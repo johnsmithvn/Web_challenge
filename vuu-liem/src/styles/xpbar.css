@@ -1,0 +1,102 @@
+/* XP BAR */
+.xpbar {
+  padding: 1.25rem;
+}
+
+.xpbar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.xpbar__level-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.xpbar__emoji {
+  font-size: 2rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+.xpbar__level-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.xpbar__level-num {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.xpbar__total {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.5rem;
+}
+
+/* Compact (Navbar) */
+.xpbar-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: default;
+}
+
+.xpbar-compact__emoji {
+  font-size: 1rem;
+}
+
+.xpbar-compact__track {
+  width: 60px;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.xpbar-compact__fill {
+  height: 100%;
+  background: var(--grad-text);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.xpbar-compact__xp {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* XP Toast popup */
+.xp-toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: rgba(0,255,136,0.12);
+  border: 1px solid rgba(0,255,136,0.3);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--green);
+  font-size: 0.95rem;
+  animation: slideUp 0.3s ease, fadeOut 0.5s 2.5s ease forwards;
+  z-index: 999;
+  box-shadow: var(--shadow-green);
+}
+
+@keyframes fadeOut {
+  to { opacity: 0; transform: translateY(10px); }
+}

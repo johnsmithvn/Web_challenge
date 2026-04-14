@@ -1,0 +1,12 @@
+/* Reset Vite defaults */
+#root {
+  min-height: 100vh;
+}
+
+/* Utility: visually highlight today's date col in tracker */
+.tracker-table td:nth-child(n+3):nth-child(-n+9) {
+  font-size: 0;
+}
+.tracker-table td:nth-child(n+3):nth-child(-n+9) .habit-checkbox {
+  font-size: 1rem;
+}
