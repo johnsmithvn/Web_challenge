@@ -1,0 +1,182 @@
+/* Team page styles */
+.team-page {
+  min-height: 100vh;
+  padding: 6rem 0 4rem;
+  background: var(--bg-primary);
+}
+
+.team-auth-wall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 2rem;
+}
+
+.team-auth-wall__icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Setup grid */
+.team-setup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 600px) { .team-setup-grid { grid-template-columns: 1fr; } }
+
+.team-setup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.team-setup-card__icon { font-size: 2rem; }
+.team-setup-card h3 { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; }
+.team-setup-card p  { color: var(--text-secondary); font-size: 0.9rem; }
+
+/* Duo grid */
+.team-duo-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 600px) {
+  .team-duo-grid { grid-template-columns: 1fr; }
+  .team-vs { display: none; }
+}
+
+.team-vs {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.team-player-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  text-align: center;
+}
+
+.team-player-card__avatar {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+  overflow: hidden;
+}
+
+.team-player-card__avatar img { width:100%; height:100%; object-fit:cover; }
+
+.team-player-card__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.team-player-card__streak {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.team-player-mini-heatmap {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0.4rem 0;
+}
+
+.team-today-badge {
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border-radius: 99px;
+}
+
+.team-today-badge.done    { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.25); }
+.team-today-badge.pending { background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.08); }
+
+/* Reactions */
+.team-reactions { padding: 1.5rem; margin-bottom: 1.5rem; }
+
+.reaction-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.reaction-btn {
+  position: relative;
+  width: 54px; height: 54px;
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+  font-size: 1.5rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--transition-spring);
+}
+
+.reaction-btn:hover {
+  transform: scale(1.2);
+  background: rgba(139,92,246,0.1);
+  border-color: rgba(139,92,246,0.3);
+}
+
+.reaction-emoji { line-height: 1; }
+
+.reaction-count {
+  position: absolute;
+  top: -4px; right: -4px;
+  background: var(--purple);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 16px; height: 16px;
+  border-radius: 99px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 3px;
+}
+
+/* Invite code box */
+.invite-code-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px dashed rgba(255,255,255,0.15);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+}
+
+.invite-code-value {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
