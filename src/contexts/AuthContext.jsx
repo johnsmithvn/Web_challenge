@@ -40,20 +40,34 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Sign up with email + password
-  const signUp = useCallback(async ({ email, password, displayName }) => {
+  // Convert username → fake email (user never sees this)
+  const toFakeEmail = (username) =>
+    `${username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '_')}@vvlazy.local`;
+
+  // Sign up with username + password
+  const signUp = useCallback(async ({ username, password, displayName }) => {
     if (!isSupabaseEnabled) return { error: { message: 'Supabase chưa được cấu hình' } };
+    const fakeEmail = toFakeEmail(username);
     const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { name: displayName } },
+      email: fakeEmail,
+      password,
+      options: { data: { name: displayName || username } },
     });
+    // Upsert profile with display_name immediately
+    if (data?.user && !error) {
+      await supabase.from('profiles').upsert({
+        id: data.user.id,
+        display_name: displayName || username,
+      }, { onConflict: 'id' });
+    }
     return { data, error };
   }, []);
 
-  // Sign in with email + password
-  const signIn = useCallback(async ({ email, password }) => {
+  // Sign in with username + password
+  const signIn = useCallback(async ({ username, password }) => {
     if (!isSupabaseEnabled) return { error: { message: 'Supabase chưa được cấu hình' } };
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const fakeEmail = toFakeEmail(username);
+    const { data, error } = await supabase.auth.signInWithPassword({ email: fakeEmail, password });
     return { data, error };
   }, []);
 

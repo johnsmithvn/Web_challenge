@@ -6,15 +6,14 @@ const TABS = ['login', 'register'];
 
 export default function AuthModal({ onClose }) {
   const { signIn, signUp, signInWithGoogle, isSupabaseEnabled } = useAuth();
-  const [tab,          setTab]          = useState('login');
-  const [email,        setEmail]        = useState('');
-  const [password,     setPassword]     = useState('');
-  const [displayName,  setDisplayName]  = useState('');
-  const [loading,      setLoading]      = useState(false);
-  const [error,        setError]        = useState('');
-  const [successMsg,   setSuccessMsg]   = useState('');
+  const [tab,         setTab]         = useState('login');
+  const [username,    setUsername]    = useState('');
+  const [password,    setPassword]    = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState('');
 
-  const reset = () => { setError(''); setSuccessMsg(''); };
+  const reset = () => setError('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,29 +21,31 @@ export default function AuthModal({ onClose }) {
       setError('Supabase chưa được cấu hình. Thêm keys vào .env.local');
       return;
     }
+    if (!username.trim()) { setError('Vui lòng nhập tên đăng nhập'); return; }
+
     setLoading(true); reset();
 
     let result;
     if (tab === 'login') {
-      result = await signIn({ email, password });
+      result = await signIn({ username, password });
     } else {
-      if (!displayName.trim()) { setError('Vui lòng nhập tên hiển thị'); setLoading(false); return; }
-      result = await signUp({ email, password, displayName });
+      result = await signUp({ username, password, displayName: displayName.trim() || username });
     }
 
     setLoading(false);
+
     if (result?.error) {
-      const msg = result.error.message;
-      if (msg.includes('Invalid login')) setError('Email hoặc mật khẩu không đúng');
-      else if (msg.includes('already registered')) setError('Email này đã được đăng ký');
-      else if (msg.includes('Password should')) setError('Mật khẩu tối thiểu 6 ký tự');
-      else setError(msg);
+      const msg = result.error.message || '';
+      if (msg.includes('Invalid login') || msg.includes('invalid_credentials'))
+        setError('Tên đăng nhập hoặc mật khẩu không đúng');
+      else if (msg.includes('already registered') || msg.includes('already exists'))
+        setError('Tên đăng nhập này đã được sử dụng');
+      else if (msg.includes('Password should') || msg.includes('password'))
+        setError('Mật khẩu tối thiểu 6 ký tự');
+      else
+        setError(msg);
     } else {
-      if (tab === 'register') {
-        setSuccessMsg('✅ Kiểm tra email để xác nhận tài khoản!');
-      } else {
-        onClose?.();
-      }
+      onClose?.();
     }
   };
 
@@ -56,6 +57,7 @@ export default function AuthModal({ onClose }) {
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
       <div className="auth-modal card" role="dialog" aria-modal="true">
+
         {/* Close */}
         <button className="auth-modal__close" onClick={onClose} aria-label="Đóng" id="auth-close">✕</button>
 
@@ -94,36 +96,45 @@ export default function AuthModal({ onClose }) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="auth-form">
+
+          {/* Tên hiển thị — chỉ khi đăng ký */}
           {tab === 'register' && (
             <div className="auth-field">
-              <label htmlFor="auth-name">Tên hiển thị</label>
+              <label htmlFor="auth-displayname">Tên hiển thị (trong team)</label>
               <input
-                id="auth-name"
+                id="auth-displayname"
                 type="text"
                 placeholder="Ví dụ: Minh Anh"
                 value={displayName}
                 onChange={e => setDisplayName(e.target.value)}
-                required={tab === 'register'}
                 autoComplete="name"
                 className="auth-input"
               />
             </div>
           )}
 
+          {/* Username */}
           <div className="auth-field">
-            <label htmlFor="auth-email">Email</label>
+            <label htmlFor="auth-username">Tên đăng nhập</label>
             <input
-              id="auth-email"
-              type="email"
-              placeholder="hello@example.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              id="auth-username"
+              type="text"
+              placeholder="Ví dụ: minhanh99"
+              value={username}
+              onChange={e => setUsername(e.target.value.trim())}
               required
-              autoComplete="email"
+              autoComplete="username"
               className="auth-input"
+              autoCapitalize="none"
             />
+            {tab === 'register' && (
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                Chỉ dùng a-z, 0-9, dấu _ hoặc . (không cần @)
+              </div>
+            )}
           </div>
 
+          {/* Password */}
           <div className="auth-field">
             <label htmlFor="auth-password">Mật khẩu</label>
             <input
@@ -139,8 +150,7 @@ export default function AuthModal({ onClose }) {
             />
           </div>
 
-          {error      && <div className="auth-error">⚠️ {error}</div>}
-          {successMsg && <div className="auth-success">{successMsg}</div>}
+          {error && <div className="auth-error">⚠️ {error}</div>}
 
           <button
             type="submit"
