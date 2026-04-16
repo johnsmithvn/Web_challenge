@@ -19,8 +19,7 @@ export default function TrackerPage() {
 
   // useTeam — always called (Rules of Hooks), handles errors internally
   const { team } = useTeam();
-  // Week 2 is locked for self-check when user is in an active team
-  const week2Locked = !!(team?.id);
+  const isInTeam = !!(team?.id);
 
   // Award XP for streak milestones
   useEffect(() => {
@@ -87,7 +86,7 @@ export default function TrackerPage() {
         </div>
 
         {/* Habit table */}
-        <TrackerSection compact={true} week2Locked={week2Locked} />
+        <TrackerSection compact={true} isInTeam={isInTeam} />
 
         {/* Insight */}
         <div className="card" style={{ marginTop: '1.5rem' }}>

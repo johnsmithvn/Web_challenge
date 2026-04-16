@@ -1,8 +1,9 @@
+import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useHabitStore } from '../hooks/useHabitStore';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import '../styles/sections.css';
 import '../styles/tracker.css';
-
 
 const DAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
@@ -30,17 +31,83 @@ const WEEKS_CONFIG = [
   },
 ];
 
-export default function TrackerSection({ compact = false, week2Locked = false }) {
+/** Small inline banner that pops up when user clicks a locked row */
+function LockBanner({ message, cta, onCta, onClose }) {
+  return (
+    <div className="lock-banner" role="alert">
+      <span className="lock-banner__icon">🔒</span>
+      <span className="lock-banner__msg">{message}</span>
+      {cta && (
+        <button className="lock-banner__btn" onClick={onCta}>{cta}</button>
+      )}
+      <button className="lock-banner__close" onClick={onClose} aria-label="Đóng">✕</button>
+    </div>
+  );
+}
+
+export default function TrackerSection({ compact = false, isInTeam = false }) {
   const { data, toggle, weekDates, streak, weekDone, completionPct, badge } = useHabitStore();
   const { addXp, hasMilestone } = useXpStore();
+  const navigate = useNavigate();
+
+  // Track which week's banner is visible: null | 2 | 3
+  const [bannerWeek, setBannerWeek] = useState(null);
+  const bannerTimer = useRef(null);
+
+  const showBanner = (wkId) => {
+    setBannerWeek(wkId);
+    clearTimeout(bannerTimer.current);
+    bannerTimer.current = setTimeout(() => setBannerWeek(null), 6000);
+  };
 
   const handleToggle = (dateKey) => {
     const wasUnchecked = !data[dateKey];
     toggle(dateKey);
-    // Award XP only when checking (not unchecking) and only first time
     if (wasUnchecked && !hasMilestone('daily_check', { date: dateKey })) {
       addXp(XP_REWARDS.daily_check, 'daily_check', { date: dateKey });
     }
+  };
+
+  // Compute week date slices and done counts
+  const weekSlices = WEEKS_CONFIG.map((wk, wi) => {
+    const slice = weekDates.slice(0, 7).map((_, di) => {
+      const base = new Date(weekDates[0]);
+      base.setDate(base.getDate() + wi * 7 + di);
+      return base.toISOString().split('T')[0];
+    });
+    return { slice, doneDays: slice.filter(d => data[d]).length };
+  });
+
+  const week1Done = weekSlices[0].doneDays;
+  const week2Done = weekSlices[1].doneDays;
+
+  /**
+   * Lock rules:
+   * - Week 2: ALWAYS locked for self-tick (requires team accountability)
+   *     no team  → popup: "Tìm đồng đội để mở khóa Tuần 2"
+   *     in team  → popup: "Đồng đội sẽ báo cáo chéo cho bạn"
+   * - Week 3: locked until Week 2 is fully done (7/7)
+   */
+  const getLockInfo = (wkId) => {
+    if (wkId === 2) {
+      return {
+        locked: true,
+        message: isInTeam
+          ? '🤝 Tuần 2 do đồng đội xác nhận — vào trang Đồng Đội để xem'
+          : '👥 Tuần 2 cần đồng đội để mở khóa',
+        cta:     isInTeam ? 'Đến trang Đồng Đội' : 'Tìm đồng đội ngay',
+        onCta:   () => navigate('/dong-doi'),
+      };
+    }
+    if (wkId === 3 && week2Done < 7) {
+      return {
+        locked: true,
+        message: `⏳ Hoàn thành Tuần 2 trước đã (${week2Done}/7 ngày)`,
+        cta: null,
+        onCta: null,
+      };
+    }
+    return { locked: false };
   };
 
   return (
@@ -101,55 +168,84 @@ export default function TrackerSection({ compact = false, week2Locked = false })
             </thead>
             <tbody>
               {WEEKS_CONFIG.map((wk, wi) => {
-                const weekDatesSlice = weekDates.slice(0, 7).map((_, di) => {
-                  const base = new Date(weekDates[0]);
-                  base.setDate(base.getDate() + wi * 7 + di);
-                  return base.toISOString().split('T')[0];
-                });
-                const doneDays  = weekDatesSlice.filter(d => data[d]).length;
-                const isLocked  = wk.id === 2 && week2Locked;
+                const { slice: weekDatesSlice, doneDays } = weekSlices[wi];
+                const { locked, message, cta, onCta } = getLockInfo(wk.id);
 
                 return (
-                  <tr key={wk.id} className={isLocked ? 'tracker-row--locked' : ''}>
-                    <td>
-                      <span className={`week-label week-label--${wk.color}`}>
-                        {isLocked ? '🔒' : ''} {wk.label}
-                      </span>
-                    </td>
-                    <td>
-                      {wk.task}
-                      {isLocked && (
-                        <div style={{ fontSize: '0.72rem', color: 'var(--purple-light)', marginTop: '0.2rem' }}>
-                          🤝 Cần teammate xác nhận trên trang Đồng Đội
-                        </div>
-                      )}
-                    </td>
-                    {weekDatesSlice.map((dateKey, di) => (
-                      <td key={di}>
-                        <input
-                          type="checkbox"
-                          className={`habit-checkbox ${isLocked ? 'habit-checkbox--locked' : ''}`}
-                          checked={!!data[dateKey]}
-                          onChange={() => !isLocked && handleToggle(dateKey)}
-                          disabled={isLocked}
-                          id={`check-w${wk.id}-d${di + 1}`}
-                          aria-label={`${wk.label} ${DAY_LABELS[di]}${isLocked ? ' (bị khóa)' : ''}`}
-                          title={isLocked ? 'Tuần 2: teammate phải xác nhận cho bạn' : ''}
-                        />
+                  <>
+                    <tr
+                      key={wk.id}
+                      className={locked ? 'tracker-row--locked' : ''}
+                    >
+                      <td>
+                        <span className={`week-label week-label--${wk.color}`}>
+                          {locked ? '🔒 ' : ''}{wk.label}
+                        </span>
                       </td>
-                    ))}
-                    <td>
-                      <div className="tracker-score">
-                        <span style={{ color: doneDays === 7 ? 'var(--green)' : 'var(--text-secondary)' }}>
-                          {doneDays}/7
-                        </span>
-                        {' '}
-                        <span className={`badge ${wk.badge.cls}`} style={{ fontSize: '0.7rem' }}>
-                          {wk.badge.emoji} {wk.badge.label}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
+                      <td style={{ lineHeight: 1.4 }}>
+                        {wk.task}
+                        {locked && wk.id === 2 && !isInTeam && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--purple-light)', marginTop: '0.2rem' }}>
+                            👥 Cần đồng đội để mở khóa
+                          </div>
+                        )}
+                        {locked && wk.id === 2 && isInTeam && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--cyan)', marginTop: '0.2rem' }}>
+                            🤝 Đồng đội sẽ báo cáo chéo cho bạn
+                          </div>
+                        )}
+                        {locked && wk.id === 3 && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--gold-dim)', marginTop: '0.2rem' }}>
+                            ⏳ Hoàn thành Tuần 2 trước ({week2Done}/7)
+                          </div>
+                        )}
+                      </td>
+                      {weekDatesSlice.map((dateKey, di) => (
+                        <td key={di}>
+                          <input
+                            type="checkbox"
+                            className={`habit-checkbox ${locked ? 'habit-checkbox--locked' : ''}`}
+                            checked={!!data[dateKey]}
+                            onChange={() => {
+                              if (locked) {
+                                showBanner(wk.id);
+                              } else {
+                                handleToggle(dateKey);
+                              }
+                            }}
+                            id={`check-w${wk.id}-d${di + 1}`}
+                            aria-label={`${wk.label} ${DAY_LABELS[di]}${locked ? ' (bị khóa)' : ''}`}
+                            title={locked ? message : ''}
+                          />
+                        </td>
+                      ))}
+                      <td>
+                        <div className="tracker-score">
+                          <span style={{ color: doneDays === 7 ? 'var(--green)' : 'var(--text-secondary)' }}>
+                            {doneDays}/7
+                          </span>
+                          {' '}
+                          <span className={`badge ${wk.badge.cls}`} style={{ fontSize: '0.7rem' }}>
+                            {wk.badge.emoji} {wk.badge.label}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Inline lock banner — shows when user taps a locked row */}
+                    {bannerWeek === wk.id && locked && (
+                      <tr key={`banner-${wk.id}`} className="tracker-row-banner">
+                        <td colSpan={10} style={{ padding: '0 0 0.5rem 0' }}>
+                          <LockBanner
+                            message={message}
+                            cta={cta}
+                            onCta={() => { onCta?.(); setBannerWeek(null); }}
+                            onClose={() => setBannerWeek(null)}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 );
               })}
             </tbody>
