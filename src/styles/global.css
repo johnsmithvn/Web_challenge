@@ -336,6 +336,19 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(0,255,136,0.08);
 }
 
+.habit-checkbox--locked,
+.habit-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+  border-color: rgba(139,92,246,0.3) !important;
+  background: rgba(139,92,246,0.05) !important;
+  box-shadow: none !important;
+}
+
+.tracker-row--locked td {
+  opacity: 0.75;
+}
+
 /* ============================
    DIVIDER
    ============================ */

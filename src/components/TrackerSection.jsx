@@ -30,7 +30,7 @@ const WEEKS_CONFIG = [
   },
 ];
 
-export default function TrackerSection({ compact = false }) {
+export default function TrackerSection({ compact = false, week2Locked = false }) {
   const { data, toggle, weekDates, streak, weekDone, completionPct, badge } = useHabitStore();
   const { addXp, hasMilestone } = useXpStore();
 
@@ -101,30 +101,40 @@ export default function TrackerSection({ compact = false }) {
             </thead>
             <tbody>
               {WEEKS_CONFIG.map((wk, wi) => {
-                const weekStart = wi * 7;
                 const weekDatesSlice = weekDates.slice(0, 7).map((_, di) => {
-                  // Use actual week dates for week 1, offset for others (demo purposes)
                   const base = new Date(weekDates[0]);
                   base.setDate(base.getDate() + wi * 7 + di);
                   return base.toISOString().split('T')[0];
                 });
-                const doneDays = weekDatesSlice.filter(d => data[d]).length;
+                const doneDays  = weekDatesSlice.filter(d => data[d]).length;
+                const isLocked  = wk.id === 2 && week2Locked;
 
                 return (
-                  <tr key={wk.id}>
+                  <tr key={wk.id} className={isLocked ? 'tracker-row--locked' : ''}>
                     <td>
-                      <span className={`week-label week-label--${wk.color}`}>{wk.label}</span>
+                      <span className={`week-label week-label--${wk.color}`}>
+                        {isLocked ? '🔒' : ''} {wk.label}
+                      </span>
                     </td>
-                    <td>{wk.task}</td>
+                    <td>
+                      {wk.task}
+                      {isLocked && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--purple-light)', marginTop: '0.2rem' }}>
+                          🤝 Cần teammate xác nhận trên trang Đồng Đội
+                        </div>
+                      )}
+                    </td>
                     {weekDatesSlice.map((dateKey, di) => (
                       <td key={di}>
                         <input
                           type="checkbox"
-                          className="habit-checkbox"
+                          className={`habit-checkbox ${isLocked ? 'habit-checkbox--locked' : ''}`}
                           checked={!!data[dateKey]}
-                          onChange={() => handleToggle(dateKey)}
+                          onChange={() => !isLocked && handleToggle(dateKey)}
+                          disabled={isLocked}
                           id={`check-w${wk.id}-d${di + 1}`}
-                          aria-label={`${wk.label} ${DAY_LABELS[di]}`}
+                          aria-label={`${wk.label} ${DAY_LABELS[di]}${isLocked ? ' (bị khóa)' : ''}`}
+                          title={isLocked ? 'Tuần 2: teammate phải xác nhận cho bạn' : ''}
                         />
                       </td>
                     ))}

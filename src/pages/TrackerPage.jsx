@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useHabitStore } from '../hooks/useHabitStore';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import { useNotifications } from '../hooks/useNotifications';
+import { useTeam } from '../hooks/useTeam';
 import TrackerSection from '../components/TrackerSection';
 import DailyChallenge from '../components/DailyChallenge';
 import XpBar from '../components/XpBar';
@@ -15,6 +16,11 @@ export default function TrackerPage() {
   const { data, weekDates, streak, totalDone, completionPct, badge, todayDone } = useHabitStore();
   const { addXp, hasMilestone } = useXpStore();
   const { scheduleTodayReminder } = useNotifications();
+
+  // useTeam — always called (Rules of Hooks), handles errors internally
+  const { team } = useTeam();
+  // Week 2 is locked for self-check when user is in an active team
+  const week2Locked = !!(team?.id);
 
   // Award XP for streak milestones
   useEffect(() => {
@@ -81,7 +87,7 @@ export default function TrackerPage() {
         </div>
 
         {/* Habit table */}
-        <TrackerSection compact={true} />
+        <TrackerSection compact={true} week2Locked={week2Locked} />
 
         {/* Insight */}
         <div className="card" style={{ marginTop: '1.5rem' }}>
