@@ -40,38 +40,72 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Convert username → fake email (user never sees this)
-  const toFakeEmail = (username) =>
-    `${username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '_')}@vvlazy.local`;
-
-  // Sign up with username + password
-  const signUp = useCallback(async ({ username, password, displayName }) => {
+  // ── Sign Up ─────────────────────────────────────────────────────
+  // Fields: username (required), email (required), password, displayName (optional)
+  const signUp = useCallback(async ({ username, email, password, displayName }) => {
     if (!isSupabaseEnabled) return { error: { message: 'Supabase chưa được cấu hình' } };
-    const fakeEmail = toFakeEmail(username);
+
+    // 1. Check username uniqueness before creating auth user
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', username.trim().toLowerCase())
+      .maybeSingle();
+
+    if (existing) return { error: { message: 'username_taken' } };
+
+    // 2. Create Supabase auth user with real email
     const { data, error } = await supabase.auth.signUp({
-      email: fakeEmail,
+      email: email.trim().toLowerCase(),
       password,
       options: { data: { name: displayName || username } },
     });
-    // Upsert profile with display_name immediately
-    if (data?.user && !error) {
+
+    if (error) return { error };
+
+    // 3. Upsert profile with username + email immediately
+    if (data?.user) {
       await supabase.from('profiles').upsert({
-        id: data.user.id,
-        display_name: displayName || username,
+        id:           data.user.id,
+        username:     username.trim().toLowerCase(),
+        email:        email.trim().toLowerCase(),
+        display_name: displayName?.trim() || username,
       }, { onConflict: 'id' });
     }
-    return { data, error };
+
+    return { data, error: null };
   }, []);
 
-  // Sign in with username + password
-  const signIn = useCallback(async ({ username, password }) => {
+  // ── Sign In ─────────────────────────────────────────────────────
+  // loginId: can be username OR email
+  const signIn = useCallback(async ({ loginId, password }) => {
     if (!isSupabaseEnabled) return { error: { message: 'Supabase chưa được cấu hình' } };
-    const fakeEmail = toFakeEmail(username);
-    const { data, error } = await supabase.auth.signInWithPassword({ email: fakeEmail, password });
+
+    const trimmed = loginId.trim();
+    let emailToUse = trimmed;
+
+    // If no @ → it's a username → look up the real email from profiles
+    if (!trimmed.includes('@')) {
+      const { data: prof, error: lookupErr } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('username', trimmed.toLowerCase())
+        .maybeSingle();
+
+      if (lookupErr || !prof?.email) {
+        return { error: { message: 'username_not_found' } };
+      }
+      emailToUse = prof.email;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: emailToUse,
+      password,
+    });
     return { data, error };
   }, []);
 
-  // Sign in with Google OAuth
+  // ── Google OAuth ──────────────────────────────────────────────
   const signInWithGoogle = useCallback(async () => {
     if (!isSupabaseEnabled) return { error: { message: 'Supabase chưa được cấu hình' } };
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -81,7 +115,7 @@ export function AuthProvider({ children }) {
     return { data, error };
   }, []);
 
-  // Sign out
+  // ── Sign Out ──────────────────────────────────────────────────
   const signOut = useCallback(async () => {
     if (!isSupabaseEnabled) return;
     await supabase.auth.signOut();
@@ -89,7 +123,7 @@ export function AuthProvider({ children }) {
     setProfile(null);
   }, []);
 
-  // Update profile
+  // ── Update profile ────────────────────────────────────────────
   const updateProfile = useCallback(async (updates) => {
     if (!isSupabaseEnabled || !user) return;
     const { data, error } = await supabase

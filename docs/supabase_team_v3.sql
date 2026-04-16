@@ -6,10 +6,16 @@
 -- ─── 0. profiles (extends Supabase auth.users) ───────────────────
 CREATE TABLE IF NOT EXISTS profiles (
   id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  display_name TEXT,
+  username     TEXT UNIQUE,           -- login identifier (no @ needed)
+  email        TEXT,                  -- real email (for login lookup & Google OAuth)
+  display_name TEXT,                  -- shown in UI / team
   avatar_url   TEXT,
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Index for fast username lookup during login
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_profiles_username ON profiles (username) WHERE username IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles (email) WHERE email IS NOT NULL;
 
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
