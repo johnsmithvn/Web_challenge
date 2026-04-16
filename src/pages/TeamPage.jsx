@@ -1,179 +1,121 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, isSupabaseEnabled } from '../lib/supabase';
+import { isSupabaseEnabled } from '../lib/supabase';
 import AuthModal from '../components/AuthModal';
+import TeamMemberCard from '../components/team/TeamMemberCard';
+import TeammateCheckPanel from '../components/team/TeammateCheckPanel';
+import JoinSyncModal from '../components/team/JoinSyncModal';
+import TeamRules from '../components/team/TeamRules';
+import { useTeam } from '../hooks/useTeam';
+import { useTeamCheck } from '../hooks/useTeamCheck';
+import { useTeamRules } from '../hooks/useTeamRules';
 import '../styles/tracker.css';
 import '../styles/auth.css';
 import '../styles/team.css';
 
-const REACTIONS = ['🔥', '💪', '👏', '🎯', '⚡'];
+// ─── Mock data for guest demo ────────────────────────────────
+const todayKey = new Date().toISOString().split('T')[0];
+const sevenAgo = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date(); d.setDate(d.getDate() - 6 + i);
+  return d.toISOString().split('T')[0];
+});
 
-// Generate invite code
-function genCode() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
-}
+const MOCK_MEMBERS = [
+  {
+    id: 'mock-1', display_name: 'Bạn (Demo)', isMe: true, role: 'owner',
+    currentWeek: 1, streak: 3, avatar_url: null,
+    progress: Object.fromEntries(sevenAgo.slice(0, 5).map(d => [d, true])),
+  },
+  {
+    id: 'mock-2', display_name: 'Minh Anh', isMe: false, role: 'member',
+    currentWeek: 2, streak: 8, avatar_url: null,
+    progress: Object.fromEntries(sevenAgo.slice(0, 6).map(d => [d, true])),
+  },
+  {
+    id: 'mock-3', display_name: 'Tuấn', isMe: false, role: 'member',
+    currentWeek: 3, streak: 21, avatar_url: null,
+    progress: Object.fromEntries(sevenAgo.map(d => [d, true])),
+  },
+];
 
-// ─── Mock teammate for demo / no-auth mode ──────────────────
-const MOCK_TEAMMATE = {
-  id: 'mock',
-  display_name: 'Minh Anh',
-  avatar_url: null,
-  emoji: '🧑‍💻',
-  streak: 5,
-  progress: { [new Date().toISOString().split('T')[0]]: true },
-};
-
+// ─── Main Page ───────────────────────────────────────────────
 export default function TeamPage() {
   const { user, profile, isAuthenticated } = useAuth();
-  const [showAuth,     setShowAuth]     = useState(false);
-  const [team,         setTeam]         = useState(null);
-  const [teammate,     setTeammate]     = useState(null);
-  const [tmProgress,   setTmProgress]   = useState({});
-  const [inviteCode,   setInviteCode]   = useState('');
-  const [joinCode,     setJoinCode]     = useState('');
-  const [joinError,    setJoinError]    = useState('');
-  const [reactions,    setReactions]    = useState({});
-  const [loadingJoin,  setLoadingJoin]  = useState(false);
-  const [copied,       setCopied]       = useState(false);
-  const [useMock,      setUseMock]      = useState(false);
 
-  const todayKey = new Date().toISOString().split('T')[0];
-  const myTodayDone = !!JSON.parse(localStorage.getItem('vl_habit_data') || '{}')[todayKey];
+  // UI state
+  const [showAuth,        setShowAuth]        = useState(false);
+  const [useMock,         setUseMock]         = useState(false);
+  const [checkTarget,     setCheckTarget]     = useState(null); // member being checked
+  const [showJoinSync,    setShowJoinSync]    = useState(false);
+  const [pendingJoinCode, setPendingJoinCode] = useState('');
 
-  // ── Load existing team from DB ──
-  useEffect(() => {
-    if (!isSupabaseEnabled || !isAuthenticated || !user) return;
-    loadTeam();
-  }, [isAuthenticated, user?.id]);
+  // Form state
+  const [createName,  setCreateName]  = useState('');
+  const [maxMembers,  setMaxMembers]  = useState(2);
+  const [joinCode,    setJoinCode]    = useState('');
 
-  const loadTeam = async () => {
-    const { data: teams } = await supabase
-      .from('teams')
-      .select('*')
-      .or(`member1_id.eq.${user.id},member2_id.eq.${user.id}`)
-      .eq('status', 'active')
-      .maybeSingle();
+  // ── Hooks (only active when Supabase + authenticated) ──
+  const teamHook  = useTeam();
+  const checkHook = useTeamCheck(teamHook.team?.id);
+  const memberIds = teamHook.members.map(m => m.id);
+  const rulesHook = useTeamRules(teamHook.team?.id, memberIds);
 
-    if (teams) {
-      setTeam(teams);
-      const tmId = teams.member1_id === user.id ? teams.member2_id : teams.member1_id;
-      if (tmId) await loadTeammate(tmId);
+  // ── Helpers ──
+  const isDayValidated = (member) => {
+    if (useMock) {
+      return member.currentWeek !== 2 ? !!member.progress?.[todayKey] : false;
+    }
+    return checkHook.isDayValidated(member);
+  };
+
+  const needsTeamCheck = (member) => {
+    if (useMock) return member.currentWeek === 2;
+    return checkHook.needsTeamCheck(member);
+  };
+
+  const canBeChecked = (member) => {
+    if (useMock) return false; // demo only
+    return checkHook.canCheck(member);
+  };
+
+  // ── Join flow — show sync modal if user has active program ──
+  const handleJoinClick = () => {
+    const myProgram = teamHook.myProgram;
+    if (myProgram && myProgram.current_week > 1) {
+      setPendingJoinCode(joinCode);
+      setShowJoinSync(true);
+    } else {
+      teamHook.joinTeam(joinCode, 'continue');
     }
   };
 
-  const loadTeammate = async (tmId) => {
-    const { data: prof } = await supabase
-      .from('profiles').select('*').eq('id', tmId).single();
-    const { data: streak } = await supabase
-      .from('streaks').select('*').eq('user_id', tmId).single();
-    const { data: prog } = await supabase
-      .from('progress').select('date, completed').eq('user_id', tmId);
-
-    const progMap = {};
-    prog?.forEach(r => { progMap[r.date] = r.completed; });
-
-    setTeammate({ ...prof, streak: streak?.current_streak || 0 });
-    setTmProgress(progMap);
+  const handleSyncChoice = (choice) => {
+    setShowJoinSync(false);
+    teamHook.joinTeam(pendingJoinCode, choice);
   };
 
-  // ── Realtime subscription ──
-  useEffect(() => {
-    if (!isSupabaseEnabled || !team || !teammate) return;
-
-    const channel = supabase
-      .channel(`team-${team.id}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'progress',
-        filter: `user_id=eq.${teammate.id}`,
-      }, (payload) => {
-        if (payload.new) {
-          setTmProgress(prev => ({
-            ...prev,
-            [payload.new.date]: payload.new.completed,
-          }));
-        }
-      })
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  }, [team?.id, teammate?.id]);
-
-  // ── Create team ──
-  const handleCreate = async () => {
-    if (!isSupabaseEnabled || !user) return;
-    const code = genCode();
-    const { data, error } = await supabase.from('teams').insert({
-      invite_code: code,
-      member1_id:  user.id,
-      status:      'pending',
-    }).select().single();
-
-    if (!error) { setTeam(data); setInviteCode(code); }
+  // ── Check submit ──
+  const handleCheckSubmit = async (checkedId, status, reason) => {
+    await checkHook.submitCheck(checkedId, status, reason);
+    if (!checkHook.submitError) setCheckTarget(null);
   };
 
-  // ── Join team ──
-  const handleJoin = async () => {
-    if (!joinCode.trim()) return;
-    setLoadingJoin(true); setJoinError('');
-    const code = joinCode.trim().toUpperCase();
-
-    const { data: found } = await supabase
-      .from('teams').select('*').eq('invite_code', code).maybeSingle();
-
-    if (!found) { setJoinError('Mã không tồn tại'); setLoadingJoin(false); return; }
-    if (found.member1_id === user.id) { setJoinError('Không thể join team của chính mình'); setLoadingJoin(false); return; }
-    if (found.member2_id) { setJoinError('Team này đã đủ người'); setLoadingJoin(false); return; }
-
-    const { data: updated, error } = await supabase
-      .from('teams')
-      .update({ member2_id: user.id, status: 'active', activated_at: new Date().toISOString() })
-      .eq('id', found.id)
-      .select().single();
-
-    if (!error) { setTeam(updated); await loadTeammate(found.member1_id); }
-    else setJoinError(error.message);
-    setLoadingJoin(false);
-  };
-
-  // ── Send reaction ──
-  const handleReaction = async (emoji) => {
-    if (!isSupabaseEnabled || !user || !teammate) return;
-    await supabase.from('reactions').upsert({
-      from_user_id: user.id,
-      to_user_id:   teammate.id,
-      emoji, date: todayKey,
-    }, { onConflict: 'from_user_id,to_user_id,emoji,date' });
-    setReactions(prev => ({ ...prev, [emoji]: (prev[emoji] || 0) + 1 }));
-  };
-
-  const copyCode = () => {
-    navigator.clipboard.writeText(team?.invite_code || inviteCode);
-    setCopied(true); setTimeout(() => setCopied(false), 2000);
-  };
-
-  // Week mini heatmap
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - 6 + i);
-    return d.toISOString().split('T')[0];
-  });
-
-  // ─── No auth state ──────────────────────────────────────────
+  // ─── No-auth wall ──────────────────────────────────────────
   if (!isAuthenticated && !useMock) {
     return (
       <div className="team-page">
         <div className="container team-auth-wall">
           <div className="team-auth-wall__icon">🤝</div>
           <h1 className="display-2">Team Mode</h1>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', maxWidth: 480 }}>
-            Ghép cặp với 1 người. Thấy nhau tick mỗi ngày. Không muốn phá streak trước mặt người khác.
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', maxWidth: 480, textAlign: 'center' }}>
+            Ghép nhóm 2–4 người. Theo dõi nhau mỗi ngày. Tuần 2 cần đồng đội xác nhận — không thể fake!
           </p>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             <button className="btn btn-primary" onClick={() => setShowAuth(true)} id="team-login">
               🔑 Đăng Nhập / Đăng Ký
             </button>
             <button className="btn btn-ghost" onClick={() => setUseMock(true)} id="team-demo">
-              👁 Xem Demo
+              👁 Xem Demo (3 người)
             </button>
           </div>
         </div>
@@ -182,40 +124,80 @@ export default function TeamPage() {
     );
   }
 
-  // ─── Demo mode (mock teammate) ──────────────────────────────
-  const displayTeammate = useMock && !teammate ? MOCK_TEAMMATE : teammate;
-  const displayProgress = useMock && !teammate ? MOCK_TEAMMATE.progress : tmProgress;
-  const hasTeam = !!team || useMock;
+  // ─── Which members to display ──────────────────────────────
+  const displayMembers = useMock ? MOCK_MEMBERS : teamHook.members;
+  const displayTeam    = useMock ? { name: 'Demo Squad', invite_code: 'DEMO01', max_members: 3 } : teamHook.team;
+  const hasTeam        = !!displayTeam || useMock;
 
+  // ─── Render ────────────────────────────────────────────────
   return (
     <div className="team-page">
       <div className="container">
-        <div style={{ marginBottom: '2rem' }}>
+
+        {/* Page header */}
+        <div className="team-page-header">
           <div className="section-label">🤝 Đồng Đội</div>
-          <h1 className="display-2">Team Mode {useMock && <span className="badge badge-cyan" style={{ fontSize: '0.6rem', verticalAlign: 'middle' }}>DEMO</span>}</h1>
-          {isAuthenticated && !team && !useMock && (
-            <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-              Tạo team hoặc nhập mã để kết nối với đồng đội
-            </p>
+          <h1 className="display-2">
+            Team Mode
+            {useMock && <span className="badge badge-cyan" style={{ fontSize: '0.6rem', verticalAlign: 'middle', marginLeft: '0.5rem' }}>DEMO</span>}
+          </h1>
+          {hasTeam && displayTeam && (
+            <div className="team-page-meta">
+              <span className="team-page-name">{displayTeam.name || 'My Team'}</span>
+              <span className="team-page-size">👥 {displayMembers.length}/{displayTeam.max_members || 2} thành viên</span>
+            </div>
           )}
         </div>
 
-        {/* ── No team yet (authenticated) ── */}
-        {isAuthenticated && !team && (
+        {/* ── Setup: no team yet ── */}
+        {isAuthenticated && !teamHook.team && !useMock && (
           <div className="team-setup-grid">
+
             {/* Create */}
             <div className="card team-setup-card">
               <div className="team-setup-card__icon">🚀</div>
               <h3>Tạo Team Mới</h3>
-              <p>Tạo mã invite và gửi cho bạn đồng hành</p>
-              <button className="btn btn-primary" onClick={handleCreate} id="team-create">
+              <p>Tạo mã invite và gửi cho đồng đội</p>
+
+              <input
+                type="text"
+                className="auth-input"
+                placeholder="Tên team (tuỳ chọn)"
+                value={createName}
+                onChange={e => setCreateName(e.target.value)}
+                id="team-name-input"
+              />
+
+              <div className="team-size-picker">
+                <label>Số thành viên tối đa:</label>
+                <div className="team-size-options">
+                  {[2, 3, 4].map(n => (
+                    <button
+                      key={n}
+                      className={`team-size-btn ${maxMembers === n ? 'active' : ''}`}
+                      onClick={() => setMaxMembers(n)}
+                      id={`size-${n}`}
+                    >
+                      {n === 2 ? '👫 Duo' : n === 3 ? '👨‍👩‍👦 Trio' : '👨‍👩‍👧‍👦 Squad'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary"
+                onClick={() => teamHook.createTeam(createName, maxMembers)}
+                id="team-create"
+                style={{ width: '100%' }}
+              >
                 Tạo Team
               </button>
-              {(team?.invite_code || inviteCode) && (
-                <div className="invite-code-box" style={{ marginTop: '1rem' }}>
-                  <span className="invite-code-value">{team?.invite_code || inviteCode}</span>
-                  <button className="btn btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }} onClick={copyCode}>
-                    {copied ? '✅ Đã copy' : '📋 Copy'}
+
+              {teamHook.inviteCode && (
+                <div className="invite-code-box" style={{ marginTop: '0.75rem' }}>
+                  <span className="invite-code-value">{teamHook.inviteCode}</span>
+                  <button className="btn btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }} onClick={teamHook.copyInviteCode}>
+                    {teamHook.copied ? '✅ Đã copy' : '📋 Copy'}
                   </button>
                 </div>
               )}
@@ -237,111 +219,139 @@ export default function TeamPage() {
                   style={{ flex: 1, textTransform: 'uppercase', letterSpacing: '0.1em' }}
                   id="join-code-input"
                 />
-                <button className="btn btn-primary" onClick={handleJoin} disabled={loadingJoin} id="team-join">
-                  {loadingJoin ? '...' : 'Join'}
+                <button
+                  className="btn btn-primary"
+                  onClick={handleJoinClick}
+                  disabled={teamHook.joinLoading || !joinCode.trim()}
+                  id="team-join"
+                >
+                  {teamHook.joinLoading ? '...' : 'Join'}
                 </button>
               </div>
-              {joinError && <div className="auth-error" style={{ marginTop: '0.5rem' }}>{joinError}</div>}
+              {teamHook.joinError && (
+                <div className="auth-error" style={{ marginTop: '0.5rem' }}>{teamHook.joinError}</div>
+              )}
             </div>
           </div>
         )}
 
-        {/* ── Active team ── */}
-        {(hasTeam) && (
+        {/* ── Active team: members grid ── */}
+        {hasTeam && (
           <>
-            {/* Duo cards */}
-            <div className="team-duo-grid">
-              {/* Me */}
-              <div className="team-player-card card">
-                <div className="team-player-card__avatar">
-                  {profile?.avatar_url
-                    ? <img src={profile.avatar_url} alt="" />
-                    : (profile?.display_name?.[0] || '😤')}
-                </div>
-                <div className="team-player-card__name">
-                  {profile?.display_name || 'Bạn'}
-                  <span className="badge badge-cyan" style={{ marginLeft: 8, fontSize: '0.65rem' }}>Bạn</span>
-                </div>
-                <div className="team-player-card__streak">
-                  🔥 {JSON.parse(localStorage.getItem('vl_streak_cache') || '0')} streak
-                </div>
-                <div className="team-player-mini-heatmap">
-                  {weekDays.map(d => {
-                    const done = !!JSON.parse(localStorage.getItem('vl_habit_data') || '{}')[d];
-                    return <div key={d} className={`heatmap-cell ${done ? 'heatmap-cell--done' : 'heatmap-cell--empty'}`} title={d} />;
-                  })}
-                </div>
-                <div className={`team-today-badge ${myTodayDone ? 'done' : 'pending'}`}>
-                  {myTodayDone ? '✅ Done hôm nay!' : '⏳ Chưa tick hôm nay'}
-                </div>
+            {/* Loading */}
+            {teamHook.loading && !useMock && (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                ⏳ Đang tải dữ liệu team...
               </div>
+            )}
 
-              {/* VS */}
-              <div className="team-vs">VS</div>
-
-              {/* Teammate */}
-              <div className="team-player-card card">
-                <div className="team-player-card__avatar">
-                  {displayTeammate?.avatar_url
-                    ? <img src={displayTeammate.avatar_url} alt="" />
-                    : (displayTeammate?.emoji || displayTeammate?.display_name?.[0] || '🧑')}
-                </div>
-                <div className="team-player-card__name">{displayTeammate?.display_name || 'Đang chờ...'}</div>
-                <div className="team-player-card__streak">
-                  🔥 {displayTeammate?.streak || 0} streak
-                </div>
-                <div className="team-player-mini-heatmap">
-                  {weekDays.map(d => {
-                    const done = !!displayProgress?.[d];
-                    return <div key={d} className={`heatmap-cell ${done ? 'heatmap-cell--done' : 'heatmap-cell--empty'}`} title={d} />;
-                  })}
-                </div>
-                <div className={`team-today-badge ${displayProgress?.[todayKey] ? 'done' : 'pending'}`}>
-                  {displayProgress?.[todayKey] ? '✅ Done hôm nay!' : '⏳ Chưa tick hôm nay'}
-                </div>
+            {/* Members */}
+            {displayMembers.length > 0 && (
+              <div className={`team-members-grid team-members-grid--${Math.min(displayMembers.length, 4)}`}>
+                {displayMembers.map(member => (
+                  <TeamMemberCard
+                    key={member.id}
+                    member={member}
+                    todayKey={todayKey}
+                    isDayValidated={isDayValidated}
+                    needsTeamCheck={needsTeamCheck}
+                    canBeChecked={canBeChecked(member)}
+                    onCheckClick={setCheckTarget}
+                  />
+                ))}
               </div>
-            </div>
+            )}
 
-            {/* Reactions */}
-            {displayTeammate && (
-              <div className="card team-reactions">
-                <div className="dash-card-title">⚡ Gửi Động Lực</div>
+            {/* Waiting for members (invite code shown) */}
+            {isAuthenticated && displayTeam?.invite_code && displayMembers.length < (displayTeam.max_members || 2) && !useMock && (
+              <div className="card" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                <div className="dash-card-title">⏳ Chờ đồng đội join...</div>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                  Gửi reaction cho {displayTeammate.display_name}
+                  Chia sẻ mã dưới đây cho {(displayTeam.max_members || 2) - displayMembers.length} người còn lại
                 </p>
-                <div className="reaction-row">
-                  {REACTIONS.map(emoji => (
-                    <button
-                      key={emoji}
-                      className="reaction-btn"
-                      onClick={() => handleReaction(emoji)}
-                      id={`reaction-${emoji}`}
-                    >
-                      <span className="reaction-emoji">{emoji}</span>
-                      {reactions[emoji] > 0 && (
-                        <span className="reaction-count">{reactions[emoji]}</span>
-                      )}
-                    </button>
-                  ))}
+                <div className="invite-code-box" style={{ justifyContent: 'center' }}>
+                  <span className="invite-code-value">{displayTeam.invite_code}</span>
+                  <button className="btn btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }} onClick={teamHook.copyInviteCode}>
+                    {teamHook.copied ? '✅ Đã copy' : '📋 Copy'}
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* Invite code */}
-            {(team?.invite_code) && !team?.member2_id && (
-              <div className="card" style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-                <div className="dash-card-title">⏳ Chờ đồng đội join...</div>
-                <div className="invite-code-box" style={{ justifyContent: 'center' }}>
-                  <span className="invite-code-value">{team.invite_code}</span>
-                  <button className="btn btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.82rem' }} onClick={copyCode}>
-                    {copied ? '✅ Đã copy' : '📋 Copy'}
-                  </button>
+            {/* Team Rules section — real mode only */}
+            {isAuthenticated && teamHook.team && (
+              <TeamRules
+                teamId={teamHook.team.id}
+                memberIds={memberIds}
+                userId={user?.id}
+                useTeamRulesHook={rulesHook}
+              />
+            )}
+
+            {/* Demo rules placeholder */}
+            {useMock && (
+              <div className="card team-rules-section" style={{ margin: '1.5rem 0' }}>
+                <div className="team-rules-header">
+                  <div className="dash-card-title">⚖️ Team Rules</div>
                 </div>
+                <div className="team-rules-list">
+                  <div className="team-rule-card team-rule-card--active">
+                    <div className="team-rule-card__top">
+                      <span>🔴</span>
+                      <span className="rule-status rule-status--active">✅ Active</span>
+                    </div>
+                    <div className="team-rule-card__desc">Bỏ 1 ngày → Chuyển khoản 50.000đ cho teammate</div>
+                    <div className="team-rule-card__trigger">☠️ Bỏ 1 ngày</div>
+                  </div>
+                  <div className="team-rule-card">
+                    <div className="team-rule-card__top">
+                      <span>🏆</span>
+                      <span className="rule-status rule-status--pending">⏳ 2/3 đồng ý</span>
+                    </div>
+                    <div className="team-rule-card__desc">Streak 7 ngày → Người kia mua cà phê 1 tuần</div>
+                    <div className="team-rule-card__trigger">🔥 Streak 7 ngày</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Leave team button (real mode) */}
+            {isAuthenticated && teamHook.team && (
+              <div style={{ textAlign: 'right', marginTop: '1rem' }}>
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}
+                  onClick={() => { if (confirm('Bạn chắc chắn muốn rời team?')) teamHook.leaveTeam(); }}
+                  id="leave-team"
+                >
+                  🚪 Rời Team
+                </button>
               </div>
             )}
           </>
         )}
       </div>
+
+      {/* ── Modals ── */}
+      {checkTarget && !useMock && (
+        <TeammateCheckPanel
+          member={checkTarget}
+          onSubmit={handleCheckSubmit}
+          onClose={() => { setCheckTarget(null); checkHook.setSubmitError(''); }}
+          submitting={checkHook.submitting}
+          submitError={checkHook.submitError}
+        />
+      )}
+
+      {showJoinSync && (
+        <JoinSyncModal
+          currentWeek={teamHook.myProgram?.current_week || 1}
+          teamName=""
+          onChoice={handleSyncChoice}
+          onClose={() => setShowJoinSync(false)}
+        />
+      )}
+
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
     </div>
   );
