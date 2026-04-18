@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHabitStore } from '../hooks/useHabitStore';
-import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import '../styles/sections.css';
 import '../styles/tracker.css';
 
@@ -46,8 +45,8 @@ function LockBanner({ message, cta, onCta, onClose }) {
 }
 
 export default function TrackerSection({ compact = false, isInTeam = false }) {
-  const { data, toggle, weekDates, streak, weekDone, completionPct, badge } = useHabitStore();
-  const { addXp, hasMilestone } = useXpStore();
+  // data is auto-synced from HabitsPage: date = true when ALL custom habits are ticked
+  const { data, weekDates, streak, weekDone, completionPct, badge } = useHabitStore();
   const navigate = useNavigate();
 
   // Track which week's banner is visible: null | 2 | 3
@@ -58,14 +57,6 @@ export default function TrackerSection({ compact = false, isInTeam = false }) {
     setBannerWeek(wkId);
     clearTimeout(bannerTimer.current);
     bannerTimer.current = setTimeout(() => setBannerWeek(null), 6000);
-  };
-
-  const handleToggle = (dateKey) => {
-    const wasUnchecked = !data[dateKey];
-    toggle(dateKey);
-    if (wasUnchecked && !hasMilestone('daily_check', { date: dateKey })) {
-      addXp(XP_REWARDS.daily_check, 'daily_check', { date: dateKey });
-    }
   };
 
   // Compute week date slices and done counts
@@ -200,25 +191,29 @@ export default function TrackerSection({ compact = false, isInTeam = false }) {
                           </div>
                         )}
                       </td>
-                      {weekDatesSlice.map((dateKey, di) => (
-                        <td key={di}>
-                          <input
-                            type="checkbox"
-                            className={`habit-checkbox ${locked ? 'habit-checkbox--locked' : ''}`}
-                            checked={!!data[dateKey]}
-                            onChange={() => {
-                              if (locked) {
-                                showBanner(wk.id);
-                              } else {
-                                handleToggle(dateKey);
-                              }
-                            }}
-                            id={`check-w${wk.id}-d${di + 1}`}
-                            aria-label={`${wk.label} ${DAY_LABELS[di]}${locked ? ' (bị khóa)' : ''}`}
-                            title={locked ? message : ''}
-                          />
-                        </td>
-                      ))}
+                      {weekDatesSlice.map((dateKey, di) => {
+                        const isDone    = !!data[dateKey];
+                        const isFuture  = dateKey > new Date().toISOString().split('T')[0];
+                        return (
+                          <td key={di}>
+                            <button
+                              className={`tracker-status-dot ${
+                                locked    ? 'tracker-status-dot--locked' :
+                                isFuture  ? 'tracker-status-dot--future' :
+                                isDone    ? 'tracker-status-dot--done'   :
+                                            'tracker-status-dot--miss'
+                              }`}
+                              onClick={() => locked && showBanner(wk.id)}
+                              title={locked ? message : isDone ? 'Đã hoàn thành' : isFuture ? 'Chưa đến ngày' : 'Chưa hoàn thành — tick habits để ghi nhận'}
+                              aria-label={`${wk.label} ${DAY_LABELS[di]}: ${isDone ? 'done' : 'pending'}`}
+                              disabled={!locked}
+                              style={{ cursor: locked ? 'pointer' : 'default' }}
+                            >
+                              {locked ? '—' : isFuture ? '·' : isDone ? '✓' : '○'}
+                            </button>
+                          </td>
+                        );
+                      })}
                       <td>
                         <div className="tracker-score">
                           <span style={{ color: doneDays === 7 ? 'var(--green)' : 'var(--text-secondary)' }}>

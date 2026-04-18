@@ -9,9 +9,11 @@ import { useMoodLog } from '../hooks/useMoodSkip';
 import DailyChallenge from '../components/DailyChallenge';
 import XpBar from '../components/XpBar';
 import NotificationSettings from '../components/NotificationSettings';
+import CompletionModal from '../components/CompletionModal';
 import '../styles/tracker.css';
 import '../styles/xpbar.css';
 import '../styles/calendar.css';
+import '../styles/completion.css';
 
 /* ── Plant levels based on streak ──────────────────────── */
 const PLANT_STAGES = [
@@ -132,13 +134,35 @@ export default function TrackerPage() {
     totalDone, completionPct, badge, todayDone
   } = useHabitStore();
   const { activeHabits } = useCustomHabits();
-  const { addXp, hasMilestone } = useXpStore();
+  const { addXp, hasMilestone, totalXp } = useXpStore();
   const { scheduleTodayReminder } = useNotifications();
   const { saveMood, getMood } = useMoodLog();
 
   const { team } = useTeam();
 
   const [tickAnim, setTickAnim] = useState(false);
+
+  // Completion modal: show once per completion milestone
+  const COMPLETION_KEY = `vl_completion_shown_${streak >= 21 ? Math.floor(streak / 21) : 0}`;
+  const [showCompletion, setShowCompletion] = useState(() =>
+    streak >= 21 && !localStorage.getItem(COMPLETION_KEY)
+  );
+
+  const dismissCompletion = () => {
+    localStorage.setItem(COMPLETION_KEY, '1');
+    setShowCompletion(false);
+  };
+
+  const handleNewRound = () => {
+    // Mark this milestone as seen, CompletionModal will handle round counter
+    localStorage.setItem(COMPLETION_KEY, '1');
+    setShowCompletion(false);
+    // Reset the streak data for a fresh 21-day cycle
+    // We clear vl_habit_data so streak resets; history remains in Supabase
+    localStorage.removeItem('vl_habit_data');
+    localStorage.removeItem('vl_habit_progress');
+    window.location.reload(); // simplest reset trigger
+  };
 
   const todayKey  = new Date().toISOString().split('T')[0];
   const plant     = getPlant(streak);
@@ -168,6 +192,14 @@ export default function TrackerPage() {
 
   return (
     <div className="tracker-v2-page">
+      {showCompletion && (
+        <CompletionModal
+          streak={streak}
+          totalXp={totalXp}
+          onStartNewRound={handleNewRound}
+          onClose={dismissCompletion}
+        />
+      )}
       <div className="container">
 
         {/* ── Header ── */}

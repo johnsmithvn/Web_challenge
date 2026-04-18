@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
+import OnboardingModal, { useOnboarding } from './components/OnboardingModal';
 import LandingPage    from './pages/LandingPage';
 import TrackerPage    from './pages/TrackerPage';
 import HabitsPage     from './pages/HabitsPage';
@@ -13,23 +15,35 @@ import FriendsPage    from './pages/FriendsPage';
 import './styles/global.css';
 import './index.css';
 
+function AppShell() {
+  const { shouldShow } = useOnboarding();
+  const [onboarded, setOnboarded] = useState(!shouldShow);
+
+  return (
+    <>
+      {!onboarded && <OnboardingModal onDone={() => setOnboarded(true)} />}
+      <Navbar />
+      <Routes>
+        <Route path="/"            element={<LandingPage />} />
+        <Route path="/tracker"     element={<TrackerPage />} />
+        <Route path="/habits"      element={<HabitsPage />} />
+        <Route path="/focus"       element={<FocusPage />} />
+        <Route path="/team"        element={<TeamPage />} />
+        <Route path="/dashboard"   element={<DashboardPage />} />
+        <Route path="/quiz"        element={<QuizPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/friends"     element={<FriendsPage />} />
+        <Route path="*"            element={<LandingPage />} />
+      </Routes>
+    </>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Navbar />
-        <Routes>
-          <Route path="/"            element={<LandingPage />} />
-          <Route path="/tracker"     element={<TrackerPage />} />
-          <Route path="/habits"      element={<HabitsPage />} />
-          <Route path="/focus"       element={<FocusPage />} />
-          <Route path="/team"        element={<TeamPage />} />
-          <Route path="/dashboard"   element={<DashboardPage />} />
-          <Route path="/quiz"        element={<QuizPage />} />
-          <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/friends"     element={<FriendsPage />} />
-          <Route path="*"            element={<LandingPage />} />
-        </Routes>
+        <AppShell />
       </BrowserRouter>
     </AuthProvider>
   );

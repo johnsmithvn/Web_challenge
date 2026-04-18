@@ -45,10 +45,33 @@ export default function FriendsPage() {
         id: f.id,
         from: f.requester,
       }));
+
+      // Enrich accepted friends with streak + XP data
+      if (accepted.length > 0) {
+        const friendIds = accepted.map(f => f.friend.id);
+
+        const [{ data: streakRows }, { data: xpRows }] = await Promise.all([
+          supabase.from('streaks').select('user_id, current_streak').in('user_id', friendIds),
+          supabase.from('xp_logs').select('user_id, amount').in('user_id', friendIds),
+        ]);
+
+        const streakMap = {};
+        (streakRows || []).forEach(r => { streakMap[r.user_id] = r.current_streak; });
+
+        const xpMap = {};
+        (xpRows || []).forEach(r => { xpMap[r.user_id] = (xpMap[r.user_id] || 0) + r.amount; });
+
+        accepted.forEach(f => {
+          f.streak = streakMap[f.friend.id] ?? 0;
+          f.totalXp = xpMap[f.friend.id] ?? 0;
+        });
+      }
+
       setFriends(accepted);
       setIncoming(pending);
     }
   }, [user?.id]);
+
 
   useEffect(() => { if (isAuthenticated) loadFriends(); }, [isAuthenticated]);
 
@@ -186,7 +209,8 @@ export default function FriendsPage() {
             </p>
           ) : (
             friends.map(f => {
-              const lv = computeLevel(0); // TODO: fetch friend XP
+              const lv = computeLevel(f.totalXp || 0);
+              const streak = f.streak || 0;
               return (
                 <div key={f.id} className="friend-row" style={{ paddingTop: '0.75rem' }}>
                   <div className="friend-avatar">
@@ -194,7 +218,14 @@ export default function FriendsPage() {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div className="friend-name">{f.friend.display_name}</div>
-                    <div className="friend-username">{lv.emoji} {lv.name}</div>
+                    <div className="friend-username" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span>{lv.emoji} {lv.name}</span>
+                      {streak > 0 && (
+                        <span style={{ color: 'var(--orange)', fontWeight: 600, fontSize: '0.78rem' }}>
+                          🔥 {streak} ngày
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <button className="btn btn-ghost" style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem', color: '#f87171' }}
                     onClick={() => removeFriend(f.id)} id={`remove-${f.id}`}>
@@ -203,6 +234,7 @@ export default function FriendsPage() {
                 </div>
               );
             })
+
           )}
         </div>
       </div>

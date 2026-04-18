@@ -72,6 +72,32 @@ export function useFocusTimer() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       setSessions(next);
 
+      // Auto-tick linked habit in vl_habit_progress if session >= habit.durationMin
+      if (habitId) {
+        try {
+          const HABITS_KEY  = 'vl_custom_habits';
+          const PROG_KEY    = 'vl_habit_progress';
+          const habits      = JSON.parse(localStorage.getItem(HABITS_KEY) || '[]');
+          const habit       = habits.find(h => h.id === habitId);
+          const totalFocusMin = [...next]
+            .filter(s => s.habitId === habitId && s.date === log.date)
+            .reduce((sum, s) => sum + s.durationMin, 0);
+          const target = habit?.durationMin ?? settings.workMin;
+          if (habit && totalFocusMin >= target) {
+            const prog = JSON.parse(localStorage.getItem(PROG_KEY) || '{}');
+            const key  = `${log.date}_${habitId}`;
+            if (!prog[key]) {
+              prog[key] = true;
+              localStorage.setItem(PROG_KEY, JSON.stringify(prog));
+              // Dispatch storage event so HabitsPage can react without reload
+              window.dispatchEvent(new Event('storage'));
+            }
+          }
+        } catch (e) {
+          console.warn('[FocusTimer] habit auto-tick failed:', e.message);
+        }
+      }
+
       // Sync to Supabase if authenticated
       if (useDB && user) {
         supabase.from('focus_sessions').insert({

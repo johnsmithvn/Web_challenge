@@ -47,15 +47,27 @@ async function fetchLeaderboard() {
     doneMap[r.user_id] = (doneMap[r.user_id] || 0) + 1;
   });
 
+  // Fetch real XP totals from xp_logs
+  const { data: xpRows } = await supabase
+    .from('xp_logs')
+    .select('user_id, amount');
+
+  const xpMap = {};
+  (xpRows || []).forEach(r => {
+    xpMap[r.user_id] = (xpMap[r.user_id] || 0) + r.amount;
+  });
+
   return profiles.map(p => ({
     id:        p.id,
     name:      p.display_name || 'Ẩn danh',
     avatarUrl: p.avatar_url || null,
     streak:    p.streaks?.current_streak  ?? 0,
-    totalXp:   ((p.streaks?.current_streak ?? 0) * 10) + ((doneMap[p.id] ?? 0) * 10),
+    // Real XP from xp_logs; fallback to streak-based estimate if no logs yet
+    totalXp:   xpMap[p.id] ?? ((p.streaks?.current_streak ?? 0) * 10 + (doneMap[p.id] ?? 0) * 10),
     totalDone: doneMap[p.id] ?? 0,
   }));
 }
+
 
 export default function LeaderboardPage() {
   const { streak, totalDone }  = useHabitStore();

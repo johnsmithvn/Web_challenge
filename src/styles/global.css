@@ -350,6 +350,58 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================
+   TRACKER STATUS DOT (read-only)
+   ============================ */
+.tracker-status-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: var(--transition-base);
+  flex-shrink: 0;
+}
+
+/* Done ✓ — green filled */
+.tracker-status-dot--done {
+  background: rgba(0,255,136,0.15);
+  color: var(--green);
+  box-shadow: 0 0 8px rgba(0,255,136,0.25);
+}
+
+/* Miss ○ — empty ring */
+.tracker-status-dot--miss {
+  background: transparent;
+  color: rgba(255,255,255,0.2);
+  border: 1.5px solid rgba(255,255,255,0.12);
+}
+
+/* Future · — muted */
+.tracker-status-dot--future {
+  background: transparent;
+  color: rgba(255,255,255,0.12);
+  border: 1.5px dashed rgba(255,255,255,0.08);
+}
+
+/* Locked — show lock icon, clickable to show banner */
+.tracker-status-dot--locked {
+  background: rgba(139,92,246,0.06);
+  color: rgba(139,92,246,0.3);
+  border: 1.5px solid rgba(139,92,246,0.12);
+  cursor: pointer !important;
+}
+
+.tracker-status-dot--locked:hover {
+  background: rgba(139,92,246,0.12);
+  color: rgba(139,92,246,0.6);
+}
+
+
+/* ============================
    DIVIDER
    ============================ */
 .divider {

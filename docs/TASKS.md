@@ -3,6 +3,28 @@
 
 ---
 
+## v1.3.0 — ✅ DONE (2026-04-18)
+
+### Phase 1 — Quick Wins
+- [x] `src/components/CompletionModal.jsx` — Modal ăn mừng 21 ngày, confetti, summary XP/habits/round
+- [x] `src/styles/completion.css` — Gold theme, burst animation
+- [x] `src/pages/TrackerPage.jsx` — Wire CompletionModal: show once per milestone, "Bắt đầu vòng 2" reset
+- [x] `src/components/OnboardingModal.jsx` — 3-step guide: chào mừng, MVA, cách dùng app
+- [x] `src/styles/onboarding.css` — Dot progress, step animation
+- [x] `src/App.jsx` — AppShell wrapper: show OnboardingModal once (localStorage vl_onboarded)
+- [x] `src/hooks/useFocusTimer.js` — Auto-tick habit khi session complete >= habit.durationMin
+
+### Phase 2 — Feature Completion
+- [x] `src/pages/FriendsPage.jsx` — Fetch streak + XP thật từ Supabase cho từng bạn bè, hiển thị 🔥 streak
+- [x] `src/pages/LeaderboardPage.jsx` — Query xp_logs table thay công thức hardcode streak*10
+
+### Skipped (deferred)
+- [ ] Push Notification thực sự (Web Push) — để sau
+- [ ] Cross-tick Team (Tuần 2 accountability) — để sau
+
+---
+
+
 ## v1.2.0 — ✅ DONE (2026-04-18)
 
 ### Custom Habits + Focus Timer + Dashboard v2 + Tracker Redesign
