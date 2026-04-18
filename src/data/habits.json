@@ -1,8 +1,8 @@
 {
   "defaultHabits": [
-    { "id": "h1", "name": "Tập thể dục",   "icon": "💪", "color": "#06B6D4", "category": "health",   "timeTarget": "07:00", "durationMin": 20 },
-    { "id": "h2", "name": "Đọc sách",       "icon": "📚", "color": "#8B5CF6", "category": "learning", "timeTarget": "21:00", "durationMin": 30 },
-    { "id": "h3", "name": "MVA hàng ngày",  "icon": "⚡", "color": "#00FF88", "category": "focus",    "timeTarget": "08:00", "durationMin": 15 }
+    { "id": "h1", "name": "Tập thể dục",   "action": "Tập 20 phút vào buổi sáng",         "icon": "💪", "color": "#06B6D4", "category": "health",   "timeTarget": "07:00", "durationMin": 20, "status": "active", "cycleCount": 1 },
+    { "id": "h2", "name": "Đọc sách",       "action": "Đọc 20 trang trước khi ngủ",         "icon": "📚", "color": "#8B5CF6", "category": "learning", "timeTarget": "21:00", "durationMin": 30, "status": "active", "cycleCount": 1 },
+    { "id": "h3", "name": "MVA hàng ngày",  "action": "Thực hiện 1 hành động nhỏ quan trọng", "icon": "⚡", "color": "#00FF88", "category": "focus",    "timeTarget": "08:00", "durationMin": 15, "status": "active", "cycleCount": 1 }
   ],
   "categories": [
     { "id": "health",   "label": "Sức Khoẻ",  "icon": "💚" },

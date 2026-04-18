@@ -5,6 +5,7 @@ import '../styles/calendar.css';
 
 function HabitForm({ initial, onSave, onCancel }) {
   const [name,        setName]        = useState(initial?.name        || '');
+  const [action,      setAction]      = useState(initial?.action      || '');
   const [icon,        setIcon]        = useState(initial?.icon        || '⚡');
   const [color,       setColor]       = useState(initial?.color       || '#8B5CF6');
   const [category,    setCategory]    = useState(initial?.category    || 'other');
@@ -43,9 +44,24 @@ function HabitForm({ initial, onSave, onCancel }) {
 
       {/* Name */}
       <div className="habit-form__field">
-        <label>Tên habit</label>
-        <input className="auth-input" placeholder="VD: Đọc sách 30 phút"
+        <label>Tên habit <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(danh mục chung)</span></label>
+        <input className="auth-input" placeholder="VD: Học Tiếng Anh, Tập thể dục"
           value={name} onChange={e => setName(e.target.value)} id="habit-name-input" />
+      </div>
+
+      {/* Action — what user does EVERY DAY */}
+      <div className="habit-form__field">
+        <label>
+          🎯 Hành động mỗi ngày{' '}
+          <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(cụ thể)</span>
+        </label>
+        <input className="auth-input"
+          placeholder="VD: Học 30 phút Duolingo, Chạy bộ 20 phút buổi sáng"
+          value={action} onChange={e => setAction(e.target.value)}
+          id="habit-action-input" />
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+          ℹ️ Đây là câu hỏi bạn tự hỏi mỗi ngày: “Hôm nay mình cần làm gì?”
+        </div>
       </div>
 
       {/* Category */}
@@ -87,7 +103,7 @@ function HabitForm({ initial, onSave, onCancel }) {
 
       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
         <button className="btn btn-primary" style={{ flex: 1 }}
-          onClick={() => name.trim() && onSave({ name, icon, color, category, timeTarget, durationMin })}
+          onClick={() => name.trim() && onSave({ name, action: action.trim() || name, icon, color, category, timeTarget, durationMin })}
           id="habit-save-btn">
           {initial ? '💾 Lưu' : '➕ Thêm Habit'}
         </button>
@@ -140,6 +156,11 @@ export default function HabitManager() {
                 <div className="habit-item__info">
                   <div className="habit-item__name">{habit.name}</div>
                   <div className="habit-item__meta">
+                    {habit.action && habit.action !== habit.name && (
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', display: 'block', marginBottom: '0.15rem' }}>
+                        🎯 {habit.action}
+                      </span>
+                    )}
                     {CATEGORIES.find(c => c.id === habit.category)?.icon} {habit.category}
                     {habit.timeTarget && ` · ⏰ ${habit.timeTarget}`}
                     {habit.durationMin && ` · ⏱ ${habit.durationMin}p`}

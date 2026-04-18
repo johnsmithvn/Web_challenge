@@ -133,7 +133,7 @@ export default function TrackerPage() {
     data, toggle, weekDates, streak, longestStreak,
     totalDone, completionPct, badge, todayDone
   } = useHabitStore();
-  const { activeHabits } = useCustomHabits();
+  const { activeHabits, conquestHabit, renewHabit } = useCustomHabits();
   const { addXp, hasMilestone, totalXp } = useXpStore();
   const { scheduleTodayReminder } = useNotifications();
   const { saveMood, getMood } = useMoodLog();
@@ -153,15 +153,27 @@ export default function TrackerPage() {
     setShowCompletion(false);
   };
 
-  const handleNewRound = () => {
-    // Mark this milestone as seen, CompletionModal will handle round counter
+  // Option A: Renew — reset streak data, keep habits, bump cycleCount
+  const handleRenew = () => {
     localStorage.setItem(COMPLETION_KEY, '1');
     setShowCompletion(false);
-    // Reset the streak data for a fresh 21-day cycle
-    // We clear vl_habit_data so streak resets; history remains in Supabase
+    // Renew all active habits cycle count
+    activeHabits.forEach(h => renewHabit(h.id));
     localStorage.removeItem('vl_habit_data');
     localStorage.removeItem('vl_habit_progress');
-    window.location.reload(); // simplest reset trigger
+    window.location.reload();
+  };
+
+  // Option B: New Challenge — mark habits as conquered, reset everything
+  const handleNewChallenge = () => {
+    localStorage.setItem(COMPLETION_KEY, '1');
+    setShowCompletion(false);
+    // Mark all active habits as conquered
+    activeHabits.forEach(h => conquestHabit(h.id));
+    localStorage.removeItem('vl_habit_data');
+    localStorage.removeItem('vl_habit_progress');
+    localStorage.removeItem('vl_custom_habits'); // will reload defaults
+    window.location.reload();
   };
 
   const todayKey  = new Date().toISOString().split('T')[0];
@@ -196,7 +208,8 @@ export default function TrackerPage() {
         <CompletionModal
           streak={streak}
           totalXp={totalXp}
-          onStartNewRound={handleNewRound}
+          onRenew={handleRenew}
+          onNewChallenge={handleNewChallenge}
           onClose={dismissCompletion}
         />
       )}

@@ -3,7 +3,7 @@ import { useCustomHabits } from '../hooks/useCustomHabits';
 import '../styles/completion.css';
 
 const CONFETTI_COLORS = ['#ffd700', '#f97316', '#00ff88', '#8b5cf6', '#06b6d4', '#ec4899'];
-const ROUND_KEY = 'vl_program_round'; // which round (1, 2, 3...)
+const ROUND_KEY = 'vl_program_round';
 
 function Confetti() {
   return (
@@ -26,16 +26,23 @@ function Confetti() {
 }
 
 /**
- * CompletionModal — shown once when streak reaches 21.
- * onStartNewRound: callback to reset habit store for a new 21-day cycle.
- * onClose: dismiss without resetting.
+ * CompletionModal — Certificate redesign.
+ * Shown once when streak reaches 21.
+ *
+ * Props:
+ *   streak        — current streak count
+ *   totalXp       — total XP earned
+ *   onRenew       — user chooses "Gia Hạn" (harder round, keep habits)
+ *   onNewChallenge — user chooses "Thử Thách Mới" (conquer habits, start fresh)
+ *   onClose       — dismiss without action
  */
-export default function CompletionModal({ streak, totalXp, onStartNewRound, onClose }) {
+export default function CompletionModal({ streak, totalXp, onRenew, onNewChallenge, onClose }) {
   const { activeHabits } = useCustomHabits();
-  const round = parseInt(localStorage.getItem(ROUND_KEY) || '1', 10);
-  const closeRef = useRef(null);
+  const round     = parseInt(localStorage.getItem(ROUND_KEY) || '1', 10);
+  const closeRef  = useRef(null);
+  const issuedAt  = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  // Trap focus on mount
+  // Focus trap + ESC close
   useEffect(() => {
     closeRef.current?.focus();
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
@@ -43,27 +50,38 @@ export default function CompletionModal({ streak, totalXp, onStartNewRound, onCl
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleNewRound = () => {
+  const handleRenew = () => {
     localStorage.setItem(ROUND_KEY, String(round + 1));
-    onStartNewRound();
+    onRenew?.();
+  };
+
+  const handleNewChallenge = () => {
+    localStorage.setItem(ROUND_KEY, String(round + 1));
+    onNewChallenge?.();
   };
 
   return (
-    <div className="completion-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Hoàn thành 21 ngày">
+    <div className="completion-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Chứng nhận hoàn thành">
       <div className="completion-modal" onClick={e => e.stopPropagation()}>
         <Confetti />
 
-        <div className="completion-burst">🏆</div>
+        {/* ── Certificate header ── */}
+        <div className="cert-header">
+          <div className="cert-seal">🏅</div>
+          <div className="cert-label">CHỨNG NHẬN CHINH PHỤC</div>
+          <h2 className="completion-title" style={{ marginTop: '0.25rem' }}>
+            {round === 1 ? '21 Ngày Hoàn Thành!' : `Vòng ${round} Hoàn Thành!`}
+          </h2>
+          <p className="cert-issued">Cấp ngày {issuedAt} · Vòng {round}</p>
+        </div>
 
-        <h2 className="completion-title">
-          {round === 1 ? '21 Ngày Hoàn Thành!' : `Vòng ${round} Hoàn Thành!`}
-        </h2>
+        {/* ── Subtitle ── */}
         <p className="completion-subtitle">
           Kỷ luật đã trở thành bản năng. Não bộ bạn đã định hình lại.<br />
           <strong style={{ color: 'var(--gold)' }}>Bạn không còn cần ý chí nữa.</strong>
         </p>
 
-        {/* Stats */}
+        {/* ── Stats ── */}
         <div className="completion-stats">
           <div className="completion-stat">
             <span className="completion-stat__num">{streak}</span>
@@ -83,7 +101,7 @@ export default function CompletionModal({ streak, totalXp, onStartNewRound, onCl
           </div>
         </div>
 
-        {/* Habit chips */}
+        {/* ── Conquered habits chips ── */}
         {activeHabits.length > 0 && (
           <div className="completion-habits">
             {activeHabits.map(h => (
@@ -94,24 +112,46 @@ export default function CompletionModal({ streak, totalXp, onStartNewRound, onCl
           </div>
         )}
 
-        {/* Actions */}
-        <div className="completion-actions">
+        {/* ── Divider ── */}
+        <div className="cert-divider">
+          <span>Bạn muốn làm gì tiếp theo?</span>
+        </div>
+
+        {/* ── 2 CTA options ── */}
+        <div className="cert-options">
+          {/* Option A: Renew — harder round */}
           <button
             ref={closeRef}
-            className="btn btn-gold"
-            onClick={handleNewRound}
-            id="completion-new-round"
+            className="cert-option cert-option--renew"
+            onClick={handleRenew}
+            id="completion-renew"
           >
-            🔄 Bắt Đầu Vòng {round + 1}
+            <div className="cert-option__icon">🔄</div>
+            <div className="cert-option__text">
+              <strong>Gia Hạn — Vòng {round + 1}</strong>
+              <span>Tiếp tục với thói quen hiện tại<br />Vòng mới, thử thách cao hơn</span>
+            </div>
           </button>
+
+          {/* Option B: Start over with new challenge */}
           <button
-            className="btn btn-ghost"
-            onClick={onClose}
-            id="completion-close"
+            className="cert-option cert-option--new"
+            onClick={handleNewChallenge}
+            id="completion-new-challenge"
           >
-            Xem Kết Quả
+            <div className="cert-option__icon">🌱</div>
+            <div className="cert-option__text">
+              <strong>Thử Thách Mới</strong>
+              <span>Lưu thói quen vào "Đã Chinh Phục"<br />Bắt đầu hành trình hoàn toàn mới</span>
+            </div>
           </button>
         </div>
+
+        {/* Dismiss */}
+        <button className="btn btn-ghost" onClick={onClose} id="completion-close"
+          style={{ marginTop: '0.75rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+          Xem lại sau
+        </button>
       </div>
     </div>
   );

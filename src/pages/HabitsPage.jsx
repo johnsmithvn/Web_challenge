@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useHabitStore } from '../hooks/useHabitStore';
 import { useCustomHabits } from '../hooks/useCustomHabits';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import { useMoodLog, useSkipReasons } from '../hooks/useMoodSkip';
+import { useAuth } from '../contexts/AuthContext';
 import MonthCalendar from '../components/MonthCalendar';
 import HabitManager from '../components/HabitManager';
+import LoginNudgeModal from '../components/LoginNudgeModal';
 import '../styles/calendar.css';
 import '../styles/tracker.css';
+import '../styles/completion.css';
 
 import HABITS_DATA from '../data/habits.json';
 const SKIP_REASONS = HABITS_DATA.skipReasons;
@@ -14,15 +17,20 @@ const MOODS        = HABITS_DATA.moods;
 
 export default function HabitsPage() {
   const { data, toggle, streak, totalDone } = useHabitStore();
-  const { activeHabits } = useCustomHabits();
+  const { activeHabits, conqueredHabits } = useCustomHabits();
   const { addXp, hasMilestone } = useXpStore();
   const { saveMood, getMood } = useMoodLog();
   const { saveSkip } = useSkipReasons();
+  const { isAuthenticated } = useAuth();
 
-  const [tab,        setTab]        = useState('calendar');
-  const [skipModal,  setSkipModal]  = useState(null);
-  const [skipReason, setSkipReason] = useState('');
-  const [skipNote,   setSkipNote]   = useState('');
+  const NUDGE_KEY = 'vl_login_nudge_shown';
+  const [showNudge, setShowNudge] = useState(false);
+
+  const [tab,           setTab]           = useState('calendar');
+  const [skipModal,     setSkipModal]     = useState(null);
+  const [skipReason,    setSkipReason]    = useState('');
+  const [skipNote,      setSkipNote]      = useState('');
+  const [celebration,   setCelebration]   = useState(false); // day-complete banner
 
   // Per-habit daily progress: { "2026-04-18_h1": true, ... }
   const HABIT_PROG_KEY = 'vl_habit_progress';
@@ -51,9 +59,25 @@ export default function HabitsPage() {
     const allDone = activeHabits.every(h =>
       h.id === habit.id ? !wasDone : !!next[`${todayKey}_${h.id}`]
     );
-    if (allDone && !data[todayKey]) toggle(todayKey);
-    else if (!allDone &&  data[todayKey]) toggle(todayKey); // untick overall if any unchecked
+    if (allDone && !data[todayKey]) {
+      toggle(todayKey);
+      setCelebration(true);
+      // Show login nudge for guest users on their FIRST completed day
+      if (!isAuthenticated && totalDone === 0 && !localStorage.getItem(NUDGE_KEY)) {
+        setTimeout(() => setShowNudge(true), 1500); // slight delay for celebration first
+      }
+    } else if (!allDone && data[todayKey]) {
+      toggle(todayKey); // untick overall if any unchecked
+      setCelebration(false);
+    }
   };
+
+  // Auto-dismiss celebration after 4s
+  useEffect(() => {
+    if (!celebration) return;
+    const t = setTimeout(() => setCelebration(false), 4000);
+    return () => clearTimeout(t);
+  }, [celebration]);
 
   const todayDone = activeHabits.length > 0
     ? activeHabits.every(h => !!habitProg[`${todayKey}_${h.id}`])
@@ -89,6 +113,30 @@ export default function HabitsPage() {
           </div>
         </div>
 
+        {/* ── Celebration banner ── */}
+        {celebration && (
+          <div style={{
+            position: 'relative',
+            background: 'linear-gradient(135deg, rgba(0,255,136,0.12), rgba(139,92,246,0.12))',
+            border: '1px solid rgba(0,255,136,0.3)',
+            borderRadius: 'var(--radius-md)',
+            padding: '1.25rem 1.5rem',
+            marginBottom: '1.25rem',
+            textAlign: 'center',
+            animation: 'completionPop 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '0.4rem' }}>🎉</div>
+            <div style={{ fontWeight: 800, fontSize: '1.1rem', fontFamily: 'var(--font-display)', color: 'var(--green)' }}>
+              Chúc mừng! Ngày thứ <span style={{ color: 'var(--gold)' }}>{streak}/{Math.max(streak, 21)}</span> hoàn thành!
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>
+              {streak < 21
+                ? `Còn ${21 - streak} ngày nữa để hoàn thành chương trình 🌱`
+                : '🏆 Bạn đã hoàn thành 21 ngày! Kỷ luật thành bản năng.'}
+            </div>
+          </div>
+        )}
+
         {/* Today's habits quick-tick */}
         <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
           <div className="dash-card-title">⚡ Hôm Nay — {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
@@ -108,12 +156,18 @@ export default function HabitsPage() {
                     <div style={{ fontWeight: 600, fontSize: '0.92rem',
                       textDecoration: doneToday ? 'line-through' : 'none',
                       color: doneToday ? 'var(--text-muted)' : 'var(--text-primary)',
-                    }}>{habit.name}</div>
-                    {habit.timeTarget && (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        ⏰ {habit.timeTarget} · ⏱ {habit.durationMin}p
-                      </div>
-                    )}
+                    }}>
+                      {/* Show specific action if defined, fallback to name */}
+                      {habit.action && habit.action !== habit.name ? habit.action : habit.name}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                      {habit.action && habit.action !== habit.name && (
+                        <span style={{ marginRight: '0.5rem', opacity: 0.7 }}>{habit.name}</span>
+                      )}
+                      {habit.timeTarget && `⏰ ${habit.timeTarget}`}
+                      {habit.timeTarget && habit.durationMin && ' · '}
+                      {habit.durationMin && `⏱ ${habit.durationMin}p`}
+                    </div>
                   </div>
                   <input
                     type="checkbox"
@@ -205,6 +259,44 @@ export default function HabitsPage() {
         )}
       </div>
 
+      {/* ── Conquered Habits ── */}
+      {conqueredHabits.length > 0 && (
+        <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
+          <div className="dash-card-title">🏅 Đã Chinh Phục</div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem', marginBottom: '0.75rem' }}>
+            Những thói quen bạn đã hoàn thành 21 ngày. Kỷ luật thành bản năng!
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {conqueredHabits.map(habit => (
+              <div key={habit.id} style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                padding: '0.75rem',
+                background: 'rgba(255,215,0,0.04)',
+                border: '1px solid rgba(255,215,0,0.2)',
+                borderLeft: '3px solid #FFD700',
+                borderRadius: 'var(--radius-md)',
+              }}>
+                <span style={{ fontSize: '1.4rem' }}>{habit.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{habit.name}</div>
+                  {habit.action && habit.action !== habit.name && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>🎯 {habit.action}</div>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#FFD700', fontWeight: 700 }}>🏅 Vòng {habit.cycleCount || 1}</div>
+                  {habit.conqueredAt && (
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      {new Date(habit.conqueredAt).toLocaleDateString('vi-VN')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Skip Reason Modal */}
       {skipModal && (
         <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setSkipModal(null)}>
@@ -255,6 +347,10 @@ export default function HabitsPage() {
           </div>
         </div>
       )}
+      {showNudge && (
+        <LoginNudgeModal onClose={() => setShowNudge(false)} />
+      )}
+
     </div>
   );
 }
