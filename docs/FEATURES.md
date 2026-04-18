@@ -1,5 +1,5 @@
 # FEATURES.md — Thử Thách Vượt Lười
-**Version:** v1.2.0
+**Version:** v1.3.1
 **Updated:** 2026-04-18
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
@@ -29,6 +29,9 @@
 - **Daily Challenge:** Thử thách ngẫu nhiên mỗi ngày, +20 XP khi hoàn thành
 - **Insight:** Nhận xét động theo streak hiện tại
 - **Notification Settings:** Toggle + giờ nhắc nhở browser notification
+- **Completion Modal (v1.3.0):** Khi streak đạt 21 lần đầu → popup ăn mừng, hiện XP/habits/round, CTA "Bắt Đầu Vòng 2"
+  - "Bắt đầu Vòng 2" → xóa `vl_habit_data`, `vl_habit_progress`, reload — Supabase history giữ lại
+  - Deduped bằng `vl_completion_shown_N` key, không hiện lại sau khi đã xử lý
 
 **Data:** `useHabitStore` (localStorage / Supabase dual-mode)
 
@@ -88,6 +91,8 @@
 - **Notification:** Browser notification khi hết giờ (cần cấp quyền)
 - **DB Sync:** Insert vào `focus_sessions` table (fire-and-forget) khi authed
 - **FocusPage layout:** 2 cột (timer | stats + history + tips)
+- **Auto-tick habit (v1.3.0):** Khi session hoàn thành và tổng `durationMin` đủ so với target của habit → tự tick `vl_habit_progress`, dispatch `storage` event để HabitsPage cập nhật live
+- **Focus XP (v1.3.1):** +15 XP mỗi session hoàn thành, deduped theo `sessionId`
 
 ---
 
@@ -106,6 +111,10 @@
   - Cột Done / Miss / % tỷ lệ
 - **Contribution Graph:** 12 tuần × 7 ngày kiểu GitHub, ô xanh = done, ô cyan = hôm nay
 - **Insight:** Nhận xét động theo streak + milestone tiếp theo
+- **Skip Reason Insight (v1.3.1):** Widget phân tích lý do bỏ qua trong 14 ngày gần đây
+  - Hiển thị top 3 lý do dưới dạng bar chart miniature
+  - Smart tip theo lý do phổ biến nhất (“Thiếu động lực” / “Bận công việc” / “Quên mất”)
+  - Chỉ hiển khi có dữ liệu skip trong 14 ngày
 
 ---
 
@@ -171,6 +180,7 @@
 | Streak 21 ngày | +200 | One-time milestone |
 | Daily Challenge | +20 | Max 1/ngày |
 | Quiz (score×5) | +10→+50 | Mỗi lần làm |
+| Focus Session | +15 | 1 lần/session (deduped sessionId) |
 
 **XpBar:** Hiển thị compact trên Navbar + đầy đủ trên TrackerPage
 
@@ -200,7 +210,8 @@
 - **3 tabs:** Streak | XP | Tổng ngày
 - **Top 3 podium:** Hiển thị đặc biệt với animation
 - **Real data:** Từ `streaks` table (public read), Supabase
-- **Fallback mock:** Khi không có Supabase
+- **XP thật (v1.3.0):** Query `xp_logs` table tính totalXp thật thay vì công thức `streak*10` hàrdócode
+- **Fallback:** Nếu `xp_logs` chưa có → fallback về công thức ước tính (không bị lỗi)
 
 ---
 
@@ -215,6 +226,7 @@
 - Gửi lời mời kết bạn
 - Accept / Decline request
 - Danh sách bạn bè hiện tại
+- **Streak + Level thật (v1.3.0):** Mỗi bạn hiển thị streak 🔥 N ngày và level từ XP thật (query `streaks` + `xp_logs` table, parallel)
 
 ---
 
@@ -281,6 +293,22 @@
 - Seed theo ngày → cùng user cùng ngày thấy cùng challenge
 - Click "Hoàn thành" → +20 XP, 1 lần/ngày
 - Hiển thị trên TrackerPage
+
+---
+
+## 17. 👋 Onboarding Modal (v1.3.0)
+
+**Files:** `src/components/OnboardingModal.jsx`, `src/styles/onboarding.css`
+
+**Mô tả:** Hướng dẫn 3 bước, hiện 1 lần duy nhất sau lần đầu truy cập app.
+
+**Chi tiết:**
+- **Bước 1:** Chào mừng + giới thiệu mục tiêu 21 ngày
+- **Bước 2:** Giải thích MVA (Minimum Viable Action) — tại sao bắt đầu nhỏ hiệu quả hơn
+- **Bước 3:** Hướng dẫn cách dùng — Tick Habits → Daily Challenge → Duy trì streak
+- Nút **"Bỏ qua"** ở mọi bước
+- Ghi nhớ bằng `vl_onboarded` localStorage — không hiện lại sau khi đóng
+- Mount ở `AppShell` (`App.jsx`) — hiện trên tất cả routes
 
 ---
 

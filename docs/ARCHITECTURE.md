@@ -1,5 +1,5 @@
 # ARCHITECTURE.md — Thử Thách Vượt Lười
-**Version:** v1.2.0
+**Version:** v1.3.1
 **Updated:** 2026-04-18
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
@@ -29,14 +29,16 @@ src/
 │   │   ├── TeammateCheckPanel.jsx (TODO v3)
 │   │   ├── JoinSyncModal.jsx      (TODO v3)
 │   │   └── TeamRules.jsx          (TODO v3)
-│   ├── AuthModal.jsx        # Login/Register/Google tabs
-│   ├── DailyChallenge.jsx   # Daily mini-challenge, +20 XP
-│   ├── FocusTimer.jsx       # SVG countdown + habit dropdown
-│   ├── HabitManager.jsx     # CRUD custom habits UI
-│   ├── MonthCalendar.jsx    # Monthly view, VN holidays
+│   ├── AuthModal.jsx          # Login/Register/Google tabs
+│   ├── CompletionModal.jsx    # NEW v1.3.0 — Popup ăn mừng khi streak=21, start round 2
+│   ├── OnboardingModal.jsx    # NEW v1.3.0 — 3-step guide lần đầu truy cập
+│   ├── DailyChallenge.jsx     # Daily mini-challenge, +20 XP
+│   ├── FocusTimer.jsx         # SVG countdown + habit dropdown
+│   ├── HabitManager.jsx       # CRUD custom habits UI
+│   ├── MonthCalendar.jsx      # Monthly view, VN holidays
 │   ├── NotificationSettings.jsx
-│   ├── TrackerSection.jsx   # Compact 3-week habit table
-│   ├── XpBar.jsx            # XP + level indicator
+│   ├── TrackerSection.jsx     # Read-only 3-week status dots (v1.2.2+)
+│   ├── XpBar.jsx              # XP + level indicator
 │   └── ...
 │
 ├── contexts/
@@ -66,19 +68,27 @@ src/
 │   ├── LeaderboardPage.jsx  # /leaderboard — Streak/XP ranking
 │   └── FriendsPage.jsx      # /friends — Kết bạn
 │
+├── data/                    # NEW v1.2.2 — Static JSON content (Rule 14)
+│   ├── challenges.json      # 21 Daily Challenges
+│   ├── quiz.json            # 10 Quiz questions
+│   ├── habits.json          # defaultHabits, categories, icons, colors, skipReasons, moods
+│   └── testimonials.json    # Landing page reviews
+│
 ├── styles/
 │   ├── global.css           # CSS variables, reset, typography
 │   ├── components.css       # Shared component classes
-│   ├── tracker.css          # Tracker + Team styles (legacy split)
+│   ├── tracker.css          # Tracker + Team styles
 │   ├── dashboard.css        # Dashboard v2 styles
 │   ├── focus.css            # Focus timer + custom dropdown
 │   ├── calendar.css         # Monthly calendar
 │   ├── auth.css             # Auth modal
 │   ├── friends.css          # Friends page
 │   ├── xpbar.css            # XP bar
+│   ├── completion.css       # NEW v1.3.0 — CompletionModal styles
+│   ├── onboarding.css       # NEW v1.3.0 — OnboardingModal styles
 │   └── team.css             # Team page (v3 ready)
 │
-└── App.jsx                  # Router config, all routes
+└── App.jsx                  # AppShell wrapper — Onboarding gate + Router
 ```
 
 ---
@@ -113,9 +123,13 @@ vl_habit_progress      # { [dateStr_habitId]: boolean } — per-habit tick
 vl_custom_habits       # Habit[] — list of custom habits
 vl_xp_store            # XPEntry[] — immutable log
 vl_mood_log            # { [dateStr]: { emoji, label } }
+vl_skip_{date}         # SkipEntry — per-day skip reason
 vl_focus_sessions      # FocusSession[]
 vl_notif_settings      # { enabled, time }
 vl_migrated            # "true" after first login migration
+vl_onboarded           # "1" — onboarding completed (NEW v1.3.0)
+vl_program_round       # "1"|"2"|... — which 21-day round (NEW v1.3.0)
+vl_completion_shown_N  # "1" — completion modal shown for round N (NEW v1.3.0)
 ```
 
 ### Supabase Tables
@@ -180,6 +194,22 @@ daily_challenge_completions ← 1 per day
 - Không update/delete XP entries
 - Compute `totalXp = SUM(log)` tại runtime
 - Dedup bằng `hasMilestone(reason, meta)` trước khi `addXp`
+- `focus_session` XP (+15) được write trực tiếp vào `vl_xp_store` trong `useFocusTimer.js` để tránh circular import với `useXpStore.js`
+
+### 6. week_num computation (v1.3.1)
+- Trước: hardcode `week_num: 1` khi sync sang Supabase
+- Sau: tính từ ngày đầu tiên trong `vl_habit_data`, `diffDays/7 + 1`, capped tại 3
+- Dùng `vl_program_round` để track hành trình vòng 2, 3...
+
+### 7. Onboarding gate (v1.3.0)
+- `AppShell` kiểm tra `vl_onboarded` trước khi render app
+- Nếu chưa có → show `OnboardingModal` (3 bước)
+- Không block routing — user có thể bỏ qua
+
+### 8. TrackerSection — read-only (v1.2.2)
+- Các ô ngày trong TrackerSection không còn là checkbox tương tác
+- Status dots tự động từ `vl_habit_progress` (auto-sync khi all habits done)
+- Single source of truth: `useHabitStore` ← aggregated từ `HabitsPage`
 
 ---
 

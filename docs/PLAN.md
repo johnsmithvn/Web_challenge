@@ -1,6 +1,6 @@
 # PLAN.md — Thử Thách Vượt Lười
 **Updated:** 2026-04-18
-**Current Version:** v1.2.0
+**Current Version:** v1.3.1
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -58,15 +58,38 @@
 
 ---
 
+## ✅ Phase 4.5 — UX Polish + Data Architecture (v1.2.1 → v1.3.1)
+*Hoàn thành: 2026-04-18*
+
+- [x] Data modularization: tách all static content → `src/data/*.json` (Rule 14)
+- [x] TrackerSection → read-only status dots (xoá manual toggle)
+- [x] CompletionModal khi streak = 21 (confetti, XP summary, "Bắt đầu Vòng 2")
+- [x] OnboardingModal 3 bước lần đầu truy cập
+- [x] Focus session → auto-tick habit + +15 XP/session
+- [x] Friend list → streak + XP thật từ Supabase
+- [x] Leaderboard → query `xp_logs` thật thay công thức hardcode
+- [x] Dashboard → Skip Reason Insight widget (14 ngày, bar chart, smart tip)
+- [x] Fix `week_num` hardcode → tính từ program start
+
+---
+
 ## 🚧 Phase 5 — Team Accountability v3 (v3.0.0)
 *Đang thiết kế — chưa implement*
 
-**Goal:** Nâng cấp Team Mode từ mock 2 người thành thực thể N người với luật accountability nghiêm túc.
+**Core Value Insight (2026-04-18):**
+> “Teammate Check là “vũ khí” chính của app. Khi người dùng hiểu rằng “quyền lực” nằm trong tay đồng đội, họ mới thấy app có giá trị.”
+
+**Game design quyết định:**
+| Tuần | Self-check | Teammate check | Logic |
+|------|:---:|:---:|---------|
+| Tuần 1 | ✅ Cho phép | — | Tạo thói quen, low-friction |
+| Tuần 2 | ❌ Vô hiệu hoá | ✅ Bắt buộc | Accountability có răng |
+| Tuần 3 | ❌ Vô hiệu hoá | ✅ Bắt buộc | Kỷ luật đầy đủ |
 
 **Core Features:**
 - [ ] N-member teams (không giới hạn, do creator quyết định)
 - [ ] Week-based progression per user (user_programs)
-- [ ] **Tuần 2+:** Teammate check (không tự check được — phải teammate xác nhận)
+- [ ] **Tuần 2+:** Tắt nút tự tick — chỉ khi đồng đội nhấn “Xác Nhận” mới xanh
 - [ ] Teammate check panel: Done ✓ / Fail ✗ + lý do
 - [ ] Join sync modal: Reset tuần về 1 vs tiếp tục tuần hiện tại
 - [ ] Team rules: Propose → All members agree → Active
@@ -112,5 +135,9 @@
 | v1.1.0 | Gamification |
 | v1.1.1 | Bug fixes (checkbox, UI) |
 | v1.2.0 | Advanced Habit + Focus + Dashboard redesign |
+| v1.2.1 | Data modularization (JSON-first, Rule 14) |
+| v1.2.2 | TrackerSection read-only status dots |
+| v1.3.0 | Completion Modal + Onboarding + Focus auto-tick + Friend streaks |
+| v1.3.1 | Focus XP + Skip insight analytics + week_num fix |
 | v2.0.0 | Cloud Auth + Supabase sync |
-| v3.0.0 | Team Accountability N-member |
+| v3.0.0 | Team Accountability N-member (Teammate check Tuần 2) |
