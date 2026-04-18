@@ -1,0 +1,260 @@
+/* ============================================================
+   DASHBOARD v2 — Dedicated CSS
+   ============================================================ */
+
+.db-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.db-section { padding: 1.25rem; margin-bottom: 1.25rem; }
+
+/* ── KPI row ── */
+.db-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 700px) { .db-kpi-row { grid-template-columns: repeat(2, 1fr); } }
+
+.db-kpi {
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.3rem;
+}
+
+.db-kpi__icon { font-size: 1.5rem; }
+
+.db-kpi__val {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.db-kpi__label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Flower journey (inspired by spreadsheet planner) ── */
+.flower-journey {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.flower-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 34px;
+  padding: 4px 2px;
+  border-radius: var(--radius-sm);
+  transition: var(--transition-base);
+}
+
+.flower-slot--today {
+  background: rgba(6,182,212,0.1);
+  outline: 2px solid rgba(6,182,212,0.4);
+}
+
+.flower-slot--future { opacity: 0.3; }
+
+.flower-emoji { font-size: 1.4rem; line-height: 1.2; }
+
+.flower-day {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.flower-legend {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  font-size: 1rem;
+  flex-wrap: wrap;
+}
+
+/* ── Two-column layout ── */
+.db-two-col {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 700px) { .db-two-col { grid-template-columns: 1fr; } }
+
+/* ── Monthly donut ── */
+.month-donut {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  position: relative;
+}
+
+.month-donut__center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) translateY(-30px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.month-donut__pct {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.month-donut__label { font-size: 0.68rem; color: var(--text-muted); }
+
+.month-donut__detail {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.month-donut__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.month-donut__stat span:first-child {
+  font-size: 1.1rem;
+  font-family: var(--font-display);
+}
+
+/* ── Weekly table ── */
+.weekly-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.weekly-table__head,
+.weekly-table__row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr) 30px 30px 40px;
+  gap: 3px;
+  align-items: center;
+}
+
+.weekly-table__th {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.2rem 0;
+}
+
+.weekly-table__cell {
+  aspect-ratio: 1;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  transition: var(--transition-base);
+}
+
+.weekly-table__cell--done  { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+.weekly-table__cell--miss  { background: rgba(255,255,255,0.03); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.06); }
+.weekly-table__cell--future{ background: transparent; border: 1px dashed rgba(255,255,255,0.06); }
+
+.weekly-table__stat {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* ── Contribution graph (GitHub style) ── */
+.contrib-graph {
+  margin-top: 0.75rem;
+}
+
+.contrib-graph__labels {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  float: left;
+  margin-right: 6px;
+}
+
+.contrib-graph__labels span {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  height: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.contrib-graph__cols {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+}
+
+.contrib-graph__col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.contrib-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.05);
+  transition: var(--transition-base);
+  flex-shrink: 0;
+}
+
+.contrib-cell--done   { background: rgba(0,255,136,0.35); }
+.contrib-cell--today  { background: var(--cyan); box-shadow: 0 0 6px rgba(6,182,212,0.5); }
+.contrib-cell--future { opacity: 0.25; }
+
+/* intensity variants */
+.contrib-cell--l1 { background: rgba(0,255,136,0.12); }
+.contrib-cell--l2 { background: rgba(0,255,136,0.25); }
+
+.contrib-graph__legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 0.6rem;
+  clear: both;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.contrib-cell--empty-demo { background: rgba(255,255,255,0.05); }
