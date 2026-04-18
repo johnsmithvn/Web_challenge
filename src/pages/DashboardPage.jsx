@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useHabitStore } from '../hooks/useHabitStore';
 import { useXpStore } from '../hooks/useXpStore';
+import { useSkipReasons } from '../hooks/useMoodSkip';
 import '../styles/tracker.css';
 import '../styles/dashboard.css';
 
@@ -228,6 +229,66 @@ function WeeklyTable({ data }) {
   );
 }
 
+/* ── Skip Reason Insight ────────────────────────────────── */
+function SkipInsight() {
+  const { getAllSkips } = useSkipReasons();
+
+  const insight = useMemo(() => {
+    const skips = getAllSkips();
+    if (!skips || !skips.length) return null;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 14);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    const recent = skips.filter(s => s.date >= cutoffStr);
+    if (!recent.length) return null;
+    const counts = {};
+    recent.forEach(s => {
+      const r = s.reason || 'Lý do khác';
+      counts[r] = (counts[r] || 0) + 1;
+    });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    return { total: recent.length, top };
+  }, [getAllSkips]);
+
+  if (!insight) return null;
+
+  const [topReason, topCount] = insight.top[0];
+  const tips = {
+    'Thiếu động lực': '💡 Thử giảm durationMin xuống 5 phút — bắt đầu nhỏ hơn dễ hơn.',
+    'Bận công việc':  '💡 Dời habit sang buổi sáng trước khi ngày làm việc bắt đầu.',
+    'Quên mất':       '💡 Bật nhắc nhở trong Tracker — tick trước 23:59.',
+  };
+
+  return (
+    <div className="card db-section" style={{ borderColor: 'rgba(249,115,22,0.2)' }}>
+      <div className="dash-card-title">🔍 Phân Tích Bỏ Qua — 14 Ngày Gần Đây</div>
+      <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div className="dash-insight" style={{ borderColor: 'var(--orange)', marginTop: 0 }}>
+          Bỏ qua <strong>{insight.total} lần</strong>. Lý do chủ yếu:{' '}
+          <strong style={{ color: 'var(--orange)' }}>"{topReason}"</strong> ({topCount} lần)
+        </div>
+        {insight.top.slice(0, 3).map(([reason, count]) => {
+          const pct = Math.round((count / insight.total) * 100);
+          return (
+            <div key={reason} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', flex: 1 }}>{reason}</span>
+              <div style={{ width: 100, height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ width: `${pct}%`, height: '100%', background: 'var(--orange)', borderRadius: 3 }} />
+              </div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', width: 28, textAlign: 'right' }}>{count}x</span>
+            </div>
+          );
+        })}
+        {tips[topReason] && (
+          <div style={{ fontSize: '0.82rem', color: 'var(--purple-light)', marginTop: '0.25rem' }}>
+            {tips[topReason]}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Main ────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { data, streak, longestStreak, totalDone, completionPct, badge } = useHabitStore();
@@ -313,6 +374,9 @@ export default function DashboardPage() {
           <div className="dash-card-title">📅 Contribution — 12 Tuần Gần Đây</div>
           <ContributionGraph data={data} />
         </div>
+
+        {/* Skip Insight */}
+        <SkipInsight />
 
         {/* Insight */}
         <div className="card db-section">

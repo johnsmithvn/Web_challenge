@@ -2,6 +2,22 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
+// XP for completing a focus session (avoid circular import from useXpStore)
+const FOCUS_XP      = 15;
+const XP_STORE_KEY  = 'vl_xp_store';
+
+function awardFocusXp(sessionId) {
+  try {
+    const log = JSON.parse(localStorage.getItem(XP_STORE_KEY) || '[]');
+    const already = log.some(e => e.reason === 'focus_session' && e.meta?.sessionId === sessionId);
+    if (already) return;
+    log.push({ amount: FOCUS_XP, reason: 'focus_session', meta: { sessionId }, ts: Date.now() });
+    localStorage.setItem(XP_STORE_KEY, JSON.stringify(log));
+  } catch (e) {
+    console.warn('[FocusTimer] XP award failed:', e.message);
+  }
+}
+
 const STORAGE_KEY   = 'vl_focus_sessions';
 const SETTINGS_KEY  = 'vl_focus_settings';
 
@@ -71,6 +87,9 @@ export function useFocusTimer() {
       const next = [...sessions, log];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       setSessions(next);
+
+      // Award focus XP (deduped per session id)
+      awardFocusXp(log.id);
 
       // Auto-tick linked habit in vl_habit_progress if session >= habit.durationMin
       if (habitId) {

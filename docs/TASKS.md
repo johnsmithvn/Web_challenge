@@ -3,6 +3,18 @@
 
 ---
 
+## v1.3.1 — ✅ DONE (2026-04-18)
+
+### Phase 3 — Polish & Tech Debt
+- [x] `src/hooks/useFocusTimer.js` — Focus XP +15 mỗi session (deduped by sessionId, write trực tiếp vào vl_xp_store để tránh circular import)
+- [x] `src/hooks/useXpStore.js` — Thêm `focus_session: 15` vào XP_REWARDS cho nhất quán
+- [x] `src/hooks/useMoodSkip.js` — Thêm `getAllSkips()` API
+- [x] `src/pages/DashboardPage.jsx` — Widget "Phân Tích Bỏ Qua" 14 ngày gần đây, top reasons bar chart + smart tip theo lý do
+- [x] `src/hooks/useHabitStore.js` — Fix `week_num` hardcode: tính từ ngày đầu tiên tick, capped tại 3
+
+---
+
+
 ## v1.3.0 — ✅ DONE (2026-04-18)
 
 ### Phase 1 — Quick Wins

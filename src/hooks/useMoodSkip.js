@@ -68,7 +68,8 @@ export function useSkipReasons() {
     }
   }, [useDB, user]);
 
-  const getSkip = useCallback((date) => skipLog[date] ?? null, [skipLog]);
+  const getSkip    = useCallback((date) => skipLog[date] ?? null, [skipLog]);
+  const getAllSkips = useCallback(() => Object.values(skipLog), [skipLog]);
 
-  return { skipLog, saveSkip, getSkip };
+  return { skipLog, saveSkip, getSkip, getAllSkips };
 }

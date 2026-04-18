@@ -12,13 +12,14 @@ const LEVELS = [
 ];
 
 export const XP_REWARDS = {
-  daily_check: 10,
-  streak_3: 50,
-  streak_10: 100,
-  streak_21: 200,
-  daily_challenge: 20,
-  quiz_complete: (score) => Math.round((score / 10) * 50),
-  duo_streak: 30,
+  daily_check:      10,
+  streak_3:         50,
+  streak_10:        100,
+  streak_21:        200,
+  daily_challenge:  20,
+  quiz_complete:    (score) => Math.round((score / 10) * 50),
+  duo_streak:       30,
+  focus_session:    15,  // awarded directly in useFocusTimer.js (avoid circular import)
 };
 
 function computeLevel(totalXp) {

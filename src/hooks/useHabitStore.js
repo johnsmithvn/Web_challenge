@@ -112,6 +112,14 @@ export function useHabitStore() {
   const toggle = useCallback(async (dateKey) => {
     const next = !data[dateKey];
 
+    // Compute week number from earliest checked date (program start)
+    const checkedDates = Object.keys(data).filter(k => data[k]).sort();
+    const programStart = checkedDates[0] || dateKey;
+    const diffDays = Math.floor(
+      (new Date(dateKey) - new Date(programStart)) / 86400000
+    );
+    const weekNum = Math.min(Math.floor(diffDays / 7) + 1, 3); // cap at 3
+
     // Optimistic update
     setData(prev => {
       const updated = { ...prev, [dateKey]: next };
@@ -121,7 +129,6 @@ export function useHabitStore() {
 
     // Sync to DB if authenticated
     if (useDB && user) {
-      const weekNum = 1; // TODO: compute from challenge program start date
       await supabase.from('progress').upsert(
         { user_id: user.id, date: dateKey, completed: next, week_num: weekNum,
           completed_at: next ? new Date().toISOString() : null },
