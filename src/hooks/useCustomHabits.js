@@ -4,23 +4,13 @@ import { useAuth } from '../contexts/AuthContext';
 
 const STORAGE_KEY = 'vl_custom_habits';
 
-const DEFAULT_HABITS = [
-  { id: 'h1', name: 'Tập thể dục', icon: '💪', color: '#06B6D4', category: 'health',  timeTarget: '07:00', durationMin: 20 },
-  { id: 'h2', name: 'Đọc sách',    icon: '📚', color: '#8B5CF6', category: 'learning', timeTarget: '21:00', durationMin: 30 },
-  { id: 'h3', name: 'MVA hàng ngày', icon: '⚡', color: '#00FF88', category: 'focus',  timeTarget: '08:00', durationMin: 15 },
-];
+import HABITS_DATA from '../data/habits.json';
 
-export const CATEGORIES = [
-  { id: 'health',   label: 'Sức Khoẻ',  icon: '💚' },
-  { id: 'learning', label: 'Học Tập',   icon: '📖' },
-  { id: 'focus',    label: 'Tập Trung', icon: '🎯' },
-  { id: 'social',   label: 'Xã Hội',   icon: '👥' },
-  { id: 'finance',  label: 'Tài Chính', icon: '💰' },
-  { id: 'other',    label: 'Khác',      icon: '✨' },
-];
+const DEFAULT_HABITS = HABITS_DATA.defaultHabits;
+export const CATEGORIES  = HABITS_DATA.categories;
+export const HABIT_ICONS = HABITS_DATA.icons;
+export const HABIT_COLORS = HABITS_DATA.colors;
 
-export const HABIT_ICONS = ['💪','📚','⚡','🏃','🧘','💧','🥗','😴','🎯','✍️','🎵','🪴','🐕','🧹','💊','🚴','🏊','📝','🎨','🧠'];
-export const HABIT_COLORS = ['#06B6D4','#8B5CF6','#00FF88','#F97316','#EF4444','#FFD700','#EC4899','#10B981','#6366F1','#F59E0B'];
 
 function loadLocal() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || DEFAULT_HABITS; }

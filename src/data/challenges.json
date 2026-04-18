@@ -1,0 +1,277 @@
+[
+  {
+    "key": "mva-morning",
+    "type": "MVA",
+    "icon": "⚡",
+    "title": "Hành Động Vi Mô Buổi Sáng",
+    "desc": "Làm 1 việc nhỏ nhất có thể ngay sau khi thức dậy.",
+    "steps": [
+      "Mở app/note và viết ra thói quen chính của bạn (vd: \"tập thể dục\")",
+      "Thu nhỏ nó xuống mức nhỏ nhất có thể — chỉ 2 phút (vd: \"mang giày ra\")",
+      "Làm ngay — TRƯỚC KHI làm bất kỳ việc gì khác (ăn sáng, check điện thoại...)",
+      "→ Tác dụng: não bộ hình thành thói quen từ hành động nhỏ lặp lại mỗi ngày"
+    ]
+  },
+  {
+    "key": "body-anchor",
+    "type": "MVA",
+    "icon": "💪",
+    "title": "Neo Cơ Thể",
+    "desc": "Kích hoạt cơ thể ngay bây giờ — không cần chuẩn bị.",
+    "steps": [
+      "Đứng dậy ngay (nếu đang ngồi)",
+      "Làm đúng 3 cái hít đất — bất kể hình thức (đầu gối chạm đất cũng được)",
+      "Xong rồi. Vậy thôi.",
+      "→ Tác dụng: phá vỡ trạng thái lười, kích hoạt dopamine nhỏ"
+    ]
+  },
+  {
+    "key": "shrink-it",
+    "type": "MVA",
+    "icon": "🔬",
+    "title": "Thu Nhỏ Nó",
+    "desc": "Nhiệm vụ hôm nay quá lớn? Cắt xuống còn 20%.",
+    "steps": [
+      "Viết ra nhiệm vụ gốc (vd: \"Tập gym 1 tiếng\")",
+      "Hỏi: \"Phiên bản 20% của việc này là gì?\" (vd: \"Đi bộ 10 phút\")",
+      "Làm đúng phiên bản 20% đó — không cố làm thêm nếu không muốn",
+      "→ Bắt đầu được là thắng. Hầu hết sẽ tự làm thêm sau khi bắt đầu."
+    ]
+  },
+  {
+    "key": "reflection",
+    "type": "Reflection",
+    "icon": "🪞",
+    "title": "Nhìn Lại Ngày Qua",
+    "desc": "Viết 3 điều bạn đã làm được hôm qua, dù nhỏ đến đâu.",
+    "steps": [
+      "Lấy điện thoại / sổ tay ra",
+      "Nghĩ lại hôm qua từ sáng đến tối",
+      "Viết đúng 3 câu bắt đầu bằng \"Hôm qua tao đã...\"",
+      "→ Không cần hay, không cần dài — miễn là thật"
+    ]
+  },
+  {
+    "key": "win-journal",
+    "type": "Reflection",
+    "icon": "📓",
+    "title": "Nhật Ký Chiến Thắng",
+    "desc": "Ghi lại 1 điều nhỏ bạn làm được hôm nay.",
+    "steps": [
+      "Mở note điện thoại hoặc sổ tay",
+      "Viết: \"Hôm nay [ngày] — tôi đã: ___\"",
+      "Điền vào bất kỳ thứ gì bạn làm được (nhỏ cũng tính)",
+      "→ Sau 21 ngày, đọc lại — bạn sẽ ngạc nhiên về sự thay đổi của mình"
+    ]
+  },
+  {
+    "key": "gratitude",
+    "type": "Reflection",
+    "icon": "🙏",
+    "title": "Biết Ơn Chính Mình",
+    "desc": "Ghi nhận 1 điều bạn tự hào về bản thân hôm nay.",
+    "steps": [
+      "Dừng lại 1 phút",
+      "Nghĩ: \"Hôm nay tao đã làm được gì, dù nhỏ?\"",
+      "Viết đúng 1 câu — không được viết \"không có gì\"",
+      "→ Tự công nhận bản thân là nhiên liệu để tiếp tục, không phải kiêu ngạo"
+    ]
+  },
+  {
+    "key": "no-excuse",
+    "type": "Challenge",
+    "icon": "🛡",
+    "title": "Không Lý Do",
+    "desc": "Làm thói quen hôm nay dù không có cảm hứng.",
+    "steps": [
+      "Xác định thói quen cần làm hôm nay",
+      "Đặt hẹn giờ 5 phút",
+      "Bắt đầu ngay — không cần cảm thấy sẵn sàng, không cần hứng",
+      "Hết 5 phút rồi quyết định có tiếp tục không — hầu hết sẽ tiếp tục",
+      "→ Ý chí không phải nguồn gốc của kỷ luật — hành động mới tạo ra động lực"
+    ]
+  },
+  {
+    "key": "public-commit",
+    "type": "Challenge",
+    "icon": "📢",
+    "title": "Cam Kết Công Khai",
+    "desc": "Nói với 1 người về việc bạn sẽ làm hôm nay.",
+    "steps": [
+      "Chọn 1 người (bạn bè, gia đình, hoặc nhắn vào group chat)",
+      "Nhắn đúng 1 câu: \"Hôm nay tao sẽ [việc cụ thể] lúc [giờ cụ thể]\"",
+      "Làm việc đó",
+      "→ Có người biết = áp lực xã hội nhỏ = khả năng thực hiện cao hơn 65%"
+    ]
+  },
+  {
+    "key": "deep-work",
+    "type": "Challenge",
+    "icon": "🏔",
+    "title": "Deep Work Mini",
+    "desc": "Làm việc không bị phân tâm trong 15 phút.",
+    "steps": [
+      "Tắt thông báo điện thoại (hoặc bật chế độ máy bay)",
+      "Đặt điện thoại úp xuống hoặc ra xa tầm tay",
+      "Đặt đồng hồ 15 phút",
+      "Làm đúng 1 việc trong 15 phút đó — không check gì khác",
+      "→ 15 phút tập trung thật sự = hiệu quả hơn 1 giờ xao nhãng"
+    ]
+  },
+  {
+    "key": "final-boss",
+    "type": "Challenge",
+    "icon": "🏆",
+    "title": "Final Boss",
+    "desc": "Ngày 21 — làm thói quen và chia sẻ hành trình với 1 người.",
+    "steps": [
+      "Làm thói quen của ngày hôm nay như bình thường",
+      "Nhìn lại 21 ngày: bạn đã thay đổi gì?",
+      "Nhắn hoặc nói với 1 người về hành trình này (bạn bè, gia đình)",
+      "→ Chia sẻ giúp củng cố danh tính mới của bạn trong mắt người khác"
+    ]
+  },
+  {
+    "key": "dopamine-hack",
+    "type": "Brain",
+    "icon": "🧠",
+    "title": "Dopamine Hack",
+    "desc": "Tạo phần thưởng nhỏ ngay sau khi hoàn thành thói quen.",
+    "steps": [
+      "Quyết định phần thưởng TRƯỚC (vd: pha cà phê ngon, xem 1 clip yêu thích)",
+      "Làm thói quen của ngày hôm nay",
+      "Nhận phần thưởng NGAY SAU — không delay, không mua chịu",
+      "→ Não bộ sẽ gắn \"dễ chịu\" với thói quen sau vài lần lặp như vậy"
+    ]
+  },
+  {
+    "key": "brain-break",
+    "type": "Brain",
+    "icon": "🧬",
+    "title": "Hiểu Não Của Bạn",
+    "desc": "Đọc hiểu 1 cơ chế não bộ và áp dụng ngay hôm nay.",
+    "steps": [
+      "Đọc: Dopamine không phải về \"vui\" — mà về \"kỳ vọng\". Não thích chuẩn bị hơn thực hiện.",
+      "Nhận ra: Khi bạn lướt TikTok, não đang nhận dopamine từ \"chuẩn bị xem gì tiếp\".",
+      "Áp dụng: Tạo ra \"kỳ vọng nhỏ\" trước khi làm thói quen (vd: đặt đồng hồ đếm ngược)",
+      "→ Viết 1 dòng: \"Tôi sẽ áp dụng điều này bằng cách ___\""
+    ]
+  },
+  {
+    "key": "amygdala",
+    "type": "Brain",
+    "icon": "🛡",
+    "title": "Vượt Amygdala",
+    "desc": "Cảm giác lười/ngại bắt đầu là não đang bảo vệ bạn — không phải sự thật.",
+    "steps": [
+      "Khi cảm thấy lười: nhận ra đó là amygdala (phần não cảnh báo nguy hiểm) đang kích hoạt",
+      "Đây không phải tín hiệu \"không làm được\" — mà là tín hiệu \"chưa quen\"",
+      "Làm 1 bước đầu tiên nhỏ nhất (mở sách, mang giày, mở máy tính)",
+      "→ Sau bước đầu tiên, amygdala tắt — bạn sẽ tiếp tục được"
+    ]
+  },
+  {
+    "key": "environment",
+    "type": "System",
+    "icon": "🏗",
+    "title": "Thiết Kế Môi Trường",
+    "desc": "Đặt vật nhắc nhở để trigger thói quen tự động.",
+    "steps": [
+      "Nghĩ về thói quen bạn muốn làm (vd: đọc sách)",
+      "Đặt cuốn sách ngay trên gối / bàn làm việc — chỗ dễ thấy nhất",
+      "Giấu điện thoại vào ngăn kéo khi học/đọc",
+      "→ Mục tiêu: không cần ý chí, môi trường tự nhắc"
+    ]
+  },
+  {
+    "key": "momentum",
+    "type": "System",
+    "icon": "🌊",
+    "title": "Quán Tính",
+    "desc": "Gắn thói quen vào ngay sau 1 việc đã làm sáng nay.",
+    "steps": [
+      "Chọn 1 việc bạn ĐÃ làm sáng nay (đánh răng, pha cà phê, tắm...)",
+      "Quyết định: \"Sau khi ___ xong, tôi sẽ làm [thói quen] ngay\"",
+      "Thực hiện đúng thứ tự đó — không làm việc khác xen vào",
+      "→ Đây là kỹ thuật \"habit stacking\" — xây dựng thói quen mới bằng cái cũ"
+    ]
+  },
+  {
+    "key": "reset-ritual",
+    "type": "System",
+    "icon": "🔄",
+    "title": "Khởi Động Lại",
+    "desc": "Bỡ streak rồi? Làm 1 việc nhỏ ngay hôm nay để quay lại.",
+    "steps": [
+      "Dừng tự trách bản thân — việc bỏ lỡ đã xảy ra rồi, không thay đổi được",
+      "Làm 1 hành động nhỏ nhất bây giờ (dù chỉ 2 phút)",
+      "Đánh dấu hôm nay là ngày bắt đầu lại — không phải \"ngày thất bại\"",
+      "→ Người kỷ luật không phải người không bao giờ bỏ — là người quay lại nhanh nhất"
+    ]
+  },
+  {
+    "key": "stack-habit",
+    "type": "System",
+    "icon": "🔗",
+    "title": "Ghép Thói Quen",
+    "desc": "Gắn thói quen mới vào 1 thói quen cũ đã có.",
+    "steps": [
+      "Liệt kê 3 việc bạn làm hàng ngày KHÔNG CẦN nghĩ (pha cà phê, đánh răng, ăn sáng...)",
+      "Chọn 1 cái và quyết định: \"Sau khi [thói quen cũ], tôi sẽ làm [thói quen mới] ngay\"",
+      "Lặp lại đúng thứ tự đó trong 7 ngày liên tiếp",
+      "→ Não bộ sẽ tự động liên kết 2 hành động với nhau"
+    ]
+  },
+  {
+    "key": "identity",
+    "type": "Mindset",
+    "icon": "🎭",
+    "title": "Xác Định Danh Tính",
+    "desc": "Viết ra con người bạn muốn trở thành.",
+    "steps": [
+      "Lấy giấy hoặc mở note trên điện thoại",
+      "Viết: \"Tôi là người ___\" (vd: \"Tôi là người kỷ luật\", \"Tôi là người chăm đọc sách\")",
+      "Viết thêm: \"Vì vậy hôm nay tôi sẽ ___\"",
+      "→ Đọc to 1 lần trước khi bắt đầu ngày"
+    ]
+  },
+  {
+    "key": "visualization",
+    "type": "Mindset",
+    "icon": "🎯",
+    "title": "Hình Dung Kết Quả",
+    "desc": "Dành 2 phút hình dung bạn sau 21 ngày.",
+    "steps": [
+      "Tìm chỗ yên tĩnh, nhắm mắt lại",
+      "Hình dung: bạn sau 21 ngày kỷ luật trông như thế nào? Cảm giác ra sao?",
+      "Hình dung cụ thể: buổi sáng, cơ thể, mức năng lượng, cảm giác tự hào",
+      "→ Mở mắt và viết 1 câu về điều bạn vừa hình dung"
+    ]
+  },
+  {
+    "key": "team-checkin",
+    "type": "Team",
+    "icon": "🤝",
+    "title": "Check-in Đồng Đội",
+    "desc": "Báo cáo tiến độ cho teammate của bạn.",
+    "steps": [
+      "Mở app chat với teammate",
+      "Gửi 1 tin: \"Hôm nay tao [đã làm / chưa làm] vì ___\"",
+      "Hỏi lại: \"Còn mày thì sao?\"",
+      "→ Accountability 2 chiều — cả 2 cùng có trách nhiệm"
+    ]
+  },
+  {
+    "key": "duo-challenge",
+    "type": "Team",
+    "icon": "🔥",
+    "title": "Duo Thử Thách",
+    "desc": "Cả 2 hoàn thành thói quen trước 12PM hôm nay.",
+    "steps": [
+      "Nhắn teammate ngay bây giờ: \"Race 12PM nha — ai xong trước?\"",
+      "Làm thói quen của bạn càng sớm càng tốt",
+      "Báo lại khi xong: \"Done! Mày chưa?\"",
+      "→ Cạnh tranh friendly = động lực mạnh hơn làm một mình"
+    ]
+  }
+]

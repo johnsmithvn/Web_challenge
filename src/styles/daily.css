@@ -31,6 +31,66 @@
   animation: float 3s ease-in-out infinite;
 }
 
+/* MVA tooltip */
+.dc-mva-tip {
+  font-size: 0.72rem;
+  color: var(--cyan);
+  border-bottom: 1px dashed var(--cyan);
+  cursor: help;
+  opacity: 0.75;
+}
+
+/* Steps toggle */
+.dc-steps-toggle {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  transition: var(--transition-base);
+  margin-bottom: 0.25rem;
+}
+
+.dc-steps-toggle:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-secondary);
+}
+
+/* Steps list */
+.dc-steps-list {
+  margin: 0.5rem 0 0;
+  padding: 0.75rem 0.75rem 0.75rem 1.5rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-md);
+  list-style: decimal;
+  animation: slideUp 0.15s ease;
+}
+
+.dc-step-item {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.65;
+  margin-bottom: 0.4rem;
+  padding-left: 0.25rem;
+}
+
+.dc-step-item:last-child { margin-bottom: 0; }
+
+.dc-step-item:last-child {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.82rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 0.4rem;
+  margin-top: 0.5rem;
+  list-style: none;
+  margin-left: -1rem;
+}
+
+
 /* Notification Settings */
 .notif-settings {
   padding: 1.5rem;
@@ -113,3 +173,90 @@
   outline: none;
   border-color: rgba(139,92,246,0.4);
 }
+
+/* ── Daily Challenge v2 — Confirmation flow ── */
+.dc-confirm-panel {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  animation: slideUp 0.2s ease;
+}
+
+.dc-confirm-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: block;
+}
+
+.dc-reflection-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: 0.75rem;
+  resize: vertical;
+  min-height: 72px;
+  transition: var(--transition-base);
+}
+
+.dc-reflection-input:focus {
+  outline: none;
+  border-color: rgba(139,92,246,0.4);
+  background: rgba(139,92,246,0.05);
+}
+
+.dc-reflection-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Done state */
+.dc-done-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.dc-done-badge {
+  background: rgba(0,255,136,0.1);
+  border: 1px solid rgba(0,255,136,0.3);
+  color: var(--green);
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.dc-undo-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  padding: 0.35rem 0.85rem;
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.dc-undo-btn:hover {
+  border-color: rgba(255,100,100,0.3);
+  color: var(--red);
+}
+
+.dc-reflection-display {
+  background: rgba(255,255,255,0.03);
+  border-left: 3px solid rgba(139,92,246,0.4);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.6rem 0.85rem;
+}
+

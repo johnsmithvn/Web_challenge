@@ -8,17 +8,9 @@ import HabitManager from '../components/HabitManager';
 import '../styles/calendar.css';
 import '../styles/tracker.css';
 
-const SKIP_REASONS = [
-  'Bận công việc', 'Ốm / mệt', 'Quên mất', 'Thiếu động lực',
-  'Không có thời gian', 'Có việc đột xuất', 'Lý do khác',
-];
-const MOODS = [
-  { emoji: '😴', label: 'Kiệt sức' },
-  { emoji: '😔', label: 'Thấp' },
-  { emoji: '😐', label: 'Bình thường' },
-  { emoji: '😊', label: 'Tốt' },
-  { emoji: '💪', label: 'Tuyệt vời' },
-];
+import HABITS_DATA from '../data/habits.json';
+const SKIP_REASONS = HABITS_DATA.skipReasons;
+const MOODS        = HABITS_DATA.moods;
 
 export default function HabitsPage() {
   const { data, toggle, streak, totalDone } = useHabitStore();

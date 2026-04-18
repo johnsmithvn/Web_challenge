@@ -1,42 +1,17 @@
 import { useState, useMemo } from 'react';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
+import { useTeam } from '../hooks/useTeam';
 import '../styles/daily.css';
+import ALL_CHALLENGES from '../data/challenges.json';
 
-// 21 challenges — one per day of the program, seeded by date
-const CHALLENGES = [
-  { key: 'mva-morning',   type: 'MVA',        icon: '⚡', title: 'Hành Động Vi Mô Buổi Sáng',    desc: 'Chọn 1 việc nhỏ nhất có thể làm trong 2 phút. Làm ngay sau khi thức dậy.' },
-  { key: 'reflection',    type: 'Reflection',  icon: '🪞', title: 'Nhìn Lại Ngày Qua',            desc: 'Viết 3 điều bạn đã làm được hôm qua, dù nhỏ đến đâu.' },
-  { key: 'team-checkin',  type: 'Team',        icon: '🤝', title: 'Check-in Đồng Đội',            desc: 'Nhắn bạn đồng hành một tin: "Hôm nay tao làm được X rồi!"' },
-  { key: 'no-excuse',     type: 'Challenge',   icon: '🛡', title: 'Không Lý Do',                   desc: 'Làm MVA của bạn mà không cần "cảm hứng" hay mood tốt. Just start.' },
-  { key: 'dopamine-hack', type: 'Brain',       icon: '🧠', title: 'Dopamine Hack',                 desc: 'Tạo phần thưởng nhỏ ngay sau khi hoàn thành MVA (ăn gì ngon, xem clip 5 phút...)' },
-  { key: 'environment',   type: 'System',      icon: '🏗', title: 'Thiết Kế Môi Trường',          desc: 'Đặt nhắc nhở vật lý (note, vật dụng) để trigger cho thói quen ngay tầm nhìn.' },
-  { key: 'identity',      type: 'Mindset',     icon: '🎭', title: 'Xác Định Danh Tính',           desc: 'Viết câu: "Tôi là người ___". Điền vào thứ bạn muốn trở thành.' },
-  { key: 'body-anchor',   type: 'MVA',         icon: '💪', title: 'Neo Cơ Thể',                   desc: 'Làm 3 cái hít đất ngay bây giờ. Ngay lúc này. Không cần thay đồ.' },
-  { key: 'duo-challenge',  type: 'Team',       icon: '🔥', title: 'Duo Thử Thách',                desc: 'Cả bạn và teammate hoàn thành MVA trước 12PM hôm nay.' },
-  { key: 'brain-break',   type: 'Brain',       icon: '🧬', title: 'Hiểu Não Của Bạn',            desc: 'Đọc lại bài "Dopamine System". Viết 1 điều bạn sẽ áp dụng hôm nay.' },
-  { key: 'momentum',      type: 'System',      icon: '🌊', title: 'Quán Tính',                     desc: 'Làm MVA ngay sau khi đánh răng sáng nay — không delay, không nghĩ.' },
-  { key: 'shrink-it',     type: 'MVA',         icon: '🔬', title: 'Thu Nhỏ Nó',                   desc: 'Nhiệm vụ của bạn hôm nay quá lớn? Cắt nó còn 20%. Chỉ làm phần đó thôi.' },
-  { key: 'public-commit', type: 'Challenge',   icon: '📢', title: 'Cam Kết Công Khai',            desc: 'Post lên story / nhắn bạn bè: "Hôm nay tao sẽ làm X". Accountability ngoại lực.' },
-  { key: 'win-journal',   type: 'Reflection',  icon: '📓', title: 'Nhật Ký Chiến Thắng',         desc: 'Viết 1 "chiến thắng nhỏ" trong ngày hôm nay vào notepad/điện thoại.' },
-  { key: 'reset-ritual',  type: 'System',      icon: '🔄', title: 'Ritual Khởi Động Lại',        desc: 'Đã bỏ streak rồi? Làm MVA ngay bây giờ. Không cần đợi ngày mai.' },
-  { key: 'amygdala',      type: 'Brain',       icon: '🛡', title: 'Vượt Amygdala',               desc: 'Cảm thấy lười/sợ bắt đầu? Đó là amygdala. Chỉ cần làm 1 bước đầu tiên.' },
-  { key: 'stack-habit',   type: 'System',      icon: '🔗', title: 'Ghép Thói Quen',              desc: 'Gắn MVA vào sau 1 việc đã làm hàng ngày (pha cà phê, đánh răng...)' },
-  { key: 'visualization', type: 'Mindset',     icon: '🎯', title: 'Hình Dung Kết Quả',           desc: 'Nhắm mắt 2 phút. Hình dung bạn sau 21 ngày sẽ như thế nào.' },
-  { key: 'gratitude',     type: 'Reflection',  icon: '🙏', title: 'Biết Ơn Chính Mình',          desc: 'Viết 1 điều bạn tự hào về bản thân hôm nay.' },
-  { key: 'deep-work',     type: 'Challenge',   icon: '🏔', title: 'Deep Work Mini',              desc: 'Làm MVA với điện thoại úp ngửa, không thông báo trong 15 phút.' },
-  { key: 'final-boss',    type: 'Challenge',   icon: '🏆', title: 'Final Boss',                   desc: 'Ngày cuối! Làm MVA và chia sẻ hành trình 21 ngày của bạn với 1 người.' },
-];
+// MVA = Minimum Viable Action = Hành động nhỏ nhất có thể làm được ngay hôm nay
+const MVA_TIP = 'MVA = Hành động nhỏ nhất bạn có thể làm ngay hôm nay cho thói quen của mình. Ví dụ: "Tập thể dục" → chỉ cần mang giày ra trước cửa.';
+const SOLO_CHALLENGES = ALL_CHALLENGES.filter(c => c.type !== 'Team');
 
-function getDailyChallengeKey() {
-  const todayStr = new Date().toISOString().split('T')[0];
-  // Deterministic seed from date string
-  let hash = 0;
-  for (let i = 0; i < todayStr.length; i++) {
-    hash = ((hash << 5) - hash) + todayStr.charCodeAt(i);
-    hash |= 0;
-  }
-  const idx = Math.abs(hash) % CHALLENGES.length;
-  return { challenge: CHALLENGES[idx], dateKey: todayStr };
+function pick(pool, dateStr) {
+  let h = 0;
+  for (let i = 0; i < dateStr.length; i++) { h = ((h << 5) - h) + dateStr.charCodeAt(i); h |= 0; }
+  return pool[Math.abs(h) % pool.length];
 }
 
 const TYPE_COLORS = {
@@ -45,24 +20,36 @@ const TYPE_COLORS = {
 };
 
 export default function DailyChallenge() {
-  const { challenge, dateKey } = useMemo(getDailyChallengeKey, []);
+  const { team } = useTeam();
+  const isInTeam  = !!(team?.id);
+  const dateKey   = new Date().toISOString().split('T')[0];
+  const pool      = isInTeam ? ALL_CHALLENGES : SOLO_CHALLENGES;
+  const challenge = useMemo(() => pick(pool, dateKey), [isInTeam, dateKey]);
+
   const { addXp, hasMilestone } = useXpStore();
-  const doneKey = `vl_dc_${dateKey}`;
-  const [done, setDone] = useState(() => !!localStorage.getItem(doneKey));
+  const storageKey = `vl_dc_${dateKey}`;
+
+  const [done, setDone]           = useState(() => !!localStorage.getItem(storageKey));
+  const [showSteps, setShowSteps] = useState(false);
   const [showXpPop, setShowXpPop] = useState(false);
 
-  const color = TYPE_COLORS[challenge.type] || 'purple';
-
-  const handleComplete = () => {
-    if (done) return;
-    localStorage.setItem(doneKey, '1');
-    setDone(true);
-    if (!hasMilestone('daily_challenge', { date: dateKey })) {
-      addXp(XP_REWARDS.daily_challenge, 'daily_challenge', { date: dateKey });
-      setShowXpPop(true);
-      setTimeout(() => setShowXpPop(false), 3000);
+  const toggle = () => {
+    if (!done) {
+      localStorage.setItem(storageKey, '1');
+      setDone(true);
+      if (!hasMilestone('daily_challenge', { date: dateKey })) {
+        addXp(XP_REWARDS.daily_challenge, 'daily_challenge', { date: dateKey });
+        setShowXpPop(true);
+        setTimeout(() => setShowXpPop(false), 3000);
+      }
+    } else {
+      localStorage.removeItem(storageKey);
+      setDone(false);
     }
   };
+
+  const color = TYPE_COLORS[challenge.type] || 'purple';
+  const isMVA = challenge.type === 'MVA';
 
   return (
     <div className={`daily-challenge card daily-challenge--${color}`} id="daily-challenge">
@@ -72,30 +59,63 @@ export default function DailyChallenge() {
 
       <div className="daily-challenge__header">
         <div className="section-label" style={{ margin: 0 }}>🎯 Daily Challenge</div>
-        <span className={`badge badge-${color === 'gold' ? 'gold' : color === 'green' ? 'green' : 'cyan'}`}>
-          {challenge.type}
-        </span>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {isMVA && (
+            <span className="dc-mva-tip" title={MVA_TIP}>
+              ❓ MVA là gì?
+            </span>
+          )}
+          <span className={`badge badge-${color === 'gold' ? 'gold' : color === 'green' ? 'green' : 'cyan'}`}>
+            {challenge.type}
+          </span>
+        </div>
       </div>
 
       <div className="daily-challenge__icon">{challenge.icon}</div>
       <h3 className="h2" style={{ marginBottom: '0.5rem' }}>{challenge.title}</h3>
-      <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '1.25rem' }}>
+      <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '1rem' }}>
         {challenge.desc}
       </p>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+      <button
+        className="dc-steps-toggle"
+        onClick={() => setShowSteps(v => !v)}
+        id="dc-steps-btn"
+      >
+        {showSteps ? '▲ Ẩn hướng dẫn' : '▼ Xem hướng dẫn làm thế nào'}
+      </button>
+
+      {showSteps && (
+        <ol className="dc-steps-list">
+          {challenge.steps.map((step, i) => (
+            <li key={i} className="dc-step-item">{step}</li>
+          ))}
+        </ol>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
         <button
           className={`btn ${done ? 'btn-ghost' : 'btn-primary'}`}
-          onClick={handleComplete}
-          disabled={done}
+          onClick={toggle}
           id="daily-challenge-complete"
-          style={{ opacity: done ? 0.7 : 1 }}
+          style={{
+            background:  done ? 'rgba(0,255,136,0.1)' : undefined,
+            borderColor: done ? 'rgba(0,255,136,0.35)' : undefined,
+            color:       done ? 'var(--green)' : undefined,
+          }}
         >
-          {done ? '✅ Đã Hoàn Thành!' : '⚡ Hoàn Thành — +20 XP'}
+          {done ? '✅ Đã Hoàn Thành' : `⚡ Hoàn Thành — +${XP_REWARDS.daily_challenge} XP`}
         </button>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          Reset mỗi ngày lúc 00:00
-        </span>
+        {done ? (
+          <button onClick={toggle} id="daily-challenge-uncheck"
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+            bỏ chọn
+          </button>
+        ) : (
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            Reset lúc 00:00 mỗi ngày
+          </span>
+        )}
       </div>
     </div>
   );

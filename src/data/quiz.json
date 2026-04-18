@@ -1,0 +1,62 @@
+[
+  {
+    "q": "Dopamine được tiết ra khi nào?",
+    "options": ["Khi bạn nghỉ ngơi", "Khi não kỳ vọng phần thưởng", "Khi bạn buồn ngủ", "Khi ăn ngon"],
+    "correct": 1,
+    "explain": "Dopamine là hormone ĐỘNG LỰC, được tiết khi não kỳ vọng phần thưởng — không phải khi nhận phần thưởng. Đó là lý do anticipation thường thú vị hơn kết quả."
+  },
+  {
+    "q": "MVA (Minimum Viable Action) là gì?",
+    "options": ["Kế hoạch 30 ngày chi tiết", "Hành động nhỏ nhất bạn không thể từ chối", "Mục tiêu lớn nhất có thể", "Chiến lược marketing"],
+    "correct": 1,
+    "explain": "MVA = hành động nhỏ đến mức buồn cười nhưng đủ để bắt đầu. Ví dụ: không \"tập gym 1 tiếng\" mà \"mang giày thể thao ra\"."
+  },
+  {
+    "q": "Amygdala gây ra điều gì khi bạn bắt đầu công việc mới?",
+    "options": ["Tăng năng lượng", "Kích hoạt cơ chế sợ hãi/né tránh", "Tăng tập trung", "Giải phóng endorphin"],
+    "correct": 1,
+    "explain": "Amygdala là phần não nguyên thủy xử lý sợ hãi. Khi gặp nhiệm vụ mới/khó — nó báo động \"nguy hiểm\" → bạn cảm thấy lười/né tránh."
+  },
+  {
+    "q": "Tại sao không nên dùng \"ý chí\" làm nguồn động lực chính?",
+    "options": ["Ý chí không có thật", "Ý chí là tài nguyên hữu hạn, cạn dần trong ngày", "Ý chí khiến bạn mập", "Không có lý do gì"],
+    "correct": 1,
+    "explain": "Ý chí (willpower) hoạt động như pin — cạn dần theo thời gian trong ngày. Đó là lý do buổi chiều tối khó từ chối đồ ăn/game hơn buổi sáng."
+  },
+  {
+    "q": "Streak psychology hoạt động như thế nào?",
+    "options": ["Làm bạn căng thẳng", "\"Không muốn phá chuỗi\" tạo động lực mạnh hơn phần thưởng", "Không có tác dụng gì", "Chỉ hiệu quả với trẻ em"],
+    "correct": 1,
+    "explain": "Loss aversion (sợ mất) mạnh hơn desire (muốn được). Streak tận dụng tâm lý này — bạn làm việc để \"không mất streak\" hơn là để \"được thưởng\"."
+  },
+  {
+    "q": "Habit stacking là gì?",
+    "options": ["Làm nhiều thói quen cùng lúc", "Gắn thói quen mới sau thói quen đã có", "Xếp hạng thói quen theo độ khó", "Tích thưởng từng ngày"],
+    "correct": 1,
+    "explain": "Habit stacking = \"Sau khi tôi [THÓI QUEN CŨ], tôi sẽ [THÓI QUEN MỚI]\". Tận dụng trigger đã có sẵn để bắt đầu thói quen mới."
+  },
+  {
+    "q": "Accountability partner hiệu quả nhất khi nào?",
+    "options": ["Khi là người lạ hoàn toàn", "Khi là người có cùng mục tiêu và check-in hàng ngày", "Khi là người nổi tiếng", "Khi số lượng > 10 người"],
+    "correct": 1,
+    "explain": "Research cho thấy 1 accountability partner check-in thường xuyên hiệu quả hơn group lớn. Cặp đôi tạo trách nhiệm cụ thể, không bị pha loãng."
+  },
+  {
+    "q": "Điều gì xảy ra sau khi bạn làm MVA xong?",
+    "options": ["Não báo \"done\" và muốn nghỉ ngay", "Quán tính kéo bạn tiếp tục làm thêm", "Không có gì đặc biệt", "Dopamine giảm"],
+    "correct": 1,
+    "explain": "Đây là \"Newton's first law\" của não: vật thể đang chuyển động có xu hướng tiếp tục chuyển động. Bắt đầu là khó nhất — sau MVA, bạn thường làm tiếp tự nhiên."
+  },
+  {
+    "q": "Tuần 2 của chương trình tập trung vào điều gì?",
+    "options": ["Học lý thuyết não bộ", "Thử thách cá nhân một mình", "Thử thách đồng đội và accountability", "Nghỉ ngơi và review"],
+    "correct": 2,
+    "explain": "Tuần 2 = Thử Thách Đồng Đội. Bắt cặp với 1 người, dùng trách nhiệm nhóm để duy trì kỷ luật. Sau khi đã có đà từ Tuần 1."
+  },
+  {
+    "q": "Cách tốt nhất để vượt qua \"tôi không có cảm hứng hôm nay\"?",
+    "options": ["Đợi cảm hứng tự đến", "Uống cà phê thêm", "Làm MVA — action trước, motivation theo sau", "Xem video motivational 30 phút"],
+    "correct": 2,
+    "explain": "Motivation follows action — không phải ngược lại. Bắt đầu nhỏ → dopamine tiết → mood tăng → muốn làm tiếp. Đợi cảm hứng là cái bẫy lớn nhất."
+  }
+]

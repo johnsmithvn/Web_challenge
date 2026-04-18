@@ -495,4 +495,51 @@ feat(sleep-tracker): add sleep duration logging
 - CHANGELOG.md v1.3.0 Added
 ```
 
-> ⚠️ Pull request sẽ bị reject nếu thiếu docs update.
+> ⚠️ Pull request sẽ bị reject nếu thiếu docs update.
+
+---
+
+# 14. 📂 Static Content Data — 1 JSON File Per Feature
+
+**Áp dụng cho: challenges, quiz, testimonials, knowledge cards, skip reasons, moods, default habits, v.v.**
+
+## Quy tắc cốt lõi:
+
+- **KHÔNG** hardcode mảng content tĩnh trong component/hook
+- **PHẢI** lưu vào `src/data/<feature>.json` — **1 file per feature**, không split theo type
+- Nếu feature có nhiều sub-group → dùng key trong cùng 1 object JSON
+
+## Cấu trúc hiện tại `src/data/`:
+
+```
+src/data/
+├── challenges.json    # Tất cả Daily Challenges (21 entries, type field phân loại)
+├── quiz.json          # Tất cả câu hỏi Quiz (10 questions)
+├── habits.json        # defaultHabits, categories, icons, colors, skipReasons, moods
+└── testimonials.json  # Phản hồi landing page
+```
+
+## Tiêu chí để tách ra JSON:
+
+| Nên tách | Không cần tách |
+|---------|---------------|
+| Nhiều items có cùng schema (>3) | UI config nhỏ (TABS, NAV_LINKS) |
+| Content thay đổi độc lập với logic | Hằng số tính toán (RANK_COLORS) |
+| Content cần thêm/xóa bởi non-dev | DAY_LABELS, WEEKDAYS (i18n riêng) |
+| Text/label dài, có thể dịch | PLANT_STAGES, FLOWERS (UI-tightly coupled) |
+
+## Import pattern:
+
+```js
+// Single file per feature
+import QUESTIONS from '../data/quiz.json';
+import HABITS_DATA from '../data/habits.json';
+const { skipReasons, moods, categories } = HABITS_DATA;
+```
+
+## Lý do:
+
+- Thêm challenge mới → chỉ edit JSON, không touch component
+- Non-dev có thể tự sửa content mà không cần hiểu React
+- Tránh merge conflict trên component khi chỉ đổi data
+

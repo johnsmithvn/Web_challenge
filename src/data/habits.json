@@ -1,0 +1,28 @@
+{
+  "defaultHabits": [
+    { "id": "h1", "name": "Tập thể dục",   "icon": "💪", "color": "#06B6D4", "category": "health",   "timeTarget": "07:00", "durationMin": 20 },
+    { "id": "h2", "name": "Đọc sách",       "icon": "📚", "color": "#8B5CF6", "category": "learning", "timeTarget": "21:00", "durationMin": 30 },
+    { "id": "h3", "name": "MVA hàng ngày",  "icon": "⚡", "color": "#00FF88", "category": "focus",    "timeTarget": "08:00", "durationMin": 15 }
+  ],
+  "categories": [
+    { "id": "health",   "label": "Sức Khoẻ",  "icon": "💚" },
+    { "id": "learning", "label": "Học Tập",   "icon": "📖" },
+    { "id": "focus",    "label": "Tập Trung", "icon": "🎯" },
+    { "id": "social",   "label": "Xã Hội",   "icon": "👥" },
+    { "id": "finance",  "label": "Tài Chính", "icon": "💰" },
+    { "id": "other",    "label": "Khác",      "icon": "✨" }
+  ],
+  "icons": ["💪","📚","⚡","🏃","🧘","💧","🥗","😴","🎯","✍️","🎵","🪴","🐕","🧹","💊","🚴","🏊","📝","🎨","🧠"],
+  "colors": ["#06B6D4","#8B5CF6","#00FF88","#F97316","#EF4444","#FFD700","#EC4899","#10B981","#6366F1","#F59E0B"],
+  "skipReasons": [
+    "Bận công việc", "Ốm / mệt", "Quên mất", "Thiếu động lực",
+    "Không có thời gian", "Có việc đột xuất", "Lý do khác"
+  ],
+  "moods": [
+    { "emoji": "😴", "label": "Kiệt sức" },
+    { "emoji": "😔", "label": "Thấp" },
+    { "emoji": "😐", "label": "Bình thường" },
+    { "emoji": "😊", "label": "Tốt" },
+    { "emoji": "💪", "label": "Tuyệt vời" }
+  ]
+}
