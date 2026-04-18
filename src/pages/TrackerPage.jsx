@@ -35,14 +35,27 @@ const MOODS = [
   { emoji: '💪', label: 'Tuyệt vời' },
 ];
 
-/* ── 21-day dots in 3 rows of 7 ────────────────────────── */
+/* ── 21-day dots: Day 1 → Day 21 from program start ─── */
 function WeekDots({ data }) {
   const today = new Date().toISOString().split('T')[0];
+
+  // Find program start = earliest checked date, fallback = today
+  const checkedDates = Object.keys(data).filter(k => data[k]).sort();
+  const startStr     = checkedDates[0] || today;
+  const startDate    = new Date(startStr);
+
+  // Build 21 slots from day 1
   const days = Array.from({ length: 21 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (20 - i));
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
     const key = d.toISOString().split('T')[0];
-    return { key, done: !!data[key], isToday: key === today, isFuture: key > today };
+    return {
+      key,
+      dayNum:   i + 1,
+      done:     !!data[key],
+      isToday:  key === today,
+      isFuture: key > today,
+    };
   });
 
   // Group into 3 weeks
@@ -60,13 +73,13 @@ function WeekDots({ data }) {
                 key={di}
                 className={[
                   'week-dot',
-                  day.done    ? 'week-dot--done'    : '',
-                  day.isToday ? 'week-dot--today'   : '',
-                  day.isFuture? 'week-dot--future'  : '',
+                  day.done    ? 'week-dot--done'   : '',
+                  day.isToday ? 'week-dot--today'  : '',
+                  day.isFuture? 'week-dot--future' : '',
                 ].join(' ')}
-                title={day.key}
+                title={`Ngày ${day.dayNum} · ${day.key}`}
               >
-                {day.done && <span className="week-dot__check">✓</span>}
+                {day.done    && <span className="week-dot__check">✓</span>}
                 {day.isToday && !day.done && <span className="week-dot__pulse" />}
               </div>
             ))}
@@ -76,6 +89,7 @@ function WeekDots({ data }) {
     </div>
   );
 }
+
 
 /* ── Streak Ring ────────────────────────────────────────── */
 function StreakRing({ streak, target = 21 }) {
