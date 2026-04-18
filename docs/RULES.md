@@ -447,3 +447,52 @@ dashboard-v2/
 * New React Query hooks MUST include hook tests
 * New data transformation logic in pages SHOULD be extracted and tested
 * Tests MUST NOT make real network requests
+
+---
+
+# 13. ⚠️ Mandatory Documentation Sync on Feature Changes
+
+**Áp dụng cho cả human developer và AI agent.**
+
+Mỗi khi **thêm tính năng mới** hoặc **sửa đổi tính năng hiện có**, BẮT BUỘC phải cập nhật đồng thời các file sau:
+
+## Bắt buộc cập nhật:
+
+| File | Khi nào |
+|------|---------|
+| `docs/FEATURES.md` | Mọi thay đổi tính năng (thêm mới, sửa behavior, xóa) |
+| `docs/TASKS.md` | Đánh dấu task hoàn thành, thêm task mới nếu phát sinh |
+| `docs/ARCHITECTURE.md` | Khi thêm page, hook, component mới hoặc thay đổi data flow |
+| `docs/PLAN.md` | Khi milestone thay đổi hoặc phase mới bắt đầu |
+| `CHANGELOG.md` | Mọi thay đổi (version bump, Added/Changed/Fixed/Removed) |
+
+## Không được phép:
+
+- Merge code mới mà không cập nhật `docs/FEATURES.md`
+- Thêm table DB mới mà không cập nhật `docs/DATABASE.md`
+- Thêm hook/component mà không cập nhật `docs/ARCHITECTURE.md`
+- Đổi behavior tính năng mà không cập nhật `docs/FEATURES.md`
+
+## Format cập nhật FEATURES.md:
+
+Mỗi tính năng trong `FEATURES.md` phải có:
+1. **Số thứ tự + tên** (`## 5. 📈 Dashboard Cá Nhân`)
+2. **File references** (page + hook + css)
+3. **Mô tả ngắn** (1 câu)
+4. **Chi tiết từng sub-feature** (bullet list)
+5. **Data source** (localStorage key hoặc Supabase table)
+
+## Ví dụ commit khi có tính năng mới:
+
+```
+feat(sleep-tracker): add sleep duration logging
+
+- src/hooks/useSleepLog.js
+- src/components/SleepWidget.jsx
+- docs/FEATURES.md updated (thêm section #17)
+- docs/ARCHITECTURE.md updated (thêm hook + table)
+- docs/DATABASE.md updated (thêm sleep_logs table)
+- CHANGELOG.md v1.3.0 Added
+```
+
+> ⚠️ Pull request sẽ bị reject nếu thiếu docs update.

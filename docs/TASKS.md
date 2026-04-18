@@ -1,92 +1,97 @@
 # TASKS — Thử Thách Vượt Lười
-
-## v3.0.0 — 🚧 In Progress (Team Mode v3)
-
-### DB (run supabase_team_v3.sql)
-- [x] `teams` table: `name`, `max_members`, `created_by`, `activated_at` columns
-- [x] `team_members` junction table (N per team, role, week_sync)
-- [x] `user_programs` (per-user 21-day journey, week tracking)
-- [x] `team_check_logs` (accountability checks with UNIQUE(team_id,checked_id,date))
-- [x] `team_rules` + `team_rule_agreements` (propose + approval flow)
-- [x] Realtime: all 5 new tables published
-- [x] RLS policies for all new tables
-
-### Hooks
-- [x] `src/hooks/useTeam.js` — fetch team + N members + programs + streaks, realtime, create/join/leave
-- [x] `src/hooks/useTeamCheck.js` — week-2 check logic, submit + validate, realtime
-- [x] `src/hooks/useTeamRules.js` — CRUD rules, agree/reject flow, status computation
-
-### Components
-- [x] `src/components/team/TeamMemberCard.jsx` — per-member card (week badge, heatmap, check btn)
-- [x] `src/components/team/TeammateCheckPanel.jsx` — done/fail modal + reason field
-- [x] `src/components/team/JoinSyncModal.jsx` — restart vs continue week choice
-- [x] `src/components/team/TeamRules.jsx` + `TeamRuleCard` — rules list + propose form + agree UI
-
-### Pages
-- [x] `src/pages/TeamPage.jsx` — refactored: N members grid, all components wired
-
-### Styles
-- [x] `src/styles/team.css` — full rewrite: member grid, check panel, join modal, rules
-
-### Pending (manual)
-- [ ] Run `docs/supabase_team_v3.sql` in Supabase SQL Editor
-- [ ] Test: create team → join → check tuần 2 flow
-- [ ] Test: propose rule → all members agree → active
+**Updated:** 2026-04-18
 
 ---
 
-## v2.0.0 — ✅ DONE (code, pending Supabase keys)
+## v1.2.0 — ✅ DONE (2026-04-18)
 
-### Setup
-- [x] `src/lib/supabase.js` — singleton, safe fallback if keys missing
-- [x] `.env.local.example` — template keys
+### Custom Habits + Focus Timer + Dashboard v2 + Tracker Redesign
 
-### Auth
-- [x] `src/contexts/AuthContext.jsx` — signIn, signUp, Google OAuth, signOut, profile
-- [x] `src/components/AuthModal.jsx` — Login/Register/Google tabs, error UX
-- [x] `src/styles/auth.css` — modal, input, user menu
-- [x] Navbar: avatar + dropdown menu if logged in, login button if guest
+- [x] `src/hooks/useCustomHabits.js` — CRUD custom habits, dual-mode sync (localStorage / Supabase `habits` table)
+- [x] `src/components/HabitManager.jsx` — UI tạo/sửa/xóa habit, icon/color/category picker, live preview
+- [x] `src/components/MonthCalendar.jsx` — Lịch tháng, VN holidays, done/miss/future states, click detail
+- [x] `src/hooks/useFocusTimer.js` — Pomodoro logic (work/break phases, session log, DB sync)
+- [x] `src/components/FocusTimer.jsx` — SVG ring countdown, custom dropdown habit picker, settings slider
+- [x] `src/pages/FocusPage.jsx` — 2 cột: timer + session history + daily breakdown
+- [x] `src/pages/HabitsPage.jsx` — Today quick-tick per-habit, mood, skip modal, calendar tab, manage tab
+- [x] `src/hooks/useMoodSkip.js` — useMoodLog + useSkipReasons, dual-mode upsert
+- [x] `src/pages/TrackerPage.jsx` — Redesign: streak ring SVG, plant growth, big tick button, 21-day dot grid
+- [x] `src/pages/DashboardPage.jsx` — Redesign: flower journey, monthly donut, weekly table, contribution graph
+- [x] `src/styles/dashboard.css` — CSS riêng cho dashboard v2
+- [x] `src/styles/focus.css` — Custom dropdown styles thay native select
+- [x] `src/styles/tracker.css` — Tracker v2 styles (streak ring, tick btn, week dots)
+- [x] `docs/FEATURES.md` — Tạo mới: tài liệu giải thích 16 tính năng
+- [x] `data/migration_v1.2.0.sql` — SQL migration chỉ chứa 4 bảng mới (habits, focus_sessions, mood_logs, skip_reasons)
+- [x] `docs/DATABASE.md` — Thêm v1.2 additions section
+- [x] `docs/ARCHITECTURE.md` — Cập nhật cấu trúc thư mục + routes
+- [x] `docs/TASKS.md` — Cập nhật (file này)
 
-### Data Sync
-- [x] `useHabitStore.js` — dual mode (Supabase authed / localStorage guest)
-- [x] Migration: localStorage → Supabase DB on first login (deduped)
+### Pending (cần làm thủ công)
+- [ ] Chạy `data/migration_v1.2.0.sql` trong Supabase SQL Editor (thêm 4 bảng mới)
+- [ ] Điền real keys vào `.env.local` → test toàn bộ flow với DB thật
+- [ ] Test: habit tick → mood → skip reason → focus session → all synced DB
 
-### Team Mode
-- [x] `TeamPage.jsx` — real Supabase create/join team, realtime subscription
-- [x] Auth wall + demo bypass
-- [x] Reactions persist to DB
+---
 
-### Social
-- [x] `FriendsPage.jsx` — search, send/accept/decline requests, friend list
-- [x] `src/styles/friends.css`
-- [x] `src/styles/team.css`
+## v1.1.1 — ✅ DONE (2026-04-18 sáng)
 
-> ⚠️ Cần điền VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY vào .env.local để kích hoạt
+- [x] Fix checkbox per-habit: mỗi habit có state riêng `vl_habit_progress`
+- [x] Fix mood handler: `handleMood(m)` thay vì `saveMood(m)` sai
+- [x] Fix WeekDots: tính từ ngày bắt đầu thật, không phải ngược về từ hôm nay
+- [x] Fix FocusTimer custom dropdown: thay native `<select>` bằng glassmorphism panel
+- [x] Fix CSS import: `HabitManager.jsx` dùng `calendar.css` không phải `habits.css`
+
+---
+
+## v3.0.0 — 🚧 Đang Thiết Kế (Team Mode v3 — N members)
+
+### DB (chưa deploy)
+- [x] Schema thiết kế: `team_members`, `user_programs`, `team_check_logs`, `team_rules`, `team_rule_agreements`
+- [ ] Chạy `data/supabase_team_v3.sql` trong Supabase
+
+### Hooks (chưa implement)
+- [ ] `src/hooks/useTeamCheck.js` — week-2 check logic (teammate check, không self-check)
+- [ ] `src/hooks/useTeamRules.js` — CRUD rules, propose + unanimous approval
+
+### Components (chưa implement)
+- [ ] `src/components/team/TeamMemberCard.jsx`
+- [ ] `src/components/team/TeammateCheckPanel.jsx` — done/fail modal + reason
+- [ ] `src/components/team/JoinSyncModal.jsx` — restart vs continue week
+- [ ] `src/components/team/TeamRules.jsx`
+
+### Next (backlog)
+- [ ] Per-habit progress sync lên Supabase (hiện chỉ localStorage `vl_habit_progress`)
+- [ ] Mood log chart trong DashboardPage
+- [ ] Weekly review email/notification
+- [ ] AI insight từ skip reason patterns
+
+---
+
+## v2.0.0 — ✅ DONE
+
+- [x] Auth system (email, Google OAuth)
+- [x] AuthContext, AuthModal
+- [x] useHabitStore dual-mode (localStorage → Supabase migration on first login)
+- [x] TeamPage: create/join team, realtime, reactions
+- [x] FriendsPage: search, send/accept/decline
+- [x] Supabase schema: profiles, progress, streaks, xp_logs, teams, reactions, friendships
 
 ---
 
 ## v1.1.0 — ✅ DONE (2026-04-14)
 
-- [x] Fix countdown: localStorage-persisted 7-day rolling window
-- [x] Testimonials section: 4 cards, added to LandingPage before Pricing
-- [x] `useXpStore.js` — XP/Level system (6 levels, localStorage)
-- [x] `XpBar.jsx` — compact (Navbar) + full card (TrackerPage)
-- [x] `DailyChallenge.jsx` — 21-challenge pool, date-seeded, +20 XP
-- [x] `QuizPage.jsx` — 10 câu MCQ não bộ, route `/quiz`, XP reward
-- [x] `useNotifications.js` — browser Notification API, schedule reminder
-- [x] `NotificationSettings.jsx` — toggle + time picker trong TrackerPage
-- [x] `LeaderboardPage.jsx` — 3 tabs, podium, mock + real user, `/leaderboard`
-- [x] Navbar updated: Quiz + Leaderboard + XpBar compact
-- [x] TrackerSection: +10 XP per daily check (deduped)
-- [x] TrackerPage: XP milestone awards + notification scheduling
+- [x] useXpStore + XpBar (6 levels)
+- [x] DailyChallenge component (+20 XP)
+- [x] QuizPage (10 MCQ, score-based XP)
+- [x] LeaderboardPage (3 tabs, podium)
+- [x] useNotifications + NotificationSettings
+- [x] TrackerSection +10 XP per check (deduped)
 
 ---
 
 ## v1.0.0 — ✅ DONE
 
-- [x] Navbar, Hero, Problem, Knowledge, Roadmap, Tracker, Reverse, Pricing
-- [x] TrackerPage, DashboardPage, TeamPage (mock)
+- [x] Navbar, Landing, TrackerPage, DashboardPage, TeamPage (mock)
 - [x] useHabitStore (streak, badge, localStorage)
-- [x] Design system (dark mode, glassmorphism)
-- [x] BrowserRouter + 4 routes
-- [x] README + CHANGELOG + docs/
+- [x] Design system (dark mode, glassmorphism, CSS variables)
+- [x] BrowserRouter + routes

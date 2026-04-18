@@ -1,82 +1,116 @@
-# PLAN — Thử Thách Vượt Lười
-
-## Current Version: v1.1.0 ✅
-
----
-
-## Phase 1 — v1.1.0 (Frontend Only) — ✅ DONE
-**Branch:** `feat/v1.1-gamification-quiz-notifications`
-
-### Completed
-- [x] Fix countdown hardcoded → localStorage-persisted 7-day rolling window
-- [x] Testimonials section (4 cards, landing page)
-- [x] XP / Level gamification system (6 levels, localStorage)
-- [x] Daily Challenge (21-pool, date-seeded, +20 XP)
-- [x] Quiz Não Bộ page (10 MCQ, XP reward, explanation)
-- [x] Web Notifications (browser Notification API, scheduled reminder)
-- [x] Leaderboard page (mock + local user, 3 tabs, podium)
-- [x] Navbar: Quiz + Leaderboard links + XpBar compact
-- [x] TrackerSection: +10 XP per daily check (deduped)
+# PLAN.md — Thử Thách Vượt Lười
+**Updated:** 2026-04-18
+**Current Version:** v1.2.0
+**Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
 
-## Phase 2 — v2.0.0 (Supabase Backend)
-**Status:** PENDING — requires Supabase project keys  
-**Branch:** `feat/v2.0-supabase-auth-team`
+## ✅ Phase 1 — Core MVP (v1.0.0)
+*Hoàn thành: 2026-04-13*
 
-### Prerequisites
-- [ ] Create Supabase project at supabase.com (region: Singapore)
-- [ ] Run `docs/DATABASE.md` SQL schema in SQL Editor
-- [ ] Enable Google OAuth (Authentication → Providers → Google)
-- [ ] Enable Realtime for: progress, reactions, streaks, teams
-- [ ] Add keys to `.env.local`:
-  ```
-  VITE_SUPABASE_URL=https://xxx.supabase.co
-  VITE_SUPABASE_ANON_KEY=eyJxxx...
-  ```
-
-### Milestones
-- [ ] `src/lib/supabase.js` — singleton Supabase client
-- [ ] `src/contexts/AuthContext.jsx` — session, signIn, signUp, signOut, Google OAuth
-- [ ] `src/components/AuthModal.jsx` — Login/Register/Google tabs
-- [ ] Navbar: avatar + logout if logged in, else "Login" button
-- [ ] `useHabitStore.js` — dual mode: Supabase DB (if authed) / localStorage (guest)
-- [ ] Migration: localStorage → DB on first login
-- [ ] `TeamPage.jsx` — real invite codes via Supabase `teams` table
-- [ ] Realtime: teammate progress subscription
-- [ ] Auto-match queue (`partner_queue` table)
-- [ ] `FriendsPage.jsx` — search user, send/accept requests
-- [ ] `LeaderboardPage.jsx` — real data from Supabase DB aggregation
+- [x] Landing page (marketing, pricing, testimonials)
+- [x] TrackerPage — daily tick, streak, badge
+- [x] DashboardPage — stats overview
+- [x] TeamPage — mock UI
+- [x] Design system: dark mode, glassmorphism, CSS variables
+- [x] Routing (BrowserRouter)
 
 ---
 
-## Phase 3 — v3.0.0 (AI + Advanced)
-**Status:** BACKLOG
+## ✅ Phase 2 — Gamification (v1.1.0)
+*Hoàn thành: 2026-04-14*
 
-- [ ] AI Coach chatbot (OpenAI API)
-- [ ] Payment gateway integration (Stripe / MoMo)
-- [ ] Push notifications via Service Worker (native mobile-like)
+- [x] XP & Level system (6 levels, localStorage)
+- [x] Daily Challenge (+20 XP)
+- [x] Quiz 10 câu MCQ (score-based XP)
+- [x] Leaderboard (streak/XP, 3 tabs)
+- [x] Notification reminder (browser API)
+- [x] XpBar trên Navbar + TrackerPage
+
+---
+
+## ✅ Phase 3 — Cloud + Auth (v2.0.0)
+*Hoàn thành: 2026-04-15*
+
+- [x] Supabase schema (profiles, progress, streaks, xp_logs, teams, reactions, friendships)
+- [x] Auth: Email + Google OAuth
+- [x] Dual-mode habit store (localStorage ↔ Supabase)
+- [x] localStorage → Supabase migration on first login
+- [x] TeamPage: real DB create/join/leave, realtime
+- [x] FriendsPage: search, add, accept/decline
+- [x] RLS policies cho tất cả tables
+
+---
+
+## ✅ Phase 4 — Advanced Habit Tracking (v1.2.0)
+*Hoàn thành: 2026-04-18*
+
+- [x] Custom Habits CRUD (icon, màu, category, giờ target)
+- [x] Per-habit daily tick (độc lập, không phụ thuộc nhau)
+- [x] Monthly Calendar (VN holidays, click detail)
+- [x] Pomodoro Focus Timer (SVG ring, phases, habit linking, session log)
+- [x] Mood Tracker (5 levels, 1/ngày, dual-mode sync)
+- [x] Skip Reasons (lý do bỏ habit, sau 8PM trigger)
+- [x] TrackerPage redesign (streak ring, plant growth, 21-day dots)
+- [x] DashboardPage redesign (flower journey, monthly donut, weekly table, contribution graph)
+- [x] DB migration: thêm 4 bảng mới (habits, focus_sessions, mood_logs, skip_reasons)
+- [x] Docs: FEATURES.md, TASKS.md, ARCHITECTURE.md, PLAN.md cập nhật
+
+---
+
+## 🚧 Phase 5 — Team Accountability v3 (v3.0.0)
+*Đang thiết kế — chưa implement*
+
+**Goal:** Nâng cấp Team Mode từ mock 2 người thành thực thể N người với luật accountability nghiêm túc.
+
+**Core Features:**
+- [ ] N-member teams (không giới hạn, do creator quyết định)
+- [ ] Week-based progression per user (user_programs)
+- [ ] **Tuần 2+:** Teammate check (không tự check được — phải teammate xác nhận)
+- [ ] Teammate check panel: Done ✓ / Fail ✗ + lý do
+- [ ] Join sync modal: Reset tuần về 1 vs tiếp tục tuần hiện tại
+- [ ] Team rules: Propose → All members agree → Active
+- [ ] Team penalty/reward system: custom rules do team set
+- [ ] Realtime check notifications
+
+**DB cần:** `team_members`, `user_programs`, `team_check_logs`, `team_rules`, `team_rule_agreements`
+
+**Schema:** Đã thiết kế trong `data/supabase_team_v3.sql`
+
+---
+
+## 📋 Phase 6 — Analytics & Intelligence (v2.1.0)
+*Backlog*
+
+- [ ] Mood pattern chart (7 ngày, 30 ngày)
+- [ ] Skip reason analysis (thường bỏ ngày nào nhất, lý do gì)
+- [ ] Weekly review digest (email hoặc in-app summary)
+- [ ] Focus session breakdown per habit (charts)
+- [ ] AI insight từ pattern data
+
+---
+
+## 📋 Phase 7 — Production Hardening (v2.2.0)
+*Backlog*
+
+- [ ] Per-habit progress sync lên Supabase (`vl_habit_progress` hiện chỉ localStorage)
+- [ ] Lazy loading routes (giảm bundle size)
 - [ ] PWA manifest + offline support
+- [ ] SEO meta tags, sitemap
+- [ ] Error boundary components
+- [ ] Loading skeleton states
+- [ ] Supabase Edge Functions (streak recompute cron)
+- [ ] Rate limiting + abuse prevention
 
 ---
 
-## Architecture Notes
+## Semantic Version Map
 
-### Data Flow (v1.x — current)
-```
-User action → useHabitStore → localStorage → React state
-           → useXpStore   → localStorage → XpBar UI
-```
-
-### Data Flow (v2.x — Supabase)
-```
-Guest:   action → localStorage (unchanged UX, no login needed)
-Authed:  action → Supabase DB → realtime broadcast → teammate UI updates
-         (optimistic update to localStorage first for instant feedback)
-```
-
-### Auth Strategy
-- **Guest mode**: full app usable with no login, no friction
-- **Login trigger**: when accessing Team Mode real sync or seeing Leaderboard real data
-- **Session**: Supabase JWT, persisted via localStorage adapter
-- **First login**: detect `vl_habit_data` in localStorage → migrate to Supabase progress table
+| Version | Milestone |
+|---------|-----------|
+| v1.0.0 | Core MVP |
+| v1.1.0 | Gamification |
+| v1.1.1 | Bug fixes (checkbox, UI) |
+| v1.2.0 | Advanced Habit + Focus + Dashboard redesign |
+| v2.0.0 | Cloud Auth + Supabase sync |
+| v3.0.0 | Team Accountability N-member |
