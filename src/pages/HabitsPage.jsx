@@ -15,6 +15,168 @@ import HABITS_DATA from '../data/habits.json';
 const SKIP_REASONS = HABITS_DATA.skipReasons;
 const MOODS        = HABITS_DATA.moods;
 
+/* ── Compute per-habit consecutive streak from habitProg ──
+   Counts backwards from today until a day is NOT done for that habit. */
+function computeHabitStreak(habitId, habitProg) {
+  let count = 0;
+  const today = new Date();
+  while (true) {
+    const key = new Date(today.getFullYear(), today.getMonth(), today.getDate() - count)
+      .toISOString().split('T')[0];
+    if (habitProg[`${key}_${habitId}`]) count++;
+    else break;
+    if (count > 365) break; // safety
+  }
+  return count;
+}
+
+/* ── Compute daily completion % across ALL habits for a given day ── */
+function dayPct(dateKey, activeHabits, habitProg) {
+  if (!activeHabits.length) return 0;
+  const done = activeHabits.filter(h => !!habitProg[`${dateKey}_${h.id}`]).length;
+  return Math.round((done / activeHabits.length) * 100);
+}
+
+import QUOTES_DATA from '../data/quotes.json';
+
+const DAILY_QUOTES = QUOTES_DATA.dailyQuotes;
+function getDailyQuote() {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  return DAILY_QUOTES[dayOfYear % DAILY_QUOTES.length];
+}
+
+function PerHabitWeeklyGrid({ habitProg, activeHabits }) {
+  const today = new Date();
+  const todayKey = today.toISOString().split('T')[0];
+
+  // Build last 14 days (2 weeks)
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (13 - i));
+    const key = d.toISOString().split('T')[0];
+    return {
+      key,
+      label:   d.toLocaleDateString('vi-VN', { weekday: 'narrow' }),
+      dayNum:  d.getDate(),
+      isToday: key === todayKey,
+      isFuture: key > todayKey,
+    };
+  });
+
+  const week1 = days.slice(0, 7);
+  const week2 = days.slice(7, 14);
+
+  // Cell: gradient opacity based on per-habit done (binary per habit, but day% shown as title)
+  const cellStyle = (done, isToday, isFuture, color, pct) => ({
+    width: 32, height: 32, borderRadius: 8,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: '0.7rem', fontWeight: 700, flexShrink: 0,
+    position: 'relative', overflow: 'hidden',
+    background: done
+      ? `${color}44`
+      : isFuture
+        ? 'rgba(255,255,255,0.02)'
+        : pct > 0
+          ? `${color}${Math.round(pct / 100 * 30).toString(16).padStart(2,'0')}` // partial: tint
+          : 'rgba(255,255,255,0.03)',
+    border: `1px solid ${done ? color + '88' : isToday ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)'}`,
+    color: done ? color : isToday ? 'var(--text-secondary)' : 'var(--text-muted)',
+    boxShadow: isToday ? `0 0 0 2px ${color}44` : 'none',
+    transition: 'all 0.15s ease',
+  });
+
+  return (
+    <div className="card" style={{ padding: '1.25rem' }}>
+      <div className="dash-card-title" style={{ marginBottom: '0.25rem' }}>📊 Theo Dõi Từng Thói Quen</div>
+      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>14 ngày gần nhất · cột sáng = hôm nay</p>
+
+      {activeHabits.length === 0 && (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Chưa có habit nào.</p>
+      )}
+
+      {/* Day-header row: % all habits for each day */}
+      {activeHabits.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.75rem', paddingLeft: 70 }}>
+          {days.map(day => {
+            const pct = dayPct(day.key, activeHabits, habitProg);
+            return (
+              <div key={day.key}
+                title={`${day.label} ${day.dayNum}: ${pct}% toàn bộ habits`}
+                style={{
+                  width: 32, flexShrink: 0, textAlign: 'center',
+                  fontSize: '0.6rem', color: day.isToday ? 'var(--text-primary)' : 'var(--text-muted)',
+                  fontWeight: day.isToday ? 700 : 400,
+                }}>
+                <div>{day.label}</div>
+                <div style={{ fontWeight: 700, fontSize: '0.58rem', color: pct === 100 ? 'var(--green)' : pct > 0 ? '#f97316' : 'var(--text-muted)' }}>
+                  {day.isFuture ? '' : `${pct}%`}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {activeHabits.map(habit => {
+        const week1Done = week1.filter(d => !!habitProg[`${d.key}_${habit.id}`]).length;
+        const week2Done = week2.filter(d => !!habitProg[`${d.key}_${habit.id}`]).length;
+        const totalDone = week1Done + week2Done;
+        const pct14     = Math.round((totalDone / 14) * 100);
+        const hStreak   = computeHabitStreak(habit.id, habitProg);
+
+        return (
+          <div key={habit.id} style={{ marginBottom: '1.1rem' }}>
+            {/* Habit header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+              <span style={{ fontSize: '1rem' }}>{habit.icon}</span>
+              <span style={{ fontWeight: 600, fontSize: '0.82rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {habit.action && habit.action !== habit.name ? habit.action : habit.name}
+              </span>
+              {/* Per-habit streak */}
+              {hStreak > 0 && (
+                <span title={`Chuỗi liên tục: ${hStreak} ngày`}
+                  style={{ fontSize: '0.72rem', fontWeight: 700, color: hStreak >= 7 ? '#f97316' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  🔥{hStreak}
+                </span>
+              )}
+              {/* 14-day rate */}
+              <span style={{
+                fontSize: '0.68rem', fontWeight: 700, padding: '0.1rem 0.45rem',
+                borderRadius: 99, background: `${habit.color}22`, color: habit.color, whiteSpace: 'nowrap',
+              }}>
+                {totalDone}/14 · {pct14}%
+              </span>
+            </div>
+
+            {/* All 14 cells in 1 row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', width: 64, flexShrink: 0 }}>
+                T.trước&nbsp;&nbsp;T.này
+              </span>
+              {days.map(day => {
+                const done   = !!habitProg[`${day.key}_${habit.id}`];
+                const pctDay = dayPct(day.key, activeHabits, habitProg);
+                return (
+                  <div key={day.key}
+                    title={`${day.label} ${day.dayNum}: ${done ? '✓ Hoàn thành' : day.isFuture ? 'Chưa đến' : `${pctDay}% toàn bộ ngày`}`}
+                    style={cellStyle(done, day.isToday, day.isFuture, habit.color, pctDay)}>
+                    {done ? '✓' : day.isFuture ? '' : pctDay > 0 ? <span style={{ opacity: 0.5, fontSize: '0.6rem' }}>{pctDay}%</span> : <span style={{ opacity: 0.2 }}>·</span>}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Progress bar */}
+            <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 99, marginTop: '0.4rem', marginLeft: 70 }}>
+              <div style={{ height: '100%', width: `${pct14}%`, background: habit.color, borderRadius: 99, transition: 'width 0.6s ease' }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function HabitsPage() {
   const { data, toggle, streak, totalDone } = useHabitStore();
   const { activeHabits, conqueredHabits } = useCustomHabits();
@@ -93,13 +255,13 @@ export default function HabitsPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', padding: '6rem 0 4rem' }}>
       <div className="container">
-        {/* Header */}
+        {/* ── Header ── */}
         <div style={{ marginBottom: '2rem' }}>
           <div className="section-label">📋 Habits</div>
           <h1 className="display-2">
             Theo Dõi <span className="gradient-text">Thói Quen</span>
           </h1>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
             <div className="tracker-stat-card card" style={{ flex: '0 0 auto', padding: '0.75rem 1.25rem' }}>
               <span style={{ fontSize: '1.4rem' }}>🔥</span>
               <span className="gradient-text" style={{ fontWeight: 800, fontSize: '1.4rem' }}>{streak}</span>
@@ -110,7 +272,51 @@ export default function HabitsPage() {
               <span className="gradient-text-green" style={{ fontWeight: 800, fontSize: '1.4rem' }}>{totalDone}</span>
               <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Tổng ngày</span>
             </div>
+            <div className="tracker-stat-card card" style={{ flex: '0 0 auto', padding: '0.75rem 1.25rem' }}>
+              <span style={{ fontSize: '1.4rem' }}>🎯</span>
+              <span style={{ fontWeight: 800, fontSize: '1.4rem', color: 'var(--text-primary)' }}>{activeHabits.length}</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Habits</span>
+            </div>
+            {/* Remaining days badge */}
+            <div className="tracker-stat-card card" style={{ flex: '0 0 auto', padding: '0.75rem 1.25rem',
+              borderColor: streak >= 21 ? 'rgba(255,215,0,0.4)' : undefined }}>
+              <span style={{ fontSize: '1.4rem' }}>{streak >= 21 ? '🏆' : '⏳'}</span>
+              <span style={{ fontWeight: 800, fontSize: '1.4rem', color: streak >= 21 ? '#FFD700' : 'var(--text-primary)' }}>
+                {streak >= 21 ? 'Done' : 21 - streak}
+              </span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {streak >= 21 ? 'Chinh phục' : 'Ngày còn lại'}
+              </span>
+            </div>
           </div>
+
+          {/* Daily quote */}
+          {(() => {
+            const q = getDailyQuote();
+            return (
+              <div style={{
+                marginTop: '1.25rem',
+                padding: '0.9rem 1.25rem',
+                background: 'rgba(139,92,246,0.06)',
+                border: '1px solid rgba(139,92,246,0.15)',
+                borderLeft: '3px solid rgba(139,92,246,0.5)',
+                borderRadius: 'var(--radius-md)',
+                display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+              }}>
+                <span style={{ fontSize: '1.1rem', opacity: 0.6, flexShrink: 0, marginTop: '0.05rem' }}>“”</span>
+                <div>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: 1.55, margin: 0 }}>
+                    {q.text}
+                  </p>
+                  {q.author && (
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem', fontWeight: 600 }}>
+                      — {q.author}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* ── Celebration banner ── */}
@@ -139,8 +345,25 @@ export default function HabitsPage() {
 
         {/* Today's habits quick-tick */}
         <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem' }}>
-          <div className="dash-card-title">⚡ Hôm Nay — {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.75rem' }}>
+          {/* Header with today counter */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+            <div className="dash-card-title" style={{ marginBottom: 0 }}>⚡ Hôm Nay — {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+            {activeHabits.length > 0 && (() => {
+              const doneCount = activeHabits.filter(h => !!habitProg[`${todayKey}_${h.id}`]).length;
+              return (
+                <span style={{
+                  fontWeight: 800, fontSize: '0.9rem',
+                  color: doneCount === activeHabits.length ? 'var(--green)' : 'var(--text-secondary)',
+                  background: doneCount === activeHabits.length ? 'rgba(0,255,136,0.12)' : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${doneCount === activeHabits.length ? 'rgba(0,255,136,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 99, padding: '0.2rem 0.65rem',
+                }}>
+                  {doneCount}/{activeHabits.length}
+                </span>
+              );
+            })()}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {activeHabits.map(habit => {
               const doneToday = !!habitProg[`${todayKey}_${habit.id}`];
               return (
@@ -157,12 +380,15 @@ export default function HabitsPage() {
                       textDecoration: doneToday ? 'line-through' : 'none',
                       color: doneToday ? 'var(--text-muted)' : 'var(--text-primary)',
                     }}>
-                      {/* Show specific action if defined, fallback to name */}
                       {habit.action && habit.action !== habit.name ? habit.action : habit.name}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {/* Per-habit streak */}
+                      {(() => { const s = computeHabitStreak(habit.id, habitProg); return s > 0 ? (
+                        <span style={{ color: s >= 7 ? '#f97316' : 'var(--text-muted)', fontWeight: 700 }}>🔥{s}</span>
+                      ) : null; })()}
                       {habit.action && habit.action !== habit.name && (
-                        <span style={{ marginRight: '0.5rem', opacity: 0.7 }}>{habit.name}</span>
+                        <span style={{ opacity: 0.7 }}>{habit.name}</span>
                       )}
                       {habit.timeTarget && `⏰ ${habit.timeTarget}`}
                       {habit.timeTarget && habit.durationMin && ' · '}
@@ -232,7 +458,7 @@ export default function HabitsPage() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '0.35rem', background: 'rgba(255,255,255,0.04)', padding: '0.25rem', borderRadius: 'var(--radius-lg)', marginBottom: '1.25rem' }}>
-          {[['calendar','📅 Lịch Tháng'],['manage','⚙️ Quản Lý Habits']].map(([id,label]) => (
+          {[['calendar','📅 Lịch Tháng'],['weekly','📊 Theo Tuần'],['manage','⚙️ Quản Lý']].map(([id,label]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -256,6 +482,9 @@ export default function HabitsPage() {
           <div className="card" style={{ padding: '1.5rem' }}>
             <HabitManager />
           </div>
+        )}
+        {tab === 'weekly' && (
+          <PerHabitWeeklyGrid habitProg={habitProg} activeHabits={activeHabits} />
         )}
       </div>
 

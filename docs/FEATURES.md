@@ -1,6 +1,6 @@
 # FEATURES.md — Thử Thách Vượt Lười
-**Version:** v1.3.1
-**Updated:** 2026-04-18
+**Version:** v1.4.5
+**Updated:** 2026-04-19
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -39,21 +39,34 @@
 
 ## 2. 📋 Habits Management (`/habits`)
 
-**File:** `src/pages/HabitsPage.jsx`
+**File:** `src/pages/HabitsPage.jsx`  
+**Data:** `useCustomHabits` + `useMoodLog` + `useSkipReasons` + `useHabitStore`  
+**Static data:** `src/data/habits.json`, `src/data/quotes.json`
 
-**Mô tả:** Quản lý và tick từng custom habit cụ thể, xem lịch tháng, theo dõi tâm trạng.
+**Mô tả:** Trang hành động chính — tick từng habit, xem tiến độ 21 ngày, track streak per-habit.
 
 **Chi tiết:**
-- **Today Quick-Tick:** Danh sách tất cả custom habit hôm nay, mỗi habit có checkbox riêng độc lập
-  - Tick xong → tên gạch ngang + nền tô màu habit
-  - Khi TẤT CẢ habits tick → mark overall day done (tác động streak)
+- **Header Stats:** 4 stat cards: Streak 🔥, Tổng ngày 📅, Số habits 🎯, Ngày còn lại ⏳
+- **Daily Quote:** Câu trích dẫn động lực thay đổi theo ngày (xoay theo day-of-year từ `quotes.json`, 30 câu)
+- **Today Quick-Tick:** Danh sách custom habits hôm nay
+  - Hiện `action` cụ thể (ví dụ: "Học 30 phút Duolingo") thay vì chỉ tên habit
+  - **Per-habit streak 🔥N:** Chuỗi ngày liên tục của từng habit riêng lẻ (tính từ `vl_habit_progress`)
+  - **Counter `X/N`:** Badge hiển thị số habit đã done hôm nay so với tổng
+  - Tick xong → gạch ngang + nền tô màu
+  - Khi TẤT CẢ tick → mark overall day done → sinh celebration banner
   - XP +10 mỗi habit tick (deduped by habit+date)
-- **Skip Reason Modal:** Trigger sau 8PM nếu chưa tick — chọn lý do preset + ghi chú, lưu localStorage/DB
+- **Celebration Banner:** "🎉 Ngày X/21 hoàn thành!" fade out sau 4s
+- **LoginNudgeModal:** Bottom sheet không blocking cho guest sau ngày 1 hoàn thành
 - **Mood Tracker:** 5 emoji mức cảm xúc, upsert 1 lần/ngày
-- **Tab Lịch Tháng:** `MonthCalendar` component — VN holidays, done/miss/future states, click ngày xem detail
-- **Tab Quản Lý Habits:** `HabitManager` component — CRUD habits
-
-**Data:** `useCustomHabits` + `useMoodLog` + `useSkipReasons`
+- **Skip Reason Modal:** Trigger sau 8PM nếu chưa tick
+- **Tab 📅 Lịch Tháng:** `MonthCalendar` component
+- **Tab 📊 Theo Tuần:** Per-habit weekly grid  
+  - 14 ngày gần nhất hiển thị dạng dot grid per-habit
+  - Header row: % hoàn thành toàn bộ habits theo từng ngày (màu xanh=100%, cam>0%)
+  - Mỗi habit: streak 🔥N + tỷ lệ 14 ngày + progress bar
+  - Cell gradient: ô xanh = habit done; ô nhạt = ngày có làm partial habits khác
+- **Tab ⚙️ Quản Lý:** `HabitManager` component — CRUD habits
+- **Conquered Habits 🏅:** Section hiển thị habits đã chinh phục 21 ngày (status='conquered')
 
 ---
 

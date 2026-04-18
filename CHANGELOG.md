@@ -1,6 +1,39 @@
 # CHANGELOG
 
-## v3.0.0 — 2026-04-16
+## v1.4.5 — 2026-04-19
+
+### Added
+- `src/data/quotes.json` — 30 câu trích dẫn động lực tiếng Việt (Rule 14: tách ra khỏi component)
+- `src/pages/HabitsPage.jsx` — Daily motivational quote card xoay theo ngày trong năm
+- `src/pages/HabitsPage.jsx` — Header stat cards: Habits count 🎯 + Ngày còn lại ⏳
+- `src/pages/HabitsPage.jsx` — Tab "📊 Theo Tuần": PerHabitWeeklyGrid 14 ngày per-habit
+- `src/pages/HabitsPage.jsx` — Per-habit streak 🔥N trong today list
+- `src/pages/HabitsPage.jsx` — Counter badge X/N habits done hôm nay
+- `src/pages/HabitsPage.jsx` — `computeHabitStreak()` + `dayPct()` helpers
+
+### Changed
+- `src/pages/HabitsPage.jsx` — Weekly grid: gradient cell (partial day = tint màu habit)
+- `src/pages/HabitsPage.jsx` — Weekly grid: header row % completion toàn bộ habits per-day
+
+---
+
+## v1.4.0 — 2026-04-18
+
+### Added
+- `data/migration_v1.4.0.sql` — Thêm cột `action`, `status`, `cycle_count`, `conquered_at` vào bảng `habits`
+- `src/data/habits.json` — Thêm field `action` cho 3 default habits
+- `src/components/LoginNudgeModal.jsx` — Bottom sheet nhắc đăng ký cho guest sau ngày 1
+- `src/styles/completion.css` — Certificate styles (seal, divider, dual CTA options)
+
+### Changed
+- `src/hooks/useCustomHabits.js` — Thêm `conquestHabit()`, `renewHabit()`, computed `activeHabits`, `conqueredHabits`
+- `src/components/HabitManager.jsx` — Thêm field `action` (hành động cụ thể) vào form
+- `src/components/CompletionModal.jsx` — Redesign thành Certificate modal: 2 CTA (Gia Hạn / Thử Thách Mới)
+- `src/pages/HabitsPage.jsx` — Thêm Celebration banner + Conquered Habits section + LoginNudgeModal
+- `src/pages/TrackerPage.jsx` — Wire `onRenew` / `onNewChallenge` cho CompletionModal
+
+---
+
 
 ### Added
 - `src/hooks/useTeam.js` — Team hook: fetch N members (batch), realtime subscription, create/join/leave team

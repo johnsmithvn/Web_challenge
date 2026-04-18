@@ -1,9 +1,27 @@
 # TASKS — Thử Thách Vượt Lười
-**Updated:** 2026-04-18
+**Updated:** 2026-04-19
 
 ---
 
-## v1.3.1 — ✅ DONE (2026-04-18)
+## v1.4.5 — ✅ DONE (2026-04-19)
+
+### HabitsPage v1.4.x — Action Tracking + Per-Habit Grid + Streak
+- [x] `src/data/quotes.json` — Tạo mới: 30 câu trích dẫn động lực theo Rule 14
+- [x] `src/pages/HabitsPage.jsx` — Daily quote card xoay theo ngày (import từ `quotes.json`)
+- [x] `src/pages/HabitsPage.jsx` — Header: thêm stat card "🎯 Habits" + "⏳ Ngày còn lại"
+- [x] `src/pages/HabitsPage.jsx` — Per-habit streak 🔥N trong today list (tính ngược từ `vl_habit_progress`)
+- [x] `src/pages/HabitsPage.jsx` — Counter badge X/N habits done hôm nay
+- [x] `src/pages/HabitsPage.jsx` — Tab "📊 Theo Tuần": PerHabitWeeklyGrid 14 ngày
+  - Header row: % toàn bộ habits per-day
+  - Per-habit: streak badge + tỷ lệ 14 ngày + gradient cell (partial = tint màu)
+- [x] `src/pages/HabitsPage.jsx` — `computeHabitStreak()` + `dayPct()` helper functions
+- [x] `docs/FEATURES.md` — Cập nhật section #2 HabitsPage
+- [x] `docs/TASKS.md` — File này
+- [x] `CHANGELOG.md` — Cập nhật v1.4.x
+
+---
+
+## v1.4.0 — ✅ DONE (2026-04-18)
 
 ### Phase 3 — Polish & Tech Debt
 - [x] `src/hooks/useFocusTimer.js` — Focus XP +15 mỗi session (deduped by sessionId, write trực tiếp vào vl_xp_store để tránh circular import)
