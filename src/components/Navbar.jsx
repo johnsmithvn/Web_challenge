@@ -9,12 +9,15 @@ import '../styles/auth.css';
 
 const NAV_LINKS = [
   { to: '/',            label: 'Trang Chủ' },
-  { to: '/tracker',     label: '📊 Tracker' },
-  { to: '/team',        label: '🤝 Đồng Đội' },
-  { to: '/dashboard',   label: '📈 Dashboard' },
+  { to: '/habits',      label: '📋 Habits' },
+  { to: '/tracker',     label: '🗓 Tracker' },
+  { to: '/focus',       label: '⏱ Focus' },
+  { to: '/team',        label: '🤝 Team' },
+  { to: '/dashboard',   label: '📈 Stats' },
   { to: '/quiz',        label: '🧠 Quiz' },
   { to: '/leaderboard', label: '🏆 BXH' },
 ];
+
 
 function UserAvatar({ profile, user, onSignOut }) {
   const [open, setOpen] = useState(false);
