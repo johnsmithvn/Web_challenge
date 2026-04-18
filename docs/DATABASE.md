@@ -387,7 +387,92 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- ============================================================
+-- v1.2 ADDITIONS: Custom Habits, Focus Sessions, Mood, Skip
+-- ============================================================
+
+-- 12. HABITS (custom user-defined habits)
+CREATE TABLE habits (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  name         TEXT NOT NULL,
+  icon         TEXT NOT NULL DEFAULT '⚡',
+  color        TEXT NOT NULL DEFAULT '#8B5CF6',
+  category     TEXT NOT NULL DEFAULT 'other',
+  time_target  TIME,
+  duration_min SMALLINT,
+  active       BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order   SMALLINT DEFAULT 0,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_habits_user ON habits (user_id, active);
+
+CREATE TRIGGER habits_updated_at
+  BEFORE UPDATE ON habits
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "habits_own" ON habits FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+-- 13. FOCUS_SESSIONS (Pomodoro sessions)
+CREATE TABLE focus_sessions (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  habit_id     UUID REFERENCES habits(id) ON DELETE SET NULL,
+  duration_min SMALLINT NOT NULL DEFAULT 25,
+  date         DATE NOT NULL DEFAULT CURRENT_DATE,
+  completed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_focus_user_date ON focus_sessions (user_id, date DESC);
+
+ALTER TABLE focus_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "focus_own" ON focus_sessions FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+-- 14. MOOD_LOGS (daily mood check — 1 per day)
+CREATE TABLE mood_logs (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  date       DATE NOT NULL DEFAULT CURRENT_DATE,
+  mood_emoji TEXT NOT NULL,
+  mood_label TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (user_id, date)
+);
+
+CREATE INDEX idx_mood_user ON mood_logs (user_id, date DESC);
+
+ALTER TABLE mood_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "mood_own" ON mood_logs FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+-- 15. SKIP_REASONS (why user missed a habit day)
+CREATE TABLE skip_reasons (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  date       DATE NOT NULL,
+  reason     TEXT NOT NULL,
+  note       TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (user_id, date)
+);
+
+CREATE INDEX idx_skip_user ON skip_reasons (user_id, date DESC);
+
+ALTER TABLE skip_reasons ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "skip_own" ON skip_reasons FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+-- Realtime for new tables
+ALTER PUBLICATION supabase_realtime ADD TABLE habits;
+ALTER PUBLICATION supabase_realtime ADD TABLE focus_sessions;
 ```
+
 
 ---
 
