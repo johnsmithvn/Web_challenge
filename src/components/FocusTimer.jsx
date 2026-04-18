@@ -18,7 +18,8 @@ export default function FocusTimer({ defaultHabitId }) {
   } = useFocusTimer();
 
   const { activeHabits } = useCustomHabits();
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings,   setShowSettings]   = useState(false);
+  const [showHabitPick,  setShowHabitPick]  = useState(false);
   const [ws, setWs] = useState(settings.workMin);
   const [sb, setSb] = useState(settings.shortBreakMin);
   const [lb, setLb] = useState(settings.longBreakMin);
@@ -76,20 +77,53 @@ export default function FocusTimer({ defaultHabitId }) {
         </div>
       )}
 
-      {/* Link habit */}
+      {/* Link habit — custom pill picker */}
       <div className="focus-habit-link">
-        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Gắn với habit:</span>
-        <select
-          className="focus-select"
-          value={habitId || ''}
-          onChange={e => linkHabit(e.target.value || null)}
-          id="focus-habit-select"
-        >
-          <option value="">— Không gắn —</option>
-          {activeHabits.map(h => (
-            <option key={h.id} value={h.id}>{h.icon} {h.name}</option>
-          ))}
-        </select>
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', flexShrink: 0 }}>Gắn habit:</span>
+        <div style={{ position: 'relative', flex: 1 }}>
+          {/* Trigger button */}
+          <button
+            className="focus-habit-trigger"
+            onClick={() => setShowHabitPick(v => !v)}
+            id="focus-habit-select"
+            style={{ borderColor: linkedHabit ? linkedHabit.color + '88' : 'rgba(255,255,255,0.1)' }}
+          >
+            {linkedHabit
+              ? <><span>{linkedHabit.icon}</span><span style={{ flex: 1 }}>{linkedHabit.name}</span>
+                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: linkedHabit.color, flexShrink: 0 }} /></>
+              : <><span style={{ color: 'var(--text-muted)' }}>— Không gắn —</span><span style={{ marginLeft: 'auto' }}>▾</span></>
+            }
+            <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.7rem' }}>▾</span>
+          </button>
+
+          {/* Dropdown panel */}
+          {showHabitPick && (
+            <div className="focus-habit-dropdown">
+              <button
+                className={`focus-habit-option ${!habitId ? 'focus-habit-option--active' : ''}`}
+                onClick={() => { linkHabit(null); setShowHabitPick(false); }}
+                id="focus-habit-none"
+              >
+                <span className="focus-habit-option__icon">○</span>
+                <span>Không gắn</span>
+              </button>
+              {activeHabits.map(h => (
+                <button
+                  key={h.id}
+                  className={`focus-habit-option ${habitId === h.id ? 'focus-habit-option--active' : ''}`}
+                  onClick={() => { linkHabit(h.id); setShowHabitPick(false); }}
+                  id={`focus-habit-opt-${h.id}`}
+                  style={{ '--opt-color': h.color }}
+                >
+                  <span className="focus-habit-option__icon" style={{ background: h.color + '22' }}>{h.icon}</span>
+                  <span style={{ flex: 1 }}>{h.name}</span>
+                  {h.timeTarget && <span className="focus-habit-option__time">⏰ {h.timeTarget}</span>}
+                  {habitId === h.id && <span style={{ color: h.color }}>✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Phase badge */}

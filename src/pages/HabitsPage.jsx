@@ -27,22 +27,45 @@ export default function HabitsPage() {
   const { saveMood, getMood } = useMoodLog();
   const { saveSkip } = useSkipReasons();
 
-  const [tab,         setTab]         = useState('calendar');
-  const [skipModal,   setSkipModal]   = useState(null);
-  const [skipReason,  setSkipReason]  = useState('');
-  const [skipNote,    setSkipNote]    = useState('');
+  const [tab,        setTab]        = useState('calendar');
+  const [skipModal,  setSkipModal]  = useState(null);
+  const [skipReason, setSkipReason] = useState('');
+  const [skipNote,   setSkipNote]   = useState('');
 
-  const todayKey = new Date().toISOString().split('T')[0];
-  const todayDone = !!data[todayKey];
+  // Per-habit daily progress: { "2026-04-18_h1": true, ... }
+  const HABIT_PROG_KEY = 'vl_habit_progress';
+  const [habitProg, setHabitProg] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(HABIT_PROG_KEY) || '{}'); }
+    catch { return {}; }
+  });
+
+  const todayKey  = new Date().toISOString().split('T')[0];
   const todayMood = getMood(todayKey);
 
-  const handleTick = (dateKey) => {
-    const wasUnchecked = !data[dateKey];
-    toggle(dateKey);
-    if (wasUnchecked && !hasMilestone('daily_check', { date: dateKey })) {
-      addXp(XP_REWARDS.daily_check, 'daily_check', { date: dateKey });
+  // Tick a specific habit for today
+  const handleHabitTick = (habit) => {
+    const key       = `${todayKey}_${habit.id}`;
+    const wasDone   = !!habitProg[key];
+    const next      = { ...habitProg, [key]: !wasDone };
+    localStorage.setItem(HABIT_PROG_KEY, JSON.stringify(next));
+    setHabitProg(next);
+
+    // Award XP once per habit per day (only when checking)
+    if (!wasDone && !hasMilestone('habit_tick', { habitId: habit.id, date: todayKey })) {
+      addXp(XP_REWARDS.daily_check, 'habit_tick', { habitId: habit.id, date: todayKey });
     }
+
+    // Mark overall day done if ALL habits ticked
+    const allDone = activeHabits.every(h =>
+      h.id === habit.id ? !wasDone : !!next[`${todayKey}_${h.id}`]
+    );
+    if (allDone && !data[todayKey]) toggle(todayKey);
+    else if (!allDone &&  data[todayKey]) toggle(todayKey); // untick overall if any unchecked
   };
+
+  const todayDone = activeHabits.length > 0
+    ? activeHabits.every(h => !!habitProg[`${todayKey}_${h.id}`])
+    : !!data[todayKey];
 
   const handleSkipSubmit = () => {
     saveSkip(skipModal, skipReason, skipNote);
@@ -79,18 +102,21 @@ export default function HabitsPage() {
           <div className="dash-card-title">⚡ Hôm Nay — {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.75rem' }}>
             {activeHabits.map(habit => {
-              const doneToday = !!data[`${todayKey}_${habit.id}`] || (activeHabits.length === 1 && todayDone);
+              const doneToday = !!habitProg[`${todayKey}_${habit.id}`];
               return (
                 <div key={habit.id} style={{
                   display: 'flex', alignItems: 'center', gap: '0.75rem',
-                  padding: '0.75rem', background: 'rgba(255,255,255,0.03)',
+                  padding: '0.75rem', background: doneToday ? `${habit.color}11` : 'rgba(255,255,255,0.03)',
                   border: `1px solid ${doneToday ? habit.color + '55' : 'rgba(255,255,255,0.07)'}`,
                   borderLeft: `3px solid ${habit.color}`,
                   borderRadius: 'var(--radius-md)', transition: 'var(--transition-base)',
                 }}>
                   <span style={{ fontSize: '1.4rem' }}>{habit.icon}</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.92rem' }}>{habit.name}</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.92rem',
+                      textDecoration: doneToday ? 'line-through' : 'none',
+                      color: doneToday ? 'var(--text-muted)' : 'var(--text-primary)',
+                    }}>{habit.name}</div>
                     {habit.timeTarget && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         ⏰ {habit.timeTarget} · ⏱ {habit.durationMin}p
@@ -101,7 +127,7 @@ export default function HabitsPage() {
                     type="checkbox"
                     className="habit-checkbox"
                     checked={doneToday}
-                    onChange={() => handleTick(todayKey)}
+                    onChange={() => handleHabitTick(habit)}
                     id={`today-habit-${habit.id}`}
                     aria-label={habit.name}
                   />
@@ -130,14 +156,14 @@ export default function HabitsPage() {
             {MOODS.map(m => (
               <button
                 key={m.label}
-                onClick={() => saveMood(m)}
+                onClick={() => handleMood(m)}
                 id={`mood-${m.label}`}
                 style={{
                   padding: '0.6rem 1rem',
                   borderRadius: 'var(--radius-full)',
-                  background: (todayMood?.label || mood?.label) === m.label
+                  background: todayMood?.label === m.label
                     ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${(todayMood?.label || mood?.label) === m.label
+                  border: `1px solid ${ todayMood?.label === m.label
                     ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.1)'}`,
                   cursor: 'pointer',
                   fontSize: '0.88rem',
