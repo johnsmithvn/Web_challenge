@@ -1,39 +1,109 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
-const STORAGE_KEY = 'vl_custom_habits';
-
 import HABITS_DATA from '../data/habits.json';
 
-const DEFAULT_HABITS = HABITS_DATA.defaultHabits;
-export const CATEGORIES  = HABITS_DATA.categories;
-export const HABIT_ICONS = HABITS_DATA.icons;
+const DEFAULT_HABITS  = HABITS_DATA.defaultHabits;
+export const CATEGORIES   = HABITS_DATA.categories;
+export const HABIT_ICONS  = HABITS_DATA.icons;
 export const HABIT_COLORS = HABITS_DATA.colors;
 
+// Legacy localStorage key — read once for migration, then ignore
+const LEGACY_KEY    = 'vl_custom_habits';
+const MIGRATED_KEY  = 'vl_custom_habits_migrated';
 
-function loadLocal() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || DEFAULT_HABITS; }
-  catch { return DEFAULT_HABITS; }
+// One-time migration: push any localStorage habits to Supabase
+async function migrateLocalHabits(userId) {
+  if (localStorage.getItem(MIGRATED_KEY) === userId) return;
+  try {
+    const local = JSON.parse(localStorage.getItem(LEGACY_KEY) || 'null');
+    if (local && Array.isArray(local) && local.length) {
+      // Only push non-default habits (UUID ids)
+      const custom = local.filter(h => h.id && h.id.includes('-'));
+      if (custom.length) {
+        const rows = custom.map(h => ({
+          id:           h.id,
+          user_id:      userId,
+          name:         h.name,
+          action:       h.action || h.name,
+          icon:         h.icon || '⚡',
+          color:        h.color || '#8B5CF6',
+          category:     h.category || 'other',
+          time_target:  h.timeTarget || null,
+          duration_min: h.durationMin || null,
+          status:       h.status || 'active',
+          cycle_count:  h.cycleCount || 1,
+          conquered_at: h.conqueredAt || null,
+          active:       h.active !== false,
+          created_at:   h.createdAt || new Date().toISOString(),
+        }));
+        await supabase.from('habits').upsert(rows, { onConflict: 'id' });
+        console.log(`[CustomHabits] Migrated ${rows.length} habits from localStorage`);
+      }
+    }
+    localStorage.removeItem(LEGACY_KEY);
+    localStorage.setItem(MIGRATED_KEY, userId);
+  } catch (e) {
+    console.warn('[CustomHabits] Migration failed:', e.message);
+  }
+}
+
+// Map Supabase row → camelCase habit object used by UI
+function rowToHabit(r) {
+  return {
+    id:          r.id,
+    name:        r.name,
+    action:      r.action || r.name,
+    icon:        r.icon || '⚡',
+    color:       r.color || '#8B5CF6',
+    category:    r.category || 'other',
+    timeTarget:  r.time_target || null,
+    durationMin: r.duration_min || null,
+    status:      r.status || 'active',
+    cycleCount:  r.cycle_count || 1,
+    conqueredAt: r.conquered_at || null,
+    active:      r.active !== false,
+    createdAt:   r.created_at,
+  };
 }
 
 export function useCustomHabits() {
   const { user, isAuthenticated } = useAuth();
   const useDB = isSupabaseEnabled && isAuthenticated;
 
-  const [habits, setHabits] = useState(loadLocal);
+  // Default habits shown for guests (not persisted)
+  const [habits, setHabits] = useState(DEFAULT_HABITS);
 
-  const saveLocal = (list) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    setHabits(list);
-  };
+  // On login: migrate + load from Supabase
+  useEffect(() => {
+    if (!useDB || !user) return;
 
-  // ── CRUD ──────────────────────────────────────────────
+    migrateLocalHabits(user.id).then(async () => {
+      const { data, error } = await supabase
+        .from('habits')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at');
+
+      if (!error && data) {
+        const loaded = data.map(rowToHabit);
+        setHabits(loaded.length ? loaded : DEFAULT_HABITS);
+      }
+    });
+  }, [useDB, user?.id]);
+
+  // Clear on logout — back to defaults
+  useEffect(() => {
+    if (!useDB) setHabits(DEFAULT_HABITS);
+  }, [useDB]);
+
+  // ── CRUD ──────────────────────────────────────────────────
   const addHabit = useCallback(async (habit) => {
     const newHabit = {
       id:          crypto.randomUUID(),
       name:        habit.name,
-      action:      habit.action || habit.name, // fallback: action = name
+      action:      habit.action || habit.name,
       icon:        habit.icon || '⚡',
       color:       habit.color || '#8B5CF6',
       category:    habit.category || 'other',
@@ -45,67 +115,95 @@ export function useCustomHabits() {
       active:      true,
       createdAt:   new Date().toISOString(),
     };
-    const next = [...habits, newHabit];
-    saveLocal(next);
 
-    if (useDB) {
-      await supabase.from('habits').insert({
-        ...newHabit,
+    setHabits(prev => [...prev, newHabit]);
+
+    if (useDB && user) {
+      const { error } = await supabase.from('habits').insert({
+        id:           newHabit.id,
         user_id:      user.id,
+        name:         newHabit.name,
+        action:       newHabit.action,
+        icon:         newHabit.icon,
+        color:        newHabit.color,
+        category:     newHabit.category,
+        time_target:  newHabit.timeTarget,
+        duration_min: newHabit.durationMin,
+        status:       newHabit.status,
         cycle_count:  newHabit.cycleCount,
-        conquered_at: newHabit.conqueredAt,
+        active:       true,
+        created_at:   newHabit.createdAt,
       });
+      if (error) {
+        console.warn('[CustomHabits] add failed:', error.message);
+        setHabits(prev => prev.filter(h => h.id !== newHabit.id));
+        return null;
+      }
     }
     return newHabit;
-  }, [habits, useDB, user]);
+  }, [useDB, user]);
 
   const updateHabit = useCallback(async (id, updates) => {
-    const next = habits.map(h => h.id === id ? { ...h, ...updates } : h);
-    saveLocal(next);
-    if (useDB) await supabase.from('habits').update(updates).eq('id', id).eq('user_id', user.id);
-  }, [habits, useDB, user]);
+    setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
+
+    if (useDB && user) {
+      const { error } = await supabase
+        .from('habits')
+        .update(updates)
+        .eq('id', id)
+        .eq('user_id', user.id);
+      if (error) console.warn('[CustomHabits] update failed:', error.message);
+    }
+  }, [useDB, user]);
 
   const deleteHabit = useCallback(async (id) => {
-    const next = habits.filter(h => h.id !== id);
-    saveLocal(next);
-    if (useDB) await supabase.from('habits').delete().eq('id', id).eq('user_id', user.id);
+    const prev = habits.find(h => h.id === id);
+    setHabits(p => p.filter(h => h.id !== id));
+
+    if (useDB && user) {
+      const { error } = await supabase
+        .from('habits')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+      if (error) {
+        console.warn('[CustomHabits] delete failed:', error.message);
+        if (prev) setHabits(p => [...p, prev]);
+      }
+    }
   }, [habits, useDB, user]);
 
   const reorderHabits = useCallback((fromIdx, toIdx) => {
-    const next = [...habits];
-    const [moved] = next.splice(fromIdx, 1);
-    next.splice(toIdx, 0, moved);
-    saveLocal(next);
-  }, [habits]);
+    setHabits(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
+    // Reorder is UI-only — no DB column for sort_order yet
+  }, []);
 
-  // Mark habit as conquered after 21-day cycle completion
   const conquestHabit = useCallback(async (id) => {
     const now = new Date().toISOString();
-    const updates = { status: 'conquered', conqueredAt: now };
-    const next = habits.map(h =>
-      h.id === id ? { ...h, ...updates } : h
-    );
-    saveLocal(next);
-    if (useDB) {
-      await supabase.from('habits').update({
-        status:       'conquered',
-        conquered_at: now,
-      }).eq('id', id).eq('user_id', user.id);
+    setHabits(prev => prev.map(h =>
+      h.id === id ? { ...h, status: 'conquered', conqueredAt: now } : h
+    ));
+    if (useDB && user) {
+      await supabase.from('habits')
+        .update({ status: 'conquered', conquered_at: now })
+        .eq('id', id).eq('user_id', user.id);
     }
-  }, [habits, useDB, user]);
+  }, [useDB, user]);
 
-  // Renew habit for another 21-day cycle (harder round)
   const renewHabit = useCallback(async (id) => {
-    const next = habits.map(h =>
+    setHabits(prev => prev.map(h =>
       h.id === id ? { ...h, status: 'active', cycleCount: (h.cycleCount || 1) + 1 } : h
-    );
-    saveLocal(next);
-    if (useDB) {
+    ));
+    if (useDB && user) {
       const h = habits.find(x => x.id === id);
-      await supabase.from('habits').update({
-        status:      'active',
-        cycle_count: (h?.cycleCount || 1) + 1,
-      }).eq('id', id).eq('user_id', user.id);
+      await supabase.from('habits')
+        .update({ status: 'active', cycle_count: (h?.cycleCount || 1) + 1 })
+        .eq('id', id).eq('user_id', user.id);
     }
   }, [habits, useDB, user]);
 
