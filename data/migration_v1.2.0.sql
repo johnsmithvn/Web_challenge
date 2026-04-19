@@ -97,9 +97,9 @@ DROP POLICY IF EXISTS "skip_own" ON skip_reasons;
 CREATE POLICY "skip_own" ON skip_reasons FOR ALL
   USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
--- Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE habits;
-ALTER PUBLICATION supabase_realtime ADD TABLE focus_sessions;
+-- Realtime (skip if already added)
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE habits;          EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE focus_sessions;  EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Verify
 SELECT table_name FROM information_schema.tables

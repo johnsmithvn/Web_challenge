@@ -29,6 +29,12 @@ function saveLocal(prog) {
   localStorage.setItem(LS_KEY, JSON.stringify(prog));
 }
 
+/** Validate UUID v4 format — default habits use short IDs like h1, h2, h3 */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUUID(str) {
+  return typeof str === 'string' && UUID_REGEX.test(str);
+}
+
 /** Convert Supabase habit_logs rows → { "date_habitId": true } */
 function rowsToMap(rows) {
   return rows.reduce((acc, row) => {
@@ -39,21 +45,24 @@ function rowsToMap(rows) {
   }, {});
 }
 
-/** Convert local map → array of insert objects */
+/** Convert local map → array of insert objects (skips non-UUID habit IDs) */
 function mapToInserts(prog, userId, journeyId) {
   return Object.entries(prog)
     .filter(([, v]) => v)
     .map(([key]) => {
-      const [date, habitId] = key.split(/_(.+)/); // split on first underscore only
-      return {
-        user_id:    userId,
-        habit_id:   habitId,
-        journey_id: journeyId || null,
-        log_date:   date,
-        status:     'completed',
-      };
+      const underscoreIdx = key.indexOf('_');
+      const date    = key.slice(0, underscoreIdx);
+      const habitId = key.slice(underscoreIdx + 1);
+      return { date, habitId };
     })
-    .filter(r => r.habit_id); // discard malformed keys
+    .filter(({ habitId }) => isValidUUID(habitId)) // skip h1, h2, h3 etc.
+    .map(({ date, habitId }) => ({
+      user_id:    userId,
+      habit_id:   habitId,
+      journey_id: journeyId || null,
+      log_date:   date,
+      status:     'completed',
+    }));
 }
 
 // ── Hook ──────────────────────────────────────────────────
@@ -134,15 +143,16 @@ export function useHabitLogs(journeyId = null) {
     const key   = `${today}_${habitId}`;
     const wasDone = !!habitProg[key];
 
-    // Optimistic update
+    // Optimistic update (always — works for both local and DB habits)
     const next = { ...habitProg, [key]: !wasDone };
     setHabitProg(next);
     saveLocal(next);
 
-    if (useDB) {
+    // Skip DB sync for non-UUID habit IDs (default habits: h1, h2, h3...)
+    // These habits need to be synced to Supabase habits table first via useCustomHabits
+    if (useDB && isValidUUID(habitId)) {
       try {
         if (!wasDone) {
-          // Insert completed log
           const { error } = await supabase.from('habit_logs').upsert({
             user_id:    user.id,
             habit_id:   habitId,
@@ -152,7 +162,6 @@ export function useHabitLogs(journeyId = null) {
           }, { onConflict: 'user_id,habit_id,log_date' });
           if (error) throw error;
         } else {
-          // Delete log (untick)
           const { error } = await supabase
             .from('habit_logs')
             .delete()
@@ -163,7 +172,7 @@ export function useHabitLogs(journeyId = null) {
         }
       } catch (err) {
         console.warn('[useHabitLogs] toggle error, kept local:', err.message);
-        // Rollback optimistic update on error
+        // Rollback optimistic update on DB error
         setHabitProg(habitProg);
         saveLocal(habitProg);
       }

@@ -6,9 +6,9 @@
 -- ─── 0. profiles (extends Supabase auth.users) ───────────────────
 CREATE TABLE IF NOT EXISTS profiles (
   id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  username     TEXT UNIQUE,           -- login identifier (no @ needed)
-  email        TEXT,                  -- real email (for login lookup & Google OAuth)
-  display_name TEXT,                  -- shown in UI / team
+  username     TEXT UNIQUE,
+  email        TEXT,
+  display_name TEXT,
   avatar_url   TEXT,
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
@@ -151,17 +151,17 @@ CREATE TABLE IF NOT EXISTS friends (
 );
 
 -- ════════════════════════════════════════════════════════════════
--- REALTIME
+-- REALTIME — wrapped in DO blocks to skip if already added
 -- ════════════════════════════════════════════════════════════════
-ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
-ALTER PUBLICATION supabase_realtime ADD TABLE progress;
-ALTER PUBLICATION supabase_realtime ADD TABLE teams;
-ALTER PUBLICATION supabase_realtime ADD TABLE team_members;
-ALTER PUBLICATION supabase_realtime ADD TABLE team_check_logs;
-ALTER PUBLICATION supabase_realtime ADD TABLE team_rules;
-ALTER PUBLICATION supabase_realtime ADD TABLE team_rule_agreements;
-ALTER PUBLICATION supabase_realtime ADD TABLE reactions;
-ALTER PUBLICATION supabase_realtime ADD TABLE friends;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE profiles;           EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE progress;           EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE teams;              EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE team_members;       EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE team_check_logs;    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE team_rules;         EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE team_rule_agreements; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE reactions;          EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE friends;            EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ════════════════════════════════════════════════════════════════
 -- ROW LEVEL SECURITY
@@ -169,23 +169,34 @@ ALTER PUBLICATION supabase_realtime ADD TABLE friends;
 
 -- profiles
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "profiles_select_all" ON profiles;
+DROP POLICY IF EXISTS "profiles_update_own" ON profiles;
 CREATE POLICY "profiles_select_all"  ON profiles FOR SELECT USING (true);
 CREATE POLICY "profiles_update_own"  ON profiles FOR UPDATE USING (id = auth.uid());
 
 -- progress
 ALTER TABLE progress ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "progress_select_own" ON progress;
+DROP POLICY IF EXISTS "progress_insert_own" ON progress;
+DROP POLICY IF EXISTS "progress_update_own" ON progress;
 CREATE POLICY "progress_select_own"  ON progress FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY "progress_insert_own"  ON progress FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "progress_update_own"  ON progress FOR UPDATE USING (user_id = auth.uid());
 
 -- streaks
 ALTER TABLE streaks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "streaks_select_all" ON streaks;
+DROP POLICY IF EXISTS "streaks_upsert_own" ON streaks;
+DROP POLICY IF EXISTS "streaks_update_own" ON streaks;
 CREATE POLICY "streaks_select_all"   ON streaks FOR SELECT USING (true);
 CREATE POLICY "streaks_upsert_own"   ON streaks FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "streaks_update_own"   ON streaks FOR UPDATE USING (user_id = auth.uid());
 
 -- teams
 ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "teams_select_member" ON teams;
+DROP POLICY IF EXISTS "teams_insert_auth"   ON teams;
+DROP POLICY IF EXISTS "teams_update_member" ON teams;
 CREATE POLICY "teams_select_member"  ON teams FOR SELECT USING (
   id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
   OR created_by = auth.uid()
@@ -196,19 +207,38 @@ CREATE POLICY "teams_update_member"  ON teams FOR UPDATE USING (
 );
 
 -- team_members
+-- ⚠ FIX: policy cannot query team_members FROM WITHIN team_members policy
+--   → use SECURITY DEFINER function to bypass RLS internally
+CREATE OR REPLACE FUNCTION get_my_team_ids()
+RETURNS SETOF uuid
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT DISTINCT team_id FROM team_members WHERE user_id = auth.uid();
+$$;
+
 ALTER TABLE team_members ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "tm_select_same_team" ON team_members;
+DROP POLICY IF EXISTS "tm_select_own"       ON team_members;
+DROP POLICY IF EXISTS "tm_insert_own"       ON team_members;
+DROP POLICY IF EXISTS "tm_delete_own"       ON team_members;
+-- Allow seeing all members in same team (via SECURITY DEFINER — no recursion)
 CREATE POLICY "tm_select_same_team"  ON team_members FOR SELECT USING (
-  team_id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
+  team_id IN (SELECT get_my_team_ids())
 );
 CREATE POLICY "tm_insert_own"        ON team_members FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "tm_delete_own"        ON team_members FOR DELETE USING (user_id = auth.uid());
 
 -- user_programs
 ALTER TABLE user_programs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "programs_own" ON user_programs;
 CREATE POLICY "programs_own"         ON user_programs FOR ALL USING (user_id = auth.uid());
 
 -- team_check_logs
 ALTER TABLE team_check_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "checks_select_team" ON team_check_logs;
+DROP POLICY IF EXISTS "checks_insert_own"  ON team_check_logs;
+DROP POLICY IF EXISTS "checks_update_own"  ON team_check_logs;
 CREATE POLICY "checks_select_team"   ON team_check_logs FOR SELECT USING (
   team_id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
 );
@@ -217,6 +247,9 @@ CREATE POLICY "checks_update_own"    ON team_check_logs FOR UPDATE USING (checke
 
 -- team_rules
 ALTER TABLE team_rules ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "rules_select_team"   ON team_rules;
+DROP POLICY IF EXISTS "rules_insert_member" ON team_rules;
+DROP POLICY IF EXISTS "rules_update_member" ON team_rules;
 CREATE POLICY "rules_select_team"    ON team_rules FOR SELECT USING (
   team_id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
 );
@@ -230,6 +263,9 @@ CREATE POLICY "rules_update_member"  ON team_rules FOR UPDATE USING (
 
 -- team_rule_agreements
 ALTER TABLE team_rule_agreements ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "agreements_select" ON team_rule_agreements;
+DROP POLICY IF EXISTS "agreements_upsert" ON team_rule_agreements;
+DROP POLICY IF EXISTS "agreements_update" ON team_rule_agreements;
 CREATE POLICY "agreements_select"    ON team_rule_agreements FOR SELECT USING (
   rule_id IN (
     SELECT id FROM team_rules WHERE team_id IN (
@@ -242,11 +278,16 @@ CREATE POLICY "agreements_update"    ON team_rule_agreements FOR UPDATE USING (u
 
 -- reactions
 ALTER TABLE reactions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "reactions_select_all" ON reactions;
+DROP POLICY IF EXISTS "reactions_insert_own" ON reactions;
 CREATE POLICY "reactions_select_all" ON reactions FOR SELECT USING (true);
 CREATE POLICY "reactions_insert_own" ON reactions FOR INSERT WITH CHECK (from_user_id = auth.uid());
 
 -- friends
 ALTER TABLE friends ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "friends_select_own" ON friends;
+DROP POLICY IF EXISTS "friends_insert_own" ON friends;
+DROP POLICY IF EXISTS "friends_update_own" ON friends;
 CREATE POLICY "friends_select_own"   ON friends FOR SELECT USING (
   user_id = auth.uid() OR friend_id = auth.uid()
 );
