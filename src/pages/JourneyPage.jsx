@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useJourney } from '../hooks/useJourney';
 import { useAuth } from '../contexts/AuthContext';
 import ActiveJourneyPanel from '../components/journey/ActiveJourneyPanel';
@@ -17,7 +17,9 @@ const TABS = [
 ];
 
 export default function JourneyPage() {
-  const navigate = useNavigate();
+  const navigate      = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isFirstTime   = searchParams.get('firstTime') === 'true';
   const { isAuthenticated } = useAuth();
   const {
     activeJourney,
@@ -79,6 +81,29 @@ export default function JourneyPage() {
             <h1>🗺 Lộ Trình</h1>
             <p>Chọn và theo dõi hành trình chuyển đổi thói quen của bạn</p>
           </div>
+
+          {/* First-time welcome banner (redirected here because no journey yet) */}
+          {isFirstTime && (
+            <div style={{
+              padding: '1rem 1.25rem',
+              background: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(6,182,212,0.08))',
+              border: '1px solid rgba(139,92,246,0.3)',
+              borderRadius: '12px',
+              marginBottom: '1.25rem',
+              display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+            }}>
+              <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>🗺</span>
+              <div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                  Chào mừng! Hãy chọn lộ trình đầu tiên
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  Mọi habit tick, focus session và tiến độ của bạn sẽ được gắn với lộ trình này.
+                  Bạn có thể tự tạo hoặc chọn từ các template có sẵn bên dưới.
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Success toast */}
           {startSuccessMsg && (

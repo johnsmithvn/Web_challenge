@@ -1,65 +1,44 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useActiveJourney } from '../contexts/JourneyContext';
 
 /**
- * useJourney — manages user journeys (program execution instances)
+ * useJourney — manages user journey lifecycle mutations.
+ *
+ * v1.8.0 change: activeJourney is now READ from JourneyContext
+ * (single source of truth). All mutations call setActiveJourney
+ * from context so JourneyContext, useHabitLogs, useFocusTimer
+ * all stay in sync immediately after start/complete/renew/extend.
  *
  * Responsibilities:
- *  - Load active journey for current user
- *  - Auto-create default journey if none exists (backward compat)
- *  - Start a journey from a program template
- *  - Complete / extend / archive a journey
+ *  - Start a journey from a program template (inserts habits too)
+ *  - Complete / renew / extend / archive a journey
+ *  - Create default journey if none exists (backward compat)
  *  - Load journey history
  */
 
-const LS_JOURNEY_KEY = 'vl_active_journey'; // fallback for guests
-
-// ── Local fallback helpers ────────────────────────────────
-function loadLocalJourney() {
-  try { return JSON.parse(localStorage.getItem(LS_JOURNEY_KEY) || 'null'); }
-  catch { return null; }
-}
+const LS_JOURNEY_KEY = 'vl_active_journey';
 
 function saveLocalJourney(journey) {
   if (journey) localStorage.setItem(LS_JOURNEY_KEY, JSON.stringify(journey));
   else localStorage.removeItem(LS_JOURNEY_KEY);
 }
 
-// ── Hook ──────────────────────────────────────────────────
 export function useJourney() {
   const { user, isAuthenticated } = useAuth();
+  // ── Read from JourneyContext — single source of truth ──────
+  const {
+    activeJourney,
+    setActiveJourney,    // updates context immediately
+    isLoadingJourney: isLoading,
+    refetchJourney,      // re-fetch from Supabase if needed
+  } = useActiveJourney();
+
   const useDB = isSupabaseEnabled && isAuthenticated;
-
-  const [activeJourney, setActiveJourney] = useState(loadLocalJourney);
   const [journeyHistory, setJourneyHistory] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // ── Fetch active journey from Supabase ───────────────────
-  const fetchActiveJourney = useCallback(async () => {
-    if (!useDB) return;
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('user_journeys')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
-      setActiveJourney(data || null);
-      saveLocalJourney(data || null);
-    } catch (err) {
-      console.warn('[useJourney] fetchActive error:', err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [useDB, user]);
-
-  // ── Fetch journey history ────────────────────────────────
+  // ── Fetch journey history ─────────────────────────────────
   const fetchHistory = useCallback(async () => {
     if (!useDB) return;
     try {
@@ -77,13 +56,10 @@ export function useJourney() {
     }
   }, [useDB, user]);
 
-  // ── Auto-wrap: create default journey if none exists ─────
-  // Called once on authenticated load — backward compat for
-  // users who had habits before Journey system was introduced.
+  // ── Auto-wrap: create default journey if none exists ──────
   const ensureDefaultJourney = useCallback(async (activeHabits = []) => {
     if (!useDB) return null;
 
-    // Already has active journey → nothing to do
     const { data: existing } = await supabase
       .from('user_journeys')
       .select('id')
@@ -93,24 +69,22 @@ export function useJourney() {
 
     if (existing) return existing;
 
-    // Create default journey
     const today = new Date().toISOString().split('T')[0];
     const { data: newJourney, error: jErr } = await supabase
       .from('user_journeys')
       .insert({
-        user_id:    user.id,
-        title:      'Lộ Trình Của Tôi',
-        started_at: today,
+        user_id:     user.id,
+        title:       'Lộ Trình Của Tôi',
+        started_at:  today,
         target_days: 21,
-        status:     'active',
-        cycle:      1,
+        status:      'active',
+        cycle:       1,
       })
       .select()
       .single();
 
     if (jErr) { console.warn('[useJourney] ensureDefault error:', jErr.message); return null; }
 
-    // Snapshot current active habits into journey_habits
     if (activeHabits.length) {
       const snaps = activeHabits.map((h, i) => ({
         journey_id: newJourney.id,
@@ -123,7 +97,6 @@ export function useJourney() {
       }));
       await supabase.from('journey_habits').insert(snaps);
 
-      // Backfill journey_id on habits table
       await supabase
         .from('habits')
         .update({ journey_id: newJourney.id })
@@ -131,12 +104,13 @@ export function useJourney() {
         .is('journey_id', null);
     }
 
+    // ← Update context so all hooks see it immediately
     setActiveJourney(newJourney);
     saveLocalJourney(newJourney);
     return newJourney;
-  }, [useDB, user]);
+  }, [useDB, user, setActiveJourney]);
 
-  // ── Start a journey from a program template ──────────────
+  // ── Start a journey from a program template ───────────────
   const startJourney = useCallback(async ({ title, description, programId, targetDays, habits = [] }) => {
     const today = new Date().toISOString().split('T')[0];
     const payload = {
@@ -151,7 +125,6 @@ export function useJourney() {
     };
 
     if (!useDB) {
-      // Guest fallback — in-memory only
       const localJourney = { ...payload, id: crypto.randomUUID(), created_at: new Date().toISOString() };
       setActiveJourney(localJourney);
       saveLocalJourney(localJourney);
@@ -166,7 +139,6 @@ export function useJourney() {
         .eq('id', activeJourney.id);
     }
 
-    // Create the new journey record
     const { data: newJourney, error } = await supabase
       .from('user_journeys')
       .insert(payload)
@@ -175,24 +147,22 @@ export function useJourney() {
 
     if (error) { console.warn('[useJourney] startJourney error:', error.message); return null; }
 
-    // ── Insert template habits into user's habits table ──────
-    // This makes them appear in HabitsPage and be trackable
-    let insertedHabitIds = [];
+    // Insert template habits into user's habits table
     if (habits.length) {
       const habitRows = habits.map((h, i) => ({
-        id:           crypto.randomUUID(),
-        user_id:      user.id,
-        name:         h.name,
-        action:       h.action || h.name,
-        icon:         h.icon || '✅',
-        color:        h.color || '#8b5cf6',
-        category:     h.category || 'other',
-        status:       'active',
-        cycle_count:  1,
-        active:       true,
-        journey_id:   newJourney.id,         // link to this journey
-        created_at:   new Date().toISOString(),
-        sort_order:   i,
+        id:          crypto.randomUUID(),
+        user_id:     user.id,
+        name:        h.name,
+        action:      h.action || h.name,
+        icon:        h.icon || '✅',
+        color:       h.color || '#8b5cf6',
+        category:    h.category || 'other',
+        status:      'active',
+        cycle_count: 1,
+        active:      true,
+        journey_id:  newJourney.id,
+        created_at:  new Date().toISOString(),
+        sort_order:  i,
       }));
 
       const { data: insertedHabits, error: hErr } = await supabase
@@ -203,14 +173,12 @@ export function useJourney() {
       if (hErr) {
         console.warn('[useJourney] habit insert error:', hErr.message);
       } else {
-        insertedHabitIds = (insertedHabits || []).map(h => h.id);
-        console.log(`[useJourney] Created ${insertedHabitIds.length} habits from template`);
+        console.log(`[useJourney] Created ${insertedHabits?.length ?? 0} habits from template`);
       }
 
-      // Also snapshot into journey_habits for history display
       const snaps = (insertedHabits || habits).map((h, i) => ({
         journey_id: newJourney.id,
-        habit_id:   h.id || null,  // real habit id if inserted successfully
+        habit_id:   h.id || null,
         name:       h.name,
         action:     h.action || null,
         icon:       h.icon || '✅',
@@ -220,12 +188,14 @@ export function useJourney() {
       await supabase.from('journey_habits').insert(snaps);
     }
 
+    // ← Sync context immediately so useHabitLogs / useFocusTimer
+    //   pick up the new journey_id on the very next write
     setActiveJourney(newJourney);
     saveLocalJourney(newJourney);
     return newJourney;
-  }, [useDB, user, activeJourney]);
+  }, [useDB, user, activeJourney, setActiveJourney]);
 
-  // ── Complete journey ─────────────────────────────────────
+  // ── Complete journey ──────────────────────────────────────
   const completeJourney = useCallback(async () => {
     if (!activeJourney) return;
     const today = new Date().toISOString().split('T')[0];
@@ -239,13 +209,13 @@ export function useJourney() {
       if (error) { console.warn('[useJourney] complete error:', error.message); return; }
     }
 
-    const updated = { ...activeJourney, ...updates };
-    setActiveJourney(null);
+    const completed = { ...activeJourney, ...updates };
+    setActiveJourney(null);          // ← clear context
     saveLocalJourney(null);
-    setJourneyHistory(prev => [updated, ...prev]);
-  }, [activeJourney, useDB]);
+    setJourneyHistory(prev => [completed, ...prev]);
+  }, [activeJourney, useDB, setActiveJourney]);
 
-  // ── Renew journey (same habits, +1 cycle) ────────────────
+  // ── Renew journey (same habits, +1 cycle) ─────────────────
   const renewJourney = useCallback(async () => {
     if (!activeJourney) return;
     await completeJourney();
@@ -271,12 +241,13 @@ export function useJourney() {
 
     const { data, error } = await supabase.from('user_journeys').insert(payload).select().single();
     if (error) { console.warn('[useJourney] renew error:', error.message); return null; }
-    setActiveJourney(data);
+
+    setActiveJourney(data);          // ← sync context
     saveLocalJourney(data);
     return data;
-  }, [activeJourney, useDB, user, completeJourney]);
+  }, [activeJourney, useDB, user, completeJourney, setActiveJourney]);
 
-  // ── Extend journey duration ──────────────────────────────
+  // ── Extend journey duration ───────────────────────────────
   const extendJourney = useCallback(async (extraDays) => {
     if (!activeJourney) return;
     const newTarget = (activeJourney.target_days || 21) + extraDays;
@@ -290,28 +261,27 @@ export function useJourney() {
     }
 
     const updated = { ...activeJourney, target_days: newTarget, status: 'extended' };
-    setActiveJourney(updated);
+    setActiveJourney(updated);       // ← sync context
     saveLocalJourney(updated);
-  }, [activeJourney, useDB]);
+  }, [activeJourney, useDB, setActiveJourney]);
 
-  // ── Init ─────────────────────────────────────────────────
+  // ── Load history on mount ─────────────────────────────────
   useEffect(() => {
-    if (useDB) {
-      fetchActiveJourney();
-      fetchHistory();
-    }
+    if (useDB) fetchHistory();
   }, [useDB]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
-    activeJourney,       // Current active journey object | null
-    journeyHistory,      // Past journeys []
+    activeJourney,       // from JourneyContext — always in sync
+    journeyHistory,
     isLoading,
-    startJourney,        // ({ title, programId, targetDays, habits }) => journey
-    completeJourney,     // () => void
-    renewJourney,        // () => new journey (same habits, cycle+1)
-    extendJourney,       // (extraDays: number) => void
-    ensureDefaultJourney,// (activeHabits[]) => journey — auto-wrap on first load
-    fetchActiveJourney,
+    startJourney,
+    completeJourney,
+    renewJourney,
+    extendJourney,
+    ensureDefaultJourney,
+    refetchJourney,      // renamed from fetchActiveJourney — same function
     fetchHistory,
+    // backward compat
+    fetchActiveJourney: refetchJourney,
   };
 }
