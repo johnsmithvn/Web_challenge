@@ -137,7 +137,7 @@ export function useJourney() {
   }, [useDB, user]);
 
   // ── Start a journey from a program template ──────────────
-  const startJourney = useCallback(async ({ title, description, programId, targetDays, habits }) => {
+  const startJourney = useCallback(async ({ title, description, programId, targetDays, habits = [] }) => {
     const today = new Date().toISOString().split('T')[0];
     const payload = {
       user_id:     useDB ? user.id : 'guest',
@@ -151,7 +151,7 @@ export function useJourney() {
     };
 
     if (!useDB) {
-      // Guest fallback — only local
+      // Guest fallback — in-memory only
       const localJourney = { ...payload, id: crypto.randomUUID(), created_at: new Date().toISOString() };
       setActiveJourney(localJourney);
       saveLocalJourney(localJourney);
@@ -166,6 +166,7 @@ export function useJourney() {
         .eq('id', activeJourney.id);
     }
 
+    // Create the new journey record
     const { data: newJourney, error } = await supabase
       .from('user_journeys')
       .insert(payload)
@@ -174,11 +175,42 @@ export function useJourney() {
 
     if (error) { console.warn('[useJourney] startJourney error:', error.message); return null; }
 
-    // Snapshot habits
-    if (habits?.length) {
-      const snaps = habits.map((h, i) => ({
+    // ── Insert template habits into user's habits table ──────
+    // This makes them appear in HabitsPage and be trackable
+    let insertedHabitIds = [];
+    if (habits.length) {
+      const habitRows = habits.map((h, i) => ({
+        id:           crypto.randomUUID(),
+        user_id:      user.id,
+        name:         h.name,
+        action:       h.action || h.name,
+        icon:         h.icon || '✅',
+        color:        h.color || '#8b5cf6',
+        category:     h.category || 'other',
+        status:       'active',
+        cycle_count:  1,
+        active:       true,
+        journey_id:   newJourney.id,         // link to this journey
+        created_at:   new Date().toISOString(),
+        sort_order:   i,
+      }));
+
+      const { data: insertedHabits, error: hErr } = await supabase
+        .from('habits')
+        .insert(habitRows)
+        .select('id, name, icon, color');
+
+      if (hErr) {
+        console.warn('[useJourney] habit insert error:', hErr.message);
+      } else {
+        insertedHabitIds = (insertedHabits || []).map(h => h.id);
+        console.log(`[useJourney] Created ${insertedHabitIds.length} habits from template`);
+      }
+
+      // Also snapshot into journey_habits for history display
+      const snaps = (insertedHabits || habits).map((h, i) => ({
         journey_id: newJourney.id,
-        habit_id:   h.id || null,
+        habit_id:   h.id || null,  // real habit id if inserted successfully
         name:       h.name,
         action:     h.action || null,
         icon:       h.icon || '✅',

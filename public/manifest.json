@@ -1,0 +1,19 @@
+{
+  "name": "Vượt Lười",
+  "short_name": "VượtLười",
+  "description": "Thử thách 21 ngày xây dựng thói quen tốt",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f13",
+  "theme_color": "#8B5CF6",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "productivity"]
+}

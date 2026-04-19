@@ -8,10 +8,13 @@ import ALL_CHALLENGES from '../data/challenges.json';
 const MVA_TIP = 'MVA = Hành động nhỏ nhất bạn có thể làm ngay hôm nay cho thói quen của mình. Ví dụ: "Tập thể dục" → chỉ cần mang giày ra trước cửa.';
 const SOLO_CHALLENGES = ALL_CHALLENGES.filter(c => c.type !== 'Team');
 
-function pick(pool, dateStr) {
-  let h = 0;
-  for (let i = 0; i < dateStr.length; i++) { h = ((h << 5) - h) + dateStr.charCodeAt(i); h |= 0; }
-  return pool[Math.abs(h) % pool.length];
+// Pick challenge by streak day so new users start from Day 1, not a random point
+// Stable per day: streak only changes when user ticks, not mid-day
+function pickByDay(pool, streak) {
+  // streak=0 or 1 → index 0 (first challenge)
+  // Clamp to pool length so it wraps cleanly for repeat users
+  const idx = Math.max(0, streak - 1) % pool.length;
+  return pool[idx];
 }
 
 const TYPE_COLORS = {
@@ -19,12 +22,13 @@ const TYPE_COLORS = {
   Challenge: 'gold', Brain: 'purple', System: 'cyan', Mindset: 'blue',
 };
 
-export default function DailyChallenge() {
+export default function DailyChallenge({ streak = 0 }) {
   const { team } = useTeam();
   const isInTeam  = !!(team?.id);
   const dateKey   = new Date().toISOString().split('T')[0];
   const pool      = isInTeam ? ALL_CHALLENGES : SOLO_CHALLENGES;
-  const challenge = useMemo(() => pick(pool, dateKey), [isInTeam, dateKey]);
+  // Pick based on current streak day — new user (streak 0/1) sees Challenge 1
+  const challenge = useMemo(() => pickByDay(pool, streak), [pool, streak]);
 
   const { addXp, hasMilestone } = useXpStore();
   const storageKey = `vl_dc_${dateKey}`;

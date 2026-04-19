@@ -337,7 +337,7 @@ export default function TrackerPage() {
         </div>
 
         {/* ── Daily Challenge ── */}
-        <DailyChallenge />
+        <DailyChallenge streak={streak} />
 
         {/* ── Insight ── */}
         <div className="card" style={{ marginTop: '1.25rem', padding: '1.25rem' }}>

@@ -1,42 +1,78 @@
-import { useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { lazy, Suspense, useState } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
 import OnboardingModal, { useOnboarding } from './components/OnboardingModal';
-import LandingPage    from './pages/LandingPage';
-import TrackerPage    from './pages/TrackerPage';
-import HabitsPage     from './pages/HabitsPage';
-import FocusPage      from './pages/FocusPage';
-import TeamPage       from './pages/TeamPage';
-import DashboardPage  from './pages/DashboardPage';
-import QuizPage       from './pages/QuizPage';
-import LeaderboardPage from './pages/LeaderboardPage';
-import FriendsPage    from './pages/FriendsPage';
-import JourneyPage    from './pages/JourneyPage';
+import ErrorBoundary from './components/ErrorBoundary';
+import PageSkeleton  from './components/PageSkeleton';
 import './styles/global.css';
 import './index.css';
 
+// ── Lazy-loaded pages (each becomes its own JS chunk) ──────────────
+// LandingPage & TrackerPage are eager (entry points, always needed)
+import LandingPage from './pages/LandingPage';
+import TrackerPage from './pages/TrackerPage';
+
+const HabitsPage      = lazy(() => import('./pages/HabitsPage'));
+const FocusPage       = lazy(() => import('./pages/FocusPage'));
+const TeamPage        = lazy(() => import('./pages/TeamPage'));
+const DashboardPage   = lazy(() => import('./pages/DashboardPage'));
+const QuizPage        = lazy(() => import('./pages/QuizPage'));
+const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
+const FriendsPage     = lazy(() => import('./pages/FriendsPage'));
+const JourneyPage     = lazy(() => import('./pages/JourneyPage'));
+
+// ── SEO meta per route ─────────────────────────────────────────────
+const ROUTE_META = {
+  '/':           { title: 'Vượt Lười — Thử Thách 21 Ngày Chinh Phục Thói Quen',             desc: 'Xây dựng thói quen tốt trong 21 ngày. Theo dõi streak, đặt mục tiêu, và cùng đồng đội vượt lười.' },
+  '/tracker':    { title: 'Tracker — Vượt Lười',                                             desc: 'Tick ngày hôm nay, theo dõi streak và tiến độ 21 ngày của bạn.' },
+  '/habits':     { title: 'Habits — Vượt Lười',                                              desc: 'Quản lý danh sách thói quen cá nhân. Thêm, chỉnh sửa, và theo dõi từng habit.' },
+  '/focus':      { title: 'Focus Timer — Vượt Lười',                                         desc: 'Dùng Pomodoro để tập trung sâu và liên kết với thói quen của bạn.' },
+  '/team':       { title: 'Team — Vượt Lười',                                                desc: 'Tạo hoặc tham gia nhóm để cùng nhau vượt lười. Có đồng đội check = không bỏ cuộc được!' },
+  '/journey':    { title: 'Lộ Trình — Vượt Lười',                                            desc: 'Chọn lộ trình 21 ngày phù hợp với bạn hoặc tự tạo lộ trình riêng.' },
+  '/dashboard':  { title: 'Stats — Vượt Lười',                                               desc: 'Thống kê toàn bộ quá trình: streak, XP, mood, habit completion và lộ trình.' },
+  '/quiz':       { title: 'Quiz — Vượt Lười',                                                desc: 'Kiểm tra hiểu biết về tâm lý hành vi và thói quen. +50 XP nếu làm tốt!' },
+  '/leaderboard':{ title: 'Bảng Xếp Hạng — Vượt Lười',                                      desc: 'Xem ai đang dẫn đầu về streak và XP. Cạnh tranh lành mạnh!' },
+  '/friends':    { title: 'Bạn Bè — Vượt Lười',                                              desc: 'Kết bạn, xem streak và XP của nhau, cổ vũ nhau cùng tiến.' },
+};
+
+function PageMeta() {
+  const { pathname } = useLocation();
+  const meta = ROUTE_META[pathname] || ROUTE_META['/'];
+  document.title = meta.title;
+  const descEl = document.querySelector('meta[name="description"]');
+  if (descEl) descEl.setAttribute('content', meta.desc);
+  return null;
+}
+
+// ── App Shell ──────────────────────────────────────────────────────
 function AppShell() {
   const { shouldShow } = useOnboarding();
   const [onboarded, setOnboarded] = useState(!shouldShow);
 
   return (
     <>
+      <PageMeta />
       {!onboarded && <OnboardingModal onDone={() => setOnboarded(true)} />}
       <Navbar />
-      <Routes>
-        <Route path="/"            element={<LandingPage />} />
-        <Route path="/tracker"     element={<TrackerPage />} />
-        <Route path="/habits"      element={<HabitsPage />} />
-        <Route path="/focus"       element={<FocusPage />} />
-        <Route path="/team"        element={<TeamPage />} />
-        <Route path="/dashboard"   element={<DashboardPage />} />
-        <Route path="/quiz"        element={<QuizPage />} />
-        <Route path="/leaderboard" element={<LeaderboardPage />} />
-        <Route path="/friends"     element={<FriendsPage />} />
-        <Route path="/journey"     element={<JourneyPage />} />
-        <Route path="*"            element={<LandingPage />} />
-      </Routes>
+
+      <ErrorBoundary>
+        <Suspense fallback={<PageSkeleton />}>
+          <Routes>
+            <Route path="/"            element={<LandingPage />} />
+            <Route path="/tracker"     element={<TrackerPage />} />
+            <Route path="/habits"      element={<HabitsPage />} />
+            <Route path="/focus"       element={<FocusPage />} />
+            <Route path="/team"        element={<TeamPage />} />
+            <Route path="/dashboard"   element={<DashboardPage />} />
+            <Route path="/quiz"        element={<QuizPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/friends"     element={<FriendsPage />} />
+            <Route path="/journey"     element={<JourneyPage />} />
+            <Route path="*"            element={<LandingPage />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </>
   );
 }

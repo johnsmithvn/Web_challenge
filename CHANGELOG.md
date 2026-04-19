@@ -1,5 +1,45 @@
 # CHANGELOG
 
+## v1.7.1 — 2026-04-19
+
+### Fixed (Journey-Habit Integration)
+- `src/hooks/useJourney.js` — `startJourney()` giờ INSERT habits từ template vào bảng `habits` của user (trước chỉ snapshot vào `journey_habits`). Habits được link `journey_id` ngay khi tạo
+- `src/components/journey/ProgramBrowser.jsx` — `handleStart` giờ truyền `habits` array từ template khi gọi `onStart()`
+- `src/pages/JourneyPage.jsx` — `handleStart` forward `habits` xuống `startJourney`. Thêm success toast "X habits mới được thêm" sau khi bắt đầu lộ trình
+- `src/components/journey/ActiveJourneyPanel.jsx` — Progress ring/bar giờ tính từ **habit_logs thực tế**: đếm số ngày user tick đủ TẤT CẢ habits của lộ trình (thay vì đếm calendar days). Hiện "Hôm nay đã hoàn thành ✅" hoặc "Chưa tick đủ ⭕"
+
+### Flow sau fix
+```
+1. User bấm "Bắt Đầu" template "Kỷ Luật Thể Chất"
+2. → 3 habits (Tập luyện, Uống 2L, Ngủ trước 23h) tự xuất hiện trong /habits
+3. → Mỗi ngày tick đủ 3 = +1 ngày hoàn thành
+4. → Progress ring = (ngày tick đủ) / target_days
+```
+
+---
+
+## v1.7.0 — 2026-04-19
+
+### Added
+- `src/components/ErrorBoundary.jsx` — Class component bắt mọi render error, hiện friendly fallback với "Thử lại" + "Về trang chủ" thay vì màn trắng
+- `src/components/PageSkeleton.jsx` — Shimmer skeleton loading placeholder cho lazy-loaded pages
+- `public/manifest.json` — PWA Web App Manifest: `display: standalone`, theme-color, icons, categories
+- `index.html` — PWA meta tags: `theme-color`, `og:type/url/image/locale`, Twitter Card, `<link rel="manifest">`
+
+### Changed
+- `src/App.jsx` — Lazy load 8 pages (HabitsPage, FocusPage, TeamPage, DashboardPage, QuizPage, LeaderboardPage, FriendsPage, JourneyPage) với `React.lazy` + `Suspense`. LandingPage + TrackerPage vẫn eager (entry points). Mỗi page = 1 JS chunk riêng
+- `src/App.jsx` — Wrap toàn bộ Routes trong `<ErrorBoundary>` 
+- `src/App.jsx` — Thêm `<PageMeta />` component cập nhật `document.title` + `meta[description]` theo route
+- `src/components/DailyChallenge.jsx` — Fix: thay hash-by-date bằng pick-by-streak-day. User mới (streak=0/1) sẽ thấy Challenge Ngày 1, không còn hiện "Final Boss"
+- `src/pages/TrackerPage.jsx` — Pass `streak` prop vào `<DailyChallenge>`
+
+### Bundle Impact (gzip)
+| Before | After |
+|--------|-------|
+| 1 chunk ~350kB | Main 79kB + pages 0.6-9kB each (lazy loaded) |
+
+---
+
 ## v1.6.2 — 2026-04-19
 
 ### Added

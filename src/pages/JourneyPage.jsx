@@ -30,21 +30,29 @@ export default function JourneyPage() {
   } = useJourney();
 
   // default tab: "Đang Chạy" if active, else "Khám Phá"
-  const [tab, setTab]               = useState(activeJourney ? 'active' : 'explore');
-  const [showCustomModal, setCustom] = useState(false);
-  const [starting, setStarting]     = useState(false);
-  const [showAuth,  setShowAuth]    = useState(false);
+  const [tab, setTab]                   = useState(activeJourney ? 'active' : 'explore');
+  const [showCustomModal, setCustom]    = useState(false);
+  const [starting, setStarting]         = useState(false);
+  const [showAuth,  setShowAuth]        = useState(false);
+  const [startSuccessMsg, setStartSuccessMsg] = useState('');
 
   // ── Handlers ───────────────────────────────────────────────
-  const handleStart = async ({ title, programId, targetDays, description }) => {
+  const handleStart = async ({ title, programId, targetDays, description, habits }) => {
     if (!isAuthenticated) {
       setShowAuth(true);
       return;
     }
     setStarting(true);
-    const j = await startJourney({ title, programId, targetDays, description });
+    const j = await startJourney({ title, programId, targetDays, description, habits });
     setStarting(false);
-    if (j) setTab('active');
+    if (j) {
+      setTab('active');
+      // Brief nudge to visit Habits page
+      setStartSuccessMsg(habits?.length
+        ? `✅ Đã tạo lộ trình! ${habits.length} habits mới được thêm vào danh sách của bạn.`
+        : '✅ Đã tạo lộ trình!');
+      setTimeout(() => setStartSuccessMsg(''), 5000);
+    }
   };
 
   const handleRenew = async () => {
@@ -71,6 +79,25 @@ export default function JourneyPage() {
             <h1>🗺 Lộ Trình</h1>
             <p>Chọn và theo dõi hành trình chuyển đổi thói quen của bạn</p>
           </div>
+
+          {/* Success toast */}
+          {startSuccessMsg && (
+            <div style={{
+              padding: '0.85rem 1.1rem',
+              background: 'rgba(0, 255, 136, 0.08)',
+              border: '1px solid rgba(0, 255, 136, 0.25)',
+              borderRadius: '10px',
+              color: 'var(--green)',
+              fontSize: '0.9rem',
+              marginBottom: '1rem',
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+            }}>
+              {startSuccessMsg}
+              <span style={{ marginLeft: 'auto', opacity: 0.6, fontSize: '0.75rem' }}>
+                → Vào <a href="/habits" style={{ color: 'var(--green)' }}>Habits</a> để bắt đầu tick
+              </span>
+            </div>
+          )}
 
       {/* Tabs */}
       <div className="journey-tabs">

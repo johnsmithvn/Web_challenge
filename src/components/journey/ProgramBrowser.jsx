@@ -49,11 +49,11 @@ export default function ProgramBrowser({ onStart, onCustom, hasActiveJourney, st
   const handleStart = async (prog) => {
     setStartingId(prog.id);
     await onStart({
-      title:      prog.title,
-      programId:  prog.id,
-      targetDays: prog.duration_days || prog.duration || 21,
+      title:       prog.title,
+      programId:   prog.id,
+      targetDays:  prog.duration_days || prog.duration || 21,
       description: prog.description || null,
-      // habits not auto-added to user habits, only snapshotted
+      habits:      prog.habits || [],   // ← pass template habits
     });
     setStartingId(null);
   };
