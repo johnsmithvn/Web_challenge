@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v1.9.4 — 2026-04-19
+
+### Fixed
+- **Redirect loop:** Fixed a deep React batching race condition where `isLoadingJourney` flipped to `false` for exactly one render tick when authentication finished, before the journey fetch could begin. This caused the app to instantly redirect. Converted loading state to a synchronous derived variable to completely eliminate the race condition.
+
+---
+
 ## v1.9.3 — 2026-04-19
 
 ### Added

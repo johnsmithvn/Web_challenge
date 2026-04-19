@@ -23,13 +23,19 @@ export function JourneyProvider({ children }) {
   const useDB = isSupabaseEnabled && isAuthenticated;
 
   const [activeJourney,    setActiveJourney]    = useState(null);
-  // MUST default to true — otherwise AppShell sees !isLoading && !activeJourney
-  // on mount and redirects BEFORE the fetch even starts
-  const [isLoadingJourney, setIsLoadingJourney] = useState(true);
+  const [loadedUserId,     setLoadedUserId]     = useState(undefined); // undefined = initial
+
+  // SYNCHRONOUSLY derive loading state to prevent React `useEffect` 1-tick race condition
+  // where isAuthenticated becomes true but isLoadingJourney hasn't been set to true yet.
+  let isLoadingJourney = false;
+  if (useDB) {
+    if (loadedUserId !== user.id) {
+      isLoadingJourney = true; // Still fetching for this specific user
+    }
+  }
 
   const fetchActiveJourney = useCallback(async () => {
     if (!useDB || !user) return;
-    setIsLoadingJourney(true);
     try {
       const { data, error } = await supabase
         .from('user_journeys')
@@ -45,17 +51,18 @@ export function JourneyProvider({ children }) {
     } catch (err) {
       console.warn('[JourneyContext] fetch error:', err.message);
     } finally {
-      setIsLoadingJourney(false);
+      setLoadedUserId(user.id);
     }
   }, [useDB, user]);
 
   // Fetch once on login, clear on logout
   useEffect(() => {
     if (useDB) {
+      setLoadedUserId(undefined); // Force loading state immediately
       fetchActiveJourney();
     } else {
       setActiveJourney(null);
-      setIsLoadingJourney(false); // Guest user → no fetch needed
+      setLoadedUserId(null); // Guest user
     }
   }, [useDB]); // eslint-disable-line react-hooks/exhaustive-deps
 

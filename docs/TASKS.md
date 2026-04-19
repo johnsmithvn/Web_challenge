@@ -17,13 +17,13 @@
 
 ---
 
+## v1.9.4 — ✅ DONE (2026-04-19) — Bulletproof Redirect Fix
 
+### The REAL root cause of the redirect bug
+- [x] `src/contexts/JourneyContext.jsx` — Fixed a deeper React `useEffect` batching race condition. Previously, when `AuthContext` finished loading and `isAuthenticated` became `true`, there was exactly **one render cycle (tick)** where `AppShell` evaluated `isAuthenticated=true`, but `JourneyContext` hadn't fired its effect yet, so `isLoadingJourney` was still `false` (set by the guest initialization).
+- **Solution:** Converted `isLoadingJourney` into a **synchronous derived state** (`loadedUserId !== user.id`) instead of relying on `useEffect`. Now, the moment `user` is available, `isLoadingJourney` evaluates to `true` instantly, blocking the `AppShell` redirect until the fetch truly finishes.
 
-### Fix firstTime redirect (ROOT CAUSE)
-- [x] `src/contexts/JourneyContext.jsx` — `isLoadingJourney` defaulted to `false` → on mount, AppShell saw `!isLoading && !activeJourney` and redirected BEFORE fetch started. Fix: default to `true` + set `false` for guest users in else branch
-- [x] `src/App.jsx` — `useRef` → `sessionStorage` as secondary safety net
-
-### Remove manual tick button
+---### Remove manual tick button
 - [x] `src/pages/TrackerPage.jsx` — removed `handleMainTick` + big "Tick Hôm Nay" button. Hero area now shows auto-calculated status (X/Y habits). Daily day-complete is auto-derived from habit ticks (all done = day done). Fixes cross-journey stale tick state bug.
 
 ---
