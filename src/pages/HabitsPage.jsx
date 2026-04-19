@@ -4,6 +4,8 @@ import { useCustomHabits } from '../hooks/useCustomHabits';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import { useMoodLog, useSkipReasons } from '../hooks/useMoodSkip';
 import { useAuth } from '../contexts/AuthContext';
+import { useHabitLogs } from '../hooks/useHabitLogs';
+import { useJourney } from '../hooks/useJourney';
 import MonthCalendar from '../components/MonthCalendar';
 import HabitManager from '../components/HabitManager';
 import LoginNudgeModal from '../components/LoginNudgeModal';
@@ -192,44 +194,43 @@ export default function HabitsPage() {
   const [skipModal,     setSkipModal]     = useState(null);
   const [skipReason,    setSkipReason]    = useState('');
   const [skipNote,      setSkipNote]      = useState('');
-  const [celebration,   setCelebration]   = useState(false); // day-complete banner
+  const [celebration,   setCelebration]   = useState(false);
 
-  // Per-habit daily progress: { "2026-04-18_h1": true, ... }
-  const HABIT_PROG_KEY = 'vl_habit_progress';
-  const [habitProg, setHabitProg] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(HABIT_PROG_KEY) || '{}'); }
-    catch { return {}; }
-  });
+  // ── Journey context ──────────────────────────────────────
+  const { activeJourney, ensureDefaultJourney } = useJourney();
+
+  // ── Per-habit daily progress (Supabase habit_logs / localStorage fallback) ──
+  const { habitProg, toggleLog } = useHabitLogs(activeJourney?.id || null);
 
   const todayKey  = new Date().toISOString().split('T')[0];
   const todayMood = getMood(todayKey);
 
   // Tick a specific habit for today
-  const handleHabitTick = (habit) => {
-    const key       = `${todayKey}_${habit.id}`;
-    const wasDone   = !!habitProg[key];
-    const next      = { ...habitProg, [key]: !wasDone };
-    localStorage.setItem(HABIT_PROG_KEY, JSON.stringify(next));
-    setHabitProg(next);
+  const handleHabitTick = async (habit) => {
+    const key     = `${todayKey}_${habit.id}`;
+    const wasDone = !!habitProg[key];
+
+    // Delegate to useHabitLogs (handles Supabase + localStorage)
+    await toggleLog(habit.id, todayKey);
 
     // Award XP once per habit per day (only when checking)
     if (!wasDone && !hasMilestone('habit_tick', { habitId: habit.id, date: todayKey })) {
       addXp(XP_REWARDS.daily_check, 'habit_tick', { habitId: habit.id, date: todayKey });
     }
 
-    // Mark overall day done if ALL habits ticked
+    // Mark overall day done if ALL habits ticked (check optimistically against toggled state)
+    const nextDone = !wasDone;
     const allDone = activeHabits.every(h =>
-      h.id === habit.id ? !wasDone : !!next[`${todayKey}_${h.id}`]
+      h.id === habit.id ? nextDone : !!habitProg[`${todayKey}_${h.id}`]
     );
     if (allDone && !data[todayKey]) {
       toggle(todayKey);
       setCelebration(true);
-      // Show login nudge for guest users on their FIRST completed day
       if (!isAuthenticated && totalDone === 0 && !localStorage.getItem(NUDGE_KEY)) {
-        setTimeout(() => setShowNudge(true), 1500); // slight delay for celebration first
+        setTimeout(() => setShowNudge(true), 1500);
       }
     } else if (!allDone && data[todayKey]) {
-      toggle(todayKey); // untick overall if any unchecked
+      toggle(todayKey);
       setCelebration(false);
     }
   };

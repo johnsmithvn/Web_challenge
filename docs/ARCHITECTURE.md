@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Thử Thách Vượt Lười
-**Version:** v1.3.1
-**Updated:** 2026-04-18
+**Version:** v1.5.0
+**Updated:** 2026-04-19
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 ---
@@ -47,6 +47,8 @@ src/
 ├── hooks/
 │   ├── useHabitStore.js     # Daily tick, streak, dual-mode (LS/Supabase)
 │   ├── useCustomHabits.js   # Custom habit CRUD, dual-mode
+│   ├── useHabitLogs.js      # NEW v1.5.0 — Per-habit daily logs (replaces vl_habit_progress)
+│   ├── useJourney.js        # NEW v1.5.0 — Journey lifecycle (start/complete/renew/extend)
 │   ├── useFocusTimer.js     # Pomodoro phases, session log, DB sync
 │   ├── useMoodSkip.js       # useMoodLog + useSkipReasons hooks
 │   ├── useXpStore.js        # XP log, level computation
@@ -68,11 +70,12 @@ src/
 │   ├── LeaderboardPage.jsx  # /leaderboard — Streak/XP ranking
 │   └── FriendsPage.jsx      # /friends — Kết bạn
 │
-├── data/                    # NEW v1.2.2 — Static JSON content (Rule 14)
+├── data/                    # Static JSON content (Rule 14)
 │   ├── challenges.json      # 21 Daily Challenges
 │   ├── quiz.json            # 10 Quiz questions
 │   ├── habits.json          # defaultHabits, categories, icons, colors, skipReasons, moods
-│   └── testimonials.json    # Landing page reviews
+│   ├── testimonials.json    # Landing page reviews
+│   └── quotes.json          # NEW v1.4.5 — 30 daily motivational quotes
 │
 ├── styles/
 │   ├── global.css           # CSS variables, reset, typography
@@ -119,7 +122,8 @@ Hook (e.g. useHabitStore)
 
 ```
 vl_habit_data          # { [dateStr]: boolean } — daily tick
-vl_habit_progress      # { [dateStr_habitId]: boolean } — per-habit tick
+vl_habit_progress      # { [dateStr_habitId]: boolean } — DEPRECATED v1.5.0
+                       # → migrated to Supabase habit_logs on first auth login
 vl_custom_habits       # Habit[] — list of custom habits
 vl_xp_store            # XPEntry[] — immutable log
 vl_mood_log            # { [dateStr]: { emoji, label } }
@@ -127,29 +131,38 @@ vl_skip_{date}         # SkipEntry — per-day skip reason
 vl_focus_sessions      # FocusSession[]
 vl_notif_settings      # { enabled, time }
 vl_migrated            # "true" after first login migration
-vl_onboarded           # "1" — onboarding completed (NEW v1.3.0)
-vl_program_round       # "1"|"2"|... — which 21-day round (NEW v1.3.0)
-vl_completion_shown_N  # "1" — completion modal shown for round N (NEW v1.3.0)
+vl_onboarded           # "1" — onboarding completed
+vl_program_round       # "1"|"2"|... — which 21-day round
+vl_completion_shown_N  # "1" — completion modal shown for round N
+vl_active_journey      # NEW v1.5.0 — snapshot of active user_journey (offline fallback)
+vl_habit_logs_migrated # NEW v1.5.0 — "1" after vl_habit_progress migrated to Supabase
 ```
 
 ### Supabase Tables
 
 ```
-profiles           ← auth.users (auto-created by trigger)
-streaks            ← updated by trigger on progress INSERT/UPDATE
-progress           ← primary daily check source of truth
-habits             ← custom user habits
-focus_sessions     ← pomodoro session log
-mood_logs          ← daily mood (UNIQUE user+date)
-skip_reasons       ← daily skip (UNIQUE user+date)
-xp_logs            ← immutable XP event log
-teams              ← accountability pairs
-reactions          ← emoji reactions between teammates
-friendships        ← friend request graph
+profiles              ← auth.users (auto-created by trigger)
+streaks               ← updated by trigger on progress INSERT/UPDATE
+progress              ← primary daily check source of truth
+habits                ← custom user habits (+journey_id col v1.5.0)
+focus_sessions        ← pomodoro session log
+mood_logs             ← daily mood (UNIQUE user+date)
+skip_reasons          ← daily skip (UNIQUE user+date)
+xp_logs               ← immutable XP event log
+teams                 ← accountability pairs
+reactions             ← emoji reactions between teammates
+friendships           ← friend request graph
 notification_settings ← 1:1 with profiles
-partner_queue      ← auto-match waiting room
-quiz_attempts      ← quiz history
+partner_queue         ← auto-match waiting room
+quiz_attempts         ← quiz history
 daily_challenge_completions ← 1 per day
+
+-- NEW v1.5.0 (run data/migration_v1.5.0.sql)
+programs              ← program/lộ trình library (system templates + user)
+program_habits        ← habit templates belonging to a program
+user_journeys         ← each user's run of a program (with start/end dates)
+journey_habits        ← snapshot of habits at journey start (history preservation)
+habit_logs            ← per-habit daily completion (replaces vl_habit_progress)
 ```
 
 ---
