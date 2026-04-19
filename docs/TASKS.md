@@ -3,7 +3,21 @@
 
 ---
 
-## v1.9.2 — ✅ DONE (2026-04-19) — Redirect + Remove Manual Tick
+## v1.9.3 — ✅ DONE (2026-04-19) — Journey Switch Modal + Fixes
+
+### Journey switch modal (replace vs append)
+- [x] `src/components/journey/ProgramBrowser.jsx` — SwitchModeModal with 2 radio options: 🔄 Thay thế toàn bộ habits / ➕ Ghi thêm habits
+- [x] `src/hooks/useJourney.js` — `startJourney` accepts `habitMode`: replace deactivates old habits, append keeps them + re-points to new journey
+
+### History sort fix
+- [x] `src/hooks/useJourney.js` — history sorted by `created_at` DESC (not `started_at` which is DATE-only)
+
+### Stale chunk resilience
+- [x] `src/pages/TrackerPage.jsx` — `lazyRetry()` wrapper auto-reloads on chunk load failure after redeployment
+
+---
+
+
 
 ### Fix firstTime redirect (ROOT CAUSE)
 - [x] `src/contexts/JourneyContext.jsx` — `isLoadingJourney` defaulted to `false` → on mount, AppShell saw `!isLoading && !activeJourney` and redirected BEFORE fetch started. Fix: default to `true` + set `false` for guest users in else branch

@@ -111,7 +111,8 @@ export function useJourney() {
   }, [useDB, user, setActiveJourney]);
 
   // ── Start a journey from a program template ───────────────
-  const startJourney = useCallback(async ({ title, description, programId, targetDays, habits = [] }) => {
+  // habitMode: 'replace' (deactivate old habits) | 'append' (keep old + add new)
+  const startJourney = useCallback(async ({ title, description, programId, targetDays, habits = [], habitMode = 'replace' }) => {
     const today = new Date().toISOString().split('T')[0];
     const payload = {
       user_id:     useDB ? user.id : 'guest',
@@ -131,7 +132,7 @@ export function useJourney() {
       return localJourney;
     }
 
-    // Archive any existing active journey first
+    // 1. Archive any existing active journey first (preserves history)
     if (activeJourney) {
       await supabase
         .from('user_journeys')
@@ -139,6 +140,18 @@ export function useJourney() {
         .eq('id', activeJourney.id);
     }
 
+    // 2. Handle old habits based on habitMode
+    if (habitMode === 'replace') {
+      // Deactivate ALL old habits for this user (they belong to the old journey)
+      await supabase
+        .from('habits')
+        .update({ active: false, status: 'conquered' })
+        .eq('user_id', user.id)
+        .eq('active', true);
+    }
+    // 'append' mode: leave old habits active, they'll carry over
+
+    // 3. Create new journey
     const { data: newJourney, error } = await supabase
       .from('user_journeys')
       .insert(payload)
@@ -147,7 +160,7 @@ export function useJourney() {
 
     if (error) { console.warn('[useJourney] startJourney error:', error.message); return null; }
 
-    // Insert template habits into user's habits table
+    // 4. Insert template habits into user's habits table
     if (habits.length) {
       const habitRows = habits.map((h, i) => ({
         id:          crypto.randomUUID(),
@@ -176,7 +189,9 @@ export function useJourney() {
         console.log(`[useJourney] Created ${insertedHabits?.length ?? 0} habits from template`);
       }
 
-      const snaps = (insertedHabits || habits).map((h, i) => ({
+      // 5. Build journey_habits snapshot
+      //    For 'append' mode, also snapshot the kept old habits
+      const snapsFromNew = (insertedHabits || habits).map((h, i) => ({
         journey_id: newJourney.id,
         habit_id:   h.id || null,
         name:       h.name,
@@ -185,11 +200,42 @@ export function useJourney() {
         color:      h.color || '#8b5cf6',
         sort_order: i,
       }));
-      await supabase.from('journey_habits').insert(snaps);
+
+      if (habitMode === 'append') {
+        // Also snapshot old still-active habits
+        const { data: oldActive } = await supabase
+          .from('habits')
+          .select('id, name, action, icon, color')
+          .eq('user_id', user.id)
+          .eq('active', true)
+          .neq('journey_id', newJourney.id);
+
+        const snapsFromOld = (oldActive || []).map((h, i) => ({
+          journey_id: newJourney.id,
+          habit_id:   h.id,
+          name:       h.name,
+          action:     h.action || null,
+          icon:       h.icon || '✅',
+          color:      h.color || '#8b5cf6',
+          sort_order: snapsFromNew.length + i,
+        }));
+
+        // Update old habits to point to new journey
+        if (oldActive?.length) {
+          const oldIds = oldActive.map(h => h.id);
+          await supabase
+            .from('habits')
+            .update({ journey_id: newJourney.id })
+            .in('id', oldIds);
+        }
+
+        await supabase.from('journey_habits').insert([...snapsFromNew, ...snapsFromOld]);
+      } else {
+        await supabase.from('journey_habits').insert(snapsFromNew);
+      }
     }
 
-    // ← Sync context immediately so useHabitLogs / useFocusTimer
-    //   pick up the new journey_id on the very next write
+    // 6. Sync context immediately
     setActiveJourney(newJourney);
     saveLocalJourney(newJourney);
     return newJourney;

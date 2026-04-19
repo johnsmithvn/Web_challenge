@@ -28,8 +28,16 @@ const MOODS = HABITS_DATA.moods;
 const DAILY_QUOTES = QUOTES_DATA.dailyQuotes;
 
 // ── Lazy tab content (performance: only load when tab is active) ──
-const MonthCalendar      = lazy(() => import('../components/MonthCalendar'));
-const HabitManager       = lazy(() => import('../components/HabitManager'));
+// lazyRetry: auto-reload on chunk load failure (stale deployment cache)
+const lazyRetry = (fn) => lazy(() => fn().catch(() => {
+  if (!sessionStorage.getItem('vl_chunk_retry')) {
+    sessionStorage.setItem('vl_chunk_retry', '1');
+    window.location.reload();
+  }
+  return fn(); // re-throw if already retried
+}));
+const MonthCalendar      = lazyRetry(() => import('../components/MonthCalendar'));
+const HabitManager       = lazyRetry(() => import('../components/HabitManager'));
 
 function getDailyQuote() {
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);

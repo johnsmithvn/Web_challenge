@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v1.9.3 — 2026-04-19
+
+### Added
+- **Journey switch modal:** When switching to a new template, shows modal with 2 options: 🔄 Replace all habits / ➕ Append new habits. Warning: tick state resets, old journey saved to history.
+- **lazyRetry wrapper:** Auto-reload on stale chunk errors after Vercel redeployment
+
+### Fixed
+- **History sort:** `started_at` (DATE, no time) → `created_at` (TIMESTAMPTZ) for newest-first ordering
+
+---
+
 ## v1.9.2 — 2026-04-19
 
 ### Fixed

@@ -29,6 +29,10 @@ export default function ProgramBrowser({ onStart, onCustom, hasActiveJourney, st
   const [activeCategory, setActive] = useState('all');
   const [startingId, setStartingId] = useState(null);
 
+  // Switch mode modal state
+  const [switchModal, setSwitchModal] = useState(null); // prog to start
+  const [habitMode, setHabitMode]     = useState('replace'); // 'replace' | 'append'
+
   // ── Load from Supabase if available ──────────────────────
   useEffect(() => {
     if (!isSupabaseEnabled || !isAuthenticated) return;
@@ -60,6 +64,13 @@ export default function ProgramBrowser({ onStart, onCustom, hasActiveJourney, st
     : programs.filter(p => p.category === activeCategory);
 
   const handleStart = async (prog) => {
+    // If user has active journey → show switch mode modal first
+    if (hasActiveJourney) {
+      setSwitchModal(prog);
+      setHabitMode('replace');
+      return;
+    }
+    // No active journey → start directly
     setStartingId(prog.id);
     await onStart({
       title:       prog.title,
@@ -67,6 +78,23 @@ export default function ProgramBrowser({ onStart, onCustom, hasActiveJourney, st
       targetDays:  prog.duration_days || prog.duration || 21,
       description: prog.description || null,
       habits:      prog.habits || [],
+      habitMode:   'replace',
+    });
+    setStartingId(null);
+  };
+
+  const handleConfirmSwitch = async () => {
+    if (!switchModal) return;
+    const prog = switchModal;
+    setSwitchModal(null);
+    setStartingId(prog.id);
+    await onStart({
+      title:       prog.title,
+      programId:   prog.id,
+      targetDays:  prog.duration_days || prog.duration || 21,
+      description: prog.description || null,
+      habits:      prog.habits || [],
+      habitMode,
     });
     setStartingId(null);
   };
@@ -96,7 +124,67 @@ export default function ProgramBrowser({ onStart, onCustom, hasActiveJourney, st
           fontSize: '0.83rem',
           color: '#fbbf24',
         }}>
-          ⚠️ Bạn đang có lộ trình active. Chọn template mới sẽ archive lộ trình cũ và lưu vào Lịch Sử.
+          ⚠️ Bạn đang có lộ trình active. Chọn template mới sẽ lưu lộ trình cũ vào Lịch Sử.
+        </div>
+      )}
+
+      {/* Switch mode modal */}
+      {switchModal && (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setSwitchModal(null)}>
+          <div className="auth-modal card" style={{ maxWidth: 420, padding: '1.5rem' }}>
+            <button className="auth-modal__close" onClick={() => setSwitchModal(null)}>✕</button>
+            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem' }}>🔄 Đổi Lộ Trình</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 1rem' }}>
+              Bạn sắp chuyển sang <strong style={{ color: 'var(--text-primary)' }}>{switchModal.title}</strong>.
+              Lộ trình cũ sẽ được lưu vào Lịch Sử.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.25rem' }}>
+              <label style={{
+                display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
+                padding: '0.75rem', borderRadius: 10,
+                background: habitMode === 'replace' ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${habitMode === 'replace' ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}>
+                <input type="radio" name="habitMode" value="replace" checked={habitMode === 'replace'}
+                  onChange={() => setHabitMode('replace')} style={{ marginTop: 2 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>🔄 Thay thế toàn bộ habits</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Xoá habits cũ, chỉ dùng habits của lộ trình mới</div>
+                </div>
+              </label>
+
+              <label style={{
+                display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
+                padding: '0.75rem', borderRadius: 10,
+                background: habitMode === 'append' ? 'rgba(6,182,212,0.1)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${habitMode === 'append' ? 'rgba(6,182,212,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}>
+                <input type="radio" name="habitMode" value="append" checked={habitMode === 'append'}
+                  onChange={() => setHabitMode('append')} style={{ marginTop: 2 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>➕ Ghi thêm habits</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Giữ habits cũ + thêm habits mới từ lộ trình</div>
+                </div>
+              </label>
+            </div>
+
+            <div style={{ padding: '0.6rem 0.8rem', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: '1rem', fontSize: '0.78rem', color: '#f87171' }}>
+              ⚠️ Trạng thái tick hôm nay sẽ được reset. Lịch sử lộ trình cũ vẫn được lưu.
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button className="btn btn-ghost" onClick={() => setSwitchModal(null)} style={{ flex: 1 }}>
+                Huỷ
+              </button>
+              <button className="btn btn-primary" onClick={handleConfirmSwitch}
+                disabled={starting} style={{ flex: 1 }}>
+                {starting ? '⏳ Đang xử lý...' : '🚀 Xác nhận đổi'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
