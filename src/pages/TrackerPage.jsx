@@ -7,6 +7,7 @@ import { useNotifications } from '../hooks/useNotifications';
 import { useTeam } from '../hooks/useTeam';
 import { useMoodLog } from '../hooks/useMoodSkip';
 import { useJourney } from '../hooks/useJourney';
+import { useHabitLogs } from '../hooks/useHabitLogs';
 import DailyChallenge from '../components/DailyChallenge';
 import XpBar from '../components/XpBar';
 import NotificationSettings from '../components/NotificationSettings';
@@ -139,6 +140,7 @@ export default function TrackerPage() {
   const { scheduleTodayReminder } = useNotifications();
   const { saveMood, getMood } = useMoodLog();
   const { activeJourney } = useJourney();
+  const { habitProg }     = useHabitLogs();
 
   const { team } = useTeam();
 
@@ -155,26 +157,19 @@ export default function TrackerPage() {
     setShowCompletion(false);
   };
 
-  // Option A: Renew — reset streak data, keep habits, bump cycleCount
+  // Option A: Renew — renew all active habits cycle count, reload
   const handleRenew = () => {
     localStorage.setItem(COMPLETION_KEY, '1');
     setShowCompletion(false);
-    // Renew all active habits cycle count
     activeHabits.forEach(h => renewHabit(h.id));
-    localStorage.removeItem('vl_habit_data');
-    localStorage.removeItem('vl_habit_progress');
     window.location.reload();
   };
 
-  // Option B: New Challenge — mark habits as conquered, reset everything
+  // Option B: New Challenge — mark habits as conquered, reload
   const handleNewChallenge = () => {
     localStorage.setItem(COMPLETION_KEY, '1');
     setShowCompletion(false);
-    // Mark all active habits as conquered
     activeHabits.forEach(h => conquestHabit(h.id));
-    localStorage.removeItem('vl_habit_data');
-    localStorage.removeItem('vl_habit_progress');
-    localStorage.removeItem('vl_custom_habits'); // will reload defaults
     window.location.reload();
   };
 
@@ -301,8 +296,7 @@ export default function TrackerPage() {
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {activeHabits.slice(0, 4).map(h => {
-                const prog = JSON.parse(localStorage.getItem('vl_habit_progress') || '{}');
-                const done = !!prog[`${todayKey}_${h.id}`];
+                const done = !!habitProg[`${todayKey}_${h.id}`];
                 return (
                   <div key={h.id} style={{
                     display: 'flex', alignItems: 'center', gap: '0.4rem',
