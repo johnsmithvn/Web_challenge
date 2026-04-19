@@ -70,3 +70,10 @@ SELECT table_name FROM information_schema.tables
 WHERE table_schema = 'public'
   AND table_name IN ('xp_logs', 'friendships', 'team_check_logs', 'team_members')
 ORDER BY table_name;
+
+-- ── 4. v1.8.0: Add journey_id to focus_sessions ───────────────
+-- Links each focus session to the active Journey for per-journey analytics
+ALTER TABLE focus_sessions
+  ADD COLUMN IF NOT EXISTS journey_id UUID REFERENCES user_journeys(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_focus_journey ON focus_sessions (journey_id, date DESC);

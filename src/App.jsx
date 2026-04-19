@@ -1,6 +1,9 @@
-import { lazy, Suspense, useState } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { JourneyProvider } from './contexts/JourneyContext';
+import { useAuth } from './contexts/AuthContext';
+import { useActiveJourney } from './contexts/JourneyContext';
 import Navbar from './components/Navbar';
 import OnboardingModal, { useOnboarding } from './components/OnboardingModal';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -13,14 +16,15 @@ import './index.css';
 import LandingPage from './pages/LandingPage';
 import TrackerPage from './pages/TrackerPage';
 
-const HabitsPage      = lazy(() => import('./pages/HabitsPage'));
-const FocusPage       = lazy(() => import('./pages/FocusPage'));
-const TeamPage        = lazy(() => import('./pages/TeamPage'));
-const DashboardPage   = lazy(() => import('./pages/DashboardPage'));
-const QuizPage        = lazy(() => import('./pages/QuizPage'));
-const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'));
-const FriendsPage     = lazy(() => import('./pages/FriendsPage'));
-const JourneyPage     = lazy(() => import('./pages/JourneyPage'));
+const HabitsPage        = lazy(() => import('./pages/HabitsPage'));
+const FocusPage         = lazy(() => import('./pages/FocusPage'));
+const TeamPage          = lazy(() => import('./pages/TeamPage'));
+const DashboardPage     = lazy(() => import('./pages/DashboardPage'));
+const QuizPage          = lazy(() => import('./pages/QuizPage'));
+const LeaderboardPage   = lazy(() => import('./pages/LeaderboardPage'));
+const FriendsPage       = lazy(() => import('./pages/FriendsPage'));
+const JourneyPage       = lazy(() => import('./pages/JourneyPage'));
+const JourneyDetailPage = lazy(() => import('./pages/JourneyDetailPage'));
 
 // ── SEO meta per route ─────────────────────────────────────────────
 const ROUTE_META = {
@@ -49,27 +53,41 @@ function PageMeta() {
 function AppShell() {
   const { shouldShow } = useOnboarding();
   const [onboarded, setOnboarded] = useState(!shouldShow);
+  const { isAuthenticated } = useAuth();
+  const { activeJourney, isLoadingJourney } = useActiveJourney();
+
+  // Step 6: After onboarding + login, if no active journey → redirect to /journey?firstTime=true
+  const [redirectToJourney, setRedirectToJourney] = useState(false);
+  useEffect(() => {
+    if (onboarded && isAuthenticated && !isLoadingJourney && !activeJourney) {
+      setRedirectToJourney(true);
+    } else {
+      setRedirectToJourney(false);
+    }
+  }, [onboarded, isAuthenticated, isLoadingJourney, activeJourney]);
 
   return (
     <>
       <PageMeta />
       {!onboarded && <OnboardingModal onDone={() => setOnboarded(true)} />}
+      {redirectToJourney && <Navigate to="/journey?firstTime=true" replace />}
       <Navbar />
 
       <ErrorBoundary>
         <Suspense fallback={<PageSkeleton />}>
           <Routes>
-            <Route path="/"            element={<LandingPage />} />
-            <Route path="/tracker"     element={<TrackerPage />} />
-            <Route path="/habits"      element={<HabitsPage />} />
-            <Route path="/focus"       element={<FocusPage />} />
-            <Route path="/team"        element={<TeamPage />} />
-            <Route path="/dashboard"   element={<DashboardPage />} />
-            <Route path="/quiz"        element={<QuizPage />} />
-            <Route path="/leaderboard" element={<LeaderboardPage />} />
-            <Route path="/friends"     element={<FriendsPage />} />
-            <Route path="/journey"     element={<JourneyPage />} />
-            <Route path="*"            element={<LandingPage />} />
+            <Route path="/"             element={<LandingPage />} />
+            <Route path="/tracker"      element={<TrackerPage />} />
+            <Route path="/habits"       element={<HabitsPage />} />
+            <Route path="/focus"        element={<FocusPage />} />
+            <Route path="/team"         element={<TeamPage />} />
+            <Route path="/dashboard"    element={<DashboardPage />} />
+            <Route path="/quiz"         element={<QuizPage />} />
+            <Route path="/leaderboard"  element={<LeaderboardPage />} />
+            <Route path="/friends"      element={<FriendsPage />} />
+            <Route path="/journey"      element={<JourneyPage />} />
+            <Route path="/journey/:id"  element={<JourneyDetailPage />} />
+            <Route path="*"             element={<LandingPage />} />
           </Routes>
         </Suspense>
       </ErrorBoundary>
@@ -81,7 +99,9 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <AppShell />
+        <JourneyProvider>
+          <AppShell />
+        </JourneyProvider>
       </BrowserRouter>
     </AuthProvider>
   );

@@ -3,6 +3,37 @@
 
 ---
 
+## v1.8.0 — ✅ DONE (2026-04-19) — Journey-as-Core-Context
+
+### Step 1 — DB: add `journey_id` to `focus_sessions`
+- [x] `data/migration_v1.6.2.sql` — ALTER TABLE focus_sessions ADD COLUMN journey_id
+
+### Step 2 — JourneyContext
+- [x] `src/contexts/JourneyContext.jsx` — NEW: expose activeJourney globally, 1 Supabase fetch per login
+- [x] `src/App.jsx` — wrap AppShell với JourneyProvider
+
+### Step 3 — useHabitLogs: pass journey_id khi tick
+- [x] `src/hooks/useHabitLogs.js` — import useActiveJourney, effectiveJourneyId, pass vào habit_logs upsert
+
+### Step 4 — useFocusTimer: tag journey_id
+- [x] `src/hooks/useFocusTimer.js` — useRef pattern để pass activeJourney.id vào focus_sessions insert
+
+### Step 5 — useCustomHabits: gắn journey_id khi tạo habit
+- [x] `src/hooks/useCustomHabits.js` — addHabit() thêm journey_id: activeJourney?.id
+
+### Step 6 — Onboarding: redirect /journey nếu chưa có journey
+- [x] `src/App.jsx` — AppShell: sau login, nếu !activeJourney → Navigate to /journey?firstTime=true
+
+### Step 7 — Journey Detail Page
+- [x] `src/pages/JourneyDetailPage.jsx` — NEW full page /journey/:id với stats: completion%, focus hours, XP, mood, habits
+- [x] `src/components/journey/JourneyHistory.jsx` — click card → navigate /journey/:id
+- [x] `src/App.jsx` — add route /journey/:id
+
+### ⚠️ Pending (manual action required)
+- [ ] Chạy phần SQL mới trong `data/migration_v1.6.2.sql` (phần 4 — ADD COLUMN to focus_sessions) trong Supabase SQL Editor
+
+---
+
 ## v1.6.0 — ✅ DONE (2026-04-19)
 
 ### Phase B — JourneyPage UI ✅ Done

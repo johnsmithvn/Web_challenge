@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## v1.8.0 — 2026-04-19
+
+### Added
+- `src/contexts/JourneyContext.jsx` — Single source of truth cho `activeJourney`. Fetch 1 lần khi login, expose qua `useActiveJourney()`. Tránh redundant Supabase calls từ nhiều hooks
+- `src/pages/JourneyDetailPage.jsx` — Full page `/journey/:id`: stats đầy đủ của 1 journey (hoàn thành % thực tế, focus hours, XP, mood distribution, danh sách ngày đã tick đủ)
+- `data/migration_v1.6.2.sql` — ALTER TABLE focus_sessions ADD COLUMN journey_id (phần 4 — cần chạy thủ công trong Supabase)
+
+### Changed
+- `src/App.jsx` — Wrap với `JourneyProvider`. Thêm redirect `/journey?firstTime=true` nếu user login nhưng chưa có journey. Thêm route `/journey/:id`
+- `src/hooks/useHabitLogs.js` — Import `useActiveJourney`, tự động pass `journey_id` vào mọi `habit_logs` write (upsert + auto-tick). Không cần truyền prop nữa
+- `src/hooks/useFocusTimer.js` — Import `useActiveJourney`, dùng `useRef` pattern để pass `journey_id` vào `focus_sessions` insert
+- `src/hooks/useCustomHabits.js` — `addHabit()` tự động gắn `journey_id: activeJourney?.id` khi tạo habit mới
+- `src/components/journey/JourneyHistory.jsx` — Mỗi card clickable → navigate `/journey/:id`
+
+### Flow hoàn chỉnh sau v1.8.0
+```
+User login → JourneyContext fetch activeJourney
+  → Nếu không có journey → redirect /journey?firstTime=true
+  → Mọi habit tick → habit_logs.journey_id = activeJourney.id
+  → Mọi focus session → focus_sessions.journey_id = activeJourney.id  
+  → Mọi habit tạo mới → habits.journey_id = activeJourney.id
+  → Journey kết thúc → click trong History → /journey/:id → xem full stats
+```
+
+---
+
 ## v1.7.1 — 2026-04-19
 
 ### Fixed (Journey-Habit Integration)

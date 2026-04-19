@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useActiveJourney } from '../contexts/JourneyContext';
 
 /**
  * useHabitLogs — per-habit daily completion tracking
@@ -58,7 +59,11 @@ function mapToInserts(prog, userId, journeyId) {
 // ── Hook ──────────────────────────────────────────────────────
 export function useHabitLogs(journeyId = null) {
   const { user, isAuthenticated } = useAuth();
+  const { activeJourney } = useActiveJourney();  // ← from JourneyContext
   const useDB = isSupabaseEnabled && isAuthenticated;
+
+  // Prefer explicit journeyId prop; fallback to context's active journey
+  const effectiveJourneyId = journeyId ?? activeJourney?.id ?? null;
 
   // In-memory map: guest gets empty, authenticated loads from Supabase
   const [habitProg, setHabitProg] = useState({});
@@ -147,7 +152,7 @@ export function useHabitLogs(journeyId = null) {
         const { error } = await supabase.from('habit_logs').upsert({
           user_id:    user.id,
           habit_id:   habitId,
-          journey_id: journeyId || null,
+          journey_id: effectiveJourneyId,
           log_date:   date,
           status:     'completed',
         }, { onConflict: 'user_id,habit_id,log_date' });
@@ -161,7 +166,7 @@ export function useHabitLogs(journeyId = null) {
 
     window.addEventListener('focus:habit-tick', handler);
     return () => window.removeEventListener('focus:habit-tick', handler);
-  }, [useDB, user, habitProg, journeyId]);
+  }, [useDB, user, habitProg, effectiveJourneyId]);
 
   // ── Toggle ─────────────────────────────────────────────────
   const toggleLog = useCallback(async (habitId, dateStr = null) => {
@@ -178,7 +183,7 @@ export function useHabitLogs(journeyId = null) {
           const { error } = await supabase.from('habit_logs').upsert({
             user_id:    user.id,
             habit_id:   habitId,
-            journey_id: journeyId || null,
+            journey_id: effectiveJourneyId,
             log_date:   today,
             status:     'completed',
           }, { onConflict: 'user_id,habit_id,log_date' });
@@ -197,7 +202,7 @@ export function useHabitLogs(journeyId = null) {
         setHabitProg(prev => ({ ...prev, [key]: wasDone })); // rollback
       }
     }
-  }, [habitProg, useDB, user, journeyId]);
+  }, [habitProg, useDB, user, effectiveJourneyId]);
 
   // ── Date range query ────────────────────────────────────────
   const getLogsInRange = useCallback(async (startDate, endDate, filterJourneyId = null) => {

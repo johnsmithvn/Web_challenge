@@ -6,6 +6,8 @@
  *   history — user_journeys[] (status: completed | archived | extended)
  */
 
+import { useNavigate } from 'react-router-dom';
+
 const STATUS_LABEL = {
   completed: '✅ Hoàn Thành',
   archived:  '🏳 Bỏ Cuộc',
@@ -13,6 +15,7 @@ const STATUS_LABEL = {
 };
 
 export default function JourneyHistory({ history = [] }) {
+  const navigate = useNavigate();
   if (!history.length) {
     return (
       <div className="journey-history-empty">
@@ -50,7 +53,13 @@ export default function JourneyHistory({ history = [] }) {
         const icon = statusKey === 'completed' ? '🏆' : statusKey === 'archived' ? '📁' : '📈';
 
         return (
-          <div key={j.id} className="journey-history-card">
+          <div
+            key={j.id}
+            className="journey-history-card"
+            onClick={() => navigate(`/journey/${j.id}`)}
+            style={{ cursor: 'pointer' }}
+            title="Xem chi tiết lộ trình"
+          >
             <span className="journey-history-icon">{icon}</span>
 
             <div className="journey-history-info">
@@ -65,9 +74,12 @@ export default function JourneyHistory({ history = [] }) {
               </div>
             </div>
 
-            <span className={`journey-status-badge ${statusKey}`}>
-              {STATUS_LABEL[statusKey] || statusKey}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span className={`journey-status-badge ${statusKey}`}>
+                {STATUS_LABEL[statusKey] || statusKey}
+              </span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>›</span>
+            </div>
           </div>
         );
       })}

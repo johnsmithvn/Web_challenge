@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useActiveJourney } from '../contexts/JourneyContext';
 
 // XP for completing a focus session.
 // Written directly to Supabase xp_logs to avoid circular import with useXpStore.
@@ -44,6 +45,9 @@ const DEFAULT_SETTINGS = {
 
 export function useFocusTimer() {
   const { user, isAuthenticated } = useAuth();
+  const { activeJourney } = useActiveJourney();  // ← context, always up-to-date
+  const activeJourneyRef = useRef(activeJourney);
+  useEffect(() => { activeJourneyRef.current = activeJourney; }, [activeJourney]);
   const useDB = isSupabaseEnabled && isAuthenticated;
 
   const [settings, setSettings] = useState(() => {
@@ -131,6 +135,7 @@ export function useFocusTimer() {
           id:           log.id,
           user_id:      user.id,
           habit_id:     habitId || null,
+          journey_id:   activeJourneyRef.current?.id || null,
           duration_min: settings.workMin,
           date:         today,
           completed_at: log.completedAt,

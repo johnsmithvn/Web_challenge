@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useActiveJourney } from '../contexts/JourneyContext';
 
 import HABITS_DATA from '../data/habits.json';
 
@@ -70,6 +71,7 @@ function rowToHabit(r) {
 
 export function useCustomHabits() {
   const { user, isAuthenticated } = useAuth();
+  const { activeJourney } = useActiveJourney();  // ← from JourneyContext
   const useDB = isSupabaseEnabled && isAuthenticated;
 
   // Default habits shown for guests (not persisted)
@@ -132,6 +134,7 @@ export function useCustomHabits() {
         status:       newHabit.status,
         cycle_count:  newHabit.cycleCount,
         active:       true,
+        journey_id:   activeJourney?.id || null,   // ← auto-link to active journey
         created_at:   newHabit.createdAt,
       });
       if (error) {
