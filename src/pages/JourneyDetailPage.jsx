@@ -243,6 +243,9 @@ export default function JourneyDetailPage() {
           ))}
         </div>
 
+        {/* ══ Month Summary Cards ══ */}
+        <MonthSummary journey={journey} stats={stats} />
+
         {/* ══ Journey Calendar ══ */}
         <JourneyCalendar
           journey={journey}
@@ -302,6 +305,115 @@ export default function JourneyDetailPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+
+/* ══════════════════════════════════════════════════════════
+   MonthSummary — progress ring per month (like Tracker page)
+   ══════════════════════════════════════════════════════════ */
+function MonthSummary({ journey, stats }) {
+  if (!stats || !stats.targetDays) return null;
+
+  const startDate = new Date(journey.started_at);
+  const endDate   = journey.ended_at ? new Date(journey.ended_at) : new Date();
+  const today     = new Date().toISOString().split('T')[0];
+
+  // Group journey days by month
+  const months = {};
+  const d = new Date(startDate);
+  while (d <= endDate && d.toISOString().split('T')[0] <= today) {
+    const k = d.toISOString().split('T')[0];
+    const monthKey = k.substring(0, 7); // "2026-04"
+    if (!months[monthKey]) months[monthKey] = { total: 0, done: 0, partial: 0, missed: 0 };
+    months[monthKey].total++;
+
+    const daySet = stats.byDate?.[k];
+    const done = daySet?.size || 0;
+    if (done >= stats.totalHabits && stats.totalHabits > 0) months[monthKey].done++;
+    else if (done > 0) months[monthKey].partial++;
+    else months[monthKey].missed++;
+
+    d.setDate(d.getDate() + 1);
+  }
+
+  // Future days remaining
+  const endStr = journey.ended_at || (() => {
+    const e = new Date(startDate);
+    e.setDate(e.getDate() + (stats.targetDays - 1));
+    return e.toISOString().split('T')[0];
+  })();
+  const futureD = new Date(today);
+  futureD.setDate(futureD.getDate() + 1);
+  const endD = new Date(endStr);
+  let futureDays = 0;
+  while (futureD <= endD) {
+    const monthKey = futureD.toISOString().split('T')[0].substring(0, 7);
+    if (!months[monthKey]) months[monthKey] = { total: 0, done: 0, partial: 0, missed: 0 };
+    futureDays++;
+    futureD.setDate(futureD.getDate() + 1);
+  }
+
+  const sortedMonths = Object.entries(months).sort(([a], [b]) => a.localeCompare(b));
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+      {sortedMonths.map(([monthKey, m]) => {
+        const total = m.total || 1;
+        const pct = Math.round((m.done / total) * 100);
+        const r = 40;
+        const circ = 2 * Math.PI * r;
+        const off = circ - (pct / 100) * circ;
+        const label = new Date(monthKey + '-01').toLocaleDateString('vi-VN', { month: 'long' });
+
+        // Future count for the last month
+        const remaining = monthKey === sortedMonths[sortedMonths.length - 1]?.[0] ? futureDays : 0;
+
+        return (
+          <div key={monthKey} className="card" style={{ padding: '1.25rem', textAlign: 'center' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
+              🎯 {label}
+            </div>
+
+            {/* Progress ring */}
+            <div style={{ position: 'relative', width: 96, height: 96, margin: '0 auto 0.75rem' }}>
+              <svg width="96" height="96" viewBox="0 0 96 96">
+                <circle cx="48" cy="48" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+                <circle cx="48" cy="48" r={r} fill="none"
+                  stroke={pct >= 80 ? '#00ff88' : pct >= 40 ? '#ffd700' : '#f97316'}
+                  strokeWidth="8" strokeLinecap="round"
+                  strokeDasharray={circ} strokeDashoffset={off}
+                  transform="rotate(-90 48 48)"
+                  style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+                />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '1.3rem', fontWeight: 800, color: pct >= 80 ? '#00ff88' : pct >= 40 ? '#ffd700' : '#f97316' }}>{pct}%</span>
+                <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{label}</span>
+              </div>
+            </div>
+
+            {/* Stats row */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1.25rem' }}>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--green)' }}>{m.done}</div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Hoàn thành</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f97316' }}>{m.missed + m.partial}</div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Bỏ qua</div>
+              </div>
+              {remaining > 0 && (
+                <div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-secondary)' }}>{remaining}</div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Còn lại</div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -3,7 +3,24 @@
 
 ---
 
-## v1.9.0 — ✅ DONE (2026-04-19) — Bug Fixes + Page Consolidation
+## v1.9.1 — ✅ DONE (2026-04-19) — Hotfixes
+
+### Fix firstTime redirect loop
+- [x] `src/App.jsx` — use `useRef` to fire redirect ONCE + skip if already on /journey
+
+### Fix signup → can't login
+- [x] `src/contexts/AuthContext.jsx` — pass username in auth metadata + `ignoreDuplicates: false` for profile upsert
+- [x] `data/migration_v1.9.0.sql` — update trigger `handle_new_user` to extract username+email from metadata + `ON CONFLICT DO UPDATE`
+
+### Seed template habits in Supabase
+- [x] `data/migration_v1.9.0.sql` — seed `program_habits` for all 5 template programs
+
+### Month summary UI for journey detail
+- [x] `src/pages/JourneyDetailPage.jsx` — added `MonthSummary` component with per-month progress rings (Hoàn thành / Bỏ qua / Còn lại)
+
+---
+
+
 
 ### Step 1 — Fix template habits loading (Bug 1)
 - [x] `src/components/journey/ProgramBrowser.jsx` — join `program_habits(*)` + normalize vào `habits[]`

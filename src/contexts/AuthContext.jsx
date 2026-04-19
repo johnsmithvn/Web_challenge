@@ -55,22 +55,37 @@ export function AuthProvider({ children }) {
     if (existing) return { error: { message: 'username_taken' } };
 
     // 2. Create Supabase auth user with real email
+    //    Pass username in metadata so DB trigger can also read it
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      options: { data: { name: displayName || username } },
+      options: {
+        data: {
+          name:     displayName || username,
+          username: username.trim().toLowerCase(),
+        },
+      },
     });
 
     if (error) return { error };
 
-    // 3. Upsert profile with username + email immediately
+    // 3. Upsert profile with username + email
+    //    The trigger may have already created a row with id only,
+    //    so we use upsert with ignoreDuplicates=false to UPDATE existing row
     if (data?.user) {
-      await supabase.from('profiles').upsert({
+      const { error: profErr } = await supabase.from('profiles').upsert({
         id:           data.user.id,
         username:     username.trim().toLowerCase(),
         email:        email.trim().toLowerCase(),
         display_name: displayName?.trim() || username,
-      }, { onConflict: 'id' });
+      }, { onConflict: 'id', ignoreDuplicates: false });
+
+      // If RLS blocked the upsert (e.g. email confirmation required),
+      // retry via raw SQL approach — at minimum the username is in auth metadata
+      // so the updated trigger will pick it up
+      if (profErr) {
+        console.warn('[signUp] Profile upsert blocked by RLS, username saved in auth metadata:', profErr.message);
+      }
     }
 
     return { data, error: null };

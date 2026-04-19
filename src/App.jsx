@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { JourneyProvider } from './contexts/JourneyContext';
@@ -55,16 +55,31 @@ function AppShell() {
   const [onboarded, setOnboarded] = useState(!shouldShow);
   const { isAuthenticated } = useAuth();
   const { activeJourney, isLoadingJourney } = useActiveJourney();
+  const location = useLocation();
 
-  // Step 6: After onboarding + login, if no active journey → redirect to /journey?firstTime=true
+  // Only redirect ONCE after login if no active journey
+  // Skip if user is already on /journey page
+  const hasRedirected = React.useRef(false);
   const [redirectToJourney, setRedirectToJourney] = useState(false);
   useEffect(() => {
-    if (onboarded && isAuthenticated && !isLoadingJourney && !activeJourney) {
+    if (onboarded && isAuthenticated && !isLoadingJourney && !activeJourney
+        && !hasRedirected.current
+        && !location.pathname.startsWith('/journey')) {
+      hasRedirected.current = true;
       setRedirectToJourney(true);
-    } else {
+    } else if (activeJourney) {
+      // Journey exists now (user just started one) → clear redirect
+      setRedirectToJourney(false);
+      hasRedirected.current = false;
+    }
+  }, [onboarded, isAuthenticated, isLoadingJourney, activeJourney, location.pathname]);
+
+  // Clear redirect flag after navigation happens
+  useEffect(() => {
+    if (redirectToJourney && location.pathname.startsWith('/journey')) {
       setRedirectToJourney(false);
     }
-  }, [onboarded, isAuthenticated, isLoadingJourney, activeJourney]);
+  }, [location.pathname, redirectToJourney]);
 
   return (
     <>
