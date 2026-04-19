@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v1.6.1 — 2026-04-19
+
+### Changed
+- `src/hooks/useHabitStore.js` — Xóa localStorage làm primary storage cho habit data. Supabase `progress` table là sole source of truth khi đã login. Guest mode dùng in-memory state (reset khi refresh — acceptable). Migration vẫn chạy lần cuối để import `vl_habit_data` cũ rồi xoá sạch.
+- Bump migration flag key từ `vl_migrated` sang `vl_migrated_v2` để force re-run migration cho user cũ
+- Thêm rollback optimistic update khi Supabase toggle thất bại
+
+### Removed
+- `src/hooks/useHabitStore.js` — Xóa `localStorage.setItem(STORAGE_KEY, ...)` khỏi tất cả các đường ghi. `vl_habit_data` key không còn được write nữa.
+
+### Technical Debt Resolved
+- `vl_habit_data` (localStorage) → Supabase `progress`: data bền vững, cross-device, không còn mất streak khi đăng nhập trên thiết bị khác
+
+---
+
 ## v1.6.0 — 2026-04-19
 
 ### Added

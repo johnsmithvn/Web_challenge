@@ -1,5 +1,5 @@
 # ARCHITECTURE.md — Thử Thách Vượt Lười
-**Version:** v1.6.0
+**Version:** v1.6.1
 **Updated:** 2026-04-19
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
@@ -129,22 +129,25 @@ Hook (e.g. useHabitStore)
 ### localStorage Keys
 
 ```
-vl_habit_data          # { [dateStr]: boolean } — daily tick
-vl_habit_progress      # { [dateStr_habitId]: boolean } — DEPRECATED v1.5.0
-                       # → migrated to Supabase habit_logs on first auth login
-vl_custom_habits       # Habit[] — list of custom habits
-vl_xp_store            # XPEntry[] — immutable log
-vl_mood_log            # { [dateStr]: { emoji, label } }
-vl_skip_{date}         # SkipEntry — per-day skip reason
-vl_focus_sessions      # FocusSession[]
-vl_notif_settings      # { enabled, time }
-vl_migrated            # "true" after first login migration
-vl_onboarded           # "1" — onboarding completed
-vl_program_round       # "1"|"2"|... — which 21-day round
-vl_completion_shown_N  # "1" — completion modal shown for round N
-vl_active_journey      # NEW v1.5.0 — snapshot of active user_journey (offline fallback)
-vl_habit_logs_migrated # NEW v1.5.0 — "1" after vl_habit_progress migrated to Supabase
+vl_habit_data          # REMOVED v1.6.1 — đã migrate sang Supabase `progress`, key bị wipe sau migration
+vl_habit_progress      # DEPRECATED v1.5.0 — đã migrate sang Supabase `habit_logs`
+vl_custom_habits       # Habit[] — list of custom habits (guest fallback)
+vl_xp_store            # XPEntry[] — XP log (guest fallback, sync DB on login)
+vl_mood_log            # { [dateStr]: { emoji, label } } (guest fallback)
+vl_skip_{date}         # SkipEntry — per-day skip reason (guest fallback)
+vl_focus_sessions      # FocusSession[] (guest fallback)
+vl_notif_settings      # { enabled, time } — UI config, ở local là đúng
+vl_migrated_v2         # userId — đã migrate vl_habit_data lên Supabase (v1.6.1, bump từ vl_migrated)
+vl_onboarded           # "1" — onboarding completed, UI state
+vl_program_round       # "1"|"2"|... — UI state cho CompletionModal
+vl_completion_shown_N  # "1" — UI state, completion modal shown for round N
+vl_active_journey      # v1.5.0 — snapshot active user_journey (offline fallback)
+vl_habit_logs_migrated # v1.5.0 — "1" sau khi vl_habit_progress migrate sang Supabase
+vl_login_nudge_shown   # "1" — UI state, nó chỉ hiển 1 lần
 ```
+
+> **Rule:** Chỉ lưu **UI state flags** và **offline guest fallback** trong localStorage.
+> Mọi **user data** có thỵ được sync đều phải dùng Supabase làm primary.
 
 ### Supabase Tables
 
