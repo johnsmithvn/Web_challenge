@@ -3,9 +3,19 @@
 
 ---
 
+## v1.9.2 — ✅ DONE (2026-04-19) — Redirect + Remove Manual Tick
+
+### Fix firstTime redirect survives reload
+- [x] `src/App.jsx` — `useRef` → `sessionStorage` to persist redirect flag across page reloads
+
+### Remove manual tick button
+- [x] `src/pages/TrackerPage.jsx` — removed `handleMainTick` + big "Tick Hôm Nay" button. Hero area now shows auto-calculated status (X/Y habits). Daily day-complete is auto-derived from habit ticks (all done = day done). Fixes cross-journey stale tick state bug.
+
+---
+
 ## v1.9.1 — ✅ DONE (2026-04-19) — Hotfixes
 
-### Fix firstTime redirect loop
+### Fix firstTime redirect loop (attempt 1 → superseded by v1.9.2)
 - [x] `src/App.jsx` — use `useRef` to fire redirect ONCE + skip if already on /journey
 
 ### Fix signup → can't login

@@ -293,7 +293,7 @@ export default function TrackerPage() {
   const { team } = useTeam();
 
   const [tab, setTab] = useState('today');
-  const [tickAnim, setTickAnim]   = useState(false);
+
   const [celebration, setCelebration] = useState(false);
   const [skipModal, setSkipModal]   = useState(null);
   const [skipReason, setSkipReason] = useState('');
@@ -382,15 +382,7 @@ export default function TrackerPage() {
     return cleanup;
   }, [allHabitsDone]);
 
-  const handleMainTick = () => {
-    toggle(todayKey);
-    if (!data[todayKey]) {
-      setTickAnim(true);
-      setTimeout(() => setTickAnim(false), 600);
-      if (!hasMilestone('daily_check', { date: todayKey }))
-        addXp(XP_REWARDS.daily_check, 'daily_check', { date: todayKey });
-    }
-  };
+
 
   const handleMood = (m) => saveMood(todayKey, m);
 
@@ -448,7 +440,7 @@ export default function TrackerPage() {
         {/* ── XP Bar ── */}
         <XpBar />
 
-        {/* ── Hero tick area ── */}
+        {/* ── Hero status area (auto-derived from habit ticks) ── */}
         <div className="tracker-hero card">
           <div className="tracker-hero__left">
             <StreakRing streak={streak} />
@@ -457,17 +449,19 @@ export default function TrackerPage() {
             </div>
           </div>
           <div className="tracker-hero__center">
-            <button
-              onClick={handleMainTick}
-              className={`tick-btn ${allHabitsDone ? 'tick-btn--done' : 'tick-btn--idle'} ${tickAnim ? 'tick-btn--pop' : ''}`}
-              id="main-tick-btn"
-              aria-label="Tick hôm nay"
+            <div className={`tick-btn ${allHabitsDone ? 'tick-btn--done' : 'tick-btn--idle'}`}
+              style={{ cursor: 'default' }}
+              id="main-status-indicator"
             >
               <span className="tick-btn__icon">{allHabitsDone ? '✅' : '⭕'}</span>
               <span className="tick-btn__label">
-                {allHabitsDone ? 'Hôm nay ✓' : 'Tick Hôm Nay!'}
+                {activeHabits.length === 0
+                  ? 'Chưa có habit'
+                  : allHabitsDone
+                    ? 'Hoàn thành! 🎉'
+                    : `${activeHabits.filter(h => !!habitProg[`${todayKey}_${h.id}`]).length}/${activeHabits.length} habits`}
               </span>
-            </button>
+            </div>
             <div className="tick-date">
               {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
             </div>

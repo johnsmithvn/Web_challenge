@@ -57,24 +57,24 @@ function AppShell() {
   const { activeJourney, isLoadingJourney } = useActiveJourney();
   const location = useLocation();
 
-  // Only redirect ONCE after login if no active journey
-  // Skip if user is already on /journey page
-  const hasRedirected = React.useRef(false);
+  // Only redirect ONCE per session after login if no active journey.
+  // sessionStorage survives page reloads but clears on tab close.
+  const REDIRECT_KEY = 'vl_journey_redirected';
   const [redirectToJourney, setRedirectToJourney] = useState(false);
   useEffect(() => {
     if (onboarded && isAuthenticated && !isLoadingJourney && !activeJourney
-        && !hasRedirected.current
+        && !sessionStorage.getItem(REDIRECT_KEY)
         && !location.pathname.startsWith('/journey')) {
-      hasRedirected.current = true;
+      sessionStorage.setItem(REDIRECT_KEY, '1');
       setRedirectToJourney(true);
     } else if (activeJourney) {
-      // Journey exists now (user just started one) → clear redirect
+      // Journey just started → clear flag so next login can re-check
       setRedirectToJourney(false);
-      hasRedirected.current = false;
+      sessionStorage.removeItem(REDIRECT_KEY);
     }
   }, [onboarded, isAuthenticated, isLoadingJourney, activeJourney, location.pathname]);
 
-  // Clear redirect flag after navigation happens
+  // Clear redirect state after navigation happens
   useEffect(() => {
     if (redirectToJourney && location.pathname.startsWith('/journey')) {
       setRedirectToJourney(false);

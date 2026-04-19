@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v1.9.1 — 2026-04-19
+
+### Fixed
+- **firstTime redirect loop:** `AppShell` redirect fired on every render when `!activeJourney`, even when user was already on /journey. Fix: `useRef` + location check to fire redirect only ONCE
+- **Signup → can't login:** DB trigger `handle_new_user` created profile WITHOUT username/email → `signIn` couldn't find profile by username. Fix: pass `username` in auth metadata + update trigger to extract it + change profile upsert `ON CONFLICT DO UPDATE`
+
+### Added
+- **Template habits seeded:** SQL migration seeds `program_habits` for all 5 templates (Buổi Sáng Kỷ Luật, Thói Quen Đọc Sách, Mindful Morning, Kỷ Luật Thể Chất, Deep Work 30 Ngày)
+- **Month summary cards** in JourneyDetailPage: per-month progress rings with Hoàn thành/Bỏ qua/Còn lại stats
+
+### Migration Required
+- Run `data/migration_v1.9.0.sql` in Supabase SQL Editor
+
+---
+
 ## v1.9.0 — 2026-04-19
 
 ### Fixed
