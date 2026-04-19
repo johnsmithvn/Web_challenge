@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -122,13 +122,22 @@ export function useTeam() {
   }, [user]);
 
   // ── Realtime subscriptions ──
+  const channelRef = useRef(null);
+
   useEffect(() => {
     if (!isSupabaseEnabled || !team) return;
 
     const memberIds = members.map(m => m.id);
+    const channelName = `team-v3-${team.id}`;
+
+    // Always clean up existing channel first (handles React StrictMode double-invoke)
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
 
     const channel = supabase
-      .channel(`team-v3-${team.id}`)
+      .channel(channelName)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'team_members',
         filter: `team_id=eq.${team.id}`,
@@ -141,17 +150,25 @@ export function useTeam() {
         event: '*', schema: 'public', table: 'progress',
       }, (payload) => {
         if (memberIds.includes(payload.new?.user_id)) {
-          // Partial update — just refresh progress for that user
           setMembers(prev => prev.map(m => {
             if (m.id !== payload.new?.user_id) return m;
             return { ...m, progress: { ...m.progress, [payload.new.date]: payload.new.completed } };
           }));
         }
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[useTeam] realtime error:', err.message);
+      });
 
-    return () => supabase.removeChannel(channel);
-  }, [team?.id, members.length]);
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [team?.id]); // removed members.length — prevents re-subscribe on every member load
 
   // ── Create Team ──
   const createTeam = useCallback(async (name = '', maxMembers = 2) => {

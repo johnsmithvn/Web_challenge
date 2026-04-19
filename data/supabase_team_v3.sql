@@ -194,15 +194,14 @@ CREATE POLICY "streaks_update_own"   ON streaks FOR UPDATE USING (user_id = auth
 
 -- teams
 ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "teams_select_member" ON teams;
-DROP POLICY IF EXISTS "teams_insert_auth"   ON teams;
-DROP POLICY IF EXISTS "teams_update_member" ON teams;
-CREATE POLICY "teams_select_member"  ON teams FOR SELECT USING (
-  id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
-  OR created_by = auth.uid()
-);
-CREATE POLICY "teams_insert_auth"    ON teams FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "teams_update_member"  ON teams FOR UPDATE USING (
+DROP POLICY IF EXISTS "teams_select_member"   ON teams;
+DROP POLICY IF EXISTS "teams_select_by_code"  ON teams;
+DROP POLICY IF EXISTS "teams_insert_auth"     ON teams;
+DROP POLICY IF EXISTS "teams_update_member"   ON teams;
+-- Any authenticated user can look up a team (needed for invite code join flow)
+CREATE POLICY "teams_select_by_code"   ON teams FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "teams_insert_auth"      ON teams FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "teams_update_member"    ON teams FOR UPDATE USING (
   id IN (SELECT team_id FROM team_members WHERE user_id = auth.uid())
 );
 
