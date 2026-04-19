@@ -5,8 +5,9 @@
 
 ## v1.9.2 — ✅ DONE (2026-04-19) — Redirect + Remove Manual Tick
 
-### Fix firstTime redirect survives reload
-- [x] `src/App.jsx` — `useRef` → `sessionStorage` to persist redirect flag across page reloads
+### Fix firstTime redirect (ROOT CAUSE)
+- [x] `src/contexts/JourneyContext.jsx` — `isLoadingJourney` defaulted to `false` → on mount, AppShell saw `!isLoading && !activeJourney` and redirected BEFORE fetch started. Fix: default to `true` + set `false` for guest users in else branch
+- [x] `src/App.jsx` — `useRef` → `sessionStorage` as secondary safety net
 
 ### Remove manual tick button
 - [x] `src/pages/TrackerPage.jsx` — removed `handleMainTick` + big "Tick Hôm Nay" button. Hero area now shows auto-calculated status (X/Y habits). Daily day-complete is auto-derived from habit ticks (all done = day done). Fixes cross-journey stale tick state bug.

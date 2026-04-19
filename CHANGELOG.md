@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v1.9.2 — 2026-04-19
+
+### Fixed
+- **Redirect loop persists across reload:** `useRef` resets on page reload → redirect fires again every time. Fix: replaced with `sessionStorage` flag that survives reloads but clears on tab close
+- **Cross-journey stale tick:** Switching journeys kept old "Hôm nay ✓" state from `useHabitStore` (localStorage). Fix: removed manual tick button entirely. Daily completion is now **auto-derived** from habit ticks (all habits done = day done)
+
+### Changed
+- Hero section now shows read-only status indicator (`X/Y habits` or `Hoàn thành! 🎉`) instead of clickable button
+
+---
+
 ## v1.9.1 — 2026-04-19
 
 ### Fixed

@@ -47,7 +47,7 @@ export function useJourney() {
         .select('*')
         .eq('user_id', user.id)
         .neq('status', 'active')
-        .order('started_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setJourneyHistory(data || []);

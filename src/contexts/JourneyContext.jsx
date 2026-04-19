@@ -23,7 +23,9 @@ export function JourneyProvider({ children }) {
   const useDB = isSupabaseEnabled && isAuthenticated;
 
   const [activeJourney,    setActiveJourney]    = useState(null);
-  const [isLoadingJourney, setIsLoadingJourney] = useState(false);
+  // MUST default to true — otherwise AppShell sees !isLoading && !activeJourney
+  // on mount and redirects BEFORE the fetch even starts
+  const [isLoadingJourney, setIsLoadingJourney] = useState(true);
 
   const fetchActiveJourney = useCallback(async () => {
     if (!useDB || !user) return;
@@ -53,6 +55,7 @@ export function JourneyProvider({ children }) {
       fetchActiveJourney();
     } else {
       setActiveJourney(null);
+      setIsLoadingJourney(false); // Guest user → no fetch needed
     }
   }, [useDB]); // eslint-disable-line react-hooks/exhaustive-deps
 
