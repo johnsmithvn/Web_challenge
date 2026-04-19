@@ -3,6 +3,25 @@
 
 ---
 
+## v1.9.0 — ✅ DONE (2026-04-19) — Bug Fixes + Page Consolidation
+
+### Step 1 — Fix template habits loading (Bug 1)
+- [x] `src/components/journey/ProgramBrowser.jsx` — join `program_habits(*)` + normalize vào `habits[]`
+
+### Step 2 — Xóa fake habits khi login (Bug 2)
+- [x] `src/hooks/useCustomHabits.js` — authenticated → real data only, no DEFAULT_HABITS fallback
+
+### Step 3 — Gộp HabitsPage → TrackerPage (Bug 4+5)
+- [x] `src/pages/TrackerPage.jsx` — merged: 4 tabs (Hôm Nay/Lịch/Tuần/Quản Lý), lazy MonthCalendar+HabitManager, memo PerHabitWeeklyGrid, single mood, empty state CTA
+- [x] `src/pages/HabitsPage.jsx` — `<Navigate to="/tracker" replace />`
+- [x] `src/components/Navbar.jsx` — removed Habits link
+- [x] `src/App.jsx` — route exists, HabitsPage handles redirect
+
+### Step 4 — JourneyDetailPage full dashboard (Bug 3)
+- [x] `src/pages/JourneyDetailPage.jsx` — JourneyCalendar (🟢/🟡/⬜ per day) + DayDetailModal (habits ✅/❌, mood, focus sessions)
+
+---
+
 ## v1.8.0 — ✅ DONE (2026-04-19) — Journey-as-Core-Context
 
 ### Step 1 — DB: add `journey_id` to `focus_sessions`

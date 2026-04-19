@@ -34,11 +34,24 @@ export default function ProgramBrowser({ onStart, onCustom, hasActiveJourney, st
     if (!isSupabaseEnabled || !isAuthenticated) return;
     supabase
       .from('programs')
-      .select('*')
+      .select('*, program_habits(*)')           // ← join habits from program_habits table
       .eq('is_template', true)
       .order('created_at')
       .then(({ data, error }) => {
-        if (!error && data?.length) setPrograms(data);
+        if (!error && data?.length) {
+          // Normalize: Supabase returns program_habits[], local JSON uses habits[]
+          const normalized = data.map(p => ({
+            ...p,
+            habits: (p.program_habits || []).map(h => ({
+              name:     h.name,
+              action:   h.action || h.name,
+              icon:     h.icon || '✅',
+              color:    h.color || '#8b5cf6',
+              category: h.category || 'other',
+            })),
+          }));
+          setPrograms(normalized);
+        }
       });
   }, [isAuthenticated]);
 
@@ -53,7 +66,7 @@ export default function ProgramBrowser({ onStart, onCustom, hasActiveJourney, st
       programId:   prog.id,
       targetDays:  prog.duration_days || prog.duration || 21,
       description: prog.description || null,
-      habits:      prog.habits || [],   // ← pass template habits
+      habits:      prog.habits || [],
     });
     setStartingId(null);
   };

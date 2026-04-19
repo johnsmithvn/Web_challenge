@@ -9,7 +9,6 @@ import '../styles/auth.css';
 
 const NAV_LINKS = [
   { to: '/',            label: 'Trang Chủ' },
-  { to: '/habits',      label: '📋 Habits' },
   { to: '/tracker',     label: '🗓 Tracker' },
   { to: '/focus',       label: '⏱ Focus' },
   { to: '/journey',     label: '🗺 Lộ Trình' },

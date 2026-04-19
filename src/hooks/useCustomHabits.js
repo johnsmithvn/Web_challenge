@@ -74,10 +74,10 @@ export function useCustomHabits() {
   const { activeJourney } = useActiveJourney();  // ← from JourneyContext
   const useDB = isSupabaseEnabled && isAuthenticated;
 
-  // Default habits shown for guests (not persisted)
-  const [habits, setHabits] = useState(DEFAULT_HABITS);
+  // Guest → demo defaults | Authenticated → empty until Supabase loads
+  const [habits, setHabits] = useState(useDB ? [] : DEFAULT_HABITS);
 
-  // On login: migrate + load from Supabase
+  // On login: migrate + load REAL habits from Supabase (no fallback)
   useEffect(() => {
     if (!useDB || !user) return;
 
@@ -89,13 +89,14 @@ export function useCustomHabits() {
         .order('created_at');
 
       if (!error && data) {
-        const loaded = data.map(rowToHabit);
-        setHabits(loaded.length ? loaded : DEFAULT_HABITS);
+        // Authenticated user: show only real habits from DB
+        // If empty → UI shows empty state CTA "Chọn Lộ Trình"
+        setHabits(data.map(rowToHabit));
       }
     });
   }, [useDB, user?.id]);
 
-  // Clear on logout — back to defaults
+  // Logout → back to demo defaults for guest view
   useEffect(() => {
     if (!useDB) setHabits(DEFAULT_HABITS);
   }, [useDB]);
