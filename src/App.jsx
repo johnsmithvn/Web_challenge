@@ -12,6 +12,7 @@ import DashboardPage  from './pages/DashboardPage';
 import QuizPage       from './pages/QuizPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import FriendsPage    from './pages/FriendsPage';
+import JourneyPage    from './pages/JourneyPage';
 import './styles/global.css';
 import './index.css';
 
@@ -33,6 +34,7 @@ function AppShell() {
         <Route path="/quiz"        element={<QuizPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/friends"     element={<FriendsPage />} />
+        <Route path="/journey"     element={<JourneyPage />} />
         <Route path="*"            element={<LandingPage />} />
       </Routes>
     </>

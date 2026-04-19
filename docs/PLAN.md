@@ -1,6 +1,6 @@
 # PLAN.md — Thử Thách Vượt Lười
-**Updated:** 2026-04-18
-**Current Version:** v1.3.1
+**Updated:** 2026-04-19
+**Current Version:** v1.6.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -73,6 +73,33 @@
 
 ---
 
+## ✅ Phase 4.6 — Journey Foundation (v1.5.0)
+*Hoàn thành: 2026-04-19*
+
+- [x] DB migration: 5 bảng mới (`programs`, `program_habits`, `user_journeys`, `journey_habits`, `habit_logs`) + RLS + 5 seed templates
+- [x] `useHabitLogs.js` — Thay thế `vl_habit_progress` localStorage bằng Supabase `habit_logs`. One-time silent migration
+- [x] `useJourney.js` — Journey lifecycle: start/complete/renew/extend, `ensureDefaultJourney()`
+- [x] UUID guard: lọc default habits (h1, h2, h3) khỏi Supabase sync
+- [x] Team RLS fix: `get_my_team_ids()` SECURITY DEFINER chống recursion
+
+---
+
+## ✅ Phase 4.7 — Journey System UI (v1.6.0)
+*Hoàn thành: 2026-04-19*
+
+- [x] `JourneyPage.jsx` — 3 tabs: Đang Chạy / Khám Phá / Lịch Sử
+- [x] Journey sub-components: `ActiveJourneyPanel`, `ProgramBrowser`, `JourneyHistory`, `CustomJourneyModal`
+- [x] `programs.json` — 5 system templates (Rule 14, offline fallback)
+- [x] `journey.css` — Full CSS: progress ring, glassmorphism cards, modals, layout chuẩn hóa
+- [x] Route `/journey` + Navbar link "🗺 Lộ Trình"
+- [x] `HabitsPage.jsx` — Journey banner (active: Ngày X/Y; inactive: CTA)
+- [x] `TrackerPage.jsx` — 21-day dots anchor từ `user_journeys.started_at`
+- [x] `CompletionModal.jsx` — Option C "🗺 Chọn Lộ Trình Mới" → navigate `/journey`
+- [x] `AuthModal` thay `alert()` khi guest action
+- [x] Layout chuẩn hóa: đồng nhất với `tracker-v2-page` pattern
+
+---
+
 ## 🚧 Phase 5 — Team Accountability v3 (v3.0.0)
 *Đang thiết kế — chưa implement*
 
@@ -110,6 +137,7 @@
 - [ ] Weekly review digest (email hoặc in-app summary)
 - [ ] Focus session breakdown per habit (charts)
 - [ ] AI insight từ pattern data
+- [ ] **Dashboard Journey Selector** — Dropdown chọn journey (current / past), hiển thị stats (habits%, focus giờ, streak) riêng theo từng journey. Cần thêm query `habit_logs` join `user_journeys`.
 
 ---
 

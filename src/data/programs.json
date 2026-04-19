@@ -1,0 +1,80 @@
+{
+  "templates": [
+    {
+      "id": "tpl-morning",
+      "title": "Buổi Sáng Kỷ Luật",
+      "description": "Xây dựng thói quen buổi sáng chiến thắng trong 21 ngày",
+      "icon": "🌅",
+      "color": "#f97316",
+      "category": "health",
+      "duration_days": 21,
+      "habits": [
+        { "name": "Thức dậy đúng giờ", "action": "Không snooze alarm", "icon": "⏰", "color": "#f97316" },
+        { "name": "Uống 1 ly nước", "action": "Ngay khi thức dậy", "icon": "💧", "color": "#06b6d4" },
+        { "name": "Tập thể dục buổi sáng", "action": "Ít nhất 15 phút", "icon": "🏃", "color": "#10b981" }
+      ]
+    },
+    {
+      "id": "tpl-reading",
+      "title": "Thói Quen Đọc Sách",
+      "description": "Đọc sách mỗi ngày — 21 ngày hình thành thói quen trọn đời",
+      "icon": "📚",
+      "color": "#06b6d4",
+      "category": "learning",
+      "duration_days": 21,
+      "habits": [
+        { "name": "Đọc sách 20 trang", "action": "Trước khi ngủ hoặc sáng sớm", "icon": "📖", "color": "#06b6d4" },
+        { "name": "Ghi chú điều học được", "action": "1–3 bullet points/ngày", "icon": "✍️", "color": "#8b5cf6" }
+      ]
+    },
+    {
+      "id": "tpl-mindful",
+      "title": "Mindful Morning",
+      "description": "Thiền, hít thở, và bắt đầu ngày mới với tâm trí sáng suốt",
+      "icon": "🧘",
+      "color": "#8b5cf6",
+      "category": "mindfulness",
+      "duration_days": 14,
+      "habits": [
+        { "name": "Thiền 10 phút", "action": "Nhắm mắt, tập trung hơi thở", "icon": "🧘", "color": "#8b5cf6" },
+        { "name": "Viết nhật ký", "action": "3 điều biết ơn hôm nay", "icon": "📓", "color": "#ec4899" },
+        { "name": "Không điện thoại 30 phút đầu", "action": "Sau khi thức dậy", "icon": "📵", "color": "#6b7280" }
+      ]
+    },
+    {
+      "id": "tpl-fitness",
+      "title": "Kỷ Luật Thể Chất",
+      "description": "Tập luyện đều đặn, uống đủ nước, và ngủ đúng giờ trong 21 ngày",
+      "icon": "💪",
+      "color": "#00ff88",
+      "category": "health",
+      "duration_days": 21,
+      "habits": [
+        { "name": "Tập luyện 30 phút", "action": "Bất kỳ thể loại nào", "icon": "🏋️", "color": "#00ff88" },
+        { "name": "Uống 2L nước/ngày", "action": "Track bằng chai 500ml x4", "icon": "💧", "color": "#06b6d4" },
+        { "name": "Ngủ trước 23h", "action": "Tắt màn hình 30 phút trước", "icon": "🌙", "color": "#6366f1" }
+      ]
+    },
+    {
+      "id": "tpl-deepwork",
+      "title": "Deep Work 30 Ngày",
+      "description": "Tập trung sâu hơn, tối đa hóa năng suất, loại bỏ phân tâm",
+      "icon": "🚀",
+      "color": "#ffd700",
+      "category": "productivity",
+      "duration_days": 30,
+      "habits": [
+        { "name": "1 session Deep Work 90 phút", "action": "Không điện thoại, không mạng", "icon": "🎯", "color": "#ffd700" },
+        { "name": "Review task list tối hôm trước", "action": "Top 3 việc quan trọng nhất", "icon": "✅", "color": "#10b981" },
+        { "name": "Tắt thông báo sau 21h", "action": "Focus time cho gia đình / nghỉ ngơi", "icon": "🔕", "color": "#6b7280" }
+      ]
+    }
+  ],
+  "categories": [
+    { "key": "all",           "label": "Tất Cả",       "icon": "🌟" },
+    { "key": "health",        "label": "Sức Khoẻ",     "icon": "💪" },
+    { "key": "learning",      "label": "Học Tập",      "icon": "📚" },
+    { "key": "mindfulness",   "label": "Tâm Trí",      "icon": "🧘" },
+    { "key": "productivity",  "label": "Năng Suất",    "icon": "🚀" }
+  ]
+}

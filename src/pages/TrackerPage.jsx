@@ -6,6 +6,7 @@ import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import { useNotifications } from '../hooks/useNotifications';
 import { useTeam } from '../hooks/useTeam';
 import { useMoodLog } from '../hooks/useMoodSkip';
+import { useJourney } from '../hooks/useJourney';
 import DailyChallenge from '../components/DailyChallenge';
 import XpBar from '../components/XpBar';
 import NotificationSettings from '../components/NotificationSettings';
@@ -37,13 +38,13 @@ const MOODS = [
   { emoji: '💪', label: 'Tuyệt vời' },
 ];
 
-/* ── 21-day dots: Day 1 → Day 21 from program start ─── */
-function WeekDots({ data }) {
+/* ── 21-day dots: Day 1 → Day 21 from journey start (or earliest tick) ─── */
+function WeekDots({ data, journeyStart }) {
   const today = new Date().toISOString().split('T')[0];
 
-  // Find program start = earliest checked date, fallback = today
+  // Priority: journey.started_at > earliest checked date > today
   const checkedDates = Object.keys(data).filter(k => data[k]).sort();
-  const startStr     = checkedDates[0] || today;
+  const startStr     = journeyStart || checkedDates[0] || today;
   const startDate    = new Date(startStr);
 
   // Build 21 slots from day 1
@@ -137,6 +138,7 @@ export default function TrackerPage() {
   const { addXp, hasMilestone, totalXp } = useXpStore();
   const { scheduleTodayReminder } = useNotifications();
   const { saveMood, getMood } = useMoodLog();
+  const { activeJourney } = useJourney();
 
   const { team } = useTeam();
 
@@ -277,7 +279,7 @@ export default function TrackerPage() {
         {/* ── 21-day visual progress ── */}
         <div className="card tracker-dots-card">
           <div className="dash-card-title">📍 Tiến Độ 21 Ngày</div>
-          <WeekDots data={data} />
+          <WeekDots data={data} journeyStart={activeJourney?.started_at || null} />
           <div className="progress-bar-track" style={{ marginTop: '1rem' }}>
             <div className="progress-bar-fill" style={{ width: `${Math.round((streak / 21) * 100)}%` }} />
           </div>

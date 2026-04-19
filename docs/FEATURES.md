@@ -1,5 +1,5 @@
 # FEATURES.md — Thử Thách Vượt Lười
-**Version:** v1.4.5
+**Version:** v1.6.0
 **Updated:** 2026-04-19
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
@@ -21,7 +21,7 @@
 - **Big Tick Button:** Nút lớn ở giữa, bounce animation khi click, đổi màu sau khi tick
 - **Streak Ring:** Vòng tròn SVG tô màu theo % tiến độ, màu thay đổi theo cây sinh trưởng
 - **Plant Growth 🌰→🏆:** 6 giai đoạn hiển thị bên trong ring (hạt → mầm → cây lớn → trophy)
-- **21-Day Dot Grid:** 3 hàng × 7 ô đại diện 3 tuần, tính từ ngày bắt đầu thật (không phải ngược về từ hôm nay)
+- **21-Day Dot Grid:** 3 hàng × 7 ô đại diện 3 tuần. **v1.6.0:** anchor từ `user_journeys.started_at` nếu có journey active, fallback = ngày tick sớm nhất
 - **Progress Bar:** `streak / 21` ngày
 - **Habit Chips:** Hiển thị top 4 custom habit hôm nay, dạng pill, click để đến `/habits`
 - **Mood Tracker:** 5 mức cảm xúc, lưu theo ngày, sync DB nếu đã login
@@ -351,8 +351,33 @@
 | `/tracker` | TrackerPage | ❌ |
 | `/habits` | HabitsPage | ❌ |
 | `/focus` | FocusPage | ❌ |
+| `/journey` | JourneyPage | ❌ (soft wall: cần login để lưu) |
 | `/team` | TeamPage | ✅ (soft wall) |
 | `/dashboard` | DashboardPage | ❌ |
 | `/quiz` | QuizPage | ❌ |
 | `/leaderboard` | LeaderboardPage | ❌ |
 | `/friends` | FriendsPage | ✅ |
+
+---
+
+## 17. 🗺 Lộ Trình (Journey) (`/journey`)
+
+**Added:** v1.6.0
+**Files:** `src/pages/JourneyPage.jsx`, `src/components/journey/*`, `src/styles/journey.css`, `src/data/programs.json`
+
+**Mô tả:** Hệ thống quản lý lộ trình (journey) giúp user có mục tiêu hành trình rõ ràng thay vì chỉ tick hì.
+
+**3 tabs:**
+1. **🗺 Đang Chạy** — Progress ring SVG (ngày hiện tại / target), habit chips, nút Gia Hạn 21 ngày / +30 ngày / Bỏ Cuộc
+2. **✨ Khám Phá** — Grid 5 system templates với category filter (Sức Khoẻ / Học Tập / Tâm Trí / Năng Suất). Load từ Supabase, fallback `programs.json` khi offline/guest. Nút “✑ Tự tạo lộ trình riêng” mở `CustomJourneyModal`
+3. **📜 Lịch Sử** — List journey đã kết thúc: tên, ngày bắt đầu/kết thúc, trạng thái badge (completed/archived/extended), % hoàn thành
+
+**Integrations:**
+- **HabitsPage:** Banner nhỏ hiển thị tên lộ trình + "Ngày X/Y" nếu active; CTA nếu chưa có
+- **TrackerPage:** 21-day dots anchor từ `user_journeys.started_at` (trước: từ ngày tick sớm nhất)
+- **CompletionModal:** Thêm Option C "🗺 Chọn Lộ Trình Mới" sau khi hoàn thành 21 ngày
+
+**Business logic:**
+- Guest có thể browse templates, nhưng cần login để lưu journey → mở `AuthModal` (không dùng `alert()`)
+- Khi start journey mới nếu đã có journey active → cảnh báo banner vàng, journey cũ sẽ được archive vào Lịch Sử
+- Bỏ cuộc → confirm modal → archive, chuyển sang tab Khám Phá

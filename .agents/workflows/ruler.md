@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+description: rules for project
 ---
 
 # AI_AGENT_RULES.md

@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { to: '/habits',      label: '📋 Habits' },
   { to: '/tracker',     label: '🗓 Tracker' },
   { to: '/focus',       label: '⏱ Focus' },
+  { to: '/journey',     label: '🗺 Lộ Trình' },
   { to: '/team',        label: '🤝 Team' },
   { to: '/dashboard',   label: '📈 Stats' },
   { to: '/quiz',        label: '🧠 Quiz' },

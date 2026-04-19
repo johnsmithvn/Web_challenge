@@ -12,6 +12,8 @@ import LoginNudgeModal from '../components/LoginNudgeModal';
 import '../styles/calendar.css';
 import '../styles/tracker.css';
 import '../styles/completion.css';
+import '../styles/journey.css';
+import { Link } from 'react-router-dom';
 
 import HABITS_DATA from '../data/habits.json';
 const SKIP_REASONS = HABITS_DATA.skipReasons;
@@ -315,6 +317,38 @@ export default function HabitsPage() {
                     </p>
                   )}
                 </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Journey Banner ── */}
+          {(() => {
+            if (!activeJourney) {
+              return (
+                <div className="habits-journey-banner" style={{ marginTop: '1rem' }}>
+                  <span className="banner-icon">🗺</span>
+                  <span className="banner-text">
+                    Chưa có lộ trình đang chạy
+                    <span className="banner-sub">— Chọn một lộ trình để track có mục tiêu hơn</span>
+                  </span>
+                  <Link to="/journey" className="banner-link">Chọn lộ trình →</Link>
+                </div>
+              );
+            }
+            const start = new Date(activeJourney.started_at);
+            const today = new Date();
+            const currentDay = Math.min(
+              Math.floor((today - start) / 86400000) + 1,
+              activeJourney.target_days || 21
+            );
+            return (
+              <div className="habits-journey-banner" style={{ marginTop: '1rem' }}>
+                <span className="banner-icon">🗺</span>
+                <span className="banner-text">
+                  {activeJourney.title}
+                  <span className="banner-sub">— Ngày {currentDay}/{activeJourney.target_days || 21}</span>
+                </span>
+                <Link to="/journey" className="banner-link">Xem lộ trình →</Link>
               </div>
             );
           })()}

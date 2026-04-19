@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCustomHabits } from '../hooks/useCustomHabits';
 import '../styles/completion.css';
 
@@ -30,14 +31,15 @@ function Confetti() {
  * Shown once when streak reaches 21.
  *
  * Props:
- *   streak        — current streak count
- *   totalXp       — total XP earned
- *   onRenew       — user chooses "Gia Hạn" (harder round, keep habits)
+ *   streak         — current streak count
+ *   totalXp        — total XP earned
+ *   onRenew        — user chooses "Gia Hạn" (harder round, keep habits)
  *   onNewChallenge — user chooses "Thử Thách Mới" (conquer habits, start fresh)
- *   onClose       — dismiss without action
+ *   onClose        — dismiss without action
  */
 export default function CompletionModal({ streak, totalXp, onRenew, onNewChallenge, onClose }) {
   const { activeHabits } = useCustomHabits();
+  const navigate  = useNavigate();
   const round     = parseInt(localStorage.getItem(ROUND_KEY) || '1', 10);
   const closeRef  = useRef(null);
   const issuedAt  = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -58,6 +60,12 @@ export default function CompletionModal({ streak, totalXp, onRenew, onNewChallen
   const handleNewChallenge = () => {
     localStorage.setItem(ROUND_KEY, String(round + 1));
     onNewChallenge?.();
+  };
+
+  const handleChooseJourney = () => {
+    localStorage.setItem(ROUND_KEY, String(round + 1));
+    onClose?.();
+    navigate('/journey');
   };
 
   return (
@@ -143,6 +151,23 @@ export default function CompletionModal({ streak, totalXp, onRenew, onNewChallen
             <div className="cert-option__text">
               <strong>Thử Thách Mới</strong>
               <span>Lưu thói quen vào "Đã Chinh Phục"<br />Bắt đầu hành trình hoàn toàn mới</span>
+            </div>
+          </button>
+
+          {/* Option C: Choose a new Journey from /journey */}
+          <button
+            className="cert-option"
+            onClick={handleChooseJourney}
+            id="completion-choose-journey"
+            style={{
+              borderColor: 'rgba(6,182,212,0.35)',
+              background: 'linear-gradient(135deg, rgba(6,182,212,0.07), rgba(139,92,246,0.07))',
+            }}
+          >
+            <div className="cert-option__icon">🗺</div>
+            <div className="cert-option__text">
+              <strong>Chọn Lộ Trình Mới</strong>
+              <span>Khám phá template có sẵn<br />hoặc tự thiết kế lộ trình riêng</span>
             </div>
           </button>
         </div>

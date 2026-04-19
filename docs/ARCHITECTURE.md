@@ -1,5 +1,5 @@
 # ARCHITECTURE.md — Thử Thách Vượt Lười
-**Version:** v1.5.0
+**Version:** v1.6.0
 **Updated:** 2026-04-19
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
@@ -24,13 +24,18 @@
 ```
 src/
 ├── components/              # Reusable UI components
+│   ├── journey/             # Journey system sub-components (NEW v1.6.0)
+│   │   ├── ActiveJourneyPanel.jsx   # Progress ring, habit chips, renew/extend/quit
+│   │   ├── ProgramBrowser.jsx       # Template grid, category filter, start flow
+│   │   ├── JourneyHistory.jsx       # Past journeys list + status badges
+│   │   └── CustomJourneyModal.jsx   # Free-form journey creation modal
 │   ├── team/                # Team-specific sub-components
 │   │   ├── TeamMemberCard.jsx     (TODO v3)
 │   │   ├── TeammateCheckPanel.jsx (TODO v3)
 │   │   ├── JoinSyncModal.jsx      (TODO v3)
 │   │   └── TeamRules.jsx          (TODO v3)
 │   ├── AuthModal.jsx          # Login/Register/Google tabs
-│   ├── CompletionModal.jsx    # NEW v1.3.0 — Popup ăn mừng khi streak=21, start round 2
+│   ├── CompletionModal.jsx    # v1.3.0 — Popup ăn mừng streak=21. v1.6.0 — thêm "Chọn Lộ Trình Mới"
 │   ├── OnboardingModal.jsx    # NEW v1.3.0 — 3-step guide lần đầu truy cập
 │   ├── DailyChallenge.jsx     # Daily mini-challenge, +20 XP
 │   ├── FocusTimer.jsx         # SVG countdown + habit dropdown
@@ -61,9 +66,10 @@ src/
 │
 ├── pages/
 │   ├── LandingPage.jsx      # / — Marketing page
-│   ├── TrackerPage.jsx      # /tracker — Tick daily, streak ring, 21-day dots
-│   ├── HabitsPage.jsx       # /habits — Per-habit tick, calendar, manage
+│   ├── TrackerPage.jsx      # /tracker — Tick daily, streak ring, 21-day dots (v1.6.0: journeyStart prop)
+│   ├── HabitsPage.jsx       # /habits — Per-habit tick, calendar, manage (v1.6.0: journey banner)
 │   ├── FocusPage.jsx        # /focus — Pomodoro timer
+│   ├── JourneyPage.jsx      # /journey — NEW v1.6.0 — 3 tabs: Đang chạy / Khám Phá / Lịch Sử
 │   ├── DashboardPage.jsx    # /dashboard (Stats tab) — Flower, donut, weekly table
 │   ├── TeamPage.jsx         # /team — Accountability partner
 │   ├── QuizPage.jsx         # /quiz — 10-question MCQ
@@ -75,20 +81,22 @@ src/
 │   ├── quiz.json            # 10 Quiz questions
 │   ├── habits.json          # defaultHabits, categories, icons, colors, skipReasons, moods
 │   ├── testimonials.json    # Landing page reviews
-│   └── quotes.json          # NEW v1.4.5 — 30 daily motivational quotes
+│   ├── quotes.json          # v1.4.5 — 30 daily motivational quotes
+│   └── programs.json        # NEW v1.6.0 — 5 system program templates (offline fallback)
 │
 ├── styles/
 │   ├── global.css           # CSS variables, reset, typography
 │   ├── components.css       # Shared component classes
-│   ├── tracker.css          # Tracker + Team styles
+│   ├── tracker.css          # Tracker + Team styles (page wrapper pattern)
 │   ├── dashboard.css        # Dashboard v2 styles
 │   ├── focus.css            # Focus timer + custom dropdown
 │   ├── calendar.css         # Monthly calendar
 │   ├── auth.css             # Auth modal
 │   ├── friends.css          # Friends page
 │   ├── xpbar.css            # XP bar
-│   ├── completion.css       # NEW v1.3.0 — CompletionModal styles
-│   ├── onboarding.css       # NEW v1.3.0 — OnboardingModal styles
+│   ├── journey.css          # NEW v1.6.0 — Journey page, progress ring, program cards, modals
+│   ├── completion.css       # v1.3.0 — CompletionModal styles
+│   ├── onboarding.css       # v1.3.0 — OnboardingModal styles
 │   └── team.css             # Team page (v3 ready)
 │
 └── App.jsx                  # AppShell wrapper — Onboarding gate + Router

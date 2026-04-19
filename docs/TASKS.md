@@ -3,30 +3,25 @@
 
 ---
 
-## v1.5.0 — 🚧 IN PROGRESS (2026-04-19)
+## v1.6.0 — ✅ DONE (2026-04-19)
 
-### Phase A — Journey Foundation ✅ Done
-- [x] `data/migration_v1.5.0.sql` — 5 bảng mới + RLS + indexes + seed templates
-- [x] `src/hooks/useHabitLogs.js` — Thay thế vl_habit_progress, dual-mode + one-time migration
-- [x] `src/hooks/useJourney.js` — start/complete/renew/extend + ensureDefaultJourney
-- [x] `src/pages/HabitsPage.jsx` — Wire useHabitLogs + useJourney
-- [x] `docs/ARCHITECTURE.md` — Cập nhật hooks, tables, LS keys
-- [x] `CHANGELOG.md` — v1.5.0 Phase A entry
+### Phase B — JourneyPage UI ✅ Done
+- [x] `src/pages/JourneyPage.jsx` — 3 tabs: Đang chạy / Khám Phá / Lịch Sử
+- [x] `src/App.jsx` — Thêm route `/journey`
+- [x] `src/components/Navbar.jsx` — Thêm link "🗺 Lộ Trình"
+- [x] `src/pages/HabitsPage.jsx` — Journey banner (active: Ngày X/Y + link; inactive: CTA)
+- [x] `src/styles/journey.css` — Full CSS cho tất cả journey components
+- [x] `src/data/programs.json` — 5 system templates (Rule 14 compliant)
 
-### Phase B — JourneyPage UI ⏳ TODO
-- [ ] `src/pages/JourneyPage.jsx` — 3 tabs: Đang chạy / Khám Phá / Lịch Sử
-- [ ] `src/App.jsx` — Thêm route `/journey`
-- [ ] `src/components/Navbar.jsx` — Thêm link "🗺 Lộ Trình"
+### Phase C — Templates & History ✅ Done
+- [x] `src/components/journey/ProgramBrowser.jsx` — Grid templates, category filter, Supabase + local fallback
+- [x] `src/components/journey/JourneyHistory.jsx` — List lịch sử + status badges
+- [x] `src/components/journey/ActiveJourneyPanel.jsx` — Progress ring, habit snapshot, quit/renew/extend
+- [x] `src/components/journey/CustomJourneyModal.jsx` — Tự tạo lộ trình
 
-### Phase C — Templates & History ⏳ TODO
-- [ ] `src/data/programs.json` — 5 system templates (Rule 14)
-- [ ] `src/components/ProgramBrowser.jsx` — Browse + filter template library
-- [ ] `src/components/JourneyHistory.jsx` — List hành trình + link xem chi tiết
-- [ ] `src/components/JourneyDetail.jsx` — Xem lại hành trình cũ (readonly)
-
-### Phase D — Completion Flow ⏳ TODO
-- [ ] `src/components/CompletionModal.jsx` — Thêm option "Chọn Lộ Trình Mới"
-- [ ] `src/pages/HabitsPage.jsx` — Header hiển thị tên journey hiện tại
+### Phase D — Completion Flow ✅ Done
+- [x] `src/pages/TrackerPage.jsx` — Dots tính từ `user_journeys.started_at` thay `vl_program_round`
+- [x] `src/components/CompletionModal.jsx` — Thêm "🗺 Chọn Lộ Trình Mới" button → navigate /journey
 
 ---
 
