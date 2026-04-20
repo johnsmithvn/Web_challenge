@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import ActiveJourneyPanel from '../components/journey/ActiveJourneyPanel';
 import ProgramBrowser from '../components/journey/ProgramBrowser';
 import JourneyHistory from '../components/journey/JourneyHistory';
+import MyJourneys from '../components/journey/MyJourneys';
 import CustomJourneyModal from '../components/journey/CustomJourneyModal';
 import AuthModal from '../components/AuthModal';
 import '../styles/journey.css';
@@ -13,6 +14,7 @@ import '../styles/auth.css';
 const TABS = [
   { key: 'active',  label: '🗺 Đang Chạy' },
   { key: 'explore', label: '✨ Khám Phá'  },
+  { key: 'mine',    label: '📂 Của Tôi'   },
   { key: 'history', label: '📜 Lịch Sử'  },
 ];
 
@@ -60,6 +62,11 @@ export default function JourneyPage() {
   const handleRenew = async () => {
     await renewJourney();
     setTab('active');
+  };
+
+  const handleComplete = async () => {
+    await completeJourney();   // completes journey + closes habits
+    setTab('explore');
   };
 
   const handleQuit = async () => {
@@ -176,6 +183,7 @@ export default function JourneyPage() {
               journey={activeJourney}
               onRenew={handleRenew}
               onExtend={handleExtend}
+              onComplete={handleComplete}
               onQuit={handleQuit}
             />
           : <div className="journey-empty">
@@ -195,6 +203,15 @@ export default function JourneyPage() {
           onCustom={() => setCustom(true)}
           hasActiveJourney={!!activeJourney}
           starting={starting}
+        />
+      )}
+
+      {/* Tab: Của Tôi */}
+      {!isLoading && tab === 'mine' && (
+        <MyJourneys
+          history={journeyHistory}
+          onRestart={handleStart}
+          restarting={starting}
         />
       )}
 

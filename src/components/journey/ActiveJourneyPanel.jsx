@@ -14,9 +14,10 @@ import { useAuth } from '../../contexts/AuthContext';
  *   journey   — user_journeys row (active)
  *   onRenew   — () => void
  *   onExtend  — (days: number) => void
+ *   onComplete — () => void  (completes journey + closes habits)
  *   onQuit    — () => void  (archives journey)
  */
-export default function ActiveJourneyPanel({ journey, onRenew, onExtend, onQuit }) {
+export default function ActiveJourneyPanel({ journey, onRenew, onExtend, onComplete, onQuit }) {
   const { user } = useAuth();
   const [journeyHabits, setJourneyHabits] = useState([]);
   const [completedDays, setCompletedDays]  = useState(0);
@@ -153,15 +154,47 @@ export default function ActiveJourneyPanel({ journey, onRenew, onExtend, onQuit 
 
           {/* Actions */}
           <div className="journey-actions" style={{ marginTop: '1rem' }}>
-            <button className="btn-journey-renew" onClick={onRenew} title="Gia hạn 21 ngày mới">
-              🔄 Gia Hạn 21 Ngày
-            </button>
-            <button className="btn-journey-extend" onClick={() => onExtend(30)} title="Mở rộng thêm 30 ngày">
-              ⏩ +30 Ngày
-            </button>
-            <button className="btn-journey-quit" onClick={() => setShowQuitConfirm(true)}>
-              🏳 Bỏ Cuộc
-            </button>
+            {completedDays >= targetDays ? (
+              /* ── Journey Goal Reached! ─────────────── */
+              <>
+                <div style={{
+                  width: '100%',
+                  padding: '0.85rem 1rem',
+                  background: 'linear-gradient(135deg, rgba(0,255,136,0.1), rgba(139,92,246,0.1))',
+                  border: '1px solid rgba(0,255,136,0.25)',
+                  borderRadius: '10px',
+                  textAlign: 'center',
+                  marginBottom: '0.75rem',
+                  color: 'var(--green)',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                }}>
+                  🎉 Chúc mừng! Bạn đã hoàn thành {targetDays} ngày!
+                </div>
+                <button className="btn-journey-renew" onClick={onRenew} title="Tiếp tục với cùng habits, reset ngày">
+                  🔄 Tiếp Tục Cycle {(journey.cycle || 1) + 1}
+                </button>
+                <button className="btn-journey-extend" onClick={() => onExtend(21)} title="Thêm 21 ngày nữa">
+                  ⏩ +21 Ngày
+                </button>
+                <button className="btn-journey-quit" onClick={onComplete} title="Đóng lộ trình, lưu vào lịch sử">
+                  ✅ Hoàn Thành
+                </button>
+              </>
+            ) : (
+              /* ── Normal (In Progress) ─────────────── */
+              <>
+                <button className="btn-journey-renew" onClick={onRenew} title="Gia hạn 21 ngày mới">
+                  🔄 Gia Hạn 21 Ngày
+                </button>
+                <button className="btn-journey-extend" onClick={() => onExtend(30)} title="Mở rộng thêm 30 ngày">
+                  ⏩ +30 Ngày
+                </button>
+                <button className="btn-journey-quit" onClick={() => setShowQuitConfirm(true)}>
+                  🏳 Bỏ Cuộc
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

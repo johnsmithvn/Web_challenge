@@ -8,8 +8,12 @@
 - **Append mode:** Archive old journey, keep old habits active → add fresh template habits on top
 
 ### Fixed
-- **completeJourney:** Now properly closes all active habits (`active=false, status='completed'`) when journey completes. Previously habits stayed active after completion.
-- **renewJourney:** Now snapshots old habits BEFORE completing, then clones them as fresh rows for the new cycle. Previously the renewed journey had zero habits.
+- **completeJourney:** Now properly closes all active habits (`active=false, status='completed'`) when journey completes.
+- **renewJourney:** Now snapshots old habits BEFORE completing, then clones them as fresh rows for the new cycle.
+
+### Added
+- **"Của Tôi" tab:** New tab on Journey page showing user's past journeys with "🔄 Bắt đầu lại" button.
+- **Completion celebration UI:** When `completedDays >= targetDays`, ActiveJourneyPanel shows 🎉 banner with 3 actions: "Tiếp Tục Cycle N" (renew), "+21 Ngày" (extend), "✅ Hoàn Thành" (complete & close).
 
 ---
 
