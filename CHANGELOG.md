@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## v2.0.0 — 2026-04-20
+
+### Changed
+- **Journey owns its habits.** Each journey creates its own fresh habit rows. When a journey is archived/completed, all its habits are closed (`active=false`). No reuse across journeys.
+- **Replace mode:** Archive old journey + close all its habits → create fresh habits from template
+- **Append mode:** Archive old journey, keep old habits active → add fresh template habits on top
+
+### Fixed
+- **completeJourney:** Now properly closes all active habits (`active=false, status='completed'`) when journey completes. Previously habits stayed active after completion.
+- **renewJourney:** Now snapshots old habits BEFORE completing, then clones them as fresh rows for the new cycle. Previously the renewed journey had zero habits.
+
+---
+
+## v1.9.5 — 2026-04-20
+
+### Fixed
+- **Manage tab shows old habits after replace:** `useCustomHabits` fetched ALL habits from Supabase without filtering `active=true`. After replacing journey, deactivated habits still appeared in Quản Lý tab. Fix: added `.eq('active', true)` to the fetch query.
+
+---
+
 ## v1.9.4 — 2026-04-19
 
 ### Fixed

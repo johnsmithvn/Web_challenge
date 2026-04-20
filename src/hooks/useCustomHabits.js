@@ -86,6 +86,7 @@ export function useCustomHabits() {
         .from('habits')
         .select('*')
         .eq('user_id', user.id)
+        .eq('active', true)          // Only fetch active habits (replaced ones are deactivated)
         .order('created_at');
 
       if (!error && data) {

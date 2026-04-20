@@ -3,7 +3,19 @@
 
 ---
 
-## v1.9.3 — ✅ DONE (2026-04-19) — Journey Switch Modal + Fixes
+## v2.0.0 — ✅ DONE (2026-04-20) — Journey Owns Habits
+
+### Architecture: Journey-scoped habits
+- [x] `src/hooks/useJourney.js` — startJourney rewritten: each journey creates FRESH habit rows. No name-match reuse. Replace mode closes all old habits. Append mode keeps old + adds new.
+- [x] `src/hooks/useCustomHabits.js` — fetch query filters `.eq('active', true)` so manage tab only shows current journey's habits
+
+### Lifecycle fixes
+- [x] `completeJourney` — now closes all active habits (`active=false, status='completed'`) alongside the journey
+- [x] `renewJourney` — snapshots old habits BEFORE completing, then clones them as fresh rows for the new cycle with `journey_id` pointing to the new journey
+
+---
+
+
 
 ### Journey switch modal (replace vs append)
 - [x] `src/components/journey/ProgramBrowser.jsx` — SwitchModeModal with 2 radio options: 🔄 Thay thế toàn bộ habits / ➕ Ghi thêm habits

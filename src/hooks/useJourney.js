@@ -111,7 +111,13 @@ export function useJourney() {
   }, [useDB, user, setActiveJourney]);
 
   // ── Start a journey from a program template ───────────────
-  // habitMode: 'replace' (deactivate old habits) | 'append' (keep old + add new)
+  // habitMode: 'replace' (close old habits, create new) | 'append' (keep old + add new)
+  //
+  // ARCHITECTURE: Each journey OWNS its habits.
+  // Close journey = close all its habits (active=false).
+  // New journey = always create fresh habit rows.
+  // journey_habits = snapshot of which habits belonged to which journey.
+  // habit_logs = tied to specific habit_id (scoped to its journey).
   const startJourney = useCallback(async ({ title, description, programId, targetDays, habits = [], habitMode = 'replace' }) => {
     const today = new Date().toISOString().split('T')[0];
     const payload = {
@@ -132,26 +138,25 @@ export function useJourney() {
       return localJourney;
     }
 
-    // 1. Archive any existing active journey first (preserves history)
+    // ── Step 1: Archive existing active journey + close its habits ──
     if (activeJourney) {
       await supabase
         .from('user_journeys')
         .update({ status: 'archived', ended_at: today })
         .eq('id', activeJourney.id);
+
+      if (habitMode === 'replace') {
+        // Close ALL active habits (they belong to the old journey)
+        await supabase
+          .from('habits')
+          .update({ active: false, status: 'archived' })
+          .eq('user_id', user.id)
+          .eq('active', true);
+      }
+      // 'append': keep old habits active, they carry forward
     }
 
-    // 2. Handle old habits based on habitMode
-    if (habitMode === 'replace') {
-      // Deactivate ALL old habits for this user (they belong to the old journey)
-      await supabase
-        .from('habits')
-        .update({ active: false, status: 'conquered' })
-        .eq('user_id', user.id)
-        .eq('active', true);
-    }
-    // 'append' mode: leave old habits active, they'll carry over
-
-    // 3. Create new journey
+    // ── Step 2: Create new journey row ──────────────────────
     const { data: newJourney, error } = await supabase
       .from('user_journeys')
       .insert(payload)
@@ -160,7 +165,8 @@ export function useJourney() {
 
     if (error) { console.warn('[useJourney] startJourney error:', error.message); return null; }
 
-    // 4. Insert template habits into user's habits table
+    // ── Step 3: Create FRESH habit rows from template ────────
+    // Always new rows — each journey owns its own habits
     if (habits.length) {
       const habitRows = habits.map((h, i) => ({
         id:          crypto.randomUUID(),
@@ -181,19 +187,18 @@ export function useJourney() {
       const { data: insertedHabits, error: hErr } = await supabase
         .from('habits')
         .insert(habitRows)
-        .select('id, name, icon, color');
+        .select('id, name, action, icon, color');
 
       if (hErr) {
         console.warn('[useJourney] habit insert error:', hErr.message);
       } else {
-        console.log(`[useJourney] Created ${insertedHabits?.length ?? 0} habits from template`);
+        console.log(`[useJourney] Created ${insertedHabits?.length ?? 0} habits for journey "${title}"`);
       }
 
-      // 5. Build journey_habits snapshot
-      //    For 'append' mode, also snapshot the kept old habits
-      const snapsFromNew = (insertedHabits || habits).map((h, i) => ({
+      // ── Step 4: Build journey_habits snapshot ────────────────
+      const newSnaps = (insertedHabits || habitRows).map((h, i) => ({
         journey_id: newJourney.id,
-        habit_id:   h.id || null,
+        habit_id:   h.id,
         name:       h.name,
         action:     h.action || null,
         icon:       h.icon || '✅',
@@ -202,7 +207,7 @@ export function useJourney() {
       }));
 
       if (habitMode === 'append') {
-        // Also snapshot old still-active habits
+        // Also snapshot old active habits that carry forward
         const { data: oldActive } = await supabase
           .from('habits')
           .select('id, name, action, icon, color')
@@ -210,36 +215,28 @@ export function useJourney() {
           .eq('active', true)
           .neq('journey_id', newJourney.id);
 
-        const snapsFromOld = (oldActive || []).map((h, i) => ({
+        const oldSnaps = (oldActive || []).map((h, i) => ({
           journey_id: newJourney.id,
           habit_id:   h.id,
           name:       h.name,
           action:     h.action || null,
           icon:       h.icon || '✅',
           color:      h.color || '#8b5cf6',
-          sort_order: snapsFromNew.length + i,
+          sort_order: newSnaps.length + i,
         }));
 
-        // Update old habits to point to new journey
-        if (oldActive?.length) {
-          const oldIds = oldActive.map(h => h.id);
-          await supabase
-            .from('habits')
-            .update({ journey_id: newJourney.id })
-            .in('id', oldIds);
-        }
-
-        await supabase.from('journey_habits').insert([...snapsFromNew, ...snapsFromOld]);
+        await supabase.from('journey_habits').insert([...newSnaps, ...oldSnaps]);
       } else {
-        await supabase.from('journey_habits').insert(snapsFromNew);
+        await supabase.from('journey_habits').insert(newSnaps);
       }
     }
 
-    // 6. Sync context immediately
+    // ── Step 5: Sync context ────────────────────────────────
     setActiveJourney(newJourney);
     saveLocalJourney(newJourney);
     return newJourney;
   }, [useDB, user, activeJourney, setActiveJourney]);
+
 
   // ── Complete journey ──────────────────────────────────────
   const completeJourney = useCallback(async () => {
@@ -248,24 +245,47 @@ export function useJourney() {
     const updates = { status: 'completed', ended_at: today };
 
     if (useDB) {
+      // 1. Mark journey as completed
       const { error } = await supabase
         .from('user_journeys')
         .update(updates)
         .eq('id', activeJourney.id);
       if (error) { console.warn('[useJourney] complete error:', error.message); return; }
+
+      // 2. Close all habits belonging to this journey
+      await supabase
+        .from('habits')
+        .update({ active: false, status: 'completed' })
+        .eq('user_id', user.id)
+        .eq('active', true);
     }
 
     const completed = { ...activeJourney, ...updates };
     setActiveJourney(null);          // ← clear context
     saveLocalJourney(null);
     setJourneyHistory(prev => [completed, ...prev]);
-  }, [activeJourney, useDB, setActiveJourney]);
+  }, [activeJourney, useDB, user, setActiveJourney]);
 
-  // ── Renew journey (same habits, +1 cycle) ─────────────────
+  // ── Renew journey (clone habits, +1 cycle) ─────────────────
   const renewJourney = useCallback(async () => {
     if (!activeJourney) return;
+
+    // 1. Snapshot old habits BEFORE completing (they'll be closed)
+    let oldHabits = [];
+    if (useDB && user) {
+      const { data } = await supabase
+        .from('habits')
+        .select('name, action, icon, color, category')
+        .eq('user_id', user.id)
+        .eq('active', true)
+        .order('sort_order');
+      oldHabits = data || [];
+    }
+
+    // 2. Complete old journey (closes its habits)
     await completeJourney();
 
+    // 3. Create new journey with cycle +1
     const today = new Date().toISOString().split('T')[0];
     const payload = {
       user_id:     useDB ? user.id : 'guest',
@@ -285,12 +305,50 @@ export function useJourney() {
       return renewed;
     }
 
-    const { data, error } = await supabase.from('user_journeys').insert(payload).select().single();
+    const { data: newJourney, error } = await supabase.from('user_journeys').insert(payload).select().single();
     if (error) { console.warn('[useJourney] renew error:', error.message); return null; }
 
-    setActiveJourney(data);          // ← sync context
-    saveLocalJourney(data);
-    return data;
+    // 4. Clone old habits as FRESH rows for the new journey
+    if (oldHabits.length) {
+      const habitRows = oldHabits.map((h, i) => ({
+        id:          crypto.randomUUID(),
+        user_id:     user.id,
+        name:        h.name,
+        action:      h.action || h.name,
+        icon:        h.icon || '✅',
+        color:       h.color || '#8b5cf6',
+        category:    h.category || 'other',
+        status:      'active',
+        cycle_count: 1,
+        active:      true,
+        journey_id:  newJourney.id,
+        created_at:  new Date().toISOString(),
+        sort_order:  i,
+      }));
+
+      const { data: inserted } = await supabase
+        .from('habits')
+        .insert(habitRows)
+        .select('id, name, action, icon, color');
+
+      // Build journey_habits snapshot
+      const snaps = (inserted || habitRows).map((h, i) => ({
+        journey_id: newJourney.id,
+        habit_id:   h.id,
+        name:       h.name,
+        action:     h.action || null,
+        icon:       h.icon || '✅',
+        color:      h.color || '#8b5cf6',
+        sort_order: i,
+      }));
+      await supabase.from('journey_habits').insert(snaps);
+
+      console.log(`[useJourney] Renewed: cloned ${habitRows.length} habits for cycle ${payload.cycle}`);
+    }
+
+    setActiveJourney(newJourney);
+    saveLocalJourney(newJourney);
+    return newJourney;
   }, [activeJourney, useDB, user, completeJourney, setActiveJourney]);
 
   // ── Extend journey duration ───────────────────────────────
