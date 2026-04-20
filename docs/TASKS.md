@@ -13,7 +13,10 @@
 - [x] `completeJourney` — now closes all active habits (`active=false, status='completed'`) alongside the journey
 - [x] `renewJourney` — snapshots old habits BEFORE completing, then clones them as fresh rows for the new cycle with `journey_id` pointing to the new journey
 
----
+### New UI
+- [x] `src/components/journey/MyJourneys.jsx` — [NEW] "Của Tôi" tab showing past journeys with "Bắt đầu lại" button (fetches journey_habits snapshot)
+- [x] `src/components/journey/ActiveJourneyPanel.jsx` — completion celebration UI: when completedDays >= targetDays shows 🎉 banner + 3 actions (Renew / Extend / Complete)
+- [x] `src/pages/JourneyPage.jsx` — added "📂 Của Tôi" tab + wired onComplete handler
 
 
 
