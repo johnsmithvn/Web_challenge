@@ -123,6 +123,32 @@ export function useXpStore() {
     return entry;
   }, [useDB, user]);
 
+  // ── Remove XP (reverse a previous addXp) ──────────────────
+  const removeXp = useCallback(async (reason, meta = {}) => {
+    const metaStr = JSON.stringify(meta);
+    const match = log.find(e => e.reason === reason && JSON.stringify(e.meta) === metaStr);
+    if (!match) return; // nothing to reverse
+
+    // Optimistic: remove from in-memory log
+    setLog(prev => prev.filter(e => !(e.reason === reason && JSON.stringify(e.meta) === metaStr)));
+
+    if (useDB && user) {
+      // Delete the matching xp_logs row from Supabase
+      const { error } = await supabase
+        .from('xp_logs')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('reason', reason)
+        .eq('meta', meta);
+
+      if (error) {
+        console.warn('[XpStore] removeXp failed:', error.message);
+        // Rollback: put it back
+        setLog(prev => [...prev, match]);
+      }
+    }
+  }, [useDB, user, log]);
+
   const hasMilestone = useCallback((reason, meta = {}) => {
     return log.some(e =>
       e.reason === reason && JSON.stringify(e.meta) === JSON.stringify(meta)
@@ -132,5 +158,5 @@ export function useXpStore() {
   const totalXp  = log.reduce((sum, e) => sum + e.amount, 0);
   const levelInfo = computeLevel(totalXp);
 
-  return { totalXp, levelInfo, log, addXp, hasMilestone, levels: LEVELS };
+  return { totalXp, levelInfo, log, addXp, removeXp, hasMilestone, levels: LEVELS };
 }

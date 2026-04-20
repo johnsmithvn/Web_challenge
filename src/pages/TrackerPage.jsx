@@ -291,7 +291,7 @@ export default function TrackerPage() {
     totalDone, completionPct, badge, todayDone
   } = useHabitStore();
   const { activeHabits, conqueredHabits, conquestHabit, renewHabit } = useCustomHabits();
-  const { addXp, hasMilestone, totalXp } = useXpStore();
+  const { addXp, removeXp, hasMilestone, totalXp } = useXpStore();
   const { scheduleTodayReminder } = useNotifications();
   const { saveMood, getMood } = useMoodLog();
   const { saveSkip } = useSkipReasons();
@@ -349,6 +349,9 @@ export default function TrackerPage() {
 
     if (!wasDone && !hasMilestone('habit_tick', { habitId: habit.id, date: todayKey })) {
       addXp(XP_REWARDS.daily_check, 'habit_tick', { habitId: habit.id, date: todayKey });
+    } else if (wasDone) {
+      // Un-ticking: deduct the XP
+      removeXp('habit_tick', { habitId: habit.id, date: todayKey });
     }
 
     const nextDone = !wasDone;

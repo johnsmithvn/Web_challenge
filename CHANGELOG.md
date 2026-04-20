@@ -10,6 +10,7 @@
 ### Fixed
 - **completeJourney:** Now properly closes all active habits (`active=false, status='completed'`) when journey completes.
 - **renewJourney:** Now snapshots old habits BEFORE completing, then clones them as fresh rows for the new cycle.
+- **XP deduction on un-check:** Added `removeXp()` to `useXpStore`. Un-ticking a daily challenge or habit now properly deducts the XP. Previously XP was only added, never removed.
 
 ### Added
 - **"Của Tôi" tab:** New tab on Journey page showing user's past journeys with "🔄 Bắt đầu lại" button.

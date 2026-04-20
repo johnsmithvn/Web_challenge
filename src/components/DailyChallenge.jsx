@@ -30,7 +30,7 @@ export default function DailyChallenge({ streak = 0 }) {
   // Pick based on current streak day — new user (streak 0/1) sees Challenge 1
   const challenge = useMemo(() => pickByDay(pool, streak), [pool, streak]);
 
-  const { addXp, hasMilestone } = useXpStore();
+  const { addXp, removeXp, hasMilestone } = useXpStore();
   const storageKey = `vl_dc_${dateKey}`;
 
   const [done, setDone]           = useState(() => !!localStorage.getItem(storageKey));
@@ -49,6 +49,8 @@ export default function DailyChallenge({ streak = 0 }) {
     } else {
       localStorage.removeItem(storageKey);
       setDone(false);
+      // Deduct the XP that was awarded for this challenge
+      removeXp('daily_challenge', { date: dateKey });
     }
   };
 
