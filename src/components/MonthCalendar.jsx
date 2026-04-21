@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useCustomHabits } from '../hooks/useCustomHabits';
 import '../styles/calendar.css';
 
@@ -22,11 +22,14 @@ function getFirstDayOfWeek(year, month) {
   return d === 0 ? 6 : d - 1; // Monday = 0
 }
 
-export default function MonthCalendar({ habitData }) {
+export default function MonthCalendar({ habitData, getCompletedTasks }) {
   const today = new Date();
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selected,  setSelected]  = useState(null);
+  const [selectedTasks, setSelectedTasks] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [expandedTaskId, setExpandedTaskId] = useState(null);
 
   const { activeHabits } = useCustomHabits();
 
@@ -41,7 +44,6 @@ export default function MonthCalendar({ habitData }) {
       const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const holiday = VN_HOLIDAYS[`${String(viewMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`];
       const done    = habitData?.[dateStr] ?? false;
-      const mmKey   = `${String(viewMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       map[d] = { dateStr, done, holiday };
     }
     return map;
@@ -66,6 +68,38 @@ export default function MonthCalendar({ habitData }) {
 
   // Build grid: blanks + days
   const cells = [...Array(firstDayOfW).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+
+  // Fetch completed tasks when a day is selected
+  const handleSelectDay = useCallback(async (dateStr) => {
+    if (selected === dateStr) {
+      setSelected(null);
+      setSelectedTasks([]);
+      setExpandedTaskId(null);
+      return;
+    }
+    setSelected(dateStr);
+    setExpandedTaskId(null);
+    setSelectedTasks([]);
+
+    if (getCompletedTasks) {
+      setLoadingTasks(true);
+      try {
+        const tasks = await getCompletedTasks(dateStr);
+        setSelectedTasks(tasks || []);
+      } catch {
+        setSelectedTasks([]);
+      } finally {
+        setLoadingTasks(false);
+      }
+    }
+  }, [selected, getCompletedTasks]);
+
+  // Reset tasks when changing months
+  useEffect(() => {
+    setSelected(null);
+    setSelectedTasks([]);
+    setExpandedTaskId(null);
+  }, [viewYear, viewMonth]);
 
   return (
     <div className="month-calendar card">
@@ -126,7 +160,7 @@ export default function MonthCalendar({ habitData }) {
                 isToday    ? 'cal-cell--today'    : '',
                 isSelected ? 'cal-cell--selected' : '',
               ].join(' ')}
-              onClick={() => setSelected(isSelected ? null : info.dateStr)}
+              onClick={() => handleSelectDay(info.dateStr)}
               id={`cal-day-${info.dateStr}`}
               role="button"
               title={info.holiday || info.dateStr}
@@ -149,6 +183,66 @@ export default function MonthCalendar({ habitData }) {
           }
           {dayData[new Date(selected).getDate()]?.holiday && (
             <span style={{ color: '#fbbf24' }}>{dayData[new Date(selected).getDate()].holiday}</span>
+          )}
+
+          {/* Completed tasks for this day */}
+          {loadingTasks && (
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.5rem', display: 'block' }}>
+              ⏳ Đang tải nhiệm vụ...
+            </span>
+          )}
+          {selectedTasks.length > 0 && (
+            <div style={{ marginTop: '0.75rem' }}>
+              <div style={{
+                fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)',
+                marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem',
+              }}>
+                📌 Nhiệm vụ đã hoàn thành ({selectedTasks.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                {selectedTasks.map(task => (
+                  <div key={task.id} style={{
+                    background: 'rgba(0,255,136,0.04)',
+                    border: '1px solid rgba(0,255,136,0.1)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '0.5rem 0.6rem',
+                    cursor: task.description ? 'pointer' : 'default',
+                  }}
+                  onClick={() => task.description && setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                        ✅ {task.title}
+                        {task.description && (
+                          <span style={{ fontSize: '0.68rem', marginLeft: '0.3rem', color: 'var(--text-muted)' }}>
+                            {expandedTaskId === task.id ? '▾' : '▸'}
+                          </span>
+                        )}
+                      </span>
+                      {task.completed_at && (
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                          {new Date(task.completed_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                    {expandedTaskId === task.id && task.description && (
+                      <div style={{
+                        marginTop: '0.35rem',
+                        padding: '0.4rem 0.5rem',
+                        background: 'rgba(255,255,255,0.03)',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.75rem',
+                        color: 'var(--text-muted)',
+                        lineHeight: 1.5,
+                        whiteSpace: 'pre-wrap',
+                      }}>
+                        {task.description}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}

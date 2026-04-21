@@ -574,6 +574,31 @@ CREATE INDEX idx_habit_logs_user ON habit_logs (user_id, date DESC);
 ALTER TABLE habit_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "habit_logs_own" ON habit_logs FOR ALL
   USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+-- ============================================================
+-- v2.1.0 ADDITIONS: Personal Tasks (run data/migration_v2.1.0.sql)
+-- ============================================================
+
+-- 21. USER_TASKS (personal to-do items)
+CREATE TABLE user_tasks (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title         TEXT NOT NULL,
+  description   TEXT,
+  due_date      DATE NOT NULL,
+  due_time      TIME,
+  completed     BOOLEAN NOT NULL DEFAULT FALSE,
+  completed_at  TIMESTAMPTZ,
+  notified      BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_tasks_user_date ON user_tasks (user_id, due_date);
+CREATE INDEX idx_user_tasks_pending ON user_tasks (user_id, completed, due_date) WHERE completed = false;
+
+ALTER TABLE user_tasks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "tasks_own" ON user_tasks FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 ```
 
 
@@ -640,11 +665,12 @@ On first login (one-time per data type):
 | `data/migration_v1.6.2.sql` | v1.6.2 | Create xp_logs, friendships + enable Realtime |
 | `data/migration_v1.9.0.sql` | v1.9.0 | Update handle_new_user trigger, seed program_habits |
 | `data/supabase_team_v3.sql` | v3.0.0 | team_members, user_programs, team_check_logs, team_rules, team_rule_agreements |
+| `data/migration_v2.1.0.sql` | v2.1.0 | user_tasks table + RLS + indexes |
 
 ## Supabase Setup Checklist
 
 - [ ] Create project (region: Southeast Asia – Singapore)
-- [ ] Run migration SQL files in order (v1.2.0 → v1.4.0 → v1.5.0 → v1.6.2 → v1.9.0)
+- [ ] Run migration SQL files in order (v1.2.0 → v1.4.0 → v1.5.0 → v1.6.2 → v1.9.0 → v2.1.0)
 - [ ] Enable Realtime for: progress, reactions, streaks, teams, xp_logs, habits, focus_sessions
 - [ ] Enable Google OAuth (Auth → Providers → Google)
 - [ ] Get URL + anon key from Project Settings → API

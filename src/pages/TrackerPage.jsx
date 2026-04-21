@@ -8,12 +8,14 @@ import { useTeam } from '../hooks/useTeam';
 import { useMoodLog, useSkipReasons } from '../hooks/useMoodSkip';
 import { useJourney } from '../hooks/useJourney';
 import { useHabitLogs } from '../hooks/useHabitLogs';
+import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
 import DailyChallenge from '../components/DailyChallenge';
 import XpBar from '../components/XpBar';
 import NotificationSettings from '../components/NotificationSettings';
 import CompletionModal from '../components/CompletionModal';
 import LoginNudgeModal from '../components/LoginNudgeModal';
+import TaskListSection from '../components/TaskListSection';
 import '../styles/tracker.css';
 import '../styles/xpbar.css';
 import '../styles/calendar.css';
@@ -299,6 +301,7 @@ export default function TrackerPage() {
   const { habitProg, toggleLog } = useHabitLogs();
   const { isAuthenticated } = useAuth();
   const { team } = useTeam();
+  const { getCompletedTasks } = useUserTasks();
 
   const [tab, setTab] = useState('today');
 
@@ -734,6 +737,9 @@ export default function TrackerPage() {
               )}
             </div>
 
+            {/* ── Personal Tasks (Nhiệm Vụ) ── */}
+            <TaskListSection />
+
             {/* ── Daily Challenge ── */}
             <DailyChallenge streak={streak} />
 
@@ -759,7 +765,7 @@ export default function TrackerPage() {
         {/* ── Tab: Calendar (lazy loaded) ── */}
         {tab === 'calendar' && (
           <Suspense fallback={<div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>⏳ Loading...</div>}>
-            <MonthCalendar habitData={data} />
+            <MonthCalendar habitData={data} getCompletedTasks={getCompletedTasks} />
           </Suspense>
         )}
 

@@ -1,5 +1,5 @@
 # ARCHITECTURE.md — Thử Thách Vượt Lười
-**Version:** v2.0.0
+**Version:** v2.1.0
 **Updated:** 2026-04-21
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
@@ -43,9 +43,10 @@ src/
 │   ├── FocusTimer.jsx         # SVG countdown + habit dropdown
 │   ├── HabitManager.jsx       # CRUD custom habits UI
 │   ├── LoginNudgeModal.jsx    # v1.4.0 — Bottom sheet nhắc guest đăng ký
-│   ├── MonthCalendar.jsx      # Monthly view, VN holidays
+│   ├── MonthCalendar.jsx      # Monthly view, VN holidays, completed tasks display
 │   ├── NotificationSettings.jsx
-│   ├── PageSkeleton.jsx       # v1.7.0 — Shimmer skeleton for lazy pages
+│   ├── PageSkeleton.jsx       # v1.7.0 — Shimmer skeleton loading
+│   ├── TaskListSection.jsx    # v2.1.0 — Personal tasks UI (📌 Nhiệm Vụ)
 │   ├── TrackerSection.jsx     # Read-only 3-week status dots
 │   ├── XpBar.jsx              # XP + level indicator
 │   └── ...
@@ -65,6 +66,7 @@ src/
 │   ├── useTeam.js             # Team fetch, create/join/leave, realtime
 │   ├── useTeamCheck.js        # Week-2 check logic, submit team_check_logs
 │   ├── useTeamRules.js        # CRUD rules, propose + unanimous approval
+│   ├── useUserTasks.js        # v2.1.0 — Personal task CRUD, notification sync
 │   ├── useNotifications.js    # Browser notification API
 │   └── ...
 │
@@ -186,6 +188,7 @@ notification_settings ← 1:1 with profiles
 partner_queue         ← auto-match waiting room
 quiz_attempts         ← quiz history
 daily_challenge_completions ← 1 per day
+user_tasks                 ← v2.1.0: personal to-do items (title, desc, due date/time)
 
 -- v1.5.0 (run data/migration_v1.5.0.sql)
 programs              ← program/lộ trình library (system templates + user)

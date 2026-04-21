@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v2.1.0 — 2026-04-21
+
+### Added
+- `src/components/TaskListSection.jsx` — Personal task UI (📌 Nhiệm Vụ) in TrackerPage "Hôm Nay" tab
+- `src/hooks/useUserTasks.js` — Task CRUD hook (Supabase-first, guest in-memory)
+- `public/sw.js` — Service Worker for background task due-time notifications
+- `data/migration_v2.1.0.sql` — `user_tasks` table + RLS + indexes
+- Task list: title, description, due date/time, overdue indicator, completion with timestamp
+- Calendar integration: click day → see completed tasks with expandable description + completion time
+- Service Worker registered in `App.jsx` — notifications work even when tab is closed
+
+### Changed
+- `src/components/MonthCalendar.jsx` — Accept `getCompletedTasks` prop, show tasks in day detail panel
+- `src/pages/TrackerPage.jsx` — Add `TaskListSection` between Mood and Daily Challenge, pass `getCompletedTasks` to calendar
+
+---
+
 ## v2.0.0 — 2026-04-20
 
 ### Changed

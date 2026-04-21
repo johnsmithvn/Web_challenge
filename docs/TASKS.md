@@ -3,6 +3,30 @@
 
 ---
 
+## v2.1.0 — ✅ DONE (2026-04-21) — Personal Tasks (Nhiệm Vụ Cá Nhân)
+
+### Database
+- [x] `data/migration_v2.1.0.sql` — `user_tasks` table + RLS + indexes
+
+### Hook
+- [x] `src/hooks/useUserTasks.js` — CRUD (addTask, completeTask, deleteTask, getCompletedTasks). Supabase-first, guest in-memory
+
+### Components
+- [x] `src/components/TaskListSection.jsx` — Task list UI: add form, pending/completed display, overdue indicator, expandable description
+- [x] `src/components/MonthCalendar.jsx` — Accept `getCompletedTasks` prop, show completed tasks in day detail panel
+
+### Service Worker
+- [x] `public/sw.js` — Background notification scheduler (check every 60s, fire when task due)
+- [x] `src/App.jsx` — Register SW on mount
+
+### Integration
+- [x] `src/pages/TrackerPage.jsx` — Import TaskListSection + useUserTasks, wire getCompletedTasks to calendar
+
+### Pending (user responsibility)
+- [ ] Run `data/migration_v2.1.0.sql` in Supabase SQL Editor
+
+---
+
 ## v2.0.0 — ✅ DONE (2026-04-20) — Journey Owns Habits
 
 ### Architecture: Journey-scoped habits

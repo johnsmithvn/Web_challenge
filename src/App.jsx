@@ -111,6 +111,13 @@ function AppShell() {
 }
 
 export default function App() {
+  // Register Service Worker for background task notifications
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+
   return (
     <AuthProvider>
       <BrowserRouter>

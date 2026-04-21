@@ -1,6 +1,6 @@
 # PLAN.md — Thử Thách Vượt Lười
 **Updated:** 2026-04-21
-**Current Version:** v2.0.0
+**Current Version:** v2.1.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -168,6 +168,19 @@
 
 ---
 
+## ✅ Phase 5.3 — Personal Tasks (v2.1.0)
+*Hoàn thành: 2026-04-21*
+
+- [x] `data/migration_v2.1.0.sql` — `user_tasks` table + RLS + indexes
+- [x] `src/hooks/useUserTasks.js` — Task CRUD (Supabase-first, guest in-memory)
+- [x] `src/components/TaskListSection.jsx` — Task list UI in TrackerPage
+- [x] `public/sw.js` — Service Worker background notification (check 60s, fire when due)
+- [x] `src/App.jsx` — Register Service Worker
+- [x] `src/components/MonthCalendar.jsx` — Show completed tasks in day detail
+- [x] `src/pages/TrackerPage.jsx` — Wire task list + calendar integration
+
+---
+
 ## 🚧 Phase 6 — Team Accountability v3 (v3.0.0)
 *Components built — chưa integrate full flow*
 
@@ -243,3 +256,4 @@
 | v1.9.4 | Synchronous isLoadingJourney (eliminate redirect race) |
 | v1.9.5 | Fix manage tab showing old habits after replace |
 | v2.0.0 | Journey Owns Habits + MyJourneys tab + removeXp + Completion UI |
+| v2.1.0 | Personal Tasks (Nhiệm Vụ) + Service Worker notifications + Calendar log |

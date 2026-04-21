@@ -1,5 +1,5 @@
 # FEATURES.md — Thử Thách Vượt Lười
-**Version:** v2.0.0
+**Version:** v2.1.0
 **Updated:** 2026-04-21
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
@@ -371,7 +371,29 @@
 
 ---
 
+## 20. 📌 Nhiệm Vụ Cá Nhân (Personal Tasks) (v2.1.0)
+
+**Added:** v2.1.0
+**Files:** `src/components/TaskListSection.jsx`, `src/hooks/useUserTasks.js`, `public/sw.js`
+
+**Mô tả:** Danh sách nhiệm vụ cá nhân (to-do), tách biệt khỏi habit/journey/XP. User tự tạo task với tiêu đề, mô tả, ngày giờ hẹn. Nhận notification khi đến hạn. Tick hoàn thành → lưu log xem trên calendar.
+
+**Chi tiết:**
+- **Task list** trong TrackerPage tab "⚡ Hôm Nay" (giữa Mood và Daily Challenge)
+- **Add form:** Tên (required), mô tả (optional), ngày (default hôm nay), giờ (optional)
+- **Task card:** Checkbox + title + description expand (▸/▾) + ⏰ badge + 📅 badge + "Quá hạn" indicator
+- **Tick hoàn thành** → gạch ngang, lưu `completed_at` timestamp
+- **Completed tasks** hôm nay hiển thị bên dưới với style nhạt
+- Sau ngày hôm đó → task biến mất khỏi danh sách chính
+- **Calendar integration:** Tab 📅 Lịch → click ngày → thấy danh sách tasks đã hoàn thành + expandable description + thời gian hoàn thành
+- **Service Worker notification:** Background check mỗi 60s → fire notification khi task đến hạn (hoạt động cả khi tab đóng, chỉ cần browser mở)
+- **Không tính XP, không tính streak, không gắn journey**
+- **Data:** `user_tasks` (Supabase), guest = in-memory
+
+---
+
 ## Data Architecture — Dual Mode
+
 
 | Chức năng | Storage (Authed) | Guest Fallback |
 |-----------|-------------------|---------------|
@@ -387,6 +409,7 @@
 | Teams | `teams` (Supabase) | — |
 | Friends | `friendships` (Supabase) | — |
 | Notifications | `vl_notif_settings` (localStorage) | localStorage |
+| Personal tasks | `user_tasks` (Supabase) | in-memory |
 
 ---
 
