@@ -1,6 +1,7 @@
 # DATABASE DESIGN — Thử Thách Vượt Lười
 **Target:** Supabase (PostgreSQL)
 **Version:** v2.0.0
+**Updated:** 2026-04-21
 **Strategy:** Production-ready from day 1
 
 ---
@@ -16,14 +17,22 @@ profiles ───────────────────────�
     ├──► progress          (daily check)        │
     ├──► streaks           (cached trigger)     │
     ├──► xp_logs           (immutable events)   │
-    ├──► quiz_attempts                          │
-    ├──► daily_challenge_completions            │
+    ├──► habits            (custom + journey)    │
+    ├──► habit_logs        (per-habit daily)     │
+    ├──► focus_sessions    (pomodoro)            │
+    ├──► mood_logs / skip_reasons               │
+    ├──► quiz_attempts / daily_challenge_comp.  │
     ├──► notification_settings  (1:1)           │
     ├──► partner_queue     (auto-match)         │
+    │                                           │
+    ├──► user_journeys     (journey runs)       │
+    ├──► journey_habits    (snapshot per run)   │
     │                                           │
     ├──► teams             (member1 or member2) │
     ├──► reactions         (from or to)         │
     └──► friendships       (requester/addressee)┘
+
+programs ──► program_habits   (template library, system + user)
 ```
 
 ---
@@ -400,9 +409,14 @@ CREATE TABLE habits (
   icon         TEXT NOT NULL DEFAULT '⚡',
   color        TEXT NOT NULL DEFAULT '#8B5CF6',
   category     TEXT NOT NULL DEFAULT 'other',
+  action       TEXT,                                    -- v1.4.0: specific action description
   time_target  TIME,
   duration_min SMALLINT,
   active       BOOLEAN NOT NULL DEFAULT TRUE,
+  status       TEXT DEFAULT 'active',                   -- v1.4.0: active/conquered/archived
+  cycle_count  SMALLINT DEFAULT 0,                      -- v1.4.0: number of 21-day cycles completed
+  conquered_at TIMESTAMPTZ,                             -- v1.4.0: when habit reached 21 days
+  journey_id   UUID REFERENCES user_journeys(id),       -- v1.5.0: link to journey
   sort_order   SMALLINT DEFAULT 0,
   created_at   TIMESTAMPTZ DEFAULT NOW(),
   updated_at   TIMESTAMPTZ DEFAULT NOW()
@@ -423,6 +437,7 @@ CREATE TABLE focus_sessions (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   habit_id     UUID REFERENCES habits(id) ON DELETE SET NULL,
+  journey_id   UUID REFERENCES user_journeys(id),       -- v1.8.0: link to journey
   duration_min SMALLINT NOT NULL DEFAULT 25,
   date         DATE NOT NULL DEFAULT CURRENT_DATE,
   completed_at TIMESTAMPTZ DEFAULT NOW()
@@ -471,6 +486,94 @@ CREATE POLICY "skip_own" ON skip_reasons FOR ALL
 -- Realtime for new tables
 ALTER PUBLICATION supabase_realtime ADD TABLE habits;
 ALTER PUBLICATION supabase_realtime ADD TABLE focus_sessions;
+
+-- ============================================================
+-- v1.5 ADDITIONS: Journey System (run data/migration_v1.5.0.sql)
+-- ============================================================
+
+-- 16. PROGRAMS (journey templates)
+CREATE TABLE programs (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title        TEXT NOT NULL,
+  description  TEXT,
+  category     TEXT NOT NULL DEFAULT 'other',
+  target_days  SMALLINT NOT NULL DEFAULT 21,
+  is_system    BOOLEAN NOT NULL DEFAULT FALSE,
+  created_by   UUID REFERENCES profiles(id),
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE programs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "programs_read" ON programs FOR SELECT USING (true);
+CREATE POLICY "programs_create" ON programs FOR INSERT WITH CHECK (auth.uid() = created_by);
+
+-- 17. PROGRAM_HABITS (template habit definitions)
+CREATE TABLE program_habits (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  program_id   UUID NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
+  name         TEXT NOT NULL,
+  icon         TEXT NOT NULL DEFAULT '⚡',
+  color        TEXT NOT NULL DEFAULT '#8B5CF6',
+  category     TEXT NOT NULL DEFAULT 'other',
+  action       TEXT,
+  duration_min SMALLINT,
+  sort_order   SMALLINT DEFAULT 0
+);
+
+ALTER TABLE program_habits ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "program_habits_read" ON program_habits FOR SELECT USING (true);
+
+-- 18. USER_JOURNEYS (each run of a program)
+CREATE TABLE user_journeys (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  program_id   UUID REFERENCES programs(id),
+  title        TEXT NOT NULL,
+  description  TEXT,
+  target_days  SMALLINT NOT NULL DEFAULT 21,
+  started_at   DATE NOT NULL DEFAULT CURRENT_DATE,
+  ended_at     DATE,
+  status       TEXT NOT NULL DEFAULT 'active',   -- active / completed / archived / extended
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_journeys_user ON user_journeys (user_id, status);
+
+ALTER TABLE user_journeys ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "journeys_own" ON user_journeys FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+-- 19. JOURNEY_HABITS (snapshot of habits at journey start)
+CREATE TABLE journey_habits (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  journey_id   UUID NOT NULL REFERENCES user_journeys(id) ON DELETE CASCADE,
+  habit_id     UUID REFERENCES habits(id) ON DELETE SET NULL,
+  name         TEXT NOT NULL,
+  icon         TEXT NOT NULL DEFAULT '⚡',
+  color        TEXT NOT NULL DEFAULT '#8B5CF6'
+);
+
+ALTER TABLE journey_habits ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "journey_habits_own" ON journey_habits FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_journeys WHERE id = journey_id AND user_id = auth.uid()));
+
+-- 20. HABIT_LOGS (per-habit daily completion — replaces vl_habit_progress)
+CREATE TABLE habit_logs (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  habit_id     UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+  journey_id   UUID REFERENCES user_journeys(id),
+  date         DATE NOT NULL DEFAULT CURRENT_DATE,
+  completed    BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (user_id, habit_id, date)
+);
+
+CREATE INDEX idx_habit_logs_user ON habit_logs (user_id, date DESC);
+
+ALTER TABLE habit_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "habit_logs_own" ON habit_logs FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 ```
 
 
@@ -480,13 +583,14 @@ ALTER PUBLICATION supabase_realtime ADD TABLE focus_sessions;
 
 | Event | XP | Frequency |
 |-------|-----|----------|
-| Daily check ✓ | +10 | Per day (deduped) |
+| Daily check ✓ | +10 | Per habit/day (deduped) |
 | Streak 3 | +50 | One-time |
 | Streak 10 | +100 | One-time |
 | Streak 21 | +200 | One-time |
 | Daily Challenge | +20 | Max 1/day |
 | Quiz | +10–50 | Per attempt (score-based) |
-| Duo streak | +30 | Per day (v2) |
+| Focus Session | +15 | Per session (deduped) |
+| Duo streak | +30 | Per day (v3 planned) |
 
 ## Level Thresholds
 
@@ -515,18 +619,33 @@ LIMIT 20;
 
 ## Migration Strategy (localStorage → Supabase)
 
-On first login:
-1. Read `vl_habit_data` from localStorage
-2. Upsert each entry into `progress` table
-3. Compute XP from history → insert `xp_logs` entries
-4. Set `vl_migrated = true` flag in localStorage
-5. Subsequent reads → Supabase only
+**v1.6.2+ architecture:** Supabase is primary for ALL user data. localStorage only stores UI flags.
+
+On first login (one-time per data type):
+1. Read `vl_habit_data` from localStorage → upsert into `progress` → wipe local
+2. Read `vl_custom_habits` → upsert into `habits` → wipe local
+3. Read `vl_xp_store` → insert into `xp_logs` → wipe local
+4. Read `vl_habit_progress` → insert into `habit_logs` → wipe local
+5. Read `vl_focus_sessions` → insert into `focus_sessions` → wipe local
+6. Set `vl_migrated_v2 = userId` flag in localStorage
+7. Subsequent reads → Supabase only
+
+## Migration Files
+
+| File | Version | Content |
+|------|---------|----------|
+| `data/migration_v1.2.0.sql` | v1.2.0 | Create habits, focus_sessions, mood_logs, skip_reasons |
+| `data/migration_v1.4.0.sql` | v1.4.0 | Add action/status/cycle_count/conquered_at to habits |
+| `data/migration_v1.5.0.sql` | v1.5.0 | Create programs, program_habits, user_journeys, journey_habits, habit_logs + seed 5 templates |
+| `data/migration_v1.6.2.sql` | v1.6.2 | Create xp_logs, friendships + enable Realtime |
+| `data/migration_v1.9.0.sql` | v1.9.0 | Update handle_new_user trigger, seed program_habits |
+| `data/supabase_team_v3.sql` | v3.0.0 | team_members, user_programs, team_check_logs, team_rules, team_rule_agreements |
 
 ## Supabase Setup Checklist
 
 - [ ] Create project (region: Southeast Asia – Singapore)
-- [ ] Run full SQL schema above in SQL Editor
-- [ ] Enable Realtime for: progress, reactions, streaks, teams
+- [ ] Run migration SQL files in order (v1.2.0 → v1.4.0 → v1.5.0 → v1.6.2 → v1.9.0)
+- [ ] Enable Realtime for: progress, reactions, streaks, teams, xp_logs, habits, focus_sessions
 - [ ] Enable Google OAuth (Auth → Providers → Google)
 - [ ] Get URL + anon key from Project Settings → API
 - [ ] Create `.env.local` with the two keys

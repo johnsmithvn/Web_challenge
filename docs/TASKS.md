@@ -1,5 +1,5 @@
 # TASKS — Thử Thách Vượt Lười
-**Updated:** 2026-04-19
+**Updated:** 2026-04-21
 
 ---
 
@@ -222,31 +222,34 @@
 
 ---
 
-## v3.0.0 — 🚧 Đang Thiết Kế (Team Mode v3 — N members)
+## v3.0.0 — 🚧 Components Built, Chưa Full Integration (Team Mode v3 — N members)
 
 ### DB (chưa deploy)
 - [x] Schema thiết kế: `team_members`, `user_programs`, `team_check_logs`, `team_rules`, `team_rule_agreements`
 - [ ] Chạy `data/supabase_team_v3.sql` trong Supabase
 
-### Hooks (chưa implement)
-- [ ] `src/hooks/useTeamCheck.js` — week-2 check logic (teammate check, không self-check)
-- [ ] `src/hooks/useTeamRules.js` — CRUD rules, propose + unanimous approval
+### Hooks (built, chưa integrate full flow)
+- [x] `src/hooks/useTeamCheck.js` — week-2 check logic (teammate check, không self-check)
+- [x] `src/hooks/useTeamRules.js` — CRUD rules, propose + unanimous approval
 
-### Components (chưa implement)
-- [ ] `src/components/team/TeamMemberCard.jsx`
-- [ ] `src/components/team/TeammateCheckPanel.jsx` — done/fail modal + reason
-- [ ] `src/components/team/JoinSyncModal.jsx` — restart vs continue week
-- [ ] `src/components/team/TeamRules.jsx`
+### Components (built, chưa integrate full flow)
+- [x] `src/components/team/TeamMemberCard.jsx`
+- [x] `src/components/team/TeammateCheckPanel.jsx` — done/fail modal + reason
+- [x] `src/components/team/JoinSyncModal.jsx` — restart vs continue week
+- [x] `src/components/team/TeamRules.jsx`
+
+### Remaining (chưa done)
+- [ ] Full integration: wire hooks + components vào TeamPage production flow
+- [ ] Realtime check notifications
 
 ### Next (backlog)
-- [ ] Per-habit progress sync lên Supabase (hiện chỉ localStorage `vl_habit_progress`)
 - [ ] Mood log chart trong DashboardPage
 - [ ] Weekly review email/notification
 - [ ] AI insight từ skip reason patterns
 
 ---
 
-## v2.0.0 — ✅ DONE
+## v2.0.0-auth — ✅ DONE (Cloud + Auth, trước Journey v2.0.0)
 
 - [x] Auth system (email, Google OAuth)
 - [x] AuthContext, AuthModal

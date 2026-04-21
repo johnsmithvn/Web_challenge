@@ -304,7 +304,7 @@ User login → JourneyContext fetch activeJourney
 
 ---
 
-## v2.0.0 — 2026-04-15
+## v2.0.0-auth — 2026-04-15
 
 ### Added
 - `src/lib/supabase.js` — Singleton Supabase client, safe fallback when keys not set

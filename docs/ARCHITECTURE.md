@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Thử Thách Vượt Lười
-**Version:** v1.6.1
-**Updated:** 2026-04-19
+**Version:** v2.0.0
+**Updated:** 2026-04-21
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 ---
@@ -13,9 +13,9 @@
 | Routing | React Router v6 |
 | Styling | Vanilla CSS (CSS variables, glassmorphism) |
 | Database | Supabase (PostgreSQL + Realtime + Auth) |
-| Local fallback | localStorage |
-| Build | Vite (chunked output) |
-| Hosting | (TBD — Vercel / Netlify) |
+| Local fallback | localStorage (UI state only) |
+| Build | Vite (lazy-loaded chunks per page) |
+| Hosting | Vercel (`vercel.json` SPA routing) |
 
 ---
 
@@ -24,82 +24,96 @@
 ```
 src/
 ├── components/              # Reusable UI components
-│   ├── journey/             # Journey system sub-components (NEW v1.6.0)
-│   │   ├── ActiveJourneyPanel.jsx   # Progress ring, habit chips, renew/extend/quit
-│   │   ├── ProgramBrowser.jsx       # Template grid, category filter, start flow
-│   │   ├── JourneyHistory.jsx       # Past journeys list + status badges
+│   ├── journey/             # Journey system sub-components
+│   │   ├── ActiveJourneyPanel.jsx   # Progress ring, habit chips, completion UI, renew/extend/quit
+│   │   ├── ProgramBrowser.jsx       # Template grid, category filter, start flow, SwitchModeModal
+│   │   ├── JourneyHistory.jsx       # Past journeys list + status badges, click → /journey/:id
+│   │   ├── MyJourneys.jsx           # NEW v2.0.0 — "Của Tôi" tab, past journeys with "Bắt đầu lại"
 │   │   └── CustomJourneyModal.jsx   # Free-form journey creation modal
 │   ├── team/                # Team-specific sub-components
-│   │   ├── TeamMemberCard.jsx     (TODO v3)
-│   │   ├── TeammateCheckPanel.jsx (TODO v3)
-│   │   ├── JoinSyncModal.jsx      (TODO v3)
-│   │   └── TeamRules.jsx          (TODO v3)
+│   │   ├── TeamMemberCard.jsx       # Per-member card: week badge, mini heatmap
+│   │   ├── TeammateCheckPanel.jsx   # Done/Fail modal with reason
+│   │   ├── JoinSyncModal.jsx        # Week sync: restart vs continue
+│   │   └── TeamRules.jsx            # Rules section: propose, agree/reject
 │   ├── AuthModal.jsx          # Login/Register/Google tabs
-│   ├── CompletionModal.jsx    # v1.3.0 — Popup ăn mừng streak=21. v1.6.0 — thêm "Chọn Lộ Trình Mới"
-│   ├── OnboardingModal.jsx    # NEW v1.3.0 — 3-step guide lần đầu truy cập
-│   ├── DailyChallenge.jsx     # Daily mini-challenge, +20 XP
+│   ├── CompletionModal.jsx    # Certificate modal: Gia Hạn / Thử Thách Mới / Chọn Lộ Trình Mới
+│   ├── OnboardingModal.jsx    # 3-step guide lần đầu truy cập
+│   ├── DailyChallenge.jsx     # Daily mini-challenge, +20 XP, pick-by-streak-day
+│   ├── ErrorBoundary.jsx      # v1.7.0 — Class component, friendly fallback UI
 │   ├── FocusTimer.jsx         # SVG countdown + habit dropdown
 │   ├── HabitManager.jsx       # CRUD custom habits UI
+│   ├── LoginNudgeModal.jsx    # v1.4.0 — Bottom sheet nhắc guest đăng ký
 │   ├── MonthCalendar.jsx      # Monthly view, VN holidays
 │   ├── NotificationSettings.jsx
-│   ├── TrackerSection.jsx     # Read-only 3-week status dots (v1.2.2+)
+│   ├── PageSkeleton.jsx       # v1.7.0 — Shimmer skeleton for lazy pages
+│   ├── TrackerSection.jsx     # Read-only 3-week status dots
 │   ├── XpBar.jsx              # XP + level indicator
 │   └── ...
 │
 ├── contexts/
-│   └── AuthContext.jsx      # Auth state, signIn, signUp, Google, profile
+│   ├── AuthContext.jsx        # Auth state, signIn, signUp, Google, profile
+│   └── JourneyContext.jsx     # v1.8.0 — Single source of truth cho activeJourney
 │
 ├── hooks/
-│   ├── useHabitStore.js     # Daily tick, streak, dual-mode (LS/Supabase)
-│   ├── useCustomHabits.js   # Custom habit CRUD, dual-mode
-│   ├── useHabitLogs.js      # NEW v1.5.0 — Per-habit daily logs (replaces vl_habit_progress)
-│   ├── useJourney.js        # NEW v1.5.0 — Journey lifecycle (start/complete/renew/extend)
-│   ├── useFocusTimer.js     # Pomodoro phases, session log, DB sync
-│   ├── useMoodSkip.js       # useMoodLog + useSkipReasons hooks
-│   ├── useXpStore.js        # XP log, level computation
-│   ├── useTeam.js           # Team fetch, create/join/leave, realtime
-│   ├── useNotifications.js  # Browser notification API
+│   ├── useHabitStore.js       # Daily tick, streak, Supabase-first (guest=in-memory)
+│   ├── useCustomHabits.js     # Custom habit CRUD, Supabase-first, journey_id tagging
+│   ├── useHabitLogs.js        # v1.5.0 — Per-habit daily logs (replaces vl_habit_progress)
+│   ├── useJourney.js          # v1.5.0 — Journey lifecycle (start/complete/renew/extend)
+│   ├── useFocusTimer.js       # Pomodoro phases, session log, DB sync, journey_id tagging
+│   ├── useMoodSkip.js         # useMoodLog + useSkipReasons hooks, Supabase-first
+│   ├── useXpStore.js          # XP log, level computation, addXp/removeXp, Supabase-first
+│   ├── useTeam.js             # Team fetch, create/join/leave, realtime
+│   ├── useTeamCheck.js        # Week-2 check logic, submit team_check_logs
+│   ├── useTeamRules.js        # CRUD rules, propose + unanimous approval
+│   ├── useNotifications.js    # Browser notification API
 │   └── ...
 │
 ├── lib/
-│   └── supabase.js          # Singleton Supabase client, safe fallback
+│   └── supabase.js            # Singleton Supabase client, safe fallback
 │
 ├── pages/
-│   ├── LandingPage.jsx      # / — Marketing page
-│   ├── TrackerPage.jsx      # /tracker — Tick daily, streak ring, 21-day dots (v1.6.0: journeyStart prop)
-│   ├── HabitsPage.jsx       # /habits — Per-habit tick, calendar, manage (v1.6.0: journey banner)
-│   ├── FocusPage.jsx        # /focus — Pomodoro timer
-│   ├── JourneyPage.jsx      # /journey — NEW v1.6.0 — 3 tabs: Đang chạy / Khám Phá / Lịch Sử
-│   ├── DashboardPage.jsx    # /dashboard (Stats tab) — Flower, donut, weekly table
-│   ├── TeamPage.jsx         # /team — Accountability partner
-│   ├── QuizPage.jsx         # /quiz — 10-question MCQ
-│   ├── LeaderboardPage.jsx  # /leaderboard — Streak/XP ranking
-│   └── FriendsPage.jsx      # /friends — Kết bạn
+│   ├── LandingPage.jsx        # / — Marketing page (eager loaded)
+│   ├── TrackerPage.jsx        # /tracker — MERGED with HabitsPage (v1.9.0). 4 tabs: Hôm Nay/Lịch/Tuần/Quản Lý
+│   ├── HabitsPage.jsx         # /habits — DEPRECATED: redirect → /tracker
+│   ├── FocusPage.jsx          # /focus — Pomodoro timer (lazy)
+│   ├── JourneyPage.jsx        # /journey — 4 tabs: Đang chạy / Khám Phá / Của Tôi / Lịch Sử (lazy)
+│   ├── JourneyDetailPage.jsx  # /journey/:id — Full dashboard per journey (lazy)
+│   ├── DashboardPage.jsx      # /dashboard — Flower, donut, weekly table, contribution (lazy)
+│   ├── TeamPage.jsx           # /team — N-member accountability (lazy)
+│   ├── QuizPage.jsx           # /quiz — 10-question MCQ (lazy)
+│   ├── LeaderboardPage.jsx    # /leaderboard — Streak/XP ranking (lazy)
+│   └── FriendsPage.jsx        # /friends — Kết bạn (lazy)
 │
-├── data/                    # Static JSON content (Rule 14)
-│   ├── challenges.json      # 21 Daily Challenges
-│   ├── quiz.json            # 10 Quiz questions
-│   ├── habits.json          # defaultHabits, categories, icons, colors, skipReasons, moods
-│   ├── testimonials.json    # Landing page reviews
-│   ├── quotes.json          # v1.4.5 — 30 daily motivational quotes
-│   └── programs.json        # NEW v1.6.0 — 5 system program templates (offline fallback)
+├── data/                      # Static JSON content (Rule 14)
+│   ├── challenges.json        # 21 Daily Challenges
+│   ├── quiz.json              # 10 Quiz questions
+│   ├── habits.json            # defaultHabits, categories, icons, colors, skipReasons, moods
+│   ├── testimonials.json      # Landing page reviews
+│   ├── quotes.json            # v1.4.5 — 30 daily motivational quotes
+│   └── programs.json          # v1.6.0 — 5 system program templates (offline fallback)
 │
 ├── styles/
-│   ├── global.css           # CSS variables, reset, typography
-│   ├── components.css       # Shared component classes
-│   ├── tracker.css          # Tracker + Team styles (page wrapper pattern)
-│   ├── dashboard.css        # Dashboard v2 styles
-│   ├── focus.css            # Focus timer + custom dropdown
-│   ├── calendar.css         # Monthly calendar
-│   ├── auth.css             # Auth modal
-│   ├── friends.css          # Friends page
-│   ├── xpbar.css            # XP bar
-│   ├── journey.css          # NEW v1.6.0 — Journey page, progress ring, program cards, modals
-│   ├── completion.css       # v1.3.0 — CompletionModal styles
-│   ├── onboarding.css       # v1.3.0 — OnboardingModal styles
-│   └── team.css             # Team page (v3 ready)
+│   ├── global.css             # CSS variables, reset, typography
+│   ├── navbar.css             # Navbar layout + mobile menu
+│   ├── hero.css               # HeroSection styles
+│   ├── sections.css           # ContentSections + RoadmapSection
+│   ├── tracker.css            # TrackerPage v2 styles (merged habits)
+│   ├── dashboard.css          # Dashboard v2 styles
+│   ├── focus.css              # Focus timer + custom dropdown
+│   ├── calendar.css           # Monthly calendar
+│   ├── daily.css              # DailyChallenge styles
+│   ├── journey.css            # Journey page, progress ring, program cards, modals
+│   ├── team.css               # Team page (N-member grid, check panel, rules)
+│   ├── auth.css               # Auth modal
+│   ├── friends.css            # Friends page
+│   ├── xpbar.css              # XP bar
+│   ├── quiz.css               # Quiz page
+│   ├── leaderboard.css        # Leaderboard page
+│   ├── completion.css         # CompletionModal styles
+│   ├── onboarding.css         # OnboardingModal styles
+│   └── testimonials.css       # Testimonials section
 │
-└── App.jsx                  # AppShell wrapper — Onboarding gate + Router
+└── App.jsx                    # AppShell wrapper — Onboarding gate + JourneyProvider + Router + LazyLoad
 ```
 
 ---
@@ -116,38 +130,43 @@ Hook (e.g. useHabitStore)
     │
     ├── isAuthenticated?
     │       │
-    │       ├── YES → Supabase upsert/insert
+    │       ├── YES → Supabase upsert/insert (PRIMARY)
     │       │         ├── Realtime subscription → live update
-    │       │         └── Error → fallback localStorage silently
+    │       │         └── Error → optimistic rollback
     │       │
-    │       └── NO → localStorage read/write
-    │                 key format: vl_{feature}_{identifier}
+    │       └── NO → In-memory state (reset on refresh — acceptable for guest)
     │
     └── Update local React state → re-render
 ```
 
+> **v1.6.2+:** Toàn bộ **user data** dùng Supabase làm primary.
+> localStorage chỉ còn **UI state flags** và **settings** (không chứa user data).
+
 ### localStorage Keys
 
 ```
-vl_habit_data          # REMOVED v1.6.1 — đã migrate sang Supabase `progress`, key bị wipe sau migration
-vl_habit_progress      # DEPRECATED v1.5.0 — đã migrate sang Supabase `habit_logs`
-vl_custom_habits       # Habit[] — list of custom habits (guest fallback)
-vl_xp_store            # XPEntry[] — XP log (guest fallback, sync DB on login)
-vl_mood_log            # { [dateStr]: { emoji, label } } (guest fallback)
-vl_skip_{date}         # SkipEntry — per-day skip reason (guest fallback)
-vl_focus_sessions      # FocusSession[] (guest fallback)
-vl_notif_settings      # { enabled, time } — UI config, ở local là đúng
-vl_migrated_v2         # userId — đã migrate vl_habit_data lên Supabase (v1.6.1, bump từ vl_migrated)
+vl_xp_store            # DEPRECATED — migrated to Supabase `xp_logs`, then wiped
+vl_custom_habits       # DEPRECATED — migrated to Supabase `habits`, then wiped
+vl_habit_data          # REMOVED v1.6.1 — migrated sang Supabase `progress`, wiped
+vl_habit_progress      # REMOVED v1.5.0 — migrated sang Supabase `habit_logs`, wiped
+vl_focus_sessions      # REMOVED v1.6.2 — migrated sang Supabase `focus_sessions`, wiped
+vl_mood_log            # REMOVED v1.6.2 — Supabase-first, in-memory cho guest
+vl_skip_{date}         # REMOVED v1.6.2 — Supabase-first, in-memory cho guest
+
+--- STILL IN USE (UI state only) ---
+vl_migrated_v2         # userId — đã migrate vl_habit_data lên Supabase (v1.6.1)
 vl_onboarded           # "1" — onboarding completed, UI state
-vl_program_round       # "1"|"2"|... — UI state cho CompletionModal
-vl_completion_shown_N  # "1" — UI state, completion modal shown for round N
-vl_active_journey      # v1.5.0 — snapshot active user_journey (offline fallback)
-vl_habit_logs_migrated # v1.5.0 — "1" sau khi vl_habit_progress migrate sang Supabase
-vl_login_nudge_shown   # "1" — UI state, nó chỉ hiển 1 lần
+vl_notif_settings      # { enabled, time } — UI preference, stays local
+vl_focus_settings      # UI preference cho focus timer durations
+vl_completion_shown_N  # "1" — completion modal shown for round N
+vl_habit_logs_migrated # "1" — vl_habit_progress migrated to Supabase
+vl_login_nudge_shown   # "1" — login nudge shown once
+vl_chunk_retry         # "1" — stale chunk retry flag (cleared on success)
+vl_journey_redirected  # sessionStorage — redirect-once flag per session
 ```
 
 > **Rule:** Chỉ lưu **UI state flags** và **offline guest fallback** trong localStorage.
-> Mọi **user data** có thỵ được sync đều phải dùng Supabase làm primary.
+> Mọi **user data** có thể được sync đều phải dùng Supabase làm primary.
 
 ### Supabase Tables
 
@@ -155,8 +174,8 @@ vl_login_nudge_shown   # "1" — UI state, nó chỉ hiển 1 lần
 profiles              ← auth.users (auto-created by trigger)
 streaks               ← updated by trigger on progress INSERT/UPDATE
 progress              ← primary daily check source of truth
-habits                ← custom user habits (+journey_id col v1.5.0)
-focus_sessions        ← pomodoro session log
+habits                ← custom user habits (+journey_id, +action, +status, +cycle_count, +conquered_at)
+focus_sessions        ← pomodoro session log (+journey_id v1.8.0)
 mood_logs             ← daily mood (UNIQUE user+date)
 skip_reasons          ← daily skip (UNIQUE user+date)
 xp_logs               ← immutable XP event log
@@ -168,29 +187,56 @@ partner_queue         ← auto-match waiting room
 quiz_attempts         ← quiz history
 daily_challenge_completions ← 1 per day
 
--- NEW v1.5.0 (run data/migration_v1.5.0.sql)
+-- v1.5.0 (run data/migration_v1.5.0.sql)
 programs              ← program/lộ trình library (system templates + user)
 program_habits        ← habit templates belonging to a program
 user_journeys         ← each user's run of a program (with start/end dates)
 journey_habits        ← snapshot of habits at journey start (history preservation)
 habit_logs            ← per-habit daily completion (replaces vl_habit_progress)
+
+-- Team v3 (run data/supabase_team_v3.sql)
+team_members          ← junction table (N per team)
+user_programs         ← per-user 21-day journey
+team_check_logs       ← accountability checks
+team_rules            ← reward/punishment rules
+team_rule_agreements  ← per-member approval flow
 ```
 
 ---
 
 ## Routes
 
-| Path | Component | Auth |
-|------|-----------|:----:|
-| `/` | LandingPage | Public |
-| `/tracker` | TrackerPage | Public |
-| `/habits` | HabitsPage | Public |
-| `/focus` | FocusPage | Public |
-| `/dashboard` | DashboardPage | Public |
-| `/team` | TeamPage | Soft wall (needs login) |
-| `/quiz` | QuizPage | Public |
-| `/leaderboard` | LeaderboardPage | Public |
-| `/friends` | FriendsPage | Required |
+| Path | Component | Auth | Load |
+|------|-----------|:----:|:----:|
+| `/` | LandingPage | Public | Eager |
+| `/tracker` | TrackerPage | Public | Eager |
+| `/habits` | HabitsPage → redirect `/tracker` | — | Lazy |
+| `/focus` | FocusPage | Public | Lazy |
+| `/journey` | JourneyPage | Public (soft wall for save) | Lazy |
+| `/journey/:id` | JourneyDetailPage | Public | Lazy |
+| `/dashboard` | DashboardPage | Public | Lazy |
+| `/team` | TeamPage | Soft wall (needs login) | Lazy |
+| `/quiz` | QuizPage | Public | Lazy |
+| `/leaderboard` | LeaderboardPage | Public | Lazy |
+| `/friends` | FriendsPage | Required | Lazy |
+
+---
+
+## App Architecture (v1.7.0+)
+
+```
+AuthProvider
+  └── BrowserRouter
+        └── JourneyProvider
+              └── AppShell
+                    ├── PageMeta (SEO title/desc per route)
+                    ├── OnboardingModal (once, gated by vl_onboarded)
+                    ├── Redirect to /journey?firstTime=true (once per session if no journey)
+                    ├── Navbar
+                    └── ErrorBoundary
+                          └── Suspense (PageSkeleton fallback)
+                                └── Routes (8 lazy + 2 eager)
+```
 
 ---
 
@@ -198,14 +244,15 @@ habit_logs            ← per-habit daily completion (replaces vl_habit_progress
 
 ### 1. Dual-Mode (Guest → Authenticated)
 - Ưu tiên UX: không cần đăng nhập để dùng cơ bản
-- Migration tự động: lần đầu login → push localStorage → Supabase
+- v1.6.2+: Supabase là primary. Guest dùng in-memory (reset khi refresh)
+- Migration tự động: lần đầu login → push localStorage → Supabase → wipe local
 
 ### 2. localStorage key format
 - Prefix `vl_` cho tất cả keys → tránh conflict với thư viện khác
 - Dễ xóa sạch: `Object.keys(localStorage).filter(k => k.startsWith('vl_'))`
 
 ### 3. Streak computed on client vs DB trigger
-- Client: từ `vl_habit_data` (guest)
+- Client: in-memory (guest)
 - DB: trigger `refresh_streak()` sau mỗi INSERT/UPDATE vào `progress`
 - RLS cho phép teammate đọc progress (isTeammate check)
 
@@ -215,25 +262,38 @@ habit_logs            ← per-habit daily completion (replaces vl_habit_progress
 - Mỗi domain có file CSS riêng để dễ maintain
 
 ### 5. XP là immutable log
-- Không update/delete XP entries
+- Không update/delete XP entries (except removeXp v2.0.0 for un-tick)
 - Compute `totalXp = SUM(log)` tại runtime
 - Dedup bằng `hasMilestone(reason, meta)` trước khi `addXp`
-- `focus_session` XP (+15) được write trực tiếp vào `vl_xp_store` trong `useFocusTimer.js` để tránh circular import với `useXpStore.js`
+- `focus_session` XP (+15) write trực tiếp qua Supabase (deduped)
 
-### 6. week_num computation (v1.3.1)
-- Trước: hardcode `week_num: 1` khi sync sang Supabase
-- Sau: tính từ ngày đầu tiên trong `vl_habit_data`, `diffDays/7 + 1`, capped tại 3
-- Dùng `vl_program_round` để track hành trình vòng 2, 3...
+### 6. Journey-as-Core-Context (v1.8.0+)
+- `JourneyContext` wraps entire app, fetches activeJourney once on login
+- All habit ticks → `habit_logs.journey_id`
+- All focus sessions → `focus_sessions.journey_id`
+- All new habits → `habits.journey_id`
 
-### 7. Onboarding gate (v1.3.0)
+### 7. Journey Owns Habits (v2.0.0)
+- Mỗi journey tạo fresh habit rows riêng. Không reuse habits giữa journeys
+- Complete/quit → close all active habits (`active=false`)
+- Renew → snapshot old habits → clone as fresh rows for new cycle
+- Replace mode: archive old journey + close habits → create fresh
+- Append mode: archive old journey, keep old habits + add new
+
+### 8. Page Consolidation (v1.9.0)
+- HabitsPage deprecated → redirect `/tracker`
+- TrackerPage absorbed tất cả features: per-habit tick, mood, skip, calendar, weekly grid, habit manager
+- 4 tabs: ⚡ Hôm Nay | 📅 Lịch | 📊 Tuần | ⚙️ Quản Lý
+
+### 9. Onboarding gate (v1.3.0)
 - `AppShell` kiểm tra `vl_onboarded` trước khi render app
 - Nếu chưa có → show `OnboardingModal` (3 bước)
 - Không block routing — user có thể bỏ qua
 
-### 8. TrackerSection — read-only (v1.2.2)
-- Các ô ngày trong TrackerSection không còn là checkbox tương tác
-- Status dots tự động từ `vl_habit_progress` (auto-sync khi all habits done)
-- Single source of truth: `useHabitStore` ← aggregated từ `HabitsPage`
+### 10. Lazy Loading + Error Boundary (v1.7.0)
+- 8 pages lazy-loaded via `React.lazy` + `Suspense`
+- `ErrorBoundary` wraps routes → friendly fallback thay màn trắng
+- `lazyRetry()` wrapper auto-reload on stale chunk after Vercel redeploy
 
 ---
 
@@ -244,4 +304,4 @@ VITE_SUPABASE_URL=https://xxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJxxx...
 ```
 
-Nếu thiếu → `supabase.js` fallback graceful, mọi thứ chạy với localStorage.
+Nếu thiếu → `supabase.js` fallback graceful, mọi thứ chạy với in-memory state.

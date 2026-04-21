@@ -1,6 +1,6 @@
 # PLAN.md — Thử Thách Vượt Lười
-**Updated:** 2026-04-19
-**Current Version:** v1.6.0
+**Updated:** 2026-04-21
+**Current Version:** v2.0.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -29,7 +29,7 @@
 
 ---
 
-## ✅ Phase 3 — Cloud + Auth (v2.0.0)
+## ✅ Phase 3 — Cloud + Auth (v2.0.0-auth)
 *Hoàn thành: 2026-04-15*
 
 - [x] Supabase schema (profiles, progress, streaks, xp_logs, teams, reactions, friendships)
@@ -54,7 +54,6 @@
 - [x] TrackerPage redesign (streak ring, plant growth, 21-day dots)
 - [x] DashboardPage redesign (flower journey, monthly donut, weekly table, contribution graph)
 - [x] DB migration: thêm 4 bảng mới (habits, focus_sessions, mood_logs, skip_reasons)
-- [x] Docs: FEATURES.md, TASKS.md, ARCHITECTURE.md, PLAN.md cập nhật
 
 ---
 
@@ -90,21 +89,90 @@
 - [x] `JourneyPage.jsx` — 3 tabs: Đang Chạy / Khám Phá / Lịch Sử
 - [x] Journey sub-components: `ActiveJourneyPanel`, `ProgramBrowser`, `JourneyHistory`, `CustomJourneyModal`
 - [x] `programs.json` — 5 system templates (Rule 14, offline fallback)
-- [x] `journey.css` — Full CSS: progress ring, glassmorphism cards, modals, layout chuẩn hóa
 - [x] Route `/journey` + Navbar link "🗺 Lộ Trình"
 - [x] `HabitsPage.jsx` — Journey banner (active: Ngày X/Y; inactive: CTA)
 - [x] `TrackerPage.jsx` — 21-day dots anchor từ `user_journeys.started_at`
 - [x] `CompletionModal.jsx` — Option C "🗺 Chọn Lộ Trình Mới" → navigate `/journey`
 - [x] `AuthModal` thay `alert()` khi guest action
-- [x] Layout chuẩn hóa: đồng nhất với `tracker-v2-page` pattern
 
 ---
 
-## 🚧 Phase 5 — Team Accountability v3 (v3.0.0)
-*Đang thiết kế — chưa implement*
+## ✅ Phase 4.8 — Supabase-First Migration (v1.6.1 → v1.6.2)
+*Hoàn thành: 2026-04-19*
+
+- [x] `useHabitStore.js` — Xóa localStorage primary, Supabase-first, guest=in-memory
+- [x] `useMoodSkip.js` — Supabase-first, xóa localStorage
+- [x] `useCustomHabits.js` — Supabase-first, one-time migrate rồi wipe
+- [x] `useXpStore.js` — Supabase `xp_logs` primary, migrate rồi wipe
+- [x] `useFocusTimer.js` — Xóa `vl_focus_sessions` direct reads, Supabase-first
+- [x] `data/migration_v1.6.2.sql` — Create `xp_logs` + `friendships` tables, enable Realtime
+
+---
+
+## ✅ Phase 4.9 — Production Hardening (v1.7.0)
+*Hoàn thành: 2026-04-19*
+
+- [x] `ErrorBoundary.jsx` — Friendly fallback UI thay màn trắng
+- [x] `PageSkeleton.jsx` — Shimmer skeleton loading
+- [x] `public/manifest.json` — PWA Web App Manifest
+- [x] `index.html` — PWA meta tags, OG tags, Twitter Card
+- [x] `App.jsx` — Lazy load 8 pages, `React.lazy` + `Suspense`
+- [x] DailyChallenge fix: pick-by-streak-day thay hash-by-date
+- [x] Bundle: 1 chunk ~350kB → Main 79kB + lazy pages 0.6-9kB each
+
+---
+
+## ✅ Phase 5.0 — Journey-as-Core-Context (v1.8.0 → v1.8.1)
+*Hoàn thành: 2026-04-19*
+
+- [x] `JourneyContext.jsx` — Single source of truth, 1 fetch per login
+- [x] `App.jsx` — Wrap `JourneyProvider`, redirect `/journey?firstTime=true` if no journey
+- [x] `useHabitLogs.js` — Auto-pass `journey_id` to habit_logs
+- [x] `useFocusTimer.js` — Tag `journey_id` to focus_sessions
+- [x] `useCustomHabits.js` — Auto-tag `journey_id` on habit create
+- [x] `JourneyDetailPage.jsx` — Full stats page `/journey/:id`
+- [x] `useJourney.js` — Rewrite to read from JourneyContext (single source of truth)
+
+---
+
+## ✅ Phase 5.1 — Page Consolidation + Hotfixes (v1.9.0 → v1.9.5)
+*Hoàn thành: 2026-04-20*
+
+- [x] TrackerPage absorbs HabitsPage → 4 tabs (Hôm Nay/Lịch/Tuần/Quản Lý)
+- [x] HabitsPage → redirect `/tracker`
+- [x] Navbar: remove "📋 Habits" link
+- [x] JourneyDetailPage: JourneyCalendar + DayDetailModal + MonthSummary
+- [x] ProgramBrowser: join `program_habits(*)` fix
+- [x] useCustomHabits: authenticated → no DEFAULT_HABITS fallback
+- [x] Remove manual tick button → auto-derived from habit ticks
+- [x] Fix redirect loop (sessionStorage + synchronous derived `isLoadingJourney`)
+- [x] Fix signup → can't login (trigger `handle_new_user` metadata extraction)
+- [x] Seed template habits in Supabase
+- [x] Journey switch modal: Replace vs Append mode
+- [x] `lazyRetry()` wrapper for stale chunk resilience
+
+---
+
+## ✅ Phase 5.2 — Journey Owns Habits (v2.0.0)
+*Hoàn thành: 2026-04-20*
+
+- [x] Each journey creates FRESH habit rows (no name-match reuse)
+- [x] Replace mode: close all old habits + create fresh
+- [x] Append mode: keep old habits + add new
+- [x] `completeJourney` → close all active habits (`active=false, status='completed'`)
+- [x] `renewJourney` → snapshot old habits → clone as fresh rows
+- [x] `MyJourneys.jsx` — "📂 Của Tôi" tab + "Bắt đầu lại" button
+- [x] `ActiveJourneyPanel` — Completion celebration UI: 🎉 + Renew/Extend/Complete
+- [x] JourneyPage: 4 tabs (thêm "📂 Của Tôi")
+- [x] `removeXp()` — Un-tick deducts XP properly
+
+---
+
+## 🚧 Phase 6 — Team Accountability v3 (v3.0.0)
+*Components built — chưa integrate full flow*
 
 **Core Value Insight (2026-04-18):**
-> “Teammate Check là “vũ khí” chính của app. Khi người dùng hiểu rằng “quyền lực” nằm trong tay đồng đội, họ mới thấy app có giá trị.”
+> "Teammate Check là "vũ khí" chính của app. Khi người dùng hiểu rằng "quyền lực" nằm trong tay đồng đội, họ mới thấy app có giá trị."
 
 **Game design quyết định:**
 | Tuần | Self-check | Teammate check | Logic |
@@ -113,23 +181,17 @@
 | Tuần 2 | ❌ Vô hiệu hoá | ✅ Bắt buộc | Accountability có răng |
 | Tuần 3 | ❌ Vô hiệu hoá | ✅ Bắt buộc | Kỷ luật đầy đủ |
 
-**Core Features:**
-- [ ] N-member teams (không giới hạn, do creator quyết định)
-- [ ] Week-based progression per user (user_programs)
-- [ ] **Tuần 2+:** Tắt nút tự tick — chỉ khi đồng đội nhấn “Xác Nhận” mới xanh
-- [ ] Teammate check panel: Done ✓ / Fail ✗ + lý do
-- [ ] Join sync modal: Reset tuần về 1 vs tiếp tục tuần hiện tại
-- [ ] Team rules: Propose → All members agree → Active
-- [ ] Team penalty/reward system: custom rules do team set
+**Status:**
+- [x] DB schema: `team_members`, `user_programs`, `team_check_logs`, `team_rules`, `team_rule_agreements` (designed, file at `data/supabase_team_v3.sql`)
+- [x] Components built: `TeamMemberCard`, `TeammateCheckPanel`, `JoinSyncModal`, `TeamRules`
+- [x] Hooks built: `useTeamCheck.js`, `useTeamRules.js`
+- [ ] Full integration: wire hooks + components into TeamPage flow
+- [ ] Run SQL migration in Supabase
 - [ ] Realtime check notifications
-
-**DB cần:** `team_members`, `user_programs`, `team_check_logs`, `team_rules`, `team_rule_agreements`
-
-**Schema:** Đã thiết kế trong `data/supabase_team_v3.sql`
 
 ---
 
-## 📋 Phase 6 — Analytics & Intelligence (v2.1.0)
+## 📋 Phase 7 — Analytics & Intelligence (v2.1.0)
 *Backlog*
 
 - [ ] Mood pattern chart (7 ngày, 30 ngày)
@@ -137,21 +199,18 @@
 - [ ] Weekly review digest (email hoặc in-app summary)
 - [ ] Focus session breakdown per habit (charts)
 - [ ] AI insight từ pattern data
-- [ ] **Dashboard Journey Selector** — Dropdown chọn journey (current / past), hiển thị stats (habits%, focus giờ, streak) riêng theo từng journey. Cần thêm query `habit_logs` join `user_journeys`.
+- [ ] **Dashboard Journey Selector** — Dropdown chọn journey (current / past), hiển thị stats riêng theo từng journey
 
 ---
 
-## 📋 Phase 7 — Production Hardening (v2.2.0)
+## 📋 Phase 8 — Production Polish (v2.2.0)
 *Backlog*
 
-- [ ] Per-habit progress sync lên Supabase (`vl_habit_progress` hiện chỉ localStorage)
-- [ ] Lazy loading routes (giảm bundle size)
-- [ ] PWA manifest + offline support
-- [ ] SEO meta tags, sitemap
-- [ ] Error boundary components
-- [ ] Loading skeleton states
+- [ ] SEO sitemap
+- [ ] Loading skeleton states (per-component, not just page-level)
 - [ ] Supabase Edge Functions (streak recompute cron)
 - [ ] Rate limiting + abuse prevention
+- [ ] i18n (Vietnamese/English)
 
 ---
 
@@ -167,5 +226,20 @@
 | v1.2.2 | TrackerSection read-only status dots |
 | v1.3.0 | Completion Modal + Onboarding + Focus auto-tick + Friend streaks |
 | v1.3.1 | Focus XP + Skip insight analytics + week_num fix |
-| v2.0.0 | Cloud Auth + Supabase sync |
-| v3.0.0 | Team Accountability N-member (Teammate check Tuần 2) |
+| v1.4.0 | Habit action field + Conquered habits + LoginNudge + Certificate modal |
+| v1.4.5 | Daily quotes + Per-habit weekly grid + Habit streaks |
+| v1.5.0 | Journey DB foundation (5 tables + useHabitLogs + useJourney) |
+| v1.6.0 | Journey UI (3 tabs + sub-components + programs.json) |
+| v1.6.1 | useHabitStore Supabase-first (xóa localStorage primary) |
+| v1.6.2 | Supabase-first toàn bộ hooks + xp_logs/friendships tables |
+| v1.7.0 | ErrorBoundary + PWA + Lazy loading + PageSkeleton |
+| v1.7.1 | Journey-Habit integration (template → real habits) |
+| v1.8.0 | JourneyContext + journey_id tagging + JourneyDetailPage |
+| v1.8.1 | useJourney rewrite (single source of truth from context) |
+| v1.9.0 | Page consolidation (TrackerPage absorbs HabitsPage) + JourneyDetail dashboard |
+| v1.9.1 | Hotfixes: redirect, signup, seed habits, MonthSummary |
+| v1.9.2 | Remove manual tick, auto-derived day complete |
+| v1.9.3 | Journey switch modal (Replace/Append) + lazyRetry |
+| v1.9.4 | Synchronous isLoadingJourney (eliminate redirect race) |
+| v1.9.5 | Fix manage tab showing old habits after replace |
+| v2.0.0 | Journey Owns Habits + MyJourneys tab + removeXp + Completion UI |
