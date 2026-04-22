@@ -2,15 +2,9 @@ import { useState, useCallback } from 'react';
 import { useLifeJourney } from '../hooks/useLifeJourney';
 import './LifeJourneyPage.css';
 
-// ── Chart geometry ─────────────────────────────────────────────────────
-const W      = 900;
-const H      = 520;
-const PAD    = { top: 110, right: 55, bottom: 100, left: 70 };
-const PLOT_W = W - PAD.left - PAD.right;
-const PLOT_H = H - PAD.top  - PAD.bottom;
-
-const toX = (age, lo, hi) => PAD.left + ((age - lo) / Math.max(hi - lo, 1)) * PLOT_W;
-const toY = (e)            => PAD.top  + ((5 - e) / 10) * PLOT_H; // e in [-5,+5]
+// ── Chart geometry (base width, shared) ────────────────────────────────
+const W = 960;
+const toX = (age, lo, hi, padL, plotW) => padL + ((age - lo) / Math.max(hi - lo, 1)) * plotW;
 
 /** Catmull-Rom smooth path through ordered points */
 function catmull(pts) {
@@ -21,11 +15,7 @@ function catmull(pts) {
     const p1 = pts[i];
     const p2 = pts[i+1];
     const p3 = pts[Math.min(i+2, pts.length-1)];
-    const c1x = p1.x + (p2.x - p0.x) / 6;
-    const c1y = p1.y + (p2.y - p0.y) / 6;
-    const c2x = p2.x - (p3.x - p1.x) / 6;
-    const c2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C${c1x},${c1y},${c2x},${c2y},${p2.x},${p2.y}`;
+    d += ` C${p1.x+(p2.x-p0.x)/6},${p1.y+(p2.y-p0.y)/6},${p2.x-(p3.x-p1.x)/6},${p2.y-(p3.y-p1.y)/6},${p2.x},${p2.y}`;
   }
   return d;
 }
@@ -100,225 +90,115 @@ function EventModal({ initial, onSave, onClose, onDelete }) {
 }
 
 // ── Chart component ────────────────────────────────────────────────────
-function Chart({ events, onClickPoint }) {
+function Chart({ events, onClickPoint, expanded }) {
   const [hov, setHov] = useState(null);
+  if (!events.length) return <p style={{ textAlign:'center', color:'var(--text-muted)', padding:'3rem' }}>Chưa có cột mốc nào. Nhấn "✨ Thêm cột mốc"!</p>;
 
-  if (!events.length) return (
-    <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem' }}>
-      Chưa có cột mốc nào. Nhấn "✨ Thêm cột mốc" để bắt đầu!
-    </p>
-  );
+  // ── Dynamic geometry ──
+  const cH = expanded ? 700 : 450;
+  const P  = expanded
+    ? { top: 140, right: 55, bottom: 80, left: 75 }
+    : { top: 55,  right: 55, bottom: 80, left: 75 };
+  const PW = W - P.left - P.right;
+  const PH = cH - P.top - P.bottom;
+  const cToY = (e) => P.top + ((5 - e) / 10) * PH;
+  const cToX = (age, lo, hi) => toX(age, lo, hi, P.left, PW);
+  const IR = 15;
 
-  /* ── 1. Sort ALL events: age ASC, same age → emotion DESC (positive first)
-           This means at age 5: +5 point comes before -5 point on the line ── */
-  const sorted = [...events].sort((a, b) => a.age - b.age || b.emotion - a.emotion);
-
-  const ages   = sorted.map(e => e.age);
+  const sorted = [...events].sort((a,b) => a.age-b.age || b.emotion-a.emotion);
+  const ages   = sorted.map(e=>e.age);
   const minAge = Math.min(...ages, 0);
   const maxAge = Math.max(...ages) + 1;
-
-  // Map each event to SVG coordinates
-  const pts = sorted.map(e => ({ ...e, x: toX(e.age, minAge, maxAge), y: toY(e.emotion) }));
-
-  /* ── 2. ONE continuous Catmull-Rom path through ALL points ── */
-  const singlePath = catmull(pts);
-
-  const zeroY   = toY(0);   // y-coordinate of the zero (0) gridline
-  const topY    = toY(5);   // y-coordinate of the +5 gridline  = PAD.top
-  const botY    = toY(-5);  // y-coordinate of the -5 gridline  = PAD.top + PLOT_H
-
-  const yTicks  = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
-  const xTicks  = Array.from({ length: maxAge - minAge + 1 }, (_, i) => minAge + i);
+  const pts    = sorted.map(e => ({ ...e, x: cToX(e.age,minAge,maxAge), y: cToY(e.emotion) }));
+  const path   = catmull(pts);
+  const zeroY  = cToY(0), topY = cToY(5), botY = cToY(-5);
+  const yTicks = [-5,-4,-3,-2,-1,0,1,2,3,4,5];
+  const xTicks = Array.from({length: maxAge-minAge+1},(_,i)=>minAge+i);
 
   return (
     <div className="lj-chart-wrapper">
-      <svg viewBox={`0 0 ${W} ${H}`} className="lj-svg">
+      <svg viewBox={`0 0 ${W} ${cH}`} className="lj-svg">
         <defs>
-          {/*
-            clipPath for GREEN: the rectangle ABOVE the zero line.
-            Any part of the path that's above zeroY will be green.
-          */}
-          <clipPath id="lj-pos-clip">
-            <rect x="0" y="0" width={W} height={zeroY} />
-          </clipPath>
-
-          {/*
-            clipPath for RED: the rectangle BELOW the zero line.
-            Any part of the path that's below zeroY will be red.
-          */}
-          <clipPath id="lj-neg-clip">
-            <rect x="0" y={zeroY} width={W} height={H - zeroY} />
-          </clipPath>
+          <clipPath id="lj-pos-clip"><rect x="0" y="0" width={W} height={zeroY}/></clipPath>
+          <clipPath id="lj-neg-clip"><rect x="0" y={zeroY} width={W} height={cH-zeroY}/></clipPath>
         </defs>
 
-        {/* ── Grid: horizontal dashed lines ── */}
-        {yTicks.map(v => (
-          <line key={v}
-            x1={PAD.left} x2={W - PAD.right}
-            y1={toY(v)}   y2={toY(v)}
-            className={v === 0 ? 'lj-axis-zero' : 'lj-grid-line'}
-            strokeDasharray={v === 0 ? undefined : '5 5'} />
-        ))}
+        {/* Grid + axes */}
+        {yTicks.map(v=><line key={v} x1={P.left} x2={W-P.right} y1={cToY(v)} y2={cToY(v)} className={v===0?'lj-axis-zero':'lj-grid-line'} strokeDasharray={v===0?undefined:'5 5'}/>)}
+        {yTicks.map(v=><text key={v} x={P.left-10} y={cToY(v)+4} textAnchor="end" fontSize="10" fontFamily="var(--font-display)" fontWeight="700" className={v>0?'lj-txt-pos':v<0?'lj-txt-neg':'lj-txt-zero'}>{v>0?`+${v}`:v}</text>)}
+        <text x={P.left-10} y={topY-6} textAnchor="end" fontSize="8" fontFamily="var(--font-display)" fontWeight="700" className="lj-txt-pos">RẤT VUI</text>
+        <text x={P.left-10} y={botY+14} textAnchor="end" fontSize="8" fontFamily="var(--font-display)" fontWeight="700" className="lj-txt-neg">RẤT TỆ</text>
+        <text x={P.left-55} y={(topY+botY)/2} textAnchor="middle" fontSize="8" fontFamily="var(--font-display)" className="lj-txt-axis" transform={`rotate(-90,${P.left-55},${(topY+botY)/2})`}>CẢM XÚC (-5 → +5)</text>
+        <line x1={P.left} x2={P.left} y1={botY} y2={topY} className="lj-axis-side"/>
+        <polygon points={`${P.left},${topY} ${P.left-4},${topY+8} ${P.left+4},${topY+8}`} className="lj-axis-arrow"/>
+        <line x1={P.left} x2={W-P.right-2} y1={zeroY} y2={zeroY} className="lj-axis-zero"/>
+        <polygon points={`${W-P.right},${zeroY} ${W-P.right-8},${zeroY-4} ${W-P.right-8},${zeroY+4}`} className="lj-axis-arrow"/>
+        <text x={W-P.right+6} y={zeroY+4} fontSize="11" fontFamily="var(--font-display)" fontWeight="700" className="lj-txt-axis">Tuổi</text>
+        {xTicks.map(a=><g key={a}>
+          <line x1={cToX(a,minAge,maxAge)} x2={cToX(a,minAge,maxAge)} y1={zeroY-3} y2={zeroY+3} className="lj-tick-line" strokeWidth="1"/>
+          <text x={cToX(a,minAge,maxAge)} y={botY+22} textAnchor="middle" fontSize="10" fontFamily="var(--font-display)" fontWeight="600" className="lj-txt-axis">{a}</text>
+        </g>)}
 
-        {/* ── Y-axis value labels ── */}
-        {yTicks.map(v => (
-          <text key={v}
-            x={PAD.left - 8} y={toY(v) + 4}
-            textAnchor="end" fontSize="10"
-            fontFamily="var(--font-display)" fontWeight="700"
-            className={v > 0 ? 'lj-txt-pos' : v < 0 ? 'lj-txt-neg' : 'lj-txt-zero'}>
-            {v > 0 ? `+${v}` : v}
-          </text>
-        ))}
+        {/* Bi-color line */}
+        {pts.length>1&&<>
+          <path d={path} fill="none" stroke="var(--green)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" clipPath="url(#lj-pos-clip)" className="lj-line-anim"/>
+          <path d={path} fill="none" stroke="var(--red)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" clipPath="url(#lj-neg-clip)" className="lj-line-anim"/>
+        </>}
 
-        {/* ── "RẤT VUI" / "RẤT TỆ" labels on Y axis ── */}
-        <text x={PAD.left - 8} y={topY - 8}
-          textAnchor="end" fontSize="9" fontFamily="var(--font-display)"
-          fontWeight="700" className="lj-txt-pos">RẤT VUI</text>
-        <text x={PAD.left - 8} y={botY + 18}
-          textAnchor="end" fontSize="9" fontFamily="var(--font-display)"
-          fontWeight="700" className="lj-txt-neg">RẤT TỆ</text>
-
-        {/* ── Y-axis side line + arrow ── */}
-        <line x1={PAD.left} x2={PAD.left}
-          y1={H - PAD.bottom} y2={PAD.top}
-          className="lj-axis-side" />
-        <polygon
-          points={`${PAD.left},${PAD.top} ${PAD.left-4},${PAD.top+9} ${PAD.left+4},${PAD.top+9}`}
-          className="lj-axis-arrow" />
-
-        {/* ── Zero horizontal axis + arrow ── */}
-        <line x1={PAD.left} x2={W - PAD.right - 2}
-          y1={zeroY} y2={zeroY}
-          className="lj-axis-zero" />
-        <polygon
-          points={`${W-PAD.right},${zeroY} ${W-PAD.right-9},${zeroY-4} ${W-PAD.right-9},${zeroY+4}`}
-          className="lj-axis-arrow" />
-        <text x={W - PAD.right + 5} y={zeroY + 4}
-          fontSize="10" fontFamily="var(--font-display)" fontWeight="600"
-          className="lj-txt-axis">Tuổi</text>
-
-        {/* ── X-axis tick marks (on zero line) + age labels at very bottom ── */}
-        {xTicks.map(a => (
-          <g key={a}>
-            <line
-              x1={toX(a, minAge, maxAge)} x2={toX(a, minAge, maxAge)}
-              y1={zeroY - 4} y2={zeroY + 4}
-              className="lj-tick-line" strokeWidth="1.2" />
-            <text
-              x={toX(a, minAge, maxAge)} y={H - 8}
-              textAnchor="middle" fontSize="10"
-              fontFamily="var(--font-display)" fontWeight="600"
-              className="lj-txt-axis">{a}</text>
-          </g>
-        ))}
-
-        {/* ── THE SINGLE LINE — drawn with two clip paths:
-              Pass 1: full path, clipped to ABOVE zero → GREEN
-              Pass 2: full path, clipped to BELOW zero → RED
-              Both together = one continuous bi-colored line ── */}
-        {pts.length > 1 && (
-          <>
-            <path d={singlePath} fill="none"
-              stroke="var(--green)" strokeWidth="3"
-              strokeLinecap="round" strokeLinejoin="round"
-              clipPath="url(#lj-pos-clip)"
-              className="lj-line-anim" />
-            <path d={singlePath} fill="none"
-              stroke="var(--red)" strokeWidth="3"
-              strokeLinecap="round" strokeLinejoin="round"
-              clipPath="url(#lj-neg-clip)"
-              className="lj-line-anim" />
-          </>
-        )}
-
-        {/* ── Dots + floating labels ──
-              POSITIVE labels → rendered in PAD.top area (ABOVE +5 gridline = topY)
-              NEGATIVE labels → rendered in PAD.bottom area (BELOW -5 gridline = botY)
-              Each label: icon → name, connected to dot by a dashed line ── */}
+        {/* ── POINTS ── */}
         {pts.map((p, idx) => {
-          const isPos = p.emotion >= 0;
-          const col   = isPos ? 'var(--green)' : 'var(--red)';
-          const isHov = hov === p.id;
-          const alt   = idx % 2; // alternate offset to reduce overlap between neighbors
+          const isPos = p.emotion>=0, col = isPos?'var(--green)':'var(--red)', isHov = hov===p.id;
 
-          let iconCY, nameY, connY1, connY2;
-
-          if (isPos) {
-            // Label stack (bottom→top): dashed line → icon → name
-            // Place icon center at: topY - gap - alt*offset
-            iconCY  = topY - 20 - alt * 26;
-            nameY   = iconCY - 16;   // name text above icon
-            connY1  = p.y - 6;       // top of dot
-            connY2  = iconCY + 10;   // bottom of icon
-          } else {
-            // Label stack (top→bottom): dashed line → icon → name
-            iconCY  = botY + 24 + alt * 26;
-            nameY   = iconCY + 17;   // name text below icon
-            connY1  = p.y + 6;       // bottom of dot
-            connY2  = iconCY - 10;   // top of icon
+          if (!expanded) {
+            /* ── COLLAPSE mode: dot only, hover tooltip ── */
+            const ttA = isPos ? p.y-65 : p.y+25;
+            return (
+              <g key={p.id} className="lj-point-group" onClick={()=>onClickPoint(p)} onMouseEnter={()=>setHov(p.id)} onMouseLeave={()=>setHov(null)}>
+                <circle cx={p.x} cy={p.y} r={isHov?9:5} fill={col} stroke="var(--bg-secondary)" strokeWidth="2.5" className="lj-dot-main"/>
+                {isHov && <>
+                  <rect x={p.x-60} y={ttA} width="120" height="48" rx="8" fill="var(--bg-secondary)" stroke={col} strokeWidth="1.5" opacity="0.97"/>
+                  <text x={p.x} y={ttA+17} textAnchor="middle" fontSize="12" fontWeight="800" fontFamily="var(--font-display)" fill={col}>{p.icon} {p.age} tuổi</text>
+                  <text x={p.x} y={ttA+31} textAnchor="middle" fontSize="9" fontWeight="600" fontFamily="var(--font-display)" className="lj-txt-title">{p.label}</text>
+                  <text x={p.x} y={ttA+43} textAnchor="middle" fontSize="9" fontWeight="700" fontFamily="var(--font-display)" fill={col}>Cảm xúc: {p.emotion>0?`+${p.emotion}`:p.emotion}</text>
+                </>}
+              </g>
+            );
           }
 
+          /* ── EXPAND mode: full labels always visible ── */
+          const alt = idx % 2;
+          const baseOff = 22 + alt * 28;
+          let iconCY, ageY, nameY, scoreY, connY1, connY2;
+          if (isPos) {
+            iconCY=p.y-baseOff-IR; ageY=iconCY-IR-6; nameY=ageY-11; scoreY=nameY-10;
+            connY1=p.y-6; connY2=iconCY+IR+2;
+          } else {
+            iconCY=p.y+baseOff+IR; ageY=iconCY+IR+12; nameY=ageY+11; scoreY=nameY+10;
+            connY1=p.y+6; connY2=iconCY-IR-2;
+          }
           return (
-            <g key={p.id} className="lj-point-group"
-              onClick={() => onClickPoint(p)}
-              onMouseEnter={() => setHov(p.id)}
-              onMouseLeave={() => setHov(null)}>
-
-              {/* Dashed connector: dot ↔ label */}
-              <line
-                x1={p.x} y1={connY1}
-                x2={p.x} y2={connY2}
-                stroke={col} strokeWidth="1.2"
-                strokeDasharray="3 3" opacity="0.75" />
-
-              {/* Icon (emoji) */}
-              <text
-                x={p.x} y={iconCY + 6}
-                textAnchor="middle" fontSize="15"
-                style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                {p.icon}
-              </text>
-
-              {/* Event name */}
-              <text
-                x={p.x} y={nameY}
-                textAnchor="middle" fontSize="9" fontWeight="800"
-                fontFamily="var(--font-display)" fill={col}
-                style={{ pointerEvents: 'none' }}>
-                {p.label}
-              </text>
-
-              {/* Emotion score (small, muted) */}
-              <text
-                x={p.x} y={isPos ? nameY - 11 : nameY + 12}
-                textAnchor="middle" fontSize="8"
-                fontFamily="var(--font-display)"
-                className="lj-txt-axis"
-                style={{ pointerEvents: 'none' }}>
-                ({p.emotion > 0 ? `+${p.emotion}` : p.emotion})
-              </text>
-
-              {/* Dot */}
-              <circle
-                cx={p.x} cy={p.y}
-                r={isHov ? 7 : 5}
-                fill={col}
-                stroke="var(--bg-secondary)" strokeWidth="2.5"
-                className="lj-dot-main" />
-
-              {/* Age label next to dot on hover */}
-              {isHov && (
-                <text x={p.x + 9} y={p.y - 2}
-                  fontSize="9" fontFamily="var(--font-display)"
-                  fontWeight="700" fill={col}
-                  style={{ pointerEvents: 'none' }}>
-                  {p.age} tuổi
-                </text>
-              )}
+            <g key={p.id} className="lj-point-group" onClick={()=>onClickPoint(p)} onMouseEnter={()=>setHov(p.id)} onMouseLeave={()=>setHov(null)}>
+              <line x1={p.x} y1={connY1} x2={p.x} y2={connY2} stroke={col} strokeWidth="1.2" strokeDasharray="3 3" opacity="0.7"/>
+              <circle cx={p.x} cy={iconCY} r={IR} fill={isPos?'rgba(0,200,100,0.15)':'rgba(220,60,60,0.15)'} stroke={col} strokeWidth="1.5" opacity="0.9"/>
+              <text x={p.x} y={iconCY+6} textAnchor="middle" fontSize="17" style={{pointerEvents:'none',userSelect:'none'}}>{p.icon}</text>
+              <text x={p.x} y={ageY} textAnchor="middle" fontSize="10" fontWeight="800" fontFamily="var(--font-display)" fill={col} style={{pointerEvents:'none'}}>{p.age} tuổi</text>
+              <text x={p.x} y={nameY} textAnchor="middle" fontSize="8" fontWeight="600" fontFamily="var(--font-display)" className="lj-txt-axis" style={{pointerEvents:'none'}}>{p.label}</text>
+              <text x={p.x} y={scoreY} textAnchor="middle" fontSize="8" fontWeight="700" fontFamily="var(--font-display)" fill={col} style={{pointerEvents:'none'}}>({p.emotion>0?`+${p.emotion}`:p.emotion})</text>
+              <circle cx={p.x} cy={p.y} r={isHov?8:5} fill={col} stroke="var(--bg-secondary)" strokeWidth="2.5" className="lj-dot-main"/>
             </g>
           );
         })}
+
+        {/* Legend */}
+        <g transform={`translate(${P.left},${cH-14})`}>
+          <line x1="0" x2="22" y1="0" y2="0" stroke="var(--green)" strokeWidth="3" strokeLinecap="round"/>
+          <circle cx="11" cy="0" r="3" fill="var(--green)"/>
+          <text x="28" y="4" fontSize="9" fontFamily="var(--font-display)" fontWeight="600" className="lj-txt-axis">Khoảng thời gian tích cực</text>
+          <line x1="190" x2="212" y1="0" y2="0" stroke="var(--red)" strokeWidth="3" strokeLinecap="round"/>
+          <circle cx="201" cy="0" r="3" fill="var(--red)"/>
+          <text x="218" y="4" fontSize="9" fontFamily="var(--font-display)" fontWeight="600" className="lj-txt-axis">Khoảng thời gian tiêu cực</text>
+          <text x={PW} y="4" textAnchor="end" fontSize="8" fontStyle="italic" fontFamily="var(--font-display)" className="lj-txt-axis">💡 Click điểm để chỉnh sửa</text>
+        </g>
       </svg>
     </div>
   );
@@ -328,6 +208,7 @@ function Chart({ events, onClickPoint }) {
 export default function LifeJourneyPage() {
   const { events, addEvent, updateEvent, deleteEvent, resetToDefault } = useLifeJourney();
   const [modal,     setModal]     = useState(null);
+  const [expanded,  setExpanded]  = useState(false);
   const [editTitle, setEditTitle] = useState(false);
   const [title,     setTitle]     = useState(
     () => localStorage.getItem('vl_journey_title') || 'My Life Journey'
@@ -410,20 +291,12 @@ export default function LifeJourneyPage() {
 
         {/* Chart */}
         <div className="lj-chart-card">
-          <Chart events={events} onClickPoint={setModal} />
-          <div className="lj-legend">
-            <div className="lj-legend-box">
-              <div className="lj-legend-item">
-                <span className="lj-legend-line green" />
-                Khoảng thời gian tích cực
-              </div>
-              <div className="lj-legend-item">
-                <span className="lj-legend-line red" />
-                Khoảng thời gian tiêu cực
-              </div>
-            </div>
-            <span className="lj-legend-hint">💡 Click điểm để chỉnh sửa</span>
+          <div className="lj-chart-toolbar">
+            <button className="lj-btn-toggle" onClick={() => setExpanded(e => !e)}>
+              {expanded ? '◀ Thu gọn' : '▶ Xem chi tiết'}
+            </button>
           </div>
+          <Chart events={events} onClickPoint={setModal} expanded={expanded} />
         </div>
 
         {/* Event list */}
