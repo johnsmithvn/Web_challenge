@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import AuthModal from './AuthModal';
 import XpBar from './XpBar';
 import '../styles/navbar.css';
@@ -8,14 +9,15 @@ import '../styles/xpbar.css';
 import '../styles/auth.css';
 
 const NAV_LINKS = [
-  { to: '/',            label: 'Trang Chủ' },
-  { to: '/tracker',     label: '🗓 Tracker' },
-  { to: '/focus',       label: '⏱ Focus' },
-  { to: '/journey',     label: '🗺 Lộ Trình' },
-  { to: '/team',        label: '🤝 Team' },
-  { to: '/dashboard',   label: '📈 Stats' },
-  { to: '/quiz',        label: '🧠 Quiz' },
-  { to: '/leaderboard', label: '🏆 BXH' },
+  { to: '/',              label: 'Trang Chủ' },
+  { to: '/tracker',       label: '🗓 Tracker' },
+  { to: '/focus',         label: '⏱ Focus' },
+  { to: '/journey',       label: '🗺 Lộ Trình' },
+  { to: '/team',          label: '🤝 Team' },
+  { to: '/dashboard',     label: '📈 Stats' },
+  { to: '/quiz',          label: '🧠 Quiz' },
+  { to: '/leaderboard',   label: '🏆 BXH' },
+  { to: '/life-journey',  label: '💛 Hành Trình' },
 ];
 
 
@@ -72,6 +74,7 @@ export default function Navbar() {
   const [menuOpen,   setMenuOpen]   = useState(false);
   const [showAuth,   setShowAuth]   = useState(false);
   const { user, profile, signOut, loading } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
 
   useEffect(() => {
@@ -110,6 +113,17 @@ export default function Navbar() {
           <div className="navbar__xp">
             <XpBar compact />
           </div>
+
+          {/* Theme toggle */}
+          <button
+            className="navbar__theme-toggle"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Chuyển Light Mode' : 'Chuyển Dark Mode'}
+            aria-label="Toggle theme"
+            id="navbar-theme-toggle"
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
 
           {/* Auth section */}
           {!loading && (

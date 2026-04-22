@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { JourneyProvider } from './contexts/JourneyContext';
@@ -25,6 +26,7 @@ const LeaderboardPage   = lazy(() => import('./pages/LeaderboardPage'));
 const FriendsPage       = lazy(() => import('./pages/FriendsPage'));
 const JourneyPage       = lazy(() => import('./pages/JourneyPage'));
 const JourneyDetailPage = lazy(() => import('./pages/JourneyDetailPage'));
+const LifeJourneyPage   = lazy(() => import('./pages/LifeJourneyPage'));
 
 // ── SEO meta per route ─────────────────────────────────────────────
 const ROUTE_META = {
@@ -37,7 +39,8 @@ const ROUTE_META = {
   '/dashboard':  { title: 'Stats — Vượt Lười',                                               desc: 'Thống kê toàn bộ quá trình: streak, XP, mood, habit completion và lộ trình.' },
   '/quiz':       { title: 'Quiz — Vượt Lười',                                                desc: 'Kiểm tra hiểu biết về tâm lý hành vi và thói quen. +50 XP nếu làm tốt!' },
   '/leaderboard':{ title: 'Bảng Xếp Hạng — Vượt Lười',                                      desc: 'Xem ai đang dẫn đầu về streak và XP. Cạnh tranh lành mạnh!' },
-  '/friends':    { title: 'Bạn Bè — Vượt Lười',                                              desc: 'Kết bạn, xem streak và XP của nhau, cổ vũ nhau cùng tiến.' },
+  '/friends':      { title: 'Bạn Bè — Vượt Lười',                                              desc: 'Kết bạn, xem streak và XP của nhau, cổ vũ nhau cùng tiến.' },
+  '/life-journey': { title: 'Hành Trình Cuộc Đời — Vượt Lười',                                 desc: 'Ghi lại những cột mốc quan trọng trong cuộc sống của bạn trên biểu đồ cảm xúc.' },
 };
 
 function PageMeta() {
@@ -102,6 +105,7 @@ function AppShell() {
             <Route path="/friends"      element={<FriendsPage />} />
             <Route path="/journey"      element={<JourneyPage />} />
             <Route path="/journey/:id"  element={<JourneyDetailPage />} />
+            <Route path="/life-journey" element={<LifeJourneyPage />} />
             <Route path="*"             element={<LandingPage />} />
           </Routes>
         </Suspense>
@@ -119,12 +123,14 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <JourneyProvider>
-          <AppShell />
-        </JourneyProvider>
-      </BrowserRouter>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <JourneyProvider>
+            <AppShell />
+          </JourneyProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

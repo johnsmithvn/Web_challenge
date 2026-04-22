@@ -1,0 +1,433 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap');
+
+/* ── Page wrapper — dùng .container như các trang khác ─── */
+.lj-page {
+  padding-top: var(--space-2xl);
+  padding-bottom: var(--space-4xl);
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+.lj-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-2xl);
+}
+.lj-title-wrap { flex: 1; }
+.lj-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 900;
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  cursor: pointer;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: opacity var(--transition-fast);
+  line-height: 1.2;
+}
+.lj-title:hover { opacity: 0.8; }
+.lj-title-edit { font-size: 1rem; -webkit-text-fill-color: var(--text-muted); }
+.lj-title-input {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 900;
+  border: none;
+  border-bottom: 2px solid var(--purple);
+  background: transparent;
+  outline: none;
+  color: var(--text-primary);
+  width: 100%;
+}
+.lj-heart-icon {
+  display: block;
+  text-align: left;
+  margin: 4px 0 2px;
+  color: #e74c8b;
+}
+.lj-subtitle {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin: 0;
+}
+.lj-header-actions {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+.lj-btn-add {
+  background: var(--grad-hero);
+  color: white;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 0.65rem 1.4rem;
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-spring);
+  box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+}
+.lj-btn-add:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99,102,241,0.5); }
+.lj-btn-reset {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-full);
+  padding: 0.65rem 1.2rem;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+.lj-btn-reset:hover {
+  border-color: var(--purple-light);
+  color: var(--purple-light);
+  background: rgba(139,92,246,0.08);
+}
+
+/* ── Stats bar ────────────────────────────────────────────── */
+.lj-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+@media (max-width: 640px) {
+  .lj-stats { grid-template-columns: repeat(2, 1fr); }
+}
+.lj-stat {
+  background: var(--bg-card);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg) var(--space-md);
+  text-align: center;
+  backdrop-filter: blur(12px);
+  transition: var(--transition-base);
+}
+.lj-stat:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(139,92,246,0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-purple);
+}
+.lj-stat-num {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.lj-stat-lbl {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-top: 6px;
+  display: block;
+  font-family: var(--font-display);
+}
+.lj-stat-pos .lj-stat-num { color: var(--green); }
+.lj-stat-neg .lj-stat-num { color: var(--red); }
+.lj-stat-total .lj-stat-num { color: var(--purple-light); }
+
+/* ── Chart card ───────────────────────────────────────────── */
+.lj-chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl) var(--space-lg) var(--space-lg);
+  backdrop-filter: blur(12px);
+  margin-bottom: var(--space-xl);
+  transition: var(--transition-base);
+}
+.lj-chart-card:hover {
+  border-color: rgba(139,92,246,0.2);
+  box-shadow: var(--shadow-purple);
+}
+.lj-chart-wrapper { overflow-x: auto; }
+.lj-svg {
+  width: 100%;
+  min-width: 640px;
+  display: block;
+}
+
+/* ── Line animations ──────────────────────────────────────── */
+.lj-line-anim {
+  stroke-dasharray: 3000;
+  stroke-dashoffset: 3000;
+  animation: ljDrawLine 1.6s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+.lj-line-anim-delay {
+  stroke-dasharray: 3000;
+  stroke-dashoffset: 3000;
+  animation: ljDrawLine 1.6s cubic-bezier(0.4,0,0.2,1) 0.2s forwards;
+}
+@keyframes ljDrawLine { to { stroke-dashoffset: 0; } }
+
+.lj-point-group { cursor: pointer; }
+.lj-dot-main { transition: r 0.15s ease; }
+.lj-point-group:hover .lj-dot-main { filter: drop-shadow(0 0 6px currentColor); }
+
+/* ── Legend ───────────────────────────────────────────────── */
+.lj-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  flex-wrap: wrap;
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-glass-border);
+  margin-top: var(--space-md);
+}
+.lj-legend-box { display: flex; flex-direction: column; gap: 6px; }
+.lj-legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--text-secondary); font-family: var(--font-display); font-weight: 600; }
+.lj-legend-line { width: 32px; height: 3px; border-radius: 99px; }
+.lj-legend-line.green { background: #00ff88; }
+.lj-legend-line.red   { background: #ff6b6b; }
+.lj-legend-hint { margin-left: auto; font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
+
+/* ── Section title ────────────────────────────────────────── */
+.lj-section-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* ── Event grid ───────────────────────────────────────────── */
+.lj-event-list { margin-bottom: var(--space-xl); }
+.lj-event-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-md);
+}
+.lj-event-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--bg-glass-border);
+  cursor: pointer;
+  transition: var(--transition-base);
+  backdrop-filter: blur(12px);
+}
+.lj-event-card:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.lj-event-card.pos:hover { border-color: rgba(0,255,136,0.3); box-shadow: var(--shadow-green); }
+.lj-event-card.neg:hover { border-color: rgba(239,68,68,0.3); box-shadow: 0 0 20px rgba(239,68,68,0.2); }
+.lj-event-add-card { border-style: dashed; background: transparent; }
+.lj-event-add-card:hover { border-color: var(--purple); background: rgba(139,92,246,0.06); }
+.lj-ec-icon { font-size: 1.6rem; flex-shrink: 0; }
+.lj-ec-body { flex: 1; min-width: 0; }
+.lj-ec-label { font-family: var(--font-display); font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
+.lj-ec-desc  { font-size: 0.74rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lj-ec-score { font-family: var(--font-display); font-size: 1rem; font-weight: 900; flex-shrink: 0; }
+.lj-ec-score.pos { color: var(--green); }
+.lj-ec-score.neg { color: var(--red); }
+
+/* ── Quote ────────────────────────────────────────────────── */
+.lj-quote {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-style: italic;
+  margin-top: var(--space-md);
+}
+
+/* ── Modal — dùng pattern của global.css ─────────────────── */
+.lj-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-xl);
+  animation: fadeIn 0.2s ease;
+}
+.lj-modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl);
+  width: 100%;
+  max-width: 460px;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.lj-modal h3 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-xl);
+}
+.lj-form-row { margin-bottom: var(--space-lg); }
+.lj-form-row label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.lj-form-row input[type="text"],
+.lj-form-row input[type="number"] {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-md);
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  box-sizing: border-box;
+  font-family: var(--font-body);
+}
+.lj-form-row input:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
+}
+.lj-emotion-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.lj-emotion-label {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+.lj-slider {
+  width: 100%;
+  margin: 6px 0 4px;
+  accent-color: var(--purple);
+  cursor: pointer;
+}
+.lj-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.lj-emoji-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  cursor: pointer;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition-fast);
+}
+.lj-emoji-trigger:hover { border-color: var(--purple); }
+.lj-emoji-big { font-size: 1.6rem; }
+.lj-emoji-hint { font-size: 0.82rem; color: var(--text-muted); font-family: var(--font-display); }
+.lj-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--bg-glass-border);
+}
+.lj-emoji-btn {
+  font-size: 1.2rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: var(--radius-sm);
+  transition: background 0.1s, transform 0.1s;
+}
+.lj-emoji-btn:hover { background: rgba(255,255,255,0.08); transform: scale(1.25); }
+.lj-emoji-btn.active { background: rgba(139,92,246,0.2); outline: 1px solid var(--purple); }
+
+/* Modal actions */
+.lj-modal-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-xl);
+  justify-content: flex-end;
+  align-items: center;
+}
+.lj-btn-primary {
+  background: var(--grad-hero);
+  color: white;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 0.7rem 1.4rem;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-spring);
+  box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+}
+.lj-btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99,102,241,0.5); }
+.lj-btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+.lj-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-full);
+  padding: 0.7rem 1.2rem;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+.lj-btn-secondary:hover { border-color: var(--purple-light); color: var(--purple-light); }
+.lj-btn-danger {
+  background: rgba(239,68,68,0.1);
+  color: var(--red);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: var(--radius-full);
+  padding: 0.7rem 1.2rem;
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-right: auto;
+  transition: var(--transition-base);
+}
+.lj-btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+@media (max-width: 640px) {
+  .lj-header { flex-direction: column; }
+  .lj-header-actions { width: 100%; }
+}
