@@ -1,6 +1,6 @@
 # FEATURES.md — Thử Thách Vượt Lười
-**Version:** v2.1.0
-**Updated:** 2026-04-21
+**Version:** v2.2.0
+**Updated:** 2026-04-24
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -392,6 +392,26 @@
 
 ---
 
+## 21. 💛 Hành Trình Cuộc Đời (Life Journey) (`/life-journey`) (v2.2.0)
+
+**Added:** v2.2.0
+**Files:** `src/pages/LifeJourneyPage.jsx`, `src/pages/LifeJourneyPage.css`, `src/hooks/useLifeJourney.js`
+
+**Mô tả:** Biểu đồ cảm xúc theo tuổi — người dùng ghi lại các cột mốc quan trọng trong cuộc đời (vui/buồn) lên đồ thị SVG. Dữ liệu chỉ lưu localStorage (feature cá nhân, không sync cloud).
+
+**Chi tiết:**
+- **Emotion timeline SVG:** Trục X = tuổi, trục Y = cảm xúc (-5 → +5). Catmull-Rom smooth curve, bi-color (xanh=tích cực, đỏ=tiêu cực)
+- **Dual view:** "Thu gọn" (hover tooltip) / "Xem chi tiết" (expanded: labels gắn trực tiếp, tiered layout tránh overlap)
+- **CRUD events:** Thêm/sửa/xóa cột mốc qua modal: tuổi, cảm xúc slider, tên, mô tả, icon emoji (30 emoji picker)
+- **Stats cards:** Tổng cột mốc, số tích cực, số tiêu cực, TB cảm xúc
+- **Event list:** Grid cards sorted theo tuổi, click → edit modal
+- **Custom title:** Click tiêu đề → inline edit, lưu localStorage (`vl_journey_title`)
+- **Reset to default:** 12 sample events mẫu
+- **Navbar link:** "💛 Hành Trình" trong main nav
+- **Data:** `vl_life_journey_events` (localStorage JSON array) — KHÔNG dùng Supabase
+
+---
+
 ## Data Architecture — Dual Mode
 
 
@@ -410,6 +430,7 @@
 | Friends | `friendships` (Supabase) | — |
 | Notifications | `vl_notif_settings` (localStorage) | localStorage |
 | Personal tasks | `user_tasks` (Supabase) | in-memory |
+| Life milestones | `vl_life_journey_events` (localStorage) | localStorage |
 
 ---
 
@@ -428,3 +449,4 @@
 | `/quiz` | QuizPage | ❌ |
 | `/leaderboard` | LeaderboardPage | ❌ |
 | `/friends` | FriendsPage | ✅ |
+| `/life-journey` | LifeJourneyPage | ❌ |

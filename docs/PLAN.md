@@ -1,6 +1,6 @@
 # PLAN.md — Thử Thách Vượt Lười
-**Updated:** 2026-04-21
-**Current Version:** v2.1.0
+**Updated:** 2026-04-24
+**Current Version:** v2.2.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -181,6 +181,18 @@
 
 ---
 
+## ✅ Phase 5.4 — Life Journey Visualization (v2.2.0)
+*Hoàn thành: 2026-04-22*
+
+- [x] `src/pages/LifeJourneyPage.jsx` + `LifeJourneyPage.css` — Emotion timeline SVG (Catmull-Rom curve)
+- [x] `src/hooks/useLifeJourney.js` — CRUD milestones (localStorage-only, no Supabase)
+- [x] `src/contexts/ThemeContext.jsx` — Dark/Light theme toggle
+- [x] Route `/life-journey` + Navbar link "💛 Hành Trình"
+- [x] Dual view: compact (hover tooltip) / expanded (tiered labels)
+- [x] 30 emoji picker, emotion slider -5→+5, custom chart title
+
+---
+
 ## 🚧 Phase 6 — Team Accountability v3 (v3.0.0)
 *Components built — chưa integrate full flow*
 
@@ -204,7 +216,7 @@
 
 ---
 
-## 📋 Phase 7 — Analytics & Intelligence (v2.1.0)
+## 📋 Phase 7 — Analytics & Intelligence (v2.3.0+)
 *Backlog*
 
 - [ ] Mood pattern chart (7 ngày, 30 ngày)
@@ -257,3 +269,4 @@
 | v1.9.5 | Fix manage tab showing old habits after replace |
 | v2.0.0 | Journey Owns Habits + MyJourneys tab + removeXp + Completion UI |
 | v2.1.0 | Personal Tasks (Nhiệm Vụ) + Service Worker notifications + Calendar log |
+| v2.2.0 | Life Journey visualization + ThemeContext (dark/light toggle) |

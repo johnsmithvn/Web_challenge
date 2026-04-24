@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v2.2.0 — 2026-04-22
+
+### Added
+- `src/pages/LifeJourneyPage.jsx` + `LifeJourneyPage.css` — Life emotion timeline: SVG chart (Catmull-Rom), dual view (compact/expanded), event list grid, stats cards
+- `src/hooks/useLifeJourney.js` — CRUD milestones (add/update/delete/resetToDefault), localStorage-only (`vl_life_journey_events`)
+- `src/contexts/ThemeContext.jsx` — Dark/Light theme toggle, persist preference in `vl_theme` localStorage key
+- Route `/life-journey` + Navbar link "💛 Hành Trình"
+- SEO meta for `/life-journey` route in `App.jsx`
+
+### Changed
+- `src/App.jsx` — Wrap with `ThemeProvider` (outermost), lazy-load `LifeJourneyPage`
+- `src/components/Navbar.jsx` — Add theme toggle button (☀️/🌙), add "💛 Hành Trình" nav link
+
+---
+
 ## v2.1.0 — 2026-04-21
 
 ### Added

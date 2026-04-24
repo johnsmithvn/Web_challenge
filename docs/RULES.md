@@ -79,9 +79,8 @@ The agent MUST work **only within the current task scope**.
 
 2. If context is missing or the project behavior is unclear, read the following documents:
 
-   - `docs/PROJECT.md`
-   - `docs/ROADMAP.md`
    - `docs/ARCHITECTURE.md`
+   - `docs/FEATURES.md`
 
 3. Read `docs/PLAN.md` to understand the current phase of development.
 
@@ -241,7 +240,7 @@ Avoid:
 
 # Environment
 
-Python dependencies must be installed in a project virtual environment.
+Node.js dependencies are managed via `npm`. Use `npm install` to set up.
 
 ---
 
@@ -414,18 +413,16 @@ The repository MUST contain a README.md explaining how to run the project from a
 
 # 12. Frontend Unit Test Guidelines
 
-Dashboard V2 (`dashboard-v2/`) uses **Vitest** + **React Testing Library** + **jsdom** for unit testing.
+Project uses **Vitest** + **React Testing Library** + **jsdom** for unit testing (when applicable).
 
 ## Structure
 
 ```
-dashboard-v2/
+src/
   test/
     setup.js            — global setup (jest-dom, localStorage mock)
     utils/              — pure function tests
-    api/                — API client tests
     hooks/              — React Query hook tests
-    charts/             — chart component tests
     components/         — UI component tests
     pages/              — page-level data transform tests
 ```
@@ -433,7 +430,7 @@ dashboard-v2/
 ## Conventions
 
 * Test files: `<module>.test.js` or `<module>.test.jsx`
-* Config: `dashboard-v2/vitest.config.js`
+* Config: `vitest.config.js`
 * Run: `npm test` (single run), `npm run test:watch` (watch mode)
 * Pure functions **first** — format utils, data transforms, URL builders
 * Mock external dependencies: `fetch`, `localStorage`, `framer-motion`, `recharts`
@@ -516,7 +513,9 @@ src/data/
 ├── challenges.json    # Tất cả Daily Challenges (21 entries, type field phân loại)
 ├── quiz.json          # Tất cả câu hỏi Quiz (10 questions)
 ├── habits.json        # defaultHabits, categories, icons, colors, skipReasons, moods
-└── testimonials.json  # Phản hồi landing page
+├── testimonials.json  # Phản hồi landing page
+├── quotes.json        # v1.4.5 — 30 daily motivational quotes
+└── programs.json      # v1.6.0 — 5 system program templates (offline fallback)
 ```
 
 ## Tiêu chí để tách ra JSON:

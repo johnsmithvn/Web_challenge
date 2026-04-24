@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Thử Thách Vượt Lười
-**Version:** v2.1.0
-**Updated:** 2026-04-21
+**Version:** v2.2.0
+**Updated:** 2026-04-24
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 ---
@@ -9,7 +9,7 @@
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | React 18 + Vite |
+| Framework | React 19 + Vite 8 |
 | Routing | React Router v6 |
 | Styling | Vanilla CSS (CSS variables, glassmorphism) |
 | Database | Supabase (PostgreSQL + Realtime + Auth) |
@@ -53,7 +53,8 @@ src/
 │
 ├── contexts/
 │   ├── AuthContext.jsx        # Auth state, signIn, signUp, Google, profile
-│   └── JourneyContext.jsx     # v1.8.0 — Single source of truth cho activeJourney
+│   ├── JourneyContext.jsx     # v1.8.0 — Single source of truth cho activeJourney
+│   └── ThemeContext.jsx       # v2.2.0 — Dark/Light theme toggle (localStorage vl_theme)
 │
 ├── hooks/
 │   ├── useHabitStore.js       # Daily tick, streak, Supabase-first (guest=in-memory)
@@ -67,6 +68,7 @@ src/
 │   ├── useTeamCheck.js        # Week-2 check logic, submit team_check_logs
 │   ├── useTeamRules.js        # CRUD rules, propose + unanimous approval
 │   ├── useUserTasks.js        # v2.1.0 — Personal task CRUD, notification sync
+│   ├── useLifeJourney.js      # v2.2.0 — Life milestones CRUD (localStorage-only)
 │   ├── useNotifications.js    # Browser notification API
 │   └── ...
 │
@@ -84,7 +86,9 @@ src/
 │   ├── TeamPage.jsx           # /team — N-member accountability (lazy)
 │   ├── QuizPage.jsx           # /quiz — 10-question MCQ (lazy)
 │   ├── LeaderboardPage.jsx    # /leaderboard — Streak/XP ranking (lazy)
-│   └── FriendsPage.jsx        # /friends — Kết bạn (lazy)
+│   ├── FriendsPage.jsx        # /friends — Kết bạn (lazy)
+│   ├── LifeJourneyPage.jsx    # /life-journey — v2.2.0 — Emotion timeline SVG (lazy)
+│   └── LifeJourneyPage.css    # Co-located CSS (not in styles/)
 │
 ├── data/                      # Static JSON content (Rule 14)
 │   ├── challenges.json        # 21 Daily Challenges
@@ -115,7 +119,7 @@ src/
 │   ├── onboarding.css         # OnboardingModal styles
 │   └── testimonials.css       # Testimonials section
 │
-└── App.jsx                    # AppShell wrapper — Onboarding gate + JourneyProvider + Router + LazyLoad
+└── App.jsx                    # AppShell wrapper — ThemeProvider + Onboarding gate + JourneyProvider + Router + LazyLoad
 ```
 
 ---
@@ -165,6 +169,9 @@ vl_habit_logs_migrated # "1" — vl_habit_progress migrated to Supabase
 vl_login_nudge_shown   # "1" — login nudge shown once
 vl_chunk_retry         # "1" — stale chunk retry flag (cleared on success)
 vl_journey_redirected  # sessionStorage — redirect-once flag per session
+vl_theme               # "dark" | "light" — theme preference (v2.2.0)
+vl_life_journey_events # JSON array — life milestones (v2.2.0, localStorage-only)
+vl_journey_title       # string — custom title for life journey chart (v2.2.0)
 ```
 
 > **Rule:** Chỉ lưu **UI state flags** và **offline guest fallback** trong localStorage.
@@ -222,23 +229,25 @@ team_rule_agreements  ← per-member approval flow
 | `/quiz` | QuizPage | Public | Lazy |
 | `/leaderboard` | LeaderboardPage | Public | Lazy |
 | `/friends` | FriendsPage | Required | Lazy |
+| `/life-journey` | LifeJourneyPage | Public | Lazy |
 
 ---
 
 ## App Architecture (v1.7.0+)
 
 ```
-AuthProvider
-  └── BrowserRouter
-        └── JourneyProvider
-              └── AppShell
-                    ├── PageMeta (SEO title/desc per route)
-                    ├── OnboardingModal (once, gated by vl_onboarded)
-                    ├── Redirect to /journey?firstTime=true (once per session if no journey)
-                    ├── Navbar
-                    └── ErrorBoundary
-                          └── Suspense (PageSkeleton fallback)
-                                └── Routes (8 lazy + 2 eager)
+ThemeProvider
+  └── AuthProvider
+        └── BrowserRouter
+              └── JourneyProvider
+                    └── AppShell
+                          ├── PageMeta (SEO title/desc per route)
+                          ├── OnboardingModal (once, gated by vl_onboarded)
+                          ├── Redirect to /journey?firstTime=true (once per session if no journey)
+                          ├── Navbar (uses useTheme for dark/light toggle)
+                          └── ErrorBoundary
+                                └── Suspense (PageSkeleton fallback)
+                                      └── Routes (10 lazy + 2 eager)
 ```
 
 ---

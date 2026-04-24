@@ -1,7 +1,7 @@
 # DATABASE DESIGN — Thử Thách Vượt Lười
 **Target:** Supabase (PostgreSQL)
-**Version:** v2.0.0
-**Updated:** 2026-04-21
+**Version:** v2.2.0
+**Updated:** 2026-04-24
 **Strategy:** Production-ready from day 1
 
 ---

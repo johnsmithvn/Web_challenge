@@ -1,5 +1,23 @@
 # TASKS — Thử Thách Vượt Lười
-**Updated:** 2026-04-21
+**Updated:** 2026-04-24
+
+---
+
+## v2.2.0 — ✅ DONE (2026-04-22) — Life Journey Visualization + Theme Toggle
+
+### Page
+- [x] `src/pages/LifeJourneyPage.jsx` — Emotion timeline SVG (Catmull-Rom), dual view (compact/expanded), event list grid
+- [x] `src/pages/LifeJourneyPage.css` — Co-located CSS for Life Journey page
+
+### Hook
+- [x] `src/hooks/useLifeJourney.js` — CRUD milestones (add/update/delete/resetToDefault), localStorage-only
+
+### Context
+- [x] `src/contexts/ThemeContext.jsx` — Dark/Light theme toggle, persist `vl_theme` in localStorage
+
+### Integration
+- [x] `src/App.jsx` — Add route `/life-journey`, wrap with ThemeProvider, lazy-load LifeJourneyPage
+- [x] `src/components/Navbar.jsx` — Add "💛 Hành Trình" link, add theme toggle button (☀️/🌙)
 
 ---
 
