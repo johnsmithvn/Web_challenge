@@ -19,8 +19,8 @@ export const XP_REWARDS = {
   streak_21:       200,
   daily_challenge: 20,
   quiz_complete:   (score) => Math.round((score / 10) * 50),
-  duo_streak:      30,
-  focus_session:   15, // awarded directly in useFocusTimer.js (avoid circular import)
+  duo_streak:      30,  // TODO: wire into Team Mode v3 when team check is live
+  focus_session:   15,  // awarded directly in useFocusTimer.js (avoid circular import)
 };
 
 export function computeLevel(totalXp) {
@@ -73,10 +73,16 @@ export function useXpStore() {
 
   // In-memory log: [{ amount, reason, meta, ts }]
   const [log, setLog] = useState([]);
+  // Prevents double-awarding XP before DB log finishes loading
+  const [isReady, setIsReady] = useState(!useDB);
 
   // On login: migrate then load
   useEffect(() => {
-    if (!useDB || !user) return;
+    if (!useDB || !user) {
+      setIsReady(true); // guest mode — nothing to load
+      return;
+    }
+    setIsReady(false);
 
     migrateXpToSupabase(user.id).then(async () => {
       const { data, error } = await supabase
@@ -93,15 +99,29 @@ export function useXpStore() {
           ts:     new Date(r.created_at).getTime(),
         })));
       }
+      setIsReady(true);
     });
   }, [useDB, user?.id]);
 
   // Clear on logout
   useEffect(() => {
-    if (!useDB) setLog([]);
+    if (!useDB) { setLog([]); setIsReady(true); }
   }, [useDB]);
 
   const addXp = useCallback(async (amount, reason, meta = {}) => {
+    // Server-side dedup: check if this exact (reason, meta) already exists in DB
+    if (useDB && user) {
+      const { data: existing } = await supabase
+        .from('xp_logs')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('reason', reason)
+        .contains('meta', meta)
+        .maybeSingle();
+
+      if (existing) return null; // already awarded — skip
+    }
+
     const entry = { amount, reason, meta, ts: Date.now() };
     setLog(prev => [...prev, entry]);
 
@@ -150,13 +170,17 @@ export function useXpStore() {
   }, [useDB, user, log]);
 
   const hasMilestone = useCallback((reason, meta = {}) => {
+    // Conservative: if DB log hasn't loaded yet, assume already awarded
+    // This prevents double-awarding during the async load window
+    if (useDB && !isReady) return true;
+
     return log.some(e =>
       e.reason === reason && JSON.stringify(e.meta) === JSON.stringify(meta)
     );
-  }, [log]);
+  }, [log, useDB, isReady]);
 
   const totalXp  = log.reduce((sum, e) => sum + e.amount, 0);
   const levelInfo = computeLevel(totalXp);
 
-  return { totalXp, levelInfo, log, addXp, removeXp, hasMilestone, levels: LEVELS };
+  return { totalXp, levelInfo, log, addXp, removeXp, hasMilestone, isReady, levels: LEVELS };
 }

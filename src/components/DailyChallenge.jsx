@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import { useTeam } from '../hooks/useTeam';
 import '../styles/daily.css';
@@ -30,12 +30,22 @@ export default function DailyChallenge({ streak = 0 }) {
   // Pick based on current streak day — new user (streak 0/1) sees Challenge 1
   const challenge = useMemo(() => pickByDay(pool, streak), [pool, streak]);
 
-  const { addXp, removeXp, hasMilestone } = useXpStore();
+  const { addXp, removeXp, hasMilestone, isReady } = useXpStore();
   const storageKey = `vl_dc_${dateKey}`;
 
   const [done, setDone]           = useState(() => !!localStorage.getItem(storageKey));
   const [showSteps, setShowSteps] = useState(false);
   const [showXpPop, setShowXpPop] = useState(false);
+
+  // Sync done state with XP log after it loads.
+  // Handles case where localStorage was cleared but XP was already awarded.
+  useEffect(() => {
+    if (!isReady) return;
+    if (!done && hasMilestone('daily_challenge', { date: dateKey })) {
+      setDone(true);
+      localStorage.setItem(storageKey, '1');
+    }
+  }, [isReady]);
 
   const toggle = () => {
     if (!done) {

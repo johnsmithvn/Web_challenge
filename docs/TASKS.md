@@ -3,6 +3,24 @@
 
 ---
 
+## v2.2.3 — ✅ DONE (2026-04-25) — XP Dedup Fixes
+
+### Code
+- [x] `src/hooks/useXpStore.js` — `isReady` flag + server-side dedup in `addXp()`
+- [x] `src/components/DailyChallenge.jsx` — Sync done state with XP log
+- [x] `CHANGELOG.md` — v2.2.3 entry
+
+---
+
+## v2.2.2 — ✅ DONE (2026-04-25) — Database Security Fix
+
+### SQL Fix (user runs manually)
+- [x] `data/migration_v2.2.2_security.sql` — Fix RLS policies (5 fixes)
+- [x] Update `docs/DATABASE.md` — Sync column names + fix schema conflicts
+- [x] Update `CHANGELOG.md`
+
+---
+
 ## v2.2.1 — ✅ DONE (2026-04-25) — Refactor: Remove HabitsPage
 
 ### Cleanup

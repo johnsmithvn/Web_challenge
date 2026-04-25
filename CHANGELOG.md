@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## v2.2.3 — 2026-04-25
+
+### Fixed
+- `useXpStore.js` — Added `isReady` flag: `hasMilestone()` returns `true` conservatively until DB log loads, preventing double XP awards during async window
+- `useXpStore.js` — Server-side dedup in `addXp()`: queries existing entry before INSERT (belt-and-suspenders with client dedup)
+- `DailyChallenge.jsx` — Syncs `done` state with XP log on load; prevents re-awarding if localStorage was cleared
+
+### Changed
+- `useXpStore.js` — Now exports `isReady` flag for consumers to check load status
+- `useXpStore.js` — `duo_streak` marked as TODO (planned for Team v3, not wired yet)
+
+---
+
+## v2.2.2 — 2026-04-25
+
+### Added
+- `data/migration_v2.2.2_security.sql` — 5 database security fixes (run manually in Supabase SQL Editor)
+
+### Security Fixes
+- `progress` RLS — Teammates can now read each other's progress (was owner-only in team v3 SQL)
+- `team_check_logs` RLS — Blocked self-check (checked_id != auth.uid()) + require same team
+- `streaks` RLS — Removed client INSERT/UPDATE policies (write only via trigger)
+- `xp_logs` — Added CHECK constraint: amount BETWEEN -200 AND 200
+- `handle_new_user` trigger — Merged legacy + team v3 versions (creates username + streaks + notification_settings)
+
+### Fixed
+- `docs/DATABASE.md` — Synced xp_logs column names to match actual schema (amount/meta, not xp_amount/metadata)
+
+---
+
 ## v2.2.1 — 2026-04-25
 
 ### Removed

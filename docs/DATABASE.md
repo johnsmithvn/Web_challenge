@@ -1,7 +1,7 @@
 # DATABASE DESIGN — Thử Thách Vượt Lười
 **Target:** Supabase (PostgreSQL)
-**Version:** v2.2.0
-**Updated:** 2026-04-24
+**Version:** v2.2.2
+**Updated:** 2026-04-25
 **Strategy:** Production-ready from day 1
 
 ---
@@ -151,27 +151,22 @@ CREATE TRIGGER trg_refresh_streak
   FOR EACH ROW EXECUTE FUNCTION refresh_streak();
 
 -- ============================================================
--- 4. XP_LOGS (immutable — NEVER update or delete)
+-- 4. XP_LOGS (immutable event log)
 -- ============================================================
-CREATE TYPE xp_reason AS ENUM (
-  'daily_check', 'streak_3', 'streak_10', 'streak_21',
-  'quiz_complete', 'daily_challenge', 'team_duo_streak',
-  'friend_joined', 'manual_admin'
-);
-
 CREATE TABLE xp_logs (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  xp_amount  SMALLINT NOT NULL,
-  reason     xp_reason NOT NULL,
-  metadata   JSONB DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  amount     SMALLINT NOT NULL DEFAULT 0,
+  reason     TEXT NOT NULL,
+  meta       JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT xp_amount_range CHECK (amount BETWEEN -200 AND 200)  -- v2.2.2 security
 );
 
 CREATE INDEX idx_xp_logs_user ON xp_logs (user_id, created_at DESC);
 
 CREATE OR REPLACE VIEW user_xp AS
-  SELECT user_id, SUM(xp_amount)::INT AS total_xp
+  SELECT user_id, SUM(amount)::INT AS total_xp
   FROM xp_logs GROUP BY user_id;
 
 -- ============================================================
@@ -319,13 +314,20 @@ CREATE POLICY "profiles_insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = 
 CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (auth.uid() = id);
 
 -- Progress
-CREATE POLICY "progress_read"   ON progress FOR SELECT USING (user_id = auth.uid() OR is_teammate(user_id));
+CREATE POLICY "progress_select_own"  ON progress FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "progress_select_team" ON progress FOR SELECT USING (
+  user_id IN (
+    SELECT tm2.user_id FROM team_members tm1
+    JOIN team_members tm2 ON tm1.team_id = tm2.team_id
+    WHERE tm1.user_id = auth.uid()
+  )
+);
 CREATE POLICY "progress_insert" ON progress FOR INSERT WITH CHECK (user_id = auth.uid());
 CREATE POLICY "progress_update" ON progress FOR UPDATE USING (user_id = auth.uid());
 
--- Streaks (public read for leaderboard)
+-- Streaks (public read for leaderboard, write only via trigger)
 CREATE POLICY "streaks_read"  ON streaks FOR SELECT USING (true);
-CREATE POLICY "streaks_write" ON streaks FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+-- No client INSERT/UPDATE — streaks updated only by refresh_streak() trigger (SECURITY DEFINER)
 
 -- XP
 CREATE POLICY "xp_read"   ON xp_logs FOR SELECT USING (user_id = auth.uid());
@@ -666,6 +668,7 @@ On first login (one-time per data type):
 | `data/migration_v1.9.0.sql` | v1.9.0 | Update handle_new_user trigger, seed program_habits |
 | `data/supabase_team_v3.sql` | v3.0.0 | team_members, user_programs, team_check_logs, team_rules, team_rule_agreements |
 | `data/migration_v2.1.0.sql` | v2.1.0 | user_tasks table + RLS + indexes |
+| `data/migration_v2.2.2_security.sql` | v2.2.2 | RLS fixes: progress team read, self-check block, streaks write lock, xp_logs constraint, trigger merge |
 
 ## Supabase Setup Checklist
 
