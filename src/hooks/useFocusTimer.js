@@ -148,7 +148,7 @@ export function useFocusTimer() {
       }
 
       // Auto-tick linked habit via useHabitLogs event
-      // Emit a custom event so HabitsPage/useHabitLogs can react
+      // Emit a custom event so TrackerPage/useHabitLogs can react
       if (habitId) {
         const totalFocusMin = next
           .filter(s => s.habitId === habitId && s.date === today)

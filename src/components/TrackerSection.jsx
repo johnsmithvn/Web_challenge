@@ -45,7 +45,7 @@ function LockBanner({ message, cta, onCta, onClose }) {
 }
 
 export default function TrackerSection({ compact = false, isInTeam = false }) {
-  // data is auto-synced from HabitsPage: date = true when ALL custom habits are ticked
+  // data is auto-synced from TrackerPage: date = true when ALL custom habits are ticked
   const { data, weekDates, streak, weekDone, completionPct, badge } = useHabitStore();
   const navigate = useNavigate();
 

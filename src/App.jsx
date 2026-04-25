@@ -17,7 +17,7 @@ import './index.css';
 import LandingPage from './pages/LandingPage';
 import TrackerPage from './pages/TrackerPage';
 
-const HabitsPage        = lazy(() => import('./pages/HabitsPage'));
+
 const FocusPage         = lazy(() => import('./pages/FocusPage'));
 const TeamPage          = lazy(() => import('./pages/TeamPage'));
 const DashboardPage     = lazy(() => import('./pages/DashboardPage'));
@@ -32,7 +32,7 @@ const LifeJourneyPage   = lazy(() => import('./pages/LifeJourneyPage'));
 const ROUTE_META = {
   '/':           { title: 'Vượt Lười — Thử Thách 21 Ngày Chinh Phục Thói Quen',             desc: 'Xây dựng thói quen tốt trong 21 ngày. Theo dõi streak, đặt mục tiêu, và cùng đồng đội vượt lười.' },
   '/tracker':    { title: 'Tracker — Vượt Lười',                                             desc: 'Tick ngày hôm nay, theo dõi streak và tiến độ 21 ngày của bạn.' },
-  '/habits':     { title: 'Habits — Vượt Lười',                                              desc: 'Quản lý danh sách thói quen cá nhân. Thêm, chỉnh sửa, và theo dõi từng habit.' },
+
   '/focus':      { title: 'Focus Timer — Vượt Lười',                                         desc: 'Dùng Pomodoro để tập trung sâu và liên kết với thói quen của bạn.' },
   '/team':       { title: 'Team — Vượt Lười',                                                desc: 'Tạo hoặc tham gia nhóm để cùng nhau vượt lười. Có đồng đội check = không bỏ cuộc được!' },
   '/journey':    { title: 'Lộ Trình — Vượt Lười',                                            desc: 'Chọn lộ trình 21 ngày phù hợp với bạn hoặc tự tạo lộ trình riêng.' },
@@ -96,7 +96,7 @@ function AppShell() {
           <Routes>
             <Route path="/"             element={<LandingPage />} />
             <Route path="/tracker"      element={<TrackerPage />} />
-            <Route path="/habits"       element={<HabitsPage />} />
+            <Route path="/habits"       element={<Navigate to="/tracker" replace />} />
             <Route path="/focus"        element={<FocusPage />} />
             <Route path="/team"         element={<TeamPage />} />
             <Route path="/dashboard"    element={<DashboardPage />} />

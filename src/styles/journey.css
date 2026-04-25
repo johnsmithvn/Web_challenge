@@ -684,7 +684,7 @@
 .btn-modal-confirm:hover { opacity: 0.88; }
 .btn-modal-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ── HabitsPage Journey Banner ─────────────────────────────── */
+/* ── TrackerPage Journey Banner ────────────────────────────── */
 .habits-journey-banner {
   display: flex;
   align-items: center;

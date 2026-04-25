@@ -1,5 +1,5 @@
 # ARCHITECTURE.md — Thử Thách Vượt Lười
-**Version:** v2.2.0
+**Version:** v2.2.1
 **Updated:** 2026-04-24
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
@@ -77,8 +77,8 @@ src/
 │
 ├── pages/
 │   ├── LandingPage.jsx        # / — Marketing page (eager loaded)
-│   ├── TrackerPage.jsx        # /tracker — MERGED with HabitsPage (v1.9.0). 4 tabs: Hôm Nay/Lịch/Tuần/Quản Lý
-│   ├── HabitsPage.jsx         # /habits — DEPRECATED: redirect → /tracker
+│   ├── TrackerPage.jsx        # /tracker — Main tracker. 4 tabs: Hôm Nay/Lịch/Tuần/Quản Lý
+│   │                           # /habits redirects here (inline Navigate in App.jsx)
 │   ├── FocusPage.jsx          # /focus — Pomodoro timer (lazy)
 │   ├── JourneyPage.jsx        # /journey — 4 tabs: Đang chạy / Khám Phá / Của Tôi / Lịch Sử (lazy)
 │   ├── JourneyDetailPage.jsx  # /journey/:id — Full dashboard per journey (lazy)
@@ -220,7 +220,7 @@ team_rule_agreements  ← per-member approval flow
 |------|-----------|:----:|:----:|
 | `/` | LandingPage | Public | Eager |
 | `/tracker` | TrackerPage | Public | Eager |
-| `/habits` | HabitsPage → redirect `/tracker` | — | Lazy |
+| `/habits` | Inline redirect → `/tracker` | — | — |
 | `/focus` | FocusPage | Public | Lazy |
 | `/journey` | JourneyPage | Public (soft wall for save) | Lazy |
 | `/journey/:id` | JourneyDetailPage | Public | Lazy |

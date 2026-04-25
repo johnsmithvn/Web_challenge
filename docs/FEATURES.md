@@ -1,5 +1,5 @@
 # FEATURES.md — Thử Thách Vượt Lười
-**Version:** v2.2.0
+**Version:** v2.2.1
 **Updated:** 2026-04-24
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
@@ -61,11 +61,9 @@
 
 ---
 
-## 2. 📋 Habits Page (`/habits`) — DEPRECATED
+## 2. 📋 Habits Page (`/habits`) — REMOVED v2.2.1
 
-**File:** `src/pages/HabitsPage.jsx`
-
-**Mô tả:** Deprecated since v1.9.0. Redirect → `/tracker`. Tất cả features đã merge vào TrackerPage.
+**Mô tả:** Deprecated v1.9.0, file deleted v2.2.1. Route `/habits` redirects inline to `/tracker` via `App.jsx`.
 
 ---
 
@@ -440,7 +438,7 @@
 |-------|------|:---:|
 | `/` | LandingPage | ❌ |
 | `/tracker` | TrackerPage | ❌ |
-| `/habits` | → redirect `/tracker` | — |
+| `/habits` | Inline redirect → `/tracker` | — |
 | `/focus` | FocusPage | ❌ |
 | `/journey` | JourneyPage | ❌ (soft wall: cần login để lưu) |
 | `/journey/:id` | JourneyDetailPage | ❌ |

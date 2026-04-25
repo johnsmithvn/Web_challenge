@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v2.2.1 — 2026-04-25
+
+### Removed
+- `src/pages/HabitsPage.jsx` — Deleted deprecated redirect file (dead code since v1.9.0). Route `/habits` now uses inline `<Navigate>` in `App.jsx`
+
+### Changed
+- `src/App.jsx` — Removed lazy import + SEO meta for `/habits`. Route kept as inline redirect
+- `src/pages/JourneyPage.jsx` — Fixed dead link `/habits` → `/tracker` in success toast
+- `src/hooks/useFocusTimer.js` — Updated stale comment reference
+- `src/components/TrackerSection.jsx` — Updated stale comment reference
+- `src/styles/journey.css` — Updated CSS comment header
+
+---
+
 ## v2.2.0 — 2026-04-22
 
 ### Added

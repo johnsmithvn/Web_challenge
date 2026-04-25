@@ -126,7 +126,7 @@ export default function JourneyPage() {
             }}>
               {startSuccessMsg}
               <span style={{ marginLeft: 'auto', opacity: 0.6, fontSize: '0.75rem' }}>
-                → Vào <a href="/habits" style={{ color: 'var(--green)' }}>Habits</a> để bắt đầu tick
+                → Vào <a href="/tracker" style={{ color: 'var(--green)' }}>Tracker</a> để bắt đầu tick
               </span>
             </div>
           )}

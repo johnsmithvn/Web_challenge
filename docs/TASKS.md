@@ -1,5 +1,22 @@
 # TASKS — Thử Thách Vượt Lười
-**Updated:** 2026-04-24
+**Updated:** 2026-04-25
+
+---
+
+## v2.2.1 — ✅ DONE (2026-04-25) — Refactor: Remove HabitsPage
+
+### Cleanup
+- [x] `src/pages/HabitsPage.jsx` — DELETED (deprecated redirect since v1.9.0)
+- [x] `src/App.jsx` — Removed lazy import + SEO meta for `/habits`. Route `/habits` now uses inline `<Navigate to="/tracker" replace />`
+- [x] `src/pages/JourneyPage.jsx` — Fixed dead link `/habits` → `/tracker` in success toast
+- [x] `src/hooks/useFocusTimer.js` — Updated stale comment "HabitsPage" → "TrackerPage"
+- [x] `src/components/TrackerSection.jsx` — Updated stale comment "HabitsPage" → "TrackerPage"
+- [x] `src/styles/journey.css` — Updated CSS comment header "HabitsPage" → "TrackerPage"
+
+### Docs
+- [x] `docs/ARCHITECTURE.md` — Removed HabitsPage from folder tree + routes table
+- [x] `docs/FEATURES.md` — Section #2 marked REMOVED v2.2.1
+- [x] `CHANGELOG.md` — Added v2.2.1 entry
 
 ---
 
