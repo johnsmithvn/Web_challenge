@@ -1,6 +1,20 @@
 # CHANGELOG
 
-## v3.0.0-alpha.1 — 2026-04-25
+## v3.0.1 — 2026-04-25
+
+### Added
+- `KnowledgeResurface.jsx` — "Hôm nay nhớ lại" spaced repetition widget (random Collect resurface, dismiss per session)
+- `FinancePage` — Inline SVG Pie chart (category donut) + 7-day bar chart trend
+- `InboxPage` — "→ Task" action (📌 converts inbox item to user_task) + "→ Sub" action (🔄 navigates to Finance)
+- `TrackerPage` — SubAlert + KnowledgeResurface wired inline between XpBar and Hero section
+
+### Changed
+- `widgets.css` — Added KnowledgeResurface styles (cyan accent)
+- `finance.css` — Added chart row layout, pie chart, bar chart styles
+
+---
+
+## v3.0.0 — 2026-04-25
 
 ### BREAKING — Personal Life Hub Pivot
 - **Archived** Team/Friends modules → `src/_archived/` (pages, hooks, components, CSS)
@@ -25,6 +39,51 @@
 - `src/styles/team.css` → archived
 - `src/styles/friends.css` → archived
 - `src/components/team/` (4 components) → archived
+
+### Added — Navigation Restructure (Phase 6.2)
+- `Navbar.jsx` — Complete rewrite: Sidebar (desktop, fixed left 220px) + Top bar (mobile) + Bottom tabs (mobile, 6 items)
+- `navbar.css` — New sidebar + bottom tabs + topbar layout with glassmorphism, light/dark theme support
+- `QuickCapture.jsx` — Global floating [+] button → saves to `collections` table as type='inbox'
+- `quick-capture.css` — FAB with gradient + pulse animation, slide-up capture modal
+- `placeholder-page.css` — Shared "Coming Soon" layout for unreleased pages
+- `InboxPage.jsx` — Placeholder (lazy-loaded)
+- `CollectPage.jsx` — Placeholder (lazy-loaded)
+- `FinancePage.jsx` — Placeholder (lazy-loaded)
+- `LifeLogPage.jsx` — Placeholder (lazy-loaded)
+
+### Changed — Navigation Restructure
+- `App.jsx` — Added `.app-content` wrapper for sidebar offset; 4 new routes; QuickCapture component; SEO meta rebranded "Life Hub"
+- `Navbar.jsx` — Primary nav (Today, Inbox, Collect, Finance, Life Log) + Secondary nav (Focus, Journey, Stats, Quiz, BXH, Hành Trình)
+
+### Added — Activity Log System (Phase 6.3)
+- `useActivityLog.js` — Append-only hook: `logActivity()`, `getHeatmapData()`, `getTimelineByDate()`, `getTodayCount()`
+- Wired into TrackerPage (habit_done, habit_undo, mood_set), DailyChallenge (challenge_done), QuickCapture (collect_add), useFocusTimer (focus_done)
+
+### Added — Inbox + Collect Module (Phase 6.4)
+- `useCollections.js` — CRUD hook for collections table (add, classify, star, archive, delete, inboxCount)
+- `InboxPage.jsx` + `inbox.css` — Quick-add form, inbox items list, classify→type actions, delete
+- `CollectPage.jsx` + `collect.css` — Tabbed view (All/Links/Quotes/Want/Learn/Ideas), search, card grid with type-accent borders
+
+### Added — Finance Module (Phase 6.5)
+- `useExpenses.js` — CRUD for expenses (VNĐ, date-range fetch, getTotal, getByCategory)
+- `useSubscriptions.js` — CRUD for subscriptions (monthly/yearly, toggleActive, getUpcoming, getMonthlyCost)
+- `FinancePage.jsx` + `finance.css` — 2 tabs (Chi tiêu + Đăng ký), summary cards, category breakdown bars, expense list, subscription cards with expiry countdown
+
+### Added — Life Log Module (Phase 6.6)
+- `ActivityHeatmap.jsx` — GitHub-style SVG heatmap (53×7 grid, purple scale, click-to-drill)
+- `DailyTimeline.jsx` — Vertical timeline with action icons, timestamps, labels
+- `LifeLogPage.jsx` + `lifelog.css` — Yearly heatmap + today stat badge + drill-down daily timeline
+
+### Added — Sidebar Widgets (Phase 6.7)
+- `SubAlert.jsx` — Compact alert showing upcoming subscription renewals (≤7 days), auto-hides when empty
+- `DailyReview.jsx` — Today-recap widget (total activity count + last 5 actions), auto-hides when empty
+- `widgets.css` — Shared styles for sidebar widgets
+- Wired both widgets into `Navbar.jsx` sidebar bottom section
+
+### Changed — Branding
+- `package.json` — name: `life-hub`, version: `3.0.0`
+- `index.html` — All meta tags + title rebranded to "Life Hub — Personal Life OS"
+- `manifest.json` — name/short_name/description updated to Life Hub
 
 ---
 

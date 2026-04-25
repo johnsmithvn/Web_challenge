@@ -439,16 +439,7 @@
   .topbar { display: none !important; }
   .bottom-tabs { display: none !important; }
 
-  /* Push main content right of sidebar */
-  .page-wrapper,
-  main,
-  .tracker-page,
-  .focus-page,
-  .dashboard-page,
-  .journey-page,
-  .quiz-page,
-  .leaderboard-page,
-  .life-journey-page {
+  .app-content {
     margin-left: var(--sidebar-width);
   }
 }
@@ -459,7 +450,6 @@
   .topbar { display: flex !important; }
   .bottom-tabs { display: flex !important; }
 
-  /* Push content below topbar and above bottom tabs */
   body {
     padding-top: var(--topbar-height);
     padding-bottom: var(--bottom-tabs-height);

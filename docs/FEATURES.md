@@ -1,13 +1,13 @@
-# FEATURES.md — Thử Thách Vượt Lười
-**Version:** v2.2.1
-**Updated:** 2026-04-24
+# FEATURES.md — Life Hub (Personal Life OS)
+**Version:** v3.0.0
+**Updated:** 2026-04-25
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
 
 ## Tổng Quan Hệ Thống
 
-**Thử Thách Vượt Lười** là nền tảng habit tracking 21 ngày gamified, hỗ trợ cả chế độ offline (in-memory guest) lẫn đồng bộ cloud (Supabase). Người dùng có thể tự thiết lập thói quen, theo dõi tiến độ theo ngày/tháng, dùng Pomodoro timer, và luyện tập trong team accountability.
+**Life Hub** là nền tảng Personal Life OS ("Bộ não thứ 2") tích hợp: habit tracking 21 ngày gamified, quản lý chi tiêu, đăng ký dịch vụ, ghi chú nhanh (Inbox/Collect), và lịch sử hoạt động (Life Log heatmap). Hỗ trợ cả chế độ offline (in-memory guest) lẫn đồng bộ cloud (Supabase).
 
 ---
 
@@ -439,12 +439,105 @@
 | `/` | LandingPage | ❌ |
 | `/tracker` | TrackerPage | ❌ |
 | `/habits` | Inline redirect → `/tracker` | — |
+| `/inbox` | InboxPage | ✅ |
+| `/collect` | CollectPage | ✅ |
+| `/finance` | FinancePage | ✅ |
+| `/life-log` | LifeLogPage | ✅ |
 | `/focus` | FocusPage | ❌ |
 | `/journey` | JourneyPage | ❌ (soft wall: cần login để lưu) |
 | `/journey/:id` | JourneyDetailPage | ❌ |
-| `/team` | TeamPage | ✅ (soft wall) |
+| `/team` | → redirect `/tracker` | — (archived) |
 | `/dashboard` | DashboardPage | ❌ |
 | `/quiz` | QuizPage | ❌ |
 | `/leaderboard` | LeaderboardPage | ❌ |
-| `/friends` | FriendsPage | ✅ |
+| `/friends` | → redirect `/tracker` | — (archived) |
 | `/life-journey` | LifeJourneyPage | ❌ |
+
+---
+
+## 17. 📥 Inbox (`/inbox`)
+
+**File:** `src/pages/InboxPage.jsx` + `src/styles/inbox.css`
+**Hook:** `src/hooks/useCollections.js`
+
+**Mô tả:** Nơi ghi nhanh mọi thứ (link, ý tưởng, ghi chú) — phân loại sau.
+
+**Chi tiết:**
+- Quick-add form (text input + submit)
+- Inbox items list với thời gian tạo
+- Classify action: phân loại → Link / Quote / Muốn mua / Học / Ý tưởng
+- Delete action
+- Tự động detect URL
+- Empty state khi inbox trống
+
+**Data source:** `collections` table (Supabase, type='inbox')
+
+---
+
+## 18. 📓 Collect (`/collect`)
+
+**File:** `src/pages/CollectPage.jsx` + `src/styles/collect.css`
+**Hook:** `src/hooks/useCollections.js`
+
+**Mô tả:** Kho lưu trữ kiến thức đã phân loại.
+
+**Chi tiết:**
+- 6 tabs: Tất cả / Links / Quotes / Muốn / Học / Ý tưởng
+- Search filter
+- Card grid với type-accent left border (màu theo loại)
+- Status badges: Chưa đọc / Đã đọc / ⭐ Starred / Archived
+- Actions: Star, Đánh đã đọc, Archive, Xóa
+- Tags display
+- Responsive: single column mobile, multi-column desktop
+
+**Data source:** `collections` table (Supabase, type ≠ 'inbox')
+
+---
+
+## 19. 💰 Finance (`/finance`)
+
+**File:** `src/pages/FinancePage.jsx` + `src/styles/finance.css`
+**Hook:** `src/hooks/useExpenses.js` + `src/hooks/useSubscriptions.js`
+
+**Mô tả:** Quản lý chi tiêu và đăng ký dịch vụ.
+
+**Chi tiết:**
+- **Summary cards:** Chi tiêu tháng / Đăng ký/tháng / Tổng ước tính
+- **Alert bar:** Cảnh báo subscriptions sắp hết hạn (≤7 ngày)
+- **Tab Chi tiêu:** Quick-add form (số tiền + category + ghi chú), category breakdown với progress bars, expense list với delete
+- **Tab Đăng ký:** Sub cards với tên, số tiền, chu kỳ, ngày hết hạn, toggle active/pause, delete
+- **8 categories:** Ăn uống, Di chuyển, Mua sắm, Sức khỏe, Học tập, Giải trí, Hóa đơn, Khác
+
+**Data source:** `expenses` + `subscriptions` tables (Supabase)
+
+---
+
+## 20. 📅 Life Log (`/life-log`)
+
+**File:** `src/pages/LifeLogPage.jsx` + `src/styles/lifelog.css`
+**Components:** `src/components/ActivityHeatmap.jsx` + `src/components/DailyTimeline.jsx`
+**Hook:** `src/hooks/useActivityLog.js`
+
+**Mô tả:** Lịch sử hoạt động toàn hệ thống dạng GitHub contribution heatmap.
+
+**Chi tiết:**
+- **Today stat badge:** Số hoạt động hôm nay
+- **ActivityHeatmap:** SVG 53×7 grid, 5-level purple scale, click để drill-down
+- **DailyTimeline:** Vertical timeline với action icons, timestamps, labels, XP amounts
+- **Activity types logged:** habit_done, habit_undo, mood_set, challenge_done, collect_add, focus_done, expense_add, subscription_add
+
+**Data source:** `activity_logs` table (Supabase, append-only)
+
+---
+
+## 21. 🔔 Sidebar Widgets
+
+**Files:** `src/components/SubAlert.jsx` + `src/components/DailyReview.jsx` + `src/styles/widgets.css`
+
+**Mô tả:** Widgets nhỏ gắn trong sidebar desktop, tự động ẩn khi không có data.
+
+**Chi tiết:**
+- **SubAlert:** Hiển thị subscriptions sắp gia hạn (≤7 ngày) + đếm ngược ngày. Urgent style khi ≤2 ngày.
+- **DailyReview:** Tổng số hoạt động hôm nay + 5 actions gần nhất với icon + timestamp.
+
+**Data source:** SubAlert → `subscriptions` | DailyReview → `activity_logs`

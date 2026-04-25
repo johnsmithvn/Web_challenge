@@ -1,0 +1,225 @@
+/* ============================
+   INBOX PAGE
+   ============================ */
+
+.inbox-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.inbox-page__header {
+  margin-bottom: 1.5rem;
+}
+
+.inbox-page__title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 0.25rem;
+}
+
+.inbox-page__subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* ── Quick Add ─────────────────────────────────────────────── */
+.inbox-quick-add {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.inbox-quick-add__input {
+  flex: 1;
+  padding: 0.7rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+[data-theme="light"] .inbox-quick-add__input {
+  background: rgba(99, 102, 241, 0.04);
+  border-color: rgba(99, 102, 241, 0.15);
+}
+
+.inbox-quick-add__input:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+}
+
+.inbox-quick-add__input::placeholder {
+  color: var(--text-muted);
+}
+
+.inbox-quick-add__btn {
+  padding: 0.7rem 1.25rem;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* ── Items List ────────────────────────────────────────────── */
+.inbox-items__count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.inbox-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  margin-bottom: 0.5rem;
+  transition: all 0.15s ease;
+}
+
+[data-theme="light"] .inbox-item {
+  background: rgba(99, 102, 241, 0.03);
+  border-color: rgba(99, 102, 241, 0.08);
+}
+
+.inbox-item:hover {
+  border-color: rgba(139, 92, 246, 0.2);
+  background: rgba(139, 92, 246, 0.04);
+}
+
+.inbox-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.inbox-item__title {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.inbox-item__link {
+  color: var(--cyan);
+  text-decoration: none;
+}
+
+.inbox-item__link:hover {
+  text-decoration: underline;
+}
+
+.inbox-item__time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.inbox-item__actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
+
+.inbox-item__action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  transition: all 0.12s ease;
+}
+
+.inbox-item__action-btn:hover {
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.inbox-item__action-btn--delete:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ── Classify Menu ─────────────────────────────────────────── */
+.inbox-item__classify-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.inbox-item__classify-btn {
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+
+.inbox-item__classify-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--text-primary);
+}
+
+.inbox-item__classify-btn--cancel {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.15);
+}
+
+.inbox-item__classify-btn--cancel:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* ── Empty State ───────────────────────────────────────────── */
+.inbox-page__empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+
+.inbox-page__empty-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.inbox-page__empty-hint {
+  font-size: 0.82rem;
+  margin-top: 0.5rem;
+}
+
+.inbox-page__empty-hint strong {
+  color: var(--purple-light);
+}
+
+.inbox-page__loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+
+.inbox-page__empty {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: var(--text-muted);
+  font-size: 1rem;
+}

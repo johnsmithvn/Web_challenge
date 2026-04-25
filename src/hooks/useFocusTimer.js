@@ -145,6 +145,17 @@ export function useFocusTimer() {
 
         // Award XP via Supabase (deduped)
         awardFocusXp(user.id, log.id, useDB);
+
+        // Activity log: focus_done (fire-and-forget)
+        supabase.from('activity_logs').insert({
+          user_id: user.id,
+          action:  'focus_done',
+          label:   `${settings.workMin} phút Focus`,
+          amount:  FOCUS_XP,
+          meta:    { session_id: log.id, habit_id: habitId, duration_min: settings.workMin },
+        }).then(({ error }) => {
+          if (error) console.warn('[FocusTimer] activity_log insert failed:', error.message);
+        });
       }
 
       // Auto-tick linked habit via useHabitLogs event

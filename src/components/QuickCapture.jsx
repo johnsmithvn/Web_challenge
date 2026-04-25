@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import supabase from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { useActivityLog } from '../hooks/useActivityLog';
 import '../styles/quick-capture.css';
 
 /**
@@ -11,6 +12,7 @@ import '../styles/quick-capture.css';
  */
 export default function QuickCapture() {
   const { user } = useAuth();
+  const { logActivity } = useActivityLog();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -51,6 +53,7 @@ export default function QuickCapture() {
       if (error) {
         console.error('[QuickCapture] insert error:', error.message);
       } else {
+        logActivity('collect_add', trimmed, null, { type: 'inbox', is_url: isUrl });
         setText('');
         setOpen(false);
       }

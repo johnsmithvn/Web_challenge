@@ -3,7 +3,7 @@
 
 ---
 
-## v3.0.0 — 🚧 IN PROGRESS — Personal Life Hub Foundation
+## v3.0.0 — ✅ DONE (2026-04-25) — Personal Life Hub Foundation
 
 ### Phase 6.1 — Cleanup + Migration SQL
 - [x] Archive team/friends code → `src/_archived/` (7 files + team/ folder)
@@ -12,35 +12,57 @@
 - [x] Remove Team/Friends routes from App.jsx (→ redirect /tracker)
 - [x] Create `data/migration_v3.0.0.sql` (collections, expenses, subscriptions, activity_logs + RLS)
 - [x] Create `src/data/expense-categories.json` (8 categories)
-- [ ] Update `package.json` version → 3.0.0
+- [x] Update `package.json` version → 3.0.0 + name → life-hub
+- [x] Rebrand `index.html` + `manifest.json` → Life Hub
 - [ ] User runs `migration_v3.0.0.sql` in Supabase SQL Editor
 
 ### Phase 6.2 — Navigation Restructure
-- [ ] Sidebar (desktop) + Bottom tabs (mobile)
-- [ ] Global floating [+] Quick Capture button
-- [ ] Gamification dropdown (Journey, Quiz, BXH)
-- [ ] Landing page flow: marketing → login → Today
+- [x] Sidebar (desktop) + Bottom tabs (mobile) — `Navbar.jsx` rewrite + `navbar.css` rewrite
+- [x] Global floating [+] Quick Capture button — `QuickCapture.jsx` + `quick-capture.css`
+- [x] Gamification dropdown (Journey, Quiz, BXH) — sidebar "Khác" section + mobile "Thêm" dropdown
+- [x] Landing page flow: sidebar hidden when unauthenticated on `/`
+- [x] `.app-content` wrapper in App.jsx for sidebar offset
+- [x] 4 placeholder pages: InboxPage, CollectPage, FinancePage, LifeLogPage + `placeholder-page.css`
+- [x] SEO meta updated for all new routes (Life Hub branding)
+- [x] Build verification ✅
 
 ### Phase 6.3 — Activity Log System
-- [ ] `useActivityLog.js` hook
-- [ ] Wire into existing actions
+- [x] `useActivityLog.js` hook — logActivity(), getHeatmapData(), getTimelineByDate(), getTodayCount()
+- [x] Wire into TrackerPage — habit_done / habit_undo / mood_set
+- [x] Wire into DailyChallenge — challenge_done
+- [x] Wire into QuickCapture — collect_add
+- [x] Wire into useFocusTimer — focus_done (direct supabase insert, avoids circular import)
 
 ### Phase 6.4 — Inbox + Collect
-- [ ] `useCollections.js` hook
-- [ ] `InboxPage.jsx`
-- [ ] `CollectPage.jsx`
-- [ ] `DailyReview.jsx` widget
+- [x] `useCollections.js` hook — CRUD, classify, star, archive, inboxCount
+- [x] `InboxPage.jsx` — Quick-add form + inbox items list + classify/delete actions + `inbox.css`
+- [x] `CollectPage.jsx` — Tabbed view (All/Links/Quotes/Want/Learn/Ideas) + search + card grid + `collect.css`
+- [x] `DailyReview.jsx` widget — today-recap (activity count + last 5 actions) wired to sidebar
 
 ### Phase 6.5 — Finance
-- [ ] `useExpenses.js` + `useSubscriptions.js`
-- [ ] `FinancePage.jsx` (2 tabs)
-- [ ] `expense-categories.json`
-- [ ] `SubAlert.jsx` widget
+- [x] `useExpenses.js` — CRUD, date-range fetch, getTotal/getByCategory aggregation
+- [x] `useSubscriptions.js` — CRUD, cycle management, toggleActive, getUpcoming, getMonthlyCost
+- [x] `FinancePage.jsx` — 2 tabs (Chi tiêu + Đăng ký), summary cards, category breakdown bars, expense list, sub cards + `finance.css`
+- [x] `expense-categories.json` (already created in Phase 6.1)
+- [x] `SubAlert.jsx` widget — upcoming sub renewals alert, wired to sidebar
 
 ### Phase 6.6 — Life Log
-- [ ] `Heatmap.jsx` (SVG)
-- [ ] `DailyTimeline.jsx`
-- [ ] `LifeLogPage.jsx`
+- [x] `ActivityHeatmap.jsx` — GitHub-style SVG heatmap, 53×7 grid, purple color scale, click-to-drill
+- [x] `DailyTimeline.jsx` — Vertical timeline with action icons, timestamps, labels
+- [x] `LifeLogPage.jsx` — Heatmap + today stat + drill-down timeline + `lifelog.css`
+
+---
+
+## v3.0.1 — ✅ DONE (2026-04-25) — Plan Gap Fix
+
+### Phase 6.7 — Finalize Plan Gaps
+- [x] `KnowledgeResurface.jsx` — "Hôm nay nhớ lại" widget (random Collect resurface, spaced repetition)
+- [x] Wire `SubAlert` + `KnowledgeResurface` inline into TrackerPage (between XpBar and Hero)
+- [x] `FinancePage.jsx` — Add inline SVG Pie chart (category donut) + 7-day bar chart trend
+- [x] `InboxPage.jsx` — Add "→ Task" action (creates `user_task` from inbox item)
+- [x] `InboxPage.jsx` — Add "→ Sub" action (navigates to Finance, passes item text)
+- [x] `widgets.css` — Add KnowledgeResurface styles (cyan accent)
+- [x] `finance.css` — Add PieChart + WeekBarChart styles
 
 ---
 

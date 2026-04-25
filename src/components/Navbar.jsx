@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthModal from './AuthModal';
 import XpBar from './XpBar';
+import SubAlert from './SubAlert';
+import DailyReview from './DailyReview';
 import '../styles/navbar.css';
 import '../styles/xpbar.css';
 import '../styles/auth.css';
@@ -132,6 +134,8 @@ export default function Navbar() {
         </nav>
 
         <div className="sidebar__bottom">
+          <DailyReview />
+          <SubAlert />
           <div className="sidebar__xp">
             <XpBar compact />
           </div>

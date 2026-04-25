@@ -97,29 +97,31 @@ function AppShell() {
       <Navbar />
       <QuickCapture />
 
-      <ErrorBoundary>
-        <Suspense fallback={<PageSkeleton />}>
-          <Routes>
-            <Route path="/"             element={<LandingPage />} />
-            <Route path="/tracker"      element={<TrackerPage />} />
-            <Route path="/habits"       element={<Navigate to="/tracker" replace />} />
-            <Route path="/inbox"        element={<InboxPage />} />
-            <Route path="/collect"      element={<CollectPage />} />
-            <Route path="/finance"      element={<FinancePage />} />
-            <Route path="/life-log"     element={<LifeLogPage />} />
-            <Route path="/focus"        element={<FocusPage />} />
-            <Route path="/team"         element={<Navigate to="/tracker" replace />} />
-            <Route path="/friends"      element={<Navigate to="/tracker" replace />} />
-            <Route path="/dashboard"    element={<DashboardPage />} />
-            <Route path="/quiz"         element={<QuizPage />} />
-            <Route path="/leaderboard"  element={<LeaderboardPage />} />
-            <Route path="/journey"      element={<JourneyPage />} />
-            <Route path="/journey/:id"  element={<JourneyDetailPage />} />
-            <Route path="/life-journey" element={<LifeJourneyPage />} />
-            <Route path="*"             element={<LandingPage />} />
-          </Routes>
-        </Suspense>
-      </ErrorBoundary>
+      <div className="app-content">
+        <ErrorBoundary>
+          <Suspense fallback={<PageSkeleton />}>
+            <Routes>
+              <Route path="/"             element={<LandingPage />} />
+              <Route path="/tracker"      element={<TrackerPage />} />
+              <Route path="/habits"       element={<Navigate to="/tracker" replace />} />
+              <Route path="/inbox"        element={<InboxPage />} />
+              <Route path="/collect"      element={<CollectPage />} />
+              <Route path="/finance"      element={<FinancePage />} />
+              <Route path="/life-log"     element={<LifeLogPage />} />
+              <Route path="/focus"        element={<FocusPage />} />
+              <Route path="/team"         element={<Navigate to="/tracker" replace />} />
+              <Route path="/friends"      element={<Navigate to="/tracker" replace />} />
+              <Route path="/dashboard"    element={<DashboardPage />} />
+              <Route path="/quiz"         element={<QuizPage />} />
+              <Route path="/leaderboard"  element={<LeaderboardPage />} />
+              <Route path="/journey"      element={<JourneyPage />} />
+              <Route path="/journey/:id"  element={<JourneyDetailPage />} />
+              <Route path="/life-journey" element={<LifeJourneyPage />} />
+              <Route path="*"             element={<LandingPage />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
+      </div>
     </>
   );
 }

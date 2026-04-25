@@ -1,7 +1,7 @@
 {
-  "name": "vuu-liem",
+  "name": "life-hub",
   "private": true,
-  "version": "2.3.0",
+  "version": "3.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",

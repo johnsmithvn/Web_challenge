@@ -1,6 +1,6 @@
-# PLAN.md — Thử Thách Vượt Lười
-**Updated:** 2026-04-24
-**Current Version:** v2.2.0
+# PLAN.md — Life Hub (Personal Life OS)
+**Updated:** 2026-04-25
+**Current Version:** v3.0.1
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -201,44 +201,44 @@
 
 ---
 
-## 🚧 Phase 6 (NEW) — Personal Life Hub Foundation (v3.0.0)
-*IN PROGRESS — Branch: `feat/v3-personal`*
+## ✅ Phase 6 (NEW) — Personal Life Hub Foundation (v3.0.0)
+*Hoàn thành: 2026-04-25 — Branch: `feat/v3-personal`*
 
 **Goal:** Pivot app từ "Team Habit Tracker" → "Personal Life Hub / Second Brain"
 
-### 6.1 — Cleanup + Migration SQL
-- [ ] Archive team/friends code → `src/_archived/`
-- [ ] Create `data/migration_v3.0.0.sql` (4 new tables: collections, expenses, subscriptions, activity_logs + RLS)
-- [ ] Rename app: "Thử Thách Vượt Lười" → New name (TODO: tên mới)
-- [ ] Update `package.json` version → 3.0.0
+### 6.1 — Cleanup + Migration SQL ✅
+- [x] Archive team/friends code → `src/_archived/`
+- [x] Create `data/migration_v3.0.0.sql` (4 new tables + RLS)
+- [x] Rebrand: "Thử Thách Vượt Lười" → "Life Hub — Personal Life OS"
+- [x] Update `package.json` version → 3.0.0
 
-### 6.2 — Navigation Restructure
-- [ ] Sidebar (desktop) + Bottom tabs (mobile): Today, Inbox, Collect, Finance, Life Log
-- [ ] Gamification dropdown (Journey, Quiz, BXH) — ẩn khỏi nav chính
-- [ ] Global floating [+] Quick Capture button
-- [ ] Landing page: marketing (unauthenticated) → login → Today page
+### 6.2 — Navigation Restructure ✅
+- [x] Sidebar (desktop) + Bottom tabs (mobile): Today, Inbox, Collect, Finance, Life Log
+- [x] Gamification dropdown (Journey, Quiz, BXH) — ẩn khỏi nav chính
+- [x] Global floating [+] Quick Capture button
+- [x] Landing page: marketing (unauthenticated) → login → Today page
 
-### 6.3 — Activity Log System
-- [ ] `useActivityLog.js` — log mọi action vào `activity_logs` table
-- [ ] Wire into existing: habit tick, task done, mood set, focus done, xp earned
+### 6.3 — Activity Log System ✅
+- [x] `useActivityLog.js` — log mọi action vào `activity_logs` table
+- [x] Wire into existing: habit tick, task done, mood set, focus done, challenge done, collect add
 
-### 6.4 — Inbox + Collect
-- [ ] `useCollections.js` — CRUD collections (inbox + typed items)
-- [ ] `InboxPage.jsx` — Quick items chưa phân loại, classify → Collect
-- [ ] `CollectPage.jsx` — Filtered list (Link, Quote, Want, Learn, Idea)
-- [ ] `DailyReview.jsx` — Random resurface widget trên Today page
+### 6.4 — Inbox + Collect ✅
+- [x] `useCollections.js` — CRUD collections (inbox + typed items)
+- [x] `InboxPage.jsx` — Quick items chưa phân loại, classify → Collect
+- [x] `CollectPage.jsx` — Filtered list (Link, Quote, Want, Learn, Idea)
+- [x] `DailyReview.jsx` — Today-recap widget (sidebar)
 
-### 6.5 — Finance
-- [ ] `useExpenses.js` — CRUD expenses (chi tiêu only)
-- [ ] `useSubscriptions.js` — CRUD subscriptions + expiry alerts
-- [ ] `FinancePage.jsx` — 2 tabs: Chi tiêu (quick-add + charts) + Đăng ký
-- [ ] `SubAlert.jsx` — Cảnh báo sắp hết hạn trên Today page
-- [ ] `src/data/expense-categories.json` — Categories mặc định
+### 6.5 — Finance ✅
+- [x] `useExpenses.js` — CRUD expenses (chi tiêu only)
+- [x] `useSubscriptions.js` — CRUD subscriptions + expiry alerts
+- [x] `FinancePage.jsx` — 2 tabs: Chi tiêu (quick-add + breakdown) + Đăng ký
+- [x] `SubAlert.jsx` — Cảnh báo sắp hết hạn (sidebar)
+- [x] `src/data/expense-categories.json` — 8 categories mặc định
 
-### 6.6 — Life Log
-- [ ] `Heatmap.jsx` — GitHub-style yearly activity heatmap (SVG)
-- [ ] `DailyTimeline.jsx` — Vertical feed per day (click from heatmap)
-- [ ] `LifeLogPage.jsx` — Combine heatmap + daily timeline
+### 6.6 — Life Log ✅
+- [x] `ActivityHeatmap.jsx` — GitHub-style yearly activity heatmap (SVG)
+- [x] `DailyTimeline.jsx` — Vertical feed per day (click from heatmap)
+- [x] `LifeLogPage.jsx` — Combine heatmap + daily timeline
 
 ---
 
@@ -304,4 +304,5 @@
 | v2.2.3 | XP Dedup Fixes (isReady + server-side dedup) |
 | v2.3.0 | Mood/Skip History on Calendar |
 | **v3.0.0** | **Personal Life Hub (Inbox, Collect, Finance, Life Log)** |
+| v3.0.1 | Plan gap fix: KnowledgeResurface, Finance charts, Inbox actions |
 

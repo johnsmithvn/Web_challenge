@@ -1,6 +1,6 @@
-# ARCHITECTURE.md — Thử Thách Vượt Lười
-**Version:** v2.2.1
-**Updated:** 2026-04-24
+# ARCHITECTURE.md — Life Hub (Personal Life OS)
+**Version:** v3.0.0-alpha.2
+**Updated:** 2026-04-25
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 ---
@@ -28,17 +28,12 @@ src/
 │   │   ├── ActiveJourneyPanel.jsx   # Progress ring, habit chips, completion UI, renew/extend/quit
 │   │   ├── ProgramBrowser.jsx       # Template grid, category filter, start flow, SwitchModeModal
 │   │   ├── JourneyHistory.jsx       # Past journeys list + status badges, click → /journey/:id
-│   │   ├── MyJourneys.jsx           # NEW v2.0.0 — "Của Tôi" tab, past journeys with "Bắt đầu lại"
+│   │   ├── MyJourneys.jsx           # v2.0.0 — "Của Tôi" tab, past journeys with "Bắt đầu lại"
 │   │   └── CustomJourneyModal.jsx   # Free-form journey creation modal
-│   ├── team/                # Team-specific sub-components
-│   │   ├── TeamMemberCard.jsx       # Per-member card: week badge, mini heatmap
-│   │   ├── TeammateCheckPanel.jsx   # Done/Fail modal with reason
-│   │   ├── JoinSyncModal.jsx        # Week sync: restart vs continue
-│   │   └── TeamRules.jsx            # Rules section: propose, agree/reject
 │   ├── AuthModal.jsx          # Login/Register/Google tabs
 │   ├── CompletionModal.jsx    # Certificate modal: Gia Hạn / Thử Thách Mới / Chọn Lộ Trình Mới
 │   ├── OnboardingModal.jsx    # 3-step guide lần đầu truy cập
-│   ├── DailyChallenge.jsx     # Daily mini-challenge, +20 XP, pick-by-streak-day
+│   ├── DailyChallenge.jsx     # Daily mini-challenge, +20 XP, solo-only (team removed v3.0.0)
 │   ├── ErrorBoundary.jsx      # v1.7.0 — Class component, friendly fallback UI
 │   ├── FocusTimer.jsx         # SVG countdown + habit dropdown
 │   ├── HabitManager.jsx       # CRUD custom habits UI
@@ -46,6 +41,12 @@ src/
 │   ├── MonthCalendar.jsx      # Monthly view, VN holidays, completed tasks display
 │   ├── NotificationSettings.jsx
 │   ├── PageSkeleton.jsx       # v1.7.0 — Shimmer skeleton loading
+│   ├── QuickCapture.jsx       # v3.0.0 — Global floating [+] button → saves to collections(inbox)
+│   ├── ActivityHeatmap.jsx    # v3.0.0 — GitHub-style SVG yearly heatmap (53×7 grid)
+│   ├── DailyTimeline.jsx      # v3.0.0 — Vertical activity timeline for a single day
+│   ├── SubAlert.jsx           # v3.0.0 — Compact sidebar alert for upcoming subscription renewals
+│   ├── DailyReview.jsx        # v3.0.0 — Today-recap widget (activity count + last 5 actions)
+│   ├── KnowledgeResurface.jsx # v3.0.1 — "Hôm nay nhớ lại" spaced repetition (random Collect resurface)
 │   ├── TaskListSection.jsx    # v2.1.0 — Personal tasks UI (📌 Nhiệm Vụ)
 │   ├── TrackerSection.jsx     # Read-only 3-week status dots
 │   ├── XpBar.jsx              # XP + level indicator
@@ -64,10 +65,11 @@ src/
 │   ├── useFocusTimer.js       # Pomodoro phases, session log, DB sync, journey_id tagging
 │   ├── useMoodSkip.js         # useMoodLog + useSkipReasons hooks, Supabase-first
 │   ├── useXpStore.js          # XP log, level computation, addXp/removeXp, Supabase-first
-│   ├── useTeam.js             # Team fetch, create/join/leave, realtime
-│   ├── useTeamCheck.js        # Week-2 check logic, submit team_check_logs
-│   ├── useTeamRules.js        # CRUD rules, propose + unanimous approval
 │   ├── useUserTasks.js        # v2.1.0 — Personal task CRUD, notification sync
+│   ├── useActivityLog.js      # v3.0.0 — Append-only activity logger for Life Log heatmap/timeline
+│   ├── useCollections.js      # v3.0.0 — CRUD for collections (inbox + typed items)
+│   ├── useExpenses.js         # v3.0.0 — CRUD for expenses (VNĐ, chi tiêu only)
+│   ├── useSubscriptions.js    # v3.0.0 — CRUD for subscriptions (monthly/yearly cycles)
 │   ├── useLifeJourney.js      # v2.2.0 — Life milestones CRUD (localStorage-only)
 │   ├── useNotifications.js    # Browser notification API
 │   └── ...
@@ -77,16 +79,18 @@ src/
 │
 ├── pages/
 │   ├── LandingPage.jsx        # / — Marketing page (eager loaded)
-│   ├── TrackerPage.jsx        # /tracker — Main tracker. 4 tabs: Hôm Nay/Lịch/Tuần/Quản Lý
+│   ├── TrackerPage.jsx        # /tracker — Today page. 4 tabs: Hôm Nay/Lịch/Tuần/Quản Lý
 │   │                           # /habits redirects here (inline Navigate in App.jsx)
+│   ├── InboxPage.jsx          # /inbox — v3.0.0 — Quick items chưa phân loại (lazy)
+│   ├── CollectPage.jsx        # /collect — v3.0.0 — Kho lưu trữ đã phân loại (lazy)
+│   ├── FinancePage.jsx        # /finance — v3.0.0 — Chi tiêu + Subscriptions (lazy)
+│   ├── LifeLogPage.jsx        # /life-log — v3.0.0 — Heatmap + Daily Timeline (lazy)
 │   ├── FocusPage.jsx          # /focus — Pomodoro timer (lazy)
 │   ├── JourneyPage.jsx        # /journey — 4 tabs: Đang chạy / Khám Phá / Của Tôi / Lịch Sử (lazy)
 │   ├── JourneyDetailPage.jsx  # /journey/:id — Full dashboard per journey (lazy)
 │   ├── DashboardPage.jsx      # /dashboard — Flower, donut, weekly table, contribution (lazy)
-│   ├── TeamPage.jsx           # /team — N-member accountability (lazy)
 │   ├── QuizPage.jsx           # /quiz — 10-question MCQ (lazy)
 │   ├── LeaderboardPage.jsx    # /leaderboard — Streak/XP ranking (lazy)
-│   ├── FriendsPage.jsx        # /friends — Kết bạn (lazy)
 │   ├── LifeJourneyPage.jsx    # /life-journey — v2.2.0 — Emotion timeline SVG (lazy)
 │   └── LifeJourneyPage.css    # Co-located CSS (not in styles/)
 │
@@ -96,11 +100,19 @@ src/
 │   ├── habits.json            # defaultHabits, categories, icons, colors, skipReasons, moods
 │   ├── testimonials.json      # Landing page reviews
 │   ├── quotes.json            # v1.4.5 — 30 daily motivational quotes
-│   └── programs.json          # v1.6.0 — 5 system program templates (offline fallback)
+│   ├── programs.json          # v1.6.0 — 5 system program templates (offline fallback)
+│   └── expense-categories.json # v3.0.0 — 8 expense categories (food, transport, etc.)
 │
 ├── styles/
 │   ├── global.css             # CSS variables, reset, typography
-│   ├── navbar.css             # Navbar layout + mobile menu
+│   ├── navbar.css             # v3.0.0 — Sidebar (desktop) + Bottom tabs (mobile) + Topbar
+│   ├── quick-capture.css      # v3.0.0 — Floating [+] button + capture modal
+│   ├── placeholder-page.css   # v3.0.0 — Coming-soon placeholder layout
+│   ├── inbox.css              # v3.0.0 — Inbox page (quick-add, items, classify)
+│   ├── collect.css            # v3.0.0 — Collect page (tabs, card grid, search)
+│   ├── finance.css            # v3.0.0 — Finance page (summary, breakdown, forms, sub cards)
+│   ├── lifelog.css            # v3.0.0 — Life Log page (heatmap, timeline)
+│   ├── widgets.css            # v3.0.0 — SubAlert + DailyReview sidebar widgets
 │   ├── hero.css               # HeroSection styles
 │   ├── sections.css           # ContentSections + RoadmapSection
 │   ├── tracker.css            # TrackerPage v2 styles (merged habits)
@@ -109,9 +121,7 @@ src/
 │   ├── calendar.css           # Monthly calendar
 │   ├── daily.css              # DailyChallenge styles
 │   ├── journey.css            # Journey page, progress ring, program cards, modals
-│   ├── team.css               # Team page (N-member grid, check panel, rules)
 │   ├── auth.css               # Auth modal
-│   ├── friends.css            # Friends page
 │   ├── xpbar.css              # XP bar
 │   ├── quiz.css               # Quiz page
 │   ├── leaderboard.css        # Leaderboard page

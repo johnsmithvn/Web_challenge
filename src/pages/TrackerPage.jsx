@@ -8,6 +8,7 @@ import { useMoodLog, useSkipReasons } from '../hooks/useMoodSkip';
 import { useJourney } from '../hooks/useJourney';
 import { useHabitLogs } from '../hooks/useHabitLogs';
 import { useUserTasks } from '../hooks/useUserTasks';
+import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
 import DailyChallenge from '../components/DailyChallenge';
 import XpBar from '../components/XpBar';
@@ -15,6 +16,8 @@ import NotificationSettings from '../components/NotificationSettings';
 import CompletionModal from '../components/CompletionModal';
 import LoginNudgeModal from '../components/LoginNudgeModal';
 import TaskListSection from '../components/TaskListSection';
+import KnowledgeResurface from '../components/KnowledgeResurface';
+import SubAlert from '../components/SubAlert';
 import '../styles/tracker.css';
 import '../styles/xpbar.css';
 import '../styles/calendar.css';
@@ -300,6 +303,7 @@ export default function TrackerPage() {
   const { habitProg, toggleLog } = useHabitLogs();
   const { isAuthenticated } = useAuth();
   const { getCompletedTasks } = useUserTasks();
+  const { logActivity } = useActivityLog();
 
   const [tab, setTab] = useState('today');
 
@@ -351,9 +355,16 @@ export default function TrackerPage() {
     if (!wasDone && !hasMilestone('habit_tick', { habitId: habit.id, date: todayKey })) {
       addXp(XP_REWARDS.daily_check, 'habit_tick', { habitId: habit.id, date: todayKey });
     } else if (wasDone) {
-      // Un-ticking: deduct the XP
       removeXp('habit_tick', { habitId: habit.id, date: todayKey });
     }
+
+    // Activity log: fire-and-forget
+    logActivity(
+      wasDone ? 'habit_undo' : 'habit_done',
+      habit.name || habit.label,
+      wasDone ? null : XP_REWARDS.daily_check,
+      { habit_id: habit.id, date: todayKey }
+    );
 
     const nextDone = !wasDone;
     const allDone = activeHabits.every(h =>
@@ -396,7 +407,10 @@ export default function TrackerPage() {
 
 
 
-  const handleMood = (m) => saveMood(todayKey, m);
+  const handleMood = (m) => {
+    saveMood(todayKey, m);
+    logActivity('mood_set', `${m.emoji} ${m.label}`, null, { date: todayKey });
+  };
 
   const handleSkipSubmit = () => {
     saveSkip(skipModal, skipReason, skipNote);
@@ -451,6 +465,10 @@ export default function TrackerPage() {
 
         {/* ── XP Bar ── */}
         <XpBar />
+
+        {/* ── Inline Widgets (Sub alert + Knowledge resurface) ── */}
+        <SubAlert />
+        <KnowledgeResurface />
 
         {/* ── Hero status area (auto-derived from habit ticks) ── */}
         <div className="tracker-hero card">
