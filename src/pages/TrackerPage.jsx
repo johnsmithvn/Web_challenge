@@ -295,8 +295,8 @@ export default function TrackerPage() {
   const { activeHabits, conqueredHabits, conquestHabit, renewHabit } = useCustomHabits();
   const { addXp, removeXp, hasMilestone, totalXp } = useXpStore();
   const { scheduleTodayReminder } = useNotifications();
-  const { saveMood, getMood } = useMoodLog();
-  const { saveSkip } = useSkipReasons();
+  const { moodLog, saveMood, getMood } = useMoodLog();
+  const { skipLog, saveSkip } = useSkipReasons();
   const { activeJourney } = useJourney();
   const { habitProg, toggleLog } = useHabitLogs();
   const { isAuthenticated } = useAuth();
@@ -765,7 +765,7 @@ export default function TrackerPage() {
         {/* ── Tab: Calendar (lazy loaded) ── */}
         {tab === 'calendar' && (
           <Suspense fallback={<div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>⏳ Loading...</div>}>
-            <MonthCalendar habitData={data} getCompletedTasks={getCompletedTasks} />
+            <MonthCalendar habitData={data} getCompletedTasks={getCompletedTasks} moodLog={moodLog} skipLog={skipLog} />
           </Suspense>
         )}
 

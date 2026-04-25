@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v2.3.0 — 2026-04-25
+
+### Added
+- `MonthCalendar.jsx` — Display mood emoji on calendar cells (top-left corner indicator)
+- `MonthCalendar.jsx` — Show mood + skip reason in day detail panel when clicking a date
+- `calendar.css` — `.cal-cell__mood` positioning style
+
+### Changed
+- `TrackerPage.jsx` — Pass `moodLog` and `skipLog` to MonthCalendar component
+
+---
+
 ## v2.2.3 — 2026-04-25
 
 ### Fixed

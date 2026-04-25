@@ -3,6 +3,18 @@
 
 ---
 
+## v2.3.0 — ✅ DONE (2026-04-25) — Mood/Skip History on Calendar
+
+### Code
+- [x] `src/components/MonthCalendar.jsx` — Accept `moodLog` + `skipLog` props, show emoji on cells + detail panel
+- [x] `src/pages/TrackerPage.jsx` — Pass `moodLog` + `skipLog` to MonthCalendar
+- [x] `src/styles/calendar.css` — `.cal-cell__mood` positioning
+
+### Docs
+- [x] `CHANGELOG.md` — v2.3.0 entry
+
+---
+
 ## v2.2.3 — ✅ DONE (2026-04-25) — XP Dedup Fixes
 
 ### Code
