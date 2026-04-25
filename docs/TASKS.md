@@ -1,5 +1,46 @@
-# TASKS — Thử Thách Vượt Lười
+# TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
 **Updated:** 2026-04-25
+
+---
+
+## v3.0.0 — 🚧 IN PROGRESS — Personal Life Hub Foundation
+
+### Phase 6.1 — Cleanup + Migration SQL
+- [x] Archive team/friends code → `src/_archived/` (7 files + team/ folder)
+- [x] Remove `useTeam` from TrackerPage + DailyChallenge
+- [x] Remove Team/Friends nav links from Navbar
+- [x] Remove Team/Friends routes from App.jsx (→ redirect /tracker)
+- [x] Create `data/migration_v3.0.0.sql` (collections, expenses, subscriptions, activity_logs + RLS)
+- [x] Create `src/data/expense-categories.json` (8 categories)
+- [ ] Update `package.json` version → 3.0.0
+- [ ] User runs `migration_v3.0.0.sql` in Supabase SQL Editor
+
+### Phase 6.2 — Navigation Restructure
+- [ ] Sidebar (desktop) + Bottom tabs (mobile)
+- [ ] Global floating [+] Quick Capture button
+- [ ] Gamification dropdown (Journey, Quiz, BXH)
+- [ ] Landing page flow: marketing → login → Today
+
+### Phase 6.3 — Activity Log System
+- [ ] `useActivityLog.js` hook
+- [ ] Wire into existing actions
+
+### Phase 6.4 — Inbox + Collect
+- [ ] `useCollections.js` hook
+- [ ] `InboxPage.jsx`
+- [ ] `CollectPage.jsx`
+- [ ] `DailyReview.jsx` widget
+
+### Phase 6.5 — Finance
+- [ ] `useExpenses.js` + `useSubscriptions.js`
+- [ ] `FinancePage.jsx` (2 tabs)
+- [ ] `expense-categories.json`
+- [ ] `SubAlert.jsx` widget
+
+### Phase 6.6 — Life Log
+- [ ] `Heatmap.jsx` (SVG)
+- [ ] `DailyTimeline.jsx`
+- [ ] `LifeLogPage.jsx`
 
 ---
 

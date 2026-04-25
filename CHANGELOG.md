@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## v3.0.0-alpha.1 — 2026-04-25
+
+### BREAKING — Personal Life Hub Pivot
+- **Archived** Team/Friends modules → `src/_archived/` (pages, hooks, components, CSS)
+- `/team` and `/friends` routes now redirect to `/tracker`
+
+### Added
+- `data/migration_v3.0.0.sql` — 4 new tables: `collections`, `expenses`, `subscriptions`, `activity_logs` + RLS + indexes
+- `src/data/expense-categories.json` — 8 default expense categories (Rule 14)
+
+### Changed
+- `App.jsx` — Removed TeamPage/FriendsPage lazy imports, routes redirect
+- `Navbar.jsx` — Removed Team/Friends nav links
+- `TrackerPage.jsx` — Removed `useTeam` import (unused)
+- `DailyChallenge.jsx` — Removed `useTeam`, always uses solo challenge pool
+
+### Removed
+- `src/pages/TeamPage.jsx` → archived
+- `src/pages/FriendsPage.jsx` → archived
+- `src/hooks/useTeam.js` → archived
+- `src/hooks/useTeamCheck.js` → archived
+- `src/hooks/useTeamRules.js` → archived
+- `src/styles/team.css` → archived
+- `src/styles/friends.css` → archived
+- `src/components/team/` (4 components) → archived
+
+---
+
 ## v2.3.0 — 2026-04-25
 
 ### Added

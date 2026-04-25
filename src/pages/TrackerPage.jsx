@@ -4,7 +4,6 @@ import { useHabitStore } from '../hooks/useHabitStore';
 import { useCustomHabits } from '../hooks/useCustomHabits';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import { useNotifications } from '../hooks/useNotifications';
-import { useTeam } from '../hooks/useTeam';
 import { useMoodLog, useSkipReasons } from '../hooks/useMoodSkip';
 import { useJourney } from '../hooks/useJourney';
 import { useHabitLogs } from '../hooks/useHabitLogs';
@@ -300,7 +299,6 @@ export default function TrackerPage() {
   const { activeJourney } = useJourney();
   const { habitProg, toggleLog } = useHabitLogs();
   const { isAuthenticated } = useAuth();
-  const { team } = useTeam();
   const { getCompletedTasks } = useUserTasks();
 
   const [tab, setTab] = useState('today');

@@ -193,49 +193,78 @@
 
 ---
 
-## 🚧 Phase 6 — Team Accountability v3 (v3.0.0)
-*Components built — chưa integrate full flow*
+## ❌ Phase 6 — Team Accountability v3 — CANCELLED
+*Cancelled: 2026-04-25 — Pivot to Personal Life Hub*
 
-**Core Value Insight (2026-04-18):**
-> "Teammate Check là "vũ khí" chính của app. Khi người dùng hiểu rằng "quyền lực" nằm trong tay đồng đội, họ mới thấy app có giá trị."
-
-**Game design quyết định:**
-| Tuần | Self-check | Teammate check | Logic |
-|------|:---:|:---:|---------|
-| Tuần 1 | ✅ Cho phép | — | Tạo thói quen, low-friction |
-| Tuần 2 | ❌ Vô hiệu hoá | ✅ Bắt buộc | Accountability có răng |
-| Tuần 3 | ❌ Vô hiệu hoá | ✅ Bắt buộc | Kỷ luật đầy đủ |
-
-**Status:**
-- [x] DB schema: `team_members`, `user_programs`, `team_check_logs`, `team_rules`, `team_rule_agreements` (designed, file at `data/supabase_team_v3.sql`)
-- [x] Components built: `TeamMemberCard`, `TeammateCheckPanel`, `JoinSyncModal`, `TeamRules`
-- [x] Hooks built: `useTeamCheck.js`, `useTeamRules.js`
-- [ ] Full integration: wire hooks + components into TeamPage flow
-- [ ] Run SQL migration in Supabase
-- [ ] Realtime check notifications
+> Team features archived. App repositioned as personal productivity hub ("Second Brain").
+> Code moved to `src/_archived/`. DB tables remain but unused.
 
 ---
 
-## 📋 Phase 7 — Analytics & Intelligence (v2.3.0+)
-*Backlog*
+## 🚧 Phase 6 (NEW) — Personal Life Hub Foundation (v3.0.0)
+*IN PROGRESS — Branch: `feat/v3-personal`*
 
-- [ ] Mood pattern chart (7 ngày, 30 ngày)
-- [ ] Skip reason analysis (thường bỏ ngày nào nhất, lý do gì)
-- [ ] Weekly review digest (email hoặc in-app summary)
-- [ ] Focus session breakdown per habit (charts)
-- [ ] AI insight từ pattern data
-- [ ] **Dashboard Journey Selector** — Dropdown chọn journey (current / past), hiển thị stats riêng theo từng journey
+**Goal:** Pivot app từ "Team Habit Tracker" → "Personal Life Hub / Second Brain"
+
+### 6.1 — Cleanup + Migration SQL
+- [ ] Archive team/friends code → `src/_archived/`
+- [ ] Create `data/migration_v3.0.0.sql` (4 new tables: collections, expenses, subscriptions, activity_logs + RLS)
+- [ ] Rename app: "Thử Thách Vượt Lười" → New name (TODO: tên mới)
+- [ ] Update `package.json` version → 3.0.0
+
+### 6.2 — Navigation Restructure
+- [ ] Sidebar (desktop) + Bottom tabs (mobile): Today, Inbox, Collect, Finance, Life Log
+- [ ] Gamification dropdown (Journey, Quiz, BXH) — ẩn khỏi nav chính
+- [ ] Global floating [+] Quick Capture button
+- [ ] Landing page: marketing (unauthenticated) → login → Today page
+
+### 6.3 — Activity Log System
+- [ ] `useActivityLog.js` — log mọi action vào `activity_logs` table
+- [ ] Wire into existing: habit tick, task done, mood set, focus done, xp earned
+
+### 6.4 — Inbox + Collect
+- [ ] `useCollections.js` — CRUD collections (inbox + typed items)
+- [ ] `InboxPage.jsx` — Quick items chưa phân loại, classify → Collect
+- [ ] `CollectPage.jsx` — Filtered list (Link, Quote, Want, Learn, Idea)
+- [ ] `DailyReview.jsx` — Random resurface widget trên Today page
+
+### 6.5 — Finance
+- [ ] `useExpenses.js` — CRUD expenses (chi tiêu only)
+- [ ] `useSubscriptions.js` — CRUD subscriptions + expiry alerts
+- [ ] `FinancePage.jsx` — 2 tabs: Chi tiêu (quick-add + charts) + Đăng ký
+- [ ] `SubAlert.jsx` — Cảnh báo sắp hết hạn trên Today page
+- [ ] `src/data/expense-categories.json` — Categories mặc định
+
+### 6.6 — Life Log
+- [ ] `Heatmap.jsx` — GitHub-style yearly activity heatmap (SVG)
+- [ ] `DailyTimeline.jsx` — Vertical feed per day (click from heatmap)
+- [ ] `LifeLogPage.jsx` — Combine heatmap + daily timeline
 
 ---
 
-## 📋 Phase 8 — Production Polish (v2.2.0)
-*Backlog*
+## 📋 Phase 7 — Analytics & Intelligence (v3.1.0+)
+*Backlog — sau khi v3.0.0 stable*
 
+- [ ] Mood pattern chart (7/30 ngày)
+- [ ] Skip reason analysis
+- [ ] Focus session breakdown per habit
+- [ ] Weekly review digest (in-app summary)
+- [ ] Dashboard redesign (unified stats from all modules)
+- [ ] AI insight từ pattern data (future)
+
+---
+
+## 📋 Phase 8 — Focus Upgrade + Polish (v3.2.0+)
+*Backlog — deferred theo yêu cầu*
+
+- [ ] Ambient sounds (Rain, Café, Forest, Lo-fi, Ocean)
+- [ ] Distraction Pad (quick capture from Focus)
+- [ ] Focus stats dashboard
+- [ ] Fullscreen mode
 - [ ] SEO sitemap
-- [ ] Loading skeleton states (per-component, not just page-level)
-- [ ] Supabase Edge Functions (streak recompute cron)
-- [ ] Rate limiting + abuse prevention
 - [ ] i18n (Vietnamese/English)
+- [ ] Kanban board cho Wishlist (if needed)
+- [ ] Tree structure cho Learning notes (if needed)
 
 ---
 
@@ -270,3 +299,9 @@
 | v2.0.0 | Journey Owns Habits + MyJourneys tab + removeXp + Completion UI |
 | v2.1.0 | Personal Tasks (Nhiệm Vụ) + Service Worker notifications + Calendar log |
 | v2.2.0 | Life Journey visualization + ThemeContext (dark/light toggle) |
+| v2.2.1 | Remove deprecated HabitsPage |
+| v2.2.2 | Database Security Fix (RLS + XP guard) |
+| v2.2.3 | XP Dedup Fixes (isReady + server-side dedup) |
+| v2.3.0 | Mood/Skip History on Calendar |
+| **v3.0.0** | **Personal Life Hub (Inbox, Collect, Finance, Life Log)** |
+

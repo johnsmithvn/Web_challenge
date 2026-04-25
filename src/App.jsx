@@ -6,6 +6,7 @@ import { JourneyProvider } from './contexts/JourneyContext';
 import { useAuth } from './contexts/AuthContext';
 import { useActiveJourney } from './contexts/JourneyContext';
 import Navbar from './components/Navbar';
+import QuickCapture from './components/QuickCapture';
 import OnboardingModal, { useOnboarding } from './components/OnboardingModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import PageSkeleton  from './components/PageSkeleton';
@@ -19,28 +20,32 @@ import TrackerPage from './pages/TrackerPage';
 
 
 const FocusPage         = lazy(() => import('./pages/FocusPage'));
-const TeamPage          = lazy(() => import('./pages/TeamPage'));
 const DashboardPage     = lazy(() => import('./pages/DashboardPage'));
 const QuizPage          = lazy(() => import('./pages/QuizPage'));
 const LeaderboardPage   = lazy(() => import('./pages/LeaderboardPage'));
-const FriendsPage       = lazy(() => import('./pages/FriendsPage'));
 const JourneyPage       = lazy(() => import('./pages/JourneyPage'));
 const JourneyDetailPage = lazy(() => import('./pages/JourneyDetailPage'));
 const LifeJourneyPage   = lazy(() => import('./pages/LifeJourneyPage'));
+// v3.0.0 — New Life Hub pages
+const InboxPage         = lazy(() => import('./pages/InboxPage'));
+const CollectPage       = lazy(() => import('./pages/CollectPage'));
+const FinancePage       = lazy(() => import('./pages/FinancePage'));
+const LifeLogPage       = lazy(() => import('./pages/LifeLogPage'));
 
 // ── SEO meta per route ─────────────────────────────────────────────
 const ROUTE_META = {
-  '/':           { title: 'Vượt Lười — Thử Thách 21 Ngày Chinh Phục Thói Quen',             desc: 'Xây dựng thói quen tốt trong 21 ngày. Theo dõi streak, đặt mục tiêu, và cùng đồng đội vượt lười.' },
-  '/tracker':    { title: 'Tracker — Vượt Lười',                                             desc: 'Tick ngày hôm nay, theo dõi streak và tiến độ 21 ngày của bạn.' },
-
-  '/focus':      { title: 'Focus Timer — Vượt Lười',                                         desc: 'Dùng Pomodoro để tập trung sâu và liên kết với thói quen của bạn.' },
-  '/team':       { title: 'Team — Vượt Lười',                                                desc: 'Tạo hoặc tham gia nhóm để cùng nhau vượt lười. Có đồng đội check = không bỏ cuộc được!' },
-  '/journey':    { title: 'Lộ Trình — Vượt Lười',                                            desc: 'Chọn lộ trình 21 ngày phù hợp với bạn hoặc tự tạo lộ trình riêng.' },
-  '/dashboard':  { title: 'Stats — Vượt Lười',                                               desc: 'Thống kê toàn bộ quá trình: streak, XP, mood, habit completion và lộ trình.' },
-  '/quiz':       { title: 'Quiz — Vượt Lười',                                                desc: 'Kiểm tra hiểu biết về tâm lý hành vi và thói quen. +50 XP nếu làm tốt!' },
-  '/leaderboard':{ title: 'Bảng Xếp Hạng — Vượt Lười',                                      desc: 'Xem ai đang dẫn đầu về streak và XP. Cạnh tranh lành mạnh!' },
-  '/friends':      { title: 'Bạn Bè — Vượt Lười',                                              desc: 'Kết bạn, xem streak và XP của nhau, cổ vũ nhau cùng tiến.' },
-  '/life-journey': { title: 'Hành Trình Cuộc Đời — Vượt Lười',                                 desc: 'Ghi lại những cột mốc quan trọng trong cuộc sống của bạn trên biểu đồ cảm xúc.' },
+  '/':           { title: 'Life Hub — Personal Life OS',                                     desc: 'Hệ điều hành cuộc sống cá nhân. Quản lý thói quen, tài chính, kiến thức và mục tiêu.' },
+  '/tracker':    { title: 'Today — Life Hub',                                                 desc: 'Checklist hôm nay: thói quen, nhiệm vụ, và gợi nhở kiến thức.' },
+  '/inbox':      { title: 'Inbox — Life Hub',                                                 desc: 'Ghi nhanh mọi thứ chưa phân loại. Phân loại sau.' },
+  '/collect':    { title: 'Collect — Life Hub',                                               desc: 'Kho lưu trữ: links, quotes, wishlist, học tập, ý tưởng.' },
+  '/finance':    { title: 'Finance — Life Hub',                                               desc: 'Quản lý chi tiêu cá nhân và đăng ký gói dịch vụ.' },
+  '/life-log':   { title: 'Life Log — Life Hub',                                              desc: 'Lịch sử cuộc sống: heatmap cả năm và timeline hàng ngày.' },
+  '/focus':      { title: 'Focus Timer — Life Hub',                                           desc: 'Dùng Pomodoro để tập trung sâu và liên kết với thói quen của bạn.' },
+  '/journey':    { title: 'Lộ Trình — Life Hub',                                              desc: 'Chọn lộ trình 21 ngày phù hợp với bạn hoặc tự tạo lộ trình riêng.' },
+  '/dashboard':  { title: 'Stats — Life Hub',                                                 desc: 'Thống kê toàn bộ quá trình: streak, XP, mood, habit completion.' },
+  '/quiz':       { title: 'Quiz — Life Hub',                                                  desc: 'Kiểm tra hiểu biết về tâm lý hành vi. +50 XP nếu làm tốt!' },
+  '/leaderboard':{ title: 'Bảng Xếp Hạng — Life Hub',                                        desc: 'Xem ai đang dẫn đầu về streak và XP.' },
+  '/life-journey': { title: 'Hành Trình — Life Hub',                                           desc: 'Ghi lại những cột mốc quan trọng trên biểu đồ cảm xúc.' },
 };
 
 function PageMeta() {
@@ -90,6 +95,7 @@ function AppShell() {
       {!onboarded && <OnboardingModal onDone={() => setOnboarded(true)} />}
       {redirectToJourney && <Navigate to="/journey?firstTime=true" replace />}
       <Navbar />
+      <QuickCapture />
 
       <ErrorBoundary>
         <Suspense fallback={<PageSkeleton />}>
@@ -97,12 +103,16 @@ function AppShell() {
             <Route path="/"             element={<LandingPage />} />
             <Route path="/tracker"      element={<TrackerPage />} />
             <Route path="/habits"       element={<Navigate to="/tracker" replace />} />
+            <Route path="/inbox"        element={<InboxPage />} />
+            <Route path="/collect"      element={<CollectPage />} />
+            <Route path="/finance"      element={<FinancePage />} />
+            <Route path="/life-log"     element={<LifeLogPage />} />
             <Route path="/focus"        element={<FocusPage />} />
-            <Route path="/team"         element={<TeamPage />} />
+            <Route path="/team"         element={<Navigate to="/tracker" replace />} />
+            <Route path="/friends"      element={<Navigate to="/tracker" replace />} />
             <Route path="/dashboard"    element={<DashboardPage />} />
             <Route path="/quiz"         element={<QuizPage />} />
             <Route path="/leaderboard"  element={<LeaderboardPage />} />
-            <Route path="/friends"      element={<FriendsPage />} />
             <Route path="/journey"      element={<JourneyPage />} />
             <Route path="/journey/:id"  element={<JourneyDetailPage />} />
             <Route path="/life-journey" element={<LifeJourneyPage />} />

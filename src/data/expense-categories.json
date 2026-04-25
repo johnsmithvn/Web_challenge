@@ -1,0 +1,12 @@
+{
+  "categories": [
+    { "key": "food",      "label": "Ăn uống",    "icon": "🍜", "color": "#f97316" },
+    { "key": "transport",  "label": "Di chuyển",  "icon": "🚗", "color": "#3b82f6" },
+    { "key": "shopping",   "label": "Mua sắm",    "icon": "🛒", "color": "#8b5cf6" },
+    { "key": "health",     "label": "Sức khỏe",   "icon": "💊", "color": "#22c55e" },
+    { "key": "education",  "label": "Học tập",     "icon": "📚", "color": "#06b6d4" },
+    { "key": "entertainment", "label": "Giải trí", "icon": "🎮", "color": "#ec4899" },
+    { "key": "bills",      "label": "Hóa đơn",    "icon": "💡", "color": "#eab308" },
+    { "key": "other",      "label": "Khác",        "icon": "📦", "color": "#64748b" }
+  ]
+}
