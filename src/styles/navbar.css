@@ -458,3 +458,26 @@
 
 /* Hide legacy .navbar if any remains */
 .navbar { display: none !important; }
+
+/* ── PAGE TRANSITIONS ──────────────────────────────────────── */
+.page-transition {
+  animation: pageEnter 0.22s ease-out;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: none;
+  }
+}
