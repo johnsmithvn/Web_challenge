@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCustomHabits, CATEGORIES, HABIT_ICONS, HABIT_COLORS } from '../hooks/useCustomHabits';
+import { useConfirm } from './ConfirmModal';
 import '../styles/calendar.css';
 
 
@@ -115,11 +116,13 @@ function HabitForm({ initial, onSave, onCancel }) {
 
 export default function HabitManager() {
   const { habits, addHabit, updateHabit, deleteHabit } = useCustomHabits();
+  const { confirm, ConfirmModal } = useConfirm();
   const [adding,   setAdding]   = useState(false);
-  const [editing,  setEditing]  = useState(null); // habit id
+  const [editing,  setEditing]  = useState(null);
 
   return (
     <div className="habit-manager" id="habit-manager">
+      {ConfirmModal}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
         <div className="dash-card-title">📋 Habits Của Bạn</div>
         {!adding && (
@@ -170,7 +173,15 @@ export default function HabitManager() {
                   <button className="btn btn-ghost" style={{ padding: '0.3rem 0.6rem', fontSize: '0.82rem' }}
                     onClick={() => setEditing(habit.id)} id={`edit-habit-${habit.id}`}>✏️</button>
                   <button className="btn btn-ghost" style={{ padding: '0.3rem 0.6rem', fontSize: '0.82rem', color: '#f87171' }}
-                    onClick={() => { if (confirm(`Xóa "${habit.name}"?`)) deleteHabit(habit.id); }}
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: `Xóa "${habit.name}"?`,
+                        message: 'Habit và toàn bộ lịch sử sẽ bị xóa.',
+                        confirmLabel: 'Xóa',
+                        danger: true,
+                      });
+                      if (ok) deleteHabit(habit.id);
+                    }}
                     id={`delete-habit-${habit.id}`}>🗑</button>
                 </div>
               </div>

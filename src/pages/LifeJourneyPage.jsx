@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useLifeJourney } from '../hooks/useLifeJourney';
+import { useConfirm } from '../components/ConfirmModal';
 import './LifeJourneyPage.css';
 
 // ── Shared helpers ─────────────────────────────────────────────────────
@@ -280,6 +281,7 @@ function Chart({ events, onClickPoint, expanded }) {
 // ── Page ───────────────────────────────────────────────────────────────
 export default function LifeJourneyPage() {
   const { events, addEvent, updateEvent, deleteEvent, resetToDefault } = useLifeJourney();
+  const { confirm, ConfirmModal } = useConfirm();
   const [modal,     setModal]     = useState(null);
   const [expanded,  setExpanded]  = useState(false);
   const [editTitle, setEditTitle] = useState(false);
@@ -313,6 +315,7 @@ export default function LifeJourneyPage() {
 
   return (
     <div className="lj-page">
+      {ConfirmModal}
       <div className="container">
 
         {/* Header */}
@@ -333,7 +336,15 @@ export default function LifeJourneyPage() {
           <div className="lj-header-actions">
             <button className="lj-btn-add" onClick={() => setModal('add')}>✨ Thêm cột mốc</button>
             <button className="lj-btn-reset"
-              onClick={() => { if (window.confirm('Reset về dữ liệu mẫu?')) resetToDefault(); }}>
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Reset dữ liệu?',
+                  message: 'Toàn bộ cột mốc sẽ bị thay thế bằng dữ liệu mẫu.',
+                  confirmLabel: 'Reset',
+                  danger: true,
+                });
+                if (ok) resetToDefault();
+              }}>
               🔄 Reset
             </button>
           </div>

@@ -1,10 +1,14 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useCollections } from '../hooks/useCollections';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfirm } from '../components/ConfirmModal';
 import '../styles/collect.css';
+
+const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
+const TiptapReadOnly = lazy(() => import('../components/TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
 
 /* ── Constants ─────────────────────────────────────────────── */
 const TYPE_META = {
@@ -22,12 +26,26 @@ const SORT_OPTIONS = [
   { value: 'alpha',  label: 'A → Z' },
 ];
 
-const EMPTY_DRAFT = { title: '', body: '', tags: [], type: 'note', url: '' };
+const EMPTY_DRAFT = { title: '', body: '', body_text: '', tags: [], type: 'note', url: '', content_format: 'markdown' };
+const EDITOR_MODE_KEY = 'kb_editor_mode';
 
 /* ── Helpers ──────────────────────────────────────────────── */
 function readTime(text = '') {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 200));
+}
+
+function markdownToPlainText(md = '') {
+  return md
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`]+`/g, '')
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/\[(.+?)\]\(.*?\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/[*_~>|]/g, '')
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function makeExcerpt(body = '', len = 180) {
@@ -177,9 +195,11 @@ function TableOfContents({ content }) {
 
 /* ── ArticleCard ──────────────────────────────────────────── */
 function ArticleCard({ item, onClick }) {
-  const meta  = TYPE_META[item.type] || TYPE_META.note;
-  const mins  = readTime(item.body);
-  const excp  = makeExcerpt(item.body);
+  const meta      = TYPE_META[item.type] || TYPE_META.note;
+  // Use body_text (plain text) for cards — avoids showing raw JSON for Tiptap articles
+  const plainText = item.body_text || (item.content_format === 'tiptap' ? '' : item.body) || '';
+  const mins      = item.word_count ? Math.max(1, Math.ceil(item.word_count / 200)) : readTime(plainText);
+  const excp      = plainText.trim().slice(0, 180);
 
   return (
     <article className="kb-card" onClick={() => onClick(item)} role="button" tabIndex={0}
@@ -199,7 +219,7 @@ function ArticleCard({ item, onClick }) {
           <span className="kb-card__date">{fmtDate(item.created_at)}</span>
         </div>
         <h3 className="kb-card__title">{item.title}</h3>
-        {excp && <p className="kb-card__excerpt">{excp}{item.body?.length > 180 ? '…' : ''}</p>}
+        {excp && <p className="kb-card__excerpt">{excp}{plainText.length > 180 ? '…' : ''}</p>}
         <div className="kb-card__footer">
           <div className="kb-card__tags">
             {(item.tags || []).map(t => <span key={t} className="kb-tag-chip">#{t}</span>)}
@@ -227,7 +247,8 @@ const mdComponents = {
 /* ── ReaderView ───────────────────────────────────────────── */
 function ReaderView({ item, onEdit, onDelete, onBack }) {
   const meta = TYPE_META[item.type] || TYPE_META.note;
-  const mins = readTime(item.body);
+  const mins = item.word_count ? Math.max(1, Math.ceil(item.word_count / 200)) : readTime(item.body);
+  const isTiptap = item.content_format === 'tiptap';
 
   return (
     <div className="kb-reader">
@@ -252,6 +273,7 @@ function ReaderView({ item, onEdit, onDelete, onBack }) {
               <span>{fmtDate(item.updated_at || item.created_at)}</span>
               <span>·</span>
               <span>⏱ {mins} phút đọc</span>
+              {isTiptap && <span className="kb-format-badge">🎨 Visual</span>}
             </div>
             {(item.tags || []).length > 0 && (
               <div className="kb-reader__tags">
@@ -267,17 +289,24 @@ function ReaderView({ item, onEdit, onDelete, onBack }) {
 
           <div className="kb-reader__divider" />
 
-          <div className="kb-prose" data-color-mode="dark">
-            {item.body ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{item.body}</ReactMarkdown>
-            ) : (
-              <p className="kb-prose__empty">Bài viết này chưa có nội dung. Nhấn ✏️ Sửa để thêm.</p>
-            )}
-          </div>
+          {/* Body — auto-detect format */}
+          {isTiptap ? (
+            <Suspense fallback={<div className="kb-loading">Đang tải nội dung...</div>}>
+              <TiptapReadOnly content={item.body} />
+            </Suspense>
+          ) : (
+            <div className="kb-prose">
+              {item.body ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{item.body}</ReactMarkdown>
+              ) : (
+                <p className="kb-prose__empty">Bài viết này chưa có nội dung. Nhấn ✏️ Sửa để thêm.</p>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* TOC sidebar */}
-        <TableOfContents content={item.body} />
+        {/* TOC sidebar — only for markdown (tiptap has its own structure) */}
+        {!isTiptap && <TableOfContents content={item.body} />}
       </div>
     </div>
   );
@@ -383,18 +412,48 @@ function MarkdownEditor({ value, onChange }) {
 }
 
 /* ── EditorView ───────────────────────────────────────────── */
-function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [] }) {
-  const [draft, setDraft] = useState(initial || EMPTY_DRAFT);
+function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isNew = false, onConfirmSwitch }) {
+  const savedMode = localStorage.getItem(EDITOR_MODE_KEY) || 'markdown';
+  const initialFormat = isNew ? savedMode : (initial?.content_format || 'markdown');
+
+  const [draft, setDraft] = useState(() => ({
+    ...EMPTY_DRAFT,
+    ...initial,
+    content_format: initialFormat,
+  }));
   const set = (k, v) => setDraft(d => ({ ...d, [k]: v }));
 
-  const wordCount = (draft.body || '').trim().split(/\s+/).filter(Boolean).length;
-  const mins = readTime(draft.body);
+  // body_text for stats display
+  const bodyText = draft.content_format === 'markdown'
+    ? markdownToPlainText(draft.body)
+    : (draft.body_text || '');
+  const wordCount = bodyText.trim().split(/\s+/).filter(Boolean).length;
+  const mins      = readTime(bodyText);
+  const canSave   = draft.title.trim().length > 0;
 
-  const canSave = draft.title.trim().length > 0;
+  const switchMode = async (mode) => {
+    if (!isNew) return;
+    if (draft.body && mode !== draft.content_format) {
+      const ok = await onConfirmSwitch?.();
+      if (!ok) return;
+      set('body', '');
+      set('body_text', '');
+    }
+    localStorage.setItem(EDITOR_MODE_KEY, mode);
+    set('content_format', mode);
+  };
+
+  const handleSaveDraft = () => {
+    const text = draft.content_format === 'markdown'
+      ? markdownToPlainText(draft.body)
+      : draft.body_text;
+    const wc   = text.trim().split(/\s+/).filter(Boolean).length;
+    onSave({ ...draft, body_text: text, word_count: wc });
+  };
 
   return (
-    <div className="kb-editor" data-color-mode="dark">
-      {/* Editor bar */}
+    <div className="kb-editor">
+      {/* Top bar */}
       <div className="kb-editor__bar">
         <button className="kb-back-btn" onClick={onCancel}>← Hủy</button>
         <div className="kb-editor__stats">
@@ -402,7 +461,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [] }) {
         </div>
         <button
           className="btn btn-primary kb-save-btn"
-          onClick={() => onSave(draft)}
+          onClick={handleSaveDraft}
           disabled={!canSave || isSaving}
         >
           {isSaving ? '⏳ Đang lưu...' : '💾 Lưu'}
@@ -411,16 +470,11 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [] }) {
 
       {/* Meta row */}
       <div className="kb-editor__meta">
-        <select
-          className="kb-type-select"
-          value={draft.type}
-          onChange={e => set('type', e.target.value)}
-        >
+        <select className="kb-type-select" value={draft.type} onChange={e => set('type', e.target.value)}>
           {Object.entries(TYPE_META).map(([k, v]) => (
             <option key={k} value={k}>{v.emoji} {v.label}</option>
           ))}
         </select>
-
         <input
           className="kb-editor__title"
           placeholder="Tiêu đề bài viết..."
@@ -430,7 +484,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [] }) {
         />
       </div>
 
-      {/* Tags + URL row */}
+      {/* Tags + URL + Mode toggle row */}
       <div className="kb-editor__sub-meta">
         <div style={{ flex: 1 }}>
           <TagInput tags={draft.tags} onChange={v => set('tags', v)} suggestions={suggestions} />
@@ -441,11 +495,35 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [] }) {
           value={draft.url || ''}
           onChange={e => set('url', e.target.value)}
         />
+        {/* Mode toggle — only for new articles */}
+        {isNew && (
+          <div className="kb-mode-toggle">
+            <button
+              className={`kb-mode-btn${draft.content_format === 'markdown' ? ' kb-mode-btn--active' : ''}`}
+              onClick={() => switchMode('markdown')}
+              title="Markdown editor"
+            >✍️ Markdown</button>
+            <button
+              className={`kb-mode-btn${draft.content_format === 'tiptap' ? ' kb-mode-btn--active' : ''}`}
+              onClick={() => switchMode('tiptap')}
+              title="Visual editor (WYSIWYG)"
+            >🎨 Visual</button>
+          </div>
+        )}
       </div>
 
-      {/* MD Editor */}
+      {/* Body — conditional on content_format */}
       <div className="kb-editor__body">
-        <MarkdownEditor value={draft.body} onChange={v => set('body', v)} />
+        {draft.content_format === 'tiptap' ? (
+          <Suspense fallback={<div className="kb-loading">Đang tải editor...</div>}>
+            <TiptapEditor
+              value={draft.body}
+              onChange={(json, text) => setDraft(d => ({ ...d, body: json, body_text: text }))}
+            />
+          </Suspense>
+        ) : (
+          <MarkdownEditor value={draft.body} onChange={v => set('body', v)} />
+        )}
       </div>
     </div>
   );
@@ -455,8 +533,9 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [] }) {
 export default function CollectPage() {
   const { user } = useAuth();
   const { items, isLoading, fetchItems, addItem, updateItem, deleteItem } = useCollections();
+  const { confirm, ConfirmModal } = useConfirm();
 
-  const [view, setView]         = useState('list'); // 'list' | 'reader' | 'editor'
+  const [view, setView]         = useState('list');
   const [selected, setSelected] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -502,13 +581,20 @@ export default function CollectPage() {
   const handleSave = useCallback(async (draft) => {
     setIsSaving(true);
     try {
+      const payload = {
+        title:          draft.title,
+        body:           draft.body,
+        body_text:      draft.body_text || '',
+        word_count:     draft.word_count || 0,
+        content_format: draft.content_format || 'markdown',
+        tags:           draft.tags,
+        type:           draft.type,
+        url:            draft.url || null,
+      };
       if (selected?.id) {
-        await updateItem(selected.id, {
-          title: draft.title, body: draft.body,
-          tags: draft.tags, type: draft.type, url: draft.url || null,
-        });
+        await updateItem(selected.id, payload);
       } else {
-        await addItem({ ...draft, status: 'read' });
+        await addItem({ ...payload, status: 'read' });
       }
       await fetchItems({});
       goList();
@@ -518,10 +604,16 @@ export default function CollectPage() {
   }, [selected, updateItem, addItem, fetchItems, goList]);
 
   const handleDelete = useCallback(async (item) => {
-    if (!confirm(`Xóa "${item.title}"?`)) return;
+    const ok = await confirm({
+      title: `Xóa "${item.title}"?`,
+      message: 'Hành động này không thể hoàn tác.',
+      confirmLabel: 'Xóa',
+      danger: true,
+    });
+    if (!ok) return;
     await deleteItem(item.id);
     goList();
-  }, [deleteItem, goList]);
+  }, [confirm, deleteItem, goList]);
 
   if (!user) {
     return (
@@ -533,14 +625,34 @@ export default function CollectPage() {
 
   /* ── Editor view ─────────────────── */
   if (view === 'editor') {
+    const isNew = !selected;
+    const initialDraft = selected
+      ? {
+          title:          selected.title,
+          body:           selected.body || '',
+          body_text:      selected.body_text || '',
+          tags:           selected.tags || [],
+          type:           selected.type,
+          url:            selected.url || '',
+          content_format: selected.content_format || 'markdown',
+        }
+      : EMPTY_DRAFT;
     return (
       <div className="kb-page kb-page--editor">
+        {ConfirmModal}
         <EditorView
-          initial={selected ? { title: selected.title, body: selected.body || '', tags: selected.tags || [], type: selected.type, url: selected.url || '' } : EMPTY_DRAFT}
+          initial={initialDraft}
           onSave={handleSave}
           onCancel={goList}
           isSaving={isSaving}
           suggestions={allTags}
+          isNew={isNew}
+          onConfirmSwitch={() => confirm({
+            title: 'Chuyển mode?',
+            message: 'Nội dung hiện tại sẽ bị xóa. Tiếp tục?',
+            confirmLabel: 'Chuyển',
+            danger: true,
+          })}
         />
       </div>
     );
@@ -550,6 +662,7 @@ export default function CollectPage() {
   if (view === 'reader' && selected) {
     return (
       <div className="kb-page kb-page--reader">
+        {ConfirmModal}
         <ReaderView
           item={selected}
           onEdit={() => openEditor(selected)}
@@ -563,6 +676,7 @@ export default function CollectPage() {
   /* ── List view ───────────────────── */
   return (
     <div className="kb-page">
+      {ConfirmModal}
       {/* Header */}
       <div className="kb-header">
         <div>
