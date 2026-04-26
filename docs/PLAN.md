@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-04-25
-**Current Version:** v3.0.1
+**Updated:** 2026-04-26
+**Current Version:** v3.1.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -242,14 +242,17 @@
 
 ---
 
-## 📋 Phase 7 — Analytics & Intelligence (v3.1.0+)
-*Backlog — sau khi v3.0.0 stable*
+## ✅ Phase 7 — Unified Dashboard (v3.1.0)
+*Hoàn thành: 2026-04-26*
 
+- [x] Dashboard redesign — Unified stats từ tất cả modules (habit + finance + activity + focus + XP)
+- [x] Today Overview row: 4 KPIs hôm nay
+- [x] Finance Section: 3 KPI cards + Finance Pie SVG donut chart
+- [x] ActivityHeatmap thay ContributionGraph habit-only
 - [ ] Mood pattern chart (7/30 ngày)
-- [ ] Skip reason analysis
+- [ ] Skip reason deep analysis
 - [ ] Focus session breakdown per habit
 - [ ] Weekly review digest (in-app summary)
-- [ ] Dashboard redesign (unified stats from all modules)
 - [ ] AI insight từ pattern data (future)
 
 ---

@@ -1,5 +1,18 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-04-25
+**Updated:** 2026-04-26
+
+---
+
+## v3.1.0 — ✅ DONE (2026-04-26) — Unified Dashboard Redesign
+
+- [x] `DashboardPage.jsx` — Rewrite: Today 4-KPI row (activity/focus/chi tiêu/XP hôm nay)
+- [x] `DashboardPage.jsx` — Finance section: 3 KPI cards + Finance Pie SVG donut chart
+- [x] `DashboardPage.jsx` — ActivityHeatmap thay ContributionGraph
+- [x] `DashboardPage.jsx` — SectionTitle dividers, TodayKpi cards với hover animations
+- [x] `dashboard.css` — Full rewrite: today-row, finance-kpi-row, db-fin-pie, section-title
+- [x] `CHANGELOG.md` — v3.1.0 entry
+- [x] `docs/TASKS.md` — Updated
+- [x] `docs/FEATURES.md` — Section #5 updated
 
 ---
 

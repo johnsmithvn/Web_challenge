@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useLifeJourney } from '../hooks/useLifeJourney';
 import './LifeJourneyPage.css';
 
@@ -34,9 +34,17 @@ function EventModal({ initial, onSave, onClose, onDelete }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const valid = form.age !== '' && Number(form.age) >= 0 && form.label.trim();
   const ec = form.emotion > 0 ? 'var(--green)' : form.emotion < 0 ? 'var(--red)' : 'var(--text-muted)';
+  const mouseDownTarget = useRef(null);
 
   return (
-    <div className="lj-overlay" onClick={onClose}>
+    <div
+      className="lj-overlay"
+      onMouseDown={(e) => { mouseDownTarget.current = e.target; }}
+      onMouseUp={(e) => {
+        if (mouseDownTarget.current === e.currentTarget && e.target === e.currentTarget) onClose();
+        mouseDownTarget.current = null;
+      }}
+    >
       <div className="lj-modal" onClick={e => e.stopPropagation()}>
         <h3>{isEdit ? '✏️ Chỉnh sửa' : '✨ Thêm cột mốc mới'}</h3>
         <div className="lj-form-row">

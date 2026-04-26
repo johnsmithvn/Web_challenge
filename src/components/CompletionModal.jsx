@@ -68,8 +68,18 @@ export default function CompletionModal({ streak, totalXp, onRenew, onNewChallen
     navigate('/journey');
   };
 
+  const mouseDownTarget = useRef(null);
+
   return (
-    <div className="completion-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label="Chứng nhận hoàn thành">
+    <div
+      className="completion-overlay"
+      onMouseDown={(e) => { mouseDownTarget.current = e.target; }}
+      onMouseUp={(e) => {
+        if (mouseDownTarget.current === e.currentTarget && e.target === e.currentTarget) onClose();
+        mouseDownTarget.current = null;
+      }}
+      role="dialog" aria-modal="true" aria-label="Chứng nhận hoàn thành"
+    >
       <div className="completion-modal" onClick={e => e.stopPropagation()}>
         <Confetti />
 

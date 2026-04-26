@@ -109,6 +109,7 @@ function KnowledgeCard({ card, onOpen }) {
 }
 
 function MiniLesson({ card, onClose }) {
+  const mouseDownTarget = useRef(null);
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
@@ -116,7 +117,14 @@ function MiniLesson({ card, onClose }) {
   }, [onClose]);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div
+      className="modal-overlay"
+      onMouseDown={(e) => { mouseDownTarget.current = e.target; }}
+      onMouseUp={(e) => {
+        if (mouseDownTarget.current === e.currentTarget && e.target === e.currentTarget) onClose();
+        mouseDownTarget.current = null;
+      }}
+    >
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose}>✕</button>
         <h2 className="h2" style={{ marginBottom: '1.5rem' }}>{card.lesson.title}</h2>

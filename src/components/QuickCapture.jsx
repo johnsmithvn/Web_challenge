@@ -17,6 +17,8 @@ export default function QuickCapture() {
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef(null);
+  // Track where mousedown started — only close if mousedown AND mouseup both hit the backdrop
+  const mouseDownTarget = useRef(null);
 
   // Auto-focus input when opened
   useEffect(() => {
@@ -78,7 +80,16 @@ export default function QuickCapture() {
 
       {/* Capture modal */}
       {open && (
-        <div className="qc-backdrop" onClick={() => setOpen(false)}>
+        <div
+          className="qc-backdrop"
+          onMouseDown={(e) => { mouseDownTarget.current = e.target; }}
+          onMouseUp={(e) => {
+            if (mouseDownTarget.current === e.currentTarget && e.target === e.currentTarget) {
+              setOpen(false);
+            }
+            mouseDownTarget.current = null;
+          }}
+        >
           <form
             className="qc-modal"
             onClick={(e) => e.stopPropagation()}

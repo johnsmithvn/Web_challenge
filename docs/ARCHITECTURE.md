@@ -1,7 +1,8 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v3.0.0-alpha.2
-**Updated:** 2026-04-25
+**Version:** v3.1.0
+**Updated:** 2026-04-26
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
+
 
 ---
 
@@ -88,7 +89,7 @@ src/
 │   ├── FocusPage.jsx          # /focus — Pomodoro timer (lazy)
 │   ├── JourneyPage.jsx        # /journey — 4 tabs: Đang chạy / Khám Phá / Của Tôi / Lịch Sử (lazy)
 │   ├── JourneyDetailPage.jsx  # /journey/:id — Full dashboard per journey (lazy)
-│   ├── DashboardPage.jsx      # /dashboard — Flower, donut, weekly table, contribution (lazy)
+│   ├── DashboardPage.jsx  # /dashboard — v3.1.0 Unified Dashboard (habits+finance+activity+XP heatmap)
 │   ├── QuizPage.jsx           # /quiz — 10-question MCQ (lazy)
 │   ├── LeaderboardPage.jsx    # /leaderboard — Streak/XP ranking (lazy)
 │   ├── LifeJourneyPage.jsx    # /life-journey — v2.2.0 — Emotion timeline SVG (lazy)
@@ -116,7 +117,7 @@ src/
 │   ├── hero.css               # HeroSection styles
 │   ├── sections.css           # ContentSections + RoadmapSection
 │   ├── tracker.css            # TrackerPage v2 styles (merged habits)
-│   ├── dashboard.css          # Dashboard v2 styles
+│   ├── dashboard.css          # Dashboard v3.1.0 styles (unified: today-row, finance-pie, section-titles)
 │   ├── focus.css              # Focus timer + custom dropdown
 │   ├── calendar.css           # Monthly calendar
 │   ├── daily.css              # DailyChallenge styles
@@ -214,12 +215,25 @@ user_journeys         ← each user's run of a program (with start/end dates)
 journey_habits        ← snapshot of habits at journey start (history preservation)
 habit_logs            ← per-habit daily completion (replaces vl_habit_progress)
 
--- Team v3 (run data/supabase_team_v3.sql)
-team_members          ← junction table (N per team)
-user_programs         ← per-user 21-day journey
-team_check_logs       ← accountability checks
-team_rules            ← reward/punishment rules
-team_rule_agreements  ← per-member approval flow
+-- v3.0.0 (run data/migration_v3.0.0.sql)
+collections           ← inbox items + knowledge collect
+expenses              ← daily expense logs (VNĐ, category, date)
+subscriptions         ← recurring service subscriptions (monthly/yearly)
+activity_logs         ← append-only audit log (habit_done, focus_done, expense_add, etc.)
+```
+
+### DashboardPage v3.1.0 — Data Sources
+
+```
+DashboardPage
+  ├── useHabitStore      → streak, longestStreak, totalDone, data (heatmap)
+  ├── useXpStore         → totalXp, levelInfo, log (today XP earned)
+  ├── useSkipReasons     → getAllSkips() (skip analysis 14 days)
+  ├── useFocusTimer      → todayMinutes, todaySessions
+  ├── useExpenses        → fetchExpenses, getTotal, getByCategory
+  ├── useSubscriptions   → fetchSubs, getMonthlyCost, getUpcoming
+  ├── useActivityLog     → getTodayCount
+  └── ActivityHeatmap    → reused component (activity_logs heatmap)
 ```
 
 ---
@@ -231,15 +245,20 @@ team_rule_agreements  ← per-member approval flow
 | `/` | LandingPage | Public | Eager |
 | `/tracker` | TrackerPage | Public | Eager |
 | `/habits` | Inline redirect → `/tracker` | — | — |
+| `/inbox` | InboxPage | Required | Lazy |
+| `/collect` | CollectPage | Required | Lazy |
+| `/finance` | FinancePage | Required | Lazy |
+| `/life-log` | LifeLogPage | Required | Lazy |
 | `/focus` | FocusPage | Public | Lazy |
 | `/journey` | JourneyPage | Public (soft wall for save) | Lazy |
 | `/journey/:id` | JourneyDetailPage | Public | Lazy |
 | `/dashboard` | DashboardPage | Public | Lazy |
-| `/team` | TeamPage | Soft wall (needs login) | Lazy |
 | `/quiz` | QuizPage | Public | Lazy |
 | `/leaderboard` | LeaderboardPage | Public | Lazy |
-| `/friends` | FriendsPage | Required | Lazy |
+| `/team` | Inline redirect → `/tracker` | — | — |
+| `/friends` | Inline redirect → `/tracker` | — | — |
 | `/life-journey` | LifeJourneyPage | Public | Lazy |
+
 
 ---
 
@@ -254,10 +273,11 @@ ThemeProvider
                           ├── PageMeta (SEO title/desc per route)
                           ├── OnboardingModal (once, gated by vl_onboarded)
                           ├── Redirect to /journey?firstTime=true (once per session if no journey)
-                          ├── Navbar (uses useTheme for dark/light toggle)
+                          ├── Navbar (sidebar desktop + bottom tabs mobile)
+                          ├── QuickCapture (global floating [+] button)
                           └── ErrorBoundary
                                 └── Suspense (PageSkeleton fallback)
-                                      └── Routes (10 lazy + 2 eager)
+                                      └── Routes (12 lazy + 2 eager)
 ```
 
 ---

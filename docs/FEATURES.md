@@ -111,22 +111,20 @@
 ## 5. 📈 Dashboard Cá Nhân (`/dashboard`)
 
 **File:** `src/pages/DashboardPage.jsx`, `src/styles/dashboard.css`
+**Version:** v3.1.0 — Unified Life Hub Dashboard
 
-**Mô tả:** Tổng quan số liệu cá nhân, visual progress, weekly table, contribution graph.
+**Mô tả:** Tổng quan toàn bộ cuộc sống — hôm nay, thói quen, tài chính, hoạt động.
 
 **Chi tiết:**
-- **4 KPI Cards:** Streak hiện tại, Best streak, Tổng ngày, Tổng XP
-- **Flower Journey 🌸:** 21 ô hoa đại diện hành trình, hoa nở dần theo streak liên tiếp (`🌰→🌱→🌿→🌸→🌺→🌻`), highlight ô hôm nay
-- **Monthly Donut Ring:** Tỷ lệ hoàn thành tháng hiện tại — Done / Bỏ / Còn lại
-- **Weekly Table:** 4 tuần gần nhất, mỗi tuần hiển thị:
-  - 7 ô ✓ (xanh) / ngày (mờ) / tương lai (dashed)
-  - Cột Done / Miss / % tỷ lệ
-- **Contribution Graph:** 12 tuần × 7 ngày kiểu GitHub, ô xanh = done, ô cyan = hôm nay
-- **Insight:** Nhận xét động theo streak + milestone tiếp theo
-- **Skip Reason Insight (v1.3.1):** Widget phân tích lý do bỏ qua trong 14 ngày gần đây
-  - Hiển thị top 3 lý do dưới dạng bar chart miniature
-  - Smart tip theo lý do phổ biến nhất ("Thiếu động lực" / "Bận công việc" / "Quên mất")
-  - Chỉ hiển khi có dữ liệu skip trong 14 ngày
+- **Today Overview (4 KPIs hôm nay):** Hoạt động (activity_logs) / Focus phút + sessions (useFocusTimer) / Chi tiêu hôm nay (expenses) / XP kiếm hôm nay (xp_logs). Hover lift animation.
+- **Section Dividers:** `SectionTitle` với gradient underline + icon + action link
+- **Habits:** Flower Journey 21 ô / Monthly Donut ring / Weekly Table 4 tuần / mini KPI row (Streak, Best, Tổng, XP)
+- **Finance Summary:** 3 KPI cards (Chi tháng / Đăng ký/tháng / Sắp hết hạn) + Finance Pie SVG donut (category breakdown + legend %)
+- **Activity Heatmap:** Reuse `ActivityHeatmap` — toàn bộ activity_logs (thay ContributionGraph habit-only)
+- **Insights:** Skip Reason analysis 14 ngày + nhận xét streak + milestone tiếp theo
+- **Guest mode:** Finance/Activity widgets hiện empty state graceful
+
+**Data sources:** `useHabitStore`, `useXpStore`, `useSkipReasons`, `useFocusTimer`, `useExpenses`, `useSubscriptions`, `useActivityLog`
 
 ---
 

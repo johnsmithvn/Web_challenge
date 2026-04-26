@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## v3.1.1 — 2026-04-26
+
+### Fixed
+- **UX Bug:** Bôi đen text bên trong bất kỳ popup/modal nào đều bị đóng popup (close-on-text-select)
+- **Root cause:** Các overlay backdrop dùng `onClick` — khi user drag để bôi text, `mouseup` bubble lên backdrop → trigger close
+- **Fix:** Thay `onClick` backdrop bằng `onMouseDown` + `onMouseUp` target check — chỉ đóng khi cả mousedown VÀ mouseup đều hit đúng backdrop element (không phải từ bên trong modal)
+- **Files affected:**
+  - `QuickCapture.jsx` — `.qc-backdrop`
+  - `LifeJourneyPage.jsx` — `EventModal .lj-overlay`
+  - `CustomJourneyModal.jsx` — `.journey-modal-overlay`
+  - `CompletionModal.jsx` — `.completion-overlay`
+  - `ContentSections.jsx` — `MiniLesson .modal-overlay`
+
+---
+
+## v3.1.0 — 2026-04-26
+
+### Added
+- `DashboardPage.jsx` — Unified Life Hub Dashboard: tổng hợp stats từ tất cả modules
+- **Today Overview row:** 4 KPIs hôm nay (Hoạt động từ activity_logs, Focus phút từ useFocusTimer, Chi tiêu hôm nay từ expenses, XP kiếm được hôm nay)
+- **Finance Section:** 3 KPI cards (Chi tháng / Đăng ký/tháng / Sắp hết hạn) + Finance Pie donut SVG chart (category breakdown tháng này)
+- **Activity Heatmap:** Thay ContributionGraph habit-only bằng ActivityHeatmap (reuse component từ LifeLogPage) — lịch sử toàn hệ thống
+- **Section Dividers:** `SectionTitle` component với gradient underline, icon, action link
+- **TodayKpi component:** Card với hover lift effect, gradient overlay
+- **FinancePie component:** SVG donut chart với legend (category + amount + %)
+- `dashboard.css` — Hoàn toàn rewrite: Today KPI row, Finance KPI row, Finance Pie, Section Title dividers, hover animations
+
+### Changed
+- `DashboardPage.jsx` — Tích hợp thêm hooks: `useExpenses`, `useSubscriptions`, `useActivityLog`, `useFocusTimer`
+- `DashboardPage.jsx` — Giữ nguyên: FlowerJourney, MonthDonut, WeeklyTable, SkipInsight, streak insight
+- `DashboardPage.jsx` — Xóa inline `ContributionGraph` (habit-only) → thay bằng `ActivityHeatmap` (all modules)
+
+---
+
 ## v3.0.1 — 2026-04-25
 
 ### Added

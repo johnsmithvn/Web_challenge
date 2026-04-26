@@ -1,60 +1,64 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useHabitStore } from '../hooks/useHabitStore';
-import { useXpStore } from '../hooks/useXpStore';
+import { useXpStore, computeLevel } from '../hooks/useXpStore';
 import { useSkipReasons } from '../hooks/useMoodSkip';
+import { useExpenses } from '../hooks/useExpenses';
+import { useSubscriptions } from '../hooks/useSubscriptions';
+import { useActivityLog } from '../hooks/useActivityLog';
+import { useFocusTimer } from '../hooks/useFocusTimer';
+import ActivityHeatmap from '../components/ActivityHeatmap';
 import '../styles/tracker.css';
 import '../styles/dashboard.css';
 
-
 const DAY_LABELS = ['T2','T3','T4','T5','T6','T7','CN'];
-
-/* ── Insight từ streak ───────────────────────────────────── */
-function insightFromStreak(streak) {
-  if (streak === 0)  return { text: 'Chưa bắt đầu. Tick ngày đầu tiên để khởi động!', color: 'var(--text-muted)' };
-  if (streak < 3)    return { text: `🔥 ${streak} ngày! Chỉ ${3-streak} ngày nữa vào vùng quán tính.`, color: 'var(--orange)' };
-  if (streak < 10)   return { text: `💪 Streak ${streak}! Não bộ đang hình thành thói quen. Đừng phá vỡ chuỗi.`, color: 'var(--purple-light)' };
-  if (streak < 21)   return { text: `🌳 ${streak} ngày! Chỉ ${21-streak} ngày nữa hoàn thành chương trình.`, color: 'var(--green)' };
-  return { text: '🏆 21 ngày! Kỷ luật đã thành bản năng. Bắt đầu vòng mới?', color: 'var(--gold)' };
-}
-
-/* ── Flower row (lấy cảm hứng từ spreadsheet) ───────────── */
 const FLOWERS = ['🌰','🌱','🌿','🌸','🌺','🌻'];
-function flowerForDay(streakAtThatPoint) {
-  if (streakAtThatPoint === 0) return '⬜';
-  const idx = Math.min(Math.floor(streakAtThatPoint / 4), FLOWERS.length - 1);
-  return FLOWERS[idx];
+const CAT_COLORS = {
+  'Ăn uống':'#f97316','Di chuyển':'#3b82f6','Mua sắm':'#8b5cf6',
+  'Sức khỏe':'#22c55e','Học tập':'#06b6d4','Giải trí':'#ec4899',
+  'Hóa đơn':'#eab308','Khác':'#64748b',
+};
+
+function fmt(n) {
+  if (n >= 1_000_000) return (n/1_000_000).toFixed(1)+'M';
+  if (n >= 1_000) return (n/1_000).toFixed(0)+'k';
+  return n.toLocaleString('vi-VN');
 }
 
+function insightFromStreak(s) {
+  if (s===0) return { text:'Chưa bắt đầu. Tick ngày đầu tiên!', color:'var(--text-muted)' };
+  if (s<3)   return { text:`🔥 ${s} ngày! Chỉ ${3-s} ngày nữa vào vùng quán tính.`, color:'var(--orange)' };
+  if (s<10)  return { text:`💪 Streak ${s}! Não đang hình thành thói quen.`, color:'var(--purple-light)' };
+  if (s<21)  return { text:`🌳 ${s} ngày! ${21-s} ngày nữa hoàn thành chương trình.`, color:'var(--green)' };
+  return { text:'🏆 21 ngày! Kỷ luật đã thành bản năng.', color:'var(--gold)' };
+}
+
+function flowerForDay(streak) {
+  if (streak===0) return '⬜';
+  return FLOWERS[Math.min(Math.floor(streak/4), FLOWERS.length-1)];
+}
+
+/* ── Flower Journey ── */
 function FlowerJourney({ data, startDate }) {
   const days = useMemo(() => {
-    const result = [];
-    let streak = 0;
-    for (let i = 0; i < 21; i++) {
-      const d = new Date(startDate);
-      d.setDate(startDate.getDate() + i);
-      const key = d.toISOString().split('T')[0];
-      const done = !!data[key];
-      if (done) streak++;
-      else if (key < new Date().toISOString().split('T')[0]) streak = 0;
-      result.push({ key, done, dayNum: i + 1, streak });
+    const res=[]; let streak=0;
+    for (let i=0;i<21;i++) {
+      const d=new Date(startDate); d.setDate(startDate.getDate()+i);
+      const key=d.toISOString().split('T')[0];
+      const done=!!data[key];
+      if (done) streak++; else if (key<new Date().toISOString().split('T')[0]) streak=0;
+      res.push({key,done,dayNum:i+1,streak});
     }
-    return result;
-  }, [data, startDate]);
-
+    return res;
+  },[data,startDate]);
+  const todayStr=new Date().toISOString().split('T')[0];
   return (
     <div className="flower-journey">
-      {days.map((day, i) => {
-        const today = day.key === new Date().toISOString().split('T')[0];
-        const future = day.key > new Date().toISOString().split('T')[0];
+      {days.map((day,i)=>{
+        const today=day.key===todayStr, future=day.key>todayStr;
         return (
-          <div key={i}
-            className={`flower-slot ${today ? 'flower-slot--today' : ''} ${future ? 'flower-slot--future' : ''}`}
-            title={`Ngày ${day.dayNum} · ${day.key}`}
-          >
-            <span className="flower-emoji">
-              {future ? '⬜' : day.done ? flowerForDay(day.streak) : '🩶'}
-            </span>
+          <div key={i} className={`flower-slot${today?' flower-slot--today':''}${future?' flower-slot--future':''}`} title={`Ngày ${day.dayNum}`}>
+            <span className="flower-emoji">{future?'⬜':day.done?flowerForDay(day.streak):'🩶'}</span>
             <span className="flower-day">{day.dayNum}</span>
           </div>
         );
@@ -63,164 +67,73 @@ function FlowerJourney({ data, startDate }) {
   );
 }
 
-/* ── GitHub contribution heatmap (12 weeks) ─────────────── */
-function ContributionGraph({ data }) {
-  const today   = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-
-  // build 84 days (12 weeks), aligned to Mon
-  const startDay = new Date(today);
-  const dow = startDay.getDay(); // 0=Sun
-  const daysBack = (dow === 0 ? 6 : dow - 1) + 77; // back to Monday, 12 weeks
-  startDay.setDate(startDay.getDate() - daysBack);
-
-  const cells = Array.from({ length: 84 }, (_, i) => {
-    const d = new Date(startDay);
-    d.setDate(startDay.getDate() + i);
-    const key = d.toISOString().split('T')[0];
-    return { key, done: !!data[key], isToday: key === todayStr, isFuture: key > todayStr };
-  });
-
-  // group into columns (each 7 days = 1 week column)
-  const cols = Array.from({ length: 12 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
-
-  return (
-    <div className="contrib-graph">
-      <div className="contrib-graph__labels">
-        {DAY_LABELS.map(l => <span key={l}>{l}</span>)}
-      </div>
-      <div className="contrib-graph__cols">
-        {cols.map((col, ci) => (
-          <div key={ci} className="contrib-graph__col">
-            {col.map((cell, ri) => (
-              <div
-                key={ri}
-                className={[
-                  'contrib-cell',
-                  cell.done    ? 'contrib-cell--done'   : '',
-                  cell.isToday ? 'contrib-cell--today'  : '',
-                  cell.isFuture? 'contrib-cell--future' : '',
-                ].join(' ')}
-                title={cell.key + (cell.done ? ' ✓' : '')}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-      <div className="contrib-graph__legend">
-        <span>Ít hơn</span>
-        <div className="contrib-cell contrib-cell--empty-demo" />
-        <div className="contrib-cell contrib-cell--done contrib-cell--l1" />
-        <div className="contrib-cell contrib-cell--done contrib-cell--l2" />
-        <div className="contrib-cell contrib-cell--done" />
-        <span>Nhiều hơn</span>
-      </div>
-    </div>
-  );
-}
-
-/* ── Monthly donut ring ────────────────────────────────── */
+/* ── Monthly Donut ── */
 function MonthDonut({ data }) {
-  const now  = new Date();
-  const year = now.getFullYear();
-  const mon  = now.getMonth();
-  const total = new Date(year, mon + 1, 0).getDate();
-  const done  = Array.from({ length: now.getDate() }, (_, i) => {
-    const d = new Date(year, mon, i + 1).toISOString().split('T')[0];
-    return !!data[d];
-  }).filter(Boolean).length;
-  const pct = Math.round((done / Math.min(now.getDate(), total)) * 100);
-
-  const r    = 44;
-  const circ = 2 * Math.PI * r;
-  const off  = circ - (pct / 100) * circ;
-  const color = pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--purple)' : 'var(--orange)';
-  const month = now.toLocaleDateString('vi-VN', { month: 'long' });
-
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  const total=new Date(y,m+1,0).getDate();
+  const done=Array.from({length:now.getDate()},(_,i)=>!!data[new Date(y,m,i+1).toISOString().split('T')[0]]).filter(Boolean).length;
+  const pct=Math.round((done/Math.min(now.getDate(),total))*100);
+  const r=44, circ=2*Math.PI*r, off=circ-(pct/100)*circ;
+  const color=pct>=80?'var(--green)':pct>=50?'var(--purple)':'var(--orange)';
   return (
     <div className="month-donut">
       <svg width="120" height="120" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="14" />
-        <circle cx="60" cy="60" r={r} fill="none"
-          stroke={color} strokeWidth="14" strokeLinecap="round"
-          strokeDasharray={circ} strokeDashoffset={off}
-          transform="rotate(-90 60 60)"
-          style={{ transition: 'stroke-dashoffset 1s ease' }}
-        />
+        <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="14"/>
+        <circle cx="60" cy="60" r={r} fill="none" stroke={color} strokeWidth="14" strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={off} transform="rotate(-90 60 60)"
+          style={{transition:'stroke-dashoffset 1s ease'}}/>
       </svg>
       <div className="month-donut__center">
-        <span className="month-donut__pct" style={{ color }}>{pct}%</span>
-        <span className="month-donut__label">{month}</span>
+        <span className="month-donut__pct" style={{color}}>{pct}%</span>
+        <span className="month-donut__label">{now.toLocaleDateString('vi-VN',{month:'long'})}</span>
       </div>
       <div className="month-donut__detail">
-        <div className="month-donut__stat">
-          <span style={{ color: 'var(--green)', fontWeight: 700 }}>{done}</span>
-          <span>Hoàn thành</span>
-        </div>
-        <div className="month-donut__stat">
-          <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>{now.getDate() - done}</span>
-          <span>Bỏ qua</span>
-        </div>
-        <div className="month-donut__stat">
-          <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>{total - now.getDate()}</span>
-          <span>Còn lại</span>
-        </div>
+        {[['✅',done,'var(--green)'],['❌',now.getDate()-done,'var(--red)'],['📅',total-now.getDate(),'var(--text-muted)']].map(([e,v,c])=>(
+          <div key={e} className="month-donut__stat"><span style={{color:c,fontWeight:700}}>{v}</span><span>{e}</span></div>
+        ))}
       </div>
     </div>
   );
 }
 
-/* ── Weekly summary table ───────────────────────────────── */
+/* ── Weekly Table ── */
 function WeeklyTable({ data }) {
-  const weeks = useMemo(() => {
-    const now = new Date();
-    return Array.from({ length: 4 }, (_, wi) => {
-      const startMon = new Date(now);
-      // go back to this Monday
-      const thisDow = startMon.getDay() === 0 ? 6 : startMon.getDay() - 1;
-      startMon.setDate(startMon.getDate() - thisDow - wi * 7);
-      return Array.from({ length: 7 }, (_, di) => {
-        const d = new Date(startMon);
-        d.setDate(startMon.getDate() + di);
-        const key = d.toISOString().split('T')[0];
-        const future = key > now.toISOString().split('T')[0];
-        return { key, done: !!data[key], future, date: d.getDate() };
+  const weeks=useMemo(()=>{
+    const now=new Date();
+    return Array.from({length:4},(_,wi)=>{
+      const s=new Date(now);
+      const dow=s.getDay()===0?6:s.getDay()-1;
+      s.setDate(s.getDate()-dow-wi*7);
+      return Array.from({length:7},(_,di)=>{
+        const d=new Date(s); d.setDate(s.getDate()+di);
+        const key=d.toISOString().split('T')[0];
+        return {key,done:!!data[key],future:key>now.toISOString().split('T')[0],date:d.getDate()};
       });
     }).reverse();
-  }, [data]);
-
+  },[data]);
   return (
     <div className="weekly-table">
       <div className="weekly-table__head">
-        {DAY_LABELS.map(l => <div key={l} className="weekly-table__th">{l}</div>)}
-        <div className="weekly-table__th" style={{ color: 'var(--green)' }}>✓</div>
-        <div className="weekly-table__th" style={{ color: 'var(--red)' }}>✗</div>
+        {DAY_LABELS.map(l=><div key={l} className="weekly-table__th">{l}</div>)}
+        <div className="weekly-table__th" style={{color:'var(--green)'}}>✓</div>
+        <div className="weekly-table__th" style={{color:'var(--red)'}}>✗</div>
         <div className="weekly-table__th">%</div>
       </div>
-      {weeks.map((week, wi) => {
-        const done   = week.filter(d => !d.future && d.done).length;
-        const missed = week.filter(d => !d.future && !d.done).length;
-        const passed = done + missed;
-        const pct    = passed > 0 ? Math.round((done / passed) * 100) : null;
+      {weeks.map((week,wi)=>{
+        const done=week.filter(d=>!d.future&&d.done).length;
+        const missed=week.filter(d=>!d.future&&!d.done).length;
+        const pct=done+missed>0?Math.round((done/(done+missed))*100):null;
         return (
           <div key={wi} className="weekly-table__row">
-            {week.map((day, di) => (
-              <div key={di}
-                className={[
-                  'weekly-table__cell',
-                  day.future ? 'weekly-table__cell--future' : day.done ? 'weekly-table__cell--done' : 'weekly-table__cell--miss',
-                ].join(' ')}
-                title={day.key}
-              >
-                {day.future ? <span style={{ opacity: 0.3 }}>{day.date}</span>
-                  : day.done ? '✓' : <span style={{ opacity: 0.4 }}>{day.date}</span>
-                }
+            {week.map((day,di)=>(
+              <div key={di} className={`weekly-table__cell weekly-table__cell--${day.future?'future':day.done?'done':'miss'}`} title={day.key}>
+                {day.future?<span style={{opacity:.3}}>{day.date}</span>:day.done?'✓':<span style={{opacity:.4}}>{day.date}</span>}
               </div>
             ))}
-            <div className="weekly-table__stat" style={{ color: 'var(--green)' }}>{done}</div>
-            <div className="weekly-table__stat" style={{ color: 'var(--red)' }}>{missed}</div>
-            <div className="weekly-table__stat" style={{ color: pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--orange)' : 'var(--red)' }}>
-              {pct !== null ? pct + '%' : '—'}
+            <div className="weekly-table__stat" style={{color:'var(--green)'}}>{done}</div>
+            <div className="weekly-table__stat" style={{color:'var(--red)'}}>{missed}</div>
+            <div className="weekly-table__stat" style={{color:pct>=80?'var(--green)':pct>=50?'var(--orange)':'var(--red)'}}>
+              {pct!==null?pct+'%':'—'}
             </div>
           </div>
         );
@@ -229,164 +142,257 @@ function WeeklyTable({ data }) {
   );
 }
 
-/* ── Skip Reason Insight ────────────────────────────────── */
-function SkipInsight() {
-  const { getAllSkips } = useSkipReasons();
-
-  const insight = useMemo(() => {
-    const skips = getAllSkips();
-    if (!skips || !skips.length) return null;
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 14);
-    const cutoffStr = cutoff.toISOString().split('T')[0];
-    const recent = skips.filter(s => s.date >= cutoffStr);
-    if (!recent.length) return null;
-    const counts = {};
-    recent.forEach(s => {
-      const r = s.reason || 'Lý do khác';
-      counts[r] = (counts[r] || 0) + 1;
-    });
-    const top = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    return { total: recent.length, top };
-  }, [getAllSkips]);
-
-  if (!insight) return null;
-
-  const [topReason, topCount] = insight.top[0];
-  const tips = {
-    'Thiếu động lực': '💡 Thử giảm durationMin xuống 5 phút — bắt đầu nhỏ hơn dễ hơn.',
-    'Bận công việc':  '💡 Dời habit sang buổi sáng trước khi ngày làm việc bắt đầu.',
-    'Quên mất':       '💡 Bật nhắc nhở trong Tracker — tick trước 23:59.',
-  };
-
+/* ── Finance Pie Donut ── */
+function FinancePie({ byCategory, total }) {
+  if (!byCategory.length) return <div style={{color:'var(--text-muted)',fontSize:'.85rem',textAlign:'center',padding:'1rem'}}>Chưa có dữ liệu tháng này</div>;
+  const r=52, circ=2*Math.PI*r;
+  let offset=0;
+  const slices=byCategory.slice(0,6).map(({category,total:amt})=>{
+    const pct=amt/total;
+    const slice={category,amt,pct,offset,color:CAT_COLORS[category]||'#64748b'};
+    offset+=pct;
+    return slice;
+  });
   return (
-    <div className="card db-section" style={{ borderColor: 'rgba(249,115,22,0.2)' }}>
-      <div className="dash-card-title">🔍 Phân Tích Bỏ Qua — 14 Ngày Gần Đây</div>
-      <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <div className="dash-insight" style={{ borderColor: 'var(--orange)', marginTop: 0 }}>
-          Bỏ qua <strong>{insight.total} lần</strong>. Lý do chủ yếu:{' '}
-          <strong style={{ color: 'var(--orange)' }}>"{topReason}"</strong> ({topCount} lần)
-        </div>
-        {insight.top.slice(0, 3).map(([reason, count]) => {
-          const pct = Math.round((count / insight.total) * 100);
-          return (
-            <div key={reason} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', flex: 1 }}>{reason}</span>
-              <div style={{ width: 100, height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ width: `${pct}%`, height: '100%', background: 'var(--orange)', borderRadius: 3 }} />
-              </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', width: 28, textAlign: 'right' }}>{count}x</span>
-            </div>
-          );
-        })}
-        {tips[topReason] && (
-          <div style={{ fontSize: '0.82rem', color: 'var(--purple-light)', marginTop: '0.25rem' }}>
-            {tips[topReason]}
+    <div className="db-fin-pie">
+      <svg width="130" height="130" viewBox="0 0 130 130">
+        {slices.map((s,i)=>(
+          <circle key={i} cx="65" cy="65" r={r} fill="none"
+            stroke={s.color} strokeWidth="20" strokeLinecap="butt"
+            strokeDasharray={`${s.pct*circ} ${circ}`}
+            strokeDashoffset={-s.offset*circ}
+            transform="rotate(-90 65 65)"
+            style={{transition:'stroke-dasharray .8s ease'}}
+          />
+        ))}
+        <circle cx="65" cy="65" r="42" fill="var(--bg-card)"/>
+        <text x="65" y="61" textAnchor="middle" fill="var(--text-primary)" fontSize="11" fontWeight="700">
+          {fmt(total)}₫
+        </text>
+        <text x="65" y="75" textAnchor="middle" fill="var(--text-muted)" fontSize="9">tháng này</text>
+      </svg>
+      <div className="db-fin-legend">
+        {slices.map(s=>(
+          <div key={s.category} className="db-fin-legend-item">
+            <span className="db-fin-legend-dot" style={{background:s.color}}/>
+            <span className="db-fin-legend-name">{s.category}</span>
+            <span className="db-fin-legend-val">{fmt(s.amt)}₫</span>
+            <span className="db-fin-legend-pct">{Math.round(s.pct*100)}%</span>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
 }
 
-/* ── Main ────────────────────────────────────────────────── */
+/* ── Skip Insight ── */
+function SkipInsight() {
+  const { getAllSkips }=useSkipReasons();
+  const insight=useMemo(()=>{
+    const skips=getAllSkips(); if(!skips?.length) return null;
+    const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-14);
+    const recent=skips.filter(s=>s.date>=cutoff.toISOString().split('T')[0]);
+    if(!recent.length) return null;
+    const counts={};
+    recent.forEach(s=>{ const r=s.reason||'Lý do khác'; counts[r]=(counts[r]||0)+1; });
+    return {total:recent.length,top:Object.entries(counts).sort((a,b)=>b[1]-a[1])};
+  },[getAllSkips]);
+  if(!insight) return null;
+  const [topReason,topCount]=insight.top[0];
+  const tips={'Thiếu động lực':'💡 Giảm durationMin xuống 5 phút — bắt đầu nhỏ hơn.','Bận công việc':'💡 Dời habit sang buổi sáng trước khi ngày bắt đầu.','Quên mất':'💡 Bật nhắc nhở trong Tracker.'};
+  return (
+    <div className="card db-section" style={{borderColor:'rgba(249,115,22,.2)'}}>
+      <div className="dash-card-title">🔍 Phân Tích Bỏ Qua — 14 Ngày</div>
+      <div style={{marginTop:'.75rem',display:'flex',flexDirection:'column',gap:'.5rem'}}>
+        <div className="dash-insight" style={{borderColor:'var(--orange)',marginTop:0}}>
+          Bỏ qua <strong>{insight.total} lần</strong> · Lý do chủ yếu:{' '}
+          <strong style={{color:'var(--orange)'}}>"{topReason}"</strong> ({topCount}x)
+        </div>
+        {insight.top.slice(0,3).map(([reason,count])=>{
+          const pct=Math.round((count/insight.total)*100);
+          return (
+            <div key={reason} style={{display:'flex',alignItems:'center',gap:'.75rem'}}>
+              <span style={{fontSize:'.82rem',color:'var(--text-secondary)',flex:1}}>{reason}</span>
+              <div style={{width:100,height:6,background:'rgba(255,255,255,.06)',borderRadius:3,overflow:'hidden'}}>
+                <div style={{width:`${pct}%`,height:'100%',background:'var(--orange)',borderRadius:3}}/>
+              </div>
+              <span style={{fontSize:'.75rem',color:'var(--text-muted)',width:28,textAlign:'right'}}>{count}x</span>
+            </div>
+          );
+        })}
+        {tips[topReason]&&<div style={{fontSize:'.82rem',color:'var(--purple-light)',marginTop:'.25rem'}}>{tips[topReason]}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ── TODAY KPI Card ── */
+function TodayKpi({ icon, label, value, unit, color, sub }) {
+  return (
+    <div className="db-today-kpi card">
+      <div className="db-today-kpi__icon" style={{color}}>{icon}</div>
+      <div className="db-today-kpi__val" style={{color}}>{value}<span className="db-today-kpi__unit">{unit}</span></div>
+      <div className="db-today-kpi__label">{label}</div>
+      {sub&&<div className="db-today-kpi__sub">{sub}</div>}
+    </div>
+  );
+}
+
+/* ── Section Divider ── */
+function SectionTitle({ icon, title, action }) {
+  return (
+    <div className="db-section-title">
+      <div className="db-section-title__left">
+        <span className="db-section-title__icon">{icon}</span>
+        <span className="db-section-title__text">{title}</span>
+      </div>
+      {action&&<div className="db-section-title__action">{action}</div>}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   MAIN
+══════════════════════════════════════════════════ */
 export default function DashboardPage() {
-  const { data, streak, longestStreak, totalDone, completionPct, badge } = useHabitStore();
-  const { totalXp } = useXpStore();
+  const { data, streak, longestStreak, totalDone } = useHabitStore();
+  const { totalXp, levelInfo } = useXpStore();
+  const { getAllSkips } = useSkipReasons();
+  const { todayMinutes, todaySessions } = useFocusTimer();
 
-  // Program start = earliest checked date
-  const checkedDates = Object.keys(data).filter(k => data[k]).sort();
-  const startDate    = checkedDates[0] ? new Date(checkedDates[0]) : new Date();
+  /* ── Expenses ── */
+  const { expenses, fetchExpenses, getTotal, getByCategory, enabled: expEnabled } = useExpenses();
+  const today = new Date();
+  const monthStart = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`;
+  const todayStr = today.toISOString().split('T')[0];
+  useEffect(() => { if (expEnabled) fetchExpenses(monthStart, todayStr); }, [expEnabled, monthStart, todayStr]);
 
+  const todayExpenses = useMemo(() => expenses.filter(e => e.date === todayStr), [expenses, todayStr]);
+  const monthTotal = useMemo(() => getTotal(), [expenses]);
+  const byCategory = useMemo(() => getByCategory(), [expenses]);
+  const todaySpend = useMemo(() => getTotal(todayExpenses), [todayExpenses]);
+
+  /* ── Subscriptions ── */
+  const { subs, fetchSubs, getMonthlyCost, getUpcoming, enabled: subEnabled } = useSubscriptions();
+  useEffect(() => { if (subEnabled) fetchSubs(); }, [subEnabled]);
+  const monthlySub = getMonthlyCost();
+  const upcomingSubs = getUpcoming(7);
+
+  /* ── Activity today ── */
+  const { getTodayCount, enabled: actEnabled } = useActivityLog();
+  const [todayActivity, setTodayActivity] = useState(0);
+  useEffect(() => { if (actEnabled) getTodayCount().then(setTodayActivity); }, [actEnabled]);
+
+  /* ── XP today ── */
+  const { log: xpLog } = useXpStore();
+  const todayXp = useMemo(() => {
+    return xpLog.filter(e => new Date(e.ts).toDateString() === today.toDateString()).reduce((s,e) => s+e.amount, 0);
+  }, [xpLog]);
+
+  /* ── Habit start ── */
+  const checkedDates = Object.keys(data).filter(k=>data[k]).sort();
+  const startDate = checkedDates[0] ? new Date(checkedDates[0]) : new Date();
   const insight = insightFromStreak(streak);
 
   return (
     <div className="dashboard-page">
       <div className="container">
 
-        {/* Header */}
+        {/* ── Header ── */}
         <div className="db-header">
           <div>
-            <div className="section-label">📈 Tổng Quan</div>
+            <div className="section-label">📈 Life Hub</div>
             <h1 className="display-2">Dashboard <span className="gradient-text">Của Bạn</span></h1>
           </div>
-          <Link to="/tracker" className="btn btn-ghost" style={{ fontSize: '0.85rem' }}>
-            🗓 Tracker →
-          </Link>
+          <Link to="/tracker" className="btn btn-ghost" style={{fontSize:'.85rem'}}>🗓 Tracker →</Link>
         </div>
 
-        {/* KPI row */}
-        <div className="db-kpi-row">
-          <div className="db-kpi card">
-            <div className="db-kpi__icon">🔥</div>
-            <div className="db-kpi__val gradient-text">{streak}</div>
-            <div className="db-kpi__label">Streak hiện tại</div>
-            {badge && <div className={`badge badge-${badge.color === 'gold' ? 'gold' : 'green'}`} style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}>{badge.emoji} {badge.label}</div>}
-          </div>
-          <div className="db-kpi card">
-            <div className="db-kpi__icon">🏅</div>
-            <div className="db-kpi__val gradient-text-gold">{longestStreak}</div>
-            <div className="db-kpi__label">Best streak</div>
-          </div>
-          <div className="db-kpi card">
-            <div className="db-kpi__icon">✅</div>
-            <div className="db-kpi__val gradient-text-green">{totalDone}</div>
-            <div className="db-kpi__label">Tổng hoàn thành</div>
-          </div>
-          <div className="db-kpi card">
-            <div className="db-kpi__icon">⭐</div>
-            <div className="db-kpi__val" style={{ color: 'var(--cyan)' }}>{totalXp || 0}</div>
-            <div className="db-kpi__label">Tổng XP</div>
-          </div>
+        {/* ── TODAY OVERVIEW ── */}
+        <SectionTitle icon="⚡" title="Hôm Nay" />
+        <div className="db-today-row">
+          <TodayKpi icon="🔥" label="Hoạt động" value={todayActivity} unit=" actions" color="var(--orange)" sub={`Streak ${streak} ngày`}/>
+          <TodayKpi icon="⏱" label="Focus" value={todayMinutes} unit=" phút" color="var(--cyan)" sub={`${todaySessions.length} sessions`}/>
+          <TodayKpi icon="💰" label="Chi tiêu" value={fmt(todaySpend)} unit="₫" color="var(--purple-light)" sub={expEnabled?'Hôm nay':'Cần đăng nhập'}/>
+          <TodayKpi icon="⭐" label="XP kiếm được" value={`+${todayXp}`} unit=" XP" color="var(--gold)" sub={`${levelInfo.emoji} ${levelInfo.name}`}/>
         </div>
 
-        {/* Flower journey */}
+        {/* ── HABITS ── */}
+        <SectionTitle icon="🌸" title="Thói Quen" action={
+          <div className="db-kpi-row-mini">
+            {[['🔥',streak,'Streak'],['🏅',longestStreak,'Best'],['✅',totalDone,'Tổng'],['⭐',totalXp,'XP']].map(([ic,v,lb])=>(
+              <div key={lb} className="db-kpi-mini card">
+                <span className="db-kpi-mini__icon">{ic}</span>
+                <span className="db-kpi-mini__val gradient-text">{v}</span>
+                <span className="db-kpi-mini__label">{lb}</span>
+              </div>
+            ))}
+          </div>
+        }/>
+
         <div className="card db-section">
           <div className="dash-card-title">🌸 Hành Trình 21 Ngày</div>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem', marginBottom: '0.75rem' }}>
-            Mỗi ô là 1 ngày — hoa nở theo streak liên tiếp
-          </p>
-          <FlowerJourney data={data} startDate={startDate} />
+          <p style={{fontSize:'.8rem',color:'var(--text-muted)',marginTop:'.25rem',marginBottom:'.75rem'}}>Hoa nở theo streak liên tiếp</p>
+          <FlowerJourney data={data} startDate={startDate}/>
           <div className="flower-legend">
-            {'🌰 → 🌱 → 🌿 → 🌸 → 🌺 → 🌻'.split(' → ').map((f, i) => (
-              <span key={i} style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{f}</span>
+            {'🌰 → 🌱 → 🌿 → 🌸 → 🌺 → 🌻'.split(' → ').map((f,i)=>(
+              <span key={i} style={{fontSize:'.82rem',color:'var(--text-muted)'}}>{f}</span>
             ))}
           </div>
         </div>
 
-        {/* 2-col: donut + weekly table */}
         <div className="db-two-col">
           <div className="card db-section">
             <div className="dash-card-title">🎯 Tháng Này</div>
-            <MonthDonut data={data} />
+            <MonthDonut data={data}/>
           </div>
           <div className="card db-section">
-            <div className="dash-card-title">📋 Tuần Gần Đây</div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem', marginTop: '0.25rem' }}>
-              4 tuần gần nhất · Hoàn thành / Bỏ / Tỷ lệ
-            </p>
-            <WeeklyTable data={data} />
+            <div className="dash-card-title">📋 4 Tuần Gần Đây</div>
+            <p style={{fontSize:'.78rem',color:'var(--text-muted)',margin:'.25rem 0 .75rem'}}>Hoàn thành / Bỏ / Tỷ lệ</p>
+            <WeeklyTable data={data}/>
           </div>
         </div>
 
-        {/* Contribution graph */}
-        <div className="card db-section">
-          <div className="dash-card-title">📅 Contribution — 12 Tuần Gần Đây</div>
-          <ContributionGraph data={data} />
+        {/* ── FINANCE ── */}
+        <SectionTitle icon="💰" title="Tài Chính" action={<Link to="/finance" className="btn btn-ghost" style={{fontSize:'.8rem'}}>Chi tiết →</Link>}/>
+
+        <div className="db-finance-kpi-row">
+          {[
+            {icon:'🛒',label:'Chi tháng',val:fmt(monthTotal)+'₫',color:'var(--orange)',sub:`Hôm nay: ${fmt(todaySpend)}₫`},
+            {icon:'🔄',label:'Đăng ký/tháng',val:fmt(monthlySub)+'₫',color:'var(--purple)',sub:`${subs.filter(s=>s.active).length} dịch vụ`},
+            {icon:'⚠️',label:'Sắp hết hạn',val:upcomingSubs.length,color:upcomingSubs.length>0?'var(--orange)':'var(--green)',sub:upcomingSubs.length?upcomingSubs[0].name:'Không có trong 7 ngày'},
+          ].map(({icon,label,val,color,sub})=>(
+            <div key={label} className="db-fin-kpi card">
+              <div className="db-fin-kpi__icon">{icon}</div>
+              <div className="db-fin-kpi__val" style={{color}}>{val}</div>
+              <div className="db-fin-kpi__label">{label}</div>
+              <div className="db-fin-kpi__sub">{sub}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Skip Insight */}
-        <SkipInsight />
+        {expEnabled && byCategory.length > 0 && (
+          <div className="card db-section">
+            <div className="dash-card-title">🥧 Phân Bổ Chi Tiêu Tháng</div>
+            <FinancePie byCategory={byCategory} total={monthTotal}/>
+          </div>
+        )}
 
-        {/* Insight */}
+        {/* ── ACTIVITY HEATMAP ── */}
+        <SectionTitle icon="📅" title="Hoạt Động" action={<Link to="/life-log" className="btn btn-ghost" style={{fontSize:'.8rem'}}>Life Log →</Link>}/>
+        <div className="card db-section">
+          <div className="dash-card-title">🗓 Lịch Sử Hoạt Động</div>
+          <ActivityHeatmap/>
+        </div>
+
+        {/* ── INSIGHTS ── */}
+        <SectionTitle icon="💡" title="Phân Tích"/>
+        <SkipInsight/>
         <div className="card db-section">
           <div className="dash-card-title">💡 Nhận Xét</div>
-          <div className="dash-insight" style={{ borderColor: insight.color, marginTop: '0.75rem' }}>
-            {insight.text}
-          </div>
-          {totalDone >= 7 && (
-            <div className="dash-insight" style={{ borderColor: 'var(--green)', marginTop: '0.5rem' }}>
-              ⚡ Bạn đã hoàn thành <strong>{totalDone} ngày</strong> kể từ khi bắt đầu. Tiếp tục để đạt <strong>{Math.ceil(totalDone / 7) * 7 + 7} ngày</strong>!
+          <div className="dash-insight" style={{borderColor:insight.color,marginTop:'.75rem'}}>{insight.text}</div>
+          {totalDone>=7&&(
+            <div className="dash-insight" style={{borderColor:'var(--green)',marginTop:'.5rem'}}>
+              ⚡ Bạn đã hoàn thành <strong>{totalDone} ngày</strong>. Tiếp tục đến <strong>{Math.ceil(totalDone/7)*7+7} ngày</strong>!
             </div>
           )}
         </div>
