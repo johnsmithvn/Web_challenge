@@ -168,8 +168,9 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 );
 
 -- Primary index for heatmap (count per day per user)
+-- Note: use created_at directly — avoid ::date cast (not IMMUTABLE with TIMESTAMPTZ)
 CREATE INDEX IF NOT EXISTS idx_activity_logs_user_date
-  ON activity_logs (user_id, (created_at::date));
+  ON activity_logs (user_id, created_at);
 
 -- Index for querying specific actions
 CREATE INDEX IF NOT EXISTS idx_activity_logs_user_action

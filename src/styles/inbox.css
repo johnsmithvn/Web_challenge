@@ -3,9 +3,9 @@
    ============================ */
 
 .inbox-page {
-  max-width: 640px;
+  max-width: 760px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 6rem 1.5rem 4rem;
 }
 
 .inbox-page__header {
@@ -14,7 +14,7 @@
 
 .inbox-page__title {
   font-family: var(--font-display);
-  font-size: 1.75rem;
+  font-size: clamp(2rem, 4vw, 3.5rem);
   font-weight: 800;
   background: var(--grad-text);
   -webkit-background-clip: text;

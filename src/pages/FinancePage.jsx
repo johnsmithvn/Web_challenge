@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useExpenses } from '../hooks/useExpenses';
 import { useSubscriptions } from '../hooks/useSubscriptions';
 import { useActivityLog } from '../hooks/useActivityLog';
@@ -8,6 +8,50 @@ import '../styles/finance.css';
 
 const CATEGORIES = EXPENSE_DATA.categories;
 const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
+
+/* ── Custom Select Dropdown ───────────────────────────────── */
+function CustomSelect({ value, onChange, options, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const selected = options.find(o => o.value === value);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="custom-select" ref={ref}>
+      <button
+        type="button"
+        className={`custom-select__trigger${open ? ' custom-select__trigger--open' : ''}`}
+        onClick={() => setOpen(o => !o)}
+      >
+        <span className="custom-select__value">
+          {selected ? <>{selected.icon && <span className="custom-select__icon">{selected.icon}</span>}{selected.label}</> : placeholder}
+        </span>
+        <span className={`custom-select__arrow${open ? ' custom-select__arrow--up' : ''}`}>▾</span>
+      </button>
+      {open && (
+        <div className="custom-select__dropdown">
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`custom-select__option${opt.value === value ? ' custom-select__option--active' : ''}`}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+            >
+              {opt.icon && <span className="custom-select__icon">{opt.icon}</span>}
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function formatVND(amount) {
   return new Intl.NumberFormat('vi-VN').format(amount) + '₫';
@@ -158,6 +202,16 @@ export default function FinancePage() {
   const [subDue, setSubDue] = useState('');
   const [subIcon, setSubIcon] = useState('📦');
 
+  // Auto-calculate next due date from today based on cycle
+  const calcNextDue = (cycle) => {
+    const d = new Date();
+    if (cycle === 'monthly')    d.setMonth(d.getMonth() + 1);
+    else if (cycle === '3month') d.setMonth(d.getMonth() + 3);
+    else if (cycle === '6month') d.setMonth(d.getMonth() + 6);
+    else if (cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().split('T')[0];
+  };
+
   // Load data on mount
   useEffect(() => {
     if (!user) return;
@@ -282,15 +336,11 @@ export default function FinancePage() {
                   step="1000"
                   required
                 />
-                <select
-                  className="finance-form__select"
+                <CustomSelect
                   value={expCategory}
-                  onChange={(e) => setExpCategory(e.target.value)}
-                >
-                  {CATEGORIES.map(c => (
-                    <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
-                  ))}
-                </select>
+                  onChange={setExpCategory}
+                  options={CATEGORIES.map(c => ({ value: c.key, label: c.label, icon: c.icon }))}
+                />
               </div>
               <input
                 className="finance-form__input"
@@ -387,21 +437,31 @@ export default function FinancePage() {
                 />
               </div>
               <div className="finance-form__row">
-                <select
-                  className="finance-form__select"
+                <CustomSelect
                   value={subCycle}
-                  onChange={(e) => setSubCycle(e.target.value)}
-                >
-                  <option value="monthly">Hàng tháng</option>
-                  <option value="yearly">Hàng năm</option>
-                </select>
-                <input
-                  className="finance-form__input"
-                  type="date"
-                  value={subDue}
-                  onChange={(e) => setSubDue(e.target.value)}
-                  required
+                  onChange={(val) => { setSubCycle(val); setSubDue(calcNextDue(val)); }}
+                  options={[
+                    { value: 'monthly', label: '1 tháng',  icon: '📅' },
+                    { value: '3month',  label: '3 tháng',  icon: '📆' },
+                    { value: '6month',  label: '6 tháng',  icon: '🗓' },
+                    { value: 'yearly',  label: '1 năm',    icon: '🔁' },
+                  ]}
                 />
+              </div>
+              <div className="finance-form__due-row">
+                <span className="finance-form__due-label">📅 Ngày gia hạn tiếp theo</span>
+                <div className="finance-form__due-actions">
+                  <button type="button" className="finance-form__due-auto" onClick={() => setSubDue(calcNextDue(subCycle))}>
+                    Tự tính ↻
+                  </button>
+                  <input
+                    className="finance-form__input finance-form__input--date"
+                    type="date"
+                    value={subDue}
+                    onChange={(e) => setSubDue(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
               <button type="submit" className="btn btn-primary" disabled={!subName || !subAmount || !subDue}>Lưu</button>
             </form>
@@ -427,7 +487,7 @@ export default function FinancePage() {
                     </div>
                     <div className="finance-sub-card__details">
                       <span className="finance-sub-card__amount" style={{ color: sub.color }}>
-                        {formatVND(sub.amount)}/{sub.cycle === 'yearly' ? 'năm' : 'tháng'}
+                        {formatVND(sub.amount)}/{{ monthly: 'tháng', '3month': '3 tháng', '6month': '6 tháng', yearly: 'năm' }[sub.cycle] || sub.cycle}
                       </span>
                       <span className="finance-sub-card__due">
                         Kỳ tiếp: {new Date(sub.next_due).toLocaleDateString('vi-VN')}

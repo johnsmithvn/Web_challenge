@@ -9,9 +9,10 @@ export default function LifeLogPage() {
   const { user } = useAuth();
   const { getHeatmapData, getTimelineByDate, getTodayCount } = useActivityLog();
 
+  const today = new Date().toISOString().split('T')[0];
   const [year] = useState(() => new Date().getFullYear());
   const [heatmapData, setHeatmapData] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(today);
   const [timeline, setTimeline] = useState([]);
   const [todayCount, setTodayCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -81,7 +82,7 @@ export default function LifeLogPage() {
         />
       )}
 
-      {/* Daily timeline */}
+      {/* Daily timeline — always visible, default = today */}
       {selectedDate && (
         <div className="lifelog-timeline-section">
           <DailyTimeline entries={timeline} date={selectedDate} />

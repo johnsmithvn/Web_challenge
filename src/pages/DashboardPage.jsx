@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useHabitStore } from '../hooks/useHabitStore';
 import { useXpStore, computeLevel } from '../hooks/useXpStore';
@@ -32,6 +32,82 @@ function insightFromStreak(s) {
   if (s<21)  return { text:`🌳 ${s} ngày! ${21-s} ngày nữa hoàn thành chương trình.`, color:'var(--green)' };
   return { text:'🏆 21 ngày! Kỷ luật đã thành bản năng.', color:'var(--gold)' };
 }
+
+const MOOD_SCORE = { 'Xuất sắc': 5, 'Tốt': 4, 'Bình thường': 3, 'Không tốt': 2, 'Tệ': 1 };
+const MOOD_COLOR = { 5: '#22c55e', 4: '#06b6d4', 3: '#8b5cf6', 2: '#f97316', 1: '#ef4444' };
+
+/* ── Mood 7-Day Chart ───────────────────────────────────── */
+const MoodChart7Day = memo(function MoodChart7Day({ moodLog }) {
+  const days = useMemo(() => {
+    const res = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      const mood = moodLog[key] ?? null;
+      const score = mood ? (MOOD_SCORE[mood.label] ?? 3) : null;
+      res.push({
+        key,
+        label: d.toLocaleDateString('vi-VN', { weekday: 'short' }).replace('Th ', 'T'),
+        emoji: mood?.emoji ?? null,
+        score,
+        color: score ? MOOD_COLOR[score] : 'rgba(255,255,255,0.08)',
+      });
+    }
+    return res;
+  }, [moodLog]);
+
+  const hasData = days.some(d => d.score !== null);
+  const W = 420, H = 90, PAD = 24, BAR_W = 40;
+  const slotW = (W - PAD * 2) / 7;
+
+  if (!hasData) {
+    return (
+      <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '.85rem' }}>
+        Chưa có dữ liệu tâm trạng 7 ngày này
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H + 44}`} style={{ minWidth: 280 }}>
+        {days.map((d, i) => {
+          const x = PAD + i * slotW + slotW / 2;
+          const barH = d.score ? ((d.score / 5) * (H - 16)) : 4;
+          const y = H - barH + 8;
+          return (
+            <g key={d.key}>
+              {/* bar */}
+              <rect
+                x={x - BAR_W / 2} y={y}
+                width={BAR_W} height={barH}
+                rx="6"
+                fill={d.score ? d.color : 'rgba(255,255,255,0.05)'}
+                opacity={d.score ? 0.85 : 1}
+              />
+              {/* emoji */}
+              {d.emoji && (
+                <text x={x} y={y - 4} textAnchor="middle" fontSize="14">{d.emoji}</text>
+              )}
+              {/* day label */}
+              <text
+                x={x} y={H + 22}
+                textAnchor="middle"
+                fill={i === 6 ? 'var(--purple-light)' : 'var(--text-muted)'}
+                fontSize="10"
+                fontWeight={i === 6 ? '700' : '400'}
+              >
+                {i === 6 ? 'Hôm nay' : d.label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+});
+
 
 function flowerForDay(streak) {
   if (streak===0) return '⬜';
@@ -260,12 +336,18 @@ export default function DashboardPage() {
   const { getAllSkips } = useSkipReasons();
   const { todayMinutes, todaySessions } = useFocusTimer();
 
+  /* ── Stable date refs (avoid recreation every render) ── */
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const monthStart = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+  }, []);
+
   /* ── Expenses ── */
   const { expenses, fetchExpenses, getTotal, getByCategory, enabled: expEnabled } = useExpenses();
   const today = new Date();
-  const monthStart = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`;
-  const todayStr = today.toISOString().split('T')[0];
-  useEffect(() => { if (expEnabled) fetchExpenses(monthStart, todayStr); }, [expEnabled, monthStart, todayStr]);
+  useEffect(() => { if (expEnabled) fetchExpenses(monthStart, todayStr); }, [expEnabled]); // eslint-disable-line
+
 
   const todayExpenses = useMemo(() => expenses.filter(e => e.date === todayStr), [expenses, todayStr]);
   const monthTotal = useMemo(() => getTotal(), [expenses]);
@@ -376,6 +458,7 @@ export default function DashboardPage() {
             <FinancePie byCategory={byCategory} total={monthTotal}/>
           </div>
         )}
+
 
         {/* ── ACTIVITY HEATMAP ── */}
         <SectionTitle icon="📅" title="Hoạt Động" action={<Link to="/life-log" className="btn btn-ghost" style={{fontSize:'.8rem'}}>Life Log →</Link>}/>

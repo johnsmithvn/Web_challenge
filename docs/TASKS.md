@@ -3,7 +3,27 @@
 
 ---
 
-## v3.1.0 — ✅ DONE (2026-04-26) — Unified Dashboard Redesign
+## v3.1.2 — ✅ DONE (2026-04-26) — UX Polish + Mood Chart + Performance
+
+- [x] `FinancePage.jsx` — Replace native `<select>` with `CustomSelect` glassmorphic dropdown (both category + cycle)
+- [x] `FinancePage.jsx` — Subscription cycle: 4 options (1/3/6 tháng, 1 năm)
+- [x] `FinancePage.jsx` — Smart date auto-fill from cycle, "Tự tính ↻" button, labeled date field
+- [x] `finance.css` — Custom dropdown styles: trigger, dropdown panel, options, scrollbar, animation
+- [x] `LifeLogPage.jsx` — selectedDate default = today, timeline visible on page load immediately
+- [x] `DashboardPage.jsx` — `MoodChart7Day` component: inline SVG bar chart, emoji overlay, color-coded by mood level
+- [x] `DashboardPage.jsx` — Import `useMoodLog` hook, wire into dashboard
+- [x] `DashboardPage.jsx` — `todayStr` + `monthStart` use `useMemo` (stable refs, avoid re-render)
+- [x] `DashboardPage.jsx` — `useExpenses` effect dependency fixed (no more infinite re-fetch)
+- [x] `migration_v3.0.0.sql` — Fix `ERROR: 42P17` IMMUTABLE index error on `activity_logs`
+- [x] `schema_v3.1.1.sql` — Consolidated migration (456 lines, fresh Supabase setup)
+- [x] `CHANGELOG.md` — v3.1.2 entry
+- [x] `docs/TASKS.md` — Updated (this file)
+- [x] `implementation_plan.md` — New roadmap v3.2.0+ (4 phases, 10+ features)
+
+---
+
+## v3.1.1 — ✅ DONE (2026-04-26) — Modal UX Fix
+
 
 - [x] `DashboardPage.jsx` — Rewrite: Today 4-KPI row (activity/focus/chi tiêu/XP hôm nay)
 - [x] `DashboardPage.jsx` — Finance section: 3 KPI cards + Finance Pie SVG donut chart

@@ -3,9 +3,9 @@
    ============================ */
 
 .collect-page {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 6rem 2rem 4rem;
 }
 
 .collect-page__header {
@@ -14,7 +14,7 @@
 
 .collect-page__title {
   font-family: var(--font-display);
-  font-size: 1.75rem;
+  font-size: clamp(2rem, 4vw, 3.5rem);
   font-weight: 800;
   background: var(--grad-text);
   -webkit-background-clip: text;

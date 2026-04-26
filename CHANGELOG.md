@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## v3.1.2 — 2026-04-26
+
+### Added
+- **Dashboard:** Mood 7-day chart — inline SVG line chart với emoji overlay, hiển thị xu hướng cảm xúc 7 ngày gần đây
+- **Finance:** `CustomSelect` component — thay native `<select>` bằng glassmorphic dropdown với animation slide-down, icon emoji, active highlight
+- **Finance Subscription:** 4 chu kỳ: `1 tháng / 3 tháng / 6 tháng / 1 năm` (thay vì chỉ 2)
+- **Finance Subscription:** Nút "Tự tính ↻" — auto-fill ngày gia hạn dựa theo chu kỳ chọn
+- **Finance Subscription:** Label rõ "📅 Ngày gia hạn tiếp theo" + date field styled với `color-scheme`
+- **Life Log:** `selectedDate` mặc định = hôm nay → vào trang là thấy timeline ngay, không cần click heatmap
+
+### Fixed
+- `migration_v3.0.0.sql` — Index `idx_activity_logs_user_date` dùng `created_at::date` gây lỗi `ERROR: 42P17` (function not IMMUTABLE) → đổi thành `created_at` plain
+
+### Performance
+- `DashboardPage` — `monthStart` và `todayStr` dùng `useMemo` tránh recreation mỗi render
+- `DashboardPage` — Chart components bọc `React.memo` tránh re-render không cần thiết
+- Bundle: lazy-load tất cả heavy pages
+
+### Database
+- `data/schema_v3.1.1.sql` — **Migration gộp mới**: 1 file duy nhất (456 dòng) thay 8 file lịch sử. Dùng cho fresh Supabase project. Gộp tất cả tables trừ Team (archived)
+
+---
+
 ## v3.1.1 — 2026-04-26
 
 ### Fixed

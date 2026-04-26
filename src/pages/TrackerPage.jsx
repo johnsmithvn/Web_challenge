@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense, memo } from 'react';
+import { useEffect, useState, useMemo, lazy, Suspense, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useHabitStore } from '../hooks/useHabitStore';
 import { useCustomHabits } from '../hooks/useCustomHabits';
@@ -342,8 +342,8 @@ export default function TrackerPage() {
   };
 
   const todayKey  = new Date().toISOString().split('T')[0];
-  const plant     = getPlant(streak);
   const todayMood = getMood(todayKey);
+  // plant derived after effectiveStreak is computed (placeholder — recalculated below)
 
   // Per-habit tick
   const handleHabitTick = async (habit) => {
@@ -389,9 +389,74 @@ export default function TrackerPage() {
     return () => clearTimeout(t);
   }, [celebration]);
 
-  const allHabitsDone = activeHabits.length > 0
+  const hasHabits = activeHabits.length > 0;
+
+  // When no habits exist, treat day as NOT done — ignore stale progress data
+  const allHabitsDone = hasHabits
     ? activeHabits.every(h => !!habitProg[`${todayKey}_${h.id}`])
-    : !!data[todayKey];
+    : false;
+
+  // ── Journey-scoped progress ──────────────────────────────────
+  // Filter progress data to current journey start date to prevent
+  // old streaks from showing up after starting a new journey
+  const journeyStartStr = activeJourney?.started_at
+    ? activeJourney.started_at.split('T')[0]
+    : null;
+
+  const effectiveData = useMemo(() => {
+    if (!hasHabits) return {};
+    if (!journeyStartStr) return data;
+    // Only count days from journey start onwards
+    return Object.fromEntries(
+      Object.entries(data).filter(([date]) => date >= journeyStartStr)
+    );
+  }, [hasHabits, data, journeyStartStr]);
+
+  // Recalculate streak from filtered data (inline — avoids exporting from hook)
+  const effectiveStreak = useMemo(() => {
+    if (!hasHabits) return 0;
+    const today = new Date();
+    let s = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      if (effectiveData[key]) s++;
+      else break;
+    }
+    return s;
+  }, [hasHabits, effectiveData]);
+
+  const effectiveLongest = useMemo(() => {
+    const keys = Object.keys(effectiveData).filter(k => effectiveData[k]).sort();
+    if (!keys.length) return 0;
+    let longest = 1, current = 1;
+    for (let i = 1; i < keys.length; i++) {
+      const diff = (new Date(keys[i]) - new Date(keys[i - 1])) / 86400000;
+      if (diff === 1) { current++; longest = Math.max(longest, current); }
+      else current = 1;
+    }
+    return longest;
+  }, [effectiveData]);
+
+  const effectiveTotalDone    = useMemo(() => Object.values(effectiveData).filter(Boolean).length, [effectiveData]);
+  const effectiveCompletionPct = useMemo(() => {
+    const weekDates = (() => {
+      const today  = new Date();
+      const day    = today.getDay();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        return d.toISOString().split('T')[0];
+      });
+    })();
+    const done = weekDates.filter(d => effectiveData[d]).length;
+    return Math.round((done / 7) * 100);
+  }, [effectiveData]);
+
+  const plant = getPlant(effectiveStreak);
 
   // XP milestones
   useEffect(() => {
@@ -447,12 +512,12 @@ export default function TrackerPage() {
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <div className="tracker-stat-card card" style={{ flex: '0 0 auto', padding: '0.5rem 0.85rem' }}>
               <span style={{ fontSize: '1.2rem' }}>🔥</span>
-              <span className="gradient-text" style={{ fontWeight: 800, fontSize: '1.2rem' }}>{streak}</span>
+              <span className="gradient-text" style={{ fontWeight: 800, fontSize: '1.2rem' }}>{effectiveStreak}</span>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Streak</span>
             </div>
             <div className="tracker-stat-card card" style={{ flex: '0 0 auto', padding: '0.5rem 0.85rem' }}>
               <span style={{ fontSize: '1.2rem' }}>📅</span>
-              <span style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--green)' }}>{totalDone}</span>
+              <span style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--green)' }}>{effectiveTotalDone}</span>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Tổng</span>
             </div>
             <div className="tracker-stat-card card" style={{ flex: '0 0 auto', padding: '0.5rem 0.85rem' }}>
@@ -473,7 +538,7 @@ export default function TrackerPage() {
         {/* ── Hero status area (auto-derived from habit ticks) ── */}
         <div className="tracker-hero card">
           <div className="tracker-hero__left">
-            <StreakRing streak={streak} />
+            <StreakRing streak={effectiveStreak} />
             <div className="tracker-hero__plant-label" style={{ color: plant.color }}>
               {plant.label}
             </div>
@@ -498,15 +563,15 @@ export default function TrackerPage() {
           </div>
           <div className="tracker-hero__right">
             <div className="tracker-hero-stat">
-              <span className="tracker-hero-stat__val" style={{ color: 'var(--gold)' }}>{longestStreak}</span>
+              <span className="tracker-hero-stat__val" style={{ color: 'var(--gold)' }}>{effectiveLongest}</span>
               <span className="tracker-hero-stat__label">Best Streak</span>
             </div>
             <div className="tracker-hero-stat">
-              <span className="tracker-hero-stat__val" style={{ color: 'var(--green)' }}>{totalDone}</span>
+              <span className="tracker-hero-stat__val" style={{ color: 'var(--green)' }}>{effectiveTotalDone}</span>
               <span className="tracker-hero-stat__label">Tổng ngày</span>
             </div>
             <div className="tracker-hero-stat">
-              <span className="tracker-hero-stat__val" style={{ color: 'var(--cyan)' }}>{completionPct}%</span>
+              <span className="tracker-hero-stat__val" style={{ color: 'var(--cyan)' }}>{effectiveCompletionPct}%</span>
               <span className="tracker-hero-stat__label">Tuần này</span>
             </div>
           </div>
@@ -515,13 +580,13 @@ export default function TrackerPage() {
         {/* ── 21-day visual progress ── */}
         <div className="card tracker-dots-card">
           <div className="dash-card-title">📍 Tiến Độ 21 Ngày</div>
-          <WeekDots data={data} journeyStart={activeJourney?.started_at || null} />
+          <WeekDots data={effectiveData} journeyStart={activeJourney?.started_at || null} />
           <div className="progress-bar-track" style={{ marginTop: '1rem' }}>
-            <div className="progress-bar-fill" style={{ width: `${Math.round((streak / 21) * 100)}%` }} />
+            <div className="progress-bar-fill" style={{ width: `${Math.round((effectiveStreak / 21) * 100)}%` }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
             <span>Ngày 1</span>
-            <span style={{ color: plant.color, fontWeight: 700 }}>{streak}/21 ngày</span>
+            <span style={{ color: plant.color, fontWeight: 700 }}>{effectiveStreak}/21 ngày</span>
             <span>Ngày 21</span>
           </div>
         </div>
