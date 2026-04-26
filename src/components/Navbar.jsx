@@ -15,7 +15,7 @@ import '../styles/auth.css';
 const PRIMARY_NAV = [
   { to: '/tracker',   icon: '🏠', label: 'Today' },
   { to: '/inbox',     icon: '📥', label: 'Inbox' },
-  { to: '/collect',   icon: '📓', label: 'Collect' },
+  { to: '/collect',   icon: '🧠', label: 'Knowledge' },
   { to: '/finance',   icon: '💰', label: 'Finance' },
   { to: '/life-log',  icon: '📅', label: 'Life Log' },
 ];

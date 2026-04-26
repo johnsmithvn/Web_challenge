@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useExpenses } from '../hooks/useExpenses';
 import { useSubscriptions } from '../hooks/useSubscriptions';
 import { useActivityLog } from '../hooks/useActivityLog';
+import { useCollections } from '../hooks/useCollections';
 import { useAuth } from '../contexts/AuthContext';
 import EXPENSE_DATA from '../data/expense-categories.json';
 import '../styles/finance.css';
@@ -182,13 +184,16 @@ function WeekBarChart({ expenses }) {
 
 export default function FinancePage() {
   const { user } = useAuth();
+  const location = useLocation();
   const { expenses, isLoading: expLoading, fetchExpenses, addExpense, deleteExpense, getTotal, getByCategory } = useExpenses();
   const { subs, isLoading: subLoading, fetchSubs, addSub, deleteSub, toggleActive, getMonthlyCost, getUpcoming } = useSubscriptions();
   const { logActivity } = useActivityLog();
+  const { deleteItem: deleteInboxItem } = useCollections();
 
   const [tab, setTab] = useState('expense');
   const [showAddExp, setShowAddExp] = useState(false);
   const [showAddSub, setShowAddSub] = useState(false);
+  const [pendingInboxId, setPendingInboxId] = useState(null);
 
   // Expense form state
   const [expAmount, setExpAmount] = useState('');
@@ -211,6 +216,29 @@ export default function FinancePage() {
     else if (cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
     return d.toISOString().split('T')[0];
   };
+
+  // ── Inbox → Subscription handoff ─────────────────────────
+  // location.key changes on every navigation, so this re-runs each visit
+  useEffect(() => {
+    const raw = sessionStorage.getItem('lh_inbox_to_sub');
+    if (!raw) return;
+    try {
+      const { title, inboxId } = JSON.parse(raw);
+      sessionStorage.removeItem('lh_inbox_to_sub');
+      setSubName(title);
+      setSubDue(calcNextDue('monthly'));
+      setTab('subs');
+      setShowAddSub(true);
+      setPendingInboxId(inboxId);
+    } catch {
+      // legacy plain-string fallback
+      sessionStorage.removeItem('lh_inbox_to_sub');
+      setSubName(raw);
+      setSubDue(calcNextDue('monthly'));
+      setTab('subs');
+      setShowAddSub(true);
+    }
+  }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load data on mount
   useEffect(() => {
@@ -244,9 +272,12 @@ export default function FinancePage() {
 
     const result = await addSub({ name: subName, amount, cycle: subCycle, next_due: subDue, icon: subIcon });
     if (result) {
-      logActivity('subscription_add', `${subName} — ${formatVND(amount)}/${subCycle}`, amount, {
-        cycle: subCycle,
-      });
+      logActivity('subscription_add', `${subName} — ${formatVND(amount)}/${subCycle}`, amount, { cycle: subCycle });
+      // If this subscription was created from Inbox, delete the inbox item now
+      if (pendingInboxId) {
+        await deleteInboxItem(pendingInboxId);
+        setPendingInboxId(null);
+      }
       setSubName('');
       setSubAmount('');
       setSubDue('');

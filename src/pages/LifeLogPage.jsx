@@ -1,51 +1,47 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useActivityLog } from '../hooks/useActivityLog';
+import { useHabitStore } from '../hooks/useHabitStore';
+import { useMoodLog, useSkipReasons } from '../hooks/useMoodSkip';
+import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
 import ActivityHeatmap from '../components/ActivityHeatmap';
-import DailyTimeline from '../components/DailyTimeline';
 import '../styles/lifelog.css';
+
+const MonthCalendar = lazy(() => import('../components/MonthCalendar'));
 
 export default function LifeLogPage() {
   const { user } = useAuth();
-  const { getHeatmapData, getTimelineByDate, getTodayCount } = useActivityLog();
+  const { getHeatmapData, getTodayCount } = useActivityLog();
+  const { data: habitData } = useHabitStore();
+  const { moodLog } = useMoodLog();
+  const { skipLog } = useSkipReasons();
+  const { getCompletedTasks } = useUserTasks();
 
   const today = new Date().toISOString().split('T')[0];
-  const [year] = useState(() => new Date().getFullYear());
+  const [year]                        = useState(() => new Date().getFullYear());
   const [heatmapData, setHeatmapData] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(today);
-  const [timeline, setTimeline] = useState([]);
-  const [todayCount, setTodayCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [todayCount, setTodayCount]   = useState(0);
+  const [loadingHeatmap, setLoadingHeatmap] = useState(false);
 
-  // Fetch heatmap data for the year
+  // Fetch year heatmap
   useEffect(() => {
     if (!user) return;
     const fetchHeatmap = async () => {
-      setLoading(true);
-      const startDate = `${year}-01-01`;
-      const endDate = `${year}-12-31`;
-      const data = await getHeatmapData(startDate, endDate);
+      setLoadingHeatmap(true);
+      const data = await getHeatmapData(`${year}-01-01`, `${year}-12-31`);
       setHeatmapData(data);
       const count = await getTodayCount();
       setTodayCount(count);
-      setLoading(false);
+      setLoadingHeatmap(false);
     };
     fetchHeatmap();
   }, [user, year]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch timeline when date is clicked
-  useEffect(() => {
-    if (!selectedDate || !user) return;
-    const fetchTimeline = async () => {
-      const data = await getTimelineByDate(selectedDate);
-      setTimeline(data);
-    };
-    fetchTimeline();
-  }, [selectedDate, user]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Heatmap cell click — no-op for now, MonthCalendar handles detail
+  const handleHeatmapClick = () => {};
 
-  const handleDateClick = (date) => {
-    setSelectedDate(date === selectedDate ? null : date);
-  };
+  // MonthCalendar day click callback (for future use)
+  const handleCalendarDayClick = () => {};
 
   if (!user) {
     return (
@@ -57,37 +53,56 @@ export default function LifeLogPage() {
 
   return (
     <div className="lifelog-page">
+
+      {/* Header */}
       <div className="lifelog-page__header">
-        <h1 className="lifelog-page__title">📅 Life Log</h1>
+        <div className="section-label">📅 Life Log</div>
+        <h1 className="lifelog-page__title">
+          Lịch Sử <span className="gradient-text">Cuộc Sống</span>
+        </h1>
         <p className="lifelog-page__subtitle">
-          Lịch sử hoạt động — {year}
+          Hành trình mỗi ngày của bạn — {year}
         </p>
       </div>
 
-      {/* Today stat */}
+      {/* Today pill stat */}
       <div className="lifelog-today">
         <span className="lifelog-today__label">Hôm nay</span>
         <span className="lifelog-today__count">{todayCount}</span>
         <span className="lifelog-today__unit">hoạt động</span>
       </div>
 
-      {/* Heatmap */}
-      {loading ? (
-        <div className="lifelog-loading">Đang tải heatmap...</div>
-      ) : (
-        <ActivityHeatmap
-          data={heatmapData}
-          year={year}
-          onDateClick={handleDateClick}
+      {/* ── PRIMARY: MonthCalendar ─────────────────────────── */}
+      <Suspense fallback={
+        <div className="card lifelog-cal-loading">⏳ Đang tải lịch...</div>
+      }>
+        <MonthCalendar
+          habitData={habitData}
+          moodLog={moodLog}
+          skipLog={skipLog}
+          getCompletedTasks={getCompletedTasks}
+          onDayClick={handleCalendarDayClick}
         />
-      )}
+      </Suspense>
 
-      {/* Daily timeline — always visible, default = today */}
-      {selectedDate && (
-        <div className="lifelog-timeline-section">
-          <DailyTimeline entries={timeline} date={selectedDate} />
+      <div className="lifelog-heatmap-section">
+        <div className="card lifelog-heatmap-card">
+          <div className="lifelog-heatmap-header">
+            <span className="dash-card-title">🗓 Hoạt Động — {year}</span>
+            <span className="lifelog-heatmap-hint">Click ô để xem chi tiết</span>
+          </div>
+          {loadingHeatmap ? (
+            <div className="lifelog-loading">Đang tải heatmap...</div>
+          ) : (
+            <ActivityHeatmap
+              data={heatmapData}
+              year={year}
+              onDateClick={handleHeatmapClick}
+            />
+          )}
         </div>
-      )}
+      </div>
+
     </div>
   );
 }

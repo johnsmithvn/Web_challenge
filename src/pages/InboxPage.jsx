@@ -67,10 +67,9 @@ export default function InboxPage() {
   };
 
   // Navigate to Finance to create a subscription from inbox item
+  // NOTE: do NOT delete item here — Finance will delete it only after successful save
   const handleToSub = (item) => {
-    // Store item text in sessionStorage for Finance page to pick up
-    sessionStorage.setItem('lh_inbox_to_sub', item.title);
-    deleteItem(item.id);
+    sessionStorage.setItem('lh_inbox_to_sub', JSON.stringify({ title: item.title, inboxId: item.id }));
     navigate('/finance');
   };
 

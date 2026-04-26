@@ -9,7 +9,36 @@
 }
 
 .lifelog-page__header {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+/* ── New section blocks ────────────────────────────────────── */
+.lifelog-cal-loading {
+  padding: 2.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.lifelog-heatmap-section {
+  margin-top: 1.5rem;
+}
+
+.lifelog-heatmap-card {
+  padding: 1.25rem;
+}
+
+.lifelog-heatmap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.lifelog-heatmap-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .lifelog-page__title {
