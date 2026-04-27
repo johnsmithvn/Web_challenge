@@ -1,7 +1,7 @@
 {
-  "name": "Vượt Lười",
-  "short_name": "VượtLười",
-  "description": "Thử thách 21 ngày xây dựng thói quen tốt",
+  "name": "Life Hub",
+  "short_name": "LifeHub",
+  "description": "Hệ điều hành cá nhân — thói quen, chi tiêu, ghi chú, lịch sử cuộc sống",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f0f13",
@@ -15,5 +15,5 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["health", "lifestyle", "productivity"]
+  "categories": ["health", "lifestyle", "productivity", "finance"]
 }

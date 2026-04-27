@@ -1,5 +1,234 @@
 # CHANGELOG
 
+## v3.3.1 — 2026-04-27
+
+### Fixed
+- **Light mode CSS:** Comprehensive overrides for Tiptap editor — toolbar buttons, active states, divider, link popover, slash menu, shortcuts modal, footer, code/blockquote/highlight/table/mark all now visible and properly contrasted.
+- **Word count realtime:** Tiptap mode now uses `CharacterCount.words()` (accurate) instead of manual text split. Passed as 3rd arg in `onChange(json, text, words)`. EditorView header updates in realtime.
+- **Expanded shortcuts panel:** Added 3rd section "✍️ Gõ tắt Markdown" (9 auto-format rules: `# `, `## `, `- `, `1. `, `> `, `---`, etc.). Added Tab/Shift+Tab, Shift+Enter to Khối section.
+- **Markdown keyboard shortcuts [NEW]:** `Ctrl+B/I/E/K/1/2/3`, `Ctrl+Shift+X/B/C/7/8/9`, `Ctrl+S` save, `Ctrl+P` block, `Ctrl+.` shortcuts panel. Also added `⌨` button to Markdown toolbar.
+
+### Changed
+- `TiptapEditor.jsx` — Export `ShortcutsModal` + `MD_SHORTCUT_SECTIONS` for Markdown reuse. `sections` prop for ShortcutsModal.
+- `CollectPage.jsx` — MarkdownEditor now accepts `onSave`, has `handleKeyDown`, `mdShortcutsOpen` state, ShortcutsModal.
+- `tiptap.css` — ~200 lines of light mode overrides (was 8 lines).
+- `collect.css` — Added `.kb-tb-divider` style.
+
+---
+
+## v3.3.0 — 2026-04-27
+
+### Added
+- **Tiptap — Slash Command Menu (`/`):** Gõ `/` trong editor → dropdown 12 block types (Paragraph, H1-H3, Bullet/Ordered/Task List, Blockquote, Code Block, Divider, Table, Highlight). Filter theo text (`/hea` → Heading 1/2/3). Arrow keys + Enter + Escape navigation. Dùng `@tiptap/suggestion` plugin.
+- **Tiptap — Keyboard Shortcuts Panel (`Ctrl+.`):** Modal glassmorphism hiển thị 25+ phím tắt, chia 4 nhóm (Văn bản, Khối, Chèn, Chung). Toggle bằng nút `⌨` trên toolbar hoặc `Ctrl+.`.
+- **Tiptap — Browser Shortcut Override:** `Ctrl+S` → save article (thay vì Save Page), `Ctrl+P` → blocked (không Print), `Ctrl+.` → toggle shortcuts panel. Xử lý qua `editorProps.handleKeyDown`.
+- **SlashCommand.jsx [NEW]:** Component riêng cho Slash Command extension + UI dropdown.
+- **`@tiptap/suggestion`** package (0 production deps, peer deps đã có).
+
+### Changed
+- `TiptapEditor.jsx` — Thêm `onSave` prop, `SlashCommandExtension`, `ShortcutsModal`, `handleKeyDown` browser override, footer hint (`/` + `Ctrl+.`).
+- `CollectPage.jsx` — Pass `onSave={handleSaveDraft}` to TiptapEditor cho Ctrl+S save.
+- `tiptap.css` — Thêm styles cho slash menu, shortcuts modal, footer hint, light mode variants.
+- `package.json` — Bump version 3.2.1 → 3.3.0.
+
+---
+
+## v3.2.1 — 2026-04-27
+
+### Added
+- **Dashboard — Mood Trend Chart:** Thay MoodChart7Day bar chart bằng dot-line SVG chart mới, toggle 7/30 ngày. Hiển thị average mood score, color-coded dots, emoji overlay, grid lines. Import `useMoodLog` vào Dashboard.
+- **Dashboard — Focus Breakdown:** Per-habit horizontal bar chart 7 ngày gần nhất. Query trực tiếp `focus_sessions` + join `habits` table từ Supabase. Hiển thị icon, tên habit, progress bar, phút, %.
+- **Dashboard — Weekly Review Digest:** Collapsible summary card: Habits hoàn thành, XP, Chi tiêu, Mood TB — so sánh với tuần trước (↑/↓/→). Expand/collapse animation.
+
+### Changed
+- `package.json` — Bump version 3.1.0 → 3.2.1 (3.2.0 was documented but never bumped)
+- `dashboard.css` — Add styles for MoodTrendChart, FocusBreakdown, WeeklyReview
+- `DashboardPage.jsx` — Import `useAuth`, `supabase`, `useMoodLog`. Add 3 new widget components.
+- `docs/FEATURES.md` — Update Dashboard section #5 with 3 new widgets
+- `docs/ARCHITECTURE.md` — Update DashboardPage data sources diagram
+- `docs/PLAN.md` — Fix Phase 7 incomplete items → Phase 8 backlog, add Phase 7.6 v3.2.1
+- `docs/TASKS.md` — Mark Team v3 as ❌ CANCELLED, add v3.2.1 section
+
+---
+
+## v3.2.0 — 2026-04-26
+
+### Added
+- **Knowledge Base — Dual-Mode Editor:** Tích hợp Tiptap WYSIWYG editor bên cạnh Markdown. Mặc định = Markdown, có toggle sang Visual khi tạo bài mới.
+- **Knowledge Base — Mode Lock:** Bài viết lock mode khi tạo (tiptap/markdown), không thể đổi khi edit lại.
+- **Knowledge Base — Tag Autocomplete:** TagInput với searchable dropdown (tối đa 10 tags), phân trang scroll, tạo tag mới bằng Enter, lưu DB khi bài được save.
+- **Knowledge Base — AI-ready schema:** 3 columns mới: `content_format`, `body_text` (plain text extracted), `word_count` (pre-computed) → sẵn sàng Phase 2 AI (embedding, RAG, semantic search).
+- **TiptapEditor component:** `src/components/TiptapEditor.jsx` — WYSIWYG full toolbar (Bold/Italic/Strike/Highlight/Code/H1-H3/Lists/TaskList/Blockquote/CodeBlock/HR/Link/Table/Undo/Redo) + `TiptapReadOnly` cho reader view.
+- **Inline Link Popover:** Thay `window.prompt` bằng inline link input bar hiện ngay dưới toolbar khi bấm 🔗.
+- **ConfirmModal component:** `src/components/ConfirmModal.jsx` — Promise-based `useConfirm()` hook, drop-in thay toàn bộ `window.confirm()`. Glassmorphism UI, danger variant, Escape key, backdrop click, auto-focus.
+- **isTiptapBody auto-detect:** Tự nhận dạng bài Tiptap từ body JSON shape khi `content_format` column chưa được migrate.
+- **safeHostname helper:** Guard `new URL(url)` crash với URL invalid/relative.
+
+### Changed
+- `useCollections.addItem` — Nhận đầy đủ `content_format`, `body_text`, `word_count` thay vì hardcode fixed fields.
+- `ArticleCard` — Dùng `body_text` (plain text) cho excerpt thay vì `body` raw (tránh hiển thị JSON Tiptap).
+- `ReaderView` — Auto-detect format, render `TiptapReadOnly` hoặc `ReactMarkdown` tương ứng.
+- `handleSave` — Truyền đủ payload mới vào DB khi save/update.
+- `HabitManager` — Nút xóa dùng `useConfirm` modal thay `window.confirm`.
+- `LifeJourneyPage` — Nút Reset dùng `useConfirm` modal thay `window.confirm`.
+
+### Removed
+- `makeExcerpt()` — Dead code, đã thay bằng `body_text.slice(0, 180)`.
+- Tất cả `window.confirm()`, `window.alert()`, `window.prompt()` trong active code.
+
+### Fixed
+- `TiptapEditor` imports — Đổi từ default sang named exports (`{ Table }`, `{ Link }`, v.v.) để tránh Vite runtime error.
+- `new URL(item.url).hostname` không được guard → crash khi URL invalid.
+
+### Database
+- `data/migration_v3.2.0_knowledge.sql` — `ALTER TABLE collections ADD COLUMN content_format / body_text / word_count`
+
+---
+
+## v3.1.2 — 2026-04-26
+
+### Added
+- **Dashboard:** Mood 7-day chart — inline SVG line chart với emoji overlay, hiển thị xu hướng cảm xúc 7 ngày gần đây
+- **Finance:** `CustomSelect` component — thay native `<select>` bằng glassmorphic dropdown với animation slide-down, icon emoji, active highlight
+- **Finance Subscription:** 4 chu kỳ: `1 tháng / 3 tháng / 6 tháng / 1 năm` (thay vì chỉ 2)
+- **Finance Subscription:** Nút "Tự tính ↻" — auto-fill ngày gia hạn dựa theo chu kỳ chọn
+- **Finance Subscription:** Label rõ "📅 Ngày gia hạn tiếp theo" + date field styled với `color-scheme`
+- **Life Log:** `selectedDate` mặc định = hôm nay → vào trang là thấy timeline ngay, không cần click heatmap
+
+### Fixed
+- `migration_v3.0.0.sql` — Index `idx_activity_logs_user_date` dùng `created_at::date` gây lỗi `ERROR: 42P17` (function not IMMUTABLE) → đổi thành `created_at` plain
+
+### Performance
+- `DashboardPage` — `monthStart` và `todayStr` dùng `useMemo` tránh recreation mỗi render
+- `DashboardPage` — Chart components bọc `React.memo` tránh re-render không cần thiết
+- Bundle: lazy-load tất cả heavy pages
+
+### Database
+- `data/schema_v3.1.1.sql` — **Migration gộp mới**: 1 file duy nhất (456 dòng) thay 8 file lịch sử. Dùng cho fresh Supabase project. Gộp tất cả tables trừ Team (archived)
+
+---
+
+## v3.1.1 — 2026-04-26
+
+### Fixed
+- **UX Bug:** Bôi đen text bên trong bất kỳ popup/modal nào đều bị đóng popup (close-on-text-select)
+- **Root cause:** Các overlay backdrop dùng `onClick` — khi user drag để bôi text, `mouseup` bubble lên backdrop → trigger close
+- **Fix:** Thay `onClick` backdrop bằng `onMouseDown` + `onMouseUp` target check — chỉ đóng khi cả mousedown VÀ mouseup đều hit đúng backdrop element (không phải từ bên trong modal)
+- **Files affected:**
+  - `QuickCapture.jsx` — `.qc-backdrop`
+  - `LifeJourneyPage.jsx` — `EventModal .lj-overlay`
+  - `CustomJourneyModal.jsx` — `.journey-modal-overlay`
+  - `CompletionModal.jsx` — `.completion-overlay`
+  - `ContentSections.jsx` — `MiniLesson .modal-overlay`
+
+---
+
+## v3.1.0 — 2026-04-26
+
+### Added
+- `DashboardPage.jsx` — Unified Life Hub Dashboard: tổng hợp stats từ tất cả modules
+- **Today Overview row:** 4 KPIs hôm nay (Hoạt động từ activity_logs, Focus phút từ useFocusTimer, Chi tiêu hôm nay từ expenses, XP kiếm được hôm nay)
+- **Finance Section:** 3 KPI cards (Chi tháng / Đăng ký/tháng / Sắp hết hạn) + Finance Pie donut SVG chart (category breakdown tháng này)
+- **Activity Heatmap:** Thay ContributionGraph habit-only bằng ActivityHeatmap (reuse component từ LifeLogPage) — lịch sử toàn hệ thống
+- **Section Dividers:** `SectionTitle` component với gradient underline, icon, action link
+- **TodayKpi component:** Card với hover lift effect, gradient overlay
+- **FinancePie component:** SVG donut chart với legend (category + amount + %)
+- `dashboard.css` — Hoàn toàn rewrite: Today KPI row, Finance KPI row, Finance Pie, Section Title dividers, hover animations
+
+### Changed
+- `DashboardPage.jsx` — Tích hợp thêm hooks: `useExpenses`, `useSubscriptions`, `useActivityLog`, `useFocusTimer`
+- `DashboardPage.jsx` — Giữ nguyên: FlowerJourney, MonthDonut, WeeklyTable, SkipInsight, streak insight
+- `DashboardPage.jsx` — Xóa inline `ContributionGraph` (habit-only) → thay bằng `ActivityHeatmap` (all modules)
+
+---
+
+## v3.0.1 — 2026-04-25
+
+### Added
+- `KnowledgeResurface.jsx` — "Hôm nay nhớ lại" spaced repetition widget (random Collect resurface, dismiss per session)
+- `FinancePage` — Inline SVG Pie chart (category donut) + 7-day bar chart trend
+- `InboxPage` — "→ Task" action (📌 converts inbox item to user_task) + "→ Sub" action (🔄 navigates to Finance)
+- `TrackerPage` — SubAlert + KnowledgeResurface wired inline between XpBar and Hero section
+
+### Changed
+- `widgets.css` — Added KnowledgeResurface styles (cyan accent)
+- `finance.css` — Added chart row layout, pie chart, bar chart styles
+
+---
+
+## v3.0.0 — 2026-04-25
+
+### BREAKING — Personal Life Hub Pivot
+- **Archived** Team/Friends modules → `src/_archived/` (pages, hooks, components, CSS)
+- `/team` and `/friends` routes now redirect to `/tracker`
+
+### Added
+- `data/migration_v3.0.0.sql` — 4 new tables: `collections`, `expenses`, `subscriptions`, `activity_logs` + RLS + indexes
+- `src/data/expense-categories.json` — 8 default expense categories (Rule 14)
+
+### Changed
+- `App.jsx` — Removed TeamPage/FriendsPage lazy imports, routes redirect
+- `Navbar.jsx` — Removed Team/Friends nav links
+- `TrackerPage.jsx` — Removed `useTeam` import (unused)
+- `DailyChallenge.jsx` — Removed `useTeam`, always uses solo challenge pool
+
+### Removed
+- `src/pages/TeamPage.jsx` → archived
+- `src/pages/FriendsPage.jsx` → archived
+- `src/hooks/useTeam.js` → archived
+- `src/hooks/useTeamCheck.js` → archived
+- `src/hooks/useTeamRules.js` → archived
+- `src/styles/team.css` → archived
+- `src/styles/friends.css` → archived
+- `src/components/team/` (4 components) → archived
+
+### Added — Navigation Restructure (Phase 6.2)
+- `Navbar.jsx` — Complete rewrite: Sidebar (desktop, fixed left 220px) + Top bar (mobile) + Bottom tabs (mobile, 6 items)
+- `navbar.css` — New sidebar + bottom tabs + topbar layout with glassmorphism, light/dark theme support
+- `QuickCapture.jsx` — Global floating [+] button → saves to `collections` table as type='inbox'
+- `quick-capture.css` — FAB with gradient + pulse animation, slide-up capture modal
+- `placeholder-page.css` — Shared "Coming Soon" layout for unreleased pages
+- `InboxPage.jsx` — Placeholder (lazy-loaded)
+- `CollectPage.jsx` — Placeholder (lazy-loaded)
+- `FinancePage.jsx` — Placeholder (lazy-loaded)
+- `LifeLogPage.jsx` — Placeholder (lazy-loaded)
+
+### Changed — Navigation Restructure
+- `App.jsx` — Added `.app-content` wrapper for sidebar offset; 4 new routes; QuickCapture component; SEO meta rebranded "Life Hub"
+- `Navbar.jsx` — Primary nav (Today, Inbox, Collect, Finance, Life Log) + Secondary nav (Focus, Journey, Stats, Quiz, BXH, Hành Trình)
+
+### Added — Activity Log System (Phase 6.3)
+- `useActivityLog.js` — Append-only hook: `logActivity()`, `getHeatmapData()`, `getTimelineByDate()`, `getTodayCount()`
+- Wired into TrackerPage (habit_done, habit_undo, mood_set), DailyChallenge (challenge_done), QuickCapture (collect_add), useFocusTimer (focus_done)
+
+### Added — Inbox + Collect Module (Phase 6.4)
+- `useCollections.js` — CRUD hook for collections table (add, classify, star, archive, delete, inboxCount)
+- `InboxPage.jsx` + `inbox.css` — Quick-add form, inbox items list, classify→type actions, delete
+- `CollectPage.jsx` + `collect.css` — Tabbed view (All/Links/Quotes/Want/Learn/Ideas), search, card grid with type-accent borders
+
+### Added — Finance Module (Phase 6.5)
+- `useExpenses.js` — CRUD for expenses (VNĐ, date-range fetch, getTotal, getByCategory)
+- `useSubscriptions.js` — CRUD for subscriptions (monthly/yearly, toggleActive, getUpcoming, getMonthlyCost)
+- `FinancePage.jsx` + `finance.css` — 2 tabs (Chi tiêu + Đăng ký), summary cards, category breakdown bars, expense list, subscription cards with expiry countdown
+
+### Added — Life Log Module (Phase 6.6)
+- `ActivityHeatmap.jsx` — GitHub-style SVG heatmap (53×7 grid, purple scale, click-to-drill)
+- `DailyTimeline.jsx` — Vertical timeline with action icons, timestamps, labels
+- `LifeLogPage.jsx` + `lifelog.css` — Yearly heatmap + today stat badge + drill-down daily timeline
+
+### Added — Sidebar Widgets (Phase 6.7)
+- `SubAlert.jsx` — Compact alert showing upcoming subscription renewals (≤7 days), auto-hides when empty
+- `DailyReview.jsx` — Today-recap widget (total activity count + last 5 actions), auto-hides when empty
+- `widgets.css` — Shared styles for sidebar widgets
+- Wired both widgets into `Navbar.jsx` sidebar bottom section
+
+### Changed — Branding
+- `package.json` — name: `life-hub`, version: `3.0.0`
+- `index.html` — All meta tags + title rebranded to "Life Hub — Personal Life OS"
+- `manifest.json` — name/short_name/description updated to Life Hub
+
+---
+
 ## v2.3.0 — 2026-04-25
 
 ### Added

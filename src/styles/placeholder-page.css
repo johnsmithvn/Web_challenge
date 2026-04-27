@@ -1,0 +1,74 @@
+/* ============================
+   PLACEHOLDER PAGE — Coming Soon
+   Used by: InboxPage, CollectPage, FinancePage, LifeLogPage
+   ============================ */
+
+.placeholder-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  text-align: center;
+  padding: 2rem 1.5rem;
+  gap: 0.75rem;
+}
+
+.placeholder-page__icon {
+  font-size: 4rem;
+  line-height: 1;
+  animation: placeholder-float 3s ease-in-out infinite;
+}
+
+@keyframes placeholder-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+.placeholder-page__title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.placeholder-page__desc {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  max-width: 400px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.placeholder-page__badge {
+  display: inline-block;
+  padding: 0.35rem 1rem;
+  border-radius: var(--radius-full);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  color: var(--purple-light);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+}
+
+[data-theme="light"] .placeholder-page__badge {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.2);
+  color: var(--purple);
+}
+
+.placeholder-page__hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.placeholder-page__hint strong {
+  color: var(--purple-light);
+}

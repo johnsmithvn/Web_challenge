@@ -181,6 +181,68 @@ export function useUserTasks() {
     }
   }, [isAuth, userId, tasks]);
 
+  // ── Uncomplete task (revert to pending) ───────────────
+  const uncompleteTask = useCallback(async (taskId) => {
+    const backup = tasks.find(t => t.id === taskId);
+
+    // Optimistic
+    setTasks(prev => prev.map(t =>
+      t.id === taskId ? { ...t, completed: false, completed_at: null } : t
+    ));
+
+    if (isAuth) {
+      try {
+        const sb = await getSb();
+        if (!sb) return;
+
+        const { error } = await sb
+          .from('user_tasks')
+          .update({ completed: false, completed_at: null })
+          .eq('id', taskId)
+          .eq('user_id', userId);
+
+        if (error) {
+          console.error('[useUserTasks] uncomplete error:', error.message);
+          if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
+        }
+      } catch (err) {
+        console.error('[useUserTasks] uncomplete exception:', err);
+        if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
+      }
+    }
+  }, [isAuth, userId, tasks]);
+
+  // ── Update task (title / description / date / time) ───
+  const updateTask = useCallback(async (taskId, changes) => {
+    const backup = tasks.find(t => t.id === taskId);
+
+    // Optimistic
+    setTasks(prev => prev.map(t =>
+      t.id === taskId ? { ...t, ...changes } : t
+    ));
+
+    if (isAuth) {
+      try {
+        const sb = await getSb();
+        if (!sb) return;
+
+        const { error } = await sb
+          .from('user_tasks')
+          .update(changes)
+          .eq('id', taskId)
+          .eq('user_id', userId);
+
+        if (error) {
+          console.error('[useUserTasks] update error:', error.message);
+          if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
+        }
+      } catch (err) {
+        console.error('[useUserTasks] update exception:', err);
+        if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
+      }
+    }
+  }, [isAuth, userId, tasks]);
+
   // ── Get completed tasks by date (for calendar) ────────
   const getCompletedTasks = useCallback(async (dateStr) => {
     if (!isAuth || !userId) return [];
@@ -243,6 +305,8 @@ export function useUserTasks() {
     isLoading,
     addTask,
     completeTask,
+    uncompleteTask,
+    updateTask,
     deleteTask,
     getCompletedTasks,
   };

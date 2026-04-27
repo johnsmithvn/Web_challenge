@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
-import { useTeam } from '../hooks/useTeam';
+import { useActivityLog } from '../hooks/useActivityLog';
+
 import '../styles/daily.css';
 import ALL_CHALLENGES from '../data/challenges.json';
 
@@ -23,14 +24,12 @@ const TYPE_COLORS = {
 };
 
 export default function DailyChallenge({ streak = 0 }) {
-  const { team } = useTeam();
-  const isInTeam  = !!(team?.id);
   const dateKey   = new Date().toISOString().split('T')[0];
-  const pool      = isInTeam ? ALL_CHALLENGES : SOLO_CHALLENGES;
-  // Pick based on current streak day — new user (streak 0/1) sees Challenge 1
-  const challenge = useMemo(() => pickByDay(pool, streak), [pool, streak]);
+  // Personal mode: always use solo challenges (no team challenges)
+  const challenge = useMemo(() => pickByDay(SOLO_CHALLENGES, streak), [streak]);
 
   const { addXp, removeXp, hasMilestone, isReady } = useXpStore();
+  const { logActivity } = useActivityLog();
   const storageKey = `vl_dc_${dateKey}`;
 
   const [done, setDone]           = useState(() => !!localStorage.getItem(storageKey));
@@ -56,6 +55,7 @@ export default function DailyChallenge({ streak = 0 }) {
         setShowXpPop(true);
         setTimeout(() => setShowXpPop(false), 3000);
       }
+      logActivity('challenge_done', challenge.title, XP_REWARDS.daily_challenge, { type: challenge.type });
     } else {
       localStorage.removeItem(storageKey);
       setDone(false);

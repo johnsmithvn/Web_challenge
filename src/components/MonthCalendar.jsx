@@ -22,7 +22,7 @@ function getFirstDayOfWeek(year, month) {
   return d === 0 ? 6 : d - 1; // Monday = 0
 }
 
-export default function MonthCalendar({ habitData, getCompletedTasks, moodLog = {}, skipLog = {} }) {
+export default function MonthCalendar({ habitData, getCompletedTasks, moodLog = {}, skipLog = {}, onDayClick }) {
   const today = new Date();
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -80,6 +80,7 @@ export default function MonthCalendar({ habitData, getCompletedTasks, moodLog = 
     setSelected(dateStr);
     setExpandedTaskId(null);
     setSelectedTasks([]);
+    onDayClick?.(dateStr);
 
     if (getCompletedTasks) {
       setLoadingTasks(true);

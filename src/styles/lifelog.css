@@ -1,0 +1,275 @@
+/* ============================
+   LIFE LOG PAGE + HEATMAP + TIMELINE
+   ============================ */
+
+.lifelog-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 6rem 2rem 4rem;
+}
+
+.lifelog-page__header {
+  margin-bottom: 1rem;
+}
+
+/* ── New section blocks ────────────────────────────────────── */
+.lifelog-cal-loading {
+  padding: 2.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.lifelog-heatmap-section {
+  margin-top: 1.5rem;
+}
+
+.lifelog-heatmap-card {
+  padding: 1.25rem;
+}
+
+.lifelog-heatmap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.lifelog-heatmap-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.lifelog-page__title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 800;
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 0.25rem;
+}
+
+.lifelog-page__subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* ── Today Stat ────────────────────────────────────────────── */
+.lifelog-today {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: var(--radius-full);
+  padding: 0.4rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.lifelog-today__label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.lifelog-today__count {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--purple-light);
+  font-family: var(--font-display);
+}
+
+.lifelog-today__unit {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ── Heatmap Container ─────────────────────────────────────── */
+.heatmap-container {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+[data-theme="light"] .heatmap-container {
+  background: rgba(99, 102, 241, 0.02);
+  border-color: rgba(99, 102, 241, 0.08);
+}
+
+.heatmap-header {
+  margin-bottom: 0.75rem;
+}
+
+.heatmap-total {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.heatmap-svg {
+  display: block;
+  min-width: 100%;
+}
+
+.heatmap-cell {
+  transition: opacity 0.12s ease;
+}
+
+.heatmap-cell:hover {
+  opacity: 0.75;
+  stroke: var(--purple-light);
+  stroke-width: 1;
+}
+
+/* Legend */
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+  justify-content: flex-end;
+}
+
+.heatmap-legend__label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.heatmap-legend__cell {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* ── Timeline ──────────────────────────────────────────────── */
+.lifelog-timeline-section {
+  animation: fadeSlideUp 0.25s ease;
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.timeline {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+}
+
+[data-theme="light"] .timeline {
+  background: rgba(99, 102, 241, 0.02);
+  border-color: rgba(99, 102, 241, 0.08);
+}
+
+.timeline__header {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timeline__count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-full);
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--purple-light);
+}
+
+.timeline__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timeline__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  position: relative;
+}
+
+.timeline__dot {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.timeline__line {
+  position: absolute;
+  left: 14px;
+  top: 28px;
+  width: 1px;
+  height: calc(100% - 10px);
+  background: rgba(139, 92, 246, 0.15);
+}
+
+.timeline__item:last-child .timeline__line {
+  display: none;
+}
+
+.timeline__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.timeline__time {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.timeline__action {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.timeline__label {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-top: 0.1rem;
+}
+
+.timeline__amount {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--purple-light);
+  margin-left: 0.5rem;
+}
+
+.timeline-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Loading / Empty ───────────────────────────────────────── */
+.lifelog-loading,
+.lifelog-page__empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}

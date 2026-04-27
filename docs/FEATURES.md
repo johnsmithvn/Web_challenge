@@ -1,13 +1,13 @@
-# FEATURES.md — Thử Thách Vượt Lười
-**Version:** v2.2.1
-**Updated:** 2026-04-24
+# FEATURES.md — Life Hub (Personal Life OS)
+**Version:** v3.3.0
+**Updated:** 2026-04-27
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
 
 ## Tổng Quan Hệ Thống
 
-**Thử Thách Vượt Lười** là nền tảng habit tracking 21 ngày gamified, hỗ trợ cả chế độ offline (in-memory guest) lẫn đồng bộ cloud (Supabase). Người dùng có thể tự thiết lập thói quen, theo dõi tiến độ theo ngày/tháng, dùng Pomodoro timer, và luyện tập trong team accountability.
+**Life Hub** là nền tảng Personal Life OS ("Bộ não thứ 2") tích hợp: habit tracking 21 ngày gamified, quản lý chi tiêu, đăng ký dịch vụ, ghi chú nhanh (Inbox/Collect), và lịch sử hoạt động (Life Log heatmap). Hỗ trợ cả chế độ offline (in-memory guest) lẫn đồng bộ cloud (Supabase).
 
 ---
 
@@ -111,22 +111,23 @@
 ## 5. 📈 Dashboard Cá Nhân (`/dashboard`)
 
 **File:** `src/pages/DashboardPage.jsx`, `src/styles/dashboard.css`
+**Version:** v3.2.1 — Unified Life Hub Dashboard + Polish
 
-**Mô tả:** Tổng quan số liệu cá nhân, visual progress, weekly table, contribution graph.
+**Mô tả:** Tổng quan toàn bộ cuộc sống — hôm nay, thói quen, tài chính, hoạt động, tâm trạng, focus.
 
 **Chi tiết:**
-- **4 KPI Cards:** Streak hiện tại, Best streak, Tổng ngày, Tổng XP
-- **Flower Journey 🌸:** 21 ô hoa đại diện hành trình, hoa nở dần theo streak liên tiếp (`🌰→🌱→🌿→🌸→🌺→🌻`), highlight ô hôm nay
-- **Monthly Donut Ring:** Tỷ lệ hoàn thành tháng hiện tại — Done / Bỏ / Còn lại
-- **Weekly Table:** 4 tuần gần nhất, mỗi tuần hiển thị:
-  - 7 ô ✓ (xanh) / ngày (mờ) / tương lai (dashed)
-  - Cột Done / Miss / % tỷ lệ
-- **Contribution Graph:** 12 tuần × 7 ngày kiểu GitHub, ô xanh = done, ô cyan = hôm nay
-- **Insight:** Nhận xét động theo streak + milestone tiếp theo
-- **Skip Reason Insight (v1.3.1):** Widget phân tích lý do bỏ qua trong 14 ngày gần đây
-  - Hiển thị top 3 lý do dưới dạng bar chart miniature
-  - Smart tip theo lý do phổ biến nhất ("Thiếu động lực" / "Bận công việc" / "Quên mất")
-  - Chỉ hiển khi có dữ liệu skip trong 14 ngày
+- **Today Overview (4 KPIs hôm nay):** Hoạt động (activity_logs) / Focus phút + sessions (useFocusTimer) / Chi tiêu hôm nay (expenses) / XP kiếm hôm nay (xp_logs). Hover lift animation.
+- **Section Dividers:** `SectionTitle` với gradient underline + icon + action link
+- **Habits:** Flower Journey 21 ô / Monthly Donut ring / Weekly Table 4 tuần / mini KPI row (Streak, Best, Tổng, XP)
+- **Finance Summary:** 3 KPI cards (Chi tháng / Đăng ký/tháng / Sắp hết hạn) + Finance Pie SVG donut (category breakdown + legend %)
+- **Activity Heatmap:** Reuse `ActivityHeatmap` — toàn bộ activity_logs (thay ContributionGraph habit-only)
+- **Mood Trend Chart (v3.2.1):** Dot-line SVG chart với toggle 7/30 ngày. Color-coded dots by mood score, average indicator, emoji overlay. Empty state khi chưa có data.
+- **Focus Breakdown (v3.2.1):** Per-habit horizontal bar chart 7 ngày gần nhất. Query trực tiếp `focus_sessions` + join `habits` table. Hiển thị icon, tên habit, progress bar, phút, %.
+- **Weekly Review (v3.2.1):** Collapsible summary card: Habits (ngày hoàn thành), XP, Chi tiêu, Mood TB — so sánh với tuần trước (↑/↓/→). Expand/collapse với animation.
+- **Insights:** Skip Reason analysis 14 ngày + nhận xét streak + milestone tiếp theo
+- **Guest mode:** Finance/Activity/Focus widgets hiện empty state graceful
+
+**Data sources:** `useHabitStore`, `useXpStore`, `useSkipReasons`, `useMoodLog`, `useFocusTimer`, `useExpenses`, `useSubscriptions`, `useActivityLog`, `useAuth`, `supabase` (direct query for FocusBreakdown)
 
 ---
 
@@ -439,12 +440,140 @@
 | `/` | LandingPage | ❌ |
 | `/tracker` | TrackerPage | ❌ |
 | `/habits` | Inline redirect → `/tracker` | — |
+| `/inbox` | InboxPage | ✅ |
+| `/collect` | CollectPage | ✅ |
+| `/finance` | FinancePage | ✅ |
+| `/life-log` | LifeLogPage | ✅ |
 | `/focus` | FocusPage | ❌ |
 | `/journey` | JourneyPage | ❌ (soft wall: cần login để lưu) |
 | `/journey/:id` | JourneyDetailPage | ❌ |
-| `/team` | TeamPage | ✅ (soft wall) |
+| `/team` | → redirect `/tracker` | — (archived) |
 | `/dashboard` | DashboardPage | ❌ |
 | `/quiz` | QuizPage | ❌ |
 | `/leaderboard` | LeaderboardPage | ❌ |
-| `/friends` | FriendsPage | ✅ |
+| `/friends` | → redirect `/tracker` | — (archived) |
 | `/life-journey` | LifeJourneyPage | ❌ |
+
+---
+
+## 17. 📥 Inbox (`/inbox`)
+
+**File:** `src/pages/InboxPage.jsx` + `src/styles/inbox.css`
+**Hook:** `src/hooks/useCollections.js`
+
+**Mô tả:** Nơi ghi nhanh mọi thứ (link, ý tưởng, ghi chú) — phân loại sau.
+
+**Chi tiết:**
+- Quick-add form (text input + submit)
+- Inbox items list với thời gian tạo
+- Classify action: phân loại → Link / Quote / Muốn mua / Học / Ý tưởng
+- Delete action
+- Tự động detect URL
+- Empty state khi inbox trống
+
+**Data source:** `collections` table (Supabase, type='inbox')
+
+---
+
+## 18. 📓 Kho Tàng Kiến Thức (`/collect`) — v3.3.0
+
+**File:** `src/pages/CollectPage.jsx` + `src/styles/collect.css` + `src/styles/tiptap.css`
+**Component:** `src/components/TiptapEditor.jsx` (WYSIWYG) + `TiptapReadOnly` + `src/components/SlashCommand.jsx` [v3.3.0]
+**Hook:** `src/hooks/useCollections.js`
+
+**Mô tả:** Kho lưu trữ và viết bài kiến thức đã phân loại — hỗ trợ 2 editor mode.
+
+**Chi tiết:**
+- **6 tabs:** Tất cả / Links / Quotes / Muốn / Học / Ý tưởng
+- **Search filter** theo tiêu đề, nội dung, tag
+- **Tag Autocomplete:** Dropdown searchable (max 10 tags), tạo tag mới bằng Enter
+
+**Dual-Mode Editor (v3.2.0):**
+- **Markdown mode** (mặc định) — editor textarea với live preview
+- **Visual mode** — Tiptap WYSIWYG: Bold/Italic/Strike/Highlight/Code/H1-H3/Lists/TaskList/Blockquote/CodeBlock/HR/Link (inline popover)/Table/Undo/Redo
+- **Mode Lock:** Chọn mode khi tạo bài, không đổi được sau khi save
+- **Inline Link Popover:** Thay `window.prompt` — input bar xuất hiện dưới toolbar khi bấm 🔗
+- **ReaderView:** Tự detect format, render `TiptapReadOnly` hoặc `ReactMarkdown`
+
+**Slash Command Menu (v3.3.0):**
+- Gõ `/` trong Tiptap editor → dropdown 12 block types
+- Filter theo query text (`/hea` → Heading 1/2/3)
+- Arrow keys + Enter chọn, Escape đóng
+- Dùng `@tiptap/suggestion` plugin — handles cursor tracking + keyboard trapping
+- Block types: Paragraph, H1-H3, Bullet/Ordered/Task List, Blockquote, Code Block, Divider, Table, Highlight
+
+**Keyboard Shortcuts Panel (v3.3.0):**
+- Toggle bằng nút `⌨` trên toolbar hoặc `Ctrl+.`
+- 25+ phím tắt, 4 nhóm: Văn bản / Khối / Chèn / Chung
+- Glassmorphism modal, 2-column responsive, kbd key badges
+
+**Browser Shortcut Override (v3.3.0):**
+- `Ctrl+S` → save article (thay vì browser Save Page dialog)
+- `Ctrl+P` → blocked (không mở Print)
+- `Ctrl+.` → toggle shortcuts panel
+- Xử lý qua `editorProps.handleKeyDown`, return `true` = consume event
+
+**AI-Ready Fields (v3.2.0):**
+- `content_format`: `'markdown' | 'tiptap'` — loại nội dung
+- `body_text`: Plain text extracted (không markdown/HTML) — dùng cho future AI/embedding
+- `word_count`: Pre-computed — dùng cho read-time estimate
+
+**ArticleCard:**
+- Dùng `body_text` cho excerpt (không hiện JSON raw với bài Tiptap)
+- `safeHostname()` guard `new URL()` crash
+- Word count read-time khi có `word_count` từ DB
+
+**ConfirmModal (v3.2.0):**
+- Tất cả delete/switch action dùng `useConfirm()` — không còn `window.confirm()`
+
+**Data source:** `collections` table (Supabase) — columns: `type, title, body, url, tags, source, status, content_format, body_text, word_count`
+
+---
+
+## 19. 💰 Finance (`/finance`)
+
+**File:** `src/pages/FinancePage.jsx` + `src/styles/finance.css`
+**Hook:** `src/hooks/useExpenses.js` + `src/hooks/useSubscriptions.js`
+
+**Mô tả:** Quản lý chi tiêu và đăng ký dịch vụ.
+
+**Chi tiết:**
+- **Summary cards:** Chi tiêu tháng / Đăng ký/tháng / Tổng ước tính
+- **Alert bar:** Cảnh báo subscriptions sắp hết hạn (≤7 ngày)
+- **Tab Chi tiêu:** Quick-add form (số tiền + category + ghi chú), category breakdown với progress bars, expense list với delete
+- **Tab Đăng ký:** Sub cards với tên, số tiền, chu kỳ, ngày hết hạn, toggle active/pause, delete
+- **8 categories:** Ăn uống, Di chuyển, Mua sắm, Sức khỏe, Học tập, Giải trí, Hóa đơn, Khác
+
+**Data source:** `expenses` + `subscriptions` tables (Supabase)
+
+---
+
+## 20. 📅 Life Log (`/life-log`)
+
+**File:** `src/pages/LifeLogPage.jsx` + `src/styles/lifelog.css`
+**Components:** `src/components/ActivityHeatmap.jsx` + `src/components/DailyTimeline.jsx`
+**Hook:** `src/hooks/useActivityLog.js`
+
+**Mô tả:** Lịch sử hoạt động toàn hệ thống dạng GitHub contribution heatmap.
+
+**Chi tiết:**
+- **Today stat badge:** Số hoạt động hôm nay
+- **ActivityHeatmap:** SVG 53×7 grid, 5-level purple scale, click để drill-down
+- **DailyTimeline:** Vertical timeline với action icons, timestamps, labels, XP amounts
+- **Activity types logged:** habit_done, habit_undo, mood_set, challenge_done, collect_add, focus_done, expense_add, subscription_add
+
+**Data source:** `activity_logs` table (Supabase, append-only)
+
+---
+
+## 21. 🔔 Sidebar Widgets
+
+**Files:** `src/components/SubAlert.jsx` + `src/components/DailyReview.jsx` + `src/styles/widgets.css`
+
+**Mô tả:** Widgets nhỏ gắn trong sidebar desktop, tự động ẩn khi không có data.
+
+**Chi tiết:**
+- **SubAlert:** Hiển thị subscriptions sắp gia hạn (≤7 ngày) + đếm ngược ngày. Urgent style khi ≤2 ngày.
+- **DailyReview:** Tổng số hoạt động hôm nay + 5 actions gần nhất với icon + timestamp.
+
+**Data source:** SubAlert → `subscriptions` | DailyReview → `activity_logs`
