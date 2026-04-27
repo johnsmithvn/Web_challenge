@@ -1,5 +1,5 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v3.1.0
+**Version:** v3.2.0
 **Updated:** 2026-04-26
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
@@ -33,6 +33,7 @@ src/
 │   │   └── CustomJourneyModal.jsx   # Free-form journey creation modal
 │   ├── AuthModal.jsx          # Login/Register/Google tabs
 │   ├── CompletionModal.jsx    # Certificate modal: Gia Hạn / Thử Thách Mới / Chọn Lộ Trình Mới
+│   ├── ConfirmModal.jsx       # v3.2.0 — Shared confirm dialog + useConfirm() Promise-based hook
 │   ├── OnboardingModal.jsx    # 3-step guide lần đầu truy cập
 │   ├── DailyChallenge.jsx     # Daily mini-challenge, +20 XP, solo-only (team removed v3.0.0)
 │   ├── ErrorBoundary.jsx      # v1.7.0 — Class component, friendly fallback UI
@@ -43,6 +44,7 @@ src/
 │   ├── NotificationSettings.jsx
 │   ├── PageSkeleton.jsx       # v1.7.0 — Shimmer skeleton loading
 │   ├── QuickCapture.jsx       # v3.0.0 — Global floating [+] button → saves to collections(inbox)
+│   ├── TiptapEditor.jsx       # v3.2.0 — WYSIWYG editor (Tiptap) + TiptapReadOnly component
 │   ├── ActivityHeatmap.jsx    # v3.0.0 — GitHub-style SVG yearly heatmap (53×7 grid)
 │   ├── DailyTimeline.jsx      # v3.0.0 — Vertical activity timeline for a single day
 │   ├── SubAlert.jsx           # v3.0.0 — Compact sidebar alert for upcoming subscription renewals

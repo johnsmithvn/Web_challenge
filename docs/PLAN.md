@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
 **Updated:** 2026-04-26
-**Current Version:** v3.1.0
+**Current Version:** v3.2.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -225,7 +225,7 @@
 ### 6.4 — Inbox + Collect ✅
 - [x] `useCollections.js` — CRUD collections (inbox + typed items)
 - [x] `InboxPage.jsx` — Quick items chưa phân loại, classify → Collect
-- [x] `CollectPage.jsx` — Filtered list (Link, Quote, Want, Learn, Idea)
+- [x] `CollectPage.jsx` — Kho Tàng Kiến Thức: 6 tabs, search, card grid, reader view
 - [x] `DailyReview.jsx` — Today-recap widget (sidebar)
 
 ### 6.5 — Finance ✅
@@ -257,7 +257,28 @@
 
 ---
 
-## 📋 Phase 8 — Focus Upgrade + Polish (v3.2.0+)
+## ✅ Phase 7.5 — Knowledge Base Dual-Mode Editor + UX Polish (v3.2.0)
+*Hoàn thành: 2026-04-26*
+
+### KB Dual-Mode Editor
+- [x] `TiptapEditor.jsx` — WYSIWYG editor (Tiptap) + `TiptapReadOnly`
+- [x] `tiptap.css` — Dark theme toolbar, prose styles, table, inline link popover
+- [x] `CollectPage.jsx` — Mode toggle (Markdown default / Visual), mode-lock per article
+- [x] `CollectPage.jsx` — `isTiptapBody()` auto-detect (fallback khi migration chưa chạy)
+- [x] `CollectPage.jsx` — `ReaderView` detect format → render `TiptapReadOnly` hoặc `ReactMarkdown`
+- [x] `CollectPage.jsx` — `ArticleCard` dùng `body_text` cho excerpt
+- [x] `CollectPage.jsx` — `safeHostname()` guard `new URL()` crash
+- [x] `useCollections.js` — `addItem` nhận `content_format`, `body_text`, `word_count`
+- [x] `migration_v3.2.0_knowledge.sql` — ADD COLUMN `content_format / body_text / word_count`
+
+### ConfirmModal System
+- [x] `ConfirmModal.jsx` — Promise-based `useConfirm()` hook, glassmorphism UI, danger variant
+- [x] `confirm-modal.css` — Scale-in animation, Escape key, backdrop click, light mode
+- [x] Remove tất cả `window.confirm()`, `window.alert()`, `window.prompt()` trong active code
+
+---
+
+## 📋 Phase 8 — Focus Upgrade + Polish (v3.3.0+)
 *Backlog — deferred theo yêu cầu*
 
 - [ ] Ambient sounds (Rain, Café, Forest, Lo-fi, Ocean)
@@ -308,4 +329,8 @@
 | v2.3.0 | Mood/Skip History on Calendar |
 | **v3.0.0** | **Personal Life Hub (Inbox, Collect, Finance, Life Log)** |
 | v3.0.1 | Plan gap fix: KnowledgeResurface, Finance charts, Inbox actions |
+| v3.1.0 | Unified Dashboard (4-KPI today row, Finance Pie, ActivityHeatmap) |
+| v3.1.1 | UX Bug: modal close on text-select fix |
+| v3.1.2 | Mood chart, CustomSelect Finance dropdown, Life Log today default |
+| **v3.2.0** | **KB Dual-Mode Editor (Tiptap+Markdown), ConfirmModal, AI-ready schema** |
 

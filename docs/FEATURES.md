@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v3.0.0
-**Updated:** 2026-04-25
+**Version:** v3.2.0
+**Updated:** 2026-04-26
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -472,23 +472,40 @@
 
 ---
 
-## 18. 📓 Collect (`/collect`)
+## 18. 📓 Kho Tàng Kiến Thức (`/collect`) — v3.2.0
 
-**File:** `src/pages/CollectPage.jsx` + `src/styles/collect.css`
+**File:** `src/pages/CollectPage.jsx` + `src/styles/collect.css` + `src/styles/tiptap.css`
+**Component:** `src/components/TiptapEditor.jsx` (WYSIWYG) + `TiptapReadOnly`
 **Hook:** `src/hooks/useCollections.js`
 
-**Mô tả:** Kho lưu trữ kiến thức đã phân loại.
+**Mô tả:** Kho lưu trữ và viết bài kiến thức đã phân loại — hỗ trợ 2 editor mode.
 
 **Chi tiết:**
-- 6 tabs: Tất cả / Links / Quotes / Muốn / Học / Ý tưởng
-- Search filter
-- Card grid với type-accent left border (màu theo loại)
-- Status badges: Chưa đọc / Đã đọc / ⭐ Starred / Archived
-- Actions: Star, Đánh đã đọc, Archive, Xóa
-- Tags display
-- Responsive: single column mobile, multi-column desktop
+- **6 tabs:** Tất cả / Links / Quotes / Muốn / Học / Ý tưởng
+- **Search filter** theo tiêu đề, nội dung, tag
+- **Tag Autocomplete:** Dropdown searchable (max 10 tags), tạo tag mới bằng Enter
 
-**Data source:** `collections` table (Supabase, type ≠ 'inbox')
+**Dual-Mode Editor (v3.2.0):**
+- **Markdown mode** (mặc định) — editor textarea với live preview
+- **Visual mode** — Tiptap WYSIWYG: Bold/Italic/Strike/Highlight/Code/H1-H3/Lists/TaskList/Blockquote/CodeBlock/HR/Link (inline popover)/Table/Undo/Redo
+- **Mode Lock:** Chọn mode khi tạo bài, không đổi được sau khi save
+- **Inline Link Popover:** Thay `window.prompt` — input bar xuất hiện dưới toolbar khi bấm 🔗
+- **ReaderView:** Tự detect format, render `TiptapReadOnly` hoặc `ReactMarkdown`
+
+**AI-Ready Fields (v3.2.0):**
+- `content_format`: `'markdown' | 'tiptap'` — loại nội dung
+- `body_text`: Plain text extracted (không markdown/HTML) — dùng cho future AI/embedding
+- `word_count`: Pre-computed — dùng cho read-time estimate
+
+**ArticleCard:**
+- Dùng `body_text` cho excerpt (không hiện JSON raw với bài Tiptap)
+- `safeHostname()` guard `new URL()` crash
+- Word count read-time khi có `word_count` từ DB
+
+**ConfirmModal (v3.2.0):**
+- Tất cả delete/switch action dùng `useConfirm()` — không còn `window.confirm()`
+
+**Data source:** `collections` table (Supabase) — columns: `type, title, body, url, tags, source, status, content_format, body_text, word_count`
 
 ---
 

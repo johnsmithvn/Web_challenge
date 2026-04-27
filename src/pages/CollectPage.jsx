@@ -48,8 +48,11 @@ function markdownToPlainText(md = '') {
     .trim();
 }
 
-function makeExcerpt(body = '', len = 180) {
-  return body.replace(/```[\s\S]*?```/g, '').replace(/[#*`_>~\[\]!]/g, '').trim().slice(0, len);
+
+// safeHostname — guard against invalid/relative URLs crashing new URL()
+function safeHostname(url) {
+  try { return new URL(url).hostname; }
+  catch { return url.replace(/^https?:\/\//, '').split('/')[0] || url; }
 }
 
 function getAllTags(items) {
@@ -60,6 +63,15 @@ function getAllTags(items) {
 
 function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+// Auto-detect Tiptap JSON — fallback when content_format column not yet migrated
+function isTiptapBody(item) {
+  if (item.content_format === 'tiptap') return true;
+  if (item.content_format === 'markdown') return false;
+  // Detect from body shape: Tiptap JSON starts with {"type":"doc"
+  const b = (item.body || '').trimStart();
+  return b.startsWith('{"type":"doc"');
 }
 
 /* ── TagInput ─────────────────────────────────────────────── */
@@ -196,8 +208,9 @@ function TableOfContents({ content }) {
 /* ── ArticleCard ──────────────────────────────────────────── */
 function ArticleCard({ item, onClick }) {
   const meta      = TYPE_META[item.type] || TYPE_META.note;
+  const isTiptap  = isTiptapBody(item);
   // Use body_text (plain text) for cards — avoids showing raw JSON for Tiptap articles
-  const plainText = item.body_text || (item.content_format === 'tiptap' ? '' : item.body) || '';
+  const plainText = item.body_text || (isTiptap ? '' : item.body) || '';
   const mins      = item.word_count ? Math.max(1, Math.ceil(item.word_count / 200)) : readTime(plainText);
   const excp      = plainText.trim().slice(0, 180);
 
@@ -213,7 +226,7 @@ function ArticleCard({ item, onClick }) {
           {item.url && (
             <a href={item.url} target="_blank" rel="noopener noreferrer"
                className="kb-card__url" onClick={e => e.stopPropagation()}>
-              🔗 {new URL(item.url).hostname}
+              🔗 {safeHostname(item.url)}
             </a>
           )}
           <span className="kb-card__date">{fmtDate(item.created_at)}</span>
@@ -246,9 +259,9 @@ const mdComponents = {
 
 /* ── ReaderView ───────────────────────────────────────────── */
 function ReaderView({ item, onEdit, onDelete, onBack }) {
-  const meta = TYPE_META[item.type] || TYPE_META.note;
-  const mins = item.word_count ? Math.max(1, Math.ceil(item.word_count / 200)) : readTime(item.body);
-  const isTiptap = item.content_format === 'tiptap';
+  const meta    = TYPE_META[item.type] || TYPE_META.note;
+  const isTiptap = isTiptapBody(item);
+  const mins    = item.word_count ? Math.max(1, Math.ceil(item.word_count / 200)) : readTime(item.body);
 
   return (
     <div className="kb-reader">

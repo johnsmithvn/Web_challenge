@@ -3,6 +3,36 @@
 
 ---
 
+## v3.2.0 — ✅ DONE (2026-04-26) — Knowledge Base Dual-Mode Editor + UX Polish
+
+### Knowledge Base
+- [x] `TiptapEditor.jsx` — WYSIWYG editor: Bold/Italic/Strike/Highlight/Code/H1-H3/Lists/TaskList/Blockquote/CodeBlock/HR/Link/Table/Undo/Redo + `TiptapReadOnly`
+- [x] `tiptap.css` — Dark theme, toolbar, prose styles, table, task list, link popover
+- [x] `EditorView` — Dual-mode: Markdown (default) / Visual toggle, mode-lock per article, `isNew` prop
+- [x] `CollectPage.jsx` — `isTiptapBody()` auto-detect helper, `safeHostname()` URL guard
+- [x] `CollectPage.jsx` — `markdownToPlainText()` helper, `EDITOR_MODE_KEY` localStorage
+- [x] `CollectPage.jsx` — `ReaderView` auto-detect format: render `TiptapReadOnly` hoặc `ReactMarkdown`
+- [x] `CollectPage.jsx` — `ArticleCard` dùng `body_text` cho excerpt (không hiện JSON raw)
+- [x] `CollectPage.jsx` — `handleSave` truyền đủ `content_format`, `body_text`, `word_count`
+- [x] `CollectPage.jsx` — Xóa dead code `makeExcerpt()`
+- [x] `useCollections.js` — `addItem` nhận đủ `content_format`, `body_text`, `word_count`
+- [x] `TagInput` — Searchable dropdown (max 10), scroll, tạo tag mới Enter, lưu khi save bài
+- [x] `migration_v3.2.0_knowledge.sql` — `ADD COLUMN content_format / body_text / word_count`
+
+### ConfirmModal System
+- [x] `ConfirmModal.jsx` — Promise-based `useConfirm()` hook, drop-in `window.confirm()`
+- [x] `confirm-modal.css` — Glassmorphism, scale-in animation, danger/default variants, light mode
+- [x] `CollectPage.jsx` — Thay tất cả `confirm()` bằng `useConfirm` modal
+- [x] `HabitManager.jsx` — Thay `confirm()` bằng `useConfirm` modal
+- [x] `LifeJourneyPage.jsx` — Thay `window.confirm()` bằng `useConfirm` modal
+
+### Tiptap Bug Fixes
+- [x] Fix import named exports: `{ Table }`, `{ Link }`, `{ TaskList }`, v.v. (Vite runtime error)
+- [x] Inline link popover (thay `window.prompt`)
+- [x] `new URL(item.url)` → `safeHostname()` guard crash
+
+---
+
 ## v3.1.2 — ✅ DONE (2026-04-26) — UX Polish + Mood Chart + Performance
 
 - [x] `FinancePage.jsx` — Replace native `<select>` with `CustomSelect` glassmorphic dropdown (both category + cycle)

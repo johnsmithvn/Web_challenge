@@ -52,15 +52,19 @@ export function useCollections() {
     if (!enabled) return null;
 
     const newItem = {
-      user_id: user.id,
-      type:    item.type || 'inbox',
-      title:   item.title,
-      url:     item.url || null,
-      body:    item.body || '',
-      tags:    item.tags || [],
-      source:  item.source || null,
-      priority: item.priority || null,
-      status:  item.status || 'inbox',
+      user_id:        user.id,
+      type:           item.type    || 'inbox',
+      title:          item.title,
+      url:            item.url     || null,
+      body:           item.body    || '',
+      tags:           item.tags    || [],
+      source:         item.source  || null,
+      priority:       item.priority || null,
+      status:         item.status  || 'inbox',
+      // AI-ready fields (require migration v3.2.0)
+      content_format: item.content_format || 'markdown',
+      body_text:      item.body_text      || null,
+      word_count:     item.word_count     || 0,
     };
 
     try {

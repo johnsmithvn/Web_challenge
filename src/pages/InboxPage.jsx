@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCollections } from '../hooks/useCollections';
 import { useUserTasks } from '../hooks/useUserTasks';
-import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
 import '../styles/inbox.css';
 
@@ -19,9 +18,8 @@ export default function InboxPage() {
   const navigate = useNavigate();
   const { items, isLoading, fetchItems, classifyItem, deleteItem, addItem } = useCollections();
   const { addTask } = useUserTasks();
-  const { logActivity } = useActivityLog();
   const [quickText, setQuickText] = useState('');
-  const [classifying, setClassifying] = useState(null); // item.id being classified
+  const [classifying, setClassifying] = useState(null);
 
   // Load inbox items on mount
   useEffect(() => {
@@ -40,17 +38,13 @@ export default function InboxPage() {
       url: isUrl ? trimmed : null,
     });
     if (result) {
-      logActivity('collect_add', trimmed, null, { type: 'inbox', is_url: isUrl });
       setQuickText('');
     }
   };
 
   const handleClassify = async (itemId, newType) => {
-    const item = items.find(i => i.id === itemId);
     await classifyItem(itemId, newType);
     setClassifying(null);
-    logActivity('collect_add', item?.title, null, { type: newType, from: 'inbox' });
-    // Re-fetch inbox to remove classified item
     fetchItems({ type: 'inbox' });
   };
 
@@ -62,7 +56,6 @@ export default function InboxPage() {
   const handleToTask = async (item) => {
     await addTask({ title: item.title, description: item.url || '' });
     await deleteItem(item.id);
-    logActivity('task_done', `📌 Từ inbox: ${item.title}`, null, { from: 'inbox' });
     fetchItems({ type: 'inbox' });
   };
 
@@ -162,7 +155,7 @@ export default function InboxPage() {
                       className="inbox-item__classify-btn inbox-item__classify-btn--cancel"
                       onClick={() => setClassifying(null)}
                     >
-                      ✕
+                      ✕ Huỷ
                     </button>
                   </div>
                 ) : (
@@ -170,30 +163,30 @@ export default function InboxPage() {
                     <button
                       className="inbox-item__action-btn"
                       onClick={() => setClassifying(item.id)}
-                      title="Phân loại → Collect"
+                      title="Phân loại vào Collect"
                     >
-                      📂
+                      📂 Phân loại
                     </button>
                     <button
                       className="inbox-item__action-btn"
                       onClick={() => handleToTask(item)}
-                      title="Tạo Task"
+                      title="Chuyển thành Task"
                     >
-                      📌
+                      📌 Task
                     </button>
                     <button
                       className="inbox-item__action-btn"
                       onClick={() => handleToSub(item)}
-                      title="Tạo Subscription"
+                      title="Tạo Đăng ký (Finance)"
                     >
-                      🔄
+                      🔄 Đăng ký
                     </button>
                     <button
                       className="inbox-item__action-btn inbox-item__action-btn--delete"
                       onClick={() => handleDelete(item.id)}
                       title="Xóa"
                     >
-                      🗑
+                      🗑 Xóa
                     </button>
                   </>
                 )}
