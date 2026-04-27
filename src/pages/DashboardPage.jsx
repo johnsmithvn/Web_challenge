@@ -1,12 +1,14 @@
-import { useMemo, useState, useEffect, memo } from 'react';
+import { useMemo, useState, useEffect, useCallback, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useHabitStore } from '../hooks/useHabitStore';
 import { useXpStore, computeLevel } from '../hooks/useXpStore';
-import { useSkipReasons } from '../hooks/useMoodSkip';
+import { useSkipReasons, useMoodLog } from '../hooks/useMoodSkip';
 import { useExpenses } from '../hooks/useExpenses';
 import { useSubscriptions } from '../hooks/useSubscriptions';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useFocusTimer } from '../hooks/useFocusTimer';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import ActivityHeatmap from '../components/ActivityHeatmap';
 import '../styles/tracker.css';
 import '../styles/dashboard.css';
@@ -36,74 +38,286 @@ function insightFromStreak(s) {
 const MOOD_SCORE = { 'Xuất sắc': 5, 'Tốt': 4, 'Bình thường': 3, 'Không tốt': 2, 'Tệ': 1 };
 const MOOD_COLOR = { 5: '#22c55e', 4: '#06b6d4', 3: '#8b5cf6', 2: '#f97316', 1: '#ef4444' };
 
-/* ── Mood 7-Day Chart ───────────────────────────────────── */
-const MoodChart7Day = memo(function MoodChart7Day({ moodLog }) {
+const MOOD_EMOJI = { 5: '💪', 4: '😊', 3: '😐', 2: '😔', 1: '😴' };
+
+/* ── Mood Trend Chart (7/30 day toggle) ─────────────────── */
+const MoodTrendChart = memo(function MoodTrendChart({ moodLog }) {
+  const [range, setRange] = useState(7);
+
   const days = useMemo(() => {
     const res = [];
-    for (let i = 6; i >= 0; i--) {
+    for (let i = range - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const key = d.toISOString().split('T')[0];
       const mood = moodLog[key] ?? null;
-      const score = mood ? (MOOD_SCORE[mood.label] ?? 3) : null;
+      const score = mood ? (MOOD_SCORE[mood.label] ?? null) : null;
       res.push({
         key,
-        label: d.toLocaleDateString('vi-VN', { weekday: 'short' }).replace('Th ', 'T'),
+        label: range <= 7
+          ? d.toLocaleDateString('vi-VN', { weekday: 'short' }).replace('Th ', 'T')
+          : `${d.getDate()}/${d.getMonth() + 1}`,
         emoji: mood?.emoji ?? null,
         score,
-        color: score ? MOOD_COLOR[score] : 'rgba(255,255,255,0.08)',
+        color: score ? MOOD_COLOR[score] : null,
       });
     }
     return res;
-  }, [moodLog]);
+  }, [moodLog, range]);
 
-  const hasData = days.some(d => d.score !== null);
-  const W = 420, H = 90, PAD = 24, BAR_W = 40;
-  const slotW = (W - PAD * 2) / 7;
+  const withData = days.filter(d => d.score !== null);
+  const avg = withData.length ? (withData.reduce((s, d) => s + d.score, 0) / withData.length).toFixed(1) : null;
 
-  if (!hasData) {
-    return (
-      <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '.85rem' }}>
-        Chưa có dữ liệu tâm trạng 7 ngày này
-      </div>
-    );
-  }
+  const W = 480, H = 120, PAD_X = 32, PAD_Y = 16;
+  const plotW = W - PAD_X * 2;
+  const plotH = H - PAD_Y * 2;
+  const stepX = days.length > 1 ? plotW / (days.length - 1) : 0;
+
+  // Build SVG polyline points for connected dots
+  const points = days.map((d, i) => {
+    const x = PAD_X + i * stepX;
+    const y = d.score !== null
+      ? PAD_Y + plotH - ((d.score - 1) / 4) * plotH
+      : null;
+    return { ...d, x, y, i };
+  });
+
+  const linePoints = points.filter(p => p.y !== null);
+  const linePath = linePoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+
+  // Show label every N items depending on range
+  const labelEvery = range <= 7 ? 1 : range <= 14 ? 2 : 5;
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <svg width="100%" viewBox={`0 0 ${W} ${H + 44}`} style={{ minWidth: 280 }}>
-        {days.map((d, i) => {
-          const x = PAD + i * slotW + slotW / 2;
-          const barH = d.score ? ((d.score / 5) * (H - 16)) : 4;
-          const y = H - barH + 8;
-          return (
-            <g key={d.key}>
-              {/* bar */}
-              <rect
-                x={x - BAR_W / 2} y={y}
-                width={BAR_W} height={barH}
-                rx="6"
-                fill={d.score ? d.color : 'rgba(255,255,255,0.05)'}
-                opacity={d.score ? 0.85 : 1}
-              />
-              {/* emoji */}
-              {d.emoji && (
-                <text x={x} y={y - 4} textAnchor="middle" fontSize="14">{d.emoji}</text>
-              )}
-              {/* day label */}
-              <text
-                x={x} y={H + 22}
-                textAnchor="middle"
-                fill={i === 6 ? 'var(--purple-light)' : 'var(--text-muted)'}
-                fontSize="10"
-                fontWeight={i === 6 ? '700' : '400'}
-              >
-                {i === 6 ? 'Hôm nay' : d.label}
+    <div className="mood-trend">
+      <div className="mood-trend__header">
+        <div className="mood-trend__tabs">
+          {[7, 30].map(r => (
+            <button key={r} className={`mood-trend__tab${range === r ? ' mood-trend__tab--active' : ''}`}
+              onClick={() => setRange(r)}>{r} ngày</button>
+          ))}
+        </div>
+        {avg && <div className="mood-trend__avg">TB: <strong style={{color: MOOD_COLOR[Math.round(avg)]}}>{avg}/5</strong> {MOOD_EMOJI[Math.round(avg)]}</div>}
+      </div>
+
+      {!withData.length ? (
+        <div className="mood-trend__empty">Chưa có dữ liệu tâm trạng {range} ngày này</div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <svg width="100%" viewBox={`0 0 ${W} ${H + 28}`} style={{ minWidth: 280 }}>
+            {/* grid lines */}
+            {[1, 2, 3, 4, 5].map(lv => {
+              const y = PAD_Y + plotH - ((lv - 1) / 4) * plotH;
+              return <line key={lv} x1={PAD_X} y1={y} x2={W - PAD_X} y2={y}
+                stroke="rgba(255,255,255,0.05)" strokeDasharray="3,3" />;
+            })}
+            {/* line */}
+            {linePoints.length > 1 && (
+              <path d={linePath} fill="none" stroke="var(--purple)" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+            )}
+            {/* dots */}
+            {points.map((p) => p.y !== null && (
+              <g key={p.key}>
+                <circle cx={p.x} cy={p.y} r="5" fill={p.color} stroke="var(--bg-card)" strokeWidth="2" />
+                <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize="10">{p.emoji}</text>
+              </g>
+            ))}
+            {/* x labels */}
+            {points.map((p, i) => (i % labelEvery === 0 || i === points.length - 1) && (
+              <text key={`l-${p.key}`} x={p.x} y={H + 18} textAnchor="middle"
+                fill={i === points.length - 1 ? 'var(--purple-light)' : 'var(--text-muted)'}
+                fontSize="9" fontWeight={i === points.length - 1 ? 700 : 400}>
+                {i === points.length - 1 ? 'Nay' : p.label}
               </text>
-            </g>
-          );
-        })}
-      </svg>
+            ))}
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+});
+
+/* ── Focus Breakdown Per Habit (7 days) ─────────────────── */
+const FocusBreakdown = memo(function FocusBreakdown() {
+  const { user, isAuthenticated } = useAuth();
+  const [data, setData] = useState([]);
+  const [total, setTotal] = useState(0);
+  const useDB = isSupabaseEnabled && isAuthenticated;
+
+  useEffect(() => {
+    if (!useDB || !user) return;
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+    const sinceStr = since.toISOString().split('T')[0];
+
+    (async () => {
+      // Fetch focus sessions for last 7 days
+      const { data: sessions, error } = await supabase
+        .from('focus_sessions')
+        .select('habit_id, duration_min')
+        .eq('user_id', user.id)
+        .gte('date', sinceStr);
+
+      if (error || !sessions?.length) { setData([]); setTotal(0); return; }
+
+      // Group by habit_id
+      const map = {};
+      let t = 0;
+      sessions.forEach(s => {
+        const hid = s.habit_id || '__none__';
+        map[hid] = (map[hid] || 0) + s.duration_min;
+        t += s.duration_min;
+      });
+      setTotal(t);
+
+      // Fetch habit names
+      const habitIds = Object.keys(map).filter(k => k !== '__none__');
+      let habitNames = {};
+      if (habitIds.length) {
+        const { data: habits } = await supabase
+          .from('habits')
+          .select('id, name, icon, color')
+          .in('id', habitIds);
+        if (habits) habits.forEach(h => { habitNames[h.id] = h; });
+      }
+
+      const rows = Object.entries(map)
+        .map(([hid, mins]) => ({
+          id: hid,
+          name: hid === '__none__' ? 'Không gắn habit' : (habitNames[hid]?.name || 'Unknown'),
+          icon: hid === '__none__' ? '⏱' : (habitNames[hid]?.icon || '⚡'),
+          color: hid === '__none__' ? '#64748b' : (habitNames[hid]?.color || '#8b5cf6'),
+          mins,
+          pct: Math.round((mins / t) * 100),
+        }))
+        .sort((a, b) => b.mins - a.mins);
+
+      setData(rows);
+    })();
+  }, [useDB, user?.id]);
+
+  if (!useDB) return null;
+  if (!data.length) return (
+    <div className="focus-bkdn__empty">Chưa có session focus 7 ngày gần đây</div>
+  );
+
+  const hours = Math.floor(total / 60);
+  const mins = total % 60;
+
+  return (
+    <div className="focus-bkdn">
+      <div className="focus-bkdn__total">
+        Tổng: <strong>{hours > 0 ? `${hours}h ` : ''}{mins}p</strong> · {data.length} habits
+      </div>
+      {data.map(row => (
+        <div key={row.id} className="focus-bkdn__row">
+          <span className="focus-bkdn__icon">{row.icon}</span>
+          <span className="focus-bkdn__name">{row.name}</span>
+          <div className="focus-bkdn__bar">
+            <div className="focus-bkdn__bar-fill" style={{ width: `${row.pct}%`, background: row.color }} />
+          </div>
+          <span className="focus-bkdn__val">{row.mins}p</span>
+          <span className="focus-bkdn__pct">{row.pct}%</span>
+        </div>
+      ))}
+    </div>
+  );
+});
+
+/* ── Weekly Review Digest ───────────────────────────────── */
+const WeeklyReview = memo(function WeeklyReview({ data: habitData, streak, xpLog, todayMinutes, expenses, moodLog }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const review = useMemo(() => {
+    const now = new Date();
+    // This week: Mon..today
+    const dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const thisWeekStart = new Date(now);
+    thisWeekStart.setDate(now.getDate() - dow);
+    const lastWeekStart = new Date(thisWeekStart);
+    lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+
+    const dateStr = (d) => d.toISOString().split('T')[0];
+    const range = (start, days) => {
+      const r = [];
+      for (let i = 0; i < days; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        r.push(dateStr(d));
+      }
+      return r;
+    };
+
+    const thisWeekDays = range(thisWeekStart, dow + 1);
+    const lastWeekDays = range(lastWeekStart, 7);
+
+    // Habits: days completed
+    const thisHabits = thisWeekDays.filter(d => !!habitData[d]).length;
+    const lastHabits = lastWeekDays.filter(d => !!habitData[d]).length;
+
+    // XP this week vs last
+    const xpInRange = (dates) => xpLog.filter(e => {
+      const d = new Date(e.ts).toISOString().split('T')[0];
+      return dates.includes(d);
+    }).reduce((s, e) => s + e.amount, 0);
+    const thisXp = xpInRange(thisWeekDays);
+    const lastXp = xpInRange(lastWeekDays);
+
+    // Expenses this week vs last
+    const expInRange = (dates) => expenses.filter(e => dates.includes(e.date)).reduce((s, e) => s + (e.amount || 0), 0);
+    const thisExp = expInRange(thisWeekDays);
+    const lastExp = expInRange(lastWeekDays);
+
+    // Mood avg this week vs last
+    const moodAvg = (dates) => {
+      const moods = dates.map(d => moodLog[d]).filter(Boolean).map(m => MOOD_SCORE[m.label] ?? 3);
+      return moods.length ? (moods.reduce((a, b) => a + b, 0) / moods.length) : null;
+    };
+    const thisMood = moodAvg(thisWeekDays);
+    const lastMood = moodAvg(lastWeekDays);
+
+    return { thisHabits, lastHabits, thisXp, lastXp, thisExp, lastExp, thisMood, lastMood, daysInWeek: dow + 1 };
+  }, [habitData, xpLog, expenses, moodLog]);
+
+  const trend = (curr, prev) => {
+    if (prev === 0 && curr === 0) return { arrow: '→', color: 'var(--text-muted)', text: 'ổn định' };
+    const diff = curr - prev;
+    if (diff > 0) return { arrow: '↑', color: 'var(--green)', text: `+${typeof curr === 'number' && curr > 100 ? fmt(diff) : diff}` };
+    if (diff < 0) return { arrow: '↓', color: 'var(--orange)', text: `${typeof curr === 'number' && Math.abs(curr) > 100 ? fmt(diff) : diff}` };
+    return { arrow: '→', color: 'var(--text-muted)', text: 'ổn định' };
+  };
+
+  const metrics = [
+    { icon: '🔥', label: 'Habits', value: `${review.thisHabits}/${review.daysInWeek} ngày`, trend: trend(review.thisHabits, review.lastHabits) },
+    { icon: '⭐', label: 'XP', value: `+${review.thisXp}`, trend: trend(review.thisXp, review.lastXp) },
+    { icon: '💰', label: 'Chi tiêu', value: `${fmt(review.thisExp)}₫`, trend: trend(review.thisExp, review.lastExp) },
+    { icon: '😊', label: 'Mood TB', value: review.thisMood ? `${review.thisMood.toFixed(1)}/5` : '—', trend: review.thisMood && review.lastMood ? trend(review.thisMood, review.lastMood) : { arrow: '—', color: 'var(--text-muted)', text: '' } },
+  ];
+
+  return (
+    <div className="weekly-review card">
+      <div className="weekly-review__header" onClick={() => setExpanded(e => !e)} style={{ cursor: 'pointer' }}>
+        <span className="dash-card-title">📊 Tuần Này</span>
+        <span className="weekly-review__toggle">{expanded ? '▾' : '▸'}</span>
+      </div>
+      {expanded && (
+        <div className="weekly-review__body">
+          {metrics.map(m => (
+            <div key={m.label} className="weekly-review__row">
+              <span className="weekly-review__icon">{m.icon}</span>
+              <span className="weekly-review__label">{m.label}</span>
+              <span className="weekly-review__value">{m.value}</span>
+              <span className="weekly-review__trend" style={{ color: m.trend.color }}>
+                {m.trend.arrow} {m.trend.text}
+              </span>
+            </div>
+          ))}
+          <div className="weekly-review__note">
+            So sánh với tuần trước (T2–CN)
+          </div>
+        </div>
+      )}
     </div>
   );
 });
@@ -334,6 +548,7 @@ export default function DashboardPage() {
   const { data, streak, longestStreak, totalDone } = useHabitStore();
   const { totalXp, levelInfo } = useXpStore();
   const { getAllSkips } = useSkipReasons();
+  const { moodLog } = useMoodLog();
   const { todayMinutes, todaySessions } = useFocusTimer();
 
   /* ── Stable date refs (avoid recreation every render) ── */
@@ -466,6 +681,24 @@ export default function DashboardPage() {
           <div className="dash-card-title">🗓 Lịch Sử Hoạt Động</div>
           <ActivityHeatmap/>
         </div>
+
+        {/* ── MOOD TREND ── */}
+        <SectionTitle icon="😊" title="Tâm Trạng" />
+        <div className="card db-section">
+          <div className="dash-card-title">😊 Xu Hướng Tâm Trạng</div>
+          <MoodTrendChart moodLog={moodLog}/>
+        </div>
+
+        {/* ── FOCUS BREAKDOWN ── */}
+        <SectionTitle icon="⏱" title="Focus" action={<Link to="/focus" className="btn btn-ghost" style={{fontSize:'.8rem'}}>Timer →</Link>}/>
+        <div className="card db-section">
+          <div className="dash-card-title">⏱ Focus 7 Ngày — Per Habit</div>
+          <FocusBreakdown/>
+        </div>
+
+        {/* ── WEEKLY REVIEW ── */}
+        <SectionTitle icon="📊" title="Tổng Kết" />
+        <WeeklyReview data={data} streak={streak} xpLog={xpLog ?? []} todayMinutes={todayMinutes} expenses={expenses} moodLog={moodLog}/>
 
         {/* ── INSIGHTS ── */}
         <SectionTitle icon="💡" title="Phân Tích"/>

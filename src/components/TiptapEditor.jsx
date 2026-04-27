@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Link } from '@tiptap/extension-link';
@@ -12,7 +12,124 @@ import { Highlight } from '@tiptap/extension-highlight';
 import { Typography } from '@tiptap/extension-typography';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { CharacterCount } from '@tiptap/extension-character-count';
+import { SlashCommandExtension } from './SlashCommand';
 import '../styles/tiptap.css';
+
+/* ── Keyboard Shortcuts Data ──────────────────────────────────── */
+const SHORTCUT_SECTIONS = [
+  { title: '✏️ Văn bản', items: [
+    { keys: ['Ctrl', 'B'], label: 'Bold' },
+    { keys: ['Ctrl', 'I'], label: 'Italic' },
+    { keys: ['Ctrl', 'Shift', 'X'], label: 'Strikethrough' },
+    { keys: ['Ctrl', 'Shift', 'H'], label: 'Highlight' },
+    { keys: ['Ctrl', 'E'], label: 'Inline Code' },
+    { keys: ['Ctrl', 'Alt', '1'], label: 'Heading 1' },
+    { keys: ['Ctrl', 'Alt', '2'], label: 'Heading 2' },
+    { keys: ['Ctrl', 'Alt', '3'], label: 'Heading 3' },
+  ]},
+  { title: '📐 Khối & List', items: [
+    { keys: ['Ctrl', 'Shift', '8'], label: 'Bullet List' },
+    { keys: ['Ctrl', 'Shift', '7'], label: 'Ordered List' },
+    { keys: ['Ctrl', 'Shift', '9'], label: 'Task List' },
+    { keys: ['Ctrl', 'Shift', 'B'], label: 'Blockquote' },
+    { keys: ['Ctrl', 'Alt', 'C'], label: 'Code Block' },
+    { keys: ['Tab'], label: 'Thụt vào (trong list)' },
+    { keys: ['Shift', 'Tab'], label: 'Lùi ra (trong list)' },
+    { keys: ['Shift', 'Enter'], label: 'Xuống dòng (giữ đoạn)' },
+  ]},
+  { title: '✍️ Gõ tắt Markdown', items: [
+    { keys: ['#', 'Space'], label: '→ Heading 1' },
+    { keys: ['##', 'Space'], label: '→ Heading 2' },
+    { keys: ['###', 'Space'], label: '→ Heading 3' },
+    { keys: ['-', 'Space'], label: '→ Bullet List' },
+    { keys: ['1.', 'Space'], label: '→ Ordered List' },
+    { keys: ['>', 'Space'], label: '→ Blockquote' },
+    { keys: ['```'], label: '→ Code Block' },
+    { keys: ['---'], label: '→ Đường kẻ ngang' },
+    { keys: ['[]', 'Space'], label: '→ Task List' },
+  ]},
+  { title: '⚙️ Chung', items: [
+    { keys: ['Ctrl', 'Z'], label: 'Undo' },
+    { keys: ['Ctrl', 'Shift', 'Z'], label: 'Redo' },
+    { keys: ['Ctrl', 'A'], label: 'Select All' },
+    { keys: ['/'], label: 'Slash Menu (Chèn khối)' },
+    { keys: ['Ctrl', '.'], label: 'Bảng phím tắt' },
+    { keys: ['Ctrl', 'S'], label: 'Lưu bài viết' },
+  ]},
+];
+
+const MD_SHORTCUT_SECTIONS = [
+  { title: '✏️ Văn bản', items: [
+    { keys: ['Ctrl', 'B'], label: 'Bold **text**' },
+    { keys: ['Ctrl', 'I'], label: 'Italic *text*' },
+    { keys: ['Ctrl', 'Shift', 'X'], label: 'Strike ~~text~~' },
+    { keys: ['Ctrl', 'E'], label: 'Code `text`' },
+    { keys: ['Ctrl', 'K'], label: 'Link [text](url)' },
+  ]},
+  { title: '📐 Khối', items: [
+    { keys: ['Ctrl', '1'], label: '# Heading 1' },
+    { keys: ['Ctrl', '2'], label: '## Heading 2' },
+    { keys: ['Ctrl', '3'], label: '### Heading 3' },
+    { keys: ['Ctrl', 'Shift', '8'], label: '- Bullet List' },
+    { keys: ['Ctrl', 'Shift', '7'], label: '1. Ordered List' },
+    { keys: ['Ctrl', 'Shift', '9'], label: '- [ ] Task List' },
+    { keys: ['Ctrl', 'Shift', 'B'], label: '> Blockquote' },
+    { keys: ['Ctrl', 'Shift', 'C'], label: '``` Code Block' },
+  ]},
+  { title: '⚙️ Chung', items: [
+    { keys: ['Ctrl', 'Z'], label: 'Undo' },
+    { keys: ['Ctrl', 'Shift', 'Z'], label: 'Redo' },
+    { keys: ['Ctrl', 'A'], label: 'Select All' },
+    { keys: ['Ctrl', '.'], label: 'Bảng phím tắt' },
+    { keys: ['Ctrl', 'S'], label: 'Lưu bài viết' },
+  ]},
+];
+
+/* ── Shortcuts Modal (shared) ─────────────────────────────────── */
+export function ShortcutsModal({ open, onClose, sections }) {
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [open, onClose]);
+
+  if (!open) return null;
+  const data = sections || SHORTCUT_SECTIONS;
+
+  return (
+    <div className="tp-shortcuts-overlay" onClick={onClose}>
+      <div className="tp-shortcuts-modal" onClick={e => e.stopPropagation()}>
+        <div className="tp-shortcuts-header">
+          <span className="tp-shortcuts-title">⌨ Phím tắt</span>
+          <button className="tp-shortcuts-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="tp-shortcuts-grid">
+          {data.map(section => (
+            <div key={section.title} className="tp-shortcuts-section">
+              <div className="tp-shortcuts-section-title">{section.title}</div>
+              {section.items.map(item => (
+                <div key={item.label} className="tp-shortcuts-row">
+                  <span className="tp-shortcuts-label">{item.label}</span>
+                  <span className="tp-shortcuts-keys">
+                    {item.keys.map((k, i) => (
+                      <span key={i}>
+                        <kbd className="tp-shortcuts-key">{k}</kbd>
+                        {i < item.keys.length - 1 && <span className="tp-shortcuts-plus">+</span>}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { MD_SHORTCUT_SECTIONS };
 
 /* ── Toolbar Button ─────────────────────────────────────────── */
 function TBtn({ onClick, active, disabled, title, children }) {
@@ -86,7 +203,7 @@ function LinkPopover({ editor, open, onClose }) {
 }
 
 /* ── Tiptap Toolbar ─────────────────────────────────────────── */
-function TiptapToolbar({ editor }) {
+function TiptapToolbar({ editor, onToggleShortcuts }) {
   const [linkOpen, setLinkOpen] = useState(false);
   if (!editor) return null;
 
@@ -139,6 +256,11 @@ function TiptapToolbar({ editor }) {
         {/* History */}
         <TBtn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo">↩</TBtn>
         <TBtn onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Redo">↪</TBtn>
+
+        <Divider />
+
+        {/* Shortcuts panel toggle */}
+        <TBtn onClick={onToggleShortcuts} title="Phím tắt (Ctrl+.)">⌨</TBtn>
       </div>
 
       {/* Inline link popover — no window.prompt */}
@@ -148,7 +270,13 @@ function TiptapToolbar({ editor }) {
 }
 
 /* ── TiptapEditor (main export) ─────────────────────────────── */
-export default function TiptapEditor({ value, onChange }) {
+export default function TiptapEditor({ value, onChange, onSave }) {
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const onSaveRef = useRef(onSave);
+  useEffect(() => { onSaveRef.current = onSave; }, [onSave]);
+
+  const toggleShortcuts = useCallback(() => setShortcutsOpen(v => !v), []);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -163,8 +291,9 @@ export default function TiptapEditor({ value, onChange }) {
       TaskItem.configure({ nested: true }),
       Highlight.configure({ multicolor: false }),
       Typography,
-      Placeholder.configure({ placeholder: 'Bắt đầu viết...' }),
+      Placeholder.configure({ placeholder: 'Gõ / để chèn khối · Ctrl+. xem phím tắt' }),
       CharacterCount,
+      SlashCommandExtension,
     ],
     content: (() => {
       if (!value) return '';
@@ -174,10 +303,36 @@ export default function TiptapEditor({ value, onChange }) {
     onUpdate: ({ editor }) => {
       const json = JSON.stringify(editor.getJSON());
       const text = editor.getText();
-      onChange(json, text);
+      const words = editor.storage?.characterCount?.words?.() ?? 0;
+      onChange(json, text, words);
     },
     editorProps: {
       attributes: { class: 'tp-content' },
+      handleKeyDown(view, event) {
+        const mod = event.ctrlKey || event.metaKey;
+
+        // Ctrl+S → trigger external save, prevent browser Save Page
+        if (mod && event.key === 's') {
+          event.preventDefault();
+          if (onSaveRef.current) onSaveRef.current();
+          return true;
+        }
+
+        // Ctrl+P → block browser Print dialog
+        if (mod && event.key === 'p') {
+          event.preventDefault();
+          return true;
+        }
+
+        // Ctrl+. → toggle shortcuts panel
+        if (mod && event.key === '.') {
+          event.preventDefault();
+          setShortcutsOpen(v => !v);
+          return true;
+        }
+
+        return false; // pass through all other keys
+      },
     },
   });
 
@@ -185,13 +340,15 @@ export default function TiptapEditor({ value, onChange }) {
 
   return (
     <div className="tp-editor">
-      <TiptapToolbar editor={editor} />
+      <TiptapToolbar editor={editor} onToggleShortcuts={toggleShortcuts} />
       <div className="tp-body">
         <EditorContent editor={editor} className="tp-editor-content" />
       </div>
       <div className="tp-footer">
         <span>{words} từ</span>
+        <span className="tp-footer-hint">Gõ <kbd>/</kbd> để chèn · <kbd>Ctrl+.</kbd> phím tắt</span>
       </div>
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }

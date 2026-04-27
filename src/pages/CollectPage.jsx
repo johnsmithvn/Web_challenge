@@ -9,6 +9,7 @@ import '../styles/collect.css';
 
 const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
 const TiptapReadOnly = lazy(() => import('../components/TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
+import { ShortcutsModal, MD_SHORTCUT_SECTIONS } from '../components/TiptapEditor';
 
 /* ── Constants ─────────────────────────────────────────────── */
 const TYPE_META = {
@@ -334,9 +335,10 @@ function ToolbarBtn({ label, title, onClick }) {
   );
 }
 
-/* ── MarkdownEditor (custom split-pane) ───────────────────── */
-function MarkdownEditor({ value, onChange }) {
+/* ── MarkdownEditor (custom split-pane) ─────────────────── */
+function MarkdownEditor({ value, onChange, onSave }) {
   const ref = useCallback(node => { if (node) node.focus(); }, []);
+  const [mdShortcutsOpen, setMdShortcutsOpen] = useState(false);
 
   const insert = useCallback((before, after = '', placeholder = '') => {
     const ta = document.getElementById('kb-md-textarea');
@@ -366,21 +368,56 @@ function MarkdownEditor({ value, onChange }) {
     });
   }, [onChange]);
 
+  /* ── Keyboard shortcuts for Markdown textarea ── */
+  const handleKeyDown = useCallback((e) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+
+    // Ctrl+S → save
+    if (e.key === 's') { e.preventDefault(); if (onSave) onSave(); return; }
+    // Ctrl+P → block print
+    if (e.key === 'p') { e.preventDefault(); return; }
+    // Ctrl+. → toggle shortcuts
+    if (e.key === '.') { e.preventDefault(); setMdShortcutsOpen(v => !v); return; }
+    // Ctrl+B → bold
+    if (e.key === 'b') { e.preventDefault(); insert('**', '**', 'bold'); return; }
+    // Ctrl+I → italic
+    if (e.key === 'i') { e.preventDefault(); insert('*', '*', 'italic'); return; }
+    // Ctrl+E → inline code
+    if (e.key === 'e') { e.preventDefault(); insert('`', '`', 'code'); return; }
+    // Ctrl+K → link
+    if (e.key === 'k') { e.preventDefault(); insert('[', '](url)', 'link text'); return; }
+    // Ctrl+1/2/3 → heading
+    if (e.key === '1') { e.preventDefault(); insertLine('# '); return; }
+    if (e.key === '2') { e.preventDefault(); insertLine('## '); return; }
+    if (e.key === '3') { e.preventDefault(); insertLine('### '); return; }
+    // Ctrl+Shift combos
+    if (e.shiftKey) {
+      if (e.key === 'X' || e.key === 'x') { e.preventDefault(); insert('~~', '~~', 'text'); return; }
+      if (e.key === 'B' || e.key === 'b') { e.preventDefault(); insertLine('> '); return; }
+      if (e.key === 'C' || e.key === 'c') { e.preventDefault(); insert('\n```\n', '\n```\n', 'code'); return; }
+      if (e.key === '8' || e.code === 'Digit8') { e.preventDefault(); insertLine('- '); return; }
+      if (e.key === '7' || e.code === 'Digit7') { e.preventDefault(); insertLine('1. '); return; }
+      if (e.key === '9' || e.code === 'Digit9') { e.preventDefault(); insertLine('- [ ] '); return; }
+      if (e.key === 'Z' || e.key === 'z') return; // let browser handle redo
+    }
+  }, [insert, insertLine, onSave]);
+
   const tools = [
-    { label: 'B',   title: 'Bold',       action: () => insert('**', '**', 'bold') },
-    { label: 'I',   title: 'Italic',     action: () => insert('*', '*', 'italic') },
-    { label: 'S',   title: 'Strikethrough', action: () => insert('~~', '~~', 'text') },
-    { label: 'H1',  title: 'Heading 1',  action: () => insertLine('# ') },
-    { label: 'H2',  title: 'Heading 2',  action: () => insertLine('## ') },
-    { label: 'H3',  title: 'Heading 3',  action: () => insertLine('### ') },
-    { label: '`',   title: 'Inline code',action: () => insert('`', '`', 'code') },
-    { label: '```', title: 'Code block', action: () => insert('\n```\n', '\n```\n', 'code here') },
-    { label: '>',   title: 'Blockquote', action: () => insertLine('> ') },
+    { label: 'B',   title: 'Bold (Ctrl+B)',       action: () => insert('**', '**', 'bold') },
+    { label: 'I',   title: 'Italic (Ctrl+I)',     action: () => insert('*', '*', 'italic') },
+    { label: 'S',   title: 'Strike (Ctrl+Shift+X)', action: () => insert('~~', '~~', 'text') },
+    { label: 'H1',  title: 'Heading 1 (Ctrl+1)',  action: () => insertLine('# ') },
+    { label: 'H2',  title: 'Heading 2 (Ctrl+2)',  action: () => insertLine('## ') },
+    { label: 'H3',  title: 'Heading 3 (Ctrl+3)',  action: () => insertLine('### ') },
+    { label: '`',   title: 'Code (Ctrl+E)',       action: () => insert('`', '`', 'code') },
+    { label: '```', title: 'Code Block (Ctrl+Shift+C)', action: () => insert('\n```\n', '\n```\n', 'code here') },
+    { label: '>',   title: 'Blockquote (Ctrl+Shift+B)', action: () => insertLine('> ') },
     { label: '—',   title: 'Divider',    action: () => { const ta = document.getElementById('kb-md-textarea'); if (!ta) return; const s = ta.selectionStart; const next = ta.value.slice(0,s)+'\n---\n'+ta.value.slice(s); onChange(next); } },
-    { label: '[ ]', title: 'Task list',  action: () => insertLine('- [ ] ') },
-    { label: '•',   title: 'Bullet list',action: () => insertLine('- ') },
-    { label: '1.',  title: 'Ordered list',action: () => insertLine('1. ') },
-    { label: '🔗',  title: 'Link',       action: () => insert('[', '](url)', 'link text') },
+    { label: '[ ]', title: 'Task list (Ctrl+Shift+9)',  action: () => insertLine('- [ ] ') },
+    { label: '•',   title: 'Bullet list (Ctrl+Shift+8)',action: () => insertLine('- ') },
+    { label: '1.',  title: 'Ordered list (Ctrl+Shift+7)',action: () => insertLine('1. ') },
+    { label: '🔗',  title: 'Link (Ctrl+K)',       action: () => insert('[', '](url)', 'link text') },
   ];
 
   return (
@@ -390,6 +427,8 @@ function MarkdownEditor({ value, onChange }) {
         {tools.map((t, i) => (
           <ToolbarBtn key={i} label={t.label} title={t.title} onClick={t.action} />
         ))}
+        <span className="kb-tb-divider" />
+        <ToolbarBtn label="⌨" title="Phím tắt (Ctrl+.)" onClick={() => setMdShortcutsOpen(v => !v)} />
       </div>
 
       {/* Panes */}
@@ -402,7 +441,8 @@ function MarkdownEditor({ value, onChange }) {
             className="kb-split__textarea"
             value={value}
             onChange={e => onChange(e.target.value)}
-            placeholder="Bắt đầu viết bằng Markdown..."
+            onKeyDown={handleKeyDown}
+            placeholder="Bắt đầu viết bằng Markdown... (Ctrl+. xem phím tắt)"
             spellCheck={false}
           />
         </div>
@@ -420,9 +460,12 @@ function MarkdownEditor({ value, onChange }) {
           </div>
         </div>
       </div>
+
+      <ShortcutsModal open={mdShortcutsOpen} onClose={() => setMdShortcutsOpen(false)} sections={MD_SHORTCUT_SECTIONS} />
     </div>
   );
 }
+
 
 /* ── EditorView ───────────────────────────────────────────── */
 function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isNew = false, onConfirmSwitch }) {
@@ -440,8 +483,11 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
   const bodyText = draft.content_format === 'markdown'
     ? markdownToPlainText(draft.body)
     : (draft.body_text || '');
-  const wordCount = bodyText.trim().split(/\s+/).filter(Boolean).length;
-  const mins      = readTime(bodyText);
+  // Tiptap: use accurate word count from CharacterCount extension
+  const wordCount = draft.content_format === 'tiptap'
+    ? (draft._tiptapWordCount || 0)
+    : bodyText.trim().split(/\s+/).filter(Boolean).length;
+  const mins      = Math.max(1, Math.ceil(wordCount / 200));
   const canSave   = draft.title.trim().length > 0;
 
   const switchMode = async (mode) => {
@@ -531,11 +577,12 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
           <Suspense fallback={<div className="kb-loading">Đang tải editor...</div>}>
             <TiptapEditor
               value={draft.body}
-              onChange={(json, text) => setDraft(d => ({ ...d, body: json, body_text: text }))}
+              onChange={(json, text, words) => setDraft(d => ({ ...d, body: json, body_text: text, _tiptapWordCount: words || 0 }))}
+              onSave={handleSaveDraft}
             />
           </Suspense>
         ) : (
-          <MarkdownEditor value={draft.body} onChange={v => set('body', v)} />
+          <MarkdownEditor value={draft.body} onChange={v => set('body', v)} onSave={handleSaveDraft} />
         )}
       </div>
     </div>

@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
 **Updated:** 2026-04-26
-**Current Version:** v3.2.0
+**Current Version:** v3.2.1
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -249,11 +249,6 @@
 - [x] Today Overview row: 4 KPIs hôm nay
 - [x] Finance Section: 3 KPI cards + Finance Pie SVG donut chart
 - [x] ActivityHeatmap thay ContributionGraph habit-only
-- [ ] Mood pattern chart (7/30 ngày)
-- [ ] Skip reason deep analysis
-- [ ] Focus session breakdown per habit
-- [ ] Weekly review digest (in-app summary)
-- [ ] AI insight từ pattern data (future)
 
 ---
 
@@ -278,7 +273,26 @@
 
 ---
 
-## 📋 Phase 8 — Focus Upgrade + Polish (v3.3.0+)
+## ✅ Phase 7.6 — Dashboard Polish + Debt Cleanup (v3.2.1)
+*Hoàn thành: 2026-04-27*
+
+- [x] Mood trend chart (7/30 ngày toggle, dot-line SVG)
+- [x] Focus session breakdown per habit (horizontal bar chart)
+- [x] Weekly review digest (in-app 7-day summary)
+- [x] Docs cleanup: Team v3 debris, version bump, PLAN.md fix
+
+---
+
+## ✅ Phase 7.7 — Tiptap Slash Command + Shortcuts (v3.3.0)
+*Hoàn thành: 2026-04-27*
+
+- [x] Slash Command Menu (`/`) — 12 block types, @tiptap/suggestion plugin
+- [x] Keyboard Shortcuts Panel (Ctrl+.) — 25+ shortcuts, 4 sections, glassmorphism modal
+- [x] Browser Shortcut Override — Ctrl+S save, Ctrl+P block, Ctrl+. toggle
+- [x] CollectPage → TiptapEditor `onSave` prop wired
+- [x] SlashCommand.jsx [NEW]
+
+## 📋 Phase 8 — Focus Upgrade + Polish (v3.4.0+)
 *Backlog — deferred theo yêu cầu*
 
 - [ ] Ambient sounds (Rain, Café, Forest, Lo-fi, Ocean)
@@ -286,7 +300,7 @@
 - [ ] Focus stats dashboard
 - [ ] Fullscreen mode
 - [ ] SEO sitemap
-- [ ] i18n (Vietnamese/English)
+- [ ] AI insight từ pattern data (future)
 - [ ] Kanban board cho Wishlist (if needed)
 - [ ] Tree structure cho Learning notes (if needed)
 
@@ -333,4 +347,5 @@
 | v3.1.1 | UX Bug: modal close on text-select fix |
 | v3.1.2 | Mood chart, CustomSelect Finance dropdown, Life Log today default |
 | **v3.2.0** | **KB Dual-Mode Editor (Tiptap+Markdown), ConfirmModal, AI-ready schema** |
+| v3.2.1 | Dashboard Polish (Mood 30d, Focus breakdown, Weekly Review) + Debt Cleanup |
 

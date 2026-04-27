@@ -1,5 +1,70 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-04-26
+**Updated:** 2026-04-27
+
+---
+
+## v3.3.1 — ✅ DONE (2026-04-27) — Tiptap Bug Fixes & Polish
+
+- [x] **Light mode CSS** — ~200 lines comprehensive overrides cho toolbar, slash menu, shortcuts modal, footer, editor content (mark, code, blockquote, table, links)
+- [x] **Word count realtime** — Dùng `CharacterCount.words()` (chính xác), pass qua `onChange(json, text, words)`. EditorView header cập nhật ngay
+- [x] **Expanded shortcuts** — Thêm section "✍️ Gõ tắt Markdown" (9 auto-format rules), Tab/Shift+Tab, Shift+Enter
+- [x] **Markdown keyboard shortcuts** — Ctrl+B/I/E/K/1/2/3, Ctrl+Shift+X/B/C/7/8/9, Ctrl+S save, Ctrl+P block, Ctrl+. shortcuts panel, ⌨ toolbar button
+- [x] Build ✓ (293ms, 0 errors)
+
+---
+
+## v3.3.0 — ✅ DONE (2026-04-27) — Tiptap Slash Command + Shortcuts + Browser Key Override
+
+### Install
+- [x] `npm install @tiptap/suggestion@^3.22.4`
+
+### Slash Command Menu
+- [x] `src/components/SlashCommand.jsx` [NEW] — Extension + React dropdown UI
+- [x] `src/components/TiptapEditor.jsx` — Import + register SlashCommandExtension
+
+### Keyboard Shortcuts Panel
+- [x] `src/components/TiptapEditor.jsx` — `ShortcutsModal` component + toolbar button `⌨`
+
+### Browser Shortcut Override
+- [x] `src/components/TiptapEditor.jsx` — `handleKeyDown` (Ctrl+S save, Ctrl+P block, Ctrl+. shortcuts)
+
+### CollectPage Wire
+- [x] `src/pages/CollectPage.jsx` — Pass `onSave` prop to TiptapEditor
+
+### CSS
+- [x] `src/styles/tiptap.css` — Slash menu + Shortcuts modal styles
+
+### Docs Sync
+- [x] `docs/FEATURES.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `docs/PLAN.md`
+- [x] `package.json` — bump → 3.3.0
+
+### Verification
+- [x] `npm run build` — No compile errors (✓ built in 280ms)
+
+---
+
+## v3.2.1 — ✅ DONE (2026-04-27) — Polish + Debt Cleanup
+
+### Housekeeping
+- [x] `package.json` — Bump version 3.1.0 → 3.2.1
+- [x] `docs/TASKS.md` — Clean Team v3 debris, add v3.2.1 section
+- [x] `docs/PLAN.md` — Fix Phase 7 incomplete items → move to Phase 8
+
+### Dashboard Widgets
+- [x] `DashboardPage.jsx` — `MoodTrendChart`: 7/30 day toggle, dot-line SVG, color-coded
+- [x] `DashboardPage.jsx` — `FocusBreakdown`: per-habit horizontal bars, 7 days, Supabase query
+- [x] `DashboardPage.jsx` — `WeeklyReview`: 7-day summary digest, week-over-week comparison
+
+### CSS
+- [x] `dashboard.css` — Styles for MoodTrendChart, FocusBreakdown, WeeklyReview
+
+### Docs Sync
+- [x] `docs/FEATURES.md` — Update Dashboard section (#5)
+- [x] `docs/ARCHITECTURE.md` — Update DashboardPage data sources (add useMoodLog)
+- [x] `CHANGELOG.md` — Add v3.2.1 entry
+
+### Verification
+- [x] `npm run build` — No compile errors (✓ built in 426ms)
 
 ---
 
@@ -437,30 +502,10 @@
 
 ---
 
-## v3.0.0 — 🚧 Components Built, Chưa Full Integration (Team Mode v3 — N members)
+## v3.0.0 — ❌ CANCELLED (Team Mode v3 — archived to `src/_archived/`)
 
-### DB (chưa deploy)
-- [x] Schema thiết kế: `team_members`, `user_programs`, `team_check_logs`, `team_rules`, `team_rule_agreements`
-- [ ] Chạy `data/supabase_team_v3.sql` trong Supabase
-
-### Hooks (built, chưa integrate full flow)
-- [x] `src/hooks/useTeamCheck.js` — week-2 check logic (teammate check, không self-check)
-- [x] `src/hooks/useTeamRules.js` — CRUD rules, propose + unanimous approval
-
-### Components (built, chưa integrate full flow)
-- [x] `src/components/team/TeamMemberCard.jsx`
-- [x] `src/components/team/TeammateCheckPanel.jsx` — done/fail modal + reason
-- [x] `src/components/team/JoinSyncModal.jsx` — restart vs continue week
-- [x] `src/components/team/TeamRules.jsx`
-
-### Remaining (chưa done)
-- [ ] Full integration: wire hooks + components vào TeamPage production flow
-- [ ] Realtime check notifications
-
-### Next (backlog)
-- [ ] Mood log chart trong DashboardPage
-- [ ] Weekly review email/notification
-- [ ] AI insight từ skip reason patterns
+> Team features archived in v3.0.0. App repositioned as Personal Life Hub.
+> Components and hooks moved to `src/_archived/`. DB tables remain but unused.
 
 ---
 

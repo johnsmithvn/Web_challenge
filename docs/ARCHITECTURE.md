@@ -45,6 +45,7 @@ src/
 │   ├── PageSkeleton.jsx       # v1.7.0 — Shimmer skeleton loading
 │   ├── QuickCapture.jsx       # v3.0.0 — Global floating [+] button → saves to collections(inbox)
 │   ├── TiptapEditor.jsx       # v3.2.0 — WYSIWYG editor (Tiptap) + TiptapReadOnly component
+│   ├── SlashCommand.jsx       # v3.3.0 — Slash command extension (/menu) + React dropdown UI
 │   ├── ActivityHeatmap.jsx    # v3.0.0 — GitHub-style SVG yearly heatmap (53×7 grid)
 │   ├── DailyTimeline.jsx      # v3.0.0 — Vertical activity timeline for a single day
 │   ├── SubAlert.jsx           # v3.0.0 — Compact sidebar alert for upcoming subscription renewals
@@ -231,10 +232,13 @@ DashboardPage
   ├── useHabitStore      → streak, longestStreak, totalDone, data (heatmap)
   ├── useXpStore         → totalXp, levelInfo, log (today XP earned)
   ├── useSkipReasons     → getAllSkips() (skip analysis 14 days)
+  ├── useMoodLog         → moodLog (mood trend chart 7/30 days)    [v3.2.1]
   ├── useFocusTimer      → todayMinutes, todaySessions
   ├── useExpenses        → fetchExpenses, getTotal, getByCategory
   ├── useSubscriptions   → fetchSubs, getMonthlyCost, getUpcoming
   ├── useActivityLog     → getTodayCount
+  ├── useAuth            → user, isAuthenticated (for FocusBreakdown) [v3.2.1]
+  ├── supabase (direct)  → focus_sessions + habits (FocusBreakdown)  [v3.2.1]
   └── ActivityHeatmap    → reused component (activity_logs heatmap)
 ```
 

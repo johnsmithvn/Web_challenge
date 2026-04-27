@@ -733,6 +733,14 @@
   color: var(--text-primary);
 }
 
+.kb-tb-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.1);
+  margin: 0 0.15rem;
+  flex-shrink: 0;
+}
+
 /* Pane container */
 .kb-split__panes {
   display: flex;

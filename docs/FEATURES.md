@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v3.2.0
-**Updated:** 2026-04-26
+**Version:** v3.3.0
+**Updated:** 2026-04-27
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -111,9 +111,9 @@
 ## 5. 📈 Dashboard Cá Nhân (`/dashboard`)
 
 **File:** `src/pages/DashboardPage.jsx`, `src/styles/dashboard.css`
-**Version:** v3.1.0 — Unified Life Hub Dashboard
+**Version:** v3.2.1 — Unified Life Hub Dashboard + Polish
 
-**Mô tả:** Tổng quan toàn bộ cuộc sống — hôm nay, thói quen, tài chính, hoạt động.
+**Mô tả:** Tổng quan toàn bộ cuộc sống — hôm nay, thói quen, tài chính, hoạt động, tâm trạng, focus.
 
 **Chi tiết:**
 - **Today Overview (4 KPIs hôm nay):** Hoạt động (activity_logs) / Focus phút + sessions (useFocusTimer) / Chi tiêu hôm nay (expenses) / XP kiếm hôm nay (xp_logs). Hover lift animation.
@@ -121,10 +121,13 @@
 - **Habits:** Flower Journey 21 ô / Monthly Donut ring / Weekly Table 4 tuần / mini KPI row (Streak, Best, Tổng, XP)
 - **Finance Summary:** 3 KPI cards (Chi tháng / Đăng ký/tháng / Sắp hết hạn) + Finance Pie SVG donut (category breakdown + legend %)
 - **Activity Heatmap:** Reuse `ActivityHeatmap` — toàn bộ activity_logs (thay ContributionGraph habit-only)
+- **Mood Trend Chart (v3.2.1):** Dot-line SVG chart với toggle 7/30 ngày. Color-coded dots by mood score, average indicator, emoji overlay. Empty state khi chưa có data.
+- **Focus Breakdown (v3.2.1):** Per-habit horizontal bar chart 7 ngày gần nhất. Query trực tiếp `focus_sessions` + join `habits` table. Hiển thị icon, tên habit, progress bar, phút, %.
+- **Weekly Review (v3.2.1):** Collapsible summary card: Habits (ngày hoàn thành), XP, Chi tiêu, Mood TB — so sánh với tuần trước (↑/↓/→). Expand/collapse với animation.
 - **Insights:** Skip Reason analysis 14 ngày + nhận xét streak + milestone tiếp theo
-- **Guest mode:** Finance/Activity widgets hiện empty state graceful
+- **Guest mode:** Finance/Activity/Focus widgets hiện empty state graceful
 
-**Data sources:** `useHabitStore`, `useXpStore`, `useSkipReasons`, `useFocusTimer`, `useExpenses`, `useSubscriptions`, `useActivityLog`
+**Data sources:** `useHabitStore`, `useXpStore`, `useSkipReasons`, `useMoodLog`, `useFocusTimer`, `useExpenses`, `useSubscriptions`, `useActivityLog`, `useAuth`, `supabase` (direct query for FocusBreakdown)
 
 ---
 
@@ -472,10 +475,10 @@
 
 ---
 
-## 18. 📓 Kho Tàng Kiến Thức (`/collect`) — v3.2.0
+## 18. 📓 Kho Tàng Kiến Thức (`/collect`) — v3.3.0
 
 **File:** `src/pages/CollectPage.jsx` + `src/styles/collect.css` + `src/styles/tiptap.css`
-**Component:** `src/components/TiptapEditor.jsx` (WYSIWYG) + `TiptapReadOnly`
+**Component:** `src/components/TiptapEditor.jsx` (WYSIWYG) + `TiptapReadOnly` + `src/components/SlashCommand.jsx` [v3.3.0]
 **Hook:** `src/hooks/useCollections.js`
 
 **Mô tả:** Kho lưu trữ và viết bài kiến thức đã phân loại — hỗ trợ 2 editor mode.
@@ -491,6 +494,24 @@
 - **Mode Lock:** Chọn mode khi tạo bài, không đổi được sau khi save
 - **Inline Link Popover:** Thay `window.prompt` — input bar xuất hiện dưới toolbar khi bấm 🔗
 - **ReaderView:** Tự detect format, render `TiptapReadOnly` hoặc `ReactMarkdown`
+
+**Slash Command Menu (v3.3.0):**
+- Gõ `/` trong Tiptap editor → dropdown 12 block types
+- Filter theo query text (`/hea` → Heading 1/2/3)
+- Arrow keys + Enter chọn, Escape đóng
+- Dùng `@tiptap/suggestion` plugin — handles cursor tracking + keyboard trapping
+- Block types: Paragraph, H1-H3, Bullet/Ordered/Task List, Blockquote, Code Block, Divider, Table, Highlight
+
+**Keyboard Shortcuts Panel (v3.3.0):**
+- Toggle bằng nút `⌨` trên toolbar hoặc `Ctrl+.`
+- 25+ phím tắt, 4 nhóm: Văn bản / Khối / Chèn / Chung
+- Glassmorphism modal, 2-column responsive, kbd key badges
+
+**Browser Shortcut Override (v3.3.0):**
+- `Ctrl+S` → save article (thay vì browser Save Page dialog)
+- `Ctrl+P` → blocked (không mở Print)
+- `Ctrl+.` → toggle shortcuts panel
+- Xử lý qua `editorProps.handleKeyDown`, return `true` = consume event
 
 **AI-Ready Fields (v3.2.0):**
 - `content_format`: `'markdown' | 'tiptap'` — loại nội dung
