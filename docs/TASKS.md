@@ -3,6 +3,16 @@
 
 ---
 
+## v3.4.0 — ✅ DONE (2026-04-27) — Google Docs UI Upgrade cho Tiptap Editor
+
+- [x] **Cài đặt thư viện:** Thêm `lucide-react`, `@tiptap/extension-underline`, `@tiptap/extension-text-align`, `@tiptap/extension-text-style`, `@tiptap/extension-color`.
+- [x] **Tái thiết kế Toolbar:** Sử dụng Lucide Icons, thêm dropdown chọn Heading, thêm bộ chọn màu sắc (Text Color). Nhóm các công cụ hợp lý bằng vách ngăn (Divider).
+- [x] **Tính năng mới:** Căn lề (Left, Center, Right, Justify), Gạch chân, Màu chữ.
+- [x] **Phím tắt mới:** Thêm `Ctrl+U`, `Ctrl+Shift+L/E/R/J` vào Shortcuts Modal.
+- [x] **CSS Upgrade:** Định dạng `tiptap.css` cho `.tp-toolbar-dropdown`, `.tp-color-picker`, nút icon phẳng chuẩn UX của Google Docs.
+
+---
+
 ## v3.3.1 — ✅ DONE (2026-04-27) — Tiptap Bug Fixes & Polish
 
 - [x] **Light mode CSS** — ~200 lines comprehensive overrides cho toolbar, slash menu, shortcuts modal, footer, editor content (mark, code, blockquote, table, links)

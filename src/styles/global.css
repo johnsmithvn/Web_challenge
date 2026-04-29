@@ -345,7 +345,8 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-appearance: none;
   width: 28px;
   height: 28px;
-  border: 2px solid rgba(255,255,255,0.15);
+  border: 2px solid var(--text-muted);
+  opacity: 0.6;
   border-radius: 6px;
   cursor: pointer;
   position: relative;
@@ -356,6 +357,7 @@ h1, h2, h3, h4, h5, h6 {
 .habit-checkbox:checked {
   background: var(--grad-green);
   border-color: var(--green);
+  opacity: 1;
   box-shadow: var(--shadow-green);
 }
 
@@ -373,6 +375,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .habit-checkbox:hover:not(:checked) {
   border-color: var(--green-dim);
+  opacity: 1;
   background: rgba(0,255,136,0.08);
 }
 

@@ -12,6 +12,11 @@ import { Highlight } from '@tiptap/extension-highlight';
 import { Typography } from '@tiptap/extension-typography';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { CharacterCount } from '@tiptap/extension-character-count';
+import { Underline } from '@tiptap/extension-underline';
+import { TextAlign } from '@tiptap/extension-text-align';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
+import { Undo2, Redo2, Bold, Italic, Underline as UnderlineIcon, Strikethrough, Highlighter, Code, Link as LinkIcon, Quote, List, ListOrdered, ListTodo, Minus, AlignLeft, AlignCenter, AlignRight, AlignJustify, ChevronDown, Keyboard, RemoveFormatting, Palette, Table as TableIcon, Heading1, Heading2, Heading3, Type } from 'lucide-react';
 import { SlashCommandExtension } from './SlashCommand';
 import '../styles/tiptap.css';
 
@@ -20,12 +25,18 @@ const SHORTCUT_SECTIONS = [
   { title: '✏️ Văn bản', items: [
     { keys: ['Ctrl', 'B'], label: 'Bold' },
     { keys: ['Ctrl', 'I'], label: 'Italic' },
+    { keys: ['Ctrl', 'U'], label: 'Underline' },
     { keys: ['Ctrl', 'Shift', 'X'], label: 'Strikethrough' },
+    { keys: ['Ctrl', 'Shift', 'H'], label: 'Highlight' },
     { keys: ['Ctrl', 'Shift', 'H'], label: 'Highlight' },
     { keys: ['Ctrl', 'E'], label: 'Inline Code' },
     { keys: ['Ctrl', 'Alt', '1'], label: 'Heading 1' },
     { keys: ['Ctrl', 'Alt', '2'], label: 'Heading 2' },
     { keys: ['Ctrl', 'Alt', '3'], label: 'Heading 3' },
+    { keys: ['Ctrl', 'Shift', 'L'], label: 'Căn trái' },
+    { keys: ['Ctrl', 'Shift', 'E'], label: 'Căn giữa' },
+    { keys: ['Ctrl', 'Shift', 'R'], label: 'Căn phải' },
+    { keys: ['Ctrl', 'Shift', 'J'], label: 'Căn đều' },
   ]},
   { title: '📐 Khối & List', items: [
     { keys: ['Ctrl', 'Shift', '8'], label: 'Bullet List' },
@@ -210,57 +221,70 @@ function TiptapToolbar({ editor, onToggleShortcuts }) {
   return (
     <div className="tp-toolbar-wrap">
       <div className="tp-toolbar">
-        {/* Text style */}
-        <TBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold (Ctrl+B)"><strong>B</strong></TBtn>
-        <TBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic (Ctrl+I)"><em>I</em></TBtn>
-        <TBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough"><s>S</s></TBtn>
-        <TBtn onClick={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')} title="Highlight">▌</TBtn>
-        <TBtn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Inline code">`</TBtn>
+        {/* History */}
+        <TBtn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo (Ctrl+Z)"><Undo2 size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Redo (Ctrl+Shift+Z)"><Redo2 size={15} /></TBtn>
 
         <Divider />
 
         {/* Headings */}
-        <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">H1</TBtn>
-        <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading 2">H2</TBtn>
-        <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="Heading 3">H3</TBtn>
+        <TBtn onClick={() => editor.chain().focus().setParagraph().run()} active={editor.isActive('paragraph')} title="Normal text (Ctrl+Alt+0)"><Type size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1 (Ctrl+Alt+1)"><Heading1 size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading 2 (Ctrl+Alt+2)"><Heading2 size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="Heading 3 (Ctrl+Alt+3)"><Heading3 size={15} /></TBtn>
+
+        <Divider />
+
+        {/* Text style */}
+        <TBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold (Ctrl+B)"><Bold size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic (Ctrl+I)"><Italic size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline (Ctrl+U)"><UnderlineIcon size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough (Ctrl+Shift+X)"><Strikethrough size={15} /></TBtn>
+
+        {/* Colors */}
+        <div className="tp-color-picker" title="Text Color">
+          <Palette size={15} style={{ color: editor.getAttributes('textStyle').color || 'currentColor' }} />
+          <input 
+            type="color" 
+            onInput={event => editor.chain().focus().setColor(event.target.value).run()}
+            value={editor.getAttributes('textStyle').color || '#000000'}
+          />
+        </div>
+        <TBtn onClick={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')} title="Highlight Color (Ctrl+Shift+H)"><Highlighter size={15} /></TBtn>
+
+        <Divider />
+
+        {/* Align */}
+        <TBtn onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Align Left (Ctrl+Shift+L)"><AlignLeft size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })} title="Align Center (Ctrl+Shift+E)"><AlignCenter size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })} title="Align Right (Ctrl+Shift+R)"><AlignRight size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().setTextAlign('justify').run()} active={editor.isActive({ textAlign: 'justify' })} title="Justify (Ctrl+Shift+J)"><AlignJustify size={15} /></TBtn>
 
         <Divider />
 
         {/* Lists */}
-        <TBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">•</TBtn>
-        <TBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Ordered list">1.</TBtn>
-        <TBtn onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive('taskList')} title="Task list">☑</TBtn>
+        <TBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list (Ctrl+Shift+8)"><List size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered list (Ctrl+Shift+7)"><ListOrdered size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive('taskList')} title="Task list (Ctrl+Shift+9)"><ListTodo size={15} /></TBtn>
 
         <Divider />
 
-        {/* Blocks */}
-        <TBtn onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Blockquote">"</TBtn>
-        <TBtn onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive('codeBlock')} title="Code block">{'</>'}</TBtn>
-        <TBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal rule">—</TBtn>
-
-        <Divider />
-
-        {/* Link — opens inline popover instead of window.prompt */}
+        {/* Blocks & Insert */}
         <TBtn
           onClick={() => setLinkOpen(v => !v)}
           active={editor.isActive('link') || linkOpen}
-          title="Insert link"
-        >🔗</TBtn>
-        <TBtn
-          onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-          title="Insert table"
-        >⊞</TBtn>
-
-        <Divider />
-
-        {/* History */}
-        <TBtn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo">↩</TBtn>
-        <TBtn onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Redo">↪</TBtn>
+          title="Insert link (Ctrl+K)"
+        ><LinkIcon size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert table"><TableIcon size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Inline code (Ctrl+E)"><Code size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Blockquote (Ctrl+Shift+B)"><Quote size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal line"><Minus size={15} /></TBtn>
+        <TBtn onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title="Clear formatting"><RemoveFormatting size={15} /></TBtn>
 
         <Divider />
 
         {/* Shortcuts panel toggle */}
-        <TBtn onClick={onToggleShortcuts} title="Phím tắt (Ctrl+.)">⌨</TBtn>
+        <TBtn onClick={onToggleShortcuts} title="Keyboard shortcuts (Ctrl+.)"><Keyboard size={15} /></TBtn>
       </div>
 
       {/* Inline link popover — no window.prompt */}
@@ -291,6 +315,10 @@ export default function TiptapEditor({ value, onChange, onSave }) {
       TaskItem.configure({ nested: true }),
       Highlight.configure({ multicolor: false }),
       Typography,
+      Underline,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextStyle,
+      Color,
       Placeholder.configure({ placeholder: 'Gõ / để chèn khối · Ctrl+. xem phím tắt' }),
       CharacterCount,
       SlashCommandExtension,
@@ -303,8 +331,9 @@ export default function TiptapEditor({ value, onChange, onSave }) {
     onUpdate: ({ editor }) => {
       const json = JSON.stringify(editor.getJSON());
       const text = editor.getText();
-      const words = editor.storage?.characterCount?.words?.() ?? 0;
-      onChange(json, text, words);
+      const words = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+      const chars = editor.storage?.characterCount?.characters?.() ?? text.length;
+      onChange(json, text, words, chars);
     },
     editorProps: {
       attributes: { class: 'tp-content' },

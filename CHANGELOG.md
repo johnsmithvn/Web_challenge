@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v3.4.0 — 2026-04-27
+
+### Added
+- **Google Docs UI for Tiptap Editor:**
+  - Integrated `lucide-react` for clean, professional icons replacing text buttons.
+  - Added new extensions: `@tiptap/extension-underline`, `@tiptap/extension-text-align`, `@tiptap/extension-text-style`, `@tiptap/extension-color`.
+  - Added dropdown for Heading levels (Normal text, H1, H2, H3).
+  - Added native color picker for text coloring.
+  - Added alignment buttons (Left, Center, Right, Justify).
+  - Redesigned toolbar with grouping and vertical dividers.
+- **Shortcuts:** Added shortcuts for Underline (`Ctrl+U`) and Alignments (`Ctrl+Shift+L/E/R/J`).
+
+### Changed
+- `tiptap.css`: Rewrote `.tp-btn` for icon layout, added `.tp-toolbar-dropdown`, `.tp-select`, and `.tp-color-picker` styling to match Google Docs flat aesthetic.
+
+---
+
 ## v3.3.1 — 2026-04-27
 
 ### Fixed

@@ -10,15 +10,16 @@ import '../styles/collect.css';
 const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
 const TiptapReadOnly = lazy(() => import('../components/TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
 import { ShortcutsModal, MD_SHORTCUT_SECTIONS } from '../components/TiptapEditor';
+import { FileText, Link as LinkIcon, MessageSquareQuote, BookOpen, Lightbulb, ShoppingCart, Library } from 'lucide-react';
 
 /* ── Constants ─────────────────────────────────────────────── */
 const TYPE_META = {
-  note:  { emoji: '📝', label: 'Ghi chú',   color: '#8b5cf6' },
-  link:  { emoji: '🔗', label: 'Link',       color: '#06b6d4' },
-  quote: { emoji: '💬', label: 'Trích dẫn', color: '#f59e0b' },
-  learn: { emoji: '📚', label: 'Học',        color: '#22c55e' },
-  idea:  { emoji: '💡', label: 'Ý tưởng',   color: '#f97316' },
-  want:  { emoji: '🛒', label: 'Muốn mua',  color: '#f43f5e' },
+  note:  { icon: FileText, label: 'Ghi chú',   color: '#8b5cf6' },
+  link:  { icon: LinkIcon, label: 'Link',       color: '#06b6d4' },
+  quote: { icon: MessageSquareQuote, label: 'Trích dẫn', color: '#f59e0b' },
+  learn: { icon: BookOpen, label: 'Học',        color: '#22c55e' },
+  idea:  { icon: Lightbulb, label: 'Ý tưởng',   color: '#f97316' },
+  want:  { icon: ShoppingCart, label: 'Muốn mua',  color: '#f43f5e' },
 };
 
 const SORT_OPTIONS = [
@@ -219,7 +220,9 @@ function ArticleCard({ item, onClick }) {
     <article className="kb-card" onClick={() => onClick(item)} role="button" tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onClick(item)}>
       <div className="kb-card__left">
-        <span className="kb-card__emoji" style={{ '--type-color': meta.color }}>{meta.emoji}</span>
+        <span className="kb-card__emoji" style={{ '--type-color': meta.color }}>
+          <meta.icon size={20} />
+        </span>
       </div>
       <div className="kb-card__body">
         <div className="kb-card__meta-top">
@@ -279,7 +282,7 @@ function ReaderView({ item, onEdit, onDelete, onBack }) {
         {/* Main content */}
         <div className="kb-reader__main">
           <div className="kb-reader__hero">
-            <span className="kb-reader__emoji" style={{ '--type-color': meta.color }}>{meta.emoji}</span>
+            <span className="kb-reader__emoji" style={{ '--type-color': meta.color }}><meta.icon size={32} /></span>
             <h1 className="kb-reader__title">{item.title}</h1>
             <div className="kb-reader__meta">
               <span style={{ color: meta.color }}>{meta.label}</span>
@@ -483,10 +486,12 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
   const bodyText = draft.content_format === 'markdown'
     ? markdownToPlainText(draft.body)
     : (draft.body_text || '');
-  // Tiptap: use accurate word count from CharacterCount extension
   const wordCount = draft.content_format === 'tiptap'
-    ? (draft._tiptapWordCount || 0)
-    : bodyText.trim().split(/\s+/).filter(Boolean).length;
+    ? (draft._tiptapWordCount ?? (bodyText.trim() ? bodyText.trim().split(/\s+/).filter(Boolean).length : 0))
+    : (bodyText.trim() ? bodyText.trim().split(/\s+/).filter(Boolean).length : 0);
+  const charCount = draft.content_format === 'tiptap'
+    ? (draft._tiptapCharCount ?? bodyText.length)
+    : bodyText.length;
   const mins      = Math.max(1, Math.ceil(wordCount / 200));
   const canSave   = draft.title.trim().length > 0;
 
@@ -516,7 +521,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
       <div className="kb-editor__bar">
         <button className="kb-back-btn" onClick={onCancel}>← Hủy</button>
         <div className="kb-editor__stats">
-          <span>{wordCount} từ · {mins} phút đọc</span>
+          <span>{wordCount} từ · {charCount} ký tự · {mins} phút đọc</span>
         </div>
         <button
           className="btn btn-primary kb-save-btn"
@@ -531,7 +536,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
       <div className="kb-editor__meta">
         <select className="kb-type-select" value={draft.type} onChange={e => set('type', e.target.value)}>
           {Object.entries(TYPE_META).map(([k, v]) => (
-            <option key={k} value={k}>{v.emoji} {v.label}</option>
+            <option key={k} value={k}>{v.label}</option>
           ))}
         </select>
         <input
@@ -577,7 +582,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
           <Suspense fallback={<div className="kb-loading">Đang tải editor...</div>}>
             <TiptapEditor
               value={draft.body}
-              onChange={(json, text, words) => setDraft(d => ({ ...d, body: json, body_text: text, _tiptapWordCount: words || 0 }))}
+              onChange={(json, text, words, chars) => setDraft(d => ({ ...d, body: json, body_text: text, _tiptapWordCount: words || 0, _tiptapCharCount: chars || 0 }))}
               onSave={handleSaveDraft}
             />
           </Suspense>
@@ -766,18 +771,21 @@ export default function CollectPage() {
       {/* Type filter pills */}
       <div className="kb-type-filters">
         <button className={`kb-type-pill${!typeFilter ? ' kb-type-pill--active' : ''}`} onClick={() => setTypeFilter('')}>
-          🗂 Tất cả
+          <Library size={14} style={{ marginRight: 6 }} /> Tất cả
         </button>
-        {Object.entries(TYPE_META).map(([k, v]) => (
-          <button
-            key={k}
-            className={`kb-type-pill${typeFilter === k ? ' kb-type-pill--active' : ''}`}
-            style={typeFilter === k ? { '--pill-color': v.color } : {}}
-            onClick={() => setTypeFilter(typeFilter === k ? '' : k)}
-          >
-            {v.emoji} {v.label}
-          </button>
-        ))}
+        {Object.entries(TYPE_META).map(([k, v]) => {
+          const Icon = v.icon;
+          return (
+            <button
+              key={k}
+              className={`kb-type-pill${typeFilter === k ? ' kb-type-pill--active' : ''}`}
+              style={typeFilter === k ? { '--pill-color': v.color } : {}}
+              onClick={() => setTypeFilter(typeFilter === k ? '' : k)}
+            >
+              <Icon size={14} style={{ marginRight: 6 }} /> {v.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tag filter row */}
