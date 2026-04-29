@@ -51,10 +51,21 @@ export default function InboxPage() {
   const [classifying, setClassifying] = useState(null);
   const [snoozeMenu, setSnoozeMenu] = useState(null); // item.id or null
   const [snoozedCount, setSnoozedCount] = useState(0);
+  const [overflowMenu, setOverflowMenu] = useState(null); // item.id or null
   const { getMeta, metaCache } = useLinkMeta();
 
   // Quick Expense modal state
   const [expenseModal, setExpenseModal] = useState(null); // { item, amount, category, note }
+
+  // Close overflow menu on click outside
+  useEffect(() => {
+    if (!overflowMenu) return;
+    const handler = (e) => {
+      if (!e.target.closest('.inbox-overflow-wrap')) setOverflowMenu(null);
+    };
+    document.addEventListener('click', handler, true);
+    return () => document.removeEventListener('click', handler, true);
+  }, [overflowMenu]);
 
   // Load inbox items on mount
   useEffect(() => {
@@ -334,15 +345,27 @@ export default function InboxPage() {
                       ✕ Huỷ
                     </button>
                   </div>
+                ) : snoozeMenu === item.id ? (
+                  <div className="inbox-item__snooze-menu">
+                    {SNOOZE_OPTIONS.map(opt => (
+                      <button
+                        key={opt.days}
+                        className="inbox-item__snooze-option"
+                        onClick={() => handleSnooze(item.id, opt.days)}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                    <button
+                      className="inbox-item__snooze-option inbox-item__snooze-option--cancel"
+                      onClick={() => setSnoozeMenu(null)}
+                    >
+                      ✕ Huỷ
+                    </button>
+                  </div>
                 ) : (
                   <>
-                    <button
-                      className="inbox-item__action-btn"
-                      onClick={() => setClassifying(item.id)}
-                      title="Phân loại vào Collect"
-                    >
-                      📂 Phân loại
-                    </button>
+                    {/* Primary actions */}
                     <button
                       className="inbox-item__action-btn"
                       onClick={() => handleToTask(item)}
@@ -351,63 +374,47 @@ export default function InboxPage() {
                       📌 Task
                     </button>
                     <button
-                      className="inbox-item__action-btn inbox-item__action-btn--expense"
-                      onClick={() => handleToExpense(item)}
-                      title="Chuyển thành Chi tiêu"
-                    >
-                      💸 Chi tiêu
-                    </button>
-                    <button
-                      className="inbox-item__action-btn"
-                      onClick={() => handleToSub(item)}
-                      title="Tạo Đăng ký (Finance)"
-                    >
-                      🔄 Đăng ký
-                    </button>
-                    <button
-                      className="inbox-item__action-btn"
-                      onClick={async () => {
-                        await addIntention({ title: item.title });
-                        await deleteItem(item.id);
-                        fetchItems({ type: 'inbox' });
-                      }}
-                      title="Chuyển vào Trạm Ấp Trứng"
-                    >
-                      🥚 Ấp Trứng
-                    </button>
-                    <button
-                      className="inbox-item__action-btn inbox-item__action-btn--snooze"
-                      onClick={() => setSnoozeMenu(snoozeMenu === item.id ? null : item.id)}
-                      title="Snooze — ẩn tạm thời"
-                    >
-                      🕔 Snooze
-                    </button>
-                    {snoozeMenu === item.id && (
-                      <div className="inbox-item__snooze-menu">
-                        {SNOOZE_OPTIONS.map(opt => (
-                          <button
-                            key={opt.days}
-                            className="inbox-item__snooze-option"
-                            onClick={() => handleSnooze(item.id, opt.days)}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                        <button
-                          className="inbox-item__snooze-option inbox-item__snooze-option--cancel"
-                          onClick={() => setSnoozeMenu(null)}
-                        >
-                          ✕ Huỷ
-                        </button>
-                      </div>
-                    )}
-                    <button
                       className="inbox-item__action-btn inbox-item__action-btn--delete"
                       onClick={() => handleDelete(item.id)}
                       title="Xóa"
                     >
-                      🗑 Xóa
+                      🗑
                     </button>
+
+                    {/* Overflow menu trigger */}
+                    <div className="inbox-overflow-wrap">
+                      <button
+                        className="inbox-item__action-btn inbox-overflow-trigger"
+                        onClick={() => setOverflowMenu(overflowMenu === item.id ? null : item.id)}
+                        title="Thêm hành động"
+                      >
+                        ···
+                      </button>
+                      {overflowMenu === item.id && (
+                        <div className="inbox-overflow-menu">
+                          <button className="inbox-overflow-item" onClick={() => { setClassifying(item.id); setOverflowMenu(null); }}>
+                            📂 Phân loại
+                          </button>
+                          <button className="inbox-overflow-item" onClick={() => { handleToExpense(item); setOverflowMenu(null); }}>
+                            💸 Chi tiêu
+                          </button>
+                          <button className="inbox-overflow-item" onClick={() => { handleToSub(item); setOverflowMenu(null); }}>
+                            🔄 Đăng ký
+                          </button>
+                          <button className="inbox-overflow-item" onClick={async () => {
+                            await addIntention({ title: item.title });
+                            await deleteItem(item.id);
+                            fetchItems({ type: 'inbox' });
+                            setOverflowMenu(null);
+                          }}>
+                            🥚 Ấp Trứng
+                          </button>
+                          <button className="inbox-overflow-item" onClick={() => { setSnoozeMenu(item.id); setOverflowMenu(null); }}>
+                            🕔 Snooze
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
               </div>

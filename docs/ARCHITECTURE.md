@@ -1,5 +1,5 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v3.9.0
+**Version:** v4.0.0
 **Updated:** 2026-04-30
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
@@ -78,12 +78,17 @@ src/
 │   ├── useSubscriptions.js    # v3.0.0 — CRUD for subscriptions (monthly/yearly cycles)
 │   ├── useTags.js             # v3.7.0 — Central tag CRUD + link/unlink (expenses, subscriptions)
 │   ├── useIntentions.js       # v3.9.0 — Incubator CRUD + defer(friction) + execute + abandon + logs
+│   ├── useFitnessLog.js       # v4.0.0 — Fitness session logging (add, delete, todayLogs, weekSummary)
+│   ├── useLinkMeta.js         # v4.0.0 — OG metadata fetch+cache via /api/meta
 │   ├── useLifeJourney.js      # v2.2.0 — Life milestones CRUD (localStorage-only)
 │   ├── useNotifications.js    # Browser notification API
 │   └── ...
 │
-├── lib/
+│ lib/
 │   └── supabase.js            # Singleton Supabase client, safe fallback
+│
+├── api/                       # v4.0.0 Vercel Edge Functions
+│   └── meta.js                # OG metadata fetcher (edge runtime, 5s timeout, graceful fallback)
 │
 ├── pages/
 │   ├── LandingPage.jsx        # / — Marketing page (eager loaded)
@@ -244,6 +249,9 @@ collections           += snoozed_until DATE column
 -- v3.9.0 (run data/migration_v3.9.0_incubator.sql)
 intentions            ← someday-maybe items (title, reason, cost, status, review_date)
 intention_logs        ← timeline: created/deferred/executed/abandoned per intention
+
+-- v4.0.0 (run data/migration_v4.0.0_fitness.sql)
+fitness_logs          ← session log (session_name, duration_min, energy, notes)
 ```
 
 ### DashboardPage v3.1.0 — Data Sources

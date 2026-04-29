@@ -3,22 +3,31 @@
 
 ---
 
-## v4.0.0 — 🔄 IN PROGRESS — Health Tab + Reader View
+## v4.0.1 — ✅ DONE (2026-04-30) — Tech Debt: InboxPage Overflow Menu
+
+### Debt #1: InboxPage Action Overflow
+- [x] Refactor 7 action buttons → 2 primary (📌 Task + 🗑) + overflow menu (···)
+- [x] overflow menu CSS (dropdown, dark/light, click-outside close)
+- [x] `docs/FEATURES.md` + `CHANGELOG.md`
+
+---
+
+## v4.0.0 — ✅ DONE (2026-04-30) — Health Tab + Reader View
 
 ### Feature 7A: Health/Fitness Tab (🏋️ Sức Khỏe)
-- [ ] `data/migration_v4.0.0_fitness.sql` [NEW] — fitness_logs table + RLS
-- [ ] `src/hooks/useFitnessLog.js` [NEW] — addLog, deleteLog, getTodayLogs, getWeekSummary
-- [ ] `src/pages/TrackerPage.jsx` — Thêm tab 🏋️ Sức Khỏe (tab thứ 5)
-- [ ] `src/styles/tracker.css` — Fitness form + log list styles
-- [ ] XP + logActivity integration
+- [x] `data/migration_v4.0.0_fitness.sql` [NEW] — fitness_logs table + RLS
+- [x] `src/hooks/useFitnessLog.js` [NEW] — addLog, deleteLog, todayLogs, weekSummary
+- [x] `src/pages/TrackerPage.jsx` — Thêm tab 🏋️ Sức Khỏe (tab thứ 5)
+- [x] XP + logActivity integration
 
 ### Feature 7B: Reader View (Metadata Preview)
-- [ ] `api/meta.js` [NEW] — Vercel Edge Function fetch OG metadata
-- [ ] `src/hooks/useLinkMeta.js` [NEW] — Cache + fetch link metadata
-- [ ] `src/pages/InboxPage.jsx` — Preview cards for URL items
+- [x] `api/meta.js` [NEW] — Vercel Edge Function fetch OG metadata
+- [x] `src/hooks/useLinkMeta.js` [NEW] — Cache + fetch link metadata
+- [x] `src/pages/InboxPage.jsx` — Preview cards for URL items
+- [x] `src/styles/inbox.css` — Link preview styles
 
 ### Docs Sync
-- [ ] `docs/FEATURES.md` + `CHANGELOG.md` + `docs/ARCHITECTURE.md` + `docs/PLAN.md` + `package.json`
+- [x] `docs/FEATURES.md` + `CHANGELOG.md` + `docs/ARCHITECTURE.md` + `docs/PLAN.md` + `package.json`
 
 ---
 

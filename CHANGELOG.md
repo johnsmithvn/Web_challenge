@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## v4.0.1 — 2026-04-30
+
+### Changed
+- **InboxPage overflow menu:** Refactor 7 inline action buttons → 2 primary (📌 Task + 🗑) + overflow menu (···) dropdown.
+  - Overflow contains: 📂 Phân loại, 💸 Chi tiêu, 🔄 Đăng ký, 🥚 Ấp Trứng, 🕔 Snooze.
+  - Click-outside auto-close.
+  - Glassmorphic dark/light theme dropdown.
+  - Fixes Technical Debt #1 (action overflow since v3.5.0).
+
+---
+
+## v4.0.0 — 2026-04-30
+
+### Added
+- **🏋️ Health/Fitness Tab (Phase 1):** Tab thứ 5 trong TrackerPage.
+  - `migration_v4.0.0_fitness.sql` [NEW] — `fitness_logs` table + RLS + index.
+  - `useFitnessLog.js` [NEW] — addLog, deleteLog, todayLogs, weekSummary.
+  - TrackerPage — Form nhập (tên buổi tập + thời gian + năng lượng + ghi chú), today log list, week summary cards.
+  - XP integration: +10 XP/buổi tập + logActivity('fitness_done').
+- **🔗 Reader View (Metadata Preview):**
+  - `api/meta.js` [NEW] — Vercel Edge Function fetch OG metadata (title, image, desc) với 5s timeout + graceful fallback.
+  - `useLinkMeta.js` [NEW] — Client-side cache + fetch hook.
+  - InboxPage — Preview card (thumbnail + title + desc) cho inbox items có URL.
+  - `inbox.css` — Link preview styles (dark/light).
+
+### Changed
+- `TrackerPage.jsx` — 5 tabs (thêm 🏋️ Sức Khỏe).
+- `InboxPage.jsx` — Auto-fetch link meta, render preview card.
+
+---
+
 ## v3.9.0 — 2026-04-30
 
 ### Added

@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
 **Updated:** 2026-04-30
-**Current Version:** v3.9.0
+**Current Version:** v4.0.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -325,15 +325,15 @@
 
 ---
 
-## 📋 Phase 8.6 — Reader View + Health Tab (v4.0.0)
-*Backlog — next*
+## ✅ Phase 8.6 — Reader View + Health Tab (v4.0.0)
+*Hoàn thành: 2026-04-30*
 
-- [ ] Vercel Edge Function api/meta.js (OG metadata fetch)
-- [ ] useLinkMeta hook + preview cards in InboxPage
-- [ ] Graceful fallback for blocked URLs
-- [ ] fitness_logs table + useFitnessLog hook
-- [ ] 🏋️ Sức Khỏe tab in TrackerPage
-- [ ] XP + Heatmap integration for fitness
+- [x] Vercel Edge Function api/meta.js (OG metadata fetch)
+- [x] useLinkMeta hook + preview cards in InboxPage
+- [x] Graceful fallback for blocked URLs
+- [x] fitness_logs table + useFitnessLog hook
+- [x] 🏋️ Sức Khỏe tab in TrackerPage
+- [x] XP + Heatmap integration for fitness
 
 ---
 

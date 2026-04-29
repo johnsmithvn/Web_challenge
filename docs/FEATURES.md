@@ -1,5 +1,5 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v3.9.0
+**Version:** v4.0.0
 **Updated:** 2026-04-30
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
@@ -477,7 +477,8 @@
 - **🔄 Đăng ký action:** Chuyển sang FinancePage tạo Subscription (v3.0.1)
 - **💸 Chi tiêu nhanh (v3.5.0):** Bấm nút → QuickExpenseModal inline (không navigate). Regex tự bóc tách số tiền từ text ("Cafe 50k" → 50,000đ). Pre-fill amount + note + category dropdown 8 loại. Lưu → `addExpense()` + `logActivity()` + xóa item khỏi inbox.
 - Delete action
-- **🕔 Snooze (v3.8.0):** Ẩn inbox item tạm thời. 4 options: 1 tuần / 2 tuần / 1 tháng / 3 tháng. Item biến mất khỏi danh sách, tự xuất hiện lại khi đến ngày. Badge "🕔 X snoozed" trong header. DB: `snoozed_until DATE`. Filter: `snoozed_until IS NULL OR ≤ today`.
+- **🕔 Snooze (v3.8.0):** Ẩn inbox item tạm thời. 4 options: 1 tuần / 2 tuần / 1 tháng / 3 tháng. Badge "🕔 X snoozed" trong header.
+- **🔗 Link Preview (v4.0.0):** Inbox items có URL tự động hiển preview card (thumbnail + title + desc) qua Vercel Edge Function `/api/meta`. Graceful fallback khi bị chặn.
 - Tự động detect URL
 - Empty state khi inbox trống
 
@@ -536,6 +537,26 @@
 - Review-due highlighting: card viền vàng khi đến ngày review
 - Badge header: số lượng đang ấp + cần review
 - Inbox integration: nút 🥚 Ấp Trứng chuyển inbox item vào Incubator
+
+---
+
+## 26. 🏋️ Sức Khỏe / Health Tab (v4.0.0)
+
+**Added:** v4.0.0
+**Files:** `src/hooks/useFitnessLog.js`, TrackerPage (tab thứ 5)
+**DB:** `fitness_logs`
+**Route:** `/tracker` (tab `fitness`)
+
+**Mô tả:** Phase 1 — Simple fitness session logging. Mục tiêu: định hình thói quen tracking, chưa analytics.
+
+**Chi tiết:**
+- Form nhập: tên buổi tập + thời gian (phút) + năng lượng (Tốt/Bình thường/Tệ) + ghi chú tự do
+- Today log list: danh sách buổi tập hôm nay, xóa từng log
+- Week summary: 3 KPI cards (số buổi + tổng phút + số ngày)
+- XP: +10 XP/buổi tập
+- Heatmap: logActivity('fitness_done') → tự vào Life Log heatmap
+- Phase 1 limitation: chưa có edit session (add + delete only)
+- **Data source:** Supabase `fitness_logs`
 
 ---
 
