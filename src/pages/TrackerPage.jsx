@@ -309,11 +309,12 @@ export default function TrackerPage() {
   const [tab, setTab] = useState('today');
 
   // Fitness state
-  const { todayLogs: fitTodayLogs, weekSummary: fitWeek, addLog: addFitLog, deleteLog: delFitLog, ENERGY_LABELS } = useFitnessLog();
+  const { todayLogs: fitTodayLogs, weekSummary: fitWeek, addLog: addFitLog, updateLog: updFitLog, deleteLog: delFitLog, ENERGY_LABELS } = useFitnessLog();
   const [fitName, setFitName] = useState('');
   const [fitDuration, setFitDuration] = useState('45');
   const [fitEnergy, setFitEnergy] = useState('good');
   const [fitNotes, setFitNotes] = useState('');
+  const [editFit, setEditFit] = useState(null); // { id, session_name, duration_min, energy, notes } or null
 
   const [celebration, setCelebration] = useState(false);
   const [skipModal, setSkipModal]   = useState(null);
@@ -1001,27 +1002,102 @@ export default function TrackerPage() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                   {fitTodayLogs.map(l => (
-                    <div key={l.id} style={{
-                      display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem',
-                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-                      borderLeft: `3px solid ${l.energy === 'good' ? 'var(--green)' : l.energy === 'bad' ? '#f87171' : '#eab308'}`,
-                      borderRadius: 'var(--radius-md)',
-                    }}>
-                      <span style={{ fontSize: '1.1rem' }}>🏋️</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{l.session_name}</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '0.4rem' }}>
-                          <span>⏱ {l.duration_min}p</span>
-                          <span>{ENERGY_LABELS[l.energy]}</span>
+                    editFit?.id === l.id ? (
+                      /* ── Inline edit mode ── */
+                      <div key={l.id} style={{
+                        padding: '0.6rem', background: 'rgba(139,92,246,0.06)',
+                        border: '1px solid rgba(139,92,246,0.2)', borderRadius: 'var(--radius-md)',
+                        display: 'flex', flexDirection: 'column', gap: '0.35rem',
+                      }}>
+                        <input
+                          className="auth-input"
+                          value={editFit.session_name}
+                          onChange={e => setEditFit(p => ({ ...p, session_name: e.target.value }))}
+                          style={{ fontSize: '0.82rem', padding: '0.35rem 0.5rem' }}
+                        />
+                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                          <input
+                            className="auth-input"
+                            type="number" min="1" max="300"
+                            value={editFit.duration_min}
+                            onChange={e => setEditFit(p => ({ ...p, duration_min: e.target.value }))}
+                            style={{ width: 60, fontSize: '0.82rem', padding: '0.35rem 0.5rem' }}
+                          />
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>p</span>
+                          {['good', 'normal', 'bad'].map(e => (
+                            <button key={e} type="button"
+                              onClick={() => setEditFit(p => ({ ...p, energy: e }))}
+                              style={{
+                                flex: 1, padding: '0.3rem', borderRadius: 'var(--radius-sm)',
+                                fontSize: '0.65rem', fontWeight: 600, cursor: 'pointer',
+                                background: editFit.energy === e ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.04)',
+                                border: `1px solid ${editFit.energy === e ? 'rgba(139,92,246,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                                color: editFit.energy === e ? 'var(--text-primary)' : 'var(--text-muted)',
+                              }}
+                            >{ENERGY_LABELS[e].split(' ')[0]}</button>
+                          ))}
                         </div>
-                        {l.notes && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.15rem' }}>📝 {l.notes}</div>}
+                        <textarea
+                          className="auth-input"
+                          rows={1}
+                          value={editFit.notes || ''}
+                          onChange={e => setEditFit(p => ({ ...p, notes: e.target.value }))}
+                          placeholder="Ghi chú..."
+                          style={{ resize: 'none', fontSize: '0.78rem', padding: '0.35rem 0.5rem' }}
+                        />
+                        <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end' }}>
+                          <button
+                            className="btn btn-ghost"
+                            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                            onClick={() => setEditFit(null)}
+                          >Huỷ</button>
+                          <button
+                            className="btn btn-primary"
+                            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                            onClick={async () => {
+                              await updFitLog(editFit.id, {
+                                session_name: editFit.session_name,
+                                duration_min: editFit.duration_min,
+                                energy: editFit.energy,
+                                notes: editFit.notes,
+                              });
+                              setEditFit(null);
+                            }}
+                          >Lưu</button>
+                        </div>
                       </div>
-                      <button
-                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}
-                        onClick={() => delFitLog(l.id)}
-                        title="Xóa"
-                      >🗑</button>
-                    </div>
+                    ) : (
+                      /* ── View mode ── */
+                      <div key={l.id} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem',
+                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                        borderLeft: `3px solid ${l.energy === 'good' ? 'var(--green)' : l.energy === 'bad' ? '#f87171' : '#eab308'}`,
+                        borderRadius: 'var(--radius-md)',
+                      }}>
+                        <span style={{ fontSize: '1.1rem' }}>🏋️</span>
+                        <div style={{ flex: 1, cursor: 'pointer' }}
+                          onClick={() => setEditFit({ id: l.id, session_name: l.session_name, duration_min: l.duration_min, energy: l.energy, notes: l.notes || '' })}
+                          title="Bấm để sửa"
+                        >
+                          <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{l.session_name}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '0.4rem' }}>
+                            <span>⏱ {l.duration_min}p</span>
+                            <span>{ENERGY_LABELS[l.energy]}</span>
+                          </div>
+                          {l.notes && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.15rem' }}>📝 {l.notes}</div>}
+                        </div>
+                        <button
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.72rem' }}
+                          onClick={() => setEditFit({ id: l.id, session_name: l.session_name, duration_min: l.duration_min, energy: l.energy, notes: l.notes || '' })}
+                          title="Sửa"
+                        >✏️</button>
+                        <button
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}
+                          onClick={() => delFitLog(l.id)}
+                          title="Xóa"
+                        >🗑</button>
+                      </div>
+                    )
                   ))}
                 </div>
               )}

@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## v4.0.3 — 2026-04-30
+
+### Added
+- **Fitness edit (Phase 2):** `updateLog(id, fields)` in `useFitnessLog.js` — optimistic update + rollback.
+- **Fitness inline edit UI:** Click log item or ✏️ button → inline edit form (session name, duration, energy, notes) + Save/Huỷ.
+- **Dashboard Fitness card:** Compact "🏋️ Tuần Này" section with 3 KPI cards + today summary. CTA → Tracker fitness tab.
+
+### Changed
+- `useFitnessLog.js` — Phase 2 docstring, full CRUD (add + update + delete).
+- Resolves Technical Debt #4 (fitness edit).
+
+---
+
+## v4.0.2 — 2026-04-30
+
+### Fixed
+- **spawnRecurringTask retry:** Bounded retry (max 3 attempts, 1s/2s backoff) khi insert recurring task thất bại. Trước đây: silent fail → task lặp lại không được tạo. Bây giờ: retry + structured `console.error` log khi hết retry.
+
+---
+
 ## v4.0.1 — 2026-04-30
 
 ### Changed

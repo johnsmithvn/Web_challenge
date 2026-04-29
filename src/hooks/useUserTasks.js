@@ -148,9 +148,9 @@ export function useUserTasks() {
     return newTask;
   }, [isAuth, userId]);
 
-  // ── Spawn next recurring task (fire-and-forget, NEVER calls completeTask) ──
+  // ── Spawn next recurring task (bounded retry, NEVER calls completeTask) ──
   const spawnRecurringTask = useCallback(async (task) => {
-    if (!task?.recurrence_rule || !isAuth) return;
+    if (!task?.recurrence_rule || !isAuth) return false;
 
     const rule = task.recurrence_rule;
     const today = todayStr();
@@ -164,33 +164,55 @@ export function useUserTasks() {
       nextDate = nextMonthDay(rule.day);
     }
 
-    if (!nextDate) return;
+    if (!nextDate) return false;
 
-    try {
-      const sb = await getSb();
-      if (!sb) return;
+    const MAX_RETRIES = 2;
+    const BACKOFF_MS = 1000;
 
-      // Insert directly to Supabase — no optimistic update, task is in the future
-      const { error } = await sb.from('user_tasks').insert({
-        user_id: userId,
-        title: task.title,
-        description: task.description,
-        due_date: nextDate,
-        due_time: task.due_time,
-        energy_level: task.energy_level,
-        duration_est: task.duration_est,
-        recurrence_rule: task.recurrence_rule, // clone rule for chain
-        completed: false,
-        notified: false,
-      });
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const sb = await getSb();
+        if (!sb) return false;
 
-      if (error) {
-        console.error('[useUserTasks] spawnRecurring error:', error.message);
-        // Silent fail — task was already completed, user gets the dopamine hit
+        const { error } = await sb.from('user_tasks').insert({
+          user_id: userId,
+          title: task.title,
+          description: task.description,
+          due_date: nextDate,
+          due_time: task.due_time,
+          energy_level: task.energy_level,
+          duration_est: task.duration_est,
+          recurrence_rule: task.recurrence_rule, // clone rule for chain
+          completed: false,
+          notified: false,
+        });
+
+        if (!error) return true; // Success
+
+        console.warn(
+          `[useUserTasks] spawnRecurring attempt ${attempt + 1}/${MAX_RETRIES + 1} failed:`,
+          error.message
+        );
+      } catch (err) {
+        console.warn(
+          `[useUserTasks] spawnRecurring attempt ${attempt + 1}/${MAX_RETRIES + 1} exception:`,
+          err.message
+        );
       }
-    } catch (err) {
-      console.error('[useUserTasks] spawnRecurring exception:', err);
+
+      // Backoff before retry (skip on last attempt)
+      if (attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, BACKOFF_MS * (attempt + 1)));
+      }
     }
+
+    // All retries exhausted — structured warning for debugging
+    console.error(
+      `[useUserTasks] RECURRING TASK FAILED after ${MAX_RETRIES + 1} attempts.`,
+      `Task: "${task.title}" → Next due: ${nextDate}.`,
+      'User should manually create the next occurrence.'
+    );
+    return false;
   }, [isAuth, userId]);
 
   // ── Complete task ──────────────────────────────────────

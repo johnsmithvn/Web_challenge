@@ -3,6 +3,26 @@
 
 ---
 
+## v4.0.3 — ✅ DONE (2026-04-30) — Fitness Edit + Dashboard Fitness Card
+
+### Debt #4: Fitness edit support
+- [x] `useFitnessLog.js` — thêm `updateLog(id, fields)`
+- [x] TrackerPage fitness tab — inline edit mode cho từng log
+- [x] Dashboard — compact fitness card (tuần này)
+- [x] Docs sync
+
+---
+
+## v4.0.2 — ✅ DONE (2026-04-30) — Tech Debt: Recurring Task Retry
+
+### Debt #2: spawnRecurringTask no retry
+- [x] Bounded retry (max 2 retries, 1s backoff) on insert fail
+- [x] Return success/failure status for logging
+- [x] Structured console.error on final failure
+- [x] `CHANGELOG.md`
+
+---
+
 ## v4.0.1 — ✅ DONE (2026-04-30) — Tech Debt: InboxPage Overflow Menu
 
 ### Debt #1: InboxPage Action Overflow

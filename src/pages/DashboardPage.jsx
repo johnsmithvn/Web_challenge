@@ -7,6 +7,7 @@ import { useExpenses } from '../hooks/useExpenses';
 import { useSubscriptions } from '../hooks/useSubscriptions';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useFocusTimer } from '../hooks/useFocusTimer';
+import { useFitnessLog } from '../hooks/useFitnessLog';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import ActivityHeatmap from '../components/ActivityHeatmap';
@@ -550,6 +551,7 @@ export default function DashboardPage() {
   const { getAllSkips } = useSkipReasons();
   const { moodLog } = useMoodLog();
   const { todayMinutes, todaySessions } = useFocusTimer();
+  const { weekSummary: fitWeek, todayLogs: fitToday } = useFitnessLog();
 
   /* ── Stable date refs (avoid recreation every render) ── */
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -694,6 +696,35 @@ export default function DashboardPage() {
         <div className="card db-section">
           <div className="dash-card-title">⏱ Focus 7 Ngày — Per Habit</div>
           <FocusBreakdown/>
+        </div>
+
+        {/* ── FITNESS WEEK (v4.0.3) ── */}
+        <SectionTitle icon="🏋️" title="Sức Khỏe" action={<Link to="/tracker" className="btn btn-ghost" style={{fontSize:'.8rem'}} onClick={() => setTimeout(() => document.getElementById('tab-fitness')?.click(), 100)}>Ghi nhận →</Link>}/>
+        <div className="card db-section">
+          <div className="dash-card-title">🏋️ Tuần Này</div>
+          {fitWeek.sessions === 0 ? (
+            <p style={{color:'var(--text-muted)',fontSize:'.85rem',marginTop:'.5rem'}}>Chưa ghi nhận buổi tập nào tuần này.</p>
+          ) : (
+            <div style={{display:'flex',gap:'.75rem',flexWrap:'wrap',marginTop:'.5rem'}}>
+              <div style={{flex:1,minWidth:70,textAlign:'center',padding:'.5rem',background:'rgba(0,255,136,.06)',borderRadius:'var(--radius-md)',border:'1px solid rgba(0,255,136,.15)'}}>
+                <div style={{fontSize:'1.2rem',fontWeight:800,color:'var(--green)'}}>{fitWeek.sessions}</div>
+                <div style={{fontSize:'.68rem',color:'var(--text-muted)'}}>buổi</div>
+              </div>
+              <div style={{flex:1,minWidth:70,textAlign:'center',padding:'.5rem',background:'rgba(139,92,246,.06)',borderRadius:'var(--radius-md)',border:'1px solid rgba(139,92,246,.15)'}}>
+                <div style={{fontSize:'1.2rem',fontWeight:800,color:'#a78bfa'}}>{fitWeek.totalMin}</div>
+                <div style={{fontSize:'.68rem',color:'var(--text-muted)'}}>phút</div>
+              </div>
+              <div style={{flex:1,minWidth:70,textAlign:'center',padding:'.5rem',background:'rgba(234,179,8,.06)',borderRadius:'var(--radius-md)',border:'1px solid rgba(234,179,8,.15)'}}>
+                <div style={{fontSize:'1.2rem',fontWeight:800,color:'#eab308'}}>{fitWeek.uniqueDays}</div>
+                <div style={{fontSize:'.68rem',color:'var(--text-muted)'}}>ngày</div>
+              </div>
+            </div>
+          )}
+          {fitToday.length > 0 && (
+            <div style={{marginTop:'.6rem',fontSize:'.78rem',color:'var(--text-muted)'}}>
+              Hôm nay: {fitToday.map(l => l.session_name).join(', ')} · {fitToday.reduce((s,l) => s + l.duration_min, 0)}p
+            </div>
+          )}
         </div>
 
         {/* ── WEEKLY REVIEW ── */}

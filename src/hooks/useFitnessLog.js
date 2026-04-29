@@ -13,10 +13,9 @@ async function getSb() {
 const ENERGY_LABELS = { good: '😊 Tốt', normal: '😐 Bình thường', bad: '😞 Tệ' };
 
 /**
- * useFitnessLog — Phase 1: Simple fitness session logging.
+ * useFitnessLog — Phase 2: Fitness session logging with CRUD.
  *
- * Scope: add, delete, query today + week summary.
- * No edit in Phase 1 (documented technical debt).
+ * Scope: add, update, delete, query today + week summary.
  */
 export function useFitnessLog() {
   const { user } = useAuth();
@@ -131,6 +130,44 @@ export function useFitnessLog() {
     }
   }, [isAuth, userId]);
 
+  // ── Update log ────────────────────────────────────────────
+  const updateLog = useCallback(async (id, fields) => {
+    if (!isAuth || !id) return false;
+    const backup = logs.find(l => l.id === id);
+    if (!backup) return false;
+
+    // Optimistic
+    setLogs(prev => prev.map(l => l.id === id ? { ...l, ...fields } : l));
+
+    try {
+      const sb = await getSb();
+      if (!sb) { setLogs(prev => prev.map(l => l.id === id ? backup : l)); return false; }
+
+      const allowed = {};
+      if (fields.session_name !== undefined) allowed.session_name = fields.session_name.trim();
+      if (fields.duration_min !== undefined) allowed.duration_min = parseInt(fields.duration_min, 10);
+      if (fields.energy !== undefined) allowed.energy = fields.energy;
+      if (fields.notes !== undefined) allowed.notes = fields.notes?.trim() || null;
+
+      const { error } = await sb
+        .from('fitness_logs')
+        .update(allowed)
+        .eq('id', id)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('[useFitnessLog] update error:', error.message);
+        setLogs(prev => prev.map(l => l.id === id ? backup : l));
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('[useFitnessLog] update exception:', err);
+      setLogs(prev => prev.map(l => l.id === id ? backup : l));
+      return false;
+    }
+  }, [isAuth, userId, logs]);
+
   // ── Derived: today's logs ─────────────────────────────────
   const todayLogs = useMemo(() =>
     logs.filter(l => l.date === todayStr),
@@ -157,6 +194,7 @@ export function useFitnessLog() {
     todayLogs,
     weekSummary,
     addLog,
+    updateLog,
     deleteLog,
     fetchLogs,
     ENERGY_LABELS,

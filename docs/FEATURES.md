@@ -479,6 +479,7 @@
 - Delete action
 - **🕔 Snooze (v3.8.0):** Ẩn inbox item tạm thời. 4 options: 1 tuần / 2 tuần / 1 tháng / 3 tháng. Badge "🕔 X snoozed" trong header.
 - **🔗 Link Preview (v4.0.0):** Inbox items có URL tự động hiển preview card (thumbnail + title + desc) qua Vercel Edge Function `/api/meta`. Graceful fallback khi bị chặn.
+- **··· Overflow Menu (v4.0.1):** 2 primary buttons (📌 Task + 🗑) luôn hiện. 5 actions phụ (📂 Phân loại, 💸 Chi tiêu, 🔄 Đăng ký, 🥚 Ấp Trứng, 🕔 Snooze) gom vào dropdown ···. Click-outside auto-close.
 - Tự động detect URL
 - Empty state khi inbox trống
 
@@ -547,15 +548,16 @@
 **DB:** `fitness_logs`
 **Route:** `/tracker` (tab `fitness`)
 
-**Mô tả:** Phase 1 — Simple fitness session logging. Mục tiêu: định hình thói quen tracking, chưa analytics.
+**Mô tả:** Phase 2 — Full CRUD fitness session logging + Dashboard integration.
 
 **Chi tiết:**
 - Form nhập: tên buổi tập + thời gian (phút) + năng lượng (Tốt/Bình thường/Tệ) + ghi chú tự do
-- Today log list: danh sách buổi tập hôm nay, xóa từng log
+- Today log list: danh sách buổi tập hôm nay, **sửa inline** (click/✏️) + xóa từng log
 - Week summary: 3 KPI cards (số buổi + tổng phút + số ngày)
+- **Inline edit (v4.0.3):** Click log → edit form (session_name, duration, energy, notes) + Save/Huỷ
+- **Dashboard card (v4.0.3):** Compact "🏋️ Tuần Này" section trong Dashboard + today summary
 - XP: +10 XP/buổi tập
 - Heatmap: logActivity('fitness_done') → tự vào Life Log heatmap
-- Phase 1 limitation: chưa có edit session (add + delete only)
 - **Data source:** Supabase `fitness_logs`
 
 ---
