@@ -1,5 +1,108 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-04-27
+**Updated:** 2026-04-30
+
+---
+
+## v4.0.0 — 🔄 IN PROGRESS — Health Tab + Reader View
+
+### Feature 7A: Health/Fitness Tab (🏋️ Sức Khỏe)
+- [ ] `data/migration_v4.0.0_fitness.sql` [NEW] — fitness_logs table + RLS
+- [ ] `src/hooks/useFitnessLog.js` [NEW] — addLog, deleteLog, getTodayLogs, getWeekSummary
+- [ ] `src/pages/TrackerPage.jsx` — Thêm tab 🏋️ Sức Khỏe (tab thứ 5)
+- [ ] `src/styles/tracker.css` — Fitness form + log list styles
+- [ ] XP + logActivity integration
+
+### Feature 7B: Reader View (Metadata Preview)
+- [ ] `api/meta.js` [NEW] — Vercel Edge Function fetch OG metadata
+- [ ] `src/hooks/useLinkMeta.js` [NEW] — Cache + fetch link metadata
+- [ ] `src/pages/InboxPage.jsx` — Preview cards for URL items
+
+### Docs Sync
+- [ ] `docs/FEATURES.md` + `CHANGELOG.md` + `docs/ARCHITECTURE.md` + `docs/PLAN.md` + `package.json`
+
+---
+
+## v3.9.0 — ✅ DONE (2026-04-30) — 🥚 Incubator Module
+
+### Feature 6A: Incubator (Trạm Ấp Trứng)
+- [x] `data/migration_v3.9.0_incubator.sql` [NEW] — intentions + intention_logs + RLS
+- [x] `src/hooks/useIntentions.js` [NEW] — CRUD + deferIntention + executeIntention + abandonIntention + getLogs
+- [x] `src/pages/IncubatorPage.jsx` [NEW] — Card UI + Defer modal (friction) + Execute modal
+- [x] `src/styles/incubator.css` [NEW] — Page + card + modal styles
+- [x] `src/App.jsx` — Route /incubator + lazy import
+- [x] `src/components/Navbar.jsx` — Link 🥚 Incubator
+- [x] `src/pages/InboxPage.jsx` — Nút 🥚 Ấp Trứng action
+
+### Docs Sync
+- [x] `docs/FEATURES.md` + `CHANGELOG.md` + `package.json`
+
+---
+
+## v3.8.0 — ✅ DONE (2026-04-30) — Inbox Snooze
+
+### Feature 5A: Inbox Snooze
+- [x] `data/migration_v3.8.0_snooze.sql` [NEW] — ALTER TABLE collections ADD snoozed_until
+- [x] `src/hooks/useCollections.js` — snoozeItem(), fetchItems filter snoozed
+- [x] `src/pages/InboxPage.jsx` — Snooze menu (1 tuần/2 tuần/1 tháng/3 tháng) + snoozed count badge
+- [x] `src/styles/inbox.css` — snooze button + menu styles
+
+### Docs Sync
+- [x] `docs/FEATURES.md` + `CHANGELOG.md` + `package.json`
+
+---
+
+## v3.7.0 — ✅ DONE (2026-04-30) — Cashflow Calendar + PARA Tag
+
+### Feature 4A: Cashflow Calendar
+- [x] `src/components/CashflowBar.jsx` [NEW] — thanh 30 ngày hiển thị sub due dots
+- [x] `src/pages/FinancePage.jsx` — mount CashflowBar dưới summary cards
+- [x] `src/styles/finance.css` — styles cho CashflowBar
+
+### Feature 4B: PARA Tags
+- [x] `data/migration_v3.7.0_para.sql` [NEW] — tags + expense_tags + subscription_tags + RLS
+- [x] `src/hooks/useTags.js` [NEW] — CRUD tags, fetchTags, addTag, deleteTag
+- [x] `src/components/TagPicker.jsx` [NEW] — searchable dropdown + tạo tag mới
+- [x] `src/pages/FinancePage.jsx` — integrate TagPicker vào expense + sub forms
+
+### Docs Sync
+- [x] `docs/FEATURES.md` + `CHANGELOG.md` + `package.json`
+
+---
+
+## v3.6.0 — ✅ DONE (2026-04-30) — Energy Tag + Recurring Tasks
+
+### Feature 2B: Energy-based Tagging
+- [x] `data/migration_v3.6.0_tasks.sql` — ALTER TABLE thêm energy_level, duration_est, recurrence_rule
+- [x] `src/hooks/useUserTasks.js` — addTask nhận energyLevel/durationEst/recurrenceRule, completeTask spawn recurring
+- [x] `src/components/TaskListSection.jsx` — Energy picker + Duration picker + Recurrence toggle trong form, badges + filter chips
+
+### Feature 3A: Recurring Tasks
+- [x] `spawnRecurringTask()` helper tách riêng trong hook — tránh vòng lặp
+- [x] Date helpers: addDays, nextWeekday, nextMonthDay
+
+### Docs Sync
+- [x] `docs/FEATURES.md` — update Task section
+- [x] `CHANGELOG.md` — v3.6.0 entry
+- [x] `package.json` — version bump → 3.6.0
+
+---
+
+## v3.5.0 — ✅ DONE (2026-04-30) — Quick Expense từ Inbox + Overdue Task Triage
+
+### Feature 1A: Quick Expense Modal (Inbox → Finance)
+- [x] `src/pages/InboxPage.jsx` — thêm nút 💸 Chi tiêu + QuickExpenseModal inline
+- [x] `src/styles/inbox.css` — style cho QuickExpenseModal
+- [x] Import `useExpenses` + `useActivityLog` vào InboxPage
+- [x] Regex bóc tách số tiền từ text (50k → 50000)
+
+### Feature 2A: Overdue Rollover / Triage
+- [x] `src/hooks/useUserTasks.js` — thêm todayTasks, overdueTasks, futureTasks, rolloverTask
+- [x] `src/components/TaskListSection.jsx` — tách UI 3 khối: Quá hạn / Hôm nay / Sắp tới
+
+### Docs Sync
+- [x] `docs/FEATURES.md` — update Inbox + Task sections
+- [x] `CHANGELOG.md` — v3.5.0 entry
+- [x] `package.json` — version bump → 3.5.0
 
 ---
 

@@ -4,7 +4,10 @@ import { useExpenses } from '../hooks/useExpenses';
 import { useSubscriptions } from '../hooks/useSubscriptions';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useCollections } from '../hooks/useCollections';
+import { useTags } from '../hooks/useTags';
 import { useAuth } from '../contexts/AuthContext';
+import CashflowBar from '../components/CashflowBar';
+import TagPicker from '../components/TagPicker';
 import EXPENSE_DATA from '../data/expense-categories.json';
 import '../styles/finance.css';
 
@@ -189,6 +192,7 @@ export default function FinancePage() {
   const { subs, isLoading: subLoading, fetchSubs, addSub, deleteSub, toggleActive, getMonthlyCost, getUpcoming } = useSubscriptions();
   const { logActivity } = useActivityLog();
   const { deleteItem: deleteInboxItem } = useCollections();
+  const { tags, addTag, linkTag } = useTags();
 
   const [tab, setTab] = useState('expense');
   const [showAddExp, setShowAddExp] = useState(false);
@@ -206,6 +210,10 @@ export default function FinancePage() {
   const [subCycle, setSubCycle] = useState('monthly');
   const [subDue, setSubDue] = useState('');
   const [subIcon, setSubIcon] = useState('📦');
+
+  // Tag selection state
+  const [expTagIds, setExpTagIds] = useState([]);
+  const [subTagIds, setSubTagIds] = useState([]);
 
   // Auto-calculate next due date from today based on cycle
   const calcNextDue = (cycle) => {
@@ -259,8 +267,13 @@ export default function FinancePage() {
       logActivity('expense_add', `${formatVND(amount)} ${cat?.label || expCategory}`, amount, {
         category: expCategory,
       });
+      // Link tags
+      for (const tagId of expTagIds) {
+        await linkTag(result.id, tagId, 'expense');
+      }
       setExpAmount('');
       setExpNote('');
+      setExpTagIds([]);
       setShowAddExp(false);
     }
   };
@@ -273,6 +286,10 @@ export default function FinancePage() {
     const result = await addSub({ name: subName, amount, cycle: subCycle, next_due: subDue, icon: subIcon });
     if (result) {
       logActivity('subscription_add', `${subName} — ${formatVND(amount)}/${subCycle}`, amount, { cycle: subCycle });
+      // Link tags
+      for (const tagId of subTagIds) {
+        await linkTag(result.id, tagId, 'subscription');
+      }
       // If this subscription was created from Inbox, delete the inbox item now
       if (pendingInboxId) {
         await deleteInboxItem(pendingInboxId);
@@ -282,6 +299,7 @@ export default function FinancePage() {
       setSubAmount('');
       setSubDue('');
       setSubIcon('📦');
+      setSubTagIds([]);
       setShowAddSub(false);
     }
   };
@@ -337,6 +355,9 @@ export default function FinancePage() {
         </div>
       )}
 
+      {/* Cashflow Calendar */}
+      <CashflowBar subs={subs} />
+
       {/* Tabs */}
       <div className="finance-tabs">
         <button className={`finance-tab${tab === 'expense' ? ' finance-tab--active' : ''}`} onClick={() => setTab('expense')}>
@@ -380,6 +401,13 @@ export default function FinancePage() {
                 value={expNote}
                 onChange={(e) => setExpNote(e.target.value)}
                 maxLength={200}
+              />
+              <TagPicker
+                tags={tags}
+                selected={expTagIds}
+                onToggle={id => setExpTagIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                onAdd={addTag}
+                compact
               />
               <button type="submit" className="btn btn-primary" disabled={!expAmount}>Lưu</button>
             </form>
@@ -494,6 +522,13 @@ export default function FinancePage() {
                   />
                 </div>
               </div>
+              <TagPicker
+                tags={tags}
+                selected={subTagIds}
+                onToggle={id => setSubTagIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                onAdd={addTag}
+                compact
+              />
               <button type="submit" className="btn btn-primary" disabled={!subName || !subAmount || !subDue}>Lưu</button>
             </form>
           )}

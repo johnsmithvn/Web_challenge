@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v3.2.0
-**Updated:** 2026-04-26
+**Version:** v3.9.0
+**Updated:** 2026-04-30
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 
@@ -51,7 +51,9 @@ src/
 │   ├── SubAlert.jsx           # v3.0.0 — Compact sidebar alert for upcoming subscription renewals
 │   ├── DailyReview.jsx        # v3.0.0 — Today-recap widget (activity count + last 5 actions)
 │   ├── KnowledgeResurface.jsx # v3.0.1 — "Hôm nay nhớ lại" spaced repetition (random Collect resurface)
-│   ├── TaskListSection.jsx    # v2.1.0 — Personal tasks UI (📌 Nhiệm Vụ)
+│   ├── TaskListSection.jsx    # v2.1.0 — Personal tasks UI (📌 Nhiệm Vụ) + energy/duration/recurrence v3.6.0
+│   ├── CashflowBar.jsx       # v3.7.0 — 30-day subscription due date timeline
+│   ├── TagPicker.jsx         # v3.7.0 — Searchable multi-select tag dropdown
 │   ├── TrackerSection.jsx     # Read-only 3-week status dots
 │   ├── XpBar.jsx              # XP + level indicator
 │   └── ...
@@ -71,9 +73,11 @@ src/
 │   ├── useXpStore.js          # XP log, level computation, addXp/removeXp, Supabase-first
 │   ├── useUserTasks.js        # v2.1.0 — Personal task CRUD, notification sync
 │   ├── useActivityLog.js      # v3.0.0 — Append-only activity logger for Life Log heatmap/timeline
-│   ├── useCollections.js      # v3.0.0 — CRUD for collections (inbox + typed items)
+│   ├── useCollections.js      # v3.0.0 — CRUD for collections (inbox + typed items) + snooze v3.8.0
 │   ├── useExpenses.js         # v3.0.0 — CRUD for expenses (VNĐ, chi tiêu only)
 │   ├── useSubscriptions.js    # v3.0.0 — CRUD for subscriptions (monthly/yearly cycles)
+│   ├── useTags.js             # v3.7.0 — Central tag CRUD + link/unlink (expenses, subscriptions)
+│   ├── useIntentions.js       # v3.9.0 — Incubator CRUD + defer(friction) + execute + abandon + logs
 │   ├── useLifeJourney.js      # v2.2.0 — Life milestones CRUD (localStorage-only)
 │   ├── useNotifications.js    # Browser notification API
 │   └── ...
@@ -93,6 +97,7 @@ src/
 │   ├── JourneyPage.jsx        # /journey — 4 tabs: Đang chạy / Khám Phá / Của Tôi / Lịch Sử (lazy)
 │   ├── JourneyDetailPage.jsx  # /journey/:id — Full dashboard per journey (lazy)
 │   ├── DashboardPage.jsx  # /dashboard — v3.1.0 Unified Dashboard (habits+finance+activity+XP heatmap)
+│   ├── IncubatorPage.jsx  # /incubator — v3.9.0 Trạm Ấp Trứng (someday-maybe + friction defer)
 │   ├── QuizPage.jsx           # /quiz — 10-question MCQ (lazy)
 │   ├── LeaderboardPage.jsx    # /leaderboard — Streak/XP ranking (lazy)
 │   ├── LifeJourneyPage.jsx    # /life-journey — v2.2.0 — Emotion timeline SVG (lazy)
@@ -129,6 +134,7 @@ src/
 │   ├── xpbar.css              # XP bar
 │   ├── quiz.css               # Quiz page
 │   ├── leaderboard.css        # Leaderboard page
+│   ├── incubator.css          # v3.9.0 — Incubator page, cards, timeline, modals
 │   ├── completion.css         # CompletionModal styles
 │   ├── onboarding.css         # OnboardingModal styles
 │   └── testimonials.css       # Testimonials section
@@ -223,6 +229,21 @@ collections           ← inbox items + knowledge collect
 expenses              ← daily expense logs (VNĐ, category, date)
 subscriptions         ← recurring service subscriptions (monthly/yearly)
 activity_logs         ← append-only audit log (habit_done, focus_done, expense_add, etc.)
+
+-- v3.6.0 (run data/migration_v3.6.0_tasks.sql)
+user_tasks            += energy_level, duration_est, recurrence_rule columns
+
+-- v3.7.0 (run data/migration_v3.7.0_para.sql)
+tags                  ← central tag table (shared across modules, UNIQUE per user)
+expense_tags          ← junction: expense ↔ tag
+subscription_tags     ← junction: subscription ↔ tag
+
+-- v3.8.0 (run data/migration_v3.8.0_snooze.sql)
+collections           += snoozed_until DATE column
+
+-- v3.9.0 (run data/migration_v3.9.0_incubator.sql)
+intentions            ← someday-maybe items (title, reason, cost, status, review_date)
+intention_logs        ← timeline: created/deferred/executed/abandoned per intention
 ```
 
 ### DashboardPage v3.1.0 — Data Sources
@@ -264,6 +285,7 @@ DashboardPage
 | `/team` | Inline redirect → `/tracker` | — | — |
 | `/friends` | Inline redirect → `/tracker` | — | — |
 | `/life-journey` | LifeJourneyPage | Public | Lazy |
+| `/incubator` | IncubatorPage | Required | Lazy |
 
 
 ---

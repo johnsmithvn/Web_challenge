@@ -1,0 +1,394 @@
+/* ============================
+   INCUBATOR PAGE (v3.9.0)
+   ============================ */
+
+.incubator-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 6rem 2rem 4rem;
+}
+
+.incubator-page__header {
+  margin-bottom: 1.5rem;
+}
+
+.incubator-page__title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 800;
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 0.25rem;
+}
+
+.incubator-page__subtitle {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.incubator-page__stats {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.incubator-page__stat {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+}
+
+.incubator-page__stat--count {
+  background: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+}
+
+.incubator-page__stat--review {
+  background: rgba(234, 179, 8, 0.12);
+  color: #eab308;
+}
+
+/* ── Add Form ────────────────────────────────────────────── */
+.incubator-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: rgba(139, 92, 246, 0.04);
+  border: 1px solid rgba(139, 92, 246, 0.12);
+  border-radius: var(--radius-lg);
+  animation: modalSlideIn 0.2s ease;
+}
+
+.incubator-form__row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.incubator-form__input {
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.incubator-form__input:focus {
+  border-color: var(--purple);
+}
+
+.incubator-form__input--cost {
+  max-width: 150px;
+}
+
+/* ── Intention Card ──────────────────────────────────────── */
+.incubator-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.incubator-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  transition: all 0.15s ease;
+}
+
+[data-theme="light"] .incubator-card {
+  background: rgba(99, 102, 241, 0.02);
+  border-color: rgba(99, 102, 241, 0.08);
+}
+
+.incubator-card:hover {
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.incubator-card--review {
+  border-color: rgba(234, 179, 8, 0.25);
+  background: rgba(234, 179, 8, 0.04);
+}
+
+.incubator-card__title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.incubator-card__reason {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+  font-style: italic;
+}
+
+.incubator-card__meta {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.incubator-card__badge {
+  font-size: 0.68rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+}
+
+.incubator-card__badge--cost {
+  background: rgba(249, 115, 22, 0.12);
+  color: #f97316;
+}
+
+.incubator-card__badge--time {
+  background: rgba(6, 182, 212, 0.1);
+  color: #22d3ee;
+}
+
+.incubator-card__badge--review {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+
+.incubator-card__badge--age {
+  background: rgba(139, 92, 246, 0.1);
+  color: #a78bfa;
+}
+
+.incubator-card__actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.incubator-card__btn {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  font-family: inherit;
+}
+
+.incubator-card__btn:hover {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.25);
+}
+
+.incubator-card__btn--execute {
+  color: var(--green);
+  border-color: rgba(0, 255, 136, 0.2);
+}
+
+.incubator-card__btn--execute:hover {
+  background: rgba(0, 255, 136, 0.1);
+}
+
+.incubator-card__btn--defer {
+  color: #eab308;
+  border-color: rgba(234, 179, 8, 0.2);
+}
+
+.incubator-card__btn--defer:hover {
+  background: rgba(234, 179, 8, 0.1);
+}
+
+.incubator-card__btn--abandon {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.incubator-card__btn--abandon:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.08);
+  color: #f87171;
+}
+
+.incubator-card__btn--timeline {
+  color: var(--text-muted);
+}
+
+/* ── Timeline (expandable log) ───────────────────────────── */
+.incubator-timeline {
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+}
+
+.incubator-timeline__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.3rem 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.incubator-timeline__item:last-child {
+  border-bottom: none;
+}
+
+.incubator-timeline__action {
+  font-weight: 700;
+  min-width: 65px;
+}
+
+.incubator-timeline__action--created   { color: #a78bfa; }
+.incubator-timeline__action--deferred  { color: #eab308; }
+.incubator-timeline__action--executed  { color: var(--green); }
+.incubator-timeline__action--abandoned { color: #f87171; }
+
+.incubator-timeline__note {
+  flex: 1;
+  font-style: italic;
+}
+
+.incubator-timeline__date {
+  font-size: 0.65rem;
+  white-space: nowrap;
+}
+
+/* ── Defer Modal ─────────────────────────────────────────── */
+.incubator-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: modalFadeIn 0.15s ease;
+}
+
+.incubator-modal {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl);
+  width: 90%;
+  max-width: 420px;
+  animation: modalSlideIn 0.2s ease;
+  overflow: hidden;
+}
+
+.incubator-modal__header {
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-weight: 700;
+  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.incubator-modal__close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.incubator-modal__body {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.incubator-modal__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.incubator-modal__input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  resize: none;
+}
+
+.incubator-modal__input:focus {
+  border-color: var(--purple);
+}
+
+.incubator-modal__options {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.incubator-modal__option {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: inherit;
+}
+
+.incubator-modal__option--active {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.35);
+  color: #eab308;
+}
+
+.incubator-modal__footer {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* ── Empty / Loading ─────────────────────────────────────── */
+.incubator-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.incubator-empty__icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

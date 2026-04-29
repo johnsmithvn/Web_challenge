@@ -12,6 +12,35 @@ async function getSb() {
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
+// ── Date helpers for recurring tasks ────────────────────────
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+function nextWeekday(targetDay) {
+  // targetDay: 0=Sun, 1=Mon, ..., 6=Sat
+  const d = new Date();
+  const current = d.getDay();
+  let diff = targetDay - current;
+  if (diff <= 0) diff += 7; // always go to NEXT occurrence
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split('T')[0];
+}
+
+function nextMonthDay(targetDay) {
+  const d = new Date();
+  const today = d.getDate();
+  if (today < targetDay) {
+    d.setDate(targetDay);
+  } else {
+    d.setMonth(d.getMonth() + 1);
+    d.setDate(targetDay);
+  }
+  return d.toISOString().split('T')[0];
+}
+
 /**
  * useUserTasks — Personal task CRUD, Supabase-first.
  *
@@ -69,7 +98,7 @@ export function useUserTasks() {
   }, [isAuth, fetchTasks]);
 
   // ── Add task ───────────────────────────────────────────
-  const addTask = useCallback(async ({ title, description, dueDate, dueTime }) => {
+  const addTask = useCallback(async ({ title, description, dueDate, dueTime, energyLevel, durationEst, recurrenceRule }) => {
     const newTask = {
       id: crypto.randomUUID ? crypto.randomUUID() : `local_${Date.now()}`,
       user_id: userId,
@@ -77,6 +106,9 @@ export function useUserTasks() {
       description: description || null,
       due_date: dueDate || todayStr(),
       due_time: dueTime || null,
+      energy_level: energyLevel || null,
+      duration_est: durationEst || null,
+      recurrence_rule: recurrenceRule || null,
       completed: false,
       completed_at: null,
       notified: false,
@@ -116,8 +148,54 @@ export function useUserTasks() {
     return newTask;
   }, [isAuth, userId]);
 
+  // ── Spawn next recurring task (fire-and-forget, NEVER calls completeTask) ──
+  const spawnRecurringTask = useCallback(async (task) => {
+    if (!task?.recurrence_rule || !isAuth) return;
+
+    const rule = task.recurrence_rule;
+    const today = todayStr();
+    let nextDate;
+
+    if (rule.type === 'interval') {
+      nextDate = addDays(today, rule.days);
+    } else if (rule.type === 'weekly') {
+      nextDate = nextWeekday(rule.weekday);
+    } else if (rule.type === 'monthly') {
+      nextDate = nextMonthDay(rule.day);
+    }
+
+    if (!nextDate) return;
+
+    try {
+      const sb = await getSb();
+      if (!sb) return;
+
+      // Insert directly to Supabase — no optimistic update, task is in the future
+      const { error } = await sb.from('user_tasks').insert({
+        user_id: userId,
+        title: task.title,
+        description: task.description,
+        due_date: nextDate,
+        due_time: task.due_time,
+        energy_level: task.energy_level,
+        duration_est: task.duration_est,
+        recurrence_rule: task.recurrence_rule, // clone rule for chain
+        completed: false,
+        notified: false,
+      });
+
+      if (error) {
+        console.error('[useUserTasks] spawnRecurring error:', error.message);
+        // Silent fail — task was already completed, user gets the dopamine hit
+      }
+    } catch (err) {
+      console.error('[useUserTasks] spawnRecurring exception:', err);
+    }
+  }, [isAuth, userId]);
+
   // ── Complete task ──────────────────────────────────────
   const completeTask = useCallback(async (taskId) => {
+    const task = tasks.find(t => t.id === taskId);
     const now = new Date().toISOString();
 
     // Optimistic
@@ -142,6 +220,12 @@ export function useUserTasks() {
           setTasks(prev => prev.map(t =>
             t.id === taskId ? { ...t, completed: false, completed_at: null } : t
           ));
+          return; // Don't spawn if complete failed
+        }
+
+        // Spawn next recurring task (fire-and-forget, non-blocking)
+        if (task?.recurrence_rule) {
+          spawnRecurringTask(task);
         }
       } catch (err) {
         console.error('[useUserTasks] complete exception:', err);
@@ -150,7 +234,7 @@ export function useUserTasks() {
         ));
       }
     }
-  }, [isAuth, userId]);
+  }, [isAuth, userId, tasks, spawnRecurringTask]);
 
   // ── Delete task ────────────────────────────────────────
   const deleteTask = useCallback(async (taskId) => {
@@ -298,16 +382,31 @@ export function useUserTasks() {
   const pendingTasks = tasks.filter(t => !t.completed);
   const completedToday = tasks.filter(t => t.completed);
 
+  // ── Overdue Triage splits ─────────────────────────────────
+  const today = todayStr();
+  const todayTasks   = pendingTasks.filter(t => t.due_date === today);
+  const overdueTasks = pendingTasks.filter(t => t.due_date < today);
+  const futureTasks  = pendingTasks.filter(t => t.due_date > today);
+
+  // ── Rollover: move overdue task to today ──────────────────
+  const rolloverTask = useCallback(async (taskId) => {
+    return updateTask(taskId, { due_date: todayStr() });
+  }, [updateTask]);
+
   return {
     tasks,
     pendingTasks,
     completedToday,
+    todayTasks,
+    overdueTasks,
+    futureTasks,
     isLoading,
     addTask,
     completeTask,
     uncompleteTask,
     updateTask,
     deleteTask,
+    rolloverTask,
     getCompletedTasks,
   };
 }

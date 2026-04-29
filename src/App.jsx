@@ -31,6 +31,7 @@ const InboxPage         = lazy(() => import('./pages/InboxPage'));
 const CollectPage       = lazy(() => import('./pages/CollectPage'));
 const FinancePage       = lazy(() => import('./pages/FinancePage'));
 const LifeLogPage       = lazy(() => import('./pages/LifeLogPage'));
+const IncubatorPage     = lazy(() => import('./pages/IncubatorPage'));
 
 // ── SEO meta per route ─────────────────────────────────────────────
 const ROUTE_META = {
@@ -46,6 +47,7 @@ const ROUTE_META = {
   '/quiz':       { title: 'Quiz — Life Hub',                                                  desc: 'Kiểm tra hiểu biết về tâm lý hành vi. +50 XP nếu làm tốt!' },
   '/leaderboard':{ title: 'Bảng Xếp Hạng — Life Hub',                                        desc: 'Xem ai đang dẫn đầu về streak và XP.' },
   '/life-journey': { title: 'Hành Trình — Life Hub',                                           desc: 'Ghi lại những cột mốc quan trọng trên biểu đồ cảm xúc.' },
+  '/incubator':  { title: 'Trạm Ấp Trứng — Life Hub',                                          desc: 'Nuôi dưỡng dự định, dời lại phải có lý do, theo dõi timeline quyết định.' },
 };
 
 function PageMeta() {
@@ -109,6 +111,7 @@ function AppShell() {
                 <Route path="/collect"      element={<CollectPage />} />
                 <Route path="/finance"      element={<FinancePage />} />
                 <Route path="/life-log"     element={<LifeLogPage />} />
+                <Route path="/incubator"    element={<IncubatorPage />} />
                 <Route path="/focus"        element={<FocusPage />} />
                 <Route path="/team"         element={<Navigate to="/tracker" replace />} />
                 <Route path="/friends"      element={<Navigate to="/tracker" replace />} />

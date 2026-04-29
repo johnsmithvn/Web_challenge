@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v3.3.0
-**Updated:** 2026-04-27
+**Version:** v3.9.0
+**Updated:** 2026-04-30
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -384,6 +384,12 @@
 - **Tick hoàn thành** → gạch ngang, lưu `completed_at` timestamp
 - **Completed tasks** hôm nay hiển thị bên dưới với style nhạt
 - Sau ngày hôm đó → task biến mất khỏi danh sách chính
+- **Overdue Triage (v3.5.0):** Task list chia 3 khối: ⚠️ Quá hạn (nền đỏ, nút 🔄 Dời sang hôm nay) / 📅 Hôm nay / 🔮 Sắp tới (collapsed). Bắt user đối mặt và dọn dẹp backlog.
+- **Rollover (v3.5.0):** Nút 🔄 trên overdue task → `updateTask(id, { due_date: today })` → task chuyển sang section Hôm nay.
+- **Energy Tag (v3.6.0):** Mỗi task có thể gắn mức năng lượng: ⚡ Cao / 🔋 Vừa / 🪫 Thấp. Filter chips đầu danh sách lọc theo energy. Badge hiển trên task card.
+- **Duration Estimate (v3.6.0):** Ước tính thời gian (5p/15p/30p/1h/2h+). Badge ⏱ trên task card.
+- **Recurring Tasks (v3.6.0):** Toggle 🔁 Lặp lại: Mỗi N ngày / Hàng tuần thứ X / Hàng tháng ngày Y. Khi tick xong task recurring → task cũ ở lại "Hoàn thành hôm nay" (dopamine hit) → task mới insert ẩn với `due_date` tương lai. Chỉ spawn 1 task, không batch, không vòng lặp.
+- **DB columns (v3.6.0):** `energy_level TEXT`, `duration_est SMALLINT`, `recurrence_rule JSONB` trên `user_tasks`.
 - **Calendar integration:** Tab 📅 Lịch → click ngày → thấy danh sách tasks đã hoàn thành + expandable description + thời gian hoàn thành
 - **Service Worker notification:** Background check mỗi 60s → fire notification khi task đến hạn (hoạt động cả khi tab đóng, chỉ cần browser mở)
 - **Không tính XP, không tính streak, không gắn journey**
@@ -459,19 +465,77 @@
 ## 17. 📥 Inbox (`/inbox`)
 
 **File:** `src/pages/InboxPage.jsx` + `src/styles/inbox.css`
-**Hook:** `src/hooks/useCollections.js`
+**Hook:** `src/hooks/useCollections.js`, `src/hooks/useExpenses.js`, `src/hooks/useActivityLog.js`
 
-**Mô tả:** Nơi ghi nhanh mọi thứ (link, ý tưởng, ghi chú) — phân loại sau.
+**Mô tả:** Nơi ghi nhanh mọi thứ (link, ý tưởng, ghi chú) — phân loại sau. Trạm triage với luồng chuyển đổi nhanh.
 
 **Chi tiết:**
 - Quick-add form (text input + submit)
 - Inbox items list với thời gian tạo
 - Classify action: phân loại → Link / Quote / Muốn mua / Học / Ý tưởng
+- **📌 Task action:** Chuyển inbox item thành Task (v3.0.1)
+- **🔄 Đăng ký action:** Chuyển sang FinancePage tạo Subscription (v3.0.1)
+- **💸 Chi tiêu nhanh (v3.5.0):** Bấm nút → QuickExpenseModal inline (không navigate). Regex tự bóc tách số tiền từ text ("Cafe 50k" → 50,000đ). Pre-fill amount + note + category dropdown 8 loại. Lưu → `addExpense()` + `logActivity()` + xóa item khỏi inbox.
 - Delete action
+- **🕔 Snooze (v3.8.0):** Ẩn inbox item tạm thời. 4 options: 1 tuần / 2 tuần / 1 tháng / 3 tháng. Item biến mất khỏi danh sách, tự xuất hiện lại khi đến ngày. Badge "🕔 X snoozed" trong header. DB: `snoozed_until DATE`. Filter: `snoozed_until IS NULL OR ≤ today`.
 - Tự động detect URL
 - Empty state khi inbox trống
 
-**Data source:** `collections` table (Supabase, type='inbox')
+**Data source:** `collections` table (Supabase, type='inbox'), `expenses` table (khi dùng Quick Expense)
+
+---
+
+## 23. 🏷️ PARA Tags (v3.7.0)
+
+**Added:** v3.7.0
+**Files:** `src/hooks/useTags.js`, `src/components/TagPicker.jsx`
+**DB:** `tags`, `expense_tags`, `subscription_tags`
+
+**Mô tả:** Hệ thống tag trung tâm dùng chung cho expenses, subscriptions (và collections trong tương lai). Mỗi user có bộ tags riêng.
+
+**Chi tiết:**
+- `useTags` hook: fetchTags, addTag (upsert), deleteTag, linkTag, unlinkTag
+- `TagPicker` component: searchable dropdown, multi-select toggle, inline tạo tag mới bằng Enter
+- Tích hợp vào FinancePage: expense form + subscription form có TagPicker
+- Tags link qua junction tables (expense_tags, subscription_tags)
+- RLS policies đảm bảo user chỉ thấy tags của mình
+
+---
+
+## 24. 📅 Cashflow Calendar (v3.7.0)
+
+**Added:** v3.7.0
+**Files:** `src/components/CashflowBar.jsx`, `src/styles/finance.css`
+
+**Mô tả:** Thanh timeline 30 ngày hiển thị các ngày có subscription sắp đến hạn.
+
+**Chi tiết:**
+- 30 cells ngang, mỗi cell = 1 ngày, dot đỏ khi có sub due
+- Tooltip hiển tên sub khi hover
+- Legend dưới bar hiển 5 ngày gần nhất có sub
+- Chỉ hiển active subscriptions
+- Mount trong FinancePage sau summary cards
+
+---
+
+## 25. 🥚 Trạm Ấp Trứng / Incubator (v3.9.0)
+
+**Added:** v3.9.0
+**Files:** `src/pages/IncubatorPage.jsx`, `src/styles/incubator.css`, `src/hooks/useIntentions.js`
+**DB:** `intentions`, `intention_logs`
+**Route:** `/incubator`
+
+**Mô tả:** Module "someday-maybe" với friction khi hoãn. Khác Inbox (chưa phân loại) và Task (sẵn sàng làm).
+
+**Chi tiết:**
+- Intention Card: title, original reason, estimated cost, review date, age badge
+- Dời lại (Defer): bắt buộc nhập lý do (friction UX chống bốc đồng). 4 options: 1w/2w/1m/3m
+- Thực thi (Execute): chuyển thành Task hoặc Chi tiêu. Navigate tương ứng
+- Bỏ qua (Abandon): xóa khỏi danh sách với reason log
+- Timeline: lịch sử mọi lần dời/thực thi/tạo. Expand từ card
+- Review-due highlighting: card viền vàng khi đến ngày review
+- Badge header: số lượng đang ấp + cần review
+- Inbox integration: nút 🥚 Ấp Trứng chuyển inbox item vào Incubator
 
 ---
 

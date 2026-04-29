@@ -36,6 +36,11 @@ export function useCollections() {
         // For Collect page: exclude archived by default
         if (!filters.status) query = query.neq('status', 'archived');
       }
+      // For Inbox: hide snoozed items (snoozed_until > today)
+      if (filters.type === 'inbox') {
+        const today = new Date().toISOString().split('T')[0];
+        query = query.or(`snoozed_until.is.null,snoozed_until.lte.${today}`);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -157,16 +162,61 @@ export function useCollections() {
   const getInboxCount = useCallback(async () => {
     if (!enabled) return 0;
     try {
+      const today = new Date().toISOString().split('T')[0];
       const { count, error } = await supabase
         .from('collections')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .eq('type', 'inbox');
+        .eq('type', 'inbox')
+        .or(`snoozed_until.is.null,snoozed_until.lte.${today}`);
 
       if (error) throw error;
       return count || 0;
     } catch (err) {
       console.warn('[useCollections] inboxCount error:', err.message);
+      return 0;
+    }
+  }, [enabled, user]);
+
+  // ── Snooze inbox item ──────────────────────────────
+  const snoozeItem = useCallback(async (id, untilDate) => {
+    if (!enabled) return false;
+
+    // Optimistic: remove from view
+    setItems(prev => prev.filter(item => item.id !== id));
+
+    try {
+      const { error } = await supabase
+        .from('collections')
+        .update({ snoozed_until: untilDate })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.warn('[useCollections] snooze error:', err.message);
+      fetchItems({ type: 'inbox' });
+      return false;
+    }
+  }, [enabled, user, fetchItems]);
+
+  // ── Get snoozed count ──────────────────────────────
+  const getSnoozedCount = useCallback(async () => {
+    if (!enabled) return 0;
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { count, error } = await supabase
+        .from('collections')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('type', 'inbox')
+        .gt('snoozed_until', today);
+
+      if (error) throw error;
+      return count || 0;
+    } catch (err) {
+      console.warn('[useCollections] snoozedCount error:', err.message);
       return 0;
     }
   }, [enabled, user]);
@@ -181,7 +231,9 @@ export function useCollections() {
     classifyItem,  // (id, newType) => Promise<boolean>
     toggleStar,    // (id, currentStatus) => Promise<boolean>
     archiveItem,   // (id) => Promise<boolean>
+    snoozeItem,    // (id, untilDate) => Promise<boolean>
     getInboxCount, // () => Promise<number>
+    getSnoozedCount, // () => Promise<number>
     enabled,       // boolean
   };
 }

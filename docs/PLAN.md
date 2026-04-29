@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-04-26
-**Current Version:** v3.2.1
+**Updated:** 2026-04-30
+**Current Version:** v3.9.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -292,17 +292,48 @@
 - [x] CollectPage → TiptapEditor `onSave` prop wired
 - [x] SlashCommand.jsx [NEW]
 
-## 📋 Phase 8 — Focus Upgrade + Polish (v3.4.0+)
-*Backlog — deferred theo yêu cầu*
+## ✅ Phase 8.1—8.5 — Personal OS Expansion (v3.5.0 → v3.9.0)
+*Hoàn thành: 2026-04-30*
 
-- [ ] Ambient sounds (Rain, Café, Forest, Lo-fi, Ocean)
-- [ ] Distraction Pad (quick capture from Focus)
-- [ ] Focus stats dashboard
-- [ ] Fullscreen mode
-- [ ] SEO sitemap
-- [ ] AI insight từ pattern data (future)
-- [ ] Kanban board cho Wishlist (if needed)
-- [ ] Tree structure cho Learning notes (if needed)
+### 8.1 — Quick Expense + Overdue Triage (v3.5.0) ✅
+- [x] Quick Expense Modal (Inbox → Expense, regex parse VNĐ)
+- [x] Overdue triage sections (Quá hạn / Hôm nay / Sắp tới)
+- [x] One-click Rollover overdue → today
+
+### 8.2 — Energy Tag + Recurring Tasks (v3.6.0) ✅
+- [x] energy_level + duration_est columns on user_tasks
+- [x] recurrence_rule JSONB (interval/weekly/monthly)
+- [x] Spawn-one recurring logic (no infinite loops)
+- [x] Energy filter chips in TaskListSection
+
+### 8.3 — Cashflow Calendar + PARA Tags (v3.7.0) ✅
+- [x] CashflowBar — 30-day subscription timeline
+- [x] Central tags table + junction tables (expense_tags, subscription_tags)
+- [x] useTags hook + TagPicker component
+
+### 8.4 — Inbox Snooze (v3.8.0) ✅
+- [x] snoozed_until DATE on collections
+- [x] snoozeItem() + getSnoozedCount() in useCollections
+- [x] Snooze UI (4 options) + snoozed badge
+
+### 8.5 — 🥚 Incubator Module (v3.9.0) ✅
+- [x] intentions + intention_logs DB tables
+- [x] useIntentions hook (defer with friction, execute → Task/Expense)
+- [x] IncubatorPage — card UI, timeline, defer/execute modals
+- [x] Route /incubator + Navbar link
+- [x] Inbox → 🥚 Ấp Trứng action
+
+---
+
+## 📋 Phase 8.6 — Reader View + Health Tab (v4.0.0)
+*Backlog — next*
+
+- [ ] Vercel Edge Function api/meta.js (OG metadata fetch)
+- [ ] useLinkMeta hook + preview cards in InboxPage
+- [ ] Graceful fallback for blocked URLs
+- [ ] fitness_logs table + useFitnessLog hook
+- [ ] 🏋️ Sức Khỏe tab in TrackerPage
+- [ ] XP + Heatmap integration for fitness
 
 ---
 
@@ -348,4 +379,11 @@
 | v3.1.2 | Mood chart, CustomSelect Finance dropdown, Life Log today default |
 | **v3.2.0** | **KB Dual-Mode Editor (Tiptap+Markdown), ConfirmModal, AI-ready schema** |
 | v3.2.1 | Dashboard Polish (Mood 30d, Focus breakdown, Weekly Review) + Debt Cleanup |
+| v3.3.0 | Tiptap Slash Command + Keyboard Shortcuts |
+| v3.5.0 | Quick Expense + Overdue Triage |
+| v3.6.0 | Energy Tag + Duration + Recurring Tasks |
+| v3.7.0 | Cashflow Calendar + PARA Tags |
+| v3.8.0 | Inbox Snooze |
+| **v3.9.0** | **🥚 Incubator Module (Trạm Ấp Trứng)** |
+| v4.0.0 | Reader View + Health Tab (planned) |
 

@@ -17,6 +17,7 @@ const PRIMARY_NAV = [
   { to: '/inbox',     icon: '📥', label: 'Inbox' },
   { to: '/collect',   icon: '🧠', label: 'Knowledge' },
   { to: '/finance',   icon: '💰', label: 'Finance' },
+  { to: '/incubator', icon: '🥚', label: 'Incubator' },
   { to: '/life-log',  icon: '📅', label: 'Life Log' },
 ];
 

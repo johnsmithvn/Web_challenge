@@ -1,5 +1,78 @@
 # CHANGELOG
 
+## v3.9.0 — 2026-04-30
+
+### Added
+- **🥚 Incubator Module (Trạm Ấp Trứng):** Module mới cho "someday-maybe" items.
+  - `IncubatorPage.jsx` [NEW] — Card UI với review-due highlighting, expandable timeline logs.
+  - `useIntentions.js` [NEW] — CRUD + deferIntention (reason bắt buộc) + executeIntention (→ Task/Expense) + abandonIntention + getLogs.
+  - `incubator.css` [NEW] — Full page styles, modals, timeline, dark/light theme.
+  - `migration_v3.9.0_incubator.sql` [NEW] — `intentions` + `intention_logs` tables + RLS.
+
+### Changed
+- `App.jsx` — Route `/incubator` + lazy import.
+- `Navbar.jsx` — Link 🥚 Incubator trong main nav.
+- `InboxPage.jsx` — Nút 🥚 Ấp Trứng chuyển inbox item vào Incubator.
+
+---
+
+## v3.8.0 — 2026-04-30
+
+### Added
+- **Inbox — Snooze (🕔):** Nút 🕔 Snooze trên inbox item → dropdown 4 options (1 tuần / 2 tuần / 1 tháng / 3 tháng). Item ẩn khỏi danh sách, tự xuất hiện lại khi đến ngày. Badge "🕔 X snoozed" trong header.
+- **Migration:** `data/migration_v3.8.0_snooze.sql` — `ALTER TABLE collections ADD snoozed_until DATE`.
+
+### Changed
+- `src/hooks/useCollections.js` — `snoozeItem(id, untilDate)`, `getSnoozedCount()`, `fetchItems` filter snoozed inbox items, `getInboxCount` excludes snoozed.
+- `src/pages/InboxPage.jsx` — Snooze button + dropdown menu, snoozed count badge in header, handleSnooze helper.
+- `src/styles/inbox.css` — Snooze button + menu styles (amber theme, dark/light mode).
+
+---
+
+## v3.7.0 — 2026-04-30
+
+### Added
+- **Finance — Cashflow Calendar (📅):** `CashflowBar.jsx` [NEW] — thanh timeline 30 ngày hiển thị subscription due dates. Dot đỏ + tooltip + legend. Mount dưới summary cards trong FinancePage.
+- **PARA Tags (🏷️):** `useTags.js` [NEW] — CRUD tags, linkTag/unlinkTag cho expenses + subscriptions. `TagPicker.jsx` [NEW] — searchable dropdown, multi-select, tạo tag mới bằng Enter.
+- **Migration:** `data/migration_v3.7.0_para.sql` — `tags`, `expense_tags`, `subscription_tags` tables + RLS + indexes.
+
+### Changed
+- `src/pages/FinancePage.jsx` — Import CashflowBar, TagPicker, useTags. Mount CashflowBar sau upcoming alert. TagPicker trong cả expense và subscription forms. Link tags on save.
+- `src/styles/finance.css` — Thêm ~130 dòng `.cashflow-bar-*` styles (track, cells, dots, legend, dark/light theme).
+
+---
+
+## v3.6.0 — 2026-04-30
+
+### Added
+- **Task — Energy Tag (⚡):** Mỗi task gắn energy level (high/medium/low). Picker 3 nút trong form. Badge emoji trên task card. Filter chips (Tất cả/Cao/Vừa/Thấp) đầu danh sách.
+- **Task — Duration Estimate (⏱):** 5 mức thời gian (5p/15p/30p/1h/2h+). Picker trong form, badge hiển thị trên card.
+- **Task — Recurring Tasks (🔁):** Toggle "Lặp lại" trong form → chọn Mỗi N ngày / Hàng tuần thứ X / Hàng tháng ngày Y. `recurrence_rule` JSONB lưu vào DB. Spawn-one strategy: completeTask → `spawnRecurringTask()` insert 1 row mới với `due_date` tương lai. Không batch, không vòng lặp.
+- **Date helpers:** `addDays()`, `nextWeekday()`, `nextMonthDay()` trong `useUserTasks.js`.
+- **Migration:** `data/migration_v3.6.0_tasks.sql` — `ALTER TABLE user_tasks ADD COLUMN energy_level / duration_est / recurrence_rule`.
+
+### Changed
+- `src/hooks/useUserTasks.js` — `addTask()` nhận `energyLevel/durationEst/recurrenceRule`. `completeTask()` fire-and-forget `spawnRecurringTask()` khi task có recurrence_rule.
+- `src/components/TaskListSection.jsx` — Thêm ENERGY_OPTIONS, DURATION_OPTIONS, WEEKDAYS constants. Form: Energy picker + Duration picker + Recurrence toggle (interval/weekly/monthly). Task cards: 🔁/⚡/⏱ badges. Filter chips trước danh sách. filterFn áp dụng trên filteredToday/filteredOverdue/filteredFuture.
+
+---
+
+## v3.5.0 — 2026-04-30
+
+### Added
+- **Inbox — Quick Expense (💸):** Nút "💸 Chi tiêu" trên mỗi inbox item → QuickExpenseModal inline. Regex tự bóc tách số tiền từ text Việt Nam ("Cafe 50k" → 50,000). Pre-fill amount + note + category dropdown 8 loại. Lưu → `addExpense()` + `logActivity()` + xóa item khỏi inbox.
+- **Task — Overdue Triage (⚠️):** Task list chia 3 khối: ⚠️ Quá hạn (nền đỏ) / 📅 Hôm nay / 🔮 Sắp tới (collapsed mặc định).
+- **Task — Rollover (🔄):** Nút 🔄 trên overdue task → cập nhật `due_date = today` → task chuyển sang section Hôm nay.
+- **useUserTasks hook:** Thêm `todayTasks`, `overdueTasks`, `futureTasks` derived state + `rolloverTask()` function.
+
+### Changed
+- `src/pages/InboxPage.jsx` — Thêm import `useExpenses`, `useActivityLog`, `EXPENSE_DATA`. Thêm `extractAmount()` regex, `QuickExpenseModal` component, `handleToExpense()`, `handleExpenseSave()`.
+- `src/styles/inbox.css` — Thêm ~180 dòng: `.inbox-expense-modal-*` styles (backdrop blur, glassmorphism modal, category grid, amount preview, light mode variants).
+- `src/components/TaskListSection.jsx` — Tái cấu trúc: dùng `todayTasks/overdueTasks/futureTasks` thay `pendingTasks`. Extract `renderTask()` helper. Thêm Overdue section, collapsed Future section, Rollover button.
+- `src/hooks/useUserTasks.js` — Thêm derived splits + `rolloverTask()`. Export 3 fields mới.
+
+---
+
 ## v3.4.0 — 2026-04-27
 
 ### Added
