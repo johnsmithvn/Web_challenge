@@ -251,6 +251,14 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 8px 40px rgba(99,102,241,0.6);
   transform: translateY(-2px);
 }
+.btn-primary:disabled,
+.btn-primary[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
 
 .btn-ghost {
   background: transparent;

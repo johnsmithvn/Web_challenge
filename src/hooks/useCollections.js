@@ -91,6 +91,7 @@ export function useCollections() {
   // v4.1.0: No longer writes to collections.tags TEXT[] column.
   // Tags are linked via collection_tags junction (caller uses useTags.linkTag).
   const addItem = useCallback(async (item) => {
+    console.log('[useCollections] addItem called, enabled:', enabled, 'user:', !!user, 'item:', item);
     if (!enabled) return null;
 
     const newItem = {
@@ -99,6 +100,7 @@ export function useCollections() {
       title:          item.title,
       url:            item.url     || null,
       body:           item.body    || '',
+      tags:           [],  // DEPRECATED column (v4.1.0) — still required for NOT NULL constraint
       source:         item.source  || null,
       priority:       item.priority || null,
       status:         item.status  || 'inbox',
@@ -115,7 +117,10 @@ export function useCollections() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useCollections] addItem DB error:', error.message, error.details, error.hint);
+        throw error;
+      }
 
       // Attach empty _tags for consistency with fetched items
       const withTags = { ...data, _tags: [] };
@@ -124,7 +129,7 @@ export function useCollections() {
       setItems(prev => [withTags, ...prev]);
       return data;
     } catch (err) {
-      console.warn('[useCollections] add error:', err.message);
+      console.error('[useCollections] addItem failed:', err.message);
       return null;
     }
   }, [enabled, user]);

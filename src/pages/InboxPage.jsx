@@ -93,6 +93,7 @@ export default function InboxPage() {
 
   const handleQuickAdd = async (e) => {
     e.preventDefault();
+    console.log('[InboxPage] handleQuickAdd fired, quickText:', quickText);
     const trimmed = quickText.trim();
     if (!trimmed) return;
 

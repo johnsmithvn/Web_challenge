@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -34,29 +35,66 @@ const SECONDARY_NAV = [
 
 
 /* ── User Avatar Dropdown ──────────────────────────────────── */
-function UserAvatar({ profile, user, onSignOut }) {
+function UserAvatar({ profile, user, onSignOut, direction = 'down' }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [menuPos, setMenuPos] = useState(null);
+  const avatarRef = useRef(null);
 
+  // Close on outside click
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    if (!open) return;
+    const handler = (e) => {
+      if (avatarRef.current && !avatarRef.current.closest('[data-avatar-root]')?.contains(e.target)) {
+        setOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  }, [open]);
+
+  // Calculate position when opening
+  const handleToggle = () => {
+    if (!open && avatarRef.current) {
+      const rect = avatarRef.current.getBoundingClientRect();
+      if (direction === 'up') {
+        setMenuPos({
+          left: 12,  // align to sidebar left padding
+          bottom: window.innerHeight - rect.top + 8,
+          top: 'auto',
+        });
+      } else {
+        setMenuPos({
+          left: rect.left,
+          top: rect.bottom + 8,
+          bottom: 'auto',
+        });
+      }
+    }
+    setOpen(v => !v);
+  };
 
   const initials = (profile?.display_name || user?.email || 'U')
     .split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 
+  const dropdownStyle = menuPos ? {
+    position: 'fixed',
+    left: menuPos.left,
+    top: menuPos.top,
+    bottom: menuPos.bottom,
+    width: 196,
+    zIndex: 99999,
+  } : {};
+
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <div className="nav-avatar" onClick={() => setOpen(v => !v)} id="nav-avatar" role="button" aria-label="Tài khoản">
+    <div data-avatar-root ref={avatarRef}>
+      <div className="nav-avatar" onClick={handleToggle} id="nav-avatar" role="button" aria-label="Tài khoản">
         {profile?.avatar_url
           ? <img src={profile.avatar_url} alt={initials} />
           : initials}
       </div>
 
-      {open && (
-        <div className="nav-user-menu">
+      {open && menuPos && createPortal(
+        <div className="nav-user-menu" style={dropdownStyle}>
           <div className="nav-user-menu__name">
             {profile?.display_name || user?.email?.split('@')[0]}
           </div>
@@ -65,9 +103,10 @@ function UserAvatar({ profile, user, onSignOut }) {
             onClick={() => { onSignOut(); setOpen(false); }}
             id="nav-signout"
           >
-            🚪 Đăng Xuất
+            🚶 Đăng Xuất
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -152,7 +191,7 @@ export default function Navbar() {
           </button>
           {!loading && (
             user
-              ? <UserAvatar profile={profile} user={user} onSignOut={signOut} />
+              ? <UserAvatar profile={profile} user={user} onSignOut={signOut} direction="up" />
               : (
                 <button
                   className="btn btn-primary sidebar__login"
@@ -182,7 +221,7 @@ export default function Navbar() {
           </button>
           {!loading && (
             user
-              ? <UserAvatar profile={profile} user={user} onSignOut={signOut} />
+              ? <UserAvatar profile={profile} user={user} onSignOut={signOut} direction="down" />
               : (
                 <button
                   className="btn btn-primary topbar__login"
