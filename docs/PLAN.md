@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
 **Updated:** 2026-04-30
-**Current Version:** v4.0.0
+**Current Version:** v4.1.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -385,5 +385,9 @@
 | v3.7.0 | Cashflow Calendar + PARA Tags |
 | v3.8.0 | Inbox Snooze |
 | **v3.9.0** | **🥚 Incubator Module (Trạm Ấp Trứng)** |
-| v4.0.0 | Reader View + Health Tab (planned) |
+| v4.0.0 | Reader View + Health Tab |
+| v4.0.1 | InboxPage Overflow Menu |
+| v4.0.2 | Recurring Task Retry |
+| v4.0.3 | Fitness Edit + Dashboard Card |
+| **v4.1.0** | **⚙️ Settings Page + Tag Unification (collection_tags junction)** |
 

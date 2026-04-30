@@ -29,6 +29,7 @@ const SECONDARY_NAV = [
   { to: '/quiz',          icon: '🧠', label: 'Quiz' },
   { to: '/leaderboard',   icon: '🏆', label: 'BXH' },
   { to: '/life-journey',  icon: '💛', label: 'Hành Trình' },
+  { to: '/settings',      icon: '⚙️', label: 'Cài Đặt' },
 ];
 
 

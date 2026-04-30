@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## v4.1.0 — 2026-04-30
+
+### Added
+- **⚙️ Settings Page (`/settings`):** Trang cài đặt mới — hiện tại quản lý Tags (CRUD, rename, recolor, usage count). Future: Theme, Notifications, Account.
+  - `SettingsPage.jsx` [NEW] — Tag Manager UI: danh sách tag + form thêm mới + inline edit + color picker + delete with confirmation.
+  - `settings.css` [NEW] — Glassmorphism layout, color picker grid, responsive, dark/light mode.
+- **🏷️ Tag Unification (Collection Tags):** Chuyển `collections.tags` (TEXT[]) sang central `tags` + `collection_tags` junction table.
+  - `migration_v4.1.0_tag_unification.sql` [NEW] — `collection_tags` table + RLS + indexes + data migration script (TEXT[] → junction).
+  - `useTags.js` — `updateTag(id, {name, color})` [NEW], `getTagsForEntity()` [NEW], `getTagUsageCount()` [NEW], `getAllTagUsageCounts()` [NEW]. `linkTag`/`unlinkTag` now support `entityType='collection'`.
+  - `useCollections.js` — `fetchItems()` joins `collection_tags(tags(id,name,color))` → `item._tags`. `addItem()` no longer writes to `collections.tags` TEXT[] column.
+  - `CollectPage.jsx` — Switched to central tags: TagInput shows color dots, tag filter chips show color dots, save/edit uses `linkTag`/`unlinkTag`.
+- **Navbar:** ⚙️ Cài Đặt link in SECONDARY_NAV.
+
+### Changed
+- `App.jsx` — Route `/settings` + lazy import SettingsPage + SEO meta.
+- `Navbar.jsx` — Added ⚙️ Settings nav link.
+- `collections.tags` column — Marked DEPRECATED (comment). Will be removed in v5.0.
+
+### Database
+- `data/migration_v4.1.0_tag_unification.sql` — Run BEFORE deploying frontend v4.1.0.
+
+---
+
 ## v4.0.3 — 2026-04-30
 
 ### Added

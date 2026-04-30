@@ -3,6 +3,38 @@
 
 ---
 
+## v4.1.0 — ✅ DONE (2026-04-30) — Tag Unification + Settings Page
+
+### Phase A: Database Migration
+- [x] `data/migration_v4.1.0_tag_unification.sql` — collection_tags table + RLS + indexes + data migration
+
+### Phase B: Hook Changes
+- [x] `useTags.js` — extend: updateTag, collection linkTag/unlinkTag, getTagUsageCount, getAllTagUsageCounts, getTagsForEntity
+- [x] `useCollections.js` — refactor: join collection_tags, remove TEXT[] write, _tags mapping
+
+### Phase C: CollectPage Refactor
+- [x] `CollectPage.jsx` — central tags, TagInput color dots, tag filter color dots, linkTag/unlinkTag save
+
+### Phase D: SettingsPage (NEW)
+- [x] `SettingsPage.jsx` — Tag Manager UI (CRUD, rename, recolor, usage count, delete w/ confirmation)
+- [x] `settings.css` — Glassmorphism, color picker, responsive, dark/light
+
+### Phase E: Navigation
+- [x] `App.jsx` — lazy import + route `/settings` + SEO meta
+- [x] `Navbar.jsx` — ⚙️ Cài Đặt link in SECONDARY_NAV
+
+### Phase F: Documentation
+- [x] `CHANGELOG.md` — v4.1.0 entry
+- [x] `FEATURES.md` — sections #22 + #23
+- [x] `ARCHITECTURE.md` — SettingsPage, useTags, collection_tags, settings.css
+- [x] `PLAN.md` — version table + header bump
+- [x] `package.json` — version bump → 4.1.0
+
+### Verification
+- [x] `npm run build` — 0 errors
+
+---
+
 ## v4.0.3 — ✅ DONE (2026-04-30) — Fitness Edit + Dashboard Fitness Card
 
 ### Debt #4: Fitness edit support

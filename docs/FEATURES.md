@@ -1,5 +1,5 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.0.0
+**Version:** v4.1.0
 **Updated:** 2026-04-30
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
@@ -664,3 +664,40 @@
 - **DailyReview:** Tổng số hoạt động hôm nay + 5 actions gần nhất với icon + timestamp.
 
 **Data source:** SubAlert → `subscriptions` | DailyReview → `activity_logs`
+
+---
+
+## 22. ⚙️ Cài Đặt (`/settings`)
+
+**File:** `src/pages/SettingsPage.jsx` + `src/styles/settings.css`
+**Hook:** `src/hooks/useTags.js`
+
+**Mô tả:** Trang cài đặt hệ thống. Hiện tại: quản lý tags tập trung. Sẽ mở rộng: Theme, Notifications, Account.
+
+**Chi tiết:**
+- **Tag Manager:** Danh sách tất cả tags với color dot, tên, và số liên kết (usage count)
+- **Add tag:** Form nhập tên + color picker (12 màu)
+- **Inline edit:** Rename + recolor tag tại chỗ (Enter save, Escape cancel)
+- **Delete:** Confirm modal, hiển số liên kết sẽ bị gỡ (CASCADE delete)
+- **Color picker:** Dropdown grid 4×3 màu, auto-close khi chọn
+- **Future placeholder:** Theme · Notifications · Account (dashed border section)
+
+**Data source:** `tags` table (Supabase) + `expense_tags` + `subscription_tags` + `collection_tags` (usage count)
+
+---
+
+## 23. 🏷️ Tag Unification (v4.1.0)
+
+**Files:** `src/hooks/useTags.js` + `src/hooks/useCollections.js` + `src/pages/CollectPage.jsx`
+**Migration:** `data/migration_v4.1.0_tag_unification.sql`
+
+**Mô tả:** Thống nhất hệ thống tags: `collections.tags` (TEXT[]) → central `tags` + `collection_tags` junction table.
+
+**Chi tiết:**
+- **Junction table:** `collection_tags` (collection_id, tag_id) với RLS + CASCADE delete
+- **useTags.js:** Mở rộng `linkTag`/`unlinkTag` hỗ trợ `entityType='collection'`. Thêm `updateTag()`, `getTagsForEntity()`, `getTagUsageCount()`, `getAllTagUsageCounts()`.
+- **useCollections.js:** `fetchItems()` join `collection_tags(tags(id,name,color))` → `item._tags`. `addItem()` không còn ghi vào `collections.tags` TEXT[].
+- **CollectPage:** TagInput hiển color dots, tag filter chips hiển color dots, save/edit dùng `linkTag`/`unlinkTag`.
+- **Backward compat:** `collections.tags` TEXT[] giữ lại (DEPRECATED), sẽ DROP ở v5.0.
+
+**Data source:** `tags` + `collection_tags` + `expense_tags` + `subscription_tags` (Supabase)

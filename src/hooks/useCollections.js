@@ -17,34 +17,69 @@ export function useCollections() {
   const [items, setItems]       = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ── Fetch all items (recent 500) ────────────────────────────
+  // ── Fetch all items (recent 500) — joins collection_tags for tag data ──
+  // Graceful fallback: if collection_tags table doesn't exist yet (migration not run),
+  // falls back to plain select (no _tags data).
   const fetchItems = useCallback(async (filters = {}) => {
     if (!enabled) return;
     setIsLoading(true);
     try {
+      // Try with junction join first (v4.1.0)
+      let useJoin = true;
       let query = supabase
         .from('collections')
-        .select('*')
+        .select('*, collection_tags(tag_id, tags(id, name, color))')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(500);
 
-      // Optional filters
+      // Apply filters
       if (filters.type)   query = query.eq('type', filters.type);
       if (filters.status) query = query.eq('status', filters.status);
       if (filters.type && filters.type !== 'inbox') {
-        // For Collect page: exclude archived by default
         if (!filters.status) query = query.neq('status', 'archived');
       }
-      // For Inbox: hide snoozed items (snoozed_until > today)
       if (filters.type === 'inbox') {
         const today = new Date().toISOString().split('T')[0];
         query = query.or(`snoozed_until.is.null,snoozed_until.lte.${today}`);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      setItems(data || []);
+      let { data, error } = await query;
+
+      // Fallback: if join fails (table not yet created), retry without join
+      if (error) {
+        console.warn('[useCollections] join failed, falling back to plain select:', error.message);
+        useJoin = false;
+        let fallback = supabase
+          .from('collections')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(500);
+
+        if (filters.type)   fallback = fallback.eq('type', filters.type);
+        if (filters.status) fallback = fallback.eq('status', filters.status);
+        if (filters.type && filters.type !== 'inbox') {
+          if (!filters.status) fallback = fallback.neq('status', 'archived');
+        }
+        if (filters.type === 'inbox') {
+          const today = new Date().toISOString().split('T')[0];
+          fallback = fallback.or(`snoozed_until.is.null,snoozed_until.lte.${today}`);
+        }
+
+        const result = await fallback;
+        if (result.error) throw result.error;
+        data = result.data;
+      }
+
+      // Flatten junction join → item._tags = [{id, name, color}, ...]
+      const mapped = (data || []).map(item => ({
+        ...item,
+        _tags: useJoin
+          ? (item.collection_tags || []).map(ct => ct.tags).filter(Boolean)
+          : (item.tags || []).map(t => ({ name: t, color: '#8b5cf6' })),
+      }));
+      setItems(mapped);
     } catch (err) {
       console.warn('[useCollections] fetch error:', err.message);
     } finally {
@@ -53,6 +88,8 @@ export function useCollections() {
   }, [enabled, user]);
 
   // ── Add item ────────────────────────────────────────────────
+  // v4.1.0: No longer writes to collections.tags TEXT[] column.
+  // Tags are linked via collection_tags junction (caller uses useTags.linkTag).
   const addItem = useCallback(async (item) => {
     if (!enabled) return null;
 
@@ -62,7 +99,6 @@ export function useCollections() {
       title:          item.title,
       url:            item.url     || null,
       body:           item.body    || '',
-      tags:           item.tags    || [],
       source:         item.source  || null,
       priority:       item.priority || null,
       status:         item.status  || 'inbox',
@@ -81,8 +117,11 @@ export function useCollections() {
 
       if (error) throw error;
 
+      // Attach empty _tags for consistency with fetched items
+      const withTags = { ...data, _tags: [] };
+
       // Optimistic: prepend to local list
-      setItems(prev => [data, ...prev]);
+      setItems(prev => [withTags, ...prev]);
       return data;
     } catch (err) {
       console.warn('[useCollections] add error:', err.message);

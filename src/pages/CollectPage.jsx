@@ -3,6 +3,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useCollections } from '../hooks/useCollections';
+import { useTags } from '../hooks/useTags';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import '../styles/collect.css';
@@ -58,9 +59,11 @@ function safeHostname(url) {
 }
 
 function getAllTags(items) {
-  const set = new Set();
-  items.forEach(it => (it.tags || []).forEach(t => set.add(t)));
-  return [...set].sort();
+  const map = new Map();
+  items.forEach(it => (it._tags || []).forEach(t => {
+    if (t && t.id) map.set(t.id, t);
+  }));
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function fmtDate(iso) {
@@ -76,30 +79,42 @@ function isTiptapBody(item) {
   return b.startsWith('{"type":"doc"');
 }
 
-/* ── TagInput ─────────────────────────────────────────────── */
+/* ── TagInput (v4.1.0 — accepts tag objects with color) ──── */
 function TagInput({ tags = [], onChange, suggestions = [] }) {
   const [input, setInput]   = useState('');
   const [open, setOpen]     = useState(false);
   const [cursor, setCursor] = useState(-1);
   const containerRef        = useRef(null);
 
+  // tags = [{id, name, color}, ...] or string[] (backward compat)
+  const tagNames = tags.map(t => typeof t === 'string' ? t : t.name);
+
   // Filter: match input text, exclude already-added tags
   const filtered = useMemo(() => {
     const q = input.toLowerCase().trim();
     return suggestions
-      .filter(t => !tags.includes(t) && (!q || t.includes(q)))
+      .filter(s => {
+        const sName = typeof s === 'string' ? s : s.name;
+        return !tagNames.includes(sName) && (!q || sName.includes(q));
+      })
       .slice(0, 10);
-  }, [suggestions, tags, input]);
+  }, [suggestions, tagNames, input]);
 
   const slugify = (v) => v.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
 
   const addTag = useCallback((val) => {
-    const v = slugify(val);
-    if (v && !tags.includes(v)) onChange([...tags, v]);
+    // val can be string or tag object
+    const tagObj = typeof val === 'string'
+      ? suggestions.find(s => (typeof s === 'string' ? s : s.name) === slugify(val)) || { name: slugify(val), color: '#8b5cf6' }
+      : val;
+    const name = typeof tagObj === 'string' ? tagObj : tagObj.name;
+    if (name && !tagNames.includes(name)) onChange([...tags, tagObj]);
     setInput('');
     setOpen(false);
     setCursor(-1);
-  }, [tags, onChange]);
+  }, [tags, tagNames, onChange, suggestions]);
+
+  const showNew = input.trim().length > 0 && !suggestions.some(s => (typeof s === 'string' ? s : s.name) === slugify(input));
 
   const onKey = (e) => {
     if (e.key === 'ArrowDown')  { e.preventDefault(); setCursor(c => Math.min(c + 1, filtered.length - (showNew ? 0 : 1))); }
@@ -120,16 +135,19 @@ function TagInput({ tags = [], onChange, suggestions = [] }) {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const showNew = input.trim().length > 0 && !suggestions.includes(slugify(input));
-
   return (
     <div className="kb-tag-input" ref={containerRef}>
-      {tags.map(t => (
-        <span key={t} className="kb-tag-chip kb-tag-chip--edit">
-          #{t}
-          <button onMouseDown={e => { e.preventDefault(); onChange(tags.filter(x => x !== t)); }} className="kb-tag-chip__rm">×</button>
-        </span>
-      ))}
+      {tags.map(t => {
+        const name = typeof t === 'string' ? t : t.name;
+        const color = typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6');
+        return (
+          <span key={name} className="kb-tag-chip kb-tag-chip--edit">
+            <span className="kb-tag-dot" style={{ background: color }} />
+            #{name}
+            <button onMouseDown={e => { e.preventDefault(); onChange(tags.filter(x => (typeof x === 'string' ? x : x.name) !== name)); }} className="kb-tag-chip__rm">×</button>
+          </span>
+        );
+      })}
       <input
         className="kb-tag-input__field"
         value={input}
@@ -143,16 +161,21 @@ function TagInput({ tags = [], onChange, suggestions = [] }) {
       {/* Suggestions dropdown */}
       {open && (filtered.length > 0 || showNew) && (
         <div className="kb-tag-dropdown">
-          {filtered.map((t, i) => (
-            <button
-              key={t}
-              className={`kb-tag-dropdown__item${cursor === i ? ' kb-tag-dropdown__item--active' : ''}`}
-              onMouseDown={e => { e.preventDefault(); addTag(t); }}
-              onMouseEnter={() => setCursor(i)}
-            >
-              <span className="kb-tag-dropdown__hash">#</span>{t}
-            </button>
-          ))}
+          {filtered.map((t, i) => {
+            const name = typeof t === 'string' ? t : t.name;
+            const color = typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6');
+            return (
+              <button
+                key={name}
+                className={`kb-tag-dropdown__item${cursor === i ? ' kb-tag-dropdown__item--active' : ''}`}
+                onMouseDown={e => { e.preventDefault(); addTag(t); }}
+                onMouseEnter={() => setCursor(i)}
+              >
+                <span className="kb-tag-dot" style={{ background: color }} />
+                <span className="kb-tag-dropdown__hash">#</span>{name}
+              </button>
+            );
+          })}
           {showNew && (
             <button
               className={`kb-tag-dropdown__item kb-tag-dropdown__item--new${cursor === filtered.length ? ' kb-tag-dropdown__item--active' : ''}`}
@@ -239,7 +262,11 @@ function ArticleCard({ item, onClick }) {
         {excp && <p className="kb-card__excerpt">{excp}{plainText.length > 180 ? '…' : ''}</p>}
         <div className="kb-card__footer">
           <div className="kb-card__tags">
-            {(item.tags || []).map(t => <span key={t} className="kb-tag-chip">#{t}</span>)}
+            {(item._tags || item.tags || []).map(t => {
+              const name = typeof t === 'string' ? t : t.name;
+              const color = typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6');
+              return <span key={name} className="kb-tag-chip"><span className="kb-tag-dot" style={{ background: color }} />#{name}</span>;
+            })}
           </div>
           <span className="kb-card__readtime">⏱ {mins} phút đọc</span>
         </div>
@@ -292,9 +319,13 @@ function ReaderView({ item, onEdit, onDelete, onBack }) {
               <span>⏱ {mins} phút đọc</span>
               {isTiptap && <span className="kb-format-badge">🎨 Visual</span>}
             </div>
-            {(item.tags || []).length > 0 && (
+            {(item._tags || item.tags || []).length > 0 && (
               <div className="kb-reader__tags">
-                {item.tags.map(t => <span key={t} className="kb-tag-chip">#{t}</span>)}
+                {(item._tags || item.tags || []).map(t => {
+                  const name = typeof t === 'string' ? t : t.name;
+                  const color = typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6');
+                  return <span key={name} className="kb-tag-chip"><span className="kb-tag-dot" style={{ background: color }} />#{name}</span>;
+                })}
               </div>
             )}
             {item.url && (
@@ -598,6 +629,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
 export default function CollectPage() {
   const { user } = useAuth();
   const { items, isLoading, fetchItems, addItem, updateItem, deleteItem } = useCollections();
+  const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag, fetchTags: refetchTags } = useTags();
   const { confirm, ConfirmModal } = useConfirm();
 
   const [view, setView]         = useState('list');
@@ -615,13 +647,24 @@ export default function CollectPage() {
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Derived data ─────────────────── */
-  const allTags = useMemo(() => getAllTags(items.filter(i => i.type !== 'inbox')), [items]);
+  const allTags = useMemo(() => {
+    // Merge central tags with any tags found on items (for display completeness)
+    const map = new Map();
+    centralTags.forEach(t => map.set(t.id, t));
+    items.filter(i => i.type !== 'inbox').forEach(i => {
+      (i._tags || []).forEach(t => { if (t && t.id) map.set(t.id, t); });
+    });
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [items, centralTags]);
 
   const filtered = useMemo(() => {
     let list = items.filter(i => i.type !== 'inbox' && i.status !== 'archived');
 
     if (typeFilter) list = list.filter(i => i.type === typeFilter);
-    if (activeTag)  list = list.filter(i => (i.tags || []).includes(activeTag));
+    if (activeTag) {
+      // activeTag is now a tag id
+      list = list.filter(i => (i._tags || []).some(t => t.id === activeTag));
+    }
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(i =>
@@ -652,21 +695,49 @@ export default function CollectPage() {
         body_text:      draft.body_text || '',
         word_count:     draft.word_count || 0,
         content_format: draft.content_format || 'markdown',
-        tags:           draft.tags,
         type:           draft.type,
         url:            draft.url || null,
       };
+
+      let savedId;
       if (selected?.id) {
         await updateItem(selected.id, payload);
+        savedId = selected.id;
       } else {
-        await addItem({ ...payload, status: 'read' });
+        const created = await addItem({ ...payload, status: 'read' });
+        savedId = created?.id;
       }
+
+      // v4.1.0: Sync tags via junction table
+      if (savedId && draft.tags) {
+        const draftTagNames = draft.tags.map(t => typeof t === 'string' ? t : t.name);
+        const existingTags = selected?._tags || [];
+        const existingNames = existingTags.map(t => t.name);
+
+        // Tags to add (in draft but not in existing)
+        for (const t of draft.tags) {
+          const name = typeof t === 'string' ? t : t.name;
+          if (!existingNames.includes(name)) {
+            // Ensure tag exists in central table
+            const tagObj = await addCentralTag(name, typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6'));
+            if (tagObj) await linkTag(savedId, tagObj.id, 'collection');
+          }
+        }
+
+        // Tags to remove (in existing but not in draft)
+        for (const t of existingTags) {
+          if (!draftTagNames.includes(t.name)) {
+            await unlinkTag(savedId, t.id, 'collection');
+          }
+        }
+      }
+
       await fetchItems({});
       goList();
     } finally {
       setIsSaving(false);
     }
-  }, [selected, updateItem, addItem, fetchItems, goList]);
+  }, [selected, updateItem, addItem, fetchItems, goList, addCentralTag, linkTag, unlinkTag]);
 
   const handleDelete = useCallback(async (item) => {
     const ok = await confirm({
@@ -696,7 +767,7 @@ export default function CollectPage() {
           title:          selected.title,
           body:           selected.body || '',
           body_text:      selected.body_text || '',
-          tags:           selected.tags || [],
+          tags:           selected._tags || selected.tags || [],
           type:           selected.type,
           url:            selected.url || '',
           content_format: selected.content_format || 'markdown',
@@ -747,7 +818,7 @@ export default function CollectPage() {
         <div>
           <div className="section-label">🧠 Knowledge Base</div>
           <h1 className="kb-title">Kho Tàng <span className="gradient-text">Kiến Thức</span></h1>
-          <p className="kb-subtitle">{filtered.length} bài viết{activeTag ? ` · #${activeTag}` : ''}</p>
+          <p className="kb-subtitle">{filtered.length} bài viết{activeTag ? ` · #${allTags.find(t => t.id === activeTag)?.name || ''}` : ''}</p>
         </div>
         <button className="btn btn-primary kb-new-btn" onClick={() => openEditor(null)}>
           ✏️ Viết bài mới
@@ -795,11 +866,12 @@ export default function CollectPage() {
           <button className={`kb-tag-chip kb-tag-filter-btn${!activeTag ? ' kb-tag-chip--active' : ''}`} onClick={() => setActiveTag('')}>Tất cả</button>
           {allTags.map(t => (
             <button
-              key={t}
-              className={`kb-tag-chip kb-tag-filter-btn${activeTag === t ? ' kb-tag-chip--active' : ''}`}
-              onClick={() => setActiveTag(activeTag === t ? '' : t)}
+              key={t.id}
+              className={`kb-tag-chip kb-tag-filter-btn${activeTag === t.id ? ' kb-tag-chip--active' : ''}`}
+              onClick={() => setActiveTag(activeTag === t.id ? '' : t.id)}
             >
-              #{t}
+              <span className="kb-tag-dot" style={{ background: t.color || '#8b5cf6' }} />
+              #{t.name}
             </button>
           ))}
         </div>

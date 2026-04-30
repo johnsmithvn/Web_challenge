@@ -1,5 +1,5 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.0.0
+**Version:** v4.1.0
 **Updated:** 2026-04-30
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
@@ -76,7 +76,7 @@ src/
 │   ├── useCollections.js      # v3.0.0 — CRUD for collections (inbox + typed items) + snooze v3.8.0
 │   ├── useExpenses.js         # v3.0.0 — CRUD for expenses (VNĐ, chi tiêu only)
 │   ├── useSubscriptions.js    # v3.0.0 — CRUD for subscriptions (monthly/yearly cycles)
-│   ├── useTags.js             # v3.7.0 — Central tag CRUD + link/unlink (expenses, subscriptions)
+│   ├── useTags.js             # v3.7.0 → v4.1.0 — Central tag CRUD + link/unlink (expenses, subscriptions, collections) + updateTag + getTagUsageCount
 │   ├── useIntentions.js       # v3.9.0 — Incubator CRUD + defer(friction) + execute + abandon + logs
 │   ├── useFitnessLog.js       # v4.0.0 — Fitness session logging (add, delete, todayLogs, weekSummary)
 │   ├── useLinkMeta.js         # v4.0.0 — OG metadata fetch+cache via /api/meta
@@ -106,6 +106,7 @@ src/
 │   ├── QuizPage.jsx           # /quiz — 10-question MCQ (lazy)
 │   ├── LeaderboardPage.jsx    # /leaderboard — Streak/XP ranking (lazy)
 │   ├── LifeJourneyPage.jsx    # /life-journey — v2.2.0 — Emotion timeline SVG (lazy)
+│   ├── SettingsPage.jsx       # /settings — v4.1.0 — Tag Manager UI (CRUD, color, usage count)
 │   └── LifeJourneyPage.css    # Co-located CSS (not in styles/)
 │
 ├── data/                      # Static JSON content (Rule 14)
@@ -140,6 +141,7 @@ src/
 │   ├── quiz.css               # Quiz page
 │   ├── leaderboard.css        # Leaderboard page
 │   ├── incubator.css          # v3.9.0 — Incubator page, cards, timeline, modals
+│   ├── settings.css           # v4.1.0 — Settings page, tag manager, color picker
 │   ├── completion.css         # CompletionModal styles
 │   ├── onboarding.css         # OnboardingModal styles
 │   └── testimonials.css       # Testimonials section
@@ -252,6 +254,10 @@ intention_logs        ← timeline: created/deferred/executed/abandoned per inte
 
 -- v4.0.0 (run data/migration_v4.0.0_fitness.sql)
 fitness_logs          ← session log (session_name, duration_min, energy, notes)
+
+-- v4.1.0 (run data/migration_v4.1.0_tag_unification.sql)
+collection_tags       ← junction: collection ↔ tag (CASCADE delete both sides)
+collections.tags      ← TEXT[] column DEPRECATED — use collection_tags junction
 ```
 
 ### DashboardPage v3.1.0 — Data Sources
