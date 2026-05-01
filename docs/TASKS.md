@@ -1,5 +1,47 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-04-30
+**Updated:** 2026-05-01
+
+---
+
+## v4.2.0 — ✅ DONE (2026-05-01) — 🥚 Incubator Multi-Output Router + estimated_time UI
+
+### Phase A: Database Migration
+- [x] `data/migration_v4.2.0_incubator_v2.sql` [NEW] — ALTER `converted_to` TEXT → TEXT[], ADD `converted_ids` JSONB
+
+### Phase B: Hook Changes
+- [x] `useIntentions.js` — `executeIntention` nhận `convertedTypes[]` + `convertedIds{}` thay `convertTo`/`convertedId`
+
+### Phase C: UI — Form + Card
+- [x] `IncubatorPage.jsx` — Form: thêm dropdown `⏱ Cam kết thời gian` (15m/30m/1h/1.5h/2h/nửa ngày)
+- [x] `IncubatorPage.jsx` — Card: thêm badge `⏱` hiển thị `estimated_time` (format h/m)
+
+### Phase D: UI — Execute Modal (Multi-Output Router)
+- [x] `IncubatorPage.jsx` — Replace Radio → 3 Checkbox cards (💰 Expense + 🔁 Habit + 📌 Task)
+- [x] `IncubatorPage.jsx` — Multi-dispatch handler (addExpense + addHabit + addTask đồng thời)
+- [x] `IncubatorPage.jsx` — Import useExpenses + useCustomHabits + expense-categories.json
+- [x] `IncubatorPage.jsx` — Auto-suggest: cost→Expense, time→Habit, nothing→Task
+
+### Phase E: CSS
+- [x] `incubator.css` — time select, duration badge, exec option cards, checkbox visual, category dropdown, light mode
+
+### Phase F: Documentation
+- [x] `docs/FEATURES.md` — Update section #25
+- [x] `docs/ARCHITECTURE.md` — Update data flow + DB tables
+- [x] `docs/TASKS.md` — This section
+- [x] `docs/PLAN.md` — Add Phase 8.7
+- [x] `CHANGELOG.md` — v4.2.0 entry
+- [x] `package.json` — version bump → 4.2.0
+
+### Phase G: Verification
+- [x] `npm run build` — 0 errors (638ms)
+
+---
+
+
+- [x] `Navbar.jsx` — Sidebar user dropdown: rewrite with **React Portal + getBoundingClientRect** → escapes `overflow-y` sidebar clipping. Menu appears above avatar, correct size.
+- [x] `navbar.css` — Clean up `.nav-user-menu` (remove dead position classes). Add `position: relative; z-index: 10` to `.sidebar__bottom`.
+- [x] `useCollections.js` — Remove optional AI columns (`content_format`, `body_text`, `word_count`) from `addItem` insert payload — prevents insert failure on instances without migration v3.2.0.
+- [x] `global.css` — Add `.btn-primary:disabled` style (opacity 0.4, cursor not-allowed) so disabled state is visually clear.
 
 ---
 

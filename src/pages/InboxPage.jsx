@@ -42,7 +42,7 @@ function formatVND(amount) {
 export default function InboxPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { items, isLoading, fetchItems, classifyItem, deleteItem, addItem, snoozeItem, getSnoozedCount } = useCollections();
+  const { items, isLoading, fetchItems, classifyItem, deleteItem, addItem, snoozeItem, getSnoozedCount, fetchSnoozedItems } = useCollections();
   const { addTask } = useUserTasks();
   const { addExpense } = useExpenses();
   const { addIntention } = useIntentions();
@@ -51,6 +51,8 @@ export default function InboxPage() {
   const [classifying, setClassifying] = useState(null);
   const [snoozeMenu, setSnoozeMenu] = useState(null); // item.id or null
   const [snoozedCount, setSnoozedCount] = useState(0);
+  const [showSnoozed, setShowSnoozed] = useState(false);
+  const [snoozedItems, setSnoozedItems] = useState([]);
   const [overflowMenu, setOverflowMenu] = useState(null); // item.id or null
   const { getMeta, metaCache } = useLinkMeta();
 
@@ -89,6 +91,14 @@ export default function InboxPage() {
     await snoozeItem(itemId, until);
     setSnoozeMenu(null);
     setSnoozedCount(prev => prev + 1);
+  };
+
+  const handleToggleSnoozed = async () => {
+    if (!showSnoozed) {
+      const list = await fetchSnoozedItems();
+      setSnoozedItems(list);
+    }
+    setShowSnoozed(v => !v);
   };
 
   const handleQuickAdd = async (e) => {
@@ -176,12 +186,16 @@ export default function InboxPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <h1 className="inbox-page__title">📥 Inbox</h1>
           {snoozedCount > 0 && (
-            <span style={{
-              fontSize: '0.68rem', padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-full)',
-              background: 'rgba(234,179,8,0.12)', color: '#eab308', fontWeight: 600,
-            }}>
-              🕔 {snoozedCount} snoozed
-            </span>
+            <button
+              onClick={handleToggleSnoozed}
+              style={{
+                fontSize: '0.68rem', padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-full)',
+                background: showSnoozed ? 'rgba(234,179,8,0.25)' : 'rgba(234,179,8,0.12)',
+                color: '#eab308', fontWeight: 600, border: 'none', cursor: 'pointer',
+              }}
+            >
+              🕔 {snoozedCount} snoozed {showSnoozed ? '▲' : '▼'}
+            </button>
           )}
         </div>
         <p className="inbox-page__subtitle">
@@ -207,6 +221,56 @@ export default function InboxPage() {
           Thêm
         </button>
       </form>
+
+      {/* Snoozed items panel */}
+      {showSnoozed && (
+        <div style={{
+          margin: '0.75rem 0',
+          border: '1px solid rgba(234,179,8,0.2)',
+          borderRadius: 'var(--radius-lg)',
+          overflow: 'hidden',
+          background: 'rgba(234,179,8,0.04)',
+        }}>
+          <div style={{ padding: '0.6rem 1rem', borderBottom: '1px solid rgba(234,179,8,0.1)', fontSize: '0.78rem', color: '#eab308', fontWeight: 600 }}>
+            🕔 Đang tạm hoãn ({snoozedItems.length})
+          </div>
+          {snoozedItems.length === 0 ? (
+            <div style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>Không có item nào đang snooze</div>
+          ) : (
+            snoozedItems.map(item => (
+              <div key={item.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '0.6rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                gap: '0.75rem',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.title}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#eab308', marginTop: '0.15rem' }}>
+                    Hiện lại: {new Date(item.snoozed_until).toLocaleDateString('vi-VN')}
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    await snoozeItem(item.id, null);
+                    setSnoozedItems(prev => prev.filter(s => s.id !== item.id));
+                    setSnoozedCount(prev => Math.max(0, prev - 1));
+                    fetchItems({ type: 'inbox' });
+                  }}
+                  style={{
+                    fontSize: '0.72rem', padding: '0.2rem 0.55rem', borderRadius: 'var(--radius-full)',
+                    background: 'rgba(234,179,8,0.15)', color: '#eab308', border: '1px solid rgba(234,179,8,0.3)',
+                    cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                  }}
+                >
+                  Bỏ hoãn
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Quick Expense Modal */}
       {expenseModal && (

@@ -1,5 +1,6 @@
 /* ============================
-   INCUBATOR PAGE (v3.9.0)
+   INCUBATOR PAGE (v4.2.0)
+   Multi-Output Router + estimated_time
    ============================ */
 
 .incubator-page {
@@ -91,6 +92,118 @@
   max-width: 150px;
 }
 
+/* ── Custom Time Dropdown ────────────────────────────────── */
+.incubator-dropdown {
+  position: relative;
+  flex: 1;
+  max-width: 180px;
+}
+
+.incubator-dropdown__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  padding: 0.6rem 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.incubator-dropdown__trigger:hover,
+.incubator-dropdown__trigger--open {
+  border-color: var(--purple);
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.incubator-dropdown__trigger--open {
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.incubator-dropdown__value {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.incubator-dropdown__arrow {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.incubator-dropdown__arrow--up {
+  transform: rotate(180deg);
+}
+
+.incubator-dropdown__menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-top: none;
+  border-bottom-left-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: dropdownSlideIn 0.12s ease;
+}
+
+@keyframes dropdownSlideIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.incubator-dropdown__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0.55rem 0.8rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.incubator-dropdown__item:hover {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--text-primary);
+}
+
+.incubator-dropdown__item--active {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--purple-light);
+  font-weight: 600;
+}
+
+.incubator-dropdown__menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.incubator-dropdown__menu::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 2px;
+}
+
 /* ── Intention Card ──────────────────────────────────────── */
 .incubator-cards {
   display: flex;
@@ -154,6 +267,11 @@
 .incubator-card__badge--cost {
   background: rgba(249, 115, 22, 0.12);
   color: #f97316;
+}
+
+.incubator-card__badge--duration {
+  background: rgba(6, 182, 212, 0.12);
+  color: #06b6d4;
 }
 
 .incubator-card__badge--time {
@@ -271,7 +389,7 @@
   white-space: nowrap;
 }
 
-/* ── Defer Modal ─────────────────────────────────────────── */
+/* ── Modal (shared) ──────────────────────────────────────── */
 .incubator-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -292,6 +410,10 @@
   max-width: 420px;
   animation: modalSlideIn 0.2s ease;
   overflow: hidden;
+}
+
+.incubator-modal--execute {
+  max-width: 460px;
 }
 
 .incubator-modal__header {
@@ -375,6 +497,111 @@
   gap: 0.5rem;
 }
 
+/* ── Execute Modal — Option Cards ────────────────────────── */
+.incubator-exec-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: rgba(255, 255, 255, 0.02);
+  user-select: none;
+}
+
+.incubator-exec-option:hover {
+  border-color: rgba(139, 92, 246, 0.2);
+  background: rgba(139, 92, 246, 0.04);
+}
+
+.incubator-exec-option--active {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.incubator-exec-option--active:hover {
+  border-color: rgba(34, 197, 94, 0.5);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.incubator-exec-option--dim {
+  opacity: 0.55;
+}
+
+.incubator-exec-option--dim.incubator-exec-option--active {
+  opacity: 1;
+}
+
+.incubator-exec-checkbox {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #22c55e;
+  transition: all 0.12s ease;
+  margin-top: 1px;
+}
+
+.incubator-exec-option--active .incubator-exec-checkbox {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.incubator-exec-option__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.incubator-exec-option__title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+
+.incubator-exec-option__info {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.incubator-exec-option__sub {
+  margin-top: 0.45rem;
+  animation: modalSlideIn 0.15s ease;
+}
+
+.incubator-exec-category {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M3 5l3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  padding-right: 1.5rem;
+  color-scheme: dark;
+}
+
+.incubator-exec-category:focus {
+  border-color: var(--purple);
+}
+
 /* ── Empty / Loading ─────────────────────────────────────── */
 .incubator-empty {
   text-align: center;
@@ -388,7 +615,91 @@
   margin-bottom: 0.5rem;
 }
 
+/* ── Light Mode ──────────────────────────────────────────── */
+[data-theme="light"] .incubator-form__input,
+[data-theme="light"] .incubator-modal__input {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .incubator-dropdown__trigger {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .incubator-dropdown__trigger:hover,
+[data-theme="light"] .incubator-dropdown__trigger--open {
+  border-color: var(--purple);
+  background: rgba(99, 102, 241, 0.06);
+}
+
+[data-theme="light"] .incubator-dropdown__menu {
+  background: var(--bg-secondary);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="light"] .incubator-card__btn {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .incubator-exec-option {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.01);
+}
+
+[data-theme="light"] .incubator-exec-option:hover {
+  border-color: rgba(99, 102, 241, 0.25);
+  background: rgba(99, 102, 241, 0.04);
+}
+
+[data-theme="light"] .incubator-exec-option--active {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+[data-theme="light"] .incubator-exec-checkbox {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .incubator-exec-category {
+  background-color: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: var(--text-primary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M3 5l3 3 3-3'/%3E%3C/svg%3E");
+  color-scheme: light;
+}
+
+[data-theme="light"] .incubator-modal {
+  background: var(--bg-secondary);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .incubator-modal__header {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .incubator-modal__footer {
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .incubator-timeline {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .incubator-timeline__item {
+  border-bottom-color: rgba(0, 0, 0, 0.04);
+}
+
+/* ── Animations ──────────────────────────────────────────── */
 @keyframes modalFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

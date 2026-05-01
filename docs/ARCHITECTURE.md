@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.1.0
-**Updated:** 2026-04-30
+**Version:** v4.2.0
+**Updated:** 2026-05-01
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 
@@ -77,7 +77,7 @@ src/
 │   ├── useExpenses.js         # v3.0.0 — CRUD for expenses (VNĐ, chi tiêu only)
 │   ├── useSubscriptions.js    # v3.0.0 — CRUD for subscriptions (monthly/yearly cycles)
 │   ├── useTags.js             # v3.7.0 → v4.1.0 — Central tag CRUD + link/unlink (expenses, subscriptions, collections) + updateTag + getTagUsageCount
-│   ├── useIntentions.js       # v3.9.0 — Incubator CRUD + defer(friction) + execute + abandon + logs
+│   ├── useIntentions.js       # v3.9.0 → v4.2.0 — Incubator CRUD + defer(friction) + execute(multi-output) + abandon + logs
 │   ├── useFitnessLog.js       # v4.0.0 — Fitness session logging (add, delete, todayLogs, weekSummary)
 │   ├── useLinkMeta.js         # v4.0.0 — OG metadata fetch+cache via /api/meta
 │   ├── useLifeJourney.js      # v2.2.0 — Life milestones CRUD (localStorage-only)
@@ -249,8 +249,12 @@ subscription_tags     ← junction: subscription ↔ tag
 collections           += snoozed_until DATE column
 
 -- v3.9.0 (run data/migration_v3.9.0_incubator.sql)
-intentions            ← someday-maybe items (title, reason, cost, status, review_date)
+intentions            ← someday-maybe items (title, reason, cost, time, status, review_date)
+                        converted_to TEXT[] (v4.2.0), converted_ids JSONB (v4.2.0)
 intention_logs        ← timeline: created/deferred/executed/abandoned per intention
+
+-- v4.2.0 (run data/migration_v4.2.0_incubator_v2.sql)
+intentions            += converted_to TEXT → TEXT[], converted_ids JSONB (multi-output router)
 
 -- v4.0.0 (run data/migration_v4.0.0_fitness.sql)
 fitness_logs          ← session log (session_name, duration_min, energy, notes)

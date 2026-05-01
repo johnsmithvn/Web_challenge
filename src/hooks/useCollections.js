@@ -91,23 +91,18 @@ export function useCollections() {
   // v4.1.0: No longer writes to collections.tags TEXT[] column.
   // Tags are linked via collection_tags junction (caller uses useTags.linkTag).
   const addItem = useCallback(async (item) => {
-    console.log('[useCollections] addItem called, enabled:', enabled, 'user:', !!user, 'item:', item);
     if (!enabled) return null;
 
     const newItem = {
-      user_id:        user.id,
-      type:           item.type    || 'inbox',
-      title:          item.title,
-      url:            item.url     || null,
-      body:           item.body    || '',
-      tags:           [],  // DEPRECATED column (v4.1.0) — still required for NOT NULL constraint
-      source:         item.source  || null,
-      priority:       item.priority || null,
-      status:         item.status  || 'inbox',
-      // AI-ready fields (require migration v3.2.0)
-      content_format: item.content_format || 'markdown',
-      body_text:      item.body_text      || null,
-      word_count:     item.word_count     || 0,
+      user_id:  user.id,
+      type:     item.type    || 'inbox',
+      title:    item.title,
+      url:      item.url     || null,
+      body:     item.body    || '',
+      tags:     [],  // DEPRECATED column (v4.1.0) — still required for NOT NULL constraint
+      source:   item.source  || null,
+      priority: item.priority || null,
+      status:   item.status  || 'inbox',
     };
 
     try {
@@ -265,6 +260,27 @@ export function useCollections() {
     }
   }, [enabled, user]);
 
+  // ── Fetch snoozed items (for review panel) ──────────────────
+  const fetchSnoozedItems = useCallback(async () => {
+    if (!enabled) return [];
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('collections')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'inbox')
+        .gt('snoozed_until', today)
+        .order('snoozed_until', { ascending: true });
+
+      if (error) throw error;
+      return (data || []).map(item => ({ ...item, _tags: [] }));
+    } catch (err) {
+      console.warn('[useCollections] fetchSnoozed error:', err.message);
+      return [];
+    }
+  }, [enabled, user]);
+
   return {
     items,         // current fetched items
     isLoading,
@@ -278,6 +294,7 @@ export function useCollections() {
     snoozeItem,    // (id, untilDate) => Promise<boolean>
     getInboxCount, // () => Promise<number>
     getSnoozedCount, // () => Promise<number>
+    fetchSnoozedItems, // () => Promise<item[]>
     enabled,       // boolean
   };
 }

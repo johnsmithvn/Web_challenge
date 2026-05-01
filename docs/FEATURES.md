@@ -520,24 +520,34 @@
 
 ---
 
-## 25. 🥚 Trạm Ấp Trứng / Incubator (v3.9.0)
+## 25. 🥚 Trạm Ấp Trứng / Incubator (v3.9.0 → v4.2.0)
 
-**Added:** v3.9.0
+**Added:** v3.9.0, **upgraded v4.2.0** (Multi-Output Router)
 **Files:** `src/pages/IncubatorPage.jsx`, `src/styles/incubator.css`, `src/hooks/useIntentions.js`
 **DB:** `intentions`, `intention_logs`
 **Route:** `/incubator`
 
-**Mô tả:** Module "someday-maybe" với friction khi hoãn. Khác Inbox (chưa phân loại) và Task (sẵn sàng làm).
+**Mô tả:** Module "someday-maybe" với friction khi hoãn. Đóng vai trò **Bộ định tuyến nguồn lực**: hút vào ý tưởng trừu tượng, nhả ra hành động vật lý (tiền bạc, thói quen, công việc).
 
 **Chi tiết:**
-- Intention Card: title, original reason, estimated cost, review date, age badge
+- Intention Card: title, original reason, estimated cost, **estimated time badge ⏱** (v4.2.0), review date, age badge
+- **Form nhập (v4.2.0):** Chi phí dự kiến (number) + Cam kết thời gian (dropdown: 15m/30m/1h/1.5h/2h/nửa ngày)
 - Dời lại (Defer): bắt buộc nhập lý do (friction UX chống bốc đồng). 4 options: 1w/2w/1m/3m
-- Thực thi (Execute): chuyển thành Task hoặc Chi tiêu. Navigate tương ứng
+- **Thực thi (Execute) v4.2.0 — Multi-Output Router:**
+  - 3 checkbox cards (đa lựa chọn, không phải radio):
+    - 💰 Ghi nhận Chi tiêu → `addExpense()` + dropdown category (8 loại)
+    - 🔁 Tạo Thói quen → `addHabit()` + tự động điền `durationMin` từ `estimated_time`
+    - 📌 Tạo Công việc → `addTask()` + tự động điền `durationEst` từ `estimated_time`
+  - Auto-suggest: cost > 0 → pre-check Expense, time > 0 → pre-check Habit, cả 2 = 0 → pre-check Task
+  - Multi-dispatch: tạo đồng thời nhiều records (expense + habit + task)
+  - `converted_to TEXT[]` lưu mảng output types, `converted_ids JSONB` lưu map UUID
 - Bỏ qua (Abandon): xóa khỏi danh sách với reason log
 - Timeline: lịch sử mọi lần dời/thực thi/tạo. Expand từ card
 - Review-due highlighting: card viền vàng khi đến ngày review
 - Badge header: số lượng đang ấp + cần review
 - Inbox integration: nút 🥚 Ấp Trứng chuyển inbox item vào Incubator
+
+**Data source:** `intentions` + `intention_logs` (Supabase). Cross-module: `expenses`, `habits`, `user_tasks`
 
 ---
 

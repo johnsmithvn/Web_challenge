@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-04-30
-**Current Version:** v4.1.0
+**Updated:** 2026-05-01
+**Current Version:** v4.2.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -337,6 +337,18 @@
 
 ---
 
+## ✅ Phase 8.7 — Incubator Multi-Output Router (v4.2.0)
+*Hoàn thành: 2026-05-01*
+
+- [x] Execute Modal: Radio → Checkbox (multi-select: Expense + Habit + Task)
+- [x] `estimated_time` UI: dropdown form input + duration badge on cards
+- [x] Multi-dispatch: `addExpense` + `addHabit` + `addTask` đồng thời
+- [x] Auto-suggest: cost→Expense, time→Habit, nothing→Task
+- [x] DB: `converted_to TEXT[]` + `converted_ids JSONB`
+- [x] Cross-module: `useExpenses` + `useCustomHabits` + `expense-categories.json`
+
+---
+
 ## Semantic Version Map
 
 | Version | Milestone |
@@ -390,4 +402,6 @@
 | v4.0.2 | Recurring Task Retry |
 | v4.0.3 | Fitness Edit + Dashboard Card |
 | **v4.1.0** | **⚙️ Settings Page + Tag Unification (collection_tags junction)** |
+| v4.1.1 | Bug Fixes: Sidebar Dropdown + Inbox Add |
+| **v4.2.0** | **🥚 Incubator Multi-Output Router + estimated_time UI** |
 

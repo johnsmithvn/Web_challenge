@@ -1,12 +1,23 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIntentions } from '../hooks/useIntentions';
 import { useUserTasks } from '../hooks/useUserTasks';
+import { useExpenses } from '../hooks/useExpenses';
+import { useCustomHabits } from '../hooks/useCustomHabits';
 import { useAuth } from '../contexts/AuthContext';
+import EXPENSE_DATA from '../data/expense-categories.json';
 import '../styles/incubator.css';
 
 function formatVND(amount) {
   return new Intl.NumberFormat('vi-VN').format(amount) + '₫';
+}
+
+function formatDuration(minutes) {
+  if (!minutes) return null;
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
 }
 
 function daysAgo(dateStr) {
@@ -14,6 +25,58 @@ function daysAgo(dateStr) {
   if (diff === 0) return 'Hôm nay';
   if (diff === 1) return 'Hôm qua';
   return `${diff} ngày trước`;
+}
+
+const TIME_OPTIONS = [
+  { value: '', label: '⏱ Tốn khoảng...' },
+  { value: '15', label: '15 phút' },
+  { value: '30', label: '30 phút' },
+  { value: '60', label: '1 tiếng' },
+  { value: '90', label: '1.5 tiếng' },
+  { value: '120', label: '2 tiếng' },
+  { value: '240', label: 'Nửa ngày' },
+];
+
+/* ── Custom Time Dropdown (glassmorphic, no native popup) ── */
+function TimeDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const selected = TIME_OPTIONS.find(o => o.value === value);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="incubator-dropdown" ref={ref}>
+      <button
+        type="button"
+        className={`incubator-dropdown__trigger${open ? ' incubator-dropdown__trigger--open' : ''}`}
+        onClick={() => setOpen(o => !o)}
+      >
+        <span className="incubator-dropdown__value">
+          {selected?.value ? selected.label : '⏱ Tốn khoảng...'}
+        </span>
+        <span className={`incubator-dropdown__arrow${open ? ' incubator-dropdown__arrow--up' : ''}`}>▾</span>
+      </button>
+      {open && (
+        <div className="incubator-dropdown__menu">
+          {TIME_OPTIONS.filter(o => o.value !== '').map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`incubator-dropdown__item${opt.value === value ? ' incubator-dropdown__item--active' : ''}`}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const DEFER_OPTIONS = [
@@ -39,12 +102,15 @@ export default function IncubatorPage() {
     addIntention, deferIntention, executeIntention, abandonIntention, getLogs,
   } = useIntentions();
   const { addTask } = useUserTasks();
+  const { addExpense } = useExpenses();
+  const { addHabit } = useCustomHabits();
 
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [reason, setReason] = useState('');
   const [cost, setCost] = useState('');
+  const [time, setTime] = useState('');
 
   // Defer modal
   const [deferModal, setDeferModal] = useState(null); // intention object
@@ -53,13 +119,17 @@ export default function IncubatorPage() {
 
   // Execute modal
   const [executeModal, setExecuteModal] = useState(null);
-  const [executeType, setExecuteType] = useState('task');
+  const [execOptions, setExecOptions] = useState({ expense: false, habit: false, task: false });
+  const [expenseCategory, setExpenseCategory] = useState('shopping');
 
   // Timeline expand
   const [expandedId, setExpandedId] = useState(null);
   const [timelineLogs, setTimelineLogs] = useState([]);
 
   const todayStr = new Date().toISOString().split('T')[0];
+
+  const toggleExec = (key) => setExecOptions(prev => ({ ...prev, [key]: !prev[key] }));
+  const anySelected = execOptions.expense || execOptions.habit || execOptions.task;
 
   /* ── Add ── */
   const handleAdd = useCallback(async (e) => {
@@ -69,9 +139,10 @@ export default function IncubatorPage() {
       title: title.trim(),
       originalReason: reason.trim() || null,
       estimatedCost: cost ? parseInt(cost, 10) : null,
+      estimatedTime: time ? parseInt(time, 10) : null,
     });
-    setTitle(''); setReason(''); setCost(''); setShowForm(false);
-  }, [title, reason, cost, addIntention]);
+    setTitle(''); setReason(''); setCost(''); setTime(''); setShowForm(false);
+  }, [title, reason, cost, time, addIntention]);
 
   /* ── Defer ── */
   const handleDefer = useCallback(async () => {
@@ -83,19 +154,79 @@ export default function IncubatorPage() {
     setDeferModal(null); setDeferReason(''); setDeferDays(7);
   }, [deferModal, deferReason, deferDays, deferIntention]);
 
-  /* ── Execute ── */
+  /* ── Open Execute Modal (auto-suggest) ── */
+  const openExecuteModal = useCallback((item) => {
+    setExecuteModal(item);
+    // Auto-suggest based on intention data
+    setExecOptions({
+      expense: !!item.estimated_cost,
+      habit: !!item.estimated_time,
+      task: !item.estimated_cost && !item.estimated_time, // default if no cost/time
+    });
+    setExpenseCategory('shopping');
+  }, []);
+
+  /* ── Execute (multi-dispatch) ── */
   const handleExecute = useCallback(async () => {
-    if (!executeModal) return;
-    if (executeType === 'task') {
-      const task = await addTask({ title: executeModal.title, description: executeModal.original_reason || '' });
-      await executeIntention(executeModal.id, { convertTo: 'task', convertedId: task?.id });
+    if (!executeModal || !anySelected) return;
+
+    const convertedTypes = [];
+    const convertedIds = {};
+
+    // 1. Expense
+    if (execOptions.expense && executeModal.estimated_cost) {
+      const exp = await addExpense({
+        amount: executeModal.estimated_cost,
+        category: expenseCategory,
+        note: `Từ Incubator: ${executeModal.title}`,
+        date: todayStr,
+      });
+      if (exp) {
+        convertedTypes.push('expense');
+        convertedIds.expense = exp.id;
+      }
+    }
+
+    // 2. Habit
+    if (execOptions.habit) {
+      const hab = await addHabit({
+        name: executeModal.title,
+        action: executeModal.title,
+        durationMin: executeModal.estimated_time || null,
+      });
+      if (hab) {
+        convertedTypes.push('habit');
+        convertedIds.habit = hab.id;
+      }
+    }
+
+    // 3. Task
+    if (execOptions.task) {
+      const t = await addTask({
+        title: executeModal.title,
+        description: executeModal.original_reason || '',
+        durationEst: executeModal.estimated_time || null,
+      });
+      if (t) {
+        convertedTypes.push('task');
+        convertedIds.task = t.id;
+      }
+    }
+
+    // Mark intention as executed
+    await executeIntention(executeModal.id, { convertedTypes, convertedIds });
+
+    // Navigate to most relevant page
+    if (execOptions.task || execOptions.habit) {
       navigate('/tracker');
-    } else {
-      await executeIntention(executeModal.id, { convertTo: 'expense' });
+    } else if (execOptions.expense) {
       navigate('/finance');
     }
+
     setExecuteModal(null);
-  }, [executeModal, executeType, addTask, executeIntention, navigate]);
+    setExecOptions({ expense: false, habit: false, task: false });
+  }, [executeModal, execOptions, anySelected, expenseCategory, todayStr,
+    addExpense, addHabit, addTask, executeIntention, navigate]);
 
   /* ── Toggle timeline ── */
   const toggleTimeline = useCallback(async (id) => {
@@ -172,8 +303,8 @@ export default function IncubatorPage() {
               value={cost}
               onChange={e => setCost(e.target.value)}
               min="0"
-              step="1000"
             />
+            <TimeDropdown value={time} onChange={setTime} />
           </div>
           <button type="submit" className="btn btn-primary" disabled={!title.trim()}
             style={{ justifyContent: 'center' }}>
@@ -213,6 +344,11 @@ export default function IncubatorPage() {
                       💰 ~{formatVND(item.estimated_cost)}
                     </span>
                   )}
+                  {item.estimated_time && (
+                    <span className="incubator-card__badge incubator-card__badge--duration">
+                      ⏱ {formatDuration(item.estimated_time)}
+                    </span>
+                  )}
                   {item.review_date && (
                     <span className={`incubator-card__badge ${isReviewDue ? 'incubator-card__badge--review' : 'incubator-card__badge--time'}`}>
                       {isReviewDue ? '⚠️ Cần review!' : `📅 Review: ${new Date(item.review_date + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}`}
@@ -226,7 +362,7 @@ export default function IncubatorPage() {
                 <div className="incubator-card__actions">
                   <button
                     className="incubator-card__btn incubator-card__btn--execute"
-                    onClick={() => { setExecuteModal(item); setExecuteType('task'); }}
+                    onClick={() => openExecuteModal(item)}
                   >
                     ✅ Thực thi ngay
                   </button>
@@ -324,41 +460,82 @@ export default function IncubatorPage() {
         </div>
       )}
 
-      {/* ── Execute Modal ── */}
+      {/* ── Execute Modal (Multi-Output) ── */}
       {executeModal && (
         <div className="incubator-modal-backdrop" onClick={() => setExecuteModal(null)}>
-          <div className="incubator-modal" onClick={e => e.stopPropagation()}>
+          <div className="incubator-modal incubator-modal--execute" onClick={e => e.stopPropagation()}>
             <div className="incubator-modal__header">
               <span>✅ Thực thi: {executeModal.title}</span>
               <button className="incubator-modal__close" onClick={() => setExecuteModal(null)}>✕</button>
             </div>
             <div className="incubator-modal__body">
-              <label className="incubator-modal__label">Chuyển thành</label>
-              <div className="incubator-modal__options">
-                <button
-                  type="button"
-                  className={`incubator-modal__option${executeType === 'task' ? ' incubator-modal__option--active' : ''}`}
-                  onClick={() => setExecuteType('task')}
-                >
-                  📌 Task
-                </button>
-                <button
-                  type="button"
-                  className={`incubator-modal__option${executeType === 'expense' ? ' incubator-modal__option--active' : ''}`}
-                  onClick={() => setExecuteType('expense')}
-                >
-                  💸 Chi tiêu
-                </button>
-              </div>
-              {executeModal.estimated_cost && (
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  Chi phí ước tính: <strong style={{ color: '#f97316' }}>{formatVND(executeModal.estimated_cost)}</strong>
+              <label className="incubator-modal__label">Phân bổ nguồn lực cho dự định này:</label>
+
+              {/* Option: Expense */}
+              <div
+                className={`incubator-exec-option${execOptions.expense ? ' incubator-exec-option--active' : ''}${!executeModal.estimated_cost ? ' incubator-exec-option--dim' : ''}`}
+                onClick={() => toggleExec('expense')}
+              >
+                <span className="incubator-exec-checkbox">{execOptions.expense ? '✓' : ''}</span>
+                <div className="incubator-exec-option__content">
+                  <div className="incubator-exec-option__title">💰 Ghi nhận Chi tiêu</div>
+                  <div className="incubator-exec-option__info">
+                    {executeModal.estimated_cost
+                      ? `Tự động điền ${formatVND(executeModal.estimated_cost)}`
+                      : 'Không có chi phí ước tính'}
+                  </div>
+                  {execOptions.expense && executeModal.estimated_cost && (
+                    <div className="incubator-exec-option__sub" onClick={e => e.stopPropagation()}>
+                      <select
+                        className="incubator-exec-category"
+                        value={expenseCategory}
+                        onChange={e => setExpenseCategory(e.target.value)}
+                      >
+                        {EXPENSE_DATA.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+
+              {/* Option: Habit */}
+              <div
+                className={`incubator-exec-option${execOptions.habit ? ' incubator-exec-option--active' : ''}`}
+                onClick={() => toggleExec('habit')}
+              >
+                <span className="incubator-exec-checkbox">{execOptions.habit ? '✓' : ''}</span>
+                <div className="incubator-exec-option__content">
+                  <div className="incubator-exec-option__title">🔁 Tạo Thói quen</div>
+                  <div className="incubator-exec-option__info">
+                    "{executeModal.title}"
+                    {executeModal.estimated_time ? ` · ⏱ ${formatDuration(executeModal.estimated_time)}/ngày` : ''}
+                  </div>
+                </div>
+              </div>
+
+              {/* Option: Task */}
+              <div
+                className={`incubator-exec-option${execOptions.task ? ' incubator-exec-option--active' : ''}`}
+                onClick={() => toggleExec('task')}
+              >
+                <span className="incubator-exec-checkbox">{execOptions.task ? '✓' : ''}</span>
+                <div className="incubator-exec-option__content">
+                  <div className="incubator-exec-option__title">📌 Tạo Công việc</div>
+                  <div className="incubator-exec-option__info">
+                    Thêm vào danh sách Task hôm nay
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="incubator-modal__footer">
               <button className="btn btn-ghost" onClick={() => setExecuteModal(null)}>Huỷ</button>
-              <button className="btn btn-primary" onClick={handleExecute}>
+              <button
+                className="btn btn-primary"
+                onClick={handleExecute}
+                disabled={!anySelected}
+              >
                 ✅ Thực thi
               </button>
             </div>

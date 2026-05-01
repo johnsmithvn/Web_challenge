@@ -148,8 +148,8 @@ export function useIntentions() {
     }
   }, [isAuth, userId]);
 
-  // ── Execute intention (convert to Task or Expense) ────────
-  const executeIntention = useCallback(async (id, { convertTo, convertedId }) => {
+  // ── Execute intention (multi-output: Task + Expense + Habit) ────
+  const executeIntention = useCallback(async (id, { convertedTypes, convertedIds }) => {
     if (!isAuth) return false;
     try {
       const sb = await getSb();
@@ -159,8 +159,8 @@ export function useIntentions() {
         .from('intentions')
         .update({
           status: 'executed',
-          converted_to: convertTo || null,
-          converted_id: convertedId || null,
+          converted_to: convertedTypes?.length ? convertedTypes : null,
+          converted_ids: convertedIds && Object.keys(convertedIds).length ? convertedIds : null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
@@ -174,7 +174,7 @@ export function useIntentions() {
       await sb.from('intention_logs').insert({
         intention_id: id,
         action: 'executed',
-        reason_note: convertTo ? `Converted to ${convertTo}` : null,
+        reason_note: convertedTypes?.length ? `Converted to ${convertedTypes.join(', ')}` : null,
       });
 
       setIntentions(prev => prev.filter(i => i.id !== id));

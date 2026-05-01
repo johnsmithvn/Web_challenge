@@ -1,5 +1,37 @@
 # CHANGELOG
 
+## v4.2.0 — 2026-05-01
+
+### Added
+- **🥚 Incubator Multi-Output Router:** Execute Modal chuyển từ Radio (chọn 1) sang Checkbox (đa lựa chọn). Khi thực thi một dự định, user có thể tạo đồng thời:
+  - 💰 **Chi tiêu** → `addExpense()` + dropdown chọn 1 trong 8 category. Tự động điền `estimated_cost`.
+  - 🔁 **Thói quen** → `addHabit()` + tự động điền `durationMin` từ `estimated_time`.
+  - 📌 **Công việc** → `addTask()` + tự động điền `durationEst` từ `estimated_time`.
+- **Auto-suggest:** Pre-check options dựa trên data: cost > 0 → Expense, time > 0 → Habit, cả 2 = 0 → Task.
+- **estimated_time UI:**
+  - Form: Dropdown `⏱ Cam kết thời gian` (15m/30m/1h/1.5h/2h/nửa ngày) thay vì ô số.
+  - Card: Badge `⏱ 1h` / `⏱ 30m` hiển thị cạnh badge 💰 chi phí.
+- **Migration:** `data/migration_v4.2.0_incubator_v2.sql` — `converted_to` TEXT → TEXT[], thêm `converted_ids` JSONB.
+
+### Changed
+- `useIntentions.js` — `executeIntention(id, { convertedTypes, convertedIds })` thay `{ convertTo, convertedId }`.
+- `IncubatorPage.jsx` — Import thêm `useExpenses`, `useCustomHabits`, `expense-categories.json`. Multi-dispatch handler.
+- `incubator.css` — Thêm ~150 dòng: exec option cards, checkbox visual, category dropdown, duration badge, light mode.
+
+### Database
+- `data/migration_v4.2.0_incubator_v2.sql` — Run BEFORE deploying frontend v4.2.0.
+
+---
+
+
+### Fixed
+- **Sidebar avatar dropdown** (`Navbar.jsx`) — Rewritten with React Portal + `getBoundingClientRect`. Menu no longer clipped by `overflow-y: auto` on sidebar. Renders correctly above avatar at fixed viewport position.
+- **Inbox add button** (`useCollections.js`) — Removed `content_format`, `body_text`, `word_count` from `addItem` insert payload. These optional columns (migration v3.2.0) caused insert failure on instances where migration hadn't been applied.
+- **Button disabled state** (`global.css`) — Added `.btn-primary:disabled` style with `opacity: 0.4` + `cursor: not-allowed` — previously disabled buttons looked identical to enabled ones.
+- **Sidebar layout** (`navbar.css`) — Moved `overflow-y: auto` from `.sidebar` to `.sidebar__nav`. Added `position: relative; z-index: 10` to `.sidebar__bottom` to allow dropdown to escape nav stacking context.
+
+---
+
 ## v4.1.0 — 2026-04-30
 
 ### Added
