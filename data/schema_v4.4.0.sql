@@ -474,3 +474,26 @@ INSERT INTO programs (title, description, icon, color, category, duration_days, 
 ON CONFLICT DO NOTHING;
 
 -- DONE: 24 tables, all RLS, all indexes, idempotent
+
+-- ──────────────────────────────────────────────────────────
+-- v4.4.1 PATCH: Retire 'want' type from collections
+-- Reason: 'want' (Muốn mua) is superseded by the Incubator
+--   (intentions table) which provides cost/time estimation
+--   and an executed→expense workflow. Keeping both causes
+--   mental model confusion with no benefit.
+--
+-- Steps:
+--   1. Migrate existing 'want' rows → type = 'idea'
+--   2. Add CHECK constraint to prevent future 'want' inserts
+-- ──────────────────────────────────────────────────────────
+
+-- Step 1: Migrate legacy data (idempotent — safe to re-run)
+UPDATE collections SET type = 'idea' WHERE type = 'want';
+
+-- Step 2: Add CHECK constraint (drop first for idempotency)
+ALTER TABLE collections
+  DROP CONSTRAINT IF EXISTS chk_collections_type;
+
+ALTER TABLE collections
+  ADD CONSTRAINT chk_collections_type
+  CHECK (type IN ('inbox', 'note', 'link', 'quote', 'learn', 'idea'));

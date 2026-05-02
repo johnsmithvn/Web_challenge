@@ -12,7 +12,7 @@ import '../styles/collect.css';
 const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
 const TiptapReadOnly = lazy(() => import('../components/TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
 import { ShortcutsModal, MD_SHORTCUT_SECTIONS } from '../components/TiptapEditor';
-import { FileText, Link as LinkIcon, MessageSquareQuote, BookOpen, Lightbulb, ShoppingCart, Library } from 'lucide-react';
+import { FileText, Link as LinkIcon, MessageSquareQuote, BookOpen, Lightbulb, Library } from 'lucide-react';
 
 /* ── Constants ─────────────────────────────────────────────── */
 const TYPE_META = {
@@ -21,7 +21,7 @@ const TYPE_META = {
   quote: { icon: MessageSquareQuote, label: 'Trích dẫn', color: '#f59e0b' },
   learn: { icon: BookOpen, label: 'Học',        color: '#22c55e' },
   idea:  { icon: Lightbulb, label: 'Ý tưởng',   color: '#f97316' },
-  want:  { icon: ShoppingCart, label: 'Muốn mua',  color: '#f43f5e' },
+  // 'want' removed in v4.4.1 — superseded by Incubator (intentions table)
 };
 
 const SORT_OPTIONS = [

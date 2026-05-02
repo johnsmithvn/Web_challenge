@@ -12,10 +12,10 @@ import '../styles/inbox.css';
 
 const CATEGORIES = EXPENSE_DATA.categories;
 
+// 'want' removed in v4.4.1 — superseded by Incubator (🥚 Ấp Trứng button in overflow menu)
 const TYPES = [
   { key: 'link',  label: '🔗 Link',    desc: 'Bài viết, video, repo' },
   { key: 'quote', label: '💬 Quote',   desc: 'Câu nói hay' },
-  { key: 'want',  label: '🛒 Muốn mua',desc: 'Đồ cần mua / sửa' },
   { key: 'learn', label: '📚 Học',     desc: 'Khóa học, bài tập' },
   { key: 'idea',  label: '💡 Ý tưởng', desc: 'Ý tưởng cá nhân' },
 ];

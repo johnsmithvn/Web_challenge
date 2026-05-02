@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 /**
  * useCollections — CRUD for the `collections` table.
  *
- * Types: 'inbox' | 'link' | 'quote' | 'want' | 'learn' | 'idea'
+ * Types: 'inbox' | 'note' | 'link' | 'quote' | 'learn' | 'idea'
+ *   Note: 'want' was removed in v4.4.1 — use Incubator (intentions) instead.
  * Status: 'inbox' | 'unread' | 'read' | 'starred' | 'archived'
  *
  * Used by: InboxPage (type='inbox'), CollectPage (all other types)

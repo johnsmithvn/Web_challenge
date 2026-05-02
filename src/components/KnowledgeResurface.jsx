@@ -77,7 +77,7 @@ export default function KnowledgeResurface() {
 
   if (!enabled || dismissed || !item) return null;
 
-  const TYPE_ICONS = { link: '🔗', quote: '💬', want: '📌', learn: '📚', idea: '💡' };
+  const TYPE_ICONS = { link: '🔗', quote: '💬', note: '📝', learn: '📚', idea: '💡' };
 
   return (
     <div className="resurface-widget">
