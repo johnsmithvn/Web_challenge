@@ -13,7 +13,7 @@ export function useSubscriptions() {
   const [subs, setSubs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ── Fetch all active subs ───────────────────────────────────
+  // ── Fetch all active subs + auto-advance expired ─────────────
   const fetchSubs = useCallback(async () => {
     if (!enabled) return;
     setIsLoading(true);
@@ -25,7 +25,43 @@ export function useSubscriptions() {
         .order('next_due', { ascending: true });
 
       if (error) throw error;
-      setSubs(data || []);
+      const rows = data || [];
+
+      // Auto-advance expired subscriptions
+      const today = new Date().toISOString().split('T')[0];
+      const advancePromises = [];
+
+      for (const sub of rows) {
+        if (!sub.active || sub.next_due > today) continue;
+
+        // Calculate next due date based on cycle
+        const d = new Date(sub.next_due + 'T00:00:00');
+        const MAX_ADVANCES = 24; // safety: max 24 cycles forward (2 years monthly)
+        let advances = 0;
+        while (d.toISOString().split('T')[0] <= today && advances < MAX_ADVANCES) {
+          if (sub.cycle === 'monthly') d.setMonth(d.getMonth() + 1);
+          else if (sub.cycle === '3month') d.setMonth(d.getMonth() + 3);
+          else if (sub.cycle === '6month') d.setMonth(d.getMonth() + 6);
+          else if (sub.cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
+          else d.setMonth(d.getMonth() + 1); // fallback
+          advances++;
+        }
+
+        const newDue = d.toISOString().split('T')[0];
+        if (newDue !== sub.next_due) {
+          sub.next_due = newDue; // update local copy
+          advancePromises.push(
+            supabase.from('subscriptions').update({ next_due: newDue }).eq('id', sub.id).eq('user_id', user.id)
+          );
+        }
+      }
+
+      if (advancePromises.length > 0) {
+        await Promise.allSettled(advancePromises);
+        console.log(`[useSubscriptions] auto-advanced ${advancePromises.length} subs`);
+      }
+
+      setSubs(rows);
     } catch (err) {
       console.warn('[useSubscriptions] fetch error:', err.message);
     } finally {

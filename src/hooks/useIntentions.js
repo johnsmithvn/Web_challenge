@@ -247,6 +247,31 @@ export function useIntentions() {
     return i.review_date <= new Date().toISOString().split('T')[0];
   }).length;
 
+  // ── Fetch abandoned intentions (for archive view) ─────────
+  const fetchAbandoned = useCallback(async () => {
+    if (!isAuth || !userId) return [];
+    try {
+      const sb = await getSb();
+      if (!sb) return [];
+
+      const { data, error } = await sb
+        .from('intentions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'abandoned')
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('[useIntentions] fetchAbandoned error:', error.message);
+        return [];
+      }
+      return data || [];
+    } catch (err) {
+      console.error('[useIntentions] fetchAbandoned exception:', err);
+      return [];
+    }
+  }, [isAuth, userId]);
+
   return {
     intentions,
     isLoading,
@@ -256,6 +281,7 @@ export function useIntentions() {
     deferIntention,
     executeIntention,
     abandonIntention,
+    fetchAbandoned,
     getLogs,
   };
 }

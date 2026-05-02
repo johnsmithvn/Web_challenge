@@ -1,5 +1,54 @@
 # CHANGELOG
 
+## v4.3.0 — 2026-05-01
+
+### Added
+- InboxPage: Filter chips (Tất cả / Có URL / Gần đây 7 ngày) — client-side filtering, no search bar
+- IncubatorPage: "▼ Xem dự định đã bỏ qua" toggle — collapsible archive view for abandoned intentions
+- `useIntentions.fetchAbandoned()` — fetches intentions with status='abandoned'
+
+### Changed
+- `InboxPage.jsx` — filter state + chip UI + filtered rendering with smart empty state
+- `IncubatorPage.jsx` — archive toggle + read-only abandoned cards
+- `inbox.css` — `.inbox-filter-chip` styles (dark/light mode)
+- `useIntentions.js` — added `fetchAbandoned` export
+
+### Removed
+- `data/migration_v4.3.0_drop_tags_column.sql` — drops deprecated `collections.tags TEXT[]` column
+
+### Files Modified
+- `src/pages/InboxPage.jsx`
+- `src/pages/IncubatorPage.jsx`
+- `src/hooks/useIntentions.js`
+- `src/styles/inbox.css`
+- `data/migration_v4.3.0_drop_tags_column.sql` [NEW]
+
+---
+
+## v4.2.1 — 2026-05-01
+
+### Added
+- `useExpenses.updateExpense(id, updates)` — optimistic update + rollback
+- FinancePage: ✏️ edit button on each expense → modal with amount/category/note
+- `useSubscriptions.fetchSubs` auto-advances expired `next_due` by cycle (bounded MAX_ADVANCES=24)
+- TrackerPage: 🥚 Incubator Review Banner — yellow alert when intentions have review_date ≤ today, links to `/incubator`
+
+### Changed
+- `useExpenses.js` — added `updateExpense` export
+- `useSubscriptions.js` — `fetchSubs` now auto-advances expired subs
+- `TrackerPage.jsx` — imports `useIntentions`, adds review banner widget
+- `FinancePage.jsx` — wrapped return in Fragment for edit modal overlay
+- `finance.css` — added `.finance-list__edit` styling
+
+### Files Modified
+- `src/hooks/useExpenses.js`
+- `src/hooks/useSubscriptions.js`
+- `src/pages/FinancePage.jsx`
+- `src/pages/TrackerPage.jsx`
+- `src/styles/finance.css`
+
+---
+
 ## v4.2.0 — 2026-05-01
 
 ### Added

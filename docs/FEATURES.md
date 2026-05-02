@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.1.0
-**Updated:** 2026-04-30
+**Version:** v4.3.0
+**Updated:** 2026-05-01
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -44,6 +44,7 @@
 - **Insight:** Nhận xét động theo streak hiện tại
 - **Notification Settings:** Toggle + giờ nhắc nhở browser notification
 - **Empty State:** Khi authenticated + no habits → CTA "🗺 Chọn Lộ Trình"
+- **🥚 Incubator Review Banner (v4.2.1):** Khi có dự định cần review hôm nay → banner vàng "🥚 N dự định cần review" + link tới `/incubator`. Cùng vị trí với SubAlert + KnowledgeResurface.
 
 **Tab 📅 Lịch:** `MonthCalendar` component (lazy loaded)
 
@@ -476,10 +477,13 @@
 - **📌 Task action:** Chuyển inbox item thành Task (v3.0.1)
 - **🔄 Đăng ký action:** Chuyển sang FinancePage tạo Subscription (v3.0.1)
 - **💸 Chi tiêu nhanh (v3.5.0):** Bấm nút → QuickExpenseModal inline (không navigate). Regex tự bóc tách số tiền từ text ("Cafe 50k" → 50,000đ). Pre-fill amount + note + category dropdown 8 loại. Lưu → `addExpense()` + `logActivity()` + xóa item khỏi inbox.
+- **✏️ Sửa chi tiêu (v4.2.1):** Click ✏️ trên expense → modal sửa (số tiền, danh mục, ghi chú). Optimistic update + rollback.
+- **🔄 Sub auto-advance (v4.2.1):** Subscription hết hạn tự động nhảy `next_due` theo cycle (monthly/3month/6month/yearly). Chạy khi fetch, bounded max 24 cycle.
 - Delete action
 - **🕔 Snooze (v3.8.0):** Ẩn inbox item tạm thời. 4 options: 1 tuần / 2 tuần / 1 tháng / 3 tháng. Badge "🕔 X snoozed" trong header.
 - **🔗 Link Preview (v4.0.0):** Inbox items có URL tự động hiển preview card (thumbnail + title + desc) qua Vercel Edge Function `/api/meta`. Graceful fallback khi bị chặn.
 - **··· Overflow Menu (v4.0.1):** 2 primary buttons (📌 Task + 🗑) luôn hiện. 5 actions phụ (📂 Phân loại, 💸 Chi tiêu, 🔄 Đăng ký, 🥚 Ấp Trứng, 🕔 Snooze) gom vào dropdown ···. Click-outside auto-close.
+- **📊 Filter Chips (v4.3.0):** 3 chip lọc: Tất cả / Có URL / Gần đây (7 ngày). Client-side filtering trên data đã fetch. Smart empty state khi không có item khớp.
 - Tự động detect URL
 - Empty state khi inbox trống
 
@@ -543,6 +547,7 @@
   - `converted_to TEXT[]` lưu mảng output types, `converted_ids JSONB` lưu map UUID
 - Bỏ qua (Abandon): xóa khỏi danh sách với reason log
 - Timeline: lịch sử mọi lần dời/thực thi/tạo. Expand từ card
+- **Archive View (v4.3.0):** Nút "▼ Xem dự định đã bỏ qua" ở cuối trang. Lazy-load abandoned intentions, hiện read-only cards.
 - Review-due highlighting: card viền vàng khi đến ngày review
 - Badge header: số lượng đang ấp + cần review
 - Inbox integration: nút 🥚 Ấp Trứng chuyển inbox item vào Incubator

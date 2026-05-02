@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
 **Updated:** 2026-05-01
-**Current Version:** v4.2.0
+**Current Version:** v4.3.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -349,6 +349,26 @@
 
 ---
 
+## ✅ Phase 9.1 — Quick Wins: Edit Expense + Sub Auto-Advance + Review Banner (v4.2.1)
+*Hoàn thành: 2026-05-01*
+
+- [x] `useExpenses.updateExpense()` — optimistic update + rollback
+- [x] FinancePage: ✏️ edit button + modal (amount, category, note)
+- [x] `useSubscriptions.fetchSubs` auto-advance expired `next_due` (bounded MAX=24)
+- [x] TrackerPage: 🥚 Incubator Review Banner (yellow alert + link)
+
+---
+
+## ✅ Phase 9.4 — Inbox Filters + Incubator Archive + Tags Cleanup (v4.3.0)
+*Hoàn thành: 2026-05-01*
+
+- [x] InboxPage: Filter chips (Tất cả / Có URL / Gần đây) — client-side filtering
+- [x] IncubatorPage: Archive toggle — xem dự định đã bỏ qua
+- [x] `useIntentions.fetchAbandoned()` — fetch abandoned intentions
+- [x] Migration: `ALTER TABLE collections DROP COLUMN IF EXISTS tags`
+
+---
+
 ## Semantic Version Map
 
 | Version | Milestone |
@@ -404,4 +424,6 @@
 | **v4.1.0** | **⚙️ Settings Page + Tag Unification (collection_tags junction)** |
 | v4.1.1 | Bug Fixes: Sidebar Dropdown + Inbox Add |
 | **v4.2.0** | **🥚 Incubator Multi-Output Router + estimated_time UI** |
+| v4.2.1 | Edit Expense + Sub auto-advance + Incubator Review Banner |
+| **v4.3.0** | **Inbox Filters + Incubator Archive + Tags Cleanup** |
 

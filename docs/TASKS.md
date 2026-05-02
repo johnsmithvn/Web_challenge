@@ -3,7 +3,38 @@
 
 ---
 
-## v4.2.0 — ✅ DONE (2026-05-01) — 🥚 Incubator Multi-Output Router + estimated_time UI
+## v4.3.0 — ✅ DONE (2026-05-01) — Inbox Filters + Incubator Archive + Tags Cleanup
+
+### Phase 9.4: Inbox Filter Chips (#10)
+- [x] `InboxPage.jsx` — filter chips: Tất cả / Có URL / Gần đây (7 ngày)
+- [x] `inbox.css` — chip styling (dark/light mode)
+
+### Phase 9.5: Incubator Archive View (#8)
+- [x] `useIntentions.js` — `fetchAbandoned()` returns abandoned items
+- [x] `IncubatorPage.jsx` — toggle "Đã bỏ qua" section (read-only cards)
+
+### Phase 9.6: Drop deprecated `collections.tags TEXT[]` (#7)
+- [x] Verified: `useCollections.js` has zero references to `tags` column
+- [x] `data/migration_v4.3.0_drop_tags_column.sql` — `ALTER TABLE DROP COLUMN IF EXISTS`
+
+---
+
+## v4.2.1 — ✅ DONE (2026-05-01) — Edit Expense + Sub Auto-Advance + Incubator Review Banner
+
+### Phase 9.1: Edit Expense (Quick Win)
+- [x] `useExpenses.js` — thêm `updateExpense(id, { amount, category, note })`
+- [x] `FinancePage.jsx` — inline edit modal (click expense → edit form)
+- [x] `finance.css` — edit button styling
+
+### Phase 9.2: Subscription auto-advance `next_due`
+- [x] `useSubscriptions.js` — auto-advance expired subs trong `fetchSubs()` (bounded MAX=24)
+
+### Phase 9.3: Incubator review banner on Today page
+- [x] `TrackerPage.jsx` — 🥚 yellow banner khi reviewDueCount > 0, link tới `/incubator`
+- [x] `useIntentions.js` — `reviewDueCount` (đã có sẵn, chỉ import)
+
+---
+
 
 ### Phase A: Database Migration
 - [x] `data/migration_v4.2.0_incubator_v2.sql` [NEW] — ALTER `converted_to` TEXT → TEXT[], ADD `converted_ids` JSONB

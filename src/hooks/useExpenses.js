@@ -85,6 +85,30 @@ export function useExpenses() {
     }
   }, [enabled, user]);
 
+  // ── Update expense ─────────────────────────────────────────
+  const updateExpense = useCallback(async (id, updates) => {
+    if (!enabled) return false;
+
+    // Optimistic update
+    const prev = expenses;
+    setExpenses(list => list.map(e => e.id === id ? { ...e, ...updates } : e));
+
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update(updates)
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.warn('[useExpenses] update error:', err.message);
+      setExpenses(prev); // rollback
+      return false;
+    }
+  }, [enabled, user, expenses]);
+
   // ── Get total for a date range ──────────────────────────────
   const getTotal = useCallback((list = expenses) => {
     return list.reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -107,6 +131,7 @@ export function useExpenses() {
     isLoading,
     fetchExpenses,  // (startDate, endDate) => Promise<void>
     addExpense,     // (expense) => Promise<row|null>
+    updateExpense,  // (id, updates) => Promise<boolean>
     deleteExpense,  // (id) => Promise<boolean>
     getTotal,       // (list?) => number
     getByCategory,  // (list?) => [{category, total}]

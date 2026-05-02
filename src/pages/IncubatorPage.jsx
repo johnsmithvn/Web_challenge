@@ -99,7 +99,7 @@ export default function IncubatorPage() {
   const navigate = useNavigate();
   const {
     intentions, isLoading, reviewDueCount,
-    addIntention, deferIntention, executeIntention, abandonIntention, getLogs,
+    addIntention, deferIntention, executeIntention, abandonIntention, fetchAbandoned, getLogs,
   } = useIntentions();
   const { addTask } = useUserTasks();
   const { addExpense } = useExpenses();
@@ -127,6 +127,10 @@ export default function IncubatorPage() {
   const [timelineLogs, setTimelineLogs] = useState([]);
 
   const todayStr = new Date().toISOString().split('T')[0];
+
+  // Archive (abandoned) view
+  const [showArchive, setShowArchive] = useState(false);
+  const [archivedItems, setArchivedItems] = useState([]);
 
   const toggleExec = (key) => setExecOptions(prev => ({ ...prev, [key]: !prev[key] }));
   const anySelected = execOptions.expense || execOptions.habit || execOptions.task;
@@ -413,6 +417,57 @@ export default function IncubatorPage() {
           })}
         </div>
       )}
+
+      {/* ── Archive (Abandoned) toggle ── */}
+      <div style={{ marginTop: '1.5rem' }}>
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: '0.82rem', color: 'var(--text-muted)', width: '100%', justifyContent: 'center' }}
+          onClick={async () => {
+            if (!showArchive) {
+              const list = await fetchAbandoned();
+              setArchivedItems(list);
+            }
+            setShowArchive(v => !v);
+          }}
+        >
+          {showArchive ? '▲ Ẩn dự định đã bỏ qua' : `▼ Xem dự định đã bỏ qua`}
+        </button>
+
+        {showArchive && (
+          <div style={{ marginTop: '0.75rem' }}>
+            {archivedItems.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                Chưa có dự định nào bị bỏ qua
+              </div>
+            ) : (
+              <div className="incubator-cards">
+                {archivedItems.map(item => (
+                  <div key={item.id} className="incubator-card" style={{ opacity: 0.65 }}>
+                    <div className="incubator-card__header">
+                      <span className="incubator-card__title">❌ {item.title}</span>
+                    </div>
+                    {item.original_reason && (
+                      <div className="incubator-card__reason">📝 {item.original_reason}</div>
+                    )}
+                    <div className="incubator-card__meta">
+                      {item.estimated_cost > 0 && (
+                        <span className="incubator-card__badge">💰 {formatVND(item.estimated_cost)}</span>
+                      )}
+                      {item.estimated_time > 0 && (
+                        <span className="incubator-card__badge">⏱ {formatDuration(item.estimated_time)}</span>
+                      )}
+                      <span className="incubator-card__badge" style={{ color: '#ef4444' }}>
+                        🗓 {item.updated_at ? daysAgo(item.updated_at) : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ── Defer Modal ── */}
       {deferModal && (

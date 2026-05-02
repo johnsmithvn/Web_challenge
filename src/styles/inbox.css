@@ -69,6 +69,52 @@
   flex-shrink: 0;
 }
 
+/* ── Filter Chips (v4.3.0) ─────────────────────────────────── */
+.inbox-filter-chips {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.inbox-filter-chip {
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+[data-theme="light"] .inbox-filter-chip {
+  background: rgba(99,102,241,0.04);
+  border-color: rgba(99,102,241,0.1);
+}
+
+.inbox-filter-chip:hover {
+  background: rgba(139,92,246,0.1);
+  border-color: rgba(139,92,246,0.25);
+  color: var(--text-secondary);
+}
+
+.inbox-filter-chip--active {
+  background: rgba(139,92,246,0.18);
+  border-color: rgba(139,92,246,0.4);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+[data-theme="light"] .inbox-filter-chip--active {
+  background: rgba(99,102,241,0.12);
+  border-color: rgba(99,102,241,0.3);
+  color: #312e81;
+}
+
 /* ── Items List ────────────────────────────────────────────── */
 .inbox-items__count {
   font-size: 0.78rem;

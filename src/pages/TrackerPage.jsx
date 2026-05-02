@@ -10,6 +10,7 @@ import { useHabitLogs } from '../hooks/useHabitLogs';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useFitnessLog } from '../hooks/useFitnessLog';
+import { useIntentions } from '../hooks/useIntentions';
 import { useAuth } from '../contexts/AuthContext';
 import DailyChallenge from '../components/DailyChallenge';
 import XpBar from '../components/XpBar';
@@ -305,6 +306,7 @@ export default function TrackerPage() {
   const { isAuthenticated } = useAuth();
   const { getCompletedTasks } = useUserTasks();
   const { logActivity } = useActivityLog();
+  const { reviewDueCount } = useIntentions();
 
   const [tab, setTab] = useState('today');
 
@@ -544,6 +546,26 @@ export default function TrackerPage() {
         {/* ── Inline Widgets (Sub alert + Knowledge resurface) ── */}
         <SubAlert />
         <KnowledgeResurface />
+
+        {/* ── Incubator Review Banner ── */}
+        {reviewDueCount > 0 && (
+          <Link to="/incubator" style={{ textDecoration: 'none' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.6rem',
+              padding: '0.65rem 1rem', marginBottom: '1.25rem',
+              background: 'rgba(234, 179, 8, 0.08)',
+              border: '1px solid rgba(234, 179, 8, 0.2)',
+              borderRadius: 'var(--radius-md)',
+              cursor: 'pointer', transition: 'var(--transition-base)',
+            }}>
+              <span style={{ fontSize: '1.1rem' }}>🥚</span>
+              <span style={{ flex: 1, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                <strong style={{ color: '#eab308' }}>{reviewDueCount}</strong> dự định cần review hôm nay
+              </span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Xem →</span>
+            </div>
+          </Link>
+        )}
 
         {/* ── Hero status area (auto-derived from habit ticks) ── */}
         <div className="tracker-hero card">

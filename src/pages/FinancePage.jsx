@@ -188,7 +188,7 @@ function WeekBarChart({ expenses }) {
 export default function FinancePage() {
   const { user } = useAuth();
   const location = useLocation();
-  const { expenses, isLoading: expLoading, fetchExpenses, addExpense, deleteExpense, getTotal, getByCategory } = useExpenses();
+  const { expenses, isLoading: expLoading, fetchExpenses, addExpense, updateExpense, deleteExpense, getTotal, getByCategory } = useExpenses();
   const { subs, isLoading: subLoading, fetchSubs, addSub, deleteSub, toggleActive, getMonthlyCost, getUpcoming } = useSubscriptions();
   const { logActivity } = useActivityLog();
   const { deleteItem: deleteInboxItem } = useCollections();
@@ -214,6 +214,12 @@ export default function FinancePage() {
   // Tag selection state
   const [expTagIds, setExpTagIds] = useState([]);
   const [subTagIds, setSubTagIds] = useState([]);
+
+  // Edit expense state
+  const [editExp, setEditExp] = useState(null); // expense object being edited
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editNote, setEditNote] = useState('');
 
   // Auto-calculate next due date from today based on cycle
   const calcNextDue = (cycle) => {
@@ -278,6 +284,27 @@ export default function FinancePage() {
     }
   };
 
+  /* ── Edit expense ── */
+  const openEditExp = (exp) => {
+    setEditExp(exp);
+    setEditAmount(String(exp.amount));
+    setEditCategory(exp.category);
+    setEditNote(exp.note || '');
+  };
+
+  const handleEditExpense = async (e) => {
+    e.preventDefault();
+    const amount = parseInt(editAmount, 10);
+    if (!editExp || !amount || amount <= 0) return;
+
+    const ok = await updateExpense(editExp.id, {
+      amount,
+      category: editCategory,
+      note: editNote || null,
+    });
+    if (ok) setEditExp(null);
+  };
+
   const handleAddSub = async (e) => {
     e.preventDefault();
     const amount = parseInt(subAmount, 10);
@@ -319,6 +346,7 @@ export default function FinancePage() {
   }
 
   return (
+    <>
     <div className="finance-page">
       <div className="finance-page__header">
         <h1 className="finance-page__title">💰 Finance</h1>
@@ -457,6 +485,7 @@ export default function FinancePage() {
                       <div className="finance-list__date">{new Date(exp.date).toLocaleDateString('vi-VN')}</div>
                     </div>
                     <div className="finance-list__amount">-{formatVND(exp.amount)}</div>
+                    <button className="finance-list__edit" onClick={() => openEditExp(exp)} title="Sửa">✏️</button>
                     <button className="finance-list__delete" onClick={() => deleteExpense(exp.id)} title="Xóa">🗑</button>
                   </div>
                 );
@@ -573,5 +602,51 @@ export default function FinancePage() {
         </div>
       )}
     </div>
+
+      {/* ── Edit Expense Modal ── */}
+      {editExp && (
+        <div className="incubator-modal-backdrop" onClick={() => setEditExp(null)}>
+          <div className="incubator-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+            <div className="incubator-modal__header">
+              <span>✏️ Sửa chi tiêu</span>
+              <button className="incubator-modal__close" onClick={() => setEditExp(null)}>✕</button>
+            </div>
+            <form onSubmit={handleEditExpense}>
+              <div className="incubator-modal__body">
+                <label className="incubator-modal__label">Số tiền (VNĐ)</label>
+                <input
+                  className="incubator-modal__input"
+                  type="number"
+                  value={editAmount}
+                  onChange={e => setEditAmount(e.target.value)}
+                  min="1"
+                  required
+                  autoFocus
+                />
+                <label className="incubator-modal__label">Danh mục</label>
+                <CustomSelect
+                  value={editCategory}
+                  onChange={setEditCategory}
+                  options={CATEGORIES.map(c => ({ value: c.key, label: c.label, icon: c.icon }))}
+                />
+                <label className="incubator-modal__label">Ghi chú</label>
+                <input
+                  className="incubator-modal__input"
+                  type="text"
+                  value={editNote}
+                  onChange={e => setEditNote(e.target.value)}
+                  placeholder="Ghi chú (tùy chọn)"
+                  maxLength={200}
+                />
+              </div>
+              <div className="incubator-modal__footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setEditExp(null)}>Huỷ</button>
+                <button type="submit" className="btn btn-primary" disabled={!editAmount}>💾 Lưu</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

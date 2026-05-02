@@ -54,6 +54,7 @@ export default function InboxPage() {
   const [showSnoozed, setShowSnoozed] = useState(false);
   const [snoozedItems, setSnoozedItems] = useState([]);
   const [overflowMenu, setOverflowMenu] = useState(null); // item.id or null
+  const [filter, setFilter] = useState('all'); // 'all' | 'has_url' | 'recent'
   const { getMeta, metaCache } = useLinkMeta();
 
   // Quick Expense modal state
@@ -222,6 +223,25 @@ export default function InboxPage() {
         </button>
       </form>
 
+      {/* Filter chips */}
+      {items.length > 0 && (
+        <div className="inbox-filter-chips">
+          {[
+            { key: 'all', label: 'Tất cả', icon: '📥' },
+            { key: 'has_url', label: 'Có URL', icon: '🔗' },
+            { key: 'recent', label: 'Gần đây (7 ngày)', icon: '🗓' },
+          ].map(f => (
+            <button
+              key={f.key}
+              className={`inbox-filter-chip${filter === f.key ? ' inbox-filter-chip--active' : ''}`}
+              onClick={() => setFilter(f.key)}
+            >
+              {f.icon} {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Snoozed items panel */}
       {showSnoozed && (
         <div style={{
@@ -339,18 +359,34 @@ export default function InboxPage() {
       {/* Items list */}
       {isLoading ? (
         <div className="inbox-page__loading">Đang tải...</div>
-      ) : items.length === 0 ? (
+      ) : (() => {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const sevenDaysAgoStr = sevenDaysAgo.toISOString();
+
+        const filtered = items.filter(item => {
+          if (filter === 'has_url') return !!item.url;
+          if (filter === 'recent') return item.created_at >= sevenDaysAgoStr;
+          return true;
+        });
+
+        return filtered.length === 0 ? (
         <div className="inbox-page__empty-state">
-          <div className="inbox-page__empty-icon">📭</div>
-          <p>Inbox trống — rất tốt!</p>
+          <div className="inbox-page__empty-icon">{items.length === 0 ? '📭' : '🔍'}</div>
+          <p>{items.length === 0 ? 'Inbox trống — rất tốt!' : `Không có mục nào khớp bộ lọc "${filter === 'has_url' ? 'Có URL' : 'Gần đây'}"`}</p>
+          {items.length > 0 && (
+            <button className="btn btn-ghost" style={{ marginTop: '0.5rem', fontSize: '0.82rem' }} onClick={() => setFilter('all')}>
+              Xem tất cả ({items.length})
+            </button>
+          )}
           <p className="inbox-page__empty-hint">
             Dùng nút <strong>+</strong> hoặc form trên để ghi nhanh
           </p>
         </div>
       ) : (
         <div className="inbox-items">
-          <div className="inbox-items__count">{items.length} mục chưa phân loại</div>
-          {items.map(item => (
+          <div className="inbox-items__count">{filtered.length}{filtered.length !== items.length ? `/${items.length}` : ''} mục chưa phân loại</div>
+          {filtered.map(item => (
             <div key={item.id} className="inbox-item">
               <div className="inbox-item__content">
                 <div className="inbox-item__title">
@@ -486,7 +522,8 @@ export default function InboxPage() {
             </div>
           ))}
         </div>
-      )}
+      );
+      })()}
     </div>
   );
 }

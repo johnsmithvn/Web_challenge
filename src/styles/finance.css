@@ -566,6 +566,24 @@
   background: rgba(239, 68, 68, 0.12);
 }
 
+.finance-list__edit {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s;
+}
+
+.finance-list__edit:hover {
+  background: rgba(139, 92, 246, 0.12);
+}
+
 /* ── Subscription Cards ────────────────────────────────────── */
 .finance-subs {
   display: flex;
