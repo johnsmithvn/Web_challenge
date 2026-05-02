@@ -1,5 +1,42 @@
 # CHANGELOG
 
+## v4.4.0 — 2026-05-02
+
+### Fixed
+- **IncubatorPage Execute Modal crash:** `EXPENSE_DATA.map()` called on object root instead of `.categories` array. Also fixed field names `cat.id`→`cat.key`, `cat.name`→`cat.label`. Without this fix, selecting "💰 Ghi nhận Chi tiêu" in Execute Modal would throw `TypeError`.
+- **Subscription monthly cost miscalculation:** `getMonthlyCost()` returned full cycle amount for `3month` and `6month` subscriptions instead of dividing by 3 and 6 respectively. A 300k/3-month sub now correctly shows 100k/month.
+
+### Added
+- **Task ↔ Knowledge Link:** Tasks can now reference a Knowledge Base item via `collection_id` FK. Create linked tasks from the Knowledge reader view (📌 Task button). Tasks with links show a clickable 🔗 KB badge.
+  - `migration_v4.4.0_task_knowledge_link.sql` [NEW] — `ALTER TABLE user_tasks ADD COLUMN collection_id UUID REFERENCES collections(id)`
+  - `useUserTasks.addTask()` accepts optional `collectionId`
+  - `CollectPage.jsx` ReaderView — 📌 Task action button
+  - `TaskListSection.jsx` — 🔗 KB badge with navigate-to-collect
+- **Inbox Bulk Actions:** Toggle "☑ Chọn nhiều" mode → checkboxes appear on each item. Bulk classify (📂 picks type for all selected) and bulk delete (🗑). Select all/none toggle. Activity log for bulk operations.
+- **Activity Log for Inbox:** `handleClassify()` and `handleSnooze()` now log to activity_logs for traceability in Life Log heatmap/timeline.
+
+### Changed
+- `useSubscriptions.js` — `getMonthlyCost()` now handles all 4 cycles correctly
+- `InboxPage.jsx` — Bulk mode state + UI + handlers + activity log integration
+- `CollectPage.jsx` — Import `useUserTasks`, pass `onCreateTask` to ReaderView
+- `TaskListSection.jsx` — Import `useNavigate`, render 🔗 KB badge
+- `inbox.css` — ~100 lines: bulk bar, classify menu, checkbox, selected highlight (dark/light)
+
+### Database
+- `data/migration_v4.4.0_task_knowledge_link.sql` — Run BEFORE deploying frontend v4.4.0
+
+### Files Modified
+- `src/pages/IncubatorPage.jsx`
+- `src/hooks/useSubscriptions.js`
+- `src/pages/InboxPage.jsx`
+- `src/pages/CollectPage.jsx`
+- `src/hooks/useUserTasks.js`
+- `src/components/TaskListSection.jsx`
+- `src/styles/inbox.css`
+- `data/migration_v4.4.0_task_knowledge_link.sql` [NEW]
+
+---
+
 ## v4.3.0 — 2026-05-01
 
 ### Added

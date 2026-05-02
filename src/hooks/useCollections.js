@@ -99,7 +99,6 @@ export function useCollections() {
       title:    item.title,
       url:      item.url     || null,
       body:     item.body    || '',
-      tags:     [],  // DEPRECATED column (v4.1.0) — still required for NOT NULL constraint
       source:   item.source  || null,
       priority: item.priority || null,
       status:   item.status  || 'inbox',

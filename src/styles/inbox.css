@@ -657,3 +657,102 @@
 [data-theme="light"] .inbox-overflow-item:hover {
   background: rgba(99,102,241,0.08);
 }
+
+/* ── Bulk Actions (v4.4.0) ─────────────────────────────────── */
+.inbox-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(139,92,246,0.06);
+  border: 1px solid rgba(139,92,246,0.15);
+  border-radius: var(--radius-md);
+  animation: fadeIn 0.15s ease;
+}
+
+[data-theme="light"] .inbox-bulk-bar {
+  background: rgba(99,102,241,0.05);
+  border-color: rgba(99,102,241,0.15);
+}
+
+.inbox-bulk-bar__btn {
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+
+[data-theme="light"] .inbox-bulk-bar__btn {
+  background: rgba(99,102,241,0.06);
+  border-color: rgba(99,102,241,0.12);
+  color: #4c1d95;
+}
+
+.inbox-bulk-bar__btn:hover {
+  background: rgba(139,92,246,0.15);
+  border-color: rgba(139,92,246,0.35);
+  color: var(--text-primary);
+}
+
+.inbox-bulk-bar__btn--classify {
+  color: #a78bfa;
+  border-color: rgba(139,92,246,0.25);
+}
+
+.inbox-bulk-bar__btn--delete {
+  color: #f87171;
+  border-color: rgba(239,68,68,0.2);
+}
+
+.inbox-bulk-bar__btn--delete:hover {
+  background: rgba(239,68,68,0.15);
+  border-color: rgba(239,68,68,0.35);
+  color: #fca5a5;
+}
+
+.inbox-bulk-classify-menu {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  animation: fadeIn 0.1s ease;
+}
+
+[data-theme="light"] .inbox-bulk-classify-menu {
+  border-top-color: rgba(99,102,241,0.1);
+}
+
+.inbox-item__checkbox {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.inbox-item__checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--purple);
+  cursor: pointer;
+}
+
+.inbox-item--selected {
+  border-color: rgba(139,92,246,0.35) !important;
+  background: rgba(139,92,246,0.08) !important;
+}
+
+[data-theme="light"] .inbox-item--selected {
+  border-color: rgba(99,102,241,0.3) !important;
+  background: rgba(99,102,241,0.06) !important;
+}

@@ -3,6 +3,7 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useCollections } from '../hooks/useCollections';
+import { useUserTasks } from '../hooks/useUserTasks';
 import { useTags } from '../hooks/useTags';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
@@ -289,7 +290,7 @@ const mdComponents = {
 };
 
 /* ── ReaderView ───────────────────────────────────────────── */
-function ReaderView({ item, onEdit, onDelete, onBack }) {
+function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask }) {
   const meta    = TYPE_META[item.type] || TYPE_META.note;
   const isTiptap = isTiptapBody(item);
   const mins    = item.word_count ? Math.max(1, Math.ceil(item.word_count / 200)) : readTime(item.body);
@@ -300,6 +301,7 @@ function ReaderView({ item, onEdit, onDelete, onBack }) {
       <div className="kb-reader__bar">
         <button className="kb-back-btn" onClick={onBack}>← Quay lại</button>
         <div className="kb-reader__actions">
+          <button className="btn btn-ghost kb-action-btn" onClick={() => onCreateTask(item)} title="Tạo task liên kết">📌 Task</button>
           <button className="btn btn-ghost kb-action-btn" onClick={onEdit}>✏️ Sửa</button>
           <button className="btn btn-ghost kb-action-btn kb-action-btn--danger" onClick={onDelete}>🗑 Xóa</button>
         </div>
@@ -629,6 +631,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
 export default function CollectPage() {
   const { user } = useAuth();
   const { items, isLoading, fetchItems, addItem, updateItem, deleteItem } = useCollections();
+  const { addTask } = useUserTasks();
   const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag, fetchTags: refetchTags } = useTags();
   const { confirm, ConfirmModal } = useConfirm();
 
@@ -641,6 +644,10 @@ export default function CollectPage() {
   const [activeTag, setActiveTag] = useState('');
   const [sort, setSort]         = useState('newest');
   const [typeFilter, setTypeFilter] = useState('');
+
+  // Bulk actions
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState(new Set());
 
   useEffect(() => {
     if (user) fetchItems({});
@@ -804,6 +811,16 @@ export default function CollectPage() {
           onEdit={() => openEditor(selected)}
           onDelete={() => handleDelete(selected)}
           onBack={goList}
+          onCreateTask={async (item) => {
+            const result = await addTask({
+              title: item.title,
+              description: item.url || (item.body_text || '').slice(0, 200) || '',
+              collectionId: item.id,
+            });
+            if (result) {
+              alert(`📌 Task "${item.title}" đã được tạo!`);
+            }
+          }}
         />
       </div>
     );
@@ -820,9 +837,19 @@ export default function CollectPage() {
           <h1 className="kb-title">Kho Tàng <span className="gradient-text">Kiến Thức</span></h1>
           <p className="kb-subtitle">{filtered.length} bài viết{activeTag ? ` · #${allTags.find(t => t.id === activeTag)?.name || ''}` : ''}</p>
         </div>
-        <button className="btn btn-primary kb-new-btn" onClick={() => openEditor(null)}>
-          ✏️ Viết bài mới
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {filtered.length > 0 && (
+            <button
+              className={`kb-type-pill${bulkMode ? ' kb-type-pill--active' : ''}`}
+              onClick={() => { setBulkMode(v => !v); setBulkSelected(new Set()); }}
+            >
+              {bulkMode ? '✕ Thoát' : '☑ Chọn nhiều'}
+            </button>
+          )}
+          <button className="btn btn-primary kb-new-btn" onClick={() => openEditor(null)}>
+            ✏️ Viết bài mới
+          </button>
+        </div>
       </div>
 
       {/* Search + Sort */}
@@ -888,8 +915,60 @@ export default function CollectPage() {
         </div>
       ) : (
         <div className="kb-list">
+          {/* Bulk bar */}
+          {bulkMode && (
+            <div className="inbox-bulk-bar" style={{ marginBottom: '0.75rem' }}>
+              <button
+                className="inbox-bulk-bar__btn"
+                onClick={() => {
+                  if (bulkSelected.size >= filtered.length) setBulkSelected(new Set());
+                  else setBulkSelected(new Set(filtered.map(i => i.id)));
+                }}
+              >
+                {bulkSelected.size >= filtered.length ? '☐ Bỏ chọn' : '☑ Chọn tất cả'}
+              </button>
+              {bulkSelected.size > 0 && (
+                <button
+                  className="inbox-bulk-bar__btn inbox-bulk-bar__btn--delete"
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: `Xóa ${bulkSelected.size} bài viết?`,
+                      message: 'Hành động này không thể hoàn tác.',
+                      confirmLabel: 'Xóa tất cả',
+                      danger: true,
+                    });
+                    if (!ok) return;
+                    for (const id of bulkSelected) { await deleteItem(id); }
+                    setBulkSelected(new Set());
+                    setBulkMode(false);
+                    fetchItems({});
+                  }}
+                >
+                  🗑 Xóa ({bulkSelected.size})
+                </button>
+              )}
+            </div>
+          )}
           {filtered.map(item => (
-            <ArticleCard key={item.id} item={item} onClick={openReader} />
+            <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+              {bulkMode && (
+                <label style={{ paddingTop: '1.1rem', cursor: 'pointer', flexShrink: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={bulkSelected.has(item.id)}
+                    onChange={() => setBulkSelected(prev => {
+                      const next = new Set(prev);
+                      if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                      return next;
+                    })}
+                    style={{ width: 18, height: 18, accentColor: 'var(--purple)', cursor: 'pointer' }}
+                  />
+                </label>
+              )}
+              <div style={{ flex: 1 }}>
+                <ArticleCard item={item} onClick={openReader} />
+              </div>
+            </div>
           ))}
         </div>
       )}

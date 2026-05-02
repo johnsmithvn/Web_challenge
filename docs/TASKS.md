@@ -1,5 +1,29 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-05-01
+**Updated:** 2026-05-02
+
+---
+
+## v4.4.0 — ✅ DONE (2026-05-02) — Bug Fixes + Task↔Knowledge Link + Inbox Bulk Actions
+
+### Phase 10.1: Bug Fixes
+- [x] `IncubatorPage.jsx` — Fix `EXPENSE_DATA.map()` crash → `.categories.map()` + fix `cat.id`→`cat.key`, `cat.name`→`cat.label`
+- [x] `useSubscriptions.js` — Fix `getMonthlyCost()` for `3month` (÷3) and `6month` (÷6) cycles
+
+### Phase 10.2: Activity Log for Inbox Actions
+- [x] `InboxPage.jsx` — `handleClassify()` → logActivity('inbox_classify')
+- [x] `InboxPage.jsx` — `handleSnooze()` → logActivity('inbox_snooze')
+
+### Phase 10.3: Task ↔ Knowledge Link
+- [x] `data/migration_v4.4.0_task_knowledge_link.sql` [NEW] — `ALTER TABLE user_tasks ADD COLUMN collection_id UUID REFERENCES collections(id) ON DELETE SET NULL`
+- [x] `useUserTasks.js` — `addTask()` accepts optional `collectionId` parameter
+- [x] `CollectPage.jsx` — ReaderView: 📌 Task button creates task linked to knowledge item
+- [x] `TaskListSection.jsx` — 🔗 KB badge on tasks with `collection_id`, click navigates to /collect
+
+### Phase 10.4: Inbox Bulk Actions
+- [x] `InboxPage.jsx` — Toggle bulk mode (☑ Chọn nhiều), checkbox per item, select all/none
+- [x] `InboxPage.jsx` — Bulk classify (📂 Phân loại → type picker), bulk delete (🗑)
+- [x] `InboxPage.jsx` — Activity log for bulk operations
+- [x] `inbox.css` — Bulk bar, classify menu, checkbox, selected item highlight (dark/light)
 
 ---
 

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -23,6 +24,7 @@ const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
 export default function TaskListSection() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     todayTasks, overdueTasks, futureTasks, completedToday,
     addTask, completeTask, uncompleteTask, updateTask, deleteTask, rolloverTask,
@@ -252,6 +254,16 @@ export default function TaskListSection() {
                     fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-full)',
                     background: 'rgba(139,92,246,0.08)', color: 'var(--text-muted)',
                   }}>⏱ {task.duration_est >= 60 ? `${Math.floor(task.duration_est / 60)}h${task.duration_est % 60 ? task.duration_est % 60 + 'p' : ''}` : `${task.duration_est}p`}</span>
+                )}
+                {task.collection_id && (
+                  <span
+                    onClick={(e) => { e.stopPropagation(); navigate('/collect'); }}
+                    style={{
+                      fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-full)',
+                      background: 'rgba(6,182,212,0.1)', color: '#22d3ee', cursor: 'pointer',
+                    }}
+                    title="Xem bài viết liên kết"
+                  >🔗 KB</span>
                 )}
               </div>
             </div>

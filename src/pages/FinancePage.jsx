@@ -70,19 +70,6 @@ function getMonthRange() {
   return { start, end };
 }
 
-// Get last 7 days labels
-function getLast7Days() {
-  const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    days.push({
-      key: d.toISOString().split('T')[0],
-      label: d.toLocaleDateString('vi-VN', { weekday: 'short' }).replace('Th ', 'T'),
-    });
-  }
-  return days;
-}
 
 /* ── Inline SVG Pie Chart ─────────────────────────────────── */
 function PieChart({ data, total }) {
@@ -127,59 +114,6 @@ function PieChart({ data, total }) {
         <text x={cx} y={cy + 10} textAnchor="middle" fill="var(--text-muted)" fontSize="7.5">
           Tổng tháng
         </text>
-      </svg>
-    </div>
-  );
-}
-
-/* ── Inline SVG 7-Day Bar Chart ───────────────────────────── */
-function WeekBarChart({ expenses }) {
-  const days = getLast7Days();
-  const dayTotals = days.map(day => {
-    const total = expenses
-      .filter(e => e.date === day.key)
-      .reduce((sum, e) => sum + e.amount, 0);
-    return { ...day, total };
-  });
-
-  const max = Math.max(...dayTotals.map(d => d.total), 1);
-  const barW = 28;
-  const gap = 8;
-  const chartW = days.length * (barW + gap);
-  const chartH = 80;
-
-  return (
-    <div className="finance-bar-chart">
-      <div className="finance-bar-chart__title">📊 7 ngày gần đây</div>
-      <svg width={chartW} height={chartH + 24} viewBox={`0 0 ${chartW} ${chartH + 24}`}>
-        {dayTotals.map((d, i) => {
-          const barH = max > 0 ? (d.total / max) * (chartH - 10) : 0;
-          const x = i * (barW + gap);
-          const y = chartH - barH;
-          const isToday = d.key === new Date().toISOString().split('T')[0];
-          return (
-            <g key={d.key}>
-              {barH > 0 && (
-                <>
-                  <rect
-                    x={x} y={y} width={barW} height={barH}
-                    rx="4" fill={isToday ? 'var(--purple)' : 'rgba(139,92,246,0.35)'}
-                  />
-                  <text x={x + barW / 2} y={y - 3} textAnchor="middle"
-                    fill="var(--text-muted)" fontSize="7" fontWeight="600">
-                    {d.total >= 1000000 ? Math.round(d.total / 1000000) + 'M' :
-                     d.total >= 1000 ? Math.round(d.total / 1000) + 'K' : d.total}
-                  </text>
-                </>
-              )}
-              <text x={x + barW / 2} y={chartH + 14} textAnchor="middle"
-                fill={isToday ? 'var(--purple-light)' : 'var(--text-muted)'} fontSize="8"
-                fontWeight={isToday ? '700' : '400'}>
-                {d.label}
-              </text>
-            </g>
-          );
-        })}
       </svg>
     </div>
   );
@@ -465,8 +399,6 @@ export default function FinancePage() {
             </div>
           )}
 
-          {/* 7-day bar chart */}
-          <WeekBarChart expenses={expenses} />
 
           {/* Expense list */}
           {expLoading ? (

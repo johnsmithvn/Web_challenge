@@ -546,8 +546,8 @@ export default function IncubatorPage() {
                         value={expenseCategory}
                         onChange={e => setExpenseCategory(e.target.value)}
                       >
-                        {EXPENSE_DATA.map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
+                        {EXPENSE_DATA.categories.map(cat => (
+                          <option key={cat.key} value={cat.key}>{cat.icon} {cat.label}</option>
                         ))}
                       </select>
                     </div>

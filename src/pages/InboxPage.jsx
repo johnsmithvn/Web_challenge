@@ -60,6 +60,11 @@ export default function InboxPage() {
   // Quick Expense modal state
   const [expenseModal, setExpenseModal] = useState(null); // { item, amount, category, note }
 
+  // Bulk actions state
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState(new Set());
+  const [bulkClassifyMenu, setBulkClassifyMenu] = useState(false);
+
   // Close overflow menu on click outside
   useEffect(() => {
     if (!overflowMenu) return;
@@ -90,6 +95,8 @@ export default function InboxPage() {
     d.setDate(d.getDate() + days);
     const until = d.toISOString().split('T')[0];
     await snoozeItem(itemId, until);
+    const snoozedItem = items.find(i => i.id === itemId);
+    logActivity('inbox_snooze', `Snooze ${days}d: ${snoozedItem?.title || ''}`, days, { days, until });
     setSnoozeMenu(null);
     setSnoozedCount(prev => prev + 1);
   };
@@ -120,7 +127,9 @@ export default function InboxPage() {
   };
 
   const handleClassify = async (itemId, newType) => {
+    const item = items.find(i => i.id === itemId);
     await classifyItem(itemId, newType);
+    logActivity('inbox_classify', `→ ${newType}: ${item?.title || ''}`, 0, { type: newType });
     setClassifying(null);
     fetchItems({ type: 'inbox' });
   };
@@ -196,6 +205,15 @@ export default function InboxPage() {
               }}
             >
               🕔 {snoozedCount} snoozed {showSnoozed ? '▲' : '▼'}
+            </button>
+          )}
+          {items.length > 0 && (
+            <button
+              onClick={() => { setBulkMode(v => !v); setBulkSelected(new Set()); setBulkClassifyMenu(false); }}
+              className={`inbox-filter-chip${bulkMode ? ' inbox-filter-chip--active' : ''}`}
+              style={{ marginLeft: '0.25rem' }}
+            >
+              {bulkMode ? '✕ Thoát' : '☑ Chọn nhiều'}
             </button>
           )}
         </div>
@@ -385,9 +403,97 @@ export default function InboxPage() {
         </div>
       ) : (
         <div className="inbox-items">
-          <div className="inbox-items__count">{filtered.length}{filtered.length !== items.length ? `/${items.length}` : ''} mục chưa phân loại</div>
+          <div className="inbox-items__count">
+            {bulkMode && bulkSelected.size > 0 && (
+              <span style={{ color: 'var(--purple-light)', marginRight: '0.5rem' }}>✓ {bulkSelected.size} đã chọn</span>
+            )}
+            {filtered.length}{filtered.length !== items.length ? `/${items.length}` : ''} mục chưa phân loại
+          </div>
+
+          {/* Bulk action bar */}
+          {bulkMode && (
+            <div className="inbox-bulk-bar">
+              <button
+                className="inbox-bulk-bar__btn"
+                onClick={() => {
+                  const filteredIds = new Set(filtered.map(i => i.id));
+                  if (bulkSelected.size >= filtered.length) {
+                    setBulkSelected(new Set());
+                  } else {
+                    setBulkSelected(filteredIds);
+                  }
+                }}
+              >
+                {bulkSelected.size >= filtered.length ? '☐ Bỏ chọn tất cả' : '☑ Chọn tất cả'}
+              </button>
+              {bulkSelected.size > 0 && (
+                <>
+                  <button
+                    className="inbox-bulk-bar__btn inbox-bulk-bar__btn--classify"
+                    onClick={() => setBulkClassifyMenu(v => !v)}
+                  >
+                    📂 Phân loại ({bulkSelected.size})
+                  </button>
+                  <button
+                    className="inbox-bulk-bar__btn inbox-bulk-bar__btn--delete"
+                    onClick={async () => {
+                      for (const id of bulkSelected) {
+                        await deleteItem(id);
+                      }
+                      logActivity('inbox_bulk_delete', `Xóa ${bulkSelected.size} items`, bulkSelected.size);
+                      setBulkSelected(new Set());
+                      setBulkMode(false);
+                      fetchItems({ type: 'inbox' });
+                    }}
+                  >
+                    🗑 Xóa ({bulkSelected.size})
+                  </button>
+                </>
+              )}
+              {bulkClassifyMenu && bulkSelected.size > 0 && (
+                <div className="inbox-bulk-classify-menu">
+                  {TYPES.map(t => (
+                    <button
+                      key={t.key}
+                      className="inbox-item__classify-btn"
+                      onClick={async () => {
+                        for (const id of bulkSelected) {
+                          await classifyItem(id, t.key);
+                        }
+                        logActivity('inbox_bulk_classify', `→ ${t.key}: ${bulkSelected.size} items`, bulkSelected.size, { type: t.key });
+                        setBulkSelected(new Set());
+                        setBulkClassifyMenu(false);
+                        setBulkMode(false);
+                        fetchItems({ type: 'inbox' });
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {filtered.map(item => (
-            <div key={item.id} className="inbox-item">
+            <div key={item.id} className={`inbox-item${bulkMode && bulkSelected.has(item.id) ? ' inbox-item--selected' : ''}`}>
+              {/* Bulk checkbox */}
+              {bulkMode && (
+                <label className="inbox-item__checkbox" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={bulkSelected.has(item.id)}
+                    onChange={() => {
+                      setBulkSelected(prev => {
+                        const next = new Set(prev);
+                        if (next.has(item.id)) next.delete(item.id);
+                        else next.add(item.id);
+                        return next;
+                      });
+                    }}
+                  />
+                </label>
+              )}
               <div className="inbox-item__content">
                 <div className="inbox-item__title">
                   {item.url ? (

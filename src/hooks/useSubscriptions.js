@@ -170,6 +170,8 @@ export function useSubscriptions() {
       .filter(s => s.active)
       .reduce((sum, s) => {
         if (s.cycle === 'yearly') return sum + Math.round(s.amount / 12);
+        if (s.cycle === '6month') return sum + Math.round(s.amount / 6);
+        if (s.cycle === '3month') return sum + Math.round(s.amount / 3);
         return sum + s.amount;
       }, 0);
   }, [subs]);
