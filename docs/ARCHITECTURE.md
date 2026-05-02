@@ -1,7 +1,8 @@
-# ARCHITECTURE.md — Thử Thách Vượt Lười
-**Version:** v2.2.1
-**Updated:** 2026-04-24
+# ARCHITECTURE.md — Life Hub (Personal Life OS)
+**Version:** v4.2.0
+**Updated:** 2026-05-01
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
+
 
 ---
 
@@ -28,17 +29,13 @@ src/
 │   │   ├── ActiveJourneyPanel.jsx   # Progress ring, habit chips, completion UI, renew/extend/quit
 │   │   ├── ProgramBrowser.jsx       # Template grid, category filter, start flow, SwitchModeModal
 │   │   ├── JourneyHistory.jsx       # Past journeys list + status badges, click → /journey/:id
-│   │   ├── MyJourneys.jsx           # NEW v2.0.0 — "Của Tôi" tab, past journeys with "Bắt đầu lại"
+│   │   ├── MyJourneys.jsx           # v2.0.0 — "Của Tôi" tab, past journeys with "Bắt đầu lại"
 │   │   └── CustomJourneyModal.jsx   # Free-form journey creation modal
-│   ├── team/                # Team-specific sub-components
-│   │   ├── TeamMemberCard.jsx       # Per-member card: week badge, mini heatmap
-│   │   ├── TeammateCheckPanel.jsx   # Done/Fail modal with reason
-│   │   ├── JoinSyncModal.jsx        # Week sync: restart vs continue
-│   │   └── TeamRules.jsx            # Rules section: propose, agree/reject
 │   ├── AuthModal.jsx          # Login/Register/Google tabs
 │   ├── CompletionModal.jsx    # Certificate modal: Gia Hạn / Thử Thách Mới / Chọn Lộ Trình Mới
+│   ├── ConfirmModal.jsx       # v3.2.0 — Shared confirm dialog + useConfirm() Promise-based hook
 │   ├── OnboardingModal.jsx    # 3-step guide lần đầu truy cập
-│   ├── DailyChallenge.jsx     # Daily mini-challenge, +20 XP, pick-by-streak-day
+│   ├── DailyChallenge.jsx     # Daily mini-challenge, +20 XP, solo-only (team removed v3.0.0)
 │   ├── ErrorBoundary.jsx      # v1.7.0 — Class component, friendly fallback UI
 │   ├── FocusTimer.jsx         # SVG countdown + habit dropdown
 │   ├── HabitManager.jsx       # CRUD custom habits UI
@@ -46,7 +43,17 @@ src/
 │   ├── MonthCalendar.jsx      # Monthly view, VN holidays, completed tasks display
 │   ├── NotificationSettings.jsx
 │   ├── PageSkeleton.jsx       # v1.7.0 — Shimmer skeleton loading
-│   ├── TaskListSection.jsx    # v2.1.0 — Personal tasks UI (📌 Nhiệm Vụ)
+│   ├── QuickCapture.jsx       # v3.0.0 — Global floating [+] button → saves to collections(inbox)
+│   ├── TiptapEditor.jsx       # v3.2.0 — WYSIWYG editor (Tiptap) + TiptapReadOnly component
+│   ├── SlashCommand.jsx       # v3.3.0 — Slash command extension (/menu) + React dropdown UI
+│   ├── ActivityHeatmap.jsx    # v3.0.0 — GitHub-style SVG yearly heatmap (53×7 grid)
+│   ├── DailyTimeline.jsx      # v3.0.0 — Vertical activity timeline for a single day
+│   ├── SubAlert.jsx           # v3.0.0 — Compact sidebar alert for upcoming subscription renewals
+│   ├── DailyReview.jsx        # v3.0.0 — Today-recap widget (activity count + last 5 actions)
+│   ├── KnowledgeResurface.jsx # v3.0.1 — "Hôm nay nhớ lại" spaced repetition (random Collect resurface)
+│   ├── TaskListSection.jsx    # v2.1.0 — Personal tasks UI (📌 Nhiệm Vụ) + energy/duration/recurrence v3.6.0
+│   ├── CashflowBar.jsx       # v3.7.0 — 30-day subscription due date timeline
+│   ├── TagPicker.jsx         # v3.7.0 — Searchable multi-select tag dropdown
 │   ├── TrackerSection.jsx     # Read-only 3-week status dots
 │   ├── XpBar.jsx              # XP + level indicator
 │   └── ...
@@ -64,30 +71,42 @@ src/
 │   ├── useFocusTimer.js       # Pomodoro phases, session log, DB sync, journey_id tagging
 │   ├── useMoodSkip.js         # useMoodLog + useSkipReasons hooks, Supabase-first
 │   ├── useXpStore.js          # XP log, level computation, addXp/removeXp, Supabase-first
-│   ├── useTeam.js             # Team fetch, create/join/leave, realtime
-│   ├── useTeamCheck.js        # Week-2 check logic, submit team_check_logs
-│   ├── useTeamRules.js        # CRUD rules, propose + unanimous approval
 │   ├── useUserTasks.js        # v2.1.0 — Personal task CRUD, notification sync
+│   ├── useActivityLog.js      # v3.0.0 — Append-only activity logger for Life Log heatmap/timeline
+│   ├── useCollections.js      # v3.0.0 — CRUD for collections (inbox + typed items) + snooze v3.8.0
+│   ├── useExpenses.js         # v3.0.0 — CRUD for expenses (VNĐ, chi tiêu only)
+│   ├── useSubscriptions.js    # v3.0.0 — CRUD for subscriptions (monthly/yearly cycles)
+│   ├── useTags.js             # v3.7.0 → v4.1.0 — Central tag CRUD + link/unlink (expenses, subscriptions, collections) + updateTag + getTagUsageCount
+│   ├── useIntentions.js       # v3.9.0 → v4.2.0 — Incubator CRUD + defer(friction) + execute(multi-output) + abandon + logs
+│   ├── useFitnessLog.js       # v4.0.0 — Fitness session logging (add, delete, todayLogs, weekSummary)
+│   ├── useLinkMeta.js         # v4.0.0 — OG metadata fetch+cache via /api/meta
 │   ├── useLifeJourney.js      # v2.2.0 — Life milestones CRUD (localStorage-only)
 │   ├── useNotifications.js    # Browser notification API
 │   └── ...
 │
-├── lib/
+│ lib/
 │   └── supabase.js            # Singleton Supabase client, safe fallback
+│
+├── api/                       # v4.0.0 Vercel Edge Functions
+│   └── meta.js                # OG metadata fetcher (edge runtime, 5s timeout, graceful fallback)
 │
 ├── pages/
 │   ├── LandingPage.jsx        # / — Marketing page (eager loaded)
-│   ├── TrackerPage.jsx        # /tracker — Main tracker. 4 tabs: Hôm Nay/Lịch/Tuần/Quản Lý
+│   ├── TrackerPage.jsx        # /tracker — Today page. 4 tabs: Hôm Nay/Lịch/Tuần/Quản Lý
 │   │                           # /habits redirects here (inline Navigate in App.jsx)
+│   ├── InboxPage.jsx          # /inbox — v3.0.0 — Quick items chưa phân loại (lazy)
+│   ├── CollectPage.jsx        # /collect — v3.0.0 — Kho lưu trữ đã phân loại (lazy)
+│   ├── FinancePage.jsx        # /finance — v3.0.0 — Chi tiêu + Subscriptions (lazy)
+│   ├── LifeLogPage.jsx        # /life-log — v3.0.0 — Heatmap + Daily Timeline (lazy)
 │   ├── FocusPage.jsx          # /focus — Pomodoro timer (lazy)
 │   ├── JourneyPage.jsx        # /journey — 4 tabs: Đang chạy / Khám Phá / Của Tôi / Lịch Sử (lazy)
 │   ├── JourneyDetailPage.jsx  # /journey/:id — Full dashboard per journey (lazy)
-│   ├── DashboardPage.jsx      # /dashboard — Flower, donut, weekly table, contribution (lazy)
-│   ├── TeamPage.jsx           # /team — N-member accountability (lazy)
+│   ├── DashboardPage.jsx  # /dashboard — v3.1.0 Unified Dashboard (habits+finance+activity+XP heatmap)
+│   ├── IncubatorPage.jsx  # /incubator — v3.9.0 Trạm Ấp Trứng (someday-maybe + friction defer)
 │   ├── QuizPage.jsx           # /quiz — 10-question MCQ (lazy)
 │   ├── LeaderboardPage.jsx    # /leaderboard — Streak/XP ranking (lazy)
-│   ├── FriendsPage.jsx        # /friends — Kết bạn (lazy)
 │   ├── LifeJourneyPage.jsx    # /life-journey — v2.2.0 — Emotion timeline SVG (lazy)
+│   ├── SettingsPage.jsx       # /settings — v4.1.0 — Tag Manager UI (CRUD, color, usage count)
 │   └── LifeJourneyPage.css    # Co-located CSS (not in styles/)
 │
 ├── data/                      # Static JSON content (Rule 14)
@@ -96,25 +115,33 @@ src/
 │   ├── habits.json            # defaultHabits, categories, icons, colors, skipReasons, moods
 │   ├── testimonials.json      # Landing page reviews
 │   ├── quotes.json            # v1.4.5 — 30 daily motivational quotes
-│   └── programs.json          # v1.6.0 — 5 system program templates (offline fallback)
+│   ├── programs.json          # v1.6.0 — 5 system program templates (offline fallback)
+│   └── expense-categories.json # v3.0.0 — 8 expense categories (food, transport, etc.)
 │
 ├── styles/
 │   ├── global.css             # CSS variables, reset, typography
-│   ├── navbar.css             # Navbar layout + mobile menu
+│   ├── navbar.css             # v3.0.0 — Sidebar (desktop) + Bottom tabs (mobile) + Topbar
+│   ├── quick-capture.css      # v3.0.0 — Floating [+] button + capture modal
+│   ├── placeholder-page.css   # v3.0.0 — Coming-soon placeholder layout
+│   ├── inbox.css              # v3.0.0 — Inbox page (quick-add, items, classify)
+│   ├── collect.css            # v3.0.0 — Collect page (tabs, card grid, search)
+│   ├── finance.css            # v3.0.0 — Finance page (summary, breakdown, forms, sub cards)
+│   ├── lifelog.css            # v3.0.0 — Life Log page (heatmap, timeline)
+│   ├── widgets.css            # v3.0.0 — SubAlert + DailyReview sidebar widgets
 │   ├── hero.css               # HeroSection styles
 │   ├── sections.css           # ContentSections + RoadmapSection
 │   ├── tracker.css            # TrackerPage v2 styles (merged habits)
-│   ├── dashboard.css          # Dashboard v2 styles
+│   ├── dashboard.css          # Dashboard v3.1.0 styles (unified: today-row, finance-pie, section-titles)
 │   ├── focus.css              # Focus timer + custom dropdown
 │   ├── calendar.css           # Monthly calendar
 │   ├── daily.css              # DailyChallenge styles
 │   ├── journey.css            # Journey page, progress ring, program cards, modals
-│   ├── team.css               # Team page (N-member grid, check panel, rules)
 │   ├── auth.css               # Auth modal
-│   ├── friends.css            # Friends page
 │   ├── xpbar.css              # XP bar
 │   ├── quiz.css               # Quiz page
 │   ├── leaderboard.css        # Leaderboard page
+│   ├── incubator.css          # v3.9.0 — Incubator page, cards, timeline, modals
+│   ├── settings.css           # v4.1.0 — Settings page, tag manager, color picker
 │   ├── completion.css         # CompletionModal styles
 │   ├── onboarding.css         # OnboardingModal styles
 │   └── testimonials.css       # Testimonials section
@@ -204,12 +231,54 @@ user_journeys         ← each user's run of a program (with start/end dates)
 journey_habits        ← snapshot of habits at journey start (history preservation)
 habit_logs            ← per-habit daily completion (replaces vl_habit_progress)
 
--- Team v3 (run data/supabase_team_v3.sql)
-team_members          ← junction table (N per team)
-user_programs         ← per-user 21-day journey
-team_check_logs       ← accountability checks
-team_rules            ← reward/punishment rules
-team_rule_agreements  ← per-member approval flow
+-- v3.0.0 (run data/migration_v3.0.0.sql)
+collections           ← inbox items + knowledge collect
+expenses              ← daily expense logs (VNĐ, category, date)
+subscriptions         ← recurring service subscriptions (monthly/yearly)
+activity_logs         ← append-only audit log (habit_done, focus_done, expense_add, etc.)
+
+-- v3.6.0 (run data/migration_v3.6.0_tasks.sql)
+user_tasks            += energy_level, duration_est, recurrence_rule columns
+
+-- v3.7.0 (run data/migration_v3.7.0_para.sql)
+tags                  ← central tag table (shared across modules, UNIQUE per user)
+expense_tags          ← junction: expense ↔ tag
+subscription_tags     ← junction: subscription ↔ tag
+
+-- v3.8.0 (run data/migration_v3.8.0_snooze.sql)
+collections           += snoozed_until DATE column
+
+-- v3.9.0 (run data/migration_v3.9.0_incubator.sql)
+intentions            ← someday-maybe items (title, reason, cost, time, status, review_date)
+                        converted_to TEXT[] (v4.2.0), converted_ids JSONB (v4.2.0)
+intention_logs        ← timeline: created/deferred/executed/abandoned per intention
+
+-- v4.2.0 (run data/migration_v4.2.0_incubator_v2.sql)
+intentions            += converted_to TEXT → TEXT[], converted_ids JSONB (multi-output router)
+
+-- v4.0.0 (run data/migration_v4.0.0_fitness.sql)
+fitness_logs          ← session log (session_name, duration_min, energy, notes)
+
+-- v4.1.0 (run data/migration_v4.1.0_tag_unification.sql)
+collection_tags       ← junction: collection ↔ tag (CASCADE delete both sides)
+collections.tags      ← TEXT[] column DEPRECATED — use collection_tags junction
+```
+
+### DashboardPage v3.1.0 — Data Sources
+
+```
+DashboardPage
+  ├── useHabitStore      → streak, longestStreak, totalDone, data (heatmap)
+  ├── useXpStore         → totalXp, levelInfo, log (today XP earned)
+  ├── useSkipReasons     → getAllSkips() (skip analysis 14 days)
+  ├── useMoodLog         → moodLog (mood trend chart 7/30 days)    [v3.2.1]
+  ├── useFocusTimer      → todayMinutes, todaySessions
+  ├── useExpenses        → fetchExpenses, getTotal, getByCategory
+  ├── useSubscriptions   → fetchSubs, getMonthlyCost, getUpcoming
+  ├── useActivityLog     → getTodayCount
+  ├── useAuth            → user, isAuthenticated (for FocusBreakdown) [v3.2.1]
+  ├── supabase (direct)  → focus_sessions + habits (FocusBreakdown)  [v3.2.1]
+  └── ActivityHeatmap    → reused component (activity_logs heatmap)
 ```
 
 ---
@@ -221,15 +290,21 @@ team_rule_agreements  ← per-member approval flow
 | `/` | LandingPage | Public | Eager |
 | `/tracker` | TrackerPage | Public | Eager |
 | `/habits` | Inline redirect → `/tracker` | — | — |
+| `/inbox` | InboxPage | Required | Lazy |
+| `/collect` | CollectPage | Required | Lazy |
+| `/finance` | FinancePage | Required | Lazy |
+| `/life-log` | LifeLogPage | Required | Lazy |
 | `/focus` | FocusPage | Public | Lazy |
 | `/journey` | JourneyPage | Public (soft wall for save) | Lazy |
 | `/journey/:id` | JourneyDetailPage | Public | Lazy |
 | `/dashboard` | DashboardPage | Public | Lazy |
-| `/team` | TeamPage | Soft wall (needs login) | Lazy |
 | `/quiz` | QuizPage | Public | Lazy |
 | `/leaderboard` | LeaderboardPage | Public | Lazy |
-| `/friends` | FriendsPage | Required | Lazy |
+| `/team` | Inline redirect → `/tracker` | — | — |
+| `/friends` | Inline redirect → `/tracker` | — | — |
 | `/life-journey` | LifeJourneyPage | Public | Lazy |
+| `/incubator` | IncubatorPage | Required | Lazy |
+
 
 ---
 
@@ -244,10 +319,11 @@ ThemeProvider
                           ├── PageMeta (SEO title/desc per route)
                           ├── OnboardingModal (once, gated by vl_onboarded)
                           ├── Redirect to /journey?firstTime=true (once per session if no journey)
-                          ├── Navbar (uses useTheme for dark/light toggle)
+                          ├── Navbar (sidebar desktop + bottom tabs mobile)
+                          ├── QuickCapture (global floating [+] button)
                           └── ErrorBoundary
                                 └── Suspense (PageSkeleton fallback)
-                                      └── Routes (10 lazy + 2 eager)
+                                      └── Routes (12 lazy + 2 eager)
 ```
 
 ---

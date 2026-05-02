@@ -1,13 +1,13 @@
-# FEATURES.md — Thử Thách Vượt Lười
-**Version:** v2.2.1
-**Updated:** 2026-04-24
+# FEATURES.md — Life Hub (Personal Life OS)
+**Version:** v4.3.0
+**Updated:** 2026-05-01
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
 
 ## Tổng Quan Hệ Thống
 
-**Thử Thách Vượt Lười** là nền tảng habit tracking 21 ngày gamified, hỗ trợ cả chế độ offline (in-memory guest) lẫn đồng bộ cloud (Supabase). Người dùng có thể tự thiết lập thói quen, theo dõi tiến độ theo ngày/tháng, dùng Pomodoro timer, và luyện tập trong team accountability.
+**Life Hub** là nền tảng Personal Life OS ("Bộ não thứ 2") tích hợp: habit tracking 21 ngày gamified, quản lý chi tiêu, đăng ký dịch vụ, ghi chú nhanh (Inbox/Collect), và lịch sử hoạt động (Life Log heatmap). Hỗ trợ cả chế độ offline (in-memory guest) lẫn đồng bộ cloud (Supabase).
 
 ---
 
@@ -44,6 +44,7 @@
 - **Insight:** Nhận xét động theo streak hiện tại
 - **Notification Settings:** Toggle + giờ nhắc nhở browser notification
 - **Empty State:** Khi authenticated + no habits → CTA "🗺 Chọn Lộ Trình"
+- **🥚 Incubator Review Banner (v4.2.1):** Khi có dự định cần review hôm nay → banner vàng "🥚 N dự định cần review" + link tới `/incubator`. Cùng vị trí với SubAlert + KnowledgeResurface.
 
 **Tab 📅 Lịch:** `MonthCalendar` component (lazy loaded)
 
@@ -111,22 +112,23 @@
 ## 5. 📈 Dashboard Cá Nhân (`/dashboard`)
 
 **File:** `src/pages/DashboardPage.jsx`, `src/styles/dashboard.css`
+**Version:** v3.2.1 — Unified Life Hub Dashboard + Polish
 
-**Mô tả:** Tổng quan số liệu cá nhân, visual progress, weekly table, contribution graph.
+**Mô tả:** Tổng quan toàn bộ cuộc sống — hôm nay, thói quen, tài chính, hoạt động, tâm trạng, focus.
 
 **Chi tiết:**
-- **4 KPI Cards:** Streak hiện tại, Best streak, Tổng ngày, Tổng XP
-- **Flower Journey 🌸:** 21 ô hoa đại diện hành trình, hoa nở dần theo streak liên tiếp (`🌰→🌱→🌿→🌸→🌺→🌻`), highlight ô hôm nay
-- **Monthly Donut Ring:** Tỷ lệ hoàn thành tháng hiện tại — Done / Bỏ / Còn lại
-- **Weekly Table:** 4 tuần gần nhất, mỗi tuần hiển thị:
-  - 7 ô ✓ (xanh) / ngày (mờ) / tương lai (dashed)
-  - Cột Done / Miss / % tỷ lệ
-- **Contribution Graph:** 12 tuần × 7 ngày kiểu GitHub, ô xanh = done, ô cyan = hôm nay
-- **Insight:** Nhận xét động theo streak + milestone tiếp theo
-- **Skip Reason Insight (v1.3.1):** Widget phân tích lý do bỏ qua trong 14 ngày gần đây
-  - Hiển thị top 3 lý do dưới dạng bar chart miniature
-  - Smart tip theo lý do phổ biến nhất ("Thiếu động lực" / "Bận công việc" / "Quên mất")
-  - Chỉ hiển khi có dữ liệu skip trong 14 ngày
+- **Today Overview (4 KPIs hôm nay):** Hoạt động (activity_logs) / Focus phút + sessions (useFocusTimer) / Chi tiêu hôm nay (expenses) / XP kiếm hôm nay (xp_logs). Hover lift animation.
+- **Section Dividers:** `SectionTitle` với gradient underline + icon + action link
+- **Habits:** Flower Journey 21 ô / Monthly Donut ring / Weekly Table 4 tuần / mini KPI row (Streak, Best, Tổng, XP)
+- **Finance Summary:** 3 KPI cards (Chi tháng / Đăng ký/tháng / Sắp hết hạn) + Finance Pie SVG donut (category breakdown + legend %)
+- **Activity Heatmap:** Reuse `ActivityHeatmap` — toàn bộ activity_logs (thay ContributionGraph habit-only)
+- **Mood Trend Chart (v3.2.1):** Dot-line SVG chart với toggle 7/30 ngày. Color-coded dots by mood score, average indicator, emoji overlay. Empty state khi chưa có data.
+- **Focus Breakdown (v3.2.1):** Per-habit horizontal bar chart 7 ngày gần nhất. Query trực tiếp `focus_sessions` + join `habits` table. Hiển thị icon, tên habit, progress bar, phút, %.
+- **Weekly Review (v3.2.1):** Collapsible summary card: Habits (ngày hoàn thành), XP, Chi tiêu, Mood TB — so sánh với tuần trước (↑/↓/→). Expand/collapse với animation.
+- **Insights:** Skip Reason analysis 14 ngày + nhận xét streak + milestone tiếp theo
+- **Guest mode:** Finance/Activity/Focus widgets hiện empty state graceful
+
+**Data sources:** `useHabitStore`, `useXpStore`, `useSkipReasons`, `useMoodLog`, `useFocusTimer`, `useExpenses`, `useSubscriptions`, `useActivityLog`, `useAuth`, `supabase` (direct query for FocusBreakdown)
 
 ---
 
@@ -383,6 +385,12 @@
 - **Tick hoàn thành** → gạch ngang, lưu `completed_at` timestamp
 - **Completed tasks** hôm nay hiển thị bên dưới với style nhạt
 - Sau ngày hôm đó → task biến mất khỏi danh sách chính
+- **Overdue Triage (v3.5.0):** Task list chia 3 khối: ⚠️ Quá hạn (nền đỏ, nút 🔄 Dời sang hôm nay) / 📅 Hôm nay / 🔮 Sắp tới (collapsed). Bắt user đối mặt và dọn dẹp backlog.
+- **Rollover (v3.5.0):** Nút 🔄 trên overdue task → `updateTask(id, { due_date: today })` → task chuyển sang section Hôm nay.
+- **Energy Tag (v3.6.0):** Mỗi task có thể gắn mức năng lượng: ⚡ Cao / 🔋 Vừa / 🪫 Thấp. Filter chips đầu danh sách lọc theo energy. Badge hiển trên task card.
+- **Duration Estimate (v3.6.0):** Ước tính thời gian (5p/15p/30p/1h/2h+). Badge ⏱ trên task card.
+- **Recurring Tasks (v3.6.0):** Toggle 🔁 Lặp lại: Mỗi N ngày / Hàng tuần thứ X / Hàng tháng ngày Y. Khi tick xong task recurring → task cũ ở lại "Hoàn thành hôm nay" (dopamine hit) → task mới insert ẩn với `due_date` tương lai. Chỉ spawn 1 task, không batch, không vòng lặp.
+- **DB columns (v3.6.0):** `energy_level TEXT`, `duration_est SMALLINT`, `recurrence_rule JSONB` trên `user_tasks`.
 - **Calendar integration:** Tab 📅 Lịch → click ngày → thấy danh sách tasks đã hoàn thành + expandable description + thời gian hoàn thành
 - **Service Worker notification:** Background check mỗi 60s → fire notification khi task đến hạn (hoạt động cả khi tab đóng, chỉ cần browser mở)
 - **Không tính XP, không tính streak, không gắn journey**
@@ -439,12 +447,272 @@
 | `/` | LandingPage | ❌ |
 | `/tracker` | TrackerPage | ❌ |
 | `/habits` | Inline redirect → `/tracker` | — |
+| `/inbox` | InboxPage | ✅ |
+| `/collect` | CollectPage | ✅ |
+| `/finance` | FinancePage | ✅ |
+| `/life-log` | LifeLogPage | ✅ |
 | `/focus` | FocusPage | ❌ |
 | `/journey` | JourneyPage | ❌ (soft wall: cần login để lưu) |
 | `/journey/:id` | JourneyDetailPage | ❌ |
-| `/team` | TeamPage | ✅ (soft wall) |
+| `/team` | → redirect `/tracker` | — (archived) |
 | `/dashboard` | DashboardPage | ❌ |
 | `/quiz` | QuizPage | ❌ |
 | `/leaderboard` | LeaderboardPage | ❌ |
-| `/friends` | FriendsPage | ✅ |
+| `/friends` | → redirect `/tracker` | — (archived) |
 | `/life-journey` | LifeJourneyPage | ❌ |
+
+---
+
+## 17. 📥 Inbox (`/inbox`)
+
+**File:** `src/pages/InboxPage.jsx` + `src/styles/inbox.css`
+**Hook:** `src/hooks/useCollections.js`, `src/hooks/useExpenses.js`, `src/hooks/useActivityLog.js`
+
+**Mô tả:** Nơi ghi nhanh mọi thứ (link, ý tưởng, ghi chú) — phân loại sau. Trạm triage với luồng chuyển đổi nhanh.
+
+**Chi tiết:**
+- Quick-add form (text input + submit)
+- Inbox items list với thời gian tạo
+- Classify action: phân loại → Link / Quote / Muốn mua / Học / Ý tưởng
+- **📌 Task action:** Chuyển inbox item thành Task (v3.0.1)
+- **🔄 Đăng ký action:** Chuyển sang FinancePage tạo Subscription (v3.0.1)
+- **💸 Chi tiêu nhanh (v3.5.0):** Bấm nút → QuickExpenseModal inline (không navigate). Regex tự bóc tách số tiền từ text ("Cafe 50k" → 50,000đ). Pre-fill amount + note + category dropdown 8 loại. Lưu → `addExpense()` + `logActivity()` + xóa item khỏi inbox.
+- **✏️ Sửa chi tiêu (v4.2.1):** Click ✏️ trên expense → modal sửa (số tiền, danh mục, ghi chú). Optimistic update + rollback.
+- **🔄 Sub auto-advance (v4.2.1):** Subscription hết hạn tự động nhảy `next_due` theo cycle (monthly/3month/6month/yearly). Chạy khi fetch, bounded max 24 cycle.
+- Delete action
+- **🕔 Snooze (v3.8.0):** Ẩn inbox item tạm thời. 4 options: 1 tuần / 2 tuần / 1 tháng / 3 tháng. Badge "🕔 X snoozed" trong header.
+- **🔗 Link Preview (v4.0.0):** Inbox items có URL tự động hiển preview card (thumbnail + title + desc) qua Vercel Edge Function `/api/meta`. Graceful fallback khi bị chặn.
+- **··· Overflow Menu (v4.0.1):** 2 primary buttons (📌 Task + 🗑) luôn hiện. 5 actions phụ (📂 Phân loại, 💸 Chi tiêu, 🔄 Đăng ký, 🥚 Ấp Trứng, 🕔 Snooze) gom vào dropdown ···. Click-outside auto-close.
+- **📊 Filter Chips (v4.3.0):** 3 chip lọc: Tất cả / Có URL / Gần đây (7 ngày). Client-side filtering trên data đã fetch. Smart empty state khi không có item khớp.
+- Tự động detect URL
+- Empty state khi inbox trống
+
+**Data source:** `collections` table (Supabase, type='inbox'), `expenses` table (khi dùng Quick Expense)
+
+---
+
+## 23. 🏷️ PARA Tags (v3.7.0)
+
+**Added:** v3.7.0
+**Files:** `src/hooks/useTags.js`, `src/components/TagPicker.jsx`
+**DB:** `tags`, `expense_tags`, `subscription_tags`
+
+**Mô tả:** Hệ thống tag trung tâm dùng chung cho expenses, subscriptions (và collections trong tương lai). Mỗi user có bộ tags riêng.
+
+**Chi tiết:**
+- `useTags` hook: fetchTags, addTag (upsert), deleteTag, linkTag, unlinkTag
+- `TagPicker` component: searchable dropdown, multi-select toggle, inline tạo tag mới bằng Enter
+- Tích hợp vào FinancePage: expense form + subscription form có TagPicker
+- Tags link qua junction tables (expense_tags, subscription_tags)
+- RLS policies đảm bảo user chỉ thấy tags của mình
+
+---
+
+## 24. 📅 Cashflow Calendar (v3.7.0)
+
+**Added:** v3.7.0
+**Files:** `src/components/CashflowBar.jsx`, `src/styles/finance.css`
+
+**Mô tả:** Thanh timeline 30 ngày hiển thị các ngày có subscription sắp đến hạn.
+
+**Chi tiết:**
+- 30 cells ngang, mỗi cell = 1 ngày, dot đỏ khi có sub due
+- Tooltip hiển tên sub khi hover
+- Legend dưới bar hiển 5 ngày gần nhất có sub
+- Chỉ hiển active subscriptions
+- Mount trong FinancePage sau summary cards
+
+---
+
+## 25. 🥚 Trạm Ấp Trứng / Incubator (v3.9.0 → v4.2.0)
+
+**Added:** v3.9.0, **upgraded v4.2.0** (Multi-Output Router)
+**Files:** `src/pages/IncubatorPage.jsx`, `src/styles/incubator.css`, `src/hooks/useIntentions.js`
+**DB:** `intentions`, `intention_logs`
+**Route:** `/incubator`
+
+**Mô tả:** Module "someday-maybe" với friction khi hoãn. Đóng vai trò **Bộ định tuyến nguồn lực**: hút vào ý tưởng trừu tượng, nhả ra hành động vật lý (tiền bạc, thói quen, công việc).
+
+**Chi tiết:**
+- Intention Card: title, original reason, estimated cost, **estimated time badge ⏱** (v4.2.0), review date, age badge
+- **Form nhập (v4.2.0):** Chi phí dự kiến (number) + Cam kết thời gian (dropdown: 15m/30m/1h/1.5h/2h/nửa ngày)
+- Dời lại (Defer): bắt buộc nhập lý do (friction UX chống bốc đồng). 4 options: 1w/2w/1m/3m
+- **Thực thi (Execute) v4.2.0 — Multi-Output Router:**
+  - 3 checkbox cards (đa lựa chọn, không phải radio):
+    - 💰 Ghi nhận Chi tiêu → `addExpense()` + dropdown category (8 loại)
+    - 🔁 Tạo Thói quen → `addHabit()` + tự động điền `durationMin` từ `estimated_time`
+    - 📌 Tạo Công việc → `addTask()` + tự động điền `durationEst` từ `estimated_time`
+  - Auto-suggest: cost > 0 → pre-check Expense, time > 0 → pre-check Habit, cả 2 = 0 → pre-check Task
+  - Multi-dispatch: tạo đồng thời nhiều records (expense + habit + task)
+  - `converted_to TEXT[]` lưu mảng output types, `converted_ids JSONB` lưu map UUID
+- Bỏ qua (Abandon): xóa khỏi danh sách với reason log
+- Timeline: lịch sử mọi lần dời/thực thi/tạo. Expand từ card
+- **Archive View (v4.3.0):** Nút "▼ Xem dự định đã bỏ qua" ở cuối trang. Lazy-load abandoned intentions, hiện read-only cards.
+- Review-due highlighting: card viền vàng khi đến ngày review
+- Badge header: số lượng đang ấp + cần review
+- Inbox integration: nút 🥚 Ấp Trứng chuyển inbox item vào Incubator
+
+**Data source:** `intentions` + `intention_logs` (Supabase). Cross-module: `expenses`, `habits`, `user_tasks`
+
+---
+
+## 26. 🏋️ Sức Khỏe / Health Tab (v4.0.0)
+
+**Added:** v4.0.0
+**Files:** `src/hooks/useFitnessLog.js`, TrackerPage (tab thứ 5)
+**DB:** `fitness_logs`
+**Route:** `/tracker` (tab `fitness`)
+
+**Mô tả:** Phase 2 — Full CRUD fitness session logging + Dashboard integration.
+
+**Chi tiết:**
+- Form nhập: tên buổi tập + thời gian (phút) + năng lượng (Tốt/Bình thường/Tệ) + ghi chú tự do
+- Today log list: danh sách buổi tập hôm nay, **sửa inline** (click/✏️) + xóa từng log
+- Week summary: 3 KPI cards (số buổi + tổng phút + số ngày)
+- **Inline edit (v4.0.3):** Click log → edit form (session_name, duration, energy, notes) + Save/Huỷ
+- **Dashboard card (v4.0.3):** Compact "🏋️ Tuần Này" section trong Dashboard + today summary
+- XP: +10 XP/buổi tập
+- Heatmap: logActivity('fitness_done') → tự vào Life Log heatmap
+- **Data source:** Supabase `fitness_logs`
+
+---
+
+## 18. 📓 Kho Tàng Kiến Thức (`/collect`) — v3.3.0
+
+**File:** `src/pages/CollectPage.jsx` + `src/styles/collect.css` + `src/styles/tiptap.css`
+**Component:** `src/components/TiptapEditor.jsx` (WYSIWYG) + `TiptapReadOnly` + `src/components/SlashCommand.jsx` [v3.3.0]
+**Hook:** `src/hooks/useCollections.js`
+
+**Mô tả:** Kho lưu trữ và viết bài kiến thức đã phân loại — hỗ trợ 2 editor mode.
+
+**Chi tiết:**
+- **6 tabs:** Tất cả / Links / Quotes / Muốn / Học / Ý tưởng
+- **Search filter** theo tiêu đề, nội dung, tag
+- **Tag Autocomplete:** Dropdown searchable (max 10 tags), tạo tag mới bằng Enter
+
+**Dual-Mode Editor (v3.2.0):**
+- **Markdown mode** (mặc định) — editor textarea với live preview
+- **Visual mode** — Tiptap WYSIWYG: Bold/Italic/Strike/Highlight/Code/H1-H3/Lists/TaskList/Blockquote/CodeBlock/HR/Link (inline popover)/Table/Undo/Redo
+- **Mode Lock:** Chọn mode khi tạo bài, không đổi được sau khi save
+- **Inline Link Popover:** Thay `window.prompt` — input bar xuất hiện dưới toolbar khi bấm 🔗
+- **ReaderView:** Tự detect format, render `TiptapReadOnly` hoặc `ReactMarkdown`
+
+**Slash Command Menu (v3.3.0):**
+- Gõ `/` trong Tiptap editor → dropdown 12 block types
+- Filter theo query text (`/hea` → Heading 1/2/3)
+- Arrow keys + Enter chọn, Escape đóng
+- Dùng `@tiptap/suggestion` plugin — handles cursor tracking + keyboard trapping
+- Block types: Paragraph, H1-H3, Bullet/Ordered/Task List, Blockquote, Code Block, Divider, Table, Highlight
+
+**Keyboard Shortcuts Panel (v3.3.0):**
+- Toggle bằng nút `⌨` trên toolbar hoặc `Ctrl+.`
+- 25+ phím tắt, 4 nhóm: Văn bản / Khối / Chèn / Chung
+- Glassmorphism modal, 2-column responsive, kbd key badges
+
+**Browser Shortcut Override (v3.3.0):**
+- `Ctrl+S` → save article (thay vì browser Save Page dialog)
+- `Ctrl+P` → blocked (không mở Print)
+- `Ctrl+.` → toggle shortcuts panel
+- Xử lý qua `editorProps.handleKeyDown`, return `true` = consume event
+
+**AI-Ready Fields (v3.2.0):**
+- `content_format`: `'markdown' | 'tiptap'` — loại nội dung
+- `body_text`: Plain text extracted (không markdown/HTML) — dùng cho future AI/embedding
+- `word_count`: Pre-computed — dùng cho read-time estimate
+
+**ArticleCard:**
+- Dùng `body_text` cho excerpt (không hiện JSON raw với bài Tiptap)
+- `safeHostname()` guard `new URL()` crash
+- Word count read-time khi có `word_count` từ DB
+
+**ConfirmModal (v3.2.0):**
+- Tất cả delete/switch action dùng `useConfirm()` — không còn `window.confirm()`
+
+**Data source:** `collections` table (Supabase) — columns: `type, title, body, url, tags, source, status, content_format, body_text, word_count`
+
+---
+
+## 19. 💰 Finance (`/finance`)
+
+**File:** `src/pages/FinancePage.jsx` + `src/styles/finance.css`
+**Hook:** `src/hooks/useExpenses.js` + `src/hooks/useSubscriptions.js`
+
+**Mô tả:** Quản lý chi tiêu và đăng ký dịch vụ.
+
+**Chi tiết:**
+- **Summary cards:** Chi tiêu tháng / Đăng ký/tháng / Tổng ước tính
+- **Alert bar:** Cảnh báo subscriptions sắp hết hạn (≤7 ngày)
+- **Tab Chi tiêu:** Quick-add form (số tiền + category + ghi chú), category breakdown với progress bars, expense list với delete
+- **Tab Đăng ký:** Sub cards với tên, số tiền, chu kỳ, ngày hết hạn, toggle active/pause, delete
+- **8 categories:** Ăn uống, Di chuyển, Mua sắm, Sức khỏe, Học tập, Giải trí, Hóa đơn, Khác
+
+**Data source:** `expenses` + `subscriptions` tables (Supabase)
+
+---
+
+## 20. 📅 Life Log (`/life-log`)
+
+**File:** `src/pages/LifeLogPage.jsx` + `src/styles/lifelog.css`
+**Components:** `src/components/ActivityHeatmap.jsx` + `src/components/DailyTimeline.jsx`
+**Hook:** `src/hooks/useActivityLog.js`
+
+**Mô tả:** Lịch sử hoạt động toàn hệ thống dạng GitHub contribution heatmap.
+
+**Chi tiết:**
+- **Today stat badge:** Số hoạt động hôm nay
+- **ActivityHeatmap:** SVG 53×7 grid, 5-level purple scale, click để drill-down
+- **DailyTimeline:** Vertical timeline với action icons, timestamps, labels, XP amounts
+- **Activity types logged:** habit_done, habit_undo, mood_set, challenge_done, collect_add, focus_done, expense_add, subscription_add
+
+**Data source:** `activity_logs` table (Supabase, append-only)
+
+---
+
+## 21. 🔔 Sidebar Widgets
+
+**Files:** `src/components/SubAlert.jsx` + `src/components/DailyReview.jsx` + `src/styles/widgets.css`
+
+**Mô tả:** Widgets nhỏ gắn trong sidebar desktop, tự động ẩn khi không có data.
+
+**Chi tiết:**
+- **SubAlert:** Hiển thị subscriptions sắp gia hạn (≤7 ngày) + đếm ngược ngày. Urgent style khi ≤2 ngày.
+- **DailyReview:** Tổng số hoạt động hôm nay + 5 actions gần nhất với icon + timestamp.
+
+**Data source:** SubAlert → `subscriptions` | DailyReview → `activity_logs`
+
+---
+
+## 22. ⚙️ Cài Đặt (`/settings`)
+
+**File:** `src/pages/SettingsPage.jsx` + `src/styles/settings.css`
+**Hook:** `src/hooks/useTags.js`
+
+**Mô tả:** Trang cài đặt hệ thống. Hiện tại: quản lý tags tập trung. Sẽ mở rộng: Theme, Notifications, Account.
+
+**Chi tiết:**
+- **Tag Manager:** Danh sách tất cả tags với color dot, tên, và số liên kết (usage count)
+- **Add tag:** Form nhập tên + color picker (12 màu)
+- **Inline edit:** Rename + recolor tag tại chỗ (Enter save, Escape cancel)
+- **Delete:** Confirm modal, hiển số liên kết sẽ bị gỡ (CASCADE delete)
+- **Color picker:** Dropdown grid 4×3 màu, auto-close khi chọn
+- **Future placeholder:** Theme · Notifications · Account (dashed border section)
+
+**Data source:** `tags` table (Supabase) + `expense_tags` + `subscription_tags` + `collection_tags` (usage count)
+
+---
+
+## 23. 🏷️ Tag Unification (v4.1.0)
+
+**Files:** `src/hooks/useTags.js` + `src/hooks/useCollections.js` + `src/pages/CollectPage.jsx`
+**Migration:** `data/migration_v4.1.0_tag_unification.sql`
+
+**Mô tả:** Thống nhất hệ thống tags: `collections.tags` (TEXT[]) → central `tags` + `collection_tags` junction table.
+
+**Chi tiết:**
+- **Junction table:** `collection_tags` (collection_id, tag_id) với RLS + CASCADE delete
+- **useTags.js:** Mở rộng `linkTag`/`unlinkTag` hỗ trợ `entityType='collection'`. Thêm `updateTag()`, `getTagsForEntity()`, `getTagUsageCount()`, `getAllTagUsageCounts()`.
+- **useCollections.js:** `fetchItems()` join `collection_tags(tags(id,name,color))` → `item._tags`. `addItem()` không còn ghi vào `collections.tags` TEXT[].
+- **CollectPage:** TagInput hiển color dots, tag filter chips hiển color dots, save/edit dùng `linkTag`/`unlinkTag`.
+- **Backward compat:** `collections.tags` TEXT[] giữ lại (DEPRECATED), sẽ DROP ở v5.0.
+
+**Data source:** `tags` + `collection_tags` + `expense_tags` + `subscription_tags` (Supabase)

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 /**
  * CustomJourneyModal
@@ -17,6 +17,7 @@ export default function CustomJourneyModal({ onConfirm, onClose, loading }) {
   const [description, setDescription] = useState('');
   const [targetDays,  setTargetDays]  = useState(21);
   const [customDays,  setCustomDays]  = useState('');
+  const mouseDownTarget = useRef(null);
 
   const activeDays = customDays ? parseInt(customDays) || 21 : targetDays;
 
@@ -27,7 +28,14 @@ export default function CustomJourneyModal({ onConfirm, onClose, loading }) {
   };
 
   return (
-    <div className="journey-modal-overlay" onClick={onClose}>
+    <div
+      className="journey-modal-overlay"
+      onMouseDown={(e) => { mouseDownTarget.current = e.target; }}
+      onMouseUp={(e) => {
+        if (mouseDownTarget.current === e.currentTarget && e.target === e.currentTarget) onClose();
+        mouseDownTarget.current = null;
+      }}
+    >
       <div className="journey-modal" onClick={e => e.stopPropagation()}>
         <h3>✏️ Tạo Lộ Trình Riêng</h3>
 

@@ -1,0 +1,342 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+
+let _supabase = null;
+async function getSb() {
+  if (!_supabase) {
+    const mod = await import('../lib/supabase');
+    _supabase = mod.supabase;
+  }
+  return _supabase;
+}
+
+/**
+ * useTags — Central tag CRUD, Supabase-first.
+ *
+ * v3.7.0: expenses, subscriptions
+ * v4.1.0: + collections, updateTag, getTagUsageCount, getTagsForEntity
+ *
+ * Shared across modules (expenses, subscriptions, collections).
+ * All tags belong to the authenticated user.
+ */
+
+/* ── Entity type → junction table mapping ─────────────────── */
+const ENTITY_CONFIG = {
+  expense:      { table: 'expense_tags',      fk: 'expense_id' },
+  subscription: { table: 'subscription_tags', fk: 'subscription_id' },
+  collection:   { table: 'collection_tags',   fk: 'collection_id' },
+};
+
+export function useTags() {
+  const { user } = useAuth();
+  const isAuth = !!user;
+  const userId = user?.id;
+
+  const [tags, setTags] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const fetchedRef = useRef(false);
+
+  // ── Fetch all tags ────────────────────────────────────────
+  const fetchTags = useCallback(async () => {
+    if (!isAuth || !userId) return;
+    setIsLoading(true);
+    try {
+      const sb = await getSb();
+      if (!sb) return;
+
+      const { data, error } = await sb
+        .from('tags')
+        .select('*')
+        .eq('user_id', userId)
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('[useTags] fetch error:', error.message);
+      } else {
+        setTags(data || []);
+      }
+    } catch (err) {
+      console.error('[useTags] fetch exception:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAuth, userId]);
+
+  useEffect(() => {
+    if (isAuth && !fetchedRef.current) {
+      fetchedRef.current = true;
+      fetchTags();
+    }
+    if (!isAuth) {
+      fetchedRef.current = false;
+      setTags([]);
+    }
+  }, [isAuth, fetchTags]);
+
+  // ── Add tag (or return existing) ──────────────────────────
+  const addTag = useCallback(async (name, color = '#8b5cf6') => {
+    if (!isAuth || !userId || !name.trim()) return null;
+
+    const trimmed = name.trim().toLowerCase();
+
+    // Check if already exists (client-side)
+    const existing = tags.find(t => t.name.toLowerCase() === trimmed);
+    if (existing) return existing;
+
+    try {
+      const sb = await getSb();
+      if (!sb) return null;
+
+      const { data, error } = await sb
+        .from('tags')
+        .insert({ user_id: userId, name: trimmed, color })
+        .select()
+        .single();
+
+      if (error) {
+        // UNIQUE violation → fetch existing
+        if (error.code === '23505') {
+          const { data: found } = await sb
+            .from('tags')
+            .select('*')
+            .eq('user_id', userId)
+            .ilike('name', trimmed)
+            .single();
+          if (found) {
+            setTags(prev => prev.some(t => t.id === found.id) ? prev : [...prev, found]);
+            return found;
+          }
+        }
+        console.error('[useTags] add error:', error.message);
+        return null;
+      }
+
+      setTags(prev => [...prev, data]);
+      return data;
+    } catch (err) {
+      console.error('[useTags] add exception:', err);
+      return null;
+    }
+  }, [isAuth, userId, tags]);
+
+  // ── Update tag (rename / recolor) ─────────────────────────
+  const updateTag = useCallback(async (tagId, updates) => {
+    if (!isAuth || !userId) return false;
+
+    const backup = tags.find(t => t.id === tagId);
+    if (!backup) return false;
+
+    // Normalize name if provided
+    const clean = {};
+    if (updates.name !== undefined) clean.name = updates.name.trim().toLowerCase();
+    if (updates.color !== undefined) clean.color = updates.color;
+
+    if (Object.keys(clean).length === 0) return false;
+
+    // Optimistic update
+    setTags(prev => prev.map(t => t.id === tagId ? { ...t, ...clean } : t));
+
+    try {
+      const sb = await getSb();
+      if (!sb) return false;
+
+      const { error } = await sb
+        .from('tags')
+        .update(clean)
+        .eq('id', tagId)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('[useTags] update error:', error.message);
+        // Rollback
+        setTags(prev => prev.map(t => t.id === tagId ? backup : t));
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('[useTags] update exception:', err);
+      setTags(prev => prev.map(t => t.id === tagId ? backup : t));
+      return false;
+    }
+  }, [isAuth, userId, tags]);
+
+  // ── Delete tag ────────────────────────────────────────────
+  const deleteTag = useCallback(async (tagId) => {
+    if (!isAuth) return;
+    const backup = tags.find(t => t.id === tagId);
+
+    setTags(prev => prev.filter(t => t.id !== tagId));
+
+    try {
+      const sb = await getSb();
+      if (!sb) return;
+
+      const { error } = await sb
+        .from('tags')
+        .delete()
+        .eq('id', tagId)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('[useTags] delete error:', error.message);
+        if (backup) setTags(prev => [...prev, backup]);
+      }
+    } catch (err) {
+      console.error('[useTags] delete exception:', err);
+      if (backup) setTags(prev => [...prev, backup]);
+    }
+  }, [isAuth, userId, tags]);
+
+  // ── Link tag to entity (expense, subscription, or collection) ──
+  const linkTag = useCallback(async (entityId, tagId, entityType = 'expense') => {
+    if (!isAuth) return false;
+
+    const config = ENTITY_CONFIG[entityType];
+    if (!config) {
+      console.error(`[useTags] linkTag: unknown entityType "${entityType}"`);
+      return false;
+    }
+
+    try {
+      const sb = await getSb();
+      if (!sb) return false;
+
+      const { error } = await sb.from(config.table).upsert(
+        { [config.fk]: entityId, tag_id: tagId },
+        { onConflict: `${config.fk},tag_id` }
+      );
+
+      if (error) {
+        console.error(`[useTags] linkTag error:`, error.message);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error(`[useTags] linkTag exception:`, err);
+      return false;
+    }
+  }, [isAuth]);
+
+  // ── Unlink tag from entity ────────────────────────────────
+  const unlinkTag = useCallback(async (entityId, tagId, entityType = 'expense') => {
+    if (!isAuth) return false;
+
+    const config = ENTITY_CONFIG[entityType];
+    if (!config) {
+      console.error(`[useTags] unlinkTag: unknown entityType "${entityType}"`);
+      return false;
+    }
+
+    try {
+      const sb = await getSb();
+      if (!sb) return false;
+
+      const { error } = await sb.from(config.table).delete()
+        .eq(config.fk, entityId)
+        .eq('tag_id', tagId);
+
+      if (error) {
+        console.error(`[useTags] unlinkTag error:`, error.message);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error(`[useTags] unlinkTag exception:`, err);
+      return false;
+    }
+  }, [isAuth]);
+
+  // ── Get tags for a specific entity ────────────────────────
+  const getTagsForEntity = useCallback(async (entityId, entityType = 'expense') => {
+    if (!isAuth) return [];
+
+    const config = ENTITY_CONFIG[entityType];
+    if (!config) return [];
+
+    try {
+      const sb = await getSb();
+      if (!sb) return [];
+
+      const { data, error } = await sb
+        .from(config.table)
+        .select('tag_id, tags(id, name, color)')
+        .eq(config.fk, entityId);
+
+      if (error) {
+        console.error('[useTags] getTagsForEntity error:', error.message);
+        return [];
+      }
+      return (data || []).map(row => row.tags).filter(Boolean);
+    } catch (err) {
+      console.error('[useTags] getTagsForEntity exception:', err);
+      return [];
+    }
+  }, [isAuth]);
+
+  // ── Get usage count for a tag across all junction tables ───
+  const getTagUsageCount = useCallback(async (tagId) => {
+    if (!isAuth) return 0;
+
+    try {
+      const sb = await getSb();
+      if (!sb) return 0;
+
+      // Query all 3 junction tables in parallel
+      const [expenses, subs, collections] = await Promise.all([
+        sb.from('expense_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
+        sb.from('subscription_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
+        sb.from('collection_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
+      ]);
+
+      return (expenses.count || 0) + (subs.count || 0) + (collections.count || 0);
+    } catch (err) {
+      console.error('[useTags] getTagUsageCount exception:', err);
+      return 0;
+    }
+  }, [isAuth]);
+
+  // ── Batch get usage counts for all tags ───────────────────
+  const getAllTagUsageCounts = useCallback(async () => {
+    if (!isAuth || !userId) return {};
+
+    try {
+      const sb = await getSb();
+      if (!sb) return {};
+
+      // Fetch all links from all 3 junction tables
+      const [expenses, subs, collections] = await Promise.all([
+        sb.from('expense_tags').select('tag_id'),
+        sb.from('subscription_tags').select('tag_id'),
+        sb.from('collection_tags').select('tag_id'),
+      ]);
+
+      const counts = {};
+      const all = [
+        ...(expenses.data || []),
+        ...(subs.data || []),
+        ...(collections.data || []),
+      ];
+      for (const row of all) {
+        counts[row.tag_id] = (counts[row.tag_id] || 0) + 1;
+      }
+      return counts;
+    } catch (err) {
+      console.error('[useTags] getAllTagUsageCounts exception:', err);
+      return {};
+    }
+  }, [isAuth, userId]);
+
+  return {
+    tags,
+    isLoading,
+    fetchTags,
+    addTag,
+    updateTag,
+    deleteTag,
+    linkTag,
+    unlinkTag,
+    getTagsForEntity,
+    getTagUsageCount,
+    getAllTagUsageCounts,
+  };
+}

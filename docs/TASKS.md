@@ -1,5 +1,467 @@
-# TASKS — Thử Thách Vượt Lười
-**Updated:** 2026-04-25
+# TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
+**Updated:** 2026-05-02
+
+---
+
+## v4.4.0 — ✅ DONE (2026-05-02) — Bug Fixes + Task↔Knowledge Link + Inbox Bulk Actions
+
+### Phase 10.1: Bug Fixes
+- [x] `IncubatorPage.jsx` — Fix `EXPENSE_DATA.map()` crash → `.categories.map()` + fix `cat.id`→`cat.key`, `cat.name`→`cat.label`
+- [x] `useSubscriptions.js` — Fix `getMonthlyCost()` for `3month` (÷3) and `6month` (÷6) cycles
+
+### Phase 10.2: Activity Log for Inbox Actions
+- [x] `InboxPage.jsx` — `handleClassify()` → logActivity('inbox_classify')
+- [x] `InboxPage.jsx` — `handleSnooze()` → logActivity('inbox_snooze')
+
+### Phase 10.3: Task ↔ Knowledge Link
+- [x] `data/migration_v4.4.0_task_knowledge_link.sql` [NEW] — `ALTER TABLE user_tasks ADD COLUMN collection_id UUID REFERENCES collections(id) ON DELETE SET NULL`
+- [x] `useUserTasks.js` — `addTask()` accepts optional `collectionId` parameter
+- [x] `CollectPage.jsx` — ReaderView: 📌 Task button creates task linked to knowledge item
+- [x] `TaskListSection.jsx` — 🔗 KB badge on tasks with `collection_id`, click navigates to /collect
+
+### Phase 10.4: Inbox Bulk Actions
+- [x] `InboxPage.jsx` — Toggle bulk mode (☑ Chọn nhiều), checkbox per item, select all/none
+- [x] `InboxPage.jsx` — Bulk classify (📂 Phân loại → type picker), bulk delete (🗑)
+- [x] `InboxPage.jsx` — Activity log for bulk operations
+- [x] `inbox.css` — Bulk bar, classify menu, checkbox, selected item highlight (dark/light)
+
+---
+
+## v4.3.0 — ✅ DONE (2026-05-01) — Inbox Filters + Incubator Archive + Tags Cleanup
+
+### Phase 9.4: Inbox Filter Chips (#10)
+- [x] `InboxPage.jsx` — filter chips: Tất cả / Có URL / Gần đây (7 ngày)
+- [x] `inbox.css` — chip styling (dark/light mode)
+
+### Phase 9.5: Incubator Archive View (#8)
+- [x] `useIntentions.js` — `fetchAbandoned()` returns abandoned items
+- [x] `IncubatorPage.jsx` — toggle "Đã bỏ qua" section (read-only cards)
+
+### Phase 9.6: Drop deprecated `collections.tags TEXT[]` (#7)
+- [x] Verified: `useCollections.js` has zero references to `tags` column
+- [x] `data/migration_v4.3.0_drop_tags_column.sql` — `ALTER TABLE DROP COLUMN IF EXISTS`
+
+---
+
+## v4.2.1 — ✅ DONE (2026-05-01) — Edit Expense + Sub Auto-Advance + Incubator Review Banner
+
+### Phase 9.1: Edit Expense (Quick Win)
+- [x] `useExpenses.js` — thêm `updateExpense(id, { amount, category, note })`
+- [x] `FinancePage.jsx` — inline edit modal (click expense → edit form)
+- [x] `finance.css` — edit button styling
+
+### Phase 9.2: Subscription auto-advance `next_due`
+- [x] `useSubscriptions.js` — auto-advance expired subs trong `fetchSubs()` (bounded MAX=24)
+
+### Phase 9.3: Incubator review banner on Today page
+- [x] `TrackerPage.jsx` — 🥚 yellow banner khi reviewDueCount > 0, link tới `/incubator`
+- [x] `useIntentions.js` — `reviewDueCount` (đã có sẵn, chỉ import)
+
+---
+
+
+### Phase A: Database Migration
+- [x] `data/migration_v4.2.0_incubator_v2.sql` [NEW] — ALTER `converted_to` TEXT → TEXT[], ADD `converted_ids` JSONB
+
+### Phase B: Hook Changes
+- [x] `useIntentions.js` — `executeIntention` nhận `convertedTypes[]` + `convertedIds{}` thay `convertTo`/`convertedId`
+
+### Phase C: UI — Form + Card
+- [x] `IncubatorPage.jsx` — Form: thêm dropdown `⏱ Cam kết thời gian` (15m/30m/1h/1.5h/2h/nửa ngày)
+- [x] `IncubatorPage.jsx` — Card: thêm badge `⏱` hiển thị `estimated_time` (format h/m)
+
+### Phase D: UI — Execute Modal (Multi-Output Router)
+- [x] `IncubatorPage.jsx` — Replace Radio → 3 Checkbox cards (💰 Expense + 🔁 Habit + 📌 Task)
+- [x] `IncubatorPage.jsx` — Multi-dispatch handler (addExpense + addHabit + addTask đồng thời)
+- [x] `IncubatorPage.jsx` — Import useExpenses + useCustomHabits + expense-categories.json
+- [x] `IncubatorPage.jsx` — Auto-suggest: cost→Expense, time→Habit, nothing→Task
+
+### Phase E: CSS
+- [x] `incubator.css` — time select, duration badge, exec option cards, checkbox visual, category dropdown, light mode
+
+### Phase F: Documentation
+- [x] `docs/FEATURES.md` — Update section #25
+- [x] `docs/ARCHITECTURE.md` — Update data flow + DB tables
+- [x] `docs/TASKS.md` — This section
+- [x] `docs/PLAN.md` — Add Phase 8.7
+- [x] `CHANGELOG.md` — v4.2.0 entry
+- [x] `package.json` — version bump → 4.2.0
+
+### Phase G: Verification
+- [x] `npm run build` — 0 errors (638ms)
+
+---
+
+
+- [x] `Navbar.jsx` — Sidebar user dropdown: rewrite with **React Portal + getBoundingClientRect** → escapes `overflow-y` sidebar clipping. Menu appears above avatar, correct size.
+- [x] `navbar.css` — Clean up `.nav-user-menu` (remove dead position classes). Add `position: relative; z-index: 10` to `.sidebar__bottom`.
+- [x] `useCollections.js` — Remove optional AI columns (`content_format`, `body_text`, `word_count`) from `addItem` insert payload — prevents insert failure on instances without migration v3.2.0.
+- [x] `global.css` — Add `.btn-primary:disabled` style (opacity 0.4, cursor not-allowed) so disabled state is visually clear.
+
+---
+
+## v4.1.0 — ✅ DONE (2026-04-30) — Tag Unification + Settings Page
+
+### Phase A: Database Migration
+- [x] `data/migration_v4.1.0_tag_unification.sql` — collection_tags table + RLS + indexes + data migration
+
+### Phase B: Hook Changes
+- [x] `useTags.js` — extend: updateTag, collection linkTag/unlinkTag, getTagUsageCount, getAllTagUsageCounts, getTagsForEntity
+- [x] `useCollections.js` — refactor: join collection_tags, remove TEXT[] write, _tags mapping
+
+### Phase C: CollectPage Refactor
+- [x] `CollectPage.jsx` — central tags, TagInput color dots, tag filter color dots, linkTag/unlinkTag save
+
+### Phase D: SettingsPage (NEW)
+- [x] `SettingsPage.jsx` — Tag Manager UI (CRUD, rename, recolor, usage count, delete w/ confirmation)
+- [x] `settings.css` — Glassmorphism, color picker, responsive, dark/light
+
+### Phase E: Navigation
+- [x] `App.jsx` — lazy import + route `/settings` + SEO meta
+- [x] `Navbar.jsx` — ⚙️ Cài Đặt link in SECONDARY_NAV
+
+### Phase F: Documentation
+- [x] `CHANGELOG.md` — v4.1.0 entry
+- [x] `FEATURES.md` — sections #22 + #23
+- [x] `ARCHITECTURE.md` — SettingsPage, useTags, collection_tags, settings.css
+- [x] `PLAN.md` — version table + header bump
+- [x] `package.json` — version bump → 4.1.0
+
+### Verification
+- [x] `npm run build` — 0 errors
+
+---
+
+## v4.0.3 — ✅ DONE (2026-04-30) — Fitness Edit + Dashboard Fitness Card
+
+### Debt #4: Fitness edit support
+- [x] `useFitnessLog.js` — thêm `updateLog(id, fields)`
+- [x] TrackerPage fitness tab — inline edit mode cho từng log
+- [x] Dashboard — compact fitness card (tuần này)
+- [x] Docs sync
+
+---
+
+## v4.0.2 — ✅ DONE (2026-04-30) — Tech Debt: Recurring Task Retry
+
+### Debt #2: spawnRecurringTask no retry
+- [x] Bounded retry (max 2 retries, 1s backoff) on insert fail
+- [x] Return success/failure status for logging
+- [x] Structured console.error on final failure
+- [x] `CHANGELOG.md`
+
+---
+
+## v4.0.1 — ✅ DONE (2026-04-30) — Tech Debt: InboxPage Overflow Menu
+
+### Debt #1: InboxPage Action Overflow
+- [x] Refactor 7 action buttons → 2 primary (📌 Task + 🗑) + overflow menu (···)
+- [x] overflow menu CSS (dropdown, dark/light, click-outside close)
+- [x] `docs/FEATURES.md` + `CHANGELOG.md`
+
+---
+
+## v4.0.0 — ✅ DONE (2026-04-30) — Health Tab + Reader View
+
+### Feature 7A: Health/Fitness Tab (🏋️ Sức Khỏe)
+- [x] `data/migration_v4.0.0_fitness.sql` [NEW] — fitness_logs table + RLS
+- [x] `src/hooks/useFitnessLog.js` [NEW] — addLog, deleteLog, todayLogs, weekSummary
+- [x] `src/pages/TrackerPage.jsx` — Thêm tab 🏋️ Sức Khỏe (tab thứ 5)
+- [x] XP + logActivity integration
+
+### Feature 7B: Reader View (Metadata Preview)
+- [x] `api/meta.js` [NEW] — Vercel Edge Function fetch OG metadata
+- [x] `src/hooks/useLinkMeta.js` [NEW] — Cache + fetch link metadata
+- [x] `src/pages/InboxPage.jsx` — Preview cards for URL items
+- [x] `src/styles/inbox.css` — Link preview styles
+
+### Docs Sync
+- [x] `docs/FEATURES.md` + `CHANGELOG.md` + `docs/ARCHITECTURE.md` + `docs/PLAN.md` + `package.json`
+
+---
+
+## v3.9.0 — ✅ DONE (2026-04-30) — 🥚 Incubator Module
+
+### Feature 6A: Incubator (Trạm Ấp Trứng)
+- [x] `data/migration_v3.9.0_incubator.sql` [NEW] — intentions + intention_logs + RLS
+- [x] `src/hooks/useIntentions.js` [NEW] — CRUD + deferIntention + executeIntention + abandonIntention + getLogs
+- [x] `src/pages/IncubatorPage.jsx` [NEW] — Card UI + Defer modal (friction) + Execute modal
+- [x] `src/styles/incubator.css` [NEW] — Page + card + modal styles
+- [x] `src/App.jsx` — Route /incubator + lazy import
+- [x] `src/components/Navbar.jsx` — Link 🥚 Incubator
+- [x] `src/pages/InboxPage.jsx` — Nút 🥚 Ấp Trứng action
+
+### Docs Sync
+- [x] `docs/FEATURES.md` + `CHANGELOG.md` + `package.json`
+
+---
+
+## v3.8.0 — ✅ DONE (2026-04-30) — Inbox Snooze
+
+### Feature 5A: Inbox Snooze
+- [x] `data/migration_v3.8.0_snooze.sql` [NEW] — ALTER TABLE collections ADD snoozed_until
+- [x] `src/hooks/useCollections.js` — snoozeItem(), fetchItems filter snoozed
+- [x] `src/pages/InboxPage.jsx` — Snooze menu (1 tuần/2 tuần/1 tháng/3 tháng) + snoozed count badge
+- [x] `src/styles/inbox.css` — snooze button + menu styles
+
+### Docs Sync
+- [x] `docs/FEATURES.md` + `CHANGELOG.md` + `package.json`
+
+---
+
+## v3.7.0 — ✅ DONE (2026-04-30) — Cashflow Calendar + PARA Tag
+
+### Feature 4A: Cashflow Calendar
+- [x] `src/components/CashflowBar.jsx` [NEW] — thanh 30 ngày hiển thị sub due dots
+- [x] `src/pages/FinancePage.jsx` — mount CashflowBar dưới summary cards
+- [x] `src/styles/finance.css` — styles cho CashflowBar
+
+### Feature 4B: PARA Tags
+- [x] `data/migration_v3.7.0_para.sql` [NEW] — tags + expense_tags + subscription_tags + RLS
+- [x] `src/hooks/useTags.js` [NEW] — CRUD tags, fetchTags, addTag, deleteTag
+- [x] `src/components/TagPicker.jsx` [NEW] — searchable dropdown + tạo tag mới
+- [x] `src/pages/FinancePage.jsx` — integrate TagPicker vào expense + sub forms
+
+### Docs Sync
+- [x] `docs/FEATURES.md` + `CHANGELOG.md` + `package.json`
+
+---
+
+## v3.6.0 — ✅ DONE (2026-04-30) — Energy Tag + Recurring Tasks
+
+### Feature 2B: Energy-based Tagging
+- [x] `data/migration_v3.6.0_tasks.sql` — ALTER TABLE thêm energy_level, duration_est, recurrence_rule
+- [x] `src/hooks/useUserTasks.js` — addTask nhận energyLevel/durationEst/recurrenceRule, completeTask spawn recurring
+- [x] `src/components/TaskListSection.jsx` — Energy picker + Duration picker + Recurrence toggle trong form, badges + filter chips
+
+### Feature 3A: Recurring Tasks
+- [x] `spawnRecurringTask()` helper tách riêng trong hook — tránh vòng lặp
+- [x] Date helpers: addDays, nextWeekday, nextMonthDay
+
+### Docs Sync
+- [x] `docs/FEATURES.md` — update Task section
+- [x] `CHANGELOG.md` — v3.6.0 entry
+- [x] `package.json` — version bump → 3.6.0
+
+---
+
+## v3.5.0 — ✅ DONE (2026-04-30) — Quick Expense từ Inbox + Overdue Task Triage
+
+### Feature 1A: Quick Expense Modal (Inbox → Finance)
+- [x] `src/pages/InboxPage.jsx` — thêm nút 💸 Chi tiêu + QuickExpenseModal inline
+- [x] `src/styles/inbox.css` — style cho QuickExpenseModal
+- [x] Import `useExpenses` + `useActivityLog` vào InboxPage
+- [x] Regex bóc tách số tiền từ text (50k → 50000)
+
+### Feature 2A: Overdue Rollover / Triage
+- [x] `src/hooks/useUserTasks.js` — thêm todayTasks, overdueTasks, futureTasks, rolloverTask
+- [x] `src/components/TaskListSection.jsx` — tách UI 3 khối: Quá hạn / Hôm nay / Sắp tới
+
+### Docs Sync
+- [x] `docs/FEATURES.md` — update Inbox + Task sections
+- [x] `CHANGELOG.md` — v3.5.0 entry
+- [x] `package.json` — version bump → 3.5.0
+
+---
+
+## v3.4.0 — ✅ DONE (2026-04-27) — Google Docs UI Upgrade cho Tiptap Editor
+
+- [x] **Cài đặt thư viện:** Thêm `lucide-react`, `@tiptap/extension-underline`, `@tiptap/extension-text-align`, `@tiptap/extension-text-style`, `@tiptap/extension-color`.
+- [x] **Tái thiết kế Toolbar:** Sử dụng Lucide Icons, thêm dropdown chọn Heading, thêm bộ chọn màu sắc (Text Color). Nhóm các công cụ hợp lý bằng vách ngăn (Divider).
+- [x] **Tính năng mới:** Căn lề (Left, Center, Right, Justify), Gạch chân, Màu chữ.
+- [x] **Phím tắt mới:** Thêm `Ctrl+U`, `Ctrl+Shift+L/E/R/J` vào Shortcuts Modal.
+- [x] **CSS Upgrade:** Định dạng `tiptap.css` cho `.tp-toolbar-dropdown`, `.tp-color-picker`, nút icon phẳng chuẩn UX của Google Docs.
+
+---
+
+## v3.3.1 — ✅ DONE (2026-04-27) — Tiptap Bug Fixes & Polish
+
+- [x] **Light mode CSS** — ~200 lines comprehensive overrides cho toolbar, slash menu, shortcuts modal, footer, editor content (mark, code, blockquote, table, links)
+- [x] **Word count realtime** — Dùng `CharacterCount.words()` (chính xác), pass qua `onChange(json, text, words)`. EditorView header cập nhật ngay
+- [x] **Expanded shortcuts** — Thêm section "✍️ Gõ tắt Markdown" (9 auto-format rules), Tab/Shift+Tab, Shift+Enter
+- [x] **Markdown keyboard shortcuts** — Ctrl+B/I/E/K/1/2/3, Ctrl+Shift+X/B/C/7/8/9, Ctrl+S save, Ctrl+P block, Ctrl+. shortcuts panel, ⌨ toolbar button
+- [x] Build ✓ (293ms, 0 errors)
+
+---
+
+## v3.3.0 — ✅ DONE (2026-04-27) — Tiptap Slash Command + Shortcuts + Browser Key Override
+
+### Install
+- [x] `npm install @tiptap/suggestion@^3.22.4`
+
+### Slash Command Menu
+- [x] `src/components/SlashCommand.jsx` [NEW] — Extension + React dropdown UI
+- [x] `src/components/TiptapEditor.jsx` — Import + register SlashCommandExtension
+
+### Keyboard Shortcuts Panel
+- [x] `src/components/TiptapEditor.jsx` — `ShortcutsModal` component + toolbar button `⌨`
+
+### Browser Shortcut Override
+- [x] `src/components/TiptapEditor.jsx` — `handleKeyDown` (Ctrl+S save, Ctrl+P block, Ctrl+. shortcuts)
+
+### CollectPage Wire
+- [x] `src/pages/CollectPage.jsx` — Pass `onSave` prop to TiptapEditor
+
+### CSS
+- [x] `src/styles/tiptap.css` — Slash menu + Shortcuts modal styles
+
+### Docs Sync
+- [x] `docs/FEATURES.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `docs/PLAN.md`
+- [x] `package.json` — bump → 3.3.0
+
+### Verification
+- [x] `npm run build` — No compile errors (✓ built in 280ms)
+
+---
+
+## v3.2.1 — ✅ DONE (2026-04-27) — Polish + Debt Cleanup
+
+### Housekeeping
+- [x] `package.json` — Bump version 3.1.0 → 3.2.1
+- [x] `docs/TASKS.md` — Clean Team v3 debris, add v3.2.1 section
+- [x] `docs/PLAN.md` — Fix Phase 7 incomplete items → move to Phase 8
+
+### Dashboard Widgets
+- [x] `DashboardPage.jsx` — `MoodTrendChart`: 7/30 day toggle, dot-line SVG, color-coded
+- [x] `DashboardPage.jsx` — `FocusBreakdown`: per-habit horizontal bars, 7 days, Supabase query
+- [x] `DashboardPage.jsx` — `WeeklyReview`: 7-day summary digest, week-over-week comparison
+
+### CSS
+- [x] `dashboard.css` — Styles for MoodTrendChart, FocusBreakdown, WeeklyReview
+
+### Docs Sync
+- [x] `docs/FEATURES.md` — Update Dashboard section (#5)
+- [x] `docs/ARCHITECTURE.md` — Update DashboardPage data sources (add useMoodLog)
+- [x] `CHANGELOG.md` — Add v3.2.1 entry
+
+### Verification
+- [x] `npm run build` — No compile errors (✓ built in 426ms)
+
+---
+
+## v3.2.0 — ✅ DONE (2026-04-26) — Knowledge Base Dual-Mode Editor + UX Polish
+
+### Knowledge Base
+- [x] `TiptapEditor.jsx` — WYSIWYG editor: Bold/Italic/Strike/Highlight/Code/H1-H3/Lists/TaskList/Blockquote/CodeBlock/HR/Link/Table/Undo/Redo + `TiptapReadOnly`
+- [x] `tiptap.css` — Dark theme, toolbar, prose styles, table, task list, link popover
+- [x] `EditorView` — Dual-mode: Markdown (default) / Visual toggle, mode-lock per article, `isNew` prop
+- [x] `CollectPage.jsx` — `isTiptapBody()` auto-detect helper, `safeHostname()` URL guard
+- [x] `CollectPage.jsx` — `markdownToPlainText()` helper, `EDITOR_MODE_KEY` localStorage
+- [x] `CollectPage.jsx` — `ReaderView` auto-detect format: render `TiptapReadOnly` hoặc `ReactMarkdown`
+- [x] `CollectPage.jsx` — `ArticleCard` dùng `body_text` cho excerpt (không hiện JSON raw)
+- [x] `CollectPage.jsx` — `handleSave` truyền đủ `content_format`, `body_text`, `word_count`
+- [x] `CollectPage.jsx` — Xóa dead code `makeExcerpt()`
+- [x] `useCollections.js` — `addItem` nhận đủ `content_format`, `body_text`, `word_count`
+- [x] `TagInput` — Searchable dropdown (max 10), scroll, tạo tag mới Enter, lưu khi save bài
+- [x] `migration_v3.2.0_knowledge.sql` — `ADD COLUMN content_format / body_text / word_count`
+
+### ConfirmModal System
+- [x] `ConfirmModal.jsx` — Promise-based `useConfirm()` hook, drop-in `window.confirm()`
+- [x] `confirm-modal.css` — Glassmorphism, scale-in animation, danger/default variants, light mode
+- [x] `CollectPage.jsx` — Thay tất cả `confirm()` bằng `useConfirm` modal
+- [x] `HabitManager.jsx` — Thay `confirm()` bằng `useConfirm` modal
+- [x] `LifeJourneyPage.jsx` — Thay `window.confirm()` bằng `useConfirm` modal
+
+### Tiptap Bug Fixes
+- [x] Fix import named exports: `{ Table }`, `{ Link }`, `{ TaskList }`, v.v. (Vite runtime error)
+- [x] Inline link popover (thay `window.prompt`)
+- [x] `new URL(item.url)` → `safeHostname()` guard crash
+
+---
+
+## v3.1.2 — ✅ DONE (2026-04-26) — UX Polish + Mood Chart + Performance
+
+- [x] `FinancePage.jsx` — Replace native `<select>` with `CustomSelect` glassmorphic dropdown (both category + cycle)
+- [x] `FinancePage.jsx` — Subscription cycle: 4 options (1/3/6 tháng, 1 năm)
+- [x] `FinancePage.jsx` — Smart date auto-fill from cycle, "Tự tính ↻" button, labeled date field
+- [x] `finance.css` — Custom dropdown styles: trigger, dropdown panel, options, scrollbar, animation
+- [x] `LifeLogPage.jsx` — selectedDate default = today, timeline visible on page load immediately
+- [x] `DashboardPage.jsx` — `MoodChart7Day` component: inline SVG bar chart, emoji overlay, color-coded by mood level
+- [x] `DashboardPage.jsx` — Import `useMoodLog` hook, wire into dashboard
+- [x] `DashboardPage.jsx` — `todayStr` + `monthStart` use `useMemo` (stable refs, avoid re-render)
+- [x] `DashboardPage.jsx` — `useExpenses` effect dependency fixed (no more infinite re-fetch)
+- [x] `migration_v3.0.0.sql` — Fix `ERROR: 42P17` IMMUTABLE index error on `activity_logs`
+- [x] `schema_v3.1.1.sql` — Consolidated migration (456 lines, fresh Supabase setup)
+- [x] `CHANGELOG.md` — v3.1.2 entry
+- [x] `docs/TASKS.md` — Updated (this file)
+- [x] `implementation_plan.md` — New roadmap v3.2.0+ (4 phases, 10+ features)
+
+---
+
+## v3.1.1 — ✅ DONE (2026-04-26) — Modal UX Fix
+
+
+- [x] `DashboardPage.jsx` — Rewrite: Today 4-KPI row (activity/focus/chi tiêu/XP hôm nay)
+- [x] `DashboardPage.jsx` — Finance section: 3 KPI cards + Finance Pie SVG donut chart
+- [x] `DashboardPage.jsx` — ActivityHeatmap thay ContributionGraph
+- [x] `DashboardPage.jsx` — SectionTitle dividers, TodayKpi cards với hover animations
+- [x] `dashboard.css` — Full rewrite: today-row, finance-kpi-row, db-fin-pie, section-title
+- [x] `CHANGELOG.md` — v3.1.0 entry
+- [x] `docs/TASKS.md` — Updated
+- [x] `docs/FEATURES.md` — Section #5 updated
+
+---
+
+## v3.0.0 — ✅ DONE (2026-04-25) — Personal Life Hub Foundation
+
+### Phase 6.1 — Cleanup + Migration SQL
+- [x] Archive team/friends code → `src/_archived/` (7 files + team/ folder)
+- [x] Remove `useTeam` from TrackerPage + DailyChallenge
+- [x] Remove Team/Friends nav links from Navbar
+- [x] Remove Team/Friends routes from App.jsx (→ redirect /tracker)
+- [x] Create `data/migration_v3.0.0.sql` (collections, expenses, subscriptions, activity_logs + RLS)
+- [x] Create `src/data/expense-categories.json` (8 categories)
+- [x] Update `package.json` version → 3.0.0 + name → life-hub
+- [x] Rebrand `index.html` + `manifest.json` → Life Hub
+- [ ] User runs `migration_v3.0.0.sql` in Supabase SQL Editor
+
+### Phase 6.2 — Navigation Restructure
+- [x] Sidebar (desktop) + Bottom tabs (mobile) — `Navbar.jsx` rewrite + `navbar.css` rewrite
+- [x] Global floating [+] Quick Capture button — `QuickCapture.jsx` + `quick-capture.css`
+- [x] Gamification dropdown (Journey, Quiz, BXH) — sidebar "Khác" section + mobile "Thêm" dropdown
+- [x] Landing page flow: sidebar hidden when unauthenticated on `/`
+- [x] `.app-content` wrapper in App.jsx for sidebar offset
+- [x] 4 placeholder pages: InboxPage, CollectPage, FinancePage, LifeLogPage + `placeholder-page.css`
+- [x] SEO meta updated for all new routes (Life Hub branding)
+- [x] Build verification ✅
+
+### Phase 6.3 — Activity Log System
+- [x] `useActivityLog.js` hook — logActivity(), getHeatmapData(), getTimelineByDate(), getTodayCount()
+- [x] Wire into TrackerPage — habit_done / habit_undo / mood_set
+- [x] Wire into DailyChallenge — challenge_done
+- [x] Wire into QuickCapture — collect_add
+- [x] Wire into useFocusTimer — focus_done (direct supabase insert, avoids circular import)
+
+### Phase 6.4 — Inbox + Collect
+- [x] `useCollections.js` hook — CRUD, classify, star, archive, inboxCount
+- [x] `InboxPage.jsx` — Quick-add form + inbox items list + classify/delete actions + `inbox.css`
+- [x] `CollectPage.jsx` — Tabbed view (All/Links/Quotes/Want/Learn/Ideas) + search + card grid + `collect.css`
+- [x] `DailyReview.jsx` widget — today-recap (activity count + last 5 actions) wired to sidebar
+
+### Phase 6.5 — Finance
+- [x] `useExpenses.js` — CRUD, date-range fetch, getTotal/getByCategory aggregation
+- [x] `useSubscriptions.js` — CRUD, cycle management, toggleActive, getUpcoming, getMonthlyCost
+- [x] `FinancePage.jsx` — 2 tabs (Chi tiêu + Đăng ký), summary cards, category breakdown bars, expense list, sub cards + `finance.css`
+- [x] `expense-categories.json` (already created in Phase 6.1)
+- [x] `SubAlert.jsx` widget — upcoming sub renewals alert, wired to sidebar
+
+### Phase 6.6 — Life Log
+- [x] `ActivityHeatmap.jsx` — GitHub-style SVG heatmap, 53×7 grid, purple color scale, click-to-drill
+- [x] `DailyTimeline.jsx` — Vertical timeline with action icons, timestamps, labels
+- [x] `LifeLogPage.jsx` — Heatmap + today stat + drill-down timeline + `lifelog.css`
+
+---
+
+## v3.0.1 — ✅ DONE (2026-04-25) — Plan Gap Fix
+
+### Phase 6.7 — Finalize Plan Gaps
+- [x] `KnowledgeResurface.jsx` — "Hôm nay nhớ lại" widget (random Collect resurface, spaced repetition)
+- [x] Wire `SubAlert` + `KnowledgeResurface` inline into TrackerPage (between XpBar and Hero)
+- [x] `FinancePage.jsx` — Add inline SVG Pie chart (category donut) + 7-day bar chart trend
+- [x] `InboxPage.jsx` — Add "→ Task" action (creates `user_task` from inbox item)
+- [x] `InboxPage.jsx` — Add "→ Sub" action (navigates to Finance, passes item text)
+- [x] `widgets.css` — Add KnowledgeResurface styles (cyan accent)
+- [x] `finance.css` — Add PieChart + WeekBarChart styles
 
 ---
 
@@ -311,30 +773,10 @@
 
 ---
 
-## v3.0.0 — 🚧 Components Built, Chưa Full Integration (Team Mode v3 — N members)
+## v3.0.0 — ❌ CANCELLED (Team Mode v3 — archived to `src/_archived/`)
 
-### DB (chưa deploy)
-- [x] Schema thiết kế: `team_members`, `user_programs`, `team_check_logs`, `team_rules`, `team_rule_agreements`
-- [ ] Chạy `data/supabase_team_v3.sql` trong Supabase
-
-### Hooks (built, chưa integrate full flow)
-- [x] `src/hooks/useTeamCheck.js` — week-2 check logic (teammate check, không self-check)
-- [x] `src/hooks/useTeamRules.js` — CRUD rules, propose + unanimous approval
-
-### Components (built, chưa integrate full flow)
-- [x] `src/components/team/TeamMemberCard.jsx`
-- [x] `src/components/team/TeammateCheckPanel.jsx` — done/fail modal + reason
-- [x] `src/components/team/JoinSyncModal.jsx` — restart vs continue week
-- [x] `src/components/team/TeamRules.jsx`
-
-### Remaining (chưa done)
-- [ ] Full integration: wire hooks + components vào TeamPage production flow
-- [ ] Realtime check notifications
-
-### Next (backlog)
-- [ ] Mood log chart trong DashboardPage
-- [ ] Weekly review email/notification
-- [ ] AI insight từ skip reason patterns
+> Team features archived in v3.0.0. App repositioned as Personal Life Hub.
+> Components and hooks moved to `src/_archived/`. DB tables remain but unused.
 
 ---
 

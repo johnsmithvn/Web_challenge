@@ -1,0 +1,225 @@
+/* ============================
+   SUB ALERT + DAILY REVIEW + KNOWLEDGE RESURFACE WIDGETS
+   ============================ */
+
+/* ── SubAlert ──────────────────────────────────────────────── */
+.sub-alert {
+  background: rgba(234, 179, 8, 0.06);
+  border: 1px solid rgba(234, 179, 8, 0.15);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.sub-alert__title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+}
+
+.sub-alert__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.sub-alert__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.sub-alert__days {
+  font-weight: 600;
+  font-size: 0.68rem;
+}
+
+.sub-alert__days--urgent {
+  color: #ef4444;
+}
+
+/* ── DailyReview ───────────────────────────────────────────── */
+.daily-review {
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.12);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.daily-review__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.daily-review__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.daily-review__count {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-full);
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--purple-light);
+}
+
+.daily-review__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.daily-review__item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.daily-review__icon {
+  font-size: 0.8rem;
+  width: 18px;
+  text-align: center;
+}
+
+.daily-review__label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-secondary);
+}
+
+.daily-review__time {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── KnowledgeResurface ────────────────────────────────────── */
+.resurface-widget {
+  background: rgba(6, 182, 212, 0.05);
+  border: 1px solid rgba(6, 182, 212, 0.15);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.resurface-widget__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.resurface-widget__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.resurface-widget__close {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resurface-widget__close:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.resurface-widget__card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.65rem;
+  margin-bottom: 0.4rem;
+}
+
+[data-theme="light"] .resurface-widget__card {
+  background: rgba(6, 182, 212, 0.03);
+  border-color: rgba(6, 182, 212, 0.08);
+}
+
+.resurface-widget__type {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.resurface-widget__text {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-top: 0.15rem;
+  line-height: 1.4;
+}
+
+.resurface-widget__link {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--cyan, #06b6d4);
+  margin-top: 0.2rem;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resurface-widget__link:hover {
+  text-decoration: underline;
+}
+
+.resurface-widget__actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.resurface-widget__btn {
+  flex: 1;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  font-family: inherit;
+}
+
+.resurface-widget__btn:hover {
+  background: rgba(6, 182, 212, 0.08);
+  color: var(--text-secondary);
+}
+
+.resurface-widget__btn--primary {
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.2);
+  color: var(--cyan, #06b6d4);
+  font-weight: 600;
+}
+
+.resurface-widget__btn--primary:hover {
+  background: rgba(6, 182, 212, 0.18);
+}

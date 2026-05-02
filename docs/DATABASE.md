@@ -1,7 +1,7 @@
-# DATABASE DESIGN — Thử Thách Vượt Lười
+# DATABASE DESIGN — Life Hub (Personal Life OS)
 **Target:** Supabase (PostgreSQL)
-**Version:** v2.2.2
-**Updated:** 2026-04-25
+**Version:** v3.2.0
+**Updated:** 2026-04-26
 **Strategy:** Production-ready from day 1
 
 ---
@@ -669,11 +669,12 @@ On first login (one-time per data type):
 | `data/supabase_team_v3.sql` | v3.0.0 | team_members, user_programs, team_check_logs, team_rules, team_rule_agreements |
 | `data/migration_v2.1.0.sql` | v2.1.0 | user_tasks table + RLS + indexes |
 | `data/migration_v2.2.2_security.sql` | v2.2.2 | RLS fixes: progress team read, self-check block, streaks write lock, xp_logs constraint, trigger merge |
+| `data/migration_v3.2.0_knowledge.sql` | v3.2.0 | `ALTER TABLE collections ADD COLUMN content_format, body_text, word_count` |
 
 ## Supabase Setup Checklist
 
 - [ ] Create project (region: Southeast Asia – Singapore)
-- [ ] Run migration SQL files in order (v1.2.0 → v1.4.0 → v1.5.0 → v1.6.2 → v1.9.0 → v2.1.0)
+- [ ] Run migration SQL files in order: v1.2.0 → v1.4.0 → v1.5.0 → v1.6.2 → v1.9.0 → v2.1.0 → v2.2.2 → **v3.2.0**
 - [ ] Enable Realtime for: progress, reactions, streaks, teams, xp_logs, habits, focus_sessions
 - [ ] Enable Google OAuth (Auth → Providers → Google)
 - [ ] Get URL + anon key from Project Settings → API

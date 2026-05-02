@@ -251,6 +251,14 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 8px 40px rgba(99,102,241,0.6);
   transform: translateY(-2px);
 }
+.btn-primary:disabled,
+.btn-primary[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
 
 .btn-ghost {
   background: transparent;
@@ -345,7 +353,8 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-appearance: none;
   width: 28px;
   height: 28px;
-  border: 2px solid rgba(255,255,255,0.15);
+  border: 2px solid var(--text-muted);
+  opacity: 0.6;
   border-radius: 6px;
   cursor: pointer;
   position: relative;
@@ -356,6 +365,7 @@ h1, h2, h3, h4, h5, h6 {
 .habit-checkbox:checked {
   background: var(--grad-green);
   border-color: var(--green);
+  opacity: 1;
   box-shadow: var(--shadow-green);
 }
 
@@ -373,6 +383,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .habit-checkbox:hover:not(:checked) {
   border-color: var(--green-dim);
+  opacity: 1;
   background: rgba(0,255,136,0.08);
 }
 

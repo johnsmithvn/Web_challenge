@@ -1,14 +1,16 @@
-import { useEffect, useState, lazy, Suspense, memo } from 'react';
+import { useEffect, useState, useMemo, lazy, Suspense, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useHabitStore } from '../hooks/useHabitStore';
 import { useCustomHabits } from '../hooks/useCustomHabits';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import { useNotifications } from '../hooks/useNotifications';
-import { useTeam } from '../hooks/useTeam';
 import { useMoodLog, useSkipReasons } from '../hooks/useMoodSkip';
 import { useJourney } from '../hooks/useJourney';
 import { useHabitLogs } from '../hooks/useHabitLogs';
 import { useUserTasks } from '../hooks/useUserTasks';
+import { useActivityLog } from '../hooks/useActivityLog';
+import { useFitnessLog } from '../hooks/useFitnessLog';
+import { useIntentions } from '../hooks/useIntentions';
 import { useAuth } from '../contexts/AuthContext';
 import DailyChallenge from '../components/DailyChallenge';
 import XpBar from '../components/XpBar';
@@ -16,6 +18,8 @@ import NotificationSettings from '../components/NotificationSettings';
 import CompletionModal from '../components/CompletionModal';
 import LoginNudgeModal from '../components/LoginNudgeModal';
 import TaskListSection from '../components/TaskListSection';
+import KnowledgeResurface from '../components/KnowledgeResurface';
+import SubAlert from '../components/SubAlert';
 import '../styles/tracker.css';
 import '../styles/xpbar.css';
 import '../styles/calendar.css';
@@ -300,10 +304,19 @@ export default function TrackerPage() {
   const { activeJourney } = useJourney();
   const { habitProg, toggleLog } = useHabitLogs();
   const { isAuthenticated } = useAuth();
-  const { team } = useTeam();
   const { getCompletedTasks } = useUserTasks();
+  const { logActivity } = useActivityLog();
+  const { reviewDueCount } = useIntentions();
 
   const [tab, setTab] = useState('today');
+
+  // Fitness state
+  const { todayLogs: fitTodayLogs, weekSummary: fitWeek, addLog: addFitLog, updateLog: updFitLog, deleteLog: delFitLog, ENERGY_LABELS } = useFitnessLog();
+  const [fitName, setFitName] = useState('');
+  const [fitDuration, setFitDuration] = useState('45');
+  const [fitEnergy, setFitEnergy] = useState('good');
+  const [fitNotes, setFitNotes] = useState('');
+  const [editFit, setEditFit] = useState(null); // { id, session_name, duration_min, energy, notes } or null
 
   const [celebration, setCelebration] = useState(false);
   const [skipModal, setSkipModal]   = useState(null);
@@ -340,8 +353,8 @@ export default function TrackerPage() {
   };
 
   const todayKey  = new Date().toISOString().split('T')[0];
-  const plant     = getPlant(streak);
   const todayMood = getMood(todayKey);
+  // plant derived after effectiveStreak is computed (placeholder — recalculated below)
 
   // Per-habit tick
   const handleHabitTick = async (habit) => {
@@ -353,9 +366,16 @@ export default function TrackerPage() {
     if (!wasDone && !hasMilestone('habit_tick', { habitId: habit.id, date: todayKey })) {
       addXp(XP_REWARDS.daily_check, 'habit_tick', { habitId: habit.id, date: todayKey });
     } else if (wasDone) {
-      // Un-ticking: deduct the XP
       removeXp('habit_tick', { habitId: habit.id, date: todayKey });
     }
+
+    // Activity log: fire-and-forget
+    logActivity(
+      wasDone ? 'habit_undo' : 'habit_done',
+      habit.name || habit.label,
+      wasDone ? null : XP_REWARDS.daily_check,
+      { habit_id: habit.id, date: todayKey }
+    );
 
     const nextDone = !wasDone;
     const allDone = activeHabits.every(h =>
@@ -380,9 +400,74 @@ export default function TrackerPage() {
     return () => clearTimeout(t);
   }, [celebration]);
 
-  const allHabitsDone = activeHabits.length > 0
+  const hasHabits = activeHabits.length > 0;
+
+  // When no habits exist, treat day as NOT done — ignore stale progress data
+  const allHabitsDone = hasHabits
     ? activeHabits.every(h => !!habitProg[`${todayKey}_${h.id}`])
-    : !!data[todayKey];
+    : false;
+
+  // ── Journey-scoped progress ──────────────────────────────────
+  // Filter progress data to current journey start date to prevent
+  // old streaks from showing up after starting a new journey
+  const journeyStartStr = activeJourney?.started_at
+    ? activeJourney.started_at.split('T')[0]
+    : null;
+
+  const effectiveData = useMemo(() => {
+    if (!hasHabits) return {};
+    if (!journeyStartStr) return data;
+    // Only count days from journey start onwards
+    return Object.fromEntries(
+      Object.entries(data).filter(([date]) => date >= journeyStartStr)
+    );
+  }, [hasHabits, data, journeyStartStr]);
+
+  // Recalculate streak from filtered data (inline — avoids exporting from hook)
+  const effectiveStreak = useMemo(() => {
+    if (!hasHabits) return 0;
+    const today = new Date();
+    let s = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      if (effectiveData[key]) s++;
+      else break;
+    }
+    return s;
+  }, [hasHabits, effectiveData]);
+
+  const effectiveLongest = useMemo(() => {
+    const keys = Object.keys(effectiveData).filter(k => effectiveData[k]).sort();
+    if (!keys.length) return 0;
+    let longest = 1, current = 1;
+    for (let i = 1; i < keys.length; i++) {
+      const diff = (new Date(keys[i]) - new Date(keys[i - 1])) / 86400000;
+      if (diff === 1) { current++; longest = Math.max(longest, current); }
+      else current = 1;
+    }
+    return longest;
+  }, [effectiveData]);
+
+  const effectiveTotalDone    = useMemo(() => Object.values(effectiveData).filter(Boolean).length, [effectiveData]);
+  const effectiveCompletionPct = useMemo(() => {
+    const weekDates = (() => {
+      const today  = new Date();
+      const day    = today.getDay();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        return d.toISOString().split('T')[0];
+      });
+    })();
+    const done = weekDates.filter(d => effectiveData[d]).length;
+    return Math.round((done / 7) * 100);
+  }, [effectiveData]);
+
+  const plant = getPlant(effectiveStreak);
 
   // XP milestones
   useEffect(() => {
@@ -398,7 +483,10 @@ export default function TrackerPage() {
 
 
 
-  const handleMood = (m) => saveMood(todayKey, m);
+  const handleMood = (m) => {
+    saveMood(todayKey, m);
+    logActivity('mood_set', `${m.emoji} ${m.label}`, null, { date: todayKey });
+  };
 
   const handleSkipSubmit = () => {
     saveSkip(skipModal, skipReason, skipNote);
@@ -411,6 +499,7 @@ export default function TrackerPage() {
     { key: 'calendar', label: '📅 Lịch' },
     { key: 'weekly',   label: '📊 Tuần' },
     { key: 'manage',   label: '⚙️ Quản Lý' },
+    { key: 'fitness',  label: '🏋️ Sức Khỏe' },
   ];
 
   return (
@@ -435,12 +524,12 @@ export default function TrackerPage() {
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <div className="tracker-stat-card card" style={{ flex: '0 0 auto', padding: '0.5rem 0.85rem' }}>
               <span style={{ fontSize: '1.2rem' }}>🔥</span>
-              <span className="gradient-text" style={{ fontWeight: 800, fontSize: '1.2rem' }}>{streak}</span>
+              <span className="gradient-text" style={{ fontWeight: 800, fontSize: '1.2rem' }}>{effectiveStreak}</span>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Streak</span>
             </div>
             <div className="tracker-stat-card card" style={{ flex: '0 0 auto', padding: '0.5rem 0.85rem' }}>
               <span style={{ fontSize: '1.2rem' }}>📅</span>
-              <span style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--green)' }}>{totalDone}</span>
+              <span style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--green)' }}>{effectiveTotalDone}</span>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Tổng</span>
             </div>
             <div className="tracker-stat-card card" style={{ flex: '0 0 auto', padding: '0.5rem 0.85rem' }}>
@@ -454,10 +543,34 @@ export default function TrackerPage() {
         {/* ── XP Bar ── */}
         <XpBar />
 
+        {/* ── Inline Widgets (Sub alert + Knowledge resurface) ── */}
+        <SubAlert />
+        <KnowledgeResurface />
+
+        {/* ── Incubator Review Banner ── */}
+        {reviewDueCount > 0 && (
+          <Link to="/incubator" style={{ textDecoration: 'none' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.6rem',
+              padding: '0.65rem 1rem', marginBottom: '1.25rem',
+              background: 'rgba(234, 179, 8, 0.08)',
+              border: '1px solid rgba(234, 179, 8, 0.2)',
+              borderRadius: 'var(--radius-md)',
+              cursor: 'pointer', transition: 'var(--transition-base)',
+            }}>
+              <span style={{ fontSize: '1.1rem' }}>🥚</span>
+              <span style={{ flex: 1, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                <strong style={{ color: '#eab308' }}>{reviewDueCount}</strong> dự định cần review hôm nay
+              </span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Xem →</span>
+            </div>
+          </Link>
+        )}
+
         {/* ── Hero status area (auto-derived from habit ticks) ── */}
         <div className="tracker-hero card">
           <div className="tracker-hero__left">
-            <StreakRing streak={streak} />
+            <StreakRing streak={effectiveStreak} />
             <div className="tracker-hero__plant-label" style={{ color: plant.color }}>
               {plant.label}
             </div>
@@ -482,15 +595,15 @@ export default function TrackerPage() {
           </div>
           <div className="tracker-hero__right">
             <div className="tracker-hero-stat">
-              <span className="tracker-hero-stat__val" style={{ color: 'var(--gold)' }}>{longestStreak}</span>
+              <span className="tracker-hero-stat__val" style={{ color: 'var(--gold)' }}>{effectiveLongest}</span>
               <span className="tracker-hero-stat__label">Best Streak</span>
             </div>
             <div className="tracker-hero-stat">
-              <span className="tracker-hero-stat__val" style={{ color: 'var(--green)' }}>{totalDone}</span>
+              <span className="tracker-hero-stat__val" style={{ color: 'var(--green)' }}>{effectiveTotalDone}</span>
               <span className="tracker-hero-stat__label">Tổng ngày</span>
             </div>
             <div className="tracker-hero-stat">
-              <span className="tracker-hero-stat__val" style={{ color: 'var(--cyan)' }}>{completionPct}%</span>
+              <span className="tracker-hero-stat__val" style={{ color: 'var(--cyan)' }}>{effectiveCompletionPct}%</span>
               <span className="tracker-hero-stat__label">Tuần này</span>
             </div>
           </div>
@@ -499,13 +612,13 @@ export default function TrackerPage() {
         {/* ── 21-day visual progress ── */}
         <div className="card tracker-dots-card">
           <div className="dash-card-title">📍 Tiến Độ 21 Ngày</div>
-          <WeekDots data={data} journeyStart={activeJourney?.started_at || null} />
+          <WeekDots data={effectiveData} journeyStart={activeJourney?.started_at || null} />
           <div className="progress-bar-track" style={{ marginTop: '1rem' }}>
-            <div className="progress-bar-fill" style={{ width: `${Math.round((streak / 21) * 100)}%` }} />
+            <div className="progress-bar-fill" style={{ width: `${Math.round((effectiveStreak / 21) * 100)}%` }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
             <span>Ngày 1</span>
-            <span style={{ color: plant.color, fontWeight: 700 }}>{streak}/21 ngày</span>
+            <span style={{ color: plant.color, fontWeight: 700 }}>{effectiveStreak}/21 ngày</span>
             <span>Ngày 21</span>
           </div>
         </div>
@@ -820,6 +933,216 @@ export default function TrackerPage() {
                 </div>
               </div>
             )}
+          </>
+        )}
+
+        {/* ── Tab: Fitness (🏋️ Sức Khỏe) ── */}
+        {tab === 'fitness' && (
+          <>
+            {/* Add form */}
+            <div className="card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
+              <div className="dash-card-title" style={{ marginBottom: '0.75rem' }}>🏋️ Ghi Nhận Buổi Tập</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <input
+                  className="auth-input"
+                  placeholder="Tên buổi tập (VD: Tập ngực, Chạy bộ...)"
+                  value={fitName}
+                  onChange={e => setFitName(e.target.value)}
+                  id="fitness-session-name"
+                />
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    className="auth-input"
+                    type="number"
+                    min="1"
+                    max="300"
+                    value={fitDuration}
+                    onChange={e => setFitDuration(e.target.value)}
+                    style={{ width: 80 }}
+                    id="fitness-duration"
+                  />
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>phút</span>
+                  <div style={{ flex: 1, display: 'flex', gap: '0.3rem' }}>
+                    {['good', 'normal', 'bad'].map(e => (
+                      <button key={e}
+                        type="button"
+                        onClick={() => setFitEnergy(e)}
+                        style={{
+                          flex: 1, padding: '0.4rem', borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer',
+                          background: fitEnergy === e ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${fitEnergy === e ? 'rgba(139,92,246,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                          color: fitEnergy === e ? 'var(--text-primary)' : 'var(--text-muted)',
+                          transition: 'var(--transition-base)',
+                        }}
+                      >
+                        {ENERGY_LABELS[e]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <textarea
+                  className="auth-input"
+                  rows={2}
+                  placeholder="Ghi chú (tuỳ chọn): Bench 60kg 3x10..."
+                  value={fitNotes}
+                  onChange={e => setFitNotes(e.target.value)}
+                  style={{ resize: 'none' }}
+                  id="fitness-notes"
+                />
+                <button
+                  className="btn btn-primary"
+                  style={{ justifyContent: 'center' }}
+                  disabled={!fitName.trim() || !fitDuration}
+                  onClick={async () => {
+                    const log = await addFitLog({
+                      session_name: fitName,
+                      duration_min: parseInt(fitDuration, 10),
+                      energy: fitEnergy,
+                      notes: fitNotes,
+                    });
+                    if (log) {
+                      logActivity('fitness_done', fitName, 10, { duration: fitDuration });
+                      if (!hasMilestone('fitness_done', { date: todayKey })) {
+                        addXp(10, 'fitness_done', { date: todayKey });
+                      }
+                      setFitName(''); setFitDuration('45'); setFitEnergy('good'); setFitNotes('');
+                    }
+                  }}
+                  id="fitness-submit"
+                >
+                  + Ghi Nhận
+                </button>
+              </div>
+            </div>
+
+            {/* Today logs */}
+            <div className="card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
+              <div className="dash-card-title" style={{ marginBottom: '0.6rem' }}>📅 Hôm Nay</div>
+              {fitTodayLogs.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Chưa ghi nhận buổi tập nào hôm nay.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {fitTodayLogs.map(l => (
+                    editFit?.id === l.id ? (
+                      /* ── Inline edit mode ── */
+                      <div key={l.id} style={{
+                        padding: '0.6rem', background: 'rgba(139,92,246,0.06)',
+                        border: '1px solid rgba(139,92,246,0.2)', borderRadius: 'var(--radius-md)',
+                        display: 'flex', flexDirection: 'column', gap: '0.35rem',
+                      }}>
+                        <input
+                          className="auth-input"
+                          value={editFit.session_name}
+                          onChange={e => setEditFit(p => ({ ...p, session_name: e.target.value }))}
+                          style={{ fontSize: '0.82rem', padding: '0.35rem 0.5rem' }}
+                        />
+                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                          <input
+                            className="auth-input"
+                            type="number" min="1" max="300"
+                            value={editFit.duration_min}
+                            onChange={e => setEditFit(p => ({ ...p, duration_min: e.target.value }))}
+                            style={{ width: 60, fontSize: '0.82rem', padding: '0.35rem 0.5rem' }}
+                          />
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>p</span>
+                          {['good', 'normal', 'bad'].map(e => (
+                            <button key={e} type="button"
+                              onClick={() => setEditFit(p => ({ ...p, energy: e }))}
+                              style={{
+                                flex: 1, padding: '0.3rem', borderRadius: 'var(--radius-sm)',
+                                fontSize: '0.65rem', fontWeight: 600, cursor: 'pointer',
+                                background: editFit.energy === e ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.04)',
+                                border: `1px solid ${editFit.energy === e ? 'rgba(139,92,246,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                                color: editFit.energy === e ? 'var(--text-primary)' : 'var(--text-muted)',
+                              }}
+                            >{ENERGY_LABELS[e].split(' ')[0]}</button>
+                          ))}
+                        </div>
+                        <textarea
+                          className="auth-input"
+                          rows={1}
+                          value={editFit.notes || ''}
+                          onChange={e => setEditFit(p => ({ ...p, notes: e.target.value }))}
+                          placeholder="Ghi chú..."
+                          style={{ resize: 'none', fontSize: '0.78rem', padding: '0.35rem 0.5rem' }}
+                        />
+                        <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end' }}>
+                          <button
+                            className="btn btn-ghost"
+                            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                            onClick={() => setEditFit(null)}
+                          >Huỷ</button>
+                          <button
+                            className="btn btn-primary"
+                            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                            onClick={async () => {
+                              await updFitLog(editFit.id, {
+                                session_name: editFit.session_name,
+                                duration_min: editFit.duration_min,
+                                energy: editFit.energy,
+                                notes: editFit.notes,
+                              });
+                              setEditFit(null);
+                            }}
+                          >Lưu</button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── View mode ── */
+                      <div key={l.id} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem',
+                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                        borderLeft: `3px solid ${l.energy === 'good' ? 'var(--green)' : l.energy === 'bad' ? '#f87171' : '#eab308'}`,
+                        borderRadius: 'var(--radius-md)',
+                      }}>
+                        <span style={{ fontSize: '1.1rem' }}>🏋️</span>
+                        <div style={{ flex: 1, cursor: 'pointer' }}
+                          onClick={() => setEditFit({ id: l.id, session_name: l.session_name, duration_min: l.duration_min, energy: l.energy, notes: l.notes || '' })}
+                          title="Bấm để sửa"
+                        >
+                          <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{l.session_name}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '0.4rem' }}>
+                            <span>⏱ {l.duration_min}p</span>
+                            <span>{ENERGY_LABELS[l.energy]}</span>
+                          </div>
+                          {l.notes && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.15rem' }}>📝 {l.notes}</div>}
+                        </div>
+                        <button
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.72rem' }}
+                          onClick={() => setEditFit({ id: l.id, session_name: l.session_name, duration_min: l.duration_min, energy: l.energy, notes: l.notes || '' })}
+                          title="Sửa"
+                        >✏️</button>
+                        <button
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}
+                          onClick={() => delFitLog(l.id)}
+                          title="Xóa"
+                        >🗑</button>
+                      </div>
+                    )
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Week summary */}
+            <div className="card" style={{ padding: '1.25rem' }}>
+              <div className="dash-card-title" style={{ marginBottom: '0.6rem' }}>📊 Tuần Này</div>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.6rem', background: 'rgba(0,255,136,0.06)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(0,255,136,0.15)' }}>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--green)' }}>{fitWeek.sessions}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>buổi</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.6rem', background: 'rgba(139,92,246,0.06)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(139,92,246,0.15)' }}>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#a78bfa' }}>{fitWeek.totalMin}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>phút</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.6rem', background: 'rgba(234,179,8,0.06)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(234,179,8,0.15)' }}>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#eab308' }}>{fitWeek.uniqueDays}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>ngày</div>
+                </div>
+              </div>
+            </div>
           </>
         )}
       </div>
