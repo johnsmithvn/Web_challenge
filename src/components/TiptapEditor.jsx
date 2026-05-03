@@ -16,7 +16,7 @@ import { Underline } from '@tiptap/extension-underline';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
-import { Undo2, Redo2, Bold, Italic, Underline as UnderlineIcon, Strikethrough, Highlighter, Code, Link as LinkIcon, Quote, List, ListOrdered, ListTodo, Minus, AlignLeft, AlignCenter, AlignRight, AlignJustify, ChevronDown, Keyboard, RemoveFormatting, Palette, Table as TableIcon, Heading1, Heading2, Heading3, Type } from 'lucide-react';
+import { Undo2, Redo2, Bold, Italic, Underline as UnderlineIcon, Strikethrough, Highlighter, Code, Link as LinkIcon, Quote, List, ListOrdered, ListTodo, Minus, AlignLeft, AlignCenter, AlignRight, AlignJustify, ChevronDown, RemoveFormatting, Palette, Table as TableIcon, Heading1, Heading2, Heading3, Type } from 'lucide-react';
 import { SlashCommandExtension } from './SlashCommand';
 import '../styles/tiptap.css';
 
@@ -96,8 +96,10 @@ const MD_SHORTCUT_SECTIONS = [
   ]},
 ];
 
-/* ── Shortcuts Modal (shared) ─────────────────────────────────── */
-export function ShortcutsModal({ open, onClose, sections }) {
+/* ── Shortcuts Modal — 2 tabs: Visual (Tiptap) + Markdown ──────── */
+export function ShortcutsModal({ open, onClose }) {
+  const [tab, setTab] = useState('tiptap');
+
   useEffect(() => {
     if (!open) return;
     const h = (e) => { if (e.key === 'Escape') onClose(); };
@@ -106,7 +108,7 @@ export function ShortcutsModal({ open, onClose, sections }) {
   }, [open, onClose]);
 
   if (!open) return null;
-  const data = sections || SHORTCUT_SECTIONS;
+  const sections = tab === 'markdown' ? MD_SHORTCUT_SECTIONS : SHORTCUT_SECTIONS;
 
   return (
     <div className="tp-shortcuts-overlay" onClick={onClose}>
@@ -115,8 +117,25 @@ export function ShortcutsModal({ open, onClose, sections }) {
           <span className="tp-shortcuts-title">⌨ Phím tắt</span>
           <button className="tp-shortcuts-close" onClick={onClose}>✕</button>
         </div>
+
+        {/* Tab switcher */}
+        <div className="tp-shortcuts-tabs">
+          <button
+            className={`tp-shortcuts-tab${tab === 'tiptap' ? ' tp-shortcuts-tab--active' : ''}`}
+            onClick={() => setTab('tiptap')}
+          >
+            🎨 Visual Editor
+          </button>
+          <button
+            className={`tp-shortcuts-tab${tab === 'markdown' ? ' tp-shortcuts-tab--active' : ''}`}
+            onClick={() => setTab('markdown')}
+          >
+            ✍️ Markdown
+          </button>
+        </div>
+
         <div className="tp-shortcuts-grid">
-          {data.map(section => (
+          {sections.map(section => (
             <div key={section.title} className="tp-shortcuts-section">
               <div className="tp-shortcuts-section-title">{section.title}</div>
               {section.items.map(item => (
@@ -139,8 +158,6 @@ export function ShortcutsModal({ open, onClose, sections }) {
     </div>
   );
 }
-
-export { MD_SHORTCUT_SECTIONS };
 
 /* ── Toolbar Button ─────────────────────────────────────────── */
 function TBtn({ onClick, active, disabled, title, children }) {
@@ -214,7 +231,7 @@ function LinkPopover({ editor, open, onClose }) {
 }
 
 /* ── Tiptap Toolbar ─────────────────────────────────────────── */
-function TiptapToolbar({ editor, onToggleShortcuts }) {
+function TiptapToolbar({ editor }) {
   const [linkOpen, setLinkOpen] = useState(false);
   if (!editor) return null;
 
@@ -281,10 +298,6 @@ function TiptapToolbar({ editor, onToggleShortcuts }) {
         <TBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal line"><Minus size={15} /></TBtn>
         <TBtn onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title="Clear formatting"><RemoveFormatting size={15} /></TBtn>
 
-        <Divider />
-
-        {/* Shortcuts panel toggle */}
-        <TBtn onClick={onToggleShortcuts} title="Keyboard shortcuts (Ctrl+.)"><Keyboard size={15} /></TBtn>
       </div>
 
       {/* Inline link popover — no window.prompt */}
@@ -295,16 +308,16 @@ function TiptapToolbar({ editor, onToggleShortcuts }) {
 
 /* ── TiptapEditor (main export) ─────────────────────────────── */
 export default function TiptapEditor({ value, onChange, onSave }) {
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const onSaveRef = useRef(onSave);
   useEffect(() => { onSaveRef.current = onSave; }, [onSave]);
-
-  const toggleShortcuts = useCallback(() => setShortcutsOpen(v => !v), []);
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         codeBlock: { languageClassPrefix: 'language-' },
+        // Disable bundled v3 versions — we configure these explicitly below
+        link: false,
+        underline: false,
       }),
       Link.configure({ openOnClick: false, autolink: true }),
       Table.configure({ resizable: true }),
@@ -353,13 +366,6 @@ export default function TiptapEditor({ value, onChange, onSave }) {
           return true;
         }
 
-        // Ctrl+. → toggle shortcuts panel
-        if (mod && event.key === '.') {
-          event.preventDefault();
-          setShortcutsOpen(v => !v);
-          return true;
-        }
-
         return false; // pass through all other keys
       },
     },
@@ -369,15 +375,14 @@ export default function TiptapEditor({ value, onChange, onSave }) {
 
   return (
     <div className="tp-editor">
-      <TiptapToolbar editor={editor} onToggleShortcuts={toggleShortcuts} />
+      <TiptapToolbar editor={editor} />
       <div className="tp-body">
         <EditorContent editor={editor} className="tp-editor-content" />
       </div>
       <div className="tp-footer">
         <span>{words} từ</span>
-        <span className="tp-footer-hint">Gõ <kbd>/</kbd> để chèn · <kbd>Ctrl+.</kbd> phím tắt</span>
+        <span className="tp-footer-hint">Gõ <kbd>/</kbd> để chèn khối</span>
       </div>
-      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }
@@ -386,7 +391,10 @@ export default function TiptapEditor({ value, onChange, onSave }) {
 export function TiptapReadOnly({ content }) {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        // Disable bundled v3 versions — we configure Link explicitly below
+        link: false,
+      }),
       Link.configure({ openOnClick: true }),
       Table, TableRow, TableHeader, TableCell,
       TaskList,

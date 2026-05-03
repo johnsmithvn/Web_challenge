@@ -750,6 +750,58 @@
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
+/* ── Tab switcher ──────────────────────────────────────────── */
+.tp-shortcuts-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem 0;
+}
+
+.tp-shortcuts-tab {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm, 8px);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+
+.tp-shortcuts-tab:hover {
+  background: rgba(139,92,246,0.1);
+  border-color: rgba(139,92,246,0.25);
+  color: var(--text-secondary);
+}
+
+.tp-shortcuts-tab--active {
+  background: rgba(139,92,246,0.2);
+  border-color: rgba(139,92,246,0.5);
+  color: #c4b5fd;
+}
+
+/* Light mode tabs */
+[data-theme="light"] .tp-shortcuts-tab {
+  background: rgba(99,102,241,0.04);
+  border-color: rgba(99,102,241,0.12);
+  color: #6b7280;
+}
+[data-theme="light"] .tp-shortcuts-tab:hover {
+  background: rgba(99,102,241,0.08);
+  border-color: rgba(99,102,241,0.25);
+  color: #4c1d95;
+}
+[data-theme="light"] .tp-shortcuts-tab--active {
+  background: rgba(99,102,241,0.12);
+  border-color: #818cf8;
+  color: #4c1d95;
+}
+
+
+
 .tp-shortcuts-title {
   font-family: var(--font-display, 'Outfit', sans-serif);
   font-size: 1.1rem;

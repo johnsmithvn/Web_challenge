@@ -11,7 +11,6 @@ import '../styles/collect.css';
 
 const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
 const TiptapReadOnly = lazy(() => import('../components/TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
-import { ShortcutsModal, MD_SHORTCUT_SECTIONS } from '../components/TiptapEditor';
 import { FileText, Link as LinkIcon, MessageSquareQuote, BookOpen, Lightbulb, Library } from 'lucide-react';
 
 /* ── Constants ─────────────────────────────────────────────── */
@@ -374,7 +373,6 @@ function ToolbarBtn({ label, title, onClick }) {
 /* ── MarkdownEditor (custom split-pane) ─────────────────── */
 function MarkdownEditor({ value, onChange, onSave }) {
   const ref = useCallback(node => { if (node) node.focus(); }, []);
-  const [mdShortcutsOpen, setMdShortcutsOpen] = useState(false);
 
   const insert = useCallback((before, after = '', placeholder = '') => {
     const ta = document.getElementById('kb-md-textarea');
@@ -413,8 +411,6 @@ function MarkdownEditor({ value, onChange, onSave }) {
     if (e.key === 's') { e.preventDefault(); if (onSave) onSave(); return; }
     // Ctrl+P → block print
     if (e.key === 'p') { e.preventDefault(); return; }
-    // Ctrl+. → toggle shortcuts
-    if (e.key === '.') { e.preventDefault(); setMdShortcutsOpen(v => !v); return; }
     // Ctrl+B → bold
     if (e.key === 'b') { e.preventDefault(); insert('**', '**', 'bold'); return; }
     // Ctrl+I → italic
@@ -464,7 +460,6 @@ function MarkdownEditor({ value, onChange, onSave }) {
           <ToolbarBtn key={i} label={t.label} title={t.title} onClick={t.action} />
         ))}
         <span className="kb-tb-divider" />
-        <ToolbarBtn label="⌨" title="Phím tắt (Ctrl+.)" onClick={() => setMdShortcutsOpen(v => !v)} />
       </div>
 
       {/* Panes */}
@@ -497,7 +492,6 @@ function MarkdownEditor({ value, onChange, onSave }) {
         </div>
       </div>
 
-      <ShortcutsModal open={mdShortcutsOpen} onClose={() => setMdShortcutsOpen(false)} sections={MD_SHORTCUT_SECTIONS} />
     </div>
   );
 }

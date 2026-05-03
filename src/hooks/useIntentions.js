@@ -241,11 +241,59 @@ export function useIntentions() {
     }
   }, [isAuth]);
 
-  // Derived counts
+  // Derived counts — use local date (NOT toISOString which is UTC)
+  const _today = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  })();
   const reviewDueCount = intentions.filter(i => {
     if (!i.review_date) return false;
-    return i.review_date <= new Date().toISOString().split('T')[0];
+    return i.review_date <= _today;
   }).length;
+
+  // ── Update intention (edit title / params) ───────────────
+  const updateIntention = useCallback(async (id, { title, originalReason, estimatedCost, estimatedTime }) => {
+    if (!isAuth || !userId || !title?.trim()) return false;
+    try {
+      const sb = await getSb();
+      if (!sb) return false;
+
+      const updates = {
+        title: title.trim(),
+        original_reason: originalReason?.trim() || null,
+        estimated_cost: estimatedCost ? parseInt(estimatedCost, 10) : null,
+        estimated_time: estimatedTime ? parseInt(estimatedTime, 10) : null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await sb
+        .from('intentions')
+        .update(updates)
+        .eq('id', id)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('[useIntentions] update error:', error.message);
+        return false;
+      }
+
+      // Log as reviewed
+      await sb.from('intention_logs').insert({
+        intention_id: id,
+        action: 'reviewed',
+        reason_note: 'Chỉnh sửa thông tin dự định',
+      });
+
+      // Optimistic local state
+      setIntentions(prev => prev.map(i =>
+        i.id === id ? { ...i, ...updates } : i
+      ));
+      return true;
+    } catch (err) {
+      console.error('[useIntentions] update exception:', err);
+      return false;
+    }
+  }, [isAuth, userId]);
 
   // ── Fetch abandoned intentions (for archive view) ─────────
   const fetchAbandoned = useCallback(async () => {
@@ -272,16 +320,49 @@ export function useIntentions() {
     }
   }, [isAuth, userId]);
 
+  // ── Hard-delete an intention (logs → intention, FK safe) ──
+  const deleteIntention = useCallback(async (id) => {
+    if (!isAuth || !userId) return false;
+    try {
+      const sb = await getSb();
+      if (!sb) return false;
+
+      // Delete logs first to satisfy FK constraint
+      await sb.from('intention_logs').delete().eq('intention_id', id);
+
+      const { error } = await sb
+        .from('intentions')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('[useIntentions] delete error:', error.message);
+        return false;
+      }
+
+      // Remove from active list if still there
+      setIntentions(prev => prev.filter(i => i.id !== id));
+      return true;
+    } catch (err) {
+      console.error('[useIntentions] delete exception:', err);
+      return false;
+    }
+  }, [isAuth, userId]);
+
   return {
     intentions,
     isLoading,
     reviewDueCount,
     fetchIntentions,
     addIntention,
+    updateIntention,
     deferIntention,
     executeIntention,
     abandonIntention,
+    deleteIntention,
     fetchAbandoned,
     getLogs,
   };
+
 }

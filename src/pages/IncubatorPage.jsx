@@ -20,8 +20,23 @@ function formatDuration(minutes) {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
+/* ── Timezone-safe local date string (YYYY-MM-DD) ─────────────── */
+// NOTE: new Date().toISOString() returns UTC — wrong for Vietnam +07:00.
+// Use local date components instead.
+function localDateStr(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function daysAgo(dateStr) {
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+  const now   = new Date();
+  const past  = new Date(dateStr);
+  // Compare calendar dates in local timezone (not raw ms delta)
+  const nowDay  = new Date(now.getFullYear(),  now.getMonth(),  now.getDate());
+  const pastDay = new Date(past.getFullYear(), past.getMonth(), past.getDate());
+  const diff = Math.round((nowDay - pastDay) / (1000 * 60 * 60 * 24));
   if (diff === 0) return 'Hôm nay';
   if (diff === 1) return 'Hôm qua';
   return `${diff} ngày trước`;
@@ -99,7 +114,8 @@ export default function IncubatorPage() {
   const navigate = useNavigate();
   const {
     intentions, isLoading, reviewDueCount,
-    addIntention, deferIntention, executeIntention, abandonIntention, fetchAbandoned, getLogs,
+    addIntention, updateIntention, deferIntention, executeIntention,
+    abandonIntention, deleteIntention, fetchAbandoned, getLogs,
   } = useIntentions();
   const { addTask } = useUserTasks();
   const { addExpense } = useExpenses();
@@ -126,7 +142,15 @@ export default function IncubatorPage() {
   const [expandedId, setExpandedId] = useState(null);
   const [timelineLogs, setTimelineLogs] = useState([]);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Edit modal
+  const [editModal, setEditModal] = useState(null); // intention object
+  const [editTitle, setEditTitle] = useState('');
+  const [editReason, setEditReason] = useState('');
+  const [editCost, setEditCost] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  const todayStr = localDateStr(); // local date, NOT toISOString() which is UTC
 
   // Archive (abandoned) view
   const [showArchive, setShowArchive] = useState(false);
@@ -148,12 +172,36 @@ export default function IncubatorPage() {
     setTitle(''); setReason(''); setCost(''); setTime(''); setShowForm(false);
   }, [title, reason, cost, time, addIntention]);
 
+  /* ── Open Edit Modal ── */
+  const openEditModal = useCallback((item) => {
+    setEditModal(item);
+    setEditTitle(item.title || '');
+    setEditReason(item.original_reason || '');
+    setEditCost(item.estimated_cost ? String(item.estimated_cost) : '');
+    setEditTime(item.estimated_time ? String(item.estimated_time) : '');
+    setEditSaving(false);
+  }, []);
+
+  /* ── Save Edit ── */
+  const handleEditSave = useCallback(async () => {
+    if (!editModal || !editTitle.trim()) return;
+    setEditSaving(true);
+    const ok = await updateIntention(editModal.id, {
+      title: editTitle,
+      originalReason: editReason,
+      estimatedCost: editCost || null,
+      estimatedTime: editTime || null,
+    });
+    setEditSaving(false);
+    if (ok) setEditModal(null);
+  }, [editModal, editTitle, editReason, editCost, editTime, updateIntention]);
+
   /* ── Defer ── */
   const handleDefer = useCallback(async () => {
     if (!deferModal || !deferReason.trim()) return;
     const d = new Date();
     d.setDate(d.getDate() + deferDays);
-    const scheduledFor = d.toISOString().split('T')[0];
+    const scheduledFor = localDateStr(d); // local date — not UTC
     await deferIntention(deferModal.id, { reason: deferReason, scheduledFor });
     setDeferModal(null); setDeferReason(''); setDeferDays(7);
   }, [deferModal, deferReason, deferDays, deferIntention]);
@@ -349,46 +397,54 @@ export default function IncubatorPage() {
                     </span>
                   )}
                   {item.estimated_time && (
-                    <span className="incubator-card__badge incubator-card__badge--duration">
-                      ⏱ {formatDuration(item.estimated_time)}
+                    <span className="incubator-card__badge incubator-card__badge--duration" title="Thời gian ước tính để thực hiện">
+                      ⏱ ~{formatDuration(item.estimated_time)} để làm
                     </span>
                   )}
                   {item.review_date && (
                     <span className={`incubator-card__badge ${isReviewDue ? 'incubator-card__badge--review' : 'incubator-card__badge--time'}`}>
-                      {isReviewDue ? '⚠️ Cần review!' : `📅 Review: ${new Date(item.review_date + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}`}
+                      {isReviewDue ? '⚠️ Cần review!' : `📅 Review: ${(() => { const d = new Date(item.review_date + 'T00:00:00'); return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0'); })()}`}
                     </span>
                   )}
-                  <span className="incubator-card__badge incubator-card__badge--age">
-                    🕐 {daysAgo(item.created_at)}
+                  <span className="incubator-card__badge incubator-card__badge--age" title="Ngày tạo dự định">
+                    📅 Tạo: {daysAgo(item.created_at)}
                   </span>
                 </div>
 
                 <div className="incubator-card__actions">
-                  <button
-                    className="incubator-card__btn incubator-card__btn--execute"
-                    onClick={() => openExecuteModal(item)}
-                  >
-                    ✅ Thực thi ngay
-                  </button>
-                  <button
-                    className="incubator-card__btn incubator-card__btn--defer"
-                    onClick={() => { setDeferModal(item); setDeferReason(''); setDeferDays(7); }}
-                  >
-                    💤 Dời lại
-                  </button>
-                  <button
-                    className="incubator-card__btn incubator-card__btn--timeline"
-                    onClick={() => toggleTimeline(item.id)}
-                  >
-                    {isExpanded ? '▾ Timeline' : '▸ Timeline'}
-                  </button>
-                  <button
-                    className="incubator-card__btn incubator-card__btn--abandon"
-                    onClick={() => abandonIntention(item.id, 'Không còn cần thiết')}
-                  >
-                    🗑
-                  </button>
-                </div>
+                    <button
+                      className="incubator-card__btn incubator-card__btn--execute"
+                      onClick={() => openExecuteModal(item)}
+                    >
+                      ✅ Thực thi ngay
+                    </button>
+                    <button
+                      className="incubator-card__btn incubator-card__btn--defer"
+                      onClick={() => { setDeferModal(item); setDeferReason(''); setDeferDays(7); }}
+                    >
+                      💤 Dời lại
+                    </button>
+                    <button
+                      className="incubator-card__btn incubator-card__btn--timeline"
+                      onClick={() => toggleTimeline(item.id)}
+                    >
+                      {isExpanded ? '▾ Timeline' : '▸ Timeline'}
+                    </button>
+                    <button
+                      className="incubator-card__btn"
+                      onClick={() => openEditModal(item)}
+                      title="Chỉnh sửa dự định"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      className="incubator-card__btn incubator-card__btn--abandon"
+                      onClick={() => abandonIntention(item.id, 'Không còn cần thiết')}
+                    >
+                      🗑
+                    </button>
+                  </div>
 
                 {/* Timeline logs */}
                 {isExpanded && (
@@ -405,7 +461,16 @@ export default function IncubatorPage() {
                             <span className="incubator-timeline__note">{log.reason_note}</span>
                           )}
                           <span className="incubator-timeline__date">
-                            {new Date(log.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                            {(() => {
+                              const d   = new Date(log.created_at);
+                              const now = new Date();
+                              const dDay  = new Date(d.getFullYear(),   d.getMonth(),   d.getDate());
+                              const nDay  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                              const diff  = Math.round((nDay - dDay) / 864e5);
+                              if (diff === 0) return 'Hôm nay';
+                              if (diff === 1) return 'Hôm qua';
+                              return `${String(d.getDate()).padStart(2,'0')} Th.${d.getMonth()+1}`;
+                            })()}
                           </span>
                         </div>
                       ))
@@ -455,11 +520,23 @@ export default function IncubatorPage() {
                         <span className="incubator-card__badge">💰 {formatVND(item.estimated_cost)}</span>
                       )}
                       {item.estimated_time > 0 && (
-                        <span className="incubator-card__badge">⏱ {formatDuration(item.estimated_time)}</span>
+                        <span className="incubator-card__badge">⏱ ~{formatDuration(item.estimated_time)} để làm</span>
                       )}
                       <span className="incubator-card__badge" style={{ color: '#ef4444' }}>
                         🗓 {item.updated_at ? daysAgo(item.updated_at) : 'N/A'}
                       </span>
+                    </div>
+                    <div className="incubator-card__actions" style={{ marginTop: '0.5rem' }}>
+                      <button
+                        className="incubator-card__btn incubator-card__btn--abandon"
+                        style={{ fontSize: '0.78rem' }}
+                        onClick={async () => {
+                          const ok = await deleteIntention(item.id);
+                          if (ok) setArchivedItems(prev => prev.filter(i => i.id !== item.id));
+                        }}
+                      >
+                        🗑 Xóa vĩnh viễn
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -509,6 +586,60 @@ export default function IncubatorPage() {
                 disabled={!deferReason.trim()}
               >
                 💤 Xác nhận Dời lại
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Modal ── */}
+      {editModal && (
+        <div className="incubator-modal-backdrop" onClick={() => setEditModal(null)}>
+          <div className="incubator-modal" onClick={e => e.stopPropagation()}>
+            <div className="incubator-modal__header">
+              <span>✏️ Chỉnh sửa dự định</span>
+              <button className="incubator-modal__close" onClick={() => setEditModal(null)}>✕</button>
+            </div>
+            <div className="incubator-modal__body">
+              <label className="incubator-modal__label">Tên dự định *</label>
+              <input
+                className="incubator-modal__input"
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                placeholder="Tên dự định..."
+                autoFocus
+              />
+              <label className="incubator-modal__label" style={{ marginTop: '0.75rem' }}>Lý do ban đầu</label>
+              <input
+                className="incubator-modal__input"
+                value={editReason}
+                onChange={e => setEditReason(e.target.value)}
+                placeholder="Lý do (ùy chọn)"
+              />
+              <label className="incubator-modal__label" style={{ marginTop: '0.75rem' }}>Thông số</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  className="incubator-modal__input incubator-form__input--cost"
+                  type="number"
+                  placeholder="Chi phí dự kiến (₫)"
+                  value={editCost}
+                  onChange={e => setEditCost(e.target.value)}
+                  min="0"
+                  style={{ flex: 1 }}
+                />
+                <div style={{ flex: 1 }}>
+                  <TimeDropdown value={editTime} onChange={setEditTime} />
+                </div>
+              </div>
+            </div>
+            <div className="incubator-modal__footer">
+              <button className="btn btn-ghost" onClick={() => setEditModal(null)}>Huỷ</button>
+              <button
+                className="btn btn-primary"
+                onClick={handleEditSave}
+                disabled={!editTitle.trim() || editSaving}
+              >
+                {editSaving ? '⏳ Đang lưu...' : '💾 Lưu'}
               </button>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { ShortcutsModal } from './TiptapEditor';
 import AuthModal from './AuthModal';
 import XpBar from './XpBar';
 import SubAlert from './SubAlert';
@@ -35,18 +36,19 @@ const SECONDARY_NAV = [
 
 
 /* ── User Avatar Dropdown ──────────────────────────────────── */
-function UserAvatar({ profile, user, onSignOut, direction = 'down' }) {
+function UserAvatar({ profile, user, onSignOut, onOpenShortcuts, direction = 'down' }) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState(null);
   const avatarRef = useRef(null);
+  const menuRef = useRef(null); // ref for the portaled dropdown
 
-  // Close on outside click
+  // Close on outside click — must exclude both the avatar AND the portaled menu
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (avatarRef.current && !avatarRef.current.closest('[data-avatar-root]')?.contains(e.target)) {
-        setOpen(false);
-      }
+      const inAvatar = avatarRef.current?.contains(e.target);
+      const inMenu   = menuRef.current?.contains(e.target);
+      if (!inAvatar && !inMenu) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -58,7 +60,7 @@ function UserAvatar({ profile, user, onSignOut, direction = 'down' }) {
       const rect = avatarRef.current.getBoundingClientRect();
       if (direction === 'up') {
         setMenuPos({
-          left: 12,  // align to sidebar left padding
+          left: 12,
           bottom: window.innerHeight - rect.top + 8,
           top: 'auto',
         });
@@ -94,10 +96,17 @@ function UserAvatar({ profile, user, onSignOut, direction = 'down' }) {
       </div>
 
       {open && menuPos && createPortal(
-        <div className="nav-user-menu" style={dropdownStyle}>
+        <div ref={menuRef} className="nav-user-menu" style={dropdownStyle}>
           <div className="nav-user-menu__name">
             {profile?.display_name || user?.email?.split('@')[0]}
           </div>
+          <button
+            className="nav-user-menu__item"
+            onClick={() => { onOpenShortcuts?.(); setOpen(false); }}
+            id="nav-shortcuts-menu"
+          >
+            ⌨️ Phím Tắt
+          </button>
           <button
             className="nav-user-menu__item nav-user-menu__item--danger"
             onClick={() => { onSignOut(); setOpen(false); }}
@@ -117,6 +126,7 @@ function UserAvatar({ profile, user, onSignOut, direction = 'down' }) {
 export default function Navbar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const { user, profile, signOut, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
@@ -191,7 +201,7 @@ export default function Navbar() {
           </button>
           {!loading && (
             user
-              ? <UserAvatar profile={profile} user={user} onSignOut={signOut} direction="up" />
+              ? <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="up" />
               : (
                 <button
                   className="btn btn-primary sidebar__login"
@@ -221,7 +231,7 @@ export default function Navbar() {
           </button>
           {!loading && (
             user
-              ? <UserAvatar profile={profile} user={user} onSignOut={signOut} direction="down" />
+              ? <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="down" />
               : (
                 <button
                   className="btn btn-primary topbar__login"
@@ -277,6 +287,9 @@ export default function Navbar() {
 
       {/* Auth Modal */}
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+
+      {/* Shortcuts Modal */}
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </>
   );
 }

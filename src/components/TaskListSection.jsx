@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
 
-const todayStr = () => new Date().toISOString().split('T')[0];
+// Timezone-safe local date string
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
 
 const ENERGY_OPTIONS = [
   { key: null, label: 'Tất cả', icon: '🔋' },
@@ -49,10 +53,19 @@ export default function TaskListSection() {
   // Filter state
   const [filterEnergy, setFilterEnergy] = useState(null);
 
-  // Edit state
-  const [editId, setEditId]         = useState(null);
-  const [editTitle, setEditTitle]   = useState('');
-  const [editDesc, setEditDesc]     = useState('');
+  // Edit state — full fields
+  const [editId, setEditId]               = useState(null);
+  const [editTitle, setEditTitle]         = useState('');
+  const [editDesc, setEditDesc]           = useState('');
+  const [editDate, setEditDate]           = useState('');
+  const [editTime, setEditTime]           = useState('');
+  const [editEnergy, setEditEnergy]       = useState(null);
+  const [editDuration, setEditDuration]   = useState(null);
+  const [editShowRec, setEditShowRec]     = useState(false);
+  const [editRecType, setEditRecType]     = useState('interval');
+  const [editRecDays, setEditRecDays]     = useState(7);
+  const [editRecWeekday, setEditRecWeekday] = useState(1);
+  const [editRecMonthDay, setEditRecMonthDay] = useState(1);
 
   const [expandedTask, setExpandedTask] = useState(null);
   const [showFuture, setShowFuture]     = useState(false);
@@ -89,11 +102,41 @@ export default function TaskListSection() {
     setEditId(task.id);
     setEditTitle(task.title);
     setEditDesc(task.description || '');
+    setEditDate(task.due_date || todayStr());
+    setEditTime(task.due_time ? task.due_time.substring(0,5) : '');
+    setEditEnergy(task.energy_level || null);
+    setEditDuration(task.duration_est || null);
+    const rec = task.recurrence_rule;
+    if (rec) {
+      setEditShowRec(true);
+      setEditRecType(rec.type || 'interval');
+      setEditRecDays(rec.days || 7);
+      setEditRecWeekday(rec.weekday ?? 1);
+      setEditRecMonthDay(rec.day || 1);
+    } else {
+      setEditShowRec(false);
+      setEditRecType('interval'); setEditRecDays(7);
+    }
   };
 
   const saveEdit = async (taskId) => {
     if (!editTitle.trim()) return;
-    await updateTask(taskId, { title: editTitle.trim(), description: editDesc.trim() || null });
+    let recurrenceRule = null;
+    if (editShowRec) {
+      if (editRecType === 'interval') recurrenceRule = { type: 'interval', days: editRecDays };
+      else if (editRecType === 'weekly')   recurrenceRule = { type: 'weekly',   weekday: editRecWeekday };
+      else if (editRecType === 'monthly')  recurrenceRule = { type: 'monthly',  day: editRecMonthDay };
+    }
+    // updateTask passes changes directly to Supabase → must be snake_case
+    await updateTask(taskId, {
+      title:            editTitle.trim(),
+      description:      editDesc.trim() || null,
+      due_date:         editDate || todayStr(),
+      due_time:         editTime || null,
+      energy_level:     editEnergy,
+      duration_est:     editDuration,
+      recurrence_rule:  recurrenceRule,
+    });
     setEditId(null);
   };
 
@@ -153,30 +196,148 @@ export default function TaskListSection() {
         borderRadius: 'var(--radius-md)', transition: 'var(--transition-base)',
       }}>
         {isEditing ? (
-          /* ── Edit mode ── */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <input
-              className="auth-input"
-              value={editTitle}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem',
+            background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)',
+            borderRadius: 'var(--radius-md)', padding: '0.85rem', marginBottom: '0.25rem' }}>
+
+            {/* Title */}
+            <input className="auth-input" value={editTitle}
               onChange={e => setEditTitle(e.target.value)}
-              style={{ fontSize: '0.85rem' }}
-              autoFocus
-            />
-            <textarea
-              className="auth-input"
-              value={editDesc}
+              style={{ fontSize: '0.88rem', fontWeight: 600 }} autoFocus
+              placeholder="Tên nhiệm vụ *" />
+
+            {/* Description */}
+            <textarea className="auth-input" value={editDesc}
               onChange={e => setEditDesc(e.target.value)}
-              rows={2}
-              placeholder="Mô tả..."
-              style={{ resize: 'none', fontSize: '0.8rem' }}
-            />
+              rows={2} placeholder="Mô tả..." style={{ resize: 'none', fontSize: '0.82rem' }} />
+
+            {/* Date + Time */}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>📅 Ngày</label>
+                <input type="date" className="auth-input" value={editDate}
+                  onChange={e => setEditDate(e.target.value)} style={{ fontSize: '0.82rem', width: '100%' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>⏰ Giờ</label>
+                <input type="time" className="auth-input" value={editTime}
+                  onChange={e => setEditTime(e.target.value)} style={{ fontSize: '0.82rem', width: '100%' }} />
+              </div>
+            </div>
+
+            {/* Energy */}
+            <div>
+              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Năng lượng</label>
+              <div style={{ display: 'flex', gap: '0.3rem' }}>
+                {ENERGY_OPTIONS.slice(1).map(opt => (
+                  <button key={opt.key} type="button"
+                    onClick={() => setEditEnergy(editEnergy === opt.key ? null : opt.key)}
+                    style={{
+                      padding: '0.28rem 0.6rem', borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.78rem', cursor: 'pointer',
+                      background: editEnergy === opt.key ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${editEnergy === opt.key ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                      color: editEnergy === opt.key ? '#a78bfa' : 'var(--text-muted)',
+                    }}>{opt.icon} {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Duration */}
+            <div>
+              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>⏱ Ước tính thời gian</label>
+              <div style={{ display: 'flex', gap: '0.3rem' }}>
+                {DURATION_OPTIONS.map(opt => (
+                  <button key={opt.value} type="button"
+                    onClick={() => setEditDuration(editDuration === opt.value ? null : opt.value)}
+                    style={{
+                      padding: '0.28rem 0.55rem', borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.78rem', cursor: 'pointer',
+                      background: editDuration === opt.value ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${editDuration === opt.value ? 'rgba(6,182,212,0.35)' : 'rgba(255,255,255,0.08)'}`,
+                      color: editDuration === opt.value ? '#22d3ee' : 'var(--text-muted)',
+                    }}>{opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Recurrence toggle */}
+            <div>
+              <button type="button"
+                onClick={() => setEditShowRec(!editShowRec)}
+                style={{
+                  ...btnBase, fontSize: '0.78rem', padding: '0.28rem 0.6rem',
+                  color: editShowRec ? '#22d3ee' : 'var(--text-muted)',
+                  background: editShowRec ? 'rgba(6,182,212,0.1)' : 'transparent',
+                  border: `1px solid ${editShowRec ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '0.3rem',
+                }}>🔁 {editShowRec ? 'Lặp lại ✓' : 'Lặp lại'}
+              </button>
+              {editShowRec && (
+                <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.4rem',
+                  padding: '0.6rem', borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.12)' }}>
+                  <div style={{ display: 'flex', gap: '0.3rem' }}>
+                    {[{ key: 'interval', label: 'Mỗi N ngày' }, { key: 'weekly', label: 'Hàng tuần' }, { key: 'monthly', label: 'Hàng tháng' }].map(rt => (
+                      <button key={rt.key} type="button" onClick={() => setEditRecType(rt.key)}
+                        style={{
+                          padding: '0.22rem 0.45rem', borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.72rem', cursor: 'pointer',
+                          background: editRecType === rt.key ? 'rgba(6,182,212,0.15)' : 'transparent',
+                          border: `1px solid ${editRecType === rt.key ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                          color: editRecType === rt.key ? '#22d3ee' : 'var(--text-muted)',
+                        }}>{rt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {editRecType === 'interval' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mỗi</span>
+                      <input type="number" min="1" max="365" value={editRecDays}
+                        onChange={e => setEditRecDays(Math.max(1, parseInt(e.target.value)||1))}
+                        className="auth-input" style={{ width: '60px', fontSize: '0.82rem', textAlign: 'center' }} />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ngày</span>
+                    </div>
+                  )}
+                  {editRecType === 'weekly' && (
+                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                      {WEEKDAYS.map((day, i) => (
+                        <button key={i} type="button" onClick={() => setEditRecWeekday(i)}
+                          style={{
+                            padding: '0.22rem 0.38rem', borderRadius: 'var(--radius-sm)',
+                            fontSize: '0.72rem', cursor: 'pointer',
+                            background: editRecWeekday === i ? 'rgba(6,182,212,0.2)' : 'transparent',
+                            border: `1px solid ${editRecWeekday === i ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                            color: editRecWeekday === i ? '#22d3ee' : 'var(--text-muted)',
+                          }}>{day}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {editRecType === 'monthly' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ngày</span>
+                      <input type="number" min="1" max="31" value={editRecMonthDay}
+                        onChange={e => setEditRecMonthDay(Math.min(31, Math.max(1, parseInt(e.target.value)||1)))}
+                        className="auth-input" style={{ width: '55px', fontSize: '0.82rem', textAlign: 'center' }} />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>mỗi tháng</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
             <div style={{ display: 'flex', gap: '0.4rem' }}>
               <button onClick={() => saveEdit(task.id)} className="btn btn-primary"
-                style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem' }}>
+                style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
+                disabled={!editTitle.trim()}>
                 ✓ Lưu
               </button>
               <button onClick={cancelEdit} className="btn btn-ghost"
-                style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', color: 'var(--text-muted)' }}>
+                style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', color: 'var(--text-muted)' }}>
                 Huỷ
               </button>
             </div>
