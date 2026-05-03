@@ -10,10 +10,11 @@ const todayStr = () => {
 };
 
 const ENERGY_OPTIONS = [
-  { key: null, label: 'Tất cả', icon: '🔋' },
+  { key: null, label: 'Tất cả', icon: '📋' },
   { key: 'high', label: 'Cao', icon: '⚡' },
   { key: 'medium', label: 'Vừa', icon: '🔋' },
   { key: 'low', label: 'Thấp', icon: '🪫' },
+  { key: 'none', label: 'Chưa gắn', icon: '➖' },
 ];
 
 const DURATION_OPTIONS = [
@@ -168,7 +169,11 @@ export default function TaskListSection() {
   const totalPending = todayTasks.length + overdueTasks.length + futureTasks.length;
 
   // Apply energy filter
-  const filterFn = (tasks) => filterEnergy ? tasks.filter(t => t.energy_level === filterEnergy) : tasks;
+  const filterFn = (tasks) => {
+    if (!filterEnergy) return tasks;
+    if (filterEnergy === 'none') return tasks.filter(t => !t.energy_level);
+    return tasks.filter(t => t.energy_level === filterEnergy);
+  };
   const filteredToday   = filterFn(todayTasks);
   const filteredOverdue = filterFn(overdueTasks);
   const filteredFuture  = filterFn(futureTasks);
@@ -229,7 +234,7 @@ export default function TaskListSection() {
             <div>
               <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Năng lượng</label>
               <div style={{ display: 'flex', gap: '0.3rem' }}>
-                {ENERGY_OPTIONS.slice(1).map(opt => (
+                {ENERGY_OPTIONS.filter(o => o.key && o.key !== 'none').map(opt => (
                   <button key={opt.key} type="button"
                     onClick={() => setEditEnergy(editEnergy === opt.key ? null : opt.key)}
                     style={{
@@ -517,7 +522,7 @@ export default function TaskListSection() {
           <div>
             <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Năng lượng</label>
             <div style={{ display: 'flex', gap: '0.3rem' }}>
-              {ENERGY_OPTIONS.slice(1).map(opt => (
+              {ENERGY_OPTIONS.filter(o => o.key && o.key !== 'none').map(opt => (
                 <button key={opt.key} type="button"
                   onClick={() => setEnergyLevel(energyLevel === opt.key ? null : opt.key)}
                   style={{
@@ -661,13 +666,13 @@ export default function TaskListSection() {
       )}
 
       {/* ── Overdue Section ── */}
-      {overdueTasks.length > 0 && (
+      {filteredOverdue.length > 0 && (
         <div style={{ marginBottom: '0.75rem' }}>
           <div style={{
             fontSize: '0.75rem', fontWeight: 700, color: '#f87171', marginBottom: '0.5rem',
             display: 'flex', alignItems: 'center', gap: '0.35rem',
           }}>
-            ⚠️ Quá hạn ({overdueTasks.length})
+            ⚠️ Quá hạn ({filteredOverdue.length})
           </div>
           <div style={{
             display: 'flex', flexDirection: 'column', gap: '0.4rem',
@@ -680,11 +685,11 @@ export default function TaskListSection() {
       )}
 
       {/* ── Today Section ── */}
-      {todayTasks.length > 0 && (
+      {filteredToday.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-          {overdueTasks.length > 0 && (
+          {filteredOverdue.length > 0 && (
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
-              📅 Hôm nay ({todayTasks.length})
+              📅 Hôm nay ({filteredToday.length})
             </div>
           )}
           {filteredToday.map(task => renderTask(task))}
@@ -692,7 +697,7 @@ export default function TaskListSection() {
       )}
 
       {/* ── Future Section (collapsed) ── */}
-      {futureTasks.length > 0 && (
+      {filteredFuture.length > 0 && (
         <div style={{ marginTop: '0.75rem' }}>
           <button
             onClick={() => setShowFuture(!showFuture)}
@@ -701,7 +706,7 @@ export default function TaskListSection() {
               fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600,
               padding: '0.3rem 0', width: '100%', justifyContent: 'flex-start',
             }}>
-            {showFuture ? '▾' : '▸'} 🔮 Sắp tới ({futureTasks.length})
+            {showFuture ? '▾' : '▸'} 🔮 Sắp tới ({filteredFuture.length})
           </button>
           {showFuture && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.4rem' }}>
