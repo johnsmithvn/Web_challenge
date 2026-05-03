@@ -63,14 +63,18 @@ export default function AuthModal({ onClose }) {
         setError('Tên đăng nhập: 3–20 ký tự, chỉ dùng a-z, 0-9, dấu _ hoặc .');
         setLoading(false); return;
       }
-      if (!email || !isValidEmail(email)) {
+      // Email is optional — generate placeholder if not provided
+      let emailToUse = email;
+      if (!emailToUse) {
+        emailToUse = `${uname}@vuotluoi.local`;
+      } else if (!isValidEmail(emailToUse)) {
         setError('Email không hợp lệ');
         setLoading(false); return;
       }
 
       const result = await signUp({
         username:    uname,
-        email,
+        email:       emailToUse,
         password:    regPassword,
         displayName: regDisplayName.trim() || uname,
       });
@@ -219,22 +223,21 @@ export default function AuthModal({ onClose }) {
               />
             </div>
 
-            {/* Email */}
+            {/* Email (optional) */}
             <div className="auth-field">
               <label htmlFor="reg-email">
-                Email <span style={{ color: 'var(--purple)' }}>*</span>
+                Email <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(tuỳ chọn)</span>
               </label>
               <input
                 id="reg-email"
                 type="email"
-                placeholder="hello@gmail.com"
+                placeholder="hello@gmail.com (bỏ trống cũng được)"
                 value={regEmail}
                 onChange={e => setRegEmail(e.target.value)}
-                required
                 autoComplete="email"
                 className="auth-input"
               />
-              <div className="auth-hint">Dùng để đăng nhập bằng email · bạn cũng có thể dùng tên đăng nhập</div>
+              <div className="auth-hint">Để khôi phục mật khẩu · nếu bỏ trống, chỉ đăng nhập bằng tên đăng nhập + mật khẩu</div>
             </div>
 
             {/* Password */}

@@ -438,31 +438,62 @@ DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE habits; EXCEPTION WHEN
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE focus_sessions; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE xp_logs; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- handle_new_user trigger
+-- handle_new_user trigger (resilient — never blocks auth.users insert)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
   base_username TEXT; final_username TEXT; counter INT := 0;
 BEGIN
+  -- Prefer explicit 'username' from metadata, fallback to name/email
   base_username := LOWER(REGEXP_REPLACE(
-    COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', SPLIT_PART(NEW.email,'@',1)),
-    '[^a-z0-9]','','g'));
+    COALESCE(
+      NEW.raw_user_meta_data->>'username',
+      NEW.raw_user_meta_data->>'name',
+      NEW.raw_user_meta_data->>'full_name',
+      SPLIT_PART(NEW.email,'@',1)
+    ),
+    '[^a-z0-9_.]','','g'));
   IF base_username = '' OR base_username IS NULL THEN base_username := 'user'; END IF;
   final_username := base_username;
   WHILE EXISTS (SELECT 1 FROM profiles WHERE username = final_username) LOOP
     counter := counter + 1; final_username := base_username || counter;
   END LOOP;
-  INSERT INTO profiles (id, username, display_name, avatar_url) VALUES (NEW.id, final_username,
-    COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', final_username),
-    NEW.raw_user_meta_data->>'avatar_url') ON CONFLICT (id) DO NOTHING;
-  INSERT INTO streaks (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
-  BEGIN INSERT INTO notification_settings (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+
+  -- Profile insert — catch unique constraint violations
+  BEGIN
+    INSERT INTO profiles (id, username, display_name, avatar_url, email)
+    VALUES (
+      NEW.id,
+      final_username,
+      COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', final_username),
+      NEW.raw_user_meta_data->>'avatar_url',
+      NEW.email
+    ) ON CONFLICT (id) DO UPDATE SET
+      email = EXCLUDED.email,
+      display_name = COALESCE(profiles.display_name, EXCLUDED.display_name);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING '[handle_new_user] profiles insert failed: %', SQLERRM;
+  END;
+
+  -- Streaks init
+  BEGIN
+    INSERT INTO streaks (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING '[handle_new_user] streaks insert failed: %', SQLERRM;
+  END;
+
+  -- Notification settings init
+  BEGIN
+    INSERT INTO notification_settings (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
 
 -- Seed programs
 INSERT INTO programs (title, description, icon, color, category, duration_days, is_template, is_public) VALUES
