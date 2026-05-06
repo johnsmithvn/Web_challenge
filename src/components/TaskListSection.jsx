@@ -1,7 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
+import { useCollections } from '../hooks/useCollections';
+import LinkKBModal from './LinkKBModal';
 
 // Timezone-safe local date string
 const todayStr = () => {
@@ -33,8 +35,10 @@ export default function TaskListSection() {
   const {
     todayTasks, overdueTasks, futureTasks, completedToday,
     addTask, completeTask, uncompleteTask, updateTask, deleteTask, rolloverTask,
+    linkCollection, unlinkCollection,
     isLoading,
   } = useUserTasks();
+  const { items: allCollections, fetchItems: fetchCollections } = useCollections();
 
   const [showForm, setShowForm]     = useState(false);
   const [title, setTitle]           = useState('');
@@ -70,6 +74,12 @@ export default function TaskListSection() {
 
   const [expandedTask, setExpandedTask] = useState(null);
   const [showFuture, setShowFuture]     = useState(false);
+  const [linkTaskId, setLinkTaskId]     = useState(null); // task ID for LinkKBModal
+
+  // Fetch collections when modal opens (allCollections is lazy — not auto-fetched)
+  useEffect(() => {
+    if (linkTaskId && fetchCollections) fetchCollections({});
+  }, [linkTaskId, fetchCollections]);
 
   /* ── Add ── */
   const handleSubmit = useCallback(async (e) => {
@@ -334,6 +344,20 @@ export default function TaskListSection() {
               )}
             </div>
 
+            {/* KB Link */}
+            <div>
+              <button type="button"
+                onClick={() => setLinkTaskId(task.id)}
+                style={{
+                  ...btnBase, fontSize: '0.78rem', padding: '0.28rem 0.6rem',
+                  color: (task._collections || []).length > 0 ? '#22d3ee' : 'var(--text-muted)',
+                  background: (task._collections || []).length > 0 ? 'rgba(6,182,212,0.1)' : 'transparent',
+                  border: `1px solid ${(task._collections || []).length > 0 ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '0.3rem',
+                }}>🔗 {(task._collections || []).length > 0 ? `${(task._collections || []).length} bài viết liên kết` : 'Liên kết bài viết'}
+              </button>
+            </div>
+
             {/* Actions */}
             <div style={{ display: 'flex', gap: '0.4rem' }}>
               <button onClick={() => saveEdit(task.id)} className="btn btn-primary"
@@ -421,7 +445,7 @@ export default function TaskListSection() {
                     background: 'rgba(139,92,246,0.08)', color: 'var(--text-muted)',
                   }}>⏱ {task.duration_est >= 60 ? `${Math.floor(task.duration_est / 60)}h${task.duration_est % 60 ? task.duration_est % 60 + 'p' : ''}` : `${task.duration_est}p`}</span>
                 )}
-                {task.collection_id && (
+                {(task._collections || []).length > 0 && (
                   <span
                     onClick={(e) => { e.stopPropagation(); navigate('/collect'); }}
                     style={{
@@ -429,7 +453,7 @@ export default function TaskListSection() {
                       background: 'rgba(6,182,212,0.1)', color: '#22d3ee', cursor: 'pointer',
                     }}
                     title="Xem bài viết liên kết"
-                  >🔗 KB</span>
+                  >🔗 {(task._collections || []).length} bài</span>
                 )}
               </div>
             </div>
@@ -452,6 +476,13 @@ export default function TaskListSection() {
                 onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
                 ✏️
               </button>
+              <button onClick={() => setLinkTaskId(task.id)} id={`task-link-${task.id}`}
+                style={{ ...btnBase, color: (task._collections || []).length > 0 ? '#22d3ee' : 'var(--text-muted)', opacity: 0.6 }}
+                title="Liên kết bài viết"
+                onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
+                🔗
+              </button>
               <button onClick={() => deleteTask(task.id)} id={`task-delete-${task.id}`}
                 style={{ ...btnBase, color: 'var(--text-muted)', opacity: 0.5 }}
                 title="Xoá"
@@ -467,6 +498,7 @@ export default function TaskListSection() {
   };
 
   return (
+    <>
     <div className="card task-list-card" style={{ padding: '1.25rem', marginBottom: '1.25rem' }}>
 
       {/* ── Header ── */}
@@ -636,6 +668,12 @@ export default function TaskListSection() {
               </div>
             )}
           </div>
+
+          {/* KB Link hint */}
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            💡 Tạo xong nhiệm vụ rồi nhấn 🔗 để liên kết bài viết Knowledge
+          </div>
+
           <button type="submit" className="btn btn-primary" disabled={!title.trim()} id="task-submit-btn"
             style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem', marginTop: '0.25rem' }}>
             📌 Thêm Nhiệm Vụ
@@ -775,5 +813,22 @@ export default function TaskListSection() {
         </div>
       )}
     </div>
+
+      {/* Link KB Modal */}
+      {linkTaskId && (() => {
+        const task = [...todayTasks, ...overdueTasks, ...futureTasks].find(t => t.id === linkTaskId);
+        if (!task) return null;
+        return (
+          <LinkKBModal
+            taskId={linkTaskId}
+            linkedIds={(task._collections || []).map(c => c.id)}
+            allCollections={allCollections}
+            onLink={linkCollection}
+            onUnlink={unlinkCollection}
+            onClose={() => setLinkTaskId(null)}
+          />
+        );
+      })()}
+    </>
   );
 }

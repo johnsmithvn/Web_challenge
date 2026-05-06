@@ -1,5 +1,67 @@
 # CHANGELOG
 
+## v4.5.1 — 2026-05-03
+
+### Fixed
+- **useUserTasks query crash:** Embedded select `task_collections(...)` returns 400 when junction table not yet created. Added graceful fallback → retry with plain `select('*')`. Tasks now load even without migration.
+- **useCollections query crash:** Same `task_collections` join failure. Fallback now retries without `task_collections` (keeps `collection_tags` join), then falls back to plain `select('*')` if both fail.
+- **LinkKBModal empty state:** Modal showed "Chưa có bài viết" because `useCollections()` in `TaskListSection` never called `fetchItems()`. Added `useEffect` to trigger `fetchCollections({})` when modal opens (`linkTaskId` set).
+- **LinkKBModal search:** Now searches both `title` AND `body_text`/`body` fields (previously title only).
+- **profiles INSERT RLS policy missing:** Signup "Database error saving new user" caused by missing INSERT policy on `profiles` table. Added `profiles_insert_own` policy.
+
+### Changed
+- **LinkKBModal max results:** Reduced from 20 → 10 for cleaner UX. Scroll for overflow.
+- **Settings in avatar dropdown:** Added "⚙️ Cài Đặt" menu item between "Phím Tắt" and "Đăng Xuất" in user avatar dropdown.
+- **Edit form KB link button:** Added 🔗 link KB button inside task edit form (opens LinkKBModal inline).
+- **Add form KB hint:** Shows "💡 Tạo xong nhiệm vụ rồi nhấn 🔗 để liên kết bài viết Knowledge" in add form.
+- **CollectPage Task Filter:** Replaced inline chip row with 📌 icon button + dropdown popup in toolbar. Click-outside auto-close. Scrollable task list.
+### Files Modified
+- `src/hooks/useUserTasks.js` — fallback query
+- `src/hooks/useCollections.js` — 2-step fallback query
+- `src/components/LinkKBModal.jsx` — search body, max 10
+- `src/components/TaskListSection.jsx` — fetchCollections trigger, edit form 🔗 button, add form hint
+- `src/components/Navbar.jsx` — Settings in avatar dropdown
+- `data/schema_v4.4.0.sql` — profiles INSERT policy
+- `package.json` — version bump → 4.5.1
+
+---
+
+## v4.5.0 — 2026-05-03
+
+### Added
+- **Task ↔ Knowledge Base Many-to-Many:** Tasks can now link to MULTIPLE Knowledge Base articles, and each article can be linked to multiple tasks. Replaces the old 1:1 `collection_id` FK.
+  - `task_collections` junction table [NEW] — `(task_id, collection_id)` composite PK + RLS + CASCADE delete
+  - `useUserTasks.linkCollection(taskId, collectionId)` [NEW] — optimistic junction insert
+  - `useUserTasks.unlinkCollection(taskId, collectionId)` [NEW] — optimistic junction delete
+  - Embedded Supabase select — 1 query fetches tasks WITH linked collections (no N+1)
+- **LinkKBModal component** [NEW] — Search + checkbox modal to link/unlink Knowledge articles to a task. Max 20 search results. Linked items sorted first.
+- **CollectPage Task Filter:** New `📌 Task:` filter chip row — filter Knowledge articles by linked task. Shows only active (pending) tasks.
+- **CollectPage Task Badge:** Each article card shows `📌 N tasks` badge when linked to tasks.
+
+### Fixed
+- **ArticleCard Tiptap excerpt:** When `body_text` is empty (pre-migration articles), ArticleCard now extracts plain text from Tiptap JSON content instead of showing raw JSON.
+
+### Changed
+- `useUserTasks.js` — Fetch uses embedded select `task_collections(collection_id, collections(id, title, type))`. Each task exposes `_collections` array.
+- `useCollections.js` — Fetch includes `task_collections(task_id)` join. Items expose `_linkedTaskIds` array and `_linkedTaskCount`.
+- `TaskListSection.jsx` — Badge `🔗 KB` → `🔗 N bài`. New 🔗 button per task opens LinkKBModal. Imports `useCollections` + `LinkKBModal`.
+- `CollectPage.jsx` — `pendingTasks` destructured from `useUserTasks`. `filterTaskId` state + filter logic. Task filter chip row. ArticleCard excerpt fix.
+
+### Database
+- `data/schema_v4.4.0.sql` — v4.5.0 section: `task_collections` table + RLS + index + data migration from `user_tasks.collection_id`
+- **Migration:** Run the v4.5.0 section of `schema_v4.4.0.sql` in Supabase SQL Editor BEFORE deploying frontend v4.5.0
+
+### Files Modified
+- `src/hooks/useUserTasks.js`
+- `src/hooks/useCollections.js`
+- `src/components/TaskListSection.jsx`
+- `src/components/LinkKBModal.jsx` [NEW]
+- `src/pages/CollectPage.jsx`
+- `data/schema_v4.4.0.sql`
+- `package.json` — version bump → 4.5.0
+
+---
+
 ## v4.4.0 — 2026-05-02
 
 ### Fixed

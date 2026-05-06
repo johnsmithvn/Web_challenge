@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-05-01
-**Current Version:** v4.3.0
+**Updated:** 2026-05-03
+**Current Version:** v4.5.1
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -426,4 +426,6 @@
 | **v4.2.0** | **🥚 Incubator Multi-Output Router + estimated_time UI** |
 | v4.2.1 | Edit Expense + Sub auto-advance + Incubator Review Banner |
 | **v4.3.0** | **Inbox Filters + Incubator Archive + Tags Cleanup** |
-
+| v4.4.0 | Bug Fixes + Task↔Knowledge 1:1 Link + Inbox Bulk Actions |
+| **v4.5.0** | **Task ↔ KB Many-to-Many (task_collections junction) + KB Task Filter + LinkKBModal** |
+| v4.5.1 | Bug Fixes: query fallback, LinkKBModal empty state, Settings dropdown, profiles RLS |

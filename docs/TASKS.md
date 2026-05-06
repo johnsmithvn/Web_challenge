@@ -1,5 +1,63 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-05-02
+**Updated:** 2026-05-03
+
+---
+
+## v4.5.1 — ✅ DONE (2026-05-03) — Bug Fixes + UX Improvements
+
+### Bug Fixes
+- [x] `useUserTasks.js` — Fallback query when `task_collections` table doesn't exist (400 error → retry plain select)
+- [x] `useCollections.js` — 2-step fallback: retry without `task_collections` → retry plain `select('*')`
+- [x] `LinkKBModal.jsx` — Fix empty modal: trigger `fetchCollections({})` when modal opens
+- [x] `LinkKBModal.jsx` — Search both `title` AND `body_text`/`body` fields
+- [x] `schema_v4.4.0.sql` — Add missing `profiles_insert_own` INSERT RLS policy
+
+### UX Improvements
+- [x] `Navbar.jsx` — Add "⚙️ Cài Đặt" to avatar dropdown menu
+- [x] `LinkKBModal.jsx` — Max results 20 → 10
+- [x] `TaskListSection.jsx` — Add 🔗 link KB button in edit form
+- [x] `TaskListSection.jsx` — Add "💡 Tạo xong... nhấn 🔗" hint in add form
+- [x] `CollectPage.jsx` — Replace inline task chip row with 📌 icon + dropdown popup in toolbar
+
+### Documentation (Rule #13 compliance)
+- [x] `docs/TASKS.md` — This section
+- [x] `CHANGELOG.md` — v4.5.1 entry
+- [x] `package.json` — version bump → 4.5.1
+
+---
+
+## v4.5.0 — ✅ DONE (2026-05-03) — Task ↔ KB Many-to-Many + KB Task Filter
+
+### Phase 10.5A: Database — Junction Table
+- [x] `data/schema_v4.4.0.sql` — Add `task_collections` junction table (composite PK, RLS, CASCADE, index)
+- [x] Migration: INSERT existing `user_tasks.collection_id` data into junction table
+- [x] Deprecate `user_tasks.collection_id` column (COMMENT, keep for rollback)
+
+### Phase 10.5B: Hooks — Embedded Select + Link/Unlink
+- [x] `useUserTasks.js` — Fetch with embedded select `task_collections(collection_id, collections(id, title, type))` → `_collections` array (1 query, no N+1)
+- [x] `useUserTasks.js` — `linkCollection(taskId, collectionId)` + `unlinkCollection(taskId, collectionId)` with optimistic updates
+- [x] `useUserTasks.js` — `addTask` backward compat: inserts into junction when `collectionId` provided
+- [x] `useCollections.js` — Fetch with `task_collections(task_id)` join → `_linkedTaskIds` + `_linkedTaskCount` per item
+
+### Phase 10.5C: UI — Task Side
+- [x] `LinkKBModal.jsx` [NEW] — Search + checkbox modal, max 20 results, linked items sorted first
+- [x] `TaskListSection.jsx` — Badge `🔗 KB` → `🔗 N bài`, new 🔗 button per task opens LinkKBModal, imports `useCollections`
+
+### Phase 10.5D: UI — KB Side
+- [x] `CollectPage.jsx` — `📌 Task:` filter chip row (active tasks only), `filterTaskId` state + filter logic
+- [x] `CollectPage.jsx` — ArticleCard `📌 N tasks` badge when linked
+- [x] `CollectPage.jsx` — Fix ArticleCard excerpt: extract text from Tiptap JSON when `body_text` is empty
+
+### Phase 10.5E: Documentation
+- [x] `docs/TASKS.md` — This section
+- [x] `docs/ARCHITECTURE.md` — Add task_collections table + LinkKBModal + data flow
+- [x] `docs/FEATURES.md` — Update Task + KB sections
+- [x] `docs/PLAN.md` — Add Phase 10.5
+- [x] `CHANGELOG.md` — v4.5.0 entry
+- [x] `package.json` — version bump → 4.5.0
+
+### Verification
+- [x] `npm run build` — 0 errors
 
 ---
 

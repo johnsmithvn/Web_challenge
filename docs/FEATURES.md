@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.3.0
-**Updated:** 2026-05-01
+**Version:** v4.5.0
+**Updated:** 2026-05-03
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -394,7 +394,13 @@
 - **Calendar integration:** Tab 📅 Lịch → click ngày → thấy danh sách tasks đã hoàn thành + expandable description + thời gian hoàn thành
 - **Service Worker notification:** Background check mỗi 60s → fire notification khi task đến hạn (hoạt động cả khi tab đóng, chỉ cần browser mở)
 - **Không tính XP, không tính streak, không gắn journey**
-- **Data:** `user_tasks` (Supabase), guest = in-memory
+- **Task ↔ KB Many-to-Many Link (v4.5.0):**
+  - Nút 🔗 trên mỗi task card → mở `LinkKBModal` (search + checkbox, max 20 kết quả)
+  - Badge `🔗 N bài` trên task card khi có liên kết
+  - Junction table `task_collections` (composite PK, CASCADE, RLS)
+  - Embedded Supabase select: 1 query fetch tasks + linked collections (no N+1)
+  - `linkCollection(taskId, collectionId)` + `unlinkCollection(taskId, collectionId)` với optimistic updates
+- **Data:** `user_tasks` + `task_collections` (Supabase), guest = in-memory
 
 ---
 
@@ -622,8 +628,15 @@
 
 **ArticleCard:**
 - Dùng `body_text` cho excerpt (không hiện JSON raw với bài Tiptap)
+- Fallback: extract text từ Tiptap JSON khi `body_text` chưa có (v4.5.0)
 - `safeHostname()` guard `new URL()` crash
 - Word count read-time khi có `word_count` từ DB
+- Badge `📌 N tasks` khi bài viết được link với task (v4.5.0)
+
+**Task Filter (v4.5.0):**
+- Dòng chip `📌 Task:` bên dưới tag filter — chỉ hiện task active (chưa hoàn thành)
+- Click chip → lọc bài viết đã link với task đó
+- Data: `useCollections` join `task_collections(task_id)` → `_linkedTaskIds` + `_linkedTaskCount`
 
 **ConfirmModal (v3.2.0):**
 - Tất cả delete/switch action dùng `useConfirm()` — không còn `window.confirm()`

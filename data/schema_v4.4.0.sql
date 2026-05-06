@@ -17,6 +17,8 @@ CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles (email) WHERE email IS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "profiles_select_all" ON profiles;
 CREATE POLICY "profiles_select_all" ON profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
+CREATE POLICY "profiles_insert_own" ON profiles FOR INSERT WITH CHECK (id = auth.uid());
 DROP POLICY IF EXISTS "profiles_update_own" ON profiles;
 CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE USING (id = auth.uid());
 
@@ -528,3 +530,32 @@ ALTER TABLE collections
 ALTER TABLE collections
   ADD CONSTRAINT chk_collections_type
   CHECK (type IN ('inbox', 'note', 'link', 'quote', 'learn', 'idea'));
+
+-- ──────────────────────────────────────────────────────────
+-- v4.5.0: Task ↔ Knowledge Base Many-to-Many junction table
+-- Replaces the 1:1 user_tasks.collection_id FK with a proper
+-- junction table supporting N tasks ↔ M collections.
+-- ──────────────────────────────────────────────────────────
+
+-- 25. task_collections (junction: user_tasks ↔ collections)
+CREATE TABLE IF NOT EXISTS task_collections (
+  task_id       UUID NOT NULL REFERENCES user_tasks(id) ON DELETE CASCADE,
+  collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (task_id, collection_id)
+);
+ALTER TABLE task_collections ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "task_collections_own" ON task_collections;
+CREATE POLICY "task_collections_own" ON task_collections FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_tasks WHERE id = task_id AND user_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM user_tasks WHERE id = task_id AND user_id = auth.uid()));
+CREATE INDEX IF NOT EXISTS idx_task_collections_coll ON task_collections(collection_id);
+
+-- Migrate existing 1:1 collection_id data into junction table
+INSERT INTO task_collections (task_id, collection_id)
+SELECT id, collection_id FROM user_tasks
+WHERE collection_id IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+-- Deprecate old column (keep for rollback, remove in next major)
+COMMENT ON COLUMN user_tasks.collection_id IS 'DEPRECATED v4.5.0: use task_collections junction table';

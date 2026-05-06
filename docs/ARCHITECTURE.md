@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.2.0
-**Updated:** 2026-05-01
+**Version:** v4.5.0
+**Updated:** 2026-05-03
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 
@@ -54,6 +54,7 @@ src/
 │   ├── TaskListSection.jsx    # v2.1.0 — Personal tasks UI (📌 Nhiệm Vụ) + energy/duration/recurrence v3.6.0
 │   ├── CashflowBar.jsx       # v3.7.0 — 30-day subscription due date timeline
 │   ├── TagPicker.jsx         # v3.7.0 — Searchable multi-select tag dropdown
+│   ├── LinkKBModal.jsx       # v4.5.0 — Search+checkbox modal to link/unlink KB articles to a task
 │   ├── TrackerSection.jsx     # Read-only 3-week status dots
 │   ├── XpBar.jsx              # XP + level indicator
 │   └── ...
@@ -71,9 +72,9 @@ src/
 │   ├── useFocusTimer.js       # Pomodoro phases, session log, DB sync, journey_id tagging
 │   ├── useMoodSkip.js         # useMoodLog + useSkipReasons hooks, Supabase-first
 │   ├── useXpStore.js          # XP log, level computation, addXp/removeXp, Supabase-first
-│   ├── useUserTasks.js        # v2.1.0 — Personal task CRUD, notification sync
+│   ├── useUserTasks.js        # v2.1.0 — Personal task CRUD, notification sync + M2M link/unlink v4.5.0
 │   ├── useActivityLog.js      # v3.0.0 — Append-only activity logger for Life Log heatmap/timeline
-│   ├── useCollections.js      # v3.0.0 — CRUD for collections (inbox + typed items) + snooze v3.8.0
+│   ├── useCollections.js      # v3.0.0 — CRUD for collections (inbox + typed items) + snooze v3.8.0 + _linkedTaskCount v4.5.0
 │   ├── useExpenses.js         # v3.0.0 — CRUD for expenses (VNĐ, chi tiêu only)
 │   ├── useSubscriptions.js    # v3.0.0 — CRUD for subscriptions (monthly/yearly cycles)
 │   ├── useTags.js             # v3.7.0 → v4.1.0 — Central tag CRUD + link/unlink (expenses, subscriptions, collections) + updateTag + getTagUsageCount
@@ -262,6 +263,11 @@ fitness_logs          ← session log (session_name, duration_min, energy, notes
 -- v4.1.0 (run data/migration_v4.1.0_tag_unification.sql)
 collection_tags       ← junction: collection ↔ tag (CASCADE delete both sides)
 collections.tags      ← TEXT[] column DEPRECATED — use collection_tags junction
+
+-- v4.5.0 (section in schema_v4.4.0.sql)
+task_collections      ← junction: user_tasks ↔ collections (composite PK, CASCADE both sides)
+                        Replaces 1:1 user_tasks.collection_id FK (DEPRECATED)
+                        Query: embedded select avoids N+1
 ```
 
 ### DashboardPage v3.1.0 — Data Sources
@@ -382,6 +388,12 @@ ThemeProvider
 - 8 pages lazy-loaded via `React.lazy` + `Suspense`
 - `ErrorBoundary` wraps routes → friendly fallback thay màn trắng
 - `lazyRetry()` wrapper auto-reload on stale chunk after Vercel redeploy
+
+### 11. Task ↔ KB Many-to-Many (v4.5.0)
+- Junction table `task_collections` replaces 1:1 `user_tasks.collection_id` FK
+- Embedded Supabase select: `task_collections(collection_id, collections(id, title, type))` → 1 query, no N+1
+- `useCollections` also joins `task_collections(task_id)` → `_linkedTaskCount` per article
+- UI: `LinkKBModal` (search + checkbox) on tasks, `📌 Task:` filter chip on CollectPage
 
 ---
 

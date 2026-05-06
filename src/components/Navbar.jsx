@@ -31,7 +31,6 @@ const SECONDARY_NAV = [
   { to: '/quiz',          icon: '🧠', label: 'Quiz' },
   { to: '/leaderboard',   icon: '🏆', label: 'BXH' },
   { to: '/life-journey',  icon: '💛', label: 'Hành Trình' },
-  { to: '/settings',      icon: '⚙️', label: 'Cài Đặt' },
 ];
 
 
@@ -106,6 +105,13 @@ function UserAvatar({ profile, user, onSignOut, onOpenShortcuts, direction = 'do
             id="nav-shortcuts-menu"
           >
             ⌨️ Phím Tắt
+          </button>
+          <button
+            className="nav-user-menu__item"
+            onClick={() => { window.location.href = '/settings'; setOpen(false); }}
+            id="nav-settings-menu"
+          >
+            ⚙️ Cài Đặt
           </button>
           <button
             className="nav-user-menu__item nav-user-menu__item--danger"

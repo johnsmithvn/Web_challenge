@@ -235,7 +235,22 @@ function ArticleCard({ item, onClick }) {
   const meta      = TYPE_META[item.type] || TYPE_META.note;
   const isTiptap  = isTiptapBody(item);
   // Use body_text (plain text) for cards — avoids showing raw JSON for Tiptap articles
-  const plainText = item.body_text || (isTiptap ? '' : item.body) || '';
+  // If body_text is missing for Tiptap, extract text from JSON content
+  let plainText = item.body_text || '';
+  if (!plainText && isTiptap) {
+    try {
+      const json = typeof item.body === 'string' ? JSON.parse(item.body) : item.body;
+      const extractText = (node) => {
+        if (!node) return '';
+        if (node.text) return node.text;
+        if (node.content) return node.content.map(extractText).join(' ');
+        return '';
+      };
+      plainText = extractText(json).trim();
+    } catch { plainText = ''; }
+  } else if (!plainText) {
+    plainText = item.body || '';
+  }
   const mins      = item.word_count ? Math.max(1, Math.ceil(item.word_count / 200)) : readTime(plainText);
   const excp      = plainText.trim().slice(0, 180);
 
@@ -267,6 +282,11 @@ function ArticleCard({ item, onClick }) {
               const color = typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6');
               return <span key={name} className="kb-tag-chip"><span className="kb-tag-dot" style={{ background: color }} />#{name}</span>;
             })}
+            {(item._linkedTaskCount || 0) > 0 && (
+              <span className="kb-tag-chip" style={{ background: 'rgba(6,182,212,0.1)', color: '#22d3ee', borderColor: 'rgba(6,182,212,0.2)' }}>
+                📌 {item._linkedTaskCount} task{item._linkedTaskCount > 1 ? 's' : ''}
+              </span>
+            )}
           </div>
           <span className="kb-card__readtime">⏱ {mins} phút đọc</span>
         </div>
@@ -625,7 +645,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
 export default function CollectPage() {
   const { user } = useAuth();
   const { items, isLoading, fetchItems, addItem, updateItem, deleteItem } = useCollections();
-  const { addTask } = useUserTasks();
+  const { addTask, pendingTasks } = useUserTasks();
   const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag, fetchTags: refetchTags } = useTags();
   const { confirm, ConfirmModal } = useConfirm();
 
@@ -638,6 +658,10 @@ export default function CollectPage() {
   const [activeTag, setActiveTag] = useState('');
   const [sort, setSort]         = useState('newest');
   const [typeFilter, setTypeFilter] = useState('');
+  const [filterTaskId, setFilterTaskId] = useState(''); // filter KB by linked task
+  const [showTaskFilter, setShowTaskFilter] = useState(false); // task filter popup
+  const [taskSearch, setTaskSearch] = useState(''); // search inside task filter
+  const taskFilterRef = useRef(null);
 
   // Bulk actions
   const [bulkMode, setBulkMode] = useState(false);
@@ -646,6 +670,18 @@ export default function CollectPage() {
   useEffect(() => {
     if (user) fetchItems({});
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Close task filter popup on outside click
+  useEffect(() => {
+    if (!showTaskFilter) return;
+    const handler = (e) => {
+      if (taskFilterRef.current && !taskFilterRef.current.contains(e.target)) {
+        setShowTaskFilter(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showTaskFilter]);
 
   /* ── Derived data ─────────────────── */
   const allTags = useMemo(() => {
@@ -666,6 +702,10 @@ export default function CollectPage() {
       // activeTag is now a tag id
       list = list.filter(i => (i._tags || []).some(t => t.id === activeTag));
     }
+    // Task link filter
+    if (filterTaskId) {
+      list = list.filter(i => (i._linkedTaskIds || []).includes(filterTaskId));
+    }
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(i =>
@@ -680,7 +720,7 @@ export default function CollectPage() {
     if (sort === 'alpha')  list = [...list].sort((a, b) => a.title.localeCompare(b.title));
 
     return list;
-  }, [items, typeFilter, activeTag, search, sort]);
+  }, [items, typeFilter, activeTag, filterTaskId, search, sort]);
 
   /* ── Handlers ────────────────────── */
   const openReader = useCallback((item) => { setSelected(item); setView('reader'); }, []);
@@ -846,7 +886,7 @@ export default function CollectPage() {
         </div>
       </div>
 
-      {/* Search + Sort */}
+      {/* Search + Sort + Task Filter */}
       <div className="kb-toolbar">
         <input
           className="kb-search"
@@ -858,6 +898,115 @@ export default function CollectPage() {
         <select className="kb-sort" value={sort} onChange={e => setSort(e.target.value)}>
           {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+
+        {/* Task filter icon + dropdown */}
+        {pendingTasks.length > 0 && (
+          <div ref={taskFilterRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowTaskFilter(v => !v)}
+              title="Lọc theo Task"
+              id="kb-task-filter-btn"
+              style={{
+                background: filterTaskId ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${filterTaskId ? 'rgba(6,182,212,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: 'var(--radius-sm)', padding: '0.45rem 0.6rem',
+                cursor: 'pointer', fontSize: '0.88rem', color: filterTaskId ? '#22d3ee' : 'var(--text-muted)',
+                transition: 'var(--transition-base)', display: 'flex', alignItems: 'center', gap: '0.3rem',
+              }}
+            >
+              📌{filterTaskId ? ' 1' : ''}
+            </button>
+
+            {showTaskFilter && (() => {
+              const q = taskSearch.trim().toLowerCase();
+              const filteredTasks = pendingTasks
+                .filter(t => !q || t.title?.toLowerCase().includes(q))
+                .slice(0, 10);
+              return (
+              <div style={{
+                position: 'absolute', top: '100%', right: 0, marginTop: '0.4rem',
+                background: 'var(--bg-card, #1e1b2e)', border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 'var(--radius-md)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+                width: '300px', maxHeight: '380px', overflow: 'hidden',
+                zIndex: 9999, display: 'flex', flexDirection: 'column',
+              }}>
+                {/* Header */}
+                <div style={{
+                  padding: '0.6rem 0.8rem', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                  fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                  <span>📌 Lọc theo Task</span>
+                  {filterTaskId && (
+                    <button
+                      onClick={() => { setFilterTaskId(''); setShowTaskFilter(false); setTaskSearch(''); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.72rem', color: '#f87171', fontFamily: 'inherit' }}
+                    >Xóa bộ lọc</button>
+                  )}
+                </div>
+
+                {/* Search */}
+                <div style={{ padding: '0.4rem 0.6rem' }}>
+                  <input
+                    type="text"
+                    placeholder="Tìm task..."
+                    value={taskSearch}
+                    onChange={e => setTaskSearch(e.target.value)}
+                    autoFocus
+                    style={{
+                      width: '100%', padding: '0.4rem 0.6rem', fontSize: '0.8rem',
+                      background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
+                      outline: 'none', fontFamily: 'inherit',
+                    }}
+                  />
+                </div>
+
+                {/* Task list */}
+                <div style={{ overflowY: 'auto', maxHeight: '260px', padding: '0.2rem 0.3rem' }}>
+                  {filteredTasks.length === 0 && (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', padding: '1rem 0' }}>
+                      Không tìm thấy task
+                    </div>
+                  )}
+                  {filteredTasks.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => { setFilterTaskId(filterTaskId === t.id ? '' : t.id); setShowTaskFilter(false); setTaskSearch(''); }}
+                      style={{
+                        width: '100%', textAlign: 'left', padding: '0.5rem 0.6rem',
+                        background: filterTaskId === t.id ? 'rgba(6,182,212,0.12)' : 'transparent',
+                        border: 'none', borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)',
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        fontFamily: 'inherit', transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = filterTaskId === t.id ? 'rgba(6,182,212,0.18)' : 'rgba(255,255,255,0.04)'}
+                      onMouseLeave={e => e.currentTarget.style.background = filterTaskId === t.id ? 'rgba(6,182,212,0.12)' : 'transparent'}
+                    >
+                      <span style={{
+                        width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: filterTaskId === t.id ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.06)',
+                        border: `1.5px solid ${filterTaskId === t.id ? '#22d3ee' : 'rgba(255,255,255,0.15)'}`,
+                        color: filterTaskId === t.id ? '#22d3ee' : 'transparent', fontSize: '0.65rem', fontWeight: 700,
+                      }}>{filterTaskId === t.id ? '✓' : ''}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t.title}
+                      </span>
+                    </button>
+                  ))}
+                  {pendingTasks.filter(t => !q || t.title?.toLowerCase().includes(q)).length > 10 && (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.7rem', padding: '0.4rem 0' }}>
+                      Hiện tối đa 10 · thu hẹp từ khoá
+                    </div>
+                  )}
+                </div>
+              </div>
+              );
+            })()}
+          </div>
+        )}
       </div>
 
       {/* Type filter pills */}
@@ -897,6 +1046,8 @@ export default function CollectPage() {
           ))}
         </div>
       )}
+
+
 
       {/* List */}
       {isLoading ? (
