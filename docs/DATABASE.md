@@ -1,8 +1,9 @@
 # DATABASE DESIGN — Life Hub (Personal Life OS)
 **Target:** Supabase (PostgreSQL)
-**Version:** v3.2.0
-**Updated:** 2026-04-26
+**Version:** v4.5.3
+**Updated:** 2026-05-07
 **Strategy:** Production-ready from day 1
+**Source of Truth:** `data/schema_v4.4.0.sql` (25 tables, idempotent, safe to re-run)
 
 ---
 
@@ -21,18 +22,28 @@ profiles ───────────────────────�
     ├──► habit_logs        (per-habit daily)     │
     ├──► focus_sessions    (pomodoro)            │
     ├──► mood_logs / skip_reasons               │
-    ├──► quiz_attempts / daily_challenge_comp.  │
     ├──► notification_settings  (1:1)           │
-    ├──► partner_queue     (auto-match)         │
     │                                           │
     ├──► user_journeys     (journey runs)       │
     ├──► journey_habits    (snapshot per run)   │
     │                                           │
-    ├──► teams             (member1 or member2) │
-    ├──► reactions         (from or to)         │
-    └──► friendships       (requester/addressee)┘
+    ├──► user_tasks ◄──► task_collections ──► collections
+    │                                    (M:N junction v4.5.0)
+    ├──► collections       (inbox + knowledge)  │
+    ├──► expenses          (daily spending)     │
+    ├──► subscriptions     (recurring services) │
+    ├──► activity_logs     (append-only audit)  │
+    ├──► intentions / intention_logs (incubator)│
+    ├──► fitness_logs      (workout sessions)   │
+    │                                           │
+    ├──► tags ◄──► collection_tags              │
+    │         ◄──► expense_tags                 │
+    │         ◄──► subscription_tags            │
+    │                                           │
+    ├──► friendships       (requester/addressee)│
+    └────────────────────────────────────────────┘
 
-programs ──► program_habits   (template library, system + user)
+Programs ──► program_habits   (template library, system + user)
 ```
 
 ---
@@ -659,23 +670,20 @@ On first login (one-time per data type):
 
 ## Migration Files
 
-| File | Version | Content |
-|------|---------|----------|
-| `data/migration_v1.2.0.sql` | v1.2.0 | Create habits, focus_sessions, mood_logs, skip_reasons |
-| `data/migration_v1.4.0.sql` | v1.4.0 | Add action/status/cycle_count/conquered_at to habits |
-| `data/migration_v1.5.0.sql` | v1.5.0 | Create programs, program_habits, user_journeys, journey_habits, habit_logs + seed 5 templates |
-| `data/migration_v1.6.2.sql` | v1.6.2 | Create xp_logs, friendships + enable Realtime |
-| `data/migration_v1.9.0.sql` | v1.9.0 | Update handle_new_user trigger, seed program_habits |
-| `data/supabase_team_v3.sql` | v3.0.0 | team_members, user_programs, team_check_logs, team_rules, team_rule_agreements |
-| `data/migration_v2.1.0.sql` | v2.1.0 | user_tasks table + RLS + indexes |
-| `data/migration_v2.2.2_security.sql` | v2.2.2 | RLS fixes: progress team read, self-check block, streaks write lock, xp_logs constraint, trigger merge |
-| `data/migration_v3.2.0_knowledge.sql` | v3.2.0 | `ALTER TABLE collections ADD COLUMN content_format, body_text, word_count` |
+> **v4.4.0+:** All legacy migration files have been consolidated into `data/schema_v4.4.0.sql`.
+> This single file contains all 25 tables, RLS policies, indexes, triggers, and seed data.
+> It is **idempotent** — safe to re-run on any Supabase project.
+
+| File | Purpose |
+|------|---------|
+| `data/schema_v4.4.0.sql` | **Master schema** — 25 tables + all RLS + triggers + seeds (idempotent) |
+| `data/reset_user_data.sql` | **Reset script** — DELETE all user data, keep auth accounts |
 
 ## Supabase Setup Checklist
 
 - [ ] Create project (region: Southeast Asia – Singapore)
-- [ ] Run migration SQL files in order: v1.2.0 → v1.4.0 → v1.5.0 → v1.6.2 → v1.9.0 → v2.1.0 → v2.2.2 → **v3.2.0**
-- [ ] Enable Realtime for: progress, reactions, streaks, teams, xp_logs, habits, focus_sessions
+- [ ] Run `data/schema_v4.4.0.sql` in SQL Editor (creates everything)
+- [ ] Enable Realtime for: profiles, progress, habits, focus_sessions, xp_logs
 - [ ] Enable Google OAuth (Auth → Providers → Google)
 - [ ] Get URL + anon key from Project Settings → API
 - [ ] Create `.env.local` with the two keys

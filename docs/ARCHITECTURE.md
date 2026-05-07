@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.5.0
-**Updated:** 2026-05-03
+**Version:** v4.5.3
+**Updated:** 2026-05-07
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 
@@ -123,7 +123,6 @@ src/
 │   ├── global.css             # CSS variables, reset, typography
 │   ├── navbar.css             # v3.0.0 — Sidebar (desktop) + Bottom tabs (mobile) + Topbar
 │   ├── quick-capture.css      # v3.0.0 — Floating [+] button + capture modal
-│   ├── placeholder-page.css   # v3.0.0 — Coming-soon placeholder layout
 │   ├── inbox.css              # v3.0.0 — Inbox page (quick-add, items, classify)
 │   ├── collect.css            # v3.0.0 — Collect page (tabs, card grid, search)
 │   ├── finance.css            # v3.0.0 — Finance page (summary, breakdown, forms, sub cards)
@@ -310,6 +309,7 @@ DashboardPage
 | `/friends` | Inline redirect → `/tracker` | — | — |
 | `/life-journey` | LifeJourneyPage | Public | Lazy |
 | `/incubator` | IncubatorPage | Required | Lazy |
+| `/settings` | SettingsPage | Required | Lazy |
 
 
 ---

@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
 **Updated:** 2026-05-07
-**Current Version:** v4.5.2
+**Current Version:** v4.5.3
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -493,3 +493,4 @@
 | **v4.5.0** | **Task ↔ KB Many-to-Many (task_collections junction) + KB Task Filter + LinkKBModal** |
 | v4.5.1 | Bug Fixes: query fallback, LinkKBModal empty state, Settings dropdown, profiles RLS |
 | v4.5.2 | Recovery: 3 corrupted files restored + deprecated meta tag fix |
+| v4.5.3 | Cleanup: archive old docs, remove dead CSS, sync reset script |

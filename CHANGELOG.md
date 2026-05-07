@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v4.5.3 — 2026-05-07
+
+### Changed
+- **`useCollections.js` JSDoc:** Fixed stale type list — removed deprecated `'want'`, added missing `'note'` to match DB CHECK constraint.
+- **`reset_user_data.sql`:** Synced with v4.5.0 schema — added `DELETE FROM task_collections` (was missing), updated table count 24 → 25.
+
+### Removed
+- **`placeholder-page.css`:** Orphan CSS with zero imports — dead code from early development.
+
+### Archived
+- **`docs/TEAM_DESIGN.md`** → `docs/_archived/` — Team feature fully archived, design doc orphaned.
+- **`docs/implementation_plan.md.resolved`** → `docs/_archived/implementation_plan_ai_v3.md` — Resolved AI roadmap from v3.x era.
+- **`Chương Trình Kỷ Luật.pdf`** → `docs/_archived/Chuong_Trinh_Ky_Luat.pdf` — Non-code file removed from repo root.
+- **`dist/` directory** — Stale build output cleaned (already in .gitignore).
+
+---
+
 ## v4.5.2 — 2026-05-07
 
 ### Fixed

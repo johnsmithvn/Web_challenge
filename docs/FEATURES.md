@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.5.0
-**Updated:** 2026-05-03
+**Version:** v4.5.3
+**Updated:** 2026-05-07
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -395,7 +395,7 @@
 - **Service Worker notification:** Background check mỗi 60s → fire notification khi task đến hạn (hoạt động cả khi tab đóng, chỉ cần browser mở)
 - **Không tính XP, không tính streak, không gắn journey**
 - **Task ↔ KB Many-to-Many Link (v4.5.0):**
-  - Nút 🔗 trên mỗi task card → mở `LinkKBModal` (search + checkbox, max 20 kết quả)
+  - Nút 🔗 trên mỗi task card → mở `LinkKBModal` (search + checkbox, max 10 kết quả)
   - Badge `🔗 N bài` trên task card khi có liên kết
   - Junction table `task_collections` (composite PK, CASCADE, RLS)
   - Embedded Supabase select: 1 query fetch tasks + linked collections (no N+1)
@@ -479,7 +479,7 @@
 **Chi tiết:**
 - Quick-add form (text input + submit)
 - Inbox items list với thời gian tạo
-- Classify action: phân loại → Link / Quote / Muốn mua / Học / Ý tưởng
+- Classify action: phân loại → Link / Quote / Học / Ý tưởng / Ghi chú
 - **📌 Task action:** Chuyển inbox item thành Task (v3.0.1)
 - **🔄 Đăng ký action:** Chuyển sang FinancePage tạo Subscription (v3.0.1)
 - **💸 Chi tiêu nhanh (v3.5.0):** Bấm nút → QuickExpenseModal inline (không navigate). Regex tự bóc tách số tiền từ text ("Cafe 50k" → 50,000đ). Pre-fill amount + note + category dropdown 8 loại. Lưu → `addExpense()` + `logActivity()` + xóa item khỏi inbox.
@@ -592,7 +592,7 @@
 **Mô tả:** Kho lưu trữ và viết bài kiến thức đã phân loại — hỗ trợ 2 editor mode.
 
 **Chi tiết:**
-- **6 tabs:** Tất cả / Links / Quotes / Muốn / Học / Ý tưởng
+- **6 tabs:** Tất cả / Links / Quotes / Ghi chú / Học / Ý tưởng
 - **Search filter** theo tiêu đề, nội dung, tag
 - **Tag Autocomplete:** Dropdown searchable (max 10 tags), tạo tag mới bằng Enter
 
