@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 /**
  * useCollections — CRUD for the `collections` table.
  *
- * Types: 'inbox' | 'link' | 'quote' | 'want' | 'learn' | 'idea'
+ * Types: 'inbox' | 'note' | 'link' | 'quote' | 'learn' | 'idea'
  * Status: 'inbox' | 'unread' | 'read' | 'starred' | 'archived'
  *
  * Used by: InboxPage (type='inbox'), CollectPage (all other types)
@@ -17,68 +17,96 @@ export function useCollections() {
   const [items, setItems]       = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ── Fetch all items (recent 500) — joins collection_tags for tag data ──
-  // Graceful fallback: if collection_tags table doesn't exist yet (migration not run),
-  // falls back to plain select (no _tags data).
+  // ── Fetch all items (recent 500) — joins collection_tags + task_collections ──
+  // v4.5.0: Adds task_collections(task_id) join for _linkedTaskIds/_linkedTaskCount.
+  // 2-step fallback: try full join → try without task_collections → plain select.
   const fetchItems = useCallback(async (filters = {}) => {
     if (!enabled) return;
     setIsLoading(true);
+
+    const applyFilters = (q, f) => {
+      if (f.type)   q = q.eq('type', f.type);
+      if (f.status) q = q.eq('status', f.status);
+      if (f.type && f.type !== 'inbox') {
+        if (!f.status) q = q.neq('status', 'archived');
+      }
+      if (f.type === 'inbox') {
+        const today = new Date().toISOString().split('T')[0];
+        q = q.or(`snoozed_until.is.null,snoozed_until.lte.${today}`);
+      }
+      return q;
+    };
+
     try {
-      // Try with junction join first (v4.1.0)
-      let useJoin = true;
+      let joinLevel = 'full'; // full | tags-only | none
+
+      // Step 1: Try with both collection_tags + task_collections (v4.5.0)
       let query = supabase
         .from('collections')
-        .select('*, collection_tags(tag_id, tags(id, name, color))')
+        .select('*, collection_tags(tag_id, tags(id, name, color)), task_collections(task_id)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(500);
-
-      // Apply filters
-      if (filters.type)   query = query.eq('type', filters.type);
-      if (filters.status) query = query.eq('status', filters.status);
-      if (filters.type && filters.type !== 'inbox') {
-        if (!filters.status) query = query.neq('status', 'archived');
-      }
-      if (filters.type === 'inbox') {
-        const today = new Date().toISOString().split('T')[0];
-        query = query.or(`snoozed_until.is.null,snoozed_until.lte.${today}`);
-      }
+      query = applyFilters(query, filters);
 
       let { data, error } = await query;
 
-      // Fallback: if join fails (table not yet created), retry without join
+      // Step 2: Fallback without task_collections (keeps collection_tags)
       if (error) {
-        console.warn('[useCollections] join failed, falling back to plain select:', error.message);
-        useJoin = false;
-        let fallback = supabase
+        console.warn('[useCollections] full join failed, trying tags-only:', error.message);
+        joinLevel = 'tags-only';
+        let q2 = supabase
           .from('collections')
-          .select('*')
+          .select('*, collection_tags(tag_id, tags(id, name, color))')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(500);
+        q2 = applyFilters(q2, filters);
+        const r2 = await q2;
 
-        if (filters.type)   fallback = fallback.eq('type', filters.type);
-        if (filters.status) fallback = fallback.eq('status', filters.status);
-        if (filters.type && filters.type !== 'inbox') {
-          if (!filters.status) fallback = fallback.neq('status', 'archived');
+        if (r2.error) {
+          // Step 3: Plain select (no joins at all)
+          console.warn('[useCollections] tags join failed, plain select:', r2.error.message);
+          joinLevel = 'none';
+          let q3 = supabase
+            .from('collections')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(500);
+          q3 = applyFilters(q3, filters);
+          const r3 = await q3;
+          if (r3.error) throw r3.error;
+          data = r3.data;
+        } else {
+          data = r2.data;
         }
-        if (filters.type === 'inbox') {
-          const today = new Date().toISOString().split('T')[0];
-          fallback = fallback.or(`snoozed_until.is.null,snoozed_until.lte.${today}`);
-        }
-
-        const result = await fallback;
-        if (result.error) throw result.error;
-        data = result.data;
       }
 
-      // Flatten junction join → item._tags = [{id, name, color}, ...]
-      const mapped = (data || []).map(item => ({
-        ...item,
-        _tags: useJoin
+      // Map results based on join level
+      const mapped = (data || []).map(item => {
+        const _tags = joinLevel !== 'none'
           ? (item.collection_tags || []).map(ct => ct.tags).filter(Boolean)
-          : (item.tags || []).map(t => ({ name: t, color: '#8b5cf6' })),
-      }));
+          : (item.tags || []).map(t => ({ name: t, color: '#8b5cf6' }));
+
+        const _linkedTaskIds = joinLevel === 'full'
+          ? (item.task_collections || []).map(tc => tc.task_id).filter(Boolean)
+          : [];
+
+        return {
+          ...item,
+          _tags,
+          _linkedTaskIds,
+          _linkedTaskCount: _linkedTaskIds.length,
+        };
+      });
+
+      // Clean raw junction data
+      mapped.forEach(item => {
+        delete item.collection_tags;
+        delete item.task_collections;
+      });
+
       setItems(mapped);
     } catch (err) {
       console.warn('[useCollections] fetch error:', err.message);

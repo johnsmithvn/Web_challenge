@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-05-03
-**Current Version:** v4.5.1
+**Updated:** 2026-05-07
+**Current Version:** v4.5.2
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -369,6 +369,69 @@
 
 ---
 
+## ✅ Phase 10 — Task ↔ Knowledge Link + Inbox Bulk Actions (v4.4.0)
+*Hoàn thành: 2026-05-02*
+
+### 10.1 — Bug Fixes ✅
+- [x] `IncubatorPage.jsx` — Fix `EXPENSE_DATA.map()` crash → `.categories.map()` + fix field names `cat.id`→`cat.key`, `cat.name`→`cat.label`
+- [x] `useSubscriptions.js` — Fix `getMonthlyCost()` for `3month` (÷3) and `6month` (÷6) cycles
+
+### 10.2 — Activity Log for Inbox Actions ✅
+- [x] `InboxPage.jsx` — `handleClassify()` + `handleSnooze()` → `logActivity()` integration
+
+### 10.3 — Task ↔ Knowledge 1:1 Link ✅
+- [x] `migration_v4.4.0_task_knowledge_link.sql` — `ALTER TABLE user_tasks ADD COLUMN collection_id UUID REFERENCES collections(id)`
+- [x] `useUserTasks.addTask()` — accepts optional `collectionId`
+- [x] `CollectPage.jsx` — ReaderView: 📌 Task button creates task linked to KB item
+- [x] `TaskListSection.jsx` — 🔗 KB badge on tasks with `collection_id`, click navigates to /collect
+
+### 10.4 — Inbox Bulk Actions ✅
+- [x] `InboxPage.jsx` — Toggle "☑ Chọn nhiều" mode, checkbox per item, select all/none
+- [x] `InboxPage.jsx` — Bulk classify (📂 type picker) + bulk delete (🗑)
+- [x] `InboxPage.jsx` — Activity log for bulk operations
+- [x] `inbox.css` — Bulk bar, classify menu, checkbox, selected highlight (dark/light)
+
+---
+
+## ✅ Phase 10.5 — Task ↔ KB Many-to-Many + Recovery (v4.5.0 → v4.5.2)
+*Hoàn thành: 2026-05-07*
+
+### 10.5A — Junction Table (v4.5.0) ✅
+- [x] `schema_v4.4.0.sql` — `task_collections` junction table (composite PK, RLS, CASCADE, index)
+- [x] Migration: INSERT existing `user_tasks.collection_id` data → junction table
+- [x] Deprecate `user_tasks.collection_id` column (COMMENT, keep for rollback)
+
+### 10.5B — Hooks: Embedded Select + Link/Unlink (v4.5.0) ✅
+- [x] `useUserTasks.js` — Fetch with embedded select `task_collections(collection_id, collections(id, title, type))` → `_collections` array (1 query, no N+1)
+- [x] `useUserTasks.js` — `linkCollection(taskId, collectionId)` + `unlinkCollection(taskId, collectionId)` with optimistic updates
+- [x] `useCollections.js` — Fetch with `task_collections(task_id)` join → `_linkedTaskIds` + `_linkedTaskCount` per item
+- [x] Both hooks: 2-step graceful fallback (full → tags-only → plain) when junction table missing
+
+### 10.5C — UI: LinkKBModal + Task Side (v4.5.0) ✅
+- [x] `LinkKBModal.jsx` [NEW] — Search + checkbox modal, max 10 results, linked items sorted first, searches title + body_text/body
+- [x] `TaskListSection.jsx` — Badge `🔗 N bài`, 🔗 button per task opens LinkKBModal, KB link button in edit form
+- [x] `TaskListSection.jsx` — `fetchCollections({})` trigger when modal opens
+
+### 10.5D — UI: KB Side (v4.5.0) ✅
+- [x] `CollectPage.jsx` — 📌 icon + dropdown task filter popup (click-outside auto-close, task search)
+- [x] `CollectPage.jsx` — ArticleCard `📌 N tasks` badge when linked
+- [x] `CollectPage.jsx` — ArticleCard excerpt: extract text from Tiptap JSON when `body_text` is empty
+
+### 10.5E — Bug Fixes (v4.5.1) ✅
+- [x] `useUserTasks.js` — Fallback query when `task_collections` table doesn't exist (400 error → retry plain select)
+- [x] `useCollections.js` — 3-step fallback: full join → tags-only → plain `select('*')`
+- [x] `LinkKBModal.jsx` — Fix empty modal: trigger `fetchCollections({})` when modal opens
+- [x] `schema_v4.4.0.sql` — Add missing `profiles_insert_own` INSERT RLS policy
+- [x] `Navbar.jsx` — Add "⚙️ Cài Đặt" to avatar dropdown menu
+
+### 10.5F — Recovery (v4.5.2) ✅
+- [x] `useUserTasks.js` — Restored from git (0 bytes corruption) + re-applied v4.5.0 upgrades
+- [x] `useCollections.js` — Restored from git (0 bytes corruption) + re-applied v4.5.0 upgrades
+- [x] `LinkKBModal.jsx` — Rebuilt from scratch (no git history)
+- [x] `index.html` — Replace deprecated `apple-mobile-web-app-capable` with `mobile-web-app-capable`
+
+---
+
 ## Semantic Version Map
 
 | Version | Milestone |
@@ -429,3 +492,4 @@
 | v4.4.0 | Bug Fixes + Task↔Knowledge 1:1 Link + Inbox Bulk Actions |
 | **v4.5.0** | **Task ↔ KB Many-to-Many (task_collections junction) + KB Task Filter + LinkKBModal** |
 | v4.5.1 | Bug Fixes: query fallback, LinkKBModal empty state, Settings dropdown, profiles RLS |
+| v4.5.2 | Recovery: 3 corrupted files restored + deprecated meta tag fix |

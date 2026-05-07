@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v4.5.2 — 2026-05-07
+
+### Fixed
+- **3 empty files recovered:** `useUserTasks.js`, `useCollections.js`, and `LinkKBModal.jsx` were corrupted to 0 bytes in commit `d7c29de`. Restored from `cfff3b2` and re-applied v4.5.0/v4.5.1 upgrades.
+  - `useUserTasks.js` — Restored + re-added `task_collections` embedded select with fallback, `linkCollection()`, `unlinkCollection()`, `_collections` array on each task.
+  - `useCollections.js` — Restored + re-added `task_collections(task_id)` join for `_linkedTaskIds`/`_linkedTaskCount`, 2-step fallback (full → tags-only → plain).
+  - `LinkKBModal.jsx` — Rebuilt from scratch: search + checkbox modal, max 10 results, searches title + body_text/body, linked items sorted first, glassmorphism UI.
+- **Deprecated meta tag:** Replaced `<meta name="apple-mobile-web-app-capable">` with `<meta name="mobile-web-app-capable">` in `index.html` to fix Chrome deprecation warning.
+
+### Files Modified
+- `src/hooks/useUserTasks.js` — restored + v4.5.0 upgrades
+- `src/hooks/useCollections.js` — restored + v4.5.0 upgrades
+- `src/components/LinkKBModal.jsx` — rebuilt from spec
+- `index.html` — meta tag fix
+
+---
+
 ## v4.5.1 — 2026-05-03
 
 ### Fixed

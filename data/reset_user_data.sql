@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════
 -- RESET USER DATA — Xóa toàn bộ data app, GIỮ lại auth accounts
--- Synced with: schema_v4.4.0.sql (24 tables)
--- Last updated: 2026-05-03
+-- Synced with: schema_v4.4.0.sql (25 tables)
+-- Last updated: 2026-05-07
 -- Chạy trong Supabase SQL Editor
 -- ⚠️  KHÔNG THỂ HOÀN TÁC — chỉ chạy khi chắc chắn muốn reset
 -- ═══════════════════════════════════════════════════════════════
@@ -26,7 +26,10 @@ DELETE FROM habits;
 -- 4. Tags (after all junction tables)
 DELETE FROM tags;
 
--- 5. Collections & tasks (task FK → collection, must delete tasks first)
+-- 5. Task↔Collection junction (v4.5.0, must go before user_tasks + collections)
+DELETE FROM task_collections;
+
+-- 6. Collections & tasks (task FK → collection, must delete tasks first)
 DELETE FROM user_tasks;
 DELETE FROM collections;
 

@@ -1,5 +1,24 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-05-03
+**Updated:** 2026-05-07
+
+---
+
+## v4.5.2 — ✅ DONE (2026-05-07) — Recovery: Corrupted Files + Meta Tag Fix
+
+### Recovery
+- [x] `src/hooks/useUserTasks.js` — Restored from git (empty 0 bytes in HEAD). Re-applied v4.5.0 upgrades: task_collections embedded select + fallback + linkCollection/unlinkCollection.
+- [x] `src/hooks/useCollections.js` — Restored from git (empty 0 bytes). Re-applied v4.5.0 upgrades: task_collections join + 2-step fallback + _linkedTaskIds/_linkedTaskCount.
+- [x] `src/components/LinkKBModal.jsx` — Rebuilt from scratch (no git history). Search + checkbox modal, max 10 results, linked items sorted first, glassmorphism.
+
+### Bug Fix
+- [x] `index.html` — Replace deprecated `apple-mobile-web-app-capable` meta tag with `mobile-web-app-capable`.
+
+### Documentation
+- [x] `CHANGELOG.md` — v4.5.2 entry
+- [x] `package.json` — version bump → 4.5.2
+
+### Verification
+- [x] `npm run build` — 0 errors (804ms)
 
 ---
 

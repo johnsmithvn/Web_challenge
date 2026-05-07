@@ -57,6 +57,7 @@ export function useUserTasks() {
   const fetchedRef = useRef(false);
 
   // ── Fetch tasks: pending + completed today ─────────────
+  // v4.5.0: Embedded select for task_collections junction with graceful fallback
   const fetchTasks = useCallback(async () => {
     if (!isAuth || !userId) return;
     setIsLoading(true);
@@ -65,21 +66,46 @@ export function useUserTasks() {
       if (!sb) return;
 
       const today = todayStr();
+      const filter = `completed.eq.false,and(completed.eq.true,completed_at.gte.${today}T00:00:00,completed_at.lt.${today}T23:59:59)`;
 
-      // Pending tasks (any date) + completed today
-      const { data, error } = await sb
+      // Try with task_collections join first (v4.5.0)
+      let { data, error } = await sb
         .from('user_tasks')
-        .select('*')
+        .select('*, task_collections(collection_id, collections(id, title, type))')
         .eq('user_id', userId)
-        .or(`completed.eq.false,and(completed.eq.true,completed_at.gte.${today}T00:00:00,completed_at.lt.${today}T23:59:59)`)
+        .or(filter)
         .order('due_date', { ascending: true })
         .order('due_time', { ascending: true, nullsFirst: false });
 
+      // Fallback: if task_collections table doesn't exist yet (migration not run)
       if (error) {
-        console.error('[useUserTasks] fetch error:', error.message);
-      } else {
-        setTasks(data || []);
+        console.warn('[useUserTasks] junction join failed, falling back:', error.message);
+        const result = await sb
+          .from('user_tasks')
+          .select('*')
+          .eq('user_id', userId)
+          .or(filter)
+          .order('due_date', { ascending: true })
+          .order('due_time', { ascending: true, nullsFirst: false });
+
+        if (result.error) {
+          console.error('[useUserTasks] fallback fetch error:', result.error.message);
+        } else {
+          setTasks((result.data || []).map(t => ({ ...t, _collections: [] })));
+        }
+        return;
       }
+
+      // Flatten junction join → task._collections = [{id, title, type}, ...]
+      const mapped = (data || []).map(task => ({
+        ...task,
+        _collections: (task.task_collections || [])
+          .map(tc => tc.collections)
+          .filter(Boolean),
+      }));
+      // Remove raw junction data
+      mapped.forEach(t => delete t.task_collections);
+      setTasks(mapped);
     } catch (err) {
       console.error('[useUserTasks] fetch exception:', err);
     } finally {
@@ -401,6 +427,80 @@ export function useUserTasks() {
     }).catch(() => {});
   }, [tasks]);
 
+  // ── Link collection to task (v4.5.0 junction) ──────────────
+  const linkCollection = useCallback(async (taskId, collectionId) => {
+    if (!isAuth) return false;
+
+    // Optimistic: add to _collections
+    setTasks(prev => prev.map(t => {
+      if (t.id !== taskId) return t;
+      const already = (t._collections || []).some(c => c.id === collectionId);
+      if (already) return t;
+      return { ...t, _collections: [...(t._collections || []), { id: collectionId }] };
+    }));
+
+    try {
+      const sb = await getSb();
+      if (!sb) return false;
+
+      const { error } = await sb.from('task_collections').insert({
+        task_id: taskId,
+        collection_id: collectionId,
+      });
+
+      if (error) {
+        console.error('[useUserTasks] linkCollection error:', error.message);
+        // Rollback
+        setTasks(prev => prev.map(t => {
+          if (t.id !== taskId) return t;
+          return { ...t, _collections: (t._collections || []).filter(c => c.id !== collectionId) };
+        }));
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('[useUserTasks] linkCollection exception:', err);
+      return false;
+    }
+  }, [isAuth]);
+
+  // ── Unlink collection from task (v4.5.0 junction) ──────────
+  const unlinkCollection = useCallback(async (taskId, collectionId) => {
+    if (!isAuth) return false;
+
+    // Backup for rollback
+    const backup = tasks.find(t => t.id === taskId)?._collections || [];
+
+    // Optimistic: remove from _collections
+    setTasks(prev => prev.map(t => {
+      if (t.id !== taskId) return t;
+      return { ...t, _collections: (t._collections || []).filter(c => c.id !== collectionId) };
+    }));
+
+    try {
+      const sb = await getSb();
+      if (!sb) return false;
+
+      const { error } = await sb.from('task_collections')
+        .delete()
+        .eq('task_id', taskId)
+        .eq('collection_id', collectionId);
+
+      if (error) {
+        console.error('[useUserTasks] unlinkCollection error:', error.message);
+        setTasks(prev => prev.map(t => {
+          if (t.id !== taskId) return t;
+          return { ...t, _collections: backup };
+        }));
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('[useUserTasks] unlinkCollection exception:', err);
+      return false;
+    }
+  }, [isAuth, tasks]);
+
   // Derived: split pending vs completed today
   const pendingTasks = tasks.filter(t => !t.completed);
   const completedToday = tasks.filter(t => t.completed);
@@ -431,5 +531,7 @@ export function useUserTasks() {
     deleteTask,
     rolloverTask,
     getCompletedTasks,
+    linkCollection,
+    unlinkCollection,
   };
 }
