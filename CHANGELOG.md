@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## v4.10.0 — 2026-05-09
+### Added
+- **DatePickerPopover:** ClickUp-style date picker with quick shortcuts (Hôm nay, Ngày mai, Tuần sau, 2/4/8 tuần) + mini calendar grid.
+- **Quick date edit:** 📅 button on each task card to change due date instantly via popover.
+- New CSS: `src/styles/datepicker.css`
+
+### Changed
+- **Task forms:** Replaced native `<input type="date">` + `<input type="time">` with DatePickerPopover trigger button in both Add and Edit forms.
+- **Task card actions:** Replaced 🔄 rollover button with 📅 quick date picker.
+
+## v4.9.0 — 2026-05-09
+### Changed
+- **Task Priority:** Replaced Energy Level (⚡🔋🪫) + Duration Estimate (5p-2h+) with 5-level Priority system (⬇️ Rất thấp → ⚡ Khẩn cấp).
+- **Label clarity:** `📅 Ngày` → `📅 Khi nào` to clarify due date meaning.
+
+### Removed
+- Energy Level selector (add/edit/view badges)
+- Duration Estimate selector (add/edit/view badges)
+- Energy Filter chips bar
+- DB columns: `energy_level`, `duration_est` (via migration)
+
+### Added
+- `priority SMALLINT` column in `user_tasks` (0=None, 1-5)
+- Priority selector in Add + Edit forms
+- Priority badge on task cards
+
 ## v4.8.0 — 2026-05-09
 ### Changed
 - **Incubator UI Redesign:** Replaced single-list + archive toggle with 2-tab layout (🥚 Đang ấp / 🗑 Đã bỏ qua).

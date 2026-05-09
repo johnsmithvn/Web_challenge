@@ -3,6 +3,34 @@
 
 ---
 
+## v4.10.0 — ✅ DONE (2026-05-09) — ClickUp-style DatePicker
+
+### Changes
+- [x] New `DatePickerPopover.jsx` (shortcuts + calendar grid)
+- [x] New `datepicker.css` (2-column layout, dark theme)
+- [x] Replace native date/time inputs in Add form
+- [x] Replace native date/time inputs in Edit form
+- [x] Replace 🔄 rollover with 📅 quick date button on cards
+- [x] `npm run build` — 0 errors
+
+---
+
+## v4.9.0 — ✅ DONE (2026-05-09) — Task Priority System
+
+### Changes
+- [x] Remove Energy Level (⚡🔋🪫) from UI
+- [x] Remove Duration Estimate (5p-2h+) from UI
+- [x] Remove Energy Filter bar
+- [x] Add Priority 5-level (⬇️→⚡) to Add/Edit/View
+- [x] DB migration: drop `energy_level`, `duration_est`, add `priority`
+- [x] Fix label: 📅 Ngày → 📅 Khi nào
+- [x] Fix InboxPage `metaCache` crash (dead code cleanup)
+
+### Verification
+- [x] `npm run build` — 0 errors
+
+---
+
 ## v4.8.0 — ✅ DONE (2026-05-09) — Incubator UI Redesign
 
 ### UI Changes

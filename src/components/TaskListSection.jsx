@@ -4,6 +4,7 @@ import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
 import { useCollections } from '../hooks/useCollections';
 import LinkKBModal from './LinkKBModal';
+import DatePickerPopover from './DatePickerPopover';
 
 // Timezone-safe local date string
 const todayStr = () => {
@@ -11,20 +12,13 @@ const todayStr = () => {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
 
-const ENERGY_OPTIONS = [
-  { key: null, label: 'Tất cả', icon: '📋' },
-  { key: 'high', label: 'Cao', icon: '⚡' },
-  { key: 'medium', label: 'Vừa', icon: '🔋' },
-  { key: 'low', label: 'Thấp', icon: '🪫' },
-  { key: 'none', label: 'Chưa gắn', icon: '➖' },
-];
-
-const DURATION_OPTIONS = [
-  { value: 5, label: '5p' },
-  { value: 15, label: '15p' },
-  { value: 30, label: '30p' },
-  { value: 60, label: '1h' },
-  { value: 120, label: '2h+' },
+const PRIORITY_OPTIONS = [
+  { value: 0, label: 'Không', icon: '➖', color: 'var(--text-muted)' },
+  { value: 1, label: 'Rất thấp', icon: '⬇️', color: '#94a3b8' },
+  { value: 2, label: 'Thấp', icon: '🔽', color: '#60a5fa' },
+  { value: 3, label: 'Trung bình', icon: '▶️', color: '#eab308' },
+  { value: 4, label: 'Cao', icon: '🔼', color: '#f97316' },
+  { value: 5, label: 'Khẩn cấp', icon: '⚡', color: '#ef4444' },
 ];
 
 const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -46,17 +40,13 @@ export default function TaskListSection() {
   const [dueDate, setDueDate]       = useState(todayStr());
   const [dueTime, setDueTime]       = useState('');
 
-  // Energy + Duration + Recurrence form state
-  const [energyLevel, setEnergyLevel]   = useState(null);
-  const [durationEst, setDurationEst]   = useState(null);
+  // Priority + Recurrence form state
+  const [priority, setPriority]         = useState(0);
   const [showRecurrence, setShowRecurrence] = useState(false);
   const [recType, setRecType]           = useState('interval');
   const [recDays, setRecDays]           = useState(7);
   const [recWeekday, setRecWeekday]     = useState(1);
   const [recMonthDay, setRecMonthDay]   = useState(1);
-
-  // Filter state
-  const [filterEnergy, setFilterEnergy] = useState(null);
 
   // Edit state — full fields
   const [editId, setEditId]               = useState(null);
@@ -64,8 +54,7 @@ export default function TaskListSection() {
   const [editDesc, setEditDesc]           = useState('');
   const [editDate, setEditDate]           = useState('');
   const [editTime, setEditTime]           = useState('');
-  const [editEnergy, setEditEnergy]       = useState(null);
-  const [editDuration, setEditDuration]   = useState(null);
+  const [editPriority, setEditPriority]   = useState(0);
   const [editShowRec, setEditShowRec]     = useState(false);
   const [editRecType, setEditRecType]     = useState('interval');
   const [editRecDays, setEditRecDays]     = useState(7);
@@ -74,6 +63,9 @@ export default function TaskListSection() {
 
   const [expandedTask, setExpandedTask] = useState(null);
   const [showFuture, setShowFuture]     = useState(false);
+  const [showAddDP, setShowAddDP]       = useState(false);
+  const [showEditDP, setShowEditDP]     = useState(false);
+  const [quickDateTaskId, setQuickDateTaskId] = useState(null);
   const [linkTaskId, setLinkTaskId]     = useState(null); // task ID for LinkKBModal
 
   // Fetch collections when modal opens (allCollections is lazy — not auto-fetched)
@@ -98,15 +90,14 @@ export default function TaskListSection() {
       description: description.trim() || null,
       dueDate: dueDate || todayStr(),
       dueTime: dueTime || null,
-      energyLevel: energyLevel,
-      durationEst: durationEst,
+      priority,
       recurrenceRule,
     });
     setTitle(''); setDescription(''); setDueDate(todayStr()); setDueTime('');
-    setEnergyLevel(null); setDurationEst(null);
+    setPriority(0);
     setShowRecurrence(false); setRecType('interval'); setRecDays(7);
     setShowForm(false);
-  }, [title, description, dueDate, dueTime, energyLevel, durationEst, showRecurrence, recType, recDays, recWeekday, recMonthDay, addTask]);
+  }, [title, description, dueDate, dueTime, priority, showRecurrence, recType, recDays, recWeekday, recMonthDay, addTask]);
 
   /* ── Inline edit ── */
   const startEdit = (task) => {
@@ -115,8 +106,7 @@ export default function TaskListSection() {
     setEditDesc(task.description || '');
     setEditDate(task.due_date || todayStr());
     setEditTime(task.due_time ? task.due_time.substring(0,5) : '');
-    setEditEnergy(task.energy_level || null);
-    setEditDuration(task.duration_est || null);
+    setEditPriority(task.priority || 0);
     const rec = task.recurrence_rule;
     if (rec) {
       setEditShowRec(true);
@@ -144,8 +134,7 @@ export default function TaskListSection() {
       description:      editDesc.trim() || null,
       due_date:         editDate || todayStr(),
       due_time:         editTime || null,
-      energy_level:     editEnergy,
-      duration_est:     editDuration,
+      priority:         editPriority,
       recurrence_rule:  recurrenceRule,
     });
     setEditId(null);
@@ -178,15 +167,9 @@ export default function TaskListSection() {
 
   const totalPending = todayTasks.length + overdueTasks.length + futureTasks.length;
 
-  // Apply energy filter
-  const filterFn = (tasks) => {
-    if (!filterEnergy) return tasks;
-    if (filterEnergy === 'none') return tasks.filter(t => !t.energy_level);
-    return tasks.filter(t => t.energy_level === filterEnergy);
-  };
-  const filteredToday   = filterFn(todayTasks);
-  const filteredOverdue = filterFn(overdueTasks);
-  const filteredFuture  = filterFn(futureTasks);
+  const filteredToday   = todayTasks;
+  const filteredOverdue = overdueTasks;
+  const filteredFuture  = futureTasks;
 
   const totalCount = totalPending + completedToday.length;
 
@@ -226,53 +209,44 @@ export default function TaskListSection() {
               onChange={e => setEditDesc(e.target.value)}
               rows={2} placeholder="Mô tả..." style={{ resize: 'none', fontSize: '0.82rem' }} />
 
-            {/* Date + Time */}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>📅 Ngày</label>
-                <input type="date" className="auth-input" value={editDate}
-                  onChange={e => setEditDate(e.target.value)} style={{ fontSize: '0.82rem', width: '100%' }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>⏰ Giờ</label>
-                <input type="time" className="auth-input" value={editTime}
-                  onChange={e => setEditTime(e.target.value)} style={{ fontSize: '0.82rem', width: '100%' }} />
-              </div>
+            {/* Date + Time (DatePicker) */}
+            <div style={{ position: 'relative' }}>
+              <button type="button" onClick={() => setShowEditDP(!showEditDP)}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '0.45rem 0.6rem',
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
+                  fontSize: '0.82rem', cursor: 'pointer',
+                }}>
+                📅 {editDate ? new Date(editDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
+                {editTime && ` · ⏰ ${editTime}`}
+              </button>
+              {showEditDP && (
+                <DatePickerPopover
+                  value={editDate}
+                  onChange={(d) => setEditDate(d)}
+                  onClose={() => setShowEditDP(false)}
+                  timeValue={editTime}
+                  onTimeChange={setEditTime}
+                  style={{ top: '100%', left: 0, marginTop: '0.25rem' }}
+                />
+              )}
             </div>
 
-            {/* Energy */}
+            {/* Priority */}
             <div>
-              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Năng lượng</label>
-              <div style={{ display: 'flex', gap: '0.3rem' }}>
-                {ENERGY_OPTIONS.filter(o => o.key && o.key !== 'none').map(opt => (
-                  <button key={opt.key} type="button"
-                    onClick={() => setEditEnergy(editEnergy === opt.key ? null : opt.key)}
+              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Độ ưu tiên</label>
+              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                {PRIORITY_OPTIONS.filter(o => o.value > 0).map(opt => (
+                  <button key={opt.value} type="button"
+                    onClick={() => setEditPriority(editPriority === opt.value ? 0 : opt.value)}
                     style={{
                       padding: '0.28rem 0.6rem', borderRadius: 'var(--radius-sm)',
                       fontSize: '0.78rem', cursor: 'pointer',
-                      background: editEnergy === opt.key ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${editEnergy === opt.key ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                      color: editEnergy === opt.key ? '#a78bfa' : 'var(--text-muted)',
+                      background: editPriority === opt.value ? `${opt.color}20` : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${editPriority === opt.value ? `${opt.color}60` : 'rgba(255,255,255,0.08)'}`,
+                      color: editPriority === opt.value ? opt.color : 'var(--text-muted)',
                     }}>{opt.icon} {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Duration */}
-            <div>
-              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>⏱ Ước tính thời gian</label>
-              <div style={{ display: 'flex', gap: '0.3rem' }}>
-                {DURATION_OPTIONS.map(opt => (
-                  <button key={opt.value} type="button"
-                    onClick={() => setEditDuration(editDuration === opt.value ? null : opt.value)}
-                    style={{
-                      padding: '0.28rem 0.55rem', borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.78rem', cursor: 'pointer',
-                      background: editDuration === opt.value ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${editDuration === opt.value ? 'rgba(6,182,212,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                      color: editDuration === opt.value ? '#22d3ee' : 'var(--text-muted)',
-                    }}>{opt.label}
                   </button>
                 ))}
               </div>
@@ -432,19 +406,15 @@ export default function TaskListSection() {
                     background: 'rgba(6,182,212,0.1)', color: '#22d3ee',
                   }}>🔁 {task.recurrence_rule.type === 'interval' ? `${task.recurrence_rule.days}d` : task.recurrence_rule.type === 'weekly' ? WEEKDAYS[task.recurrence_rule.weekday] : `D${task.recurrence_rule.day}`}</span>
                 )}
-                {task.energy_level && (
-                  <span style={{
-                    fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-full)',
-                    background: task.energy_level === 'high' ? 'rgba(234,179,8,0.12)' : task.energy_level === 'medium' ? 'rgba(139,92,246,0.1)' : 'rgba(100,116,139,0.12)',
-                    color: task.energy_level === 'high' ? '#eab308' : task.energy_level === 'medium' ? '#a78bfa' : '#94a3b8',
-                  }}>{task.energy_level === 'high' ? '⚡' : task.energy_level === 'medium' ? '🔋' : '🪫'}</span>
-                )}
-                {task.duration_est && (
-                  <span style={{
-                    fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-full)',
-                    background: 'rgba(139,92,246,0.08)', color: 'var(--text-muted)',
-                  }}>⏱ {task.duration_est >= 60 ? `${Math.floor(task.duration_est / 60)}h${task.duration_est % 60 ? task.duration_est % 60 + 'p' : ''}` : `${task.duration_est}p`}</span>
-                )}
+                {task.priority > 0 && (() => {
+                  const p = PRIORITY_OPTIONS.find(o => o.value === task.priority);
+                  return p ? (
+                    <span style={{
+                      fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-full)',
+                      background: `${p.color}18`, color: p.color,
+                    }}>{p.icon} {p.label}</span>
+                  ) : null;
+                })()}
                 {(task._collections || []).length > 0 && (
                   <span
                     onClick={(e) => { e.stopPropagation(); navigate('/collect'); }}
@@ -459,15 +429,25 @@ export default function TaskListSection() {
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: '0.15rem', flexShrink: 0, alignItems: 'center' }}>
-              {showRollover && (
-                <button onClick={() => rolloverTask(task.id)} id={`task-rollover-${task.id}`}
-                  style={{ ...btnBase, color: '#f59e0b', opacity: 0.8, fontSize: '0.72rem' }}
-                  title="Dời sang hôm nay"
-                  onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                  onMouseLeave={e => e.currentTarget.style.opacity = 0.8}>
-                  🔄
-                </button>
+            <div style={{ display: 'flex', gap: '0.15rem', flexShrink: 0, alignItems: 'center', position: 'relative' }}>
+              {/* Quick date edit button */}
+              <button onClick={() => setQuickDateTaskId(quickDateTaskId === task.id ? null : task.id)}
+                id={`task-date-${task.id}`}
+                style={{ ...btnBase, color: '#a78bfa', opacity: 0.6, fontSize: '0.72rem' }}
+                title="Đổi ngày"
+                onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
+                📅
+              </button>
+              {quickDateTaskId === task.id && (
+                <DatePickerPopover
+                  value={task.due_date}
+                  onChange={(d) => {
+                    if (d) updateTask(task.id, { due_date: d });
+                  }}
+                  onClose={() => setQuickDateTaskId(null)}
+                  style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.25rem' }}
+                />
               )}
               <button onClick={() => startEdit(task)} id={`task-edit-${task.id}`}
                 style={{ ...btnBase, color: 'var(--text-muted)', opacity: 0.6 }}
@@ -537,56 +517,45 @@ export default function TaskListSection() {
             required id="task-title-input" className="auth-input" style={{ fontSize: '0.88rem' }} />
           <textarea placeholder="Mô tả (tuỳ chọn)..." value={description} onChange={e => setDescription(e.target.value)}
             id="task-desc-input" className="auth-input" rows={2} style={{ resize: 'none', fontSize: '0.82rem' }} />
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>📅 Ngày</label>
-              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                id="task-date-input" className="auth-input" style={{ fontSize: '0.82rem', width: '100%' }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>⏰ Giờ (tuỳ chọn)</label>
-              <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)}
-                id="task-time-input" className="auth-input" style={{ fontSize: '0.82rem', width: '100%' }} />
-            </div>
+          {/* Date + Time (DatePicker) */}
+          <div style={{ position: 'relative' }}>
+            <button type="button" onClick={() => setShowAddDP(!showAddDP)} id="task-date-input"
+              style={{
+                width: '100%', textAlign: 'left', padding: '0.5rem 0.65rem',
+                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
+                fontSize: '0.82rem', cursor: 'pointer',
+              }}>
+              📅 {dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
+              {dueTime && ` · ⏰ ${dueTime}`}
+            </button>
+            {showAddDP && (
+              <DatePickerPopover
+                value={dueDate}
+                onChange={(d) => setDueDate(d)}
+                onClose={() => setShowAddDP(false)}
+                timeValue={dueTime}
+                onTimeChange={setDueTime}
+                style={{ top: '100%', left: 0, marginTop: '0.25rem' }}
+              />
+            )}
           </div>
-
-          {/* ── Energy Level ── */}
+          {/* ── Priority ── */}
           <div>
-            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Năng lượng</label>
-            <div style={{ display: 'flex', gap: '0.3rem' }}>
-              {ENERGY_OPTIONS.filter(o => o.key && o.key !== 'none').map(opt => (
-                <button key={opt.key} type="button"
-                  onClick={() => setEnergyLevel(energyLevel === opt.key ? null : opt.key)}
+            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Độ ưu tiên</label>
+            <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+              {PRIORITY_OPTIONS.filter(o => o.value > 0).map(opt => (
+                <button key={opt.value} type="button"
+                  onClick={() => setPriority(priority === opt.value ? 0 : opt.value)}
                   style={{
                     padding: '0.3rem 0.65rem', borderRadius: 'var(--radius-sm)',
                     fontSize: '0.78rem', cursor: 'pointer',
-                    background: energyLevel === opt.key ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${energyLevel === opt.key ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                    color: energyLevel === opt.key ? '#a78bfa' : 'var(--text-muted)',
+                    background: priority === opt.value ? `${opt.color}20` : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${priority === opt.value ? `${opt.color}60` : 'rgba(255,255,255,0.08)'}`,
+                    color: priority === opt.value ? opt.color : 'var(--text-muted)',
                     transition: 'var(--transition-base)',
                   }}>
                   {opt.icon} {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Duration Estimate ── */}
-          <div>
-            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Ước tính thời gian</label>
-            <div style={{ display: 'flex', gap: '0.3rem' }}>
-              {DURATION_OPTIONS.map(opt => (
-                <button key={opt.value} type="button"
-                  onClick={() => setDurationEst(durationEst === opt.value ? null : opt.value)}
-                  style={{
-                    padding: '0.3rem 0.6rem', borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.78rem', cursor: 'pointer',
-                    background: durationEst === opt.value ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${durationEst === opt.value ? 'rgba(6,182,212,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                    color: durationEst === opt.value ? '#22d3ee' : 'var(--text-muted)',
-                    transition: 'var(--transition-base)',
-                  }}>
-                  {opt.label}
                 </button>
               ))}
             </div>
@@ -681,27 +650,6 @@ export default function TaskListSection() {
         </form>
       )}
 
-      {/* ── Energy Filter Chips ── */}
-      {totalPending > 0 && (
-        <div style={{ display: 'flex', gap: '0.3rem', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
-          {ENERGY_OPTIONS.map(opt => (
-            <button
-              key={opt.key ?? 'all'}
-              onClick={() => setFilterEnergy(opt.key)}
-              style={{
-                padding: '0.2rem 0.6rem', borderRadius: 'var(--radius-full)',
-                fontSize: '0.72rem', fontWeight: filterEnergy === opt.key ? 700 : 500,
-                background: filterEnergy === opt.key ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${filterEnergy === opt.key ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                color: filterEnergy === opt.key ? '#a78bfa' : 'var(--text-muted)',
-                cursor: 'pointer', transition: 'var(--transition-base)',
-              }}
-            >
-              {opt.icon} {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* ── Overdue Section ── */}
       {filteredOverdue.length > 0 && (
