@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## v4.10.1 — 2026-05-10
+### Changed
+- **DatePicker — Always-visible time input:** Time input now always shown (removed "Thêm giờ" toggle). Defaults to current local time (`HH:MM`) when opening picker. "Bây giờ" quick-set button added.
+- **DatePicker — Start-time semantics:** Header label changed from "📅 Khi nào" → "📅 Bắt đầu lúc" to clarify the date/time represents when user should START the task, not a deadline.
+- **Task default time:** If user doesn't explicitly set a time, defaults to `00:00` (midnight = "start of day / unspecified"). Previously stored as `null`.
+- **Task card time badge:** `⏰` badge only shows for tasks with explicitly set time (not `00:00`).
+- **Notification logic:** Service Worker skips `00:00` tasks for notifications — only tasks with user-set times trigger reminders.
+
+### Added
+- `dp-time__now-btn` CSS class for the "Bây giờ" quick-set button in DatePicker.
+- `hideTime` prop on `DatePickerPopover` for contexts where time input should be hidden.
+- `nowHHMM()` helper function in DatePicker and TaskListSection.
+
+### Files Modified
+- `src/components/DatePickerPopover.jsx` — always-visible time, smart defaults, label change
+- `src/components/TaskListSection.jsx` — default dueTime to now, hide 00:00 badges
+- `src/hooks/useUserTasks.js` — default due_time to '00:00', filter SW sync
+- `src/styles/datepicker.css` — .dp-time__now-btn styles
+- `public/sw.js` — skip 00:00 notifications
+- `package.json` — version bump → 4.10.1
+
 ## v4.10.0 — 2026-05-09
 ### Added
 - **DatePickerPopover:** ClickUp-style date picker with quick shortcuts (Hôm nay, Ngày mai, Tuần sau, 2/4/8 tuần) + mini calendar grid.

@@ -3,6 +3,7 @@ import '../styles/datepicker.css';
 
 // ── Date helpers ──────────────────────────────────────────
 const toStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const nowHHMM = () => { const n = new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; };
 
 const WEEKDAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const MONTH_NAMES = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
@@ -66,26 +67,27 @@ function buildCalendar(year, month) {
  * then clicks Save to confirm, or X to cancel.
  *
  * Props:
- *   value       — current date string (YYYY-MM-DD) or ''
- *   onChange     — (dateStr) => void — called on Save
- *   onClose      — () => void — called on Cancel/X
- *   timeValue   — current time string (HH:MM) or ''
- *   onTimeChange — (timeStr) => void (optional, enables time input)
- *   style       — optional positioning styles for the popover
+ *   value        — current date string (YYYY-MM-DD) or ''
+ *   onChange      — (dateStr) => void — called on Save
+ *   onClose       — () => void — called on Cancel/X
+ *   timeValue    — current time string (HH:MM) or ''
+ *   onTimeChange  — (timeStr) => void — called on Save with time
+ *   hideTime     — if true, hide time input (for quick date-only pickers)
+ *   style        — optional positioning styles for the popover
  */
-export default function DatePickerPopover({ value, onChange, onClose, timeValue, onTimeChange, style }) {
+export default function DatePickerPopover({ value, onChange, onClose, timeValue, onTimeChange, hideTime, style }) {
   const today = useMemo(() => new Date(), []);
   const todayStr = useMemo(() => toStr(today), [today]);
 
   // Draft state — internal selection before Save
   const [draft, setDraft] = useState(value || '');
-  const [draftTime, setDraftTime] = useState(timeValue || '');
+  // Default time: use provided value, or current HH:MM if none
+  const [draftTime, setDraftTime] = useState(timeValue || nowHHMM());
 
   // Calendar view month
   const initialDate = value ? new Date(value + 'T00:00:00') : today;
   const [viewYear, setViewYear] = useState(initialDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth());
-  const [showTime, setShowTime] = useState(!!timeValue);
 
   const popoverRef = useRef(null);
 
@@ -135,38 +137,31 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
   // ── Save / Cancel ──
   const handleSave = useCallback(() => {
     onChange(draft);
-    if (onTimeChange && draftTime !== (timeValue || '')) {
-      onTimeChange(draftTime);
+    if (onTimeChange) {
+      // Always save time — default to '00:00' if user cleared it
+      onTimeChange(draftTime || '00:00');
     }
     onClose();
-  }, [draft, draftTime, onChange, onTimeChange, timeValue, onClose]);
+  }, [draft, draftTime, onChange, onTimeChange, onClose]);
 
   const draftLabel = draft
     ? new Date(draft + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'short' })
     : null;
 
-  const hasChanges = draft !== (value || '') || draftTime !== (timeValue || '');
+  const hasChanges = draft !== (value || '') || draftTime !== (timeValue || nowHHMM());
+  const showTimeInput = !hideTime;
 
   return (
     <div ref={popoverRef} className="dp-popover" style={style}>
       {/* ── Header ── */}
       <div className="dp-header">
-        <span className="dp-header__tab dp-header__tab--active">📅 Khi nào</span>
+        <span className="dp-header__tab dp-header__tab--active">📅 Bắt đầu lúc</span>
         {draftLabel && (
           <span className="dp-header__value">
             {draftLabel}
             {draftTime && <span style={{ opacity: 0.7 }}> · ⏰ {draftTime}</span>}
             <button className="dp-header__value-clear" onClick={() => { setDraft(''); setDraftTime(''); }} title="Xoá">✕</button>
           </span>
-        )}
-        {onTimeChange && (
-          <button
-            className={`dp-header__tab${showTime ? ' dp-header__tab--active' : ''}`}
-            onClick={() => setShowTime(!showTime)}
-            style={{ marginLeft: 'auto' }}
-          >
-            ⏰ {showTime ? 'Ẩn giờ' : 'Thêm giờ'}
-          </button>
         )}
       </div>
 
@@ -241,16 +236,22 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
         </div>
       </div>
 
-      {/* ── Time (optional) ── */}
-      {showTime && onTimeChange && (
+      {/* ── Time input (always visible unless hideTime) ── */}
+      {showTimeInput && (
         <div className="dp-time">
-          <span className="dp-time__label">⏰</span>
+          <span className="dp-time__label">⏰ Giờ bắt đầu</span>
           <input
             type="time"
             className="dp-time__input"
             value={draftTime}
             onChange={(e) => setDraftTime(e.target.value)}
           />
+          <button
+            type="button"
+            className="dp-time__now-btn"
+            onClick={() => setDraftTime(nowHHMM())}
+            title="Đặt giờ hiện tại"
+          >Bây giờ</button>
         </div>
       )}
 

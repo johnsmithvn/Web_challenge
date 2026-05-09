@@ -30,6 +30,9 @@ setInterval(() => {
     // Compare HH:MM (due_time from DB is "HH:MM:SS", trim seconds)
     const dueHHMM = task.due_time.substring(0, 5);
 
+    // Skip tasks with default '00:00' time (no explicit time set by user)
+    if (dueHHMM === '00:00') return;
+
     if (dueHHMM <= currentTime) {
       self.registration.showNotification('📌 Nhiệm Vụ Đến Hạn', {
         body: task.title,

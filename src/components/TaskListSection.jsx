@@ -11,6 +11,7 @@ const todayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
+const nowHHMM = () => { const n = new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; };
 
 const PRIORITY_OPTIONS = [
   { value: 0, label: 'Không', icon: '➖', color: 'var(--text-muted)' },
@@ -38,7 +39,7 @@ export default function TaskListSection() {
   const [title, setTitle]           = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate]       = useState(todayStr());
-  const [dueTime, setDueTime]       = useState('');
+  const [dueTime, setDueTime]       = useState(nowHHMM());
 
   // Priority + Recurrence form state
   const [priority, setPriority]         = useState(0);
@@ -89,11 +90,11 @@ export default function TaskListSection() {
       title: title.trim(),
       description: description.trim() || null,
       dueDate: dueDate || todayStr(),
-      dueTime: dueTime || null,
+      dueTime: dueTime || '00:00',
       priority,
       recurrenceRule,
     });
-    setTitle(''); setDescription(''); setDueDate(todayStr()); setDueTime('');
+    setTitle(''); setDescription(''); setDueDate(todayStr()); setDueTime(nowHHMM());
     setPriority(0);
     setShowRecurrence(false); setRecType('interval'); setRecDays(7);
     setShowForm(false);
@@ -219,7 +220,7 @@ export default function TaskListSection() {
                   fontSize: '0.82rem', cursor: 'pointer',
                 }}>
                 📅 {editDate ? new Date(editDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
-                {editTime && ` · ⏰ ${editTime}`}
+                {editTime && editTime !== '00:00' && ` · ⏰ ${editTime}`}
               </button>
               {showEditDP && (
                 <DatePickerPopover
@@ -387,7 +388,7 @@ export default function TaskListSection() {
                     color: overdue ? '#f87171' : '#a78bfa',
                   }}>📅 {fmtDate(task.due_date)}</span>
                 )}
-                {task.due_time && (
+                {task.due_time && task.due_time.substring(0,5) !== '00:00' && (
                   <span style={{
                     fontSize: '0.72rem', padding: '0.1rem 0.45rem', borderRadius: 'var(--radius-full)',
                     background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(6,182,212,0.1)',
@@ -446,6 +447,8 @@ export default function TaskListSection() {
                     if (d) updateTask(task.id, { due_date: d });
                   }}
                   onClose={() => setQuickDateTaskId(null)}
+                  timeValue={task.due_time ? task.due_time.substring(0, 5) : ''}
+                  onTimeChange={(t) => updateTask(task.id, { due_time: t || '00:00' })}
                   style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.25rem' }}
                 />
               )}
@@ -527,7 +530,7 @@ export default function TaskListSection() {
                 fontSize: '0.82rem', cursor: 'pointer',
               }}>
               📅 {dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
-              {dueTime && ` · ⏰ ${dueTime}`}
+              {dueTime && dueTime !== '00:00' && ` · ⏰ ${dueTime}`}
             </button>
             {showAddDP && (
               <DatePickerPopover

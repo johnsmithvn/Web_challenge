@@ -3,6 +3,25 @@
 
 ---
 
+## v4.10.1 — ✅ DONE (2026-05-10) — Task Start Time + Always-Visible Time Input
+
+### Changes
+- [x] DatePicker: Remove "Thêm giờ" toggle, always show time input
+- [x] DatePicker: Default draft time to current local time (`nowHHMM()`)
+- [x] DatePicker: Add "Bây giờ" quick-set button
+- [x] DatePicker: Label "📅 Khi nào" → "📅 Bắt đầu lúc"
+- [x] DatePicker: Label time row "⏰ Giờ bắt đầu"
+- [x] TaskListSection: Default `dueTime` form state to current time
+- [x] TaskListSection: Hide `⏰` badge when time is `00:00`
+- [x] useUserTasks: Default `due_time` to `'00:00'` (not null)
+- [x] useUserTasks: Filter `00:00` tasks from SW notification sync
+- [x] Service Worker: Skip notifications for `00:00` tasks
+- [x] Quick date picker on cards: pass `timeValue` + `onTimeChange`
+- [x] CSS: `.dp-time__now-btn` styles
+- [x] `npm run build` — 0 errors
+
+---
+
 ## v4.10.0 — ✅ DONE (2026-05-09) — ClickUp-style DatePicker
 
 ### Changes

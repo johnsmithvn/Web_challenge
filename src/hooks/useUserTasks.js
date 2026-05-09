@@ -131,7 +131,7 @@ export function useUserTasks() {
       title,
       description: description || null,
       due_date: dueDate || todayStr(),
-      due_time: dueTime || null,
+      due_time: dueTime || '00:00',
       priority: priority || 0,
       recurrence_rule: recurrenceRule || null,
       collection_id: collectionId || null,
@@ -408,7 +408,7 @@ export function useUserTasks() {
     if (!('serviceWorker' in navigator)) return;
 
     const todayTasks = tasks.filter(t =>
-      !t.completed && t.due_date === todayStr() && t.due_time
+      !t.completed && t.due_date === todayStr() && t.due_time && t.due_time.substring(0, 5) !== '00:00'
     ).map(t => ({
       id: t.id,
       title: t.title,
