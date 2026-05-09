@@ -9,8 +9,8 @@ import { useIntentions } from '../hooks/useIntentions';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
 import EXPENSE_DATA from '../data/expense-categories.json';
-import { useLinkMeta } from '../hooks/useLinkMeta';
 import '../styles/inbox.css';
+import '../styles/collect.css';
 
 const CATEGORIES = EXPENSE_DATA.categories;
 
@@ -57,7 +57,6 @@ export default function InboxPage() {
   const [snoozedItems, setSnoozedItems] = useState([]);
   const [overflowMenu, setOverflowMenu] = useState(null); // item.id or null
   const [filter, setFilter] = useState('all'); // 'all' | 'has_url' | 'recent'
-  const { getMeta, metaCache } = useLinkMeta();
 
   // Quick Expense modal state
   const [expenseModal, setExpenseModal] = useState(null); // { item, amount, category, note }

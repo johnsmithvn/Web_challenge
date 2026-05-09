@@ -1,18 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-import { useActivityLog } from '../hooks/useActivityLog';
+import { useCollections } from '../hooks/useCollections';
 import '../styles/quick-capture.css';
 
 /**
  * QuickCapture — Global floating [+] button.
  * Appears on every page (except landing).
  * Captures raw text → inserts into `collections` table as type='inbox'.
+ * Uses useCollections.addItem() for consistency with InboxPage.
  * Guest users see a prompt to login.
  */
 export default function QuickCapture() {
   const { user } = useAuth();
-  const { logActivity } = useActivityLog();
+  const { addItem } = useCollections();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -35,27 +35,32 @@ export default function QuickCapture() {
   }, [open]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const trimmed = text.trim();
     if (!trimmed || !user) return;
 
     setSaving(true);
     try {
-      // Detect if the text looks like a URL
       const isUrl = /^https?:\/\//i.test(trimmed);
+      const words = trimmed.split(/\s+/);
+      const isLong = words.length > 25 || trimmed.length > 100;
 
-      const { error } = await supabase.from('collections').insert({
-        user_id: user.id,
+      // Auto-split: long text → truncated title + full body (same logic as InboxPage)
+      let title = trimmed;
+      let body = '';
+      if (isLong && !isUrl) {
+        title = words.slice(0, 25).join(' ') + (words.length > 25 ? '…' : '');
+        body = trimmed; // full original text preserved in body
+      }
+
+      const result = await addItem({
         type: 'inbox',
-        title: trimmed,
+        title,
         url: isUrl ? trimmed : null,
-        status: 'inbox',
+        body: body || null,
       });
 
-      if (error) {
-        console.error('[QuickCapture] insert error:', error.message);
-      } else {
-        logActivity('collect_add', trimmed, null, { type: 'inbox', is_url: isUrl });
+      if (result) {
         setText('');
         setOpen(false);
       }
@@ -63,6 +68,14 @@ export default function QuickCapture() {
       console.error('[QuickCapture] unexpected error:', err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Enter = submit, Shift+Enter = new line
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
@@ -98,18 +111,18 @@ export default function QuickCapture() {
             <div className="qc-modal__header">📥 Ghi nhanh vào Inbox</div>
             {user ? (
               <>
-                <input
+                <textarea
                   ref={inputRef}
                   className="qc-modal__input"
-                  type="text"
                   placeholder="Nhập ý tưởng, link, ghi chú..."
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  maxLength={500}
+                  onKeyDown={handleKeyDown}
                   disabled={saving}
+                  rows={2}
                 />
                 <div className="qc-modal__footer">
-                  <span className="qc-modal__hint">Enter để lưu · Esc để hủy</span>
+                  <span className="qc-modal__hint">Enter để lưu · Shift+Enter xuống dòng · Esc để hủy</span>
                   <button
                     type="submit"
                     className="btn btn-primary qc-modal__submit"

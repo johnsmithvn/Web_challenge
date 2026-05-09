@@ -19,7 +19,6 @@ export const XP_REWARDS = {
   streak_21:       200,
   daily_challenge: 20,
   quiz_complete:   (score) => Math.round((score / 10) * 50),
-  duo_streak:      30,  // TODO: wire into Team Mode v3 when team check is live
   focus_session:   15,  // awarded directly in useFocusTimer.js (avoid circular import)
 };
 

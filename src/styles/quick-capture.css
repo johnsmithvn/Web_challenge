@@ -148,6 +148,9 @@
   font-family: inherit;
   outline: none;
   transition: border-color 0.15s ease;
+  resize: none;
+  min-height: 46px;
+  line-height: 1.5;
 }
 
 [data-theme="light"] .qc-modal__input {

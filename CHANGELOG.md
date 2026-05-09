@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## v4.7.0 — 2026-05-09
+
+### Removed (Dead Code Cleanup)
+- **`DailyTimeline.jsx`** — dead component, no import anywhere in codebase
+- **`useLinkMeta.js`** — dead hook calling non-existent `/api/meta` endpoint
+- **`XP_REWARDS.duo_streak`** — unused constant for unimplemented Team Mode
+- **`useLinkMeta` import/usage** in `InboxPage.jsx` — always silently failed
+- **Life Journey default events** — replaced hardcoded personal demo data with empty array
+
+### Changed
+- **`QuickCapture.jsx`** — rewrote to use `useCollections.addItem()` instead of raw Supabase insert. Now uses `<textarea>` with Shift+Enter for newlines. Added auto-split logic for long text (>25 words → title truncation + body preservation).
+
+### Files Modified
+- `src/components/DailyTimeline.jsx` — DELETED
+- `src/hooks/useLinkMeta.js` — DELETED
+- `src/pages/InboxPage.jsx` — removed useLinkMeta import + destructuring
+- `src/hooks/useXpStore.js` — removed duo_streak from XP_REWARDS
+- `src/hooks/useLifeJourney.js` — DEFAULT_EVENTS = []
+- `src/components/QuickCapture.jsx` — full rewrite (useCollections + textarea)
+- `src/styles/quick-capture.css` — textarea support (resize, min-height)
+- `docs/FEATURES.md` — removed DailyTimeline reference from Life Log
+
+---
+
+
+
+### Added
+- **Incubator Detail View:** Click any intention card to open a full detail panel with title, reason, cost/time estimates, meta info, and timeline history. Inline edit mode via "✏️ Sửa" button. Action bar at bottom (Thực thi / Dời lại / Bỏ qua).
+
+### Changed
+- **Incubator cards:** Now clickable with hover lift effect. Action buttons moved from card to detail panel for cleaner card UI.
+- **Incubator edit flow:** Replaced small edit modal with inline editing in the detail panel.
+
+### Files Modified
+- `src/pages/IncubatorPage.jsx` — detail view state, handlers, panel UI
+- `src/styles/incubator.css` — detail panel styles, clickable card hover, light mode
+
+---
+
 ## v4.6.0 — 2026-05-09
 
 ### Added

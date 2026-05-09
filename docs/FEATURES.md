@@ -666,7 +666,7 @@
 ## 20. 📅 Life Log (`/life-log`)
 
 **File:** `src/pages/LifeLogPage.jsx` + `src/styles/lifelog.css`
-**Components:** `src/components/ActivityHeatmap.jsx` + `src/components/DailyTimeline.jsx`
+**Components:** `src/components/ActivityHeatmap.jsx`
 **Hook:** `src/hooks/useActivityLog.js`
 
 **Mô tả:** Lịch sử hoạt động toàn hệ thống dạng GitHub contribution heatmap.

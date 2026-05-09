@@ -3,6 +3,31 @@
 
 ---
 
+## v4.7.0 — ✅ DONE (2026-05-09) — Phase 1: Dead Code Cleanup + QuickCapture Upgrade
+
+### Tier 1: Dead Code Removal
+- [x] 1.1 Delete `DailyTimeline.jsx` (dead component, no import)
+- [x] 1.2 Delete `useLinkMeta.js` + remove import from InboxPage
+- [x] 1.3 `user_tasks.collection_id` — already removed in v4.5.4 ✅
+- [x] 1.4 `handleDetailTitleSave` — already removed in v4.6.1 ✅
+- [x] 1.5 Remove `XP_REWARDS.duo_streak` (unused, Team Mode not planned)
+- [x] 1.6 QuickCapture: remove `maxLength={500}`
+- [x] 1.7 Life Journey: replace hardcoded demo events with empty `[]`
+
+### Quick Wins
+- [x] 2.3 QuickCapture: use `useCollections.addItem()` instead of raw Supabase
+- [x] 2.1 QuickCapture: convert `<input>` to `<textarea>` for format preservation
+
+### Documentation Sync
+- [x] CHANGELOG.md — v4.7.0 entry
+- [x] FEATURES.md — update Life Log DailyTimeline reference
+- [x] package.json — version bump → 4.7.0
+
+### Verification
+- [x] `npm run build` — 0 errors (446ms)
+
+---
+
 ## v4.5.4 — ✅ DONE (2026-05-09) — Audit Cleanup: DB Docs + Habit Sort Persist
 
 ### P0-1: DATABASE.md SQL Block Cleanup
