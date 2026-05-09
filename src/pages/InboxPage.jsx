@@ -617,26 +617,7 @@ export default function InboxPage() {
                     day: '2-digit', month: '2-digit',
                   })}
                 </div>
-                {/* Link preview (v4.0.0) */}
-                {item.url && (() => {
-                  const meta = metaCache[item.url];
-                  if (!meta) { getMeta(item.url); return null; }
-                  if (meta.loading) return (
-                    <div className="inbox-item__meta-preview" style={{ opacity: 0.5 }}>
-                      ⏳ Đang tải preview...
-                    </div>
-                  );
-                  if (meta.blocked || (!meta.title && !meta.desc)) return null;
-                  return (
-                    <div className="inbox-item__meta-preview">
-                      {meta.image && <img src={meta.image} alt="" className="inbox-item__meta-img" />}
-                      <div className="inbox-item__meta-text">
-                        {meta.title && <div className="inbox-item__meta-title">{meta.title}</div>}
-                        {meta.desc && <div className="inbox-item__meta-desc">{meta.desc}</div>}
-                      </div>
-                    </div>
-                  );
-                })()}
+
               </div>
 
               <div className="inbox-item__actions">

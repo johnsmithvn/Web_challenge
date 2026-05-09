@@ -544,7 +544,33 @@ export default function IncubatorPage() {
                         >
                           🗑 Bỏ
                         </button>
+                        <button
+                          className="incubator-card__btn incubator-card__btn--timeline"
+                          onClick={(e) => { e.stopPropagation(); toggleTimeline(item.id); }}
+                        >
+                          {expandedId === item.id ? '▲ Ẩn' : '📜 Lịch sử'}
+                        </button>
                       </div>
+                      {/* Timeline expand */}
+                      {expandedId === item.id && (
+                        <div className="incubator-card__timeline">
+                          {timelineLogs.length === 0 ? (
+                            <div className="incubator-card__timeline-empty">Chưa có lịch sử</div>
+                          ) : (
+                            timelineLogs.map((log, i) => {
+                              const d = new Date(log.created_at);
+                              const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+                              return (
+                                <div key={i} className="incubator-card__timeline-item">
+                                  <span className="incubator-card__timeline-date">{dateStr}</span>
+                                  <span className="incubator-card__timeline-action">{ACTION_LABELS[log.action] || log.action}</span>
+                                  {log.reason_note && <span className="incubator-card__timeline-note">— {log.reason_note}</span>}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

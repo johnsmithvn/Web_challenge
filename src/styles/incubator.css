@@ -472,6 +472,54 @@
   background: rgba(239, 68, 68, 0.1);
 }
 
+/* ── Inline Timeline (expand/collapse) ──────────────────── */
+.incubator-card__timeline {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(139, 92, 246, 0.04);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  border-radius: var(--radius-md);
+  animation: modalSlideIn 0.15s ease;
+}
+
+.incubator-card__timeline-empty {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.3rem 0;
+}
+
+.incubator-card__timeline-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.incubator-card__timeline-item:last-child {
+  border-bottom: none;
+}
+
+.incubator-card__timeline-date {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.7rem;
+  min-width: 36px;
+  flex-shrink: 0;
+}
+
+.incubator-card__timeline-action {
+  color: #a78bfa;
+  font-weight: 600;
+}
+
+.incubator-card__timeline-note {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
 /* ── Detail View Panel ─────────────────────────────────────── */
 .incubator-detail {
   background: var(--bg-secondary);
