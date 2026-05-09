@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useCollections } from '../hooks/useCollections';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useExpenses } from '../hooks/useExpenses';
@@ -42,7 +44,7 @@ function formatVND(amount) {
 export default function InboxPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { items, isLoading, fetchItems, classifyItem, deleteItem, addItem, snoozeItem, getSnoozedCount, fetchSnoozedItems } = useCollections();
+  const { items, isLoading, fetchItems, classifyItem, deleteItem, addItem, updateItem, snoozeItem, getSnoozedCount, fetchSnoozedItems } = useCollections();
   const { addTask } = useUserTasks();
   const { addExpense } = useExpenses();
   const { addIntention } = useIntentions();
@@ -63,6 +65,18 @@ export default function InboxPage() {
   // Bulk actions state
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelected, setBulkSelected] = useState(new Set());
+
+  // Quick-add description (v4.6.0)
+  const [quickDesc, setQuickDesc] = useState('');
+  const [showDescInput, setShowDescInput] = useState(false);
+
+  // Detail view (v4.6.0)
+  const [detailItem, setDetailItem] = useState(null);
+  const [detailTitle, setDetailTitle] = useState('');
+  const [detailBody, setDetailBody] = useState('');
+  const [detailSaving, setDetailSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const saveTimerRef = useRef(null);
   const [bulkClassifyMenu, setBulkClassifyMenu] = useState(false);
 
   // Close overflow menu on click outside
@@ -111,20 +125,105 @@ export default function InboxPage() {
 
   const handleQuickAdd = async (e) => {
     e.preventDefault();
-    console.log('[InboxPage] handleQuickAdd fired, quickText:', quickText);
     const trimmed = quickText.trim();
     if (!trimmed) return;
 
     const isUrl = /^https?:\/\//i.test(trimmed);
+    const words = trimmed.split(/\s+/);
+    const isLong = words.length > 25 || trimmed.length > 100;
+
+    // Auto-split: long text → truncated title + full body
+    // TODO: future — AI summarize title from body content
+    let title = trimmed;
+    let autoBody = '';
+    if (isLong && !isUrl) {
+      title = words.slice(0, 25).join(' ') + (words.length > 25 ? '…' : '');
+      autoBody = trimmed; // full original text preserved in body
+    }
+
+    // Merge: user description (if any) appended after auto-body
+    const userDesc = quickDesc.trim();
+    let finalBody = autoBody;
+    if (userDesc && autoBody) {
+      finalBody = autoBody + '\n\n---\n\n' + userDesc;
+    } else if (userDesc) {
+      finalBody = userDesc;
+    }
+
     const result = await addItem({
       type: 'inbox',
-      title: trimmed,
+      title,
       url: isUrl ? trimmed : null,
+      body: finalBody,
     });
     if (result) {
       setQuickText('');
+      setQuickDesc('');
+      setShowDescInput(false);
     }
   };
+
+  // ── Detail View handlers (v4.6.0) ──────────────────────────
+  const openDetail = useCallback((item) => {
+    if (bulkMode) return;
+    setDetailItem(item);
+    setDetailTitle(item.title || '');
+    setDetailBody(item.body || '');
+  }, [bulkMode]);
+
+  const closeDetail = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setDetailItem(null);
+    setDetailTitle('');
+    setDetailBody('');
+    setIsEditing(false);
+    fetchItems({ type: 'inbox' });
+  }, [fetchItems]);
+
+  const handleDetailBodyChange = useCallback((val) => {
+    setDetailBody(val || '');
+  }, []);
+
+  const handleDetailSave = useCallback(async () => {
+    if (!detailItem) return;
+    setDetailSaving(true);
+    const updates = {};
+    if (detailTitle.trim() !== (detailItem.title || '')) updates.title = detailTitle.trim();
+    if (detailBody !== (detailItem.body || '')) updates.body = detailBody;
+    if (Object.keys(updates).length > 0) {
+      await updateItem(detailItem.id, updates);
+      setDetailItem(prev => prev ? { ...prev, ...updates } : null);
+    }
+    setDetailSaving(false);
+    setIsEditing(false);
+  }, [detailItem, detailTitle, detailBody, updateItem]);
+
+  const handleDetailTitleSave = useCallback(async () => {
+    // no-op: title saved via handleDetailSave
+  }, []);
+
+  const handleDetailDelete = useCallback(async () => {
+    if (!detailItem) return;
+    await deleteItem(detailItem.id);
+    closeDetail();
+    fetchItems({ type: 'inbox' });
+  }, [detailItem, deleteItem, closeDetail, fetchItems]);
+
+  const handleDetailClassify = useCallback(async (newType) => {
+    if (!detailItem) return;
+    await classifyItem(detailItem.id, newType);
+    logActivity('inbox_classify', `→ ${newType}: ${detailItem.title || ''}`, 0, { type: newType });
+    closeDetail();
+    fetchItems({ type: 'inbox' });
+  }, [detailItem, classifyItem, logActivity, closeDetail, fetchItems]);
+
+  const handleDetailToTask = useCallback(async () => {
+    if (!detailItem) return;
+    await addTask({ title: detailItem.title, description: detailBody || detailItem.url || '' });
+    await deleteItem(detailItem.id);
+    closeDetail();
+    fetchItems({ type: 'inbox' });
+  }, [detailItem, detailBody, addTask, deleteItem, closeDetail, fetchItems]);
 
   const handleClassify = async (itemId, newType) => {
     const item = items.find(i => i.id === itemId);
@@ -191,7 +290,9 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="inbox-page">
+    <>
+      {!detailItem && (
+      <div className="inbox-page">
       <div className="inbox-page__header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <h1 className="inbox-page__title">📥 Inbox</h1>
@@ -224,21 +325,44 @@ export default function InboxPage() {
 
       {/* Quick add form */}
       <form className="inbox-quick-add" onSubmit={handleQuickAdd}>
-        <input
-          className="inbox-quick-add__input"
-          type="text"
-          placeholder="Nhập nhanh ghi chú, link, ý tưởng..."
-          value={quickText}
-          onChange={(e) => setQuickText(e.target.value)}
-          maxLength={500}
-        />
-        <button
-          type="submit"
-          className="btn btn-primary inbox-quick-add__btn"
-          disabled={!quickText.trim()}
-        >
-          Thêm
-        </button>
+        <div className="inbox-quick-add__row">
+          <textarea
+            className="inbox-quick-add__input"
+            placeholder="Nhập nhanh ghi chú, link, ý tưởng..."
+            value={quickText}
+            onChange={(e) => setQuickText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (quickText.trim()) handleQuickAdd(e);
+              }
+            }}
+          />
+          <button
+            type="button"
+            className={`inbox-desc-toggle${showDescInput ? ' inbox-desc-toggle--active' : ''}`}
+            onClick={() => setShowDescInput(v => !v)}
+            title="Thêm mô tả"
+          >
+            📝
+          </button>
+          <button
+            type="submit"
+            className="btn btn-primary inbox-quick-add__btn"
+            disabled={!quickText.trim()}
+          >
+            Thêm
+          </button>
+        </div>
+        {showDescInput && (
+          <textarea
+            className="inbox-desc-textarea"
+            placeholder="Thêm mô tả chi tiết (không bắt buộc)..."
+            value={quickDesc}
+            onChange={(e) => setQuickDesc(e.target.value)}
+            rows={3}
+          />
+        )}
       </form>
 
       {/* Filter chips */}
@@ -476,7 +600,10 @@ export default function InboxPage() {
           )}
 
           {filtered.map(item => (
-            <div key={item.id} className={`inbox-item${bulkMode && bulkSelected.has(item.id) ? ' inbox-item--selected' : ''}`}>
+            <div
+              key={item.id}
+              className={`inbox-item${bulkMode && bulkSelected.has(item.id) ? ' inbox-item--selected' : ''}`}
+            >
               {/* Bulk checkbox */}
               {bulkMode && (
                 <label className="inbox-item__checkbox" onClick={(e) => e.stopPropagation()}>
@@ -494,16 +621,25 @@ export default function InboxPage() {
                   />
                 </label>
               )}
-              <div className="inbox-item__content">
+              <div 
+                className={`inbox-item__content${!bulkMode ? ' inbox-item__content--clickable' : ''}`}
+                onClick={() => !bulkMode && openDetail(item)}
+              >
                 <div className="inbox-item__title">
                   {item.url ? (
-                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="inbox-item__link">
+                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="inbox-item__link" onClick={(e) => e.stopPropagation()}>
                       🔗 {item.title}
                     </a>
                   ) : (
                     item.title
                   )}
                 </div>
+                {/* Body preview (v4.6.0) */}
+                {item.body && (
+                  <div className="inbox-item__body-preview">
+                    {item.body.length > 80 ? item.body.slice(0, 80) + '…' : item.body}
+                  </div>
+                )}
                 <div className="inbox-item__time">
                   {new Date(item.created_at).toLocaleString('vi-VN', {
                     hour: '2-digit', minute: '2-digit',
@@ -630,6 +766,130 @@ export default function InboxPage() {
         </div>
       );
       })()}
-    </div>
+      </div>
+      )}
+
+      {/* ═══ DETAIL VIEW (v4.6.0) — inline, replaces page content ═══ */}
+      {detailItem && !isEditing && (
+        <div className="kb-reader">
+          {/* Header bar */}
+          <div className="kb-reader__bar">
+            <button className="kb-back-btn" onClick={closeDetail}>← Quay lại</button>
+            <div className="kb-reader__actions">
+              {detailSaving && <span className="inbox-detail__saving">Đang lưu...</span>}
+              <button className="btn btn-ghost kb-action-btn" onClick={handleDetailToTask} title="Chuyển thành Task">📌 Task</button>
+              <button className="btn btn-ghost kb-action-btn" onClick={() => setIsEditing(true)}>✏️ Sửa</button>
+              <button className="btn btn-ghost kb-action-btn kb-action-btn--danger" onClick={handleDetailDelete}>🗑 Xóa</button>
+            </div>
+          </div>
+
+          <div className="kb-reader__layout">
+            <div className="kb-reader__main">
+              {/* Hero */}
+              <div className="kb-reader__hero">
+                <span className="kb-reader__emoji" style={{ '--type-color': '#8b5cf6' }}>📥</span>
+                <h1 className="kb-reader__title" title={detailItem.title}>{detailItem.title}</h1>
+                <div className="kb-reader__meta">
+                  <span style={{ color: '#8b5cf6' }}>Inbox</span>
+                  <span>·</span>
+                  <span>{new Date(detailItem.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                </div>
+                {detailItem.url && (
+                  <a href={detailItem.url} target="_blank" rel="noopener noreferrer" className="kb-reader__source">
+                    🔗 Xem nguồn: {detailItem.url}
+                  </a>
+                )}
+              </div>
+
+              <div className="kb-reader__divider" />
+
+              {/* Body */}
+              <div className="kb-prose">
+                {detailItem.body ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{detailItem.body}</ReactMarkdown>
+                ) : (
+                  <p className="kb-prose__empty">Chưa có nội dung. Nhấn ✏️ Sửa để thêm mô tả.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Classify footer */}
+          <div className="inbox-detail__footer">
+            <div className="inbox-detail__footer-left">
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>Phân loại:</span>
+              <div className="inbox-detail__classify-group">
+                {TYPES.map(t => (
+                  <button
+                    key={t.key}
+                    className="inbox-item__classify-btn"
+                    onClick={() => handleDetailClassify(t.key)}
+                    title={t.desc}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ EDIT MODE (v4.6.0) ═══ */}
+      {detailItem && isEditing && (
+        <div className="kb-editor">
+          {/* Top bar */}
+          <div className="kb-editor__bar">
+            <button className="kb-back-btn" onClick={() => setIsEditing(false)}>← Hủy</button>
+            <button
+              className="btn btn-primary kb-save-btn"
+              onClick={handleDetailSave}
+              disabled={!detailTitle.trim() || detailSaving}
+            >
+              {detailSaving ? '⏳ Đang lưu...' : '💾 Lưu'}
+            </button>
+          </div>
+
+          {/* Title */}
+          <div className="kb-editor__meta">
+            <input
+              className="kb-editor__title"
+              value={detailTitle}
+              onChange={(e) => setDetailTitle(e.target.value)}
+              placeholder="Tiêu đề..."
+              maxLength={500}
+            />
+          </div>
+
+          {/* Body editor — KB-style split pane */}
+          <div className="kb-editor__body">
+            <div className="kb-split">
+              <div className="kb-split__panes">
+                <div className="kb-split__pane kb-split__pane--write">
+                  <div className="kb-split__label">✍️ Viết</div>
+                  <textarea
+                    className="kb-split__textarea"
+                    value={detailBody}
+                    onChange={(e) => handleDetailBodyChange(e.target.value)}
+                    placeholder="Viết mô tả, ghi chú chi tiết bằng Markdown..."
+                    spellCheck={false}
+                  />
+                </div>
+                <div className="kb-split__pane kb-split__pane--preview">
+                  <div className="kb-split__label">👁 Preview</div>
+                  <div className="kb-prose kb-split__preview">
+                    {detailBody ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{detailBody}</ReactMarkdown>
+                    ) : (
+                      <p className="kb-prose__empty">Preview sẽ hiện ở đây...</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

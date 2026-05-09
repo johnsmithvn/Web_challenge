@@ -1,6 +1,28 @@
 # CHANGELOG
 
-## v4.5.4 — 2026-05-09
+## v4.6.0 — 2026-05-09
+
+### Added
+- **Inbox Detail View:** Click any inbox item to open an inline reader view (reusing Knowledge Base `kb-reader` CSS) with rendered Markdown, metadata, and action buttons (📌 Task, ✏️ Sửa, 🗑 Xóa). Edit mode uses KB-style split-pane (✍️ Write / 👁 Preview).
+- **Inbox Description:** Quick-add form now has a 📝 toggle to add an optional description when creating inbox items. Body preview shown on item cards.
+- **Settings Profile Section:** New "Hồ sơ" tab in Settings with sidebar navigation. Users can edit display name, email, and bio. Email duplicate check on save.
+- **Settings Sidebar:** Extensible sidebar navigation in Settings page ("Chung" + "Hồ sơ"). Responsive — collapses to horizontal tabs on mobile.
+- **Auth Form Improvements:** Signup now accepts email as username (auto-fill email field). Smart display_name fallback. Email duplicate check on registration.
+
+### Changed
+- **Inbox detail architecture:** Replaced `@uiw/react-md-editor` overlay with inline reader/editor views reusing KB CSS classes (`kb-reader`, `kb-editor`, `kb-split`, `kb-prose`). Bundle size reduced from 915KB → 19.7KB.
+- **Quick-add form layout:** Wrapped in row container to accommodate description toggle button.
+- **Inbox item cards:** Now clickable (cursor pointer). URL links use `stopPropagation` to avoid opening detail view when clicking links.
+
+### Files Modified
+- `src/pages/InboxPage.jsx` — detail view + description toggle + body preview
+- `src/styles/inbox.css` — detail panel, desc toggle, body preview, clickable items
+- `src/pages/SettingsPage.jsx` — sidebar layout + profile section
+- `src/styles/settings.css` — sidebar + profile styles
+- `src/components/AuthModal.jsx` — smart signup form
+- `src/contexts/AuthContext.jsx` — (no changes, hooks already support body)
+
+---
 
 ### Changed
 - **`DATABASE.md` overhaul (P0):** Removed 560-line stale SQL block containing 6 phantom tables (`teams`, `reactions`, `quiz_attempts`, `daily_challenge_completions`, `partner_queue` + their RLS policies). Replaced with concise Table Inventory reference to `schema_v4.4.0.sql` as single source of truth.

@@ -31,13 +31,14 @@
   font-size: clamp(2rem, 4vw, 3.5rem);
   font-weight: 800;
   margin: 0.25rem 0 0;
-  line-height: 1.15;
+  line-height: 1.3;
+  padding-bottom: 0.2rem;
 }
 
 .kb-subtitle {
   color: var(--text-muted);
   font-size: 0.88rem;
-  margin: 0.4rem 0 0;
+  margin: 0.5rem 0 0;
 }
 
 .kb-new-btn {
@@ -237,9 +238,10 @@
   color: var(--text-primary);
   margin: 0 0 0.35rem;
   line-height: 1.4;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .kb-card__excerpt {
@@ -293,7 +295,7 @@
 .kb-reader__bar {
   position: fixed;
   top: 0;
-  left: 0;
+  left: var(--sidebar-width, 220px);
   right: 0;
   height: 4rem;
   background: rgba(10,10,18,0.85);
@@ -356,6 +358,10 @@
   color: var(--text-primary);
   margin: 0 0 0.75rem;
   line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .kb-reader__meta {
   display: flex;
@@ -392,7 +398,7 @@
   color: var(--text-secondary);
   font-size: 1.05rem;
   line-height: 1.85;
-  max-width: 780px;
+  max-width: 100%;
 }
 .kb-prose__empty {
   color: var(--text-muted);
@@ -905,6 +911,12 @@
 [data-theme="light"] .kb-editor__bar { background: rgba(255,255,255,0.95); }
 
 /* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .kb-reader__bar {
+    left: 0;
+    top: var(--topbar-height, 52px);
+  }
+}
 @media (max-width: 640px) {
   .kb-header { flex-direction: column; }
   .kb-new-btn { width: 100%; }

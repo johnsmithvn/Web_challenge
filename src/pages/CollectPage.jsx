@@ -331,7 +331,7 @@ function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask }) {
         <div className="kb-reader__main">
           <div className="kb-reader__hero">
             <span className="kb-reader__emoji" style={{ '--type-color': meta.color }}><meta.icon size={32} /></span>
-            <h1 className="kb-reader__title">{item.title}</h1>
+            <h1 className="kb-reader__title" title={item.title}>{item.title}</h1>
             <div className="kb-reader__meta">
               <span style={{ color: meta.color }}>{meta.label}</span>
               <span>·</span>
