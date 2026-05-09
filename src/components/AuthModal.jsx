@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import '../styles/auth.css';
 
 const TABS = ['login', 'register'];
@@ -56,27 +57,54 @@ export default function AuthModal({ onClose }) {
     } else {
       // ── Register ──
       const uname = regUsername.trim().toLowerCase();
-      const email = regEmail.trim().toLowerCase();
+      const emailRaw = regEmail.trim().toLowerCase();
 
       if (!uname) { setError('Vui lòng nhập tên đăng nhập'); setLoading(false); return; }
-      if (!isValidUsername(uname)) {
+
+      // Determine if username is an email
+      const usernameIsEmail = isValidEmail(uname);
+
+      // If username is NOT an email → validate as standard username
+      if (!usernameIsEmail && !isValidUsername(uname)) {
         setError('Tên đăng nhập: 3–20 ký tự, chỉ dùng a-z, 0-9, dấu _ hoặc .');
         setLoading(false); return;
       }
-      // Email is optional — generate placeholder if not provided
-      let emailToUse = email;
+
+      // Auto-fill email: if username is email and email field is empty → use username as email
+      let emailToUse = emailRaw;
+      if (!emailToUse && usernameIsEmail) {
+        emailToUse = uname;
+      }
+      // If still no email → generate placeholder (Supabase auth requires email)
       if (!emailToUse) {
-        emailToUse = `${uname}@vuotluoi.local`;
+        emailToUse = `${uname}@lifehub.local`;
       } else if (!isValidEmail(emailToUse)) {
         setError('Email không hợp lệ');
         setLoading(false); return;
       }
 
+      // Check duplicate email if user provided a real email (not placeholder)
+      if (!emailToUse.endsWith('@lifehub.local')) {
+        const { data: existingEmail } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', emailToUse)
+          .maybeSingle();
+        if (existingEmail) {
+          setError('Email này đã được đăng ký');
+          setLoading(false); return;
+        }
+      }
+
+      // Smart display_name fallback
+      const displayName = regDisplayName.trim()
+        || (usernameIsEmail ? uname.split('@')[0] : uname);
+
       const result = await signUp({
         username:    uname,
         email:       emailToUse,
         password:    regPassword,
-        displayName: regDisplayName.trim() || uname,
+        displayName,
       });
 
       setLoading(false);
@@ -189,7 +217,7 @@ export default function AuthModal({ onClose }) {
         {tab === 'register' && (
           <form onSubmit={handleSubmit} className="auth-form">
 
-            {/* Username */}
+            {/* Username (required) */}
             <div className="auth-field">
               <label htmlFor="reg-username">
                 Tên đăng nhập <span style={{ color: 'var(--purple)' }}>*</span>
@@ -197,29 +225,40 @@ export default function AuthModal({ onClose }) {
               <input
                 id="reg-username"
                 type="text"
-                placeholder="minhanh99"
+                placeholder="minhanh99  hoặc  hello@gmail.com"
                 value={regUsername}
-                onChange={e => setRegUsername(e.target.value.toLowerCase())}
+                onChange={e => {
+                  const val = e.target.value.toLowerCase().trim();
+                  setRegUsername(val);
+                  // Auto-fill email if username looks like email and email field is empty
+                  if (isValidEmail(val) && !regEmail) {
+                    setRegEmail(val);
+                  }
+                }}
                 required
                 autoComplete="username"
                 className="auth-input"
                 autoCapitalize="none"
-                maxLength={20}
+                maxLength={50}
               />
-              <div className="auth-hint">3–20 ký tự · a–z, 0–9, dấu _ hoặc . · không cần @</div>
+              <div className="auth-hint">Có thể dùng email làm tên đăng nhập</div>
             </div>
 
-            {/* Display name */}
+            {/* Password (required) */}
             <div className="auth-field">
-              <label htmlFor="reg-displayname">Tên hiển thị (trong team)</label>
+              <label htmlFor="reg-password">
+                Mật khẩu <span style={{ color: 'var(--purple)' }}>*</span>
+              </label>
               <input
-                id="reg-displayname"
-                type="text"
-                placeholder="Ví dụ: Minh Anh (để trống = dùng tên đăng nhập)"
-                value={regDisplayName}
-                onChange={e => setRegDisplayName(e.target.value)}
-                autoComplete="name"
+                id="reg-password"
+                type="password"
+                placeholder="Tối thiểu 6 ký tự"
+                value={regPassword}
+                onChange={e => setRegPassword(e.target.value)}
+                required
+                autoComplete="new-password"
                 className="auth-input"
+                minLength={6}
               />
             </div>
 
@@ -240,21 +279,19 @@ export default function AuthModal({ onClose }) {
               <div className="auth-hint">Để khôi phục mật khẩu · nếu bỏ trống, chỉ đăng nhập bằng tên đăng nhập + mật khẩu</div>
             </div>
 
-            {/* Password */}
+            {/* Display name (optional) */}
             <div className="auth-field">
-              <label htmlFor="reg-password">
-                Mật khẩu <span style={{ color: 'var(--purple)' }}>*</span>
+              <label htmlFor="reg-displayname">
+                Tên hiển thị <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(tuỳ chọn)</span>
               </label>
               <input
-                id="reg-password"
-                type="password"
-                placeholder="Tối thiểu 6 ký tự"
-                value={regPassword}
-                onChange={e => setRegPassword(e.target.value)}
-                required
-                autoComplete="new-password"
+                id="reg-displayname"
+                type="text"
+                placeholder={regUsername ? `Mặc định: ${isValidEmail(regUsername) ? regUsername.split('@')[0] : regUsername}` : 'Để trống = dùng tên đăng nhập'}
+                value={regDisplayName}
+                onChange={e => setRegDisplayName(e.target.value)}
+                autoComplete="name"
                 className="auth-input"
-                minLength={6}
               />
             </div>
 
