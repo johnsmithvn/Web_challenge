@@ -67,12 +67,23 @@ export default function TaskListSection() {
   const [showAddDP, setShowAddDP]       = useState(false);
   const [showEditDP, setShowEditDP]     = useState(false);
   const [quickDateTaskId, setQuickDateTaskId] = useState(null);
+  const [overflowTaskId, setOverflowTaskId]   = useState(null); // mobile "..." action menu
   const [linkTaskId, setLinkTaskId]     = useState(null); // task ID for LinkKBModal
 
   // Fetch collections when modal opens (allCollections is lazy — not auto-fetched)
   useEffect(() => {
     if (linkTaskId && fetchCollections) fetchCollections({});
   }, [linkTaskId, fetchCollections]);
+
+  // Close mobile overflow menu on outside click
+  useEffect(() => {
+    if (!overflowTaskId) return;
+    const handler = (e) => {
+      if (!e.target.closest('.task-actions--mobile')) setOverflowTaskId(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [overflowTaskId]);
 
   /* ── Add ── */
   const handleSubmit = useCallback(async (e) => {
@@ -429,17 +440,68 @@ export default function TaskListSection() {
               </div>
             </div>
 
-            {/* Actions */}
+            {/* Actions — Desktop: inline buttons, Mobile: overflow ⋯ */}
             <div style={{ display: 'flex', gap: '0.15rem', flexShrink: 0, alignItems: 'center', position: 'relative' }}>
-              {/* Quick date edit button */}
-              <button onClick={() => setQuickDateTaskId(quickDateTaskId === task.id ? null : task.id)}
-                id={`task-date-${task.id}`}
-                style={{ ...btnBase, color: '#a78bfa', opacity: 0.6, fontSize: '0.72rem' }}
-                title="Đổi ngày"
-                onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
-                📅
-              </button>
+              {/* ── Desktop buttons (hidden on mobile via CSS) ── */}
+              <div className="task-actions--desktop">
+                <button onClick={() => setQuickDateTaskId(quickDateTaskId === task.id ? null : task.id)}
+                  id={`task-date-${task.id}`}
+                  style={{ ...btnBase, color: '#a78bfa', opacity: 0.6, fontSize: '0.72rem' }}
+                  title="Đổi ngày"
+                  onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                  onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
+                  📅
+                </button>
+                <button onClick={() => startEdit(task)} id={`task-edit-${task.id}`}
+                  style={{ ...btnBase, color: 'var(--text-muted)', opacity: 0.6 }}
+                  title="Sửa"
+                  onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                  onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
+                  ✏️
+                </button>
+                <button onClick={() => setLinkTaskId(task.id)} id={`task-link-${task.id}`}
+                  style={{ ...btnBase, color: (task._collections || []).length > 0 ? '#22d3ee' : 'var(--text-muted)', opacity: 0.6 }}
+                  title="Liên kết bài viết"
+                  onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                  onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
+                  🔗
+                </button>
+                <button onClick={() => deleteTask(task.id)} id={`task-delete-${task.id}`}
+                  style={{ ...btnBase, color: 'var(--text-muted)', opacity: 0.5 }}
+                  title="Xoá"
+                  onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                  onMouseLeave={e => e.currentTarget.style.opacity = 0.5}>
+                  🗑
+                </button>
+              </div>
+
+              {/* ── Mobile overflow button (hidden on desktop via CSS) ── */}
+              <div className="task-actions--mobile">
+                <button
+                  onClick={() => setOverflowTaskId(overflowTaskId === task.id ? null : task.id)}
+                  style={{ ...btnBase, color: 'var(--text-muted)', fontSize: '1rem', opacity: 0.7, padding: '0.15rem 0.3rem' }}
+                  title="Thêm"
+                >⋯</button>
+
+                {overflowTaskId === task.id && (
+                  <div className="task-overflow-menu" onClick={(e) => e.stopPropagation()}>
+                    <button className="task-overflow-item" onClick={() => { setOverflowTaskId(null); setQuickDateTaskId(task.id); }}>
+                      📅 Đổi ngày
+                    </button>
+                    <button className="task-overflow-item" onClick={() => { setOverflowTaskId(null); startEdit(task); }}>
+                      ✏️ Sửa
+                    </button>
+                    <button className="task-overflow-item" onClick={() => { setOverflowTaskId(null); setLinkTaskId(task.id); }}>
+                      🔗 Liên kết KB
+                    </button>
+                    <button className="task-overflow-item task-overflow-item--danger" onClick={() => { setOverflowTaskId(null); deleteTask(task.id); }}>
+                      🗑 Xoá
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick date popover (shared between desktop/mobile) */}
               {quickDateTaskId === task.id && (
                 <DatePickerPopover
                   value={task.due_date}
@@ -452,27 +514,6 @@ export default function TaskListSection() {
                   style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.25rem' }}
                 />
               )}
-              <button onClick={() => startEdit(task)} id={`task-edit-${task.id}`}
-                style={{ ...btnBase, color: 'var(--text-muted)', opacity: 0.6 }}
-                title="Sửa"
-                onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
-                ✏️
-              </button>
-              <button onClick={() => setLinkTaskId(task.id)} id={`task-link-${task.id}`}
-                style={{ ...btnBase, color: (task._collections || []).length > 0 ? '#22d3ee' : 'var(--text-muted)', opacity: 0.6 }}
-                title="Liên kết bài viết"
-                onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
-                🔗
-              </button>
-              <button onClick={() => deleteTask(task.id)} id={`task-delete-${task.id}`}
-                style={{ ...btnBase, color: 'var(--text-muted)', opacity: 0.5 }}
-                title="Xoá"
-                onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                onMouseLeave={e => e.currentTarget.style.opacity = 0.5}>
-                🗑
-              </button>
             </div>
           </div>
         )}

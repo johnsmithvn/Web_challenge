@@ -206,8 +206,7 @@ export function useUserTasks() {
           description: task.description,
           due_date: nextDate,
           due_time: task.due_time,
-          energy_level: task.energy_level,
-          duration_est: task.duration_est,
+          priority: task.priority || 0,
           recurrence_rule: task.recurrence_rule, // clone rule for chain
           completed: false,
           notified: false,

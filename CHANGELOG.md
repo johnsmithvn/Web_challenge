@@ -8,16 +8,24 @@
 - **Task card time badge:** `⏰` badge only shows for tasks with explicitly set time (not `00:00`).
 - **Notification logic:** Service Worker skips `00:00` tasks for notifications — only tasks with user-set times trigger reminders.
 
+### Fixed
+- **Recurring task spawn bug:** `spawnRecurringTask` was referencing deleted columns `energy_level`/`duration_est` (dropped in v4.9.0). Fixed to use `priority` instead — spawned tasks now inherit the original's priority level.
+
 ### Added
 - `dp-time__now-btn` CSS class for the "Bây giờ" quick-set button in DatePicker.
 - `hideTime` prop on `DatePickerPopover` for contexts where time input should be hidden.
 - `nowHHMM()` helper function in DatePicker and TaskListSection.
+- **DatePicker mobile responsive:** Bottom-sheet layout on ≤520px, shortcuts hidden (calendar only), safe-area for notch phones.
+- **Task card mobile overflow:** Action buttons (📅 ✏️ 🔗 🗑) collapse into `⋯` overflow dropdown on ≤520px. Click-outside auto-close.
+- `task-actions--desktop` / `task-actions--mobile` CSS visibility toggle.
+- `.task-overflow-menu` / `.task-overflow-item` dropdown styles (dark/light).
 
 ### Files Modified
 - `src/components/DatePickerPopover.jsx` — always-visible time, smart defaults, label change
-- `src/components/TaskListSection.jsx` — default dueTime to now, hide 00:00 badges
-- `src/hooks/useUserTasks.js` — default due_time to '00:00', filter SW sync
-- `src/styles/datepicker.css` — .dp-time__now-btn styles
+- `src/components/TaskListSection.jsx` — default dueTime to now, hide 00:00 badges, mobile overflow menu
+- `src/hooks/useUserTasks.js` — default due_time to '00:00', filter SW sync, fix spawn columns
+- `src/styles/datepicker.css` — .dp-time__now-btn + mobile bottom-sheet layout
+- `src/styles/global.css` — task overflow menu styles (dark/light)
 - `public/sw.js` — skip 00:00 notifications
 - `package.json` — version bump → 4.10.1
 

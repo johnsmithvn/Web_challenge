@@ -18,6 +18,10 @@
 - [x] Service Worker: Skip notifications for `00:00` tasks
 - [x] Quick date picker on cards: pass `timeValue` + `onTimeChange`
 - [x] CSS: `.dp-time__now-btn` styles
+- [x] **BUG FIX:** `spawnRecurringTask` xóa cột `energy_level`/`duration_est` (đã drop v4.9.0), thêm `priority` clone
+- [x] **Mobile DatePicker:** Bottom-sheet layout ≤520px, ẩn shortcuts, chỉ show calendar
+- [x] **Mobile Task Overflow:** Action buttons → `⋯` overflow dropdown ≤520px
+- [x] CSS: `.task-overflow-menu`, `.task-overflow-item` (dark/light mode)
 - [x] `npm run build` — 0 errors
 
 ---
