@@ -65,6 +65,7 @@ function rowToHabit(r) {
     cycleCount:  r.cycle_count || 1,
     conqueredAt: r.conquered_at || null,
     active:      r.active !== false,
+    sortOrder:   r.sort_order ?? 0,
     createdAt:   r.created_at,
   };
 }
@@ -87,7 +88,8 @@ export function useCustomHabits() {
         .select('*')
         .eq('user_id', user.id)
         .eq('active', true)          // Only fetch active habits (replaced ones are deactivated)
-        .order('created_at');
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
 
       if (!error && data) {
         // Authenticated user: show only real habits from DB
@@ -183,10 +185,27 @@ export function useCustomHabits() {
       const next = [...prev];
       const [moved] = next.splice(fromIdx, 1);
       next.splice(toIdx, 0, moved);
+
+      // Persist sort_order to Supabase (fire-and-forget, bounded)
+      if (useDB && user) {
+        const updates = next.map((h, i) => ({
+          id: h.id,
+          sort_order: i,
+        }));
+        // Batch update: 1 query per habit (small set, typically <20)
+        Promise.all(
+          updates.map(u =>
+            supabase.from('habits')
+              .update({ sort_order: u.sort_order })
+              .eq('id', u.id)
+              .eq('user_id', user.id)
+          )
+        ).catch(err => console.warn('[CustomHabits] reorder persist failed:', err.message));
+      }
+
       return next;
     });
-    // Reorder is UI-only — no DB column for sort_order yet
-  }, []);
+  }, [useDB, user]);
 
   const conquestHabit = useCallback(async (id) => {
     const now = new Date().toISOString();

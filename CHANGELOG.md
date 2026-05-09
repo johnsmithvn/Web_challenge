@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## v4.5.4 — 2026-05-09
+
+### Changed
+- **`DATABASE.md` overhaul (P0):** Removed 560-line stale SQL block containing 6 phantom tables (`teams`, `reactions`, `quiz_attempts`, `daily_challenge_completions`, `partner_queue` + their RLS policies). Replaced with concise Table Inventory reference to `schema_v4.4.0.sql` as single source of truth.
+- **`friendships` marked ARCHIVED:** Entity Overview and Table Inventory now clearly label `friendships` as `[ARCHIVED v3.0.0]`. Table exists in production but is not used by any active code.
+- **`user_tasks.collection_id` documented as DEPRECATED:** Added Deprecated Columns section in DATABASE.md. Column superseded by `task_collections` junction table (M:N, v4.5.0). Will be DROPped in v5.0.
+
+### Fixed
+- **Habit sort_order not persisted (P1):** `useCustomHabits.reorderHabits()` now batch-updates `sort_order` column in Supabase (fire-and-forget). Previously reorder was UI-only and lost on page refresh. Fetch query now orders by `sort_order ASC, created_at ASC`.
+
+### Files Modified
+- `docs/DATABASE.md` — complete rewrite of SQL block + Entity Overview cleanup
+- `src/hooks/useCustomHabits.js` — sort_order persist + fetch order + rowToHabit mapping
+- `docs/TASKS.md` — v4.5.4 section
+- `CHANGELOG.md` — this entry
+- `package.json` — version bump → 4.5.4
+
+---
+
 ## v4.5.3 — 2026-05-07
 
 ### Changed

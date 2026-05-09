@@ -1,5 +1,33 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-05-07
+**Updated:** 2026-05-09
+
+---
+
+## v4.5.4 — ✅ DONE (2026-05-09) — Audit Cleanup: DB Docs + Habit Sort Persist
+
+### P0-1: DATABASE.md SQL Block Cleanup
+- [x] Remove phantom SQL block (teams, reactions, quiz_attempts, daily_challenge_completions, partner_queue, friendships RLS)
+- [x] Replace with reference to `data/schema_v4.4.0.sql` as single source of truth
+- [x] Remove stale RLS policies referencing non-existent tables (team_members, is_teammate, etc.)
+
+### P0-4: Document friendships as ARCHIVED
+- [x] Add `[ARCHIVED]` label to friendships in DATABASE.md Entity Overview
+- [x] Add note: code in `src/_archived/FriendsPage.jsx`, not used since v3.0.0
+
+### P1-5: Document collection_id as DROPPED
+- [x] Confirm `user_tasks.collection_id` fully removed from hook code (✅ verified)
+- [x] Add migration note in DATABASE.md: column deprecated, use `task_collections` junction
+
+### P1-6: Persist reorderHabits sort_order to Supabase
+- [x] `useCustomHabits.js` — `reorderHabits()` batch UPDATE `sort_order` to Supabase
+- [x] Verify existing `sort_order` column in `habits` table schema
+
+### Documentation Sync
+- [x] `CHANGELOG.md` — v4.5.4 entry
+- [x] `package.json` — version bump → 4.5.4
+
+### Verification
+- [x] `npm run build` — 0 errors (718ms)
 
 ---
 
