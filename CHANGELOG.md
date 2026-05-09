@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## v4.8.0 — 2026-05-09
+### Changed
+- **Incubator UI Redesign:** Replaced single-list + archive toggle with 2-tab layout (🥚 Đang ấp / 🗑 Đã bỏ qua).
+- **Card Actions:** Action buttons (Thực thi, Dời, Bỏ) now shown directly on each card instead of hidden in detail view.
+- **Abandoned Tab:** Items can be restored (♻️ Khôi phục) or permanently deleted (🗑 Xóa vĩnh viễn).
+- **Add Button:** Redesigned with dashed border style for clearer visual hierarchy.
+
+### Added
+- `useIntentions.restoreIntention()` — Restores abandoned intentions back to incubating status with activity log.
+
+## v4.7.3 — 2026-05-09
+### Fixed
+- **Inbox → Task (card view):** `handleToTask` now includes `item.body` in description — previously only passed `item.url`, losing long text content.
+- **Incubator → Task (Execute):** Now composes a rich Markdown description with all metadata (💰 cost, ⏱ time, 💡 original reason, 📜 history logs, 📝 description) instead of only `original_reason`.
+- **Incubator → Expense date:** Replaced stale `todayStr` closure with `localDateStr()` call to prevent wrong date when app stays open overnight.
+
+## v4.7.2 — 2026-05-09
+### Added
+- **Incubator Description Field:** `intentions` table now supports a `description` column for long-form content.
+- **Incubator Detail UI:** Detail view renders Markdown descriptions. Editor features a split-pane (Write/Preview) layout.
+- **Incubator Cards:** Added `📝 Có mô tả` badge indicator.
+### Changed
+- **Inbox "Ấp Trứng" Action:** Now perfectly maps the item's `body` and `url` to the new `description` field in `intentions`.
+
+## v4.7.1 — 2026-05-09
+### Removed
+- **`DailyReview` widget** — Removed from Sidebar (`Navbar.jsx`) to reduce UI clutter.
+- **`DailyReview.jsx`** — Component completely deleted.
+
 ## v4.7.0 — 2026-05-09
 
 ### Removed (Dead Code Cleanup)

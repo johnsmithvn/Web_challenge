@@ -204,6 +204,88 @@
   border-radius: 2px;
 }
 
+/* ── Tab Bar ────────────────────────────────────────────── */
+.incubator-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  padding: 0.25rem;
+}
+
+.incubator-tab {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.incubator-tab:hover {
+  color: var(--text-secondary);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.incubator-tab--active {
+  background: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+}
+
+.incubator-tab__badge {
+  font-size: 0.68rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: var(--radius-full);
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+
+[data-theme="light"] .incubator-tabs {
+  background: rgba(99, 102, 241, 0.03);
+  border-color: rgba(99, 102, 241, 0.08);
+}
+
+[data-theme="light"] .incubator-tab--active {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+}
+
+/* ── Add Button ─────────────────────────────────────────── */
+.incubator-add-btn {
+  width: 100%;
+  padding: 0.55rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px dashed rgba(139, 92, 246, 0.25);
+  border-radius: var(--radius-lg);
+  background: rgba(139, 92, 246, 0.04);
+  color: var(--purple-light);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.incubator-add-btn:hover {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
 /* ── Intention Card ──────────────────────────────────────── */
 .incubator-cards {
   display: flex;
@@ -346,16 +428,48 @@
   color: var(--text-muted);
 }
 
-/* ── Clickable card ────────────────────────────────────────── */
-.incubator-card--clickable {
+/* ── Clickable card body ──────────────────────────────────── */
+.incubator-card__body {
   cursor: pointer;
+  transition: opacity 0.1s ease;
 }
 
-.incubator-card--clickable:hover {
-  border-color: rgba(139, 92, 246, 0.3);
-  background: rgba(139, 92, 246, 0.04);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.incubator-card__body:hover {
+  opacity: 0.85;
+}
+
+.incubator-card--abandoned {
+  opacity: 0.6;
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+.incubator-card--abandoned:hover {
+  opacity: 0.8;
+}
+
+.incubator-card__badge--desc {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+
+.incubator-card__btn--restore {
+  color: #22d3ee;
+  border-color: rgba(6, 182, 212, 0.2);
+}
+
+.incubator-card__btn--restore:hover {
+  background: rgba(6, 182, 212, 0.1);
+}
+
+.incubator-card__btn--delete {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.15);
+  opacity: 0.7;
+}
+
+.incubator-card__btn--delete:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.1);
 }
 
 /* ── Detail View Panel ─────────────────────────────────────── */

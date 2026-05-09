@@ -3,6 +3,60 @@
 
 ---
 
+## v4.8.0 — ✅ DONE (2026-05-09) — Incubator UI Redesign
+
+### UI Changes
+- [x] Tab bar: Đang ấp / Đã bỏ qua
+- [x] Card redesign: inline action buttons
+- [x] Abandoned tab: restore + permanent delete
+- [x] Hook: `restoreIntention()`
+- [x] CSS: tabs + card improvements
+
+### Verification
+- [x] `npm run build` — 0 errors (498ms)
+
+---
+
+## v4.7.3 — ✅ DONE (2026-05-09) — Fix Conversion Flow Bugs
+
+### Bug Fixes
+- [x] BUG #1: Inbox → Task (card view) mất `body` → thêm `item.body ||`
+- [x] BUG #2: Incubator → Task mất metadata → `buildTaskDescription()` ghép toàn bộ
+- [x] BUG #3: `todayStr` stale → dùng `localDateStr()` trực tiếp
+
+### Documentation Sync
+- [x] `CHANGELOG.md` — v4.7.3 entry
+- [x] `docs/TASKS.md` — This section
+
+### Verification
+- [x] `npm run build` — 0 errors (462ms)
+
+---
+
+## v4.7.2 — ✅ DONE (2026-05-09) — Phase 1: Incubator UX Enhancement
+
+### Incubator Rich Text Upgrade
+- [x] Add `description TEXT` to `intentions` DB schema
+- [x] Update `useIntentions` to support `description` parameter
+- [x] UI: Render `description` as Markdown in `kb-prose` block in Detail View
+- [x] UI: Add `kb-split` pane to edit `description`
+- [x] UI: Add `📝 Có mô tả` badge to Incubator card
+- [x] Integration: Map Inbox `body` to Incubator `description` when transferring
+
+### Documentation Sync
+- [x] `CHANGELOG.md` — v4.7.2 entry
+- [x] `docs/TASKS.md` — This section
+
+---
+
+## v4.7.1 — ✅ DONE (2026-05-09) — Phase 1: UI Cleanup
+
+### Minor Cleanup
+- [x] Remove `DailyReview` from Sidebar
+- [x] Delete `DailyReview.jsx` component
+
+---
+
 ## v4.7.0 — ✅ DONE (2026-05-09) — Phase 1: Dead Code Cleanup + QuickCapture Upgrade
 
 ### Tier 1: Dead Code Removal

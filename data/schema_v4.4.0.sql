@@ -395,7 +395,7 @@ CREATE INDEX IF NOT EXISTS idx_subscription_tags_sub ON subscription_tags(subscr
 CREATE TABLE IF NOT EXISTS intentions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL, original_reason TEXT,
+  title TEXT NOT NULL, original_reason TEXT, description TEXT,
   estimated_cost NUMERIC(12,0), estimated_time SMALLINT,
   status TEXT NOT NULL DEFAULT 'incubating' CHECK (status IN ('incubating','executed','abandoned')),
   review_date DATE, converted_to TEXT[], converted_id UUID, converted_ids JSONB,

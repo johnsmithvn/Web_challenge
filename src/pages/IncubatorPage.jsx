@@ -1,5 +1,7 @@
-﻿import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useIntentions } from '../hooks/useIntentions';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useExpenses } from '../hooks/useExpenses';
@@ -110,13 +112,51 @@ const ACTION_LABELS = {
   reviewed: 'Review',
 };
 
+/**
+ * Build a rich Markdown description when converting an Incubator intention to a Task.
+ * Composes all metadata (cost, time, reason, history, description) into one readable body.
+ */
+function buildTaskDescription(item, logs = []) {
+  const sections = [];
+
+  // 1. Estimates
+  const estimates = [];
+  if (item.estimated_cost) estimates.push(`💰 Chi phí: ~${formatVND(item.estimated_cost)}`);
+  if (item.estimated_time) estimates.push(`⏱ Tốn khoảng: ~${formatDuration(item.estimated_time)}`);
+  if (estimates.length) sections.push(estimates.join(' | '));
+
+  // 2. Original reason
+  if (item.original_reason) {
+    sections.push(`💡 **Lý do ban đầu:**\n${item.original_reason}`);
+  }
+
+  // 3. History logs
+  if (logs.length > 0) {
+    const logLines = logs.map(log => {
+      const d = new Date(log.created_at);
+      const dateStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const action = ACTION_LABELS[log.action] || log.action;
+      const note = log.reason_note ? `: ${log.reason_note}` : '';
+      return `• ${dateStr} — ${action}${note}`;
+    });
+    sections.push(`📜 **Lịch sử ấp trứng:**\n${logLines.join('\n')}`);
+  }
+
+  // 4. Description (long-form content)
+  if (item.description) {
+    sections.push(`📝 **Mô tả chi tiết:**\n${item.description}`);
+  }
+
+  return sections.join('\n\n---\n\n') || '';
+}
+
 export default function IncubatorPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const {
-    intentions, isLoading, reviewDueCount,
+    intentions, isLoading, reviewDueCount, fetchIntentions,
     addIntention, updateIntention, deferIntention, executeIntention,
-    abandonIntention, deleteIntention, fetchAbandoned, getLogs,
+    abandonIntention, restoreIntention, deleteIntention, fetchAbandoned, getLogs,
   } = useIntentions();
   const { addTask } = useUserTasks();
   const { addExpense } = useExpenses();
@@ -129,6 +169,11 @@ export default function IncubatorPage() {
   const [cost, setCost] = useState('');
   const [time, setTime] = useState('');
 
+  // Tab: 'incubating' | 'abandoned'
+  const [activeTab, setActiveTab] = useState('incubating');
+  const [archivedItems, setArchivedItems] = useState([]);
+  const [archivedLoading, setArchivedLoading] = useState(false);
+
   // Defer modal
   const [deferModal, setDeferModal] = useState(null); // intention object
   const [deferReason, setDeferReason] = useState('');
@@ -138,6 +183,7 @@ export default function IncubatorPage() {
   const [executeModal, setExecuteModal] = useState(null);
   const [execOptions, setExecOptions] = useState({ expense: false, habit: false, task: false });
   const [expenseCategory, setExpenseCategory] = useState('shopping');
+  const [execLogs, setExecLogs] = useState([]);
 
   // Timeline expand
   const [expandedId, setExpandedId] = useState(null);
@@ -147,6 +193,7 @@ export default function IncubatorPage() {
   const [detailItem, setDetailItem] = useState(null);
   const [detailTitle, setDetailTitle] = useState('');
   const [detailReason, setDetailReason] = useState('');
+  const [detailDescription, setDetailDescription] = useState('');
   const [detailCost, setDetailCost] = useState('');
   const [detailTime, setDetailTime] = useState('');
   const [detailSaving, setDetailSaving] = useState(false);
@@ -155,10 +202,6 @@ export default function IncubatorPage() {
   const [detailLogsLoading, setDetailLogsLoading] = useState(false);
 
   const todayStr = localDateStr(); // local date, NOT toISOString() which is UTC
-
-  // Archive (abandoned) view
-  const [showArchive, setShowArchive] = useState(false);
-  const [archivedItems, setArchivedItems] = useState([]);
 
   const toggleExec = (key) => setExecOptions(prev => ({ ...prev, [key]: !prev[key] }));
   const anySelected = execOptions.expense || execOptions.habit || execOptions.task;
@@ -181,6 +224,7 @@ export default function IncubatorPage() {
     setDetailItem(item);
     setDetailTitle(item.title || '');
     setDetailReason(item.original_reason || '');
+    setDetailDescription(item.description || '');
     setDetailCost(item.estimated_cost ? String(item.estimated_cost) : '');
     setDetailTime(item.estimated_time ? String(item.estimated_time) : '');
     setDetailSaving(false);
@@ -204,12 +248,20 @@ export default function IncubatorPage() {
     const ok = await updateIntention(detailItem.id, {
       title: detailTitle,
       originalReason: detailReason,
+      description: detailDescription,
       estimatedCost: detailCost || null,
       estimatedTime: detailTime || null,
     });
     setDetailSaving(false);
     if (ok) {
-      setDetailItem(prev => prev ? { ...prev, title: detailTitle.trim(), original_reason: detailReason.trim() || null, estimated_cost: detailCost ? parseInt(detailCost, 10) : null, estimated_time: detailTime ? parseInt(detailTime, 10) : null } : null);
+      setDetailItem(prev => prev ? { 
+        ...prev, 
+        title: detailTitle.trim(), 
+        original_reason: detailReason.trim() || null, 
+        description: detailDescription.trim() || null,
+        estimated_cost: detailCost ? parseInt(detailCost, 10) : null, 
+        estimated_time: detailTime ? parseInt(detailTime, 10) : null 
+      } : null);
       setDetailEditing(false);
     }
   }, [detailItem, detailTitle, detailReason, detailCost, detailTime, updateIntention]);
@@ -225,7 +277,7 @@ export default function IncubatorPage() {
   }, [deferModal, deferReason, deferDays, deferIntention]);
 
   /* ── Open Execute Modal (auto-suggest) ── */
-  const openExecuteModal = useCallback((item) => {
+  const openExecuteModal = useCallback(async (item) => {
     setExecuteModal(item);
     // Auto-suggest based on intention data
     setExecOptions({
@@ -234,7 +286,10 @@ export default function IncubatorPage() {
       task: !item.estimated_cost && !item.estimated_time, // default if no cost/time
     });
     setExpenseCategory('shopping');
-  }, []);
+    // Fetch logs for rich description when converting to Task
+    const logs = await getLogs(item.id);
+    setExecLogs(logs);
+  }, [getLogs]);
 
   /* ── Execute (multi-dispatch) ── */
   const handleExecute = useCallback(async () => {
@@ -249,7 +304,7 @@ export default function IncubatorPage() {
         amount: executeModal.estimated_cost,
         category: expenseCategory,
         note: `Từ Incubator: ${executeModal.title}`,
-        date: todayStr,
+        date: localDateStr(),
       });
       if (exp) {
         convertedTypes.push('expense');
@@ -274,7 +329,7 @@ export default function IncubatorPage() {
     if (execOptions.task) {
       const t = await addTask({
         title: executeModal.title,
-        description: executeModal.original_reason || '',
+        description: buildTaskDescription(executeModal, execLogs),
         durationEst: executeModal.estimated_time || null,
       });
       if (t) {
@@ -317,6 +372,33 @@ export default function IncubatorPage() {
     );
   }
 
+  // Switch to abandoned tab
+  const handleTabChange = useCallback(async (tab) => {
+    setActiveTab(tab);
+    if (tab === 'abandoned') {
+      setArchivedLoading(true);
+      const list = await fetchAbandoned();
+      setArchivedItems(list);
+      setArchivedLoading(false);
+    }
+  }, [fetchAbandoned]);
+
+  // Restore abandoned item
+  const handleRestore = useCallback(async (id) => {
+    const ok = await restoreIntention(id);
+    if (ok) {
+      setArchivedItems(prev => prev.filter(i => i.id !== id));
+    }
+  }, [restoreIntention]);
+
+  // Permanent delete
+  const handlePermanentDelete = useCallback(async (id) => {
+    const ok = await deleteIntention(id);
+    if (ok) {
+      setArchivedItems(prev => prev.filter(i => i.id !== id));
+    }
+  }, [deleteIntention]);
+
   return (
     <>
       {!detailItem && (
@@ -326,287 +408,322 @@ export default function IncubatorPage() {
           <p className="incubator-page__subtitle">
             Nuôi dưỡng dự định — Dời lại phải có lý do
           </p>
-          <div className="incubator-page__stats">
-            {intentions.length > 0 && (
-              <span className="incubator-page__stat incubator-page__stat--count">
-                {intentions.length} đang ấp
-              </span>
-            )}
-            {reviewDueCount > 0 && (
-              <span className="incubator-page__stat incubator-page__stat--review">
-                ⚠️ {reviewDueCount} cần review
-              </span>
-            )}
-          </div>
         </div>
 
-        {/* Add button */}
-        <button
-          className="incubator-card__btn"
-          onClick={() => setShowForm(!showForm)}
-          style={{ width: '100%', marginBottom: '0.75rem', padding: '0.5rem', justifyContent: 'center',
-            background: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.15)', color: 'var(--purple-light)' }}
-        >
-          {showForm ? '✕ Đóng' : '+ Thêm dự định'}
-        </button>
+        {/* Tab bar */}
+        <div className="incubator-tabs">
+          <button
+            className={`incubator-tab${activeTab === 'incubating' ? ' incubator-tab--active' : ''}`}
+            onClick={() => handleTabChange('incubating')}
+          >
+            🥚 Đang ấp{intentions.length > 0 ? ` (${intentions.length})` : ''}
+            {reviewDueCount > 0 && <span className="incubator-tab__badge">⚠️ {reviewDueCount}</span>}
+          </button>
+          <button
+            className={`incubator-tab${activeTab === 'abandoned' ? ' incubator-tab--active' : ''}`}
+            onClick={() => handleTabChange('abandoned')}
+          >
+            🗑 Đã bỏ qua{archivedItems.length > 0 ? ` (${archivedItems.length})` : ''}
+          </button>
+        </div>
 
-        {/* Add Form */}
-        {showForm && (
-          <form className="incubator-form" onSubmit={handleAdd}>
-            <input
-              className="incubator-form__input"
-              placeholder="Tên dự định *"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              required
-              autoFocus
-            />
-            <input
-              className="incubator-form__input"
-              placeholder="Lý do ban đầu (tuỳ chọn)"
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-            />
-            <div className="incubator-form__row">
-              <input
-                className="incubator-form__input incubator-form__input--cost"
-                type="number"
-                placeholder="Chi phí dự kiến"
-                value={cost}
-                onChange={e => setCost(e.target.value)}
-                min="0"
-              />
-              <TimeDropdown value={time} onChange={setTime} />
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={!title.trim()}
-              style={{ justifyContent: 'center' }}>
-              🥚 Thêm vào Trạm Ấp
+        {/* ═══ TAB: Đang ấp ═══ */}
+        {activeTab === 'incubating' && (
+          <>
+            {/* Add button */}
+            <button
+              className="incubator-add-btn"
+              onClick={() => setShowForm(!showForm)}
+            >
+              {showForm ? '✕ Đóng' : '+ Thêm dự định'}
             </button>
-          </form>
-        )}
 
-        {/* Cards */}
-        {isLoading ? (
-          <div className="incubator-empty">⏳ Đang tải...</div>
-        ) : intentions.length === 0 ? (
-          <div className="incubator-empty">
-            <div className="incubator-empty__icon">🥚</div>
-            <p>Chưa có dự định nào đang ấp.</p>
-            <p style={{ fontSize: '0.78rem' }}>Thêm ý tưởng, kế hoạch mua sắm, hoặc dự án "someday" vào đây.</p>
-          </div>
-        ) : (
-          <div className="incubator-cards">
-            {intentions.map(item => {
-              const isReviewDue = item.review_date && item.review_date <= todayStr;
-
-              return (
-                <div key={item.id}
-                  className={`incubator-card${isReviewDue ? ' incubator-card--review' : ''} incubator-card--clickable`}
-                  onClick={() => openDetail(item)}
-                >
-                  <div className="incubator-card__title">
-                    🥚 {item.title}
-                  </div>
-                  {item.original_reason && (
-                    <div className="incubator-card__reason">
-                      💡 "{item.original_reason}"
-                    </div>
-                  )}
-                  <div className="incubator-card__meta">
-                    {item.estimated_cost && (
-                      <span className="incubator-card__badge incubator-card__badge--cost">
-                        💰 ~{formatVND(item.estimated_cost)}
-                      </span>
-                    )}
-                    {item.estimated_time && (
-                      <span className="incubator-card__badge incubator-card__badge--duration" title="Thời gian ước tính để thực hiện">
-                        ⏱ ~{formatDuration(item.estimated_time)} để làm
-                      </span>
-                    )}
-                    {item.review_date && (
-                      <span className={`incubator-card__badge ${isReviewDue ? 'incubator-card__badge--review' : 'incubator-card__badge--time'}`}>
-                        {isReviewDue ? '⚠️ Cần review!' : `📅 Review: ${(() => { const d = new Date(item.review_date + 'T00:00:00'); return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0'); })()}`}
-                      </span>
-                    )}
-                    <span className="incubator-card__badge incubator-card__badge--age" title="Ngày tạo dự định">
-                      📅 Tạo: {daysAgo(item.created_at)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Archive */}
-        <button
-          className="incubator-card__btn"
-          onClick={async () => {
-            if (!showArchive) {
-              const list = await fetchAbandoned();
-              setArchivedItems(list);
-            }
-            setShowArchive(v => !v);
-          }}
-          style={{ width: '100%', marginTop: '1rem', padding: '0.5rem', justifyContent: 'center',
-            background: 'transparent', borderColor: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}
-        >
-          {showArchive ? '▲ Ẩn dự định đã bỏ qua' : '▼ Xem dự định đã bỏ qua'}
-        </button>
-        {showArchive && (
-          <div className="incubator-cards" style={{ marginTop: '0.5rem' }}>
-            {archivedItems.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', padding: '1rem' }}>
-                Chưa có dự định nào bị bỏ qua
-              </div>
-            ) : (
-              archivedItems.map(item => (
-                <div key={item.id} className="incubator-card" style={{ opacity: 0.5 }}>
-                  <div className="incubator-card__title">🗑 {item.title}</div>
-                  {item.original_reason && (
-                    <div className="incubator-card__reason">💡 "{item.original_reason}"</div>
-                  )}
-                  <div className="incubator-card__meta">
-                    <span className="incubator-card__badge incubator-card__badge--age">
-                      📅 Bỏ: {daysAgo(item.updated_at)}
-                    </span>
-                  </div>
-                  <div className="incubator-card__actions">
-                    <button
-                      className="incubator-card__btn incubator-card__btn--abandon"
-                      style={{ opacity: 1, color: '#f87171' }}
-                      onClick={() => deleteIntention(item.id).then(() => setArchivedItems(prev => prev.filter(i => i.id !== item.id)))}
-                    >
-                      🗑 Xóa vĩnh viễn
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* ── Defer Modal ── */}
-        {deferModal && (
-          <div className="incubator-modal-backdrop" onClick={() => setDeferModal(null)}>
-            <div className="incubator-modal" onClick={e => e.stopPropagation()}>
-              <div className="incubator-modal__header">
-                <span>💤 Dời lại: {deferModal.title}</span>
-                <button className="incubator-modal__close" onClick={() => setDeferModal(null)}>✕</button>
-              </div>
-              <div className="incubator-modal__body">
-                <label className="incubator-modal__label">Lý do dời *</label>
-                <textarea
-                  className="incubator-modal__input"
-                  placeholder="Tại sao bạn muốn dời lại?"
-                  value={deferReason}
-                  onChange={e => setDeferReason(e.target.value)}
-                  rows={2}
+            {/* Add Form */}
+            {showForm && (
+              <form className="incubator-form" onSubmit={handleAdd}>
+                <input
+                  className="incubator-form__input"
+                  placeholder="Tên dự định *"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  required
                   autoFocus
                 />
-                <label className="incubator-modal__label" style={{ marginTop: '0.5rem' }}>Review lại sau</label>
-                <div className="incubator-modal__options">
-                  {[{l:'1 tuần',d:7},{l:'2 tuần',d:14},{l:'1 tháng',d:30},{l:'3 tháng',d:90}].map(o => (
-                    <button key={o.d}
-                      className={`incubator-modal__option${deferDays===o.d ? ' incubator-modal__option--active' : ''}`}
-                      onClick={() => setDeferDays(o.d)}
-                    >{o.l}</button>
-                  ))}
+                <input
+                  className="incubator-form__input"
+                  placeholder="Lý do ban đầu (tuỳ chọn)"
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                />
+                <div className="incubator-form__row">
+                  <input
+                    className="incubator-form__input incubator-form__input--cost"
+                    type="number"
+                    placeholder="Chi phí dự kiến"
+                    value={cost}
+                    onChange={e => setCost(e.target.value)}
+                    min="0"
+                  />
+                  <TimeDropdown value={time} onChange={setTime} />
                 </div>
-              </div>
-              <div className="incubator-modal__footer">
-                <button className="btn btn-ghost" onClick={() => setDeferModal(null)}>Huỷ</button>
-                <button className="btn btn-primary" onClick={handleDefer} disabled={!deferReason.trim()}>
-                  💤 Dời lại
+                <button type="submit" className="btn btn-primary" disabled={!title.trim()}
+                  style={{ justifyContent: 'center' }}>
+                  🥚 Thêm vào Trạm Ấp
                 </button>
+              </form>
+            )}
+
+            {/* Cards */}
+            {isLoading ? (
+              <div className="incubator-empty">⏳ Đang tải...</div>
+            ) : intentions.length === 0 ? (
+              <div className="incubator-empty">
+                <div className="incubator-empty__icon">🥚</div>
+                <p>Chưa có dự định nào đang ấp.</p>
+                <p style={{ fontSize: '0.78rem' }}>Thêm ý tưởng, kế hoạch mua sắm, hoặc dự án "someday" vào đây.</p>
               </div>
-            </div>
-          </div>
+            ) : (
+              <div className="incubator-cards">
+                {intentions.map(item => {
+                  const isReviewDue = item.review_date && item.review_date <= todayStr;
+                  return (
+                    <div key={item.id}
+                      className={`incubator-card${isReviewDue ? ' incubator-card--review' : ''}`}
+                    >
+                      <div className="incubator-card__body" onClick={() => openDetail(item)}>
+                        <div className="incubator-card__title">
+                          🥚 {item.title}
+                        </div>
+                        {item.original_reason && (
+                          <div className="incubator-card__reason">
+                            💡 "{item.original_reason}"
+                          </div>
+                        )}
+                        <div className="incubator-card__meta">
+                          {item.description && (
+                            <span className="incubator-card__badge incubator-card__badge--desc">
+                              📝 Có mô tả
+                            </span>
+                          )}
+                          {item.estimated_cost && (
+                            <span className="incubator-card__badge incubator-card__badge--cost">
+                              💰 ~{formatVND(item.estimated_cost)}
+                            </span>
+                          )}
+                          {item.estimated_time && (
+                            <span className="incubator-card__badge incubator-card__badge--duration">
+                              ⏱ ~{formatDuration(item.estimated_time)}
+                            </span>
+                          )}
+                          {item.review_date && (
+                            <span className={`incubator-card__badge ${isReviewDue ? 'incubator-card__badge--review' : 'incubator-card__badge--time'}`}>
+                              {isReviewDue ? '⚠️ Cần review!' : `📅 ${(() => { const d = new Date(item.review_date + 'T00:00:00'); return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0'); })()}`}
+                            </span>
+                          )}
+                          <span className="incubator-card__badge incubator-card__badge--age">
+                            📅 {daysAgo(item.created_at)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="incubator-card__actions">
+                        <button
+                          className="incubator-card__btn incubator-card__btn--execute"
+                          onClick={(e) => { e.stopPropagation(); openExecuteModal(item); }}
+                        >
+                          ✅ Thực thi
+                        </button>
+                        <button
+                          className="incubator-card__btn incubator-card__btn--defer"
+                          onClick={(e) => { e.stopPropagation(); setDeferModal(item); setDeferReason(''); setDeferDays(7); }}
+                        >
+                          💤 Dời
+                        </button>
+                        <button
+                          className="incubator-card__btn incubator-card__btn--abandon"
+                          onClick={(e) => { e.stopPropagation(); abandonIntention(item.id, 'Không còn cần thiết'); }}
+                        >
+                          🗑 Bỏ
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
 
-        {/* ── Execute Modal (Multi-Output) ── */}
-        {executeModal && (
-          <div className="incubator-modal-backdrop" onClick={() => setExecuteModal(null)}>
-            <div className="incubator-modal incubator-modal--execute" onClick={e => e.stopPropagation()}>
-              <div className="incubator-modal__header">
-                <span>✅ Thực thi: {executeModal.title}</span>
-                <button className="incubator-modal__close" onClick={() => setExecuteModal(null)}>✕</button>
+        {/* ═══ TAB: Đã bỏ qua ═══ */}
+        {activeTab === 'abandoned' && (
+          <>
+            {archivedLoading ? (
+              <div className="incubator-empty">⏳ Đang tải...</div>
+            ) : archivedItems.length === 0 ? (
+              <div className="incubator-empty">
+                <div className="incubator-empty__icon">✨</div>
+                <p>Không có dự định nào bị bỏ qua.</p>
               </div>
-              <div className="incubator-modal__body">
-                <label className="incubator-modal__label">Phân bổ nguồn lực cho dự định này:</label>
-
-                {/* Option: Expense */}
-                <div
-                  className={`incubator-exec-option${execOptions.expense ? ' incubator-exec-option--active' : ''}${!executeModal.estimated_cost ? ' incubator-exec-option--dim' : ''}`}
-                  onClick={() => toggleExec('expense')}
-                >
-                  <span className="incubator-exec-checkbox">{execOptions.expense ? '✓' : ''}</span>
-                  <div className="incubator-exec-option__content">
-                    <div className="incubator-exec-option__title">💰 Ghi nhận Chi tiêu</div>
-                    <div className="incubator-exec-option__info">
-                      {executeModal.estimated_cost
-                        ? `Tự động điền ${formatVND(executeModal.estimated_cost)}`
-                        : 'Không có chi phí ước tính'}
-                    </div>
-                    {execOptions.expense && executeModal.estimated_cost && (
-                      <div className="incubator-exec-option__sub" onClick={e => e.stopPropagation()}>
-                        <select
-                          className="incubator-exec-category"
-                          value={expenseCategory}
-                          onChange={e => setExpenseCategory(e.target.value)}
-                        >
-                          {EXPENSE_DATA.categories.map(cat => (
-                            <option key={cat.key} value={cat.key}>{cat.icon} {cat.label}</option>
-                          ))}
-                        </select>
+            ) : (
+              <div className="incubator-cards">
+                {archivedItems.map(item => (
+                  <div key={item.id} className="incubator-card incubator-card--abandoned">
+                    <div className="incubator-card__body">
+                      <div className="incubator-card__title">
+                        🗑 {item.title}
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Option: Habit */}
-                <div
-                  className={`incubator-exec-option${execOptions.habit ? ' incubator-exec-option--active' : ''}`}
-                  onClick={() => toggleExec('habit')}
-                >
-                  <span className="incubator-exec-checkbox">{execOptions.habit ? '✓' : ''}</span>
-                  <div className="incubator-exec-option__content">
-                    <div className="incubator-exec-option__title">🔁 Tạo Thói quen</div>
-                    <div className="incubator-exec-option__info">
-                      "{executeModal.title}"
-                      {executeModal.estimated_time ? ` · ⏱ ${formatDuration(executeModal.estimated_time)}/ngày` : ''}
+                      {item.original_reason && (
+                        <div className="incubator-card__reason">
+                          💡 "{item.original_reason}"
+                        </div>
+                      )}
+                      <div className="incubator-card__meta">
+                        <span className="incubator-card__badge incubator-card__badge--age">
+                          📅 Bỏ: {daysAgo(item.updated_at)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="incubator-card__actions">
+                      <button
+                        className="incubator-card__btn incubator-card__btn--restore"
+                        onClick={() => handleRestore(item.id)}
+                      >
+                        ♻️ Khôi phục
+                      </button>
+                      <button
+                        className="incubator-card__btn incubator-card__btn--delete"
+                        onClick={() => handlePermanentDelete(item.id)}
+                      >
+                        🗑 Xóa vĩnh viễn
+                      </button>
                     </div>
                   </div>
-                </div>
-
-                {/* Option: Task */}
-                <div
-                  className={`incubator-exec-option${execOptions.task ? ' incubator-exec-option--active' : ''}`}
-                  onClick={() => toggleExec('task')}
-                >
-                  <span className="incubator-exec-checkbox">{execOptions.task ? '✓' : ''}</span>
-                  <div className="incubator-exec-option__content">
-                    <div className="incubator-exec-option__title">📌 Tạo Công việc</div>
-                    <div className="incubator-exec-option__info">
-                      Thêm vào danh sách Task hôm nay
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
-              <div className="incubator-modal__footer">
-                <button className="btn btn-ghost" onClick={() => setExecuteModal(null)}>Huỷ</button>
-                <button
-                  className="btn btn-primary"
-                  onClick={handleExecute}
-                  disabled={!anySelected}
-                >
-                  ✅ Thực thi
-                </button>
-              </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
       </div>
+      )}
+
+      {/* ── Defer Modal (rendered outside page guard so it works from detail view too) ── */}
+      {deferModal && (
+        <div className="incubator-modal-backdrop" onClick={() => setDeferModal(null)}>
+          <div className="incubator-modal" onClick={e => e.stopPropagation()}>
+            <div className="incubator-modal__header">
+              <span>💤 Dời lại: {deferModal.title}</span>
+              <button className="incubator-modal__close" onClick={() => setDeferModal(null)}>✕</button>
+            </div>
+            <div className="incubator-modal__body">
+              <label className="incubator-modal__label">Lý do dời *</label>
+              <textarea
+                className="incubator-modal__input"
+                placeholder="Tại sao bạn muốn dời lại?"
+                value={deferReason}
+                onChange={e => setDeferReason(e.target.value)}
+                rows={2}
+                autoFocus
+              />
+              <label className="incubator-modal__label" style={{ marginTop: '0.5rem' }}>Review lại sau</label>
+              <div className="incubator-modal__options">
+                {[{l:'1 tuần',d:7},{l:'2 tuần',d:14},{l:'1 tháng',d:30},{l:'3 tháng',d:90}].map(o => (
+                  <button key={o.d}
+                    className={`incubator-modal__option${deferDays===o.d ? ' incubator-modal__option--active' : ''}`}
+                    onClick={() => setDeferDays(o.d)}
+                  >{o.l}</button>
+                ))}
+              </div>
+            </div>
+            <div className="incubator-modal__footer">
+              <button className="btn btn-ghost" onClick={() => setDeferModal(null)}>Huỷ</button>
+              <button className="btn btn-primary" onClick={handleDefer} disabled={!deferReason.trim()}>
+                💤 Dời lại
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Execute Modal (Multi-Output) ── */}
+      {executeModal && (
+        <div className="incubator-modal-backdrop" onClick={() => setExecuteModal(null)}>
+          <div className="incubator-modal incubator-modal--execute" onClick={e => e.stopPropagation()}>
+            <div className="incubator-modal__header">
+              <span>✅ Thực thi: {executeModal.title}</span>
+              <button className="incubator-modal__close" onClick={() => setExecuteModal(null)}>✕</button>
+            </div>
+            <div className="incubator-modal__body">
+              <label className="incubator-modal__label">Phân bổ nguồn lực cho dự định này:</label>
+
+              {/* Option: Expense */}
+              <div
+                className={`incubator-exec-option${execOptions.expense ? ' incubator-exec-option--active' : ''}${!executeModal.estimated_cost ? ' incubator-exec-option--dim' : ''}`}
+                onClick={() => toggleExec('expense')}
+              >
+                <span className="incubator-exec-checkbox">{execOptions.expense ? '✓' : ''}</span>
+                <div className="incubator-exec-option__content">
+                  <div className="incubator-exec-option__title">💰 Ghi nhận Chi tiêu</div>
+                  <div className="incubator-exec-option__info">
+                    {executeModal.estimated_cost
+                      ? `Tự động điền ${formatVND(executeModal.estimated_cost)}`
+                      : 'Không có chi phí ước tính'}
+                  </div>
+                  {execOptions.expense && executeModal.estimated_cost && (
+                    <div className="incubator-exec-option__sub" onClick={e => e.stopPropagation()}>
+                      <select
+                        className="incubator-exec-category"
+                        value={expenseCategory}
+                        onChange={e => setExpenseCategory(e.target.value)}
+                      >
+                        {EXPENSE_DATA.categories.map(cat => (
+                          <option key={cat.key} value={cat.key}>{cat.icon} {cat.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Option: Habit */}
+              <div
+                className={`incubator-exec-option${execOptions.habit ? ' incubator-exec-option--active' : ''}`}
+                onClick={() => toggleExec('habit')}
+              >
+                <span className="incubator-exec-checkbox">{execOptions.habit ? '✓' : ''}</span>
+                <div className="incubator-exec-option__content">
+                  <div className="incubator-exec-option__title">🔁 Tạo Thói quen</div>
+                  <div className="incubator-exec-option__info">
+                    "{executeModal.title}"
+                    {executeModal.estimated_time ? ` · ⏱ ${formatDuration(executeModal.estimated_time)}/ngày` : ''}
+                  </div>
+                </div>
+              </div>
+
+              {/* Option: Task */}
+              <div
+                className={`incubator-exec-option${execOptions.task ? ' incubator-exec-option--active' : ''}`}
+                onClick={() => toggleExec('task')}
+              >
+                <span className="incubator-exec-checkbox">{execOptions.task ? '✓' : ''}</span>
+                <div className="incubator-exec-option__content">
+                  <div className="incubator-exec-option__title">📌 Tạo Công việc</div>
+                  <div className="incubator-exec-option__info">
+                    Thêm vào danh sách Task hôm nay
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="incubator-modal__footer">
+              <button className="btn btn-ghost" onClick={() => setExecuteModal(null)}>Huỷ</button>
+              <button
+                className="btn btn-primary"
+                onClick={handleExecute}
+                disabled={!anySelected}
+              >
+                ✅ Thực thi
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ═══ DETAIL VIEW — inline, replaces page content (same pattern as InboxPage) ═══ */}
@@ -710,6 +827,19 @@ export default function IncubatorPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Description */}
+                {detailItem.description && (
+                  <>
+                    <div className="kb-reader__divider" style={{ margin: '1.5rem 0' }} />
+                    <div>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.75rem' }}>📝 Mô tả chi tiết</div>
+                      <div className="kb-prose" style={{ padding: 0 }}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{detailItem.description}</ReactMarkdown>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -724,6 +854,7 @@ export default function IncubatorPage() {
               setDetailEditing(false);
               setDetailTitle(detailItem.title || '');
               setDetailReason(detailItem.original_reason || '');
+              setDetailDescription(detailItem.description || '');
               setDetailCost(detailItem.estimated_cost ? String(detailItem.estimated_cost) : '');
               setDetailTime(detailItem.estimated_time ? String(detailItem.estimated_time) : '');
             }}>← Hủy</button>
@@ -775,6 +906,32 @@ export default function IncubatorPage() {
                   />
                   <div style={{ flex: 1 }}>
                     <TimeDropdown value={detailTime} onChange={setDetailTime} />
+                  </div>
+                </div>
+                </div>
+
+              {/* Description */}
+              <div className="kb-split">
+                <div className="kb-split__panes" style={{ height: '300px' }}>
+                  <div className="kb-split__pane kb-split__pane--write">
+                    <div className="kb-split__label">✍️ Viết Mô tả chi tiết</div>
+                    <textarea
+                      className="kb-split__textarea"
+                      value={detailDescription}
+                      onChange={(e) => setDetailDescription(e.target.value)}
+                      placeholder="Viết mô tả, ghi chú chi tiết bằng Markdown..."
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div className="kb-split__pane kb-split__pane--preview">
+                    <div className="kb-split__label">👁 Preview</div>
+                    <div className="kb-prose kb-split__preview" style={{ padding: '0.75rem' }}>
+                      {detailDescription ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{detailDescription}</ReactMarkdown>
+                      ) : (
+                        <p className="kb-prose__empty">Preview sẽ hiện ở đây...</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

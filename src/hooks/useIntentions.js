@@ -66,7 +66,7 @@ export function useIntentions() {
   }, [isAuth, fetchIntentions]);
 
   // ── Add intention ─────────────────────────────────────────
-  const addIntention = useCallback(async ({ title, originalReason, estimatedCost, estimatedTime }) => {
+  const addIntention = useCallback(async ({ title, originalReason, description, estimatedCost, estimatedTime }) => {
     if (!isAuth || !userId || !title?.trim()) return null;
     try {
       const sb = await getSb();
@@ -78,6 +78,7 @@ export function useIntentions() {
           user_id: userId,
           title: title.trim(),
           original_reason: originalReason || null,
+          description: description || null,
           estimated_cost: estimatedCost || null,
           estimated_time: estimatedTime || null,
           status: 'incubating',
@@ -252,7 +253,7 @@ export function useIntentions() {
   }).length;
 
   // ── Update intention (edit title / params) ───────────────
-  const updateIntention = useCallback(async (id, { title, originalReason, estimatedCost, estimatedTime }) => {
+  const updateIntention = useCallback(async (id, { title, originalReason, description, estimatedCost, estimatedTime }) => {
     if (!isAuth || !userId || !title?.trim()) return false;
     try {
       const sb = await getSb();
@@ -261,6 +262,7 @@ export function useIntentions() {
       const updates = {
         title: title.trim(),
         original_reason: originalReason?.trim() || null,
+        description: description?.trim() || null,
         estimated_cost: estimatedCost ? parseInt(estimatedCost, 10) : null,
         estimated_time: estimatedTime ? parseInt(estimatedTime, 10) : null,
         updated_at: new Date().toISOString(),
@@ -350,6 +352,40 @@ export function useIntentions() {
     }
   }, [isAuth, userId]);
 
+  // ── Restore abandoned intention back to incubating ──────────
+  const restoreIntention = useCallback(async (id) => {
+    if (!isAuth || !userId) return false;
+    try {
+      const sb = await getSb();
+      if (!sb) return false;
+
+      const { error } = await sb
+        .from('intentions')
+        .update({ status: 'incubating' })
+        .eq('id', id)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('[useIntentions] restore error:', error.message);
+        return false;
+      }
+
+      // Log restore action
+      await sb.from('intention_logs').insert({
+        intention_id: id,
+        action: 'restored',
+        reason_note: 'Khôi phục từ danh sách đã bỏ qua',
+      });
+
+      // Refresh active list
+      fetchIntentions();
+      return true;
+    } catch (err) {
+      console.error('[useIntentions] restore exception:', err);
+      return false;
+    }
+  }, [isAuth, userId, fetchIntentions]);
+
   return {
     intentions,
     isLoading,
@@ -360,6 +396,7 @@ export function useIntentions() {
     deferIntention,
     executeIntention,
     abandonIntention,
+    restoreIntention,
     deleteIntention,
     fetchAbandoned,
     getLogs,

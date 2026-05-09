@@ -65,9 +65,7 @@ export default function InboxPage() {
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelected, setBulkSelected] = useState(new Set());
 
-  // Quick-add description (v4.6.0)
-  const [quickDesc, setQuickDesc] = useState('');
-  const [showDescInput, setShowDescInput] = useState(false);
+
 
   // Detail view (v4.6.0)
   const [detailItem, setDetailItem] = useState(null);
@@ -140,25 +138,14 @@ export default function InboxPage() {
       autoBody = trimmed; // full original text preserved in body
     }
 
-    // Merge: user description (if any) appended after auto-body
-    const userDesc = quickDesc.trim();
-    let finalBody = autoBody;
-    if (userDesc && autoBody) {
-      finalBody = autoBody + '\n\n---\n\n' + userDesc;
-    } else if (userDesc) {
-      finalBody = userDesc;
-    }
-
     const result = await addItem({
       type: 'inbox',
       title,
       url: isUrl ? trimmed : null,
-      body: finalBody,
+      body: autoBody,
     });
     if (result) {
       setQuickText('');
-      setQuickDesc('');
-      setShowDescInput(false);
     }
   };
 
@@ -238,7 +225,7 @@ export default function InboxPage() {
 
   // Convert inbox item → Task
   const handleToTask = async (item) => {
-    await addTask({ title: item.title, description: item.url || '' });
+    await addTask({ title: item.title, description: item.body || item.url || '' });
     await deleteItem(item.id);
     fetchItems({ type: 'inbox' });
   };
@@ -337,14 +324,7 @@ export default function InboxPage() {
               }
             }}
           />
-          <button
-            type="button"
-            className={`inbox-desc-toggle${showDescInput ? ' inbox-desc-toggle--active' : ''}`}
-            onClick={() => setShowDescInput(v => !v)}
-            title="Thêm mô tả"
-          >
-            📝
-          </button>
+
           <button
             type="submit"
             className="btn btn-primary inbox-quick-add__btn"
@@ -353,15 +333,7 @@ export default function InboxPage() {
             Thêm
           </button>
         </div>
-        {showDescInput && (
-          <textarea
-            className="inbox-desc-textarea"
-            placeholder="Thêm mô tả chi tiết (không bắt buộc)..."
-            value={quickDesc}
-            onChange={(e) => setQuickDesc(e.target.value)}
-            rows={3}
-          />
-        )}
+
       </form>
 
       {/* Filter chips */}
@@ -744,7 +716,10 @@ export default function InboxPage() {
                             🔄 Đăng ký
                           </button>
                           <button className="inbox-overflow-item" onClick={async () => {
-                            await addIntention({ title: item.title });
+                            await addIntention({ 
+                              title: item.title,
+                              description: item.body || item.url || null 
+                            });
                             await deleteItem(item.id);
                             fetchItems({ type: 'inbox' });
                             setOverflowMenu(null);

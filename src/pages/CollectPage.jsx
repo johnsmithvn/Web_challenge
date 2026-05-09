@@ -925,7 +925,8 @@ export default function CollectPage() {
               return (
               <div style={{
                 position: 'absolute', top: '100%', right: 0, marginTop: '0.4rem',
-                background: 'var(--bg-card, #1e1b2e)', border: '1px solid rgba(255,255,255,0.12)',
+                background: 'rgba(13, 13, 26, 0.98)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255,255,255,0.12)',
                 borderRadius: 'var(--radius-md)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
                 width: '300px', maxHeight: '380px', overflow: 'hidden',
                 zIndex: 9999, display: 'flex', flexDirection: 'column',
