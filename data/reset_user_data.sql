@@ -43,7 +43,6 @@ DELETE FROM focus_sessions;
 DELETE FROM fitness_logs;
 
 -- 8. Mood & motivation
-DELETE FROM mood_logs;
 DELETE FROM skip_reasons;
 
 -- 9. Progress (legacy day-done table)
@@ -68,5 +67,5 @@ DELETE FROM notification_settings;
 --   intention_logs, intentions, habit_logs, journey_habits, user_journeys,
 --   program_habits, programs, habits, tags, user_tasks, collections,
 --   expenses, subscriptions, activity_logs, focus_sessions, fitness_logs,
---   mood_logs, skip_reasons, progress, streaks, notification_settings
+--   skip_reasons, progress, streaks, notification_settings
 -- ═══════════════════════════════════════════════════════════════

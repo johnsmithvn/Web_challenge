@@ -22,6 +22,12 @@
 - [x] **Mobile DatePicker:** Bottom-sheet layout ≤520px, ẩn shortcuts, chỉ show calendar
 - [x] **Mobile Task Overflow:** Action buttons → `⋯` overflow dropdown ≤520px
 - [x] CSS: `.task-overflow-menu`, `.task-overflow-item` (dark/light mode)
+- [x] **Mood Tracker Removal:** Removed from `habits.json`
+- [x] **Mood Tracker Removal:** Removed hook logic from `useMoodSkip.js`
+- [x] **Mood Tracker Removal:** Removed from `TrackerPage`, `MonthCalendar`, `DashboardPage`, `LifeLogPage`, `JourneyDetailPage`
+- [x] **Mood Tracker Removal:** Cleaned up CSS (`dashboard.css`, `calendar.css`)
+- [x] **Mood Tracker Removal:** Updated Docs (`FEATURES.md`, `ARCHITECTURE.md`, `DATABASE.md`)
+- [x] **Mood Tracker Removal:** Created SQL migration (`migration_v4.10.1_drop_mood.sql`) + updated `reset_user_data.sql`
 - [x] `npm run build` — 0 errors
 
 ---

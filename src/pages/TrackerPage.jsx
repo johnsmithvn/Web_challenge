@@ -4,7 +4,7 @@ import { useHabitStore } from '../hooks/useHabitStore';
 import { useCustomHabits } from '../hooks/useCustomHabits';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import { useNotifications } from '../hooks/useNotifications';
-import { useMoodLog, useSkipReasons } from '../hooks/useMoodSkip';
+import { useSkipReasons } from '../hooks/useMoodSkip';
 import { useJourney } from '../hooks/useJourney';
 import { useHabitLogs } from '../hooks/useHabitLogs';
 import { useUserTasks } from '../hooks/useUserTasks';
@@ -30,7 +30,6 @@ import HABITS_DATA from '../data/habits.json';
 import QUOTES_DATA from '../data/quotes.json';
 
 const SKIP_REASONS = HABITS_DATA.skipReasons;
-const MOODS = HABITS_DATA.moods;
 const DAILY_QUOTES = QUOTES_DATA.dailyQuotes;
 
 // ── Lazy tab content (performance: only load when tab is active) ──
@@ -299,7 +298,6 @@ export default function TrackerPage() {
   const { activeHabits, conqueredHabits, conquestHabit, renewHabit } = useCustomHabits();
   const { addXp, removeXp, hasMilestone, totalXp } = useXpStore();
   const { scheduleTodayReminder } = useNotifications();
-  const { moodLog, saveMood, getMood } = useMoodLog();
   const { skipLog, saveSkip } = useSkipReasons();
   const { activeJourney } = useJourney();
   const { habitProg, toggleLog } = useHabitLogs();
@@ -353,7 +351,6 @@ export default function TrackerPage() {
   };
 
   const todayKey  = new Date().toISOString().split('T')[0];
-  const todayMood = getMood(todayKey);
   // plant derived after effectiveStreak is computed (placeholder — recalculated below)
 
   // Per-habit tick
@@ -481,12 +478,6 @@ export default function TrackerPage() {
     return cleanup;
   }, [allHabitsDone]);
 
-
-
-  const handleMood = (m) => {
-    saveMood(todayKey, m);
-    logActivity('mood_set', `${m.emoji} ${m.label}`, null, { date: todayKey });
-  };
 
   const handleSkipSubmit = () => {
     saveSkip(skipModal, skipReason, skipNote);
@@ -825,30 +816,6 @@ export default function TrackerPage() {
               </div>
             )}
 
-            {/* ── Mood (single instance — no duplicate) ── */}
-            <div className="card" style={{ padding: '1.25rem', marginBottom: '1.25rem' }}>
-              <div className="dash-card-title" style={{ marginBottom: '0.75rem' }}>😊 Tâm Trạng Hôm Nay</div>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {MOODS.map(m => (
-                  <button key={m.label} onClick={() => handleMood(m)} id={`mood-${m.label}`}
-                    style={{
-                      padding: '0.5rem 0.9rem', borderRadius: 'var(--radius-full)',
-                      fontSize: '0.88rem', cursor: 'pointer',
-                      background: todayMood?.label === m.label ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${todayMood?.label === m.label ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                      color: 'var(--text-secondary)', transition: 'var(--transition-base)',
-                      display: 'flex', alignItems: 'center', gap: '0.3rem',
-                    }}>
-                    <span style={{ fontSize: '1.1rem' }}>{m.emoji}</span> {m.label}
-                  </button>
-                ))}
-              </div>
-              {todayMood && (
-                <p style={{ marginTop: '0.5rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  Đã lưu: {todayMood.emoji} {todayMood.label}
-                </p>
-              )}
-            </div>
 
             {/* ── Personal Tasks (Nhiệm Vụ) ── */}
             <TaskListSection />
@@ -878,7 +845,7 @@ export default function TrackerPage() {
         {/* ── Tab: Calendar (lazy loaded) ── */}
         {tab === 'calendar' && (
           <Suspense fallback={<div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>⏳ Loading...</div>}>
-            <MonthCalendar habitData={data} getCompletedTasks={getCompletedTasks} moodLog={moodLog} skipLog={skipLog} />
+            <MonthCalendar habitData={data} getCompletedTasks={getCompletedTasks} skipLog={skipLog} />
           </Suspense>
         )}
 

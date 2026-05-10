@@ -379,54 +379,6 @@
   color: var(--text-secondary);
 }
 
-/* ── MOOD TREND CHART ── */
-.mood-trend { margin-top: .5rem; }
-
-.mood-trend__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: .75rem;
-  gap: .5rem;
-  flex-wrap: wrap;
-}
-
-.mood-trend__tabs { display: flex; gap: .25rem; }
-
-.mood-trend__tab {
-  padding: .3rem .75rem;
-  border-radius: 20px;
-  border: 1px solid rgba(255,255,255,.1);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: .72rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition-base);
-}
-
-.mood-trend__tab--active {
-  background: var(--purple);
-  color: #fff;
-  border-color: var(--purple);
-}
-
-.mood-trend__tab:hover:not(.mood-trend__tab--active) {
-  border-color: rgba(255,255,255,.2);
-  color: var(--text-secondary);
-}
-
-.mood-trend__avg {
-  font-size: .8rem;
-  color: var(--text-secondary);
-}
-
-.mood-trend__empty {
-  text-align: center;
-  padding: 1.5rem;
-  color: var(--text-muted);
-  font-size: .85rem;
-}
 
 /* ── FOCUS BREAKDOWN ── */
 .focus-bkdn { margin-top: .75rem; display: flex; flex-direction: column; gap: .6rem; }

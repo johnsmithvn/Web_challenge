@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useCallback, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useHabitStore } from '../hooks/useHabitStore';
 import { useXpStore, computeLevel } from '../hooks/useXpStore';
-import { useSkipReasons, useMoodLog } from '../hooks/useMoodSkip';
+import { useSkipReasons } from '../hooks/useMoodSkip';
 import { useExpenses } from '../hooks/useExpenses';
 import { useSubscriptions } from '../hooks/useSubscriptions';
 import { useActivityLog } from '../hooks/useActivityLog';
@@ -36,108 +36,6 @@ function insightFromStreak(s) {
   return { text:'🏆 21 ngày! Kỷ luật đã thành bản năng.', color:'var(--gold)' };
 }
 
-const MOOD_SCORE = { 'Xuất sắc': 5, 'Tốt': 4, 'Bình thường': 3, 'Không tốt': 2, 'Tệ': 1 };
-const MOOD_COLOR = { 5: '#22c55e', 4: '#06b6d4', 3: '#8b5cf6', 2: '#f97316', 1: '#ef4444' };
-
-const MOOD_EMOJI = { 5: '💪', 4: '😊', 3: '😐', 2: '😔', 1: '😴' };
-
-/* ── Mood Trend Chart (7/30 day toggle) ─────────────────── */
-const MoodTrendChart = memo(function MoodTrendChart({ moodLog }) {
-  const [range, setRange] = useState(7);
-
-  const days = useMemo(() => {
-    const res = [];
-    for (let i = range - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().split('T')[0];
-      const mood = moodLog[key] ?? null;
-      const score = mood ? (MOOD_SCORE[mood.label] ?? null) : null;
-      res.push({
-        key,
-        label: range <= 7
-          ? d.toLocaleDateString('vi-VN', { weekday: 'short' }).replace('Th ', 'T')
-          : `${d.getDate()}/${d.getMonth() + 1}`,
-        emoji: mood?.emoji ?? null,
-        score,
-        color: score ? MOOD_COLOR[score] : null,
-      });
-    }
-    return res;
-  }, [moodLog, range]);
-
-  const withData = days.filter(d => d.score !== null);
-  const avg = withData.length ? (withData.reduce((s, d) => s + d.score, 0) / withData.length).toFixed(1) : null;
-
-  const W = 480, H = 120, PAD_X = 32, PAD_Y = 16;
-  const plotW = W - PAD_X * 2;
-  const plotH = H - PAD_Y * 2;
-  const stepX = days.length > 1 ? plotW / (days.length - 1) : 0;
-
-  // Build SVG polyline points for connected dots
-  const points = days.map((d, i) => {
-    const x = PAD_X + i * stepX;
-    const y = d.score !== null
-      ? PAD_Y + plotH - ((d.score - 1) / 4) * plotH
-      : null;
-    return { ...d, x, y, i };
-  });
-
-  const linePoints = points.filter(p => p.y !== null);
-  const linePath = linePoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-
-  // Show label every N items depending on range
-  const labelEvery = range <= 7 ? 1 : range <= 14 ? 2 : 5;
-
-  return (
-    <div className="mood-trend">
-      <div className="mood-trend__header">
-        <div className="mood-trend__tabs">
-          {[7, 30].map(r => (
-            <button key={r} className={`mood-trend__tab${range === r ? ' mood-trend__tab--active' : ''}`}
-              onClick={() => setRange(r)}>{r} ngày</button>
-          ))}
-        </div>
-        {avg && <div className="mood-trend__avg">TB: <strong style={{color: MOOD_COLOR[Math.round(avg)]}}>{avg}/5</strong> {MOOD_EMOJI[Math.round(avg)]}</div>}
-      </div>
-
-      {!withData.length ? (
-        <div className="mood-trend__empty">Chưa có dữ liệu tâm trạng {range} ngày này</div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <svg width="100%" viewBox={`0 0 ${W} ${H + 28}`} style={{ minWidth: 280 }}>
-            {/* grid lines */}
-            {[1, 2, 3, 4, 5].map(lv => {
-              const y = PAD_Y + plotH - ((lv - 1) / 4) * plotH;
-              return <line key={lv} x1={PAD_X} y1={y} x2={W - PAD_X} y2={y}
-                stroke="rgba(255,255,255,0.05)" strokeDasharray="3,3" />;
-            })}
-            {/* line */}
-            {linePoints.length > 1 && (
-              <path d={linePath} fill="none" stroke="var(--purple)" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
-            )}
-            {/* dots */}
-            {points.map((p) => p.y !== null && (
-              <g key={p.key}>
-                <circle cx={p.x} cy={p.y} r="5" fill={p.color} stroke="var(--bg-card)" strokeWidth="2" />
-                <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize="10">{p.emoji}</text>
-              </g>
-            ))}
-            {/* x labels */}
-            {points.map((p, i) => (i % labelEvery === 0 || i === points.length - 1) && (
-              <text key={`l-${p.key}`} x={p.x} y={H + 18} textAnchor="middle"
-                fill={i === points.length - 1 ? 'var(--purple-light)' : 'var(--text-muted)'}
-                fontSize="9" fontWeight={i === points.length - 1 ? 700 : 400}>
-                {i === points.length - 1 ? 'Nay' : p.label}
-              </text>
-            ))}
-          </svg>
-        </div>
-      )}
-    </div>
-  );
-});
 
 /* ── Focus Breakdown Per Habit (7 days) ─────────────────── */
 const FocusBreakdown = memo(function FocusBreakdown() {
@@ -227,7 +125,7 @@ const FocusBreakdown = memo(function FocusBreakdown() {
 });
 
 /* ── Weekly Review Digest ───────────────────────────────── */
-const WeeklyReview = memo(function WeeklyReview({ data: habitData, streak, xpLog, todayMinutes, expenses, moodLog }) {
+const WeeklyReview = memo(function WeeklyReview({ data: habitData, streak, xpLog, todayMinutes, expenses }) {
   const [expanded, setExpanded] = useState(false);
 
   const review = useMemo(() => {
@@ -270,16 +168,8 @@ const WeeklyReview = memo(function WeeklyReview({ data: habitData, streak, xpLog
     const thisExp = expInRange(thisWeekDays);
     const lastExp = expInRange(lastWeekDays);
 
-    // Mood avg this week vs last
-    const moodAvg = (dates) => {
-      const moods = dates.map(d => moodLog[d]).filter(Boolean).map(m => MOOD_SCORE[m.label] ?? 3);
-      return moods.length ? (moods.reduce((a, b) => a + b, 0) / moods.length) : null;
-    };
-    const thisMood = moodAvg(thisWeekDays);
-    const lastMood = moodAvg(lastWeekDays);
-
-    return { thisHabits, lastHabits, thisXp, lastXp, thisExp, lastExp, thisMood, lastMood, daysInWeek: dow + 1 };
-  }, [habitData, xpLog, expenses, moodLog]);
+    return { thisHabits, lastHabits, thisXp, lastXp, thisExp, lastExp, daysInWeek: dow + 1 };
+  }, [habitData, xpLog, expenses]);
 
   const trend = (curr, prev) => {
     if (prev === 0 && curr === 0) return { arrow: '→', color: 'var(--text-muted)', text: 'ổn định' };
@@ -293,7 +183,6 @@ const WeeklyReview = memo(function WeeklyReview({ data: habitData, streak, xpLog
     { icon: '🔥', label: 'Habits', value: `${review.thisHabits}/${review.daysInWeek} ngày`, trend: trend(review.thisHabits, review.lastHabits) },
     { icon: '⭐', label: 'XP', value: `+${review.thisXp}`, trend: trend(review.thisXp, review.lastXp) },
     { icon: '💰', label: 'Chi tiêu', value: `${fmt(review.thisExp)}₫`, trend: trend(review.thisExp, review.lastExp) },
-    { icon: '😊', label: 'Mood TB', value: review.thisMood ? `${review.thisMood.toFixed(1)}/5` : '—', trend: review.thisMood && review.lastMood ? trend(review.thisMood, review.lastMood) : { arrow: '—', color: 'var(--text-muted)', text: '' } },
   ];
 
   return (
@@ -549,7 +438,7 @@ export default function DashboardPage() {
   const { data, streak, longestStreak, totalDone } = useHabitStore();
   const { totalXp, levelInfo } = useXpStore();
   const { getAllSkips } = useSkipReasons();
-  const { moodLog } = useMoodLog();
+
   const { todayMinutes, todaySessions } = useFocusTimer();
   const { weekSummary: fitWeek, todayLogs: fitToday } = useFitnessLog();
 
@@ -684,12 +573,6 @@ export default function DashboardPage() {
           <ActivityHeatmap/>
         </div>
 
-        {/* ── MOOD TREND ── */}
-        <SectionTitle icon="😊" title="Tâm Trạng" />
-        <div className="card db-section">
-          <div className="dash-card-title">😊 Xu Hướng Tâm Trạng</div>
-          <MoodTrendChart moodLog={moodLog}/>
-        </div>
 
         {/* ── FOCUS BREAKDOWN ── */}
         <SectionTitle icon="⏱" title="Focus" action={<Link to="/focus" className="btn btn-ghost" style={{fontSize:'.8rem'}}>Timer →</Link>}/>
@@ -729,7 +612,7 @@ export default function DashboardPage() {
 
         {/* ── WEEKLY REVIEW ── */}
         <SectionTitle icon="📊" title="Tổng Kết" />
-        <WeeklyReview data={data} streak={streak} xpLog={xpLog ?? []} todayMinutes={todayMinutes} expenses={expenses} moodLog={moodLog}/>
+        <WeeklyReview data={data} streak={streak} xpLog={xpLog ?? []} todayMinutes={todayMinutes} expenses={expenses} />
 
         {/* ── INSIGHTS ── */}
         <SectionTitle icon="💡" title="Phân Tích"/>

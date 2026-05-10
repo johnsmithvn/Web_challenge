@@ -38,7 +38,7 @@
   - Khi TẤT CẢ tick → mark overall day done → sinh celebration banner
 - **Celebration Banner:** "🎉 Ngày X/21 hoàn thành!" fade out sau 4s
 - **LoginNudgeModal:** Bottom sheet không blocking cho guest sau ngày 1 hoàn thành
-- **Mood Tracker:** 5 emoji mức cảm xúc, upsert 1 lần/ngày (single instance, no duplicate)
+
 - **Skip Reason:** Trigger sau 8PM nếu chưa tick
 - **Daily Challenge:** Thử thách mỗi ngày, +20 XP khi hoàn thành
 - **Insight:** Nhận xét động theo streak hiện tại
@@ -58,7 +58,7 @@
 
 **Completion Modal (v1.3.0):** Khi streak đạt 21 → certificate modal: CTA "Gia Hạn" / "Thử Thách Mới" / "🗺 Chọn Lộ Trình Mới"
 
-**Data:** `useHabitStore`, `useCustomHabits`, `useHabitLogs`, `useJourney`, `useXpStore`, `useMoodLog`, `useSkipReasons`
+**Data:** `useHabitStore`, `useCustomHabits`, `useHabitLogs`, `useJourney`, `useXpStore`, `useSkipReasons`
 
 ---
 
@@ -114,7 +114,7 @@
 **File:** `src/pages/DashboardPage.jsx`, `src/styles/dashboard.css`
 **Version:** v3.2.1 — Unified Life Hub Dashboard + Polish
 
-**Mô tả:** Tổng quan toàn bộ cuộc sống — hôm nay, thói quen, tài chính, hoạt động, tâm trạng, focus.
+**Mô tả:** Tổng quan toàn bộ cuộc sống — hôm nay, thói quen, tài chính, hoạt động, focus.
 
 **Chi tiết:**
 - **Today Overview (4 KPIs hôm nay):** Hoạt động (activity_logs) / Focus phút + sessions (useFocusTimer) / Chi tiêu hôm nay (expenses) / XP kiếm hôm nay (xp_logs). Hover lift animation.
@@ -122,13 +122,13 @@
 - **Habits:** Flower Journey 21 ô / Monthly Donut ring / Weekly Table 4 tuần / mini KPI row (Streak, Best, Tổng, XP)
 - **Finance Summary:** 3 KPI cards (Chi tháng / Đăng ký/tháng / Sắp hết hạn) + Finance Pie SVG donut (category breakdown + legend %)
 - **Activity Heatmap:** Reuse `ActivityHeatmap` — toàn bộ activity_logs (thay ContributionGraph habit-only)
-- **Mood Trend Chart (v3.2.1):** Dot-line SVG chart với toggle 7/30 ngày. Color-coded dots by mood score, average indicator, emoji overlay. Empty state khi chưa có data.
+
 - **Focus Breakdown (v3.2.1):** Per-habit horizontal bar chart 7 ngày gần nhất. Query trực tiếp `focus_sessions` + join `habits` table. Hiển thị icon, tên habit, progress bar, phút, %.
-- **Weekly Review (v3.2.1):** Collapsible summary card: Habits (ngày hoàn thành), XP, Chi tiêu, Mood TB — so sánh với tuần trước (↑/↓/→). Expand/collapse với animation.
+- **Weekly Review (v3.2.1):** Collapsible summary card: Habits (ngày hoàn thành), XP, Chi tiêu — so sánh với tuần trước (↑/↓/→). Expand/collapse với animation.
 - **Insights:** Skip Reason analysis 14 ngày + nhận xét streak + milestone tiếp theo
 - **Guest mode:** Finance/Activity/Focus widgets hiện empty state graceful
 
-**Data sources:** `useHabitStore`, `useXpStore`, `useSkipReasons`, `useMoodLog`, `useFocusTimer`, `useExpenses`, `useSubscriptions`, `useActivityLog`, `useAuth`, `supabase` (direct query for FocusBreakdown)
+**Data sources:** `useHabitStore`, `useXpStore`, `useSkipReasons`, `useFocusTimer`, `useExpenses`, `useSubscriptions`, `useActivityLog`, `useAuth`, `supabase` (direct query for FocusBreakdown)
 
 ---
 
@@ -261,19 +261,6 @@
 
 ---
 
-## 13. 😊 Mood Tracker
-
-**Files:** `src/hooks/useMoodSkip.js` (`useMoodLog`)
-
-**Mô tả:** Ghi lại tâm trạng mỗi ngày, 5 mức độ.
-
-- 5 mức: 😴 Kiệt sức · 😔 Thấp · 😐 Bình thường · 😊 Tốt · 💪 Tuyệt vời
-- 1 lần/ngày (upsert)
-- Supabase-first (v1.6.2), in-memory cho guest
-- Hiển thị trên TrackerPage (tab Hôm Nay)
-
----
-
 ## 14. 📝 Skip Reasons
 
 **Files:** `src/hooks/useMoodSkip.js` (`useSkipReasons`)
@@ -363,10 +350,10 @@
 **Mô tả:** Full dashboard cho 1 journey cụ thể.
 
 **Chi tiết:**
-- Stats grid: completion %, focus hours, XP, mood distribution
+- Stats grid: completion %, focus hours, XP
 - Habit chips with status
 - **JourneyCalendar:** Month view — 🟢 all done / 🟡 partial / ⬜ missed / ⚫ outside range
-- Click ngày → **DayDetailModal:** danh sách habits ✅/❌, tâm trạng, focus sessions với timestamp
+- Click ngày → **DayDetailModal:** danh sách habits ✅/❌, focus sessions với timestamp
 - **MonthSummary (v1.9.1):** Per-month progress rings (Hoàn thành / Bỏ qua / Còn lại)
 
 ---
@@ -435,7 +422,7 @@
 | Custom habits | `habits` (Supabase) | in-memory defaults |
 | Habit per-day | `habit_logs` (Supabase) | in-memory |
 | Focus sessions | `focus_sessions` (Supabase) | in-memory |
-| Mood logs | `mood_logs` (Supabase) | in-memory |
+
 | Skip reasons | `skip_reasons` (Supabase) | in-memory |
 | Journeys | `user_journeys` (Supabase) | — |
 | Teams | `teams` (Supabase) | — |
@@ -675,7 +662,7 @@
 - **Today stat badge:** Số hoạt động hôm nay
 - **ActivityHeatmap:** SVG 53×7 grid, 5-level purple scale, click để drill-down
 - **DailyTimeline:** Vertical timeline với action icons, timestamps, labels, XP amounts
-- **Activity types logged:** habit_done, habit_undo, mood_set, challenge_done, collect_add, focus_done, expense_add, subscription_add
+- **Activity types logged:** habit_done, habit_undo, challenge_done, collect_add, focus_done, expense_add, subscription_add
 
 **Data source:** `activity_logs` table (Supabase, append-only)
 

@@ -17,12 +17,5 @@
   "skipReasons": [
     "Bận công việc", "Ốm / mệt", "Quên mất", "Thiếu động lực",
     "Không có thời gian", "Có việc đột xuất", "Lý do khác"
-  ],
-  "moods": [
-    { "emoji": "😴", "label": "Kiệt sức" },
-    { "emoji": "😔", "label": "Thấp" },
-    { "emoji": "😐", "label": "Bình thường" },
-    { "emoji": "😊", "label": "Tốt" },
-    { "emoji": "💪", "label": "Tuyệt vời" }
   ]
 }

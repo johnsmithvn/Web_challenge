@@ -20,12 +20,20 @@
 - `task-actions--desktop` / `task-actions--mobile` CSS visibility toggle.
 - `.task-overflow-menu` / `.task-overflow-item` dropdown styles (dark/light).
 
+### Removed
+- **Mood Tracker Feature:** Completely purged the "😊 Tâm Trạng Hôm Nay" feature to simplify the architecture. Removed `useMoodLog`, `MoodTrendChart`, and mood-related UI from `TrackerPage`, `DashboardPage`, `LifeLogPage`, and `JourneyDetailPage`.
+- **Database:** Prepared SQL migration to drop `mood_logs` table (`data/migration_v4.10.1_drop_mood.sql`).
+
 ### Files Modified
 - `src/components/DatePickerPopover.jsx` — always-visible time, smart defaults, label change
 - `src/components/TaskListSection.jsx` — default dueTime to now, hide 00:00 badges, mobile overflow menu
 - `src/hooks/useUserTasks.js` — default due_time to '00:00', filter SW sync, fix spawn columns
 - `src/styles/datepicker.css` — .dp-time__now-btn + mobile bottom-sheet layout
 - `src/styles/global.css` — task overflow menu styles (dark/light)
+- `src/styles/dashboard.css`, `src/styles/calendar.css` — removed mood-related classes
+- `src/data/habits.json` — removed `moods` object
+- `docs/FEATURES.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md` — purged mood tracker refs
+- `data/migration_v4.10.1_drop_mood.sql` — new migration file
 - `public/sw.js` — skip 00:00 notifications
 - `package.json` — version bump → 4.10.1
 

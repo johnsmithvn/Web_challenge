@@ -21,7 +21,7 @@ profiles ───────────────────────�
     ├──► habits            (custom + journey)    │
     ├──► habit_logs        (per-habit daily)     │
     ├──► focus_sessions    (pomodoro)            │
-    ├──► mood_logs / skip_reasons               │
+    ├──► skip_reasons               │
     ├──► notification_settings  (1:1)           │
     │                                           │
     ├──► user_journeys     (journey runs)       │
@@ -65,26 +65,25 @@ Programs ──► program_habits   (template library, system + user)
 | 5 | `habits` | Custom + journey habits | FK → user_journeys(journey_id), `active` flag |
 | 6 | `habit_logs` | Per-habit daily completion | UNIQUE(user_id, habit_id, date), status: completed/skipped |
 | 7 | `focus_sessions` | Pomodoro sessions | FK → habits, FK → user_journeys |
-| 8 | `mood_logs` | Daily mood emoji | UNIQUE(user_id, date) |
-| 9 | `skip_reasons` | Why user missed a day | UNIQUE(user_id, date) |
-| 10 | `notification_settings` | Reminder config (1:1) | Auto-created by signup trigger |
-| 11 | `programs` | Journey templates | `is_system` flag for built-in templates |
-| 12 | `program_habits` | Template habit definitions | FK → programs |
-| 13 | `user_journeys` | Journey runs | status: active/completed/extended/archived |
-| 14 | `journey_habits` | Snapshot of habits per run | FK → user_journeys, FK → habits |
-| 15 | `user_tasks` | Personal to-do items | energy_level, recurrence_rule JSONB |
-| 16 | `task_collections` | Junction: Task ↔ KB (M:N) | Composite PK(task_id, collection_id), CASCADE |
-| 17 | `collections` | Inbox + Knowledge Base | type CHECK: inbox/note/link/quote/learn/idea |
-| 18 | `expenses` | Daily spending log | amount VNĐ, category, note |
-| 19 | `subscriptions` | Recurring services | cycle, next_due, auto-advance |
-| 20 | `activity_logs` | Append-only audit trail | action + label + amount + meta JSONB |
-| 21 | `intentions` | Incubator (someday-maybe) | status: incubating/deferred/executed/abandoned |
-| 22 | `intention_logs` | Incubator audit trail | FK → intentions |
-| 23 | `fitness_logs` | Workout sessions | session_name, duration_min, energy |
-| 24 | `tags` | Central tag system | UNIQUE(user_id, name) |
-| 25 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
-| 26 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
-| 27 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
+| 8 | `skip_reasons` | Why user missed a day | UNIQUE(user_id, date) |
+| 9 | `notification_settings` | Reminder config (1:1) | Auto-created by signup trigger |
+| 10 | `programs` | Journey templates | `is_system` flag for built-in templates |
+| 11 | `program_habits` | Template habit definitions | FK → programs |
+| 12 | `user_journeys` | Journey runs | status: active/completed/extended/archived |
+| 13 | `journey_habits` | Snapshot of habits per run | FK → user_journeys, FK → habits |
+| 14 | `user_tasks` | Personal to-do items | energy_level, recurrence_rule JSONB |
+| 15 | `task_collections` | Junction: Task ↔ KB (M:N) | Composite PK(task_id, collection_id), CASCADE |
+| 16 | `collections` | Inbox + Knowledge Base | type CHECK: inbox/note/link/quote/learn/idea |
+| 17 | `expenses` | Daily spending log | amount VNĐ, category, note |
+| 18 | `subscriptions` | Recurring services | cycle, next_due, auto-advance |
+| 19 | `activity_logs` | Append-only audit trail | action + label + amount + meta JSONB |
+| 20 | `intentions` | Incubator (someday-maybe) | status: incubating/deferred/executed/abandoned |
+| 21 | `intention_logs` | Incubator audit trail | FK → intentions |
+| 22 | `fitness_logs` | Workout sessions | session_name, duration_min, energy |
+| 23 | `tags` | Central tag system | UNIQUE(user_id, name) |
+| 24 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
+| 25 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
+| 26 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
 | — | `friendships` | **[ARCHIVED v3.0.0]** Friend requests | Code in `src/_archived/FriendsPage.jsx`. Table exists in production DB but is not used by any active hook or page. Safe to DROP when ready. |
 
 ### Deprecated Columns
@@ -101,6 +100,7 @@ The following tables appeared in earlier versions of this document but were **ne
 - `reactions` — Team emoji reactions, cancelled v3.0.0
 - `quiz_attempts` — Quiz uses `xp_logs` instead (deduped by reason+meta)
 - `daily_challenge_completions` — Challenges use `xp_logs` instead
+- `mood_logs` — Removed in v4.10.1
 - `partner_queue` — Auto-match feature never implemented
 
 

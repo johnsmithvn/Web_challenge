@@ -22,7 +22,7 @@ function getFirstDayOfWeek(year, month) {
   return d === 0 ? 6 : d - 1; // Monday = 0
 }
 
-export default function MonthCalendar({ habitData, getCompletedTasks, moodLog = {}, skipLog = {}, onDayClick }) {
+export default function MonthCalendar({ habitData, getCompletedTasks, skipLog = {}, onDayClick }) {
   const today = new Date();
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -168,11 +168,7 @@ export default function MonthCalendar({ habitData, getCompletedTasks, moodLog = 
             >
               <span className="cal-cell__num">{day}</span>
               {info.done && <span className="cal-cell__dot" />}
-              {moodLog[info.dateStr] && (
-                <span className="cal-cell__mood" title={moodLog[info.dateStr].label}>
-                  {moodLog[info.dateStr].emoji}
-                </span>
-              )}
+
               {info.holiday && <span className="cal-cell__holiday" title={info.holiday}>🔴</span>}
             </div>
           );
@@ -191,23 +187,7 @@ export default function MonthCalendar({ habitData, getCompletedTasks, moodLog = 
             <span style={{ color: '#fbbf24' }}>{dayData[new Date(selected).getDate()].holiday}</span>
           )}
 
-          {/* Mood for this day */}
-          {moodLog[selected] && (
-            <div style={{
-              marginTop: '0.6rem', padding: '0.5rem 0.75rem',
-              background: 'rgba(139,92,246,0.06)',
-              border: '1px solid rgba(139,92,246,0.15)',
-              borderRadius: 'var(--radius-sm)',
-              display: 'flex', alignItems: 'center', gap: '0.5rem',
-            }}>
-              <span style={{ fontSize: '1.2rem' }}>{moodLog[selected].emoji}</span>
-              <div>
-                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                  Tâm trạng: {moodLog[selected].label}
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {/* Skip reason for this day */}
           {skipLog[selected] && (

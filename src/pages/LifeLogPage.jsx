@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useHabitStore } from '../hooks/useHabitStore';
-import { useMoodLog, useSkipReasons } from '../hooks/useMoodSkip';
+import { useSkipReasons } from '../hooks/useMoodSkip';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
 import ActivityHeatmap from '../components/ActivityHeatmap';
@@ -13,7 +13,7 @@ export default function LifeLogPage() {
   const { user } = useAuth();
   const { getHeatmapData, getTodayCount } = useActivityLog();
   const { data: habitData } = useHabitStore();
-  const { moodLog } = useMoodLog();
+
   const { skipLog } = useSkipReasons();
   const { getCompletedTasks } = useUserTasks();
 
@@ -78,7 +78,7 @@ export default function LifeLogPage() {
       }>
         <MonthCalendar
           habitData={habitData}
-          moodLog={moodLog}
+
           skipLog={skipLog}
           getCompletedTasks={getCompletedTasks}
           onDayClick={handleCalendarDayClick}

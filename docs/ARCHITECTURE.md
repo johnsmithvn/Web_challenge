@@ -183,7 +183,6 @@ vl_custom_habits       # DEPRECATED — migrated to Supabase `habits`, then wipe
 vl_habit_data          # REMOVED v1.6.1 — migrated sang Supabase `progress`, wiped
 vl_habit_progress      # REMOVED v1.5.0 — migrated sang Supabase `habit_logs`, wiped
 vl_focus_sessions      # REMOVED v1.6.2 — migrated sang Supabase `focus_sessions`, wiped
-vl_mood_log            # REMOVED v1.6.2 — Supabase-first, in-memory cho guest
 vl_skip_{date}         # REMOVED v1.6.2 — Supabase-first, in-memory cho guest
 
 --- STILL IN USE (UI state only) ---
@@ -212,7 +211,6 @@ streaks               ← updated by trigger on progress INSERT/UPDATE
 progress              ← primary daily check source of truth
 habits                ← custom user habits (+journey_id, +action, +status, +cycle_count, +conquered_at)
 focus_sessions        ← pomodoro session log (+journey_id v1.8.0)
-mood_logs             ← daily mood (UNIQUE user+date)
 skip_reasons          ← daily skip (UNIQUE user+date)
 xp_logs               ← immutable XP event log
 teams                 ← accountability pairs

@@ -15,8 +15,6 @@ import { useAuth } from '../contexts/AuthContext';
  *  5. Habits list, mood distribution, completed days
  */
 
-const MOOD_LABELS = ['😤','😟','😐','😊','🤩'];
-const MOOD_NAMES  = ['Rất Tệ','Tệ','Bình Thường','Tốt','Xuất Sắc'];
 const STATUS_COLOR = {
   completed: { bg: 'rgba(0,255,136,0.12)', color: '#00ff88', label: '✅ Hoàn Thành' },
   archived:  { bg: 'rgba(107,114,128,0.12)', color: '#9ca3af', label: '🏳 Đã Bỏ' },
@@ -38,7 +36,6 @@ export default function JourneyDetailPage() {
   // Calendar + day detail
   const [allLogs,      setAllLogs]      = useState([]);
   const [allFocus,     setAllFocus]     = useState([]);
-  const [allMoods,     setAllMoods]     = useState([]);
   const [selectedDay,  setSelectedDay]  = useState(null);
 
   useEffect(() => {
@@ -119,17 +116,6 @@ export default function JourneyDetailPage() {
         .lte('created_at', `${endDate}T23:59:59Z`);
       const totalXp = (xpRows || []).reduce((s, r) => s + (r.amount || 0), 0);
 
-      // 6. Mood logs in range
-      const { data: moodRows } = await supabase
-        .from('mood_logs')
-        .select('mood, logged_at')
-        .eq('user_id', user.id)
-        .gte('logged_at', `${startDate}T00:00:00Z`)
-        .lte('logged_at', `${endDate}T23:59:59Z`);
-      setAllMoods(moodRows || []);
-
-      const moodDist = [0, 0, 0, 0, 0];
-      (moodRows || []).forEach(r => { if (r.mood >= 1 && r.mood <= 5) moodDist[r.mood - 1]++; });
 
       const targetDays = j.target_days || 21;
       const pct = totalHabits ? Math.round((completedDays / targetDays) * 100) : 0;
@@ -137,7 +123,6 @@ export default function JourneyDetailPage() {
       setStats({
         completedDays, targetDays, pct,
         totalFocusMin, totalXp,
-        moodDist,
         focusSessionCount: (focusSessions || []).length,
         completedDaysList,
         byDate, totalHabits,
@@ -262,7 +247,6 @@ export default function JourneyDetailPage() {
             habitSnaps={habitSnaps}
             allLogs={allLogs}
             allFocus={allFocus}
-            allMoods={allMoods}
             onClose={() => setSelectedDay(null)}
           />
         )}
@@ -287,23 +271,7 @@ export default function JourneyDetailPage() {
           </div>
         )}
 
-        {/* ══ Mood Distribution ══ */}
-        {stats.moodDist.some(v => v > 0) && (
-          <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-            <h3 style={{ margin: '0 0 1rem' }}>😊 Mood Trong Lộ Trình</h3>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              {stats.moodDist.map((count, i) => (
-                count > 0 && (
-                  <div key={i} style={{ textAlign: 'center', minWidth: 54 }}>
-                    <div style={{ fontSize: '1.5rem' }}>{MOOD_LABELS[i]}</div>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem', lineHeight: 1 }}>{count}</div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{MOOD_NAMES[i]}</div>
-                  </div>
-                )
-              ))}
-            </div>
-          </div>
-        )}
+
       </div>
     </div>
   );
@@ -539,7 +507,7 @@ function JourneyCalendar({ journey, stats, habitSnaps, allLogs, onSelectDay }) {
 /* ══════════════════════════════════════════════════════════
    DayDetailModal — popup showing per-day details
    ══════════════════════════════════════════════════════════ */
-function DayDetailModal({ dateKey, habitSnaps, allLogs, allFocus, allMoods, onClose }) {
+function DayDetailModal({ dateKey, habitSnaps, allLogs, allFocus, onClose }) {
   const habitIds = habitSnaps.map(h => h.habit_id).filter(Boolean);
 
   // Habits done/missed for this day
@@ -550,8 +518,6 @@ function DayDetailModal({ dateKey, habitSnaps, allLogs, allFocus, allMoods, onCl
   const focusToday = allFocus.filter(f => f.date === dateKey);
   const totalFocusMin = focusToday.reduce((s, f) => s + (f.duration_min || 0), 0);
 
-  // Mood for this day
-  const moodToday = allMoods.find(m => m.logged_at && m.logged_at.startsWith(dateKey));
 
   const dateLabel = new Date(dateKey).toLocaleDateString('vi-VN', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -604,27 +570,7 @@ function DayDetailModal({ dateKey, habitSnaps, allLogs, allFocus, allMoods, onCl
           </div>
         )}
 
-        {/* Mood */}
-        {moodToday && (
-          <div style={{ marginBottom: '1.25rem' }}>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
-              Tâm Trạng
-            </div>
-            <div style={{
-              padding: '0.6rem 1rem', borderRadius: 8,
-              background: 'rgba(139,92,246,0.08)',
-              border: '1px solid rgba(139,92,246,0.2)',
-              display: 'flex', alignItems: 'center', gap: '0.5rem',
-            }}>
-              <span style={{ fontSize: '1.5rem' }}>
-                {MOOD_LABELS[moodToday.mood - 1] || '😐'}
-              </span>
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                {MOOD_NAMES[moodToday.mood - 1] || 'Bình Thường'}
-              </span>
-            </div>
-          </div>
-        )}
+
 
         {/* Focus Sessions */}
         {focusToday.length > 0 && (
@@ -655,7 +601,7 @@ function DayDetailModal({ dateKey, habitSnaps, allLogs, allFocus, allMoods, onCl
         )}
 
         {/* No data fallback */}
-        {!moodToday && focusToday.length === 0 && doneCount === 0 && (
+        {focusToday.length === 0 && doneCount === 0 && (
           <div style={{ textAlign: 'center', padding: '1rem 0', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
             Không có dữ liệu cho ngày này
           </div>
