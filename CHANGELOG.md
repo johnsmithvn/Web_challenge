@@ -1,5 +1,56 @@
 # CHANGELOG
 
+## v4.12.0 — 2026-05-10
+### Added
+- **Media in KB Articles (Phase 1):** Image + YouTube support for both Tiptap Visual and Markdown editors.
+  - Tiptap: `@tiptap/extension-image` + `@tiptap/extension-youtube` with toolbar buttons (🖼️ + 🎥)
+  - Slash commands: `/image` and `/youtube` for quick insertion
+  - Markdown: auto-detect YouTube URLs → embed iframe, audio URLs → native player, responsive images
+  - CSS: 16:9 responsive video embeds, styled audio players, responsive images
+- **Media Utils:** `src/utils/mediaUtils.js` — shared YouTube ID extraction + audio URL detection
+- **Upload API (Phase 2):** `api/upload.js` — Vercel serverless proxy to Cloudflare R2 (AWS Sig V4, zero external deps). `useFileUpload.js` hook.
+- **UrlInputPopover (Phase 3):** Shared ClickUp-style popover component — replaces `window.prompt()` for Image/YouTube URL input. Labeled input, Hủy/Chèn buttons, Escape/click-outside close, glassmorphism dark/light.
+- **QuoteWidget (Phase 4):** Dynamic inspirational quote widget with daily-seeded selection (different quote per page), 🔀 shuffle with crossfade animation, optional audio playback. Mounted on Today, Inbox, Knowledge pages.
+- **AudioNode (Phase 5):** Custom Tiptap extension for inline audio players. Toolbar 🎵 + `/audio` slash command + styled player block.
+- **User Quotes (Phase 6):** `inspirational_quotes` Supabase table + `useQuotes.js` hook with CRUD and graceful fallback.
+- **Imgur Auto-Upload (Phase 7):** `api/upload.js` refactored — dual provider (Imgur auto for images, R2 for audio). Paste/drop images in Tiptap → auto upload + insert.
+- **Quote Manager UI (Phase 7):** New Settings tab "Quotes" — add/edit/delete/toggle personal quotes, view system quotes. `SettingsPage.jsx` + CSS.
+
+### Changed
+- `src/components/SlashCommand.jsx` — 3 new slash items (Image, YouTube, Audio), no `window.prompt()`
+- `src/components/TiptapEditor.jsx` — AudioNode extension + 🎵 toolbar + paste/drop image auto-upload + UrlInputPopover
+- `src/pages/TrackerPage.jsx` — Replaced inline hardcoded quote with `<QuoteWidget>`
+- `src/pages/InboxPage.jsx` — Added QuoteWidget between quick-add and items list
+- `src/pages/CollectPage.jsx` — QuoteWidget + UrlInputPopover (Markdown toolbar: **all `window.prompt` removed**)
+- `src/pages/SettingsPage.jsx` — New "Quotes" sidebar tab + QuoteManagerSection component
+
+---
+
+## v4.11.0 — 2026-05-10
+### Added
+- **Knowledge Groups (M:N):** New organizational layer for Knowledge Base. Users can create named groups (with emoji) and assign articles to multiple groups simultaneously (Many-to-Many). Includes full drill-down view with contextual search, breadcrumb navigation, and group management.
+- **Sub-Notes (Threaded Notes):** Personal annotations attached to KB articles. Thread-style notes for book reading highlights, follow-up thoughts, and review notes. Inline editing with Ctrl+Enter to save.
+- **Group Picker (Editor):** Searchable group selector with inline creation — type a new name and create group instantly without leaving the editor.
+- **Group Badge (Article Cards):** Articles show group badges in list view. Click a badge to navigate directly to that group's drill-down view.
+- **Delete UX:** Deleting a group only removes the link (articles preserved). Separate "Delete All" option with strong confirmation for destructive delete.
+
+### Database
+- `knowledge_groups` table — user-created folders (title, emoji, description)
+- `collection_groups` junction table — M:N link between collections and groups (CASCADE delete)
+- `collection_notes` table — threaded sub-notes per article
+- Migration: `data/migration_v4.11.0_knowledge_groups.sql`
+
+### Files Added
+- `src/hooks/useKnowledgeGroups.js` — CRUD groups, link/unlink articles
+- `src/hooks/useCollectionNotes.js` — CRUD sub-notes
+
+### Files Modified
+- `src/hooks/useCollections.js` — Added collection_groups join to fetchItems
+- `src/pages/CollectPage.jsx` — 📁 Nhóm tab, GroupPicker, SubNotesSection, group badges
+- `src/styles/collect.css` — Group cards, breadcrumb, picker, sub-notes styles
+
+---
+
 ## v4.10.1 — 2026-05-10
 ### Changed
 - **DatePicker — Always-visible time input:** Time input now always shown (removed "Thêm giờ" toggle). Defaults to current local time (`HH:MM`) when opening picker. "Bây giờ" quick-set button added.

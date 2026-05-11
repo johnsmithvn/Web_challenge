@@ -5,22 +5,28 @@ import remarkGfm from 'remark-gfm';
 import { useCollections } from '../hooks/useCollections';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useTags } from '../hooks/useTags';
+import { useKnowledgeGroups } from '../hooks/useKnowledgeGroups';
+import { useCollectionNotes } from '../hooks/useCollectionNotes';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import '../styles/collect.css';
 
 const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
 const TiptapReadOnly = lazy(() => import('../components/TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
-import { FileText, Link as LinkIcon, MessageSquareQuote, BookOpen, Lightbulb, Library } from 'lucide-react';
+import { FileText, Link as LinkIcon, MessageSquareQuote, BookOpen, Lightbulb, Library, FolderOpen, Bot, GraduationCap, Briefcase } from 'lucide-react';
+import QuoteWidget from '../components/QuoteWidget';
+import UrlInputPopover from '../components/UrlInputPopover';
 
 /* ── Constants ─────────────────────────────────────────────── */
 const TYPE_META = {
-  note:  { icon: FileText, label: 'Ghi chú',   color: '#8b5cf6' },
-  link:  { icon: LinkIcon, label: 'Link',       color: '#06b6d4' },
-  quote: { icon: MessageSquareQuote, label: 'Trích dẫn', color: '#f59e0b' },
-  learn: { icon: BookOpen, label: 'Học',        color: '#22c55e' },
-  idea:  { icon: Lightbulb, label: 'Ý tưởng',   color: '#f97316' },
-  // 'want' removed in v4.4.1 — superseded by Incubator (intentions table)
+  note:       { icon: FileText, label: 'Ghi chú',     color: '#8b5cf6' },
+  link:       { icon: LinkIcon, label: 'Link',         color: '#06b6d4' },
+  quote:      { icon: MessageSquareQuote, label: 'Trích dẫn', color: '#f59e0b' },
+  learn:      { icon: BookOpen, label: 'Học',          color: '#22c55e' },
+  idea:       { icon: Lightbulb, label: 'Ý tưởng',     color: '#f97316' },
+  ai:         { icon: Bot, label: 'AI',                color: '#a855f7' },
+  knowledge:  { icon: GraduationCap, label: 'Kiến thức', color: '#0ea5e9' },
+  experience: { icon: Briefcase, label: 'Kinh nghiệm', color: '#ec4899' },
 };
 
 const SORT_OPTIONS = [
@@ -230,8 +236,168 @@ function TableOfContents({ content }) {
   );
 }
 
+/* ── GroupPicker (for editor — inline creation) ──────────── */
+function GroupPicker({ selected = [], onChange, groups = [], onCreateGroup }) {
+  const [input, setInput] = useState('');
+  const [open, setOpen]   = useState(false);
+  const containerRef      = useRef(null);
+
+  const selectedIds = selected.map(g => g.id);
+  const filtered = useMemo(() => {
+    const q = input.toLowerCase().trim();
+    return groups.filter(g => !selectedIds.includes(g.id) && (!q || g.title.toLowerCase().includes(q))).slice(0, 10);
+  }, [groups, selectedIds, input]);
+
+  const showNew = input.trim().length > 0 && !groups.some(g => g.title.toLowerCase() === input.trim().toLowerCase());
+
+  const addGroup = useCallback(async (group) => {
+    onChange([...selected, group]);
+    setInput('');
+    setOpen(false);
+  }, [selected, onChange]);
+
+  const createAndAdd = useCallback(async () => {
+    if (!input.trim() || !onCreateGroup) return;
+    const newG = await onCreateGroup(input.trim());
+    if (newG) addGroup(newG);
+  }, [input, onCreateGroup, addGroup]);
+
+  useEffect(() => {
+    const h = (e) => { if (containerRef.current && !containerRef.current.contains(e.target)) { setOpen(false); } };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  return (
+    <div className="kb-group-picker" ref={containerRef}>
+      {selected.map(g => (
+        <span key={g.id} className="kb-group-chip">
+          {g.emoji} {g.title}
+          <button className="kb-group-chip__rm" onMouseDown={e => { e.preventDefault(); onChange(selected.filter(x => x.id !== g.id)); }}>×</button>
+        </span>
+      ))}
+      <input
+        className="kb-group-picker__field"
+        value={input}
+        onChange={e => { setInput(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && showNew) { e.preventDefault(); createAndAdd(); }
+          else if (e.key === 'Enter' && filtered.length > 0) { e.preventDefault(); addGroup(filtered[0]); }
+          else if (e.key === 'Backspace' && !input && selected.length) onChange(selected.slice(0, -1));
+          else if (e.key === 'Escape') setOpen(false);
+        }}
+        placeholder={selected.length ? '' : '📁 Thêm vào nhóm...'}
+        autoComplete="off"
+      />
+      {open && (filtered.length > 0 || showNew) && (
+        <div className="kb-tag-dropdown">
+          {filtered.map(g => (
+            <button key={g.id} className="kb-tag-dropdown__item" onMouseDown={e => { e.preventDefault(); addGroup(g); }}>
+              {g.emoji} {g.title} <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{g._articleCount || 0}</span>
+            </button>
+          ))}
+          {showNew && (
+            <button className="kb-tag-dropdown__item kb-tag-dropdown__item--new" onMouseDown={e => { e.preventDefault(); createAndAdd(); }}>
+              ✚ Tạo nhóm mới "<strong>{input.trim()}</strong>"
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── SubNotes Section (reader view) ──────────────────────── */
+function SubNotesSection({ collectionId, notesHook }) {
+  const { notes, isLoading, fetchNotes, addNote, updateNote, deleteNote } = notesHook;
+  const [newContent, setNewContent] = useState('');
+  const [editingId, setEditingId]   = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [showForm, setShowForm]     = useState(false);
+
+  useEffect(() => { if (collectionId) fetchNotes(collectionId); }, [collectionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAdd = async () => {
+    if (!newContent.trim()) return;
+    await addNote(collectionId, newContent);
+    setNewContent('');
+    setShowForm(false);
+  };
+
+  const handleUpdate = async (id) => {
+    if (!editContent.trim()) return;
+    await updateNote(id, editContent);
+    setEditingId(null);
+    setEditContent('');
+  };
+
+  const fmtNoteDate = (iso) => new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div className="kb-subnotes">
+      <div className="kb-subnotes__header">
+        <span className="kb-subnotes__title">💭 Ghi Chú Cá Nhân</span>
+        {notes.length > 0 && <span className="kb-subnotes__count">{notes.length}</span>}
+      </div>
+
+      {isLoading && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Đang tải...</div>}
+
+      {notes.map(n => (
+        <div key={n.id} className={`kb-subnote${editingId === n.id ? ' kb-subnote--editing' : ''}`}>
+          {editingId === n.id ? (
+            <>
+              <textarea
+                className="kb-subnote__edit-textarea"
+                value={editContent}
+                onChange={e => setEditContent(e.target.value)}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleUpdate(n.id); if (e.key === 'Escape') { setEditingId(null); setEditContent(''); } }}
+              />
+              <div className="kb-subnote-form__actions">
+                <button className="btn btn-ghost" style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }} onClick={() => { setEditingId(null); setEditContent(''); }}>Hủy</button>
+                <button className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.3rem 0.6rem' }} onClick={() => handleUpdate(n.id)}>Lưu</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="kb-subnote__content">{n.content}</div>
+              <div className="kb-subnote__footer">
+                <span className="kb-subnote__date">{fmtNoteDate(n.created_at)}</span>
+                <div className="kb-subnote__actions">
+                  <button className="kb-subnote__btn" onClick={() => { setEditingId(n.id); setEditContent(n.content); }}>✏️</button>
+                  <button className="kb-subnote__btn kb-subnote__btn--danger" onClick={() => deleteNote(n.id)}>🗑</button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      ))}
+
+      {showForm ? (
+        <div className="kb-subnote-form">
+          <textarea
+            className="kb-subnote-form__textarea"
+            value={newContent}
+            onChange={e => setNewContent(e.target.value)}
+            placeholder="Viết ghi chú..."
+            autoFocus
+            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAdd(); if (e.key === 'Escape') { setShowForm(false); setNewContent(''); } }}
+          />
+          <div className="kb-subnote-form__actions">
+            <button className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '0.35rem 0.7rem' }} onClick={() => { setShowForm(false); setNewContent(''); }}>Hủy</button>
+            <button className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.35rem 0.7rem' }} disabled={!newContent.trim()} onClick={handleAdd}>💾 Lưu</button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn btn-ghost" style={{ fontSize: '0.82rem', marginTop: '0.5rem' }} onClick={() => setShowForm(true)}>＋ Thêm ghi chú</button>
+      )}
+    </div>
+  );
+}
+
 /* ── ArticleCard ──────────────────────────────────────────── */
-function ArticleCard({ item, onClick }) {
+function ArticleCard({ item, onClick, onGroupClick }) {
   const meta      = TYPE_META[item.type] || TYPE_META.note;
   const isTiptap  = isTiptapBody(item);
   // Use body_text (plain text) for cards — avoids showing raw JSON for Tiptap articles
@@ -287,6 +453,11 @@ function ArticleCard({ item, onClick }) {
                 📌 {item._linkedTaskCount} task{item._linkedTaskCount > 1 ? 's' : ''}
               </span>
             )}
+            {(item._groups || []).map(g => (
+              <span key={g.id} className="kb-group-badge" onClick={e => { e.stopPropagation(); onGroupClick?.(g); }}>
+                {g.emoji} {g.title}
+              </span>
+            ))}
           </div>
           <span className="kb-card__readtime">⏱ {mins} phút đọc</span>
         </div>
@@ -300,16 +471,58 @@ function slugify(text) {
   return String(text).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
 }
 
-/* Custom ReactMarkdown components — injects id attrs for TOC */
+/* Custom ReactMarkdown components — injects id attrs for TOC + media embeds */
 const mdComponents = {
   h1: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h1 id={id}>{children}</h1>; },
   h2: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h2 id={id}>{children}</h2>; },
   h3: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h3 id={id}>{children}</h3>; },
   h4: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h4 id={id}>{children}</h4>; },
+  /* Responsive images with lazy loading */
+  img: ({ src, alt }) => (
+    <img src={src} alt={alt || ''} className="kb-md-image" loading="lazy" />
+  ),
+  /* Auto-detect YouTube + audio URLs in links */
+  a: ({ href, children }) => {
+    // YouTube → iframe embed
+    if (href && /youtube\.com\/watch|youtu\.be\/|youtube\.com\/embed\//.test(href)) {
+      const ytId = (() => {
+        try {
+          const u = new URL(href);
+          if (u.searchParams.has('v')) return u.searchParams.get('v');
+          if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('/')[0];
+          if (u.pathname.startsWith('/embed/')) return u.pathname.split('/embed/')[1]?.split('?')[0];
+        } catch { /* ignore */ }
+        return null;
+      })();
+      if (ytId) {
+        return (
+          <div className="kb-video-embed">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${ytId}`}
+              title="YouTube video"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        );
+      }
+    }
+    // Audio file → native player
+    if (href && /\.(mp3|m4a|ogg|wav|aac|flac)(\?|$)/i.test(href)) {
+      return (
+        <div className="kb-audio-player">
+          <audio controls src={href} preload="metadata" />
+          <span className="kb-audio-player__label">{children}</span>
+        </div>
+      );
+    }
+    // Normal link
+    return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
+  },
 };
 
 /* ── ReaderView ───────────────────────────────────────────── */
-function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask }) {
+function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook }) {
   const meta    = TYPE_META[item.type] || TYPE_META.note;
   const isTiptap = isTiptapBody(item);
   const mins    = item.word_count ? Math.max(1, Math.ceil(item.word_count / 200)) : readTime(item.body);
@@ -377,6 +590,11 @@ function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask }) {
         {/* TOC sidebar — only for markdown (tiptap has its own structure) */}
         {!isTiptap && <TableOfContents content={item.body} />}
       </div>
+
+      {/* Sub-notes section */}
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 1.5rem 4rem' }}>
+        <SubNotesSection collectionId={item.id} notesHook={notesHook} />
+      </div>
     </div>
   );
 }
@@ -393,6 +611,7 @@ function ToolbarBtn({ label, title, onClick }) {
 /* ── MarkdownEditor (custom split-pane) ─────────────────── */
 function MarkdownEditor({ value, onChange, onSave }) {
   const ref = useCallback(node => { if (node) node.focus(); }, []);
+  const [mdMediaPopover, setMdMediaPopover] = useState(null); // 'image' | 'youtube' | 'audio' | null
 
   const insert = useCallback((before, after = '', placeholder = '') => {
     const ta = document.getElementById('kb-md-textarea');
@@ -470,6 +689,9 @@ function MarkdownEditor({ value, onChange, onSave }) {
     { label: '•',   title: 'Bullet list (Ctrl+Shift+8)',action: () => insertLine('- ') },
     { label: '1.',  title: 'Ordered list (Ctrl+Shift+7)',action: () => insertLine('1. ') },
     { label: '🔗',  title: 'Link (Ctrl+K)',       action: () => insert('[', '](url)', 'link text') },
+    { label: '🖼️',  title: 'Chèn ảnh',             action: () => setMdMediaPopover(p => p === 'image' ? null : 'image') },
+    { label: '▶️',  title: 'Chèn YouTube',          action: () => setMdMediaPopover(p => p === 'youtube' ? null : 'youtube') },
+    { label: '🎵',  title: 'Chèn Audio',            action: () => setMdMediaPopover(p => p === 'audio' ? null : 'audio') },
   ];
 
   return (
@@ -481,6 +703,22 @@ function MarkdownEditor({ value, onChange, onSave }) {
         ))}
         <span className="kb-tb-divider" />
       </div>
+
+      {/* Media URL popover (replaces window.prompt) */}
+      <UrlInputPopover
+        open={!!mdMediaPopover}
+        onClose={() => setMdMediaPopover(null)}
+        onSubmit={(url) => {
+          if (mdMediaPopover === 'image') insert('\n![', `](${url})\n`, 'mô tả ảnh');
+          else if (mdMediaPopover === 'youtube') insert('\n[Video](', `${url})\n`);
+          else if (mdMediaPopover === 'audio') insert('\n[Audio](', `${url})\n`);
+        }}
+        label={mdMediaPopover === 'image' ? 'URL ảnh' : mdMediaPopover === 'youtube' ? 'YouTube URL' : 'Audio URL'}
+        placeholder={mdMediaPopover === 'image' ? 'https://example.com/photo.jpg' : mdMediaPopover === 'youtube' ? 'https://youtu.be/...' : 'https://example.com/audio.mp3'}
+        icon={mdMediaPopover === 'image' ? '🖼️' : mdMediaPopover === 'youtube' ? '▶️' : '🎵'}
+        allowUpload={mdMediaPopover === 'image' || mdMediaPopover === 'audio'}
+        accept={mdMediaPopover === 'image' ? 'image/*' : mdMediaPopover === 'audio' ? 'audio/*' : undefined}
+      />
 
       {/* Panes */}
       <div className="kb-split__panes">
@@ -518,7 +756,7 @@ function MarkdownEditor({ value, onChange, onSave }) {
 
 
 /* ── EditorView ───────────────────────────────────────────── */
-function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isNew = false, onConfirmSwitch }) {
+function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isNew = false, onConfirmSwitch, groups = [], onCreateGroup, selectedGroups = [], onGroupsChange }) {
   const savedMode = localStorage.getItem(EDITOR_MODE_KEY) || 'markdown';
   const initialFormat = isNew ? savedMode : (initial?.content_format || 'markdown');
 
@@ -595,6 +833,13 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
         />
       </div>
 
+      {/* Groups row */}
+      <div className="kb-editor__sub-meta">
+        <div style={{ flex: 1 }}>
+          <GroupPicker selected={selectedGroups} onChange={onGroupsChange} groups={groups} onCreateGroup={onCreateGroup} />
+        </div>
+      </div>
+
       {/* Tags + URL + Mode toggle row */}
       <div className="kb-editor__sub-meta">
         <div style={{ flex: 1 }}>
@@ -647,11 +892,17 @@ export default function CollectPage() {
   const { items, isLoading, fetchItems, addItem, updateItem, deleteItem } = useCollections();
   const { addTask, pendingTasks } = useUserTasks();
   const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag, fetchTags: refetchTags } = useTags();
+  const groupsHook = useKnowledgeGroups();
+  const notesHook = useCollectionNotes();
   const { confirm, ConfirmModal } = useConfirm();
 
   const [view, setView]         = useState('list');
   const [selected, setSelected] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeGroupView, setActiveGroupView] = useState(null); // group drill-down
+  const [groupArticles, setGroupArticles] = useState([]);
+  const [editGroups, setEditGroups] = useState([]); // groups selected in editor
+  const [groupNewName, setGroupNewName] = useState(''); // separate state for group creation input
 
   // Filters
   const [search, setSearch]     = useState('');
@@ -668,7 +919,7 @@ export default function CollectPage() {
   const [bulkSelected, setBulkSelected] = useState(new Set());
 
   useEffect(() => {
-    if (user) fetchItems({});
+    if (user) { fetchItems({}); groupsHook.fetchGroups(); }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close task filter popup on outside click
@@ -724,8 +975,25 @@ export default function CollectPage() {
 
   /* ── Handlers ────────────────────── */
   const openReader = useCallback((item) => { setSelected(item); setView('reader'); }, []);
-  const openEditor = useCallback((item = null) => { setSelected(item); setView('editor'); }, []);
-  const goList     = useCallback(() => { setView('list'); setSelected(null); }, []);
+  const openEditor = useCallback(async (item = null) => {
+    setSelected(item);
+    setView('editor');
+    // Load existing groups for this article
+    if (item?.id) {
+      const articleGroups = await groupsHook.getGroupsForArticle(item.id);
+      setEditGroups(articleGroups);
+    } else {
+      setEditGroups(activeGroupView ? [activeGroupView] : []);
+    }
+  }, [activeGroupView]); // eslint-disable-line react-hooks/exhaustive-deps
+  const goList = useCallback(() => {
+    setView('list');
+    setSelected(null);
+    if (activeGroupView) {
+      // Refresh group articles
+      groupsHook.fetchGroupArticles(activeGroupView.id).then(setGroupArticles);
+    }
+  }, [activeGroupView]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = useCallback(async (draft) => {
     setIsSaving(true);
@@ -773,12 +1041,33 @@ export default function CollectPage() {
         }
       }
 
+      // v4.11.0: Sync group links
+      if (savedId && editGroups) {
+        const existingGroups = selected?._groups || [];
+        const existingIds = existingGroups.map(g => g.id);
+        const newIds = editGroups.map(g => g.id);
+
+        // Groups to link
+        for (const g of editGroups) {
+          if (!existingIds.includes(g.id)) {
+            await groupsHook.linkArticle(savedId, g.id);
+          }
+        }
+        // Groups to unlink
+        for (const g of existingGroups) {
+          if (!newIds.includes(g.id)) {
+            await groupsHook.unlinkArticle(savedId, g.id);
+          }
+        }
+      }
+
       await fetchItems({});
+      await groupsHook.fetchGroups();
       goList();
     } finally {
       setIsSaving(false);
     }
-  }, [selected, updateItem, addItem, fetchItems, goList, addCentralTag, linkTag, unlinkTag]);
+  }, [selected, updateItem, addItem, fetchItems, goList, addCentralTag, linkTag, unlinkTag, editGroups]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = useCallback(async (item) => {
     const ok = await confirm({
@@ -824,6 +1113,10 @@ export default function CollectPage() {
           isSaving={isSaving}
           suggestions={allTags}
           isNew={isNew}
+          groups={groupsHook.groups}
+          onCreateGroup={groupsHook.addGroup}
+          selectedGroups={editGroups}
+          onGroupsChange={setEditGroups}
           onConfirmSwitch={() => confirm({
             title: 'Chuyển mode?',
             message: 'Nội dung hiện tại sẽ bị xóa. Tiếp tục?',
@@ -845,6 +1138,7 @@ export default function CollectPage() {
           onEdit={() => openEditor(selected)}
           onDelete={() => handleDelete(selected)}
           onBack={goList}
+          notesHook={notesHook}
           onCreateTask={async (item) => {
             const result = await addTask({
               title: item.title,
@@ -885,6 +1179,9 @@ export default function CollectPage() {
           </button>
         </div>
       </div>
+
+      {/* Daily quote */}
+      <QuoteWidget pageKey="knowledge" />
 
       {/* Search + Sort + Task Filter */}
       <div className="kb-toolbar">
@@ -1012,7 +1309,7 @@ export default function CollectPage() {
 
       {/* Type filter pills */}
       <div className="kb-type-filters">
-        <button className={`kb-type-pill${!typeFilter ? ' kb-type-pill--active' : ''}`} onClick={() => setTypeFilter('')}>
+        <button className={`kb-type-pill${!typeFilter && !activeGroupView ? ' kb-type-pill--active' : ''}`} onClick={() => { setTypeFilter(''); setActiveGroupView(null); }}>
           <Library size={14} style={{ marginRight: 6 }} /> Tất cả
         </button>
         {Object.entries(TYPE_META).map(([k, v]) => {
@@ -1022,101 +1319,278 @@ export default function CollectPage() {
               key={k}
               className={`kb-type-pill${typeFilter === k ? ' kb-type-pill--active' : ''}`}
               style={typeFilter === k ? { '--pill-color': v.color } : {}}
-              onClick={() => setTypeFilter(typeFilter === k ? '' : k)}
+              onClick={() => { setTypeFilter(typeFilter === k ? '' : k); setActiveGroupView(null); }}
             >
               <Icon size={14} style={{ marginRight: 6 }} /> {v.label}
             </button>
           );
         })}
+        <button
+          className={`kb-type-pill${activeGroupView || typeFilter === '__groups' ? ' kb-type-pill--active' : ''}`}
+          style={activeGroupView || typeFilter === '__groups' ? { '--pill-color': '#8b5cf6' } : {}}
+          onClick={() => { setTypeFilter(typeFilter === '__groups' ? '' : '__groups'); setActiveGroupView(null); }}
+        >
+          <FolderOpen size={14} style={{ marginRight: 6 }} /> Nhóm
+        </button>
       </div>
 
-      {/* Tag filter row */}
-      {allTags.length > 0 && (
-        <div className="kb-tag-filters">
-          <span className="kb-tag-filters__label">Tags:</span>
-          <button className={`kb-tag-chip kb-tag-filter-btn${!activeTag ? ' kb-tag-chip--active' : ''}`} onClick={() => setActiveTag('')}>Tất cả</button>
-          {allTags.map(t => (
-            <button
-              key={t.id}
-              className={`kb-tag-chip kb-tag-filter-btn${activeTag === t.id ? ' kb-tag-chip--active' : ''}`}
-              onClick={() => setActiveTag(activeTag === t.id ? '' : t.id)}
-            >
-              <span className="kb-tag-dot" style={{ background: t.color || '#8b5cf6' }} />
-              #{t.name}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* ── GROUP DRILL-DOWN VIEW ───────────────────── */}
+      {activeGroupView ? (
+        <>
+          {/* Breadcrumb */}
+          <div className="kb-breadcrumb">
+            <button className="kb-breadcrumb__link" onClick={() => { setActiveGroupView(null); setTypeFilter('__groups'); setSearch(''); }}>🧠 Kho Tàng</button>
+            <span className="kb-breadcrumb__sep">›</span>
+            <span className="kb-breadcrumb__current">{activeGroupView.emoji} {activeGroupView.title}</span>
+          </div>
 
-
-
-      {/* List */}
-      {isLoading ? (
-        <div className="kb-loading">⏳ Đang tải...</div>
-      ) : filtered.length === 0 ? (
-        <div className="kb-empty">
-          <div className="kb-empty__icon">🧠</div>
-          <p>Chưa có bài viết nào{search ? ` cho "${search}"` : ''}.</p>
-          <button className="btn btn-primary" onClick={() => openEditor(null)}>✏️ Tạo bài đầu tiên</button>
-        </div>
-      ) : (
-        <div className="kb-list">
-          {/* Bulk bar */}
-          {bulkMode && (
-            <div className="inbox-bulk-bar" style={{ marginBottom: '0.75rem' }}>
-              <button
-                className="inbox-bulk-bar__btn"
-                onClick={() => {
-                  if (bulkSelected.size >= filtered.length) setBulkSelected(new Set());
-                  else setBulkSelected(new Set(filtered.map(i => i.id)));
-                }}
-              >
-                {bulkSelected.size >= filtered.length ? '☐ Bỏ chọn' : '☑ Chọn tất cả'}
-              </button>
-              {bulkSelected.size > 0 && (
-                <button
-                  className="inbox-bulk-bar__btn inbox-bulk-bar__btn--delete"
-                  onClick={async () => {
-                    const ok = await confirm({
-                      title: `Xóa ${bulkSelected.size} bài viết?`,
-                      message: 'Hành động này không thể hoàn tác.',
-                      confirmLabel: 'Xóa tất cả',
-                      danger: true,
-                    });
-                    if (!ok) return;
-                    for (const id of bulkSelected) { await deleteItem(id); }
-                    setBulkSelected(new Set());
-                    setBulkMode(false);
-                    fetchItems({});
-                  }}
-                >
-                  🗑 Xóa ({bulkSelected.size})
-                </button>
-              )}
-            </div>
-          )}
-          {filtered.map(item => (
-            <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-              {bulkMode && (
-                <label style={{ paddingTop: '1.1rem', cursor: 'pointer', flexShrink: 0 }}>
-                  <input
-                    type="checkbox"
-                    checked={bulkSelected.has(item.id)}
-                    onChange={() => setBulkSelected(prev => {
-                      const next = new Set(prev);
-                      if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
-                      return next;
-                    })}
-                    style={{ width: 18, height: 18, accentColor: 'var(--purple)', cursor: 'pointer' }}
-                  />
-                </label>
-              )}
-              <div style={{ flex: 1 }}>
-                <ArticleCard item={item} onClick={openReader} />
+          {/* Group header */}
+          <div className="kb-group-header">
+            <div className="kb-group-header__info">
+              <div className="kb-group-header__emoji">{activeGroupView.emoji}</div>
+              <h2 className="kb-group-header__title">{activeGroupView.title}</h2>
+              <div className="kb-group-header__meta">
+                {groupArticles.length} bài · Tạo {fmtDate(activeGroupView.created_at)}
+                {activeGroupView.description && <> · {activeGroupView.description}</>}
               </div>
             </div>
-          ))}
-        </div>
+            <div className="kb-group-header__actions">
+              <button className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.4rem 0.8rem' }} onClick={() => openEditor(null)}>＋ Thêm bài</button>
+              <button className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '0.4rem 0.8rem' }} onClick={async () => {
+                const ok = await confirm({
+                  title: `Xóa nhóm "${activeGroupView.emoji} ${activeGroupView.title}"?`,
+                  message: `${groupArticles.length} bài viết bên trong sẽ KHÔNG bị xóa — chỉ gỡ khỏi nhóm này.`,
+                  confirmLabel: 'Xóa nhóm',
+                  danger: true,
+                });
+                if (!ok) return;
+                await groupsHook.deleteGroup(activeGroupView.id);
+                setActiveGroupView(null);
+                setTypeFilter('__groups');
+                fetchItems({});
+              }}>🗑 Xóa nhóm</button>
+            </div>
+          </div>
+
+          {/* Contextual search */}
+          <div className="kb-toolbar">
+            <input
+              className="kb-search"
+              type="text"
+              placeholder={`🔍 Tìm trong "${activeGroupView.title}"...`}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+
+          {/* Articles in group */}
+          {(() => {
+            let list = groupArticles;
+            if (search) {
+              const q = search.toLowerCase();
+              list = list.filter(i => i.title.toLowerCase().includes(q) || (i.body || '').toLowerCase().includes(q));
+            }
+            return list.length === 0 ? (
+              <div className="kb-empty">
+                <div className="kb-empty__icon">📁</div>
+                <p>Chưa có bài viết nào trong nhóm{search ? ` cho "${search}"` : ''}.</p>
+                <button className="btn btn-primary" onClick={() => openEditor(null)}>✏️ Thêm bài</button>
+              </div>
+            ) : (
+              <div className="kb-list">
+                {list.map(item => (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <ArticleCard item={item} onClick={openReader} onGroupClick={(g) => {
+                        if (g.id !== activeGroupView.id) {
+                          setActiveGroupView(g);
+                          groupsHook.fetchGroupArticles(g.id).then(setGroupArticles);
+                          setSearch('');
+                        }
+                      }} />
+                    </div>
+                    <button
+                      className="kb-subnote__btn"
+                      title="Gỡ khỏi nhóm"
+                      style={{ opacity: 0.5, flexShrink: 0 }}
+                      onClick={async () => {
+                        await groupsHook.unlinkArticle(item.id, activeGroupView.id);
+                        setGroupArticles(prev => prev.filter(a => a.id !== item.id));
+                        groupsHook.fetchGroups();
+                      }}
+                    >✕</button>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </>
+
+      /* ── GROUP LIST TAB ──────────────────────────── */
+      ) : typeFilter === '__groups' ? (
+        <>
+          {/* Create group inline */}
+          <div className="kb-create-group">
+            <input
+              className="kb-create-group__input"
+              placeholder="Tên nhóm mới..."
+              value={groupNewName}
+              onChange={e => setGroupNewName(e.target.value)}
+              onKeyDown={async e => {
+                if (e.key === 'Enter' && groupNewName.trim()) {
+                  await groupsHook.addGroup(groupNewName.trim());
+                  setGroupNewName('');
+                }
+              }}
+            />
+            <button
+              className="btn btn-primary"
+              style={{ fontSize: '0.85rem', padding: '0.45rem 0.9rem', whiteSpace: 'nowrap' }}
+              disabled={!groupNewName.trim()}
+              onClick={async () => {
+                if (!groupNewName.trim()) return;
+                await groupsHook.addGroup(groupNewName.trim());
+                setGroupNewName('');
+              }}
+            >＋ Tạo nhóm</button>
+          </div>
+
+          {/* Group list with search filter */}
+          {(() => {
+            const q = search.toLowerCase();
+            const filteredGroups = search
+              ? groupsHook.groups.filter(g => g.title.toLowerCase().includes(q) || (g.description || '').toLowerCase().includes(q))
+              : groupsHook.groups;
+
+            if (groupsHook.isLoading) return <div className="kb-loading">⏳ Đang tải nhóm...</div>;
+            if (filteredGroups.length === 0) return (
+              <div className="kb-empty">
+                <div className="kb-empty__icon">📁</div>
+                <p>{search ? `Không tìm thấy nhóm cho "${search}"` : 'Chưa có nhóm nào. Tạo nhóm đầu tiên ở trên!'}</p>
+              </div>
+            );
+            return (
+              <div className="kb-group-list">
+                {filteredGroups.map(g => (
+                  <div
+                    key={g.id}
+                    className="kb-group-card"
+                    onClick={async () => {
+                      setActiveGroupView(g);
+                      setTypeFilter('');
+                      setSearch('');
+                      const articles = await groupsHook.fetchGroupArticles(g.id);
+                      setGroupArticles(articles);
+                    }}
+                  >
+                    <div className="kb-group-card__emoji">{g.emoji}</div>
+                    <div className="kb-group-card__body">
+                      <h3 className="kb-group-card__title">{g.title}</h3>
+                      {g.description && <p className="kb-group-card__desc">{g.description}</p>}
+                    </div>
+                    <span className="kb-group-card__count">{g._articleCount || 0} bài</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </>
+
+      /* ── NORMAL ARTICLE LIST ─────────────────────── */
+      ) : (
+        <>
+          {/* Tag filter row */}
+          {allTags.length > 0 && (
+            <div className="kb-tag-filters">
+              <span className="kb-tag-filters__label">Tags:</span>
+              <button className={`kb-tag-chip kb-tag-filter-btn${!activeTag ? ' kb-tag-chip--active' : ''}`} onClick={() => setActiveTag('')}>Tất cả</button>
+              {allTags.map(t => (
+                <button
+                  key={t.id}
+                  className={`kb-tag-chip kb-tag-filter-btn${activeTag === t.id ? ' kb-tag-chip--active' : ''}`}
+                  onClick={() => setActiveTag(activeTag === t.id ? '' : t.id)}
+                >
+                  <span className="kb-tag-dot" style={{ background: t.color || '#8b5cf6' }} />
+                  #{t.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* List */}
+          {isLoading ? (
+            <div className="kb-loading">⏳ Đang tải...</div>
+          ) : filtered.length === 0 ? (
+            <div className="kb-empty">
+              <div className="kb-empty__icon">🧠</div>
+              <p>Chưa có bài viết nào{search ? ` cho "${search}"` : ''}.</p>
+              <button className="btn btn-primary" onClick={() => openEditor(null)}>✏️ Tạo bài đầu tiên</button>
+            </div>
+          ) : (
+            <div className="kb-list">
+              {/* Bulk bar */}
+              {bulkMode && (
+                <div className="inbox-bulk-bar" style={{ marginBottom: '0.75rem' }}>
+                  <button
+                    className="inbox-bulk-bar__btn"
+                    onClick={() => {
+                      if (bulkSelected.size >= filtered.length) setBulkSelected(new Set());
+                      else setBulkSelected(new Set(filtered.map(i => i.id)));
+                    }}
+                  >
+                    {bulkSelected.size >= filtered.length ? '☐ Bỏ chọn' : '☑ Chọn tất cả'}
+                  </button>
+                  {bulkSelected.size > 0 && (
+                    <button
+                      className="inbox-bulk-bar__btn inbox-bulk-bar__btn--delete"
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: `Xóa ${bulkSelected.size} bài viết?`,
+                          message: 'Hành động này không thể hoàn tác.',
+                          confirmLabel: 'Xóa tất cả',
+                          danger: true,
+                        });
+                        if (!ok) return;
+                        for (const id of bulkSelected) { await deleteItem(id); }
+                        setBulkSelected(new Set());
+                        setBulkMode(false);
+                        fetchItems({});
+                      }}
+                    >
+                      🗑 Xóa ({bulkSelected.size})
+                    </button>
+                  )}
+                </div>
+              )}
+              {filtered.map(item => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                  {bulkMode && (
+                    <label style={{ paddingTop: '1.1rem', cursor: 'pointer', flexShrink: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={bulkSelected.has(item.id)}
+                        onChange={() => setBulkSelected(prev => {
+                          const next = new Set(prev);
+                          if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                          return next;
+                        })}
+                        style={{ width: 18, height: 18, accentColor: 'var(--purple)', cursor: 'pointer' }}
+                      />
+                    </label>
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <ArticleCard item={item} onClick={openReader} onGroupClick={(g) => {
+                      setActiveGroupView(g);
+                      setTypeFilter('');
+                      setSearch('');
+                      groupsHook.fetchGroupArticles(g.id).then(setGroupArticles);
+                    }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

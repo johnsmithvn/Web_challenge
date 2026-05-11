@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.5.3
-**Updated:** 2026-05-07
+**Version:** v4.11.0
+**Updated:** 2026-05-10
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 
@@ -55,9 +55,14 @@ src/
 │   ├── CashflowBar.jsx       # v3.7.0 — 30-day subscription due date timeline
 │   ├── TagPicker.jsx         # v3.7.0 — Searchable multi-select tag dropdown
 │   ├── LinkKBModal.jsx       # v4.5.0 — Search+checkbox modal to link/unlink KB articles to a task
+│   ├── QuoteWidget.jsx       # v4.12.0 — Daily-seeded random quote, shuffle, audio, crossfade (Today/Inbox/KB)
+│   ├── UrlInputPopover.jsx   # v4.12.0 — Shared ClickUp-style URL input popover (Image/YouTube/Audio)
 │   ├── TrackerSection.jsx     # Read-only 3-week status dots
 │   ├── XpBar.jsx              # XP + level indicator
 │   └── ...
+│
+├── extensions/              # v4.12.0 — Custom Tiptap extensions
+│   └── AudioNode.js          # Atom node: inline audio player block (src + title)
 │
 ├── contexts/
 │   ├── AuthContext.jsx        # Auth state, signIn, signUp, Google, profile
@@ -81,6 +86,10 @@ src/
 │   ├── useIntentions.js       # v3.9.0 → v4.2.0 — Incubator CRUD + defer(friction) + execute(multi-output) + abandon + logs
 │   ├── useFitnessLog.js       # v4.0.0 — Fitness session logging (add, delete, todayLogs, weekSummary)
 │   ├── useLinkMeta.js         # v4.0.0 — OG metadata fetch+cache via /api/meta
+│   ├── useKnowledgeGroups.js   # v4.11.0 — KB group CRUD + M:N link/unlink articles + fetchGroupArticles
+│   ├── useCollectionNotes.js   # v4.11.0 — Threaded sub-notes CRUD per KB article
+│   ├── useFileUpload.js       # v4.12.0 — Upload files to R2 via /api/upload (25MB limit)
+│   ├── useQuotes.js           # v4.12.0 — CRUD user quotes + merge system quotes.json
 │   ├── useLifeJourney.js      # v2.2.0 — Life milestones CRUD (localStorage-only)
 │   ├── useNotifications.js    # Browser notification API
 │   └── ...
@@ -89,7 +98,8 @@ src/
 │   └── supabase.js            # Singleton Supabase client, safe fallback
 │
 ├── api/                       # v4.0.0 Vercel Edge Functions
-│   └── meta.js                # OG metadata fetcher (edge runtime, 5s timeout, graceful fallback)
+│   ├── meta.js                # OG metadata fetcher (edge runtime, 5s timeout, graceful fallback)
+│   └── upload.js              # v4.12.0 — Dual upload proxy (Imgur for images, R2 for audio) + multipart parser
 │
 ├── pages/
 │   ├── LandingPage.jsx        # / — Marketing page (eager loaded)
@@ -107,7 +117,7 @@ src/
 │   ├── QuizPage.jsx           # /quiz — 10-question MCQ (lazy)
 │   ├── LeaderboardPage.jsx    # /leaderboard — Streak/XP ranking (lazy)
 │   ├── LifeJourneyPage.jsx    # /life-journey — v2.2.0 — Emotion timeline SVG (lazy)
-│   ├── SettingsPage.jsx       # /settings — v4.1.0 — Tag Manager UI (CRUD, color, usage count)
+│   ├── SettingsPage.jsx       # /settings — v4.1.0 — Tag Manager + Quote Manager (v4.12.0) + Profile
 │   └── LifeJourneyPage.css    # Co-located CSS (not in styles/)
 │
 ├── data/                      # Static JSON content (Rule 14)

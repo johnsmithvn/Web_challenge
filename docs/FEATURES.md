@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.5.3
-**Updated:** 2026-05-07
+**Version:** v4.11.0
+**Updated:** 2026-05-10
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -26,7 +26,7 @@
 - **21-Day Dot Grid:** 3 hàng × 7 ô đại diện 3 tuần. Anchor từ `user_journeys.started_at` nếu có journey active, fallback = ngày tick sớm nhất
 - **Progress Bar:** `streak / 21` ngày
 - **Journey Banner:** Active = tên lộ trình + "Ngày X/Y" + link; Inactive (authed) = CTA "Chọn lộ trình →"
-- **Daily Quote:** Câu trích dẫn động lực xoay theo ngày (30 câu từ `quotes.json`)
+- **Daily Quote (v4.12.0):** `QuoteWidget` component — daily-seeded random from `quotes.json` (30 câu), nút 🔀 shuffle, crossfade animation, hỗ trợ `audio_url`. Hiện ở 3 pages: Today, Inbox, Knowledge (mỗi page seed khác → quote khác nhau)
 
 **Tab ⚡ Hôm Nay:**
 - **Today Quick-Tick:** Danh sách custom habits hôm nay
@@ -585,17 +585,18 @@
 
 **Dual-Mode Editor (v3.2.0):**
 - **Markdown mode** (mặc định) — editor textarea với live preview
-- **Visual mode** — Tiptap WYSIWYG: Bold/Italic/Strike/Highlight/Code/H1-H3/Lists/TaskList/Blockquote/CodeBlock/HR/Link (inline popover)/Table/Undo/Redo
+- **Visual mode** — Tiptap WYSIWYG: Bold/Italic/Strike/Highlight/Code/H1-H3/Lists/TaskList/Blockquote/CodeBlock/HR/Link (inline popover)/Table/Image/YouTube/Audio/Undo/Redo
 - **Mode Lock:** Chọn mode khi tạo bài, không đổi được sau khi save
-- **Inline Link Popover:** Thay `window.prompt` — input bar xuất hiện dưới toolbar khi bấm 🔗
+- **Inline Popovers:** UrlInputPopover (ClickUp-style) cho Link, Image, YouTube, Audio — thay thế `window.prompt`
 - **ReaderView:** Tự detect format, render `TiptapReadOnly` hoặc `ReactMarkdown`
+- **Media Support (v4.12.0):** Ảnh (🖼️), YouTube (▶️), Audio (🎵) — cả toolbar + slash commands. AudioNode custom Tiptap extension.
 
 **Slash Command Menu (v3.3.0):**
 - Gõ `/` trong Tiptap editor → dropdown 12 block types
 - Filter theo query text (`/hea` → Heading 1/2/3)
 - Arrow keys + Enter chọn, Escape đóng
 - Dùng `@tiptap/suggestion` plugin — handles cursor tracking + keyboard trapping
-- Block types: Paragraph, H1-H3, Bullet/Ordered/Task List, Blockquote, Code Block, Divider, Table, Highlight
+- Block types: Paragraph, H1-H3, Bullet/Ordered/Task List, Blockquote, Code Block, Divider, Table, Highlight, Image, YouTube, Audio
 
 **Keyboard Shortcuts Panel (v3.3.0):**
 - Toggle bằng nút `⌨` trên toolbar hoặc `Ctrl+.`
@@ -625,10 +626,31 @@
 - Click chip → lọc bài viết đã link với task đó
 - Data: `useCollections` join `task_collections(task_id)` → `_linkedTaskIds` + `_linkedTaskCount`
 
+**Knowledge Groups M:N (v4.11.0):**
+- **📁 Nhóm tab:** Pill 📁 Nhóm bên cạnh type filters. Click → group list view.
+- **Group Cards:** Mỗi card hiển emoji + title + article count. Click → drill-down.
+- **Drill-down view:** Breadcrumb navigation (🧠 Kho Tàng › Nhóm), group header (emoji + title + stats), contextual search chỉ trong nhóm đó.
+- **Inline group creation:** Nhập tên nhóm mới → enter → tạo ngay trong Groups tab.
+- **GroupPicker (Editor):** Searchable dropdown với inline creation — gõ tên chưa tồn tại → ✚ Tạo nhóm mới.
+- **M:N:** Một bài viết thuộc nhiều nhóm, một nhóm chứa nhiều bài viết.
+- **Group Badge:** Badge nhỏ trên ArticleCard, click → navigate to group.
+- **Delete UX:** Xóa nhóm = chỉ gỡ link (bài viết không bị xóa). Confirm dialog rõ ràng.
+- **Hooks:** `useKnowledgeGroups.js` (CRUD groups, link/unlink) + `useCollections.js` (join `collection_groups`)
+- **DB:** `knowledge_groups` + `collection_groups` junction table (CASCADE)
+
+**Sub-Notes / Threaded Notes (v4.11.0):**
+- **Ghi Chú Cá Nhân:** Section bên dưới bài viết trong ReaderView.
+- **Add form:** Textarea + Ctrl+Enter save. Plain text.
+- **Inline edit:** Click ✏️ → edit textarea + Save/Hủy.
+- **Delete:** Click 🗑 → optimistic remove.
+- **Use case:** Book reading notes, personal annotations, follow-up thoughts.
+- **Hook:** `useCollectionNotes.js` (fetchNotes, addNote, updateNote, deleteNote, getNoteCount)
+- **DB:** `collection_notes` table (FK → collections + profiles, CASCADE)
+
 **ConfirmModal (v3.2.0):**
 - Tất cả delete/switch action dùng `useConfirm()` — không còn `window.confirm()`
 
-**Data source:** `collections` table (Supabase) — columns: `type, title, body, url, tags, source, status, content_format, body_text, word_count`
+**Data source:** `collections` + `knowledge_groups` + `collection_groups` + `collection_notes` (Supabase) — columns: `type, title, body, url, tags, source, status, content_format, body_text, word_count`
 
 ---
 
@@ -685,19 +707,25 @@
 ## 22. ⚙️ Cài Đặt (`/settings`)
 
 **File:** `src/pages/SettingsPage.jsx` + `src/styles/settings.css`
-**Hook:** `src/hooks/useTags.js`
+**Hooks:** `src/hooks/useTags.js`, `src/hooks/useQuotes.js` (v4.12.0)
 
-**Mô tả:** Trang cài đặt hệ thống. Hiện tại: quản lý tags tập trung. Sẽ mở rộng: Theme, Notifications, Account.
+**Mô tả:** Trang cài đặt hệ thống. 3 tabs sidebar: Chung, Quotes, Hồ sơ.
 
 **Chi tiết:**
-- **Tag Manager:** Danh sách tất cả tags với color dot, tên, và số liên kết (usage count)
-- **Add tag:** Form nhập tên + color picker (12 màu)
-- **Inline edit:** Rename + recolor tag tại chỗ (Enter save, Escape cancel)
-- **Delete:** Confirm modal, hiển số liên kết sẽ bị gỡ (CASCADE delete)
-- **Color picker:** Dropdown grid 4×3 màu, auto-close khi chọn
-- **Future placeholder:** Theme · Notifications · Account (dashed border section)
+- **Tab Chung — Tag Manager:** Danh sách tags + color dot + usage count
+  - Add tag: Form + color picker (12 màu)
+  - Inline edit: Rename + recolor (Enter save, Escape cancel)
+  - Delete: Confirm modal, hiển thị số liên kết sẽ bị gỡ
+- **Tab Quotes (v4.12.0) — Quote Manager:**
+  - Add quote: Textarea nội dung + Author + Source + nút Thêm
+  - List: Hiện quotes cá nhân, toggle On/Off (ToggleLeft/Right), Edit inline, Delete
+  - System quotes: Collapsible section hiện 30 câu hệ thống (read-only)
+- **Tab Hồ sơ — Profile:**
+  - Avatar + username (read-only)
+  - Editable: Display name, Email, Bio
+  - Save + validation (email unique, format check)
 
-**Data source:** `tags` table (Supabase) + `expense_tags` + `subscription_tags` + `collection_tags` (usage count)
+**Data source:** `tags` table + `inspirational_quotes` table (Supabase)
 
 ---
 

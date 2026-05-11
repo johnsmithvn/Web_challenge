@@ -1,0 +1,102 @@
+/* ── QuoteWidget ──────────────────────────────────────────── */
+.qw {
+  padding: 0.85rem 1.15rem;
+  margin-bottom: 1.25rem;
+  background: rgba(139,92,246,0.06);
+  border: 1px solid rgba(139,92,246,0.15);
+  border-left: 3px solid rgba(139,92,246,0.5);
+  border-radius: var(--radius-md, 8px);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  position: relative;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.qw--fade-out {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+.qw--fade-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.qw__mark {
+  font-size: 1.2rem;
+  opacity: 0.45;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+  color: rgba(139,92,246,0.7);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.qw__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.qw__text {
+  font-size: 0.88rem;
+  color: var(--text-secondary, #c0c0d0);
+  font-style: italic;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.qw__author {
+  font-size: 0.72rem;
+  color: var(--text-muted, #888);
+  margin-top: 0.35rem;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+/* Actions — shuffle + audio */
+.qw__actions {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.qw__btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  font-size: 0.85rem;
+  opacity: 0.45;
+  transition: all 0.15s;
+  padding: 0;
+}
+.qw__btn:hover {
+  opacity: 1;
+  background: rgba(139,92,246,0.1);
+}
+.qw__btn--shuffle:active {
+  transform: rotate(90deg);
+}
+
+/* Light mode */
+[data-theme="light"] .qw {
+  background: rgba(99,102,241,0.04);
+  border-color: rgba(99,102,241,0.12);
+  border-left-color: rgba(99,102,241,0.4);
+}
+[data-theme="light"] .qw__mark {
+  color: rgba(99,102,241,0.5);
+}
+[data-theme="light"] .qw__text {
+  color: var(--text-secondary, #4a4a60);
+}
+[data-theme="light"] .qw__btn:hover {
+  background: rgba(99,102,241,0.08);
+}

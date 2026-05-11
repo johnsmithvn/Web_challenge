@@ -9,6 +9,7 @@ import { useIntentions } from '../hooks/useIntentions';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
 import EXPENSE_DATA from '../data/expense-categories.json';
+import QuoteWidget from '../components/QuoteWidget';
 import '../styles/inbox.css';
 import '../styles/collect.css';
 
@@ -468,6 +469,9 @@ export default function InboxPage() {
           </div>
         </div>
       )}
+
+      {/* Daily quote */}
+      <QuoteWidget pageKey="inbox" />
 
       {/* Items list */}
       {isLoading ? (

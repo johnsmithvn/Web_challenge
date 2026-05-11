@@ -16,8 +16,12 @@ import { Underline } from '@tiptap/extension-underline';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
-import { Undo2, Redo2, Bold, Italic, Underline as UnderlineIcon, Strikethrough, Highlighter, Code, Link as LinkIcon, Quote, List, ListOrdered, ListTodo, Minus, AlignLeft, AlignCenter, AlignRight, AlignJustify, ChevronDown, RemoveFormatting, Palette, Table as TableIcon, Heading1, Heading2, Heading3, Type } from 'lucide-react';
+import { Image as TiptapImage } from '@tiptap/extension-image';
+import { Youtube } from '@tiptap/extension-youtube';
+import { AudioNode } from '../extensions/AudioNode';
+import { Undo2, Redo2, Bold, Italic, Underline as UnderlineIcon, Strikethrough, Highlighter, Code, Link as LinkIcon, Quote, List, ListOrdered, ListTodo, Minus, AlignLeft, AlignCenter, AlignRight, AlignJustify, ChevronDown, RemoveFormatting, Palette, Table as TableIcon, Heading1, Heading2, Heading3, Type, ImageIcon, Video, Music } from 'lucide-react';
 import { SlashCommandExtension } from './SlashCommand';
+import UrlInputPopover from './UrlInputPopover';
 import '../styles/tiptap.css';
 
 /* ── Keyboard Shortcuts Data ──────────────────────────────────── */
@@ -233,7 +237,23 @@ function LinkPopover({ editor, open, onClose }) {
 /* ── Tiptap Toolbar ─────────────────────────────────────────── */
 function TiptapToolbar({ editor }) {
   const [linkOpen, setLinkOpen] = useState(false);
+  const [mediaPopover, setMediaPopover] = useState(null); // null | 'image' | 'youtube'
   if (!editor) return null;
+
+  const openMedia = (type) => {
+    setMediaPopover(prev => prev === type ? null : type);
+    setLinkOpen(false);
+  };
+
+  const handleMediaSubmit = (url) => {
+    if (mediaPopover === 'image') {
+      editor.chain().focus().setImage({ src: url }).run();
+    } else if (mediaPopover === 'youtube') {
+      editor.chain().focus().setYoutubeVideo({ src: url }).run();
+    } else if (mediaPopover === 'audio') {
+      editor.chain().focus().setAudioBlock({ src: url, title: url.split('/').pop() || 'Audio' }).run();
+    }
+  };
 
   return (
     <div className="tp-toolbar-wrap">
@@ -296,14 +316,76 @@ function TiptapToolbar({ editor }) {
         <TBtn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="Inline code (Ctrl+E)"><Code size={15} /></TBtn>
         <TBtn onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Blockquote (Ctrl+Shift+B)"><Quote size={15} /></TBtn>
         <TBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal line"><Minus size={15} /></TBtn>
+        <TBtn onClick={() => openMedia('image')} active={mediaPopover === 'image'} title="Chèn ảnh (URL)"><ImageIcon size={15} /></TBtn>
+        <TBtn onClick={() => openMedia('youtube')} active={mediaPopover === 'youtube'} title="Chèn YouTube video"><Video size={15} /></TBtn>
+        <TBtn onClick={() => openMedia('audio')} active={mediaPopover === 'audio'} title="Chèn audio (URL)"><Music size={15} /></TBtn>
         <TBtn onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title="Clear formatting"><RemoveFormatting size={15} /></TBtn>
 
       </div>
 
       {/* Inline link popover — no window.prompt */}
       <LinkPopover editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} />
+      <UrlInputPopover
+        open={!!mediaPopover}
+        onClose={() => setMediaPopover(null)}
+        onSubmit={handleMediaSubmit}
+        label={mediaPopover === 'image' ? 'URL ảnh' : mediaPopover === 'youtube' ? 'YouTube URL' : 'Audio URL'}
+        placeholder={mediaPopover === 'image' ? 'https://example.com/photo.jpg' : mediaPopover === 'youtube' ? 'https://youtu.be/...' : 'https://example.com/audio.mp3'}
+        icon={mediaPopover === 'image' ? '🖼️' : mediaPopover === 'youtube' ? '▶️' : '🎵'}
+        allowUpload={mediaPopover === 'image' || mediaPopover === 'audio'}
+        accept={mediaPopover === 'image' ? 'image/*' : mediaPopover === 'audio' ? 'audio/*' : undefined}
+      />
     </div>
   );
+}
+
+/* ── Auto-upload image helper (paste/drop) ──────────────────── */
+async function uploadAndInsertImage(tr, view, file) {
+  const { state } = view;
+  const imageType = state.schema.nodes.image;
+  if (!imageType) return;
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', 'images');
+
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    if (!res.ok) {
+      showUploadToast('⚠ Upload thất bại — cần deploy Vercel + IMGUR_CLIENT_ID');
+      return;
+    }
+
+    const data = await res.json();
+    if (data.url) {
+      const node = imageType.create({ src: data.url });
+      view.dispatch(view.state.tr.replaceSelectionWith(node));
+    } else {
+      showUploadToast('⚠ Upload không trả về URL');
+    }
+  } catch {
+    showUploadToast('⚠ Upload API không khả dụng (local dev). Dùng nút 🖼️ → nhập URL.');
+  }
+}
+
+/** Simple toast notification for upload errors */
+function showUploadToast(msg) {
+  let toast = document.getElementById('tp-upload-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'tp-upload-toast';
+    Object.assign(toast.style, {
+      position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)',
+      padding: '0.6rem 1.2rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600',
+      background: 'rgba(239,68,68,0.9)', color: '#fff', zIndex: '9999',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.3)', transition: 'opacity 0.3s',
+    });
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 3500);
 }
 
 /* ── TiptapEditor (main export) ─────────────────────────────── */
@@ -335,6 +417,9 @@ export default function TiptapEditor({ value, onChange, onSave }) {
       Placeholder.configure({ placeholder: 'Gõ / để chèn khối · Ctrl+. xem phím tắt' }),
       CharacterCount,
       SlashCommandExtension,
+      TiptapImage.configure({ inline: false, allowBase64: true }),
+      Youtube.configure({ inline: false, nocookie: true }),
+      AudioNode,
     ],
     content: (() => {
       if (!value) return '';
@@ -367,6 +452,36 @@ export default function TiptapEditor({ value, onChange, onSave }) {
         }
 
         return false; // pass through all other keys
+      },
+
+      // Auto-upload pasted images → Imgur/R2
+      handlePaste(view, event) {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+
+        for (const item of items) {
+          if (item.type.startsWith('image/')) {
+            event.preventDefault();
+            const file = item.getAsFile();
+            if (file) uploadAndInsertImage(view.state.tr, view, file);
+            return true;
+          }
+        }
+        return false;
+      },
+
+      // Auto-upload dropped images
+      handleDrop(view, event) {
+        const files = event.dataTransfer?.files;
+        if (!files || files.length === 0) return false;
+
+        const imageFile = [...files].find(f => f.type.startsWith('image/'));
+        if (imageFile) {
+          event.preventDefault();
+          uploadAndInsertImage(view.state.tr, view, imageFile);
+          return true;
+        }
+        return false;
       },
     },
   });
@@ -401,6 +516,9 @@ export function TiptapReadOnly({ content }) {
       TaskItem.configure({ nested: true }),
       Highlight,
       Typography,
+      TiptapImage.configure({ inline: false }),
+      Youtube.configure({ inline: false, nocookie: true }),
+      AudioNode,
     ],
     content: (() => {
       if (!content) return '';

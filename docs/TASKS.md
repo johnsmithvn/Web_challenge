@@ -1,5 +1,81 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-05-09
+**Updated:** 2026-05-10
+
+---
+
+## v4.12.0 — IN PROGRESS — Media Infrastructure
+
+### Phase 1: Image + YouTube trong bài viết ✅
+- [x] Install `@tiptap/extension-image@3.22.4` + `@tiptap/extension-youtube@3.22.4`
+- [x] `src/utils/mediaUtils.js` [NEW] — YouTube/audio URL utils
+- [x] `src/components/TiptapEditor.jsx` — Image/YouTube extensions + toolbar buttons
+- [x] `src/components/SlashCommand.jsx` — /image + /youtube commands
+- [x] `src/pages/CollectPage.jsx` — mdComponents: img, YouTube embed, audio player
+- [x] `src/pages/CollectPage.jsx` — Markdown toolbar: 🖼️ Image + ▶️ YouTube buttons
+- [x] `src/styles/collect.css` — Media embed CSS
+- [x] `npm run build` — 0 errors
+
+### Phase 2: Cloudflare R2 + Upload API ✅ (code ready, cần user tạo Cloudflare account)
+- [x] `api/upload.js` [NEW] — Vercel serverless upload proxy (AWS Sig V4, zero deps)
+- [x] `src/hooks/useFileUpload.js` [NEW] — Upload hook (25MB limit, loading state)
+- [x] `npm run build` — 0 errors
+- [ ] **USER ACTION:** Tạo Cloudflare account → R2 bucket → env vars trên Vercel
+
+### Phase 3: Shared UrlInputPopover ✅
+- [x] `src/components/UrlInputPopover.jsx` [NEW] — ClickUp-style popover (label, input, Hủy/Chèn)
+- [x] `src/styles/url-input-popover.css` [NEW] — Glassmorphism, animation, dark/light
+- [x] `src/components/TiptapEditor.jsx` — Refactored: xóa inline MediaPopover, dùng UrlInputPopover
+- [x] `src/components/SlashCommand.jsx` — Xóa window.prompt, dùng placeholder
+- [x] `npm run build` — 0 errors
+
+### Phase 4: QuoteWidget (text + shuffle, mọi page) ✅
+- [x] `src/components/QuoteWidget.jsx` [NEW] — Daily-seeded random, shuffle 🔀, audio support, crossfade animation
+- [x] `src/styles/quote-widget.css` [NEW] — Purple accent, shuffle spin, dark/light
+- [x] `src/pages/TrackerPage.jsx` — Replace inline quote → QuoteWidget, xóa getDailyQuote/QUOTES_DATA
+- [x] `src/pages/InboxPage.jsx` — Mount QuoteWidget (seed: 'inbox')
+- [x] `src/pages/CollectPage.jsx` — Mount QuoteWidget (seed: 'knowledge')
+- [x] `npm run build` — 0 errors
+
+### Phase 5: Audio Player trong bài viết ✅
+- [x] `src/extensions/AudioNode.js` [NEW] — Custom Tiptap node (atom, src+title attrs)
+- [x] `src/components/TiptapEditor.jsx` — AudioNode extension + 🎵 toolbar + UrlInputPopover audio
+- [x] `src/components/SlashCommand.jsx` — /audio slash command
+- [x] `src/styles/tiptap.css` — Audio player block CSS (dark/light)
+- [x] `npm run build` — 0 errors
+
+### Phase 6: User Quotes Infrastructure ✅
+- [x] `data/migration_v4.12.0_quotes.sql` [NEW] — `inspirational_quotes` table + RLS
+- [x] `src/hooks/useQuotes.js` [NEW] — CRUD + merge system/user quotes, graceful fallback
+- [x] `npm run build` — 0 errors
+- [ ] **USER ACTION:** Run SQL migration in Supabase dashboard
+
+### Phase 7: Imgur Auto-Upload + Quote Manager UI ✅
+- [x] `api/upload.js` — Refactored: dual provider (Imgur + R2), auto-detect image → Imgur
+- [x] `src/components/TiptapEditor.jsx` — Paste/drop image handler → auto-upload → insert
+- [x] `src/pages/CollectPage.jsx` — Markdown toolbar: xóa tất cả `window.prompt`, dùng UrlInputPopover
+- [x] `src/pages/SettingsPage.jsx` — QuoteManagerSection: CRUD quotes, toggle active, view system quotes
+- [x] `src/styles/settings.css` — Quote Manager CSS
+- [x] `npm run build` — 0 errors
+- [ ] **USER ACTION:** Tạo Imgur App → `IMGUR_CLIENT_ID` env var trên Vercel
+- [ ] **USER ACTION:** Cloudflare R2 bucket + env vars trên Vercel
+- [ ] **USER ACTION:** Run `migration_v4.12.0_quotes.sql` in Supabase
+
+---
+
+## v4.11.0 — ✅ DONE (2026-05-10) — Knowledge Groups (M:N) + Sub-Notes
+
+### Changes
+- [x] `data/migration_v4.11.0_knowledge_groups.sql` — 3 tables: `knowledge_groups`, `collection_groups`, `collection_notes`
+- [x] `src/hooks/useKnowledgeGroups.js` [NEW] — CRUD groups, link/unlink articles, fetchGroupArticles
+- [x] `src/hooks/useCollectionNotes.js` [NEW] — CRUD threaded sub-notes
+- [x] `src/hooks/useCollections.js` — Join `collection_groups` in fetchItems
+- [x] `src/pages/CollectPage.jsx` — Phase 1: 📁 Nhóm tab + Group Cards + drill-down with contextual search
+- [x] `src/pages/CollectPage.jsx` — Phase 2: GroupPicker in EditorView (inline group creation)
+- [x] `src/pages/CollectPage.jsx` — Phase 3: SubNotes section in ReaderView
+- [x] `src/pages/CollectPage.jsx` — Phase 4: Group Badge on ArticleCard (click → navigate)
+- [x] `src/styles/collect.css` — Group cards, breadcrumb, group picker, sub-notes styles
+- [x] Docs: FEATURES.md, ARCHITECTURE.md, DATABASE.md, PLAN.md, CHANGELOG.md
+- [x] `npm run build` — 0 errors
 
 ---
 

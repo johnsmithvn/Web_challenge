@@ -1,9 +1,9 @@
 # DATABASE DESIGN — Life Hub (Personal Life OS)
 **Target:** Supabase (PostgreSQL)
-**Version:** v4.5.3
-**Updated:** 2026-05-07
+**Version:** v4.11.0
+**Updated:** 2026-05-10
 **Strategy:** Production-ready from day 1
-**Source of Truth:** `data/schema_v4.4.0.sql` (25 tables, idempotent, safe to re-run)
+**Source of Truth:** `data/schema_v4.4.0.sql` (25 tables) + `data/migration_v4.11.0_knowledge_groups.sql` (3 tables)
 
 ---
 
@@ -40,6 +40,10 @@ profiles ───────────────────────�
     │         ◄──► expense_tags                 │
     │         ◄──► subscription_tags            │
     │                                           │
+    ├──► knowledge_groups ◄──► collection_groups ──► collections
+    │                        (M:N junction v4.11.0)
+    ├──► collection_notes    (threaded sub-notes)│
+    │                                           │
     ├──► friendships       [ARCHIVED v3.0.0]    │
     └────────────────────────────────────────────┘
 
@@ -54,7 +58,7 @@ Programs ──► program_habits   (template library, system + user)
 >
 > ⚠️ Do NOT duplicate SQL here. Read the `.sql` file directly for column definitions, RLS policies, triggers, and indexes.
 
-### Table Inventory (25 active tables)
+### Table Inventory (28 active tables)
 
 | # | Table | Purpose | Key constraints |
 |---|-------|---------|-----------------|
@@ -84,6 +88,9 @@ Programs ──► program_habits   (template library, system + user)
 | 24 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
 | 25 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
 | 26 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
+| 27 | `knowledge_groups` | KB folder/group metadata | title, emoji, description. FK → profiles |
+| 28 | `collection_groups` | Junction: KB ↔ Groups (M:N) | Composite PK(collection_id, group_id), CASCADE |
+| 29 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
 | — | `friendships` | **[ARCHIVED v3.0.0]** Friend requests | Code in `src/_archived/FriendsPage.jsx`. Table exists in production DB but is not used by any active hook or page. Safe to DROP when ready. |
 
 ### Deprecated Columns

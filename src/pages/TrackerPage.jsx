@@ -18,7 +18,6 @@ import NotificationSettings from '../components/NotificationSettings';
 import CompletionModal from '../components/CompletionModal';
 import LoginNudgeModal from '../components/LoginNudgeModal';
 import TaskListSection from '../components/TaskListSection';
-import KnowledgeResurface from '../components/KnowledgeResurface';
 import SubAlert from '../components/SubAlert';
 import '../styles/tracker.css';
 import '../styles/xpbar.css';
@@ -27,10 +26,9 @@ import '../styles/completion.css';
 import '../styles/journey.css';
 
 import HABITS_DATA from '../data/habits.json';
-import QUOTES_DATA from '../data/quotes.json';
+import QuoteWidget from '../components/QuoteWidget';
 
 const SKIP_REASONS = HABITS_DATA.skipReasons;
-const DAILY_QUOTES = QUOTES_DATA.dailyQuotes;
 
 // ── Lazy tab content (performance: only load when tab is active) ──
 // lazyRetry: auto-reload on chunk load failure (stale deployment cache)
@@ -43,11 +41,6 @@ const lazyRetry = (fn) => lazy(() => fn().catch(() => {
 }));
 const MonthCalendar      = lazyRetry(() => import('../components/MonthCalendar'));
 const HabitManager       = lazyRetry(() => import('../components/HabitManager'));
-
-function getDailyQuote() {
-  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-  return DAILY_QUOTES[dayOfYear % DAILY_QUOTES.length];
-}
 
 /* ── Plant levels based on streak ──────────────────────── */
 const PLANT_STAGES = [
@@ -534,9 +527,8 @@ export default function TrackerPage() {
         {/* ── XP Bar ── */}
         <XpBar />
 
-        {/* ── Inline Widgets (Sub alert + Knowledge resurface) ── */}
+        {/* ── Inline Widgets ── */}
         <SubAlert />
-        <KnowledgeResurface />
 
         {/* ── Incubator Review Banner ── */}
         {reviewDueCount > 0 && (
@@ -647,31 +639,7 @@ export default function TrackerPage() {
         })()}
 
         {/* ── Daily quote ── */}
-        {(() => {
-          const q = getDailyQuote();
-          return (
-            <div style={{
-              padding: '0.9rem 1.25rem', marginBottom: '1.25rem',
-              background: 'rgba(139,92,246,0.06)',
-              border: '1px solid rgba(139,92,246,0.15)',
-              borderLeft: '3px solid rgba(139,92,246,0.5)',
-              borderRadius: 'var(--radius-md)',
-              display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
-            }}>
-              <span style={{ fontSize: '1.1rem', opacity: 0.6, flexShrink: 0, marginTop: '0.05rem' }}>"</span>
-              <div>
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: 1.55, margin: 0 }}>
-                  {q.text}
-                </p>
-                {q.author && (
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem', fontWeight: 600 }}>
-                    — {q.author}
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+        <QuoteWidget pageKey="today" />
 
         {/* ── Celebration banner ── */}
         {celebration && (

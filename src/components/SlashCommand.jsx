@@ -29,6 +29,12 @@ const SLASH_ITEMS = [
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { icon: '▌',   title: 'Highlight',     desc: 'Đánh dấu text',              aliases: ['mark','color','hl'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHighlight().run() },
+  { icon: '🖼️',  title: 'Image',          desc: 'Chèn ảnh (URL)',              aliases: ['img','picture','photo'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setImage({ src: 'https://paste-url-here.jpg' }).run() },
+  { icon: '▶️',  title: 'YouTube',        desc: 'Chèn video YouTube',          aliases: ['video','yt','youtube'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setYoutubeVideo({ src: 'https://www.youtube.com/watch?v=VIDEO_ID' }).run() },
+  { icon: '🎵',  title: 'Audio',          desc: 'Chèn audio player',           aliases: ['audio','music','mp3','sound'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setAudioBlock({ src: 'https://paste-audio-url.mp3', title: 'Audio' }).run() },
 ];
 
 /* ── SlashCommandList (React UI) ──────────────────────────────── */

@@ -43,7 +43,7 @@ export function useCollections() {
       // Step 1: Try with both collection_tags + task_collections (v4.5.0)
       let query = supabase
         .from('collections')
-        .select('*, collection_tags(tag_id, tags(id, name, color)), task_collections(task_id)')
+        .select('*, collection_tags(tag_id, tags(id, name, color)), task_collections(task_id), collection_groups(group_id, knowledge_groups(id, title, emoji))')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(500);
@@ -93,11 +93,16 @@ export function useCollections() {
           ? (item.task_collections || []).map(tc => tc.task_id).filter(Boolean)
           : [];
 
+        const _groups = joinLevel === 'full'
+          ? (item.collection_groups || []).map(cg => cg.knowledge_groups).filter(Boolean)
+          : [];
+
         return {
           ...item,
           _tags,
           _linkedTaskIds,
           _linkedTaskCount: _linkedTaskIds.length,
+          _groups,
         };
       });
 
@@ -105,6 +110,7 @@ export function useCollections() {
       mapped.forEach(item => {
         delete item.collection_tags;
         delete item.task_collections;
+        delete item.collection_groups;
       });
 
       setItems(mapped);

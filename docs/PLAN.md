@@ -495,3 +495,5 @@
 | v4.5.2 | Recovery: 3 corrupted files restored + deprecated meta tag fix |
 | v4.5.3 | Cleanup: archive old docs, remove dead CSS, sync reset script |
 | v4.5.4 | Audit Cleanup: DB docs overhaul, phantom tables removed, habit sort_order persist |
+| v4.10.1 | Task Start Time + Mobile DatePicker/Overflow + Mood Tracker Removal |
+| **v4.11.0** | **Knowledge Groups (M:N) + Sub-Notes (Threaded Notes)** |
