@@ -674,6 +674,8 @@ function MarkdownEditor({ value, onChange, onSave }) {
     }
   }, [insert, insertLine, onSave]);
 
+  const mdToolbarRef = useRef(null);
+
   const tools = [
     { label: 'B',   title: 'Bold (Ctrl+B)',       action: () => insert('**', '**', 'bold') },
     { label: 'I',   title: 'Italic (Ctrl+I)',     action: () => insert('*', '*', 'italic') },
@@ -697,7 +699,7 @@ function MarkdownEditor({ value, onChange, onSave }) {
   return (
     <div className="kb-split">
       {/* Toolbar */}
-      <div className="kb-tb">
+      <div className="kb-tb" ref={mdToolbarRef}>
         {tools.map((t, i) => (
           <ToolbarBtn key={i} label={t.label} title={t.title} onClick={t.action} />
         ))}
@@ -718,6 +720,7 @@ function MarkdownEditor({ value, onChange, onSave }) {
         icon={mdMediaPopover === 'image' ? '🖼️' : mdMediaPopover === 'youtube' ? '▶️' : '🎵'}
         allowUpload={mdMediaPopover === 'image' || mdMediaPopover === 'audio'}
         accept={mdMediaPopover === 'image' ? 'image/*' : mdMediaPopover === 'audio' ? 'audio/*' : undefined}
+        anchorRef={mdToolbarRef}
       />
 
       {/* Panes */}

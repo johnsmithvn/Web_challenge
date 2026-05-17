@@ -19,6 +19,25 @@ const SLASH_ITEMS = [
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleOrderedList().run() },
   { icon: '☑',   title: 'Task List',     desc: 'Danh sách checkbox',          aliases: ['todo','check','task'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleTaskList().run() },
+
+  // ── Media (moved up so they're visible without scrolling) ──
+  { icon: '🖼️',  title: 'Image',          desc: 'Chèn ảnh (URL / Upload)',     aliases: ['img','image','picture','photo','anh'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run();
+      document.dispatchEvent(new CustomEvent('tiptap:open-media', { detail: { type: 'image' } }));
+    }},
+  { icon: '▶️',  title: 'YouTube',        desc: 'Chèn video YouTube',          aliases: ['video','yt','youtube'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run();
+      document.dispatchEvent(new CustomEvent('tiptap:open-media', { detail: { type: 'youtube' } }));
+    }},
+  { icon: '🎵',  title: 'Audio',          desc: 'Chèn audio player',           aliases: ['audio','music','mp3','sound','nhac'],
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run();
+      document.dispatchEvent(new CustomEvent('tiptap:open-media', { detail: { type: 'audio' } }));
+    }},
+
+  // ── Blocks ──
   { icon: '"',   title: 'Blockquote',    desc: 'Trích dẫn',                   aliases: ['quote','bq'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBlockquote().run() },
   { icon: '</>', title: 'Code Block',    desc: 'Khối code',                   aliases: ['code','pre','snippet'],
@@ -29,12 +48,6 @@ const SLASH_ITEMS = [
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { icon: '▌',   title: 'Highlight',     desc: 'Đánh dấu text',              aliases: ['mark','color','hl'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHighlight().run() },
-  { icon: '🖼️',  title: 'Image',          desc: 'Chèn ảnh (URL)',              aliases: ['img','picture','photo'],
-    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setImage({ src: 'https://paste-url-here.jpg' }).run() },
-  { icon: '▶️',  title: 'YouTube',        desc: 'Chèn video YouTube',          aliases: ['video','yt','youtube'],
-    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setYoutubeVideo({ src: 'https://www.youtube.com/watch?v=VIDEO_ID' }).run() },
-  { icon: '🎵',  title: 'Audio',          desc: 'Chèn audio player',           aliases: ['audio','music','mp3','sound'],
-    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setAudioBlock({ src: 'https://paste-audio-url.mp3', title: 'Audio' }).run() },
 ];
 
 /* ── SlashCommandList (React UI) ──────────────────────────────── */
@@ -186,7 +199,7 @@ export const SlashCommandExtension = Extension.create({
           return SLASH_ITEMS.filter(item =>
             item.title.toLowerCase().includes(q) ||
             item.aliases.some(a => a.includes(q))
-          ).slice(0, 10); // max 10 results
+          );
         },
         render: createSuggestionRenderer,
         command: ({ editor, range, props }) => {

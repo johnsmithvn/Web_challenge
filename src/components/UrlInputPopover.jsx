@@ -2,6 +2,10 @@
  * UrlInputPopover — Shared popover for inserting media (Image, YouTube, Audio).
  * Supports both URL input AND file upload (for image/audio).
  *
+ * When `anchorRef` is provided, renders via React Portal with fixed positioning
+ * to escape any parent stacking context (e.g. ProseMirror/Tiptap).
+ * Otherwise, renders inline with absolute positioning (e.g. MarkdownEditor).
+ *
  * Props:
  *   open      — boolean, controls visibility
  *   onClose   — callback to close
@@ -11,20 +15,42 @@
  *   icon      — optional emoji/icon before label
  *   allowUpload — boolean, show file upload button (default: false)
  *   accept    — file input accept string (e.g. "image/*", "audio/*")
+ *   anchorRef — optional React ref to anchor element (enables portal mode)
  */
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import '../styles/url-input-popover.css';
 
 export default function UrlInputPopover({
   open, onClose, onSubmit,
   label = 'URL', placeholder = 'https://...',
   icon = '🔗', allowUpload = false, accept = '*/*',
+  anchorRef,
 }) {
   const [url, setUrl] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
   const inputRef = useRef(null);
   const fileRef = useRef(null);
   const wrapRef = useRef(null);
+
+  const usePortal = !!anchorRef;
+
+  // Calculate position from anchor element (portal mode only)
+  useEffect(() => {
+    if (!open || !anchorRef?.current) return;
+    const update = () => {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, left: rect.left });
+    };
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [open, anchorRef]);
 
   // Reset + focus on open
   useEffect(() => {
@@ -89,8 +115,12 @@ export default function UrlInputPopover({
     }
   };
 
-  return (
-    <div ref={wrapRef} className="url-popover">
+  const popoverEl = (
+    <div
+      ref={wrapRef}
+      className={`url-popover${usePortal ? ' url-popover--portal' : ''}`}
+      style={usePortal ? { position: 'fixed', top: `${pos.top}px`, left: `${pos.left}px` } : undefined}
+    >
       <div className="url-popover__label">
         <span className="url-popover__icon">{icon}</span>
         {label}
@@ -150,4 +180,8 @@ export default function UrlInputPopover({
       </div>
     </div>
   );
+
+  // Portal mode: render at document.body (escapes all stacking contexts)
+  // Inline mode: render in-place with absolute positioning
+  return usePortal ? createPortal(popoverEl, document.body) : popoverEl;
 }

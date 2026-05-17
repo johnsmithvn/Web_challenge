@@ -237,7 +237,22 @@ function LinkPopover({ editor, open, onClose }) {
 /* ── Tiptap Toolbar ─────────────────────────────────────────── */
 function TiptapToolbar({ editor }) {
   const [linkOpen, setLinkOpen] = useState(false);
-  const [mediaPopover, setMediaPopover] = useState(null); // null | 'image' | 'youtube'
+  const [mediaPopover, setMediaPopover] = useState(null); // null | 'image' | 'youtube' | 'audio'
+  const toolbarRef = useRef(null);
+
+  // Listen for slash command media events
+  useEffect(() => {
+    const handler = (e) => {
+      const type = e.detail?.type;
+      if (type) {
+        setMediaPopover(type);
+        setLinkOpen(false);
+      }
+    };
+    document.addEventListener('tiptap:open-media', handler);
+    return () => document.removeEventListener('tiptap:open-media', handler);
+  }, []);
+
   if (!editor) return null;
 
   const openMedia = (type) => {
@@ -256,7 +271,7 @@ function TiptapToolbar({ editor }) {
   };
 
   return (
-    <div className="tp-toolbar-wrap">
+    <div className="tp-toolbar-wrap" ref={toolbarRef}>
       <div className="tp-toolbar">
         {/* History */}
         <TBtn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo (Ctrl+Z)"><Undo2 size={15} /></TBtn>
@@ -334,6 +349,7 @@ function TiptapToolbar({ editor }) {
         icon={mediaPopover === 'image' ? '🖼️' : mediaPopover === 'youtube' ? '▶️' : '🎵'}
         allowUpload={mediaPopover === 'image' || mediaPopover === 'audio'}
         accept={mediaPopover === 'image' ? 'image/*' : mediaPopover === 'audio' ? 'audio/*' : undefined}
+        anchorRef={toolbarRef}
       />
     </div>
   );
