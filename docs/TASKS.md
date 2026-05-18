@@ -1,9 +1,53 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-05-10
+**Updated:** 2026-05-18
 
 ---
 
-## v4.12.0 — IN PROGRESS — Media Infrastructure
+## v4.14.0 — ✅ DONE (2026-05-18) — KB Category Expansion + DB Type Sync
+
+### New Categories ✅
+- [x] `entertainment` type — Giải trí (🎮 Gamepad2, red #ef4444) — anime, music, movies, games
+- [x] `emotion` type — Cảm xúc (❤️ Heart, pink #f472b6) — healing, reflections, diary
+
+### DB Fix ✅
+- [x] `migration_v4.14.0_collection_types.sql` — expands CHECK constraint from 6 → 11 types
+- [x] Fixed type desync: `ai`, `knowledge`, `experience` were in UI but blocked by DB since v4.4.1
+
+### ⚠️ USER ACTION REQUIRED
+- [ ] Run `migration_v4.14.0_collection_types.sql` in Supabase SQL Editor
+
+### Docs ✅
+- [x] `CHANGELOG.md` v4.14.0 entry
+- [x] `docs/TASKS.md` updated
+- [x] `package.json` → v4.14.0
+- [x] `npm run build` — 0 errors
+
+---
+
+## v4.13.0 — DONE — Postcard Gallery + QuoteWidget KB Integration
+
+### Postcard Gallery UI ✅
+- [x] `PostcardCard` component — gradient card with serif italic text, line-clamp, audio badge
+- [x] `postcardGradientClass()` helper — 8-color gradient palette
+- [x] `detectAudioUrl()` helper — regex audio URL detection from body text
+- [x] `CollectPage.jsx` — Render postcard grid when `typeFilter === 'quote'`
+- [x] `collect.css` — `.kb-postcard-grid`, `.kb-postcard`, hover lift, truncation fade, light mode
+- [x] Empty state updated: 💬 icon + "Tạo trích dẫn đầu tiên" CTA for quote tab
+
+### QuoteWidget KB Integration ✅
+- [x] `QuoteWidget.jsx` — Accept `kbQuotes` prop, merge KB quote items into shuffle pool
+- [x] `CollectPage.jsx` — Pass `kbQuotes={items.filter(type === 'quote')}` to QuoteWidget
+
+### Docs ✅
+- [x] `CHANGELOG.md` v4.13.0 entry
+- [x] `docs/FEATURES.md` updated (Postcard Gallery + QuoteWidget KB integration)
+- [x] `docs/TASKS.md` updated
+- [x] `package.json` → v4.13.0
+- [x] `npm run build` — 0 errors
+
+---
+
+## v4.12.0 — ✅ DONE (2026-05-10) — Media Infrastructure
 
 ### Phase 1: Image + YouTube trong bài viết ✅
 - [x] Install `@tiptap/extension-image@3.22.4` + `@tiptap/extension-youtube@3.22.4`

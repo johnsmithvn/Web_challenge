@@ -1299,3 +1299,178 @@
   border-color: rgba(99,102,241,0.12);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   POSTCARD GALLERY — Quote type visual upgrade (v4.13.0)
+   ───────────────────────────────────────────────────────────── */
+.kb-postcard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 700px) {
+  .kb-postcard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Individual Postcard */
+.kb-postcard {
+  position: relative;
+  min-height: 200px;
+  max-height: 320px;
+  padding: 1.75rem 1.5rem 1.25rem;
+  border-radius: var(--radius-xl, 16px);
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.kb-postcard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+}
+.kb-postcard:active {
+  transform: translateY(-1px);
+}
+
+/* Gradient palette — applied via --pc-grad CSS var */
+.kb-postcard--g0 { background: linear-gradient(135deg, #2d1b69 0%, #1a1145 100%); }
+.kb-postcard--g1 { background: linear-gradient(135deg, #1b4332 0%, #0d2818 100%); }
+.kb-postcard--g2 { background: linear-gradient(135deg, #4a1942 0%, #2d0f29 100%); }
+.kb-postcard--g3 { background: linear-gradient(135deg, #1a3a5c 0%, #0d1f33 100%); }
+.kb-postcard--g4 { background: linear-gradient(135deg, #5c3a1a 0%, #33200d 100%); }
+.kb-postcard--g5 { background: linear-gradient(135deg, #1a4a4a 0%, #0d2d2d 100%); }
+.kb-postcard--g6 { background: linear-gradient(135deg, #3b1a5c 0%, #200d33 100%); }
+.kb-postcard--g7 { background: linear-gradient(135deg, #5c1a2d 0%, #330d17 100%); }
+
+/* Quote mark decoration */
+.kb-postcard__mark {
+  position: absolute;
+  top: 0.5rem;
+  left: 1rem;
+  font-size: 4rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1;
+  color: rgba(255,255,255,0.08);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Quote text */
+.kb-postcard__text {
+  flex: 1;
+  font-size: 1.15rem;
+  font-style: italic;
+  font-family: Georgia, 'Noto Serif', 'Times New Roman', serif;
+  color: rgba(255,255,255,0.92);
+  line-height: 1.7;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  position: relative;
+  padding-top: 0.75rem;
+}
+/* Short quotes get bigger font */
+.kb-postcard__text--short {
+  font-size: 1.35rem;
+  -webkit-line-clamp: 4;
+}
+
+/* Fade-out for truncated text */
+.kb-postcard__text--truncated::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2.5rem;
+  background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.6));
+  pointer-events: none;
+}
+
+/* Author */
+.kb-postcard__author {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.55);
+  margin-top: 0.75rem;
+  font-weight: 500;
+}
+
+/* Bottom row — tags + audio + date */
+.kb-postcard__footer {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+.kb-postcard__footer .kb-tag-chip {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.7);
+  font-size: 0.68rem;
+}
+.kb-postcard__date {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.35);
+}
+.kb-postcard__audio-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-full);
+}
+
+/* ── Postcard Light Mode ──────────────────────────────────── */
+[data-theme="light"] .kb-postcard--g0 { background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); }
+[data-theme="light"] .kb-postcard--g1 { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
+[data-theme="light"] .kb-postcard--g2 { background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); }
+[data-theme="light"] .kb-postcard--g3 { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+[data-theme="light"] .kb-postcard--g4 { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+[data-theme="light"] .kb-postcard--g5 { background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%); }
+[data-theme="light"] .kb-postcard--g6 { background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); }
+[data-theme="light"] .kb-postcard--g7 { background: linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%); }
+
+[data-theme="light"] .kb-postcard {
+  border-color: rgba(0,0,0,0.08);
+}
+[data-theme="light"] .kb-postcard:hover {
+  box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+}
+[data-theme="light"] .kb-postcard__mark {
+  color: rgba(0,0,0,0.06);
+}
+[data-theme="light"] .kb-postcard__text {
+  color: rgba(0,0,0,0.82);
+}
+[data-theme="light"] .kb-postcard__author {
+  color: rgba(0,0,0,0.5);
+}
+[data-theme="light"] .kb-postcard__date {
+  color: rgba(0,0,0,0.35);
+}
+[data-theme="light"] .kb-postcard__text--truncated::after {
+  background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.6));
+}
+[data-theme="light"] .kb-postcard__footer .kb-tag-chip {
+  background: rgba(0,0,0,0.05);
+  border-color: rgba(0,0,0,0.1);
+  color: rgba(0,0,0,0.6);
+}
+[data-theme="light"] .kb-postcard__audio-badge {
+  color: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.1);
+}
+

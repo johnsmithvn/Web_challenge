@@ -70,6 +70,8 @@ const SHORTCUT_SECTIONS = [
     { keys: ['/'], label: 'Slash Menu (Chèn khối)' },
     { keys: ['Ctrl', '.'], label: 'Bảng phím tắt' },
     { keys: ['Ctrl', 'S'], label: 'Lưu bài viết' },
+    { keys: ['Ctrl', 'V'], label: 'Paste (giữ format)' },
+    { keys: ['Ctrl', 'Shift', 'V'], label: 'Paste (plain text)' },
   ]},
 ];
 
@@ -97,6 +99,8 @@ const MD_SHORTCUT_SECTIONS = [
     { keys: ['Ctrl', 'A'], label: 'Select All' },
     { keys: ['Ctrl', '.'], label: 'Bảng phím tắt' },
     { keys: ['Ctrl', 'S'], label: 'Lưu bài viết' },
+    { keys: ['Ctrl', 'V'], label: 'Paste (giữ format)' },
+    { keys: ['Ctrl', 'Shift', 'V'], label: 'Paste (plain text)' },
   ]},
 ];
 
@@ -471,6 +475,7 @@ export default function TiptapEditor({ value, onChange, onSave }) {
       },
 
       // Auto-upload pasted images → Imgur/R2
+      // Ctrl+V = paste with formatting | Ctrl+Shift+V = paste plain text
       handlePaste(view, event) {
         const items = event.clipboardData?.items;
         if (!items) return false;
@@ -512,7 +517,7 @@ export default function TiptapEditor({ value, onChange, onSave }) {
       </div>
       <div className="tp-footer">
         <span>{words} từ</span>
-        <span className="tp-footer-hint">Gõ <kbd>/</kbd> để chèn khối</span>
+        <span className="tp-footer-hint">Gõ <kbd>/</kbd> để chèn khối · <kbd>Ctrl+Shift+V</kbd> paste không format</span>
       </div>
     </div>
   );

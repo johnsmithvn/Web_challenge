@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-05-09
-**Current Version:** v4.5.4
+**Updated:** 2026-05-18
+**Current Version:** v4.13.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -495,5 +495,9 @@
 | v4.5.2 | Recovery: 3 corrupted files restored + deprecated meta tag fix |
 | v4.5.3 | Cleanup: archive old docs, remove dead CSS, sync reset script |
 | v4.5.4 | Audit Cleanup: DB docs overhaul, phantom tables removed, habit sort_order persist |
+| v4.9.0 | Task Priority System (replaced Energy/Duration) |
+| v4.10.0 | ClickUp-style DatePicker |
 | v4.10.1 | Task Start Time + Mobile DatePicker/Overflow + Mood Tracker Removal |
 | **v4.11.0** | **Knowledge Groups (M:N) + Sub-Notes (Threaded Notes)** |
+| **v4.12.0** | **Media Infrastructure (Image/YouTube/Audio/Upload/QuoteWidget/Quote Manager)** |
+| **v4.13.0** | **Postcard Gallery + QuoteWidget KB Integration** |

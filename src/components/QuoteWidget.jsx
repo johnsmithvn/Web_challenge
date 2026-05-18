@@ -29,8 +29,22 @@ function dailySeed(pageKey = '') {
   return Math.abs(h);
 }
 
-export default function QuoteWidget({ pageKey = 'default' }) {
-  const allQuotes = useMemo(() => [...SYSTEM_QUOTES], []);
+export default function QuoteWidget({ pageKey = 'default', kbQuotes = [] }) {
+  // Merge system quotes with KB quotes (optional)
+  const allQuotes = useMemo(() => {
+    const pool = [...SYSTEM_QUOTES];
+    // Map KB quote items → QuoteWidget format
+    for (const item of kbQuotes) {
+      const text = item.body_text || item.title || '';
+      if (!text.trim()) continue;
+      pool.push({
+        text: text.length > 200 ? text.slice(0, 200) + '…' : text,
+        author: item.body_text ? item.title : null,
+        audio_url: null,
+      });
+    }
+    return pool;
+  }, [kbQuotes]);
   const initialIdx = useMemo(() => dailySeed(pageKey) % allQuotes.length, [pageKey, allQuotes.length]);
 
   const [idx, setIdx] = useState(initialIdx);

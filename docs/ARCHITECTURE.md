@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.11.0
-**Updated:** 2026-05-10
+**Version:** v4.13.0
+**Updated:** 2026-05-18
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 
@@ -47,9 +47,8 @@ src/
 │   ├── TiptapEditor.jsx       # v3.2.0 — WYSIWYG editor (Tiptap) + TiptapReadOnly component
 │   ├── SlashCommand.jsx       # v3.3.0 — Slash command extension (/menu) + React dropdown UI
 │   ├── ActivityHeatmap.jsx    # v3.0.0 — GitHub-style SVG yearly heatmap (53×7 grid)
-│   ├── DailyTimeline.jsx      # v3.0.0 — Vertical activity timeline for a single day
 │   ├── SubAlert.jsx           # v3.0.0 — Compact sidebar alert for upcoming subscription renewals
-│   ├── DailyReview.jsx        # v3.0.0 — Today-recap widget (activity count + last 5 actions)
+│   ├── DatePickerPopover.jsx  # v4.10.0 — ClickUp-style date picker with shortcuts + calendar grid
 │   ├── KnowledgeResurface.jsx # v3.0.1 — "Hôm nay nhớ lại" spaced repetition (random Collect resurface)
 │   ├── TaskListSection.jsx    # v2.1.0 — Personal tasks UI (📌 Nhiệm Vụ) + energy/duration/recurrence v3.6.0
 │   ├── CashflowBar.jsx       # v3.7.0 — 30-day subscription due date timeline
@@ -75,7 +74,7 @@ src/
 │   ├── useHabitLogs.js        # v1.5.0 — Per-habit daily logs (replaces vl_habit_progress)
 │   ├── useJourney.js          # v1.5.0 — Journey lifecycle (start/complete/renew/extend)
 │   ├── useFocusTimer.js       # Pomodoro phases, session log, DB sync, journey_id tagging
-│   ├── useMoodSkip.js         # useMoodLog + useSkipReasons hooks, Supabase-first
+│   ├── useMoodSkip.js         # useSkipReasons hook, Supabase-first (useMoodLog removed v4.10.1)
 │   ├── useXpStore.js          # XP log, level computation, addXp/removeXp, Supabase-first
 │   ├── useUserTasks.js        # v2.1.0 — Personal task CRUD, notification sync + M2M link/unlink v4.5.0
 │   ├── useActivityLog.js      # v3.0.0 — Append-only activity logger for Life Log heatmap/timeline
@@ -85,7 +84,6 @@ src/
 │   ├── useTags.js             # v3.7.0 → v4.1.0 — Central tag CRUD + link/unlink (expenses, subscriptions, collections) + updateTag + getTagUsageCount
 │   ├── useIntentions.js       # v3.9.0 → v4.2.0 — Incubator CRUD + defer(friction) + execute(multi-output) + abandon + logs
 │   ├── useFitnessLog.js       # v4.0.0 — Fitness session logging (add, delete, todayLogs, weekSummary)
-│   ├── useLinkMeta.js         # v4.0.0 — OG metadata fetch+cache via /api/meta
 │   ├── useKnowledgeGroups.js   # v4.11.0 — KB group CRUD + M:N link/unlink articles + fetchGroupArticles
 │   ├── useCollectionNotes.js   # v4.11.0 — Threaded sub-notes CRUD per KB article
 │   ├── useFileUpload.js       # v4.12.0 — Upload files to R2 via /api/upload (25MB limit)
@@ -123,7 +121,7 @@ src/
 ├── data/                      # Static JSON content (Rule 14)
 │   ├── challenges.json        # 21 Daily Challenges
 │   ├── quiz.json              # 10 Quiz questions
-│   ├── habits.json            # defaultHabits, categories, icons, colors, skipReasons, moods
+│   ├── habits.json            # defaultHabits, categories, icons, colors, skipReasons
 │   ├── testimonials.json      # Landing page reviews
 │   ├── quotes.json            # v1.4.5 — 30 daily motivational quotes
 │   ├── programs.json          # v1.6.0 — 5 system program templates (offline fallback)
@@ -137,7 +135,7 @@ src/
 │   ├── collect.css            # v3.0.0 — Collect page (tabs, card grid, search)
 │   ├── finance.css            # v3.0.0 — Finance page (summary, breakdown, forms, sub cards)
 │   ├── lifelog.css            # v3.0.0 — Life Log page (heatmap, timeline)
-│   ├── widgets.css            # v3.0.0 — SubAlert + DailyReview sidebar widgets
+│   ├── widgets.css            # v3.0.0 — SubAlert sidebar widget
 │   ├── hero.css               # HeroSection styles
 │   ├── sections.css           # ContentSections + RoadmapSection
 │   ├── tracker.css            # TrackerPage v2 styles (merged habits)
@@ -152,6 +150,10 @@ src/
 │   ├── leaderboard.css        # Leaderboard page
 │   ├── incubator.css          # v3.9.0 — Incubator page, cards, timeline, modals
 │   ├── settings.css           # v4.1.0 — Settings page, tag manager, color picker
+│   ├── datepicker.css         # v4.10.0 — ClickUp-style date picker
+│   ├── confirm-modal.css      # v3.2.0 — ConfirmModal glassmorphism
+│   ├── quote-widget.css       # v4.12.0 — QuoteWidget purple accent
+│   ├── url-input-popover.css  # v4.12.0 — UrlInputPopover glassmorphism
 │   ├── completion.css         # CompletionModal styles
 │   ├── onboarding.css         # OnboardingModal styles
 │   └── testimonials.css       # Testimonials section

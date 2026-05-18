@@ -1,5 +1,42 @@
 # CHANGELOG
 
+## v4.14.0 — 2026-05-18
+### Added
+- **KB Category: Giải trí (Entertainment):** New `entertainment` type with 🎮 Gamepad2 icon (red). Use for anime, music, movies, games.
+- **KB Category: Cảm xúc (Emotion):** New `emotion` type with ❤️ Heart icon (pink). Use for healing, reflections, diary, emotional content.
+
+### Changed
+- **Removed `link` type:** Links merged into `note`. URL field preserved — no data loss.
+- **Merged `knowledge` + `experience` + `learn`:** All consolidated into single `learn` type ("Học"). Covers learning material, knowledge articles, lessons, and experiences.
+- **SQL Migration:** `migration_v4.14.0_collection_types.sql` — migrates `link→note`, `experience→learn`, `knowledge→learn`, restructures CHECK constraint (8 types).
+
+### Fixed
+- **DB ↔ UI type desync:** The DB CHECK constraint only allowed 6 types but the UI had 8+. Now all 9 types are aligned.
+
+---
+
+## v4.13.1 — 2026-05-18
+### Changed
+- `docs/PLAN.md` — Version header synced `v4.5.4` → `v4.13.0`, added v4.9.0–v4.13.0 to Semantic Version Map.
+- `docs/ARCHITECTURE.md` — Version header synced `v4.11.0` → `v4.13.0`. Removed 3 ghost entries (`DailyTimeline.jsx`, `DailyReview.jsx`, `useLinkMeta.js` — deleted v4.7.0/v4.7.1). Added 5 missing CSS files + `DatePickerPopover.jsx`. Fixed `useMoodSkip.js` + `habits.json` descriptions (mood removed v4.10.1).
+- `docs/FEATURES.md` — Cleaned stale `DailyTimeline` ref in Life Log section, cleaned `DailyReview` ref in Sidebar Widgets section (deleted v4.7.1).
+- `docs/TASKS.md` — Fixed v4.12.0 status `IN PROGRESS` → `✅ DONE`.
+
+---
+
+## v4.13.0 — 2026-05-17
+### Added
+- **Postcard Gallery:** Quote-type KB items now render as gradient-backed postcard cards (2-column grid) instead of standard article list. 8-color gradient palette, serif italic typography, line-clamp truncation with fade.
+- **PostcardCard component:** Large quote text display, author attribution from title, audio badge detection, responsive (1-col on mobile).
+- **QuoteWidget KB integration:** `QuoteWidget` now accepts optional `kbQuotes` prop — KB quote items appear in random rotation alongside system quotes on the Knowledge Base page.
+
+### Changed
+- `src/pages/CollectPage.jsx` — Added PostcardCard component, PostcardGrid rendering when `typeFilter === 'quote'`, empty state with 💬 icon, kbQuotes passed to QuoteWidget.
+- `src/components/QuoteWidget.jsx` — Accepts `kbQuotes` prop, merges KB quote items into shuffle pool (backward-compatible).
+- `src/styles/collect.css` — Postcard gallery CSS (gradients, typography, hover lift, truncation fade, light mode overrides, responsive grid).
+
+---
+
 ## v4.12.0 — 2026-05-10
 ### Added
 - **Media in KB Articles (Phase 1):** Image + YouTube support for both Tiptap Visual and Markdown editors.

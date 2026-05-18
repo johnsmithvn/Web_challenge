@@ -13,21 +13,31 @@ import '../styles/collect.css';
 
 const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
 const TiptapReadOnly = lazy(() => import('../components/TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
-import { FileText, Link as LinkIcon, MessageSquareQuote, BookOpen, Lightbulb, Library, FolderOpen, Bot, GraduationCap, Briefcase } from 'lucide-react';
+import { FileText, MessageSquareQuote, BookOpen, Lightbulb, Library, FolderOpen, Bot, Gamepad2, Heart } from 'lucide-react';
 import QuoteWidget from '../components/QuoteWidget';
 import UrlInputPopover from '../components/UrlInputPopover';
 
 /* ── Constants ─────────────────────────────────────────────── */
 const TYPE_META = {
-  note:       { icon: FileText, label: 'Ghi chú',     color: '#8b5cf6' },
-  link:       { icon: LinkIcon, label: 'Link',         color: '#06b6d4' },
-  quote:      { icon: MessageSquareQuote, label: 'Trích dẫn', color: '#f59e0b' },
-  learn:      { icon: BookOpen, label: 'Học',          color: '#22c55e' },
-  idea:       { icon: Lightbulb, label: 'Ý tưởng',     color: '#f97316' },
-  ai:         { icon: Bot, label: 'AI',                color: '#a855f7' },
-  knowledge:  { icon: GraduationCap, label: 'Kiến thức', color: '#0ea5e9' },
-  experience: { icon: Briefcase, label: 'Kinh nghiệm', color: '#ec4899' },
+  note:          { icon: FileText, label: 'Ghi chú',     color: '#8b5cf6' },
+  quote:         { icon: MessageSquareQuote, label: 'Trích dẫn', color: '#f59e0b' },
+  learn:         { icon: BookOpen, label: 'Học',          color: '#22c55e' },
+  idea:          { icon: Lightbulb, label: 'Ý tưởng',     color: '#f97316' },
+  ai:            { icon: Bot, label: 'AI',                color: '#a855f7' },
+  entertainment: { icon: Gamepad2, label: 'Giải trí',     color: '#ef4444' },
+  emotion:       { icon: Heart, label: 'Cảm xúc',        color: '#f472b6' },
 };
+
+const POSTCARD_GRADIENT_COUNT = 8;
+function postcardGradientClass(index) {
+  return `kb-postcard--g${index % POSTCARD_GRADIENT_COUNT}`;
+}
+
+/** Detect audio URL in body text */
+function detectAudioUrl(body = '') {
+  const match = body.match(/https?:\/\/[^\s)"]+\.(mp3|m4a|ogg|wav|aac|flac)(\?[^\s)"]*)?/i);
+  return match ? match[0] : null;
+}
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Mới nhất' },
@@ -461,6 +471,56 @@ function ArticleCard({ item, onClick, onGroupClick }) {
           </div>
           <span className="kb-card__readtime">⏱ {mins} phút đọc</span>
         </div>
+      </div>
+    </article>
+  );
+}
+
+/* ── PostcardCard (v4.13.0 — quote gallery view) ─────────── */
+function PostcardCard({ item, index, onClick }) {
+  const isTiptap = isTiptapBody(item);
+  let quoteText = item.body_text || '';
+  if (!quoteText && isTiptap) {
+    try {
+      const json = typeof item.body === 'string' ? JSON.parse(item.body) : item.body;
+      const walk = (node) => {
+        if (!node) return '';
+        if (node.text) return node.text;
+        if (node.content) return node.content.map(walk).join(' ');
+        return '';
+      };
+      quoteText = walk(json).trim();
+    } catch { quoteText = ''; }
+  } else if (!quoteText) {
+    quoteText = markdownToPlainText(item.body || '');
+  }
+  // Use body text as the quote; title becomes the author/source
+  const displayText = quoteText || item.title;
+  const isShort = displayText.length < 120;
+  const isTruncated = displayText.length > 250;
+  const audioUrl = detectAudioUrl(item.body || '');
+
+  return (
+    <article
+      className={`kb-postcard ${postcardGradientClass(index)}`}
+      onClick={() => onClick(item)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => e.key === 'Enter' && onClick(item)}
+    >
+      <span className="kb-postcard__mark">&ldquo;</span>
+      <p className={`kb-postcard__text${isShort ? ' kb-postcard__text--short' : ''}${isTruncated ? ' kb-postcard__text--truncated' : ''}`}>
+        {displayText.slice(0, 350)}
+      </p>
+      {quoteText && <div className="kb-postcard__author">— {item.title}</div>}
+      <div className="kb-postcard__footer">
+        {(item._tags || []).map(t => {
+          const name = typeof t === 'string' ? t : t.name;
+          const color = typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6');
+          return <span key={name} className="kb-tag-chip"><span className="kb-tag-dot" style={{ background: color }} />#{name}</span>;
+        })}
+        {audioUrl && <span className="kb-postcard__audio-badge">🔊 Audio</span>}
+        <span className="kb-postcard__date">{fmtDate(item.created_at)}</span>
       </div>
     </article>
   );
@@ -1184,7 +1244,7 @@ export default function CollectPage() {
       </div>
 
       {/* Daily quote */}
-      <QuoteWidget pageKey="knowledge" />
+      <QuoteWidget pageKey="knowledge" kbQuotes={items.filter(i => i.type === 'quote' && i.status !== 'archived')} />
 
       {/* Search + Sort + Task Filter */}
       <div className="kb-toolbar">
@@ -1525,10 +1585,56 @@ export default function CollectPage() {
             <div className="kb-loading">⏳ Đang tải...</div>
           ) : filtered.length === 0 ? (
             <div className="kb-empty">
-              <div className="kb-empty__icon">🧠</div>
-              <p>Chưa có bài viết nào{search ? ` cho "${search}"` : ''}.</p>
-              <button className="btn btn-primary" onClick={() => openEditor(null)}>✏️ Tạo bài đầu tiên</button>
+              <div className="kb-empty__icon">{typeFilter === 'quote' ? '💬' : '🧠'}</div>
+              <p>{typeFilter === 'quote'
+                ? `Chưa có trích dẫn nào${search ? ` cho "${search}"` : ''}. Bắt đầu sưu tầm thôi!`
+                : `Chưa có bài viết nào${search ? ` cho "${search}"` : ''}.`}</p>
+              <button className="btn btn-primary" onClick={() => openEditor(null)}>
+                ✏️ {typeFilter === 'quote' ? 'Tạo trích dẫn đầu tiên' : 'Tạo bài đầu tiên'}
+              </button>
             </div>
+          ) : typeFilter === 'quote' ? (
+            /* ── POSTCARD GALLERY (quote type) ──────────── */
+            <>
+              {bulkMode && (
+                <div className="inbox-bulk-bar" style={{ marginBottom: '0.75rem' }}>
+                  <button
+                    className="inbox-bulk-bar__btn"
+                    onClick={() => {
+                      if (bulkSelected.size >= filtered.length) setBulkSelected(new Set());
+                      else setBulkSelected(new Set(filtered.map(i => i.id)));
+                    }}
+                  >
+                    {bulkSelected.size >= filtered.length ? '☐ Bỏ chọn' : '☑ Chọn tất cả'}
+                  </button>
+                  {bulkSelected.size > 0 && (
+                    <button
+                      className="inbox-bulk-bar__btn inbox-bulk-bar__btn--delete"
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: `Xóa ${bulkSelected.size} trích dẫn?`,
+                          message: 'Hành động này không thể hoàn tác.',
+                          confirmLabel: 'Xóa tất cả',
+                          danger: true,
+                        });
+                        if (!ok) return;
+                        for (const id of bulkSelected) { await deleteItem(id); }
+                        setBulkSelected(new Set());
+                        setBulkMode(false);
+                        fetchItems({});
+                      }}
+                    >
+                      🗑 Xóa ({bulkSelected.size})
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className="kb-postcard-grid">
+                {filtered.map((item, idx) => (
+                  <PostcardCard key={item.id} item={item} index={idx} onClick={openReader} />
+                ))}
+              </div>
+            </>
           ) : (
             <div className="kb-list">
               {/* Bulk bar */}

@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.11.0
-**Updated:** 2026-05-10
+**Version:** v4.13.0
+**Updated:** 2026-05-17
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -590,6 +590,8 @@
 - **Inline Popovers:** UrlInputPopover (ClickUp-style) cho Link, Image, YouTube, Audio — thay thế `window.prompt`
 - **ReaderView:** Tự detect format, render `TiptapReadOnly` hoặc `ReactMarkdown`
 - **Media Support (v4.12.0):** Ảnh (🖼️), YouTube (▶️), Audio (🎵) — cả toolbar + slash commands. AudioNode custom Tiptap extension.
+- **Postcard Gallery (v4.13.0):** Quote-type items render dạng gradient postcard cards (2-col grid) thay vì article list. 8 gradient màu, serif italic typography, line-clamp 5 dòng + fade truncation. Audio badge detection. Responsive 1-col mobile.
+- **QuoteWidget KB Integration (v4.13.0):** KB quote items tự động được merge vào QuoteWidget random rotation pool trên trang Collect — user quotes xuất hiện cạnh system quotes.
 
 **Slash Command Menu (v3.3.0):**
 - Gõ `/` trong Tiptap editor → dropdown 12 block types
@@ -683,7 +685,7 @@
 **Chi tiết:**
 - **Today stat badge:** Số hoạt động hôm nay
 - **ActivityHeatmap:** SVG 53×7 grid, 5-level purple scale, click để drill-down
-- **DailyTimeline:** Vertical timeline với action icons, timestamps, labels, XP amounts
+- **Daily drill-down:** Click ngày → vertical timeline với action icons, timestamps, labels, XP amounts
 - **Activity types logged:** habit_done, habit_undo, challenge_done, collect_add, focus_done, expense_add, subscription_add
 
 **Data source:** `activity_logs` table (Supabase, append-only)
@@ -692,15 +694,16 @@
 
 ## 21. 🔔 Sidebar Widgets
 
-**Files:** `src/components/SubAlert.jsx` + `src/components/DailyReview.jsx` + `src/styles/widgets.css`
+**Files:** `src/components/SubAlert.jsx` + `src/styles/widgets.css`
 
-**Mô tả:** Widgets nhỏ gắn trong sidebar desktop, tự động ẩn khi không có data.
+**Mô tả:** Widget nhỏ gắn inline trong TrackerPage, tự động ẩn khi không có data.
 
 **Chi tiết:**
 - **SubAlert:** Hiển thị subscriptions sắp gia hạn (≤7 ngày) + đếm ngược ngày. Urgent style khi ≤2 ngày.
-- **DailyReview:** Tổng số hoạt động hôm nay + 5 actions gần nhất với icon + timestamp.
 
-**Data source:** SubAlert → `subscriptions` | DailyReview → `activity_logs`
+> **Note:** `DailyReview` widget đã bị xóa v4.7.1 để giảm UI clutter.
+
+**Data source:** SubAlert → `subscriptions`
 
 ---
 
