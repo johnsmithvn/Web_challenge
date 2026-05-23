@@ -1241,7 +1241,7 @@
 /* ── Light mode ──────────────────────────────────────────────── */
 [data-theme="light"] .kb-card:hover { background: rgba(99,102,241,0.04); }
 [data-theme="light"] .kb-card { border-bottom-color: rgba(99,102,241,0.08); }
-[data-theme="light"] .kb-reader__bar { background: rgba(255,255,255,0.9); border-bottom-color: rgba(99,102,241,0.1); }
+[data-theme="light"] .kb-reader__bar { background: rgba(255,255,255,0.9); border-bottom-color: rgba(0,0,0,0.08); }
 [data-theme="light"] .kb-prose h1, [data-theme="light"] .kb-prose h2,
 [data-theme="light"] .kb-prose h3 { color: #1e1b4b; }
 [data-theme="light"] .kb-prose blockquote { background: rgba(99,102,241,0.06); border-left-color: var(--purple); }
@@ -1250,6 +1250,14 @@
 [data-theme="light"] .kb-prose code { background: rgba(99,102,241,0.08); color: #6d28d9; border-color: rgba(99,102,241,0.15); }
 [data-theme="light"] .kb-editor { background: #f9f9fb; }
 [data-theme="light"] .kb-editor__bar { background: rgba(255,255,255,0.95); }
+
+/* ReaderView Light Mode Fixes */
+[data-theme="light"] .kb-reader__divider { background: rgba(0,0,0,0.08); }
+[data-theme="light"] .kb-prose__empty { border-color: rgba(0,0,0,0.15); background: rgba(0,0,0,0.02); }
+[data-theme="light"] .kb-subnotes { border-top-color: rgba(0,0,0,0.08); }
+[data-theme="light"] .kb-subnote { border-color: rgba(0,0,0,0.08); background: rgba(0,0,0,0.02); }
+[data-theme="light"] .kb-subnote:hover { border-color: rgba(0,0,0,0.15); }
+[data-theme="light"] .kb-subnote-form__textarea { border-color: rgba(0,0,0,0.12); background: rgba(0,0,0,0.02); }
 
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
