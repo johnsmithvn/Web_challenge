@@ -1199,7 +1199,7 @@
 }
 .kb-subnote-form__textarea {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 1rem;
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: var(--radius-md);
@@ -1207,10 +1207,18 @@
   font-size: 0.88rem;
   font-family: inherit;
   line-height: 1.6;
-  resize: vertical;
-  min-height: 70px;
+  resize: none;
+  height: 44px;
+  min-height: 44px;
   outline: none;
-  transition: border-color 0.12s;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+.kb-subnote-form.is-expanded .kb-subnote-form__textarea {
+  resize: vertical;
+  height: 80px;
+  min-height: 80px;
+  padding: 0.75rem 1rem;
 }
 .kb-subnote-form__textarea:focus { border-color: var(--purple); }
 .kb-subnote-form__textarea::placeholder { color: var(--text-muted); }

@@ -5,6 +5,7 @@
 - **Knowledge Base Categories (JSON Refactor):** Consolidated `TYPES` array from `InboxPage` and `CollectPage` into a central static JSON file `src/data/knowledge.json`.
 - **Inbox UI Refactor:** Replaced inline classification buttons with `<select>` dropdowns in `InboxPage` (Detail View, Inline Menu, Bulk Actions) to save space and match the unified types.
 - **Collect UI Refactor:** `CollectPage` now dynamically builds `TYPE_META` from `knowledge.json`.
+- **SubNotes UX Improvement:** Redesigned the "Thêm ghi chú" (Add sub-note) section in the Knowledge Reader View to behave like Confluence (inline expandable comment box instead of a toggle button).
 ### Fixed
 - **ReaderView Light Mode Contrast:** Fixed invisible dividers and borders in Light Theme for the ReaderView and SubNotes section.
 

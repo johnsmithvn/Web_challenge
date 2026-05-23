@@ -329,7 +329,7 @@ function SubNotesSection({ collectionId, notesHook }) {
   const [newContent, setNewContent] = useState('');
   const [editingId, setEditingId]   = useState(null);
   const [editContent, setEditContent] = useState('');
-  const [showForm, setShowForm]     = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => { if (collectionId) fetchNotes(collectionId); }, [collectionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -337,7 +337,7 @@ function SubNotesSection({ collectionId, notesHook }) {
     if (!newContent.trim()) return;
     await addNote(collectionId, newContent);
     setNewContent('');
-    setShowForm(false);
+    setIsExpanded(false);
   };
 
   const handleUpdate = async (id) => {
@@ -389,24 +389,22 @@ function SubNotesSection({ collectionId, notesHook }) {
         </div>
       ))}
 
-      {showForm ? (
-        <div className="kb-subnote-form">
-          <textarea
-            className="kb-subnote-form__textarea"
-            value={newContent}
-            onChange={e => setNewContent(e.target.value)}
-            placeholder="Viết ghi chú..."
-            autoFocus
-            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAdd(); if (e.key === 'Escape') { setShowForm(false); setNewContent(''); } }}
-          />
+      <div className={`kb-subnote-form ${isExpanded ? 'is-expanded' : ''}`}>
+        <textarea
+          className="kb-subnote-form__textarea"
+          value={newContent}
+          onChange={e => setNewContent(e.target.value)}
+          placeholder="Viết ghi chú..."
+          onFocus={() => setIsExpanded(true)}
+          onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAdd(); if (e.key === 'Escape') { setIsExpanded(false); setNewContent(''); } }}
+        />
+        {isExpanded && (
           <div className="kb-subnote-form__actions">
-            <button className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '0.35rem 0.7rem' }} onClick={() => { setShowForm(false); setNewContent(''); }}>Hủy</button>
+            <button className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '0.35rem 0.7rem' }} onClick={() => { setIsExpanded(false); setNewContent(''); }}>Hủy</button>
             <button className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.35rem 0.7rem' }} disabled={!newContent.trim()} onClick={handleAdd}>💾 Lưu</button>
           </div>
-        </div>
-      ) : (
-        <button className="btn btn-ghost" style={{ fontSize: '0.82rem', marginTop: '0.5rem' }} onClick={() => setShowForm(true)}>＋ Thêm ghi chú</button>
-      )}
+        )}
+      </div>
     </div>
   );
 }
