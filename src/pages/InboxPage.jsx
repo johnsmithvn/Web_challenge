@@ -9,19 +9,13 @@ import { useIntentions } from '../hooks/useIntentions';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
 import EXPENSE_DATA from '../data/expense-categories.json';
+import KNOWLEDGE_DATA from '../data/knowledge.json';
 import QuoteWidget from '../components/QuoteWidget';
 import '../styles/inbox.css';
 import '../styles/collect.css';
 
 const CATEGORIES = EXPENSE_DATA.categories;
-
-// 'want' removed in v4.4.1 — superseded by Incubator (🥚 Ấp Trứng button in overflow menu)
-const TYPES = [
-  { key: 'link',  label: '🔗 Link',    desc: 'Bài viết, video, repo' },
-  { key: 'quote', label: '💬 Quote',   desc: 'Câu nói hay' },
-  { key: 'learn', label: '📚 Học',     desc: 'Khóa học, bài tập' },
-  { key: 'idea',  label: '💡 Ý tưởng', desc: 'Ý tưởng cá nhân' },
-];
+const TYPES = KNOWLEDGE_DATA.types;
 
 /**
  * Extract amount from Vietnamese-style text.
@@ -550,25 +544,28 @@ export default function InboxPage() {
                 </>
               )}
               {bulkClassifyMenu && bulkSelected.size > 0 && (
-                <div className="inbox-bulk-classify-menu">
-                  {TYPES.map(t => (
-                    <button
-                      key={t.key}
-                      className="inbox-item__classify-btn"
-                      onClick={async () => {
-                        for (const id of bulkSelected) {
-                          await classifyItem(id, t.key);
-                        }
-                        logActivity('inbox_bulk_classify', `→ ${t.key}: ${bulkSelected.size} items`, bulkSelected.size, { type: t.key });
-                        setBulkSelected(new Set());
-                        setBulkClassifyMenu(false);
-                        setBulkMode(false);
-                        fetchItems({ type: 'inbox' });
-                      }}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
+                <div className="inbox-bulk-classify-menu" style={{ padding: '0.2rem' }}>
+                  <select
+                    className="kb-type-select"
+                    onChange={async (e) => {
+                      const newType = e.target.value;
+                      if (!newType) return;
+                      for (const id of bulkSelected) {
+                        await classifyItem(id, newType);
+                      }
+                      logActivity('inbox_bulk_classify', `→ ${newType}: ${bulkSelected.size} items`, bulkSelected.size, { type: newType });
+                      setBulkSelected(new Set());
+                      setBulkClassifyMenu(false);
+                      setBulkMode(false);
+                      fetchItems({ type: 'inbox' });
+                    }}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>-- Chọn phân loại --</option>
+                    {TYPES.map(t => (
+                      <option key={t.key} value={t.key}>{t.emoji} {t.label}</option>
+                    ))}
+                  </select>
                 </div>
               )}
             </div>
@@ -627,18 +624,22 @@ export default function InboxPage() {
               <div className="inbox-item__actions">
                 {classifying === item.id ? (
                   <div className="inbox-item__classify-menu">
-                    {TYPES.map(t => (
-                      <button
-                        key={t.key}
-                        className="inbox-item__classify-btn"
-                        onClick={() => handleClassify(item.id, t.key)}
-                        title={t.desc}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
+                    <select
+                      className="kb-type-select"
+                      autoFocus
+                      onChange={(e) => {
+                        if (e.target.value) handleClassify(item.id, e.target.value);
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="" disabled>-- Phân loại nhanh --</option>
+                      {TYPES.map(t => (
+                        <option key={t.key} value={t.key}>{t.emoji} {t.label}</option>
+                      ))}
+                    </select>
                     <button
                       className="inbox-item__classify-btn inbox-item__classify-btn--cancel"
+                      style={{ marginLeft: '0.5rem' }}
                       onClick={() => setClassifying(null)}
                     >
                       ✕ Huỷ
@@ -670,12 +671,13 @@ export default function InboxPage() {
                       onClick={() => handleToTask(item)}
                       title="Chuyển thành Task"
                     >
-                      📌 Task
+                      ⚡ Task
                     </button>
                     <button
                       className="inbox-item__action-btn inbox-item__action-btn--delete"
                       onClick={() => handleDelete(item.id)}
                       title="Xóa"
+                      style={{ color: '#ef4444' }}
                     >
                       🗑
                     </button>
@@ -736,9 +738,9 @@ export default function InboxPage() {
             <button className="kb-back-btn" onClick={closeDetail}>← Quay lại</button>
             <div className="kb-reader__actions">
               {detailSaving && <span className="inbox-detail__saving">Đang lưu...</span>}
-              <button className="btn btn-ghost kb-action-btn" onClick={handleDetailToTask} title="Chuyển thành Task">📌 Task</button>
+              <button className="btn btn-ghost kb-action-btn" onClick={handleDetailToTask} title="Chuyển thành Task">⚡ Task</button>
               <button className="btn btn-ghost kb-action-btn" onClick={() => setIsEditing(true)}>✏️ Sửa</button>
-              <button className="btn btn-ghost kb-action-btn kb-action-btn--danger" onClick={handleDetailDelete}>🗑 Xóa</button>
+              <button className="btn btn-ghost kb-action-btn kb-action-btn--danger" onClick={handleDetailDelete} style={{ color: '#ef4444' }}>🗑 Xóa</button>
             </div>
           </div>
 
@@ -752,6 +754,20 @@ export default function InboxPage() {
                   <span style={{ color: '#8b5cf6' }}>Inbox</span>
                   <span>·</span>
                   <span>{new Date(detailItem.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                  <span>·</span>
+                  <select
+                    className="kb-type-select"
+                    style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}
+                    onChange={(e) => {
+                      if (e.target.value) handleDetailClassify(e.target.value);
+                    }}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>📂 Phân loại</option>
+                    {TYPES.map(t => (
+                      <option key={t.key} value={t.key}>{t.emoji} {t.label}</option>
+                    ))}
+                  </select>
                 </div>
                 {detailItem.url && (
                   <a href={detailItem.url} target="_blank" rel="noopener noreferrer" className="kb-reader__source">
@@ -773,24 +789,7 @@ export default function InboxPage() {
             </div>
           </div>
 
-          {/* Classify footer */}
-          <div className="inbox-detail__footer">
-            <div className="inbox-detail__footer-left">
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>Phân loại:</span>
-              <div className="inbox-detail__classify-group">
-                {TYPES.map(t => (
-                  <button
-                    key={t.key}
-                    className="inbox-item__classify-btn"
-                    onClick={() => handleDetailClassify(t.key)}
-                    title={t.desc}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* Classify footer removed - moved to header */}
         </div>
       )}
 

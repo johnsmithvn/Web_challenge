@@ -466,7 +466,7 @@
 **Chi tiết:**
 - Quick-add form (text input + submit)
 - Inbox items list với thời gian tạo
-- Classify action: phân loại → Link / Quote / Học / Ý tưởng / Ghi chú
+- Classify action: phân loại nhanh qua `<select>` dropdown (lấy dữ liệu tĩnh từ `knowledge.json`)
 - **📌 Task action:** Chuyển inbox item thành Task (v3.0.1)
 - **🔄 Đăng ký action:** Chuyển sang FinancePage tạo Subscription (v3.0.1)
 - **💸 Chi tiêu nhanh (v3.5.0):** Bấm nút → QuickExpenseModal inline (không navigate). Regex tự bóc tách số tiền từ text ("Cafe 50k" → 50,000đ). Pre-fill amount + note + category dropdown 8 loại. Lưu → `addExpense()` + `logActivity()` + xóa item khỏi inbox.
@@ -480,7 +480,7 @@
 - Tự động detect URL
 - Empty state khi inbox trống
 
-**Data source:** `collections` table (Supabase, type='inbox'), `expenses` table (khi dùng Quick Expense)
+- **Data source:** `collections` table (Supabase, type='inbox'), `expenses` table (khi dùng Quick Expense), `knowledge.json` cho danh sách phân loại
 
 ---
 
@@ -652,7 +652,7 @@
 **ConfirmModal (v3.2.0):**
 - Tất cả delete/switch action dùng `useConfirm()` — không còn `window.confirm()`
 
-**Data source:** `collections` + `knowledge_groups` + `collection_groups` + `collection_notes` (Supabase) — columns: `type, title, body, url, tags, source, status, content_format, body_text, word_count`
+**Data source:** `collections` + `knowledge_groups` + `collection_groups` + `collection_notes` (Supabase) — columns: `type, title, body, url, tags, source, status, content_format, body_text, word_count`. Phân loại được config cứng ở `src/data/knowledge.json`.
 
 ---
 

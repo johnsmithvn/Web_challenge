@@ -1,0 +1,12 @@
+{
+  "types": [
+    { "key": "note", "label": "Ghi chú", "desc": "Ghi chú chung", "color": "#8b5cf6", "icon": "FileText", "emoji": "📝" },
+    { "key": "link", "label": "Link", "desc": "Bài viết, video", "color": "#3b82f6", "icon": "Link", "emoji": "🔗" },
+    { "key": "quote", "label": "Trích dẫn", "desc": "Câu nói hay", "color": "#f59e0b", "icon": "MessageSquareQuote", "emoji": "💬" },
+    { "key": "learn", "label": "Học", "desc": "Khóa học", "color": "#22c55e", "icon": "BookOpen", "emoji": "📚" },
+    { "key": "idea", "label": "Ý tưởng", "desc": "Ý tưởng cá nhân", "color": "#f97316", "icon": "Lightbulb", "emoji": "💡" },
+    { "key": "ai", "label": "AI", "desc": "Prompt, công cụ AI", "color": "#a855f7", "icon": "Bot", "emoji": "🤖" },
+    { "key": "entertainment", "label": "Giải trí", "desc": "Phim ảnh, game", "color": "#ef4444", "icon": "Gamepad2", "emoji": "🎮" },
+    { "key": "emotion", "label": "Cảm xúc", "desc": "Nhật ký cảm xúc", "color": "#f472b6", "icon": "Heart", "emoji": "💖" }
+  ]
+}

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v4.15.0 — 2026-05-23
+### Changed
+- **Knowledge Base Categories (JSON Refactor):** Consolidated `TYPES` array from `InboxPage` and `CollectPage` into a central static JSON file `src/data/knowledge.json`.
+- **Inbox UI Refactor:** Replaced inline classification buttons with `<select>` dropdowns in `InboxPage` (Detail View, Inline Menu, Bulk Actions) to save space and match the unified types.
+- **Collect UI Refactor:** `CollectPage` now dynamically builds `TYPE_META` from `knowledge.json`.
+
 ## v4.14.0 — 2026-05-18
 ### Added
 - **KB Category: Giải trí (Entertainment):** New `entertainment` type with 🎮 Gamepad2 icon (red). Use for anime, music, movies, games.

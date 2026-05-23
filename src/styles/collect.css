@@ -334,7 +334,7 @@
   align-items: flex-start;
 }
 
-.kb-reader__main { flex: 1; min-width: 0; }
+.kb-reader__main { flex: 1; min-width: 0; max-width: 800px; margin: 0 auto; width: 100%; }
 
 .kb-reader__hero {
   margin-bottom: 2rem;
@@ -401,12 +401,35 @@
   max-width: 100%;
 }
 .kb-prose__empty {
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-style: italic;
   padding: 2rem;
   border: 1px dashed rgba(255,255,255,0.1);
   border-radius: var(--radius-md);
   text-align: center;
+}
+
+/* ── Select Dropdown for Type ────────────────────────────────── */
+.kb-type-select {
+  padding: 0.35rem 0.75rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s;
+}
+.kb-type-select:hover, .kb-type-select:focus {
+  border-color: var(--purple-light);
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+}
+.kb-type-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 /* react-markdown elements */

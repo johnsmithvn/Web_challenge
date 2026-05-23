@@ -125,7 +125,8 @@ src/
 │   ├── testimonials.json      # Landing page reviews
 │   ├── quotes.json            # v1.4.5 — 30 daily motivational quotes
 │   ├── programs.json          # v1.6.0 — 5 system program templates (offline fallback)
-│   └── expense-categories.json # v3.0.0 — 8 expense categories (food, transport, etc.)
+│   ├── expense-categories.json # v3.0.0 — 8 expense categories (food, transport, etc.)
+│   └── knowledge.json         # v4.15.0 — Unified Knowledge Base types (Inbox/Collect)
 │
 ├── styles/
 │   ├── global.css             # CSS variables, reset, typography

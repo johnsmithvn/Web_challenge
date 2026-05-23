@@ -13,20 +13,25 @@ import '../styles/collect.css';
 
 const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
 const TiptapReadOnly = lazy(() => import('../components/TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
-import { FileText, MessageSquareQuote, BookOpen, Lightbulb, Library, FolderOpen, Bot, Gamepad2, Heart } from 'lucide-react';
+import { FileText, MessageSquareQuote, BookOpen, Lightbulb, Library, FolderOpen, Bot, Gamepad2, Heart, Link } from 'lucide-react';
 import QuoteWidget from '../components/QuoteWidget';
 import UrlInputPopover from '../components/UrlInputPopover';
+import KNOWLEDGE_DATA from '../data/knowledge.json';
 
 /* ── Constants ─────────────────────────────────────────────── */
-const TYPE_META = {
-  note:          { icon: FileText, label: 'Ghi chú',     color: '#8b5cf6' },
-  quote:         { icon: MessageSquareQuote, label: 'Trích dẫn', color: '#f59e0b' },
-  learn:         { icon: BookOpen, label: 'Học',          color: '#22c55e' },
-  idea:          { icon: Lightbulb, label: 'Ý tưởng',     color: '#f97316' },
-  ai:            { icon: Bot, label: 'AI',                color: '#a855f7' },
-  entertainment: { icon: Gamepad2, label: 'Giải trí',     color: '#ef4444' },
-  emotion:       { icon: Heart, label: 'Cảm xúc',        color: '#f472b6' },
+const ICON_MAP = {
+  FileText, Link, MessageSquareQuote, BookOpen, Lightbulb, Bot, Gamepad2, Heart,
+  Library, FolderOpen
 };
+
+const TYPE_META = KNOWLEDGE_DATA.types.reduce((acc, t) => {
+  acc[t.key] = {
+    icon: ICON_MAP[t.icon] || FileText,
+    label: t.label,
+    color: t.color
+  };
+  return acc;
+}, {});
 
 const POSTCARD_GRADIENT_COUNT = 8;
 function postcardGradientClass(index) {
