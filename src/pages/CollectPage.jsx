@@ -821,7 +821,20 @@ function MarkdownEditor({ value, onChange, onSave }) {
 /* ── EditorView ───────────────────────────────────────────── */
 function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isNew = false, onConfirmSwitch, groups = [], onCreateGroup, selectedGroups = [], onGroupsChange }) {
   const savedMode = localStorage.getItem(EDITOR_MODE_KEY) || 'markdown';
-  const initialFormat = isNew ? savedMode : (initial?.content_format || 'markdown');
+  // Auto-detect tiptap from body shape when content_format wasn't saved (legacy bug)
+  const detectFormat = (item) => {
+    if (item?.content_format === 'tiptap') return 'tiptap';
+    if (item?.content_format === 'markdown') {
+      // Double-check: body might actually be tiptap JSON (saved before fix)
+      const b = (item?.body || '').trimStart();
+      if (b.startsWith('{"type":"doc"')) return 'tiptap';
+      return 'markdown';
+    }
+    // No content_format at all — detect from body
+    const b = (item?.body || '').trimStart();
+    return b.startsWith('{"type":"doc"') ? 'tiptap' : 'markdown';
+  };
+  const initialFormat = isNew ? savedMode : detectFormat(initial);
 
   const [draft, setDraft] = useState(() => ({
     ...EMPTY_DRAFT,
