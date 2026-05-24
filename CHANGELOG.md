@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## v4.19.6 — 2026-05-24
+### Fixed
+- **Light Theme Usability & Borders:**
+  - Khắc phục các đường viền (border outlines) và giao diện các nút điều hướng, ô tìm kiếm, bộ lọc trong chế độ Sáng (Light Theme) bị quá mờ hoặc biến mất hoàn toàn.
+  - Đồng bộ và bổ sung viền rõ nét cho các nút chức năng ở Sidebar/Topbar (`.sidebar__theme-toggle`, `.topbar__theme-toggle`, `.nav-avatar`) và chỉnh nền trắng/indigo nhạt để nổi bật rõ ràng.
+  - Sửa lỗi mờ và thiếu viền cho ô tìm kiếm (`.kb-search`), dropdown lọc (`.kb-sort`), bộ chọn loại (`.kb-type-select`), trường nhập nguồn URL (`.kb-editor__url`), input tạo nhóm (`.kb-create-group__input`), bộ chọn tag (`.kb-tag-input`), và bộ chọn nhóm (`.kb-group-picker`).
+  - Refactor nút lọc task (`📌`) từ việc dùng inline styles sang class `.kb-task-filter-btn` để hỗ trợ hiển thị đường viền rõ nét và đổi màu linh hoạt khi được kích hoạt hoặc khi đổi sang chế độ Sáng (Light Mode).
+  - Định nghĩa lại màu chữ tags trong Light Mode sang màu tím indigo rõ nét (`#4f46e5`) trên nền tag nhạt để tăng contrast và cải thiện khả năng đọc.
+  - Sửa lỗi chữ màu trắng siêu mờ của nhãn định dạng (`🎨 Visual` và `✍️ MD`) trong Light Mode bằng các màu chữ tím đậm (`#6d28d9`) và xanh mòng két (`#0e7490`) có tương phản cao.
+  - Khắc phục thanh tiến trình kinh nghiệm (`XpBar`) bị tàng hình trong Light Mode bằng cách hiển thị rõ rãnh tiến trình màu indigo (`rgba(99,102,241,0.16)`) và thanh điền tiến trình gradient rõ nét.
+- **Layout & Alignment Updates:**
+  - Tái cấu trúc khu vực chân trang của Sidebar: nhóm nút chuyển Theme và Avatar người dùng vào chung một hàng ngang `.sidebar__actions` thay vì xếp dọc lệch nhau. Sử dụng `justify-content: space-between` đẩy Avatar sang góc trái (dưới icon Ngọn lửa) và nút chuyển Theme sang sát lề phải bên ngoài để giao diện cân đối, gọn gàng.
+- **Interactive Sorting Dropdown:**
+  - Thay thế dropdown lựa chọn cách sắp xếp bài viết (`kb-sort`) từ thẻ `<select>` mặc định của trình duyệt (vốn bị đen/trắng lệch lạc tùy hệ điều hành) thành một menu popover tùy chỉnh (`.kb-sort-dropdown`) dạng kính mờ (glassmorphic) tuyệt đẹp và căn chỉnh thẳng hàng hoàn hảo.
+  - Bổ sung thêm tùy chọn sắp xếp bài viết theo thứ tự ngược bảng chữ cái **Z → A** (`rev-alpha`) đáp ứng yêu cầu của người dùng.
+
+
+
 ## v4.19.5 — 2026-05-24
 ### Fixed
 - **Task Filter Popover UX & Theme Sync:**

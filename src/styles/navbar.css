@@ -372,7 +372,15 @@
   user-select: none;
   flex-shrink: 0;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.15s ease;
 }
+
+.nav-avatar:hover {
+  border-color: var(--cyan-light);
+  transform: scale(1.05);
+}
+
 
 .nav-avatar img {
   width: 100%;
@@ -479,3 +487,48 @@
     animation: none;
   }
 }
+
+.topbar__theme-toggle:hover {
+  background: rgba(139, 92, 246, 0.12);
+  border-color: var(--purple);
+  transform: rotate(15deg) scale(1.05);
+}
+
+/* Light mode adjustments for buttons & avatar */
+[data-theme="light"] .sidebar__theme-toggle,
+[data-theme="light"] .topbar__theme-toggle {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .sidebar__theme-toggle:hover,
+[data-theme="light"] .topbar__theme-toggle:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--purple);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .nav-avatar {
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+[data-theme="light"] .nav-avatar:hover {
+  border-color: var(--purple);
+}
+
+.sidebar__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.25rem;
+  width: 100%;
+}
+
+.sidebar__actions .sidebar__login {
+  flex: 1;
+  margin: 0;
+  width: auto;
+}
+
+

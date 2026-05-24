@@ -196,28 +196,30 @@ export default function Navbar() {
           <div className="sidebar__xp">
             <XpBar compact />
           </div>
-          <button
-            className="sidebar__theme-toggle"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-            aria-label="Toggle theme"
-            id="navbar-theme-toggle"
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
-          {!loading && (
-            user
-              ? <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="up" />
-              : (
-                <button
-                  className="btn btn-primary sidebar__login"
-                  onClick={() => setShowAuth(true)}
-                  id="navbar-login"
-                >
-                  🔑 Đăng Nhập
-                </button>
-              )
-          )}
+          <div className="sidebar__actions">
+            {!loading && (
+              user
+                ? <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="up" />
+                : (
+                  <button
+                    className="btn btn-primary sidebar__login"
+                    onClick={() => setShowAuth(true)}
+                    id="navbar-login"
+                  >
+                    🔑 Đăng Nhập
+                  </button>
+                )
+            )}
+            <button
+              className="sidebar__theme-toggle"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              aria-label="Toggle theme"
+              id="navbar-theme-toggle"
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+          </div>
         </div>
       </aside>
 

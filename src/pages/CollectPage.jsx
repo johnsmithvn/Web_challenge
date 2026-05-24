@@ -50,6 +50,7 @@ const SORT_OPTIONS = [
   { value: 'newest', label: 'Mới nhất' },
   { value: 'oldest', label: 'Cũ nhất' },
   { value: 'alpha',  label: 'A → Z' },
+  { value: 'rev-alpha', label: 'Z → A' },
 ];
 
 const EMPTY_DRAFT = { title: '', body: '', body_text: '', tags: [], type: 'note', url: '', content_format: 'markdown' };
@@ -1035,11 +1036,13 @@ export default function CollectPage() {
   const [search, setSearch]     = useState('');
   const [activeTag, setActiveTag] = useState('');
   const [sort, setSort]         = useState('newest');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [typeFilter, setTypeFilter] = useState('');
   const [filterTaskId, setFilterTaskId] = useState(''); // filter KB by linked task
   const [showTaskFilter, setShowTaskFilter] = useState(false); // task filter popup
   const [taskSearch, setTaskSearch] = useState(''); // search inside task filter
   const taskFilterRef = useRef(null);
+  const sortRef = useRef(null);
 
   // Bulk actions
   const [bulkMode, setBulkMode] = useState(false);
@@ -1060,6 +1063,18 @@ export default function CollectPage() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showTaskFilter]);
+
+  // Close sort dropdown on outside click
+  useEffect(() => {
+    if (!showSortDropdown) return;
+    const handler = (e) => {
+      if (sortRef.current && !sortRef.current.contains(e.target)) {
+        setShowSortDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showSortDropdown]);
 
   /* ── Derived data ─────────────────── */
   const allTags = useMemo(() => {
@@ -1096,6 +1111,7 @@ export default function CollectPage() {
     if (sort === 'newest') list = [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     if (sort === 'oldest') list = [...list].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     if (sort === 'alpha')  list = [...list].sort((a, b) => a.title.localeCompare(b.title));
+    if (sort === 'rev-alpha') list = [...list].sort((a, b) => b.title.localeCompare(a.title));
 
     return list;
   }, [items, typeFilter, activeTag, filterTaskId, search, sort]);
@@ -1324,9 +1340,34 @@ export default function CollectPage() {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <select className="kb-sort" value={sort} onChange={e => setSort(e.target.value)}>
-          {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
+        <div ref={sortRef} style={{ position: 'relative' }}>
+          <button
+            className="kb-sort-trigger"
+            onClick={() => setShowSortDropdown(v => !v)}
+            id="kb-sort-trigger-btn"
+          >
+            <span>{SORT_OPTIONS.find(o => o.value === sort)?.label}</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.2rem' }}>▼</span>
+          </button>
+
+          {showSortDropdown && (
+            <div className="kb-sort-dropdown">
+              {SORT_OPTIONS.map(o => (
+                <button
+                  key={o.value}
+                  className={`kb-sort-dropdown-item${sort === o.value ? ' kb-sort-dropdown-item--active' : ''}`}
+                  onClick={() => {
+                    setSort(o.value);
+                    setShowSortDropdown(false);
+                  }}
+                >
+                  <span>{o.label}</span>
+                  {sort === o.value && <span style={{ color: 'var(--purple)', fontWeight: 'bold' }}>✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Task filter icon + dropdown */}
         {pendingTasks.length > 0 && (
@@ -1335,13 +1376,7 @@ export default function CollectPage() {
               onClick={() => setShowTaskFilter(v => !v)}
               title="Lọc theo Task"
               id="kb-task-filter-btn"
-              style={{
-                background: filterTaskId ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${filterTaskId ? 'rgba(6,182,212,0.35)' : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: 'var(--radius-sm)', padding: '0.45rem 0.6rem',
-                cursor: 'pointer', fontSize: '0.88rem', color: filterTaskId ? '#22d3ee' : 'var(--text-muted)',
-                transition: 'var(--transition-base)', display: 'flex', alignItems: 'center', gap: '0.3rem',
-              }}
+              className={`kb-task-filter-btn${filterTaskId ? ' kb-task-filter-btn--active' : ''}`}
             >
               📌{filterTaskId ? ' 1' : ''}
             </button>

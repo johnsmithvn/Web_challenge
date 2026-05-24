@@ -3,6 +3,17 @@
 
 ---
 
+## v4.19.6 — ✅ DONE (2026-05-24) — Hotfix: Enhance Sidebar, Input, Dropdown, and Tag borders/contrast in Light Mode
+
+### UX & Styling Fixes ✅
+- [x] `src/styles/navbar.css` — Refactored sidebar bottom footer into a horizontal `.sidebar__actions` row layout. Placed user profile/avatar on the left and the theme toggle on the right (`justify-content: space-between`), aligning them with the XP bar and the rightmost edge. Added outlines for circular buttons in Light Theme.
+- [x] `src/styles/xpbar.css` — Added Light Mode overrides to make the XP track progress background and fill gradient clearly visible on light backgrounds.
+- [x] `src/styles/collect.css` — Added Light Mode overrides for input fields, selects, group/tag creators, category pills, format badges (`🎨 Visual` / `✍️ MD`), and tag chips to establish clear borders and increase text contrast (`#4f46e5` for tags). Copied `.inbox-bulk-bar` styling to fix the unstyled "Chọn tất cả" button.
+- [x] `src/pages/CollectPage.jsx` — Refactored the Task filter button (`📌`) and sorting select to use custom CSS dropdown buttons and popovers. Added Z → A sorting option (`rev-alpha`) to the sort configurations.
+- [x] `package.json` — Bump version to `4.19.6`.
+
+
+
 ## v4.19.5 — ✅ DONE (2026-05-24) — Hotfix: Fix Task Filter popover readability and theme sync
 
 ### UX & Styling Fixes ✅

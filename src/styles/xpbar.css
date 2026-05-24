@@ -100,3 +100,17 @@
 @keyframes fadeOut {
   to { opacity: 0; transform: translateY(10px); }
 }
+
+/* Light mode adjustments for XP bar */
+[data-theme="light"] .xpbar-compact__track {
+  background: rgba(99, 102, 241, 0.16);
+}
+
+[data-theme="light"] .xpbar-compact__fill {
+  background: linear-gradient(135deg, var(--purple), var(--cyan));
+}
+
+[data-theme="light"] .xpbar-compact__xp {
+  color: var(--text-secondary);
+}
+
