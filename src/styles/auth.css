@@ -275,3 +275,21 @@
   background: rgba(239,68,68,0.1);
   color: #f87171;
 }
+
+/* ── Light Mode overrides for auth-input ── */
+[data-theme="light"] .auth-input {
+  background: var(--bg-secondary) !important;
+  border: 1px solid rgba(99, 102, 241, 0.22) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .auth-input:focus {
+  border-color: var(--purple) !important;
+  background: rgba(99, 102, 241, 0.05) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+}
+
+[data-theme="light"] .auth-input::placeholder {
+  color: var(--text-muted) !important;
+}
+

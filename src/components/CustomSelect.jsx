@@ -42,7 +42,7 @@ export default function CustomSelect({
     <div
       ref={containerRef}
       className={`kb-custom-select ${className}`}
-      style={{ position: 'relative', display: 'inline-block', ...style }}
+      style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle', ...style }}
       id={id}
     >
       <button

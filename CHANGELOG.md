@@ -1,5 +1,58 @@
 # CHANGELOG
 
+## v4.20.1 — 2026-05-24
+### Added
+- **Smart Money Input Parsing & Configurable Currency Settings:**
+  - Triển khai tệp tiện ích `src/utils/currencyUtils.js` để xử lý việc lưu trữ cấu hình tỷ giá USD và Toggle Auto-K trong `localStorage`.
+  - Bổ sung cấu phần cấu hình "Cấu Hình Tiền Tệ & Chi Tiêu" trong tab Chung của trang Cài đặt để quản lý tỷ giá quy đổi USD ➔ VND và bật/tắt Auto-K (tự thêm 3 số 0).
+  - Chuyển đổi các ô nhập số tiền (chi tiêu, đăng ký, ấp trứng) từ `type="number"` sang `type="text"` để hỗ trợ nhập tự do (ví dụ: `50`, `50k`, `89$`, `1.5m`).
+  - Thêm dòng chữ Xem trước (Live Preview) mượt mà có phân tách hàng nghìn theo chuẩn VND (`50.000₫`, `2.260.600₫`) phía dưới các ô nhập tiền.
+  - Tự động quy đổi ngoại tệ USD sang VND theo tỷ giá tùy chỉnh của người dùng, đồng thời tự động nối thêm ngữ cảnh gốc (ví dụ: `"(Quy đổi từ 89$)"`) vào ghi chú chi tiêu/tên đăng ký để lưu trữ vết.
+  - Loại bỏ các khai báo hàm trùng lặp `formatVND` trong `InboxPage.jsx`, `FinancePage.jsx` và `IncubatorPage.jsx`.
+
+## v4.20.0 — 2026-05-24
+### Added
+- **Inbox Quick Done Feature:**
+  - Bổ sung nút "✓ Xong" bên cạnh "⚡ Task" cho từng inbox item tại danh sách chính và trong Reader view của chi tiết inbox item.
+  - Tự động chuyển đổi inbox item thành một Task chính thức với trạng thái đã hoàn thành (completed) trong ngày hôm nay ngay lập tức.
+  - Tự động lưu vết hoạt động `task_done` vào `activity_logs` để đồng bộ với Life Log heatmap và lịch sử cá nhân.
+  - Tự động xóa/dọn dẹp nguồn inbox item ban đầu sau khi chuyển đổi thành công.
+  - Hỗ trợ đầy đủ CSS Light/Dark mode thích ứng cho nút "✓ Xong" với gam màu xanh lục (green) dịu nhẹ.
+
+## v4.19.9 — 2026-05-24
+### Fixed
+- **Light Mode Task Form Inputs & Buttons Visibility:**
+  - Thiết lập các lớp CSS Light Mode cho lớp `.auth-input` trong `auth.css` để bảo đảm các viền (border) và nền (background) của ô nhập tên nhiệm vụ, mô tả, và ô nhập chuỗi ngày lặp lại hiển thị rõ ràng trên nền sáng.
+  - Tách biệt và chuẩn hóa các lớp CSS trong `tracker.css` bao gồm `.task-item`, `.task-option-btn` (nút độ ưu tiên, lặp lại, và các nút chọn tần suất lặp lại), `.task-form-rec-panel`, `.task-desc-box`, và `.task-checkbox-btn`.
+  - Thay thế toàn bộ mã màu nền/viền tối hardcode (inline style) trong `TaskListSection.jsx` bằng các lớp CSS có hỗ trợ Light Mode overrides tương ứng, giúp toàn bộ form và các nút bấm hiển thị trực quan sắc nét.
+
+## v4.19.8 — 2026-05-24
+### Fixed
+- **CustomSelect & Title Input Alignment:**
+  - Cập nhật hiển thị wrapper div của CustomSelect từ `display: inline-block` sang `display: inline-flex` và bổ sung `vertical-align: middle` nhằm loại bỏ khoảng trống biên (descender spacing) mặc định của trình duyệt.
+  - Đồng bộ hóa kích thước bằng cách thiết lập chiều cao cố định `height: 38px !important` cho `.kb-custom-select.kb-type-select`, đảm bảo bộ chọn loại (Type Select) và ô nhập tiêu đề (.kb-editor__title) căn chỉnh hàng ngang chuẩn xác pixel-perfect.
+
+## v4.19.7 — 2026-05-24
+### Added
+- **Unified Custom Dropdowns:**
+  - Thay thế toàn bộ dropdown thẻ `<select>` mặc định của hệ điều hành bằng component `CustomSelect` kính mờ (glassmorphic) tuyệt đẹp tại Inbox page, Collect editor và Incubator execute modal.
+  - Đồng bộ màu sắc, đường viền và tương phản chữ cho dropdown list trong cả 2 chế độ Sáng/Tối.
+- **Task Overdue UX & Warning Badge:**
+  - Bổ sung badge màu vàng vui nhộn `⏳ Nhanh lên sắp hết ngày rồi` cho các nhiệm vụ ngày hôm nay chưa hoàn thành để nhắc nhở và tạo động lực cho người dùng.
+
+### Changed
+- **Default Due Time:**
+  - Mặc định giờ cho các nhiệm vụ mới tạo là `23:59` thay vì tự lấy giờ hiện tại (tránh việc nhiệm vụ lập tức biến thành quá hạn sau khi tạo).
+  - Ẩn nhãn giờ `23:59` và `00:00` trên giao diện danh sách để hiển thị ngày gọn gàng.
+
+### Fixed
+- **isOverdue Logic:**
+  - Cập nhật logic `isOverdue` trong `TaskListSection.jsx` bỏ qua giờ `23:59` và `00:00` của ngày hiện tại để tránh cảnh báo quá hạn sai lệch cho các nhiệm vụ cả ngày.
+- **Style Refinements:**
+  - Khắc phục lỗi hiển thị 2 viền (double borders) của custom select bằng cách loại bỏ viền/nền của thẻ div bọc ngoài `.kb-custom-select`.
+  - Tăng độ tương phản (contrast) của viền các icon định dạng văn bản `.tp-btn`, dropdown `.tp-toolbar-dropdown` và bộ chọn màu `.tp-color-picker` trong chế độ Sáng (Light Mode) từ 0.18 lên 0.28.
+  - Bổ sung viền rõ nét, padding và chiều cao cố định `38px` cho ô nhập tiêu đề bài viết `.kb-editor__title` ở cả hai chế độ Sáng/Tối. Đồng bộ hóa kích thước và căn chỉnh dòng (vertical alignment) hoàn hảo pixel-perfect với nút bấm custom select bên cạnh.
+
 ## v4.19.6 — 2026-05-24
 ### Fixed
 - **Light Theme Usability & Borders:**

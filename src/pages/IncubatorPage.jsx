@@ -8,12 +8,10 @@ import { useExpenses } from '../hooks/useExpenses';
 import { useCustomHabits } from '../hooks/useCustomHabits';
 import { useAuth } from '../contexts/AuthContext';
 import EXPENSE_DATA from '../data/expense-categories.json';
+import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
+import CustomSelect from '../components/CustomSelect';
 import '../styles/incubator.css';
 import '../styles/collect.css';
-
-function formatVND(amount) {
-  return new Intl.NumberFormat('vi-VN').format(amount) + '₫';
-}
 
 function formatDuration(minutes) {
   if (!minutes) return null;
@@ -213,7 +211,7 @@ export default function IncubatorPage() {
     await addIntention({
       title: title.trim(),
       originalReason: reason.trim() || null,
-      estimatedCost: cost ? parseInt(cost, 10) : null,
+      estimatedCost: cost ? parseCurrencyInput(cost) : null,
       estimatedTime: time ? parseInt(time, 10) : null,
     });
     setTitle(''); setReason(''); setCost(''); setTime(''); setShowForm(false);
@@ -249,7 +247,7 @@ export default function IncubatorPage() {
       title: detailTitle,
       originalReason: detailReason,
       description: detailDescription,
-      estimatedCost: detailCost || null,
+      estimatedCost: detailCost ? parseCurrencyInput(detailCost) : null,
       estimatedTime: detailTime || null,
     });
     setDetailSaving(false);
@@ -259,12 +257,12 @@ export default function IncubatorPage() {
         title: detailTitle.trim(), 
         original_reason: detailReason.trim() || null, 
         description: detailDescription.trim() || null,
-        estimated_cost: detailCost ? parseInt(detailCost, 10) : null, 
+        estimated_cost: detailCost ? parseCurrencyInput(detailCost) : null, 
         estimated_time: detailTime ? parseInt(detailTime, 10) : null 
       } : null);
       setDetailEditing(false);
     }
-  }, [detailItem, detailTitle, detailReason, detailCost, detailTime, updateIntention]);
+  }, [detailItem, detailTitle, detailReason, detailDescription, detailCost, detailTime, updateIntention]);
 
   /* ── Defer ── */
   const handleDefer = useCallback(async () => {
@@ -350,7 +348,7 @@ export default function IncubatorPage() {
 
     setExecuteModal(null);
     setExecOptions({ expense: false, habit: false, task: false });
-  }, [executeModal, execOptions, anySelected, expenseCategory, todayStr,
+  }, [executeModal, execOptions, anySelected, expenseCategory, execLogs,
     addExpense, addHabit, addTask, executeIntention, navigate]);
 
   /* ── Toggle timeline ── */
@@ -458,14 +456,19 @@ export default function IncubatorPage() {
                 <div className="incubator-form__row">
                   <input
                     className="incubator-form__input incubator-form__input--cost"
-                    type="number"
-                    placeholder="Chi phí dự kiến"
+                    type="text"
+                    placeholder="Chi phí dự kiến (Ví dụ: 50, 50k, 10$)"
                     value={cost}
                     onChange={e => setCost(e.target.value)}
-                    min="0"
                   />
                   <TimeDropdown value={time} onChange={setTime} />
                 </div>
+                {cost && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '-0.25rem', marginBottom: '0.75rem', paddingLeft: '0.25rem' }}>
+                    Xem trước: <strong style={{ color: 'var(--text-primary)' }}>{formatVND(parseCurrencyInput(cost))}</strong>
+                    {/[$]|usd/i.test(cost) && ' (Quy đổi tỷ giá)'}
+                  </div>
+                )}
                 <button type="submit" className="btn btn-primary" disabled={!title.trim()}
                   style={{ justifyContent: 'center' }}>
                   🥚 Thêm vào Trạm Ấp
@@ -695,15 +698,13 @@ export default function IncubatorPage() {
                   </div>
                   {execOptions.expense && executeModal.estimated_cost && (
                     <div className="incubator-exec-option__sub" onClick={e => e.stopPropagation()}>
-                      <select
+                      <CustomSelect
                         className="incubator-exec-category"
+                        style={{ width: '100%' }}
                         value={expenseCategory}
-                        onChange={e => setExpenseCategory(e.target.value)}
-                      >
-                        {EXPENSE_DATA.categories.map(cat => (
-                          <option key={cat.key} value={cat.key}>{cat.icon} {cat.label}</option>
-                        ))}
-                      </select>
+                        onChange={val => setExpenseCategory(val)}
+                        options={EXPENSE_DATA.categories.map(cat => ({ value: cat.key, label: `${cat.icon} ${cat.label}` }))}
+                      />
                     </div>
                   )}
                 </div>
@@ -923,17 +924,20 @@ export default function IncubatorPage() {
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input
                     className="incubator-modal__input"
-                    type="number"
-                    placeholder="Chi phí (₫)"
+                    type="text"
+                    placeholder="Chi phí (Ví dụ: 50, 50k, 10$)"
                     value={detailCost}
                     onChange={e => setDetailCost(e.target.value)}
-                    min="0"
                     style={{ flex: 1 }}
                   />
-                  <div style={{ flex: 1 }}>
-                    <TimeDropdown value={detailTime} onChange={setDetailTime} />
-                  </div>
+                  <TimeDropdown value={detailTime} onChange={setDetailTime} />
                 </div>
+                {detailCost && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem', paddingLeft: '0.25rem' }}>
+                    Xem trước: <strong style={{ color: 'var(--text-primary)' }}>{formatVND(parseCurrencyInput(detailCost))}</strong>
+                    {/[$]|usd/i.test(detailCost) && ' (Quy đổi tỷ giá)'}
+                  </div>
+                )}
                 </div>
 
               {/* Description */}

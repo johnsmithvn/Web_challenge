@@ -481,7 +481,7 @@
 [data-theme="light"] .tp-toolbar-dropdown,
 [data-theme="light"] .tp-color-picker {
   background: white;
-  border-color: rgba(99,102,241,0.18);
+  border-color: rgba(99,102,241,0.28);
 }
 [data-theme="light"] .tp-toolbar-dropdown:hover,
 [data-theme="light"] .tp-color-picker:hover {
@@ -498,7 +498,7 @@
 
 [data-theme="light"] .tp-btn {
   background: white;
-  border-color: rgba(99,102,241,0.18);
+  border-color: rgba(99,102,241,0.28);
   color: #4c1d95;
 }
 

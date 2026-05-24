@@ -11,6 +11,8 @@ import { useAuth } from '../contexts/AuthContext';
 import EXPENSE_DATA from '../data/expense-categories.json';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
 import QuoteWidget from '../components/QuoteWidget';
+import CustomSelect from '../components/CustomSelect';
+import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
 import '../styles/inbox.css';
 import '../styles/collect.css';
 
@@ -30,10 +32,6 @@ function extractAmount(text) {
   if (/[kK]/.test(m[2])) n *= 1000;
   if (/[mM]/.test(m[2])) n *= 1000000;
   return isNaN(n) ? '' : n;
-}
-
-function formatVND(amount) {
-  return new Intl.NumberFormat('vi-VN').format(amount) + '₫';
 }
 
 export default function InboxPage() {
@@ -206,6 +204,21 @@ export default function InboxPage() {
     fetchItems({ type: 'inbox' });
   }, [detailItem, detailBody, addTask, deleteItem, closeDetail, fetchItems]);
 
+  const handleDetailQuickDone = useCallback(async () => {
+    if (!detailItem) return;
+    const now = new Date().toISOString();
+    await addTask({
+      title: detailItem.title,
+      description: detailBody || detailItem.url || '',
+      completed: true,
+      completedAt: now,
+    });
+    logActivity('task_done', `Xong nhanh: ${detailItem.title}`, 0, { source: 'inbox' });
+    await deleteItem(detailItem.id);
+    closeDetail();
+    fetchItems({ type: 'inbox' });
+  }, [detailItem, detailBody, addTask, deleteItem, closeDetail, fetchItems, logActivity]);
+
   const handleClassify = async (itemId, newType) => {
     const item = items.find(i => i.id === itemId);
     await classifyItem(itemId, newType);
@@ -221,6 +234,20 @@ export default function InboxPage() {
   // Convert inbox item → Task
   const handleToTask = async (item) => {
     await addTask({ title: item.title, description: item.body || item.url || '' });
+    await deleteItem(item.id);
+    fetchItems({ type: 'inbox' });
+  };
+
+  // Convert inbox item → Completed Task today immediately
+  const handleQuickDone = async (item) => {
+    const now = new Date().toISOString();
+    await addTask({
+      title: item.title,
+      description: item.body || item.url || '',
+      completed: true,
+      completedAt: now,
+    });
+    logActivity('task_done', `Xong nhanh: ${item.title}`, 0, { source: 'inbox' });
     await deleteItem(item.id);
     fetchItems({ type: 'inbox' });
   };
@@ -247,11 +274,18 @@ export default function InboxPage() {
   const handleExpenseSave = async () => {
     if (!expenseModal) return;
     const { item, amount, category, note } = expenseModal;
-    const parsedAmount = parseInt(amount, 10);
+    const parsedAmount = parseCurrencyInput(amount);
     if (!parsedAmount || parsedAmount <= 0) return;
 
+    // Auto-append USD metadata to notes if USD is detected in input
+    let finalNote = note;
+    if (/[$]|usd/i.test(amount)) {
+      const originalText = amount.trim();
+      finalNote = note ? `${note} (${originalText})` : originalText;
+    }
+
     const cat = CATEGORIES.find(c => c.key === category);
-    const result = await addExpense({ amount: parsedAmount, category, note });
+    const result = await addExpense({ amount: parsedAmount, category, note: finalNote });
     if (result) {
       logActivity('expense_add', `${formatVND(parsedAmount)} ${cat?.label || category}`, parsedAmount, { category, source: 'inbox' });
       await deleteItem(item.id);
@@ -421,17 +455,16 @@ export default function InboxPage() {
               <label className="inbox-expense-modal__label">Số tiền (VNĐ)</label>
               <input
                 className="inbox-expense-modal__input inbox-expense-modal__input--amount"
-                type="number"
+                type="text"
+                placeholder="Ví dụ: 50, 50k, 10$"
                 value={expenseModal.amount}
                 onChange={e => setExpenseModal(prev => ({ ...prev, amount: e.target.value }))}
-                min="1000"
-                step="1000"
-                placeholder="50000"
                 autoFocus
               />
-              {expenseModal.amount > 0 && (
+              {expenseModal.amount && (
                 <div className="inbox-expense-modal__preview">
-                  {formatVND(parseInt(expenseModal.amount, 10) || 0)}
+                  Xem trước: {formatVND(parseCurrencyInput(expenseModal.amount))}
+                  {/[$]|usd/i.test(expenseModal.amount) && ' (Quy đổi tỷ giá)'}
                 </div>
               )}
 
@@ -455,7 +488,7 @@ export default function InboxPage() {
               <button
                 className="btn btn-primary"
                 onClick={handleExpenseSave}
-                disabled={!expenseModal.amount || parseInt(expenseModal.amount, 10) <= 0}
+                disabled={!expenseModal.amount || parseCurrencyInput(expenseModal.amount) <= 0}
               >
                 💸 Lưu chi tiêu
               </button>
@@ -545,10 +578,12 @@ export default function InboxPage() {
               )}
               {bulkClassifyMenu && bulkSelected.size > 0 && (
                 <div className="inbox-bulk-classify-menu" style={{ padding: '0.2rem' }}>
-                  <select
+                  <CustomSelect
                     className="kb-type-select"
-                    onChange={async (e) => {
-                      const newType = e.target.value;
+                    value=""
+                    placeholder="-- Chọn phân loại --"
+                    options={TYPES.map(t => ({ value: t.key, label: `${t.emoji} ${t.label}` }))}
+                    onChange={async (newType) => {
                       if (!newType) return;
                       for (const id of bulkSelected) {
                         await classifyItem(id, newType);
@@ -559,13 +594,7 @@ export default function InboxPage() {
                       setBulkMode(false);
                       fetchItems({ type: 'inbox' });
                     }}
-                    defaultValue=""
-                  >
-                    <option value="" disabled>-- Chọn phân loại --</option>
-                    {TYPES.map(t => (
-                      <option key={t.key} value={t.key}>{t.emoji} {t.label}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
               )}
             </div>
@@ -624,19 +653,16 @@ export default function InboxPage() {
               <div className="inbox-item__actions">
                 {classifying === item.id ? (
                   <div className="inbox-item__classify-menu">
-                    <select
+                    <CustomSelect
                       className="kb-type-select"
                       autoFocus
-                      onChange={(e) => {
-                        if (e.target.value) handleClassify(item.id, e.target.value);
+                      value=""
+                      placeholder="-- Phân loại nhanh --"
+                      options={TYPES.map(t => ({ value: t.key, label: `${t.emoji} ${t.label}` }))}
+                      onChange={(newType) => {
+                        if (newType) handleClassify(item.id, newType);
                       }}
-                      defaultValue=""
-                    >
-                      <option value="" disabled>-- Phân loại nhanh --</option>
-                      {TYPES.map(t => (
-                        <option key={t.key} value={t.key}>{t.emoji} {t.label}</option>
-                      ))}
-                    </select>
+                    />
                     <button
                       className="inbox-item__classify-btn inbox-item__classify-btn--cancel"
                       style={{ marginLeft: '0.5rem' }}
@@ -666,6 +692,13 @@ export default function InboxPage() {
                 ) : (
                   <>
                     {/* Primary actions */}
+                    <button
+                      className="inbox-item__action-btn inbox-item__action-btn--done"
+                      onClick={() => handleQuickDone(item)}
+                      title="Làm xong luôn"
+                    >
+                      ✓ Xong
+                    </button>
                     <button
                       className="inbox-item__action-btn"
                       onClick={() => handleToTask(item)}
@@ -738,6 +771,7 @@ export default function InboxPage() {
             <button className="kb-back-btn" onClick={closeDetail}>← Quay lại</button>
             <div className="kb-reader__actions">
               {detailSaving && <span className="inbox-detail__saving">Đang lưu...</span>}
+              <button className="btn btn-ghost kb-action-btn" onClick={handleDetailQuickDone} title="Làm xong luôn" style={{ color: 'var(--green)' }}>✓ Xong</button>
               <button className="btn btn-ghost kb-action-btn" onClick={handleDetailToTask} title="Chuyển thành Task">⚡ Task</button>
               <button className="btn btn-ghost kb-action-btn" onClick={() => setIsEditing(true)}>✏️ Sửa</button>
               <button className="btn btn-ghost kb-action-btn kb-action-btn--danger" onClick={handleDetailDelete} style={{ color: '#ef4444' }}>🗑 Xóa</button>
@@ -755,19 +789,16 @@ export default function InboxPage() {
                   <span>·</span>
                   <span>{new Date(detailItem.created_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                   <span>·</span>
-                  <select
+                  <CustomSelect
                     className="kb-type-select"
                     style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}
-                    onChange={(e) => {
-                      if (e.target.value) handleDetailClassify(e.target.value);
+                    value=""
+                    placeholder="📂 Phân loại"
+                    options={TYPES.map(t => ({ value: t.key, label: `${t.emoji} ${t.label}` }))}
+                    onChange={(newType) => {
+                      if (newType) handleDetailClassify(newType);
                     }}
-                    defaultValue=""
-                  >
-                    <option value="" disabled>📂 Phân loại</option>
-                    {TYPES.map(t => (
-                      <option key={t.key} value={t.key}>{t.emoji} {t.label}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
                 {detailItem.url && (
                   <a href={detailItem.url} target="_blank" rel="noopener noreferrer" className="kb-reader__source">

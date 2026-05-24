@@ -39,7 +39,7 @@ export default function TaskListSection() {
   const [title, setTitle]           = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate]       = useState(todayStr());
-  const [dueTime, setDueTime]       = useState(nowHHMM());
+  const [dueTime, setDueTime]       = useState('23:59');
 
   // Priority + Recurrence form state
   const [priority, setPriority]         = useState(0);
@@ -105,7 +105,7 @@ export default function TaskListSection() {
       priority,
       recurrenceRule,
     });
-    setTitle(''); setDescription(''); setDueDate(todayStr()); setDueTime(nowHHMM());
+    setTitle(''); setDescription(''); setDueDate(todayStr()); setDueTime('23:59');
     setPriority(0);
     setShowRecurrence(false); setRecType('interval'); setRecDays(7);
     setShowForm(false);
@@ -159,7 +159,7 @@ export default function TaskListSection() {
     const now = new Date();
     const taskDate = new Date(task.due_date + 'T00:00:00');
     if (taskDate < new Date(todayStr() + 'T00:00:00')) return true;
-    if (task.due_time && task.due_date === todayStr()) {
+    if (task.due_time && task.due_time.substring(0, 5) !== '00:00' && task.due_time.substring(0, 5) !== '23:59' && task.due_date === todayStr()) {
       const [h, m] = task.due_time.split(':').map(Number);
       if (now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m)) return true;
     }
@@ -199,14 +199,12 @@ export default function TaskListSection() {
     const isExpanded = expandedTask === task.id;
 
     return (
-      <div key={task.id} className="task-item" style={{
-        padding: '0.75rem',
-        background: overdue ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.03)',
-        border: `1px solid ${overdue ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.08)'}`,
-        borderRadius: 'var(--radius-md)', transition: 'var(--transition-base)',
-      }}>
+      <div key={task.id} className="task-item" style={overdue ? {
+        background: 'rgba(239,68,68,0.06)',
+        borderColor: 'rgba(239,68,68,0.2)',
+      } : {}}>
         {isEditing ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem',
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem',
             background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)',
             borderRadius: 'var(--radius-md)', padding: '0.85rem', marginBottom: '0.25rem' }}>
 
@@ -224,11 +222,9 @@ export default function TaskListSection() {
             {/* Date + Time (DatePicker) */}
             <div style={{ position: 'relative' }}>
               <button type="button" onClick={() => setShowEditDP(!showEditDP)}
+                className="auth-input"
                 style={{
-                  width: '100%', textAlign: 'left', padding: '0.45rem 0.6rem',
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
-                  fontSize: '0.82rem', cursor: 'pointer',
+                  width: '100%', textAlign: 'left', cursor: 'pointer', fontSize: '0.82rem',
                 }}>
                 📅 {editDate ? new Date(editDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
                 {editTime && editTime !== '00:00' && ` · ⏰ ${editTime}`}
@@ -252,13 +248,12 @@ export default function TaskListSection() {
                 {PRIORITY_OPTIONS.filter(o => o.value > 0).map(opt => (
                   <button key={opt.value} type="button"
                     onClick={() => setEditPriority(editPriority === opt.value ? 0 : opt.value)}
-                    style={{
-                      padding: '0.28rem 0.6rem', borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.78rem', cursor: 'pointer',
-                      background: editPriority === opt.value ? `${opt.color}20` : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${editPriority === opt.value ? `${opt.color}60` : 'rgba(255,255,255,0.08)'}`,
-                      color: editPriority === opt.value ? opt.color : 'var(--text-muted)',
-                    }}>{opt.icon} {opt.label}
+                    className={`task-option-btn ${editPriority === opt.value ? 'active' : ''}`}
+                    style={editPriority === opt.value ? {
+                      background: `${opt.color}20`,
+                      borderColor: `${opt.color}60`,
+                      color: opt.color,
+                    } : {}}>{opt.icon} {opt.label}
                   </button>
                 ))}
               </div>
@@ -268,28 +263,18 @@ export default function TaskListSection() {
             <div>
               <button type="button"
                 onClick={() => setEditShowRec(!editShowRec)}
-                style={{
-                  ...btnBase, fontSize: '0.78rem', padding: '0.28rem 0.6rem',
-                  color: editShowRec ? '#22d3ee' : 'var(--text-muted)',
-                  background: editShowRec ? 'rgba(6,182,212,0.1)' : 'transparent',
-                  border: `1px solid ${editShowRec ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '0.3rem',
-                }}>🔁 {editShowRec ? 'Lặp lại ✓' : 'Lặp lại'}
+                className={`task-option-btn ${editShowRec ? 'task-option-btn--active-cyan' : ''}`}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+              >🔁 {editShowRec ? 'Lặp lại ✓' : 'Lặp lại'}
               </button>
               {editShowRec && (
-                <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.4rem',
-                  padding: '0.6rem', borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.12)' }}>
+                <div className="task-form-rec-panel">
                   <div style={{ display: 'flex', gap: '0.3rem' }}>
                     {[{ key: 'interval', label: 'Mỗi N ngày' }, { key: 'weekly', label: 'Hàng tuần' }, { key: 'monthly', label: 'Hàng tháng' }].map(rt => (
                       <button key={rt.key} type="button" onClick={() => setEditRecType(rt.key)}
-                        style={{
-                          padding: '0.22rem 0.45rem', borderRadius: 'var(--radius-sm)',
-                          fontSize: '0.72rem', cursor: 'pointer',
-                          background: editRecType === rt.key ? 'rgba(6,182,212,0.15)' : 'transparent',
-                          border: `1px solid ${editRecType === rt.key ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                          color: editRecType === rt.key ? '#22d3ee' : 'var(--text-muted)',
-                        }}>{rt.label}
+                        className={`task-option-btn ${editRecType === rt.key ? 'task-option-btn--active-cyan' : ''}`}
+                        style={{ padding: '0.22rem 0.45rem', fontSize: '0.72rem' }}
+                      >{rt.label}
                       </button>
                     ))}
                   </div>
@@ -302,17 +287,13 @@ export default function TaskListSection() {
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ngày</span>
                     </div>
                   )}
-                  {editRecType === 'weekly' && (
+                  {recType === 'weekly' && (
                     <div style={{ display: 'flex', gap: '0.25rem' }}>
                       {WEEKDAYS.map((day, i) => (
                         <button key={i} type="button" onClick={() => setEditRecWeekday(i)}
-                          style={{
-                            padding: '0.22rem 0.38rem', borderRadius: 'var(--radius-sm)',
-                            fontSize: '0.72rem', cursor: 'pointer',
-                            background: editRecWeekday === i ? 'rgba(6,182,212,0.2)' : 'transparent',
-                            border: `1px solid ${editRecWeekday === i ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                            color: editRecWeekday === i ? '#22d3ee' : 'var(--text-muted)',
-                          }}>{day}
+                          className={`task-option-btn ${editRecWeekday === i ? 'task-option-btn--active-cyan' : ''}`}
+                          style={{ padding: '0.22rem 0.38rem', fontSize: '0.72rem' }}
+                        >{day}
                         </button>
                       ))}
                     </div>
@@ -334,13 +315,9 @@ export default function TaskListSection() {
             <div>
               <button type="button"
                 onClick={() => setLinkTaskId(task.id)}
-                style={{
-                  ...btnBase, fontSize: '0.78rem', padding: '0.28rem 0.6rem',
-                  color: (task._collections || []).length > 0 ? '#22d3ee' : 'var(--text-muted)',
-                  background: (task._collections || []).length > 0 ? 'rgba(6,182,212,0.1)' : 'transparent',
-                  border: `1px solid ${(task._collections || []).length > 0 ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '0.3rem',
-                }}>🔗 {(task._collections || []).length > 0 ? `${(task._collections || []).length} bài viết liên kết` : 'Liên kết bài viết'}
+                className={`task-option-btn ${(task._collections || []).length > 0 ? 'task-option-btn--active-cyan' : ''}`}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+              >🔗 {(task._collections || []).length > 0 ? `${(task._collections || []).length} bài viết liên kết` : 'Liên kết bài viết'}
               </button>
             </div>
 
@@ -362,11 +339,9 @@ export default function TaskListSection() {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
             {/* Checkbox */}
             <button onClick={() => completeTask(task.id)} id={`task-check-${task.id}`}
+              className="task-checkbox-btn"
               style={{
-                width: 22, height: 22, minWidth: 22, borderRadius: 'var(--radius-sm)',
                 border: `2px solid ${overdue ? 'rgba(239,68,68,0.4)' : 'rgba(139,92,246,0.4)'}`,
-                background: 'transparent', cursor: 'pointer', marginTop: '0.1rem',
-                transition: 'var(--transition-base)', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }} title="Hoàn thành" />
 
             {/* Content */}
@@ -382,11 +357,7 @@ export default function TaskListSection() {
               </div>
 
               {isExpanded && task.description && (
-                <div style={{
-                  marginTop: '0.4rem', padding: '0.5rem 0.6rem',
-                  background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap',
-                }}>
+                <div className="task-desc-box">
                   {task.description}
                 </div>
               )}
@@ -399,7 +370,7 @@ export default function TaskListSection() {
                     color: overdue ? '#f87171' : '#a78bfa',
                   }}>📅 {fmtDate(task.due_date)}</span>
                 )}
-                {task.due_time && task.due_time.substring(0,5) !== '00:00' && (
+                {task.due_time && task.due_time.substring(0,5) !== '00:00' && task.due_time.substring(0,5) !== '23:59' && (
                   <span style={{
                     fontSize: '0.72rem', padding: '0.1rem 0.45rem', borderRadius: 'var(--radius-full)',
                     background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(6,182,212,0.1)',
@@ -411,6 +382,13 @@ export default function TaskListSection() {
                     fontSize: '0.68rem', padding: '0.1rem 0.45rem', borderRadius: 'var(--radius-full)',
                     background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700,
                   }}>Quá hạn</span>
+                )}
+                {task.due_date === todayStr() && !overdue && (
+                  <span style={{
+                    fontSize: '0.68rem', padding: '0.1rem 0.45rem', borderRadius: 'var(--radius-full)',
+                    background: 'rgba(234,179,8,0.12)', color: '#eab308', fontWeight: 600,
+                    border: '1px solid rgba(234,179,8,0.2)'
+                  }}>⏳ Nhanh lên sắp hết ngày rồi</span>
                 )}
                 {task.recurrence_rule && (
                   <span style={{
@@ -564,11 +542,9 @@ export default function TaskListSection() {
           {/* Date + Time (DatePicker) */}
           <div style={{ position: 'relative' }}>
             <button type="button" onClick={() => setShowAddDP(!showAddDP)} id="task-date-input"
+              className="auth-input"
               style={{
-                width: '100%', textAlign: 'left', padding: '0.5rem 0.65rem',
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
-                fontSize: '0.82rem', cursor: 'pointer',
+                width: '100%', textAlign: 'left', cursor: 'pointer', fontSize: '0.82rem',
               }}>
               📅 {dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
               {dueTime && dueTime !== '00:00' && ` · ⏰ ${dueTime}`}
@@ -591,14 +567,12 @@ export default function TaskListSection() {
               {PRIORITY_OPTIONS.filter(o => o.value > 0).map(opt => (
                 <button key={opt.value} type="button"
                   onClick={() => setPriority(priority === opt.value ? 0 : opt.value)}
-                  style={{
-                    padding: '0.3rem 0.65rem', borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.78rem', cursor: 'pointer',
-                    background: priority === opt.value ? `${opt.color}20` : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${priority === opt.value ? `${opt.color}60` : 'rgba(255,255,255,0.08)'}`,
-                    color: priority === opt.value ? opt.color : 'var(--text-muted)',
-                    transition: 'var(--transition-base)',
-                  }}>
+                  className={`task-option-btn ${priority === opt.value ? 'active' : ''}`}
+                  style={priority === opt.value ? {
+                    background: `${opt.color}20`,
+                    borderColor: `${opt.color}60`,
+                    color: opt.color,
+                  } : {}}>
                   {opt.icon} {opt.label}
                 </button>
               ))}
@@ -609,21 +583,13 @@ export default function TaskListSection() {
           <div>
             <button type="button"
               onClick={() => setShowRecurrence(!showRecurrence)}
-              style={{
-                ...btnBase, display: 'flex', alignItems: 'center', gap: '0.3rem',
-                fontSize: '0.78rem', padding: '0.3rem 0.6rem',
-                color: showRecurrence ? '#22d3ee' : 'var(--text-muted)',
-                background: showRecurrence ? 'rgba(6,182,212,0.1)' : 'transparent',
-                border: `1px solid ${showRecurrence ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                borderRadius: 'var(--radius-sm)',
-              }}>
+              className={`task-option-btn ${showRecurrence ? 'task-option-btn--active-cyan' : ''}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+            >
               🔁 {showRecurrence ? 'Lặp lại ✓' : 'Lặp lại'}
             </button>
             {showRecurrence && (
-              <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.4rem',
-                padding: '0.6rem', borderRadius: 'var(--radius-sm)',
-                background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.12)',
-              }}>
+              <div className="task-form-rec-panel">
                 <div style={{ display: 'flex', gap: '0.3rem' }}>
                   {[
                     { key: 'interval', label: 'Mỗi N ngày' },
@@ -632,14 +598,9 @@ export default function TaskListSection() {
                   ].map(rt => (
                     <button key={rt.key} type="button"
                       onClick={() => setRecType(rt.key)}
-                      style={{
-                        padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)',
-                        fontSize: '0.72rem', cursor: 'pointer',
-                        background: recType === rt.key ? 'rgba(6,182,212,0.15)' : 'transparent',
-                        border: `1px solid ${recType === rt.key ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                        color: recType === rt.key ? '#22d3ee' : 'var(--text-muted)',
-                        transition: 'var(--transition-base)',
-                      }}>
+                      className={`task-option-btn ${recType === rt.key ? 'task-option-btn--active-cyan' : ''}`}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.72rem' }}
+                    >
                       {rt.label}
                     </button>
                   ))}
@@ -657,13 +618,9 @@ export default function TaskListSection() {
                   <div style={{ display: 'flex', gap: '0.25rem' }}>
                     {WEEKDAYS.map((day, i) => (
                       <button key={i} type="button" onClick={() => setRecWeekday(i)}
-                        style={{
-                          padding: '0.25rem 0.4rem', borderRadius: 'var(--radius-sm)',
-                          fontSize: '0.72rem', cursor: 'pointer',
-                          background: recWeekday === i ? 'rgba(6,182,212,0.2)' : 'transparent',
-                          border: `1px solid ${recWeekday === i ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                          color: recWeekday === i ? '#22d3ee' : 'var(--text-muted)',
-                        }}>
+                        className={`task-option-btn ${recWeekday === i ? 'task-option-btn--active-cyan' : ''}`}
+                        style={{ padding: '0.25rem 0.4rem', fontSize: '0.72rem' }}
+                      >
                         {day}
                       </button>
                     ))}

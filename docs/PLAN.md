@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
 **Updated:** 2026-05-24
-**Current Version:** v4.19.5
+**Current Version:** v4.20.1
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -516,3 +516,10 @@
 | v4.19.3 | Hotfix: Render format badges (Markdown/Visual) in ArticleCard and ReaderView |
 | v4.19.4 | Hotfix: Optimize ArticleCard list borders and container backgrounds in Light Theme |
 | v4.19.5 | Hotfix: Fix Task Filter popover readability and theme sync (Light/Dark adaptive CSS) |
+| v4.19.6 | Hotfix: Enhance Sidebar, Input, Dropdown, and Tag borders/contrast in Light Mode |
+| v4.19.7 | Hotfix: Unified Custom Dropdowns & Task Overdue UX Fixes |
+| v4.19.8 | Hotfix: Fix Editor Title Input & CustomSelect Alignment |
+| v4.19.9 | Hotfix: Fix Light Mode Task Form Inputs & Buttons Visibility |
+| **v4.20.0** | **Inbox Quick Done Feature (instant task conversion & completion)** |
+| v4.20.1 | Hotfix: Smart Money Input Parsing & Configurable Currency Settings |
+

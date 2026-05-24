@@ -19,6 +19,7 @@ import UrlInputPopover from '../components/UrlInputPopover';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
 import { extractDriveDirectUrl, extractDriveFileId, isAudioUrl, stripMediaTag } from '../utils/mediaUtils';
 import MediaPreview from '../components/MediaPreview';
+import CustomSelect from '../components/CustomSelect';
 
 /* ── Constants ─────────────────────────────────────────────── */
 const ICON_MAP = {
@@ -917,11 +918,12 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
 
       {/* Meta row */}
       <div className="kb-editor__meta">
-        <select className="kb-type-select" value={draft.type} onChange={e => set('type', e.target.value)}>
-          {Object.entries(TYPE_META).map(([k, v]) => (
-            <option key={k} value={k}>{v.label}</option>
-          ))}
-        </select>
+        <CustomSelect
+          className="kb-type-select"
+          value={draft.type}
+          onChange={val => set('type', val)}
+          options={Object.entries(TYPE_META).map(([k, v]) => ({ value: k, label: v.label }))}
+        />
         <input
           className="kb-editor__title"
           placeholder="Tiêu đề bài viết..."

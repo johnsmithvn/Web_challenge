@@ -702,13 +702,21 @@
   flex: 1;
   min-width: 200px;
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  background: none;
-  border: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
   color: var(--text-primary);
   outline: none;
-  padding: 0.25rem 0;
+  padding: 0 0.85rem;
+  height: 38px;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+.kb-editor__title:focus {
+  border-color: var(--purple-light);
+  background: rgba(255, 255, 255, 0.07);
 }
 .kb-editor__title::placeholder { color: var(--text-muted); }
 
@@ -2223,6 +2231,60 @@
   color: #0e7490;
   border-color: rgba(8, 145, 178, 0.2);
 }
+
+/* ── CustomSelect Dropdown & Theme Sync ── */
+.kb-type-select .kb-sort-trigger {
+  border-radius: var(--radius-md) !important;
+  height: 38px !important;
+  padding: 0 0.85rem !important;
+  box-sizing: border-box !important;
+}
+
+[data-theme="light"] .kb-sort-dropdown {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(99, 102, 241, 0.18) !important;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.08) !important;
+}
+
+[data-theme="light"] .kb-sort-dropdown-item {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .kb-sort-dropdown-item:hover {
+  background: rgba(99, 102, 241, 0.06) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .kb-sort-dropdown-item--active {
+  color: var(--purple) !important;
+}
+
+/* ── CustomSelect Container Double Border Fix & Alignment Sync ── */
+.kb-custom-select {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  vertical-align: middle;
+  align-items: center;
+}
+
+.kb-custom-select.kb-type-select {
+  height: 38px !important;
+}
+
+/* ── Editor Title Input Border Sync ── */
+[data-theme="light"] .kb-editor__title {
+  background: var(--bg-secondary) !important;
+  border: 1px solid rgba(99, 102, 241, 0.22) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="light"] .kb-editor__title:focus {
+  border-color: var(--purple) !important;
+  background: rgba(99, 102, 241, 0.04) !important;
+}
+
+
 
 
 

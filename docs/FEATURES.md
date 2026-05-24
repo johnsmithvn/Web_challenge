@@ -1,5 +1,5 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.19.5
+**Version:** v4.20.1
 **Updated:** 2026-05-24
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
@@ -468,6 +468,7 @@
 - Inbox items list với thời gian tạo
 - Classify action: phân loại nhanh qua `<select>` dropdown (lấy dữ liệu tĩnh từ `knowledge.json`)
 - **📌 Task action:** Chuyển inbox item thành Task (v3.0.1)
+- **✓ Xong nhanh (v4.20.0):** Nút "✓ Xong" trên mỗi inbox item và trong Reader view. Nhấp vào sẽ tự động chuyển item thành Task, đánh dấu hoàn thành (completed) trong ngày hôm nay ngay lập tức, ghi nhận vào activity log (`task_done`), và xoá/dọn dẹp item đó khỏi inbox.
 - **🔄 Đăng ký action:** Chuyển sang FinancePage tạo Subscription (v3.0.1)
 - **💸 Chi tiêu nhanh (v3.5.0):** Bấm nút → QuickExpenseModal inline (không navigate). Regex tự bóc tách số tiền từ text ("Cafe 50k" → 50,000đ). Pre-fill amount + note + category dropdown 8 loại. Lưu → `addExpense()` + `logActivity()` + xóa item khỏi inbox.
 - **✏️ Sửa chi tiêu (v4.2.1):** Click ✏️ trên expense → modal sửa (số tiền, danh mục, ghi chú). Optimistic update + rollback.
@@ -596,6 +597,8 @@
 - **Global Mini Player (v4.16.0):** Thanh phát audio trôi nổi toàn cục (GlobalAudioPlayer) hiển thị trên mọi trang, sử dụng hook `useRandomPodcast` để tự động chọn và phát ngẫu nhiên podcast từ kho tàng kiến thức (hỗ trợ phát trực tiếp từ stream link Google Drive).
 - **Phân Loại Media Nâng Cao (v4.18.0):** MediaNode thay thế AudioNode trong Tiptap, kết hợp MediaPreview thống nhất các định dạng YouTube Shorts, direct audio/video, và Google Drive. Hỗ trợ hệ thống Hashtag client-side (`#audio` / `#video`) để lưu trữ định dạng và tùy biến chiều cao player (90px cho audio và 360px cho video/Drive) kèm nút bấm toggle trực tiếp trên player giúp lưu định dạng ngay lập tức vào database.
 - **Custom Audio Player (v4.19.0):** Trình phát âm thanh tùy chỉnh đẹp mắt được viết bằng React thay thế cho player mặc định xấu xí của trình duyệt hoặc khung iframe đen của Google Drive. Hỗ trợ hiển thị kính mờ (glassmorphic), các nút điều khiển Play/Pause/Volume, thanh trượt phát và hiển thị thời lượng chuẩn xác. Đặc biệt tích hợp cơ chế tự động chuyển đổi thông minh (error fallback): nếu stream trực tiếp từ Google Drive thất bại (do phân quyền/cookies), player sẽ tự động hiển thị iframe Google Drive xem trước để đảm bảo bài viết vẫn phát được nhạc bình thường.
+- **Unified Custom Dropdowns (v4.19.7):** Thay thế toàn bộ dropdown `<select>` mặc định của hệ điều hành bằng component `CustomSelect` kính mờ (glassmorphic) đồng bộ trên mọi nền tảng (áp dụng tại Inbox, Collect editor và Incubator execute modal). Hỗ trợ nhãn emoji và tự động đóng khi click ra ngoài.
+- **Task Overdue UX Fixes (v4.19.7):** Mặc định giờ hoàn thành nhiệm vụ là `23:59` (Nhiệm vụ cả ngày) thay vì lấy giờ tạo hiện tại giúp tránh cảnh báo quá hạn lập tức. Tích hợp badge màu vàng vui nhộn `⏳ Nhanh lên sắp hết ngày rồi` cho các nhiệm vụ ngày hôm nay chưa hoàn thành.
 - **Postcard Gallery (v4.13.0):** Quote-type items render dạng gradient postcard cards (2-col grid) thay vì article list. 8 gradient màu, serif italic typography, line-clamp 5 dòng + fade truncation. Audio badge detection. Responsive 1-col mobile.
 - **QuoteWidget KB Integration (v4.13.0):** KB quote items tự động được merge vào QuoteWidget random rotation pool trên trang Collect — user quotes xuất hiện cạnh system quotes.
 
@@ -675,6 +678,7 @@
 - **Tab Chi tiêu:** Quick-add form (số tiền + category + ghi chú), category breakdown với progress bars, expense list với delete
 - **Tab Đăng ký:** Sub cards với tên, số tiền, chu kỳ, ngày hết hạn, toggle active/pause, delete
 - **8 categories:** Ăn uống, Di chuyển, Mua sắm, Sức khỏe, Học tập, Giải trí, Hóa đơn, Khác
+- **Tự động phân tích & Quy đổi ngoại tệ (v4.20.1):** Hỗ trợ nhập tiền tệ tự do dạng văn bản (ví dụ: `50`, `50k`, `89$`, `1.5m`) tại ô nhập chi phí, đăng ký và ấp trứng. Hiển thị nhãn Xem trước trực tiếp đã phân tách nghìn dạng VND (`vi-VN` standard). Tự động nhân 1000 đối với số ngắn dưới 10,000 (Auto-K) và quy đổi USD dựa trên tỷ giá tùy chỉnh. Cấu hình tỷ giá và Toggle bật/tắt Auto-K được quản lý trong tab Chung ở trang Cài đặt. Tự động nối thông tin quy đổi gốc vào phần ghi chú/tên dịch vụ khi lưu.
 
 **Data source:** `expenses` + `subscriptions` tables (Supabase)
 

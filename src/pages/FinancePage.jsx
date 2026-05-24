@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import CashflowBar from '../components/CashflowBar';
 import TagPicker from '../components/TagPicker';
 import EXPENSE_DATA from '../data/expense-categories.json';
+import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
 import '../styles/finance.css';
 
 const CATEGORIES = EXPENSE_DATA.categories;
@@ -57,10 +58,6 @@ function CustomSelect({ value, onChange, options, placeholder }) {
   );
 }
 
-
-function formatVND(amount) {
-  return new Intl.NumberFormat('vi-VN').format(amount) + '₫';
-}
 
 // Get current month date range
 function getMonthRange() {
@@ -198,11 +195,19 @@ export default function FinancePage() {
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
-    const amount = parseInt(expAmount, 10);
+    const amount = parseCurrencyInput(expAmount);
     if (!amount || amount <= 0) return;
 
     const cat = CAT_MAP[expCategory];
-    const result = await addExpense({ amount, category: expCategory, note: expNote });
+    
+    // Auto-append USD metadata to notes if USD is detected in input
+    let finalNote = expNote;
+    if (/[$]|usd/i.test(expAmount)) {
+      const originalText = expAmount.trim();
+      finalNote = expNote ? `${expNote} (${originalText})` : originalText;
+    }
+
+    const result = await addExpense({ amount, category: expCategory, note: finalNote });
     if (result) {
       logActivity('expense_add', `${formatVND(amount)} ${cat?.label || expCategory}`, amount, {
         category: expCategory,
@@ -228,25 +233,37 @@ export default function FinancePage() {
 
   const handleEditExpense = async (e) => {
     e.preventDefault();
-    const amount = parseInt(editAmount, 10);
+    const amount = parseCurrencyInput(editAmount);
     if (!editExp || !amount || amount <= 0) return;
+
+    let finalNote = editNote;
+    if (/[$]|usd/i.test(editAmount)) {
+      const originalText = editAmount.trim();
+      finalNote = editNote ? `${editNote} (${originalText})` : originalText;
+    }
 
     const ok = await updateExpense(editExp.id, {
       amount,
       category: editCategory,
-      note: editNote || null,
+      note: finalNote || null,
     });
     if (ok) setEditExp(null);
   };
 
   const handleAddSub = async (e) => {
     e.preventDefault();
-    const amount = parseInt(subAmount, 10);
+    const amount = parseCurrencyInput(subAmount);
     if (!subName || !amount || !subDue) return;
 
-    const result = await addSub({ name: subName, amount, cycle: subCycle, next_due: subDue, icon: subIcon });
+    let finalName = subName;
+    if (/[$]|usd/i.test(subAmount)) {
+      const originalText = subAmount.trim();
+      finalName = `${subName} (${originalText})`;
+    }
+
+    const result = await addSub({ name: finalName, amount, cycle: subCycle, next_due: subDue, icon: subIcon });
     if (result) {
-      logActivity('subscription_add', `${subName} — ${formatVND(amount)}/${subCycle}`, amount, { cycle: subCycle });
+      logActivity('subscription_add', `${finalName} — ${formatVND(amount)}/${subCycle}`, amount, { cycle: subCycle });
       // Link tags
       for (const tagId of subTagIds) {
         await linkTag(result.id, tagId, 'subscription');
@@ -342,12 +359,10 @@ export default function FinancePage() {
               <div className="finance-form__row">
                 <input
                   className="finance-form__input finance-form__input--amount"
-                  type="number"
-                  placeholder="Số tiền (VNĐ)"
+                  type="text"
+                  placeholder="Số tiền (Ví dụ: 50, 50k, 10$)"
                   value={expAmount}
                   onChange={(e) => setExpAmount(e.target.value)}
-                  min="1000"
-                  step="1000"
                   required
                 />
                 <CustomSelect
@@ -356,6 +371,12 @@ export default function FinancePage() {
                   options={CATEGORIES.map(c => ({ value: c.key, label: c.label, icon: c.icon }))}
                 />
               </div>
+              {expAmount && (
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '-0.5rem', marginBottom: '0.75rem', paddingLeft: '0.25rem' }}>
+                  Xem trước: <strong style={{ color: 'var(--text-primary)' }}>{formatVND(parseCurrencyInput(expAmount))}</strong>
+                  {/[$]|usd/i.test(expAmount) && ' (Quy đổi tỷ giá)'}
+                </div>
+              )}
               <input
                 className="finance-form__input"
                 type="text"
@@ -447,15 +468,19 @@ export default function FinancePage() {
                 />
                 <input
                   className="finance-form__input finance-form__input--amount"
-                  type="number"
-                  placeholder="Số tiền (VNĐ)"
+                  type="text"
+                  placeholder="Số tiền (Ví dụ: 50, 50k, 10$)"
                   value={subAmount}
                   onChange={(e) => setSubAmount(e.target.value)}
-                  min="1000"
-                  step="1000"
                   required
                 />
               </div>
+              {subAmount && (
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '-0.5rem', marginBottom: '0.5rem', paddingLeft: '0.25rem' }}>
+                  Xem trước: <strong style={{ color: 'var(--text-primary)' }}>{formatVND(parseCurrencyInput(subAmount))}</strong>
+                  {/[$]|usd/i.test(subAmount) && ' (Quy đổi tỷ giá)'}
+                </div>
+              )}
               <div className="finance-form__row">
                 <CustomSelect
                   value={subCycle}
@@ -548,13 +573,19 @@ export default function FinancePage() {
                 <label className="incubator-modal__label">Số tiền (VNĐ)</label>
                 <input
                   className="incubator-modal__input"
-                  type="number"
+                  type="text"
+                  placeholder="Ví dụ: 50, 50k, 10$"
                   value={editAmount}
                   onChange={e => setEditAmount(e.target.value)}
-                  min="1"
                   required
                   autoFocus
                 />
+                {editAmount && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem', marginBottom: '0.75rem' }}>
+                    Xem trước: <strong style={{ color: 'var(--text-primary)' }}>{formatVND(parseCurrencyInput(editAmount))}</strong>
+                    {/[$]|usd/i.test(editAmount) && ' (Quy đổi tỷ giá)'}
+                  </div>
+                )}
                 <label className="incubator-modal__label">Danh mục</label>
                 <CustomSelect
                   value={editCategory}

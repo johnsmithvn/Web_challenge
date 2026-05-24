@@ -3,6 +3,49 @@
 
 ---
 
+## v4.20.1 — ✅ DONE (2026-05-24) — Smart Money Input Parsing & Configurable Currency Settings
+- [x] `src/utils/currencyUtils.js` — Created helper utility to manage settings persistence (USD exchange rate and Auto-K toggle in `localStorage`) and parse freeform user string amount inputs to clean integer VND values.
+- [x] `src/pages/SettingsPage.jsx` — Added `FinanceSettingsSection` under the "Chung" (General) settings tab to let users change the USD rate and toggle Auto-K.
+- [x] `src/pages/FinancePage.jsx` — Updated expense, subscription, and edit modal amount inputs to type `text`, added live formatted previews, and integrated currency parsing and context logging on submit.
+- [x] `src/pages/InboxPage.jsx` — Refactored the Quick Expense modal amount input to `text`, integrated live preview, and parsed values using currencyUtils.
+- [x] `src/pages/IncubatorPage.jsx` — Refactored the estimated cost inputs in the Add form and Detail Edit view to support text entries, live formatted previews, and currency parsing.
+- [x] `package.json` — Bumped version to `4.20.1`.
+
+---
+
+## v4.20.0 — ✅ DONE (2026-05-24) — Inbox Quick Done Feature
+- [x] `src/hooks/useUserTasks.js` — Extended `addTask` function to accept `completed` and `completedAt` parameters, facilitating atomic task creation in completed state.
+- [x] `src/styles/inbox.css` — Added `.inbox-item__action-btn--done` class with theme-aware green accents supporting both light and dark modes.
+- [x] `src/pages/InboxPage.jsx` — Added `handleQuickDone` and `handleDetailQuickDone` callback handlers to convert inbox items into task records completed today, logging `task_done` activity and removing the items from inbox. Rendered the "✓ Xong" buttons in both the list view and detail view.
+- [x] `package.json` — Bumped version to `4.20.0`.
+
+---
+
+## v4.19.9 — ✅ DONE (2026-05-24) — Fix Light Mode Task Form Inputs & Buttons Visibility
+- [x] `src/styles/auth.css` — Appended Light Mode overrides for the `.auth-input` class to guarantee visible border outlines and input backgrounds.
+- [x] `src/styles/tracker.css` — Added styling and Light Mode adjustments for `.task-item`, `.task-option-btn`, `.task-form-rec-panel`, `.task-desc-box`, and `.task-checkbox-btn`.
+- [x] `src/components/TaskListSection.jsx` — Refactored the task creation form and inline task editor card components to replace hardcoded inline dark-mode styles with the new theme-aware CSS classes.
+
+---
+
+## v4.19.8 — ✅ DONE (2026-05-24) — Fix Editor Title Input & CustomSelect Alignment
+- [x] `src/components/CustomSelect.jsx` — Updated wrapper div display to `inline-flex` and vertical-align to `middle` to eliminate inline line-height descender margins.
+- [x] `src/styles/collect.css` — Standardized CustomSelect wrapper `.kb-custom-select` with `display: inline-flex !important; vertical-align: middle; align-items: center;`. Synchronized vertical sizing by setting `.kb-custom-select.kb-type-select` to `height: 38px !important`.
+
+---
+
+## v4.19.7 — ✅ DONE (2026-05-24) — Unified Custom Dropdowns & Task Overdue UX Fixes
+
+### Refactoring & Bug Fixes ✅
+- [x] `src/hooks/useUserTasks.js` — Set default fallback task due time to `'23:59'`.
+- [x] `src/components/TaskListSection.jsx` — Changed default `dueTime` state and submit reset to `'23:59'`, updated `isOverdue` to ignore `'23:59'` and `'00:00'` on current day, hid default times from task label, and added a yellow warning badge for today's active pending tasks.
+- [x] `src/pages/InboxPage.jsx` — Refactored bulk, inline, and detail view type selects to use the reusable `<CustomSelect>` component.
+- [x] `src/pages/CollectPage.jsx` — Refactored editor type select to use `<CustomSelect>`.
+- [x] `src/pages/IncubatorPage.jsx` — Refactored execute modal expense category select to use `<CustomSelect>`.
+- [x] `src/styles/collect.css` — Added Light Mode overrides and custom selector styling for popovers.
+- [x] `src/styles/incubator.css` — Standardized styling for `.incubator-exec-category` wrapper.
+- [x] `package.json` — Bump version to `4.19.7`.
+
 ## v4.19.6 — ✅ DONE (2026-05-24) — Hotfix: Enhance Sidebar, Input, Dropdown, and Tag borders/contrast in Light Mode
 
 ### UX & Styling Fixes ✅

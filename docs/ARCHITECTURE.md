@@ -1,5 +1,5 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.19.5
+**Version:** v4.20.1
 **Updated:** 2026-05-24
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
@@ -60,6 +60,7 @@ src/
 │   ├── XpBar.jsx              # XP + level indicator
 │   ├── GlobalAudioPlayer.jsx  # v4.16.0 — Floating random podcast player
 │   ├── CustomAudioPlayer.jsx  # v4.19.0 — Premium glassmorphic custom audio player
+│   ├── CustomSelect.jsx       # v3.1.2 — Reusable glassmorphic custom dropdown replacement
 │   └── ...
 │
 ├── extensions/              # v4.12.0 — Custom Tiptap extensions
@@ -99,7 +100,8 @@ src/
 │   └── supabase.js            # Singleton Supabase client, safe fallback
 │
 │ utils/
-│   └── mediaUtils.js          # v4.16.0 — Helpers for Google Drive URL parsing and streaming
+│   ├── mediaUtils.js          # v4.16.0 — Helpers for Google Drive URL parsing and streaming
+│   └── currencyUtils.js       # v4.20.1 — Money input parsing & configurable currency settings
 │
 ├── api/                       # v4.0.0 Vercel Edge Functions
 │   ├── meta.js                # OG metadata fetcher (edge runtime, 5s timeout, graceful fallback)

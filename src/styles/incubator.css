@@ -1016,3 +1016,36 @@
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ── CustomSelect overrides for execute category ── */
+.incubator-exec-category .kb-sort-trigger {
+  width: 100%;
+  padding: 0.4rem 0.6rem !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text-primary) !important;
+  font-size: 0.78rem !important;
+  cursor: pointer;
+  height: auto;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.incubator-exec-category .kb-sort-trigger:hover,
+.incubator-exec-category .kb-sort-trigger:focus {
+  border-color: var(--purple) !important;
+}
+
+[data-theme="light"] .incubator-exec-category .kb-sort-trigger {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  color: var(--text-primary) !important;
+}
+[data-theme="light"] .incubator-exec-category .kb-sort-trigger:hover,
+[data-theme="light"] .incubator-exec-category .kb-sort-trigger:focus {
+  border-color: var(--purple) !important;
+  background-color: rgba(99, 102, 241, 0.06) !important;
+}
+

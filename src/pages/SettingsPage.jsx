@@ -3,8 +3,9 @@ import { useTags } from '../hooks/useTags';
 import { useQuotes } from '../hooks/useQuotes';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
-import { Settings, Tag, Plus, Pencil, Trash2, Check, X, Palette, User, Save, Mail, AtSign, FileText, Quote as QuoteIcon, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Settings, Tag, Plus, Pencil, Trash2, Check, X, Palette, User, Save, Mail, AtSign, FileText, Quote as QuoteIcon, ToggleLeft, ToggleRight, Coins } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getUsdRate, getAutoK, setUsdRate, setAutoK } from '../utils/currencyUtils';
 import '../styles/settings.css';
 
 /* ── Color palette for tag picker ──────────────────────────── */
@@ -20,6 +21,83 @@ const MENU_ITEMS = [
   { key: 'quotes',  label: 'Quotes',  icon: QuoteIcon,  desc: 'Câu nói truyền cảm hứng' },
   { key: 'profile', label: 'Hồ sơ',  icon: User,       desc: 'Thông tin cá nhân' },
 ];
+
+/* ══════════════════════════════════════════════════════════════
+   FINANCE SETTINGS SECTION
+   ══════════════════════════════════════════════════════════════ */
+function FinanceSettingsSection() {
+  const [usdRate, setUsdRateState] = useState(() => getUsdRate());
+  const [autoK, setAutoKState] = useState(() => getAutoK());
+  const [saveMsg, setSaveMsg] = useState('');
+
+  const handleSaveRate = (e) => {
+    if (e) e.preventDefault();
+    const rate = parseFloat(usdRate);
+    if (isNaN(rate) || rate <= 0) return;
+    setUsdRate(rate);
+    setSaveMsg('✅ Đã lưu tỷ giá');
+    setTimeout(() => setSaveMsg(''), 2000);
+  };
+
+  const handleToggleAutoK = () => {
+    const next = !autoK;
+    setAutoK(next);
+    setAutoKState(next);
+    setSaveMsg('✅ Đã cập nhật Auto-K');
+    setTimeout(() => setSaveMsg(''), 2000);
+  };
+
+  return (
+    <section className="settings-section" style={{ marginBottom: '1.5rem' }}>
+      <div className="settings-section__header">
+        <Coins size={20} />
+        <h2>Cấu Hình Tiền Tệ & Chi Tiêu</h2>
+        {saveMsg && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#22c55e', fontWeight: 600 }}>{saveMsg}</span>}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.25rem' }}>
+        {/* USD Rate Input */}
+        <form onSubmit={handleSaveRate} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Tỷ giá quy đổi USD ➔ VND</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sử dụng để quy đổi khi nhập chi phí dạng $ (Ví dụ: 89$)</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="number"
+              className="settings-tag-form__input"
+              style={{ width: '100px', textAlign: 'right', height: '36px', padding: '0 0.75rem' }}
+              value={usdRate}
+              onChange={e => setUsdRateState(e.target.value)}
+              onBlur={handleSaveRate}
+              min="1"
+            />
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>đ</span>
+          </div>
+        </form>
+
+        {/* Divider */}
+        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }} />
+
+        {/* Auto-K Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+          <div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Tự động thêm 3 số 0 (Auto-K)</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mặc định nhân 1.000 cho số ngắn dưới 10.000 (Ví dụ: 50 ➔ 50.000đ)</div>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleAutoK}
+            title={autoK ? 'Đang bật' : 'Đang tắt'}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            {autoK ? <ToggleRight size={28} color="#22c55e" /> : <ToggleLeft size={28} color="var(--text-muted)" />}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 /* ══════════════════════════════════════════════════════════════
    TAG MANAGER SECTION
@@ -715,7 +793,12 @@ export default function SettingsPage() {
 
         {/* Content area */}
         <main className="settings-content">
-          {activeTab === 'general' && <TagManagerSection user={user} />}
+          {activeTab === 'general' && (
+            <>
+              <FinanceSettingsSection />
+              <TagManagerSection user={user} />
+            </>
+          )}
           {activeTab === 'quotes' && <QuoteManagerSection user={user} />}
           {activeTab === 'profile' && <ProfileSection user={user} profile={profile} updateProfile={updateProfile} />}
         </main>

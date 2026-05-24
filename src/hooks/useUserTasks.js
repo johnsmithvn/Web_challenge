@@ -124,19 +124,19 @@ export function useUserTasks() {
   }, [isAuth, fetchTasks]);
 
   // ── Add task ───────────────────────────────────────────
-  const addTask = useCallback(async ({ title, description, dueDate, dueTime, priority, recurrenceRule, collectionId }) => {
+  const addTask = useCallback(async ({ title, description, dueDate, dueTime, priority, recurrenceRule, collectionId, completed, completedAt }) => {
     const newTask = {
       id: crypto.randomUUID ? crypto.randomUUID() : `local_${Date.now()}`,
       user_id: userId,
       title,
       description: description || null,
       due_date: dueDate || todayStr(),
-      due_time: dueTime || '00:00',
+      due_time: dueTime || '23:59',
       priority: priority || 0,
       recurrence_rule: recurrenceRule || null,
       collection_id: collectionId || null,
-      completed: false,
-      completed_at: null,
+      completed: completed || false,
+      completed_at: completedAt || null,
       notified: false,
       created_at: new Date().toISOString(),
     };

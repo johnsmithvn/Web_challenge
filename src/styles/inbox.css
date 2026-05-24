@@ -242,6 +242,27 @@
   transform: translateY(-1px);
 }
 
+.inbox-item__action-btn--done {
+  color: var(--green);
+  border-color: rgba(0, 255, 136, 0.12);
+}
+
+[data-theme="light"] .inbox-item__action-btn--done {
+  border-color: rgba(22, 163, 74, 0.15);
+}
+
+.inbox-item__action-btn--done:hover {
+  background: rgba(0, 255, 136, 0.15);
+  border-color: rgba(0, 255, 136, 0.35);
+  color: var(--green);
+  transform: translateY(-1px);
+}
+
+[data-theme="light"] .inbox-item__action-btn--done:hover {
+  background: rgba(22, 163, 74, 0.1);
+  border-color: rgba(22, 163, 74, 0.35);
+}
+
 /* ── Classify Menu ─────────────────────────────────────────── */
 .inbox-item__classify-menu {
   display: flex;
