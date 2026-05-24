@@ -3,6 +3,39 @@
 
 ---
 
+## v4.19.5 — ✅ DONE (2026-05-24) — Hotfix: Fix Task Filter popover readability and theme sync
+
+### UX & Styling Fixes ✅
+- [x] `src/pages/CollectPage.jsx` — Refactored task filter popover markup to use CSS classes instead of hardcoded dark background and border values.
+- [x] `src/styles/collect.css` — Added `.kb-task-filter-popover`, `.kb-task-filter-header`, `.kb-task-filter-search-container`, `.kb-task-filter-search-input`, `.kb-task-filter-list`, `.kb-task-filter-item`, and `.kb-task-filter-checkbox` classes that dynamically sync colors with Light/Dark CSS variables.
+- [x] `package.json` — Bump version to `4.19.5`.
+
+## v4.19.4 — ✅ DONE (2026-05-24) — Hotfix: Optimize ArticleCard list borders and container backgrounds in Light Theme
+
+### UX & Styling Fixes ✅
+- [x] `src/styles/collect.css` — Fixed intermediate `kb-card` borders in Light mode by establishing a cohesive `1px solid rgba(99, 102, 241, 0.16)` border (with `border-top: none` on sub-items) instead of a single faint bottom border.
+- [x] `src/styles/collect.css` — Replaced the transparent card background with a solid `#ffffff` background in Light Mode, making cards look distinct and clean on top of the page background.
+- [x] `src/styles/collect.css` — Refactored `:first-child` and `:last-child` card border-radius rules to target nested cards under list item wrapper divs (`.kb-list > div:first-child .kb-card`).
+- [x] `src/pages/CollectPage.jsx` — Moved the bulk actions bar (`inbox-bulk-bar`) outside of the `.kb-list` element to ensure it does not break list child-selection pseudo selectors.
+- [x] `package.json` — Bump version to `4.19.4`.
+
+## v4.19.3 — ✅ DONE (2026-05-24) — Hotfix: Format Badges in list/reader view
+
+### Features & Refactoring ✅
+- [x] `src/pages/CollectPage.jsx` — Added format badges ('🎨 Visual' or '✍️ MD') in `ArticleCard` metadata row to identify article editor format at a glance from the main list.
+- [x] `src/pages/CollectPage.jsx` — Unified format badge rendering in `ReaderView` to use the same CSS styling as the card badges.
+- [x] `src/styles/collect.css` — Appended `.kb-format-badge--visual` and `.kb-format-badge--markdown` styling using purple and cyan glassmorphism designs.
+- [x] `package.json` — Bump version to `4.19.3`.
+
+## v4.19.2 — ✅ DONE (2026-05-24) — Hotfix: Markdown Editor Preview Reload Fix
+
+### Bug Fixes & Optimizations ✅
+- [x] `src/pages/CollectPage.jsx` — Declared static `REMARK_PLUGINS` outside the render lifecycle to prevent `ReactMarkdown` from rebuilding the parser pipeline and recreating the entire DOM tree on every keystroke.
+- [x] `src/components/MediaPreview.jsx` — Wrapped with `React.memo` using custom comparison targeting `url`, `type`, and stringified `title` children to completely prevent re-renders unless the media source actually changes.
+- [x] `src/components/CustomAudioPlayer.jsx` — Wrapped with `React.memo` using custom comparison to prevent audio state resets when typing in the markdown editor.
+- [x] `src/pages/CollectPage.jsx` — Refactored markdown inline component `a` to delegate YouTube rendering to `MediaPreview` (bringing it under the same memoization rules as other media links).
+- [x] `package.json` — Bump version to `4.19.2`.
+
 ## v4.19.0 — ✅ DONE (2026-05-24) — Custom Glassmorphic Audio Player
 
 ### Features & Refactoring ✅

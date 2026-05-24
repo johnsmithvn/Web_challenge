@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.13.0
-**Updated:** 2026-05-17
+**Version:** v4.19.5
+**Updated:** 2026-05-24
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---

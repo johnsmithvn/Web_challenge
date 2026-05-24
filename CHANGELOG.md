@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## v4.19.5 — 2026-05-24
+### Fixed
+- **Task Filter Popover UX & Theme Sync:**
+  - Khắc phục lỗi hiển thị của bộ lọc Task (`📌 Lọc theo Task`) bị đen sì, chữ tối màu không thể nhìn thấy gì khi chuyển sang chế độ Sáng (Light Mode).
+  - Loại bỏ hoàn toàn các mã màu inline hardcode tối màu của popover. Thay thế bằng các class CSS động trong `collect.css` (`.kb-task-filter-popover`, `.kb-task-filter-item`, v.v.) tự động đồng bộ theo biến môi trường sáng/tối của hệ thống (`var(--bg-secondary)`, `var(--text-primary)`).
+  - Tối ưu màu sắc của ô tìm kiếm, danh sách tác vụ và checkbox trạng thái trong popover hiển thị sắc nét trên cả 2 theme.
+
+## v4.19.4 — 2026-05-24
+### Fixed
+- **ArticleCard List Styling & Borders in Light Theme:**
+  - Khắc phục lỗi các đường viền bài viết không rõ ràng (quá mờ hoặc mất nét trên/dưới) trong chế độ Sáng (Light Theme).
+  - Định nghĩa lại đường viền `.kb-card` sắc nét hơn (`1px solid rgba(99,102,241,0.16)`) và thiết lập nền trắng `#ffffff` thay vì trong suốt để các thẻ nổi bật rõ ràng trên nền trang.
+  - Sửa lỗi vỡ border-radius khi render thẻ: chuyển từ CSS selector trực tiếp `.kb-card:first-child` sang selector thông qua div bọc (`.kb-list > div:first-child .kb-card`) do cấu trúc React component chứa wrapper.
+  - Di chuyển thanh tác vụ hàng loạt (`inbox-bulk-bar`) ra ngoài thẻ container `.kb-list` để tránh ảnh hưởng đến các selector chọn phần tử đầu/cuối của danh sách bài viết.
+
+## v4.19.3 — 2026-05-24
+### Added
+- **Format Badges on Article Card and ReaderView:**
+  - Bổ sung nhãn định dạng trực quan (`🎨 Visual` hoặc `✍️ MD`/`✍️ Markdown`) hiển thị ngay tại dòng metadata của mỗi thẻ bài viết (`ArticleCard`) ở danh sách ngoài trang Knowledge Base.
+  - Đồng bộ thiết kế nhãn định dạng trong `ReaderView` bằng cách sử dụng các CSS class dùng chung mới.
+  - Định nghĩa các class màu sắc kính mờ riêng biệt trong `collect.css`: tím nhạt (`rgba(139,92,246,0.12)`) cho Visual Editor và xanh cyan (`rgba(6,182,212,0.12)`) cho Markdown Editor để dễ nhận diện tức thì.
+
+## v4.19.2 — 2026-05-24
+### Fixed
+- **Markdown Editor Preview Reload:**
+  - Khắc phục triệt để lỗi reload lại video/audio player hoặc iframe Google Drive ở khung Preview khi người dùng gõ chữ trong Markdown editor.
+  - Chuyển `remarkPlugins={[remarkGfm]}` thành biến hằng số tĩnh `REMARK_PLUGINS` định nghĩa ngoài component để tránh việc ReactMarkdown hủy và khởi dựng lại (remount) toàn bộ cây DOM của preview trên mỗi keystroke.
+  - Sử dụng `React.memo` với hàm so sánh tùy biến (custom comparison) cho các component `MediaPreview` và `CustomAudioPlayer` nhằm bỏ qua các thay đổi không liên quan đến tệp nguồn (chỉ re-render khi URL hoặc nội dung tệp thay đổi).
+  - Tích hợp phát YouTube qua `MediaPreview` trong Markdown component `a` để thừa hưởng cơ chế memoization này.
+
 ## v4.19.0 — 2026-05-24
 ### Added
 - **Custom Glassmorphic Audio Player:**

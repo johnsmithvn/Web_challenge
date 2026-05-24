@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.13.0
-**Updated:** 2026-05-18
+**Version:** v4.19.5
+**Updated:** 2026-05-24
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 

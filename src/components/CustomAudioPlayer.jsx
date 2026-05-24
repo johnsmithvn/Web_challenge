@@ -15,7 +15,15 @@ function formatTime(secs) {
  * CustomAudioPlayer — A gorgeous glassmorphic HTML5 audio player.
  * Automatically falls back to Google Drive iframe preview if the direct audio stream fails (CORS/Private).
  */
-export default function CustomAudioPlayer({ src, fallbackUrl, title, onToggleFormat }) {
+const stringifyChildren = (children) => {
+  if (!children) return '';
+  if (typeof children === 'string') return children;
+  if (Array.isArray(children)) return children.map(stringifyChildren).join('');
+  if (children.props && children.props.children) return stringifyChildren(children.props.children);
+  return '';
+};
+
+function CustomAudioPlayer({ src, fallbackUrl, title, onToggleFormat }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -193,3 +201,13 @@ export default function CustomAudioPlayer({ src, fallbackUrl, title, onToggleFor
     </div>
   );
 }
+
+const MemoizedCustomAudioPlayer = React.memo(CustomAudioPlayer, (prev, next) => {
+  return (
+    prev.src === next.src &&
+    prev.fallbackUrl === next.fallbackUrl &&
+    stringifyChildren(prev.title) === stringifyChildren(next.title)
+  );
+});
+
+export default MemoizedCustomAudioPlayer;

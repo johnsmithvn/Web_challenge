@@ -452,6 +452,9 @@ function ArticleCard({ item, onClick, onGroupClick }) {
               🔗 {safeHostname(item.url)}
             </a>
           )}
+          <span className={`kb-format-badge ${isTiptap ? 'kb-format-badge--visual' : 'kb-format-badge--markdown'}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
+            {isTiptap ? '🎨 Visual' : '✍️ MD'}
+          </span>
           <span className="kb-card__date">{fmtDate(item.created_at)}</span>
         </div>
         <h3 className="kb-card__title">{item.title}</h3>
@@ -536,6 +539,8 @@ function slugify(text) {
   return String(text).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
 }
 
+const REMARK_PLUGINS = [remarkGfm];
+
 /* Custom ReactMarkdown components — injects id attrs for TOC + media embeds */
 const createMdComponents = (onUrlToggle) => ({
   h1: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h1 id={id}>{children}</h1>; },
@@ -548,29 +553,9 @@ const createMdComponents = (onUrlToggle) => ({
   ),
   /* Auto-detect YouTube + audio URLs in links */
   a: ({ href, children }) => {
-    // YouTube → iframe embed
+    // YouTube → embed via MediaPreview (which is memoized)
     if (href && /youtube\.com\/watch|youtu\.be\/|youtube\.com\/embed\//.test(href)) {
-      const ytId = (() => {
-        try {
-          const u = new URL(href);
-          if (u.searchParams.has('v')) return u.searchParams.get('v');
-          if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('/')[0];
-          if (u.pathname.startsWith('/embed/')) return u.pathname.split('/embed/')[1]?.split('?')[0];
-        } catch { /* ignore */ }
-        return null;
-      })();
-      if (ytId) {
-        return (
-          <div className="kb-video-embed">
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${ytId}`}
-              title="YouTube video"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-        );
-      }
+      return <MediaPreview url={href} title={children} onToggleFormat={onUrlToggle ? (newUrl) => onUrlToggle(href, newUrl) : undefined} />;
     }
     // Audio file → native player
     if (href && /\.(mp3|m4a|ogg|wav|aac|flac)(\?|$)/i.test(href)) {
@@ -617,7 +602,9 @@ function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook, o
               <span>{fmtDate(item.updated_at || item.created_at)}</span>
               <span>·</span>
               <span>⏱ {mins} phút đọc</span>
-              {isTiptap && <span className="kb-format-badge">🎨 Visual</span>}
+              <span className={`kb-format-badge ${isTiptap ? 'kb-format-badge--visual' : 'kb-format-badge--markdown'}`}>
+                {isTiptap ? '🎨 Visual' : '✍️ Markdown'}
+              </span>
             </div>
             {(item._tags || item.tags || []).length > 0 && (
               <div className="kb-reader__tags">
@@ -648,7 +635,7 @@ function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook, o
           ) : (
             <div className="kb-prose">
               {item.body ? (
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{item.body}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={mdComponents}>{item.body}</ReactMarkdown>
               ) : (
                 <p className="kb-prose__empty">Bài viết này chưa có nội dung. Nhấn ✏️ Sửa để thêm.</p>
               )}
@@ -690,7 +677,16 @@ function MarkdownEditor({ value, onChange, onSave }) {
     onChange(next);
   }, [value, onChange]);
 
-  const previewComponents = useMemo(() => createMdComponents(handleUrlToggle), [handleUrlToggle]);
+  const handleUrlToggleRef = useRef(handleUrlToggle);
+  useEffect(() => {
+    handleUrlToggleRef.current = handleUrlToggle;
+  }, [handleUrlToggle]);
+
+  const previewComponents = useMemo(() => {
+    return createMdComponents((oldUrl, newUrl) => {
+      handleUrlToggleRef.current?.(oldUrl, newUrl);
+    });
+  }, []);
 
   const insert = useCallback((before, after = '', placeholder = '') => {
     const ta = document.getElementById('kb-md-textarea');
@@ -828,7 +824,7 @@ function MarkdownEditor({ value, onChange, onSave }) {
           <div className="kb-split__label">👁 Preview</div>
           <div className="kb-prose kb-split__preview">
             {value ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={previewComponents}>
+              <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={previewComponents}>
                 {value}
               </ReactMarkdown>
             ) : (
@@ -1356,20 +1352,9 @@ export default function CollectPage() {
                 .filter(t => !q || t.title?.toLowerCase().includes(q))
                 .slice(0, 10);
               return (
-              <div style={{
-                position: 'absolute', top: '100%', right: 0, marginTop: '0.4rem',
-                background: 'rgba(13, 13, 26, 0.98)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: 'var(--radius-md)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
-                width: '300px', maxHeight: '380px', overflow: 'hidden',
-                zIndex: 9999, display: 'flex', flexDirection: 'column',
-              }}>
+              <div className="kb-task-filter-popover">
                 {/* Header */}
-                <div style={{
-                  padding: '0.6rem 0.8rem', borderBottom: '1px solid rgba(255,255,255,0.06)',
-                  fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                }}>
+                <div className="kb-task-filter-header">
                   <span>📌 Lọc theo Task</span>
                   {filterTaskId && (
                     <button
@@ -1380,24 +1365,19 @@ export default function CollectPage() {
                 </div>
 
                 {/* Search */}
-                <div style={{ padding: '0.4rem 0.6rem' }}>
+                <div className="kb-task-filter-search-container">
                   <input
                     type="text"
                     placeholder="Tìm task..."
                     value={taskSearch}
                     onChange={e => setTaskSearch(e.target.value)}
                     autoFocus
-                    style={{
-                      width: '100%', padding: '0.4rem 0.6rem', fontSize: '0.8rem',
-                      background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
-                      outline: 'none', fontFamily: 'inherit',
-                    }}
+                    className="kb-task-filter-search-input"
                   />
                 </div>
 
                 {/* Task list */}
-                <div style={{ overflowY: 'auto', maxHeight: '260px', padding: '0.2rem 0.3rem' }}>
+                <div className="kb-task-filter-list">
                   {filteredTasks.length === 0 && (
                     <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', padding: '1rem 0' }}>
                       Không tìm thấy task
@@ -1407,24 +1387,11 @@ export default function CollectPage() {
                     <button
                       key={t.id}
                       onClick={() => { setFilterTaskId(filterTaskId === t.id ? '' : t.id); setShowTaskFilter(false); setTaskSearch(''); }}
-                      style={{
-                        width: '100%', textAlign: 'left', padding: '0.5rem 0.6rem',
-                        background: filterTaskId === t.id ? 'rgba(6,182,212,0.12)' : 'transparent',
-                        border: 'none', borderRadius: 'var(--radius-sm)',
-                        cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)',
-                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                        fontFamily: 'inherit', transition: 'background 0.15s',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = filterTaskId === t.id ? 'rgba(6,182,212,0.18)' : 'rgba(255,255,255,0.04)'}
-                      onMouseLeave={e => e.currentTarget.style.background = filterTaskId === t.id ? 'rgba(6,182,212,0.12)' : 'transparent'}
+                      className={`kb-task-filter-item ${filterTaskId === t.id ? 'kb-task-filter-item--active' : ''}`}
                     >
-                      <span style={{
-                        width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: filterTaskId === t.id ? 'rgba(6,182,212,0.3)' : 'rgba(255,255,255,0.06)',
-                        border: `1.5px solid ${filterTaskId === t.id ? '#22d3ee' : 'rgba(255,255,255,0.15)'}`,
-                        color: filterTaskId === t.id ? '#22d3ee' : 'transparent', fontSize: '0.65rem', fontWeight: 700,
-                      }}>{filterTaskId === t.id ? '✓' : ''}</span>
+                      <span className={`kb-task-filter-checkbox ${filterTaskId === t.id ? 'kb-task-filter-checkbox--active' : ''}`}>
+                        {filterTaskId === t.id ? '✓' : ''}
+                      </span>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {t.title}
                       </span>
@@ -1709,7 +1676,7 @@ export default function CollectPage() {
               </div>
             </>
           ) : (
-            <div className="kb-list">
+            <>
               {/* Bulk bar */}
               {bulkMode && (
                 <div className="inbox-bulk-bar" style={{ marginBottom: '0.75rem' }}>
@@ -1744,8 +1711,9 @@ export default function CollectPage() {
                   )}
                 </div>
               )}
-              {filtered.map(item => (
-                <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+              <div className="kb-list">
+                {filtered.map(item => (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
                   {bulkMode && (
                     <label style={{ paddingTop: '1.1rem', cursor: 'pointer', flexShrink: 0 }}>
                       <input
@@ -1771,6 +1739,7 @@ export default function CollectPage() {
                 </div>
               ))}
             </div>
+          </>
           )}
         </>
       )}

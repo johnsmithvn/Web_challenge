@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
 **Updated:** 2026-05-24
-**Current Version:** v4.19.0
+**Current Version:** v4.19.5
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -511,3 +511,8 @@
 | **v4.18.0** | **Advanced Media Classification and Hashtag System** |
 | v4.18.1 | Hotfix: TrackerSection keys and source URL truncation |
 | **v4.19.0** | **Custom Glassmorphic Audio Player** |
+| v4.19.1 | Hotfix: Preserve iframe player state in Markdown preview pane |
+| v4.19.2 | Hotfix: Optimize ReactMarkdown preview re-renders (stable remarkPlugins and React.memo components) |
+| v4.19.3 | Hotfix: Render format badges (Markdown/Visual) in ArticleCard and ReaderView |
+| v4.19.4 | Hotfix: Optimize ArticleCard list borders and container backgrounds in Light Theme |
+| v4.19.5 | Hotfix: Fix Task Filter popover readability and theme sync (Light/Dark adaptive CSS) |

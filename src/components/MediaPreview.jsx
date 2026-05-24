@@ -15,7 +15,15 @@ import CustomAudioPlayer from './CustomAudioPlayer';
  * @param {string} [props.className] - Custom class name
  * @param {Function} [props.onToggleFormat] - Callback when media type is toggled manually
  */
-export default function MediaPreview({ url, type, title, style, className, onToggleFormat }) {
+const stringifyChildren = (children) => {
+  if (!children) return '';
+  if (typeof children === 'string') return children;
+  if (Array.isArray(children)) return children.map(stringifyChildren).join('');
+  if (children.props && children.props.children) return stringifyChildren(children.props.children);
+  return '';
+};
+
+function MediaPreview({ url, type, title, style, className, onToggleFormat }) {
   if (!url) return null;
 
   const mediaType = getMediaType(url);
@@ -184,3 +192,15 @@ export default function MediaPreview({ url, type, title, style, className, onTog
       return null;
   }
 }
+
+const MemoizedMediaPreview = React.memo(MediaPreview, (prev, next) => {
+  return (
+    prev.url === next.url &&
+    prev.type === next.type &&
+    prev.className === next.className &&
+    JSON.stringify(prev.style) === JSON.stringify(next.style) &&
+    stringifyChildren(prev.title) === stringifyChildren(next.title)
+  );
+});
+
+export default MemoizedMediaPreview;
