@@ -10,18 +10,26 @@
 import { useState, useCallback } from 'react';
 
 const UPLOAD_ENDPOINT = '/api/upload';
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export function useFileUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState(null);
 
-  const upload = useCallback(async (file, folder = 'uploads') => {
+  const upload = useCallback(async (file, explicitFolder) => {
     if (!file) throw new Error('No file provided');
     if (file.size > MAX_FILE_SIZE) {
-      const msg = `File quá lớn (${(file.size / 1024 / 1024).toFixed(1)}MB). Tối đa 25MB.`;
+      const msg = `File quá lớn (${(file.size / 1024 / 1024).toFixed(1)}MB). Tối đa 50MB.`;
       setError(msg);
       throw new Error(msg);
+    }
+
+    let folder = explicitFolder;
+    if (!folder || folder === 'uploads') {
+      if (file.type.startsWith('image/')) folder = 'images';
+      else if (file.type.startsWith('audio/')) folder = 'audio';
+      else if (file.type.startsWith('video/')) folder = 'video';
+      else folder = 'documents';
     }
 
     setIsUploading(true);

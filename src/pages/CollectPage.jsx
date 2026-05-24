@@ -17,6 +17,8 @@ import { FileText, MessageSquareQuote, BookOpen, Lightbulb, Library, FolderOpen,
 import QuoteWidget from '../components/QuoteWidget';
 import UrlInputPopover from '../components/UrlInputPopover';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
+import { extractDriveDirectUrl, extractDriveFileId, isAudioUrl, stripMediaTag } from '../utils/mediaUtils';
+import MediaPreview from '../components/MediaPreview';
 
 /* ── Constants ─────────────────────────────────────────────── */
 const ICON_MAP = {
@@ -535,7 +537,7 @@ function slugify(text) {
 }
 
 /* Custom ReactMarkdown components — injects id attrs for TOC + media embeds */
-const mdComponents = {
+const createMdComponents = (onUrlToggle) => ({
   h1: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h1 id={id}>{children}</h1>; },
   h2: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h2 id={id}>{children}</h2>; },
   h3: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h3 id={id}>{children}</h3>; },
@@ -572,20 +574,21 @@ const mdComponents = {
     }
     // Audio file → native player
     if (href && /\.(mp3|m4a|ogg|wav|aac|flac)(\?|$)/i.test(href)) {
-      return (
-        <div className="kb-audio-player">
-          <audio controls src={href} preload="metadata" />
-          <span className="kb-audio-player__label">{children}</span>
-        </div>
-      );
+      return <MediaPreview url={href} title={children} onToggleFormat={onUrlToggle ? (newUrl) => onUrlToggle(href, newUrl) : undefined} />;
+    }
+    // Google Drive Audio/Video Player
+    if (href && /drive\.google\.com\//.test(href)) {
+      return <MediaPreview url={href} title={children} onToggleFormat={onUrlToggle ? (newUrl) => onUrlToggle(href, newUrl) : undefined} />;
     }
     // Normal link
     return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
   },
-};
+});
+
+const mdComponents = createMdComponents();
 
 /* ── ReaderView ───────────────────────────────────────────── */
-function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook }) {
+function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook, onUpdateUrl }) {
   const meta    = TYPE_META[item.type] || TYPE_META.note;
   const isTiptap = isTiptapBody(item);
   const mins    = item.word_count ? Math.max(1, Math.ceil(item.word_count / 200)) : readTime(item.body);
@@ -626,9 +629,12 @@ function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook })
               </div>
             )}
             {item.url && (
-              <a href={item.url} target="_blank" rel="noopener noreferrer" className="kb-reader__source">
-                🔗 Xem nguồn: {item.url}
-              </a>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
+                <MediaPreview url={item.url} type={item.type} onToggleFormat={onUpdateUrl} />
+                <a href={stripMediaTag(item.url)} target="_blank" rel="noopener noreferrer" className="kb-reader__source" style={{ marginTop: 0 }}>
+                  🔗 Xem nguồn: {stripMediaTag(item.url)}
+                </a>
+              </div>
             )}
           </div>
 
@@ -675,6 +681,16 @@ function ToolbarBtn({ label, title, onClick }) {
 function MarkdownEditor({ value, onChange, onSave }) {
   const ref = useCallback(node => { if (node) node.focus(); }, []);
   const [mdMediaPopover, setMdMediaPopover] = useState(null); // 'image' | 'youtube' | 'audio' | null
+
+  const handleUrlToggle = useCallback((oldUrl, newUrl) => {
+    const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedOld = escapeRegExp(oldUrl);
+    const regex = new RegExp(escapedOld, 'g');
+    const next = value.replace(regex, newUrl);
+    onChange(next);
+  }, [value, onChange]);
+
+  const previewComponents = useMemo(() => createMdComponents(handleUrlToggle), [handleUrlToggle]);
 
   const insert = useCallback((before, after = '', placeholder = '') => {
     const ta = document.getElementById('kb-md-textarea');
@@ -776,7 +792,13 @@ function MarkdownEditor({ value, onChange, onSave }) {
         onSubmit={(url) => {
           if (mdMediaPopover === 'image') insert('\n![', `](${url})\n`, 'mô tả ảnh');
           else if (mdMediaPopover === 'youtube') insert('\n[Video](', `${url})\n`);
-          else if (mdMediaPopover === 'audio') insert('\n[Audio](', `${url})\n`);
+          else if (mdMediaPopover === 'audio') {
+            const cleanUrl = url.trim();
+            const taggedUrl = (cleanUrl.includes('#audio') || cleanUrl.includes('#video'))
+              ? cleanUrl
+              : `${cleanUrl}#audio`;
+            insert('\n[Audio](', `${taggedUrl})\n`);
+          }
         }}
         label={mdMediaPopover === 'image' ? 'URL ảnh' : mdMediaPopover === 'youtube' ? 'YouTube URL' : 'Audio URL'}
         placeholder={mdMediaPopover === 'image' ? 'https://example.com/photo.jpg' : mdMediaPopover === 'youtube' ? 'https://youtu.be/...' : 'https://example.com/audio.mp3'}
@@ -806,7 +828,7 @@ function MarkdownEditor({ value, onChange, onSave }) {
           <div className="kb-split__label">👁 Preview</div>
           <div className="kb-prose kb-split__preview">
             {value ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={previewComponents}>
                 {value}
               </ReactMarkdown>
             ) : (
@@ -924,12 +946,42 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
         <div style={{ flex: 1 }}>
           <TagInput tags={draft.tags} onChange={v => set('tags', v)} suggestions={suggestions} />
         </div>
-        <input
-          className="kb-editor__url"
-          placeholder="URL nguồn (tùy chọn)"
-          value={draft.url || ''}
-          onChange={e => set('url', e.target.value)}
-        />
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <input
+            className="kb-editor__url"
+            placeholder="URL nguồn (tùy chọn)"
+            value={draft.url || ''}
+            onChange={e => set('url', e.target.value)}
+          />
+          {draft.url && (
+            <div className="kb-editor-format-pill">
+              <button
+                type="button"
+                className={`kb-format-pill-btn ${!draft.url.includes('#audio') && !draft.url.includes('#video') ? 'active' : ''}`}
+                onClick={() => set('url', draft.url.split('#')[0])}
+                title="Dạng Drive/Tự động"
+              >
+                📁 Auto
+              </button>
+              <button
+                type="button"
+                className={`kb-format-pill-btn ${draft.url.includes('#audio') ? 'active' : ''}`}
+                onClick={() => set('url', draft.url.split('#')[0] + '#audio')}
+                title="Dạng Audio"
+              >
+                🎵 Audio
+              </button>
+              <button
+                type="button"
+                className={`kb-format-pill-btn ${draft.url.includes('#video') ? 'active' : ''}`}
+                onClick={() => set('url', draft.url.split('#')[0] + '#video')}
+                title="Dạng Video"
+              >
+                📺 Video
+              </button>
+            </div>
+          )}
+        </div>
         {/* Mode toggle — only for new articles */}
         {isNew && (
           <div className="kb-mode-toggle">
@@ -1218,6 +1270,11 @@ export default function CollectPage() {
           onDelete={() => handleDelete(selected)}
           onBack={goList}
           notesHook={notesHook}
+          onUpdateUrl={async (newUrl) => {
+            await updateItem(selected.id, { url: newUrl });
+            setSelected(prev => ({ ...prev, url: newUrl }));
+            await fetchItems({});
+          }}
           onCreateTask={async (item) => {
             const result = await addTask({
               title: item.title,

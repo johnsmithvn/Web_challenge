@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-05-18
-**Current Version:** v4.13.0
+**Updated:** 2026-05-24
+**Current Version:** v4.19.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -501,3 +501,13 @@
 | **v4.11.0** | **Knowledge Groups (M:N) + Sub-Notes (Threaded Notes)** |
 | **v4.12.0** | **Media Infrastructure (Image/YouTube/Audio/Upload/QuoteWidget/Quote Manager)** |
 | **v4.13.0** | **Postcard Gallery + QuoteWidget KB Integration** |
+| **v4.14.0** | **KB Category Expansion + DB Type Sync** |
+| **v4.15.0** | **Knowledge Base Categories (JSON Refactor) + SubNotes UX** |
+| **v4.16.0** | **Hybrid Storage & Podcast Player** |
+| v4.16.1 | Unified Google Drive Upload + URL Fix |
+| v4.16.2 | Documentation: Upload Naming Convention |
+| v4.16.3 | Google Drive iframe Preview Fix |
+| **v4.17.0** | **Compact Audio Preview Redesign** |
+| **v4.18.0** | **Advanced Media Classification and Hashtag System** |
+| v4.18.1 | Hotfix: TrackerSection keys and source URL truncation |
+| **v4.19.0** | **Custom Glassmorphic Audio Player** |

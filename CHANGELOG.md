@@ -1,11 +1,74 @@
 # CHANGELOG
 
+## v4.19.0 — 2026-05-24
+### Added
+- **Custom Glassmorphic Audio Player:**
+  - Thiết kế trình phát âm thanh HTML5 tùy chỉnh dạng kính mờ (glassmorphism) tuyệt đẹp thay thế cho player mặc định của trình duyệt hoặc iframe đen của Drive.
+  - Tích hợp cơ chế tự động chuyển đổi thông minh (error fallback): tự động hiển thị iframe Drive nếu stream trực tiếp thất bại (do phân quyền/cookies).
+- **Markdown Mode Format Toggles:**
+  - Hỗ trợ đầy đủ các nút chuyển đổi định dạng (`🎵 Dạng audio`, `📺 Dạng video`, `📁 Dạng Drive`) ngay trên player ở khung Preview của Markdown Editor.
+  - Khi click chuyển đổi, hệ thống sẽ tự động tìm kiếm và thay đổi link tương ứng trực tiếp trong textarea viết Markdown ở bên trái (thêm `#audio` / `#video` hoặc xóa tag).
+  - Tự động gắn tag `#audio` khi người dùng chèn audio qua nút công cụ 🎵 trên toolbar của Markdown editor.
+
+## v4.18.1 — 2026-05-24
+### Fixed
+- **Source Link Truncation:** Giới hạn chiều dài của link nguồn (`.kb-reader__source`) hiển thị tối đa 3 dòng bằng cơ chế CSS line-clamp và tự động bẻ chữ (`word-break: break-all`) để tránh tình trạng URL siêu dài (như log terminal) che hết giao diện bài viết.
+- **TrackerSection React Keys:** Sửa lỗi thiếu prop `key` trên thẻ Fragment ở vòng lặp render tiến độ tuần trong `TrackerSection.jsx` nhằm loại bỏ cảnh báo lỗi trong console của browser.
+
+## v4.18.0 — 2026-05-24
+### Added
+- **Advanced Media Classification System:**
+  - Tích hợp `getMediaType`, `stripMediaTag`, `isYoutubeUrl`, và `getYoutubeEmbedUrl` vào `mediaUtils.js` để tự động nhận dạng định dạng các link YouTube, YouTube Shorts, Google Drive, direct audio, và direct video.
+  - Hỗ trợ parser YouTube Shorts tự động chuyển đổi định dạng link `youtube.com/shorts/...` sang link nhúng `youtube.com/embed/...`.
+- **Unified MediaPreview Player:**
+  - Giao diện phát đa phương tiện thống nhất với switch-case phân loại các dạng file.
+  - Tự động điều chỉnh chiều cao linh hoạt cho Google Drive (90px cho audio, 360px cho video/preview chung).
+  - Bổ sung nút bấm chuyển đổi định dạng trực quan (`🎵 Dạng audio`, `📺 Dạng video`, `📁 Dạng Drive`) giúp người dùng thay đổi trực tiếp trên player và đồng bộ tức thì vào database.
+- **Tiptap MediaNode Extension:**
+  - Tạo mới `MediaNode.js` thay thế cho `AudioNode.js` lỗi thời. Sử dụng `ReactNodeViewRenderer` để nhúng trực tiếp `<MediaPreview>` với các nút chuyển đổi vào visual editor.
+  - Hỗ trợ cơ chế tương thích ngược (Backward Compatibility) tự động migrate cấu trúc JSON bài viết từ `audioBlock` sang `mediaBlock` hoàn toàn trên client mà không cần chạy SQL migration.
+- **Format Selector Pills in Editor:** Bổ sung bộ chọn dạng pill ở ô nhập link nguồn của editor giúp người dùng gắn tag định dạng thủ công (`#audio` hoặc `#video`) một cách thuận tiện.
+
+## v4.17.0 — 2026-05-24
+### Added
+- **MediaPreview Component:** Phát triển component React dùng chung `src/components/MediaPreview.jsx` để tập trung hóa toàn bộ logic hiển thị trình phát đa phương tiện. Hỗ trợ tự động phân loại tệp (Audio/Video) và nhà cung cấp (Google Drive vs Direct Link).
+- **Compact Audio Player Design:**
+  - Nhúng Google Drive Audio thông qua `<iframe>` với chiều cao thu nhỏ (`height="90px"`) để hiển thị giao diện thanh điều khiển phát nhạc tinh gọn của Google mà không bị khoảng đen thừa của khung phát video.
+  - Sử dụng thẻ `<audio>` nguyên bản của HTML5 thay thế cho thẻ `<video>` cho các tệp âm thanh trực tiếp (đường dẫn ngoài Google Drive) để hiển thị thanh phát nhạc trực quan và tiết kiệm diện tích.
+  - Bổ sung viền thủy tinh (glassmorphic border) và bóng mờ nhẹ (`box-shadow`) cho khung iframe để đồng bộ với ngôn ngữ thiết kế chung của hệ thống.
+- **Visual Editor Sync:** Cập nhật Tiptap `AudioNode` sử dụng khung hiển thị `iframe` 90px tương tự đối với tệp Drive âm thanh và thẻ `<audio>` đối với các tệp âm thanh trực tiếp khác.
+- **Manual Audio Override:** Cập nhật `isAudioUrl` hỗ trợ tự động phát hiện tham số `type=audio` hoặc mã neo (hashtag) như `#audio` hoặc `#podcast` ở cuối URL nguồn. Giúp người dùng có thể tự cấu hình ép buộc hiển thị thanh phát nhạc thu nhỏ (chiều cao 90px) khi dán các liên kết Google Drive bằng cách thêm ký tự `#audio` vào cuối đường dẫn.
+
+## v4.16.3 — 2026-05-24
+### Fixed
+- **Google Drive Preview:** Bổ sung helper `extractDriveFileId` và cập nhật `extractDriveDirectUrl` để chuyển đổi link Google Drive sang định dạng `/uc?id=FILE_ID` chuẩn xác hơn thay vì hardcode `authuser=0` và `export=download`. Điều này khắc phục lỗi 403 Forbidden đối với người dùng đăng nhập nhiều tài khoản Google đồng thời và loại bỏ các header bắt buộc tải file (download attachment).
+- **Google Drive iframe Embedding:** Cập nhật hiển thị link Google Drive trong `CollectPage` (Markdown + Reader View) và Tiptap `AudioNode` (Visual Editor) sang thẻ `<iframe>` trỏ tới `/preview`. Điều này giải quyết triệt để các rào cản về CORS và chặn cookie bên thứ ba (third-party cookies) trong Chrome.
+
+## v4.16.2 — 2026-05-24
+### Changed
+- **Documentation:** Bổ sung quy chuẩn đặt tên file upload (`LifeHub_{folder}_{yyyyMMdd}_{HHMMSS}_{hex6}.{ext}`) vào tài liệu `FEATURES.md` để đồng bộ chuẩn mực thiết kế.
+
+## v4.16.1 — 2026-05-24
+### Changed
+- **Unified Upload Architecture:** Cập nhật `api/upload.js` để định tuyến 100% tất cả các loại file (ảnh, audio, video, pdf) lên Google Drive thông qua Service Account, thay vì cơ chế Hybrid (Imgur + Drive) trước đó.
+- **Direct Drive URLs:** Định dạng lại Google Drive link trả về từ `open?id=...` thành `uc?export=view&id=...` giúp trình duyệt có thể render trực tiếp hình ảnh thông qua thẻ `<img>` mà không bị lỗi hiển thị.
+- Cập nhật `.env.local.example` và tài liệu hệ thống loại bỏ các dependency về Imgur và R2, hoàn toàn quy chuẩn về một backend lưu trữ duy nhất.
+
+## v4.16.0 — 2026-05-23
+### Added
+- **Hybrid Storage Architecture:** Updated `/api/upload.js` to route image uploads to Imgur and audio/video/document uploads to Google Drive via a Service Account.
+- **Global Mini Player:** Implemented `GlobalAudioPlayer.jsx` to float at the bottom of the screen. Randomly auto-plays podcasts using the new `useRandomPodcast.js` hook.
+- **Universal Google Drive Parser:** Added helpers `extractDriveDirectUrl` to parse any Google Drive sharing links into direct stream URLs.
+- **Tiptap Audio/Video Node:** Extended `AudioNode` with PasteRules to automatically intercept Google Drive links and standard audio links, rendering an inline media player.
+- **Reader View Media Player:** `CollectPage` now renders a native audio/video player if the item type is `podcast` or its source URL is a media/Drive link.
+
 ## v4.15.0 — 2026-05-23
 ### Changed
 - **Knowledge Base Categories (JSON Refactor):** Consolidated `TYPES` array from `InboxPage` and `CollectPage` into a central static JSON file `src/data/knowledge.json`.
 - **Inbox UI Refactor:** Replaced inline classification buttons with `<select>` dropdowns in `InboxPage` (Detail View, Inline Menu, Bulk Actions) to save space and match the unified types.
 - **Collect UI Refactor:** `CollectPage` now dynamically builds `TYPE_META` from `knowledge.json`.
 - **SubNotes UX Improvement:** Redesigned the "Thêm ghi chú" (Add sub-note) section in the Knowledge Reader View to behave like Confluence (inline expandable comment box instead of a toggle button).
+- **Knowledge Categories Config:** Removed `link` type and replaced `emotion` type with `podcast` type in `knowledge.json` as part of the Audio prep.
 ### Fixed
 - **ReaderView Light Mode Contrast:** Fixed invisible dividers and borders in Light Theme for the ReaderView and SubNotes section.
 

@@ -58,10 +58,12 @@ src/
 │   ├── UrlInputPopover.jsx   # v4.12.0 — Shared ClickUp-style URL input popover (Image/YouTube/Audio)
 │   ├── TrackerSection.jsx     # Read-only 3-week status dots
 │   ├── XpBar.jsx              # XP + level indicator
+│   ├── GlobalAudioPlayer.jsx  # v4.16.0 — Floating random podcast player
+│   ├── CustomAudioPlayer.jsx  # v4.19.0 — Premium glassmorphic custom audio player
 │   └── ...
 │
 ├── extensions/              # v4.12.0 — Custom Tiptap extensions
-│   └── AudioNode.js          # Atom node: inline audio player block (src + title)
+│   └── MediaNode.jsx         # v4.18.0 — Atom node: inline media player block (src + title)
 │
 ├── contexts/
 │   ├── AuthContext.jsx        # Auth state, signIn, signUp, Google, profile
@@ -86,18 +88,22 @@ src/
 │   ├── useFitnessLog.js       # v4.0.0 — Fitness session logging (add, delete, todayLogs, weekSummary)
 │   ├── useKnowledgeGroups.js   # v4.11.0 — KB group CRUD + M:N link/unlink articles + fetchGroupArticles
 │   ├── useCollectionNotes.js   # v4.11.0 — Threaded sub-notes CRUD per KB article
-│   ├── useFileUpload.js       # v4.12.0 — Upload files to R2 via /api/upload (25MB limit)
+│   ├── useFileUpload.js       # v4.12.0 — Upload files via /api/upload (50MB Drive)
 │   ├── useQuotes.js           # v4.12.0 — CRUD user quotes + merge system quotes.json
 │   ├── useLifeJourney.js      # v2.2.0 — Life milestones CRUD (localStorage-only)
 │   ├── useNotifications.js    # Browser notification API
+│   ├── useRandomPodcast.js    # v4.16.0 — Fetch random podcast from Supabase
 │   └── ...
 │
 │ lib/
 │   └── supabase.js            # Singleton Supabase client, safe fallback
 │
+│ utils/
+│   └── mediaUtils.js          # v4.16.0 — Helpers for Google Drive URL parsing and streaming
+│
 ├── api/                       # v4.0.0 Vercel Edge Functions
 │   ├── meta.js                # OG metadata fetcher (edge runtime, 5s timeout, graceful fallback)
-│   └── upload.js              # v4.12.0 — Dual upload proxy (Imgur for images, R2 for audio) + multipart parser
+│   └── upload.js              # v4.16.1 — Unified upload proxy (Google Drive Service Account for all media)
 │
 ├── pages/
 │   ├── LandingPage.jsx        # / — Marketing page (eager loaded)

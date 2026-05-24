@@ -18,10 +18,11 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Image as TiptapImage } from '@tiptap/extension-image';
 import { Youtube } from '@tiptap/extension-youtube';
-import { AudioNode } from '../extensions/AudioNode';
+import { MediaNode } from '../extensions/MediaNode';
 import { Undo2, Redo2, Bold, Italic, Underline as UnderlineIcon, Strikethrough, Highlighter, Code, Link as LinkIcon, Quote, List, ListOrdered, ListTodo, Minus, AlignLeft, AlignCenter, AlignRight, AlignJustify, ChevronDown, RemoveFormatting, Palette, Table as TableIcon, Heading1, Heading2, Heading3, Type, ImageIcon, Video, Music } from 'lucide-react';
 import { SlashCommandExtension } from './SlashCommand';
 import UrlInputPopover from './UrlInputPopover';
+import { extractDriveDirectUrl } from '../utils/mediaUtils';
 import '../styles/tiptap.css';
 
 /* ── Keyboard Shortcuts Data ──────────────────────────────────── */
@@ -270,7 +271,8 @@ function TiptapToolbar({ editor }) {
     } else if (mediaPopover === 'youtube') {
       editor.chain().focus().setYoutubeVideo({ src: url }).run();
     } else if (mediaPopover === 'audio') {
-      editor.chain().focus().setAudioBlock({ src: url, title: url.split('/').pop() || 'Audio' }).run();
+      const directUrl = extractDriveDirectUrl(url) || url;
+      editor.chain().focus().setMediaBlock({ src: directUrl, title: directUrl.split('/').pop() || 'Media' }).run();
     }
   };
 
@@ -408,6 +410,35 @@ function showUploadToast(msg) {
   toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 3500);
 }
 
+/* ── Backward Compatibility Migration Helper ────────────────── */
+function migrateJson(node) {
+  if (!node) return node;
+  if (Array.isArray(node)) {
+    return node.map(migrateJson);
+  }
+  if (typeof node === 'object') {
+    const updated = { ...node };
+    if (updated.type === 'audioBlock') {
+      updated.type = 'mediaBlock';
+    }
+    if (updated.content) {
+      updated.content = migrateJson(updated.content);
+    }
+    return updated;
+  }
+  return node;
+}
+
+function migrateTiptapContent(content) {
+  if (!content) return '';
+  try {
+    const parsed = typeof content === 'string' ? JSON.parse(content) : content;
+    return migrateJson(parsed);
+  } catch {
+    return content;
+  }
+}
+
 /* ── TiptapEditor (main export) ─────────────────────────────── */
 export default function TiptapEditor({ value, onChange, onSave }) {
   const onSaveRef = useRef(onSave);
@@ -439,13 +470,9 @@ export default function TiptapEditor({ value, onChange, onSave }) {
       SlashCommandExtension,
       TiptapImage.configure({ inline: false, allowBase64: true }),
       Youtube.configure({ inline: false, nocookie: true }),
-      AudioNode,
+      MediaNode,
     ],
-    content: (() => {
-      if (!value) return '';
-      try { return JSON.parse(value); }
-      catch { return value; }
-    })(),
+    content: migrateTiptapContent(value),
     onUpdate: ({ editor }) => {
       const json = JSON.stringify(editor.getJSON());
       const text = editor.getText();
@@ -543,13 +570,9 @@ export function TiptapReadOnly({ content }) {
       Color,
       TiptapImage.configure({ inline: false }),
       Youtube.configure({ inline: false, nocookie: true }),
-      AudioNode,
+      MediaNode,
     ],
-    content: (() => {
-      if (!content) return '';
-      try { return JSON.parse(content); }
-      catch { return content; }
-    })(),
+    content: migrateTiptapContent(content),
     editable: false,
     editorProps: {
       attributes: { class: 'tp-content tp-content--readonly' },

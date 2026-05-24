@@ -1,22 +1,21 @@
 /**
  * Vercel Serverless Function — File upload proxy.
  * 
- * Supports two providers:
- *   - "imgur"  → Anonymous Imgur upload (images only, free unlimited)
- *   - "r2"    → Cloudflare R2 (any file type, 10GB free)
+ * Supports Google Drive Service Account (images, audio, video, docs)
  * 
  * POST /api/upload
- * Body: multipart/form-data { file, folder?, provider? }
- *   provider = "imgur" (default for images) | "r2"
+ * Body: multipart/form-data { file, folder? }
  * 
- * Response: { url, provider, size }
+ * Response: { url, provider, id, size }
  * 
  * Environment variables:
- *   IMGUR_CLIENT_ID              — Imgur Anonymous API
- *   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
- *   R2_BUCKET_NAME, R2_PUBLIC_URL  — Cloudflare R2
+ *   GOOGLE_SERVICE_ACCOUNT_JSON    — Google Service Account JSON string
+ *   DRIVE_FOLDER_ID                — Google Drive Root Folder ID to upload to
  */
 export const config = { api: { bodyParser: false } };
+
+// Global in-memory cache for folder IDs across hot serverless invocations
+let folderCache = {};
 
 export default async function handler(req, res) {
   // CORS
@@ -35,24 +34,16 @@ export default async function handler(req, res) {
     const boundary = contentType.split('boundary=')[1];
     if (!boundary) return res.status(400).json({ error: 'Missing multipart boundary' });
 
-    const { file, filename, mimeType, folder, provider: reqProvider } = parseMultipart(body, boundary);
+    const { file, filename, mimeType, folder } = parseMultipart(body, boundary);
     if (!file || !filename) return res.status(400).json({ error: 'No file uploaded' });
 
-    // Validate file size (max 25MB)
-    const MAX_SIZE = 25 * 1024 * 1024;
+    // Validate file size (max 50MB for Drive)
+    const MAX_SIZE = 50 * 1024 * 1024;
     if (file.length > MAX_SIZE) {
-      return res.status(413).json({ error: `File too large. Max 25MB` });
+      return res.status(413).json({ error: `File too large. Max 50MB` });
     }
 
-    // Auto-detect provider: images → imgur (if configured), else → r2
-    const isImage = /^image\/(png|jpe?g|gif|webp|bmp|svg)/.test(mimeType || '');
-    const provider = reqProvider || (isImage && process.env.IMGUR_CLIENT_ID ? 'imgur' : 'r2');
-
-    if (provider === 'imgur') {
-      return await handleImgur(req, res, file, mimeType, filename);
-    } else {
-      return await handleR2(req, res, file, mimeType, filename, folder);
-    }
+    return await handleDrive(req, res, file, mimeType, filename, folder);
 
   } catch (err) {
     console.error('Upload error:', err);
@@ -60,114 +51,167 @@ export default async function handler(req, res) {
   }
 }
 
-/* ── Imgur Anonymous Upload ─────────────────────────────────── */
-async function handleImgur(req, res, file, mimeType, filename) {
-  const clientId = process.env.IMGUR_CLIENT_ID;
-  if (!clientId) {
-    return res.status(500).json({ error: 'IMGUR_CLIENT_ID not configured' });
-  }
-
-  const imgurRes = await fetch('https://api.imgur.com/3/image', {
+/* ── Google Drive Service Account Upload ───────────────────── */
+async function getDriveToken(serviceAccountJson) {
+  const crypto = await import('crypto');
+  const sa = JSON.parse(serviceAccountJson);
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/drive',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  };
+  
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const encodeBase64Url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const unsigned = `${encodeBase64Url(header)}.${encodeBase64Url(payload)}`;
+  const signature = crypto.createSign('RSA-SHA256').update(unsigned).sign(sa.private_key, 'base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const jwt = `${unsigned}.${signature}`;
+  
+  const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
-    headers: {
-      'Authorization': `Client-ID ${clientId}`,
-      'Content-Type': mimeType || 'image/png',
-    },
-    body: file,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
   });
-
-  if (!imgurRes.ok) {
-    const errText = await imgurRes.text();
-    console.error('Imgur upload failed:', imgurRes.status, errText);
-    return res.status(500).json({ error: 'Imgur upload failed', detail: errText });
-  }
-
-  const data = await imgurRes.json();
-  const url = data.data?.link;
-  if (!url) {
-    return res.status(500).json({ error: 'Imgur response missing link' });
-  }
-
-  return res.status(200).json({ url, provider: 'imgur', size: file.length });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error_description || 'Failed to get Google Token');
+  return data.access_token;
 }
 
-/* ── Cloudflare R2 Upload ───────────────────────────────────── */
-async function handleR2(req, res, file, mimeType, filename, folder) {
-  const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL } = process.env;
-  if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
-    return res.status(500).json({ error: 'R2 credentials not configured' });
-  }
+// Get or Create Subfolder
+async function getOrCreateSubfolder(accessToken, rootFolderId, folderName) {
+  const cacheKey = `${rootFolderId}_${folderName}`;
+  if (folderCache[cacheKey]) return folderCache[cacheKey];
 
-  const sanitized = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const key = `${folder || 'uploads'}/${Date.now()}_${sanitized}`;
-  const url = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${R2_BUCKET_NAME}/${key}`;
-
-  const now = new Date();
-  const dateStamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  const shortDate = dateStamp.slice(0, 8);
-  
-  const { createHmac, createHash } = await import('crypto');
-  
-  const hash = (data) => createHash('sha256').update(data).digest('hex');
-  const hmac = (key, data) => createHmac('sha256', key).update(data).digest();
-  
-  const payloadHash = hash(file);
-  const region = 'auto';
-  const service = 's3';
-  const scope = `${shortDate}/${region}/${service}/aws4_request`;
-  
-  const canonicalHeaders = [
-    `content-type:${mimeType || 'application/octet-stream'}`,
-    `host:${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    `x-amz-content-sha256:${payloadHash}`,
-    `x-amz-date:${dateStamp}`,
-  ].join('\n') + '\n';
-  
-  const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
-  
-  const canonicalRequest = [
-    'PUT',
-    `/${R2_BUCKET_NAME}/${key}`,
-    '',
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash,
-  ].join('\n');
-  
-  const stringToSign = [
-    'AWS4-HMAC-SHA256',
-    dateStamp,
-    scope,
-    hash(canonicalRequest),
-  ].join('\n');
-  
-  const signingKey = hmac(
-    hmac(hmac(hmac(`AWS4${R2_SECRET_ACCESS_KEY}`, shortDate), region), service),
-    'aws4_request'
-  );
-  
-  const signature = createHmac('sha256', signingKey).update(stringToSign).digest('hex');
-  const authorization = `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-  
-  const uploadRes = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': mimeType || 'application/octet-stream',
-      'x-amz-content-sha256': payloadHash,
-      'x-amz-date': dateStamp,
-      'Authorization': authorization,
-    },
-    body: file,
+  // Search if folder exists
+  const query = `name='${folderName}' and '${rootFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id)`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
   });
+  const searchData = await searchRes.json();
 
-  if (!uploadRes.ok) {
-    const errText = await uploadRes.text();
-    console.error('R2 upload failed:', uploadRes.status, errText);
-    return res.status(500).json({ error: 'Upload to R2 failed', detail: errText });
+  if (searchData.files && searchData.files.length > 0) {
+    const id = searchData.files[0].id;
+    folderCache[cacheKey] = id;
+    return id;
   }
 
-  const publicUrl = `${R2_PUBLIC_URL}/${key}`;
-  return res.status(200).json({ url: publicUrl, provider: 'r2', key, size: file.length });
+  // Create folder if not found
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [rootFolderId]
+    })
+  });
+  
+  if (!createRes.ok) {
+    const errText = await createRes.text();
+    throw new Error(`Failed to create folder ${folderName}: ${errText}`);
+  }
+
+  const createData = await createRes.json();
+  folderCache[cacheKey] = createData.id;
+  return createData.id;
+}
+
+function generateFileName(originalName, folder) {
+  const extMatch = originalName.match(/\.([a-zA-Z0-9]+)$/);
+  const ext = extMatch ? extMatch[1] : 'bin';
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const HH = String(now.getHours()).padStart(2, '0');
+  const MM = String(now.getMinutes()).padStart(2, '0');
+  const SS = String(now.getSeconds()).padStart(2, '0');
+  const hex = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+  
+  // Example: LifeHub_images_20260523_161030_1a2b3c.jpg
+  return `LifeHub_${folder}_${yyyy}${mm}${dd}_${HH}${MM}${SS}_${hex}.${ext}`;
+}
+
+async function handleDrive(req, res, file, mimeType, originalFilename, folder) {
+  const saJsonStr = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const rootFolderId = process.env.DRIVE_FOLDER_ID;
+
+  if (!saJsonStr || !rootFolderId) {
+    return res.status(500).json({ error: 'Google Drive credentials not configured' });
+  }
+
+  try {
+    const accessToken = await getDriveToken(saJsonStr);
+    
+    // Determine the target folder ID (Root vs Subfolder)
+    let targetFolderId = rootFolderId;
+    if (folder && folder !== 'uploads') {
+      targetFolderId = await getOrCreateSubfolder(accessToken, rootFolderId, folder);
+    }
+
+    // Generate unique formatted filename
+    const formattedFilename = generateFileName(originalFilename, folder || 'misc');
+    
+    // Create multipart body
+    const boundary = 'kb_drive_boundary_' + Date.now();
+    const metadata = {
+      name: formattedFilename,
+      parents: [targetFolderId]
+    };
+
+    const prefix = Buffer.from(
+      `--${boundary}\r\n` +
+      `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+      JSON.stringify(metadata) + `\r\n` +
+      `--${boundary}\r\n` +
+      `Content-Type: ${mimeType || 'application/octet-stream'}\r\n\r\n`
+    );
+    const suffix = Buffer.from(`\r\n--${boundary}--`);
+
+    const payload = Buffer.concat([prefix, file, suffix]);
+
+    const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': `multipart/related; boundary=${boundary}`,
+        'Content-Length': payload.length.toString()
+      },
+      body: payload
+    });
+
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      console.error('Drive upload failed:', uploadRes.status, errText);
+      return res.status(500).json({ error: 'Upload to Drive failed', detail: errText });
+    }
+
+    const data = await uploadRes.json();
+    
+    // Removed the per-file permission API call!
+    // The user MUST set the Root Folder to "Viewer" for Anyone.
+    // Files inside will automatically inherit it.
+
+    let hash = '';
+    if (mimeType && mimeType.startsWith('audio/')) {
+      hash = '#audio';
+    } else if (mimeType && mimeType.startsWith('video/')) {
+      hash = '#video';
+    }
+
+    const url = `https://drive.google.com/uc?export=view&id=${data.id}${hash}`;
+    return res.status(200).json({ url, provider: 'drive', id: data.id, size: file.length });
+
+  } catch (err) {
+    console.error('Drive upload exception:', err);
+    return res.status(500).json({ error: 'Drive upload error', message: err.message });
+  }
 }
 
 /* ── Multipart Parser ───────────────────────────────────────── */
@@ -186,7 +230,7 @@ function parseMultipart(body, boundary) {
     start = idx + sep.length + 2;
   }
 
-  let file = null, filename = null, mimeType = null, folder = 'uploads', provider = '';
+  let file = null, filename = null, mimeType = null, folder = 'uploads';
 
   for (const part of parts) {
     const headerEnd = part.indexOf('\r\n\r\n');
@@ -207,11 +251,9 @@ function parseMultipart(body, boundary) {
         mimeType = typeMatch ? typeMatch[1].trim() : 'application/octet-stream';
       } else if (fieldName === 'folder') {
         folder = content.toString().trim() || 'uploads';
-      } else if (fieldName === 'provider') {
-        provider = content.toString().trim();
       }
     }
   }
 
-  return { file, filename, mimeType, folder, provider };
+  return { file, filename, mimeType, folder };
 }

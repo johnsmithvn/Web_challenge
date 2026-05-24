@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHabitStore } from '../hooks/useHabitStore';
 import '../styles/sections.css';
@@ -163,9 +163,8 @@ export default function TrackerSection({ compact = false, isInTeam = false }) {
                 const { locked, message, cta, onCta } = getLockInfo(wk.id);
 
                 return (
-                  <>
+                  <Fragment key={wk.id}>
                     <tr
-                      key={wk.id}
                       className={locked ? 'tracker-row--locked' : ''}
                     >
                       <td>
@@ -240,7 +239,7 @@ export default function TrackerSection({ compact = false, isInTeam = false }) {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>

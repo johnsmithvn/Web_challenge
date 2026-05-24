@@ -10,6 +10,7 @@ import QuickCapture from './components/QuickCapture';
 import OnboardingModal, { useOnboarding } from './components/OnboardingModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import PageSkeleton  from './components/PageSkeleton';
+import GlobalAudioPlayer from './components/GlobalAudioPlayer';
 import './styles/global.css';
 import './index.css';
 
@@ -100,6 +101,7 @@ function AppShell() {
       {redirectToJourney && <Navigate to="/journey?firstTime=true" replace />}
       <Navbar />
       <QuickCapture />
+      <GlobalAudioPlayer />
 
       <div className="app-content">
         <ErrorBoundary>

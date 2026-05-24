@@ -95,7 +95,13 @@ export default function UrlInputPopover({
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('folder', file.type.startsWith('audio') ? 'audio' : 'images');
+      
+      let folderName = 'documents';
+      if (file.type.startsWith('image/')) folderName = 'images';
+      else if (file.type.startsWith('audio/')) folderName = 'audio';
+      else if (file.type.startsWith('video/')) folderName = 'video';
+      
+      formData.append('folder', folderName);
 
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
       if (res.ok) {

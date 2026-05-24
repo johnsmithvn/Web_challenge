@@ -1,5 +1,76 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-05-18
+**Updated:** 2026-05-24
+
+---
+
+## v4.19.0 — ✅ DONE (2026-05-24) — Custom Glassmorphic Audio Player
+
+### Features & Refactoring ✅
+- [x] `src/components/CustomAudioPlayer.jsx` [NEW] — Premium glassmorphic custom audio player component with Play/Pause state, progress/volume sliders, and time tracking.
+- [x] `src/components/MediaPreview.jsx` — Integrated `CustomAudioPlayer` to stream public Drive files and direct audio links.
+- [x] `src/pages/CollectPage.jsx` — Updated Markdown editor preview components to support dynamic URL formatting toggles that automatically rewrite the raw Markdown source text. Also auto-tags inserted audio links with `#audio`.
+- [x] `src/styles/collect.css` & `src/styles/tiptap.css` — Appended detailed responsive styles for the custom audio player widget.
+- [x] `package.json` — Bump version to `4.19.0`.
+
+## v4.18.0 — ✅ DONE (2026-05-24) — Advanced Media Classification and Hashtag System
+
+### Features & Refactoring ✅
+- [x] `src/utils/mediaUtils.js` — Core media utilities supporting `getMediaType`, `stripMediaTag`, `isYoutubeUrl`, and `getYoutubeEmbedUrl` (with YouTube Shorts support).
+- [x] `src/components/MediaPreview.jsx` — Centralized switch-case media player layout rendering Drive embeds with custom height (`90px` / `360px`) and YouTube, audio, and video embeds with format toggles.
+- [x] `src/extensions/MediaNode.jsx` [NEW] — Custom Tiptap node view extension rendering `MediaPreview` with inline toggles.
+- [x] `src/components/TiptapEditor.jsx` — Integrated `MediaNode`, updated media inserting to use `setMediaBlock`, and implemented dynamic JSON tree migration to map legacy `audioBlock` nodes to `mediaBlock` at runtime.
+- [x] `src/pages/CollectPage.jsx` — Added format pill selectors in the URL editor and connected player toggles in ReaderView to write updates directly back to the database.
+- [x] `api/upload.js` — Automatic backend tagging of uploaded files (`#audio` / `#video`) based on verified MIME types.
+- [x] `src/styles/collect.css` & `src/styles/tiptap.css` — Appended design styles for format pills and interactive players. Also added `.kb-reader__source` line-clamp styling to truncate long URLs to a maximum of 3 lines.
+- [x] `package.json` — Bump version to `4.18.1`.
+
+## v4.17.0 — ✅ DONE (2026-05-24) — Compact Audio Preview Redesign
+
+### Features & Refactoring ✅
+- [x] `src/components/MediaPreview.jsx` [NEW] — Reusable media component that centralizes all Drive and direct audio/video player rendering. Bypasses CORS/cookies for Drive files via iframe, and uses compact height (90px) for audio.
+- [x] `src/pages/CollectPage.jsx` — Replaced duplicate inline rendering logic in both `ReaderView` and `mdComponents.a` with the unified `<MediaPreview>` component.
+- [x] `src/extensions/AudioNode.js` — Updated Tiptap audio node `renderHTML` to use a compact `90px` iframe preview for Drive files and native `<audio>` controls for direct audio links.
+- [x] `src/utils/mediaUtils.js` — Updated `isAudioUrl` to automatically check for query parameters or hash anchors (like `#audio`, `#podcast`, or `type=audio`). This allows users to paste raw Drive links and force-render them as compact player bars by simply appending `#audio` at the end.
+- [x] `package.json` — Bump version to `4.17.0`.
+
+## v4.16.3 — ✅ DONE (2026-05-24) — Google Drive iframe Preview Fix
+
+### Bug Fixes ✅
+- [x] `src/utils/mediaUtils.js` — Added `extractDriveFileId` helper and refactored `extractDriveDirectUrl` to use a clean `drive.google.com/uc?id=` format to bypass account session mismatch issues (`authuser=0`) and file download header blocks.
+- [x] `src/pages/CollectPage.jsx` — Render Google Drive links in a native Google iframe preview (using `https://drive.google.com/file/d/FILE_ID/preview`) instead of HTML5 video/audio elements to bypass third-party cookie restrictions and CORS errors.
+- [x] `src/extensions/AudioNode.js` — Update Tiptap inline media node to render Drive links using the same secure iframe preview.
+- [x] `package.json` — Bump version to `4.16.3`.
+
+## v4.16.2 — ✅ DONE (2026-05-24) — Documentation: Upload Naming Convention
+
+### Tasks ✅
+- [x] Docs — Bổ sung quy tắc đặt tên file (`LifeHub_{folder}_{date}_{hex}.ext`) vào `FEATURES.md`.
+
+## v4.16.1 — ✅ DONE (2026-05-24) — Unified Google Drive Upload + URL Fix
+
+### Tech Debt & UX Fixes ✅
+- [x] `api/upload.js` — Changed Drive URL to use `uc?export=view` for direct image embedding without CORS/Frame issues.
+- [x] Docs — Updated `FEATURES.md` and `ARCHITECTURE.md` to reflect 100% Google Drive proxying (removed stale Imgur/R2 references).
+- [x] `.env.local.example` — Removed Imgur & R2. Added Google Drive Service Account info.
+
+## v4.16.0 — ✅ DONE (2026-05-23) — Hybrid Storage & Podcast Player
+
+### Phase 1: Utility Core ✅
+- [x] `src/utils/mediaUtils.js` [NEW] — `extractDriveDirectUrl`, `isAudioUrl`, `isDriveUrl` regex logic.
+
+### Phase 2: Reader View & Tiptap Parser ✅
+- [x] `src/pages/CollectPage.jsx` — Render native audio/video player if type='podcast' or drive url.
+- [x] `src/components/TiptapEditor.jsx` & `AudioNode.js` — Tiptap extension to parse Drive links inline via PasteRules.
+
+### Phase 3: Global Audio Player ✅
+- [x] `src/components/GlobalAudioPlayer.jsx` [NEW] — Floating mini player.
+- [x] `src/hooks/useRandomPodcast.js` [NEW] — Fetch random podcast logic.
+- [x] `App.jsx` — Mount GlobalAudioPlayer.
+- [x] `global.css` — Styling for the floating player.
+
+### Phase 4: Hybrid Upload API ✅
+- [x] `api/upload.js` — Refactored to route images to Imgur, media to Google Drive Service Account via JWT and Multipart upload (No external dependencies needed).
+- [x] `src/hooks/useFileUpload.js` — Keep logic as is, API transparently handles routing.
 
 ---
 
