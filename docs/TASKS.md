@@ -1,5 +1,47 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-05-24
+**Updated:** 2026-06-13
+
+---
+
+## v4.22.0 — ✅ DONE (2026-06-13) — Codebase Audit Cleanup
+
+### Dead Code Removal ✅
+- [x] Delete `src/hooks/useFileUpload.js` — never imported
+- [x] Delete `src/components/KnowledgeResurface.jsx` — never imported
+- [x] Delete `src/App.css` — Vite scaffolding, zero imports
+- [x] Delete `src/assets/react.svg` + `src/assets/vite.svg` — unused Vite defaults
+- [x] Delete `src/constants/` — empty directory
+- [x] Add `src/_archived` to `.gitignore`
+
+### Code Deduplication ✅
+- [x] `FinancePage.jsx` — Remove inline `CustomSelect` duplicate (40 lines), import shared component
+- [x] `FinancePage.jsx` — Migrate Edit Expense modal from `incubator-modal*` → `GenericModal`
+- [x] `TrackerPage.jsx` — Remove duplicate `SubAlert` render (already in Navbar)
+- [x] Create `src/components/GenericModal.jsx` — Shared modal component
+- [x] Create `src/styles/generic-modal.css` — Shared modal styles
+- [x] Create `src/utils/dateUtils.js` — Centralized Vietnamese date formatting
+
+### Structural Fixes ✅
+- [x] Move `src/pages/LifeJourneyPage.css` → `src/styles/life-journey.css`
+- [x] Update CSS import in `LifeJourneyPage.jsx`
+
+### Documentation Fixes ✅
+- [x] `ARCHITECTURE.md` — Fix Router v6 → v7, lazy count 8 → 13, remove useMoodLog, remove KnowledgeResurface, add new files
+- [x] `CHANGELOG.md` — v4.22.0 entry
+- [x] `package.json` — Bump version → 4.22.0
+
+### Verification ✅
+- [x] `npx vite build` — 0 errors (689ms)
+
+---
+
+## v4.21.0 — ✅ DONE (2026-05-24) — Optional Journey & Onboarding Redirect Polish
+- [x] `src/App.jsx` — Remove the forced journey redirect logic from AppShell.
+- [x] `docs/ARCHITECTURE.md` — Remove reference to redirected session state.
+- [x] `docs/FEATURES.md` — Update Journey & Onboarding behavior descriptions.
+- [x] `docs/PLAN.md` — Add v4.21.0 milestone.
+- [x] `CHANGELOG.md` — Record changes under v4.21.0.
+- [x] `package.json` — Bump version to 4.21.0.
 
 ---
 

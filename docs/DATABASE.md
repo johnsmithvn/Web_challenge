@@ -1,9 +1,9 @@
 # DATABASE DESIGN — Life Hub (Personal Life OS)
 **Target:** Supabase (PostgreSQL)
-**Version:** v4.11.0
-**Updated:** 2026-05-10
+**Version:** v4.22.0
+**Updated:** 2026-06-13
 **Strategy:** Production-ready from day 1
-**Source of Truth:** `data/schema_v4.4.0.sql` (25 tables) + `data/migration_v4.11.0_knowledge_groups.sql` (3 tables)
+**Source of Truth:** `data/schema_v4.4.0.sql` (25 tables) + incremental migrations (see Migration Files below)
 
 ---
 
@@ -58,7 +58,7 @@ Programs ──► program_habits   (template library, system + user)
 >
 > ⚠️ Do NOT duplicate SQL here. Read the `.sql` file directly for column definitions, RLS policies, triggers, and indexes.
 
-### Table Inventory (28 active tables)
+### Table Inventory (30 active tables)
 
 | # | Table | Purpose | Key constraints |
 |---|-------|---------|-----------------|
@@ -75,7 +75,7 @@ Programs ──► program_habits   (template library, system + user)
 | 11 | `program_habits` | Template habit definitions | FK → programs |
 | 12 | `user_journeys` | Journey runs | status: active/completed/extended/archived |
 | 13 | `journey_habits` | Snapshot of habits per run | FK → user_journeys, FK → habits |
-| 14 | `user_tasks` | Personal to-do items | energy_level, recurrence_rule JSONB |
+| 14 | `user_tasks` | Personal to-do items | priority SMALLINT, recurrence_rule JSONB |
 | 15 | `task_collections` | Junction: Task ↔ KB (M:N) | Composite PK(task_id, collection_id), CASCADE |
 | 16 | `collections` | Inbox + Knowledge Base | type CHECK: inbox/note/link/quote/learn/idea |
 | 17 | `expenses` | Daily spending log | amount VNĐ, category, note |
@@ -91,6 +91,7 @@ Programs ──► program_habits   (template library, system + user)
 | 27 | `knowledge_groups` | KB folder/group metadata | title, emoji, description. FK → profiles |
 | 28 | `collection_groups` | Junction: KB ↔ Groups (M:N) | Composite PK(collection_id, group_id), CASCADE |
 | 29 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
+| 30 | `inspirational_quotes` | User + system quotes | FK → profiles, `is_active` toggle, `audio_url` optional |
 | — | `friendships` | **[ARCHIVED v3.0.0]** Friend requests | Code in `src/_archived/FriendsPage.jsx`. Table exists in production DB but is not used by any active hook or page. Safe to DROP when ready. |
 
 ### Deprecated Columns
@@ -174,6 +175,12 @@ On first login (one-time per data type):
 |------|---------|
 | `data/schema_v4.4.0.sql` | **Master schema** — 25 tables + all RLS + triggers + seeds (idempotent) |
 | `data/reset_user_data.sql` | **Reset script** — DELETE all user data, keep auth accounts |
+| `data/migration_v4.7.2_add_description_to_intentions.sql` | ADD `description` column to `intentions` |
+| `data/migration_v4.9.0_task_priority.sql` | DROP energy/duration, ADD `priority` to `user_tasks` |
+| `data/migration_v4.10.1_drop_mood.sql` | DROP `mood_logs` table |
+| `data/migration_v4.11.0_knowledge_groups.sql` | 3 tables: `knowledge_groups` + `collection_groups` + `collection_notes` |
+| `data/migration_v4.12.0_quotes.sql` | `inspirational_quotes` table + RLS |
+| `data/migration_v4.14.0_collection_types.sql` | Expand collection type CHECK constraint |
 
 ## Supabase Setup Checklist
 

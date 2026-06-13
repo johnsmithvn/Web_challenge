@@ -18,7 +18,7 @@ import NotificationSettings from '../components/NotificationSettings';
 import CompletionModal from '../components/CompletionModal';
 import LoginNudgeModal from '../components/LoginNudgeModal';
 import TaskListSection from '../components/TaskListSection';
-import SubAlert from '../components/SubAlert';
+
 import '../styles/tracker.css';
 import '../styles/xpbar.css';
 import '../styles/calendar.css';
@@ -527,8 +527,7 @@ export default function TrackerPage() {
         {/* ── XP Bar ── */}
         <XpBar />
 
-        {/* ── Inline Widgets ── */}
-        <SubAlert />
+
 
         {/* ── Incubator Review Banner ── */}
         {reviewDueCount > 0 && (

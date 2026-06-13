@@ -3,8 +3,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { JourneyProvider } from './contexts/JourneyContext';
-import { useAuth } from './contexts/AuthContext';
-import { useActiveJourney } from './contexts/JourneyContext';
 import Navbar from './components/Navbar';
 import QuickCapture from './components/QuickCapture';
 import OnboardingModal, { useOnboarding } from './components/OnboardingModal';
@@ -66,39 +64,12 @@ function PageMeta() {
 function AppShell() {
   const { shouldShow } = useOnboarding();
   const [onboarded, setOnboarded] = useState(!shouldShow);
-  const { isAuthenticated } = useAuth();
-  const { activeJourney, isLoadingJourney } = useActiveJourney();
   const location = useLocation();
-
-  // Only redirect ONCE per session after login if no active journey.
-  // sessionStorage survives page reloads but clears on tab close.
-  const REDIRECT_KEY = 'vl_journey_redirected';
-  const [redirectToJourney, setRedirectToJourney] = useState(false);
-  useEffect(() => {
-    if (onboarded && isAuthenticated && !isLoadingJourney && !activeJourney
-        && !sessionStorage.getItem(REDIRECT_KEY)
-        && !location.pathname.startsWith('/journey')) {
-      sessionStorage.setItem(REDIRECT_KEY, '1');
-      setRedirectToJourney(true);
-    } else if (activeJourney) {
-      // Journey just started → clear flag so next login can re-check
-      setRedirectToJourney(false);
-      sessionStorage.removeItem(REDIRECT_KEY);
-    }
-  }, [onboarded, isAuthenticated, isLoadingJourney, activeJourney, location.pathname]);
-
-  // Clear redirect state after navigation happens
-  useEffect(() => {
-    if (redirectToJourney && location.pathname.startsWith('/journey')) {
-      setRedirectToJourney(false);
-    }
-  }, [location.pathname, redirectToJourney]);
 
   return (
     <>
       <PageMeta />
       {!onboarded && <OnboardingModal onDone={() => setOnboarded(true)} />}
-      {redirectToJourney && <Navigate to="/journey?firstTime=true" replace />}
       <Navbar />
       <QuickCapture />
       <GlobalAudioPlayer />

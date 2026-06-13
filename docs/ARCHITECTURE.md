@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.20.1
-**Updated:** 2026-05-24
+**Version:** v4.22.0
+**Updated:** 2026-06-13
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 
@@ -11,7 +11,7 @@
 | Layer | Technology |
 |-------|-----------|
 | Framework | React 19 + Vite 8 |
-| Routing | React Router v6 |
+| Routing | React Router v7 |
 | Styling | Vanilla CSS (CSS variables, glassmorphism) |
 | Database | Supabase (PostgreSQL + Realtime + Auth) |
 | Local fallback | localStorage (UI state only) |
@@ -49,8 +49,8 @@ src/
 │   ├── ActivityHeatmap.jsx    # v3.0.0 — GitHub-style SVG yearly heatmap (53×7 grid)
 │   ├── SubAlert.jsx           # v3.0.0 — Compact sidebar alert for upcoming subscription renewals
 │   ├── DatePickerPopover.jsx  # v4.10.0 — ClickUp-style date picker with shortcuts + calendar grid
-│   ├── KnowledgeResurface.jsx # v3.0.1 — "Hôm nay nhớ lại" spaced repetition (random Collect resurface)
 │   ├── TaskListSection.jsx    # v2.1.0 — Personal tasks UI (📌 Nhiệm Vụ) + energy/duration/recurrence v3.6.0
+│   ├── GenericModal.jsx       # v4.22.0 — Shared modal backdrop + container (replaces incubator-modal coupling)
 │   ├── CashflowBar.jsx       # v3.7.0 — 30-day subscription due date timeline
 │   ├── TagPicker.jsx         # v3.7.0 — Searchable multi-select tag dropdown
 │   ├── LinkKBModal.jsx       # v4.5.0 — Search+checkbox modal to link/unlink KB articles to a task
@@ -89,7 +89,7 @@ src/
 │   ├── useFitnessLog.js       # v4.0.0 — Fitness session logging (add, delete, todayLogs, weekSummary)
 │   ├── useKnowledgeGroups.js   # v4.11.0 — KB group CRUD + M:N link/unlink articles + fetchGroupArticles
 │   ├── useCollectionNotes.js   # v4.11.0 — Threaded sub-notes CRUD per KB article
-│   ├── useFileUpload.js       # v4.12.0 — Upload files via /api/upload (50MB Drive)
+│   ├── useFileUpload.js       # REMOVED v4.22.0 — was dead code (never imported)
 │   ├── useQuotes.js           # v4.12.0 — CRUD user quotes + merge system quotes.json
 │   ├── useLifeJourney.js      # v2.2.0 — Life milestones CRUD (localStorage-only)
 │   ├── useNotifications.js    # Browser notification API
@@ -101,7 +101,8 @@ src/
 │
 │ utils/
 │   ├── mediaUtils.js          # v4.16.0 — Helpers for Google Drive URL parsing and streaming
-│   └── currencyUtils.js       # v4.20.1 — Money input parsing & configurable currency settings
+│   ├── currencyUtils.js       # v4.20.1 — Money input parsing & configurable currency settings
+│   └── dateUtils.js           # v4.22.0 — Centralized Vietnamese date formatting helpers
 │
 ├── api/                       # v4.0.0 Vercel Edge Functions
 │   ├── meta.js                # OG metadata fetcher (edge runtime, 5s timeout, graceful fallback)
@@ -124,7 +125,7 @@ src/
 │   ├── LeaderboardPage.jsx    # /leaderboard — Streak/XP ranking (lazy)
 │   ├── LifeJourneyPage.jsx    # /life-journey — v2.2.0 — Emotion timeline SVG (lazy)
 │   ├── SettingsPage.jsx       # /settings — v4.1.0 — Tag Manager + Quote Manager (v4.12.0) + Profile
-│   └── LifeJourneyPage.css    # Co-located CSS (not in styles/)
+│   └── (all CSS now in styles/)
 │
 ├── data/                      # Static JSON content (Rule 14)
 │   ├── challenges.json        # 21 Daily Challenges
@@ -161,6 +162,8 @@ src/
 │   ├── settings.css           # v4.1.0 — Settings page, tag manager, color picker
 │   ├── datepicker.css         # v4.10.0 — ClickUp-style date picker
 │   ├── confirm-modal.css      # v3.2.0 — ConfirmModal glassmorphism
+│   ├── generic-modal.css      # v4.22.0 — Shared GenericModal styles
+│   ├── life-journey.css       # v4.22.0 — Life Journey page (moved from pages/)
 │   ├── quote-widget.css       # v4.12.0 — QuoteWidget purple accent
 │   ├── url-input-popover.css  # v4.12.0 — UrlInputPopover glassmorphism
 │   ├── completion.css         # CompletionModal styles
@@ -205,6 +208,7 @@ vl_habit_data          # REMOVED v1.6.1 — migrated sang Supabase `progress`, w
 vl_habit_progress      # REMOVED v1.5.0 — migrated sang Supabase `habit_logs`, wiped
 vl_focus_sessions      # REMOVED v1.6.2 — migrated sang Supabase `focus_sessions`, wiped
 vl_skip_{date}         # REMOVED v1.6.2 — Supabase-first, in-memory cho guest
+vl_journey_redirected  # REMOVED v4.21.0 — sessionStorage redirect-once flag per session
 
 --- STILL IN USE (UI state only) ---
 vl_migrated_v2         # userId — đã migrate vl_habit_data lên Supabase (v1.6.1)
@@ -215,7 +219,6 @@ vl_completion_shown_N  # "1" — completion modal shown for round N
 vl_habit_logs_migrated # "1" — vl_habit_progress migrated to Supabase
 vl_login_nudge_shown   # "1" — login nudge shown once
 vl_chunk_retry         # "1" — stale chunk retry flag (cleared on success)
-vl_journey_redirected  # sessionStorage — redirect-once flag per session
 vl_theme               # "dark" | "light" — theme preference (v2.2.0)
 vl_life_journey_events # JSON array — life milestones (v2.2.0, localStorage-only)
 vl_journey_title       # string — custom title for life journey chart (v2.2.0)
@@ -295,7 +298,6 @@ DashboardPage
   ├── useHabitStore      → streak, longestStreak, totalDone, data (heatmap)
   ├── useXpStore         → totalXp, levelInfo, log (today XP earned)
   ├── useSkipReasons     → getAllSkips() (skip analysis 14 days)
-  ├── useMoodLog         → moodLog (mood trend chart 7/30 days)    [v3.2.1]
   ├── useFocusTimer      → todayMinutes, todaySessions
   ├── useExpenses        → fetchExpenses, getTotal, getByCategory
   ├── useSubscriptions   → fetchSubs, getMonthlyCost, getUpcoming
@@ -340,13 +342,12 @@ ThemeProvider
   └── AuthProvider
         └── BrowserRouter
               └── JourneyProvider
-                    └── AppShell
-                          ├── PageMeta (SEO title/desc per route)
-                          ├── OnboardingModal (once, gated by vl_onboarded)
-                          ├── Redirect to /journey?firstTime=true (once per session if no journey)
-                          ├── Navbar (sidebar desktop + bottom tabs mobile)
-                          ├── QuickCapture (global floating [+] button)
-                          └── ErrorBoundary
+                     └── AppShell
+                           ├── PageMeta (SEO title/desc per route)
+                           ├── OnboardingModal (once, gated by vl_onboarded)
+                           ├── Navbar (sidebar desktop + bottom tabs mobile)
+                           ├── QuickCapture (global floating [+] button)
+                           └── ErrorBoundary
                                 └── Suspense (PageSkeleton fallback)
                                       └── Routes (12 lazy + 2 eager)
 ```
@@ -404,7 +405,7 @@ ThemeProvider
 - Không block routing — user có thể bỏ qua
 
 ### 10. Lazy Loading + Error Boundary (v1.7.0)
-- 8 pages lazy-loaded via `React.lazy` + `Suspense`
+- 13 pages lazy-loaded via `React.lazy` + `Suspense` (LandingPage + TrackerPage are eager)
 - `ErrorBoundary` wraps routes → friendly fallback thay màn trắng
 - `lazyRetry()` wrapper auto-reload on stale chunk after Vercel redeploy
 

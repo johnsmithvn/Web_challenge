@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-05-24
-**Current Version:** v4.20.1
+**Updated:** 2026-06-13
+**Current Version:** v4.22.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 ---
@@ -522,4 +522,6 @@
 | v4.19.9 | Hotfix: Fix Light Mode Task Form Inputs & Buttons Visibility |
 | **v4.20.0** | **Inbox Quick Done Feature (instant task conversion & completion)** |
 | v4.20.1 | Hotfix: Smart Money Input Parsing & Configurable Currency Settings |
+| **v4.21.0** | **Optional Journey & Onboarding Redirect Polish** |
+| **v4.22.0** | **Codebase Audit Cleanup (Dead Code, Dedup, Structural Fixes, GenericModal, dateUtils)** |
 

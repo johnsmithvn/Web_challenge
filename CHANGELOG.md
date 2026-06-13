@@ -1,5 +1,58 @@
 # CHANGELOG
 
+## v4.22.0 — 2026-06-13
+### Removed (Dead Code Cleanup)
+- **`useFileUpload.js`** — Hook never imported anywhere in the codebase
+- **`KnowledgeResurface.jsx`** — Component never imported by any page or component
+- **`App.css`** — Vite scaffolding leftover, zero imports
+- **`src/assets/react.svg`** + **`src/assets/vite.svg`** — Default Vite template files, unused
+- **`src/constants/`** — Empty directory
+- **SubAlert duplicate** from TrackerPage — already rendered globally in Navbar
+
+### Added
+- **`GenericModal.jsx`** — Shared modal component (backdrop + container + Body/Footer slots). Replaces cross-module `incubator-modal*` CSS coupling between FinancePage and IncubatorPage
+- **`src/styles/generic-modal.css`** — Shared modal styles (previously hardcoded in incubator.css)
+- **`src/utils/dateUtils.js`** — Centralized Vietnamese date formatting helpers (`formatDate`, `formatDateTime`, `formatWeekdayDate`, `formatMonthYear`, `formatMonth`, `formatWeekdayNarrow`). Replaces 20+ scattered `toLocaleDateString('vi-VN')` calls
+- **`src/_archived`** added to `.gitignore` — Prevents dead archived code from being committed
+
+### Changed
+- **FinancePage.jsx** — Removed inline `CustomSelect` re-implementation (40 lines), now imports from `src/components/CustomSelect.jsx`. Migrated Edit Expense modal from `incubator-modal*` classes to `GenericModal`
+- **LifeJourneyPage.css** — Moved from `src/pages/` to `src/styles/life-journey.css` to follow project CSS convention
+
+### Fixed (Documentation)
+- **ARCHITECTURE.md** — Updated React Router v6 → v7, fixed lazy page count 8 → 13, removed stale `useMoodLog` from DashboardPage data sources, removed dead `KnowledgeResurface` reference, added new files
+- **ARCHITECTURE.md** — Removed co-located CSS note for LifeJourneyPage
+
+### Files Added
+- `src/components/GenericModal.jsx`
+- `src/styles/generic-modal.css`
+- `src/utils/dateUtils.js`
+
+### Files Deleted
+- `src/hooks/useFileUpload.js`
+- `src/components/KnowledgeResurface.jsx`
+- `src/App.css`
+- `src/assets/react.svg`
+- `src/assets/vite.svg`
+- `src/constants/` (empty dir)
+
+### Files Modified
+- `src/pages/FinancePage.jsx`
+- `src/pages/TrackerPage.jsx`
+- `src/pages/LifeJourneyPage.jsx`
+- `docs/ARCHITECTURE.md`
+- `.gitignore`
+
+
+## v4.21.0 — 2026-05-24
+### Changed
+- **Optional Journey & Onboarding Redirect Polish:**
+  - Loại bỏ hoàn toàn cơ chế tự động chuyển hướng người dùng mới hoặc người dùng không có lộ trình đang hoạt động (active journey) sang trang `/journey`.
+  - Loại bỏ logic kiểm tra lộ trình, cờ `vl_journey_redirected` và state `redirectToJourney` trong `AppShell` (`src/App.jsx`).
+  - Dọn dẹp các biến và import không sử dụng (`useAuth`, `useActiveJourney`) trong `App.jsx`.
+  - Cho phép người dùng tự do truy cập trang Today Tracker (`/tracker`), Inbox, Finance, Collect mà không bị chặn điều hướng.
+  - TrackerPage vẫn giữ nguyên banner kêu gọi "Chọn lộ trình" ở dạng không ngăn cản (non-blocking) để người dùng có thể thao tác với thói quen tự do (custom habits) và nhiệm vụ.
+
 ## v4.20.1 — 2026-05-24
 ### Added
 - **Smart Money Input Parsing & Configurable Currency Settings:**

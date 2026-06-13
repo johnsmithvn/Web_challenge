@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useLifeJourney } from '../hooks/useLifeJourney';
 import { useConfirm } from '../components/ConfirmModal';
-import './LifeJourneyPage.css';
+import '../styles/life-journey.css';
 
 // ── Shared helpers ─────────────────────────────────────────────────────
 const toX = (age, lo, hi, padL, plotW) => padL + ((age - lo) / Math.max(hi - lo, 1)) * plotW;

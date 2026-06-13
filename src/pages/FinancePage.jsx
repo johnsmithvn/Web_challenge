@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useExpenses } from '../hooks/useExpenses';
 import { useSubscriptions } from '../hooks/useSubscriptions';
@@ -9,55 +9,13 @@ import { useAuth } from '../contexts/AuthContext';
 import CashflowBar from '../components/CashflowBar';
 import TagPicker from '../components/TagPicker';
 import EXPENSE_DATA from '../data/expense-categories.json';
+import CustomSelect from '../components/CustomSelect';
+import GenericModal from '../components/GenericModal';
 import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
 import '../styles/finance.css';
 
 const CATEGORIES = EXPENSE_DATA.categories;
 const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
-
-/* ── Custom Select Dropdown ───────────────────────────────── */
-function CustomSelect({ value, onChange, options, placeholder }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const selected = options.find(o => o.value === value);
-
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  return (
-    <div className="custom-select" ref={ref}>
-      <button
-        type="button"
-        className={`custom-select__trigger${open ? ' custom-select__trigger--open' : ''}`}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span className="custom-select__value">
-          {selected ? <>{selected.icon && <span className="custom-select__icon">{selected.icon}</span>}{selected.label}</> : placeholder}
-        </span>
-        <span className={`custom-select__arrow${open ? ' custom-select__arrow--up' : ''}`}>▾</span>
-      </button>
-      {open && (
-        <div className="custom-select__dropdown">
-          {options.map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              className={`custom-select__option${opt.value === value ? ' custom-select__option--active' : ''}`}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-            >
-              {opt.icon && <span className="custom-select__icon">{opt.icon}</span>}
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 
 // Get current month date range
 function getMonthRange() {
@@ -562,53 +520,47 @@ export default function FinancePage() {
 
       {/* ── Edit Expense Modal ── */}
       {editExp && (
-        <div className="incubator-modal-backdrop" onClick={() => setEditExp(null)}>
-          <div className="incubator-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
-            <div className="incubator-modal__header">
-              <span>✏️ Sửa chi tiêu</span>
-              <button className="incubator-modal__close" onClick={() => setEditExp(null)}>✕</button>
-            </div>
-            <form onSubmit={handleEditExpense}>
-              <div className="incubator-modal__body">
-                <label className="incubator-modal__label">Số tiền (VNĐ)</label>
-                <input
-                  className="incubator-modal__input"
-                  type="text"
-                  placeholder="Ví dụ: 50, 50k, 10$"
-                  value={editAmount}
-                  onChange={e => setEditAmount(e.target.value)}
-                  required
-                  autoFocus
-                />
-                {editAmount && (
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem', marginBottom: '0.75rem' }}>
-                    Xem trước: <strong style={{ color: 'var(--text-primary)' }}>{formatVND(parseCurrencyInput(editAmount))}</strong>
-                    {/[$]|usd/i.test(editAmount) && ' (Quy đổi tỷ giá)'}
-                  </div>
-                )}
-                <label className="incubator-modal__label">Danh mục</label>
-                <CustomSelect
-                  value={editCategory}
-                  onChange={setEditCategory}
-                  options={CATEGORIES.map(c => ({ value: c.key, label: c.label, icon: c.icon }))}
-                />
-                <label className="incubator-modal__label">Ghi chú</label>
-                <input
-                  className="incubator-modal__input"
-                  type="text"
-                  value={editNote}
-                  onChange={e => setEditNote(e.target.value)}
-                  placeholder="Ghi chú (tùy chọn)"
-                  maxLength={200}
-                />
-              </div>
-              <div className="incubator-modal__footer">
-                <button type="button" className="btn btn-ghost" onClick={() => setEditExp(null)}>Huỷ</button>
-                <button type="submit" className="btn btn-primary" disabled={!editAmount}>💾 Lưu</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <GenericModal onClose={() => setEditExp(null)} title="✏️ Sửa chi tiêu" maxWidth={380}>
+          <form onSubmit={handleEditExpense}>
+            <GenericModal.Body>
+              <label className="generic-modal__label">Số tiền (VNĐ)</label>
+              <input
+                className="generic-modal__input"
+                type="text"
+                placeholder="Ví dụ: 50, 50k, 10$"
+                value={editAmount}
+                onChange={e => setEditAmount(e.target.value)}
+                required
+                autoFocus
+              />
+              {editAmount && (
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem', marginBottom: '0.75rem' }}>
+                  Xem trước: <strong style={{ color: 'var(--text-primary)' }}>{formatVND(parseCurrencyInput(editAmount))}</strong>
+                  {/[$]|usd/i.test(editAmount) && ' (Quy đổi tỷ giá)'}
+                </div>
+              )}
+              <label className="generic-modal__label">Danh mục</label>
+              <CustomSelect
+                value={editCategory}
+                onChange={setEditCategory}
+                options={CATEGORIES.map(c => ({ value: c.key, label: c.label, icon: c.icon }))}
+              />
+              <label className="generic-modal__label">Ghi chú</label>
+              <input
+                className="generic-modal__input"
+                type="text"
+                value={editNote}
+                onChange={e => setEditNote(e.target.value)}
+                placeholder="Ghi chú (tùy chọn)"
+                maxLength={200}
+              />
+            </GenericModal.Body>
+            <GenericModal.Footer>
+              <button type="button" className="btn btn-ghost" onClick={() => setEditExp(null)}>Huỷ</button>
+              <button type="submit" className="btn btn-primary" disabled={!editAmount}>💾 Lưu</button>
+            </GenericModal.Footer>
+          </form>
+        </GenericModal>
       )}
     </>
   );

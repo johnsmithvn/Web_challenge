@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.20.1
-**Updated:** 2026-05-24
+**Version:** v4.22.0
+**Updated:** 2026-06-13
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -320,7 +320,7 @@
 **Added:** v1.6.0, expanded v2.0.0
 **Files:** `src/pages/JourneyPage.jsx`, `src/components/journey/*`, `src/styles/journey.css`, `src/data/programs.json`
 
-**Mô tả:** Hệ thống quản lý lộ trình (journey) giúp user có mục tiêu hành trình rõ ràng.
+**Mô tả:** Hệ thống quản lý lộ trình (journey) giúp user có mục tiêu hành trình rõ ràng. Kể từ `v4.21.0`, việc chọn lộ trình là tùy chọn (Optional), loại bỏ cơ chế cưỡng chế tự động chuyển hướng khi người dùng đăng nhập mà không có lộ trình active.
 
 **4 tabs:**
 1. **🗺 Đang Chạy** — Progress ring SVG (ngày hiện tại / target), habit chips. Completion UI (v2.0.0): khi `completedDays >= targetDays` → 🎉 banner + 3 actions: Renew / +21 Ngày / ✅ Hoàn Thành. Nút Gia Hạn / Bỏ Cuộc
