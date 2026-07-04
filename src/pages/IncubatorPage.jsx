@@ -152,7 +152,7 @@ export default function IncubatorPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const {
-    intentions, isLoading, reviewDueCount, fetchIntentions,
+    intentions, isLoading, reviewDueCount,
     addIntention, updateIntention, deferIntention, executeIntention,
     abandonIntention, restoreIntention, deleteIntention, fetchAbandoned, getLogs,
   } = useIntentions();
@@ -336,6 +336,17 @@ export default function IncubatorPage() {
       }
     }
 
+    // Guard: if nothing was actually created (e.g. "Chi tiêu" chosen but no estimated_cost,
+    // or every insert failed), do NOT mark the intention executed — that would silently lose it.
+    if (convertedTypes.length === 0) {
+      alert(
+        execOptions.expense && !executeModal.estimated_cost
+          ? 'Chưa có chi phí ước tính. Hãy thêm chi phí cho dự định hoặc bỏ chọn "Chi tiêu".'
+          : 'Không tạo được mục nào — vui lòng thử lại.'
+      );
+      return; // keep the modal open so the user can adjust
+    }
+
     // Mark intention as executed
     await executeIntention(executeModal.id, { convertedTypes, convertedIds });
 
@@ -361,14 +372,6 @@ export default function IncubatorPage() {
     setTimelineLogs(logs);
     setExpandedId(id);
   }, [expandedId, getLogs]);
-
-  if (!user) {
-    return (
-      <div className="incubator-page">
-        <div className="incubator-empty">🔐 Đăng nhập để sử dụng Incubator</div>
-      </div>
-    );
-  }
 
   // Switch to abandoned tab
   const handleTabChange = useCallback(async (tab) => {
@@ -396,6 +399,15 @@ export default function IncubatorPage() {
       setArchivedItems(prev => prev.filter(i => i.id !== id));
     }
   }, [deleteIntention]);
+
+  // Guard placed AFTER all hooks so hook order stays stable across renders (rules-of-hooks).
+  if (!user) {
+    return (
+      <div className="incubator-page">
+        <div className="incubator-empty">🔐 Đăng nhập để sử dụng Incubator</div>
+      </div>
+    );
+  }
 
   return (
     <>

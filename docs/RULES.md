@@ -1,8 +1,8 @@
 # AI_AGENT_RULES.md — Life Hub (Personal Life OS)
 
 **Project:** Life Hub — Personal Life OS
-**Version:** v4.22.0
-**Updated:** 2026-06-13
+**Version:** v4.23.0
+**Updated:** 2026-06-28
 **Repository:** React 19 + Vite 8 + Supabase (PostgreSQL) SPA
 
 Rules for AI coding agents working on this repository.

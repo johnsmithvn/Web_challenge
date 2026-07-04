@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useActiveJourney } from '../contexts/JourneyContext';
+import { logger } from '../utils/logger';
 
 /**
  * useJourney — manages user journey lifecycle mutations.
@@ -52,7 +53,7 @@ export function useJourney() {
       if (error) throw error;
       setJourneyHistory(data || []);
     } catch (err) {
-      console.warn('[useJourney] fetchHistory error:', err.message);
+      logger.warn('[useJourney] fetchHistory error:', err.message);
     }
   }, [useDB, user]);
 
@@ -83,7 +84,7 @@ export function useJourney() {
       .select()
       .single();
 
-    if (jErr) { console.warn('[useJourney] ensureDefault error:', jErr.message); return null; }
+    if (jErr) { logger.warn('[useJourney] ensureDefault error:', jErr.message); return null; }
 
     if (activeHabits.length) {
       const snaps = activeHabits.map((h, i) => ({
@@ -163,7 +164,7 @@ export function useJourney() {
       .select()
       .single();
 
-    if (error) { console.warn('[useJourney] startJourney error:', error.message); return null; }
+    if (error) { logger.warn('[useJourney] startJourney error:', error.message); return null; }
 
     // ── Step 3: Create FRESH habit rows from template ────────
     // Always new rows — each journey owns its own habits
@@ -190,9 +191,9 @@ export function useJourney() {
         .select('id, name, action, icon, color');
 
       if (hErr) {
-        console.warn('[useJourney] habit insert error:', hErr.message);
+        logger.warn('[useJourney] habit insert error:', hErr.message);
       } else {
-        console.log(`[useJourney] Created ${insertedHabits?.length ?? 0} habits for journey "${title}"`);
+        logger.info(`[useJourney] Created ${insertedHabits?.length ?? 0} habits for journey "${title}"`);
       }
 
       // ── Step 4: Build journey_habits snapshot ────────────────
@@ -250,7 +251,7 @@ export function useJourney() {
         .from('user_journeys')
         .update(updates)
         .eq('id', activeJourney.id);
-      if (error) { console.warn('[useJourney] complete error:', error.message); return; }
+      if (error) { logger.warn('[useJourney] complete error:', error.message); return; }
 
       // 2. Close all habits belonging to this journey
       await supabase
@@ -306,7 +307,7 @@ export function useJourney() {
     }
 
     const { data: newJourney, error } = await supabase.from('user_journeys').insert(payload).select().single();
-    if (error) { console.warn('[useJourney] renew error:', error.message); return null; }
+    if (error) { logger.warn('[useJourney] renew error:', error.message); return null; }
 
     // 4. Clone old habits as FRESH rows for the new journey
     if (oldHabits.length) {
@@ -343,7 +344,7 @@ export function useJourney() {
       }));
       await supabase.from('journey_habits').insert(snaps);
 
-      console.log(`[useJourney] Renewed: cloned ${habitRows.length} habits for cycle ${payload.cycle}`);
+      logger.info(`[useJourney] Renewed: cloned ${habitRows.length} habits for cycle ${payload.cycle}`);
     }
 
     setActiveJourney(newJourney);
@@ -361,7 +362,7 @@ export function useJourney() {
         .from('user_journeys')
         .update({ target_days: newTarget, status: 'extended' })
         .eq('id', activeJourney.id);
-      if (error) { console.warn('[useJourney] extend error:', error.message); return; }
+      if (error) { logger.warn('[useJourney] extend error:', error.message); return; }
     }
 
     const updated = { ...activeJourney, target_days: newTarget, status: 'extended' };

@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 /**
  * useCollections — CRUD for the `collections` table.
@@ -53,7 +54,7 @@ export function useCollections() {
 
       // Step 2: Fallback without task_collections (keeps collection_tags)
       if (error) {
-        console.warn('[useCollections] full join failed, trying tags-only:', error.message);
+        logger.warn('[useCollections] full join failed, trying tags-only:', error.message);
         joinLevel = 'tags-only';
         let q2 = supabase
           .from('collections')
@@ -66,7 +67,7 @@ export function useCollections() {
 
         if (r2.error) {
           // Step 3: Plain select (no joins at all)
-          console.warn('[useCollections] tags join failed, plain select:', r2.error.message);
+          logger.warn('[useCollections] tags join failed, plain select:', r2.error.message);
           joinLevel = 'none';
           let q3 = supabase
             .from('collections')
@@ -115,7 +116,7 @@ export function useCollections() {
 
       setItems(mapped);
     } catch (err) {
-      console.warn('[useCollections] fetch error:', err.message);
+      logger.warn('[useCollections] fetch error:', err.message);
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +150,7 @@ export function useCollections() {
         .single();
 
       if (error) {
-        console.error('[useCollections] addItem DB error:', error.message, error.details, error.hint);
+        logger.error('[useCollections] addItem DB error:', error.message, error.details, error.hint);
         throw error;
       }
 
@@ -160,7 +161,7 @@ export function useCollections() {
       setItems(prev => [withTags, ...prev]);
       return data;
     } catch (err) {
-      console.error('[useCollections] addItem failed:', err.message);
+      logger.error('[useCollections] addItem failed:', err.message);
       return null;
     }
   }, [enabled, user]);
@@ -184,7 +185,7 @@ export function useCollections() {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn('[useCollections] update error:', err.message);
+      logger.warn('[useCollections] update error:', err.message);
       // Rollback: refetch
       fetchItems();
       return false;
@@ -208,7 +209,7 @@ export function useCollections() {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn('[useCollections] delete error:', err.message);
+      logger.warn('[useCollections] delete error:', err.message);
       fetchItems();
       return false;
     }
@@ -248,7 +249,7 @@ export function useCollections() {
       if (error) throw error;
       return count || 0;
     } catch (err) {
-      console.warn('[useCollections] inboxCount error:', err.message);
+      logger.warn('[useCollections] inboxCount error:', err.message);
       return 0;
     }
   }, [enabled, user]);
@@ -270,7 +271,7 @@ export function useCollections() {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn('[useCollections] snooze error:', err.message);
+      logger.warn('[useCollections] snooze error:', err.message);
       fetchItems({ type: 'inbox' });
       return false;
     }
@@ -291,7 +292,7 @@ export function useCollections() {
       if (error) throw error;
       return count || 0;
     } catch (err) {
-      console.warn('[useCollections] snoozedCount error:', err.message);
+      logger.warn('[useCollections] snoozedCount error:', err.message);
       return 0;
     }
   }, [enabled, user]);
@@ -312,7 +313,7 @@ export function useCollections() {
       if (error) throw error;
       return (data || []).map(item => ({ ...item, _tags: [] }));
     } catch (err) {
-      console.warn('[useCollections] fetchSnoozed error:', err.message);
+      logger.warn('[useCollections] fetchSnoozed error:', err.message);
       return [];
     }
   }, [enabled, user]);

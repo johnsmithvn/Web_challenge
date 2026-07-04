@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.22.0
-**Updated:** 2026-06-13
+**Version:** v4.23.0
+**Updated:** 2026-06-28
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 
@@ -104,9 +104,10 @@ src/
 │   ├── currencyUtils.js       # v4.20.1 — Money input parsing & configurable currency settings
 │   └── dateUtils.js           # v4.22.0 — Centralized Vietnamese date formatting helpers
 │
-├── api/                       # v4.0.0 Vercel Edge Functions
-│   ├── meta.js                # OG metadata fetcher (edge runtime, 5s timeout, graceful fallback)
-│   └── upload.js              # v4.16.1 — Unified upload proxy (Google Drive Service Account for all media)
+├── api/                       # Vercel serverless functions
+│   ├── upload.js              # v4.16.1 — Upload proxy → Google Drive (Supabase JWT required; folder whitelist)
+│   ├── stream.js              # v4.23.0 — Drive media stream proxy (Range/seek; folder-scoped; rate-limited)
+│   └── _lib/verifyAuth.js     # Supabase JWT verification helper (not a route; api/meta.js removed v4.23.0)
 │
 ├── pages/
 │   ├── LandingPage.jsx        # / — Marketing page (eager loaded)

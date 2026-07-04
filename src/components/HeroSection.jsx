@@ -1,9 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/hero.css';
 
 export default function HeroSection() {
-  const titleRef = useRef(null);
 
   useEffect(() => {
     // Typewriter for subtitle

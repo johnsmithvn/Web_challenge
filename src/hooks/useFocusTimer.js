@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useActiveJourney } from '../contexts/JourneyContext';
+import { logger } from '../utils/logger';
 
 // XP for completing a focus session.
 // Written directly to Supabase xp_logs to avoid circular import with useXpStore.
@@ -29,7 +30,7 @@ async function awardFocusXp(userId, sessionId, useDB) {
       created_at: new Date().toISOString(),
     });
   } catch (e) {
-    console.warn('[FocusTimer] XP award failed:', e.message);
+    logger.warn('[FocusTimer] XP award failed:', e.message);
   }
 }
 
@@ -99,12 +100,15 @@ export function useFocusTimer() {
 
   const pct = Math.round(((totalSec - secondsLeft) / totalSec) * 100);
 
-  // Tick
+  // Tick — calls the LATEST handlePhaseEnd via a ref so a running timer doesn't
+  // capture a stale closure (which would read stale session/sessions and pick the
+  // wrong next phase or drop concurrently-added sessions).
+  const handlePhaseEndRef = useRef(null);
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => {
       setSecondsLeft(s => {
-        if (s <= 1) { clearInterval(id); handlePhaseEnd(); return 0; }
+        if (s <= 1) { clearInterval(id); handlePhaseEndRef.current?.(); return 0; }
         return s - 1;
       });
     }, 1000);
@@ -140,7 +144,7 @@ export function useFocusTimer() {
           date:         today,
           completed_at: log.completedAt,
         }).then(({ error }) => {
-          if (error) console.warn('[FocusTimer] session insert failed:', error.message);
+          if (error) logger.warn('[FocusTimer] session insert failed:', error.message);
         });
 
         // Award XP via Supabase (deduped)
@@ -154,7 +158,7 @@ export function useFocusTimer() {
           amount:  FOCUS_XP,
           meta:    { session_id: log.id, habit_id: habitId, duration_min: settings.workMin },
         }).then(({ error }) => {
-          if (error) console.warn('[FocusTimer] activity_log insert failed:', error.message);
+          if (error) logger.warn('[FocusTimer] activity_log insert failed:', error.message);
         });
       }
 
@@ -191,6 +195,9 @@ export function useFocusTimer() {
       }
     }
   }, [phase, session, sessions, settings, habitId, useDB, user]);
+
+  // Keep the ref pointing at the freshest handlePhaseEnd for the tick interval.
+  useEffect(() => { handlePhaseEndRef.current = handlePhaseEnd; }, [handlePhaseEnd]);
 
   const start  = useCallback(() => setRunning(true), []);
   const pause  = useCallback(() => setRunning(false), []);

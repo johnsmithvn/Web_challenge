@@ -285,8 +285,7 @@ const PerHabitWeeklyGrid = memo(function PerHabitWeeklyGrid({ habitProg, activeH
    ══════════════════════════════════════════════════════════ */
 export default function TrackerPage() {
   const {
-    data, toggle, weekDates, streak, longestStreak,
-    totalDone, completionPct, badge, todayDone
+    data, toggle, streak, totalDone,
   } = useHabitStore();
   const { activeHabits, conqueredHabits, conquestHabit, renewHabit } = useCustomHabits();
   const { addXp, removeXp, hasMilestone, totalXp } = useXpStore();
@@ -318,27 +317,31 @@ export default function TrackerPage() {
   const NUDGE_KEY = 'vl_login_nudge_shown';
   const [showNudge, setShowNudge] = useState(false);
 
-  // Completion modal
-  const COMPLETION_KEY = `vl_completion_shown_${streak >= 21 ? Math.floor(streak / 21) : 0}`;
-  const [showCompletion, setShowCompletion] = useState(() =>
-    streak >= 21 && !localStorage.getItem(COMPLETION_KEY)
-  );
+  // Completion modal — derived from streak so it reacts to async-loaded data without a
+  // setState-in-effect (the old lazy useState read streak=0 at mount and never fired).
+  // `dismissedCycle` lets the user close it for the current 21-day cycle only.
+  const completionCycle = streak >= 21 ? Math.floor(streak / 21) : 0;
+  const COMPLETION_KEY = `vl_completion_shown_${completionCycle}`;
+  const [dismissedCycle, setDismissedCycle] = useState(-1);
+  const showCompletion = streak >= 21
+    && dismissedCycle !== completionCycle
+    && !localStorage.getItem(COMPLETION_KEY);
 
   const dismissCompletion = () => {
     localStorage.setItem(COMPLETION_KEY, '1');
-    setShowCompletion(false);
+    setDismissedCycle(completionCycle);
   };
 
   const handleRenew = () => {
     localStorage.setItem(COMPLETION_KEY, '1');
-    setShowCompletion(false);
+    setDismissedCycle(completionCycle);
     activeHabits.forEach(h => renewHabit(h.id));
     window.location.reload();
   };
 
   const handleNewChallenge = () => {
     localStorage.setItem(COMPLETION_KEY, '1');
-    setShowCompletion(false);
+    setDismissedCycle(completionCycle);
     activeHabits.forEach(h => conquestHabit(h.id));
     window.location.reload();
   };
@@ -355,7 +358,8 @@ export default function TrackerPage() {
 
     if (!wasDone && !hasMilestone('habit_tick', { habitId: habit.id, date: todayKey })) {
       addXp(XP_REWARDS.daily_check, 'habit_tick', { habitId: habit.id, date: todayKey });
-    } else if (wasDone) {
+    } else if (wasDone && hasMilestone('habit_tick', { habitId: habit.id, date: todayKey })) {
+      // Only reverse XP that was actually granted for this habit/day.
       removeXp('habit_tick', { habitId: habit.id, date: todayKey });
     }
 

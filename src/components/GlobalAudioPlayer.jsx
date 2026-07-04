@@ -1,16 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRandomPodcast } from '../hooks/useRandomPodcast';
-import { extractDriveDirectUrl } from '../utils/mediaUtils';
+import { getDriveStreamUrl } from '../utils/mediaUtils';
 import { Play, Pause, SkipForward, X, Music } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { logger } from '../utils/logger';
 
 export default function GlobalAudioPlayer() {
-  const { podcast, fetchRandomPodcast, isLoading } = useRandomPodcast();
+  const { podcast, fetchRandomPodcast } = useRandomPodcast();
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const audioRef = useRef(null);
-  const location = useLocation();
 
   // If user is on /collect and specifically reading a podcast, we might want to hide the global player or sync it.
   // For now, let's just make it a floating player that the user can dismiss.
@@ -32,20 +31,20 @@ export default function GlobalAudioPlayer() {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play().catch(e => console.error("Autoplay blocked:", e));
+      audioRef.current.play().catch(e => logger.error("Autoplay blocked:", e));
     }
     setIsPlaying(!isPlaying);
   };
 
   if (!podcast || isDismissed) return null;
 
-  const directUrl = extractDriveDirectUrl(podcast.url) || podcast.url;
+  const streamUrl = getDriveStreamUrl(podcast.url) || podcast.url;
 
   return (
     <div className={`global-audio-player ${isMinimized ? 'is-minimized' : ''}`}>
       <audio
         ref={audioRef}
-        src={directUrl}
+        src={streamUrl}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onEnded={() => {

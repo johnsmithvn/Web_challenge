@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 // ── UI state flags (NOT data) — these stay in localStorage forever ──
 // vl_program_round, vl_completion_shown_*, vl_login_nudge_shown → OK
@@ -76,14 +77,14 @@ async function migrateLocalToSupabase(userId) {
       await supabase
         .from('progress')
         .upsert(rows, { onConflict: 'user_id,date' });
-      console.log(`[HabitStore] Migrated ${rows.length} entries from localStorage`);
+      logger.info(`[HabitStore] Migrated ${rows.length} entries from localStorage`);
     }
 
     // Wipe local copy — Supabase is now the sole source
     localStorage.removeItem(LEGACY_LS_KEY);
     localStorage.setItem(MIGRATED_KEY, userId);
   } catch (e) {
-    console.warn('[HabitStore] Migration failed (will retry next session):', e.message);
+    logger.warn('[HabitStore] Migration failed (will retry next session):', e.message);
   }
 }
 
@@ -145,7 +146,7 @@ export function useHabitStore() {
 
       if (error) {
         // Rollback optimistic update on DB failure
-        console.warn('[HabitStore] toggle failed, rolling back:', error.message);
+        logger.warn('[HabitStore] toggle failed, rolling back:', error.message);
         setData(prev => ({ ...prev, [dateKey]: !next }));
       }
     }

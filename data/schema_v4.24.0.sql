@@ -1,12 +1,27 @@
--- Life Hub v4.4.0 FULL SCHEMA (idempotent - safe to re-run)
--- Date: 2026-05-02 | 24 tables, all RLS, all indexes
+-- ════════════════════════════════════════════════════════════════════════════
+-- Life Hub — FULL CONSOLIDATED SCHEMA  v4.24.0
+-- ════════════════════════════════════════════════════════════════════════════
+-- ✅ CHỈ CẦN CHẠY FILE NÀY 1 LẦN trên Supabase → SQL Editor (fresh install).
+-- Idempotent — an toàn chạy lại nhiều lần.
+--
+-- File này GỘP toàn bộ: schema_v4.4.0 + các migration v4.4.1 → v4.24.0.
+-- Đã phản ánh trạng thái CUỐI CÙNG:
+--   • mood_logs đã bị gỡ (v4.10.1) — không còn trong schema này
+--   • user_tasks dùng `priority` (bỏ energy_level/duration_est) (v4.9.0)
+--   • collections.type = 8 loại cuối (v4.14.0)
+--   • thêm knowledge_groups / collection_groups / collection_notes (v4.11.0)
+--   • thêm inspirational_quotes (v4.12.0)
+--   • profiles: chỉ chủ tài khoản đọc được hàng mình + 4 hàm RPC (v4.24.0 — vá rò email)
+--   • friendships: GIỮ LẠI nhưng đã archived/không dùng — an toàn để DROP nếu muốn
+-- ════════════════════════════════════════════════════════════════════════════
 
+-- Shared trigger function: auto-update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
 
--- 1. profiles
+-- ── 1. profiles ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username TEXT UNIQUE, email TEXT, display_name TEXT, avatar_url TEXT,
@@ -15,14 +30,17 @@ CREATE TABLE IF NOT EXISTS profiles (
 CREATE UNIQUE INDEX IF NOT EXISTS uidx_profiles_username ON profiles (username) WHERE username IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles (email) WHERE email IS NOT NULL;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+-- v4.24.0: chỉ chủ tài khoản đọc được hàng của mình (trước đây USING(true) → rò email).
+-- Nhu cầu cross-user (login, leaderboard, check trùng) đi qua các hàm RPC ở cuối file.
 DROP POLICY IF EXISTS "profiles_select_all" ON profiles;
-CREATE POLICY "profiles_select_all" ON profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "profiles_select_own" ON profiles;
+CREATE POLICY "profiles_select_own" ON profiles FOR SELECT USING (id = auth.uid());
 DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
 CREATE POLICY "profiles_insert_own" ON profiles FOR INSERT WITH CHECK (id = auth.uid());
 DROP POLICY IF EXISTS "profiles_update_own" ON profiles;
 CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE USING (id = auth.uid());
 
--- 2. progress
+-- ── 2. progress ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -38,17 +56,20 @@ CREATE POLICY "progress_insert_own" ON progress FOR INSERT WITH CHECK (user_id =
 DROP POLICY IF EXISTS "progress_update_own" ON progress;
 CREATE POLICY "progress_update_own" ON progress FOR UPDATE USING (user_id = auth.uid());
 
--- 3. streaks
+-- ── 3. streaks ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS streaks (
   user_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
   current_streak INT NOT NULL DEFAULT 0, longest_streak INT NOT NULL DEFAULT 0,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE streaks ENABLE ROW LEVEL SECURITY;
+-- Đọc chéo cho leaderboard giờ đi qua hàm get_leaderboard() (SECURITY DEFINER),
+-- nên chỉ cần policy đọc hàng của mình.
 DROP POLICY IF EXISTS "streaks_select_all" ON streaks;
-CREATE POLICY "streaks_select_all" ON streaks FOR SELECT USING (true);
+DROP POLICY IF EXISTS "streaks_own" ON streaks;
+CREATE POLICY "streaks_own" ON streaks FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
--- 4. notification_settings
+-- ── 4. notification_settings ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS notification_settings (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   enabled BOOLEAN DEFAULT true, remind_time TIME DEFAULT '08:00',
@@ -58,7 +79,7 @@ ALTER TABLE notification_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "notif_own" ON notification_settings;
 CREATE POLICY "notif_own" ON notification_settings FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
--- 5. habits
+-- ── 5. habits ───────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS habits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -79,7 +100,7 @@ ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "habits_own" ON habits;
 CREATE POLICY "habits_own" ON habits FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
--- 6. programs
+-- ── 6. programs ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS programs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   creator_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -98,7 +119,7 @@ DROP POLICY IF EXISTS "Manage own programs" ON programs;
 CREATE POLICY "Manage own programs" ON programs FOR ALL
   USING (creator_id = auth.uid()) WITH CHECK (creator_id = auth.uid());
 
--- 7. program_habits
+-- ── 7. program_habits ───────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS program_habits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   program_id UUID NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
@@ -111,7 +132,7 @@ DROP POLICY IF EXISTS "Read program habits" ON program_habits;
 CREATE POLICY "Read program habits" ON program_habits FOR SELECT
   USING (program_id IN (SELECT id FROM programs WHERE is_public=true OR is_template=true OR creator_id=auth.uid()));
 
--- 8. user_journeys
+-- ── 8. user_journeys ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS user_journeys (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -128,7 +149,7 @@ DROP POLICY IF EXISTS "Users manage own journeys" ON user_journeys;
 CREATE POLICY "Users manage own journeys" ON user_journeys FOR ALL
   USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
--- 9. journey_habits
+-- ── 9. journey_habits ───────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS journey_habits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   journey_id UUID NOT NULL REFERENCES user_journeys(id) ON DELETE CASCADE,
@@ -142,7 +163,7 @@ DROP POLICY IF EXISTS "Users see own journey habits" ON journey_habits;
 CREATE POLICY "Users see own journey habits" ON journey_habits FOR ALL
   USING (journey_id IN (SELECT id FROM user_journeys WHERE user_id = auth.uid()));
 
--- 10. habit_logs
+-- ── 10. habit_logs ──────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS habit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -161,7 +182,7 @@ DROP POLICY IF EXISTS "Users manage own habit_logs" ON habit_logs;
 CREATE POLICY "Users manage own habit_logs" ON habit_logs FOR ALL
   USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
--- 11. focus_sessions
+-- ── 11. focus_sessions ──────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS focus_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -176,20 +197,9 @@ ALTER TABLE focus_sessions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "focus_own" ON focus_sessions;
 CREATE POLICY "focus_own" ON focus_sessions FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
--- 12. mood_logs
-CREATE TABLE IF NOT EXISTS mood_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  date DATE NOT NULL DEFAULT CURRENT_DATE,
-  mood_emoji TEXT NOT NULL, mood_label TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE (user_id, date)
-);
-CREATE INDEX IF NOT EXISTS idx_mood_user ON mood_logs (user_id, date DESC);
-ALTER TABLE mood_logs ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "mood_own" ON mood_logs;
-CREATE POLICY "mood_own" ON mood_logs FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+-- (mood_logs đã GỠ ở v4.10.1 — cố tình không có trong schema này)
 
--- 13. skip_reasons
+-- ── 12. skip_reasons ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS skip_reasons (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -201,7 +211,7 @@ ALTER TABLE skip_reasons ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "skip_own" ON skip_reasons;
 CREATE POLICY "skip_own" ON skip_reasons FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
--- 14. xp_logs
+-- ── 13. xp_logs ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS xp_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -213,10 +223,10 @@ CREATE INDEX IF NOT EXISTS idx_xp_logs_user ON xp_logs (user_id, created_at DESC
 ALTER TABLE xp_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "xp_own" ON xp_logs;
 CREATE POLICY "xp_own" ON xp_logs FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+-- v4.24.0: bỏ "xp_read_all" — leaderboard giờ tổng hợp qua get_leaderboard() (definer).
 DROP POLICY IF EXISTS "xp_read_all" ON xp_logs;
-CREATE POLICY "xp_read_all" ON xp_logs FOR SELECT USING (auth.role() = 'authenticated');
 
--- 15. friendships
+-- ── 14. friendships (ARCHIVED v3.0.0 — không dùng; an toàn để DROP) ──────────
 CREATE TABLE IF NOT EXISTS friendships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   requester_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -234,18 +244,22 @@ DROP POLICY IF EXISTS "friendships_own" ON friendships;
 CREATE POLICY "friendships_own" ON friendships FOR ALL
   USING (requester_id = auth.uid() OR addressee_id = auth.uid()) WITH CHECK (requester_id = auth.uid());
 
--- 16. user_tasks
+-- ── 15. user_tasks (v4.9.0: priority thay energy_level/duration_est) ─────────
 CREATE TABLE IF NOT EXISTS user_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   title TEXT NOT NULL, description TEXT,
   due_date DATE NOT NULL, due_time TIME,
-  energy_level TEXT CHECK (energy_level IN ('high','medium','low')),
-  duration_est SMALLINT, recurrence_rule JSONB,
+  priority SMALLINT NOT NULL DEFAULT 0,  -- 0=None,1=Lowest,2=Low,3=Medium,4=High,5=Urgent
+  recurrence_rule JSONB,
   collection_id UUID,
   completed BOOLEAN NOT NULL DEFAULT false, completed_at TIMESTAMPTZ,
   notified BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- Nâng cấp DB cũ (nếu chạy lại trên DB từng có energy_level/duration_est):
+ALTER TABLE user_tasks DROP COLUMN IF EXISTS energy_level;
+ALTER TABLE user_tasks DROP COLUMN IF EXISTS duration_est;
+ALTER TABLE user_tasks ADD COLUMN IF NOT EXISTS priority SMALLINT NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_user_tasks_user_date ON user_tasks (user_id, due_date);
 CREATE INDEX IF NOT EXISTS idx_user_tasks_pending ON user_tasks (user_id, completed, due_date) WHERE completed=false;
 CREATE INDEX IF NOT EXISTS idx_user_tasks_recurring ON user_tasks (user_id) WHERE recurrence_rule IS NOT NULL;
@@ -254,7 +268,7 @@ DROP POLICY IF EXISTS "Users manage own tasks" ON user_tasks;
 CREATE POLICY "Users manage own tasks" ON user_tasks FOR ALL
   USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
--- 17. collections
+-- ── 16. collections ─────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS collections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -284,15 +298,43 @@ CREATE POLICY "collections_update_own" ON collections FOR UPDATE USING (user_id 
 DROP POLICY IF EXISTS "collections_delete_own" ON collections;
 CREATE POLICY "collections_delete_own" ON collections FOR DELETE USING (user_id = auth.uid());
 
--- FK: user_tasks.collection_id
+-- collections.type — migrate dữ liệu cũ rồi áp CHECK 8 loại cuối (v4.4.1 + v4.14.0)
+UPDATE collections SET type = 'idea'  WHERE type = 'want';
+UPDATE collections SET type = 'note'  WHERE type = 'link';
+UPDATE collections SET type = 'learn' WHERE type = 'experience';
+UPDATE collections SET type = 'learn' WHERE type = 'knowledge';
+ALTER TABLE collections DROP CONSTRAINT IF EXISTS chk_collections_type;
+ALTER TABLE collections ADD CONSTRAINT chk_collections_type
+  CHECK (type IN ('inbox','note','quote','learn','idea','ai','entertainment','emotion'));
+
+-- FK: user_tasks.collection_id → collections (deprecated, dùng task_collections)
 DO $$ BEGIN
   ALTER TABLE user_tasks ADD CONSTRAINT fk_user_tasks_collection
     FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE SET NULL;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_user_tasks_collection_id ON user_tasks(collection_id) WHERE collection_id IS NOT NULL;
+COMMENT ON COLUMN user_tasks.collection_id IS 'DEPRECATED v4.5.0: use task_collections junction table';
 
--- 18. expenses
+-- ── 17. task_collections (junction: user_tasks ↔ collections) ───────────────
+CREATE TABLE IF NOT EXISTS task_collections (
+  task_id       UUID NOT NULL REFERENCES user_tasks(id) ON DELETE CASCADE,
+  collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (task_id, collection_id)
+);
+ALTER TABLE task_collections ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "task_collections_own" ON task_collections;
+CREATE POLICY "task_collections_own" ON task_collections FOR ALL
+  USING (EXISTS (SELECT 1 FROM user_tasks WHERE id = task_id AND user_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM user_tasks WHERE id = task_id AND user_id = auth.uid()));
+CREATE INDEX IF NOT EXISTS idx_task_collections_coll ON task_collections(collection_id);
+-- Di chuyển dữ liệu 1:1 cũ (nếu có) vào junction
+INSERT INTO task_collections (task_id, collection_id)
+SELECT id, collection_id FROM user_tasks WHERE collection_id IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+-- ── 18. expenses ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS expenses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -311,7 +353,7 @@ CREATE POLICY "expenses_update_own" ON expenses FOR UPDATE USING (user_id = auth
 DROP POLICY IF EXISTS "expenses_delete_own" ON expenses;
 CREATE POLICY "expenses_delete_own" ON expenses FOR DELETE USING (user_id = auth.uid());
 
--- 19. subscriptions
+-- ── 19. subscriptions ───────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -331,7 +373,7 @@ CREATE POLICY "subscriptions_update_own" ON subscriptions FOR UPDATE USING (user
 DROP POLICY IF EXISTS "subscriptions_delete_own" ON subscriptions;
 CREATE POLICY "subscriptions_delete_own" ON subscriptions FOR DELETE USING (user_id = auth.uid());
 
--- 20. activity_logs
+-- ── 20. activity_logs ───────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS activity_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -346,7 +388,7 @@ CREATE POLICY "activity_logs_select_own" ON activity_logs FOR SELECT USING (user
 DROP POLICY IF EXISTS "activity_logs_insert_own" ON activity_logs;
 CREATE POLICY "activity_logs_insert_own" ON activity_logs FOR INSERT WITH CHECK (user_id = auth.uid());
 
--- 21. tags
+-- ── 21. tags + junctions ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS tags (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -358,7 +400,6 @@ ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "tags_own" ON tags;
 CREATE POLICY "tags_own" ON tags FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
--- 22. tag junctions
 CREATE TABLE IF NOT EXISTS collection_tags (
   collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
   tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
@@ -391,7 +432,7 @@ CREATE INDEX IF NOT EXISTS idx_collection_tags_tag ON collection_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_expense_tags_expense ON expense_tags(expense_id);
 CREATE INDEX IF NOT EXISTS idx_subscription_tags_sub ON subscription_tags(subscription_id);
 
--- 23. intentions (Incubator)
+-- ── 22. intentions + intention_logs (Incubator; description từ v4.7.2) ───────
 CREATE TABLE IF NOT EXISTS intentions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -401,6 +442,7 @@ CREATE TABLE IF NOT EXISTS intentions (
   review_date DATE, converted_to TEXT[], converted_id UUID, converted_ids JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE intentions ADD COLUMN IF NOT EXISTS description TEXT; -- nâng cấp DB cũ
 CREATE TABLE IF NOT EXISTS intention_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   intention_id UUID NOT NULL REFERENCES intentions(id) ON DELETE CASCADE,
@@ -418,7 +460,7 @@ CREATE POLICY "intention_logs_own" ON intention_logs FOR ALL
 CREATE INDEX IF NOT EXISTS idx_intentions_user ON intentions(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_intention_logs_intention ON intention_logs(intention_id);
 
--- 24. fitness_logs
+-- ── 23. fitness_logs ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS fitness_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -433,20 +475,77 @@ CREATE POLICY "fitness_own" ON fitness_logs FOR ALL
   USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 CREATE INDEX IF NOT EXISTS idx_fitness_user_date ON fitness_logs(user_id, date DESC);
 
+-- ── 24. knowledge_groups + collection_groups (v4.11.0) ──────────────────────
+CREATE TABLE IF NOT EXISTS knowledge_groups (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL, emoji TEXT DEFAULT '📁', description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_kgroups_user ON knowledge_groups(user_id);
+ALTER TABLE knowledge_groups ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "kgroups_own" ON knowledge_groups;
+CREATE POLICY "kgroups_own" ON knowledge_groups FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+CREATE TABLE IF NOT EXISTS collection_groups (
+  collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+  group_id      UUID NOT NULL REFERENCES knowledge_groups(id) ON DELETE CASCADE,
+  sort_order    SMALLINT DEFAULT 0,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (collection_id, group_id)
+);
+CREATE INDEX IF NOT EXISTS idx_cgroups_group ON collection_groups(group_id);
+ALTER TABLE collection_groups ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "cgroups_own" ON collection_groups;
+CREATE POLICY "cgroups_own" ON collection_groups FOR ALL
+  USING (EXISTS (SELECT 1 FROM collections WHERE id = collection_id AND user_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM collections WHERE id = collection_id AND user_id = auth.uid()));
+
+-- ── 25. collection_notes (v4.11.0) ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS collection_notes (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  content       TEXT NOT NULL, sort_order SMALLINT DEFAULT 0,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cnotes_collection ON collection_notes(collection_id);
+ALTER TABLE collection_notes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "cnotes_own" ON collection_notes;
+CREATE POLICY "cnotes_own" ON collection_notes FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+-- ── 26. inspirational_quotes (v4.12.0) ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS inspirational_quotes (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  text       TEXT NOT NULL, author TEXT, audio_url TEXT, source TEXT,
+  is_active  BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_quotes_user_active ON inspirational_quotes(user_id, is_active);
+ALTER TABLE inspirational_quotes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users manage own quotes" ON inspirational_quotes;
+CREATE POLICY "Users manage own quotes" ON inspirational_quotes FOR ALL
+  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- ════════════════════════════════════════════════════════════════════════════
 -- REALTIME
+-- ════════════════════════════════════════════════════════════════════════════
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE profiles; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE progress; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE habits; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE focus_sessions; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE xp_logs; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- handle_new_user trigger (resilient — never blocks auth.users insert)
+-- ════════════════════════════════════════════════════════════════════════════
+-- AUTH TRIGGER: tự tạo profile/streaks/notification_settings khi có user mới
+-- ════════════════════════════════════════════════════════════════════════════
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
   base_username TEXT; final_username TEXT; counter INT := 0;
 BEGIN
-  -- Prefer explicit 'username' from metadata, fallback to name/email
   base_username := LOWER(REGEXP_REPLACE(
     COALESCE(
       NEW.raw_user_meta_data->>'username',
@@ -461,15 +560,12 @@ BEGIN
     counter := counter + 1; final_username := base_username || counter;
   END LOOP;
 
-  -- Profile insert — catch unique constraint violations
   BEGIN
     INSERT INTO profiles (id, username, display_name, avatar_url, email)
     VALUES (
-      NEW.id,
-      final_username,
+      NEW.id, final_username,
       COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', final_username),
-      NEW.raw_user_meta_data->>'avatar_url',
-      NEW.email
+      NEW.raw_user_meta_data->>'avatar_url', NEW.email
     ) ON CONFLICT (id) DO UPDATE SET
       email = EXCLUDED.email,
       display_name = COALESCE(profiles.display_name, EXCLUDED.display_name);
@@ -477,14 +573,12 @@ BEGIN
     RAISE WARNING '[handle_new_user] profiles insert failed: %', SQLERRM;
   END;
 
-  -- Streaks init
   BEGIN
     INSERT INTO streaks (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
   EXCEPTION WHEN OTHERS THEN
     RAISE WARNING '[handle_new_user] streaks insert failed: %', SQLERRM;
   END;
 
-  -- Notification settings init
   BEGIN
     INSERT INTO notification_settings (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
   EXCEPTION WHEN OTHERS THEN NULL;
@@ -496,8 +590,66 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- ════════════════════════════════════════════════════════════════════════════
+-- v4.24.0 — Hàm cross-user an toàn (KHÔNG lộ email). Bù cho việc profiles giờ
+-- chỉ đọc-hàng-mình. Frontend gọi qua supabase.rpc(...).
+-- ════════════════════════════════════════════════════════════════════════════
 
--- Seed programs
+-- Đăng nhập: username → email
+DROP FUNCTION IF EXISTS public.login_email(text);
+CREATE FUNCTION public.login_email(p_username text)
+RETURNS text LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT email FROM public.profiles WHERE username = lower(p_username) LIMIT 1;
+$$;
+
+-- Đăng ký: username đã tồn tại chưa?
+DROP FUNCTION IF EXISTS public.username_exists(text);
+CREATE FUNCTION public.username_exists(p_username text)
+RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (SELECT 1 FROM public.profiles WHERE username = lower(p_username));
+$$;
+
+-- Đăng ký/Cài đặt: email đã dùng bởi NGƯỜI KHÁC chưa? (loại trừ chính mình)
+DROP FUNCTION IF EXISTS public.email_exists(text);
+CREATE FUNCTION public.email_exists(p_email text)
+RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE lower(email) = lower(p_email)
+      AND (auth.uid() IS NULL OR id <> auth.uid())
+  );
+$$;
+
+-- Leaderboard: tên + thống kê (KHÔNG email), tính server-side
+DROP FUNCTION IF EXISTS public.get_leaderboard();
+CREATE FUNCTION public.get_leaderboard()
+RETURNS TABLE (
+  id uuid, display_name text, avatar_url text,
+  current_streak int, longest_streak int,
+  total_xp bigint, total_done bigint
+)
+LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT p.id, p.display_name, p.avatar_url,
+         COALESCE(s.current_streak, 0) AS current_streak,
+         COALESCE(s.longest_streak, 0) AS longest_streak,
+         COALESCE(x.total_xp, 0)       AS total_xp,
+         COALESCE(d.total_done, 0)     AS total_done
+  FROM public.profiles p
+  LEFT JOIN public.streaks s ON s.user_id = p.id
+  LEFT JOIN (SELECT user_id, SUM(amount)::bigint AS total_xp FROM public.xp_logs GROUP BY user_id) x ON x.user_id = p.id
+  LEFT JOIN (SELECT user_id, COUNT(*)::bigint AS total_done FROM public.progress WHERE completed GROUP BY user_id) d ON d.user_id = p.id
+  ORDER BY total_xp DESC, current_streak DESC
+  LIMIT 50;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.login_email(text)     TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.username_exists(text)  TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.email_exists(text)     TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_leaderboard()      TO anon, authenticated;
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- SEED: 5 lộ trình mẫu (chỉ thêm nếu chưa có)
+-- ════════════════════════════════════════════════════════════════════════════
 INSERT INTO programs (title, description, icon, color, category, duration_days, is_template, is_public) VALUES
   ('Buoi Sang Ky Luat', 'Xay dung thoi quen buoi sang', '🌅', '#f97316', 'health', 21, true, true),
   ('Thoi Quen Doc Sach', 'Doc sach moi ngay', '📚', '#06b6d4', 'learning', 21, true, true),
@@ -506,56 +658,4 @@ INSERT INTO programs (title, description, icon, color, category, duration_days, 
   ('Deep Work 30 Ngay', 'Tap trung sau hon', '🚀', '#ffd700', 'productivity', 30, true, true)
 ON CONFLICT DO NOTHING;
 
--- DONE: 24 tables, all RLS, all indexes, idempotent
-
--- ──────────────────────────────────────────────────────────
--- v4.4.1 PATCH: Retire 'want' type from collections
--- Reason: 'want' (Muốn mua) is superseded by the Incubator
---   (intentions table) which provides cost/time estimation
---   and an executed→expense workflow. Keeping both causes
---   mental model confusion with no benefit.
---
--- Steps:
---   1. Migrate existing 'want' rows → type = 'idea'
---   2. Add CHECK constraint to prevent future 'want' inserts
--- ──────────────────────────────────────────────────────────
-
--- Step 1: Migrate legacy data (idempotent — safe to re-run)
-UPDATE collections SET type = 'idea' WHERE type = 'want';
-
--- Step 2: Add CHECK constraint (drop first for idempotency)
-ALTER TABLE collections
-  DROP CONSTRAINT IF EXISTS chk_collections_type;
-
-ALTER TABLE collections
-  ADD CONSTRAINT chk_collections_type
-  CHECK (type IN ('inbox', 'note', 'link', 'quote', 'learn', 'idea'));
-
--- ──────────────────────────────────────────────────────────
--- v4.5.0: Task ↔ Knowledge Base Many-to-Many junction table
--- Replaces the 1:1 user_tasks.collection_id FK with a proper
--- junction table supporting N tasks ↔ M collections.
--- ──────────────────────────────────────────────────────────
-
--- 25. task_collections (junction: user_tasks ↔ collections)
-CREATE TABLE IF NOT EXISTS task_collections (
-  task_id       UUID NOT NULL REFERENCES user_tasks(id) ON DELETE CASCADE,
-  collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (task_id, collection_id)
-);
-ALTER TABLE task_collections ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "task_collections_own" ON task_collections;
-CREATE POLICY "task_collections_own" ON task_collections FOR ALL
-  USING (EXISTS (SELECT 1 FROM user_tasks WHERE id = task_id AND user_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM user_tasks WHERE id = task_id AND user_id = auth.uid()));
-CREATE INDEX IF NOT EXISTS idx_task_collections_coll ON task_collections(collection_id);
-
--- Migrate existing 1:1 collection_id data into junction table
-INSERT INTO task_collections (task_id, collection_id)
-SELECT id, collection_id FROM user_tasks
-WHERE collection_id IS NOT NULL
-ON CONFLICT DO NOTHING;
-
--- Deprecate old column (keep for rollback, remove in next major)
-COMMENT ON COLUMN user_tasks.collection_id IS 'DEPRECATED v4.5.0: use task_collections junction table';
+-- ✅ DONE — 26 bảng + RLS + indexes + triggers + functions + seed (idempotent).

@@ -85,12 +85,9 @@ export default function AuthModal({ onClose }) {
 
       // Check duplicate email if user provided a real email (not placeholder)
       if (!emailToUse.endsWith('@lifehub.local')) {
-        const { data: existingEmail } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', emailToUse)
-          .maybeSingle();
-        if (existingEmail) {
+        const { data: emailTaken } = await supabase
+          .rpc('email_exists', { p_email: emailToUse });
+        if (emailTaken) {
           setError('Email này đã được đăng ký');
           setLoading(false); return;
         }

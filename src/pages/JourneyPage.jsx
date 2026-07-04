@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useJourney } from '../hooks/useJourney';
 import { useAuth } from '../contexts/AuthContext';
 import ActiveJourneyPanel from '../components/journey/ActiveJourneyPanel';
@@ -19,7 +19,6 @@ const TABS = [
 ];
 
 export default function JourneyPage() {
-  const navigate      = useNavigate();
   const [searchParams] = useSearchParams();
   const isFirstTime   = searchParams.get('firstTime') === 'true';
   const { isAuthenticated } = useAuth();

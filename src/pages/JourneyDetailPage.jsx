@@ -390,7 +390,7 @@ function MonthSummary({ journey, stats }) {
 /* ══════════════════════════════════════════════════════════
    Journey Calendar — month view scoped to journey dates
    ══════════════════════════════════════════════════════════ */
-function JourneyCalendar({ journey, stats, habitSnaps, allLogs, onSelectDay }) {
+function JourneyCalendar({ journey, habitSnaps, allLogs, onSelectDay }) {
   const startDate = new Date(journey.started_at);
   const endDate   = journey.ended_at ? new Date(journey.ended_at) : new Date();
 
@@ -508,7 +508,6 @@ function JourneyCalendar({ journey, stats, habitSnaps, allLogs, onSelectDay }) {
    DayDetailModal — popup showing per-day details
    ══════════════════════════════════════════════════════════ */
 function DayDetailModal({ dateKey, habitSnaps, allLogs, allFocus, onClose }) {
-  const habitIds = habitSnaps.map(h => h.habit_id).filter(Boolean);
 
   // Habits done/missed for this day
   const logsToday = allLogs.filter(l => l.log_date === dateKey && l.status === 'completed');

@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Link } from '@tiptap/extension-link';
@@ -372,9 +373,19 @@ async function uploadAndInsertImage(tr, view, file) {
     formData.append('file', file);
     formData.append('folder', 'images');
 
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    let authHeaders;
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) authHeaders = { Authorization: `Bearer ${session.access_token}` };
+    }
+    if (!authHeaders) {
+      showUploadToast('⚠ Cần đăng nhập để tải ảnh lên.');
+      return;
+    }
+
+    const res = await fetch('/api/upload', { method: 'POST', body: formData, headers: authHeaders });
     if (!res.ok) {
-      showUploadToast('⚠ Upload thất bại — cần deploy Vercel + IMGUR_CLIENT_ID');
+      showUploadToast('⚠ Upload thất bại — cần đăng nhập + deploy Vercel.');
       return;
     }
 

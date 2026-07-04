@@ -1,5 +1,5 @@
 import React from 'react';
-import { extractDriveFileId, getMediaType, getYoutubeEmbedUrl, extractDriveDirectUrl } from '../utils/mediaUtils';
+import { extractDriveFileId, getMediaType, getYoutubeEmbedUrl, extractDriveDirectUrl, getDriveStreamUrl } from '../utils/mediaUtils';
 import CustomAudioPlayer from './CustomAudioPlayer';
 
 /**
@@ -23,7 +23,7 @@ const stringifyChildren = (children) => {
   return '';
 };
 
-function MediaPreview({ url, type, title, style, className, onToggleFormat }) {
+function MediaPreview({ url, title, style, className, onToggleFormat }) {
   if (!url) return null;
 
   const mediaType = getMediaType(url);
@@ -39,11 +39,9 @@ function MediaPreview({ url, type, title, style, className, onToggleFormat }) {
 
   const renderToggleBar = () => {
     if (!onToggleFormat) return null;
-    const hasAudioTag = url.includes('#audio');
     const hasVideoTag = url.includes('#video');
-    const hasNoTag = !hasAudioTag && !hasVideoTag;
 
-    // We show format toggles for Drive and direct Audio/Video links
+    // Show format toggles for Drive and direct Audio/Video links (Audio + Video only, no Drive)
     if (mediaType !== 'drive' && mediaType !== 'audio' && mediaType !== 'video') {
       return null;
     }
@@ -53,7 +51,7 @@ function MediaPreview({ url, type, title, style, className, onToggleFormat }) {
         <span className="kb-media-toggle-label">Định dạng:</span>
         <button
           type="button"
-          className={`kb-media-toggle-btn${hasAudioTag ? ' kb-media-toggle-btn--active' : ''}`}
+          className={`kb-media-toggle-btn${!hasVideoTag ? ' kb-media-toggle-btn--active' : ''}`}
           onClick={() => handleToggle('audio')}
         >
           🎵 Dạng audio
@@ -65,15 +63,6 @@ function MediaPreview({ url, type, title, style, className, onToggleFormat }) {
         >
           📺 Dạng video
         </button>
-        {mediaType === 'drive' && (
-          <button
-            type="button"
-            className={`kb-media-toggle-btn${hasNoTag ? ' kb-media-toggle-btn--active' : ''}`}
-            onClick={() => handleToggle('drive')}
-          >
-            📁 Dạng Drive
-          </button>
-        )}
       </div>
     );
   };
@@ -97,15 +86,18 @@ function MediaPreview({ url, type, title, style, className, onToggleFormat }) {
     case 'drive': {
       const driveFileId = extractDriveFileId(url);
       if (!driveFileId) return null;
-      const isAudio = url.includes('#audio') || type === 'podcast';
+      const isVideo = url.includes('#video');
       
-      if (isAudio) {
-        const directUrl = extractDriveDirectUrl(url) || url;
+      // Default: render as audio player using proxy stream to bypass CORS.
+      // Primary src = /api/stream?id=xxx (our proxy, enables custom player).
+      // Fallback = Drive iframe preview (if proxy is unavailable).
+      if (!isVideo) {
+        const proxyUrl = getDriveStreamUrl(url);
         const fallbackUrl = `https://drive.google.com/file/d/${driveFileId}/preview`;
         return (
           <div className={`${className || ''}`} style={{ margin: '1rem 0', ...style }}>
             <CustomAudioPlayer 
-              src={directUrl} 
+              src={proxyUrl || extractDriveDirectUrl(url) || url} 
               fallbackUrl={fallbackUrl} 
               title={title} 
             />
@@ -114,6 +106,7 @@ function MediaPreview({ url, type, title, style, className, onToggleFormat }) {
         );
       }
       
+      // Explicit #video tag: render Drive iframe for video preview
       return (
         <div 
           className={`kb-audio-player ${className || ''}`} 
@@ -132,7 +125,7 @@ function MediaPreview({ url, type, title, style, className, onToggleFormat }) {
             }}
             allow="autoplay"
             allowFullScreen
-            title={title || 'Google Drive Media'}
+            title={title || 'Google Drive Video'}
           />
           {title && (
             <span 

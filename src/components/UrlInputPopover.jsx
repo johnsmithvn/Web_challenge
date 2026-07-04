@@ -19,6 +19,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { supabase } from '../lib/supabase';
 import '../styles/url-input-popover.css';
 
 export default function UrlInputPopover({
@@ -103,7 +104,17 @@ export default function UrlInputPopover({
       
       formData.append('folder', folderName);
 
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      let authHeaders;
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) authHeaders = { Authorization: `Bearer ${session.access_token}` };
+      }
+      if (!authHeaders) {
+        setUrl('⚠ Cần đăng nhập để tải file lên.');
+        return;
+      }
+
+      const res = await fetch('/api/upload', { method: 'POST', body: formData, headers: authHeaders });
       if (res.ok) {
         const data = await res.json();
         if (data.url) {

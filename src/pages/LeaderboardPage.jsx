@@ -22,49 +22,19 @@ const RANK_EMOJIS = ['🥇', '🥈', '🥉'];
  * All joined via profiles.id
  */
 async function fetchLeaderboard() {
-  // Fetch profiles + streaks in one query
-  const { data: profiles, error } = await supabase
-    .from('profiles')
-    .select(`
-      id,
-      display_name,
-      avatar_url,
-      streaks ( current_streak, longest_streak )
-    `)
-    .order('created_at', { ascending: true })
-    .limit(50);
+  // Server-side leaderboard (SECURITY DEFINER rpc) — names + stats only, never
+  // email. Stays correct cross-user even though profiles/xp_logs/progress/streaks
+  // are now RLS-scoped to each owner.
+  const { data, error } = await supabase.rpc('get_leaderboard');
+  if (error || !data) return [];
 
-  if (error || !profiles) return [];
-
-  // Fetch done counts per user
-  const { data: doneCounts } = await supabase
-    .from('progress')
-    .select('user_id')
-    .eq('completed', true);
-
-  const doneMap = {};
-  (doneCounts || []).forEach(r => {
-    doneMap[r.user_id] = (doneMap[r.user_id] || 0) + 1;
-  });
-
-  // Fetch real XP totals from xp_logs
-  const { data: xpRows } = await supabase
-    .from('xp_logs')
-    .select('user_id, amount');
-
-  const xpMap = {};
-  (xpRows || []).forEach(r => {
-    xpMap[r.user_id] = (xpMap[r.user_id] || 0) + r.amount;
-  });
-
-  return profiles.map(p => ({
+  return data.map(p => ({
     id:        p.id,
     name:      p.display_name || 'Ẩn danh',
     avatarUrl: p.avatar_url || null,
-    streak:    p.streaks?.current_streak  ?? 0,
-    // Real XP from xp_logs; fallback to streak-based estimate if no logs yet
-    totalXp:   xpMap[p.id] ?? ((p.streaks?.current_streak ?? 0) * 10 + (doneMap[p.id] ?? 0) * 10),
-    totalDone: doneMap[p.id] ?? 0,
+    streak:    p.current_streak ?? 0,
+    totalXp:   Number(p.total_xp) || 0,
+    totalDone: Number(p.total_done) || 0,
   }));
 }
 

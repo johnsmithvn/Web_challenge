@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 let _supabase = null;
 async function getSb() {
@@ -66,7 +67,9 @@ export function useUserTasks() {
       if (!sb) return;
 
       const today = todayStr();
-      const filter = `completed.eq.false,and(completed.eq.true,completed_at.gte.${today}T00:00:00,completed_at.lt.${today}T23:59:59)`;
+      // Exclusive upper bound = next-day midnight (a contiguous 24h window) so tasks
+      // completed in the last second of the day (23:59:59.xxx) aren't dropped.
+      const filter = `completed.eq.false,and(completed.eq.true,completed_at.gte.${today}T00:00:00,completed_at.lt.${addDays(today, 1)}T00:00:00)`;
 
       // Try with task_collections join first (v4.5.0)
       let { data, error } = await sb
@@ -79,7 +82,7 @@ export function useUserTasks() {
 
       // Fallback: if task_collections table doesn't exist yet (migration not run)
       if (error) {
-        console.warn('[useUserTasks] junction join failed, falling back:', error.message);
+        logger.warn('[useUserTasks] junction join failed, falling back:', error.message);
         const result = await sb
           .from('user_tasks')
           .select('*')
@@ -89,7 +92,7 @@ export function useUserTasks() {
           .order('due_time', { ascending: true, nullsFirst: false });
 
         if (result.error) {
-          console.error('[useUserTasks] fallback fetch error:', result.error.message);
+          logger.error('[useUserTasks] fallback fetch error:', result.error.message);
         } else {
           setTasks((result.data || []).map(t => ({ ...t, _collections: [] })));
         }
@@ -107,7 +110,7 @@ export function useUserTasks() {
       mapped.forEach(t => delete t.task_collections);
       setTasks(mapped);
     } catch (err) {
-      console.error('[useUserTasks] fetch exception:', err);
+      logger.error('[useUserTasks] fetch exception:', err);
     } finally {
       setIsLoading(false);
     }
@@ -157,7 +160,7 @@ export function useUserTasks() {
           .single();
 
         if (error) {
-          console.error('[useUserTasks] add error:', error.message);
+          logger.error('[useUserTasks] add error:', error.message);
           // Rollback
           setTasks(prev => prev.filter(t => t.id !== newTask.id));
           return null;
@@ -166,7 +169,7 @@ export function useUserTasks() {
         setTasks(prev => prev.map(t => t.id === newTask.id ? data : t));
         return data;
       } catch (err) {
-        console.error('[useUserTasks] add exception:', err);
+        logger.error('[useUserTasks] add exception:', err);
         setTasks(prev => prev.filter(t => t.id !== newTask.id));
         return null;
       }
@@ -214,12 +217,12 @@ export function useUserTasks() {
 
         if (!error) return true; // Success
 
-        console.warn(
+        logger.warn(
           `[useUserTasks] spawnRecurring attempt ${attempt + 1}/${MAX_RETRIES + 1} failed:`,
           error.message
         );
       } catch (err) {
-        console.warn(
+        logger.warn(
           `[useUserTasks] spawnRecurring attempt ${attempt + 1}/${MAX_RETRIES + 1} exception:`,
           err.message
         );
@@ -232,7 +235,7 @@ export function useUserTasks() {
     }
 
     // All retries exhausted — structured warning for debugging
-    console.error(
+    logger.error(
       `[useUserTasks] RECURRING TASK FAILED after ${MAX_RETRIES + 1} attempts.`,
       `Task: "${task.title}" → Next due: ${nextDate}.`,
       'User should manually create the next occurrence.'
@@ -262,7 +265,7 @@ export function useUserTasks() {
           .eq('user_id', userId);
 
         if (error) {
-          console.error('[useUserTasks] complete error:', error.message);
+          logger.error('[useUserTasks] complete error:', error.message);
           // Rollback
           setTasks(prev => prev.map(t =>
             t.id === taskId ? { ...t, completed: false, completed_at: null } : t
@@ -275,7 +278,7 @@ export function useUserTasks() {
           spawnRecurringTask(task);
         }
       } catch (err) {
-        console.error('[useUserTasks] complete exception:', err);
+        logger.error('[useUserTasks] complete exception:', err);
         setTasks(prev => prev.map(t =>
           t.id === taskId ? { ...t, completed: false, completed_at: null } : t
         ));
@@ -302,11 +305,11 @@ export function useUserTasks() {
           .eq('user_id', userId);
 
         if (error) {
-          console.error('[useUserTasks] delete error:', error.message);
+          logger.error('[useUserTasks] delete error:', error.message);
           setTasks(prev => [...prev, backup]);
         }
       } catch (err) {
-        console.error('[useUserTasks] delete exception:', err);
+        logger.error('[useUserTasks] delete exception:', err);
         setTasks(prev => [...prev, backup]);
       }
     }
@@ -333,11 +336,11 @@ export function useUserTasks() {
           .eq('user_id', userId);
 
         if (error) {
-          console.error('[useUserTasks] uncomplete error:', error.message);
+          logger.error('[useUserTasks] uncomplete error:', error.message);
           if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
         }
       } catch (err) {
-        console.error('[useUserTasks] uncomplete exception:', err);
+        logger.error('[useUserTasks] uncomplete exception:', err);
         if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
       }
     }
@@ -364,11 +367,11 @@ export function useUserTasks() {
           .eq('user_id', userId);
 
         if (error) {
-          console.error('[useUserTasks] update error:', error.message);
+          logger.error('[useUserTasks] update error:', error.message);
           if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
         }
       } catch (err) {
-        console.error('[useUserTasks] update exception:', err);
+        logger.error('[useUserTasks] update exception:', err);
         if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
       }
     }
@@ -388,16 +391,16 @@ export function useUserTasks() {
         .eq('user_id', userId)
         .eq('completed', true)
         .gte('completed_at', `${dateStr}T00:00:00`)
-        .lt('completed_at', `${dateStr}T23:59:59`)
+        .lt('completed_at', `${addDays(dateStr, 1)}T00:00:00`) // contiguous next-day bound
         .order('completed_at', { ascending: true });
 
       if (error) {
-        console.error('[useUserTasks] getCompleted error:', error.message);
+        logger.error('[useUserTasks] getCompleted error:', error.message);
         return [];
       }
       return data || [];
     } catch (err) {
-      console.error('[useUserTasks] getCompleted exception:', err);
+      logger.error('[useUserTasks] getCompleted exception:', err);
       return [];
     }
   }, [isAuth, userId]);
@@ -447,7 +450,7 @@ export function useUserTasks() {
       });
 
       if (error) {
-        console.error('[useUserTasks] linkCollection error:', error.message);
+        logger.error('[useUserTasks] linkCollection error:', error.message);
         // Rollback
         setTasks(prev => prev.map(t => {
           if (t.id !== taskId) return t;
@@ -457,7 +460,7 @@ export function useUserTasks() {
       }
       return true;
     } catch (err) {
-      console.error('[useUserTasks] linkCollection exception:', err);
+      logger.error('[useUserTasks] linkCollection exception:', err);
       return false;
     }
   }, [isAuth]);
@@ -485,7 +488,7 @@ export function useUserTasks() {
         .eq('collection_id', collectionId);
 
       if (error) {
-        console.error('[useUserTasks] unlinkCollection error:', error.message);
+        logger.error('[useUserTasks] unlinkCollection error:', error.message);
         setTasks(prev => prev.map(t => {
           if (t.id !== taskId) return t;
           return { ...t, _collections: backup };
@@ -494,7 +497,7 @@ export function useUserTasks() {
       }
       return true;
     } catch (err) {
-      console.error('[useUserTasks] unlinkCollection exception:', err);
+      logger.error('[useUserTasks] unlinkCollection exception:', err);
       return false;
     }
   }, [isAuth, tasks]);

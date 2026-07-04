@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
+import { logger } from '../utils/logger';
 
 const AuthContext = createContext(null);
 
@@ -45,14 +46,12 @@ export function AuthProvider({ children }) {
   const signUp = useCallback(async ({ username, email, password, displayName }) => {
     if (!isSupabaseEnabled) return { error: { message: 'Supabase chưa được cấu hình' } };
 
-    // 1. Check username uniqueness before creating auth user
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', username.trim().toLowerCase())
-      .maybeSingle();
+    // 1. Check username uniqueness before creating auth user (via rpc — profiles
+    //    is no longer cross-user readable)
+    const { data: usernameTaken } = await supabase
+      .rpc('username_exists', { p_username: username.trim().toLowerCase() });
 
-    if (existing) return { error: { message: 'username_taken' } };
+    if (usernameTaken) return { error: { message: 'username_taken' } };
 
     // 2. Create Supabase auth user with real email
     //    Pass username in metadata so DB trigger can also read it
@@ -84,7 +83,7 @@ export function AuthProvider({ children }) {
       // retry via raw SQL approach — at minimum the username is in auth metadata
       // so the updated trigger will pick it up
       if (profErr) {
-        console.warn('[signUp] Profile upsert blocked by RLS, username saved in auth metadata:', profErr.message);
+        logger.warn('[signUp] Profile upsert blocked by RLS, username saved in auth metadata:', profErr.message);
       }
     }
 
@@ -99,18 +98,16 @@ export function AuthProvider({ children }) {
     const trimmed = loginId.trim();
     let emailToUse = trimmed;
 
-    // If no @ → it's a username → look up the real email from profiles
+    // If no @ → it's a username → resolve email via SECURITY DEFINER rpc
+    // (profiles.email is no longer directly readable by other users).
     if (!trimmed.includes('@')) {
-      const { data: prof, error: lookupErr } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('username', trimmed.toLowerCase())
-        .maybeSingle();
+      const { data: email, error: lookupErr } = await supabase
+        .rpc('login_email', { p_username: trimmed.toLowerCase() });
 
-      if (lookupErr || !prof?.email) {
+      if (lookupErr || !email) {
         return { error: { message: 'username_not_found' } };
       }
-      emailToUse = prof.email;
+      emailToUse = email;
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({

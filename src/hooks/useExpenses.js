@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 /**
  * useExpenses — CRUD for the `expenses` table.
@@ -30,7 +31,7 @@ export function useExpenses() {
       if (error) throw error;
       setExpenses(data || []);
     } catch (err) {
-      console.warn('[useExpenses] fetch error:', err.message);
+      logger.warn('[useExpenses] fetch error:', err.message);
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +60,7 @@ export function useExpenses() {
       setExpenses(prev => [data, ...prev]);
       return data;
     } catch (err) {
-      console.warn('[useExpenses] add error:', err.message);
+      logger.warn('[useExpenses] add error:', err.message);
       return null;
     }
   }, [enabled, user]);
@@ -80,7 +81,7 @@ export function useExpenses() {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn('[useExpenses] delete error:', err.message);
+      logger.warn('[useExpenses] delete error:', err.message);
       return false;
     }
   }, [enabled, user]);
@@ -89,9 +90,13 @@ export function useExpenses() {
   const updateExpense = useCallback(async (id, updates) => {
     if (!enabled) return false;
 
-    // Optimistic update
-    const prev = expenses;
-    setExpenses(list => list.map(e => e.id === id ? { ...e, ...updates } : e));
+    // Optimistic — capture only the affected row (not a full-list snapshot) so a
+    // concurrent add/delete isn't clobbered on rollback.
+    let backup;
+    setExpenses(list => {
+      backup = list.find(e => e.id === id);
+      return list.map(e => e.id === id ? { ...e, ...updates } : e);
+    });
 
     try {
       const { error } = await supabase
@@ -103,11 +108,11 @@ export function useExpenses() {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn('[useExpenses] update error:', err.message);
-      setExpenses(prev); // rollback
+      logger.warn('[useExpenses] update error:', err.message);
+      if (backup) setExpenses(list => list.map(e => e.id === id ? backup : e)); // targeted rollback
       return false;
     }
-  }, [enabled, user, expenses]);
+  }, [enabled, user]);
 
   // ── Get total for a date range ──────────────────────────────
   const getTotal = useCallback((list = expenses) => {

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 
 // ── Skip Reason ───────────────────────────────────────────
@@ -46,7 +47,7 @@ export function useSkipReasons() {
       }, { onConflict: 'user_id,date' });
 
       if (error) {
-        console.warn('[SkipReasons] save failed:', error.message);
+        logger.warn('[SkipReasons] save failed:', error.message);
         setSkipLog(prev => { const next = { ...prev }; delete next[date]; return next; });
       }
     }

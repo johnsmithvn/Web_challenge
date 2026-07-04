@@ -179,9 +179,13 @@
 }
 
 .sidebar__login {
-  font-size: 0.82rem;
-  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  font-size: 0.85rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-md);
 }
 
 
@@ -525,10 +529,5 @@
   width: 100%;
 }
 
-.sidebar__actions .sidebar__login {
-  flex: 1;
-  margin: 0;
-  width: auto;
-}
 
 

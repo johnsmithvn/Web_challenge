@@ -14,7 +14,7 @@ import {
 
 // Regex for Google Drive links, YouTube links, and standard direct audio/video links
 const DRIVE_REGEX = /(https?:\/\/drive\.google\.com\/(?:file\/d\/[a-zA-Z0-9_-]+|open\?id=[a-zA-Z0-9_-]+)[^\s]*)/g;
-const YOUTUBE_REGEX = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11}))/ig;
+const YOUTUBE_REGEX = /(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&? ]{11}))/ig;
 const AUDIO_REGEX = /(https?:\/\/[^\s]+\.(?:mp3|m4a|ogg|wav|aac|flac|webm)(?:\?[^\s]*)?)/ig;
 const VIDEO_REGEX = /(https?:\/\/[^\s]+\.(?:mp4|webm|ogg|ogv|mov|mkv)(?:\?[^\s]*)?)/ig;
 
@@ -92,14 +92,14 @@ export const MediaNode = Node.create({
 
       case 'drive': {
         const fileId = extractDriveFileId(src);
-        const isAudio = src?.includes('#audio');
-        const height = isAudio ? '90' : '360';
+        const isVideo = src?.includes('#video');
+        const height = isVideo ? '360' : '80';
         return [
           'div',
           mergeAttributes({ 'data-media-block': '', class: 'kb-audio-player', style: 'background: none; padding: 0;' }),
           ['iframe', {
             src: `https://drive.google.com/file/d/${fileId}/preview`,
-            style: `width: 100%; height: ${height}px; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; background: #000;`,
+            style: `width: 100%; height: ${height}px; border: none; border-radius: 8px; overflow: hidden;`,
             allow: 'autoplay',
             allowfullscreen: ''
           }],

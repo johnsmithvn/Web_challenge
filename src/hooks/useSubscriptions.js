@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 /**
  * useSubscriptions — CRUD for the `subscriptions` table.
@@ -58,12 +59,12 @@ export function useSubscriptions() {
 
       if (advancePromises.length > 0) {
         await Promise.allSettled(advancePromises);
-        console.log(`[useSubscriptions] auto-advanced ${advancePromises.length} subs`);
+        logger.info(`[useSubscriptions] auto-advanced ${advancePromises.length} subs`);
       }
 
       setSubs(rows);
     } catch (err) {
-      console.warn('[useSubscriptions] fetch error:', err.message);
+      logger.warn('[useSubscriptions] fetch error:', err.message);
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +96,7 @@ export function useSubscriptions() {
       setSubs(prev => [...prev, data].sort((a, b) => a.next_due.localeCompare(b.next_due)));
       return data;
     } catch (err) {
-      console.warn('[useSubscriptions] add error:', err.message);
+      logger.warn('[useSubscriptions] add error:', err.message);
       return null;
     }
   }, [enabled, user]);
@@ -116,7 +117,7 @@ export function useSubscriptions() {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn('[useSubscriptions] update error:', err.message);
+      logger.warn('[useSubscriptions] update error:', err.message);
       fetchSubs(); // rollback
       return false;
     }
@@ -138,7 +139,7 @@ export function useSubscriptions() {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn('[useSubscriptions] delete error:', err.message);
+      logger.warn('[useSubscriptions] delete error:', err.message);
       fetchSubs();
       return false;
     }

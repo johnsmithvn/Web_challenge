@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useCustomHabits } from '../hooks/useCustomHabits';
 import '../styles/calendar.css';
 
 const VN_HOLIDAYS = {
@@ -30,8 +29,6 @@ export default function MonthCalendar({ habitData, getCompletedTasks, skipLog = 
   const [selectedTasks, setSelectedTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
-
-  const { activeHabits } = useCustomHabits();
 
   const daysInMonth  = getDaysInMonth(viewYear, viewMonth);
   const firstDayOfW  = getFirstDayOfWeek(viewYear, viewMonth);

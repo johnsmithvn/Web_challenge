@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import { logger } from '../utils/logger';
 
 /**
  * JourneyContext — single source of truth for the active journey.
@@ -49,13 +50,13 @@ export function JourneyProvider({ children }) {
       if (error) throw error;
       setActiveJourney(data || null);
     } catch (err) {
-      console.warn('[JourneyContext] fetch error:', err.message);
+      logger.warn('[JourneyContext] fetch error:', err.message);
     } finally {
       setLoadedUserId(user.id);
     }
   }, [useDB, user]);
 
-  // Fetch once on login, clear on logout
+  // Fetch on login AND on account switch (user.id change without remount), clear on logout
   useEffect(() => {
     if (useDB) {
       setLoadedUserId(undefined); // Force loading state immediately
@@ -64,7 +65,7 @@ export function JourneyProvider({ children }) {
       setActiveJourney(null);
       setLoadedUserId(null); // Guest user
     }
-  }, [useDB]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [useDB, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <JourneyContext.Provider value={{

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useActiveJourney } from '../contexts/JourneyContext';
+import { logger } from '../utils/logger';
 
 /**
  * useHabitLogs — per-habit daily completion tracking
@@ -88,7 +89,7 @@ export function useHabitLogs(journeyId = null) {
       if (error) throw error;
       setHabitProg(rowsToMap(data || []));
     } catch (err) {
-      console.warn('[useHabitLogs] fetch error:', err.message);
+      logger.warn('[useHabitLogs] fetch error:', err.message);
     } finally {
       setIsLoading(false);
     }
@@ -107,12 +108,12 @@ export function useHabitLogs(journeyId = null) {
           .from('habit_logs')
           .upsert(inserts, { onConflict: 'user_id,habit_id,log_date', ignoreDuplicates: true });
         if (error) throw error;
-        console.log(`[useHabitLogs] Migrated ${inserts.length} entries from localStorage`);
+        logger.info(`[useHabitLogs] Migrated ${inserts.length} entries from localStorage`);
       }
       localStorage.removeItem(LS_LEGACY); // wipe after migration
       localStorage.setItem(LS_MIGRATED, '1');
     } catch (err) {
-      console.warn('[useHabitLogs] migration error:', err.message);
+      logger.warn('[useHabitLogs] migration error:', err.message);
     }
   }, [useDB, user, journeyId]);
 
@@ -159,7 +160,7 @@ export function useHabitLogs(journeyId = null) {
 
         if (!error) {
           setHabitProg(prev => ({ ...prev, [key]: true }));
-          console.log(`[useHabitLogs] Auto-ticked habit ${habitId} via focus session`);
+          logger.info(`[useHabitLogs] Auto-ticked habit ${habitId} via focus session`);
         }
       }
     };
@@ -198,7 +199,7 @@ export function useHabitLogs(journeyId = null) {
           if (error) throw error;
         }
       } catch (err) {
-        console.warn('[useHabitLogs] toggle error, rolling back:', err.message);
+        logger.warn('[useHabitLogs] toggle error, rolling back:', err.message);
         setHabitProg(prev => ({ ...prev, [key]: wasDone })); // rollback
       }
     }
@@ -223,7 +224,7 @@ export function useHabitLogs(journeyId = null) {
     if (filterJourneyId) query.eq('journey_id', filterJourneyId);
 
     const { data, error } = await query;
-    if (error) { console.warn('[useHabitLogs] getLogsInRange error:', error.message); return {}; }
+    if (error) { logger.warn('[useHabitLogs] getLogsInRange error:', error.message); return {}; }
     return rowsToMap(data || []);
   }, [useDB, user, habitProg]);
 

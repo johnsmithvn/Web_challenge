@@ -196,19 +196,21 @@ export default function Navbar() {
           <div className="sidebar__xp">
             <XpBar compact />
           </div>
+
+          {/* Login button — always visible when no user (no loading guard) */}
+          {!user && (
+            <button
+              className="btn btn-primary sidebar__login"
+              onClick={() => setShowAuth(true)}
+              id="navbar-login"
+            >
+              🔑 Đăng Nhập
+            </button>
+          )}
+
           <div className="sidebar__actions">
-            {!loading && (
-              user
-                ? <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="up" />
-                : (
-                  <button
-                    className="btn btn-primary sidebar__login"
-                    onClick={() => setShowAuth(true)}
-                    id="navbar-login"
-                  >
-                    🔑 Đăng Nhập
-                  </button>
-                )
+            {!loading && user && (
+              <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="up" />
             )}
             <button
               className="sidebar__theme-toggle"
@@ -237,19 +239,18 @@ export default function Navbar() {
           >
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
-          {!loading && (
-            user
-              ? <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="down" />
-              : (
-                <button
-                  className="btn btn-primary topbar__login"
-                  onClick={() => setShowAuth(true)}
-                  id="mobile-login"
-                >
-                  🔑
-                </button>
-              )
-          )}
+          {user
+            ? <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="down" />
+            : (
+              <button
+                className="btn btn-primary topbar__login"
+                onClick={() => setShowAuth(true)}
+                id="mobile-login"
+              >
+                🔑
+              </button>
+            )
+          }
         </div>
       </header>
 

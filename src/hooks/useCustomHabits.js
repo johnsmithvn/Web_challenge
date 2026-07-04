@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useActiveJourney } from '../contexts/JourneyContext';
+import { logger } from '../utils/logger';
 
 import HABITS_DATA from '../data/habits.json';
 
@@ -40,13 +41,13 @@ async function migrateLocalHabits(userId) {
           created_at:   h.createdAt || new Date().toISOString(),
         }));
         await supabase.from('habits').upsert(rows, { onConflict: 'id' });
-        console.log(`[CustomHabits] Migrated ${rows.length} habits from localStorage`);
+        logger.info(`[CustomHabits] Migrated ${rows.length} habits from localStorage`);
       }
     }
     localStorage.removeItem(LEGACY_KEY);
     localStorage.setItem(MIGRATED_KEY, userId);
   } catch (e) {
-    console.warn('[CustomHabits] Migration failed:', e.message);
+    logger.warn('[CustomHabits] Migration failed:', e.message);
   }
 }
 
@@ -142,7 +143,7 @@ export function useCustomHabits() {
         created_at:   newHabit.createdAt,
       });
       if (error) {
-        console.warn('[CustomHabits] add failed:', error.message);
+        logger.warn('[CustomHabits] add failed:', error.message);
         setHabits(prev => prev.filter(h => h.id !== newHabit.id));
         return null;
       }
@@ -159,7 +160,7 @@ export function useCustomHabits() {
         .update(updates)
         .eq('id', id)
         .eq('user_id', user.id);
-      if (error) console.warn('[CustomHabits] update failed:', error.message);
+      if (error) logger.warn('[CustomHabits] update failed:', error.message);
     }
   }, [useDB, user]);
 
@@ -174,7 +175,7 @@ export function useCustomHabits() {
         .eq('id', id)
         .eq('user_id', user.id);
       if (error) {
-        console.warn('[CustomHabits] delete failed:', error.message);
+        logger.warn('[CustomHabits] delete failed:', error.message);
         if (prev) setHabits(p => [...p, prev]);
       }
     }
@@ -200,7 +201,7 @@ export function useCustomHabits() {
               .eq('id', u.id)
               .eq('user_id', user.id)
           )
-        ).catch(err => console.warn('[CustomHabits] reorder persist failed:', err.message));
+        ).catch(err => logger.warn('[CustomHabits] reorder persist failed:', err.message));
       }
 
       return next;

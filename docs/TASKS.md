@@ -1,5 +1,23 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-06-13
+**Updated:** 2026-06-14
+
+---
+
+## v4.23.0 — ✅ DONE (2026-06-14) — Remove Drive Format Toggle + Audio-First Default
+
+### Drive Format Cleanup ✅
+- [x] `MediaPreview.jsx` — Remove "Dạng Drive" toggle button, default Drive URLs to audio player
+- [x] `CollectPage.jsx` — Remove "📁 Auto" format pill from editor, keep Audio + Video only
+- [x] `CustomAudioPlayer.jsx` — Clean up iframe fallback UI (remove verbose warning, use compact card)
+- [x] `MediaNode.jsx` — Sync Tiptap renderHTML: default Drive height 80px (audio), only #video → 360px
+
+### Proxy Stream (CORS Fix) ✅
+- [x] `api/stream.js` — NEW: Vercel serverless proxy for Drive file streaming (CORS bypass)
+- [x] `mediaUtils.js` — NEW: `getDriveStreamUrl()` helper
+- [x] `MediaPreview.jsx` — Use proxy URL for Drive audio (custom player now works!)
+- [x] `GlobalAudioPlayer.jsx` — Use proxy URL for podcast playback
+- [x] `CHANGELOG.md` — v4.23.0 entry
+- [x] `docs/TASKS.md` — Updated
 
 ---
 

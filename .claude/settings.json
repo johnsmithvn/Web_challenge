@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"d:/Development/Workspace/Web_Update\" && echo \"=== is .env.local tracked? ===\" && git ls-files | grep -i \"env\" 2>&1; echo \"\\(empty = not tracked, good\\)\"; echo \"\" && echo \"=== .env.local content \\(masked\\) ===\" && sed -E 's/=\\(.{4}\\).*/=\\\\1****/' .env.local 2>&1 && echo \"\" && echo \"=== public/ ===\" && ls -la public/ 2>&1 && echo \"\" && echo \"=== sw.js exists? ===\" && ls -la public/sw.js 2>&1)",
+      "Bash(/c/Users/kuroe/AppData/Local/ms-playwright-go/1.57.0/node.exe --version)",
+      "Bash(/c/Users/kuroe/AppData/Local/ms-playwright-go/1.57.0/node.exe node_modules/eslint/bin/eslint.js .)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(grep -oE \"[a-z-]+/[a-z-]+$|no-[a-z-]+$|react-[a-z/-]+$\")",
+      "Bash(/c/Users/kuroe/AppData/Local/ms-playwright-go/1.57.0/node.exe node_modules/vite/bin/vite.js build)",
+      "Bash(npm outdated *)",
+      "Bash(node -e ' *)",
+      "Bash(git log *)",
+      "Bash(grep -rn \"api/meta\\\\|/meta?\" src/ public/ index.html)",
+      "Bash(grep -nE \"// ──|// ═|return \\\\\\(|^  const \\\\[\" src/pages/TrackerPage.jsx)",
+      "Bash(grep -iE \"// ─|// ═\")",
+      "Bash(grep -nE \"// ──|// ═\" src/pages/IncubatorPage.jsx)",
+      "Bash(grep -nE \"// ──|// ═\" src/pages/InboxPage.jsx)",
+      "Bash(npx eslint *)",
+      "Bash(npm run *)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(echo \"api lint exit: $?\")",
+      "Bash(echo \"api exit: $?\")",
+      "Bash(node --check public/sw.js)"
+    ],
+    "additionalDirectories": [
+      "D:\\Development\\Workspace\\Web_Update"
+    ]
+  }
+}

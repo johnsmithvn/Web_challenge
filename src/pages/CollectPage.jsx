@@ -17,7 +17,8 @@ import { FileText, MessageSquareQuote, BookOpen, Lightbulb, Library, FolderOpen,
 import QuoteWidget from '../components/QuoteWidget';
 import UrlInputPopover from '../components/UrlInputPopover';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
-import { extractDriveDirectUrl, extractDriveFileId, isAudioUrl, stripMediaTag } from '../utils/mediaUtils';
+import { stripMediaTag } from '../utils/mediaUtils';
+import { formatDateTime } from '../utils/dateUtils';
 import MediaPreview from '../components/MediaPreview';
 import CustomSelect from '../components/CustomSelect';
 
@@ -83,15 +84,7 @@ function safeHostname(url) {
   catch { return url.replace(/^https?:\/\//, '').split('/')[0] || url; }
 }
 
-function getAllTags(items) {
-  const map = new Map();
-  items.forEach(it => (it._tags || []).forEach(t => {
-    if (t && t.id) map.set(t.id, t);
-  }));
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function fmtDate(iso) {
+function formatDate(iso) {
   return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
@@ -351,7 +344,7 @@ function SubNotesSection({ collectionId, notesHook }) {
     setEditContent('');
   };
 
-  const fmtNoteDate = (iso) => new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  // Using centralized dateUtils
 
   return (
     <div className="kb-subnotes">
@@ -382,7 +375,7 @@ function SubNotesSection({ collectionId, notesHook }) {
             <>
               <div className="kb-subnote__content">{n.content}</div>
               <div className="kb-subnote__footer">
-                <span className="kb-subnote__date">{fmtNoteDate(n.created_at)}</span>
+                <span className="kb-subnote__date">{formatDateTime(n.created_at)}</span>
                 <div className="kb-subnote__actions">
                   <button className="kb-subnote__btn" onClick={() => { setEditingId(n.id); setEditContent(n.content); }}>✏️</button>
                   <button className="kb-subnote__btn kb-subnote__btn--danger" onClick={() => deleteNote(n.id)}>🗑</button>
@@ -457,7 +450,7 @@ function ArticleCard({ item, onClick, onGroupClick }) {
           <span className={`kb-format-badge ${isTiptap ? 'kb-format-badge--visual' : 'kb-format-badge--markdown'}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
             {isTiptap ? '🎨 Visual' : '✍️ MD'}
           </span>
-          <span className="kb-card__date">{fmtDate(item.created_at)}</span>
+          <span className="kb-card__date">{formatDate(item.created_at)}</span>
         </div>
         <h3 className="kb-card__title">{item.title}</h3>
         {excp && <p className="kb-card__excerpt">{excp}{plainText.length > 180 ? '…' : ''}</p>}
@@ -530,7 +523,7 @@ function PostcardCard({ item, index, onClick }) {
           return <span key={name} className="kb-tag-chip"><span className="kb-tag-dot" style={{ background: color }} />#{name}</span>;
         })}
         {audioUrl && <span className="kb-postcard__audio-badge">🔊 Audio</span>}
-        <span className="kb-postcard__date">{fmtDate(item.created_at)}</span>
+        <span className="kb-postcard__date">{formatDate(item.created_at)}</span>
       </div>
     </article>
   );
@@ -601,7 +594,7 @@ function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook, o
             <div className="kb-reader__meta">
               <span style={{ color: meta.color }}>{meta.label}</span>
               <span>·</span>
-              <span>{fmtDate(item.updated_at || item.created_at)}</span>
+              <span>{formatDate(item.updated_at || item.created_at)}</span>
               <span>·</span>
               <span>⏱ {mins} phút đọc</span>
               <span className={`kb-format-badge ${isTiptap ? 'kb-format-badge--visual' : 'kb-format-badge--markdown'}`}>
@@ -956,15 +949,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
             <div className="kb-editor-format-pill">
               <button
                 type="button"
-                className={`kb-format-pill-btn ${!draft.url.includes('#audio') && !draft.url.includes('#video') ? 'active' : ''}`}
-                onClick={() => set('url', draft.url.split('#')[0])}
-                title="Dạng Drive/Tự động"
-              >
-                📁 Auto
-              </button>
-              <button
-                type="button"
-                className={`kb-format-pill-btn ${draft.url.includes('#audio') ? 'active' : ''}`}
+                className={`kb-format-pill-btn ${!draft.url.includes('#video') ? 'active' : ''}`}
                 onClick={() => set('url', draft.url.split('#')[0] + '#audio')}
                 title="Dạng Audio"
               >
@@ -1021,7 +1006,7 @@ export default function CollectPage() {
   const { user } = useAuth();
   const { items, isLoading, fetchItems, addItem, updateItem, deleteItem } = useCollections();
   const { addTask, pendingTasks } = useUserTasks();
-  const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag, fetchTags: refetchTags } = useTags();
+  const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag } = useTags();
   const groupsHook = useKnowledgeGroups();
   const notesHook = useCollectionNotes();
   const { confirm, ConfirmModal } = useConfirm();
@@ -1490,7 +1475,7 @@ export default function CollectPage() {
               <div className="kb-group-header__emoji">{activeGroupView.emoji}</div>
               <h2 className="kb-group-header__title">{activeGroupView.title}</h2>
               <div className="kb-group-header__meta">
-                {groupArticles.length} bài · Tạo {fmtDate(activeGroupView.created_at)}
+                {groupArticles.length} bài · Tạo {formatDate(activeGroupView.created_at)}
                 {activeGroupView.description && <> · {activeGroupView.description}</>}
               </div>
             </div>

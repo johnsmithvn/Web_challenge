@@ -7,6 +7,7 @@ import { Settings, Tag, Plus, Pencil, Trash2, Check, X, Palette, User, Save, Mai
 import { supabase } from '../lib/supabase';
 import { getUsdRate, getAutoK, setUsdRate, setAutoK } from '../utils/currencyUtils';
 import '../styles/settings.css';
+import { logger } from '../utils/logger';
 
 /* ── Color palette for tag picker ──────────────────────────── */
 const TAG_COLORS = [
@@ -104,7 +105,7 @@ function FinanceSettingsSection() {
    ══════════════════════════════════════════════════════════════ */
 function TagManagerSection({ user }) {
   const {
-    tags, isLoading, fetchTags,
+    tags, isLoading,
     addTag, updateTag, deleteTag,
     getAllTagUsageCounts,
   } = useTags();
@@ -388,15 +389,11 @@ function ProfileSection({ user, profile, updateProfile }) {
         setSaveMsg('invalid_email');
         return;
       }
-      // Check duplicate email
+      // Check duplicate email (rpc excludes the caller's own row via auth.uid())
       if (newEmail && !newEmail.endsWith('@lifehub.local')) {
-        const { data: existing } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', newEmail)
-          .neq('id', user.id)
-          .maybeSingle();
-        if (existing) {
+        const { data: emailTaken } = await supabase
+          .rpc('email_exists', { p_email: newEmail });
+        if (emailTaken) {
           setSaving(false);
           setSaveMsg('email_taken');
           return;
@@ -417,7 +414,7 @@ function ProfileSection({ user, profile, updateProfile }) {
     const { error } = await updateProfile(updates);
     setSaving(false);
     if (error) {
-      console.warn('[Profile] update failed:', error.message);
+      logger.warn('[Profile] update failed:', error.message);
       setSaveMsg('error');
     } else {
       setSaveMsg('success');
@@ -540,7 +537,7 @@ function ProfileSection({ user, profile, updateProfile }) {
 /* ══════════════════════════════════════════════════════════════
    QUOTE MANAGER SECTION
    ══════════════════════════════════════════════════════════════ */
-function QuoteManagerSection({ user }) {
+function QuoteManagerSection() {
   const { userQuotes, systemQuotes, addQuote, updateQuote, deleteQuote, isLoading } = useQuotes();
   const { confirm, ConfirmModal } = useConfirm();
 

@@ -1,7 +1,7 @@
-import { useMemo, useState, useEffect, useCallback, memo } from 'react';
+import { useMemo, useState, useEffect, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useHabitStore } from '../hooks/useHabitStore';
-import { useXpStore, computeLevel } from '../hooks/useXpStore';
+import { useXpStore } from '../hooks/useXpStore';
 import { useSkipReasons } from '../hooks/useMoodSkip';
 import { useExpenses } from '../hooks/useExpenses';
 import { useSubscriptions } from '../hooks/useSubscriptions';
@@ -125,7 +125,7 @@ const FocusBreakdown = memo(function FocusBreakdown() {
 });
 
 /* ── Weekly Review Digest ───────────────────────────────── */
-const WeeklyReview = memo(function WeeklyReview({ data: habitData, streak, xpLog, todayMinutes, expenses }) {
+const WeeklyReview = memo(function WeeklyReview({ data: habitData, xpLog, expenses }) {
   const [expanded, setExpanded] = useState(false);
 
   const review = useMemo(() => {
@@ -437,7 +437,6 @@ function SectionTitle({ icon, title, action }) {
 export default function DashboardPage() {
   const { data, streak, longestStreak, totalDone } = useHabitStore();
   const { totalXp, levelInfo } = useXpStore();
-  const { getAllSkips } = useSkipReasons();
 
   const { todayMinutes, todaySessions } = useFocusTimer();
   const { weekSummary: fitWeek, todayLogs: fitToday } = useFitnessLog();

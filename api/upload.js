@@ -12,18 +12,40 @@
  *   GOOGLE_SERVICE_ACCOUNT_JSON    — Google Service Account JSON string
  *   DRIVE_FOLDER_ID                — Google Drive Root Folder ID to upload to
  */
+import { verifyAuth } from './_lib/verifyAuth.js';
+
 export const config = { api: { bodyParser: false } };
 
 // Global in-memory cache for folder IDs across hot serverless invocations
 let folderCache = {};
 
-export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+// Whitelist of allowed upload subfolders — prevents Drive query injection via the
+// user-controlled `folder` field. Anything else is coerced to 'uploads'.
+const ALLOWED_FOLDERS = new Set(['images', 'audio', 'video', 'documents', 'uploads']);
+
+// Allowed CORS origins (comma-separated env). Same-origin app calls (relative
+// '/api/upload') don't need CORS at all; this only governs cross-origin access.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
+export default async function handler(req, res) {
+  applyCors(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Require a valid Supabase session — block anonymous uploads to the owner's Drive.
+  const user = await verifyAuth(req);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     const chunks = [];
@@ -37,13 +59,16 @@ export default async function handler(req, res) {
     const { file, filename, mimeType, folder } = parseMultipart(body, boundary);
     if (!file || !filename) return res.status(400).json({ error: 'No file uploaded' });
 
+    // Coerce folder to the whitelist (defense-in-depth against Drive query injection)
+    const safeFolder = ALLOWED_FOLDERS.has(folder) ? folder : 'uploads';
+
     // Validate file size (max 50MB for Drive)
     const MAX_SIZE = 50 * 1024 * 1024;
     if (file.length > MAX_SIZE) {
       return res.status(413).json({ error: `File too large. Max 50MB` });
     }
 
-    return await handleDrive(req, res, file, mimeType, filename, folder);
+    return await handleDrive(req, res, file, mimeType, filename, safeFolder);
 
   } catch (err) {
     console.error('Upload error:', err);
@@ -249,6 +274,9 @@ function parseMultipart(body, boundary) {
         file = content;
         filename = fileMatch[1];
         mimeType = typeMatch ? typeMatch[1].trim() : 'application/octet-stream';
+        // Sanitize: reject anything that isn't a clean type/subtype (prevents CRLF/header
+        // injection into the outgoing Drive multipart body).
+        if (!/^[\w.+-]+\/[\w.+-]+$/.test(mimeType)) mimeType = 'application/octet-stream';
       } else if (fieldName === 'folder') {
         folder = content.toString().trim() || 'uploads';
       }

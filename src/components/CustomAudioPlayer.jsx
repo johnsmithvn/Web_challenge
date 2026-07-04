@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, Loader2, AlertCircle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { logger } from '../utils/logger';
 
 /**
  * Helper to format seconds into MM:SS format.
@@ -23,7 +24,7 @@ const stringifyChildren = (children) => {
   return '';
 };
 
-function CustomAudioPlayer({ src, fallbackUrl, title, onToggleFormat }) {
+function CustomAudioPlayer({ src, fallbackUrl, title }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -33,7 +34,6 @@ function CustomAudioPlayer({ src, fallbackUrl, title, onToggleFormat }) {
   const [hasError, setHasError] = useState(false);
 
   const audioRef = useRef(null);
-  const progressRef = useRef(null);
 
   // Sync volume state
   useEffect(() => {
@@ -77,7 +77,7 @@ function CustomAudioPlayer({ src, fallbackUrl, title, onToggleFormat }) {
   };
 
   const handleError = () => {
-    console.warn("Direct audio streaming failed, falling back to iframe:", src);
+    logger.warn("Direct audio streaming failed, falling back to iframe:", src);
     setIsLoading(false);
     // Only fall back to iframe if a fallbackUrl is available
     if (fallbackUrl) {
@@ -91,20 +91,15 @@ function CustomAudioPlayer({ src, fallbackUrl, title, onToggleFormat }) {
   // If the stream fails and we have a Google Drive fallback URL, render the iframe
   if (hasError && fallbackUrl) {
     return (
-      <div className="kb-audio-player kb-audio-player--iframe-fallback">
-        <div className="kb-audio-player__fallback-header">
-          <AlertCircle size={14} className="kb-audio-player__fallback-icon" />
-          <span>Đang sử dụng trình phát dự phòng bảo mật của Drive</span>
-        </div>
+      <div className="kb-custom-audio-player card kb-audio-player--iframe-fallback">
         <iframe
           src={fallbackUrl}
           width="100%"
-          height="90px"
+          height="80px"
           style={{ 
             border: 'none', 
-            borderRadius: '6px', 
-            background: '#000', 
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            borderRadius: '8px', 
+            overflow: 'hidden'
           }}
           allow="autoplay"
           title={title || 'Google Drive Media'}

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 // ── Levels ────────────────────────────────────────────────
 const LEVELS = [
@@ -57,12 +58,12 @@ async function migrateXpToSupabase(userId) {
         created_at: e.ts ? new Date(e.ts).toISOString() : new Date().toISOString(),
       }));
       await supabase.from('xp_logs').insert(rows);
-      console.log(`[XpStore] Migrated ${rows.length} XP entries from localStorage`);
+      logger.info(`[XpStore] Migrated ${rows.length} XP entries from localStorage`);
     }
     localStorage.removeItem(LEGACY_KEY);
     localStorage.setItem(MIGRATED_KEY, userId);
   } catch (e) {
-    console.warn('[XpStore] Migration failed:', e.message);
+    logger.warn('[XpStore] Migration failed:', e.message);
   }
 }
 
@@ -133,7 +134,7 @@ export function useXpStore() {
         created_at: new Date().toISOString(),
       });
       if (error) {
-        console.warn('[XpStore] addXp failed:', error.message);
+        logger.warn('[XpStore] addXp failed:', error.message);
         // Rollback — remove last entry matching this reason+ts
         setLog(prev => prev.filter(e => e.ts !== entry.ts));
       }
@@ -152,17 +153,20 @@ export function useXpStore() {
     setLog(prev => prev.filter(e => !(e.reason === reason && JSON.stringify(e.meta) === metaStr)));
 
     if (useDB && user) {
-      // Delete the matching xp_logs row from Supabase
-      const { error } = await supabase
+      // Delete the matching xp_logs row from Supabase.
+      // Use `.contains` (jsonb @>) — `.eq('meta', obj)` does NOT reliably match a
+      // jsonb column (mirrors addXp's dedup). Return the deleted rows to verify.
+      const { data: deleted, error } = await supabase
         .from('xp_logs')
         .delete()
         .eq('user_id', user.id)
         .eq('reason', reason)
-        .eq('meta', meta);
+        .contains('meta', meta)
+        .select('id');
 
-      if (error) {
-        console.warn('[XpStore] removeXp failed:', error.message);
-        // Rollback: put it back
+      if (error || !deleted || deleted.length === 0) {
+        if (error) logger.warn('[XpStore] removeXp failed:', error.message);
+        // Rollback: nothing was actually removed in the DB, restore the entry.
         setLog(prev => [...prev, match]);
       }
     }

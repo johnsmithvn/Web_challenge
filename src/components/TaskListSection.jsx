@@ -11,7 +11,6 @@ const todayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
-const nowHHMM = () => { const n = new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; };
 
 const PRIORITY_OPTIONS = [
   { value: 0, label: 'Không', icon: '➖', color: 'var(--text-muted)' },
@@ -29,7 +28,7 @@ export default function TaskListSection() {
   const navigate = useNavigate();
   const {
     todayTasks, overdueTasks, futureTasks, completedToday,
-    addTask, completeTask, uncompleteTask, updateTask, deleteTask, rolloverTask,
+    addTask, completeTask, uncompleteTask, updateTask, deleteTask,
     linkCollection, unlinkCollection,
     isLoading,
   } = useUserTasks();
@@ -172,10 +171,6 @@ export default function TaskListSection() {
     return new Date(d + 'T00:00:00').toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
   };
 
-  const overdueDays = (d) => {
-    const diff = Math.floor((new Date(todayStr() + 'T00:00:00') - new Date(d + 'T00:00:00')) / (1000 * 60 * 60 * 24));
-    return diff;
-  };
 
   const totalPending = todayTasks.length + overdueTasks.length + futureTasks.length;
 

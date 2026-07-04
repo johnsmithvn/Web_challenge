@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 /**
  * useKnowledgeGroups — CRUD for knowledge_groups + collection_groups junction.
@@ -37,7 +38,7 @@ export function useKnowledgeGroups() {
 
       setGroups(mapped);
     } catch (err) {
-      console.warn('[useKnowledgeGroups] fetchGroups error:', err.message);
+      logger.warn('[useKnowledgeGroups] fetchGroups error:', err.message);
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +60,7 @@ export function useKnowledgeGroups() {
       setGroups(prev => [newGroup, ...prev]);
       return newGroup;
     } catch (err) {
-      console.warn('[useKnowledgeGroups] addGroup error:', err.message);
+      logger.warn('[useKnowledgeGroups] addGroup error:', err.message);
       return null;
     }
   }, [enabled, user]);
@@ -81,7 +82,7 @@ export function useKnowledgeGroups() {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn('[useKnowledgeGroups] updateGroup error:', err.message);
+      logger.warn('[useKnowledgeGroups] updateGroup error:', err.message);
       fetchGroups();
       return false;
     }
@@ -104,7 +105,7 @@ export function useKnowledgeGroups() {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn('[useKnowledgeGroups] deleteGroup error:', err.message);
+      logger.warn('[useKnowledgeGroups] deleteGroup error:', err.message);
       fetchGroups();
       return false;
     }
@@ -137,13 +138,13 @@ export function useKnowledgeGroups() {
           .delete()
           .in('id', articleIds)
           .eq('user_id', user.id);
-        if (aErr) console.warn('[useKnowledgeGroups] deleteArticles error:', aErr.message);
+        if (aErr) logger.warn('[useKnowledgeGroups] deleteArticles error:', aErr.message);
       }
 
       setGroups(prev => prev.filter(g => g.id !== id));
       return true;
     } catch (err) {
-      console.warn('[useKnowledgeGroups] deleteGroupWithArticles error:', err.message);
+      logger.warn('[useKnowledgeGroups] deleteGroupWithArticles error:', err.message);
       fetchGroups();
       return false;
     }
@@ -170,7 +171,7 @@ export function useKnowledgeGroups() {
       ));
       return true;
     } catch (err) {
-      console.warn('[useKnowledgeGroups] linkArticle error:', err.message);
+      logger.warn('[useKnowledgeGroups] linkArticle error:', err.message);
       return false;
     }
   }, [enabled]);
@@ -192,7 +193,7 @@ export function useKnowledgeGroups() {
       ));
       return true;
     } catch (err) {
-      console.warn('[useKnowledgeGroups] unlinkArticle error:', err.message);
+      logger.warn('[useKnowledgeGroups] unlinkArticle error:', err.message);
       return false;
     }
   }, [enabled]);
@@ -218,7 +219,7 @@ export function useKnowledgeGroups() {
         return cleaned;
       }).filter(Boolean);
     } catch (err) {
-      console.warn('[useKnowledgeGroups] fetchGroupArticles error:', err.message);
+      logger.warn('[useKnowledgeGroups] fetchGroupArticles error:', err.message);
       return [];
     }
   }, [enabled]);
@@ -235,7 +236,7 @@ export function useKnowledgeGroups() {
       if (error) throw error;
       return (data || []).map(row => row.knowledge_groups).filter(Boolean);
     } catch (err) {
-      console.warn('[useKnowledgeGroups] getGroupsForArticle error:', err.message);
+      logger.warn('[useKnowledgeGroups] getGroupsForArticle error:', err.message);
       return [];
     }
   }, [enabled]);

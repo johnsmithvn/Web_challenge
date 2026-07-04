@@ -188,4 +188,17 @@
   padding: 1.5rem 0;
   color: var(--text-muted);
   font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.qc-modal__guest p {
+  margin: 0;
+}
+
+.qc-modal__guest .btn {
+  font-size: 0.85rem;
+  padding: 0.5rem 1.5rem;
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 let _supabase = null;
 async function getSb() {
@@ -51,12 +52,12 @@ export function useTags() {
         .order('name', { ascending: true });
 
       if (error) {
-        console.error('[useTags] fetch error:', error.message);
+        logger.error('[useTags] fetch error:', error.message);
       } else {
         setTags(data || []);
       }
     } catch (err) {
-      console.error('[useTags] fetch exception:', err);
+      logger.error('[useTags] fetch exception:', err);
     } finally {
       setIsLoading(false);
     }
@@ -107,14 +108,14 @@ export function useTags() {
             return found;
           }
         }
-        console.error('[useTags] add error:', error.message);
+        logger.error('[useTags] add error:', error.message);
         return null;
       }
 
       setTags(prev => [...prev, data]);
       return data;
     } catch (err) {
-      console.error('[useTags] add exception:', err);
+      logger.error('[useTags] add exception:', err);
       return null;
     }
   }, [isAuth, userId, tags]);
@@ -147,14 +148,14 @@ export function useTags() {
         .eq('user_id', userId);
 
       if (error) {
-        console.error('[useTags] update error:', error.message);
+        logger.error('[useTags] update error:', error.message);
         // Rollback
         setTags(prev => prev.map(t => t.id === tagId ? backup : t));
         return false;
       }
       return true;
     } catch (err) {
-      console.error('[useTags] update exception:', err);
+      logger.error('[useTags] update exception:', err);
       setTags(prev => prev.map(t => t.id === tagId ? backup : t));
       return false;
     }
@@ -178,11 +179,11 @@ export function useTags() {
         .eq('user_id', userId);
 
       if (error) {
-        console.error('[useTags] delete error:', error.message);
+        logger.error('[useTags] delete error:', error.message);
         if (backup) setTags(prev => [...prev, backup]);
       }
     } catch (err) {
-      console.error('[useTags] delete exception:', err);
+      logger.error('[useTags] delete exception:', err);
       if (backup) setTags(prev => [...prev, backup]);
     }
   }, [isAuth, userId, tags]);
@@ -193,7 +194,7 @@ export function useTags() {
 
     const config = ENTITY_CONFIG[entityType];
     if (!config) {
-      console.error(`[useTags] linkTag: unknown entityType "${entityType}"`);
+      logger.error(`[useTags] linkTag: unknown entityType "${entityType}"`);
       return false;
     }
 
@@ -207,12 +208,12 @@ export function useTags() {
       );
 
       if (error) {
-        console.error(`[useTags] linkTag error:`, error.message);
+        logger.error(`[useTags] linkTag error:`, error.message);
         return false;
       }
       return true;
     } catch (err) {
-      console.error(`[useTags] linkTag exception:`, err);
+      logger.error(`[useTags] linkTag exception:`, err);
       return false;
     }
   }, [isAuth]);
@@ -223,7 +224,7 @@ export function useTags() {
 
     const config = ENTITY_CONFIG[entityType];
     if (!config) {
-      console.error(`[useTags] unlinkTag: unknown entityType "${entityType}"`);
+      logger.error(`[useTags] unlinkTag: unknown entityType "${entityType}"`);
       return false;
     }
 
@@ -236,12 +237,12 @@ export function useTags() {
         .eq('tag_id', tagId);
 
       if (error) {
-        console.error(`[useTags] unlinkTag error:`, error.message);
+        logger.error(`[useTags] unlinkTag error:`, error.message);
         return false;
       }
       return true;
     } catch (err) {
-      console.error(`[useTags] unlinkTag exception:`, err);
+      logger.error(`[useTags] unlinkTag exception:`, err);
       return false;
     }
   }, [isAuth]);
@@ -263,12 +264,12 @@ export function useTags() {
         .eq(config.fk, entityId);
 
       if (error) {
-        console.error('[useTags] getTagsForEntity error:', error.message);
+        logger.error('[useTags] getTagsForEntity error:', error.message);
         return [];
       }
       return (data || []).map(row => row.tags).filter(Boolean);
     } catch (err) {
-      console.error('[useTags] getTagsForEntity exception:', err);
+      logger.error('[useTags] getTagsForEntity exception:', err);
       return [];
     }
   }, [isAuth]);
@@ -290,7 +291,7 @@ export function useTags() {
 
       return (expenses.count || 0) + (subs.count || 0) + (collections.count || 0);
     } catch (err) {
-      console.error('[useTags] getTagUsageCount exception:', err);
+      logger.error('[useTags] getTagUsageCount exception:', err);
       return 0;
     }
   }, [isAuth]);
@@ -321,7 +322,7 @@ export function useTags() {
       }
       return counts;
     } catch (err) {
-      console.error('[useTags] getAllTagUsageCounts exception:', err);
+      logger.error('[useTags] getAllTagUsageCounts exception:', err);
       return {};
     }
   }, [isAuth, userId]);

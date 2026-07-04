@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCollections } from '../hooks/useCollections';
+import AuthModal from './AuthModal';
 import '../styles/quick-capture.css';
+import { logger } from '../utils/logger';
 
 /**
  * QuickCapture — Global floating [+] button.
@@ -16,6 +18,7 @@ export default function QuickCapture() {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const inputRef = useRef(null);
   // Track where mousedown started — only close if mousedown AND mouseup both hit the backdrop
   const mouseDownTarget = useRef(null);
@@ -65,7 +68,7 @@ export default function QuickCapture() {
         setOpen(false);
       }
     } catch (err) {
-      console.error('[QuickCapture] unexpected error:', err);
+      logger.error('[QuickCapture] unexpected error:', err);
     } finally {
       setSaving(false);
     }
@@ -134,12 +137,24 @@ export default function QuickCapture() {
               </>
             ) : (
               <div className="qc-modal__guest">
-                🔐 Đăng nhập để sử dụng Quick Capture
+                <p>🔐 Đăng nhập để sử dụng Quick Capture</p>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => { setOpen(false); setShowAuth(true); }}
+                  id="qc-login-btn"
+                >
+                  🔑 Đăng Nhập
+                </button>
               </div>
             )}
           </form>
         </div>
       )}
+
+      {/* Auth Modal triggered from guest prompt */}
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
     </>
   );
 }
+

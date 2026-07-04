@@ -141,7 +141,7 @@ export default function FinancePage() {
       setTab('subs');
       setShowAddSub(true);
     }
-  }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [location.key]);  
 
   // Load data on mount
   useEffect(() => {

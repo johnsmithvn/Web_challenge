@@ -69,7 +69,6 @@ export default function TrackerSection({ compact = false, isInTeam = false }) {
     return { slice, doneDays: slice.filter(d => data[d]).length };
   });
 
-  const week1Done = weekSlices[0].doneDays;
   const week2Done = weekSlices[1].doneDays;
 
   /**

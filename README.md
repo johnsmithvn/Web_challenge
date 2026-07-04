@@ -1,4 +1,4 @@
-# Life Hub — Personal Life OS v4.12.0
+# Life Hub — Personal Life OS v4.23.0
 
 > **Kỷ Luật = Hệ Thống, Không Phải Ý Chí**
 
@@ -46,40 +46,25 @@ File `.env.local.example` chứa tất cả biến. Copy sang `.env.local` rồi
 3. Copy `Project URL` → `VITE_SUPABASE_URL`
 4. Copy `anon public` key → `VITE_SUPABASE_ANON_KEY`
 
-### Tùy chọn — Imgur (auto-upload ảnh khi paste/drop)
+### Tùy chọn — Google Drive (upload ảnh / audio / video / file)
+
+Mọi file được upload qua **Google Drive Service Account** (Vercel serverless `api/upload.js`) và phát lại qua proxy `api/stream.js`. Upload **yêu cầu người dùng đã đăng nhập** (xác thực Supabase JWT).
 
 | Biến | Ở đâu | Mục đích |
 |------|--------|----------|
-| `IMGUR_CLIENT_ID` | Vercel only | Imgur Anonymous API |
-
-**Cách lấy:**
-1. Vào [api.imgur.com/oauth2/addclient](https://api.imgur.com/oauth2/addclient)
-2. **Application name:** LifeHub
-3. **Authorization type:** "Anonymous usage without user authorization"
-4. **Callback URL:** `https://your-domain.vercel.app`
-5. Submit → Copy **Client ID** (KHÔNG phải Secret)
-
-> ⚠️ **KHÔNG thêm prefix `VITE_`** — biến này chỉ dùng server-side trong Vercel Functions.
-
-### Tùy chọn — Cloudflare R2 (upload audio/file lớn)
-
-| Biến | Ở đâu | Mục đích |
-|------|--------|----------|
-| `R2_ACCOUNT_ID` | Vercel only | Cloudflare Account ID |
-| `R2_ACCESS_KEY_ID` | Vercel only | R2 API Key |
-| `R2_SECRET_ACCESS_KEY` | Vercel only | R2 API Secret |
-| `R2_BUCKET_NAME` | Vercel only | Tên bucket (mặc định: `lifehub-media`) |
-| `R2_PUBLIC_URL` | Vercel only | Public URL của bucket |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | Vercel only | Service Account JSON (nén thành chuỗi 1 dòng) — bật upload + stream |
+| `DRIVE_FOLDER_ID` | Vercel only | ID thư mục Drive gốc chứa file — bật upload + **bắt buộc cho stream** (fail-closed nếu thiếu) |
+| `ALLOWED_ORIGIN` | Vercel only (tùy chọn) | Origin app cho CORS, vd `https://your-app.vercel.app` |
 
 **Cách tạo:**
-1. Vào [dash.cloudflare.com](https://dash.cloudflare.com) → **R2 Object Storage**
-2. **Create Bucket** → Tên: `lifehub-media` → Region: Auto
-3. Vào bucket → **Settings** → **Public access** → **Allow Access**
-4. Copy **Public Bucket URL** → `R2_PUBLIC_URL`
-5. **Manage R2 API Tokens** → Create Token → Permission: Object Read & Write → Scope: `lifehub-media`
-6. Copy **Access Key ID** + **Secret Access Key**
+1. Vào [console.cloud.google.com → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts)
+2. Tạo Service Account → **Keys → Add key → JSON** → tải file JSON
+3. Tạo 1 thư mục trên Google Drive, **Share** thư mục đó cho email của Service Account (quyền Editor)
+4. Đặt thư mục gốc thành **"Anyone with the link → Viewer"** (file upload kế thừa quyền xem)
+5. Copy ID thư mục (đoạn cuối URL Drive) → `DRIVE_FOLDER_ID`
+6. Nén JSON thành chuỗi 1 dòng → `GOOGLE_SERVICE_ACCOUNT_JSON`
 
-> ⚠️ **KHÔNG thêm prefix `VITE_`** — server-side only. Không bao giờ expose secrets ra frontend.
+> ⚠️ **KHÔNG thêm prefix `VITE_`** — các biến này chỉ dùng server-side trong Vercel Functions. Không bao giờ expose Service Account ra frontend.
 
 ---
 
@@ -87,18 +72,13 @@ File `.env.local.example` chứa tất cả biến. Copy sang `.env.local` rồi
 
 ### Cài lần đầu (Fresh Install)
 
-Chạy SQL trong **Supabase SQL Editor** theo thứ tự:
+Chỉ cần **1 bước**: mở **Supabase → SQL Editor**, dán toàn bộ nội dung file dưới đây rồi **Run**:
 
-| # | File | Nội dung |
-|---|------|----------|
-| 1 | `data/schema_v4.4.0.sql` | **Master schema** — tạo tất cả bảng + RLS + indexes + triggers + seed data |
-| 2 | `data/migration_v4.7.2_add_description_to_intentions.sql` | Thêm cột `description` cho intentions |
-| 3 | `data/migration_v4.9.0_task_priority.sql` | Thêm priority cho tasks |
-| 4 | `data/migration_v4.10.1_drop_mood.sql` | Dọn bảng mood cũ |
-| 5 | `data/migration_v4.11.0_knowledge_groups.sql` | Knowledge Groups M:N + Sub-notes |
-| 6 | `data/migration_v4.12.0_quotes.sql` | Inspirational quotes (user-managed) |
+| File | Nội dung |
+|------|----------|
+| **`data/schema_v4.24.0.sql`** | **Schema hợp nhất** — toàn bộ bảng + RLS + indexes + triggers + functions + seed (đã gộp mọi migration v4.4.0 → v4.24.0). Idempotent, chạy lại được. |
 
-> **Lưu ý:** `schema_v4.4.0.sql` là file master, chứa tất cả bảng từ v1.0 → v4.4.0. Các migration sau đó là incremental.
+> **Lưu ý:** Đây là file **duy nhất** cần chạy (đã gộp tất cả migration cũ). Nó cũng vá lỗ rò email ở `profiles` (v4.24.0). Frontend tương ứng đã dùng các hàm `rpc()` định nghĩa trong file này — deploy code mới + chạy file này cùng lúc.
 
 ### Reset dữ liệu user (giữ nguyên schema)
 
@@ -125,13 +105,10 @@ Vào **Vercel → Project → Settings → Environment Variables**, thêm:
 | Biến | Bắt buộc | Giá trị |
 |------|:--------:|---------|
 | `VITE_SUPABASE_URL` | ✅ | `https://xxx.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | ✅ | `eyJhb...` |
-| `IMGUR_CLIENT_ID` | ❌ | Client ID từ Imgur |
-| `R2_ACCOUNT_ID` | ❌ | Cloudflare Account ID |
-| `R2_ACCESS_KEY_ID` | ❌ | R2 API Key |
-| `R2_SECRET_ACCESS_KEY` | ❌ | R2 API Secret |
-| `R2_BUCKET_NAME` | ❌ | `lifehub-media` |
-| `R2_PUBLIC_URL` | ❌ | `https://pub-xxx.r2.dev` |
+| `VITE_SUPABASE_ANON_KEY` | ✅ | `sb_publishable_...` (hoặc `eyJhb...`) |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | media | Service Account JSON (1 dòng) — bật upload + stream |
+| `DRIVE_FOLDER_ID` | media | ID thư mục Drive gốc — bật upload + stream |
+| `ALLOWED_ORIGIN` | ❌ | Origin app cho CORS các serverless function |
 
 > `vercel.json` đã cấu hình sẵn cho SPA routing.
 
@@ -159,19 +136,22 @@ src/
     SettingsPage.jsx        ← /settings — Tags + Quotes + Profile
     ...
   components/
-    TiptapEditor.jsx        ← WYSIWYG editor (Tiptap v2)
+    TiptapEditor.jsx        ← WYSIWYG editor (Tiptap v3)
     SlashCommand.jsx        ← / slash command menu
+    MediaPreview.jsx        ← Render YouTube/Drive/audio/video
+    CustomAudioPlayer.jsx   ← Glassmorphic HTML5 audio player
+    GlobalAudioPlayer.jsx   ← Floating random-podcast mini-player
     QuoteWidget.jsx         ← Daily quote with shuffle + audio
     UrlInputPopover.jsx     ← Shared media URL input
     QuickCapture.jsx        ← Global floating [+] → inbox
     ...
   extensions/
-    AudioNode.js            ← Custom Tiptap audio player node
+    MediaNode.jsx           ← Custom Tiptap media node (audio/video/YouTube/Drive)
   hooks/
     useHabitStore.js        ← Supabase-first habit ticks
     useCollections.js       ← KB article CRUD
     useQuotes.js            ← User quotes CRUD + system merge
-    useFileUpload.js        ← Upload to Imgur/R2
+    useRandomPodcast.js     ← Random podcast picker (Drive audio)
     useKnowledgeGroups.js   ← KB groups M:N
     useCollectionNotes.js   ← Threaded sub-notes
     useIntentions.js        ← Incubator CRUD
@@ -191,8 +171,9 @@ src/
   utils/                    ← Pure utility functions
   lib/supabase.js           ← Singleton Supabase client
 api/
-  meta.js                   ← OG metadata fetcher (Vercel Edge)
-  upload.js                 ← File upload proxy (Imgur + R2)
+  upload.js                 ← File upload proxy → Google Drive (Supabase JWT required)
+  stream.js                 ← Google Drive media stream proxy (Range/seek; folder-scoped)
+  _lib/verifyAuth.js        ← Supabase JWT verification helper (not a route)
 data/
   schema_v4.4.0.sql         ← Master DB schema
   migration_*.sql           ← Incremental migrations
@@ -239,11 +220,11 @@ docs/
 - **Dashboard:** Unified stats — today + habits + finance + activity
 - **Incubator:** Someday/maybe ideas with friction defer + multi-output execute
 
-### 🎵 Media Infrastructure (v4.12.0)
-- **Image:** Paste/drop → auto-upload Imgur + toolbar + `/image` slash
-- **YouTube:** Toolbar + `/youtube` slash → embedded player
-- **Audio:** Custom AudioNode + toolbar 🎵 + `/audio` slash → native player
-- **Upload API:** Dual provider (Imgur for images, R2 for audio/files)
+### 🎵 Media Infrastructure (v4.23.0)
+- **Upload:** Paste / drop / toolbar → Google Drive (Service Account) qua `api/upload.js` — **yêu cầu đăng nhập**
+- **Image / YouTube / Audio / Video:** toolbar + slash command; YouTube nhúng player, Drive media phát qua custom HTML5 player
+- **Stream proxy:** `api/stream.js` proxy media Drive (hỗ trợ Range/seek) — chỉ phục vụ file nằm trong thư mục app
+- **MediaNode (Tiptap v3):** tự nhận diện URL Drive / YouTube / audio / video khi paste
 - **QuoteWidget:** Daily-seeded random, shuffle 🔀, audio support (Today / Inbox / KB)
 - **Quote Manager:** Settings → CRUD personal quotes + view system quotes
 
@@ -267,12 +248,11 @@ docs/
 | | |
 |--|--|
 | **Frontend** | React 19, Vite 8, React Router 7 |
-| **Editor** | Tiptap v2 (ProseMirror) + custom extensions |
+| **Editor** | Tiptap v3 (ProseMirror) + custom extensions |
 | **Styling** | Vanilla CSS, Dark/Light mode, Glassmorphism |
 | **Backend** | Supabase (PostgreSQL + Auth + RLS) |
-| **Serverless** | Vercel Functions (`api/upload.js`, `api/meta.js`) |
-| **Image CDN** | Imgur (anonymous upload, free, unlimited) |
-| **File Storage** | Cloudflare R2 (S3-compatible, 10GB free) |
+| **Serverless** | Vercel Functions (`api/upload.js`, `api/stream.js`) |
+| **Media Storage** | Google Drive (Service Account, server-side upload + stream proxy) |
 | **Deploy** | Vercel (static SPA + serverless functions) |
 | **PWA** | Web App Manifest, Service Worker |
 
@@ -282,7 +262,10 @@ docs/
 
 | Version | Mô tả |
 |---------|-------|
-| **v4.12.0** | Media Infrastructure: Image/YouTube/Audio + QuoteWidget + Imgur upload + Quote Manager |
+| **v4.23.0** | Drive stream proxy (`api/stream.js`) + custom audio player + API hardening (auth/CORS/rate-limit) |
+| **v4.16.1** | Unified Google Drive upload — thay thế Imgur + Cloudflare R2 |
+| **v4.13.0–v4.22.0** | GlobalAudioPlayer + useRandomPodcast, MediaNode (thay AudioNode), CustomAudioPlayer, currency settings, GenericModal, dateUtils |
+| **v4.12.0** | Media Infrastructure: Image/YouTube/Audio + QuoteWidget + Quote Manager |
 | **v4.11.0** | Knowledge Groups M:N + Sub-Notes |
 | **v4.9.0** | Task priority system + ClickUp DatePicker |
 | **v4.5.0** | M:M Task↔KB linking + LinkKBModal |
@@ -320,9 +303,9 @@ git push origin feat/ten-feature
 | Vấn đề | Giải pháp |
 |--------|-----------|
 | App trắng, không load | Kiểm tra `VITE_SUPABASE_URL` trong `.env.local` |
-| Paste ảnh không upload | Kiểm tra `IMGUR_CLIENT_ID` trên Vercel env vars |
-| Audio upload failed | Kiểm tra R2 env vars (`R2_ACCOUNT_ID`, etc.) |
-| Quotes tab trống | Chạy `migration_v4.12.0_quotes.sql` trong Supabase |
+| Upload ảnh/file thất bại | Đăng nhập trước; kiểm tra `GOOGLE_SERVICE_ACCOUNT_JSON` + `DRIVE_FOLDER_ID` trên Vercel |
+| Audio/video Drive không phát | Kiểm tra `DRIVE_FOLDER_ID` (stream proxy fail-closed nếu thiếu) |
+| Quotes tab trống / Collect lỗi khi lưu | Chạy lại `data/schema_v4.24.0.sql` trong Supabase (idempotent) |
 | 404 khi refresh | Kiểm tra `vercel.json` có rewrite rule |
 | Build fail | `npm run build` — check console errors |
 

@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import QUOTES_DATA from '../data/quotes.json';
+import { logger } from '../utils/logger';
 
 const SYSTEM_QUOTES = QUOTES_DATA.dailyQuotes.map((q, i) => ({
   id: `sys_${i}`,
@@ -40,13 +41,13 @@ export function useQuotes() {
         .order('created_at', { ascending: false });
       if (error) {
         // Table may not exist yet — graceful fallback
-        console.warn('useQuotes: fetch error (table may not exist):', error.message);
+        logger.warn('useQuotes: fetch error (table may not exist):', error.message);
         setUserQuotes([]);
       } else {
         setUserQuotes(data || []);
       }
     } catch (err) {
-      console.warn('useQuotes: unexpected error:', err);
+      logger.warn('useQuotes: unexpected error:', err);
       setUserQuotes([]);
     } finally {
       setIsLoading(false);
@@ -65,7 +66,7 @@ export function useQuotes() {
       .select()
       .single();
     if (error) {
-      console.error('useQuotes: add error:', error.message);
+      logger.error('useQuotes: add error:', error.message);
       return null;
     }
     setUserQuotes(prev => [data, ...prev]);
@@ -78,7 +79,7 @@ export function useQuotes() {
       .update(updates)
       .eq('id', id);
     if (error) {
-      console.error('useQuotes: update error:', error.message);
+      logger.error('useQuotes: update error:', error.message);
       return false;
     }
     setUserQuotes(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q));
@@ -91,7 +92,7 @@ export function useQuotes() {
       .delete()
       .eq('id', id);
     if (error) {
-      console.error('useQuotes: delete error:', error.message);
+      logger.error('useQuotes: delete error:', error.message);
       return false;
     }
     setUserQuotes(prev => prev.filter(q => q.id !== id));

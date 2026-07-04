@@ -9,7 +9,7 @@ import QUESTIONS from '../data/quiz.json';
 const XP_PER_CORRECT = 5;
 
 export default function QuizPage() {
-  const { addXp, hasMilestone } = useXpStore();
+  const { addXp } = useXpStore();
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState(null);
   const [answers, setAnswers] = useState([]);

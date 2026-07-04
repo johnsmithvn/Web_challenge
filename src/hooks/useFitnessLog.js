@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 let _supabase = null;
 async function getSb() {
@@ -49,12 +50,12 @@ export function useFitnessLog() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('[useFitnessLog] fetch error:', error.message);
+        logger.error('[useFitnessLog] fetch error:', error.message);
       } else {
         setLogs(data || []);
       }
     } catch (err) {
-      console.error('[useFitnessLog] fetch exception:', err);
+      logger.error('[useFitnessLog] fetch exception:', err);
     } finally {
       setIsLoading(false);
     }
@@ -92,14 +93,14 @@ export function useFitnessLog() {
         .single();
 
       if (error) {
-        console.error('[useFitnessLog] add error:', error.message);
+        logger.error('[useFitnessLog] add error:', error.message);
         return null;
       }
 
       setLogs(prev => [data, ...prev]);
       return data;
     } catch (err) {
-      console.error('[useFitnessLog] add exception:', err);
+      logger.error('[useFitnessLog] add exception:', err);
       return null;
     }
   }, [isAuth, userId, todayStr]);
@@ -118,14 +119,14 @@ export function useFitnessLog() {
         .eq('user_id', userId);
 
       if (error) {
-        console.error('[useFitnessLog] delete error:', error.message);
+        logger.error('[useFitnessLog] delete error:', error.message);
         return false;
       }
 
       setLogs(prev => prev.filter(l => l.id !== id));
       return true;
     } catch (err) {
-      console.error('[useFitnessLog] delete exception:', err);
+      logger.error('[useFitnessLog] delete exception:', err);
       return false;
     }
   }, [isAuth, userId]);
@@ -156,13 +157,13 @@ export function useFitnessLog() {
         .eq('user_id', userId);
 
       if (error) {
-        console.error('[useFitnessLog] update error:', error.message);
+        logger.error('[useFitnessLog] update error:', error.message);
         setLogs(prev => prev.map(l => l.id === id ? backup : l));
         return false;
       }
       return true;
     } catch (err) {
-      console.error('[useFitnessLog] update exception:', err);
+      logger.error('[useFitnessLog] update exception:', err);
       setLogs(prev => prev.map(l => l.id === id ? backup : l));
       return false;
     }

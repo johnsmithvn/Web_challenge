@@ -31,31 +31,50 @@ export function formatVND(amount) {
  */
 export function parseCurrencyInput(value) {
   if (!value) return 0;
-  
+
   const str = String(value).trim().replace(/\s+/g, '');
   const isUsd = /[$]|usd/i.test(str);
-  
+
   // Tách phần số (hỗ trợ cả chấm/phẩy thập phân) và hậu tố nhân (k, m) nếu có
   const m = str.match(/(\d[\d.,]*)[\s]*([kKmM]?)/);
   if (!m) return 0;
-  
-  // Chuẩn hóa dấu chấm/phẩy thập phân
-  let val = parseFloat(m[1].replace(/[.,](?=\d{3})/g, '').replace(',', '.'));
+
+  const { num: val, hasDecimal } = parseNumericPart(m[1]);
   if (isNaN(val)) return 0;
-  
+
+  let result = val;
   const suffix = m[2];
-  
+
   if (isUsd) {
-    val = val * getUsdRate();
-  } else {
-    if (/[kK]/.test(suffix)) {
-      val *= 1000;
-    } else if (/[mM]/.test(suffix)) {
-      val *= 1000000;
-    } else if (getAutoK() && val < 10000) { // Chỉ nhân thêm 1000 khi tuỳ chọn Auto-K được bật
-      val *= 1000;
-    }
+    result = val * getUsdRate();
+  } else if (/[kK]/.test(suffix)) {
+    result *= 1000;
+  } else if (/[mM]/.test(suffix)) {
+    result *= 1000000;
+  } else if (!hasDecimal && getAutoK() && val < 10000) {
+    // Auto-K: số nguyên ngắn như "50" nghĩa là 50.000.
+    // Bỏ qua khi người dùng nhập số thập phân rõ ràng (vd "12.50") để tránh nhân nhầm 1000.
+    result *= 1000;
   }
-  
-  return Math.round(val);
+
+  return Math.round(result);
+}
+
+/**
+ * Phân tích token số có thể dùng '.'/',' làm dấu ngăn cách nghìn và/hoặc dấu thập phân.
+ * Quy ước: nhóm 1-2 chữ số sau dấu cuối cùng = thập phân; nhóm 3 chữ số = ngăn cách nghìn.
+ * Ví dụ: "120.000" -> 120000 (nghìn); "12.50" -> 12.5 (thập phân); "1.234.567" -> 1234567.
+ * @param {string} token
+ * @returns {{ num: number, hasDecimal: boolean }}
+ */
+function parseNumericPart(token) {
+  const lastSep = Math.max(token.lastIndexOf('.'), token.lastIndexOf(','));
+  if (lastSep === -1) return { num: parseFloat(token), hasDecimal: false };
+
+  const after = token.slice(lastSep + 1);
+  if (/^\d{1,2}$/.test(after)) {
+    const intPart = token.slice(0, lastSep).replace(/[.,]/g, '');
+    return { num: parseFloat(`${intPart}.${after}`), hasDecimal: true };
+  }
+  return { num: parseFloat(token.replace(/[.,]/g, '')), hasDecimal: false };
 }

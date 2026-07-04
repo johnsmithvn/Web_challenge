@@ -12,7 +12,7 @@ const PHASE_LABELS = {
 export default function FocusTimer({ defaultHabitId }) {
   const {
     phase, running, mins, secs, pct, session,
-    settings, todaySessions, todayMinutes,
+    settings, todayMinutes,
     habitId, start, pause, reset, skip,
     updateSettings, linkHabit,
   } = useFocusTimer();

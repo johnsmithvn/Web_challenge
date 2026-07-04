@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 /**
  * useCollectionNotes — CRUD for collection_notes (threaded sub-notes).
@@ -30,7 +31,7 @@ export function useCollectionNotes() {
       if (error) throw error;
       setNotes(data || []);
     } catch (err) {
-      console.warn('[useCollectionNotes] fetchNotes error:', err.message);
+      logger.warn('[useCollectionNotes] fetchNotes error:', err.message);
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +57,7 @@ export function useCollectionNotes() {
       setNotes(prev => [...prev, data]);
       return data;
     } catch (err) {
-      console.warn('[useCollectionNotes] addNote error:', err.message);
+      logger.warn('[useCollectionNotes] addNote error:', err.message);
       return null;
     }
   }, [enabled, user]);
@@ -65,10 +66,12 @@ export function useCollectionNotes() {
   const updateNote = useCallback(async (noteId, content) => {
     if (!enabled || !content?.trim()) return false;
 
-    // Optimistic
-    setNotes(prev => prev.map(n =>
-      n.id === noteId ? { ...n, content: content.trim() } : n
-    ));
+    // Optimistic — capture the prior value (from the freshest state) for rollback.
+    let backup;
+    setNotes(prev => {
+      backup = prev.find(n => n.id === noteId);
+      return prev.map(n => n.id === noteId ? { ...n, content: content.trim() } : n);
+    });
 
     try {
       const { error } = await supabase
@@ -80,7 +83,9 @@ export function useCollectionNotes() {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn('[useCollectionNotes] updateNote error:', err.message);
+      logger.warn('[useCollectionNotes] updateNote error:', err.message);
+      // Restore the original note so the UI doesn't show unsaved content.
+      if (backup) setNotes(prev => prev.map(n => n.id === noteId ? backup : n));
       return false;
     }
   }, [enabled, user]);
@@ -102,7 +107,7 @@ export function useCollectionNotes() {
       if (error) throw error;
       return true;
     } catch (err) {
-      console.warn('[useCollectionNotes] deleteNote error:', err.message);
+      logger.warn('[useCollectionNotes] deleteNote error:', err.message);
       return false;
     }
   }, [enabled, user]);
@@ -120,7 +125,7 @@ export function useCollectionNotes() {
       if (error) throw error;
       return count || 0;
     } catch (err) {
-      console.warn('[useCollectionNotes] getNoteCount error:', err.message);
+      logger.warn('[useCollectionNotes] getNoteCount error:', err.message);
       return 0;
     }
   }, [enabled, user]);

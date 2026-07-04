@@ -11,6 +11,7 @@
 
 import { useState, useCallback } from 'react';
 import { supabase, isSupabaseEnabled } from '../../lib/supabase';
+import { logger } from '../../utils/logger';
 
 const STATUS_ICON = {
   completed: '🏆',
@@ -64,7 +65,7 @@ export default function MyJourneys({ history = [], onRestart, restarting = false
         habits,
       });
     } catch (err) {
-      console.warn('[MyJourneys] restart error:', err.message);
+      logger.warn('[MyJourneys] restart error:', err.message);
     } finally {
       setLoadingId(null);
     }

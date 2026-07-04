@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════
 -- RESET USER DATA — Xóa toàn bộ data app, GIỮ lại auth accounts
--- Synced with: schema_v4.4.0.sql (25 tables)
--- Last updated: 2026-05-07
+-- Synced with: schema_v4.24.0.sql
+-- Last updated: 2026-06-28
 -- Chạy trong Supabase SQL Editor
 -- ⚠️  KHÔNG THỂ HOÀN TÁC — chỉ chạy khi chắc chắn muốn reset
 -- ═══════════════════════════════════════════════════════════════

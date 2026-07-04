@@ -1,18 +1,27 @@
 /**
  * Service Worker — Task Notification Scheduler
  *
- * Receives pending tasks from the main thread via postMessage.
- * Checks every 60 seconds if any task is due → shows notification.
- * Works even when the tab is closed (as long as browser is open).
+ * Receives the current day's pending tasks from the main thread via postMessage
+ * and shows a notification when one is due.
+ *
+ * NOTE: browsers suspend idle service workers, so this 60s timer is best-effort —
+ * it is NOT guaranteed to run when no tab is open. The synced task list is only
+ * valid for the day it was synced (see the day-rollover guard below).
  */
 
-const SW_VERSION = '1.0.0';
+const SW_VERSION = '1.1.0';
 let pendingTasks = [];
+let syncDay = null; // local YYYY-MM-DD when tasks were last synced
+
+function localDay(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 // ── Receive tasks from main thread ───────────────────────
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SYNC_TASKS') {
     pendingTasks = event.data.tasks || [];
+    syncDay = localDay();
   }
 });
 
@@ -21,6 +30,10 @@ setInterval(() => {
   if (pendingTasks.length === 0) return;
 
   const now = new Date();
+  // The synced tasks are only for `syncDay`. If the day has rolled over (tab left
+  // open past midnight), don't fire stale tasks — wait for a fresh SYNC_TASKS.
+  if (syncDay && localDay(now) !== syncDay) return;
+
   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   pendingTasks.forEach((task) => {
@@ -38,12 +51,13 @@ setInterval(() => {
         body: task.title,
         icon: '/favicon.svg',
         badge: '/favicon.svg',
-        tag: `task-${task.id}`,
+        tag: `task-${task.id}`, // coalesce duplicates with the same tag
+        renotify: false,        // if the SW restarts, don't re-alert an already-shown task
         data: { taskId: task.id },
         requireInteraction: true,
       });
 
-      // Mark as notified locally (prevent re-fire)
+      // Mark as notified locally (prevent re-fire within this SW lifetime)
       task.notified = true;
     }
   });

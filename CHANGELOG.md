@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## v4.23.0 — 2026-06-14
+### Added
+- **`api/stream.js`** — Vercel serverless proxy that streams Google Drive files through our server, bypassing CORS. Supports `Range` headers for seeking. Caches Service Account token across hot invocations. Enables custom HTML5 `<audio>` player for Drive audio (previously always fell back to ugly Drive iframe)
+- **`getDriveStreamUrl()`** in `mediaUtils.js` — Returns proxy URL (`/api/stream?id=xxx`) for Drive files
+
+### Removed
+- **"Dạng Drive" toggle** from MediaPreview — unused option, all Drive content now defaults to audio player format
+- **"📁 Auto" format pill** from CollectPage editor — redundant with audio-first default
+- **AlertCircle import** from CustomAudioPlayer — no longer used after fallback UI cleanup
+- **Verbose iframe fallback warning** ("Đang sử dụng trình phát dự phòng bảo mật của Drive") — replaced with cleaner compact layout
+
+### Changed
+- **MediaPreview.jsx** — Drive audio now uses proxy stream URL (`/api/stream?id=xxx`) as primary source, with iframe fallback if proxy fails. Removes CORS dependency
+- **GlobalAudioPlayer.jsx** — Switched from direct Drive URL to proxy stream URL for podcast playback
+- **CustomAudioPlayer.jsx** — Iframe fallback uses cleaner card layout (`.kb-custom-audio-player.card`) instead of warning header + dark box
+- **MediaNode.jsx** — Tiptap `renderHTML()` Drive case synced: default height 80px (audio), only `#video` gets 360px
+- **CollectPage.jsx** — Editor format pills reduced from 3 (Auto/Audio/Video) to 2 (Audio/Video)
+
 ## v4.22.0 — 2026-06-13
 ### Removed (Dead Code Cleanup)
 - **`useFileUpload.js`** — Hook never imported anywhere in the codebase

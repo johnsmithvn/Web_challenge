@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { logger } from '../utils/logger';
 
 let _supabase = null;
 async function getSb() {
@@ -43,12 +44,12 @@ export function useIntentions() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('[useIntentions] fetch error:', error.message);
+        logger.error('[useIntentions] fetch error:', error.message);
       } else {
         setIntentions(data || []);
       }
     } catch (err) {
-      console.error('[useIntentions] fetch exception:', err);
+      logger.error('[useIntentions] fetch exception:', err);
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +88,7 @@ export function useIntentions() {
         .single();
 
       if (error) {
-        console.error('[useIntentions] add error:', error.message);
+        logger.error('[useIntentions] add error:', error.message);
         return null;
       }
 
@@ -101,7 +102,7 @@ export function useIntentions() {
       setIntentions(prev => [data, ...prev]);
       return data;
     } catch (err) {
-      console.error('[useIntentions] add exception:', err);
+      logger.error('[useIntentions] add exception:', err);
       return null;
     }
   }, [isAuth, userId]);
@@ -124,7 +125,7 @@ export function useIntentions() {
         .eq('user_id', userId);
 
       if (updateErr) {
-        console.error('[useIntentions] defer update error:', updateErr.message);
+        logger.error('[useIntentions] defer update error:', updateErr.message);
         return false;
       }
 
@@ -136,7 +137,7 @@ export function useIntentions() {
         scheduled_for: scheduledFor || null,
       });
 
-      if (logErr) console.error('[useIntentions] defer log error:', logErr.message);
+      if (logErr) logger.error('[useIntentions] defer log error:', logErr.message);
 
       // Update local state
       setIntentions(prev => prev.map(i =>
@@ -144,7 +145,7 @@ export function useIntentions() {
       ));
       return true;
     } catch (err) {
-      console.error('[useIntentions] defer exception:', err);
+      logger.error('[useIntentions] defer exception:', err);
       return false;
     }
   }, [isAuth, userId]);
@@ -168,7 +169,7 @@ export function useIntentions() {
         .eq('user_id', userId);
 
       if (updateErr) {
-        console.error('[useIntentions] execute error:', updateErr.message);
+        logger.error('[useIntentions] execute error:', updateErr.message);
         return false;
       }
 
@@ -181,7 +182,7 @@ export function useIntentions() {
       setIntentions(prev => prev.filter(i => i.id !== id));
       return true;
     } catch (err) {
-      console.error('[useIntentions] execute exception:', err);
+      logger.error('[useIntentions] execute exception:', err);
       return false;
     }
   }, [isAuth, userId]);
@@ -200,7 +201,7 @@ export function useIntentions() {
         .eq('user_id', userId);
 
       if (updateErr) {
-        console.error('[useIntentions] abandon error:', updateErr.message);
+        logger.error('[useIntentions] abandon error:', updateErr.message);
         return false;
       }
 
@@ -213,7 +214,7 @@ export function useIntentions() {
       setIntentions(prev => prev.filter(i => i.id !== id));
       return true;
     } catch (err) {
-      console.error('[useIntentions] abandon exception:', err);
+      logger.error('[useIntentions] abandon exception:', err);
       return false;
     }
   }, [isAuth, userId]);
@@ -232,12 +233,12 @@ export function useIntentions() {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('[useIntentions] getLogs error:', error.message);
+        logger.error('[useIntentions] getLogs error:', error.message);
         return [];
       }
       return data || [];
     } catch (err) {
-      console.error('[useIntentions] getLogs exception:', err);
+      logger.error('[useIntentions] getLogs exception:', err);
       return [];
     }
   }, [isAuth]);
@@ -275,7 +276,7 @@ export function useIntentions() {
         .eq('user_id', userId);
 
       if (error) {
-        console.error('[useIntentions] update error:', error.message);
+        logger.error('[useIntentions] update error:', error.message);
         return false;
       }
 
@@ -292,7 +293,7 @@ export function useIntentions() {
       ));
       return true;
     } catch (err) {
-      console.error('[useIntentions] update exception:', err);
+      logger.error('[useIntentions] update exception:', err);
       return false;
     }
   }, [isAuth, userId]);
@@ -312,12 +313,12 @@ export function useIntentions() {
         .order('updated_at', { ascending: false });
 
       if (error) {
-        console.error('[useIntentions] fetchAbandoned error:', error.message);
+        logger.error('[useIntentions] fetchAbandoned error:', error.message);
         return [];
       }
       return data || [];
     } catch (err) {
-      console.error('[useIntentions] fetchAbandoned exception:', err);
+      logger.error('[useIntentions] fetchAbandoned exception:', err);
       return [];
     }
   }, [isAuth, userId]);
@@ -339,7 +340,7 @@ export function useIntentions() {
         .eq('user_id', userId);
 
       if (error) {
-        console.error('[useIntentions] delete error:', error.message);
+        logger.error('[useIntentions] delete error:', error.message);
         return false;
       }
 
@@ -347,7 +348,7 @@ export function useIntentions() {
       setIntentions(prev => prev.filter(i => i.id !== id));
       return true;
     } catch (err) {
-      console.error('[useIntentions] delete exception:', err);
+      logger.error('[useIntentions] delete exception:', err);
       return false;
     }
   }, [isAuth, userId]);
@@ -366,7 +367,7 @@ export function useIntentions() {
         .eq('user_id', userId);
 
       if (error) {
-        console.error('[useIntentions] restore error:', error.message);
+        logger.error('[useIntentions] restore error:', error.message);
         return false;
       }
 
@@ -381,7 +382,7 @@ export function useIntentions() {
       fetchIntentions();
       return true;
     } catch (err) {
-      console.error('[useIntentions] restore exception:', err);
+      logger.error('[useIntentions] restore exception:', err);
       return false;
     }
   }, [isAuth, userId, fetchIntentions]);

@@ -32,7 +32,7 @@ export function extractYoutubeId(url) {
   } catch { /* invalid URL */ }
 
   // Fallback regex for non-standard or raw copy-paste URLs
-  const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/i);
+  const match = url.match(/(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&? ]{11})/i);
   return match ? match[1] : null;
 }
 
@@ -161,6 +161,17 @@ export function extractDriveFileId(url) {
 export function extractDriveDirectUrl(url) {
   const id = extractDriveFileId(url);
   return id ? `https://drive.google.com/uc?id=${id}` : null;
+}
+
+/**
+ * Get proxied stream URL for Google Drive files.
+ * Routes through /api/stream to bypass CORS, enabling custom HTML5 players.
+ * @param {string} url - Google Drive URL
+ * @returns {string|null} Proxy stream URL or null
+ */
+export function getDriveStreamUrl(url) {
+  const id = extractDriveFileId(url);
+  return id ? `/api/stream?id=${id}` : null;
 }
 
 /**

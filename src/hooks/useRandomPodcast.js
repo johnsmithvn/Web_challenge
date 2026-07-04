@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { logger } from '../utils/logger';
 
 export function useRandomPodcast() {
   const [podcast, setPodcast] = useState(null);
@@ -27,7 +28,7 @@ export function useRandomPodcast() {
         setPodcast(null);
       }
     } catch (err) {
-      console.error('Error fetching random podcast:', err);
+      logger.error('Error fetching random podcast:', err);
     } finally {
       setIsLoading(false);
     }

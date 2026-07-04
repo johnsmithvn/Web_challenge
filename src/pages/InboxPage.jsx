@@ -26,12 +26,11 @@ const TYPES = KNOWLEDGE_DATA.types;
  * "Grab 35K" → 35000
  */
 function extractAmount(text) {
-  const m = text.match(/(\d[\d.,]*)[\s]*([kKmM]?)/);
+  // Reuse the canonical parser so Inbox and Finance agree on decimals/k/m/auto-K.
+  const m = text.match(/\d[\d.,]*\s*[kKmM]?/);
   if (!m) return '';
-  let n = parseFloat(m[1].replace(/[.,]/g, ''));
-  if (/[kK]/.test(m[2])) n *= 1000;
-  if (/[mM]/.test(m[2])) n *= 1000000;
-  return isNaN(n) ? '' : n;
+  const n = parseCurrencyInput(m[0]);
+  return n || '';
 }
 
 export default function InboxPage() {
@@ -176,10 +175,6 @@ export default function InboxPage() {
     setDetailSaving(false);
     setIsEditing(false);
   }, [detailItem, detailTitle, detailBody, updateItem]);
-
-  const handleDetailTitleSave = useCallback(async () => {
-    // no-op: title saved via handleDetailSave
-  }, []);
 
   const handleDetailDelete = useCallback(async () => {
     if (!detailItem) return;

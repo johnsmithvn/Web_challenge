@@ -1,9 +1,9 @@
 # DATABASE DESIGN — Life Hub (Personal Life OS)
 **Target:** Supabase (PostgreSQL)
-**Version:** v4.22.0
-**Updated:** 2026-06-13
+**Version:** v4.24.0
+**Updated:** 2026-06-28
 **Strategy:** Production-ready from day 1
-**Source of Truth:** `data/schema_v4.4.0.sql` (25 tables) + incremental migrations (see Migration Files below)
+**Source of Truth:** **`data/schema_v4.24.0.sql`** — single consolidated schema (all migrations v4.4.0 → v4.24.0 folded in). **26 tables** (final state: `mood_logs` removed; `friendships` kept but archived/unused). Idempotent — run once on a fresh project.
 
 ---
 
@@ -54,11 +54,11 @@ Programs ──► program_habits   (template library, system + user)
 
 ## Full SQL Schema
 
-> **Source of Truth:** [`data/schema_v4.4.0.sql`](../data/schema_v4.4.0.sql) — 25 tables, idempotent, safe to re-run.
+> **Source of Truth:** [`data/schema_v4.4.0.sql`](../data/schema_v4.4.0.sql) — **28 `CREATE TABLE`** (incl. 2 legacy: `mood_logs`, `friendships`), idempotent, safe to re-run. Migrations then DROP `mood_logs` and ADD 4 tables (`knowledge_groups`, `collection_groups`, `collection_notes`, `inspirational_quotes`).
 >
 > ⚠️ Do NOT duplicate SQL here. Read the `.sql` file directly for column definitions, RLS policies, triggers, and indexes.
 
-### Table Inventory (30 active tables)
+### Table Inventory (30 active tables = 28 master − `mood_logs` dropped − `friendships` archived + 4 from migrations)
 
 | # | Table | Purpose | Key constraints |
 |---|-------|---------|-----------------|
@@ -108,8 +108,9 @@ The following tables appeared in earlier versions of this document but were **ne
 - `reactions` — Team emoji reactions, cancelled v3.0.0
 - `quiz_attempts` — Quiz uses `xp_logs` instead (deduped by reason+meta)
 - `daily_challenge_completions` — Challenges use `xp_logs` instead
-- `mood_logs` — Removed in v4.10.1
 - `partner_queue` — Auto-match feature never implemented
+
+> ⚠️ **`mood_logs` & `friendships` ARE in `schema_v4.4.0.sql`** (unlike the list above). A fresh install creates them via master, then `migration_v4.10.1_drop_mood.sql` DROPs `mood_logs`; `friendships` remains but is unused/archived (safe to DROP). They are NOT "docs-only".
 
 
 ---
@@ -167,25 +168,20 @@ On first login (one-time per data type):
 
 ## Migration Files
 
-> **v4.4.0+:** All legacy migration files have been consolidated into `data/schema_v4.4.0.sql`.
-> This single file contains all 25 tables, RLS policies, indexes, triggers, and seed data.
-> It is **idempotent** — safe to re-run on any Supabase project.
+> **v4.24.0:** ALL migrations are now consolidated into a single file —
+> **`data/schema_v4.24.0.sql`**. The old `schema_v4.4.0.sql` + the v4.7.2 → v4.14.0
+> migrations + the v4.24.0 RLS patch have been merged and removed (history in git).
+> The consolidated file is idempotent — run it once; re-running is safe.
 
 | File | Purpose |
 |------|---------|
-| `data/schema_v4.4.0.sql` | **Master schema** — 25 tables + all RLS + triggers + seeds (idempotent) |
+| **`data/schema_v4.24.0.sql`** | **Single source of truth** — all 26 tables + RLS + indexes + triggers + RPC functions (login_email/username_exists/email_exists/get_leaderboard) + seed. Idempotent. |
 | `data/reset_user_data.sql` | **Reset script** — DELETE all user data, keep auth accounts |
-| `data/migration_v4.7.2_add_description_to_intentions.sql` | ADD `description` column to `intentions` |
-| `data/migration_v4.9.0_task_priority.sql` | DROP energy/duration, ADD `priority` to `user_tasks` |
-| `data/migration_v4.10.1_drop_mood.sql` | DROP `mood_logs` table |
-| `data/migration_v4.11.0_knowledge_groups.sql` | 3 tables: `knowledge_groups` + `collection_groups` + `collection_notes` |
-| `data/migration_v4.12.0_quotes.sql` | `inspirational_quotes` table + RLS |
-| `data/migration_v4.14.0_collection_types.sql` | Expand collection type CHECK constraint |
 
 ## Supabase Setup Checklist
 
 - [ ] Create project (region: Southeast Asia – Singapore)
-- [ ] Run `data/schema_v4.4.0.sql` in SQL Editor (creates everything)
+- [ ] Run **`data/schema_v4.24.0.sql`** in SQL Editor (the ONLY file needed — creates everything)
 - [ ] Enable Realtime for: profiles, progress, habits, focus_sessions, xp_logs
 - [ ] Enable Google OAuth (Auth → Providers → Google)
 - [ ] Get URL + anon key from Project Settings → API

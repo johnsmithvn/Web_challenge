@@ -17,7 +17,6 @@ export default function LifeLogPage() {
   const { skipLog } = useSkipReasons();
   const { getCompletedTasks } = useUserTasks();
 
-  const today = new Date().toISOString().split('T')[0];
   const [year]                        = useState(() => new Date().getFullYear());
   const [heatmapData, setHeatmapData] = useState([]);
   const [todayCount, setTodayCount]   = useState(0);

@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.22.0
-**Updated:** 2026-06-13
+**Version:** v4.23.0
+**Updated:** 2026-06-14
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 ---
@@ -595,8 +595,8 @@
 - **Unified Drive Upload Architecture (v4.16.1):** Upload API (`/api/upload.js`) định tuyến 100% tất cả các file (Ảnh, Audio, Video, PDF) sang Google Drive thông qua Service Account (không cần user login). URL trả về đã được tối ưu dạng Direct link để hiển thị ảnh mượt mà trên trình duyệt.
 - **Quy chuẩn Đặt Tên File (v4.16.2):** Tự động đổi tên file upload theo format chuẩn `LifeHub_{folder}_{yyyyMMdd}_{HHMMSS}_{hex6}.{ext}` (VD: `LifeHub_images_20260523_161030_1a2b3c.jpg`) giúp chống lỗi ký tự tiếng Việt, khoảng trắng và chống trùng lặp file.
 - **Global Mini Player (v4.16.0):** Thanh phát audio trôi nổi toàn cục (GlobalAudioPlayer) hiển thị trên mọi trang, sử dụng hook `useRandomPodcast` để tự động chọn và phát ngẫu nhiên podcast từ kho tàng kiến thức (hỗ trợ phát trực tiếp từ stream link Google Drive).
-- **Phân Loại Media Nâng Cao (v4.18.0):** MediaNode thay thế AudioNode trong Tiptap, kết hợp MediaPreview thống nhất các định dạng YouTube Shorts, direct audio/video, và Google Drive. Hỗ trợ hệ thống Hashtag client-side (`#audio` / `#video`) để lưu trữ định dạng và tùy biến chiều cao player (90px cho audio và 360px cho video/Drive) kèm nút bấm toggle trực tiếp trên player giúp lưu định dạng ngay lập tức vào database.
-- **Custom Audio Player (v4.19.0):** Trình phát âm thanh tùy chỉnh đẹp mắt được viết bằng React thay thế cho player mặc định xấu xí của trình duyệt hoặc khung iframe đen của Google Drive. Hỗ trợ hiển thị kính mờ (glassmorphic), các nút điều khiển Play/Pause/Volume, thanh trượt phát và hiển thị thời lượng chuẩn xác. Đặc biệt tích hợp cơ chế tự động chuyển đổi thông minh (error fallback): nếu stream trực tiếp từ Google Drive thất bại (do phân quyền/cookies), player sẽ tự động hiển thị iframe Google Drive xem trước để đảm bảo bài viết vẫn phát được nhạc bình thường.
+- **Phân Loại Media Nâng Cao (v4.18.0 → v4.23.0):** MediaNode thay thế AudioNode trong Tiptap, kết hợp MediaPreview thống nhất các định dạng YouTube Shorts, direct audio/video, và Google Drive. Hỗ trợ hệ thống Hashtag client-side (`#audio` / `#video`) để lưu trữ định dạng. Drive URL mặc định render dạng Audio Player (v4.23.0 — xóa option "Dạng Drive" không dùng, default audio-first). Toggle bar chỉ còn 2 option: 🎵 Audio / 📺 Video. Editor format pill tương ứng cũng chỉ còn 2 nút.
+- **Custom Audio Player (v4.19.0 → v4.23.0):** Trình phát âm thanh tùy chỉnh glassmorphic. Play/Pause/Volume/Seek/Duration. Tích hợp cơ chế fallback thông minh: nếu stream trực tiếp từ Google Drive thất bại (CORS), player tự động hiển thị compact iframe (80px) với card styling sạch sẽ (v4.23.0 — xóa verbose warning "Đang sử dụng trình phát dự phòng bảo mật của Drive").
 - **Unified Custom Dropdowns (v4.19.7):** Thay thế toàn bộ dropdown `<select>` mặc định của hệ điều hành bằng component `CustomSelect` kính mờ (glassmorphic) đồng bộ trên mọi nền tảng (áp dụng tại Inbox, Collect editor và Incubator execute modal). Hỗ trợ nhãn emoji và tự động đóng khi click ra ngoài.
 - **Task Overdue UX Fixes (v4.19.7):** Mặc định giờ hoàn thành nhiệm vụ là `23:59` (Nhiệm vụ cả ngày) thay vì lấy giờ tạo hiện tại giúp tránh cảnh báo quá hạn lập tức. Tích hợp badge màu vàng vui nhộn `⏳ Nhanh lên sắp hết ngày rồi` cho các nhiệm vụ ngày hôm nay chưa hoàn thành.
 - **Postcard Gallery (v4.13.0):** Quote-type items render dạng gradient postcard cards (2-col grid) thay vì article list. 8 gradient màu, serif italic typography, line-clamp 5 dòng + fade truncation. Audio badge detection. Responsive 1-col mobile.
