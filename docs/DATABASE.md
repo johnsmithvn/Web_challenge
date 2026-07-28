@@ -1,9 +1,13 @@
 # DATABASE DESIGN — Life Hub (Personal Life OS)
 **Target:** Supabase (PostgreSQL)
-**Version:** v4.24.0
-**Updated:** 2026-06-28
+**Version:** v4.24.1
+**Updated:** 2026-07-27
 **Strategy:** Production-ready from day 1
-**Source of Truth:** **`data/schema_v4.24.0.sql`** — single consolidated schema (all migrations v4.4.0 → v4.24.0 folded in). **26 tables** (final state: `mood_logs` removed; `friendships` kept but archived/unused). Idempotent — run once on a fresh project.
+**Source of Truth:** **`data/schema_v4.24.0.sql`** — single consolidated schema (all migrations v4.4.0 → v4.24.0 folded in). Idempotent — run once on a fresh project.
+
+**Table count (verified against the `.sql` file):** **31 `CREATE TABLE`** = **30 active** + **1 archived** (`friendships`).
+`mood_logs` is NOT in this schema (dropped in v4.10.1, folded into the consolidated file).
+Every other doc that says 26 / 28 tables is stale — this line is the count.
 
 ---
 
@@ -18,10 +22,10 @@ profiles ───────────────────────�
     ├──► progress          (daily check)        │
     ├──► streaks           (cached trigger)     │
     ├──► xp_logs           (immutable events)   │
-    ├──► habits            (custom + journey)    │
-    ├──► habit_logs        (per-habit daily)     │
-    ├──► focus_sessions    (pomodoro)            │
-    ├──► skip_reasons               │
+    ├──► habits            (custom + journey)   │
+    ├──► habit_logs        (per-habit daily)    │
+    ├──► focus_sessions    (pomodoro)           │
+    ├──► skip_reasons      (daily skip)         │
     ├──► notification_settings  (1:1)           │
     │                                           │
     ├──► user_journeys     (journey runs)       │
@@ -42,7 +46,8 @@ profiles ───────────────────────�
     │                                           │
     ├──► knowledge_groups ◄──► collection_groups ──► collections
     │                        (M:N junction v4.11.0)
-    ├──► collection_notes    (threaded sub-notes)│
+    ├──► collection_notes  (threaded sub-notes) │
+    ├──► inspirational_quotes (user quotes)     │
     │                                           │
     ├──► friendships       [ARCHIVED v3.0.0]    │
     └────────────────────────────────────────────┘
@@ -54,17 +59,17 @@ Programs ──► program_habits   (template library, system + user)
 
 ## Full SQL Schema
 
-> **Source of Truth:** [`data/schema_v4.4.0.sql`](../data/schema_v4.4.0.sql) — **28 `CREATE TABLE`** (incl. 2 legacy: `mood_logs`, `friendships`), idempotent, safe to re-run. Migrations then DROP `mood_logs` and ADD 4 tables (`knowledge_groups`, `collection_groups`, `collection_notes`, `inspirational_quotes`).
->
-> ⚠️ Do NOT duplicate SQL here. Read the `.sql` file directly for column definitions, RLS policies, triggers, and indexes.
+> ⚠️ Do NOT duplicate SQL here. Read [`data/schema_v4.24.0.sql`](../data/schema_v4.24.0.sql) directly for
+> column definitions, RLS policies, triggers, and indexes. `schema_v4.4.0.sql` and the per-version
+> `migration_*.sql` files no longer exist — they were folded into the consolidated file (history in git).
 
-### Table Inventory (30 active tables = 28 master − `mood_logs` dropped − `friendships` archived + 4 from migrations)
+### Table Inventory (30 active)
 
 | # | Table | Purpose | Key constraints |
 |---|-------|---------|-----------------|
 | 1 | `profiles` | Extends `auth.users` (1:1) | PK = `auth.users.id`, auto-created by trigger |
 | 2 | `progress` | Daily habit check-in | UNIQUE(user_id, date) |
-| 3 | `streaks` | Cached streak stats | 1:1 with profiles, updated by `refresh_streak()` trigger |
+| 3 | `streaks` | Streak stats row | 1:1 with profiles, inserted by signup trigger. ⚠️ No `refresh_streak()` trigger exists — see [Streak note](#streak-source-of-truth) |
 | 4 | `xp_logs` | Immutable XP event log | CHECK(amount BETWEEN -200 AND 200) |
 | 5 | `habits` | Custom + journey habits | FK → user_journeys(journey_id), `active` flag |
 | 6 | `habit_logs` | Per-habit daily completion | UNIQUE(user_id, habit_id, date), status: completed/skipped |
@@ -77,7 +82,7 @@ Programs ──► program_habits   (template library, system + user)
 | 13 | `journey_habits` | Snapshot of habits per run | FK → user_journeys, FK → habits |
 | 14 | `user_tasks` | Personal to-do items | priority SMALLINT, recurrence_rule JSONB |
 | 15 | `task_collections` | Junction: Task ↔ KB (M:N) | Composite PK(task_id, collection_id), CASCADE |
-| 16 | `collections` | Inbox + Knowledge Base | type CHECK: inbox/note/link/quote/learn/idea |
+| 16 | `collections` | Inbox + Knowledge Base | type CHECK (8, v4.14.0): `inbox`, `note`, `quote`, `learn`, `idea`, `ai`, `entertainment`, `emotion` |
 | 17 | `expenses` | Daily spending log | amount VNĐ, category, note |
 | 18 | `subscriptions` | Recurring services | cycle, next_due, auto-advance |
 | 19 | `activity_logs` | Append-only audit trail | action + label + amount + meta JSONB |
@@ -98,35 +103,50 @@ Programs ──► program_habits   (template library, system + user)
 
 | Table | Column | Status | Replacement |
 |-------|--------|--------|-------------|
-| `user_tasks` | `collection_id` | **DEPRECATED v4.5.0** | Use `task_collections` junction table (M:N). Column kept for rollback, will be DROPped in v5.0. |
+| `user_tasks` | `collection_id` | **DEPRECATED v4.5.0** | Use `task_collections` junction table (M:N). Column still created (+ FK + partial index) for rollback, will be DROPped in v5.0. |
+| `user_tasks` | `energy_level`, `duration_est` | **DROPPED v4.9.0** | Replaced by `priority SMALLINT` (0=None … 5=Urgent). The schema file explicitly `DROP COLUMN IF EXISTS` both. |
+| `collections` | `tags` (TEXT[]) | **GONE v4.1.0** | Use `collection_tags` junction. Not created by `schema_v4.24.0.sql` at all — a fresh install has no such column. Docs claiming it is "kept for backward compat" are stale. |
 
-### Removed Tables (docs-only, never in schema_v4.4.0.sql)
+### Tables That Do NOT Exist
 
-The following tables appeared in earlier versions of this document but were **never part of the production schema file**:
+Named in older docs / older `ARCHITECTURE.md` revisions, but **never** in the current schema file:
 
-- `teams` — Team feature cancelled v3.0.0, code archived
-- `reactions` — Team emoji reactions, cancelled v3.0.0
-- `quiz_attempts` — Quiz uses `xp_logs` instead (deduped by reason+meta)
-- `daily_challenge_completions` — Challenges use `xp_logs` instead
-- `partner_queue` — Auto-match feature never implemented
+| Table | Reality |
+|-------|---------|
+| `teams`, `reactions`, `partner_queue` | Team feature cancelled v3.0.0 — code in `src/_archived/` |
+| `quiz_attempts` | Quiz XP goes to `xp_logs` (deduped by reason+meta) |
+| `daily_challenge_completions` | Challenge XP goes to `xp_logs` |
+| `mood_logs` | Existed until v4.10.1, dropped — not in `schema_v4.24.0.sql` |
 
-> ⚠️ **`mood_logs` & `friendships` ARE in `schema_v4.4.0.sql`** (unlike the list above). A fresh install creates them via master, then `migration_v4.10.1_drop_mood.sql` DROPs `mood_logs`; `friendships` remains but is unused/archived (safe to DROP). They are NOT "docs-only".
+<a id="streak-source-of-truth"></a>
+### Streak — Source of Truth
+
+- `streaks` rows are created **once** by the `handle_new_user()` signup trigger and are **never updated**:
+  no `refresh_streak()` function or trigger exists in `schema_v4.24.0.sql`, and no frontend hook writes to `streaks`.
+- The streak the user sees is computed **client-side** in `useHabitStore.js` (`calcStreak()` / `getLongestStreak()`
+  over the `progress` map).
+- Consequence: `get_leaderboard()` reads `streaks`, so its streak/longest columns stay at 0.
+  `TODO: decision needed` — either write `streaks` on each `progress` upsert, or make the leaderboard
+  derive streaks from `progress` server-side.
 
 
 ---
 
 ## XP System
 
+Source: `XP_REWARDS` in `src/hooks/useXpStore.js` (+ `FOCUS_XP` in `useFocusTimer.js`).
+`xp_logs.amount` has `CHECK (amount BETWEEN -200 AND 200)`.
+
 | Event | XP | Frequency |
 |-------|-----|----------|
-| Daily check ✓ | +10 | Per habit/day (deduped) |
+| Daily check ✓ | +10 | Per habit/day (deduped; un-tick → `removeXp`) |
 | Streak 3 | +50 | One-time |
 | Streak 10 | +100 | One-time |
 | Streak 21 | +200 | One-time |
 | Daily Challenge | +20 | Max 1/day |
-| Quiz | +10–50 | Per attempt (score-based) |
-| Focus Session | +15 | Per session (deduped) |
-| Duo streak | +30 | Per day (v3 planned) |
+| Quiz | score × 5 (0–50) | Per attempt |
+| Focus Session | +15 | Per session (deduped by `meta.sessionId`) |
+| Fitness Log | +10 | Per logged session (`TrackerPage`, tab Sức Khỏe) |
 
 ## Level Thresholds
 
@@ -139,19 +159,22 @@ The following tables appeared in earlier versions of this document but were **ne
 | 4 | 👑 Huyền Thoại | 1500 |
 | 5 | 🏆 Vô Địch | 3000 |
 
-## Leaderboard Query
+## Leaderboard
 
-```sql
-SELECT
-  p.id, p.display_name, p.avatar_url,
-  s.current_streak, s.longest_streak, s.total_done,
-  COALESCE(x.total_xp, 0) AS total_xp
-FROM profiles p
-JOIN streaks s ON s.user_id = p.id
-LEFT JOIN user_xp x ON x.user_id = p.id
-ORDER BY s.current_streak DESC, total_xp DESC
-LIMIT 20;
+Since v4.24.0 `profiles` is read-own-row-only (email leak fix), so the leaderboard is **not** a client-side
+join anymore. There is **no `user_xp` view** — XP is aggregated inside the function.
+
+```js
+const { data } = await supabase.rpc('get_leaderboard');   // src/pages/LeaderboardPage.jsx
 ```
+
+`public.get_leaderboard()` — `SECURITY DEFINER`, granted to `anon` + `authenticated`, returns
+`id, display_name, avatar_url, current_streak, longest_streak, total_xp, total_done`
+(no email), `ORDER BY total_xp DESC, current_streak DESC LIMIT 50`. XP = `SUM(xp_logs.amount)`,
+done = `COUNT(progress WHERE completed)`, streaks = `streaks` table (see the streak note above).
+
+Other `SECURITY DEFINER` RPCs added in v4.24.0: `login_email(username)`, `username_exists(username)`,
+`email_exists(email)`.
 
 ## Migration Strategy (localStorage → Supabase)
 
@@ -175,7 +198,7 @@ On first login (one-time per data type):
 
 | File | Purpose |
 |------|---------|
-| **`data/schema_v4.24.0.sql`** | **Single source of truth** — all 26 tables + RLS + indexes + triggers + RPC functions (login_email/username_exists/email_exists/get_leaderboard) + seed. Idempotent. |
+| **`data/schema_v4.24.0.sql`** | **Single source of truth** — all 31 tables + RLS + indexes + triggers + RPC functions (login_email/username_exists/email_exists/get_leaderboard) + seed 5 programs. Idempotent. |
 | `data/reset_user_data.sql` | **Reset script** — DELETE all user data, keep auth accounts |
 
 ## Supabase Setup Checklist

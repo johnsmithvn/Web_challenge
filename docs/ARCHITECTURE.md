@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.23.0
-**Updated:** 2026-06-28
+**Version:** v4.24.1
+**Updated:** 2026-07-27
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 
@@ -22,156 +22,36 @@
 
 ## Cấu Trúc Thư Mục
 
+Chỉ liệt kê thư mục + vai trò. Danh sách file/feature chi tiết: `docs/FEATURES.md`.
+Bản đồ cấp cao (route → page → hook → table): `PROJECT.md`.
+
 ```
 src/
-├── components/              # Reusable UI components
-│   ├── journey/             # Journey system sub-components
-│   │   ├── ActiveJourneyPanel.jsx   # Progress ring, habit chips, completion UI, renew/extend/quit
-│   │   ├── ProgramBrowser.jsx       # Template grid, category filter, start flow, SwitchModeModal
-│   │   ├── JourneyHistory.jsx       # Past journeys list + status badges, click → /journey/:id
-│   │   ├── MyJourneys.jsx           # v2.0.0 — "Của Tôi" tab, past journeys with "Bắt đầu lại"
-│   │   └── CustomJourneyModal.jsx   # Free-form journey creation modal
-│   ├── AuthModal.jsx          # Login/Register/Google tabs
-│   ├── CompletionModal.jsx    # Certificate modal: Gia Hạn / Thử Thách Mới / Chọn Lộ Trình Mới
-│   ├── ConfirmModal.jsx       # v3.2.0 — Shared confirm dialog + useConfirm() Promise-based hook
-│   ├── OnboardingModal.jsx    # 3-step guide lần đầu truy cập
-│   ├── DailyChallenge.jsx     # Daily mini-challenge, +20 XP, solo-only (team removed v3.0.0)
-│   ├── ErrorBoundary.jsx      # v1.7.0 — Class component, friendly fallback UI
-│   ├── FocusTimer.jsx         # SVG countdown + habit dropdown
-│   ├── HabitManager.jsx       # CRUD custom habits UI
-│   ├── LoginNudgeModal.jsx    # v1.4.0 — Bottom sheet nhắc guest đăng ký
-│   ├── MonthCalendar.jsx      # Monthly view, VN holidays, completed tasks display
-│   ├── NotificationSettings.jsx
-│   ├── PageSkeleton.jsx       # v1.7.0 — Shimmer skeleton loading
-│   ├── QuickCapture.jsx       # v3.0.0 — Global floating [+] button → saves to collections(inbox)
-│   ├── TiptapEditor.jsx       # v3.2.0 — WYSIWYG editor (Tiptap) + TiptapReadOnly component
-│   ├── SlashCommand.jsx       # v3.3.0 — Slash command extension (/menu) + React dropdown UI
-│   ├── ActivityHeatmap.jsx    # v3.0.0 — GitHub-style SVG yearly heatmap (53×7 grid)
-│   ├── SubAlert.jsx           # v3.0.0 — Compact sidebar alert for upcoming subscription renewals
-│   ├── DatePickerPopover.jsx  # v4.10.0 — ClickUp-style date picker with shortcuts + calendar grid
-│   ├── TaskListSection.jsx    # v2.1.0 — Personal tasks UI (📌 Nhiệm Vụ) + energy/duration/recurrence v3.6.0
-│   ├── GenericModal.jsx       # v4.22.0 — Shared modal backdrop + container (replaces incubator-modal coupling)
-│   ├── CashflowBar.jsx       # v3.7.0 — 30-day subscription due date timeline
-│   ├── TagPicker.jsx         # v3.7.0 — Searchable multi-select tag dropdown
-│   ├── LinkKBModal.jsx       # v4.5.0 — Search+checkbox modal to link/unlink KB articles to a task
-│   ├── QuoteWidget.jsx       # v4.12.0 — Daily-seeded random quote, shuffle, audio, crossfade (Today/Inbox/KB)
-│   ├── UrlInputPopover.jsx   # v4.12.0 — Shared ClickUp-style URL input popover (Image/YouTube/Audio)
-│   ├── TrackerSection.jsx     # Read-only 3-week status dots
-│   ├── XpBar.jsx              # XP + level indicator
-│   ├── GlobalAudioPlayer.jsx  # v4.16.0 — Floating random podcast player
-│   ├── CustomAudioPlayer.jsx  # v4.19.0 — Premium glassmorphic custom audio player
-│   ├── CustomSelect.jsx       # v3.1.2 — Reusable glassmorphic custom dropdown replacement
-│   └── ...
-│
-├── extensions/              # v4.12.0 — Custom Tiptap extensions
-│   └── MediaNode.jsx         # v4.18.0 — Atom node: inline media player block (src + title)
-│
-├── contexts/
-│   ├── AuthContext.jsx        # Auth state, signIn, signUp, Google, profile
-│   ├── JourneyContext.jsx     # v1.8.0 — Single source of truth cho activeJourney
-│   └── ThemeContext.jsx       # v2.2.0 — Dark/Light theme toggle (localStorage vl_theme)
-│
-├── hooks/
-│   ├── useHabitStore.js       # Daily tick, streak, Supabase-first (guest=in-memory)
-│   ├── useCustomHabits.js     # Custom habit CRUD, Supabase-first, journey_id tagging
-│   ├── useHabitLogs.js        # v1.5.0 — Per-habit daily logs (replaces vl_habit_progress)
-│   ├── useJourney.js          # v1.5.0 — Journey lifecycle (start/complete/renew/extend)
-│   ├── useFocusTimer.js       # Pomodoro phases, session log, DB sync, journey_id tagging
-│   ├── useMoodSkip.js         # useSkipReasons hook, Supabase-first (useMoodLog removed v4.10.1)
-│   ├── useXpStore.js          # XP log, level computation, addXp/removeXp, Supabase-first
-│   ├── useUserTasks.js        # v2.1.0 — Personal task CRUD, notification sync + M2M link/unlink v4.5.0
-│   ├── useActivityLog.js      # v3.0.0 — Append-only activity logger for Life Log heatmap/timeline
-│   ├── useCollections.js      # v3.0.0 — CRUD for collections (inbox + typed items) + snooze v3.8.0 + _linkedTaskCount v4.5.0
-│   ├── useExpenses.js         # v3.0.0 — CRUD for expenses (VNĐ, chi tiêu only)
-│   ├── useSubscriptions.js    # v3.0.0 — CRUD for subscriptions (monthly/yearly cycles)
-│   ├── useTags.js             # v3.7.0 → v4.1.0 — Central tag CRUD + link/unlink (expenses, subscriptions, collections) + updateTag + getTagUsageCount
-│   ├── useIntentions.js       # v3.9.0 → v4.2.0 — Incubator CRUD + defer(friction) + execute(multi-output) + abandon + logs
-│   ├── useFitnessLog.js       # v4.0.0 — Fitness session logging (add, delete, todayLogs, weekSummary)
-│   ├── useKnowledgeGroups.js   # v4.11.0 — KB group CRUD + M:N link/unlink articles + fetchGroupArticles
-│   ├── useCollectionNotes.js   # v4.11.0 — Threaded sub-notes CRUD per KB article
-│   ├── useFileUpload.js       # REMOVED v4.22.0 — was dead code (never imported)
-│   ├── useQuotes.js           # v4.12.0 — CRUD user quotes + merge system quotes.json
-│   ├── useLifeJourney.js      # v2.2.0 — Life milestones CRUD (localStorage-only)
-│   ├── useNotifications.js    # Browser notification API
-│   ├── useRandomPodcast.js    # v4.16.0 — Fetch random podcast from Supabase
-│   └── ...
-│
-│ lib/
-│   └── supabase.js            # Singleton Supabase client, safe fallback
-│
-│ utils/
-│   ├── mediaUtils.js          # v4.16.0 — Helpers for Google Drive URL parsing and streaming
-│   ├── currencyUtils.js       # v4.20.1 — Money input parsing & configurable currency settings
-│   └── dateUtils.js           # v4.22.0 — Centralized Vietnamese date formatting helpers
-│
-├── api/                       # Vercel serverless functions
-│   ├── upload.js              # v4.16.1 — Upload proxy → Google Drive (Supabase JWT required; folder whitelist)
-│   ├── stream.js              # v4.23.0 — Drive media stream proxy (Range/seek; folder-scoped; rate-limited)
-│   └── _lib/verifyAuth.js     # Supabase JWT verification helper (not a route; api/meta.js removed v4.23.0)
-│
-├── pages/
-│   ├── LandingPage.jsx        # / — Marketing page (eager loaded)
-│   ├── TrackerPage.jsx        # /tracker — Today page. 4 tabs: Hôm Nay/Lịch/Tuần/Quản Lý
-│   │                           # /habits redirects here (inline Navigate in App.jsx)
-│   ├── InboxPage.jsx          # /inbox — v3.0.0 — Quick items chưa phân loại (lazy)
-│   ├── CollectPage.jsx        # /collect — v3.0.0 — Kho lưu trữ đã phân loại (lazy)
-│   ├── FinancePage.jsx        # /finance — v3.0.0 — Chi tiêu + Subscriptions (lazy)
-│   ├── LifeLogPage.jsx        # /life-log — v3.0.0 — Heatmap + Daily Timeline (lazy)
-│   ├── FocusPage.jsx          # /focus — Pomodoro timer (lazy)
-│   ├── JourneyPage.jsx        # /journey — 4 tabs: Đang chạy / Khám Phá / Của Tôi / Lịch Sử (lazy)
-│   ├── JourneyDetailPage.jsx  # /journey/:id — Full dashboard per journey (lazy)
-│   ├── DashboardPage.jsx  # /dashboard — v3.1.0 Unified Dashboard (habits+finance+activity+XP heatmap)
-│   ├── IncubatorPage.jsx  # /incubator — v3.9.0 Trạm Ấp Trứng (someday-maybe + friction defer)
-│   ├── QuizPage.jsx           # /quiz — 10-question MCQ (lazy)
-│   ├── LeaderboardPage.jsx    # /leaderboard — Streak/XP ranking (lazy)
-│   ├── LifeJourneyPage.jsx    # /life-journey — v2.2.0 — Emotion timeline SVG (lazy)
-│   ├── SettingsPage.jsx       # /settings — v4.1.0 — Tag Manager + Quote Manager (v4.12.0) + Profile
-│   └── (all CSS now in styles/)
-│
-├── data/                      # Static JSON content (Rule 14)
-│   ├── challenges.json        # 21 Daily Challenges
-│   ├── quiz.json              # 10 Quiz questions
-│   ├── habits.json            # defaultHabits, categories, icons, colors, skipReasons
-│   ├── testimonials.json      # Landing page reviews
-│   ├── quotes.json            # v1.4.5 — 30 daily motivational quotes
-│   ├── programs.json          # v1.6.0 — 5 system program templates (offline fallback)
-│   ├── expense-categories.json # v3.0.0 — 8 expense categories (food, transport, etc.)
-│   └── knowledge.json         # v4.15.0 — Unified Knowledge Base types (Inbox/Collect)
-│
-├── styles/
-│   ├── global.css             # CSS variables, reset, typography
-│   ├── navbar.css             # v3.0.0 — Sidebar (desktop) + Bottom tabs (mobile) + Topbar
-│   ├── quick-capture.css      # v3.0.0 — Floating [+] button + capture modal
-│   ├── inbox.css              # v3.0.0 — Inbox page (quick-add, items, classify)
-│   ├── collect.css            # v3.0.0 — Collect page (tabs, card grid, search)
-│   ├── finance.css            # v3.0.0 — Finance page (summary, breakdown, forms, sub cards)
-│   ├── lifelog.css            # v3.0.0 — Life Log page (heatmap, timeline)
-│   ├── widgets.css            # v3.0.0 — SubAlert sidebar widget
-│   ├── hero.css               # HeroSection styles
-│   ├── sections.css           # ContentSections + RoadmapSection
-│   ├── tracker.css            # TrackerPage v2 styles (merged habits)
-│   ├── dashboard.css          # Dashboard v3.1.0 styles (unified: today-row, finance-pie, section-titles)
-│   ├── focus.css              # Focus timer + custom dropdown
-│   ├── calendar.css           # Monthly calendar
-│   ├── daily.css              # DailyChallenge styles
-│   ├── journey.css            # Journey page, progress ring, program cards, modals
-│   ├── auth.css               # Auth modal
-│   ├── xpbar.css              # XP bar
-│   ├── quiz.css               # Quiz page
-│   ├── leaderboard.css        # Leaderboard page
-│   ├── incubator.css          # v3.9.0 — Incubator page, cards, timeline, modals
-│   ├── settings.css           # v4.1.0 — Settings page, tag manager, color picker
-│   ├── datepicker.css         # v4.10.0 — ClickUp-style date picker
-│   ├── confirm-modal.css      # v3.2.0 — ConfirmModal glassmorphism
-│   ├── generic-modal.css      # v4.22.0 — Shared GenericModal styles
-│   ├── life-journey.css       # v4.22.0 — Life Journey page (moved from pages/)
-│   ├── quote-widget.css       # v4.12.0 — QuoteWidget purple accent
-│   ├── url-input-popover.css  # v4.12.0 — UrlInputPopover glassmorphism
-│   ├── completion.css         # CompletionModal styles
-│   ├── onboarding.css         # OnboardingModal styles
-│   └── testimonials.css       # Testimonials section
-│
-└── App.jsx                    # AppShell wrapper — ThemeProvider + Onboarding gate + JourneyProvider + Router + LazyLoad
+├── App.jsx           AppShell: PageMeta + Onboarding gate + Navbar + QuickCapture
+│                     + GlobalAudioPlayer + ErrorBoundary + Suspense + Routes
+├── main.jsx          React root
+├── pages/       (15) 1 file / route. LandingPage + TrackerPage eager, 13 còn lại lazy
+├── components/  (38) UI dùng lại, props-driven, không gọi supabase trực tiếp
+│   └── journey/  (5) ActiveJourneyPanel, ProgramBrowser, MyJourneys, JourneyHistory,
+│                     CustomJourneyModal
+├── hooks/       (21) use<Entity>.js — toàn bộ logic Supabase, dual-mode guest fallback
+├── contexts/     (3) AuthContext, JourneyContext, ThemeContext
+├── extensions/   (1) MediaNode.jsx — Tiptap atom node cho media inline
+├── lib/          (1) supabase.js — singleton client, graceful fallback khi thiếu env
+├── utils/        (4) currencyUtils, dateUtils, logger, mediaUtils (pure, no React)
+├── data/         (8) JSON content tĩnh (Rule 14): challenges, quiz, habits, quotes,
+│                     programs, expense-categories, knowledge, testimonials
+└── styles/      (32) 1 file / domain + global.css (design tokens). Không dùng Tailwind
+
+api/                  Vercel serverless
+├── upload.js         Upload proxy → Google Drive (Supabase JWT + folder whitelist)
+├── stream.js         Drive media stream proxy (Range/seek, rate-limited)
+└── _lib/verifyAuth.js   JWT helper (không phải route)
+
+data/                 schema_v4.24.0.sql (source of truth) + reset_user_data.sql
+public/               favicon.svg, icons.svg, manifest.json, sw.js (task notifications)
+docs/                 ARCHITECTURE / DATABASE / FEATURES / PLAN / TASKS / RULES / AUDIT
+src/_archived/        Dead code (Team + Friends). Gitignored, KHÔNG sửa
 ```
 
 ---
@@ -198,7 +78,7 @@ Hook (e.g. useHabitStore)
 ```
 
 > **v1.6.2+:** Toàn bộ **user data** dùng Supabase làm primary.
-> localStorage chỉ còn **UI state flags** và **settings** (không chứa user data).
+> localStorage chỉ còn **UI state flags**, **settings**, và các **ngoại lệ legacy được ghi rõ** (xem Rule bên dưới).
 
 ### localStorage Keys
 
@@ -225,72 +105,40 @@ vl_life_journey_events # JSON array — life milestones (v2.2.0, localStorage-on
 vl_journey_title       # string — custom title for life journey chart (v2.2.0)
 ```
 
-> **Rule:** Chỉ lưu **UI state flags** và **offline guest fallback** trong localStorage.
-> Mọi **user data** có thể được sync đều phải dùng Supabase làm primary.
+> **Rule:** localStorage chỉ lưu **UI state flags**, **offline guest fallback**, và các
+> **ngoại lệ legacy được ghi rõ**. Mọi user data khác phải dùng Supabase làm primary.
+>
+> **Ngoại lệ legacy hiện tại** — là user data thật, **chưa** migrate:
+> - `vl_life_journey_events` — mảng cột mốc cuộc đời (Life Journey, v2.2.0)
+> - `vl_journey_title` — tiêu đề tuỳ chỉnh của biểu đồ Life Journey
+>
+> Hệ quả: dữ liệu Life Journey không sync giữa thiết bị và mất khi user xoá browser data,
+> kể cả khi đã đăng nhập. Migrate sang Supabase là đổi code + thêm bảng — chưa làm, không phải
+> việc của tài liệu. Đừng dùng 2 key này làm tiền lệ cho feature mới.
 
 ### Supabase Tables
 
-```
-profiles              ← auth.users (auto-created by trigger)
-streaks               ← updated by trigger on progress INSERT/UPDATE
-progress              ← primary daily check source of truth
-habits                ← custom user habits (+journey_id, +action, +status, +cycle_count, +conquered_at)
-focus_sessions        ← pomodoro session log (+journey_id v1.8.0)
-skip_reasons          ← daily skip (UNIQUE user+date)
-xp_logs               ← immutable XP event log
-teams                 ← accountability pairs
-reactions             ← emoji reactions between teammates
-friendships           ← friend request graph
-notification_settings ← 1:1 with profiles
-partner_queue         ← auto-match waiting room
-quiz_attempts         ← quiz history
-daily_challenge_completions ← 1 per day
-user_tasks                 ← v2.1.0: personal to-do items (title, desc, due date/time)
+Không liệt kê lại ở đây — **`docs/DATABASE.md`** là nơi duy nhất mô tả bảng, còn
+**`data/schema_v4.24.0.sql`** là source of truth (31 `CREATE TABLE`: 30 active + `friendships` archived).
+Các file `migration_*.sql` theo version đã bị gộp và xoá; đừng tham chiếu chúng nữa.
 
--- v1.5.0 (run data/migration_v1.5.0.sql)
-programs              ← program/lộ trình library (system templates + user)
-program_habits        ← habit templates belonging to a program
-user_journeys         ← each user's run of a program (with start/end dates)
-journey_habits        ← snapshot of habits at journey start (history preservation)
-habit_logs            ← per-habit daily completion (replaces vl_habit_progress)
+Cụm bảng theo domain:
 
--- v3.0.0 (run data/migration_v3.0.0.sql)
-collections           ← inbox items + knowledge collect
-expenses              ← daily expense logs (VNĐ, category, date)
-subscriptions         ← recurring service subscriptions (monthly/yearly)
-activity_logs         ← append-only audit log (habit_done, focus_done, expense_add, etc.)
-
--- v3.6.0 (run data/migration_v3.6.0_tasks.sql)
-user_tasks            += energy_level, duration_est, recurrence_rule columns
-
--- v3.7.0 (run data/migration_v3.7.0_para.sql)
-tags                  ← central tag table (shared across modules, UNIQUE per user)
-expense_tags          ← junction: expense ↔ tag
-subscription_tags     ← junction: subscription ↔ tag
-
--- v3.8.0 (run data/migration_v3.8.0_snooze.sql)
-collections           += snoozed_until DATE column
-
--- v3.9.0 (run data/migration_v3.9.0_incubator.sql)
-intentions            ← someday-maybe items (title, reason, cost, time, status, review_date)
-                        converted_to TEXT[] (v4.2.0), converted_ids JSONB (v4.2.0)
-intention_logs        ← timeline: created/deferred/executed/abandoned per intention
-
--- v4.2.0 (run data/migration_v4.2.0_incubator_v2.sql)
-intentions            += converted_to TEXT → TEXT[], converted_ids JSONB (multi-output router)
-
--- v4.0.0 (run data/migration_v4.0.0_fitness.sql)
-fitness_logs          ← session log (session_name, duration_min, energy, notes)
-
--- v4.1.0 (run data/migration_v4.1.0_tag_unification.sql)
-collection_tags       ← junction: collection ↔ tag (CASCADE delete both sides)
-collections.tags      ← TEXT[] column DEPRECATED — use collection_tags junction
-
--- v4.5.0 (section in schema_v4.4.0.sql)
-task_collections      ← junction: user_tasks ↔ collections (composite PK, CASCADE both sides)
-                        Replaces 1:1 user_tasks.collection_id FK (DEPRECATED)
-                        Query: embedded select avoids N+1
-```
+| Domain | Tables |
+|--------|--------|
+| Habit / streak | `progress`, `habits`, `habit_logs`, `streaks`, `skip_reasons` |
+| Journey | `programs`, `program_habits`, `user_journeys`, `journey_habits` |
+| Focus | `focus_sessions` |
+| Gamification | `xp_logs` |
+| Tasks | `user_tasks`, `task_collections` |
+| Knowledge | `collections`, `knowledge_groups`, `collection_groups`, `collection_notes`, `inspirational_quotes` |
+| Finance | `expenses`, `subscriptions` |
+| Incubator | `intentions`, `intention_logs` |
+| Fitness | `fitness_logs` |
+| Tags | `tags`, `collection_tags`, `expense_tags`, `subscription_tags` |
+| Audit | `activity_logs` |
+| Account | `profiles`, `notification_settings` |
+| Archived | `friendships` (không hook nào dùng, an toàn để DROP) |
 
 ### DashboardPage v3.1.0 — Data Sources
 
@@ -350,7 +198,7 @@ ThemeProvider
                            ├── QuickCapture (global floating [+] button)
                            └── ErrorBoundary
                                 └── Suspense (PageSkeleton fallback)
-                                      └── Routes (12 lazy + 2 eager)
+                                      └── Routes (13 lazy + 2 eager)
 ```
 
 ---
@@ -366,10 +214,11 @@ ThemeProvider
 - Prefix `vl_` cho tất cả keys → tránh conflict với thư viện khác
 - Dễ xóa sạch: `Object.keys(localStorage).filter(k => k.startsWith('vl_'))`
 
-### 3. Streak computed on client vs DB trigger
-- Client: in-memory (guest)
-- DB: trigger `refresh_streak()` sau mỗi INSERT/UPDATE vào `progress`
-- RLS cho phép teammate đọc progress (isTeammate check)
+### 3. Streak computed on client
+- `useHabitStore.calcStreak()` tính streak từ map `progress` — cả guest lẫn authed
+- Bảng `streaks` chỉ được INSERT 1 lần bởi trigger signup, **không có** `refresh_streak()`
+  → cột streak trong `get_leaderboard()` hiện đứng ở 0. Chi tiết + TODO: `docs/DATABASE.md`
+- RLS: mỗi user chỉ đọc hàng của mình (v4.24.0); cross-user đi qua RPC `SECURITY DEFINER`
 
 ### 4. CSS architecture
 - Không dùng Tailwind — vanilla CSS với CSS variables

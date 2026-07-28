@@ -1,8 +1,8 @@
 # AI_AGENT_RULES.md — Life Hub (Personal Life OS)
 
 **Project:** Life Hub — Personal Life OS
-**Version:** v4.23.0
-**Updated:** 2026-06-28
+**Version:** v4.24.1
+**Updated:** 2026-07-27
 **Repository:** React 19 + Vite 8 + Supabase (PostgreSQL) SPA
 
 Rules for AI coding agents working on this repository.
@@ -81,64 +81,14 @@ Do NOT touch:
 * `src/_archived/` — dead code, preserved for reference only
 * `node_modules/`, `dist/`, `.git/` — auto-generated
 * `.env.local` — contains secrets, NEVER read or modify
-* `data/schema_v4.4.0.sql` — master schema, only modify with explicit instruction
+* `data/schema_v4.24.0.sql` — master schema, only modify with explicit instruction
 
 ---
 
-# Workflow
-
-## Before Writing Code
-
-1. Read `docs/RULES.md` (this file).
-
-2. If context is missing or the project behavior is unclear, read:
-
-   - `docs/ARCHITECTURE.md` — folder structure, data flow, tech stack, routes
-   - `docs/FEATURES.md` — feature specifications, sub-feature details, data sources
-
-3. Read `docs/PLAN.md` to understand the current phase of development and version history.
-
-4. Read `docs/TASKS.md` to find the current task.
-
-5. Update `docs/TASKS.md` to mark the current task as:
-
-```
-IN PROGRESS
-```
-
-6. Implement **only the current task**.
 
 ---
 
-## After Implementation
-
-1. Update `docs/TASKS.md`
-
-   - Mark the task as completed `[x]`.
-   - Add follow-up tasks if necessary.
-
-2. Update `docs/PLAN.md` if the phase or milestone progress has changed.
-
-3. Update `docs/ARCHITECTURE.md` if:
-
-   - A new page, hook, component, or utility was added
-   - Module behavior changed
-   - Data flow changed
-   - Route table changed
-   - localStorage key was added/removed
-   - Supabase table was added/modified
-
-4. Update `docs/FEATURES.md` if any user-facing behavior changed.
-
-5. Update `docs/DATABASE.md` if any Supabase table, column, or RLS policy changed.
-
-6. Update `CHANGELOG.md` with version entry.
-
-7. Bump version in `package.json`.
-
----
-
-# Restrictions
+# Scope & Restrictions
 
 The agent MUST NOT:
 
@@ -148,7 +98,7 @@ The agent MUST NOT:
 - Modify configuration defaults unnecessarily (`vite.config.js`, `vercel.json`, `eslint.config.js`)
 - Introduce large refactors
 - Touch `src/_archived/` files
-- Modify `data/schema_v4.4.0.sql` without explicit instruction
+- Modify `data/schema_v4.24.0.sql` without explicit instruction
 - Remove or modify existing CSS variables in `src/styles/global.css` without understanding downstream impact
 
 If a larger change appears necessary, record:
@@ -161,7 +111,7 @@ Do NOT implement architectural changes automatically.
 
 ---
 
-# Mandatory Practices
+# General Practices
 
 The agent MUST:
 
@@ -174,23 +124,6 @@ The agent MUST:
 - Keep changes **minimal and reversible**
 - Preserve naming consistency with architecture documentation
 - Follow existing code patterns (e.g., hook structure, CSS class naming, component composition)
-
----
-
-# Documentation Synchronization
-
-Any behavior change MUST be reflected in the documentation.
-
-Required updates:
-
-| File | When to update |
-|------|----------------|
-| `docs/ARCHITECTURE.md` | Module structure, data flow, route, hook, component, or utility changes |
-| `docs/FEATURES.md` | Any user-facing feature change (add, modify, remove) |
-| `docs/DATABASE.md` | Supabase table, column, RLS policy, or trigger changes |
-| `docs/PLAN.md` | Phase or milestone progress changes |
-| `docs/TASKS.md` | Task completion, new tasks |
-| `CHANGELOG.md` | Every repository modification (version, Added/Changed/Fixed/Removed) |
 
 ---
 
@@ -208,30 +141,6 @@ Stop implementation until the missing input is clarified.
 
 ---
 
-# File Verification Rule
-
-Before modifying a file:
-
-1. Verify the file exists in the repository.
-2. If the file does not exist, explicitly create it.
-3. Inspect related files before making modifications.
-
----
-
-# Task Completion Verification
-
-Before marking a task as completed, the agent MUST verify:
-
-- All relevant files were modified correctly
-- No unrelated files were changed
-- Documentation was updated where necessary
-- `docs/TASKS.md` status was updated
-- `docs/PLAN.md` was updated if phase progress changed
-- `CHANGELOG.md` was updated
-- `package.json` version was bumped
-- `npm run build` passes with 0 errors
-
----
 
 # 4. File Modification Rules
 
@@ -316,8 +225,11 @@ Hook (e.g. useHabitStore)
 ### localStorage Rules
 
 - Prefix ALL keys with `vl_` (e.g., `vl_theme`, `vl_onboarded`)
-- Store ONLY UI state flags and settings — NEVER user data
+- Store ONLY UI state flags, settings, and explicitly documented legacy exceptions — never new user data
 - User data goes to Supabase (authenticated) or in-memory (guest)
+- **Legacy exceptions (do NOT copy this pattern):** `vl_life_journey_events` + `vl_journey_title`
+  hold real user data (Life Journey milestones, v2.2.0) and have not been migrated. Consequence:
+  no cross-device sync, lost when browser data is cleared. See `docs/ARCHITECTURE.md` § localStorage Keys
 
 ### Hook Naming
 
@@ -479,31 +391,9 @@ If unsure which version level to use:
 TODO: version decision needed
 ```
 
-Current version: **v4.22.0**
-
 ---
 
-# 10. Documentation Integrity
-
-If code behavior changes, documentation must be updated.
-
-This includes:
-
-* Module behavior
-* Component interfaces and props
-* Hook return shapes
-* Configuration structure
-* Data flow (Supabase ↔ React state ↔ UI)
-* Route table
-* localStorage key usage
-
-Documentation must reflect the **current repository state**.
-
-Never silently change behavior without documenting it.
-
----
-
-# 11. Completion Checklist
+# 10. Completion Checklist
 
 Before declaring a task finished, verify:
 
@@ -537,7 +427,7 @@ These rules exist to ensure the AI agent:
 
 ---
 
-# README Requirement
+# 11. README Requirement
 
 The repository MUST contain a `README.md` at root explaining:
 
@@ -712,7 +602,8 @@ import EXPENSE_CATEGORIES from '../data/expense-categories.json';
 
 ## Migrations
 
-- Master schema: `data/schema_v4.4.0.sql` (idempotent, safe to re-run)
+- Master schema: `data/schema_v4.24.0.sql` (idempotent, safe to re-run) — single consolidated file;
+  the old `schema_v4.4.0.sql` + per-version `migration_*.sql` files were folded in and deleted
 - New migrations: `data/migration_v{version}_{description}.sql`
 - Never modify the master schema without explicit instruction
 - Document new tables in `docs/DATABASE.md`

@@ -1,7 +1,11 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.23.0
-**Updated:** 2026-06-14
+**Version:** v4.24.1
+**Updated:** 2026-07-27
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
+
+**Cấu trúc file:** §1–§28 = tính năng **đang chạy**, số thứ tự duy nhất và tăng dần.
+Cuối file: `Data Architecture` → `Routes` → **`Archived / Removed`**.
+Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuyển xuống bảng Archived kèm version.
 
 ---
 
@@ -15,7 +19,8 @@
 
 **File:** `src/pages/TrackerPage.jsx` (merged with HabitsPage since v1.9.0)
 
-**Mô tả:** Trang hành động chính — tick từng habit, xem tiến độ 21 ngày, track streak per-habit. **4 tabs:** ⚡ Hôm Nay | 📅 Lịch | 📊 Tuần | ⚙️ Quản Lý
+**Mô tả:** Trang hành động chính — tick từng habit, xem tiến độ 21 ngày, track streak per-habit.
+**5 tabs:** ⚡ Hôm Nay | 📅 Lịch | 📊 Tuần | ⚙️ Quản Lý | 🏋️ Sức Khỏe (§22)
 
 **Chi tiết:**
 - **Header Stats:** 3 stat cards: Streak 🔥, Tổng ngày 📅, Số habits 🎯
@@ -44,7 +49,7 @@
 - **Insight:** Nhận xét động theo streak hiện tại
 - **Notification Settings:** Toggle + giờ nhắc nhở browser notification
 - **Empty State:** Khi authenticated + no habits → CTA "🗺 Chọn Lộ Trình"
-- **🥚 Incubator Review Banner (v4.2.1):** Khi có dự định cần review hôm nay → banner vàng "🥚 N dự định cần review" + link tới `/incubator`. Cùng vị trí với SubAlert + KnowledgeResurface.
+- **🥚 Incubator Review Banner (v4.2.1):** Khi có dự định cần review hôm nay → banner vàng "🥚 N dự định cần review" + link tới `/incubator`. Cùng khu vực với SubAlert và các banner ngữ cảnh khác.
 
 **Tab 📅 Lịch:** `MonthCalendar` component (lazy loaded)
 
@@ -62,13 +67,7 @@
 
 ---
 
-## 2. 📋 Habits Page (`/habits`) — REMOVED v2.2.1
-
-**Mô tả:** Deprecated v1.9.0, file deleted v2.2.1. Route `/habits` redirects inline to `/tracker` via `App.jsx`.
-
----
-
-## 3. ⚙️ Custom Habit Manager
+## 2. ⚙️ Custom Habit Manager
 
 **Files:** `src/components/HabitManager.jsx`, `src/hooks/useCustomHabits.js`
 
@@ -86,7 +85,7 @@
 
 ---
 
-## 4. ⏱ Focus Timer — Pomodoro (`/focus`)
+## 3. ⏱ Focus Timer — Pomodoro (`/focus`)
 
 **Files:** `src/pages/FocusPage.jsx`, `src/components/FocusTimer.jsx`, `src/hooks/useFocusTimer.js`
 
@@ -109,7 +108,7 @@
 
 ---
 
-## 5. 📈 Dashboard Cá Nhân (`/dashboard`)
+## 4. 📈 Dashboard Cá Nhân (`/dashboard`)
 
 **File:** `src/pages/DashboardPage.jsx`, `src/styles/dashboard.css`
 **Version:** v3.2.1 — Unified Life Hub Dashboard + Polish
@@ -132,30 +131,7 @@
 
 ---
 
-## 6. 🤝 Team Mode (`/team`)
-
-**File:** `src/pages/TeamPage.jsx`, `src/hooks/useTeam.js`
-
-**Mô tả:** Chế độ accountability partner — tạo/join team, xem progress của nhau, gửi reaction.
-
-**Chi tiết:**
-- **Tạo team:** Random invite code 6 ký tự, chờ đối tác join
-- **Join team:** Nhập invite code của người khác
-- **Realtime:** Cập nhật trạng thái tick, streak của teammate realtime qua Supabase
-- **N-member grid:** Duo/Trio/Squad cards hiển thị streak, status hôm nay
-- **Reactions:** Gửi emoji reaction (🔥💪👏🫡😎) cho teammate, persist DB
-- **Auth wall:** Yêu cầu đăng nhập để dùng team mode (có nút bypass demo)
-- **Demo mode:** 3 mock members khi chạy local
-
-**Team Logic (v3 — components built, chưa full deploy):**
-- `TeamMemberCard.jsx` — Per-member card: week badge, 7-day mini heatmap, lock state
-- `TeammateCheckPanel.jsx` — Done/Fail modal + reason
-- `JoinSyncModal.jsx` — Reset tuần về 1 vs tiếp tục
-- `TeamRules.jsx` — Propose → All members agree → Active
-
----
-
-## 7. 🔐 Xác Thực (Auth)
+## 5. 🔐 Xác Thực (Auth)
 
 **Files:** `src/contexts/AuthContext.jsx`, `src/components/AuthModal.jsx`
 
@@ -171,7 +147,7 @@
 
 ---
 
-## 8. 🏆 XP & Level System
+## 6. 🏆 XP & Level System
 
 **Files:** `src/hooks/useXpStore.js`, `src/components/XpBar.jsx`
 
@@ -195,14 +171,17 @@
 | Streak 10 ngày | +100 | One-time milestone |
 | Streak 21 ngày | +200 | One-time milestone |
 | Daily Challenge | +20 | Max 1/ngày (un-check → removeXp) |
-| Quiz (score×5) | +10→+50 | Mỗi lần làm |
-| Focus Session | +15 | 1 lần/session (deduped) |
+| Quiz | score × 5 (0→50) | Mỗi lần làm |
+| Focus Session | +15 | 1 lần/session (deduped by `meta.sessionId`) |
+| Fitness Log | +10 | 1 lần/buổi tập (§22) |
+
+> Nguồn: `XP_REWARDS` trong `useXpStore.js`; `FOCUS_XP` trong `useFocusTimer.js`.
 
 **XpBar:** Hiển thị compact trên Navbar + đầy đủ trên TrackerPage
 
 ---
 
-## 9. 🧠 Quiz Tâm Lý (`/quiz`)
+## 7. 🧠 Quiz Tâm Lý (`/quiz`)
 
 **File:** `src/pages/QuizPage.jsx`
 
@@ -216,37 +195,25 @@
 
 ---
 
-## 10. 🏆 Leaderboard (`/leaderboard`)
+## 8. 🏆 Leaderboard (`/leaderboard`)
 
 **File:** `src/pages/LeaderboardPage.jsx`
 
 **Mô tả:** Bảng xếp hạng người dùng theo streak/XP.
 
 **Chi tiết:**
-- **3 tabs:** Streak | XP | Tổng ngày
+- **3 tabs:** 🔥 Streak | ⚡ XP | ✅ Ngày Done
 - **Top 3 podium:** Hiển thị đặc biệt với animation
-- **Real data:** Từ `streaks` table (public read), Supabase
-- **XP thật (v1.3.0):** Query `xp_logs` table tính totalXp thật
-- **Fallback:** Nếu `xp_logs` chưa có → fallback về công thức ước tính
+- **Data (v4.24.0):** 1 lời gọi `supabase.rpc('get_leaderboard')` — RPC `SECURITY DEFINER`
+  trả về display_name/avatar/streak/XP/ngày done, **không** trả email. Top 50.
+  Không còn client-side join `profiles`/`xp_logs` (RLS giờ chỉ cho đọc hàng của mình),
+  và không còn "fallback công thức ước tính"
+- ⚠️ Cột streak lấy từ bảng `streaks` — bảng này chưa được cập nhật sau signup,
+  xem `docs/DATABASE.md` § Streak — Source of Truth
 
 ---
 
-## 11. 👥 Friends (`/friends`)
-
-**File:** `src/pages/FriendsPage.jsx`
-
-**Mô tả:** Hệ thống kết bạn, tìm user theo username.
-
-**Chi tiết:**
-- Search realtime theo username (fuzzy với `pg_trgm`)
-- Gửi lời mời kết bạn
-- Accept / Decline request
-- Danh sách bạn bè hiện tại
-- **Streak + Level thật (v1.3.0):** Mỗi bạn hiển thị streak 🔥 N ngày và level từ XP thật
-
----
-
-## 12. 📅 Monthly Calendar
+## 9. 📅 Monthly Calendar
 
 **File:** `src/components/MonthCalendar.jsx`
 
@@ -261,7 +228,7 @@
 
 ---
 
-## 14. 📝 Skip Reasons
+## 10. 📝 Skip Reasons
 
 **Files:** `src/hooks/useMoodSkip.js` (`useSkipReasons`)
 
@@ -274,7 +241,7 @@
 
 ---
 
-## 15. 🔔 Notification Reminder
+## 11. 🔔 Notification Reminder
 
 **Files:** `src/hooks/useNotifications.js`, `src/components/NotificationSettings.jsx`
 
@@ -287,7 +254,7 @@
 
 ---
 
-## 16. 📊 Daily Challenge
+## 12. 📊 Daily Challenge
 
 **File:** `src/components/DailyChallenge.jsx`
 
@@ -299,7 +266,7 @@
 
 ---
 
-## 17. 👋 Onboarding Modal (v1.3.0)
+## 13. 👋 Onboarding Modal (v1.3.0)
 
 **Files:** `src/components/OnboardingModal.jsx`, `src/styles/onboarding.css`
 
@@ -315,7 +282,7 @@
 
 ---
 
-## 18. 🗺 Lộ Trình (Journey) (`/journey`)
+## 14. 🗺 Lộ Trình (Journey) (`/journey`)
 
 **Added:** v1.6.0, expanded v2.0.0
 **Files:** `src/pages/JourneyPage.jsx`, `src/components/journey/*`, `src/styles/journey.css`, `src/data/programs.json`
@@ -343,7 +310,7 @@
 
 ---
 
-## 19. 🗺 Journey Detail (`/journey/:id`) (v1.8.0)
+## 15. 🗺 Journey Detail (`/journey/:id`) (v1.8.0)
 
 **File:** `src/pages/JourneyDetailPage.jsx`
 
@@ -358,7 +325,7 @@
 
 ---
 
-## 20. 📌 Nhiệm Vụ Cá Nhân (Personal Tasks) (v2.1.0)
+## 16. 📌 Nhiệm Vụ Cá Nhân (Personal Tasks) (v2.1.0)
 
 **Added:** v2.1.0
 **Files:** `src/components/TaskListSection.jsx`, `src/hooks/useUserTasks.js`, `public/sw.js`
@@ -374,10 +341,9 @@
 - Sau ngày hôm đó → task biến mất khỏi danh sách chính
 - **Overdue Triage (v3.5.0):** Task list chia 3 khối: ⚠️ Quá hạn (nền đỏ, nút 🔄 Dời sang hôm nay) / 📅 Hôm nay / 🔮 Sắp tới (collapsed). Bắt user đối mặt và dọn dẹp backlog.
 - **Rollover (v3.5.0):** Nút 🔄 trên overdue task → `updateTask(id, { due_date: today })` → task chuyển sang section Hôm nay.
-- **Energy Tag (v3.6.0):** Mỗi task có thể gắn mức năng lượng: ⚡ Cao / 🔋 Vừa / 🪫 Thấp. Filter chips đầu danh sách lọc theo energy. Badge hiển trên task card.
-- **Duration Estimate (v3.6.0):** Ước tính thời gian (5p/15p/30p/1h/2h+). Badge ⏱ trên task card.
+- **Priority (v4.9.0):** Thay thế Energy Tag + Duration Estimate của v3.6.0. `priority SMALLINT` 0=None / 1=Lowest / 2=Low / 3=Medium / 4=High / 5=Urgent (`PRIORITY_OPTIONS` trong `TaskListSection.jsx`). Badge màu trên task card khi `priority > 0`. Cột `energy_level` + `duration_est` đã bị DROP khỏi schema.
 - **Recurring Tasks (v3.6.0):** Toggle 🔁 Lặp lại: Mỗi N ngày / Hàng tuần thứ X / Hàng tháng ngày Y. Khi tick xong task recurring → task cũ ở lại "Hoàn thành hôm nay" (dopamine hit) → task mới insert ẩn với `due_date` tương lai. Chỉ spawn 1 task, không batch, không vòng lặp.
-- **DB columns (v3.6.0):** `energy_level TEXT`, `duration_est SMALLINT`, `recurrence_rule JSONB` trên `user_tasks`.
+- **DB columns:** `priority SMALLINT`, `recurrence_rule JSONB` trên `user_tasks`.
 - **Calendar integration:** Tab 📅 Lịch → click ngày → thấy danh sách tasks đã hoàn thành + expandable description + thời gian hoàn thành
 - **Service Worker notification:** Background check mỗi 60s → fire notification khi task đến hạn (hoạt động cả khi tab đóng, chỉ cần browser mở)
 - **Không tính XP, không tính streak, không gắn journey**
@@ -391,10 +357,10 @@
 
 ---
 
-## 21. 💛 Hành Trình Cuộc Đời (Life Journey) (`/life-journey`) (v2.2.0)
+## 17. 💛 Hành Trình Cuộc Đời (Life Journey) (`/life-journey`) (v2.2.0)
 
 **Added:** v2.2.0
-**Files:** `src/pages/LifeJourneyPage.jsx`, `src/pages/LifeJourneyPage.css`, `src/hooks/useLifeJourney.js`
+**Files:** `src/pages/LifeJourneyPage.jsx`, `src/styles/life-journey.css`, `src/hooks/useLifeJourney.js`
 
 **Mô tả:** Biểu đồ cảm xúc theo tuổi — người dùng ghi lại các cột mốc quan trọng trong cuộc đời (vui/buồn) lên đồ thị SVG. Dữ liệu chỉ lưu localStorage (feature cá nhân, không sync cloud).
 
@@ -411,52 +377,7 @@
 
 ---
 
-## Data Architecture — Dual Mode
-
-
-| Chức năng | Storage (Authed) | Guest Fallback |
-|-----------|-------------------|---------------|
-| Daily tick | `progress` (Supabase) | in-memory |
-| Streak cache | `streaks` (trigger) | computed |
-| XP log | `xp_logs` (Supabase) | in-memory |
-| Custom habits | `habits` (Supabase) | in-memory defaults |
-| Habit per-day | `habit_logs` (Supabase) | in-memory |
-| Focus sessions | `focus_sessions` (Supabase) | in-memory |
-
-| Skip reasons | `skip_reasons` (Supabase) | in-memory |
-| Journeys | `user_journeys` (Supabase) | — |
-| Teams | `teams` (Supabase) | — |
-| Friends | `friendships` (Supabase) | — |
-| Notifications | `vl_notif_settings` (localStorage) | localStorage |
-| Personal tasks | `user_tasks` (Supabase) | in-memory |
-| Life milestones | `vl_life_journey_events` (localStorage) | localStorage |
-
----
-
-## Routes
-
-| Route | Page | Auth Required |
-|-------|------|:---:|
-| `/` | LandingPage | ❌ |
-| `/tracker` | TrackerPage | ❌ |
-| `/habits` | Inline redirect → `/tracker` | — |
-| `/inbox` | InboxPage | ✅ |
-| `/collect` | CollectPage | ✅ |
-| `/finance` | FinancePage | ✅ |
-| `/life-log` | LifeLogPage | ✅ |
-| `/focus` | FocusPage | ❌ |
-| `/journey` | JourneyPage | ❌ (soft wall: cần login để lưu) |
-| `/journey/:id` | JourneyDetailPage | ❌ |
-| `/team` | → redirect `/tracker` | — (archived) |
-| `/dashboard` | DashboardPage | ❌ |
-| `/quiz` | QuizPage | ❌ |
-| `/leaderboard` | LeaderboardPage | ❌ |
-| `/friends` | → redirect `/tracker` | — (archived) |
-| `/life-journey` | LifeJourneyPage | ❌ |
-
----
-
-## 17. 📥 Inbox (`/inbox`)
+## 18. 📥 Inbox (`/inbox`)
 
 **File:** `src/pages/InboxPage.jsx` + `src/styles/inbox.css`
 **Hook:** `src/hooks/useCollections.js`, `src/hooks/useExpenses.js`, `src/hooks/useActivityLog.js`
@@ -475,7 +396,6 @@
 - **🔄 Sub auto-advance (v4.2.1):** Subscription hết hạn tự động nhảy `next_due` theo cycle (monthly/3month/6month/yearly). Chạy khi fetch, bounded max 24 cycle.
 - Delete action
 - **🕔 Snooze (v3.8.0):** Ẩn inbox item tạm thời. 4 options: 1 tuần / 2 tuần / 1 tháng / 3 tháng. Badge "🕔 X snoozed" trong header.
-- **🔗 Link Preview (v4.0.0):** Inbox items có URL tự động hiển preview card (thumbnail + title + desc) qua Vercel Edge Function `/api/meta`. Graceful fallback khi bị chặn.
 - **··· Overflow Menu (v4.0.1):** 2 primary buttons (📌 Task + 🗑) luôn hiện. 5 actions phụ (📂 Phân loại, 💸 Chi tiêu, 🔄 Đăng ký, 🥚 Ấp Trứng, 🕔 Snooze) gom vào dropdown ···. Click-outside auto-close.
 - **📊 Filter Chips (v4.3.0):** 3 chip lọc: Tất cả / Có URL / Gần đây (7 ngày). Client-side filtering trên data đã fetch. Smart empty state khi không có item khớp.
 - Tự động detect URL
@@ -485,7 +405,7 @@
 
 ---
 
-## 23. 🏷️ PARA Tags (v3.7.0)
+## 19. 🏷️ Tags — Hệ Thống Trung Tâm (v3.7.0)
 
 **Added:** v3.7.0
 **Files:** `src/hooks/useTags.js`, `src/components/TagPicker.jsx`
@@ -502,7 +422,7 @@
 
 ---
 
-## 24. 📅 Cashflow Calendar (v3.7.0)
+## 20. 📅 Cashflow Calendar (v3.7.0)
 
 **Added:** v3.7.0
 **Files:** `src/components/CashflowBar.jsx`, `src/styles/finance.css`
@@ -518,7 +438,7 @@
 
 ---
 
-## 25. 🥚 Trạm Ấp Trứng / Incubator (v3.9.0 → v4.2.0)
+## 21. 🥚 Trạm Ấp Trứng / Incubator (v3.9.0 → v4.2.0)
 
 **Added:** v3.9.0, **upgraded v4.2.0** (Multi-Output Router)
 **Files:** `src/pages/IncubatorPage.jsx`, `src/styles/incubator.css`, `src/hooks/useIntentions.js`
@@ -550,7 +470,7 @@
 
 ---
 
-## 26. 🏋️ Sức Khỏe / Health Tab (v4.0.0)
+## 22. 🏋️ Sức Khỏe / Health Tab (v4.0.0)
 
 **Added:** v4.0.0
 **Files:** `src/hooks/useFitnessLog.js`, TrackerPage (tab thứ 5)
@@ -571,7 +491,7 @@
 
 ---
 
-## 18. 📓 Kho Tàng Kiến Thức (`/collect`) — v3.3.0
+## 23. 📓 Kho Tàng Kiến Thức (`/collect`) — v3.3.0
 
 **File:** `src/pages/CollectPage.jsx` + `src/styles/collect.css` + `src/styles/tiptap.css`
 **Component:** `src/components/TiptapEditor.jsx` (WYSIWYG) + `TiptapReadOnly` + `src/components/SlashCommand.jsx` [v3.3.0]
@@ -661,11 +581,11 @@
 **ConfirmModal (v3.2.0):**
 - Tất cả delete/switch action dùng `useConfirm()` — không còn `window.confirm()`
 
-**Data source:** `collections` + `knowledge_groups` + `collection_groups` + `collection_notes` (Supabase) — columns: `type, title, body, url, tags, source, status, content_format, body_text, word_count`. Phân loại được config cứng ở `src/data/knowledge.json`.
+**Data source:** `collections` + `knowledge_groups` + `collection_groups` + `collection_notes` + `collection_tags` (Supabase) — columns: `type, title, body, url, source, status, content_format, body_text, word_count, snoozed_until`. Tags đi qua junction `collection_tags` (không phải cột `tags`). Phân loại được config cứng ở `src/data/knowledge.json`.
 
 ---
 
-## 19. 💰 Finance (`/finance`)
+## 24. 💰 Finance (`/finance`)
 
 **File:** `src/pages/FinancePage.jsx` + `src/styles/finance.css`
 **Hook:** `src/hooks/useExpenses.js` + `src/hooks/useSubscriptions.js`
@@ -684,7 +604,7 @@
 
 ---
 
-## 20. 📅 Life Log (`/life-log`)
+## 25. 📅 Life Log (`/life-log`)
 
 **File:** `src/pages/LifeLogPage.jsx` + `src/styles/lifelog.css`
 **Components:** `src/components/ActivityHeatmap.jsx`
@@ -702,7 +622,7 @@
 
 ---
 
-## 21. 🔔 Sidebar Widgets
+## 26. 🔔 Sidebar Widgets
 
 **Files:** `src/components/SubAlert.jsx` + `src/styles/widgets.css`
 
@@ -717,7 +637,7 @@
 
 ---
 
-## 22. ⚙️ Cài Đặt (`/settings`)
+## 27. ⚙️ Cài Đặt (`/settings`)
 
 **File:** `src/pages/SettingsPage.jsx` + `src/styles/settings.css`
 **Hooks:** `src/hooks/useTags.js`, `src/hooks/useQuotes.js` (v4.12.0)
@@ -742,10 +662,10 @@
 
 ---
 
-## 23. 🏷️ Tag Unification (v4.1.0)
+## 28. 🏷️ Tags — Hợp Nhất vào Knowledge Base (v4.1.0)
 
 **Files:** `src/hooks/useTags.js` + `src/hooks/useCollections.js` + `src/pages/CollectPage.jsx`
-**Migration:** `data/migration_v4.1.0_tag_unification.sql`
+**DB:** `collection_tags` (đã nằm trong `data/schema_v4.24.0.sql`)
 
 **Mô tả:** Thống nhất hệ thống tags: `collections.tags` (TEXT[]) → central `tags` + `collection_tags` junction table.
 
@@ -754,6 +674,72 @@
 - **useTags.js:** Mở rộng `linkTag`/`unlinkTag` hỗ trợ `entityType='collection'`. Thêm `updateTag()`, `getTagsForEntity()`, `getTagUsageCount()`, `getAllTagUsageCounts()`.
 - **useCollections.js:** `fetchItems()` join `collection_tags(tags(id,name,color))` → `item._tags`. `addItem()` không còn ghi vào `collections.tags` TEXT[].
 - **CollectPage:** TagInput hiển color dots, tag filter chips hiển color dots, save/edit dùng `linkTag`/`unlinkTag`.
-- **Backward compat:** `collections.tags` TEXT[] giữ lại (DEPRECATED), sẽ DROP ở v5.0.
+- **Backward compat:** không còn — `collections.tags` TEXT[] **không tồn tại** trong `schema_v4.24.0.sql`. Fresh install chỉ có junction `collection_tags`.
 
 **Data source:** `tags` + `collection_tags` + `expense_tags` + `subscription_tags` (Supabase)
+
+---
+
+## Data Architecture — Dual Mode
+
+| Chức năng | Storage (Authed) | Guest Fallback |
+|-----------|-------------------|---------------|
+| Daily tick | `progress` | in-memory |
+| Streak | tính client-side từ `progress` (`useHabitStore`) | tính client-side |
+| XP log | `xp_logs` | in-memory |
+| Custom habits | `habits` | in-memory defaults |
+| Habit per-day | `habit_logs` | in-memory |
+| Focus sessions | `focus_sessions` | in-memory |
+| Skip reasons | `skip_reasons` | in-memory |
+| Journeys | `user_journeys` + `journey_habits` | — (cần login để lưu) |
+| Personal tasks | `user_tasks` + `task_collections` | in-memory |
+| Inbox / Knowledge | `collections` (+ groups/notes/tags) | — (cần login) |
+| Finance | `expenses`, `subscriptions` | — (cần login) |
+| Incubator | `intentions`, `intention_logs` | — (cần login) |
+| Fitness | `fitness_logs` | — (cần login) |
+| Notifications | `notification_settings` + `vl_notif_settings` | localStorage |
+| Life milestones | `vl_life_journey_events` (localStorage-only) | localStorage |
+
+---
+
+## Routes
+
+| Route | Page | Auth |
+|-------|------|:---:|
+| `/` | LandingPage (eager) | ❌ |
+| `/tracker` | TrackerPage (eager) | ❌ |
+| `/inbox` | InboxPage | ✅ |
+| `/collect` | CollectPage | ✅ |
+| `/finance` | FinancePage | ✅ |
+| `/life-log` | LifeLogPage | ✅ |
+| `/incubator` | IncubatorPage | ✅ |
+| `/settings` | SettingsPage | ✅ |
+| `/focus` | FocusPage | ❌ |
+| `/journey` | JourneyPage | ❌ (soft wall: cần login để lưu) |
+| `/journey/:id` | JourneyDetailPage | ❌ |
+| `/dashboard` | DashboardPage | ❌ |
+| `/quiz` | QuizPage | ❌ |
+| `/leaderboard` | LeaderboardPage | ❌ |
+| `/life-journey` | LifeJourneyPage | ❌ |
+| `/habits`, `/team`, `/friends` | `<Navigate to="/tracker">` | — |
+| `*` | LandingPage (catch-all) | ❌ |
+
+Auth ✅ = trang tự hiện empty/login state khi guest (không có route guard tập trung).
+
+---
+
+## Archived / Removed
+
+Không còn là tính năng đang chạy. Giữ lại đây để không ai mô tả chúng như đang hoạt động.
+
+| Tính năng | Trạng thái |
+|-----------|-----------|
+| 🤝 **Team Mode** (`/team`) | Huỷ v3.0.0. Code trong `src/_archived/` (`TeamPage.jsx`, `useTeam.js`, `team/*`). Route redirect `/tracker`. Bảng `teams`/`reactions`/`partner_queue` **chưa từng** tồn tại trong schema |
+| 👥 **Friends** (`/friends`) | Archived v3.0.0. Code trong `src/_archived/FriendsPage.jsx`. Route redirect `/tracker`. Bảng `friendships` còn trong schema nhưng không hook nào dùng — an toàn để DROP |
+| 📋 **Habits Page** (`/habits`) | Gộp vào TrackerPage v1.9.0, file xoá v2.2.1. Route redirect `/tracker` |
+| 😊 **Mood Log** | Bỏ v4.10.1 (`useMoodLog` + bảng `mood_logs`). Chỉ còn `useSkipReasons` (§10) |
+| 🔗 **Inbox Link Preview** | Bỏ v4.23.0 cùng với `api/meta.js`. Inbox chỉ tự detect URL, không fetch metadata |
+| 📊 **DailyReview widget** | Xoá v4.7.1 để giảm UI clutter |
+| ⚡ **Energy Tag + Duration Estimate** (task) | Thay bằng `priority` v4.9.0, cột DB đã DROP |
+| 🎚 **"Dạng Drive" media option** | Xoá v4.23.0 — Drive URL mặc định render audio player |
+| 📤 **`useFileUpload` hook** | Xoá v4.22.0 (dead code, chưa từng được import) |

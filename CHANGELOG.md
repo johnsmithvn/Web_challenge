@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v4.24.1 — 2026-07-27
+### Changed (Documentation only — không sửa code app)
+- **`docs/DATABASE.md`** — Sửa mâu thuẫn số bảng (26 / 28 / 30 → **31 `CREATE TABLE` = 30 active + `friendships` archived**, đối chiếu trực tiếp `data/schema_v4.24.0.sql`). Bỏ tham chiếu tới `schema_v4.4.0.sql` và các `migration_*.sql` đã bị gộp/xoá. Sửa `collections.type` thành đúng 8 loại của CHECK constraint. Thay query leaderboard cũ (join view `user_xp` không tồn tại) bằng RPC `get_leaderboard()`. Bảng XP: bỏ "Duo streak (v3 planned)", thêm Fitness +10, sửa Quiz thành `score × 5`. Thêm mục **Streak — Source of Truth** ghi rõ `refresh_streak()` không tồn tại + `TODO: decision needed`. Thêm cột deprecated `user_tasks.energy_level/duration_est` (DROPPED v4.9.0) và `collections.tags` (không còn trong schema)
+- **`docs/FEATURES.md`** — Dọn active/archived: đánh số lại §1–§28 (trước đó 17/18/19/20/21/22/23 bị trùng, thiếu 13), gom Team Mode / Friends / Habits Page / Mood Log / Link Preview / DailyReview / Energy-Duration tag vào bảng **Archived / Removed** ở cuối file. Sửa Tracker 4 tab → 5 tab, Leaderboard sang RPC, task Energy/Duration → `priority`, đường dẫn `life-journey.css`, bỏ claim `collections.tags` còn tồn tại. Chuyển Data Architecture + Routes xuống cuối file và cập nhật (thêm `/incubator`, `/settings`, catch-all; bỏ Teams/Friends)
+- **`docs/ARCHITECTURE.md`** — Rút gọn cây thư mục từ ~150 dòng annotate từng file xuống ~30 dòng (thư mục + số lượng + vai trò). Thay danh sách "Supabase Tables" (có 5 bảng không tồn tại + trỏ tới migration files đã xoá) bằng bảng nhóm theo domain + trỏ về DATABASE.md. Sửa `Routes (12 lazy)` → 13 lazy, sửa Key Design Decision #3 (streak client-side, không có DB trigger)
+- **`PROJECT.md`** (mới) — Bản đồ cấp cao 127 dòng: stack, chỉ mục tài liệu, module map (route → page → hook → table), data flow, 9 luật không được phá, cách chạy, và danh sách sai lệch đã biết
+- **`package.json`** — version 4.23.0 → 4.24.1 (v4.24.0 là patch RLS/email chỉ sửa schema SQL, không bump package)
+- **`docs/RULES.md`** — Sửa 3 tham chiếu `data/schema_v4.4.0.sql` → `data/schema_v4.24.0.sql` (§3, §Scope & Restrictions, §15) vì file cũ đã bị gộp và xoá. §localStorage Rules: ghi rõ ngoại lệ legacy thay cho tuyên bố "NEVER user data" (đang bị `vl_life_journey_events` phản chứng). Đánh số `README Requirement` thành §11 để bịt khoảng trống §10 → §12 (không đánh số lại §12–§16 để không phá các tham chiếu "Rule 14" ở file khác)
+- **Ngoại lệ legacy localStorage** — `docs/ARCHITECTURE.md` + `docs/RULES.md` + `PROJECT.md`: `vl_life_journey_events` và `vl_journey_title` là user data thật, chưa migrate sang Supabase. Trước đây 3 file đều tuyên bố localStorage "không chứa user data" trong khi vẫn liệt kê 2 key này. Quyết định: giữ nguyên, ghi rõ là ngoại lệ legacy, kèm hệ quả (không sync đa thiết bị) và cảnh báo không lấy làm tiền lệ
+- **`docs/FEATURES.md`** — Bỏ tham chiếu `KnowledgeResurface` trong Incubator Review Banner (component đã xoá ở v4.22.0)
+- **Header version** — `RULES.md`, `ARCHITECTURE.md`, `DATABASE.md`, `FEATURES.md`, `PROJECT.md` đồng bộ về v4.24.1. Tên file `data/schema_v4.24.0.sql` giữ nguyên (cố ý — không đổi tên file schema theo patch tài liệu)
+
 ## v4.23.0 — 2026-06-14
 ### Added
 - **`api/stream.js`** — Vercel serverless proxy that streams Google Drive files through our server, bypassing CORS. Supports `Range` headers for seeking. Caches Service Account token across hot invocations. Enables custom HTML5 `<audio>` player for Drive audio (previously always fell back to ugly Drive iframe)
