@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { toDateStr } from '../utils/dateUtils';
 import '../styles/calendar.css';
 
 const VN_HOLIDAYS = {
@@ -21,32 +22,63 @@ function getFirstDayOfWeek(year, month) {
   return d === 0 ? 6 : d - 1; // Monday = 0
 }
 
-export default function MonthCalendar({ habitData, getCompletedTasks, skipLog = {}, onDayClick }) {
+/**
+ * MonthCalendar — lịch tháng, dùng ở 2 chế độ:
+ *
+ * - **habit mode** (truyền `habitData`): ô tô xanh/đỏ theo ngày tick đủ habit.
+ *   Dùng ở /tracker và /life-log.
+ * - **task mode** (KHÔNG truyền `habitData`): ô tô theo số task đã xong hôm đó,
+ *   hiện chip tên task ngay trong ô. Dùng ở /tasks (v4.29.0).
+ *
+ * Khi feature habit bị cắt, xoá nhánh habit là xong — không có prop cấu hình.
+ */
+export default function MonthCalendar({ habitData, getCompletedTasksRange, skipLog = {}, onDayClick }) {
   const today = new Date();
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selected,  setSelected]  = useState(null);
-  const [selectedTasks, setSelectedTasks] = useState([]);
-  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [tasksByDay, setTasksByDay] = useState({});
   const [expandedTaskId, setExpandedTaskId] = useState(null);
 
+  const habitMode = !!habitData;
   const daysInMonth  = getDaysInMonth(viewYear, viewMonth);
   const firstDayOfW  = getFirstDayOfWeek(viewYear, viewMonth);
   const monthLabel   = new Date(viewYear, viewMonth).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+  const pad = (n) => String(n).padStart(2, '0');
+
+  // 1 query cho cả tháng rồi group theo ngày ĐỊA PHƯƠNG (không phải UTC).
+  useEffect(() => {
+    if (!getCompletedTasksRange) return;
+    let stale = false;
+    const start = `${viewYear}-${pad(viewMonth + 1)}-01`;
+    const end   = `${viewYear}-${pad(viewMonth + 1)}-${pad(getDaysInMonth(viewYear, viewMonth))}`;
+    getCompletedTasksRange(start, end).then(rows => {
+      if (stale) return;
+      const map = {};
+      for (const r of rows) {
+        if (!r.completed_at) continue;
+        const key = toDateStr(new Date(r.completed_at));
+        (map[key] ||= []).push(r);
+      }
+      setTasksByDay(map);
+    });
+    return () => { stale = true; };
+  }, [viewYear, viewMonth, getCompletedTasksRange]);
 
   // Compute day data
   const dayData = useMemo(() => {
     const map = {};
     for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const holiday = VN_HOLIDAYS[`${String(viewMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`];
-      const done    = habitData?.[dateStr] ?? false;
-      map[d] = { dateStr, done, holiday };
+      const dateStr = `${viewYear}-${pad(viewMonth + 1)}-${pad(d)}`;
+      const holiday = VN_HOLIDAYS[`${pad(viewMonth + 1)}-${pad(d)}`];
+      const tasks   = tasksByDay[dateStr] || [];
+      const done    = habitMode ? (habitData?.[dateStr] ?? false) : tasks.length > 0;
+      map[d] = { dateStr, done, holiday, tasks };
     }
     return map;
-  }, [viewYear, viewMonth, habitData]);
+  }, [viewYear, viewMonth, daysInMonth, habitMode, habitData, tasksByDay]);
 
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = toDateStr(today);
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
@@ -62,40 +94,23 @@ export default function MonthCalendar({ habitData, getCompletedTasks, skipLog = 
   const doneCount   = Object.values(dayData).filter(d => d.done).length;
   const totalPassed = Object.values(dayData).filter(d => new Date(d.dateStr) <= today).length;
   const monthPct    = totalPassed ? Math.round((doneCount / totalPassed) * 100) : 0;
+  const taskTotal   = Object.values(dayData).reduce((s, d) => s + d.tasks.length, 0);
 
   // Build grid: blanks + days
   const cells = [...Array(firstDayOfW).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
-  // Fetch completed tasks when a day is selected
-  const handleSelectDay = useCallback(async (dateStr) => {
-    if (selected === dateStr) {
-      setSelected(null);
-      setSelectedTasks([]);
-      setExpandedTaskId(null);
-      return;
-    }
-    setSelected(dateStr);
+  // Data cho cả tháng đã có sẵn → chọn ngày chỉ là toggle, không fetch.
+  const handleSelectDay = useCallback((dateStr) => {
     setExpandedTaskId(null);
-    setSelectedTasks([]);
+    setSelected(prev => (prev === dateStr ? null : dateStr));
     onDayClick?.(dateStr);
+  }, [onDayClick]);
 
-    if (getCompletedTasks) {
-      setLoadingTasks(true);
-      try {
-        const tasks = await getCompletedTasks(dateStr);
-        setSelectedTasks(tasks || []);
-      } catch {
-        setSelectedTasks([]);
-      } finally {
-        setLoadingTasks(false);
-      }
-    }
-  }, [selected, getCompletedTasks]);
+  const selectedTasks = selected ? (tasksByDay[selected] || []) : [];
 
-  // Reset tasks when changing months
+  // Reset selection when changing months
   useEffect(() => {
     setSelected(null);
-    setSelectedTasks([]);
     setExpandedTaskId(null);
   }, [viewYear, viewMonth]);
 
@@ -117,20 +132,28 @@ export default function MonthCalendar({ habitData, getCompletedTasks, skipLog = 
       {/* Month stats */}
       <div className="cal-month-stats">
         <div className="cal-stat">
-          <span className="cal-stat__val" style={{ color: 'var(--green)' }}>{doneCount}</span>
-          <span className="cal-stat__label">Ngày done</span>
+          <span className="cal-stat__val" style={{ color: 'var(--green)' }}>
+            {habitMode ? doneCount : taskTotal}
+          </span>
+          <span className="cal-stat__label">{habitMode ? 'Ngày done' : 'Task xong'}</span>
         </div>
+        {/* Task mode bỏ progress bar: % ngày-có-task không phải mục tiêu nào cả,
+            và thanh 6% trong track rộng nhìn như đang lỗi. */}
         <div className="cal-stat-bar">
-          <div className="progress-bar-track" style={{ height: 6 }}>
-            <div className="progress-bar-fill" style={{ width: `${monthPct}%` }} />
-          </div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{monthPct}% tháng này</span>
+          {habitMode && (
+            <div className="progress-bar-track" style={{ height: 6 }}>
+              <div className="progress-bar-fill" style={{ width: `${monthPct}%` }} />
+            </div>
+          )}
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {habitMode ? `${monthPct}% tháng này` : `${doneCount} ngày có việc xong`}
+          </span>
         </div>
         <div className="cal-stat">
-          <span className="cal-stat__val" style={{ color: 'var(--red)' }}>
-            {totalPassed - doneCount}
+          <span className="cal-stat__val" style={{ color: habitMode ? 'var(--red)' : 'var(--purple-light)' }}>
+            {habitMode ? totalPassed - doneCount : (doneCount ? Math.round(taskTotal / doneCount * 10) / 10 : 0)}
           </span>
-          <span className="cal-stat__label">Ngày miss</span>
+          <span className="cal-stat__label">{habitMode ? 'Ngày miss' : 'TB / ngày'}</span>
         </div>
       </div>
 
@@ -149,22 +172,42 @@ export default function MonthCalendar({ habitData, getCompletedTasks, skipLog = 
           const isFuture = new Date(info.dateStr) > today;
           const isSelected = selected === info.dateStr;
 
+          // Task mode: ô trống là bình thường (không phải "miss"), nên không tô đỏ.
+          const stateClass = info.done
+            ? 'cal-cell--done'
+            : isFuture ? 'cal-cell--future'
+            : habitMode ? 'cal-cell--miss' : 'cal-cell--empty';
+
           return (
             <div
               key={day}
               className={[
                 'cal-cell',
-                info.done ? 'cal-cell--done' : isFuture ? 'cal-cell--future' : 'cal-cell--miss',
+                stateClass,
+                habitMode ? '' : 'cal-cell--tasks',
                 isToday    ? 'cal-cell--today'    : '',
                 isSelected ? 'cal-cell--selected' : '',
               ].join(' ')}
               onClick={() => handleSelectDay(info.dateStr)}
               id={`cal-day-${info.dateStr}`}
               role="button"
-              title={info.holiday || info.dateStr}
+              title={info.holiday || `${info.dateStr}${info.tasks.length ? ` — ${info.tasks.length} task xong` : ''}`}
             >
               <span className="cal-cell__num">{day}</span>
-              {info.done && <span className="cal-cell__dot" />}
+
+              {/* habit mode giữ dot; task mode hiện chip tên task như Google Calendar */}
+              {habitMode
+                ? info.done && <span className="cal-cell__dot" />
+                : info.tasks.length > 0 && (
+                    <span className="cal-cell__chips">
+                      {info.tasks.slice(0, 2).map(t => (
+                        <span key={t.id} className="cal-chip" title={t.title}>{t.title}</span>
+                      ))}
+                      {info.tasks.length > 2 && (
+                        <span className="cal-chip cal-chip--more">+{info.tasks.length - 2} nữa</span>
+                      )}
+                    </span>
+                  )}
 
               {info.holiday && <span className="cal-cell__holiday" title={info.holiday}>🔴</span>}
             </div>
@@ -176,10 +219,10 @@ export default function MonthCalendar({ habitData, getCompletedTasks, skipLog = 
       {selected && (
         <div className="cal-day-detail">
           <strong>{new Date(selected).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</strong>
-          {dayData[new Date(selected).getDate()]?.done
+          {habitMode && (dayData[new Date(selected).getDate()]?.done
             ? <span style={{ color: 'var(--green)' }}>✅ Đã hoàn thành</span>
             : <span style={{ color: 'var(--text-muted)' }}>❌ Chưa hoàn thành</span>
-          }
+          )}
           {dayData[new Date(selected).getDate()]?.holiday && (
             <span style={{ color: '#fbbf24' }}>{dayData[new Date(selected).getDate()].holiday}</span>
           )}
@@ -206,9 +249,9 @@ export default function MonthCalendar({ habitData, getCompletedTasks, skipLog = 
           )}
 
           {/* Completed tasks for this day */}
-          {loadingTasks && (
+          {!habitMode && selectedTasks.length === 0 && (
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.5rem', display: 'block' }}>
-              ⏳ Đang tải nhiệm vụ...
+              Không có task nào hoàn thành ngày này.
             </span>
           )}
           {selectedTasks.length > 0 && (
@@ -269,8 +312,14 @@ export default function MonthCalendar({ habitData, getCompletedTasks, skipLog = 
 
       {/* Legend */}
       <div className="cal-legend">
-        <span><span className="cal-dot cal-dot--done"/> Done</span>
-        <span><span className="cal-dot cal-dot--miss"/> Miss</span>
+        {habitMode ? (
+          <>
+            <span><span className="cal-dot cal-dot--done"/> Done</span>
+            <span><span className="cal-dot cal-dot--miss"/> Miss</span>
+          </>
+        ) : (
+          <span><span className="cal-dot cal-dot--done"/> Có task xong</span>
+        )}
         <span><span className="cal-dot cal-dot--future"/> Chưa tới</span>
         <span>🔴 Ngày lễ</span>
       </div>

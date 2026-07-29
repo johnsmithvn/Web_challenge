@@ -95,7 +95,10 @@
 /* Grid */
 .cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr) chứ KHÔNG phải 1fr: `1fr` = `minmax(auto, 1fr)`, nên nội dung
+     không wrap được (chip task `white-space: nowrap`) sẽ đẩy cột rộng ra và làm
+     lệch cả 7 cột. Đây là nguyên nhân ô lệch nhau ở v4.29.0 trước khi sửa. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 3px;
 }
 
@@ -325,3 +328,78 @@
 
 .habit-preview__name { font-weight: 600; font-size: 0.92rem; flex: 1; }
 .habit-preview__meta { font-size: 0.78rem; color: var(--text-muted); }
+
+/* ── Task mode (v4.29.0) — ô ngày hiện chip tên task thay vì 1 dấu dot.
+      Đây là thứ làm calendar trông giống Google Calendar, và nó vừa khít dữ
+      liệu all-day của user_tasks (due_time mặc định 23:59, nên time-grid
+      kiểu GCal week view sẽ dồn hết vào 1 hàng — cố ý không làm). ── */
+.cal-cell--tasks {
+  aspect-ratio: auto;
+  min-height: 62px;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: 3px 4px 4px;
+  gap: 2px;
+  /* Hairline định nghĩa ô — DESIGN.md: "the 1px hairline that defines every
+     glass edge". Không có nó thì lưới không đọc ra là lưới, chỉ là số trôi. */
+  border: 1px solid var(--bg-glass-border);
+  background: var(--bg-card);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cal-cell--tasks .cal-cell__num {
+  text-align: left;
+  padding-left: 2px;
+  opacity: 0.75;
+}
+
+/* Task mode: ô KHÔNG tô xanh — nếu tô, ô xanh + chip xanh = khối xanh nặng.
+   Màu do chip mang, ô chỉ đậm viền lên một bậc. */
+.cal-cell--tasks.cal-cell--done {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: rgba(0, 255, 136, 0.28);
+}
+
+.cal-cell--tasks.cal-cell--done .cal-cell__num { opacity: 1; color: var(--green); }
+
+/* Ngày quá khứ không có task xong là BÌNH THƯỜNG — không tô đỏ như habit miss */
+.cal-cell--empty { color: var(--text-muted); }
+
+/* Ngày chưa tới: nhạt hẳn nhưng vẫn giữ ô để lưới liền mạch */
+.cal-cell--tasks.cal-cell--future { background: transparent; border-style: dashed; opacity: 0.45; }
+
+.cal-cell__chips {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  min-width: 0; /* cho ellipsis của .cal-chip hoạt động trong flex column */
+}
+
+.cal-chip {
+  font-size: 0.6rem;
+  font-weight: 500;
+  line-height: 1.3;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(0, 255, 136, 0.14);
+  color: var(--green);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-chip--more {
+  background: transparent;
+  color: var(--text-muted);
+  padding-left: 2px;
+}
+
+[data-theme="light"] .cal-cell--tasks { background: var(--bg-card); }
+[data-theme="light"] .cal-chip {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}

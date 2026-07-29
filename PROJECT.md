@@ -49,10 +49,11 @@ Mỗi route = 1 page trong `src/pages/`. Hook chứa toàn bộ logic Supabase; 
 | Route | Page | Hook chính | Bảng chính |
 |-------|------|-----------|-----------|
 | `/` | LandingPage | — | — |
-| `/tracker` | TrackerPage (4 tab) | useHabitStore, useCustomHabits, useHabitLogs, useUserTasks | progress, habits, habit_logs, user_tasks |
+| `/tracker` | TrackerPage (4 tab) | useHabitStore, useCustomHabits, useHabitLogs | progress, habits, habit_logs |
 | `/focus` | FocusPage | useFocusTimer | focus_sessions, xp_logs |
 | `/journey`, `/journey/:id` | JourneyPage, JourneyDetailPage | useJourney (+ JourneyContext) | programs, user_journeys, journey_habits |
 | `/inbox` | InboxPage | useCollections, useExpenses | collections (type=inbox), expenses |
+| `/tasks` | TasksPage (2 view: Danh sách / Lịch) | useUserTasks, useCollections | user_tasks, task_collections |
 | `/collect` | CollectPage | useCollections, useKnowledgeGroups, useCollectionNotes, useTags | collections, knowledge_groups, collection_groups, collection_notes, collection_tags |
 | `/finance` | FinancePage | useExpenses, useSubscriptions, useTags | expenses, subscriptions, *_tags |
 | `/incubator` | IncubatorPage | useIntentions | intentions, intention_logs |

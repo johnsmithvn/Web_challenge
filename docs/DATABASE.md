@@ -40,8 +40,10 @@ profiles ───────────────────────�
     ├──► intentions / intention_logs (incubator)│
     │                                           │
     ├──► tags ◄──► collection_tags              │
-    │         ◄──► expense_tags                 │
-    │         ◄──► subscription_tags            │
+    │         ◄──► task_tags        (v4.28.0)    │
+    │         ◄──► expense_tags                  │
+    │         ◄──► subscription_tags             │
+    │              └─ all 4 ──► VIEW tagged_items │
     │                                           │
     ├──► knowledge_groups ◄──► collection_groups ──► collections
     │                        (M:N junction v4.11.0)
@@ -81,7 +83,7 @@ Programs ──► program_habits   (template library, system + user)
 | 13 | `journey_habits` | Snapshot of habits per run | FK → user_journeys, FK → habits |
 | 14 | `user_tasks` | Personal to-do items | priority SMALLINT, recurrence_rule JSONB |
 | 15 | `task_collections` | Junction: Task ↔ KB (M:N) | Composite PK(task_id, collection_id), CASCADE |
-| 16 | `collections` | Inbox + Knowledge Base | type CHECK (8, v4.14.0): `inbox`, `note`, `quote`, `learn`, `idea`, `ai`, `entertainment`, `emotion` |
+| 16 | `collections` | Inbox + Knowledge Base | type CHECK (8, **sửa v4.28.0**): `inbox`, `note`, `quote`, `learn`, `idea`, `ai`, `entertainment`, `podcast`. ⚠️ Trước v4.28.0 CHECK có `emotion` (không tồn tại trong `src/`) và **thiếu `podcast`** (có trong `knowledge.json`) → classify sang Podcast fail constraint |
 | 17 | `expenses` | Daily spending log | amount VNĐ, category, note |
 | 18 | `subscriptions` | Recurring services | cycle, next_due, auto-advance |
 | 19 | `activity_logs` | Append-only audit trail | action + label + amount + meta JSONB |
@@ -91,6 +93,7 @@ Programs ──► program_habits   (template library, system + user)
 | 23 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
 | 24 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
 | 25 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
+| 25b | `task_tags` | Junction: Task ↔ Tags | **v4.28.0.** Composite PK(task_id, tag_id), CASCADE. RLS kiểm ownership **cả 2 phía**. Chỉ index `tag_id` (task_id đã là cột dẫn đầu của PK) |
 | 26 | `knowledge_groups` | KB folder/group metadata | title, emoji, description. FK → profiles |
 | 27 | `collection_groups` | Junction: KB ↔ Groups (M:N) | Composite PK(collection_id, group_id), CASCADE |
 | 28 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
@@ -98,11 +101,28 @@ Programs ──► program_habits   (template library, system + user)
 | — | `fitness_logs` | **[ARCHIVED v4.26.0]** Workout sessions | `session_name`, `duration_min`, `energy`. Frontend code deleted v4.26.0 (recoverable from git history). Table still exists in production DB, no active hook or page uses it. Safe to DROP when ready. |
 | — | `friendships` | **[ARCHIVED v3.0.0]** Friend requests | Frontend code deleted v4.25.0 (was `src/_archived/`, recoverable from git history). Table exists in production DB but is not used by any active hook or page. Safe to DROP when ready. |
 
+### Views
+
+| View | Mục đích | Ghi chú |
+|------|----------|---------|
+| `tagged_items` | **v4.28.0.** 1 mặt đọc hợp nhất cho filter/search theo tag: `UNION ALL` 4 junction → `(tag_id, kind, item_id)` với `kind ∈ {collection, task, expense, subscription}` | ⚠️ Tạo với `WITH (security_invoker = true)` — **bắt buộc**. Mặc định view chạy bằng quyền OWNER (postgres) và **bỏ qua RLS** của bảng dưới → leak data mọi user. Cần PostgreSQL ≥ 15. |
+
+### Kiến trúc Tag — tại sao N junction, không phải 1 bảng polymorphic
+
+`tags` là **1 bảng trung tâm duy nhất** (`UNIQUE(user_id, name)`), không có cột `tags TEXT[]` lặp ở đâu. Mỗi loại entity nối vào qua 1 junction riêng: `collection_tags`, `task_tags`, `expense_tags`, `subscription_tags`.
+
+Nhìn có vẻ dư (N loại → N bảng), nhưng **đó là giá của referential integrity**: mỗi junction có `REFERENCES ... ON DELETE CASCADE` cả 2 phía, nên xoá entity thì link tự biến mất.
+
+**Cố ý KHÔNG dùng** `taggables(tag_id, entity_type, entity_id)` polymorphic: `entity_id` không thể có FK → xoá entity không xoá link → **rác vĩnh viễn**. Đây đúng là bệnh của `activity_logs` (row `fitness_done` treo mãi sau khi feature bị xoá ở v4.26.0).
+
+Nguyên tắc: **N junction để GHI (giữ FK), 1 view để ĐỌC (unified filter).**
+
 ### Deprecated Columns
 
 | Table | Column | Status | Replacement |
 |-------|--------|--------|-------------|
-| `user_tasks` | `collection_id` | **DEPRECATED v4.5.0** | Use `task_collections` junction table (M:N). Column still created (+ FK + partial index) for rollback, will be DROPped in v5.0. |
+| `user_tasks` | `collection_id` | **DEPRECATED v4.5.0 → code ngừng ghi v4.28.0, DROP ở `migration_v5.0.0`** | `task_collections` junction (M:N). v4.28.0 đã bỏ tham số `collectionId` khỏi `addTask` và chuyển `CollectPage.onCreateTask` sang `linkCollection()`. **Trước v4.28.0 link tạo từ Knowledge coi như mất** vì cột 1:1 không được đọc ở đâu. |
+| `collections` | `resolved`, `course_name`, `duration_min`, `reviewed_at`, `priority` | **CỘT CHẾT — DROP ở `migration_v5.0.0`** | Không cột nào được đọc/render (grep 0 hit trong `useCollections`/`CollectPage`/`InboxPage`/`ArticleCard`). `priority` chỉ được passthrough lúc INSERT — v4.28.0 đã bỏ. Lưu ý `collections.priority` là `TEXT`, khác hẳn `user_tasks.priority` (`SMALLINT`) dù trùng tên. |
 | `user_tasks` | `energy_level`, `duration_est` | **DROPPED v4.9.0** | Replaced by `priority SMALLINT` (0=None … 5=Urgent). The schema file explicitly `DROP COLUMN IF EXISTS` both. |
 | `collections` | `tags` (TEXT[]) | **GONE v4.1.0** | Use `collection_tags` junction. Not created by `schema_v4.24.0.sql` at all — a fresh install has no such column. Docs claiming it is "kept for backward compat" are stale. |
 

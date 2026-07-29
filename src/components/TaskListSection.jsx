@@ -6,6 +6,7 @@ import { useCollections } from '../hooks/useCollections';
 import LinkKBModal from './LinkKBModal';
 import DatePickerPopover from './DatePickerPopover';
 import { toDateStr } from '../utils/dateUtils';
+import '../styles/tasks.css';
 
 const PRIORITY_OPTIONS = [
   { value: 0, label: 'Không', icon: '➖', color: 'var(--text-muted)' },
@@ -22,8 +23,8 @@ export default function TaskListSection() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const {
-    todayTasks, overdueTasks, futureTasks, completedToday,
-    addTask, completeTask, uncompleteTask, updateTask, deleteTask,
+    todayTasks, overdueTasks, futureTasks,
+    addTask, completeTask, updateTask, deleteTask,
     linkCollection, unlinkCollection,
     isLoading,
   } = useUserTasks();
@@ -168,7 +169,6 @@ export default function TaskListSection() {
 
 
   const totalPending = todayTasks.length + overdueTasks.length + futureTasks.length;
-  const totalCount   = totalPending + completedToday.length;
 
   const btnBase = {
     background: 'none', border: 'none', cursor: 'pointer',
@@ -183,11 +183,20 @@ export default function TaskListSection() {
     const isEditing = editId === task.id;
     const isExpanded = expandedTask === task.id;
 
+    // Dải màu priority bên trái — quét mắt thấy ngay cái nào gấp.
+    // Màu lấy từ PRIORITY_OPTIONS, không thêm token/class mới.
+    const pri = PRIORITY_OPTIONS.find(o => o.value === task.priority);
+    const stripe = task.priority > 0 && pri ? { borderLeft: `3px solid ${pri.color}` } : {};
+
     return (
-      <div key={task.id} className="task-item" style={overdue ? {
-        background: 'rgba(239,68,68,0.06)',
-        borderColor: 'rgba(239,68,68,0.2)',
-      } : {}}>
+      <div key={task.id} className="task-item" style={{
+        ...stripe,
+        ...(overdue ? {
+          background: 'rgba(239,68,68,0.06)',
+          borderColor: 'rgba(239,68,68,0.2)',
+          ...(task.priority > 0 && pri ? { borderLeftColor: pri.color } : {}),
+        } : {}),
+      }}>
         {isEditing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem',
             background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)',
@@ -323,11 +332,12 @@ export default function TaskListSection() {
           /* ── View mode ── */
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
             {/* Checkbox */}
+            {/* Animation tick nằm hoàn toàn trong CSS (:active + :hover) — không cần state React */}
             <button onClick={() => completeTask(task.id)} id={`task-check-${task.id}`}
               className="task-checkbox-btn"
               style={{
                 border: `2px solid ${overdue ? 'rgba(239,68,68,0.4)' : 'rgba(139,92,246,0.4)'}`,
-              }} title="Hoàn thành" />
+              }} title="Hoàn thành" aria-label={`Hoàn thành: ${task.title}`} />
 
             {/* Content */}
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -488,21 +498,8 @@ export default function TaskListSection() {
     <>
     <div className="card task-list-card" style={{ padding: '1.25rem', marginBottom: '1.25rem' }}>
 
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span className="dash-card-title" style={{ margin: 0 }}>📌 Nhiệm Vụ</span>
-          {totalCount > 0 && (
-            <span style={{
-              background: (todayTasks.length + overdueTasks.length) > 0 ? 'rgba(139,92,246,0.2)' : 'rgba(0,255,136,0.15)',
-              color: (todayTasks.length + overdueTasks.length) > 0 ? '#a78bfa' : 'var(--green)',
-              padding: '0.15rem 0.55rem', borderRadius: 'var(--radius-full)',
-              fontSize: '0.72rem', fontWeight: 700,
-            }}>
-              {todayTasks.length + overdueTasks.length}/{totalCount}
-            </span>
-          )}
-        </div>
+      {/* v4.29.0: tiêu đề + badge đếm đã chuyển lên hero của TasksPage — bỏ ở đây để khỏi trùng */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
         <button
           className="btn btn-ghost"
           onClick={() => setShowForm(!showForm)}
@@ -688,56 +685,20 @@ export default function TaskListSection() {
         </div>
       )}
 
-      {/* ── Completed Today ── */}
-      {completedToday.length > 0 && (
-        <div style={{ marginTop: (todayTasks.length > 0 || overdueTasks.length > 0 || futureTasks.length > 0) ? '0.75rem' : 0 }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            ✅ Đã hoàn thành hôm nay ({completedToday.length})
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            {completedToday.map(task => (
-              <div key={task.id} style={{
-                padding: '0.5rem 0.75rem',
-                background: 'rgba(0,255,136,0.04)', border: '1px solid rgba(0,255,136,0.1)',
-                borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: '0.5rem',
-              }}>
-                <span style={{ color: 'var(--green)', fontSize: '0.9rem' }}>✓</span>
-                <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.82rem', flex: 1 }}>
-                  {task.title}
-                </span>
-                {task.completed_at && (
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                    {new Date(task.completed_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                )}
-                {/* Uncheck */}
-                <button
-                  onClick={() => uncompleteTask(task.id)}
-                  id={`task-uncheck-${task.id}`}
-                  style={{ ...btnBase, opacity: 0.5, color: 'var(--text-muted)' }}
-                  title="Đánh dấu chưa xong"
-                  onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                  onMouseLeave={e => e.currentTarget.style.opacity = 0.5}
-                >↩</button>
-                {/* Delete */}
-                <button
-                  onClick={() => deleteTask(task.id)}
-                  id={`task-delete-done-${task.id}`}
-                  style={{ ...btnBase, opacity: 0.45, color: 'var(--text-muted)' }}
-                  title="Xoá"
-                  onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                  onMouseLeave={e => e.currentTarget.style.opacity = 0.45}
-                >🗑</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* v4.29.0: block "Đã hoàn thành hôm nay" đã xoá — task xong xem ở tab 📅 Lịch */}
 
       {/* ── Empty state ── */}
-      {todayTasks.length === 0 && overdueTasks.length === 0 && futureTasks.length === 0 && completedToday.length === 0 && !isLoading && (
-        <div style={{ textAlign: 'center', padding: '1rem 0', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-          {user ? 'Chưa có nhiệm vụ nào. Bấm "+ Thêm" để tạo!' : 'Đăng nhập để tạo và lưu nhiệm vụ.'}
+      {totalPending === 0 && !isLoading && (
+        <div className="task-empty">
+          {user ? (
+            <>
+              <div className="task-empty__icon">✓</div>
+              <div className="task-empty__title">Hết việc</div>
+              <div className="task-empty__hint">Bấm <strong>+ Thêm</strong> để tạo nhiệm vụ, hoặc mở tab 📅 Lịch xem những gì đã xong.</div>
+            </>
+          ) : (
+            <div className="task-empty__hint">Đăng nhập để tạo và lưu nhiệm vụ.</div>
+          )}
         </div>
       )}
 

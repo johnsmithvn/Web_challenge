@@ -214,16 +214,30 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ## 9. 📅 Monthly Calendar
 
-**File:** `src/components/MonthCalendar.jsx`
+**File:** `src/components/MonthCalendar.jsx` + `src/styles/calendar.css`
+**Dùng ở:** `/tracker` tab 📅 Lịch, `/life-log`, `/tasks` tab 📅 Lịch (v4.29.0)
 
-**Mô tả:** Lịch tháng inline trong TrackerPage (tab 📅 Lịch).
+**Mô tả:** Lịch tháng inline, **2 chế độ** quyết định bởi prop `habitData` (v4.29.0).
 
-**Chi tiết:**
-- Navigate tháng prev/next
-- Mỗi ô ngày: done (xanh), miss (đỏ nhạt), future (mờ), today (highlight)
-- Click ngày → xem detail (trạng thái + mood nếu có)
-- VN national holidays hiển thị
-- Stats bar dưới lịch: X ngày done / X miss / % tháng này
+**Chung cho cả 2 mode:**
+- Navigate tháng prev/next + nút "Hôm nay"
+- Ngày lễ VN, highlight today, outline ngày đang chọn
+- Click ngày → panel chi tiết list task đã hoàn thành + expand mô tả + giờ xong
+- **1 query cho cả tháng** (`getCompletedTasksRange`), group theo ngày **địa phương** ở client. Click ngày chỉ filter mảng đã fetch — không fetch thêm
+
+**habit mode** (truyền `habitData` — `/tracker`, `/life-log`):
+- Ô ngày: done (xanh), **miss (đỏ nhạt)**, future (mờ) — theo việc tick đủ habit
+- 1 dấu dot cho ngày done
+- Stats: X ngày done / % tháng này / X ngày miss
+- Hiện `skipLog` (lý do bỏ habit) trong panel chi tiết
+
+**task mode** (KHÔNG truyền `habitData` — `/tasks`):
+- Ô cao `76px` (bỏ `aspect-ratio: 1`), hiện **chip tên task** (tối đa 2 + `+N nữa`)
+- Ngày quá khứ không có task xong là **transparent, không tô đỏ** — thiếu habit là thất bại, không có task ngày đó thì không
+- Stats: X task xong / X ngày có việc xong / TB mỗi ngày
+- Không có `skipLog`, legend chỉ còn "Có task xong / Chưa tới / Ngày lễ"
+
+> Khi feature habit bị cắt, xoá nhánh `habitMode` là xong — không có prop cấu hình để dọn.
 
 ---
 
@@ -324,15 +338,25 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ---
 
-## 16. 📌 Nhiệm Vụ Cá Nhân (Personal Tasks) (v2.1.0)
+## 16. 📌 Nhiệm Vụ Cá Nhân (Personal Tasks) (v2.1.0 → v4.27.0)
 
-**Added:** v2.1.0
-**Files:** `src/components/TaskListSection.jsx`, `src/hooks/useUserTasks.js`, `public/sw.js`
+**Added:** v2.1.0, **tách thành route riêng v4.27.0**
+**Route:** `/tasks` (lazy)
+**Files:** `src/pages/TasksPage.jsx`, `src/components/TaskListSection.jsx`, `src/hooks/useUserTasks.js`, `src/styles/tasks.css`, `public/sw.js`
 
 **Mô tả:** Danh sách nhiệm vụ cá nhân (to-do), tách biệt khỏi habit/journey/XP. User tự tạo task với tiêu đề, mô tả, ngày giờ hẹn. Nhận notification khi đến hạn. Tick hoàn thành → lưu log xem trên calendar.
 
 **Chi tiết:**
-- **Task list** trong TrackerPage tab "⚡ Hôm Nay" (giữa Mood và Daily Challenge)
+- **Route riêng `/tasks` (v4.27.0):** Trước đó `TaskListSection` chỉ render trong TrackerPage tab "⚡ Hôm Nay" — Task bị ràng vào trang habit. Nay là page độc lập, có link `📌 Nhiệm Vụ` trong nav CHÍNH. CSS task tách từ `tracker.css` → `src/styles/tasks.css`.
+- **Hero + 2 view (v4.29.0):**
+  - **Hero:** số việc cần làm (quá hạn + hôm nay) ở display scale với `.gradient-text`, kèm 3 tile Quá hạn / Hôm nay / Sắp tới. Độ nổi mã hoá độ gấp: quá hạn nền đỏ, hôm nay tím, sắp tới `opacity 0.6`.
+  - **Tab 📋 Danh sách** — chỉ việc **CHƯA** làm. Block "Đã hoàn thành hôm nay" **đã xoá** khỏi list.
+  - **Tab 📅 Lịch** — việc **ĐÃ** xong theo ngày. Reuse `MonthCalendar` ở **task mode** (không truyền `habitData`): ô ngày hiện **chip tên task** thay 1 dấu dot, bấm ngày → list task đã xong + expand mô tả + giờ hoàn thành.
+  - **Dải màu priority** 3px bên trái mỗi task card, màu từ `PRIORITY_OPTIONS` — quét mắt thấy ngay cái nào gấp.
+  - **Animation tick** thuần CSS (`::after` + `:active` + `--transition-spring` + `--shadow-green`), không cần state React. Có escape `prefers-reduced-motion`.
+  - **Empty state** có icon + tiêu đề, không còn là dòng text trơn.
+- **1 query/tháng thay 30 (v4.29.0):** `getCompletedTasks(dateStr)` → `getCompletedTasksRange(start, end)`. Calendar fetch 1 lần/tháng rồi group theo ngày **địa phương** ở client — vừa bớt N+1, vừa sửa luôn lỗi lệch ngày do `completed_at` được so sánh theo UTC.
+- **Cố ý KHÔNG làm:** week/day time-grid kiểu Google Calendar. `due_time` mặc định `23:59` nên mọi task sẽ dồn vào 1 hàng đáy — phần đắt nhất của GCal (cột giờ, thuật toán xếp event chồng, drag-resize) không đem lại gì cho dữ liệu all-day. Cũng không làm Board/Gantt/assignee/custom field (xem `docs/TASKS.md`).
 - **Add form:** Tên (required), mô tả (optional), ngày (default hôm nay), giờ (optional)
 - **Task card:** Checkbox + title + description expand (▸/▾) + ⏰ badge + 📅 badge + "Quá hạn" indicator
 - **Tick hoàn thành** → gạch ngang, lưu `completed_at` timestamp
@@ -593,7 +617,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 **Chi tiết:**
 - **Today stat badge:** Số hoạt động hôm nay
 - **ActivityHeatmap:** SVG 53×7 grid, 5-level purple scale
-- **MonthCalendar:** Lịch tháng (habit data + skip log + task đã hoàn thành theo ngày)
+- **MonthCalendar (habit mode):** Lịch tháng — ô tô màu theo habit, bấm ngày xem task đã xong. Task mode (không `habitData`) dùng ở `/tasks`, xem §16
 - **Activity types logged (11):** habit_done, habit_undo, challenge_done, task_done, expense_add, subscription_add, inbox_snooze, inbox_classify, inbox_bulk_delete, inbox_bulk_classify, focus_done
 
 **Data source:** `activity_logs` table (Supabase, append-only)

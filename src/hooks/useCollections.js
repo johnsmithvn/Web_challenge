@@ -138,8 +138,12 @@ export function useCollections() {
       word_count:     item.word_count || 0,
       content_format: item.content_format || 'markdown',
       source:         item.source  || null,
-      priority:       item.priority || null,
-      status:         item.status  || 'inbox',
+      // v4.28.0: bỏ ghi `priority` — cột chết, không đọc/render ở đâu, và trùng
+      // tên với user_tasks.priority (SMALLINT) dù đây là TEXT.
+      // DROP ở migration_v5.0.0.
+      // v4.28.0: default 'unread' thay 'inbox' — status='inbox' trùng nghĩa với
+      // type='inbox' và không query nào filter theo nó.
+      status:         item.status  || 'unread',
     };
 
     try {
@@ -217,10 +221,10 @@ export function useCollections() {
 
   // ── Move inbox item → typed collection ──────────────────────
   const classifyItem = useCallback(async (id, newType) => {
-    return updateItem(id, {
-      type: newType,
-      status: newType === 'inbox' ? 'inbox' : 'unread',
-    });
+    // v4.28.0: status luôn 'unread' — bỏ giá trị 'inbox' (trùng nghĩa với
+    // type='inbox'). Hành vi không đổi: nhánh cũ cũng set 'unread' cho mọi
+    // type khác inbox, và không query nào filter status='inbox'.
+    return updateItem(id, { type: newType, status: 'unread' });
   }, [updateItem]);
 
   // ── Snooze inbox item ──────────────────────────────

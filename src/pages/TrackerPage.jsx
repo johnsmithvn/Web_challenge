@@ -16,7 +16,6 @@ import XpBar from '../components/XpBar';
 import NotificationSettings from '../components/NotificationSettings';
 import CompletionModal from '../components/CompletionModal';
 import LoginNudgeModal from '../components/LoginNudgeModal';
-import TaskListSection from '../components/TaskListSection';
 
 import '../styles/tracker.css';
 import '../styles/xpbar.css';
@@ -293,7 +292,7 @@ export default function TrackerPage() {
   const { activeJourney } = useJourney();
   const { habitProg, toggleLog } = useHabitLogs();
   const { isAuthenticated } = useAuth();
-  const { getCompletedTasks } = useUserTasks();
+  const { getCompletedTasksRange } = useUserTasks();
   const { logActivity } = useActivityLog();
   const { reviewDueCount } = useIntentions();
 
@@ -778,8 +777,7 @@ export default function TrackerPage() {
             )}
 
 
-            {/* ── Personal Tasks (Nhiệm Vụ) ── */}
-            <TaskListSection />
+            {/* Task list đã tách sang /tasks (v4.27.0) */}
 
             {/* ── Daily Challenge ── */}
             <DailyChallenge streak={streak} />
@@ -806,7 +804,7 @@ export default function TrackerPage() {
         {/* ── Tab: Calendar (lazy loaded) ── */}
         {tab === 'calendar' && (
           <Suspense fallback={<div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>⏳ Loading...</div>}>
-            <MonthCalendar habitData={data} getCompletedTasks={getCompletedTasks} skipLog={skipLog} />
+            <MonthCalendar habitData={data} getCompletedTasksRange={getCompletedTasksRange} skipLog={skipLog} />
           </Suspense>
         )}
 

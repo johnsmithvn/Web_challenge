@@ -27,6 +27,7 @@ const JourneyDetailPage = lazy(() => import('./pages/JourneyDetailPage'));
 const LifeJourneyPage   = lazy(() => import('./pages/LifeJourneyPage'));
 // v3.0.0 — New Life Hub pages
 const InboxPage         = lazy(() => import('./pages/InboxPage'));
+const TasksPage         = lazy(() => import('./pages/TasksPage'));
 const CollectPage       = lazy(() => import('./pages/CollectPage'));
 const FinancePage       = lazy(() => import('./pages/FinancePage'));
 const LifeLogPage       = lazy(() => import('./pages/LifeLogPage'));
@@ -38,6 +39,7 @@ const ROUTE_META = {
   '/':           { title: 'Life Hub — Personal Life OS',                                     desc: 'Hệ điều hành cuộc sống cá nhân. Quản lý thói quen, tài chính, kiến thức và mục tiêu.' },
   '/tracker':    { title: 'Today — Life Hub',                                                 desc: 'Checklist hôm nay: thói quen, nhiệm vụ, và gợi nhở kiến thức.' },
   '/inbox':      { title: 'Inbox — Life Hub',                                                 desc: 'Ghi nhanh mọi thứ chưa phân loại. Phân loại sau.' },
+  '/tasks':      { title: 'Nhiệm Vụ — Life Hub',                                              desc: 'Danh sách nhiệm vụ cá nhân: quá hạn, hôm nay, sắp tới.' },
   '/collect':    { title: 'Knowledge Base — Life Hub',                                          desc: 'Kho tàng kiến thức cá nhân. Viết bài, đọc lại, phân loại theo tag.' },
   '/finance':    { title: 'Finance — Life Hub',                                               desc: 'Quản lý chi tiêu cá nhân và đăng ký gói dịch vụ.' },
   '/life-log':   { title: 'Life Log — Life Hub',                                              desc: 'Lịch sử cuộc sống: heatmap cả năm và timeline hàng ngày.' },
@@ -83,6 +85,7 @@ function AppShell() {
                 <Route path="/tracker"      element={<TrackerPage />} />
                 <Route path="/habits"       element={<Navigate to="/tracker" replace />} />
                 <Route path="/inbox"        element={<InboxPage />} />
+                <Route path="/tasks"        element={<TasksPage />} />
                 <Route path="/collect"      element={<CollectPage />} />
                 <Route path="/finance"      element={<FinancePage />} />
                 <Route path="/life-log"     element={<LifeLogPage />} />

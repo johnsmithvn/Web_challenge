@@ -169,6 +169,7 @@ DashboardPage
 | `/tracker` | TrackerPage | Public | Eager |
 | `/habits` | Inline redirect → `/tracker` | — | — |
 | `/inbox` | InboxPage | Required | Lazy |
+| `/tasks` | TasksPage (List + Calendar view) | Required | Lazy |
 | `/collect` | CollectPage | Required | Lazy |
 | `/finance` | FinancePage | Required | Lazy |
 | `/life-log` | LifeLogPage | Required | Lazy |

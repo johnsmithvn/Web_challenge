@@ -1,0 +1,74 @@
+import { useState, lazy, Suspense } from 'react';
+import TaskListSection from '../components/TaskListSection';
+import { useUserTasks } from '../hooks/useUserTasks';
+import { useAuth } from '../contexts/AuthContext';
+import '../styles/tasks.css';
+
+const MonthCalendar = lazy(() => import('../components/MonthCalendar'));
+
+/**
+ * TasksPage (/tasks) — Task thành module riêng ở v4.27.0, thêm hero + tab Lịch ở v4.29.0.
+ *
+ * 2 view trên cùng `user_tasks`:
+ * - **Danh sách** — việc CHƯA làm (Quá hạn / Hôm nay / Sắp tới)
+ * - **Lịch** — việc ĐÃ xong, theo ngày. Reuse `MonthCalendar` ở task mode
+ *   (không truyền `habitData` → ô tô theo số task xong + hiện chip tên task)
+ */
+export default function TasksPage() {
+  const { user } = useAuth();
+  const { todayTasks, overdueTasks, futureTasks, getCompletedTasksRange } = useUserTasks();
+  const [view, setView] = useState('list');
+
+  const due = overdueTasks.length + todayTasks.length;
+
+  return (
+    <div className={`tasks-page${view === 'calendar' ? ' tasks-page--calendar' : ''}`}>
+      <div className="tasks-hero">
+        <div className="tasks-hero__count">
+          <span className="tasks-hero__num gradient-text">{due}</span>
+          <span className="tasks-hero__unit">việc cần làm</span>
+        </div>
+
+        <div className="tasks-hero__stats">
+          <div className="tasks-stat tasks-stat--overdue">
+            <span className="tasks-stat__val">{overdueTasks.length}</span>
+            <span className="tasks-stat__label">Quá hạn</span>
+          </div>
+          <div className="tasks-stat tasks-stat--today">
+            <span className="tasks-stat__val">{todayTasks.length}</span>
+            <span className="tasks-stat__label">Hôm nay</span>
+          </div>
+          <div className="tasks-stat tasks-stat--future">
+            <span className="tasks-stat__val">{futureTasks.length}</span>
+            <span className="tasks-stat__label">Sắp tới</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="tasks-viewbar" role="tablist" aria-label="Chế độ xem">
+        <button
+          role="tab" aria-selected={view === 'list'}
+          className={`tasks-viewbar__tab${view === 'list' ? ' tasks-viewbar__tab--active' : ''}`}
+          onClick={() => setView('list')}
+        >📋 Danh sách</button>
+        <button
+          role="tab" aria-selected={view === 'calendar'}
+          className={`tasks-viewbar__tab${view === 'calendar' ? ' tasks-viewbar__tab--active' : ''}`}
+          onClick={() => setView('calendar')}
+        >📅 Lịch</button>
+      </div>
+
+      {view === 'list' ? (
+        <TaskListSection />
+      ) : !user ? (
+        <div className="task-empty">
+          <div className="task-empty__hint">Đăng nhập để xem lịch sử nhiệm vụ.</div>
+        </div>
+      ) : (
+        <Suspense fallback={<div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>⏳ Đang tải lịch...</div>}>
+          <MonthCalendar getCompletedTasksRange={getCompletedTasksRange} />
+        </Suspense>
+      )}
+    </div>
+  );
+}

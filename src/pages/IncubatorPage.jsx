@@ -317,10 +317,12 @@ export default function IncubatorPage() {
 
     // 3. Task
     if (execOptions.task) {
+      // v4.28.0: bỏ `durationEst` — addTask không nhận tham số này (cột
+      // duration_est đã DROP ở v4.9.0, thay bằng priority). Nó đang bị bỏ qua
+      // im lặng, để lại chỉ gây tưởng là estimated_time được mang sang task.
       const t = await addTask({
         title: executeModal.title,
         description: buildTaskDescription(executeModal, execLogs),
-        durationEst: executeModal.estimated_time || null,
       });
       if (t) {
         convertedTypes.push('task');

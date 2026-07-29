@@ -1002,7 +1002,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
 export default function CollectPage() {
   const { user } = useAuth();
   const { items, isLoading, fetchItems, addItem, updateItem, deleteItem } = useCollections();
-  const { addTask, pendingTasks } = useUserTasks();
+  const { addTask, linkCollection, pendingTasks } = useUserTasks();
   const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag } = useTags();
   const groupsHook = useKnowledgeGroups();
   const notesHook = useCollectionNotes();
@@ -1275,9 +1275,14 @@ export default function CollectPage() {
             const result = await addTask({
               title: item.title,
               description: item.url || (item.body_text || '').slice(0, 200) || '',
-              collectionId: item.id,
             });
             if (result) {
+              // v4.28.0: link qua junction task_collections thay cột
+              // user_tasks.collection_id (deprecated từ v4.5.0, DROP ở v5.0.0).
+              // Nhờ vậy badge "🔗 N bài" trên task card và filter "📌 Task"
+              // ở Knowledge nhận ra liên kết này — trước đây cột 1:1 không
+              // được đọc ở đâu nên link tạo từ đây coi như mất.
+              await linkCollection(result.id, item.id);
               alert(`📌 Task "${item.title}" đã được tạo!`);
             }
           }}

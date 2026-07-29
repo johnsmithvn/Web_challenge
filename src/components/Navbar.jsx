@@ -17,14 +17,17 @@ import '../styles/auth.css';
 const PRIMARY_NAV = [
   { to: '/tracker',   icon: '🏠', label: 'Today' },
   { to: '/inbox',     icon: '📥', label: 'Inbox' },
+  { to: '/tasks',     icon: '📌', label: 'Nhiệm Vụ' },
   { to: '/collect',   icon: '🧠', label: 'Knowledge' },
   { to: '/finance',   icon: '💰', label: 'Finance' },
   { to: '/incubator', icon: '🥚', label: 'Incubator' },
-  { to: '/life-log',  icon: '📅', label: 'Life Log' },
 ];
 
 // Secondary: visible in sidebar, hidden in bottom tabs (dropdown)
+// Life Log xuống SECONDARY ở v4.27.0 để /tasks vào PRIMARY mà bottom-tabs
+// mobile không quá 6 tab + nút "Thêm".
 const SECONDARY_NAV = [
+  { to: '/life-log',      icon: '📅', label: 'Life Log' },
   { to: '/focus',         icon: '⏱',  label: 'Focus' },
   { to: '/journey',       icon: '🗺', label: 'Lộ Trình' },
   { to: '/dashboard',     icon: '📈', label: 'Stats' },

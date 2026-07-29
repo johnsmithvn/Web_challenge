@@ -15,7 +15,7 @@ export default function LifeLogPage() {
   const { data: habitData } = useHabitStore();
 
   const { skipLog } = useSkipReasons();
-  const { getCompletedTasks } = useUserTasks();
+  const { getCompletedTasksRange } = useUserTasks();
 
   const [year]                        = useState(() => new Date().getFullYear());
   const [heatmapData, setHeatmapData] = useState([]);
@@ -79,7 +79,7 @@ export default function LifeLogPage() {
           habitData={habitData}
 
           skipLog={skipLog}
-          getCompletedTasks={getCompletedTasks}
+          getCompletedTasksRange={getCompletedTasksRange}
           onDayClick={handleCalendarDayClick}
         />
       </Suspense>

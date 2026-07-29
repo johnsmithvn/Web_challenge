@@ -116,7 +116,12 @@ export function useUserTasks() {
   }, [isAuth, fetchTasks]);
 
   // ── Add task ───────────────────────────────────────────
-  const addTask = useCallback(async ({ title, description, dueDate, dueTime, priority, recurrenceRule, collectionId, completed, completedAt }) => {
+  // v4.28.0: bỏ tham số `collectionId` + cột `collection_id`. Cột này đã
+  // DEPRECATED từ v4.5.0 (thay bằng junction task_collections) — schema có
+  // COMMENT nói rõ, nhưng addTask vẫn ghi vào, tạo 2 đường link song song cho
+  // cùng 1 quan hệ. Không caller nào từng truyền collectionId (đã grep).
+  // Dùng linkCollection(taskId, collectionId) thay thế. DROP ở migration_v5.0.0.
+  const addTask = useCallback(async ({ title, description, dueDate, dueTime, priority, recurrenceRule, completed, completedAt }) => {
     const newTask = {
       id: crypto.randomUUID ? crypto.randomUUID() : `local_${Date.now()}`,
       user_id: userId,
@@ -126,7 +131,6 @@ export function useUserTasks() {
       due_time: dueTime || '23:59',
       priority: priority || 0,
       recurrence_rule: recurrenceRule || null,
-      collection_id: collectionId || null,
       completed: completed || false,
       completed_at: completedAt || null,
       notified: false,
@@ -348,27 +352,33 @@ export function useUserTasks() {
     }
   }, [isAuth, userId, tasks]);
 
-  // ── Get completed tasks by date (for calendar) ────────
-  const getCompletedTasks = useCallback(async (dateStr) => {
+  // ── Get completed tasks in a date range (for calendar) ────────
+  // v4.29.0: thay `getCompletedTasks(dateStr)` (1 query/ngày → 30 query/tháng khi
+  // calendar cần chip trên mọi ô). Caller fetch 1 lần/tháng rồi tự group.
+  //
+  // Đệm ±1 ngày: `completed_at` là timestamptz, chuỗi không có timezone nên
+  // Postgres so sánh theo UTC — còn caller group theo ngày ĐỊA PHƯƠNG. Task xong
+  // lúc 00:30 giờ VN (+07) có completed_at UTC là ngày hôm trước, không đệm thì mất.
+  const getCompletedTasksRange = useCallback(async (startDate, endDate) => {
     if (!isAuth || !userId) return [];
 
     try {
       const { data, error } = await supabase
         .from('user_tasks')
-        .select('*')
+        .select('id, title, description, priority, completed_at')
         .eq('user_id', userId)
         .eq('completed', true)
-        .gte('completed_at', `${dateStr}T00:00:00`)
-        .lt('completed_at', `${addDays(dateStr, 1)}T00:00:00`) // contiguous next-day bound
+        .gte('completed_at', `${addDays(startDate, -1)}T00:00:00`)
+        .lt('completed_at', `${addDays(endDate, 2)}T00:00:00`)
         .order('completed_at', { ascending: true });
 
       if (error) {
-        logger.error('[useUserTasks] getCompleted error:', error.message);
+        logger.error('[useUserTasks] getCompletedRange error:', error.message);
         return [];
       }
       return data || [];
     } catch (err) {
-      logger.error('[useUserTasks] getCompleted exception:', err);
+      logger.error('[useUserTasks] getCompletedRange exception:', err);
       return [];
     }
   }, [isAuth, userId]);
@@ -493,7 +503,7 @@ export function useUserTasks() {
     updateTask,
     deleteTask,
     rolloverTask,
-    getCompletedTasks,
+    getCompletedTasksRange,
     linkCollection,
     unlinkCollection,
   };

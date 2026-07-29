@@ -3,6 +3,123 @@
 
 ---
 
+## v4.29.0 — ✅ DONE (2026-07-29) — `/tasks` rõ ràng + view Lịch (ponytail ultra)
+
+### Done ✅
+- [x] **Hero** — số việc cần làm ở display scale + `.gradient-text`, 3 tile Quá hạn/Hôm nay/Sắp tới với độ nổi mã hoá độ gấp
+- [x] **Tab 📋 Danh sách / 📅 Lịch** — pill switcher, `role="tablist"` + `aria-selected`
+- [x] **Xoá** block "Đã hoàn thành hôm nay" (~45 dòng) + tiêu đề/badge trùng trong card. Lint 64 → 62 warning
+- [x] **`MonthCalendar` task mode** — ô cao 76px, chip tên task (tối đa 2 + `+N nữa`) thay dot. Ngày quá khứ không có task = transparent, **không** tô đỏ như habit miss
+- [x] **Dải màu priority** 3px border-left, màu từ `PRIORITY_OPTIONS` (không tạo 5 class)
+- [x] **Animation tick** thuần CSS `::after` + `:active`, **0 state React**, có `prefers-reduced-motion`
+- [x] **Empty state** có icon + tiêu đề + hint
+- [x] **`getCompletedTasks(dateStr)` → `getCompletedTasksRange(start, end)`** — 30 query/tháng → 1. Bỏ luôn `loadingTasks` + async click handler
+- [x] **Sửa kèm bug lệch ngày:** group theo ngày **địa phương** (`toDateStr`) thay UTC bucket → task xong 00:00–07:00 giờ VN không còn rơi vào ô ngày hôm trước. `MonthCalendar.todayStr` cũng đổi từ `toISOString()` sang `toDateStr()` (1 trong 5 chỗ đã ghi nợ ở v4.26.1)
+- [x] `npm run build` 0 lỗi · `lint` 0 error/62 warning · `test` 3/3 · `design:lint` **0 error**/76 warning (baseline: token màu chưa dùng)
+- [x] Docs: `DESIGN.md` (2 section mới), `FEATURES.md` §9 viết lại 2 mode + §16 + §24, `ARCHITECTURE.md`, `PROJECT.md`, `CHANGELOG.md`
+
+### Fixed sau khi user gửi screenshot ✅
+- [x] **🔴 Root cause "trông như lỗi": `grid-template-columns: repeat(7, 1fr)`.** `1fr` = `minmax(auto, 1fr)` nên chip `nowrap` đẩy cột rộng ra → ô 28 rộng ~2.5× ô 29. Sửa `minmax(0, 1fr)` + `min-width: 0`. **Đo lại: 7 cột đều 147px**, chip trong ô (thừa 5px), ellipsis chạy
+- [x] Ô ngày thêm hairline `1px --bg-glass-border` + `--bg-card` — không có viền thì lưới chỉ là số trôi
+- [x] Ô done bỏ fill xanh (giữ `--bg-card`, viền `rgba(0,255,136,0.28)`) — ô xanh + chip xanh = khối nặng
+- [x] `min-height` 76px → 62px, số ngày `opacity 0.75`
+- [x] Bỏ progress bar ở task mode — thanh 6% trong track rộng nhìn như lỗi
+- [x] `.tasks-page--calendar` nới 900 → 1180px, bớt khoảng trống 2 bên trên màn rộng
+- [x] Ngày chưa tới: viền `dashed` + `opacity 0.45`, giữ ô cho lưới liền mạch
+- [x] `DESIGN.md` ghi rõ quy tắc `minmax(0,1fr)` để không tái phạm
+
+### ⏳ User tự verify (agent browser là guest, không đăng nhập được)
+- [ ] Mở `/tasks` → tab **📅 Lịch** → xem chip tên task trong ô ngày có hiện đúng không
+- [ ] Bấm 1 ngày → list task đã xong + expand mô tả + giờ hoàn thành
+- [ ] Tick 1 task → xem animation `:active` (scale + lóe xanh)
+- [ ] `/tracker` tab 📅 Lịch + `/life-log` — habit mode phải **y như cũ**, không regression
+
+### Cố ý KHÔNG làm (ponytail ultra — model là Things 3 / Linear, KHÔNG phải ClickUp/Lark Base)
+- [ ] ~~Week/day time-grid kiểu Google Calendar~~ — `due_time` mặc định `23:59` nên mọi task dồn vào 1 hàng đáy, nhìn như hỏng. Phần đắt nhất của GCal (cột giờ, thuật toán xếp event chồng, drag-resize, vạch giờ hiện tại) = 0 lợi ích cho dữ liệu all-day
+- [ ] ~~Board view (kanban theo priority)~~ — hoãn: chưa chắc mở lần nào. Data đã đủ (`priority` 0–5), làm được lúc nào cũng được
+- [ ] ~~Saved view~~ — chờ dùng thật để biết hay filter cái gì. Đừng thiết kế trước khi biết query (bài học `activity_logs`)
+- [ ] ~~Assignee, comment, sprint, custom field, custom status, Gantt, workload, report, time tracking~~ — tool cho đội, 1 user = 0 giá trị. Custom field còn là bẫy schema-động làm mất khả năng enforce rule
+- [ ] ~~Task ID ngắn (`Task #30`)~~ — hay thật, nhưng cần migration (`SERIAL` + backfill). Để đợt sau
+- [ ] ~~Chiếu occurrence ảo của recurring lên lịch (kiểu Google Calendar)~~ — `spawnRecurringTask` hiện chỉ tạo occurrence **kế tiếp** và **chỉ khi** hoàn thành cái hiện tại, nên tối đa thấy 1 instance tương lai. Làm đúng = **tính occurrence ảo, không insert row** (task hàng tuần không nên tạo 52 row). Trade-off cần user xác nhận: occurrence ảo **không có `id`** nên không tick trực tiếp được, phải materialize thành row thật trước — giống cách Google Calendar tách 1 lần xuất hiện khỏi chuỗi
+
+---
+
+## v4.28.0 — ✅ CODE DONE / ⏳ SQL CHỜ USER CHẠY (2026-07-29) — Audit + refactor DB trục Inbox·Knowledge·Task·Tags
+
+### Done ✅ (code, đã build + lint pass)
+- [x] **Sửa bug link mất từ v4.5.0:** `CollectPage.onCreateTask` truyền `collectionId` → ghi vào cột deprecated không ai đọc → task tạo từ bài KB không có badge `🔗 N bài`, không hiện trong filter `📌 Task`. Nay dùng `linkCollection()` → junction
+- [x] `useUserTasks.addTask` — bỏ tham số `collectionId` + cột `collection_id`
+- [x] `IncubatorPage` — bỏ `durationEst` (tham số không tồn tại, bị bỏ qua im lặng từ v4.9.0)
+- [x] `useCollections` — bỏ ghi `priority`; `status` default + classify → `'unread'`
+- [x] Viết `data/migration_v4.28.0_tags_rls_indexes.sql` (an toàn) + `data/migration_v5.0.0_cleanup_dead_columns.sql` (breaking)
+- [x] `docs/DATABASE.md` — `task_tags`, section Views, section "Kiến trúc Tag — tại sao N junction"
+
+### ⏳ User phải tự chạy (agent không kết nối Supabase) — ĐÚNG THỨ TỰ
+- [ ] **B0.** Kiểm schema drift: `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname='chk_collections_type';` → có `podcast` không? Kết quả cho biết P0-1 là bug thật hay file lệch prod
+- [ ] **B1.** Deploy code v4.28.0 lên prod
+- [ ] **B2.** Chạy `migration_v4.28.0_tags_rls_indexes.sql` (an toàn, idempotent)
+- [ ] **B3.** Backup DB
+- [ ] **B4.** Chạy mục "KIỂM TRƯỚC" trong `migration_v5.0.0` — 6 câu SELECT phải = 0
+- [ ] **B5.** Chạy `migration_v5.0.0_cleanup_dead_columns.sql` + smoke test 5 bước trong file
+- [ ] **B6.** Hợp nhất 2 migration vào `data/schema_v4.24.0.sql` (cần chỉ thị rõ ràng — RULES §3)
+
+### 7 lỗ hổng đã tìm — trạng thái
+| # | Lỗ hổng | Xử lý |
+|---|---|---|
+| P0-1 | `chk_collections_type` có `emotion` chết, **thiếu `podcast`** → classify Podcast fail constraint | migration v4.28.0 |
+| P0-2 | 4 junction RLS chỉ kiểm ownership 1 phía → ghi được rác cross-user (đọc không leak) | migration v4.28.0 |
+| P1-3 | `expense_tags`/`subscription_tags` thiếu index `tag_id` → filter theo tag full scan | migration v4.28.0 |
+| P1-4 | `type` và `status` trùng nghĩa (cả 2 default `'inbox'`) | code v4.28.0 + CHECK ở v5.0.0 |
+| P2-5 | 5 cột chết trên `collections` | DROP ở v5.0.0 |
+| P2-6 | `user_tasks.collection_id` deprecated nhưng vẫn được ghi | code v4.28.0 + DROP ở v5.0.0 |
+| P2-7 | `knowledge_groups` là taxonomy M:N **thứ 3** trên `collections`, trùng việc với `tags` | ⏳ quyết định sản phẩm, chưa làm |
+
+### Còn nợ
+- [ ] `TODO: decision needed` — **P2-7:** gộp `knowledge_groups` vào `tags` (thêm `is_group BOOLEAN`) hay bỏ hẳn groups? Hiện `collections` bị phân loại bởi 3 hệ độc lập: `type` (CHECK 8), `tags` (M:N), `knowledge_groups` (M:N). Hai hệ M:N làm cùng một việc
+- [ ] **`parent_id` subtask — 6 chỗ vỡ ở tầng list, phải sửa cùng lúc với migration:**
+  1. `pendingTasks` không lọc `parent_id` → subtask render **2 lần** (lồng dưới parent + card riêng)
+  2. `due_date DATE **NOT NULL**` → subtask buộc có ngày riêng → nesting **đứt ngang section** (subtask ở "Sắp tới", parent ở "Hôm nay"). Fix: subtask kế thừa `due_date` của parent
+  3. `LinkKBModal` tìm task trong `[...todayTasks,...overdueTasks,...futureTasks]` → bấm 🔗 trên subtask trả **null**, modal trống. Fix: tìm trong `tasks` gốc
+  4. `spawnRecurringTask` chỉ INSERT field của parent → lần lặp sau **mất hết subtask**
+  5. `deleteTask` optimistic chỉ filter parent → subtask **treo trên UI** tới lần refetch; rollback cũng chỉ khôi phục parent
+  6. `getCompletedTasks` + SW `SYNC_TASKS` không lọc parent → mỗi subtask 1 dòng calendar + 1 notification
+- [ ] `task_tags` đã có bảng nhưng **chưa có UI/hook** — cần `useTags` mở rộng + TagPicker trên task card
+- [ ] VIEW `tagged_items` chưa có consumer nào — chờ làm unified search
+- [ ] `alert()` ở `CollectPage.onCreateTask` vi phạm RULES (cấm `window.alert`) — cần component toast
+
+---
+
+## v4.27.0 — ✅ DONE (2026-07-29) — Task thành module riêng (`/tasks`)
+
+> **Bối cảnh chiến lược (2026-07-29):** thu hẹp trọng tâm về **Inbox + Knowledge + Tasks**, sau đó Finance.
+> Habit / Lộ Trình / Quiz / BXH / XP / Life Journey đang cân nhắc bỏ. `TaskListSection` vốn nằm
+> **bên trong** TrackerPage nên không thể cắt habit mà không mất Task → đây là việc phải làm đầu tiên.
+> Bộ lọc cho mọi feature tiếp theo: **"Notion làm được cái này không?"** Nếu có → cân nhắc bỏ.
+> Nếu không (rule enforcement, automation xuyên module) → đó là việc đáng làm.
+
+### Done ✅
+- [x] `src/pages/TasksPage.jsx` — route `/tasks` lazy, container mỏng (không `<h1>` để tránh trùng header của card)
+- [x] `src/styles/tasks.css` — tách 105 dòng CSS task khỏi `tracker.css` (vì `tracker.css` sẽ bị xoá khi cắt habit)
+- [x] `App.jsx` — lazy import + `<Route path="/tasks">` + `ROUTE_META`
+- [x] `Navbar` — `📌 Nhiệm Vụ` vào PRIMARY, `Life Log` xuống SECONDARY (giữ bottom-tabs mobile ở 6 + "Thêm")
+- [x] `TrackerPage` — xoá `<TaskListSection />` + import
+- [x] Bonus: main chunk 906 → 876 kB (−30 kB) nhờ TaskListSection ra khỏi eager chunk
+- [x] `npm run build` 0 lỗi, `npm run lint` 64 = baseline, verify browser 0 console error
+
+### Chưa làm — cần migration SQL user tự chạy trên Supabase
+- [ ] **Subtask** — thêm `user_tasks.parent_id UUID REFERENCES user_tasks(id) ON DELETE CASCADE`, render lồng **1 cấp** (không đệ quy vô hạn). Đây là khoảng trống thật duy nhất so với task manager cá nhân
+- [ ] **`task_tags` junction** — `(task_id, tag_id)` composite PK, tái dùng bảng `tags` đã có (dùng chung với KB). **Chọn 1 trong 2** cách phân loại này với subtask, đừng làm cả hai — hiện đã có 3 taxonomy (`tags`, `knowledge_groups`, `collections.type`), thêm nữa là tê liệt
+- [ ] **Inline quick-add theo từng nhóm** — nút `+ Thêm` ngay trong khối Quá hạn / Hôm nay / Sắp tới (không cần DB, nhưng để chung phase 2 cho gọn)
+
+### Cố ý KHÔNG làm (chống bloat — model là Things 3 / Linear, KHÔNG phải ClickUp)
+- [ ] ~~Assignee, comment, mention~~ — 1 user, giá trị 0
+- [ ] ~~Custom status pipeline, custom field~~ — bẫy schema động: mất khả năng enforce rule, đúng lý do Notion không ép được gì
+- [ ] ~~Space > Folder > List hierarchy~~ — taxonomy thứ 4/5/6
+- [ ] ~~Gantt / Workload / Mind Map / Sprint~~ — 1 user, giá trị 0
+- [ ] ~~Time tracking~~ — đã có Focus Timer
+
+---
+
 ## v4.26.2 — ✅ DONE (2026-07-29) — Dọn dead code + doc sai của Activity Log
 
 ### Done ✅

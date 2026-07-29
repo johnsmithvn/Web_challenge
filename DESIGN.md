@@ -854,6 +854,74 @@ hover → `--cyan-light` border, `scale(1.05)`. Theme toggles are `34px`
 (sidebar) / `32px` (topbar) circles that `rotate(15deg) scale(1.05)` on hover.
 Light mode re-tints every one of these to indigo-alpha.
 
+### Tasks page atoms — `.tasks-*` / `.task-*` (`tasks.css`)
+
+Added v4.29.0 for `/tasks`. All values come from existing tokens; no new colour
+is introduced.
+
+- **`.tasks-hero`** — the page's focal point. `.tasks-hero__num` is
+  `--font-display` at `clamp(2.5rem, 8vw, 3.75rem)/800`, `-0.03em` tracking,
+  wearing `.gradient-text` so it clips `--grad-hero`. Paired with a `0.95rem`
+  `--text-secondary` unit label. This is the one place on the page allowed a
+  display-scale number.
+- **`.tasks-stat`** — three `68px`-min tiles, `--bg-card` on
+  `1px --bg-glass-border`, `--radius-md`. Value `1.25rem/700` display font,
+  label `0.68rem --text-muted`. **Volume ladder, not a palette:**
+  `--overdue` gets `rgba(239,68,68,0.1)` fill + `0.28` border + `--red` value,
+  `--today` gets a plain card with a `--purple-light` value, `--future` is the
+  same card at `opacity: 0.6`. Loudness encodes urgency.
+- **`.tasks-viewbar__tab`** — pill view switcher, same formula as
+  `.inbox-filter-chip`: `--radius-full`, `--bg-card` on `--bg-glass-border`,
+  `--text-muted`; active → `rgba(139,92,246,0.18)` fill, `0.45` border,
+  `--purple-light`. `role="tablist"` + `aria-selected` on each tab.
+- **`.task-checkbox-btn`** — `22px`, `--radius-sm`, `2px` brand-alpha border
+  (red-alpha when overdue), `--transition-spring`. The `✓` is a `::after`
+  pseudo-element, so ticking needs no extra DOM and no React state: `:hover`
+  → green border + `0.55` opacity glyph, `:active` → `scale(1.35)` +
+  `--shadow-green` + full glyph. Wrapped in a
+  `prefers-reduced-motion: reduce` escape that drops both the transition and
+  the scale.
+- **Priority stripe** — a `3px` `border-left` on `.task-item`, coloured from
+  `PRIORITY_OPTIONS` in `TaskListSection.jsx` (`#94a3b8` → `#ef4444`). Applied
+  inline rather than as five classes because the colour already lives in that
+  array. Overdue rows keep the red background but the stripe wins on
+  `border-left-color`.
+- **`.task-empty`** — empty state, not a blank line: a `52px --radius-full`
+  green-alpha disc holding `✓`, a `1.05rem/700` display title, and a
+  `0.82rem --text-muted` hint capped at `30rem`.
+
+### Calendar task mode — `.cal-cell--tasks` / `.cal-chip` (`calendar.css`)
+
+`MonthCalendar` runs in two modes. Passing `habitData` keeps the original
+habit colouring (dot per completed day); omitting it switches to task mode,
+used by `/tasks`.
+
+- **`.cal-grid`** — must be `repeat(7, minmax(0, 1fr))`, **never** `repeat(7, 1fr)`.
+  `1fr` is `minmax(auto, 1fr)`, so a non-wrapping child (the `nowrap` task chip)
+  pushes its column wider and skews all seven. Pair it with `min-width: 0` on
+  the cell and the chip wrapper, or the ellipsis never triggers.
+- **`.cal-cell--tasks`** — drops `aspect-ratio: 1` for `min-height: 62px`,
+  top-aligns content, left-aligns the day number at `opacity: 0.75`. Carries a
+  `1px --bg-glass-border` hairline over `--bg-card`: without the hairline the
+  grid stops reading as a grid and becomes floating numerals.
+- **`.cal-cell--tasks.cal-cell--done`** — keeps the plain `--bg-card` fill and
+  only lifts its border to `rgba(0,255,136,0.28)`. The habit-mode green fill is
+  deliberately *not* reused here: a green cell behind a green chip collapses
+  into one heavy block. Colour belongs to the chip, weight belongs to the border.
+- **`.cal-chip`** — `0.6rem/500`, `3px` radius, `rgba(0,255,136,0.14)` fill with
+  `--green` text, single-line ellipsis. Max two per cell plus a
+  `.cal-chip--more` counter in `--text-muted`. Light theme swaps to
+  `rgba(22,163,74,0.12)` on `#15803d`.
+- **`.cal-cell--empty`** — a past day with no completed task keeps the hairline
+  but takes no fill, and is **not** `.cal-cell--miss` red. Missing a habit is a
+  failure; having no task that day is not.
+- **`.cal-cell--tasks.cal-cell--future`** — `dashed` border at `opacity: 0.45`.
+  The cell stays present so the grid rhythm is unbroken.
+- **No week/day time grid.** `user_tasks.due_time` defaults to `23:59`, so an
+  hour × day grid would stack every task in one bottom row. The expensive parts
+  of that layout (hour gutter, overlap collision solving, drag-resize,
+  now-indicator) buy nothing for all-day data.
+
 ### Other shared atoms (`global.css`)
 
 - **`.badge`** — pill, `0.25rem 0.75rem`, `0.8rem/600` display font, four

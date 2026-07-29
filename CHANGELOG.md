@@ -1,5 +1,116 @@
 # CHANGELOG
 
+## v4.29.0 — 2026-07-29
+> Làm `/tasks` rõ ràng + thêm view Lịch. Ponytail **ultra**: mọi thứ dưới đây
+> dùng token/component đã có, **không thêm dependency, không migration, không token mới**.
+
+### Added
+- **Hero cho `/tasks`** — số việc cần làm (quá hạn + hôm nay) ở display scale với `.gradient-text` clip `--grad-hero`, kèm 3 tile Quá hạn / Hôm nay / Sắp tới. **Độ nổi mã hoá độ gấp**, không phải bảng màu: quá hạn nền đỏ-alpha, hôm nay tím, sắp tới `opacity 0.6`. Trước đó cả trang cùng cỡ `0.8rem` → không có điểm nhìn
+- **Tab 📋 Danh sách / 📅 Lịch** — pill switcher `role="tablist"` + `aria-selected`, dùng lại đúng formula của `.inbox-filter-chip`
+- **`MonthCalendar` task mode** — không truyền `habitData` thì ô ngày cao `76px` và hiện **chip tên task** (tối đa 2 + `+N nữa`) thay 1 dấu dot. Đây là thứ làm calendar trông giống Google Calendar
+- **Dải màu priority** — `3px border-left` trên `.task-item`, màu lấy từ `PRIORITY_OPTIONS` đã có. Inline chứ không tạo 5 class cho 5 màu
+- **Animation tick** — `✓` là `::after`, `:hover` hé mờ, `:active` `scale(1.35)` + `--shadow-green`. **Zero state React, zero DOM thêm.** Kèm escape `prefers-reduced-motion`
+- **Empty state** có icon disc + tiêu đề + hint, thay dòng text trơn
+
+### Fixed — lỗi hiển thị lịch (phát hiện khi user gửi screenshot)
+- **🔴 `grid-template-columns: repeat(7, 1fr)` làm lệch cả 7 cột.** `1fr` = `minmax(auto, 1fr)`, nên chip task (`white-space: nowrap`) **đẩy cột rộng ra**: trong screenshot ô ngày 28 rộng ~2.5× ô ngày 29. Đây là nguyên nhân thật của "trông như lỗi", không phải padding. Sửa thành `repeat(7, minmax(0, 1fr))` + `min-width: 0` trên `.cal-cell--tasks` và `.cal-cell__chips`. Đo lại: **7 cột đều 147px**, chip nằm trong ô và ellipsis đúng
+- **Ô ngày không có viền** → lưới không đọc ra là lưới, chỉ là số trôi lơ lửng. Thêm hairline `1px var(--bg-glass-border)` + fill `--bg-card` theo DESIGN.md ("the 1px hairline that defines every glass edge")
+- **Ô "done" tô xanh + chip cũng xanh = khối xanh nặng.** Task mode bỏ fill xanh của ô (`--bg-card`), chỉ đậm viền lên `rgba(0,255,136,0.28)` — màu do chip mang
+- **Ô cao 76px mà trống hoác** → `62px` min, padding chặt hơn, số ngày `opacity 0.75`
+- **Progress bar vô nghĩa trong task mode** — nó vẽ `% ngày có task`, hiện ra thanh 6% trong track rộng, nhìn như đang lỗi. Bỏ bar ở task mode, giữ con số
+- **Khoảng trống hai bên trên màn rộng** — `.tasks-page` nới `900px → 1180px` khi ở view lịch (`.tasks-page--calendar`); view danh sách giữ 900px vì đó là khổ đọc tốt
+- Ngày chưa tới ở task mode: viền `dashed` + `opacity 0.45` — giữ ô để lưới liền mạch thay vì biến mất
+
+### Changed
+- **`getCompletedTasks(dateStr)` → `getCompletedTasksRange(start, end)`** — calendar cần chip trên **mọi** ô, cách cũ là 1 query/ngày = **30 query/tháng**. Nay 1 query/tháng, group ở client. Đệm ±1 ngày vì `completed_at` là timestamptz so sánh theo **UTC** còn ta group theo ngày **địa phương**
+  - **Sửa kèm 1 bug lệch ngày:** cách cũ bucket theo UTC, nên task xong lúc 00:00–07:00 giờ VN rơi vào ô ngày **hôm trước**. Nay group bằng `toDateStr()` (local) → đúng ngày
+  - `MonthCalendar` bỏ luôn `loadingTasks` + handler async: click ngày chỉ là filter mảng đã fetch
+- **`MonthCalendar`** — `todayStr` đổi từ `toISOString().split('T')[0]` (UTC) sang `toDateStr()` (local). Đây là 1 trong 5 chỗ đã ghi nợ ở v4.26.1
+
+### Removed
+- **Block "✅ Đã hoàn thành hôm nay"** khỏi `TaskListSection` (~45 dòng, cả nút ↩ uncomplete + 🗑). Task xong giờ xem ở tab 📅 Lịch — theo đúng yêu cầu. Kéo theo bỏ `completedToday` + `uncompleteTask` khỏi destructure và `totalCount`
+- **Tiêu đề + badge đếm** trong card `TaskListSection` — đã có ở hero, để lại là trùng
+- Lint: **64 → 62 warning** nhờ code bị xoá
+
+### Notes
+- **Cố ý KHÔNG làm week/day time-grid kiểu Google Calendar.** `due_time` mặc định `23:59` nên mọi task sẽ dồn vào 1 hàng đáy — nhìn như hỏng. Phần đắt nhất của GCal (cột giờ, thuật toán xếp event chồng nhau, drag-resize, vạch giờ hiện tại) không đem lại gì cho dữ liệu all-day
+- **Cố ý KHÔNG làm** Board view, Gantt, assignee, sprint, custom field, custom status (xem `docs/TASKS.md` § "Cố ý KHÔNG làm")
+- `habitData` là **prop optional**, không phải flag cấu hình. Khi cắt feature habit thì xoá nhánh `habitMode` là xong. `/tracker` + `/life-log` giữ nguyên hành vi cũ, **không regression**
+- **Chưa verify được bằng browser:** chip task trong ô lịch cần đăng nhập (session browser của agent là guest). Đã verify: route, hero (60px, gradient clip), 3 tile, tab switch, guest gate, CSS `.cal-chip`/`.cal-cell--tasks`/`.cal-cell--empty`/`.task-checkbox-btn::after` đều load, không scroll ngang. **Mày tự mở `/tasks` → tab 📅 Lịch để xem chip.**
+- `npm run build` 0 lỗi · `npm run lint` 0 error / 62 warning · `npm test` 3/3 · `npm run design:lint` **0 error** / 76 warning (toàn bộ là `'<color>' defined but never referenced` — baseline sẵn có, không thêm token mới)
+
+### Files Added
+- (không có)
+
+### Files Modified
+- `src/pages/TasksPage.jsx` (hero + view switcher), `src/components/TaskListSection.jsx`, `src/components/MonthCalendar.jsx`, `src/hooks/useUserTasks.js`
+- `src/pages/TrackerPage.jsx`, `src/pages/LifeLogPage.jsx` (đổi tên prop)
+- `src/styles/tasks.css`, `src/styles/calendar.css`
+- `DESIGN.md` (2 section mới: Tasks page atoms, Calendar task mode), `docs/FEATURES.md` (§9 viết lại 2 mode, §16, §24), `docs/ARCHITECTURE.md`, `docs/TASKS.md`, `PROJECT.md`, `CHANGELOG.md`, `package.json`
+
+## v4.28.0 — 2026-07-29
+> Audit thiết kế DB cho trục **Inbox — Knowledge — Task — Tags**. Tìm được 7 lỗ hổng.
+> 2 file migration **user tự chạy trên Supabase** (agent không kết nối được).
+
+### Fixed — code (ship TRƯỚC khi chạy `migration_v5.0.0`)
+- **`CollectPage.onCreateTask` link bị mất từ v4.5.0.** Nó truyền `collectionId` vào `addTask()` → ghi vào `user_tasks.collection_id`, cột **deprecated từ v4.5.0 và không được đọc ở đâu**. Kết quả: task tạo từ bài Knowledge **không hiện badge `🔗 N bài`** và **không xuất hiện trong filter `📌 Task`** ở Knowledge. Nay gọi `linkCollection(result.id, item.id)` → vào junction `task_collections`
+- **`useUserTasks.addTask`** — bỏ tham số `collectionId` + cột `collection_id`. Hai đường link song song cho cùng 1 quan hệ đã hết
+- **`IncubatorPage`** — bỏ `durationEst` truyền vào `addTask`. Tham số này **không tồn tại** trong signature (cột `duration_est` DROP ở v4.9.0) nên đang bị bỏ qua im lặng, để lại chỉ gây tưởng `estimated_time` được mang sang task
+- **`useCollections.addItem`** — bỏ ghi `priority` (cột chết); `status` default `'inbox'` → `'unread'`
+- **`useCollections.classifyItem`** — `status` luôn `'unread'`, bỏ giá trị `'inbox'` (trùng nghĩa với `type='inbox'`, không query nào filter theo nó)
+
+### Added — `data/migration_v4.28.0_tags_rls_indexes.sql` (AN TOÀN, chạy được ngay)
+- **P0-1 · `chk_collections_type` sai.** CHECK có `'emotion'` (grep `src/` = 0 hit) và **thiếu `'podcast'`** (có trong `knowledge.json`, UI cho chọn) → nếu constraint đã áp trên prod thì classify sang 🎧 Podcast **fail constraint violation**. Nếu chưa áp thì đây là **schema drift** (file ≠ prod). Migration `UPDATE ... SET type='note' WHERE type='emotion'` trước rồi áp CHECK mới
+- **P0-2 · 4 junction RLS chỉ kiểm ownership 1 phía.** `task_collections` chỉ kiểm `task_id`; 3 bảng `*_tags` chỉ kiểm entity, **không kiểm `tag_id`**. Ghi được row trỏ sang collection/tag của user khác. **Không leak khi đọc** (RLS bảng đích chặn) nhưng tạo rác render thành link trắng. Nay `USING` + `WITH CHECK` kiểm cả 2 phía
+- **P1-3 · Thiếu index chiều ngược.** `expense_tags` và `subscription_tags` chỉ có index theo entity, **không có `tag_id`** → query "mọi expense có tag X" full scan. (`collection_tags` đã có đủ 2 chiều.) Thêm 2 index
+- **`task_tags` junction** — Task trước đây **không có tag nào**. Composite PK + CASCADE + RLS 2 phía. Chỉ index `tag_id`, **không** tạo index `task_id` vì PK đã index nó làm cột dẫn đầu (3 junction cũ tạo index trùng PK — dư thừa, không copy)
+- **VIEW `tagged_items`** — `UNION ALL` 4 junction → 1 query cho "mọi thứ có tag X" thay vì 4 query + ghép client. Dùng **`WITH (security_invoker = true)`**, bắt buộc: view mặc định chạy bằng quyền OWNER và **bỏ qua RLS** → sẽ leak data mọi user
+
+### Added — `data/migration_v5.0.0_cleanup_dead_columns.sql` (🚨 BREAKING, CHƯA CHẠY)
+- DROP 5 cột chết trên `collections`: `resolved`, `course_name`, `duration_min`, `reviewed_at`, `priority` (grep 0 hit; `priority` chỉ passthrough INSERT)
+- DROP `user_tasks.collection_id` + FK + index, kèm backfill nốt vào junction trước khi xoá
+- Chuẩn hoá `collections.status` → CHECK `(unread, read, archived)`. **Giữ `archived`** — đó là soft-delete đang dùng thật ([CollectPage.jsx:1075](src/pages/CollectPage.jsx:1075), [useCollections.js:32](src/hooks/useCollections.js:32)); chuẩn hoá về `unread|read` như dự định ban đầu **sẽ xoá mất chức năng archive**
+- File có mục "KIỂM TRƯỚC" (6 câu SELECT phải = 0), điều kiện tiên quyết, và smoke test 5 bước
+
+### Notes
+- **Không** đụng `data/schema_v4.24.0.sql` (RULES §3 + §15 — master schema chỉ sửa khi có chỉ thị rõ ràng). Sau khi chạy 2 migration, master schema sẽ lệch với prod cho tới lần hợp nhất tiếp theo
+- **Thứ tự bắt buộc:** deploy code v4.28.0 → chạy `migration_v4.28.0` → (backup) → chạy `migration_v5.0.0`. Chạy v5.0.0 trước khi deploy code sẽ làm mọi INSERT `collections`/`user_tasks` fail
+- **Tag KHÔNG bị thừa bảng** — đã có 1 bảng `tags` trung tâm, không có cột `tags TEXT[]` nào lặp. N junction là giá của FK integrity; cố ý **không** làm `taggables` polymorphic vì `entity_id` không FK được → rác vĩnh viễn (đúng bệnh `activity_logs`)
+- **Chưa làm:** `parent_id` subtask — có **6 chỗ vỡ ở tầng list** (subtask render 2 lần, nesting đứt ngang section do `due_date NOT NULL`, LinkKBModal trả null, recurring mất checklist, delete để lại rác UI, calendar/notification ồn). Cố ý không trộn với refactor DB. Xem `docs/TASKS.md`
+- Còn 1 vi phạm RULES chưa sửa: `alert()` ở `CollectPage.onCreateTask` (RULES cấm `window.alert`). Cần component toast — ngoài scope đợt này
+- `npm run build` 0 lỗi · `npm run lint` 64 warning = baseline · `npm test` 3/3 OK
+
+### Files Added
+- `data/migration_v4.28.0_tags_rls_indexes.sql`, `data/migration_v5.0.0_cleanup_dead_columns.sql`
+
+### Files Modified
+- `src/hooks/useCollections.js`, `src/hooks/useUserTasks.js`, `src/pages/CollectPage.jsx`, `src/pages/IncubatorPage.jsx`
+- `docs/DATABASE.md` (thêm `task_tags`, section Views, section Kiến trúc Tag, sửa CHECK + deprecated columns), `docs/TASKS.md`, `CHANGELOG.md`, `package.json`
+
+## v4.27.0 — 2026-07-29
+### Added
+- **Route `/tasks` — Task thành module độc lập.** Trước đây `TaskListSection` **chỉ** render bên trong `TrackerPage` tab "⚡ Hôm Nay" ([TrackerPage.jsx:782](src/pages/TrackerPage.jsx:782)), nghĩa là module Task bị ràng cứng vào trang habit — không thể cắt habit mà không mất Task. Nay:
+  - `src/pages/TasksPage.jsx` — container mỏng, lazy-loaded. **Không** thêm `<h1>` vì card của `TaskListSection` đã có header (tiêu đề + đếm + nút "+ Thêm") — thêm nữa là trùng tiêu đề
+  - `src/styles/tasks.css` — tách 105 dòng CSS task (`.task-item`, `.task-checkbox-btn`, `.task-option-btn`, `.task-form-rec-panel`, `.task-desc-box` + light-mode overrides) khỏi `tracker.css`, `TaskListSection` tự import (theo tiền lệ `TrackerSection.jsx`). Lý do tách: `tracker.css` sẽ bị xoá khi cắt feature habit
+  - `ROUTE_META['/tasks']` cho SEO title/description
+
+### Changed
+- **`Navbar` — `📌 Nhiệm Vụ` vào PRIMARY_NAV, `Life Log` xuống SECONDARY_NAV.** Bottom-tabs mobile đang 6 link + nút "Thêm" = 7; thêm Tasks mà không dời gì sẽ thành 8 tab, quá chật. Life Log là trang xem heatmap (drill-down còn chưa có — xem v4.26.2), phù hợp SECONDARY hơn
+- **`TrackerPage`** — xoá `<TaskListSection />` + import. TrackerPage giờ chỉ còn habit/mood/challenge/insight/notification
+- **Bonus code-splitting:** main chunk **906.48 kB → 876.53 kB (−30 kB)**. `TaskListSection` (30.42 kB) trước đây nằm trong main chunk vì `TrackerPage` là eager-loaded; nay đi theo chunk `TasksPage` lazy
+
+### Notes
+- `.task-list-card`, `.task-actions--desktop/mobile`, `.task-overflow-menu/item` **vẫn ở `global.css`** — cố ý không dời: `global.css` luôn được load nên không có nguy cơ mất khi `tracker.css` bị xoá. Hệ quả: CSS của Task hiện nằm ở 2 file
+- **Chưa làm** (cần migration SQL user tự chạy): subtask `parent_id`, junction `task_tags`, inline quick-add theo từng nhóm. Xem `docs/TASKS.md`
+- Verify: `npm run build` 0 lỗi · `npm run lint` 64 warning = baseline · `/tasks` render + `tasks.css` áp đúng (`.tasks-page` max-width 900px, `.task-option-btn` padding 4.8/10.4px, `.task-form-rec-panel` bg `rgba(6,182,212,0.04)`) · `/tracker` không còn `.task-list-card` và vẫn render bình thường · 0 console error
+
+### Files Added
+- `src/pages/TasksPage.jsx`, `src/styles/tasks.css`
+
+### Files Modified
+- `src/App.jsx` (lazy import + route + ROUTE_META), `src/components/Navbar.jsx`, `src/components/TaskListSection.jsx` (thêm import CSS), `src/pages/TrackerPage.jsx`, `src/styles/tracker.css`
+- `docs/FEATURES.md` §16, `docs/ARCHITECTURE.md`, `docs/TASKS.md`, `PROJECT.md`, `CHANGELOG.md`, `package.json`
+
 ## v4.26.2 — 2026-07-29
 ### Removed
 - **`useActivityLog.getTimelineByDate()`** (31 dòng) — dead code. JSDoc ghi *"for DailyTimeline component"*, nhưng component đó chưa bao giờ tồn tại. Grep toàn `src/`: **0 caller**. Hàm được export nên trông như API sẵn có, thực chất là lời hứa chưa thực hiện. Hook nay còn 3 hàm: `logActivity`, `getHeatmapData`, `getTodayCount`

@@ -1,0 +1,287 @@
+/* ── Tasks (/tasks) — Task card, form controls, light-mode overrides ──
+   Tách khỏi tracker.css ở v4.27.0 khi Task thành module riêng.
+   Các class .task-list-card / .task-actions--* / .task-overflow-* vẫn ở
+   global.css (luôn được load) — không có nguy cơ mất khi tracker.css bị xoá. */
+
+/* 900px là khổ đọc tốt cho danh sách, nhưng lịch 7 cột thì chật và để lại
+   khoảng trống hai bên trên màn rộng → nới ở view lịch. */
+.tasks-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 5rem;
+  transition: max-width var(--transition-base);
+}
+
+.tasks-page--calendar { max-width: 1180px; }
+
+/* ── Hero (v4.29.0) — điểm nhìn của trang. Trước đó mọi thứ cùng 0.8rem
+      nên không có phân cấp thị giác. ── */
+.tasks-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.tasks-hero__count {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.tasks-hero__num {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 8vw, 3.75rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.tasks-hero__unit {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.tasks-hero__stats {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tasks-stat {
+  min-width: 68px;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--bg-glass-border);
+  text-align: center;
+  transition: var(--transition-base);
+}
+
+.tasks-stat__val {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.tasks-stat__label {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+/* Chênh lệch âm lượng: quá hạn to tiếng, sắp tới gần như im. */
+.tasks-stat--overdue { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.28); }
+.tasks-stat--overdue .tasks-stat__val { color: var(--red); }
+.tasks-stat--today .tasks-stat__val { color: var(--purple-light); }
+.tasks-stat--future { opacity: 0.6; }
+
+/* ── View switcher — dùng lại đúng ngôn ngữ pill của inbox-filter-chip ── */
+.tasks-viewbar {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+}
+
+.tasks-viewbar__tab {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.9rem;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1px solid var(--bg-glass-border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.tasks-viewbar__tab:hover { color: var(--text-secondary); border-color: rgba(139, 92, 246, 0.3); }
+
+.tasks-viewbar__tab--active {
+  background: rgba(139, 92, 246, 0.18);
+  border-color: rgba(139, 92, 246, 0.45);
+  color: var(--purple-light);
+}
+
+/* ── Empty state có tính cách (thay dòng text trơn) ── */
+.task-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+
+.task-empty__icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 0.75rem;
+  border-radius: var(--radius-full);
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  color: var(--green);
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-empty__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.task-empty__hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+  max-width: 30rem;
+  margin-inline: auto;
+  line-height: 1.6;
+}
+
+/* ── Task List & Form Elements (Light Mode Usability) ── */
+.task-item {
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  transition: var(--transition-base);
+}
+
+[data-theme="light"] .task-item {
+  background: #ffffff;
+  border-color: rgba(99, 102, 241, 0.16);
+}
+
+.task-checkbox-btn {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  margin-top: 0.1rem;
+  transition: var(--transition-spring);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Tick = hành động chính của cả trang → phản hồi đáng nhất.
+   Dấu ✓ vẽ bằng ::after nên không cần thêm DOM, không cần state React. */
+.task-checkbox-btn::after {
+  content: '✓';
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--green);
+  opacity: 0;
+  transform: scale(0.4);
+  transition: var(--transition-spring);
+}
+
+.task-checkbox-btn:hover {
+  border-color: var(--green) !important;
+  background: rgba(0, 255, 136, 0.08);
+}
+
+.task-checkbox-btn:hover::after { opacity: 0.55; transform: scale(1); }
+
+/* Row bị unmount ngay sau click, nên :active là toàn bộ thời gian ta có */
+.task-checkbox-btn:active {
+  transform: scale(1.35);
+  box-shadow: var(--shadow-green);
+  border-color: var(--green) !important;
+}
+
+.task-checkbox-btn:active::after { opacity: 1; transform: scale(1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .task-checkbox-btn,
+  .task-checkbox-btn::after { transition: none; }
+  .task-checkbox-btn:active { transform: none; }
+}
+
+.task-option-btn {
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  transition: var(--transition-base);
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.task-option-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-secondary);
+}
+
+.task-option-btn--active-cyan {
+  color: #22d3ee !important;
+  background: rgba(6, 182, 212, 0.15) !important;
+  border-color: rgba(6, 182, 212, 0.4) !important;
+}
+
+.task-form-rec-panel {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border-radius: var(--radius-sm);
+  background: rgba(6, 182, 212, 0.04);
+  border: 1px solid rgba(6, 182, 212, 0.12);
+}
+
+.task-desc-box {
+  margin-top: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* Light mode overrides for task option buttons & panels */
+[data-theme="light"] .task-option-btn {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  color: var(--text-secondary);
+}
+
+[data-theme="light"] .task-option-btn:hover {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .task-option-btn--active-cyan {
+  color: #0e7490 !important;
+  background: rgba(6, 182, 212, 0.1) !important;
+  border-color: rgba(6, 182, 212, 0.3) !important;
+}
+
+[data-theme="light"] .task-form-rec-panel {
+  background: rgba(6, 182, 212, 0.06);
+  border-color: rgba(6, 182, 212, 0.22);
+}
+
+[data-theme="light"] .task-desc-box {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
