@@ -1,12 +1,13 @@
 {
   "name": "life-hub",
   "private": true,
-  "version": "4.24.1",
+  "version": "4.26.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "node api/_lib/smoke.test.js && node src/utils/dateUtils.test.js && node src/utils/mediaUtils.test.js",
     "design:lint": "design.md lint DESIGN.md",
     "preview": "vite preview"
   },
@@ -33,8 +34,6 @@
     "@tiptap/react": "^3.22.4",
     "@tiptap/starter-kit": "^3.22.4",
     "@tiptap/suggestion": "^3.22.4",
-    "@uiw/react-markdown-preview": "^5.2.0",
-    "@uiw/react-md-editor": "^4.1.0",
     "lucide-react": "^1.11.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

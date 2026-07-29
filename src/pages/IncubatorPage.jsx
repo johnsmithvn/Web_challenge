@@ -9,6 +9,7 @@ import { useCustomHabits } from '../hooks/useCustomHabits';
 import { useAuth } from '../contexts/AuthContext';
 import EXPENSE_DATA from '../data/expense-categories.json';
 import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
+import { toDateStr } from '../utils/dateUtils';
 import CustomSelect from '../components/CustomSelect';
 import '../styles/incubator.css';
 import '../styles/collect.css';
@@ -22,15 +23,6 @@ function formatDuration(minutes) {
 }
 
 /* ── Timezone-safe local date string (YYYY-MM-DD) ─────────────── */
-// NOTE: new Date().toISOString() returns UTC — wrong for Vietnam +07:00.
-// Use local date components instead.
-function localDateStr(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
 function daysAgo(dateStr) {
   const now   = new Date();
   const past  = new Date(dateStr);
@@ -199,7 +191,7 @@ export default function IncubatorPage() {
   const [detailLogs, setDetailLogs] = useState([]);
   const [detailLogsLoading, setDetailLogsLoading] = useState(false);
 
-  const todayStr = localDateStr(); // local date, NOT toISOString() which is UTC
+  const todayStr = toDateStr(); // local date, NOT toISOString() which is UTC
 
   const toggleExec = (key) => setExecOptions(prev => ({ ...prev, [key]: !prev[key] }));
   const anySelected = execOptions.expense || execOptions.habit || execOptions.task;
@@ -269,7 +261,7 @@ export default function IncubatorPage() {
     if (!deferModal || !deferReason.trim()) return;
     const d = new Date();
     d.setDate(d.getDate() + deferDays);
-    const scheduledFor = localDateStr(d); // local date — not UTC
+    const scheduledFor = toDateStr(d); // local date — not UTC
     await deferIntention(deferModal.id, { reason: deferReason, scheduledFor });
     setDeferModal(null); setDeferReason(''); setDeferDays(7);
   }, [deferModal, deferReason, deferDays, deferIntention]);
@@ -302,7 +294,7 @@ export default function IncubatorPage() {
         amount: executeModal.estimated_cost,
         category: expenseCategory,
         note: `Từ Incubator: ${executeModal.title}`,
-        date: localDateStr(),
+        date: toDateStr(),
       });
       if (exp) {
         convertedTypes.push('expense');

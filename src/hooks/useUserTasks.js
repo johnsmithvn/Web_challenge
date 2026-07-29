@@ -1,15 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
-
-let _supabase = null;
-async function getSb() {
-  if (!_supabase) {
-    const mod = await import('../lib/supabase');
-    _supabase = mod.supabase;
-  }
-  return _supabase;
-}
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
@@ -50,7 +42,7 @@ function nextMonthDay(targetDay) {
  */
 export function useUserTasks() {
   const { user } = useAuth();
-  const isAuth = !!user;
+  const isAuth = isSupabaseEnabled && !!user;
   const userId = user?.id;
 
   const [tasks, setTasks] = useState([]);
@@ -63,16 +55,13 @@ export function useUserTasks() {
     if (!isAuth || !userId) return;
     setIsLoading(true);
     try {
-      const sb = await getSb();
-      if (!sb) return;
-
       const today = todayStr();
       // Exclusive upper bound = next-day midnight (a contiguous 24h window) so tasks
       // completed in the last second of the day (23:59:59.xxx) aren't dropped.
       const filter = `completed.eq.false,and(completed.eq.true,completed_at.gte.${today}T00:00:00,completed_at.lt.${addDays(today, 1)}T00:00:00)`;
 
       // Try with task_collections join first (v4.5.0)
-      let { data, error } = await sb
+      let { data, error } = await supabase
         .from('user_tasks')
         .select('*, task_collections(collection_id, collections(id, title, type))')
         .eq('user_id', userId)
@@ -83,7 +72,7 @@ export function useUserTasks() {
       // Fallback: if task_collections table doesn't exist yet (migration not run)
       if (error) {
         logger.warn('[useUserTasks] junction join failed, falling back:', error.message);
-        const result = await sb
+        const result = await supabase
           .from('user_tasks')
           .select('*')
           .eq('user_id', userId)
@@ -149,11 +138,8 @@ export function useUserTasks() {
 
     if (isAuth) {
       try {
-        const sb = await getSb();
-        if (!sb) return newTask;
-
         const { id, user_id, ...rest } = newTask;
-        const { data, error } = await sb
+        const { data, error } = await supabase
           .from('user_tasks')
           .insert({ ...rest, user_id: userId })
           .select()
@@ -200,10 +186,7 @@ export function useUserTasks() {
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const sb = await getSb();
-        if (!sb) return false;
-
-        const { error } = await sb.from('user_tasks').insert({
+        const { error } = await supabase.from('user_tasks').insert({
           user_id: userId,
           title: task.title,
           description: task.description,
@@ -255,10 +238,7 @@ export function useUserTasks() {
 
     if (isAuth) {
       try {
-        const sb = await getSb();
-        if (!sb) return;
-
-        const { error } = await sb
+        const { error } = await supabase
           .from('user_tasks')
           .update({ completed: true, completed_at: now })
           .eq('id', taskId)
@@ -295,10 +275,7 @@ export function useUserTasks() {
 
     if (isAuth && backup) {
       try {
-        const sb = await getSb();
-        if (!sb) return;
-
-        const { error } = await sb
+        const { error } = await supabase
           .from('user_tasks')
           .delete()
           .eq('id', taskId)
@@ -326,10 +303,7 @@ export function useUserTasks() {
 
     if (isAuth) {
       try {
-        const sb = await getSb();
-        if (!sb) return;
-
-        const { error } = await sb
+        const { error } = await supabase
           .from('user_tasks')
           .update({ completed: false, completed_at: null })
           .eq('id', taskId)
@@ -357,10 +331,7 @@ export function useUserTasks() {
 
     if (isAuth) {
       try {
-        const sb = await getSb();
-        if (!sb) return;
-
-        const { error } = await sb
+        const { error } = await supabase
           .from('user_tasks')
           .update(changes)
           .eq('id', taskId)
@@ -382,10 +353,7 @@ export function useUserTasks() {
     if (!isAuth || !userId) return [];
 
     try {
-      const sb = await getSb();
-      if (!sb) return [];
-
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from('user_tasks')
         .select('*')
         .eq('user_id', userId)
@@ -441,10 +409,7 @@ export function useUserTasks() {
     }));
 
     try {
-      const sb = await getSb();
-      if (!sb) return false;
-
-      const { error } = await sb.from('task_collections').insert({
+      const { error } = await supabase.from('task_collections').insert({
         task_id: taskId,
         collection_id: collectionId,
       });
@@ -479,10 +444,7 @@ export function useUserTasks() {
     }));
 
     try {
-      const sb = await getSb();
-      if (!sb) return false;
-
-      const { error } = await sb.from('task_collections')
+      const { error } = await supabase.from('task_collections')
         .delete()
         .eq('task_id', taskId)
         .eq('collection_id', collectionId);

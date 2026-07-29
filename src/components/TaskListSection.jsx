@@ -5,12 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCollections } from '../hooks/useCollections';
 import LinkKBModal from './LinkKBModal';
 import DatePickerPopover from './DatePickerPopover';
-
-// Timezone-safe local date string
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-};
+import { toDateStr } from '../utils/dateUtils';
 
 const PRIORITY_OPTIONS = [
   { value: 0, label: 'Không', icon: '➖', color: 'var(--text-muted)' },
@@ -37,7 +32,7 @@ export default function TaskListSection() {
   const [showForm, setShowForm]     = useState(false);
   const [title, setTitle]           = useState('');
   const [description, setDescription] = useState('');
-  const [dueDate, setDueDate]       = useState(todayStr());
+  const [dueDate, setDueDate]       = useState(toDateStr());
   const [dueTime, setDueTime]       = useState('23:59');
 
   // Priority + Recurrence form state
@@ -99,12 +94,12 @@ export default function TaskListSection() {
     await addTask({
       title: title.trim(),
       description: description.trim() || null,
-      dueDate: dueDate || todayStr(),
+      dueDate: dueDate || toDateStr(),
       dueTime: dueTime || '00:00',
       priority,
       recurrenceRule,
     });
-    setTitle(''); setDescription(''); setDueDate(todayStr()); setDueTime('23:59');
+    setTitle(''); setDescription(''); setDueDate(toDateStr()); setDueTime('23:59');
     setPriority(0);
     setShowRecurrence(false); setRecType('interval'); setRecDays(7);
     setShowForm(false);
@@ -115,7 +110,7 @@ export default function TaskListSection() {
     setEditId(task.id);
     setEditTitle(task.title);
     setEditDesc(task.description || '');
-    setEditDate(task.due_date || todayStr());
+    setEditDate(task.due_date || toDateStr());
     setEditTime(task.due_time ? task.due_time.substring(0,5) : '');
     setEditPriority(task.priority || 0);
     const rec = task.recurrence_rule;
@@ -143,7 +138,7 @@ export default function TaskListSection() {
     await updateTask(taskId, {
       title:            editTitle.trim(),
       description:      editDesc.trim() || null,
-      due_date:         editDate || todayStr(),
+      due_date:         editDate || toDateStr(),
       due_time:         editTime || null,
       priority:         editPriority,
       recurrence_rule:  recurrenceRule,
@@ -157,8 +152,8 @@ export default function TaskListSection() {
   const isOverdue = (task) => {
     const now = new Date();
     const taskDate = new Date(task.due_date + 'T00:00:00');
-    if (taskDate < new Date(todayStr() + 'T00:00:00')) return true;
-    if (task.due_time && task.due_time.substring(0, 5) !== '00:00' && task.due_time.substring(0, 5) !== '23:59' && task.due_date === todayStr()) {
+    if (taskDate < new Date(toDateStr() + 'T00:00:00')) return true;
+    if (task.due_time && task.due_time.substring(0, 5) !== '00:00' && task.due_time.substring(0, 5) !== '23:59' && task.due_date === toDateStr()) {
       const [h, m] = task.due_time.split(':').map(Number);
       if (now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m)) return true;
     }
@@ -167,18 +162,13 @@ export default function TaskListSection() {
 
   const fmtTime = (t) => t ? t.substring(0, 5) : null;
   const fmtDate = (d) => {
-    if (d === todayStr()) return 'Hôm nay';
+    if (d === toDateStr()) return 'Hôm nay';
     return new Date(d + 'T00:00:00').toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
   };
 
 
   const totalPending = todayTasks.length + overdueTasks.length + futureTasks.length;
-
-  const filteredToday   = todayTasks;
-  const filteredOverdue = overdueTasks;
-  const filteredFuture  = futureTasks;
-
-  const totalCount = totalPending + completedToday.length;
+  const totalCount   = totalPending + completedToday.length;
 
   const btnBase = {
     background: 'none', border: 'none', cursor: 'pointer',
@@ -358,7 +348,7 @@ export default function TaskListSection() {
               )}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem', flexWrap: 'wrap' }}>
-                {task.due_date !== todayStr() && (
+                {task.due_date !== toDateStr() && (
                   <span style={{
                     fontSize: '0.72rem', padding: '0.1rem 0.45rem', borderRadius: 'var(--radius-full)',
                     background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(139,92,246,0.1)',
@@ -378,7 +368,7 @@ export default function TaskListSection() {
                     background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700,
                   }}>Quá hạn</span>
                 )}
-                {task.due_date === todayStr() && !overdue && (
+                {task.due_date === toDateStr() && !overdue && (
                   <span style={{
                     fontSize: '0.68rem', padding: '0.1rem 0.45rem', borderRadius: 'var(--radius-full)',
                     background: 'rgba(234,179,8,0.12)', color: '#eab308', fontWeight: 600,
@@ -648,38 +638,38 @@ export default function TaskListSection() {
 
 
       {/* ── Overdue Section ── */}
-      {filteredOverdue.length > 0 && (
+      {overdueTasks.length > 0 && (
         <div style={{ marginBottom: '0.75rem' }}>
           <div style={{
             fontSize: '0.75rem', fontWeight: 700, color: '#f87171', marginBottom: '0.5rem',
             display: 'flex', alignItems: 'center', gap: '0.35rem',
           }}>
-            ⚠️ Quá hạn ({filteredOverdue.length})
+            ⚠️ Quá hạn ({overdueTasks.length})
           </div>
           <div style={{
             display: 'flex', flexDirection: 'column', gap: '0.4rem',
             padding: '0.5rem', borderRadius: 'var(--radius-md)',
             background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.1)',
           }}>
-            {filteredOverdue.map(task => renderTask(task, { showRollover: true }))}
+            {overdueTasks.map(task => renderTask(task, { showRollover: true }))}
           </div>
         </div>
       )}
 
       {/* ── Today Section ── */}
-      {filteredToday.length > 0 && (
+      {todayTasks.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-          {filteredOverdue.length > 0 && (
+          {overdueTasks.length > 0 && (
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
-              📅 Hôm nay ({filteredToday.length})
+              📅 Hôm nay ({todayTasks.length})
             </div>
           )}
-          {filteredToday.map(task => renderTask(task))}
+          {todayTasks.map(task => renderTask(task))}
         </div>
       )}
 
       {/* ── Future Section (collapsed) ── */}
-      {filteredFuture.length > 0 && (
+      {futureTasks.length > 0 && (
         <div style={{ marginTop: '0.75rem' }}>
           <button
             onClick={() => setShowFuture(!showFuture)}
@@ -688,11 +678,11 @@ export default function TaskListSection() {
               fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600,
               padding: '0.3rem 0', width: '100%', justifyContent: 'flex-start',
             }}>
-            {showFuture ? '▾' : '▸'} 🔮 Sắp tới ({filteredFuture.length})
+            {showFuture ? '▾' : '▸'} 🔮 Sắp tới ({futureTasks.length})
           </button>
           {showFuture && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.4rem' }}>
-              {filteredFuture.map(task => renderTask(task))}
+              {futureTasks.map(task => renderTask(task))}
             </div>
           )}
         </div>

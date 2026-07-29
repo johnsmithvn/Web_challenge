@@ -564,6 +564,12 @@ h1, h2, h3, h4, h5, h6 {
   to   { opacity: 1; }
 }
 
+/* fadeIn + nhích lên 3px — dùng cho popover/dropdown (collect, inbox) */
+@keyframes fadeInSlide {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }

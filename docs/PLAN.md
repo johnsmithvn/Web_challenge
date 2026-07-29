@@ -1,7 +1,10 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-06-13
-**Current Version:** v4.22.0
+**Updated:** 2026-07-28
+**Current Version:** v4.26.1
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
+
+> ⚠️ Bảng version ở cuối file dừng ở v4.22.0 và **chưa có** v4.23.0 / v4.24.x — sai lệch có
+> từ trước, chưa fix vì ngoài scope đợt refactor. Nguồn đầy đủ: `CHANGELOG.md`.
 
 ---
 
@@ -524,4 +527,35 @@
 | v4.20.1 | Hotfix: Smart Money Input Parsing & Configurable Currency Settings |
 | **v4.21.0** | **Optional Journey & Onboarding Redirect Polish** |
 | **v4.22.0** | **Codebase Audit Cleanup (Dead Code, Dedup, Structural Fixes, GenericModal, dateUtils)** |
+| **v4.25.0** | **Refactor P0 — Xoá code chết (`src/_archived/`, 2 dep `@uiw/*`, export không caller) + fix `@keyframes fadeIn` xung đột** |
+| **v4.25.1** | **Refactor P1 (3/5) — `api/_lib/driveToken.js` dùng chung, `verifyAuth` bỏ `createClient`, `base64url` native** |
+| **v4.26.0** | **Xoá feature Fitness Log (tab 🏋️ Sức Khỏe) — hook + tab TrackerPage + card Dashboard + XP. Bảng `fitness_logs` giữ lại, chưa DROP** |
+| **v4.26.1** | **Refactor P2 (4/6) — bỏ `getSb()` lazy ở 3 hook, gộp `snoozedFilter`, gộp `isAudioUrl`/`isVideoUrl`, `dateUtils.toDateStr()` thay 4 bản copy, thêm `npm test`** |
+
+---
+
+## 🔧 Phase 12 — Refactor chống over-engineering (v4.25.x → )
+*Bắt đầu: 2026-07-28 · Nguồn: review over-engineering toàn bộ `src/` + `api/` (41.128 dòng)*
+
+**Goal:** Bỏ code trùng lặp, code chết và abstraction không cần thiết. Không thêm tính năng.
+Mỗi phase = 1 commit độc lập, revert được, `npm run build` xanh trước khi qua phase sau.
+
+| Phase | Nội dung | Trạng thái |
+|-------|----------|-----------|
+| P0 | Xoá code chết (`_archived`, 2 dep, export không caller, `fadeIn` trùng) | ✅ v4.25.0 |
+| P1 | `api/`: gộp `getDriveToken`, `verifyAuth` dùng `fetch`, `base64url` native | ✅ v4.25.1 (3/5 mục) |
+| P1b | `Response.formData()` thay parser multipart · `Readable.fromWeb().pipe()` thay vòng `pump` | ⏸ hoãn — rủi ro cao, chờ test upload thật |
+| P2 | Hooks: bỏ `getSb()` lazy, gộp query snooze, gộp `isAudio/isVideo`, `toDateStr()` | ✅ v4.26.1 (4/6 mục) |
+| P2b | Xoá 2 thang fallback migration · bỏ retry `spawnRecurringTask` | ⏸ chờ 2 quyết định dưới |
+| P3 | `TaskListSection`: gộp form Add/Edit, 22 `useState` → 1 draft object | ⏳ chờ approve |
+| P4 | Modal: `GenericModal` viết lại trên `<dialog>`, gộp 6 overlay + 14 handler Escape | ⏳ chờ approve |
+| P5 | 872 inline style → CSS (1 page/PR) | ⏳ chờ approve |
+| P6 | ~~Bỏ markdown mode~~ | ❌ HUỶ — mất TOC + mất tính portable của plain text, lợi ích thật chỉ ~120 dòng |
+
+**Quyết định còn treo:**
+- `TODO: decision needed` — Migration `task_collections` / `collection_tags` đã chạy trên prod chưa?
+  Gate việc xoá 2 thang fallback ở P2 (`useCollections` 3 tầng, `useUserTasks` 1 tầng, ~71 dòng).
+- `TODO: decision needed` — RULES §7 liệt kê `spawnRecurringTask` retry và `lazyRetry()` là pattern
+  đang có. Đánh giá của review: cả hai là phòng xa không cần thiết (insert idempotent; chunk-fail
+  đã có `ErrorBoundary`). Bỏ (−42 dòng, phải sửa RULES §7) hay giữ?
 

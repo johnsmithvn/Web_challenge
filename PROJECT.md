@@ -3,7 +3,7 @@
 **Bản đồ cấp cao của repo.** Chỉ trả lời "cái gì ở đâu" và "đọc file nào tiếp".
 Chi tiết nằm ở các file được trỏ tới — cố tình KHÔNG lặp lại ở đây.
 
-**Version:** v4.24.1 · **Updated:** 2026-07-27
+**Version:** v4.26.1 · **Updated:** 2026-07-28
 
 ---
 
@@ -31,7 +31,7 @@ heatmap lịch sử hoạt động. Chạy được ở 2 chế độ: **guest**
 | Cần biết | File |
 |----------|------|
 | Bảng, cột, RLS, RPC, XP, migration | `docs/DATABASE.md` → source of truth: `data/schema_v4.24.0.sql` |
-| Từng tính năng làm gì, tính năng nào đã bỏ | `docs/FEATURES.md` (§1–§28 active, cuối file là Archived) |
+| Từng tính năng làm gì, tính năng nào đã bỏ | `docs/FEATURES.md` (§1–§27 active, cuối file là Archived) |
 | Thư mục, data flow, localStorage key, quyết định kiến trúc | `docs/ARCHITECTURE.md` |
 | Quy tắc cho AI agent / dev (scope, versioning, doc sync) | `docs/RULES.md` |
 | Design token, component pattern, responsive, theme | `DESIGN.md` |
@@ -49,7 +49,7 @@ Mỗi route = 1 page trong `src/pages/`. Hook chứa toàn bộ logic Supabase; 
 | Route | Page | Hook chính | Bảng chính |
 |-------|------|-----------|-----------|
 | `/` | LandingPage | — | — |
-| `/tracker` | TrackerPage (5 tab) | useHabitStore, useCustomHabits, useHabitLogs, useUserTasks, useFitnessLog | progress, habits, habit_logs, user_tasks, fitness_logs |
+| `/tracker` | TrackerPage (4 tab) | useHabitStore, useCustomHabits, useHabitLogs, useUserTasks | progress, habits, habit_logs, user_tasks |
 | `/focus` | FocusPage | useFocusTimer | focus_sessions, xp_logs |
 | `/journey`, `/journey/:id` | JourneyPage, JourneyDetailPage | useJourney (+ JourneyContext) | programs, user_journeys, journey_habits |
 | `/inbox` | InboxPage | useCollections, useExpenses | collections (type=inbox), expenses |
@@ -94,7 +94,7 @@ User action → hook → isAuthenticated ? Supabase (optimistic + rollback khi l
    `DatePickerPopover`, `TagPicker`. Không `window.confirm/alert/prompt`.
 5. RLS bật cho mọi bảng; `auth.uid() = user_id`. Ngoại lệ public SELECT: `programs`, `program_habits`.
 6. Mọi retry phải có giới hạn (`MAX_RETRIES`, `MAX_ADVANCE = 24`, `lazyRetry` 1 lần).
-7. Không sửa `src/_archived/` (dead code, đã gitignore) và không tự ý sửa `data/schema_v4.24.0.sql`.
+7. Không tự ý sửa `data/schema_v4.24.0.sql`.
 8. Đổi tính năng → cập nhật `docs/FEATURES.md` + `CHANGELOG.md` (RULES.md §8, §13).
 9. `npm run build` phải 0 lỗi trước khi coi task là xong.
 
@@ -107,6 +107,7 @@ npm install
 npm run dev      # vite dev server
 npm run build    # bắt buộc pass trước khi kết thúc task
 npm run lint
+npm test         # 3 self-check bằng node:assert (không có test framework)
 ```
 
 Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (client) ·
@@ -125,5 +126,5 @@ DB: chạy `data/schema_v4.24.0.sql` một lần trong Supabase SQL Editor (idem
   không bump `package.json`) chưa bao giờ được ghi changelog. Changelog nhảy từ v4.23.0 sang v4.24.1.
 - **Life Journey lưu trong localStorage** (`vl_life_journey_events`, `vl_journey_title`) — ngoại lệ legacy
   đã được ghi rõ, chưa migrate. Không sync đa thiết bị, mất khi xoá browser data.
-- **Tên file schema giữ nguyên `schema_v4.24.0.sql`** dù docs đã lên v4.24.1 — cố ý, để không phải
+- **Tên file schema giữ nguyên `schema_v4.24.0.sql`** dù docs đã lên v4.26.1 — cố ý, để không phải
   đổi tên file mỗi lần bump patch tài liệu.

@@ -1,5 +1,119 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-06-14
+**Updated:** 2026-07-29
+
+---
+
+## v4.26.2 — ✅ DONE (2026-07-29) — Dọn dead code + doc sai của Activity Log
+
+### Done ✅
+- [x] Xoá `useActivityLog.getTimelineByDate()` (31 dòng) — 0 caller, JSDoc nhắc tới "DailyTimeline component" chưa bao giờ tồn tại
+- [x] JSDoc `useActivityLog` — bỏ 6 action bịa (`task_add`, `collect_add`, `mood_set`, `xp_earned`, `journey_start`, `journey_complete`), thêm 5 action thật đang thiếu (`subscription_add`, `inbox_snooze`, `inbox_classify`, `inbox_bulk_delete`, `inbox_bulk_classify`) → bảng 11 action verify từ call site
+- [x] `docs/FEATURES.md` §24 — xoá bullet "Daily drill-down" (không tồn tại: `handleHeatmapClick` là no-op), thêm MonthCalendar, sửa list action 7 → 11
+- [x] `npm run build` 0 lỗi, `npm run lint` 64 = baseline, `npm test` 3/3 OK
+
+### Nợ Activity Log — chờ redesign SAU KHI xong feature
+> Quyết định 2026-07-29: **đóng băng**, không xoá. Heatmap + KPI đang dùng thật, mà read-side
+> hiện chỉ là `COUNT` nên chưa biết cần query gì → thiết kế schema bây giờ sẽ lặp lại sai lầm cũ.
+> **Không thêm `logActivity` vào feature mới** cho tới khi redesign.
+
+- [ ] `TODO: decision needed` — `amount` nhồi **4 đơn vị** vào 1 cột: XP / VNĐ / số ngày (`inbox_snooze`) / số item (`inbox_bulk_*`). Không có cột unit → không SUM/so sánh được. Redesign: tách `amount` + `unit`
+- [ ] `TODO: decision needed` — **Không có `entity_type` / `entity_id`.** `meta` tuỳ hứng mỗi chỗ (`{habit_id}` / `{source:'inbox'}` / `{type,days,until}`) → không join lại record gốc, không trả lời được "item inbox này đi đâu"
+- [ ] `TODO: decision needed` — **`label` là câu tiếng Việt render sẵn** (`"85,000₫ Ăn trưa"`). Formatting nằm trong data → đổi format tiền hoặc i18n thì data cũ lệch vĩnh viễn. Redesign: derive label từ `action` + `meta` lúc render
+- [ ] `TODO: decision needed` — **`action` là free-form text**, không CHECK constraint, không hằng số dùng chung. Gõ sai (`'taskDone'`) vẫn insert thành công
+- [ ] `TODO: decision needed` — **Coverage lệch:** `useUserTasks.completeTask` (cách hoàn thành task bình thường) không log gì; chỉ Inbox quick-done phát `task_done`. Cũng chưa log: quick-add, single delete, Inbox→Task/Intention/Sub, Collect/KB, Journey, Incubator, Quiz, Mood
+- [ ] `TODO: decision needed` — **`useFocusTimer.js:154` insert trực tiếp vào `activity_logs`**, bypass hook → hook không phải chokepoint duy nhất
+- [ ] `TODO: decision needed` — **Row orphan `action='fitness_done'`** (feature xoá ở v4.26.0) vẫn cộng vào heatmap vĩnh viễn vì bảng append-only
+- [ ] `TODO: decision needed` — `getHeatmapData` SELECT **cả năm** `created_at` về client rồi group bằng JS. Comment tự nhận "Supabase JS doesn't support GROUP BY" nhưng RPC/view làm được
+- [ ] `TODO: decision needed` — Gọi là "audit trail" nhưng fire-and-forget, fail chỉ `logger.warn` → không đảm bảo ghi được
+
+---
+
+## v4.26.1 — ✅ DONE (2026-07-28) — Refactor P2 (4/6): tầng data
+
+### Done ✅
+- [x] `useUserTasks`/`useIntentions`/`useTags` — bỏ `getSb()` lazy-import, dùng `import { supabase }` tĩnh như 17 hook khác. Xoá 29 cặp `const sb = await getSb()` + `if (!sb) return …`; guard chuyển vào `isAuth = isSupabaseEnabled && !!user`
+- [x] `useCollections` — `getSnoozedCount` + `fetchSnoozedItems` dùng chung `snoozedFilter()`
+- [x] `mediaUtils` — gộp `isAudioUrl`/`isVideoUrl` → `isMediaUrl(url, kind, extRe)`
+- [x] `dateUtils.toDateStr()` — gộp 4 bản copy (TaskListSection, useIntentions, IncubatorPage, DatePickerPopover), 17 callsite
+- [x] `npm test` + 2 self-check mới (`dateUtils.test.js`, `mediaUtils.test.js`) — không thêm framework
+- [x] `npm run build` 0 lỗi, `npm run lint` 64 = baseline, `npm test` 3/3 OK
+
+### Chờ quyết định (2 mục còn lại của P2)
+- [ ] `TODO: decision needed` — Xoá 2 thang fallback migration (`useCollections` 3 tầng, `useUserTasks` 1 tầng, ~71 dòng)? Cần biết migration `task_collections`/`collection_tags` đã chạy trên prod chưa
+- [ ] `TODO: decision needed` — Bỏ retry của `spawnRecurringTask` (~35 dòng)? RULES §7 đang liệt kê nó là pattern bắt buộc
+
+### Phát hiện thêm — bug, không phải over-engineering
+- [ ] `TODO: decision needed` — **5 chỗ dùng `toISOString().split('T')[0]` (UTC) làm "hôm nay"**: `useUserTasks`, `useSubscriptions`, `DashboardPage`, `CashflowBar`, `MonthCalendar`. Ở GMT+7 từ 00:00–06:59 hiểu thành *ngày hôm qua*. Sửa = đổi cách chốt ngày của task/subscription/calendar → cần approve riêng, không gộp vào refactor
+
+---
+
+## v4.26.0 — ✅ DONE (2026-07-28) — Xoá feature Fitness Log (🏋️ Sức Khỏe)
+
+### Done ✅
+- [x] Xoá `src/hooks/useFitnessLog.js`
+- [x] `TrackerPage` — xoá tab `fitness` (209 dòng JSX), 6 state `fit*`/`editFit`, entry `TABS`, import → **còn 4 tab**
+- [x] `DashboardPage` — xoá section "🏋️ Sức Khỏe" (29 dòng), hook, import
+- [x] XP `fitness_done` + `logActivity('fitness_done')` biến mất cùng tab (không có caller khác)
+- [x] Docs: `FEATURES.md` (xoá §22 + đánh số lại §23–§28 → §22–§27, bảng XP, Data Architecture, "5 tabs" → "4 tabs", thêm vào Archived), `DATABASE.md` (fitness_logs → archived, đánh số lại 23–30 → 22–29, table count, Entity Overview, bảng XP), `ARCHITECTURE.md` (domain + hooks count + số bảng), `RULES.md` (§16 XP), `PROJECT.md` (module map), `PLAN.md`, `CHANGELOG.md`
+- [x] `npm run build` 0 lỗi, `npm run lint` 64 warning = baseline
+
+### Cố ý KHÔNG làm
+- [ ] `TODO: decision needed` — **DROP bảng `fitness_logs`?** Master schema `data/schema_v4.24.0.sql` chỉ sửa khi có chỉ thị rõ ràng (RULES §3). Bảng còn trên prod, không hook nào dùng
+- [x] ~~Xoá `tpl-fitness` trong `programs.json`~~ — **KHÔNG xoá**: đó là journey template "Kỷ Luật Thể Chất" thuộc feature Journey, không phải Fitness Log
+- [x] ~~Xoá row `activity_logs` có `action='fitness_done'`~~ — **KHÔNG xoá**: bảng append-only audit trail
+
+---
+
+## v4.25.1 — ✅ DONE (2026-07-28) — Refactor P1 (phần 3/5): dọn `api/`
+
+### Done ✅
+- [x] Tạo `api/_lib/driveToken.js` — gộp 2 bản `getDriveToken` trùng ở `upload.js` + `stream.js`, cache token **theo scope** (rw vs readonly)
+- [x] `verifyAuth.js` — bỏ `createClient` + `withTimeout` tự viết → 1 `fetch` + `AbortSignal.timeout`
+- [x] 6 chain `.replace()` → `.toString('base64url')` native
+- [x] `generateFileName()` 15 dòng → 4, **format tên file không đổi**
+- [x] `api/_lib/smoke.test.js` — self-check `node api/_lib/smoke.test.js`
+
+### Cố ý CHƯA làm (rủi ro cao, chờ quyết định)
+- [ ] Thay `parseMultipart()` (45 dòng tự viết) bằng `Response.formData()` — undici từng lỗi với filename non-ASCII và file lớn; chỉ làm nếu test upload thật pass
+- [ ] Thay vòng `pump` + `res.once('drain')` (28 dòng) bằng `Readable.fromWeb(body).pipe(res)`
+
+### ⚠️ Cần test tay (build không chạy `api/`)
+- [ ] Upload 1 ảnh qua `/collect`
+- [ ] Upload 1 file audio, phát được
+- [ ] Seek thanh audio Drive → response 206 Partial Content
+- [ ] `curl` `/api/upload` không token → 401
+
+---
+
+## v4.25.0 — ✅ DONE (2026-07-28) — Refactor P0: Xoá code chết
+
+Phase 0 của đợt refactor chống over-engineering (xem review đầy đủ trong CHANGELOG v4.25.0).
+
+### Dead Code Removal ✅
+- [x] Xoá `src/_archived/` — 11 file, 2.524 dòng, 0 import (khôi phục được từ git history)
+- [x] Bỏ `src/_archived` khỏi `.gitignore` (dòng này vô tác dụng — file đã được track)
+- [x] Gỡ `@uiw/react-md-editor` + `@uiw/react-markdown-preview` — 0 import (−43 package)
+- [x] Xoá `logger.debug()` — không caller
+- [x] Xoá `useCollections`: `toggleStar`, `archiveItem`, `getInboxCount` — không caller
+- [x] Xoá 8/10 export không caller trong `dateUtils.js`
+
+### Deduplication ✅
+- [x] `CollectPage` — xoá `formatDate` local trùng `dateUtils`, gộp 2 `slugify` → 1, `h1`–`h4` → 1 vòng lặp
+- [x] `TaskListSection` — xoá 3 alias `filtered*`
+- [x] `@keyframes fadeIn` — gộp 5 định nghĩa (2 shape khác nhau) về `global.css`: `fadeIn` + `fadeInSlide`
+
+### Docs Sync ✅
+- [x] `docs/RULES.md` — bỏ 2 luật cấm sửa `src/_archived/`
+- [x] `docs/ARCHITECTURE.md`, `PROJECT.md`, `docs/DATABASE.md`, `docs/FEATURES.md` — cập nhật tham chiếu `src/_archived/`
+- [x] `npm run build` 0 lỗi, `npm run lint` 64 warning = baseline
+
+### Chờ approve
+- [ ] P1 — `api/`: 3/5 mục xong ở v4.25.1, còn 2 mục rủi ro cao (xem dưới)
+- [ ] P2 — hooks: bỏ `getSb()` lazy, bỏ 2 thang fallback migration, gộp query snooze, thống nhất `todayStr`
+- [ ] P3 — `TaskListSection`: gộp form Add/Edit, 22 `useState` → 1 draft object
+- [ ] P4 — Modal: `GenericModal` viết lại trên `<dialog>`, gộp 6 overlay
+- [ ] P5 — 872 inline style → CSS (1 page/PR)
+- [x] ~~P6 — bỏ markdown mode~~ **HUỶ** — mất TOC, mất tính portable của plain text, lợi ích thật chỉ ~120 dòng chứ không phải 250
 
 ---
 

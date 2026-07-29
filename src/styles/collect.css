@@ -2163,7 +2163,7 @@
   background: rgba(139, 92, 246, 0.06);
   border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: var(--radius-md);
-  animation: fadeIn 0.15s ease;
+  animation: fadeInSlide 0.15s ease;
 }
 
 [data-theme="light"] .inbox-bulk-bar {
@@ -2214,10 +2214,6 @@
   color: #fca5a5;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-3px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 
 /* Light mode adjustments for format badges (MD and Visual) */
 [data-theme="light"] .kb-format-badge--visual {

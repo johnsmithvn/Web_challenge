@@ -65,65 +65,40 @@ export function stripMediaTag(url) {
   return url.split('#')[0];
 }
 
+const AUDIO_EXT = /\.(mp3|m4a|ogg|wav|aac|flac|webm)(\?|$)/i;
+const VIDEO_EXT = /\.(mp4|webm|ogg|ogv|mov|mkv)(\?|$)/i;
+
 /**
- * Check if a URL points to an audio file based on extension or hash tag.
+ * Nhận diện media theo hash tag (#audio), query (?type=/&mime=) hoặc đuôi file.
  * @param {string} url
+ * @param {'audio'|'video'} kind
+ * @param {RegExp} extRe — regex đuôi file tương ứng
  * @returns {boolean}
  */
-export function isAudioUrl(url) {
+function isMediaUrl(url, kind, extRe) {
   if (!url) return false;
-  
-  const lowerUrl = url.toLowerCase();
-  if (lowerUrl.includes('#audio') || lowerUrl.includes('#podcast') || lowerUrl.includes('type=audio')) {
-    return true;
-  }
+
+  const lower = url.toLowerCase();
+  // '#podcast' là alias lịch sử của '#audio'
+  if (lower.includes(`#${kind}`) || lower.includes(`type=${kind}`)) return true;
+  if (kind === 'audio' && lower.includes('#podcast')) return true;
 
   try {
     const u = new URL(url);
-    const pathname = u.pathname.toLowerCase();
-    const hasAudioExt = /\.(mp3|m4a|ogg|wav|aac|flac|webm)$/.test(pathname);
-    if (hasAudioExt) return true;
-
-    // Check query params
-    const typeParam = u.searchParams.get('type');
-    if (typeParam === 'audio') return true;
-    const mimeParam = u.searchParams.get('mime');
-    if (mimeParam && mimeParam.startsWith('audio/')) return true;
+    if (extRe.test(u.pathname)) return true;
+    if (u.searchParams.get('type') === kind) return true;
+    return u.searchParams.get('mime')?.startsWith(`${kind}/`) || false;
   } catch {
-    return /\.(mp3|m4a|ogg|wav|aac|flac|webm)(\?|$)/i.test(url);
+    // URL tương đối / không hợp lệ → chỉ còn đuôi file để dựa vào
+    return extRe.test(url);
   }
-  return false;
 }
 
-/**
- * Check if a URL points to a video file based on extension or hash tag.
- * @param {string} url
- * @returns {boolean}
- */
-export function isVideoUrl(url) {
-  if (!url) return false;
-  
-  const lowerUrl = url.toLowerCase();
-  if (lowerUrl.includes('#video') || lowerUrl.includes('type=video')) {
-    return true;
-  }
+/** @param {string} url @returns {boolean} */
+export const isAudioUrl = (url) => isMediaUrl(url, 'audio', AUDIO_EXT);
 
-  try {
-    const u = new URL(url);
-    const pathname = u.pathname.toLowerCase();
-    const hasVideoExt = /\.(mp4|webm|ogg|ogv|mov|mkv)$/.test(pathname);
-    if (hasVideoExt) return true;
-
-    // Check query params
-    const typeParam = u.searchParams.get('type');
-    if (typeParam === 'video') return true;
-    const mimeParam = u.searchParams.get('mime');
-    if (mimeParam && mimeParam.startsWith('video/')) return true;
-  } catch {
-    return /\.(mp4|webm|ogg|ogv|mov|mkv)(\?|$)/i.test(url);
-  }
-  return false;
-}
+/** @param {string} url @returns {boolean} */
+export const isVideoUrl = (url) => isMediaUrl(url, 'video', VIDEO_EXT);
 
 /**
  * Extract Google Drive File ID from any Drive URL format.

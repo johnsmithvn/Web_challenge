@@ -268,13 +268,9 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
-  animation: fadeIn 0.1s ease;
+  animation: fadeInSlide 0.1s ease;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-3px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 
 .inbox-item__classify-btn {
   padding: 0.3rem 0.7rem;
@@ -363,7 +359,7 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  animation: fadeIn 0.15s ease;
+  animation: fadeInSlide 0.15s ease;
 }
 
 .inbox-expense-modal {
@@ -703,7 +699,7 @@
   background: rgba(139,92,246,0.06);
   border: 1px solid rgba(139,92,246,0.15);
   border-radius: var(--radius-md);
-  animation: fadeIn 0.15s ease;
+  animation: fadeInSlide 0.15s ease;
 }
 
 [data-theme="light"] .inbox-bulk-bar {
@@ -761,7 +757,7 @@
   margin-top: 0.35rem;
   padding-top: 0.5rem;
   border-top: 1px solid rgba(255,255,255,0.06);
-  animation: fadeIn 0.1s ease;
+  animation: fadeInSlide 0.1s ease;
 }
 
 [data-theme="light"] .inbox-bulk-classify-menu {
@@ -845,7 +841,7 @@
   resize: vertical;
   min-height: 60px;
   transition: border-color 0.15s ease;
-  animation: fadeIn 0.15s ease;
+  animation: fadeInSlide 0.15s ease;
   box-sizing: border-box;
 }
 .inbox-desc-textarea:focus {
@@ -890,7 +886,7 @@
   font-size: 0.72rem;
   color: #22c55e;
   font-weight: 600;
-  animation: fadeIn 0.2s ease;
+  animation: fadeInSlide 0.2s ease;
 }
 
 /* ── Detail Footer ─────────────────────────────────────────── */

@@ -1,8 +1,8 @@
 # AI_AGENT_RULES.md — Life Hub (Personal Life OS)
 
 **Project:** Life Hub — Personal Life OS
-**Version:** v4.24.1
-**Updated:** 2026-07-27
+**Version:** v4.26.1
+**Updated:** 2026-07-28
 **Repository:** React 19 + Vite 8 + Supabase (PostgreSQL) SPA
 
 Rules for AI coding agents working on this repository.
@@ -78,7 +78,6 @@ The agent MUST work **only within the current task scope**.
 
 Do NOT touch:
 
-* `src/_archived/` — dead code, preserved for reference only
 * `node_modules/`, `dist/`, `.git/` — auto-generated
 * `.env.local` — contains secrets, NEVER read or modify
 * `data/schema_v4.24.0.sql` — master schema, only modify with explicit instruction
@@ -97,7 +96,6 @@ The agent MUST NOT:
 - Rename files across the repository
 - Modify configuration defaults unnecessarily (`vite.config.js`, `vercel.json`, `eslint.config.js`)
 - Introduce large refactors
-- Touch `src/_archived/` files
 - Modify `data/schema_v4.24.0.sql` without explicit instruction
 - Remove or modify existing CSS variables in `src/styles/global.css` without understanding downstream impact
 
@@ -259,7 +257,13 @@ npm run build        # Production build — MUST pass with 0 errors
 
 # Lint
 npm run lint         # ESLint check
+
+# Self-check (node:assert, không có test framework)
+npm test             # api/_lib/smoke.test.js + src/utils/{dateUtils,mediaUtils}.test.js
 ```
+
+> `npm run build` chỉ build frontend — **không** chạy `api/` bao giờ. Sửa `api/` phải test tay
+> sau khi deploy (upload ảnh, upload audio, seek 206, gọi không token phải ra 401).
 
 ### Required Environment Variables
 
@@ -625,7 +629,6 @@ XP events are logged to `xp_logs` table (immutable append-only).
 | Daily Challenge | +20 | 1 per day |
 | Quiz | +10→+50 | Per attempt (score-based) |
 | Focus Session | +15 | 1 per session |
-| Fitness Log | +10 | 1 per session |
 
 **Rules:**
 - Always dedup via `hasMilestone(reason, meta)` before `addXp`

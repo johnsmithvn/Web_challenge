@@ -1,15 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
-
-let _supabase = null;
-async function getSb() {
-  if (!_supabase) {
-    const mod = await import('../lib/supabase');
-    _supabase = mod.supabase;
-  }
-  return _supabase;
-}
 
 /**
  * useTags — Central tag CRUD, Supabase-first.
@@ -30,7 +22,7 @@ const ENTITY_CONFIG = {
 
 export function useTags() {
   const { user } = useAuth();
-  const isAuth = !!user;
+  const isAuth = isSupabaseEnabled && !!user;
   const userId = user?.id;
 
   const [tags, setTags] = useState([]);
@@ -42,10 +34,7 @@ export function useTags() {
     if (!isAuth || !userId) return;
     setIsLoading(true);
     try {
-      const sb = await getSb();
-      if (!sb) return;
-
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from('tags')
         .select('*')
         .eq('user_id', userId)
@@ -85,10 +74,7 @@ export function useTags() {
     if (existing) return existing;
 
     try {
-      const sb = await getSb();
-      if (!sb) return null;
-
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from('tags')
         .insert({ user_id: userId, name: trimmed, color })
         .select()
@@ -97,7 +83,7 @@ export function useTags() {
       if (error) {
         // UNIQUE violation → fetch existing
         if (error.code === '23505') {
-          const { data: found } = await sb
+          const { data: found } = await supabase
             .from('tags')
             .select('*')
             .eq('user_id', userId)
@@ -138,10 +124,7 @@ export function useTags() {
     setTags(prev => prev.map(t => t.id === tagId ? { ...t, ...clean } : t));
 
     try {
-      const sb = await getSb();
-      if (!sb) return false;
-
-      const { error } = await sb
+      const { error } = await supabase
         .from('tags')
         .update(clean)
         .eq('id', tagId)
@@ -169,10 +152,7 @@ export function useTags() {
     setTags(prev => prev.filter(t => t.id !== tagId));
 
     try {
-      const sb = await getSb();
-      if (!sb) return;
-
-      const { error } = await sb
+      const { error } = await supabase
         .from('tags')
         .delete()
         .eq('id', tagId)
@@ -199,10 +179,7 @@ export function useTags() {
     }
 
     try {
-      const sb = await getSb();
-      if (!sb) return false;
-
-      const { error } = await sb.from(config.table).upsert(
+      const { error } = await supabase.from(config.table).upsert(
         { [config.fk]: entityId, tag_id: tagId },
         { onConflict: `${config.fk},tag_id` }
       );
@@ -229,10 +206,7 @@ export function useTags() {
     }
 
     try {
-      const sb = await getSb();
-      if (!sb) return false;
-
-      const { error } = await sb.from(config.table).delete()
+      const { error } = await supabase.from(config.table).delete()
         .eq(config.fk, entityId)
         .eq('tag_id', tagId);
 
@@ -255,10 +229,7 @@ export function useTags() {
     if (!config) return [];
 
     try {
-      const sb = await getSb();
-      if (!sb) return [];
-
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from(config.table)
         .select('tag_id, tags(id, name, color)')
         .eq(config.fk, entityId);
@@ -279,14 +250,11 @@ export function useTags() {
     if (!isAuth) return 0;
 
     try {
-      const sb = await getSb();
-      if (!sb) return 0;
-
       // Query all 3 junction tables in parallel
       const [expenses, subs, collections] = await Promise.all([
-        sb.from('expense_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
-        sb.from('subscription_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
-        sb.from('collection_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
+        supabase.from('expense_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
+        supabase.from('subscription_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
+        supabase.from('collection_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
       ]);
 
       return (expenses.count || 0) + (subs.count || 0) + (collections.count || 0);
@@ -301,14 +269,11 @@ export function useTags() {
     if (!isAuth || !userId) return {};
 
     try {
-      const sb = await getSb();
-      if (!sb) return {};
-
       // Fetch all links from all 3 junction tables
       const [expenses, subs, collections] = await Promise.all([
-        sb.from('expense_tags').select('tag_id'),
-        sb.from('subscription_tags').select('tag_id'),
-        sb.from('collection_tags').select('tag_id'),
+        supabase.from('expense_tags').select('tag_id'),
+        supabase.from('subscription_tags').select('tag_id'),
+        supabase.from('collection_tags').select('tag_id'),
       ]);
 
       const counts = {};

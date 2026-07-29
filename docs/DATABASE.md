@@ -1,11 +1,11 @@
 # DATABASE DESIGN — Life Hub (Personal Life OS)
 **Target:** Supabase (PostgreSQL)
-**Version:** v4.24.1
-**Updated:** 2026-07-27
+**Version:** v4.26.1
+**Updated:** 2026-07-28
 **Strategy:** Production-ready from day 1
 **Source of Truth:** **`data/schema_v4.24.0.sql`** — single consolidated schema (all migrations v4.4.0 → v4.24.0 folded in). Idempotent — run once on a fresh project.
 
-**Table count (verified against the `.sql` file):** **31 `CREATE TABLE`** = **30 active** + **1 archived** (`friendships`).
+**Table count (verified against the `.sql` file):** **31 `CREATE TABLE`** = **29 active** + **2 archived** (`friendships`, `fitness_logs`).
 `mood_logs` is NOT in this schema (dropped in v4.10.1, folded into the consolidated file).
 Every other doc that says 26 / 28 tables is stale — this line is the count.
 
@@ -38,7 +38,6 @@ profiles ───────────────────────�
     ├──► subscriptions     (recurring services) │
     ├──► activity_logs     (append-only audit)  │
     ├──► intentions / intention_logs (incubator)│
-    ├──► fitness_logs      (workout sessions)   │
     │                                           │
     ├──► tags ◄──► collection_tags              │
     │         ◄──► expense_tags                 │
@@ -63,7 +62,7 @@ Programs ──► program_habits   (template library, system + user)
 > column definitions, RLS policies, triggers, and indexes. `schema_v4.4.0.sql` and the per-version
 > `migration_*.sql` files no longer exist — they were folded into the consolidated file (history in git).
 
-### Table Inventory (30 active)
+### Table Inventory (29 active)
 
 | # | Table | Purpose | Key constraints |
 |---|-------|---------|-----------------|
@@ -88,16 +87,16 @@ Programs ──► program_habits   (template library, system + user)
 | 19 | `activity_logs` | Append-only audit trail | action + label + amount + meta JSONB |
 | 20 | `intentions` | Incubator (someday-maybe) | status: incubating/deferred/executed/abandoned |
 | 21 | `intention_logs` | Incubator audit trail | FK → intentions |
-| 22 | `fitness_logs` | Workout sessions | session_name, duration_min, energy |
-| 23 | `tags` | Central tag system | UNIQUE(user_id, name) |
-| 24 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
-| 25 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
-| 26 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
-| 27 | `knowledge_groups` | KB folder/group metadata | title, emoji, description. FK → profiles |
-| 28 | `collection_groups` | Junction: KB ↔ Groups (M:N) | Composite PK(collection_id, group_id), CASCADE |
-| 29 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
-| 30 | `inspirational_quotes` | User + system quotes | FK → profiles, `is_active` toggle, `audio_url` optional |
-| — | `friendships` | **[ARCHIVED v3.0.0]** Friend requests | Code in `src/_archived/FriendsPage.jsx`. Table exists in production DB but is not used by any active hook or page. Safe to DROP when ready. |
+| 22 | `tags` | Central tag system | UNIQUE(user_id, name) |
+| 23 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
+| 24 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
+| 25 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
+| 26 | `knowledge_groups` | KB folder/group metadata | title, emoji, description. FK → profiles |
+| 27 | `collection_groups` | Junction: KB ↔ Groups (M:N) | Composite PK(collection_id, group_id), CASCADE |
+| 28 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
+| 29 | `inspirational_quotes` | User + system quotes | FK → profiles, `is_active` toggle, `audio_url` optional |
+| — | `fitness_logs` | **[ARCHIVED v4.26.0]** Workout sessions | `session_name`, `duration_min`, `energy`. Frontend code deleted v4.26.0 (recoverable from git history). Table still exists in production DB, no active hook or page uses it. Safe to DROP when ready. |
+| — | `friendships` | **[ARCHIVED v3.0.0]** Friend requests | Frontend code deleted v4.25.0 (was `src/_archived/`, recoverable from git history). Table exists in production DB but is not used by any active hook or page. Safe to DROP when ready. |
 
 ### Deprecated Columns
 
@@ -113,7 +112,7 @@ Named in older docs / older `ARCHITECTURE.md` revisions, but **never** in the cu
 
 | Table | Reality |
 |-------|---------|
-| `teams`, `reactions`, `partner_queue` | Team feature cancelled v3.0.0 — code in `src/_archived/` |
+| `teams`, `reactions`, `partner_queue` | Team feature cancelled v3.0.0 — frontend code deleted v4.25.0 |
 | `quiz_attempts` | Quiz XP goes to `xp_logs` (deduped by reason+meta) |
 | `daily_challenge_completions` | Challenge XP goes to `xp_logs` |
 | `mood_logs` | Existed until v4.10.1, dropped — not in `schema_v4.24.0.sql` |
@@ -146,7 +145,6 @@ Source: `XP_REWARDS` in `src/hooks/useXpStore.js` (+ `FOCUS_XP` in `useFocusTime
 | Daily Challenge | +20 | Max 1/day |
 | Quiz | score × 5 (0–50) | Per attempt |
 | Focus Session | +15 | Per session (deduped by `meta.sessionId`) |
-| Fitness Log | +10 | Per logged session (`TrackerPage`, tab Sức Khỏe) |
 
 ## Level Thresholds
 

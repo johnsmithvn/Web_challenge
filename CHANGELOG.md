@@ -1,5 +1,135 @@
 # CHANGELOG
 
+## v4.26.2 — 2026-07-29
+### Removed
+- **`useActivityLog.getTimelineByDate()`** (31 dòng) — dead code. JSDoc ghi *"for DailyTimeline component"*, nhưng component đó chưa bao giờ tồn tại. Grep toàn `src/`: **0 caller**. Hàm được export nên trông như API sẵn có, thực chất là lời hứa chưa thực hiện. Hook nay còn 3 hàm: `logActivity`, `getHeatmapData`, `getTodayCount`
+
+### Fixed (tài liệu sai — không đổi hành vi runtime)
+- **JSDoc `useActivityLog`** khai **6/13 `action` không có caller nào**: `task_add`, `collect_add`, `mood_set`, `xp_earned`, `journey_start`, `journey_complete`. Đồng thời **thiếu 5 action đang ghi thật**: `subscription_add`, `inbox_snooze`, `inbox_classify`, `inbox_bulk_delete`, `inbox_bulk_classify`. Thay bằng bảng 11 action verify từ call site, kèm cột "Written by"
+- **`docs/FEATURES.md` §24** mô tả *"Daily drill-down: Click ngày → vertical timeline với action icons, timestamps, labels, XP amounts"* — feature này **không tồn tại**: `handleHeatmapClick` trong `LifeLogPage.jsx:40` là no-op (`() => {}`). Xoá bullet, thêm dòng MonthCalendar (thứ thực sự đang render), sửa list action 7 → 11
+
+### Notes
+- ⚠️ **Không** xoá/thêm call site `logActivity` nào (12 chỗ) — heatmap `/life-log` + KPI "Hoạt động" `/dashboard` vẫn chạy nguyên
+- Ghi lại 3 giới hạn đã phát hiện vào JSDoc + `docs/TASKS.md` (không giấu TODO chỉ trong code — RULES §"General Practices"):
+  - `amount` nhồi **4 đơn vị** vào 1 cột: XP (`habit_done`) / VNĐ (`expense_add`) / số ngày (`inbox_snooze`) / số item (`inbox_bulk_*`), không có cột unit → không SUM/so sánh được
+  - Read-side **chỉ COUNT row**. `action`, `label`, `amount`, `meta` ghi vào DB nhưng **chưa được đọc ở đâu**
+  - Coverage lệch: `useUserTasks.completeTask` (cách hoàn thành task bình thường) **không log gì** — chỉ Inbox quick-done phát `task_done`
+- Cố ý **chưa** thiết kế lại schema: read-side hiện chỉ là 1 con số đếm, chưa biết cần query gì thì thiết kế event schema sẽ lặp lại đúng sai lầm cũ. Chờ xong feature
+- `npm run build` 0 lỗi · `npm run lint` 64 warning = baseline · `npm test` 3/3 OK
+
+### Files Modified
+- `src/hooks/useActivityLog.js` (−31 dòng logic, JSDoc viết lại)
+- `docs/FEATURES.md` §24, `docs/TASKS.md`, `CHANGELOG.md`, `package.json`
+
+## v4.26.1 — 2026-07-28
+### Added
+- **`npm test`** — chạy cả 3 self-check: `api/_lib/smoke.test.js`, `src/utils/dateUtils.test.js`, `src/utils/mediaUtils.test.js`. Không thêm test framework nào, chỉ `node:assert` + `node <file>`
+- **`src/utils/dateUtils.test.js`** — khoá hợp đồng "`toDateStr` phải theo giờ **địa phương**". Case 00:30 sáng sẽ fail ngay nếu ai đó đổi lại thành `toISOString()`. Đã chạy pass ở TZ `Asia/Ho_Chi_Minh`, `UTC`, `America/New_York`
+- **`src/utils/mediaUtils.test.js`** — 30 case khoá hành vi trước khi gộp `isAudioUrl`/`isVideoUrl`, gồm các chỗ 2 hàm cũ lệch nhau: `#podcast` chỉ tính audio, `.webm`/`.ogg` khớp cả hai, URL không parse được thì chỉ dựa vào đuôi file
+
+### Changed (Refactor P2 — tầng data, không đổi hành vi)
+- **`useUserTasks` / `useIntentions` / `useTags`** — bỏ singleton `getSb()` + `await import('../lib/supabase')` (8 dòng/file), dùng `import { supabase, isSupabaseEnabled }` như 17 hook còn lại. Lazy-import này vốn không tiết kiệm gì: `AuthContext` (provider gốc) đã import tĩnh `supabase`, nên module luôn nằm trong main chunk. Xoá **29 cặp** `const sb = await getSb()` + `if (!sb) return …`; lớp bảo vệ chuyển vào `const isAuth = isSupabaseEnabled && !!user` — mọi hàm DB trong 3 hook đều đã gate bằng `isAuth`, nên không mất guard nào
+- **`useCollections`** — `getSnoozedCount` và `fetchSnoozedItems` dùng chung `snoozedFilter()`. Trước đây định nghĩa "snoozed là gì" (3 điều kiện `.eq/.eq/.gt`) bị copy ở 2 nơi, đổi rule phải sửa 2 chỗ
+- **`mediaUtils`** — `isAudioUrl` + `isVideoUrl` giống nhau ~90% (mỗi hàm lặp regex đuôi file 2 lần: 1 trong `try`, 1 trong `catch`) → gộp về `isMediaUrl(url, kind, extRe)`, 2 export thành wrapper 1 dòng
+- **`dateUtils`: thêm `toDateStr(date?)`** — gộp **4 bản copy y hệt** của hàm sinh chuỗi `yyyy-MM-dd` theo giờ local: `todayStr` (TaskListSection), IIFE `_today` (useIntentions), `localDateStr` (IncubatorPage), `toStr` (DatePickerPopover). 17 callsite đổi tên, hành vi không đổi (cả 4 bản đều là local)
+
+### Notes
+- ⚠️ **Còn 5 chỗ dùng `toISOString().split('T')[0]` (UTC) làm "hôm nay"** — `useUserTasks`, `useSubscriptions`, `DashboardPage`, `CashflowBar`, `MonthCalendar`. Ở GMT+7 từ 00:00–06:59 chúng hiểu là *ngày hôm qua*. Đây là **bug timezone**, không phải over-engineering, và sửa nó đổi cách chốt ngày của task/subscription/calendar → cố ý KHÔNG gộp vào đợt refactor này. `TODO: decision needed`
+- **Chưa làm** 2 mục còn lại của P2 vì đang chờ quyết định: (a) xoá 2 thang fallback migration ở `useCollections`/`useUserTasks` — cần biết migration `task_collections`/`collection_tags` đã chạy trên prod chưa; (b) bỏ retry của `spawnRecurringTask` — RULES §7 đang liệt kê nó là pattern bắt buộc
+- `npm run build` 0 lỗi · `npm run lint` 64 warning = baseline · `npm test` 3/3 OK
+
+### Files Added
+- `src/utils/dateUtils.test.js`, `src/utils/mediaUtils.test.js`
+
+### Files Modified
+- `src/hooks/useUserTasks.js`, `src/hooks/useIntentions.js`, `src/hooks/useTags.js`, `src/hooks/useCollections.js`
+- `src/utils/dateUtils.js`, `src/utils/mediaUtils.js`
+- `src/components/TaskListSection.jsx`, `src/components/DatePickerPopover.jsx`, `src/pages/IncubatorPage.jsx`
+- `package.json` (script `test` + version), `CHANGELOG.md`, `docs/TASKS.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, `README.md`, `PROJECT.md`
+
+## v4.26.0 — 2026-07-28
+### Removed
+- **Feature Fitness Log / 🏋️ Sức Khỏe (tab 5 của `/tracker`)** — xoá toàn bộ code frontend:
+  - `src/hooks/useFitnessLog.js` (203 dòng) — xoá file
+  - `src/pages/TrackerPage.jsx` — xoá tab `fitness` (209 dòng JSX: form nhập, list hôm nay, inline edit, week summary), 5 state `fit*` + `editFit`, entry `{ key: 'fitness' }` trong `TABS`, import hook. **TrackerPage nay còn 4 tab**: ⚡ Hôm Nay · 📅 Lịch · 📊 Tuần · ⚙️ Quản Lý
+  - `src/pages/DashboardPage.jsx` — xoá section "🏋️ Sức Khỏe" + card "Tuần Này" (29 dòng), hook `useFitnessLog`, import
+  - XP `fitness_done` (+10/buổi) và `logActivity('fitness_done')` biến mất cùng tab — không có chỗ nào khác gọi
+- Tổng: **-455 dòng** code
+
+### Notes
+- **Bảng `fitness_logs` KHÔNG bị DROP.** `data/schema_v4.24.0.sql` là master schema, RULES §3 cấm sửa khi không có chỉ thị rõ ràng. Bảng vẫn tồn tại trên production, không hook/page nào dùng → an toàn để DROP khi bạn muốn. Ghi nhận trong `docs/DATABASE.md` như bảng archived (giống tiền lệ `friendships`). `TODO: decision needed` — có DROP bảng + data không?
+- **Row `activity_logs` cũ với `action = 'fitness_done'` vẫn còn** và vẫn được tính vào heatmap Life Log. Đây là bảng append-only audit (RULES: no UPDATE/DELETE) nên cố ý không xoá. Không gây lỗi render: LifeLogPage không map `action` → label, chỉ đếm.
+- **`tpl-fitness` trong `src/data/programs.json` KHÔNG bị xoá** — đó là journey template "Kỷ Luật Thể Chất" (21 ngày: tập luyện / uống nước / ngủ sớm) thuộc feature Journey (§14), không liên quan tới Fitness Log. Xoá nó sẽ mất 1 trong 5 template hệ thống và phá journey đang chạy của user.
+- `npm run build` 0 lỗi · `npm run lint` 64 warning = baseline · `node api/_lib/smoke.test.js` OK
+
+### Files Removed
+- `src/hooks/useFitnessLog.js`
+
+### Files Modified
+- `src/pages/TrackerPage.jsx`, `src/pages/DashboardPage.jsx`, `package.json`
+- `docs/FEATURES.md` — xoá §22, **đánh số lại §23–§28 → §22–§27** (header khai báo "§1–§27 đang chạy, số duy nhất và tăng dần"), bỏ dòng XP Fitness, bỏ dòng Data Architecture, sửa "5 tabs" → "4 tabs", thêm dòng vào bảng **Archived / Removed**
+- `docs/DATABASE.md` — `fitness_logs` chuyển xuống nhóm archived, **đánh số lại inventory 23–30 → 22–29**, table count `30 active + 1 archived` → `29 active + 2 archived`, bỏ `fitness_logs` khỏi Entity Overview, bỏ dòng XP Fitness
+- `docs/ARCHITECTURE.md` — bỏ domain `Fitness`, thêm `fitness_logs` vào `Archived`, `hooks/ (21)` → `(20)`, sửa số bảng active
+- `docs/RULES.md` — bỏ dòng `Fitness Log +10` khỏi bảng XP §16
+- `PROJECT.md` — module map `/tracker`: `5 tab` → `4 tab`, bỏ `useFitnessLog` + `fitness_logs`; sửa `§1–§28` → `§1–§27`
+- `docs/PLAN.md`, `docs/TASKS.md` — ghi nhận việc xoá
+- Entry lịch sử của v4.0.0 / v4.0.3 trong `PLAN.md`, `TASKS.md`, `README.md`, CHANGELOG cũ **giữ nguyên** — là log quá khứ, không phải mô tả trạng thái hiện tại
+
+## v4.25.1 — 2026-07-28
+### Added
+- **`api/_lib/driveToken.js`** — Helper ký JWT Service Account + đổi access token, dùng chung cho `/api/upload` và `/api/stream` (trước đó mỗi file 1 bản copy). Cache token **theo scope** (`Map` scope → token): upload cần `/auth/drive` (ghi), stream chỉ cần `/auth/drive.readonly`. Nếu cache chung 1 biến thì upload có thể nhận token readonly → 403 khó hiểu, nên key theo scope là bắt buộc chứ không phải tùy chọn
+- **`api/_lib/smoke.test.js`** — Self-check chạy bằng `node api/_lib/smoke.test.js`, phủ 3 điều `npm run build` không kiểm được: (1) `base64url` cho ra đúng chuỗi như chain `.replace()` cũ (sai là JWT chết âm thầm), (2) format tên file upload không đổi, (3) sign/verify RS256 round-trip với key thật. Đặt trong `_lib/` nên Vercel không route thành endpoint
+
+### Changed
+- **`api/upload.js` + `api/stream.js`** — Bỏ 2 bản `getDriveToken` trùng nhau (~27 dòng/file), import từ `_lib/driveToken.js`. Upload nay **cũng cache token** (trước không cache, mỗi request ký JWT mới) — hệ quả: đổi Service Account key thì token cũ còn sống tối đa ~58 phút, giống hành vi `/api/stream` vốn có
+- **`api/_lib/*.js`** — 6 chuỗi `.toString('base64').replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_')` → `.toString('base64url')` (native Node)
+- **`api/_lib/verifyAuth.js`** — Bỏ `createClient()` + helper `withTimeout` tự viết (10 dòng `Promise.race`), thay bằng 1 `fetch` tới `/auth/v1/user` với `AbortSignal.timeout(8000)`. Hành vi giữ nguyên: token sai/hết hạn → `null` → handler trả 401. Thêm `.replace(/\/$/, '')` cho `SUPABASE_URL` (trước `createClient` tự lo dấu `/` cuối). Phụ: `api/` không còn import `@supabase/supabase-js` → bundle serverless nhỏ hơn
+- **`api/upload.js`** — `generateFileName()` từ 15 dòng (6 biến `padStart`) còn 4 dòng. **Format tên file giữ y nguyên** `LifeHub_<folder>_<yyyymmdd>_<HHMMSS>_<hex6>.<ext>`, có test khẳng định. Giữ nguyên `Math.floor(Math.random()*0xffffff).padStart(6,'0')` — không đổi nguồn entropy, và `padStart` là cái bảo đảm luôn đủ 6 ký tự
+
+### Docs
+- **`docs/PLAN.md`** — Thêm **Phase 12 — Refactor chống over-engineering** (bảng P0–P6 kèm trạng thái, 2 `TODO: decision needed` đang treo) + 2 dòng v4.25.0/v4.25.1 vào bảng version. Bump header v4.22.0 → v4.25.1. Ghi rõ bảng version thiếu v4.23.0/v4.24.x — sai lệch có từ trước, không fix vì ngoài scope
+- **`docs/ARCHITECTURE.md`** — Cây `api/` nay liệt kê cả `_lib/driveToken.js` + `_lib/smoke.test.js` (trước chỉ có `verifyAuth.js`)
+- **`README.md`** — Cây `api/` bổ sung 2 file `_lib/` mới. Sửa luôn `data/schema_v4.4.0.sql` → `schema_v4.24.0.sql` + `reset_user_data.sql`: file cũ đã bị gộp/xoá từ v4.24.1 nên người mới làm theo README sẽ đi tìm file không tồn tại
+- **Header version** — `RULES.md`, `ARCHITECTURE.md`, `DATABASE.md`, `FEATURES.md`, `PROJECT.md` đồng bộ v4.24.1 → **v4.25.1**, Updated 2026-07-28
+
+### Notes
+- **Chưa làm** 2 mục còn lại của P1, cố ý bỏ vì rủi ro cao: (a) thay parser multipart tự viết bằng `Response.formData()` — undici từng có vấn đề với filename non-ASCII/file lớn; (b) thay vòng `pump` bằng `Readable.fromWeb().pipe()`. Cả hai vẫn nằm trong `docs/TASKS.md`
+- **Không sửa gì thuộc security**: authz folder-boundary của stream, rate limit per-IP, cap 50MB, CORS allowlist, sanitize mimeType — giữ 100%
+- `npm run build` 0 lỗi (chỉ build frontend), `npm run lint` 64 warning = baseline, `node api/_lib/smoke.test.js` OK
+- ⚠️ **Vẫn cần test tay sau deploy** — build không chạy `api/` bao giờ: upload 1 ảnh, upload 1 audio, seek thanh audio Drive (kiểm 206 Partial Content), gọi `/api/upload` không token phải ra 401
+
+## v4.25.0 — 2026-07-28
+### Removed
+- **`src/_archived/` (11 file, 2.524 dòng)** — Team + Friends code huỷ từ v3.0.0, 0 import trong toàn repo. Xoá hẳn thay vì giữ làm "tham khảo". Khôi phục được từ git history (thư mục **có** được track, dòng `src/_archived` trong `.gitignore` không untrack file đã commit — ghi chú v4.23.0 "prevents dead code from being committed" là sai). Bỏ luôn dòng đó khỏi `.gitignore`
+- **`@uiw/react-md-editor` + `@uiw/react-markdown-preview`** — 0 lần import trong `src/`, editor markdown đang dùng `react-markdown` + Tiptap. `npm install` gỡ **43 package**
+- **`logger.debug()`** — không caller
+- **`useCollections`: `toggleStar()`, `archiveItem()`, `getInboxCount()`** — không caller (wrapper 1 dòng của `updateItem` + 1 query đếm không ai gọi)
+- **`dateUtils`: 8/10 export** — `formatWeekdayDate`, `formatMonthYear`, `formatMonth`, `formatWeekdayNarrow`, `formatDateShort`, `formatWeekdayShort`, `parseDateLocal`, `formatDayMonth` đều không có caller. Giữ `formatDate` + `formatDateTime`
+
+### Fixed
+- **`@keyframes fadeIn` xung đột toàn cục** — có 2 định nghĩa khác nhau cùng tên: `global/journey/generic-modal` (chỉ opacity) và `collect/inbox` (opacity + `translateY(-3px)`). Vì `@keyframes` là global và bản load sau thắng, hiệu ứng fadeIn của cả app phụ thuộc vào page nào được lazy-load trước. Nay: `global.css` giữ `fadeIn` (opacity) + thêm `fadeInSlide` (có translateY) dùng chung; xoá 4 bản định nghĩa trùng ở `journey/generic-modal/collect/inbox`; 7 usage trong `inbox.css` + 1 trong `collect.css` đổi sang `fadeInSlide`
+
+### Changed
+- **`CollectPage.jsx`** — Xoá `formatDate()` local (trùng `dateUtils.formatDate`, file đã import từ đó rồi); gộp 2 hàm `slugify` khác nhau trong cùng file thành 1 (bản dùng chung nay có `.trim()`, tránh slug bắt đầu bằng dấu `-`); `h1`–`h4` override giống hệt nhau → 1 vòng `Object.fromEntries`
+- **`TaskListSection.jsx`** — Xoá 3 alias `filteredToday`/`filteredOverdue`/`filteredFuture` (gán thẳng từ `todayTasks`/`overdueTasks`/`futureTasks`, không filter gì), 14 callsite dùng biến gốc
+- **`docs/RULES.md`** — Bỏ 2 luật "Do NOT touch `src/_archived/`" (§3 + §Scope & Restrictions) vì thư mục không còn tồn tại
+- **`docs/ARCHITECTURE.md` / `PROJECT.md` / `docs/DATABASE.md` / `docs/FEATURES.md`** — Bỏ/cập nhật các tham chiếu tới `src/_archived/` đang mô tả như trạng thái hiện tại. Ghi rõ code Team/Friends xoá ở v4.25.0, lấy lại được từ git history. Các entry lịch sử trong `docs/PLAN.md`, `docs/TASKS.md` và CHANGELOG cũ giữ nguyên (là log quá khứ, không phải mô tả hiện tại)
+
+### Files Removed
+- `src/_archived/` (toàn bộ: `TeamPage.jsx`, `FriendsPage.jsx`, `useTeam.js`, `useTeamCheck.js`, `useTeamRules.js`, `team/*` 4 file, `team.css`, `friends.css`)
+
+### Files Modified
+- `.gitignore`, `package.json`, `CHANGELOG.md`
+- `src/utils/logger.js`, `src/utils/dateUtils.js`, `src/hooks/useCollections.js`
+- `src/pages/CollectPage.jsx`, `src/components/TaskListSection.jsx`
+- `src/styles/global.css`, `src/styles/collect.css`, `src/styles/inbox.css`, `src/styles/journey.css`, `src/styles/generic-modal.css`
+- `docs/RULES.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/FEATURES.md`, `PROJECT.md`
+
+### Notes
+- `npm run build` — 0 lỗi. `npm run lint` — 64 warning, **bằng đúng baseline trước khi sửa**, không phát sinh warning mới
+- `docs/_archived/` (PDF + 2 file md) **không** bị chạm — khác scope
+- Đây là Phase 0 của đợt refactor chống over-engineering. P1–P5 còn lại chờ approve từng phase
+
 ## v4.24.1 — 2026-07-27
 ### Changed (Documentation only — không sửa code app)
 - **`docs/DATABASE.md`** — Sửa mâu thuẫn số bảng (26 / 28 / 30 → **31 `CREATE TABLE` = 30 active + `friendships` archived**, đối chiếu trực tiếp `data/schema_v4.24.0.sql`). Bỏ tham chiếu tới `schema_v4.4.0.sql` và các `migration_*.sql` đã bị gộp/xoá. Sửa `collections.type` thành đúng 8 loại của CHECK constraint. Thay query leaderboard cũ (join view `user_xp` không tồn tại) bằng RPC `get_leaderboard()`. Bảng XP: bỏ "Duo streak (v3 planned)", thêm Fitness +10, sửa Quiz thành `score × 5`. Thêm mục **Streak — Source of Truth** ghi rõ `refresh_streak()` không tồn tại + `TODO: decision needed`. Thêm cột deprecated `user_tasks.energy_level/duration_est` (DROPPED v4.9.0) và `collections.tags` (không còn trong schema)

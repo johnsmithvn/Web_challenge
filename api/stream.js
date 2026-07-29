@@ -22,9 +22,7 @@
  *   ALLOWED_ORIGIN              — comma-separated allowed CORS origins (optional)
  */
 
-// Token cache — reuse across hot serverless invocations (token valid 1h)
-let cachedToken = null;
-let tokenExpiry = 0;
+import { getDriveToken, DRIVE_SCOPE_RO } from './_lib/driveToken.js';
 
 // Authorization caches (per warm instance)
 let allowedFolders = null;        // Set<string> of folder IDs (root + immediate subfolders)
@@ -81,49 +79,6 @@ function rateLimit(ip) {
   if (b.tokens < 1) return false;
   b.tokens -= 1;
   return true;
-}
-
-async function getDriveToken() {
-  const now = Date.now();
-  if (cachedToken && now < tokenExpiry) return cachedToken;
-
-  const saJsonStr = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!saJsonStr) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON not configured');
-
-  const crypto = await import('crypto');
-  const sa = JSON.parse(saJsonStr);
-  const nowSec = Math.floor(now / 1000);
-  const payload = {
-    iss: sa.client_email,
-    scope: 'https://www.googleapis.com/auth/drive.readonly',
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: nowSec + 3600,
-    iat: nowSec,
-  };
-
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const encodeBase64Url = (obj) =>
-    Buffer.from(JSON.stringify(obj)).toString('base64')
-      .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const unsigned = `${encodeBase64Url(header)}.${encodeBase64Url(payload)}`;
-  const signature = crypto.createSign('RSA-SHA256')
-    .update(unsigned)
-    .sign(sa.private_key, 'base64')
-    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const jwt = `${unsigned}.${signature}`;
-
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
-    signal: AbortSignal.timeout(8000),
-  });
-  const data = await tokenRes.json();
-  if (!tokenRes.ok) throw new Error(data.error_description || 'Token fetch failed');
-
-  cachedToken = data.access_token;
-  tokenExpiry = now + 3500 * 1000; // refresh 100s before expiry
-  return cachedToken;
 }
 
 // Build the set of authorized folder IDs: the app root + its immediate subfolders
@@ -199,7 +154,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const accessToken = await getDriveToken();
+    const accessToken = await getDriveToken(DRIVE_SCOPE_RO);
 
     // Authorization: only serve files that live under the app's Drive folder.
     const authorized = await isFileAuthorized(accessToken, fileId, rootFolderId);

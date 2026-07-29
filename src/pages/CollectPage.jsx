@@ -18,7 +18,7 @@ import QuoteWidget from '../components/QuoteWidget';
 import UrlInputPopover from '../components/UrlInputPopover';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
 import { stripMediaTag } from '../utils/mediaUtils';
-import { formatDateTime } from '../utils/dateUtils';
+import { formatDate, formatDateTime } from '../utils/dateUtils';
 import MediaPreview from '../components/MediaPreview';
 import CustomSelect from '../components/CustomSelect';
 
@@ -84,10 +84,6 @@ function safeHostname(url) {
   catch { return url.replace(/^https?:\/\//, '').split('/')[0] || url; }
 }
 
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
 // Auto-detect Tiptap JSON — fallback when content_format column not yet migrated
 function isTiptapBody(item) {
   if (item.content_format === 'tiptap') return true;
@@ -117,8 +113,6 @@ function TagInput({ tags = [], onChange, suggestions = [] }) {
       })
       .slice(0, 10);
   }, [suggestions, tagNames, input]);
-
-  const slugify = (v) => v.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '');
 
   const addTag = useCallback((val) => {
     // val can be string or tag object
@@ -529,19 +523,22 @@ function PostcardCard({ item, index, onClick }) {
   );
 }
 
-/* ── Heading slug (must match extractHeadings) ────────────── */
+/* ── Slug for heading anchors (TOC) + tag names ────────────── */
 function slugify(text) {
-  return String(text).toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+  return String(text).trim().toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
 }
 
 const REMARK_PLUGINS = [remarkGfm];
 
 /* Custom ReactMarkdown components — injects id attrs for TOC + media embeds */
+const HEADING_TAGS = ['h1', 'h2', 'h3', 'h4'];
+const headingComponents = Object.fromEntries(HEADING_TAGS.map(Tag => [
+  Tag,
+  ({ children }) => <Tag id={slugify(React.Children.toArray(children).join(''))}>{children}</Tag>,
+]));
+
 const createMdComponents = (onUrlToggle) => ({
-  h1: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h1 id={id}>{children}</h1>; },
-  h2: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h2 id={id}>{children}</h2>; },
-  h3: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h3 id={id}>{children}</h3>; },
-  h4: ({ children }) => { const id = slugify(React.Children.toArray(children).join('')); return <h4 id={id}>{children}</h4>; },
+  ...headingComponents,
   /* Responsive images with lazy loading */
   img: ({ src, alt }) => (
     <img src={src} alt={alt || ''} className="kb-md-image" loading="lazy" />

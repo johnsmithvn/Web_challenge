@@ -1,15 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
-
-let _supabase = null;
-async function getSb() {
-  if (!_supabase) {
-    const mod = await import('../lib/supabase');
-    _supabase = mod.supabase;
-  }
-  return _supabase;
-}
+import { toDateStr } from '../utils/dateUtils';
 
 /**
  * useIntentions — Incubator (Trạm Ấp Trứng) CRUD.
@@ -21,7 +14,7 @@ async function getSb() {
  */
 export function useIntentions() {
   const { user } = useAuth();
-  const isAuth = !!user;
+  const isAuth = isSupabaseEnabled && !!user;
   const userId = user?.id;
 
   const [intentions, setIntentions] = useState([]);
@@ -33,10 +26,7 @@ export function useIntentions() {
     if (!isAuth || !userId) return;
     setIsLoading(true);
     try {
-      const sb = await getSb();
-      if (!sb) return;
-
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from('intentions')
         .select('*')
         .eq('user_id', userId)
@@ -70,10 +60,7 @@ export function useIntentions() {
   const addIntention = useCallback(async ({ title, originalReason, description, estimatedCost, estimatedTime }) => {
     if (!isAuth || !userId || !title?.trim()) return null;
     try {
-      const sb = await getSb();
-      if (!sb) return null;
-
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from('intentions')
         .insert({
           user_id: userId,
@@ -93,7 +80,7 @@ export function useIntentions() {
       }
 
       // Log creation
-      await sb.from('intention_logs').insert({
+      await supabase.from('intention_logs').insert({
         intention_id: data.id,
         action: 'created',
         reason_note: originalReason || null,
@@ -111,14 +98,11 @@ export function useIntentions() {
   const deferIntention = useCallback(async (id, { reason, scheduledFor }) => {
     if (!isAuth || !reason?.trim()) return false;
     try {
-      const sb = await getSb();
-      if (!sb) return false;
-
       // Update review_date
       const updates = { updated_at: new Date().toISOString() };
       if (scheduledFor) updates.review_date = scheduledFor;
 
-      const { error: updateErr } = await sb
+      const { error: updateErr } = await supabase
         .from('intentions')
         .update(updates)
         .eq('id', id)
@@ -130,7 +114,7 @@ export function useIntentions() {
       }
 
       // Log the deferral
-      const { error: logErr } = await sb.from('intention_logs').insert({
+      const { error: logErr } = await supabase.from('intention_logs').insert({
         intention_id: id,
         action: 'deferred',
         reason_note: reason.trim(),
@@ -154,10 +138,7 @@ export function useIntentions() {
   const executeIntention = useCallback(async (id, { convertedTypes, convertedIds }) => {
     if (!isAuth) return false;
     try {
-      const sb = await getSb();
-      if (!sb) return false;
-
-      const { error: updateErr } = await sb
+      const { error: updateErr } = await supabase
         .from('intentions')
         .update({
           status: 'executed',
@@ -173,7 +154,7 @@ export function useIntentions() {
         return false;
       }
 
-      await sb.from('intention_logs').insert({
+      await supabase.from('intention_logs').insert({
         intention_id: id,
         action: 'executed',
         reason_note: convertedTypes?.length ? `Converted to ${convertedTypes.join(', ')}` : null,
@@ -191,10 +172,7 @@ export function useIntentions() {
   const abandonIntention = useCallback(async (id, reason) => {
     if (!isAuth) return false;
     try {
-      const sb = await getSb();
-      if (!sb) return false;
-
-      const { error: updateErr } = await sb
+      const { error: updateErr } = await supabase
         .from('intentions')
         .update({ status: 'abandoned', updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -205,7 +183,7 @@ export function useIntentions() {
         return false;
       }
 
-      await sb.from('intention_logs').insert({
+      await supabase.from('intention_logs').insert({
         intention_id: id,
         action: 'abandoned',
         reason_note: reason || null,
@@ -223,10 +201,7 @@ export function useIntentions() {
   const getLogs = useCallback(async (intentionId) => {
     if (!isAuth) return [];
     try {
-      const sb = await getSb();
-      if (!sb) return [];
-
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from('intention_logs')
         .select('*')
         .eq('intention_id', intentionId)
@@ -243,11 +218,8 @@ export function useIntentions() {
     }
   }, [isAuth]);
 
-  // Derived counts — use local date (NOT toISOString which is UTC)
-  const _today = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  })();
+  // Derived counts — ngay local (toDateStr), KHONG dung toISOString (UTC)
+  const _today = toDateStr();
   const reviewDueCount = intentions.filter(i => {
     if (!i.review_date) return false;
     return i.review_date <= _today;
@@ -257,9 +229,6 @@ export function useIntentions() {
   const updateIntention = useCallback(async (id, { title, originalReason, description, estimatedCost, estimatedTime }) => {
     if (!isAuth || !userId || !title?.trim()) return false;
     try {
-      const sb = await getSb();
-      if (!sb) return false;
-
       const updates = {
         title: title.trim(),
         original_reason: originalReason?.trim() || null,
@@ -269,7 +238,7 @@ export function useIntentions() {
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await sb
+      const { error } = await supabase
         .from('intentions')
         .update(updates)
         .eq('id', id)
@@ -281,7 +250,7 @@ export function useIntentions() {
       }
 
       // Log as reviewed
-      await sb.from('intention_logs').insert({
+      await supabase.from('intention_logs').insert({
         intention_id: id,
         action: 'reviewed',
         reason_note: 'Chỉnh sửa thông tin dự định',
@@ -302,10 +271,7 @@ export function useIntentions() {
   const fetchAbandoned = useCallback(async () => {
     if (!isAuth || !userId) return [];
     try {
-      const sb = await getSb();
-      if (!sb) return [];
-
-      const { data, error } = await sb
+      const { data, error } = await supabase
         .from('intentions')
         .select('*')
         .eq('user_id', userId)
@@ -327,13 +293,10 @@ export function useIntentions() {
   const deleteIntention = useCallback(async (id) => {
     if (!isAuth || !userId) return false;
     try {
-      const sb = await getSb();
-      if (!sb) return false;
-
       // Delete logs first to satisfy FK constraint
-      await sb.from('intention_logs').delete().eq('intention_id', id);
+      await supabase.from('intention_logs').delete().eq('intention_id', id);
 
-      const { error } = await sb
+      const { error } = await supabase
         .from('intentions')
         .delete()
         .eq('id', id)
@@ -357,10 +320,7 @@ export function useIntentions() {
   const restoreIntention = useCallback(async (id) => {
     if (!isAuth || !userId) return false;
     try {
-      const sb = await getSb();
-      if (!sb) return false;
-
-      const { error } = await sb
+      const { error } = await supabase
         .from('intentions')
         .update({ status: 'incubating' })
         .eq('id', id)
@@ -372,7 +332,7 @@ export function useIntentions() {
       }
 
       // Log restore action
-      await sb.from('intention_logs').insert({
+      await supabase.from('intention_logs').insert({
         intention_id: id,
         action: 'restored',
         reason_note: 'Khôi phục từ danh sách đã bỏ qua',

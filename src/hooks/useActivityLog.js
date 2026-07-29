@@ -12,16 +12,36 @@ const localYMD = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.g
 const localMidnight = (dateStr) => new Date(`${dateStr}T00:00:00`);
 
 /**
- * useActivityLog — Append-only logging for Life Log heatmap + timeline.
+ * useActivityLog — Append-only logging that feeds the Life Log heatmap.
  *
- * Table: activity_logs (see migration_v3.0.0.sql)
- * - action:     'habit_done' | 'habit_undo' | 'task_done' | 'task_add'
- *               | 'expense_add' | 'collect_add' | 'focus_done'
- *               | 'mood_set' | 'xp_earned' | 'challenge_done'
- *               | 'subscription_add' | 'journey_start' | 'journey_complete'
- * - label:      human-readable text ("Tập thể dục", "85,000₫ Ăn trưa")
- * - amount:     XP or VNĐ if applicable
- * - meta:       JSONB extra context { habit_id, category, etc. }
+ * Table: activity_logs (see data/schema_v4.24.0.sql § 20)
+ *
+ * `action` is free-form text (no CHECK constraint). Every value actually written
+ * as of v4.26.2 — verified from call sites, keep this list in sync when adding one:
+ *
+ * | action                | Written by                                        |
+ * |-----------------------|---------------------------------------------------|
+ * | habit_done/habit_undo | TrackerPage.jsx handleHabitTick                   |
+ * | challenge_done        | DailyChallenge.jsx                                |
+ * | expense_add           | FinancePage.jsx, InboxPage.jsx (quick expense)    |
+ * | subscription_add      | FinancePage.jsx                                   |
+ * | task_done             | InboxPage.jsx quick-done ONLY (see caveat below)  |
+ * | inbox_snooze          | InboxPage.jsx                                     |
+ * | inbox_classify        | InboxPage.jsx (row + detail view)                 |
+ * | inbox_bulk_delete     | InboxPage.jsx bulk bar                            |
+ * | inbox_bulk_classify   | InboxPage.jsx bulk bar                            |
+ * | focus_done            | useFocusTimer.js — inserts DIRECTLY, bypasses this hook |
+ *
+ * Stale data: rows with action='fitness_done' predate the v4.26.0 tab removal.
+ * Append-only means they stay, and the heatmap still counts them.
+ *
+ * ⚠️ Known limits — see docs/TASKS.md before building on this table:
+ * - `amount` mixes 4 units in one column (XP / VNĐ / snooze days / item count)
+ *   with no unit column, so it cannot be summed or compared across actions.
+ * - Read side only ever COUNTs rows (getHeatmapData, getTodayCount).
+ *   `action`, `label`, `amount` and `meta` are written but never read anywhere.
+ * - Coverage is partial: useUserTasks.completeTask (the normal way to finish a
+ *   task) logs nothing — only Inbox quick-done emits task_done.
  *
  * Design: fire-and-forget inserts. Never blocks the calling hook.
  * No UPDATE/DELETE — append-only audit trail.
@@ -99,38 +119,6 @@ export function useActivityLog() {
   }, [enabled, user]);
 
   /**
-   * Get timeline for a specific date (for DailyTimeline component).
-   * Returns: [{ id, action, label, amount, meta, created_at }, ...]
-   */
-  const getTimelineByDate = useCallback(async (dateStr) => {
-    if (!enabled) return [];
-
-    try {
-      const startLocal = localMidnight(dateStr);
-      const endLocal = localMidnight(dateStr);
-      endLocal.setDate(endLocal.getDate() + 1);
-
-      const { data, error } = await supabase
-        .from('activity_logs')
-        .select('id, action, label, amount, meta, created_at')
-        .eq('user_id', user.id)
-        .gte('created_at', startLocal.toISOString())
-        .lt('created_at', endLocal.toISOString())
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        logger.warn('[useActivityLog] timeline query error:', error.message);
-        return [];
-      }
-
-      return data || [];
-    } catch (err) {
-      logger.warn('[useActivityLog] timeline error:', err);
-      return [];
-    }
-  }, [enabled, user]);
-
-  /**
    * Get total activity count for today (for quick stats).
    */
   const getTodayCount = useCallback(async () => {
@@ -163,7 +151,6 @@ export function useActivityLog() {
   return {
     logActivity,      // (action, label?, amount?, meta?) => Promise<void>
     getHeatmapData,   // (startDate, endDate) => Promise<[{date, count}]>
-    getTimelineByDate,// (dateStr) => Promise<[{id, action, label, ...}]>
     getTodayCount,    // () => Promise<number>
     enabled,          // boolean — whether logging is active
   };

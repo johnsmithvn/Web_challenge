@@ -13,6 +13,7 @@
  *   DRIVE_FOLDER_ID                — Google Drive Root Folder ID to upload to
  */
 import { verifyAuth } from './_lib/verifyAuth.js';
+import { getDriveToken, DRIVE_SCOPE_RW } from './_lib/driveToken.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -77,34 +78,6 @@ export default async function handler(req, res) {
 }
 
 /* ── Google Drive Service Account Upload ───────────────────── */
-async function getDriveToken(serviceAccountJson) {
-  const crypto = await import('crypto');
-  const sa = JSON.parse(serviceAccountJson);
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    iss: sa.client_email,
-    scope: 'https://www.googleapis.com/auth/drive',
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: now + 3600,
-    iat: now,
-  };
-  
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const encodeBase64Url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const unsigned = `${encodeBase64Url(header)}.${encodeBase64Url(payload)}`;
-  const signature = crypto.createSign('RSA-SHA256').update(unsigned).sign(sa.private_key, 'base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const jwt = `${unsigned}.${signature}`;
-  
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error_description || 'Failed to get Google Token');
-  return data.access_token;
-}
-
 // Get or Create Subfolder
 async function getOrCreateSubfolder(accessToken, rootFolderId, folderName) {
   const cacheKey = `${rootFolderId}_${folderName}`;
@@ -147,20 +120,14 @@ async function getOrCreateSubfolder(accessToken, rootFolderId, folderName) {
   return createData.id;
 }
 
-function generateFileName(originalName, folder) {
-  const extMatch = originalName.match(/\.([a-zA-Z0-9]+)$/);
-  const ext = extMatch ? extMatch[1] : 'bin';
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const HH = String(now.getHours()).padStart(2, '0');
-  const MM = String(now.getMinutes()).padStart(2, '0');
-  const SS = String(now.getSeconds()).padStart(2, '0');
+export function generateFileName(originalName, folder) {
+  const ext = originalName.match(/\.([a-zA-Z0-9]+)$/)?.[1] || 'bin';
+  // yyyymmddHHMMSS (UTC — Vercel functions run in UTC)
+  const ts = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
   const hex = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
-  
+
   // Example: LifeHub_images_20260523_161030_1a2b3c.jpg
-  return `LifeHub_${folder}_${yyyy}${mm}${dd}_${HH}${MM}${SS}_${hex}.${ext}`;
+  return `LifeHub_${folder}_${ts.slice(0, 8)}_${ts.slice(8)}_${hex}.${ext}`;
 }
 
 async function handleDrive(req, res, file, mimeType, originalFilename, folder) {
@@ -172,8 +139,8 @@ async function handleDrive(req, res, file, mimeType, originalFilename, folder) {
   }
 
   try {
-    const accessToken = await getDriveToken(saJsonStr);
-    
+    const accessToken = await getDriveToken(DRIVE_SCOPE_RW);
+
     // Determine the target folder ID (Root vs Subfolder)
     let targetFolderId = rootFolderId;
     if (folder && folder !== 'uploads') {

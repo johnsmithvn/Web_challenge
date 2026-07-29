@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.24.1
-**Updated:** 2026-07-27
+**Version:** v4.26.1
+**Updated:** 2026-07-28
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 
@@ -34,11 +34,13 @@ src/
 ├── components/  (38) UI dùng lại, props-driven, không gọi supabase trực tiếp
 │   └── journey/  (5) ActiveJourneyPanel, ProgramBrowser, MyJourneys, JourneyHistory,
 │                     CustomJourneyModal
-├── hooks/       (21) use<Entity>.js — toàn bộ logic Supabase, dual-mode guest fallback
+├── hooks/       (20) use<Entity>.js — toàn bộ logic Supabase, dual-mode guest fallback
 ├── contexts/     (3) AuthContext, JourneyContext, ThemeContext
 ├── extensions/   (1) MediaNode.jsx — Tiptap atom node cho media inline
 ├── lib/          (1) supabase.js — singleton client, graceful fallback khi thiếu env
 ├── utils/        (4) currencyUtils, dateUtils, logger, mediaUtils (pure, no React)
+│                 (+2) dateUtils.test.js, mediaUtils.test.js — self-check `npm test`,
+│                     không nằm trong bundle (không file app nào import)
 ├── data/         (8) JSON content tĩnh (Rule 14): challenges, quiz, habits, quotes,
 │                     programs, expense-categories, knowledge, testimonials
 └── styles/      (32) 1 file / domain + global.css (design tokens). Không dùng Tailwind
@@ -46,12 +48,14 @@ src/
 api/                  Vercel serverless
 ├── upload.js         Upload proxy → Google Drive (Supabase JWT + folder whitelist)
 ├── stream.js         Drive media stream proxy (Range/seek, rate-limited)
-└── _lib/verifyAuth.js   JWT helper (không phải route)
+└── _lib/                Không phải route (Vercel bỏ qua prefix `_`)
+    ├── verifyAuth.js    Xác thực Supabase JWT qua `/auth/v1/user`
+    ├── driveToken.js    Ký JWT Service Account → access token, cache theo scope (rw/readonly)
+    └── smoke.test.js    Self-check: `node api/_lib/smoke.test.js`
 
 data/                 schema_v4.24.0.sql (source of truth) + reset_user_data.sql
 public/               favicon.svg, icons.svg, manifest.json, sw.js (task notifications)
 docs/                 ARCHITECTURE / DATABASE / FEATURES / PLAN / TASKS / RULES / AUDIT
-src/_archived/        Dead code (Team + Friends). Gitignored, KHÔNG sửa
 ```
 
 ---
@@ -119,7 +123,7 @@ vl_journey_title       # string — custom title for life journey chart (v2.2.0)
 ### Supabase Tables
 
 Không liệt kê lại ở đây — **`docs/DATABASE.md`** là nơi duy nhất mô tả bảng, còn
-**`data/schema_v4.24.0.sql`** là source of truth (31 `CREATE TABLE`: 30 active + `friendships` archived).
+**`data/schema_v4.24.0.sql`** là source of truth (31 `CREATE TABLE`: 29 active + `friendships` / `fitness_logs` archived).
 Các file `migration_*.sql` theo version đã bị gộp và xoá; đừng tham chiếu chúng nữa.
 
 Cụm bảng theo domain:
@@ -134,11 +138,10 @@ Cụm bảng theo domain:
 | Knowledge | `collections`, `knowledge_groups`, `collection_groups`, `collection_notes`, `inspirational_quotes` |
 | Finance | `expenses`, `subscriptions` |
 | Incubator | `intentions`, `intention_logs` |
-| Fitness | `fitness_logs` |
 | Tags | `tags`, `collection_tags`, `expense_tags`, `subscription_tags` |
 | Audit | `activity_logs` |
 | Account | `profiles`, `notification_settings` |
-| Archived | `friendships` (không hook nào dùng, an toàn để DROP) |
+| Archived | `friendships`, `fitness_logs` (không hook nào dùng, an toàn để DROP) |
 
 ### DashboardPage v3.1.0 — Data Sources
 

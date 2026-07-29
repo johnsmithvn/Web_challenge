@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import '../styles/datepicker.css';
+import { toDateStr } from '../utils/dateUtils';
 
 // ── Date helpers ──────────────────────────────────────────
-const toStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const nowHHMM = () => { const n = new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; };
 
 const WEEKDAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -77,7 +77,7 @@ function buildCalendar(year, month) {
  */
 export default function DatePickerPopover({ value, onChange, onClose, timeValue, onTimeChange, hideTime, style }) {
   const today = useMemo(() => new Date(), []);
-  const todayStr = useMemo(() => toStr(today), [today]);
+  const todayStr = useMemo(() => toDateStr(today), [today]);
 
   // Draft state — internal selection before Save
   const [draft, setDraft] = useState(value || '');
@@ -172,9 +172,9 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
           {shortcuts.map((s, i) => (
             <button
               key={i}
-              className={`dp-shortcut${draft === toStr(s.date) ? ' dp-shortcut--active' : ''}`}
+              className={`dp-shortcut${draft === toDateStr(s.date) ? ' dp-shortcut--active' : ''}`}
               onClick={() => {
-                setDraft(toStr(s.date));
+                setDraft(toDateStr(s.date));
                 setViewYear(s.date.getFullYear());
                 setViewMonth(s.date.getMonth());
               }}
@@ -208,7 +208,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
 
             {/* Day cells */}
             {cells.map((cell, i) => {
-              const ds = toStr(cell.date);
+              const ds = toDateStr(cell.date);
               const isToday = ds === todayStr;
               const isSelected = ds === draft;
               let cls = 'dp-grid__cell';

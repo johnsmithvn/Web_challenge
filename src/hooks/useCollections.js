@@ -223,37 +223,6 @@ export function useCollections() {
     });
   }, [updateItem]);
 
-  // ── Toggle star ─────────────────────────────────────────────
-  const toggleStar = useCallback(async (id, currentStatus) => {
-    const newStatus = currentStatus === 'starred' ? 'read' : 'starred';
-    return updateItem(id, { status: newStatus });
-  }, [updateItem]);
-
-  // ── Archive ─────────────────────────────────────────────────
-  const archiveItem = useCallback(async (id) => {
-    return updateItem(id, { status: 'archived' });
-  }, [updateItem]);
-
-  // ── Get inbox count (for badge on nav) ──────────────────────
-  const getInboxCount = useCallback(async () => {
-    if (!enabled) return 0;
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const { count, error } = await supabase
-        .from('collections')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('type', 'inbox')
-        .or(`snoozed_until.is.null,snoozed_until.lte.${today}`);
-
-      if (error) throw error;
-      return count || 0;
-    } catch (err) {
-      logger.warn('[useCollections] inboxCount error:', err.message);
-      return 0;
-    }
-  }, [enabled, user]);
-
   // ── Snooze inbox item ──────────────────────────────
   const snoozeItem = useCallback(async (id, untilDate) => {
     if (!enabled) return false;
@@ -277,46 +246,43 @@ export function useCollections() {
     }
   }, [enabled, user, fetchItems]);
 
-  // ── Get snoozed count ──────────────────────────────
+  // ── "Snoozed" = item inbox có snoozed_until ở tương lai ─────────
+  // Định nghĩa duy nhất, dùng cho cả count và list. Điều kiện ngược lại
+  // (chưa snooze / đã hết snooze) nằm trong applyFilters của fetchItems.
+  const snoozedFilter = useCallback((query) => query
+    .eq('user_id', user.id)
+    .eq('type', 'inbox')
+    .gt('snoozed_until', new Date().toISOString().split('T')[0]),
+  [user]);
+
   const getSnoozedCount = useCallback(async () => {
     if (!enabled) return 0;
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const { count, error } = await supabase
-        .from('collections')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('type', 'inbox')
-        .gt('snoozed_until', today);
-
+      const { count, error } = await snoozedFilter(
+        supabase.from('collections').select('id', { count: 'exact', head: true })
+      );
       if (error) throw error;
       return count || 0;
     } catch (err) {
       logger.warn('[useCollections] snoozedCount error:', err.message);
       return 0;
     }
-  }, [enabled, user]);
+  }, [enabled, snoozedFilter]);
 
   // ── Fetch snoozed items (for review panel) ──────────────────
   const fetchSnoozedItems = useCallback(async () => {
     if (!enabled) return [];
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('collections')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('type', 'inbox')
-        .gt('snoozed_until', today)
-        .order('snoozed_until', { ascending: true });
-
+      const { data, error } = await snoozedFilter(
+        supabase.from('collections').select('*')
+      ).order('snoozed_until', { ascending: true });
       if (error) throw error;
       return (data || []).map(item => ({ ...item, _tags: [] }));
     } catch (err) {
       logger.warn('[useCollections] fetchSnoozed error:', err.message);
       return [];
     }
-  }, [enabled, user]);
+  }, [enabled, snoozedFilter]);
 
   return {
     items,         // current fetched items
@@ -326,10 +292,7 @@ export function useCollections() {
     updateItem,    // (id, updates) => Promise<boolean>
     deleteItem,    // (id) => Promise<boolean>
     classifyItem,  // (id, newType) => Promise<boolean>
-    toggleStar,    // (id, currentStatus) => Promise<boolean>
-    archiveItem,   // (id) => Promise<boolean>
     snoozeItem,    // (id, untilDate) => Promise<boolean>
-    getInboxCount, // () => Promise<number>
     getSnoozedCount, // () => Promise<number>
     fetchSnoozedItems, // () => Promise<item[]>
     enabled,       // boolean

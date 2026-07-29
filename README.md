@@ -1,4 +1,4 @@
-# Life Hub — Personal Life OS v4.23.0
+# Life Hub — Personal Life OS v4.26.1
 
 > **Kỷ Luật = Hệ Thống, Không Phải Ý Chí**
 
@@ -23,6 +23,9 @@ cp .env.local.example .env.local
 # 4. Chạy dev server
 npm run dev
 # → http://localhost:5173
+
+# (tuỳ chọn) Self-check nhanh — node:assert, không cần cài gì thêm
+npm test
 ```
 
 > **Không có Supabase?** App vẫn chạy ở chế độ Guest (in-memory state, reset khi refresh). Chỉ cần key để bật Auth + cloud sync.
@@ -174,9 +177,11 @@ api/
   upload.js                 ← File upload proxy → Google Drive (Supabase JWT required)
   stream.js                 ← Google Drive media stream proxy (Range/seek; folder-scoped)
   _lib/verifyAuth.js        ← Supabase JWT verification helper (not a route)
+  _lib/driveToken.js        ← Drive Service Account token, cached per scope (not a route)
+  _lib/smoke.test.js        ← Self-check: `node api/_lib/smoke.test.js`
 data/
-  schema_v4.4.0.sql         ← Master DB schema
-  migration_*.sql           ← Incremental migrations
+  schema_v4.24.0.sql        ← Master DB schema (consolidated, idempotent)
+  reset_user_data.sql       ← Wipe one user's rows (dev helper)
 docs/
   ARCHITECTURE.md           ← Module structure + data flow
   DATABASE.md               ← Full SQL schema + RLS

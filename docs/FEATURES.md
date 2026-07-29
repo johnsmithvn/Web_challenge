@@ -1,9 +1,9 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.24.1
-**Updated:** 2026-07-27
+**Version:** v4.26.1
+**Updated:** 2026-07-28
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
-**Cấu trúc file:** §1–§28 = tính năng **đang chạy**, số thứ tự duy nhất và tăng dần.
+**Cấu trúc file:** §1–§27 = tính năng **đang chạy**, số thứ tự duy nhất và tăng dần.
 Cuối file: `Data Architecture` → `Routes` → **`Archived / Removed`**.
 Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuyển xuống bảng Archived kèm version.
 
@@ -20,7 +20,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 **File:** `src/pages/TrackerPage.jsx` (merged with HabitsPage since v1.9.0)
 
 **Mô tả:** Trang hành động chính — tick từng habit, xem tiến độ 21 ngày, track streak per-habit.
-**5 tabs:** ⚡ Hôm Nay | 📅 Lịch | 📊 Tuần | ⚙️ Quản Lý | 🏋️ Sức Khỏe (§22)
+**4 tabs:** ⚡ Hôm Nay | 📅 Lịch | 📊 Tuần | ⚙️ Quản Lý
 
 **Chi tiết:**
 - **Header Stats:** 3 stat cards: Streak 🔥, Tổng ngày 📅, Số habits 🎯
@@ -173,7 +173,6 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 | Daily Challenge | +20 | Max 1/ngày (un-check → removeXp) |
 | Quiz | score × 5 (0→50) | Mỗi lần làm |
 | Focus Session | +15 | 1 lần/session (deduped by `meta.sessionId`) |
-| Fitness Log | +10 | 1 lần/buổi tập (§22) |
 
 > Nguồn: `XP_REWARDS` trong `useXpStore.js`; `FOCUS_XP` trong `useFocusTimer.js`.
 
@@ -470,28 +469,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ---
 
-## 22. 🏋️ Sức Khỏe / Health Tab (v4.0.0)
-
-**Added:** v4.0.0
-**Files:** `src/hooks/useFitnessLog.js`, TrackerPage (tab thứ 5)
-**DB:** `fitness_logs`
-**Route:** `/tracker` (tab `fitness`)
-
-**Mô tả:** Phase 2 — Full CRUD fitness session logging + Dashboard integration.
-
-**Chi tiết:**
-- Form nhập: tên buổi tập + thời gian (phút) + năng lượng (Tốt/Bình thường/Tệ) + ghi chú tự do
-- Today log list: danh sách buổi tập hôm nay, **sửa inline** (click/✏️) + xóa từng log
-- Week summary: 3 KPI cards (số buổi + tổng phút + số ngày)
-- **Inline edit (v4.0.3):** Click log → edit form (session_name, duration, energy, notes) + Save/Huỷ
-- **Dashboard card (v4.0.3):** Compact "🏋️ Tuần Này" section trong Dashboard + today summary
-- XP: +10 XP/buổi tập
-- Heatmap: logActivity('fitness_done') → tự vào Life Log heatmap
-- **Data source:** Supabase `fitness_logs`
-
----
-
-## 23. 📓 Kho Tàng Kiến Thức (`/collect`) — v3.3.0
+## 22. 📓 Kho Tàng Kiến Thức (`/collect`) — v3.3.0
 
 **File:** `src/pages/CollectPage.jsx` + `src/styles/collect.css` + `src/styles/tiptap.css`
 **Component:** `src/components/TiptapEditor.jsx` (WYSIWYG) + `TiptapReadOnly` + `src/components/SlashCommand.jsx` [v3.3.0]
@@ -585,7 +563,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ---
 
-## 24. 💰 Finance (`/finance`)
+## 23. 💰 Finance (`/finance`)
 
 **File:** `src/pages/FinancePage.jsx` + `src/styles/finance.css`
 **Hook:** `src/hooks/useExpenses.js` + `src/hooks/useSubscriptions.js`
@@ -604,7 +582,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ---
 
-## 25. 📅 Life Log (`/life-log`)
+## 24. 📅 Life Log (`/life-log`)
 
 **File:** `src/pages/LifeLogPage.jsx` + `src/styles/lifelog.css`
 **Components:** `src/components/ActivityHeatmap.jsx`
@@ -614,15 +592,18 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 **Chi tiết:**
 - **Today stat badge:** Số hoạt động hôm nay
-- **ActivityHeatmap:** SVG 53×7 grid, 5-level purple scale, click để drill-down
-- **Daily drill-down:** Click ngày → vertical timeline với action icons, timestamps, labels, XP amounts
-- **Activity types logged:** habit_done, habit_undo, challenge_done, collect_add, focus_done, expense_add, subscription_add
+- **ActivityHeatmap:** SVG 53×7 grid, 5-level purple scale
+- **MonthCalendar:** Lịch tháng (habit data + skip log + task đã hoàn thành theo ngày)
+- **Activity types logged (11):** habit_done, habit_undo, challenge_done, task_done, expense_add, subscription_add, inbox_snooze, inbox_classify, inbox_bulk_delete, inbox_bulk_classify, focus_done
 
 **Data source:** `activity_logs` table (Supabase, append-only)
 
+> ⚠️ Heatmap chỉ **đếm số row/ngày** — không đọc `action`, `label`, `amount`, `meta`.
+> Chưa có daily drill-down: `onDateClick` của ActivityHeatmap hiện là no-op. Xem `docs/TASKS.md` § Activity Log.
+
 ---
 
-## 26. 🔔 Sidebar Widgets
+## 25. 🔔 Sidebar Widgets
 
 **Files:** `src/components/SubAlert.jsx` + `src/styles/widgets.css`
 
@@ -637,7 +618,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ---
 
-## 27. ⚙️ Cài Đặt (`/settings`)
+## 26. ⚙️ Cài Đặt (`/settings`)
 
 **File:** `src/pages/SettingsPage.jsx` + `src/styles/settings.css`
 **Hooks:** `src/hooks/useTags.js`, `src/hooks/useQuotes.js` (v4.12.0)
@@ -662,7 +643,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ---
 
-## 28. 🏷️ Tags — Hợp Nhất vào Knowledge Base (v4.1.0)
+## 27. 🏷️ Tags — Hợp Nhất vào Knowledge Base (v4.1.0)
 
 **Files:** `src/hooks/useTags.js` + `src/hooks/useCollections.js` + `src/pages/CollectPage.jsx`
 **DB:** `collection_tags` (đã nằm trong `data/schema_v4.24.0.sql`)
@@ -696,7 +677,6 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 | Inbox / Knowledge | `collections` (+ groups/notes/tags) | — (cần login) |
 | Finance | `expenses`, `subscriptions` | — (cần login) |
 | Incubator | `intentions`, `intention_logs` | — (cần login) |
-| Fitness | `fitness_logs` | — (cần login) |
 | Notifications | `notification_settings` + `vl_notif_settings` | localStorage |
 | Life milestones | `vl_life_journey_events` (localStorage-only) | localStorage |
 
@@ -734,9 +714,10 @@ Không còn là tính năng đang chạy. Giữ lại đây để không ai mô 
 
 | Tính năng | Trạng thái |
 |-----------|-----------|
-| 🤝 **Team Mode** (`/team`) | Huỷ v3.0.0. Code trong `src/_archived/` (`TeamPage.jsx`, `useTeam.js`, `team/*`). Route redirect `/tracker`. Bảng `teams`/`reactions`/`partner_queue` **chưa từng** tồn tại trong schema |
-| 👥 **Friends** (`/friends`) | Archived v3.0.0. Code trong `src/_archived/FriendsPage.jsx`. Route redirect `/tracker`. Bảng `friendships` còn trong schema nhưng không hook nào dùng — an toàn để DROP |
+| 🤝 **Team Mode** (`/team`) | Huỷ v3.0.0, code xoá hẳn v4.25.0 (`TeamPage.jsx`, `useTeam.js`, `team/*` — lấy lại được từ git history). Route redirect `/tracker`. Bảng `teams`/`reactions`/`partner_queue` **chưa từng** tồn tại trong schema |
+| 👥 **Friends** (`/friends`) | Archived v3.0.0, code xoá hẳn v4.25.0 (`FriendsPage.jsx` — lấy lại được từ git history). Route redirect `/tracker`. Bảng `friendships` còn trong schema nhưng không hook nào dùng — an toàn để DROP |
 | 📋 **Habits Page** (`/habits`) | Gộp vào TrackerPage v1.9.0, file xoá v2.2.1. Route redirect `/tracker` |
+| 🏋️ **Fitness Log / Sức Khỏe** (tab 5 của `/tracker`) | Xoá v4.26.0 — `useFitnessLog.js`, tab TrackerPage, card Dashboard, XP `fitness_done` (lấy lại được từ git history). Bảng `fitness_logs` **còn** trong schema, không hook nào dùng — an toàn để DROP. Row `activity_logs` với `action='fitness_done'` cũ vẫn còn, vẫn hiện trên heatmap Life Log |
 | 😊 **Mood Log** | Bỏ v4.10.1 (`useMoodLog` + bảng `mood_logs`). Chỉ còn `useSkipReasons` (§10) |
 | 🔗 **Inbox Link Preview** | Bỏ v4.23.0 cùng với `api/meta.js`. Inbox chỉ tự detect URL, không fetch metadata |
 | 📊 **DailyReview widget** | Xoá v4.7.1 để giảm UI clutter |
