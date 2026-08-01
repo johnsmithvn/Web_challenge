@@ -18,7 +18,7 @@ Before implementing any code changes:
 6. Implement the smallest correct solution.
 7. Prefer modifying existing code over creating new files.
 8. Reuse existing components, hooks, utilities, and patterns whenever possible.
-9. Run `npm run build` before completing the task.
+9. Do not run `npm run build` automatically. The user builds manually; only run it yourself if they report a build error, then fix and re-run until it passes.
 10. Summarize what changed.
 
 ---
@@ -111,12 +111,12 @@ Stay inside the requested scope.
 
 Before finishing every implementation:
 
-- Confirm build succeeded.
+- Do not claim the build passes — you didn't run it. Ask the user to build and report back.
 - Explain what changed.
 - Mention important tradeoffs.
 - Mention remaining TODOs if any.
 
-Do not claim completion without verification.
+If the user reports a build error, run `npm run build` yourself, fix it, and repeat until clean.
 
 
 ## Project Memory
