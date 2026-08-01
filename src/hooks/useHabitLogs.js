@@ -3,6 +3,7 @@ import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useActiveJourney } from '../contexts/JourneyContext';
 import { logger } from '../utils/logger';
+import { toDateStr } from '../utils/dateUtils';
 
 /**
  * useHabitLogs — per-habit daily completion tracking
@@ -77,7 +78,7 @@ export function useHabitLogs(journeyId = null) {
     try {
       const since = new Date();
       since.setDate(since.getDate() - 90);
-      const sinceStr = since.toISOString().split('T')[0];
+      const sinceStr = toDateStr(since);
 
       const { data, error } = await supabase
         .from('habit_logs')
@@ -171,7 +172,7 @@ export function useHabitLogs(journeyId = null) {
 
   // ── Toggle ─────────────────────────────────────────────────
   const toggleLog = useCallback(async (habitId, dateStr = null) => {
-    const today  = dateStr || new Date().toISOString().split('T')[0];
+    const today  = dateStr || toDateStr();
     const key    = `${today}_${habitId}`;
     const wasDone = !!habitProg[key];
 

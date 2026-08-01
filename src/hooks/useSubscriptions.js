@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
+import { advanceByCycle, monthlyCostForCycle } from '../utils/currencyUtils';
+import { toDateStr } from '../utils/dateUtils';
 
 /**
  * useSubscriptions — CRUD for the `subscriptions` table.
@@ -29,26 +31,22 @@ export function useSubscriptions() {
       const rows = data || [];
 
       // Auto-advance expired subscriptions
-      const today = new Date().toISOString().split('T')[0];
+      const today = toDateStr();
       const advancePromises = [];
 
       for (const sub of rows) {
         if (!sub.active || sub.next_due > today) continue;
 
         // Calculate next due date based on cycle
-        const d = new Date(sub.next_due + 'T00:00:00');
+        let d = new Date(sub.next_due + 'T00:00:00');
         const MAX_ADVANCES = 24; // safety: max 24 cycles forward (2 years monthly)
         let advances = 0;
-        while (d.toISOString().split('T')[0] <= today && advances < MAX_ADVANCES) {
-          if (sub.cycle === 'monthly') d.setMonth(d.getMonth() + 1);
-          else if (sub.cycle === '3month') d.setMonth(d.getMonth() + 3);
-          else if (sub.cycle === '6month') d.setMonth(d.getMonth() + 6);
-          else if (sub.cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
-          else d.setMonth(d.getMonth() + 1); // fallback
+        while (toDateStr(d) <= today && advances < MAX_ADVANCES) {
+          d = advanceByCycle(d, sub.cycle);
           advances++;
         }
 
-        const newDue = d.toISOString().split('T')[0];
+        const newDue = toDateStr(d);
         if (newDue !== sub.next_due) {
           sub.next_due = newDue; // update local copy
           advancePromises.push(
@@ -157,8 +155,8 @@ export function useSubscriptions() {
     const now = new Date();
     const limit = new Date(now);
     limit.setDate(limit.getDate() + days);
-    const limitStr = limit.toISOString().split('T')[0];
-    const todayStr = now.toISOString().split('T')[0];
+    const limitStr = toDateStr(limit);
+    const todayStr = toDateStr(now);
 
     return subs.filter(s =>
       s.active && s.next_due >= todayStr && s.next_due <= limitStr
@@ -169,12 +167,7 @@ export function useSubscriptions() {
   const getMonthlyCost = useCallback(() => {
     return subs
       .filter(s => s.active)
-      .reduce((sum, s) => {
-        if (s.cycle === 'yearly') return sum + Math.round(s.amount / 12);
-        if (s.cycle === '6month') return sum + Math.round(s.amount / 6);
-        if (s.cycle === '3month') return sum + Math.round(s.amount / 3);
-        return sum + s.amount;
-      }, 0);
+      .reduce((sum, s) => sum + monthlyCostForCycle(s.amount, s.cycle), 0);
   }, [subs]);
 
   return {

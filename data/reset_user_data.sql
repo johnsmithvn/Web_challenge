@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════
 -- RESET USER DATA — Xóa toàn bộ data app, GIỮ lại auth accounts
 -- Synced with: schema_v4.24.0.sql
--- Last updated: 2026-06-28
+-- Last updated: 2026-08-01
 -- Chạy trong Supabase SQL Editor
 -- ⚠️  KHÔNG THỂ HOÀN TÁC — chỉ chạy khi chắc chắn muốn reset
 -- ═══════════════════════════════════════════════════════════════
@@ -29,6 +29,11 @@ DELETE FROM tags;
 -- 5. Task↔Collection junction (v4.5.0, must go before user_tasks + collections)
 DELETE FROM task_collections;
 
+-- 5b. Knowledge groups (v4.11.0) — collection_groups/collection_notes cascade via
+-- collections FK ON DELETE CASCADE, nhưng knowledge_groups chỉ có user_id FK nên
+-- phải xoá tay, không thì "reset toàn bộ" để sót
+DELETE FROM knowledge_groups;
+
 -- 6. Collections & tasks (task FK → collection, must delete tasks first)
 DELETE FROM user_tasks;
 DELETE FROM collections;
@@ -52,6 +57,9 @@ DELETE FROM progress;
 DELETE FROM streaks;
 DELETE FROM notification_settings;
 
+-- 10b. Inspirational quotes (v4.12.0) — độc lập hoàn toàn, chỉ có user_id FK
+DELETE FROM inspirational_quotes;
+
 -- 11. XP (optional — uncomment nếu muốn reset XP luôn)
 -- DELETE FROM xp_logs;
 
@@ -63,9 +71,10 @@ DELETE FROM notification_settings;
 
 -- ═══════════════════════════════════════════════════════════════
 -- DONE — Auth accounts (auth.users) được giữ nguyên
--- Tables reset (11): collection_tags, expense_tags, subscription_tags,
+-- Tables reset: collection_tags, expense_tags, subscription_tags,
 --   intention_logs, intentions, habit_logs, journey_habits, user_journeys,
---   program_habits, programs, habits, tags, user_tasks, collections,
---   expenses, subscriptions, activity_logs, focus_sessions, fitness_logs,
---   skip_reasons, progress, streaks, notification_settings
+--   program_habits, programs, habits, tags, knowledge_groups, user_tasks,
+--   collections (+ cascade: collection_groups, collection_notes), expenses,
+--   subscriptions, activity_logs, focus_sessions, fitness_logs, skip_reasons,
+--   progress, streaks, notification_settings, inspirational_quotes
 -- ═══════════════════════════════════════════════════════════════

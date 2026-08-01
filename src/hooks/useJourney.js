@@ -3,6 +3,7 @@ import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useActiveJourney } from '../contexts/JourneyContext';
 import { logger } from '../utils/logger';
+import { toDateStr } from '../utils/dateUtils';
 
 /**
  * useJourney — manages user journey lifecycle mutations.
@@ -70,7 +71,7 @@ export function useJourney() {
 
     if (existing) return existing;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = toDateStr();
     const { data: newJourney, error: jErr } = await supabase
       .from('user_journeys')
       .insert({
@@ -120,7 +121,7 @@ export function useJourney() {
   // journey_habits = snapshot of which habits belonged to which journey.
   // habit_logs = tied to specific habit_id (scoped to its journey).
   const startJourney = useCallback(async ({ title, description, programId, targetDays, habits = [], habitMode = 'replace' }) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toDateStr();
     const payload = {
       user_id:     useDB ? user.id : 'guest',
       program_id:  programId || null,
@@ -242,7 +243,7 @@ export function useJourney() {
   // ── Complete journey ──────────────────────────────────────
   const completeJourney = useCallback(async () => {
     if (!activeJourney) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = toDateStr();
     const updates = { status: 'completed', ended_at: today };
 
     if (useDB) {
@@ -287,7 +288,7 @@ export function useJourney() {
     await completeJourney();
 
     // 3. Create new journey with cycle +1
-    const today = new Date().toISOString().split('T')[0];
+    const today = toDateStr();
     const payload = {
       user_id:     useDB ? user.id : 'guest',
       program_id:  activeJourney.program_id || null,

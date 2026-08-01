@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import PROGRAMS_LOCAL from '../../data/programs.json';
+import GenericModal from '../GenericModal';
 
 /**
  * ProgramBrowser
@@ -130,10 +131,8 @@ export default function ProgramBrowser({ onStart, onCustom, hasActiveJourney, st
 
       {/* Switch mode modal */}
       {switchModal && (
-        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setSwitchModal(null)}>
-          <div className="auth-modal card" style={{ maxWidth: 420, padding: '1.5rem' }}>
-            <button className="auth-modal__close" onClick={() => setSwitchModal(null)}>✕</button>
-            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem' }}>🔄 Đổi Lộ Trình</h3>
+        <GenericModal onClose={() => setSwitchModal(null)} title="🔄 Đổi Lộ Trình" maxWidth={420}>
+          <GenericModal.Body>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 1rem' }}>
               Bạn sắp chuyển sang <strong style={{ color: 'var(--text-primary)' }}>{switchModal.title}</strong>.
               Lộ trình cũ sẽ được lưu vào Lịch Sử.
@@ -174,18 +173,17 @@ export default function ProgramBrowser({ onStart, onCustom, hasActiveJourney, st
             <div style={{ padding: '0.6rem 0.8rem', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: '1rem', fontSize: '0.78rem', color: '#f87171' }}>
               ⚠️ Trạng thái tick hôm nay sẽ được reset. Lịch sử lộ trình cũ vẫn được lưu.
             </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button className="btn btn-ghost" onClick={() => setSwitchModal(null)} style={{ flex: 1 }}>
-                Huỷ
-              </button>
-              <button className="btn btn-primary" onClick={handleConfirmSwitch}
-                disabled={starting} style={{ flex: 1 }}>
-                {starting ? '⏳ Đang xử lý...' : '🚀 Xác nhận đổi'}
-              </button>
-            </div>
-          </div>
-        </div>
+          </GenericModal.Body>
+          <GenericModal.Footer>
+            <button className="btn btn-ghost" onClick={() => setSwitchModal(null)} style={{ flex: 1 }}>
+              Huỷ
+            </button>
+            <button className="btn btn-primary" onClick={handleConfirmSwitch}
+              disabled={starting} style={{ flex: 1 }}>
+              {starting ? '⏳ Đang xử lý...' : '🚀 Xác nhận đổi'}
+            </button>
+          </GenericModal.Footer>
+        </GenericModal>
       )}
 
       {/* Program grid */}

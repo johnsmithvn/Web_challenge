@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import GenericModal from '../components/GenericModal';
+import '../styles/journey.css';
 
 /**
  * JourneyDetailPage — /journey/:id
@@ -525,14 +527,9 @@ function DayDetailModal({ dateKey, habitSnaps, allLogs, allFocus, onClose }) {
   const doneCount = habitSnaps.filter(h => doneIds.has(h.habit_id)).length;
 
   return (
-    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="auth-modal card" style={{ maxWidth: 480, maxHeight: '85vh', overflowY: 'auto' }}>
-        <button className="auth-modal__close" onClick={onClose}>✕</button>
-
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.25rem' }}>
-          📅 {dateLabel}
-        </div>
-        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+    <GenericModal onClose={onClose} title={`📅 ${dateLabel}`} maxWidth={480} className="jd-day-modal">
+      <GenericModal.Body>
+        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '-0.5rem' }}>
           {doneCount}/{habitSnaps.length} thói quen hoàn thành
         </div>
 
@@ -605,7 +602,7 @@ function DayDetailModal({ dateKey, habitSnaps, allLogs, allFocus, onClose }) {
             Không có dữ liệu cho ngày này
           </div>
         )}
-      </div>
-    </div>
+      </GenericModal.Body>
+    </GenericModal>
   );
 }

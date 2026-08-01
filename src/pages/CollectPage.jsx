@@ -5,10 +5,10 @@ import remarkGfm from 'remark-gfm';
 import { useCollections } from '../hooks/useCollections';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useTags } from '../hooks/useTags';
-import { useKnowledgeGroups } from '../hooks/useKnowledgeGroups';
 import { useCollectionNotes } from '../hooks/useCollectionNotes';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
+import { useToast } from '../components/Toast';
 import '../styles/collect.css';
 
 const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
@@ -251,10 +251,10 @@ function GroupPicker({ selected = [], onChange, groups = [], onCreateGroup }) {
   const selectedIds = selected.map(g => g.id);
   const filtered = useMemo(() => {
     const q = input.toLowerCase().trim();
-    return groups.filter(g => !selectedIds.includes(g.id) && (!q || g.title.toLowerCase().includes(q))).slice(0, 10);
+    return groups.filter(g => !selectedIds.includes(g.id) && (!q || g.name.toLowerCase().includes(q))).slice(0, 10);
   }, [groups, selectedIds, input]);
 
-  const showNew = input.trim().length > 0 && !groups.some(g => g.title.toLowerCase() === input.trim().toLowerCase());
+  const showNew = input.trim().length > 0 && !groups.some(g => g.name.toLowerCase() === input.trim().toLowerCase());
 
   const addGroup = useCallback(async (group) => {
     onChange([...selected, group]);
@@ -278,7 +278,7 @@ function GroupPicker({ selected = [], onChange, groups = [], onCreateGroup }) {
     <div className="kb-group-picker" ref={containerRef}>
       {selected.map(g => (
         <span key={g.id} className="kb-group-chip">
-          {g.emoji} {g.title}
+          {g.emoji} {g.name}
           <button className="kb-group-chip__rm" onMouseDown={e => { e.preventDefault(); onChange(selected.filter(x => x.id !== g.id)); }}>×</button>
         </span>
       ))}
@@ -300,7 +300,7 @@ function GroupPicker({ selected = [], onChange, groups = [], onCreateGroup }) {
         <div className="kb-tag-dropdown">
           {filtered.map(g => (
             <button key={g.id} className="kb-tag-dropdown__item" onMouseDown={e => { e.preventDefault(); addGroup(g); }}>
-              {g.emoji} {g.title} <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{g._articleCount || 0}</span>
+              {g.emoji} {g.name} <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{g._articleCount || 0}</span>
             </button>
           ))}
           {showNew && (
@@ -453,6 +453,15 @@ function ArticleCard({ item, onClick, onGroupClick }) {
             {(item._tags || item.tags || []).map(t => {
               const name = typeof t === 'string' ? t : t.name;
               const color = typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6');
+              const emoji = typeof t === 'string' ? null : t.emoji;
+              // Tag có emoji = đóng vai trò "nhóm/folder" (v4.30.0, gộp từ knowledge_groups)
+              if (emoji) {
+                return (
+                  <span key={name} className="kb-group-badge" onClick={e => { e.stopPropagation(); onGroupClick?.(t); }}>
+                    {emoji} {name}
+                  </span>
+                );
+              }
               return <span key={name} className="kb-tag-chip"><span className="kb-tag-dot" style={{ background: color }} />#{name}</span>;
             })}
             {(item._linkedTaskCount || 0) > 0 && (
@@ -460,11 +469,6 @@ function ArticleCard({ item, onClick, onGroupClick }) {
                 📌 {item._linkedTaskCount} task{item._linkedTaskCount > 1 ? 's' : ''}
               </span>
             )}
-            {(item._groups || []).map(g => (
-              <span key={g.id} className="kb-group-badge" onClick={e => { e.stopPropagation(); onGroupClick?.(g); }}>
-                {g.emoji} {g.title}
-              </span>
-            ))}
           </div>
           <span className="kb-card__readtime">⏱ {mins} phút đọc</span>
         </div>
@@ -1003,10 +1007,13 @@ export default function CollectPage() {
   const { user } = useAuth();
   const { items, isLoading, fetchItems, addItem, updateItem, deleteItem } = useCollections();
   const { addTask, linkCollection, pendingTasks } = useUserTasks();
-  const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag } = useTags();
-  const groupsHook = useKnowledgeGroups();
+  const {
+    tags: centralTags, isLoading: tagsLoading, addTag: addCentralTag,
+    deleteTag: deleteCentralTag, linkTag, unlinkTag, getCollectionsForTag,
+  } = useTags();
   const notesHook = useCollectionNotes();
   const { confirm, ConfirmModal } = useConfirm();
+  const { showToast, Toast } = useToast();
 
   const [view, setView]         = useState('list');
   const [selected, setSelected] = useState(null);
@@ -1033,7 +1040,7 @@ export default function CollectPage() {
   const [bulkSelected, setBulkSelected] = useState(new Set());
 
   useEffect(() => {
-    if (user) { fetchItems({}); groupsHook.fetchGroups(); }
+    if (user) fetchItems({});
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close task filter popup on outside click
@@ -1062,14 +1069,30 @@ export default function CollectPage() {
 
   /* ── Derived data ─────────────────── */
   const allTags = useMemo(() => {
-    // Merge central tags with any tags found on items (for display completeness)
+    // Merge central tags with any tags found on items (for display completeness).
+    // centralTags (useTags, select('*')) có đủ field kể cả description; bản
+    // nhúng trong item._tags (useCollections join) KHÔNG select description —
+    // ưu tiên bản centralTags, chỉ dùng bản nhúng làm fallback cho tag lạ.
     const map = new Map();
-    centralTags.forEach(t => map.set(t.id, t));
     items.filter(i => i.type !== 'inbox').forEach(i => {
       (i._tags || []).forEach(t => { if (t && t.id) map.set(t.id, t); });
     });
+    centralTags.forEach(t => map.set(t.id, t));
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [items, centralTags]);
+
+  // v4.30.0: tag có emoji đóng vai trò "nhóm/folder" (gộp từ knowledge_groups).
+  // plainTags = tag thường (picker tag + filter row); groupTags = tag-nhóm
+  // (GroupPicker + tab "Nhóm"), kèm _articleCount tính trực tiếp từ items
+  // đang có sẵn (không cần gọi hook riêng như trước).
+  const plainTags = useMemo(() => allTags.filter(t => !t.emoji), [allTags]);
+  const groupTags = useMemo(() => {
+    const counts = {};
+    items.filter(i => i.type !== 'inbox').forEach(i => {
+      (i._tags || []).forEach(t => { if (t?.emoji) counts[t.id] = (counts[t.id] || 0) + 1; });
+    });
+    return allTags.filter(t => t.emoji).map(t => ({ ...t, _articleCount: counts[t.id] || 0 }));
+  }, [allTags, items]);
 
   const filtered = useMemo(() => {
     let list = items.filter(i => i.type !== 'inbox' && i.status !== 'archived');
@@ -1102,25 +1125,25 @@ export default function CollectPage() {
 
   /* ── Handlers ────────────────────── */
   const openReader = useCallback((item) => { setSelected(item); setView('reader'); }, []);
-  const openEditor = useCallback(async (item = null) => {
+  const openEditor = useCallback((item = null) => {
     setSelected(item);
     setView('editor');
-    // Load existing groups for this article
-    if (item?.id) {
-      const articleGroups = await groupsHook.getGroupsForArticle(item.id);
-      setEditGroups(articleGroups);
+    // v4.30.0: nhóm của bài = tag có emoji trong _tags — đã có sẵn từ
+    // useCollections join, không cần gọi hook riêng như trước.
+    if (item?._tags) {
+      setEditGroups(item._tags.filter(t => t.emoji));
     } else {
       setEditGroups(activeGroupView ? [activeGroupView] : []);
     }
-  }, [activeGroupView]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeGroupView]);
   const goList = useCallback(() => {
     setView('list');
     setSelected(null);
     if (activeGroupView) {
       // Refresh group articles
-      groupsHook.fetchGroupArticles(activeGroupView.id).then(setGroupArticles);
+      getCollectionsForTag(activeGroupView.id).then(setGroupArticles);
     }
-  }, [activeGroupView]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeGroupView, getCollectionsForTag]);
 
   const handleSave = useCallback(async (draft) => {
     setIsSaving(true);
@@ -1144,18 +1167,24 @@ export default function CollectPage() {
         savedId = created?.id;
       }
 
-      // v4.1.0: Sync tags via junction table
-      if (savedId && draft.tags) {
-        const draftTagNames = draft.tags.map(t => typeof t === 'string' ? t : t.name);
+      // v4.1.0/v4.30.0: Sync tags via junction table — editGroups (tag có
+      // emoji, đóng vai trò "nhóm") gộp cùng 1 luồng với tag thường, vì từ
+      // v4.30.0 cả 2 đều là hàng trong `tags`, chỉ khác có emoji hay không.
+      const allDraftTags = [...(draft.tags || []), ...editGroups];
+      if (savedId) {
+        const draftTagNames = allDraftTags.map(t => typeof t === 'string' ? t : t.name);
         const existingTags = selected?._tags || [];
         const existingNames = existingTags.map(t => t.name);
 
         // Tags to add (in draft but not in existing)
-        for (const t of draft.tags) {
+        for (const t of allDraftTags) {
           const name = typeof t === 'string' ? t : t.name;
           if (!existingNames.includes(name)) {
-            // Ensure tag exists in central table
-            const tagObj = await addCentralTag(name, typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6'));
+            // Ensure tag exists in central table (addCentralTag dedups by
+            // name, nên gọi cả với tag đã có id cũng an toàn)
+            const tagObj = typeof t === 'string'
+              ? await addCentralTag(t, '#8b5cf6')
+              : await addCentralTag(t.name, t.color || '#8b5cf6', { emoji: t.emoji, description: t.description });
             if (tagObj) await linkTag(savedId, tagObj.id, 'collection');
           }
         }
@@ -1168,33 +1197,12 @@ export default function CollectPage() {
         }
       }
 
-      // v4.11.0: Sync group links
-      if (savedId && editGroups) {
-        const existingGroups = selected?._groups || [];
-        const existingIds = existingGroups.map(g => g.id);
-        const newIds = editGroups.map(g => g.id);
-
-        // Groups to link
-        for (const g of editGroups) {
-          if (!existingIds.includes(g.id)) {
-            await groupsHook.linkArticle(savedId, g.id);
-          }
-        }
-        // Groups to unlink
-        for (const g of existingGroups) {
-          if (!newIds.includes(g.id)) {
-            await groupsHook.unlinkArticle(savedId, g.id);
-          }
-        }
-      }
-
       await fetchItems({});
-      await groupsHook.fetchGroups();
       goList();
     } finally {
       setIsSaving(false);
     }
-  }, [selected, updateItem, addItem, fetchItems, goList, addCentralTag, linkTag, unlinkTag, editGroups]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected, updateItem, addItem, fetchItems, goList, addCentralTag, linkTag, unlinkTag, editGroups]);
 
   const handleDelete = useCallback(async (item) => {
     const ok = await confirm({
@@ -1224,7 +1232,7 @@ export default function CollectPage() {
           title:          selected.title,
           body:           selected.body || '',
           body_text:      selected.body_text || '',
-          tags:           selected._tags || selected.tags || [],
+          tags:           (selected._tags || selected.tags || []).filter(t => !t?.emoji),
           type:           selected.type,
           url:            selected.url || '',
           content_format: selected.content_format || 'markdown',
@@ -1233,15 +1241,16 @@ export default function CollectPage() {
     return (
       <div className="kb-page kb-page--editor">
         {ConfirmModal}
+        {Toast}
         <EditorView
           initial={initialDraft}
           onSave={handleSave}
           onCancel={goList}
           isSaving={isSaving}
-          suggestions={allTags}
+          suggestions={plainTags}
           isNew={isNew}
-          groups={groupsHook.groups}
-          onCreateGroup={groupsHook.addGroup}
+          groups={groupTags}
+          onCreateGroup={(name) => addCentralTag(name, '#8b5cf6', { emoji: '📁' })}
           selectedGroups={editGroups}
           onGroupsChange={setEditGroups}
           onConfirmSwitch={() => confirm({
@@ -1260,6 +1269,7 @@ export default function CollectPage() {
     return (
       <div className="kb-page kb-page--reader">
         {ConfirmModal}
+        {Toast}
         <ReaderView
           item={selected}
           onEdit={() => openEditor(selected)}
@@ -1283,7 +1293,7 @@ export default function CollectPage() {
               // ở Knowledge nhận ra liên kết này — trước đây cột 1:1 không
               // được đọc ở đâu nên link tạo từ đây coi như mất.
               await linkCollection(result.id, item.id);
-              alert(`📌 Task "${item.title}" đã được tạo!`);
+              showToast(`📌 Task "${item.title}" đã được tạo!`);
             }
           }}
         />
@@ -1295,6 +1305,7 @@ export default function CollectPage() {
   return (
     <div className="kb-page">
       {ConfirmModal}
+      {Toast}
       {/* Header */}
       <div className="kb-header">
         <div>
@@ -1468,14 +1479,14 @@ export default function CollectPage() {
           <div className="kb-breadcrumb">
             <button className="kb-breadcrumb__link" onClick={() => { setActiveGroupView(null); setTypeFilter('__groups'); setSearch(''); }}>🧠 Kho Tàng</button>
             <span className="kb-breadcrumb__sep">›</span>
-            <span className="kb-breadcrumb__current">{activeGroupView.emoji} {activeGroupView.title}</span>
+            <span className="kb-breadcrumb__current">{activeGroupView.emoji} {activeGroupView.name}</span>
           </div>
 
           {/* Group header */}
           <div className="kb-group-header">
             <div className="kb-group-header__info">
               <div className="kb-group-header__emoji">{activeGroupView.emoji}</div>
-              <h2 className="kb-group-header__title">{activeGroupView.title}</h2>
+              <h2 className="kb-group-header__title">{activeGroupView.name}</h2>
               <div className="kb-group-header__meta">
                 {groupArticles.length} bài · Tạo {formatDate(activeGroupView.created_at)}
                 {activeGroupView.description && <> · {activeGroupView.description}</>}
@@ -1485,13 +1496,13 @@ export default function CollectPage() {
               <button className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.4rem 0.8rem' }} onClick={() => openEditor(null)}>＋ Thêm bài</button>
               <button className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '0.4rem 0.8rem' }} onClick={async () => {
                 const ok = await confirm({
-                  title: `Xóa nhóm "${activeGroupView.emoji} ${activeGroupView.title}"?`,
+                  title: `Xóa nhóm "${activeGroupView.emoji} ${activeGroupView.name}"?`,
                   message: `${groupArticles.length} bài viết bên trong sẽ KHÔNG bị xóa — chỉ gỡ khỏi nhóm này.`,
                   confirmLabel: 'Xóa nhóm',
                   danger: true,
                 });
                 if (!ok) return;
-                await groupsHook.deleteGroup(activeGroupView.id);
+                await deleteCentralTag(activeGroupView.id);
                 setActiveGroupView(null);
                 setTypeFilter('__groups');
                 fetchItems({});
@@ -1504,7 +1515,7 @@ export default function CollectPage() {
             <input
               className="kb-search"
               type="text"
-              placeholder={`🔍 Tìm trong "${activeGroupView.title}"...`}
+              placeholder={`🔍 Tìm trong "${activeGroupView.name}"...`}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -1531,7 +1542,7 @@ export default function CollectPage() {
                       <ArticleCard item={item} onClick={openReader} onGroupClick={(g) => {
                         if (g.id !== activeGroupView.id) {
                           setActiveGroupView(g);
-                          groupsHook.fetchGroupArticles(g.id).then(setGroupArticles);
+                          getCollectionsForTag(g.id).then(setGroupArticles);
                           setSearch('');
                         }
                       }} />
@@ -1541,9 +1552,9 @@ export default function CollectPage() {
                       title="Gỡ khỏi nhóm"
                       style={{ opacity: 0.5, flexShrink: 0 }}
                       onClick={async () => {
-                        await groupsHook.unlinkArticle(item.id, activeGroupView.id);
+                        await unlinkTag(item.id, activeGroupView.id, 'collection');
                         setGroupArticles(prev => prev.filter(a => a.id !== item.id));
-                        groupsHook.fetchGroups();
+                        fetchItems({});
                       }}
                     >✕</button>
                   </div>
@@ -1565,7 +1576,7 @@ export default function CollectPage() {
               onChange={e => setGroupNewName(e.target.value)}
               onKeyDown={async e => {
                 if (e.key === 'Enter' && groupNewName.trim()) {
-                  await groupsHook.addGroup(groupNewName.trim());
+                  await addCentralTag(groupNewName.trim(), '#8b5cf6', { emoji: '📁' });
                   setGroupNewName('');
                 }
               }}
@@ -1576,7 +1587,7 @@ export default function CollectPage() {
               disabled={!groupNewName.trim()}
               onClick={async () => {
                 if (!groupNewName.trim()) return;
-                await groupsHook.addGroup(groupNewName.trim());
+                await addCentralTag(groupNewName.trim(), '#8b5cf6', { emoji: '📁' });
                 setGroupNewName('');
               }}
             >＋ Tạo nhóm</button>
@@ -1586,10 +1597,10 @@ export default function CollectPage() {
           {(() => {
             const q = search.toLowerCase();
             const filteredGroups = search
-              ? groupsHook.groups.filter(g => g.title.toLowerCase().includes(q) || (g.description || '').toLowerCase().includes(q))
-              : groupsHook.groups;
+              ? groupTags.filter(g => g.name.toLowerCase().includes(q) || (g.description || '').toLowerCase().includes(q))
+              : groupTags;
 
-            if (groupsHook.isLoading) return <div className="kb-loading">⏳ Đang tải nhóm...</div>;
+            if (tagsLoading) return <div className="kb-loading">⏳ Đang tải nhóm...</div>;
             if (filteredGroups.length === 0) return (
               <div className="kb-empty">
                 <div className="kb-empty__icon">📁</div>
@@ -1606,13 +1617,13 @@ export default function CollectPage() {
                       setActiveGroupView(g);
                       setTypeFilter('');
                       setSearch('');
-                      const articles = await groupsHook.fetchGroupArticles(g.id);
+                      const articles = await getCollectionsForTag(g.id);
                       setGroupArticles(articles);
                     }}
                   >
                     <div className="kb-group-card__emoji">{g.emoji}</div>
                     <div className="kb-group-card__body">
-                      <h3 className="kb-group-card__title">{g.title}</h3>
+                      <h3 className="kb-group-card__title">{g.name}</h3>
                       {g.description && <p className="kb-group-card__desc">{g.description}</p>}
                     </div>
                     <span className="kb-group-card__count">{g._articleCount || 0} bài</span>
@@ -1626,12 +1637,12 @@ export default function CollectPage() {
       /* ── NORMAL ARTICLE LIST ─────────────────────── */
       ) : (
         <>
-          {/* Tag filter row */}
-          {allTags.length > 0 && (
+          {/* Tag filter row — chỉ tag thường, tag-nhóm có emoji đã có tab "Nhóm" riêng */}
+          {plainTags.length > 0 && (
             <div className="kb-tag-filters">
               <span className="kb-tag-filters__label">Tags:</span>
               <button className={`kb-tag-chip kb-tag-filter-btn${!activeTag ? ' kb-tag-chip--active' : ''}`} onClick={() => setActiveTag('')}>Tất cả</button>
-              {allTags.map(t => (
+              {plainTags.map(t => (
                 <button
                   key={t.id}
                   className={`kb-tag-chip kb-tag-filter-btn${activeTag === t.id ? ' kb-tag-chip--active' : ''}`}
@@ -1757,7 +1768,7 @@ export default function CollectPage() {
                       setActiveGroupView(g);
                       setTypeFilter('');
                       setSearch('');
-                      groupsHook.fetchGroupArticles(g.id).then(setGroupArticles);
+                      getCollectionsForTag(g.id).then(setGroupArticles);
                     }} />
                   </div>
                 </div>

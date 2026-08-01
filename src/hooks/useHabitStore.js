@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
+import { getWeekDates, toDateStr } from '../utils/dateUtils';
 
 // ── UI state flags (NOT data) — these stay in localStorage forever ──
 // vl_program_round, vl_completion_shown_*, vl_login_nudge_shown → OK
@@ -12,35 +13,26 @@ const LEGACY_LS_KEY  = 'vl_habit_data';   // kept only to read + clear on migrat
 const MIGRATED_KEY   = 'vl_migrated_v2';  // bump key so old migrated flag doesn't block
 
 function getTodayKey() {
-  return new Date().toISOString().split('T')[0];
+  return toDateStr();
 }
 
-function getWeekDates() {
-  const today  = new Date();
-  const day    = today.getDay();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return d.toISOString().split('T')[0];
-  });
-}
-
-function calcStreak(data) {
+// Exported so callers needing streak for a filtered/derived dataset (VD:
+// TrackerPage.effectiveData sau khi lọc theo journeyStartStr) không phải copy
+// lại thuật toán — trước v4.29.1 có 1 bản inline riêng ở TrackerPage.
+export function calcStreak(data) {
   let streak = 0;
   const today = new Date();
   for (let i = 0; i < 365; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const key = d.toISOString().split('T')[0];
+    const key = toDateStr(d);
     if (data[key]) streak++;
     else break;
   }
   return streak;
 }
 
-function getLongestStreak(data) {
+export function getLongestStreak(data) {
   const keys = Object.keys(data).filter(k => data[k]).sort();
   if (!keys.length) return 0;
   let longest = 1, current = 1;

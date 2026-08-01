@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { toDateStr } from '../utils/dateUtils';
+import { toDateStr, mondayIndex } from '../utils/dateUtils';
 import '../styles/calendar.css';
 
 const VN_HOLIDAYS = {
@@ -18,8 +18,7 @@ function getDaysInMonth(year, month) {
 }
 
 function getFirstDayOfWeek(year, month) {
-  const d = new Date(year, month, 1).getDay();
-  return d === 0 ? 6 : d - 1; // Monday = 0
+  return mondayIndex(new Date(year, month, 1)); // Monday = 0
 }
 
 /**

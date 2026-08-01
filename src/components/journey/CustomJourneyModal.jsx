@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
+import GenericModal from '../GenericModal';
 
 /**
  * CustomJourneyModal
@@ -17,7 +18,6 @@ export default function CustomJourneyModal({ onConfirm, onClose, loading }) {
   const [description, setDescription] = useState('');
   const [targetDays,  setTargetDays]  = useState(21);
   const [customDays,  setCustomDays]  = useState('');
-  const mouseDownTarget = useRef(null);
 
   const activeDays = customDays ? parseInt(customDays) || 21 : targetDays;
 
@@ -28,17 +28,8 @@ export default function CustomJourneyModal({ onConfirm, onClose, loading }) {
   };
 
   return (
-    <div
-      className="journey-modal-overlay"
-      onMouseDown={(e) => { mouseDownTarget.current = e.target; }}
-      onMouseUp={(e) => {
-        if (mouseDownTarget.current === e.currentTarget && e.target === e.currentTarget) onClose();
-        mouseDownTarget.current = null;
-      }}
-    >
-      <div className="journey-modal" onClick={e => e.stopPropagation()}>
-        <h3>✏️ Tạo Lộ Trình Riêng</h3>
-
+    <GenericModal onClose={onClose} title="✏️ Tạo Lộ Trình Riêng" maxWidth={440}>
+      <GenericModal.Body>
         <div className="journey-modal-field">
           <label>Tên lộ trình *</label>
           <input
@@ -88,20 +79,19 @@ export default function CustomJourneyModal({ onConfirm, onClose, loading }) {
             />
           </div>
         </div>
-
-        <div className="journey-modal-actions">
-          <button className="btn-modal-cancel" onClick={onClose} disabled={loading}>
-            Huỷ
-          </button>
-          <button
-            className="btn-modal-confirm"
-            onClick={handleSubmit}
-            disabled={!title.trim() || loading || activeDays < 7}
-          >
-            {loading ? '⏳ Đang tạo...' : '🚀 Bắt Đầu'}
-          </button>
-        </div>
-      </div>
-    </div>
+      </GenericModal.Body>
+      <GenericModal.Footer>
+        <button className="btn-modal-cancel" onClick={onClose} disabled={loading}>
+          Huỷ
+        </button>
+        <button
+          className="btn-modal-confirm"
+          onClick={handleSubmit}
+          disabled={!title.trim() || loading || activeDays < 7}
+        >
+          {loading ? '⏳ Đang tạo...' : '🚀 Bắt Đầu'}
+        </button>
+      </GenericModal.Footer>
+    </GenericModal>
   );
 }

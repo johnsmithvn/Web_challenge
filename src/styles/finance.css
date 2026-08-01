@@ -209,11 +209,8 @@
 
 .finance-form__input--date {
   flex: 1;
-  color-scheme: dark;
-}
-
-[data-theme="light"] .finance-form__input--date {
-  color-scheme: light;
+  text-align: left;
+  cursor: pointer;
 }
 
 /* Due date row */

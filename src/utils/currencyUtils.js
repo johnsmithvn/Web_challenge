@@ -21,6 +21,34 @@ export function formatVND(amount) {
 }
 
 /**
+ * Nguồn sự thật duy nhất cho chu kỳ subscription — trước đây giá trị này bị
+ * viết tay độc lập ở FinancePage.jsx (calcNextDue, option list, label map) và
+ * useSubscriptions.js (auto-advance, getMonthlyCost), từng lệch nhau thật ở v4.4.0.
+ */
+export const SUBSCRIPTION_CYCLES = [
+  { key: 'monthly', label: '1 tháng', unit: 'tháng',   months: 1 },
+  { key: '3month',  label: '3 tháng', unit: '3 tháng', months: 3 },
+  { key: '6month',  label: '6 tháng', unit: '6 tháng', months: 6 },
+  { key: 'yearly',  label: '1 năm',   unit: 'năm',     months: 12 },
+];
+
+export function cycleMonths(cycle) {
+  return SUBSCRIPTION_CYCLES.find(c => c.key === cycle)?.months || 1;
+}
+
+/** Trả về Date mới, lùi tới kỳ tiếp theo của `cycle` tính từ `date`. */
+export function advanceByCycle(date, cycle) {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + cycleMonths(cycle));
+  return d;
+}
+
+/** Quy đổi `amount` của 1 subscription về chi phí trung bình/tháng. */
+export function monthlyCostForCycle(amount, cycle) {
+  return Math.round(amount / cycleMonths(cycle));
+}
+
+/**
  * Chuyển chuỗi nhập liệu của người dùng thành số nguyên VND.
  * Ví dụ:
  * - "50" -> 50000 (tự động nhân 1000 đối với số ngắn < 10000 khi getAutoK() bật)

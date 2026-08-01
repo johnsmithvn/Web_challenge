@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, lazy, Suspense, memo } from 'react';
 import { Link } from 'react-router-dom';
-import { useHabitStore } from '../hooks/useHabitStore';
+import { useHabitStore, calcStreak, getLongestStreak } from '../hooks/useHabitStore';
 import { useCustomHabits } from '../hooks/useCustomHabits';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import { useNotifications } from '../hooks/useNotifications';
@@ -16,6 +16,8 @@ import XpBar from '../components/XpBar';
 import NotificationSettings from '../components/NotificationSettings';
 import CompletionModal from '../components/CompletionModal';
 import LoginNudgeModal from '../components/LoginNudgeModal';
+import GenericModal from '../components/GenericModal';
+import { getWeekDates } from '../utils/dateUtils';
 
 import '../styles/tracker.css';
 import '../styles/xpbar.css';
@@ -407,47 +409,18 @@ export default function TrackerPage() {
     );
   }, [hasHabits, data, journeyStartStr]);
 
-  // Recalculate streak from filtered data (inline — avoids exporting from hook)
+  // Recalculate streak from filtered data — dùng lại thuật toán từ useHabitStore
+  // thay vì copy riêng (trước v4.29.1 có 2 bản, dễ lệch khi sửa 1 bên)
   const effectiveStreak = useMemo(() => {
     if (!hasHabits) return 0;
-    const today = new Date();
-    let s = 0;
-    for (let i = 0; i < 365; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const key = d.toISOString().split('T')[0];
-      if (effectiveData[key]) s++;
-      else break;
-    }
-    return s;
+    return calcStreak(effectiveData);
   }, [hasHabits, effectiveData]);
 
-  const effectiveLongest = useMemo(() => {
-    const keys = Object.keys(effectiveData).filter(k => effectiveData[k]).sort();
-    if (!keys.length) return 0;
-    let longest = 1, current = 1;
-    for (let i = 1; i < keys.length; i++) {
-      const diff = (new Date(keys[i]) - new Date(keys[i - 1])) / 86400000;
-      if (diff === 1) { current++; longest = Math.max(longest, current); }
-      else current = 1;
-    }
-    return longest;
-  }, [effectiveData]);
+  const effectiveLongest = useMemo(() => getLongestStreak(effectiveData), [effectiveData]);
 
   const effectiveTotalDone    = useMemo(() => Object.values(effectiveData).filter(Boolean).length, [effectiveData]);
   const effectiveCompletionPct = useMemo(() => {
-    const weekDates = (() => {
-      const today  = new Date();
-      const day    = today.getDay();
-      const monday = new Date(today);
-      monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
-      return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        return d.toISOString().split('T')[0];
-      });
-    })();
-    const done = weekDates.filter(d => effectiveData[d]).length;
+    const done = getWeekDates().filter(d => effectiveData[d]).length;
     return Math.round((done / 7) * 100);
   }, [effectiveData]);
 
@@ -866,12 +839,8 @@ export default function TrackerPage() {
 
       {/* Skip Reason Modal */}
       {skipModal && (
-        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setSkipModal(null)}>
-          <div className="auth-modal card" style={{ maxWidth: 440 }}>
-            <button className="auth-modal__close" onClick={() => setSkipModal(null)}>✕</button>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', marginBottom: '1rem' }}>
-              📝 Tại sao bỏ hôm nay?
-            </div>
+        <GenericModal onClose={() => setSkipModal(null)} title="📝 Tại sao bỏ hôm nay?" maxWidth={440}>
+          <GenericModal.Body>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1rem' }}>
               {SKIP_REASONS.map(r => (
                 <button
@@ -909,8 +878,8 @@ export default function TrackerPage() {
             >
               Lưu Lý Do
             </button>
-          </div>
-        </div>
+          </GenericModal.Body>
+        </GenericModal>
       )}
       {showNudge && (
         <LoginNudgeModal onClose={() => setShowNudge(false)} />

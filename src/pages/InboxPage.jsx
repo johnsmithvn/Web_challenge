@@ -12,6 +12,7 @@ import EXPENSE_DATA from '../data/expense-categories.json';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
 import QuoteWidget from '../components/QuoteWidget';
 import CustomSelect from '../components/CustomSelect';
+import GenericModal from '../components/GenericModal';
 import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
 import '../styles/inbox.css';
 import '../styles/collect.css';
@@ -431,13 +432,8 @@ export default function InboxPage() {
 
       {/* Quick Expense Modal */}
       {expenseModal && (
-        <div className="inbox-expense-modal-backdrop" onClick={() => setExpenseModal(null)}>
-          <div className="inbox-expense-modal" onClick={e => e.stopPropagation()}>
-            <div className="inbox-expense-modal__header">
-              <span>💸 Chi tiêu nhanh</span>
-              <button className="inbox-expense-modal__close" onClick={() => setExpenseModal(null)}>✕</button>
-            </div>
-            <div className="inbox-expense-modal__body">
+        <GenericModal onClose={() => setExpenseModal(null)} title="💸 Chi tiêu nhanh" maxWidth={380}>
+          <GenericModal.Body>
               <label className="inbox-expense-modal__label">Ghi chú</label>
               <input
                 className="inbox-expense-modal__input"
@@ -477,19 +473,18 @@ export default function InboxPage() {
                   </button>
                 ))}
               </div>
-            </div>
-            <div className="inbox-expense-modal__footer">
-              <button className="btn btn-ghost" onClick={() => setExpenseModal(null)}>Huỷ</button>
-              <button
-                className="btn btn-primary"
-                onClick={handleExpenseSave}
-                disabled={!expenseModal.amount || parseCurrencyInput(expenseModal.amount) <= 0}
-              >
-                💸 Lưu chi tiêu
-              </button>
-            </div>
-          </div>
-        </div>
+          </GenericModal.Body>
+          <GenericModal.Footer>
+            <button className="btn btn-ghost" onClick={() => setExpenseModal(null)}>Huỷ</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleExpenseSave}
+              disabled={!expenseModal.amount || parseCurrencyInput(expenseModal.amount) <= 0}
+            >
+              💸 Lưu chi tiêu
+            </button>
+          </GenericModal.Footer>
+        </GenericModal>
       )}
 
       {/* Daily quote */}

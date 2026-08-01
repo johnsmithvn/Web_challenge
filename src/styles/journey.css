@@ -560,38 +560,15 @@
   color: #22d3ee;
 }
 
+/* ── DayDetailModal (JourneyDetailPage) — dùng GenericModal, chỉ cần override kích thước ── */
+.jd-day-modal {
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
 /* ── Custom Journey Modal ──────────────────────────────────── */
-.journey-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-  backdrop-filter: blur(4px);
-  animation: fadeIn 0.15s ease;
-}
-
-.journey-modal {
-  background: #1a1a2e;
-  border: 1px solid rgba(139,92,246,0.25);
-  border-radius: 20px;
-  padding: 2rem;
-  width: 100%;
-  max-width: 460px;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.journey-modal h3 {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #f1f5f9;
-  margin: 0;
-}
+/* Wrapper (overlay/box/title) migrated to GenericModal (v4.29.1) — chỉ còn
+   style cho nội dung bên trong dưới đây. */
 
 .journey-modal-field {
   display: flex;
@@ -648,12 +625,6 @@
   background: rgba(139,92,246,0.2);
   border-color: rgba(139,92,246,0.5);
   color: #a78bfa;
-}
-
-.journey-modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
 }
 
 .btn-modal-cancel {

@@ -23,6 +23,33 @@ export function toDateStr(date = new Date()) {
 }
 
 /**
+ * Chuyển `Date.getDay()` (0=Chủ Nhật..6=Thứ Bảy) sang index tuần bắt đầu Thứ
+ * Hai (0=T2..6=CN). Trước v4.29.1 công thức `day===0?6:day-1` bị viết lại độc
+ * lập ở 5 nơi (useHabitStore, TrackerPage, DashboardPage x2, MonthCalendar).
+ */
+export function mondayIndex(date = new Date()) {
+  const day = date.getDay();
+  return day === 0 ? 6 : day - 1;
+}
+
+/** Date object của Thứ Hai đầu tuần chứa `date` (giữ giờ/phút gốc). */
+export function getWeekStart(date = new Date()) {
+  const d = new Date(date);
+  d.setDate(d.getDate() - mondayIndex(d));
+  return d;
+}
+
+/** 7 chuỗi ngày local (T2 → CN) của tuần chứa `date`. */
+export function getWeekDates(date = new Date()) {
+  const monday = getWeekStart(date);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return toDateStr(d);
+  });
+}
+
+/**
  * Format ISO date to "dd/MM/yyyy"
  * @param {string} iso — ISO date string
  * @returns {string} e.g. "13/06/2026"

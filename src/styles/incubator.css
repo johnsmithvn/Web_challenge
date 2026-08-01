@@ -703,56 +703,8 @@
 }
 
 /* ── Modal (shared) ──────────────────────────────────────── */
-.incubator-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  animation: modalFadeIn 0.15s ease;
-}
-
-.incubator-modal {
-  background: var(--bg-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-xl);
-  width: 90%;
-  max-width: 420px;
-  animation: modalSlideIn 0.2s ease;
-  overflow: hidden;
-}
-
-.incubator-modal--execute {
-  max-width: 460px;
-}
-
-.incubator-modal__header {
-  padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  font-weight: 700;
-  font-size: 0.92rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.incubator-modal__close {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.incubator-modal__body {
-  padding: 1rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
+/* Wrapper (backdrop/box/header/body/footer) migrated to GenericModal (v4.29.1) —
+   chỉ còn style cho nội dung bên trong dưới đây. */
 
 .incubator-modal__label {
   font-size: 0.75rem;
@@ -800,14 +752,6 @@
   background: rgba(234, 179, 8, 0.15);
   border-color: rgba(234, 179, 8, 0.35);
   color: #eab308;
-}
-
-.incubator-modal__footer {
-  padding: 0.75rem 1.25rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
 }
 
 /* ── Execute Modal — Option Cards ────────────────────────── */
@@ -888,6 +832,18 @@
 
 .incubator-exec-option__sub {
   margin-top: 0.45rem;
+  animation: modalSlideIn 0.15s ease;
+}
+
+.incubator-exec-error {
+  margin-top: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #ef4444;
+  font-size: 0.78rem;
+  line-height: 1.4;
   animation: modalSlideIn 0.15s ease;
 }
 
@@ -984,18 +940,6 @@
   color-scheme: light;
 }
 
-[data-theme="light"] .incubator-modal {
-  background: var(--bg-secondary);
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
-[data-theme="light"] .incubator-modal__header {
-  border-bottom-color: rgba(0, 0, 0, 0.06);
-}
-
-[data-theme="light"] .incubator-modal__footer {
-  border-top-color: rgba(0, 0, 0, 0.06);
-}
 
 [data-theme="light"] .incubator-timeline {
   background: rgba(0, 0, 0, 0.02);
@@ -1007,11 +951,6 @@
 }
 
 /* ── Animations ──────────────────────────────────────────── */
-@keyframes modalFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
 @keyframes modalSlideIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }

@@ -2,14 +2,15 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
+import { toDateStr } from '../utils/dateUtils';
 
-const todayStr = () => new Date().toISOString().split('T')[0];
+const todayStr = () => toDateStr();
 
 // ── Date helpers for recurring tasks ────────────────────────
 function addDays(date, days) {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  return toDateStr(d);
 }
 
 function nextWeekday(targetDay) {
@@ -19,7 +20,7 @@ function nextWeekday(targetDay) {
   let diff = targetDay - current;
   if (diff <= 0) diff += 7; // always go to NEXT occurrence
   d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
+  return toDateStr(d);
 }
 
 function nextMonthDay(targetDay) {
@@ -31,7 +32,7 @@ function nextMonthDay(targetDay) {
     d.setMonth(d.getMonth() + 1);
     d.setDate(targetDay);
   }
-  return d.toISOString().split('T')[0];
+  return toDateStr(d);
 }
 
 /**
@@ -183,7 +184,12 @@ export function useUserTasks() {
       nextDate = nextMonthDay(rule.day);
     }
 
-    if (!nextDate) return false;
+    if (!nextDate) {
+      logger.error(
+        `[useUserTasks] spawnRecurring: recurrence_rule.type không xác định — task "${task.title}" (rule.type="${rule.type}") không tạo được occurrence tiếp theo, sẽ biến mất khỏi danh sách lặp lại.`
+      );
+      return false;
+    }
 
     const MAX_RETRIES = 2;
     const BACKOFF_MS = 1000;

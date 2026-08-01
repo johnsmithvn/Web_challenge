@@ -185,8 +185,11 @@ function TagManagerSection({ user }) {
     await deleteTag(tag.id);
   }, [confirm, deleteTag, usageCounts]);
 
+  // v4.30.0: tag có emoji đóng vai trò "nhóm Kho Tàng" (Knowledge Base) — quản
+  // lý (đặc biệt xoá) riêng ở CollectPage, nơi có confirm dialog cảnh báo rõ
+  // "bài viết bên trong sẽ gỡ khỏi nhóm". Ẩn khỏi đây tránh xoá nhầm không cảnh báo.
   const sortedTags = useMemo(() =>
-    [...tags].sort((a, b) => a.name.localeCompare(b.name)),
+    tags.filter(t => !t.emoji).sort((a, b) => a.name.localeCompare(b.name)),
     [tags]
   );
 
@@ -197,7 +200,7 @@ function TagManagerSection({ user }) {
         <div className="settings-section__header">
           <Tag size={20} />
           <h2>Quản Lý Tags</h2>
-          <span className="settings-section__count">{tags.length} tags</span>
+          <span className="settings-section__count">{sortedTags.length} tags</span>
         </div>
 
         {/* Add tag form */}

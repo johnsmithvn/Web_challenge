@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
+import { toDateStr } from '../utils/dateUtils';
 
 /**
  * useCollections — CRUD for the `collections` table.
@@ -32,7 +33,7 @@ export function useCollections() {
         if (!f.status) q = q.neq('status', 'archived');
       }
       if (f.type === 'inbox') {
-        const today = new Date().toISOString().split('T')[0];
+        const today = toDateStr();
         q = q.or(`snoozed_until.is.null,snoozed_until.lte.${today}`);
       }
       return q;
@@ -44,7 +45,7 @@ export function useCollections() {
       // Step 1: Try with both collection_tags + task_collections (v4.5.0)
       let query = supabase
         .from('collections')
-        .select('*, collection_tags(tag_id, tags(id, name, color)), task_collections(task_id), collection_groups(group_id, knowledge_groups(id, title, emoji))')
+        .select('*, collection_tags(tag_id, tags(id, name, color, emoji)), task_collections(task_id)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(500);
@@ -58,7 +59,7 @@ export function useCollections() {
         joinLevel = 'tags-only';
         let q2 = supabase
           .from('collections')
-          .select('*, collection_tags(tag_id, tags(id, name, color))')
+          .select('*, collection_tags(tag_id, tags(id, name, color, emoji))')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(500);
@@ -94,16 +95,11 @@ export function useCollections() {
           ? (item.task_collections || []).map(tc => tc.task_id).filter(Boolean)
           : [];
 
-        const _groups = joinLevel === 'full'
-          ? (item.collection_groups || []).map(cg => cg.knowledge_groups).filter(Boolean)
-          : [];
-
         return {
           ...item,
           _tags,
           _linkedTaskIds,
           _linkedTaskCount: _linkedTaskIds.length,
-          _groups,
         };
       });
 
@@ -111,7 +107,6 @@ export function useCollections() {
       mapped.forEach(item => {
         delete item.collection_tags;
         delete item.task_collections;
-        delete item.collection_groups;
       });
 
       setItems(mapped);
@@ -256,7 +251,7 @@ export function useCollections() {
   const snoozedFilter = useCallback((query) => query
     .eq('user_id', user.id)
     .eq('type', 'inbox')
-    .gt('snoozed_until', new Date().toISOString().split('T')[0]),
+    .gt('snoozed_until', toDateStr()),
   [user]);
 
   const getSnoozedCount = useCallback(async () => {

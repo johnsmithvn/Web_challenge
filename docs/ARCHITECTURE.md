@@ -135,7 +135,7 @@ Cụm bảng theo domain:
 | Focus | `focus_sessions` |
 | Gamification | `xp_logs` |
 | Tasks | `user_tasks`, `task_collections` |
-| Knowledge | `collections`, `knowledge_groups`, `collection_groups`, `collection_notes`, `inspirational_quotes` |
+| Knowledge | `collections`, `tags`/`collection_tags` (tag có `emoji` = "nhóm", v4.30.0), `collection_notes`, `inspirational_quotes` |
 | Finance | `expenses`, `subscriptions` |
 | Incubator | `intentions`, `intention_logs` |
 | Tags | `tags`, `collection_tags`, `expense_tags`, `subscription_tags` |

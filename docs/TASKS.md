@@ -15,6 +15,46 @@ SQL v4.28.0/v5.0.0, các `TODO: decision needed` còn treo, và dọn dead code/
 
 ---
 
+## v4.30.0 — ✅ CODE DONE / ⏳ SQL CHỜ USER CHẠY (2026-08-01) — P2-7: gộp knowledge_groups vào tags
+
+**Quyết định:** sau thảo luận, chọn hướng đơn giản nhất — thêm `emoji`/`description` thẳng vào
+`tags` (KHÔNG dùng `is_group BOOLEAN` như đề xuất ban đầu). "Nhóm" = 1 tag có `emoji`. Không giữ
+`collection_groups.sort_order` (user xác nhận không dùng tính năng sắp xếp thủ công trong nhóm).
+
+### Đã làm ✅ (code, lint 0 lỗi)
+- `data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql` — Phase 1 an toàn (thêm cột,
+  copy data) + Phase 2 breaking (DROP TABLE, comment sẵn)
+- `data/RUNBOOK.sql` — gộp v4.28.0 + v5.0.0 + v4.30.0 thành 1 file chạy tuần tự, giữ nguyên
+  các file gốc để tham khảo lịch sử
+- `useTags.js` — `addTag`/`updateTag` nhận thêm `{emoji, description}`; thêm
+  `getCollectionsForTag(tagId)` (chiều ngược `getTagsForEntity`)
+- `useCollections.js` — bỏ join `collection_groups`/`knowledge_groups`, thêm `emoji` vào select
+  `tags(...)` — nhóm giờ tự có trong `_tags`, không cần `_groups` riêng
+- `CollectPage.jsx` — toàn bộ UI Nhóm (GroupPicker, drill-down, tab Nhóm, ArticleCard badge) đổi
+  sang dùng `useTags` thay `useKnowledgeGroups`. `_articleCount` tính client-side từ `items` đang
+  có, không gọi API riêng nữa
+- Xoá `src/hooks/useKnowledgeGroups.js` (không còn ai import)
+- Docs: `DATABASE.md`, `ARCHITECTURE.md`, `FEATURES.md` §22 + §27 cập nhật
+
+### Verify đối kháng (4 lens độc lập) — 5 phát hiện, đã fix hết (chi tiết: CHANGELOG.md v4.30.0 "Fixed")
+- [x] SQL: `INSERT...ON CONFLICT DO UPDATE` copy nhóm trùng tên có thể crash → thêm `DISTINCT ON`
+- [x] `addTag()` không đồng bộ emoji khi tên đã tồn tại → nâng cấp tag thành nhóm thay vì bỏ qua
+- [x] `CollectPage.allTags` merge sai thứ tự làm mất `description` của nhóm có bài viết
+- [x] `DATABASE.md` tự mâu thuẫn 27 vs 29 active (heading quên sửa)
+- [x] Tag-nhóm rò rỉ vào TagPicker của `FinancePage`/danh sách `SettingsPage` → lọc `!tag.emoji`
+
+### ⏳ User phải tự chạy (agent không kết nối Supabase)
+- [ ] Chạy `data/RUNBOOK.sql` Phần 1+2 (an toàn) — hoặc riêng
+      `migration_v4.30.0_merge_knowledge_groups_into_tags.sql` Phase 1 nếu chưa muốn đụng
+      v4.28.0/v5.0.0 chung
+- [ ] Kiểm mục "KIỂM TRA SAU PHASE 1" trong migration — số liệu group cũ vs tag mới phải khớp
+- [ ] Deploy code này lên prod
+- [ ] Smoke test `/collect` → Kho Tàng → nhóm cũ hiện đúng, tạo nhóm mới hoạt động
+- [ ] Sau khi ổn định: bỏ comment PHẦN 3 trong RUNBOOK.sql (hoặc Phase 2 trong migration riêng)
+      để `DROP TABLE knowledge_groups, collection_groups` — breaking, không hoàn lại được
+
+---
+
 ## v4.29.0 — ✅ DONE (2026-07-29) — `/tasks` rõ ràng + view Lịch (ponytail ultra)
 
 ### Đã làm ✅ (chi tiết: CHANGELOG.md v4.29.0)
@@ -67,10 +107,10 @@ SQL v4.28.0/v5.0.0, các `TODO: decision needed` còn treo, và dọn dead code/
 | P1-4 | `type` và `status` trùng nghĩa (cả 2 default `'inbox'`) | code v4.28.0 + CHECK ở v5.0.0 |
 | P2-5 | 5 cột chết trên `collections` | DROP ở v5.0.0 |
 | P2-6 | `user_tasks.collection_id` deprecated nhưng vẫn được ghi | code v4.28.0 + DROP ở v5.0.0 |
-| P2-7 | `knowledge_groups` là taxonomy M:N **thứ 3** trên `collections`, trùng việc với `tags` | ⏳ quyết định sản phẩm, chưa làm |
+| P2-7 | `knowledge_groups` là taxonomy M:N **thứ 3** trên `collections`, trùng việc với `tags` | ✅ **đã quyết + code xong** (2026-08-01) — gộp vào `tags` (`emoji`/`description`), xem v4.30.0. Chỉ còn SQL chờ user chạy |
 
 ### Còn nợ
-- [ ] `TODO: decision needed` — **P2-7:** gộp `knowledge_groups` vào `tags` (thêm `is_group BOOLEAN`) hay bỏ hẳn groups? Hiện `collections` bị phân loại bởi 3 hệ độc lập: `type` (CHECK 8), `tags` (M:N), `knowledge_groups` (M:N). Hai hệ M:N làm cùng một việc
+- [x] `TODO: decision needed` — **P2-7:** đã chốt 2026-08-01 — gộp `knowledge_groups` vào `tags` (thêm cột `emoji`/`description`, KHÔNG dùng `is_group BOOLEAN`). Xem v4.30.0 ở trên
 - [ ] **`parent_id` subtask — 6 chỗ vỡ ở tầng list, phải sửa cùng lúc với migration:**
   1. `pendingTasks` không lọc `parent_id` → subtask render **2 lần** (lồng dưới parent + card riêng)
   2. `due_date DATE **NOT NULL**` → subtask buộc có ngày riêng → nesting **đứt ngang section** (subtask ở "Sắp tới", parent ở "Hôm nay"). Fix: subtask kế thừa `due_date` của parent
@@ -80,7 +120,7 @@ SQL v4.28.0/v5.0.0, các `TODO: decision needed` còn treo, và dọn dead code/
   6. `getCompletedTasks` + SW `SYNC_TASKS` không lọc parent → mỗi subtask 1 dòng calendar + 1 notification
 - [ ] `task_tags` đã có bảng nhưng **chưa có UI/hook** — cần `useTags` mở rộng + TagPicker trên task card
 - [ ] VIEW `tagged_items` chưa có consumer nào — chờ làm unified search
-- [ ] `alert()` ở `CollectPage.onCreateTask` vi phạm RULES (cấm `window.alert`) — cần component toast
+- [x] `alert()` ở `CollectPage.onCreateTask` vi phạm RULES (cấm `window.alert`) — cần component toast — **fix 2026-08-01:** thêm `src/components/Toast.jsx` (`useToast()`, cùng pattern `useConfirm()`), thay `alert()` bằng `showToast()`. Đồng thời fix luôn `IncubatorPage.jsx:336` (bug tương tự, phát hiện trong audit duplicate-logic 2026-08-01) bằng inline error state riêng (không dùng Toast — đó là lỗi chặn hành động, không phải thông báo thành công)
 
 ---
 
@@ -99,7 +139,7 @@ SQL v4.28.0/v5.0.0, các `TODO: decision needed` còn treo, và dọn dead code/
 
 ### Chưa làm — cần migration SQL user tự chạy trên Supabase
 - [ ] **Subtask** — thêm `user_tasks.parent_id UUID REFERENCES user_tasks(id) ON DELETE CASCADE`, render lồng **1 cấp** (không đệ quy vô hạn). Đây là khoảng trống thật duy nhất so với task manager cá nhân
-- [ ] **`task_tags` junction** — `(task_id, tag_id)` composite PK, tái dùng bảng `tags` đã có (dùng chung với KB). **Chọn 1 trong 2** cách phân loại này với subtask, đừng làm cả hai — hiện đã có 3 taxonomy (`tags`, `knowledge_groups`, `collections.type`), thêm nữa là tê liệt
+- [ ] **`task_tags` junction** — `(task_id, tag_id)` composite PK, tái dùng bảng `tags` đã có (dùng chung với KB). **Chọn 1 trong 2** cách phân loại này với subtask, đừng làm cả hai — hiện có 2 taxonomy (`tags` — nay đã gộp cả "nhóm" từ v4.30.0, và `collections.type`), thêm nữa là tê liệt
 - [ ] **Inline quick-add theo từng nhóm** — nút `+ Thêm` ngay trong khối Quá hạn / Hôm nay / Sắp tới (không cần DB, nhưng để chung phase 2 cho gọn)
 
 ### Cố ý KHÔNG làm (chống bloat — model là Things 3 / Linear, KHÔNG phải ClickUp)
@@ -313,6 +353,7 @@ SQL v4.28.0/v5.0.0, các `TODO: decision needed` còn treo, và dọn dead code/
 
 ## v4.11.0 — ✅ DONE (2026-05-10) — Knowledge Groups (M:N) + Sub-Notes
 - 3 bảng mới (`knowledge_groups`, `collection_groups`, `collection_notes`); tab 📁 Nhóm + GroupPicker + SubNotes trong Collect. (chi tiết: CHANGELOG.md v4.11.0)
+- ⚠️ `knowledge_groups`/`collection_groups` đã gộp vào `tags` ở v4.30.0 (xem trên) — tab Nhóm vẫn còn, chỉ đổi nguồn dữ liệu.
 
 ---
 

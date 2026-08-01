@@ -10,16 +10,17 @@ import { useFocusTimer } from '../hooks/useFocusTimer';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import ActivityHeatmap from '../components/ActivityHeatmap';
+import EXPENSE_DATA from '../data/expense-categories.json';
+import { getWeekStart, mondayIndex, toDateStr } from '../utils/dateUtils';
 import '../styles/tracker.css';
 import '../styles/dashboard.css';
 
 const DAY_LABELS = ['T2','T3','T4','T5','T6','T7','CN'];
 const FLOWERS = ['🌰','🌱','🌿','🌸','🌺','🌻'];
-const CAT_COLORS = {
-  'Ăn uống':'#f97316','Di chuyển':'#3b82f6','Mua sắm':'#8b5cf6',
-  'Sức khỏe':'#22c55e','Học tập':'#06b6d4','Giải trí':'#ec4899',
-  'Hóa đơn':'#eab308','Khác':'#64748b',
-};
+// v4.29.1: build từ expense-categories.json (key tiếng Anh, khớp với e.category lưu
+// trong DB) thay vì hardcode lại theo label tiếng Việt — bản cũ luôn miss vì
+// byCategory trả về key, không phải label.
+const CAT_META = Object.fromEntries(EXPENSE_DATA.categories.map(c => [c.key, c]));
 
 function fmt(n) {
   if (n >= 1_000_000) return (n/1_000_000).toFixed(1)+'M';
@@ -130,13 +131,12 @@ const WeeklyReview = memo(function WeeklyReview({ data: habitData, xpLog, expens
   const review = useMemo(() => {
     const now = new Date();
     // This week: Mon..today
-    const dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
-    const thisWeekStart = new Date(now);
-    thisWeekStart.setDate(now.getDate() - dow);
+    const dow = mondayIndex(now);
+    const thisWeekStart = getWeekStart(now);
     const lastWeekStart = new Date(thisWeekStart);
     lastWeekStart.setDate(thisWeekStart.getDate() - 7);
 
-    const dateStr = (d) => d.toISOString().split('T')[0];
+    const dateStr = toDateStr;
     const range = (start, days) => {
       const r = [];
       for (let i = 0; i < days; i++) {
@@ -156,7 +156,7 @@ const WeeklyReview = memo(function WeeklyReview({ data: habitData, xpLog, expens
 
     // XP this week vs last
     const xpInRange = (dates) => xpLog.filter(e => {
-      const d = new Date(e.ts).toISOString().split('T')[0];
+      const d = toDateStr(new Date(e.ts));
       return dates.includes(d);
     }).reduce((s, e) => s + e.amount, 0);
     const thisXp = xpInRange(thisWeekDays);
@@ -279,14 +279,14 @@ function MonthDonut({ data }) {
 function WeeklyTable({ data }) {
   const weeks=useMemo(()=>{
     const now=new Date();
+    const todayStr=toDateStr(now);
     return Array.from({length:4},(_,wi)=>{
-      const s=new Date(now);
-      const dow=s.getDay()===0?6:s.getDay()-1;
-      s.setDate(s.getDate()-dow-wi*7);
+      const s=getWeekStart(now);
+      s.setDate(s.getDate()-wi*7);
       return Array.from({length:7},(_,di)=>{
         const d=new Date(s); d.setDate(s.getDate()+di);
-        const key=d.toISOString().split('T')[0];
-        return {key,done:!!data[key],future:key>now.toISOString().split('T')[0],date:d.getDate()};
+        const key=toDateStr(d);
+        return {key,done:!!data[key],future:key>todayStr,date:d.getDate()};
       });
     }).reverse();
   },[data]);
@@ -328,7 +328,8 @@ function FinancePie({ byCategory, total }) {
   let offset=0;
   const slices=byCategory.slice(0,6).map(({category,total:amt})=>{
     const pct=amt/total;
-    const slice={category,amt,pct,offset,color:CAT_COLORS[category]||'#64748b'};
+    const meta=CAT_META[category];
+    const slice={category,label:meta?.label||category,amt,pct,offset,color:meta?.color||'#64748b'};
     offset+=pct;
     return slice;
   });
@@ -354,7 +355,7 @@ function FinancePie({ byCategory, total }) {
         {slices.map(s=>(
           <div key={s.category} className="db-fin-legend-item">
             <span className="db-fin-legend-dot" style={{background:s.color}}/>
-            <span className="db-fin-legend-name">{s.category}</span>
+            <span className="db-fin-legend-name">{s.label}</span>
             <span className="db-fin-legend-val">{fmt(s.amt)}₫</span>
             <span className="db-fin-legend-pct">{Math.round(s.pct*100)}%</span>
           </div>

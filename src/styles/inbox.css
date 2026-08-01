@@ -349,78 +349,8 @@
 }
 
 /* ── Quick Expense Modal ──────────────────────────────────── */
-.inbox-expense-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  animation: fadeInSlide 0.15s ease;
-}
-
-.inbox-expense-modal {
-  background: var(--bg-secondary, #1a1a2e);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 420px;
-  overflow: hidden;
-  animation: modalSlideIn 0.2s ease;
-}
-
-[data-theme="light"] .inbox-expense-modal {
-  background: #fff;
-  border-color: rgba(99,102,241,0.15);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.12);
-}
-
-@keyframes modalSlideIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.inbox-expense-modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  font-weight: 700;
-  font-size: 1rem;
-  color: var(--text-primary);
-}
-
-[data-theme="light"] .inbox-expense-modal__header {
-  border-bottom-color: rgba(99,102,241,0.1);
-}
-
-.inbox-expense-modal__close {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 1.1rem;
-  cursor: pointer;
-  padding: 0.2rem;
-  line-height: 1;
-  border-radius: var(--radius-sm);
-  transition: var(--transition-base);
-}
-
-.inbox-expense-modal__close:hover {
-  color: var(--text-primary);
-  background: rgba(255,255,255,0.08);
-}
-
-.inbox-expense-modal__body {
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
+/* Wrapper (backdrop/box/header/body/footer) migrated to GenericModal (v4.29.1) —
+   chỉ còn style cho nội dung bên trong dưới đây. */
 
 .inbox-expense-modal__label {
   font-size: 0.75rem;
@@ -506,18 +436,6 @@
 [data-theme="light"] .inbox-expense-modal__cat-btn--active {
   background: rgba(99,102,241,0.12);
   color: #312e81;
-}
-
-.inbox-expense-modal__footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  border-top: 1px solid rgba(255,255,255,0.06);
-}
-
-[data-theme="light"] .inbox-expense-modal__footer {
-  border-top-color: rgba(99,102,241,0.1);
 }
 
 /* ── Snooze (v3.8.0) ──────────────────────────────────────── */

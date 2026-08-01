@@ -11,7 +11,9 @@ import TagPicker from '../components/TagPicker';
 import EXPENSE_DATA from '../data/expense-categories.json';
 import CustomSelect from '../components/CustomSelect';
 import GenericModal from '../components/GenericModal';
-import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
+import DatePickerPopover from '../components/DatePickerPopover';
+import { parseCurrencyInput, formatVND, SUBSCRIPTION_CYCLES, advanceByCycle } from '../utils/currencyUtils';
+import { toDateStr } from '../utils/dateUtils';
 import '../styles/finance.css';
 
 const CATEGORIES = EXPENSE_DATA.categories;
@@ -20,8 +22,8 @@ const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
 // Get current month date range
 function getMonthRange() {
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  const start = toDateStr(new Date(now.getFullYear(), now.getMonth(), 1));
+  const end = toDateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0));
   return { start, end };
 }
 
@@ -82,6 +84,10 @@ export default function FinancePage() {
   const { logActivity } = useActivityLog();
   const { deleteItem: deleteInboxItem } = useCollections();
   const { tags, addTag, linkTag } = useTags();
+  // v4.30.0: tag có emoji đóng vai trò "nhóm Kho Tàng" (Knowledge Base) —
+  // không cho chọn ở form chi tiêu/subscription, tránh nhầm lẫn + tránh xoá
+  // nhóm KB vô tình cascade-delete link ở expense_tags/subscription_tags.
+  const financeTags = useMemo(() => tags.filter(t => !t.emoji), [tags]);
 
   const [tab, setTab] = useState('expense');
   const [showAddExp, setShowAddExp] = useState(false);
@@ -103,6 +109,7 @@ export default function FinancePage() {
   // Tag selection state
   const [expTagIds, setExpTagIds] = useState([]);
   const [subTagIds, setSubTagIds] = useState([]);
+  const [showSubDueDP, setShowSubDueDP] = useState(false);
 
   // Edit expense state
   const [editExp, setEditExp] = useState(null); // expense object being edited
@@ -112,12 +119,7 @@ export default function FinancePage() {
 
   // Auto-calculate next due date from today based on cycle
   const calcNextDue = (cycle) => {
-    const d = new Date();
-    if (cycle === 'monthly')    d.setMonth(d.getMonth() + 1);
-    else if (cycle === '3month') d.setMonth(d.getMonth() + 3);
-    else if (cycle === '6month') d.setMonth(d.getMonth() + 6);
-    else if (cycle === 'yearly') d.setFullYear(d.getFullYear() + 1);
-    return d.toISOString().split('T')[0];
+    return toDateStr(advanceByCycle(new Date(), cycle));
   };
 
   // ── Inbox → Subscription handoff ─────────────────────────
@@ -344,7 +346,7 @@ export default function FinancePage() {
                 maxLength={200}
               />
               <TagPicker
-                tags={tags}
+                tags={financeTags}
                 selected={expTagIds}
                 onToggle={id => setExpTagIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
                 onAdd={addTag}
@@ -443,12 +445,7 @@ export default function FinancePage() {
                 <CustomSelect
                   value={subCycle}
                   onChange={(val) => { setSubCycle(val); setSubDue(calcNextDue(val)); }}
-                  options={[
-                    { value: 'monthly', label: '1 tháng',  icon: '📅' },
-                    { value: '3month',  label: '3 tháng',  icon: '📆' },
-                    { value: '6month',  label: '6 tháng',  icon: '🗓' },
-                    { value: 'yearly',  label: '1 năm',    icon: '🔁' },
-                  ]}
+                  options={SUBSCRIPTION_CYCLES.map(c => ({ value: c.key, label: c.label }))}
                 />
               </div>
               <div className="finance-form__due-row">
@@ -457,17 +454,28 @@ export default function FinancePage() {
                   <button type="button" className="finance-form__due-auto" onClick={() => setSubDue(calcNextDue(subCycle))}>
                     Tự tính ↻
                   </button>
-                  <input
-                    className="finance-form__input finance-form__input--date"
-                    type="date"
-                    value={subDue}
-                    onChange={(e) => setSubDue(e.target.value)}
-                    required
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      type="button"
+                      className="finance-form__input finance-form__input--date"
+                      onClick={() => setShowSubDueDP(v => !v)}
+                    >
+                      {subDue ? new Date(subDue + 'T00:00:00').toLocaleDateString('vi-VN') : 'Chọn ngày'}
+                    </button>
+                    {showSubDueDP && (
+                      <DatePickerPopover
+                        value={subDue}
+                        onChange={(d) => setSubDue(d)}
+                        onClose={() => setShowSubDueDP(false)}
+                        hideTime
+                        style={{ top: '100%', right: 0, marginTop: '0.25rem' }}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
               <TagPicker
-                tags={tags}
+                tags={financeTags}
                 selected={subTagIds}
                 onToggle={id => setSubTagIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
                 onAdd={addTag}
@@ -497,7 +505,7 @@ export default function FinancePage() {
                     </div>
                     <div className="finance-sub-card__details">
                       <span className="finance-sub-card__amount" style={{ color: sub.color }}>
-                        {formatVND(sub.amount)}/{{ monthly: 'tháng', '3month': '3 tháng', '6month': '6 tháng', yearly: 'năm' }[sub.cycle] || sub.cycle}
+                        {formatVND(sub.amount)}/{SUBSCRIPTION_CYCLES.find(c => c.key === sub.cycle)?.unit || sub.cycle}
                       </span>
                       <span className="finance-sub-card__due">
                         Kỳ tiếp: {new Date(sub.next_due).toLocaleDateString('vi-VN')}

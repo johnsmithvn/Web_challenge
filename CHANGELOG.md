@@ -1,5 +1,61 @@
 # CHANGELOG
 
+## v4.30.0 — 2026-08-01
+> Quyết định sản phẩm P2-7: gộp `knowledge_groups` (taxonomy M:N thứ 3, trùng việc với `tags`)
+> vào `tags`. Code xong, SQL còn chờ user tự chạy (agent không kết nối Supabase) — xem
+> `docs/TASKS.md` v4.30.0 cho runbook đầy đủ.
+
+### Added
+- **`tags.emoji`, `tags.description`** — tag có `emoji` giờ đóng vai trò "nhóm/folder" hiển thị trong Knowledge Base, thay cho bảng `knowledge_groups` riêng
+- **`useTags.getCollectionsForTag(tagId)`** — chiều ngược `getTagsForEntity`, thay `useKnowledgeGroups.fetchGroupArticles`
+- **`data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql`** — Phase 1 an toàn (thêm cột + copy data từ `knowledge_groups`/`collection_groups`), Phase 2 breaking (`DROP TABLE`, comment sẵn, chạy sau khi xác nhận)
+- **`data/RUNBOOK.sql`** — gộp 3 migration rời (`v4.28.0`, `v5.0.0`, `v4.30.0`) thành 1 file chạy tuần tự cho đỡ rối, giữ nguyên 3 file gốc làm hồ sơ lịch sử
+
+### Changed
+- **`CollectPage.jsx`** — toàn bộ UI "Nhóm" (GroupPicker, drill-down, tab Nhóm, badge trên ArticleCard) đổi từ `useKnowledgeGroups` sang `useTags`, lọc theo `tag.emoji`. `_articleCount` tính client-side từ `items` đã load thay vì gọi API riêng
+- **`useCollections.js`** — bỏ join `collection_groups`/`knowledge_groups`, `tags(...)` select thêm `emoji` — nhóm giờ nằm sẵn trong `item._tags`
+- **`FinancePage.jsx`, `SettingsPage.jsx`** — TagPicker/danh sách tag lọc bỏ tag có `emoji` (tag-nhóm KB) — tránh nhầm lẫn chọn nhầm nhóm làm tag chi tiêu, và tránh xoá nhầm 1 nhóm KB từ Settings mà không có cảnh báo "gỡ khỏi bài viết" như ở CollectPage
+
+### Removed
+- **`src/hooks/useKnowledgeGroups.js`** — không còn ai import
+
+### Fixed (phát hiện qua verify đối kháng ngay sau khi refactor)
+- **SQL:** `migration_v4.30.0` + `RUNBOOK.sql` — câu `INSERT...SELECT...ON CONFLICT DO UPDATE` copy `knowledge_groups→tags` có thể crash "cannot affect row a second time" nếu 1 user có ≥2 nhóm cũ trùng tên (không hoa/thường) — code cũ chưa từng chặn tạo nhóm trùng tên. Thêm `DISTINCT ON` trước khi insert
+- **`useTags.addTag()`** không đồng bộ `emoji` khi tên đã tồn tại — tạo "nhóm" trùng tên 1 tag thường có sẵn sẽ âm thầm trả về tag thường cũ (không có emoji), làm "nhóm mới" không xuất hiện trong tab Nhóm dù tưởng đã tạo. Nay nâng cấp tag đó thành nhóm (backfill emoji/description) thay vì bỏ qua
+- **`CollectPage.allTags`** — merge `centralTags` (đủ field) với tag nhúng trong `item._tags` (thiếu `description` vì `useCollections` không select cột đó) theo thứ tự sai, khiến `description` của mọi nhóm có ≥1 bài viết bị mất khi hiển thị. Đổi thứ tự merge, ưu tiên `centralTags`
+- **`docs/DATABASE.md`** tự mâu thuẫn — dòng tổng kết đã sửa "27 active" nhưng heading `### Table Inventory` cách đó vài dòng vẫn ghi "(29 active)"
+
+---
+
+## v4.29.1 — 2026-08-01
+> Audit "duplicate-logic" (`docs/AUDIT_REPORT_2026-08-01_duplicate_logic.md`): 10 phát hiện, tất cả
+> đã fix. Chủ đề chung: 1 sự thật (giá trị hợp lệ hoặc phép tính) từng được giữ độc lập ở ≥2 nơi,
+> không có cơ chế đồng bộ — sửa 1 nơi mà quên nơi kia là hỏng, thường hỏng âm thầm.
+
+### Fixed
+- **Lệch ngày UTC (66 chỗ, 21 file)** — `new Date().toISOString().split('T')[0]` bị thay bằng `toDateStr()` (local) ở mọi nơi tính "hôm nay" cho logic nghiệp vụ (`useUserTasks`, `useSubscriptions`, `useJourney`, `useHabitLogs`, `useCollections`, `useHabitStore`, `FinancePage`). Trước đây từ 00:00–06:59 giờ VN, task "Hôm nay" có thể biến mất khỏi list, subscription auto-advance sai
+- **`data/reset_user_data.sql`** thiếu `DELETE FROM knowledge_groups` + `inspirational_quotes` — script tự khai "reset toàn bộ, không hoàn tác" nhưng để sót 2 bảng
+- **`DashboardPage` biểu đồ chi tiêu luôn ra màu xám** — `CAT_COLORS` tự hardcode keyed theo label tiếng Việt, trong khi data lưu key tiếng Anh → lookup luôn miss. Nay build từ `expense-categories.json` theo `key`, giống `FinancePage`
+- **`window.alert()` thứ 2** ở `IncubatorPage.jsx` (guard "Thực thi") — thay bằng state lỗi inline
+- **`useUserTasks.spawnRecurringTask`** — thêm `logger.error` khi `recurrence_rule.type` không khớp branch nào, trước đó `return false` âm thầm làm task lặp lại biến mất không dấu vết
+
+### Added
+- **`src/components/Toast.jsx`** (`useToast()`) — thay `window.alert()`, cùng pattern với `useConfirm()`/`ConfirmModal`. Áp dụng cho `CollectPage.jsx` (tạo task từ bài KB)
+- **`SUBSCRIPTION_CYCLES`/`advanceByCycle`/`monthlyCostForCycle`** (`currencyUtils.js`) — 1 nguồn cho chu kỳ subscription, thay 5 bản viết tay độc lập ở `FinancePage.jsx` + `useSubscriptions.js`
+- **`mondayIndex`/`getWeekStart`/`getWeekDates`** (`dateUtils.js`) — 1 nguồn cho công thức "tuần bắt đầu Thứ Hai", thay 5 bản (`useHabitStore`, `TrackerPage`, `DashboardPage` x2, `MonthCalendar`)
+- **`useHabitStore.calcStreak`/`getLongestStreak`** giờ export — `TrackerPage.effectiveStreak`/`effectiveLongest` gọi lại thay vì có bản copy riêng
+
+### Changed
+- **6 modal tay → `GenericModal`**: `IncubatorPage` (Defer + Execute modal), `InboxPage` (expense modal), `TrackerPage` (Skip Reason), `JourneyDetailPage` (DayDetailModal), `ProgramBrowser` (switch mode), `CustomJourneyModal`. Xoá CSS wrapper chết theo (`incubator-modal*`, `inbox-expense-modal*`, `journey-modal*`, `modal-backdrop`/`auth-modal` copy ở 3 nơi)
+- **`FinancePage`** — input ngày gia hạn subscription: native `<input type="date">` → `DatePickerPopover` (đúng RULES.md, đồng bộ với `TaskListSection`)
+
+### Docs
+- **`docs/AUDIT_REPORT_2026-08-01_duplicate_logic.md`** — báo cáo audit đầy đủ 10 phát hiện, severity, file:line, hướng sửa
+- **`docs/TASKS.md`, `docs/PLAN.md`** — rút gọn ~1140 dòng lịch sử đã trùng với CHANGELOG.md thành pointer 1 dòng (verify riêng: không mất task/decision nào đang mở)
+- **`project_analysis.md`** (root) — xoá, đã lỗi thời (v4.22.0) và trùng nội dung với `PROJECT.md`/`docs/AUDIT_REPORT_2026-06-27.md`
+
+---
+
 ## v4.29.0 — 2026-07-29
 > Làm `/tasks` rõ ràng + thêm view Lịch. Ponytail **ultra**: mọi thứ dưới đây
 > dùng token/component đã có, **không thêm dependency, không migration, không token mới**.

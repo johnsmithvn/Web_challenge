@@ -11,6 +11,7 @@ import EXPENSE_DATA from '../data/expense-categories.json';
 import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
 import { toDateStr } from '../utils/dateUtils';
 import CustomSelect from '../components/CustomSelect';
+import GenericModal from '../components/GenericModal';
 import '../styles/incubator.css';
 import '../styles/collect.css';
 
@@ -174,6 +175,7 @@ export default function IncubatorPage() {
   const [execOptions, setExecOptions] = useState({ expense: false, habit: false, task: false });
   const [expenseCategory, setExpenseCategory] = useState('shopping');
   const [execLogs, setExecLogs] = useState([]);
+  const [execError, setExecError] = useState('');
 
   // Timeline expand
   const [expandedId, setExpandedId] = useState(null);
@@ -193,7 +195,7 @@ export default function IncubatorPage() {
 
   const todayStr = toDateStr(); // local date, NOT toISOString() which is UTC
 
-  const toggleExec = (key) => setExecOptions(prev => ({ ...prev, [key]: !prev[key] }));
+  const toggleExec = (key) => { setExecError(''); setExecOptions(prev => ({ ...prev, [key]: !prev[key] })); };
   const anySelected = execOptions.expense || execOptions.habit || execOptions.task;
 
   /* ── Add ── */
@@ -269,6 +271,7 @@ export default function IncubatorPage() {
   /* ── Open Execute Modal (auto-suggest) ── */
   const openExecuteModal = useCallback(async (item) => {
     setExecuteModal(item);
+    setExecError('');
     // Auto-suggest based on intention data
     setExecOptions({
       expense: !!item.estimated_cost,
@@ -333,7 +336,7 @@ export default function IncubatorPage() {
     // Guard: if nothing was actually created (e.g. "Chi tiêu" chosen but no estimated_cost,
     // or every insert failed), do NOT mark the intention executed — that would silently lose it.
     if (convertedTypes.length === 0) {
-      alert(
+      setExecError(
         execOptions.expense && !executeModal.estimated_cost
           ? 'Chưa có chi phí ước tính. Hãy thêm chi phí cho dự định hoặc bỏ chọn "Chi tiêu".'
           : 'Không tạo được mục nào — vui lòng thử lại.'
@@ -642,52 +645,41 @@ export default function IncubatorPage() {
 
       {/* ── Defer Modal (rendered outside page guard so it works from detail view too) ── */}
       {deferModal && (
-        <div className="incubator-modal-backdrop" onClick={() => setDeferModal(null)}>
-          <div className="incubator-modal" onClick={e => e.stopPropagation()}>
-            <div className="incubator-modal__header">
-              <span>💤 Dời lại: {deferModal.title}</span>
-              <button className="incubator-modal__close" onClick={() => setDeferModal(null)}>✕</button>
+        <GenericModal onClose={() => setDeferModal(null)} title={`💤 Dời lại: ${deferModal.title}`} maxWidth={420}>
+          <GenericModal.Body>
+            <label className="incubator-modal__label">Lý do dời *</label>
+            <textarea
+              className="incubator-modal__input"
+              placeholder="Tại sao bạn muốn dời lại?"
+              value={deferReason}
+              onChange={e => setDeferReason(e.target.value)}
+              rows={2}
+              autoFocus
+            />
+            <label className="incubator-modal__label" style={{ marginTop: '0.5rem' }}>Review lại sau</label>
+            <div className="incubator-modal__options">
+              {[{l:'1 tuần',d:7},{l:'2 tuần',d:14},{l:'1 tháng',d:30},{l:'3 tháng',d:90}].map(o => (
+                <button key={o.d}
+                  className={`incubator-modal__option${deferDays===o.d ? ' incubator-modal__option--active' : ''}`}
+                  onClick={() => setDeferDays(o.d)}
+                >{o.l}</button>
+              ))}
             </div>
-            <div className="incubator-modal__body">
-              <label className="incubator-modal__label">Lý do dời *</label>
-              <textarea
-                className="incubator-modal__input"
-                placeholder="Tại sao bạn muốn dời lại?"
-                value={deferReason}
-                onChange={e => setDeferReason(e.target.value)}
-                rows={2}
-                autoFocus
-              />
-              <label className="incubator-modal__label" style={{ marginTop: '0.5rem' }}>Review lại sau</label>
-              <div className="incubator-modal__options">
-                {[{l:'1 tuần',d:7},{l:'2 tuần',d:14},{l:'1 tháng',d:30},{l:'3 tháng',d:90}].map(o => (
-                  <button key={o.d}
-                    className={`incubator-modal__option${deferDays===o.d ? ' incubator-modal__option--active' : ''}`}
-                    onClick={() => setDeferDays(o.d)}
-                  >{o.l}</button>
-                ))}
-              </div>
-            </div>
-            <div className="incubator-modal__footer">
-              <button className="btn btn-ghost" onClick={() => setDeferModal(null)}>Huỷ</button>
-              <button className="btn btn-primary" onClick={handleDefer} disabled={!deferReason.trim()}>
-                💤 Dời lại
-              </button>
-            </div>
-          </div>
-        </div>
+          </GenericModal.Body>
+          <GenericModal.Footer>
+            <button className="btn btn-ghost" onClick={() => setDeferModal(null)}>Huỷ</button>
+            <button className="btn btn-primary" onClick={handleDefer} disabled={!deferReason.trim()}>
+              💤 Dời lại
+            </button>
+          </GenericModal.Footer>
+        </GenericModal>
       )}
 
       {/* ── Execute Modal (Multi-Output) ── */}
       {executeModal && (
-        <div className="incubator-modal-backdrop" onClick={() => setExecuteModal(null)}>
-          <div className="incubator-modal incubator-modal--execute" onClick={e => e.stopPropagation()}>
-            <div className="incubator-modal__header">
-              <span>✅ Thực thi: {executeModal.title}</span>
-              <button className="incubator-modal__close" onClick={() => setExecuteModal(null)}>✕</button>
-            </div>
-            <div className="incubator-modal__body">
-              <label className="incubator-modal__label">Phân bổ nguồn lực cho dự định này:</label>
+        <GenericModal onClose={() => setExecuteModal(null)} title={`✅ Thực thi: ${executeModal.title}`} maxWidth={460}>
+          <GenericModal.Body>
+            <label className="incubator-modal__label">Phân bổ nguồn lực cho dự định này:</label>
 
               {/* Option: Expense */}
               <div
@@ -744,19 +736,22 @@ export default function IncubatorPage() {
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="incubator-modal__footer">
-              <button className="btn btn-ghost" onClick={() => setExecuteModal(null)}>Huỷ</button>
-              <button
-                className="btn btn-primary"
-                onClick={handleExecute}
-                disabled={!anySelected}
-              >
-                ✅ Thực thi
-              </button>
-            </div>
-          </div>
-        </div>
+
+            {execError && (
+              <div className="incubator-exec-error">⚠️ {execError}</div>
+            )}
+          </GenericModal.Body>
+          <GenericModal.Footer>
+            <button className="btn btn-ghost" onClick={() => setExecuteModal(null)}>Huỷ</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleExecute}
+              disabled={!anySelected}
+            >
+              ✅ Thực thi
+            </button>
+          </GenericModal.Footer>
+        </GenericModal>
       )}
 
       {/* ═══ DETAIL VIEW — inline, replaces page content (same pattern as InboxPage) ═══ */}

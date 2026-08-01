@@ -5,9 +5,10 @@
 **Strategy:** Production-ready from day 1
 **Source of Truth:** **`data/schema_v4.24.0.sql`** — single consolidated schema (all migrations v4.4.0 → v4.24.0 folded in). Idempotent — run once on a fresh project.
 
-**Table count (verified against the `.sql` file):** **31 `CREATE TABLE`** = **29 active** + **2 archived** (`friendships`, `fitness_logs`).
+**Table count (verified against the `.sql` file):** **31 `CREATE TABLE`** = **27 active** + **4 archived** (`friendships`, `fitness_logs`, `knowledge_groups`, `collection_groups` — 2 nhóm sau mới archived v4.30.0, xem P2-7).
 `mood_logs` is NOT in this schema (dropped in v4.10.1, folded into the consolidated file).
-Every other doc that says 26 / 28 tables is stale — this line is the count.
+Every other doc that says 26 / 28 / 29 tables is stale — this line is the count.
+Lưu ý: `data/schema_v4.24.0.sql` (file snapshot) CHƯA phản ánh v4.30.0 — xem `data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql` cho thay đổi thật.
 
 ---
 
@@ -40,13 +41,13 @@ profiles ───────────────────────�
     ├──► intentions / intention_logs (incubator)│
     │                                           │
     ├──► tags ◄──► collection_tags              │
+    │    (+ emoji, description v4.30.0 —        │
+    │     tag có emoji = "nhóm/folder")          │
     │         ◄──► task_tags        (v4.28.0)    │
     │         ◄──► expense_tags                  │
     │         ◄──► subscription_tags             │
     │              └─ all 4 ──► VIEW tagged_items │
     │                                           │
-    ├──► knowledge_groups ◄──► collection_groups ──► collections
-    │                        (M:N junction v4.11.0)
     ├──► collection_notes  (threaded sub-notes) │
     ├──► inspirational_quotes (user quotes)     │
     │                                           │
@@ -64,7 +65,7 @@ Programs ──► program_habits   (template library, system + user)
 > column definitions, RLS policies, triggers, and indexes. `schema_v4.4.0.sql` and the per-version
 > `migration_*.sql` files no longer exist — they were folded into the consolidated file (history in git).
 
-### Table Inventory (29 active)
+### Table Inventory (27 active)
 
 | # | Table | Purpose | Key constraints |
 |---|-------|---------|-----------------|
@@ -89,15 +90,15 @@ Programs ──► program_habits   (template library, system + user)
 | 19 | `activity_logs` | Append-only audit trail | action + label + amount + meta JSONB |
 | 20 | `intentions` | Incubator (someday-maybe) | status: incubating/deferred/executed/abandoned |
 | 21 | `intention_logs` | Incubator audit trail | FK → intentions |
-| 22 | `tags` | Central tag system | UNIQUE(user_id, name) |
+| 22 | `tags` | Central tag system | UNIQUE(user_id, name). **v4.30.0:** + cột `emoji`, `description` — tag có `emoji` đóng vai trò "nhóm/folder" hiển thị trong Knowledge Base (gộp từ `knowledge_groups`, xem P2-7) |
 | 23 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
 | 24 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
 | 25 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
 | 25b | `task_tags` | Junction: Task ↔ Tags | **v4.28.0.** Composite PK(task_id, tag_id), CASCADE. RLS kiểm ownership **cả 2 phía**. Chỉ index `tag_id` (task_id đã là cột dẫn đầu của PK) |
-| 26 | `knowledge_groups` | KB folder/group metadata | title, emoji, description. FK → profiles |
-| 27 | `collection_groups` | Junction: KB ↔ Groups (M:N) | Composite PK(collection_id, group_id), CASCADE |
 | 28 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
 | 29 | `inspirational_quotes` | User + system quotes | FK → profiles, `is_active` toggle, `audio_url` optional |
+| — | `knowledge_groups` | **[ARCHIVED v4.30.0]** KB folder/group metadata | Quyết định P2-7 (2026-08-01): trùng việc với `tags` (cả 2 đều M:N trên `collections`). Đã gộp dữ liệu sang `tags` (cột `emoji`/`description` mới) + `collection_tags` qua `migration_v4.30.0_merge_knowledge_groups_into_tags.sql` Phase 1. Frontend không còn dùng (`useKnowledgeGroups.js` đã xoá). Table còn tồn tại trong DB tới khi chạy Phase 2 (`DROP TABLE`, breaking, chưa chạy). |
+| — | `collection_groups` | **[ARCHIVED v4.30.0]** Junction: KB ↔ Groups (M:N) | Cùng lý do với `knowledge_groups` ở trên — đã gộp vào `collection_tags`. |
 | — | `fitness_logs` | **[ARCHIVED v4.26.0]** Workout sessions | `session_name`, `duration_min`, `energy`. Frontend code deleted v4.26.0 (recoverable from git history). Table still exists in production DB, no active hook or page uses it. Safe to DROP when ready. |
 | — | `friendships` | **[ARCHIVED v3.0.0]** Friend requests | Frontend code deleted v4.25.0 (was `src/_archived/`, recoverable from git history). Table exists in production DB but is not used by any active hook or page. Safe to DROP when ready. |
 

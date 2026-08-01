@@ -64,19 +64,37 @@ export function useTags() {
   }, [isAuth, fetchTags]);
 
   // ── Add tag (or return existing) ──────────────────────────
-  const addTag = useCallback(async (name, color = '#8b5cf6') => {
+  // extra: { emoji, description } — dùng khi tag đóng vai trò "nhóm/folder"
+  // hiển thị (v4.30.0, gộp từ knowledge_groups).
+  const addTag = useCallback(async (name, color = '#8b5cf6', extra = {}) => {
     if (!isAuth || !userId || !name.trim()) return null;
 
     const trimmed = name.trim().toLowerCase();
 
     // Check if already exists (client-side)
     const existing = tags.find(t => t.name.toLowerCase() === trimmed);
-    if (existing) return existing;
+    if (existing) {
+      // v4.30.0: đang tạo "nhóm" (extra.emoji) mà trùng tên 1 tag thường đã
+      // có (chưa có emoji) — nâng cấp nó thành nhóm thay vì âm thầm bỏ qua
+      // emoji, tránh user tưởng vừa tạo nhóm mới nhưng thực ra không đổi gì.
+      if (extra.emoji && !existing.emoji) {
+        const patch = { emoji: extra.emoji, description: extra.description || existing.description || null };
+        setTags(prev => prev.map(t => t.id === existing.id ? { ...t, ...patch } : t));
+        try {
+          const { error } = await supabase.from('tags').update(patch).eq('id', existing.id).eq('user_id', userId);
+          if (error) throw error;
+        } catch (err) {
+          logger.warn('[useTags] addTag emoji-sync error:', err.message);
+        }
+        return { ...existing, ...patch };
+      }
+      return existing;
+    }
 
     try {
       const { data, error } = await supabase
         .from('tags')
-        .insert({ user_id: userId, name: trimmed, color })
+        .insert({ user_id: userId, name: trimmed, color, emoji: extra.emoji || null, description: extra.description || null })
         .select()
         .single();
 
@@ -117,6 +135,8 @@ export function useTags() {
     const clean = {};
     if (updates.name !== undefined) clean.name = updates.name.trim().toLowerCase();
     if (updates.color !== undefined) clean.color = updates.color;
+    if (updates.emoji !== undefined) clean.emoji = updates.emoji;
+    if (updates.description !== undefined) clean.description = updates.description;
 
     if (Object.keys(clean).length === 0) return false;
 
@@ -231,7 +251,7 @@ export function useTags() {
     try {
       const { data, error } = await supabase
         .from(config.table)
-        .select('tag_id, tags(id, name, color)')
+        .select('tag_id, tags(id, name, color, emoji)')
         .eq(config.fk, entityId);
 
       if (error) {
@@ -241,6 +261,36 @@ export function useTags() {
       return (data || []).map(row => row.tags).filter(Boolean);
     } catch (err) {
       logger.error('[useTags] getTagsForEntity exception:', err);
+      return [];
+    }
+  }, [isAuth]);
+
+  // ── Get collections for a specific tag (chiều ngược getTagsForEntity) ──
+  // v4.30.0: thay useKnowledgeGroups.fetchGroupArticles — tag đóng vai trò
+  // "nhóm" khi có emoji. Không giữ thứ tự thủ công (collection_tags không có
+  // sort_order, và cũ đã xác nhận không dùng tính năng đó).
+  const getCollectionsForTag = useCallback(async (tagId) => {
+    if (!isAuth) return [];
+    try {
+      const { data, error } = await supabase
+        .from('collection_tags')
+        .select('collections(*, collection_tags(tag_id, tags(id, name, color, emoji)))')
+        .eq('tag_id', tagId);
+
+      if (error) throw error;
+
+      return (data || [])
+        .map(row => row.collections)
+        .filter(Boolean)
+        .map(item => {
+          const _tags = (item.collection_tags || []).map(ct => ct.tags).filter(Boolean);
+          const cleaned = { ...item, _tags };
+          delete cleaned.collection_tags;
+          return cleaned;
+        })
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } catch (err) {
+      logger.error('[useTags] getCollectionsForTag exception:', err);
       return [];
     }
   }, [isAuth]);
@@ -302,6 +352,7 @@ export function useTags() {
     linkTag,
     unlinkTag,
     getTagsForEntity,
+    getCollectionsForTag,
     getTagUsageCount,
     getAllTagUsageCounts,
   };
