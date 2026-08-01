@@ -193,9 +193,10 @@ COMMIT;
 
 -- (D) Điều kiện KHÔNG-thuộc-SQL, tự xác nhận trước khi qua Phần 3:
 --     [ ] Đã deploy code app mới nhất (không còn ghi collections.priority /
---         user_tasks.collection_id; CollectPage.jsx dùng useTags thay
---         useKnowledgeGroups)
---     [ ] Đã smoke test /collect → Kho Tàng hiện đúng như trước
+--         user_tasks.collection_id; CollectPage.jsx KHÔNG còn UI "Nhóm",
+--         không đọc tags.emoji/description; useCollections.js không select emoji)
+--     [ ] Đã smoke test /collect → không còn tab 📁 Nhóm, mọi bài viết (kể cả
+--         bài từng ở trong nhóm cũ) vẫn hiện đầy đủ với tag thường
 --     [ ] Đã backup DB (Supabase Dashboard → Database → Backups, hoặc
 --         pg_dump "$DATABASE_URL" > backup_pre_v5.sql)
 
@@ -234,6 +235,11 @@ COMMIT;
 -- -- 3e. Xoá bảng group cũ (đã copy hết sang tags/collection_tags ở Phần 2)
 -- DROP TABLE IF EXISTS collection_groups;
 -- DROP TABLE IF EXISTS knowledge_groups;
+--
+-- -- 3f. Xoá cột emoji/description trên tags — quyết định sau (2026-08-01):
+-- -- bỏ hẳn tính năng "Nhóm" khỏi UI, không còn ai đọc 2 cột này nữa
+-- ALTER TABLE tags DROP COLUMN IF EXISTS emoji;
+-- ALTER TABLE tags DROP COLUMN IF EXISTS description;
 --
 -- COMMIT;
 

@@ -41,8 +41,6 @@ profiles ───────────────────────�
     ├──► intentions / intention_logs (incubator)│
     │                                           │
     ├──► tags ◄──► collection_tags              │
-    │    (+ emoji, description v4.30.0 —        │
-    │     tag có emoji = "nhóm/folder")          │
     │         ◄──► task_tags        (v4.28.0)    │
     │         ◄──► expense_tags                  │
     │         ◄──► subscription_tags             │
@@ -90,15 +88,15 @@ Programs ──► program_habits   (template library, system + user)
 | 19 | `activity_logs` | Append-only audit trail | action + label + amount + meta JSONB |
 | 20 | `intentions` | Incubator (someday-maybe) | status: incubating/deferred/executed/abandoned |
 | 21 | `intention_logs` | Incubator audit trail | FK → intentions |
-| 22 | `tags` | Central tag system | UNIQUE(user_id, name). **v4.30.0:** + cột `emoji`, `description` — tag có `emoji` đóng vai trò "nhóm/folder" hiển thị trong Knowledge Base (gộp từ `knowledge_groups`, xem P2-7) |
+| 22 | `tags` | Central tag system | UNIQUE(user_id, name). ⚠️ Nếu đã chạy Phase 1 của `migration_v4.30.0_merge_knowledge_groups_into_tags.sql`, DB thật hiện có thêm 2 cột `emoji`/`description` — không ai đọc/ghi nữa (feature "Nhóm" đã bỏ khỏi UI), chờ Phase 2 `DROP COLUMN` |
 | 23 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
 | 24 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
 | 25 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
 | 25b | `task_tags` | Junction: Task ↔ Tags | **v4.28.0.** Composite PK(task_id, tag_id), CASCADE. RLS kiểm ownership **cả 2 phía**. Chỉ index `tag_id` (task_id đã là cột dẫn đầu của PK) |
 | 28 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
 | 29 | `inspirational_quotes` | User + system quotes | FK → profiles, `is_active` toggle, `audio_url` optional |
-| — | `knowledge_groups` | **[ARCHIVED v4.30.0]** KB folder/group metadata | Quyết định P2-7 (2026-08-01): trùng việc với `tags` (cả 2 đều M:N trên `collections`). Đã gộp dữ liệu sang `tags` (cột `emoji`/`description` mới) + `collection_tags` qua `migration_v4.30.0_merge_knowledge_groups_into_tags.sql` Phase 1. Frontend không còn dùng (`useKnowledgeGroups.js` đã xoá). Table còn tồn tại trong DB tới khi chạy Phase 2 (`DROP TABLE`, breaking, chưa chạy). |
-| — | `collection_groups` | **[ARCHIVED v4.30.0]** Junction: KB ↔ Groups (M:N) | Cùng lý do với `knowledge_groups` ở trên — đã gộp vào `collection_tags`. |
+| — | `knowledge_groups` | **[ARCHIVED v4.30.0]** KB folder/group metadata | Quyết định P2-7 (2026-08-01): trùng việc với `tags`. Ban đầu định gộp hiển thị (tag có emoji = "nhóm"), nhưng chốt cuối là **bỏ hẳn tính năng Nhóm khỏi UI**. Data đã copy sang `tags`/`collection_tags` (Phase 1) trước khi quyết định đổi — bài viết không mất liên kết, chỉ mất hiển thị folder. Frontend không còn dùng (`useKnowledgeGroups.js` đã xoá). Table còn tồn tại tới khi chạy Phase 2 (`DROP TABLE`, breaking, chưa chạy). |
+| — | `collection_groups` | **[ARCHIVED v4.30.0]** Junction: KB ↔ Groups (M:N) | Cùng lý do với `knowledge_groups` ở trên. |
 | — | `fitness_logs` | **[ARCHIVED v4.26.0]** Workout sessions | `session_name`, `duration_min`, `energy`. Frontend code deleted v4.26.0 (recoverable from git history). Table still exists in production DB, no active hook or page uses it. Safe to DROP when ready. |
 | — | `friendships` | **[ARCHIVED v3.0.0]** Friend requests | Frontend code deleted v4.25.0 (was `src/_archived/`, recoverable from git history). Table exists in production DB but is not used by any active hook or page. Safe to DROP when ready. |
 

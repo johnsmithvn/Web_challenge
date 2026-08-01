@@ -1,29 +1,31 @@
 # CHANGELOG
 
 ## v4.30.0 — 2026-08-01
-> Quyết định sản phẩm P2-7: gộp `knowledge_groups` (taxonomy M:N thứ 3, trùng việc với `tags`)
-> vào `tags`. Code xong, SQL còn chờ user tự chạy (agent không kết nối Supabase) — xem
-> `docs/TASKS.md` v4.30.0 cho runbook đầy đủ.
-
-### Added
-- **`tags.emoji`, `tags.description`** — tag có `emoji` giờ đóng vai trò "nhóm/folder" hiển thị trong Knowledge Base, thay cho bảng `knowledge_groups` riêng
-- **`useTags.getCollectionsForTag(tagId)`** — chiều ngược `getTagsForEntity`, thay `useKnowledgeGroups.fetchGroupArticles`
-- **`data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql`** — Phase 1 an toàn (thêm cột + copy data từ `knowledge_groups`/`collection_groups`), Phase 2 breaking (`DROP TABLE`, comment sẵn, chạy sau khi xác nhận)
-- **`data/RUNBOOK.sql`** — gộp 3 migration rời (`v4.28.0`, `v5.0.0`, `v4.30.0`) thành 1 file chạy tuần tự cho đỡ rối, giữ nguyên 3 file gốc làm hồ sơ lịch sử
-
-### Changed
-- **`CollectPage.jsx`** — toàn bộ UI "Nhóm" (GroupPicker, drill-down, tab Nhóm, badge trên ArticleCard) đổi từ `useKnowledgeGroups` sang `useTags`, lọc theo `tag.emoji`. `_articleCount` tính client-side từ `items` đã load thay vì gọi API riêng
-- **`useCollections.js`** — bỏ join `collection_groups`/`knowledge_groups`, `tags(...)` select thêm `emoji` — nhóm giờ nằm sẵn trong `item._tags`
-- **`FinancePage.jsx`, `SettingsPage.jsx`** — TagPicker/danh sách tag lọc bỏ tag có `emoji` (tag-nhóm KB) — tránh nhầm lẫn chọn nhầm nhóm làm tag chi tiêu, và tránh xoá nhầm 1 nhóm KB từ Settings mà không có cảnh báo "gỡ khỏi bài viết" như ở CollectPage
+> Quyết định sản phẩm P2-7: `knowledge_groups` (taxonomy M:N thứ 3 trên `collections`) trùng việc
+> với `tags`. Sau thảo luận, chốt **bỏ hẳn tính năng "Nhóm" khỏi giao diện** Knowledge Base — không
+> gộp hiển thị (tag+emoji) như phương án đầu, mà đơn giản hoá về chỉ còn tag thường. Dữ liệu nhóm cũ
+> migrate thành tag thường (không mất liên kết bài viết, chỉ mất hiển thị "folder"). Code xong, SQL
+> còn 1 bước breaking chờ user tự chạy (agent không kết nối Supabase) — xem `docs/TASKS.md` v4.30.0.
 
 ### Removed
+- **Tính năng "Nhóm"/folder trong Knowledge Base** — bỏ hẳn khỏi UI: tab 📁 Nhóm, `GroupPicker`,
+  drill-down view, group list, badge folder trên `ArticleCard`. Chỉ còn tag thường (`#tag`)
 - **`src/hooks/useKnowledgeGroups.js`** — không còn ai import
 
-### Fixed (phát hiện qua verify đối kháng ngay sau khi refactor)
-- **SQL:** `migration_v4.30.0` + `RUNBOOK.sql` — câu `INSERT...SELECT...ON CONFLICT DO UPDATE` copy `knowledge_groups→tags` có thể crash "cannot affect row a second time" nếu 1 user có ≥2 nhóm cũ trùng tên (không hoa/thường) — code cũ chưa từng chặn tạo nhóm trùng tên. Thêm `DISTINCT ON` trước khi insert
-- **`useTags.addTag()`** không đồng bộ `emoji` khi tên đã tồn tại — tạo "nhóm" trùng tên 1 tag thường có sẵn sẽ âm thầm trả về tag thường cũ (không có emoji), làm "nhóm mới" không xuất hiện trong tab Nhóm dù tưởng đã tạo. Nay nâng cấp tag đó thành nhóm (backfill emoji/description) thay vì bỏ qua
-- **`CollectPage.allTags`** — merge `centralTags` (đủ field) với tag nhúng trong `item._tags` (thiếu `description` vì `useCollections` không select cột đó) theo thứ tự sai, khiến `description` của mọi nhóm có ≥1 bài viết bị mất khi hiển thị. Đổi thứ tự merge, ưu tiên `centralTags`
-- **`docs/DATABASE.md`** tự mâu thuẫn — dòng tổng kết đã sửa "27 active" nhưng heading `### Table Inventory` cách đó vài dòng vẫn ghi "(29 active)"
+### Changed
+- **`data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql`** — Phase 1 (đã chạy: thêm cột
+  `tags.emoji`/`description`, copy data từ `knowledge_groups`/`collection_groups`), Phase 2 breaking
+  (comment sẵn): `DROP TABLE knowledge_groups, collection_groups` **+ `DROP COLUMN tags.emoji,
+  tags.description`** (không còn UI nào đọc 2 cột này sau khi bỏ tính năng Nhóm)
+- **`data/RUNBOOK.sql`** — gộp 3 migration rời (`v4.28.0`, `v5.0.0`, `v4.30.0`) thành 1 file chạy
+  tuần tự cho đỡ rối, giữ nguyên 3 file gốc làm hồ sơ lịch sử
+
+### Fixed (phát hiện qua verify đối kháng khi còn ở phương án "gộp hiển thị", trước khi đổi hướng)
+- **SQL:** `INSERT...SELECT...ON CONFLICT DO UPDATE` copy `knowledge_groups→tags` có thể crash
+  "cannot affect row a second time" nếu 1 user có ≥2 nhóm cũ trùng tên (không hoa/thường) — code cũ
+  chưa từng chặn tạo nhóm trùng tên. Thêm `DISTINCT ON` trước khi insert (vẫn áp dụng dù đổi hướng)
+- **`docs/DATABASE.md`** tự mâu thuẫn — dòng tổng kết đã sửa "27 active" nhưng heading
+  `### Table Inventory` cách đó vài dòng vẫn ghi "(29 active)"
 
 ---
 

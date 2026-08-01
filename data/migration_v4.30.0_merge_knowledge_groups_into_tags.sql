@@ -6,26 +6,28 @@
 -- quan hệ M:N trên `collections` — cùng giải 1 bài toán ("1 bài viết có thể
 -- thuộc nhiều nhóm/chủ đề"). Khác biệt DUY NHẤT là `knowledge_groups` có thêm
 -- cột `emoji` + `description` để hiển thị kiểu "folder", còn `tags` thì không.
--- → Thêm 2 cột đó vào `tags`, gộp 2 hệ thành 1. Không cần giữ
--- `collection_groups.sort_order` (thứ tự thủ công trong nhóm) — user xác nhận
--- không dùng tính năng này.
 --
--- PHASE 1 (an toàn, idempotent, KHÔNG phụ thuộc thứ tự deploy code):
+-- CẬP NHẬT quyết định (cùng ngày, sau khi PHASE 1 đã chạy): thay vì giữ lại
+-- tính năng "Nhóm" trên UI (hiển thị qua tag có emoji), quyết định XOÁ HẲN
+-- tính năng Nhóm khỏi giao diện — chỉ còn tag thường. Vì vậy `tags.emoji`/
+-- `description` không còn cần thiết nữa → dọn luôn ở PHASE 2 (xem dưới).
+-- Dữ liệu nhóm cũ ĐÃ được PHASE 1 copy thành tag thường (giữ tên, mất emoji)
+-- — bài viết KHÔNG mất liên kết, chỉ mất hiển thị "folder" đặc biệt.
+--
+-- PHASE 1 (đã chạy, an toàn, idempotent):
 --   - Thêm tags.emoji, tags.description
 --   - Copy dữ liệu knowledge_groups → tags, collection_groups → collection_tags
---   - KHÔNG xoá gì — chạy lại nhiều lần không sao, chạy trước/sau deploy code
---     mới đều được (code cũ vẫn đọc knowledge_groups/collection_groups bình
---     thường, không bị ảnh hưởng vì 2 bảng đó còn nguyên tới Phase 2)
+--   - KHÔNG xoá gì
 --
--- PHASE 2 (BREAKING — DROP TABLE, KHÔNG HOÀN LẠI ĐƯỢC) — nằm cuối file, đã
--- COMMENT sẵn. CHỈ bỏ comment & chạy sau khi:
---   1. Đã chạy PHASE 1 và xác nhận số liệu ở mục "KIỂM TRA SAU PHASE 1" khớp
---   2. Đã deploy code mới (CollectPage.jsx dùng useTags thay useKnowledgeGroups)
---   3. Đã backup DB
+-- PHASE 2 (BREAKING — DROP TABLE + DROP COLUMN, KHÔNG HOÀN LẠI ĐƯỢC) — nằm
+-- cuối file, đã COMMENT sẵn. CHỈ bỏ comment & chạy sau khi:
+--   1. Đã deploy code mới (CollectPage.jsx không còn UI Nhóm, không còn đọc
+--      tags.emoji/description; useCollections.js không còn select emoji)
+--   2. Đã backup DB
 --   (Nếu chạy Phase 2 khi code cũ còn sống: query join của useCollections.js
---   có 3 bước fallback — full → tags-only → plain — nên sẽ tự rớt xuống
---   fallback tags-only, KHÔNG crash app, chỉ mất phần hiển thị nhóm cũ tạm
---   thời. Vẫn nên deploy code mới trước cho gọn.)
+--   có 3 bước fallback — full → tags-only → plain — nên khi cột emoji biến
+--   mất, code CŨ (nếu còn select emoji) sẽ lỗi ở bước full, tự rớt xuống
+--   fallback — KHÔNG crash app, nhưng vẫn nên deploy code mới trước cho gọn.)
 -- ════════════════════════════════════════════════════════════════════════════
 
 BEGIN;
@@ -100,9 +102,11 @@ COMMIT;
 --   3. Tạo nhóm mới → phải là 1 tag mới có emoji, hiện ngay trong Kho Tàng
 --
 -- ════════════════════════════════════════════════════════════════════════════
--- PHASE 2 — BREAKING — bỏ comment và chạy SAU khi đã làm đủ 3 điều kiện ở đầu file
+-- PHASE 2 — BREAKING — bỏ comment và chạy SAU khi đã deploy code mới + backup
 -- ════════════════════════════════════════════════════════════════════════════
 -- BEGIN;
 -- DROP TABLE IF EXISTS collection_groups;
 -- DROP TABLE IF EXISTS knowledge_groups;
+-- ALTER TABLE tags DROP COLUMN IF EXISTS emoji;
+-- ALTER TABLE tags DROP COLUMN IF EXISTS description;
 -- COMMIT;

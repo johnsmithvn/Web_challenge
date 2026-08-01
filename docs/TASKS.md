@@ -15,43 +15,51 @@ SQL v4.28.0/v5.0.0, các `TODO: decision needed` còn treo, và dọn dead code/
 
 ---
 
-## v4.30.0 — ✅ CODE DONE / ⏳ SQL CHỜ USER CHẠY (2026-08-01) — P2-7: gộp knowledge_groups vào tags
+## v4.30.0 — ✅ CODE DONE / ⏳ SQL CHỜ USER CHẠY (2026-08-01) — P2-7: bỏ hẳn Nhóm, gộp về tags thường
 
-**Quyết định:** sau thảo luận, chọn hướng đơn giản nhất — thêm `emoji`/`description` thẳng vào
-`tags` (KHÔNG dùng `is_group BOOLEAN` như đề xuất ban đầu). "Nhóm" = 1 tag có `emoji`. Không giữ
-`collection_groups.sort_order` (user xác nhận không dùng tính năng sắp xếp thủ công trong nhóm).
+**Quyết định (2 vòng cùng ngày):**
+1. Vòng 1 — gộp hiển thị: thêm `emoji`/`description` vào `tags`, "nhóm" = 1 tag có `emoji`
+   (KHÔNG dùng `is_group BOOLEAN`). Không giữ `collection_groups.sort_order` (không dùng).
+2. Vòng 2 — sau khi user chạy Phase 1 + thấy nhóm cũ vẫn hiện y hệt trên UI, hỏi lại và **chốt bỏ
+   hẳn tính năng Nhóm khỏi giao diện** (không phải chỉ gộp backend) — "xóa gọn gàng cả backend".
+   → Revert: bỏ toàn bộ UI Nhóm khỏi `CollectPage.jsx`, revert `useTags.js` về chữ ký gốc, thêm
+   `DROP COLUMN emoji/description` vào Phase 2 của migration.
 
 ### Đã làm ✅ (code, lint 0 lỗi)
-- `data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql` — Phase 1 an toàn (thêm cột,
-  copy data) + Phase 2 breaking (DROP TABLE, comment sẵn)
+- `data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql` — Phase 1 (đã chạy: thêm cột,
+  copy data) + Phase 2 breaking, comment sẵn (DROP TABLE `knowledge_groups`/`collection_groups`
+  **+ DROP COLUMN `tags.emoji`/`description`** — thêm ở vòng 2)
 - `data/RUNBOOK.sql` — gộp v4.28.0 + v5.0.0 + v4.30.0 thành 1 file chạy tuần tự, giữ nguyên
   các file gốc để tham khảo lịch sử
-- `useTags.js` — `addTag`/`updateTag` nhận thêm `{emoji, description}`; thêm
-  `getCollectionsForTag(tagId)` (chiều ngược `getTagsForEntity`)
-- `useCollections.js` — bỏ join `collection_groups`/`knowledge_groups`, thêm `emoji` vào select
-  `tags(...)` — nhóm giờ tự có trong `_tags`, không cần `_groups` riêng
-- `CollectPage.jsx` — toàn bộ UI Nhóm (GroupPicker, drill-down, tab Nhóm, ArticleCard badge) đổi
-  sang dùng `useTags` thay `useKnowledgeGroups`. `_articleCount` tính client-side từ `items` đang
-  có, không gọi API riêng nữa
-- Xoá `src/hooks/useKnowledgeGroups.js` (không còn ai import)
-- Docs: `DATABASE.md`, `ARCHITECTURE.md`, `FEATURES.md` §22 + §27 cập nhật
+- `useTags.js` — về lại chữ ký gốc (`addTag`/`updateTag` không nhận `emoji`/`description` nữa,
+  `getCollectionsForTag` đã xoá — không còn UI nào cần)
+- `useCollections.js` — bỏ join `collection_groups`/`knowledge_groups`, select `tags(...)` không
+  còn `emoji` (cột sắp bị drop)
+- `CollectPage.jsx` — xoá sạch UI Nhóm: `GroupPicker`, tab 📁 Nhóm, drill-down view, group list,
+  ArticleCard badge, mọi state liên quan (`activeGroupView`, `groupArticles`, `editGroups`,
+  `groupNewName`, `plainTags`, `groupTags`). Chỉ còn tag thường (`#tag`)
+- `FinancePage.jsx`/`SettingsPage.jsx` — bỏ filter `!tag.emoji` đã thêm ở vòng 1 (không cần nữa,
+  mọi tag đều là tag thường)
+- Xoá `src/hooks/useKnowledgeGroups.js`
+- CSS: dọn sạch `collect.css` (`.kb-group-*`, `.kb-breadcrumb*`, `.kb-create-group*`) — dead code
+- Docs: `DATABASE.md`, `ARCHITECTURE.md`, `FEATURES.md` §22 + §27 cập nhật theo quyết định cuối
 
-### Verify đối kháng (4 lens độc lập) — 5 phát hiện, đã fix hết (chi tiết: CHANGELOG.md v4.30.0 "Fixed")
-- [x] SQL: `INSERT...ON CONFLICT DO UPDATE` copy nhóm trùng tên có thể crash → thêm `DISTINCT ON`
-- [x] `addTag()` không đồng bộ emoji khi tên đã tồn tại → nâng cấp tag thành nhóm thay vì bỏ qua
-- [x] `CollectPage.allTags` merge sai thứ tự làm mất `description` của nhóm có bài viết
-- [x] `DATABASE.md` tự mâu thuẫn 27 vs 29 active (heading quên sửa)
-- [x] Tag-nhóm rò rỉ vào TagPicker của `FinancePage`/danh sách `SettingsPage` → lọc `!tag.emoji`
+### Verify đối kháng vòng 1 (4 lens độc lập) — 5 phát hiện, đã fix trước khi đổi hướng (chi tiết: CHANGELOG.md v4.30.0 "Fixed")
+- [x] SQL: `INSERT...ON CONFLICT DO UPDATE` copy nhóm trùng tên có thể crash → thêm `DISTINCT ON` (vẫn giữ, áp dụng cho Phase 1 dù có đổi hướng ở vòng 2)
+- [x] `addTag()` không đồng bộ emoji khi tên đã tồn tại (đã revert cùng việc bỏ emoji khỏi `addTag`)
+- [x] `CollectPage.allTags` merge sai thứ tự làm mất `description` (không còn liên quan sau khi bỏ description)
+- [x] `DATABASE.md` tự mâu thuẫn 27 vs 29 active (heading quên sửa) — vẫn giữ fix này
+- [x] Tag-nhóm rò rỉ vào TagPicker Finance/Settings (đã revert filter cùng việc bỏ khái niệm tag-nhóm)
 
 ### ⏳ User phải tự chạy (agent không kết nối Supabase)
-- [ ] Chạy `data/RUNBOOK.sql` Phần 1+2 (an toàn) — hoặc riêng
-      `migration_v4.30.0_merge_knowledge_groups_into_tags.sql` Phase 1 nếu chưa muốn đụng
-      v4.28.0/v5.0.0 chung
-- [ ] Kiểm mục "KIỂM TRA SAU PHASE 1" trong migration — số liệu group cũ vs tag mới phải khớp
-- [ ] Deploy code này lên prod
-- [ ] Smoke test `/collect` → Kho Tàng → nhóm cũ hiện đúng, tạo nhóm mới hoạt động
-- [ ] Sau khi ổn định: bỏ comment PHẦN 3 trong RUNBOOK.sql (hoặc Phase 2 trong migration riêng)
-      để `DROP TABLE knowledge_groups, collection_groups` — breaking, không hoàn lại được
+- [x] Chạy `data/RUNBOOK.sql` Phần 1+2 — **user xác nhận đã chạy** (SELECT kiểm tra thấy
+      `knowledge_groups` còn tồn tại → đúng, Phần 3/Phase 2 chưa chạy)
+- [ ] Deploy code này (bản đã bỏ UI Nhóm) lên prod
+- [ ] Smoke test `/collect` → không còn tab 📁 Nhóm, bài viết cũ (từng ở trong nhóm) vẫn hiện đủ
+      với tag thường (vd "tesst", "test 2" giờ là tag thường, không còn folder)
+- [ ] Sau khi ổn định: bỏ comment PHẦN 3 trong RUNBOOK.sql để `DROP TABLE
+      knowledge_groups, collection_groups` **+ `DROP COLUMN tags.emoji, tags.description`** —
+      breaking, không hoàn lại được
 
 ---
 

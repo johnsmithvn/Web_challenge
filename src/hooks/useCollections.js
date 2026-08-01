@@ -45,7 +45,7 @@ export function useCollections() {
       // Step 1: Try with both collection_tags + task_collections (v4.5.0)
       let query = supabase
         .from('collections')
-        .select('*, collection_tags(tag_id, tags(id, name, color, emoji)), task_collections(task_id)')
+        .select('*, collection_tags(tag_id, tags(id, name, color)), task_collections(task_id)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(500);
@@ -59,7 +59,7 @@ export function useCollections() {
         joinLevel = 'tags-only';
         let q2 = supabase
           .from('collections')
-          .select('*, collection_tags(tag_id, tags(id, name, color, emoji))')
+          .select('*, collection_tags(tag_id, tags(id, name, color))')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(500);

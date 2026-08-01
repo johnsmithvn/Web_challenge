@@ -84,10 +84,6 @@ export default function FinancePage() {
   const { logActivity } = useActivityLog();
   const { deleteItem: deleteInboxItem } = useCollections();
   const { tags, addTag, linkTag } = useTags();
-  // v4.30.0: tag có emoji đóng vai trò "nhóm Kho Tàng" (Knowledge Base) —
-  // không cho chọn ở form chi tiêu/subscription, tránh nhầm lẫn + tránh xoá
-  // nhóm KB vô tình cascade-delete link ở expense_tags/subscription_tags.
-  const financeTags = useMemo(() => tags.filter(t => !t.emoji), [tags]);
 
   const [tab, setTab] = useState('expense');
   const [showAddExp, setShowAddExp] = useState(false);
@@ -346,7 +342,7 @@ export default function FinancePage() {
                 maxLength={200}
               />
               <TagPicker
-                tags={financeTags}
+                tags={tags}
                 selected={expTagIds}
                 onToggle={id => setExpTagIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
                 onAdd={addTag}
@@ -475,7 +471,7 @@ export default function FinancePage() {
                 </div>
               </div>
               <TagPicker
-                tags={financeTags}
+                tags={tags}
                 selected={subTagIds}
                 onToggle={id => setSubTagIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
                 onAdd={addTag}

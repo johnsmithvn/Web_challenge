@@ -13,7 +13,7 @@ import '../styles/collect.css';
 
 const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
 const TiptapReadOnly = lazy(() => import('../components/TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
-import { FileText, MessageSquareQuote, BookOpen, Lightbulb, Library, FolderOpen, Bot, Gamepad2, Heart, Link } from 'lucide-react';
+import { FileText, MessageSquareQuote, BookOpen, Lightbulb, Library, Bot, Gamepad2, Heart, Link } from 'lucide-react';
 import QuoteWidget from '../components/QuoteWidget';
 import UrlInputPopover from '../components/UrlInputPopover';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
@@ -25,7 +25,7 @@ import CustomSelect from '../components/CustomSelect';
 /* ── Constants ─────────────────────────────────────────────── */
 const ICON_MAP = {
   FileText, Link, MessageSquareQuote, BookOpen, Lightbulb, Bot, Gamepad2, Heart,
-  Library, FolderOpen
+  Library
 };
 
 const TYPE_META = KNOWLEDGE_DATA.types.reduce((acc, t) => {
@@ -242,78 +242,6 @@ function TableOfContents({ content }) {
   );
 }
 
-/* ── GroupPicker (for editor — inline creation) ──────────── */
-function GroupPicker({ selected = [], onChange, groups = [], onCreateGroup }) {
-  const [input, setInput] = useState('');
-  const [open, setOpen]   = useState(false);
-  const containerRef      = useRef(null);
-
-  const selectedIds = selected.map(g => g.id);
-  const filtered = useMemo(() => {
-    const q = input.toLowerCase().trim();
-    return groups.filter(g => !selectedIds.includes(g.id) && (!q || g.name.toLowerCase().includes(q))).slice(0, 10);
-  }, [groups, selectedIds, input]);
-
-  const showNew = input.trim().length > 0 && !groups.some(g => g.name.toLowerCase() === input.trim().toLowerCase());
-
-  const addGroup = useCallback(async (group) => {
-    onChange([...selected, group]);
-    setInput('');
-    setOpen(false);
-  }, [selected, onChange]);
-
-  const createAndAdd = useCallback(async () => {
-    if (!input.trim() || !onCreateGroup) return;
-    const newG = await onCreateGroup(input.trim());
-    if (newG) addGroup(newG);
-  }, [input, onCreateGroup, addGroup]);
-
-  useEffect(() => {
-    const h = (e) => { if (containerRef.current && !containerRef.current.contains(e.target)) { setOpen(false); } };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  return (
-    <div className="kb-group-picker" ref={containerRef}>
-      {selected.map(g => (
-        <span key={g.id} className="kb-group-chip">
-          {g.emoji} {g.name}
-          <button className="kb-group-chip__rm" onMouseDown={e => { e.preventDefault(); onChange(selected.filter(x => x.id !== g.id)); }}>×</button>
-        </span>
-      ))}
-      <input
-        className="kb-group-picker__field"
-        value={input}
-        onChange={e => { setInput(e.target.value); setOpen(true); }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={e => {
-          if (e.key === 'Enter' && showNew) { e.preventDefault(); createAndAdd(); }
-          else if (e.key === 'Enter' && filtered.length > 0) { e.preventDefault(); addGroup(filtered[0]); }
-          else if (e.key === 'Backspace' && !input && selected.length) onChange(selected.slice(0, -1));
-          else if (e.key === 'Escape') setOpen(false);
-        }}
-        placeholder={selected.length ? '' : '📁 Thêm vào nhóm...'}
-        autoComplete="off"
-      />
-      {open && (filtered.length > 0 || showNew) && (
-        <div className="kb-tag-dropdown">
-          {filtered.map(g => (
-            <button key={g.id} className="kb-tag-dropdown__item" onMouseDown={e => { e.preventDefault(); addGroup(g); }}>
-              {g.emoji} {g.name} <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{g._articleCount || 0}</span>
-            </button>
-          ))}
-          {showNew && (
-            <button className="kb-tag-dropdown__item kb-tag-dropdown__item--new" onMouseDown={e => { e.preventDefault(); createAndAdd(); }}>
-              ✚ Tạo nhóm mới "<strong>{input.trim()}</strong>"
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ── SubNotes Section (reader view) ──────────────────────── */
 function SubNotesSection({ collectionId, notesHook }) {
   const { notes, isLoading, fetchNotes, addNote, updateNote, deleteNote } = notesHook;
@@ -401,7 +329,7 @@ function SubNotesSection({ collectionId, notesHook }) {
 }
 
 /* ── ArticleCard ──────────────────────────────────────────── */
-function ArticleCard({ item, onClick, onGroupClick }) {
+function ArticleCard({ item, onClick }) {
   const meta      = TYPE_META[item.type] || TYPE_META.note;
   const isTiptap  = isTiptapBody(item);
   // Use body_text (plain text) for cards — avoids showing raw JSON for Tiptap articles
@@ -453,15 +381,6 @@ function ArticleCard({ item, onClick, onGroupClick }) {
             {(item._tags || item.tags || []).map(t => {
               const name = typeof t === 'string' ? t : t.name;
               const color = typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6');
-              const emoji = typeof t === 'string' ? null : t.emoji;
-              // Tag có emoji = đóng vai trò "nhóm/folder" (v4.30.0, gộp từ knowledge_groups)
-              if (emoji) {
-                return (
-                  <span key={name} className="kb-group-badge" onClick={e => { e.stopPropagation(); onGroupClick?.(t); }}>
-                    {emoji} {name}
-                  </span>
-                );
-              }
               return <span key={name} className="kb-tag-chip"><span className="kb-tag-dot" style={{ background: color }} />#{name}</span>;
             })}
             {(item._linkedTaskCount || 0) > 0 && (
@@ -836,7 +755,7 @@ function MarkdownEditor({ value, onChange, onSave }) {
 
 
 /* ── EditorView ───────────────────────────────────────────── */
-function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isNew = false, onConfirmSwitch, groups = [], onCreateGroup, selectedGroups = [], onGroupsChange }) {
+function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isNew = false, onConfirmSwitch }) {
   const savedMode = localStorage.getItem(EDITOR_MODE_KEY) || 'markdown';
   // Auto-detect tiptap from body shape when content_format wasn't saved (legacy bug)
   const detectFormat = (item) => {
@@ -927,13 +846,6 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
         />
       </div>
 
-      {/* Groups row */}
-      <div className="kb-editor__sub-meta">
-        <div style={{ flex: 1 }}>
-          <GroupPicker selected={selectedGroups} onChange={onGroupsChange} groups={groups} onCreateGroup={onCreateGroup} />
-        </div>
-      </div>
-
       {/* Tags + URL + Mode toggle row */}
       <div className="kb-editor__sub-meta">
         <div style={{ flex: 1 }}>
@@ -1007,10 +919,7 @@ export default function CollectPage() {
   const { user } = useAuth();
   const { items, isLoading, fetchItems, addItem, updateItem, deleteItem } = useCollections();
   const { addTask, linkCollection, pendingTasks } = useUserTasks();
-  const {
-    tags: centralTags, isLoading: tagsLoading, addTag: addCentralTag,
-    deleteTag: deleteCentralTag, linkTag, unlinkTag, getCollectionsForTag,
-  } = useTags();
+  const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag } = useTags();
   const notesHook = useCollectionNotes();
   const { confirm, ConfirmModal } = useConfirm();
   const { showToast, Toast } = useToast();
@@ -1018,10 +927,6 @@ export default function CollectPage() {
   const [view, setView]         = useState('list');
   const [selected, setSelected] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeGroupView, setActiveGroupView] = useState(null); // group drill-down
-  const [groupArticles, setGroupArticles] = useState([]);
-  const [editGroups, setEditGroups] = useState([]); // groups selected in editor
-  const [groupNewName, setGroupNewName] = useState(''); // separate state for group creation input
 
   // Filters
   const [search, setSearch]     = useState('');
@@ -1081,19 +986,6 @@ export default function CollectPage() {
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [items, centralTags]);
 
-  // v4.30.0: tag có emoji đóng vai trò "nhóm/folder" (gộp từ knowledge_groups).
-  // plainTags = tag thường (picker tag + filter row); groupTags = tag-nhóm
-  // (GroupPicker + tab "Nhóm"), kèm _articleCount tính trực tiếp từ items
-  // đang có sẵn (không cần gọi hook riêng như trước).
-  const plainTags = useMemo(() => allTags.filter(t => !t.emoji), [allTags]);
-  const groupTags = useMemo(() => {
-    const counts = {};
-    items.filter(i => i.type !== 'inbox').forEach(i => {
-      (i._tags || []).forEach(t => { if (t?.emoji) counts[t.id] = (counts[t.id] || 0) + 1; });
-    });
-    return allTags.filter(t => t.emoji).map(t => ({ ...t, _articleCount: counts[t.id] || 0 }));
-  }, [allTags, items]);
-
   const filtered = useMemo(() => {
     let list = items.filter(i => i.type !== 'inbox' && i.status !== 'archived');
 
@@ -1128,22 +1020,11 @@ export default function CollectPage() {
   const openEditor = useCallback((item = null) => {
     setSelected(item);
     setView('editor');
-    // v4.30.0: nhóm của bài = tag có emoji trong _tags — đã có sẵn từ
-    // useCollections join, không cần gọi hook riêng như trước.
-    if (item?._tags) {
-      setEditGroups(item._tags.filter(t => t.emoji));
-    } else {
-      setEditGroups(activeGroupView ? [activeGroupView] : []);
-    }
-  }, [activeGroupView]);
+  }, []);
   const goList = useCallback(() => {
     setView('list');
     setSelected(null);
-    if (activeGroupView) {
-      // Refresh group articles
-      getCollectionsForTag(activeGroupView.id).then(setGroupArticles);
-    }
-  }, [activeGroupView, getCollectionsForTag]);
+  }, []);
 
   const handleSave = useCallback(async (draft) => {
     setIsSaving(true);
@@ -1167,24 +1048,18 @@ export default function CollectPage() {
         savedId = created?.id;
       }
 
-      // v4.1.0/v4.30.0: Sync tags via junction table — editGroups (tag có
-      // emoji, đóng vai trò "nhóm") gộp cùng 1 luồng với tag thường, vì từ
-      // v4.30.0 cả 2 đều là hàng trong `tags`, chỉ khác có emoji hay không.
-      const allDraftTags = [...(draft.tags || []), ...editGroups];
-      if (savedId) {
-        const draftTagNames = allDraftTags.map(t => typeof t === 'string' ? t : t.name);
+      // v4.1.0: Sync tags via junction table
+      if (savedId && draft.tags) {
+        const draftTagNames = draft.tags.map(t => typeof t === 'string' ? t : t.name);
         const existingTags = selected?._tags || [];
         const existingNames = existingTags.map(t => t.name);
 
         // Tags to add (in draft but not in existing)
-        for (const t of allDraftTags) {
+        for (const t of draft.tags) {
           const name = typeof t === 'string' ? t : t.name;
           if (!existingNames.includes(name)) {
-            // Ensure tag exists in central table (addCentralTag dedups by
-            // name, nên gọi cả với tag đã có id cũng an toàn)
-            const tagObj = typeof t === 'string'
-              ? await addCentralTag(t, '#8b5cf6')
-              : await addCentralTag(t.name, t.color || '#8b5cf6', { emoji: t.emoji, description: t.description });
+            // Ensure tag exists in central table
+            const tagObj = await addCentralTag(name, typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6'));
             if (tagObj) await linkTag(savedId, tagObj.id, 'collection');
           }
         }
@@ -1202,7 +1077,7 @@ export default function CollectPage() {
     } finally {
       setIsSaving(false);
     }
-  }, [selected, updateItem, addItem, fetchItems, goList, addCentralTag, linkTag, unlinkTag, editGroups]);
+  }, [selected, updateItem, addItem, fetchItems, goList, addCentralTag, linkTag, unlinkTag]);
 
   const handleDelete = useCallback(async (item) => {
     const ok = await confirm({
@@ -1232,7 +1107,7 @@ export default function CollectPage() {
           title:          selected.title,
           body:           selected.body || '',
           body_text:      selected.body_text || '',
-          tags:           (selected._tags || selected.tags || []).filter(t => !t?.emoji),
+          tags:           selected._tags || selected.tags || [],
           type:           selected.type,
           url:            selected.url || '',
           content_format: selected.content_format || 'markdown',
@@ -1247,12 +1122,8 @@ export default function CollectPage() {
           onSave={handleSave}
           onCancel={goList}
           isSaving={isSaving}
-          suggestions={plainTags}
+          suggestions={allTags}
           isNew={isNew}
-          groups={groupTags}
-          onCreateGroup={(name) => addCentralTag(name, '#8b5cf6', { emoji: '📁' })}
-          selectedGroups={editGroups}
-          onGroupsChange={setEditGroups}
           onConfirmSwitch={() => confirm({
             title: 'Chuyển mode?',
             message: 'Nội dung hiện tại sẽ bị xóa. Tiếp tục?',
@@ -1447,7 +1318,7 @@ export default function CollectPage() {
 
       {/* Type filter pills */}
       <div className="kb-type-filters">
-        <button className={`kb-type-pill${!typeFilter && !activeGroupView ? ' kb-type-pill--active' : ''}`} onClick={() => { setTypeFilter(''); setActiveGroupView(null); }}>
+        <button className={`kb-type-pill${!typeFilter ? ' kb-type-pill--active' : ''}`} onClick={() => setTypeFilter('')}>
           <Library size={14} style={{ marginRight: 6 }} /> Tất cả
         </button>
         {Object.entries(TYPE_META).map(([k, v]) => {
@@ -1457,192 +1328,21 @@ export default function CollectPage() {
               key={k}
               className={`kb-type-pill${typeFilter === k ? ' kb-type-pill--active' : ''}`}
               style={typeFilter === k ? { '--pill-color': v.color } : {}}
-              onClick={() => { setTypeFilter(typeFilter === k ? '' : k); setActiveGroupView(null); }}
+              onClick={() => setTypeFilter(typeFilter === k ? '' : k)}
             >
               <Icon size={14} style={{ marginRight: 6 }} /> {v.label}
             </button>
           );
         })}
-        <button
-          className={`kb-type-pill${activeGroupView || typeFilter === '__groups' ? ' kb-type-pill--active' : ''}`}
-          style={activeGroupView || typeFilter === '__groups' ? { '--pill-color': '#8b5cf6' } : {}}
-          onClick={() => { setTypeFilter(typeFilter === '__groups' ? '' : '__groups'); setActiveGroupView(null); }}
-        >
-          <FolderOpen size={14} style={{ marginRight: 6 }} /> Nhóm
-        </button>
       </div>
 
-      {/* ── GROUP DRILL-DOWN VIEW ───────────────────── */}
-      {activeGroupView ? (
-        <>
-          {/* Breadcrumb */}
-          <div className="kb-breadcrumb">
-            <button className="kb-breadcrumb__link" onClick={() => { setActiveGroupView(null); setTypeFilter('__groups'); setSearch(''); }}>🧠 Kho Tàng</button>
-            <span className="kb-breadcrumb__sep">›</span>
-            <span className="kb-breadcrumb__current">{activeGroupView.emoji} {activeGroupView.name}</span>
-          </div>
-
-          {/* Group header */}
-          <div className="kb-group-header">
-            <div className="kb-group-header__info">
-              <div className="kb-group-header__emoji">{activeGroupView.emoji}</div>
-              <h2 className="kb-group-header__title">{activeGroupView.name}</h2>
-              <div className="kb-group-header__meta">
-                {groupArticles.length} bài · Tạo {formatDate(activeGroupView.created_at)}
-                {activeGroupView.description && <> · {activeGroupView.description}</>}
-              </div>
-            </div>
-            <div className="kb-group-header__actions">
-              <button className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.4rem 0.8rem' }} onClick={() => openEditor(null)}>＋ Thêm bài</button>
-              <button className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '0.4rem 0.8rem' }} onClick={async () => {
-                const ok = await confirm({
-                  title: `Xóa nhóm "${activeGroupView.emoji} ${activeGroupView.name}"?`,
-                  message: `${groupArticles.length} bài viết bên trong sẽ KHÔNG bị xóa — chỉ gỡ khỏi nhóm này.`,
-                  confirmLabel: 'Xóa nhóm',
-                  danger: true,
-                });
-                if (!ok) return;
-                await deleteCentralTag(activeGroupView.id);
-                setActiveGroupView(null);
-                setTypeFilter('__groups');
-                fetchItems({});
-              }}>🗑 Xóa nhóm</button>
-            </div>
-          </div>
-
-          {/* Contextual search */}
-          <div className="kb-toolbar">
-            <input
-              className="kb-search"
-              type="text"
-              placeholder={`🔍 Tìm trong "${activeGroupView.name}"...`}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-
-          {/* Articles in group */}
-          {(() => {
-            let list = groupArticles;
-            if (search) {
-              const q = search.toLowerCase();
-              list = list.filter(i => i.title.toLowerCase().includes(q) || (i.body || '').toLowerCase().includes(q));
-            }
-            return list.length === 0 ? (
-              <div className="kb-empty">
-                <div className="kb-empty__icon">📁</div>
-                <p>Chưa có bài viết nào trong nhóm{search ? ` cho "${search}"` : ''}.</p>
-                <button className="btn btn-primary" onClick={() => openEditor(null)}>✏️ Thêm bài</button>
-              </div>
-            ) : (
-              <div className="kb-list">
-                {list.map(item => (
-                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <ArticleCard item={item} onClick={openReader} onGroupClick={(g) => {
-                        if (g.id !== activeGroupView.id) {
-                          setActiveGroupView(g);
-                          getCollectionsForTag(g.id).then(setGroupArticles);
-                          setSearch('');
-                        }
-                      }} />
-                    </div>
-                    <button
-                      className="kb-subnote__btn"
-                      title="Gỡ khỏi nhóm"
-                      style={{ opacity: 0.5, flexShrink: 0 }}
-                      onClick={async () => {
-                        await unlinkTag(item.id, activeGroupView.id, 'collection');
-                        setGroupArticles(prev => prev.filter(a => a.id !== item.id));
-                        fetchItems({});
-                      }}
-                    >✕</button>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </>
-
-      /* ── GROUP LIST TAB ──────────────────────────── */
-      ) : typeFilter === '__groups' ? (
-        <>
-          {/* Create group inline */}
-          <div className="kb-create-group">
-            <input
-              className="kb-create-group__input"
-              placeholder="Tên nhóm mới..."
-              value={groupNewName}
-              onChange={e => setGroupNewName(e.target.value)}
-              onKeyDown={async e => {
-                if (e.key === 'Enter' && groupNewName.trim()) {
-                  await addCentralTag(groupNewName.trim(), '#8b5cf6', { emoji: '📁' });
-                  setGroupNewName('');
-                }
-              }}
-            />
-            <button
-              className="btn btn-primary"
-              style={{ fontSize: '0.85rem', padding: '0.45rem 0.9rem', whiteSpace: 'nowrap' }}
-              disabled={!groupNewName.trim()}
-              onClick={async () => {
-                if (!groupNewName.trim()) return;
-                await addCentralTag(groupNewName.trim(), '#8b5cf6', { emoji: '📁' });
-                setGroupNewName('');
-              }}
-            >＋ Tạo nhóm</button>
-          </div>
-
-          {/* Group list with search filter */}
-          {(() => {
-            const q = search.toLowerCase();
-            const filteredGroups = search
-              ? groupTags.filter(g => g.name.toLowerCase().includes(q) || (g.description || '').toLowerCase().includes(q))
-              : groupTags;
-
-            if (tagsLoading) return <div className="kb-loading">⏳ Đang tải nhóm...</div>;
-            if (filteredGroups.length === 0) return (
-              <div className="kb-empty">
-                <div className="kb-empty__icon">📁</div>
-                <p>{search ? `Không tìm thấy nhóm cho "${search}"` : 'Chưa có nhóm nào. Tạo nhóm đầu tiên ở trên!'}</p>
-              </div>
-            );
-            return (
-              <div className="kb-group-list">
-                {filteredGroups.map(g => (
-                  <div
-                    key={g.id}
-                    className="kb-group-card"
-                    onClick={async () => {
-                      setActiveGroupView(g);
-                      setTypeFilter('');
-                      setSearch('');
-                      const articles = await getCollectionsForTag(g.id);
-                      setGroupArticles(articles);
-                    }}
-                  >
-                    <div className="kb-group-card__emoji">{g.emoji}</div>
-                    <div className="kb-group-card__body">
-                      <h3 className="kb-group-card__title">{g.name}</h3>
-                      {g.description && <p className="kb-group-card__desc">{g.description}</p>}
-                    </div>
-                    <span className="kb-group-card__count">{g._articleCount || 0} bài</span>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </>
-
-      /* ── NORMAL ARTICLE LIST ─────────────────────── */
-      ) : (
-        <>
-          {/* Tag filter row — chỉ tag thường, tag-nhóm có emoji đã có tab "Nhóm" riêng */}
-          {plainTags.length > 0 && (
+      <>
+          {/* Tag filter row */}
+          {allTags.length > 0 && (
             <div className="kb-tag-filters">
               <span className="kb-tag-filters__label">Tags:</span>
               <button className={`kb-tag-chip kb-tag-filter-btn${!activeTag ? ' kb-tag-chip--active' : ''}`} onClick={() => setActiveTag('')}>Tất cả</button>
-              {plainTags.map(t => (
+              {allTags.map(t => (
                 <button
                   key={t.id}
                   className={`kb-tag-chip kb-tag-filter-btn${activeTag === t.id ? ' kb-tag-chip--active' : ''}`}
@@ -1764,20 +1464,14 @@ export default function CollectPage() {
                     </label>
                   )}
                   <div style={{ flex: 1 }}>
-                    <ArticleCard item={item} onClick={openReader} onGroupClick={(g) => {
-                      setActiveGroupView(g);
-                      setTypeFilter('');
-                      setSearch('');
-                      getCollectionsForTag(g.id).then(setGroupArticles);
-                    }} />
+                    <ArticleCard item={item} onClick={openReader} />
                   </div>
                 </div>
               ))}
             </div>
           </>
           )}
-        </>
-      )}
+      </>
     </div>
   );
 }

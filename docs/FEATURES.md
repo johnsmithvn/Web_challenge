@@ -559,21 +559,15 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 - Click chip → lọc bài viết đã link với task đó
 - Data: `useCollections` join `task_collections(task_id)` → `_linkedTaskIds` + `_linkedTaskCount`
 
-**Knowledge Groups — gộp vào Tags (v4.11.0 → v4.30.0):**
-> Quyết định sản phẩm P2-7 (2026-08-01): `knowledge_groups` từng là bảng M:N riêng, nhưng về bản
-> chất giải cùng bài toán với `tags` ("1 bài thuộc nhiều nhóm/chủ đề"), chỉ khác ở việc có thêm
-> `emoji`/`description` để hiển thị kiểu folder. Đã gộp: thêm `emoji`, `description` vào `tags`,
-> "nhóm" giờ là 1 tag có `emoji`. Xem `data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql`.
-- **📁 Nhóm tab:** Pill 📁 Nhóm bên cạnh type filters. Click → group list view (lọc tag có `emoji`).
-- **Group Cards:** Mỗi card hiển emoji + name + article count (đếm client-side từ `items` đang có, không gọi API riêng). Click → drill-down.
-- **Drill-down view:** Breadcrumb navigation (🧠 Kho Tàng › Nhóm), group header (emoji + name + stats), contextual search chỉ trong nhóm đó.
-- **Inline group creation:** Nhập tên nhóm mới → enter → tạo tag mới với emoji mặc định 📁.
-- **GroupPicker (Editor):** Searchable dropdown với inline creation — gõ tên chưa tồn tại → ✚ Tạo nhóm mới. Tách biệt khỏi tag picker thường (chỉ hiện/tạo tag có emoji).
-- **M:N:** Một bài viết thuộc nhiều nhóm/tag, một nhóm/tag gắn nhiều bài viết — không đổi, vẫn qua `collection_tags`.
-- **Group Badge:** Badge nhỏ trên ArticleCard cho tag có emoji (tag thường hiện dạng `#tag`), click → navigate to group.
-- **Delete UX:** Xóa nhóm = xoá tag đó (`ON DELETE CASCADE` tự gỡ khỏi mọi bài viết, bài viết không bị xóa). Confirm dialog rõ ràng. ⚠️ Vì `tags` giờ dùng chung cho cả Finance (`expense_tags`/`subscription_tags`), CASCADE về lý thuyết ảnh hưởng cả 2 module đó nếu cùng 1 tag lỡ được gắn ở Finance — đã chặn bằng cách lọc `!tag.emoji` khỏi TagPicker của `FinancePage`/`SettingsPage`, nên qua luồng UI bình thường tag-nhóm không thể bị gắn vào expense/subscription.
-- **Hooks:** `useTags.js` — `addTag`/`updateTag` nhận thêm `{emoji, description}`, `getCollectionsForTag(tagId)` thay `useKnowledgeGroups.fetchGroupArticles` (đã xoá hook này).
-- **DB:** `tags` (+ `emoji`, `description`) + `collection_tags`. `knowledge_groups`/`collection_groups` **archived v4.30.0** — còn tồn tại tới khi chạy Phase 2 của migration (DROP TABLE, chưa chạy).
+**Knowledge Groups — REMOVED (v4.11.0 → v4.30.0):**
+> Quyết định sản phẩm P2-7 (2026-08-01, chốt lại cùng ngày sau thảo luận thêm): `knowledge_groups`
+> từng là bảng M:N riêng, trùng việc với `tags`. Bước đầu định gộp hiển thị ("nhóm" = tag có
+> `emoji`), nhưng quyết định CUỐI CÙNG là **bỏ hẳn tính năng Nhóm khỏi UI** — không còn tab 📁 Nhóm,
+> không còn GroupPicker, không còn badge folder trên ArticleCard. Chỉ còn tag thường (`#tag`).
+> Dữ liệu nhóm cũ đã được migrate thành tag thường (giữ tên, mất emoji/description) — bài viết
+> KHÔNG mất liên kết, chỉ mất hiển thị "folder" đặc biệt.
+- **DB:** `knowledge_groups`/`collection_groups` bị DROP; `tags.emoji`/`tags.description` (thêm tạm ở bước gộp) cũng bị DROP vì không còn UI nào đọc. Xem `data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql` Phase 2.
+- **Hooks:** `useKnowledgeGroups.js` đã xoá. `useTags.js` không còn nhận `{emoji, description}` — về lại chữ ký gốc trước v4.30.0.
 
 **Sub-Notes / Threaded Notes (v4.11.0):**
 - **Ghi Chú Cá Nhân:** Section bên dưới bài viết trong ReaderView.
@@ -684,7 +678,6 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 - **useCollections.js:** `fetchItems()` join `collection_tags(tags(id,name,color))` → `item._tags`. `addItem()` không còn ghi vào `collections.tags` TEXT[].
 - **CollectPage:** TagInput hiển color dots, tag filter chips hiển color dots, save/edit dùng `linkTag`/`unlinkTag`.
 - **Backward compat:** không còn — `collections.tags` TEXT[] **không tồn tại** trong `schema_v4.24.0.sql`. Fresh install chỉ có junction `collection_tags`.
-- **v4.30.0:** Thêm cột `emoji`, `description` — tag có `emoji` đóng vai trò "nhóm/folder" trong KB (gộp từ `knowledge_groups`, xem mục 22). Thêm `getCollectionsForTag(tagId)`.
 
 **Data source:** `tags` + `collection_tags` + `expense_tags` + `subscription_tags` (Supabase)
 
