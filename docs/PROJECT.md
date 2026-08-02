@@ -57,11 +57,7 @@ Mỗi route = 1 page trong `src/pages/`. Hook chứa toàn bộ logic Supabase; 
 | `/collect` | CollectPage | useCollections, useKnowledgeGroups, useCollectionNotes, useTags | collections, knowledge_groups, collection_groups, collection_notes, collection_tags |
 | `/finance` | FinancePage | useExpenses, useSubscriptions, useTags | expenses, subscriptions, *_tags |
 | `/incubator` | IncubatorPage | useIntentions | intentions, intention_logs |
-| `/life-log` | LifeLogPage | useActivityLog | activity_logs |
 | `/dashboard` | DashboardPage | tổng hợp nhiều hook (+ 1 query supabase trực tiếp) | nhiều |
-| `/leaderboard` | LeaderboardPage | — (RPC `get_leaderboard`) | profiles, streaks, xp_logs, progress |
-| `/quiz` | QuizPage | useXpStore | xp_logs |
-| `/life-journey` | LifeJourneyPage | useLifeJourney | — (localStorage-only) |
 | `/settings` | SettingsPage | useTags, useQuotes | tags, inspirational_quotes |
 | `/habits`, `/team`, `/friends` | redirect `/tracker` | — | — |
 
@@ -80,7 +76,7 @@ User action → hook → isAuthenticated ? Supabase (optimistic + rollback khi l
 
 - Ghi XP: append vào `xp_logs`, luôn dedup bằng `hasMilestone(reason, meta)` trước khi `addXp`.
   Tổng XP tính runtime = `SUM(amount)`.
-- Ghi hoạt động: `logActivity()` append vào `activity_logs` → nuôi heatmap Life Log.
+- Lịch sử Task: `useActivityLog` ghi `activity_logs` (field-diff + ghi chú) → tab Hoạt động/Ghi chú của Task Detail. Life Log/heatmap đã gỡ ở v5.0.0.
 - Cross-user (leaderboard, login bằng username): **chỉ** qua RPC `SECURITY DEFINER`,
   vì từ v4.24.0 `profiles` chỉ đọc được hàng của chính mình.
 

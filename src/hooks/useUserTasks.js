@@ -41,12 +41,12 @@ function addDays(date, days) {
  *
  * KHÔNG log việc xoá task: FK `activity_logs.task_id ON DELETE CASCADE` xoá
  * sạch log của task ngay khi task biến mất, nên dòng "đã xoá" sẽ tự xoá chính
- * nó. Hệ quả kèm theo: xoá task cũng làm tụt heatmap của những ngày cũ.
+ * nó (và đó là hành vi mong muốn).
  */
 export function useUserTasks() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { logActivity, logFieldChanges, logTaskRelation } = useActivityLog();
+  const { logTaskEvent, logFieldChanges, logTaskRelation } = useActivityLog();
   const isAuth = isSupabaseEnabled && !!user;
   const userId = user?.id;
 
@@ -165,7 +165,7 @@ export function useUserTasks() {
         }
         // Replace optimistic with real
         setTasks(prev => prev.map(t => t.id === newTask.id ? data : t));
-        logActivity(ACTIONS.TASK_CREATED, data.id);
+        logTaskEvent(ACTIONS.TASK_CREATED, data.id);
         return data;
       } catch (err) {
         logger.error('[useUserTasks] add exception:', err);
@@ -174,7 +174,7 @@ export function useUserTasks() {
       }
     }
     return newTask;
-  }, [isAuth, userId, logActivity]);
+  }, [isAuth, userId, logTaskEvent]);
 
   // ── Spawn next recurring task (bounded retry, NEVER calls completeTask) ──
   const spawnRecurringTask = useCallback(async (task) => {
@@ -220,7 +220,7 @@ export function useUserTasks() {
           // Copy tag + link KB sang occurrence mới (best-effort — task chính đã
           // tạo thành công nên không rollback nếu bước copy này lỗi, chỉ log warn)
           if (inserted?.id) {
-            logActivity(ACTIONS.TASK_CREATED, inserted.id);
+            logTaskEvent(ACTIONS.TASK_CREATED, inserted.id);
             if ((task._tags || []).length > 0) {
               const { error: tagError } = await supabase.from('task_tags').insert(
                 task._tags.map(tag => ({ task_id: inserted.id, tag_id: tag.id }))
@@ -262,7 +262,7 @@ export function useUserTasks() {
     );
     showToast(UI_STRINGS.toast.recurrenceSpawnFailed, { icon: '⚠️' });
     return false;
-  }, [isAuth, userId, showToast, logActivity]);
+  }, [isAuth, userId, showToast, logTaskEvent]);
 
   // ── Complete task ──────────────────────────────────────
   const completeTask = useCallback(async (taskId) => {
@@ -294,7 +294,7 @@ export function useUserTasks() {
         // Sự kiện rời rạc, KHÔNG phải field-diff `completed: false → true` —
         // để nó vẫn được đếm vào heatmap (hoàn thành task theo đường bình
         // thường trước v5.0.0 không hề lên heatmap, đây là chỗ bịt lỗ đó).
-        logActivity(ACTIONS.TASK_COMPLETED, taskId);
+        logTaskEvent(ACTIONS.TASK_COMPLETED, taskId);
 
         // Spawn next recurring task (fire-and-forget, non-blocking)
         if (task?.recurrence_rule) {
@@ -307,7 +307,7 @@ export function useUserTasks() {
         ));
       }
     }
-  }, [isAuth, userId, tasks, spawnRecurringTask, logActivity]);
+  }, [isAuth, userId, tasks, spawnRecurringTask, logTaskEvent]);
 
   // ── Delete task ────────────────────────────────────────
   // Must delete via Supabase regardless of whether the task is in local `tasks`
@@ -403,7 +403,7 @@ export function useUserTasks() {
           return;
         }
 
-        logActivity(ACTIONS.TASK_UNCOMPLETED, taskId);
+        logTaskEvent(ACTIONS.TASK_UNCOMPLETED, taskId);
 
         const { data: child, error: findError } = await supabase
           .from('user_tasks')
@@ -436,7 +436,7 @@ export function useUserTasks() {
         if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
       }
     }
-  }, [isAuth, userId, tasks, showToast, logActivity]);
+  }, [isAuth, userId, tasks, showToast, logTaskEvent]);
 
   // ── Update task (title / description / date / time) ───
   const updateTask = useCallback(async (taskId, changes) => {

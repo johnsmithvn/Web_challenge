@@ -1,9 +1,11 @@
 # CHANGELOG
 
 ## v5.0.0 — 2026-08-02
-> **BREAKING (DB).** Dựng lại bảng `activity_logs` để phục vụ 2 việc thay vì 1: heatmap Life Log
-> (như cũ) **và** lịch sử thay đổi + ghi chú cá nhân của từng Task. Kèm Task Detail Modal mới —
-> chỗ đọc lịch sử đó. MAJOR theo RULES §9 (database schema breaking change).
+> **BREAKING (DB).** Dựng lại bảng `activity_logs` thành **lịch sử thay đổi + ghi chú cá nhân của
+> từng Task**, kèm Task Detail Modal mới — chỗ đọc lịch sử đó. Đồng thời **gỡ hẳn Life Log**:
+> heatmap chỉ COUNT số dòng chứ không đọc nội dung, nên nó là người dùng duy nhất của các dòng
+> "sự kiện rời rạc"; gỡ nó thì 12 điểm ghi log rải khắp app cũng thành vô dụng và bị xoá theo.
+> MAJOR theo RULES §9 (database schema breaking change).
 
 ### Added
 - **`data/migration_v5.0.0_activity_logs_v2.sql`** — user tự chạy trên Supabase. 2 phần:
@@ -11,9 +13,16 @@
     hàm chung `update_updated_at()` có sẵn. Task cũ backfill `updated_at = created_at` (không để
     `DEFAULT NOW()` ngay từ đầu — sẽ gán dấu thời gian sai cho mọi task cũ).
   - Phần 2 (**BREAKING, chỉ chạy 1 lần**): `DROP` + `CREATE` `activity_logs` schema v2 —
-    `task_id` FK → `user_tasks` ON DELETE CASCADE (NULL = sự kiện rời rạc), `action`, `field`,
-    `old_value`, `new_value`, `note`. Bỏ `label`/`amount`/`meta`. 2 index (partial heatmap khớp đúng
-    filter + index cho tab Activity), 4 RLS policy, GRANT tường minh + `GRANT UPDATE (note)` cấp cột.
+    `task_id` FK → `user_tasks` ON DELETE CASCADE (mọi dòng đều gắn task), `action`, `field`,
+    `old_value`, `new_value`, `note`. Bỏ `label`/`amount`/`meta`. 1 index cho truy vấn đọc duy nhất,
+    4 RLS policy, GRANT tường minh + `GRANT UPDATE (note)` cấp cột.
+- **Trang chủ `/` viết lại** (`src/pages/LandingPage.jsx` + `src/styles/landing.css` mới) — thay
+  landing marketing cũ (923 dòng JSX qua 7 section + 822 dòng CSS) quảng cáo sản phẩm "Thử Thách
+  Vượt Lười 21 ngày" không còn tồn tại, kèm testimonial bịa và bảng giá cho app không bán. Bản mới
+  làm đúng 2 việc: cửa đăng nhập (`AuthModal` + nút đổi theme riêng, vì `Navbar` tự ẩn ở `/` khi
+  chưa đăng nhập) và bản đồ 6 module có thật (Inbox, Nhiệm Vụ, Knowledge, Finance, Incubator,
+  Focus) với mô tả đúng tính năng hiện tại. **Net −1.545 dòng.** Cố ý không liệt kê Habit / Lộ
+  Trình / Quiz / BXH — đang chờ gỡ ở đợt 3-4.
 - **Task Detail Modal** (`src/components/TaskDetailModal.jsx` + `src/styles/task-detail.css`) —
   chỉ đọc field + 2 tab: **🕘 Hoạt động** (lịch sử đổi field kiểu Jira, mỗi dòng 1 field với giá trị
   cũ → mới, nhóm theo ngày, xoá được từng dòng) và **📝 Ghi chú** (ghi chú cá nhân theo thời gian,
@@ -28,16 +37,11 @@
   field cứng) nên cột thêm sau này tự động được log.
 
 ### Changed
-- **Heatmap Life Log + KPI "Hoạt động hôm nay" giờ chỉ đếm SỰ KIỆN**, lọc
-  `field IS NULL AND action <> 'note'`. Nếu đếm tất cả thì sửa 1 task đổi 3 field sẽ nhảy +3 hoạt
-  động. Mệnh đề lọc khớp chính xác index partial `idx_activity_logs_heatmap`.
-- **Hoàn thành task theo đường bình thường giờ MỚI lên heatmap** — trước đây chỉ Inbox quick-done
-  phát `task_done`, `useUserTasks.completeTask` không log gì (lỗ hổng cũ, nay bịt).
-- **`logActivity(action, taskId?)`** — bỏ 3 tham số `label`/`amount`/`meta`. 11 call site chuyển sang
-  hằng số `ACTIONS` (chống gõ sai, vì cột `action` cố ý không có CHECK constraint — mọi lệnh ghi đều
-  fire-and-forget nuốt lỗi nên constraint bị vi phạm sẽ làm log biến mất âm thầm).
-- **`useFocusTimer.js`** — chỗ ghi duy nhất bypass hook, đã sửa theo schema mới. Không mất dữ liệu:
-  duration + habit_id vẫn ở `focus_sessions`, XP vẫn ở `xp_logs`.
+- **`useActivityLog` thu gọn về đúng 1 việc** — chỉ còn `logTaskEvent`/`logFieldChanges`/
+  `logTaskRelation`/`addNote`/`updateNote`/`getTaskLogs`/`deleteLog`. Bỏ `logActivity`,
+  `getHeatmapData`, `getTodayCount`. Hằng số `ACTIONS` chỉ còn 9 giá trị, tất cả gắn với Task
+  (chống gõ sai, vì cột `action` cố ý không có CHECK constraint — mọi lệnh ghi đều fire-and-forget
+  nuốt lỗi nên constraint bị vi phạm sẽ làm log biến mất âm thầm).
 - **`PRIORITY_OPTIONS` + `WEEKDAYS`** dời từ `TaskListSection.jsx` sang `src/utils/taskFields.js` để
   Detail Modal dùng chung mà không tạo vòng tròn import.
 - **`LinkKBModal`** — `onLink`/`onUnlink` nhận thêm tham số `title` để log ghi được TÊN bài viết thay
@@ -46,13 +50,40 @@
   của bệnh đó nữa (đã dùng FK thật thay `entity_type`/`entity_id`).
 
 ### Removed
-- **Purge dòng log của feature sắp gỡ** — `action IN ('habit_done','habit_undo','fitness_done')` xoá
-  hẳn trong migration. `fitness_done` vốn đã mồ côi từ v4.26.0.
-- **`TrackerPage` ngừng ghi activity log khi tick habit** — purge sẽ vô nghĩa nếu vẫn ghi tiếp, và
-  Habit tracker đang chờ gỡ hẳn (xem `docs/TASKS.md` § Backlog). Hệ quả: tick habit không còn cộng
-  vào heatmap. XP không đổi (vẫn qua `addXp`/`removeXp` → `xp_logs`).
+- **Life Log gỡ hẳn** — route `/life-log`, `src/pages/LifeLogPage.jsx`,
+  `src/components/ActivityHeatmap.jsx`, `src/styles/lifelog.css`, mục Navbar, và KPI
+  "🔥 Hoạt động hôm nay" + khối heatmap trên Dashboard. Lấy lại được từ git history.
+- **12 điểm ghi sự kiện rời rạc** — 11 call site `logActivity` (InboxPage ×8, FinancePage ×2,
+  DailyChallenge ×1) + insert trực tiếp trong `useFocusTimer`. Heatmap là người đọc duy nhất của
+  chúng; giữ lại sau khi gỡ Life Log thì thành ghi-mà-không-ai-đọc, đúng bệnh của schema v1.
+  Không mất dữ liệu nghiệp vụ: chi tiêu ở `expenses`, subscription ở `subscriptions`, focus ở
+  `focus_sessions`, XP ở `xp_logs`.
+- **`TrackerPage` ngừng ghi activity log khi tick habit** — Habit tracker đang chờ gỡ hẳn
+  (xem `docs/TASKS.md` § Backlog). XP không đổi (vẫn qua `addXp`/`removeXp` → `xp_logs`).
+- **Quiz + Bảng Xếp Hạng gỡ hẳn** (đợt 3 của kế hoạch dọn module) — route `/quiz`, `/leaderboard`,
+  2 mục Navbar, `XP_REWARDS.quiz_complete`. BXH là tính năng **xã hội** trong app 1 người dùng →
+  giá trị 0. SQL đi kèm: `DROP FUNCTION get_leaderboard()` + `DROP TABLE streaks` + gỡ INSERT
+  `streaks` khỏi trigger `handle_new_user()`. Bảng `streaks` vốn đã chết từ lâu — chỉ INSERT đúng
+  1 lần lúc signup, không nơi nào UPDATE, nên `current_streak`/`longest_streak` luôn = 0 với mọi
+  user; streak hiển thị trên UI vốn tính runtime từ `progress`/`habit_logs`. Số bảng 30 → 29.
+- **`LoginNudgeModal` sửa lời hứa sai** — 2/3 gạch đầu dòng quảng cáo tính năng không còn tồn tại
+  (Team Mode xoá từ v3.0.0, Leaderboard xoá ở đây). Thay bằng lợi ích thật của việc đăng nhập.
+- **Hành Trình Cuộc Đời gỡ hẳn** (đợt 1 của kế hoạch dọn module) — route `/life-journey`,
+  `LifeJourneyPage.jsx`, `useLifeJourney.js`, `life-journey.css`, mục Navbar. Cô lập hoàn toàn:
+  0 phụ thuộc chéo, 0 bảng Supabase. Dữ liệu cột mốc nằm ở localStorage `vl_life_journey_events`
+  + `vl_journey_title` — **xoá code KHÔNG xoá localStorage**, dữ liệu vẫn trong trình duyệt nhưng
+  không còn đường vào. Nhờ đó `docs/RULES.md` không còn "legacy exception" localStorage nào.
 - **Expand mô tả ▸/▾ trên task card** (cả pending lẫn đã hoàn thành) — thay bằng Detail Modal, giữ cả
   hai thì 1 click có 2 nghĩa. Xoá 2 state `expandedTask` / `expandedCompletedId`.
+
+### Files Removed
+- `src/pages/LifeLogPage.jsx`, `src/components/ActivityHeatmap.jsx`, `src/styles/lifelog.css`
+- `src/pages/LifeJourneyPage.jsx`, `src/hooks/useLifeJourney.js`, `src/styles/life-journey.css`
+- Landing cũ (11 file): `HeroSection.jsx`, `ContentSections.jsx`, `RoadmapSection.jsx`,
+  `TrackerSection.jsx`, `ReverseSection.jsx`, `TestimonialsSection.jsx`, `PricingSection.jsx`,
+  `styles/hero.css`, `styles/sections.css`, `styles/testimonials.css`, `data/testimonials.json`
+- Quiz + BXH (5 file): `QuizPage.jsx`, `LeaderboardPage.jsx`, `styles/quiz.css`,
+  `styles/leaderboard.css`, `data/quiz.json`
 
 ### Files Added
 - `data/migration_v5.0.0_activity_logs_v2.sql`
@@ -64,14 +95,22 @@
 ### Files Modified
 - `src/hooks/useActivityLog.js` (viết lại), `src/hooks/useUserTasks.js`, `src/hooks/useFocusTimer.js`
 - `src/components/TaskListSection.jsx`, `src/components/LinkKBModal.jsx`, `src/components/DailyChallenge.jsx`
-- `src/pages/InboxPage.jsx`, `src/pages/FinancePage.jsx`, `src/pages/TrackerPage.jsx`
-- `DESIGN.md`, `docs/DATABASE.md`, `docs/FEATURES.md`, `docs/TASKS.md`, `package.json`
+- `src/pages/InboxPage.jsx`, `src/pages/FinancePage.jsx`, `src/pages/TrackerPage.jsx`,
+  `src/pages/DashboardPage.jsx`, `src/App.jsx`, `src/components/Navbar.jsx`,
+  `src/components/MonthCalendar.jsx`
+- `data/schema_v4.24.0.sql`, `DESIGN.md`, `docs/DATABASE.md`, `docs/FEATURES.md`,
+  `docs/ARCHITECTURE.md`, `docs/PROJECT.md`, `docs/TASKS.md`, `package.json`
 
-### Known / chưa làm
-- **`data/schema_v4.24.0.sql` CHƯA gộp v5.0.0** — RULES §3 cấm sửa master schema khi không có chỉ thị
-  rõ ràng. Fresh install hiện phải chạy master rồi chạy tiếp `migration_v5.0.0_*.sql`.
-- Xoá 1 task giờ cũng **làm tụt heatmap của những ngày cũ** (dòng `task_created`/`task_completed` của
-  nó bị FK CASCADE xoá theo). Đánh đổi đã chốt khi chọn FK thật thay polymorphic.
+- **`data/schema_v4.24.0.sql`** — gộp v5.0.0 vào master schema (user cho phép tường minh, RULES §3).
+  Master giữ tính **idempotent**: dùng `CREATE TABLE IF NOT EXISTS` + `ALTER ADD/DROP COLUMN` thay vì
+  `DROP TABLE` như file migration. Nghĩa là có **2 đường tới cùng 1 schema cuối** — chạy master thì
+  GIỮ lịch sử `activity_logs` cũ (chỉ purge 3 action đã quyết), chạy `migration_v5.0.0_*.sql` thì
+  XOÁ SẠCH. Chọn một, đừng chạy cả hai.
+
+### Known
+- Xoá 1 task là **mất luôn lịch sử + ghi chú của nó** (FK CASCADE). Đánh đổi đã chốt khi chọn FK
+  thật thay polymorphic — đổi lại DB tự dọn, không bao giờ có dòng mồ côi.
+- `activity_logs` giờ chỉ phục vụ Task. Muốn log lại thứ khác thì phải có NGƯỜI ĐỌC trước.
 
 ---
 

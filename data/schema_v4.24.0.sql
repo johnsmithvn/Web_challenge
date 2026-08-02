@@ -1,17 +1,32 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- Life Hub — FULL CONSOLIDATED SCHEMA  v4.31.0
+-- Life Hub — FULL CONSOLIDATED SCHEMA  v5.0.0
 -- ════════════════════════════════════════════════════════════════════════════
 -- ✅ CHỈ CẦN CHẠY FILE NÀY 1 LẦN trên Supabase → SQL Editor (fresh install).
 -- Idempotent — an toàn chạy lại nhiều lần.
 --
--- File này GỘP toàn bộ: schema_v4.4.0 + các migration v4.4.1 → v4.31.0 (bao gồm
+-- File này GỘP toàn bộ: schema_v4.4.0 + các migration v4.4.1 → v5.0.0 (bao gồm
 -- data/RUNBOOK.sql — 2026-08-02 hợp nhất xong, RUNBOOK.sql vẫn giữ lại làm hồ
 -- sơ lịch sử SQL đã chạy trên DB thật, không cần chạy lại).
+--
+-- ⚠️ KHÁC BIỆT VỚI data/migration_v5.0.0_activity_logs_v2.sql: file migration đó
+-- dùng DROP TABLE (chạy 1 lần, mất dữ liệu cũ theo chủ ý). File MASTER này phải
+-- idempotent nên dựng activity_logs bằng CREATE TABLE IF NOT EXISTS + ALTER
+-- ADD/DROP COLUMN — chạy lại được, và nâng cấp được DB cũ mà KHÔNG mất dòng nào.
+-- Ai đã chạy file migration rồi thì chạy lại file này cũng không sao (mọi câu
+-- đều IF EXISTS / IF NOT EXISTS).
+--
 -- Đã phản ánh trạng thái CUỐI CÙNG:
 --   • mood_logs đã bị gỡ (v4.10.1) — không còn trong schema này
 --   • user_tasks dùng `priority` (bỏ energy_level/duration_est) (v4.9.0)
 --   • user_tasks.collection_id đã bỏ (v4.28.0 code, DROP v5.0.0) — dùng task_collections
 --   • user_tasks.recurrence_parent_id — chuỗi task lặp lại (v4.31.0)
+--   • user_tasks.updated_at + trigger — dấu thời gian sửa gần nhất (v5.0.0)
+--   • activity_logs dựng lại schema v2 (v5.0.0): task_id FK CASCADE +
+--     field/old_value/new_value/note, bỏ label/amount/meta. CHỈ phục vụ lịch sử
+--     thay đổi + ghi chú của từng Task
+--   • Life Log (/life-log) + heatmap + KPI "Hoạt động hôm nay" đã GỠ HẲN (v5.0.0)
+--   • Hành Trình cảm xúc (/life-journey), Quiz, Bảng Xếp Hạng đã GỠ HẲN (v5.0.0)
+--   • streaks + get_leaderboard() đã DROP (v5.0.0) — chết sẵn từ lâu, chỉ BXH đọc
 --   • collections.type = 8 loại cuối, có `podcast` (v4.14.0 + v4.28.0)
 --   • collections.status chuẩn hoá unread/read/archived (v5.0.0), bỏ 5 cột chết
 --     resolved/course_name/duration_min/reviewed_at/priority (v5.0.0)
@@ -40,7 +55,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uidx_profiles_username ON profiles (username) 
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles (email) WHERE email IS NOT NULL;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 -- v4.24.0: chỉ chủ tài khoản đọc được hàng của mình (trước đây USING(true) → rò email).
--- Nhu cầu cross-user (login, leaderboard, check trùng) đi qua các hàm RPC ở cuối file.
+-- Nhu cầu cross-user (login, check trùng username/email) đi qua các hàm RPC ở cuối file.
 DROP POLICY IF EXISTS "profiles_select_all" ON profiles;
 DROP POLICY IF EXISTS "profiles_select_own" ON profiles;
 CREATE POLICY "profiles_select_own" ON profiles FOR SELECT USING (id = auth.uid());
@@ -65,18 +80,13 @@ CREATE POLICY "progress_insert_own" ON progress FOR INSERT WITH CHECK (user_id =
 DROP POLICY IF EXISTS "progress_update_own" ON progress;
 CREATE POLICY "progress_update_own" ON progress FOR UPDATE USING (user_id = auth.uid());
 
--- ── 3. streaks ──────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS streaks (
-  user_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
-  current_streak INT NOT NULL DEFAULT 0, longest_streak INT NOT NULL DEFAULT 0,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE streaks ENABLE ROW LEVEL SECURITY;
--- Đọc chéo cho leaderboard giờ đi qua hàm get_leaderboard() (SECURITY DEFINER),
--- nên chỉ cần policy đọc hàng của mình.
-DROP POLICY IF EXISTS "streaks_select_all" ON streaks;
-DROP POLICY IF EXISTS "streaks_own" ON streaks;
-CREATE POLICY "streaks_own" ON streaks FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+-- ── 3. streaks — ĐÃ DROP ở v5.0.0 (đợt 3 dọn module) ───────────────────────
+-- Bảng này CHẾT TỪ LÂU: chỉ được INSERT đúng 1 lần lúc signup (trigger
+-- handle_new_user), không nơi nào trong src/ UPDATE nó → current_streak /
+-- longest_streak luôn = 0 với mọi user. Người đọc duy nhất là get_leaderboard(),
+-- mà Bảng Xếp Hạng đã gỡ hẳn (tính năng xã hội trong app 1 người = giá trị 0).
+-- INSERT ở handle_new_user cũng đã bỏ (xem khối AUTH TRIGGER cuối file).
+DROP TABLE IF EXISTS streaks;
 
 -- ── 4. notification_settings ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS notification_settings (
@@ -232,7 +242,8 @@ CREATE INDEX IF NOT EXISTS idx_xp_logs_user ON xp_logs (user_id, created_at DESC
 ALTER TABLE xp_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "xp_own" ON xp_logs;
 CREATE POLICY "xp_own" ON xp_logs FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
--- v4.24.0: bỏ "xp_read_all" — leaderboard giờ tổng hợp qua get_leaderboard() (definer).
+-- v4.24.0: bỏ "xp_read_all" (từng mở đọc chéo cho leaderboard). v5.0.0: leaderboard
+-- đã gỡ hẳn, xp_logs chỉ còn đọc hàng của mình.
 DROP POLICY IF EXISTS "xp_read_all" ON xp_logs;
 
 -- ── 14. friendships (ARCHIVED v3.0.0 — không dùng; an toàn để DROP) ──────────
@@ -253,7 +264,7 @@ DROP POLICY IF EXISTS "friendships_own" ON friendships;
 CREATE POLICY "friendships_own" ON friendships FOR ALL
   USING (requester_id = auth.uid() OR addressee_id = auth.uid()) WITH CHECK (requester_id = auth.uid());
 
--- ── 15. user_tasks (v4.9.0: priority thay energy_level/duration_est; v4.31.0: recurrence_parent_id) ─
+-- ── 15. user_tasks (v4.9.0: priority thay energy_level/duration_est; v4.31.0: recurrence_parent_id; v5.0.0: updated_at) ─
 CREATE TABLE IF NOT EXISTS user_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -263,7 +274,8 @@ CREATE TABLE IF NOT EXISTS user_tasks (
   recurrence_rule JSONB,
   recurrence_parent_id UUID REFERENCES user_tasks(id) ON DELETE CASCADE,
   completed BOOLEAN NOT NULL DEFAULT false, completed_at TIMESTAMPTZ,
-  notified BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW()
+  notified BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 -- Nâng cấp DB cũ (nếu chạy lại trên DB từng có energy_level/duration_est/collection_id):
 ALTER TABLE user_tasks DROP COLUMN IF EXISTS energy_level;
@@ -271,6 +283,14 @@ ALTER TABLE user_tasks DROP COLUMN IF EXISTS duration_est;
 ALTER TABLE user_tasks DROP COLUMN IF EXISTS collection_id;
 ALTER TABLE user_tasks ADD COLUMN IF NOT EXISTS priority SMALLINT NOT NULL DEFAULT 0;
 ALTER TABLE user_tasks ADD COLUMN IF NOT EXISTS recurrence_parent_id UUID REFERENCES user_tasks(id) ON DELETE CASCADE;
+-- v5.0.0: thêm KHÔNG default trước rồi mới backfill = created_at. Nếu để DEFAULT
+-- NOW() ngay từ đầu, mọi task cũ sẽ mang dấu thời gian của lúc chạy file này —
+-- sai, vì chúng đâu có vừa được sửa.
+ALTER TABLE user_tasks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+UPDATE user_tasks SET updated_at = created_at WHERE updated_at IS NULL;
+ALTER TABLE user_tasks ALTER COLUMN updated_at SET DEFAULT NOW();
+DROP TRIGGER IF EXISTS user_tasks_updated_at ON user_tasks;
+CREATE TRIGGER user_tasks_updated_at BEFORE UPDATE ON user_tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE INDEX IF NOT EXISTS idx_user_tasks_user_date ON user_tasks (user_id, due_date);
 CREATE INDEX IF NOT EXISTS idx_user_tasks_pending ON user_tasks (user_id, completed, due_date) WHERE completed=false;
 CREATE INDEX IF NOT EXISTS idx_user_tasks_recurring ON user_tasks (user_id) WHERE recurrence_rule IS NOT NULL;
@@ -392,20 +412,70 @@ CREATE POLICY "subscriptions_update_own" ON subscriptions FOR UPDATE USING (user
 DROP POLICY IF EXISTS "subscriptions_delete_own" ON subscriptions;
 CREATE POLICY "subscriptions_delete_own" ON subscriptions FOR DELETE USING (user_id = auth.uid());
 
--- ── 20. activity_logs ───────────────────────────────────────────────────────
+-- ── 20. activity_logs (v5.0.0: lịch sử thay đổi + ghi chú của Task) ─────────
+--
+-- 3 loại dòng, MỌI dòng đều gắn task_id:
+--   | Loại             | field | note |
+--   | Sự kiện của task | NULL  | NULL |  task_created / task_completed / …
+--   | Field-diff       | có    | NULL |  task_update, 1 dòng / field đổi
+--   | Ghi chú cá nhân  | NULL  | có   |  note
+--
+-- v5.0.0 KHÔNG còn dòng "sự kiện rời rạc" (expense_add, inbox_*, focus_done,
+-- challenge_done, habit_done…): heatmap Life Log là người đọc duy nhất của
+-- chúng, mà Life Log + KPI "Hoạt động hôm nay" đã bị gỡ hẳn.
+--
+-- `action` CỐ Ý không có CHECK constraint: mọi lệnh ghi log đều fire-and-forget
+-- nuốt lỗi, nên constraint bị vi phạm sẽ làm log biến mất ÂM THẦM thay vì lộ ra.
+-- Chống gõ sai bằng hằng số ACTIONS trong src/utils/taskFields.js.
 CREATE TABLE IF NOT EXISTS activity_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  action TEXT NOT NULL, label TEXT, amount INT, meta JSONB DEFAULT '{}',
+  task_id UUID REFERENCES user_tasks(id) ON DELETE CASCADE,
+  action TEXT NOT NULL,
+  field TEXT, old_value TEXT, new_value TEXT,
+  note TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_activity_logs_user_date ON activity_logs (user_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_activity_logs_user_action ON activity_logs (user_id, action);
+-- Nâng cấp DB cũ (schema v1 có label/amount/meta). Bỏ 3 cột đó KHÔNG mất dữ
+-- liệu nghiệp vụ: tiền đã có ở expenses/subscriptions, XP đã có ở xp_logs,
+-- và không nơi nào trong src/ đọc 3 cột này (chỉ COUNT dòng).
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS task_id UUID REFERENCES user_tasks(id) ON DELETE CASCADE;
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS field TEXT;
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS old_value TEXT;
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS new_value TEXT;
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS note TEXT;
+ALTER TABLE activity_logs DROP COLUMN IF EXISTS label;
+ALTER TABLE activity_logs DROP COLUMN IF EXISTS amount;
+ALTER TABLE activity_logs DROP COLUMN IF EXISTS meta;
+-- Dọn mọi dòng KHÔNG gắn task: đó là các sự kiện rời rạc của schema v1, giờ
+-- không còn ai ghi lẫn ai đọc. Idempotent — lần chạy sau không còn gì khớp.
+DELETE FROM activity_logs WHERE task_id IS NULL;
+-- Index của schema v1 — không truy vấn nào còn dùng.
+DROP INDEX IF EXISTS idx_activity_logs_user_action;
+DROP INDEX IF EXISTS idx_activity_logs_user_date;
+DROP INDEX IF EXISTS idx_activity_logs_heatmap;
+-- Truy vấn ĐỌC duy nhất: "log của 1 task, mới nhất trước" (tab Activity/Note).
+CREATE INDEX IF NOT EXISTS idx_activity_logs_task
+  ON activity_logs (task_id, created_at DESC)
+  WHERE task_id IS NOT NULL;
 ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "activity_logs_select_own" ON activity_logs;
 CREATE POLICY "activity_logs_select_own" ON activity_logs FOR SELECT USING (user_id = auth.uid());
 DROP POLICY IF EXISTS "activity_logs_insert_own" ON activity_logs;
 CREATE POLICY "activity_logs_insert_own" ON activity_logs FOR INSERT WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS "activity_logs_delete_own" ON activity_logs;
+CREATE POLICY "activity_logs_delete_own" ON activity_logs FOR DELETE USING (user_id = auth.uid());
+-- UPDATE chỉ mở cho dòng ghi chú: USING chặn không cho với tới dòng field-diff,
+-- WITH CHECK chặn biến 1 dòng note thành dòng khác.
+DROP POLICY IF EXISTS "activity_logs_update_own_note" ON activity_logs;
+CREATE POLICY "activity_logs_update_own_note" ON activity_logs FOR UPDATE
+  USING      (user_id = auth.uid() AND action = 'note')
+  WITH CHECK (user_id = auth.uid() AND action = 'note');
+-- GRANT tường minh (phòng khi bảng từng bị DROP làm mất quyền) + khoá UPDATE
+-- xuống mức CỘT: chỉ sửa được đúng `note`, mọi cột khác bất biến ở mọi dòng.
+GRANT SELECT, INSERT, DELETE ON activity_logs TO authenticated;
+REVOKE UPDATE ON activity_logs FROM authenticated;
+GRANT UPDATE (note) ON activity_logs TO authenticated;
 
 -- ── 21. tags + junctions ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS tags (
@@ -594,7 +664,8 @@ DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE focus_sessions; EXCEPT
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE xp_logs; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ════════════════════════════════════════════════════════════════════════════
--- AUTH TRIGGER: tự tạo profile/streaks/notification_settings khi có user mới
+-- AUTH TRIGGER: tự tạo profile + notification_settings khi có user mới
+-- (v5.0.0: bỏ INSERT vào streaks — bảng đã DROP)
 -- ════════════════════════════════════════════════════════════════════════════
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -626,12 +697,6 @@ BEGIN
       display_name = COALESCE(profiles.display_name, EXCLUDED.display_name);
   EXCEPTION WHEN OTHERS THEN
     RAISE WARNING '[handle_new_user] profiles insert failed: %', SQLERRM;
-  END;
-
-  BEGIN
-    INSERT INTO streaks (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
-  EXCEPTION WHEN OTHERS THEN
-    RAISE WARNING '[handle_new_user] streaks insert failed: %', SQLERRM;
   END;
 
   BEGIN
@@ -675,32 +740,14 @@ RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
   );
 $$;
 
--- Leaderboard: tên + thống kê (KHÔNG email), tính server-side
+-- get_leaderboard() — ĐÃ BỎ ở v5.0.0. Bảng Xếp Hạng gỡ hẳn (tính năng xã hội
+-- trong app 1 người dùng = giá trị 0). Hàm này JOIN streaks + progress, cả hai
+-- đều thuộc phần đang dọn.
 DROP FUNCTION IF EXISTS public.get_leaderboard();
-CREATE FUNCTION public.get_leaderboard()
-RETURNS TABLE (
-  id uuid, display_name text, avatar_url text,
-  current_streak int, longest_streak int,
-  total_xp bigint, total_done bigint
-)
-LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
-  SELECT p.id, p.display_name, p.avatar_url,
-         COALESCE(s.current_streak, 0) AS current_streak,
-         COALESCE(s.longest_streak, 0) AS longest_streak,
-         COALESCE(x.total_xp, 0)       AS total_xp,
-         COALESCE(d.total_done, 0)     AS total_done
-  FROM public.profiles p
-  LEFT JOIN public.streaks s ON s.user_id = p.id
-  LEFT JOIN (SELECT user_id, SUM(amount)::bigint AS total_xp FROM public.xp_logs GROUP BY user_id) x ON x.user_id = p.id
-  LEFT JOIN (SELECT user_id, COUNT(*)::bigint AS total_done FROM public.progress WHERE completed GROUP BY user_id) d ON d.user_id = p.id
-  ORDER BY total_xp DESC, current_streak DESC
-  LIMIT 50;
-$$;
 
 GRANT EXECUTE ON FUNCTION public.login_email(text)     TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.username_exists(text)  TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.email_exists(text)     TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_leaderboard()      TO anon, authenticated;
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- SEED: 5 lộ trình mẫu (chỉ thêm nếu chưa có)
@@ -713,4 +760,5 @@ INSERT INTO programs (title, description, icon, color, category, duration_days, 
   ('Deep Work 30 Ngay', 'Tap trung sau hon', '🚀', '#ffd700', 'productivity', 30, true, true)
 ON CONFLICT DO NOTHING;
 
--- ✅ DONE — 30 bảng + 1 view (tagged_items) + RLS + indexes + triggers + functions + seed (idempotent).
+-- ✅ DONE (v5.0.0) — 29 bảng + 1 view (tagged_items) + RLS + indexes + triggers + functions + seed (idempotent).
+-- v5.0.0: activity_logs dựng lại tại chỗ (không đổi số bảng); streaks DROP (30 → 29).

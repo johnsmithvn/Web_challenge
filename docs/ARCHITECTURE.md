@@ -30,7 +30,7 @@ src/
 ├── App.jsx           AppShell: PageMeta + Onboarding gate + Navbar + QuickCapture
 │                     + GlobalAudioPlayer + ErrorBoundary + Suspense + Routes
 ├── main.jsx          React root
-├── pages/       (15) 1 file / route. LandingPage + TrackerPage eager, 13 còn lại lazy
+├── pages/       (12) 1 file / route. LandingPage + TrackerPage eager, 10 còn lại lazy
 ├── components/  (38) UI dùng lại, props-driven, không gọi supabase trực tiếp
 │   └── journey/  (5) ActiveJourneyPanel, ProgramBrowser, MyJourneys, JourneyHistory,
 │                     CustomJourneyModal
@@ -105,16 +105,12 @@ vl_habit_logs_migrated # "1" — vl_habit_progress migrated to Supabase
 vl_login_nudge_shown   # "1" — login nudge shown once
 vl_chunk_retry         # "1" — stale chunk retry flag (cleared on success)
 vl_theme               # "dark" | "light" — theme preference (v2.2.0)
-vl_life_journey_events # JSON array — life milestones (v2.2.0, localStorage-only)
-vl_journey_title       # string — custom title for life journey chart (v2.2.0)
 ```
 
 > **Rule:** localStorage chỉ lưu **UI state flags**, **offline guest fallback**, và các
 > **ngoại lệ legacy được ghi rõ**. Mọi user data khác phải dùng Supabase làm primary.
 >
 > **Ngoại lệ legacy hiện tại** — là user data thật, **chưa** migrate:
-> - `vl_life_journey_events` — mảng cột mốc cuộc đời (Life Journey, v2.2.0)
-> - `vl_journey_title` — tiêu đề tuỳ chỉnh của biểu đồ Life Journey
 >
 > Hệ quả: dữ liệu Life Journey không sync giữa thiết bị và mất khi user xoá browser data,
 > kể cả khi đã đăng nhập. Migrate sang Supabase là đổi code + thêm bảng — chưa làm, không phải
@@ -130,7 +126,7 @@ Cụm bảng theo domain:
 
 | Domain | Tables |
 |--------|--------|
-| Habit / streak | `progress`, `habits`, `habit_logs`, `streaks`, `skip_reasons` |
+| Habit / streak | `progress`, `habits`, `habit_logs`, `skip_reasons` |
 | Journey | `programs`, `program_habits`, `user_journeys`, `journey_habits` |
 | Focus | `focus_sessions` |
 | Gamification | `xp_logs` |
@@ -156,7 +152,6 @@ DashboardPage
   ├── useActivityLog     → getTodayCount
   ├── useAuth            → user, isAuthenticated (for FocusBreakdown) [v3.2.1]
   ├── supabase (direct)  → focus_sessions + habits (FocusBreakdown)  [v3.2.1]
-  └── ActivityHeatmap    → reused component (activity_logs heatmap)
 ```
 
 ---
@@ -172,16 +167,12 @@ DashboardPage
 | `/tasks` | TasksPage (List + Calendar view) | Required | Lazy |
 | `/collect` | CollectPage | Required | Lazy |
 | `/finance` | FinancePage | Required | Lazy |
-| `/life-log` | LifeLogPage | Required | Lazy |
 | `/focus` | FocusPage | Public | Lazy |
 | `/journey` | JourneyPage | Public (soft wall for save) | Lazy |
 | `/journey/:id` | JourneyDetailPage | Public | Lazy |
 | `/dashboard` | DashboardPage | Public | Lazy |
-| `/quiz` | QuizPage | Public | Lazy |
-| `/leaderboard` | LeaderboardPage | Public | Lazy |
 | `/team` | Inline redirect → `/tracker` | — | — |
 | `/friends` | Inline redirect → `/tracker` | — | — |
-| `/life-journey` | LifeJourneyPage | Public | Lazy |
 | `/incubator` | IncubatorPage | Required | Lazy |
 | `/settings` | SettingsPage | Required | Lazy |
 
@@ -220,8 +211,8 @@ ThemeProvider
 
 ### 3. Streak computed on client
 - `useHabitStore.calcStreak()` tính streak từ map `progress` — cả guest lẫn authed
-- Bảng `streaks` chỉ được INSERT 1 lần bởi trigger signup, **không có** `refresh_streak()`
-  → cột streak trong `get_leaderboard()` hiện đứng ở 0. Chi tiết + TODO: `docs/DATABASE.md`
+- Bảng `streaks` đã **DROP ở v5.0.0** cùng Bảng Xếp Hạng — nó chưa bao giờ được cập nhật sau
+  signup. Streak trên UI tính runtime từ `progress`/`habit_logs`, không đọc bảng nào.
 - RLS: mỗi user chỉ đọc hàng của mình (v4.24.0); cross-user đi qua RPC `SECURITY DEFINER`
 
 ### 4. CSS architecture
@@ -259,7 +250,7 @@ ThemeProvider
 - Không block routing — user có thể bỏ qua
 
 ### 10. Lazy Loading + Error Boundary (v1.7.0)
-- 13 pages lazy-loaded via `React.lazy` + `Suspense` (LandingPage + TrackerPage are eager)
+- 10 pages lazy-loaded via `React.lazy` + `Suspense` (LandingPage + TrackerPage are eager)
 - `ErrorBoundary` wraps routes → friendly fallback thay màn trắng
 - `lazyRetry()` wrapper auto-reload on stale chunk after Vercel redeploy
 

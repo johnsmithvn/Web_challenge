@@ -21,17 +21,13 @@ import TrackerPage from './pages/TrackerPage';
 
 const FocusPage         = lazy(() => import('./pages/FocusPage'));
 const DashboardPage     = lazy(() => import('./pages/DashboardPage'));
-const QuizPage          = lazy(() => import('./pages/QuizPage'));
-const LeaderboardPage   = lazy(() => import('./pages/LeaderboardPage'));
 const JourneyPage       = lazy(() => import('./pages/JourneyPage'));
 const JourneyDetailPage = lazy(() => import('./pages/JourneyDetailPage'));
-const LifeJourneyPage   = lazy(() => import('./pages/LifeJourneyPage'));
 // v3.0.0 — New Life Hub pages
 const InboxPage         = lazy(() => import('./pages/InboxPage'));
 const TasksPage         = lazy(() => import('./pages/TasksPage'));
 const CollectPage       = lazy(() => import('./pages/CollectPage'));
 const FinancePage       = lazy(() => import('./pages/FinancePage'));
-const LifeLogPage       = lazy(() => import('./pages/LifeLogPage'));
 const IncubatorPage     = lazy(() => import('./pages/IncubatorPage'));
 const SettingsPage      = lazy(() => import('./pages/SettingsPage'));
 
@@ -43,13 +39,9 @@ const ROUTE_META = {
   '/tasks':      { title: 'Nhiệm Vụ — Life Hub',                                              desc: 'Danh sách nhiệm vụ cá nhân: quá hạn, hôm nay, sắp tới.' },
   '/collect':    { title: 'Knowledge Base — Life Hub',                                          desc: 'Kho tàng kiến thức cá nhân. Viết bài, đọc lại, phân loại theo tag.' },
   '/finance':    { title: 'Finance — Life Hub',                                               desc: 'Quản lý chi tiêu cá nhân và đăng ký gói dịch vụ.' },
-  '/life-log':   { title: 'Life Log — Life Hub',                                              desc: 'Lịch sử cuộc sống: heatmap cả năm và timeline hàng ngày.' },
   '/focus':      { title: 'Focus Timer — Life Hub',                                           desc: 'Dùng Pomodoro để tập trung sâu và liên kết với thói quen của bạn.' },
   '/journey':    { title: 'Lộ Trình — Life Hub',                                              desc: 'Chọn lộ trình 21 ngày phù hợp với bạn hoặc tự tạo lộ trình riêng.' },
   '/dashboard':  { title: 'Stats — Life Hub',                                                 desc: 'Thống kê toàn bộ quá trình: streak, XP, mood, habit completion.' },
-  '/quiz':       { title: 'Quiz — Life Hub',                                                  desc: 'Kiểm tra hiểu biết về tâm lý hành vi. +50 XP nếu làm tốt!' },
-  '/leaderboard':{ title: 'Bảng Xếp Hạng — Life Hub',                                        desc: 'Xem ai đang dẫn đầu về streak và XP.' },
-  '/life-journey': { title: 'Hành Trình — Life Hub',                                           desc: 'Ghi lại những cột mốc quan trọng trên biểu đồ cảm xúc.' },
   '/incubator':  { title: 'Trạm Ấp Trứng — Life Hub',                                          desc: 'Nuôi dưỡng dự định, dời lại phải có lý do, theo dõi timeline quyết định.' },
   '/settings':   { title: 'Cài Đặt — Life Hub',                                                  desc: 'Quản lý tags, giao diện và tùy chỉnh hệ thống.' },
 };
@@ -89,18 +81,14 @@ function AppShell() {
                 <Route path="/tasks"        element={<TasksPage />} />
                 <Route path="/collect"      element={<CollectPage />} />
                 <Route path="/finance"      element={<FinancePage />} />
-                <Route path="/life-log"     element={<LifeLogPage />} />
                 <Route path="/incubator"    element={<IncubatorPage />} />
                 <Route path="/settings"     element={<SettingsPage />} />
                 <Route path="/focus"        element={<FocusPage />} />
                 <Route path="/team"         element={<Navigate to="/tracker" replace />} />
                 <Route path="/friends"      element={<Navigate to="/tracker" replace />} />
                 <Route path="/dashboard"    element={<DashboardPage />} />
-                <Route path="/quiz"         element={<QuizPage />} />
-                <Route path="/leaderboard"  element={<LeaderboardPage />} />
                 <Route path="/journey"      element={<JourneyPage />} />
                 <Route path="/journey/:id"  element={<JourneyDetailPage />} />
-                <Route path="/life-journey" element={<LifeJourneyPage />} />
                 <Route path="*"             element={<LandingPage />} />
               </Routes>
             </div>

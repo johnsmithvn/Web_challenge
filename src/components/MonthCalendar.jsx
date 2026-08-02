@@ -27,7 +27,7 @@ function getFirstDayOfWeek(year, month) {
  * MonthCalendar — lịch tháng, dùng ở 2 chế độ:
  *
  * - **habit mode** (truyền `habitData`): ô tô xanh/đỏ theo ngày tick đủ habit.
- *   Dùng ở /tracker và /life-log.
+ *   Dùng ở /tracker (habit mode) và /tasks (task mode).
  * - **task mode** (KHÔNG truyền `habitData`): ô tô theo số task đã xong hôm đó,
  *   hiện chip tên task ngay trong ô. Dùng ở /tasks (v4.29.0).
  *

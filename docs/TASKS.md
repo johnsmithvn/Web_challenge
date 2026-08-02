@@ -3,44 +3,43 @@
 
 ---
 
-## v5.0.0 — ✅ CODE DONE / ⏳ SQL CHỜ USER CHẠY (2026-08-02) — Activity Log v2 + Task Detail View
+## v5.0.0 — ✅ CODE DONE / ⏳ SQL CHỜ USER CHẠY (2026-08-02) — Activity Log v2 + Task Detail View + gỡ Life Log
 
 **Đã làm** (chi tiết đầy đủ ở CHANGELOG.md v5.0.0, FEATURES.md §16/§24, DESIGN.md § Task Detail Modal):
 `activity_logs` dựng lại (task_id FK CASCADE, field/old_value/new_value/note), `user_tasks.updated_at`
 + trigger, log 5 cửa ghi với diff generic, `TaskDetailModal` 2 tab (Hoạt động / Ghi chú),
-`src/utils/taskFields.js` + test. Lint 0 error, `npm test` pass, `npm run design:lint` pass.
+`src/utils/taskFields.js` + test, **gỡ hẳn Life Log + heatmap + KPI "Hoạt động hôm nay"**.
+Lint 0 error, `npm test` pass, `npm run design:lint` pass.
 
 ### ⏳ User phải tự chạy / tự kiểm (agent không kết nối Supabase, không tự verify UI)
-- [ ] **Chạy `data/migration_v5.0.0_activity_logs_v2.sql`** trên Supabase. ⚠️ Phần 2 là `DROP TABLE`
-      — **chỉ chạy 1 lần**, chạy lại lần 2 xoá sạch dữ liệu vừa ghi. Đọc khối "ĐIỀU KIỆN TIÊN QUYẾT"
-      ở đầu file trước. Chạy xong dùng 7 câu Verify ở cuối file để kiểm.
+- [ ] **Chạy SQL trên Supabase.** Hai file tới cùng 1 schema cuối và **đều xoá sạch log cũ** (mọi dòng
+      của schema v1 đều là dữ liệu heatmap, mà heatmap đã gỡ). Chọn 1, đừng chạy cả hai:
+      `data/migration_v5.0.0_activity_logs_v2.sql` (DROP+CREATE, **chỉ chạy 1 lần**) hoặc
+      `data/schema_v4.24.0.sql` (ALTER, idempotent). Dùng các câu Verify cuối file migration để kiểm.
 - [ ] **Deploy code sát ngay sau khi chạy SQL.** Giữa 2 mốc đó mọi lệnh ghi log fail ÂM THẦM (toàn bộ
       điểm ghi đều fire-and-forget nuốt lỗi).
-- [ ] Smoke test theo checklist trong hội thoại (mở Detail, tick, sửa field, thêm/sửa/xoá ghi chú,
-      xoá dòng log, mobile bottom-sheet, light theme).
+- [ ] `npm run build`.
+- [ ] Smoke test: mở Detail, sửa task **không đổi gì** (phải KHÔNG sinh dòng log), thêm/sửa/xoá ghi
+      chú, xoá dòng log, mobile bottom-sheet + menu ⋯, light theme. Kiểm Navbar/Dashboard không còn
+      dấu vết Life Log và không vỡ layout.
 
 ### Quyết định đã chốt trong đợt này (2026-08-02)
 | Câu hỏi | Chốt |
 |---|---|
-| Rebuild kiểu gì | **DROP + CREATE** — chấp nhận mất trắng lịch sử heatmap (đã cảnh báo rõ, user xác nhận) |
-| Heatmap đếm gì | **Chỉ sự kiện** — bỏ cả dòng field-diff lẫn dòng note (`field IS NULL AND action <> 'note'`) |
+| Rebuild kiểu gì | **DROP + CREATE** — chấp nhận mất trắng log cũ |
+| Heatmap đếm gì | **Moot** — Life Log gỡ hẳn, không còn heatmap |
 | Xoá task thì log ra sao | **FK CASCADE** — log chết theo task, DB tự dọn, không có dòng mồ côi |
-| Ghi chú sửa được không | **Có** — thêm RLS UPDATE giới hạn `action='note'` + GRANT cấp cột `note` |
+| Ghi chú sửa được không | **Có** — RLS UPDATE giới hạn `action='note'` + GRANT cấp cột `note` |
 | Subtask / dependency | **Hoãn** — dùng task phẳng một thời gian dài rồi mới quyết (xem Backlog dưới) |
+| Life Log + KPI "Hoạt động" | **Gỡ hẳn** — heatmap chỉ COUNT dòng, là người đọc duy nhất của các dòng sự kiện rời rạc; gỡ nó thì 11 điểm ghi `logActivity` cũng thành vô dụng nên xoá luôn |
 
 ### Còn nợ
-- [ ] `TODO: decision needed` — **hợp nhất migration v5.0.0 vào `data/schema_v4.24.0.sql`.** RULES §3
-      cấm sửa master schema khi không có chỉ thị rõ ràng nên agent CHƯA đụng. Chưa gộp thì fresh
-      install phải chạy master rồi chạy tiếp file migration. Cần user cho phép tường minh.
-- [ ] Hệ quả mới của FK CASCADE: **xoá 1 task làm tụt heatmap của những ngày cũ** (dòng
-      `task_created`/`task_completed` của nó bị xoá theo). Nếu thấy khó chịu, đổi `ON DELETE CASCADE`
-      → `SET NULL`, nhưng khi đó phải tự dọn dòng mồ côi bằng tay.
-- [ ] `ActivityHeatmap.jsx:48` sinh key ô bằng `toISOString()` (UTC) trong khi hook group theo giờ
-      ĐỊA PHƯƠNG → lệch 1 ô ở GMT+7. **Bug có sẵn từ trước**, không phải do đợt này; nhưng giờ tab
-      Activity hiện giờ địa phương nên chênh lệch dễ bị hiểu nhầm là bug mới.
-- [ ] `DashboardPage.jsx:571` render `<ActivityHeatmap/>` **không truyền props** → luôn rỗng, và
-      không import `lifelog.css` nên còn không có style. Bug có sẵn từ trước.
-- [ ] `LifeLogPage.jsx:91` quảng cáo "Click ô để xem chi tiết" nhưng handler là no-op.
+- [x] **Hợp nhất v5.0.0 vào `data/schema_v4.24.0.sql`** — ✅ xong 2026-08-02, **user cho phép tường
+      minh** (RULES §3). Master dùng `CREATE TABLE IF NOT EXISTS` + `ALTER ADD/DROP COLUMN` để giữ
+      tính idempotent, khác file migration dùng `DROP TABLE`.
+- [ ] Bảng `activity_logs` giờ **chỉ phục vụ Task**. Nếu sau này muốn log lại chuyện gì khác
+      (chi tiêu, inbox…) thì phải có NGƯỜI ĐỌC trước — đừng lặp lại vòng cũ: ghi rồi không ai đọc.
+- [ ] Cột `task_id` để NULLABLE dù mọi dòng đều gắn task. Ép `NOT NULL` được, nhưng chưa cần.
 
 > Các version-block đã ✅ DONE hoàn toàn và có đầy đủ trong `CHANGELOG.md` được rút gọn thành
 > 1 dòng pointer. Checkbox chưa tick, TODO/decision needed, backlog, và runbook "user tự chạy"
@@ -153,45 +152,107 @@ trị ~0).
 
 ---
 
-## 🧊 Backlog — Xóa Habit tracker + Lộ Trình 21 ngày + Onboarding liên quan (audit xong 2026-08-02, CHƯA code)
+## 🧊 Backlog — KẾ HOẠCH DỌN MODULE (quét toàn repo 2026-08-02, CHƯA code)
 
-**Ưu tiên: làm SAU khi xong "Định hình lại field Task" + "Activity log v2" ở trên.** User chủ động
-gác lại — cần phân tích sâu hơn (module liên quan, action nào vô dụng cần xóa cụ thể theo từng
-file/dòng) trước khi code. Audit sơ bộ 2026-08-02 (agent Explore) đã xong ở mức file, ghi nhanh các
-điểm chốt quan trọng để không phải audit lại từ đầu:
+**Quét bằng grep toàn `src/`, không đoán.** Kết quả: `src/` hiện **37.465 dòng**. Frontend **sạch ở
+mức file** — không component/hook/CSS/JSON/context/util/route/api nào mồ côi. Rác nằm ở **mức
+module**, không phải file lẻ.
 
-- **"Lộ Trình" (`/journey`, chương trình 21 ngày) và "Hành Trình" (`/life-journey`, timeline cảm
-  xúc theo tuổi) là 2 tính năng KHÔNG liên quan code, dễ nhầm vì tên gần giống nhau.** Hành Trình
-  cảm xúc độc lập hoàn toàn — chỉ `localStorage` (`vl_life_journey_events`), không đụng Supabase,
-  không import gì từ Habit/Journey khác → xóa riêng an toàn ngay, chỉ 3 file
-  (`LifeJourneyPage.jsx`, `useLifeJourney.js`, `life-journey.css`) + route + mục Navbar.
-  Lộ Trình 21 ngày gắn **rất chặt** với Habit tracker qua `JourneyContext` (bọc toàn App, 4 hook
-  import trực tiếp: `useCustomHabits`, `useHabitLogs`, `useJourney`, `useFocusTimer`) — xóa 1 trong
-  2 (Habit hoặc Lộ Trình) mà giữ cái kia sẽ **vỡ ngay lập tức**, cần refactor cả 2 cùng lúc.
-- **Cross-dependency cần xử lý cùng lúc khi xóa Habit + Lộ Trình:**
-  - XP: reason `daily_check`/`streak_3/10/21` chỉ dùng bởi Habit → thành dead code
-  - DashboardPage: import trực tiếp `useHabitStore` (FlowerJourney, WeeklyReview, widget "Focus 7
-    ngày per-habit" join `focus_sessions.habit_id`)
-  - `useFocusTimer.linkHabit()` — FK `focus_sessions.habit_id`/`journey_id` đã `ON DELETE SET NULL`
-    (an toàn, không mất session log), nhưng UI chọn habit trong Focus cần gỡ code
-  - `activity_logs` action `habit_done`/`habit_undo` — xử lý y hệt tiền lệ Fitness Log đã xóa
-    (giữ dòng cũ, chỉ sửa comment tra cứu trong `useActivityLog.js`, heatmap vẫn đếm bình thường)
-  - Leaderboard (`get_leaderboard()` SQL) JOIN bảng `progress` (của `useHabitStore`) để tính
-    `total_done` → xóa Habit thì cột này về 0 trên BXH
-- **Onboarding cần viết lại nội dung, không chỉ xóa code** — `OnboardingModal.jsx` STEP 3 hiện
-  toàn nói về habit/streak 21 ngày.
-- **Phát hiện thêm ngoài lề (chưa đào sâu):** bảng `streaks` đã chết từ trước (chỉ INSERT 1 lần lúc
-  signup qua trigger `handle_new_user`, không đâu trong `src/` UPDATE nó — `current_streak`/
-  `longest_streak` trên BXH đã luôn = 0 từ lâu, không liên quan gì việc xóa Habit lần này, an toàn
-  DROP riêng). Quiz/DailyChallenge/Leaderboard cùng bơm chung `xp_logs`, đang cân nhắc bỏ chung đợt
-  theo bối cảnh chiến lược v4.27.0 nhưng chưa audit sâu. `programs.json` có template `tpl-fitness`
-  từng bị cảnh báo nhầm với Fitness Log đã xóa (v4.26.0) — soát kỹ trước khi đụng `programs`/
-  `program_habits` để không lặp lại nhầm lẫn tương tự.
-- **Việc cần làm tiếp trước khi code xóa:** xác nhận phạm vi chính xác (chỉ Lộ Trình? chỉ Habit? cả
-  2? có tính cả Hành Trình cảm xúc và/hoặc Quiz/Leaderboard không?), rồi liệt kê chi tiết
-  action/route/component cần xóa theo từng dòng (audit hiện mới ở mức file).
+Chiến lược đã chốt (v4.27.0): giữ **Inbox + Knowledge + Tasks + Finance**. Mọi thứ khác là ứng viên.
+
+### 5 đợt, theo thứ tự — rẻ/an toàn trước, đắt/rối sau
+
+| Đợt | Nội dung | Dòng | Rủi ro |
+|---|---|---|---|
+| ~~1~~ | ~~Hành Trình cảm xúc~~ ✅ **XONG 2026-08-02** | −873 | — |
+| ~~2~~ | ~~Landing Page~~ ✅ **VIẾT LẠI 2026-08-02** (không xoá) | −1.545 | — |
+| ~~3~~ | ~~Quiz + BXH~~ ✅ **XONG 2026-08-02** | −843 | — |
+| 4 | Habit + Lộ Trình + XP + Daily Challenge + TrackerPage + Dashboard | ~7.000+ | **Cao** |
+| 5 | Dọn 5 bảng DB chết | 0 (SQL) | Rất thấp |
 
 ---
+
+#### ✅ Đợt 1 — Hành Trình cảm xúc — XONG (2026-08-02)
+Đã xoá `LifeJourneyPage.jsx` + `useLifeJourney.js` + `life-journey.css`, gỡ route + ROUTE_META +
+mục Navbar, dọn `RULES.md`/`FEATURES.md` §17/`ARCHITECTURE.md`/`PROJECT.md`. Lint 0 error, test pass.
+⚠️ Dữ liệu cột mốc vẫn nằm trong localStorage (`vl_life_journey_events`, `vl_journey_title`) — xoá
+code không xoá nó; muốn lấy lại thì `git revert` hoặc đọc key đó trong DevTools.
+
+#### ✅ Đợt 2 — Landing Page — VIẾT LẠI, KHÔNG XOÁ (2026-08-02)
+User chọn viết lại thay vì xoá, để trang chủ mô tả đúng tính năng hiện có.
+- Xoá 11 file landing cũ (7 section component + `hero.css` + `sections.css` + `testimonials.css`
+  + `testimonials.json`) — 923 dòng JSX + 822 dòng CSS quảng cáo sản phẩm không còn tồn tại.
+- Viết mới `LandingPage.jsx` (~200) + `styles/landing.css` (~250): hero + nút đăng nhập + nút đổi
+  theme riêng (Navbar ẩn ở `/` khi chưa login) + luồng 3 bước + lưới 6 card module.
+- **Net −1.545 dòng.** `DESIGN.md` thêm mục `.lp-*`, `design:lint` pass.
+- Cố ý KHÔNG liệt kê Habit / Lộ Trình / Quiz / BXH → sau đợt 3-4 không phải sửa lại landing.
+- Câu hỏi "route `/` trỏ đâu" **không còn cần trả lời** — `/` vẫn là landing.
+
+#### ✅ Đợt 3 — Quiz + Bảng Xếp Hạng — XONG (2026-08-02)
+Xoá `QuizPage.jsx`, `LeaderboardPage.jsx`, `quiz.css`, `leaderboard.css`, `data/quiz.json`; gỡ
+2 route + 2 ROUTE_META + 2 mục Navbar + `XP_REWARDS.quiz_complete`. **−843 dòng.**
+SQL trong master schema: `DROP FUNCTION get_leaderboard()`, `DROP TABLE streaks`, gỡ INSERT
+`streaks` khỏi `handle_new_user()`. Số bảng 30 → 29.
+Tiện tay sửa `LoginNudgeModal` — 2/3 lời hứa của nó là tính năng đã xoá (Team Mode v3.0.0,
+Leaderboard v5.0.0).
+
+#### Đợt 4 — Habit + Lộ Trình + XP + Daily Challenge (PHẢI LÀM CÙNG 1 LẦN)
+**Không tách được** — đây là kết luận quan trọng nhất của lần quét:
+- `JourneyContext` bọc toàn App và bị **4 hook** import: `useCustomHabits`, `useHabitLogs`,
+  `useFocusTimer`, `useJourney`
+- `useXpStore` bị **4 nơi** import (sau đợt 3): `DailyChallenge`, `XpBar`, `DashboardPage`, `TrackerPage`
+- `useHabitStore` bị `DashboardPage` import (sau đợt 2-3; `TrackerSection`/`LeaderboardPage` đã xoá)
+- `useCustomHabits` bị `CompletionModal`, `FocusTimer`, `FocusPage`, **`IncubatorPage`** import
+
+Xoá: `useHabitStore` (164), `useCustomHabits` (239), `useHabitLogs` (240), `HabitManager` (200),
+`TrackerPage` (886), `data/habits.json`, `tracker.css`, `JourneyPage` (241), `JourneyDetailPage`
+(608), `useJourney` (393), `JourneyContext` (87), `components/journey/*`, `journey.css`,
+`data/programs.json`, `useXpStore` (189), `XpBar` (49), `xpbar.css`, `DailyChallenge` (135),
+`daily.css`, `data/challenges.json`, `CompletionModal` (193), `LoginNudgeModal` (122)
+
+**Phải VIẾT LẠI, không chỉ xoá:**
+- `DashboardPage` (586) — import cả `useHabitStore` + `useXpStore` + `useMoodSkip`. Mất habit và XP
+  thì còn Finance + Focus. **Cần quyết: viết lại gọn hay xoá hẳn Dashboard?**
+- `OnboardingModal` (113) — STEP 3 nói về habit/streak 21 ngày
+- `IncubatorPage:154,310` — nút "Execute → tạo Habit" phải gỡ (Incubator vẫn sống)
+- `useFocusTimer` — gỡ `journey_id` + `linkHabit`; `FocusPage`/`FocusTimer` gỡ chọn habit
+- `NotificationSettings` + `useNotifications` — hiện chỉ mount trong TrackerPage, cần chuyển chỗ
+  hoặc xoá
+- Navbar/App.jsx: gỡ route `/tracker`, `/habits` (redirect), `/journey`, `/journey/:id`
+- SQL: `habits`, `habit_logs`, `progress`, `user_journeys`, `journey_habits`, `programs`,
+  `program_habits`, `xp_logs`, `skip_reasons`(?); `focus_sessions.habit_id`/`journey_id`
+  (FK đã `ON DELETE SET NULL` — an toàn)
+
+#### Đợt 5 — Dọn bảng DB chết
+`grep` xác nhận **5 bảng không hook nào dùng**: `fitness_logs`, `friendships`,
+`notification_settings`(*), `program_habits`, `streaks`.
+(*) `notification_settings` — hook `useNotifications` có tồn tại nhưng grep không thấy tên bảng
+trong `src/`; **cần xác minh lại** trước khi DROP.
+
+---
+
+### ⛔ CHỐNG XOÁ NHẦM — dùng chung, KHÔNG thuộc module bị xoá
+`GenericModal` · `ConfirmModal` · `Toast`/`ToastContext` · `CustomSelect` · `DatePickerPopover` ·
+`TagPicker` · `MonthCalendar` (task mode dùng ở `/tasks`) · `QuoteWidget` (dùng ở Collect + Inbox) ·
+`useTags` · `useCollections` · `useUserTasks` · `useActivityLog` · `dateUtils` · `taskFields` ·
+`global.css` · `calendar.css` · `AuthContext` · `ThemeContext` · `ErrorBoundary` · `PageSkeleton` ·
+`GlobalAudioPlayer` + `useRandomPodcast` · `QuickCapture` (mount ở App)
+
+### ✅ Đã chốt 2026-08-02
+| Câu hỏi | Chốt | Hệ quả |
+|---|---|---|
+| DashboardPage | **XOÁ HẲN** | Gỡ route `/dashboard` + `dashboard.css`. Finance/Focus đã có trang riêng. Kéo theo: `useMoodSkip` mất consumer cuối (TrackerPage cũng xoá) → bảng `skip_reasons` chết → DROP ở đợt 5 |
+| Focus Timer | **GIỮ** — gỡ link habit | Pomodoro thuần. Bỏ `linkHabit`, `journey_id`, `habit_id` khỏi `useFocusTimer`; UI chọn habit ở `FocusPage`/`FocusTimer` gỡ. Bảng `focus_sessions` giữ (2 FK đã `ON DELETE SET NULL`) |
+| Incubator | **GIỮ** — vẫn có tác dụng với Task | Chỉ gỡ nhánh "Execute → tạo Habit" (`IncubatorPage:154` import + `:310` `addHabit`). Inbox core KHÔNG bị đụng |
+| XP | **GIỮ** — chuyển nguồn sang Task | Đây là việc THÊM, không phải bớt. Sau khi bỏ Habit/Quiz/Challenge, XP chỉ còn `focus_session`; phải thêm luồng "hoàn thành task = +XP" (hiện Task **cố ý** không tính XP — xem FEATURES §16, cần đảo quyết định cũ). `XpBar` giữ (Navbar dùng), `useXpStore` giữ, bảng `xp_logs` giữ |
+
+**Không còn câu nào chưa chốt.** (Route `/` giữ nguyên là landing — đã viết lại ở đợt 2.)
+
+### Việc PHÁT SINH từ quyết định XP (không phải xoá — là thêm)
+- [ ] Thêm `XP_REWARDS.task_done` + gọi `addXp` trong `useUserTasks.completeTask`, `removeXp` trong
+      `uncompleteTask` (dedup theo task id, đúng pattern `hasMilestone`). Dọn `XP_REWARDS` bỏ
+      `daily_check`/`streak_3`/`streak_10`/`streak_21`/`daily_challenge`/`quiz`.
+- [ ] Cập nhật RULES §16 (bảng XP System Rules đang liệt kê 5 event, sẽ chỉ còn 2).
 
 ## v4.31.0 — ✅ DONE (2026-08-02) — task_tags UI + 2 gap phát sinh + tag-delete rõ ràng hơn
 
@@ -310,7 +371,7 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 - [ ] Mở `/tasks` → tab **📅 Lịch** → xem chip tên task trong ô ngày có hiện đúng không
 - [ ] Bấm 1 ngày → list task đã xong + expand mô tả + giờ hoàn thành
 - [ ] Tick 1 task → xem animation `:active` (scale + lóe xanh)
-- [ ] `/tracker` tab 📅 Lịch + `/life-log` — habit mode phải **y như cũ**, không regression
+- [ ] `/tracker` tab 📅 Lịch — habit mode phải **y như cũ**, không regression (`/life-log` đã gỡ ở v5.0.0)
 
 ### Cố ý KHÔNG làm (ponytail ultra — model là Things 3 / Linear, KHÔNG phải ClickUp/Lark Base)
 - [ ] ~~Week/day time-grid kiểu Google Calendar~~ — `due_time` mặc định `23:59` nên mọi task dồn vào 1 hàng đáy, nhìn như hỏng. Phần đắt nhất của GCal (cột giờ, thuật toán xếp event chồng, drag-resize, vạch giờ hiện tại) = 0 lợi ích cho dữ liệu all-day
@@ -398,20 +459,23 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
   từ call site (bỏ 6 action bịa, thêm 5 action thiếu); `docs/FEATURES.md` §24 xoá claim
   "Daily drill-down" không tồn tại, thêm dòng MonthCalendar.
 
-### Nợ Activity Log — chờ redesign SAU KHI xong feature
-> Quyết định 2026-07-29: **đóng băng**, không xoá. Heatmap + KPI đang dùng thật, mà read-side
-> hiện chỉ là `COUNT` nên chưa biết cần query gì → thiết kế schema bây giờ sẽ lặp lại sai lầm cũ.
-> **Không thêm `logActivity` vào feature mới** cho tới khi redesign.
+### Nợ Activity Log — ✅ ĐÃ GIẢI QUYẾT HẾT ở v5.0.0 (2026-08-02)
 
-- [ ] `TODO: decision needed` — `amount` nhồi **4 đơn vị** vào 1 cột: XP / VNĐ / số ngày (`inbox_snooze`) / số item (`inbox_bulk_*`). Không có cột unit → không SUM/so sánh được. Redesign: tách `amount` + `unit`
-- [ ] `TODO: decision needed` — **Không có `entity_type` / `entity_id`.** `meta` tuỳ hứng mỗi chỗ (`{habit_id}` / `{source:'inbox'}` / `{type,days,until}`) → không join lại record gốc, không trả lời được "item inbox này đi đâu"
-- [ ] `TODO: decision needed` — **`label` là câu tiếng Việt render sẵn** (`"85,000₫ Ăn trưa"`). Formatting nằm trong data → đổi format tiền hoặc i18n thì data cũ lệch vĩnh viễn. Redesign: derive label từ `action` + `meta` lúc render
-- [ ] `TODO: decision needed` — **`action` là free-form text**, không CHECK constraint, không hằng số dùng chung. Gõ sai (`'taskDone'`) vẫn insert thành công
-- [ ] `TODO: decision needed` — **Coverage lệch:** `useUserTasks.completeTask` (cách hoàn thành task bình thường) không log gì; chỉ Inbox quick-done phát `task_done`. Cũng chưa log: quick-add, single delete, Inbox→Task/Intention/Sub, Collect/KB, Journey, Incubator, Quiz, Mood
-- [ ] `TODO: decision needed` — **`useFocusTimer.js:154` insert trực tiếp vào `activity_logs`**, bypass hook → hook không phải chokepoint duy nhất
-- [ ] `TODO: decision needed` — **Row orphan `action='fitness_done'`** (feature xoá ở v4.26.0) vẫn cộng vào heatmap vĩnh viễn vì bảng append-only
-- [ ] `TODO: decision needed` — `getHeatmapData` SELECT **cả năm** `created_at` về client rồi group bằng JS. Comment tự nhận "Supabase JS doesn't support GROUP BY" nhưng RPC/view làm được
-- [ ] `TODO: decision needed` — Gọi là "audit trail" nhưng fire-and-forget, fail chỉ `logger.warn` → không đảm bảo ghi được
+Toàn bộ 9 mục `TODO: decision needed` của khối này đã hết hiệu lực khi bảng `activity_logs` được
+dựng lại (xem block v5.0.0 đầu file). Ghi lại kết cục để không ai đọc nhầm danh sách cũ:
+
+| Nợ cũ | Kết cục |
+|---|---|
+| `amount` nhồi 4 đơn vị | Cột `amount` **đã bỏ** — tiền/XP vốn đã có nguồn thật ở `expenses`/`subscriptions`/`xp_logs` |
+| Không có `entity_type`/`entity_id` | Thay bằng FK thật `task_id → user_tasks ON DELETE CASCADE`, **cố ý không dùng polymorphic** |
+| `label` là câu tiếng Việt render sẵn | Cột `label` **đã bỏ**; nhãn giờ derive lúc render qua `describeActivity()` trong `utils/taskFields.js` |
+| `action` free-form, không CHECK | **Cố ý giữ free-form** — mọi lệnh ghi đều fire-and-forget nuốt lỗi, nên CHECK bị vi phạm sẽ làm log biến mất âm thầm. Chống gõ sai bằng hằng số `ACTIONS` |
+| Coverage lệch (`completeTask` không log) | **Đã bịt** — log cắm ở 5 cửa ghi của `useUserTasks` |
+| `useFocusTimer.js:154` insert bypass hook | **Đã xoá hẳn** cùng Life Log |
+| Row orphan `fitness_done` | **Đã purge** |
+| `getHeatmapData` SELECT cả năm | **Đã xoá** cùng Life Log |
+| Fire-and-forget không đảm bảo ghi | **Vẫn vậy, cố ý** — log hỏng không được phép chặn thao tác của user |
+
 
 ---
 

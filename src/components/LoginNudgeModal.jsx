@@ -82,9 +82,9 @@ export default function LoginNudgeModal({ onClose }) {
           {/* Value props */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.25rem' }}>
             {[
-              ['✅', 'Streak của bạn được lưu vĩnh viễn'],
-              ['👥', 'Tham gia Team Mode với đồng đội'],
-              ['🏆', 'Xuất hiện trên Leaderboard'],
+              ['☁️', 'Dữ liệu lưu trên cloud, không mất khi tải lại trang'],
+              ['📱', 'Đồng bộ giữa các thiết bị'],
+              ['📌', 'Nhiệm vụ, chi tiêu, bài viết đều được giữ lại'],
             ].map(([icon, text]) => (
               <div key={text} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                 <span>{icon}</span>

@@ -6,18 +6,12 @@
 --    của repo này — các file cũ đều re-run an toàn). Phần 1 thì idempotent.
 --
 -- ĐIỀU KIỆN TIÊN QUYẾT (làm ĐÚNG THỨ TỰ):
---   1. Chấp nhận MẤT TRẮNG toàn bộ lịch sử heatmap Life Log. Đã xác nhận
---      2026-08-02. Các loại dòng KHÔNG suy ngược lại được từ bảng khác:
---      inbox_snooze / inbox_classify / inbox_bulk_delete / inbox_bulk_classify
---      / task_done / challenge_done. (expense_add, subscription_add,
---      focus_done, habit_done vẫn suy ngược được từ expenses / subscriptions /
---      focus_sessions / habit_logs nếu sau này muốn viết backfill.)
---      → Muốn giữ lịch sử thì DỪNG LẠI, dùng ALTER TABLE thay vì DROP.
+--   1. Chấp nhận MẤT TRẮNG mọi dòng log cũ. Không sao — Life Log (nơi duy
+--      nhất đọc chúng) đã bị gỡ hẳn cùng đợt này. Xác nhận 2026-08-02.
 --   2. Backup bảng nếu muốn giữ đường lùi:
 --      CREATE TABLE activity_logs_backup_v1 AS SELECT * FROM activity_logs;
 --   3. Deploy code v5.0.0 TRƯỚC hoặc SÁT ngay sau khi chạy file này. Giữa 2
---      mốc đó mọi lệnh ghi log sẽ fail. Fail này ÂM THẦM (toàn bộ 13 điểm ghi
---      đều nuốt lỗi bằng logger.warn, fire-and-forget) — không có gì báo.
+--      mốc đó mọi lệnh ghi log sẽ fail ÂM THẦM (fire-and-forget nuốt lỗi).
 --
 -- Nội dung:
 --   PHẦN 1 (an toàn, idempotent) — user_tasks.updated_at + trigger.
@@ -28,15 +22,15 @@
 --     polymorphic — docs/DATABASE.md tự chê pattern đó ("entity_id không thể
 --     có FK → xoá entity không xoá link → rác vĩnh viễn"). Đổi lại: xoá 1 task
 --     là mất luôn log + ghi chú của nó, DB tự dọn, không bao giờ có dòng mồ côi.
---     Hệ quả kèm theo: xoá task cũng làm TỤT heatmap của những ngày cũ (dòng
---     task_created/task_completed của nó biến mất theo). Muốn log sống sót thì
---     đổi CASCADE → SET NULL, nhưng khi đó phải tự dọn rác bằng tay.
---   • task_id NULL = sự kiện rời rạc không gắn task nào (expense_add,
---     inbox_*, focus_done, challenge_done...).
---   • Heatmap Life Log + KPI "Hoạt động hôm nay" CHỈ đếm sự kiện rời rạc:
---     WHERE field IS NULL AND action <> 'note'. Nghĩa là sửa 1 task đổi 3 field
---     KHÔNG cộng 3 vào heatmap, ghi chú cũng không cộng. Index partial ở dưới
---     khớp đúng mệnh đề này.
+--     Muốn log sống sót sau khi xoá task thì đổi CASCADE → SET NULL, nhưng
+--     khi đó phải tự dọn dòng mồ côi bằng tay.
+--   • MỌI dòng đều gắn task_id. Bảng này CHỈ phục vụ lịch sử + ghi chú của
+--     Task. Life Log (heatmap) và KPI "Hoạt động hôm nay" trên Dashboard đã bị
+--     gỡ hẳn cùng đợt này, nên không còn dòng "sự kiện rời rạc" (expense_add,
+--     inbox_*, focus_done, challenge_done, habit_done…) nào được ghi nữa —
+--     giữ lại thì thành ghi-mà-không-ai-đọc, đúng bệnh của schema v1.
+--     (Cột task_id vẫn để NULLABLE — không có lý do ép NOT NULL, và giữ vậy
+--      thì file này chạy được cả trên DB đã lỡ chạy bản trước.)
 --   • Ghi chú SỬA ĐƯỢC: policy UPDATE giới hạn action='note', kèm GRANT chỉ
 --     cột `note` → dòng field-diff vẫn bất biến tuyệt đối.
 --   • CỐ Ý KHÔNG thêm CHECK constraint cho `action` (dù docs/TASKS.md liệt kê
@@ -81,14 +75,12 @@ CREATE TABLE activity_logs (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
 
-  -- NULL = sự kiện rời rạc không gắn task (expense_add, inbox_*, focus_done...).
-  -- Có giá trị = dòng thuộc về 1 task; xoá task thì cascade xoá theo.
+  -- Dòng thuộc về 1 task; xoá task thì cascade xoá sạch lịch sử của nó.
   task_id    UUID REFERENCES user_tasks(id) ON DELETE CASCADE,
 
   action     TEXT NOT NULL,
 
   -- 3 cột dưới chỉ có giá trị ở dòng field-diff (action = 'task_update').
-  -- field IS NULL là dấu hiệu nhận biết "sự kiện rời rạc" cho heatmap.
   field      TEXT,
   old_value  TEXT,
   new_value  TEXT,
@@ -99,14 +91,8 @@ CREATE TABLE activity_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Index 1 — heatmap Life Log + KPI "Hoạt động hôm nay".
--- Mệnh đề WHERE khớp CHÍNH XÁC filter ở getHeatmapData/getTodayCount; sửa 1 chỗ
--- phải sửa chỗ kia, không thì Postgres bỏ qua index này.
-CREATE INDEX idx_activity_logs_heatmap
-  ON activity_logs (user_id, created_at)
-  WHERE field IS NULL AND action <> 'note';
-
--- Index 2 — tab Activity/Note của Task Detail ("log của 1 task, mới nhất trước").
+-- Chỉ 1 index — tab Activity/Note của Task Detail ("log của 1 task, mới nhất
+-- trước"). Đây là truy vấn ĐỌC duy nhất của bảng này.
 CREATE INDEX idx_activity_logs_task
   ON activity_logs (task_id, created_at DESC)
   WHERE task_id IS NOT NULL;
@@ -179,5 +165,4 @@ COMMIT;
 --
 -- 7) 2 index đã tạo:
 --    SELECT indexname FROM pg_indexes WHERE tablename = 'activity_logs';
---    -- mong đợi: activity_logs_pkey, idx_activity_logs_heatmap,
---    --           idx_activity_logs_task
+--    -- mong đợi: activity_logs_pkey, idx_activity_logs_task

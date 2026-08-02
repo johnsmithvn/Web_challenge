@@ -24,16 +24,10 @@ const PRIMARY_NAV = [
 ];
 
 // Secondary: visible in sidebar, hidden in bottom tabs (dropdown)
-// Life Log xuống SECONDARY ở v4.27.0 để /tasks vào PRIMARY mà bottom-tabs
-// mobile không quá 6 tab + nút "Thêm".
 const SECONDARY_NAV = [
-  { to: '/life-log',      icon: '📅', label: 'Life Log' },
   { to: '/focus',         icon: '⏱',  label: 'Focus' },
   { to: '/journey',       icon: '🗺', label: 'Lộ Trình' },
   { to: '/dashboard',     icon: '📈', label: 'Stats' },
-  { to: '/quiz',          icon: '🧠', label: 'Quiz' },
-  { to: '/leaderboard',   icon: '🏆', label: 'BXH' },
-  { to: '/life-journey',  icon: '💛', label: 'Hành Trình' },
 ];
 
 

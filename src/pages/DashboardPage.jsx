@@ -5,11 +5,9 @@ import { useXpStore } from '../hooks/useXpStore';
 import { useSkipReasons } from '../hooks/useMoodSkip';
 import { useExpenses } from '../hooks/useExpenses';
 import { useSubscriptions } from '../hooks/useSubscriptions';
-import { useActivityLog } from '../hooks/useActivityLog';
 import { useFocusTimer } from '../hooks/useFocusTimer';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
-import ActivityHeatmap from '../components/ActivityHeatmap';
 import EXPENSE_DATA from '../data/expense-categories.json';
 import { getWeekStart, mondayIndex, toDateStr } from '../utils/dateUtils';
 import '../styles/tracker.css';
@@ -464,11 +462,6 @@ export default function DashboardPage() {
   const monthlySub = getMonthlyCost();
   const upcomingSubs = getUpcoming(7);
 
-  /* ── Activity today ── */
-  const { getTodayCount, enabled: actEnabled } = useActivityLog();
-  const [todayActivity, setTodayActivity] = useState(0);
-  useEffect(() => { if (actEnabled) getTodayCount().then(setTodayActivity); }, [actEnabled]);
-
   /* ── XP today ── */
   const { log: xpLog } = useXpStore();
   const todayXp = useMemo(() => {
@@ -496,7 +489,6 @@ export default function DashboardPage() {
         {/* ── TODAY OVERVIEW ── */}
         <SectionTitle icon="⚡" title="Hôm Nay" />
         <div className="db-today-row">
-          <TodayKpi icon="🔥" label="Hoạt động" value={todayActivity} unit=" actions" color="var(--orange)" sub={`Streak ${streak} ngày`}/>
           <TodayKpi icon="⏱" label="Focus" value={todayMinutes} unit=" phút" color="var(--cyan)" sub={`${todaySessions.length} sessions`}/>
           <TodayKpi icon="💰" label="Chi tiêu" value={fmt(todaySpend)} unit="₫" color="var(--purple-light)" sub={expEnabled?'Hôm nay':'Cần đăng nhập'}/>
           <TodayKpi icon="⭐" label="XP kiếm được" value={`+${todayXp}`} unit=" XP" color="var(--gold)" sub={`${levelInfo.emoji} ${levelInfo.name}`}/>
@@ -562,14 +554,6 @@ export default function DashboardPage() {
             <FinancePie byCategory={byCategory} total={monthTotal}/>
           </div>
         )}
-
-
-        {/* ── ACTIVITY HEATMAP ── */}
-        <SectionTitle icon="📅" title="Hoạt Động" action={<Link to="/life-log" className="btn btn-ghost" style={{fontSize:'.8rem'}}>Life Log →</Link>}/>
-        <div className="card db-section">
-          <div className="dash-card-title">🗓 Lịch Sử Hoạt Động</div>
-          <ActivityHeatmap/>
-        </div>
 
 
         {/* ── FOCUS BREAKDOWN ── */}

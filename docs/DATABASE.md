@@ -3,9 +3,9 @@
 **Version:** v5.0.0
 **Updated:** 2026-08-02
 **Strategy:** Production-ready from day 1
-**Source of Truth:** **`data/schema_v4.24.0.sql`** — single consolidated schema (all migrations v4.4.0 → v4.31.0 folded in, bao gồm `data/RUNBOOK.sql`). Idempotent — run once on a fresh project.
+**Source of Truth:** **`data/schema_v4.24.0.sql`** — single consolidated schema (all migrations v4.4.0 → v5.0.0 folded in, bao gồm `data/RUNBOOK.sql`). Idempotent — run once on a fresh project.
 
-**Table count (verified against the `.sql` file):** **30 `CREATE TABLE`** = **28 active** + **2 archived** (`friendships`, `fitness_logs` — an toàn để DROP). So với lần đếm trước (31 = 27 active + 4 archived): `knowledge_groups`/`collection_groups` đã **DROP hẳn** (v4.30.0/v5.0.0 — không còn `CREATE TABLE` cho 2 bảng này, chỉ còn `DROP TABLE IF EXISTS` cho DB cũ, nên -2 archived), `task_tags` (junction Task↔Tags, v4.28.0) mới thêm vào active (+1 active).
+**Table count (verified against the `.sql` file):** **29 `CREATE TABLE`** = **27 active** + **2 archived** (`friendships`, `fitness_logs` — an toàn để DROP). Đổi so với lần đếm trước (30): `streaks` đã **DROP hẳn** ở v5.0.0 cùng Bảng Xếp Hạng.
 `mood_logs` is NOT in this schema (dropped in v4.10.1, folded into the consolidated file).
 Every other doc that says 26 / 28 / 29 / 31 tables is stale — this line is the count.
 `data/RUNBOOK.sql` vẫn giữ lại làm hồ sơ lịch sử SQL đã chạy trên DB thật (2026-08-02) — không cần
@@ -22,7 +22,6 @@ auth.users (Supabase built-in)
 profiles ──────────────────────────────────────┐
     │                                           │
     ├──► progress          (daily check)        │
-    ├──► streaks           (cached trigger)     │
     ├──► xp_logs           (immutable events)   │
     ├──► habits            (custom + journey)   │
     ├──► habit_logs        (per-habit daily)    │
@@ -38,7 +37,7 @@ profiles ───────────────────────�
     ├──► collections       (inbox + knowledge)  │
     ├──► expenses          (daily spending)     │
     ├──► subscriptions     (recurring services) │
-    ├──► activity_logs     (append-only audit)  │
+    ├──► activity_logs     (task history + notes)│
     ├──► intentions / intention_logs (incubator)│
     │                                           │
     ├──► tags ◄──► collection_tags              │
@@ -64,13 +63,13 @@ Programs ──► program_habits   (template library, system + user)
 > column definitions, RLS policies, triggers, and indexes. `schema_v4.4.0.sql` and the per-version
 > `migration_*.sql` files no longer exist — they were folded into the consolidated file (history in git).
 
-### Table Inventory (28 active)
+### Table Inventory (27 active)
 
 | # | Table | Purpose | Key constraints |
 |---|-------|---------|-----------------|
 | 1 | `profiles` | Extends `auth.users` (1:1) | PK = `auth.users.id`, auto-created by trigger |
 | 2 | `progress` | Daily habit check-in | UNIQUE(user_id, date) |
-| 3 | `streaks` | Streak stats row | 1:1 with profiles, inserted by signup trigger. ⚠️ No `refresh_streak()` trigger exists — see [Streak note](#streak-source-of-truth) |
+| — | ~~`streaks`~~ | **DROPPED v5.0.0** | Chết từ lâu: chỉ INSERT 1 lần lúc signup, không nơi nào UPDATE → 2 cột streak luôn = 0. Người đọc duy nhất là `get_leaderboard()`, mà Bảng Xếp Hạng đã gỡ hẳn. INSERT trong `handle_new_user()` cũng đã bỏ |
 | 4 | `xp_logs` | Immutable XP event log | CHECK(amount BETWEEN -200 AND 200) |
 | 5 | `habits` | Custom + journey habits | FK → user_journeys(journey_id), `active` flag |
 | 6 | `habit_logs` | Per-habit daily completion | UNIQUE(user_id, habit_id, date), status: completed/skipped |
@@ -86,7 +85,7 @@ Programs ──► program_habits   (template library, system + user)
 | 16 | `collections` | Inbox + Knowledge Base | type CHECK (8, **sửa v4.28.0**): `inbox`, `note`, `quote`, `learn`, `idea`, `ai`, `entertainment`, `podcast`. ⚠️ Trước v4.28.0 CHECK có `emotion` (không tồn tại trong `src/`) và **thiếu `podcast`** (có trong `knowledge.json`) → classify sang Podcast fail constraint |
 | 17 | `expenses` | Daily spending log | amount VNĐ, category, note |
 | 18 | `subscriptions` | Recurring services | cycle, next_due, auto-advance |
-| 19 | `activity_logs` | Heatmap Life Log + lịch sử thay đổi & ghi chú của Task | **Dựng lại ở v5.0.0** (`DROP`+`CREATE`, dữ liệu cũ mất theo chủ ý): `task_id` UUID FK → `user_tasks` ON DELETE CASCADE (NULL = sự kiện rời rạc), `action`, `field`, `old_value`, `new_value`, `note`. Bỏ `label`/`amount`/`meta` (không nơi nào đọc; tiền/XP đã có nguồn thật ở `expenses`/`subscriptions`/`xp_logs`). 4 policy: SELECT/INSERT/DELETE own + UPDATE chỉ dòng `action='note'` kèm `GRANT UPDATE (note)` cấp cột → dòng field-diff bất biến. Index partial `idx_activity_logs_heatmap` khớp đúng filter `field IS NULL AND action <> 'note'` |
+| 19 | `activity_logs` | Lịch sử thay đổi + ghi chú cá nhân của **Task** | **Dựng lại ở v5.0.0**, dữ liệu cũ xoá hết theo chủ ý: `task_id` UUID FK → `user_tasks` ON DELETE CASCADE (mọi dòng đều gắn task), `action`, `field`, `old_value`, `new_value`, `note`. Bỏ `label`/`amount`/`meta` (không nơi nào đọc; tiền/XP đã có nguồn thật ở `expenses`/`subscriptions`/`xp_logs`). 4 policy: SELECT/INSERT/DELETE own + UPDATE chỉ dòng `action='note'` kèm `GRANT UPDATE (note)` cấp cột → dòng field-diff bất biến. 1 index `idx_activity_logs_task` phục vụ truy vấn đọc duy nhất. **Không còn** dòng "sự kiện rời rạc" (expense_add, inbox_*, focus_done…) — Life Log/heatmap là người đọc duy nhất của chúng và đã gỡ hẳn ở v5.0.0 |
 | 20 | `intentions` | Incubator (someday-maybe) | status: incubating/deferred/executed/abandoned |
 | 21 | `intention_logs` | Incubator audit trail | FK → intentions |
 | 22 | `tags` | Central tag system | UNIQUE(user_id, name). Cột `emoji`/`description` (thêm tạm ở RUNBOOK.sql Phần 2) đã **DROP lại** ở Phần 3, xác nhận 2026-08-02 — feature "Nhóm" bỏ hẳn khỏi UI, 2 cột này không còn ai đọc/ghi |
@@ -115,7 +114,7 @@ Nhìn có vẻ dư (N loại → N bảng), nhưng **đó là giá của referen
 
 **Cố ý KHÔNG dùng** `taggables(tag_id, entity_type, entity_id)` polymorphic: `entity_id` không thể có FK → xoá entity không xoá link → **rác vĩnh viễn**.
 
-> **v5.0.0:** `activity_logs` từng là ví dụ điển hình của bệnh này (row `fitness_done` treo mãi sau khi feature bị xoá ở v4.26.0). Khi dựng lại bảng, đã **bỏ hẳn hướng polymorphic** (`entity_type`/`entity_id`) để dùng FK thật `task_id → user_tasks(id) ON DELETE CASCADE`. Đánh đổi đã chốt: DB tự dọn, không bao giờ có dòng mồ côi — nhưng xoá 1 task là mất luôn lịch sử + ghi chú của nó, và làm tụt heatmap của những ngày cũ.
+> **v5.0.0:** `activity_logs` từng là ví dụ điển hình của bệnh này (row `fitness_done` treo mãi sau khi feature bị xoá ở v4.26.0). Khi dựng lại bảng, đã **bỏ hẳn hướng polymorphic** (`entity_type`/`entity_id`) để dùng FK thật `task_id → user_tasks(id) ON DELETE CASCADE`. Đánh đổi đã chốt: DB tự dọn, không bao giờ có dòng mồ côi — nhưng xoá 1 task là mất luôn lịch sử + ghi chú của nó.
 
 Nguyên tắc: **N junction để GHI (giữ FK), 1 view để ĐỌC (unified filter).**
 
@@ -135,66 +134,23 @@ Named in older docs / older `ARCHITECTURE.md` revisions, but **never** in the cu
 | Table | Reality |
 |-------|---------|
 | `teams`, `reactions`, `partner_queue` | Team feature cancelled v3.0.0 — frontend code deleted v4.25.0 |
-| `quiz_attempts` | Quiz XP goes to `xp_logs` (deduped by reason+meta) |
+| `quiz_attempts` | Quiz đã gỡ hẳn ở v5.0.0 |
 | `daily_challenge_completions` | Challenge XP goes to `xp_logs` |
 | `mood_logs` | Existed until v4.10.1, dropped — not in `schema_v4.24.0.sql` |
 
 <a id="streak-source-of-truth"></a>
 ### Streak — Source of Truth
 
-- `streaks` rows are created **once** by the `handle_new_user()` signup trigger and are **never updated**:
-  no `refresh_streak()` function or trigger exists in `schema_v4.24.0.sql`, and no frontend hook writes to `streaks`.
-- The streak the user sees is computed **client-side** in `useHabitStore.js` (`calcStreak()` / `getLongestStreak()`
-  over the `progress` map).
-- Consequence: `get_leaderboard()` reads `streaks`, so its streak/longest columns stay at 0.
-  `TODO: decision needed` — either write `streaks` on each `progress` upsert, or make the leaderboard
-  derive streaks from `progress` server-side.
+- **v5.0.0: bảng `streaks` đã DROP.** Nó chưa bao giờ được cập nhật sau signup (không có
+  `refresh_streak()`, không hook nào ghi), nên 2 cột streak luôn = 0. Streak hiển thị trên UI vẫn
+  được tính **runtime** từ `progress` / `habit_logs` trong `useHabitStore`, không đọc bảng này.
 
+## ~~Leaderboard~~ — GỠ HẲN v5.0.0
 
----
-
-## XP System
-
-Source: `XP_REWARDS` in `src/hooks/useXpStore.js` (+ `FOCUS_XP` in `useFocusTimer.js`).
-`xp_logs.amount` has `CHECK (amount BETWEEN -200 AND 200)`.
-
-| Event | XP | Frequency |
-|-------|-----|----------|
-| Daily check ✓ | +10 | Per habit/day (deduped; un-tick → `removeXp`) |
-| Streak 3 | +50 | One-time |
-| Streak 10 | +100 | One-time |
-| Streak 21 | +200 | One-time |
-| Daily Challenge | +20 | Max 1/day |
-| Quiz | score × 5 (0–50) | Per attempt |
-| Focus Session | +15 | Per session (deduped by `meta.sessionId`) |
-
-## Level Thresholds
-
-| Level | Name | XP |
-|-------|------|----|
-| 0 | 🌱 Người Mới | 0 |
-| 1 | ⚡ Luyện Sĩ | 100 |
-| 2 | 🔥 Đệ Tử | 300 |
-| 3 | ⚔️ Chiến Binh | 700 |
-| 4 | 👑 Huyền Thoại | 1500 |
-| 5 | 🏆 Vô Địch | 3000 |
-
-## Leaderboard
-
-Since v4.24.0 `profiles` is read-own-row-only (email leak fix), so the leaderboard is **not** a client-side
-join anymore. There is **no `user_xp` view** — XP is aggregated inside the function.
-
-```js
-const { data } = await supabase.rpc('get_leaderboard');   // src/pages/LeaderboardPage.jsx
-```
-
-`public.get_leaderboard()` — `SECURITY DEFINER`, granted to `anon` + `authenticated`, returns
-`id, display_name, avatar_url, current_streak, longest_streak, total_xp, total_done`
-(no email), `ORDER BY total_xp DESC, current_streak DESC LIMIT 50`. XP = `SUM(xp_logs.amount)`,
-done = `COUNT(progress WHERE completed)`, streaks = `streaks` table (see the streak note above).
-
-Other `SECURITY DEFINER` RPCs added in v4.24.0: `login_email(username)`, `username_exists(username)`,
-`email_exists(email)`.
+`get_leaderboard()` (`SECURITY DEFINER`, JOIN `profiles` + `streaks` + `xp_logs` + `progress`) đã
+`DROP FUNCTION`. Trang `/leaderboard` xoá cùng đợt. 3 hàm RPC còn lại (`login_email`,
+`username_exists`, `email_exists`) giữ nguyên — chúng phục vụ luồng đăng nhập/đăng ký, không liên
+quan bảng xếp hạng.
 
 ## Migration Strategy (localStorage → Supabase)
 
@@ -218,8 +174,8 @@ On first login (one-time per data type):
 
 | File | Purpose |
 |------|---------|
-| **`data/schema_v4.24.0.sql`** | **Single source of truth** — all 30 tables + RLS + indexes + triggers + RPC functions (login_email/username_exists/email_exists/get_leaderboard) + seed 5 programs. Idempotent. ⚠️ **CHƯA gộp v5.0.0** — xem dòng dưới |
-| `data/migration_v5.0.0_activity_logs_v2.sql` | `user_tasks.updated_at` + trigger (an toàn, idempotent) & dựng lại `activity_logs` schema v2 (**BREAKING, chỉ chạy 1 lần**). Chưa hợp nhất vào master schema — fresh install phải chạy master rồi chạy tiếp file này |
+| **`data/schema_v4.24.0.sql`** | **Single source of truth** — all 29 tables + RLS + indexes + triggers + 3 RPC functions (login_email/username_exists/email_exists) + seed 5 programs. Idempotent. **Đã gộp v5.0.0** (2026-08-02): `user_tasks.updated_at` + trigger, `activity_logs` schema v2, DROP `streaks` + `get_leaderboard()` |
+| `data/migration_v5.0.0_activity_logs_v2.sql` | Bản **DROP + CREATE** của cùng thay đổi trên. **Chỉ chạy 1 lần.** Hai file tới cùng 1 schema cuối và **cùng xoá sạch log cũ** — master dùng `DELETE FROM activity_logs WHERE task_id IS NULL`, mà mọi dòng của schema v1 đều không gắn task. Chạy file nào cũng được; đừng chạy cả hai |
 | `data/reset_user_data.sql` | **Reset script** — DELETE all user data, keep auth accounts |
 
 ## Supabase Setup Checklist

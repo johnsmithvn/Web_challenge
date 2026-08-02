@@ -890,6 +890,33 @@ is introduced.
   green-alpha disc holding `✓`, a `1.05rem/700` display title, and a
   `0.82rem --text-muted` hint capped at `30rem`.
 
+### Landing — `.lp-*` (`landing.css`)
+
+Rewritten v5.0.0, replacing `hero.css` + `sections.css` + `testimonials.css`
+(822 lines of marketing chrome for a product that no longer exists). The page
+is a login door and a module map, not a sales pitch.
+
+- **Hero ambience is spread-only.** Two `filter: blur(90px)` orbs — purple
+  `0.35` top-left, cyan `0.28` top-right — plus a `48px` grid overlay masked by
+  a `radial-gradient` ellipse so it fades before touching the edges. Both are
+  `pointer-events: none`. This is the one place the system uses large blurred
+  colour fields; everywhere else glow is a `box-shadow` state signal.
+- **`.lp-card` extends `.card`**, adding only a `3px` `border-left` in
+  `--lp-accent` — a custom property set inline per card from the module's own
+  colour, the same trick `.task-item` uses for its priority stripe. `.card:hover`
+  recolours all four borders, so `.lp-card:hover` re-pins `border-left-color`
+  or the stripe washes out. Bullet markers pick up the accent via `::marker`.
+- **`.lp__theme`** — a `40px` fixed glass circle. It exists because `Navbar`
+  returns `null` on `/` for logged-out visitors, so without it a guest cannot
+  reach the light/dark toggle at all. Same `rotate(15deg) scale(1.05)` hover as
+  the sidebar toggle, with a `prefers-reduced-motion` escape.
+- **Grids use `minmax(min(100%, Nrem), 1fr)`**, not bare `minmax(Nrem, 1fr)` —
+  the bare form overflows below `Nrem` viewports instead of collapsing to one
+  column.
+- Light mode overrides only the two raw white-alpha surfaces: the grid overlay
+  re-tints to indigo-alpha `0.06`, and orb opacity drops to `0.35`. Everything
+  else rides tokens that already invert.
+
 ### Task Detail Modal — `.task-detail-modal` / `.td-*` (`task-detail.css`)
 
 Added v5.0.0. Read-only task detail with two tabs (change history / personal

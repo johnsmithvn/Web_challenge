@@ -4,35 +4,30 @@ import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
 import { ACTIONS } from '../utils/taskFields';
 
-// activity_logs.created_at is UTC. Bucket and range queries by the user's LOCAL day,
-// otherwise activities after local midnight (e.g. 00:00–07:00 in +07) land on the
-// wrong calendar day. `localMidnight` parses 'YYYY-MM-DD' as local time, and
-// `.toISOString()` then yields the exact UTC instant of that local midnight.
-const pad2 = (n) => String(n).padStart(2, '0');
-const localYMD = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-const localMidnight = (dateStr) => new Date(`${dateStr}T00:00:00`);
-
 /**
- * useActivityLog — hai việc trong một bảng `activity_logs` (schema v2, migration
- * v5.0.0). Đọc `data/migration_v5.0.0_activity_logs_v2.sql` trước khi sửa file này.
+ * useActivityLog — lịch sử thay đổi + ghi chú cá nhân của TASK.
  *
- * ┌ Loại dòng ─────────┬ task_id ┬ field ┬ note ┬ Đếm cho heatmap? ┐
- * │ Sự kiện rời rạc    │  NULL   │ NULL  │ NULL │ CÓ               │
- * │ Sự kiện của task   │  có     │ NULL  │ NULL │ CÓ               │
- * │ Field-diff         │  có     │ có    │ NULL │ KHÔNG            │
- * │ Ghi chú cá nhân    │  có     │ NULL  │ có   │ KHÔNG            │
- * └────────────────────┴─────────┴───────┴──────┴──────────────────┘
+ * Bảng `activity_logs` (schema v2, migration v5.0.0). Đọc file migration trước
+ * khi sửa hook này.
  *
- * Quy tắc đếm (chốt 2026-08-02): heatmap Life Log + KPI "Hoạt động hôm nay" CHỈ
- * đếm sự kiện, KHÔNG đếm field-diff và ghi chú — nếu không, sửa 1 task đổi 3
- * field sẽ nhảy +3 "hoạt động", làm heatmap mất ý nghĩa. Bộ lọc dưới đây phải
- * khớp CHÍNH XÁC mệnh đề WHERE của index `idx_activity_logs_heatmap`; lệch là
- * Postgres bỏ qua index.
+ * ┌ Loại dòng ─────────┬ field ┬ note ┐
+ * │ Sự kiện của task   │ NULL  │ NULL │  task_created / task_completed / …
+ * │ Field-diff         │ có    │ NULL │  task_update, 1 dòng / field đổi
+ * │ Ghi chú cá nhân    │ NULL  │ có   │  note
+ * └────────────────────┴───────┴──────┘
  *
- * `action` KHÔNG có CHECK constraint dưới DB (cố ý — xem header migration: mọi
- * lệnh ghi ở đây đều fire-and-forget nuốt lỗi, nên constraint bị vi phạm sẽ làm
- * log biến mất âm thầm). Luôn dùng hằng số `ACTIONS` trong utils/taskFields.js,
- * đừng gõ chuỗi thẳng.
+ * MỌI dòng đều gắn `task_id` (FK ON DELETE CASCADE) — xoá task là DB tự dọn
+ * sạch lịch sử của nó, không bao giờ có dòng mồ côi.
+ *
+ * v5.0.0 (dọn sau khi xoá Life Log): bảng này KHÔNG còn ghi sự kiện rời rạc
+ * (expense_add, inbox_*, focus_done, challenge_done, habit_done…). Heatmap Life
+ * Log là người đọc duy nhất của chúng, mà Life Log + KPI "Hoạt động hôm nay"
+ * trên Dashboard đều đã bị gỡ → giữ lại thì thành ghi-mà-không-ai-đọc, đúng cái
+ * bệnh của schema v1. Cùng lý do: `getHeatmapData`/`getTodayCount` đã xoá.
+ *
+ * `action` KHÔNG có CHECK constraint dưới DB (cố ý — mọi lệnh ghi ở đây đều
+ * fire-and-forget nuốt lỗi, nên constraint bị vi phạm sẽ làm log biến mất âm
+ * thầm). Luôn dùng hằng số `ACTIONS` trong utils/taskFields.js.
  *
  * Ghi: fire-and-forget, không bao giờ chặn hook gọi nó, lỗi chỉ `logger.warn`.
  * Sửa: chỉ cột `note` của dòng ghi chú (RLS + GRANT cấp cột chặn phần còn lại)
@@ -42,21 +37,15 @@ export function useActivityLog() {
   const { user } = useAuth();
   const enabled = isSupabaseEnabled && !!user;
 
-  /** Chỉ đếm sự kiện — bỏ field-diff và ghi chú. Khớp idx_activity_logs_heatmap. */
-  const eventsOnly = useCallback(
-    (query) => query.is('field', null).neq('action', ACTIONS.NOTE),
-    []
-  );
-
   // ── GHI ────────────────────────────────────────────────────────────────
 
   /**
-   * Ghi 1 sự kiện. Fire-and-forget.
+   * Ghi 1 sự kiện của task (tạo / hoàn thành / bỏ hoàn thành). Fire-and-forget.
    * @param {string} action - hằng số trong ACTIONS
-   * @param {string|null} [taskId] - gắn vào 1 task; bỏ trống = sự kiện rời rạc
+   * @param {string} taskId
    */
-  const logActivity = useCallback(async (action, taskId = null) => {
-    if (!enabled) return;
+  const logTaskEvent = useCallback(async (action, taskId) => {
+    if (!enabled || !taskId) return;
     try {
       const { error } = await supabase.from('activity_logs').insert({
         user_id: user.id,
@@ -212,90 +201,14 @@ export function useActivityLog() {
     }
   }, [enabled, user]);
 
-  /**
-   * Heatmap: số SỰ KIỆN mỗi ngày trong khoảng.
-   * Returns: [{ date: 'YYYY-MM-DD', count: N }, ...]
-   */
-  const getHeatmapData = useCallback(async (startDate, endDate) => {
-    if (!enabled) return [];
-
-    try {
-      // Supabase JS không hỗ trợ GROUP BY, nên fetch created_at rồi group ở client.
-      // Chỉ select 1 cột nên payload không phình theo old_value/new_value.
-      const startLocal = localMidnight(startDate);
-      const endLocal = localMidnight(endDate);
-      endLocal.setDate(endLocal.getDate() + 1); // exclusive: day after endDate (local)
-
-      const { data, error } = await eventsOnly(
-        supabase
-          .from('activity_logs')
-          .select('created_at')
-          .eq('user_id', user.id)
-      )
-        .gte('created_at', startLocal.toISOString())
-        .lt('created_at', endLocal.toISOString())
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        logger.warn('[useActivityLog] heatmap query error:', error.message);
-        return [];
-      }
-
-      // Aggregate by LOCAL date
-      const counts = {};
-      (data || []).forEach(row => {
-        const date = localYMD(new Date(row.created_at));
-        counts[date] = (counts[date] || 0) + 1;
-      });
-
-      return Object.entries(counts).map(([date, count]) => ({ date, count }));
-    } catch (err) {
-      logger.warn('[useActivityLog] heatmap error:', err);
-      return [];
-    }
-  }, [enabled, user, eventsOnly]);
-
-  /** Số sự kiện hôm nay (KPI Dashboard + Life Log). */
-  const getTodayCount = useCallback(async () => {
-    if (!enabled) return 0;
-
-    try {
-      const now = new Date();
-      const startLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // local midnight today
-      const endLocal = new Date(startLocal);
-      endLocal.setDate(endLocal.getDate() + 1);
-
-      const { count, error } = await eventsOnly(
-        supabase
-          .from('activity_logs')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-      )
-        .gte('created_at', startLocal.toISOString())
-        .lt('created_at', endLocal.toISOString());
-
-      if (error) {
-        logger.warn('[useActivityLog] todayCount error:', error.message);
-        return 0;
-      }
-
-      return count || 0;
-    } catch (err) {
-      logger.warn('[useActivityLog] todayCount unexpected error:', err);
-      return 0;
-    }
-  }, [enabled, user, eventsOnly]);
-
   return {
-    logActivity,       // (action, taskId?) => Promise<void>
+    logTaskEvent,      // (action, taskId) => Promise<void>
     logFieldChanges,   // (taskId, diffs) => Promise<void>
     logTaskRelation,   // (action, taskId, label, removed?) => Promise<void>
     addNote,           // (taskId, note) => Promise<row|null>
     updateNote,        // (logId, note) => Promise<boolean>
     getTaskLogs,       // (taskId) => Promise<row[]>
     deleteLog,         // (logId) => Promise<boolean>
-    getHeatmapData,    // (startDate, endDate) => Promise<[{date, count}]>
-    getTodayCount,     // () => Promise<number>
     enabled,           // boolean — whether logging is active
   };
 }

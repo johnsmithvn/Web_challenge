@@ -19,7 +19,6 @@ export const XP_REWARDS = {
   streak_10:       100,
   streak_21:       200,
   daily_challenge: 20,
-  quiz_complete:   (score) => Math.round((score / 10) * 50),
   focus_session:   15,  // awarded directly in useFocusTimer.js (avoid circular import)
 };
 

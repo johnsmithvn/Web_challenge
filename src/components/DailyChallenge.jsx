@@ -1,7 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
-import { useActivityLog } from '../hooks/useActivityLog';
-import { ACTIONS } from '../utils/taskFields';
 
 import '../styles/daily.css';
 import ALL_CHALLENGES from '../data/challenges.json';
@@ -30,7 +28,6 @@ export default function DailyChallenge({ streak = 0 }) {
   const challenge = useMemo(() => pickByDay(SOLO_CHALLENGES, streak), [streak]);
 
   const { addXp, removeXp, hasMilestone, isReady } = useXpStore();
-  const { logActivity } = useActivityLog();
   const storageKey = `vl_dc_${dateKey}`;
 
   const [done, setDone]           = useState(() => !!localStorage.getItem(storageKey));
@@ -56,7 +53,6 @@ export default function DailyChallenge({ streak = 0 }) {
         setShowXpPop(true);
         setTimeout(() => setShowXpPop(false), 3000);
       }
-      logActivity(ACTIONS.CHALLENGE_DONE);
     } else {
       localStorage.removeItem(storageKey);
       setDone(false);

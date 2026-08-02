@@ -33,8 +33,11 @@ export const PRIORITY_OPTIONS = [
 export const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
 // ── Vốn từ của activity_logs.action ────────────────────────────────────────
+// MỌI action đều gắn với 1 task (activity_logs.task_id luôn có giá trị).
+// v5.0.0 đã bỏ hết action rời rạc (expense_add, inbox_*, focus_done,
+// challenge_done, habit_done…): heatmap Life Log là người đọc duy nhất của
+// chúng, mà Life Log + KPI "Hoạt động hôm nay" đã bị gỡ.
 export const ACTIONS = {
-  // Gắn với 1 task (activity_logs.task_id có giá trị)
   TASK_CREATED: 'task_created',
   TASK_COMPLETED: 'task_completed',
   TASK_UNCOMPLETED: 'task_uncompleted',
@@ -44,17 +47,6 @@ export const ACTIONS = {
   TASK_LINK_ADD: 'task_link_add',
   TASK_LINK_REMOVE: 'task_link_remove',
   NOTE: 'note',                     // ghi chú cá nhân, nội dung ở cột `note`
-
-  // Sự kiện rời rạc, không gắn task (task_id NULL) — chỉ để đếm cho heatmap
-  EXPENSE_ADD: 'expense_add',
-  SUBSCRIPTION_ADD: 'subscription_add',
-  CHALLENGE_DONE: 'challenge_done',
-  FOCUS_DONE: 'focus_done',
-  INBOX_SNOOZE: 'inbox_snooze',
-  INBOX_CLASSIFY: 'inbox_classify',
-  INBOX_BULK_DELETE: 'inbox_bulk_delete',
-  INBOX_BULK_CLASSIFY: 'inbox_bulk_classify',
-  INBOX_TASK_DONE: 'task_done',     // quick-done từ Inbox (giữ tên cũ)
 };
 
 // ── Nhãn tiếng Việt cho từng cột của user_tasks ─────────────────────────────

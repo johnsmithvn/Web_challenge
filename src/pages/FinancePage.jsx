@@ -2,8 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useExpenses } from '../hooks/useExpenses';
 import { useSubscriptions } from '../hooks/useSubscriptions';
-import { useActivityLog } from '../hooks/useActivityLog';
-import { ACTIONS } from '../utils/taskFields';
 import { useCollections } from '../hooks/useCollections';
 import { useTags } from '../hooks/useTags';
 import { useAuth } from '../contexts/AuthContext';
@@ -82,7 +80,6 @@ export default function FinancePage() {
   const location = useLocation();
   const { expenses, isLoading: expLoading, fetchExpenses, addExpense, updateExpense, deleteExpense, getTotal, getByCategory } = useExpenses();
   const { subs, isLoading: subLoading, fetchSubs, addSub, deleteSub, toggleActive, getMonthlyCost, getUpcoming } = useSubscriptions();
-  const { logActivity } = useActivityLog();
   const { deleteItem: deleteInboxItem } = useCollections();
   const { tags, addTag, linkTag } = useTags();
 
@@ -164,7 +161,6 @@ export default function FinancePage() {
 
     const result = await addExpense({ amount, category: expCategory, note: finalNote });
     if (result) {
-      logActivity(ACTIONS.EXPENSE_ADD);
       // Link tags
       for (const tagId of expTagIds) {
         await linkTag(result.id, tagId, 'expense');
@@ -216,7 +212,6 @@ export default function FinancePage() {
 
     const result = await addSub({ name: finalName, amount, cycle: subCycle, next_due: subDue, icon: subIcon });
     if (result) {
-      logActivity(ACTIONS.SUBSCRIPTION_ADD);
       // Link tags
       for (const tagId of subTagIds) {
         await linkTag(result.id, tagId, 'subscription');

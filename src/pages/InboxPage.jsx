@@ -6,8 +6,6 @@ import { useCollections } from '../hooks/useCollections';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useExpenses } from '../hooks/useExpenses';
 import { useIntentions } from '../hooks/useIntentions';
-import { useActivityLog } from '../hooks/useActivityLog';
-import { ACTIONS } from '../utils/taskFields';
 import { useAuth } from '../contexts/AuthContext';
 import EXPENSE_DATA from '../data/expense-categories.json';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
@@ -42,7 +40,6 @@ export default function InboxPage() {
   const { addTask } = useUserTasks();
   const { addExpense } = useExpenses();
   const { addIntention } = useIntentions();
-  const { logActivity } = useActivityLog();
   const [quickText, setQuickText] = useState('');
   const [classifying, setClassifying] = useState(null);
   const [snoozeMenu, setSnoozeMenu] = useState(null); // item.id or null
@@ -100,7 +97,6 @@ export default function InboxPage() {
     d.setDate(d.getDate() + days);
     const until = d.toISOString().split('T')[0];
     await snoozeItem(itemId, until);
-    logActivity(ACTIONS.INBOX_SNOOZE);
     setSnoozeMenu(null);
     setSnoozedCount(prev => prev + 1);
   };
@@ -187,10 +183,9 @@ export default function InboxPage() {
   const handleDetailClassify = useCallback(async (newType) => {
     if (!detailItem) return;
     await classifyItem(detailItem.id, newType);
-    logActivity(ACTIONS.INBOX_CLASSIFY);
     closeDetail();
     fetchItems({ type: 'inbox' });
-  }, [detailItem, classifyItem, logActivity, closeDetail, fetchItems]);
+  }, [detailItem, classifyItem, closeDetail, fetchItems]);
 
   const handleDetailToTask = useCallback(async () => {
     if (!detailItem) return;
@@ -209,15 +204,13 @@ export default function InboxPage() {
       completed: true,
       completedAt: now,
     });
-    logActivity(ACTIONS.INBOX_TASK_DONE);
     await deleteItem(detailItem.id);
     closeDetail();
     fetchItems({ type: 'inbox' });
-  }, [detailItem, detailBody, addTask, deleteItem, closeDetail, fetchItems, logActivity]);
+  }, [detailItem, detailBody, addTask, deleteItem, closeDetail, fetchItems]);
 
   const handleClassify = async (itemId, newType) => {
     await classifyItem(itemId, newType);
-    logActivity(ACTIONS.INBOX_CLASSIFY);
     setClassifying(null);
     fetchItems({ type: 'inbox' });
   };
@@ -242,7 +235,6 @@ export default function InboxPage() {
       completed: true,
       completedAt: now,
     });
-    logActivity(ACTIONS.INBOX_TASK_DONE);
     await deleteItem(item.id);
     fetchItems({ type: 'inbox' });
   };
@@ -281,7 +273,6 @@ export default function InboxPage() {
 
     const result = await addExpense({ amount: parsedAmount, category, note: finalNote });
     if (result) {
-      logActivity(ACTIONS.EXPENSE_ADD);
       await deleteItem(item.id);
       fetchItems({ type: 'inbox' });
       setExpenseModal(null);
@@ -554,7 +545,6 @@ export default function InboxPage() {
                       for (const id of bulkSelected) {
                         await deleteItem(id);
                       }
-                      logActivity(ACTIONS.INBOX_BULK_DELETE);
                       setBulkSelected(new Set());
                       setBulkMode(false);
                       fetchItems({ type: 'inbox' });
@@ -576,7 +566,6 @@ export default function InboxPage() {
                       for (const id of bulkSelected) {
                         await classifyItem(id, newType);
                       }
-                      logActivity(ACTIONS.INBOX_BULK_CLASSIFY);
                       setBulkSelected(new Set());
                       setBulkClassifyMenu(false);
                       setBulkMode(false);

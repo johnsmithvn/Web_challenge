@@ -225,9 +225,9 @@ Hook (e.g. useHabitStore)
 - Prefix ALL keys with `vl_` (e.g., `vl_theme`, `vl_onboarded`)
 - Store ONLY UI state flags, settings, and explicitly documented legacy exceptions — never new user data
 - User data goes to Supabase (authenticated) or in-memory (guest)
-- **Legacy exceptions (do NOT copy this pattern):** `vl_life_journey_events` + `vl_journey_title`
-  hold real user data (Life Journey milestones, v2.2.0) and have not been migrated. Consequence:
-  no cross-device sync, lost when browser data is cleared. See `docs/ARCHITECTURE.md` § localStorage Keys
+- **v5.0.0: không còn legacy exception nào.** Hai key `vl_life_journey_events` +
+  `vl_journey_title` (dữ liệu thật, chưa từng migrate) đã hết hiệu lực khi Life Journey bị gỡ.
+  Từ nay localStorage CHỈ chứa UI state flag + settings, không có ngoại lệ.
 
 ### Hook Naming
 

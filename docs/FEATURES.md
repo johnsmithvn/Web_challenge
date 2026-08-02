@@ -11,7 +11,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ## Tổng Quan Hệ Thống
 
-**Life Hub** là nền tảng Personal Life OS ("Bộ não thứ 2") tích hợp: habit tracking 21 ngày gamified, quản lý chi tiêu, đăng ký dịch vụ, ghi chú nhanh (Inbox/Collect), và lịch sử hoạt động (Life Log heatmap). Hỗ trợ cả chế độ offline (in-memory guest) lẫn đồng bộ cloud (Supabase).
+**Life Hub** là nền tảng Personal Life OS ("Bộ não thứ 2") tích hợp: habit tracking 21 ngày gamified, quản lý chi tiêu, đăng ký dịch vụ, và ghi chú nhanh (Inbox/Collect). Hỗ trợ cả chế độ offline (in-memory guest) lẫn đồng bộ cloud (Supabase).
 
 ---
 
@@ -120,7 +120,6 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 - **Section Dividers:** `SectionTitle` với gradient underline + icon + action link
 - **Habits:** Flower Journey 21 ô / Monthly Donut ring / Weekly Table 4 tuần / mini KPI row (Streak, Best, Tổng, XP)
 - **Finance Summary:** 3 KPI cards (Chi tháng / Đăng ký/tháng / Sắp hết hạn) + Finance Pie SVG donut (category breakdown + legend %)
-- **Activity Heatmap:** Reuse `ActivityHeatmap` — toàn bộ activity_logs (thay ContributionGraph habit-only)
 
 - **Focus Breakdown (v3.2.1):** Per-habit horizontal bar chart 7 ngày gần nhất. Query trực tiếp `focus_sessions` + join `habits` table. Hiển thị icon, tên habit, progress bar, phút, %.
 - **Weekly Review (v3.2.1):** Collapsible summary card: Habits (ngày hoàn thành), XP, Chi tiêu — so sánh với tuần trước (↑/↓/→). Expand/collapse với animation.
@@ -171,7 +170,6 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 | Streak 10 ngày | +100 | One-time milestone |
 | Streak 21 ngày | +200 | One-time milestone |
 | Daily Challenge | +20 | Max 1/ngày (un-check → removeXp) |
-| Quiz | score × 5 (0→50) | Mỗi lần làm |
 | Focus Session | +15 | 1 lần/session (deduped by `meta.sessionId`) |
 
 > Nguồn: `XP_REWARDS` trong `useXpStore.js`; `FOCUS_XP` trong `useFocusTimer.js`.
@@ -180,42 +178,26 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ---
 
-## 7. 🧠 Quiz Tâm Lý (`/quiz`)
+## 7-8. ~~🧠 Quiz Tâm Lý~~ + ~~🏆 Leaderboard~~ — ĐÃ GỠ HẲN (v5.0.0)
 
-**File:** `src/pages/QuizPage.jsx`
+Đợt 3 của kế hoạch dọn module.
 
-**Mô tả:** 10 câu trắc nghiệm về não bộ và tâm lý học thói quen.
-
-**Chi tiết:**
-- Pool 21 câu, seed ngẫu nhiên theo ngày (cùng ngày → cùng câu hỏi)
-- Trả lời xong → xem đáp án + giải thích
-- Score-based XP: đúng 10 câu = +50 XP
-- Unlimited attempts (XP mỗi lần)
-
----
-
-## 8. 🏆 Leaderboard (`/leaderboard`)
-
-**File:** `src/pages/LeaderboardPage.jsx`
-
-**Mô tả:** Bảng xếp hạng người dùng theo streak/XP.
-
-**Chi tiết:**
-- **3 tabs:** 🔥 Streak | ⚡ XP | ✅ Ngày Done
-- **Top 3 podium:** Hiển thị đặc biệt với animation
-- **Data (v4.24.0):** 1 lời gọi `supabase.rpc('get_leaderboard')` — RPC `SECURITY DEFINER`
-  trả về display_name/avatar/streak/XP/ngày done, **không** trả email. Top 50.
-  Không còn client-side join `profiles`/`xp_logs` (RLS giờ chỉ cho đọc hàng của mình),
-  và không còn "fallback công thức ước tính"
-- ⚠️ Cột streak lấy từ bảng `streaks` — bảng này chưa được cập nhật sau signup,
-  xem `docs/DATABASE.md` § Streak — Source of Truth
+- **Quiz** (`/quiz`, `QuizPage.jsx`, `quiz.css`, `data/quiz.json`) — 10 câu trắc nghiệm tâm lý
+  hành vi, thưởng XP theo điểm. Thuộc bộ gamification của sản phẩm "21 ngày" cũ.
+- **Leaderboard** (`/leaderboard`, `LeaderboardPage.jsx`, `leaderboard.css`) — bảng xếp hạng
+  streak + XP giữa các user. Đây là tính năng **xã hội** trong một app 1 người dùng → giá trị 0.
+- **SQL đi kèm:** `DROP FUNCTION get_leaderboard()` + `DROP TABLE streaks`. Bảng `streaks` vốn đã
+  chết từ lâu — chỉ được INSERT đúng 1 lần lúc signup, không nơi nào UPDATE, nên
+  `current_streak`/`longest_streak` luôn = 0 với mọi user. INSERT trong `handle_new_user()` cũng
+  đã gỡ.
+- `XP_REWARDS.quiz_complete` xoá khỏi `useXpStore.js`.
 
 ---
 
 ## 9. 📅 Monthly Calendar
 
 **File:** `src/components/MonthCalendar.jsx` + `src/styles/calendar.css`
-**Dùng ở:** `/tracker` tab 📅 Lịch, `/life-log`, `/tasks` tab 📅 Lịch (v4.29.0)
+**Dùng ở:** `/tracker` tab 📅 Lịch, `/tasks` tab 📅 Lịch (v4.29.0)
 
 **Mô tả:** Lịch tháng inline, **2 chế độ** quyết định bởi prop `habitData` (v4.29.0).
 
@@ -225,7 +207,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 - Click ngày → panel chi tiết list task đã hoàn thành + expand mô tả + giờ xong
 - **1 query cho cả tháng** (`getCompletedTasksRange`), group theo ngày **địa phương** ở client. Click ngày chỉ filter mảng đã fetch — không fetch thêm
 
-**habit mode** (truyền `habitData` — `/tracker`, `/life-log`):
+**habit mode** (truyền `habitData` — `/tracker`):
 - Ô ngày: done (xanh), **miss (đỏ nhạt)**, future (mờ) — theo việc tick đủ habit
 - 1 dấu dot cho ngày done
 - Stats: X ngày done / % tháng này / X ngày miss
@@ -402,23 +384,15 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ---
 
-## 17. 💛 Hành Trình Cuộc Đời (Life Journey) (`/life-journey`) (v2.2.0)
+## 17. ~~💛 Hành Trình Cuộc Đời~~ — ĐÃ GỠ HẲN (v5.0.0)
 
-**Added:** v2.2.0
-**Files:** `src/pages/LifeJourneyPage.jsx`, `src/styles/life-journey.css`, `src/hooks/useLifeJourney.js`
+Biểu đồ cảm xúc theo tuổi (SVG Catmull-Rom). Xoá `LifeJourneyPage.jsx`, `useLifeJourney.js`,
+`life-journey.css`, route `/life-journey`, mục Navbar. Đợt 1 của kế hoạch dọn module — cô lập hoàn
+toàn, 0 phụ thuộc chéo, 0 bảng Supabase.
 
-**Mô tả:** Biểu đồ cảm xúc theo tuổi — người dùng ghi lại các cột mốc quan trọng trong cuộc đời (vui/buồn) lên đồ thị SVG. Dữ liệu chỉ lưu localStorage (feature cá nhân, không sync cloud).
-
-**Chi tiết:**
-- **Emotion timeline SVG:** Trục X = tuổi, trục Y = cảm xúc (-5 → +5). Catmull-Rom smooth curve, bi-color (xanh=tích cực, đỏ=tiêu cực)
-- **Dual view:** "Thu gọn" (hover tooltip) / "Xem chi tiết" (expanded: labels gắn trực tiếp, tiered layout tránh overlap)
-- **CRUD events:** Thêm/sửa/xóa cột mốc qua modal: tuổi, cảm xúc slider, tên, mô tả, icon emoji (30 emoji picker)
-- **Stats cards:** Tổng cột mốc, số tích cực, số tiêu cực, TB cảm xúc
-- **Event list:** Grid cards sorted theo tuổi, click → edit modal
-- **Custom title:** Click tiêu đề → inline edit, lưu localStorage (`vl_journey_title`)
-- **Reset to default:** 12 sample events mẫu
-- **Navbar link:** "💛 Hành Trình" trong main nav
-- **Data:** `vl_life_journey_events` (localStorage JSON array) — KHÔNG dùng Supabase
+⚠️ Dữ liệu cột mốc nằm ở localStorage `vl_life_journey_events` + `vl_journey_title`. Xoá code
+KHÔNG xoá localStorage — dữ liệu vẫn nằm trong trình duyệt nhưng không còn đường vào. Muốn lấy lại:
+`git revert` hoặc đọc thẳng key đó trong DevTools.
 
 ---
 
@@ -627,33 +601,16 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ---
 
-## 24. 📅 Life Log (`/life-log`)
+## 24. ~~📅 Life Log~~ — ĐÃ GỠ HẲN (v5.0.0)
 
-**File:** `src/pages/LifeLogPage.jsx` + `src/styles/lifelog.css`
-**Components:** `src/components/ActivityHeatmap.jsx`
-**Hook:** `src/hooks/useActivityLog.js`
+Route `/life-log`, `LifeLogPage.jsx`, `ActivityHeatmap.jsx`, `lifelog.css` đã xoá; mục Navbar và
+KPI "🔥 Hoạt động hôm nay" trên Dashboard cũng gỡ theo. Lý do: heatmap chỉ **đếm số dòng
+`activity_logs`** chứ không đọc nội dung, nên nó là người dùng duy nhất của các dòng "sự kiện rời
+rạc". Gỡ Life Log → gỡ luôn 11 điểm ghi `logActivity` ở Inbox/Finance/DailyChallenge và insert trực
+tiếp trong `useFocusTimer`, nếu không sẽ thành ghi-mà-không-ai-đọc.
 
-**Mô tả:** Lịch sử hoạt động toàn hệ thống dạng GitHub contribution heatmap.
-
-**Chi tiết:**
-- **Today stat badge:** Số hoạt động hôm nay
-- **ActivityHeatmap:** SVG 53×7 grid, 5-level purple scale
-- **MonthCalendar (habit mode):** Lịch tháng — ô tô màu theo habit, bấm ngày xem task đã xong. Task mode (không `habitData`) dùng ở `/tasks`, xem §16
-- **Sự kiện được đếm (v5.0.0 — 9):** task_created, task_completed, task_uncompleted, challenge_done,
-  task_done (Inbox quick-done), expense_add, subscription_add, inbox_snooze, inbox_classify,
-  inbox_bulk_delete, inbox_bulk_classify, focus_done
-
-**Data source:** `activity_logs` table (Supabase)
-
-> ⚠️ **v5.0.0 — heatmap chỉ đếm SỰ KIỆN, không đếm mọi dòng.** Bảng giờ chứa thêm dòng field-diff
-> và ghi chú của Task (xem §16), nếu đếm tất thì sửa 1 task đổi 3 field sẽ nhảy +3 "hoạt động".
-> `getHeatmapData`/`getTodayCount` lọc `field IS NULL AND action <> 'note'` — mệnh đề này phải khớp
-> CHÍNH XÁC index partial `idx_activity_logs_heatmap`, lệch là Postgres bỏ qua index.
-> **Đổi so với trước:** tick habit KHÔNG còn được ghi log (dòng `habit_done`/`habit_undo` cũ đã bị
-> purge trong migration v5.0.0, và TrackerPage ngừng ghi mới — Habit tracker đang chờ gỡ hẳn).
-> Bù lại, hoàn thành task theo đường bình thường giờ MỚI được đếm (trước v5.0.0 chỉ Inbox quick-done
-> mới lên heatmap).
-> Chưa có daily drill-down: `onDateClick` của ActivityHeatmap hiện là no-op.
+`activity_logs` giờ **chỉ phục vụ Task** (lịch sử thay đổi + ghi chú, xem §16). Lấy lại được từ git
+history nếu đổi ý.
 
 ---
 
@@ -740,21 +697,41 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 | Route | Page | Auth |
 |-------|------|:---:|
+## 28. 🏠 Trang chủ (`/`) — viết lại v5.0.0
+
+**Files:** `src/pages/LandingPage.jsx` + `src/styles/landing.css`
+
+**Mô tả:** Cửa vào app. **Không phải landing marketing** — bản cũ (v2.x, 923 dòng qua 7 section:
+Hero typewriter, Problem, Knowledge, Roadmap, demo Tracker, Reverse, Testimonials, Pricing) quảng
+cáo sản phẩm "Thử Thách Vượt Lười 21 ngày" đã không còn tồn tại; kèm đánh giá bịa và bảng giá cho
+một app không bán.
+
+**Chi tiết:**
+- **Hero:** tên + 1 câu mô tả + CTA. Chưa đăng nhập → nút mở `AuthModal` + link "Dùng thử không cần
+  tài khoản" (kèm cảnh báo dữ liệu guest chỉ nằm trong bộ nhớ tạm). Đã đăng nhập → vào thẳng Inbox.
+- **Nút đổi theme riêng** (`.lp__theme`, fixed góc phải trên) — `Navbar` tự ẩn ở `/` khi chưa đăng
+  nhập (`Navbar.jsx:154`) nên đây là lối duy nhất đổi sáng/tối trước khi login.
+- **"Cách nó chạy":** 3 bước Ghi vào Inbox → Phân loại sau → Xử lý đúng chỗ.
+- **"Có những gì":** lưới 6 card module (Inbox, Nhiệm Vụ, Knowledge, Finance, Incubator, Focus),
+  mỗi card có dải màu riêng + 3-5 gạch đầu dòng mô tả thật. Card là `<Link>` đi thẳng tới module.
+- **Cố ý KHÔNG liệt kê** Habit / Lộ Trình — đang chờ gỡ ở đợt 4 của kế hoạch dọn
+  module (`docs/TASKS.md`). Quảng cáo chúng ở đây là viết để xoá lại.
+
+**Data source:** không có — nội dung là 2 mảng hằng `FLOW` + `MODULES` ngay trong file.
+
+---
+
 | `/` | LandingPage (eager) | ❌ |
 | `/tracker` | TrackerPage (eager) | ❌ |
 | `/inbox` | InboxPage | ✅ |
 | `/collect` | CollectPage | ✅ |
 | `/finance` | FinancePage | ✅ |
-| `/life-log` | LifeLogPage | ✅ |
 | `/incubator` | IncubatorPage | ✅ |
 | `/settings` | SettingsPage | ✅ |
 | `/focus` | FocusPage | ❌ |
 | `/journey` | JourneyPage | ❌ (soft wall: cần login để lưu) |
 | `/journey/:id` | JourneyDetailPage | ❌ |
 | `/dashboard` | DashboardPage | ❌ |
-| `/quiz` | QuizPage | ❌ |
-| `/leaderboard` | LeaderboardPage | ❌ |
-| `/life-journey` | LifeJourneyPage | ❌ |
 | `/habits`, `/team`, `/friends` | `<Navigate to="/tracker">` | — |
 | `*` | LandingPage (catch-all) | ❌ |
 
@@ -771,7 +748,7 @@ Không còn là tính năng đang chạy. Giữ lại đây để không ai mô 
 | 🤝 **Team Mode** (`/team`) | Huỷ v3.0.0, code xoá hẳn v4.25.0 (`TeamPage.jsx`, `useTeam.js`, `team/*` — lấy lại được từ git history). Route redirect `/tracker`. Bảng `teams`/`reactions`/`partner_queue` **chưa từng** tồn tại trong schema |
 | 👥 **Friends** (`/friends`) | Archived v3.0.0, code xoá hẳn v4.25.0 (`FriendsPage.jsx` — lấy lại được từ git history). Route redirect `/tracker`. Bảng `friendships` còn trong schema nhưng không hook nào dùng — an toàn để DROP |
 | 📋 **Habits Page** (`/habits`) | Gộp vào TrackerPage v1.9.0, file xoá v2.2.1. Route redirect `/tracker` |
-| 🏋️ **Fitness Log / Sức Khỏe** (tab 5 của `/tracker`) | Xoá v4.26.0 — `useFitnessLog.js`, tab TrackerPage, card Dashboard, XP `fitness_done` (lấy lại được từ git history). Bảng `fitness_logs` **còn** trong schema, không hook nào dùng — an toàn để DROP. Row `activity_logs` với `action='fitness_done'` cũ vẫn còn, vẫn hiện trên heatmap Life Log |
+| 🏋️ **Fitness Log / Sức Khỏe** (tab 5 của `/tracker`) | Xoá v4.26.0 — `useFitnessLog.js`, tab TrackerPage, card Dashboard, XP `fitness_done` (lấy lại được từ git history). Bảng `fitness_logs` **còn** trong schema, không hook nào dùng — an toàn để DROP. Row `activity_logs` với `action='fitness_done'` đã bị xoá ở v5.0.0 cùng Life Log |
 | 😊 **Mood Log** | Bỏ v4.10.1 (`useMoodLog` + bảng `mood_logs`). Chỉ còn `useSkipReasons` (§10) |
 | 🔗 **Inbox Link Preview** | Bỏ v4.23.0 cùng với `api/meta.js`. Inbox chỉ tự detect URL, không fetch metadata |
 | 📊 **DailyReview widget** | Xoá v4.7.1 để giảm UI clutter |

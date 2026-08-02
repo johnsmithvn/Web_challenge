@@ -3,7 +3,6 @@ import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useActiveJourney } from '../contexts/JourneyContext';
 import { logger } from '../utils/logger';
-import { ACTIONS } from '../utils/taskFields';
 
 // XP for completing a focus session.
 // Written directly to Supabase xp_logs to avoid circular import with useXpStore.
@@ -151,18 +150,10 @@ export function useFocusTimer() {
         // Award XP via Supabase (deduped)
         awardFocusXp(user.id, log.id, useDB);
 
-        // Activity log: focus_done (fire-and-forget)
-        // Insert THẲNG, không qua useActivityLog — đây là chỗ ghi duy nhất bỏ
-        // qua hook, nhớ sửa cùng lúc mỗi khi đổi schema activity_logs.
-        // v5.0.0: bỏ label/amount/meta (cột đã DROP). Không mất dữ liệu —
-        // duration + habit_id vẫn nằm ở `focus_sessions` insert ngay phía trên,
-        // XP vẫn ở `xp_logs` qua awardFocusXp().
-        supabase.from('activity_logs').insert({
-          user_id: user.id,
-          action:  ACTIONS.FOCUS_DONE,
-        }).then(({ error }) => {
-          if (error) logger.warn('[FocusTimer] activity_log insert failed:', error.message);
-        });
+        // v5.0.0: bỏ hẳn insert vào `activity_logs`. Bảng đó giờ chỉ phục vụ
+        // lịch sử + ghi chú của Task; Life Log/heatmap — người đọc duy nhất của
+        // dòng `focus_done` — đã bị xoá. Không mất dữ liệu: session nằm ở
+        // `focus_sessions` (insert ngay trên), XP ở `xp_logs` qua awardFocusXp().
       }
 
       // Auto-tick linked habit via useHabitLogs event
