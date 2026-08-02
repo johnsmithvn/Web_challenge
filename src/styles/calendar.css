@@ -186,9 +186,10 @@
   vertical-align: middle;
 }
 
-.cal-dot--done   { background: rgba(0,255,136,0.5); }
-.cal-dot--miss   { background: rgba(255,255,255,0.1); }
-.cal-dot--future { background: transparent; border: 1px solid rgba(255,255,255,0.15); }
+.cal-dot--done    { background: rgba(0,255,136,0.5); }
+.cal-dot--miss    { background: rgba(255,255,255,0.1); }
+.cal-dot--future  { background: transparent; border: 1px solid rgba(255,255,255,0.15); }
+.cal-dot--pending { background: rgba(139,92,246,0.5); }
 
 /* ============================================================
    HABIT MANAGER CSS
@@ -398,8 +399,18 @@
   padding-left: 2px;
 }
 
+/* Task chưa hoàn thành (sắp tới) — tím nhạt, phân biệt với chip xanh của task đã xong */
+.cal-chip--pending {
+  background: rgba(139, 92, 246, 0.14);
+  color: var(--purple-light, #a78bfa);
+}
+
 [data-theme="light"] .cal-cell--tasks { background: var(--bg-card); }
 [data-theme="light"] .cal-chip {
   background: rgba(22, 163, 74, 0.12);
   color: #15803d;
+}
+[data-theme="light"] .cal-chip--pending {
+  background: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
 }

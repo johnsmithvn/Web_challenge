@@ -3,6 +3,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { JourneyProvider } from './contexts/JourneyContext';
+import { ToastProvider } from './contexts/ToastContext';
 import Navbar from './components/Navbar';
 import QuickCapture from './components/QuickCapture';
 import OnboardingModal, { useOnboarding } from './components/OnboardingModal';
@@ -120,13 +121,15 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <JourneyProvider>
-            <AppShell />
-          </JourneyProvider>
-        </BrowserRouter>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <JourneyProvider>
+              <AppShell />
+            </JourneyProvider>
+          </BrowserRouter>
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

@@ -103,11 +103,13 @@ function FinanceSettingsSection() {
 /* ══════════════════════════════════════════════════════════════
    TAG MANAGER SECTION
    ══════════════════════════════════════════════════════════════ */
+const TAG_USAGE_LABELS = { task: 'nhiệm vụ', expense: 'khoản chi', subscription: 'đăng ký', collection: 'bài viết' };
+
 function TagManagerSection({ user }) {
   const {
     tags, isLoading,
     addTag, updateTag, deleteTag,
-    getAllTagUsageCounts,
+    getAllTagUsageCounts, getTagUsageBreakdown,
   } = useTags();
   const { confirm, ConfirmModal } = useConfirm();
 
@@ -172,18 +174,22 @@ function TagManagerSection({ user }) {
   }, []);
 
   const handleDeleteTag = useCallback(async (tag) => {
-    const count = usageCounts[tag.id] || 0;
+    const breakdown = await getTagUsageBreakdown(tag.id);
+    const parts = Object.entries(breakdown)
+      .filter(([, n]) => n > 0)
+      .map(([key, n]) => `${n} ${TAG_USAGE_LABELS[key]}`);
+
     const ok = await confirm({
       title: `Xóa tag "${tag.name}"?`,
-      message: count > 0
-        ? `Tag này đang được dùng ở ${count} nơi. Xóa sẽ tự động gỡ liên kết tất cả.`
+      message: parts.length > 0
+        ? `Tag đang gắn ở: ${parts.join(', ')}. Xoá tag chỉ gỡ liên kết — KHÔNG xoá các mục đó.`
         : 'Tag sẽ bị xóa vĩnh viễn.',
       confirmLabel: 'Xóa',
       danger: true,
     });
     if (!ok) return;
     await deleteTag(tag.id);
-  }, [confirm, deleteTag, usageCounts]);
+  }, [confirm, deleteTag, getTagUsageBreakdown]);
 
   const sortedTags = useMemo(() =>
     [...tags].sort((a, b) => a.name.localeCompare(b.name)),

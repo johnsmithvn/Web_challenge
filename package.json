@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node api/_lib/smoke.test.js && node src/utils/dateUtils.test.js && node src/utils/mediaUtils.test.js",
+    "test": "node api/_lib/smoke.test.js && node src/utils/dateUtils.test.js && node src/utils/mediaUtils.test.js && node src/__tests__/recurrenceUtils.test.js",
     "design:lint": "design.md lint DESIGN.md",
     "preview": "vite preview"
   },

@@ -80,7 +80,7 @@ Programs ──► program_habits   (template library, system + user)
 | 11 | `program_habits` | Template habit definitions | FK → programs |
 | 12 | `user_journeys` | Journey runs | status: active/completed/extended/archived |
 | 13 | `journey_habits` | Snapshot of habits per run | FK → user_journeys, FK → habits |
-| 14 | `user_tasks` | Personal to-do items | priority SMALLINT, recurrence_rule JSONB |
+| 14 | `user_tasks` | Personal to-do items | priority SMALLINT, recurrence_rule JSONB, `recurrence_parent_id` UUID self-FK ON DELETE CASCADE (v4.31.0 — link "task này được sinh ra TỪ task nào", khác cột `parent_id` subtask đang có kế hoạch riêng) |
 | 15 | `task_collections` | Junction: Task ↔ KB (M:N) | Composite PK(task_id, collection_id), CASCADE |
 | 16 | `collections` | Inbox + Knowledge Base | type CHECK (8, **sửa v4.28.0**): `inbox`, `note`, `quote`, `learn`, `idea`, `ai`, `entertainment`, `podcast`. ⚠️ Trước v4.28.0 CHECK có `emotion` (không tồn tại trong `src/`) và **thiếu `podcast`** (có trong `knowledge.json`) → classify sang Podcast fail constraint |
 | 17 | `expenses` | Daily spending log | amount VNĐ, category, note |

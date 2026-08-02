@@ -16,7 +16,7 @@ const MonthCalendar = lazy(() => import('../components/MonthCalendar'));
  */
 export default function TasksPage() {
   const { user } = useAuth();
-  const { todayTasks, overdueTasks, futureTasks, getCompletedTasksRange } = useUserTasks();
+  const { todayTasks, overdueTasks, futureTasks, pendingTasks, getCompletedTasksRange, deleteTask } = useUserTasks();
   const [view, setView] = useState('list');
 
   const due = overdueTasks.length + todayTasks.length;
@@ -66,7 +66,11 @@ export default function TasksPage() {
         </div>
       ) : (
         <Suspense fallback={<div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>⏳ Đang tải lịch...</div>}>
-          <MonthCalendar getCompletedTasksRange={getCompletedTasksRange} />
+          <MonthCalendar
+            getCompletedTasksRange={getCompletedTasksRange}
+            onDeleteTask={deleteTask}
+            pendingTasks={pendingTasks}
+          />
         </Suspense>
       )}
     </div>

@@ -107,11 +107,50 @@ Stay inside the requested scope.
 
 ---
 
+# UI Verification
+
+Do NOT use the Browser tool to self-verify UI/frontend changes by default — it burns tokens fast
+and the user verifies manually. Instead:
+
+- List exactly what changed (files + behavior), same as any other summary.
+- Give the user a short checklist of what to click/check themselves.
+- Call out known gotchas up front: features that need login to test (guest mode can't reach them),
+  data that must already exist (e.g. a completed task) to see a state, or anything easy to
+  misclick.
+- Only open the Browser tool when the user explicitly asks you to verify, or when you're
+  debugging a bug report and can't diagnose it from code alone.
+
+---
+
+# Testing
+
+For non-trivial business logic (date math, chain/cascade rules, anything with more than one
+edge case) — not simple CRUD wiring:
+
+- Unit tests live in `src/__tests__/`. This is a deliberate departure from the older colocated
+  `*.test.js` files next to `dateUtils.js`/`mediaUtils.js` — leave those where they are, don't
+  migrate them just to unify the pattern (unrelated refactor).
+- No test framework (no Jest/Vitest) — plain `node:assert/strict` scripts, same style as
+  `src/utils/dateUtils.test.js`: import the function, assert, `console.log('X check: OK')` at
+  the end, run via `node <path>`.
+- Extract the logic into PURE functions (no Supabase, no React) so it's testable without
+  mocking. Code that calls Supabase/hooks stays untested by this suite — manual test on
+  Supabase per existing convention (see `npm test` comment in RULES.md).
+- Wire every new test file into the `test` script in `package.json`.
+- Run `npm test` after finishing any change to logic covered by these tests.
+- **If a test fails: stop.** Report the failure to the user before changing either the test or
+  the logic — don't silently pick whichever is more convenient to "fix". The user decides which
+  one is wrong.
+
+---
+
 # Output
 
 Before finishing every implementation:
 
 - Do not claim the build passes — you didn't run it. Ask the user to build and report back.
+- Do not claim the UI works — you didn't check it in a browser (see UI Verification above).
+  Say what you verified (lint/build/code review) and what the user still needs to click through.
 - Explain what changed.
 - Mention important tradeoffs.
 - Mention remaining TODOs if any.

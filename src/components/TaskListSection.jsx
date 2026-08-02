@@ -3,9 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
 import { useCollections } from '../hooks/useCollections';
+import { useTags } from '../hooks/useTags';
 import LinkKBModal from './LinkKBModal';
 import DatePickerPopover from './DatePickerPopover';
+import TagPicker from './TagPicker';
+import { useConfirm } from './ConfirmModal';
 import { toDateStr } from '../utils/dateUtils';
+import UI_STRINGS from '../data/ui-strings.json';
 import '../styles/tasks.css';
 
 const PRIORITY_OPTIONS = [
@@ -26,9 +30,13 @@ export default function TaskListSection() {
     todayTasks, overdueTasks, futureTasks,
     addTask, completeTask, updateTask, deleteTask,
     linkCollection, unlinkCollection,
+    linkTaskTag, unlinkTaskTag,
+    getCompletedTasksRange,
     isLoading,
   } = useUserTasks();
   const { items: allCollections, fetchItems: fetchCollections } = useCollections();
+  const { tags: allTags, addTag } = useTags();
+  const { confirm, ConfirmModal } = useConfirm();
 
   const [showForm, setShowForm]     = useState(false);
   const [title, setTitle]           = useState('');
@@ -36,8 +44,9 @@ export default function TaskListSection() {
   const [dueDate, setDueDate]       = useState(toDateStr());
   const [dueTime, setDueTime]       = useState('23:59');
 
-  // Priority + Recurrence form state
+  // Priority + Recurrence + Tags form state
   const [priority, setPriority]         = useState(0);
+  const [tagIds, setTagIds]             = useState([]);
   const [showRecurrence, setShowRecurrence] = useState(false);
   const [recType, setRecType]           = useState('interval');
   const [recDays, setRecDays]           = useState(7);
@@ -51,6 +60,7 @@ export default function TaskListSection() {
   const [editDate, setEditDate]           = useState('');
   const [editTime, setEditTime]           = useState('');
   const [editPriority, setEditPriority]   = useState(0);
+  const [editTagIds, setEditTagIds]       = useState([]);
   const [editShowRec, setEditShowRec]     = useState(false);
   const [editRecType, setEditRecType]     = useState('interval');
   const [editRecDays, setEditRecDays]     = useState(7);
@@ -59,6 +69,14 @@ export default function TaskListSection() {
 
   const [expandedTask, setExpandedTask] = useState(null);
   const [showFuture, setShowFuture]     = useState(false);
+
+  // ── Completed section (collapsed by default, filtered by date) ──
+  const [showCompleted, setShowCompleted]   = useState(false);
+  const [completedDate, setCompletedDate]   = useState(toDateStr());
+  const [completedList, setCompletedList]   = useState([]);
+  const [completedLoading, setCompletedLoading] = useState(false);
+  const [showCompletedDP, setShowCompletedDP]   = useState(false);
+  const [expandedCompletedId, setExpandedCompletedId] = useState(null);
   const [showAddDP, setShowAddDP]       = useState(false);
   const [showEditDP, setShowEditDP]     = useState(false);
   const [quickDateTaskId, setQuickDateTaskId] = useState(null);
@@ -69,6 +87,42 @@ export default function TaskListSection() {
   useEffect(() => {
     if (linkTaskId && fetchCollections) fetchCollections({});
   }, [linkTaskId, fetchCollections]);
+
+  // Fetch completed tasks for the selected date — only while the section is expanded.
+  // getCompletedTasksRange đệm ±1 ngày cho lệch timezone nên phải tự lọc lại đúng
+  // ngày địa phương (cùng pattern với MonthCalendar).
+  useEffect(() => {
+    if (!showCompleted) return;
+    let stale = false;
+    setCompletedLoading(true);
+    getCompletedTasksRange(completedDate, completedDate).then(rows => {
+      if (stale) return;
+      const filtered = (rows || []).filter(
+        r => r.completed_at && toDateStr(new Date(r.completed_at)) === completedDate
+      );
+      setCompletedList(filtered);
+      setCompletedLoading(false);
+    });
+    return () => { stale = true; };
+  }, [showCompleted, completedDate, getCompletedTasksRange]);
+
+  const confirmDeleteTask = useCallback((task) => {
+    const cfg = UI_STRINGS.confirm.deleteTask;
+    return confirm({ ...cfg, message: cfg.message.replace('{name}', task.title) });
+  }, [confirm]);
+
+  // Xoá task đang pending (quá hạn/hôm nay/sắp tới) — `deleteTask` đã tự filter
+  // khỏi `tasks` state nên todayTasks/overdueTasks/futureTasks tự cập nhật.
+  const handleDeleteTask = useCallback(async (task) => {
+    if (!(await confirmDeleteTask(task))) return;
+    await deleteTask(task.id);
+  }, [confirmDeleteTask, deleteTask]);
+
+  const handleDeleteCompleted = useCallback(async (task) => {
+    if (!(await confirmDeleteTask(task))) return;
+    const deleted = await deleteTask(task.id);
+    if (deleted !== false) setCompletedList(prev => prev.filter(t => t.id !== task.id));
+  }, [confirmDeleteTask, deleteTask]);
 
   // Close mobile overflow menu on outside click
   useEffect(() => {
@@ -92,7 +146,7 @@ export default function TaskListSection() {
       else if (recType === 'monthly') recurrenceRule = { type: 'monthly', day: recMonthDay };
     }
 
-    await addTask({
+    const created = await addTask({
       title: title.trim(),
       description: description.trim() || null,
       dueDate: dueDate || toDateStr(),
@@ -100,11 +154,15 @@ export default function TaskListSection() {
       priority,
       recurrenceRule,
     });
+    if (created && tagIds.length > 0) {
+      const selectedTags = allTags.filter(t => tagIds.includes(t.id));
+      await Promise.all(selectedTags.map(tag => linkTaskTag(created.id, tag)));
+    }
     setTitle(''); setDescription(''); setDueDate(toDateStr()); setDueTime('23:59');
-    setPriority(0);
+    setPriority(0); setTagIds([]);
     setShowRecurrence(false); setRecType('interval'); setRecDays(7);
     setShowForm(false);
-  }, [title, description, dueDate, dueTime, priority, showRecurrence, recType, recDays, recWeekday, recMonthDay, addTask]);
+  }, [title, description, dueDate, dueTime, priority, tagIds, allTags, showRecurrence, recType, recDays, recWeekday, recMonthDay, addTask, linkTaskTag]);
 
   /* ── Inline edit ── */
   const startEdit = (task) => {
@@ -114,6 +172,7 @@ export default function TaskListSection() {
     setEditDate(task.due_date || toDateStr());
     setEditTime(task.due_time ? task.due_time.substring(0,5) : '');
     setEditPriority(task.priority || 0);
+    setEditTagIds((task._tags || []).map(t => t.id));
     const rec = task.recurrence_rule;
     if (rec) {
       setEditShowRec(true);
@@ -144,6 +203,18 @@ export default function TaskListSection() {
       priority:         editPriority,
       recurrence_rule:  recurrenceRule,
     });
+
+    // Diff tags against current state → link mới thêm, unlink cái bị bỏ chọn
+    const task = [...todayTasks, ...overdueTasks, ...futureTasks].find(t => t.id === taskId);
+    const currentTagIds = (task?._tags || []).map(t => t.id);
+    const toAdd = editTagIds.filter(id => !currentTagIds.includes(id));
+    const toRemove = currentTagIds.filter(id => !editTagIds.includes(id));
+    const tagsToAdd = allTags.filter(t => toAdd.includes(t.id));
+    await Promise.all([
+      ...tagsToAdd.map(tag => linkTaskTag(taskId, tag)),
+      ...toRemove.map(tagId => unlinkTaskTag(taskId, tagId)),
+    ]);
+
     setEditId(null);
   };
 
@@ -305,6 +376,17 @@ export default function TaskListSection() {
               )}
             </div>
 
+            {/* Tags */}
+            <div>
+              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Tag</label>
+              <TagPicker
+                tags={allTags}
+                selected={editTagIds}
+                onToggle={(tagId) => setEditTagIds(prev => prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId])}
+                onAdd={addTag}
+              />
+            </div>
+
             {/* KB Link */}
             <div>
               <button type="button"
@@ -410,6 +492,12 @@ export default function TaskListSection() {
                     title="Xem bài viết liên kết"
                   >🔗 {(task._collections || []).length} bài</span>
                 )}
+                {(task._tags || []).map(tag => (
+                  <span key={tag.id} style={{
+                    fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-full)',
+                    background: `${tag.color}18`, color: tag.color,
+                  }}>🏷 {tag.name}</span>
+                ))}
               </div>
             </div>
 
@@ -439,7 +527,7 @@ export default function TaskListSection() {
                   onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
                   🔗
                 </button>
-                <button onClick={() => deleteTask(task.id)} id={`task-delete-${task.id}`}
+                <button onClick={() => handleDeleteTask(task)} id={`task-delete-${task.id}`}
                   style={{ ...btnBase, color: 'var(--text-muted)', opacity: 0.5 }}
                   title="Xoá"
                   onMouseEnter={e => e.currentTarget.style.opacity = 1}
@@ -467,7 +555,7 @@ export default function TaskListSection() {
                     <button className="task-overflow-item" onClick={() => { setOverflowTaskId(null); setLinkTaskId(task.id); }}>
                       🔗 Liên kết KB
                     </button>
-                    <button className="task-overflow-item task-overflow-item--danger" onClick={() => { setOverflowTaskId(null); deleteTask(task.id); }}>
+                    <button className="task-overflow-item task-overflow-item--danger" onClick={() => { setOverflowTaskId(null); handleDeleteTask(task); }}>
                       🗑 Xoá
                     </button>
                   </div>
@@ -496,6 +584,7 @@ export default function TaskListSection() {
 
   return (
     <>
+    {ConfirmModal}
     <div className="card task-list-card" style={{ padding: '1.25rem', marginBottom: '1.25rem' }}>
 
       {/* v4.29.0: tiêu đề + badge đếm đã chuyển lên hero của TasksPage — bỏ ở đây để khỏi trùng */}
@@ -559,6 +648,17 @@ export default function TaskListSection() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* ── Tags ── */}
+          <div>
+            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Tag</label>
+            <TagPicker
+              tags={allTags}
+              selected={tagIds}
+              onToggle={(tagId) => setTagIds(prev => prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId])}
+              onAdd={addTag}
+            />
           </div>
 
           {/* ── Recurrence ── */}
@@ -685,7 +785,91 @@ export default function TaskListSection() {
         </div>
       )}
 
-      {/* v4.29.0: block "Đã hoàn thành hôm nay" đã xoá — task xong xem ở tab 📅 Lịch */}
+      {/* ── Completed Section (collapsed, filter theo ngày) ── */}
+      <div style={{ marginTop: '0.75rem' }}>
+        <button
+          onClick={() => setShowCompleted(!showCompleted)}
+          id="task-completed-toggle"
+          style={{
+            ...btnBase, display: 'flex', alignItems: 'center', gap: '0.3rem',
+            fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600,
+            padding: '0.3rem 0', width: '100%', justifyContent: 'flex-start',
+          }}>
+          {showCompleted ? '▾' : '▸'} ✅ Đã hoàn thành
+        </button>
+
+        {showCompleted && (
+          <div style={{ marginTop: '0.5rem' }}>
+            {/* Date filter */}
+            <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
+              <button type="button" onClick={() => setShowCompletedDP(!showCompletedDP)}
+                id="task-completed-date-btn"
+                className="auth-input"
+                style={{ textAlign: 'left', cursor: 'pointer', fontSize: '0.8rem', width: '220px', maxWidth: '100%' }}>
+                📅 {new Date(completedDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+              </button>
+              {showCompletedDP && (
+                <DatePickerPopover
+                  value={completedDate}
+                  onChange={(d) => { if (d) setCompletedDate(d); }}
+                  onClose={() => setShowCompletedDP(false)}
+                  hideTime
+                  style={{ top: '100%', left: 0, marginTop: '0.25rem' }}
+                />
+              )}
+            </div>
+
+            {completedLoading && (
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>⏳ Đang tải...</div>
+            )}
+
+            {!completedLoading && completedList.length === 0 && (
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>
+                Không có task nào hoàn thành ngày này.
+              </div>
+            )}
+
+            {!completedLoading && completedList.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                {completedList.map(task => (
+                  <div key={task.id} className="task-item" style={{ opacity: 0.85 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontWeight: 600, fontSize: '0.86rem', color: 'var(--text-secondary)',
+                          textDecoration: 'line-through', cursor: task.description ? 'pointer' : 'default',
+                        }} onClick={() => task.description && setExpandedCompletedId(expandedCompletedId === task.id ? null : task.id)}>
+                          ✅ {task.title}
+                          {task.description && (
+                            <span style={{ fontSize: '0.72rem', marginLeft: '0.35rem', color: 'var(--text-muted)', textDecoration: 'none' }}>
+                              {expandedCompletedId === task.id ? '▾' : '▸'}
+                            </span>
+                          )}
+                        </div>
+                        {expandedCompletedId === task.id && task.description && (
+                          <div className="task-desc-box">{task.description}</div>
+                        )}
+                        {task.completed_at && (
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                            Xong lúc {new Date(task.completed_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        )}
+                      </div>
+                      <button onClick={() => handleDeleteCompleted(task)} id={`task-completed-delete-${task.id}`}
+                        style={{ ...btnBase, color: 'var(--text-muted)', opacity: 0.5, flexShrink: 0 }}
+                        title="Xoá"
+                        onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                        onMouseLeave={e => e.currentTarget.style.opacity = 0.5}>
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* ── Empty state ── */}
       {totalPending === 0 && !isLoading && (

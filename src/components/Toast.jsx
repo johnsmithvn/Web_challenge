@@ -5,11 +5,13 @@ import '../styles/toast.css';
    Drop-in replacement for window.alert() — thông báo 1 chiều, tự biến mất,
    KHÔNG chặn tương tác (khác ConfirmModal).
 
-   Usage via hook (recommended):
-     const { showToast, Toast } = useToast();
-     {Toast}
-     ...
+   Global usage (recommended) — gọi từ bất kỳ component/hook nào:
+     import { useToast } from '../contexts/ToastContext';
+     const { showToast } = useToast();
      showToast('📌 Task đã được tạo!');
+
+   `useToastState` bên dưới chỉ dành cho ToastProvider dùng nội bộ để quản lý
+   1 instance Toast duy nhất — không import trực tiếp ở nơi khác.
 ──────────────────────────────────────────────────────────────── */
 export function Toast({ open, message, icon = '✅', onClose, duration = 3000 }) {
   const timerRef = useRef(null);
@@ -30,10 +32,10 @@ export function Toast({ open, message, icon = '✅', onClose, duration = 3000 })
   );
 }
 
-/* ── useToast hook ────────────────────────────────────────────
-   Returns { showToast, Toast }
+/* ── useToastState ────────────────────────────────────────────
+   Internal state manager — used once by ToastProvider. Returns { showToast, Toast }
 ──────────────────────────────────────────────────────────────── */
-export function useToast() {
+export function useToastState() {
   const [state, setState] = useState(null); // null | { message, icon, duration }
 
   const showToast = useCallback((message, options = {}) => {

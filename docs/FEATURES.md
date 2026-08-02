@@ -365,9 +365,12 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 - **Overdue Triage (v3.5.0):** Task list chia 3 khối: ⚠️ Quá hạn (nền đỏ, nút 🔄 Dời sang hôm nay) / 📅 Hôm nay / 🔮 Sắp tới (collapsed). Bắt user đối mặt và dọn dẹp backlog.
 - **Rollover (v3.5.0):** Nút 🔄 trên overdue task → `updateTask(id, { due_date: today })` → task chuyển sang section Hôm nay.
 - **Priority (v4.9.0):** Thay thế Energy Tag + Duration Estimate của v3.6.0. `priority SMALLINT` 0=None / 1=Lowest / 2=Low / 3=Medium / 4=High / 5=Urgent (`PRIORITY_OPTIONS` trong `TaskListSection.jsx`). Badge màu trên task card khi `priority > 0`. Cột `energy_level` + `duration_est` đã bị DROP khỏi schema.
-- **Recurring Tasks (v3.6.0):** Toggle 🔁 Lặp lại: Mỗi N ngày / Hàng tuần thứ X / Hàng tháng ngày Y. Khi tick xong task recurring → task cũ ở lại "Hoàn thành hôm nay" (dopamine hit) → task mới insert ẩn với `due_date` tương lai. Chỉ spawn 1 task, không batch, không vòng lặp.
+- **Recurring Tasks (v3.6.0 → v4.31.0):** Toggle 🔁 Lặp lại: Mỗi N ngày / Hàng tuần thứ X / Hàng tháng ngày Y. Khi tick xong task recurring → task cũ ở lại "Hoàn thành hôm nay" (dopamine hit) → task mới insert ẩn với `due_date` tương lai (đã fix clamp cuối tháng — ngày lặp không tồn tại ở tháng đích thì rơi vào ngày cuối tháng đó, không tràn sang tháng sau nữa). Tag + link KB của task cũ được copy sang occurrence mới (best-effort, không rollback task chính nếu bước copy lỗi). Chống sinh trùng: nếu task đã có occurrence tiếp theo rồi (tích/bỏ tích/tích lại nhanh) thì không sinh thêm. Sinh task lỗi hẳn sau khi hết retry → báo lỗi qua toast (trước đây chỉ log console, user không biết chuỗi lặp đã chết).
+  - **Quan hệ chuỗi (`recurrence_parent_id`, v4.31.0):** mỗi task lặp lưu lại "được sinh ra từ task nào". **Sửa** 1 task trong chuỗi không bao giờ đụng task khác đã tồn tại (chỉ ảnh hưởng occurrence tương lai chưa sinh). **Xoá** task **gốc** (chưa từng được sinh ra) → chỉ xoá đúng nó, chuỗi phía sau giữ nguyên. Xoá task **không phải gốc** (tự nó được sinh ra) → xoá luôn toàn bộ hậu duệ phía sau. **Bỏ tích** 1 task → tự xoá occurrence nó đã sinh ra (kèm hậu duệ xa hơn nếu có), tránh trùng khi tích/bỏ tích nhiều lần — có toast báo.
+  - Logic thuần (tính ngày kế tiếp + tính chuỗi cần xoá) tách ra `src/utils/recurrenceUtils.js`, unit test ở `src/__tests__/recurrenceUtils.test.js` (`npm test`).
 - **DB columns:** `priority SMALLINT`, `recurrence_rule JSONB` trên `user_tasks`.
-- **Calendar integration:** Tab 📅 Lịch → click ngày → thấy danh sách tasks đã hoàn thành + expandable description + thời gian hoàn thành
+- **Calendar integration:** Tab 📅 Lịch → click ngày → 1 danh sách "Nhiệm vụ ngày này" gồm cả task đã hoàn thành ngày đó (expandable description + giờ hoàn thành, có nút 🗑 xoá) và task sắp tới/chưa hoàn thành due ngày đó (v4.31.0). Chip trên ô ngày: xanh = có task xong, tím = chỉ có task sắp tới.
+- **Xem + xoá task đã hoàn thành (v4.31.0):** Tab 📋 Danh sách có section "✅ Đã hoàn thành" (collapsed mặc định), lọc theo ngày (`DatePickerPopover`, mặc định hôm nay) qua `getCompletedTasksRange`. Xoá task (cả ở đây lẫn trong Lịch, lẫn task pending/quá hạn/hôm nay/sắp tới ở view mode và mobile overflow menu) đều đi qua 1 `useConfirm()` dùng chung + toast xác nhận qua `ToastContext` (global, góc phải dưới).
 - **Service Worker notification:** Background check mỗi 60s → fire notification khi task đến hạn (hoạt động cả khi tab đóng, chỉ cần browser mở)
 - **Không tính XP, không tính streak, không gắn journey**
 - **Task ↔ KB Many-to-Many Link (v4.5.0):**
@@ -376,7 +379,8 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
   - Junction table `task_collections` (composite PK, CASCADE, RLS)
   - Embedded Supabase select: 1 query fetch tasks + linked collections (no N+1)
   - `linkCollection(taskId, collectionId)` + `unlinkCollection(taskId, collectionId)` với optimistic updates
-- **Data:** `user_tasks` + `task_collections` (Supabase), guest = in-memory
+- **Tags (v4.31.0):** `TagPicker` trong form Thêm + Sửa task, badge `🏷 tên` trên task card. Junction `task_tags` (đã có bảng từ v4.28.0, trước đó chưa có UI). `linkTaskTag(taskId, tag)`/`unlinkTaskTag(taskId, tagId)` trong `useUserTasks.js` — optimistic riêng (không dùng `useTags.linkTag` trực tiếp vì hook đó không sync state `tasks`).
+- **Data:** `user_tasks` + `task_collections` + `task_tags` (Supabase), guest = in-memory
 
 ---
 
@@ -432,15 +436,16 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 **Added:** v3.7.0
 **Files:** `src/hooks/useTags.js`, `src/components/TagPicker.jsx`
-**DB:** `tags`, `expense_tags`, `subscription_tags`
+**DB:** `tags`, `expense_tags`, `subscription_tags`, `collection_tags` (§27), `task_tags` (v4.31.0)
 
-**Mô tả:** Hệ thống tag trung tâm dùng chung cho expenses, subscriptions (và collections trong tương lai). Mỗi user có bộ tags riêng.
+**Mô tả:** Hệ thống tag trung tâm dùng chung cho expenses, subscriptions, collections (§27), và tasks (v4.31.0). Mỗi user có bộ tags riêng.
 
 **Chi tiết:**
-- `useTags` hook: fetchTags, addTag (upsert), deleteTag, linkTag, unlinkTag
+- `useTags` hook: fetchTags, addTag (upsert), deleteTag, linkTag, unlinkTag, `getTagUsageBreakdown` (v4.31.0 — đếm riêng theo từng loại entity, dùng cho confirm xoá tag ở Settings) — `ENTITY_CONFIG` hỗ trợ 4 loại: `expense`, `subscription`, `collection`, `task`
 - `TagPicker` component: searchable dropdown, multi-select toggle, inline tạo tag mới bằng Enter
-- Tích hợp vào FinancePage: expense form + subscription form có TagPicker
-- Tags link qua junction tables (expense_tags, subscription_tags)
+- Tích hợp vào FinancePage (expense/subscription form), CollectPage (§27), TaskListSection (v4.31.0 — form Thêm/Sửa task)
+- Tags link qua junction tables (expense_tags, subscription_tags, collection_tags, task_tags)
+- Task dùng optimistic wrapper riêng (`linkTaskTag`/`unlinkTaskTag` trong `useUserTasks.js`) thay vì gọi `useTags.linkTag` trực tiếp — cần sync state `task._tags` ngay để hiện badge, `useTags` không giữ state đó
 - RLS policies đảm bảo user chỉ thấy tags của mình
 
 ---
@@ -651,7 +656,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 - **Tab Chung — Tag Manager:** Danh sách tags + color dot + usage count
   - Add tag: Form + color picker (12 màu)
   - Inline edit: Rename + recolor (Enter save, Escape cancel)
-  - Delete: Confirm modal, hiển thị số liên kết sẽ bị gỡ
+  - Delete: Confirm modal, hiển thị breakdown liên kết sẽ bị gỡ theo từng loại (vd "3 nhiệm vụ, 2 khoản chi") kèm khẳng định rõ chỉ gỡ liên kết, không xoá các mục đó (v4.31.0 — `getTagUsageBreakdown`)
 - **Tab Quotes (v4.12.0) — Quote Manager:**
   - Add quote: Textarea nội dung + Author + Source + nút Thêm
   - List: Hiện quotes cá nhân, toggle On/Off (ToggleLeft/Right), Edit inline, Delete

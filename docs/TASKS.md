@@ -15,6 +15,80 @@ SQL v4.28.0/v5.0.0, các `TODO: decision needed` còn treo, và dọn dead code/
 
 ---
 
+## 🧊 Backlog — Task nâng cấp kiểu ClickUp/Jira (thảo luận 2026-08-02, chưa triển khai)
+
+**Bối cảnh:** trước khi làm, cần đọc lại phần "Cố ý KHÔNG làm" ở v4.29.0/v4.27.0 bên dưới —
+model là **Things 3 / Linear, KHÔNG phải ClickUp/Jira** (lý do: 1 user, phần lớn field kiểu
+team-tool giá trị ~0). Danh sách dưới đây giữ nguyên ý tưởng gốc + khuyến nghị đã trao đổi,
+**làm sau khi xong `task_tags` UI** (mục ngay dưới).
+
+- [ ] **Phân loại task thêm (type/category)** — hiện đã có 2 trục (`priority` + `tags`).
+  Khuyến nghị: KHÔNG thêm trục thứ 3 — hoàn thiện `task_tags` UI trước (đủ để phân loại).
+- [ ] **Thời gian bắt đầu–kết thúc dự kiến** — trùng "time-grid kiểu Google Calendar" đã bị
+  loại ở v4.29.0 (`due_time` mặc định `23:59` → mọi task dồn 1 hàng đáy). Nếu vẫn muốn, cân
+  nhắc bản nhẹ hơn: chỉ *ước lượng thời lượng* (1 số), không phải 2 mốc giờ start/end.
+- [ ] **Auto-fill giờ bắt đầu/kết thúc thực tế khi tick xong + cho sửa tay (chỉ sửa thực tế,
+  không sửa dự kiến)** — trùng "time tracking" đã bị loại (đã có Focus Timer). Khuyến nghị:
+  nếu cần biết thời gian thực làm task, **link Focus session vào task** (giống Focus đã link
+  habit) thay vì thêm field trùng chức năng.
+- [ ] **Activity log kiểu Jira (old value → new value mỗi lần update)** — nên là **bảng mới**,
+  KHÔNG refactor `activity_logs` (bảng đó append-only, thô, chỉ đếm cho heatmap Life Log,
+  khác hẳn audit field-diff). Nhưng cân nhắc kỹ: use-case chính của audit trail là
+  collaboration/accountability — 1 user tự sửa task của mình thì giá trị thấp. Bản rẻ hơn:
+  1 cột `updated_at` là đủ nếu chỉ cần biết "sửa lần cuối lúc nào".
+- [ ] **Task detail view (click mở chi tiết đầy đủ)** — hợp lý về kiến trúc, nhưng chỉ đáng
+  làm nếu có thêm dữ liệu thật để hiển thị (vd activity log ở trên). Chưa có gì mới thì detail
+  view sẽ trống hơn cả expand ▸/▾ mô tả hiện có — đừng làm trước khi có nội dung.
+
+---
+
+## v4.31.0 — ✅ DONE (2026-08-02) — task_tags UI + 2 gap phát sinh + tag-delete rõ ràng hơn
+
+**Đã làm** (chi tiết đầy đủ ở FEATURES.md §16/§19):
+- `task_tags` UI hoàn thiện (`useTags.ENTITY_CONFIG` + `TagPicker` trên form Thêm/Sửa task +
+  badge `🏷` trên card) — xem mục đã tick ở "Còn nợ" phía dưới v4.28.0.
+- **Fix: recurring task giờ copy tag sang occurrence tiếp theo** — `spawnRecurringTask` trước
+  chỉ clone `title/description/due_date/due_time/priority/recurrence_rule`, tag bị bỏ rơi (gap
+  mới phát sinh từ việc thêm `task_tags`, không phải bug cũ). Giờ insert xong task mới → copy
+  `task._tags` sang `task_tags` cho task đó (best-effort, không rollback task chính nếu bước
+  copy tag lỗi — chỉ log warn).
+- **Fix: xoá task pending giờ có confirm** — nút 🗑 trên task card (view mode) + trong overflow
+  menu mobile trước xoá thẳng không hỏi. Gộp chung 1 `handleDeleteTask()` với 2 nút xoá task
+  đã hoàn thành (List + Calendar) đã làm trước đó — cùng 1 confirm, không lặp code.
+- **Xoá tag ở Settings rõ ràng hơn:** `useTags.js` thêm `getTagUsageBreakdown(tagId)` — đếm
+  riêng theo từng loại (task/expense/subscription/collection) thay vì tổng gộp. Confirm dialog
+  giờ liệt kê cụ thể ("Tag đang gắn ở: 3 nhiệm vụ, 2 khoản chi...") + khẳng định rõ **chỉ gỡ
+  liên kết, KHÔNG xoá các mục đó** — đúng theo cascade thật của schema (`tag_id ON DELETE
+  CASCADE` chỉ xoá dòng junction, không đụng bảng cha).
+- **Quan hệ chuỗi task lặp (`recurrence_parent_id`)** — cột mới (self-FK, `ON DELETE CASCADE`),
+  migration `data/migration_v4.31.0_recurrence_chain.sql` (bạn tự chạy trên Supabase). Quy tắc
+  đã chốt sau thảo luận 2026-08-02 (chi tiết ở FEATURES.md §16):
+  - Sửa task → không đụng row khác đã tồn tại.
+  - Xoá task **gốc** → chỉ xoá đúng nó, không cascade.
+  - Xoá task **không phải gốc** → cascade xoá hết hậu duệ phía sau.
+  - Bỏ tích → tự xoá occurrence đã sinh (áp đúng rule "xoá không phải gốc" lên nó).
+  - `ON DELETE CASCADE` thuần KHÔNG tự làm được rule bất đối xứng trên (Postgres cascade lan
+    truyền vô điều kiện) — app phải tự "cắt dây" con của task gốc trước khi xoá nó, xem
+    `useUserTasks.deleteTask`.
+  - Chống sinh trùng: `spawnRecurringTask` check đã có occurrence tiếp theo chưa trước khi
+    insert (tích/bỏ tích/tích lại nhanh không tạo thêm bản trùng).
+  - **Mục 1 (chọn base date khi tick task lặp đã quá hạn: hôm nay/start_date/due_date) — GÁC
+    LẠI**, chưa code, chờ nghiên cứu thêm logic + design cột `start_date` (khác ý tưởng
+    "time-grid 2 mốc giờ" đã bị loại — đây chỉ là 1 cột DATE, nhẹ hơn nhiều).
+  - Logic thuần tách ra `src/utils/recurrenceUtils.js` + test `src/__tests__/recurrenceUtils.test.js`.
+
+---
+
+## 🧪 Testing convention (mới, 2026-08-02)
+
+Unit test cho logic phức tạp (không phải CRUD đơn giản) sống ở `src/__tests__/` — khác pattern
+colocated cũ (`dateUtils.test.js` nằm cạnh `dateUtils.js`), cố ý không migrate cái cũ. Không
+dùng framework (Jest/Vitest) — vẫn `node:assert/strict` script thường, chạy qua `npm test`.
+**Rule bắt buộc:** chạy `npm test` sau khi sửa xong logic có test — nếu fail thì báo cáo cho
+user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
+
+---
+
 ## v4.30.0 — ✅ CODE DONE / ⏳ SQL CHỜ USER CHẠY (2026-08-01) — P2-7: bỏ hẳn Nhóm, gộp về tags thường
 
 **Quyết định (2 vòng cùng ngày):**
@@ -126,7 +200,7 @@ SQL v4.28.0/v5.0.0, các `TODO: decision needed` còn treo, và dọn dead code/
   4. `spawnRecurringTask` chỉ INSERT field của parent → lần lặp sau **mất hết subtask**
   5. `deleteTask` optimistic chỉ filter parent → subtask **treo trên UI** tới lần refetch; rollback cũng chỉ khôi phục parent
   6. `getCompletedTasks` + SW `SYNC_TASKS` không lọc parent → mỗi subtask 1 dòng calendar + 1 notification
-- [ ] `task_tags` đã có bảng nhưng **chưa có UI/hook** — cần `useTags` mở rộng + TagPicker trên task card
+- [x] `task_tags` đã có bảng nhưng **chưa có UI/hook** — **fix 2026-08-02:** `useTags.js` thêm `task: { table: 'task_tags', fk: 'task_id' }` vào `ENTITY_CONFIG` + `task_tags` vào `getTagUsageCount`/`getAllTagUsageCounts`. `useUserTasks.fetchTasks` join thêm `task_tags(tag_id, tags(...))` → `task._tags` (cùng pattern `_collections`). Thêm `linkTaskTag`/`unlinkTaskTag` optimistic riêng trong `useUserTasks.js` (không dùng `useTags.linkTag` trực tiếp — hook đó không cập nhật state `tasks` nên badge sẽ không hiện ngay). `TagPicker` gắn vào form Thêm + Sửa task trong `TaskListSection.jsx`, badge `🏷 tên` hiện trên task card
 - [ ] VIEW `tagged_items` chưa có consumer nào — chờ làm unified search
 - [x] `alert()` ở `CollectPage.onCreateTask` vi phạm RULES (cấm `window.alert`) — cần component toast — **fix 2026-08-01:** thêm `src/components/Toast.jsx` (`useToast()`, cùng pattern `useConfirm()`), thay `alert()` bằng `showToast()`. Đồng thời fix luôn `IncubatorPage.jsx:336` (bug tương tự, phát hiện trong audit duplicate-logic 2026-08-01) bằng inline error state riêng (không dùng Toast — đó là lỗi chặn hành động, không phải thông báo thành công)
 

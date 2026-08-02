@@ -24,6 +24,7 @@ import { Undo2, Redo2, Bold, Italic, Underline as UnderlineIcon, Strikethrough, 
 import { SlashCommandExtension } from './SlashCommand';
 import UrlInputPopover from './UrlInputPopover';
 import { extractDriveDirectUrl } from '../utils/mediaUtils';
+import { showToast } from '../contexts/ToastContext';
 import '../styles/tiptap.css';
 
 /* ── Keyboard Shortcuts Data ──────────────────────────────────── */
@@ -379,13 +380,13 @@ async function uploadAndInsertImage(tr, view, file) {
       if (session?.access_token) authHeaders = { Authorization: `Bearer ${session.access_token}` };
     }
     if (!authHeaders) {
-      showUploadToast('⚠ Cần đăng nhập để tải ảnh lên.');
+      showToast('Cần đăng nhập để tải ảnh lên.', { icon: '⚠️' });
       return;
     }
 
     const res = await fetch('/api/upload', { method: 'POST', body: formData, headers: authHeaders });
     if (!res.ok) {
-      showUploadToast('⚠ Upload thất bại — cần đăng nhập + deploy Vercel.');
+      showToast('Upload thất bại — cần đăng nhập + deploy Vercel.', { icon: '⚠️' });
       return;
     }
 
@@ -394,31 +395,11 @@ async function uploadAndInsertImage(tr, view, file) {
       const node = imageType.create({ src: data.url });
       view.dispatch(view.state.tr.replaceSelectionWith(node));
     } else {
-      showUploadToast('⚠ Upload không trả về URL');
+      showToast('Upload không trả về URL', { icon: '⚠️' });
     }
   } catch {
-    showUploadToast('⚠ Upload API không khả dụng (local dev). Dùng nút 🖼️ → nhập URL.');
+    showToast('Upload API không khả dụng (local dev). Dùng nút 🖼️ → nhập URL.', { icon: '⚠️' });
   }
-}
-
-/** Simple toast notification for upload errors */
-function showUploadToast(msg) {
-  let toast = document.getElementById('tp-upload-toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'tp-upload-toast';
-    Object.assign(toast.style, {
-      position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)',
-      padding: '0.6rem 1.2rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600',
-      background: 'rgba(239,68,68,0.9)', color: '#fff', zIndex: '9999',
-      boxShadow: '0 4px 16px rgba(0,0,0,0.3)', transition: 'opacity 0.3s',
-    });
-    document.body.appendChild(toast);
-  }
-  toast.textContent = msg;
-  toast.style.opacity = '1';
-  clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 3500);
 }
 
 /* ── Backward Compatibility Migration Helper ────────────────── */

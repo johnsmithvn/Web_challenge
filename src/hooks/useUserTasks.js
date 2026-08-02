@@ -1,37 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { logger } from '../utils/logger';
 import { toDateStr } from '../utils/dateUtils';
+import { computeNextDueDate, resolveDeletionIds } from '../utils/recurrenceUtils';
+import UI_STRINGS from '../data/ui-strings.json';
 
 const todayStr = () => toDateStr();
 
-// ── Date helpers for recurring tasks ────────────────────────
+// ── Date helper (dùng ở nhiều chỗ trong file, không chỉ recurrence) ──
 function addDays(date, days) {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
-  return toDateStr(d);
-}
-
-function nextWeekday(targetDay) {
-  // targetDay: 0=Sun, 1=Mon, ..., 6=Sat
-  const d = new Date();
-  const current = d.getDay();
-  let diff = targetDay - current;
-  if (diff <= 0) diff += 7; // always go to NEXT occurrence
-  d.setDate(d.getDate() + diff);
-  return toDateStr(d);
-}
-
-function nextMonthDay(targetDay) {
-  const d = new Date();
-  const today = d.getDate();
-  if (today < targetDay) {
-    d.setDate(targetDay);
-  } else {
-    d.setMonth(d.getMonth() + 1);
-    d.setDate(targetDay);
-  }
   return toDateStr(d);
 }
 
@@ -43,6 +24,7 @@ function nextMonthDay(targetDay) {
  */
 export function useUserTasks() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const isAuth = isSupabaseEnabled && !!user;
   const userId = user?.id;
 
@@ -61,16 +43,16 @@ export function useUserTasks() {
       // completed in the last second of the day (23:59:59.xxx) aren't dropped.
       const filter = `completed.eq.false,and(completed.eq.true,completed_at.gte.${today}T00:00:00,completed_at.lt.${addDays(today, 1)}T00:00:00)`;
 
-      // Try with task_collections join first (v4.5.0)
+      // Try with task_collections + task_tags join first (v4.5.0 / v4.31.0)
       let { data, error } = await supabase
         .from('user_tasks')
-        .select('*, task_collections(collection_id, collections(id, title, type))')
+        .select('*, task_collections(collection_id, collections(id, title, type)), task_tags(tag_id, tags(id, name, color))')
         .eq('user_id', userId)
         .or(filter)
         .order('due_date', { ascending: true })
         .order('due_time', { ascending: true, nullsFirst: false });
 
-      // Fallback: if task_collections table doesn't exist yet (migration not run)
+      // Fallback: if a junction table doesn't exist yet (migration not run)
       if (error) {
         logger.warn('[useUserTasks] junction join failed, falling back:', error.message);
         const result = await supabase
@@ -84,20 +66,23 @@ export function useUserTasks() {
         if (result.error) {
           logger.error('[useUserTasks] fallback fetch error:', result.error.message);
         } else {
-          setTasks((result.data || []).map(t => ({ ...t, _collections: [] })));
+          setTasks((result.data || []).map(t => ({ ...t, _collections: [], _tags: [] })));
         }
         return;
       }
 
-      // Flatten junction join → task._collections = [{id, title, type}, ...]
+      // Flatten junction joins → task._collections / task._tags
       const mapped = (data || []).map(task => ({
         ...task,
         _collections: (task.task_collections || [])
           .map(tc => tc.collections)
           .filter(Boolean),
+        _tags: (task.task_tags || [])
+          .map(tt => tt.tags)
+          .filter(Boolean),
       }));
       // Remove raw junction data
-      mapped.forEach(t => delete t.task_collections);
+      mapped.forEach(t => { delete t.task_collections; delete t.task_tags; });
       setTasks(mapped);
     } catch (err) {
       logger.error('[useUserTasks] fetch exception:', err);
@@ -172,21 +157,20 @@ export function useUserTasks() {
   const spawnRecurringTask = useCallback(async (task) => {
     if (!task?.recurrence_rule || !isAuth) return false;
 
-    const rule = task.recurrence_rule;
-    const today = todayStr();
-    let nextDate;
+    // Chống sinh trùng: tích/bỏ tích/tích lại nhanh có thể gọi hàm này nhiều
+    // lần cho cùng 1 task — nếu đã có occurrence tiếp theo rồi thì thôi.
+    const { data: existingChild } = await supabase
+      .from('user_tasks')
+      .select('id')
+      .eq('recurrence_parent_id', task.id)
+      .maybeSingle();
+    if (existingChild?.id) return true;
 
-    if (rule.type === 'interval') {
-      nextDate = addDays(today, rule.days);
-    } else if (rule.type === 'weekly') {
-      nextDate = nextWeekday(rule.weekday);
-    } else if (rule.type === 'monthly') {
-      nextDate = nextMonthDay(rule.day);
-    }
+    const nextDate = computeNextDueDate(task.recurrence_rule, todayStr());
 
     if (!nextDate) {
       logger.error(
-        `[useUserTasks] spawnRecurring: recurrence_rule.type không xác định — task "${task.title}" (rule.type="${rule.type}") không tạo được occurrence tiếp theo, sẽ biến mất khỏi danh sách lặp lại.`
+        `[useUserTasks] spawnRecurring: recurrence_rule.type không xác định — task "${task.title}" (rule.type="${task.recurrence_rule.type}") không tạo được occurrence tiếp theo, sẽ biến mất khỏi danh sách lặp lại.`
       );
       return false;
     }
@@ -196,7 +180,7 @@ export function useUserTasks() {
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const { error } = await supabase.from('user_tasks').insert({
+        const { data: inserted, error } = await supabase.from('user_tasks').insert({
           user_id: userId,
           title: task.title,
           description: task.description,
@@ -204,11 +188,30 @@ export function useUserTasks() {
           due_time: task.due_time,
           priority: task.priority || 0,
           recurrence_rule: task.recurrence_rule, // clone rule for chain
+          recurrence_parent_id: task.id,
           completed: false,
           notified: false,
-        });
+        }).select('id').single();
 
-        if (!error) return true; // Success
+        if (!error) {
+          // Copy tag + link KB sang occurrence mới (best-effort — task chính đã
+          // tạo thành công nên không rollback nếu bước copy này lỗi, chỉ log warn)
+          if (inserted?.id) {
+            if ((task._tags || []).length > 0) {
+              const { error: tagError } = await supabase.from('task_tags').insert(
+                task._tags.map(tag => ({ task_id: inserted.id, tag_id: tag.id }))
+              );
+              if (tagError) logger.warn('[useUserTasks] spawnRecurring: copy tags failed:', tagError.message);
+            }
+            if ((task._collections || []).length > 0) {
+              const { error: collError } = await supabase.from('task_collections').insert(
+                task._collections.map(c => ({ task_id: inserted.id, collection_id: c.id }))
+              );
+              if (collError) logger.warn('[useUserTasks] spawnRecurring: copy KB links failed:', collError.message);
+            }
+          }
+          return true; // Success
+        }
 
         logger.warn(
           `[useUserTasks] spawnRecurring attempt ${attempt + 1}/${MAX_RETRIES + 1} failed:`,
@@ -227,14 +230,15 @@ export function useUserTasks() {
       }
     }
 
-    // All retries exhausted — structured warning for debugging
+    // All retries exhausted — chuỗi lặp chết âm thầm nếu không báo cho user
     logger.error(
       `[useUserTasks] RECURRING TASK FAILED after ${MAX_RETRIES + 1} attempts.`,
       `Task: "${task.title}" → Next due: ${nextDate}.`,
       'User should manually create the next occurrence.'
     );
+    showToast(UI_STRINGS.toast.recurrenceSpawnFailed, { icon: '⚠️' });
     return false;
-  }, [isAuth, userId]);
+  }, [isAuth, userId, showToast]);
 
   // ── Complete task ──────────────────────────────────────
   const completeTask = useCallback(async (taskId) => {
@@ -277,14 +281,51 @@ export function useUserTasks() {
   }, [isAuth, userId, tasks, spawnRecurringTask]);
 
   // ── Delete task ────────────────────────────────────────
+  // Must delete via Supabase regardless of whether the task is in local `tasks`
+  // state — e.g. an old completed task fetched via getCompletedTasksRange for
+  // the calendar/history views never enters `tasks`, so gating the API call on
+  // `backup` (as before) silently no-op'd the delete for every such task.
+  //
+  // Quy tắc xoá task lặp (recurrence_parent_id):
+  // - Task GỐC (recurrence_parent_id rỗng) → chỉ xoá đúng nó, KHÔNG cascade.
+  // - Task KHÔNG PHẢI gốc → xoá nó + toàn bộ hậu duệ phía sau.
+  // `ON DELETE CASCADE` của Postgres lan truyền vô điều kiện nên KHÔNG tự làm
+  // được rule bất đối xứng này — task gốc phải được "cắt dây" con trước khi xoá
+  // để CASCADE không bị kích hoạt xuống hậu duệ.
   const deleteTask = useCallback(async (taskId) => {
-    const backup = tasks.find(t => t.id === taskId);
+    // Best-effort dựa trên state cục bộ hiện có (có thể thiếu — vd 1 task lịch sử
+    // chưa từng vào `tasks` — không sao, DB call bên dưới vẫn xử lý đúng dù state
+    // cục bộ không đầy đủ).
+    const localIds = resolveDeletionIds(tasks, taskId);
+    const backups = tasks.filter(t => localIds.includes(t.id));
 
     // Optimistic
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+    setTasks(prev => prev.filter(t => !localIds.includes(t.id)));
 
-    if (isAuth && backup) {
+    if (isAuth) {
       try {
+        const { data: current, error: fetchError } = await supabase
+          .from('user_tasks')
+          .select('recurrence_parent_id')
+          .eq('id', taskId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (fetchError) {
+          logger.warn('[useUserTasks] delete: không đọc được recurrence_parent_id, xoá thẳng:', fetchError.message);
+        } else if (!current?.recurrence_parent_id) {
+          // Task GỐC — cắt dây con trực tiếp trước để CASCADE không lan xuống
+          // hậu duệ khi xoá row gốc bên dưới.
+          const { error: detachError } = await supabase
+            .from('user_tasks')
+            .update({ recurrence_parent_id: null })
+            .eq('recurrence_parent_id', taskId);
+          if (detachError) {
+            logger.error('[useUserTasks] delete: detach child failed:', detachError.message);
+          }
+        }
+        // Task KHÔNG PHẢI gốc → không detach, xoá thẳng để CASCADE tự lo hậu duệ.
+
         const { error } = await supabase
           .from('user_tasks')
           .delete()
@@ -293,16 +334,24 @@ export function useUserTasks() {
 
         if (error) {
           logger.error('[useUserTasks] delete error:', error.message);
-          setTasks(prev => [...prev, backup]);
+          if (backups.length) setTasks(prev => [...prev, ...backups]);
+          return false;
         }
       } catch (err) {
         logger.error('[useUserTasks] delete exception:', err);
-        setTasks(prev => [...prev, backup]);
+        if (backups.length) setTasks(prev => [...prev, ...backups]);
+        return false;
       }
     }
-  }, [isAuth, userId, tasks]);
+    showToast(UI_STRINGS.toast.taskDeleted);
+    return true;
+  }, [isAuth, userId, tasks, showToast]);
 
   // ── Uncomplete task (revert to pending) ───────────────
+  // Bỏ tích 1 task lặp lại → xoá luôn occurrence nó đã sinh ra (nếu có), tránh
+  // trùng khi user tích/bỏ tích/tích lại. Occurrence đó luôn KHÔNG PHẢI gốc
+  // (recurrence_parent_id = taskId) nên xoá thẳng, để CASCADE tự lo hậu duệ xa
+  // hơn nếu chính occurrence đó cũng đã hoàn thành và sinh tiếp.
   const uncompleteTask = useCallback(async (taskId) => {
     const backup = tasks.find(t => t.id === taskId);
 
@@ -322,13 +371,41 @@ export function useUserTasks() {
         if (error) {
           logger.error('[useUserTasks] uncomplete error:', error.message);
           if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
+          return;
+        }
+
+        const { data: child, error: findError } = await supabase
+          .from('user_tasks')
+          .select('id')
+          .eq('recurrence_parent_id', taskId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (findError) {
+          logger.warn('[useUserTasks] uncomplete: tìm task lặp con thất bại:', findError.message);
+        } else if (child?.id) {
+          const { error: delError } = await supabase
+            .from('user_tasks')
+            .delete()
+            .eq('id', child.id)
+            .eq('user_id', userId);
+
+          if (delError) {
+            logger.warn('[useUserTasks] uncomplete: xoá task lặp con thất bại:', delError.message);
+          } else {
+            setTasks(prev => {
+              const ids = resolveDeletionIds(prev, child.id);
+              return prev.filter(t => !ids.includes(t.id));
+            });
+            showToast(UI_STRINGS.toast.recurrenceChildRemoved);
+          }
         }
       } catch (err) {
         logger.error('[useUserTasks] uncomplete exception:', err);
         if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
       }
     }
-  }, [isAuth, userId, tasks]);
+  }, [isAuth, userId, tasks, showToast]);
 
   // ── Update task (title / description / date / time) ───
   const updateTask = useCallback(async (taskId, changes) => {
@@ -480,6 +557,69 @@ export function useUserTasks() {
     }
   }, [isAuth, tasks]);
 
+  // ── Link tag to task (task_tags junction) ──────────────────
+  const linkTaskTag = useCallback(async (taskId, tag) => {
+    if (!isAuth) return false;
+
+    // Optimistic: add to _tags
+    setTasks(prev => prev.map(t => {
+      if (t.id !== taskId) return t;
+      const already = (t._tags || []).some(x => x.id === tag.id);
+      if (already) return t;
+      return { ...t, _tags: [...(t._tags || []), tag] };
+    }));
+
+    try {
+      const { error } = await supabase.from('task_tags').insert({ task_id: taskId, tag_id: tag.id });
+
+      if (error) {
+        logger.error('[useUserTasks] linkTaskTag error:', error.message);
+        setTasks(prev => prev.map(t => {
+          if (t.id !== taskId) return t;
+          return { ...t, _tags: (t._tags || []).filter(x => x.id !== tag.id) };
+        }));
+        return false;
+      }
+      return true;
+    } catch (err) {
+      logger.error('[useUserTasks] linkTaskTag exception:', err);
+      return false;
+    }
+  }, [isAuth]);
+
+  // ── Unlink tag from task ────────────────────────────────────
+  const unlinkTaskTag = useCallback(async (taskId, tagId) => {
+    if (!isAuth) return false;
+
+    const backup = tasks.find(t => t.id === taskId)?._tags || [];
+
+    // Optimistic: remove from _tags
+    setTasks(prev => prev.map(t => {
+      if (t.id !== taskId) return t;
+      return { ...t, _tags: (t._tags || []).filter(x => x.id !== tagId) };
+    }));
+
+    try {
+      const { error } = await supabase.from('task_tags')
+        .delete()
+        .eq('task_id', taskId)
+        .eq('tag_id', tagId);
+
+      if (error) {
+        logger.error('[useUserTasks] unlinkTaskTag error:', error.message);
+        setTasks(prev => prev.map(t => {
+          if (t.id !== taskId) return t;
+          return { ...t, _tags: backup };
+        }));
+        return false;
+      }
+      return true;
+    } catch (err) {
+      logger.error('[useUserTasks] unlinkTaskTag exception:', err);
+      return false;
+    }
+  }, [isAuth, tasks]);
+
   // Derived: split pending vs completed today
   const pendingTasks = tasks.filter(t => !t.completed);
   const completedToday = tasks.filter(t => t.completed);
@@ -512,5 +652,7 @@ export function useUserTasks() {
     getCompletedTasksRange,
     linkCollection,
     unlinkCollection,
+    linkTaskTag,
+    unlinkTaskTag,
   };
 }

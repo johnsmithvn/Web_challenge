@@ -1,0 +1,20 @@
+{
+  "confirm": {
+    "defaults": {
+      "title": "Xác nhận",
+      "confirmLabel": "Xác nhận",
+      "cancelLabel": "Huỷ"
+    },
+    "deleteTask": {
+      "title": "Xoá nhiệm vụ?",
+      "message": "\"{name}\" sẽ bị xoá vĩnh viễn, không thể khôi phục.",
+      "confirmLabel": "Xoá",
+      "danger": true
+    }
+  },
+  "toast": {
+    "taskDeleted": "🗑️ Đã xoá nhiệm vụ",
+    "recurrenceChildRemoved": "🗑️ Đã xoá nhiệm vụ lặp lại vừa sinh (do bỏ tích)",
+    "recurrenceSpawnFailed": "⚠️ Không tạo được nhiệm vụ lặp lại tiếp theo — tạo tay nhé"
+  }
+}

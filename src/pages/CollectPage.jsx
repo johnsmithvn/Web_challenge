@@ -8,7 +8,7 @@ import { useTags } from '../hooks/useTags';
 import { useCollectionNotes } from '../hooks/useCollectionNotes';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
-import { useToast } from '../components/Toast';
+import { useToast } from '../contexts/ToastContext';
 import '../styles/collect.css';
 
 const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
@@ -922,7 +922,7 @@ export default function CollectPage() {
   const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag } = useTags();
   const notesHook = useCollectionNotes();
   const { confirm, ConfirmModal } = useConfirm();
-  const { showToast, Toast } = useToast();
+  const { showToast } = useToast();
 
   const [view, setView]         = useState('list');
   const [selected, setSelected] = useState(null);
@@ -1116,7 +1116,6 @@ export default function CollectPage() {
     return (
       <div className="kb-page kb-page--editor">
         {ConfirmModal}
-        {Toast}
         <EditorView
           initial={initialDraft}
           onSave={handleSave}
@@ -1140,7 +1139,6 @@ export default function CollectPage() {
     return (
       <div className="kb-page kb-page--reader">
         {ConfirmModal}
-        {Toast}
         <ReaderView
           item={selected}
           onEdit={() => openEditor(selected)}
@@ -1176,7 +1174,6 @@ export default function CollectPage() {
   return (
     <div className="kb-page">
       {ConfirmModal}
-      {Toast}
       {/* Header */}
       <div className="kb-header">
         <div>
