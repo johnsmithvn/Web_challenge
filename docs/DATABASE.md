@@ -1,14 +1,15 @@
 # DATABASE DESIGN — Life Hub (Personal Life OS)
 **Target:** Supabase (PostgreSQL)
-**Version:** v4.26.1
-**Updated:** 2026-07-28
+**Version:** v5.0.0
+**Updated:** 2026-08-02
 **Strategy:** Production-ready from day 1
-**Source of Truth:** **`data/schema_v4.24.0.sql`** — single consolidated schema (all migrations v4.4.0 → v4.24.0 folded in). Idempotent — run once on a fresh project.
+**Source of Truth:** **`data/schema_v4.24.0.sql`** — single consolidated schema (all migrations v4.4.0 → v4.31.0 folded in, bao gồm `data/RUNBOOK.sql`). Idempotent — run once on a fresh project.
 
-**Table count (verified against the `.sql` file):** **31 `CREATE TABLE`** = **27 active** + **4 archived** (`friendships`, `fitness_logs`, `knowledge_groups`, `collection_groups` — 2 nhóm sau mới archived v4.30.0, xem P2-7).
+**Table count (verified against the `.sql` file):** **30 `CREATE TABLE`** = **28 active** + **2 archived** (`friendships`, `fitness_logs` — an toàn để DROP). So với lần đếm trước (31 = 27 active + 4 archived): `knowledge_groups`/`collection_groups` đã **DROP hẳn** (v4.30.0/v5.0.0 — không còn `CREATE TABLE` cho 2 bảng này, chỉ còn `DROP TABLE IF EXISTS` cho DB cũ, nên -2 archived), `task_tags` (junction Task↔Tags, v4.28.0) mới thêm vào active (+1 active).
 `mood_logs` is NOT in this schema (dropped in v4.10.1, folded into the consolidated file).
-Every other doc that says 26 / 28 / 29 tables is stale — this line is the count.
-Lưu ý: `data/schema_v4.24.0.sql` (file snapshot) CHƯA phản ánh v4.30.0 — xem `data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql` cho thay đổi thật.
+Every other doc that says 26 / 28 / 29 / 31 tables is stale — this line is the count.
+`data/RUNBOOK.sql` vẫn giữ lại làm hồ sơ lịch sử SQL đã chạy trên DB thật (2026-08-02) — không cần
+chạy lại, `schema_v4.24.0.sql` giờ đã phản ánh đúng trạng thái cuối cùng cho fresh install.
 
 ---
 
@@ -63,7 +64,7 @@ Programs ──► program_habits   (template library, system + user)
 > column definitions, RLS policies, triggers, and indexes. `schema_v4.4.0.sql` and the per-version
 > `migration_*.sql` files no longer exist — they were folded into the consolidated file (history in git).
 
-### Table Inventory (27 active)
+### Table Inventory (28 active)
 
 | # | Table | Purpose | Key constraints |
 |---|-------|---------|-----------------|
@@ -80,23 +81,23 @@ Programs ──► program_habits   (template library, system + user)
 | 11 | `program_habits` | Template habit definitions | FK → programs |
 | 12 | `user_journeys` | Journey runs | status: active/completed/extended/archived |
 | 13 | `journey_habits` | Snapshot of habits per run | FK → user_journeys, FK → habits |
-| 14 | `user_tasks` | Personal to-do items | priority SMALLINT, recurrence_rule JSONB, `recurrence_parent_id` UUID self-FK ON DELETE CASCADE (v4.31.0 — link "task này được sinh ra TỪ task nào", khác cột `parent_id` subtask đang có kế hoạch riêng) |
+| 14 | `user_tasks` | Personal to-do items | priority SMALLINT, recurrence_rule JSONB, `recurrence_parent_id` UUID self-FK ON DELETE CASCADE (v4.31.0 — link "task này được sinh ra TỪ task nào", khác cột `parent_id` subtask đang có kế hoạch riêng), `updated_at` TIMESTAMPTZ + trigger `user_tasks_updated_at` tái dùng hàm chung `update_updated_at()` (v5.0.0; backfill = `created_at` cho task cũ) |
 | 15 | `task_collections` | Junction: Task ↔ KB (M:N) | Composite PK(task_id, collection_id), CASCADE |
 | 16 | `collections` | Inbox + Knowledge Base | type CHECK (8, **sửa v4.28.0**): `inbox`, `note`, `quote`, `learn`, `idea`, `ai`, `entertainment`, `podcast`. ⚠️ Trước v4.28.0 CHECK có `emotion` (không tồn tại trong `src/`) và **thiếu `podcast`** (có trong `knowledge.json`) → classify sang Podcast fail constraint |
 | 17 | `expenses` | Daily spending log | amount VNĐ, category, note |
 | 18 | `subscriptions` | Recurring services | cycle, next_due, auto-advance |
-| 19 | `activity_logs` | Append-only audit trail | action + label + amount + meta JSONB |
+| 19 | `activity_logs` | Heatmap Life Log + lịch sử thay đổi & ghi chú của Task | **Dựng lại ở v5.0.0** (`DROP`+`CREATE`, dữ liệu cũ mất theo chủ ý): `task_id` UUID FK → `user_tasks` ON DELETE CASCADE (NULL = sự kiện rời rạc), `action`, `field`, `old_value`, `new_value`, `note`. Bỏ `label`/`amount`/`meta` (không nơi nào đọc; tiền/XP đã có nguồn thật ở `expenses`/`subscriptions`/`xp_logs`). 4 policy: SELECT/INSERT/DELETE own + UPDATE chỉ dòng `action='note'` kèm `GRANT UPDATE (note)` cấp cột → dòng field-diff bất biến. Index partial `idx_activity_logs_heatmap` khớp đúng filter `field IS NULL AND action <> 'note'` |
 | 20 | `intentions` | Incubator (someday-maybe) | status: incubating/deferred/executed/abandoned |
 | 21 | `intention_logs` | Incubator audit trail | FK → intentions |
-| 22 | `tags` | Central tag system | UNIQUE(user_id, name). ⚠️ Nếu đã chạy Phase 1 của `migration_v4.30.0_merge_knowledge_groups_into_tags.sql`, DB thật hiện có thêm 2 cột `emoji`/`description` — không ai đọc/ghi nữa (feature "Nhóm" đã bỏ khỏi UI), chờ Phase 2 `DROP COLUMN` |
+| 22 | `tags` | Central tag system | UNIQUE(user_id, name). Cột `emoji`/`description` (thêm tạm ở RUNBOOK.sql Phần 2) đã **DROP lại** ở Phần 3, xác nhận 2026-08-02 — feature "Nhóm" bỏ hẳn khỏi UI, 2 cột này không còn ai đọc/ghi |
 | 23 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
 | 24 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
 | 25 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
 | 25b | `task_tags` | Junction: Task ↔ Tags | **v4.28.0.** Composite PK(task_id, tag_id), CASCADE. RLS kiểm ownership **cả 2 phía**. Chỉ index `tag_id` (task_id đã là cột dẫn đầu của PK) |
 | 28 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
 | 29 | `inspirational_quotes` | User + system quotes | FK → profiles, `is_active` toggle, `audio_url` optional |
-| — | `knowledge_groups` | **[ARCHIVED v4.30.0]** KB folder/group metadata | Quyết định P2-7 (2026-08-01): trùng việc với `tags`. Ban đầu định gộp hiển thị (tag có emoji = "nhóm"), nhưng chốt cuối là **bỏ hẳn tính năng Nhóm khỏi UI**. Data đã copy sang `tags`/`collection_tags` (Phase 1) trước khi quyết định đổi — bài viết không mất liên kết, chỉ mất hiển thị folder. Frontend không còn dùng (`useKnowledgeGroups.js` đã xoá). Table còn tồn tại tới khi chạy Phase 2 (`DROP TABLE`, breaking, chưa chạy). |
-| — | `collection_groups` | **[ARCHIVED v4.30.0]** Junction: KB ↔ Groups (M:N) | Cùng lý do với `knowledge_groups` ở trên. |
+| — | `knowledge_groups` | **[DROPPED v4.31.0, 2026-08-02]** KB folder/group metadata | Quyết định P2-7 (2026-08-01): trùng việc với `tags`. Ban đầu định gộp hiển thị (tag có emoji = "nhóm"), nhưng chốt cuối là **bỏ hẳn tính năng Nhóm khỏi UI**. Data đã copy sang `tags`/`collection_tags` (Phase 1) trước khi drop — bài viết không mất liên kết, chỉ mất hiển thị folder. Frontend không còn dùng (`useKnowledgeGroups.js` đã xoá). **Bảng đã DROP** qua RUNBOOK.sql Phần 3, xác nhận `information_schema.tables` 0 dòng. |
+| — | `collection_groups` | **[DROPPED v4.31.0, 2026-08-02]** Junction: KB ↔ Groups (M:N) | Cùng lý do với `knowledge_groups` ở trên. |
 | — | `fitness_logs` | **[ARCHIVED v4.26.0]** Workout sessions | `session_name`, `duration_min`, `energy`. Frontend code deleted v4.26.0 (recoverable from git history). Table still exists in production DB, no active hook or page uses it. Safe to DROP when ready. |
 | — | `friendships` | **[ARCHIVED v3.0.0]** Friend requests | Frontend code deleted v4.25.0 (was `src/_archived/`, recoverable from git history). Table exists in production DB but is not used by any active hook or page. Safe to DROP when ready. |
 
@@ -112,7 +113,9 @@ Programs ──► program_habits   (template library, system + user)
 
 Nhìn có vẻ dư (N loại → N bảng), nhưng **đó là giá của referential integrity**: mỗi junction có `REFERENCES ... ON DELETE CASCADE` cả 2 phía, nên xoá entity thì link tự biến mất.
 
-**Cố ý KHÔNG dùng** `taggables(tag_id, entity_type, entity_id)` polymorphic: `entity_id` không thể có FK → xoá entity không xoá link → **rác vĩnh viễn**. Đây đúng là bệnh của `activity_logs` (row `fitness_done` treo mãi sau khi feature bị xoá ở v4.26.0).
+**Cố ý KHÔNG dùng** `taggables(tag_id, entity_type, entity_id)` polymorphic: `entity_id` không thể có FK → xoá entity không xoá link → **rác vĩnh viễn**.
+
+> **v5.0.0:** `activity_logs` từng là ví dụ điển hình của bệnh này (row `fitness_done` treo mãi sau khi feature bị xoá ở v4.26.0). Khi dựng lại bảng, đã **bỏ hẳn hướng polymorphic** (`entity_type`/`entity_id`) để dùng FK thật `task_id → user_tasks(id) ON DELETE CASCADE`. Đánh đổi đã chốt: DB tự dọn, không bao giờ có dòng mồ côi — nhưng xoá 1 task là mất luôn lịch sử + ghi chú của nó, và làm tụt heatmap của những ngày cũ.
 
 Nguyên tắc: **N junction để GHI (giữ FK), 1 view để ĐỌC (unified filter).**
 
@@ -120,8 +123,8 @@ Nguyên tắc: **N junction để GHI (giữ FK), 1 view để ĐỌC (unified f
 
 | Table | Column | Status | Replacement |
 |-------|--------|--------|-------------|
-| `user_tasks` | `collection_id` | **DEPRECATED v4.5.0 → code ngừng ghi v4.28.0, DROP ở `migration_v5.0.0`** | `task_collections` junction (M:N). v4.28.0 đã bỏ tham số `collectionId` khỏi `addTask` và chuyển `CollectPage.onCreateTask` sang `linkCollection()`. **Trước v4.28.0 link tạo từ Knowledge coi như mất** vì cột 1:1 không được đọc ở đâu. |
-| `collections` | `resolved`, `course_name`, `duration_min`, `reviewed_at`, `priority` | **CỘT CHẾT — DROP ở `migration_v5.0.0`** | Không cột nào được đọc/render (grep 0 hit trong `useCollections`/`CollectPage`/`InboxPage`/`ArticleCard`). `priority` chỉ được passthrough lúc INSERT — v4.28.0 đã bỏ. Lưu ý `collections.priority` là `TEXT`, khác hẳn `user_tasks.priority` (`SMALLINT`) dù trùng tên. |
+| `user_tasks` | `collection_id` | **DEPRECATED v4.5.0 → code ngừng ghi v4.28.0 → xác nhận KHÔNG CÒN TỒN TẠI trên DB 2026-08-02** (`information_schema.columns` trả 0 dòng) | `task_collections` junction (M:N). v4.28.0 đã bỏ tham số `collectionId` khỏi `addTask` và chuyển `CollectPage.onCreateTask` sang `linkCollection()`. **Trước v4.28.0 link tạo từ Knowledge coi như mất** vì cột 1:1 không được đọc ở đâu. |
+| `collections` | `resolved`, `course_name`, `duration_min`, `reviewed_at`, `priority` | **CỘT CHẾT — xác nhận KHÔNG CÒN TỒN TẠI trên DB 2026-08-02** (`information_schema.columns` trả 0 dòng, cả 5 cột) | Không cột nào được đọc/render (grep 0 hit trong `useCollections`/`CollectPage`/`InboxPage`/`ArticleCard`). `priority` chỉ được passthrough lúc INSERT — v4.28.0 đã bỏ. Lưu ý `collections.priority` là `TEXT`, khác hẳn `user_tasks.priority` (`SMALLINT`) dù trùng tên. |
 | `user_tasks` | `energy_level`, `duration_est` | **DROPPED v4.9.0** | Replaced by `priority SMALLINT` (0=None … 5=Urgent). The schema file explicitly `DROP COLUMN IF EXISTS` both. |
 | `collections` | `tags` (TEXT[]) | **GONE v4.1.0** | Use `collection_tags` junction. Not created by `schema_v4.24.0.sql` at all — a fresh install has no such column. Docs claiming it is "kept for backward compat" are stale. |
 
@@ -215,7 +218,8 @@ On first login (one-time per data type):
 
 | File | Purpose |
 |------|---------|
-| **`data/schema_v4.24.0.sql`** | **Single source of truth** — all 31 tables + RLS + indexes + triggers + RPC functions (login_email/username_exists/email_exists/get_leaderboard) + seed 5 programs. Idempotent. |
+| **`data/schema_v4.24.0.sql`** | **Single source of truth** — all 30 tables + RLS + indexes + triggers + RPC functions (login_email/username_exists/email_exists/get_leaderboard) + seed 5 programs. Idempotent. ⚠️ **CHƯA gộp v5.0.0** — xem dòng dưới |
+| `data/migration_v5.0.0_activity_logs_v2.sql` | `user_tasks.updated_at` + trigger (an toàn, idempotent) & dựng lại `activity_logs` schema v2 (**BREAKING, chỉ chạy 1 lần**). Chưa hợp nhất vào master schema — fresh install phải chạy master rồi chạy tiếp file này |
 | `data/reset_user_data.sql` | **Reset script** — DELETE all user data, keep auth accounts |
 
 ## Supabase Setup Checklist

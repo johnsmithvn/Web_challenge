@@ -890,6 +890,47 @@ is introduced.
   green-alpha disc holding `✓`, a `1.05rem/700` display title, and a
   `0.82rem --text-muted` hint capped at `30rem`.
 
+### Task Detail Modal — `.task-detail-modal` / `.td-*` (`task-detail.css`)
+
+Added v5.0.0. Read-only task detail with two tabs (change history / personal
+notes). Built **on `GenericModal`**, not a fourth modal system — only two
+overrides are needed.
+
+- **One scroll container.** `.generic-modal` puts `overflow-y: auto` on the
+  panel, so the header scrolls away once the history is long. `.task-detail-modal`
+  flips to `display: flex; flex-direction: column; overflow: hidden;
+  max-height: 88vh` and moves the scroll to `.generic-modal__body`
+  (`flex: 1; min-height: 0; overflow-y: auto`) — the same recipe
+  `.incubator-detail` already uses. Nested scroll areas are deliberately
+  avoided: one scrollbar, not two.
+- **Tabs reuse `.tasks-viewbar__tab`** verbatim — same pill, same
+  `rgba(139,92,246,.18)` active tint as the Danh sách/Lịch switcher directly
+  above it on the page. Zero new tab CSS; `role="tablist"` + `aria-selected`
+  carried over. `.td-panel` holds `min-height: 180px` so the frame does not
+  jump when the two tabs differ in row count.
+- **`.td-row`** — one history line: a `22px` `--radius-full` icon disc
+  (`--bg-card` on `--bg-glass-border`), a flexible body, and a delete button.
+  The old→new pair is `.td-val--old` (`--text-muted`, `line-through`, `--bg-card`)
+  → `.td-arrow` → `.td-val--new` (purple-alpha `0.12` fill on `0.22` border),
+  both `overflow-wrap: anywhere` so a pasted URL wraps instead of widening the
+  dialog. Values over 80 characters truncate to a `.td-more` toggle.
+- **`.td-del` never hover-reveals.** It sits at `opacity: 0.5` permanently —
+  touch has no hover, and a control that only appears on hover is a control
+  that does not exist on a phone. Below 520px it grows to a 44px target.
+- **`.td-grid`** — `96px 1fr` label/value grid at `0.78rem`. Rows whose value is
+  `undefined` are not rendered at all rather than showing `—`: a task opened
+  from the calendar carries only five columns, and an em-dash there would state
+  something false.
+- **Bottom sheet below 520px** — the same breakpoint `.task-actions--mobile`
+  and `.dp-popover` already use. Reached with
+  `.generic-modal-backdrop:has(.task-detail-modal)` so `GenericModal` (shared by
+  six other callers) needs no new prop; browsers without `:has()` keep the
+  centred dialog — degraded, not broken.
+- Four raw white-alpha surfaces (`.td-row` border, `.td-note`, `.td-composer`
+  border, `.td-textarea`) each carry a `[data-theme="light"]` override, plus
+  `.td-val--new` which re-tints purple→indigo. Everything else rides tokens
+  that already invert.
+
 ### Calendar task mode — `.cal-cell--tasks` / `.cal-chip` (`calendar.css`)
 
 `MonthCalendar` runs in two modes. Passing `habitData` keeps the original

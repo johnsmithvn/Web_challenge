@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useXpStore, XP_REWARDS } from '../hooks/useXpStore';
 import { useActivityLog } from '../hooks/useActivityLog';
+import { ACTIONS } from '../utils/taskFields';
 
 import '../styles/daily.css';
 import ALL_CHALLENGES from '../data/challenges.json';
@@ -55,7 +56,7 @@ export default function DailyChallenge({ streak = 0 }) {
         setShowXpPop(true);
         setTimeout(() => setShowXpPop(false), 3000);
       }
-      logActivity('challenge_done', challenge.title, XP_REWARDS.daily_challenge, { type: challenge.type });
+      logActivity(ACTIONS.CHALLENGE_DONE);
     } else {
       localStorage.removeItem(storageKey);
       setDone(false);

@@ -7,21 +7,14 @@ import { useTags } from '../hooks/useTags';
 import LinkKBModal from './LinkKBModal';
 import DatePickerPopover from './DatePickerPopover';
 import TagPicker from './TagPicker';
+import TaskDetailModal from './TaskDetailModal';
 import { useConfirm } from './ConfirmModal';
 import { toDateStr } from '../utils/dateUtils';
+// v5.0.0: PRIORITY_OPTIONS/WEEKDAYS dời sang utils/taskFields để TaskDetailModal
+// dùng chung mà không phải import ngược file này (vòng tròn import).
+import { PRIORITY_OPTIONS, WEEKDAYS } from '../utils/taskFields';
 import UI_STRINGS from '../data/ui-strings.json';
 import '../styles/tasks.css';
-
-const PRIORITY_OPTIONS = [
-  { value: 0, label: 'Không', icon: '➖', color: 'var(--text-muted)' },
-  { value: 1, label: 'Rất thấp', icon: '⬇️', color: '#94a3b8' },
-  { value: 2, label: 'Thấp', icon: '🔽', color: '#60a5fa' },
-  { value: 3, label: 'Trung bình', icon: '▶️', color: '#eab308' },
-  { value: 4, label: 'Cao', icon: '🔼', color: '#f97316' },
-  { value: 5, label: 'Khẩn cấp', icon: '⚡', color: '#ef4444' },
-];
-
-const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
 export default function TaskListSection() {
   const { user } = useAuth();
@@ -67,8 +60,10 @@ export default function TaskListSection() {
   const [editRecWeekday, setEditRecWeekday] = useState(1);
   const [editRecMonthDay, setEditRecMonthDay] = useState(1);
 
-  const [expandedTask, setExpandedTask] = useState(null);
   const [showFuture, setShowFuture]     = useState(false);
+  // v5.0.0: thay cơ chế expand ▸/▾ mô tả trên card — Detail hiện full mô tả +
+  // lịch sử + ghi chú, giữ cả hai thì 1 click có 2 nghĩa.
+  const [detailTaskId, setDetailTaskId] = useState(null);
 
   // ── Completed section (collapsed by default, filtered by date) ──
   const [showCompleted, setShowCompleted]   = useState(false);
@@ -76,7 +71,6 @@ export default function TaskListSection() {
   const [completedList, setCompletedList]   = useState([]);
   const [completedLoading, setCompletedLoading] = useState(false);
   const [showCompletedDP, setShowCompletedDP]   = useState(false);
-  const [expandedCompletedId, setExpandedCompletedId] = useState(null);
   const [showAddDP, setShowAddDP]       = useState(false);
   const [showEditDP, setShowEditDP]     = useState(false);
   const [quickDateTaskId, setQuickDateTaskId] = useState(null);
@@ -132,6 +126,16 @@ export default function TaskListSection() {
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [overflowTaskId]);
+
+  /**
+   * Mở Detail. Guard cho mobile: cột nội dung nằm NGOÀI `.task-actions--mobile`,
+   * nên thao tác "mở menu ⋯ rồi bấm ra ngoài để đóng" sẽ vô tình mở Detail.
+   * Menu đang mở → cú bấm đó chỉ đóng menu, không mở gì thêm.
+   */
+  const openDetail = useCallback((taskId) => {
+    if (overflowTaskId) { setOverflowTaskId(null); return; }
+    setDetailTaskId(taskId);
   }, [overflowTaskId]);
 
   /* ── Add ── */
@@ -252,7 +256,6 @@ export default function TaskListSection() {
     const { showRollover = false } = options;
     const overdue = isOverdue(task);
     const isEditing = editId === task.id;
-    const isExpanded = expandedTask === task.id;
 
     // Dải màu priority bên trái — quét mắt thấy ngay cái nào gấp.
     // Màu lấy từ PRIORITY_OPTIONS, không thêm token/class mới.
@@ -421,23 +424,20 @@ export default function TaskListSection() {
                 border: `2px solid ${overdue ? 'rgba(239,68,68,0.4)' : 'rgba(139,92,246,0.4)'}`,
               }} title="Hoàn thành" aria-label={`Hoàn thành: ${task.title}`} />
 
-            {/* Content */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)', cursor: task.description ? 'pointer' : 'default' }}
-                onClick={() => task.description && setExpandedTask(isExpanded ? null : task.id)}>
+            {/* Content — vùng mở Detail. Cố ý gắn onClick Ở ĐÂY chứ không phải
+                trên cả `.task-item`: đặt trên container thì checkbox, 4 nút
+                desktop, nút ⋯ và 4 item menu đều bubble lên, phải rắc
+                stopPropagation ~10 chỗ. Cột này chỉ có tiêu đề + hàng chip, và
+                chip 🔗 duy nhất có hành vi riêng thì đã stopPropagation sẵn. */}
+            <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+              role="button" tabIndex={0} title="Xem chi tiết"
+              onClick={() => openDetail(task.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(task.id); }
+              }}>
+              <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
                 {task.title}
-                {task.description && (
-                  <span style={{ fontSize: '0.72rem', marginLeft: '0.35rem', color: 'var(--text-muted)' }}>
-                    {isExpanded ? '▾' : '▸'}
-                  </span>
-                )}
               </div>
-
-              {isExpanded && task.description && (
-                <div className="task-desc-box">
-                  {task.description}
-                </div>
-              )}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.3rem', flexWrap: 'wrap' }}>
                 {task.due_date !== toDateStr() && (
@@ -546,6 +546,9 @@ export default function TaskListSection() {
 
                 {overflowTaskId === task.id && (
                   <div className="task-overflow-menu" onClick={(e) => e.stopPropagation()}>
+                    <button className="task-overflow-item" onClick={() => { setOverflowTaskId(null); setDetailTaskId(task.id); }}>
+                      📄 Chi tiết
+                    </button>
                     <button className="task-overflow-item" onClick={() => { setOverflowTaskId(null); setQuickDateTaskId(task.id); }}>
                       📅 Đổi ngày
                     </button>
@@ -834,21 +837,18 @@ export default function TaskListSection() {
                 {completedList.map(task => (
                   <div key={task.id} className="task-item" style={{ opacity: 0.85 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                        role="button" tabIndex={0} title="Xem chi tiết"
+                        onClick={() => setDetailTaskId(task.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailTaskId(task.id); }
+                        }}>
                         <div style={{
                           fontWeight: 600, fontSize: '0.86rem', color: 'var(--text-secondary)',
-                          textDecoration: 'line-through', cursor: task.description ? 'pointer' : 'default',
-                        }} onClick={() => task.description && setExpandedCompletedId(expandedCompletedId === task.id ? null : task.id)}>
+                          textDecoration: 'line-through',
+                        }}>
                           ✅ {task.title}
-                          {task.description && (
-                            <span style={{ fontSize: '0.72rem', marginLeft: '0.35rem', color: 'var(--text-muted)', textDecoration: 'none' }}>
-                              {expandedCompletedId === task.id ? '▾' : '▸'}
-                            </span>
-                          )}
                         </div>
-                        {expandedCompletedId === task.id && task.description && (
-                          <div className="task-desc-box">{task.description}</div>
-                        )}
                         {task.completed_at && (
                           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                             Xong lúc {new Date(task.completed_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
@@ -892,6 +892,25 @@ export default function TaskListSection() {
         </div>
       )}
     </div>
+
+      {/* Task Detail Modal — tìm trong CẢ pending lẫn danh sách đã hoàn thành,
+          vì task lịch sử (getCompletedTasksRange) không bao giờ vào `tasks`.
+          Task lịch sử chỉ có 5 cột nên lưới field tự ẩn hàng thiếu, không hiện
+          "—" sai sự thật. */}
+      {detailTaskId && (() => {
+        const task = [...todayTasks, ...overdueTasks, ...futureTasks, ...completedList]
+          .find(t => t.id === detailTaskId);
+        if (!task) return null;
+        return (
+          <TaskDetailModal
+            task={task}
+            onClose={() => setDetailTaskId(null)}
+            onEdit={startEdit}
+            onComplete={completeTask}
+            onDelete={task.completed ? handleDeleteCompleted : handleDeleteTask}
+          />
+        );
+      })()}
 
       {/* Link KB Modal */}
       {linkTaskId && (() => {

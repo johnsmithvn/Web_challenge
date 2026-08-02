@@ -1,13 +1,13 @@
 {
   "name": "life-hub",
   "private": true,
-  "version": "4.30.0",
+  "version": "5.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node api/_lib/smoke.test.js && node src/utils/dateUtils.test.js && node src/utils/mediaUtils.test.js && node src/__tests__/recurrenceUtils.test.js",
+    "test": "node api/_lib/smoke.test.js && node src/utils/dateUtils.test.js && node src/utils/mediaUtils.test.js && node src/__tests__/recurrenceUtils.test.js && node src/__tests__/taskFields.test.js",
     "design:lint": "design.md lint DESIGN.md",
     "preview": "vite preview"
   },

@@ -1,0 +1,359 @@
+/**
+ * task-detail.css — Task Detail Modal (v5.0.0).
+ *
+ * Dựng trên GenericModal, không đẻ hệ modal thứ tư (DESIGN.md đã ghi nhận 3 hệ
+ * modal song song là nợ sẵn có). Chỉ 2 thứ phải đè lên GenericModal:
+ *   1. Một vùng cuộn duy nhất — mặc định `.generic-modal` đặt overflow-y trên
+ *      CẢ PANEL, nên header sẽ cuộn mất khi lịch sử dài. Đổi sang flex column +
+ *      overflow hidden ở panel, cuộn dồn vào `__body` (đúng công thức
+ *      `.incubator-detail` đang dùng).
+ *   2. Bottom sheet dưới 520px — cùng mốc mà `.task-actions--mobile` và
+ *      `.dp-popover` đang dùng, không đẻ breakpoint mới.
+ *
+ * Mọi màu lấy từ token global.css. Bốn bề mặt buộc phải dùng rgba thô đều có
+ * cặp override [data-theme="light"] ở cuối file — alpha trắng vô hình trên nền
+ * sáng, đúng bài học của `.task-item` / `.task-desc-box`.
+ */
+
+.task-detail-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 88vh;
+}
+
+.task-detail-modal .generic-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── Đầu: tick + tiêu đề ─────────────────────────────────────────────── */
+.td-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.td-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.td-title--done {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+/* ── Lưới field chỉ đọc ──────────────────────────────────────────────── */
+.td-grid {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  align-items: baseline;
+}
+
+.td-grid__label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.td-grid__value {
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.td-pill {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.td-pill--overdue {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  font-weight: 700;
+}
+
+.td-muted { color: var(--text-muted); }
+.td-desc--empty { font-style: italic; }
+
+/* ── Tab ─────────────────────────────────────────────────────────────── */
+/* Dùng lại nguyên .tasks-viewbar__tab của trang /tasks — cùng pill, cùng tint
+   tím, người dùng đã bấm nó hàng ngày ở thanh Danh sách/Lịch ngay phía trên. */
+.td-tabs {
+  margin-top: 0.35rem;
+  margin-bottom: 0.5rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--bg-glass-border);
+}
+
+/* min-height giữ khung đứng yên khi đổi tab (2 tab lệch số dòng) */
+.td-panel { min-height: 180px; }
+
+.td-loading {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+}
+
+.td-empty { padding: 1.5rem 1rem; }
+.td-empty__icon {
+  width: 44px;
+  height: 44px;
+  font-size: 1.25rem;
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.25);
+  color: var(--purple-light);
+}
+.td-empty__icon--note {
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.25);
+  color: var(--cyan-light);
+}
+
+/* ── Feed hoạt động ──────────────────────────────────────────────────── */
+.td-day {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 0.5rem 0 0.3rem;
+}
+
+.td-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.td-row:last-child { border-bottom: none; }
+
+.td-icon {
+  flex: 0 0 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  border: 1px solid var(--bg-glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+}
+
+.td-body { flex: 1; min-width: 0; }
+
+.td-line {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.td-vals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+  font-size: 0.76rem;
+}
+
+.td-val {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 0.05rem 0.35rem;
+  border-radius: var(--radius-sm);
+}
+
+.td-val--old {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  background: var(--bg-card);
+}
+
+.td-val--new {
+  color: var(--text-primary);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+}
+
+.td-arrow { color: var(--text-muted); }
+
+.td-more {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.7rem;
+  color: var(--purple-light);
+  cursor: pointer;
+}
+
+.td-time {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+/* Không hover-reveal: cảm ứng không có hover, nút ẩn = nút không tồn tại. */
+.td-del {
+  background: none;
+  border: none;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: var(--transition-base);
+}
+
+.td-del:hover { opacity: 1; color: var(--red); }
+
+/* ── Ghi chú ─────────────────────────────────────────────────────────── */
+.td-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.td-textarea {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  resize: vertical;
+  transition: var(--transition-base);
+}
+
+.td-textarea:focus {
+  outline: none;
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.td-composer__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.td-btn-add {
+  font-size: 0.78rem;
+  padding: 0.3rem 0.8rem;
+  color: var(--purple-light);
+}
+
+.td-note {
+  padding: 0.6rem 0.7rem;
+  margin-bottom: 0.45rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-md);
+}
+
+/* Ghi chú KHÔNG bị cắt — người viết muốn đọc lại nguyên văn, "Xem thêm" ở đây
+   là phiền chứ không gọn. */
+.td-note__content {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.td-note__foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
+.td-note__actions { display: flex; gap: 0.1rem; }
+
+/* ── Nút chân modal ──────────────────────────────────────────────────── */
+.td-btn {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.85rem;
+}
+
+.td-btn--danger {
+  color: var(--red);
+  margin-right: auto;   /* đẩy Xoá sang trái, tách khỏi cụm nút an toàn */
+}
+
+/* ── Light theme — 4 bề mặt alpha trắng vô hình trên nền sáng ────────── */
+[data-theme="light"] .td-row { border-bottom-color: rgba(0, 0, 0, 0.05); }
+
+[data-theme="light"] .td-note {
+  background: var(--bg-secondary);
+  border-color: rgba(99, 102, 241, 0.16);
+}
+
+[data-theme="light"] .td-composer { border-bottom-color: rgba(99, 102, 241, 0.12); }
+
+[data-theme="light"] .td-textarea {
+  background: var(--bg-secondary);
+  border-color: rgba(99, 102, 241, 0.22);
+}
+
+[data-theme="light"] .td-val--new {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.28);
+}
+
+/* ── Mobile: bottom sheet ────────────────────────────────────────────── */
+/* :has() để với ngược lên backdrop mà không phải thêm prop vào GenericModal
+   (component dùng chung ở 6 nơi khác). Trình duyệt không hỗ trợ :has() thì
+   modal nằm giữa màn như mọi GenericModal khác — hỏng êm, không vỡ layout. */
+@media (max-width: 520px) {
+  .generic-modal-backdrop:has(.task-detail-modal) {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .task-detail-modal {
+    max-width: 100%;
+    width: 100%;
+    max-height: 90vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Nhãn nằm trên giá trị — cột 96px quá chật trên màn hẹp */
+  .td-grid { grid-template-columns: 1fr; gap: 0.1rem; }
+  .td-grid__label { margin-top: 0.35rem; }
+
+  /* Vùng chạm ≥44px cho mọi nút nhỏ */
+  .td-del { padding: 0.6rem 0.7rem; font-size: 0.85rem; opacity: 0.8; }
+  .tasks-viewbar__tab { min-height: 44px; }
+  .generic-modal__footer .td-btn { flex: 1; justify-content: center; min-height: 44px; }
+  .td-btn--danger { margin-right: 0; }
+}

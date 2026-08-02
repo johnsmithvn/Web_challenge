@@ -1,15 +1,24 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- Life Hub — FULL CONSOLIDATED SCHEMA  v4.24.0
+-- Life Hub — FULL CONSOLIDATED SCHEMA  v4.31.0
 -- ════════════════════════════════════════════════════════════════════════════
 -- ✅ CHỈ CẦN CHẠY FILE NÀY 1 LẦN trên Supabase → SQL Editor (fresh install).
 -- Idempotent — an toàn chạy lại nhiều lần.
 --
--- File này GỘP toàn bộ: schema_v4.4.0 + các migration v4.4.1 → v4.24.0.
+-- File này GỘP toàn bộ: schema_v4.4.0 + các migration v4.4.1 → v4.31.0 (bao gồm
+-- data/RUNBOOK.sql — 2026-08-02 hợp nhất xong, RUNBOOK.sql vẫn giữ lại làm hồ
+-- sơ lịch sử SQL đã chạy trên DB thật, không cần chạy lại).
 -- Đã phản ánh trạng thái CUỐI CÙNG:
 --   • mood_logs đã bị gỡ (v4.10.1) — không còn trong schema này
 --   • user_tasks dùng `priority` (bỏ energy_level/duration_est) (v4.9.0)
---   • collections.type = 8 loại cuối (v4.14.0)
---   • thêm knowledge_groups / collection_groups / collection_notes (v4.11.0)
+--   • user_tasks.collection_id đã bỏ (v4.28.0 code, DROP v5.0.0) — dùng task_collections
+--   • user_tasks.recurrence_parent_id — chuỗi task lặp lại (v4.31.0)
+--   • collections.type = 8 loại cuối, có `podcast` (v4.14.0 + v4.28.0)
+--   • collections.status chuẩn hoá unread/read/archived (v5.0.0), bỏ 5 cột chết
+--     resolved/course_name/duration_min/reviewed_at/priority (v5.0.0)
+--   • task_tags junction + VIEW tagged_items (v4.28.0)
+--   • RLS 4 junction tag kiểm ownership CẢ HAI phía (v4.28.0 P0-2)
+--   • knowledge_groups / collection_groups đã DROP (v4.30.0/v5.0.0) — trùng việc
+--     với tags, xem git history nếu cần định nghĩa gốc. collection_notes vẫn giữ (v4.11.0)
 --   • thêm inspirational_quotes (v4.12.0)
 --   • profiles: chỉ chủ tài khoản đọc được hàng mình + 4 hàm RPC (v4.24.0 — vá rò email)
 --   • friendships: GIỮ LẠI nhưng đã archived/không dùng — an toàn để DROP nếu muốn
@@ -244,7 +253,7 @@ DROP POLICY IF EXISTS "friendships_own" ON friendships;
 CREATE POLICY "friendships_own" ON friendships FOR ALL
   USING (requester_id = auth.uid() OR addressee_id = auth.uid()) WITH CHECK (requester_id = auth.uid());
 
--- ── 15. user_tasks (v4.9.0: priority thay energy_level/duration_est) ─────────
+-- ── 15. user_tasks (v4.9.0: priority thay energy_level/duration_est; v4.31.0: recurrence_parent_id) ─
 CREATE TABLE IF NOT EXISTS user_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -252,17 +261,20 @@ CREATE TABLE IF NOT EXISTS user_tasks (
   due_date DATE NOT NULL, due_time TIME,
   priority SMALLINT NOT NULL DEFAULT 0,  -- 0=None,1=Lowest,2=Low,3=Medium,4=High,5=Urgent
   recurrence_rule JSONB,
-  collection_id UUID,
+  recurrence_parent_id UUID REFERENCES user_tasks(id) ON DELETE CASCADE,
   completed BOOLEAN NOT NULL DEFAULT false, completed_at TIMESTAMPTZ,
   notified BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW()
 );
--- Nâng cấp DB cũ (nếu chạy lại trên DB từng có energy_level/duration_est):
+-- Nâng cấp DB cũ (nếu chạy lại trên DB từng có energy_level/duration_est/collection_id):
 ALTER TABLE user_tasks DROP COLUMN IF EXISTS energy_level;
 ALTER TABLE user_tasks DROP COLUMN IF EXISTS duration_est;
+ALTER TABLE user_tasks DROP COLUMN IF EXISTS collection_id;
 ALTER TABLE user_tasks ADD COLUMN IF NOT EXISTS priority SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE user_tasks ADD COLUMN IF NOT EXISTS recurrence_parent_id UUID REFERENCES user_tasks(id) ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS idx_user_tasks_user_date ON user_tasks (user_id, due_date);
 CREATE INDEX IF NOT EXISTS idx_user_tasks_pending ON user_tasks (user_id, completed, due_date) WHERE completed=false;
 CREATE INDEX IF NOT EXISTS idx_user_tasks_recurring ON user_tasks (user_id) WHERE recurrence_rule IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_user_tasks_recurrence_parent ON user_tasks (recurrence_parent_id) WHERE recurrence_parent_id IS NOT NULL;
 ALTER TABLE user_tasks ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users manage own tasks" ON user_tasks;
 CREATE POLICY "Users manage own tasks" ON user_tasks FOR ALL
@@ -275,11 +287,16 @@ CREATE TABLE IF NOT EXISTS collections (
   type TEXT NOT NULL DEFAULT 'inbox', title TEXT NOT NULL,
   url TEXT, body TEXT DEFAULT '', body_text TEXT,
   word_count INT DEFAULT 0, content_format VARCHAR(20) DEFAULT 'markdown',
-  source TEXT, priority TEXT, status TEXT NOT NULL DEFAULT 'inbox',
-  resolved BOOLEAN DEFAULT false, course_name TEXT, duration_min INT,
-  reviewed_at TIMESTAMPTZ, snoozed_until DATE,
+  source TEXT, status TEXT NOT NULL DEFAULT 'unread',
+  snoozed_until DATE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Nâng cấp DB cũ (cột chết đã DROP ở migration v5.0.0 — data/RUNBOOK.sql Phần 3):
+ALTER TABLE collections DROP COLUMN IF EXISTS resolved;
+ALTER TABLE collections DROP COLUMN IF EXISTS course_name;
+ALTER TABLE collections DROP COLUMN IF EXISTS duration_min;
+ALTER TABLE collections DROP COLUMN IF EXISTS reviewed_at;
+ALTER TABLE collections DROP COLUMN IF EXISTS priority;
 CREATE OR REPLACE FUNCTION update_collections_updated_at()
 RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_collections_updated_at ON collections;
@@ -298,23 +315,22 @@ CREATE POLICY "collections_update_own" ON collections FOR UPDATE USING (user_id 
 DROP POLICY IF EXISTS "collections_delete_own" ON collections;
 CREATE POLICY "collections_delete_own" ON collections FOR DELETE USING (user_id = auth.uid());
 
--- collections.type — migrate dữ liệu cũ rồi áp CHECK 8 loại cuối (v4.4.1 + v4.14.0)
+-- collections.type — migrate dữ liệu cũ rồi áp CHECK 8 loại cuối (v4.4.1 + v4.14.0 + v4.28.0: podcast thay emotion)
 UPDATE collections SET type = 'idea'  WHERE type = 'want';
 UPDATE collections SET type = 'note'  WHERE type = 'link';
 UPDATE collections SET type = 'learn' WHERE type = 'experience';
 UPDATE collections SET type = 'learn' WHERE type = 'knowledge';
+UPDATE collections SET type = 'note'  WHERE type = 'emotion';
 ALTER TABLE collections DROP CONSTRAINT IF EXISTS chk_collections_type;
 ALTER TABLE collections ADD CONSTRAINT chk_collections_type
-  CHECK (type IN ('inbox','note','quote','learn','idea','ai','entertainment','emotion'));
+  CHECK (type IN ('inbox','note','quote','learn','idea','ai','entertainment','podcast'));
 
--- FK: user_tasks.collection_id → collections (deprecated, dùng task_collections)
-DO $$ BEGIN
-  ALTER TABLE user_tasks ADD CONSTRAINT fk_user_tasks_collection
-    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE SET NULL;
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-CREATE INDEX IF NOT EXISTS idx_user_tasks_collection_id ON user_tasks(collection_id) WHERE collection_id IS NOT NULL;
-COMMENT ON COLUMN user_tasks.collection_id IS 'DEPRECATED v4.5.0: use task_collections junction table';
+-- collections.status — chuẩn hoá còn unread/read/archived (v5.0.0, data/RUNBOOK.sql Phần 3)
+UPDATE collections SET status = 'unread' WHERE status = 'inbox' OR status IS NULL;
+ALTER TABLE collections DROP CONSTRAINT IF EXISTS chk_collections_status;
+ALTER TABLE collections ADD CONSTRAINT chk_collections_status
+  CHECK (status IN ('unread','read','archived'));
+ALTER TABLE collections ALTER COLUMN status SET DEFAULT 'unread';
 
 -- ── 17. task_collections (junction: user_tasks ↔ collections) ───────────────
 CREATE TABLE IF NOT EXISTS task_collections (
@@ -324,15 +340,18 @@ CREATE TABLE IF NOT EXISTS task_collections (
   PRIMARY KEY (task_id, collection_id)
 );
 ALTER TABLE task_collections ENABLE ROW LEVEL SECURITY;
+-- RLS kiểm ownership CẢ HAI phía (v4.28.0 P0-2 — trước chỉ kiểm 1 phía → ghi được rác cross-user)
 DROP POLICY IF EXISTS "task_collections_own" ON task_collections;
 CREATE POLICY "task_collections_own" ON task_collections FOR ALL
-  USING (EXISTS (SELECT 1 FROM user_tasks WHERE id = task_id AND user_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM user_tasks WHERE id = task_id AND user_id = auth.uid()));
+  USING (
+        EXISTS (SELECT 1 FROM user_tasks  WHERE id = task_id       AND user_id = auth.uid())
+    AND EXISTS (SELECT 1 FROM collections WHERE id = collection_id AND user_id = auth.uid())
+  )
+  WITH CHECK (
+        EXISTS (SELECT 1 FROM user_tasks  WHERE id = task_id       AND user_id = auth.uid())
+    AND EXISTS (SELECT 1 FROM collections WHERE id = collection_id AND user_id = auth.uid())
+  );
 CREATE INDEX IF NOT EXISTS idx_task_collections_coll ON task_collections(collection_id);
--- Di chuyển dữ liệu 1:1 cũ (nếu có) vào junction
-INSERT INTO task_collections (task_id, collection_id)
-SELECT id, collection_id FROM user_tasks WHERE collection_id IS NOT NULL
-ON CONFLICT DO NOTHING;
 
 -- ── 18. expenses ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS expenses (
@@ -418,19 +437,72 @@ CREATE TABLE IF NOT EXISTS subscription_tags (
 ALTER TABLE collection_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expense_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_tags ENABLE ROW LEVEL SECURITY;
+-- RLS kiểm ownership CẢ HAI phía (v4.28.0 P0-2 — trước chỉ kiểm 1 phía → ghi được rác cross-user)
 DROP POLICY IF EXISTS "collection_tags_own" ON collection_tags;
 CREATE POLICY "collection_tags_own" ON collection_tags FOR ALL
-  USING (EXISTS (SELECT 1 FROM collections WHERE id = collection_id AND user_id = auth.uid()));
+  USING (
+        EXISTS (SELECT 1 FROM collections WHERE id = collection_id AND user_id = auth.uid())
+    AND EXISTS (SELECT 1 FROM tags        WHERE id = tag_id        AND user_id = auth.uid())
+  )
+  WITH CHECK (
+        EXISTS (SELECT 1 FROM collections WHERE id = collection_id AND user_id = auth.uid())
+    AND EXISTS (SELECT 1 FROM tags        WHERE id = tag_id        AND user_id = auth.uid())
+  );
 DROP POLICY IF EXISTS "expense_tags_own" ON expense_tags;
 CREATE POLICY "expense_tags_own" ON expense_tags FOR ALL
-  USING (EXISTS (SELECT 1 FROM expenses WHERE id = expense_id AND user_id = auth.uid()));
+  USING (
+        EXISTS (SELECT 1 FROM expenses WHERE id = expense_id AND user_id = auth.uid())
+    AND EXISTS (SELECT 1 FROM tags     WHERE id = tag_id     AND user_id = auth.uid())
+  )
+  WITH CHECK (
+        EXISTS (SELECT 1 FROM expenses WHERE id = expense_id AND user_id = auth.uid())
+    AND EXISTS (SELECT 1 FROM tags     WHERE id = tag_id     AND user_id = auth.uid())
+  );
 DROP POLICY IF EXISTS "subscription_tags_own" ON subscription_tags;
 CREATE POLICY "subscription_tags_own" ON subscription_tags FOR ALL
-  USING (EXISTS (SELECT 1 FROM subscriptions WHERE id = subscription_id AND user_id = auth.uid()));
+  USING (
+        EXISTS (SELECT 1 FROM subscriptions WHERE id = subscription_id AND user_id = auth.uid())
+    AND EXISTS (SELECT 1 FROM tags          WHERE id = tag_id          AND user_id = auth.uid())
+  )
+  WITH CHECK (
+        EXISTS (SELECT 1 FROM subscriptions WHERE id = subscription_id AND user_id = auth.uid())
+    AND EXISTS (SELECT 1 FROM tags          WHERE id = tag_id          AND user_id = auth.uid())
+  );
 CREATE INDEX IF NOT EXISTS idx_collection_tags_coll ON collection_tags(collection_id);
 CREATE INDEX IF NOT EXISTS idx_collection_tags_tag ON collection_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_expense_tags_expense ON expense_tags(expense_id);
+CREATE INDEX IF NOT EXISTS idx_expense_tags_tag ON expense_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_subscription_tags_sub ON subscription_tags(subscription_id);
+CREATE INDEX IF NOT EXISTS idx_subscription_tags_tag ON subscription_tags(tag_id);
+
+-- ── 21b. task_tags (junction: user_tasks ↔ tags; v4.28.0 — Task lần đầu có tag) ──
+CREATE TABLE IF NOT EXISTS task_tags (
+  task_id UUID NOT NULL REFERENCES user_tasks(id) ON DELETE CASCADE,
+  tag_id  UUID NOT NULL REFERENCES tags(id)       ON DELETE CASCADE,
+  PRIMARY KEY (task_id, tag_id)
+);
+ALTER TABLE task_tags ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "task_tags_own" ON task_tags;
+CREATE POLICY "task_tags_own" ON task_tags FOR ALL
+  USING (
+        EXISTS (SELECT 1 FROM user_tasks WHERE id = task_id AND user_id = auth.uid())
+    AND EXISTS (SELECT 1 FROM tags       WHERE id = tag_id  AND user_id = auth.uid())
+  )
+  WITH CHECK (
+        EXISTS (SELECT 1 FROM user_tasks WHERE id = task_id AND user_id = auth.uid())
+    AND EXISTS (SELECT 1 FROM tags       WHERE id = tag_id  AND user_id = auth.uid())
+  );
+CREATE INDEX IF NOT EXISTS idx_task_tags_tag ON task_tags(tag_id);
+
+-- ── 21c. VIEW tagged_items — 1 mặt đọc hợp nhất cho "mọi thứ có tag X" (v4.28.0) ──
+-- WITH (security_invoker = true) bắt buộc: mặc định view chạy bằng quyền OWNER
+-- (postgres) và bỏ qua RLS của bảng dưới → leak data mọi user. Cần PostgreSQL >= 15.
+DROP VIEW IF EXISTS tagged_items;
+CREATE VIEW tagged_items WITH (security_invoker = true) AS
+      SELECT tag_id, 'collection'::text   AS kind, collection_id   AS item_id FROM collection_tags
+UNION ALL SELECT tag_id, 'task'::text,          task_id         FROM task_tags
+UNION ALL SELECT tag_id, 'expense'::text,       expense_id      FROM expense_tags
+UNION ALL SELECT tag_id, 'subscription'::text,  subscription_id FROM subscription_tags;
 
 -- ── 22. intentions + intention_logs (Incubator; description từ v4.7.2) ───────
 CREATE TABLE IF NOT EXISTS intentions (
@@ -475,32 +547,15 @@ CREATE POLICY "fitness_own" ON fitness_logs FOR ALL
   USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 CREATE INDEX IF NOT EXISTS idx_fitness_user_date ON fitness_logs(user_id, date DESC);
 
--- ── 24. knowledge_groups + collection_groups (v4.11.0) ──────────────────────
-CREATE TABLE IF NOT EXISTS knowledge_groups (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL, emoji TEXT DEFAULT '📁', description TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_kgroups_user ON knowledge_groups(user_id);
-ALTER TABLE knowledge_groups ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "kgroups_own" ON knowledge_groups;
-CREATE POLICY "kgroups_own" ON knowledge_groups FOR ALL
-  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
-
-CREATE TABLE IF NOT EXISTS collection_groups (
-  collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
-  group_id      UUID NOT NULL REFERENCES knowledge_groups(id) ON DELETE CASCADE,
-  sort_order    SMALLINT DEFAULT 0,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (collection_id, group_id)
-);
-CREATE INDEX IF NOT EXISTS idx_cgroups_group ON collection_groups(group_id);
-ALTER TABLE collection_groups ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "cgroups_own" ON collection_groups;
-CREATE POLICY "cgroups_own" ON collection_groups FOR ALL
-  USING (EXISTS (SELECT 1 FROM collections WHERE id = collection_id AND user_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM collections WHERE id = collection_id AND user_id = auth.uid()));
+-- ── 24. knowledge_groups + collection_groups ────────────────────────────────
+-- [ĐÃ BỎ v4.30.0/v4.31.0] Taxonomy M:N thứ 3 trên collections, trùng việc với
+-- `tags` (quyết định P2-7, 2026-08-01). Data đã copy sang tags/collection_tags
+-- trước khi DROP TABLE (data/RUNBOOK.sql Phần 2 rồi Phần 3, xác nhận 2026-08-02
+-- — information_schema.tables trả 0 dòng cho cả 2 bảng). Fresh install KHÔNG
+-- tạo 2 bảng này nữa — nếu cần xem lại định nghĩa gốc, dùng
+-- `git log -- data/schema_v4.24.0.sql`.
+DROP TABLE IF EXISTS collection_groups;
+DROP TABLE IF EXISTS knowledge_groups;
 
 -- ── 25. collection_notes (v4.11.0) ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS collection_notes (
@@ -658,4 +713,4 @@ INSERT INTO programs (title, description, icon, color, category, duration_days, 
   ('Deep Work 30 Ngay', 'Tap trung sau hon', '🚀', '#ffd700', 'productivity', 30, true, true)
 ON CONFLICT DO NOTHING;
 
--- ✅ DONE — 26 bảng + RLS + indexes + triggers + functions + seed (idempotent).
+-- ✅ DONE — 30 bảng + 1 view (tagged_items) + RLS + indexes + triggers + functions + seed (idempotent).

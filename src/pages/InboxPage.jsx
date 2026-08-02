@@ -7,6 +7,7 @@ import { useUserTasks } from '../hooks/useUserTasks';
 import { useExpenses } from '../hooks/useExpenses';
 import { useIntentions } from '../hooks/useIntentions';
 import { useActivityLog } from '../hooks/useActivityLog';
+import { ACTIONS } from '../utils/taskFields';
 import { useAuth } from '../contexts/AuthContext';
 import EXPENSE_DATA from '../data/expense-categories.json';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
@@ -99,8 +100,7 @@ export default function InboxPage() {
     d.setDate(d.getDate() + days);
     const until = d.toISOString().split('T')[0];
     await snoozeItem(itemId, until);
-    const snoozedItem = items.find(i => i.id === itemId);
-    logActivity('inbox_snooze', `Snooze ${days}d: ${snoozedItem?.title || ''}`, days, { days, until });
+    logActivity(ACTIONS.INBOX_SNOOZE);
     setSnoozeMenu(null);
     setSnoozedCount(prev => prev + 1);
   };
@@ -187,7 +187,7 @@ export default function InboxPage() {
   const handleDetailClassify = useCallback(async (newType) => {
     if (!detailItem) return;
     await classifyItem(detailItem.id, newType);
-    logActivity('inbox_classify', `→ ${newType}: ${detailItem.title || ''}`, 0, { type: newType });
+    logActivity(ACTIONS.INBOX_CLASSIFY);
     closeDetail();
     fetchItems({ type: 'inbox' });
   }, [detailItem, classifyItem, logActivity, closeDetail, fetchItems]);
@@ -209,16 +209,15 @@ export default function InboxPage() {
       completed: true,
       completedAt: now,
     });
-    logActivity('task_done', `Xong nhanh: ${detailItem.title}`, 0, { source: 'inbox' });
+    logActivity(ACTIONS.INBOX_TASK_DONE);
     await deleteItem(detailItem.id);
     closeDetail();
     fetchItems({ type: 'inbox' });
   }, [detailItem, detailBody, addTask, deleteItem, closeDetail, fetchItems, logActivity]);
 
   const handleClassify = async (itemId, newType) => {
-    const item = items.find(i => i.id === itemId);
     await classifyItem(itemId, newType);
-    logActivity('inbox_classify', `→ ${newType}: ${item?.title || ''}`, 0, { type: newType });
+    logActivity(ACTIONS.INBOX_CLASSIFY);
     setClassifying(null);
     fetchItems({ type: 'inbox' });
   };
@@ -243,7 +242,7 @@ export default function InboxPage() {
       completed: true,
       completedAt: now,
     });
-    logActivity('task_done', `Xong nhanh: ${item.title}`, 0, { source: 'inbox' });
+    logActivity(ACTIONS.INBOX_TASK_DONE);
     await deleteItem(item.id);
     fetchItems({ type: 'inbox' });
   };
@@ -280,10 +279,9 @@ export default function InboxPage() {
       finalNote = note ? `${note} (${originalText})` : originalText;
     }
 
-    const cat = CATEGORIES.find(c => c.key === category);
     const result = await addExpense({ amount: parsedAmount, category, note: finalNote });
     if (result) {
-      logActivity('expense_add', `${formatVND(parsedAmount)} ${cat?.label || category}`, parsedAmount, { category, source: 'inbox' });
+      logActivity(ACTIONS.EXPENSE_ADD);
       await deleteItem(item.id);
       fetchItems({ type: 'inbox' });
       setExpenseModal(null);
@@ -556,7 +554,7 @@ export default function InboxPage() {
                       for (const id of bulkSelected) {
                         await deleteItem(id);
                       }
-                      logActivity('inbox_bulk_delete', `Xóa ${bulkSelected.size} items`, bulkSelected.size);
+                      logActivity(ACTIONS.INBOX_BULK_DELETE);
                       setBulkSelected(new Set());
                       setBulkMode(false);
                       fetchItems({ type: 'inbox' });
@@ -578,7 +576,7 @@ export default function InboxPage() {
                       for (const id of bulkSelected) {
                         await classifyItem(id, newType);
                       }
-                      logActivity('inbox_bulk_classify', `→ ${newType}: ${bulkSelected.size} items`, bulkSelected.size, { type: newType });
+                      logActivity(ACTIONS.INBOX_BULK_CLASSIFY);
                       setBulkSelected(new Set());
                       setBulkClassifyMenu(false);
                       setBulkMode(false);

@@ -358,7 +358,25 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 - **1 query/tháng thay 30 (v4.29.0):** `getCompletedTasks(dateStr)` → `getCompletedTasksRange(start, end)`. Calendar fetch 1 lần/tháng rồi group theo ngày **địa phương** ở client — vừa bớt N+1, vừa sửa luôn lỗi lệch ngày do `completed_at` được so sánh theo UTC.
 - **Cố ý KHÔNG làm:** week/day time-grid kiểu Google Calendar. `due_time` mặc định `23:59` nên mọi task sẽ dồn vào 1 hàng đáy — phần đắt nhất của GCal (cột giờ, thuật toán xếp event chồng, drag-resize) không đem lại gì cho dữ liệu all-day. Cũng không làm Board/Gantt/assignee/custom field (xem `docs/TASKS.md`).
 - **Add form:** Tên (required), mô tả (optional), ngày (default hôm nay), giờ (optional)
-- **Task card:** Checkbox + title + description expand (▸/▾) + ⏰ badge + 📅 badge + "Quá hạn" indicator
+- **Task card:** Checkbox + title + ⏰ badge + 📅 badge + "Quá hạn" indicator. **Bấm vào vùng nội dung
+  (tiêu đề + hàng chip) mở Task Detail Modal** — thay cho cơ chế expand mô tả ▸/▾ đã bỏ ở v5.0.0
+  (Detail hiện full mô tả nên giữ cả hai thì 1 click có 2 nghĩa). Trên mobile còn đường thứ hai:
+  item `📄 Chi tiết` đầu menu ⋯.
+- **Task Detail Modal (v5.0.0)** — `src/components/TaskDetailModal.jsx` + `src/styles/task-detail.css`:
+  - **Chỉ đọc** phần field (hạn chót, độ ưu tiên, lặp lại, tag, bài viết liên kết, thời điểm hoàn
+    thành, tạo lúc, cập nhật lúc) + full mô tả. Nút Sửa/Xoá/Hoàn thành uỷ quyền ngược về handler sẵn
+    có của `TaskListSection` — cố ý để chỉ có MỘT đường ghi xuống `user_tasks`, giữ nguyên chokepoint
+    cho diff-log.
+  - **Tab 🕘 Hoạt động** — lịch sử thay đổi kiểu Jira, mỗi dòng 1 field: "Đổi Hạn chót: 05/08/2026 →
+    10/08/2026". Nhóm theo ngày (Hôm nay / Hôm qua / dd/MM/yyyy), mới nhất trước. Giá trị dài (mô tả)
+    cắt 80 ký tự + nút "Xem thêm". Có nút 🗑 xoá từng dòng (qua `useConfirm`).
+  - **Tab 📝 Ghi chú** — ghi chú cá nhân theo thời gian ("đã xong nhưng chưa đúng tiến độ" → sau đó
+    "đã xong hết"), ô nhập ở TRÊN CÙNG (Ctrl+Enter lưu), đọc xuôi theo thời gian. Sửa được inline +
+    xoá được. Đây KHÔNG phải comment kiểu team (app 1 người).
+  - Cả 2 tab dùng chung 1 lần fetch `getTaskLogs(taskId)`; badge đếm có ngay không cần query thứ hai.
+  - Mở được từ cả task pending lẫn task đã hoàn thành. Task lịch sử chỉ có 5 cột nên lưới field **tự
+    ẩn hàng thiếu** thay vì hiện `—` sai sự thật.
+  - Guest: hiện "Đăng nhập để xem lịch sử và ghi chú" (RLS bắt buộc `auth.uid()`).
 - **Tick hoàn thành** → gạch ngang, lưu `completed_at` timestamp
 - **Completed tasks** hôm nay hiển thị bên dưới với style nhạt
 - Sau ngày hôm đó → task biến mất khỏi danh sách chính
@@ -571,7 +589,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 > không còn GroupPicker, không còn badge folder trên ArticleCard. Chỉ còn tag thường (`#tag`).
 > Dữ liệu nhóm cũ đã được migrate thành tag thường (giữ tên, mất emoji/description) — bài viết
 > KHÔNG mất liên kết, chỉ mất hiển thị "folder" đặc biệt.
-- **DB:** `knowledge_groups`/`collection_groups` bị DROP; `tags.emoji`/`tags.description` (thêm tạm ở bước gộp) cũng bị DROP vì không còn UI nào đọc. Xem `data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql` Phase 2.
+- **DB:** `knowledge_groups`/`collection_groups` đã **DROP** (2026-08-02); `tags.emoji`/`tags.description` (thêm tạm ở bước gộp) cũng đã **DROP** vì không còn UI nào đọc. Xem `data/RUNBOOK.sql` Phần 3.
 - **Hooks:** `useKnowledgeGroups.js` đã xoá. `useTags.js` không còn nhận `{emoji, description}` — về lại chữ ký gốc trước v4.30.0.
 
 **Sub-Notes / Threaded Notes (v4.11.0):**
@@ -621,12 +639,21 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 - **Today stat badge:** Số hoạt động hôm nay
 - **ActivityHeatmap:** SVG 53×7 grid, 5-level purple scale
 - **MonthCalendar (habit mode):** Lịch tháng — ô tô màu theo habit, bấm ngày xem task đã xong. Task mode (không `habitData`) dùng ở `/tasks`, xem §16
-- **Activity types logged (11):** habit_done, habit_undo, challenge_done, task_done, expense_add, subscription_add, inbox_snooze, inbox_classify, inbox_bulk_delete, inbox_bulk_classify, focus_done
+- **Sự kiện được đếm (v5.0.0 — 9):** task_created, task_completed, task_uncompleted, challenge_done,
+  task_done (Inbox quick-done), expense_add, subscription_add, inbox_snooze, inbox_classify,
+  inbox_bulk_delete, inbox_bulk_classify, focus_done
 
-**Data source:** `activity_logs` table (Supabase, append-only)
+**Data source:** `activity_logs` table (Supabase)
 
-> ⚠️ Heatmap chỉ **đếm số row/ngày** — không đọc `action`, `label`, `amount`, `meta`.
-> Chưa có daily drill-down: `onDateClick` của ActivityHeatmap hiện là no-op. Xem `docs/TASKS.md` § Activity Log.
+> ⚠️ **v5.0.0 — heatmap chỉ đếm SỰ KIỆN, không đếm mọi dòng.** Bảng giờ chứa thêm dòng field-diff
+> và ghi chú của Task (xem §16), nếu đếm tất thì sửa 1 task đổi 3 field sẽ nhảy +3 "hoạt động".
+> `getHeatmapData`/`getTodayCount` lọc `field IS NULL AND action <> 'note'` — mệnh đề này phải khớp
+> CHÍNH XÁC index partial `idx_activity_logs_heatmap`, lệch là Postgres bỏ qua index.
+> **Đổi so với trước:** tick habit KHÔNG còn được ghi log (dòng `habit_done`/`habit_undo` cũ đã bị
+> purge trong migration v5.0.0, và TrackerPage ngừng ghi mới — Habit tracker đang chờ gỡ hẳn).
+> Bù lại, hoàn thành task theo đường bình thường giờ MỚI được đếm (trước v5.0.0 chỉ Inbox quick-done
+> mới lên heatmap).
+> Chưa có daily drill-down: `onDateClick` của ActivityHeatmap hiện là no-op.
 
 ---
 

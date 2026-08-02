@@ -1,5 +1,46 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-08-01
+**Updated:** 2026-08-02
+
+---
+
+## v5.0.0 — ✅ CODE DONE / ⏳ SQL CHỜ USER CHẠY (2026-08-02) — Activity Log v2 + Task Detail View
+
+**Đã làm** (chi tiết đầy đủ ở CHANGELOG.md v5.0.0, FEATURES.md §16/§24, DESIGN.md § Task Detail Modal):
+`activity_logs` dựng lại (task_id FK CASCADE, field/old_value/new_value/note), `user_tasks.updated_at`
++ trigger, log 5 cửa ghi với diff generic, `TaskDetailModal` 2 tab (Hoạt động / Ghi chú),
+`src/utils/taskFields.js` + test. Lint 0 error, `npm test` pass, `npm run design:lint` pass.
+
+### ⏳ User phải tự chạy / tự kiểm (agent không kết nối Supabase, không tự verify UI)
+- [ ] **Chạy `data/migration_v5.0.0_activity_logs_v2.sql`** trên Supabase. ⚠️ Phần 2 là `DROP TABLE`
+      — **chỉ chạy 1 lần**, chạy lại lần 2 xoá sạch dữ liệu vừa ghi. Đọc khối "ĐIỀU KIỆN TIÊN QUYẾT"
+      ở đầu file trước. Chạy xong dùng 7 câu Verify ở cuối file để kiểm.
+- [ ] **Deploy code sát ngay sau khi chạy SQL.** Giữa 2 mốc đó mọi lệnh ghi log fail ÂM THẦM (toàn bộ
+      điểm ghi đều fire-and-forget nuốt lỗi).
+- [ ] Smoke test theo checklist trong hội thoại (mở Detail, tick, sửa field, thêm/sửa/xoá ghi chú,
+      xoá dòng log, mobile bottom-sheet, light theme).
+
+### Quyết định đã chốt trong đợt này (2026-08-02)
+| Câu hỏi | Chốt |
+|---|---|
+| Rebuild kiểu gì | **DROP + CREATE** — chấp nhận mất trắng lịch sử heatmap (đã cảnh báo rõ, user xác nhận) |
+| Heatmap đếm gì | **Chỉ sự kiện** — bỏ cả dòng field-diff lẫn dòng note (`field IS NULL AND action <> 'note'`) |
+| Xoá task thì log ra sao | **FK CASCADE** — log chết theo task, DB tự dọn, không có dòng mồ côi |
+| Ghi chú sửa được không | **Có** — thêm RLS UPDATE giới hạn `action='note'` + GRANT cấp cột `note` |
+| Subtask / dependency | **Hoãn** — dùng task phẳng một thời gian dài rồi mới quyết (xem Backlog dưới) |
+
+### Còn nợ
+- [ ] `TODO: decision needed` — **hợp nhất migration v5.0.0 vào `data/schema_v4.24.0.sql`.** RULES §3
+      cấm sửa master schema khi không có chỉ thị rõ ràng nên agent CHƯA đụng. Chưa gộp thì fresh
+      install phải chạy master rồi chạy tiếp file migration. Cần user cho phép tường minh.
+- [ ] Hệ quả mới của FK CASCADE: **xoá 1 task làm tụt heatmap của những ngày cũ** (dòng
+      `task_created`/`task_completed` của nó bị xoá theo). Nếu thấy khó chịu, đổi `ON DELETE CASCADE`
+      → `SET NULL`, nhưng khi đó phải tự dọn dòng mồ côi bằng tay.
+- [ ] `ActivityHeatmap.jsx:48` sinh key ô bằng `toISOString()` (UTC) trong khi hook group theo giờ
+      ĐỊA PHƯƠNG → lệch 1 ô ở GMT+7. **Bug có sẵn từ trước**, không phải do đợt này; nhưng giờ tab
+      Activity hiện giờ địa phương nên chênh lệch dễ bị hiểu nhầm là bug mới.
+- [ ] `DashboardPage.jsx:571` render `<ActivityHeatmap/>` **không truyền props** → luôn rỗng, và
+      không import `lifelog.css` nên còn không có style. Bug có sẵn từ trước.
+- [ ] `LifeLogPage.jsx:91` quảng cáo "Click ô để xem chi tiết" nhưng handler là no-op.
 
 > Các version-block đã ✅ DONE hoàn toàn và có đầy đủ trong `CHANGELOG.md` được rút gọn thành
 > 1 dòng pointer. Checkbox chưa tick, TODO/decision needed, backlog, và runbook "user tự chạy"
@@ -10,35 +51,145 @@
 ## 🧊 Backlog — Account Vault module (chưa triển khai)
 
 Ý tưởng + kiến trúc đã chốt 2026-08-01, đầy đủ ở `docs/DESIGN_ACCOUNT_VAULT.md`. **Chưa
-code.** Chỉ bắt đầu sau khi xong: subtask `parent_id` (6 chỗ vỡ), `task_tags` UI, migration
-SQL v4.28.0/v5.0.0, các `TODO: decision needed` còn treo, và dọn dead code/lỗi hiện có.
+code.** Chỉ bắt đầu sau khi xong: migration SQL v4.28.0/v5.0.0, các `TODO: decision needed`
+còn treo, và dọn dead code/lỗi hiện có. (`task_tags` UI đã xong v4.31.0; subtask cố ý KHÔNG
+còn là điều kiện chặn — đã chuyển sang Backlog "Định hình lại field Task", ưu tiên thấp nhất,
+làm sau cùng.)
 
 ---
 
-## 🧊 Backlog — Task nâng cấp kiểu ClickUp/Jira (thảo luận 2026-08-02, chưa triển khai)
+## 🧊 Backlog — Định hình lại field & taxonomy của Task (nghiên cứu thêm, chưa triển khai)
 
-**Bối cảnh:** trước khi làm, cần đọc lại phần "Cố ý KHÔNG làm" ở v4.29.0/v4.27.0 bên dưới —
-model là **Things 3 / Linear, KHÔNG phải ClickUp/Jira** (lý do: 1 user, phần lớn field kiểu
-team-tool giá trị ~0). Danh sách dưới đây giữ nguyên ý tưởng gốc + khuyến nghị đã trao đổi,
-**làm sau khi xong `task_tags` UI** (mục ngay dưới).
+**Ưu tiên thấp nhất trong các việc Task — làm sau cùng.** Gộp 3 luồng thảo luận rời rạc (subtask
+từ v4.27.0, ClickUp/Jira 2026-08-02, base-date của recurring 2026-08-02) vào 1 chỗ vì tất cả cùng
+chạm 1 câu hỏi: **Task nên có thêm field/quan hệ gì, và chúng ăn khớp với nhau ra sao** — làm rời
+từng cái dễ dẫm chân nhau (vd subtask từng bị cảnh báo "chọn 1 trong 2 với `task_tags`, đừng làm cả
+hai" — giờ thêm cả `start_date` nữa thì càng cần nghĩ chung 1 lần thay vì vá từng field riêng lẻ).
 
-- [ ] **Phân loại task thêm (type/category)** — hiện đã có 2 trục (`priority` + `tags`).
-  Khuyến nghị: KHÔNG thêm trục thứ 3 — hoàn thiện `task_tags` UI trước (đủ để phân loại).
-- [ ] **Thời gian bắt đầu–kết thúc dự kiến** — trùng "time-grid kiểu Google Calendar" đã bị
-  loại ở v4.29.0 (`due_time` mặc định `23:59` → mọi task dồn 1 hàng đáy). Nếu vẫn muốn, cân
-  nhắc bản nhẹ hơn: chỉ *ước lượng thời lượng* (1 số), không phải 2 mốc giờ start/end.
-- [ ] **Auto-fill giờ bắt đầu/kết thúc thực tế khi tick xong + cho sửa tay (chỉ sửa thực tế,
-  không sửa dự kiến)** — trùng "time tracking" đã bị loại (đã có Focus Timer). Khuyến nghị:
-  nếu cần biết thời gian thực làm task, **link Focus session vào task** (giống Focus đã link
-  habit) thay vì thêm field trùng chức năng.
-- [ ] **Activity log kiểu Jira (old value → new value mỗi lần update)** — nên là **bảng mới**,
-  KHÔNG refactor `activity_logs` (bảng đó append-only, thô, chỉ đếm cho heatmap Life Log,
-  khác hẳn audit field-diff). Nhưng cân nhắc kỹ: use-case chính của audit trail là
-  collaboration/accountability — 1 user tự sửa task của mình thì giá trị thấp. Bản rẻ hơn:
-  1 cột `updated_at` là đủ nếu chỉ cần biết "sửa lần cuối lúc nào".
-- [ ] **Task detail view (click mở chi tiết đầy đủ)** — hợp lý về kiến trúc, nhưng chỉ đáng
-  làm nếu có thêm dữ liệu thật để hiển thị (vd activity log ở trên). Chưa có gì mới thì detail
-  view sẽ trống hơn cả expand ▸/▾ mô tả hiện có — đừng làm trước khi có nội dung.
+Trước khi làm bất kỳ mục nào: đọc lại "Cố ý KHÔNG làm" ở v4.29.0/v4.27.0 bên dưới — model là
+**Things 3 / Linear, KHÔNG phải ClickUp/Jira** (lý do: 1 user, phần lớn field kiểu team-tool giá
+trị ~0).
+
+- [ ] **Subtask** (`user_tasks.parent_id` — KHÁC `recurrence_parent_id` đã có ở v4.31.0, 2 quan hệ
+  hoàn toàn khác nhau) — khoảng trống thật duy nhất so với 1 task manager cá nhân tử tế. Đã audit
+  sẵn 6 chỗ vỡ cần sửa cùng lúc với migration (chưa code, chưa có code dở dang nào trong repo tính
+  tới 2026-08-02):
+  1. `pendingTasks` không lọc `parent_id` → subtask render **2 lần** (lồng dưới parent + card riêng)
+  2. `due_date DATE NOT NULL` → subtask buộc có ngày riêng → nesting **đứt ngang section** (subtask
+     ở "Sắp tới", parent ở "Hôm nay"). Fix: subtask kế thừa `due_date` của parent
+  3. `LinkKBModal` tìm task trong `[...todayTasks,...overdueTasks,...futureTasks]` → bấm 🔗 trên
+     subtask trả **null**, modal trống. Fix: tìm trong `tasks` gốc
+  4. `spawnRecurringTask` chỉ INSERT field của parent → lần lặp sau **mất hết subtask**
+  5. `deleteTask` optimistic chỉ filter parent → subtask **treo trên UI** tới lần refetch; rollback
+     cũng chỉ khôi phục parent
+  6. `getCompletedTasks` + SW `SYNC_TASKS` không lọc parent → mỗi subtask 1 dòng calendar + 1
+     notification
+  - **`TODO: decision needed` (2026-08-02, chưa chốt):** subtask kiểu ClickUp/Jira thực ra có 2
+    dạng khác nhau — (a) **task con đầy đủ** (`parent_id`, có priority/due riêng, đúng 6 chỗ vỡ ở
+    trên) hay (b) **checklist** (danh sách bước nhỏ trong 1 task, chỉ text+checkbox, 1 cột JSONB
+    `checklist_items` trên chính task, KHÔNG đụng 6 chỗ vỡ vì không tạo row task mới). Cần biết
+    nhu cầu thật nghiêng về "task con có deadline riêng" hay "vài bước nhỏ trong 1 việc" trước khi
+    chọn migration — 2 câu trả lời ra 2 giải pháp chi phí khác hẳn nhau.
+- [x] **`start_date`** — **chốt 2026-08-02: KHÔNG làm.** `due_date` + `completed_at` (tương đương
+  "Resolved" của Jira) đã đủ cho nhu cầu thực tế. Không thêm cột.
+- [ ] **`updated_at` (last modified time)** — **chốt 2026-08-02: NÊN LÀM**, rẻ. Hạ tầng đã có sẵn:
+  hàm trigger `update_updated_at()` trong `schema_v4.24.0.sql` (dòng 28-31) đang dùng cho
+  `habits`/`friendships`; `collections` có bản riêng tương tự (`update_collections_updated_at()`).
+  Chỉ cần thêm cột + 1 `CREATE TRIGGER` tái dùng hàm có sẵn cho `user_tasks`, không cần code app
+  tính toán gì. **Khác `activity log` bên dưới:** đây chỉ là 1 giá trị "lần cuối sửa lúc nào",
+  KHÔNG lưu đổi cái gì — 2 thứ bổ sung nhau, không thay thế nhau (Jira cũng có cả field `Updated`
+  lẫn tab History riêng).
+- [ ] **Phân loại task thêm (type/category)** — đã có 2 trục (`priority` + `tags`, `task_tags` UI
+  xong ở v4.31.0). Khuyến nghị: KHÔNG thêm trục thứ 3.
+- [x] **Thời gian bắt đầu–kết thúc dự kiến trong NGÀY (giờ, kiểu time-grid)** — **chốt lại
+  2026-08-02: vẫn KHÔNG làm**, kể cả bản nhẹ (không có `start_time` riêng). Đã loại ở v4.29.0
+  (`due_time` mặc định `23:59` → mọi task dồn 1 hàng đáy).
+- [x] **Auto-fill giờ bắt đầu/kết thúc thực tế khi tick xong** — **chốt: KHÔNG làm field riêng**,
+  trùng "time tracking" (Jira/ClickUp: bấm start/stop, cộng dồn phút làm — dùng để tính công/tính
+  giờ cho khách hoặc quản lý capacity team, 1 user không cần). Đã có Focus Timer làm đúng việc
+  "start/stop cộng phút". Khuyến nghị: **link Focus session vào task** (giống Focus đã link habit)
+  thay vì thêm field trùng chức năng.
+- [ ] **Dependency (task A phải xong trước task B, `depends_on_id`)** — **mới phát hiện 2026-08-02**
+  khi so ClickUp/Jira, TASKS.md trước đây chưa từng nhắc field này. Khác các field team-tool khác
+  (assignee, comment...) — dependency có giá trị thật cho 1 user (task sau chỉ nên hiện *Sắp tới*
+  khi task trước đã done). Nhưng đây sẽ là quan hệ tự-tham-chiếu **thứ 3** trên `user_tasks` (đã có
+  recurrence chain + đang định làm subtask chain) — rủi ro schema phình nếu không nghĩ chung với
+  subtask. **Chưa quyết**, cần biết use-case thật có tồn tại (tạo task theo kiểu trình tự phụ
+  thuộc) hay `due_date` sắp xếp theo ngày đã đủ.
+- [ ] **Activity log v2 — CHỐT THIẾT KẾ 2026-08-02, chưa code** (đập bỏ `activity_logs` cũ, xây
+  lại hoàn toàn, không phải patch):
+  - **Phạm vi:** log **mọi field đổi của Task** (không chỉ lịch trình) — mỗi dòng = 1 field đổi +
+    giá trị cũ/mới, hiển thị trong tab **Activity** của Task Detail View (kiểu Jira History).
+    Knowledge (`collections`) **không cần gì thêm** — `created_at`/`updated_at` đã có sẵn từ
+    trước (trigger `trg_collections_updated_at`), đủ cho nhu cầu ("chỉ cần biết sửa lúc nào").
+  - **Mọi field đều lưu đầy đủ `old_value`/`new_value`, kể cả `description`** — đã tính thử:
+    TEXT vài KB/lần sửa, cả đời 1 task cũng chỉ vài chục KB, không đáng lo ở quy mô 1 user
+    (khác hẳn lưu ảnh/video lặp lại). **Chỉ khác ở tầng hiển thị:** field ngắn hiện full trong
+    dòng Activity, `description` rút gọn preview (~80 ký tự + "...") kèm nút "Xem thêm" để bung
+    full — dữ liệu lưu đủ, chỉ UI gọn. Không có field nào của Task bị bỏ qua khi update.
+  - **Note cá nhân (tab riêng, KHÔNG phải comment kiểu team đã loại trước đó):** user tự thêm ghi
+    chú theo thời gian trên 1 task (vd "đã xong nhưng chưa đúng tiến độ", rồi sau thêm "đã xong
+    hết") — dùng chung bảng, cột `note TEXT` riêng, field/old_value/new_value NULL khi là note.
+  - **Schema:** `entity_type, entity_id, action, field, old_value, new_value, note, created_at`
+    (thay `action/label/amount/meta` cũ). Heatmap Life Log **không đổi cách đọc** — vẫn
+    `COUNT(*) GROUP BY ngày`, không quan tâm field mới.
+  - **Purge ngay lúc rebuild** (không đợi lúc Habit tracker bị gỡ thật): xóa hẳn dòng cũ có
+    `action IN ('habit_done','habit_undo','fitness_done')`. Hệ quả đã xác nhận với user: heatmap
+    những ngày cũ chỉ có hoạt động Habit sẽ giảm mật độ/thành ô trống — user đồng ý đánh đổi.
+  - **Diff generic, không hardcode field list:** `updateTask()` so từng key có trong payload
+    `updates` với giá trị cũ trong state hiện tại, khác thì log — field mới thêm sau này (vd
+    `parent_id` subtask, `depends_on_id` dependency) tự động được log miễn đi qua `updateTask()`
+    như convention sẵn có, không cần sửa lại code log.
+  - **Cho xóa log:** thêm RLS policy `activity_logs_delete_own` (chưa có, bảng cũ chỉ có
+    SELECT+INSERT) + nút 🗑 xóa từng dòng trong tab Activity (dùng `ConfirmModal` có sẵn). Hệ quả:
+    xóa dòng Task cũng giảm mật độ heatmap Life Log ngày đó — cùng loại đánh đổi như purge
+    habit_done ở trên, user đã biết trước.
+  - `intention_logs` (Incubator) **KHÔNG** phải mẫu tái dùng được — log chuyển trạng thái
+    (`action CHECK IN created/deferred/executed/abandoned/reviewed`), khác bản chất field-diff.
+  - Đụng >5 file khi code thật: `useActivityLog.js`, mọi call site `logActivity` hiện tại,
+    `useUserTasks.js` (ghi diff mới), Task Detail View mới (đọc + hiển thị) → chờ duyệt cuối cùng
+    trước khi viết migration.
+- [x] **Task detail view** — ✅ XONG ở v5.0.0 (`TaskDetailModal.jsx`), host cho tab Hoạt động + Ghi chú.
+
+---
+
+## 🧊 Backlog — Xóa Habit tracker + Lộ Trình 21 ngày + Onboarding liên quan (audit xong 2026-08-02, CHƯA code)
+
+**Ưu tiên: làm SAU khi xong "Định hình lại field Task" + "Activity log v2" ở trên.** User chủ động
+gác lại — cần phân tích sâu hơn (module liên quan, action nào vô dụng cần xóa cụ thể theo từng
+file/dòng) trước khi code. Audit sơ bộ 2026-08-02 (agent Explore) đã xong ở mức file, ghi nhanh các
+điểm chốt quan trọng để không phải audit lại từ đầu:
+
+- **"Lộ Trình" (`/journey`, chương trình 21 ngày) và "Hành Trình" (`/life-journey`, timeline cảm
+  xúc theo tuổi) là 2 tính năng KHÔNG liên quan code, dễ nhầm vì tên gần giống nhau.** Hành Trình
+  cảm xúc độc lập hoàn toàn — chỉ `localStorage` (`vl_life_journey_events`), không đụng Supabase,
+  không import gì từ Habit/Journey khác → xóa riêng an toàn ngay, chỉ 3 file
+  (`LifeJourneyPage.jsx`, `useLifeJourney.js`, `life-journey.css`) + route + mục Navbar.
+  Lộ Trình 21 ngày gắn **rất chặt** với Habit tracker qua `JourneyContext` (bọc toàn App, 4 hook
+  import trực tiếp: `useCustomHabits`, `useHabitLogs`, `useJourney`, `useFocusTimer`) — xóa 1 trong
+  2 (Habit hoặc Lộ Trình) mà giữ cái kia sẽ **vỡ ngay lập tức**, cần refactor cả 2 cùng lúc.
+- **Cross-dependency cần xử lý cùng lúc khi xóa Habit + Lộ Trình:**
+  - XP: reason `daily_check`/`streak_3/10/21` chỉ dùng bởi Habit → thành dead code
+  - DashboardPage: import trực tiếp `useHabitStore` (FlowerJourney, WeeklyReview, widget "Focus 7
+    ngày per-habit" join `focus_sessions.habit_id`)
+  - `useFocusTimer.linkHabit()` — FK `focus_sessions.habit_id`/`journey_id` đã `ON DELETE SET NULL`
+    (an toàn, không mất session log), nhưng UI chọn habit trong Focus cần gỡ code
+  - `activity_logs` action `habit_done`/`habit_undo` — xử lý y hệt tiền lệ Fitness Log đã xóa
+    (giữ dòng cũ, chỉ sửa comment tra cứu trong `useActivityLog.js`, heatmap vẫn đếm bình thường)
+  - Leaderboard (`get_leaderboard()` SQL) JOIN bảng `progress` (của `useHabitStore`) để tính
+    `total_done` → xóa Habit thì cột này về 0 trên BXH
+- **Onboarding cần viết lại nội dung, không chỉ xóa code** — `OnboardingModal.jsx` STEP 3 hiện
+  toàn nói về habit/streak 21 ngày.
+- **Phát hiện thêm ngoài lề (chưa đào sâu):** bảng `streaks` đã chết từ trước (chỉ INSERT 1 lần lúc
+  signup qua trigger `handle_new_user`, không đâu trong `src/` UPDATE nó — `current_streak`/
+  `longest_streak` trên BXH đã luôn = 0 từ lâu, không liên quan gì việc xóa Habit lần này, an toàn
+  DROP riêng). Quiz/DailyChallenge/Leaderboard cùng bơm chung `xp_logs`, đang cân nhắc bỏ chung đợt
+  theo bối cảnh chiến lược v4.27.0 nhưng chưa audit sâu. `programs.json` có template `tpl-fitness`
+  từng bị cảnh báo nhầm với Fitness Log đã xóa (v4.26.0) — soát kỹ trước khi đụng `programs`/
+  `program_habits` để không lặp lại nhầm lẫn tương tự.
+- **Việc cần làm tiếp trước khi code xóa:** xác nhận phạm vi chính xác (chỉ Lộ Trình? chỉ Habit? cả
+  2? có tính cả Hành Trình cảm xúc và/hoặc Quiz/Leaderboard không?), rồi liệt kê chi tiết
+  action/route/component cần xóa theo từng dòng (audit hiện mới ở mức file).
 
 ---
 
@@ -100,11 +251,13 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
    `DROP COLUMN emoji/description` vào Phase 2 của migration.
 
 ### Đã làm ✅ (code, lint 0 lỗi)
-- `data/migration_v4.30.0_merge_knowledge_groups_into_tags.sql` — Phase 1 (đã chạy: thêm cột,
-  copy data) + Phase 2 breaking, comment sẵn (DROP TABLE `knowledge_groups`/`collection_groups`
-  **+ DROP COLUMN `tags.emoji`/`description`** — thêm ở vòng 2)
-- `data/RUNBOOK.sql` — gộp v4.28.0 + v5.0.0 + v4.30.0 thành 1 file chạy tuần tự, giữ nguyên
-  các file gốc để tham khảo lịch sử
+- `data/RUNBOOK.sql` — gộp v4.28.0 + v4.30.0 + v5.0.0 thành 1 file chạy tuần tự (Phần 1/2 đã
+  chạy, Phần 3 breaking còn comment sẵn: DROP TABLE `knowledge_groups`/`collection_groups`
+  + DROP COLUMN `tags.emoji`/`description`). **2026-08-02: xoá 3 file migration standalone gốc**
+  (`migration_v4.28.0_tags_rls_indexes.sql`, `migration_v4.30.0_merge_knowledge_groups_into_tags.sql`,
+  `migration_v5.0.0_cleanup_dead_columns.sql`) — nội dung trùng lặp 100% với RUNBOOK.sql, giữ cả
+  2 nơi gây nhầm lẫn khi chạy tay (đã gặp thật: mở nhầm file cũ, dán bị auto-correct `--`→`—` gây
+  lỗi syntax). SQL gốc từng version vẫn xem được qua `git log -- data/migration_v4.28.0...sql`.
 - `useTags.js` — về lại chữ ký gốc (`addTag`/`updateTag` không nhận `emoji`/`description` nữa,
   `getCollectionsForTag` đã xoá — không còn UI nào cần)
 - `useCollections.js` — bỏ join `collection_groups`/`knowledge_groups`, select `tags(...)` không
@@ -128,12 +281,19 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 ### ⏳ User phải tự chạy (agent không kết nối Supabase)
 - [x] Chạy `data/RUNBOOK.sql` Phần 1+2 — **user xác nhận đã chạy** (SELECT kiểm tra thấy
       `knowledge_groups` còn tồn tại → đúng, Phần 3/Phase 2 chưa chạy)
-- [ ] Deploy code này (bản đã bỏ UI Nhóm) lên prod
-- [ ] Smoke test `/collect` → không còn tab 📁 Nhóm, bài viết cũ (từng ở trong nhóm) vẫn hiện đủ
-      với tag thường (vd "tesst", "test 2" giờ là tag thường, không còn folder)
-- [ ] Sau khi ổn định: bỏ comment PHẦN 3 trong RUNBOOK.sql để `DROP TABLE
-      knowledge_groups, collection_groups` **+ `DROP COLUMN tags.emoji, tags.description`** —
-      breaking, không hoàn lại được
+- [x] **2026-08-02:** chạy mục "KIỂM TRƯỚC PHẦN 3" trong RUNBOOK.sql — cả 6 cột chết
+      (`collections.resolved/course_name/duration_min/reviewed_at/priority`,
+      `user_tasks.collection_id`) xác nhận **KHÔNG TỒN TẠI** trên DB (0 dòng). DROP COLUMN ở
+      Phần 3 (mục 3b/3c) giờ chỉ là no-op an toàn, không có gì để mất.
+- [x] Deploy code (bản đã bỏ UI Nhóm) lên prod — **user xác nhận đã deploy** trước khi chạy Phần 3
+- [x] **2026-08-02:** Chạy RUNBOOK.sql Phần 3 — `DROP TABLE knowledge_groups, collection_groups`
+      + `DROP COLUMN tags.emoji, tags.description` + 2 cột chết + `collections.status` chuẩn hoá.
+      Bỏ bước 3a khỏi khối chạy (backfill `user_tasks.collection_id` → `task_collections`) vì cột
+      `collection_id` đã xác nhận không tồn tại — chạy sẽ lỗi `column does not exist`, không mất
+      dữ liệu gì (transaction tự rollback khi 3a lỗi). Verify sau khi chạy: cả 4 câu kiểm tra
+      (cột chết `collections`, `user_tasks.collection_id`, bảng `knowledge_groups`/
+      `collection_groups`, `tags.emoji`/`description`) đều trả 0 dòng — thành công hoàn toàn.
+- [x] Smoke test `/collect` trên app thật — **user xác nhận đã test xong 2026-08-02**
 
 ---
 
@@ -167,18 +327,21 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 ### Đã làm ✅ (code, đã build + lint pass; chi tiết: CHANGELOG.md v4.28.0)
 - Sửa bug link mất từ v4.5.0 (`CollectPage.onCreateTask` nay dùng `linkCollection()` → junction
   thay ghi cột `collection_id` deprecated); bỏ tham số chết `collectionId`/`durationEst`/`priority`
-  khỏi `useUserTasks.addTask`, `IncubatorPage`, `useCollections`; viết 2 file migration
-  (`v4.28.0_tags_rls_indexes.sql` an toàn + `v5.0.0_cleanup_dead_columns.sql` breaking);
-  cập nhật `docs/DATABASE.md` (task_tags, Views, kiến trúc Tag).
+  khỏi `useUserTasks.addTask`, `IncubatorPage`, `useCollections`; cập nhật `docs/DATABASE.md`
+  (task_tags, Views, kiến trúc Tag). SQL 2 phần (an toàn + breaking) viết ban đầu ở 2 file riêng,
+  từ 2026-08-02 đã gộp hết vào `data/RUNBOOK.sql` (2 file gốc đã xoá, xem block v4.30.0 phía trên).
 
 ### ⏳ User phải tự chạy (agent không kết nối Supabase) — ĐÚNG THỨ TỰ
+> **2026-08-02:** B1/B2 dưới đây đã xong qua `RUNBOOK.sql` Phần 1 (xác nhận chạy — xem block
+> v4.30.0). B3 (backup) vẫn cần tự làm trước khi mở Phần 3. B4 xong (6 cột chết xác nhận 0 dòng).
+> B5/B6 gộp thành 1: chỉ còn RUNBOOK.sql Phần 3 (DROP TABLE nhóm cũ + cột emoji/description) chưa
+> chạy, và hợp nhất vào `schema_v4.24.0.sql` sau khi Phần 3 chạy xong.
 - [x] **B0.** Kiểm schema drift — **2026-08-01 xác nhận trên prod:** `chk_collections_type` = `CHECK (type = ANY (ARRAY['inbox','note','quote','learn','idea','ai','entertainment','podcast']))` → **có `podcast`, không có `emotion`**. Kết luận: P0-1 **không phải bug thật** — constraint trên prod đã đúng, chỉ có `data/schema_v4.24.0.sql` (file snapshot trong repo) là bản cũ chưa gộp (việc của B6)
-- [ ] **B1.** Deploy code v4.28.0 lên prod (chưa xác nhận riêng — B0 chỉ xác nhận phần constraint đã đúng)
-- [ ] **B2.** Chạy `migration_v4.28.0_tags_rls_indexes.sql` (an toàn, idempotent) — phần `chk_collections_type` trong file này khớp với state hiện tại trên prod, nhưng file còn 2 phần khác (P0-2 RLS, P1-3 index) chưa xác nhận riêng
-- [ ] **B3.** Backup DB
-- [ ] **B4.** Chạy mục "KIỂM TRƯỚC" trong `migration_v5.0.0` — 6 câu SELECT phải = 0
-- [ ] **B5.** Chạy `migration_v5.0.0_cleanup_dead_columns.sql` + smoke test 5 bước trong file
-- [ ] **B6.** Hợp nhất 2 migration vào `data/schema_v4.24.0.sql` (cần chỉ thị rõ ràng — RULES §3)
+- [x] **B1+B2.** Deploy code + chạy RUNBOOK.sql Phần 1 (RLS 2 phía, index, `task_tags`, view `tagged_items`) — xác nhận đã chạy
+- [x] **B3.** Backup DB — **user chủ động chọn bỏ qua** 2026-08-02 (rủi ro tự chấp nhận), không chặn tiến độ
+- [x] **B4.** KIỂM TRƯỚC — 6 cột chết xác nhận 0 dòng trên DB thật (2026-08-02)
+- [x] **B5.** Chạy RUNBOOK.sql Phần 3 — **2026-08-02: xác nhận xong** (xem chi tiết ở "⏳ User phải tự chạy" trên), kèm smoke test `/collect` cũng đã xác nhận xong
+- [x] **B6.** Hợp nhất RUNBOOK.sql vào `data/schema_v4.24.0.sql` — **2026-08-02, làm theo yêu cầu tường minh của user.** `schema_v4.24.0.sql` giờ phản ánh đúng trạng thái cuối (v4.31.0): bỏ `user_tasks.collection_id` + 5 cột chết `collections`, thêm `recurrence_parent_id` + `task_tags` + view `tagged_items`, RLS 4 junction tag 2 phía, `chk_collections_type` có `podcast`, `chk_collections_status` mới, xoá hẳn `knowledge_groups`/`collection_groups`. `RUNBOOK.sql` giữ lại làm hồ sơ lịch sử, không cần chạy lại. Bảng đếm 31→30 (xem DATABASE.md).
 
 ### 7 lỗ hổng đã tìm — trạng thái
 | # | Lỗ hổng | Xử lý |
@@ -187,19 +350,14 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 | P0-2 | 4 junction RLS chỉ kiểm ownership 1 phía → ghi được rác cross-user (đọc không leak) | migration v4.28.0 |
 | P1-3 | `expense_tags`/`subscription_tags` thiếu index `tag_id` → filter theo tag full scan | migration v4.28.0 |
 | P1-4 | `type` và `status` trùng nghĩa (cả 2 default `'inbox'`) | code v4.28.0 + CHECK ở v5.0.0 |
-| P2-5 | 5 cột chết trên `collections` | DROP ở v5.0.0 |
-| P2-6 | `user_tasks.collection_id` deprecated nhưng vẫn được ghi | code v4.28.0 + DROP ở v5.0.0 |
+| P2-5 | 5 cột chết trên `collections` | ✅ xác nhận **không còn tồn tại** trên DB (2026-08-02, `information_schema.columns` 0 dòng) |
+| P2-6 | `user_tasks.collection_id` deprecated nhưng vẫn được ghi | code v4.28.0 đã ngừng ghi + ✅ xác nhận **không còn tồn tại** trên DB (2026-08-02) |
 | P2-7 | `knowledge_groups` là taxonomy M:N **thứ 3** trên `collections`, trùng việc với `tags` | ✅ **đã quyết + code xong** (2026-08-01) — gộp vào `tags` (`emoji`/`description`), xem v4.30.0. Chỉ còn SQL chờ user chạy |
 
 ### Còn nợ
 - [x] `TODO: decision needed` — **P2-7:** đã chốt 2026-08-01 — gộp `knowledge_groups` vào `tags` (thêm cột `emoji`/`description`, KHÔNG dùng `is_group BOOLEAN`). Xem v4.30.0 ở trên
-- [ ] **`parent_id` subtask — 6 chỗ vỡ ở tầng list, phải sửa cùng lúc với migration:**
-  1. `pendingTasks` không lọc `parent_id` → subtask render **2 lần** (lồng dưới parent + card riêng)
-  2. `due_date DATE **NOT NULL**` → subtask buộc có ngày riêng → nesting **đứt ngang section** (subtask ở "Sắp tới", parent ở "Hôm nay"). Fix: subtask kế thừa `due_date` của parent
-  3. `LinkKBModal` tìm task trong `[...todayTasks,...overdueTasks,...futureTasks]` → bấm 🔗 trên subtask trả **null**, modal trống. Fix: tìm trong `tasks` gốc
-  4. `spawnRecurringTask` chỉ INSERT field của parent → lần lặp sau **mất hết subtask**
-  5. `deleteTask` optimistic chỉ filter parent → subtask **treo trên UI** tới lần refetch; rollback cũng chỉ khôi phục parent
-  6. `getCompletedTasks` + SW `SYNC_TASKS` không lọc parent → mỗi subtask 1 dòng calendar + 1 notification
+- [ ] Subtask (`parent_id`) — **chuyển vào Backlog "Định hình lại field & taxonomy của Task" đầu
+  file** (gộp cùng mục 1 recurring base-date + phân loại/detail view khác, ưu tiên thấp nhất)
 - [x] `task_tags` đã có bảng nhưng **chưa có UI/hook** — **fix 2026-08-02:** `useTags.js` thêm `task: { table: 'task_tags', fk: 'task_id' }` vào `ENTITY_CONFIG` + `task_tags` vào `getTagUsageCount`/`getAllTagUsageCounts`. `useUserTasks.fetchTasks` join thêm `task_tags(tag_id, tags(...))` → `task._tags` (cùng pattern `_collections`). Thêm `linkTaskTag`/`unlinkTaskTag` optimistic riêng trong `useUserTasks.js` (không dùng `useTags.linkTag` trực tiếp — hook đó không cập nhật state `tasks` nên badge sẽ không hiện ngay). `TagPicker` gắn vào form Thêm + Sửa task trong `TaskListSection.jsx`, badge `🏷 tên` hiện trên task card
 - [ ] VIEW `tagged_items` chưa có consumer nào — chờ làm unified search
 - [x] `alert()` ở `CollectPage.onCreateTask` vi phạm RULES (cấm `window.alert`) — cần component toast — **fix 2026-08-01:** thêm `src/components/Toast.jsx` (`useToast()`, cùng pattern `useConfirm()`), thay `alert()` bằng `showToast()`. Đồng thời fix luôn `IncubatorPage.jsx:336` (bug tương tự, phát hiện trong audit duplicate-logic 2026-08-01) bằng inline error state riêng (không dùng Toast — đó là lỗi chặn hành động, không phải thông báo thành công)
@@ -220,8 +378,8 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
   TrackerPage, main chunk 906→876 kB (−30 kB).
 
 ### Chưa làm — cần migration SQL user tự chạy trên Supabase
-- [ ] **Subtask** — thêm `user_tasks.parent_id UUID REFERENCES user_tasks(id) ON DELETE CASCADE`, render lồng **1 cấp** (không đệ quy vô hạn). Đây là khoảng trống thật duy nhất so với task manager cá nhân
-- [ ] **`task_tags` junction** — `(task_id, tag_id)` composite PK, tái dùng bảng `tags` đã có (dùng chung với KB). **Chọn 1 trong 2** cách phân loại này với subtask, đừng làm cả hai — hiện có 2 taxonomy (`tags` — nay đã gộp cả "nhóm" từ v4.30.0, và `collections.type`), thêm nữa là tê liệt
+- [ ] Subtask — **chuyển vào Backlog "Định hình lại field & taxonomy của Task" đầu file**
+- [x] `task_tags` junction — xong v4.31.0 (xem "Còn nợ" trên)
 - [ ] **Inline quick-add theo từng nhóm** — nút `+ Thêm` ngay trong khối Quá hạn / Hôm nay / Sắp tới (không cần DB, nhưng để chung phase 2 cho gọn)
 
 ### Cố ý KHÔNG làm (chống bloat — model là Things 3 / Linear, KHÔNG phải ClickUp)
@@ -266,7 +424,7 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
   thêm `npm test` + 2 self-check mới (`dateUtils.test.js`, `mediaUtils.test.js`).
 
 ### Chờ quyết định (2 mục còn lại của P2)
-- [ ] `TODO: decision needed` — Xoá 2 thang fallback migration (`useCollections` 3 tầng, `useUserTasks` 1 tầng, ~71 dòng)? Cần biết migration `task_collections`/`collection_tags` đã chạy trên prod chưa
+- [ ] `TODO: decision needed` — Xoá 2 thang fallback migration (`useCollections` 3 tầng, `useUserTasks` 1 tầng, ~71 dòng)? **2026-08-02: blocker đã rõ** — `task_collections`/`collection_tags`/`task_tags` xác nhận đã chạy + đang dùng thật trên prod (xem B0-B6, v4.28.0). Quyết định xoá fallback hay không vẫn cần approve riêng (không tự xoá)
 - [ ] `TODO: decision needed` — Bỏ retry của `spawnRecurringTask` (~35 dòng)? RULES §7 đang liệt kê nó là pattern bắt buộc
 
 ### Phát hiện thêm — bug, không phải over-engineering
@@ -404,12 +562,7 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 ---
 
 ## v4.14.0 — ✅ DONE (2026-05-18) — KB Category Expansion + DB Type Sync
-
-### Đã làm ✅ (chi tiết: CHANGELOG.md v4.14.0)
-- Thêm type `entertainment`/`emotion`, mở CHECK constraint 6→11 loại, fix desync `ai`/`knowledge`/`experience` bị DB chặn từ v4.4.1.
-
-### ⚠️ USER ACTION REQUIRED
-- [ ] Run `migration_v4.14.0_collection_types.sql` in Supabase SQL Editor
+- Thêm type `entertainment`/`emotion` (sau đổi thành `podcast` ở v4.28.0), mở CHECK constraint 6→11 loại, fix desync `ai`/`knowledge`/`experience` bị DB chặn từ v4.4.1. **2026-08-02: dọn** — `migration_v4.14.0_collection_types.sql` không còn tồn tại trong `data/` (đã gộp vào schema từ trước), constraint đã xác nhận đúng trên prod hôm nay (xem v4.28.0 B0). (chi tiết: CHANGELOG.md v4.14.0)
 
 ---
 
@@ -419,17 +572,12 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 ---
 
 ## v4.12.0 — ✅ DONE (2026-05-10) — Media Infrastructure
-
-### Đã làm ✅ (chi tiết: CHANGELOG.md v4.12.0)
-- Image/YouTube trong bài viết (Tiptap + Markdown); upload API (R2 lúc đó, sau đổi hẳn sang
-  Google Drive Service Account ở v4.16.0/v4.16.1); `UrlInputPopover` thay `window.prompt`;
-  `QuoteWidget` (daily-seeded, shuffle); `AudioNode`; bảng `inspirational_quotes` + `useQuotes.js`;
-  Imgur auto-upload (lúc đó) + Quote Manager UI trong Settings.
-
-### ⚠️ USER ACTION (lịch sử — R2/Imgur đã bị thay bằng Google Drive Service Account từ v4.16.x, có thể đã lỗi thời)
-- [ ] Tạo Cloudflare account → R2 bucket → env vars trên Vercel
-- [ ] Run SQL migration `migration_v4.12.0_quotes.sql` in Supabase (tạo bảng `inspirational_quotes`)
-- [ ] Tạo Imgur App → `IMGUR_CLIENT_ID` env var trên Vercel
+- Image/YouTube trong bài viết (Tiptap + Markdown); upload API (R2/Imgur lúc đó, **sau đổi hẳn
+  sang Google Drive Service Account ở v4.16.0/v4.16.1** — R2/Imgur setup bên dưới đã lỗi thời,
+  không cần làm); `UrlInputPopover` thay `window.prompt`; `QuoteWidget` (daily-seeded, shuffle);
+  `AudioNode`; bảng `inspirational_quotes` + `useQuotes.js` (feature đang chạy thật, migration đã
+  chạy từ lâu — file `migration_v4.12.0_quotes.sql` không còn tồn tại trong `data/`, đã gộp vào
+  schema). (chi tiết: CHANGELOG.md v4.12.0)
 
 ---
 
@@ -603,13 +751,10 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 ---
 
 ## v3.0.0 — ✅ DONE (2026-04-25) — Personal Life Hub Foundation
-
-### Đã làm ✅ (chi tiết: CHANGELOG.md v3.0.0)
 - Archive Team/Friends → `src/_archived/`; sidebar + bottom-tabs + QuickCapture FAB; Activity Log
   system; Inbox/Collect module; Finance module; Life Log module (`ActivityHeatmap` + `DailyTimeline`).
-
-### Pending (user responsibility)
-- [ ] User runs `migration_v3.0.0.sql` in Supabase SQL Editor
+  **2026-08-02: dọn** — `migration_v3.0.0.sql` không còn tồn tại trong `data/` (đã gộp từ lâu, các
+  module này đang chạy thật). (chi tiết: CHANGELOG.md v3.0.0)
 
 ---
 
@@ -644,13 +789,10 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 ---
 
 ## v2.1.0 — ✅ DONE (2026-04-21) — Personal Tasks (Nhiệm Vụ Cá Nhân)
-
-### Đã làm ✅ (chi tiết: CHANGELOG.md v2.1.0)
 - `useUserTasks.js` CRUD (Supabase-first, guest in-memory); `TaskListSection.jsx`; Service Worker
-  background notification (`public/sw.js`); calendar integration.
-
-### Pending (user responsibility)
-- [ ] Run `data/migration_v2.1.0.sql` in Supabase SQL Editor
+  background notification (`public/sw.js`); calendar integration. **2026-08-02: dọn** —
+  `migration_v2.1.0.sql` không còn tồn tại (đã gộp từ lâu, module Task đang chạy thật + được mở
+  rộng nhiều lần từ đó tới v4.31.0). (chi tiết: CHANGELOG.md v2.1.0)
 
 ---
 
@@ -670,13 +812,10 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 ---
 
 ## v1.8.0 — ✅ DONE (2026-04-19) — Journey-as-Core-Context
-
-### Đã làm ✅ (chi tiết: CHANGELOG.md v1.8.0)
 - `JourneyContext.jsx` (single source of truth `activeJourney`); `JourneyDetailPage.jsx` full
-  stats; wire `journey_id` xuyên `useHabitLogs`/`useFocusTimer`/`useCustomHabits`.
-
-### ⚠️ Pending (manual action required)
-- [ ] Chạy phần SQL mới trong `data/migration_v1.6.2.sql` (phần 4 — ADD COLUMN to focus_sessions) trong Supabase SQL Editor
+  stats; wire `journey_id` xuyên `useHabitLogs`/`useFocusTimer`/`useCustomHabits`. **2026-08-02:
+  dọn** — `migration_v1.6.2.sql` không còn tồn tại (đã gộp từ lâu, Journey đang chạy thật).
+  (chi tiết: CHANGELOG.md v1.8.0)
 
 ---
 
@@ -748,9 +887,9 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 - [x] `docs/TASKS.md` — Cập nhật (file này)
 
 ### Pending (cần làm thủ công)
-- [ ] Chạy `data/migration_v1.2.0.sql` trong Supabase SQL Editor (thêm 4 bảng mới)
-- [ ] Điền real keys vào `.env.local` → test toàn bộ flow với DB thật
-- [ ] Test: habit tick → mood → skip reason → focus session → all synced DB
+- [x] Chạy `data/migration_v1.2.0.sql` — **2026-08-02: dọn**, file không còn tồn tại (đã gộp từ lâu)
+- [x] Điền real keys vào `.env.local` → test toàn bộ flow với DB thật — app chạy production từ lâu
+- [x] Test: habit tick → mood → skip reason → focus session → all synced DB — đã qua production lâu rồi
 
 ---
 

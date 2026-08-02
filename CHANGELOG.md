@@ -1,5 +1,151 @@
 # CHANGELOG
 
+## v5.0.0 — 2026-08-02
+> **BREAKING (DB).** Dựng lại bảng `activity_logs` để phục vụ 2 việc thay vì 1: heatmap Life Log
+> (như cũ) **và** lịch sử thay đổi + ghi chú cá nhân của từng Task. Kèm Task Detail Modal mới —
+> chỗ đọc lịch sử đó. MAJOR theo RULES §9 (database schema breaking change).
+
+### Added
+- **`data/migration_v5.0.0_activity_logs_v2.sql`** — user tự chạy trên Supabase. 2 phần:
+  - Phần 1 (an toàn, idempotent): `user_tasks.updated_at` + trigger `user_tasks_updated_at` tái dùng
+    hàm chung `update_updated_at()` có sẵn. Task cũ backfill `updated_at = created_at` (không để
+    `DEFAULT NOW()` ngay từ đầu — sẽ gán dấu thời gian sai cho mọi task cũ).
+  - Phần 2 (**BREAKING, chỉ chạy 1 lần**): `DROP` + `CREATE` `activity_logs` schema v2 —
+    `task_id` FK → `user_tasks` ON DELETE CASCADE (NULL = sự kiện rời rạc), `action`, `field`,
+    `old_value`, `new_value`, `note`. Bỏ `label`/`amount`/`meta`. 2 index (partial heatmap khớp đúng
+    filter + index cho tab Activity), 4 RLS policy, GRANT tường minh + `GRANT UPDATE (note)` cấp cột.
+- **Task Detail Modal** (`src/components/TaskDetailModal.jsx` + `src/styles/task-detail.css`) —
+  chỉ đọc field + 2 tab: **🕘 Hoạt động** (lịch sử đổi field kiểu Jira, mỗi dòng 1 field với giá trị
+  cũ → mới, nhóm theo ngày, xoá được từng dòng) và **📝 Ghi chú** (ghi chú cá nhân theo thời gian,
+  thêm/sửa/xoá). Dựng trên `GenericModal`, tab tái dùng `.tasks-viewbar__tab`, bottom-sheet ≤520px.
+- **`src/utils/taskFields.js`** — logic thuần dùng chung cho cả phía ghi lẫn phía đọc: `ACTIONS`,
+  `TASK_FIELD_LABELS`, `diffTaskFields()`, `formatTaskFieldValue()`, `describeActivity()`,
+  `describeRecurrence()`. Kèm `src/__tests__/taskFields.test.js` (`npm test`).
+- **Log mọi thay đổi của task** qua 5 cửa ghi (không phải 1): `addTask`/`spawnRecurringTask` →
+  `task_created`; `completeTask` → `task_completed`; `uncompleteTask` → `task_uncompleted`;
+  `updateTask` → 1 dòng `task_update` cho **mỗi field đổi**; 4 hàm link/unlink tag & KB →
+  `task_tag_*` / `task_link_*`. Diff là **generic** (duyệt key trong payload, không có danh sách
+  field cứng) nên cột thêm sau này tự động được log.
+
+### Changed
+- **Heatmap Life Log + KPI "Hoạt động hôm nay" giờ chỉ đếm SỰ KIỆN**, lọc
+  `field IS NULL AND action <> 'note'`. Nếu đếm tất cả thì sửa 1 task đổi 3 field sẽ nhảy +3 hoạt
+  động. Mệnh đề lọc khớp chính xác index partial `idx_activity_logs_heatmap`.
+- **Hoàn thành task theo đường bình thường giờ MỚI lên heatmap** — trước đây chỉ Inbox quick-done
+  phát `task_done`, `useUserTasks.completeTask` không log gì (lỗ hổng cũ, nay bịt).
+- **`logActivity(action, taskId?)`** — bỏ 3 tham số `label`/`amount`/`meta`. 11 call site chuyển sang
+  hằng số `ACTIONS` (chống gõ sai, vì cột `action` cố ý không có CHECK constraint — mọi lệnh ghi đều
+  fire-and-forget nuốt lỗi nên constraint bị vi phạm sẽ làm log biến mất âm thầm).
+- **`useFocusTimer.js`** — chỗ ghi duy nhất bypass hook, đã sửa theo schema mới. Không mất dữ liệu:
+  duration + habit_id vẫn ở `focus_sessions`, XP vẫn ở `xp_logs`.
+- **`PRIORITY_OPTIONS` + `WEEKDAYS`** dời từ `TaskListSection.jsx` sang `src/utils/taskFields.js` để
+  Detail Modal dùng chung mà không tạo vòng tròn import.
+- **`LinkKBModal`** — `onLink`/`onUnlink` nhận thêm tham số `title` để log ghi được TÊN bài viết thay
+  vì uuid (sau khi bài viết bị xoá thì không còn nguồn nào tra ngược tên).
+- **`docs/DATABASE.md`** — đoạn chê pattern polymorphic viết lại: `activity_logs` không còn là ví dụ
+  của bệnh đó nữa (đã dùng FK thật thay `entity_type`/`entity_id`).
+
+### Removed
+- **Purge dòng log của feature sắp gỡ** — `action IN ('habit_done','habit_undo','fitness_done')` xoá
+  hẳn trong migration. `fitness_done` vốn đã mồ côi từ v4.26.0.
+- **`TrackerPage` ngừng ghi activity log khi tick habit** — purge sẽ vô nghĩa nếu vẫn ghi tiếp, và
+  Habit tracker đang chờ gỡ hẳn (xem `docs/TASKS.md` § Backlog). Hệ quả: tick habit không còn cộng
+  vào heatmap. XP không đổi (vẫn qua `addXp`/`removeXp` → `xp_logs`).
+- **Expand mô tả ▸/▾ trên task card** (cả pending lẫn đã hoàn thành) — thay bằng Detail Modal, giữ cả
+  hai thì 1 click có 2 nghĩa. Xoá 2 state `expandedTask` / `expandedCompletedId`.
+
+### Files Added
+- `data/migration_v5.0.0_activity_logs_v2.sql`
+- `src/components/TaskDetailModal.jsx`
+- `src/styles/task-detail.css`
+- `src/utils/taskFields.js`
+- `src/__tests__/taskFields.test.js`
+
+### Files Modified
+- `src/hooks/useActivityLog.js` (viết lại), `src/hooks/useUserTasks.js`, `src/hooks/useFocusTimer.js`
+- `src/components/TaskListSection.jsx`, `src/components/LinkKBModal.jsx`, `src/components/DailyChallenge.jsx`
+- `src/pages/InboxPage.jsx`, `src/pages/FinancePage.jsx`, `src/pages/TrackerPage.jsx`
+- `DESIGN.md`, `docs/DATABASE.md`, `docs/FEATURES.md`, `docs/TASKS.md`, `package.json`
+
+### Known / chưa làm
+- **`data/schema_v4.24.0.sql` CHƯA gộp v5.0.0** — RULES §3 cấm sửa master schema khi không có chỉ thị
+  rõ ràng. Fresh install hiện phải chạy master rồi chạy tiếp `migration_v5.0.0_*.sql`.
+- Xoá 1 task giờ cũng **làm tụt heatmap của những ngày cũ** (dòng `task_created`/`task_completed` của
+  nó bị FK CASCADE xoá theo). Đánh đổi đã chốt khi chọn FK thật thay polymorphic.
+
+---
+
+## v4.31.0 — 2026-08-02
+> Task module: xem/xoá task đã hoàn thành (List + Calendar), confirm/toast dùng chung toàn app,
+> `task_tags` UI hoàn thiện, chuỗi task lặp lại (`recurrence_parent_id` — quy tắc sửa/xoá/bỏ tích)
+> kèm unit test đầu tiên của repo. Dọn 3 file SQL migration standalone trùng lặp với RUNBOOK.sql.
+
+### Added
+- **Xem/xoá task đã hoàn thành:** section "✅ Đã hoàn thành" trong Danh sách (collapsed mặc định,
+  lọc theo ngày qua `getCompletedTasksRange`); panel chi tiết ngày trong Lịch gộp chung 1 danh sách
+  (task xong + task sắp tới), có nút xoá. Lịch giờ hiện cả task sắp tới (chip tím) không chỉ task
+  đã xong (chip xanh).
+- **`ToastContext`** (`src/contexts/ToastContext.jsx`) — Toast toàn cục, mount 1 lần ở App root,
+  gọi được từ bất kỳ đâu kể cả trong hook (không cần mỗi page tự quản lý). Toast dời sang góc phải
+  dưới. Dọn bản Toast tự chế trùng lặp trong `TiptapEditor.jsx`.
+- **`useConfirm()` áp dụng cho toàn bộ nút xoá task** — pending (view mode + overflow mobile),
+  đã hoàn thành (List + Calendar) — gộp chung 1 `handleDeleteTask()`, không lặp code.
+- **`task_tags` UI** — `TagPicker` trên form Thêm/Sửa task, badge `🏷` trên card. `useTags.js` thêm
+  entity `task` vào `ENTITY_CONFIG` + `getTagUsageBreakdown(tagId)` (đếm riêng theo loại thay vì
+  tổng gộp — dùng cho confirm xoá tag ở Settings, hiện rõ "gỡ liên kết", không xoá bảng cha).
+- **Chuỗi task lặp lại (`user_tasks.recurrence_parent_id`, self-FK `ON DELETE CASCADE`)** — quy tắc:
+  sửa task không đụng row khác đã tồn tại; xoá task **gốc** chỉ xoá đúng nó; xoá task **không phải
+  gốc** cascade xoá hết hậu duệ; bỏ tích tự xoá occurrence đã sinh (chống trùng khi tích/bỏ tích
+  nhanh). `ON DELETE CASCADE` thuần không tự làm được rule bất đối xứng này — app tự "cắt dây" con
+  của task gốc trước khi xoá nó (`useUserTasks.deleteTask`).
+- **`src/data/ui-strings.json`** — text tập trung cho ConfirmModal + Toast (bắt đầu nhỏ, không
+  migrate toàn app).
+- **`src/__tests__/`** — thư mục unit test mới (khác pattern colocated cũ), `node:assert/strict`
+  thường, không framework. `recurrenceUtils.test.js` là bài test đầu tiên trong repo cho logic
+  không phải CRUD đơn giản.
+
+### Fixed
+- **`deleteTask` no-op cho task lịch sử:** gate cũ `if (isAuth && backup)` bỏ qua Supabase delete
+  thật nếu task không có trong state `tasks` cục bộ (vd task hoàn thành từ ngày trước, fetch qua
+  `getCompletedTasksRange`) — xoá trên UI nhưng KHÔNG xoá dưới DB. Sửa: luôn gọi Supabase khi đã
+  auth, `backup` chỉ dùng cho rollback lỗi.
+- **Recurring task mất tag + link KB khi sinh occurrence tiếp theo** — gap phát sinh từ việc thêm
+  `task_tags` (tag chưa tồn tại lúc code gốc viết). `spawnRecurringTask` giờ copy cả 2.
+  Chống sinh trùng: kiểm tra đã có occurrence tiếp theo chưa trước khi insert. Sinh lỗi hẳn sau
+  retry → báo qua toast (trước chỉ log console, user không biết chuỗi lặp đã chết).
+- **`nextMonthDay` tràn tháng sai** — ngày lặp không tồn tại ở tháng đích (vd "ngày 31" nhưng tháng
+  chỉ có 30 ngày) trước để JS tự tràn sang đầu tháng kế tiếp nữa; giờ clamp về ngày cuối tháng đích.
+
+### Removed
+- **3 file migration SQL standalone** (`migration_v4.28.0_tags_rls_indexes.sql`,
+  `migration_v4.30.0_merge_knowledge_groups_into_tags.sql`,
+  `migration_v5.0.0_cleanup_dead_columns.sql`) — nội dung trùng lặp 100% với `RUNBOOK.sql` (đã
+  chạy Phần 1+2), giữ cả 2 nơi gây nhầm lẫn khi chạy tay (dán nhầm file cũ vào Supabase SQL editor
+  bị auto-correct `--`→`—` gây lỗi syntax). SQL gốc từng version vẫn xem qua `git log`.
+
+### Changed
+- **`RUNBOOK.sql` viết lại thuần ASCII** — bỏ hết ký tự Unicode trang trí (box-drawing, em-dash)
+  từng gây lỗi copy-paste; cập nhật trạng thái thật đã xác nhận 2026-08-02: **6 cột chết
+  (`collections.resolved/course_name/duration_min/reviewed_at/priority`,
+  `user_tasks.collection_id`) đều không tồn tại trên DB** — Phần 3 DROP COLUMN giờ chỉ là no-op
+  an toàn, chỉ còn DROP TABLE `knowledge_groups`/`collection_groups` + cột `tags.emoji`/`description`
+  là quyết định thật cần cân nhắc.
+- **2026-08-02, cùng ngày — RUNBOOK.sql Phần 3 đã chạy trên prod:** `DROP TABLE knowledge_groups,
+  collection_groups`, `DROP COLUMN tags.emoji/description`, `DROP COLUMN` 2 cột chết còn lại +
+  chuẩn hoá `collections.status`. Bỏ bước 3a (backfill `user_tasks.collection_id`) khỏi khối chạy
+  vì cột đó đã xác nhận không tồn tại trên DB này — chạy sẽ lỗi `column does not exist` (transaction
+  tự rollback, không mất gì). Verify 4 câu sau khi chạy đều trả 0 dòng — thành công hoàn toàn.
+- **2026-08-02, cùng ngày — B6: hợp nhất `RUNBOOK.sql` vào `data/schema_v4.24.0.sql`** (theo yêu
+  cầu tường minh, RULES §3). `schema_v4.24.0.sql` giờ phản ánh đúng trạng thái cuối: bỏ
+  `user_tasks.collection_id` + 5 cột chết `collections`; thêm `user_tasks.recurrence_parent_id`
+  (v4.31.0), `task_tags` junction + VIEW `tagged_items` (v4.28.0); RLS 4 junction tag kiểm ownership
+  cả 2 phía (v4.28.0 P0-2); `chk_collections_type` có `podcast` thay `emotion`; `chk_collections_status`
+  mới (unread/read/archived); xoá hẳn `knowledge_groups`/`collection_groups` khỏi fresh-install
+  (chỉ còn `DROP TABLE IF EXISTS` dọn DB cũ). Bảng đếm 31→30 CREATE TABLE. `RUNBOOK.sql` giữ lại
+  làm hồ sơ lịch sử, không cần chạy lại trên DB đã update.
+
+---
+
 ## v4.30.0 — 2026-08-01
 > Quyết định sản phẩm P2-7: `knowledge_groups` (taxonomy M:N thứ 3 trên `collections`) trùng việc
 > với `tags`. Sau thảo luận, chốt **bỏ hẳn tính năng "Nhóm" khỏi giao diện** Knowledge Base — không

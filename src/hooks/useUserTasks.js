@@ -5,6 +5,8 @@ import { useToast } from '../contexts/ToastContext';
 import { logger } from '../utils/logger';
 import { toDateStr } from '../utils/dateUtils';
 import { computeNextDueDate, resolveDeletionIds } from '../utils/recurrenceUtils';
+import { useActivityLog } from './useActivityLog';
+import { diffTaskFields, ACTIONS } from '../utils/taskFields';
 import UI_STRINGS from '../data/ui-strings.json';
 
 const todayStr = () => toDateStr();
@@ -21,10 +23,30 @@ function addDays(date, days) {
  *
  * Tasks are independent from habits/journey/XP.
  * Guest = in-memory (reset on refresh).
+ *
+ * ── Activity log (v5.0.0) ────────────────────────────────────────────────
+ * Mọi đường ghi xuống `user_tasks` đều phải phát 1 dòng `activity_logs`, nếu
+ * không thì tab Activity của Task Detail thủng lỗ chỗ. Có 5 cửa, KHÔNG phải 1
+ * — hook diff cắm riêng ở từng chỗ:
+ *   1. addTask + spawnRecurringTask  → task_created
+ *   2. completeTask                  → task_completed
+ *   3. uncompleteTask                → task_uncompleted
+ *   4. updateTask                    → task_update (1 dòng / field đổi)
+ *   5. link/unlinkTaskTag + link/unlinkCollection → task_tag_* / task_link_*
+ *
+ * Hai quy tắc bắt buộc khi thêm đường ghi mới:
+ *   - Ghi log SAU khi biết `error == null`. Các hàm ở đây đều optimistic +
+ *     rollback, log trước sẽ để lại dòng ma cho thay đổi chưa từng xảy ra.
+ *   - Ghi log TRONG khối `if (isAuth)`. Guest không có auth.uid() nên RLS chặn.
+ *
+ * KHÔNG log việc xoá task: FK `activity_logs.task_id ON DELETE CASCADE` xoá
+ * sạch log của task ngay khi task biến mất, nên dòng "đã xoá" sẽ tự xoá chính
+ * nó. Hệ quả kèm theo: xoá task cũng làm tụt heatmap của những ngày cũ.
  */
 export function useUserTasks() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { logActivity, logFieldChanges, logTaskRelation } = useActivityLog();
   const isAuth = isSupabaseEnabled && !!user;
   const userId = user?.id;
 
@@ -143,6 +165,7 @@ export function useUserTasks() {
         }
         // Replace optimistic with real
         setTasks(prev => prev.map(t => t.id === newTask.id ? data : t));
+        logActivity(ACTIONS.TASK_CREATED, data.id);
         return data;
       } catch (err) {
         logger.error('[useUserTasks] add exception:', err);
@@ -151,7 +174,7 @@ export function useUserTasks() {
       }
     }
     return newTask;
-  }, [isAuth, userId]);
+  }, [isAuth, userId, logActivity]);
 
   // ── Spawn next recurring task (bounded retry, NEVER calls completeTask) ──
   const spawnRecurringTask = useCallback(async (task) => {
@@ -197,6 +220,7 @@ export function useUserTasks() {
           // Copy tag + link KB sang occurrence mới (best-effort — task chính đã
           // tạo thành công nên không rollback nếu bước copy này lỗi, chỉ log warn)
           if (inserted?.id) {
+            logActivity(ACTIONS.TASK_CREATED, inserted.id);
             if ((task._tags || []).length > 0) {
               const { error: tagError } = await supabase.from('task_tags').insert(
                 task._tags.map(tag => ({ task_id: inserted.id, tag_id: tag.id }))
@@ -238,7 +262,7 @@ export function useUserTasks() {
     );
     showToast(UI_STRINGS.toast.recurrenceSpawnFailed, { icon: '⚠️' });
     return false;
-  }, [isAuth, userId, showToast]);
+  }, [isAuth, userId, showToast, logActivity]);
 
   // ── Complete task ──────────────────────────────────────
   const completeTask = useCallback(async (taskId) => {
@@ -267,6 +291,11 @@ export function useUserTasks() {
           return; // Don't spawn if complete failed
         }
 
+        // Sự kiện rời rạc, KHÔNG phải field-diff `completed: false → true` —
+        // để nó vẫn được đếm vào heatmap (hoàn thành task theo đường bình
+        // thường trước v5.0.0 không hề lên heatmap, đây là chỗ bịt lỗ đó).
+        logActivity(ACTIONS.TASK_COMPLETED, taskId);
+
         // Spawn next recurring task (fire-and-forget, non-blocking)
         if (task?.recurrence_rule) {
           spawnRecurringTask(task);
@@ -278,7 +307,7 @@ export function useUserTasks() {
         ));
       }
     }
-  }, [isAuth, userId, tasks, spawnRecurringTask]);
+  }, [isAuth, userId, tasks, spawnRecurringTask, logActivity]);
 
   // ── Delete task ────────────────────────────────────────
   // Must delete via Supabase regardless of whether the task is in local `tasks`
@@ -374,6 +403,8 @@ export function useUserTasks() {
           return;
         }
 
+        logActivity(ACTIONS.TASK_UNCOMPLETED, taskId);
+
         const { data: child, error: findError } = await supabase
           .from('user_tasks')
           .select('id')
@@ -405,11 +436,21 @@ export function useUserTasks() {
         if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
       }
     }
-  }, [isAuth, userId, tasks, showToast]);
+  }, [isAuth, userId, tasks, showToast, logActivity]);
 
   // ── Update task (title / description / date / time) ───
   const updateTask = useCallback(async (taskId, changes) => {
     const backup = tasks.find(t => t.id === taskId);
+
+    // Tính diff TRƯỚC khi optimistic merge — sau đó `backup` vẫn là object cũ
+    // (setTasks tạo object mới) nhưng tính sẵn ở đây thì không phụ thuộc vào
+    // chi tiết đó. Xem diffTaskFields: so GIÁ TRỊ (form Sửa luôn gửi đủ 6 key
+    // kể cả key không đổi), bỏ qua key join `_tags`/`_collections`, và chuẩn
+    // hoá due_time 'HH:MM:SS' vs 'HH:MM' + recurrence_rule JSONB.
+    //
+    // `backup` undefined khi task không nằm trong state cục bộ (vd task lịch sử
+    // mở từ Lịch) — khi đó old_value = null, log vẫn ghi được, chỉ thiếu vế cũ.
+    const diffs = diffTaskFields(backup, changes);
 
     // Optimistic
     setTasks(prev => prev.map(t =>
@@ -427,13 +468,16 @@ export function useUserTasks() {
         if (error) {
           logger.error('[useUserTasks] update error:', error.message);
           if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
+          return; // đã rollback → KHÔNG ghi log, tránh dòng ma
         }
+
+        logFieldChanges(taskId, diffs);
       } catch (err) {
         logger.error('[useUserTasks] update exception:', err);
         if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
       }
     }
-  }, [isAuth, userId, tasks]);
+  }, [isAuth, userId, tasks, logFieldChanges]);
 
   // ── Get completed tasks in a date range (for calendar) ────────
   // v4.29.0: thay `getCompletedTasks(dateStr)` (1 query/ngày → 30 query/tháng khi
@@ -490,7 +534,9 @@ export function useUserTasks() {
   }, [tasks]);
 
   // ── Link collection to task (v4.5.0 junction) ──────────────
-  const linkCollection = useCallback(async (taskId, collectionId) => {
+  // `title` (tuỳ chọn) chỉ để activity log ghi được TÊN bài viết thay vì uuid —
+  // sau khi bài viết bị xoá thì không còn nguồn nào tra ngược tên.
+  const linkCollection = useCallback(async (taskId, collectionId, title) => {
     if (!isAuth) return false;
 
     // Optimistic: add to _collections
@@ -516,19 +562,21 @@ export function useUserTasks() {
         }));
         return false;
       }
+      logTaskRelation(ACTIONS.TASK_LINK_ADD, taskId, title || 'bài viết');
       return true;
     } catch (err) {
       logger.error('[useUserTasks] linkCollection exception:', err);
       return false;
     }
-  }, [isAuth]);
+  }, [isAuth, logTaskRelation]);
 
   // ── Unlink collection from task (v4.5.0 junction) ──────────
-  const unlinkCollection = useCallback(async (taskId, collectionId) => {
+  const unlinkCollection = useCallback(async (taskId, collectionId, title) => {
     if (!isAuth) return false;
 
     // Backup for rollback
     const backup = tasks.find(t => t.id === taskId)?._collections || [];
+    const label = title || backup.find(c => c.id === collectionId)?.title || 'bài viết';
 
     // Optimistic: remove from _collections
     setTasks(prev => prev.map(t => {
@@ -550,12 +598,13 @@ export function useUserTasks() {
         }));
         return false;
       }
+      logTaskRelation(ACTIONS.TASK_LINK_REMOVE, taskId, label, true);
       return true;
     } catch (err) {
       logger.error('[useUserTasks] unlinkCollection exception:', err);
       return false;
     }
-  }, [isAuth, tasks]);
+  }, [isAuth, tasks, logTaskRelation]);
 
   // ── Link tag to task (task_tags junction) ──────────────────
   const linkTaskTag = useCallback(async (taskId, tag) => {
@@ -580,18 +629,21 @@ export function useUserTasks() {
         }));
         return false;
       }
+      logTaskRelation(ACTIONS.TASK_TAG_ADD, taskId, tag.name);
       return true;
     } catch (err) {
       logger.error('[useUserTasks] linkTaskTag exception:', err);
       return false;
     }
-  }, [isAuth]);
+  }, [isAuth, logTaskRelation]);
 
   // ── Unlink tag from task ────────────────────────────────────
   const unlinkTaskTag = useCallback(async (taskId, tagId) => {
     if (!isAuth) return false;
 
     const backup = tasks.find(t => t.id === taskId)?._tags || [];
+    // Lấy tên tag TRƯỚC khi optimistic gỡ nó khỏi state.
+    const tagName = backup.find(x => x.id === tagId)?.name || 'tag';
 
     // Optimistic: remove from _tags
     setTasks(prev => prev.map(t => {
@@ -613,12 +665,13 @@ export function useUserTasks() {
         }));
         return false;
       }
+      logTaskRelation(ACTIONS.TASK_TAG_REMOVE, taskId, tagName, true);
       return true;
     } catch (err) {
       logger.error('[useUserTasks] unlinkTaskTag exception:', err);
       return false;
     }
-  }, [isAuth, tasks]);
+  }, [isAuth, tasks, logTaskRelation]);
 
   // Derived: split pending vs completed today
   const pendingTasks = tasks.filter(t => !t.completed);

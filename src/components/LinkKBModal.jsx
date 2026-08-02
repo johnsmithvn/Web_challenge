@@ -51,12 +51,15 @@ export default function LinkKBModal({ taskId, linkedIds = [], allCollections = [
 
   const handleToggle = useCallback(async (collectionId) => {
     const isLinked = linkedIds.includes(collectionId);
+    // Truyền kèm tiêu đề để activity log ghi được tên bài viết thay vì uuid —
+    // sau khi bài viết bị xoá thì không còn cách nào tra ngược tên nữa.
+    const title = allCollections.find(c => c.id === collectionId)?.title;
     if (isLinked) {
-      await onUnlink(taskId, collectionId);
+      await onUnlink(taskId, collectionId, title);
     } else {
-      await onLink(taskId, collectionId);
+      await onLink(taskId, collectionId, title);
     }
-  }, [taskId, linkedIds, onLink, onUnlink]);
+  }, [taskId, linkedIds, allCollections, onLink, onUnlink]);
 
   const linkedSet = new Set(linkedIds);
 

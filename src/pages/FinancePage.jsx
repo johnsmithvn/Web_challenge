@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useExpenses } from '../hooks/useExpenses';
 import { useSubscriptions } from '../hooks/useSubscriptions';
 import { useActivityLog } from '../hooks/useActivityLog';
+import { ACTIONS } from '../utils/taskFields';
 import { useCollections } from '../hooks/useCollections';
 import { useTags } from '../hooks/useTags';
 import { useAuth } from '../contexts/AuthContext';
@@ -154,8 +155,6 @@ export default function FinancePage() {
     const amount = parseCurrencyInput(expAmount);
     if (!amount || amount <= 0) return;
 
-    const cat = CAT_MAP[expCategory];
-    
     // Auto-append USD metadata to notes if USD is detected in input
     let finalNote = expNote;
     if (/[$]|usd/i.test(expAmount)) {
@@ -165,9 +164,7 @@ export default function FinancePage() {
 
     const result = await addExpense({ amount, category: expCategory, note: finalNote });
     if (result) {
-      logActivity('expense_add', `${formatVND(amount)} ${cat?.label || expCategory}`, amount, {
-        category: expCategory,
-      });
+      logActivity(ACTIONS.EXPENSE_ADD);
       // Link tags
       for (const tagId of expTagIds) {
         await linkTag(result.id, tagId, 'expense');
@@ -219,7 +216,7 @@ export default function FinancePage() {
 
     const result = await addSub({ name: finalName, amount, cycle: subCycle, next_due: subDue, icon: subIcon });
     if (result) {
-      logActivity('subscription_add', `${finalName} — ${formatVND(amount)}/${subCycle}`, amount, { cycle: subCycle });
+      logActivity(ACTIONS.SUBSCRIPTION_ADD);
       // Link tags
       for (const tagId of subTagIds) {
         await linkTag(result.id, tagId, 'subscription');

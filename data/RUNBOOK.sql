@@ -1,41 +1,59 @@
--- ════════════════════════════════════════════════════════════════════════════
--- RUNBOOK.sql — chạy 1 lần, từ trên xuống, cho database hiện tại của bạn
--- (KHÔNG dùng để dựng DB mới từ đầu — việc đó dùng schema_v4.24.0.sql)
+-- ============================================================================
+-- RUNBOOK.sql -- nguon duy nhat cho phan SQL con phai chay (v4.28.0/v4.30.0/v5.0.0)
 --
--- File này GỘP LẠI 3 migration đã viết riêng để bạn khỏi phải tự nhớ thứ tự.
--- 3 file gốc VẪN GIỮ NGUYÊN trong data/ — đó là hồ sơ lịch sử theo version
--- của dự án, không phải rác:
---   - migration_v4.28.0_tags_rls_indexes.sql
---   - migration_v5.0.0_cleanup_dead_columns.sql
---   - migration_v4.30.0_merge_knowledge_groups_into_tags.sql
+-- 2026-08-02: gop cac migration standalone (migration_v4.28.0_tags_rls_indexes.sql,
+-- migration_v4.30.0_merge_knowledge_groups_into_tags.sql,
+-- migration_v5.0.0_cleanup_dead_columns.sql) vao day roi XOA 3 file do -- toan bo
+-- noi dung cua chung da nam du trong file nay, giu 2 noi trung nhau de chay tay
+-- rat de nham (dung migrate_v5.0.0 chuan, lai lay nham file cu -> loi copy-paste
+-- do ky tu Unicode trang tri trong file cu). Muon xem lai SQL nguyen ban tung
+-- version, dung `git log -- data/migration_v4.28.0_tags_rls_indexes.sql` (va
+-- tuong tu cho 2 file kia) -- van con trong git history, khong mat.
 --
--- CÁCH DÙNG: đọc và chạy từng PHẦN theo đúng thứ tự 1 → 2 → 3.
---   - PHẦN 1, 2: nhãn "AN TOÀN" — chạy thẳng, không mất dữ liệu, chạy lại
---     nhiều lần cũng không sao.
---   - Giữa PHẦN 2 và PHẦN 3 có mục "⛔ DỪNG LẠI" — PHẢI đọc và làm đúng
---     hướng dẫn ở đó trước khi qua PHẦN 3.
---   - PHẦN 3: BREAKING, KHÔNG HOÀN LẠI ĐƯỢC — đang để dạng COMMENT (không tự
---     chạy). Chỉ bỏ comment khi đã làm đủ điều kiện ở mục "⛔ DỪNG LẠI".
+-- File nay CHI dung ASCII thuan, khong co ky tu Unicode trang tri (--, khong
+-- phai em-dash hay box-drawing) -- tranh lap lai loi copy-paste tu ky tu la
+-- "--" bi auto-correct thanh "-" (1 gach) khi dan qua clipboard/app khac.
 --
--- KHÔNG liên quan tới file này: reset_user_data.sql — đó là công cụ XOÁ DỮ
--- LIỆU (không phải sửa cấu trúc bảng), chỉ dùng khi bạn CHỦ ĐỘNG muốn xoá
--- sạch data để test lại từ đầu. Đừng nhầm 2 việc.
--- ════════════════════════════════════════════════════════════════════════════
+-- KHONG dung de dung DB moi tu dau -- viec do dung schema_v4.24.0.sql.
+--
+-- TRANG THAI DA XAC NHAN (2026-08-02, user tu chay + kiem tra):
+--   - PHAN 1 (v4.28.0)         : DA CHAY xong.
+--   - PHAN 2 (v4.30.0 Phase 1) : DA CHAY xong.
+--   - PHAN 3 (breaking)        : DA CHAY xong 2026-08-02, sau khi xac nhan da
+--     deploy code moi nhat len prod. Bo buoc 3a (backfill user_tasks.collection_id
+--     -> task_collections) khoi khoi chay vi cot collection_id da xac nhan KHONG
+--     TON TAI tren DB nay -- chay se loi "column does not exist" (transaction tu
+--     rollback, khong mat gi). Verify sau khi chay: ca 4 cau kiem tra (cot chet
+--     collections, user_tasks.collection_id, bang knowledge_groups/collection_groups,
+--     tags.emoji/description) deu tra 0 dong -- thanh cong hoan toan.
+--   - Con lai: B6 (hop nhat file nay vao schema_v4.24.0.sql) -- can chi thi ro
+--     rang truoc khi lam, xem docs/TASKS.md.
+--
+-- KHONG lien quan toi file nay: reset_user_data.sql -- do la cong cu XOA DU
+-- LIEU (khong phai sua cau truc bang), chi dung khi ban CHU DONG muon xoa
+-- sach data de test lai tu dau. Dung nham 2 viec.
+--
+-- migration_v4.31.0_recurrence_chain.sql (task recurrence_parent_id) KHONG nam
+-- trong file nay -- da chay xong rieng, xac nhan qua information_schema.columns
+-- (cot recurrence_parent_id da co tren user_tasks). Van con la file standalone
+-- rieng, khong can gop vao day vi khong con gi phai chay them.
+-- ============================================================================
 
 
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ PHẦN 1 — AN TOÀN — v4.28.0: fix constraint, RLS, index, thêm task_tags   │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- ----------------------------------------------------------------------------
+-- PHAN 1 -- AN TOAN -- v4.28.0: fix constraint, RLS, index, them task_tags
+-- DA CHAY -- giu lai de tham khao / chay lai cung an toan (idempotent)
+-- ----------------------------------------------------------------------------
 
 BEGIN;
 
--- 1a. chk_collections_type: thêm 'podcast', bỏ 'emotion' chết
+-- 1a. chk_collections_type: them 'podcast', bo 'emotion' chet
 UPDATE collections SET type = 'note' WHERE type = 'emotion';
 ALTER TABLE collections DROP CONSTRAINT IF EXISTS chk_collections_type;
 ALTER TABLE collections ADD CONSTRAINT chk_collections_type
   CHECK (type IN ('inbox','note','quote','learn','idea','ai','entertainment','podcast'));
 
--- 1b. RLS 4 junction — kiểm ownership CẢ HAI phía (trước chỉ kiểm 1 phía)
+-- 1b. RLS 4 junction -- kiem ownership CA HAI phia (truoc chi kiem 1 phia)
 DROP POLICY IF EXISTS "task_collections_own" ON task_collections;
 CREATE POLICY "task_collections_own" ON task_collections FOR ALL
   USING (
@@ -80,11 +98,11 @@ CREATE POLICY "subscription_tags_own" ON subscription_tags FOR ALL
     AND EXISTS (SELECT 1 FROM tags          WHERE id = tag_id          AND user_id = auth.uid())
   );
 
--- 1c. Index tag_id còn thiếu (filter theo tag đang full scan)
+-- 1c. Index tag_id con thieu (filter theo tag dang full scan)
 CREATE INDEX IF NOT EXISTS idx_expense_tags_tag      ON expense_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_subscription_tags_tag ON subscription_tags(tag_id);
 
--- 1d. task_tags — Task lần đầu có tag
+-- 1d. task_tags -- Task lan dau co tag
 CREATE TABLE IF NOT EXISTS task_tags (
   task_id UUID NOT NULL REFERENCES user_tasks(id) ON DELETE CASCADE,
   tag_id  UUID NOT NULL REFERENCES tags(id)       ON DELETE CASCADE,
@@ -103,7 +121,7 @@ CREATE POLICY "task_tags_own" ON task_tags FOR ALL
   );
 CREATE INDEX IF NOT EXISTS idx_task_tags_tag ON task_tags(tag_id);
 
--- 1e. VIEW tagged_items — 1 mặt đọc hợp nhất cho "mọi thứ có tag X"
+-- 1e. VIEW tagged_items -- 1 mat doc hop nhat cho "moi thu co tag X"
 DROP VIEW IF EXISTS tagged_items;
 CREATE VIEW tagged_items WITH (security_invoker = true) AS
       SELECT tag_id, 'collection'::text   AS kind, collection_id   AS item_id FROM collection_tags
@@ -114,19 +132,20 @@ UNION ALL SELECT tag_id, 'subscription'::text,  subscription_id FROM subscriptio
 COMMIT;
 
 
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ PHẦN 2 — AN TOÀN — v4.30.0 Phase 1: gộp knowledge_groups vào tags        │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- ----------------------------------------------------------------------------
+-- PHAN 2 -- AN TOAN -- v4.30.0 Phase 1: gop knowledge_groups vao tags
+-- DA CHAY -- giu lai de tham khao / chay lai cung an toan (idempotent)
+-- ----------------------------------------------------------------------------
 
 BEGIN;
 
 ALTER TABLE tags ADD COLUMN IF NOT EXISTS emoji TEXT;
 ALTER TABLE tags ADD COLUMN IF NOT EXISTS description TEXT;
 
--- name lowercase để khớp convention hiện có (useTags.addTag() luôn lowercase)
--- DISTINCT ON: code cũ không chặn 2 nhóm trùng tên — gộp về 1 dòng/tên trước
--- khi insert, tránh lỗi Postgres "ON CONFLICT DO UPDATE command cannot affect
--- row a second time" nếu user có ≥2 nhóm trùng lower(trim(title))
+-- name lowercase de khop convention hien co (useTags.addTag() luon lowercase)
+-- DISTINCT ON: code cu khong chan 2 nhom trung ten -- gop ve 1 dong/ten truoc
+-- khi insert, tranh loi Postgres "ON CONFLICT DO UPDATE command cannot affect
+-- row a second time" neu user co >= 2 nhom trung lower(trim(title))
 INSERT INTO tags (user_id, name, emoji, description)
 SELECT DISTINCT ON (kg.user_id, lower(trim(kg.title)))
        kg.user_id, lower(trim(kg.title)), kg.emoji, kg.description
@@ -136,7 +155,7 @@ ON CONFLICT (user_id, name) DO UPDATE
   SET emoji       = COALESCE(tags.emoji, EXCLUDED.emoji),
       description = COALESCE(tags.description, EXCLUDED.description);
 
--- sort_order CỐ Ý không mang sang (đã xác nhận không dùng tính năng sắp xếp thủ công)
+-- sort_order CO Y khong mang sang (da xac nhan khong dung tinh nang sap xep thu cong)
 INSERT INTO collection_tags (collection_id, tag_id)
 SELECT cg.collection_id, t.id
 FROM collection_groups cg
@@ -147,14 +166,16 @@ ON CONFLICT (collection_id, tag_id) DO NOTHING;
 COMMIT;
 
 
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ ⛔ DỪNG LẠI — chạy hết các SELECT dưới đây, đọc kỹ kết quả, rồi mới      │
--- │    quyết định có mở PHẦN 3 hay không. Đừng bỏ qua bước này.              │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- ----------------------------------------------------------------------------
+-- KIEM TRUOC KHI CHAY PHAN 3 -- chi doc (SELECT), khong doi gi ca
+-- Da chay 2026-08-02: 6 cau kiem cot chet TRA VE 0 DONG (an toan).
+-- Con thieu: chua tu xac nhan 3 dieu kien (D) ben duoi (deploy code, smoke
+-- test, backup DB) truoc khi mo PHAN 3.
+-- ----------------------------------------------------------------------------
 
--- (A) Row rác cross-user trước khi RLS thắt chặt ở Phần 1 — cả 4 câu PHẢI = 0
---     dòng. Nếu có, phải DELETE bằng service_role trước, sau Phần 1 sẽ không
---     xoá được qua API nữa:
+-- (A) Row rac cross-user truoc khi RLS thắt chặt o Phan 1 -- ca 4 cau PHAI = 0
+--     dong. Neu co, phai DELETE bang service_role truoc, sau Phan 1 se khong
+--     xoa duoc qua API nua:
 --   SELECT * FROM task_collections tc
 --     JOIN user_tasks  t ON t.id = tc.task_id
 --     JOIN collections c ON c.id = tc.collection_id
@@ -172,15 +193,16 @@ COMMIT;
 --     JOIN tags          g ON g.id = st.tag_id
 --    WHERE s.user_id <> g.user_id;
 
--- (B) knowledge_groups đã copy đủ sang tags chưa — 2 số phải bằng nhau
---     (hoặc bên tags >= vì có thể gộp vào tag trùng tên đã có sẵn):
+-- (B) knowledge_groups da copy du sang tags chua -- 2 so phai bang nhau
+--     (hoac ben tags >= vi co the gop vao tag trung ten da co san):
 --   SELECT count(*) FROM knowledge_groups;
 --   SELECT count(*) FROM tags WHERE emoji IS NOT NULL;
 --   SELECT count(*) FROM collection_groups;
 --   SELECT count(*) FROM collection_tags ct JOIN tags t ON t.id = ct.tag_id
 --    WHERE t.emoji IS NOT NULL;
 
--- (C) Các cột chuẩn bị DROP ở Phần 3 — PHẢI = 0, nếu > 0 là có data thật:
+-- (C) Cac cot chuan bi DROP o Phan 3 -- da xac nhan 2026-08-02, ca 6 cau tra
+--     ve 0 dong (khong ton tai tren DB nay). Chay lai neu muon tu kiem chung:
 --   SELECT count(*) FROM collections WHERE resolved     IS NOT NULL AND resolved <> false;
 --   SELECT count(*) FROM collections WHERE course_name  IS NOT NULL;
 --   SELECT count(*) FROM collections WHERE duration_min IS NOT NULL;
@@ -191,84 +213,89 @@ COMMIT;
 --      AND NOT EXISTS (SELECT 1 FROM task_collections tc
 --                       WHERE tc.task_id = t.id AND tc.collection_id = t.collection_id);
 
--- (D) Điều kiện KHÔNG-thuộc-SQL, tự xác nhận trước khi qua Phần 3:
---     [ ] Đã deploy code app mới nhất (không còn ghi collections.priority /
---         user_tasks.collection_id; CollectPage.jsx KHÔNG còn UI "Nhóm",
---         không đọc tags.emoji/description; useCollections.js không select emoji)
---     [ ] Đã smoke test /collect → không còn tab 📁 Nhóm, mọi bài viết (kể cả
---         bài từng ở trong nhóm cũ) vẫn hiện đầy đủ với tag thường
---     [ ] Đã backup DB (Supabase Dashboard → Database → Backups, hoặc
+-- (D) Dieu kien KHONG-thuoc-SQL, tu xac nhan truoc khi qua Phan 3:
+--     [ ] Da deploy code app moi nhat (khong con ghi collections.priority /
+--         user_tasks.collection_id; CollectPage.jsx KHONG con UI "Nhom",
+--         khong doc tags.emoji/description; useCollections.js khong select emoji)
+--     [ ] Da smoke test /collect -> khong con tab Nhom, moi bai viet (ke ca
+--         bai tung o trong nhom cu) van hien day du voi tag thuong
+--     [ ] Da backup DB (Supabase Dashboard -> Database -> Backups, hoac
 --         pg_dump "$DATABASE_URL" > backup_pre_v5.sql)
 
 
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │ PHẦN 3 — BREAKING, KHÔNG HOÀN LẠI — đang COMMENT, tự bỏ comment khi sẵn  │
--- │          sàng (bôi đen từ BEGIN tới COMMIT bên dưới, bỏ "-- " đầu dòng)  │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- ----------------------------------------------------------------------------
+-- PHAN 3 -- BREAKING, KHONG HOAN LAI DUOC
+-- DA CHAY XONG 2026-08-02 (bo buoc 3a, xem TRANG THAI o dau file). Giu nguyen
+-- dang comment ben duoi lam ho so lich su SQL da chay -- KHONG chay lai (cac
+-- ALTER/DROP deu co IF EXISTS nen chay lai an toan/no-op, nhung khong can thiet).
+-- ----------------------------------------------------------------------------
 
 -- BEGIN;
 --
--- -- 3a. Backfill an toàn: đẩy nốt link 1:1 còn sót vào junction
+-- -- 3a. Backfill an toan: day not link 1:1 con sot vao junction
+-- -- BO QUA khi chay that 2026-08-02: cot user_tasks.collection_id da xac nhan
+-- -- KHONG TON TAI tren DB nay -- chay se loi "column does not exist". Neu DB
+-- -- khac van con cot nay thi buoc nay van can chay truoc 3c.
 -- INSERT INTO task_collections (task_id, collection_id)
 -- SELECT id, collection_id FROM user_tasks WHERE collection_id IS NOT NULL
 -- ON CONFLICT DO NOTHING;
 --
--- -- 3b. DROP cột chết trên collections
+-- -- 3b. DROP cot chet tren collections (da xac nhan 0 dong -- an toan)
 -- ALTER TABLE collections DROP COLUMN IF EXISTS resolved;
 -- ALTER TABLE collections DROP COLUMN IF EXISTS course_name;
 -- ALTER TABLE collections DROP COLUMN IF EXISTS duration_min;
 -- ALTER TABLE collections DROP COLUMN IF EXISTS reviewed_at;
 -- ALTER TABLE collections DROP COLUMN IF EXISTS priority;
 --
--- -- 3c. DROP user_tasks.collection_id (deprecated từ v4.5.0)
+-- -- 3c. DROP user_tasks.collection_id (deprecated tu v4.5.0, da xac nhan 0 dong)
 -- ALTER TABLE user_tasks DROP CONSTRAINT IF EXISTS fk_user_tasks_collection;
 -- DROP INDEX IF EXISTS idx_user_tasks_collection_id;
 -- ALTER TABLE user_tasks DROP COLUMN IF EXISTS collection_id;
 --
--- -- 3d. Chuẩn hoá collections.status — GIỮ 'archived' (soft-delete đang dùng thật)
+-- -- 3d. Chuan hoa collections.status -- GIU 'archived' (soft-delete dang dung that)
 -- UPDATE collections SET status = 'unread' WHERE status = 'inbox' OR status IS NULL;
 -- ALTER TABLE collections DROP CONSTRAINT IF EXISTS chk_collections_status;
 -- ALTER TABLE collections ADD CONSTRAINT chk_collections_status
 --   CHECK (status IN ('unread','read','archived'));
 -- ALTER TABLE collections ALTER COLUMN status SET DEFAULT 'unread';
 --
--- -- 3e. Xoá bảng group cũ (đã copy hết sang tags/collection_tags ở Phần 2)
+-- -- 3e. Xoa bang group cu (da copy het sang tags/collection_tags o Phan 2)
 -- DROP TABLE IF EXISTS collection_groups;
 -- DROP TABLE IF EXISTS knowledge_groups;
 --
--- -- 3f. Xoá cột emoji/description trên tags — quyết định sau (2026-08-01):
--- -- bỏ hẳn tính năng "Nhóm" khỏi UI, không còn ai đọc 2 cột này nữa
+-- -- 3f. Xoa cot emoji/description tren tags -- quyet dinh sau (2026-08-01):
+-- -- bo han tinh nang "Nhom" khoi UI, khong con ai doc 2 cot nay nua
 -- ALTER TABLE tags DROP COLUMN IF EXISTS emoji;
 -- ALTER TABLE tags DROP COLUMN IF EXISTS description;
 --
 -- COMMIT;
 
 
--- ════════════════════════════════════════════════════════════════════════════
--- KIỂM TRA SAU KHI CHẠY PHẦN 3
--- ════════════════════════════════════════════════════════════════════════════
+-- ============================================================================
+-- KIEM TRA SAU KHI CHAY PHAN 3
+-- ============================================================================
 --   SELECT column_name FROM information_schema.columns
 --    WHERE table_name = 'collections' AND column_name IN
 --      ('resolved','course_name','duration_min','reviewed_at','priority');
---   -- phải trả 0 dòng
+--   -- phai tra 0 dong
 --
 --   SELECT column_name FROM information_schema.columns
 --    WHERE table_name = 'user_tasks' AND column_name = 'collection_id';
---   -- phải trả 0 dòng
+--   -- phai tra 0 dong
 --
 --   SELECT status, count(*) FROM collections GROUP BY status;
---   -- chỉ còn unread / read / archived
+--   -- chi con unread / read / archived
 --
 --   SELECT table_name FROM information_schema.tables
 --    WHERE table_name IN ('knowledge_groups','collection_groups');
---   -- phải trả 0 dòng
+--   -- phai tra 0 dong
 --
--- SMOKE TEST TRÊN APP (bắt buộc, không có test tự động cho phần này):
---   1. /inbox   — thêm item mới → INSERT collections thành công
---   2. /inbox   — phân loại 1 item sang 🎧 Podcast → không lỗi constraint
---   3. /tasks   — thêm task mới → INSERT user_tasks thành công
---   4. /tasks   — bấm 🔗 link 1 bài KB → task_collections vẫn hoạt động
---   5. /collect — archive 1 bài → vẫn ẩn khỏi danh sách
---   6. /collect — Kho Tàng hiện đúng nhóm cũ (giờ là tag có emoji), bấm vào
---      xem đúng danh sách bài, tạo nhóm mới vẫn hoạt động
--- ════════════════════════════════════════════════════════════════════════════
+-- SMOKE TEST TREN APP (bat buoc, khong co test tu dong cho phan nay):
+--   1. /inbox   -- them item moi -> INSERT collections thanh cong
+--   2. /inbox   -- phan loai 1 item sang Podcast -> khong loi constraint
+--   3. /tasks   -- them task moi -> INSERT user_tasks thanh cong
+--   4. /tasks   -- bam link 1 bai KB -> task_collections van hoat dong
+--   5. /collect -- archive 1 bai -> van an khoi danh sach
+--   6. /collect -- Kho Tang hien dung nhom cu (gio la tag co emoji), bam vao
+--      xem dung danh sach bai, tao nhom moi van hoat dong
+-- ============================================================================

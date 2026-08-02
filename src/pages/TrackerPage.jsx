@@ -8,7 +8,6 @@ import { useSkipReasons } from '../hooks/useMoodSkip';
 import { useJourney } from '../hooks/useJourney';
 import { useHabitLogs } from '../hooks/useHabitLogs';
 import { useUserTasks } from '../hooks/useUserTasks';
-import { useActivityLog } from '../hooks/useActivityLog';
 import { useIntentions } from '../hooks/useIntentions';
 import { useAuth } from '../contexts/AuthContext';
 import DailyChallenge from '../components/DailyChallenge';
@@ -295,7 +294,6 @@ export default function TrackerPage() {
   const { habitProg, toggleLog } = useHabitLogs();
   const { isAuthenticated } = useAuth();
   const { getCompletedTasksRange } = useUserTasks();
-  const { logActivity } = useActivityLog();
   const { reviewDueCount } = useIntentions();
 
   const [tab, setTab] = useState('today');
@@ -355,13 +353,12 @@ export default function TrackerPage() {
       removeXp('habit_tick', { habitId: habit.id, date: todayKey });
     }
 
-    // Activity log: fire-and-forget
-    logActivity(
-      wasDone ? 'habit_undo' : 'habit_done',
-      habit.name || habit.label,
-      wasDone ? null : XP_REWARDS.daily_check,
-      { habit_id: habit.id, date: todayKey }
-    );
+    // v5.0.0: KHÔNG còn ghi activity log cho habit tick.
+    // Migration v5.0.0 đã purge sạch dòng habit_done/habit_undo cũ; nếu ở đây
+    // vẫn ghi tiếp thì rác lại mọc lên ngay và phải purge lần nữa lúc gỡ hẳn
+    // Habit tracker (xem docs/TASKS.md § Backlog xoá Habit).
+    // Hệ quả: tick habit không còn cộng vào heatmap Life Log. XP thì không đổi
+    // — vẫn đi qua addXp/removeXp ở ngay trên, ghi vào `xp_logs`.
 
     const nextDone = !wasDone;
     const allDone = activeHabits.every(h =>
