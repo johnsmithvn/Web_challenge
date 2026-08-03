@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useActiveJourney } from '../contexts/JourneyContext';
 import { logger } from '../utils/logger';
 
 // XP for completing a focus session.
@@ -46,9 +45,6 @@ const DEFAULT_SETTINGS = {
 
 export function useFocusTimer() {
   const { user, isAuthenticated } = useAuth();
-  const { activeJourney } = useActiveJourney();  // ← context, always up-to-date
-  const activeJourneyRef = useRef(activeJourney);
-  useEffect(() => { activeJourneyRef.current = activeJourney; }, [activeJourney]);
   const useDB = isSupabaseEnabled && isAuthenticated;
 
   const [settings, setSettings] = useState(() => {
@@ -60,7 +56,6 @@ export function useFocusTimer() {
   const [secondsLeft, setSecondsLeft] = useState(settings.workMin * 60);
   const [running,     setRunning]     = useState(false);
   const [session,     setSession]     = useState(0);
-  const [habitId,     setHabitId]     = useState(null);
 
   // In-memory session log (loaded from Supabase on login)
   const [sessions, setSessions] = useState([]);
@@ -71,14 +66,13 @@ export function useFocusTimer() {
     const today = new Date().toISOString().split('T')[0];
     supabase
       .from('focus_sessions')
-      .select('id, habit_id, duration_min, date, completed_at')
+      .select('id, duration_min, date, completed_at')
       .eq('user_id', user.id)
       .eq('date', today)
       .then(({ data, error }) => {
         if (!error && data) {
           setSessions(data.map(r => ({
             id:          r.id,
-            habitId:     r.habit_id,
             date:        r.date,
             durationMin: r.duration_min,
             completedAt: r.completed_at,
@@ -125,7 +119,6 @@ export function useFocusTimer() {
       const today = new Date().toISOString().split('T')[0];
       const log = {
         id:          crypto.randomUUID(),
-        habitId,
         date:        today,
         durationMin: settings.workMin,
         completedAt: new Date().toISOString(),
@@ -135,11 +128,11 @@ export function useFocusTimer() {
 
       // Persist to Supabase (fire-and-forget)
       if (useDB && user) {
+        // v5.0.0: bỏ habit_id + journey_id. Habit tracker và Lộ Trình đã gỡ hẳn;
+        // 2 cột đó trên `focus_sessions` cũng DROP theo (xem schema § 7).
         supabase.from('focus_sessions').insert({
           id:           log.id,
           user_id:      user.id,
-          habit_id:     habitId || null,
-          journey_id:   activeJourneyRef.current?.id || null,
           duration_min: settings.workMin,
           date:         today,
           completed_at: log.completedAt,
@@ -156,17 +149,8 @@ export function useFocusTimer() {
         // `focus_sessions` (insert ngay trên), XP ở `xp_logs` qua awardFocusXp().
       }
 
-      // Auto-tick linked habit via useHabitLogs event
-      // Emit a custom event so TrackerPage/useHabitLogs can react
-      if (habitId) {
-        const totalFocusMin = next
-          .filter(s => s.habitId === habitId && s.date === today)
-          .reduce((sum, s) => sum + s.durationMin, 0);
-
-        window.dispatchEvent(new CustomEvent('focus:habit-tick', {
-          detail: { habitId, date: today, totalFocusMin }
-        }));
-      }
+      // v5.0.0: bỏ CustomEvent 'focus:habit-tick' (auto-tick habit khi đủ giờ
+      // focus). Người nghe duy nhất là useHabitLogs — đã xoá cùng Habit tracker.
 
       // Determine next phase
       if (newSession % settings.sessionsBeforeLong === 0) {
@@ -188,7 +172,7 @@ export function useFocusTimer() {
         new Notification('🎯 Bắt đầu lại!', { body: 'Nghỉ xong rồi. Focus tiếp nào!' });
       }
     }
-  }, [phase, session, sessions, settings, habitId, useDB, user]);
+  }, [phase, session, sessions, settings, useDB, user]);
 
   // Keep the ref pointing at the freshest handlePhaseEnd for the tick interval.
   useEffect(() => { handlePhaseEndRef.current = handlePhaseEnd; }, [handlePhaseEnd]);
@@ -208,8 +192,6 @@ export function useFocusTimer() {
     setPhase('work'); setRunning(false);
   }, [settings]);
 
-  const linkHabit = useCallback((id) => setHabitId(id), []);
-
   const mins = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
   const secs = String(secondsLeft % 60).padStart(2, '0');
 
@@ -220,8 +202,8 @@ export function useFocusTimer() {
   return {
     phase, running, mins, secs, pct, session,
     settings, sessions, todaySessions, todayMinutes,
-    habitId, secondsLeft, totalSec,
+    secondsLeft, totalSec,
     start, pause, reset, skip,
-    updateSettings, linkHabit,
+    updateSettings,
   };
 }

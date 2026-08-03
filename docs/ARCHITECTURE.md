@@ -30,20 +30,19 @@ src/
 ├── App.jsx           AppShell: PageMeta + Onboarding gate + Navbar + QuickCapture
 │                     + GlobalAudioPlayer + ErrorBoundary + Suspense + Routes
 ├── main.jsx          React root
-├── pages/       (12) 1 file / route. LandingPage + TrackerPage eager, 10 còn lại lazy
-├── components/  (38) UI dùng lại, props-driven, không gọi supabase trực tiếp
-│   └── journey/  (5) ActiveJourneyPanel, ProgramBrowser, MyJourneys, JourneyHistory,
-│                     CustomJourneyModal
-├── hooks/       (20) use<Entity>.js — toàn bộ logic Supabase, dual-mode guest fallback
-├── contexts/     (3) AuthContext, JourneyContext, ThemeContext
+├── pages/        (8) 1 file / route. LandingPage eager, 7 còn lại lazy
+├── components/  (27) UI dùng lại, props-driven, không gọi supabase trực tiếp
+├── hooks/       (12) use<Entity>.js — toàn bộ logic Supabase, dual-mode guest fallback
+├── contexts/     (3) AuthContext, ThemeContext, ToastContext
 ├── extensions/   (1) MediaNode.jsx — Tiptap atom node cho media inline
 ├── lib/          (1) supabase.js — singleton client, graceful fallback khi thiếu env
-├── utils/        (4) currencyUtils, dateUtils, logger, mediaUtils (pure, no React)
-│                 (+2) dateUtils.test.js, mediaUtils.test.js — self-check `npm test`,
-│                     không nằm trong bundle (không file app nào import)
-├── data/         (8) JSON content tĩnh (Rule 14): challenges, quiz, habits, quotes,
-│                     programs, expense-categories, knowledge, testimonials
-└── styles/      (32) 1 file / domain + global.css (design tokens). Không dùng Tailwind
+├── utils/        (7) currencyUtils, dateUtils, logger, mediaUtils, recurrenceUtils,
+│                     taskFields (pure, no React)
+│                 (+2) dateUtils.test.js, mediaUtils.test.js — self-check `npm test`
+├── __tests__/    (2) recurrenceUtils.test.js, taskFields.test.js — `npm test`
+├── data/         (4) JSON content tĩnh (Rule 14): quotes, expense-categories,
+│                     knowledge, ui-strings
+└── styles/      (24) 1 file / domain + global.css (design tokens). Không dùng Tailwind
 
 api/                  Vercel serverless
 ├── upload.js         Upload proxy → Google Drive (Supabase JWT + folder whitelist)
@@ -68,7 +67,7 @@ docs/                 ARCHITECTURE / DATABASE / FEATURES / PLAN / TASKS / RULES 
 User Action
     │
     ▼
-Hook (e.g. useHabitStore)
+Hook (e.g. useUserTasks)
     │
     ├── isAuthenticated?
     │       │
@@ -112,47 +111,38 @@ vl_theme               # "dark" | "light" — theme preference (v2.2.0)
 >
 > **Ngoại lệ legacy hiện tại** — là user data thật, **chưa** migrate:
 >
-> Hệ quả: dữ liệu Life Journey không sync giữa thiết bị và mất khi user xoá browser data,
+> (Life Journey đã gỡ ở v5.0.0 — mục này giữ lại làm ghi chú lịch sử.) Hệ quả cũ: dữ liệu không sync giữa thiết bị,
 > kể cả khi đã đăng nhập. Migrate sang Supabase là đổi code + thêm bảng — chưa làm, không phải
 > việc của tài liệu. Đừng dùng 2 key này làm tiền lệ cho feature mới.
 
 ### Supabase Tables
 
 Không liệt kê lại ở đây — **`docs/DATABASE.md`** là nơi duy nhất mô tả bảng, còn
-**`data/schema_v4.24.0.sql`** là source of truth (31 `CREATE TABLE`: 29 active + `friendships` / `fitness_logs` archived).
+**`data/schema_v4.24.0.sql`** là source of truth (**18 `CREATE TABLE`**, tất cả đều đang dùng — v5.0.0 đã DROP 12 bảng chết/đã gỡ feature).
 Các file `migration_*.sql` theo version đã bị gộp và xoá; đừng tham chiếu chúng nữa.
 
 Cụm bảng theo domain:
 
 | Domain | Tables |
 |--------|--------|
-| Habit / streak | `progress`, `habits`, `habit_logs`, `skip_reasons` |
-| Journey | `programs`, `program_habits`, `user_journeys`, `journey_habits` |
+| Tasks | `user_tasks`, `task_collections`, `task_tags`, `activity_logs` (lịch sử + ghi chú) |
+| Knowledge | `collections`, `collection_tags`, `collection_notes`, `inspirational_quotes` |
+| Finance | `expenses`, `subscriptions`, `expense_tags`, `subscription_tags` |
+| Incubator | `intentions`, `intention_logs` |
+| Tags | `tags` + 4 junction + VIEW `tagged_items` |
 | Focus | `focus_sessions` |
 | Gamification | `xp_logs` |
-| Tasks | `user_tasks`, `task_collections` |
-| Knowledge | `collections`, `tags`/`collection_tags`, `collection_notes`, `inspirational_quotes` |
-| Finance | `expenses`, `subscriptions` |
-| Incubator | `intentions`, `intention_logs` |
-| Tags | `tags`, `collection_tags`, `expense_tags`, `subscription_tags` |
-| Audit | `activity_logs` |
-| Account | `profiles`, `notification_settings` |
-| Archived | `friendships`, `fitness_logs` (không hook nào dùng, an toàn để DROP) |
+| Account | `profiles` |
 
-### DashboardPage v3.1.0 — Data Sources
+> **v5.0.0 DROP 12 bảng:** `progress`, `habits`, `habit_logs`, `programs`,
+> `program_habits`, `user_journeys`, `journey_habits`, `skip_reasons` (Habit +
+> Lộ Trình), `streaks` (BXH), `notification_settings`, `friendships`,
+> `fitness_logs` (chết sẵn). Không còn bảng nào trong schema mà không có hook dùng.
 
-```
-DashboardPage
-  ├── useHabitStore      → streak, longestStreak, totalDone, data (heatmap)
-  ├── useXpStore         → totalXp, levelInfo, log (today XP earned)
-  ├── useSkipReasons     → getAllSkips() (skip analysis 14 days)
-  ├── useFocusTimer      → todayMinutes, todaySessions
-  ├── useExpenses        → fetchExpenses, getTotal, getByCategory
-  ├── useSubscriptions   → fetchSubs, getMonthlyCost, getUpcoming
-  ├── useActivityLog     → getTodayCount
-  ├── useAuth            → user, isAuthenticated (for FocusBreakdown) [v3.2.1]
-  ├── supabase (direct)  → focus_sessions + habits (FocusBreakdown)  [v3.2.1]
-```
+### ~~DashboardPage — Data Sources~~ — TRANG ĐÃ GỠ (v5.0.0)
+
+`DashboardPage` tổng hợp 8 hook + 1 query supabase trực tiếp (ngoại lệ duy nhất
+của quy tắc "component không gọi supabase"). Gỡ trang này cũng gỡ luôn ngoại lệ đó.
 
 ---
 
@@ -161,16 +151,11 @@ DashboardPage
 | Path | Component | Auth | Load |
 |------|-----------|:----:|:----:|
 | `/` | LandingPage | Public | Eager |
-| `/tracker` | TrackerPage | Public | Eager |
-| `/habits` | Inline redirect → `/tracker` | — | — |
 | `/inbox` | InboxPage | Required | Lazy |
 | `/tasks` | TasksPage (List + Calendar view) | Required | Lazy |
 | `/collect` | CollectPage | Required | Lazy |
 | `/finance` | FinancePage | Required | Lazy |
 | `/focus` | FocusPage | Public | Lazy |
-| `/journey` | JourneyPage | Public (soft wall for save) | Lazy |
-| `/journey/:id` | JourneyDetailPage | Public | Lazy |
-| `/dashboard` | DashboardPage | Public | Lazy |
 | `/team` | Inline redirect → `/tracker` | — | — |
 | `/friends` | Inline redirect → `/tracker` | — | — |
 | `/incubator` | IncubatorPage | Required | Lazy |
@@ -183,9 +168,9 @@ DashboardPage
 
 ```
 ThemeProvider
-  └── AuthProvider
-        └── BrowserRouter
-              └── JourneyProvider
+  └── ToastProvider
+        └── AuthProvider
+              └── BrowserRouter
                      └── AppShell
                            ├── PageMeta (SEO title/desc per route)
                            ├── OnboardingModal (once, gated by vl_onboarded)
@@ -193,7 +178,7 @@ ThemeProvider
                            ├── QuickCapture (global floating [+] button)
                            └── ErrorBoundary
                                 └── Suspense (PageSkeleton fallback)
-                                      └── Routes (13 lazy + 2 eager)
+                                      └── Routes (7 lazy + 1 eager)
 ```
 
 ---
@@ -210,9 +195,8 @@ ThemeProvider
 - Dễ xóa sạch: `Object.keys(localStorage).filter(k => k.startsWith('vl_'))`
 
 ### 3. Streak computed on client
-- `useHabitStore.calcStreak()` tính streak từ map `progress` — cả guest lẫn authed
-- Bảng `streaks` đã **DROP ở v5.0.0** cùng Bảng Xếp Hạng — nó chưa bao giờ được cập nhật sau
-  signup. Streak trên UI tính runtime từ `progress`/`habit_logs`, không đọc bảng nào.
+- **v5.0.0: không còn khái niệm streak trong app.** Habit tracker và bảng `streaks`
+  đều đã gỡ. Nếu sau này cần lại, đừng dựng bảng cache — tính runtime từ dữ liệu gốc.
 - RLS: mỗi user chỉ đọc hàng của mình (v4.24.0); cross-user đi qua RPC `SECURITY DEFINER`
 
 ### 4. CSS architecture
@@ -225,32 +209,32 @@ ThemeProvider
 - Compute `totalXp = SUM(log)` tại runtime
 - Dedup bằng `hasMilestone(reason, meta)` trước khi `addXp`
 - `focus_session` XP (+15) write trực tiếp qua Supabase (deduped)
+- **v5.0.0:** nguồn XP đổi từ habit sang **hoàn thành Nhiệm vụ** (+10, dedup theo
+  `taskId`). Dòng `xp_logs` cũ của habit/quiz/challenge vẫn giữ — append-only, cố
+  ý không dọn, nên tổng XP không tụt.
 
-### 6. Journey-as-Core-Context (v1.8.0+)
-- `JourneyContext` wraps entire app, fetches activeJourney once on login
-- All habit ticks → `habit_logs.journey_id`
-- All focus sessions → `focus_sessions.journey_id`
-- All new habits → `habits.journey_id`
+### 6-8. ~~Journey-as-Core-Context~~ / ~~Journey Owns Habits~~ / ~~Page Consolidation~~ — HẾT HIỆU LỰC (v5.0.0)
 
-### 7. Journey Owns Habits (v2.0.0)
-- Mỗi journey tạo fresh habit rows riêng. Không reuse habits giữa journeys
-- Complete/quit → close all active habits (`active=false`)
-- Renew → snapshot old habits → clone as fresh rows for new cycle
-- Replace mode: archive old journey + close habits → create fresh
-- Append mode: archive old journey, keep old habits + add new
+Ba quyết định kiến trúc này đều xoay quanh Habit tracker + Lộ Trình 21 ngày, đã
+gỡ hẳn. Ghi lại bài học để không lặp lại:
 
-### 8. Page Consolidation (v1.9.0)
-- HabitsPage deprecated → redirect `/tracker`
-- TrackerPage absorbed tất cả features: per-habit tick, mood, skip, calendar, weekly grid, habit manager
-- 4 tabs: ⚡ Hôm Nay | 📅 Lịch | 📊 Tuần | ⚙️ Quản Lý
+- **`JourneyContext` bọc toàn bộ App** và bị 4 hook import trực tiếp
+  (`useCustomHabits`, `useHabitLogs`, `useFocusTimer`, `useJourney`). Hệ quả: khi
+  muốn gỡ, **không tách nhỏ được** — Habit, Lộ Trình, XP và Focus phải xử lý
+  cùng một đợt. Một context toàn cục là một ràng buộc toàn cục.
+- **Journey sở hữu Habit** (mỗi lộ trình tạo habit rows riêng, complete → đóng
+  hết) khiến 2 feature dính chặt tới mức không thể giữ cái này bỏ cái kia.
+- **Page Consolidation** gộp mọi thứ vào `TrackerPage` (886 dòng, 4 tab). Gộp
+  càng nhiều thì càng khó cắt: `/tasks` phải tách khỏi nó ở v4.27.0 trước, mới
+  gỡ được `TrackerPage` ở v5.0.0.
 
 ### 9. Onboarding gate (v1.3.0)
 - `AppShell` kiểm tra `vl_onboarded` trước khi render app
-- Nếu chưa có → show `OnboardingModal` (3 bước)
+- Nếu chưa có → show `OnboardingModal` (3 bước; nội dung viết lại ở v5.0.0)
 - Không block routing — user có thể bỏ qua
 
 ### 10. Lazy Loading + Error Boundary (v1.7.0)
-- 10 pages lazy-loaded via `React.lazy` + `Suspense` (LandingPage + TrackerPage are eager)
+- 7 pages lazy-loaded via `React.lazy` + `Suspense` (chỉ `LandingPage` là eager)
 - `ErrorBoundary` wraps routes → friendly fallback thay màn trắng
 - `lazyRetry()` wrapper auto-reload on stale chunk after Vercel redeploy
 

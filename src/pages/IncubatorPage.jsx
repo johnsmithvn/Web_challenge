@@ -5,7 +5,6 @@ import remarkGfm from 'remark-gfm';
 import { useIntentions } from '../hooks/useIntentions';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useExpenses } from '../hooks/useExpenses';
-import { useCustomHabits } from '../hooks/useCustomHabits';
 import { useAuth } from '../contexts/AuthContext';
 import EXPENSE_DATA from '../data/expense-categories.json';
 import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
@@ -151,7 +150,6 @@ export default function IncubatorPage() {
   } = useIntentions();
   const { addTask } = useUserTasks();
   const { addExpense } = useExpenses();
-  const { addHabit } = useCustomHabits();
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -172,7 +170,8 @@ export default function IncubatorPage() {
 
   // Execute modal
   const [executeModal, setExecuteModal] = useState(null);
-  const [execOptions, setExecOptions] = useState({ expense: false, habit: false, task: false });
+  // v5.0.0: bỏ lựa chọn 'habit' — Habit tracker đã gỡ hẳn.
+  const [execOptions, setExecOptions] = useState({ expense: false, task: false });
   const [expenseCategory, setExpenseCategory] = useState('shopping');
   const [execLogs, setExecLogs] = useState([]);
   const [execError, setExecError] = useState('');
@@ -196,7 +195,7 @@ export default function IncubatorPage() {
   const todayStr = toDateStr(); // local date, NOT toISOString() which is UTC
 
   const toggleExec = (key) => { setExecError(''); setExecOptions(prev => ({ ...prev, [key]: !prev[key] })); };
-  const anySelected = execOptions.expense || execOptions.habit || execOptions.task;
+  const anySelected = execOptions.expense || execOptions.task;
 
   /* ── Add ── */
   const handleAdd = useCallback(async (e) => {
@@ -275,8 +274,7 @@ export default function IncubatorPage() {
     // Auto-suggest based on intention data
     setExecOptions({
       expense: !!item.estimated_cost,
-      habit: !!item.estimated_time,
-      task: !item.estimated_cost && !item.estimated_time, // default if no cost/time
+      task: !item.estimated_cost, // mặc định nếu không có chi phí ước tính
     });
     setExpenseCategory('shopping');
     // Fetch logs for rich description when converting to Task
@@ -305,20 +303,7 @@ export default function IncubatorPage() {
       }
     }
 
-    // 2. Habit
-    if (execOptions.habit) {
-      const hab = await addHabit({
-        name: executeModal.title,
-        action: executeModal.title,
-        durationMin: executeModal.estimated_time || null,
-      });
-      if (hab) {
-        convertedTypes.push('habit');
-        convertedIds.habit = hab.id;
-      }
-    }
-
-    // 3. Task
+    // 2. Task
     if (execOptions.task) {
       // v4.28.0: bỏ `durationEst` — addTask không nhận tham số này (cột
       // duration_est đã DROP ở v4.9.0, thay bằng priority). Nó đang bị bỏ qua
@@ -348,16 +333,16 @@ export default function IncubatorPage() {
     await executeIntention(executeModal.id, { convertedTypes, convertedIds });
 
     // Navigate to most relevant page
-    if (execOptions.task || execOptions.habit) {
-      navigate('/tracker');
+    if (execOptions.task) {
+      navigate('/tasks');
     } else if (execOptions.expense) {
       navigate('/finance');
     }
 
     setExecuteModal(null);
-    setExecOptions({ expense: false, habit: false, task: false });
+    setExecOptions({ expense: false, task: false });
   }, [executeModal, execOptions, anySelected, expenseCategory, execLogs,
-    addExpense, addHabit, addTask, executeIntention, navigate]);
+    addExpense, addTask, executeIntention, navigate]);
 
   /* ── Toggle timeline ── */
   const toggleTimeline = useCallback(async (id) => {
@@ -705,21 +690,6 @@ export default function IncubatorPage() {
                       />
                     </div>
                   )}
-                </div>
-              </div>
-
-              {/* Option: Habit */}
-              <div
-                className={`incubator-exec-option${execOptions.habit ? ' incubator-exec-option--active' : ''}`}
-                onClick={() => toggleExec('habit')}
-              >
-                <span className="incubator-exec-checkbox">{execOptions.habit ? '✓' : ''}</span>
-                <div className="incubator-exec-option__content">
-                  <div className="incubator-exec-option__title">🔁 Tạo Thói quen</div>
-                  <div className="incubator-exec-option__info">
-                    "{executeModal.title}"
-                    {executeModal.estimated_time ? ` · ⏱ ${formatDuration(executeModal.estimated_time)}/ngày` : ''}
-                  </div>
                 </div>
               </div>
 

@@ -26,6 +26,9 @@
 --     thay đổi + ghi chú của từng Task
 --   • Life Log (/life-log) + heatmap + KPI "Hoạt động hôm nay" đã GỠ HẲN (v5.0.0)
 --   • Hành Trình cảm xúc (/life-journey), Quiz, Bảng Xếp Hạng đã GỠ HẲN (v5.0.0)
+--   • Habit tracker + Lộ Trình 21 ngày + Dashboard đã GỠ HẲN (v5.0.0, đợt 4):
+--     DROP progress, habits, habit_logs, programs, program_habits, user_journeys,
+--     journey_habits, skip_reasons; focus_sessions bỏ habit_id + journey_id
 --   • streaks + get_leaderboard() đã DROP (v5.0.0) — chết sẵn từ lâu, chỉ BXH đọc
 --   • collections.type = 8 loại cuối, có `podcast` (v4.14.0 + v4.28.0)
 --   • collections.status chuẩn hoá unread/read/archived (v5.0.0), bỏ 5 cột chết
@@ -36,7 +39,8 @@
 --     với tags, xem git history nếu cần định nghĩa gốc. collection_notes vẫn giữ (v4.11.0)
 --   • thêm inspirational_quotes (v4.12.0)
 --   • profiles: chỉ chủ tài khoản đọc được hàng mình + 4 hàm RPC (v4.24.0 — vá rò email)
---   • friendships: GIỮ LẠI nhưng đã archived/không dùng — an toàn để DROP nếu muốn
+--   • đợt 5 (v5.0.0): DROP 3 bảng chết còn lại — notification_settings,
+--     friendships (archived v3.0.0), fitness_logs (feature gỡ v4.26.0)
 -- ════════════════════════════════════════════════════════════════════════════
 
 -- Shared trigger function: auto-update updated_at
@@ -64,21 +68,9 @@ CREATE POLICY "profiles_insert_own" ON profiles FOR INSERT WITH CHECK (id = auth
 DROP POLICY IF EXISTS "profiles_update_own" ON profiles;
 CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE USING (id = auth.uid());
 
--- ── 2. progress ─────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS progress (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  date DATE NOT NULL, completed BOOLEAN NOT NULL DEFAULT FALSE,
-  week_num SMALLINT NOT NULL DEFAULT 1, completed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE (user_id, date)
-);
-ALTER TABLE progress ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "progress_select_own" ON progress;
-CREATE POLICY "progress_select_own" ON progress FOR SELECT USING (user_id = auth.uid());
-DROP POLICY IF EXISTS "progress_insert_own" ON progress;
-CREATE POLICY "progress_insert_own" ON progress FOR INSERT WITH CHECK (user_id = auth.uid());
-DROP POLICY IF EXISTS "progress_update_own" ON progress;
-CREATE POLICY "progress_update_own" ON progress FOR UPDATE USING (user_id = auth.uid());
+-- ── 2. progress — ĐÃ DROP ở v5.0.0 (đợt 4 dọn module) ─────────────────────
+-- Bảng "ngày nào tick đủ habit" của Habit tracker. Habit đã gỡ hẳn.
+DROP TABLE IF EXISTS progress CASCADE;
 
 -- ── 3. streaks — ĐÃ DROP ở v5.0.0 (đợt 3 dọn module) ───────────────────────
 -- Bảng này CHẾT TỪ LÂU: chỉ được INSERT đúng 1 lần lúc signup (trigger
@@ -88,147 +80,50 @@ CREATE POLICY "progress_update_own" ON progress FOR UPDATE USING (user_id = auth
 -- INSERT ở handle_new_user cũng đã bỏ (xem khối AUTH TRIGGER cuối file).
 DROP TABLE IF EXISTS streaks;
 
--- ── 4. notification_settings ────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS notification_settings (
-  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  enabled BOOLEAN DEFAULT true, remind_time TIME DEFAULT '08:00',
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE notification_settings ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "notif_own" ON notification_settings;
-CREATE POLICY "notif_own" ON notification_settings FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+-- ── 4. notification_settings — ĐÃ DROP ở v5.0.0 (đợt 5 dọn bảng chết) ─────
+-- Không hook nào từng đọc/ghi bảng này. Hook `useNotifications` (đã xoá cùng
+-- Habit tracker) lưu cấu hình nhắc nhở ở localStorage `vl_notif_settings`, chưa
+-- bao giờ chạm tới đây. Bảng chỉ được INSERT 1 dòng rỗng lúc signup.
+DROP TABLE IF EXISTS notification_settings CASCADE;
 
--- ── 5. habits ───────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS habits (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  journey_id UUID, name TEXT NOT NULL,
-  icon TEXT NOT NULL DEFAULT '⚡', color TEXT NOT NULL DEFAULT '#8B5CF6',
-  category TEXT NOT NULL DEFAULT 'other', action TEXT,
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','conquered','paused')),
-  cycle_count INT NOT NULL DEFAULT 1, conquered_at TIMESTAMPTZ,
-  time_target TIME, duration_min SMALLINT,
-  active BOOLEAN NOT NULL DEFAULT TRUE, sort_order SMALLINT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_habits_user ON habits (user_id, active);
-CREATE INDEX IF NOT EXISTS idx_habits_user_status ON habits (user_id, status);
-DROP TRIGGER IF EXISTS habits_updated_at ON habits;
-CREATE TRIGGER habits_updated_at BEFORE UPDATE ON habits FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "habits_own" ON habits;
-CREATE POLICY "habits_own" ON habits FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
-
--- ── 6. programs ─────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS programs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  title TEXT NOT NULL, description TEXT,
-  icon TEXT DEFAULT '🎯', color TEXT DEFAULT '#8b5cf6',
-  category TEXT DEFAULT 'other' CHECK (category IN ('health','learning','mindfulness','productivity','other')),
-  duration_days INT NOT NULL DEFAULT 21,
-  is_template BOOLEAN DEFAULT false, is_public BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE programs ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Read public/template programs" ON programs;
-CREATE POLICY "Read public/template programs" ON programs FOR SELECT
-  USING (is_public = true OR is_template = true OR creator_id = auth.uid());
-DROP POLICY IF EXISTS "Manage own programs" ON programs;
-CREATE POLICY "Manage own programs" ON programs FOR ALL
-  USING (creator_id = auth.uid()) WITH CHECK (creator_id = auth.uid());
-
--- ── 7. program_habits ───────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS program_habits (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  program_id UUID NOT NULL REFERENCES programs(id) ON DELETE CASCADE,
-  name TEXT NOT NULL, action TEXT,
-  icon TEXT DEFAULT '✅', color TEXT DEFAULT '#06b6d4',
-  time_target TEXT, duration_min INT, sort_order INT DEFAULT 0
-);
-ALTER TABLE program_habits ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Read program habits" ON program_habits;
-CREATE POLICY "Read program habits" ON program_habits FOR SELECT
-  USING (program_id IN (SELECT id FROM programs WHERE is_public=true OR is_template=true OR creator_id=auth.uid()));
-
--- ── 8. user_journeys ────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS user_journeys (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  program_id UUID REFERENCES programs(id) ON DELETE SET NULL,
-  title TEXT NOT NULL, description TEXT,
-  started_at DATE NOT NULL DEFAULT CURRENT_DATE, ended_at DATE,
-  target_days INT NOT NULL DEFAULT 21,
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','completed','extended','archived')),
-  cycle INT NOT NULL DEFAULT 1, created_at TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_user_journeys_user ON user_journeys (user_id, status);
-ALTER TABLE user_journeys ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users manage own journeys" ON user_journeys;
-CREATE POLICY "Users manage own journeys" ON user_journeys FOR ALL
-  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-
--- ── 9. journey_habits ───────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS journey_habits (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  journey_id UUID NOT NULL REFERENCES user_journeys(id) ON DELETE CASCADE,
-  habit_id UUID REFERENCES habits(id) ON DELETE SET NULL,
-  name TEXT NOT NULL, action TEXT,
-  icon TEXT DEFAULT '✅', color TEXT DEFAULT '#8b5cf6', sort_order INT DEFAULT 0
-);
-CREATE INDEX IF NOT EXISTS idx_journey_habits_journey ON journey_habits (journey_id);
-ALTER TABLE journey_habits ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users see own journey habits" ON journey_habits;
-CREATE POLICY "Users see own journey habits" ON journey_habits FOR ALL
-  USING (journey_id IN (SELECT id FROM user_journeys WHERE user_id = auth.uid()));
-
--- ── 10. habit_logs ──────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS habit_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  habit_id UUID REFERENCES habits(id) ON DELETE CASCADE,
-  journey_id UUID REFERENCES user_journeys(id) ON DELETE SET NULL,
-  log_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('completed','skipped')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE (user_id, habit_id, log_date)
-);
-CREATE INDEX IF NOT EXISTS idx_habit_logs_user_date ON habit_logs (user_id, log_date DESC);
-CREATE INDEX IF NOT EXISTS idx_habit_logs_habit_date ON habit_logs (habit_id, log_date DESC);
-CREATE INDEX IF NOT EXISTS idx_habit_logs_journey ON habit_logs (journey_id, log_date DESC);
-ALTER TABLE habit_logs ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users manage own habit_logs" ON habit_logs;
-CREATE POLICY "Users manage own habit_logs" ON habit_logs FOR ALL
-  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+-- ── 5-10. habits / programs / program_habits / user_journeys / journey_habits
+--          / habit_logs — ĐÃ DROP ở v5.0.0 (đợt 4 dọn module) ──────────────
+-- Toàn bộ Habit tracker + Lộ Trình 21 ngày. Lý do gỡ: chiến lược thu hẹp về
+-- Inbox + Knowledge + Tasks + Finance (xem docs/TASKS.md § KẾ HOẠCH DỌN MODULE).
+-- `CASCADE` ở đây chỉ gỡ RÀNG BUỘC FK trỏ tới các bảng này, KHÔNG xoá cột và
+-- KHÔNG xoá dòng của bảng trỏ tới. Cụ thể: `focus_sessions.habit_id` /
+-- `journey_id` mất FK ở bước này rồi được DROP COLUMN ở § 11 ngay dưới —
+-- không dòng `focus_sessions` nào bị ảnh hưởng.
+DROP TABLE IF EXISTS journey_habits CASCADE;
+DROP TABLE IF EXISTS habit_logs     CASCADE;
+DROP TABLE IF EXISTS program_habits CASCADE;
+DROP TABLE IF EXISTS user_journeys  CASCADE;
+DROP TABLE IF EXISTS habits         CASCADE;
+DROP TABLE IF EXISTS programs       CASCADE;
 
 -- ── 11. focus_sessions ──────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS focus_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  habit_id UUID REFERENCES habits(id) ON DELETE SET NULL,
-  journey_id UUID REFERENCES user_journeys(id) ON DELETE SET NULL,
   duration_min SMALLINT NOT NULL DEFAULT 25,
   date DATE NOT NULL DEFAULT CURRENT_DATE, completed_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- v5.0.0: bỏ habit_id + journey_id (Focus Timer không còn gắn habit/lộ trình).
+-- Chạy TRƯỚC khối DROP TABLE ở § 5-10 để không phụ thuộc thứ tự CASCADE.
+ALTER TABLE focus_sessions DROP COLUMN IF EXISTS habit_id;
+ALTER TABLE focus_sessions DROP COLUMN IF EXISTS journey_id;
+DROP INDEX IF EXISTS idx_focus_journey;
 CREATE INDEX IF NOT EXISTS idx_focus_user_date ON focus_sessions (user_id, date DESC);
-CREATE INDEX IF NOT EXISTS idx_focus_journey ON focus_sessions (journey_id, date DESC);
 ALTER TABLE focus_sessions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "focus_own" ON focus_sessions;
 CREATE POLICY "focus_own" ON focus_sessions FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
 -- (mood_logs đã GỠ ở v4.10.1 — cố tình không có trong schema này)
 
--- ── 12. skip_reasons ────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS skip_reasons (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  date DATE NOT NULL, reason TEXT NOT NULL, note TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE (user_id, date)
-);
-CREATE INDEX IF NOT EXISTS idx_skip_user ON skip_reasons (user_id, date DESC);
-ALTER TABLE skip_reasons ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "skip_own" ON skip_reasons;
-CREATE POLICY "skip_own" ON skip_reasons FOR ALL USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+-- ── 12. skip_reasons — ĐÃ DROP ở v5.0.0 (đợt 4 dọn module) ────────────────
+-- "Lý do bỏ habit hôm nay". Hook `useMoodSkip` đọc bảng này chỉ được dùng bởi
+-- TrackerPage + DashboardPage — cả hai đã xoá.
+DROP TABLE IF EXISTS skip_reasons CASCADE;
 
 -- ── 13. xp_logs ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS xp_logs (
@@ -246,23 +141,10 @@ CREATE POLICY "xp_own" ON xp_logs FOR ALL USING (user_id = auth.uid()) WITH CHEC
 -- đã gỡ hẳn, xp_logs chỉ còn đọc hàng của mình.
 DROP POLICY IF EXISTS "xp_read_all" ON xp_logs;
 
--- ── 14. friendships (ARCHIVED v3.0.0 — không dùng; an toàn để DROP) ──────────
-CREATE TABLE IF NOT EXISTS friendships (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  requester_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  addressee_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','declined')),
-  created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE (requester_id, addressee_id)
-);
-CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships (requester_id);
-CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships (addressee_id);
-DROP TRIGGER IF EXISTS friendships_updated_at ON friendships;
-CREATE TRIGGER friendships_updated_at BEFORE UPDATE ON friendships FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "friendships_own" ON friendships;
-CREATE POLICY "friendships_own" ON friendships FOR ALL
-  USING (requester_id = auth.uid() OR addressee_id = auth.uid()) WITH CHECK (requester_id = auth.uid());
+-- ── 14. friendships — ĐÃ DROP ở v5.0.0 (đợt 5 dọn bảng chết) ──────────────
+-- ARCHIVED từ v3.0.0, chưa bao giờ có UI. Đã đánh dấu "an toàn để DROP" nhiều
+-- version rồi, giờ dọn thật.
+DROP TABLE IF EXISTS friendships CASCADE;
 
 -- ── 15. user_tasks (v4.9.0: priority thay energy_level/duration_est; v4.31.0: recurrence_parent_id; v5.0.0: updated_at) ─
 CREATE TABLE IF NOT EXISTS user_tasks (
@@ -602,20 +484,9 @@ CREATE POLICY "intention_logs_own" ON intention_logs FOR ALL
 CREATE INDEX IF NOT EXISTS idx_intentions_user ON intentions(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_intention_logs_intention ON intention_logs(intention_id);
 
--- ── 23. fitness_logs ────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS fitness_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  date DATE NOT NULL DEFAULT CURRENT_DATE,
-  session_name TEXT NOT NULL, duration_min SMALLINT NOT NULL,
-  energy TEXT NOT NULL CHECK (energy IN ('good','normal','bad')),
-  notes TEXT, created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE fitness_logs ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "fitness_own" ON fitness_logs;
-CREATE POLICY "fitness_own" ON fitness_logs FOR ALL
-  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
-CREATE INDEX IF NOT EXISTS idx_fitness_user_date ON fitness_logs(user_id, date DESC);
+-- ── 23. fitness_logs — ĐÃ DROP ở v5.0.0 (đợt 5 dọn bảng chết) ─────────────
+-- Feature Fitness Log gỡ khỏi frontend từ v4.26.0, bảng bị bỏ quên lại.
+DROP TABLE IF EXISTS fitness_logs CASCADE;
 
 -- ── 24. knowledge_groups + collection_groups ────────────────────────────────
 -- [ĐÃ BỎ v4.30.0/v4.31.0] Taxonomy M:N thứ 3 trên collections, trùng việc với
@@ -657,15 +528,14 @@ CREATE POLICY "Users manage own quotes" ON inspirational_quotes FOR ALL
 -- ════════════════════════════════════════════════════════════════════════════
 -- REALTIME
 -- ════════════════════════════════════════════════════════════════════════════
+-- v5.0.0: bỏ `progress` + `habits` khỏi publication — 2 bảng đã DROP.
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE profiles; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE progress; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE habits; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE focus_sessions; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE xp_logs; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ════════════════════════════════════════════════════════════════════════════
--- AUTH TRIGGER: tự tạo profile + notification_settings khi có user mới
--- (v5.0.0: bỏ INSERT vào streaks — bảng đã DROP)
+-- AUTH TRIGGER: tự tạo profile khi có user mới
+-- (v5.0.0: bỏ INSERT vào streaks + notification_settings — 2 bảng đã DROP)
 -- ════════════════════════════════════════════════════════════════════════════
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -697,11 +567,6 @@ BEGIN
       display_name = COALESCE(profiles.display_name, EXCLUDED.display_name);
   EXCEPTION WHEN OTHERS THEN
     RAISE WARNING '[handle_new_user] profiles insert failed: %', SQLERRM;
-  END;
-
-  BEGIN
-    INSERT INTO notification_settings (user_id) VALUES (NEW.id) ON CONFLICT (user_id) DO NOTHING;
-  EXCEPTION WHEN OTHERS THEN NULL;
   END;
 
   RETURN NEW;
@@ -749,16 +614,8 @@ GRANT EXECUTE ON FUNCTION public.login_email(text)     TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.username_exists(text)  TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.email_exists(text)     TO anon, authenticated;
 
--- ════════════════════════════════════════════════════════════════════════════
--- SEED: 5 lộ trình mẫu (chỉ thêm nếu chưa có)
--- ════════════════════════════════════════════════════════════════════════════
-INSERT INTO programs (title, description, icon, color, category, duration_days, is_template, is_public) VALUES
-  ('Buoi Sang Ky Luat', 'Xay dung thoi quen buoi sang', '🌅', '#f97316', 'health', 21, true, true),
-  ('Thoi Quen Doc Sach', 'Doc sach moi ngay', '📚', '#06b6d4', 'learning', 21, true, true),
-  ('Mindful Morning', 'Thien va hit tho', '🧘', '#8b5cf6', 'mindfulness', 14, true, true),
-  ('Ky Luat The Chat', 'Tap luyen deu dan', '💪', '#00ff88', 'health', 21, true, true),
-  ('Deep Work 30 Ngay', 'Tap trung sau hon', '🚀', '#ffd700', 'productivity', 30, true, true)
-ON CONFLICT DO NOTHING;
+-- (SEED 5 lộ trình mẫu đã bỏ ở v5.0.0 — bảng `programs` không còn tồn tại)
 
--- ✅ DONE (v5.0.0) — 29 bảng + 1 view (tagged_items) + RLS + indexes + triggers + functions + seed (idempotent).
--- v5.0.0: activity_logs dựng lại tại chỗ (không đổi số bảng); streaks DROP (30 → 29).
+-- ✅ DONE (v5.0.0) — 18 bảng + 1 view (tagged_items) + RLS + indexes + triggers + functions (idempotent).
+-- v5.0.0 DROP tổng 12 bảng: streaks (đợt 3), 8 bảng Habit/Lộ Trình (đợt 4),
+-- notification_settings + friendships + fitness_logs (đợt 5). 30 → 18.

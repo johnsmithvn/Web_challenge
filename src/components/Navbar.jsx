@@ -15,7 +15,6 @@ import '../styles/auth.css';
 /* ── Navigation Structure ──────────────────────────────────── */
 // Primary: always visible (bottom tabs on mobile, sidebar on desktop)
 const PRIMARY_NAV = [
-  { to: '/tracker',   icon: '🏠', label: 'Today' },
   { to: '/inbox',     icon: '📥', label: 'Inbox' },
   { to: '/tasks',     icon: '📌', label: 'Nhiệm Vụ' },
   { to: '/collect',   icon: '🧠', label: 'Knowledge' },
@@ -26,8 +25,6 @@ const PRIMARY_NAV = [
 // Secondary: visible in sidebar, hidden in bottom tabs (dropdown)
 const SECONDARY_NAV = [
   { to: '/focus',         icon: '⏱',  label: 'Focus' },
-  { to: '/journey',       icon: '🗺', label: 'Lộ Trình' },
-  { to: '/dashboard',     icon: '📈', label: 'Stats' },
 ];
 
 

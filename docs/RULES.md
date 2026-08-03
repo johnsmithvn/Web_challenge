@@ -208,7 +208,7 @@ Every data hook MUST follow the dual-mode pattern:
 User Action
     │
     ▼
-Hook (e.g. useHabitStore)
+Hook (e.g. useUserTasks)
     │
     ├── isAuthenticated?
     │       ├── YES → Supabase upsert/insert (PRIMARY)
@@ -474,8 +474,7 @@ src/
 ```js
 // Static JSON
 import QUESTIONS from '../data/quiz.json';
-import HABITS_DATA from '../data/habits.json';
-const { skipReasons, categories } = HABITS_DATA;
+import EXPENSE_CATEGORIES from '../data/expense-categories.json';
 
 // Shared components (avoid re-implementing)
 import GenericModal from '../components/GenericModal';
@@ -540,7 +539,7 @@ feat(sleep-tracker): add sleep duration logging
 
 # 14. 📂 Static Content Data — 1 JSON File Per Feature
 
-**Áp dụng cho: challenges, quiz, testimonials, knowledge cards, skip reasons, default habits, v.v.**
+**Áp dụng cho: knowledge cards, expense categories, quotes, UI strings, v.v.**
 
 ## Quy tắc cốt lõi:
 
@@ -552,14 +551,13 @@ feat(sleep-tracker): add sleep duration logging
 
 ```
 src/data/
-├── challenges.json         # 21 Daily Challenges
-├── quiz.json               # Quiz questions (21 pool, pick 10)
-├── habits.json             # defaultHabits, categories, icons, colors, skipReasons
-├── testimonials.json       # Landing page reviews
 ├── quotes.json             # 30 daily motivational quotes
-├── programs.json           # 5 system journey templates (offline fallback)
 ├── expense-categories.json # 8 expense categories (food, transport, etc.)
-└── knowledge.json          # Unified KB types (Inbox/Collect tabs)
+├── knowledge.json          # Unified KB types (Inbox/Collect tabs)
+└── ui-strings.json         # Chuỗi UI dùng chung (toast...)
+
+# v5.0.0 đã xoá cùng feature: challenges.json, quiz.json, habits.json,
+# testimonials.json, programs.json
 ```
 
 ## Tiêu chí để tách ra JSON:
@@ -576,8 +574,6 @@ src/data/
 ```js
 // Single file per feature
 import QUESTIONS from '../data/quiz.json';
-import HABITS_DATA from '../data/habits.json';
-const { skipReasons, categories } = HABITS_DATA;
 import KNOWLEDGE_TYPES from '../data/knowledge.json';
 import EXPENSE_CATEGORIES from '../data/expense-categories.json';
 ```
@@ -595,14 +591,14 @@ import EXPENSE_CATEGORIES from '../data/expense-categories.json';
 ## Table Naming
 
 - Lowercase, snake_case
-- Plural nouns (e.g., `habits`, `expenses`, `user_tasks`)
+- Plural nouns (e.g., `expenses`, `user_tasks`, `collections`)
 - Junction tables: `<entity1>_<entity2>` (e.g., `task_collections`, `collection_tags`)
 
 ## RLS (Row Level Security)
 
 - ALL tables MUST have RLS enabled
 - Users can only read/write their own data (`auth.uid() = user_id`)
-- Exception: `programs` and `program_habits` allow public SELECT for system templates
+- v5.0.0: **không còn ngoại lệ nào**. Hai bảng từng cho public SELECT (`programs`, `program_habits`) đã DROP.
 
 ## Migrations
 
@@ -614,7 +610,7 @@ import EXPENSE_CATEGORIES from '../data/expense-categories.json';
 
 ## Realtime
 
-Enabled for: `profiles`, `progress`, `habits`, `focus_sessions`, `xp_logs`
+Enabled for: `profiles`, `focus_sessions`, `xp_logs` (v5.0.0: bỏ `progress` + `habits` — 2 bảng đã DROP)
 
 ---
 
@@ -624,14 +620,14 @@ XP events are logged to `xp_logs` table (immutable append-only).
 
 | Event | XP | Dedup Rule |
 |-------|-----|-----------|
-| Habit tick | +10 | 1 per habit per day (reason + meta match) |
-| Streak 3/10/21 | +50/+100/+200 | One-time milestone |
-| Daily Challenge | +20 | 1 per day |
-| Quiz | +10→+50 | Per attempt (score-based) |
-| Focus Session | +15 | 1 per session |
+| Task hoàn thành | +10 | 1 per task (`meta.taskId`) |
+| Focus Session | +15 | 1 per session (`meta.sessionId`) |
+
+> v5.0.0: 4 nguồn XP cũ (habit tick, streak 3/10/21, Daily Challenge, Quiz) đã gỡ
+> cùng feature. Dòng `xp_logs` cũ giữ nguyên — append-only, tổng XP không tụt.
 
 **Rules:**
 - Always dedup via `hasMilestone(reason, meta)` before `addXp`
-- Un-tick habit → `removeXp` (v2.0.0)
+- Bỏ tích task → `removeXp` (v5.0.0)
 - Compute `totalXp = SUM(amount)` from `xp_logs` at runtime
 - Never update/delete XP entries (except `removeXp` for un-tick)

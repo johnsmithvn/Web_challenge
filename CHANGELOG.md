@@ -37,6 +37,18 @@
   field cứng) nên cột thêm sau này tự động được log.
 
 ### Changed
+- **XP đổi nguồn sang Task.** `XP_REWARDS` còn 2 mục: `task_done` (+10, dedup theo `taskId`) và
+  `focus_session` (+15). `useUserTasks.completeTask` gọi `addXp`, `uncompleteTask` gọi `removeXp`.
+  Đây là **đảo lại quyết định cũ** ("Task cố ý không tính XP" — FEATURES §16) vì 4 nguồn XP cũ đều
+  thuộc Habit/Quiz/Challenge. Dòng `xp_logs` cũ giữ nguyên (append-only) → tổng XP không tụt.
+- **Focus Timer tách khỏi Habit** — bỏ picker chọn habit, breakdown theo habit, auto-tick habit
+  (`CustomEvent focus:habit-tick`), và 2 cột `focus_sessions.habit_id` / `journey_id`.
+- **`MonthCalendar` bỏ hẳn "habit mode"** (prop `habitData` + `skipLog`) — người gọi duy nhất là
+  `TrackerPage`. Component giờ chỉ còn 1 chế độ, không có prop cấu hình nào phải dọn.
+- **`IncubatorPage` bỏ nhánh "Execute → tạo Habit"** — 2 lựa chọn còn lại (Khoản chi / Nhiệm vụ).
+  Incubator giữ nguyên, Inbox core không bị đụng.
+- **`OnboardingModal` viết lại 3 bước** — nội dung cũ hướng dẫn MVA, streak, trang Habits, Daily
+  Challenge; cả 4 đều không còn tồn tại. Bản mới: Chào mừng → Ghi trước phân loại sau → 6 module.
 - **`useActivityLog` thu gọn về đúng 1 việc** — chỉ còn `logTaskEvent`/`logFieldChanges`/
   `logTaskRelation`/`addNote`/`updateNote`/`getTaskLogs`/`deleteLog`. Bỏ `logActivity`,
   `getHeatmapData`, `getTodayCount`. Hằng số `ACTIONS` chỉ còn 9 giá trị, tất cả gắn với Task
@@ -60,6 +72,17 @@
   `focus_sessions`, XP ở `xp_logs`.
 - **`TrackerPage` ngừng ghi activity log khi tick habit** — Habit tracker đang chờ gỡ hẳn
   (xem `docs/TASKS.md` § Backlog). XP không đổi (vẫn qua `addXp`/`removeXp` → `xp_logs`).
+- **Habit tracker + Lộ Trình 21 ngày + Dashboard gỡ hẳn** (đợt 4 — đợt lớn nhất). Phải làm cùng
+  một lần: `JourneyContext` bọc toàn App và bị 4 hook import (`useCustomHabits`, `useHabitLogs`,
+  `useFocusTimer`, `useJourney`), `useXpStore` bị 6 nơi import — gỡ 1 thứ mà giữ phần còn lại là
+  vỡ import ngay. Route `/tracker`, `/habits`, `/dashboard`, `/journey` giờ redirect `/tasks`.
+  SQL: DROP 8 bảng (`progress`, `habits`, `habit_logs`, `programs`, `program_habits`,
+  `user_journeys`, `journey_habits`, `skip_reasons`), bỏ seed 5 lộ trình mẫu, bỏ `progress` +
+  `habits` khỏi realtime publication.
+- **Đợt 5 — DROP 3 bảng chết còn lại:** `notification_settings` (chưa hook nào từng đọc/ghi;
+  `useNotifications` lưu ở localStorage), `friendships` (archived từ v3.0.0), `fitness_logs`
+  (feature gỡ v4.26.0, bảng bị bỏ quên). Trigger `handle_new_user()` bỏ luôn INSERT vào
+  `notification_settings`. **Schema 30 → 18 bảng, không còn bảng nào không có hook dùng.**
 - **Quiz + Bảng Xếp Hạng gỡ hẳn** (đợt 3 của kế hoạch dọn module) — route `/quiz`, `/leaderboard`,
   2 mục Navbar, `XP_REWARDS.quiz_complete`. BXH là tính năng **xã hội** trong app 1 người dùng →
   giá trị 0. SQL đi kèm: `DROP FUNCTION get_leaderboard()` + `DROP TABLE streaks` + gỡ INSERT
@@ -84,6 +107,13 @@
   `styles/hero.css`, `styles/sections.css`, `styles/testimonials.css`, `data/testimonials.json`
 - Quiz + BXH (5 file): `QuizPage.jsx`, `LeaderboardPage.jsx`, `styles/quiz.css`,
   `styles/leaderboard.css`, `data/quiz.json`
+- Habit + Lộ Trình + Dashboard (25 file, đợt 4): `TrackerPage.jsx`, `HabitManager.jsx`,
+  `useHabitStore.js`, `useCustomHabits.js`, `useHabitLogs.js`, `JourneyPage.jsx`,
+  `JourneyDetailPage.jsx`, `useJourney.js`, `JourneyContext.jsx`, `components/journey/*` (5),
+  `DashboardPage.jsx`, `DailyChallenge.jsx`, `CompletionModal.jsx`, `LoginNudgeModal.jsx`,
+  `NotificationSettings.jsx`, `useNotifications.js`, `useMoodSkip.js`, `tracker.css`,
+  `journey.css`, `daily.css`, `completion.css`, `dashboard.css`, `data/habits.json`,
+  `data/programs.json`, `data/challenges.json`
 
 ### Files Added
 - `data/migration_v5.0.0_activity_logs_v2.sql`

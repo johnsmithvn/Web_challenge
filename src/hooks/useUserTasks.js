@@ -6,6 +6,7 @@ import { logger } from '../utils/logger';
 import { toDateStr } from '../utils/dateUtils';
 import { computeNextDueDate, resolveDeletionIds } from '../utils/recurrenceUtils';
 import { useActivityLog } from './useActivityLog';
+import { useXpStore, XP_REWARDS } from './useXpStore';
 import { diffTaskFields, ACTIONS } from '../utils/taskFields';
 import UI_STRINGS from '../data/ui-strings.json';
 
@@ -21,7 +22,6 @@ function addDays(date, days) {
 /**
  * useUserTasks — Personal task CRUD, Supabase-first.
  *
- * Tasks are independent from habits/journey/XP.
  * Guest = in-memory (reset on refresh).
  *
  * ── Activity log (v5.0.0) ────────────────────────────────────────────────
@@ -33,6 +33,8 @@ function addDays(date, days) {
  *   3. uncompleteTask                → task_uncompleted
  *   4. updateTask                    → task_update (1 dòng / field đổi)
  *   5. link/unlinkTaskTag + link/unlinkCollection → task_tag_* / task_link_*
+ *
+ * completeTask/uncompleteTask cũng cộng/trừ XP (v5.0.0) — dedup theo `taskId`.
  *
  * Hai quy tắc bắt buộc khi thêm đường ghi mới:
  *   - Ghi log SAU khi biết `error == null`. Các hàm ở đây đều optimistic +
@@ -47,6 +49,9 @@ export function useUserTasks() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { logTaskEvent, logFieldChanges, logTaskRelation } = useActivityLog();
+  // v5.0.0: hoàn thành task là nguồn XP chính. Trước đây Task CỐ Ý không tính XP
+  // (FEATURES §16) vì XP thuộc về Habit; giờ Habit đã gỡ nên đảo lại quyết định.
+  const { addXp, removeXp } = useXpStore();
   const isAuth = isSupabaseEnabled && !!user;
   const userId = user?.id;
 
@@ -295,6 +300,9 @@ export function useUserTasks() {
         // để nó vẫn được đếm vào heatmap (hoàn thành task theo đường bình
         // thường trước v5.0.0 không hề lên heatmap, đây là chỗ bịt lỗ đó).
         logTaskEvent(ACTIONS.TASK_COMPLETED, taskId);
+        // Dedup theo taskId — tích/bỏ tích/tích lại không cộng XP nhiều lần
+        // (addXp tự kiểm `reason` + `meta` trên xp_logs trước khi ghi).
+        addXp(XP_REWARDS.task_done, 'task_done', { taskId });
 
         // Spawn next recurring task (fire-and-forget, non-blocking)
         if (task?.recurrence_rule) {
@@ -307,7 +315,7 @@ export function useUserTasks() {
         ));
       }
     }
-  }, [isAuth, userId, tasks, spawnRecurringTask, logTaskEvent]);
+  }, [isAuth, userId, tasks, spawnRecurringTask, logTaskEvent, addXp]);
 
   // ── Delete task ────────────────────────────────────────
   // Must delete via Supabase regardless of whether the task is in local `tasks`
@@ -404,6 +412,7 @@ export function useUserTasks() {
         }
 
         logTaskEvent(ACTIONS.TASK_UNCOMPLETED, taskId);
+        removeXp('task_done', { taskId });
 
         const { data: child, error: findError } = await supabase
           .from('user_tasks')
@@ -436,7 +445,7 @@ export function useUserTasks() {
         if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
       }
     }
-  }, [isAuth, userId, tasks, showToast, logTaskEvent]);
+  }, [isAuth, userId, tasks, showToast, logTaskEvent, removeXp]);
 
   // ── Update task (title / description / date / time) ───
   const updateTask = useCallback(async (taskId, changes) => {

@@ -167,8 +167,8 @@ Chiến lược đã chốt (v4.27.0): giữ **Inbox + Knowledge + Tasks + Finan
 | ~~1~~ | ~~Hành Trình cảm xúc~~ ✅ **XONG 2026-08-02** | −873 | — |
 | ~~2~~ | ~~Landing Page~~ ✅ **VIẾT LẠI 2026-08-02** (không xoá) | −1.545 | — |
 | ~~3~~ | ~~Quiz + BXH~~ ✅ **XONG 2026-08-02** | −843 | — |
-| 4 | Habit + Lộ Trình + XP + Daily Challenge + TrackerPage + Dashboard | ~7.000+ | **Cao** |
-| 5 | Dọn 5 bảng DB chết | 0 (SQL) | Rất thấp |
+| ~~4~~ | ~~Habit + Lộ Trình + Dashboard~~ ✅ **XONG 2026-08-02** | −7.729 | — |
+| ~~5~~ | ~~Dọn bảng DB chết~~ ✅ **XONG 2026-08-02** | 30→18 bảng | — |
 
 ---
 
@@ -196,40 +196,19 @@ SQL trong master schema: `DROP FUNCTION get_leaderboard()`, `DROP TABLE streaks`
 Tiện tay sửa `LoginNudgeModal` — 2/3 lời hứa của nó là tính năng đã xoá (Team Mode v3.0.0,
 Leaderboard v5.0.0).
 
-#### Đợt 4 — Habit + Lộ Trình + XP + Daily Challenge (PHẢI LÀM CÙNG 1 LẦN)
-**Không tách được** — đây là kết luận quan trọng nhất của lần quét:
-- `JourneyContext` bọc toàn App và bị **4 hook** import: `useCustomHabits`, `useHabitLogs`,
-  `useFocusTimer`, `useJourney`
-- `useXpStore` bị **4 nơi** import (sau đợt 3): `DailyChallenge`, `XpBar`, `DashboardPage`, `TrackerPage`
-- `useHabitStore` bị `DashboardPage` import (sau đợt 2-3; `TrackerSection`/`LeaderboardPage` đã xoá)
-- `useCustomHabits` bị `CompletionModal`, `FocusTimer`, `FocusPage`, **`IncubatorPage`** import
+#### ✅ Đợt 4 — Habit + Lộ Trình + Dashboard — XONG (2026-08-02)
+Xoá 25 file (~7.729 dòng). Chi tiết đầy đủ ở CHANGELOG.md v5.0.0.
+Kèm 5 chỗ **viết lại chứ không chỉ xoá**: `OnboardingModal` (3 bước mới),
+`IncubatorPage` (bỏ nhánh tạo Habit), `useFocusTimer` + `FocusTimer` + `FocusPage`
+(bỏ link habit/journey), `MonthCalendar` (bỏ habit mode), `useXpStore` +
+`useUserTasks` (XP đổi nguồn sang Task).
+SQL: DROP 8 bảng + bỏ seed programs + bỏ 2 bảng khỏi realtime publication.
 
-Xoá: `useHabitStore` (164), `useCustomHabits` (239), `useHabitLogs` (240), `HabitManager` (200),
-`TrackerPage` (886), `data/habits.json`, `tracker.css`, `JourneyPage` (241), `JourneyDetailPage`
-(608), `useJourney` (393), `JourneyContext` (87), `components/journey/*`, `journey.css`,
-`data/programs.json`, `useXpStore` (189), `XpBar` (49), `xpbar.css`, `DailyChallenge` (135),
-`daily.css`, `data/challenges.json`, `CompletionModal` (193), `LoginNudgeModal` (122)
-
-**Phải VIẾT LẠI, không chỉ xoá:**
-- `DashboardPage` (586) — import cả `useHabitStore` + `useXpStore` + `useMoodSkip`. Mất habit và XP
-  thì còn Finance + Focus. **Cần quyết: viết lại gọn hay xoá hẳn Dashboard?**
-- `OnboardingModal` (113) — STEP 3 nói về habit/streak 21 ngày
-- `IncubatorPage:154,310` — nút "Execute → tạo Habit" phải gỡ (Incubator vẫn sống)
-- `useFocusTimer` — gỡ `journey_id` + `linkHabit`; `FocusPage`/`FocusTimer` gỡ chọn habit
-- `NotificationSettings` + `useNotifications` — hiện chỉ mount trong TrackerPage, cần chuyển chỗ
-  hoặc xoá
-- Navbar/App.jsx: gỡ route `/tracker`, `/habits` (redirect), `/journey`, `/journey/:id`
-- SQL: `habits`, `habit_logs`, `progress`, `user_journeys`, `journey_habits`, `programs`,
-  `program_habits`, `xp_logs`, `skip_reasons`(?); `focus_sessions.habit_id`/`journey_id`
-  (FK đã `ON DELETE SET NULL` — an toàn)
-
-#### Đợt 5 — Dọn bảng DB chết
-`grep` xác nhận **5 bảng không hook nào dùng**: `fitness_logs`, `friendships`,
-`notification_settings`(*), `program_habits`, `streaks`.
-(*) `notification_settings` — hook `useNotifications` có tồn tại nhưng grep không thấy tên bảng
-trong `src/`; **cần xác minh lại** trước khi DROP.
-
----
+#### ✅ Đợt 5 — Dọn bảng DB chết — XONG (2026-08-02)
+DROP `notification_settings` (chưa hook nào từng đọc/ghi — `useNotifications` lưu
+localStorage), `friendships` (archived v3.0.0), `fitness_logs` (feature gỡ v4.26.0).
+Trigger `handle_new_user()` bỏ INSERT vào `notification_settings`.
+**Schema 30 → 18 bảng. Không còn bảng nào trong schema mà không có hook dùng.**
 
 ### ⛔ CHỐNG XOÁ NHẦM — dùng chung, KHÔNG thuộc module bị xoá
 `GenericModal` · `ConfirmModal` · `Toast`/`ToastContext` · `CustomSelect` · `DatePickerPopover` ·

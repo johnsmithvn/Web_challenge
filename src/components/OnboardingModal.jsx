@@ -3,38 +3,43 @@ import '../styles/onboarding.css';
 
 const ONBOARDED_KEY = 'vl_onboarded';
 
+// v5.0.0: viết lại toàn bộ. Nội dung cũ hướng dẫn sản phẩm "Thử Thách Vượt Lười
+// 21 ngày" — nói về MVA, streak, trang Habits, Daily Challenge. Cả 4 thứ đó đã
+// gỡ hẳn, nên onboarding đang chỉ đường tới những nơi không còn tồn tại.
 const STEPS = [
   {
     icon: '👋',
     title: 'Chào Mừng!',
-    desc: 'Thử Thách Vượt Lười giúp bạn xây dựng kỷ luật trong 21 ngày — không dùng ý chí, dùng hệ thống.',
+    desc: 'Life Hub gom việc cần làm, thứ cần nhớ và tiền đã tiêu về một chỗ — thay vì rải ra năm bảy app khác nhau.',
     highlight: (
       <>
-        <strong>Não bộ không cần ý chí.</strong> Nó cần <strong>thói quen nhỏ lặp lại</strong> đủ lâu để thành tự động.
+        Đây là <strong>hệ thống riêng của bạn</strong>. Không mạng xã hội,
+        không bảng xếp hạng, không ai nhìn thấy dữ liệu của bạn.
       </>
     ),
   },
   {
-    icon: '⚡',
-    title: 'MVA — Hành Động Vi Mô',
-    desc: 'Mỗi ngày bạn chỉ cần làm 1 việc nhỏ nhất có thể. Nhỏ đến mức bạn không có lý do để từ chối.',
+    icon: '📥',
+    title: 'Ghi Trước, Phân Loại Sau',
+    desc: 'Nghĩ ra gì thì gõ thẳng vào Inbox. Đừng dừng lại để quyết định nó thuộc loại nào — làm vậy là mất mạch.',
     highlight: (
       <>
-        <strong>Ví dụ:</strong> Không "tập gym 1 tiếng" → chỉ cần <strong>"mang giày ra trước cửa"</strong>.
+        Lúc rảnh mới mở Inbox ra dọn: cái này thành <strong>Nhiệm vụ</strong>,
+        cái kia thành <strong>Bài viết</strong>, cái nọ là <strong>Khoản chi</strong>.
         <br /><br />
-        Sau khi bắt đầu, não bộ tự tiếp tục. Đây gọi là <strong>quán tính</strong>.
+        Chưa quyết được? Đẩy sang <strong>Incubator</strong> để đó, hẹn ngày xem lại.
       </>
     ),
   },
   {
-    icon: '✅',
-    title: 'Cách Dùng',
-    desc: 'Mỗi ngày tick hoàn thành habit trong trang Habits. Tracker sẽ tự cập nhật streak của bạn.',
+    icon: '🧭',
+    title: 'Sáu Chỗ Để Đi',
+    desc: 'Mỗi module làm đúng một việc. Bắt đầu từ Inbox, phần còn lại dùng tới đâu khám phá tới đó.',
     highlight: (
       <>
-        1. Vào <strong>Habits</strong> → tick các thói quen hôm nay<br />
-        2. Làm <strong>Daily Challenge</strong> mỗi ngày (mỗi ngày khác nhau)<br />
-        3. Duy trì streak → sau <strong>21 ngày</strong> bạn đã xây được hệ thống
+        📥 <strong>Inbox</strong> — thu gom &nbsp;·&nbsp; 📌 <strong>Nhiệm Vụ</strong> — việc cần làm<br />
+        🧠 <strong>Knowledge</strong> — bài viết &nbsp;·&nbsp; 💰 <strong>Finance</strong> — chi tiêu<br />
+        🥚 <strong>Incubator</strong> — dự định &nbsp;·&nbsp; ⏱ <strong>Focus</strong> — Pomodoro
       </>
     ),
   },

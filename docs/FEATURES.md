@@ -11,79 +11,25 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ## Tổng Quan Hệ Thống
 
-**Life Hub** là nền tảng Personal Life OS ("Bộ não thứ 2") tích hợp: habit tracking 21 ngày gamified, quản lý chi tiêu, đăng ký dịch vụ, và ghi chú nhanh (Inbox/Collect). Hỗ trợ cả chế độ offline (in-memory guest) lẫn đồng bộ cloud (Supabase).
+**Life Hub** là Personal Life OS cho **một người dùng**: Inbox thu gom, Nhiệm vụ, Knowledge Base,
+Chi tiêu, Incubator và Focus Timer. Hỗ trợ cả chế độ guest (in-memory) lẫn đồng bộ cloud (Supabase).
+
+> **v5.0.0 đã gỡ hẳn** toàn bộ phần gamification 21 ngày: Habit tracker, Lộ Trình, Dashboard, Quiz,
+> Bảng Xếp Hạng, Daily Challenge, Life Log, Hành Trình cảm xúc. Chi tiết từng đợt ở
+> `docs/TASKS.md` § KẾ HOẠCH DỌN MODULE.
 
 ---
 
-## 1. 🗓 Tracker 21 Ngày (`/tracker`)
+## 1-2. ~~🗓 Tracker 21 Ngày~~ + ~~⚙️ Custom Habit Manager~~ — ĐÃ GỠ HẲN (v5.0.0)
 
-**File:** `src/pages/TrackerPage.jsx` (merged with HabitsPage since v1.9.0)
+Đợt 4 của kế hoạch dọn module — đợt lớn nhất.
 
-**Mô tả:** Trang hành động chính — tick từng habit, xem tiến độ 21 ngày, track streak per-habit.
-**4 tabs:** ⚡ Hôm Nay | 📅 Lịch | 📊 Tuần | ⚙️ Quản Lý
+Xoá: `TrackerPage.jsx` (886), `HabitManager.jsx`, `useHabitStore.js`,
+`useCustomHabits.js`, `useHabitLogs.js`, `tracker.css`, `data/habits.json`,
+`CompletionModal.jsx` + `completion.css`, `LoginNudgeModal.jsx`. Route `/tracker`
+và `/habits` giờ redirect về `/tasks`.
 
-**Chi tiết:**
-- **Header Stats:** 3 stat cards: Streak 🔥, Tổng ngày 📅, Số habits 🎯
-- **XP Bar:** Hiển thị level + XP hiện tại
-- **Hero Status (v1.9.2):** Read-only indicator (`X/Y habits` hoặc `Hoàn thành! 🎉`). Không còn nút tick manual — day complete tự auto-derived khi tất cả habits đều done
-- **Streak Ring:** Vòng tròn SVG tô màu theo % tiến độ, màu thay đổi theo cây sinh trưởng
-- **Plant Growth 🌰→🏆:** 6 giai đoạn hiển thị bên trong ring (hạt → mầm → cây lớn → trophy)
-- **21-Day Dot Grid:** 3 hàng × 7 ô đại diện 3 tuần. Anchor từ `user_journeys.started_at` nếu có journey active, fallback = ngày tick sớm nhất
-- **Progress Bar:** `streak / 21` ngày
-- **Journey Banner:** Active = tên lộ trình + "Ngày X/Y" + link; Inactive (authed) = CTA "Chọn lộ trình →"
-- **Daily Quote (v4.12.0):** `QuoteWidget` component — daily-seeded random from `quotes.json` (30 câu), nút 🔀 shuffle, crossfade animation, hỗ trợ `audio_url`. Hiện ở 3 pages: Today, Inbox, Knowledge (mỗi page seed khác → quote khác nhau)
-
-**Tab ⚡ Hôm Nay:**
-- **Today Quick-Tick:** Danh sách custom habits hôm nay
-  - Hiện `action` cụ thể (ví dụ: "Học 30 phút Duolingo") thay vì chỉ tên habit
-  - **Per-habit streak 🔥N:** Chuỗi ngày liên tục của từng habit riêng lẻ
-  - **Counter `X/N`:** Badge hiển thị số habit đã done hôm nay so với tổng
-  - Tick xong → gạch ngang + nền tô màu
-  - XP +10 mỗi habit tick (deduped by habit+date). Un-tick → removeXp (v2.0.0)
-  - Khi TẤT CẢ tick → mark overall day done → sinh celebration banner
-- **Celebration Banner:** "🎉 Ngày X/21 hoàn thành!" fade out sau 4s
-- **LoginNudgeModal:** Bottom sheet không blocking cho guest sau ngày 1 hoàn thành
-
-- **Skip Reason:** Trigger sau 8PM nếu chưa tick
-- **Daily Challenge:** Thử thách mỗi ngày, +20 XP khi hoàn thành
-- **Insight:** Nhận xét động theo streak hiện tại
-- **Notification Settings:** Toggle + giờ nhắc nhở browser notification
-- **Empty State:** Khi authenticated + no habits → CTA "🗺 Chọn Lộ Trình"
-- **🥚 Incubator Review Banner (v4.2.1):** Khi có dự định cần review hôm nay → banner vàng "🥚 N dự định cần review" + link tới `/incubator`. Cùng khu vực với SubAlert và các banner ngữ cảnh khác.
-
-**Tab 📅 Lịch:** `MonthCalendar` component (lazy loaded)
-
-**Tab 📊 Tuần:** `PerHabitWeeklyGrid` (memoized)
-- 14 ngày gần nhất hiển thị dạng dot grid per-habit
-- Header row: % hoàn thành toàn bộ habits theo từng ngày (màu xanh=100%, cam>0%)
-- Mỗi habit: streak 🔥N + tỷ lệ 14 ngày + progress bar
-- Cell gradient: ô xanh = habit done; ô nhạt = ngày có làm partial habits khác
-
-**Tab ⚙️ Quản Lý:** `HabitManager` component (lazy loaded) + Conquered Habits 🏅
-
-**Completion Modal (v1.3.0):** Khi streak đạt 21 → certificate modal: CTA "Gia Hạn" / "Thử Thách Mới" / "🗺 Chọn Lộ Trình Mới"
-
-**Data:** `useHabitStore`, `useCustomHabits`, `useHabitLogs`, `useJourney`, `useXpStore`, `useSkipReasons`
-
----
-
-## 2. ⚙️ Custom Habit Manager
-
-**Files:** `src/components/HabitManager.jsx`, `src/hooks/useCustomHabits.js`
-
-**Mô tả:** Hệ thống tạo/sửa/xóa thói quen tùy chỉnh của từng người dùng.
-
-**Chi tiết:**
-- **Tạo habit mới:** Nhập tên, hành động cụ thể (`action`), chọn icon (30+), chọn màu (10 màu), chọn category, đặt giờ target, thời lượng (phút)
-- **Preview live:** Xem trước giao diện habit card trước khi lưu
-- **Edit/Delete:** Sửa hoặc ẩn (soft delete — `active = false`)
-- **Default habits:** 3 habit mặc định nếu chưa tạo (guest only — authenticated chỉ thấy real data)
-- **Categories:** `health`, `learning`, `mindfulness`, `productivity`, `other`
-- **Conquered Habits 🏅:** Habits đã chinh phục 21 ngày (`status='conquered'`)
-- **Journey tagging (v1.8.0):** Mỗi habit tạo mới tự động gắn `journey_id: activeJourney?.id`
-- **Sync:** Supabase-first (v1.6.2). Guest dùng in-memory default habits
-
----
+SQL: `DROP TABLE progress, habits, habit_logs`.
 
 ## 3. ⏱ Focus Timer — Pomodoro (`/focus`)
 
@@ -95,40 +41,23 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 - **SVG Ring Countdown:** Vòng tròn countdown theo thời gian, màu đổi theo phase (focus/nghỉ ngắn/nghỉ dài)
 - **3 Phases:** Work (25p mặc định) → Short Break (5p) → Long Break (15p, sau 4 sessions)
 - **Custom settings:** Điều chỉnh thời gian bằng slider, lưu localStorage (`vl_focus_settings`)
-- **Habit Picker Custom Dropdown:** Chọn habit để gắn với session (dropdown glassmorphism thay native select)
-  - Hiển thị icon, tên, giờ target của habit
-  - Dấu ✓ khi đang được chọn
-- **Session Stats hôm nay:** Số sessions + phút tập trung, breakdown theo từng habit
-- **Lịch sử sessions:** 10 sessions gần nhất, tên habit + thời gian
+- **Session Stats hôm nay:** Số sessions + phút tập trung
+- **Lịch sử sessions:** 10 sessions gần nhất kèm thời gian
 - **Notification:** Browser notification khi hết giờ (cần cấp quyền)
-- **Journey tagging (v1.8.0):** Insert `journey_id` vào `focus_sessions`
 - **DB Sync:** Supabase-first (v1.6.2). Guest dùng in-memory
-- **Auto-tick habit (v1.3.0):** Khi session hoàn thành và tổng `durationMin` đủ → dispatch `CustomEvent focus:habit-tick` (loose coupling)
 - **Focus XP (v1.3.1):** +15 XP mỗi session hoàn thành, deduped qua Supabase
 
----
-
-## 4. 📈 Dashboard Cá Nhân (`/dashboard`)
-
-**File:** `src/pages/DashboardPage.jsx`, `src/styles/dashboard.css`
-**Version:** v3.2.1 — Unified Life Hub Dashboard + Polish
-
-**Mô tả:** Tổng quan toàn bộ cuộc sống — hôm nay, thói quen, tài chính, hoạt động, focus.
-
-**Chi tiết:**
-- **Today Overview (4 KPIs hôm nay):** Hoạt động (activity_logs) / Focus phút + sessions (useFocusTimer) / Chi tiêu hôm nay (expenses) / XP kiếm hôm nay (xp_logs). Hover lift animation.
-- **Section Dividers:** `SectionTitle` với gradient underline + icon + action link
-- **Habits:** Flower Journey 21 ô / Monthly Donut ring / Weekly Table 4 tuần / mini KPI row (Streak, Best, Tổng, XP)
-- **Finance Summary:** 3 KPI cards (Chi tháng / Đăng ký/tháng / Sắp hết hạn) + Finance Pie SVG donut (category breakdown + legend %)
-
-- **Focus Breakdown (v3.2.1):** Per-habit horizontal bar chart 7 ngày gần nhất. Query trực tiếp `focus_sessions` + join `habits` table. Hiển thị icon, tên habit, progress bar, phút, %.
-- **Weekly Review (v3.2.1):** Collapsible summary card: Habits (ngày hoàn thành), XP, Chi tiêu — so sánh với tuần trước (↑/↓/→). Expand/collapse với animation.
-- **Insights:** Skip Reason analysis 14 ngày + nhận xét streak + milestone tiếp theo
-- **Guest mode:** Finance/Activity/Focus widgets hiện empty state graceful
-
-**Data sources:** `useHabitStore`, `useXpStore`, `useSkipReasons`, `useFocusTimer`, `useExpenses`, `useSubscriptions`, `useActivityLog`, `useAuth`, `supabase` (direct query for FocusBreakdown)
+> **v5.0.0:** bỏ toàn bộ phần gắn habit/lộ trình — picker chọn habit, breakdown
+> theo habit, auto-tick habit khi đủ giờ, và 2 cột `focus_sessions.habit_id` /
+> `journey_id`. Pomodoro giờ đứng độc lập.
 
 ---
+
+## 4. ~~📈 Dashboard Cá Nhân~~ — ĐÃ GỠ HẲN (v5.0.0)
+
+Xoá `DashboardPage.jsx` (586) + `dashboard.css`. Route `/dashboard` redirect về
+`/tasks`. Sau khi bỏ Habit và XP-từ-habit thì trang chỉ còn lặp lại thứ Finance
+và Focus đã có trang riêng.
 
 ## 5. 🔐 Xác Thực (Auth)
 
@@ -162,19 +91,22 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 | 4 | 👑 Huyền Thoại | 1500 |
 | 5 | 🏆 Vô Địch | 3000 |
 
-**XP Events:**
+**XP Events (v5.0.0 — còn 2):**
 | Event | XP | Điều kiện |
 |-------|-----|----------|
-| Tick habit | +10 | 1 lần/habit/ngày (un-tick → removeXp) |
-| Streak 3 ngày | +50 | One-time milestone |
-| Streak 10 ngày | +100 | One-time milestone |
-| Streak 21 ngày | +200 | One-time milestone |
-| Daily Challenge | +20 | Max 1/ngày (un-check → removeXp) |
+| Hoàn thành nhiệm vụ | +10 | Dedup theo `taskId`; bỏ tích → `removeXp` |
 | Focus Session | +15 | 1 lần/session (deduped by `meta.sessionId`) |
 
 > Nguồn: `XP_REWARDS` trong `useXpStore.js`; `FOCUS_XP` trong `useFocusTimer.js`.
 
-**XpBar:** Hiển thị compact trên Navbar + đầy đủ trên TrackerPage
+**v5.0.0 — XP đổi nguồn.** Trước đây XP thuộc về Habit (tick habit, streak
+3/10/21, Daily Challenge, Quiz). Cả 4 nguồn đó đã gỡ, nên **hoàn thành Nhiệm vụ
+trở thành nguồn XP chính** — đảo lại quyết định cũ "Task cố ý không tính XP" ở
+§16. Dòng `xp_logs` cũ với các reason đã bỏ **vẫn nằm trong DB và vẫn cộng vào
+tổng XP**: bảng append-only, cố ý không dọn, nên level của bạn không tụt sau đợt
+dọn module.
+
+**XpBar:** Hiển thị compact trên Navbar (chỗ duy nhất còn dùng).
 
 ---
 
@@ -197,71 +129,40 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 ## 9. 📅 Monthly Calendar
 
 **File:** `src/components/MonthCalendar.jsx` + `src/styles/calendar.css`
-**Dùng ở:** `/tracker` tab 📅 Lịch, `/tasks` tab 📅 Lịch (v4.29.0)
+**Dùng ở:** `/tasks` tab 📅 Lịch (v4.29.0)
 
-**Mô tả:** Lịch tháng inline, **2 chế độ** quyết định bởi prop `habitData` (v4.29.0).
+**Mô tả:** Lịch tháng inline hiển thị task theo ngày.
 
-**Chung cho cả 2 mode:**
+**Chi tiết:**
 - Navigate tháng prev/next + nút "Hôm nay"
 - Ngày lễ VN, highlight today, outline ngày đang chọn
-- Click ngày → panel chi tiết list task đã hoàn thành + expand mô tả + giờ xong
-- **1 query cho cả tháng** (`getCompletedTasksRange`), group theo ngày **địa phương** ở client. Click ngày chỉ filter mảng đã fetch — không fetch thêm
-
-**habit mode** (truyền `habitData` — `/tracker`):
-- Ô ngày: done (xanh), **miss (đỏ nhạt)**, future (mờ) — theo việc tick đủ habit
-- 1 dấu dot cho ngày done
-- Stats: X ngày done / % tháng này / X ngày miss
-- Hiện `skipLog` (lý do bỏ habit) trong panel chi tiết
-
-**task mode** (KHÔNG truyền `habitData` — `/tasks`):
-- Ô cao `76px` (bỏ `aspect-ratio: 1`), hiện **chip tên task** (tối đa 2 + `+N nữa`)
-- Ngày quá khứ không có task xong là **transparent, không tô đỏ** — thiếu habit là thất bại, không có task ngày đó thì không
+- **1 query cho cả tháng** (`getCompletedTasksRange`), group theo ngày **địa
+  phương** ở client. Click ngày chỉ filter mảng đã fetch — không fetch thêm
+- Ô cao `76px` (bỏ `aspect-ratio: 1`), hiện **chip tên task** (tối đa 2 + `+N nữa`).
+  Chip xanh = task đã xong, chip tím = task sắp tới chưa xong
+- Ngày quá khứ không có task xong là **transparent, không tô đỏ**
 - Stats: X task xong / X ngày có việc xong / TB mỗi ngày
-- Không có `skipLog`, legend chỉ còn "Có task xong / Chưa tới / Ngày lễ"
+- Click ngày → panel chi tiết: 1 danh sách gộp task đã xong + task sắp tới, expand
+  mô tả, giờ hoàn thành, nút xoá
 
-> Khi feature habit bị cắt, xoá nhánh `habitMode` là xong — không có prop cấu hình để dọn.
-
----
-
-## 10. 📝 Skip Reasons
-
-**Files:** `src/hooks/useMoodSkip.js` (`useSkipReasons`)
-
-**Mô tả:** Ghi nhận lý do bỏ habit một ngày.
-
-- Trigger tự động sau 8PM nếu chưa tick
-- 7 lý do preset + ô ghi chú tự do
-- Supabase-first (v1.6.2), in-memory cho guest
-- Dùng để phân tích pattern bỏ habit
+> **v5.0.0: bỏ hẳn "habit mode"** (prop `habitData` + `skipLog`). Người gọi duy
+> nhất là `TrackerPage`, đã xoá. Đúng như comment cũ dự liệu: cắt feature habit
+> thì xoá nhánh habit là xong, không có prop cấu hình nào phải dọn.
 
 ---
 
-## 11. 🔔 Notification Reminder
+## 10-12. ~~📝 Skip Reasons~~ + ~~🔔 Notification Reminder~~ + ~~📊 Daily Challenge~~ — ĐÃ GỠ HẲN (v5.0.0)
 
-**Files:** `src/hooks/useNotifications.js`, `src/components/NotificationSettings.jsx`
+Cả ba đều chỉ sống bên trong `TrackerPage`, chết theo nó ở đợt 4.
 
-**Mô tả:** Nhắc nhở hàng ngày qua browser notification.
+- **Skip Reasons** — `useMoodSkip.js`, bảng `skip_reasons`. Lý do bỏ habit hôm nay.
+- **Notification Reminder** — `NotificationSettings.jsx`, `useNotifications.js`.
+  Nhắc "chưa tick streak hôm nay". Lưu ý: đây **không phải** thông báo nhắc hạn
+  Nhiệm vụ — cái đó chạy độc lập qua Service Worker (`public/sw.js` + `SYNC_TASKS`
+  trong `useUserTasks`) và **vẫn hoạt động**.
+- **Daily Challenge** — `DailyChallenge.jsx`, `daily.css`, `data/challenges.json`.
 
-- Toggle bật/tắt, chọn giờ nhắc (mặc định 21:00)
-- Scheduler tự tính `setTimeout` đến giờ đặt
-- Không nhắc nếu đã tick xong hôm nay
-- Settings sync DB nếu authed
-
----
-
-## 12. 📊 Daily Challenge
-
-**File:** `src/components/DailyChallenge.jsx`
-
-**Mô tả:** Một thử thách nhỏ mỗi ngày từ pool 21 thử thách.
-
-- Pick theo streak day (v1.7.0) → user mới thấy Challenge Ngày 1, không còn random
-- Click "Hoàn thành" → +20 XP, 1 lần/ngày. Un-check → removeXp (v2.0.0)
-- Hiển thị trên TrackerPage
-
----
-
-## 13. 👋 Onboarding Modal (v1.3.0)
+## 13. 👋 Onboarding Modal (v1.3.0 → viết lại v5.0.0)
 
 **Files:** `src/components/OnboardingModal.jsx`, `src/styles/onboarding.css`
 
@@ -277,48 +178,18 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 
 ---
 
-## 14. 🗺 Lộ Trình (Journey) (`/journey`)
+## 14-15. ~~🗺 Lộ Trình~~ + ~~🗺 Journey Detail~~ — ĐÃ GỠ HẲN (v5.0.0)
 
-**Added:** v1.6.0, expanded v2.0.0
-**Files:** `src/pages/JourneyPage.jsx`, `src/components/journey/*`, `src/styles/journey.css`, `src/data/programs.json`
+Chương trình 21 ngày. Xoá `JourneyPage.jsx`, `JourneyDetailPage.jsx` (608),
+`useJourney.js`, `JourneyContext.jsx`, `src/components/journey/*` (5 file),
+`journey.css` (800), `data/programs.json`. Route `/journey` + `/journey/:id`
+redirect về `/tasks`.
 
-**Mô tả:** Hệ thống quản lý lộ trình (journey) giúp user có mục tiêu hành trình rõ ràng. Kể từ `v4.21.0`, việc chọn lộ trình là tùy chọn (Optional), loại bỏ cơ chế cưỡng chế tự động chuyển hướng khi người dùng đăng nhập mà không có lộ trình active.
+SQL: `DROP TABLE programs, program_habits, user_journeys, journey_habits` +
+bỏ seed 5 lộ trình mẫu.
 
-**4 tabs:**
-1. **🗺 Đang Chạy** — Progress ring SVG (ngày hiện tại / target), habit chips. Completion UI (v2.0.0): khi `completedDays >= targetDays` → 🎉 banner + 3 actions: Renew / +21 Ngày / ✅ Hoàn Thành. Nút Gia Hạn / Bỏ Cuộc
-2. **✨ Khám Phá** — Grid 5 system templates với category filter (Sức Khoẻ / Học Tập / Tâm Trí / Năng Suất). Load từ Supabase, fallback `programs.json`. Nút "✑ Tự tạo lộ trình riêng" mở `CustomJourneyModal`. **SwitchModeModal (v1.9.3):** khi có active journey → 2 options: 🔄 Replace / ➕ Append
-3. **📂 Của Tôi** (v2.0.0) — `MyJourneys` component: list past journeys với "🔄 Bắt đầu lại" button (fetches journey_habits snapshot)
-4. **📜 Lịch Sử** — List journey đã kết thúc: tên, ngày bắt đầu/kết thúc, trạng thái badge (completed/archived/extended), % hoàn thành. Click → `/journey/:id`
-
-**Integrations:**
-- **TrackerPage:** Journey banner nhỏ hiển thị tên lộ trình + "Ngày X/Y" nếu active; CTA nếu chưa có
-- **TrackerPage:** 21-day dots anchor từ `user_journeys.started_at`
-- **CompletionModal:** Option C "🗺 Chọn Lộ Trình Mới" sau khi hoàn thành 21 ngày
-
-**Business logic (v2.0.0 — Journey Owns Habits):**
-- Guest có thể browse templates, nhưng cần login để lưu journey → mở `AuthModal`
-- Mỗi journey creates fresh habit rows. Không reuse across journeys
-- Replace mode: archive old + close habits → create fresh from template
-- Append mode: archive old, keep old habits + add new
-- Complete/quit → close all active habits (`active=false, status='completed'`)
-- Renew → snapshot old habits → clone as fresh rows for new cycle
-
----
-
-## 15. 🗺 Journey Detail (`/journey/:id`) (v1.8.0)
-
-**File:** `src/pages/JourneyDetailPage.jsx`
-
-**Mô tả:** Full dashboard cho 1 journey cụ thể.
-
-**Chi tiết:**
-- Stats grid: completion %, focus hours, XP
-- Habit chips with status
-- **JourneyCalendar:** Month view — 🟢 all done / 🟡 partial / ⬜ missed / ⚫ outside range
-- Click ngày → **DayDetailModal:** danh sách habits ✅/❌, focus sessions với timestamp
-- **MonthSummary (v1.9.1):** Per-month progress rings (Hoàn thành / Bỏ qua / Còn lại)
-
----
+`JourneyContext` từng bọc toàn bộ App và bị 4 hook import — đây là lý do Habit và
+Lộ Trình **bắt buộc** phải gỡ cùng một đợt.
 
 ## 16. 📌 Nhiệm Vụ Cá Nhân (Personal Tasks) (v2.1.0 → v4.27.0)
 
@@ -333,7 +204,7 @@ Tính năng đã bỏ KHÔNG được để lẫn trong phần active — chuy�
 - **Hero + 2 view (v4.29.0):**
   - **Hero:** số việc cần làm (quá hạn + hôm nay) ở display scale với `.gradient-text`, kèm 3 tile Quá hạn / Hôm nay / Sắp tới. Độ nổi mã hoá độ gấp: quá hạn nền đỏ, hôm nay tím, sắp tới `opacity 0.6`.
   - **Tab 📋 Danh sách** — chỉ việc **CHƯA** làm. Block "Đã hoàn thành hôm nay" **đã xoá** khỏi list.
-  - **Tab 📅 Lịch** — việc **ĐÃ** xong theo ngày. Reuse `MonthCalendar` ở **task mode** (không truyền `habitData`): ô ngày hiện **chip tên task** thay 1 dấu dot, bấm ngày → list task đã xong + expand mô tả + giờ hoàn thành.
+  - **Tab 📅 Lịch** — việc **ĐÃ** xong theo ngày. Reuse `MonthCalendar`: ô ngày hiện **chip tên task**, bấm ngày → list task đã xong + expand mô tả + giờ hoàn thành.
   - **Dải màu priority** 3px bên trái mỗi task card, màu từ `PRIORITY_OPTIONS` — quét mắt thấy ngay cái nào gấp.
   - **Animation tick** thuần CSS (`::after` + `:active` + `--transition-spring` + `--shadow-green`), không cần state React. Có escape `prefers-reduced-motion`.
   - **Empty state** có icon + tiêu đề, không còn là dòng text trơn.
@@ -618,7 +489,7 @@ history nếu đổi ý.
 
 **Files:** `src/components/SubAlert.jsx` + `src/styles/widgets.css`
 
-**Mô tả:** Widget nhỏ gắn inline trong TrackerPage, tự động ẩn khi không có data.
+**Mô tả:** Widget nhỏ gắn trong sidebar Navbar, tự động ẩn khi không có data.
 
 **Chi tiết:**
 - **SubAlert:** Hiển thị subscriptions sắp gia hạn (≤7 ngày) + đếm ngược ngày. Urgent style khi ≤2 ngày.
@@ -722,17 +593,13 @@ một app không bán.
 ---
 
 | `/` | LandingPage (eager) | ❌ |
-| `/tracker` | TrackerPage (eager) | ❌ |
 | `/inbox` | InboxPage | ✅ |
 | `/collect` | CollectPage | ✅ |
 | `/finance` | FinancePage | ✅ |
 | `/incubator` | IncubatorPage | ✅ |
 | `/settings` | SettingsPage | ✅ |
 | `/focus` | FocusPage | ❌ |
-| `/journey` | JourneyPage | ❌ (soft wall: cần login để lưu) |
-| `/journey/:id` | JourneyDetailPage | ❌ |
-| `/dashboard` | DashboardPage | ❌ |
-| `/habits`, `/team`, `/friends` | `<Navigate to="/tracker">` | — |
+| `/tracker`, `/habits`, `/dashboard`, `/journey` | `<Navigate to="/tasks">` (route đã gỡ) | — |
 | `*` | LandingPage (catch-all) | ❌ |
 
 Auth ✅ = trang tự hiện empty/login state khi guest (không có route guard tập trung).
@@ -747,8 +614,8 @@ Không còn là tính năng đang chạy. Giữ lại đây để không ai mô 
 |-----------|-----------|
 | 🤝 **Team Mode** (`/team`) | Huỷ v3.0.0, code xoá hẳn v4.25.0 (`TeamPage.jsx`, `useTeam.js`, `team/*` — lấy lại được từ git history). Route redirect `/tracker`. Bảng `teams`/`reactions`/`partner_queue` **chưa từng** tồn tại trong schema |
 | 👥 **Friends** (`/friends`) | Archived v3.0.0, code xoá hẳn v4.25.0 (`FriendsPage.jsx` — lấy lại được từ git history). Route redirect `/tracker`. Bảng `friendships` còn trong schema nhưng không hook nào dùng — an toàn để DROP |
-| 📋 **Habits Page** (`/habits`) | Gộp vào TrackerPage v1.9.0, file xoá v2.2.1. Route redirect `/tracker` |
-| 🏋️ **Fitness Log / Sức Khỏe** (tab 5 của `/tracker`) | Xoá v4.26.0 — `useFitnessLog.js`, tab TrackerPage, card Dashboard, XP `fitness_done` (lấy lại được từ git history). Bảng `fitness_logs` **còn** trong schema, không hook nào dùng — an toàn để DROP. Row `activity_logs` với `action='fitness_done'` đã bị xoá ở v5.0.0 cùng Life Log |
+| 📋 **Habits Page** (`/habits`) | Gộp vào TrackerPage v1.9.0, file xoá v2.2.1. Cả TrackerPage cũng gỡ ở v5.0.0; route giờ redirect `/tasks` |
+| 🏋️ **Fitness Log / Sức Khỏe** (tab 5 của `/tracker`) | Xoá v4.26.0 — `useFitnessLog.js`, tab TrackerPage, card Dashboard, XP `fitness_done` (lấy lại được từ git history). Bảng `fitness_logs` đã **DROP** ở v5.0.0 (đợt 5). Row `activity_logs` với `action='fitness_done'` đã bị xoá ở v5.0.0 cùng Life Log |
 | 😊 **Mood Log** | Bỏ v4.10.1 (`useMoodLog` + bảng `mood_logs`). Chỉ còn `useSkipReasons` (§10) |
 | 🔗 **Inbox Link Preview** | Bỏ v4.23.0 cùng với `api/meta.js`. Inbox chỉ tự detect URL, không fetch metadata |
 | 📊 **DailyReview widget** | Xoá v4.7.1 để giảm UI clutter |

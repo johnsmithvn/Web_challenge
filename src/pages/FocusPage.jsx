@@ -1,24 +1,14 @@
 import FocusTimer from '../components/FocusTimer';
 import { useFocusTimer } from '../hooks/useFocusTimer';
-import { useCustomHabits } from '../hooks/useCustomHabits';
 import '../styles/focus.css';
 
 export default function FocusPage() {
-  const { sessions, todayMinutes } = useFocusTimer();
-  const { activeHabits } = useCustomHabits();
+  const { sessions, todaySessions, todayMinutes } = useFocusTimer();
 
-  // Last 5 sessions
+  // v5.0.0: bỏ phần "breakdown theo habit" — Habit tracker đã gỡ hẳn, session
+  // không còn cột habit_id để nhóm.
   const recentSessions = [...sessions].reverse().slice(0, 10);
-
-  // Per-habit today stats
   const today = new Date().toISOString().split('T')[0];
-  const todayByHabit = sessions
-    .filter(s => s.date === today)
-    .reduce((acc, s) => {
-      const key = s.habitId || 'none';
-      acc[key] = (acc[key] || 0) + s.durationMin;
-      return acc;
-    }, {});
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', padding: '6rem 0 4rem' }}>
@@ -40,29 +30,18 @@ export default function FocusPage() {
           {/* Right side */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-            {/* Today breakdown by habit */}
+            {/* Today */}
             <div className="card" style={{ padding: '1.25rem' }}>
               <div className="dash-card-title">📊 Hôm Nay</div>
               <div style={{ fontSize: '2rem', fontWeight: 900, fontFamily: 'var(--font-display)', marginTop: '0.5rem' }}>
                 <span className="gradient-text">{todayMinutes}</span>
                 <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>phút</span>
               </div>
-              {activeHabits.map(h => {
-                const min = todayByHabit[h.id] || 0;
-                if (!min) return null;
-                return (
-                  <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
-                    <span style={{ fontSize: '1.1rem' }}>{h.icon}</span>
-                    <span style={{ flex: 1, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>{h.name}</span>
-                    <span style={{ fontWeight: 700, color: h.color, fontSize: '0.9rem' }}>{min}p</span>
-                  </div>
-                );
-              })}
-              {!Object.keys(todayByHabit).length && (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                  Chưa có session nào hôm nay
-                </p>
-              )}
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.35rem' }}>
+                {todaySessions.length
+                  ? `${todaySessions.length} session hoàn thành`
+                  : 'Chưa có session nào hôm nay'}
+              </p>
             </div>
 
             {/* Session history */}
@@ -75,7 +54,6 @@ export default function FocusPage() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.75rem' }}>
                   {recentSessions.map((s, i) => {
-                    const linked = activeHabits.find(h => h.id === s.habitId);
                     const time = new Date(s.completedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
                     return (
                       <div key={s.id || i} style={{
@@ -86,9 +64,7 @@ export default function FocusPage() {
                         fontSize: '0.85rem',
                       }}>
                         <span style={{ color: 'var(--green)' }}>✅</span>
-                        <span style={{ color: 'var(--text-secondary)', flex: 1 }}>
-                          {linked ? `${linked.icon} ${linked.name}` : 'Focus'}
-                        </span>
+                        <span style={{ color: 'var(--text-secondary)', flex: 1 }}>Focus</span>
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                           {s.durationMin}p · {s.date === today ? time : s.date}
                         </span>
@@ -107,7 +83,6 @@ export default function FocusPage() {
                 <li>Chỉ làm <strong>1 việc</strong> trong mỗi 25 phút</li>
                 <li>Nghỉ ngắn = đứng dậy, rời màn hình</li>
                 <li>4 sessions = 1 longbreak 15–20 phút</li>
-                <li>Gắn session với habit để track progress</li>
               </ul>
             </div>
           </div>

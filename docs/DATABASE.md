@@ -5,7 +5,7 @@
 **Strategy:** Production-ready from day 1
 **Source of Truth:** **`data/schema_v4.24.0.sql`** — single consolidated schema (all migrations v4.4.0 → v5.0.0 folded in, bao gồm `data/RUNBOOK.sql`). Idempotent — run once on a fresh project.
 
-**Table count (verified against the `.sql` file):** **29 `CREATE TABLE`** = **27 active** + **2 archived** (`friendships`, `fitness_logs` — an toàn để DROP). Đổi so với lần đếm trước (30): `streaks` đã **DROP hẳn** ở v5.0.0 cùng Bảng Xếp Hạng.
+**Table count (verified against the `.sql` file):** **18 `CREATE TABLE`** — **tất cả đều đang được dùng**, không còn bảng archived nào. v5.0.0 DROP 12 bảng: 8 bảng Habit + Lộ Trình (`progress`, `habits`, `habit_logs`, `programs`, `program_habits`, `user_journeys`, `journey_habits`, `skip_reasons`), `streaks` (BXH), và 3 bảng chết sẵn (`notification_settings`, `friendships`, `fitness_logs`).
 `mood_logs` is NOT in this schema (dropped in v4.10.1, folded into the consolidated file).
 Every other doc that says 26 / 28 / 29 / 31 tables is stale — this line is the count.
 `data/RUNBOOK.sql` vẫn giữ lại làm hồ sơ lịch sử SQL đã chạy trên DB thật (2026-08-02) — không cần
@@ -21,16 +21,9 @@ auth.users (Supabase built-in)
     ▼
 profiles ──────────────────────────────────────┐
     │                                           │
-    ├──► progress          (daily check)        │
     ├──► xp_logs           (immutable events)   │
-    ├──► habits            (custom + journey)   │
-    ├──► habit_logs        (per-habit daily)    │
     ├──► focus_sessions    (pomodoro)           │
-    ├──► skip_reasons      (daily skip)         │
-    ├──► notification_settings  (1:1)           │
     │                                           │
-    ├──► user_journeys     (journey runs)       │
-    ├──► journey_habits    (snapshot per run)   │
     │                                           │
     ├──► user_tasks ◄──► task_collections ──► collections
     │                                    (M:N junction v4.5.0)
@@ -49,10 +42,7 @@ profiles ───────────────────────�
     ├──► collection_notes  (threaded sub-notes) │
     ├──► inspirational_quotes (user quotes)     │
     │                                           │
-    ├──► friendships       [ARCHIVED v3.0.0]    │
     └────────────────────────────────────────────┘
-
-Programs ──► program_habits   (template library, system + user)
 ```
 
 ---
@@ -63,42 +53,30 @@ Programs ──► program_habits   (template library, system + user)
 > column definitions, RLS policies, triggers, and indexes. `schema_v4.4.0.sql` and the per-version
 > `migration_*.sql` files no longer exist — they were folded into the consolidated file (history in git).
 
-### Table Inventory (27 active)
+### Table Inventory (18 bảng — không còn bảng chết)
 
 | # | Table | Purpose | Key constraints |
 |---|-------|---------|-----------------|
 | 1 | `profiles` | Extends `auth.users` (1:1) | PK = `auth.users.id`, auto-created by trigger |
-| 2 | `progress` | Daily habit check-in | UNIQUE(user_id, date) |
-| — | ~~`streaks`~~ | **DROPPED v5.0.0** | Chết từ lâu: chỉ INSERT 1 lần lúc signup, không nơi nào UPDATE → 2 cột streak luôn = 0. Người đọc duy nhất là `get_leaderboard()`, mà Bảng Xếp Hạng đã gỡ hẳn. INSERT trong `handle_new_user()` cũng đã bỏ |
-| 4 | `xp_logs` | Immutable XP event log | CHECK(amount BETWEEN -200 AND 200) |
-| 5 | `habits` | Custom + journey habits | FK → user_journeys(journey_id), `active` flag |
-| 6 | `habit_logs` | Per-habit daily completion | UNIQUE(user_id, habit_id, date), status: completed/skipped |
-| 7 | `focus_sessions` | Pomodoro sessions | FK → habits, FK → user_journeys |
-| 8 | `skip_reasons` | Why user missed a day | UNIQUE(user_id, date) |
-| 9 | `notification_settings` | Reminder config (1:1) | Auto-created by signup trigger |
-| 10 | `programs` | Journey templates | `is_system` flag for built-in templates |
-| 11 | `program_habits` | Template habit definitions | FK → programs |
-| 12 | `user_journeys` | Journey runs | status: active/completed/extended/archived |
-| 13 | `journey_habits` | Snapshot of habits per run | FK → user_journeys, FK → habits |
-| 14 | `user_tasks` | Personal to-do items | priority SMALLINT, recurrence_rule JSONB, `recurrence_parent_id` UUID self-FK ON DELETE CASCADE (v4.31.0 — link "task này được sinh ra TỪ task nào", khác cột `parent_id` subtask đang có kế hoạch riêng), `updated_at` TIMESTAMPTZ + trigger `user_tasks_updated_at` tái dùng hàm chung `update_updated_at()` (v5.0.0; backfill = `created_at` cho task cũ) |
-| 15 | `task_collections` | Junction: Task ↔ KB (M:N) | Composite PK(task_id, collection_id), CASCADE |
-| 16 | `collections` | Inbox + Knowledge Base | type CHECK (8, **sửa v4.28.0**): `inbox`, `note`, `quote`, `learn`, `idea`, `ai`, `entertainment`, `podcast`. ⚠️ Trước v4.28.0 CHECK có `emotion` (không tồn tại trong `src/`) và **thiếu `podcast`** (có trong `knowledge.json`) → classify sang Podcast fail constraint |
-| 17 | `expenses` | Daily spending log | amount VNĐ, category, note |
-| 18 | `subscriptions` | Recurring services | cycle, next_due, auto-advance |
-| 19 | `activity_logs` | Lịch sử thay đổi + ghi chú cá nhân của **Task** | **Dựng lại ở v5.0.0**, dữ liệu cũ xoá hết theo chủ ý: `task_id` UUID FK → `user_tasks` ON DELETE CASCADE (mọi dòng đều gắn task), `action`, `field`, `old_value`, `new_value`, `note`. Bỏ `label`/`amount`/`meta` (không nơi nào đọc; tiền/XP đã có nguồn thật ở `expenses`/`subscriptions`/`xp_logs`). 4 policy: SELECT/INSERT/DELETE own + UPDATE chỉ dòng `action='note'` kèm `GRANT UPDATE (note)` cấp cột → dòng field-diff bất biến. 1 index `idx_activity_logs_task` phục vụ truy vấn đọc duy nhất. **Không còn** dòng "sự kiện rời rạc" (expense_add, inbox_*, focus_done…) — Life Log/heatmap là người đọc duy nhất của chúng và đã gỡ hẳn ở v5.0.0 |
-| 20 | `intentions` | Incubator (someday-maybe) | status: incubating/deferred/executed/abandoned |
-| 21 | `intention_logs` | Incubator audit trail | FK → intentions |
-| 22 | `tags` | Central tag system | UNIQUE(user_id, name). Cột `emoji`/`description` (thêm tạm ở RUNBOOK.sql Phần 2) đã **DROP lại** ở Phần 3, xác nhận 2026-08-02 — feature "Nhóm" bỏ hẳn khỏi UI, 2 cột này không còn ai đọc/ghi |
-| 23 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
-| 24 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
-| 25 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
-| 25b | `task_tags` | Junction: Task ↔ Tags | **v4.28.0.** Composite PK(task_id, tag_id), CASCADE. RLS kiểm ownership **cả 2 phía**. Chỉ index `tag_id` (task_id đã là cột dẫn đầu của PK) |
-| 28 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
-| 29 | `inspirational_quotes` | User + system quotes | FK → profiles, `is_active` toggle, `audio_url` optional |
+| 2 | `xp_logs` | Immutable XP event log | CHECK(amount BETWEEN -200 AND 200). v5.0.0: nguồn XP đổi sang `task_done` + `focus_session`; dòng cũ của habit/quiz/challenge **giữ nguyên** (append-only) |
+| 3 | `focus_sessions` | Pomodoro sessions | v5.0.0: DROP 2 cột `habit_id` + `journey_id` — Focus không còn gắn habit/lộ trình |
+| 4 | `user_tasks` | Personal to-do items | priority SMALLINT, recurrence_rule JSONB, `recurrence_parent_id` UUID self-FK ON DELETE CASCADE (v4.31.0 — link "task này được sinh ra TỪ task nào", khác cột `parent_id` subtask đang có kế hoạch riêng), `updated_at` TIMESTAMPTZ + trigger `user_tasks_updated_at` tái dùng hàm chung `update_updated_at()` (v5.0.0; backfill = `created_at` cho task cũ) |
+| 5 | `task_collections` | Junction: Task ↔ KB (M:N) | Composite PK(task_id, collection_id), CASCADE |
+| 6 | `collections` | Inbox + Knowledge Base | type CHECK (8, **sửa v4.28.0**): `inbox`, `note`, `quote`, `learn`, `idea`, `ai`, `entertainment`, `podcast`. ⚠️ Trước v4.28.0 CHECK có `emotion` (không tồn tại trong `src/`) và **thiếu `podcast`** (có trong `knowledge.json`) → classify sang Podcast fail constraint |
+| 7 | `expenses` | Daily spending log | amount VNĐ, category, note |
+| 8 | `subscriptions` | Recurring services | cycle, next_due, auto-advance |
+| 9 | `activity_logs` | Lịch sử thay đổi + ghi chú cá nhân của **Task** | **Dựng lại ở v5.0.0**, dữ liệu cũ xoá hết theo chủ ý: `task_id` UUID FK → `user_tasks` ON DELETE CASCADE (mọi dòng đều gắn task), `action`, `field`, `old_value`, `new_value`, `note`. Bỏ `label`/`amount`/`meta` (không nơi nào đọc; tiền/XP đã có nguồn thật ở `expenses`/`subscriptions`/`xp_logs`). 4 policy: SELECT/INSERT/DELETE own + UPDATE chỉ dòng `action='note'` kèm `GRANT UPDATE (note)` cấp cột → dòng field-diff bất biến. 1 index `idx_activity_logs_task` phục vụ truy vấn đọc duy nhất. **Không còn** dòng "sự kiện rời rạc" (expense_add, inbox_*, focus_done…) — Life Log/heatmap là người đọc duy nhất của chúng và đã gỡ hẳn ở v5.0.0 |
+| 10 | `intentions` | Incubator (someday-maybe) | status: incubating/deferred/executed/abandoned |
+| 11 | `intention_logs` | Incubator audit trail | FK → intentions |
+| 12 | `tags` | Central tag system | UNIQUE(user_id, name). Cột `emoji`/`description` (thêm tạm ở RUNBOOK.sql Phần 2) đã **DROP lại** ở Phần 3, xác nhận 2026-08-02 — feature "Nhóm" bỏ hẳn khỏi UI, 2 cột này không còn ai đọc/ghi |
+| 13 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
+| 14 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
+| 15 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
+| 16 | `task_tags` | Junction: Task ↔ Tags | **v4.28.0.** Composite PK(task_id, tag_id), CASCADE. RLS kiểm ownership **cả 2 phía**. Chỉ index `tag_id` (task_id đã là cột dẫn đầu của PK) |
+| 17 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
+| 18 | `inspirational_quotes` | User + system quotes | FK → profiles, `is_active` toggle, `audio_url` optional |
 | — | `knowledge_groups` | **[DROPPED v4.31.0, 2026-08-02]** KB folder/group metadata | Quyết định P2-7 (2026-08-01): trùng việc với `tags`. Ban đầu định gộp hiển thị (tag có emoji = "nhóm"), nhưng chốt cuối là **bỏ hẳn tính năng Nhóm khỏi UI**. Data đã copy sang `tags`/`collection_tags` (Phase 1) trước khi drop — bài viết không mất liên kết, chỉ mất hiển thị folder. Frontend không còn dùng (`useKnowledgeGroups.js` đã xoá). **Bảng đã DROP** qua RUNBOOK.sql Phần 3, xác nhận `information_schema.tables` 0 dòng. |
 | — | `collection_groups` | **[DROPPED v4.31.0, 2026-08-02]** Junction: KB ↔ Groups (M:N) | Cùng lý do với `knowledge_groups` ở trên. |
-| — | `fitness_logs` | **[ARCHIVED v4.26.0]** Workout sessions | `session_name`, `duration_min`, `energy`. Frontend code deleted v4.26.0 (recoverable from git history). Table still exists in production DB, no active hook or page uses it. Safe to DROP when ready. |
-| — | `friendships` | **[ARCHIVED v3.0.0]** Friend requests | Frontend code deleted v4.25.0 (was `src/_archived/`, recoverable from git history). Table exists in production DB but is not used by any active hook or page. Safe to DROP when ready. |
 
 ### Views
 
@@ -141,9 +119,9 @@ Named in older docs / older `ARCHITECTURE.md` revisions, but **never** in the cu
 <a id="streak-source-of-truth"></a>
 ### Streak — Source of Truth
 
-- **v5.0.0: bảng `streaks` đã DROP.** Nó chưa bao giờ được cập nhật sau signup (không có
-  `refresh_streak()`, không hook nào ghi), nên 2 cột streak luôn = 0. Streak hiển thị trên UI vẫn
-  được tính **runtime** từ `progress` / `habit_logs` trong `useHabitStore`, không đọc bảng này.
+- **v5.0.0: không còn khái niệm streak trong app.** Habit tracker + bảng `streaks`
+  đều đã gỡ. Nếu sau này cần lại: tính runtime từ dữ liệu gốc, đừng dựng bảng cache
+  (bảng `streaks` cũ chính là ví dụ — dựng ra rồi không ai update, luôn = 0).
 
 ## ~~Leaderboard~~ — GỠ HẲN v5.0.0
 

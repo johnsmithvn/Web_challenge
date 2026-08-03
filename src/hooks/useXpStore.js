@@ -13,13 +13,15 @@ const LEVELS = [
   { level: 5, name: 'Vô Địch',   emoji: '🏆',  min: 3000 },
 ];
 
+// v5.0.0: 2 nguồn XP còn lại. Đã bỏ `daily_check` / `streak_3` / `streak_10` /
+// `streak_21` (Habit tracker), `daily_challenge` (Daily Challenge) và
+// `quiz_complete` (Quiz) — cả ba tính năng đã gỡ hẳn.
+// Dòng `xp_logs` cũ với các reason đó vẫn nằm trong DB và vẫn cộng vào tổng XP:
+// bảng là append-only, cố ý không dọn (giống cách xử lý XP của Fitness Log ở
+// v4.26.0). Level của bạn không tụt sau đợt dọn.
 export const XP_REWARDS = {
-  daily_check:     10,
-  streak_3:        50,
-  streak_10:       100,
-  streak_21:       200,
-  daily_challenge: 20,
-  focus_session:   15,  // awarded directly in useFocusTimer.js (avoid circular import)
+  task_done:     10,  // hoàn thành 1 nhiệm vụ — nguồn XP chính từ v5.0.0
+  focus_session: 15,  // awarded directly in useFocusTimer.js (avoid circular import)
 };
 
 export function computeLevel(totalXp) {
