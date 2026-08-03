@@ -3,7 +3,7 @@
 
 ---
 
-## v5.0.0 — ✅ CODE DONE / ⏳ SQL CHỜ USER CHẠY (2026-08-02) — Activity Log v2 + Task Detail View + gỡ Life Log
+## v5.0.0 — ✅ DONE (code 2026-08-02, SQL + smoke test 2026-08-03) — Activity Log v2 + Task Detail View + gỡ Life Log
 
 **Đã làm** (chi tiết đầy đủ ở CHANGELOG.md v5.0.0, FEATURES.md §16/§24, DESIGN.md § Task Detail Modal):
 `activity_logs` dựng lại (task_id FK CASCADE, field/old_value/new_value/note), `user_tasks.updated_at`
@@ -11,17 +11,19 @@
 `src/utils/taskFields.js` + test, **gỡ hẳn Life Log + heatmap + KPI "Hoạt động hôm nay"**.
 Lint 0 error, `npm test` pass, `npm run design:lint` pass.
 
-### ⏳ User phải tự chạy / tự kiểm (agent không kết nối Supabase, không tự verify UI)
-- [ ] **Chạy SQL trên Supabase.** Hai file tới cùng 1 schema cuối và **đều xoá sạch log cũ** (mọi dòng
-      của schema v1 đều là dữ liệu heatmap, mà heatmap đã gỡ). Chọn 1, đừng chạy cả hai:
-      `data/migration_v5.0.0_activity_logs_v2.sql` (DROP+CREATE, **chỉ chạy 1 lần**) hoặc
-      `data/schema_v4.24.0.sql` (ALTER, idempotent). Dùng các câu Verify cuối file migration để kiểm.
-- [ ] **Deploy code sát ngay sau khi chạy SQL.** Giữa 2 mốc đó mọi lệnh ghi log fail ÂM THẦM (toàn bộ
-      điểm ghi đều fire-and-forget nuốt lỗi).
-- [ ] `npm run build`.
-- [ ] Smoke test: mở Detail, sửa task **không đổi gì** (phải KHÔNG sinh dòng log), thêm/sửa/xoá ghi
-      chú, xoá dòng log, mobile bottom-sheet + menu ⋯, light theme. Kiểm Navbar/Dashboard không còn
-      dấu vết Life Log và không vỡ layout.
+### ✅ User đã chạy / đã kiểm xong (2026-08-03)
+- [x] **Chạy SQL vòng 1** (activity_logs v2 + user_tasks.updated_at) — user xác nhận đã chạy
+      `data/schema_v4.24.0.sql` 2026-08-02.
+- [x] **Chạy LẠI `data/schema_v4.24.0.sql`** sau đợt 3-5 (DROP 12 bảng, DROP `get_leaderboard()`,
+      bỏ 2 cột `focus_sessions.habit_id`/`journey_id`, bỏ seed programs, bỏ 2 bảng khỏi realtime
+      publication, `handle_new_user()` không INSERT streaks/notif nữa) — xong 2026-08-03.
+- [x] **Deploy code** — xong 2026-08-03.
+- [x] `npm run build` — xong 2026-08-03.
+- [x] Smoke test — xong 2026-08-03 (XP tick/untick task, `/focus` timer, sửa task không đổi gì →
+      không sinh log, `/tasks` tab Lịch, `/incubator` Execute, onboarding, `/tracker` → `/tasks`,
+      Navbar, light theme landing). User xác nhận không còn lỗi.
+
+**→ v5.0.0 CLOSED.** Không còn việc treo nào của đợt dọn module.
 
 ### Quyết định đã chốt trong đợt này (2026-08-02)
 | Câu hỏi | Chốt |
@@ -50,10 +52,12 @@ Lint 0 error, `npm test` pass, `npm run design:lint` pass.
 ## 🧊 Backlog — Account Vault module (chưa triển khai)
 
 Ý tưởng + kiến trúc đã chốt 2026-08-01, đầy đủ ở `docs/DESIGN_ACCOUNT_VAULT.md`. **Chưa
-code.** Chỉ bắt đầu sau khi xong: migration SQL v4.28.0/v5.0.0, các `TODO: decision needed`
-còn treo, và dọn dead code/lỗi hiện có. (`task_tags` UI đã xong v4.31.0; subtask cố ý KHÔNG
-còn là điều kiện chặn — đã chuyển sang Backlog "Định hình lại field Task", ưu tiên thấp nhất,
-làm sau cùng.)
+code.** **MỌI điều kiện chặn đã xong 2026-08-03** — v5.0.0 closed (SQL chạy + build + smoke test),
+schema 30→18 bảng, 0 code chết, `task_tags` UI xong v4.31.0, subtask cố ý KHÔNG còn là điều kiện
+chặn (chuyển sang Backlog "Định hình lại field Task", ưu tiên thấp nhất).
+
+**→ Module tiếp theo được phép bắt đầu: Phase A1** (bảng `accounts` + `account_fields` +
+`account_relationships`, thuần metadata, KHÔNG crypto — xem design doc §A.2/§A.3/§10).
 
 ---
 
@@ -91,7 +95,7 @@ trị ~0).
     chọn migration — 2 câu trả lời ra 2 giải pháp chi phí khác hẳn nhau.
 - [x] **`start_date`** — **chốt 2026-08-02: KHÔNG làm.** `due_date` + `completed_at` (tương đương
   "Resolved" của Jira) đã đủ cho nhu cầu thực tế. Không thêm cột.
-- [ ] **`updated_at` (last modified time)** — **chốt 2026-08-02: NÊN LÀM**, rẻ. Hạ tầng đã có sẵn:
+- [x] **`updated_at` (last modified time)** — ✅ XONG v5.0.0. Hạ tầng đã có sẵn:
   hàm trigger `update_updated_at()` trong `schema_v4.24.0.sql` (dòng 28-31) đang dùng cho
   `habits`/`friendships`; `collections` có bản riêng tương tự (`update_collections_updated_at()`).
   Chỉ cần thêm cột + 1 `CREATE TRIGGER` tái dùng hàm có sẵn cho `user_tasks`, không cần code app
@@ -115,7 +119,7 @@ trị ~0).
   recurrence chain + đang định làm subtask chain) — rủi ro schema phình nếu không nghĩ chung với
   subtask. **Chưa quyết**, cần biết use-case thật có tồn tại (tạo task theo kiểu trình tự phụ
   thuộc) hay `due_date` sắp xếp theo ngày đã đủ.
-- [ ] **Activity log v2 — CHỐT THIẾT KẾ 2026-08-02, chưa code** (đập bỏ `activity_logs` cũ, xây
+- [x] **Activity log v2** — ✅ XONG v5.0.0 (đập bỏ `activity_logs` cũ, xây
   lại hoàn toàn, không phải patch):
   - **Phạm vi:** log **mọi field đổi của Task** (không chỉ lịch trình) — mỗi dòng = 1 field đổi +
     giá trị cũ/mới, hiển thị trong tab **Activity** của Task Detail View (kiểu Jira History).
@@ -228,10 +232,9 @@ Trigger `handle_new_user()` bỏ INSERT vào `notification_settings`.
 **Không còn câu nào chưa chốt.** (Route `/` giữ nguyên là landing — đã viết lại ở đợt 2.)
 
 ### Việc PHÁT SINH từ quyết định XP (không phải xoá — là thêm)
-- [ ] Thêm `XP_REWARDS.task_done` + gọi `addXp` trong `useUserTasks.completeTask`, `removeXp` trong
-      `uncompleteTask` (dedup theo task id, đúng pattern `hasMilestone`). Dọn `XP_REWARDS` bỏ
-      `daily_check`/`streak_3`/`streak_10`/`streak_21`/`daily_challenge`/`quiz`.
-- [ ] Cập nhật RULES §16 (bảng XP System Rules đang liệt kê 5 event, sẽ chỉ còn 2).
+- [x] Thêm `XP_REWARDS.task_done` + `addXp`/`removeXp` trong `completeTask`/`uncompleteTask`,
+      dọn `XP_REWARDS` còn 2 mục — ✅ XONG v5.0.0 (đợt 4).
+- [x] Cập nhật RULES §16 — ✅ XONG, bảng XP còn 2 event.
 
 ## v4.31.0 — ✅ DONE (2026-08-02) — task_tags UI + 2 gap phát sinh + tag-delete rõ ràng hơn
 
@@ -350,7 +353,7 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 - [ ] Mở `/tasks` → tab **📅 Lịch** → xem chip tên task trong ô ngày có hiện đúng không
 - [ ] Bấm 1 ngày → list task đã xong + expand mô tả + giờ hoàn thành
 - [ ] Tick 1 task → xem animation `:active` (scale + lóe xanh)
-- [ ] `/tracker` tab 📅 Lịch — habit mode phải **y như cũ**, không regression (`/life-log` đã gỡ ở v5.0.0)
+- [x] ~~`/tracker` tab 📅 Lịch — habit mode~~ — MOOT: `/tracker` + habit mode đã gỡ ở v5.0.0.
 
 ### Cố ý KHÔNG làm (ponytail ultra — model là Things 3 / Linear, KHÔNG phải ClickUp/Lark Base)
 - [ ] ~~Week/day time-grid kiểu Google Calendar~~ — `due_time` mặc định `23:59` nên mọi task dồn vào 1 hàng đáy, nhìn như hỏng. Phần đắt nhất của GCal (cột giờ, thuật toán xếp event chồng, drag-resize, vạch giờ hiện tại) = 0 lợi ích cho dữ liệu all-day
@@ -396,8 +399,7 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
 
 ### Còn nợ
 - [x] `TODO: decision needed` — **P2-7:** đã chốt 2026-08-01 — gộp `knowledge_groups` vào `tags` (thêm cột `emoji`/`description`, KHÔNG dùng `is_group BOOLEAN`). Xem v4.30.0 ở trên
-- [ ] Subtask (`parent_id`) — **chuyển vào Backlog "Định hình lại field & taxonomy của Task" đầu
-  file** (gộp cùng mục 1 recurring base-date + phân loại/detail view khác, ưu tiên thấp nhất)
+- [x] ~~Subtask (`parent_id`)~~ — đã gom vào Backlog "Định hình lại field & taxonomy của Task" đầu file.
 - [x] `task_tags` đã có bảng nhưng **chưa có UI/hook** — **fix 2026-08-02:** `useTags.js` thêm `task: { table: 'task_tags', fk: 'task_id' }` vào `ENTITY_CONFIG` + `task_tags` vào `getTagUsageCount`/`getAllTagUsageCounts`. `useUserTasks.fetchTasks` join thêm `task_tags(tag_id, tags(...))` → `task._tags` (cùng pattern `_collections`). Thêm `linkTaskTag`/`unlinkTaskTag` optimistic riêng trong `useUserTasks.js` (không dùng `useTags.linkTag` trực tiếp — hook đó không cập nhật state `tasks` nên badge sẽ không hiện ngay). `TagPicker` gắn vào form Thêm + Sửa task trong `TaskListSection.jsx`, badge `🏷 tên` hiện trên task card
 - [ ] VIEW `tagged_items` chưa có consumer nào — chờ làm unified search
 - [x] `alert()` ở `CollectPage.onCreateTask` vi phạm RULES (cấm `window.alert`) — cần component toast — **fix 2026-08-01:** thêm `src/components/Toast.jsx` (`useToast()`, cùng pattern `useConfirm()`), thay `alert()` bằng `showToast()`. Đồng thời fix luôn `IncubatorPage.jsx:336` (bug tương tự, phát hiện trong audit duplicate-logic 2026-08-01) bằng inline error state riêng (không dùng Toast — đó là lỗi chặn hành động, không phải thông báo thành công)
@@ -418,7 +420,7 @@ user trước khi tự sửa test hoặc logic (xem CLAUDE.md § Testing).
   TrackerPage, main chunk 906→876 kB (−30 kB).
 
 ### Chưa làm — cần migration SQL user tự chạy trên Supabase
-- [ ] Subtask — **chuyển vào Backlog "Định hình lại field & taxonomy của Task" đầu file**
+- [x] ~~Subtask~~ — đã gom vào Backlog đầu file.
 - [x] `task_tags` junction — xong v4.31.0 (xem "Còn nợ" trên)
 - [ ] **Inline quick-add theo từng nhóm** — nút `+ Thêm` ngay trong khối Quá hạn / Hôm nay / Sắp tới (không cần DB, nhưng để chung phase 2 cho gọn)
 
@@ -471,7 +473,12 @@ dựng lại (xem block v5.0.0 đầu file). Ghi lại kết cục để không 
 - [ ] `TODO: decision needed` — Bỏ retry của `spawnRecurringTask` (~35 dòng)? RULES §7 đang liệt kê nó là pattern bắt buộc
 
 ### Phát hiện thêm — bug, không phải over-engineering
-- [ ] `TODO: decision needed` — **5 chỗ dùng `toISOString().split('T')[0]` (UTC) làm "hôm nay"**: `useUserTasks`, `useSubscriptions`, `DashboardPage`, `CashflowBar`, `MonthCalendar`. Ở GMT+7 từ 00:00–06:59 hiểu thành *ngày hôm qua*. Sửa = đổi cách chốt ngày của task/subscription/calendar → cần approve riêng, không gộp vào refactor
+- [ ] `TODO: decision needed` — **`toISOString().split('T')[0]` (UTC) dùng làm "hôm nay"**. Ở GMT+7
+      từ 00:00–06:59 nó hiểu thành *ngày hôm qua*. **Danh sách đếm lại 2026-08-02 sau khi dọn module**
+      (khác bản cũ — `useUserTasks`/`useSubscriptions`/`MonthCalendar` giờ đã dùng `toDateStr`,
+      `DashboardPage` đã xoá): `CashflowBar` (2 chỗ), `useFocusTimer` (3 chỗ), `FocusPage`,
+      `useExpenses`, `InboxPage`. Sửa = đổi cách chốt ngày của Focus/chi tiêu/snooze → cần approve
+      riêng. Bản vá là `toDateStr()` trong `utils/dateUtils.js` (đã có sẵn).
 
 ---
 
@@ -483,7 +490,7 @@ dựng lại (xem block v5.0.0 đầu file). Ghi lại kết cục để không 
   `FEATURES.md`/`DATABASE.md`/`ARCHITECTURE.md`/`RULES.md`/`PROJECT.md`/`PLAN.md`.
 
 ### Cố ý KHÔNG làm
-- [ ] `TODO: decision needed` — **DROP bảng `fitness_logs`?** Master schema `data/schema_v4.24.0.sql` chỉ sửa khi có chỉ thị rõ ràng (RULES §3). Bảng còn trên prod, không hook nào dùng
+- [x] **DROP bảng `fitness_logs`** — ✅ XONG v5.0.0 (đợt 5), cùng `friendships` + `notification_settings`.
 - [x] ~~Xoá `tpl-fitness` trong `programs.json`~~ — **KHÔNG xoá**: đó là journey template "Kỷ Luật Thể Chất" thuộc feature Journey, không phải Fitness Log
 - [x] ~~Xoá row `activity_logs` có `action='fitness_done'`~~ — **KHÔNG xoá**: bảng append-only audit trail
 
@@ -520,10 +527,10 @@ dựng lại (xem block v5.0.0 đầu file). Ghi lại kết cục để không 
 
 ### Chờ approve
 - [ ] P1 — `api/`: 3/5 mục xong ở v4.25.1, còn 2 mục rủi ro cao (xem trên)
-- [ ] P2 — hooks: bỏ `getSb()` lazy, bỏ 2 thang fallback migration, gộp query snooze, thống nhất `todayStr`
-- [ ] P3 — `TaskListSection`: gộp form Add/Edit, 22 `useState` → 1 draft object
-- [ ] P4 — Modal: `GenericModal` viết lại trên `<dialog>`, gộp 6 overlay
-- [ ] P5 — 872 inline style → CSS (1 page/PR)
+- [ ] P2 — hooks: `getSb()` lazy đã bỏ ở v4.26.1; còn 2 thang fallback migration + thống nhất `todayStr` (xem mục UTC ở trên)
+- [ ] P3 — `TaskListSection`: gộp form Add/Edit, **37** `useState` → 1 draft object (đếm lại 2026-08-02)
+- [ ] P4 — Modal: `GenericModal` viết lại trên `<dialog>`. Còn **3 hệ**: `.modal-overlay` (global.css), `generic-modal.css`, `confirm-modal.css` — DESIGN.md đã ghi nhận là nợ, chưa chốt cái nào canonical
+- [ ] P5 — inline style → CSS (1 page/PR). **357 chỗ** còn lại (đếm lại 2026-08-02; giảm từ 872 nhờ dọn module)
 - [x] ~~P6 — bỏ markdown mode~~ **HUỶ** — mất TOC, mất tính portable của plain text, lợi ích thật chỉ ~120 dòng chứ không phải 250
 
 ---
@@ -899,8 +906,9 @@ dựng lại (xem block v5.0.0 đầu file). Ghi lại kết cục để không 
 - [x] `src/pages/LeaderboardPage.jsx` — Query xp_logs table thay công thức hardcode streak*10
 
 ### Skipped (deferred)
-- [ ] Push Notification thực sự (Web Push) — để sau
-- [ ] Cross-tick Team (Tuần 2 accountability) — để sau
+- [x] ~~Push Notification thực sự (Web Push)~~ — MOOT: nhắc nhở habit đã gỡ v5.0.0. Thông báo
+      nhắc hạn Nhiệm vụ vẫn chạy qua Service Worker, không cần Web Push.
+- [x] ~~Cross-tick Team~~ — MOOT: Team Mode gỡ từ v3.0.0.
 
 ---
 

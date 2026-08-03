@@ -10,9 +10,10 @@
  * nhà. Navbar tự ẩn ở "/" khi chưa đăng nhập (Navbar.jsx:154) nên trang này
  * phải tự chứa nút đăng nhập và nút đổi theme.
  *
- * CỐ Ý chỉ liệt kê module sẽ CÒN LẠI sau khi dọn (xem docs/TASKS.md § KẾ HOẠCH
- * DỌN MODULE). Quiz/BXH đã gỡ ở đợt 3; Habit + Lộ Trình đang chờ gỡ ở đợt 4 —
- * quảng cáo chúng ở đây là viết để xoá lại.
+ * 6 module liệt kê ở đây là TOÀN BỘ những gì còn lại sau khi dọn xong 5 đợt
+ * (xem docs/TASKS.md § KẾ HOẠCH DỌN MODULE — Habit, Lộ Trình, Dashboard, Quiz,
+ * BXH, Life Log, Hành Trình đều đã gỡ hẳn ở v5.0.0). Thêm module mới thì thêm
+ * vào MODULES bên dưới, đừng để trang này mô tả thiếu.
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';

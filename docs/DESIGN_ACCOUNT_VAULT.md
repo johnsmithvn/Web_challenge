@@ -18,15 +18,17 @@
 
 ## 0. Điều kiện bắt đầu triển khai
 
-Chưa code cho tới khi xong hết các việc đang ưu tiên hơn (theo `docs/TASKS.md` tại thời điểm
-viết file này):
+**✅ ĐÃ MỞ CHẶN 2026-08-03 — được phép bắt đầu Phase A1.**
 
-- [ ] Subtask (`parent_id`) — 6 chỗ vỡ đã liệt kê ở `TASKS.md` v4.27.0/v4.28.0
-- [ ] `task_tags` UI (TagPicker trên task card)
-- [ ] Chạy xong migration SQL v4.28.0 + v5.0.0 (B0→B6)
-- [ ] Chốt các `TODO: decision needed` còn treo (P2-7 gộp `knowledge_groups`, xoá fallback
-      migration, retry `spawnRecurringTask`)
-- [ ] Dọn dead code / lỗi hiện có trong Task + Knowledge Base
+- [x] ~~Subtask (`parent_id`)~~ — **bỏ khỏi điều kiện chặn** (2026-08-02): chuyển sang Backlog
+      "Định hình lại field & taxonomy của Task", ưu tiên thấp nhất, chưa chốt checklist vs task con
+- [x] `task_tags` UI (TagPicker trên task card) — xong v4.31.0
+- [x] Migration SQL v4.28.0 + v4.30.0 + v5.0.0 — user chạy xong, v5.0.0 closed 2026-08-03
+      (SQL + deploy + build + smoke test)
+- [x] `TODO: decision needed` P2-7 (gộp `knowledge_groups` → `tags`) — chốt + code + SQL xong
+- [ ] Còn treo nhưng **không chặn Vault** (không chạm module này): bỏ fallback migration trong
+      hooks, retry `spawnRecurringTask`, bug UTC `toISOString()` ở 6 chỗ (Focus/chi tiêu/Inbox)
+- [x] Dọn dead code / lỗi trong Task + Knowledge Base — xong (5 đợt dọn module, schema 30→18 bảng)
 
 Lý do: quyết định chiến lược 2026-07-29 đã chốt thu hẹp trọng tâm về Inbox → Knowledge →
 Tasks → Finance. Account Vault là mở rộng phạm vi có chủ đích (nhu cầu thật, không phải
