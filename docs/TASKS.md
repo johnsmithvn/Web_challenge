@@ -1,5 +1,66 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-08-02
+**Updated:** 2026-08-05
+
+---
+
+## v5.2.0 — ✅ CODE DONE / ⏳ SQL CHỜ USER CHẠY (2026-08-05) — Vault làm lại theo thiết kế Keyplate
+
+**Đã làm** (chi tiết đầy đủ ở CHANGELOG.md v5.2.0, FEATURES.md §29, DATABASE.md, DESIGN.md
+§ "Account vault"): 6 bảng `accounts`/`account_fields`/`account_auth`/`account_codes`/`account_logs`/
+`account_tags`, `useAccounts.js` viết lại, `/accounts` layout Keyplate (header + filter bar + 2 pane,
+breakpoint 900px), 10 template, 10 loại field, link nhiều-tới-một, phương thức đăng nhập, sheet mã
+dự phòng + paste import, sửa inline + diff log, history append-only, `vaultLogic.js` + self-check.
+Lint 0 error, `npm test` pass (6/6), `npm run build` pass.
+
+**Thay hẳn** bản Account Vault Phase A1 của v5.1.0 (chưa từng deploy — schema chưa chạy trên
+Supabase). Đã xoá `migration_v5.1.0_accounts.sql`, `AccountForm.jsx`, `AccountAvatar.jsx`,
+`accountLinks.js` + test.
+
+### ⏳ User phải tự chạy / tự kiểm
+- [ ] **Chạy `data/migration_v5.2.0_vault.sql`** trên Supabase SQL Editor. Idempotent, có sẵn câu
+      VERIFY ở cuối file. **Chưa chạy thì `/accounts` sẽ trắng** (mọi query fail, hook nuốt lỗi vào
+      `logger.warn`). 6 bảng này chưa từng tồn tại trên DB nên chạy lúc nào cũng an toàn.
+- [ ] `npm run build` (tao đã chạy pass, nhưng chạy lại trên máy mày cho chắc).
+- [ ] Smoke test:
+      (a) `/accounts` → **New item** → chọn **Platform account** → item mới có sẵn field + 4 phương
+          thức đăng nhập (password primary) + sheet 10 mã;
+      (b) **Edit** → đổi title, thêm/xoá field, đổi loại field (text→multi phải gieo giá trị cũ) →
+          **Save changes** → mở lại phải thấy **History** ghi từng thay đổi, secret hiện `•` không lộ
+          giá trị thật;
+      (c) field `password` có **strength bar**; nút **Generate** phải **disable**;
+      (d) tạo item thứ hai, ở item đầu Edit → field loại **link** → chọn item thứ hai + 1 giá trị →
+          Save → chip link bấm nhảy sang item kia; xoá item kia → chip thành **"Missing item"**;
+      (e) **Sign-in methods:** Make primary / Turn off ngoài chế độ sửa → History ghi ngay; đặt
+          primary cái khác → cái cũ tự về ENABLED (đúng ≤1 primary);
+      (f) **codes:** Reveal codes, bấm 1 mã → gạch ngang + mờ + History ghi "marked used"; Edit →
+          **Paste import** dán `1234 5678` (2 dòng) → đếm "2 codes detected" → Replace/Append;
+      (g) item loại **Credit card** → có **card preview**, số thẻ mask tới khi Reveal field Card number;
+      (h) search: gõ giá trị 1 field secret → **không** ra kết quả (secret loại khỏi search); gõ tiêu
+          đề/tag/nhãn field → ra đúng;
+      (i) filter chip Types + #Tags; nút Clear chỉ hiện khi có filter;
+      (j) **< 900px:** chọn item → list ẩn, có nút `← All items`; light theme không vỡ layout.
+- [ ] Kiểm tag: `/settings` → xoá 1 tag đang gắn item → hộp xác nhận phải ghi "N tài khoản".
+
+### Quyết định đã chốt trong đợt này (2026-08-05)
+| Câu hỏi | Chốt |
+|---|---|
+| Bám bản thiết kế tới đâu | **Y hệt Keyplate** — token riêng (#7c5cff, Plus Jakarta Sans, radius 18px) scope trong `.acc-vault`; chữ UI tiếng Anh |
+| Feature chỉ Life Hub có (status, nhắc hạn đăng nhập, gom theo dịch vụ, favicon, nhân bản, 20 mẫu VN) | **Bỏ hết** — mã 3 chữ của template là thứ cấu trúc của design |
+| Bảng vs cột jsonb | **Có lifecycle/ràng buộc riêng → bảng** (auth/codes/logs); **là giá trị của field → cột** (multi_values/links) |
+| CHECK constraint | Chỉ đặt trên giá trị code render phân nhánh theo (`type`, `state`); KHÔNG đặt trên giá trị chỉ tra bảng lấy nhãn (`tpl`, `kind`) — thêm template/kind mới không cần migration |
+| Link mồ côi khi xoá item đích | **jsonb không FK** → con trỏ mồ côi → UI "Missing item". Đúng hành vi đặc tả, FK không mua được gì |
+| `account_logs` | **Append-only ép bằng RLS** (chỉ SELECT + INSERT). `diffLog` mask secret trước khi ghi |
+| Password generator | **Render nhưng disable** tới khi có mã hoá — sinh mật khẩu thật để lưu plaintext là sai. Strength bar (chỉ đọc) thì bật |
+| Guest mode | **Không có** — vault mất khi refresh thì vô nghĩa; chưa login thì hiện lời nhắc |
+
+### Còn nợ
+- [ ] **Chưa gộp `migration_v5.2.0_vault.sql` vào master `schema_v4.24.0.sql`** — RULES §3 cần chỉ
+      thị tường minh. Hệ quả: cài mới từ master sẽ **thiếu 6 bảng vault**.
+- [ ] **`data/reset_user_data.sql` chưa xoá dữ liệu vault** — 6 bảng `account_*` sinh sau khi script
+      đó được viết (đã ghim chip spawn_task cho việc này).
+- [ ] **Mã hoá client-side chưa làm** — vẫn plaintext. `password`/`secret` chỉ mask UI, là **rủi ro
+      đã biết và user chấp nhận tường minh** để dùng ngay. Banner cảnh báo cố ý; đừng "dọn" đi.
+      Thiết kế envelope encryption ở `docs/DESIGN_ACCOUNT_VAULT.md`.
 
 ---
 
@@ -9,7 +70,7 @@
 `activity_logs` dựng lại (task_id FK CASCADE, field/old_value/new_value/note), `user_tasks.updated_at`
 + trigger, log 5 cửa ghi với diff generic, `TaskDetailModal` 2 tab (Hoạt động / Ghi chú),
 `src/utils/taskFields.js` + test, **gỡ hẳn Life Log + heatmap + KPI "Hoạt động hôm nay"**.
-Lint 0 error, `npm test` pass, `npm run design:lint` pass.
+Lint 0 error, `npm test` pass.
 
 ### ✅ User đã chạy / đã kiểm xong (2026-08-03)
 - [x] **Chạy SQL vòng 1** (activity_logs v2 + user_tasks.updated_at) — user xác nhận đã chạy
@@ -49,15 +110,16 @@ Lint 0 error, `npm test` pass, `npm run design:lint` pass.
 
 ---
 
-## 🧊 Backlog — Account Vault module (chưa triển khai)
+## 🧊 Backlog — Vault: mã hoá + tính năng thật (vault UI đã xong v5.2.0)
 
-Ý tưởng + kiến trúc đã chốt 2026-08-01, đầy đủ ở `docs/DESIGN_ACCOUNT_VAULT.md`. **Chưa
-code.** **MỌI điều kiện chặn đã xong 2026-08-03** — v5.0.0 closed (SQL chạy + build + smoke test),
-schema 30→18 bảng, 0 code chết, `task_tags` UI xong v4.31.0, subtask cố ý KHÔNG còn là điều kiện
-chặn (chuyển sang Backlog "Định hình lại field Task", ưu tiên thấp nhất).
+Thiết kế envelope encryption ở `docs/DESIGN_ACCOUNT_VAULT.md`. Vault UI Keyplate xong 2026-08-05
+(xem block v5.2.0 đầu file) — còn lại (theo "Not in the prototype" của handoff):
 
-**→ Module tiếp theo được phép bắt đầu: Phase A1** (bảng `accounts` + `account_fields` +
-`account_relationships`, thuần metadata, KHÔNG crypto — xem design doc §A.2/§A.3/§10).
+- [ ] **Mã hoá client-side** — envelope encryption (KEK/DEK, `crypto.subtle`, 0 dependency),
+      unlock modal + trạng thái locked, export ciphertext + đổi passphrase. Làm liền một đợt,
+      không bật từng phần (mất passphrase mà chưa có export = mất trắng).
+- [ ] Auto-lock timer (header đang ghi "no auto-lock yet"), TOTP thật cho phương thức authenticator,
+      clipboard auto-clear, dọn link mồ côi khi xoá item.
 
 ---
 
@@ -188,7 +250,7 @@ User chọn viết lại thay vì xoá, để trang chủ mô tả đúng tính 
   + `testimonials.json`) — 923 dòng JSX + 822 dòng CSS quảng cáo sản phẩm không còn tồn tại.
 - Viết mới `LandingPage.jsx` (~200) + `styles/landing.css` (~250): hero + nút đăng nhập + nút đổi
   theme riêng (Navbar ẩn ở `/` khi chưa login) + luồng 3 bước + lưới 6 card module.
-- **Net −1.545 dòng.** `DESIGN.md` thêm mục `.lp-*`, `design:lint` pass.
+- **Net −1.545 dòng.** `DESIGN.md` thêm mục `.lp-*`.
 - Cố ý KHÔNG liệt kê Habit / Lộ Trình / Quiz / BXH → sau đợt 3-4 không phải sửa lại landing.
 - Câu hỏi "route `/` trỏ đâu" **không còn cần trả lời** — `/` vẫn là landing.
 

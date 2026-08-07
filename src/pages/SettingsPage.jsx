@@ -103,7 +103,7 @@ function FinanceSettingsSection() {
 /* ══════════════════════════════════════════════════════════════
    TAG MANAGER SECTION
    ══════════════════════════════════════════════════════════════ */
-const TAG_USAGE_LABELS = { task: 'nhiệm vụ', expense: 'khoản chi', subscription: 'đăng ký', collection: 'bài viết' };
+const TAG_USAGE_LABELS = { task: 'nhiệm vụ', expense: 'khoản chi', subscription: 'đăng ký', collection: 'bài viết', account: 'tài khoản' };
 
 function TagManagerSection({ user }) {
   const {

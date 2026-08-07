@@ -1,5 +1,107 @@
 # CHANGELOG
 
+## v5.2.0 — 2026-08-05
+> **Vault (`/accounts`) làm lại từ đầu theo bản thiết kế Keyplate** — một item = mọi thứ về một tài
+> khoản: field **theo loại** (10 loại), giá trị nhiều phần (`multi`), **nhiều liên kết** tới item
+> khác trong một field (`link`), **phương thức đăng nhập** (9 kiểu, một cái primary), **sheet mã dự
+> phòng dùng 1 lần** (dán từ nhà cung cấp), và **lịch sử thay đổi từng field**. Sửa **inline** ngay
+> trong pane chi tiết; Lưu tự diff ra log. MINOR theo RULES §9 (làm lại module chưa từng release).
+>
+> Thay hẳn bản Account Vault Phase A1 của v5.1.0 (chưa từng deploy — schema chưa chạy trên Supabase,
+> nên gỡ luôn cho gọn thay vì giữ như một lớp lịch sử chết). Mất so với v5.1.0: trạng thái tài khoản
+> (active/rarely/closed), nhắc hạn đăng nhập lại (`required_cycle_days`), gom theo dịch vụ, favicon
+> avatar, nhân bản, 20 mẫu dịch vụ VN. Quyết định của user 2026-08-05: bám sát bản thiết kế.
+>
+> ⚠️ VẪN CHƯA MÃ HOÁ. `account_fields.value` là plaintext trong Supabase; type `password`/`secret`
+> chỉ mask trên UI. Banner cảnh báo cố ý không tắt được — chỉ gỡ khi xong envelope encryption.
+
+### Added
+- **`data/migration_v5.2.0_vault.sql`** — user tự chạy trên Supabase. Idempotent. 6 bảng:
+  - `accounts` — `service_name` (= title), `tpl` (key template, **không CHECK** — template là
+    content), `favorite`, `notes`, `updated_at` + trigger tái dùng `update_updated_at()`.
+  - `account_fields` — `type` CHECK(10 loại) thay cờ `is_secret` cũ; `multi_values` jsonb (loại
+    `multi`); `links` jsonb `[{id,itemId,value}]` (loại `link`, **nhiều link/field**).
+  - `account_auth` — phương thức đăng nhập; `state` CHECK(primary/on/off); partial UNIQUE ép
+    **đúng ≤1 primary/item** (đổi primary = hạ cũ trước, nâng mới sau).
+  - `account_codes` — mã dự phòng dùng 1 lần (`code`, `used`).
+  - `account_logs` — lịch sử; **append-only ép bằng RLS** (chỉ có policy SELECT + INSERT, không
+    UPDATE/DELETE); `logged_at` (tránh từ khoá `AT`), hook map → `at`.
+  - `account_tags` + `tagged_items` (`kind='account'`) — giữ nguyên từ trước.
+- **`/accounts` — layout Keyplate:** header (brand + search + New item) · banner chưa-mã-hoá ·
+  filter bar (chip TYPES theo template + chip #TAGS, mỗi cell khai `grid-column`/`grid-row` tường
+  minh vì nút Clear có điều kiện) · body 2 pane cuộn độc lập. Breakpoint **900px** xử lý hoàn toàn
+  bằng CSS (`.acc-body[data-screen]`), React chỉ giữ `selectedId` + `screen` — **không** hook đo bề
+  rộng, **không** resize listener.
+- **Pane chi tiết — 9 khối theo thứ tự đặc tả:** tiêu đề (kicker `<template> · <CODE>`) → card
+  preview (chỉ item card, số thẻ mask tới khi reveal) → fields → add-custom-field (chỉ sửa) →
+  sign-in methods → single-use codes + paste import (chỉ sửa) → notes → history → footer meta.
+- **Sửa inline:** "Edit" clone item vào draft cục bộ, mọi thao tác sửa draft, "Save changes" đẩy
+  draft lên. `diffLog` chạy **trong hook** (`useAccounts.saveItem`) — không tồn tại đường lưu mà
+  không ghi log. Mask secret trong log = `•` × min(len,24), **không bao giờ ghi giá trị thật**.
+- **`src/utils/vaultLogic.js`** (thuần, không React) + **`src/__tests__/vaultLogic.test.js`**:
+  `TYPES`/`TYPE_HINT`, `isSecretType`, `maskValue`, `scorePassword`, `parseCodes` (giữ khoảng trắng
+  trong mã kiểu Google `1234 5678`), `codeSheet` (dùng `crypto.getRandomValues`), `linkableValues`
+  (secret không bao giờ được chào làm giá trị link), `matchesQuery` (secret loại khỏi tìm kiếm),
+  `itemSubtitle`, `diffLog`, `formatStamp`/`relativeUpdated`. Đã wire vào `npm test`.
+- **`src/data/account-templates.json`** — 10 template Keyplate (LGN/ACC/CRD/IDN/NTE/API/WIF/DBS/SRV/
+  LIC) + 9 `authKinds` + `filterIcons`. Chữ giữ **tiếng Anh** đúng bản thiết kế.
+- **Bộ token Keyplate riêng scope trong `.acc-vault`** (`accounts.css`): #7c5cff, Plus Jakarta Sans,
+  radius 18px, `--lift-*`, đủ bộ dark (mặc định) + light override. Không rò biến ra phần còn lại app.
+- **`src/components/AccountAvatar.jsx` — logo dịch vụ ở dòng danh sách** (lệch handoff có chủ ý:
+  prototype để mã 3 chữ ở ô này, 20 item cùng template thành y hệt nhau, không quét được bằng mắt).
+  2 tầng: favicon của chính dịch vụ (`/apple-touch-icon.png` → `/favicon.ico`) → plate màu + chữ
+  cái (`avatarHue` trả HUE, CSS chọn lightness theo theme). URL suy từ field `type='url'` đầu tiên,
+  **không thêm cột**. **Không lưu ảnh** — CORS chặn đọc byte ảnh cross-origin nên client không cache
+  được favicon; hotlink lúc render là đường duy nhất không cần route server.
+  **Cố ý KHÔNG dùng dịch vụ favicon bên thứ ba** — gửi cả danh sách domain mình có tài khoản cho một
+  bên là tự khai mình dùng dịch vụ nào (test khoá lại điều này). Nút **Logos** ở header tắt hẳn
+  (`vl_acc_favicon`). Mã 3 chữ giữ lại thành badge `.acc-row__code`.
+- **`normalizeUrl`/`urlHost`/`itemUrl`/`faviconCandidates`/`avatarHue`/`avatarLetter`** vào
+  `vaultLogic.js` + test. `normalizeUrl` chặn `javascript:`/`data:`/`file:` — chuỗi này đi thẳng vào
+  `href` của field `url` VÀ dùng để dựng origin favicon, nên lọc scheme ở tầng util.
+
+### Changed
+- **UX của luồng tạo item** (5 chỗ user báo, 2026-08-05):
+  - Danh sách sắp theo **`updated_at` giảm dần** thay vì tên dịch vụ → item vừa tạo/vừa sửa nằm đầu.
+    Đây cũng là lý do mỗi dòng có cột thời gian bên phải; tìm theo tên thì dùng search/chip.
+  - Dialog template **ở nguyên trong lúc tạo**, card được bấm hiện "Creating…", card khác disable
+    (chặn double-click sinh 2 item). Trước đây dialog đóng ngay rồi im lặng vài giây → tưởng lỗi.
+  - Tạo xong **vào thẳng chế độ sửa** (`autoEdit`) và **chọn sẵn tiêu đề tạm** để gõ đè, thay vì
+    phải tự đi tìm item rồi bấm Edit.
+  - `createItem` bỏ 4 round-trip vô ích: `replaceChildren(..., { fresh: true })` bỏ 3 lệnh DELETE
+    trên row vừa INSERT, `appendLogs(..., { touch: false })` bỏ lệnh chạm `updated_at` dư.
+  - **Chỗ add tag**: thay `TagPicker` dùng chung bằng `TagEditor` — hàng chip bật/tắt liệt kê toàn
+    bộ tag hệ thống + ô tạo tag mới, dùng `.acc-chip` sẵn có. `TagPicker` render trigger là chữ
+    "+ Tag" 11px `opacity .7` không viền và **style toàn bộ inline** nên CSS vault đè không được →
+    trên nền vault gần như vô hình, đó là lý do "không có chỗ add tag". (`TagPicker` vẫn dùng ở
+    FinancePage + TaskListSection, không thành file chết.) Hàng **Tags** ở filter bar giữ nguyên
+    chỉ-tag-đang-dùng nhưng đổi message thành câu chỉ đường thay vì "No tags yet".
+- **`AccountDetail.jsx`** viết lại: view + edit + 9 khối, props-driven, không gọi supabase. Dùng
+  `<select>` native (style bằng token vault) thay CustomSelect để giữ fidelity — ghi rõ ngoại lệ
+  RULES §4 trong file. Password generator render nhưng **disable** tới khi có mã hoá.
+- **`useAccounts.js`** viết lại: fetch 6 bảng (5 query) ghép thành shape đặc tả; `saveItem`/
+  `createItem`/`deleteItem`/`toggleFavorite`/`setAuthState`/`setCodeUsed`. Không guest mode.
+- **`AccountsPage.jsx`** viết lại. **`App.jsx`** — `ROUTE_META['/accounts']` cập nhật mô tả.
+- **`index.html`** — Plus Jakarta Sans thêm weight 400 (Keyplate cần cho body + chip).
+- **`DESIGN.md`** — mục `.acc-*` viết lại (ngoại lệ token có chủ ý). **`DESIGN_ACCOUNT_VAULT.md`**
+  làm gọn: bỏ phần thiết kế Phase A cũ (lỗi thời), giữ phần envelope encryption (việc tương lai).
+
+### Removed
+- `data/migration_v5.1.0_accounts.sql`, `src/components/AccountForm.jsx`,
+  `src/components/AccountAvatar.jsx`, `src/utils/accountLinks.js`,
+  `src/__tests__/accountLinks.test.js` — thuộc bản v5.1.0 chưa release, bị thay hoàn toàn.
+- 8 cột không còn dùng trong thiết kế mới (chưa từng lên Supabase nên chỉ là gỡ khỏi file SQL).
+
+### Files Added
+- `data/migration_v5.2.0_vault.sql`, `src/utils/vaultLogic.js`, `src/__tests__/vaultLogic.test.js`
+- `src/components/AccountAvatar.jsx`
+
+### Files Modified
+- `src/pages/AccountsPage.jsx`, `src/components/AccountDetail.jsx`, `src/hooks/useAccounts.js`,
+  `src/styles/accounts.css`, `src/data/account-templates.json`, `src/App.jsx`, `index.html`
+- `package.json` (5.2.0 + test script), `DESIGN.md`, `docs/DATABASE.md`, `docs/ARCHITECTURE.md`,
+  `docs/FEATURES.md`, `docs/TASKS.md`, `docs/PLAN.md`, `docs/DESIGN_ACCOUNT_VAULT.md`
+
 ## v5.0.0 — 2026-08-02
 > **BREAKING (DB).** Dựng lại bảng `activity_logs` thành **lịch sử thay đổi + ghi chú cá nhân của
 > từng Task**, kèm Task Detail Modal mới — chỗ đọc lịch sử đó. Đồng thời **gỡ hẳn Life Log**:
@@ -310,7 +412,7 @@
 - **Cố ý KHÔNG làm** Board view, Gantt, assignee, sprint, custom field, custom status (xem `docs/TASKS.md` § "Cố ý KHÔNG làm")
 - `habitData` là **prop optional**, không phải flag cấu hình. Khi cắt feature habit thì xoá nhánh `habitMode` là xong. `/tracker` + `/life-log` giữ nguyên hành vi cũ, **không regression**
 - **Chưa verify được bằng browser:** chip task trong ô lịch cần đăng nhập (session browser của agent là guest). Đã verify: route, hero (60px, gradient clip), 3 tile, tab switch, guest gate, CSS `.cal-chip`/`.cal-cell--tasks`/`.cal-cell--empty`/`.task-checkbox-btn::after` đều load, không scroll ngang. **Mày tự mở `/tasks` → tab 📅 Lịch để xem chip.**
-- `npm run build` 0 lỗi · `npm run lint` 0 error / 62 warning · `npm test` 3/3 · `npm run design:lint` **0 error** / 76 warning (toàn bộ là `'<color>' defined but never referenced` — baseline sẵn có, không thêm token mới)
+- `npm run build` 0 lỗi · `npm run lint` 0 error / 62 warning · `npm test` 3/3
 
 ### Files Added
 - (không có)

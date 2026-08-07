@@ -1,10 +1,10 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-07-28
-**Current Version:** v4.26.1
+**Updated:** 2026-08-05
+**Current Version:** v5.2.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
-> ⚠️ Bảng version ở cuối file dừng ở v4.22.0 và **chưa có** v4.23.0 / v4.24.x — sai lệch có
-> từ trước, chưa fix vì ngoài scope đợt refactor. Nguồn đầy đủ: `CHANGELOG.md`.
+> ⚠️ Bảng version ở cuối file **thiếu v4.23.0 → v4.31.0** (nhảy từ v4.26.1 sang v5.0.0) — sai lệch
+> có từ trước, chưa fix vì ngoài scope. Nguồn đầy đủ: `CHANGELOG.md`.
 
 ---
 
@@ -349,6 +349,8 @@ phục hồi 3 file bị corrupt 0-byte (v4.5.2) (chi tiết: CHANGELOG.md v4.5.
 | **v4.25.1** | **Refactor P1 (3/5) — `api/_lib/driveToken.js` dùng chung, `verifyAuth` bỏ `createClient`, `base64url` native** |
 | **v4.26.0** | **Xoá feature Fitness Log (tab 🏋️ Sức Khỏe) — hook + tab TrackerPage + card Dashboard + XP. Bảng `fitness_logs` giữ lại, chưa DROP** |
 | **v4.26.1** | **Refactor P2 (4/6) — bỏ `getSb()` lazy ở 3 hook, gộp `snoozedFilter`, gộp `isAudioUrl`/`isVideoUrl`, `dateUtils.toDateStr()` thay 4 bản copy, thêm `npm test`** |
+| **v5.0.0** | **Activity Log v2 + Task Detail Modal + gỡ Life Log; dọn 5 đợt module (schema 30 → 18 bảng), XP đổi nguồn sang Task, landing viết lại** |
+| **v5.2.0** | **🔐 Vault (`/accounts`) làm lại theo thiết kế Keyplate: 6 bảng, layout 2 pane, 10 template, 10 loại field, link nhiều-tới-một, sign-in methods, mã dự phòng, sửa inline + history. Chưa mã hoá. Thay bản Phase A1 v5.1.0 (chưa từng deploy)** |
 
 ---
 
@@ -376,3 +378,25 @@ Mỗi phase = 1 commit độc lập, revert được, `npm run build` xanh trư�
 - `TODO: decision needed` — RULES §7 liệt kê `spawnRecurringTask` retry và `lazyRetry()` là pattern
   đang có. Đánh giá của review: cả hai là phòng xa không cần thiết (insert idempotent; chunk-fail
   đã có `ErrorBoundary`). Bỏ (−42 dòng, phải sửa RULES §7) hay giữ?
+
+---
+
+## 🔐 Phase 13 — Vault (v5.2.0 → )
+*UI làm lại: 2026-08-05 theo bản thiết kế Keyplate · mã hoá: `docs/DESIGN_ACCOUNT_VAULT.md`*
+
+**Goal:** Vault lưu mọi thứ về một tài khoản (field theo loại, phương thức đăng nhập, mã dự phòng,
+lịch sử) theo bản thiết kế Keyplate. Chia 2 phần độc lập: **A = UI + metadata (không crypto)**,
+**B = mã hoá client-side**.
+
+| Phase | Nội dung | Trạng thái |
+|-------|----------|-----------|
+| A | 6 bảng + `useAccounts` + `/accounts` layout Keyplate + 10 template + 10 loại field + link nhiều-tới-một + sign-in methods + code sheet + sửa inline + history | ✅ v5.2.0 (SQL chờ user chạy) |
+| B1+B2 | Crypto core (envelope KEK/DEK, `crypto.subtle`, unlock modal) **và** vault operability (export ciphertext, đổi passphrase) — làm **liền một đợt** | ⏳ chưa làm |
+| B3 | Auto-lock timer, TOTP thật, clipboard auto-clear | ⏳ sau B2 |
+
+**Điều kiện gỡ banner "chưa mã hoá" ở `/accounts`:** xong B1 **và** B2. Bật crypto mà chưa có
+export + đổi passphrase = mất passphrase là mất trắng dữ liệu.
+
+**Quyết định đã chốt (2026-08-05):** làm lại vault y hệt bản thiết kế Keyplate, bỏ các tính năng
+chỉ Life Hub có (status, nhắc hạn đăng nhập, gom theo dịch vụ, favicon, 20 mẫu VN). Trong lúc chờ
+mã hoá, type `password`/`secret` chỉ mask UI và **user đã chấp nhận tường minh rủi ro plaintext**.

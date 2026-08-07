@@ -1,0 +1,919 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Account Vault — `.acc-*` (/accounts)
+   Port từ template thật của `Vault v3 modern.dc.html`, KHÔNG phải từ prose.
+   Mọi con số dưới đây lấy nguyên từ style inline của prototype — đừng "làm
+   tròn cho đẹp", đó là cách bản trước bị lệch khỏi thiết kế.
+
+   Bộ token Keyplate scope trong `.acc-vault` nên không rò ra phần còn lại app.
+   App này `:root` = DARK, `[data-theme="light"]` = override → ở đây bộ dark là
+   mặc định, bộ light là override (ngược thứ tự handoff, cùng giá trị).
+
+   Chữ muted luôn là color-mix(... var(--color-text) N% ...) chứ không grey cứng
+   — lật theme là cả bộ đổi theo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Token khai trên CẢ HAI selector, KHÔNG chỉ `.acc-vault`: dialog được portal ra
+   `document.body` (xem AccountsPage.jsx) nên nó không còn là con của vault và
+   không thừa hưởng biến theo cây DOM nữa. Layout của shell nằm ở block sau. */
+.acc-vault,
+.acc-scrim {
+  /* ── DARK (mặc định) ── */
+  --color-bg: #0f0f16;
+  --surface: #1a1a24;
+  --color-text: #eceaf5;
+  --color-divider: #2b2a38;
+
+  --color-accent: #7c5cff;
+  --color-accent-500: #7c5cff;
+  --color-accent-600: #6a49f0;
+  /* 100/200/300 thành violet trong suốt: near-white loè trên nền tối */
+  --color-accent-100: rgba(124, 92, 255, .16);
+  --color-accent-200: rgba(124, 92, 255, .26);
+  --color-accent-300: rgba(124, 92, 255, .42);
+  --color-accent-400: #ab93ff;
+  /* 700 ĐẢO sang bậc sáng — nó cõng mọi chữ màu accent. #5734d4 trên #0f0f16
+     chỉ ~2.6:1, không đọc được */
+  --color-accent-700: #b4a0ff;
+  --color-accent-900: #d3c6ff;
+
+  --color-neutral-400: #4d4b5e;
+  --color-neutral-500: #6f6c85;
+
+  --ring: 0 0 0 4px rgba(124, 92, 255, .34);
+  /* Trên nền tối shadow đen tàng hình → panel mất viền, cả UI bẹt.
+     Dark diễn tả độ cao bằng hairline. Vẫn là box-shadow đầy đủ. */
+  --lift-1: 0 0 0 1px rgba(255, 255, 255, .06);
+  --lift-2: 0 0 0 1px rgba(255, 255, 255, .09), 0 24px 60px -24px rgba(0, 0, 0, .8);
+  --glow: 0 8px 20px -8px rgba(124, 92, 255, .65);
+  --glow-hover: 0 12px 26px -8px rgba(124, 92, 255, .7);
+
+  --card-grad: linear-gradient(140deg, #5b46c9 0%, #34277f 55%, #241d52 100%);
+  --card-shadow: 0 0 0 1px rgba(124, 92, 255, .35), 0 24px 60px -28px rgba(0, 0, 0, .9);
+  --scrim: rgba(0, 0, 0, .62);
+
+  --acc-font: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --acc-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --acc-ease: cubic-bezier(.2, .7, .3, 1);
+
+  font-family: var(--acc-font);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.006em;
+  color: var(--color-text);
+}
+
+/* ── Layout của shell (chỉ vault, không áp cho dialog) ── */
+.acc-vault {
+  background: var(--color-bg);
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  overflow-x: auto;
+  /* Vault cần khung cao cố định để 2 pane cuộn độc lập. Chỗ DUY NHẤT module
+     phải biết về app shell — dưới 768px shell có topbar + bottom tabs. */
+  height: 100dvh;
+
+  /* ⚠️ Breakpoint 900px của bản thiết kế là bề rộng CỦA VAULT, không phải của
+     viewport. Prototype chiếm trọn viewport nên hai thứ đó bằng nhau; ở đây
+     vault nằm cạnh sidebar 220px nên chúng lệch 220px. Dùng container query để
+     đo đúng bề rộng của chính nó — nếu dùng @media thì ở viewport 1100px vault
+     chỉ rộng 880px mà vẫn cố giữ 2 pane, sinh ra thanh cuộn ngang.
+     Hệ quả đã xử: `container-type` kéo theo `contain: layout`, biến vault thành
+     containing block cho position:fixed → scrim của dialog sẽ chỉ che vùng vault
+     và để hở sidebar. Vì thế dialog được portal ra `document.body`. */
+  container-type: inline-size;
+}
+
+[data-theme="light"] .acc-vault,
+[data-theme="light"] .acc-scrim {
+  --color-bg: #f6f6fb;
+  --surface: #ffffff;
+  --color-text: #16151f;
+  --color-divider: #e9e8f2;
+
+  --color-accent-100: #f3f0ff;
+  --color-accent-200: #e8e2ff;
+  --color-accent-300: #d5cbff;
+  --color-accent-400: #ab93ff;
+  --color-accent-700: #5734d4;
+  --color-accent-900: #241a4d;
+
+  --color-neutral-400: #b8b6c8;
+  --color-neutral-500: #8f8ca6;
+
+  --ring: 0 0 0 4px rgba(124, 92, 255, .16);
+  --lift-1: 0 1px 2px rgba(22, 21, 31, .05), 0 6px 18px -10px rgba(22, 21, 31, .18);
+  --lift-2: 0 2px 6px rgba(22, 21, 31, .06), 0 18px 44px -20px rgba(22, 21, 31, .28);
+
+  --card-grad: linear-gradient(140deg, #3a2a8f 0%, #241a4d 55%, #16142e 100%);
+  --card-shadow: var(--lift-2);
+  --scrim: rgba(22, 21, 31, .42);
+}
+
+.acc-vault ::selection, .acc-scrim ::selection { background: var(--color-accent-200); }
+.acc-vault :focus, .acc-scrim :focus { outline: none; }
+.acc-vault :focus-visible, .acc-scrim :focus-visible { outline: none; box-shadow: var(--ring); }
+.acc-vault h1, .acc-vault h2, .acc-vault h3,
+.acc-scrim h1, .acc-scrim h2, .acc-scrim h3 { letter-spacing: -0.022em; font-weight: 700; }
+
+@keyframes acc-rise    { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes acc-enter   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes acc-backdrop{ from { opacity: 0; } to { opacity: 1; } }
+@keyframes acc-dialog  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .acc-vault *, .acc-vault *::before, .acc-vault *::after,
+  .acc-scrim, .acc-dialog {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ══ Nguyên tử: input · select · textarea ═══════════════════════════════════
+   ⚠️ Ở thiết kế này input CÓ VIỀN THẬT (radius 12px + focus ring). Bản trước
+   làm input không viền theo pattern Proton Pass — sai, chính là chỗ khiến chế
+   độ sửa trông như text trần. */
+.acc-input,
+.acc-select,
+.acc-textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-text);
+  background: var(--surface);
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  padding: 8px 10px;
+  transition: box-shadow 160ms ease, border-color 160ms ease;
+}
+.acc-input::placeholder,
+.acc-textarea::placeholder { color: color-mix(in srgb, var(--color-text) 35%, transparent); }
+.acc-input:focus, .acc-select:focus, .acc-textarea:focus { box-shadow: var(--ring); outline: none; }
+.acc-textarea { resize: vertical; line-height: 1.55; }
+
+.acc-select {
+  cursor: pointer;
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238f8ca6' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+}
+.acc-select:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Ô nhỏ trong cột hành động của dòng field */
+.acc-select--type { width: 104px; font-size: 12px; flex: none; }
+.acc-select--kind { width: 190px; font-size: 12px; flex: none; }
+
+/* ══ Nút ═══════════════════════════════════════════════════════════════════ */
+.acc-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font: inherit; font-size: 13px; font-weight: 600;
+  padding: 9px 15px; border-radius: 12px; cursor: pointer;
+  color: var(--color-text);
+  background: var(--surface);
+  border: 1px solid var(--color-divider);
+  transition: transform 140ms var(--acc-ease), box-shadow 180ms ease,
+              background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.acc-btn:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--color-accent-300); }
+.acc-btn:active:not(:disabled) { transform: translateY(0); }
+.acc-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+/* Glow là thứ làm nút primary không bẹt — bản trước thiếu nó */
+.acc-btn--primary {
+  color: #fff;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  box-shadow: var(--glow);
+}
+.acc-btn--primary:hover:not(:disabled) {
+  background: var(--color-accent-600);
+  border-color: var(--color-accent-600);
+  box-shadow: var(--glow-hover);
+}
+
+.acc-btn--ghost {
+  background: transparent; border-color: transparent; font-weight: 500;
+}
+.acc-btn--ghost:hover:not(:disabled) {
+  background: var(--color-accent-100); border-color: transparent;
+}
+
+.acc-btn--icon {
+  width: 40px; height: 40px; padding: 0; border-radius: 999px; font-size: 15px; flex: none;
+  color: color-mix(in srgb, var(--color-text) 40%, transparent);
+}
+.acc-btn--icon.acc-btn--on { color: var(--color-accent); border-color: var(--color-accent-300); }
+
+/* `.acc-act` — nút ghost nhỏ: Reveal / Copy / Generate / Make primary / Turn off
+   / + Add value / Regenerate / Show all…  TẤT CẢ đều 11px .08em UPPERCASE.
+   Không hover-reveal: điện thoại không có hover, mà reveal + copy đúng là hai
+   thứ người dùng điện thoại với tay tới nhiều nhất. */
+.acc-act {
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  font: inherit; font-size: 11px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; white-space: nowrap;
+  padding: 4px 8px; border-radius: 999px; cursor: pointer;
+  color: color-mix(in srgb, var(--color-text) 62%, transparent);
+  background: transparent; border: 1px solid transparent;
+  transition: color 140ms ease, background-color 140ms ease;
+}
+.acc-act:hover:not(:disabled) { color: var(--color-accent-700); background: var(--color-accent-100); }
+.acc-act:disabled { opacity: .4; cursor: not-allowed; }
+.acc-act--on { color: var(--color-accent-700); background: var(--color-accent-100); }
+.acc-act--x {
+  letter-spacing: 0; text-transform: none; font-size: 13px;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
+.acc-act--x:hover:not(:disabled) { color: #ef6a6a; background: rgba(239, 106, 106, .12); }
+.acc-act--star {
+  letter-spacing: 0; text-transform: none; font-size: 13px;
+  color: color-mix(in srgb, var(--color-text) 30%, transparent);
+}
+.acc-act--star.acc-act--on { color: var(--color-accent); }
+
+/* ══ Header ════════════════════════════════════════════════════════════════ */
+.acc-head {
+  display: flex; align-items: center; gap: 20.4px;
+  padding: 13.6px 20.4px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--color-divider);
+}
+.acc-brand { display: flex; align-items: baseline; gap: 8px; flex: none; }
+.acc-brand__name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+.acc-brand__vault {
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
+
+.acc-search { position: relative; flex: 1 1 auto; max-width: 420px; }
+.acc-search svg { position: absolute; left: 9px; top: 11px; opacity: .5; pointer-events: none; }
+.acc-search .acc-input { padding-left: 30px; }
+
+.acc-head__right { margin-left: auto; display: flex; align-items: center; gap: 10.2px; }
+.acc-head__lock {
+  flex: none; font-size: 11.5px; white-space: nowrap;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
+
+/* ══ Banner "chưa mã hoá" ══════════════════════════════════════════════════
+   KHÔNG thuộc thiết kế Keyplate — đây là phần của Life Hub nên nó cố ý dùng
+   token gold của global.css. Gold-alpha chứ không đỏ: điều kiện thường trực
+   của giai đoạn này, không phải lỗi. CỐ Ý không tắt được — nó là thứ duy nhất
+   đứng giữa user và việc gõ mật khẩu thật vào cột plaintext. */
+.acc-warn {
+  padding: 8px 20.4px;
+  font-size: 11.5px; line-height: 1.5;
+  color: var(--gold);
+  background: rgba(255, 215, 0, .08);
+  border-bottom: 1px solid rgba(255, 215, 0, .25);
+}
+[data-theme="light"] .acc-warn {
+  color: var(--gold-dim);
+  background: rgba(217, 119, 6, .1);
+  border-bottom-color: rgba(217, 119, 6, .25);
+}
+
+/* ══ Filter bar ════════════════════════════════════════════════════════════
+   MỌI cell khai grid-column/grid-row tường minh. Nút Clear là có điều kiện —
+   không khai thì auto-placement dồn lại và cả thanh nhảy layout khi nó
+   xuất hiện/biến mất. Chip wrap ở desktop, không cuộn, không bị cắt. */
+.acc-filters {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 64px;
+  gap: 8px 10.2px;
+  align-items: start;
+  padding: 10.2px 20.4px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--color-divider);
+}
+.acc-filters__cap {
+  font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  padding-top: 7px;
+}
+.acc-filters__cap--types { grid-column: 1; grid-row: 1; }
+.acc-filters__cap--tags  { grid-column: 1; grid-row: 2; }
+.acc-filters__row        { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }
+.acc-filters__row--types { grid-row: 1; }
+.acc-filters__row--tags  { grid-row: 2; }
+.acc-filters__clear      { grid-column: 3; grid-row: 1; justify-self: end; }
+
+.acc-chip {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 12.5px; font-weight: 400; white-space: nowrap;
+  color: var(--color-text); background: transparent;
+  border: 1px solid var(--color-divider);
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+.acc-chip:hover { border-color: var(--color-accent-300); }
+.acc-chip--on {
+  border-color: var(--color-accent);
+  background: var(--color-accent-100);
+  font-weight: 500;
+}
+.acc-chip__num {
+  font-size: 10.5px; font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+.acc-chip--on .acc-chip__num { color: var(--color-accent-700); }
+.acc-chip svg { flex: none; opacity: .75; }
+.acc-chip--tag { color: color-mix(in srgb, var(--color-text) 62%, transparent); }
+.acc-chip--tag.acc-chip--on { color: var(--color-accent-700); }
+
+/* ══ Body: 2 pane cuộn độc lập ═════════════════════════════════════════════ */
+/* Prototype đặt `min-width: 1040px` để thà cuộn ngang chứ không bóp — hợp lý khi
+   nó chiếm trọn viewport. Ở đây sàn đó tạo ra một vùng chết (vault rộng
+   900–1040px) chỉ để hiện thanh cuộn ngang, nên bỏ. Sàn thật vẫn còn: hai cột
+   tự có min 300 + 520 = 820px, dưới 900px thì container query gộp về 1 cột. */
+.acc-body {
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) minmax(520px, 1fr);
+  min-height: 0;
+}
+.acc-pane { overflow-y: auto; scrollbar-width: thin; min-height: 0; }
+.acc-pane--list { border-right: 1px solid var(--color-divider); }
+
+/* ══ Pane danh sách ════════════════════════════════════════════════════════ */
+/* Header sticky. Nền SOLID --color-bg, không translucent: header mờ trên các
+   dòng đang cuộn sẽ nhoè ở cỡ chữ 11px. */
+.acc-listhead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 13.6px 13.6px 8px;
+  position: sticky; top: 0; z-index: 1;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-divider);
+}
+.acc-listhead__title { font-size: 17px; margin: 0; letter-spacing: .01em; }
+.acc-listhead__count {
+  font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
+
+.acc-row {
+  display: flex; align-items: center; gap: 11px;
+  width: calc(100% - 17px); margin: 3px 8.5px;
+  padding: 11px 12px; border-radius: 14px;
+  text-align: left; cursor: pointer; font: inherit;
+  color: var(--color-text);
+  background: transparent; border: 1px solid transparent;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 200ms ease;
+}
+.acc-row:hover { background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.acc-row--on {
+  background: var(--surface);
+  border-color: var(--color-accent-300);
+  box-shadow: var(--lift-1);
+}
+.acc-row__body { min-width: 0; flex: 1; text-align: left; }
+.acc-row__top { display: flex; align-items: center; gap: 6px; }
+/* min-width: 0 là bắt buộc để ellipsis chạy: flex item mặc định
+   min-width: auto nên tiêu đề dài sẽ đẩy badge mã ra khỏi dòng thay vì bị cắt */
+.acc-row__title {
+  min-width: 0;
+  font-weight: 600; font-size: 15.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.acc-row__star { color: var(--color-accent); font-size: 11px; flex: none; }
+.acc-row__sub {
+  display: block; font-size: 12.5px;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.acc-row__at {
+  flex: none; font-size: 10.5px; letter-spacing: .06em; white-space: nowrap;
+  color: color-mix(in srgb, var(--color-text) 40%, transparent);
+}
+.acc-list__empty {
+  padding: 34px 20.4px; text-align: center; font-size: 13px;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
+
+/* ── Avatar: favicon → plate màu + chữ cái ────────────────────────────────
+   Màu là HUE hash từ tiêu đề (JS chỉ trả hue qua `--h`; lightness do CSS quyết
+   theo theme, vì chữ trên nền tối và trên nền sáng cần độ sáng khác nhau).
+   Plate giữ NGUYÊN ở cả 3 tầng — tầng rơi xuống phải trông có chủ ý. */
+.acc-avatar {
+  flex: none; width: 36px; height: 36px;
+  display: grid; place-items: center; overflow: hidden;
+  border-radius: 12px;
+  font-size: 15px; font-weight: 700; line-height: 1;
+  color: hsl(var(--h) 62% 70%);
+  background: hsl(var(--h) 62% 60% / .16);
+  border: 1px solid hsl(var(--h) 62% 60% / .34);
+}
+[data-theme="light"] .acc-avatar {
+  color: hsl(var(--h) 58% 36%);
+  background: hsl(var(--h) 70% 55% / .12);
+  border-color: hsl(var(--h) 55% 50% / .28);
+}
+/* Favicon của nhiều site chỉ 16px — kéo giãn đầy 36px là thành nhoè. Thu vào
+   68% thì nó đọc ra như một logo đặt trên plate. */
+.acc-avatar--img img { width: 68%; height: 68%; object-fit: contain; }
+
+/* Ô mã 3 chữ — dùng lại ở danh sách, chip link, dòng sign-in */
+.acc-code {
+  flex: none; width: 36px; height: 36px;
+  display: grid; place-items: center; border-radius: 12px;
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  color: var(--color-accent-700);
+  background: transparent; border: 1px solid var(--color-divider);
+  transition: background-color 200ms ease, border-color 200ms ease, opacity 200ms ease;
+}
+.acc-code--on { background: var(--color-accent-100); border-color: var(--color-accent-300); }
+.acc-code--dim { opacity: .4; }
+
+/* ══ Pane chi tiết ═════════════════════════════════════════════════════════ */
+.acc-pane--detail { padding: 27.2px 34px 54px; }
+.acc-detail {
+  max-width: 880px;
+  animation: acc-enter 260ms var(--acc-ease) both;
+}
+.acc-detail__blank {
+  height: 100%; display: grid; place-items: center; padding: 54px; text-align: center;
+}
+.acc-detail__blank h2 { font-size: 19px; margin: 0 0 6px; font-weight: 700; }
+.acc-detail__blank p {
+  margin: 0; font-size: 13.5px; max-width: 300px;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+.acc-title { display: flex; align-items: flex-start; gap: 17px; margin-bottom: 27.2px; }
+.acc-title__main { flex: 1; min-width: 0; }
+.acc-back { margin: 0 0 8px -8px; font-size: 12.5px; display: none; }
+.acc-title__kicker {
+  font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--color-accent-700); margin-bottom: 4px;
+}
+.acc-title__h1 { font-size: 34px; margin: 0; line-height: 1.06; font-weight: 800; overflow-wrap: anywhere; }
+.acc-title__input { font-size: 24px; font-weight: 700; min-height: 42px; }
+.acc-title__tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+.acc-title__actions { display: flex; align-items: center; gap: 6px; flex: none; }
+
+/* Chọn tag ở chế độ sửa — hàng chip bật/tắt, không dropdown */
+.acc-tagedit {
+  margin-top: 10.2px; display: grid; gap: 6px;
+  padding: 10.2px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--color-divider);
+}
+.acc-tagedit__cap {
+  font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+.acc-tagedit__row { display: flex; flex-wrap: wrap; gap: 5px; }
+.acc-tagedit__new { display: flex; align-items: center; gap: 6px; }
+.acc-tagedit__new .acc-input { flex: 1; min-width: 0; max-width: 240px; font-size: 12.5px; }
+
+/* Card template đang được tạo */
+.acc-tpl--busy {
+  border-color: var(--color-accent-300);
+  background: var(--color-accent-100);
+}
+.acc-tpl:disabled { cursor: wait; }
+.acc-tpl:disabled:hover { transform: none; box-shadow: none; }
+
+/* Tag pill trung tính ở khối tiêu đề */
+.acc-tag {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 500;
+  color: color-mix(in srgb, var(--color-text) 62%, transparent);
+  background: transparent; border: 1px solid var(--color-divider);
+}
+
+/* ══ Section header ════════════════════════════════════════════════════════ */
+.acc-sect { margin-bottom: 27.2px; }
+.acc-sect__head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10.2px; margin-bottom: 6.8px;
+}
+.acc-sect__title {
+  font-size: 13px; margin: 0; letter-spacing: .14em; text-transform: uppercase;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+.acc-sect__meta {
+  font-size: 11px; letter-spacing: .08em;
+  color: color-mix(in srgb, var(--color-text) 40%, transparent);
+}
+.acc-sect__tools { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+
+/* ══ Khung dòng (fields · sign-in · code sheet) ════════════════════════════
+   gap 1px trên nền divider CHÍNH LÀ đường kẻ giữa các dòng, CỘNG THÊM
+   border 1px quanh khung — bản trước bỏ border nên khung mất viền. */
+.acc-panel {
+  display: grid; gap: 1px;
+  background: var(--color-divider);
+  border: 1px solid var(--color-divider);
+  border-radius: 18px; overflow: hidden;
+  box-shadow: var(--lift-1);
+}
+.acc-panel--fields { margin-bottom: 17px; }
+.acc-panel__empty {
+  padding: 17px 13.6px; background: var(--color-bg); font-size: 13px;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
+
+/* ── Dòng field ── */
+.acc-field {
+  display: grid;
+  grid-template-columns: minmax(104px, 150px) minmax(0, 1fr) auto;
+  gap: 13.6px; align-items: start;
+  padding: 10.2px 13.6px;
+  background: var(--surface);
+  transition: grid-template-columns 200ms ease, padding 200ms ease;
+}
+.acc-field--edit { grid-template-columns: minmax(110px, 160px) minmax(0, 1fr) auto; }
+.acc-field__label {
+  font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+  padding-top: 3px; overflow-wrap: anywhere;
+}
+/* Nhãn loại field, hiện dưới ô tên field khi sửa */
+.acc-field__typenote {
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--color-accent-700); margin-top: 3px;
+}
+.acc-field__col { min-width: 0; }
+.acc-field__val { font-size: 14.5px; overflow-wrap: anywhere; }
+.acc-field__val--empty { color: color-mix(in srgb, var(--color-text) 35%, transparent); }
+.acc-field__val--mask { font-family: var(--acc-mono); letter-spacing: .12em; }
+.acc-field__val--open { letter-spacing: 0; }
+.acc-field__acts {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end;
+}
+.acc-field__label .acc-input { font-size: 12.5px; }
+
+/* Thanh độ mạnh */
+.acc-strength { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.acc-strength__track {
+  flex: 1; max-width: 180px; height: 5px; border-radius: 999px; overflow: hidden;
+  background: color-mix(in srgb, var(--color-text) 9%, transparent);
+}
+.acc-strength__fill {
+  height: 100%; border-radius: 999px;
+  transition: width 320ms var(--acc-ease), background-color 320ms ease;
+}
+.acc-strength__label {
+  font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
+
+/* ── Multi-value ── */
+.acc-multi { display: grid; gap: 4px; }
+.acc-multi--edit { gap: 5px; }
+.acc-multi__row { display: flex; align-items: center; gap: 8px; }
+.acc-multi--edit .acc-multi__row { gap: 5px; }
+.acc-multi__val { font-size: 14.5px; min-width: 0; overflow-wrap: anywhere; }
+.acc-badge {
+  flex: none; font-size: 9px; letter-spacing: .1em; font-weight: 700;
+  padding: 2px 8px; border-radius: 999px;
+  color: var(--color-accent-700);
+  background: var(--color-accent-100);
+  border: 1px solid var(--color-accent);
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease;
+}
+.acc-badge--alt {
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  background: transparent; border-color: var(--color-divider);
+}
+.acc-badge--off { color: color-mix(in srgb, var(--color-text) 40%, transparent); }
+.acc-act--mini { font-size: 10.5px; padding: 2px 6px; }
+.acc-addrow { justify-self: start; }
+
+/* ── Chip link ── */
+.acc-links { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.acc-link {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 11px; border-radius: 999px;
+  font: inherit; font-size: 13.5px; text-align: left; cursor: pointer;
+  color: var(--color-text);
+  background: var(--color-accent-100);
+  border: 1px solid var(--color-accent-300);
+  transition: background-color 150ms ease, border-color 150ms ease, transform 140ms ease;
+}
+.acc-link:hover { transform: translateY(-1px); background: var(--color-accent-200); }
+/* radius 6px, KHÔNG phải pill — đây là một plate chữ, không phải một hành động.
+   Dùng chung với badge mã ở dòng danh sách: cùng ngôn ngữ thị giác cho "loại
+   item", một rule hai tên chứ không copy giá trị ra hai chỗ. */
+.acc-link__code,
+.acc-row__code {
+  flex: none; padding: 2px 6px; border-radius: 6px; border: 0;
+  font-size: 9.5px; letter-spacing: .08em; font-weight: 700;
+  color: var(--color-accent-700);
+  background: var(--color-accent-200);
+}
+.acc-link__title { font-weight: 500; }
+.acc-link__sub { opacity: .6; font-size: 12.5px; }
+.acc-link__arrow { opacity: .5; }
+.acc-link--dead {
+  background: transparent; border-color: var(--color-divider); cursor: default;
+}
+.acc-link--dead:hover { transform: none; background: transparent; }
+.acc-linkedit {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 5px; align-items: center;
+}
+
+/* ══ Card preview ══════════════════════════════════════════════════════════ */
+.acc-cardview {
+  position: relative; padding: 24px; margin-bottom: 27.2px;
+  border-radius: 18px; color: #fff;
+  background: var(--card-grad); box-shadow: var(--card-shadow);
+  display: grid; gap: 20px; max-width: 420px;
+}
+.acc-cardview__top {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; opacity: .75;
+}
+.acc-cardview__num {
+  font-size: 25px; letter-spacing: .14em; font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.acc-cardview__bot {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase;
+}
+.acc-cardview__bot span:last-child { opacity: .75; }
+
+/* ══ Dòng phương thức đăng nhập ════════════════════════════════════════════ */
+.acc-authrow {
+  display: grid; grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 13.6px; align-items: center;
+  padding: 10.2px 13.6px;
+  background: var(--surface);
+  transition: opacity 200ms ease;
+}
+.acc-authrow--off { opacity: .62; }
+.acc-authrow__body { min-width: 0; }
+.acc-authrow__top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acc-authrow__label { font-weight: 600; font-size: 15px; }
+.acc-authrow__note {
+  font-size: 12.5px; overflow-wrap: anywhere;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+.acc-authrow .acc-input { font-size: 12.5px; margin-top: 4px; }
+
+/* ══ Panel trắng (thêm field · dán mã) ═════════════════════════════════════ */
+.acc-box {
+  position: relative; padding: 17px; border-radius: 18px;
+  background: var(--surface); border: 1px solid var(--color-divider);
+  box-shadow: var(--lift-1);
+}
+.acc-box--addfield {
+  margin-bottom: 27.2px;
+  display: flex; align-items: flex-end; gap: 10.2px; flex-wrap: wrap;
+}
+.acc-box--paste { margin-top: 13.6px; display: grid; gap: 10.2px; }
+.acc-box__cap {
+  font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
+.acc-box__hint {
+  flex: 1; min-width: 180px; font-size: 11.5px;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
+.acc-box__row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acc-fieldgrp { display: grid; gap: 4px; }
+.acc-fieldgrp--name { width: 210px; }
+.acc-fieldgrp--type { width: 170px; }
+.acc-fieldgrp > label {
+  font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 50%, transparent);
+}
+
+/* ══ Code sheet ════════════════════════════════════════════════════════════ */
+.acc-codes {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: 1px;
+  background: var(--color-divider);
+  border: 1px solid var(--color-divider);
+  border-radius: 18px; overflow: hidden; box-shadow: var(--lift-1);
+  box-sizing: border-box;
+}
+.acc-codecell {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;
+  padding: 10px 12px; background: var(--surface);
+  border: 0; cursor: pointer; font: inherit; text-align: left;
+  transition: opacity 260ms ease, background-color 150ms ease;
+}
+.acc-codecell:hover { background: var(--color-accent-100); }
+.acc-codecell--used { opacity: .5; }
+.acc-codecell__idx {
+  font-size: 10px; letter-spacing: .1em; font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-text) 40%, transparent);
+}
+.acc-codecell__code {
+  position: relative; display: inline-block;
+  font-family: var(--acc-mono); font-size: 14px; letter-spacing: .06em;
+}
+.acc-codecell__strike {
+  position: absolute; left: 0; top: 50%; height: 1px; width: 0;
+  background: var(--color-text); opacity: 0; pointer-events: none;
+  transition: width 300ms var(--acc-ease), opacity 200ms ease;
+}
+.acc-codecell--used .acc-codecell__strike { width: 100%; opacity: .7; }
+.acc-codecell__state {
+  font-size: 9px; letter-spacing: .12em;
+  color: var(--color-accent-700);
+  transition: color 260ms ease;
+}
+.acc-codecell--used .acc-codecell__state { color: color-mix(in srgb, var(--color-text) 40%, transparent); }
+.acc-codes__hint {
+  margin-top: 6px; font-size: 11.5px;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+.acc-paste {
+  min-height: 96px; font-family: var(--acc-mono); font-size: 13px;
+}
+
+/* ══ Notes ═════════════════════════════════════════════════════════════════ */
+.acc-notes {
+  margin: 0; font-size: 14px; line-height: 1.6;
+  white-space: pre-wrap; text-wrap: pretty;
+  color: color-mix(in srgb, var(--color-text) 78%, transparent);
+}
+.acc-notes-input { min-height: 92px; }
+
+/* ══ History ═══════════════════════════════════════════════════════════════ */
+.acc-hist {
+  border-left: 1px solid var(--color-divider);
+  display: grid; gap: 13.6px; padding-left: 13.6px;
+}
+.acc-hist__row { position: relative; }
+.acc-hist__row--new { animation: acc-rise 260ms var(--acc-ease) both; }
+.acc-hist__dot {
+  position: absolute; left: -17.4px; top: 6px;
+  width: 8px; height: 8px; border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-bg);
+}
+/* Text và dấu thời gian cùng một baseline row, không stack */
+.acc-hist__top { display: flex; align-items: baseline; gap: 10.2px; flex-wrap: wrap; }
+.acc-hist__text { font-size: 14px; font-weight: 500; }
+.acc-hist__at {
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-text) 42%, transparent);
+}
+.acc-hist__detail {
+  font-size: 13px; margin-top: 2px; overflow-wrap: anywhere;
+  color: color-mix(in srgb, var(--color-text) 58%, transparent);
+}
+.acc-hist__detail--mono { font-family: var(--acc-mono); }
+.acc-hist__empty { font-size: 13px; color: color-mix(in srgb, var(--color-text) 45%, transparent); }
+
+/* ══ Footer meta ═══════════════════════════════════════════════════════════ */
+.acc-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid var(--color-divider); padding-top: 10.2px;
+  font-size: 11.5px; letter-spacing: .06em;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+.acc-foot__del {
+  color: var(--color-text); opacity: .6;
+  font-size: 11.5px; letter-spacing: 0; text-transform: none;
+}
+.acc-foot__del:hover { opacity: 1; }
+
+/* ══ Trạng thái rỗng / đang tải chung ══════════════════════════════════════ */
+.acc-blank {
+  display: grid; place-items: center; align-content: center; gap: 8px;
+  height: 100%; min-height: 240px; padding: 34px; text-align: center;
+}
+.acc-blank__title { font-size: 19px; font-weight: 700; }
+.acc-blank__hint {
+  font-size: 13.5px; max-width: 34ch; line-height: 1.55;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+/* ══ Dialog chọn template ══════════════════════════════════════════════════
+   Dialog RIÊNG, không dùng GenericModal của Life Hub — component đó mang style
+   Life Hub vào và phá fidelity. */
+.acc-scrim {
+  position: fixed; inset: 0; z-index: 1000;
+  display: grid; place-items: center; padding: 34px;
+  background: var(--scrim);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  animation: acc-backdrop 160ms ease-out both;
+}
+.acc-dialog {
+  width: 100%; max-width: 760px; max-height: 80vh; overflow: auto;
+  padding: 27.2px; border-radius: 18px;
+  background: var(--surface); border: 1px solid var(--color-divider);
+  box-shadow: var(--lift-2);
+  animation: acc-dialog 220ms var(--acc-ease) both;
+}
+.acc-dialog__head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 10.2px; margin-bottom: 4px;
+}
+.acc-dialog__title { font-size: 23px; margin: 0; font-weight: 700; }
+.acc-dialog__lede {
+  margin: 0 0 20.4px; font-size: 13.5px; line-height: 1.55;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+.acc-tplgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13.6px; }
+.acc-tpl {
+  position: relative; text-align: left; cursor: pointer;
+  padding: 17px; border-radius: 18px; font: inherit; color: inherit;
+  background: var(--surface); border: 1px solid var(--color-divider);
+  transition: box-shadow 180ms ease, transform 180ms var(--acc-ease), border-color 180ms ease;
+}
+.acc-tpl:hover {
+  box-shadow: var(--lift-1); transform: translateY(-2px);
+  border-color: var(--color-accent-300);
+}
+.acc-tpl__code {
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--color-accent-700);
+}
+.acc-tpl__name { font-weight: 600; font-size: 17px; margin: 2px 0 4px; }
+.acc-tpl__sum {
+  font-size: 12px; line-height: 1.45;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+
+/* ══ Vault hẹp hơn 900px: 1 cột, list và detail thành 2 màn hình ═══════════
+   @container, KHÔNG @media — đo bề rộng của vault chứ không của viewport
+   (xem chú thích `container-type` ở đầu file). */
+@container (max-width: 899px) {
+  .acc-head { flex-wrap: wrap; gap: 10.2px; padding: 10.2px 13.6px; }
+  .acc-search { order: 3; flex-basis: 100%; max-width: none; width: 100%; }
+  .acc-head__lock { display: none; }
+
+  /* Filter bar thành MỘT hàng chip cuộn ngang, ẩn caption */
+  .acc-filters { grid-template-columns: minmax(0, 1fr); padding: 8px 13.6px; }
+  .acc-filters__cap { display: none; }
+  .acc-filters__row, .acc-filters__clear { grid-column: 1; grid-row: auto; justify-self: start; }
+  .acc-filters__row {
+    flex-wrap: nowrap; overflow-x: auto; width: 100%;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .acc-filters__row::-webkit-scrollbar { display: none; }
+
+  .acc-body { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+  .acc-pane--list { border-right: none; }
+  .acc-pane--detail { padding: 17px 13.6px 68px; }
+  .acc-detail { max-width: none; }
+
+  /* Một pane hiện, pane kia display:none — không phải 2 bản markup */
+  .acc-body[data-screen="list"] .acc-pane--detail { display: none; }
+  .acc-body[data-screen="detail"] .acc-pane--list { display: none; }
+  .acc-back { display: inline-flex; }
+
+  /* Dòng field + sign-in xuống 1 cột, hành động thành hàng riêng canh trái */
+  .acc-field, .acc-field--edit {
+    grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px 13.6px;
+  }
+  .acc-field__label { padding-top: 0; }
+  .acc-field__acts { justify-content: flex-start; }
+  .acc-authrow { grid-template-columns: 36px minmax(0, 1fr); gap: 10.2px 11px; padding: 12px 13.6px; }
+  .acc-authrow .acc-field__acts { grid-column: 2; justify-content: flex-start; }
+  .acc-linkedit { grid-template-columns: minmax(0, 1fr) auto; }
+  .acc-linkedit .acc-select { grid-column: 1 / -1; }
+  .acc-linkedit .acc-act--x { grid-column: 2; grid-row: 1; }
+
+  .acc-title { flex-direction: column; gap: 13.6px; }
+  .acc-title__h1 { font-size: 27px; }
+  .acc-title__actions { width: 100%; }
+  .acc-title__actions .acc-btn:not(.acc-btn--icon) { flex: 1; }
+
+  /* Vùng chạm >= 44px, input 16px (dưới 16px iOS tự zoom khi focus) */
+  .acc-vault .acc-btn { min-height: 44px; padding-left: 14px; padding-right: 14px; }
+  .acc-vault .acc-btn--ghost { min-height: 40px; }
+  .acc-vault .acc-btn--icon { width: 44px; height: 44px; }
+  .acc-vault .acc-input, .acc-vault .acc-select, .acc-vault .acc-textarea {
+    min-height: 44px; font-size: 16px;
+  }
+  .acc-vault .acc-select--type, .acc-vault .acc-select--kind { width: auto; flex: 1; }
+}
+
+/* Dialog portal ra body nên KHÔNG có ancestor container → phải dùng @media.
+   Với overlay toàn màn hình thì bề rộng viewport mới là thước đo đúng. */
+@media (max-width: 899px) {
+  /* Modal thành bottom sheet */
+  .acc-scrim { place-items: end center; padding: 0; }
+  .acc-dialog {
+    max-width: none; max-height: 88vh;
+    border-radius: 18px 18px 0 0; padding: 20.4px 13.6px 27.2px;
+  }
+  .acc-tplgrid { grid-template-columns: 1fr; gap: 8px; }
+  .acc-scrim .acc-btn { min-height: 44px; }
+  .acc-scrim .acc-input, .acc-scrim .acc-select, .acc-scrim .acc-textarea {
+    min-height: 44px; font-size: 16px;
+  }
+}
+
+/* Grid template 3 cột chỉ hợp lý khi dialog đủ rộng */
+@media (max-width: 620px) {
+  .acc-tplgrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  /* Shell của app: topbar 52px + bottom-tabs 60px + safe-area; body đã có
+     padding tương ứng nên chiều cao khả kiến phải trừ ra. */
+  .acc-vault {
+    height: calc(100dvh - var(--topbar-height, 52px)
+                 - var(--bottom-tabs-height, 60px) - env(safe-area-inset-bottom, 0px));
+  }
+}

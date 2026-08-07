@@ -990,6 +990,137 @@ used by `/tasks`.
   of that layout (hour gutter, overlap collision solving, drag-resize,
   now-indicator) buy nothing for all-day data.
 
+### Account vault — `.acc-*` (`accounts.css`)
+
+Rebuilt v5.2.0 for `/accounts` to the **Keyplate** design handoff. Header · filter
+bar · two-pane body (item list · detail), breakpoint 900px.
+
+- **This module owns its own token set — the one deliberate exception in the
+  system.** Everything else on the page reads `--purple` / `--radius-*` from
+  `global.css`; the vault instead declares a *scoped* Keyplate palette on
+  `.acc-vault` (`--color-accent: #7c5cff`, `--surface`, radius `18px`,
+  `--lift-1/2`, a full dark set and a `[data-theme="light"] .acc-vault` override).
+  The scope means **not one of these variables leaks** to the rest of the app.
+  User decision (2026-08-05): `/accounts` must look exactly like the handoff. To
+  retune vault colour/spacing, edit `accounts.css`, **not** `global.css`. This is
+  the sanctioned way to carry a self-contained design into the app without
+  polluting the global layer — do not copy the pattern casually.
+- **Dark is the default, light is the override** — inverse of the handoff (which
+  ships light-only) because the app's `:root` is dark. Two swaps easy to get
+  wrong: `--color-accent-700` must **invert to a light step** (`#b4a0ff`) on dark
+  because it carries every accent-coloured text (kicker, 3-letter codes, PRIMARY
+  badges); and `--lift-1/2` become **hairline box-shadows** on dark because black
+  shadows vanish on a dark ground and the whole interface goes flat.
+- **Muted text is always `color-mix(in srgb, var(--color-text) N%, transparent)`,
+  never a hard grey** — flipping `--color-text` fixes the whole muted ramp at once
+  so it survives the theme flip untouched.
+- **`.acc-warn`** — the "not encrypted yet" banner. This one element deliberately
+  uses the **Life Hub** `--gold` token, not the vault palette: it is a Life Hub
+  concern layered over a Keyplate page. Gold-alpha (`0.08` fill / `0.25` border)
+  reads as a standing condition, not a failure. **Not dismissible** — the only
+  thing between the user and typing a real password into a plaintext column.
+- **Row panel (`.acc-panel`) — the module's core container,** shared by fields,
+  sign-in methods and the code sheet. Built as `display: grid; gap: 1px;
+  background: divider` so the 1px gaps *are* the row rules and each row sits on
+  `--surface` — **plus a real `1px solid divider` border around the panel** and
+  `overflow: hidden` + `18px` radius + `--lift-1`. Dropping that outer border (as
+  an earlier pass did) leaves the panel edgeless and the whole page reads flat.
+- **Edit mode uses real bordered controls, not borderless inline text.**
+  `.acc-input` / `.acc-select` / `.acc-textarea` carry a `1px divider` border,
+  `12px` radius and a `--ring` focus shadow. This is the **opposite** of the
+  Proton-Pass-derived pattern the previous `/accounts` used ("the border belongs
+  to the card, never the input"); that idea is not part of this design and
+  re-applying it is what made edit mode look like naked text. Do not "clean up"
+  these borders.
+- **Every small ghost action is `11px / .08em / uppercase`** (`.acc-act`):
+  Reveal, Hide, Copy, Generate, Make primary, Turn on/off, + Add value,
+  + Link an item, Regenerate, Append, Show all N events, Delete item. Sentence
+  case here reads as body copy and breaks the row rhythm.
+- **`.acc-btn--primary` carries a violet glow** (`0 8px 20px -8px
+  rgba(124,92,255,.65)`, deepening on hover). Without it the primary action is a
+  flat purple rectangle — it is the single biggest contributor to the page
+  feeling cheap.
+- **`.acc-code`** — the 36px `12px`-radius chip carrying a template's 3-letter
+  code, used in the sign-in rows. Accent-tinted when it marks a primary method.
+- **`.acc-avatar` — the list row's 36px identity plate, and a deliberate
+  departure from the handoff.** The prototype puts the 3-letter template code in
+  this slot; with twenty `ACC` items that makes every row identical and unscannable.
+  So the slot holds, in falling order: the service's own favicon
+  (`/apple-touch-icon.png` → `/favicon.ico`), then a **letter plate**. The code
+  survives as a small `.acc-row__code` badge beside the title — it shares one rule
+  with `.acc-link__code` so "item type" reads the same everywhere.
+  - **Colour is a hashed hue, not a brand palette.** JS returns only a hue
+    (`avatarHue`) into `--h`; CSS picks the lightness per theme
+    (`hsl(var(--h) 62% 70%)` dark / `58% 36%` light), because a single letter
+    needs different lightness on a dark vs light ground. Deliberately not the
+    seven Life Hub brand tokens — those are tuned to the app's purple/cyan and
+    would fight the vault's violet.
+  - **`img` sits at `68%` with `object-fit: contain`,** not edge to edge. Most
+    `favicon.ico` files are 16px; stretching one to fill 36px turns it to mush,
+    while insetting it reads as a logo on a plate.
+  - **The plate is identical across all three tiers.** Falling back to a letter is
+    a *normal state, not an error state* — many sites have no icon and the console
+    will show 404s. It must look deliberate, which is why nothing about the plate
+    changes when the image is missing.
+  - Icons are fetched **straight from each service's own origin, never through a
+    third-party favicon service.** This is a vault: handing one aggregator the
+    full list of domains you hold accounts at is self-disclosure of which bank and
+    which exchange you use. The `Logos` toggle in the header (`vl_acc_favicon`)
+    turns image requests off entirely.
+- **`.acc-link`** — the pointer to another item: accent-alpha pill with a small
+  code badge, target title, borrowed value and a trailing `↗`. Pill because it
+  navigates. A link whose target is gone becomes `.acc-link--dead` (divider
+  border, no hover, "Missing item / link broken") — a normal state (jsonb links
+  have no FK), not an error.
+- **`.acc-strength`** — a `180×5px` pill track at `9%` text with a pill fill whose
+  `width` and `background-color` transition over 320ms. View-mode only, and only
+  for `type="password"`; `secret` is never scored.
+- **Masked values read as redacted, not a glyph blob:** `.acc-field__val--mask` is
+  monospace with `0.12em` letter-spacing; revealing drops the spacing (`--open`).
+- **`.acc-codecell__strike`** — a 1px rule animating `width: 0 → 100%` over 300ms
+  when a single-use code is marked used, the cell fading to `opacity: 0.5`.
+- **`.acc-hist`** — a left rail (`border-left` divider) with 8px round accent dots
+  carrying a 3px `--color-bg` halo; timestamps 11px `.08em` uppercase tabular,
+  detail lines switch to monospace when they contain masked bullets.
+- **Native `<select>` (`.acc-select`) and a hand-built dialog, not `CustomSelect`
+  / `GenericModal`.** RULES §4 says dropdowns use `CustomSelect` and modals use
+  `GenericModal`; the vault overrides both **on purpose** — those components are
+  styled to Life Hub tokens and would break the scoped Keyplate look. Native
+  controls styled with vault tokens (select arrow via inline SVG background) keep
+  fidelity and are less code. Exception noted in `AccountDetail.jsx`.
+- **`.acc-act` (Reveal / Copy / Generate) never hover-reveals** — permanent
+  `62%`-text pills, same reasoning as `.td-del`: touch has no hover, and
+  reveal/copy are the two controls a phone user reaches for. **Generate is
+  rendered but `disabled`** until encryption ships — generating a real password
+  into a plaintext column is the wrong default.
+- **Two-pane, CSS-only breakpoint — and it is a `@container` query, not
+  `@media`.** `.acc-body` is `minmax(300px,360px) minmax(520px,1fr)`; React holds
+  only `selectedId` + `screen`. The handoff's 900px breakpoint measures **the
+  vault's own width**; the prototype filled the viewport so the two were the same,
+  but here the vault sits beside the 220px sidebar. Measured against the viewport,
+  a 1100px window gives the vault 880px while it still tries to hold two panes —
+  a horizontal scrollbar. So `.acc-vault` declares `container-type: inline-size`
+  and the narrow rules live in `@container (max-width: 899px)`. The prototype's
+  `min-width: 1040px` floor is **dropped** for the same reason; the real floor is
+  the columns' own `300 + 520`. Touch targets ≥44px and inputs 16px when narrow
+  (iOS zoom). No JS breakpoint, no `useMediaQuery`, no duplicated mobile markup.
+- **The template dialog is portaled to `document.body`.** `container-type` implies
+  `contain: layout`, which makes `.acc-vault` a containing block for
+  `position: fixed` — a scrim rendered inside it would cover only the vault and
+  leave the sidebar showing through. Because the portal breaks DOM inheritance,
+  the token block is declared on **`.acc-vault, .acc-scrim`** rather than the
+  vault alone, and the dialog's narrow rules use `@media` (no ancestor container).
+  It is a hand-built dialog, not `GenericModal` — see the RULES §4 note below.
+- **Filter-bar cells carry explicit `grid-column`/`grid-row`.** The Clear button
+  is conditional; without explicit placement, auto-placement reflows the whole bar
+  when it appears or disappears.
+- **`.acc-cardview`** — the credit-card preview: `linear-gradient(140deg,…)` that
+  **lightens on dark** (`#5b46c9 → #34277f → #241d52`) with a `1px` accent
+  hairline so it does not merge into a dark page; number masked to the last 4
+  until the Card number field is revealed.
+- Motion collapses to `1ms` under `prefers-reduced-motion: reduce` via a single
+  `--acc-dur` override on `.acc-vault`.
+
 ### Other shared atoms (`global.css`)
 
 - **`.badge`** — pill, `0.25rem 0.75rem`, `0.8rem/600` display font, four
@@ -1140,8 +1271,7 @@ silently resolved; pick a direction before touching the files involved.
 
 **Expected linter warnings**
 
-`npm run design:lint` reports **0 errors**. The remaining warnings are
-deliberate and should not be "fixed" by editing this file:
+The remaining warnings are deliberate and should not be "fixed" by editing this file:
 
 - **`borderColor` is not a recognised sub-token.** It is used anyway, per the
   spec's "unknown component property → accept with warning" rule, because a

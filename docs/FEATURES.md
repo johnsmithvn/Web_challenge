@@ -559,6 +559,7 @@ history nếu đổi ý.
 | Inbox / Knowledge | `collections` (+ groups/notes/tags) | — (cần login) |
 | Finance | `expenses`, `subscriptions` | — (cần login) |
 | Incubator | `intentions`, `intention_logs` | — (cần login) |
+| Vault | `accounts`, `account_fields`, `account_auth`, `account_codes`, `account_logs`, `account_tags` | — (cần login, cố ý không có guest mode) |
 | Notifications | `notification_settings` + `vl_notif_settings` | localStorage |
 | Life milestones | `vl_life_journey_events` (localStorage-only) | localStorage |
 
@@ -599,10 +600,100 @@ một app không bán.
 | `/incubator` | IncubatorPage | ✅ |
 | `/settings` | SettingsPage | ✅ |
 | `/focus` | FocusPage | ❌ |
+| `/accounts` | AccountsPage (v5.2.0) | ✅ |
 | `/tracker`, `/habits`, `/dashboard`, `/journey` | `<Navigate to="/tasks">` (route đã gỡ) | — |
 | `*` | LandingPage (catch-all) | ❌ |
 
 Auth ✅ = trang tự hiện empty/login state khi guest (không có route guard tập trung).
+
+---
+
+## 29. 🔐 Vault (`/accounts`) — v5.2.0 (thiết kế Keyplate)
+
+**Files:** `src/pages/AccountsPage.jsx` · `src/components/AccountDetail.jsx` ·
+`src/hooks/useAccounts.js` · `src/utils/vaultLogic.js` (+ test) ·
+`src/data/account-templates.json` · `src/styles/accounts.css`
+
+**Mô tả:** Vault lưu **mọi thứ về một tài khoản**, không chỉ mật khẩu — dựng theo bản thiết kế
+Keyplate. Một *item* gồm field theo loại, phương thức đăng nhập, sheet mã dự phòng và lịch sử thay
+đổi. Chữ trên UI giữ **tiếng Anh** đúng bản thiết kế (khác phần còn lại của app).
+
+> ⚠️ **CHƯA mã hoá.** `account_fields.value` là plaintext trong Supabase; type `password`/`secret`
+> chỉ mask trên UI. Banner cảnh báo trên trang là **cố ý**, đừng gỡ khi chưa xong envelope
+> encryption (`docs/DESIGN_ACCOUNT_VAULT.md`).
+
+**Bố cục (breakpoint 900px, xử lý hoàn toàn bằng CSS):**
+- **Header:** brand "Keyplate · Vault 01" · ô search · nút New item.
+- **Filter bar:** hàng chip **Types** (All / Favourites / 10 template theo mã) + hàng chip **#Tags**.
+  Mỗi cell khai `grid-column`/`grid-row` tường minh vì nút Clear có điều kiện (không khai thì cả
+  thanh nhảy layout khi Clear ẩn/hiện). Chip wrap ở desktop, cuộn ngang ở mobile.
+- **Body 2 pane cuộn độc lập:** danh sách item (mã 3 chữ + tiêu đề + dòng phụ + ★) và chi tiết.
+- **< 900px:** 1 cột, list và detail thành 2 màn hình, có nút `← All items`. React chỉ giữ
+  `selectedId` + `screen`; **không** hook đo bề rộng, **không** resize listener.
+
+**Pane chi tiết — 9 khối theo thứ tự đặc tả:** tiêu đề (kicker `<template> · <CODE>`, ★, Edit) →
+**card preview** (chỉ item loại card; số thẻ mask tới khi reveal) → **Fields** → add-custom-field
+(chỉ khi sửa) → **Sign-in methods** → **Single-use codes** + paste import (chỉ khi sửa) → **Notes**
+→ **History** → footer meta ("Updated … · N fields · N sign-in methods" + Delete item).
+
+**10 loại field** (`vaultLogic.TYPES`): `text` · `password` (mask, có **strength bar**, có nút
+Generate nhưng **disable** tới khi có mã hoá) · `secret` (mask, **không** chấm điểm — PIN/CVV/số
+giấy tờ) · `url` · `email` · `phone` · `multi` (nhiều giá trị, index 0 là primary) · `link` (**nhiều
+link/field**, mỗi link mượn 1 giá trị của item đích) · `number` · `date`. `password` và `secret`
+**không gộp** — đó là phân biệt sản phẩm dựa vào.
+
+**Liên kết (`link`)** là điểm khác Bitwarden/1Password: một field trỏ tới **nhiều** item khác trong
+vault, mỗi chip hiện mã 3 chữ + tiêu đề + giá trị mượn + `↗`, bấm là nhảy sang. Link tới item đã xoá
+hiện chip xám **"Missing item / link broken"** (jsonb không FK — hành vi đặc tả, không phải lỗi).
+
+**Phương thức đăng nhập** (9 kiểu: password/prompt/totp/passkey/sms/key/codes/email/oauth): mỗi item
+nhiều phương thức, **đúng ≤1 primary** (DB ép). Bật/tắt/đặt-primary được ngay ngoài chế độ sửa và
+**ghi log tức thì**. Thêm phương thức `codes` mà item chưa có sheet → tự sinh 10 mã.
+
+**Sheet mã dự phòng dùng 1 lần:** hiện "N of M unused", Reveal/Copy sheet/Regenerate. Đánh dấu một
+mã đã dùng → gạch ngang chạy 300ms + mờ ô + ghi log ngay. **Paste import** (khi sửa): dán khối text
+từ nhà cung cấp, parser giữ khoảng trắng trong mã (Google `1234 5678` là MỘT mã), Replace/Append.
+
+**Sửa inline + lịch sử:** "Edit" clone item vào draft cục bộ, mọi thao tác sửa draft, "Save changes"
+đẩy lên. `diffLog` chạy **trong hook** (`useAccounts.saveItem`) — không có đường lưu mà không ghi
+log. Log **append-only** (RLS chặn UPDATE/DELETE), mask secret = `•` × min(len,24), **không bao giờ**
+ghi giá trị thật. History hiện 4 dòng mới nhất + "Show all N".
+
+**Tạo item:** New item → chọn 1 trong 10 template (LGN/ACC/CRD/IDN/NTE/API/WIF/DBS/SRV/LIC) → item
+mới có sẵn bộ field + phương thức đăng nhập + sheet mã đúng theo template.
+
+**Tìm & lọc:** search theo tiêu đề / tag / ghi chú / nhãn field / giá trị field **không phải
+secret** (`matchesQuery`); filter theo template và theo tag.
+
+**Tag:** ở chế độ sửa, **toàn bộ tag của hệ thống** liệt kê thành hàng chip bật/tắt (`TagEditor`
+trong `AccountDetail.jsx`) + ô tạo tag mới ngay tại đó. Cố ý **không** dùng `TagPicker` dùng chung
+— trigger của nó là chữ "+ Tag" 11px không viền, style inline nên CSS vault đè không được, trên nền
+vault gần như vô hình. Hàng chip cũng bỏ được popover: không outside-click, không z-index, không bị
+pane `overflow-y: auto` cắt. Hàng **Tags** ở filter bar thì **chỉ** liệt kê tag đang gắn trên item
+của vault — bấm tag chưa item nào dùng thì chỉ ra danh sách rỗng.
+
+**UX của việc tạo item:** dialog **ở nguyên** trong lúc tạo, card được bấm hiện "Creating…", các
+card khác disable (chặn double-click sinh 2 item). Xong thì mở item và vào **thẳng chế độ sửa**, con
+trỏ chọn sẵn tiêu đề tạm để gõ đè. Danh sách sắp theo `updated_at` **giảm dần** nên item vừa
+tạo/vừa sửa luôn ở đầu — đó cũng là lý do mỗi dòng có cột thời gian bên phải.
+
+**Logo dịch vụ (`AccountAvatar.jsx`)** — ô 36px đầu mỗi dòng danh sách, 2 tầng tự rơi:
+favicon của chính dịch vụ (`/apple-touch-icon.png` → `/favicon.ico`) → plate màu + chữ cái đầu
+(hue hash từ tiêu đề nên cùng dịch vụ luôn cùng màu). URL suy từ **field `type='url'` đầu tiên**
+của item, không cần cột riêng. **Không lưu ảnh** — hotlink lúc render; client không thể cache
+favicon vì CORS chặn đọc byte ảnh cross-origin.
+**Cố ý KHÔNG dùng dịch vụ favicon bên thứ ba** (`google.com/s2/favicons`, DuckDuckGo, Clearbit,
+logo.dev): đây là vault, gửi cả danh sách domain mình có tài khoản cho một bên là tự khai mình
+dùng dịch vụ nào. Nút **Logos** ở header tắt hẳn việc gọi ảnh (`vl_acc_favicon`, mặc định bật) —
+tắt là trang không phát request nào ra ngoài. Site không có icon → rơi về chữ cái, **console có
+404 là bình thường, không phải bug**. Mã 3 chữ của template vẫn hiện dạng badge nhỏ cạnh tiêu đề.
+
+**Data source:** `accounts`, `account_fields`, `account_auth`, `account_codes`, `account_logs`,
+`account_tags` (Supabase). **Không có guest mode** — vault mất khi refresh thì vô nghĩa, chưa đăng
+nhập thì trang hiện lời nhắc đăng nhập.
+
+**Chưa làm:** mã hoá client-side (envelope encryption), auto-lock timer, TOTP thật cho phương thức
+authenticator, clipboard auto-clear, export/restore, dọn link mồ côi khi xoá item.
 
 ---
 

@@ -22,6 +22,7 @@ const TasksPage         = lazy(() => import('./pages/TasksPage'));
 const CollectPage       = lazy(() => import('./pages/CollectPage'));
 const FinancePage       = lazy(() => import('./pages/FinancePage'));
 const IncubatorPage     = lazy(() => import('./pages/IncubatorPage'));
+const AccountsPage      = lazy(() => import('./pages/AccountsPage'));
 const SettingsPage      = lazy(() => import('./pages/SettingsPage'));
 
 // ── SEO meta per route ─────────────────────────────────────────────
@@ -33,6 +34,7 @@ const ROUTE_META = {
   '/finance':    { title: 'Finance — Life Hub',                                               desc: 'Quản lý chi tiêu cá nhân và đăng ký gói dịch vụ.' },
   '/focus':      { title: 'Focus Timer — Life Hub',                                           desc: 'Dùng Pomodoro để tập trung sâu và liên kết với thói quen của bạn.' },
   '/incubator':  { title: 'Trạm Ấp Trứng — Life Hub',                                          desc: 'Nuôi dưỡng dự định, dời lại phải có lý do, theo dõi timeline quyết định.' },
+  '/accounts':   { title: 'Vault — Life Hub',                                                  desc: 'Hồ sơ từng tài khoản: field theo loại, phương thức đăng nhập, mã dự phòng, lịch sử thay đổi.' },
   '/settings':   { title: 'Cài Đặt — Life Hub',                                                  desc: 'Quản lý tags, giao diện và tùy chỉnh hệ thống.' },
 };
 
@@ -70,6 +72,7 @@ function AppShell() {
                 <Route path="/collect"      element={<CollectPage />} />
                 <Route path="/finance"      element={<FinancePage />} />
                 <Route path="/incubator"    element={<IncubatorPage />} />
+                <Route path="/accounts"     element={<AccountsPage />} />
                 <Route path="/settings"     element={<SettingsPage />} />
                 <Route path="/focus"        element={<FocusPage />} />
                 {/* Redirect của các route đã gỡ. Giữ lại để link/bookmark cũ

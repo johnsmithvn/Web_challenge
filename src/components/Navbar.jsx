@@ -25,6 +25,7 @@ const PRIMARY_NAV = [
 // Secondary: visible in sidebar, hidden in bottom tabs (dropdown)
 const SECONDARY_NAV = [
   { to: '/focus',         icon: '⏱',  label: 'Focus' },
+  { to: '/accounts',      icon: '🔐', label: 'Tài Khoản' },
 ];
 
 

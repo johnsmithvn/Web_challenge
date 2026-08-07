@@ -59,9 +59,6 @@ If the task is unrelated to UI, do not load `DESIGN.md`.
 When modifying the design system:
 
 - Update `DESIGN.md` if necessary.
-- Run:
-
-npm run design:lint
 
 ---
 

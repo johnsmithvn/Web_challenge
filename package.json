@@ -1,14 +1,13 @@
 {
   "name": "life-hub",
   "private": true,
-  "version": "5.0.0",
+  "version": "5.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node api/_lib/smoke.test.js && node src/utils/dateUtils.test.js && node src/utils/mediaUtils.test.js && node src/__tests__/recurrenceUtils.test.js && node src/__tests__/taskFields.test.js",
-    "design:lint": "design.md lint DESIGN.md",
+    "test": "node api/_lib/smoke.test.js && node src/utils/dateUtils.test.js && node src/utils/mediaUtils.test.js && node src/__tests__/recurrenceUtils.test.js && node src/__tests__/taskFields.test.js && node src/__tests__/vaultLogic.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -43,7 +42,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@google/design.md": "^0.3.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",

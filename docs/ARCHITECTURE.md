@@ -30,19 +30,22 @@ src/
 ├── App.jsx           AppShell: PageMeta + Onboarding gate + Navbar + QuickCapture
 │                     + GlobalAudioPlayer + ErrorBoundary + Suspense + Routes
 ├── main.jsx          React root
-├── pages/        (8) 1 file / route. LandingPage eager, 7 còn lại lazy
-├── components/  (27) UI dùng lại, props-driven, không gọi supabase trực tiếp
-├── hooks/       (12) use<Entity>.js — toàn bộ logic Supabase, dual-mode guest fallback
+├── pages/        (9) 1 file / route. LandingPage eager, 8 còn lại lazy
+├── components/  (25) UI dùng lại, props-driven, không gọi supabase trực tiếp
+│                     (AccountDetail giữ view+edit inline của vault, không gọi supabase)
+├── hooks/       (13) use<Entity>.js — toàn bộ logic Supabase, dual-mode guest fallback
+│                     (ngoại lệ: useAccounts — không có guest mode, xem §Dual-Mode)
 ├── contexts/     (3) AuthContext, ThemeContext, ToastContext
 ├── extensions/   (1) MediaNode.jsx — Tiptap atom node cho media inline
 ├── lib/          (1) supabase.js — singleton client, graceful fallback khi thiếu env
-├── utils/        (7) currencyUtils, dateUtils, logger, mediaUtils, recurrenceUtils,
-│                     taskFields (pure, no React)
+├── utils/        (8) vaultLogic, currencyUtils, dateUtils, logger, mediaUtils,
+│                     recurrenceUtils, taskFields (pure, no React)
 │                 (+2) dateUtils.test.js, mediaUtils.test.js — self-check `npm test`
-├── __tests__/    (2) recurrenceUtils.test.js, taskFields.test.js — `npm test`
+├── __tests__/    (3) recurrenceUtils.test.js, taskFields.test.js,
+│                     vaultLogic.test.js — `npm test`
 ├── data/         (4) JSON content tĩnh (Rule 14): quotes, expense-categories,
 │                     knowledge, ui-strings
-└── styles/      (24) 1 file / domain + global.css (design tokens). Không dùng Tailwind
+└── styles/      (25) 1 file / domain + global.css (design tokens). Không dùng Tailwind
 
 api/                  Vercel serverless
 ├── upload.js         Upload proxy → Google Drive (Supabase JWT + folder whitelist)
@@ -83,6 +86,10 @@ Hook (e.g. useUserTasks)
 > **v1.6.2+:** Toàn bộ **user data** dùng Supabase làm primary.
 > localStorage chỉ còn **UI state flags**, **settings**, và các **ngoại lệ legacy được ghi rõ** (xem Rule bên dưới).
 
+> **Ngoại lệ có chủ ý — `useAccounts` (v5.2.0) KHÔNG có nhánh guest.** Hồ sơ tài khoản mà mất khi
+> refresh thì vô nghĩa, và đây là dữ liệu riêng tư nhất trong app. Chưa đăng nhập → `/accounts` hiện
+> lời nhắc đăng nhập, không có in-memory fallback. Đừng "sửa" cho khớp pattern.
+
 ### localStorage Keys
 
 ```
@@ -104,6 +111,7 @@ vl_habit_logs_migrated # "1" — vl_habit_progress migrated to Supabase
 vl_login_nudge_shown   # "1" — login nudge shown once
 vl_chunk_retry         # "1" — stale chunk retry flag (cleared on success)
 vl_theme               # "dark" | "light" — theme preference (v2.2.0)
+vl_acc_favicon         # "0" = tắt tải logo dịch vụ ở /accounts (mặc định bật) (v5.2.0)
 ```
 
 > **Rule:** localStorage chỉ lưu **UI state flags**, **offline guest fallback**, và các
@@ -119,6 +127,7 @@ vl_theme               # "dark" | "light" — theme preference (v2.2.0)
 
 Không liệt kê lại ở đây — **`docs/DATABASE.md`** là nơi duy nhất mô tả bảng, còn
 **`data/schema_v4.24.0.sql`** là source of truth (**18 `CREATE TABLE`**, tất cả đều đang dùng — v5.0.0 đã DROP 12 bảng chết/đã gỡ feature).
+v5.2.0 thêm 6 bảng vault qua **`data/migration_v5.2.0_vault.sql`** — file này **chưa gộp vào master** (RULES §3), tổng thực tế trên DB là **24 bảng**.
 Các file `migration_*.sql` theo version đã bị gộp và xoá; đừng tham chiếu chúng nữa.
 
 Cụm bảng theo domain:
@@ -129,7 +138,8 @@ Cụm bảng theo domain:
 | Knowledge | `collections`, `collection_tags`, `collection_notes`, `inspirational_quotes` |
 | Finance | `expenses`, `subscriptions`, `expense_tags`, `subscription_tags` |
 | Incubator | `intentions`, `intention_logs` |
-| Tags | `tags` + 4 junction + VIEW `tagged_items` |
+| Account Vault | `accounts`, `account_fields` (field theo loại; multi/link là jsonb), `account_auth`, `account_codes`, `account_logs` (append-only), `account_tags` — **v5.2.0, plaintext, chưa mã hoá** |
+| Tags | `tags` + 5 junction + VIEW `tagged_items` |
 | Focus | `focus_sessions` |
 | Gamification | `xp_logs` |
 | Account | `profiles` |
@@ -159,6 +169,7 @@ của quy tắc "component không gọi supabase"). Gỡ trang này cũng gỡ l
 | `/team` | Inline redirect → `/tracker` | — | — |
 | `/friends` | Inline redirect → `/tracker` | — | — |
 | `/incubator` | IncubatorPage | Required | Lazy |
+| `/accounts` | AccountsPage (v5.2.0 — vault Keyplate, 2 pane) | Required | Lazy |
 | `/settings` | SettingsPage | Required | Lazy |
 
 
