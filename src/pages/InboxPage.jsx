@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
 import QuoteWidget from '../components/QuoteWidget';
 import CustomSelect from '../components/CustomSelect';
+import AppIcon from '../components/AppIcon';
 import { parseCurrencyInput } from '../utils/currencyUtils';
 import '../styles/inbox.css';
 import '../styles/collect.css';
@@ -252,7 +253,7 @@ export default function InboxPage() {
     return (
       <div className="inbox-page">
         <div className="inbox-page__empty">
-          🔐 Đăng nhập để sử dụng Inbox
+          <AppIcon name="lock" size={18} /> Đăng nhập để sử dụng Inbox
         </div>
       </div>
     );
@@ -264,7 +265,7 @@ export default function InboxPage() {
       <div className="inbox-page">
       <div className="inbox-page__header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <h1 className="inbox-page__title">📥 Inbox</h1>
+          <h1 className="inbox-page__title"><AppIcon name="inbox" size={27} weight="duotone" /> Inbox</h1>
           {snoozedCount > 0 && (
             <button
               onClick={handleToggleSnoozed}
@@ -274,7 +275,7 @@ export default function InboxPage() {
                 color: '#eab308', fontWeight: 600, border: 'none', cursor: 'pointer',
               }}
             >
-              🕔 {snoozedCount} snoozed {showSnoozed ? '▲' : '▼'}
+              <AppIcon name="clock" size={13} /> {snoozedCount} snoozed <AppIcon name={showSnoozed ? 'caretDown' : 'caretRight'} size={11} />
             </button>
           )}
           {items.length > 0 && (
@@ -283,7 +284,7 @@ export default function InboxPage() {
               className={`inbox-filter-chip${bulkMode ? ' inbox-filter-chip--active' : ''}`}
               style={{ marginLeft: '0.25rem' }}
             >
-              {bulkMode ? '✕ Thoát' : '☑ Chọn nhiều'}
+              <AppIcon name={bulkMode ? 'x' : 'checkSquare'} size={14} /> {bulkMode ? 'Thoát' : 'Chọn nhiều'}
             </button>
           )}
         </div>
@@ -313,7 +314,7 @@ export default function InboxPage() {
             className="btn btn-primary inbox-quick-add__btn"
             disabled={!quickText.trim()}
           >
-            Thêm
+            <AppIcon name="plus" size={15} /> Thêm
           </button>
         </div>
 
@@ -323,16 +324,16 @@ export default function InboxPage() {
       {items.length > 0 && (
         <div className="inbox-filter-chips">
           {[
-            { key: 'all', label: 'Tất cả', icon: '📥' },
-            { key: 'has_url', label: 'Có URL', icon: '🔗' },
-            { key: 'recent', label: 'Gần đây (7 ngày)', icon: '🗓' },
+            { key: 'all', label: 'Tất cả', icon: 'inbox' },
+            { key: 'has_url', label: 'Có URL', icon: 'link' },
+            { key: 'recent', label: 'Gần đây (7 ngày)', icon: 'calendar' },
           ].map(f => (
             <button
               key={f.key}
               className={`inbox-filter-chip${filter === f.key ? ' inbox-filter-chip--active' : ''}`}
               onClick={() => setFilter(f.key)}
             >
-              {f.icon} {f.label}
+              <AppIcon name={f.icon} size={14} /> {f.label}
             </button>
           ))}
         </div>
@@ -348,7 +349,7 @@ export default function InboxPage() {
           background: 'rgba(234,179,8,0.04)',
         }}>
           <div style={{ padding: '0.6rem 1rem', borderBottom: '1px solid rgba(234,179,8,0.1)', fontSize: '0.78rem', color: '#eab308', fontWeight: 600 }}>
-            🕔 Đang tạm hoãn ({snoozedItems.length})
+            <AppIcon name="clock" size={14} /> Đang tạm hoãn ({snoozedItems.length})
           </div>
           {snoozedItems.length === 0 ? (
             <div style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>Không có item nào đang snooze</div>
@@ -407,7 +408,7 @@ export default function InboxPage() {
 
         return filtered.length === 0 ? (
         <div className="inbox-page__empty-state">
-          <div className="inbox-page__empty-icon">{items.length === 0 ? '📭' : '🔍'}</div>
+          <div className="inbox-page__empty-icon"><AppIcon name={items.length === 0 ? 'inbox' : 'search'} size={34} weight="duotone" /></div>
           <p>{items.length === 0 ? 'Inbox trống — rất tốt!' : `Không có mục nào khớp bộ lọc "${filter === 'has_url' ? 'Có URL' : 'Gần đây'}"`}</p>
           {items.length > 0 && (
             <button className="btn btn-ghost" style={{ marginTop: '0.5rem', fontSize: '0.82rem' }} onClick={() => setFilter('all')}>
@@ -422,7 +423,7 @@ export default function InboxPage() {
         <div className="inbox-items">
           <div className="inbox-items__count">
             {bulkMode && bulkSelected.size > 0 && (
-              <span style={{ color: 'var(--purple-light)', marginRight: '0.5rem' }}>✓ {bulkSelected.size} đã chọn</span>
+              <span style={{ color: 'var(--purple-light)', marginRight: '0.5rem' }}><AppIcon name="check" size={13} /> {bulkSelected.size} đã chọn</span>
             )}
             {filtered.length}{filtered.length !== items.length ? `/${items.length}` : ''} mục chưa phân loại
           </div>
@@ -441,7 +442,7 @@ export default function InboxPage() {
                   }
                 }}
               >
-                {bulkSelected.size >= filtered.length ? '☐ Bỏ chọn tất cả' : '☑ Chọn tất cả'}
+                <AppIcon name={bulkSelected.size >= filtered.length ? 'square' : 'checkSquare'} size={14} /> {bulkSelected.size >= filtered.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
               </button>
               {bulkSelected.size > 0 && (
                 <>
@@ -449,7 +450,7 @@ export default function InboxPage() {
                     className="inbox-bulk-bar__btn inbox-bulk-bar__btn--classify"
                     onClick={() => setBulkClassifyMenu(v => !v)}
                   >
-                    📂 Phân loại ({bulkSelected.size})
+                    <AppIcon name="folder" size={14} /> Phân loại ({bulkSelected.size})
                   </button>
                   <button
                     className="inbox-bulk-bar__btn inbox-bulk-bar__btn--delete"
@@ -462,7 +463,7 @@ export default function InboxPage() {
                       fetchItems({ type: 'inbox' });
                     }}
                   >
-                    🗑 Xóa ({bulkSelected.size})
+                    <AppIcon name="trash" size={14} /> Xóa ({bulkSelected.size})
                   </button>
                 </>
               )}
@@ -472,7 +473,7 @@ export default function InboxPage() {
                     className="kb-type-select"
                     value=""
                     placeholder="-- Chọn phân loại --"
-                    options={TYPES.map(t => ({ value: t.key, label: `${t.emoji} ${t.label}` }))}
+                    options={TYPES.map(t => ({ value: t.key, label: t.label, icon: t.icon }))}
                     onChange={async (newType) => {
                       if (!newType) return;
                       for (const id of bulkSelected) {
@@ -518,7 +519,7 @@ export default function InboxPage() {
                 <div className="inbox-item__title">
                   {item.url ? (
                     <a href={item.url} target="_blank" rel="noopener noreferrer" className="inbox-item__link" onClick={(e) => e.stopPropagation()}>
-                      🔗 {item.title}
+                      <AppIcon name="link" size={13} /> {item.title}
                     </a>
                   ) : (
                     item.title
@@ -547,7 +548,7 @@ export default function InboxPage() {
                       autoFocus
                       value=""
                       placeholder="-- Phân loại nhanh --"
-                      options={TYPES.map(t => ({ value: t.key, label: `${t.emoji} ${t.label}` }))}
+                      options={TYPES.map(t => ({ value: t.key, label: t.label, icon: t.icon }))}
                       onChange={(newType) => {
                         if (newType) handleClassify(item.id, newType);
                       }}
@@ -557,7 +558,7 @@ export default function InboxPage() {
                       style={{ marginLeft: '0.5rem' }}
                       onClick={() => setClassifying(null)}
                     >
-                      ✕ Huỷ
+                      <AppIcon name="x" size={13} /> Huỷ
                     </button>
                   </div>
                 ) : snoozeMenu === item.id ? (
@@ -575,7 +576,7 @@ export default function InboxPage() {
                       className="inbox-item__snooze-option inbox-item__snooze-option--cancel"
                       onClick={() => setSnoozeMenu(null)}
                     >
-                      ✕ Huỷ
+                      <AppIcon name="x" size={13} /> Huỷ
                     </button>
                   </div>
                 ) : (
@@ -586,14 +587,14 @@ export default function InboxPage() {
                       onClick={() => handleQuickDone(item)}
                       title="Làm xong luôn"
                     >
-                      ✓ Xong
+                      <AppIcon name="check" size={14} /> Xong
                     </button>
                     <button
                       className="inbox-item__action-btn"
                       onClick={() => handleToTask(item)}
                       title="Chuyển thành Task"
                     >
-                      ⚡ Task
+                      <AppIcon name="pushPin" size={14} /> Task
                     </button>
                     <button
                       className="inbox-item__action-btn inbox-item__action-btn--delete"
@@ -601,7 +602,7 @@ export default function InboxPage() {
                       title="Xóa"
                       style={{ color: '#ef4444' }}
                     >
-                      🗑
+                      <AppIcon name="trash" size={14} />
                     </button>
 
                     {/* Overflow menu trigger */}
@@ -611,18 +612,18 @@ export default function InboxPage() {
                         onClick={() => setOverflowMenu(overflowMenu === item.id ? null : item.id)}
                         title="Thêm hành động"
                       >
-                        ···
+                        <AppIcon name="dots" size={17} />
                       </button>
                       {overflowMenu === item.id && (
                         <div className="inbox-overflow-menu">
                           <button className="inbox-overflow-item" onClick={() => { setClassifying(item.id); setOverflowMenu(null); }}>
-                            📂 Phân loại
+                            <AppIcon name="folder" size={14} /> Phân loại
                           </button>
                           <button className="inbox-overflow-item" onClick={() => { handleToExpense(item); setOverflowMenu(null); }}>
-                            💸 Giao dịch
+                            <AppIcon name="handCoins" size={14} /> Giao dịch
                           </button>
                           <button className="inbox-overflow-item" onClick={() => { handleToRule(item); setOverflowMenu(null); }}>
-                            🔁 Hóa đơn
+                            <AppIcon name="refresh" size={14} /> Hóa đơn
                           </button>
                           <button className="inbox-overflow-item" onClick={async () => {
                             await addIntention({ 
@@ -633,10 +634,10 @@ export default function InboxPage() {
                             fetchItems({ type: 'inbox' });
                             setOverflowMenu(null);
                           }}>
-                            🥚 Ấp Trứng
+                            <AppIcon name="egg" size={14} /> Ấp Trứng
                           </button>
                           <button className="inbox-overflow-item" onClick={() => { setSnoozeMenu(item.id); setOverflowMenu(null); }}>
-                            🕔 Snooze
+                            <AppIcon name="clock" size={14} /> Snooze
                           </button>
                         </div>
                       )}
@@ -657,13 +658,13 @@ export default function InboxPage() {
         <div className="kb-reader">
           {/* Header bar */}
           <div className="kb-reader__bar">
-            <button className="kb-back-btn" onClick={closeDetail}>← Quay lại</button>
+            <button className="kb-back-btn" onClick={closeDetail}><AppIcon name="back" size={15} /> Quay lại</button>
             <div className="kb-reader__actions">
               {detailSaving && <span className="inbox-detail__saving">Đang lưu...</span>}
-              <button className="btn btn-ghost kb-action-btn" onClick={handleDetailQuickDone} title="Làm xong luôn" style={{ color: 'var(--green)' }}>✓ Xong</button>
-              <button className="btn btn-ghost kb-action-btn" onClick={handleDetailToTask} title="Chuyển thành Task">⚡ Task</button>
-              <button className="btn btn-ghost kb-action-btn" onClick={() => setIsEditing(true)}>✏️ Sửa</button>
-              <button className="btn btn-ghost kb-action-btn kb-action-btn--danger" onClick={handleDetailDelete} style={{ color: '#ef4444' }}>🗑 Xóa</button>
+              <button className="btn btn-ghost kb-action-btn" onClick={handleDetailQuickDone} title="Làm xong luôn" style={{ color: 'var(--green)' }}><AppIcon name="check" size={15} /> Xong</button>
+              <button className="btn btn-ghost kb-action-btn" onClick={handleDetailToTask} title="Chuyển thành Task"><AppIcon name="pushPin" size={15} /> Task</button>
+              <button className="btn btn-ghost kb-action-btn" onClick={() => setIsEditing(true)}><AppIcon name="pencil" size={15} /> Sửa</button>
+              <button className="btn btn-ghost kb-action-btn kb-action-btn--danger" onClick={handleDetailDelete} style={{ color: '#ef4444' }}><AppIcon name="trash" size={15} /> Xóa</button>
             </div>
           </div>
 
@@ -671,7 +672,7 @@ export default function InboxPage() {
             <div className="kb-reader__main">
               {/* Hero */}
               <div className="kb-reader__hero">
-                <span className="kb-reader__emoji" style={{ '--type-color': '#8b5cf6' }}>📥</span>
+                <span className="kb-reader__emoji" style={{ '--type-color': '#8b5cf6' }}><AppIcon name="inbox" size={32} weight="duotone" /></span>
                 <h1 className="kb-reader__title" title={detailItem.title}>{detailItem.title}</h1>
                 <div className="kb-reader__meta">
                   <span style={{ color: '#8b5cf6' }}>Inbox</span>
@@ -682,8 +683,8 @@ export default function InboxPage() {
                     className="kb-type-select"
                     style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}
                     value=""
-                    placeholder="📂 Phân loại"
-                    options={TYPES.map(t => ({ value: t.key, label: `${t.emoji} ${t.label}` }))}
+                    placeholder="Phân loại"
+                    options={TYPES.map(t => ({ value: t.key, label: t.label, icon: t.icon }))}
                     onChange={(newType) => {
                       if (newType) handleDetailClassify(newType);
                     }}
@@ -691,7 +692,7 @@ export default function InboxPage() {
                 </div>
                 {detailItem.url && (
                   <a href={detailItem.url} target="_blank" rel="noopener noreferrer" className="kb-reader__source">
-                    🔗 Xem nguồn: {detailItem.url}
+                    <AppIcon name="external" size={14} /> Xem nguồn: {detailItem.url}
                   </a>
                 )}
               </div>
@@ -703,7 +704,7 @@ export default function InboxPage() {
                 {detailItem.body ? (
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{detailItem.body}</ReactMarkdown>
                 ) : (
-                  <p className="kb-prose__empty">Chưa có nội dung. Nhấn ✏️ Sửa để thêm mô tả.</p>
+                  <p className="kb-prose__empty">Chưa có nội dung. Chọn Sửa để thêm mô tả.</p>
                 )}
               </div>
             </div>
@@ -718,13 +719,13 @@ export default function InboxPage() {
         <div className="kb-editor">
           {/* Top bar */}
           <div className="kb-editor__bar">
-            <button className="kb-back-btn" onClick={() => setIsEditing(false)}>← Hủy</button>
+            <button className="kb-back-btn" onClick={() => setIsEditing(false)}><AppIcon name="back" size={15} /> Hủy</button>
             <button
               className="btn btn-primary kb-save-btn"
               onClick={handleDetailSave}
               disabled={!detailTitle.trim() || detailSaving}
             >
-              {detailSaving ? '⏳ Đang lưu...' : '💾 Lưu'}
+              <AppIcon name={detailSaving ? 'clock' : 'save'} size={15} /> {detailSaving ? 'Đang lưu...' : 'Lưu'}
             </button>
           </div>
 
@@ -744,7 +745,7 @@ export default function InboxPage() {
             <div className="kb-split">
               <div className="kb-split__panes">
                 <div className="kb-split__pane kb-split__pane--write">
-                  <div className="kb-split__label">✍️ Viết</div>
+                  <div className="kb-split__label"><AppIcon name="pencil" size={14} /> Viết</div>
                   <textarea
                     className="kb-split__textarea"
                     value={detailBody}
@@ -754,7 +755,7 @@ export default function InboxPage() {
                   />
                 </div>
                 <div className="kb-split__pane kb-split__pane--preview">
-                  <div className="kb-split__label">👁 Preview</div>
+                  <div className="kb-split__label"><AppIcon name="eye" size={14} /> Preview</div>
                   <div className="kb-prose kb-split__preview">
                     {detailBody ? (
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{detailBody}</ReactMarkdown>

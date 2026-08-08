@@ -1,12 +1,12 @@
 # DESIGN — Finance v2 (module chi tiêu, thiết kế Nocturne)
 
-**Trạng thái:** 📝 Thiết kế — chờ user duyệt, **CHƯA code**.
+**Trạng thái:** ✅ Đã triển khai code + migration clean-rebuild; chờ user chạy `data/migration_v6.0.0_finance.sql` trên Supabase.
 **Nguồn:** handoff `_ds_bundle` (Chi tieu.dc.html + README) — thay HẲN module Finance cũ.
 **Version dự kiến:** v6.0.0 (MAJOR — đổi schema breaking, drop 2 bảng cũ, kiến trúc mới).
 
 > File này là hợp đồng thiết kế. Code bám đúng đây; lệch phải sửa file này trước.
-> Theo pattern Vault (`DESIGN_ACCOUNT_VAULT.md` + `migration_v5.2.0_vault.sql`): design doc →
-> duyệt → migration idempotent + RLS → logic thuần có test → hook dual-mode → page → css.
+> Thứ tự triển khai đã áp dụng: hợp đồng thiết kế → migration clean-rebuild + RLS/RPC → logic
+> thuần có test → hook auth-gated → page → CSS → kiểm tra desktop/mobile.
 
 ---
 
@@ -37,22 +37,25 @@ Chip ngân sách trên header module luôn nói về **tháng đang chạy**, k�
 
 ---
 
-## 2. Schema DB (migration `data/migration_v6.0.0_finance.sql`, idempotent)
+## 2. Schema DB (migration `data/migration_v6.0.0_finance.sql`, clean rebuild)
 
 Convention bám repo: snake_case, `user_id` FK `auth.users ON DELETE CASCADE`, RLS bật + policy
-`user_id = auth.uid()`, trigger `update_updated_at()` (đã có sẵn), CHECK **chỉ** trên giá trị code
-phân nhánh theo (`type`, `kind`, `state`…), KHÔNG CHECK trên giá trị chỉ tra JSON lấy nhãn
-(`category_id`, `subcategory_id`). Prefix `finance_` để tách namespace.
+`user_id = auth.uid()`, trigger `update_updated_at()` (đã có sẵn), CHECK trên giá trị code phân
+nhánh theo (`type`, `kind`, `state`…). Parent category là tập đóng đúng handoff nên budget/override
+được CHECK theo 11 nhóm chi + 7 nhóm thu; `subcategory_id` vẫn giữ key lịch sử tự do.
 
 ### 2.0 DROP module cũ (đầu file migration)
 ```sql
 DROP VIEW IF EXISTS tagged_items;               -- sẽ tạo lại ở cuối, bỏ nhánh expense/subscription
+DROP TABLE IF EXISTS finance_transactions CASCADE;
+-- ... drop toàn bộ finance_* để schema không thể bị sót cột/ràng buộc từ bản cũ
 DROP TABLE IF EXISTS expense_tags CASCADE;
 DROP TABLE IF EXISTS subscription_tags CASCADE;
 DROP TABLE IF EXISTS expenses CASCADE;
 DROP TABLE IF EXISTS subscriptions CASCADE;
 ```
-> ⚠️ **Mất dữ liệu thật vĩnh viễn** — đúng lựa chọn "drop sạch" của user. Không có nhánh migrate.
+> ⚠️ **Mất dữ liệu thật vĩnh viễn** — đúng lựa chọn "drop sạch" của user. Toàn file nằm trong
+> `BEGIN/COMMIT`, nhưng không có nhánh chuyển dữ liệu cũ.
 
 ### 2.1 `finance_transactions` — bảng DUY NHẤT
 ```
@@ -62,26 +65,34 @@ occurred_at       DATE     NOT NULL           -- khoá lọc kỳ
 type              TEXT     CHECK (type IN ('expense','income','saving'))
 category_id       TEXT                        -- key trong finance-categories.json
 subcategory_id    TEXT
-source_card_id    UUID  NULL → finance_cards ON DELETE SET NULL   -- NULL = tiền mặt/có sẵn
+source_card_id    UUID  NULL → finance_cards ON DELETE RESTRICT
+source_kind       TEXT GENERATED ('cash'|'card')
 excluded          BOOLEAN  DEFAULT false       -- trả gốc vay + trả sao kê thẻ: ngoài mọi tổng chi
 necessity         TEXT NULL CHECK (necessity IN ('must','need','want'))
 is_fixed          BOOLEAN  DEFAULT false       -- thuộc "phần cố định" (hóa đơn+đăng ký+lãi)
 note, merchant    TEXT
-items             JSONB    DEFAULT '[]'         -- line items
+items, attachments JSONB   DEFAULT '[]'
 -- FK quy tắc & liên kết:
 shortcut_id       UUID NULL → finance_shortcuts ON DELETE SET NULL
-bill_id           UUID NULL → finance_bills     ON DELETE SET NULL
+bill_id           UUID NULL → finance_bills     ON DELETE RESTRICT
 bill_period       TEXT NULL                    -- chặn trả 2 lần cùng kỳ (unique với bill_id)
-loan_id           UUID NULL → finance_loans     ON DELETE SET NULL
-card_id           UUID NULL → finance_cards     ON DELETE SET NULL   -- thẻ đang trả sao kê
-saving_goal_id    UUID NULL → finance_saving_goals ON DELETE SET NULL
+income_rule_id + income_period                 -- UNIQUE theo kỳ nhận
+loan_id + loan_period + loan_part              -- interest|principal, UNIQUE từng phần/kỳ
+card_id + card_period                          -- thẻ + kỳ sao kê đang trả
+saving_goal_id    UUID NULL → finance_saving_goals ON DELETE RESTRICT
 saving_dir        TEXT NULL CHECK (saving_dir IN ('in','out'))
 inbox_item_id     UUID NULL → collections       ON DELETE SET NULL   -- LIÊN KẾT INBOX
 task_id           UUID NULL → user_tasks        ON DELETE SET NULL   -- LIÊN KẾT TASK
 created_at, updated_at
 INDEX (user_id, occurred_at DESC)
 UNIQUE (bill_id, bill_period) WHERE bill_id IS NOT NULL   -- quy tắc nghiệp vụ #3
+UNIQUE (income_rule_id, income_period) WHERE income_rule_id IS NOT NULL
+UNIQUE (loan_id, loan_period, loan_part) WHERE loan_id IS NOT NULL
 ```
+
+`bill_period`, `income_period` và `loan_period` là **kỳ nghĩa vụ**, không suy từ
+`occurred_at`. Ngày giao dịch là ngày tiền thực sự vào/ra do người dùng chọn; các RPC
+nhận kỳ đang chạy riêng để một khoản trả muộn vẫn đóng đúng kỳ và không làm lệch báo cáo.
 
 ### 2.2 `finance_bills` — Phải trả (segment `out`)
 ```
@@ -93,12 +104,13 @@ amount_mode      TEXT CHECK (amount_mode IN ('fixed','ask'))
 amount           BIGINT NULL    -- null khi mode='ask'
 term_total       INT NULL       -- trả góp
 term_done        INT DEFAULT 0
+skipped_periods  JSONB DEFAULT '[]'   -- bỏ qua bền vững theo YYYY-MM
 enabled          BOOLEAN DEFAULT true
 finished_at      TIMESTAMPTZ NULL
 ```
 Lịch sử trả = `SELECT * FROM finance_transactions WHERE bill_id = ?` — KHÔNG bảng lịch sử riêng.
-Trả góp: mỗi kỳ ghi xong `term_done++`; `term_done == term_total` → `finished_at = now()`, rời
-danh sách chính, gom vào dòng "đã kết thúc", không bật lại.
+Trả góp: trigger đếm lại transaction theo `bill_id` để suy `term_done`; đủ `term_total` thì đặt
+`finished_at`, rời danh sách chính, gom vào dòng "đã kết thúc", không bật lại.
 
 ### 2.3 `finance_loans` — Khoản vay (segment `loan`)
 ```
@@ -112,7 +124,8 @@ pay_day     INT
 opened_at   DATE
 due_at      DATE             -- ngày tất toán gốc (interest)
 ```
-**Lãi = chi tiêu; gốc KHÔNG.** Giao dịch trả gốc mang `excluded = true`.
+**Lãi = chi tiêu; gốc KHÔNG.** Giao dịch vay mang `loan_period` + `loan_part`; trigger suy lại
+`done` từ sổ giao dịch. Gốc mang `excluded = true` và không được vượt dư gốc.
 
 ### 2.4 `finance_cards` — Thẻ tín dụng (segment `card`)
 ```
@@ -121,31 +134,37 @@ credit_limit BIGINT
 statement_day INT, due_day INT, grace INT   -- chốt ≠ đến hạn; khoảng giữa = thời gian float
 annual_fee BIGINT, cash_advance_fee BIGINT, min_pct NUMERIC
 ```
-Trả sao kê = giao dịch `excluded = true`, `card_id = ?` — không phải chi mới (đã tính hôm quẹt).
+Trả sao kê = giao dịch `excluded = true`, `card_id` + `card_period` — không phải chi mới. RPC tính
+kỳ `(chốt trước, chốt hiện tại]`, trừ các lần đã trả và chặn trả vượt phần còn lại.
 
 ### 2.5 `finance_saving_goals` — Quỹ (KHÔNG có cột số dư)
 ```
 name TEXT, goal BIGINT
 lock_mode  TEXT CHECK (lock_mode IN ('soft','term','external'))   -- mềm/kỳ hạn/ngoài app
-lock_until DATE NULL
+lock_until DATE NULL                 -- bắt buộc với term, NULL với soft/external
 in_wallet  BOOLEAN DEFAULT true
-auto_deposit JSONB NULL
+auto_deposit JSONB NULL              -- {amount: số nguyên dương, day: 1..31}
+withdrawal_request JSONB NULL         -- {requested_at, available_at=+48h, amount, task_id?}
 break_count INT DEFAULT 0
 closed_at  TIMESTAMPTZ NULL
 ```
 Số dư quỹ = `SUM(finance_deposits.amount) WHERE fund_id = ?` (tính runtime, không lưu).
+Với khóa kỳ hạn, yêu cầu rút sớm chỉ tồn tại trước `lock_until` và chờ đúng 48 giờ; sau ngày mở khóa
+quỹ vận hành như khóa mềm. Mọi lần rút đều tăng `break_count` và xóa yêu cầu đang chờ.
 
 ### 2.6 `finance_deposits` — Nơi gửi (sổ thật của 1 quỹ)
 ```
 fund_id → finance_saving_goals ON DELETE CASCADE
 name, bank, account_no TEXT
 amount BIGINT, rate NUMERIC, term INT
-opened_at DATE, matures_at DATE   -- đếm ngược, vàng khi ≤45 ngày
+opened_at DATE, matures_at DATE GENERATED ALWAYS AS (opened_at + term tháng), closed_on DATE
 ```
+`matures_at` do DB tự tính theo ngày mở và kỳ hạn, UI không cho nhập tay; ngày cuối tháng được PostgreSQL
+xử lý theo lịch thực tế.
 
 ### 2.7 `finance_income_rules` — Thu định kỳ (segment `in`)
 ```
-name, source TEXT
+name, source TEXT, category_id TEXT
 rrule JSONB, due_day INT, amount BIGINT
 received_periods JSONB DEFAULT '[]'   -- các kỳ đã nhận (dedup)
 enabled BOOLEAN DEFAULT true
@@ -167,7 +186,8 @@ user_id, category_id TEXT
 limit_amount BIGINT
 UNIQUE (user_id, category_id)        -- hạn mức đứng (không theo từng tháng)
 ```
-Tổng hạn mức = mẫu số duy nhất của mọi tỉ lệ. 3 mức 50/30/20 = tổng hạn mức theo `necessity`.
+Tổng hạn mức = mẫu số duy nhất của mọi tỉ lệ. Hạn mức ba mức luôn cố định bằng 50% / 30% / 20%
+của tổng hạn mức; chi thực tế được gom theo `necessity` để so với ba ngưỡng đó.
 
 ### 2.10 Junction `finance_transaction_tags` + VIEW
 ```sql
@@ -176,8 +196,18 @@ finance_transaction_tags (transaction_id → finance_transactions, tag_id → ta
 UNION ALL SELECT tag_id, 'finance'::text, transaction_id FROM finance_transaction_tags
 ```
 
-**9 bảng + 1 junction.** RLS bật hết. Bảng con (bills/loans/cards/goals/deposits/income/shortcuts/
-budgets/transactions/junction) policy `FOR ALL USING (user_id = auth.uid())`; junction kiểm
+### 2.11 `finance_category_overrides` — taxonomy riêng theo người dùng
+```sql
+user_id, category_id TEXT, kind TEXT
+label, color, icon, hidden, necessity, nature, subs JSONB
+UNIQUE (user_id, category_id)
+```
+JSON vẫn là taxonomy mặc định và giữ key ổn định cho giao dịch. Bảng override chỉ lưu phần người
+dùng thay đổi: tên, màu, Phosphor icon, ẩn/hiện, mức cần thiết, tính chất và danh mục con. Không có
+nút hoặc contract DB để tạo parent group mới.
+
+**10 bảng chính + 1 junction (11 bảng Finance).** RLS bật hết. Bảng con (transactions/bills/loans/cards/goals/deposits/
+income/shortcuts/budgets/category_overrides/junction) policy `FOR ALL USING (user_id = auth.uid())`; junction kiểm
 ownership 2 phía như `account_tags`. File có block VERIFY + 3 phép thử phải-báo-lỗi như Vault.
 
 ---
@@ -187,19 +217,19 @@ ownership 2 phía như `account_tags`. File có block VERIFY + 3 phép thử ph�
 Một file cho cả feature:
 ```json
 {
-  "expenseGroups": [ { "key":"food","label":"Ăn uống","icon":"ph-fork-knife","color":"#e2a94e",
-      "subs":[ {"key":"food.rice","label":"Cơm","necessity":"need"}, ... ] }, ... ],   // 11 nhóm
-  "incomeGroups":  [ ... ],                                                             // 7 nhóm RIÊNG
-  "necessityByCat": { "food":"need", ... },      // NEED_BY_CAT
-  "necessityBySub": { "transport.parking":"must", "transport.drink":"want", ... },      // NEED_BY_SUB đè
-  "shortcutSeed":  [ {"name":"Cà phê","category_id":"food","subcategory_id":"food.coffee"}, ... ]
+  "expenseGroups": [ { "key":"food","label":"Ăn uống","icon":"bowlFood","color":"#e2a94e",
+      "subs":[ {"key":"food.grocery","label":"Đi chợ / siêu thị","necessity":"need"}, ... ] }, ... ],
+  "incomeGroups":  [ {"key":"luong","label":"Lương", ...}, ... ],                 // 7 nhóm RIÊNG
+  "necessityByCat": { "food":"need", ... },                                         // mặc định nhóm
+  "shortcutSeed":  [ {"name":"Nước / quán","category_id":"food","subcategory_id":"food.drinks"}, ... ]
 }
 ```
 Màu 11 nhóm chi = palette tách biệt (donut đọc được), lấy đúng hex handoff §Design tokens.
-`deriveNecessity(cat, sub)` = `necessityBySub[sub] ?? necessityByCat[cat]`.
+`deriveNecessity(cat, sub)` đọc `necessity` ngay trên subcategory trước, rồi mới fallback về
+`necessityByCat[cat]`.
 
-> **Sửa danh mục (tên/màu/subcat/mức) từ UI → PHASE SAU.** v1 danh mục seed từ JSON (read-only).
-> Tab "Danh mục" hiển thị + cho sửa `finance_budgets` (hạn mức), chưa sửa được cấu trúc danh mục.
+> JSON là seed mặc định; UI ghi phần chỉnh sửa vào `finance_category_overrides`. Key đã có giao dịch
+> không đổi, nên đổi nhãn/màu/icon không làm hỏng báo cáo cũ.
 > `NL_DICT` (15 regex đoán danh mục) là **hằng số logic**, nằm trong `financeLogic.js` (không JSON).
 
 ---
@@ -211,11 +241,11 @@ Không React, không Supabase — testable bằng `node:assert` (bám CLAUDE.md 
 
 | Hàm | Việc |
 |---|---|
-| `periodTotals(txs, {from,to})` | **Nơi tính tổng DUY NHẤT.** Bỏ `excluded`; trả `{total, byCategory, byNecessity, count, days}`. `income`/`saving` tách riêng, không trừ vào chi. |
+| `periodTotals(txs, {from,to}, {savingAsExpense})` | **Nơi tính tổng DUY NHẤT.** Bỏ `excluded`; trả `{total, byCategory, byNecessity, count, days}`. `income` tách riêng. `saving` mặc định tách riêng; khi bật tuỳ chọn chỉ tiền gửi vào quỹ được tính như chi bắt buộc, tiền rút không bị tính lại. |
 | `comparePeriods(cur, prev, mode)` | 3 nhánh: tháng đang chạy → cùng cửa sổ ngày; 2 tháng trọn → so tổng; năm chưa trọn → so mức/ngày. |
-| `deriveNecessity(cat, sub, maps)` | `necessityBySub ?? necessityByCat`. |
+| `deriveNecessity(cat, sub, cats)` | `subcategory.necessity ?? necessityByCat[cat]`. |
 | `parseNaturalLanguage(text)` | `"cà phê 35k"` → `{amount, categoryId, subId}` qua `NL_DICT` + `parseCurrencyInput` (tái dùng). |
-| `budgetBreakdown(txs, budgets)` | 50/30/20 trên tổng hạn mức theo `necessity`; "cắt được X". |
+| `budgetBreakdown(totals, budgets)` | Ngưỡng cố định 50/30/20 của tổng hạn mức; so chi thực tế theo `necessity`; "cắt được X". |
 | `cardFloat(card, today, blendedRate)` | ngày chốt→đến hạn, số ngày float còn lại, lãi ước kiếm từ float. |
 | `loanSchedule(loan)` | `interest` (chỉ lãi, gốc cuối kỳ) vs `amort` (đều gốc+lãi). |
 | `fundBalance(deposits)` | `SUM(amount)` + lãi suất bình quân gia quyền. |
@@ -225,59 +255,61 @@ Không React, không Supabase — testable bằng `node:assert` (bám CLAUDE.md 
 
 ---
 
-## 5. Hooks (dual-mode Supabase-first, guest = in-memory)
+## 5. Hook dữ liệu hợp nhất (Supabase, auth-gated)
 
-`src/hooks/useTransactions.js` (CRUD + fetch theo kỳ), `useBills.js`, `useLoans.js`, `useCards.js`,
-`useSavings.js` (goals + deposits), `useIncomeRules.js`, `useShortcuts.js`, `useBudgets.js`. Mỗi
-hook theo pattern `use<Entity>` chuẩn RULES §Hook Naming, optimistic + rollback, `fetch/add/update/
-delete<Entity>`. "Thanh toán 1 nghĩa vụ" = 1 hàm `payBill/payLoan/payCard/receiveIncome` → gọi
-`addTransaction` với FK + `excluded` đúng, rồi cập nhật `term_done`/`received_periods`.
+`src/hooks/useFinance.js` tải và quản lý cả 10 bảng vì hầu hết màn hình cần nhiều tập dữ liệu cùng
+lúc. CRUD đơn bảng đi thẳng Supabase; mọi lệnh chạm nhiều bảng gọi 7 RPC DB nguyên khối:
+`payBill`, `skipBillPeriod`, `receiveIncome`, `recordLoanPayment`, `payCardStatement`,
+`requestSavingWithdrawal`, `moveSaving`. Trigger suy `term_done`/`received_periods`/`loan.done` từ
+giao dịch liên kết. Guest chỉ thấy cổng đăng nhập, không có graph dữ liệu in-memory giả.
 
 ---
 
-## 6. UI — module shell + **child sidebar** + 6 màn
+## 6. UI — module shell + **child bar trong sidebar chính** + 5 màn
 
-Route `/finance` giữ nguyên (1 route). Trong đó là `FinancePage` = **module shell**:
+Route `/finance/:screen?` dùng URL làm nguồn điều hướng. `FinancePage` là **module shell**:
 
 ```
-┌ sidebar chính app (232px, đã có) ┬ CHILD SIDEBAR finance (208px) ┬ nội dung + header sticky ┐
-│  Inbox / Nhiệm vụ / … / Finance◄ │  Tổng quan                     │  [header: tên màn +      │
-│                                   │  Nhập nhanh   (phím N)         │   chip ngân sách tháng]  │
-│                                   │  Giao dịch                     │  ...                     │
-│                                   │  Danh mục                      │                          │
-│                                   │  Hóa đơn                       │                          │
-│                                   │  Phân tích                     │                          │
+┌ sidebar chính app (232px)          ┬ nội dung + header sticky                         ┐
+│  Inbox / Nhiệm vụ / …              │  [header: tên màn + chip ngân sách tháng]        │
+│  Finance                         ◄  │  ...                                             │
+│    ├ Tổng quan                      │                                                  │
+│    ├ Nhập nhanh (phím N)            │                                                  │
+│    ├ Giao dịch                      │                                                  │
+│    ├ Danh mục                       │                                                  │
+│    └ Hóa đơn                        │                                                  │
 ```
 
-`screen` = state string 6 giá trị `overview|add|list|cats|recurring|analyze`. Sub-nav:
-`recurring` → segment `out|in|loan|card`; `analyze` → tab `budget|stats`; `cats` → tab `cats|fields`.
+Mục Finance xổ 5 child bar trực tiếp bên dưới trong sidebar chính. `screen` = URL param với 5 giá trị
+`overview|add|list|cats|recurring`. Tổng quan có tab nội bộ `overview|budget|stats` trên cùng một
+route; `recurring` có segment `out|in|loan|card`; `cats` có tab `cats|fields`.
 `< 760px`: child sidebar → **hàng sub-tab ngang** (scroll ngang) ngay dưới header; sidebar chính →
 bottom-tabs (đã có). Điều hướng chéo giữ qua 1 context nhỏ `FinanceNav` (setScreen + params):
 
 - Cảnh báo thẻ tới hạn (Tổng quan) → `recurring` segment `card`
-- Bấm danh mục ở legend donut → `analyze/stats` đã chọn sẵn nhóm
-- Chip ngân sách header → `analyze/budget`
+- Bấm danh mục ở legend donut → `overview?view=stats` đã chọn sẵn nhóm
+- Chip ngân sách header → `overview?view=budget`
 - Hộp "Cần bạn ghi" (Nhập nhanh) → ghi xong → giao dịch bình thường
 
-**6 màn** (chi tiết bám handoff §Từng màn — không lặp lại đây, tóm điểm phải đúng):
-1. **Tổng quan** — cảnh báo thẻ (nếu có), bộ lọc kỳ (15 mục, ‹ ›, **chung state với Giao dịch**),
+**5 màn** (chi tiết bám handoff §Từng màn — không lặp lại đây, tóm điểm phải đúng):
+1. **Tổng quan** — ba tab Tổng quan / Ngân sách / Thống kê. Tab Tổng quan có cảnh báo thẻ (nếu có), picker tháng/năm (chọn tháng bất kỳ, Cả năm, Tất cả,
+   ‹ › kỳ trước/sau, **chung state với Giao dịch**),
    4 chỉ số, donut + legend bấm được + khối "Bắt buộc đến đâu" (thanh 3 màu), nhịp chi (đổi đơn vị
-   theo kỳ), khoản lớn nhất, quỹ tiết kiệm tóm tắt, Inbox gợi ý.
+   theo kỳ), khoản lớn nhất và quỹ tiết kiệm tóm tắt. Tab Ngân sách ghim tháng chạy, có hạn mức,
+   quỹ và nơi gửi; tab Thống kê có bộ chọn 3/6/12 tháng và bốn chế độ báo cáo. Không có hàng chờ
+   duyệt Inbox tự động.
 2. **Nhập nhanh** — ô NL (`NL_DICT`), 5 shortcut (không chốt tiền, chip `recent_amounts`), form;
-   hộp "Cần bạn ghi" (hóa đơn `ask` tới hạn **+ mục Inbox chưa xử lý**); bắt buộc chọn nguồn tiền;
+   hộp "Cần bạn ghi" chỉ gồm hóa đơn `ask` tới hạn; bắt buộc chọn nguồn tiền;
    segmented Chi/Thu/Để dành; cảnh báo trùng quy tắc định kỳ.
 3. **Giao dịch** — bộ lọc kỳ chung + tìm + chip lọc; nhóm theo ngày thật (thứ trong tuần đúng,
    "Hôm nay/Hôm qua"); nhãn `auto` cho khoản do quy tắc sinh; **cột chi tiết 340px** desktop (ẩn
    hẳn <760px). Chi tiết giao dịch có **ô gắn Task** + link Inbox nguồn (xem §7).
-4. **Danh mục** — tab Danh mục (hiển thị 11 nhóm chi + 7 nhóm thu + sửa **hạn mức**), tab Schema
-   (trang tài liệu, có thể rút gọn).
+4. **Danh mục** — 11 nhóm chi + 7 nhóm thu; parent là tập đóng. Bút sửa mở editor ngay trong card
+   (không modal), đẩy hàng dưới xuống; cho sửa nhãn, màu, Phosphor icon, ẩn/hiện, mức cần thiết,
+   tính chất và danh mục con. Tab Schema mô tả đủ bảng, FK và nguyên tắc tính tổng.
 5. **Hóa đơn** — 4 segment 1 hàng, nút Thêm cùng hàng (nhãn đổi theo segment), form mở ngay dưới.
    `out` fixed/ask + trả góp kết thúc; `in` không quá hạn; `loan` interest/amort (gốc `excluded`);
    `card` chốt≠đến hạn + float + lãi ước + cảnh báo phí.
-6. **Phân tích** — tab Ngân sách (ghim tháng chạy, thẻ gradient, vòng tiến độ, "nên tiêu mỗi ngày",
-   hạn mức nhóm, 3 mức, quỹ + nơi gửi); tab Thống kê (bộ chọn 3/6/12, 4 chế độ danh mục/so sánh/
-   hóa đơn/thẻ).
-
 ---
 
 ## 7. Liên kết Task + Inbox (yêu cầu riêng của user)
@@ -295,7 +327,8 @@ bottom-tabs (đã có). Điều hướng chéo giữ qua 1 context nhỏ `Financ
 - **Inbox → Hóa đơn/Quy tắc:** nút ở Inbox → màn `recurring` segment tương ứng, form điền sẵn tên
   (thay cơ chế `sessionStorage lh_inbox_to_sub` cũ, đổi key → `lh_inbox_to_finance` mang `{kind,
   title, inboxId}`).
-- Hộp "Cần bạn ghi" (Nhập nhanh) gộp mục Inbox chưa xử lý (đã chốt).
+- Finance không tự tải, phân loại hoặc hiển thị hàng chờ duyệt Inbox. Chỉ mục được người dùng chủ
+  động gửi từ Inbox mới mở form Finance và tạo liên kết `inbox_item_id`.
 
 > Ghi `activity_logs` khi thanh toán: **không chọn** ở v1 (user không tick) — để trống, có thể thêm
 > sau cùng luồng auto-task.
@@ -317,10 +350,10 @@ User cho **bỏ qua luật DESIGN.md**. Module dùng thẳng token Nocturne củ
 - Type: Inter 400/500, **không đậm hơn 500**, phân cấp bằng cỡ + khoảng trắng (thang px handoff).
 - Radius 6/8/14/20. Elevation = viền: `box-shadow: 0 0 0 1px <border>`, không bóng nặng.
 - Số tiền: `tabular-nums`, `formatVND` (tái dùng `currencyUtils`), hậu tố `₫`.
-- Icons: **Phosphor** `ph ph-*`. → thêm dependency `@phosphor-icons/react` **HOẶC** dùng emoji sẵn
-  có để 0 dependency. `TODO: decision needed` (đề xuất: emoji cho v1, Phosphor phase sau).
+- Icons: **Phosphor** qua `@phosphor-icons/react`; toàn app dùng mapper tập trung `AppIcon` và tên
+  semantic trong JSON, không dùng emoji làm icon UI.
 
-CSS: 1 file `src/styles/finance.css` (viết lại từ đầu).
+CSS: `src/styles/finance.css` cho hệ Nocturne + `src/styles/finance-handoff.css` cho các surface mở rộng.
 
 ---
 
@@ -356,7 +389,7 @@ dịch **ẩn hẳn**; vùng chạm ≥44px; mọi grid track `minmax(0, …)` c
 | `src/hooks/useTags.js` | `ENTITY_CONFIG`: bỏ expense/subscription, thêm `finance: {table:'finance_transaction_tags', fk:'transaction_id'}`; sửa `getTagUsageBreakdown`/`getAllTagUsageCounts` (bỏ 2 query cũ, thêm finance) |
 | `src/pages/SettingsPage.jsx` | `TAG_USAGE_LABELS`: bỏ expense/subscription, thêm `finance:'giao dịch'` |
 | `src/utils/currencyUtils.js` | **Giữ** (tái dùng `parseCurrencyInput`, `formatVND`; `SUBSCRIPTION_CYCLES`/`advanceByCycle` thành nền cho `rrule` bill) |
-| `data/migration_v6.0.0_finance.sql` | Mới: DROP cũ + 9 bảng + junction + view |
+| `data/migration_v6.0.0_finance.sql` | Mới: DROP cũ + 10 bảng chính + junction + view |
 | `data/schema_v4.24.0.sql` | **KHÔNG sửa** — theo đúng precedent Vault: migration layer chồng lên master (master tạo expenses/subscriptions → migration drop). Không retro-edit master cho module mới. |
 
 Kiểm lại lúc code (grep đã thấy nhưng chỉ là comment/không đụng logic): `taskFields.js` (comment
@@ -367,19 +400,19 @@ Kiểm lại lúc code (grep đã thấy nhưng chỉ là comment/không đụng
 ## 12. Docs & versioning (bắt buộc — RULES §8, §13)
 
 Cập nhật: `CHANGELOG.md` (v6.0.0 Added/Changed/Removed), `package.json` version, `docs/FEATURES.md`
-(viết lại §Finance), `docs/DATABASE.md` (9 bảng finance_*, drop expenses/subscriptions),
+(viết lại §Finance), `docs/DATABASE.md` (10 bảng finance_*, drop expenses/subscriptions),
 `docs/ARCHITECTURE.md` (hook/page/component mới), `docs/TASKS.md`, `docs/PLAN.md`.
 
 ---
 
 ## 13. Trình tự code (1 đợt, đúng thứ tự phụ thuộc)
 
-1. `migration_v6.0.0_finance.sql` + cập nhật master schema + `finance-categories.json`.
+1. `migration_v6.0.0_finance.sql` + `finance-categories.json` (không retro-edit master schema).
 2. `financeLogic.js` + test → `npm test` xanh.
 3. Hooks (useTransactions → còn lại) + rewire `useTags`.
 4. Module shell + child sidebar + `FinanceNav` context.
-5. 6 màn theo thứ tự: Tổng quan → Nhập nhanh → Giao dịch (+ liên kết Task/Inbox) → Hóa đơn → Phân
-   tích → Danh mục.
+5. 5 màn theo thứ tự: Tổng quan (gồm Ngân sách + Thống kê) → Nhập nhanh → Giao dịch (+ liên kết
+   Task/Inbox) → Hóa đơn → Danh mục.
 6. `finance.css` (Nocturne) + animation.
 7. Rewire Inbox/SubAlert/Settings; xoá file cũ.
 8. Docs + changelog + version. (User build + test cuối.)
@@ -389,16 +422,11 @@ Cập nhật: `CHANGELOG.md` (v6.0.0 Added/Changed/Removed), `package.json` vers
 ## 14. Ngoài phạm vi v1 (đã chốt hoãn)
 
 - Auto-sinh task nhắc từ nghĩa vụ quá hạn/tới hạn/đáo hạn.
-- Sửa cấu trúc danh mục (tên/màu/subcat/mức cần thiết) từ UI.
 - `activity_logs` khi thanh toán.
-- Tab Schema đầy đủ (bản v1 rút gọn).
-- Phosphor icons nếu chọn emoji cho v1.
 
 ---
 
-## 15. Câu hỏi còn treo
+## 15. Quyết định thiết kế đã chốt
 
-- `TODO: decision needed` — **Icon:** Phosphor (`@phosphor-icons/react`, +1 dep) hay emoji (0 dep)?
-  Đề xuất **emoji v1**.
-- `TODO: decision needed` — Module **dark-only** trong app có light theme: chấp nhận "cockpit" tối
-  cố định? Đề xuất **có** (đúng handoff). Nếu không, map token sang `global.css` (mất fidelity).
+- Icon toàn app dùng Phosphor; emoji chỉ còn là nội dung người dùng nhập, không phải icon điều khiển.
+- Module Finance giữ Nocturne dark-only, scoped trong `.finance-module` để không ảnh hưởng theme app.

@@ -17,6 +17,7 @@
  *   </GenericModal>
  */
 import '../styles/generic-modal.css';
+import AppIcon from './AppIcon';
 
 export default function GenericModal({ onClose, title, maxWidth, children, className = '' }) {
   return (
@@ -29,7 +30,7 @@ export default function GenericModal({ onClose, title, maxWidth, children, class
         {title && (
           <div className="generic-modal__header">
             <span>{title}</span>
-            <button className="generic-modal__close" onClick={onClose}>✕</button>
+            <button className="generic-modal__close" onClick={onClose} aria-label="Đóng"><AppIcon name="x" size={17} /></button>
           </div>
         )}
         {children}

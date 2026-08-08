@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { ShortcutsModal } from './TiptapEditor';
 import AuthModal from './AuthModal';
 import XpBar from './XpBar';
 import SubAlert from './SubAlert';
+import AppIcon from './AppIcon';
 
 import '../styles/navbar.css';
 import '../styles/xpbar.css';
@@ -15,17 +16,33 @@ import '../styles/auth.css';
 /* ── Navigation Structure ──────────────────────────────────── */
 // Primary: always visible (bottom tabs on mobile, sidebar on desktop)
 const PRIMARY_NAV = [
-  { to: '/inbox',     icon: '📥', label: 'Inbox' },
-  { to: '/tasks',     icon: '📌', label: 'Nhiệm Vụ' },
-  { to: '/collect',   icon: '🧠', label: 'Knowledge' },
-  { to: '/finance',   icon: '💰', label: 'Finance' },
-  { to: '/incubator', icon: '🥚', label: 'Incubator' },
+  { to: '/inbox',     icon: 'inbox', label: 'Inbox' },
+  { to: '/tasks',     icon: 'pushPin', label: 'Nhiệm Vụ' },
+  { to: '/collect',   icon: 'brain', label: 'Knowledge' },
+  { to: '/finance',   icon: 'wallet', label: 'Finance' },
+  { to: '/accounts',  icon: 'lock', label: 'Tài Khoản' },
+  { to: '/incubator', icon: 'egg', label: 'Incubator' },
+];
+
+// Bottom tabs giữ 5 workflow thường dùng để vùng chạm không bị co quá nhỏ.
+const MOBILE_PRIMARY_NAV = PRIMARY_NAV.filter(link => link.to !== '/accounts');
+
+const FINANCE_NAV = [
+  { to: '/finance/overview', icon: 'chartDonut', label: 'Tổng quan' },
+  { to: '/finance/add', icon: 'plusCircle', label: 'Nhập nhanh', hint: 'N' },
+  { to: '/finance/list', icon: 'receipt', label: 'Giao dịch' },
+  { to: '/finance/cats', icon: 'tree', label: 'Danh mục' },
+  { to: '/finance/recurring', icon: 'calendar', label: 'Hóa đơn' },
 ];
 
 // Secondary: visible in sidebar, hidden in bottom tabs (dropdown)
 const SECONDARY_NAV = [
-  { to: '/focus',         icon: '⏱',  label: 'Focus' },
-  { to: '/accounts',      icon: '🔐', label: 'Tài Khoản' },
+  { to: '/focus',         icon: 'timer',  label: 'Focus' },
+];
+
+const MOBILE_MORE_NAV = [
+  { to: '/accounts', icon: 'lock', label: 'Tài Khoản' },
+  ...SECONDARY_NAV,
 ];
 
 
@@ -99,21 +116,21 @@ function UserAvatar({ profile, user, onSignOut, onOpenShortcuts, direction = 'do
             onClick={() => { onOpenShortcuts?.(); setOpen(false); }}
             id="nav-shortcuts-menu"
           >
-            ⌨️ Phím Tắt
+            <AppIcon name="keyboard" size={16} /> Phím Tắt
           </button>
           <button
             className="nav-user-menu__item"
             onClick={() => { window.location.href = '/settings'; setOpen(false); }}
             id="nav-settings-menu"
           >
-            ⚙️ Cài Đặt
+            <AppIcon name="gear" size={16} /> Cài Đặt
           </button>
           <button
             className="nav-user-menu__item nav-user-menu__item--danger"
             onClick={() => { onSignOut(); setOpen(false); }}
             id="nav-signout"
           >
-            🚶 Đăng Xuất
+            <AppIcon name="signOut" size={16} /> Đăng Xuất
           </button>
         </div>,
         document.body
@@ -125,12 +142,14 @@ function UserAvatar({ profile, user, onSignOut, onOpenShortcuts, direction = 'do
 
 /* ── Main Navbar Component ─────────────────────────────────── */
 export default function Navbar() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [financeOpen, setFinanceOpen] = useState(() => location.pathname.startsWith('/finance'));
   const [showAuth, setShowAuth] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const { user, profile, signOut, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const location = useLocation();
   const moreRef = useRef(null);
 
   // Close "more" dropdown on route change
@@ -154,19 +173,42 @@ export default function Navbar() {
       {/* ── DESKTOP SIDEBAR (≥769px) ─────────────────────────── */}
       <aside className="sidebar">
         <Link to="/" className="sidebar__logo">
-          <span className="sidebar__logo-icon">⚡</span>
+          <span className="sidebar__logo-icon"><AppIcon name="sparkle" size={21} weight="fill" /></span>
           <span className="sidebar__logo-text">Life Hub</span>
         </Link>
 
         <nav className="sidebar__nav">
           <div className="sidebar__section-label">Chính</div>
-          {PRIMARY_NAV.map(link => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={`sidebar__link${isActive(link.to) ? ' sidebar__link--active' : ''}`}
-            >
-              <span className="sidebar__link-icon">{link.icon}</span>
+          {PRIMARY_NAV.map(link => link.to === '/finance' ? (
+            <div className={`sidebar__nav-group${financeOpen ? ' sidebar__nav-group--open' : ''}`} key={link.to}>
+              <button type="button" className={`sidebar__link${isActive('/finance') ? ' sidebar__link--active' : ''}`}
+                aria-expanded={financeOpen} aria-controls="finance-sidebar-children"
+                onClick={() => {
+                  if (!isActive('/finance')) navigate('/finance/overview');
+                  setFinanceOpen(open => !open);
+                }}>
+                <span className="sidebar__link-icon"><AppIcon name={link.icon} size={19} weight={isActive('/finance') ? 'fill' : 'regular'} /></span>
+                <span className="sidebar__link-label">{link.label}</span>
+                <AppIcon name="caretDown" size={13} className="sidebar__link-caret" />
+              </button>
+              <div id="finance-sidebar-children" className="sidebar__children"
+                aria-label="Điều hướng Finance" aria-hidden={!financeOpen}>
+                <div className="sidebar__children-inner">
+                  {FINANCE_NAV.map(child => (
+                    <Link key={child.to} to={child.to} tabIndex={financeOpen ? undefined : -1}
+                      className={`sidebar__child${location.pathname === child.to || (child.to.endsWith('/overview') && location.pathname === '/finance') ? ' sidebar__child--active' : ''}`}>
+                      <AppIcon name={child.icon} size={15} weight={location.pathname === child.to ? 'fill' : 'regular'} />
+                      <span>{child.label}</span>
+                      {child.hint && <kbd>{child.hint}</kbd>}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Link key={link.to} to={link.to}
+              className={`sidebar__link${isActive(link.to) ? ' sidebar__link--active' : ''}`}>
+              <span className="sidebar__link-icon"><AppIcon name={link.icon} size={19} weight={isActive(link.to) ? 'fill' : 'regular'} /></span>
               <span className="sidebar__link-label">{link.label}</span>
             </Link>
           ))}
@@ -179,7 +221,7 @@ export default function Navbar() {
               to={link.to}
               className={`sidebar__link sidebar__link--secondary${isActive(link.to) ? ' sidebar__link--active' : ''}`}
             >
-              <span className="sidebar__link-icon">{link.icon}</span>
+              <span className="sidebar__link-icon"><AppIcon name={link.icon} size={18} weight={isActive(link.to) ? 'fill' : 'regular'} /></span>
               <span className="sidebar__link-label">{link.label}</span>
             </Link>
           ))}
@@ -199,7 +241,7 @@ export default function Navbar() {
               onClick={() => setShowAuth(true)}
               id="navbar-login"
             >
-              🔑 Đăng Nhập
+              <AppIcon name="key" size={16} /> Đăng Nhập
             </button>
           )}
 
@@ -214,7 +256,7 @@ export default function Navbar() {
               aria-label="Toggle theme"
               id="navbar-theme-toggle"
             >
-              {theme === 'dark' ? '☀️' : '🌙'}
+              <AppIcon name={theme === 'dark' ? 'sun' : 'moon'} size={18} weight="fill" />
             </button>
           </div>
         </div>
@@ -223,7 +265,7 @@ export default function Navbar() {
       {/* ── MOBILE TOP BAR (<769px) ──────────────────────────── */}
       <header className="topbar">
         <Link to="/" className="topbar__logo">
-          <span>⚡</span> Life Hub
+          <AppIcon name="sparkle" size={18} weight="fill" /> Life Hub
         </Link>
 
         <div className="topbar__right">
@@ -232,7 +274,7 @@ export default function Navbar() {
             onClick={toggleTheme}
             aria-label="Toggle theme"
           >
-            {theme === 'dark' ? '☀️' : '🌙'}
+            <AppIcon name={theme === 'dark' ? 'sun' : 'moon'} size={17} weight="fill" />
           </button>
           {user
             ? <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="down" />
@@ -242,7 +284,7 @@ export default function Navbar() {
                 onClick={() => setShowAuth(true)}
                 id="mobile-login"
               >
-                🔑
+                <AppIcon name="key" size={16} />
               </button>
             )
           }
@@ -251,13 +293,13 @@ export default function Navbar() {
 
       {/* ── MOBILE BOTTOM TABS (<769px) ──────────────────────── */}
       <nav className="bottom-tabs">
-        {PRIMARY_NAV.map(link => (
+        {MOBILE_PRIMARY_NAV.map(link => (
           <Link
             key={link.to}
             to={link.to}
             className={`bottom-tabs__tab${isActive(link.to) ? ' bottom-tabs__tab--active' : ''}`}
           >
-            <span className="bottom-tabs__icon">{link.icon}</span>
+            <span className="bottom-tabs__icon"><AppIcon name={link.icon} size={21} weight={isActive(link.to) ? 'fill' : 'regular'} /></span>
             <span className="bottom-tabs__label">{link.label}</span>
           </Link>
         ))}
@@ -268,20 +310,20 @@ export default function Navbar() {
             className={`bottom-tabs__tab${moreOpen ? ' bottom-tabs__tab--active' : ''}`}
             onClick={() => setMoreOpen(v => !v)}
           >
-            <span className="bottom-tabs__icon">☰</span>
+            <span className="bottom-tabs__icon"><AppIcon name="list" size={21} /></span>
             <span className="bottom-tabs__label">Thêm</span>
           </button>
 
           {moreOpen && (
             <div className="bottom-tabs__dropdown">
-              {SECONDARY_NAV.map(link => (
+              {MOBILE_MORE_NAV.map(link => (
                 <Link
                   key={link.to}
                   to={link.to}
                   className={`bottom-tabs__dropdown-item${isActive(link.to) ? ' active' : ''}`}
                   onClick={() => setMoreOpen(false)}
                 >
-                  <span>{link.icon}</span> {link.label}
+                  <AppIcon name={link.icon} size={17} /> {link.label}
                 </Link>
               ))}
             </div>

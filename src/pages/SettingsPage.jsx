@@ -3,7 +3,12 @@ import { useTags } from '../hooks/useTags';
 import { useQuotes } from '../hooks/useQuotes';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
-import { Settings, Tag, Plus, Pencil, Trash2, Check, X, Palette, User, Save, Mail, AtSign, FileText, Quote as QuoteIcon, ToggleLeft, ToggleRight, Coins } from 'lucide-react';
+import {
+  GearSix as Settings, Tag, Plus, PencilSimple as Pencil, Trash as Trash2, Check, X,
+  Palette, User, FloppyDisk as Save, Envelope as Mail, At as AtSign, FileText,
+  Quotes as QuoteIcon, ToggleLeft, ToggleRight, Coins,
+} from '@phosphor-icons/react';
+import AppIcon from '../components/AppIcon';
 import { supabase } from '../lib/supabase';
 import { getUsdRate, getAutoK, setUsdRate, setAutoK } from '../utils/currencyUtils';
 import '../styles/settings.css';
@@ -36,7 +41,7 @@ function FinanceSettingsSection() {
     const rate = parseFloat(usdRate);
     if (isNaN(rate) || rate <= 0) return;
     setUsdRate(rate);
-    setSaveMsg('✅ Đã lưu tỷ giá');
+    setSaveMsg('Đã lưu tỷ giá');
     setTimeout(() => setSaveMsg(''), 2000);
   };
 
@@ -44,7 +49,7 @@ function FinanceSettingsSection() {
     const next = !autoK;
     setAutoK(next);
     setAutoKState(next);
-    setSaveMsg('✅ Đã cập nhật Auto-K');
+    setSaveMsg('Đã cập nhật Auto-K');
     setTimeout(() => setSaveMsg(''), 2000);
   };
 
@@ -515,11 +520,11 @@ function ProfileSection({ user, profile, updateProfile }) {
           <Save size={16} />
           {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
         </button>
-        {saveMsg === 'success' && <span className="settings-profile-msg settings-profile-msg--ok">✅ Đã lưu</span>}
-        {saveMsg === 'error' && <span className="settings-profile-msg settings-profile-msg--err">❌ Lỗi, thử lại</span>}
+        {saveMsg === 'success' && <span className="settings-profile-msg settings-profile-msg--ok"><AppIcon name="checkCircle" size={14} /> Đã lưu</span>}
+        {saveMsg === 'error' && <span className="settings-profile-msg settings-profile-msg--err"><AppIcon name="warning" size={14} /> Lỗi, thử lại</span>}
         {saveMsg === 'nothing' && <span className="settings-profile-msg settings-profile-msg--ok">Không có gì thay đổi</span>}
-        {saveMsg === 'email_taken' && <span className="settings-profile-msg settings-profile-msg--err">❌ Email này đã được dùng bởi tài khoản khác</span>}
-        {saveMsg === 'invalid_email' && <span className="settings-profile-msg settings-profile-msg--err">❌ Email không hợp lệ</span>}
+        {saveMsg === 'email_taken' && <span className="settings-profile-msg settings-profile-msg--err"><AppIcon name="warning" size={14} /> Email này đã được dùng bởi tài khoản khác</span>}
+        {saveMsg === 'invalid_email' && <span className="settings-profile-msg settings-profile-msg--err"><AppIcon name="warning" size={14} /> Email không hợp lệ</span>}
       </div>
 
       {/* Read-only info */}
@@ -531,7 +536,7 @@ function ProfileSection({ user, profile, updateProfile }) {
           <span className="settings-profile-readonly__badge">Không đổi được</span>
         </div>
         <div className="settings-profile-readonly__item">
-          <span style={{ fontSize: '0.85rem' }}>📅</span>
+          <AppIcon name="calendar" size={15} />
           <span>Tham gia:</span>
           <strong>{profile?.created_at ? new Date(profile.created_at).toLocaleDateString('vi-VN') : '—'}</strong>
         </div>
@@ -753,7 +758,7 @@ export default function SettingsPage() {
   if (!user) {
     return (
       <div className="settings-page">
-        <div className="settings-auth-wall">🔐 Đăng nhập để truy cập Cài Đặt</div>
+        <div className="settings-auth-wall"><AppIcon name="lock" size={18} /> Đăng nhập để truy cập Cài Đặt</div>
       </div>
     );
   }

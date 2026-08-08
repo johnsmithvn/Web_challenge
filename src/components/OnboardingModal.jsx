@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import '../styles/onboarding.css';
+import AppIcon from './AppIcon';
 
 const ONBOARDED_KEY = 'vl_onboarded';
 
@@ -8,7 +9,7 @@ const ONBOARDED_KEY = 'vl_onboarded';
 // gỡ hẳn, nên onboarding đang chỉ đường tới những nơi không còn tồn tại.
 const STEPS = [
   {
-    icon: '👋',
+    icon: 'sparkle',
     title: 'Chào Mừng!',
     desc: 'Life Hub gom việc cần làm, thứ cần nhớ và tiền đã tiêu về một chỗ — thay vì rải ra năm bảy app khác nhau.',
     highlight: (
@@ -19,7 +20,7 @@ const STEPS = [
     ),
   },
   {
-    icon: '📥',
+    icon: 'inbox',
     title: 'Ghi Trước, Phân Loại Sau',
     desc: 'Nghĩ ra gì thì gõ thẳng vào Inbox. Đừng dừng lại để quyết định nó thuộc loại nào — làm vậy là mất mạch.',
     highlight: (
@@ -32,14 +33,17 @@ const STEPS = [
     ),
   },
   {
-    icon: '🧭',
+    icon: 'mapPin',
     title: 'Sáu Chỗ Để Đi',
     desc: 'Mỗi module làm đúng một việc. Bắt đầu từ Inbox, phần còn lại dùng tới đâu khám phá tới đó.',
     highlight: (
       <>
-        📥 <strong>Inbox</strong> — thu gom &nbsp;·&nbsp; 📌 <strong>Nhiệm Vụ</strong> — việc cần làm<br />
-        🧠 <strong>Knowledge</strong> — bài viết &nbsp;·&nbsp; 💰 <strong>Finance</strong> — chi tiêu<br />
-        🥚 <strong>Incubator</strong> — dự định &nbsp;·&nbsp; ⏱ <strong>Focus</strong> — Pomodoro
+        <span><AppIcon name="inbox" size={14} /> <strong>Inbox</strong> — thu gom</span>
+        <span><AppIcon name="pushPin" size={14} /> <strong>Nhiệm Vụ</strong> — việc cần làm</span>
+        <span><AppIcon name="brain" size={14} /> <strong>Knowledge</strong> — bài viết</span>
+        <span><AppIcon name="money" size={14} /> <strong>Finance</strong> — chi tiêu</span>
+        <span><AppIcon name="egg" size={14} /> <strong>Incubator</strong> — dự định</span>
+        <span><AppIcon name="timer" size={14} /> <strong>Focus</strong> — Pomodoro</span>
       </>
     ),
   },
@@ -88,7 +92,7 @@ export default function OnboardingModal({ onDone }) {
 
         {/* Content — key forces re-animation on step change */}
         <div key={step}>
-          <span className="onboarding-icon">{current.icon}</span>
+          <span className="onboarding-icon"><AppIcon name={current.icon} size={38} weight="duotone" /></span>
           <h2 className="onboarding-title">{current.title}</h2>
           <p className="onboarding-desc">{current.desc}</p>
           <div className="onboarding-highlight">{current.highlight}</div>
@@ -109,7 +113,7 @@ export default function OnboardingModal({ onDone }) {
             onClick={next}
             id={`onboarding-next-${step}`}
           >
-            {isLast ? '🚀 Bắt Đầu!' : 'Tiếp →'}
+            {isLast ? <><AppIcon name="rocket" size={16} /> Bắt Đầu!</> : <>Tiếp <AppIcon name="arrowRight" size={15} /></>}
           </button>
         </div>
       </div>

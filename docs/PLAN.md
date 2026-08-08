@@ -4,7 +4,7 @@
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 > **v6.0.0 (2026-08-08):** Module chi tiêu `/finance` làm lại từ đầu theo thiết kế Nocturne (handoff).
-> Thay hẳn expenses+subscriptions bằng 9 bảng `finance_*`, 6 màn trong child sidebar, liên kết Task +
+> Thay hẳn expenses+subscriptions bằng 10 bảng `finance_*` + junction, 5 màn trong child bar của sidebar chính, liên kết Task +
 > Inbox. Thiết kế: `docs/DESIGN_FINANCE.md`. MAJOR (schema breaking).
 
 > ⚠️ Bảng version ở cuối file **thiếu v4.23.0 → v4.31.0** (nhảy từ v4.26.1 sang v5.0.0) — sai lệch

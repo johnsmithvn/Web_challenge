@@ -162,14 +162,14 @@ export function useFocusTimer() {
       }
 
       if (Notification.permission === 'granted') {
-        new Notification('⚡ Xong rồi!', { body: `${settings.workMin} phút hoàn thành! Nghỉ thôi.` });
+        new Notification('Xong rồi!', { body: `${settings.workMin} phút hoàn thành! Nghỉ thôi.` });
       }
     } else {
       // Break ended
       setPhase('work');
       setSecondsLeft(settings.workMin * 60);
       if (Notification.permission === 'granted') {
-        new Notification('🎯 Bắt đầu lại!', { body: 'Nghỉ xong rồi. Focus tiếp nào!' });
+        new Notification('Bắt đầu lại!', { body: 'Nghỉ xong rồi. Focus tiếp nào!' });
       }
     }
   }, [phase, session, sessions, settings, useDB, user]);

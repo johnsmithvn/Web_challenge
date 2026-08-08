@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRandomPodcast } from '../hooks/useRandomPodcast';
 import { getDriveStreamUrl } from '../utils/mediaUtils';
-import { Play, Pause, SkipForward, X, Music } from 'lucide-react';
+import { Minus, Play, Pause, SkipForward, X, MusicNote as Music } from '@phosphor-icons/react';
 import { logger } from '../utils/logger';
 
 export default function GlobalAudioPlayer() {
@@ -74,7 +74,7 @@ export default function GlobalAudioPlayer() {
               <SkipForward size={20} />
             </button>
             <button className="gap-btn gap-btn-min" onClick={() => setIsMinimized(true)} title="Thu nhỏ">
-              <MinusIcon size={20} />
+              <Minus size={20} />
             </button>
             <button className="gap-btn gap-btn-close" onClick={() => {
               setIsDismissed(true);
@@ -86,13 +86,5 @@ export default function GlobalAudioPlayer() {
         </div>
       )}
     </div>
-  );
-}
-
-function MinusIcon({ size }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="5" y1="12" x2="19" y2="12"></line>
-    </svg>
   );
 }

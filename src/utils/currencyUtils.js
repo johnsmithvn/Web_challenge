@@ -16,6 +16,22 @@ export function setAutoK(enabled) {
   localStorage.setItem('lh_auto_k', String(enabled));
 }
 
+export function sanitizeDigits(value, maxLength = 18) {
+  return String(value ?? '').replace(/\D/g, '').slice(0, maxLength);
+}
+
+export function sanitizeDecimal(value, maxIntegerDigits = 6, maxFractionDigits = 4) {
+  const raw = String(value ?? '').replace(',', '.').replace(/[^\d.]/g, '');
+  if (!raw) return '';
+
+  const separator = raw.indexOf('.');
+  if (separator === -1) return raw.slice(0, maxIntegerDigits);
+
+  const whole = (raw.slice(0, separator) || '0').slice(0, maxIntegerDigits);
+  const fraction = raw.slice(separator + 1).replace(/\./g, '').slice(0, maxFractionDigits);
+  return `${whole}.${fraction}`;
+}
+
 export function formatVND(amount) {
   return new Intl.NumberFormat('vi-VN').format(amount) + '₫';
 }

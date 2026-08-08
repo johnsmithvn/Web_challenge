@@ -11,6 +11,7 @@ import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
 import { toDateStr } from '../utils/dateUtils';
 import CustomSelect from '../components/CustomSelect';
 import GenericModal from '../components/GenericModal';
+import AppIcon from '../components/AppIcon';
 import '../styles/incubator.css';
 import '../styles/collect.css';
 
@@ -111,13 +112,13 @@ function buildTaskDescription(item, logs = []) {
 
   // 1. Estimates
   const estimates = [];
-  if (item.estimated_cost) estimates.push(`💰 Chi phí: ~${formatVND(item.estimated_cost)}`);
+  if (item.estimated_cost) estimates.push(`Chi phí: ~${formatVND(item.estimated_cost)}`);
   if (item.estimated_time) estimates.push(`⏱ Tốn khoảng: ~${formatDuration(item.estimated_time)}`);
   if (estimates.length) sections.push(estimates.join(' | '));
 
   // 2. Original reason
   if (item.original_reason) {
-    sections.push(`💡 **Lý do ban đầu:**\n${item.original_reason}`);
+    sections.push(`**Lý do ban đầu:**\n${item.original_reason}`);
   }
 
   // 3. History logs
@@ -129,12 +130,12 @@ function buildTaskDescription(item, logs = []) {
       const note = log.reason_note ? `: ${log.reason_note}` : '';
       return `• ${dateStr} — ${action}${note}`;
     });
-    sections.push(`📜 **Lịch sử ấp trứng:**\n${logLines.join('\n')}`);
+    sections.push(`**Lịch sử ấp trứng:**\n${logLines.join('\n')}`);
   }
 
   // 4. Description (long-form content)
   if (item.description) {
-    sections.push(`📝 **Mô tả chi tiết:**\n${item.description}`);
+    sections.push(`**Mô tả chi tiết:**\n${item.description}`);
   }
 
   return sections.join('\n\n---\n\n') || '';
@@ -387,7 +388,7 @@ export default function IncubatorPage() {
   if (!user) {
     return (
       <div className="incubator-page">
-        <div className="incubator-empty">🔐 Đăng nhập để sử dụng Incubator</div>
+        <div className="incubator-empty"><AppIcon name="lock" size={18} /> Đăng nhập để sử dụng Incubator</div>
       </div>
     );
   }
@@ -397,7 +398,7 @@ export default function IncubatorPage() {
       {!detailItem && (
       <div className="incubator-page">
         <div className="incubator-page__header">
-          <h1 className="incubator-page__title">🥚 Trạm Ấp Trứng</h1>
+          <h1 className="incubator-page__title"><AppIcon name="egg" size={27} weight="duotone" /> Trạm Ấp Trứng</h1>
           <p className="incubator-page__subtitle">
             Nuôi dưỡng dự định — Dời lại phải có lý do
           </p>
@@ -409,14 +410,14 @@ export default function IncubatorPage() {
             className={`incubator-tab${activeTab === 'incubating' ? ' incubator-tab--active' : ''}`}
             onClick={() => handleTabChange('incubating')}
           >
-            🥚 Đang ấp{intentions.length > 0 ? ` (${intentions.length})` : ''}
-            {reviewDueCount > 0 && <span className="incubator-tab__badge">⚠️ {reviewDueCount}</span>}
+            <AppIcon name="egg" size={16} /> Đang ấp{intentions.length > 0 ? ` (${intentions.length})` : ''}
+            {reviewDueCount > 0 && <span className="incubator-tab__badge"><AppIcon name="warning" size={12} /> {reviewDueCount}</span>}
           </button>
           <button
             className={`incubator-tab${activeTab === 'abandoned' ? ' incubator-tab--active' : ''}`}
             onClick={() => handleTabChange('abandoned')}
           >
-            🗑 Đã bỏ qua{archivedItems.length > 0 ? ` (${archivedItems.length})` : ''}
+            <AppIcon name="trash" size={16} /> Đã bỏ qua{archivedItems.length > 0 ? ` (${archivedItems.length})` : ''}
           </button>
         </div>
 
@@ -428,7 +429,7 @@ export default function IncubatorPage() {
               className="incubator-add-btn"
               onClick={() => setShowForm(!showForm)}
             >
-              {showForm ? '✕ Đóng' : '+ Thêm dự định'}
+              <AppIcon name={showForm ? 'x' : 'plus'} size={15} /> {showForm ? 'Đóng' : 'Thêm dự định'}
             </button>
 
             {/* Add Form */}
@@ -466,17 +467,17 @@ export default function IncubatorPage() {
                 )}
                 <button type="submit" className="btn btn-primary" disabled={!title.trim()}
                   style={{ justifyContent: 'center' }}>
-                  🥚 Thêm vào Trạm Ấp
+                  <AppIcon name="egg" size={16} /> Thêm vào Trạm Ấp
                 </button>
               </form>
             )}
 
             {/* Cards */}
             {isLoading ? (
-              <div className="incubator-empty">⏳ Đang tải...</div>
+              <div className="incubator-empty"><AppIcon name="clock" size={18} /> Đang tải...</div>
             ) : intentions.length === 0 ? (
               <div className="incubator-empty">
-                <div className="incubator-empty__icon">🥚</div>
+                <div className="incubator-empty__icon"><AppIcon name="egg" size={34} weight="duotone" /></div>
                 <p>Chưa có dự định nào đang ấp.</p>
                 <p style={{ fontSize: '0.78rem' }}>Thêm ý tưởng, kế hoạch mua sắm, hoặc dự án "someday" vào đây.</p>
               </div>
@@ -490,36 +491,36 @@ export default function IncubatorPage() {
                     >
                       <div className="incubator-card__body" onClick={() => openDetail(item)}>
                         <div className="incubator-card__title">
-                          🥚 {item.title}
+                          <AppIcon name="egg" size={17} weight="duotone" /> {item.title}
                         </div>
                         {item.original_reason && (
                           <div className="incubator-card__reason">
-                            💡 "{item.original_reason}"
+                            <AppIcon name="lightbulb" size={14} /> "{item.original_reason}"
                           </div>
                         )}
                         <div className="incubator-card__meta">
                           {item.description && (
                             <span className="incubator-card__badge incubator-card__badge--desc">
-                              📝 Có mô tả
+                              <AppIcon name="note" size={13} /> Có mô tả
                             </span>
                           )}
                           {item.estimated_cost && (
                             <span className="incubator-card__badge incubator-card__badge--cost">
-                              💰 ~{formatVND(item.estimated_cost)}
+                              <AppIcon name="money" size={13} /> ~{formatVND(item.estimated_cost)}
                             </span>
                           )}
                           {item.estimated_time && (
                             <span className="incubator-card__badge incubator-card__badge--duration">
-                              ⏱ ~{formatDuration(item.estimated_time)}
+                              <AppIcon name="timer" size={13} /> ~{formatDuration(item.estimated_time)}
                             </span>
                           )}
                           {item.review_date && (
                             <span className={`incubator-card__badge ${isReviewDue ? 'incubator-card__badge--review' : 'incubator-card__badge--time'}`}>
-                              {isReviewDue ? '⚠️ Cần review!' : `📅 ${(() => { const d = new Date(item.review_date + 'T00:00:00'); return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0'); })()}`}
+                              <AppIcon name={isReviewDue ? 'warning' : 'calendar'} size={13} /> {isReviewDue ? 'Cần review!' : (() => { const d = new Date(item.review_date + 'T00:00:00'); return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0'); })()}
                             </span>
                           )}
                           <span className="incubator-card__badge incubator-card__badge--age">
-                            📅 {daysAgo(item.created_at)}
+                            <AppIcon name="calendar" size={13} /> {daysAgo(item.created_at)}
                           </span>
                         </div>
                       </div>
@@ -528,25 +529,25 @@ export default function IncubatorPage() {
                           className="incubator-card__btn incubator-card__btn--execute"
                           onClick={(e) => { e.stopPropagation(); openExecuteModal(item); }}
                         >
-                          ✅ Thực thi
+                          <AppIcon name="checkCircle" size={15} /> Thực thi
                         </button>
                         <button
                           className="incubator-card__btn incubator-card__btn--defer"
                           onClick={(e) => { e.stopPropagation(); setDeferModal(item); setDeferReason(''); setDeferDays(7); }}
                         >
-                          💤 Dời
+                          <AppIcon name="moon" size={15} /> Dời
                         </button>
                         <button
                           className="incubator-card__btn incubator-card__btn--abandon"
                           onClick={(e) => { e.stopPropagation(); abandonIntention(item.id, 'Không còn cần thiết'); }}
                         >
-                          🗑 Bỏ
+                          <AppIcon name="trash" size={15} /> Bỏ
                         </button>
                         <button
                           className="incubator-card__btn incubator-card__btn--timeline"
                           onClick={(e) => { e.stopPropagation(); toggleTimeline(item.id); }}
                         >
-                          {expandedId === item.id ? '▲ Ẩn' : '📜 Lịch sử'}
+                          <AppIcon name={expandedId === item.id ? 'caretDown' : 'clock'} size={14} /> {expandedId === item.id ? 'Ẩn' : 'Lịch sử'}
                         </button>
                       </div>
                       {/* Timeline expand */}
@@ -581,10 +582,10 @@ export default function IncubatorPage() {
         {activeTab === 'abandoned' && (
           <>
             {archivedLoading ? (
-              <div className="incubator-empty">⏳ Đang tải...</div>
+              <div className="incubator-empty"><AppIcon name="clock" size={18} /> Đang tải...</div>
             ) : archivedItems.length === 0 ? (
               <div className="incubator-empty">
-                <div className="incubator-empty__icon">✨</div>
+                <div className="incubator-empty__icon"><AppIcon name="sparkle" size={34} weight="duotone" /></div>
                 <p>Không có dự định nào bị bỏ qua.</p>
               </div>
             ) : (
@@ -593,16 +594,16 @@ export default function IncubatorPage() {
                   <div key={item.id} className="incubator-card incubator-card--abandoned">
                     <div className="incubator-card__body">
                       <div className="incubator-card__title">
-                        🗑 {item.title}
+                        <AppIcon name="trash" size={16} /> {item.title}
                       </div>
                       {item.original_reason && (
                         <div className="incubator-card__reason">
-                          💡 "{item.original_reason}"
+                          <AppIcon name="lightbulb" size={14} /> "{item.original_reason}"
                         </div>
                       )}
                       <div className="incubator-card__meta">
                         <span className="incubator-card__badge incubator-card__badge--age">
-                          📅 Bỏ: {daysAgo(item.updated_at)}
+                          <AppIcon name="calendar" size={13} /> Bỏ: {daysAgo(item.updated_at)}
                         </span>
                       </div>
                     </div>
@@ -611,13 +612,13 @@ export default function IncubatorPage() {
                         className="incubator-card__btn incubator-card__btn--restore"
                         onClick={() => handleRestore(item.id)}
                       >
-                        ♻️ Khôi phục
+                        <AppIcon name="refresh" size={15} /> Khôi phục
                       </button>
                       <button
                         className="incubator-card__btn incubator-card__btn--delete"
                         onClick={() => handlePermanentDelete(item.id)}
                       >
-                        🗑 Xóa vĩnh viễn
+                        <AppIcon name="trash" size={15} /> Xóa vĩnh viễn
                       </button>
                     </div>
                   </div>
@@ -631,7 +632,7 @@ export default function IncubatorPage() {
 
       {/* ── Defer Modal (rendered outside page guard so it works from detail view too) ── */}
       {deferModal && (
-        <GenericModal onClose={() => setDeferModal(null)} title={`💤 Dời lại: ${deferModal.title}`} maxWidth={420}>
+        <GenericModal onClose={() => setDeferModal(null)} title={<><AppIcon name="moon" size={17} /> Dời lại: {deferModal.title}</>} maxWidth={420}>
           <GenericModal.Body>
             <label className="incubator-modal__label">Lý do dời *</label>
             <textarea
@@ -655,7 +656,7 @@ export default function IncubatorPage() {
           <GenericModal.Footer>
             <button className="btn btn-ghost" onClick={() => setDeferModal(null)}>Huỷ</button>
             <button className="btn btn-primary" onClick={handleDefer} disabled={!deferReason.trim()}>
-              💤 Dời lại
+              <AppIcon name="moon" size={15} /> Dời lại
             </button>
           </GenericModal.Footer>
         </GenericModal>
@@ -663,7 +664,7 @@ export default function IncubatorPage() {
 
       {/* ── Execute Modal (Multi-Output) ── */}
       {executeModal && (
-        <GenericModal onClose={() => setExecuteModal(null)} title={`✅ Thực thi: ${executeModal.title}`} maxWidth={460}>
+        <GenericModal onClose={() => setExecuteModal(null)} title={<><AppIcon name="checkCircle" size={17} /> Thực thi: {executeModal.title}</>} maxWidth={460}>
           <GenericModal.Body>
             <label className="incubator-modal__label">Phân bổ nguồn lực cho dự định này:</label>
 
@@ -672,9 +673,9 @@ export default function IncubatorPage() {
                 className={`incubator-exec-option${execOptions.expense ? ' incubator-exec-option--active' : ''}${!executeModal.estimated_cost ? ' incubator-exec-option--dim' : ''}`}
                 onClick={() => toggleExec('expense')}
               >
-                <span className="incubator-exec-checkbox">{execOptions.expense ? '✓' : ''}</span>
+                <span className="incubator-exec-checkbox">{execOptions.expense && <AppIcon name="check" size={13} />}</span>
                 <div className="incubator-exec-option__content">
-                  <div className="incubator-exec-option__title">💰 Ghi nhận Chi tiêu</div>
+                  <div className="incubator-exec-option__title"><AppIcon name="money" size={16} /> Ghi nhận Chi tiêu</div>
                   <div className="incubator-exec-option__info">
                     {executeModal.estimated_cost
                       ? `Tự động điền ${formatVND(executeModal.estimated_cost)}`
@@ -687,7 +688,7 @@ export default function IncubatorPage() {
                         style={{ width: '100%' }}
                         value={expenseCategory}
                         onChange={val => setExpenseCategory(val)}
-                        options={FIN_CATS.expenseGroups.map(cat => ({ value: cat.key, label: `${cat.icon} ${cat.label}` }))}
+                        options={FIN_CATS.expenseGroups.map(cat => ({ value: cat.key, label: cat.label, icon: cat.icon }))}
                       />
                     </div>
                   )}
@@ -699,9 +700,9 @@ export default function IncubatorPage() {
                 className={`incubator-exec-option${execOptions.task ? ' incubator-exec-option--active' : ''}`}
                 onClick={() => toggleExec('task')}
               >
-                <span className="incubator-exec-checkbox">{execOptions.task ? '✓' : ''}</span>
+                <span className="incubator-exec-checkbox">{execOptions.task && <AppIcon name="check" size={13} />}</span>
                 <div className="incubator-exec-option__content">
-                  <div className="incubator-exec-option__title">📌 Tạo Công việc</div>
+                  <div className="incubator-exec-option__title"><AppIcon name="pushPin" size={16} /> Tạo Công việc</div>
                   <div className="incubator-exec-option__info">
                     Thêm vào danh sách Task hôm nay
                   </div>
@@ -709,7 +710,7 @@ export default function IncubatorPage() {
               </div>
 
             {execError && (
-              <div className="incubator-exec-error">⚠️ {execError}</div>
+              <div className="incubator-exec-error"><AppIcon name="warning" size={15} /> {execError}</div>
             )}
           </GenericModal.Body>
           <GenericModal.Footer>
@@ -719,7 +720,7 @@ export default function IncubatorPage() {
               onClick={handleExecute}
               disabled={!anySelected}
             >
-              ✅ Thực thi
+              <AppIcon name="checkCircle" size={15} /> Thực thi
             </button>
           </GenericModal.Footer>
         </GenericModal>
@@ -730,13 +731,13 @@ export default function IncubatorPage() {
         <div className="kb-reader">
           {/* Header bar */}
           <div className="kb-reader__bar">
-            <button className="kb-back-btn" onClick={closeDetail}>← Quay lại</button>
+            <button className="kb-back-btn" onClick={closeDetail}><AppIcon name="back" size={15} /> Quay lại</button>
             <div className="kb-reader__actions">
               {detailSaving && <span className="inbox-detail__saving">Đang lưu...</span>}
-              <button className="btn btn-ghost kb-action-btn" onClick={() => { openExecuteModal(detailItem); }} title="Thực thi dự định">✅ Thực thi</button>
-              <button className="btn btn-ghost kb-action-btn" onClick={() => { setDeferModal(detailItem); setDeferReason(''); setDeferDays(7); }} title="Dời lại">💤 Dời</button>
-              <button className="btn btn-ghost kb-action-btn" onClick={() => setDetailEditing(true)}>✏️ Sửa</button>
-              <button className="btn btn-ghost kb-action-btn kb-action-btn--danger" onClick={() => { abandonIntention(detailItem.id, 'Không còn cần thiết'); closeDetail(); }}>🗑 Bỏ</button>
+              <button className="btn btn-ghost kb-action-btn" onClick={() => { openExecuteModal(detailItem); }} title="Thực thi dự định"><AppIcon name="checkCircle" size={15} /> Thực thi</button>
+              <button className="btn btn-ghost kb-action-btn" onClick={() => { setDeferModal(detailItem); setDeferReason(''); setDeferDays(7); }} title="Dời lại"><AppIcon name="moon" size={15} /> Dời</button>
+              <button className="btn btn-ghost kb-action-btn" onClick={() => setDetailEditing(true)}><AppIcon name="pencil" size={15} /> Sửa</button>
+              <button className="btn btn-ghost kb-action-btn kb-action-btn--danger" onClick={() => { abandonIntention(detailItem.id, 'Không còn cần thiết'); closeDetail(); }}><AppIcon name="trash" size={15} /> Bỏ</button>
             </div>
           </div>
 
@@ -744,7 +745,7 @@ export default function IncubatorPage() {
             <div className="kb-reader__main">
               {/* Hero */}
               <div className="kb-reader__hero">
-                <span className="kb-reader__emoji" style={{ '--type-color': '#a78bfa' }}>🥚</span>
+                <span className="kb-reader__emoji" style={{ '--type-color': '#a78bfa' }}><AppIcon name="egg" size={34} weight="duotone" /></span>
                 <h1 className="kb-reader__title" title={detailItem.title}>{detailItem.title}</h1>
                 <div className="kb-reader__meta">
                   <span style={{ color: '#a78bfa' }}>Incubator</span>
@@ -755,7 +756,7 @@ export default function IncubatorPage() {
                       <span>·</span>
                       <span style={{ color: detailItem.review_date <= todayStr ? '#eab308' : 'var(--text-secondary)' }}>
                         Review: {(() => { const d = new Date(detailItem.review_date + 'T00:00:00'); return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0'); })()}
-                        {detailItem.review_date <= todayStr && ' ⚠️'}
+                        {detailItem.review_date <= todayStr && <AppIcon name="warning" size={13} />}
                       </span>
                     </>
                   )}
@@ -769,24 +770,24 @@ export default function IncubatorPage() {
                 {/* Reason */}
                 {detailItem.original_reason && (
                   <div style={{ marginBottom: '1.25rem' }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>💡 Lý do ban đầu</div>
+                    <div className="incubator-section-label"><AppIcon name="lightbulb" size={14} /> Lý do ban đầu</div>
                     <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{detailItem.original_reason}</p>
                   </div>
                 )}
 
                 {/* Estimates */}
                 <div style={{ marginBottom: '1.25rem' }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>📊 Thông số ước tính</div>
+                  <div className="incubator-section-label"><AppIcon name="chartLine" size={14} /> Thông số ước tính</div>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <span className="incubator-card__badge incubator-card__badge--cost" style={{ fontSize: '0.82rem' }}>
-                      💰 {detailItem.estimated_cost ? `~${formatVND(detailItem.estimated_cost)}` : 'Chưa có'}
+                      <AppIcon name="money" size={14} /> {detailItem.estimated_cost ? `~${formatVND(detailItem.estimated_cost)}` : 'Chưa có'}
                     </span>
                     <span className="incubator-card__badge incubator-card__badge--duration" style={{ fontSize: '0.82rem' }}>
-                      ⏱ {detailItem.estimated_time ? `~${formatDuration(detailItem.estimated_time)} để làm` : 'Chưa có'}
+                      <AppIcon name="timer" size={14} /> {detailItem.estimated_time ? `~${formatDuration(detailItem.estimated_time)} để làm` : 'Chưa có'}
                     </span>
                     {detailItem.defer_count > 0 && (
                       <span className="incubator-card__badge incubator-card__badge--review" style={{ fontSize: '0.82rem' }}>
-                        💤 Đã dời {detailItem.defer_count} lần
+                        <AppIcon name="moon" size={14} /> Đã dời {detailItem.defer_count} lần
                       </span>
                     )}
                   </div>
@@ -794,9 +795,9 @@ export default function IncubatorPage() {
 
                 {/* Timeline */}
                 <div>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>📜 Lịch sử</div>
+                  <div className="incubator-section-label"><AppIcon name="clock" size={14} /> Lịch sử</div>
                   {detailLogsLoading ? (
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>⏳ Đang tải...</p>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}><AppIcon name="clock" size={14} /> Đang tải...</p>
                   ) : detailLogs.length === 0 ? (
                     <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Chưa có lịch sử</p>
                   ) : (
@@ -832,7 +833,7 @@ export default function IncubatorPage() {
                   <>
                     <div className="kb-reader__divider" style={{ margin: '1.5rem 0' }} />
                     <div>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.75rem' }}>📝 Mô tả chi tiết</div>
+                      <div className="incubator-section-label"><AppIcon name="note" size={14} /> Mô tả chi tiết</div>
                       <div className="kb-prose" style={{ padding: 0 }}>
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{detailItem.description}</ReactMarkdown>
                       </div>
@@ -856,13 +857,13 @@ export default function IncubatorPage() {
               setDetailDescription(detailItem.description || '');
               setDetailCost(detailItem.estimated_cost ? String(detailItem.estimated_cost) : '');
               setDetailTime(detailItem.estimated_time ? String(detailItem.estimated_time) : '');
-            }}>← Hủy</button>
+            }}><AppIcon name="back" size={15} /> Hủy</button>
             <button
               className="btn btn-primary kb-save-btn"
               onClick={handleDetailSave}
               disabled={!detailTitle.trim() || detailSaving}
             >
-              {detailSaving ? '⏳ Đang lưu...' : '💾 Lưu'}
+              <AppIcon name={detailSaving ? 'clock' : 'save'} size={15} /> {detailSaving ? 'Đang lưu...' : 'Lưu'}
             </button>
           </div>
 
@@ -880,7 +881,7 @@ export default function IncubatorPage() {
             <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {/* Reason */}
               <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>💡 Lý do ban đầu</label>
+                <label className="incubator-section-label"><AppIcon name="lightbulb" size={14} /> Lý do ban đầu</label>
                 <textarea
                   className="incubator-modal__input"
                   rows={2}
@@ -892,7 +893,7 @@ export default function IncubatorPage() {
 
               {/* Cost & Time */}
               <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>📊 Thông số ước tính</label>
+                <label className="incubator-section-label"><AppIcon name="chartLine" size={14} /> Thông số ước tính</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input
                     className="incubator-modal__input"
@@ -916,7 +917,7 @@ export default function IncubatorPage() {
               <div className="kb-split">
                 <div className="kb-split__panes" style={{ height: '300px' }}>
                   <div className="kb-split__pane kb-split__pane--write">
-                    <div className="kb-split__label">✍️ Viết Mô tả chi tiết</div>
+                    <div className="kb-split__label"><AppIcon name="pencil" size={14} /> Viết Mô tả chi tiết</div>
                     <textarea
                       className="kb-split__textarea"
                       value={detailDescription}
@@ -926,7 +927,7 @@ export default function IncubatorPage() {
                     />
                   </div>
                   <div className="kb-split__pane kb-split__pane--preview">
-                    <div className="kb-split__label">👁 Preview</div>
+                    <div className="kb-split__label"><AppIcon name="eye" size={14} /> Preview</div>
                     <div className="kb-prose kb-split__preview" style={{ padding: '0.75rem' }}>
                       {detailDescription ? (
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{detailDescription}</ReactMarkdown>
@@ -944,4 +945,3 @@ export default function IncubatorPage() {
     </>
   );
 }
-

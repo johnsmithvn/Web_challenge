@@ -1,5 +1,5 @@
 {
-  "_note": "Mẫu item cho /accounts (RULES §14 — 1 JSON per feature). Port nguyên từ `TPL` / `AUTH_KINDS` / `CHIP_LABEL` / `CAT_ICON` của bộ design handoff Keyplate. `key` là giá trị lưu trong cột accounts.tpl — CỐ Ý không có CHECK constraint trong DB nên thêm/bớt mẫu ở đây KHÔNG cần migration. `code` là mã 3 chữ, không dịch: nó hiện ở kicker, chip filter, chip link và ô 36px của phương thức đăng nhập. `chip` là nhãn ngắn cho thanh filter. `icon` là path của SVG 24x24 stroke-1.5. `fields` là bộ field điền sẵn khi tạo item mới, user vẫn sửa/thêm/bớt được. `auth` là các phương thức đăng nhập tạo sẵn, phần tử đầu thành `primary`. `codes` = số mã dự phòng sinh sẵn. Chữ giữ TIẾNG ANH theo quyết định 2026-08-05.",
+  "_note": "Mẫu item cho /accounts (RULES §14 — 1 JSON per feature). Port từ bộ design handoff Keyplate. `key` là giá trị lưu trong cột accounts.tpl — CỐ Ý không có CHECK constraint trong DB nên thêm/bớt mẫu ở đây KHÔNG cần migration. `code` là mã 3 chữ, không dịch: nó hiện ở kicker, chip filter, chip link và ô 36px của phương thức đăng nhập. `chip` là nhãn ngắn cho thanh filter. `icon` là tên semantic của Phosphor qua AppIcon. `fields` là bộ field điền sẵn khi tạo item mới, user vẫn sửa/thêm/bớt được. `auth` là các phương thức đăng nhập tạo sẵn, phần tử đầu thành `primary`. `codes` = số mã dự phòng sinh sẵn. Chữ giữ TIẾNG ANH theo quyết định 2026-08-05.",
   "_warning": "CHƯA MÃ HOÁ. Field type `password`/`secret` chỉ mask trên UI, giá trị vẫn là plaintext trong Supabase.",
 
   "templates": [
@@ -9,7 +9,7 @@
       "code": "LGN",
       "chip": "Logins",
       "summary": "URL, username, password and linked mailbox.",
-      "icon": "M8 11V8a4 4 0 018 0v3M5.5 11h13v9h-13z",
+      "icon": "lock",
       "fields": [
         { "label": "Website", "type": "url" },
         { "label": "Username", "type": "text" },
@@ -24,7 +24,7 @@
       "code": "ACC",
       "chip": "Accounts",
       "summary": "Multi-email, phone, prompts, codes — for Google-scale accounts.",
-      "icon": "M12 3a9 9 0 100 18 9 9 0 000-18M9.5 10.5a2.5 2.5 0 105 0 2.5 2.5 0 10-5 0M6 18c1.4-2 3.6-3 6-3s4.6 1 6 3",
+      "icon": "user",
       "fields": [
         { "label": "Website", "type": "url" },
         { "label": "Primary email", "type": "multi" },
@@ -42,7 +42,7 @@
       "code": "CRD",
       "chip": "Cards",
       "summary": "Number, expiry, CVV, PIN, issuer.",
-      "icon": "M3 6h18v12H3zM3 10h18",
+      "icon": "creditCard",
       "fields": [
         { "label": "Cardholder", "type": "text" },
         { "label": "Card number", "type": "password" },
@@ -61,7 +61,7 @@
       "code": "IDN",
       "chip": "Identity",
       "summary": "Legal name, document numbers, contact.",
-      "icon": "M4 5h16v14H4zM9 10.5a2 2 0 104 0 2 2 0 10-4 0M8 16c.8-1.4 2.2-2 3-2s2.2.6 3 2",
+      "icon": "identification",
       "fields": [
         { "label": "Full name", "type": "text" },
         { "label": "Date of birth", "type": "date" },
@@ -78,7 +78,7 @@
       "code": "NTE",
       "chip": "Notes",
       "summary": "Free text only. Nothing pre-filled.",
-      "icon": "M6 3h9l3 3v15H6zM9 9h7M9 13h7M9 17h4",
+      "icon": "file",
       "fields": [],
       "auth": []
     },
@@ -88,7 +88,7 @@
       "code": "API",
       "chip": "API keys",
       "summary": "Key ID, secret, environment, owner account.",
-      "icon": "M14 8a4 4 0 11-3.6 5.7L4 20v-3h3v-3h3l.4-.3A4 4 0 0114 8z",
+      "icon": "key",
       "fields": [
         { "label": "Service", "type": "text" },
         { "label": "Key ID", "type": "text" },
@@ -105,7 +105,7 @@
       "code": "WIF",
       "chip": "Wi-Fi",
       "summary": "SSID, passphrase, security, router.",
-      "icon": "M3 9c5-4 13-4 18 0M6.5 12.5c3-2.4 8-2.4 11 0M10 16c1.2-1 2.8-1 4 0M12 19.5h.01",
+      "icon": "wifi",
       "fields": [
         { "label": "Network (SSID)", "type": "text" },
         { "label": "Password", "type": "password" },
@@ -120,7 +120,7 @@
       "code": "DBS",
       "chip": "Databases",
       "summary": "Host, port, user, password, schema.",
-      "icon": "M4 6c0-1.4 3.6-2.5 8-2.5s8 1.1 8 2.5-3.6 2.5-8 2.5S4 7.4 4 6zM4 6v12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V6M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5",
+      "icon": "database",
       "fields": [
         { "label": "Host", "type": "text" },
         { "label": "Port", "type": "number" },
@@ -136,7 +136,7 @@
       "code": "SRV",
       "chip": "Servers",
       "summary": "Host, user, key, passphrase.",
-      "icon": "M3 5h18v6H3zM3 13h18v6H3zM7 8h.01M7 16h.01",
+      "icon": "server",
       "fields": [
         { "label": "Host", "type": "text" },
         { "label": "Port", "type": "number" },
@@ -152,7 +152,7 @@
       "code": "LIC",
       "chip": "Licences",
       "summary": "Product, key, seats, purchase date.",
-      "icon": "M5 3h14v18l-7-4-7 4zM9 8h6",
+      "icon": "certificate",
       "fields": [
         { "label": "Product", "type": "text" },
         { "label": "Licence key", "type": "secret" },
@@ -179,7 +179,7 @@
 
   "_filterNote": "Icon cho 2 chip filter không thuộc template nào.",
   "filterIcons": {
-    "all": "M4 5h16M4 12h16M4 19h16",
-    "fav": "M12 4.5l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L4.8 9.8l5-.7z"
+    "all": "list",
+    "fav": "star"
   }
 }

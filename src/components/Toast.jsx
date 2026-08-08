@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import '../styles/toast.css';
+import AppIcon from './AppIcon';
 
 /* ── Toast UI ─────────────────────────────────────────────────
    Drop-in replacement for window.alert() — thông báo 1 chiều, tự biến mất,
@@ -13,7 +14,7 @@ import '../styles/toast.css';
    `useToastState` bên dưới chỉ dành cho ToastProvider dùng nội bộ để quản lý
    1 instance Toast duy nhất — không import trực tiếp ở nơi khác.
 ──────────────────────────────────────────────────────────────── */
-export function Toast({ open, message, icon = '✅', onClose, duration = 3000 }) {
+export function Toast({ open, message, icon = 'checkCircle', onClose, duration = 3000 }) {
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export function Toast({ open, message, icon = '✅', onClose, duration = 3000 })
 
   return (
     <div className="toast" role="status" onClick={onClose}>
-      <span className="toast__icon">{icon}</span>
+      <span className="toast__icon"><AppIcon name={icon} size={19} weight="duotone" /></span>
       <span className="toast__message">{message}</span>
     </div>
   );

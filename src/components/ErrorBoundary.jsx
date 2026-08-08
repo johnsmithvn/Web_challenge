@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import AppIcon from './AppIcon';
 
 /**
  * ErrorBoundary — wraps any subtree, catches render errors.
@@ -32,7 +33,7 @@ export default class ErrorBoundary extends Component {
         padding: '2rem',
         textAlign: 'center',
       }}>
-        <span style={{ fontSize: '3rem' }}>⚠️</span>
+        <span><AppIcon name="warning" size={48} weight="duotone" /></span>
         <h2 style={{ color: 'var(--text-primary)', margin: 0 }}>
           Có lỗi xảy ra
         </h2>
@@ -44,14 +45,14 @@ export default class ErrorBoundary extends Component {
           onClick={() => this.setState({ hasError: false, error: null })}
           style={{ marginTop: '0.5rem' }}
         >
-          🔄 Thử lại
+          <AppIcon name="refresh" size={16} /> Thử lại
         </button>
         <button
           className="btn btn-ghost"
           onClick={() => window.location.href = '/'}
           style={{ fontSize: '0.85rem' }}
         >
-          ← Về Trang Chủ
+          <AppIcon name="back" size={16} /> Về Trang Chủ
         </button>
       </div>
     );

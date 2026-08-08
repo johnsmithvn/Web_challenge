@@ -1,6 +1,7 @@
 import React from 'react';
 import { extractDriveFileId, getMediaType, getYoutubeEmbedUrl, extractDriveDirectUrl, getDriveStreamUrl } from '../utils/mediaUtils';
 import CustomAudioPlayer from './CustomAudioPlayer';
+import AppIcon from './AppIcon';
 
 /**
  * MediaPreview — Shared component for rendering Google Drive, YouTube, or standard media links (Audio/Video).
@@ -54,14 +55,14 @@ function MediaPreview({ url, title, style, className, onToggleFormat }) {
           className={`kb-media-toggle-btn${!hasVideoTag ? ' kb-media-toggle-btn--active' : ''}`}
           onClick={() => handleToggle('audio')}
         >
-          🎵 Dạng audio
+          <AppIcon name="headphones" size={14} /> Dạng audio
         </button>
         <button
           type="button"
           className={`kb-media-toggle-btn${hasVideoTag ? ' kb-media-toggle-btn--active' : ''}`}
           onClick={() => handleToggle('video')}
         >
-          📺 Dạng video
+          <AppIcon name="video" size={14} /> Dạng video
         </button>
       </div>
     );

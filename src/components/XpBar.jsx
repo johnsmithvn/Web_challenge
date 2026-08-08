@@ -1,4 +1,5 @@
 import { useXpStore } from '../hooks/useXpStore';
+import AppIcon from './AppIcon';
 import '../styles/xpbar.css';
 
 export default function XpBar({ compact = false }) {
@@ -7,7 +8,7 @@ export default function XpBar({ compact = false }) {
   if (compact) {
     return (
       <div className="xpbar-compact" title={`${totalXp} XP — ${levelInfo.name}`}>
-        <span className="xpbar-compact__emoji">{levelInfo.emoji}</span>
+        <span className="xpbar-compact__emoji"><AppIcon name={levelInfo.icon} size={16} weight="duotone" /></span>
         <div className="xpbar-compact__track">
           <div className="xpbar-compact__fill" style={{ width: `${levelInfo.levelPct}%` }} />
         </div>
@@ -20,7 +21,7 @@ export default function XpBar({ compact = false }) {
     <div className="xpbar card">
       <div className="xpbar__header">
         <div className="xpbar__level-badge">
-          <span className="xpbar__emoji">{levelInfo.emoji}</span>
+          <span className="xpbar__emoji"><AppIcon name={levelInfo.icon} size={24} weight="duotone" /></span>
           <div>
             <div className="xpbar__level-name">{levelInfo.name}</div>
             <div className="xpbar__level-num">Level {levelInfo.level}</div>
@@ -32,7 +33,7 @@ export default function XpBar({ compact = false }) {
       <div style={{ margin: '0.75rem 0 0.4rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
         <span>{levelInfo.xpInLevel} XP</span>
         {levelInfo.next && <span>→ {levelInfo.next.name} ({levelInfo.xpNeeded} XP)</span>}
-        {!levelInfo.next && <span>🏆 MAX LEVEL!</span>}
+        {!levelInfo.next && <span><AppIcon name="trophy" size={14} /> MAX LEVEL!</span>}
       </div>
 
       <div className="progress-bar-track" style={{ height: 8 }}>
@@ -41,7 +42,7 @@ export default function XpBar({ compact = false }) {
 
       {levelInfo.next && (
         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem', textAlign: 'right' }}>
-          {levelInfo.levelPct}% đến {levelInfo.next.emoji} {levelInfo.next.name}
+          {levelInfo.levelPct}% đến <AppIcon name={levelInfo.next.icon} size={13} /> {levelInfo.next.name}
         </div>
       )}
     </div>

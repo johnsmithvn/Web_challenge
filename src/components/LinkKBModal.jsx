@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import AppIcon from './AppIcon';
 
 /**
  * LinkKBModal — Search + checkbox modal to link/unlink Knowledge Base articles to a task.
@@ -64,7 +65,7 @@ export default function LinkKBModal({ taskId, linkedIds = [], allCollections = [
   const linkedSet = new Set(linkedIds);
 
   const TYPE_ICONS = {
-    link: '🔗', quote: '💬', learn: '📖', idea: '💡',
+    link: 'link', quote: 'quote', learn: 'book', idea: 'lightbulb',
   };
 
   return (
@@ -88,7 +89,7 @@ export default function LinkKBModal({ taskId, linkedIds = [], allCollections = [
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-            🔗 Liên kết bài viết
+            <AppIcon name="link" size={17} /> Liên kết bài viết
           </span>
           <button
             onClick={onClose}
@@ -96,13 +97,13 @@ export default function LinkKBModal({ taskId, linkedIds = [], allCollections = [
               background: 'none', border: 'none', cursor: 'pointer',
               color: 'var(--text-muted)', fontSize: '1.1rem', padding: '0.2rem',
             }}
-          >✕</button>
+          ><AppIcon name="x" size={16} /></button>
         </div>
 
         {/* Search */}
         <input
           type="text"
-          placeholder="🔍 Tìm bài viết..."
+          placeholder="Tìm bài viết..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="auth-input"
@@ -150,7 +151,7 @@ export default function LinkKBModal({ taskId, linkedIds = [], allCollections = [
                   fontSize: '0.7rem', color: '#22d3ee',
                   transition: 'var(--transition-base, 0.15s ease)',
                 }}>
-                  {isLinked && '✓'}
+                  {isLinked && <AppIcon name="check" size={12} />}
                 </div>
 
                 {/* Content */}
@@ -160,7 +161,7 @@ export default function LinkKBModal({ taskId, linkedIds = [], allCollections = [
                     color: isLinked ? '#22d3ee' : 'var(--text-primary)',
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>
-                    {TYPE_ICONS[item.type] || '📄'} {item.title || '(Không tiêu đề)'}
+                    <AppIcon name={TYPE_ICONS[item.type] || 'file'} size={14} /> {item.title || '(Không tiêu đề)'}
                   </div>
                   {(item.body_text || item.body) && (
                     <div style={{
@@ -190,7 +191,7 @@ export default function LinkKBModal({ taskId, linkedIds = [], allCollections = [
             className="btn btn-primary"
             style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
           >
-            ✓ Xong
+            <AppIcon name="check" size={14} /> Xong
           </button>
         </div>
       </div>

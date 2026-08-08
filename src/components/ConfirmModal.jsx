@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import '../styles/confirm-modal.css';
+import AppIcon from './AppIcon';
 
 /* ── ConfirmModal UI ──────────────────────────────────────────
    Usage via hook (recommended):
@@ -51,7 +52,7 @@ export function ConfirmModal({
   return (
     <div className="cm-overlay" onClick={e => { if (e.target === e.currentTarget) onCancel?.(); }}>
       <div className="cm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="cm-title">
-        <div className="cm-icon">{danger ? '⚠️' : '❓'}</div>
+        <div className="cm-icon"><AppIcon name={danger ? 'warning' : 'question'} size={28} weight="duotone" /></div>
         <h2 className="cm-title" id="cm-title">{title}</h2>
         {message && <p className="cm-message">{message}</p>}
         <div className="cm-actions">

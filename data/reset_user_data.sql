@@ -1,15 +1,14 @@
 -- ═══════════════════════════════════════════════════════════════
 -- RESET USER DATA — Xóa toàn bộ data app, GIỮ lại auth accounts
--- Synced with: schema_v4.24.0.sql
--- Last updated: 2026-08-01
+-- Synced with: schema_v4.24.0.sql + migration_v6.0.0_finance.sql
+-- Last updated: 2026-08-08
 -- Chạy trong Supabase SQL Editor
 -- ⚠️  KHÔNG THỂ HOÀN TÁC — chỉ chạy khi chắc chắn muốn reset
 -- ═══════════════════════════════════════════════════════════════
 
--- 1. Tag junctions (must go before tags, collections, expenses, subscriptions)
+-- 1. Tag junctions (must go before tags and their entities)
 DELETE FROM collection_tags;
-DELETE FROM expense_tags;
-DELETE FROM subscription_tags;
+DELETE FROM finance_transaction_tags;
 
 -- 2. Intention logs (must go before intentions)
 DELETE FROM intention_logs;
@@ -39,8 +38,16 @@ DELETE FROM user_tasks;
 DELETE FROM collections;
 
 -- 6. Finance
-DELETE FROM expenses;
-DELETE FROM subscriptions;
+DELETE FROM finance_transactions;
+DELETE FROM finance_deposits;
+DELETE FROM finance_shortcuts;
+DELETE FROM finance_bills;
+DELETE FROM finance_income_rules;
+DELETE FROM finance_loans;
+DELETE FROM finance_cards;
+DELETE FROM finance_saving_goals;
+DELETE FROM finance_budgets;
+DELETE FROM finance_category_overrides;
 
 -- 7. Activity & sessions
 DELETE FROM activity_logs;
@@ -71,10 +78,12 @@ DELETE FROM inspirational_quotes;
 
 -- ═══════════════════════════════════════════════════════════════
 -- DONE — Auth accounts (auth.users) được giữ nguyên
--- Tables reset: collection_tags, expense_tags, subscription_tags,
+-- Tables reset: collection_tags, finance_transaction_tags,
 --   intention_logs, intentions, habit_logs, journey_habits, user_journeys,
 --   program_habits, programs, habits, tags, knowledge_groups, user_tasks,
---   collections (+ cascade: collection_groups, collection_notes), expenses,
---   subscriptions, activity_logs, focus_sessions, fitness_logs, skip_reasons,
+--   collections (+ cascade: collection_groups, collection_notes), finance_transactions,
+--   finance_deposits, finance_shortcuts, finance_bills, finance_income_rules,
+--   finance_loans, finance_cards, finance_saving_goals, finance_budgets,
+--   finance_category_overrides, activity_logs, focus_sessions, fitness_logs, skip_reasons,
 --   progress, streaks, notification_settings, inspirational_quotes
 -- ═══════════════════════════════════════════════════════════════

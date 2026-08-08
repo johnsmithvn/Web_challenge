@@ -22,6 +22,14 @@
   max-height: 88vh;
 }
 
+.td-grid__value, .td-pill, .tasks-viewbar__tab, .td-loading,
+.td-btn-add, .td-btn, .td-icon {
+  align-items: center;
+  gap: 0.35rem;
+}
+.td-grid__value, .td-pill, .tasks-viewbar__tab, .td-loading,
+.td-btn-add, .td-btn, .td-icon { display: inline-flex; }
+
 .task-detail-modal .generic-modal__body {
   flex: 1;
   min-height: 0;

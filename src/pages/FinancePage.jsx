@@ -1,54 +1,92 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useFinance } from '../hooks/useFinance';
 import { useToast } from '../contexts/ToastContext';
 import {
-  listPeriodOptions, currentMonthPeriod, periodTotals,
+  listPeriodOptions, currentMonthPeriod, periodFromKey, periodTotals,
 } from '../utils/financeLogic';
 import { money } from '../components/finance/parts';
+import AppIcon from '../components/AppIcon';
 import OverviewScreen from '../components/finance/OverviewScreen';
 import AddScreen from '../components/finance/AddScreen';
 import ListScreen from '../components/finance/ListScreen';
 import CatsScreen from '../components/finance/CatsScreen';
 import RecurringScreen from '../components/finance/RecurringScreen';
-import AnalyzeScreen from '../components/finance/AnalyzeScreen';
 import '../styles/finance.css';
+import '../styles/finance-handoff.css';
 
 const SCREENS = [
-  { key: 'overview',  icon: '📊', label: 'Tổng quan' },
-  { key: 'add',       icon: '➕', label: 'Nhập nhanh' },
-  { key: 'list',      icon: '🧾', label: 'Giao dịch' },
-  { key: 'cats',      icon: '🗂️', label: 'Danh mục' },
-  { key: 'recurring', icon: '🔁', label: 'Hóa đơn' },
-  { key: 'analyze',   icon: '📈', label: 'Phân tích' },
+  { key: 'overview',  icon: 'chartDonut', label: 'Tổng quan', title: 'Hôm nay tiêu gì?' },
+  { key: 'add',       icon: 'plusCircle', label: 'Nhập nhanh', title: 'Ghi một khoản' },
+  { key: 'list',      icon: 'receipt', label: 'Giao dịch', title: 'Giao dịch' },
+  { key: 'cats',      icon: 'tree', label: 'Danh mục', title: 'Danh mục & schema' },
+  { key: 'recurring', icon: 'calendar', label: 'Hóa đơn', title: 'Hóa đơn & nghĩa vụ' },
 ];
+const VALID_PERIOD_KEY = /^(?:\d{4}-(?:0[1-9]|1[0-2])|year-\d{4}|all)$/;
+const OVERVIEW_TABS = new Set(['overview', 'budget', 'stats']);
 
 export default function FinancePage() {
   const fin = useFinance();
   const { showToast } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { screen: routeScreen } = useParams();
 
   const periodOptions = useMemo(() => listPeriodOptions(fin.today), [fin.today]);
   // Mặc định: tháng đang chạy (mục thứ month0 trong danh sách).
   const defaultPeriodKey = currentMonthPeriod(fin.today).key;
-  const [periodKey, setPeriodKey] = useState(defaultPeriodKey);
-  const period = periodOptions.find(o => o.key === periodKey) || periodOptions[0];
+  const [periodKey, setPeriodKeyState] = useState(() => {
+    const stored = sessionStorage.getItem('lh_finance_period');
+    return stored && VALID_PERIOD_KEY.test(stored) ? stored : defaultPeriodKey;
+  });
+  const setPeriodKey = useCallback(key => {
+    const next = VALID_PERIOD_KEY.test(key) ? key : defaultPeriodKey;
+    setPeriodKeyState(next);
+    sessionStorage.setItem('lh_finance_period', next);
+  }, [defaultPeriodKey]);
+  const period = useMemo(() => periodFromKey(periodKey, fin.today), [periodKey, fin.today]);
 
-  const [screen, setScreen] = useState('overview');
+  const screen = routeScreen === 'analyze'
+    ? 'overview'
+    : SCREENS.some(s => s.key === routeScreen) ? routeScreen : 'overview';
+  const setScreen = useCallback((target) => navigate(`/finance/${target}`), [navigate]);
   const [recurringSeg, setRecurringSeg] = useState('out');
-  const [analyzeTab, setAnalyzeTab] = useState('budget');
   const [analyzeParams, setAnalyzeParams] = useState({ group: null });
   const [catsTab, setCatsTab] = useState('cats');
   const [handoff, setHandoff] = useState(null);   // prefill từ Inbox
+  const [savingAsExpense, setSavingAsExpenseState] = useState(
+    () => localStorage.getItem('lh_finance_saving_as_expense') === 'true',
+  );
+  const setSavingAsExpense = useCallback((enabled) => {
+    const next = Boolean(enabled);
+    setSavingAsExpenseState(next);
+    localStorage.setItem('lh_finance_saving_as_expense', String(next));
+  }, []);
+
+  const overviewTab = useMemo(() => {
+    const requested = new URLSearchParams(location.search).get('view') || 'overview';
+    return OVERVIEW_TABS.has(requested) ? requested : 'overview';
+  }, [location.search]);
+  const setOverviewTab = useCallback((tab) => {
+    const next = OVERVIEW_TABS.has(tab) ? tab : 'overview';
+    navigate(next === 'overview' ? '/finance/overview' : `/finance/overview?view=${next}`);
+  }, [navigate]);
 
   // Điều hướng chéo giữa các màn (giữ module dính vào nhau).
   const go = useCallback((target, opts = {}) => {
-    setScreen(target);
+    const overviewView = OVERVIEW_TABS.has(opts.overviewTab) ? opts.overviewTab : 'overview';
+    navigate(target === 'overview' && overviewView !== 'overview'
+      ? `/finance/overview?view=${overviewView}`
+      : `/finance/${target}`);
     if (opts.recurringSeg) setRecurringSeg(opts.recurringSeg);
-    if (opts.analyzeTab) setAnalyzeTab(opts.analyzeTab);
     if (opts.group !== undefined) setAnalyzeParams({ group: opts.group });
     if (opts.period) setPeriodKey(opts.period);
-  }, []);
+  }, [navigate, setPeriodKey]);
+
+  // Bookmark cũ vẫn mở đúng nội dung, nhưng Phân tích không còn là một màn riêng.
+  useEffect(() => {
+    if (routeScreen === 'analyze') navigate('/finance/overview?view=budget', { replace: true });
+  }, [navigate, routeScreen]);
 
   // Phím tắt N → Nhập nhanh (bỏ qua khi đang gõ trong input).
   useEffect(() => {
@@ -56,11 +94,11 @@ export default function FinancePage() {
       if (e.key !== 'n' && e.key !== 'N') return;
       const tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
-      setScreen('add');
+      navigate('/finance/add');
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, []);
+  }, [navigate]);
 
   // Nhận handoff từ Inbox (sessionStorage). location.key đổi mỗi lần điều hướng.
   useEffect(() => {
@@ -70,60 +108,65 @@ export default function FinancePage() {
     try {
       const data = JSON.parse(raw);   // { kind:'tx'|'out'|'in'|'loan'|'card', title, inboxId, amount? }
       setHandoff(data);
-      if (data.kind === 'tx') setScreen('add');
-      else { setScreen('recurring'); setRecurringSeg(data.kind); }
+      if (data.kind === 'tx') navigate('/finance/add');
+      else { navigate('/finance/recurring'); setRecurringSeg(data.kind); }
     } catch { /* bỏ qua payload hỏng */ }
-  }, [location.key]);
+  }, [location.key, navigate]);
 
   // Chip ngân sách header — LUÔN tháng đang chạy, kể cả khi Tổng quan xem cả năm.
   const monthChip = useMemo(() => {
     const cur = currentMonthPeriod(fin.today);
-    const t = periodTotals(fin.transactions, cur);
+    const t = periodTotals(fin.transactions, cur, { savingAsExpense });
     const limit = fin.budgets.reduce((s, b) => s + b.limit_amount, 0);
-    return { spent: t.total, limit, pct: limit ? Math.round((t.total / limit) * 100) : null };
-  }, [fin.transactions, fin.budgets, fin.today]);
+    const end = new Date(`${cur.to}T00:00:00`);
+    const now = new Date(`${fin.today}T00:00:00`);
+    const daysLeft = Math.max(0, Math.round((end - now) / 86400000) + 1);
+    return { spent: t.total, limit, remaining: Math.max(0, limit - t.total),
+      pct: limit ? Math.round((t.total / limit) * 100) : null, daysLeft };
+  }, [fin.transactions, fin.budgets, fin.today, savingAsExpense]);
 
   if (!fin.enabled) {
     return (
       <div className="finance-module finance-module--gate">
-        <div className="fin-gate">🔐 Đăng nhập để dùng Chi tiêu</div>
+        <div className="fin-gate"><AppIcon name="lock" size={22} /> Đăng nhập để dùng Chi tiêu</div>
       </div>
     );
   }
 
   const nav = {
     screen, setScreen, go, period, periodKey, setPeriodKey, periodOptions,
-    recurringSeg, setRecurringSeg, analyzeTab, setAnalyzeTab, analyzeParams,
-    catsTab, setCatsTab, handoff, clearHandoff: () => setHandoff(null), showToast,
+    recurringSeg, setRecurringSeg, overviewTab, setOverviewTab, analyzeParams,
+    catsTab, setCatsTab, handoff, startHandoff: setHandoff,
+    clearHandoff: () => setHandoff(null), showToast,
+    savingAsExpense, setSavingAsExpense,
   };
   const active = SCREENS.find(s => s.key === screen);
+  const headerSub = screen === 'overview'
+    ? 'Hạn mức cho tháng đang chạy · thống kê nhiều tháng có bộ chọn riêng'
+    : screen === 'add' ? 'Số tiền trước — mọi trường còn lại đều đã có sẵn giá trị mặc định'
+    : screen === 'list' ? `${period.label} · lọc cùng kỳ với Tổng quan`
+    : screen === 'cats' ? '11 nhóm chi · 7 nhóm thu · cấu trúc dữ liệu'
+    : 'Hóa đơn, khoản thu, khoản vay và thẻ tín dụng';
 
   return (
     <div className="finance-module">
-      {/* CHILD SIDEBAR */}
-      <aside className="fin-side">
-        <div className="fin-side__title">💰 Chi tiêu</div>
-        <nav className="fin-side__nav">
-          {SCREENS.map(s => (
-            <button key={s.key}
-              className={`fin-side__link${screen === s.key ? ' fin-side__link--active' : ''}`}
-              onClick={() => setScreen(s.key)}>
-              <span className="fin-side__icon">{s.icon}</span>
-              <span className="fin-side__label">{s.label}</span>
-              {s.key === 'add' && <span className="fin-side__kbd">N</span>}
-            </button>
-          ))}
-        </nav>
-      </aside>
-
-      {/* CONTENT */}
       <section className="fin-content">
         <header className="fin-header">
-          <h1 className="fin-header__title">{active?.label}</h1>
-          <button className="fin-header__chip" onClick={() => go('analyze', { analyzeTab: 'budget' })}
+          <div className="fin-header__copy">
+            <h1 className="fin-header__title">{active?.title}</h1>
+            <p className="fin-header__sub">{headerSub}</p>
+          </div>
+          <button className="fin-header__chip" onClick={() => go('overview', { overviewTab: 'budget' })}
             title="Ngân sách tháng đang chạy">
-            {money(monthChip.spent)} / {monthChip.limit ? money(monthChip.limit) : '—'}
-            {monthChip.pct != null && <> · <strong>{monthChip.pct}%</strong></>}
+            <span><strong>{monthChip.limit ? money(monthChip.remaining) : 'Chưa đặt'}</strong><small>còn lại</small></span>
+            <i><b style={{ width: `${Math.min(100, monthChip.pct || 0)}%` }} /></i>
+            <small>{monthChip.daysLeft} ngày</small>
+          </button>
+          <button className="fin-btn fin-btn--secondary fin-header__action" onClick={() => go('list')}>
+            <AppIcon name="search" size={16} /> Tìm
+          </button>
+          <button className="fin-btn fin-btn--primary fin-header__action" onClick={() => go('add')}>
+            <AppIcon name="plus" size={16} /> Thêm chi tiêu
           </button>
         </header>
 
@@ -132,9 +175,19 @@ export default function FinancePage() {
           {SCREENS.map(s => (
             <button key={s.key}
               className={`fin-subtabs__tab${screen === s.key ? ' fin-subtabs__tab--active' : ''}`}
-              onClick={() => setScreen(s.key)}>{s.icon} {s.label}</button>
+              onClick={() => setScreen(s.key)}><AppIcon name={s.icon} size={16} weight={screen === s.key ? 'fill' : 'regular'} /> {s.label}</button>
           ))}
         </nav>
+
+        {fin.error && (
+          <div className="fin-warn fin-inline-message" role="alert">
+            <AppIcon name="warning" size={16} weight="fill" />
+            <span>Không tải được dữ liệu Finance. Kiểm tra migration và thử lại.</span>
+            <button className="fin-btn fin-btn--secondary fin-btn--sm" onClick={fin.fetchAll}>
+              <AppIcon name="refresh" size={14} /> Thử lại
+            </button>
+          </div>
+        )}
 
         <div className="fin-screen page-transition" key={screen}>
           {screen === 'overview'  && <OverviewScreen  fin={fin} nav={nav} />}
@@ -142,7 +195,6 @@ export default function FinancePage() {
           {screen === 'list'      && <ListScreen      fin={fin} nav={nav} />}
           {screen === 'cats'      && <CatsScreen      fin={fin} nav={nav} />}
           {screen === 'recurring' && <RecurringScreen fin={fin} nav={nav} />}
-          {screen === 'analyze'   && <AnalyzeScreen   fin={fin} nav={nav} />}
         </div>
       </section>
     </div>

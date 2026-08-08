@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import AppIcon from './AppIcon';
 
 /**
  * CustomSelect — A premium glassmorphic custom dropdown replacement for native select elements.
@@ -51,8 +52,11 @@ export default function CustomSelect({
         onClick={() => setOpen(o => !o)}
         style={{ width: '100%', justifyContent: 'space-between', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
       >
-        <span>{selectedOpt ? selectedOpt.label : placeholder}</span>
-        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>▼</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+          {selectedOpt?.icon && <AppIcon name={selectedOpt.icon} size={15} />}
+          {selectedOpt ? selectedOpt.label : placeholder}
+        </span>
+        <AppIcon name={open ? 'caretDown' : 'caretRight'} size={13} style={{ color: 'var(--text-muted)' }} />
       </button>
 
       {open && (
@@ -68,8 +72,10 @@ export default function CustomSelect({
               }}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}
             >
-              <span>{o.label}</span>
-              {value === o.value && <span style={{ color: 'var(--purple)', fontWeight: 'bold' }}>✓</span>}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                {o.icon && <AppIcon name={o.icon} size={15} />}{o.label}
+              </span>
+              {value === o.value && <AppIcon name="check" size={14} style={{ color: 'var(--purple)' }} />}
             </button>
           ))}
         </div>

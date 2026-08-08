@@ -2,51 +2,52 @@ import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHand
 import { Extension } from '@tiptap/core';
 import { Suggestion } from '@tiptap/suggestion';
 import { createRoot } from 'react-dom/client';
+import AppIcon from './AppIcon';
 
 /* ── Slash Command Items ──────────────────────────────────────── */
 const SLASH_ITEMS = [
-  { icon: '¶',   title: 'Paragraph',     desc: 'Đoạn văn thông thường',      aliases: ['text','plain','p'],
+  { icon: 'paragraph', title: 'Paragraph', desc: 'Đoạn văn thông thường', aliases: ['text','plain','p'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setParagraph().run() },
-  { icon: 'H₁',  title: 'Heading 1',     desc: 'Tiêu đề lớn',                aliases: ['h1','title'],
+  { icon: 'textH1', title: 'Heading 1', desc: 'Tiêu đề lớn', aliases: ['h1','title'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run() },
-  { icon: 'H₂',  title: 'Heading 2',     desc: 'Tiêu đề trung',              aliases: ['h2','subtitle'],
+  { icon: 'textH2', title: 'Heading 2', desc: 'Tiêu đề trung', aliases: ['h2','subtitle'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run() },
-  { icon: 'H₃',  title: 'Heading 3',     desc: 'Tiêu đề nhỏ',                aliases: ['h3'],
+  { icon: 'textH3', title: 'Heading 3', desc: 'Tiêu đề nhỏ', aliases: ['h3'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run() },
-  { icon: '•',   title: 'Bullet List',   desc: 'Danh sách gạch đầu',         aliases: ['ul','unordered','list'],
+  { icon: 'listBullets', title: 'Bullet List', desc: 'Danh sách gạch đầu', aliases: ['ul','unordered','list'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBulletList().run() },
-  { icon: '1.',  title: 'Numbered List', desc: 'Danh sách đánh số',           aliases: ['ol','ordered','number'],
+  { icon: 'listNumbers', title: 'Numbered List', desc: 'Danh sách đánh số', aliases: ['ol','ordered','number'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleOrderedList().run() },
-  { icon: '☑',   title: 'Task List',     desc: 'Danh sách checkbox',          aliases: ['todo','check','task'],
+  { icon: 'listChecks', title: 'Task List', desc: 'Danh sách checkbox', aliases: ['todo','check','task'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleTaskList().run() },
 
   // ── Media (moved up so they're visible without scrolling) ──
-  { icon: '🖼️',  title: 'Image',          desc: 'Chèn ảnh (URL / Upload)',     aliases: ['img','image','picture','photo','anh'],
+  { icon: 'image', title: 'Image', desc: 'Chèn ảnh (URL / Upload)', aliases: ['img','image','picture','photo','anh'],
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).run();
       document.dispatchEvent(new CustomEvent('tiptap:open-media', { detail: { type: 'image' } }));
     }},
-  { icon: '▶️',  title: 'YouTube',        desc: 'Chèn video YouTube',          aliases: ['video','yt','youtube'],
+  { icon: 'play', title: 'YouTube', desc: 'Chèn video YouTube', aliases: ['video','yt','youtube'],
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).run();
       document.dispatchEvent(new CustomEvent('tiptap:open-media', { detail: { type: 'youtube' } }));
     }},
-  { icon: '🎵',  title: 'Audio',          desc: 'Chèn audio player',           aliases: ['audio','music','mp3','sound','nhac'],
+  { icon: 'music', title: 'Audio', desc: 'Chèn audio player', aliases: ['audio','music','mp3','sound','nhac'],
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).run();
       document.dispatchEvent(new CustomEvent('tiptap:open-media', { detail: { type: 'audio' } }));
     }},
 
   // ── Blocks ──
-  { icon: '"',   title: 'Blockquote',    desc: 'Trích dẫn',                   aliases: ['quote','bq'],
+  { icon: 'quotes', title: 'Blockquote', desc: 'Trích dẫn', aliases: ['quote','bq'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBlockquote().run() },
-  { icon: '</>', title: 'Code Block',    desc: 'Khối code',                   aliases: ['code','pre','snippet'],
+  { icon: 'code', title: 'Code Block', desc: 'Khối code', aliases: ['code','pre','snippet'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run() },
-  { icon: '—',   title: 'Divider',       desc: 'Đường kẻ ngang',              aliases: ['hr','line','rule'],
+  { icon: 'minus', title: 'Divider', desc: 'Đường kẻ ngang', aliases: ['hr','line','rule'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHorizontalRule().run() },
-  { icon: '⊞',   title: 'Table',         desc: 'Bảng 3×3',                    aliases: ['grid','table'],
+  { icon: 'table', title: 'Table', desc: 'Bảng 3×3', aliases: ['grid','table'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
-  { icon: '▌',   title: 'Highlight',     desc: 'Đánh dấu text',              aliases: ['mark','color','hl'],
+  { icon: 'highlighter', title: 'Highlight', desc: 'Đánh dấu text', aliases: ['mark','color','hl'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleHighlight().run() },
 ];
 
@@ -105,7 +106,7 @@ const SlashCommandList = forwardRef(function SlashCommandList(props, ref) {
           onClick={() => selectItem(i)}
           onMouseEnter={() => setSelectedIndex(i)}
         >
-          <span className="tp-slash-item__icon">{item.icon}</span>
+          <span className="tp-slash-item__icon"><AppIcon name={item.icon} size={17} /></span>
           <div className="tp-slash-item__text">
             <span className="tp-slash-item__title">{item.title}</span>
             <span className="tp-slash-item__desc">{item.desc}</span>

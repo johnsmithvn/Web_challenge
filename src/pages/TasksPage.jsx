@@ -2,6 +2,7 @@ import { useState, lazy, Suspense } from 'react';
 import TaskListSection from '../components/TaskListSection';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
+import AppIcon from '../components/AppIcon';
 import '../styles/tasks.css';
 
 const MonthCalendar = lazy(() => import('../components/MonthCalendar'));
@@ -50,12 +51,12 @@ export default function TasksPage() {
           role="tab" aria-selected={view === 'list'}
           className={`tasks-viewbar__tab${view === 'list' ? ' tasks-viewbar__tab--active' : ''}`}
           onClick={() => setView('list')}
-        >📋 Danh sách</button>
+        ><AppIcon name="list" size={15} /> Danh sách</button>
         <button
           role="tab" aria-selected={view === 'calendar'}
           className={`tasks-viewbar__tab${view === 'calendar' ? ' tasks-viewbar__tab--active' : ''}`}
           onClick={() => setView('calendar')}
-        >📅 Lịch</button>
+        ><AppIcon name="calendar" size={15} /> Lịch</button>
       </div>
 
       {view === 'list' ? (

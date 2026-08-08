@@ -21,12 +21,12 @@
 // Dời ra đây để TaskDetailModal dùng lại mà không phải import ngược
 // TaskListSection (vòng tròn import — vỡ với Vite HMR).
 export const PRIORITY_OPTIONS = [
-  { value: 0, label: 'Không', icon: '➖', color: 'var(--text-muted)' },
-  { value: 1, label: 'Rất thấp', icon: '⬇️', color: '#94a3b8' },
-  { value: 2, label: 'Thấp', icon: '🔽', color: '#60a5fa' },
-  { value: 3, label: 'Trung bình', icon: '▶️', color: '#eab308' },
-  { value: 4, label: 'Cao', icon: '🔼', color: '#f97316' },
-  { value: 5, label: 'Khẩn cấp', icon: '⚡', color: '#ef4444' },
+  { value: 0, label: 'Không', icon: 'minus', color: 'var(--text-muted)' },
+  { value: 1, label: 'Rất thấp', icon: 'arrowDown', color: '#94a3b8' },
+  { value: 2, label: 'Thấp', icon: 'arrowDown', color: '#60a5fa' },
+  { value: 3, label: 'Trung bình', icon: 'arrowRight', color: '#eab308' },
+  { value: 4, label: 'Cao', icon: 'arrowUp', color: '#f97316' },
+  { value: 5, label: 'Khẩn cấp', icon: 'fire', color: '#ef4444' },
 ];
 
 /** Index = Date.getDay() (0 = Chủ Nhật), khớp `recurrence_rule.weekday`. */
@@ -178,7 +178,7 @@ export function formatTaskFieldValue(field, raw) {
       return String(raw).substring(0, 5);
     case 'priority': {
       const opt = PRIORITY_OPTIONS.find(p => p.value === Number(raw));
-      return opt ? `${opt.icon} ${opt.label}` : String(raw);
+      return opt ? opt.label : String(raw);
     }
     case 'recurrence_rule':
       return describeRecurrence(raw);
@@ -221,33 +221,33 @@ export function describeActivity(row) {
 
   switch (action) {
     case ACTIONS.TASK_CREATED:
-      return { icon: '✳️', text: 'Tạo nhiệm vụ', oldText: null, newText: null };
+      return { icon: 'plusCircle', text: 'Tạo nhiệm vụ', oldText: null, newText: null };
     case ACTIONS.TASK_COMPLETED:
-      return { icon: '✅', text: 'Đánh dấu hoàn thành', oldText: null, newText: null };
+      return { icon: 'checkCircle', text: 'Đánh dấu hoàn thành', oldText: null, newText: null };
     case ACTIONS.TASK_UNCOMPLETED:
-      return { icon: '↩️', text: 'Bỏ đánh dấu hoàn thành', oldText: null, newText: null };
+      return { icon: 'refresh', text: 'Bỏ đánh dấu hoàn thành', oldText: null, newText: null };
     case ACTIONS.TASK_TAG_ADD:
-      return { icon: '🏷', text: `Thêm tag: ${newValue}`, oldText: null, newText: null };
+      return { icon: 'tag', text: `Thêm tag: ${newValue}`, oldText: null, newText: null };
     case ACTIONS.TASK_TAG_REMOVE:
-      return { icon: '🏷', text: `Bỏ tag: ${oldValue}`, oldText: null, newText: null };
+      return { icon: 'tag', text: `Bỏ tag: ${oldValue}`, oldText: null, newText: null };
     case ACTIONS.TASK_LINK_ADD:
-      return { icon: '🔗', text: `Liên kết bài viết: ${newValue}`, oldText: null, newText: null };
+      return { icon: 'link', text: `Liên kết bài viết: ${newValue}`, oldText: null, newText: null };
     case ACTIONS.TASK_LINK_REMOVE:
-      return { icon: '🔗', text: `Bỏ liên kết: ${oldValue}`, oldText: null, newText: null };
+      return { icon: 'link', text: `Bỏ liên kết: ${oldValue}`, oldText: null, newText: null };
 
     case ACTIONS.TASK_UPDATE: {
       const label = fieldLabel(field);
       const before = oldValue == null ? null : formatTaskFieldValue(field, oldValue);
       const after = newValue == null ? null : formatTaskFieldValue(field, newValue);
       // Đặt/Xoá đọc tự nhiên hơn "Đổi X: trống → Y"
-      if (before === null) return { icon: '✏️', text: `Đặt ${label}`, oldText: null, newText: after };
-      if (after === null) return { icon: '✏️', text: `Xoá ${label}`, oldText: before, newText: null };
-      return { icon: '✏️', text: `Đổi ${label}`, oldText: before, newText: after };
+      if (before === null) return { icon: 'pencil', text: `Đặt ${label}`, oldText: null, newText: after };
+      if (after === null) return { icon: 'pencil', text: `Xoá ${label}`, oldText: before, newText: null };
+      return { icon: 'pencil', text: `Đổi ${label}`, oldText: before, newText: after };
     }
 
     // Không khớp → hiện action thô. Diff là generic nên dòng lạ vẫn phải đọc
     // được, tuyệt đối không rơi vào `undefined`.
     default:
-      return { icon: '•', text: action || 'Hoạt động', oldText: null, newText: null };
+      return { icon: 'dots', text: action || 'Hoạt động', oldText: null, newText: null };
   }
 }

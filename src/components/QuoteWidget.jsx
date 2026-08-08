@@ -16,6 +16,7 @@
  */
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import QUOTES_DATA from '../data/quotes.json';
+import AppIcon from './AppIcon';
 import '../styles/quote-widget.css';
 
 const SYSTEM_QUOTES = QUOTES_DATA.dailyQuotes;
@@ -101,7 +102,7 @@ export default function QuoteWidget({ pageKey = 'default', kbQuotes = [] }) {
         {quote.audio_url && (
           <>
             <button className="qw__btn" onClick={toggleAudio} title={audioPlaying ? 'Dừng' : 'Nghe'}>
-              {audioPlaying ? '⏸️' : '🔊'}
+              <AppIcon name={audioPlaying ? 'pause' : 'headphones'} size={15} />
             </button>
             <audio
               ref={audioRef}
@@ -114,7 +115,7 @@ export default function QuoteWidget({ pageKey = 'default', kbQuotes = [] }) {
 
         {/* Shuffle button */}
         <button className="qw__btn qw__btn--shuffle" onClick={shuffle} title="Câu khác">
-          🔀
+          <AppIcon name="refresh" size={15} />
         </button>
       </div>
     </div>

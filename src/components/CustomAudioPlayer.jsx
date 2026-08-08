@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { Play, Pause, SpeakerHigh as Volume2, SpeakerX as VolumeX, CircleNotch as Loader2 } from '@phosphor-icons/react';
 import { logger } from '../utils/logger';
 
 /**

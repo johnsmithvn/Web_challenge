@@ -136,7 +136,7 @@ Cụm bảng theo domain:
 |--------|--------|
 | Tasks | `user_tasks`, `task_collections`, `task_tags`, `activity_logs` (lịch sử + ghi chú) |
 | Knowledge | `collections`, `collection_tags`, `collection_notes`, `inspirational_quotes` |
-| Finance (v6.0.0) | `finance_transactions` + `finance_bills`/`finance_loans`/`finance_cards`/`finance_saving_goals`/`finance_deposits`/`finance_income_rules`/`finance_shortcuts`/`finance_budgets` + `finance_transaction_tags`. Hook `useFinance`, logic `financeLogic`, 6 màn `components/finance/*` |
+| Finance (v6.0.0) | 10 bảng `finance_*` gồm transactions/bills/loans/cards/saving_goals/deposits/income_rules/shortcuts/budgets/category_overrides + `finance_transaction_tags`. Hook `useFinance`, logic `financeLogic`, 5 màn `components/finance/*`; Ngân sách/Thống kê nằm trong Tổng quan; route `/finance/:screen` |
 | Incubator | `intentions`, `intention_logs` |
 | Account Vault | `accounts`, `account_fields` (field theo loại; multi/link là jsonb), `account_auth`, `account_codes`, `account_logs` (append-only), `account_tags` — **v5.2.0, plaintext, chưa mã hoá** |
 | Tags | `tags` + 5 junction + VIEW `tagged_items` |

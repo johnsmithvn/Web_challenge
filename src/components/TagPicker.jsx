@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import AppIcon from './AppIcon';
 
 /**
  * TagPicker — Searchable dropdown for selecting/creating tags.
@@ -70,7 +71,7 @@ export default function TagPicker({ tags = [], selected = [], onToggle, onAdd, c
               background: `${t.color}20`, color: t.color, border: `1px solid ${t.color}40`,
               fontWeight: 600, whiteSpace: 'nowrap',
             }}>
-              🏷 {t.name}
+              <AppIcon name="tag" size={12} /> {t.name}
             </span>
           ))
         ) : (
@@ -127,7 +128,7 @@ export default function TagPicker({ tags = [], selected = [], onToggle, onAdd, c
                     flexShrink: 0, border: isSelected ? '2px solid #fff' : 'none',
                   }} />
                   <span style={{ flex: 1 }}>{t.name}</span>
-                  {isSelected && <span style={{ fontSize: '0.7rem', color: 'var(--green)' }}>✓</span>}
+                  {isSelected && <AppIcon name="check" size={12} style={{ color: 'var(--green)' }} />}
                 </button>
               );
             })}

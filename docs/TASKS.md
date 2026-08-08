@@ -3,19 +3,22 @@
 
 ---
 
-## v6.0.0 — ✅ CODE DONE / ⏳ SQL + BUILD CHỜ USER (2026-08-08) — Module chi tiêu làm lại (Nocturne)
+## v6.0.0 — ✅ CODE + BUILD DONE / ⏳ SQL + SMOKE TEST CHỜ USER (2026-08-08) — Module chi tiêu làm lại (Nocturne)
 
 **Đã làm** (chi tiết: CHANGELOG.md v6.0.0, DESIGN_FINANCE.md, DATABASE.md, FEATURES.md §23): drop
-`expenses`+`subscriptions`, dựng 9 bảng `finance_*` + junction (`migration_v6.0.0_finance.sql`),
-`financeLogic.js` + 11 self-check (`npm test` pass), `useFinance.js` (1 hook cho 9 bảng),
-`finance-categories.json`, module shell + child sidebar + 6 màn (`FinancePage` + `components/finance/*`),
-`finance.css` Nocturne dark. Liên kết Task (FK `task_id`) + Inbox (2 chiều). Rewire useTags/Inbox/
+`expenses`+`subscriptions`, dựng 10 bảng `finance_*` + junction (`migration_v6.0.0_finance.sql`),
+`financeLogic.js` + self-check (`npm test` pass), `useFinance.js` (1 hook cho 10 bảng),
+`finance-categories.json`, module shell + child bar trong sidebar chính + 5 màn (`FinancePage` + `components/finance/*`),
+`finance.css` + `finance-handoff.css` Nocturne dark. Liên kết Task (FK `task_id`) + Inbox (2 chiều). Rewire useTags/Inbox/
 Incubator/SubAlert/Settings; xoá useExpenses/useSubscriptions/CashflowBar/expense-categories.json.
-Lint 0 error, `npm test` pass.
+Danh mục chỉnh sửa inline trong card qua `finance_category_overrides`; toàn app dùng Phosphor; có quản lý quỹ/nơi
+gửi, đáo hạn tự tính, rút khóa kỳ hạn chờ đúng 48 giờ và tuỳ chọn tính tiền để dành như chi bắt buộc. DB đã siết constraint/RLS,
+ownership FK và 7 RPC nguyên khối; sao kê dùng đúng chu kỳ chốt; bỏ hóa đơn theo kỳ được lưu bền.
+Lint 0 error, `npm test` pass, `npm run build` pass (2026-08-08).
 
-**Chờ user:** (1) chạy `migration_v6.0.0_finance.sql` trên Supabase; (2) `npm run build`; (3) test 6 màn.
+**Chờ user:** (1) chạy `migration_v6.0.0_finance.sql` trên Supabase; (2) test 5 màn với dữ liệu thật.
 
-🔜 Hoãn: tự sinh task nhắc từ nghĩa vụ; sửa danh mục từ UI; activity_logs khi trả; Phosphor icons.
+🔜 Hoãn: tự sinh task nhắc từ nghĩa vụ; activity_logs khi trả.
 
 ---
 

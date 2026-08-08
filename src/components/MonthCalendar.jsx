@@ -2,15 +2,16 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { toDateStr, mondayIndex } from '../utils/dateUtils';
 import { useConfirm } from './ConfirmModal';
 import UI_STRINGS from '../data/ui-strings.json';
+import AppIcon from './AppIcon';
 import '../styles/calendar.css';
 
 const VN_HOLIDAYS = {
-  '01-01': '🎆 Tết Dương Lịch',
-  '04-30': '🎖 Giải Phóng Miền Nam',
-  '05-01': '👷 Quốc Tế Lao Động',
-  '09-02': '🇻🇳 Quốc Khánh',
-  '10-20': '🌺 Ngày Phụ Nữ VN',
-  '11-20': '📚 Ngày Nhà Giáo',
+  '01-01': 'Tết Dương Lịch',
+  '04-30': 'Giải Phóng Miền Nam',
+  '05-01': 'Quốc Tế Lao Động',
+  '09-02': 'Quốc Khánh',
+  '10-20': 'Ngày Phụ Nữ VN',
+  '11-20': 'Ngày Nhà Giáo',
 };
 
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -241,7 +242,7 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
                     </span>
                   )}
 
-              {info.holiday && <span className="cal-cell__holiday" title={info.holiday}>🔴</span>}
+              {info.holiday && <span className="cal-cell__holiday" title={info.holiday}><AppIcon name="star" size={10} weight="fill" /></span>}
             </div>
           );
         })}
@@ -271,7 +272,7 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
                 fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)',
                 marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem',
               }}>
-                📌 Nhiệm vụ ngày này ({selectedTasks.length + selectedPending.length})
+                <AppIcon name="pushPin" size={14} /> Nhiệm vụ ngày này ({selectedTasks.length + selectedPending.length})
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 {selectedTasks.map(task => (
@@ -286,7 +287,7 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
                       <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                        ✅ {task.title}
+                        <AppIcon name="checkCircle" size={14} /> {task.title}
                         {task.description && (
                           <span style={{ fontSize: '0.68rem', marginLeft: '0.3rem', color: 'var(--text-muted)' }}>
                             {expandedTaskId === task.id ? '▾' : '▸'}
@@ -308,7 +309,7 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
                               fontSize: '0.78rem', color: 'var(--text-muted)', opacity: 0.6,
                               padding: '0.1rem 0.2rem',
                             }}
-                          >🗑</button>
+                          ><AppIcon name="trash" size={14} /></button>
                         )}
                       </div>
                     </div>
@@ -350,7 +351,7 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
         <span><span className="cal-dot cal-dot--done"/> Có task xong</span>
         <span><span className="cal-dot cal-dot--pending"/> Sắp tới / chưa xong</span>
         <span><span className="cal-dot cal-dot--future"/> Chưa tới</span>
-        <span>🔴 Ngày lễ</span>
+        <span><AppIcon name="star" size={11} weight="fill" /> Ngày lễ</span>
       </div>
     </div>
   );

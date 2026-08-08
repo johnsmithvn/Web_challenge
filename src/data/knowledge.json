@@ -1,11 +1,11 @@
 {
   "types": [
-    { "key": "note", "label": "Ghi chú", "desc": "Ghi chú chung", "color": "#8b5cf6", "icon": "FileText", "emoji": "📝" },
-    { "key": "quote", "label": "Trích dẫn", "desc": "Câu nói hay", "color": "#f59e0b", "icon": "MessageSquareQuote", "emoji": "💬" },
-    { "key": "learn", "label": "Học", "desc": "Khóa học", "color": "#22c55e", "icon": "BookOpen", "emoji": "📚" },
-    { "key": "idea", "label": "Ý tưởng", "desc": "Ý tưởng cá nhân", "color": "#f97316", "icon": "Lightbulb", "emoji": "💡" },
-    { "key": "ai", "label": "AI", "desc": "Prompt, công cụ AI", "color": "#a855f7", "icon": "Bot", "emoji": "🤖" },
-    { "key": "entertainment", "label": "Giải trí", "desc": "Phim ảnh, game", "color": "#ef4444", "icon": "Gamepad2", "emoji": "🎮" },
-    { "key": "podcast", "label": "Podcast", "desc": "Âm thanh, Radio", "color": "#0ea5e9", "icon": "Headphones", "emoji": "🎧" }
+    { "key": "note", "label": "Ghi chú", "desc": "Ghi chú chung", "color": "#8b5cf6", "icon": "file" },
+    { "key": "quote", "label": "Trích dẫn", "desc": "Câu nói hay", "color": "#f59e0b", "icon": "quote" },
+    { "key": "learn", "label": "Học", "desc": "Khóa học", "color": "#22c55e", "icon": "book" },
+    { "key": "idea", "label": "Ý tưởng", "desc": "Ý tưởng cá nhân", "color": "#f97316", "icon": "lightbulb" },
+    { "key": "ai", "label": "AI", "desc": "Prompt, công cụ AI", "color": "#a855f7", "icon": "robot" },
+    { "key": "entertainment", "label": "Giải trí", "desc": "Phim ảnh, game", "color": "#ef4444", "icon": "game" },
+    { "key": "podcast", "label": "Podcast", "desc": "Âm thanh, Radio", "color": "#0ea5e9", "icon": "headphones" }
   ]
 }

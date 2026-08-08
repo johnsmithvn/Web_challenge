@@ -20,17 +20,18 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthModal from '../components/AuthModal';
+import AppIcon from '../components/AppIcon';
 import '../styles/landing.css';
 
 const FLOW = [
-  { icon: '📥', label: 'Ghi vào Inbox', desc: 'Nghĩ ra gì gõ vào đó, chưa cần phân loại' },
-  { icon: '🔀', label: 'Phân loại sau', desc: 'Lúc rảnh mới quyết định nó là việc, kiến thức hay khoản chi' },
-  { icon: '✅', label: 'Xử lý đúng chỗ', desc: 'Mỗi loại đi về đúng module của nó' },
+  { icon: 'inbox', label: 'Ghi vào Inbox', desc: 'Nghĩ ra gì gõ vào đó, chưa cần phân loại' },
+  { icon: 'funnel', label: 'Phân loại sau', desc: 'Lúc rảnh mới quyết định nó là việc, kiến thức hay khoản chi' },
+  { icon: 'checkCircle', label: 'Xử lý đúng chỗ', desc: 'Mỗi loại đi về đúng module của nó' },
 ];
 
 const MODULES = [
   {
-    to: '/inbox', icon: '📥', name: 'Inbox', accent: 'var(--purple-light)',
+    to: '/inbox', icon: 'inbox', name: 'Inbox', accent: 'var(--purple-light)',
     desc: 'Hộp thu gom mọi ý nghĩ chưa phân loại.',
     points: [
       'Ghi nhanh một dòng, tự nhận diện URL',
@@ -40,7 +41,7 @@ const MODULES = [
     ],
   },
   {
-    to: '/tasks', icon: '📌', name: 'Nhiệm Vụ', accent: '#22d3ee',
+    to: '/tasks', icon: 'pushPin', name: 'Nhiệm Vụ', accent: '#22d3ee',
     desc: 'Danh sách việc cần làm, tách hẳn khỏi mọi thứ khác.',
     points: [
       'Chia 3 khối: Quá hạn / Hôm nay / Sắp tới',
@@ -51,7 +52,7 @@ const MODULES = [
     ],
   },
   {
-    to: '/collect', icon: '🧠', name: 'Knowledge', accent: '#a78bfa',
+    to: '/collect', icon: 'brain', name: 'Knowledge', accent: '#a78bfa',
     desc: 'Kho bài viết cá nhân, viết và đọc lại.',
     points: [
       'Trình soạn thảo đầy đủ: bảng, checklist, ảnh, YouTube, audio',
@@ -61,7 +62,7 @@ const MODULES = [
     ],
   },
   {
-    to: '/finance', icon: '💰', name: 'Finance', accent: '#00cc6e',
+    to: '/finance', icon: 'money', name: 'Finance', accent: '#00cc6e',
     desc: 'Chi tiêu và các gói đăng ký định kỳ.',
     points: [
       'Nhập tiền kiểu tự do: 50k, 89$ đều hiểu',
@@ -71,7 +72,7 @@ const MODULES = [
     ],
   },
   {
-    to: '/incubator', icon: '🥚', name: 'Incubator', accent: '#eab308',
+    to: '/incubator', icon: 'egg', name: 'Incubator', accent: '#eab308',
     desc: 'Nơi ấp những dự định chưa tới lúc làm.',
     points: [
       'Hoãn phải nêu lý do — chống hoãn vô thức',
@@ -104,7 +105,7 @@ export default function LandingPage() {
         title={theme === 'dark' ? 'Chuyển giao diện sáng' : 'Chuyển giao diện tối'}
         aria-label="Đổi giao diện sáng/tối"
       >
-        {theme === 'dark' ? '☀️' : '🌙'}
+        <AppIcon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
       </button>
 
       {/* ── Hero ── */}
@@ -114,7 +115,7 @@ export default function LandingPage() {
         <div className="lp-hero__grid" />
 
         <div className="container lp-hero__content">
-          <div className="section-label">⚡ Personal Life OS</div>
+          <div className="section-label"><AppIcon name="sparkle" size={15} /> Personal Life OS</div>
 
           <h1 className="lp-hero__title display-2">
             Life <span className="gradient-text">Hub</span>
@@ -128,13 +129,13 @@ export default function LandingPage() {
           <div className="lp-hero__cta">
             {user ? (
               <>
-                <Link to="/inbox" className="btn btn-primary">📥 Vào Inbox</Link>
-                <Link to="/tasks" className="btn btn-ghost">📌 Xem nhiệm vụ</Link>
+                <Link to="/inbox" className="btn btn-primary"><AppIcon name="inbox" size={16} /> Vào Inbox</Link>
+                <Link to="/tasks" className="btn btn-ghost"><AppIcon name="pushPin" size={16} /> Xem nhiệm vụ</Link>
               </>
             ) : (
               <>
                 <button className="btn btn-primary" onClick={() => setShowAuth(true)} id="lp-login">
-                  🔑 Đăng nhập
+                  <AppIcon name="key" size={16} /> Đăng nhập
                 </button>
                 <Link to="/tasks" className="btn btn-ghost">Dùng thử không cần tài khoản</Link>
               </>
@@ -161,7 +162,7 @@ export default function LandingPage() {
           {FLOW.map((s, i) => (
             <li key={s.label} className="lp-flow__step">
               <span className="lp-flow__num">{i + 1}</span>
-              <span className="lp-flow__icon" aria-hidden="true">{s.icon}</span>
+              <span className="lp-flow__icon" aria-hidden="true"><AppIcon name={s.icon} size={26} weight="duotone" /></span>
               <span className="lp-flow__label">{s.label}</span>
               <span className="lp-flow__desc">{s.desc}</span>
             </li>
@@ -178,7 +179,7 @@ export default function LandingPage() {
           {MODULES.map(m => (
             <Link key={m.to} to={m.to} className="card lp-card" style={{ '--lp-accent': m.accent }}>
               <div className="lp-card__head">
-                <span className="lp-card__icon" aria-hidden="true">{m.icon}</span>
+                <span className="lp-card__icon" aria-hidden="true"><AppIcon name={m.icon} size={26} weight="duotone" /></span>
                 <span className="lp-card__name">{m.name}</span>
               </div>
               <p className="lp-card__desc">{m.desc}</p>
@@ -192,7 +193,7 @@ export default function LandingPage() {
 
       <footer className="lp-footer">
         <div className="container">
-          <span className="gradient-text lp-footer__logo">⚡ Life Hub</span>
+          <span className="gradient-text lp-footer__logo"><AppIcon name="sparkle" size={18} /> Life Hub</span>
           <p>Personal Life OS — dựng cho đúng một người dùng.</p>
         </div>
       </footer>

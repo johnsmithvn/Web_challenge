@@ -1,11 +1,12 @@
 /**
  * parts — mảnh UI + helper dùng chung cho module chi tiêu. Gom vào 1 file để 6
- * màn khỏi lặp: format tiền, tra danh mục, donut SVG, biểu đồ nhịp chi, chip
+ * màn Finance khỏi lặp: format tiền, tra danh mục, donut SVG, biểu đồ nhịp chi, chip
  * necessity, picker gắn Task.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatVND } from '../../utils/currencyUtils';
 import CATS from '../../data/finance-categories.json';
+import AppIcon from '../AppIcon';
 
 export { formatVND };
 export const money = (n) => formatVND(Math.round(n || 0));
@@ -16,11 +17,25 @@ export const INCOME_BY_KEY = Object.fromEntries(CATS.incomeGroups.map(g => [g.ke
 export const SUB_BY_KEY = {};
 for (const g of CATS.expenseGroups) for (const s of g.subs || []) SUB_BY_KEY[s.key] = { ...s, group: g };
 
-export function catInfo(categoryId) {
-  return EXPENSE_BY_KEY[categoryId] || INCOME_BY_KEY[categoryId]
-    || { key: categoryId, label: categoryId || 'Khác', icon: '📦', color: '#8b91a6' };
+export function catInfo(categoryId, cats = CATS) {
+  const expense = cats.expenseGroups.find(g => g.key === categoryId);
+  const income = cats.incomeGroups.find(g => g.key === categoryId);
+  return expense || income
+    || { key: categoryId, label: categoryId || 'Khác', icon: 'package', color: '#8b91a6' };
 }
-export function subLabel(subId) { return SUB_BY_KEY[subId]?.label || null; }
+export function subLabel(subId, cats = CATS) {
+  if (!subId) return null;
+  for (const group of cats.expenseGroups) {
+    const sub = (group.subs || []).find(item => item.key === subId);
+    if (sub) return sub.label;
+  }
+  return null;
+}
+
+export function FinanceIcon({ categoryId, name, cats = CATS, size = 18, weight = 'regular', ...props }) {
+  const iconName = name || catInfo(categoryId, cats).icon;
+  return <AppIcon name={iconName} size={size} weight={weight} {...props} />;
+}
 
 export const NECESSITY_META = {
   must: { label: 'Bắt buộc',  color: '#48b3a2' },
@@ -100,9 +115,10 @@ export function TaskPicker({ tasks, value, onPick }) {
   return (
     <div className="fin-taskpick">
       <button type="button" className="fin-taskpick__btn" onClick={() => setOpen(o => !o)}>
-        {current ? `📌 ${current.title}` : '📌 Gắn nhiệm vụ'}
+        <AppIcon name="pushPin" size={15} weight={current ? 'fill' : 'regular'} />
+        <span>{current ? current.title : 'Gắn nhiệm vụ'}</span>
       </button>
-      {value && <button type="button" className="fin-taskpick__clear" onClick={() => onPick(null)}>✕</button>}
+      {value && <button type="button" className="fin-taskpick__clear" onClick={() => onPick(null)} aria-label="Bỏ liên kết nhiệm vụ"><AppIcon name="x" size={13} /></button>}
       {open && (
         <div className="fin-taskpick__menu">
           {tasks.length === 0 && <div className="fin-taskpick__empty">Không có nhiệm vụ đang mở</div>}
@@ -117,37 +133,113 @@ export function TaskPicker({ tasks, value, onPick }) {
 }
 
 // ── Segmented control ─────────────────────────────────────────────────────────
-export function Segmented({ options, value, onChange }) {
+export function Segmented({ options, value, onChange, ariaLabel = 'Tùy chọn' }) {
   return (
-    <div className="fin-seg">
+    <div className="fin-seg" role="group" aria-label={ariaLabel}>
       {options.map(o => (
         <button key={o.value} type="button"
           className={`fin-seg__btn${value === o.value ? ' fin-seg__btn--active' : ''}`}
-          onClick={() => onChange(o.value)}>{o.label}</button>
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}>
+          {o.icon && <AppIcon name={o.icon} size={14} />}
+          <span>{o.label}</span>
+          {o.hint && <small>{o.hint}</small>}
+        </button>
       ))}
     </div>
   );
 }
 
 // ── Bộ lọc kỳ (dùng chung Tổng quan + Giao dịch, chung state qua nav) ────────
-export function PeriodPicker({ options, value, onChange }) {
-  const idx = options.findIndex(o => o.key === value);
-  const cur = options[idx] || options[0];
+const PERIOD_MONTHS = Array.from({ length: 12 }, (_, index) => `Tháng ${index + 1}`);
+
+export function PeriodPicker({ options, period, value, onChange }) {
+  const rootRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const currentMonthKey = options.find(option => /^\d{4}-\d{2}$/.test(option.key))?.key;
+  const currentYear = Number((currentMonthKey || '').slice(0, 4));
+  const monthMatch = /^(\d{4})-(\d{2})$/.exec(value || '');
+  const yearMatch = /^year-(\d{4})$/.exec(value || '');
+  const selectedYear = Number(monthMatch?.[1] || yearMatch?.[1] || currentYear);
+  const [viewYear, setViewYear] = useState(selectedYear);
+  const cur = period || options.find(option => option.key === value) || options[0];
   const days = useMemo(() => {
     if (!cur) return 0;
     return Math.round((new Date(cur.to + 'T00:00:00') - new Date(cur.from + 'T00:00:00')) / 86400000) + 1;
   }, [cur]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = event => {
+      if (event.key === 'Escape' || (event.type === 'mousedown' && !rootRef.current?.contains(event.target))) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', close);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', close);
+    };
+  }, [open]);
+
+  const choose = key => { onChange(key); setOpen(false); };
+  const shiftPeriod = delta => {
+    if (monthMatch) {
+      const date = new Date(Number(monthMatch[1]), Number(monthMatch[2]) - 1 + delta, 1);
+      choose(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+    } else if (yearMatch) {
+      choose(`year-${Number(yearMatch[1]) + delta}`);
+    }
+  };
+  const previousDisabled = value === 'all'
+    || (monthMatch ? value <= '2000-01' : Number(yearMatch?.[1]) <= 2000);
+  const nextDisabled = value === 'all'
+    || (monthMatch ? value >= currentMonthKey : Number(yearMatch?.[1]) >= currentYear);
+  const years = useMemo(
+    () => Array.from({ length: Math.max(1, currentYear - 1999) }, (_, index) => currentYear - index),
+    [currentYear],
+  );
+
   return (
     <div className="fin-period">
-      <span className="fin-period__ico">📅</span>
+      <AppIcon name="calendar" size={17} className="fin-period__ico" />
       <span className="fin-period__lbl">Đang xem</span>
-      <select className="fin-period__select" value={value} onChange={e => onChange(e.target.value)}>
-        {options.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-      </select>
-      <span className="fin-period__days">{days} ngày</span>
+      <div className="fin-period__picker" ref={rootRef}>
+        <button type="button" className={`fin-period__trigger${open ? ' is-open' : ''}`}
+          aria-haspopup="dialog" aria-expanded={open}
+          onClick={() => { if (!open) setViewYear(selectedYear); setOpen(active => !active); }}>
+          <strong>{cur?.label}</strong><AppIcon name="caretDown" size={13} />
+        </button>
+        {open && <div className="fin-period__popover" role="dialog" aria-label="Chọn tháng và năm">
+          <div className="fin-period__yearbar">
+            <button type="button" onClick={() => setViewYear(year => Math.max(2000, year - 1))}
+              disabled={viewYear <= 2000} aria-label="Năm trước"><AppIcon name="caretLeft" size={14} /></button>
+            <select value={viewYear} onChange={event => setViewYear(Number(event.target.value))} aria-label="Năm">
+              {years.map(year => <option key={year} value={year}>{year}</option>)}
+            </select>
+            <button type="button" onClick={() => setViewYear(year => Math.min(currentYear, year + 1))}
+              disabled={viewYear >= currentYear} aria-label="Năm sau"><AppIcon name="caretRight" size={14} /></button>
+          </div>
+          <div className="fin-period__months">
+            {PERIOD_MONTHS.map((label, index) => {
+              const key = `${viewYear}-${String(index + 1).padStart(2, '0')}`;
+              return <button type="button" key={key} disabled={key > currentMonthKey}
+                className={value === key ? 'is-selected' : ''} onClick={() => choose(key)}>{label}</button>;
+            })}
+          </div>
+          <div className="fin-period__presets">
+            <button type="button" className={value === `year-${viewYear}` ? 'is-selected' : ''}
+              onClick={() => choose(`year-${viewYear}`)}><AppIcon name="calendar" size={14} /> Cả năm {viewYear}</button>
+            <button type="button" className={value === 'all' ? 'is-selected' : ''}
+              onClick={() => choose('all')}><AppIcon name="infinity" size={14} /> Tất cả</button>
+          </div>
+        </div>}
+      </div>
+      <span className="fin-period__days">{value === 'all' ? 'Toàn bộ dữ liệu' : `${days} ngày`}</span>
       <div className="fin-period__nav">
-        <button disabled={idx <= 0} onClick={() => onChange(options[idx - 1].key)} aria-label="Kỳ trước">‹</button>
-        <button disabled={idx >= options.length - 1} onClick={() => onChange(options[idx + 1].key)} aria-label="Kỳ sau">›</button>
+        <button type="button" disabled={previousDisabled} onClick={() => shiftPeriod(-1)} aria-label="Kỳ trước"><AppIcon name="caretLeft" size={14} /></button>
+        <button type="button" disabled={nextDisabled} onClick={() => shiftPeriod(1)} aria-label="Kỳ sau"><AppIcon name="caretRight" size={14} /></button>
       </div>
     </div>
   );

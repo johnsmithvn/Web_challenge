@@ -1,5 +1,6 @@
 import FocusTimer from '../components/FocusTimer';
 import { useFocusTimer } from '../hooks/useFocusTimer';
+import AppIcon from '../components/AppIcon';
 import '../styles/focus.css';
 
 export default function FocusPage() {
@@ -14,7 +15,7 @@ export default function FocusPage() {
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', padding: '6rem 0 4rem' }}>
       <div className="container">
         <div style={{ marginBottom: '2rem' }}>
-          <div className="section-label">⏱ Focus</div>
+          <div className="section-label"><AppIcon name="timer" size={15} /> Focus</div>
           <h1 className="display-2">
             Pomodoro <span className="gradient-text">Timer</span>
           </h1>
@@ -32,7 +33,7 @@ export default function FocusPage() {
 
             {/* Today */}
             <div className="card" style={{ padding: '1.25rem' }}>
-              <div className="dash-card-title">📊 Hôm Nay</div>
+              <div className="dash-card-title"><AppIcon name="chartLine" size={16} /> Hôm Nay</div>
               <div style={{ fontSize: '2rem', fontWeight: 900, fontFamily: 'var(--font-display)', marginTop: '0.5rem' }}>
                 <span className="gradient-text">{todayMinutes}</span>
                 <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>phút</span>
@@ -46,7 +47,7 @@ export default function FocusPage() {
 
             {/* Session history */}
             <div className="card" style={{ padding: '1.25rem' }}>
-              <div className="dash-card-title">📝 Lịch Sử Sessions</div>
+              <div className="dash-card-title"><AppIcon name="note" size={16} /> Lịch Sử Sessions</div>
               {recentSessions.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
                   Chưa có session nào. Bắt đầu timer!
@@ -63,7 +64,7 @@ export default function FocusPage() {
                         borderRadius: 'var(--radius-sm)',
                         fontSize: '0.85rem',
                       }}>
-                        <span style={{ color: 'var(--green)' }}>✅</span>
+                        <span style={{ color: 'var(--green)' }}><AppIcon name="checkCircle" size={15} /></span>
                         <span style={{ color: 'var(--text-secondary)', flex: 1 }}>Focus</span>
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                           {s.durationMin}p · {s.date === today ? time : s.date}
@@ -77,7 +78,7 @@ export default function FocusPage() {
 
             {/* Tips */}
             <div className="card" style={{ padding: '1.25rem', background: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.2)' }}>
-              <div className="dash-card-title">💡 Pomodoro Tips</div>
+              <div className="dash-card-title"><AppIcon name="lightbulb" size={16} /> Pomodoro Tips</div>
               <ul style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: '1.8', paddingLeft: '1.25rem', marginTop: '0.75rem' }}>
                 <li>Tắt điện thoại/thông báo khi bắt đầu</li>
                 <li>Chỉ làm <strong>1 việc</strong> trong mỗi 25 phút</li>

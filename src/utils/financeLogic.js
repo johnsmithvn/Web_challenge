@@ -58,22 +58,45 @@ const VN_MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Thán
   'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
 
 /**
- * 15 mục bộ lọc kỳ của Tổng quan (handoff): 12 tháng của năm hiện tại, Cả năm
- * nay, Cả năm trước, Tất cả. `refStr` = ngày "hôm nay" (test truyền cố định).
+ * 15 kỳ chuẩn để khởi tạo bộ lọc: 12 tháng gần nhất theo thứ tự mới nhất trước,
+ * Cả năm nay, Cả năm trước, Tất cả. Month/year picker có thể mở kỳ xa hơn qua
+ * `periodFromKey`, không bị giới hạn bởi danh sách này.
  * unit = đơn vị cột nhịp chi ('day' cho 1 tháng, 'month' cho kỳ dài).
  */
 export function listPeriodOptions(refStr) {
   const ref = parseYmd(refStr);
   const y = ref.getFullYear();
   const opts = [];
-  for (let m = 0; m < 12; m++) {
-    opts.push({ key: `${y}-${pad(m + 1)}`, label: `${VN_MONTHS[m]}/${y}`,
-      from: monthStart(y, m), to: monthEnd(y, m), unit: 'day' });
+  for (let offset = 0; offset < 12; offset++) {
+    const d = new Date(y, ref.getMonth() - offset, 1);
+    const year = d.getFullYear(), month0 = d.getMonth();
+    opts.push({ key: `${year}-${pad(month0 + 1)}`, label: `${VN_MONTHS[month0]}/${year}`,
+      from: monthStart(year, month0), to: monthEnd(year, month0), unit: 'day' });
   }
   opts.push({ key: `year-${y}`,     label: `Cả năm ${y}`,     from: monthStart(y, 0),     to: monthEnd(y, 11),     unit: 'month' });
   opts.push({ key: `year-${y - 1}`, label: `Cả năm ${y - 1}`, from: monthStart(y - 1, 0), to: monthEnd(y - 1, 11), unit: 'month' });
   opts.push({ key: 'all', label: 'Tất cả', from: '2000-01-01', to: refStr, unit: 'month' });
   return opts;
+}
+
+/** Đổi khóa của month/year picker thành khoảng ngày để mọi màn dùng chung. */
+export function periodFromKey(key, refStr) {
+  const current = currentMonthPeriod(refStr);
+  if (key === 'all') return { key, label: 'Tất cả', from: '2000-01-01', to: refStr, unit: 'month' };
+
+  const yearMatch = /^year-(\d{4})$/.exec(key || '');
+  if (yearMatch) {
+    const year = Number(yearMatch[1]);
+    return { key, label: `Cả năm ${year}`, from: monthStart(year, 0), to: monthEnd(year, 11), unit: 'month' };
+  }
+
+  const monthMatch = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(key || '');
+  if (monthMatch) {
+    const year = Number(monthMatch[1]);
+    const month0 = Number(monthMatch[2]) - 1;
+    return { key, label: `${VN_MONTHS[month0]}/${year}`, from: monthStart(year, month0), to: monthEnd(year, month0), unit: 'day' };
+  }
+  return current;
 }
 
 /** Mục "tháng đang chạy" — dùng cho chip ngân sách / Hóa đơn / Ngân sách. */
@@ -91,7 +114,7 @@ function inRange(str, from, to) { return str >= from && str <= to; }
  * excluded=true không vào bất kỳ tổng nào. income/saving tách riêng, KHÔNG trừ chi.
  * necessity đọc từ t.necessity (hook đã suy lúc ghi); thiếu thì rơi về 'need'.
  */
-export function periodTotals(txs, { from, to }) {
+export function periodTotals(txs, { from, to }, { savingAsExpense = false } = {}) {
   const out = {
     total: 0, income: 0, savingIn: 0, savingOut: 0, fixed: 0,
     count: 0, txCount: 0, days: daysInclusive(from, to),
@@ -103,6 +126,15 @@ export function periodTotals(txs, { from, to }) {
     if (t.type === 'income') { if (!t.excluded) out.income += t.amount; continue; }
     if (t.type === 'saving') {
       if (t.saving_dir === 'out') out.savingOut += t.amount; else out.savingIn += t.amount;
+      if (savingAsExpense && t.saving_dir !== 'out' && !t.excluded) {
+        out.total += t.amount;
+        out.count++;
+        if (t.is_fixed) out.fixed += t.amount;
+        const cat = t.category_id || 'finance';
+        out.byCategory[cat] = (out.byCategory[cat] || 0) + t.amount;
+        out.byNecessity.must += t.amount;
+        if (!out.biggest || t.amount > out.biggest.amount) out.biggest = t;
+      }
       continue;
     }
     if (t.excluded) continue;                 // trả gốc / trả sao kê — ngoài tổng chi
@@ -125,8 +157,8 @@ export function periodTotals(txs, { from, to }) {
  *   - Hai tháng dương lịch đã trọn → so tổng.
  *   - Còn lại (năm chưa trọn) → so mức trung bình mỗi ngày.
  */
-export function comparePeriods(curTxs, prevTxs, curRange, prevRange, refStr) {
-  const cur = periodTotals(curTxs, curRange);
+export function comparePeriods(curTxs, prevTxs, curRange, prevRange, refStr, options) {
+  const cur = periodTotals(curTxs, curRange, options);
   const ref = parseYmd(refStr);
   // "Tháng đang chạy" = kỳ đúng bằng tháng dương lịch CHỨA hôm nay. Không chỉ
   // kiểm "from là đầu tháng" — kỳ cả năm cũng bắt đầu 01-01, sẽ bị nhận nhầm.
@@ -137,13 +169,13 @@ export function comparePeriods(curTxs, prevTxs, curRange, prevRange, refStr) {
     const dayN = daysInclusive(curRange.from, refStr);
     let winEnd = addDaysStr(prevRange.from, dayN - 1);
     if (winEnd > prevRange.to) winEnd = prevRange.to;
-    const prev = periodTotals(prevTxs, { from: prevRange.from, to: winEnd });
+    const prev = periodTotals(prevTxs, { from: prevRange.from, to: winEnd }, options);
     return { mode: 'window', dayN, unit: '₫',
       curValue: cur.total, prevValue: prev.total,
       deltaPct: pctDelta(cur.total, prev.total), note: `so cùng cửa sổ ${dayN} ngày` };
   }
 
-  const prev = periodTotals(prevTxs, prevRange);
+  const prev = periodTotals(prevTxs, prevRange, options);
   if (isFullCalendarMonth(curRange) && isFullCalendarMonth(prevRange)) {
     return { mode: 'total', unit: '₫', curValue: cur.total, prevValue: prev.total,
       deltaPct: pctDelta(cur.total, prev.total), note: 'so tổng cả tháng' };
@@ -168,20 +200,22 @@ function isFullCalendarMonth(range) {
 // không JSON. Match đầu tiên thắng. Số tiền do parseCurrencyInput (currencyUtils)
 // lo ở tầng UI — tách ra để test khỏi đụng localStorage.
 export const NL_DICT = [
-  { re: /c[àa]\s?ph[êe]|coffee|trà sữa|trà/i,       cat: 'food',          sub: 'food.coffee' },
-  { re: /ăn sáng|ăn trưa|ăn tối|cơm|bún|phở|bữa/i,  cat: 'food',          sub: 'food.rice' },
+  { re: /c[àa]\s?ph[êe]|coffee|trà sữa|trà/i,       cat: 'food',          sub: 'food.drinks' },
+  { re: /ăn sáng|ăn trưa|ăn tối|cơm|bún|phở|bữa/i,  cat: 'food',          sub: 'food.eatout' },
   { re: /chợ|siêu thị|rau|thịt|đi chợ/i,            cat: 'food',          sub: 'food.grocery' },
   { re: /ăn vặt|snack|bánh|kẹo/i,                    cat: 'food',          sub: 'food.snack' },
   { re: /xăng|đổ xăng|dầu/i,                         cat: 'transport',     sub: 'transport.fuel' },
   { re: /gửi xe|giữ xe|bãi xe/i,                     cat: 'transport',     sub: 'transport.parking' },
-  { re: /grab|taxi|xe ôm|gojek/i,                    cat: 'transport',     sub: 'transport.grab' },
+  { re: /grab|taxi|xe ôm|gojek/i,                    cat: 'transport',     sub: 'transport.taxi' },
   { re: /tiền điện|hóa đơn điện|(^|\s)điện(\s|$)/i,  cat: 'housing',       sub: 'housing.electric' },
   { re: /tiền nước|hóa đơn nước|(^|\s)nước(\s|$)/i,  cat: 'housing',       sub: 'housing.water' },
   { re: /internet|wifi|mạng|fpt|viettel/i,           cat: 'housing',       sub: 'housing.internet' },
   { re: /tiền nhà|thuê nhà|thuê phòng/i,             cat: 'housing',       sub: 'housing.rent' },
   { re: /netflix|spotify|youtube|đăng ký|subscri/i,  cat: 'subscription',  sub: 'subscription.streaming' },
   { re: /thuốc|khám|bệnh viện|bác sĩ/i,              cat: 'health',        sub: 'health.medicine' },
-  { re: /phim|game|du lịch|chơi/i,                    cat: 'entertainment', sub: 'entertainment.movie' },
+  { re: /phim|sự kiện/i,                              cat: 'entertainment', sub: 'entertainment.events' },
+  { re: /game/i,                                      cat: 'entertainment', sub: 'entertainment.game' },
+  { re: /du lịch/i,                                   cat: 'entertainment', sub: 'entertainment.travel' },
   { re: /quần áo|áo|giày|mua sắm|shopee|lazada/i,    cat: 'shopping',      sub: 'shopping.clothes' },
 ];
 
@@ -212,13 +246,11 @@ export function budgetBreakdown(totals, budgets, cats) {
       limit, spent, pct: limit ? Math.round((spent / limit) * 100) : null };
   });
 
-  const levels = { must: { limit: 0, spent: totals.byNecessity.must },
-                   need: { limit: 0, spent: totals.byNecessity.need },
-                   want: { limit: 0, spent: totals.byNecessity.want } };
-  for (const g of cats.expenseGroups) {
-    const nec = cats.necessityByCat[g.key] || 'need';
-    levels[nec].limit += byCat[g.key] || 0;
-  }
+  const levels = {
+    must: { limit: Math.round(totalLimit * 0.5), spent: totals.byNecessity.must },
+    need: { limit: Math.round(totalLimit * 0.3), spent: totals.byNecessity.need },
+    want: { limit: totalLimit - Math.round(totalLimit * 0.5) - Math.round(totalLimit * 0.3), spent: totals.byNecessity.want },
+  };
 
   return {
     totalLimit, totalSpent: totals.total, remaining: totalLimit - totals.total,
@@ -262,6 +294,42 @@ export function cardCycle(card, refStr) {
   };
 }
 
+/** Tổng dư nợ đang theo dõi = mọi lần quẹt thẻ - mọi lần trả sao kê đã ghi. */
+export function cardBalance(cardId, txs) {
+  const purchases = txs
+    .filter(t => t.source_card_id === cardId && t.type === 'expense' && !t.excluded)
+    .reduce((sum, t) => sum + t.amount, 0);
+  const payments = txs
+    .filter(t => t.card_id === cardId && t.type === 'expense' && t.excluded)
+    .reduce((sum, t) => sum + t.amount, 0);
+  return Math.max(0, purchases - payments);
+}
+
+/**
+ * Sao kê gần nhất đã chốt: (ngày chốt kỳ trước, ngày chốt kỳ này]. Khoản trả
+ * mang card_period được trừ khỏi sao kê, nên trả một phần vẫn cho ra số còn lại.
+ */
+export function cardStatementSummary(card, txs, refStr) {
+  const cycle = cardCycle(card, refStr);
+  const previousStatement = cardCycle(card, addDaysStr(cycle.statement, -1)).statement;
+  const period = cycle.statement.slice(0, 7);
+  const statementTotal = txs
+    .filter(t => t.source_card_id === card.id && t.type === 'expense' && !t.excluded
+      && t.occurred_at > previousStatement && t.occurred_at <= cycle.statement)
+    .reduce((sum, t) => sum + t.amount, 0);
+  const paid = txs
+    .filter(t => t.card_id === card.id && t.card_period === period && t.excluded)
+    .reduce((sum, t) => sum + t.amount, 0);
+  return {
+    ...cycle,
+    period,
+    previousStatement,
+    statementTotal,
+    paid,
+    outstanding: Math.max(0, statementTotal - paid),
+  };
+}
+
 /** Lãi ước kiếm được từ float: giữ `balance` thêm `days` ngày ở lãi suất `blendedRate`%/năm. */
 export function floatInterest(balance, days, blendedRate) {
   if (!balance || !days || !blendedRate) return 0;
@@ -286,8 +354,21 @@ export function loanSchedule(loan) {
   const done = loan.done || 0;
   let bal = loan.principal;                     // dư nợ gốc còn lại sau `done` kỳ
   for (let i = 0; i < done; i++) bal = bal - (pay - bal * r);
+  const interestPart = Math.round(bal * r);
   return { kind: 'amort', monthlyPayment: Math.round(pay),
+    interestPart, principalPart: Math.max(0, Math.round(pay) - interestPart),
     principalRemaining: Math.max(0, Math.round(bal)), progress: { done, total: n } };
+}
+
+/** Số tham chiếu của hóa đơn: cố định dùng giá khai báo, biến đổi lấy trung bình 3 kỳ gần nhất. */
+export function billAmountEstimate(bill, txs) {
+  if (bill.amount_mode === 'fixed') return bill.amount || 0;
+  const recent = txs.filter(tx => tx.bill_id === bill.id)
+    .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))
+    .slice(0, 3);
+  return recent.length
+    ? Math.round(recent.reduce((sum, tx) => sum + tx.amount, 0) / recent.length)
+    : 0;
 }
 
 // ── Quỹ tiết kiệm: số dư = SUM(deposits), lãi suất bình quân gia quyền ───────
@@ -311,10 +392,11 @@ export function maturityWarn(matures_at, refStr) {
 }
 
 // ── Nhịp chi: cột theo ngày (1 tháng) hoặc theo tháng (kỳ dài) ───────────────
-export function spendingRhythm(txs, { from, to, unit }) {
+export function spendingRhythm(txs, { from, to, unit }, { savingAsExpense = false } = {}) {
   const buckets = new Map();
   for (const t of txs) {
-    if (t.type !== 'expense' || t.excluded) continue;
+    const isCountedSaving = savingAsExpense && t.type === 'saving' && t.saving_dir !== 'out';
+    if ((t.type !== 'expense' && !isCountedSaving) || t.excluded) continue;
     if (!inRange(t.occurred_at, from, to)) continue;
     const key = unit === 'month' ? t.occurred_at.slice(0, 7) : t.occurred_at;
     buckets.set(key, (buckets.get(key) || 0) + t.amount);
@@ -332,8 +414,7 @@ export function spendingRhythm(txs, { from, to, unit }) {
     let cur = from;
     while (cur <= to) { rows.push({ key: cur, amount: buckets.get(cur) || 0 }); cur = addDaysStr(cur, 1); }
   }
-  const nonZero = rows.filter(r => r.amount > 0);
-  const avg = nonZero.length ? Math.round(nonZero.reduce((s, r) => s + r.amount, 0) / nonZero.length) : 0;
+  const avg = rows.length ? Math.round(rows.reduce((s, r) => s + r.amount, 0) / rows.length) : 0;
   return { rows, avg };
 }
 

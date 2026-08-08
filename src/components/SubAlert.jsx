@@ -3,6 +3,7 @@ import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { cardCycle } from '../utils/financeLogic';
 import { toDateStr } from '../utils/dateUtils';
+import AppIcon from './AppIcon';
 import '../styles/widgets.css';
 
 /**
@@ -36,11 +37,11 @@ export default function SubAlert() {
         for (const b of bills.data || []) {
           if (!b.enabled || b.finished_at) continue;
           const d = daysUntilDay(b.due_day, today);
-          if (d != null && d <= 7) list.push({ key: `b${b.name}`, icon: '🧾', name: b.name, days: d });
+          if (d != null && d <= 7) list.push({ key: `b${b.name}`, icon: 'receipt', name: b.name, days: d });
         }
         for (const c of cards.data || []) {
           const cyc = cardCycle(c, today);
-          if (cyc.daysUntilDue >= 0 && cyc.daysUntilDue <= 7) list.push({ key: `c${c.name}`, icon: '💳', name: c.name, days: cyc.daysUntilDue });
+          if (cyc.daysUntilDue >= 0 && cyc.daysUntilDue <= 7) list.push({ key: `c${c.name}`, icon: 'creditCard', name: c.name, days: cyc.daysUntilDue });
         }
         list.sort((a, b) => a.days - b.days);
         setItems(list);
@@ -52,11 +53,11 @@ export default function SubAlert() {
 
   return (
     <div className="sub-alert">
-      <div className="sub-alert__title">⚠️ Sắp tới hạn ({items.length})</div>
+      <div className="sub-alert__title"><AppIcon name="warning" size={14} /> Sắp tới hạn ({items.length})</div>
       <div className="sub-alert__list">
         {items.slice(0, 5).map(it => (
           <div key={it.key} className="sub-alert__item">
-            <span>{it.icon} {it.name}</span>
+            <span><AppIcon name={it.icon} size={14} /> {it.name}</span>
             <span className={`sub-alert__days${it.days <= 2 ? ' sub-alert__days--urgent' : ''}`}>
               {it.days <= 0 ? 'Hôm nay' : `${it.days} ngày`}
             </span>

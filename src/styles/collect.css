@@ -10,6 +10,37 @@
   padding: 6rem 2rem 4rem;
   min-height: 100vh;
 }
+
+.kb-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 180px;
+  padding-left: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-muted);
+}
+.kb-search-wrap .kb-search {
+  flex: 1;
+  min-width: 0;
+  padding-left: 0;
+  border: 0;
+  background: transparent;
+}
+.kb-empty-auth, .kb-loading, .section-label, .kb-subnotes__title,
+.kb-postcard__audio-badge, .kb-reader__format, .kb-reader__source,
+.kb-mode-btn, .kb-format-pill-btn, .kb-type-pill, .kb-task-filter-btn,
+.kb-task-filter-header > span, .inbox-bulk-bar__btn {
+  align-items: center;
+  gap: 0.4rem;
+}
+.kb-empty-auth, .kb-loading, .section-label, .kb-subnotes__title,
+.kb-postcard__audio-badge, .kb-reader__format, .kb-reader__source,
+.kb-mode-btn, .kb-format-pill-btn, .kb-type-pill, .kb-task-filter-btn,
+.kb-task-filter-header > span { display: inline-flex; }
 .kb-page--editor,
 .kb-page--reader {
   max-width: 100%;

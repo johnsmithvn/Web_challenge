@@ -11,8 +11,8 @@
 import assert from 'node:assert/strict';
 import {
   deriveNecessity, periodTotals, comparePeriods, matchCategory, budgetBreakdown,
-  cardCycle, loanSchedule, fundBalance, spendingRhythm, listPeriodOptions,
-  suggestedDailySpend, maturityWarn, groupByDate, daysInclusive, currentMonthPeriod,
+  cardCycle, cardBalance, cardStatementSummary, loanSchedule, fundBalance, spendingRhythm, listPeriodOptions,
+  suggestedDailySpend, maturityWarn, groupByDate, daysInclusive, currentMonthPeriod, periodFromKey, billAmountEstimate,
 } from '../utils/financeLogic.js';
 
 // Stub cats tối giản (không import JSON để chạy được bằng node).
@@ -53,6 +53,17 @@ assert.equal(t.byNecessity.need, 100000);
 assert.equal(t.byCategory.food, 100000);
 assert.equal(t.biggest.amount, 200000, 'khoản lớn nhất bỏ qua excluded');
 assert.equal(t.days, 31);
+const withSaving = periodTotals(txs, { from: '2026-08-01', to: '2026-08-31' },
+  { savingAsExpense: true });
+assert.equal(withSaving.total, 600000, 'tiền gửi quỹ được tính như chi khi bật tuỳ chọn');
+assert.equal(withSaving.count, 3);
+assert.equal(withSaving.byNecessity.must, 500000, 'tiền để dành luôn thuộc mức bắt buộc');
+assert.equal(withSaving.byCategory.finance, 300000, 'tiền để dành vào nhóm tài chính');
+const savingOut = periodTotals([
+  { occurred_at: '2026-08-21', type: 'saving', amount: 150000, saving_dir: 'out' },
+], { from: '2026-08-01', to: '2026-08-31' }, { savingAsExpense: true });
+assert.equal(savingOut.total, 0, 'tiền rút quỹ không bị tính như một khoản chi mới');
+assert.equal(savingOut.savingOut, 150000);
 console.log('periodTotals check: OK');
 
 /* ── comparePeriods: nhánh 1 — tháng đang chạy, cùng cửa sổ ngày ── */
@@ -89,7 +100,7 @@ assert.equal(c3.mode, 'avgPerDay');
 console.log('comparePeriods check: OK');
 
 /* ── matchCategory ── */
-assert.deepEqual(matchCategory('cà phê 35k'), { categoryId: 'food', subId: 'food.coffee' });
+assert.deepEqual(matchCategory('cà phê 35k'), { categoryId: 'food', subId: 'food.drinks' });
 assert.deepEqual(matchCategory('đổ xăng 50'), { categoryId: 'transport', subId: 'transport.fuel' });
 assert.equal(matchCategory('abcxyz không khớp'), null);
 console.log('matchCategory check: OK');
@@ -107,8 +118,9 @@ const bb = budgetBreakdown(bt, [
 ], CATS);
 assert.equal(bb.totalLimit, 3500000);
 assert.equal(bb.totalSpent, 1000000);
-assert.equal(bb.levels.must.limit, 2000000, 'housing → must');
-assert.equal(bb.levels.need.limit, 1000000, 'food → need');
+assert.equal(bb.levels.must.limit, 1750000, 'must = 50% tổng hạn mức');
+assert.equal(bb.levels.need.limit, 1050000, 'need = 30% tổng hạn mức');
+assert.equal(bb.levels.want.limit, 700000, 'want = 20% tổng hạn mức');
 assert.equal(bb.levels.want.spent, 200000, 'entertainment → want');
 assert.equal(bb.cutable, 200000, 'cắt được = nhóm muốn có');
 const foodRow = bb.categories.find(c => c.categoryId === 'food');
@@ -127,6 +139,21 @@ assert.equal(cc2.statement, '2026-08-25');
 assert.equal(cc2.due, '2026-09-15');
 console.log('cardCycle check: OK');
 
+const cardTxs = [
+  { occurred_at: '2026-07-06', type: 'expense', amount: 100000, source_card_id: 'card-1' },
+  { occurred_at: '2026-08-05', type: 'expense', amount: 200000, source_card_id: 'card-1' },
+  { occurred_at: '2026-08-06', type: 'expense', amount: 400000, source_card_id: 'card-1' },
+  { occurred_at: '2026-08-10', type: 'expense', amount: 50000, excluded: true,
+    card_id: 'card-1', card_period: '2026-08' },
+];
+const statement = cardStatementSummary({ id: 'card-1', statement_day: 5, due_day: 25 }, cardTxs, '2026-08-13');
+assert.equal(statement.previousStatement, '2026-07-05');
+assert.equal(statement.statementTotal, 300000, 'sao kê chỉ lấy giao dịch sau chốt trước đến hết ngày chốt này');
+assert.equal(statement.paid, 50000);
+assert.equal(statement.outstanding, 250000);
+assert.equal(cardBalance('card-1', cardTxs), 650000, 'dư nợ chạy gồm cả giao dịch sau ngày chốt');
+console.log('card statement check: OK');
+
 /* ── loanSchedule: interest vs amort ── */
 const li = loanSchedule({ kind: 'interest', principal: 100000000, rate: 12, term: 12, due_at: '2027-08-01' });
 assert.equal(li.monthlyInterest, 1000000, 'lãi tháng = P*12%/12');
@@ -135,7 +162,18 @@ const la = loanSchedule({ kind: 'amort', principal: 12000000, rate: 0, term: 12 
 assert.equal(la.monthlyPayment, 1000000, 'rate 0 → chia đều');
 const la2 = loanSchedule({ kind: 'amort', principal: 100000000, rate: 12, term: 24, done: 0 });
 assert.ok(la2.monthlyPayment > 4700000 && la2.monthlyPayment < 4720000, 'annuity ~4.707tr');
+assert.equal(la2.interestPart + la2.principalPart, la2.monthlyPayment, 'mỗi kỳ tách đúng lãi + gốc');
+assert.ok(la2.interestPart > 0 && la2.principalPart > 0);
 console.log('loanSchedule check: OK');
+
+assert.equal(billAmountEstimate({ id: 'bill-fixed', amount_mode: 'fixed', amount: 260000 }, []), 260000);
+assert.equal(billAmountEstimate({ id: 'bill-ask', amount_mode: 'ask' }, [
+  { bill_id: 'bill-ask', occurred_at: '2026-08-01', amount: 180000 },
+  { bill_id: 'bill-ask', occurred_at: '2026-07-01', amount: 150000 },
+  { bill_id: 'bill-ask', occurred_at: '2026-06-01', amount: 120000 },
+  { bill_id: 'bill-ask', occurred_at: '2026-05-01', amount: 999999 },
+]), 150000, 'hóa đơn biến đổi chỉ lấy trung bình 3 kỳ gần nhất');
+console.log('billAmountEstimate check: OK');
 
 /* ── fundBalance: bình quân gia quyền ── */
 const fb = fundBalance([{ amount: 100000000, rate: 6 }, { amount: 100000000, rate: 4 }]);
@@ -150,7 +188,7 @@ const rDay = spendingRhythm([
   { occurred_at: '2026-08-03', type: 'expense', amount: 300000 },
 ], { from: '2026-08-01', to: '2026-08-03', unit: 'day' });
 assert.equal(rDay.rows.length, 3, '3 ngày liên tục kể cả ngày 0đ');
-assert.equal(rDay.avg, 200000, 'trung bình chỉ tính ngày có chi');
+assert.equal(rDay.avg, 133333, 'trung bình tính trên mọi ngày trong kỳ, kể cả ngày 0đ');
 const rMonth = spendingRhythm([
   { occurred_at: '2026-01-15', type: 'expense', amount: 100000 },
   { occurred_at: '2026-03-15', type: 'expense', amount: 100000 },
@@ -161,8 +199,14 @@ console.log('spendingRhythm check: OK');
 /* ── listPeriodOptions: đúng 15 mục ── */
 const opts = listPeriodOptions('2026-08-13');
 assert.equal(opts.length, 15, '12 tháng + 2 năm + tất cả');
-assert.equal(opts[7].from, '2026-08-01', 'tháng 8');
+assert.equal(opts[0].from, '2026-08-01', 'tháng hiện tại đứng đầu');
+assert.equal(opts[11].from, '2025-09-01', 'đủ 12 tháng lùi liên tục qua năm trước');
 assert.equal(currentMonthPeriod('2026-08-13').from, '2026-08-01');
+assert.deepEqual(periodFromKey('2024-02', '2026-08-13'), {
+  key: '2024-02', label: 'Tháng 2/2024', from: '2024-02-01', to: '2024-02-29', unit: 'day',
+}, 'picker phải mở được tháng bất kỳ, kể cả năm nhuận');
+assert.equal(periodFromKey('year-2023', '2026-08-13').to, '2023-12-31');
+assert.equal(periodFromKey('key-hỏng', '2026-08-13').key, '2026-08', 'khóa hỏng fallback tháng hiện tại');
 console.log('listPeriodOptions check: OK');
 
 /* ── phụ trợ ── */

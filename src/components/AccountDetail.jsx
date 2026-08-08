@@ -4,6 +4,7 @@ import {
   linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
+import AppIcon from './AppIcon';
 
 /**
  * AccountDetail — pane chi tiết một item, cả chế độ XEM và SỬA.
@@ -129,7 +130,7 @@ export default function AccountDetail({
                 onClick={onToggleFavorite}
                 aria-pressed={item.favorite}
                 title="Favourite"
-              >★</button>
+              aria-label="Đánh dấu yêu thích"><AppIcon name="star" size={15} weight={item.favorite ? 'fill' : 'regular'} /></button>
               <button className="acc-btn acc-btn--primary" onClick={startEdit}>Edit</button>
             </>
           )}
@@ -411,7 +412,7 @@ function FieldRow({ field: f, idx, editing, items, ownerId, revealed, copied,
         )}
         {!editing && f.value && f.type !== 'multi' && (
           <button className="acc-act" onClick={() => onCopy(f.value, f.id)}>
-            {copied === f.id ? '✓ Copied' : 'Copy'}
+            <AppIcon name={copied === f.id ? 'check' : 'copy'} size={14} /> {copied === f.id ? 'Copied' : 'Copy'}
           </button>
         )}
         {editing && f.type === 'password' && (
@@ -426,8 +427,8 @@ function FieldRow({ field: f, idx, editing, items, ownerId, revealed, copied,
           </select>
         )}
         {editing && (
-          <button className="acc-act acc-act--x" title="Remove field" aria-label="Remove field"
-            onClick={() => patch((d) => { d.fields.splice(idx, 1); })}>✕</button>
+          <button className="acc-act acc-act--x" title="Remove field" aria-label="Xóa trường"
+            onClick={() => patch((d) => { d.fields.splice(idx, 1); })}><AppIcon name="x" size={14} /></button>
         )}
       </div>
     </div>
@@ -449,7 +450,7 @@ function ViewValue({ field: f, items, revealed, copied, onCopy, onOpen }) {
             </span>
             <span className="acc-multi__val">{v}</span>
             <button className="acc-act acc-act--mini" onClick={() => onCopy(v, `${f.id}:${i}`)}>
-              {copied === `${f.id}:${i}` ? '✓' : 'Copy'}
+              <AppIcon name={copied === `${f.id}:${i}` ? 'check' : 'copy'} size={14} /> {copied === `${f.id}:${i}` ? '' : 'Copy'}
             </button>
           </div>
         ))}
@@ -550,11 +551,11 @@ function EditValue({ field: f, idx, items, ownerId, patch }) {
               onChange={(e) => patch((d) => { d.fields[idx].values[vi] = e.target.value; })}
               placeholder={placeholderFor(f.type)} aria-label="Value" />
             <button className={`acc-act acc-act--star${vi === 0 ? ' acc-act--on' : ''}`}
-              title="Make primary" aria-label="Make primary"
+              title="Make primary"
               onClick={() => patch((d) => { const a = d.fields[idx].values; a.unshift(a.splice(vi, 1)[0]); })}
-            >★</button>
-            <button className="acc-act acc-act--x" title="Remove value" aria-label="Remove value"
-              onClick={() => patch((d) => { d.fields[idx].values.splice(vi, 1); })}>✕</button>
+              aria-label="Đánh dấu giá trị chính"><AppIcon name="star" size={14} weight={vi === 0 ? 'fill' : 'regular'} /></button>
+            <button className="acc-act acc-act--x" title="Remove value" aria-label="Xóa giá trị"
+              onClick={() => patch((d) => { d.fields[idx].values.splice(vi, 1); })}><AppIcon name="x" size={14} /></button>
           </div>
         ))}
         <button className="acc-act acc-addrow"
@@ -610,8 +611,8 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
               onChange={(e) => patch((d) => { d.fields[idx].links[li].value = e.target.value; })}>
               {valueOptions.map((o, oi) => <option key={oi} value={o.value}>{o.label}</option>)}
             </select>
-            <button className="acc-act acc-act--x" title="Remove link" aria-label="Remove link"
-              onClick={() => patch((d) => { d.fields[idx].links.splice(li, 1); })}>✕</button>
+            <button className="acc-act acc-act--x" title="Remove link" aria-label="Xóa liên kết"
+              onClick={() => patch((d) => { d.fields[idx].links.splice(li, 1); })}><AppIcon name="x" size={14} /></button>
           </div>
         );
       })}
@@ -722,8 +723,8 @@ function AuthRow({ auth: a, idx, editing, accountId, onSetAuthState, patch }) {
         )}
         <button className="acc-act" onClick={toggle}>{off ? 'Turn on' : 'Turn off'}</button>
         {editing && (
-          <button className="acc-act acc-act--x" title="Remove method" aria-label="Remove method"
-            onClick={() => patch((d) => { d.auth.splice(idx, 1); })}>✕</button>
+          <button className="acc-act acc-act--x" title="Remove method" aria-label="Xóa phương thức đăng nhập"
+            onClick={() => patch((d) => { d.auth.splice(idx, 1); })}><AppIcon name="x" size={14} /></button>
         )}
       </div>
     </div>
@@ -750,7 +751,7 @@ function CodeSheet({ codes, editing, accountId, revealed, onReveal, copied, onCo
             {revealed ? 'Hide codes' : 'Reveal codes'}
           </button>
           <button className="acc-act" onClick={() => onCopy(codes.map((c) => c.code).join('\n'), 'codes')}>
-            {copied === 'codes' ? '✓ Copied' : 'Copy sheet'}
+            <AppIcon name={copied === 'codes' ? 'check' : 'copy'} size={14} /> {copied === 'codes' ? 'Copied' : 'Copy sheet'}
           </button>
           {editing && (
             <button className="acc-act"

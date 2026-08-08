@@ -14,6 +14,7 @@ import { toDateStr } from '../utils/dateUtils';
 // dùng chung mà không phải import ngược file này (vòng tròn import).
 import { PRIORITY_OPTIONS, WEEKDAYS } from '../utils/taskFields';
 import UI_STRINGS from '../data/ui-strings.json';
+import AppIcon from './AppIcon';
 import '../styles/tasks.css';
 
 export default function TaskListSection() {
@@ -294,8 +295,8 @@ export default function TaskListSection() {
                 style={{
                   width: '100%', textAlign: 'left', cursor: 'pointer', fontSize: '0.82rem',
                 }}>
-                📅 {editDate ? new Date(editDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
-                {editTime && editTime !== '00:00' && ` · ⏰ ${editTime}`}
+                <AppIcon name="calendar" size={14} /> {editDate ? new Date(editDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
+                {editTime && editTime !== '00:00' && <> · <AppIcon name="clock" size={14} /> {editTime}</>}
               </button>
               {showEditDP && (
                 <DatePickerPopover
@@ -321,7 +322,7 @@ export default function TaskListSection() {
                       background: `${opt.color}20`,
                       borderColor: `${opt.color}60`,
                       color: opt.color,
-                    } : {}}>{opt.icon} {opt.label}
+                    } : {}}><AppIcon name={opt.icon} size={14} /> {opt.label}
                   </button>
                 ))}
               </div>
@@ -333,7 +334,7 @@ export default function TaskListSection() {
                 onClick={() => setEditShowRec(!editShowRec)}
                 className={`task-option-btn ${editShowRec ? 'task-option-btn--active-cyan' : ''}`}
                 style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-              >🔁 {editShowRec ? 'Lặp lại ✓' : 'Lặp lại'}
+              ><AppIcon name="refresh" size={14} /> {editShowRec ? 'Lặp lại' : 'Lặp lại'} {editShowRec && <AppIcon name="check" size={12} />}
               </button>
               {editShowRec && (
                 <div className="task-form-rec-panel">
@@ -396,7 +397,7 @@ export default function TaskListSection() {
                 onClick={() => setLinkTaskId(task.id)}
                 className={`task-option-btn ${(task._collections || []).length > 0 ? 'task-option-btn--active-cyan' : ''}`}
                 style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-              >🔗 {(task._collections || []).length > 0 ? `${(task._collections || []).length} bài viết liên kết` : 'Liên kết bài viết'}
+              ><AppIcon name="link" size={14} /> {(task._collections || []).length > 0 ? `${(task._collections || []).length} bài viết liên kết` : 'Liên kết bài viết'}
               </button>
             </div>
 
@@ -405,7 +406,7 @@ export default function TaskListSection() {
               <button onClick={() => saveEdit(task.id)} className="btn btn-primary"
                 style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
                 disabled={!editTitle.trim()}>
-                ✓ Lưu
+                <AppIcon name="save" size={14} /> Lưu
               </button>
               <button onClick={cancelEdit} className="btn btn-ghost"
                 style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', color: 'var(--text-muted)' }}>
@@ -445,14 +446,14 @@ export default function TaskListSection() {
                     fontSize: '0.72rem', padding: '0.1rem 0.45rem', borderRadius: 'var(--radius-full)',
                     background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(139,92,246,0.1)',
                     color: overdue ? '#f87171' : '#a78bfa',
-                  }}>📅 {fmtDate(task.due_date)}</span>
+                  }}><AppIcon name="calendar" size={12} /> {fmtDate(task.due_date)}</span>
                 )}
                 {task.due_time && task.due_time.substring(0,5) !== '00:00' && task.due_time.substring(0,5) !== '23:59' && (
                   <span style={{
                     fontSize: '0.72rem', padding: '0.1rem 0.45rem', borderRadius: 'var(--radius-full)',
                     background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(6,182,212,0.1)',
                     color: overdue ? '#f87171' : '#22d3ee',
-                  }}>⏰ {fmtTime(task.due_time)}</span>
+                  }}><AppIcon name="clock" size={12} /> {fmtTime(task.due_time)}</span>
                 )}
                 {overdue && !showRollover && (
                   <span style={{
@@ -465,13 +466,13 @@ export default function TaskListSection() {
                     fontSize: '0.68rem', padding: '0.1rem 0.45rem', borderRadius: 'var(--radius-full)',
                     background: 'rgba(234,179,8,0.12)', color: '#eab308', fontWeight: 600,
                     border: '1px solid rgba(234,179,8,0.2)'
-                  }}>⏳ Nhanh lên sắp hết ngày rồi</span>
+                  }}><AppIcon name="timer" size={12} /> Nhanh lên sắp hết ngày rồi</span>
                 )}
                 {task.recurrence_rule && (
                   <span style={{
                     fontSize: '0.68rem', padding: '0.1rem 0.45rem', borderRadius: 'var(--radius-full)',
                     background: 'rgba(6,182,212,0.1)', color: '#22d3ee',
-                  }}>🔁 {task.recurrence_rule.type === 'interval' ? `${task.recurrence_rule.days}d` : task.recurrence_rule.type === 'weekly' ? WEEKDAYS[task.recurrence_rule.weekday] : `D${task.recurrence_rule.day}`}</span>
+                  }}><AppIcon name="refresh" size={12} /> {task.recurrence_rule.type === 'interval' ? `${task.recurrence_rule.days}d` : task.recurrence_rule.type === 'weekly' ? WEEKDAYS[task.recurrence_rule.weekday] : `D${task.recurrence_rule.day}`}</span>
                 )}
                 {task.priority > 0 && (() => {
                   const p = PRIORITY_OPTIONS.find(o => o.value === task.priority);
@@ -479,7 +480,7 @@ export default function TaskListSection() {
                     <span style={{
                       fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-full)',
                       background: `${p.color}18`, color: p.color,
-                    }}>{p.icon} {p.label}</span>
+                    }}><AppIcon name={p.icon} size={12} /> {p.label}</span>
                   ) : null;
                 })()}
                 {(task._collections || []).length > 0 && (
@@ -490,13 +491,13 @@ export default function TaskListSection() {
                       background: 'rgba(6,182,212,0.1)', color: '#22d3ee', cursor: 'pointer',
                     }}
                     title="Xem bài viết liên kết"
-                  >🔗 {(task._collections || []).length} bài</span>
+                  ><AppIcon name="link" size={12} /> {(task._collections || []).length} bài</span>
                 )}
                 {(task._tags || []).map(tag => (
                   <span key={tag.id} style={{
                     fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: 'var(--radius-full)',
                     background: `${tag.color}18`, color: tag.color,
-                  }}>🏷 {tag.name}</span>
+                  }}><AppIcon name="tag" size={12} /> {tag.name}</span>
                 ))}
               </div>
             </div>
@@ -511,28 +512,28 @@ export default function TaskListSection() {
                   title="Đổi ngày"
                   onMouseEnter={e => e.currentTarget.style.opacity = 1}
                   onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
-                  📅
+                  <AppIcon name="calendar" size={15} />
                 </button>
                 <button onClick={() => startEdit(task)} id={`task-edit-${task.id}`}
                   style={{ ...btnBase, color: 'var(--text-muted)', opacity: 0.6 }}
                   title="Sửa"
                   onMouseEnter={e => e.currentTarget.style.opacity = 1}
                   onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
-                  ✏️
+                  <AppIcon name="pencil" size={15} />
                 </button>
                 <button onClick={() => setLinkTaskId(task.id)} id={`task-link-${task.id}`}
                   style={{ ...btnBase, color: (task._collections || []).length > 0 ? '#22d3ee' : 'var(--text-muted)', opacity: 0.6 }}
                   title="Liên kết bài viết"
                   onMouseEnter={e => e.currentTarget.style.opacity = 1}
                   onMouseLeave={e => e.currentTarget.style.opacity = 0.6}>
-                  🔗
+                  <AppIcon name="link" size={15} />
                 </button>
                 <button onClick={() => handleDeleteTask(task)} id={`task-delete-${task.id}`}
                   style={{ ...btnBase, color: 'var(--text-muted)', opacity: 0.5 }}
                   title="Xoá"
                   onMouseEnter={e => e.currentTarget.style.opacity = 1}
                   onMouseLeave={e => e.currentTarget.style.opacity = 0.5}>
-                  🗑
+                  <AppIcon name="trash" size={15} />
                 </button>
               </div>
 
@@ -542,24 +543,24 @@ export default function TaskListSection() {
                   onClick={() => setOverflowTaskId(overflowTaskId === task.id ? null : task.id)}
                   style={{ ...btnBase, color: 'var(--text-muted)', fontSize: '1rem', opacity: 0.7, padding: '0.15rem 0.3rem' }}
                   title="Thêm"
-                >⋯</button>
+                ><AppIcon name="dots" size={17} /></button>
 
                 {overflowTaskId === task.id && (
                   <div className="task-overflow-menu" onClick={(e) => e.stopPropagation()}>
                     <button className="task-overflow-item" onClick={() => { setOverflowTaskId(null); setDetailTaskId(task.id); }}>
-                      📄 Chi tiết
+                      <AppIcon name="file" size={14} /> Chi tiết
                     </button>
                     <button className="task-overflow-item" onClick={() => { setOverflowTaskId(null); setQuickDateTaskId(task.id); }}>
-                      📅 Đổi ngày
+                      <AppIcon name="calendar" size={14} /> Đổi ngày
                     </button>
                     <button className="task-overflow-item" onClick={() => { setOverflowTaskId(null); startEdit(task); }}>
-                      ✏️ Sửa
+                      <AppIcon name="pencil" size={14} /> Sửa
                     </button>
                     <button className="task-overflow-item" onClick={() => { setOverflowTaskId(null); setLinkTaskId(task.id); }}>
-                      🔗 Liên kết KB
+                      <AppIcon name="link" size={14} /> Liên kết KB
                     </button>
                     <button className="task-overflow-item task-overflow-item--danger" onClick={() => { setOverflowTaskId(null); handleDeleteTask(task); }}>
-                      🗑 Xoá
+                      <AppIcon name="trash" size={14} /> Xoá
                     </button>
                   </div>
                 )}
@@ -598,7 +599,7 @@ export default function TaskListSection() {
           id="task-add-btn"
           style={{ fontSize: '0.82rem', padding: '0.3rem 0.75rem', color: showForm ? 'var(--red)' : 'var(--purple)' }}
         >
-          {showForm ? '✕ Đóng' : '+ Thêm'}
+          <AppIcon name={showForm ? 'x' : 'plus'} size={14} /> {showForm ? 'Đóng' : 'Thêm'}
         </button>
       </div>
 
@@ -620,8 +621,8 @@ export default function TaskListSection() {
               style={{
                 width: '100%', textAlign: 'left', cursor: 'pointer', fontSize: '0.82rem',
               }}>
-              📅 {dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
-              {dueTime && dueTime !== '00:00' && ` · ⏰ ${dueTime}`}
+              <AppIcon name="calendar" size={14} /> {dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
+              {dueTime && dueTime !== '00:00' && <> · <AppIcon name="clock" size={14} /> {dueTime}</>}
             </button>
             {showAddDP && (
               <DatePickerPopover
@@ -647,7 +648,7 @@ export default function TaskListSection() {
                     borderColor: `${opt.color}60`,
                     color: opt.color,
                   } : {}}>
-                  {opt.icon} {opt.label}
+                  <AppIcon name={opt.icon} size={14} /> {opt.label}
                 </button>
               ))}
             </div>
@@ -671,7 +672,7 @@ export default function TaskListSection() {
               className={`task-option-btn ${showRecurrence ? 'task-option-btn--active-cyan' : ''}`}
               style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}
             >
-              🔁 {showRecurrence ? 'Lặp lại ✓' : 'Lặp lại'}
+              <AppIcon name="refresh" size={14} /> Lặp lại {showRecurrence && <AppIcon name="check" size={12} />}
             </button>
             {showRecurrence && (
               <div className="task-form-rec-panel">
@@ -725,13 +726,13 @@ export default function TaskListSection() {
           </div>
 
           {/* KB Link hint */}
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-            💡 Tạo xong nhiệm vụ rồi nhấn 🔗 để liên kết bài viết Knowledge
+          <div className="task-form-hint">
+            <AppIcon name="lightbulb" size={14} /> Tạo xong nhiệm vụ rồi chọn <AppIcon name="link" size={13} /> để liên kết bài viết Knowledge
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={!title.trim()} id="task-submit-btn"
             style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-            📌 Thêm Nhiệm Vụ
+            <AppIcon name="pushPin" size={15} /> Thêm Nhiệm Vụ
           </button>
         </form>
       )}
@@ -744,7 +745,7 @@ export default function TaskListSection() {
             fontSize: '0.75rem', fontWeight: 700, color: '#f87171', marginBottom: '0.5rem',
             display: 'flex', alignItems: 'center', gap: '0.35rem',
           }}>
-            ⚠️ Quá hạn ({overdueTasks.length})
+            <AppIcon name="warning" size={14} /> Quá hạn ({overdueTasks.length})
           </div>
           <div style={{
             display: 'flex', flexDirection: 'column', gap: '0.4rem',
@@ -761,7 +762,7 @@ export default function TaskListSection() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
           {overdueTasks.length > 0 && (
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
-              📅 Hôm nay ({todayTasks.length})
+              <AppIcon name="calendar" size={14} /> Hôm nay ({todayTasks.length})
             </div>
           )}
           {todayTasks.map(task => renderTask(task))}
@@ -778,7 +779,7 @@ export default function TaskListSection() {
               fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600,
               padding: '0.3rem 0', width: '100%', justifyContent: 'flex-start',
             }}>
-            {showFuture ? '▾' : '▸'} 🔮 Sắp tới ({futureTasks.length})
+            <AppIcon name={showFuture ? 'caretDown' : 'caretRight'} size={13} /> <AppIcon name="rocket" size={14} /> Sắp tới ({futureTasks.length})
           </button>
           {showFuture && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.4rem' }}>
@@ -798,7 +799,7 @@ export default function TaskListSection() {
             fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600,
             padding: '0.3rem 0', width: '100%', justifyContent: 'flex-start',
           }}>
-          {showCompleted ? '▾' : '▸'} ✅ Đã hoàn thành
+          <AppIcon name={showCompleted ? 'caretDown' : 'caretRight'} size={13} /> <AppIcon name="checkCircle" size={14} /> Đã hoàn thành
         </button>
 
         {showCompleted && (
@@ -809,7 +810,7 @@ export default function TaskListSection() {
                 id="task-completed-date-btn"
                 className="auth-input"
                 style={{ textAlign: 'left', cursor: 'pointer', fontSize: '0.8rem', width: '220px', maxWidth: '100%' }}>
-                📅 {new Date(completedDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                <AppIcon name="calendar" size={14} /> {new Date(completedDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
               </button>
               {showCompletedDP && (
                 <DatePickerPopover
@@ -823,7 +824,7 @@ export default function TaskListSection() {
             </div>
 
             {completedLoading && (
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>⏳ Đang tải...</div>
+              <div className="task-inline-status"><AppIcon name="clock" size={14} /> Đang tải...</div>
             )}
 
             {!completedLoading && completedList.length === 0 && (
@@ -847,7 +848,7 @@ export default function TaskListSection() {
                           fontWeight: 600, fontSize: '0.86rem', color: 'var(--text-secondary)',
                           textDecoration: 'line-through',
                         }}>
-                          ✅ {task.title}
+                          <AppIcon name="checkCircle" size={14} /> {task.title}
                         </div>
                         {task.completed_at && (
                           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
@@ -860,7 +861,7 @@ export default function TaskListSection() {
                         title="Xoá"
                         onMouseEnter={e => e.currentTarget.style.opacity = 1}
                         onMouseLeave={e => e.currentTarget.style.opacity = 0.5}>
-                        🗑
+                        <AppIcon name="trash" size={15} />
                       </button>
                     </div>
                   </div>
@@ -876,9 +877,9 @@ export default function TaskListSection() {
         <div className="task-empty">
           {user ? (
             <>
-              <div className="task-empty__icon">✓</div>
+              <div className="task-empty__icon"><AppIcon name="checkCircle" size={34} weight="duotone" /></div>
               <div className="task-empty__title">Hết việc</div>
-              <div className="task-empty__hint">Bấm <strong>+ Thêm</strong> để tạo nhiệm vụ, hoặc mở tab 📅 Lịch xem những gì đã xong.</div>
+              <div className="task-empty__hint">Chọn <strong>Thêm</strong> để tạo nhiệm vụ, hoặc mở tab Lịch xem những gì đã xong.</div>
             </>
           ) : (
             <div className="task-empty__hint">Đăng nhập để tạo và lưu nhiệm vụ.</div>
@@ -888,7 +889,7 @@ export default function TaskListSection() {
 
       {isLoading && (
         <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-          ⏳ Đang tải...
+          <AppIcon name="clock" size={15} /> Đang tải...
         </div>
       )}
     </div>

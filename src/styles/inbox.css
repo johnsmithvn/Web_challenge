@@ -8,6 +8,18 @@
   padding: 6rem 2rem 4rem;
 }
 
+.inbox-page__title, .inbox-page__empty, .inbox-filter-chip,
+.inbox-quick-add__btn, .inbox-items__count > span, .inbox-bulk-bar__btn,
+.inbox-item__link, .inbox-item__action-btn, .inbox-overflow-item,
+.inbox-item__classify-btn, .inbox-page__loading {
+  align-items: center;
+  gap: 0.38rem;
+}
+.inbox-page__title, .inbox-page__empty, .inbox-filter-chip,
+.inbox-quick-add__btn, .inbox-items__count > span, .inbox-bulk-bar__btn,
+.inbox-item__link, .inbox-item__action-btn, .inbox-overflow-item,
+.inbox-item__classify-btn, .inbox-page__loading { display: inline-flex; }
+
 .inbox-page__header {
   margin-bottom: 1.5rem;
 }

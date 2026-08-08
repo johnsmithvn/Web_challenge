@@ -13,6 +13,7 @@
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import GenericModal from './GenericModal';
+import AppIcon from './AppIcon';
 import { useConfirm } from './ConfirmModal';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
@@ -166,7 +167,7 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
 
   return (
     <>
-      <GenericModal title="📄 Chi tiết nhiệm vụ" maxWidth={620} className="task-detail-modal" onClose={onClose}>
+      <GenericModal title={<><AppIcon name="file" size={17} /> Chi tiết nhiệm vụ</>} maxWidth={620} className="task-detail-modal" onClose={onClose}>
         <GenericModal.Body>
           {/* ── Đầu: tick + tiêu đề, dải màu priority như trên card ── */}
           <div
@@ -189,35 +190,35 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
           <div className="td-grid">
             {row('Hạn chót', task.due_date && (
               <>
-                📅 {formatDate(`${task.due_date}T00:00:00`)}
-                {hasTime && <> · ⏰ {task.due_time.substring(0, 5)}</>}
+                <AppIcon name="calendar" size={14} /> {formatDate(`${task.due_date}T00:00:00`)}
+                {hasTime && <> · <AppIcon name="clock" size={14} /> {task.due_time.substring(0, 5)}</>}
                 {overdue && <span className="td-pill td-pill--overdue">Quá hạn</span>}
               </>
             ))}
             {row('Độ ưu tiên', pri && (
               task.priority > 0
-                ? <span className="td-pill" style={{ background: `${pri.color}1f`, color: pri.color }}>{pri.icon} {pri.label}</span>
+                ? <span className="td-pill" style={{ background: `${pri.color}1f`, color: pri.color }}><AppIcon name={pri.icon} size={13} /> {pri.label}</span>
                 : <span className="td-muted">Không</span>
             ))}
             {row('Lặp lại', task.recurrence_rule !== undefined && (
               task.recurrence_rule
-                ? <>🔁 {describeRecurrence(task.recurrence_rule)}</>
+                ? <><AppIcon name="refresh" size={14} /> {describeRecurrence(task.recurrence_rule)}</>
                 : <span className="td-muted">Không lặp</span>
             ))}
             {row('Tag', task._tags !== undefined && (
               task._tags.length
                 ? task._tags.map(t => (
-                    <span key={t.id} className="td-pill" style={{ background: `${t.color}1f`, color: t.color }}>🏷 {t.name}</span>
+                    <span key={t.id} className="td-pill" style={{ background: `${t.color}1f`, color: t.color }}><AppIcon name="tag" size={13} /> {t.name}</span>
                   ))
                 : <span className="td-muted">Chưa gắn tag</span>
             ))}
             {row('Bài viết', task._collections !== undefined && (
               task._collections.length
-                ? <>🔗 {task._collections.length} bài viết</>
+                ? <><AppIcon name="link" size={14} /> {task._collections.length} bài viết</>
                 : <span className="td-muted">Chưa liên kết</span>
             ))}
             {task.completed && task.completed_at
-              ? row('Hoàn thành lúc', <>✅ {formatDateTime(task.completed_at)}</>)
+              ? row('Hoàn thành lúc', <><AppIcon name="checkCircle" size={14} /> {formatDateTime(task.completed_at)}</>)
               : null}
             {row('Tạo lúc', task.created_at && formatDateTime(task.created_at))}
             {/* Cột updated_at đến từ migration v5.0.0; task cũ trong state chưa
@@ -237,7 +238,7 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
               className={`tasks-viewbar__tab ${tab === 'activity' ? 'tasks-viewbar__tab--active' : ''}`}
               onClick={() => setTab('activity')}
             >
-              🕘 Hoạt động · {activityRows.length}
+              <AppIcon name="clock" size={14} /> Hoạt động · {activityRows.length}
             </button>
             <button
               role="tab"
@@ -245,19 +246,19 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
               className={`tasks-viewbar__tab ${tab === 'note' ? 'tasks-viewbar__tab--active' : ''}`}
               onClick={() => setTab('note')}
             >
-              📝 Ghi chú · {noteRows.length}
+              <AppIcon name="note" size={14} /> Ghi chú · {noteRows.length}
             </button>
           </div>
 
           <div className="td-panel">
             {!user && <div className="td-loading">Đăng nhập để xem lịch sử và ghi chú.</div>}
-            {user && loading && <div className="td-loading">⏳ Đang tải...</div>}
+            {user && loading && <div className="td-loading"><AppIcon name="clock" size={14} /> Đang tải...</div>}
 
             {/* ── Tab Hoạt động ── */}
             {user && !loading && tab === 'activity' && (
               activityRows.length === 0 ? (
                 <div className="task-empty td-empty">
-                  <div className="task-empty__icon td-empty__icon">🕘</div>
+                  <div className="task-empty__icon td-empty__icon"><AppIcon name="clock" size={28} weight="duotone" /></div>
                   <div className="task-empty__title">Chưa có thay đổi nào</div>
                   <div className="task-empty__hint">Mọi lần sửa nhiệm vụ này sẽ được ghi lại ở đây.</div>
                 </div>
@@ -270,7 +271,7 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
                       const expanded = expandedLogId === item.id;
                       return (
                         <div key={item.id} className="td-row">
-                          <span className="td-icon">{d.icon}</span>
+                          <span className="td-icon"><AppIcon name={d.icon} size={15} /></span>
                           <div className="td-body">
                             <div className="td-line">{d.text}</div>
                             {(d.oldText || d.newText) && (
@@ -292,7 +293,7 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
                             )}
                             <div className="td-time">{hhmm(item.created_at)}</div>
                           </div>
-                          <button className="td-del" title="Xoá dòng này" onClick={() => handleDeleteRow(item)}>🗑</button>
+                          <button className="td-del" title="Xoá dòng này" onClick={() => handleDeleteRow(item)}><AppIcon name="trash" size={14} /></button>
                         </div>
                       );
                     })}
@@ -319,14 +320,14 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
                   />
                   <div className="td-composer__actions">
                     <button className="btn btn-ghost td-btn-add" disabled={!draft.trim() || saving} onClick={handleAddNote}>
-                      ＋ Thêm ghi chú
+                      <AppIcon name="plus" size={14} /> Thêm ghi chú
                     </button>
                   </div>
                 </div>
 
                 {noteRows.length === 0 ? (
                   <div className="task-empty td-empty">
-                    <div className="task-empty__icon td-empty__icon td-empty__icon--note">📝</div>
+                    <div className="task-empty__icon td-empty__icon td-empty__icon--note"><AppIcon name="note" size={28} weight="duotone" /></div>
                     <div className="task-empty__title">Chưa có ghi chú nào</div>
                     <div className="task-empty__hint">Ghi lại tiến độ thật của nhiệm vụ — ví dụ “đã xong nhưng chưa đúng tiến độ”.</div>
                   </div>
@@ -347,7 +348,7 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
                           />
                           <div className="td-composer__actions">
                             <button className="btn btn-ghost td-btn-add" onClick={() => setEditingNoteId(null)}>Huỷ</button>
-                            <button className="btn btn-ghost td-btn-add" disabled={!editDraft.trim()} onClick={() => handleSaveEdit(item.id)}>✓ Lưu</button>
+                            <button className="btn btn-ghost td-btn-add" disabled={!editDraft.trim()} onClick={() => handleSaveEdit(item.id)}><AppIcon name="save" size={14} /> Lưu</button>
                           </div>
                         </>
                       ) : (
@@ -359,8 +360,8 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
                               <button
                                 className="td-del" title="Sửa ghi chú"
                                 onClick={() => { setEditingNoteId(item.id); setEditDraft(item.note || ''); }}
-                              >✏️</button>
-                              <button className="td-del" title="Xoá ghi chú" onClick={() => handleDeleteRow(item)}>🗑</button>
+                              ><AppIcon name="pencil" size={14} /></button>
+                              <button className="td-del" title="Xoá ghi chú" onClick={() => handleDeleteRow(item)}><AppIcon name="trash" size={14} /></button>
                             </span>
                           </div>
                         </>
@@ -375,10 +376,10 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
 
         <GenericModal.Footer>
           <button className="btn btn-ghost td-btn td-btn--danger" onClick={() => { onClose(); onDelete(task); }}>
-            🗑 Xoá nhiệm vụ
+            <AppIcon name="trash" size={15} /> Xoá nhiệm vụ
           </button>
           <button className="btn btn-ghost td-btn" onClick={() => { onClose(); onEdit(task); }}>
-            ✏️ Sửa
+            <AppIcon name="pencil" size={15} /> Sửa
           </button>
         </GenericModal.Footer>
       </GenericModal>

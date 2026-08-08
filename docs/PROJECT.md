@@ -50,10 +50,10 @@ Mỗi route = 1 page trong `src/pages/`. Hook chứa toàn bộ logic Supabase; 
 |-------|------|-----------|-----------|
 | `/` | LandingPage | — | — |
 | `/focus` | FocusPage | useFocusTimer | focus_sessions, xp_logs |
-| `/inbox` | InboxPage | useCollections, useExpenses | collections (type=inbox), expenses |
+| `/inbox` | InboxPage | useCollections, useUserTasks, useIntentions | collections (type=inbox), user_tasks, intentions; handoff sang Finance qua sessionStorage |
 | `/tasks` | TasksPage (2 view: Danh sách / Lịch) | useUserTasks, useCollections | user_tasks, task_collections |
-| `/collect` | CollectPage | useCollections, useKnowledgeGroups, useCollectionNotes, useTags | collections, knowledge_groups, collection_groups, collection_notes, collection_tags |
-| `/finance` | FinancePage | useExpenses, useSubscriptions, useTags | expenses, subscriptions, *_tags |
+| `/collect` | CollectPage | useCollections, useCollectionNotes, useTags | collections, collection_notes, collection_tags |
+| `/finance`, `/finance/:screen` | FinancePage | useFinance | 10 bảng `finance_*` + finance_transaction_tags |
 | `/incubator` | IncubatorPage | useIntentions | intentions, intention_logs |
 | `/settings` | SettingsPage | useTags, useQuotes | tags, inspirational_quotes |
 | `/tracker`, `/habits`, `/dashboard`, `/journey` | redirect `/tasks` (route đã gỡ v5.0.0) | — | — |

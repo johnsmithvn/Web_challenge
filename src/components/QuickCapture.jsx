@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCollections } from '../hooks/useCollections';
 import AuthModal from './AuthModal';
+import AppIcon from './AppIcon';
 import '../styles/quick-capture.css';
 import { logger } from '../utils/logger';
 
@@ -13,6 +15,12 @@ import { logger } from '../utils/logger';
  * Guest users see a prompt to login.
  */
 export default function QuickCapture() {
+  const { pathname } = useLocation();
+  if (pathname.startsWith('/finance')) return null;
+  return <QuickCaptureCore />;
+}
+
+function QuickCaptureCore() {
   const { user } = useAuth();
   const { addItem } = useCollections();
   const [open, setOpen] = useState(false);
@@ -91,7 +99,7 @@ export default function QuickCapture() {
         aria-label="Quick Capture"
         id="quick-capture-fab"
       >
-        <span className="qc-fab__icon">{open ? '✕' : '+'}</span>
+        <span className="qc-fab__icon"><AppIcon name={open ? 'x' : 'plus'} size={20} /></span>
       </button>
 
       {/* Capture modal */}
@@ -111,7 +119,7 @@ export default function QuickCapture() {
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleSubmit}
           >
-            <div className="qc-modal__header">📥 Ghi nhanh vào Inbox</div>
+            <div className="qc-modal__header"><AppIcon name="inbox" size={17} /> Ghi nhanh vào Inbox</div>
             {user ? (
               <>
                 <textarea
@@ -137,14 +145,14 @@ export default function QuickCapture() {
               </>
             ) : (
               <div className="qc-modal__guest">
-                <p>🔐 Đăng nhập để sử dụng Quick Capture</p>
+                <p><AppIcon name="lock" size={16} /> Đăng nhập để sử dụng Quick Capture</p>
                 <button
                   type="button"
                   className="btn btn-primary"
                   onClick={() => { setOpen(false); setShowAuth(true); }}
                   id="qc-login-btn"
                 >
-                  🔑 Đăng Nhập
+                  <AppIcon name="key" size={15} /> Đăng Nhập
                 </button>
               </div>
             )}
@@ -157,4 +165,3 @@ export default function QuickCapture() {
     </>
   );
 }
-

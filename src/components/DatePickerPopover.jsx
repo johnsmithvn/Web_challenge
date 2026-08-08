@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import '../styles/datepicker.css';
 import { toDateStr } from '../utils/dateUtils';
+import AppIcon from './AppIcon';
 
 // ── Date helpers ──────────────────────────────────────────
 const nowHHMM = () => { const n = new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`; };
@@ -155,12 +156,12 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
     <div ref={popoverRef} className="dp-popover" style={style}>
       {/* ── Header ── */}
       <div className="dp-header">
-        <span className="dp-header__tab dp-header__tab--active">📅 Bắt đầu lúc</span>
+        <span className="dp-header__tab dp-header__tab--active"><AppIcon name="calendar" size={14} /> Bắt đầu lúc</span>
         {draftLabel && (
           <span className="dp-header__value">
             {draftLabel}
             {draftTime && <span style={{ opacity: 0.7 }}> · ⏰ {draftTime}</span>}
-            <button className="dp-header__value-clear" onClick={() => { setDraft(''); setDraftTime(''); }} title="Xoá">✕</button>
+            <button className="dp-header__value-clear" onClick={() => { setDraft(''); setDraftTime(''); }} title="Xoá" aria-label="Xóa ngày"><AppIcon name="x" size={13} /></button>
           </span>
         )}
       </div>
@@ -258,7 +259,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
       {/* ── Footer: Save / Close ── */}
       <div className="dp-footer">
         <button className="dp-footer__cancel" onClick={onClose} title="Huỷ">
-          ✕ Huỷ
+          <AppIcon name="x" size={14} /> Huỷ
         </button>
         <button
           className={`dp-footer__save${hasChanges ? ' dp-footer__save--active' : ''}`}
@@ -266,7 +267,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
           disabled={!draft}
           title="Lưu"
         >
-          ✓ Lưu
+          <AppIcon name="check" size={14} /> Lưu
         </button>
       </div>
     </div>

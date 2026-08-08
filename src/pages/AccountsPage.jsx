@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../components/ConfirmModal';
 import AccountDetail from '../components/AccountDetail';
 import AccountAvatar from '../components/AccountAvatar';
+import AppIcon from '../components/AppIcon';
 import { matchesQuery, itemSubtitle, relativeUpdated } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import '../styles/accounts.css';
@@ -38,16 +39,6 @@ const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
  * từ một trang vault, nên phải tắt được. Mặc định bật.
  */
 const FAVICON_KEY = 'vl_acc_favicon';
-
-/** Glyph 24x24 stroke-1.5 — mọi icon trong module là path inline, không ảnh. */
-function Icon({ d, size = 15 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path d={d} />
-    </svg>
-  );
-}
 
 export default function AccountsPage() {
   const { user } = useAuth();
@@ -140,7 +131,7 @@ export default function AccountsPage() {
       clearTimeout(copyTimer.current);
       copyTimer.current = setTimeout(() => setCopied(null), 1400);
     } catch {
-      showToast('Clipboard blocked by the browser', { icon: '⚠️' });
+      showToast('Clipboard blocked by the browser', { icon: 'warning' });
     }
   }, [showToast]);
 
@@ -150,7 +141,7 @@ export default function AccountsPage() {
 
   const handleSave = useCallback(async (draft, tagIds) => {
     const ok = await saveItem(draft, tagIds);
-    if (!ok) showToast('Save failed', { icon: '⚠️' });
+    if (!ok) showToast('Save failed', { icon: 'warning' });
     return ok;
   }, [saveItem, showToast]);
 
@@ -166,7 +157,7 @@ export default function AccountsPage() {
     setCreating(tplKey);
     const id = await createItem(tplKey);
     setCreating(null);
-    if (!id) { showToast('Could not create the item', { icon: '⚠️' }); return; }
+    if (!id) { showToast('Could not create the item', { icon: 'warning' }); return; }
     setPickerOpen(false);
     open(id, { edit: true });
   };
@@ -215,11 +206,7 @@ export default function AccountsPage() {
         </div>
 
         <div className="acc-search">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
+          <AppIcon name="search" size={15} />
           <input
             className="acc-input"
             type="search"
@@ -246,7 +233,7 @@ export default function AccountsPage() {
 
       {/* Không tắt được — xem accounts.css § banner */}
       <div className="acc-warn">
-        ⚠️ Not encrypted yet — values are stored as plain text in Supabase. Masked fields only
+        <AppIcon name="warning" size={16} /> Not encrypted yet — values are stored as plain text in Supabase. Masked fields only
         hide values on screen; they do not protect them. Keep real passwords in Bitwarden until
         client-side encryption ships.
       </div>
@@ -402,7 +389,7 @@ export default function AccountsPage() {
 function Chip({ icon, label, count, on, onClick }) {
   return (
     <button className={`acc-chip${on ? ' acc-chip--on' : ''}`} onClick={onClick}>
-      <Icon d={icon} size={13} />
+      <AppIcon name={icon} size={13} />
       <span>{label}</span>
       <span className="acc-chip__num">{count}</span>
     </button>
@@ -422,7 +409,7 @@ function ListRow({ item, on, useFavicon, onOpen }) {
       <span className="acc-row__body">
         <span className="acc-row__top">
           <span className="acc-row__title">{item.title}</span>
-          {item.favorite && <span className="acc-row__star" aria-label="Favourite">★</span>}
+          {item.favorite && <span className="acc-row__star" aria-label="Favourite"><AppIcon name="star" size={13} weight="fill" /></span>}
           <span className="acc-row__code">{tpl?.code || '···'}</span>
         </span>
         <span className="acc-row__sub">{itemSubtitle(item, tpl?.name || 'Item')}</span>

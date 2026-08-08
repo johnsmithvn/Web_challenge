@@ -265,7 +265,7 @@ export function useUserTasks() {
       `Task: "${task.title}" → Next due: ${nextDate}.`,
       'User should manually create the next occurrence.'
     );
-    showToast(UI_STRINGS.toast.recurrenceSpawnFailed, { icon: '⚠️' });
+    showToast(UI_STRINGS.toast.recurrenceSpawnFailed, { icon: 'warning' });
     return false;
   }, [isAuth, userId, showToast, logTaskEvent]);
 
@@ -380,7 +380,7 @@ export function useUserTasks() {
         return false;
       }
     }
-    showToast(UI_STRINGS.toast.taskDeleted);
+    showToast(UI_STRINGS.toast.taskDeleted, { icon: 'trash' });
     return true;
   }, [isAuth, userId, tasks, showToast]);
 
@@ -437,7 +437,7 @@ export function useUserTasks() {
               const ids = resolveDeletionIds(prev, child.id);
               return prev.filter(t => !ids.includes(t.id));
             });
-            showToast(UI_STRINGS.toast.recurrenceChildRemoved);
+            showToast(UI_STRINGS.toast.recurrenceChildRemoved, { icon: 'trash' });
           }
         }
       } catch (err) {

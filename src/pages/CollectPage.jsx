@@ -13,7 +13,6 @@ import '../styles/collect.css';
 
 const TiptapEditor   = lazy(() => import('../components/TiptapEditor'));
 const TiptapReadOnly = lazy(() => import('../components/TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
-import { FileText, MessageSquareQuote, BookOpen, Lightbulb, Library, Bot, Gamepad2, Heart, Link } from 'lucide-react';
 import QuoteWidget from '../components/QuoteWidget';
 import UrlInputPopover from '../components/UrlInputPopover';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
@@ -21,16 +20,12 @@ import { stripMediaTag } from '../utils/mediaUtils';
 import { formatDate, formatDateTime } from '../utils/dateUtils';
 import MediaPreview from '../components/MediaPreview';
 import CustomSelect from '../components/CustomSelect';
+import AppIcon from '../components/AppIcon';
 
 /* ── Constants ─────────────────────────────────────────────── */
-const ICON_MAP = {
-  FileText, Link, MessageSquareQuote, BookOpen, Lightbulb, Bot, Gamepad2, Heart,
-  Library
-};
-
 const TYPE_META = KNOWLEDGE_DATA.types.reduce((acc, t) => {
   acc[t.key] = {
-    icon: ICON_MAP[t.icon] || FileText,
+    icon: t.icon || 'file',
     label: t.label,
     color: t.color
   };
@@ -194,7 +189,7 @@ function TagInput({ tags = [], onChange, suggestions = [] }) {
               onMouseDown={e => { e.preventDefault(); addTag(input); }}
               onMouseEnter={() => setCursor(filtered.length)}
             >
-              ✚ Tạo tag mới "<strong>{slugify(input)}</strong>"
+              <AppIcon name="plus" size={14} /> Tạo tag mới "<strong>{slugify(input)}</strong>"
             </button>
           )}
         </div>
@@ -271,7 +266,7 @@ function SubNotesSection({ collectionId, notesHook }) {
   return (
     <div className="kb-subnotes">
       <div className="kb-subnotes__header">
-        <span className="kb-subnotes__title">💭 Ghi Chú Cá Nhân</span>
+        <span className="kb-subnotes__title"><AppIcon name="note" size={16} /> Ghi Chú Cá Nhân</span>
         {notes.length > 0 && <span className="kb-subnotes__count">{notes.length}</span>}
       </div>
 
@@ -299,8 +294,8 @@ function SubNotesSection({ collectionId, notesHook }) {
               <div className="kb-subnote__footer">
                 <span className="kb-subnote__date">{formatDateTime(n.created_at)}</span>
                 <div className="kb-subnote__actions">
-                  <button className="kb-subnote__btn" onClick={() => { setEditingId(n.id); setEditContent(n.content); }}>✏️</button>
-                  <button className="kb-subnote__btn kb-subnote__btn--danger" onClick={() => deleteNote(n.id)}>🗑</button>
+                  <button className="kb-subnote__btn" aria-label="Sửa ghi chú" onClick={() => { setEditingId(n.id); setEditContent(n.content); }}><AppIcon name="pencil" size={14} /></button>
+                  <button className="kb-subnote__btn kb-subnote__btn--danger" aria-label="Xóa ghi chú" onClick={() => deleteNote(n.id)}><AppIcon name="trash" size={14} /></button>
                 </div>
               </div>
             </>
@@ -320,7 +315,7 @@ function SubNotesSection({ collectionId, notesHook }) {
         {isExpanded && (
           <div className="kb-subnote-form__actions">
             <button className="btn btn-ghost" style={{ fontSize: '0.82rem', padding: '0.35rem 0.7rem' }} onClick={() => { setIsExpanded(false); setNewContent(''); }}>Hủy</button>
-            <button className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.35rem 0.7rem' }} disabled={!newContent.trim()} onClick={handleAdd}>💾 Lưu</button>
+            <button className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.35rem 0.7rem' }} disabled={!newContent.trim()} onClick={handleAdd}><AppIcon name="save" size={14} /> Lưu</button>
           </div>
         )}
       </div>
@@ -357,7 +352,7 @@ function ArticleCard({ item, onClick }) {
       onKeyDown={e => e.key === 'Enter' && onClick(item)}>
       <div className="kb-card__left">
         <span className="kb-card__emoji" style={{ '--type-color': meta.color }}>
-          <meta.icon size={20} />
+          <AppIcon name={meta.icon} size={20} weight="duotone" />
         </span>
       </div>
       <div className="kb-card__body">
@@ -366,11 +361,11 @@ function ArticleCard({ item, onClick }) {
           {item.url && (
             <a href={item.url} target="_blank" rel="noopener noreferrer"
                className="kb-card__url" onClick={e => e.stopPropagation()}>
-              🔗 {safeHostname(item.url)}
+              <AppIcon name="link" size={13} /> {safeHostname(item.url)}
             </a>
           )}
           <span className={`kb-format-badge ${isTiptap ? 'kb-format-badge--visual' : 'kb-format-badge--markdown'}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem' }}>
-            {isTiptap ? '🎨 Visual' : '✍️ MD'}
+            <AppIcon name={isTiptap ? 'sparkle' : 'pencil'} size={12} /> {isTiptap ? 'Visual' : 'MD'}
           </span>
           <span className="kb-card__date">{formatDate(item.created_at)}</span>
         </div>
@@ -385,7 +380,7 @@ function ArticleCard({ item, onClick }) {
             })}
             {(item._linkedTaskCount || 0) > 0 && (
               <span className="kb-tag-chip" style={{ background: 'rgba(6,182,212,0.1)', color: '#22d3ee', borderColor: 'rgba(6,182,212,0.2)' }}>
-                📌 {item._linkedTaskCount} task{item._linkedTaskCount > 1 ? 's' : ''}
+                <AppIcon name="pushPin" size={12} /> {item._linkedTaskCount} task{item._linkedTaskCount > 1 ? 's' : ''}
               </span>
             )}
           </div>
@@ -439,7 +434,7 @@ function PostcardCard({ item, index, onClick }) {
           const color = typeof t === 'string' ? '#8b5cf6' : (t.color || '#8b5cf6');
           return <span key={name} className="kb-tag-chip"><span className="kb-tag-dot" style={{ background: color }} />#{name}</span>;
         })}
-        {audioUrl && <span className="kb-postcard__audio-badge">🔊 Audio</span>}
+        {audioUrl && <span className="kb-postcard__audio-badge"><AppIcon name="headphones" size={13} /> Audio</span>}
         <span className="kb-postcard__date">{formatDate(item.created_at)}</span>
       </div>
     </article>
@@ -499,9 +494,9 @@ function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook, o
       <div className="kb-reader__bar">
         <button className="kb-back-btn" onClick={onBack}>← Quay lại</button>
         <div className="kb-reader__actions">
-          <button className="btn btn-ghost kb-action-btn" onClick={() => onCreateTask(item)} title="Tạo task liên kết">📌 Task</button>
-          <button className="btn btn-ghost kb-action-btn" onClick={onEdit}>✏️ Sửa</button>
-          <button className="btn btn-ghost kb-action-btn kb-action-btn--danger" onClick={onDelete}>🗑 Xóa</button>
+          <button className="btn btn-ghost kb-action-btn" onClick={() => onCreateTask(item)} title="Tạo task liên kết"><AppIcon name="pushPin" size={15} /> Task</button>
+          <button className="btn btn-ghost kb-action-btn" onClick={onEdit}><AppIcon name="pencil" size={15} /> Sửa</button>
+          <button className="btn btn-ghost kb-action-btn kb-action-btn--danger" onClick={onDelete}><AppIcon name="trash" size={15} /> Xóa</button>
         </div>
       </div>
 
@@ -509,7 +504,7 @@ function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook, o
         {/* Main content */}
         <div className="kb-reader__main">
           <div className="kb-reader__hero">
-            <span className="kb-reader__emoji" style={{ '--type-color': meta.color }}><meta.icon size={32} /></span>
+            <span className="kb-reader__emoji" style={{ '--type-color': meta.color }}><AppIcon name={meta.icon} size={32} weight="duotone" /></span>
             <h1 className="kb-reader__title" title={item.title}>{item.title}</h1>
             <div className="kb-reader__meta">
               <span style={{ color: meta.color }}>{meta.label}</span>
@@ -518,7 +513,7 @@ function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook, o
               <span>·</span>
               <span>⏱ {mins} phút đọc</span>
               <span className={`kb-format-badge ${isTiptap ? 'kb-format-badge--visual' : 'kb-format-badge--markdown'}`}>
-                {isTiptap ? '🎨 Visual' : '✍️ Markdown'}
+                <AppIcon name={isTiptap ? 'sparkle' : 'pencil'} size={13} /> {isTiptap ? 'Visual' : 'Markdown'}
               </span>
             </div>
             {(item._tags || item.tags || []).length > 0 && (
@@ -534,7 +529,7 @@ function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook, o
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
                 <MediaPreview url={item.url} type={item.type} onToggleFormat={onUpdateUrl} />
                 <a href={stripMediaTag(item.url)} target="_blank" rel="noopener noreferrer" className="kb-reader__source" style={{ marginTop: 0 }}>
-                  🔗 Xem nguồn: {stripMediaTag(item.url)}
+                  <AppIcon name="external" size={14} /> Xem nguồn: {stripMediaTag(item.url)}
                 </a>
               </div>
             )}
@@ -552,7 +547,7 @@ function ReaderView({ item, onEdit, onDelete, onBack, onCreateTask, notesHook, o
               {item.body ? (
                 <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={mdComponents}>{item.body}</ReactMarkdown>
               ) : (
-                <p className="kb-prose__empty">Bài viết này chưa có nội dung. Nhấn ✏️ Sửa để thêm.</p>
+                <p className="kb-prose__empty">Bài viết này chưa có nội dung. Chọn Sửa để thêm.</p>
               )}
             </div>
           )}
@@ -680,10 +675,10 @@ function MarkdownEditor({ value, onChange, onSave }) {
     { label: '[ ]', title: 'Task list (Ctrl+Shift+9)',  action: () => insertLine('- [ ] ') },
     { label: '•',   title: 'Bullet list (Ctrl+Shift+8)',action: () => insertLine('- ') },
     { label: '1.',  title: 'Ordered list (Ctrl+Shift+7)',action: () => insertLine('1. ') },
-    { label: '🔗',  title: 'Link (Ctrl+K)',       action: () => insert('[', '](url)', 'link text') },
-    { label: '🖼️',  title: 'Chèn ảnh',             action: () => setMdMediaPopover(p => p === 'image' ? null : 'image') },
-    { label: '▶️',  title: 'Chèn YouTube',          action: () => setMdMediaPopover(p => p === 'youtube' ? null : 'youtube') },
-    { label: '🎵',  title: 'Chèn Audio',            action: () => setMdMediaPopover(p => p === 'audio' ? null : 'audio') },
+    { label: <AppIcon name="link" size={15} />,  title: 'Link (Ctrl+K)',       action: () => insert('[', '](url)', 'link text') },
+    { label: <AppIcon name="image" size={15} />,  title: 'Chèn ảnh',             action: () => setMdMediaPopover(p => p === 'image' ? null : 'image') },
+    { label: <AppIcon name="play" size={15} />,  title: 'Chèn YouTube',          action: () => setMdMediaPopover(p => p === 'youtube' ? null : 'youtube') },
+    { label: <AppIcon name="music" size={15} />,  title: 'Chèn Audio',            action: () => setMdMediaPopover(p => p === 'audio' ? null : 'audio') },
   ];
 
   return (
@@ -713,7 +708,7 @@ function MarkdownEditor({ value, onChange, onSave }) {
         }}
         label={mdMediaPopover === 'image' ? 'URL ảnh' : mdMediaPopover === 'youtube' ? 'YouTube URL' : 'Audio URL'}
         placeholder={mdMediaPopover === 'image' ? 'https://example.com/photo.jpg' : mdMediaPopover === 'youtube' ? 'https://youtu.be/...' : 'https://example.com/audio.mp3'}
-        icon={mdMediaPopover === 'image' ? '🖼️' : mdMediaPopover === 'youtube' ? '▶️' : '🎵'}
+        icon={mdMediaPopover === 'image' ? 'image' : mdMediaPopover === 'youtube' ? 'play' : 'music'}
         allowUpload={mdMediaPopover === 'image' || mdMediaPopover === 'audio'}
         accept={mdMediaPopover === 'image' ? 'image/*' : mdMediaPopover === 'audio' ? 'audio/*' : undefined}
         anchorRef={mdToolbarRef}
@@ -722,7 +717,7 @@ function MarkdownEditor({ value, onChange, onSave }) {
       {/* Panes */}
       <div className="kb-split__panes">
         <div className="kb-split__pane kb-split__pane--write">
-          <div className="kb-split__label">✍️ Viết</div>
+          <div className="kb-split__label"><AppIcon name="pencil" size={14} /> Viết</div>
           <textarea
             id="kb-md-textarea"
             ref={ref}
@@ -736,7 +731,7 @@ function MarkdownEditor({ value, onChange, onSave }) {
         </div>
 
         <div className="kb-split__pane kb-split__pane--preview">
-          <div className="kb-split__label">👁 Preview</div>
+          <div className="kb-split__label"><AppIcon name="eye" size={14} /> Preview</div>
           <div className="kb-prose kb-split__preview">
             {value ? (
               <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={previewComponents}>
@@ -816,7 +811,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
     <div className="kb-editor">
       {/* Top bar */}
       <div className="kb-editor__bar">
-        <button className="kb-back-btn" onClick={onCancel}>← Hủy</button>
+        <button className="kb-back-btn" onClick={onCancel}><AppIcon name="back" size={15} /> Hủy</button>
         <div className="kb-editor__stats">
           <span>{wordCount} từ · {charCount} ký tự · {mins} phút đọc</span>
         </div>
@@ -825,7 +820,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
           onClick={handleSaveDraft}
           disabled={!canSave || isSaving}
         >
-          {isSaving ? '⏳ Đang lưu...' : '💾 Lưu'}
+          <AppIcon name={isSaving ? 'clock' : 'save'} size={15} /> {isSaving ? 'Đang lưu...' : 'Lưu'}
         </button>
       </div>
 
@@ -835,7 +830,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
           className="kb-type-select"
           value={draft.type}
           onChange={val => set('type', val)}
-          options={Object.entries(TYPE_META).map(([k, v]) => ({ value: k, label: v.label }))}
+          options={Object.entries(TYPE_META).map(([k, v]) => ({ value: k, label: v.label, icon: v.icon }))}
         />
         <input
           className="kb-editor__title"
@@ -866,7 +861,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
                 onClick={() => set('url', draft.url.split('#')[0] + '#audio')}
                 title="Dạng Audio"
               >
-                🎵 Audio
+                <AppIcon name="headphones" size={14} /> Audio
               </button>
               <button
                 type="button"
@@ -874,7 +869,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
                 onClick={() => set('url', draft.url.split('#')[0] + '#video')}
                 title="Dạng Video"
               >
-                📺 Video
+                <AppIcon name="video" size={14} /> Video
               </button>
             </div>
           )}
@@ -886,12 +881,12 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
               className={`kb-mode-btn${draft.content_format === 'markdown' ? ' kb-mode-btn--active' : ''}`}
               onClick={() => switchMode('markdown')}
               title="Markdown editor"
-            >✍️ Markdown</button>
+            ><AppIcon name="pencil" size={14} /> Markdown</button>
             <button
               className={`kb-mode-btn${draft.content_format === 'tiptap' ? ' kb-mode-btn--active' : ''}`}
               onClick={() => switchMode('tiptap')}
               title="Visual editor (WYSIWYG)"
-            >🎨 Visual</button>
+            ><AppIcon name="sparkle" size={14} /> Visual</button>
           </div>
         )}
       </div>
@@ -1094,7 +1089,7 @@ export default function CollectPage() {
   if (!user) {
     return (
       <div className="kb-page">
-        <div className="kb-empty-auth">🔐 Đăng nhập để dùng Knowledge Base</div>
+        <div className="kb-empty-auth"><AppIcon name="lock" size={18} /> Đăng nhập để dùng Knowledge Base</div>
       </div>
     );
   }
@@ -1162,7 +1157,7 @@ export default function CollectPage() {
               // ở Knowledge nhận ra liên kết này — trước đây cột 1:1 không
               // được đọc ở đâu nên link tạo từ đây coi như mất.
               await linkCollection(result.id, item.id);
-              showToast(`📌 Task "${item.title}" đã được tạo!`);
+              showToast(`Task "${item.title}" đã được tạo!`, { icon: 'pushPin' });
             }
           }}
         />
@@ -1177,7 +1172,7 @@ export default function CollectPage() {
       {/* Header */}
       <div className="kb-header">
         <div>
-          <div className="section-label">🧠 Knowledge Base</div>
+          <div className="section-label"><AppIcon name="brain" size={15} /> Knowledge Base</div>
           <h1 className="kb-title">Kho Tàng <span className="gradient-text">Kiến Thức</span></h1>
           <p className="kb-subtitle">{filtered.length} bài viết{activeTag ? ` · #${allTags.find(t => t.id === activeTag)?.name || ''}` : ''}</p>
         </div>
@@ -1187,11 +1182,11 @@ export default function CollectPage() {
               className={`kb-type-pill${bulkMode ? ' kb-type-pill--active' : ''}`}
               onClick={() => { setBulkMode(v => !v); setBulkSelected(new Set()); }}
             >
-              {bulkMode ? '✕ Thoát' : '☑ Chọn nhiều'}
+              <AppIcon name={bulkMode ? 'x' : 'checkSquare'} size={14} /> {bulkMode ? 'Thoát' : 'Chọn nhiều'}
             </button>
           )}
           <button className="btn btn-primary kb-new-btn" onClick={() => openEditor(null)}>
-            ✏️ Viết bài mới
+            <AppIcon name="pencil" size={15} /> Viết bài mới
           </button>
         </div>
       </div>
@@ -1201,13 +1196,10 @@ export default function CollectPage() {
 
       {/* Search + Sort + Task Filter */}
       <div className="kb-toolbar">
-        <input
-          className="kb-search"
-          type="text"
-          placeholder="🔍 Tìm kiếm tiêu đề, nội dung, tag..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+        <div className="kb-search-wrap"><AppIcon name="search" size={16} />
+          <input className="kb-search" type="text" placeholder="Tìm kiếm tiêu đề, nội dung, tag..."
+            value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
         <div ref={sortRef} style={{ position: 'relative' }}>
           <button
             className="kb-sort-trigger"
@@ -1215,7 +1207,7 @@ export default function CollectPage() {
             id="kb-sort-trigger-btn"
           >
             <span>{SORT_OPTIONS.find(o => o.value === sort)?.label}</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.2rem' }}>▼</span>
+            <AppIcon name={showSortDropdown ? 'caretDown' : 'caretRight'} size={13} />
           </button>
 
           {showSortDropdown && (
@@ -1230,7 +1222,7 @@ export default function CollectPage() {
                   }}
                 >
                   <span>{o.label}</span>
-                  {sort === o.value && <span style={{ color: 'var(--purple)', fontWeight: 'bold' }}>✓</span>}
+                  {sort === o.value && <AppIcon name="check" size={14} style={{ color: 'var(--purple)' }} />}
                 </button>
               ))}
             </div>
@@ -1246,7 +1238,7 @@ export default function CollectPage() {
               id="kb-task-filter-btn"
               className={`kb-task-filter-btn${filterTaskId ? ' kb-task-filter-btn--active' : ''}`}
             >
-              📌{filterTaskId ? ' 1' : ''}
+              <AppIcon name="pushPin" size={16} />{filterTaskId ? ' 1' : ''}
             </button>
 
             {showTaskFilter && (() => {
@@ -1258,7 +1250,7 @@ export default function CollectPage() {
               <div className="kb-task-filter-popover">
                 {/* Header */}
                 <div className="kb-task-filter-header">
-                  <span>📌 Lọc theo Task</span>
+                  <span><AppIcon name="pushPin" size={14} /> Lọc theo Task</span>
                   {filterTaskId && (
                     <button
                       onClick={() => { setFilterTaskId(''); setShowTaskFilter(false); setTaskSearch(''); }}
@@ -1293,7 +1285,7 @@ export default function CollectPage() {
                       className={`kb-task-filter-item ${filterTaskId === t.id ? 'kb-task-filter-item--active' : ''}`}
                     >
                       <span className={`kb-task-filter-checkbox ${filterTaskId === t.id ? 'kb-task-filter-checkbox--active' : ''}`}>
-                        {filterTaskId === t.id ? '✓' : ''}
+                        {filterTaskId === t.id && <AppIcon name="check" size={12} />}
                       </span>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {t.title}
@@ -1316,10 +1308,9 @@ export default function CollectPage() {
       {/* Type filter pills */}
       <div className="kb-type-filters">
         <button className={`kb-type-pill${!typeFilter ? ' kb-type-pill--active' : ''}`} onClick={() => setTypeFilter('')}>
-          <Library size={14} style={{ marginRight: 6 }} /> Tất cả
+          <AppIcon name="squares" size={14} /> Tất cả
         </button>
         {Object.entries(TYPE_META).map(([k, v]) => {
-          const Icon = v.icon;
           return (
             <button
               key={k}
@@ -1327,7 +1318,7 @@ export default function CollectPage() {
               style={typeFilter === k ? { '--pill-color': v.color } : {}}
               onClick={() => setTypeFilter(typeFilter === k ? '' : k)}
             >
-              <Icon size={14} style={{ marginRight: 6 }} /> {v.label}
+              <AppIcon name={v.icon} size={14} /> {v.label}
             </button>
           );
         })}
@@ -1354,15 +1345,15 @@ export default function CollectPage() {
 
           {/* List */}
           {isLoading ? (
-            <div className="kb-loading">⏳ Đang tải...</div>
+            <div className="kb-loading"><AppIcon name="clock" size={18} /> Đang tải...</div>
           ) : filtered.length === 0 ? (
             <div className="kb-empty">
-              <div className="kb-empty__icon">{typeFilter === 'quote' ? '💬' : '🧠'}</div>
+              <div className="kb-empty__icon"><AppIcon name={typeFilter === 'quote' ? 'quote' : 'brain'} size={34} weight="duotone" /></div>
               <p>{typeFilter === 'quote'
                 ? `Chưa có trích dẫn nào${search ? ` cho "${search}"` : ''}. Bắt đầu sưu tầm thôi!`
                 : `Chưa có bài viết nào${search ? ` cho "${search}"` : ''}.`}</p>
               <button className="btn btn-primary" onClick={() => openEditor(null)}>
-                ✏️ {typeFilter === 'quote' ? 'Tạo trích dẫn đầu tiên' : 'Tạo bài đầu tiên'}
+                <AppIcon name="pencil" size={15} /> {typeFilter === 'quote' ? 'Tạo trích dẫn đầu tiên' : 'Tạo bài đầu tiên'}
               </button>
             </div>
           ) : typeFilter === 'quote' ? (
@@ -1377,7 +1368,7 @@ export default function CollectPage() {
                       else setBulkSelected(new Set(filtered.map(i => i.id)));
                     }}
                   >
-                    {bulkSelected.size >= filtered.length ? '☐ Bỏ chọn' : '☑ Chọn tất cả'}
+                    <AppIcon name={bulkSelected.size >= filtered.length ? 'square' : 'checkSquare'} size={14} /> {bulkSelected.size >= filtered.length ? 'Bỏ chọn' : 'Chọn tất cả'}
                   </button>
                   {bulkSelected.size > 0 && (
                     <button
@@ -1396,7 +1387,7 @@ export default function CollectPage() {
                         fetchItems({});
                       }}
                     >
-                      🗑 Xóa ({bulkSelected.size})
+                      <AppIcon name="trash" size={14} /> Xóa ({bulkSelected.size})
                     </button>
                   )}
                 </div>
@@ -1419,7 +1410,7 @@ export default function CollectPage() {
                       else setBulkSelected(new Set(filtered.map(i => i.id)));
                     }}
                   >
-                    {bulkSelected.size >= filtered.length ? '☐ Bỏ chọn' : '☑ Chọn tất cả'}
+                    <AppIcon name={bulkSelected.size >= filtered.length ? 'square' : 'checkSquare'} size={14} /> {bulkSelected.size >= filtered.length ? 'Bỏ chọn' : 'Chọn tất cả'}
                   </button>
                   {bulkSelected.size > 0 && (
                     <button
@@ -1438,7 +1429,7 @@ export default function CollectPage() {
                         fetchItems({});
                       }}
                     >
-                      🗑 Xóa ({bulkSelected.size})
+                      <AppIcon name="trash" size={14} /> Xóa ({bulkSelected.size})
                     </button>
                   )}
                 </div>

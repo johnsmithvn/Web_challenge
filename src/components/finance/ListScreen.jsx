@@ -1,26 +1,33 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { useTags } from '../../hooks/useTags';
-import { parseCurrencyInput } from '../../utils/currencyUtils';
+import { parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
 import { periodTotals, groupByDate } from '../../utils/financeLogic';
 import {
-  money, catInfo, subLabel, NECESSITY_META, PeriodPicker, TaskPicker, Segmented,
+  money, catInfo, subLabel, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon,
 } from './parts';
+import AppIcon from '../AppIcon';
 
 const FILTERS = [
   { value: 'all', label: 'Tất cả' },
   { value: 'expense', label: 'Chi' },
   { value: 'income', label: 'Thu' },
-  { value: 'saving', label: 'Để dành' },
+  { value: 'must', label: 'Bắt buộc' },
+  { value: 'want', label: 'Muốn có' },
+  { value: 'auto', label: 'Do định kỳ sinh' },
 ];
 
 function dayLabel(dateStr, today) {
-  const yesterday = new Date(new Date(today + 'T00:00:00').getTime() - 86400000)
+  const yesterday = new Date(new Date(`${today}T00:00:00`).getTime() - 86400000)
     .toISOString().slice(0, 10);
-  if (dateStr === today) return 'Hôm nay';
-  if (dateStr === yesterday) return 'Hôm qua';
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('vi-VN',
+  if (dateStr === today) return `Hôm nay · ${new Date(`${dateStr}T00:00:00`).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' })}`;
+  if (dateStr === yesterday) return `Hôm qua · ${new Date(`${dateStr}T00:00:00`).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' })}`;
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('vi-VN',
     { weekday: 'long', day: '2-digit', month: '2-digit' });
+}
+
+function csvCell(value) {
+  return `"${String(value ?? '').replaceAll('"', '""')}"`;
 }
 
 export default function ListScreen({ fin, nav }) {
@@ -31,167 +38,258 @@ export default function ListScreen({ fin, nav }) {
   const period = nav.period;
 
   const inPeriod = useMemo(
-    () => fin.transactions.filter(t => t.occurred_at >= period.from && t.occurred_at <= period.to),
+    () => fin.transactions.filter(tx => tx.occurred_at >= period.from && tx.occurred_at <= period.to),
     [fin.transactions, period]);
-  const totals = useMemo(() => periodTotals(fin.transactions, period), [fin.transactions, period]);
+  const totals = useMemo(
+    () => periodTotals(fin.transactions, period, { savingAsExpense: nav.savingAsExpense }),
+    [fin.transactions, period, nav.savingAsExpense],
+  );
 
-  const filtered = useMemo(() => inPeriod.filter(t => {
-    if (filter !== 'all' && t.type !== filter) return false;
+  const filtered = useMemo(() => inPeriod.filter(tx => {
+    if (filter === 'auto' && !(tx.bill_id || tx.loan_id || tx.card_id)) return false;
+    if (filter === 'must' && tx.necessity !== 'must') return false;
+    if (filter === 'want' && tx.necessity !== 'want') return false;
+    if (filter === 'expense' && tx.type !== 'expense') return false;
+    if (filter === 'income' && tx.type !== 'income') return false;
     if (q) {
-      const hay = `${t.note || ''} ${catInfo(t.category_id).label} ${subLabel(t.subcategory_id) || ''}`.toLowerCase();
-      if (!hay.includes(q.toLowerCase())) return false;
+      const haystack = [tx.note, tx.merchant, catInfo(tx.category_id, fin.cats).label,
+        subLabel(tx.subcategory_id, fin.cats)].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(q.toLowerCase())) return false;
     }
     return true;
-  }), [inPeriod, filter, q]);
+  }), [inPeriod, filter, q, fin.cats]);
 
   const groups = useMemo(() => groupByDate(filtered), [filtered]);
-  const selected = fin.transactions.find(t => t.id === selId) || null;
+  const selected = filtered.find(tx => tx.id === selId) || null;
+
+  const exportCsv = () => {
+    if (!filtered.length) return;
+    const headers = ['Ngày', 'Loại', 'Số tiền', 'Nhóm', 'Danh mục con', 'Mức cần thiết', 'Nguồn tiền', 'Nơi / người nhận', 'Ghi chú'];
+    const rows = filtered.map(tx => [
+      tx.occurred_at,
+      tx.type,
+      tx.amount,
+      catInfo(tx.category_id, fin.cats).label,
+      subLabel(tx.subcategory_id, fin.cats) || '',
+      NECESSITY_META[tx.necessity]?.label || '',
+      tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn',
+      tx.merchant || '',
+      tx.note || '',
+    ]);
+    const csv = `\uFEFF${[headers, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n')}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `giao-dich-${period.key}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="fin-list">
+    <div className={`fin-list${selected ? ' fin-list--detail' : ''}`}>
       <div className="fin-list__main">
-        <PeriodPicker options={nav.periodOptions} value={nav.periodKey} onChange={nav.setPeriodKey} />
-        <div className="fin-list__toolbar">
-          <input className="fin-input fin-input--sm" placeholder="Tìm ghi chú, danh mục…"
-            value={q} onChange={e => setQ(e.target.value)} />
+        <PeriodPicker options={nav.periodOptions} period={nav.period} value={nav.periodKey} onChange={nav.setPeriodKey} />
+
+        <div className="fin-list__controls">
+          <label className="fin-list__search">
+            <AppIcon name="search" size={15} />
+            <input placeholder="Tìm theo tên, nơi, tag…" value={q} onChange={event => setQ(event.target.value)} />
+          </label>
+          <div className="fin-filter-chips">
+            {FILTERS.map(item => <button key={item.value} type="button"
+              className={filter === item.value ? 'is-active' : ''}
+              onClick={() => setFilter(item.value)}>{item.label}</button>)}
+          </div>
+          <button type="button" className="fin-export" onClick={exportCsv} disabled={!filtered.length}>
+            <AppIcon name="upload" size={15} /> Xuất CSV
+          </button>
         </div>
-        <Segmented options={FILTERS} value={filter} onChange={setFilter} />
+
         <div className="fin-list__summary">
           {filtered.length} khoản · chi {money(totals.total)}
           {totals.income > 0 && ` · thu ${money(totals.income)}`}
         </div>
 
-        {groups.length === 0 && <div className="fin-empty">Không có giao dịch trong kỳ</div>}
-        {groups.map(({ date, items }) => (
-          <div key={date} className="fin-daygroup">
-            <div className="fin-daygroup__label">{dayLabel(date, fin.today)}</div>
-            {items.map(t => {
-              const info = catInfo(t.category_id);
-              const auto = t.bill_id || t.loan_id || t.card_id;
-              const sign = t.type === 'income' ? '+' : t.type === 'saving' ? '→' : '-';
-              return (
-                <button key={t.id} className={`fin-txrow${selId === t.id ? ' fin-txrow--sel' : ''}`}
-                  onClick={() => setSelId(t.id)}>
-                  <span className="fin-txrow__ico">{t.type === 'income' ? '💰' : t.type === 'saving' ? '🏦' : info.icon}</span>
-                  <div className="fin-txrow__mid">
-                    <div className="fin-txrow__note">
-                      {t.note || subLabel(t.subcategory_id) || info.label}
-                      {auto && <span className="fin-badge">auto</span>}
-                      {t.excluded && <span className="fin-badge fin-badge--muted">ngoài tổng</span>}
-                    </div>
-                    <div className="fin-txrow__src">
-                      {t.source_card_id ? (fin.cards.find(c => c.id === t.source_card_id)?.name || 'Thẻ') : 'Tiền mặt'}
-                    </div>
-                  </div>
-                  <span className={`fin-txrow__amt fin-txrow__amt--${t.type}`}>{sign}{money(t.amount)}</span>
-                </button>
-              );
-            })}
-          </div>
-        ))}
+        {groups.length === 0 && (
+          <section className="fin-list-empty">
+            <span><AppIcon name="receipt" size={24} /></span>
+            <strong>{q || filter !== 'all' ? 'Không tìm thấy giao dịch phù hợp' : 'Chưa có giao dịch trong kỳ này'}</strong>
+            <p>{q || filter !== 'all' ? 'Thử đổi bộ lọc hoặc từ khóa tìm kiếm.' : 'Ghi khoản đầu tiên để bắt đầu theo dõi tháng này.'}</p>
+            {q || filter !== 'all'
+              ? <button type="button" onClick={() => { setQ(''); setFilter('all'); }}>Xóa bộ lọc</button>
+              : <button type="button" onClick={() => nav.go('add')}><AppIcon name="plus" size={15} /> Thêm giao dịch</button>}
+          </section>
+        )}
+
+        <div className="fin-timeline">
+          {groups.map(({ date, items }) => {
+            const groupTotal = items.filter(tx => tx.type === 'expense' && !tx.excluded)
+              .reduce((sum, tx) => sum + tx.amount, 0);
+            return <section key={date} className="fin-daygroup">
+              <div className="fin-daygroup__label"><strong>{dayLabel(date, fin.today)}</strong><i /><span>{money(groupTotal)}</span></div>
+              {items.map(tx => {
+                const info = catInfo(tx.category_id, fin.cats);
+                const automated = tx.bill_id || tx.loan_id || tx.card_id;
+                const sign = tx.type === 'income' ? '+' : tx.type === 'saving' ? '→ ' : '-';
+                const source = tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn';
+                return (
+                  <button key={tx.id} className={`fin-txrow${selected?.id === tx.id ? ' fin-txrow--sel' : ''}`}
+                    onClick={() => setSelId(tx.id)}>
+                    <span className="fin-txrow__ico" style={{ color: info.color }}>
+                      <FinanceIcon name={tx.type === 'income' ? 'money' : tx.type === 'saving' ? 'bank' : info.icon} cats={fin.cats} size={17} weight="fill" />
+                    </span>
+                    <span className="fin-txrow__mid">
+                      <span className="fin-txrow__note">
+                        {tx.note || subLabel(tx.subcategory_id, fin.cats) || info.label}
+                        {automated && <AppIcon name="arrowsClockwise" size={12} />}
+                        {tx.excluded && <span className="fin-badge fin-badge--muted">ngoài tổng</span>}
+                      </span>
+                      <span className="fin-txrow__src">{info.label}{subLabel(tx.subcategory_id, fin.cats) ? ` › ${subLabel(tx.subcategory_id, fin.cats)}` : ''} · {tx.merchant || source}</span>
+                    </span>
+                    <span className={`fin-txrow__amt fin-txrow__amt--${tx.type}`}>{sign}{money(tx.amount)}</span>
+                  </button>
+                );
+              })}
+            </section>;
+          })}
+        </div>
       </div>
 
-      {/* Cột chi tiết (ẩn <760px qua CSS) */}
-      <aside className={`fin-list__detail${selected ? ' fin-list__detail--open' : ''}`}>
-        {selected
-          ? <TxDetail key={selected.id} tx={selected} fin={fin} nav={nav} tasks={pendingTasks} onClose={() => setSelId(null)} />
-          : <div className="fin-empty">Chọn một giao dịch để xem chi tiết</div>}
-      </aside>
+      {selected && (
+        <aside className="fin-list__detail">
+          <TxDetail key={selected.id} tx={selected} fin={fin} nav={nav} tasks={pendingTasks}
+            onClose={() => setSelId(null)} onSelect={(id) => setSelId(id)} />
+        </aside>
+      )}
     </div>
   );
 }
 
-function TxDetail({ tx, fin, nav, tasks, onClose }) {
+function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
   const { tags, addTag, linkTag, unlinkTag, getTagsForEntity } = useTags();
+  const [editing, setEditing] = useState(false);
   const [amount, setAmount] = useState(String(tx.amount));
   const [note, setNote] = useState(tx.note || '');
   const [occurredAt, setOccurredAt] = useState(tx.occurred_at);
   const [necessity, setNecessity] = useState(tx.necessity || '');
+  const [categoryId, setCategoryId] = useState(tx.category_id || (tx.type === 'income' ? 'luong' : 'other'));
+  const [subcategoryId, setSubcategoryId] = useState(tx.subcategory_id || '');
+  const [sourceCardId, setSourceCardId] = useState(tx.source_card_id || '');
   const [txTags, setTxTags] = useState([]);
-  const info = catInfo(tx.category_id);
+  const info = catInfo(categoryId, fin.cats);
+  const categoryOptions = tx.type === 'income' ? fin.cats.incomeGroups : fin.cats.expenseGroups;
+  const subOptions = fin.cats.expenseGroups.find(group => group.key === categoryId)?.subs || [];
+  const source = tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn';
+  const typeLabel = tx.type === 'income' ? 'Thu' : tx.type === 'saving' ? 'Để dành' : 'Chi';
 
   useEffect(() => { getTagsForEntity(tx.id, 'finance').then(setTxTags); }, [tx.id, getTagsForEntity]);
 
   const save = async () => {
-    const amt = parseCurrencyInput(amount);
+    const parsed = parseCurrencyInput(amount);
     await fin.updateTransaction(tx.id, {
-      amount: amt || tx.amount, note: note || null, occurred_at: occurredAt,
-      necessity: necessity || null,
+      amount: parsed || tx.amount, note: note || null, occurred_at: occurredAt,
+      necessity: necessity || null, category_id: categoryId || null,
+      subcategory_id: subcategoryId || null, source_card_id: sourceCardId || null,
     });
-    nav.showToast('Đã cập nhật — báo cáo tự tính lại', { icon: '✅' });
+    nav.showToast('Đã cập nhật — báo cáo tự tính lại', { icon: 'checkCircle' });
+    setEditing(false);
+  };
+
+  const duplicate = async () => {
+    const copy = await fin.addTransaction({
+      type: tx.type, amount: tx.amount, occurred_at: fin.today,
+      category_id: tx.category_id, subcategory_id: tx.subcategory_id,
+      source_card_id: tx.source_card_id, excluded: tx.excluded,
+      necessity: tx.necessity, is_fixed: false,
+      note: tx.note ? `${tx.note} · bản sao` : null,
+      merchant: tx.merchant, items: tx.items || [], task_id: tx.task_id,
+      saving_goal_id: tx.saving_goal_id, saving_dir: tx.saving_dir,
+    });
+    if (copy) {
+      nav.showToast('Đã nhân bản giao dịch', { icon: 'copy' });
+      onSelect(copy.id);
+    }
   };
 
   const toggleTag = async (tag) => {
-    const has = txTags.some(t => t.id === tag.id);
-    if (has) { await unlinkTag(tx.id, tag.id, 'finance'); setTxTags(p => p.filter(t => t.id !== tag.id)); }
-    else { await linkTag(tx.id, tag.id, 'finance'); setTxTags(p => [...p, tag]); }
-  };
-  const addAndLink = async (name) => {
-    const tag = await addTag(name);
-    if (tag && !txTags.some(t => t.id === tag.id)) { await linkTag(tx.id, tag.id, 'finance'); setTxTags(p => [...p, tag]); }
+    const hasTag = txTags.some(item => item.id === tag.id);
+    if (hasTag) {
+      await unlinkTag(tx.id, tag.id, 'finance');
+      setTxTags(current => current.filter(item => item.id !== tag.id));
+    } else {
+      await linkTag(tx.id, tag.id, 'finance');
+      setTxTags(current => [...current, tag]);
+    }
   };
 
-  const linkedInbox = tx.inbox_item_id;
+  const addAndLink = async (name) => {
+    const tag = await addTag(name);
+    if (tag && !txTags.some(item => item.id === tag.id)) {
+      await linkTag(tx.id, tag.id, 'finance');
+      setTxTags(current => [...current, tag]);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="fin-detail fin-detail--editing">
+        <div className="fin-detail__head"><strong>Sửa giao dịch</strong><button className="fin-detail__close" onClick={() => setEditing(false)} aria-label="Đóng chỉnh sửa"><AppIcon name="x" size={15} /></button></div>
+        <label className="fin-label">Số tiền</label><input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={amount} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
+        <label className="fin-label">Ngày</label><input className="fin-input" type="date" value={occurredAt} onChange={event => setOccurredAt(event.target.value)} />
+        <label className="fin-label">Ghi chú</label><input className="fin-input" value={note} onChange={event => setNote(event.target.value)} maxLength={200} />
+        {tx.type !== 'saving' && <><label className="fin-label">Nhóm</label><select className="fin-input" value={categoryId} onChange={event => { setCategoryId(event.target.value); setSubcategoryId(''); }}>{categoryOptions.filter(group => !group.hidden).map(group => <option key={group.key} value={group.key}>{group.label}</option>)}</select></>}
+        {tx.type === 'expense' && <>
+          <label className="fin-label">Danh mục con</label><select className="fin-input" value={subcategoryId} onChange={event => setSubcategoryId(event.target.value)}><option value="">— chưa chọn —</option>{subOptions.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}</select>
+          <label className="fin-label">Nguồn tiền</label><select className="fin-input" value={sourceCardId} onChange={event => setSourceCardId(event.target.value)}><option value="">Tiền có sẵn</option>{fin.cards.map(card => <option key={card.id} value={card.id}>{card.name} {card.last4 ? `••${card.last4}` : ''}</option>)}</select>
+          {!tx.excluded && <><label className="fin-label">Mức cần thiết</label><select className="fin-input" value={necessity} onChange={event => setNecessity(event.target.value)}><option value="">— chưa đặt —</option>{Object.entries(NECESSITY_META).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></>}
+        </>}
+        <label className="fin-label">Nhiệm vụ liên quan</label><TaskPicker tasks={tasks} value={tx.task_id} onPick={id => fin.updateTransaction(tx.id, { task_id: id })} />
+        <label className="fin-label">Tag</label><div className="fin-tags">{txTags.map(tag => <button key={tag.id} className="fin-tag" style={{ '--tc': tag.color }} onClick={() => toggleTag(tag)}>#{tag.name} <AppIcon name="x" size={11} /></button>)}<TagAdd tags={tags} txTags={txTags} onAdd={addAndLink} /></div>
+        <div className="fin-detail__actions"><button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="save" size={15} /> Lưu thay đổi</button><button className="fin-btn fin-btn--secondary" onClick={() => setEditing(false)}>Hủy</button></div>
+      </div>
+    );
+  }
+
+  const meta = [
+    ['Ngày', new Date(`${tx.occurred_at}T00:00:00`).toLocaleDateString('vi-VN')],
+    ['Nơi', tx.merchant || '—'],
+    ['Loại', typeLabel],
+    ['Mức cần thiết', NECESSITY_META[tx.necessity]?.label || '—'],
+    ['Tính chất', tx.is_fixed ? 'Cố định' : 'Biến đổi'],
+    ['Trả bằng', source],
+    ['Nguồn tạo', tx.bill_id ? 'Hóa đơn định kỳ' : tx.loan_id ? 'Khoản vay' : tx.card_id ? 'Sao kê thẻ' : tx.shortcut_id ? 'Shortcut' : tx.inbox_item_id ? 'Inbox' : 'Nhập tay'],
+  ];
 
   return (
     <div className="fin-detail">
-      <div className="fin-detail__head">
-        <span className="fin-detail__ico">{info.icon}</span>
-        <div>
-          <div className="fin-detail__cat">{info.label}{subLabel(tx.subcategory_id) ? ` · ${subLabel(tx.subcategory_id)}` : ''}</div>
-          <div className="fin-detail__type">{tx.type === 'income' ? 'Khoản thu' : tx.type === 'saving' ? 'Để dành' : 'Chi tiêu'}{tx.excluded ? ' · ngoài tổng chi' : ''}</div>
-        </div>
-        <button className="fin-detail__close" onClick={onClose}>✕</button>
+      <div className="fin-detail__hero">
+        <span className="fin-detail__ico" style={{ color: info.color }}><FinanceIcon name={info.icon} cats={fin.cats} size={19} weight="fill" /></span>
+        <span><strong>{tx.note || subLabel(tx.subcategory_id, fin.cats) || info.label}</strong><small>{info.label}{subLabel(tx.subcategory_id, fin.cats) ? ` › ${subLabel(tx.subcategory_id, fin.cats)}` : ''}</small></span>
+        <button className="fin-detail__close" onClick={onClose} aria-label="Đóng chi tiết"><AppIcon name="x" size={15} /></button>
       </div>
-
-      <label className="fin-label">Số tiền</label>
-      <input className="fin-input" value={amount} onChange={e => setAmount(e.target.value)} />
-      <label className="fin-label">Ngày</label>
-      <input className="fin-input" type="date" value={occurredAt} onChange={e => setOccurredAt(e.target.value)} />
-      <label className="fin-label">Ghi chú</label>
-      <input className="fin-input" value={note} onChange={e => setNote(e.target.value)} maxLength={200} />
-
-      {tx.type === 'expense' && !tx.excluded && (
-        <>
-          <label className="fin-label">Mức cần thiết</label>
-          <select className="fin-input" value={necessity} onChange={e => setNecessity(e.target.value)}>
-            <option value="">— chưa đặt —</option>
-            {Object.entries(NECESSITY_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
-        </>
-      )}
-
-      <label className="fin-label">Nhiệm vụ liên quan</label>
-      <TaskPicker tasks={tasks} value={tx.task_id}
-        onPick={(id) => fin.updateTransaction(tx.id, { task_id: id })} />
-
-      {linkedInbox && <div className="fin-hint">🔗 Tạo từ một mục Inbox</div>}
-
-      <label className="fin-label">Tag</label>
-      <div className="fin-tags">
-        {txTags.map(t => (
-          <button key={t.id} className="fin-tag" style={{ '--tc': t.color }} onClick={() => toggleTag(t)}>#{t.name} ✕</button>
-        ))}
-        <TagAdd tags={tags} txTags={txTags} onAdd={addAndLink} />
-      </div>
-
-      <div className="fin-detail__actions">
-        <button className="fin-btn fin-btn--primary" onClick={save}>Lưu</button>
-        <button className="fin-btn fin-btn--danger" onClick={async () => { await fin.deleteTransaction(tx.id); onClose(); }}>Xóa</button>
+      <div className={`fin-detail__amount fin-detail__amount--${tx.type}`}>{tx.type === 'income' ? '+' : tx.type === 'saving' ? '' : '-'}{money(tx.amount)}</div>
+      <div className="fin-detail__meta">{meta.map(([key, value]) => <div key={key}><span>{key}</span><strong>{value}</strong></div>)}</div>
+      {(tx.items || []).length > 0 && <div className="fin-detail__items"><strong>Chi tiết {tx.items.length} món</strong>{tx.items.map((item, index) => <div key={`${item.name}-${index}`}><span>{item.qty > 1 ? `${item.qty} × ` : ''}{item.name}</span><b>{money((item.qty || 1) * (item.price || 0))}</b></div>)}</div>}
+      {txTags.length > 0 && <div className="fin-tags">{txTags.map(tag => <span key={tag.id} className="fin-tag" style={{ '--tc': tag.color }}>#{tag.name}</span>)}</div>}
+      {tx.task_id && <div className="fin-detail__linked"><AppIcon name="pushPin" size={14} /> Đã gắn với một nhiệm vụ</div>}
+      <div className="fin-detail__actions fin-detail__actions--view">
+        <button className="fin-btn fin-btn--secondary" onClick={() => setEditing(true)}><AppIcon name="pencil" size={15} /> Sửa</button>
+        {tx.type !== 'saving' && <button className="fin-btn fin-btn--secondary" onClick={duplicate}><AppIcon name="copy" size={15} /> Nhân bản</button>}
+        <button className="fin-btn fin-btn--secondary fin-detail__delete" aria-label="Xóa giao dịch" onClick={async () => { await fin.deleteTransaction(tx.id); onClose(); }}><AppIcon name="trash" size={15} /></button>
       </div>
     </div>
   );
 }
 
 function TagAdd({ tags, txTags, onAdd }) {
-  const [v, setV] = useState('');
-  const avail = tags.filter(t => !txTags.some(x => x.id === t.id));
+  const [value, setValue] = useState('');
+  const available = tags.filter(tag => !txTags.some(item => item.id === tag.id));
   return (
     <span className="fin-tagadd">
       <input className="fin-input fin-input--sm" list="fin-tag-list" placeholder="+ tag"
-        value={v} onChange={e => setV(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && v.trim()) { e.preventDefault(); onAdd(v.trim()); setV(''); } }} />
-      <datalist id="fin-tag-list">{avail.map(t => <option key={t.id} value={t.name} />)}</datalist>
+        value={value} onChange={event => setValue(event.target.value)}
+        onKeyDown={event => { if (event.key === 'Enter' && value.trim()) { event.preventDefault(); onAdd(value.trim()); setValue(''); } }} />
+      <datalist id="fin-tag-list">{available.map(tag => <option key={tag.id} value={tag.name} />)}</datalist>
     </span>
   );
 }

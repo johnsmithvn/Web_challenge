@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import AppIcon from './AppIcon';
 import '../styles/auth.css';
 
 const TABS = ['login', 'register'];
@@ -117,7 +118,7 @@ export default function AuthModal({ onClose }) {
         else
           setError(msg);
       } else {
-        setSuccessMsg('✅ Đăng ký thành công! Đang đăng nhập...');
+        setSuccessMsg('Đăng ký thành công! Đang đăng nhập...');
         setTimeout(() => onClose?.(), 1200);
       }
     }
@@ -133,11 +134,11 @@ export default function AuthModal({ onClose }) {
       <div className="auth-modal card" role="dialog" aria-modal="true">
 
         {/* Close */}
-        <button className="auth-modal__close" onClick={onClose} aria-label="Đóng" id="auth-close">✕</button>
+        <button className="auth-modal__close" onClick={onClose} aria-label="Đóng" id="auth-close"><AppIcon name="x" size={17} /></button>
 
         {/* Logo */}
         <div className="auth-modal__logo">
-          <span>⚡</span>
+          <AppIcon name="sparkle" size={21} weight="duotone" />
           <span className="gradient-text">Vượt Lười</span>
         </div>
 
@@ -150,19 +151,14 @@ export default function AuthModal({ onClose }) {
               onClick={() => { setTab(t); reset(); }}
               id={`auth-tab-${t}`}
             >
-              {t === 'login' ? '🔑 Đăng Nhập' : '✨ Đăng Ký'}
+              <AppIcon name={t === 'login' ? 'key' : 'user'} size={15} /> {t === 'login' ? 'Đăng Nhập' : 'Đăng Ký'}
             </button>
           ))}
         </div>
 
         {/* Google OAuth */}
         <button className="btn btn-ghost auth-google" onClick={handleGoogle} id="auth-google" disabled={loading}>
-          <svg width="18" height="18" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
-            <path fill="#4285F4" d="M46.145 24.503c0-1.636-.147-3.21-.42-4.722H24v8.944h12.434c-.536 2.893-2.168 5.344-4.621 6.988v5.81h7.479c4.376-4.03 6.853-9.97 6.853-17.02z"/>
-            <path fill="#34A853" d="M24 47c6.237 0 11.464-2.07 15.285-5.605l-7.479-5.81C29.735 37.05 27.056 38 24 38c-5.99 0-11.066-4.048-12.876-9.49h-7.71v6.001C7.266 41.83 15.074 47 24 47z"/>
-            <path fill="#FBBC05" d="M11.124 28.51A14.914 14.914 0 0 1 10.5 24c0-1.575.27-3.105.624-4.51v-6H3.414A23.98 23.98 0 0 0 0 24c0 3.862.922 7.52 2.556 10.749l8.568-6.24z"/>
-            <path fill="#EA4335" d="M24 9.5c3.375 0 6.405 1.16 8.792 3.44l6.586-6.587C35.455 2.686 30.23.5 24 .5 15.074.5 7.266 5.67 3.414 13.251l8.71 6.24C13.934 13.548 18.91 9.5 24 9.5z"/>
-          </svg>
+          <AppIcon name="google" size={18} weight="bold" style={{ flexShrink: 0 }} />
           Tiếp tục với Google
         </button>
 
@@ -201,11 +197,11 @@ export default function AuthModal({ onClose }) {
               />
             </div>
 
-            {error      && <div className="auth-error">⚠️ {error}</div>}
-            {successMsg && <div className="auth-success">{successMsg}</div>}
+            {error      && <div className="auth-error"><AppIcon name="warning" size={15} /> {error}</div>}
+            {successMsg && <div className="auth-success"><AppIcon name="checkCircle" size={15} /> {successMsg}</div>}
 
             <button type="submit" className="btn btn-primary auth-submit" disabled={loading} id="auth-submit">
-              {loading ? '⏳ Đang xử lý...' : '🔑 Đăng Nhập'}
+              <AppIcon name={loading ? 'clock' : 'key'} size={15} /> {loading ? 'Đang xử lý...' : 'Đăng Nhập'}
             </button>
           </form>
         )}
@@ -292,18 +288,18 @@ export default function AuthModal({ onClose }) {
               />
             </div>
 
-            {error      && <div className="auth-error">⚠️ {error}</div>}
-            {successMsg && <div className="auth-success">{successMsg}</div>}
+            {error      && <div className="auth-error"><AppIcon name="warning" size={15} /> {error}</div>}
+            {successMsg && <div className="auth-success"><AppIcon name="checkCircle" size={15} /> {successMsg}</div>}
 
             <button type="submit" className="btn btn-primary auth-submit" disabled={loading} id="auth-submit">
-              {loading ? '⏳ Đang tạo tài khoản...' : '✨ Đăng Ký'}
+              <AppIcon name={loading ? 'clock' : 'user'} size={15} /> {loading ? 'Đang tạo tài khoản...' : 'Đăng Ký'}
             </button>
           </form>
         )}
 
         {!isSupabaseEnabled && (
           <div className="auth-notice">
-            🔧 Chế độ demo — Thêm VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY để kích hoạt auth thật
+            <AppIcon name="gear" size={14} /> Chế độ demo — Thêm VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY để kích hoạt auth thật
           </div>
         )}
       </div>

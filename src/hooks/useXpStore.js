@@ -5,12 +5,12 @@ import { logger } from '../utils/logger';
 
 // ── Levels ────────────────────────────────────────────────
 const LEVELS = [
-  { level: 0, name: 'Người Mới',  emoji: '🌱', min: 0    },
-  { level: 1, name: 'Luyện Sĩ',  emoji: '⚡',  min: 100  },
-  { level: 2, name: 'Đệ Tử',     emoji: '🔥',  min: 300  },
-  { level: 3, name: 'Chiến Binh', emoji: '⚔️',  min: 700  },
-  { level: 4, name: 'Huyền Thoại',emoji: '👑',  min: 1500 },
-  { level: 5, name: 'Vô Địch',   emoji: '🏆',  min: 3000 },
+  { level: 0, name: 'Người Mới',  icon: 'plant', min: 0    },
+  { level: 1, name: 'Luyện Sĩ',  icon: 'sparkle',  min: 100  },
+  { level: 2, name: 'Đệ Tử',     icon: 'fire',  min: 300  },
+  { level: 3, name: 'Chiến Binh', icon: 'sword',  min: 700  },
+  { level: 4, name: 'Huyền Thoại',icon: 'crown',  min: 1500 },
+  { level: 5, name: 'Vô Địch',   icon: 'trophy',  min: 3000 },
 ];
 
 // v5.0.0: 2 nguồn XP còn lại. Đã bỏ `daily_check` / `streak_3` / `streak_10` /

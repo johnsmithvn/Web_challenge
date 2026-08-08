@@ -34,6 +34,7 @@ profiles ───────────────────────�
     │        └─ FK task_id       → user_tasks   (liên kết Task)
     ├──► finance_bills / finance_loans / finance_cards / finance_saving_goals
     │    finance_deposits / finance_income_rules / finance_shortcuts / finance_budgets
+    │    finance_category_overrides (taxonomy riêng theo user)
     ├──► activity_logs     (task history + notes)│
     ├──► intentions / intention_logs (incubator)│
     │                                           │
@@ -97,19 +98,21 @@ profiles ───────────────────────�
 Thiết kế: `docs/DESIGN_FINANCE.md`. Nguyên lý: app **không tính số dư**; **một bảng giao dịch, mọi
 báo cáo = đếm lại lọc theo `occurred_at`**; **app không trả hộ — chỉ nhắc, tới ngày user ghi ra 1
 giao dịch mang FK trỏ về quy tắc**. Tất cả bật RLS, policy `FOR ALL USING (user_id = auth.uid())`
-(junction kiểm 2 phía). CHECK chỉ trên giá trị code phân nhánh theo, KHÔNG trên `category_id`/`subcategory_id`.
+(junction kiểm 2 phía). Migration là **clean rebuild phá hủy dữ liệu Finance cũ**, bọc
+`BEGIN/COMMIT`; parent category là tập đóng và được CHECK theo taxonomy handoff.
 
 | Table | Purpose | Key constraints |
 |-------|---------|-----------------|
-| `finance_transactions` | Bảng DUY NHẤT | `type` CHECK(expense/income/saving); `excluded` (trả gốc vay + trả sao kê thẻ → ngoài mọi tổng chi); `necessity` CHECK(must/need/want); `is_fixed`; `source_card_id`/`card_id`; UNIQUE partial `(bill_id, bill_period)` chặn trả trùng kỳ; FK `bill_id`/`loan_id`/`saving_goal_id`+`saving_dir`/`shortcut_id`, **`inbox_item_id`→collections**, **`task_id`→user_tasks** (đều ON DELETE SET NULL). Index `(user_id, occurred_at DESC)` |
-| `finance_bills` | Hóa đơn phải trả | `amount_mode` CHECK(fixed/ask); trả góp `term_done`/`term_total` → `finished_at`; `rrule` jsonb, `due_day` |
-| `finance_loans` | Khoản vay | `kind` CHECK(interest/amort); lãi là chi, gốc `excluded` |
-| `finance_cards` | Thẻ tín dụng | `statement_day` ≠ `due_day`, `grace` (float); `annual_fee`/`cash_advance_fee`/`min_pct` |
-| `finance_saving_goals` | Quỹ tiết kiệm | `lock_mode` CHECK(soft/term/external); **KHÔNG có cột số dư** (= SUM deposits) |
-| `finance_deposits` | Nơi gửi (sổ của quỹ) | FK `fund_id` CASCADE; `rate`, `matures_at` |
-| `finance_income_rules` | Thu định kỳ | `received_periods` jsonb chặn nhận trùng kỳ; **không quá hạn** |
-| `finance_shortcuts` | Nút nhập nhanh | `recent_amounts` jsonb; **KHÔNG có cột số tiền** |
-| `finance_budgets` | Hạn mức tháng | UNIQUE `(user_id, category_id)`; cơ sở 50/30/20 |
+| `finance_transactions` | Bảng DUY NHẤT | `amount > 0`; `type` expense/income/saving; chi/thu chỉ nhận parent category thuộc tập đóng, saving không có category; `items`/`attachments`; generated `source_kind`; liên kết Task/Inbox; cặp FK+kỳ cho bill/income/loan/card; `loan_part`; CHECK phân loại `excluded`; UNIQUE bill period, income period và loan part/period. Trigger kiểm ownership mọi FK Finance/Task/Inbox |
+| `finance_bills` | Hóa đơn phải trả | Category chi hợp lệ + subcategory không rỗng; `rrule` hợp lệ; fixed phải có amount, ask lấy trung bình 3 giao dịch gần nhất ở runtime; `skipped_periods`; `term_done`/`finished_at` suy từ giao dịch; kỳ nghĩa vụ tách khỏi ngày trả thật |
+| `finance_loans` | Khoản vay | `kind` interest/amort; lãi là chi, gốc `excluded`; gốc không vượt dư; `done` suy từ `loan_period`/`loan_part` |
+| `finance_cards` | Thẻ tín dụng | Ngày chốt/đến hạn bắt buộc; RPC tính đúng khoảng sao kê, hỗ trợ trả một phần, chặn trả vượt dư sao kê |
+| `finance_saving_goals` | Quỹ tiết kiệm | `lock_mode` soft/term/external; term bắt buộc `lock_until`; `auto_deposit` là `{amount,day}` hợp lệ; yêu cầu rút sớm khóa kỳ hạn chờ đúng 48h; **KHÔNG có cột số dư** (= SUM deposits) |
+| `finance_deposits` | Nơi gửi (sổ của quỹ) | FK `(fund_id,user_id)` CASCADE chống nối chéo owner; `rate`; `matures_at` là generated column từ `opened_at + term`; `closed_on` |
+| `finance_income_rules` | Thu định kỳ | `rrule`; `category_id` thuộc đúng 7 nhóm thu handoff; `received_periods` được suy từ transaction và UNIQUE theo kỳ; **không quá hạn** |
+| `finance_shortcuts` | Nút nhập nhanh | Category chi hợp lệ + subcategory không rỗng; `recent_amounts` jsonb; **KHÔNG có cột số tiền** |
+| `finance_budgets` | Hạn mức tháng | Category thuộc đúng 11 nhóm chi; UNIQUE `(user_id, category_id)`; ngưỡng cố định 50/30/20 của tổng hạn mức |
+| `finance_category_overrides` | Phần taxonomy người dùng tuỳ biến | Parent group đóng (11 chi + 7 thu); màu chỉ nhận palette handoff; `subs` được kiểm tra cấu trúc/key/necessity; chỉ sửa nhãn/màu/Phosphor icon/ẩn/mức cần thiết/tính chất/`subs` |
 | `finance_transaction_tags` | Junction: giao dịch ↔ tags | Composite PK, RLS 2 phía |
 
 ### Views
@@ -120,7 +123,7 @@ giao dịch mang FK trỏ về quy tắc**. Tất cả bật RLS, policy `FOR AL
 
 ### Kiến trúc Tag — tại sao N junction, không phải 1 bảng polymorphic
 
-`tags` là **1 bảng trung tâm duy nhất** (`UNIQUE(user_id, name)`), không có cột `tags TEXT[]` lặp ở đâu. Mỗi loại entity nối vào qua 1 junction riêng: `collection_tags`, `task_tags`, `expense_tags`, `subscription_tags`, `account_tags`.
+`tags` là **1 bảng trung tâm duy nhất** (`UNIQUE(user_id, name)`), không có cột `tags TEXT[]` lặp ở đâu. Mỗi loại entity nối vào qua 1 junction riêng: `collection_tags`, `task_tags`, `account_tags`, `finance_transaction_tags`.
 
 Nhìn có vẻ dư (N loại → N bảng), nhưng **đó là giá của referential integrity**: mỗi junction có `REFERENCES ... ON DELETE CASCADE` cả 2 phía, nên xoá entity thì link tự biến mất.
 

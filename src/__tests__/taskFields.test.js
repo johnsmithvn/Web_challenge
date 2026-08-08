@@ -132,8 +132,8 @@ assert.equal(formatTaskFieldValue('due_date', null), 'trống');
 // Ở GMT+7, parse 'yyyy-MM-dd' trần sẽ ra ngày 04 — phải giữ đúng 05
 assert.equal(formatTaskFieldValue('due_date', '2026-08-05'), '05/08/2026');
 assert.equal(formatTaskFieldValue('due_time', '14:30:00'), '14:30');
-assert.equal(formatTaskFieldValue('priority', '0'), '➖ Không');
-assert.equal(formatTaskFieldValue('priority', '4'), '🔼 Cao');
+assert.equal(formatTaskFieldValue('priority', '0'), 'Không');
+assert.equal(formatTaskFieldValue('priority', '4'), 'Cao');
 assert.equal(formatTaskFieldValue('completed', 'true'), 'Đã hoàn thành');
 assert.equal(formatTaskFieldValue('completed', 'false'), 'Chưa hoàn thành');
 assert.equal(formatTaskFieldValue('title', 'Xin chào'), 'Xin chào');
@@ -151,11 +151,11 @@ assert.deepEqual(previewValue(null), { text: '', truncated: false });
 /* ── describeActivity: sự kiện rời rạc không có dòng giá trị ─── */
 assert.deepEqual(
   describeActivity({ action: ACTIONS.TASK_COMPLETED }),
-  { icon: '✅', text: 'Đánh dấu hoàn thành', oldText: null, newText: null }
+  { icon: 'checkCircle', text: 'Đánh dấu hoàn thành', oldText: null, newText: null }
 );
 assert.deepEqual(
   describeActivity({ action: ACTIONS.TASK_TAG_ADD, new_value: 'Việc' }),
-  { icon: '🏷', text: 'Thêm tag: Việc', oldText: null, newText: null }
+  { icon: 'tag', text: 'Thêm tag: Việc', oldText: null, newText: null }
 );
 
 /* ── describeActivity: field-diff → Đổi / Đặt / Xoá ──────────── */
@@ -164,21 +164,21 @@ assert.deepEqual(
     action: ACTIONS.TASK_UPDATE, field: 'due_date',
     old_value: '2026-08-05', new_value: '2026-08-10',
   }),
-  { icon: '✏️', text: 'Đổi Hạn chót', oldText: '05/08/2026', newText: '10/08/2026' }
+  { icon: 'pencil', text: 'Đổi Hạn chót', oldText: '05/08/2026', newText: '10/08/2026' }
 );
 assert.deepEqual(
   describeActivity({
     action: ACTIONS.TASK_UPDATE, field: 'description',
     old_value: null, new_value: 'abc',
   }),
-  { icon: '✏️', text: 'Đặt Mô tả', oldText: null, newText: 'abc' }
+  { icon: 'pencil', text: 'Đặt Mô tả', oldText: null, newText: 'abc' }
 );
 assert.deepEqual(
   describeActivity({
     action: ACTIONS.TASK_UPDATE, field: 'description',
     old_value: 'abc', new_value: null,
   }),
-  { icon: '✏️', text: 'Xoá Mô tả', oldText: 'abc', newText: null }
+  { icon: 'pencil', text: 'Xoá Mô tả', oldText: 'abc', newText: null }
 );
 // Field lạ vẫn đọc được, dùng tên cột thô làm nhãn
 assert.equal(
@@ -192,7 +192,7 @@ assert.equal(
 /* ── describeActivity: action lạ → hiện thô, KHÔNG undefined ─── */
 assert.deepEqual(
   describeActivity({ action: 'hanh_dong_la' }),
-  { icon: '•', text: 'hanh_dong_la', oldText: null, newText: null }
+  { icon: 'dots', text: 'hanh_dong_la', oldText: null, newText: null }
 );
 assert.equal(describeActivity({}).text, 'Hoạt động');
 assert.equal(describeActivity(null).text, 'Hoạt động');

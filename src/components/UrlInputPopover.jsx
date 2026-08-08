@@ -20,12 +20,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
+import AppIcon from './AppIcon';
 import '../styles/url-input-popover.css';
 
 export default function UrlInputPopover({
   open, onClose, onSubmit,
   label = 'URL', placeholder = 'https://...',
-  icon = '🔗', allowUpload = false, accept = '*/*',
+  icon = 'link', allowUpload = false, accept = '*/*',
   anchorRef,
 }) {
   const [url, setUrl] = useState('');
@@ -110,7 +111,7 @@ export default function UrlInputPopover({
         if (session?.access_token) authHeaders = { Authorization: `Bearer ${session.access_token}` };
       }
       if (!authHeaders) {
-        setUrl('⚠ Cần đăng nhập để tải file lên.');
+        setUrl('Cần đăng nhập để tải file lên.');
         return;
       }
 
@@ -123,9 +124,9 @@ export default function UrlInputPopover({
           return;
         }
       }
-      setUrl('⚠ Upload thất bại — cần Vercel + API keys');
+      setUrl('Upload thất bại — cần Vercel + API keys');
     } catch {
-      setUrl('⚠ Upload không khả dụng (local dev). Nhập URL trực tiếp.');
+      setUrl('Upload không khả dụng ở local. Nhập URL trực tiếp.');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -139,7 +140,7 @@ export default function UrlInputPopover({
       style={usePortal ? { position: 'fixed', top: `${pos.top}px`, left: `${pos.left}px` } : undefined}
     >
       <div className="url-popover__label">
-        <span className="url-popover__icon">{icon}</span>
+        <span className="url-popover__icon"><AppIcon name={icon} size={16} /></span>
         {label}
       </div>
 
@@ -171,7 +172,7 @@ export default function UrlInputPopover({
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
             >
-              {uploading ? '⏳ Đang upload...' : '📁 Chọn file'}
+              <AppIcon name={uploading ? 'clock' : 'folder'} size={14} /> {uploading ? 'Đang upload...' : 'Chọn file'}
             </button>
           </>
         )}
@@ -184,7 +185,7 @@ export default function UrlInputPopover({
           onClick={onClose}
           disabled={uploading}
         >
-          Hủy
+          <AppIcon name="x" size={14} /> Hủy
         </button>
         <button
           type="button"
@@ -192,7 +193,7 @@ export default function UrlInputPopover({
           onClick={handleSubmit}
           disabled={!url.trim() || uploading}
         >
-          Chèn
+          <AppIcon name="check" size={14} /> Chèn
         </button>
       </div>
     </div>

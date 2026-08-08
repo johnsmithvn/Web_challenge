@@ -20,16 +20,26 @@ import { Color } from '@tiptap/extension-color';
 import { Image as TiptapImage } from '@tiptap/extension-image';
 import { Youtube } from '@tiptap/extension-youtube';
 import { MediaNode } from '../extensions/MediaNode';
-import { Undo2, Redo2, Bold, Italic, Underline as UnderlineIcon, Strikethrough, Highlighter, Code, Link as LinkIcon, Quote, List, ListOrdered, ListTodo, Minus, AlignLeft, AlignCenter, AlignRight, AlignJustify, ChevronDown, RemoveFormatting, Palette, Table as TableIcon, Heading1, Heading2, Heading3, Type, ImageIcon, Video, Music } from 'lucide-react';
+import {
+  ArrowCounterClockwise as Undo2, ArrowClockwise as Redo2, TextB as Bold,
+  TextItalic as Italic, TextUnderline as UnderlineIcon, TextStrikethrough as Strikethrough,
+  Highlighter, Code, LinkSimple as LinkIcon, Quotes as Quote, ListBullets as List,
+  ListNumbers as ListOrdered, ListChecks as ListTodo, Minus, TextAlignLeft as AlignLeft,
+  TextAlignCenter as AlignCenter, TextAlignRight as AlignRight, TextAlignJustify as AlignJustify,
+  CaretDown as ChevronDown, TextTSlash as RemoveFormatting, Palette, Table as TableIcon,
+  TextHOne as Heading1, TextHTwo as Heading2, TextHThree as Heading3, TextT as Type,
+  Image as ImageIcon, VideoCamera as Video, MusicNote as Music,
+} from '@phosphor-icons/react';
 import { SlashCommandExtension } from './SlashCommand';
 import UrlInputPopover from './UrlInputPopover';
 import { extractDriveDirectUrl } from '../utils/mediaUtils';
 import { showToast } from '../contexts/ToastContext';
+import AppIcon from './AppIcon';
 import '../styles/tiptap.css';
 
 /* ── Keyboard Shortcuts Data ──────────────────────────────────── */
 const SHORTCUT_SECTIONS = [
-  { title: '✏️ Văn bản', items: [
+  { title: 'Văn bản', icon: 'pencil', items: [
     { keys: ['Ctrl', 'B'], label: 'Bold' },
     { keys: ['Ctrl', 'I'], label: 'Italic' },
     { keys: ['Ctrl', 'U'], label: 'Underline' },
@@ -45,7 +55,7 @@ const SHORTCUT_SECTIONS = [
     { keys: ['Ctrl', 'Shift', 'R'], label: 'Căn phải' },
     { keys: ['Ctrl', 'Shift', 'J'], label: 'Căn đều' },
   ]},
-  { title: '📐 Khối & List', items: [
+  { title: 'Khối & List', icon: 'squares', items: [
     { keys: ['Ctrl', 'Shift', '8'], label: 'Bullet List' },
     { keys: ['Ctrl', 'Shift', '7'], label: 'Ordered List' },
     { keys: ['Ctrl', 'Shift', '9'], label: 'Task List' },
@@ -55,7 +65,7 @@ const SHORTCUT_SECTIONS = [
     { keys: ['Shift', 'Tab'], label: 'Lùi ra (trong list)' },
     { keys: ['Shift', 'Enter'], label: 'Xuống dòng (giữ đoạn)' },
   ]},
-  { title: '✍️ Gõ tắt Markdown', items: [
+  { title: 'Gõ tắt Markdown', icon: 'note', items: [
     { keys: ['#', 'Space'], label: '→ Heading 1' },
     { keys: ['##', 'Space'], label: '→ Heading 2' },
     { keys: ['###', 'Space'], label: '→ Heading 3' },
@@ -66,7 +76,7 @@ const SHORTCUT_SECTIONS = [
     { keys: ['---'], label: '→ Đường kẻ ngang' },
     { keys: ['[]', 'Space'], label: '→ Task List' },
   ]},
-  { title: '⚙️ Chung', items: [
+  { title: 'Chung', icon: 'gear', items: [
     { keys: ['Ctrl', 'Z'], label: 'Undo' },
     { keys: ['Ctrl', 'Shift', 'Z'], label: 'Redo' },
     { keys: ['Ctrl', 'A'], label: 'Select All' },
@@ -79,14 +89,14 @@ const SHORTCUT_SECTIONS = [
 ];
 
 const MD_SHORTCUT_SECTIONS = [
-  { title: '✏️ Văn bản', items: [
+  { title: 'Văn bản', icon: 'pencil', items: [
     { keys: ['Ctrl', 'B'], label: 'Bold **text**' },
     { keys: ['Ctrl', 'I'], label: 'Italic *text*' },
     { keys: ['Ctrl', 'Shift', 'X'], label: 'Strike ~~text~~' },
     { keys: ['Ctrl', 'E'], label: 'Code `text`' },
     { keys: ['Ctrl', 'K'], label: 'Link [text](url)' },
   ]},
-  { title: '📐 Khối', items: [
+  { title: 'Khối', icon: 'squares', items: [
     { keys: ['Ctrl', '1'], label: '# Heading 1' },
     { keys: ['Ctrl', '2'], label: '## Heading 2' },
     { keys: ['Ctrl', '3'], label: '### Heading 3' },
@@ -96,7 +106,7 @@ const MD_SHORTCUT_SECTIONS = [
     { keys: ['Ctrl', 'Shift', 'B'], label: '> Blockquote' },
     { keys: ['Ctrl', 'Shift', 'C'], label: '``` Code Block' },
   ]},
-  { title: '⚙️ Chung', items: [
+  { title: 'Chung', icon: 'gear', items: [
     { keys: ['Ctrl', 'Z'], label: 'Undo' },
     { keys: ['Ctrl', 'Shift', 'Z'], label: 'Redo' },
     { keys: ['Ctrl', 'A'], label: 'Select All' },
@@ -125,8 +135,8 @@ export function ShortcutsModal({ open, onClose }) {
     <div className="tp-shortcuts-overlay" onClick={onClose}>
       <div className="tp-shortcuts-modal" onClick={e => e.stopPropagation()}>
         <div className="tp-shortcuts-header">
-          <span className="tp-shortcuts-title">⌨ Phím tắt</span>
-          <button className="tp-shortcuts-close" onClick={onClose}>✕</button>
+          <span className="tp-shortcuts-title"><AppIcon name="keyboard" size={17} /> Phím tắt</span>
+          <button className="tp-shortcuts-close" onClick={onClose} aria-label="Đóng"><AppIcon name="x" size={16} /></button>
         </div>
 
         {/* Tab switcher */}
@@ -135,20 +145,20 @@ export function ShortcutsModal({ open, onClose }) {
             className={`tp-shortcuts-tab${tab === 'tiptap' ? ' tp-shortcuts-tab--active' : ''}`}
             onClick={() => setTab('tiptap')}
           >
-            🎨 Visual Editor
+            <AppIcon name="sparkle" size={15} /> Visual Editor
           </button>
           <button
             className={`tp-shortcuts-tab${tab === 'markdown' ? ' tp-shortcuts-tab--active' : ''}`}
             onClick={() => setTab('markdown')}
           >
-            ✍️ Markdown
+            <AppIcon name="pencil" size={15} /> Markdown
           </button>
         </div>
 
         <div className="tp-shortcuts-grid">
           {sections.map(section => (
             <div key={section.title} className="tp-shortcuts-section">
-              <div className="tp-shortcuts-section-title">{section.title}</div>
+              <div className="tp-shortcuts-section-title"><AppIcon name={section.icon} size={14} /> {section.title}</div>
               {section.items.map(item => (
                 <div key={item.label} className="tp-shortcuts-row">
                   <span className="tp-shortcuts-label">{item.label}</span>
@@ -233,9 +243,9 @@ function LinkPopover({ editor, open, onClose }) {
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); apply(); } }}
         placeholder="https://..."
       />
-      <button className="tp-link-btn tp-link-btn--apply" onMouseDown={e => { e.preventDefault(); apply(); }}>✓</button>
+      <button className="tp-link-btn tp-link-btn--apply" aria-label="Áp dụng liên kết" onMouseDown={e => { e.preventDefault(); apply(); }}><AppIcon name="check" size={14} /></button>
       {editor?.isActive('link') && (
-        <button className="tp-link-btn tp-link-btn--remove" onMouseDown={e => { e.preventDefault(); remove(); }}>✕</button>
+        <button className="tp-link-btn tp-link-btn--remove" aria-label="Bỏ liên kết" onMouseDown={e => { e.preventDefault(); remove(); }}><AppIcon name="x" size={14} /></button>
       )}
     </div>
   );
@@ -354,7 +364,7 @@ function TiptapToolbar({ editor }) {
         onSubmit={handleMediaSubmit}
         label={mediaPopover === 'image' ? 'URL ảnh' : mediaPopover === 'youtube' ? 'YouTube URL' : 'Audio URL'}
         placeholder={mediaPopover === 'image' ? 'https://example.com/photo.jpg' : mediaPopover === 'youtube' ? 'https://youtu.be/...' : 'https://example.com/audio.mp3'}
-        icon={mediaPopover === 'image' ? '🖼️' : mediaPopover === 'youtube' ? '▶️' : '🎵'}
+        icon={mediaPopover === 'image' ? 'image' : mediaPopover === 'youtube' ? 'play' : 'music'}
         allowUpload={mediaPopover === 'image' || mediaPopover === 'audio'}
         accept={mediaPopover === 'image' ? 'image/*' : mediaPopover === 'audio' ? 'audio/*' : undefined}
         anchorRef={toolbarRef}
@@ -380,13 +390,13 @@ async function uploadAndInsertImage(tr, view, file) {
       if (session?.access_token) authHeaders = { Authorization: `Bearer ${session.access_token}` };
     }
     if (!authHeaders) {
-      showToast('Cần đăng nhập để tải ảnh lên.', { icon: '⚠️' });
+      showToast('Cần đăng nhập để tải ảnh lên.', { icon: 'warning' });
       return;
     }
 
     const res = await fetch('/api/upload', { method: 'POST', body: formData, headers: authHeaders });
     if (!res.ok) {
-      showToast('Upload thất bại — cần đăng nhập + deploy Vercel.', { icon: '⚠️' });
+      showToast('Upload thất bại — cần đăng nhập + deploy Vercel.', { icon: 'warning' });
       return;
     }
 
@@ -395,10 +405,10 @@ async function uploadAndInsertImage(tr, view, file) {
       const node = imageType.create({ src: data.url });
       view.dispatch(view.state.tr.replaceSelectionWith(node));
     } else {
-      showToast('Upload không trả về URL', { icon: '⚠️' });
+      showToast('Upload không trả về URL', { icon: 'warning' });
     }
   } catch {
-    showToast('Upload API không khả dụng (local dev). Dùng nút 🖼️ → nhập URL.', { icon: '⚠️' });
+    showToast('Upload API không khả dụng ở local. Dùng nút chèn ảnh rồi nhập URL.', { icon: 'warning' });
   }
 }
 

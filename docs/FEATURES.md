@@ -444,30 +444,33 @@ biểu đồ **Nhịp chi** ở màn Tổng quan và countdown ở màn Hóa đ�
 
 ## 23. 💰 Finance / Chi tiêu (`/finance`) — làm lại v6.0.0 (thiết kế Nocturne)
 
-**File:** `src/pages/FinancePage.jsx` (module shell + child sidebar) + `src/components/finance/*` (6 màn + `parts.jsx`) + `src/styles/finance.css`
-**Hook:** `src/hooks/useFinance.js` (một hook cho 9 bảng) · **Logic thuần:** `src/utils/financeLogic.js` (+ test) · **Content:** `src/data/finance-categories.json`
+**File:** `src/pages/FinancePage.jsx` (module shell + child bar trong sidebar chính) + `src/components/finance/*` (5 màn + `parts.jsx`) + `src/styles/finance.css` + `src/styles/finance-handoff.css`
+**Hook:** `src/hooks/useFinance.js` (một hook cho 10 bảng + junction) · **Logic thuần:** `src/utils/financeLogic.js` (+ test) · **Content:** `src/data/finance-categories.json`
 **Thiết kế đầy đủ:** `docs/DESIGN_FINANCE.md`
 
 **Nguyên lý:** app **không tính số dư** (thu vẫn ghi nhưng không là mẫu số của tỉ lệ nào); **một
 bảng giao dịch, mọi báo cáo = đếm lại lọc theo `occurred_at`**; **app không trả hộ — chỉ nhắc, tới
 ngày user bấm ghi ra một giao dịch mang FK trỏ về quy tắc**. 50/30/20 tính trên **hạn mức tự đặt**.
 
-**Điều hướng:** child sidebar lồng trong app (desktop) / sub-tab ngang (<760px), 6 màn:
-- **Tổng quan:** cảnh báo thẻ tới hạn · bộ lọc kỳ (15 mục, ‹ ›, **chung state với Giao dịch**) · 4 chỉ số (đã chi / so kỳ trước / TB ngày / phần cố định %) · donut "Tiền đi đâu" (legend bấm được) + "Bắt buộc đến đâu" (must/need/want) · nhịp chi (đổi đơn vị ngày↔tháng theo kỳ) · khoản lớn nhất · quỹ tiết kiệm · "Cần bạn ghi".
+**Điều hướng:** child sidebar lồng trong app (desktop) / sub-tab ngang (<760px), 5 màn:
+- **Tổng quan:** một màn có ba tab Tổng quan / Ngân sách / Thống kê. Tổng quan gồm cảnh báo thẻ tới hạn · picker tháng/năm (tháng bất kỳ / Cả năm / Tất cả, ‹ › kỳ trước/sau, **chung state với Giao dịch**) · 4 chỉ số (đã chi / so kỳ trước / TB ngày / phần cố định %) · donut "Tiền đi đâu" (legend bấm được) + "Bắt buộc đến đâu" (must/need/want) · nhịp chi (đổi đơn vị ngày↔tháng theo kỳ) · khoản lớn nhất · quỹ tiết kiệm. Ngân sách ghim tháng chạy, có vòng tiến độ, ngưỡng cố định 50/30/20 của tổng hạn mức, hạn mức nhóm sửa được, quỹ + bảng nơi gửi, ngày đáo hạn tự tính, khóa kỳ hạn/rút chờ 48 giờ và hiệu chỉnh từ 5 tháng trọn. Thống kê có bộ chọn 3/6/12 tháng và 4 chế độ danh mục / so sánh / hóa đơn / thẻ.
 - **Nhập nhanh (phím N):** ô ngôn ngữ tự nhiên (NL_DICT 15 luật) · 5 shortcut (không chốt số tiền) · form (Chi/Thu/Để dành, nguồn tiền bắt buộc, mức cần thiết auto, **gắn Task**) · hộp "Cần bạn ghi" (hóa đơn `ask`) · cảnh báo trùng quy tắc.
 - **Giao dịch:** bộ lọc kỳ chung + tìm + chip lọc · nhóm theo ngày thật (Hôm nay/Hôm qua/thứ) · nhãn `auto` · **cột chi tiết 340px** (sửa, gắn Task, tag, hiện nguồn Inbox) — ẩn hẳn <760px (bottom sheet).
-- **Danh mục:** 11 nhóm chi + danh mục con + mức cần thiết, 7 nhóm thu riêng; tab Schema tài liệu.
+- **Danh mục:** 11 nhóm chi + 7 nhóm thu; parent là tập đóng; editor mở ngay trong card và đẩy hàng dưới xuống (không popup), cho sửa/ẩn nhãn, màu, Phosphor icon, mức cần thiết, tính chất và danh mục con; tab Schema tài liệu đầy đủ.
 - **Hóa đơn:** 4 segment — Phải trả (fixed/ask, trả góp), Sẽ nhận (không quá hạn), Khoản vay (interest/amort, gốc `excluded`), Thẻ (chốt≠đến hạn, float, lãi ước từ blended rate, cảnh báo phí).
-- **Phân tích:** tab Ngân sách (ghim tháng chạy, vòng tiến độ, 50/30/20, hạn mức nhóm sửa được, quỹ + nơi gửi) · tab Thống kê (3/6/12 tháng, 4 chế độ: danh mục / so sánh / hóa đơn / thẻ).
-
 **Liên kết:** giao dịch có FK `task_id` (gắn Task) và `inbox_item_id` (từ Inbox). Inbox → Giao dịch
-(handoff `lh_inbox_to_finance` kind `tx`) và Inbox → Hóa đơn (kind `out`).
+(handoff `lh_inbox_to_finance` kind `tx`) và Inbox → Hóa đơn (kind `out`). Finance không có hàng
+chờ duyệt Inbox tự động; chỉ xử lý mục người dùng chủ động gửi sang.
 
-**Nhập tiền:** tái dùng `parseCurrencyInput` (`50`/`50k`/`89$`/`1.5m`, Auto-K, quy đổi USD).
+**Nhập tiền:** mọi ô tiền/số nguyên loại ký tự không phải chữ số ngay khi nhập; lãi suất/phần trăm
+chỉ nhận số thập phân. Riêng ô ngôn ngữ tự nhiên tiếp tục dùng `parseCurrencyInput`
+(`50`/`50k`/`89$`/`1.5m`, Auto-K, quy đổi USD).
 
-**Data source:** `finance_transactions` + 8 bảng `finance_*` (Supabase, auth-gated). Xem DATABASE.md.
+**Data source:** 10 bảng `finance_*` chính + `finance_transaction_tags` (11 bảng Finance, Supabase, auth-gated). Taxonomy mặc định từ JSON và phần người dùng sửa ở `finance_category_overrides`. Xem DATABASE.md.
 
-🔜 Hoãn: tự sinh task nhắc từ nghĩa vụ; sửa cấu trúc danh mục từ UI; activity_logs khi trả; Phosphor icons.
+**Icon:** toàn app dùng `@phosphor-icons/react` qua `AppIcon`; không dùng emoji làm icon UI.
+
+🔜 Hoãn: tự sinh task nhắc từ nghĩa vụ; activity_logs khi trả.
 
 ---
 

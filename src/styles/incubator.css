@@ -9,6 +9,28 @@
   padding: 6rem 2rem 4rem;
 }
 
+.incubator-page__title, .incubator-tab, .incubator-add-btn,
+.incubator-card__title, .incubator-card__reason, .incubator-card__badge,
+.incubator-card__btn, .incubator-exec-option__title, .incubator-exec-error,
+.incubator-section-label, .kb-back-btn, .kb-action-btn, .kb-save-btn,
+.kb-split__label, .incubator-empty {
+  align-items: center;
+  gap: 0.4rem;
+}
+.incubator-page__title, .incubator-tab, .incubator-add-btn,
+.incubator-card__title, .incubator-card__reason, .incubator-card__badge,
+.incubator-card__btn, .incubator-exec-option__title, .incubator-exec-error,
+.incubator-section-label, .kb-back-btn, .kb-action-btn, .kb-save-btn,
+.kb-split__label { display: inline-flex; }
+.incubator-section-label {
+  margin-bottom: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .incubator-page__header {
   margin-bottom: 1.5rem;
 }
