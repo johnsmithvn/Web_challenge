@@ -1,7 +1,11 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-08-05
-**Current Version:** v5.2.0
+**Updated:** 2026-08-08
+**Current Version:** v6.0.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
+
+> **v6.0.0 (2026-08-08):** Module chi tiêu `/finance` làm lại từ đầu theo thiết kế Nocturne (handoff).
+> Thay hẳn expenses+subscriptions bằng 9 bảng `finance_*`, 6 màn trong child sidebar, liên kết Task +
+> Inbox. Thiết kế: `docs/DESIGN_FINANCE.md`. MAJOR (schema breaking).
 
 > ⚠️ Bảng version ở cuối file **thiếu v4.23.0 → v4.31.0** (nhảy từ v4.26.1 sang v5.0.0) — sai lệch
 > có từ trước, chưa fix vì ngoài scope. Nguồn đầy đủ: `CHANGELOG.md`.

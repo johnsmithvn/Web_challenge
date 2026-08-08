@@ -1,0 +1,93 @@
+{
+  "_note": "Nội dung danh mục chi/thu cho module Finance (Rule 14). Key = định danh bền, dùng trong finance_transactions.category_id/subcategory_id. necessity: must=Bắt buộc, need=Cần thiết, want=Muốn có. Sub.necessity đè necessityByCat (financeLogic.deriveNecessity). Màu 11 nhóm chi = palette tách biệt để donut đọc được (hex handoff Nocturne).",
+  "necessityLabels": { "must": "Bắt buộc", "need": "Cần thiết", "want": "Muốn có" },
+  "necessityByCat": {
+    "food": "need", "transport": "need", "housing": "must", "shopping": "want",
+    "subscription": "want", "health": "need", "entertainment": "want", "family": "need",
+    "social": "need", "finance": "must", "other": "need"
+  },
+  "expenseGroups": [
+    { "key": "food", "label": "Ăn uống", "icon": "🍜", "color": "#e2a94e", "subs": [
+      { "key": "food.rice", "label": "Bữa chính", "necessity": "need" },
+      { "key": "food.grocery", "label": "Đi chợ / Siêu thị", "necessity": "need" },
+      { "key": "food.coffee", "label": "Cà phê / Trà", "necessity": "want" },
+      { "key": "food.eatout", "label": "Ăn ngoài / Nhà hàng", "necessity": "want" },
+      { "key": "food.snack", "label": "Ăn vặt", "necessity": "want" }
+    ] },
+    { "key": "transport", "label": "Đi lại", "icon": "🚗", "color": "#5aa3dd", "subs": [
+      { "key": "transport.fuel", "label": "Xăng xe", "necessity": "need" },
+      { "key": "transport.parking", "label": "Gửi xe", "necessity": "must" },
+      { "key": "transport.grab", "label": "Xe công nghệ", "necessity": "need" },
+      { "key": "transport.transit", "label": "Xe buýt / Tàu", "necessity": "need" },
+      { "key": "transport.maintain", "label": "Bảo dưỡng xe", "necessity": "need" }
+    ] },
+    { "key": "housing", "label": "Nhà ở & Hóa đơn", "icon": "🏠", "color": "#48b3a2", "subs": [
+      { "key": "housing.rent", "label": "Tiền nhà", "necessity": "must" },
+      { "key": "housing.electric", "label": "Điện", "necessity": "must" },
+      { "key": "housing.water", "label": "Nước", "necessity": "must" },
+      { "key": "housing.internet", "label": "Internet", "necessity": "need" },
+      { "key": "housing.gas", "label": "Gas", "necessity": "must" }
+    ] },
+    { "key": "shopping", "label": "Mua sắm", "icon": "🛍️", "color": "#e07f93", "subs": [
+      { "key": "shopping.clothes", "label": "Quần áo", "necessity": "want" },
+      { "key": "shopping.electronics", "label": "Đồ điện tử", "necessity": "want" },
+      { "key": "shopping.home", "label": "Đồ gia dụng", "necessity": "need" },
+      { "key": "shopping.beauty", "label": "Mỹ phẩm", "necessity": "want" }
+    ] },
+    { "key": "subscription", "label": "Dịch vụ đăng ký", "icon": "📺", "color": "#b47fd8", "subs": [
+      { "key": "subscription.streaming", "label": "Giải trí số", "necessity": "want" },
+      { "key": "subscription.software", "label": "Phần mềm / AI", "necessity": "need" },
+      { "key": "subscription.cloud", "label": "Lưu trữ đám mây", "necessity": "need" },
+      { "key": "subscription.membership", "label": "Hội viên", "necessity": "want" }
+    ] },
+    { "key": "health", "label": "Sức khỏe", "icon": "💊", "color": "#7fc060", "subs": [
+      { "key": "health.medicine", "label": "Thuốc", "necessity": "need" },
+      { "key": "health.doctor", "label": "Khám bệnh", "necessity": "need" },
+      { "key": "health.gym", "label": "Gym / Thể thao", "necessity": "want" },
+      { "key": "health.insurance", "label": "Bảo hiểm", "necessity": "must" }
+    ] },
+    { "key": "entertainment", "label": "Giải trí", "icon": "🎮", "color": "#e58159", "subs": [
+      { "key": "entertainment.movie", "label": "Xem phim", "necessity": "want" },
+      { "key": "entertainment.game", "label": "Game", "necessity": "want" },
+      { "key": "entertainment.travel", "label": "Du lịch", "necessity": "want" },
+      { "key": "entertainment.hobby", "label": "Sở thích", "necessity": "want" }
+    ] },
+    { "key": "family", "label": "Gia đình & Học tập", "icon": "👨‍👩‍👧", "color": "#6fd0c6", "subs": [
+      { "key": "family.children", "label": "Con cái", "necessity": "must" },
+      { "key": "family.parents", "label": "Biếu bố mẹ", "necessity": "need" },
+      { "key": "family.education", "label": "Học phí / Khoá học", "necessity": "need" },
+      { "key": "family.books", "label": "Sách vở", "necessity": "need" }
+    ] },
+    { "key": "social", "label": "Hiếu hỷ", "icon": "🎁", "color": "#dd76bd", "subs": [
+      { "key": "social.wedding", "label": "Cưới hỏi", "necessity": "need" },
+      { "key": "social.funeral", "label": "Hiếu / Tang", "necessity": "must" },
+      { "key": "social.gift", "label": "Quà cáp", "necessity": "want" },
+      { "key": "social.party", "label": "Tụ họp", "necessity": "want" }
+    ] },
+    { "key": "finance", "label": "Tài chính & Nợ", "icon": "🏦", "color": "#9184d9", "subs": [
+      { "key": "finance.interest", "label": "Lãi vay", "necessity": "must" },
+      { "key": "finance.fee", "label": "Phí ngân hàng", "necessity": "need" },
+      { "key": "finance.tax", "label": "Thuế", "necessity": "must" },
+      { "key": "finance.donate", "label": "Từ thiện", "necessity": "want" }
+    ] },
+    { "key": "other", "label": "Khác", "icon": "📦", "color": "#8b91a6", "subs": [
+      { "key": "other.misc", "label": "Khác", "necessity": "need" }
+    ] }
+  ],
+  "incomeGroups": [
+    { "key": "salary", "label": "Lương", "icon": "💵", "color": "#7fc060" },
+    { "key": "bonus", "label": "Thưởng", "icon": "🎉", "color": "#e2a94e" },
+    { "key": "rental", "label": "Cho thuê", "icon": "🏘️", "color": "#5aa3dd" },
+    { "key": "business", "label": "Kinh doanh / Freelance", "icon": "💼", "color": "#b47fd8" },
+    { "key": "investment", "label": "Lãi & Đầu tư", "icon": "📈", "color": "#48b3a2" },
+    { "key": "gift_in", "label": "Được tặng", "icon": "🎁", "color": "#dd76bd" },
+    { "key": "other_in", "label": "Khác", "icon": "📦", "color": "#8b91a6" }
+  ],
+  "shortcutSeed": [
+    { "name": "Cà phê", "category_id": "food", "subcategory_id": "food.coffee" },
+    { "name": "Ăn trưa", "category_id": "food", "subcategory_id": "food.rice" },
+    { "name": "Đi chợ", "category_id": "food", "subcategory_id": "food.grocery" },
+    { "name": "Xăng", "category_id": "transport", "subcategory_id": "transport.fuel" },
+    { "name": "Gửi xe", "category_id": "transport", "subcategory_id": "transport.parking" }
+  ]
+}

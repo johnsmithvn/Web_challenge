@@ -70,7 +70,8 @@ function AppShell() {
                 <Route path="/inbox"        element={<InboxPage />} />
                 <Route path="/tasks"        element={<TasksPage />} />
                 <Route path="/collect"      element={<CollectPage />} />
-                <Route path="/finance"      element={<FinancePage />} />
+                <Route path="/finance"          element={<FinancePage />} />
+                <Route path="/finance/:screen"  element={<FinancePage />} />
                 <Route path="/incubator"    element={<IncubatorPage />} />
                 <Route path="/accounts"     element={<AccountsPage />} />
                 <Route path="/settings"     element={<SettingsPage />} />

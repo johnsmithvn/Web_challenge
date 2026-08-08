@@ -1,5 +1,21 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-08-05
+**Updated:** 2026-08-08
+
+---
+
+## v6.0.0 — ✅ CODE DONE / ⏳ SQL + BUILD CHỜ USER (2026-08-08) — Module chi tiêu làm lại (Nocturne)
+
+**Đã làm** (chi tiết: CHANGELOG.md v6.0.0, DESIGN_FINANCE.md, DATABASE.md, FEATURES.md §23): drop
+`expenses`+`subscriptions`, dựng 9 bảng `finance_*` + junction (`migration_v6.0.0_finance.sql`),
+`financeLogic.js` + 11 self-check (`npm test` pass), `useFinance.js` (1 hook cho 9 bảng),
+`finance-categories.json`, module shell + child sidebar + 6 màn (`FinancePage` + `components/finance/*`),
+`finance.css` Nocturne dark. Liên kết Task (FK `task_id`) + Inbox (2 chiều). Rewire useTags/Inbox/
+Incubator/SubAlert/Settings; xoá useExpenses/useSubscriptions/CashflowBar/expense-categories.json.
+Lint 0 error, `npm test` pass.
+
+**Chờ user:** (1) chạy `migration_v6.0.0_finance.sql` trên Supabase; (2) `npm run build`; (3) test 6 màn.
+
+🔜 Hoãn: tự sinh task nhắc từ nghĩa vụ; sửa danh mục từ UI; activity_logs khi trả; Phosphor icons.
 
 ---
 

@@ -357,7 +357,7 @@ dịch **ẩn hẳn**; vùng chạm ≥44px; mọi grid track `minmax(0, …)` c
 | `src/pages/SettingsPage.jsx` | `TAG_USAGE_LABELS`: bỏ expense/subscription, thêm `finance:'giao dịch'` |
 | `src/utils/currencyUtils.js` | **Giữ** (tái dùng `parseCurrencyInput`, `formatVND`; `SUBSCRIPTION_CYCLES`/`advanceByCycle` thành nền cho `rrule` bill) |
 | `data/migration_v6.0.0_finance.sql` | Mới: DROP cũ + 9 bảng + junction + view |
-| `data/schema_v4.24.0.sql` | Cập nhật master (bỏ expenses/subscriptions, thêm finance_*) — theo RULES chỉ sửa khi có chỉ thị rõ; **có chỉ thị "làm lại từ đầu"** nên cập nhật. |
+| `data/schema_v4.24.0.sql` | **KHÔNG sửa** — theo đúng precedent Vault: migration layer chồng lên master (master tạo expenses/subscriptions → migration drop). Không retro-edit master cho module mới. |
 
 Kiểm lại lúc code (grep đã thấy nhưng chỉ là comment/không đụng logic): `taskFields.js` (comment
 `expense_add` lịch sử), `useActivityLog.js`, `IncubatorPage.jsx`, `GenericModal.jsx`, `logger.js`.

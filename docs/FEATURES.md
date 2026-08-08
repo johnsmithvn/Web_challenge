@@ -270,7 +270,7 @@ KHÔNG xoá localStorage — dữ liệu vẫn nằm trong trình duyệt nhưng
 ## 18. 📥 Inbox (`/inbox`)
 
 **File:** `src/pages/InboxPage.jsx` + `src/styles/inbox.css`
-**Hook:** `src/hooks/useCollections.js`, `src/hooks/useExpenses.js`, `src/hooks/useActivityLog.js`
+**Hook:** `src/hooks/useCollections.js`, `src/hooks/useActivityLog.js`
 
 **Mô tả:** Nơi ghi nhanh mọi thứ (link, ý tưởng, ghi chú) — phân loại sau. Trạm triage với luồng chuyển đổi nhanh.
 
@@ -280,18 +280,16 @@ KHÔNG xoá localStorage — dữ liệu vẫn nằm trong trình duyệt nhưng
 - Classify action: phân loại nhanh qua `<select>` dropdown (lấy dữ liệu tĩnh từ `knowledge.json`)
 - **📌 Task action:** Chuyển inbox item thành Task (v3.0.1)
 - **✓ Xong nhanh (v4.20.0):** Nút "✓ Xong" trên mỗi inbox item và trong Reader view. Nhấp vào sẽ tự động chuyển item thành Task, đánh dấu hoàn thành (completed) trong ngày hôm nay ngay lập tức, ghi nhận vào activity log (`task_done`), và xoá/dọn dẹp item đó khỏi inbox.
-- **🔄 Đăng ký action:** Chuyển sang FinancePage tạo Subscription (v3.0.1)
-- **💸 Chi tiêu nhanh (v3.5.0):** Bấm nút → QuickExpenseModal inline (không navigate). Regex tự bóc tách số tiền từ text ("Cafe 50k" → 50,000đ). Pre-fill amount + note + category dropdown 8 loại. Lưu → `addExpense()` + `logActivity()` + xóa item khỏi inbox.
-- **✏️ Sửa chi tiêu (v4.2.1):** Click ✏️ trên expense → modal sửa (số tiền, danh mục, ghi chú). Optimistic update + rollback.
-- **🔄 Sub auto-advance (v4.2.1):** Subscription hết hạn tự động nhảy `next_due` theo cycle (monthly/3month/6month/yearly). Chạy khi fetch, bounded max 24 cycle.
+- **💸 Giao dịch (v6.0.0):** Chuyển sang module Chi tiêu › Nhập nhanh, prefill (regex bóc số tiền), giao dịch tạo ra mang `inbox_item_id`; module xoá item Inbox sau khi ghi. Handoff qua `sessionStorage lh_inbox_to_finance` kind `tx`.
+- **🔁 Hóa đơn (v6.0.0):** Chuyển sang Chi tiêu › Hóa đơn (segment Phải trả), prefill tên. Kind `out`.
 - Delete action
 - **🕔 Snooze (v3.8.0):** Ẩn inbox item tạm thời. 4 options: 1 tuần / 2 tuần / 1 tháng / 3 tháng. Badge "🕔 X snoozed" trong header.
-- **··· Overflow Menu (v4.0.1):** 2 primary buttons (📌 Task + 🗑) luôn hiện. 5 actions phụ (📂 Phân loại, 💸 Chi tiêu, 🔄 Đăng ký, 🥚 Ấp Trứng, 🕔 Snooze) gom vào dropdown ···. Click-outside auto-close.
+- **··· Overflow Menu (v4.0.1, cập nhật v6.0.0):** 2 primary buttons (📌 Task + 🗑) luôn hiện. Actions phụ (📂 Phân loại, 💸 Giao dịch, 🔁 Hóa đơn, 🥚 Ấp Trứng, 🕔 Snooze) gom vào dropdown ···. Click-outside auto-close.
 - **📊 Filter Chips (v4.3.0):** 3 chip lọc: Tất cả / Có URL / Gần đây (7 ngày). Client-side filtering trên data đã fetch. Smart empty state khi không có item khớp.
 - Tự động detect URL
 - Empty state khi inbox trống
 
-- **Data source:** `collections` table (Supabase, type='inbox'), `expenses` table (khi dùng Quick Expense), `knowledge.json` cho danh sách phân loại
+- **Data source:** `collections` table (Supabase, type='inbox'), `knowledge.json` cho danh sách phân loại. Giao dịch/Hóa đơn tạo ở module Finance (handoff).
 
 ---
 
@@ -299,33 +297,24 @@ KHÔNG xoá localStorage — dữ liệu vẫn nằm trong trình duyệt nhưng
 
 **Added:** v3.7.0
 **Files:** `src/hooks/useTags.js`, `src/components/TagPicker.jsx`
-**DB:** `tags`, `expense_tags`, `subscription_tags`, `collection_tags` (§27), `task_tags` (v4.31.0)
+**DB:** `tags`, `finance_transaction_tags` (v6.0.0), `collection_tags` (§27), `task_tags` (v4.31.0), `account_tags` (v5.1.0)
 
-**Mô tả:** Hệ thống tag trung tâm dùng chung cho expenses, subscriptions, collections (§27), và tasks (v4.31.0). Mỗi user có bộ tags riêng.
+**Mô tả:** Hệ thống tag trung tâm dùng chung cho giao dịch (v6.0.0), collections (§27), tasks (v4.31.0) và accounts. Mỗi user có bộ tags riêng.
 
 **Chi tiết:**
-- `useTags` hook: fetchTags, addTag (upsert), deleteTag, linkTag, unlinkTag, `getTagUsageBreakdown` (v4.31.0 — đếm riêng theo từng loại entity, dùng cho confirm xoá tag ở Settings) — `ENTITY_CONFIG` hỗ trợ 4 loại: `expense`, `subscription`, `collection`, `task`
+- `useTags` hook: fetchTags, addTag (upsert), deleteTag, linkTag, unlinkTag, `getTagUsageBreakdown` — `ENTITY_CONFIG` hỗ trợ 4 loại: `finance`, `collection`, `task`, `account`
 - `TagPicker` component: searchable dropdown, multi-select toggle, inline tạo tag mới bằng Enter
-- Tích hợp vào FinancePage (expense/subscription form), CollectPage (§27), TaskListSection (v4.31.0 — form Thêm/Sửa task)
-- Tags link qua junction tables (expense_tags, subscription_tags, collection_tags, task_tags)
+- Tích hợp vào module Finance (chi tiết giao dịch), CollectPage (§27), TaskListSection, Vault
+- Tags link qua junction tables (finance_transaction_tags, collection_tags, task_tags, account_tags)
 - Task dùng optimistic wrapper riêng (`linkTaskTag`/`unlinkTaskTag` trong `useUserTasks.js`) thay vì gọi `useTags.linkTag` trực tiếp — cần sync state `task._tags` ngay để hiện badge, `useTags` không giữ state đó
 - RLS policies đảm bảo user chỉ thấy tags của mình
 
 ---
 
-## 20. 📅 Cashflow Calendar (v3.7.0)
+## 20. ~~📅 Cashflow Calendar~~ — ĐÃ GỠ (v6.0.0)
 
-**Added:** v3.7.0
-**Files:** `src/components/CashflowBar.jsx`, `src/styles/finance.css`
-
-**Mô tả:** Thanh timeline 30 ngày hiển thị các ngày có subscription sắp đến hạn.
-
-**Chi tiết:**
-- 30 cells ngang, mỗi cell = 1 ngày, dot đỏ khi có sub due
-- Tooltip hiển tên sub khi hover
-- Legend dưới bar hiển 5 ngày gần nhất có sub
-- Chỉ hiển active subscriptions
-- Mount trong FinancePage sau summary cards
+`CashflowBar.jsx` đã xoá cùng module Finance cũ. Chức năng "nhịp chi / lịch nghĩa vụ" thay bằng
+biểu đồ **Nhịp chi** ở màn Tổng quan và countdown ở màn Hóa đơn của module Finance mới (§23).
 
 ---
 
@@ -344,7 +333,7 @@ KHÔNG xoá localStorage — dữ liệu vẫn nằm trong trình duyệt nhưng
 - Dời lại (Defer): bắt buộc nhập lý do (friction UX chống bốc đồng). 4 options: 1w/2w/1m/3m
 - **Thực thi (Execute) v4.2.0 — Multi-Output Router:**
   - 3 checkbox cards (đa lựa chọn, không phải radio):
-    - 💰 Ghi nhận Chi tiêu → `addExpense()` + dropdown category (8 loại)
+    - 💰 Ghi nhận Chi tiêu → `useFinance().addTransaction()` (v6.0.0) + dropdown nhóm chi
     - 🔁 Tạo Thói quen → `addHabit()` + tự động điền `durationMin` từ `estimated_time`
     - 📌 Tạo Công việc → `addTask()` + tự động điền `durationEst` từ `estimated_time`
   - Auto-suggest: cost > 0 → pre-check Expense, time > 0 → pre-check Habit, cả 2 = 0 → pre-check Task
@@ -357,7 +346,7 @@ KHÔNG xoá localStorage — dữ liệu vẫn nằm trong trình duyệt nhưng
 - Badge header: số lượng đang ấp + cần review
 - Inbox integration: nút 🥚 Ấp Trứng chuyển inbox item vào Incubator
 
-**Data source:** `intentions` + `intention_logs` (Supabase). Cross-module: `expenses`, `habits`, `user_tasks`
+**Data source:** `intentions` + `intention_logs` (Supabase). Cross-module: `finance_transactions` (v6.0.0), `user_tasks`
 
 ---
 
@@ -453,22 +442,32 @@ KHÔNG xoá localStorage — dữ liệu vẫn nằm trong trình duyệt nhưng
 
 ---
 
-## 23. 💰 Finance (`/finance`)
+## 23. 💰 Finance / Chi tiêu (`/finance`) — làm lại v6.0.0 (thiết kế Nocturne)
 
-**File:** `src/pages/FinancePage.jsx` + `src/styles/finance.css`
-**Hook:** `src/hooks/useExpenses.js` + `src/hooks/useSubscriptions.js`
+**File:** `src/pages/FinancePage.jsx` (module shell + child sidebar) + `src/components/finance/*` (6 màn + `parts.jsx`) + `src/styles/finance.css`
+**Hook:** `src/hooks/useFinance.js` (một hook cho 9 bảng) · **Logic thuần:** `src/utils/financeLogic.js` (+ test) · **Content:** `src/data/finance-categories.json`
+**Thiết kế đầy đủ:** `docs/DESIGN_FINANCE.md`
 
-**Mô tả:** Quản lý chi tiêu và đăng ký dịch vụ.
+**Nguyên lý:** app **không tính số dư** (thu vẫn ghi nhưng không là mẫu số của tỉ lệ nào); **một
+bảng giao dịch, mọi báo cáo = đếm lại lọc theo `occurred_at`**; **app không trả hộ — chỉ nhắc, tới
+ngày user bấm ghi ra một giao dịch mang FK trỏ về quy tắc**. 50/30/20 tính trên **hạn mức tự đặt**.
 
-**Chi tiết:**
-- **Summary cards:** Chi tiêu tháng / Đăng ký/tháng / Tổng ước tính
-- **Alert bar:** Cảnh báo subscriptions sắp hết hạn (≤7 ngày)
-- **Tab Chi tiêu:** Quick-add form (số tiền + category + ghi chú), category breakdown với progress bars, expense list với delete
-- **Tab Đăng ký:** Sub cards với tên, số tiền, chu kỳ, ngày hết hạn, toggle active/pause, delete
-- **8 categories:** Ăn uống, Di chuyển, Mua sắm, Sức khỏe, Học tập, Giải trí, Hóa đơn, Khác
-- **Tự động phân tích & Quy đổi ngoại tệ (v4.20.1):** Hỗ trợ nhập tiền tệ tự do dạng văn bản (ví dụ: `50`, `50k`, `89$`, `1.5m`) tại ô nhập chi phí, đăng ký và ấp trứng. Hiển thị nhãn Xem trước trực tiếp đã phân tách nghìn dạng VND (`vi-VN` standard). Tự động nhân 1000 đối với số ngắn dưới 10,000 (Auto-K) và quy đổi USD dựa trên tỷ giá tùy chỉnh. Cấu hình tỷ giá và Toggle bật/tắt Auto-K được quản lý trong tab Chung ở trang Cài đặt. Tự động nối thông tin quy đổi gốc vào phần ghi chú/tên dịch vụ khi lưu.
+**Điều hướng:** child sidebar lồng trong app (desktop) / sub-tab ngang (<760px), 6 màn:
+- **Tổng quan:** cảnh báo thẻ tới hạn · bộ lọc kỳ (15 mục, ‹ ›, **chung state với Giao dịch**) · 4 chỉ số (đã chi / so kỳ trước / TB ngày / phần cố định %) · donut "Tiền đi đâu" (legend bấm được) + "Bắt buộc đến đâu" (must/need/want) · nhịp chi (đổi đơn vị ngày↔tháng theo kỳ) · khoản lớn nhất · quỹ tiết kiệm · "Cần bạn ghi".
+- **Nhập nhanh (phím N):** ô ngôn ngữ tự nhiên (NL_DICT 15 luật) · 5 shortcut (không chốt số tiền) · form (Chi/Thu/Để dành, nguồn tiền bắt buộc, mức cần thiết auto, **gắn Task**) · hộp "Cần bạn ghi" (hóa đơn `ask`) · cảnh báo trùng quy tắc.
+- **Giao dịch:** bộ lọc kỳ chung + tìm + chip lọc · nhóm theo ngày thật (Hôm nay/Hôm qua/thứ) · nhãn `auto` · **cột chi tiết 340px** (sửa, gắn Task, tag, hiện nguồn Inbox) — ẩn hẳn <760px (bottom sheet).
+- **Danh mục:** 11 nhóm chi + danh mục con + mức cần thiết, 7 nhóm thu riêng; tab Schema tài liệu.
+- **Hóa đơn:** 4 segment — Phải trả (fixed/ask, trả góp), Sẽ nhận (không quá hạn), Khoản vay (interest/amort, gốc `excluded`), Thẻ (chốt≠đến hạn, float, lãi ước từ blended rate, cảnh báo phí).
+- **Phân tích:** tab Ngân sách (ghim tháng chạy, vòng tiến độ, 50/30/20, hạn mức nhóm sửa được, quỹ + nơi gửi) · tab Thống kê (3/6/12 tháng, 4 chế độ: danh mục / so sánh / hóa đơn / thẻ).
 
-**Data source:** `expenses` + `subscriptions` tables (Supabase)
+**Liên kết:** giao dịch có FK `task_id` (gắn Task) và `inbox_item_id` (từ Inbox). Inbox → Giao dịch
+(handoff `lh_inbox_to_finance` kind `tx`) và Inbox → Hóa đơn (kind `out`).
+
+**Nhập tiền:** tái dùng `parseCurrencyInput` (`50`/`50k`/`89$`/`1.5m`, Auto-K, quy đổi USD).
+
+**Data source:** `finance_transactions` + 8 bảng `finance_*` (Supabase, auth-gated). Xem DATABASE.md.
+
+🔜 Hoãn: tự sinh task nhắc từ nghĩa vụ; sửa cấu trúc danh mục từ UI; activity_logs khi trả; Phosphor icons.
 
 ---
 
@@ -492,11 +491,11 @@ history nếu đổi ý.
 **Mô tả:** Widget nhỏ gắn trong sidebar Navbar, tự động ẩn khi không có data.
 
 **Chi tiết:**
-- **SubAlert:** Hiển thị subscriptions sắp gia hạn (≤7 ngày) + đếm ngược ngày. Urgent style khi ≤2 ngày.
+- **SubAlert (cập nhật v6.0.0):** Nhắc nghĩa vụ tài chính sắp tới hạn (hóa đơn `finance_bills` + thẻ `finance_cards`, ≤7 ngày) + đếm ngược. Urgent style khi ≤2 ngày.
 
 > **Note:** `DailyReview` widget đã bị xóa v4.7.1 để giảm UI clutter.
 
-**Data source:** SubAlert → `subscriptions`
+**Data source:** SubAlert → `finance_bills` + `finance_cards` (v6.0.0)
 
 ---
 
@@ -557,7 +556,7 @@ history nếu đổi ý.
 | Journeys | `user_journeys` + `journey_habits` | — (cần login để lưu) |
 | Personal tasks | `user_tasks` + `task_collections` | in-memory |
 | Inbox / Knowledge | `collections` (+ groups/notes/tags) | — (cần login) |
-| Finance | `expenses`, `subscriptions` | — (cần login) |
+| Finance | `finance_transactions` + 8 bảng `finance_*` (v6.0.0) | — (cần login, cố ý không có guest mode) |
 | Incubator | `intentions`, `intention_logs` | — (cần login) |
 | Vault | `accounts`, `account_fields`, `account_auth`, `account_codes`, `account_logs`, `account_tags` | — (cần login, cố ý không có guest mode) |
 | Notifications | `notification_settings` + `vl_notif_settings` | localStorage |

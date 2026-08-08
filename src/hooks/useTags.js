@@ -14,9 +14,10 @@ import { logger } from '../utils/logger';
  */
 
 /* ── Entity type → junction table mapping ─────────────────── */
+// v6.0.0: expense/subscription bị gỡ (module Finance viết lại) → 'finance' trỏ
+// vào finance_transaction_tags. Xem docs/DESIGN_FINANCE.md §11.
 const ENTITY_CONFIG = {
-  expense:      { table: 'expense_tags',      fk: 'expense_id' },
-  subscription: { table: 'subscription_tags', fk: 'subscription_id' },
+  finance:      { table: 'finance_transaction_tags', fk: 'transaction_id' },
   collection:   { table: 'collection_tags',   fk: 'collection_id' },
   task:         { table: 'task_tags',         fk: 'task_id' },
   account:      { table: 'account_tags',      fk: 'account_id' },
@@ -249,34 +250,32 @@ export function useTags() {
 
   // ── Get usage breakdown for a tag, per entity type ──────────
   const getTagUsageBreakdown = useCallback(async (tagId) => {
-    if (!isAuth) return { expense: 0, subscription: 0, collection: 0, task: 0, account: 0 };
+    if (!isAuth) return { finance: 0, collection: 0, task: 0, account: 0 };
 
     try {
-      const [expenses, subs, collections, tasks, accounts] = await Promise.all([
-        supabase.from('expense_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
-        supabase.from('subscription_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
+      const [finance, collections, tasks, accounts] = await Promise.all([
+        supabase.from('finance_transaction_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
         supabase.from('collection_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
         supabase.from('task_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
         supabase.from('account_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
       ]);
 
       return {
-        expense: expenses.count || 0,
-        subscription: subs.count || 0,
+        finance: finance.count || 0,
         collection: collections.count || 0,
         task: tasks.count || 0,
         account: accounts.count || 0,
       };
     } catch (err) {
       logger.error('[useTags] getTagUsageBreakdown exception:', err);
-      return { expense: 0, subscription: 0, collection: 0, task: 0, account: 0 };
+      return { finance: 0, collection: 0, task: 0, account: 0 };
     }
   }, [isAuth]);
 
   // ── Get usage count for a tag across all junction tables ───
   const getTagUsageCount = useCallback(async (tagId) => {
     const b = await getTagUsageBreakdown(tagId);
-    return b.expense + b.subscription + b.collection + b.task + b.account;
+    return b.finance + b.collection + b.task + b.account;
   }, [getTagUsageBreakdown]);
 
   // ── Batch get usage counts for all tags ───────────────────
@@ -284,10 +283,9 @@ export function useTags() {
     if (!isAuth || !userId) return {};
 
     try {
-      // Fetch all links from all 5 junction tables
-      const [expenses, subs, collections, tasks, accounts] = await Promise.all([
-        supabase.from('expense_tags').select('tag_id'),
-        supabase.from('subscription_tags').select('tag_id'),
+      // Fetch all links from all 4 junction tables
+      const [finance, collections, tasks, accounts] = await Promise.all([
+        supabase.from('finance_transaction_tags').select('tag_id'),
         supabase.from('collection_tags').select('tag_id'),
         supabase.from('task_tags').select('tag_id'),
         supabase.from('account_tags').select('tag_id'),
@@ -295,8 +293,7 @@ export function useTags() {
 
       const counts = {};
       const all = [
-        ...(expenses.data || []),
-        ...(subs.data || []),
+        ...(finance.data || []),
         ...(collections.data || []),
         ...(tasks.data || []),
         ...(accounts.data || []),

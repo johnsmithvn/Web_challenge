@@ -4,9 +4,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useIntentions } from '../hooks/useIntentions';
 import { useUserTasks } from '../hooks/useUserTasks';
-import { useExpenses } from '../hooks/useExpenses';
+import { useFinance } from '../hooks/useFinance';
 import { useAuth } from '../contexts/AuthContext';
-import EXPENSE_DATA from '../data/expense-categories.json';
+import FIN_CATS from '../data/finance-categories.json';
 import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
 import { toDateStr } from '../utils/dateUtils';
 import CustomSelect from '../components/CustomSelect';
@@ -149,7 +149,7 @@ export default function IncubatorPage() {
     abandonIntention, restoreIntention, deleteIntention, fetchAbandoned, getLogs,
   } = useIntentions();
   const { addTask } = useUserTasks();
-  const { addExpense } = useExpenses();
+  const { addTransaction } = useFinance({ autoFetch: false });
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -291,11 +291,12 @@ export default function IncubatorPage() {
 
     // 1. Expense
     if (execOptions.expense && executeModal.estimated_cost) {
-      const exp = await addExpense({
+      const exp = await addTransaction({
+        type: 'expense',
         amount: executeModal.estimated_cost,
-        category: expenseCategory,
+        category_id: expenseCategory,
         note: `Từ Incubator: ${executeModal.title}`,
-        date: toDateStr(),
+        occurred_at: toDateStr(),
       });
       if (exp) {
         convertedTypes.push('expense');
@@ -342,7 +343,7 @@ export default function IncubatorPage() {
     setExecuteModal(null);
     setExecOptions({ expense: false, task: false });
   }, [executeModal, execOptions, anySelected, expenseCategory, execLogs,
-    addExpense, addTask, executeIntention, navigate]);
+    addTransaction, addTask, executeIntention, navigate]);
 
   /* ── Toggle timeline ── */
   const toggleTimeline = useCallback(async (id) => {
@@ -686,7 +687,7 @@ export default function IncubatorPage() {
                         style={{ width: '100%' }}
                         value={expenseCategory}
                         onChange={val => setExpenseCategory(val)}
-                        options={EXPENSE_DATA.categories.map(cat => ({ value: cat.key, label: `${cat.icon} ${cat.label}` }))}
+                        options={FIN_CATS.expenseGroups.map(cat => ({ value: cat.key, label: `${cat.icon} ${cat.label}` }))}
                       />
                     </div>
                   )}

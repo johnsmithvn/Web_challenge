@@ -1,5 +1,58 @@
 # CHANGELOG
 
+## v6.0.0 — 2026-08-08
+> **Module chi tiêu (`/finance`) làm lại từ đầu theo thiết kế Nocturne (handoff).** Thay HẲN Finance
+> cũ (expenses + subscriptions). Triết lý: **app không tính số dư** (thu vẫn ghi nhưng không bao giờ
+> là mẫu số của tỉ lệ nào); **một bảng giao dịch, mọi báo cáo = đếm lại lọc theo `occurred_at`**;
+> **app không trả hộ — chỉ nhắc, tới ngày user bấm ghi ra một giao dịch mang FK trỏ về quy tắc**.
+> 6 màn trong một **child sidebar** lồng trong app: Tổng quan · Nhập nhanh (phím N) · Giao dịch ·
+> Danh mục · Hóa đơn (4 segment: phải trả/sẽ nhận/vay/thẻ) · Phân tích (ngân sách 50/30/20 + thống
+> kê 3/6/12 tháng). Giao dịch **liên kết Task** (FK `task_id`) và **Inbox** (2 chiều). Design system
+> Nocturne dark-only scoped. MAJOR theo RULES §9 (đổi schema breaking: drop 2 bảng, kiến trúc mới).
+>
+> ⚠️ **Mất dữ liệu:** migration DROP `expenses` + `subscriptions` + dữ liệu thật (lựa chọn "drop
+> sạch, làm lại từ đầu" của user 2026-08-08). Không có nhánh migrate.
+>
+> 🔜 Hoãn (đã chốt): tự sinh task nhắc từ nghĩa vụ quá hạn/tới hạn/đáo hạn; sửa cấu trúc danh mục từ
+> UI; ghi activity_logs khi thanh toán; icon Phosphor (v1 dùng emoji).
+
+### Added
+- **`data/migration_v6.0.0_finance.sql`** — user tự chạy trên Supabase. Idempotent. DROP module cũ
+  rồi tạo 9 bảng + 1 junction + view:
+  - `finance_transactions` — bảng DUY NHẤT. `type` CHECK(expense/income/saving); `excluded` (trả gốc
+    vay + trả sao kê thẻ, ngoài mọi tổng chi); `necessity` CHECK(must/need/want); `is_fixed`;
+    `source_card_id`/`card_id`; FK `bill_id`+`bill_period` (UNIQUE chặn trả trùng kỳ), `loan_id`,
+    `saving_goal_id`+`saving_dir`, `shortcut_id`, **`inbox_item_id`** (→collections), **`task_id`**
+    (→user_tasks).
+  - `finance_bills` (amount_mode fixed/ask, trả góp term_done/term_total), `finance_loans`
+    (kind interest/amort), `finance_cards` (statement_day≠due_day, grace, float), `finance_saving_goals`
+    (KHÔNG cột số dư), `finance_deposits`, `finance_income_rules` (received_periods), `finance_shortcuts`
+    (KHÔNG cột số tiền), `finance_budgets` (hạn mức đứng — cơ sở 50/30/20).
+  - `finance_transaction_tags` + `tagged_items` recreate (bỏ expense/subscription, thêm `kind='finance'`).
+- **`src/utils/financeLogic.js`** + test — logic thuần (không import JSON): `periodTotals` (nơi tính
+  tổng duy nhất), `comparePeriods` (3 nhánh), `deriveNecessity`, `matchCategory` (NL_DICT 15 luật),
+  `budgetBreakdown` (50/30/20), `cardCycle`/`floatInterest` (stoozing), `loanSchedule` (annuity/lãi),
+  `fundBalance`/`blendedRate`, `spendingRhythm`, `listPeriodOptions`. 11 self-check `node:assert`.
+- **`src/hooks/useFinance.js`** — hook duy nhất sở hữu 9 bảng + action; fetch 1 lần, lọc kỳ
+  client-side; helper thanh toán (`payBill`/`receiveIncome`/`payLoanInterest`/`payLoanPrincipal`/
+  `payCardStatement`/`moveSaving`). Auth-gated, dual-mode; cờ `autoFetch` cho nơi chỉ ghi.
+- **`src/data/finance-categories.json`** — 11 nhóm chi + danh mục con + necessity, 7 nhóm thu, seed shortcut.
+- **`src/pages/FinancePage.jsx`** (module shell + child sidebar) + **`src/components/finance/`** (6 màn
+  + parts). **`src/styles/finance.css`** — Nocturne dark scoped + animation `riseIn`.
+
+### Changed
+- **`src/hooks/useTags.js`** — junction `finance` (finance_transaction_tags) thay expense/subscription.
+- **`src/pages/InboxPage.jsx`** — nút Inbox→Giao dịch (handoff `lh_inbox_to_finance` kind `tx`, mang
+  `inbox_item_id`) và Inbox→Hóa đơn (kind `out`); bỏ modal chi tiêu cũ + `useExpenses`.
+- **`src/pages/IncubatorPage.jsx`** — "Ấp trứng → chi tiêu" dùng `useFinance().addTransaction`.
+- **`src/components/SubAlert.jsx`** — nhắc nghĩa vụ sắp tới hạn từ `finance_bills`/`finance_cards`.
+- **`src/pages/SettingsPage.jsx`** — nhãn tag `finance` thay expense/subscription.
+
+### Removed
+- **`src/hooks/useExpenses.js`, `src/hooks/useSubscriptions.js`, `src/components/CashflowBar.jsx`,
+  `src/data/expense-categories.json`** — module chi tiêu cũ.
+- Bảng `expenses`, `subscriptions`, `expense_tags`, `subscription_tags` (DROP trong migration).
+
 ## v5.2.0 — 2026-08-05
 > **Vault (`/accounts`) làm lại từ đầu theo bản thiết kế Keyplate** — một item = mọi thứ về một tài
 > khoản: field **theo loại** (10 loại), giá trị nhiều phần (`multi`), **nhiều liên kết** tới item

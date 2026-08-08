@@ -38,12 +38,12 @@ src/
 ├── contexts/     (3) AuthContext, ThemeContext, ToastContext
 ├── extensions/   (1) MediaNode.jsx — Tiptap atom node cho media inline
 ├── lib/          (1) supabase.js — singleton client, graceful fallback khi thiếu env
-├── utils/        (8) vaultLogic, currencyUtils, dateUtils, logger, mediaUtils,
-│                     recurrenceUtils, taskFields (pure, no React)
+├── utils/        (9) vaultLogic, financeLogic, currencyUtils, dateUtils, logger,
+│                     mediaUtils, recurrenceUtils, taskFields (pure, no React)
 │                 (+2) dateUtils.test.js, mediaUtils.test.js — self-check `npm test`
-├── __tests__/    (3) recurrenceUtils.test.js, taskFields.test.js,
-│                     vaultLogic.test.js — `npm test`
-├── data/         (4) JSON content tĩnh (Rule 14): quotes, expense-categories,
+├── __tests__/    (4) recurrenceUtils.test.js, taskFields.test.js,
+│                     vaultLogic.test.js, financeLogic.test.js — `npm test`
+├── data/         (4) JSON content tĩnh (Rule 14): quotes, finance-categories,
 │                     knowledge, ui-strings
 └── styles/      (25) 1 file / domain + global.css (design tokens). Không dùng Tailwind
 
@@ -136,7 +136,7 @@ Cụm bảng theo domain:
 |--------|--------|
 | Tasks | `user_tasks`, `task_collections`, `task_tags`, `activity_logs` (lịch sử + ghi chú) |
 | Knowledge | `collections`, `collection_tags`, `collection_notes`, `inspirational_quotes` |
-| Finance | `expenses`, `subscriptions`, `expense_tags`, `subscription_tags` |
+| Finance (v6.0.0) | `finance_transactions` + `finance_bills`/`finance_loans`/`finance_cards`/`finance_saving_goals`/`finance_deposits`/`finance_income_rules`/`finance_shortcuts`/`finance_budgets` + `finance_transaction_tags`. Hook `useFinance`, logic `financeLogic`, 6 màn `components/finance/*` |
 | Incubator | `intentions`, `intention_logs` |
 | Account Vault | `accounts`, `account_fields` (field theo loại; multi/link là jsonb), `account_auth`, `account_codes`, `account_logs` (append-only), `account_tags` — **v5.2.0, plaintext, chưa mã hoá** |
 | Tags | `tags` + 5 junction + VIEW `tagged_items` |

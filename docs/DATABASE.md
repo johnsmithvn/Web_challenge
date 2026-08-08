@@ -28,8 +28,12 @@ profiles ───────────────────────�
     ├──► user_tasks ◄──► task_collections ──► collections
     │                                    (M:N junction v4.5.0)
     ├──► collections       (inbox + knowledge)  │
-    ├──► expenses          (daily spending)     │
-    ├──► subscriptions     (recurring services) │
+    ├──► finance_transactions (bảng chi tiêu DUY NHẤT — v6.0.0)
+    │        ├─ FK bill_id/loan_id/card_id/saving_goal_id/shortcut_id
+    │        ├─ FK inbox_item_id → collections  (liên kết Inbox)
+    │        └─ FK task_id       → user_tasks   (liên kết Task)
+    ├──► finance_bills / finance_loans / finance_cards / finance_saving_goals
+    │    finance_deposits / finance_income_rules / finance_shortcuts / finance_budgets
     ├──► activity_logs     (task history + notes)│
     ├──► intentions / intention_logs (incubator)│
     │                                           │
@@ -41,10 +45,9 @@ profiles ───────────────────────�
     │                                           │
     ├──► tags ◄──► collection_tags              │
     │         ◄──► task_tags        (v4.28.0)    │
-    │         ◄──► expense_tags                  │
-    │         ◄──► subscription_tags             │
     │         ◄──► account_tags     (v5.1.0)     │
-    │              └─ all 5 ──► VIEW tagged_items │
+    │         ◄──► finance_transaction_tags (v6.0.0)
+    │              └─ all 4 ──► VIEW tagged_items │
     │                                           │
     ├──► collection_notes  (threaded sub-notes) │
     ├──► inspirational_quotes (user quotes)     │
@@ -70,15 +73,13 @@ profiles ───────────────────────�
 | 4 | `user_tasks` | Personal to-do items | priority SMALLINT, recurrence_rule JSONB, `recurrence_parent_id` UUID self-FK ON DELETE CASCADE (v4.31.0 — link "task này được sinh ra TỪ task nào", khác cột `parent_id` subtask đang có kế hoạch riêng), `updated_at` TIMESTAMPTZ + trigger `user_tasks_updated_at` tái dùng hàm chung `update_updated_at()` (v5.0.0; backfill = `created_at` cho task cũ) |
 | 5 | `task_collections` | Junction: Task ↔ KB (M:N) | Composite PK(task_id, collection_id), CASCADE |
 | 6 | `collections` | Inbox + Knowledge Base | type CHECK (8, **sửa v4.28.0**): `inbox`, `note`, `quote`, `learn`, `idea`, `ai`, `entertainment`, `podcast`. ⚠️ Trước v4.28.0 CHECK có `emotion` (không tồn tại trong `src/`) và **thiếu `podcast`** (có trong `knowledge.json`) → classify sang Podcast fail constraint |
-| 7 | `expenses` | Daily spending log | amount VNĐ, category, note |
-| 8 | `subscriptions` | Recurring services | cycle, next_due, auto-advance |
+| 7–8 | ~~`expenses`~~ ~~`subscriptions`~~ | **[DROPPED v6.0.0]** — thay bằng module Finance mới (bảng `finance_*` bên dưới). Xem `data/migration_v6.0.0_finance.sql`. |
 | 9 | `activity_logs` | Lịch sử thay đổi + ghi chú cá nhân của **Task** | **Dựng lại ở v5.0.0**, dữ liệu cũ xoá hết theo chủ ý: `task_id` UUID FK → `user_tasks` ON DELETE CASCADE (mọi dòng đều gắn task), `action`, `field`, `old_value`, `new_value`, `note`. Bỏ `label`/`amount`/`meta` (không nơi nào đọc; tiền/XP đã có nguồn thật ở `expenses`/`subscriptions`/`xp_logs`). 4 policy: SELECT/INSERT/DELETE own + UPDATE chỉ dòng `action='note'` kèm `GRANT UPDATE (note)` cấp cột → dòng field-diff bất biến. 1 index `idx_activity_logs_task` phục vụ truy vấn đọc duy nhất. **Không còn** dòng "sự kiện rời rạc" (expense_add, inbox_*, focus_done…) — Life Log/heatmap là người đọc duy nhất của chúng và đã gỡ hẳn ở v5.0.0 |
 | 10 | `intentions` | Incubator (someday-maybe) | status: incubating/deferred/executed/abandoned |
 | 11 | `intention_logs` | Incubator audit trail | FK → intentions |
 | 12 | `tags` | Central tag system | UNIQUE(user_id, name). Cột `emoji`/`description` (thêm tạm ở RUNBOOK.sql Phần 2) đã **DROP lại** ở Phần 3, xác nhận 2026-08-02 — feature "Nhóm" bỏ hẳn khỏi UI, 2 cột này không còn ai đọc/ghi |
 | 13 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
-| 14 | `expense_tags` | Junction: Expense ↔ Tags | Composite PK |
-| 15 | `subscription_tags` | Junction: Sub ↔ Tags | Composite PK |
+| 14–15 | ~~`expense_tags`~~ ~~`subscription_tags`~~ | **[DROPPED v6.0.0]** — thay bằng `finance_transaction_tags`. |
 | 16 | `task_tags` | Junction: Task ↔ Tags | **v4.28.0.** Composite PK(task_id, tag_id), CASCADE. RLS kiểm ownership **cả 2 phía**. Chỉ index `tag_id` (task_id đã là cột dẫn đầu của PK) |
 | 17 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
 | 18 | `inspirational_quotes` | User + system quotes | FK → profiles, `is_active` toggle, `audio_url` optional |
@@ -91,11 +92,31 @@ profiles ───────────────────────�
 | — | `knowledge_groups` | **[DROPPED v4.31.0, 2026-08-02]** KB folder/group metadata | Quyết định P2-7 (2026-08-01): trùng việc với `tags`. Ban đầu định gộp hiển thị (tag có emoji = "nhóm"), nhưng chốt cuối là **bỏ hẳn tính năng Nhóm khỏi UI**. Data đã copy sang `tags`/`collection_tags` (Phase 1) trước khi drop — bài viết không mất liên kết, chỉ mất hiển thị folder. Frontend không còn dùng (`useKnowledgeGroups.js` đã xoá). **Bảng đã DROP** qua RUNBOOK.sql Phần 3, xác nhận `information_schema.tables` 0 dòng. |
 | — | `collection_groups` | **[DROPPED v4.31.0, 2026-08-02]** Junction: KB ↔ Groups (M:N) | Cùng lý do với `knowledge_groups` ở trên. |
 
+### Module Finance (v6.0.0 — `data/migration_v6.0.0_finance.sql`)
+
+Thiết kế: `docs/DESIGN_FINANCE.md`. Nguyên lý: app **không tính số dư**; **một bảng giao dịch, mọi
+báo cáo = đếm lại lọc theo `occurred_at`**; **app không trả hộ — chỉ nhắc, tới ngày user ghi ra 1
+giao dịch mang FK trỏ về quy tắc**. Tất cả bật RLS, policy `FOR ALL USING (user_id = auth.uid())`
+(junction kiểm 2 phía). CHECK chỉ trên giá trị code phân nhánh theo, KHÔNG trên `category_id`/`subcategory_id`.
+
+| Table | Purpose | Key constraints |
+|-------|---------|-----------------|
+| `finance_transactions` | Bảng DUY NHẤT | `type` CHECK(expense/income/saving); `excluded` (trả gốc vay + trả sao kê thẻ → ngoài mọi tổng chi); `necessity` CHECK(must/need/want); `is_fixed`; `source_card_id`/`card_id`; UNIQUE partial `(bill_id, bill_period)` chặn trả trùng kỳ; FK `bill_id`/`loan_id`/`saving_goal_id`+`saving_dir`/`shortcut_id`, **`inbox_item_id`→collections**, **`task_id`→user_tasks** (đều ON DELETE SET NULL). Index `(user_id, occurred_at DESC)` |
+| `finance_bills` | Hóa đơn phải trả | `amount_mode` CHECK(fixed/ask); trả góp `term_done`/`term_total` → `finished_at`; `rrule` jsonb, `due_day` |
+| `finance_loans` | Khoản vay | `kind` CHECK(interest/amort); lãi là chi, gốc `excluded` |
+| `finance_cards` | Thẻ tín dụng | `statement_day` ≠ `due_day`, `grace` (float); `annual_fee`/`cash_advance_fee`/`min_pct` |
+| `finance_saving_goals` | Quỹ tiết kiệm | `lock_mode` CHECK(soft/term/external); **KHÔNG có cột số dư** (= SUM deposits) |
+| `finance_deposits` | Nơi gửi (sổ của quỹ) | FK `fund_id` CASCADE; `rate`, `matures_at` |
+| `finance_income_rules` | Thu định kỳ | `received_periods` jsonb chặn nhận trùng kỳ; **không quá hạn** |
+| `finance_shortcuts` | Nút nhập nhanh | `recent_amounts` jsonb; **KHÔNG có cột số tiền** |
+| `finance_budgets` | Hạn mức tháng | UNIQUE `(user_id, category_id)`; cơ sở 50/30/20 |
+| `finance_transaction_tags` | Junction: giao dịch ↔ tags | Composite PK, RLS 2 phía |
+
 ### Views
 
 | View | Mục đích | Ghi chú |
 |------|----------|---------|
-| `tagged_items` | **v4.28.0, mở rộng v5.1.0.** 1 mặt đọc hợp nhất cho filter/search theo tag: `UNION ALL` 5 junction → `(tag_id, kind, item_id)` với `kind ∈ {collection, task, expense, subscription, account}` | ⚠️ Tạo với `WITH (security_invoker = true)` — **bắt buộc**. Mặc định view chạy bằng quyền OWNER (postgres) và **bỏ qua RLS** của bảng dưới → leak data mọi user. Cần PostgreSQL ≥ 15. |
+| `tagged_items` | **v4.28.0, mở rộng v5.1.0, tạo lại v6.0.0.** 1 mặt đọc hợp nhất cho filter/search theo tag: `UNION ALL` 4 junction → `(tag_id, kind, item_id)` với `kind ∈ {collection, task, account, finance}` (v6.0.0 bỏ expense/subscription, thêm finance) | ⚠️ Tạo với `WITH (security_invoker = true)` — **bắt buộc**. Mặc định view chạy bằng quyền OWNER (postgres) và **bỏ qua RLS** của bảng dưới → leak data mọi user. Cần PostgreSQL ≥ 15. |
 
 ### Kiến trúc Tag — tại sao N junction, không phải 1 bảng polymorphic
 

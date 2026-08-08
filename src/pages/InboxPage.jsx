@@ -4,19 +4,15 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useCollections } from '../hooks/useCollections';
 import { useUserTasks } from '../hooks/useUserTasks';
-import { useExpenses } from '../hooks/useExpenses';
 import { useIntentions } from '../hooks/useIntentions';
 import { useAuth } from '../contexts/AuthContext';
-import EXPENSE_DATA from '../data/expense-categories.json';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
 import QuoteWidget from '../components/QuoteWidget';
 import CustomSelect from '../components/CustomSelect';
-import GenericModal from '../components/GenericModal';
-import { parseCurrencyInput, formatVND } from '../utils/currencyUtils';
+import { parseCurrencyInput } from '../utils/currencyUtils';
 import '../styles/inbox.css';
 import '../styles/collect.css';
 
-const CATEGORIES = EXPENSE_DATA.categories;
 const TYPES = KNOWLEDGE_DATA.types;
 
 /**
@@ -38,7 +34,6 @@ export default function InboxPage() {
   const navigate = useNavigate();
   const { items, isLoading, fetchItems, classifyItem, deleteItem, addItem, updateItem, snoozeItem, getSnoozedCount, fetchSnoozedItems } = useCollections();
   const { addTask } = useUserTasks();
-  const { addExpense } = useExpenses();
   const { addIntention } = useIntentions();
   const [quickText, setQuickText] = useState('');
   const [classifying, setClassifying] = useState(null);
@@ -48,9 +43,6 @@ export default function InboxPage() {
   const [snoozedItems, setSnoozedItems] = useState([]);
   const [overflowMenu, setOverflowMenu] = useState(null); // item.id or null
   const [filter, setFilter] = useState('all'); // 'all' | 'has_url' | 'recent'
-
-  // Quick Expense modal state
-  const [expenseModal, setExpenseModal] = useState(null); // { item, amount, category, note }
 
   // Bulk actions state
   const [bulkMode, setBulkMode] = useState(false);
@@ -239,44 +231,21 @@ export default function InboxPage() {
     fetchItems({ type: 'inbox' });
   };
 
-  // Navigate to Finance to create a subscription from inbox item
-  // NOTE: do NOT delete item here — Finance will delete it only after successful save
-  const handleToSub = (item) => {
-    sessionStorage.setItem('lh_inbox_to_sub', JSON.stringify({ title: item.title, inboxId: item.id }));
+  // Inbox → Giao dịch: sang module Chi tiêu, prefill form Nhập nhanh. Module xoá
+  // mục Inbox sau khi ghi thành công (mang theo inboxId qua sessionStorage).
+  const handleToExpense = (item) => {
+    sessionStorage.setItem('lh_inbox_to_finance', JSON.stringify({
+      kind: 'tx', title: item.title, amount: extractAmount(item.title) || undefined, inboxId: item.id,
+    }));
     navigate('/finance');
   };
 
-  // Open Quick Expense modal — pre-fill from text
-  const handleToExpense = (item) => {
-    const amount = extractAmount(item.title);
-    setExpenseModal({
-      item,
-      amount: amount || '',
-      category: 'food',
-      note: item.title,
-    });
-  };
-
-  // Save expense from modal
-  const handleExpenseSave = async () => {
-    if (!expenseModal) return;
-    const { item, amount, category, note } = expenseModal;
-    const parsedAmount = parseCurrencyInput(amount);
-    if (!parsedAmount || parsedAmount <= 0) return;
-
-    // Auto-append USD metadata to notes if USD is detected in input
-    let finalNote = note;
-    if (/[$]|usd/i.test(amount)) {
-      const originalText = amount.trim();
-      finalNote = note ? `${note} (${originalText})` : originalText;
-    }
-
-    const result = await addExpense({ amount: parsedAmount, category, note: finalNote });
-    if (result) {
-      await deleteItem(item.id);
-      fetchItems({ type: 'inbox' });
-      setExpenseModal(null);
-    }
+  // Inbox → Hóa đơn/Quy tắc: sang Chi tiêu › Hóa đơn (segment Phải trả), prefill tên.
+  const handleToRule = (item) => {
+    sessionStorage.setItem('lh_inbox_to_finance', JSON.stringify({
+      kind: 'out', title: item.title, inboxId: item.id,
+    }));
+    navigate('/finance');
   };
 
   if (!user) {
@@ -417,63 +386,6 @@ export default function InboxPage() {
             ))
           )}
         </div>
-      )}
-
-      {/* Quick Expense Modal */}
-      {expenseModal && (
-        <GenericModal onClose={() => setExpenseModal(null)} title="💸 Chi tiêu nhanh" maxWidth={380}>
-          <GenericModal.Body>
-              <label className="inbox-expense-modal__label">Ghi chú</label>
-              <input
-                className="inbox-expense-modal__input"
-                type="text"
-                value={expenseModal.note}
-                onChange={e => setExpenseModal(prev => ({ ...prev, note: e.target.value }))}
-                maxLength={200}
-              />
-
-              <label className="inbox-expense-modal__label">Số tiền (VNĐ)</label>
-              <input
-                className="inbox-expense-modal__input inbox-expense-modal__input--amount"
-                type="text"
-                placeholder="Ví dụ: 50, 50k, 10$"
-                value={expenseModal.amount}
-                onChange={e => setExpenseModal(prev => ({ ...prev, amount: e.target.value }))}
-                autoFocus
-              />
-              {expenseModal.amount && (
-                <div className="inbox-expense-modal__preview">
-                  Xem trước: {formatVND(parseCurrencyInput(expenseModal.amount))}
-                  {/[$]|usd/i.test(expenseModal.amount) && ' (Quy đổi tỷ giá)'}
-                </div>
-              )}
-
-              <label className="inbox-expense-modal__label">Danh mục</label>
-              <div className="inbox-expense-modal__categories">
-                {CATEGORIES.map(cat => (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    className={`inbox-expense-modal__cat-btn${expenseModal.category === cat.key ? ' inbox-expense-modal__cat-btn--active' : ''}`}
-                    onClick={() => setExpenseModal(prev => ({ ...prev, category: cat.key }))}
-                    style={{ '--cat-color': cat.color }}
-                  >
-                    {cat.icon} {cat.label}
-                  </button>
-                ))}
-              </div>
-          </GenericModal.Body>
-          <GenericModal.Footer>
-            <button className="btn btn-ghost" onClick={() => setExpenseModal(null)}>Huỷ</button>
-            <button
-              className="btn btn-primary"
-              onClick={handleExpenseSave}
-              disabled={!expenseModal.amount || parseCurrencyInput(expenseModal.amount) <= 0}
-            >
-              💸 Lưu chi tiêu
-            </button>
-          </GenericModal.Footer>
-        </GenericModal>
       )}
 
       {/* Daily quote */}
@@ -707,10 +619,10 @@ export default function InboxPage() {
                             📂 Phân loại
                           </button>
                           <button className="inbox-overflow-item" onClick={() => { handleToExpense(item); setOverflowMenu(null); }}>
-                            💸 Chi tiêu
+                            💸 Giao dịch
                           </button>
-                          <button className="inbox-overflow-item" onClick={() => { handleToSub(item); setOverflowMenu(null); }}>
-                            🔄 Đăng ký
+                          <button className="inbox-overflow-item" onClick={() => { handleToRule(item); setOverflowMenu(null); }}>
+                            🔁 Hóa đơn
                           </button>
                           <button className="inbox-overflow-item" onClick={async () => {
                             await addIntention({ 
