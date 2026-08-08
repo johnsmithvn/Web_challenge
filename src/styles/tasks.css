@@ -3,14 +3,27 @@
    Các class .task-list-card / .task-actions--* / .task-overflow-* vẫn ở
    global.css (luôn được load) — không có nguy cơ mất khi tracker.css bị xoá. */
 
-/* 900px là khổ đọc tốt cho danh sách, nhưng lịch 7 cột thì chật và để lại
-   khoảng trống hai bên trên màn rộng → nới ở view lịch. */
+/* v6.1.0: bỏ khổ đọc 900px — trang chiếm trọn bề ngang lẫn bề dọc của body.
+   `min-height: 100dvh` an toàn vì reset global đặt box-sizing: border-box nên
+   padding nằm TRONG chiều cao đó (không đẻ thanh cuộn thừa). */
 .tasks-page {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 5rem;
-  transition: max-width var(--transition-base);
+  max-width: 100%;
+  margin: 0;
+  padding: 1.25rem clamp(0.75rem, 2.5vw, 2rem) 3rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
 }
+
+/* Mobile có top bar + bottom tabs ăn vào body → trừ ra, không thì tràn. */
+@media (max-width: 768px) {
+  .tasks-page {
+    min-height: calc(100dvh - var(--topbar-height) - var(--bottom-tabs-height));
+  }
+}
+
+/* Card danh sách kéo dài hết phần trống còn lại theo chiều dọc. */
+.task-list-card { flex: 1; }
 
 .task-option-btn, .task-overflow-item, .task-form-hint,
 .task-inline-status, .task-item span, .task-item button,
@@ -31,7 +44,7 @@
   font-size: 0.78rem;
 }
 
-.tasks-page--calendar { max-width: 1180px; }
+.tasks-page--calendar { max-width: 100%; }
 
 /* ── Hero (v4.29.0) — điểm nhìn của trang. Trước đó mọi thứ cùng 0.8rem
       nên không có phân cấp thị giác. ── */
@@ -102,8 +115,31 @@
 /* ── View switcher — dùng lại đúng ngôn ngữ pill của inbox-filter-chip ── */
 .tasks-viewbar {
   display: flex;
+  align-items: center;
   gap: 0.35rem;
   margin-bottom: 0.9rem;
+}
+
+/* Nút "Thêm" đứng cùng hàng 2 tab nhưng dạt hẳn về mép đối diện (v6.1.0). */
+.tasks-viewbar__add {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.35rem 0.9rem;
+  border-radius: var(--radius-full);
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.tasks-viewbar__add:hover {
+  background: rgba(139, 92, 246, 0.24);
+  border-color: rgba(139, 92, 246, 0.6);
 }
 
 .tasks-viewbar__tab {
@@ -181,7 +217,8 @@
   width: 22px;
   height: 22px;
   min-width: 22px;
-  border-radius: var(--radius-sm);
+  /* v6.1.0: vuông → tròn, đồng bộ với vòng tròn của khối Đã hoàn thành */
+  border-radius: var(--radius-full);
   background: transparent;
   cursor: pointer;
   margin-top: 0.1rem;
@@ -303,4 +340,278 @@
 [data-theme="light"] .task-desc-box {
   background: rgba(0, 0, 0, 0.02);
   border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* ══ v6.1.0 — header nhóm, vạch ngăn, khung Đã hoàn thành ═════════════════ */
+
+/* Header nhóm: trước đây Hôm nay/Sắp tới là 0.75rem --text-muted nên gần như
+   tàng hình. Nay cùng cỡ với Quá hạn, mỗi nhóm một màu vai trò. */
+.task-group { margin-bottom: 1rem; }
+
+.task-group__head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.15rem 0;
+  margin-bottom: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  background: none;
+  border: none;
+  text-align: left;
+}
+
+/* Nhắc lại display vì `.task-list-card button` ở đầu file ép inline-flex với
+   cùng độ ưu tiên — luật này đứng sau nên thắng. */
+button.task-group__head { cursor: pointer; display: flex; }
+
+.task-group__head--overdue { color: #f87171; }
+.task-group__head--today   { color: var(--purple-light); }
+.task-group__head--future  { color: var(--text-secondary); }
+.task-group__head--done    { color: var(--green); }
+
+/* Viền + chữ đều `currentColor` nên badge tự ăn màu vai trò của header, không
+   cần 4 luật màu. (Bản trước dùng `background: currentColor` + `color` khác →
+   currentColor lấy chính `color` MỚI nên chữ trùng nền, số biến mất.) */
+.task-group__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  padding: 0.02rem 0.42rem;
+  border-radius: var(--radius-full);
+  border: 1px solid currentColor;
+  background: transparent;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.task-group__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* ── Hàng task: tick | tiêu đề + nhãn (cùng 1 dòng) | nút ── */
+.task-row-view {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.task-row-body {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+/* Tiêu đề co lại trước, nhãn giữ nguyên. Màn hẹp mới cho xuống dòng. */
+.task-row-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  min-height: 22px;
+}
+
+.task-row-line .task-title-1line { flex: 0 1 auto; }
+
+.task-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.task-row-acts {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Nút icon: trước đây opacity 0.5–0.6 + weight regular nên chìm hẳn vào nền.
+   Nay ô 30px có vùng hover rõ, icon weight="bold", màu --text-secondary. */
+.task-act-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.task-act-btn:hover {
+  background: rgba(139, 92, 246, 0.16);
+  border-color: rgba(139, 92, 246, 0.4);
+  color: var(--purple-light);
+}
+
+.task-act-btn--cyan { color: var(--cyan-light); }
+
+.task-act-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.38);
+  color: #f87171;
+}
+
+/* Ô mô tả tự cao theo nội dung. `field-sizing` là cách native, không cần JS đo
+   scrollHeight; trình duyệt chưa hỗ trợ thì rơi về textarea 2 dòng như cũ. */
+.task-desc-input {
+  field-sizing: content;
+  min-height: 3.2rem;
+  max-height: 40vh;
+  resize: vertical;
+}
+
+/* Vạch | ngăn vòng tròn tick ↔ nội dung */
+.task-row-sep {
+  width: 2px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.task-row-sep--done { margin-top: 0; background: rgba(0, 255, 136, 0.35); }
+[data-theme="light"] .task-row-sep { background: rgba(15, 23, 42, 0.14); }
+
+/* Tiêu đề luôn gói trong 1 dòng — dài thì cắt, không đội cao cả hàng. */
+.task-title-1line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Khung "Đã hoàn thành" — hộp riêng, nằm NGOÀI card danh sách ── */
+.task-done-card {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(0, 255, 136, 0.22);
+  background: rgba(0, 255, 136, 0.03);
+}
+
+[data-theme="light"] .task-done-card {
+  background: rgba(22, 163, 74, 0.04);
+  border-color: rgba(22, 163, 74, 0.25);
+}
+
+.task-option-btn--danger:hover {
+  color: #f87171 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+.task-done-range {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.task-done-range__label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.task-done-range__btn {
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.6rem;
+}
+
+/* Hàng đã xong: bo góc xanh lá, KHÔNG gạch ngang (gạch làm khó đọc). */
+.task-done-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  background: rgba(0, 255, 136, 0.06);
+  transition: var(--transition-base);
+}
+
+.task-done-item:hover { border-color: rgba(0, 255, 136, 0.45); }
+
+.task-done-item__main {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.task-done-item__title {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* "Xong lúc ..." là thông tin đắt nhất của hàng → cho nó dạng huy hiệu. */
+.task-done-at {
+  flex-shrink: 0;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+  background: rgba(0, 255, 136, 0.16);
+  border: 1px solid rgba(0, 255, 136, 0.35);
+  color: var(--green);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+[data-theme="light"] .task-done-item {
+  background: rgba(22, 163, 74, 0.06);
+  border-color: rgba(22, 163, 74, 0.28);
+}
+
+[data-theme="light"] .task-done-at {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: rgba(22, 163, 74, 0.35);
+}
+
+/* Vòng tròn đã tích: luôn hiện ✓; hover chuyển đỏ để báo "bấm là bỏ tích". */
+.task-checkbox-btn--done {
+  border: 2px solid var(--green);
+  background: rgba(0, 255, 136, 0.14);
+  margin-top: 0;
+}
+
+.task-checkbox-btn--done::after { opacity: 1; transform: scale(1); }
+
+.task-checkbox-btn--done:hover {
+  border-color: var(--red) !important;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.task-checkbox-btn--done:hover::after { opacity: 0.3; }
+
+/* Màn hẹp: nhãn xuống dòng dưới tiêu đề, huy hiệu "Xong lúc" cũng vậy — thà
+   cao thêm 1 dòng còn hơn bóp nát cả hàng. */
+@media (max-width: 820px) {
+  .task-row-line { flex-wrap: wrap; row-gap: 0.3rem; }
+  .task-row-line .task-title-1line { flex: 1 1 100%; }
+}
+
+@media (max-width: 560px) {
+  .task-done-item { flex-wrap: wrap; }
+  .task-done-item__main { flex: 1 1 100%; order: -1; margin-left: 2rem; }
 }

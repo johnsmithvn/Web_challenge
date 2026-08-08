@@ -231,6 +231,14 @@
   border: 1px solid rgba(139, 92, 246, 0.4);
 }
 
+/* mode="range": 2 đầu dùng lại --selected, các ngày ở GIỮA nhạt hơn hẳn để
+   đọc ra "một dải" chứ không phải "nhiều ngày được chọn rời". */
+.dp-grid__cell--in-range {
+  background: rgba(139, 92, 246, 0.12) !important;
+  color: var(--purple-light);
+  border-radius: 0;
+}
+
 /* ── Time row ── */
 .dp-time {
   display: flex;

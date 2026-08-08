@@ -3,6 +3,28 @@
 
 ---
 
+## v6.1.0 — ✅ CODE DONE / ⏳ BUILD + CLICK-THROUGH CHỜ USER (2026-08-08) — `/tasks` full-bleed + khối Đã hoàn thành
+
+**Đã làm** (chi tiết: CHANGELOG.md v6.1.0, FEATURES.md §16, DESIGN.md § "Tasks page atoms"): trang bỏ
+khổ 900px → full ngang + dọc (`min-height: 100dvh`, mobile trừ topbar/bottom-tabs); nút Thêm lên hàng
+tab căn phải (`showForm` nâng lên TasksPage); header nhóm to + có màu vai trò + badge đếm; ô tick
+vuông → tròn + vạch `|` ngăn; tiêu đề 1 dòng; khối Đã hoàn thành tách khung riêng viền xanh lá, lọc
+khoảng ngày A→B với 7 preset, bỏ gạch ngang, "Xong lúc" thành huy hiệu, nút chữ Xóa, bấm vòng tròn để
+bỏ tích (`uncompleteTask`). Lint 0 error.
+
+**Vòng 2** (góp ý trực tiếp): `DatePickerPopover` thêm `mode="range"` (preset lùi nằm trong cột
+shortcut, bỏ hàng chip riêng) → bộ lọc Đã hoàn thành chỉ còn 1 picker; nhãn task lên thẳng hàng
+tiêu đề; nút icon bỏ opacity mờ → `.task-act-btn` + `weight="bold"`; thêm nút con mắt xem chi tiết
+và đổi bấm-thân-task thành bung mô tả tại chỗ; ô mô tả `field-sizing: content`; sửa badge đếm mất
+số + khối Quá hạn 2 viền. Lịch: ô mọi ngày cao bằng nhau (`grid-auto-rows`, ô trống bỏ
+`aspect-ratio`), max 4 chip + `+N nữa…`, hôm nay viền tím + số trong viên tròn, âm lịch góc phải
+(`lunarUtils` + test), ngày lễ (`holidays.json`) tô vàng + huy hiệu tên lễ ở panel ngày, và bộ
+override `[data-theme="light"]` cho toàn bộ lịch. Lint 0 error, `npm test` pass (thêm lunarUtils).
+
+**Chờ user:** `npm run build` + click thử.
+
+---
+
 ## v6.0.0 — ✅ CODE + BUILD DONE / ⏳ SQL + SMOKE TEST CHỜ USER (2026-08-08) — Module chi tiêu làm lại (Nocturne)
 
 **Đã làm** (chi tiết: CHANGELOG.md v6.0.0, DESIGN_FINANCE.md, DATABASE.md, FEATURES.md §23): drop

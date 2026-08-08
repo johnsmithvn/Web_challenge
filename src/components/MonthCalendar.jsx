@@ -1,20 +1,17 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { toDateStr, mondayIndex } from '../utils/dateUtils';
+import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
 import { useConfirm } from './ConfirmModal';
 import UI_STRINGS from '../data/ui-strings.json';
+import HOLIDAYS from '../data/holidays.json';
 import AppIcon from './AppIcon';
 import '../styles/calendar.css';
 
-const VN_HOLIDAYS = {
-  '01-01': 'Tết Dương Lịch',
-  '04-30': 'Giải Phóng Miền Nam',
-  '05-01': 'Quốc Tế Lao Động',
-  '09-02': 'Quốc Khánh',
-  '10-20': 'Ngày Phụ Nữ VN',
-  '11-20': 'Ngày Nhà Giáo',
-};
-
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+// Số chip task hiện tối đa trong 1 ô — chiều cao ô cố định (calendar.css) được
+// tính vừa đúng 4 chip + dòng "+N nữa", đổi số này thì đổi luôn chiều cao đó.
+const MAX_CHIPS = 4;
 
 function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
@@ -77,16 +74,21 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
     return map;
   }, [pendingTasks]);
 
-  // Compute day data
+  // Compute day data — kèm âm lịch + ngày lễ (lễ dương HOẶC lễ âm).
   const dayData = useMemo(() => {
     const map = {};
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${viewYear}-${pad(viewMonth + 1)}-${pad(d)}`;
-      const holiday = VN_HOLIDAYS[`${pad(viewMonth + 1)}-${pad(d)}`];
+      const lunar   = solarToLunar(d, viewMonth + 1, viewYear);
+      // Tháng nhuận KHÔNG tính lễ: Tết tháng 1 nhuận không phải Tết.
+      const lunarKey = lunar.leap ? null : `${pad(lunar.month)}-${pad(lunar.day)}`;
+      const holiday = HOLIDAYS.solar[`${pad(viewMonth + 1)}-${pad(d)}`]
+        || (lunarKey ? HOLIDAYS.lunar[lunarKey] : null)
+        || null;
       const tasks   = tasksByDay[dateStr] || [];
       const pending = pendingByDay[dateStr] || [];
       const done    = tasks.length > 0;
-      map[d] = { dateStr, done, holiday, tasks, pending };
+      map[d] = { dateStr, done, holiday, lunar, tasks, pending };
     }
     return map;
   }, [viewYear, viewMonth, daysInMonth, tasksByDay, pendingByDay]);
@@ -202,6 +204,14 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
             ? 'cal-cell--done'
             : isFuture ? 'cal-cell--future' : 'cal-cell--empty';
 
+          // 1 danh sách chip: xong trước (xanh), sắp tới sau (tím) — trước đây
+          // ngày vừa có việc xong vừa có việc sắp tới thì chip tím bị nuốt hẳn.
+          const chips = [
+            ...info.tasks.map(t => ({ ...t, _done: true })),
+            ...info.pending.map(t => ({ ...t, _done: false })),
+          ];
+          const shown = chips.slice(0, MAX_CHIPS);
+
           return (
             <div
               key={day}
@@ -211,38 +221,40 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
                 'cal-cell--tasks',
                 isToday    ? 'cal-cell--today'    : '',
                 isSelected ? 'cal-cell--selected' : '',
+                info.holiday ? 'cal-cell--holiday' : '',
               ].join(' ')}
               onClick={() => handleSelectDay(info.dateStr)}
               id={`cal-day-${info.dateStr}`}
               role="button"
-              title={info.holiday || `${info.dateStr}${info.tasks.length ? ` — ${info.tasks.length} task xong` : ''}`}
+              title={[
+                info.dateStr,
+                `Âm lịch ${info.lunar.day}/${info.lunar.month}${info.lunar.leap ? ' (nhuận)' : ''}`,
+                info.holiday,
+                info.tasks.length ? `${info.tasks.length} task xong` : null,
+              ].filter(Boolean).join(' — ')}
             >
-              <span className="cal-cell__num">{day}</span>
+              <span className="cal-cell__head">
+                <span className="cal-cell__num">{day}</span>
+                <span className="cal-cell__lunar">{lunarLabel(info.lunar)}</span>
+              </span>
 
-              {/* Chip tên task như Google Calendar. Ưu tiên chip task đã xong (xanh);
-                  nếu ngày chưa có task xong nhưng có task sắp tới → chip tím thay vì
-                  bỏ trống. */}
-              {info.tasks.length > 0 ? (
-                    <span className="cal-cell__chips">
-                      {info.tasks.slice(0, 2).map(t => (
-                        <span key={t.id} className="cal-chip" title={t.title}>{t.title}</span>
-                      ))}
-                      {info.tasks.length > 2 && (
-                        <span className="cal-chip cal-chip--more">+{info.tasks.length - 2} nữa</span>
-                      )}
-                    </span>
-                  ) : info.pending.length > 0 && (
-                    <span className="cal-cell__chips">
-                      {info.pending.slice(0, 2).map(t => (
-                        <span key={t.id} className="cal-chip cal-chip--pending" title={t.title}>{t.title}</span>
-                      ))}
-                      {info.pending.length > 2 && (
-                        <span className="cal-chip cal-chip--more">+{info.pending.length - 2} nữa</span>
-                      )}
-                    </span>
+              {/* Chip tên task như Google Calendar */}
+              {shown.length > 0 && (
+                <span className="cal-cell__chips">
+                  {shown.map(t => (
+                    <span key={t.id} className={`cal-chip${t._done ? '' : ' cal-chip--pending'}`} title={t.title}>{t.title}</span>
+                  ))}
+                  {chips.length > MAX_CHIPS && (
+                    <span className="cal-chip cal-chip--more">+{chips.length - MAX_CHIPS} nữa…</span>
                   )}
+                </span>
+              )}
 
-              {info.holiday && <span className="cal-cell__holiday" title={info.holiday}><AppIcon name="star" size={10} weight="fill" /></span>}
+              {info.holiday && (
+                <span className="cal-cell__holiday" title={info.holiday}>
+                  <AppIcon name="star" size={11} weight="fill" />
+                </span>
+              )}
             </div>
           );
         })}
@@ -251,10 +263,26 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
       {/* Selected day detail */}
       {selected && (
         <div className="cal-day-detail">
-          <strong>{new Date(selected).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</strong>
-          {dayData[new Date(selected).getDate()]?.holiday && (
-            <span style={{ color: '#fbbf24' }}>{dayData[new Date(selected).getDate()].holiday}</span>
-          )}
+          {/* Cắt chuỗi thay vì new Date(selected).getDate(): chuỗi 'YYYY-MM-DD'
+              được parse theo UTC nên getDate() lệch 1 ngày ở múi âm. */}
+          {(() => {
+            const info = dayData[Number(selected.slice(8, 10))];
+            return (
+              <div className="cal-day-detail__head">
+                <strong>{new Date(selected + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                {info && (
+                  <span className="cal-day-detail__lunar">
+                    <AppIcon name="moon" size={13} weight="fill" /> Âm lịch {info.lunar.day}/{info.lunar.month}{info.lunar.leap ? ' (nhuận)' : ''}
+                  </span>
+                )}
+                {info?.holiday && (
+                  <span className="cal-day-detail__holiday">
+                    <AppIcon name="star" size={13} weight="fill" /> {info.holiday}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
 
 
 
@@ -336,8 +364,9 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
                     borderRadius: 'var(--radius-sm)',
                     padding: '0.5rem 0.6rem',
                     fontSize: '0.82rem', color: 'var(--text-secondary)',
+                    display: 'flex', alignItems: 'center', gap: '0.35rem',
                   }}>
-                    ⏳ {task.title}
+                    <AppIcon name="clock" size={14} weight="bold" /> {task.title}
                   </div>
                 ))}
               </div>
@@ -352,6 +381,7 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
         <span><span className="cal-dot cal-dot--pending"/> Sắp tới / chưa xong</span>
         <span><span className="cal-dot cal-dot--future"/> Chưa tới</span>
         <span><AppIcon name="star" size={11} weight="fill" /> Ngày lễ</span>
+        <span><AppIcon name="moon" size={11} weight="fill" /> Số nhỏ góc phải = ngày âm</span>
       </div>
     </div>
   );

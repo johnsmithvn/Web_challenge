@@ -38,13 +38,13 @@ src/
 ├── contexts/     (3) AuthContext, ThemeContext, ToastContext
 ├── extensions/   (1) MediaNode.jsx — Tiptap atom node cho media inline
 ├── lib/          (1) supabase.js — singleton client, graceful fallback khi thiếu env
-├── utils/        (9) vaultLogic, financeLogic, currencyUtils, dateUtils, logger,
-│                     mediaUtils, recurrenceUtils, taskFields (pure, no React)
+├── utils/       (10) vaultLogic, financeLogic, currencyUtils, dateUtils, logger,
+│                     mediaUtils, recurrenceUtils, taskFields, lunarUtils (pure, no React)
 │                 (+2) dateUtils.test.js, mediaUtils.test.js — self-check `npm test`
-├── __tests__/    (4) recurrenceUtils.test.js, taskFields.test.js,
-│                     vaultLogic.test.js, financeLogic.test.js — `npm test`
-├── data/         (4) JSON content tĩnh (Rule 14): quotes, finance-categories,
-│                     knowledge, ui-strings
+├── __tests__/    (5) recurrenceUtils.test.js, taskFields.test.js, vaultLogic.test.js,
+│                     financeLogic.test.js, lunarUtils.test.js — `npm test`
+├── data/         (5) JSON content tĩnh (Rule 14): quotes, finance-categories,
+│                     knowledge, ui-strings, holidays
 └── styles/      (25) 1 file / domain + global.css (design tokens). Không dùng Tailwind
 
 api/                  Vercel serverless

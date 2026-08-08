@@ -1,5 +1,75 @@
 # CHANGELOG
 
+## v6.1.0 — 2026-08-08
+> **`/tasks` full-bleed + khối "Đã hoàn thành" tách khung riêng.** Trang bỏ khổ đọc 900px, chiếm trọn
+> cả bề ngang lẫn bề dọc body; nút Thêm lên hàng tab; header nhóm hết nhạt; khối đã xong đổi hẳn ngôn
+> ngữ sang xanh lá + lọc theo khoảng ngày.
+
+### Added
+- **`TasksPage.jsx`** — nút **Thêm** đứng cùng hàng 2 tab Danh sách/Lịch nhưng dạt hẳn mép phải
+  (`.tasks-viewbar__add`, `margin-left: auto`). `showForm` nâng lên TasksPage, truyền xuống
+  `TaskListSection` bằng prop — đây là state DUY NHẤT được nâng.
+- **Lọc "Đã hoàn thành" theo khoảng ngày A→B** — 7 preset tính lùi từ hôm nay (Hôm nay · Hôm qua ·
+  7 ngày · 2 tuần · 3 tháng · 6 tháng · 1 năm) + 2 ô Từ/Đến dùng `DatePickerPopover`. Chọn ngày thủ
+  công tự kẹp `from <= to`. Kết quả sắp mới nhất trước; khoảng nhiều ngày thì "Xong lúc" kèm cả ngày.
+- **Bỏ tích ngay trên hàng đã xong** — bấm vòng tròn ✓ gọi `uncompleteTask` (hàm đã có sẵn trong
+  `useUserTasks`, trước v6.1.0 chưa nơi nào gọi). Hover đổi đỏ để báo trước.
+- **Vạch `|` ngăn** vòng tròn tick ↔ nội dung (`.task-row-sep`), dùng chung cho cả hàng chưa xong lẫn
+  hàng đã xong.
+
+### Changed
+- **`tasks.css`** — `.tasks-page` bỏ `max-width: 900px`, `padding` co giãn theo `clamp()`,
+  `min-height: 100dvh` (mobile trừ `--topbar-height` + `--bottom-tabs-height`); `.task-list-card`
+  `flex: 1` để kéo dài hết chiều dọc. Tab Lịch cũng full-bleed (`--calendar` bỏ `1180px`).
+- **Header nhóm** — Hôm nay / Sắp tới trước đây `0.75rem --text-muted` gần như tàng hình; nay cùng cỡ
+  `0.85rem/700 --font-display` với Quá hạn, mỗi nhóm một màu vai trò (đỏ / tím / xám / xanh lá) + số
+  đếm dạng huy hiệu. Khối Hôm nay luôn có header (trước chỉ hiện khi có task quá hạn).
+- **Ô tick vuông → tròn** (`--radius-sm` → `--radius-full`).
+- **Tiêu đề task gói trong 1 dòng** (`.task-title-1line`, ellipsis) — trước đây tiêu đề dài đội cao
+  cả hàng.
+- **Khối "Đã hoàn thành"** — chuyển ra NGOÀI card danh sách thành hộp bo góc riêng viền xanh lá
+  (`.task-done-card`). Mỗi hàng: bo góc + viền xanh lá, **bỏ gạch ngang**, "Xong lúc …" thành huy hiệu
+  xanh nổi bật, icon 🗑 đổi thành nút chữ **Xóa**.
+
+### Added — vòng 2 (theo góp ý trực tiếp của user)
+- **`DatePickerPopover` có `mode="range"`** — CÙNG 1 component, chọn cả khoảng. `value`/`onChange`
+  đổi sang `{ from, to }`; cột shortcut đổi từ hướng tương lai (Ngày mai/Tuần sau/8 tuần) sang
+  preset nhìn lùi (Hôm nay/Hôm qua/7 ngày/2 tuần/3 tháng/6 tháng/1 năm); ô giờ tự ẩn. Click 1 =
+  mốc đầu, click 2 = mốc cuối (click trước mốc đầu thì tự đảo), click 3 = khoảng mới. Ngày ở giữa
+  tô `.dp-grid__cell--in-range`. Bộ lọc "Đã hoàn thành" giờ chỉ còn **1 nút mở 1 picker**.
+- **Nút Xem chi tiết (con mắt)** trên mỗi hàng task — mở popup Chi tiết. Đổi lại UX: **bấm vào
+  thân task = bung mô tả tại chỗ** (v5.0.0 từng bỏ vì 1 click 2 nghĩa; nay hết xung đột).
+- **`src/utils/lunarUtils.js` + `src/__tests__/lunarUtils.test.js`** — đổi dương → âm lịch VN
+  (thuật toán Hồ Ngọc Đức / Meeus, không thêm thư viện). Test đối chiếu 1/1/2000, Tết 2025, Tết
+  2026 + quét 3 năm liên tục kiểm ngày âm tăng đều.
+- **`src/data/holidays.json`** — 11 lễ dương + 11 lễ âm (Rule 14). Ô lịch trúng lễ được tô vàng +
+  ngôi sao; panel chi tiết ngày hiện huy hiệu **Âm lịch d/m** và **tên ngày lễ**.
+
+### Changed — vòng 2
+- **Nhãn của task lên thẳng hàng với tiêu đề** (`.task-row-line`); tiêu đề co trước, nhãn giữ
+  nguyên; dưới 820px mới cho xuống dòng.
+- **Nút icon hết mờ** — bỏ `opacity: 0.5–0.6` + `onMouseEnter/Leave` chỉnh opacity bằng JS, thay
+  bằng `.task-act-btn` (ô 30px, `weight="bold"`, hover tím/đỏ rõ). Bỏ nốt emoji còn sót
+  (`⏰` trong DatePicker, `⏳` trong MonthCalendar).
+- **Ô mô tả tự cao theo nội dung** — `field-sizing: content` (native, không JS đo `scrollHeight`).
+- **Lịch: ô các ngày bằng nhau** — `grid-auto-rows: 124px` + ô trống bỏ `aspect-ratio: 1`. Trước
+  đây ô trống bị ép vuông theo bề rộng cột nên hàng đầu cao gấp 3 hàng khác. Mỗi ô hiện tối đa
+  **4 chip** + dòng `+N nữa…`, chip xong (xanh) và sắp tới (tím) nay đứng CHUNG danh sách.
+- **Lịch: hôm nay** đổi từ viền cyan sang viền tím + số ngày trong viên tròn tím đặc.
+- **Lịch: light mode** — nav button, khung thống kê, panel chi tiết, viền ô, ngày chưa tới, chip
+  đều có cặp override `[data-theme="light"]`; trước đây toàn `rgba(255,255,255,…)` nên vô hình.
+- **Số đếm ở header nhóm hiện lại** — badge cũ dùng `background: currentColor` + `color` khác nên
+  `currentColor` lấy chính màu chữ MỚI → chữ trùng nền, số biến mất. Nay viền + chữ cùng
+  `currentColor`, nền trong suốt.
+- **Khối Quá hạn hết 2 lớp viền** — bỏ hộp nền đỏ bao ngoài, từng hàng vốn đã có viền + nền đỏ.
+
+### Files Modified
+- `src/pages/TasksPage.jsx`, `src/components/TaskListSection.jsx`, `src/components/DatePickerPopover.jsx`,
+  `src/components/MonthCalendar.jsx`
+- `src/styles/tasks.css`, `src/styles/datepicker.css`, `src/styles/calendar.css`
+- `src/utils/lunarUtils.js`, `src/__tests__/lunarUtils.test.js`, `src/data/holidays.json`
+- `DESIGN.md`, `docs/FEATURES.md`, `docs/TASKS.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `package.json`
+
 ## v6.0.0 — 2026-08-08
 > **Module chi tiêu (`/finance`) làm lại từ đầu theo thiết kế Nocturne (handoff).** Thay HẲN Finance
 > cũ (expenses + subscriptions). Triết lý: **app không tính số dư** (thu vẫn ghi nhưng không bao giờ

@@ -99,7 +99,11 @@
      không wrap được (chip task `white-space: nowrap`) sẽ đẩy cột rộng ra và làm
      lệch cả 7 cột. Đây là nguyên nhân ô lệch nhau ở v4.29.0 trước khi sửa. */
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
+  /* Chiều cao hàng CỐ ĐỊNH (v6.1.0). Trước đây ô ăn `aspect-ratio: 1` nên trên
+     màn rộng ô vuông = cột rộng → hàng đầu (toàn ô trống) cao vọt so với các
+     hàng khác. 124px = số ngày + 4 chip + dòng "+N nữa". */
+  grid-auto-rows: 124px;
+  gap: 4px;
 }
 
 .cal-cell {
@@ -116,7 +120,8 @@
   font-weight: 500;
 }
 
-.cal-cell--blank  { cursor: default; }
+/* Ô trống KHÔNG được giữ aspect-ratio — nó chính là thứ kéo hàng đầu cao vọt. */
+.cal-cell--blank  { cursor: default; aspect-ratio: auto; }
 .cal-cell--done   { background: rgba(0,255,136,0.15); color: var(--green); }
 .cal-cell--miss   { background: rgba(255,255,255,0.03); color: var(--text-muted); }
 .cal-cell--future { background: transparent; color: rgba(255,255,255,0.2); cursor: default; }
@@ -336,11 +341,11 @@
       kiểu GCal week view sẽ dồn hết vào 1 hàng — cố ý không làm). ── */
 .cal-cell--tasks {
   aspect-ratio: auto;
-  min-height: 62px;
+  height: 100%;
   justify-content: flex-start;
   align-items: stretch;
-  padding: 3px 4px 4px;
-  gap: 2px;
+  padding: 4px 5px 5px;
+  gap: 3px;
   /* Hairline định nghĩa ô — DESIGN.md: "the 1px hairline that defines every
      glass edge". Không có nó thì lưới không đọc ra là lưới, chỉ là số trôi. */
   border: 1px solid var(--bg-glass-border);
@@ -349,10 +354,26 @@
   overflow: hidden;
 }
 
+/* Hàng đầu ô: số ngày dương bên trái, ngày âm bên phải (v6.1.0). */
+.cal-cell__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+  padding-right: 12px; /* chừa chỗ cho ngôi sao ngày lễ ở góc */
+}
+
+.cal-cell__lunar {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
 .cal-cell--tasks .cal-cell__num {
   text-align: left;
   padding-left: 2px;
-  opacity: 0.75;
+  font-weight: 600;
 }
 
 /* Task mode: ô KHÔNG tô xanh — nếu tô, ô xanh + chip xanh = khối xanh nặng.
@@ -405,12 +426,143 @@
   color: var(--purple-light, #a78bfa);
 }
 
-[data-theme="light"] .cal-cell--tasks { background: var(--bg-card); }
+/* ══ v6.1.0 — hôm nay / ngày lễ / light mode ═══════════════════════════════ */
+
+/* Hôm nay: không chỉ đổi viền như trước (dễ lẫn với ô selected) — số ngày
+   thành viên tròn tím đặc, đọc ra ngay giữa 35 ô. */
+.cal-cell--tasks.cal-cell--today {
+  border: 2px solid var(--purple);
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--text-primary);
+}
+
+.cal-cell--tasks.cal-cell--today .cal-cell__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--purple);
+  color: #fff;
+  font-weight: 800;
+}
+
+/* Ngày lễ: nền vàng nhạt + viền vàng, ngôi sao góc phải trên. */
+.cal-cell--tasks.cal-cell--holiday {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.cal-cell--tasks.cal-cell--holiday .cal-cell__num { color: var(--gold-dim); }
+
+.cal-cell__holiday {
+  position: absolute;
+  top: 4px; right: 4px;
+  line-height: 1;
+  color: var(--gold-dim);
+}
+
+/* Panel chi tiết ngày */
+.cal-day-detail__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cal-day-detail__lunar,
+.cal-day-detail__holiday {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: var(--radius-full);
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+
+.cal-day-detail__lunar {
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.32);
+  color: var(--purple-light);
+}
+
+.cal-day-detail__holiday {
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  color: var(--gold-dim);
+}
+
+/* ── Light mode: bản trước gần như mất viền + chữ mờ. Mọi bề mặt dùng
+      rgba(255,255,255,…) đều vô hình trên nền sáng → thay bằng cặp tím/xám đặc. ── */
+[data-theme="light"] .cal-cell--tasks {
+  background: #fff;
+  border-color: rgba(99, 102, 241, 0.22);
+}
+
+[data-theme="light"] .cal-cell--tasks.cal-cell--done { border-color: rgba(22, 163, 74, 0.4); }
+[data-theme="light"] .cal-cell--tasks.cal-cell--future {
+  background: rgba(99, 102, 241, 0.03);
+  border-color: rgba(99, 102, 241, 0.18);
+  opacity: 1;
+  color: var(--text-muted);
+}
+[data-theme="light"] .cal-cell--empty { color: var(--text-secondary); }
+[data-theme="light"] .cal-cell__lunar { color: #64748b; }
+[data-theme="light"] .cal-weekday { color: var(--text-secondary); }
+
+[data-theme="light"] .cal-nav-btn {
+  background: #fff;
+  border-color: rgba(99, 102, 241, 0.25);
+  color: var(--text-secondary);
+}
+[data-theme="light"] .cal-nav-btn:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.45);
+}
+
+[data-theme="light"] .cal-month-stats,
+[data-theme="light"] .cal-day-detail {
+  background: #fff;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
 [data-theme="light"] .cal-chip {
-  background: rgba(22, 163, 74, 0.12);
+  background: rgba(22, 163, 74, 0.14);
   color: #15803d;
 }
 [data-theme="light"] .cal-chip--pending {
-  background: rgba(124, 58, 237, 0.12);
-  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.14);
+  color: #6d28d9;
+}
+[data-theme="light"] .cal-chip--more { color: var(--text-secondary); }
+
+[data-theme="light"] .cal-cell--tasks.cal-cell--holiday {
+  background: rgba(217, 119, 6, 0.1);
+  border-color: rgba(217, 119, 6, 0.45);
+}
+
+[data-theme="light"] .cal-day-detail__lunar {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #4f46e5;
+}
+
+[data-theme="light"] .cal-day-detail__holiday {
+  background: rgba(217, 119, 6, 0.12);
+  border-color: rgba(217, 119, 6, 0.4);
+  color: #b45309;
+}
+
+[data-theme="light"] .cal-dot--future { border-color: rgba(99, 102, 241, 0.35); }
+[data-theme="light"] .cal-dot--miss { background: rgba(99, 102, 241, 0.15); }
+
+/* Màn hẹp: ô thấp hơn, chip nhỏ hơn — 124px × 6 hàng không vừa màn dọc. */
+@media (max-width: 700px) {
+  .cal-grid { grid-auto-rows: 84px; gap: 3px; }
+  .cal-cell__lunar { font-size: 0.55rem; }
+  .cal-chip { font-size: 0.55rem; }
 }

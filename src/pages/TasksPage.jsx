@@ -19,6 +19,9 @@ export default function TasksPage() {
   const { user } = useAuth();
   const { todayTasks, overdueTasks, futureTasks, pendingTasks, getCompletedTasksRange, deleteTask } = useUserTasks();
   const [view, setView] = useState('list');
+  // Nút "Thêm" đứng cùng hàng với 2 tab (căn phải) nên state form phải ở đây,
+  // TaskListSection chỉ nhận xuống. Đây là state DUY NHẤT được nâng lên.
+  const [showForm, setShowForm] = useState(false);
 
   const due = overdueTasks.length + todayTasks.length;
 
@@ -57,10 +60,19 @@ export default function TasksPage() {
           className={`tasks-viewbar__tab${view === 'calendar' ? ' tasks-viewbar__tab--active' : ''}`}
           onClick={() => setView('calendar')}
         ><AppIcon name="calendar" size={15} /> Lịch</button>
+
+        {view === 'list' && (
+          <button
+            className="tasks-viewbar__add"
+            onClick={() => setShowForm(!showForm)}
+            id="task-add-btn"
+            style={{ color: showForm ? 'var(--red)' : 'var(--purple-light)' }}
+          ><AppIcon name={showForm ? 'x' : 'plus'} size={15} /> {showForm ? 'Đóng' : 'Thêm'}</button>
+        )}
       </div>
 
       {view === 'list' ? (
-        <TaskListSection />
+        <TaskListSection showForm={showForm} setShowForm={setShowForm} />
       ) : !user ? (
         <div className="task-empty">
           <div className="task-empty__hint">Đăng nhập để xem lịch sử nhiệm vụ.</div>

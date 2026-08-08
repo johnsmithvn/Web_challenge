@@ -1,0 +1,29 @@
+{
+  "solar": {
+    "01-01": "Tết Dương lịch",
+    "02-14": "Lễ tình nhân",
+    "03-08": "Quốc tế Phụ nữ",
+    "04-30": "Giải phóng miền Nam",
+    "05-01": "Quốc tế Lao động",
+    "06-01": "Quốc tế Thiếu nhi",
+    "09-02": "Quốc khánh",
+    "10-20": "Phụ nữ Việt Nam",
+    "11-20": "Nhà giáo Việt Nam",
+    "12-24": "Đêm Giáng sinh",
+    "12-25": "Giáng sinh"
+  },
+  "lunar": {
+    "01-01": "Tết Nguyên Đán",
+    "01-02": "Mùng 2 Tết",
+    "01-03": "Mùng 3 Tết",
+    "01-15": "Rằm tháng Giêng",
+    "03-03": "Tết Hàn thực",
+    "03-10": "Giỗ Tổ Hùng Vương",
+    "04-15": "Lễ Phật Đản",
+    "05-05": "Tết Đoan Ngọ",
+    "07-15": "Lễ Vu Lan",
+    "08-15": "Tết Trung Thu",
+    "12-23": "Ông Công Ông Táo"
+  },
+  "_note": "Ngày lễ theo dương lịch dùng key MM-DD; theo âm lịch dùng key MM-DD ÂM (đổi bằng src/utils/lunarUtils.js). Giao thừa không liệt kê vì tháng Chạp có thể 29 hoặc 30 ngày — MonthCalendar tự suy ra từ mùng 1 Tết."
+}

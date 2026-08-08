@@ -135,11 +135,20 @@ dọn module.
 
 **Chi tiết:**
 - Navigate tháng prev/next + nút "Hôm nay"
-- Ngày lễ VN, highlight today, outline ngày đang chọn
 - **1 query cho cả tháng** (`getCompletedTasksRange`), group theo ngày **địa
   phương** ở client. Click ngày chỉ filter mảng đã fetch — không fetch thêm
-- Ô cao `76px` (bỏ `aspect-ratio: 1`), hiện **chip tên task** (tối đa 2 + `+N nữa`).
-  Chip xanh = task đã xong, chip tím = task sắp tới chưa xong
+- **Ô các ngày cao bằng nhau (v6.1.0):** `grid-auto-rows: 124px`, ô trống bỏ `aspect-ratio: 1`
+  (trước đây ô trống bị ép vuông theo bề rộng cột nên hàng đầu cao gấp 3 hàng khác). Mỗi ô hiện
+  **tối đa 4 chip** + dòng `+N nữa…`; chip xanh (đã xong) và chip tím (sắp tới) đứng CHUNG 1 danh
+  sách — trước đây ngày vừa có việc xong vừa có việc sắp tới thì chip tím bị nuốt hẳn
+- **Âm lịch + ngày lễ (v6.1.0):** mỗi ô hiện số ngày âm nhỏ ở góc phải (mùng 1 hiện `1/7`), tính
+  bằng `src/utils/lunarUtils.js` (thuật toán Hồ Ngọc Đức/Meeus, không thêm thư viện, có self-check
+  trong `npm test`). Ngày lễ lấy từ `src/data/holidays.json` (11 lễ dương + 11 lễ âm) → ô tô vàng +
+  ngôi sao; panel chi tiết ngày hiện huy hiệu **Âm lịch d/m** và **tên ngày lễ**
+- **Hôm nay (v6.1.0):** viền tím + số ngày nằm trong viên tròn tím đặc (trước là viền cyan, dễ lẫn
+  với ô đang chọn)
+- **Light mode (v6.1.0):** nav button, khung thống kê, panel chi tiết, viền ô, ngày chưa tới và chip
+  đều có override `[data-theme="light"]` — trước đây toàn `rgba(255,255,255,…)` nên vô hình trên nền sáng
 - Ngày quá khứ không có task xong là **transparent, không tô đỏ**
 - Stats: X task xong / X ngày có việc xong / TB mỗi ngày
 - Click ngày → panel chi tiết: 1 danh sách gộp task đã xong + task sắp tới, expand
@@ -230,9 +239,29 @@ Lộ Trình **bắt buộc** phải gỡ cùng một đợt.
   - Mở được từ cả task pending lẫn task đã hoàn thành. Task lịch sử chỉ có 5 cột nên lưới field **tự
     ẩn hàng thiếu** thay vì hiện `—` sai sự thật.
   - Guest: hiện "Đăng nhập để xem lịch sử và ghi chú" (RLS bắt buộc `auth.uid()`).
-- **Tick hoàn thành** → gạch ngang, lưu `completed_at` timestamp
-- **Completed tasks** hôm nay hiển thị bên dưới với style nhạt
+- **Tick hoàn thành** → lưu `completed_at` timestamp
+- **Khối "Đã hoàn thành" (v6.1.0)** — hộp bo góc RIÊNG, nằm ngoài card danh sách, viền + chữ xanh lá:
+  - **Lọc theo khoảng ngày A→B.** 7 preset tính lùi từ hôm nay (Hôm nay / Hôm qua / 7 ngày / 2 tuần /
+    3 tháng / 6 tháng / 1 năm) + 2 ô Từ–Đến (`DatePickerPopover`, tự kẹp `from <= to`). Mới nhất
+    trước; khoảng nhiều ngày thì "Xong lúc" kèm cả ngày.
+  - Hàng đã xong: bo góc xanh lá, **không gạch ngang**, "Xong lúc …" là huy hiệu xanh nổi bật, nút
+    chữ **Xóa** (thay icon 🗑).
+  - **Bấm vòng tròn ✓ = bỏ hoàn thành** (`uncompleteTask` — có sẵn trong hook từ v5.0.0 nhưng tới
+    v6.1.0 mới có đường vào từ danh sách). Hover đổi đỏ để báo trước. Task của ngày CŨ không nằm
+    trong `tasks` state nên bỏ tích chỉ làm nó rời khối này; nó về danh sách pending ở lần fetch kế.
 - Sau ngày hôm đó → task biến mất khỏi danh sách chính
+- **Layout full-bleed (v6.1.0):** `/tasks` bỏ khổ đọc 900px, chiếm trọn bề ngang lẫn bề dọc body
+  (`min-height: 100dvh`, mobile trừ top bar + bottom tabs). Nút **Thêm** đứng cùng hàng 2 tab
+  Danh sách/Lịch nhưng dạt mép phải — `showForm` vì thế nâng lên `TasksPage` và truyền xuống bằng prop.
+- **Header nhóm rõ hơn (v6.1.0):** Hôm nay / Sắp tới trước đây `0.75rem --text-muted` gần như tàng
+  hình; nay cùng cỡ với Quá hạn, mỗi nhóm một màu vai trò + số đếm dạng huy hiệu. Ô tick vuông → tròn,
+  thêm vạch `|` ngăn tick ↔ nội dung, tiêu đề gói trong 1 dòng (ellipsis).
+- **Hàng task 1 dòng (v6.1.0):** toàn bộ nhãn (ngày, giờ, quá hạn, lặp, ưu tiên, KB, tag) nằm CÙNG
+  hàng với tiêu đề; dưới 820px mới xuống dòng. Nút hành động dùng `.task-act-btn` (ô 30px, icon
+  Phosphor `weight="bold"`) thay cho icon mờ `opacity: 0.5`.
+- **Bấm thân task = bung mô tả tại chỗ (v6.1.0)** — đảo lại quyết định của v5.0.0. Popup Chi tiết
+  giờ đi bằng **nút con mắt** riêng nên 1 click không còn 2 nghĩa. Ô nhập mô tả (form Thêm + Sửa)
+  tự cao theo nội dung bằng `field-sizing: content`.
 - **Overdue Triage (v3.5.0):** Task list chia 3 khối: ⚠️ Quá hạn (nền đỏ, nút 🔄 Dời sang hôm nay) / 📅 Hôm nay / 🔮 Sắp tới (collapsed). Bắt user đối mặt và dọn dẹp backlog.
 - **Rollover (v3.5.0):** Nút 🔄 trên overdue task → `updateTask(id, { due_date: today })` → task chuyển sang section Hôm nay.
 - **Priority (v4.9.0):** Thay thế Energy Tag + Duration Estimate của v3.6.0. `priority SMALLINT` 0=None / 1=Lowest / 2=Low / 3=Medium / 4=High / 5=Urgent (`PRIORITY_OPTIONS` trong `TaskListSection.jsx`). Badge màu trên task card khi `priority > 0`. Cột `energy_level` + `duration_est` đã bị DROP khỏi schema.

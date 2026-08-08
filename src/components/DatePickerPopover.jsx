@@ -32,6 +32,29 @@ function fmtShortDate(d) {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+// ── Range presets (mode="range") ──────────────────────────
+// Cột shortcut ở chế độ khoảng nhìn LÙI (lịch sử), khác hẳn cột mặc định nhìn
+// TỚI (hạn chót). setMonth() tự tràn khi ngày đích không tồn tại (31/8 lùi 6
+// tháng → 3/3) — chấp nhận vì đây là cận dưới của bộ lọc.
+const RANGE_SHORTCUTS = [
+  { label: 'Hôm nay', days: 0 },
+  { label: 'Hôm qua', days: 1, single: true },
+  { label: '7 ngày',  days: 6 },
+  { label: '2 tuần',  days: 13 },
+  { label: '3 tháng', months: 3 },
+  { label: '6 tháng', months: 6 },
+  { label: '1 năm',   months: 12 },
+];
+
+export function rangeFromPreset(p) {
+  const start = new Date();
+  const end = new Date();
+  if (p.single) { start.setDate(start.getDate() - p.days); end.setDate(end.getDate() - p.days); }
+  else if (p.months) start.setMonth(start.getMonth() - p.months);
+  else start.setDate(start.getDate() - p.days);
+  return { from: toDateStr(start), to: toDateStr(end) };
+}
+
 // ── Calendar grid builder ─────────────────────────────────
 function buildCalendar(year, month) {
   const firstDay = new Date(year, month, 1);
@@ -75,18 +98,31 @@ function buildCalendar(year, month) {
  *   onTimeChange  — (timeStr) => void — called on Save with time
  *   hideTime     — if true, hide time input (for quick date-only pickers)
  *   style        — optional positioning styles for the popover
+ *
+ * ── mode="range" (v6.1.0) ────────────────────────────────────────────────
+ * Cùng 1 component, chọn KHOẢNG thay vì 1 ngày. Khác biệt:
+ *   value    — { from, to } thay cho chuỗi ngày
+ *   onChange — nhận { from, to } (to luôn >= from)
+ *   cột shortcut đổi sang preset nhìn lùi (Hôm nay/Hôm qua/7 ngày/…)
+ *   ô giờ luôn ẩn (khoảng ngày không có giờ)
+ * Click 1: đặt mốc đầu. Click 2: đặt mốc cuối (click trước mốc đầu thì tự
+ * đảo). Click 3: bắt đầu khoảng mới.
  */
-export default function DatePickerPopover({ value, onChange, onClose, timeValue, onTimeChange, hideTime, style }) {
+export default function DatePickerPopover({ value, onChange, onClose, timeValue, onTimeChange, hideTime, mode = 'single', style }) {
+  const isRange = mode === 'range';
   const today = useMemo(() => new Date(), []);
   const todayStr = useMemo(() => toDateStr(today), [today]);
 
   // Draft state — internal selection before Save
-  const [draft, setDraft] = useState(value || '');
+  const [draft, setDraft] = useState(isRange ? '' : (value || ''));
+  const [rFrom, setRFrom] = useState(isRange ? (value?.from || '') : '');
+  const [rTo, setRTo]     = useState(isRange ? (value?.to || '') : '');
   // Default time: use provided value, or current HH:MM if none
   const [draftTime, setDraftTime] = useState(timeValue || nowHHMM());
 
   // Calendar view month
-  const initialDate = value ? new Date(value + 'T00:00:00') : today;
+  const initialSeed = isRange ? (value?.from || todayStr) : value;
+  const initialDate = initialSeed ? new Date(initialSeed + 'T00:00:00') : today;
   const [viewYear, setViewYear] = useState(initialDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth());
 
@@ -135,42 +171,94 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
     setViewMonth(today.getMonth());
   };
 
+  // Click 1 → mốc đầu, click 2 → mốc cuối, click 3 → khoảng mới.
+  const pickRange = (ds) => {
+    if (!rFrom || rTo) { setRFrom(ds); setRTo(''); }
+    else if (ds < rFrom) { setRTo(rFrom); setRFrom(ds); }
+    else setRTo(ds);
+  };
+
   // ── Save / Cancel ──
   const handleSave = useCallback(() => {
+    if (isRange) {
+      // Chưa chọn mốc cuối → coi như khoảng 1 ngày.
+      onChange({ from: rFrom, to: rTo || rFrom });
+      onClose();
+      return;
+    }
     onChange(draft);
     if (onTimeChange) {
       // Always save time — default to '00:00' if user cleared it
       onTimeChange(draftTime || '00:00');
     }
     onClose();
-  }, [draft, draftTime, onChange, onTimeChange, onClose]);
+  }, [isRange, rFrom, rTo, draft, draftTime, onChange, onTimeChange, onClose]);
+
+  const fmtLong = (ds) => new Date(ds + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   const draftLabel = draft
     ? new Date(draft + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'short' })
     : null;
 
-  const hasChanges = draft !== (value || '') || draftTime !== (timeValue || nowHHMM());
-  const showTimeInput = !hideTime;
+  const hasChanges = isRange
+    ? (rFrom !== (value?.from || '') || (rTo || rFrom) !== (value?.to || ''))
+    : (draft !== (value || '') || draftTime !== (timeValue || nowHHMM()));
+  const showTimeInput = !hideTime && !isRange;
 
   return (
     <div ref={popoverRef} className="dp-popover" style={style}>
       {/* ── Header ── */}
       <div className="dp-header">
-        <span className="dp-header__tab dp-header__tab--active"><AppIcon name="calendar" size={14} /> Bắt đầu lúc</span>
-        {draftLabel && (
-          <span className="dp-header__value">
-            {draftLabel}
-            {draftTime && <span style={{ opacity: 0.7 }}> · ⏰ {draftTime}</span>}
-            <button className="dp-header__value-clear" onClick={() => { setDraft(''); setDraftTime(''); }} title="Xoá" aria-label="Xóa ngày"><AppIcon name="x" size={13} /></button>
-          </span>
+        {isRange ? (
+          <>
+            <span className={`dp-header__tab${!rTo ? ' dp-header__tab--active' : ''}`}>
+              <AppIcon name="calendar" size={14} /> Từ: {rFrom ? fmtLong(rFrom) : '—'}
+            </span>
+            <span className={`dp-header__tab${rTo ? ' dp-header__tab--active' : ''}`}>
+              <AppIcon name="calendar" size={14} /> Đến: {rTo ? fmtLong(rTo) : '—'}
+            </span>
+            {(rFrom || rTo) && (
+              <button className="dp-header__value-clear" onClick={() => { setRFrom(''); setRTo(''); }}
+                title="Xoá khoảng" aria-label="Xoá khoảng"><AppIcon name="x" size={13} /></button>
+            )}
+          </>
+        ) : (
+          <>
+            <span className="dp-header__tab dp-header__tab--active"><AppIcon name="calendar" size={14} /> Bắt đầu lúc</span>
+            {draftLabel && (
+              <span className="dp-header__value">
+                {draftLabel}
+                {draftTime && <span style={{ opacity: 0.7, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}> · <AppIcon name="clock" size={13} /> {draftTime}</span>}
+                <button className="dp-header__value-clear" onClick={() => { setDraft(''); setDraftTime(''); }} title="Xoá" aria-label="Xóa ngày"><AppIcon name="x" size={13} /></button>
+              </span>
+            )}
+          </>
         )}
       </div>
 
       {/* ── Body ── */}
       <div className="dp-body">
-        {/* Left: Shortcuts */}
+        {/* Left: Shortcuts — mode range đổi hẳn sang preset nhìn lùi */}
         <div className="dp-shortcuts">
-          {shortcuts.map((s, i) => (
+          {isRange ? RANGE_SHORTCUTS.map((s, i) => {
+            const r = rangeFromPreset(s);
+            const active = rFrom === r.from && (rTo || rFrom) === r.to;
+            return (
+              <button
+                key={i}
+                className={`dp-shortcut${active ? ' dp-shortcut--active' : ''}`}
+                onClick={() => {
+                  setRFrom(r.from); setRTo(r.to);
+                  const d = new Date(r.to + 'T00:00:00');
+                  setViewYear(d.getFullYear());
+                  setViewMonth(d.getMonth());
+                }}
+              >
+                <span>{s.label}</span>
+                <span className="dp-shortcut__day">{fmtShortDate(new Date(r.from + 'T00:00:00'))}</span>
+              </button>
+            );
+          }) : shortcuts.map((s, i) => (
             <button
               key={i}
               className={`dp-shortcut${draft === toDateStr(s.date) ? ' dp-shortcut--active' : ''}`}
@@ -211,18 +299,22 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
             {cells.map((cell, i) => {
               const ds = toDateStr(cell.date);
               const isToday = ds === todayStr;
-              const isSelected = ds === draft;
               let cls = 'dp-grid__cell';
               if (cell.other) cls += ' dp-grid__cell--other';
               if (isToday) cls += ' dp-grid__cell--today';
-              if (isSelected) cls += ' dp-grid__cell--selected';
+              if (isRange) {
+                if (ds === rFrom || (rTo && ds === rTo)) cls += ' dp-grid__cell--selected';
+                if (rTo && ds > rFrom && ds < rTo) cls += ' dp-grid__cell--in-range';
+              } else if (ds === draft) {
+                cls += ' dp-grid__cell--selected';
+              }
 
               return (
                 <button
                   key={i}
                   className={cls}
                   onClick={() => {
-                    setDraft(ds);
+                    if (isRange) pickRange(ds); else setDraft(ds);
                     if (cell.other) {
                       setViewYear(cell.date.getFullYear());
                       setViewMonth(cell.date.getMonth());
@@ -240,7 +332,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
       {/* ── Time input (always visible unless hideTime) ── */}
       {showTimeInput && (
         <div className="dp-time">
-          <span className="dp-time__label">⏰ Giờ bắt đầu</span>
+          <span className="dp-time__label"><AppIcon name="clock" size={14} /> Giờ bắt đầu</span>
           <input
             type="time"
             className="dp-time__input"
@@ -264,7 +356,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
         <button
           className={`dp-footer__save${hasChanges ? ' dp-footer__save--active' : ''}`}
           onClick={handleSave}
-          disabled={!draft}
+          disabled={isRange ? !rFrom : !draft}
           title="Lưu"
         >
           <AppIcon name="check" size={14} /> Lưu

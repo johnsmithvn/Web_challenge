@@ -830,6 +830,16 @@ Below 520px it becomes a fixed bottom sheet: full width, top corners only,
 `max-height: 70vh`, shortcuts hidden, footer padded with
 `max(0.5rem, env(safe-area-inset-bottom))`.
 
+**`mode="range"`** (v6.1.0) — the same popover picks a span. Two header chips
+(Từ / Đến) replace the single value chip, the shortcut column swaps its
+forward-looking entries (Ngày mai, Tuần sau, 8 tuần) for backward presets
+(Hôm nay, Hôm qua, 7 ngày, 2 tuần, 3 tháng, 6 tháng, 1 năm), and the time row
+hides. Both ends reuse `.dp-grid__cell--selected`; the days between get
+`.dp-grid__cell--in-range` — purple-alpha `0.12` with `border-radius: 0`, so
+the run reads as one bar rather than a scatter of selected days. The presets
+live **in** the popover rather than as chips beside it because a preset must
+set *both* ends, which a single-date shortcut cannot.
+
 ### Navigation — `.sidebar` / `.topbar` / `.bottom-tabs` (`navbar.css`)
 
 Sidebar: `rgba(8,8,15,0.92)` + `blur(24px)`, right hairline
@@ -886,6 +896,33 @@ is introduced.
   inline rather than as five classes because the colour already lives in that
   array. Overdue rows keep the red background but the stripe wins on
   `border-left-color`.
+- **`.task-group__head`** (v6.1.0) — group header, `0.85rem/700 --font-display`,
+  one role colour each: overdue `#f87171`, today `--purple-light`, future
+  `--text-secondary`, done `--green`. The count is a pill whose fill is
+  `currentColor` with `--bg-primary` text, so it inherits the row's role colour
+  instead of adding four more rules. `button.task-group__head` re-declares
+  `display: flex` because `.task-list-card button` forces `inline-flex` at the
+  same specificity earlier in the file.
+- **`.task-row-sep`** (v6.1.0) — the `|` between tick and content: `2px`
+  `--radius-full`, `rgba(255,255,255,0.14)` (dark) / `rgba(15,23,42,0.14)`
+  (light), green-alpha in the done panel. Neutral by design — priority is
+  already carried by the `border-left` stripe, and two encodings of one fact
+  is one too many.
+- **`.task-done-card`** (v6.1.0) — completed history is its **own** box outside
+  `.task-list-card`: `--radius-lg`, `rgba(0,255,136,0.22)` hairline on a
+  `0.03` fill. Rows repeat the formula at `--radius-md` / `0.25` / `0.06`.
+  `.task-done-at` ("Xong lúc …") is the loudest thing in the row — a
+  `--radius-full` badge at `0.16` fill, `0.35` border, `--green` display text —
+  because the timestamp is what the panel exists to show. No `line-through`:
+  the green frame already says done, and the strike only hurt legibility.
+  `.task-checkbox-btn--done` shows its `::after` ✓ permanently and flips to
+  red-alpha on hover, so "click to un-do" is legible before the click.
+- **`.task-act-btn`** (v6.1.0) — row action buttons. Replaces
+  `opacity: 0.5–0.6` icons whose hover was driven by inline
+  `onMouseEnter/onMouseLeave` JS: a `30px` square, transparent until hover,
+  then purple-alpha `0.16` fill on a `0.4` border (red-alpha for `--danger`).
+  Icons ride at Phosphor `weight="bold"`, `16px`. Faintness was the bug; the
+  fix is a hit area and a real hover state, not a heavier icon set.
 - **`.task-empty`** — empty state, not a blank line: a `52px --radius-full`
   green-alpha disc holding `✓`, a `1.05rem/700` display title, and a
   `0.82rem --text-muted` hint capped at `30rem`.
@@ -985,6 +1022,24 @@ used by `/tasks`.
   failure; having no task that day is not.
 - **`.cal-cell--tasks.cal-cell--future`** — `dashed` border at `opacity: 0.45`.
   The cell stays present so the grid rhythm is unbroken.
+- **Equal rows, not square cells** (v6.1.0) — `.cal-grid` sets
+  `grid-auto-rows: 124px` and `.cal-cell--blank` drops `aspect-ratio: 1`. The
+  square was the bug: on a wide page a square cell is as tall as a column is
+  wide, so the leading row of blanks stood three times taller than every other
+  row. `124px` is measured, not chosen — day number + four `.cal-chip`s + the
+  `+N nữa…` line. Change `MAX_CHIPS` and this number moves with it.
+- **`.cal-cell--today`** (v6.1.0) — purple border **and** the day number inside
+  a solid `--purple` pill. A border alone read the same as
+  `.cal-cell--selected`'s outline; today has to survive being also selected.
+- **`.cal-cell--holiday`** (v6.1.0) — gold-alpha `0.08` fill on a `0.5` border
+  with a corner star, sourced from `holidays.json` (solar keys and lunar keys,
+  the latter resolved through `lunarUtils`). The lunar day rides in
+  `.cal-cell__lunar` at `0.6rem --text-muted`, top-right of the number — small
+  enough to never compete with the solar date.
+- **Light mode is not free here.** Every calendar surface was
+  `rgba(255,255,255,…)`, which is invisible on `#f4f6fb`; v6.1.0 adds
+  `[data-theme="light"]` pairs for nav buttons, month stats, day detail, cell
+  borders, future cells and chips. Treat white-alpha as a dark-only material.
 - **No week/day time grid.** `user_tasks.due_time` defaults to `23:59`, so an
   hour × day grid would stack every task in one bottom row. The expensive parts
   of that layout (hour gutter, overlap collision solving, drag-resize,
