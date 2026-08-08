@@ -225,12 +225,15 @@ On first login (one-time per data type):
 | **`data/schema_v4.24.0.sql`** | **Single source of truth** — all 29 tables + RLS + indexes + triggers + 3 RPC functions (login_email/username_exists/email_exists) + seed 5 programs. Idempotent. **Đã gộp v5.0.0** (2026-08-02): `user_tasks.updated_at` + trigger, `activity_logs` schema v2, DROP `streaks` + `get_leaderboard()` |
 | `data/migration_v5.0.0_activity_logs_v2.sql` | Bản **DROP + CREATE** của cùng thay đổi trên. **Chỉ chạy 1 lần.** Hai file tới cùng 1 schema cuối và **cùng xoá sạch log cũ** — master dùng `DELETE FROM activity_logs WHERE task_id IS NULL`, mà mọi dòng của schema v1 đều không gắn task. Chạy file nào cũng được; đừng chạy cả hai |
 | **`data/migration_v5.2.0_vault.sql`** | **v5.2.0 — CHƯA gộp vào master** (RULES §3: chỉ sửa master khi có chỉ thị rõ ràng). 6 bảng Account Vault (`accounts`, `account_fields`, `account_auth`, `account_codes`, `account_logs`, `account_tags`) + `tagged_items` thêm `kind='account'`. Idempotent, dựng từ trạng thái trắng (bản v5.1.0 chưa từng chạy trên Supabase → đã xoá file đó). Có sẵn câu VERIFY ở cuối file |
+| **`data/migration_v6.0.0_finance.sql`** | **v6.0.0 — CHƯA gộp vào master.** Clean rebuild toàn bộ Finance và tạo lại `tagged_items`. Phải chạy sau v5.2.0 vì view dùng `account_tags`; migration kiểm tra tiền đề và rollback toàn bộ nếu thiếu. |
 | `data/reset_user_data.sql` | **Reset script** — DELETE all user data, keep auth accounts |
 
 ## Supabase Setup Checklist
 
 - [ ] Create project (region: Southeast Asia – Singapore)
-- [ ] Run **`data/schema_v4.24.0.sql`** in SQL Editor (the ONLY file needed — creates everything)
+- [ ] Run `data/schema_v4.24.0.sql` in SQL Editor
+- [ ] Run `data/migration_v5.2.0_vault.sql`
+- [ ] Run `data/migration_v6.0.0_finance.sql`
 - [ ] Enable Realtime for: profiles, progress, habits, focus_sessions, xp_logs
 - [ ] Enable Google OAuth (Auth → Providers → Google)
 - [ ] Get URL + anon key from Project Settings → API

@@ -20,6 +20,44 @@ BEGIN;
 -- ---------------------------------------------------------------------------
 DROP VIEW IF EXISTS tagged_items;
 
+-- The consolidated base schema already includes v4.31 and v5.0. Vault v5.2
+-- must run before Finance because the shared tagged_items view uses account_tags.
+DO $$
+BEGIN
+  IF to_regclass('public.tags') IS NULL
+    OR to_regclass('public.user_tasks') IS NULL
+    OR to_regclass('public.collections') IS NULL
+    OR to_regclass('public.collection_tags') IS NULL
+    OR to_regclass('public.task_tags') IS NULL
+  THEN
+    RAISE EXCEPTION 'Finance v6 requires data/schema_v4.24.0.sql first';
+  END IF;
+
+  IF to_regclass('public.account_tags') IS NULL THEN
+    RAISE EXCEPTION 'Finance v6 requires data/migration_v5.2.0_vault.sql first';
+  END IF;
+END;
+$$;
+
+-- Drop dependent tables before their CHECK helper functions. This also makes a
+-- rerun safe when the database still contains the older finance_valid_rule().
+DROP TABLE IF EXISTS finance_transaction_tags CASCADE;
+DROP TABLE IF EXISTS finance_transactions CASCADE;
+DROP TABLE IF EXISTS finance_category_overrides CASCADE;
+DROP TABLE IF EXISTS finance_budgets CASCADE;
+DROP TABLE IF EXISTS finance_shortcuts CASCADE;
+DROP TABLE IF EXISTS finance_income_rules CASCADE;
+DROP TABLE IF EXISTS finance_deposits CASCADE;
+DROP TABLE IF EXISTS finance_saving_goals CASCADE;
+DROP TABLE IF EXISTS finance_loans CASCADE;
+DROP TABLE IF EXISTS finance_bills CASCADE;
+DROP TABLE IF EXISTS finance_cards CASCADE;
+
+DROP TABLE IF EXISTS expense_tags CASCADE;
+DROP TABLE IF EXISTS subscription_tags CASCADE;
+DROP TABLE IF EXISTS expenses CASCADE;
+DROP TABLE IF EXISTS subscriptions CASCADE;
+
 DROP FUNCTION IF EXISTS finance_pay_bill(UUID, BIGINT, DATE, UUID, UUID, TEXT);
 DROP FUNCTION IF EXISTS finance_pay_bill(UUID, BIGINT, DATE, UUID, UUID, TEXT, TEXT);
 DROP FUNCTION IF EXISTS finance_skip_bill_period(UUID, TEXT);
@@ -37,6 +75,7 @@ DROP FUNCTION IF EXISTS finance_refresh_loan_progress(UUID);
 DROP FUNCTION IF EXISTS finance_validate_transaction_references() CASCADE;
 DROP FUNCTION IF EXISTS finance_validate_shortcut_reference() CASCADE;
 DROP FUNCTION IF EXISTS finance_cycle_statement_date(TEXT, INT);
+DROP FUNCTION IF EXISTS finance_valid_rule(JSONB);
 DROP FUNCTION IF EXISTS finance_valid_rrule(JSONB);
 DROP FUNCTION IF EXISTS finance_valid_expense_category(TEXT);
 DROP FUNCTION IF EXISTS finance_valid_income_category(TEXT);
@@ -44,23 +83,6 @@ DROP FUNCTION IF EXISTS finance_valid_category_color(TEXT);
 DROP FUNCTION IF EXISTS finance_valid_subcategories(JSONB);
 DROP FUNCTION IF EXISTS finance_valid_auto_deposit(JSONB);
 DROP FUNCTION IF EXISTS finance_valid_withdrawal_request(JSONB);
-
-DROP TABLE IF EXISTS finance_transaction_tags CASCADE;
-DROP TABLE IF EXISTS finance_transactions CASCADE;
-DROP TABLE IF EXISTS finance_category_overrides CASCADE;
-DROP TABLE IF EXISTS finance_budgets CASCADE;
-DROP TABLE IF EXISTS finance_shortcuts CASCADE;
-DROP TABLE IF EXISTS finance_income_rules CASCADE;
-DROP TABLE IF EXISTS finance_deposits CASCADE;
-DROP TABLE IF EXISTS finance_saving_goals CASCADE;
-DROP TABLE IF EXISTS finance_loans CASCADE;
-DROP TABLE IF EXISTS finance_bills CASCADE;
-DROP TABLE IF EXISTS finance_cards CASCADE;
-
-DROP TABLE IF EXISTS expense_tags CASCADE;
-DROP TABLE IF EXISTS subscription_tags CASCADE;
-DROP TABLE IF EXISTS expenses CASCADE;
-DROP TABLE IF EXISTS subscriptions CASCADE;
 
 -- Same recurrence shape already used by user_tasks.recurrence_rule.
 CREATE FUNCTION finance_valid_rrule(p_rule JSONB)
