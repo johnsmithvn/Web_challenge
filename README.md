@@ -1,8 +1,9 @@
-# Life Hub — Personal Life OS v4.26.1
+# Life Hub — Personal Life OS v6.1.0
 
 > **Kỷ Luật = Hệ Thống, Không Phải Ý Chí**
 
-Ứng dụng quản lý cuộc sống cá nhân all-in-one: habit tracking 21 ngày, quản lý tài chính, pomodoro focus timer, knowledge base, daily quotes, life log heatmap, journey system, incubator, XP/Level, và more.
+Ứng dụng quản lý cuộc sống cá nhân một người dùng: Inbox, Nhiệm vụ, Knowledge Base, Finance,
+Account Vault, Incubator và Focus. Frontend React/Vite, dữ liệu chính trên Supabase với RLS.
 
 ---
 
@@ -28,7 +29,8 @@ npm run dev
 npm test
 ```
 
-> **Không có Supabase?** App vẫn chạy ở chế độ Guest (in-memory state, reset khi refresh). Chỉ cần key để bật Auth + cloud sync.
+> **Không có Supabase?** Các module cơ bản vẫn có thể chạy guest bằng state in-memory. Finance và
+> Account Vault yêu cầu đăng nhập vì dữ liệu có nhiều quan hệ và không có guest fallback.
 
 ---
 
@@ -75,13 +77,17 @@ Mọi file được upload qua **Google Drive Service Account** (Vercel serverle
 
 ### Cài lần đầu (Fresh Install)
 
-Chỉ cần **1 bước**: mở **Supabase → SQL Editor**, dán toàn bộ nội dung file dưới đây rồi **Run**:
+Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 
-| File | Nội dung |
-|------|----------|
-| **`data/schema_v4.24.0.sql`** | **Schema hợp nhất** — toàn bộ bảng + RLS + indexes + triggers + functions + seed (đã gộp mọi migration v4.4.0 → v4.24.0). Idempotent, chạy lại được. |
+| Thứ tự | File | Nội dung |
+|:------:|------|----------|
+| 1 | **`data/schema_v4.24.0.sql`** | Master schema đã hợp nhất tới v5.0: bảng lõi, RLS, index, trigger, RPC, Task activity log. Idempotent. |
+| 2 | **`data/migration_v5.2.0_vault.sql`** | 6 bảng Account Vault + mở rộng `tagged_items`. Idempotent. |
+| 3 | **`data/migration_v6.0.0_finance.sql`** | Finance v6 clean rebuild, 10 bảng + junction + RPC. File tự kiểm tra hai bước trước và rollback nếu thiếu. |
 
-> **Lưu ý:** Đây là file **duy nhất** cần chạy (đã gộp tất cả migration cũ). Nó cũng vá lỗ rò email ở `profiles` (v4.24.0). Frontend tương ứng đã dùng các hàm `rpc()` định nghĩa trong file này — deploy code mới + chạy file này cùng lúc.
+> Không chạy thêm `migration_v5.0.0_activity_logs_v2.sql` trên fresh install vì thay đổi đó đã nằm
+> trong master schema. Finance v6 sẽ xóa dữ liệu Finance legacy (`expenses`, `subscriptions`);
+> xem phần VERIFY cuối từng file trước khi dùng trên DB đang có dữ liệu.
 
 ### Reset dữ liệu user (giữ nguyên schema)
 
@@ -125,53 +131,29 @@ Sau khi thêm env vars → vào **Deployments** → **Redeploy** (hoặc push co
 
 ```
 src/
-  pages/                    ← Route pages (lazy-loaded)
-    LandingPage.jsx         ← / — Marketing
-    TrackerPage.jsx         ← /tracker — Habit tracker 4 tabs
-    InboxPage.jsx           ← /inbox — Quick capture
-    CollectPage.jsx         ← /collect — Knowledge Base (dual-mode editor)
-    FinancePage.jsx         ← /finance — Chi tiêu + Subscriptions
-    LifeLogPage.jsx         ← /life-log — Heatmap + Timeline
-    FocusPage.jsx           ← /focus — Pomodoro timer
-    JourneyPage.jsx         ← /journey — Journey browser
-    DashboardPage.jsx       ← /dashboard — Unified stats
-    IncubatorPage.jsx       ← /incubator — Someday/Maybe ideas
+  pages/                    ← 9 route pages (Landing + 8 lazy modules)
+    TasksPage.jsx           ← /tasks — Danh sách + Lịch
+    FinancePage.jsx         ← /finance/:screen — module Finance Nocturne
+    AccountsPage.jsx        ← /accounts — Account Vault Keyplate
+    InboxPage.jsx           ← /inbox — quick capture
+    CollectPage.jsx         ← /collect — Knowledge Base
+    IncubatorPage.jsx       ← /incubator — someday/maybe
+    FocusPage.jsx           ← /focus — Pomodoro
     SettingsPage.jsx        ← /settings — Tags + Quotes + Profile
-    ...
-  components/
-    TiptapEditor.jsx        ← WYSIWYG editor (Tiptap v3)
-    SlashCommand.jsx        ← / slash command menu
-    MediaPreview.jsx        ← Render YouTube/Drive/audio/video
-    CustomAudioPlayer.jsx   ← Glassmorphic HTML5 audio player
-    GlobalAudioPlayer.jsx   ← Floating random-podcast mini-player
-    QuoteWidget.jsx         ← Daily quote with shuffle + audio
-    UrlInputPopover.jsx     ← Shared media URL input
-    QuickCapture.jsx        ← Global floating [+] → inbox
-    ...
-  extensions/
-    MediaNode.jsx           ← Custom Tiptap media node (audio/video/YouTube/Drive)
-  hooks/
-    useHabitStore.js        ← Supabase-first habit ticks
-    useCollections.js       ← KB article CRUD
-    useQuotes.js            ← User quotes CRUD + system merge
-    useRandomPodcast.js     ← Random podcast picker (Drive audio)
-    useKnowledgeGroups.js   ← KB groups M:N
-    useCollectionNotes.js   ← Threaded sub-notes
-    useIntentions.js        ← Incubator CRUD
-    ...
-  contexts/
-    AuthContext.jsx         ← Supabase Auth
-    ThemeContext.jsx         ← Dark/Light mode
-    JourneyContext.jsx      ← Active journey state
-  data/
-    challenges.json         ← 21 Daily Challenges
-    quiz.json               ← 10 quiz questions
-    habits.json             ← defaultHabits, categories, moods
-    quotes.json             ← 30 motivational quotes
-    programs.json           ← 5 journey templates
-    ...
+  components/               ← UI dùng lại; finance/ chứa các màn Finance
+    TaskListSection.jsx     ← CRUD task + completed range
+    TaskDetailModal.jsx     ← Detail/log/note + edit tại chỗ
+    MonthCalendar.jsx       ← Lịch task, âm lịch và ngày lễ
+    AppIcon.jsx             ← Phosphor icon adapter dùng toàn app
+  hooks/                    ← Supabase/data logic, không đặt trong component
+    useUserTasks.js         ← Task CRUD, recurrence, optimistic state
+    useFinance.js           ← 10 bảng Finance
+    useAccounts.js          ← Account Vault
+  contexts/                 ← Auth, Theme, Toast
+  data/                     ← JSON tĩnh: UI strings, holidays, taxonomy, templates
   styles/                   ← CSS per domain (global.css = tokens)
-  utils/                    ← Pure utility functions
+  __tests__/                ← 8 self-check chạy qua npm test
+  utils/                    ← Pure logic + self-check
   lib/supabase.js           ← Singleton Supabase client
 api/
   upload.js                 ← File upload proxy → Google Drive (Supabase JWT required)
@@ -180,14 +162,18 @@ api/
   _lib/driveToken.js        ← Drive Service Account token, cached per scope (not a route)
   _lib/smoke.test.js        ← Self-check: `node api/_lib/smoke.test.js`
 data/
-  schema_v4.24.0.sql        ← Master DB schema (consolidated, idempotent)
+  schema_v4.24.0.sql        ← Master schema lõi (đã gộp tới v5.0)
+  migration_v5.2.0_vault.sql
+  migration_v6.0.0_finance.sql
   reset_user_data.sql       ← Wipe one user's rows (dev helper)
 docs/
+  PROJECT.md                ← Bản đồ cấp cao
   ARCHITECTURE.md           ← Module structure + data flow
-  DATABASE.md               ← Full SQL schema + RLS
-  FEATURES.md               ← All features documented
-  PLAN.md                   ← Development phases
-  TASKS.md                  ← TODO tracker
+  DATABASE.md               ← SQL, RLS, RPC và thứ tự migration
+  FEATURES.md               ← Toàn bộ hành vi tính năng
+  TASKS.md                  ← Trạng thái + backlog
+DESIGN.md                   ← Design system và component contract
+CHANGELOG.md                ← Lịch sử phiên bản
 ```
 
 ---
@@ -196,34 +182,35 @@ docs/
 
 | URL | Mô tả |
 |-----|-------|
-| `/` | Landing page — marketing |
-| `/tracker` | Habit tracker 4 tabs (Hôm Nay / Lịch / Tuần / Quản Lý) |
+| `/` | Landing / đăng nhập |
 | `/inbox` | Quick-capture inbox |
+| `/tasks` | Nhiệm vụ: Danh sách + Lịch tháng |
 | `/collect` | Knowledge Base — dual-mode editor (Tiptap + Markdown) |
-| `/finance` | Chi tiêu + đăng ký gói |
-| `/life-log` | Activity heatmap + daily timeline |
-| `/focus` | Pomodoro timer |
-| `/journey` | Journey browser (4 tabs) |
-| `/journey/:id` | Journey dashboard |
-| `/dashboard` | Unified stats |
+| `/finance`, `/finance/:screen` | Tổng quan, Nhập nhanh, Giao dịch, Danh mục, Hóa đơn; Ngân sách/Thống kê nằm trong Tổng quan |
+| `/accounts` | Account Vault hai pane |
 | `/incubator` | Trạm Ấp Trứng — someday/maybe |
+| `/focus` | Pomodoro timer |
 | `/settings` | Tags + Quotes + Profile |
-| `/quiz` | Quiz não bộ |
-| `/leaderboard` | Streak/XP ranking |
-| `/life-journey` | Life emotion timeline SVG |
+| `/tracker`, `/habits`, `/dashboard`, `/journey` | Redirect về `/tasks` (module cũ đã gỡ v5.0) |
 
 ---
 
 ## ✨ Tính Năng Chính
 
 ### 🏠 Core
-- **Habit Tracker:** Custom habits, per-habit streak, mood, skip reason, 21-day grid
-- **Knowledge Base:** Dual-mode editor (Tiptap WYSIWYG + Markdown), multimedia (🖼️ ▶️ 🎵), slash commands, groups M:N, sub-notes
+- **Nhiệm vụ:** danh sách full-bleed, lịch tháng, task lặp, priority, tag, liên kết Knowledge và lịch sử thay đổi
+- **Finance:** giao dịch, ngân sách/thống kê, danh mục, hóa đơn, khoản vay, thẻ và quỹ tiết kiệm; liên kết Task/Inbox
+- **Account Vault:** item/field linh hoạt, phương thức đăng nhập, mã dự phòng và history append-only
+- **Knowledge Base:** editor Tiptap + Markdown, multimedia, slash command, tag và sub-note
 - **Inbox:** Quick capture → phân loại
-- **Finance:** Chi tiêu + subscriptions + cashflow calendar
-- **Life Log:** GitHub-style heatmap + daily timeline
-- **Dashboard:** Unified stats — today + habits + finance + activity
 - **Incubator:** Someday/maybe ideas with friction defer + multi-output execute
+- **Focus:** Pomodoro + XP event log
+
+### 📌 Tasks v6.1.0
+- **Task Detail:** nút Sửa dùng lại form edit ngay trong popup; không đóng popup hoặc navigate về list
+- **Hoàn thành tức thời:** task vừa tick xuất hiện ngay trong khối Đã hoàn thành; lỗi DB rollback cả hai state
+- **Lịch:** ngày dương + ngày âm + tên ngày lễ trong ô, không chồng chữ; panel ngày liệt kê task xong và sắp tới
+- **Sức chứa:** ngày thường tối đa 4 task, ngày lễ 3 task để dành một dòng cho tên lễ; phần còn lại hiện đúng `+N nữa…`
 
 ### 🎵 Media Infrastructure (v4.23.0)
 - **Upload:** Paste / drop / toolbar → Google Drive (Service Account) qua `api/upload.js` — **yêu cầu đăng nhập**
@@ -233,18 +220,10 @@ docs/
 - **QuoteWidget:** Daily-seeded random, shuffle 🔀, audio support (Today / Inbox / KB)
 - **Quote Manager:** Settings → CRUD personal quotes + view system quotes
 
-### 🗺 Journey System
-- 5 system templates + custom journeys (14/21/30/60 ngày)
-- Journey detail dashboard + calendar + day modal
-
-### 🎮 Gamification
-- XP/Level (6 levels: 🌱→⚡→🔥→⚔️→👑→🏆)
-- Daily Challenge, Quiz, Leaderboard, Pomodoro
-
 ### 🔐 Auth & Sync
 - Email/Password + Google OAuth (Supabase)
-- Guest mode: in-memory (reset on refresh)
-- Auto migrate localStorage → Supabase on first login
+- RLS own-row cho dữ liệu người dùng
+- Guest in-memory ở các module hỗ trợ; Finance và Account Vault yêu cầu đăng nhập
 
 ---
 
@@ -267,6 +246,10 @@ docs/
 
 | Version | Mô tả |
 |---------|-------|
+| **v6.1.0** | Tasks full-bleed; completed range; edit trong detail popup; lịch âm/ngày lễ; giới hạn 4/3 task theo sức chứa ô |
+| **v6.0.0** | Finance Nocturne clean rebuild, 10 bảng + junction/RPC, liên kết Task và Inbox |
+| **v5.2.0** | Account Vault Keyplate, 6 bảng, field/auth/code/history |
+| **v5.0.0** | Task Detail + activity log v2; gỡ Habit, Journey, Life Log, Dashboard, Quiz và Leaderboard |
 | **v4.23.0** | Drive stream proxy (`api/stream.js`) + custom audio player + API hardening (auth/CORS/rate-limit) |
 | **v4.16.1** | Unified Google Drive upload — thay thế Imgur + Cloudflare R2 |
 | **v4.13.0–v4.22.0** | GlobalAudioPlayer + useRandomPodcast, MediaNode (thay AudioNode), CustomAudioPlayer, currency settings, GenericModal, dateUtils |
@@ -311,6 +294,8 @@ git push origin feat/ten-feature
 | Upload ảnh/file thất bại | Đăng nhập trước; kiểm tra `GOOGLE_SERVICE_ACCOUNT_JSON` + `DRIVE_FOLDER_ID` trên Vercel |
 | Audio/video Drive không phát | Kiểm tra `DRIVE_FOLDER_ID` (stream proxy fail-closed nếu thiếu) |
 | Quotes tab trống / Collect lỗi khi lưu | Chạy lại `data/schema_v4.24.0.sql` trong Supabase (idempotent) |
+| Account Vault trắng | Đăng nhập và chạy `data/migration_v5.2.0_vault.sql` |
+| Finance báo không tải được dữ liệu | Chạy DB đúng thứ tự: master → Vault v5.2 → Finance v6; dùng nút Thử lại sau khi migration thành công |
 | 404 khi refresh | Kiểm tra `vercel.json` có rewrite rule |
 | Build fail | `npm run build` — check console errors |
 

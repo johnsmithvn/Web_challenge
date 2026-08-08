@@ -46,6 +46,12 @@
   ngôi sao; panel chi tiết ngày hiện huy hiệu **Âm lịch d/m** và **tên ngày lễ**.
 
 ### Changed — vòng 2
+- **Sửa task ngay trong popup Chi tiết** — nút **Sửa** chuyển nội dung popup sang đúng form edit
+  đang dùng ở `TaskListSection`; không đóng popup, không navigate về list và không tạo đường ghi DB
+  thứ hai. Bấm Hủy quay lại nội dung chi tiết.
+- **Danh sách hoàn thành cập nhật ngay sau khi tick** — `completedList` nhận cùng `completed_at`
+  với optimistic update của task; nếu ghi DB lỗi thì rollback cả hai state. Không cần đổi filter để
+  task vừa hoàn thành xuất hiện.
 - **Nhãn của task lên thẳng hàng với tiêu đề** (`.task-row-line`); tiêu đề co trước, nhãn giữ
   nguyên; dưới 820px mới cho xuống dòng.
 - **Nút icon hết mờ** — bỏ `opacity: 0.5–0.6` + `onMouseEnter/Leave` chỉnh opacity bằng JS, thay
@@ -53,8 +59,11 @@
   (`⏰` trong DatePicker, `⏳` trong MonthCalendar).
 - **Ô mô tả tự cao theo nội dung** — `field-sizing: content` (native, không JS đo `scrollHeight`).
 - **Lịch: ô các ngày bằng nhau** — `grid-auto-rows: 124px` + ô trống bỏ `aspect-ratio: 1`. Trước
-  đây ô trống bị ép vuông theo bề rộng cột nên hàng đầu cao gấp 3 hàng khác. Mỗi ô hiện tối đa
-  **4 chip** + dòng `+N nữa…`, chip xong (xanh) và sắp tới (tím) nay đứng CHUNG danh sách.
+  đây ô trống bị ép vuông theo bề rộng cột nên hàng đầu cao gấp 3 hàng khác. Ngày thường hiện tối
+  đa **4 chip**; ngày lễ hiện tối đa **3 chip** để dành một dòng cho tên lễ; `+N nữa…` luôn tính
+  theo giới hạn thực của ô. Chip xong (xanh) và sắp tới (tím) đứng CHUNG danh sách.
+- **Tên ngày lễ hiện ngay trong ô** — nằm trong luồng bố cục dưới task, không đè lên ngày âm; màn
+  hẹp cho phép tối đa 3 dòng. Panel chi tiết ngày vẫn giữ huy hiệu tên lễ đầy đủ.
 - **Lịch: hôm nay** đổi từ viền cyan sang viền tím + số ngày trong viên tròn tím đặc.
 - **Lịch: light mode** — nav button, khung thống kê, panel chi tiết, viền ô, ngày chưa tới, chip
   đều có cặp override `[data-theme="light"]`; trước đây toàn `rgba(255,255,255,…)` nên vô hình.
@@ -64,10 +73,11 @@
 - **Khối Quá hạn hết 2 lớp viền** — bỏ hộp nền đỏ bao ngoài, từng hàng vốn đã có viền + nền đỏ.
 
 ### Files Modified
-- `src/pages/TasksPage.jsx`, `src/components/TaskListSection.jsx`, `src/components/DatePickerPopover.jsx`,
-  `src/components/MonthCalendar.jsx`
+- `src/pages/TasksPage.jsx`, `src/components/TaskListSection.jsx`, `src/components/TaskDetailModal.jsx`,
+  `src/components/DatePickerPopover.jsx`, `src/components/MonthCalendar.jsx`, `src/hooks/useUserTasks.js`
 - `src/styles/tasks.css`, `src/styles/datepicker.css`, `src/styles/calendar.css`
-- `src/utils/lunarUtils.js`, `src/__tests__/lunarUtils.test.js`, `src/data/holidays.json`
+- `src/utils/lunarUtils.js`, `src/__tests__/lunarUtils.test.js`, `src/__tests__/taskUiContract.test.js`,
+  `src/data/holidays.json`
 - `DESIGN.md`, `docs/FEATURES.md`, `docs/TASKS.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md`, `package.json`
 
 ## v6.0.0 — 2026-08-08

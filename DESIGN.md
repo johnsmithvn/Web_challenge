@@ -956,9 +956,9 @@ is a login door and a module map, not a sales pitch.
 
 ### Task Detail Modal — `.task-detail-modal` / `.td-*` (`task-detail.css`)
 
-Added v5.0.0. Read-only task detail with two tabs (change history / personal
-notes). Built **on `GenericModal`**, not a fourth modal system — only two
-overrides are needed.
+Added v5.0.0. Read-first task detail with two tabs (change history / personal
+notes); v6.1.0 can switch the same popup to the existing `TaskListSection` edit
+form. Built **on `GenericModal`**, not a fourth modal system.
 
 - **One scroll container.** `.generic-modal` puts `overflow-y: auto` on the
   panel, so the header scrolls away once the history is long. `.task-detail-modal`
@@ -985,6 +985,9 @@ overrides are needed.
   `undefined` are not rendered at all rather than showing `—`: a task opened
   from the calendar carries only five columns, and an em-dash there would state
   something false.
+- **Edit stays inside the modal.** `TaskDetailModal` receives `editContent` from
+  `TaskListSection`; pressing Edit swaps the body to the same form used by the
+  list. No second form, no navigation, and Cancel returns to the detail body.
 - **Bottom sheet below 520px** — the same breakpoint `.task-actions--mobile`
   and `.dp-popover` already use. Reached with
   `.generic-modal-backdrop:has(.task-detail-modal)` so `GenericModal` (shared by
@@ -997,16 +1000,15 @@ overrides are needed.
 
 ### Calendar task mode — `.cal-cell--tasks` / `.cal-chip` (`calendar.css`)
 
-`MonthCalendar` runs in two modes. Passing `habitData` keeps the original
-habit colouring (dot per completed day); omitting it switches to task mode,
-used by `/tasks`.
+`MonthCalendar` is task-only since v5.0.0; the former `habitData`/`skipLog` mode
+was removed with TrackerPage. It renders completed and pending tasks together.
 
 - **`.cal-grid`** — must be `repeat(7, minmax(0, 1fr))`, **never** `repeat(7, 1fr)`.
   `1fr` is `minmax(auto, 1fr)`, so a non-wrapping child (the `nowrap` task chip)
   pushes its column wider and skews all seven. Pair it with `min-width: 0` on
   the cell and the chip wrapper, or the ellipsis never triggers.
-- **`.cal-cell--tasks`** — drops `aspect-ratio: 1` for `min-height: 62px`,
-  top-aligns content, left-aligns the day number at `opacity: 0.75`. Carries a
+- **`.cal-cell--tasks`** — drops `aspect-ratio: 1`, fills the fixed grid row,
+  top-aligns content and stretches children across the cell. Carries a
   `1px --bg-glass-border` hairline over `--bg-card`: without the hairline the
   grid stops reading as a grid and becomes floating numerals.
 - **`.cal-cell--tasks.cal-cell--done`** — keeps the plain `--bg-card` fill and
@@ -1014,8 +1016,9 @@ used by `/tasks`.
   deliberately *not* reused here: a green cell behind a green chip collapses
   into one heavy block. Colour belongs to the chip, weight belongs to the border.
 - **`.cal-chip`** — `0.6rem/500`, `3px` radius, `rgba(0,255,136,0.14)` fill with
-  `--green` text, single-line ellipsis. Max two per cell plus a
-  `.cal-chip--more` counter in `--text-muted`. Light theme swaps to
+  `--green` text, single-line ellipsis. Normal days show four task chips;
+  holidays show three to reserve one row for the label. Overflow uses a
+  `.cal-chip--more` counter computed from that cell's limit. Light theme swaps to
   `rgba(22,163,74,0.12)` on `#15803d`.
 - **`.cal-cell--empty`** — a past day with no completed task keeps the hairline
   but takes no fill, and is **not** `.cal-cell--miss` red. Missing a habit is a
@@ -1027,15 +1030,15 @@ used by `/tasks`.
   square was the bug: on a wide page a square cell is as tall as a column is
   wide, so the leading row of blanks stood three times taller than every other
   row. `124px` is measured, not chosen — day number + four `.cal-chip`s + the
-  `+N nữa…` line. Change `MAX_CHIPS` and this number moves with it.
+  `+N nữa…` line. A holiday replaces one visible task row with its label, keeping
+  the same capacity; 3 tasks + counter + holiday needs about 103px of 122px.
 - **`.cal-cell--today`** (v6.1.0) — purple border **and** the day number inside
   a solid `--purple` pill. A border alone read the same as
   `.cal-cell--selected`'s outline; today has to survive being also selected.
-- **`.cal-cell--holiday`** (v6.1.0) — gold-alpha `0.08` fill on a `0.5` border
-  with a corner star, sourced from `holidays.json` (solar keys and lunar keys,
-  the latter resolved through `lunarUtils`). The lunar day rides in
-  `.cal-cell__lunar` at `0.6rem --text-muted`, top-right of the number — small
-  enough to never compete with the solar date.
+- **`.cal-cell--holiday`** (v6.1.0) — gold-alpha `0.08` fill on a `0.5` border,
+  sourced from `holidays.json` (solar and lunar keys). The holiday label uses
+  normal document flow below task chips, so it cannot cover `.cal-cell__lunar`
+  in the date header. Narrow screens hide the star and clamp the name to 3 lines.
 - **Light mode is not free here.** Every calendar surface was
   `rgba(255,255,255,…)`, which is invisible on `#f4f6fb`; v6.1.0 adds
   `[data-theme="light"]` pairs for nav buttons, month stats, day detail, cell

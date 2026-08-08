@@ -41,8 +41,8 @@ src/
 ├── utils/       (10) vaultLogic, financeLogic, currencyUtils, dateUtils, logger,
 │                     mediaUtils, recurrenceUtils, taskFields, lunarUtils (pure, no React)
 │                 (+2) dateUtils.test.js, mediaUtils.test.js — self-check `npm test`
-├── __tests__/    (5) recurrenceUtils.test.js, taskFields.test.js, vaultLogic.test.js,
-│                     financeLogic.test.js, lunarUtils.test.js — `npm test`
+├── __tests__/    (8) recurrenceUtils, taskFields, taskUiContract, vaultLogic,
+│                     financeLogic, financeMigration, currencyInput, lunarUtils — `npm test`
 ├── data/         (5) JSON content tĩnh (Rule 14): quotes, finance-categories,
 │                     knowledge, ui-strings, holidays
 └── styles/      (25) 1 file / domain + global.css (design tokens). Không dùng Tailwind
@@ -82,6 +82,11 @@ Hook (e.g. useUserTasks)
     │
     └── Update local React state → re-render
 ```
+
+Task completion follows the same rule across both visible lists: `TaskListSection` creates one
+`completed_at` value, passes it to `useUserTasks.completeTask`, and optimistically inserts the same
+task into `completedList`. A failed write rolls back both states, so the completed filter never
+requires a manual refresh and cannot display a timestamp different from the task row.
 
 > **v1.6.2+:** Toàn bộ **user data** dùng Supabase làm primary.
 > localStorage chỉ còn **UI state flags**, **settings**, và các **ngoại lệ legacy được ghi rõ** (xem Rule bên dưới).

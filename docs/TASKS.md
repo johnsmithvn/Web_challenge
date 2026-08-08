@@ -3,7 +3,7 @@
 
 ---
 
-## v6.1.0 — ✅ CODE DONE / ⏳ BUILD + CLICK-THROUGH CHỜ USER (2026-08-08) — `/tasks` full-bleed + khối Đã hoàn thành
+## v6.1.0 — ✅ DONE (2026-08-08) — `/tasks` full-bleed + khối Đã hoàn thành
 
 **Đã làm** (chi tiết: CHANGELOG.md v6.1.0, FEATURES.md §16, DESIGN.md § "Tasks page atoms"): trang bỏ
 khổ 900px → full ngang + dọc (`min-height: 100dvh`, mobile trừ topbar/bottom-tabs); nút Thêm lên hàng
@@ -18,10 +18,15 @@ tiêu đề; nút icon bỏ opacity mờ → `.task-act-btn` + `weight="bold"`; 
 và đổi bấm-thân-task thành bung mô tả tại chỗ; ô mô tả `field-sizing: content`; sửa badge đếm mất
 số + khối Quá hạn 2 viền. Lịch: ô mọi ngày cao bằng nhau (`grid-auto-rows`, ô trống bỏ
 `aspect-ratio`), max 4 chip + `+N nữa…`, hôm nay viền tím + số trong viên tròn, âm lịch góc phải
-(`lunarUtils` + test), ngày lễ (`holidays.json`) tô vàng + huy hiệu tên lễ ở panel ngày, và bộ
+(`lunarUtils` + test), ngày lễ (`holidays.json`) tô vàng + tên lễ trong ô lẫn panel ngày, và bộ
 override `[data-theme="light"]` cho toàn bộ lịch. Lint 0 error, `npm test` pass (thêm lunarUtils).
 
-**Chờ user:** `npm run build` + click thử.
+**Vòng 3** (kiểm tra UX thực tế): nút Sửa trong Task Detail tái dùng form edit ngay trong popup,
+không navigate về list; task vừa tick xuất hiện ngay trong khối Đã hoàn thành mà không cần đổi filter.
+Tên ngày lễ hiện trực tiếp trong ô và nằm dưới hàng ngày dương/âm, không chồng chữ. Ngày thường giữ
+tối đa 4 task; ngày lễ giảm còn 3 task để chừa một dòng cho tên lễ, `+N nữa…` dùng đúng giới hạn đó.
+Đã kiểm tra trường hợp 6 task + ngày lễ: nội dung dùng khoảng 103/122px; `npm test` pass và browser
+click-through không có overlap.
 
 ---
 

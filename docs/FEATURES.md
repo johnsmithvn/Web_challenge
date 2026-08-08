@@ -138,13 +138,15 @@ dọn module.
 - **1 query cho cả tháng** (`getCompletedTasksRange`), group theo ngày **địa
   phương** ở client. Click ngày chỉ filter mảng đã fetch — không fetch thêm
 - **Ô các ngày cao bằng nhau (v6.1.0):** `grid-auto-rows: 124px`, ô trống bỏ `aspect-ratio: 1`
-  (trước đây ô trống bị ép vuông theo bề rộng cột nên hàng đầu cao gấp 3 hàng khác). Mỗi ô hiện
-  **tối đa 4 chip** + dòng `+N nữa…`; chip xanh (đã xong) và chip tím (sắp tới) đứng CHUNG 1 danh
-  sách — trước đây ngày vừa có việc xong vừa có việc sắp tới thì chip tím bị nuốt hẳn
+  (trước đây ô trống bị ép vuông theo bề rộng cột nên hàng đầu cao gấp 3 hàng khác). Ngày thường
+  hiện **tối đa 4 chip**, ngày lễ tối đa **3 chip** để chừa một dòng tên lễ; `+N nữa…` tính theo
+  đúng giới hạn của từng ô. Chip xanh (đã xong) và chip tím (sắp tới) đứng CHUNG 1 danh sách —
+  trước đây ngày vừa có việc xong vừa có việc sắp tới thì chip tím bị nuốt hẳn
 - **Âm lịch + ngày lễ (v6.1.0):** mỗi ô hiện số ngày âm nhỏ ở góc phải (mùng 1 hiện `1/7`), tính
   bằng `src/utils/lunarUtils.js` (thuật toán Hồ Ngọc Đức/Meeus, không thêm thư viện, có self-check
-  trong `npm test`). Ngày lễ lấy từ `src/data/holidays.json` (11 lễ dương + 11 lễ âm) → ô tô vàng +
-  ngôi sao; panel chi tiết ngày hiện huy hiệu **Âm lịch d/m** và **tên ngày lễ**
+  trong `npm test`). Ngày lễ lấy từ `src/data/holidays.json` (11 lễ dương + 11 lễ âm) → ô tô vàng,
+  hiện **tên lễ ngay trong ô** dưới nội dung task và không đè ngày âm; panel chi tiết ngày vẫn hiện
+  huy hiệu **Âm lịch d/m** và **tên ngày lễ** đầy đủ
 - **Hôm nay (v6.1.0):** viền tím + số ngày nằm trong viên tròn tím đặc (trước là viền cyan, dễ lẫn
   với ô đang chọn)
 - **Light mode (v6.1.0):** nav button, khung thống kê, panel chi tiết, viền ô, ngày chưa tới và chip
@@ -220,15 +222,14 @@ Lộ Trình **bắt buộc** phải gỡ cùng một đợt.
 - **1 query/tháng thay 30 (v4.29.0):** `getCompletedTasks(dateStr)` → `getCompletedTasksRange(start, end)`. Calendar fetch 1 lần/tháng rồi group theo ngày **địa phương** ở client — vừa bớt N+1, vừa sửa luôn lỗi lệch ngày do `completed_at` được so sánh theo UTC.
 - **Cố ý KHÔNG làm:** week/day time-grid kiểu Google Calendar. `due_time` mặc định `23:59` nên mọi task sẽ dồn vào 1 hàng đáy — phần đắt nhất của GCal (cột giờ, thuật toán xếp event chồng, drag-resize) không đem lại gì cho dữ liệu all-day. Cũng không làm Board/Gantt/assignee/custom field (xem `docs/TASKS.md`).
 - **Add form:** Tên (required), mô tả (optional), ngày (default hôm nay), giờ (optional)
-- **Task card:** Checkbox + title + ⏰ badge + 📅 badge + "Quá hạn" indicator. **Bấm vào vùng nội dung
-  (tiêu đề + hàng chip) mở Task Detail Modal** — thay cho cơ chế expand mô tả ▸/▾ đã bỏ ở v5.0.0
-  (Detail hiện full mô tả nên giữ cả hai thì 1 click có 2 nghĩa). Trên mobile còn đường thứ hai:
-  item `📄 Chi tiết` đầu menu ⋯.
+- **Task card:** Checkbox + title + badge hạn/ưu tiên/liên kết. **Bấm thân task bung mô tả tại chỗ**;
+  nút con mắt mở Task Detail Modal nên mỗi vùng chỉ có một nghĩa. Trên mobile có item **Chi tiết**
+  trong menu hành động.
 - **Task Detail Modal (v5.0.0)** — `src/components/TaskDetailModal.jsx` + `src/styles/task-detail.css`:
-  - **Chỉ đọc** phần field (hạn chót, độ ưu tiên, lặp lại, tag, bài viết liên kết, thời điểm hoàn
-    thành, tạo lúc, cập nhật lúc) + full mô tả. Nút Sửa/Xoá/Hoàn thành uỷ quyền ngược về handler sẵn
-    có của `TaskListSection` — cố ý để chỉ có MỘT đường ghi xuống `user_tasks`, giữ nguyên chokepoint
-    cho diff-log.
+  - Mặc định đọc field (hạn chót, độ ưu tiên, lặp lại, tag, bài viết liên kết, thời điểm hoàn thành,
+    tạo lúc, cập nhật lúc) + full mô tả. Nút **Sửa** chuyển ngay nội dung popup sang đúng form edit
+    của `TaskListSection`; không đóng popup, không navigate về list và không tạo đường ghi DB mới.
+    Hủy sửa quay lại detail. Xoá/Hoàn thành vẫn uỷ quyền về handler sẵn có.
   - **Tab 🕘 Hoạt động** — lịch sử thay đổi kiểu Jira, mỗi dòng 1 field: "Đổi Hạn chót: 05/08/2026 →
     10/08/2026". Nhóm theo ngày (Hôm nay / Hôm qua / dd/MM/yyyy), mới nhất trước. Giá trị dài (mô tả)
     cắt 80 ký tự + nút "Xem thêm". Có nút 🗑 xoá từng dòng (qua `useConfirm`).
@@ -239,7 +240,8 @@ Lộ Trình **bắt buộc** phải gỡ cùng một đợt.
   - Mở được từ cả task pending lẫn task đã hoàn thành. Task lịch sử chỉ có 5 cột nên lưới field **tự
     ẩn hàng thiếu** thay vì hiện `—` sai sự thật.
   - Guest: hiện "Đăng nhập để xem lịch sử và ghi chú" (RLS bắt buộc `auth.uid()`).
-- **Tick hoàn thành** → lưu `completed_at` timestamp
+- **Tick hoàn thành** → lưu `completed_at`; `completedList` nhận cùng timestamp bằng optimistic
+  update nên hàng vừa xong xuất hiện ngay trong filter hiện tại, rollback cùng task nếu ghi DB lỗi
 - **Khối "Đã hoàn thành" (v6.1.0)** — hộp bo góc RIÊNG, nằm ngoài card danh sách, viền + chữ xanh lá:
   - **Lọc theo khoảng ngày A→B.** 7 preset tính lùi từ hôm nay (Hôm nay / Hôm qua / 7 ngày / 2 tuần /
     3 tháng / 6 tháng / 1 năm) + 2 ô Từ–Đến (`DatePickerPopover`, tự kẹp `from <= to`). Mới nhất
@@ -269,7 +271,9 @@ Lộ Trình **bắt buộc** phải gỡ cùng một đợt.
   - **Quan hệ chuỗi (`recurrence_parent_id`, v4.31.0):** mỗi task lặp lưu lại "được sinh ra từ task nào". **Sửa** 1 task trong chuỗi không bao giờ đụng task khác đã tồn tại (chỉ ảnh hưởng occurrence tương lai chưa sinh). **Xoá** task **gốc** (chưa từng được sinh ra) → chỉ xoá đúng nó, chuỗi phía sau giữ nguyên. Xoá task **không phải gốc** (tự nó được sinh ra) → xoá luôn toàn bộ hậu duệ phía sau. **Bỏ tích** 1 task → tự xoá occurrence nó đã sinh ra (kèm hậu duệ xa hơn nếu có), tránh trùng khi tích/bỏ tích nhiều lần — có toast báo.
   - Logic thuần (tính ngày kế tiếp + tính chuỗi cần xoá) tách ra `src/utils/recurrenceUtils.js`, unit test ở `src/__tests__/recurrenceUtils.test.js` (`npm test`).
 - **DB columns:** `priority SMALLINT`, `recurrence_rule JSONB` trên `user_tasks`.
-- **Calendar integration:** Tab 📅 Lịch → click ngày → 1 danh sách "Nhiệm vụ ngày này" gồm cả task đã hoàn thành ngày đó (expandable description + giờ hoàn thành, có nút 🗑 xoá) và task sắp tới/chưa hoàn thành due ngày đó (v4.31.0). Chip trên ô ngày: xanh = có task xong, tím = chỉ có task sắp tới.
+- **Calendar integration:** Tab Lịch → click ngày → 1 danh sách "Nhiệm vụ ngày này" gồm cả task đã
+  hoàn thành ngày đó (expandable description + giờ hoàn thành, có nút xoá) và task sắp tới/chưa hoàn
+  thành due ngày đó. Chip xanh = đã xong, tím = sắp tới; ngày lễ giảm 4→3 chip để tên lễ luôn còn chỗ.
 - **Xem + xoá task đã hoàn thành (v4.31.0):** Tab 📋 Danh sách có section "✅ Đã hoàn thành" (collapsed mặc định), lọc theo ngày (`DatePickerPopover`, mặc định hôm nay) qua `getCompletedTasksRange`. Xoá task (cả ở đây lẫn trong Lịch, lẫn task pending/quá hạn/hôm nay/sắp tới ở view mode và mobile overflow menu) đều đi qua 1 `useConfirm()` dùng chung + toast xác nhận qua `ToastContext` (global, góc phải dưới).
 - **Service Worker notification:** Background check mỗi 60s → fire notification khi task đến hạn (hoạt động cả khi tab đóng, chỉ cần browser mở)
 - **Không tính XP, không tính streak, không gắn journey**

@@ -210,7 +210,8 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
             ...info.tasks.map(t => ({ ...t, _done: true })),
             ...info.pending.map(t => ({ ...t, _done: false })),
           ];
-          const shown = chips.slice(0, MAX_CHIPS);
+          const chipLimit = info.holiday ? MAX_CHIPS - 1 : MAX_CHIPS;
+          const shown = chips.slice(0, chipLimit);
 
           return (
             <div
@@ -244,8 +245,8 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
                   {shown.map(t => (
                     <span key={t.id} className={`cal-chip${t._done ? '' : ' cal-chip--pending'}`} title={t.title}>{t.title}</span>
                   ))}
-                  {chips.length > MAX_CHIPS && (
-                    <span className="cal-chip cal-chip--more">+{chips.length - MAX_CHIPS} nữa…</span>
+                  {chips.length > chipLimit && (
+                    <span className="cal-chip cal-chip--more">+{chips.length - chipLimit} nữa…</span>
                   )}
                 </span>
               )}
@@ -253,6 +254,7 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
               {info.holiday && (
                 <span className="cal-cell__holiday" title={info.holiday}>
                   <AppIcon name="star" size={11} weight="fill" />
+                  <span className="cal-cell__holiday-name">{info.holiday}</span>
                 </span>
               )}
             </div>

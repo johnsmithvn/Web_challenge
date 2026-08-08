@@ -1,10 +1,9 @@
 /**
  * TaskDetailModal — xem chi tiết 1 nhiệm vụ + lịch sử thay đổi + ghi chú cá nhân.
  *
- * CHỈ ĐỌC phần field. Sửa/Xoá/Hoàn thành đều uỷ quyền ngược về handler sẵn có
- * của TaskListSection — cố ý, để chỉ có MỘT đường ghi xuống user_tasks. Nếu
- * modal này cũng sửa field thì sẽ có 2 code path ghi cùng 1 task, và diff-log
- * của activity_logs v2 mất chokepoint duy nhất.
+ * Field chỉ đọc và form sửa đều uỷ quyền ngược về TaskListSection. Modal nhận
+ * chính editContent đang render ở list, nên vẫn chỉ có MỘT form và MỘT đường
+ * ghi xuống user_tasks / activity_logs.
  *
  * Hai tab dùng chung 1 lần fetch `getTaskLogs(taskId)`:
  *   - Hoạt động: mọi dòng `action !== 'note'`, mới nhất trước, nhóm theo ngày.
@@ -55,7 +54,7 @@ function LogValue({ value, variant, expanded, onToggle }) {
   );
 }
 
-export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onDelete }) {
+export default function TaskDetailModal({ task, onClose, onEdit, editContent, onComplete, onDelete }) {
   const { user } = useAuth();
   const { confirm, ConfirmModal } = useConfirm();
   const { getTaskLogs, addNote, updateNote, deleteLog } = useActivityLog();
@@ -167,8 +166,14 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
 
   return (
     <>
-      <GenericModal title={<><AppIcon name="file" size={17} /> Chi tiết nhiệm vụ</>} maxWidth={620} className="task-detail-modal" onClose={onClose}>
+      <GenericModal
+        title={<><AppIcon name={editContent ? 'pencil' : 'file'} size={17} /> {editContent ? 'Sửa nhiệm vụ' : 'Chi tiết nhiệm vụ'}</>}
+        maxWidth={620}
+        className="task-detail-modal"
+        onClose={onClose}
+      >
         <GenericModal.Body>
+          {editContent ? editContent : <>
           {/* ── Đầu: tick + tiêu đề, dải màu priority như trên card ── */}
           <div
             className="td-head"
@@ -180,7 +185,7 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
                 style={{ border: `2px solid ${overdue ? 'rgba(239,68,68,0.4)' : 'rgba(139,92,246,0.4)'}` }}
                 title="Hoàn thành"
                 aria-label={`Hoàn thành: ${task.title}`}
-                onClick={() => { onComplete(task.id); onClose(); }}
+                onClick={() => { onComplete(task); onClose(); }}
               />
             )}
             <h3 className={`td-title ${task.completed ? 'td-title--done' : ''}`}>{task.title}</h3>
@@ -372,16 +377,17 @@ export default function TaskDetailModal({ task, onClose, onEdit, onComplete, onD
               </>
             )}
           </div>
+          </>}
         </GenericModal.Body>
 
-        <GenericModal.Footer>
+        {!editContent && <GenericModal.Footer>
           <button className="btn btn-ghost td-btn td-btn--danger" onClick={() => { onClose(); onDelete(task); }}>
             <AppIcon name="trash" size={15} /> Xoá nhiệm vụ
           </button>
-          <button className="btn btn-ghost td-btn" onClick={() => { onClose(); onEdit(task); }}>
+          <button className="btn btn-ghost td-btn" onClick={() => onEdit(task)}>
             <AppIcon name="pencil" size={15} /> Sửa
           </button>
-        </GenericModal.Footer>
+        </GenericModal.Footer>}
       </GenericModal>
       {ConfirmModal}
     </>

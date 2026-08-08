@@ -134,6 +134,28 @@ export default function TaskListSection({ showForm, setShowForm }) {
     setCompletedList(prev => prev.filter(t => t.id !== task.id));
   }, [uncompleteTask]);
 
+  // completedList là dữ liệu tải riêng theo khoảng ngày, nên optimistic state
+  // trong useUserTasks không tự chảy vào đây. Cập nhật cả hai bằng cùng timestamp
+  // và rollback hàng lịch sử nếu Supabase từ chối thao tác.
+  const handleComplete = useCallback(async (task) => {
+    const completedAt = new Date().toISOString();
+    const completedDate = toDateStr(new Date(completedAt));
+    const appearsInRange = completedDate >= range.from && completedDate <= range.to;
+
+    if (appearsInRange) {
+      setCompletedList(prev => [
+        { ...task, completed: true, completed_at: completedAt },
+        ...prev.filter(item => item.id !== task.id),
+      ]);
+    }
+
+    const saved = await completeTask(task.id, completedAt);
+    if (!saved && appearsInRange) {
+      setCompletedList(prev => prev.filter(item => item.id !== task.id));
+    }
+    return saved;
+  }, [completeTask, range]);
+
   // Close mobile overflow menu on outside click
   useEffect(() => {
     if (!overflowTaskId) return;
@@ -215,17 +237,20 @@ export default function TaskListSection({ showForm, setShowForm }) {
       else if (editRecType === 'monthly')  recurrenceRule = { type: 'monthly',  day: editRecMonthDay };
     }
     // updateTask passes changes directly to Supabase → must be snake_case
-    await updateTask(taskId, {
+    const changes = {
       title:            editTitle.trim(),
       description:      editDesc.trim() || null,
       due_date:         editDate || toDateStr(),
       due_time:         editTime || null,
       priority:         editPriority,
       recurrence_rule:  recurrenceRule,
-    });
+    };
+    const saved = await updateTask(taskId, changes);
+    if (!saved) return;
+    setCompletedList(prev => prev.map(task => task.id === taskId ? { ...task, ...changes } : task));
 
     // Diff tags against current state → link mới thêm, unlink cái bị bỏ chọn
-    const task = [...todayTasks, ...overdueTasks, ...futureTasks].find(t => t.id === taskId);
+    const task = [...todayTasks, ...overdueTasks, ...futureTasks, ...completedList].find(t => t.id === taskId);
     const currentTagIds = (task?._tags || []).map(t => t.id);
     const toAdd = editTagIds.filter(id => !currentTagIds.includes(id));
     const toRemove = currentTagIds.filter(id => !editTagIds.includes(id));
@@ -270,9 +295,11 @@ export default function TaskListSection({ showForm, setShowForm }) {
 
   /* ── Render a single task card ── */
   const renderTask = (task, options = {}) => {
-    const { showRollover = false } = options;
+    const { showRollover = false, insideDetail = false } = options;
     const overdue = isOverdue(task);
-    const isEditing = editId === task.id;
+    // Cùng một form có thể được render ở list hoặc popup, nhưng không được hiện
+    // ở cả hai nơi cùng lúc khi popup đang sở hữu phiên sửa.
+    const isEditing = editId === task.id && (insideDetail || detailTaskId !== task.id);
     const expanded = expandedId === task.id;
 
     // Dải màu priority bên trái — quét mắt thấy ngay cái nào gấp.
@@ -373,7 +400,7 @@ export default function TaskListSection({ showForm, setShowForm }) {
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ngày</span>
                     </div>
                   )}
-                  {recType === 'weekly' && (
+                  {editRecType === 'weekly' && (
                     <div style={{ display: 'flex', gap: '0.25rem' }}>
                       {WEEKDAYS.map((day, i) => (
                         <button key={i} type="button" onClick={() => setEditRecWeekday(i)}
@@ -436,7 +463,7 @@ export default function TaskListSection({ showForm, setShowForm }) {
           <div className="task-row-view">
             {/* Checkbox */}
             {/* Animation tick nằm hoàn toàn trong CSS (:active + :hover) — không cần state React */}
-            <button onClick={() => completeTask(task.id)} id={`task-check-${task.id}`}
+            <button onClick={() => handleComplete(task)} id={`task-check-${task.id}`}
               className="task-checkbox-btn"
               style={{
                 border: `2px solid ${overdue ? 'rgba(239,68,68,0.4)' : 'rgba(139,92,246,0.4)'}`,
@@ -905,9 +932,10 @@ export default function TaskListSection({ showForm, setShowForm }) {
         return (
           <TaskDetailModal
             task={task}
-            onClose={() => setDetailTaskId(null)}
+            onClose={() => { setDetailTaskId(null); setEditId(null); }}
             onEdit={startEdit}
-            onComplete={completeTask}
+            editContent={editId === task.id ? renderTask(task, { insideDetail: true }) : null}
+            onComplete={handleComplete}
             onDelete={task.completed ? handleDeleteCompleted : handleDeleteTask}
           />
         );

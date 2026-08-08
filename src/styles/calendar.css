@@ -360,7 +360,6 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 4px;
-  padding-right: 12px; /* chừa chỗ cho ngôi sao ngày lễ ở góc */
 }
 
 .cal-cell__lunar {
@@ -449,7 +448,7 @@
   font-weight: 800;
 }
 
-/* Ngày lễ: nền vàng nhạt + viền vàng, ngôi sao góc phải trên. */
+/* Ngày lễ: nền vàng nhạt + tên lễ nằm ngay trong ô để không phải hover. */
 .cal-cell--tasks.cal-cell--holiday {
   border-color: rgba(245, 158, 11, 0.5);
   background: rgba(245, 158, 11, 0.08);
@@ -458,10 +457,23 @@
 .cal-cell--tasks.cal-cell--holiday .cal-cell__num { color: var(--gold-dim); }
 
 .cal-cell__holiday {
-  position: absolute;
-  top: 4px; right: 4px;
-  line-height: 1;
+  position: static;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1.2;
   color: var(--gold-dim);
+}
+
+.cal-cell__holiday svg { flex: 0 0 auto; }
+
+.cal-cell__holiday-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Panel chi tiết ngày */
@@ -565,4 +577,13 @@
   .cal-grid { grid-auto-rows: 84px; gap: 3px; }
   .cal-cell__lunar { font-size: 0.55rem; }
   .cal-chip { font-size: 0.55rem; }
+  .cal-cell__holiday { align-items: flex-start; font-size: 0.48rem; line-height: 1.05; }
+  .cal-cell__holiday svg { display: none; }
+  .cal-cell__holiday-name {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
 }

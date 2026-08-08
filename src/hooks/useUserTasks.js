@@ -270,9 +270,9 @@ export function useUserTasks() {
   }, [isAuth, userId, showToast, logTaskEvent]);
 
   // ── Complete task ──────────────────────────────────────
-  const completeTask = useCallback(async (taskId) => {
+  const completeTask = useCallback(async (taskId, completedAt = new Date().toISOString()) => {
     const task = tasks.find(t => t.id === taskId);
-    const now = new Date().toISOString();
+    const now = completedAt;
 
     // Optimistic
     setTasks(prev => prev.map(t =>
@@ -293,7 +293,7 @@ export function useUserTasks() {
           setTasks(prev => prev.map(t =>
             t.id === taskId ? { ...t, completed: false, completed_at: null } : t
           ));
-          return; // Don't spawn if complete failed
+          return false; // Don't spawn if complete failed
         }
 
         // Sự kiện rời rạc, KHÔNG phải field-diff `completed: false → true` —
@@ -313,8 +313,10 @@ export function useUserTasks() {
         setTasks(prev => prev.map(t =>
           t.id === taskId ? { ...t, completed: false, completed_at: null } : t
         ));
+        return false;
       }
     }
+    return true;
   }, [isAuth, userId, tasks, spawnRecurringTask, logTaskEvent, addXp]);
 
   // ── Delete task ────────────────────────────────────────
@@ -477,15 +479,17 @@ export function useUserTasks() {
         if (error) {
           logger.error('[useUserTasks] update error:', error.message);
           if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
-          return; // đã rollback → KHÔNG ghi log, tránh dòng ma
+          return false; // đã rollback → KHÔNG ghi log, tránh dòng ma
         }
 
         logFieldChanges(taskId, diffs);
       } catch (err) {
         logger.error('[useUserTasks] update exception:', err);
         if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
+        return false;
       }
     }
+    return true;
   }, [isAuth, userId, tasks, logFieldChanges]);
 
   // ── Get completed tasks in a date range (for calendar) ────────
@@ -501,7 +505,7 @@ export function useUserTasks() {
     try {
       const { data, error } = await supabase
         .from('user_tasks')
-        .select('id, title, description, priority, completed_at')
+        .select('*')
         .eq('user_id', userId)
         .eq('completed', true)
         .gte('completed_at', `${addDays(startDate, -1)}T00:00:00`)
