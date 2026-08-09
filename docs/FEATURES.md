@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub (Personal Life OS)
-**Version:** v4.26.1
-**Updated:** 2026-07-28
+**Version:** v6.2.0
+**Updated:** 2026-08-09
 **Rule:** File này PHẢI được cập nhật mỗi khi thêm hoặc sửa tính năng.
 
 **Cấu trúc file:** §1–§27 = tính năng **đang chạy**, số thứ tự duy nhất và tăng dần.
@@ -330,15 +330,17 @@ KHÔNG xoá localStorage — dữ liệu vẫn nằm trong trình duyệt nhưng
 
 **Added:** v3.7.0
 **Files:** `src/hooks/useTags.js`, `src/components/TagPicker.jsx`
-**DB:** `tags`, `finance_transaction_tags` (v6.0.0), `collection_tags` (§27), `task_tags` (v4.31.0), `account_tags` (v5.1.0)
+**DB:** `tags`, `finance_transaction_tags` (v6.0.0), `collection_tags` (§27), `task_tags` (v4.31.0)
 
-**Mô tả:** Hệ thống tag trung tâm dùng chung cho giao dịch (v6.0.0), collections (§27), tasks (v4.31.0) và accounts. Mỗi user có bộ tags riêng.
+**Mô tả:** Hệ thống tag trung tâm dùng chung cho giao dịch (v6.0.0), collections (§27) và tasks
+(v4.31.0). Từ v6.2.0, tag của Vault nằm trong ciphertext của từng item nên không tham gia hệ tag
+plaintext dùng chung.
 
 **Chi tiết:**
-- `useTags` hook: fetchTags, addTag (upsert), deleteTag, linkTag, unlinkTag, `getTagUsageBreakdown` — `ENTITY_CONFIG` hỗ trợ 4 loại: `finance`, `collection`, `task`, `account`
+- `useTags` hook: fetchTags, addTag (upsert), deleteTag, linkTag, unlinkTag, `getTagUsageBreakdown` — `ENTITY_CONFIG` hỗ trợ `finance`, `collection`, `task`
 - `TagPicker` component: searchable dropdown, multi-select toggle, inline tạo tag mới bằng Enter
-- Tích hợp vào module Finance (chi tiết giao dịch), CollectPage (§27), TaskListSection, Vault
-- Tags link qua junction tables (finance_transaction_tags, collection_tags, task_tags, account_tags)
+- Tích hợp vào module Finance (chi tiết giao dịch), CollectPage (§27), TaskListSection
+- Tags link qua junction tables (finance_transaction_tags, collection_tags, task_tags)
 - Task dùng optimistic wrapper riêng (`linkTaskTag`/`unlinkTaskTag` trong `useUserTasks.js`) thay vì gọi `useTags.linkTag` trực tiếp — cần sync state `task._tags` ngay để hiện badge, `useTags` không giữ state đó
 - RLS policies đảm bảo user chỉ thấy tags của mình
 
@@ -594,7 +596,7 @@ history nếu đổi ý.
 | Inbox / Knowledge | `collections` (+ groups/notes/tags) | — (cần login) |
 | Finance | `finance_transactions` + 8 bảng `finance_*` (v6.0.0) | — (cần login, cố ý không có guest mode) |
 | Incubator | `intentions`, `intention_logs` | — (cần login) |
-| Vault | `accounts`, `account_fields`, `account_auth`, `account_codes`, `account_logs`, `account_tags` | — (cần login, cố ý không có guest mode) |
+| Vault | `accounts` (ciphertext/item) + `vault_config` (wrapped DEK/user) | — (cần login, cố ý không có guest mode) |
 | Notifications | `notification_settings` + `vl_notif_settings` | localStorage |
 | Life milestones | `vl_life_journey_events` (localStorage-only) | localStorage |
 
@@ -635,7 +637,7 @@ một app không bán.
 | `/incubator` | IncubatorPage | ✅ |
 | `/settings` | SettingsPage | ✅ |
 | `/focus` | FocusPage | ❌ |
-| `/accounts` | AccountsPage (v5.2.0) | ✅ |
+| `/accounts` | AccountsPage (Vault mã hóa v6.2.0) | ✅ |
 | `/tracker`, `/habits`, `/dashboard`, `/journey` | `<Navigate to="/tasks">` (route đã gỡ) | — |
 | `*` | LandingPage (catch-all) | ❌ |
 
@@ -643,19 +645,26 @@ Auth ✅ = trang tự hiện empty/login state khi guest (không có route guard
 
 ---
 
-## 29. 🔐 Vault (`/accounts`) — v5.2.0 (thiết kế Keyplate)
+## 29. 🔐 Vault (`/accounts`) — v6.2.0 (full-content encryption)
 
 **Files:** `src/pages/AccountsPage.jsx` · `src/components/AccountDetail.jsx` ·
-`src/hooks/useAccounts.js` · `src/utils/vaultLogic.js` (+ test) ·
+`src/hooks/useAccounts.js` · `src/utils/vaultCrypto.js` · `src/utils/vaultLogic.js` (+ test) ·
 `src/data/account-templates.json` · `src/styles/accounts.css`
 
 **Mô tả:** Vault lưu **mọi thứ về một tài khoản**, không chỉ mật khẩu — dựng theo bản thiết kế
 Keyplate. Một *item* gồm field theo loại, phương thức đăng nhập, sheet mã dự phòng và lịch sử thay
 đổi. Chữ trên UI giữ **tiếng Anh** đúng bản thiết kế (khác phần còn lại của app).
 
-> ⚠️ **CHƯA mã hoá.** `account_fields.value` là plaintext trong Supabase; type `password`/`secret`
-> chỉ mask trên UI. Banner cảnh báo trên trang là **cố ý**, đừng gỡ khi chưa xong envelope
-> encryption (`docs/DESIGN_ACCOUNT_VAULT.md`).
+**Mã hóa v6.2:** mỗi item là một JSON AES-256-GCM chứa `title`, `tpl`, `favorite`, `notes`,
+`tags`, `fields`, `auth`, `codes` và `log`. PBKDF2-SHA256 600.000 vòng biến Vault
+passphrase thành KEK; KEK chỉ dùng để mở DEK ngẫu nhiên riêng của user. Supabase chỉ giữ ciphertext,
+nonce, version, owner/timestamps và DEK đã bọc trong `vault_config`; passphrase, KEK và DEK thô
+không được lưu. AES-GCM AAD khóa config theo user và item theo user + item id để chặn tráo ciphertext.
+
+**Trạng thái khóa:** user mới tạo passphrase riêng tối thiểu 12 ký tự; user cũ phải unlock trước khi
+query/decrypt danh sách. Khóa thủ công, sign-out hoặc reload sẽ xóa DEK khỏi memory, xóa item khỏi
+React state và không còn title/metadata nội dung trong DOM. Sai passphrase hoặc item hỏng không làm
+thay đổi ciphertext; item hỏng bị bỏ khỏi danh sách và hiện cảnh báo.
 
 **Bố cục (breakpoint 900px, xử lý hoàn toàn bằng CSS):**
 - **Header:** brand "Keyplate · Vault 01" · ô search · nút New item.
@@ -672,7 +681,7 @@ Keyplate. Một *item* gồm field theo loại, phương thức đăng nhập, s
 → **History** → footer meta ("Updated … · N fields · N sign-in methods" + Delete item).
 
 **10 loại field** (`vaultLogic.TYPES`): `text` · `password` (mask, có **strength bar**, có nút
-Generate nhưng **disable** tới khi có mã hoá) · `secret` (mask, **không** chấm điểm — PIN/CVV/số
+Generate dùng CSPRNG của Web Crypto) · `secret` (mask, **không** chấm điểm — PIN/CVV/số
 giấy tờ) · `url` · `email` · `phone` · `multi` (nhiều giá trị, index 0 là primary) · `link` (**nhiều
 link/field**, mỗi link mượn 1 giá trị của item đích) · `number` · `date`. `password` và `secret`
 **không gộp** — đó là phân biệt sản phẩm dựa vào.
@@ -682,7 +691,7 @@ vault, mỗi chip hiện mã 3 chữ + tiêu đề + giá trị mượn + `↗`,
 hiện chip xám **"Missing item / link broken"** (jsonb không FK — hành vi đặc tả, không phải lỗi).
 
 **Phương thức đăng nhập** (9 kiểu: password/prompt/totp/passkey/sms/key/codes/email/oauth): mỗi item
-nhiều phương thức, **đúng ≤1 primary** (DB ép). Bật/tắt/đặt-primary được ngay ngoài chế độ sửa và
+nhiều phương thức, **đúng ≤1 primary** (hook hạ primary cũ trước). Bật/tắt/đặt-primary được ngay ngoài chế độ sửa và
 **ghi log tức thì**. Thêm phương thức `codes` mà item chưa có sheet → tự sinh 10 mã.
 
 **Sheet mã dự phòng dùng 1 lần:** hiện "N of M unused", Reveal/Copy sheet/Regenerate. Đánh dấu một
@@ -691,8 +700,8 @@ từ nhà cung cấp, parser giữ khoảng trắng trong mã (Google `1234 5678
 
 **Sửa inline + lịch sử:** "Edit" clone item vào draft cục bộ, mọi thao tác sửa draft, "Save changes"
 đẩy lên. `diffLog` chạy **trong hook** (`useAccounts.saveItem`) — không có đường lưu mà không ghi
-log. Log **append-only** (RLS chặn UPDATE/DELETE), mask secret = `•` × min(len,24), **không bao giờ**
-ghi giá trị thật. History hiện 4 dòng mới nhất + "Show all N".
+log. Log được lưu trong cùng ciphertext, giới hạn 500 entry/item; `diffLog` vẫn mask secret =
+`•` × min(len,24) trước khi ghi. History hiện 4 dòng mới nhất + "Show all N".
 
 **Tạo item:** New item → chọn 1 trong 10 template (LGN/ACC/CRD/IDN/NTE/API/WIF/DBS/SRV/LIC) → item
 mới có sẵn bộ field + phương thức đăng nhập + sheet mã đúng theo template.
@@ -700,12 +709,9 @@ mới có sẵn bộ field + phương thức đăng nhập + sheet mã đúng th
 **Tìm & lọc:** search theo tiêu đề / tag / ghi chú / nhãn field / giá trị field **không phải
 secret** (`matchesQuery`); filter theo template và theo tag.
 
-**Tag:** ở chế độ sửa, **toàn bộ tag của hệ thống** liệt kê thành hàng chip bật/tắt (`TagEditor`
-trong `AccountDetail.jsx`) + ô tạo tag mới ngay tại đó. Cố ý **không** dùng `TagPicker` dùng chung
-— trigger của nó là chữ "+ Tag" 11px không viền, style inline nên CSS vault đè không được, trên nền
-vault gần như vô hình. Hàng chip cũng bỏ được popover: không outside-click, không z-index, không bị
-pane `overflow-y: auto` cắt. Hàng **Tags** ở filter bar thì **chỉ** liệt kê tag đang gắn trên item
-của vault — bấm tag chưa item nào dùng thì chỉ ra danh sách rỗng.
+**Tag:** tag Vault là chuỗi nằm trong ciphertext của item, không còn dùng `tags`/`account_tags`
+plaintext. Ở chế độ sửa, `TagEditor` cho bật/tắt tag đã thấy trong các item đã giải mã và tạo tag
+mới trong memory; save sẽ mã hóa lại cả item. Filter chỉ chạy sau unlock trên dữ liệu đã giải mã.
 
 **UX của việc tạo item:** dialog **ở nguyên** trong lúc tạo, card được bấm hiện "Creating…", các
 card khác disable (chặn double-click sinh 2 item). Xong thì mở item và vào **thẳng chế độ sửa**, con
@@ -723,12 +729,12 @@ dùng dịch vụ nào. Nút **Logos** ở header tắt hẳn việc gọi ảnh
 tắt là trang không phát request nào ra ngoài. Site không có icon → rơi về chữ cái, **console có
 404 là bình thường, không phải bug**. Mã 3 chữ của template vẫn hiện dạng badge nhỏ cạnh tiêu đề.
 
-**Data source:** `accounts`, `account_fields`, `account_auth`, `account_codes`, `account_logs`,
-`account_tags` (Supabase). **Không có guest mode** — vault mất khi refresh thì vô nghĩa, chưa đăng
-nhập thì trang hiện lời nhắc đăng nhập.
+**Data source:** `accounts` (một ciphertext/item) + `vault_config` (một wrapped DEK/user) trên
+Supabase. **Không có guest mode** — chưa đăng nhập thì trang hiện lời nhắc đăng nhập.
 
-**Chưa làm:** mã hoá client-side (envelope encryption), auto-lock timer, TOTP thật cho phương thức
-authenticator, clipboard auto-clear, export/restore, dọn link mồ côi khi xoá item.
+**Chưa làm:** reset/recovery/đổi passphrase, export/restore, rotate DEK hoặc nâng version hàng loạt,
+auto-lock timer, TOTP thật, clipboard auto-clear và dọn link mồ côi. Vì chưa có recovery/export,
+không dùng Vault làm bản lưu duy nhất của bí mật không thể cấp lại.
 
 ---
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  TYPES, TYPE_HINT, isSecretType, scorePassword, parseCodes, codeSheet,
+  TYPES, TYPE_HINT, isSecretType, scorePassword, generatePassword, parseCodes, codeSheet,
   linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
@@ -25,9 +25,8 @@ import AppIcon from './AppIcon';
  * ⚠️ CỐ Ý lệch RULES §4 (CustomSelect / GenericModal): vault có bộ token riêng,
  *    hai component đó kéo style Life Hub vào và phá fidelity.
  *
- * ⚠️ Generator mật khẩu CỐ Ý bị disable: cột value còn plaintext, sinh mật khẩu
- *    thật để user dùng rồi lưu plaintext là sai. Bật khi xong mã hoá. Strength
- *    bar chỉ đọc nên vô hại, vẫn hiện.
+ * Password generation is enabled because the complete item now reaches Supabase
+ * only as an authenticated encrypted payload.
  */
 
 const { templates: TEMPLATES, authKinds: AUTH_KINDS } = ACCOUNT_TEMPLATES;
@@ -416,7 +415,9 @@ function FieldRow({ field: f, idx, editing, items, ownerId, revealed, copied,
           </button>
         )}
         {editing && f.type === 'password' && (
-          <button className="acc-act" disabled title="Enabled once vault encryption ships">
+          <button className="acc-act" onClick={() => patch((d) => {
+            d.fields[idx].value = generatePassword();
+          })}>
             Generate
           </button>
         )}
@@ -541,6 +542,8 @@ function ViewValue({ field: f, items, revealed, copied, onCopy, onOpen }) {
 
 /* ── Giá trị field ở chế độ SỬA ── */
 function EditValue({ field: f, idx, items, ownerId, patch }) {
+  const [showSensitive, setShowSensitive] = useState(false);
+
   if (f.type === 'multi') {
     const values = f.values || [];
     return (
@@ -568,17 +571,30 @@ function EditValue({ field: f, idx, items, ownerId, patch }) {
     return <LinkEditor field={f} idx={idx} items={items} ownerId={ownerId} patch={patch} />;
   }
 
-  // Ô thường: password/secret cũng dùng input text (đang sửa thì phải thấy)
-  const type = f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text';
+  const sensitive = isSecretType(f.type);
+  const type = sensitive && !showSensitive
+    ? 'password'
+    : f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text';
   return (
-    <input
-      className="acc-input" type={type}
-      value={f.value}
-      onChange={(e) => patch((d) => { d.fields[idx].value = e.target.value; })}
-      placeholder={placeholderFor(f.type)}
-      aria-label="Field value"
-      inputMode={f.type === 'phone' ? 'tel' : f.type === 'url' ? 'url' : f.type === 'email' ? 'email' : undefined}
-    />
+    <div className="acc-editvalue">
+      <input
+        className="acc-input" type={type}
+        value={f.value}
+        onChange={(e) => patch((d) => { d.fields[idx].value = e.target.value; })}
+        placeholder={placeholderFor(f.type)}
+        aria-label="Field value"
+        inputMode={f.type === 'phone' ? 'tel' : f.type === 'url' ? 'url' : f.type === 'email' ? 'email' : undefined}
+        autoComplete={sensitive ? 'new-password' : undefined}
+        autoCorrect={sensitive ? 'off' : undefined}
+        autoCapitalize={sensitive ? 'none' : undefined}
+        spellCheck={sensitive ? false : undefined}
+      />
+      {sensitive && (
+        <button type="button" className="acc-act" onClick={() => setShowSensitive((value) => !value)}>
+          {showSensitive ? 'Hide' : 'Reveal'}
+        </button>
+      )}
+    </div>
   );
 }
 

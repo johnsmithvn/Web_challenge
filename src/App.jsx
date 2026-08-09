@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Navbar from './components/Navbar';
 import QuickCapture from './components/QuickCapture';
@@ -50,6 +50,7 @@ function PageMeta() {
 // ── App Shell ──────────────────────────────────────────────────────
 function AppShell() {
   const { shouldShow } = useOnboarding();
+  const { user } = useAuth();
   const [onboarded, setOnboarded] = useState(!shouldShow);
   const location = useLocation();
 
@@ -73,7 +74,7 @@ function AppShell() {
                 <Route path="/finance"          element={<FinancePage />} />
                 <Route path="/finance/:screen"  element={<FinancePage />} />
                 <Route path="/incubator"    element={<IncubatorPage />} />
-                <Route path="/accounts"     element={<AccountsPage />} />
+                <Route path="/accounts"     element={<AccountsPage key={user?.id || 'guest'} />} />
                 <Route path="/settings"     element={<SettingsPage />} />
                 <Route path="/focus"        element={<FocusPage />} />
                 {/* Redirect của các route đã gỡ. Giữ lại để link/bookmark cũ

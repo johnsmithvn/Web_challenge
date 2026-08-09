@@ -1,0 +1,201 @@
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+export const VAULT_ENCRYPTION_VERSION = 1;
+export const VAULT_KDF_ALGORITHM = 'PBKDF2-SHA256';
+export const VAULT_KDF_ITERATIONS = 600_000;
+export const VAULT_MIN_PASSPHRASE_LENGTH = 12;
+
+const MAX_KDF_ITERATIONS = 5_000_000;
+const SALT_BYTES = 16;
+const NONCE_BYTES = 12;
+const KEY_BYTES = 32;
+
+function randomBytes(length) {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return bytes;
+}
+
+function toBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function fromBase64(value, label) {
+  if (typeof value !== 'string' || !value) throw new Error(`Invalid ${label}`);
+  try {
+    return Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
+  } catch {
+    throw new Error(`Invalid ${label}`);
+  }
+}
+
+function requireId(value, label) {
+  if (typeof value !== 'string' || !value) throw new Error(`${label} is required`);
+}
+
+function keyAad(userId, version) {
+  return encoder.encode(`vault-key|v${version}|${userId}`);
+}
+
+function itemAad(userId, itemId, version) {
+  return encoder.encode(`vault-item|v${version}|${userId}|${itemId}`);
+}
+
+function validateConfig(config) {
+  if (!config || config.kdf_algorithm !== VAULT_KDF_ALGORITHM) {
+    throw new Error('Unsupported vault KDF');
+  }
+  if (config.encryption_version !== VAULT_ENCRYPTION_VERSION) {
+    throw new Error('Unsupported vault encryption version');
+  }
+  if (!Number.isInteger(config.kdf_iterations)
+    || config.kdf_iterations < VAULT_KDF_ITERATIONS
+    || config.kdf_iterations > MAX_KDF_ITERATIONS) {
+    throw new Error('Invalid vault KDF iterations');
+  }
+}
+
+export function validateVaultPassphrase(passphrase) {
+  if (typeof passphrase !== 'string' || passphrase.length < VAULT_MIN_PASSPHRASE_LENGTH) {
+    throw new Error(`Vault passphrase must be at least ${VAULT_MIN_PASSPHRASE_LENGTH} characters`);
+  }
+}
+
+async function deriveKek(passphrase, salt, iterations) {
+  const material = await crypto.subtle.importKey(
+    'raw', encoder.encode(passphrase), 'PBKDF2', false, ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    material,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function importDek(raw) {
+  if (raw.byteLength !== KEY_BYTES) throw new Error('Invalid vault key');
+  return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+/** Create the per-user DEK and wrap it with a passphrase-derived KEK. */
+export async function createVaultConfig(passphrase, userId) {
+  validateVaultPassphrase(passphrase);
+  requireId(userId, 'userId');
+
+  const version = VAULT_ENCRYPTION_VERSION;
+  const salt = randomBytes(SALT_BYTES);
+  const wrapNonce = randomBytes(NONCE_BYTES);
+  const rawDek = randomBytes(KEY_BYTES);
+  const kek = await deriveKek(passphrase, salt, VAULT_KDF_ITERATIONS);
+  const wrapped = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: wrapNonce, additionalData: keyAad(userId, version) },
+    kek,
+    rawDek
+  );
+
+  return {
+    key: await importDek(rawDek),
+    config: {
+      user_id: userId,
+      kdf_algorithm: VAULT_KDF_ALGORITHM,
+      kdf_salt: toBase64(salt),
+      kdf_iterations: VAULT_KDF_ITERATIONS,
+      wrapped_key: toBase64(new Uint8Array(wrapped)),
+      wrapped_key_nonce: toBase64(wrapNonce),
+      encryption_version: version,
+    },
+  };
+}
+
+/** Derive the KEK again and unwrap the in-memory DEK. */
+export async function unlockVaultKey(passphrase, userId, config) {
+  validateVaultPassphrase(passphrase);
+  requireId(userId, 'userId');
+  validateConfig(config);
+
+  const salt = fromBase64(config.kdf_salt, 'KDF salt');
+  const nonce = fromBase64(config.wrapped_key_nonce, 'wrapped key nonce');
+  const wrapped = fromBase64(config.wrapped_key, 'wrapped key');
+  if (salt.byteLength !== SALT_BYTES || nonce.byteLength !== NONCE_BYTES) {
+    throw new Error('Invalid vault configuration');
+  }
+
+  try {
+    const kek = await deriveKek(passphrase, salt, config.kdf_iterations);
+    const rawDek = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: nonce,
+        additionalData: keyAad(userId, config.encryption_version),
+      },
+      kek,
+      wrapped
+    );
+    return importDek(new Uint8Array(rawDek));
+  } catch {
+    throw new Error('Wrong passphrase or damaged vault configuration');
+  }
+}
+
+/** Encrypt one complete Vault item. Every user-authored property stays inside payload. */
+export async function encryptVaultItem(key, userId, itemId, payload) {
+  requireId(userId, 'userId');
+  requireId(itemId, 'itemId');
+  if (!key) throw new Error('Vault is locked');
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('Invalid vault item payload');
+  }
+
+  const version = VAULT_ENCRYPTION_VERSION;
+  const nonce = randomBytes(NONCE_BYTES);
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: nonce, additionalData: itemAad(userId, itemId, version) },
+    key,
+    encoder.encode(JSON.stringify(payload))
+  );
+  return {
+    encrypted_payload: toBase64(new Uint8Array(ciphertext)),
+    encryption_nonce: toBase64(nonce),
+    encryption_version: version,
+  };
+}
+
+/** Decrypt one row and authenticate its user/id/version binding through AES-GCM AAD. */
+export async function decryptVaultItem(key, userId, row) {
+  requireId(userId, 'userId');
+  requireId(row?.id, 'itemId');
+  if (!key) throw new Error('Vault is locked');
+  if (row.encryption_version !== VAULT_ENCRYPTION_VERSION) {
+    throw new Error('Unsupported vault item version');
+  }
+
+  const nonce = fromBase64(row.encryption_nonce, 'item nonce');
+  if (nonce.byteLength !== NONCE_BYTES) throw new Error('Invalid item nonce');
+
+  try {
+    const plaintext = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: nonce,
+        additionalData: itemAad(userId, row.id, row.encryption_version),
+      },
+      key,
+      fromBase64(row.encrypted_payload, 'encrypted payload')
+    );
+    const payload = JSON.parse(decoder.decode(plaintext));
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('Invalid vault item payload');
+    }
+    return payload;
+  } catch (error) {
+    if (error.message === 'Invalid vault item payload') throw error;
+    throw new Error(`Could not decrypt vault item ${row.id}`);
+  }
+}

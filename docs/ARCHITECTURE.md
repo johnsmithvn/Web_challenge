@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub (Personal Life OS)
-**Version:** v4.26.1
-**Updated:** 2026-07-28
+**Version:** v6.2.0
+**Updated:** 2026-08-09
 **Rule:** Cập nhật file này mỗi khi thêm page, hook, hoặc thay đổi data flow.
 
 
@@ -38,11 +38,8 @@ src/
 ├── contexts/     (3) AuthContext, ThemeContext, ToastContext
 ├── extensions/   (1) MediaNode.jsx — Tiptap atom node cho media inline
 ├── lib/          (1) supabase.js — singleton client, graceful fallback khi thiếu env
-├── utils/       (10) vaultLogic, financeLogic, currencyUtils, dateUtils, logger,
-│                     mediaUtils, recurrenceUtils, taskFields, lunarUtils (pure, no React)
-│                 (+2) dateUtils.test.js, mediaUtils.test.js — self-check `npm test`
-├── __tests__/    (8) recurrenceUtils, taskFields, taskUiContract, vaultLogic,
-│                     financeLogic, financeMigration, currencyInput, lunarUtils — `npm test`
+├── utils/            pure logic, gồm vaultLogic + vaultCrypto (Web Crypto, no React)
+├── __tests__/        self-check chạy qua `npm test`, gồm crypto/tamper/database contracts
 ├── data/         (5) JSON content tĩnh (Rule 14): quotes, finance-categories,
 │                     knowledge, ui-strings, holidays
 └── styles/      (25) 1 file / domain + global.css (design tokens). Không dùng Tailwind
@@ -91,9 +88,10 @@ requires a manual refresh and cannot display a timestamp different from the task
 > **v1.6.2+:** Toàn bộ **user data** dùng Supabase làm primary.
 > localStorage chỉ còn **UI state flags**, **settings**, và các **ngoại lệ legacy được ghi rõ** (xem Rule bên dưới).
 
-> **Ngoại lệ có chủ ý — `useAccounts` (v5.2.0) KHÔNG có nhánh guest.** Hồ sơ tài khoản mà mất khi
-> refresh thì vô nghĩa, và đây là dữ liệu riêng tư nhất trong app. Chưa đăng nhập → `/accounts` hiện
-> lời nhắc đăng nhập, không có in-memory fallback. Đừng "sửa" cho khớp pattern.
+> **Ngoại lệ có chủ ý — `useAccounts` (v6.2.0) KHÔNG có nhánh guest.** Chưa đăng nhập →
+> `/accounts` hiện lời nhắc đăng nhập. Khi đã đăng nhập, hook chỉ tải `vault_config` trước; danh
+> sách ciphertext chỉ được query/decrypt sau unlock. Raw DEK chỉ nằm trong một React ref và biến mất
+> khi lock, sign-out hoặc reload.
 
 ### localStorage Keys
 
@@ -130,10 +128,9 @@ vl_acc_favicon         # "0" = tắt tải logo dịch vụ ở /accounts (mặc
 
 ### Supabase Tables
 
-Không liệt kê lại ở đây — **`docs/DATABASE.md`** là nơi duy nhất mô tả bảng, còn
-**`data/schema_v4.24.0.sql`** là source of truth (**18 `CREATE TABLE`**, tất cả đều đang dùng — v5.0.0 đã DROP 12 bảng chết/đã gỡ feature).
-v5.2.0 thêm 6 bảng vault qua **`data/migration_v5.2.0_vault.sql`** — file này **chưa gộp vào master** (RULES §3), tổng thực tế trên DB là **24 bảng**.
-Các file `migration_*.sql` theo version đã bị gộp và xoá; đừng tham chiếu chúng nữa.
+Không liệt kê cột lại ở đây — **`docs/DATABASE.md`** mô tả schema. Fresh install chạy lần lượt
+`data/schema_v4.24.0.sql` → Vault v5.2 → Finance v6.0 → Vault encryption v6.2; xem runbook duy
+nhất ở `README.md`. Migration v6.2 chỉ cutover khi `accounts` trống.
 
 Cụm bảng theo domain:
 
@@ -143,8 +140,8 @@ Cụm bảng theo domain:
 | Knowledge | `collections`, `collection_tags`, `collection_notes`, `inspirational_quotes` |
 | Finance (v6.0.0) | 10 bảng `finance_*` gồm transactions/bills/loans/cards/saving_goals/deposits/income_rules/shortcuts/budgets/category_overrides + `finance_transaction_tags`. Hook `useFinance`, logic `financeLogic`, 5 màn `components/finance/*`; Ngân sách/Thống kê nằm trong Tổng quan; route `/finance/:screen` |
 | Incubator | `intentions`, `intention_logs` |
-| Account Vault | `accounts`, `account_fields` (field theo loại; multi/link là jsonb), `account_auth`, `account_codes`, `account_logs` (append-only), `account_tags` — **v5.2.0, plaintext, chưa mã hoá** |
-| Tags | `tags` + 5 junction + VIEW `tagged_items` |
+| Account Vault | `accounts` (ciphertext, nonce, version, owner/timestamps) + `vault_config` (KDF metadata + wrapped DEK) — **v6.2.0 full-content encryption** |
+| Tags | `tags` + junction cho collection/task/finance + VIEW `tagged_items`; Vault tags nằm trong ciphertext |
 | Focus | `focus_sessions` |
 | Gamification | `xp_logs` |
 | Account | `profiles` |
@@ -174,7 +171,7 @@ của quy tắc "component không gọi supabase"). Gỡ trang này cũng gỡ l
 | `/team` | Inline redirect → `/tracker` | — | — |
 | `/friends` | Inline redirect → `/tracker` | — | — |
 | `/incubator` | IncubatorPage | Required | Lazy |
-| `/accounts` | AccountsPage (v5.2.0 — vault Keyplate, 2 pane) | Required | Lazy |
+| `/accounts` | AccountsPage (v6.2.0 — encrypted Vault, setup/lock/unlock + 2 pane) | Required | Lazy |
 | `/settings` | SettingsPage | Required | Lazy |
 
 

@@ -174,3 +174,21 @@ For architecture decisions, historical context, previous bugs, conventions, and 
   (`github.com/johnsmithvn/Web_challenge.git`) — not from the folder name `Web_Update`.
 - Use the `engram` CLI only for admin commands missing from the `--tools=agent` profile:
   `engram delete`, `engram stats`, `engram projects list`, `engram doctor`.
+
+---
+
+# 🚨 CẤM TUYỆT ĐỐI: XOÁ / RESET DATABASE
+
+> **⛔ LUẬT ƯU TIÊN CAO NHẤT — KHÔNG NGOẠI LỆ.**
+
+**KHÔNG BAO GIỜ được chạy** các lệnh phá huỷ data mà không hỏi người dùng:
+
+- `supabase db reset` — xoá sạch DB
+- `DROP DATABASE` / `DROP SCHEMA ... CASCADE`
+- `TRUNCATE` / `DELETE FROM ... WHERE true`
+
+**PHẢI** giải thích rõ lệnh sẽ làm gì → cảnh báo mất data → **hỏi xin phép** trước khi chạy.
+
+Cách đúng để cập nhật DB: chạy file migration SQL trực tiếp (`psql -f`), **không** reset.
+
+Chi tiết đầy đủ: xem `docs/RULES.md` mục **#17**.

@@ -1,179 +1,226 @@
-# DESIGN — Vault: mã hoá client-side (việc tương lai)
+# DESIGN — Vault v6.2 full-content encryption
 
-**Trạng thái:** 🔜 Milestone kế tiếp — thiết kế đã review kỹ, **CHƯA code**.
+**Trạng thái:** ✅ code + local DB + automated tests + authenticated browser/RLS smoke đã xong.
+**Production:** ⏳ chưa áp dụng; user tự chạy migration/deploy theo README.
 
-> **Phạm vi file này CHỈ còn phần mã hoá.** UI + metadata của vault đã làm xong ở v5.2.0 theo
-> **bản thiết kế Keyplate** (bundle `design_handoff_keyplate_vault`) — mô tả trạng thái hiện tại ở
-> `FEATURES.md §29`, `DATABASE.md`, `DESIGN.md § "Account vault"`. Phần thiết kế Account Vault
-> "Phase A" cũ (bản tổ chức đơn giản, `account_relationships`, cột cứng, nhắc hạn đăng nhập) đã
-> **bỏ khỏi file này** vì lỗi thời — nó tả một module chưa từng deploy và đã bị thay hoàn toàn.
->
-> Giữ lại: thiết kế **envelope encryption** dưới đây — vẫn đúng, chỉ chưa tới lượt làm. Đây là mục
-> "Not in the prototype" số một của bản handoff Keyplate: prototype không có persistence, mã hoá
-> hay màn khoá.
+Vault v6.2 thay thiết kế mã hóa chọn lọc trước đây. Không còn `account_secrets`, không giữ title,
+username, URL, notes, tags hoặc log ở plaintext. Mỗi account là **một JSON payload được mã hóa toàn bộ**
+trên trình duyệt trước khi gửi Supabase.
 
 ---
 
-## 0. Vì sao không dùng sẵn giải pháp có sẵn
+## 1. Phạm vi được mã hóa
 
-Giữ lại để không đề xuất lại:
+Payload schema v1 của một account gồm:
 
-| Phương án | Vì sao loại |
-|---|---|
-| Bitwarden (secret) + Baserow tự host qua Tailscale (metadata) | Đúng nhưng cần 2 app + hạ tầng riêng (VPS/Docker/Tailscale). User muốn 1 app duy nhất. |
-| Mã hoá "cho có" — key giải mã ở server (Vercel env) | Chỉ chống "DB leak mà server không bị đụng", **không** chống server/API bị compromise. |
-| Đồng bộ với Vaultwarden qua API | Bitwarden **cố tình không có API đọc secret cho personal vault**; lách qua export/CLI = 2 nguồn sự thật. |
-| Clone crypto của Bitwarden | Gắn chặt vào model tài khoản/tổ chức của họ; dính license GPL/AGPL. |
-
-Kết luận: tự viết lõi mã hoá theo pattern chuẩn (`crypto.subtle`), zero-knowledge **đối với
-database/server** — không tuyên bố tương đương Bitwarden về tổng thể (xem §4 rủi ro).
-
----
-
-## 1. Nguyên tắc kiến trúc cốt lõi
-
-1. **2 lớp dữ liệu, xử lý khác nhau, cùng trong Web_Update:**
-   - **Metadata** (đang có ở v5.2.0: `account_fields.value` plaintext) → không nhạy cảm, để nguyên.
-   - **Secret** (nhạy cảm) → mã hoá **client-side** trước khi gửi Supabase. Server không bao giờ
-     thấy plaintext, không giữ key giải mã.
-
-2. **Envelope encryption (KEK/DEK)** — không mã hoá thẳng bằng key derive từ passphrase:
-
-   ```
-   Vault passphrase
-       ↓ KDF (Argon2id hoặc PBKDF2 — xem §5)
-   KEK — Key Encryption Key
-       ↓ unwrap
-   Vault Key (DEK) — random, sinh 1 lần lúc setup
-       ↓ encrypt
-   Toàn bộ secret
-   ```
-
-   Lý do: đổi passphrase chỉ cần unwrap DEK bằng KEK cũ → derive KEK mới → wrap lại cùng DEK, không
-   phải giải mã + mã hoá lại toàn bộ secret.
-
-3. **Vault passphrase riêng** — khác mật khẩu đăng nhập Supabase Auth, không bao giờ gửi lên server.
-
-4. **Không có cách khôi phục nếu quên passphrase** — chấp nhận, giống Bitwarden mất master password.
-   Khác với "nghi bị lộ DEK" → phải rotate DEK (đắt hơn, tách khỏi việc đổi passphrase).
-
-5. **Mỗi lần mã hoá phải có AAD, không chỉ nonce.** AES-GCM là AEAD — dùng `additionalData` gắn
-   ciphertext vào đúng bản ghi (`user_id|account_id|secret_id|secret_type|encryption_version`).
-   Thiếu AAD thì tráo ciphertext giữa 2 record vẫn "giải mã thành công" ở sai vị trí. AAD tái tạo
-   được từ các cột của row, không lưu riêng.
-
-6. **Không thêm dependency cho Web Crypto cơ bản.** `crypto.subtle` có sẵn, hỗ trợ `PBKDF2` +
-   `AES-256-GCM`. Chỉ cần 1 thư viện WASM nhỏ nếu chọn Argon2id (xem §5).
-
-7. **Session unlock, không luôn-mở.** DEK sau khi unwrap chỉ ở memory (React context) cho phiên
-   hiện tại. Khoá lại = bỏ mọi reference + khoá UI. **Không hứa "xoá sạch khỏi RAM"** — JS không
-   đảm bảo zero-out; best-effort ở tầng ứng dụng. (Header hiện ghi "no auto-lock yet".)
-
----
-
-## 2. Data model bổ sung cho secret
-
-Ở v5.2.0, giá trị secret nằm ở `account_fields.value` (plaintext, type `password`/`secret`). Khi
-làm mã hoá, giá trị secret **chuyển sang bảng mã hoá riêng**, `account_fields` chỉ giữ `label` +
-`type` làm placeholder tham chiếu (giá trị plaintext bị xoá).
-
-### `account_secrets`
-
-```sql
-CREATE TABLE IF NOT EXISTS account_secrets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-  field_id UUID REFERENCES account_fields(id) ON DELETE CASCADE, -- field placeholder tương ứng
-  secret_type TEXT NOT NULL,       -- password | secret | recovery_code | ...
-  ciphertext TEXT NOT NULL,        -- base64, AES-256-GCM
-  nonce TEXT NOT NULL,             -- base64, PHẢI unique mỗi lần encrypt
-  encryption_version SMALLINT NOT NULL DEFAULT 1,
-  is_current BOOLEAN NOT NULL DEFAULT true, -- false = bản lịch sử (chỉ ràng buộc với password)
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX idx_account_secrets_account ON account_secrets (account_id);
-CREATE UNIQUE INDEX unique_current_password_per_field
-  ON account_secrets (field_id)
-  WHERE secret_type = 'password' AND is_current = true;
-ALTER TABLE account_secrets ENABLE ROW LEVEL SECURITY;
--- 4 policy select/insert/update/delete, user_id = auth.uid()
+```text
+schema
+title
+tpl
+favorite
+notes
+tags[]
+fields[]        # label, type, value, multi-values, links
+auth[]          # loại, ghi chú, trạng thái primary/on/off
+codes[]         # mã dự phòng và trạng thái used
+log[]           # nội dung history/diff log
 ```
 
-**AAD:** build lại lúc encrypt/decrypt: `v{encryption_version}|{user_id}|{account_id}|{id}|{secret_type}`.
+Tất cả các giá trị trên nằm trong cùng `encrypted_payload`. Vì vậy database không biết user lưu dịch
+vụ nào, username nào, URL nào, dùng tag gì hoặc đã thay đổi gì. Search/filter chỉ chạy phía client sau
+khi Vault được unlock và payload đã giải mã.
 
-**Đổi mật khẩu chạy atomic** (Postgres function qua `supabase.rpc`, không 3 lời gọi client rời):
-mark bản cũ `is_current=false` → insert ciphertext mới `is_current=true`. Lịch sử mật khẩu là các
-dòng `is_current=false` — khớp với khối History append-only đã có (`account_logs`).
+Các cột kỹ thuật vẫn plaintext vì server cần chúng cho ownership và CRUD:
+
+```text
+accounts.id
+accounts.user_id
+accounts.encrypted_payload
+accounts.encryption_nonce
+accounts.encryption_version
+accounts.created_at
+accounts.updated_at
+```
+
+Supabase vẫn suy ra được số lượng item, chủ sở hữu, kích thước ciphertext và thời điểm tạo/sửa. Full-
+content encryption không che được metadata vận hành đó.
+
+---
+
+## 2. Envelope encryption đã triển khai
+
+```text
+Vault passphrase (không gửi server)
+        │
+        │ PBKDF2-SHA256, 600.000 vòng, salt 16 byte/user
+        ▼
+KEK 256-bit
+        │ AES-GCM unwrap
+        ▼
+DEK 256-bit ngẫu nhiên/user
+        │ AES-GCM encrypt/decrypt
+        ▼
+Một encrypted JSON cho mỗi account
+```
+
+- Passphrase riêng với Supabase Auth, tối thiểu 12 ký tự; không lưu vào database hay browser storage.
+- PBKDF2-SHA256 600.000 vòng dùng Web Crypto native, không thêm dependency.
+- Mỗi user có một DEK ngẫu nhiên. Database chỉ lưu DEK đã được KEK bọc trong `vault_config`.
+- DEK đã unwrap chỉ nằm trong memory (`useRef`) của phiên hiện tại; không lưu `localStorage`, session
+  storage hoặc Supabase.
+- Mỗi lần tạo/sửa account sinh nonce AES-GCM 12 byte mới và ghi lại toàn bộ payload ciphertext.
+- AES-GCM vừa mã hóa vừa xác thực; ciphertext/AAD bị sửa hoặc tráo item sẽ không giải mã được.
+
+### AAD
+
+Wrapped DEK được gắn với đúng user và version:
+
+```text
+vault-key|v{version}|{user_id}
+```
+
+Mỗi account payload được gắn với đúng user, item và version:
+
+```text
+vault-item|v{version}|{user_id}|{item_id}
+```
+
+Do đó copy ciphertext sang user khác, đổi `id`, đổi version hoặc sửa ciphertext đều fail authentication.
+
+---
+
+## 3. Data model v6.2
+
+### `accounts`
+
+Sau cutover, bảng chỉ còn ownership/timestamps và ba cột crypto:
+
+```sql
+encrypted_payload  TEXT NOT NULL
+encryption_nonce   TEXT NOT NULL
+encryption_version SMALLINT NOT NULL DEFAULT 1
+```
+
+Các bảng plaintext cũ `account_fields`, `account_auth`, `account_codes`, `account_logs` và
+`account_tags` bị bỏ. Vault tags nằm trong ciphertext, nên `tagged_items` không còn nhánh `account`.
 
 ### `vault_config`
 
-```sql
-CREATE TABLE IF NOT EXISTS vault_config (
-  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  kdf_algorithm TEXT NOT NULL DEFAULT 'PBKDF2',  -- 'PBKDF2' | 'Argon2id' — xem §5
-  kdf_params JSONB NOT NULL,
-  kdf_salt TEXT NOT NULL,
-  wrapped_vault_key TEXT NOT NULL,
-  wrapped_vault_key_nonce TEXT NOT NULL,
-  verifier_ciphertext TEXT NOT NULL,
-  verifier_nonce TEXT NOT NULL,
-  encryption_version SMALLINT NOT NULL DEFAULT 1,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-ALTER TABLE vault_config ENABLE ROW LEVEL SECURITY;
--- 4 policy select/insert/update/delete, user_id = auth.uid()
+Một dòng cho mỗi authenticated user:
+
+```text
+user_id
+kdf_algorithm       # PBKDF2-SHA256
+kdf_salt
+kdf_iterations      # 600000 hiện tại; DB chấp nhận 600000..5000000
+wrapped_key
+wrapped_key_nonce
+encryption_version  # 1
+created_at
+updated_at
 ```
 
-**Unlock:** nhập passphrase → derive KEK → giải mã `verifier_ciphertext` → đúng → unwrap
-`wrapped_vault_key` → có DEK → giữ trong memory cho session.
-**Đổi passphrase (rẻ):** unwrap DEK bằng KEK cũ → derive KEK mới → wrap lại. Không đụng `account_secrets`.
-**Rotate DEK khi nghi lộ (đắt):** sinh DEK mới → giải mã toàn bộ bằng DEK cũ → mã hoá lại bằng DEK mới.
+Passphrase, KEK và raw DEK **không được lưu**. Bảng bật RLS đủ SELECT/INSERT/UPDATE/DELETE với điều kiện
+`user_id = auth.uid()`; `anon` không có quyền.
 
 ---
 
-## 3. Bảng phân loại field — plaintext vs encrypted
+## 4. Trạng thái và luồng UI
 
-| Field | Xử lý |
-|---|---|
-| Tiêu đề item, nhãn field, URL, tag, ghi chú | Plaintext (`accounts`/`account_fields`) |
-| Username / định danh đăng nhập | **Plaintext, có chủ đích** — cross-link risk thấp, cần browse nhanh không unlock |
-| Cờ / loại phương thức đăng nhập (`account_auth`) | Plaintext — chỉ flag, không lưu seed thật |
-| Câu hỏi **và** trả lời bảo mật | **Encrypted** — biết câu hỏi nào đang set cũng là trinh sát |
-| Email/SĐT khôi phục là giá trị thô | **Encrypted** (kèm hint mask hiển thị không cần unlock) |
-| Email khôi phục CHÍNH LÀ 1 item khác đang track | Là 1 **link** (`account_fields.links`), không phải secret |
-| Mật khẩu + lịch sử, PIN, CVV, recovery code, API key | **Encrypted** |
+Vault có các trạng thái thực tế:
 
----
+- `signed-out`: yêu cầu đăng nhập.
+- `loading`: đang đọc `vault_config`.
+- `setup`: user chưa có config; nhập + xác nhận passphrase để tạo KEK/DEK.
+- `locked`: có config nhưng DEK chưa ở memory.
+- `unlocked`: DEK ở memory; mới tải/giải mã và cho CRUD item.
+- `error`: schema/config không đọc được; không mở fallback plaintext.
 
-## 4. Rủi ro đã xác nhận với user
+Luồng phiên:
 
-- Tự viết + tự bảo trì lõi mã hoá — không có "hàng triệu người soi bug", chưa audit độc lập.
-- Quên passphrase = mất toàn bộ secret vĩnh viễn, không nút khôi phục.
-- Nonce reuse / thiếu AAD là lỗi **im lặng** — bắt buộc self-check (gồm test tráo ciphertext giữa 2
-  record) trước khi tin dùng thật.
-- Rủi ro ngoài tầm kiểm soát (giới hạn web-app cùng-origin): XSS ở tính năng khác lúc vault đang mở,
-  dependency bị chèn mã độc, deploy frontend bị thay đổi ác ý ghi phím gõ passphrase. Đây là lý do
-  **không** tuyên bố "tương đương Bitwarden".
-- **Chưa sẵn sàng cho secret thật cho tới khi đủ vault operability**: export/restore, đổi passphrase,
-  rotate DEK, migration `encryption_version`, phát hiện record hỏng.
+1. Setup tạo config và mở Vault lần đầu.
+2. Lần sau, passphrase derive lại KEK để unwrap DEK. Passphrase sai hoặc config hỏng đều fail đóng.
+3. Manual lock xóa reference đến DEK và xóa item đã giải mã khỏi React state.
+4. Sign-out và reload cũng làm mất DEK, nên Vault trở lại locked.
+5. Password generator đã bật; password sinh ra chỉ đi qua encrypted CRUD.
+
+Không tuyên bố zero-out RAM tuyệt đối: JavaScript runtime không bảo đảm xóa vật lý mọi bản sao trong
+memory. Đây là best-effort ở tầng ứng dụng.
 
 ---
 
-## 5. Câu hỏi còn treo — quyết định lúc bắt đầu
+## 5. Ghi dữ liệu và xử lý lỗi
 
-- `TODO: decision needed` — PBKDF2-SHA256 ≥600k vòng (0 dependency) hay Argon2id (memory-hard, OWASP
-  khuyến nghị, cần 1 thư viện WASM nhỏ)? Nghiêng Argon2id.
-- `TODO: decision needed` — Auto-lock sau bao lâu không thao tác? (đề xuất 15 phút.)
+- `create`: client tạo UUID trước, dựng payload, mã hóa với AAD chứa UUID rồi mới INSERT ciphertext.
+- `update`, favorite, auth state, code used và history: sửa bản giải mã trong memory rồi mã hóa/UPDATE
+  lại toàn bộ payload trong một row.
+- `delete`: xóa đúng row theo cả `id` và `user_id`.
+- Khi một item hỏng, các item giải mã được vẫn hiển thị; item hỏng không bị sửa/xóa và UI báo số item
+  không mở được.
+- Không có fallback đọc/ghi schema plaintext. Thiếu schema v6.2 đưa UI về error thay vì làm rò dữ liệu.
+
+Một JSON/account là lựa chọn tối giản có chủ đích: cập nhật một phần nhỏ phải mã hóa lại toàn item,
+nhưng đổi lại mọi nội dung luôn có chung biên bảo mật và không thể vô tình thêm field plaintext ở bảng con.
+Chỉ tách ciphertext thành nhiều record khi kích thước/hiệu năng thực tế chứng minh cần thiết.
 
 ---
 
-## 6. Trình tự triển khai
+## 6. Empty-Vault cutover
 
-- **B1 — Crypto core:** `vault_config` + Web Crypto layer (KDF + AES-GCM + AAD) + `account_secrets`
-  + unlock modal / vault provider / secret field. Có self-check/test.
-- **B2 — Vault operability (bắt buộc trước khi nhập secret thật):** export ciphertext, restore, đổi
-  passphrase, rotate DEK, migration `encryption_version`, phát hiện record hỏng.
-- **Làm B1 + B2 liền một đợt** — không bật crypto từng phần (mất passphrase mà chưa có export = mất
-  trắng). Xong B1 **và** B2 mới gỡ banner "chưa mã hoá" ở `/accounts`.
-- **B3 (sau):** auto-lock timer, TOTP thật cho phương thức authenticator, clipboard auto-clear.
+`data/migration_v6.2.0_vault_encryption.sql` chỉ dành cho Vault trống, đúng với xác nhận rằng local và
+production chưa có dữ liệu thật.
+
+Migration chạy trong transaction và kiểm tra trước:
+
+```sql
+IF EXISTS (SELECT 1 FROM accounts LIMIT 1) THEN
+  RAISE EXCEPTION 'Vault encryption cutover refused ...';
+END IF;
+```
+
+Chỉ khi không có account nó mới drop schema plaintext cũ, đổi `accounts`, tạo `vault_config`, policy và
+view. Vì vậy giả định “DB trống” sai sẽ làm migration dừng, không âm thầm xóa dữ liệu. Không có dual-read,
+dual-write hay data migration cho dữ liệu không tồn tại.
+
+Production chưa chạy. User phải dùng đúng thứ tự migration trong README và kiểm tra `accounts` trống;
+agent không tự link/push hosted Supabase.
+
+---
+
+## 7. Kiểm chứng hiện tại
+
+Đã pass local:
+
+- Crypto round-trip; wrong passphrase; tamper; wrong user/item AAD; nonce mới khi ghi lại.
+- Database contract cho empty-Vault guard, schema ciphertext, KDF constraint, grants và RLS.
+- Reset user data với `accounts` + `vault_config`.
+- Authenticated browser: setup, create/read/update/delete, tags, auth methods, recovery codes, history,
+  password generator, manual lock/unlock và reload lock.
+- Hai user bị cô lập bởi RLS; database/network chỉ nhận ciphertext cho nội dung item.
+
+Đây chưa phải audit mật mã độc lập và không được mô tả là tương đương Bitwarden.
+
+---
+
+## 8. Rủi ro và giới hạn
+
+- Quên passphrase hiện đồng nghĩa không mở lại được DEK; chưa có recovery/reset cho dữ liệu cũ.
+- XSS, extension độc hại, keylogger hoặc frontend/dependency bị thay khi Vault đang mở vẫn có thể lấy
+  plaintext/passphrase.
+- RLS là lớp phòng thủ bổ sung, không thay thế crypto; crypto cũng không thay thế bảo mật frontend.
+- Chưa có export/restore, nên chưa nên dùng Vault làm **bản sao duy nhất** của secret quan trọng.
+
+---
+
+## 9. Follow-up, chưa nằm trong v6.2 core
+
+- **Export/restore:** backup ciphertext/config có kiểm tra version và quy trình phục hồi rõ ràng.
+- **Đổi passphrase:** derive KEK mới rồi re-wrap cùng DEK; không cần mã hóa lại item.
+- **Rotate DEK:** tạo DEK mới và mã hóa lại toàn bộ item khi nghi lộ khóa.
+- **Version migration:** nâng KDF/payload/encryption version mà không làm mất dữ liệu.
+- **Auto-lock:** khóa sau thời gian không hoạt động; thời lượng chưa chốt.
+- **Clipboard auto-clear:** xóa secret đã copy sau timeout.
+- **TOTP thật:** lưu seed trong encrypted payload và sinh mã phía client.
+
+Các mục trên phải được triển khai + test riêng; tài liệu không đánh dấu chúng đã xong và production cũng
+không được đánh dấu đã áp dụng cho tới khi user xác nhận.

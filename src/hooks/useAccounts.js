@@ -2,65 +2,72 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
-import { diffLog, codeSheet } from '../utils/vaultLogic';
+import { codeSheet, diffLog, newId } from '../utils/vaultLogic';
+import {
+  createVaultConfig,
+  decryptVaultItem,
+  encryptVaultItem,
+  unlockVaultKey,
+} from '../utils/vaultCrypto';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
-
-/**
- * useAccounts — tầng dữ liệu của Account Vault v2 (thiết kế Keyplate).
- *
- * Đọc/ghi 6 bảng: accounts · account_fields · account_auth · account_codes ·
- * account_logs · account_tags. Xem data/migration_v5.2.0_vault.sql.
- *
- * ⚠️ CHƯA MÃ HOÁ. `account_fields.value` là PLAINTEXT trong Supabase; type
- *    password/secret chỉ mask trên UI.
- *
- * Hook này là NƠI DUY NHẤT biết shape của DB. Ra ngoài, mọi component và mọi
- * hàm trong vaultLogic.js chỉ thấy shape của đặc tả:
- *   service_name → title · multi_values → values · logged_at → at
- * Một hàm map ở đây rẻ hơn là để shape lệch nhau ở 8 component.
- *
- * Khác các hook khác: **KHÔNG có guest mode in-memory.** Vault mà mất khi
- * refresh thì vô nghĩa, và đây là dữ liệu riêng tư nhất trong app — chưa đăng
- * nhập thì trang hiện lời nhắc đăng nhập.
- *
- * ponytail: fetch TOÀN BỘ 6 bảng trong 5 query rồi ghép ở client. Đúng ở quy mô
- * vài trăm item của 1 người. Log bị chặn ở 500 dòng mới nhất (xem LOG_LIMIT);
- * phình hơn thì mới fetch log riêng theo item đang mở.
- */
 
 const { templates: TEMPLATES, authKinds: AUTH_KINDS } = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 const AUTH_LABELS = Object.fromEntries(
-  Object.entries(AUTH_KINDS).map(([k, v]) => [k, v.label])
+  Object.entries(AUTH_KINDS).map(([key, value]) => [key, value.label])
 );
-
-// Log là bảng duy nhất phình vô hạn (append-only). Chi tiết chỉ hiện 4 dòng +
-// "Show all n", nên lấy 500 dòng mới nhất của cả vault là quá đủ.
 const LOG_LIMIT = 500;
+const ITEM_SCHEMA = 1;
+const VAULT_CONFLICT = 'This Vault item changed in another session. Reload and unlock again before retrying.';
 
-/** Dòng DB → Field của đặc tả. jsonb có thể về dạng lạ nếu ai sửa tay → chặn. */
-const toField = (f) => ({
-  id: f.id,
-  label: f.label,
-  type: f.type,
-  value: f.value || '',
-  values: Array.isArray(f.multi_values) ? f.multi_values : [],
-  links: Array.isArray(f.links) ? f.links : [],
-});
+function cleanItem(item) {
+  return {
+    schema: ITEM_SCHEMA,
+    title: item.title?.trim() || 'Untitled item',
+    tpl: item.tpl || 'login',
+    favorite: !!item.favorite,
+    notes: item.notes || '',
+    tags: Array.isArray(item.tags) ? item.tags : [],
+    fields: Array.isArray(item.fields) ? item.fields : [],
+    auth: Array.isArray(item.auth) ? item.auth : [],
+    codes: Array.isArray(item.codes) ? item.codes : [],
+    log: Array.isArray(item.log) ? item.log.slice(0, LOG_LIMIT) : [],
+  };
+}
 
-/** Field của đặc tả → dòng DB. Chỉ ghi cột thuộc về loại đang dùng, tránh giữ
- *  rác của loại cũ khi user đổi type qua lại (multi → text → multi). */
-const fromField = (f, i, userId, accountId) => ({
-  user_id: userId,
-  account_id: accountId,
-  label: f.label?.trim() || 'Untitled field',
-  type: f.type,
-  value: f.type === 'multi' || f.type === 'link' ? null : (f.value || null),
-  multi_values: f.type === 'multi' ? (f.values || []).filter((v) => v !== null) : [],
-  links: f.type === 'link' ? (f.links || []) : [],
-  sort_order: i,
-});
+function hydrateItem(row, payload) {
+  if (payload.schema !== ITEM_SCHEMA) throw new Error('Unsupported Vault item schema');
+  const clean = cleanItem(payload);
+  return {
+    id: row.id,
+    ...clean,
+    created: row.created_at,
+    updated: row.updated_at,
+  };
+}
 
+function addLogs(item, entries) {
+  if (!entries.length) return item;
+  const at = new Date().toISOString();
+  return {
+    ...item,
+    log: [
+      ...entries.map((entry) => ({
+        id: newId(),
+        at,
+        text: entry.text,
+        detail: entry.detail || '',
+      })),
+      ...(item.log || []),
+    ].slice(0, LOG_LIMIT),
+  };
+}
+
+/**
+ * The only Vault data layer. All user-authored item content is one encrypted JSON
+ * payload; the database row exposes only ownership, timestamps, nonce and version.
+ * The unwrapped DEK lives in a ref and disappears on lock, sign-out or reload.
+ */
 export function useAccounts() {
   const { user } = useAuth();
   const enabled = isSupabaseEnabled && !!user;
@@ -68,373 +75,403 @@ export function useAccounts() {
 
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const fetchedRef = useRef(false);
+  const [vaultStatus, setVaultStatus] = useState(enabled ? 'loading' : 'signed-out');
+  const [vaultError, setVaultError] = useState('');
+  const keyRef = useRef(null);
+  const configRef = useRef(null);
+  const sessionRef = useRef(0);
+  const fetchRef = useRef(0);
 
-  // ── Fetch + ghép 6 bảng thành items[] ───────────────────────
-  const fetchAll = useCallback(async () => {
-    if (!enabled) return;
+  const fetchAll = useCallback(async (key = keyRef.current) => {
+    if (!enabled || !key) return false;
+    const session = sessionRef.current;
+    const request = ++fetchRef.current;
+    const isCurrent = () => (
+      sessionRef.current === session
+      && fetchRef.current === request
+      && keyRef.current === key
+    );
     setIsLoading(true);
+    setVaultError('');
     try {
-      const [accRes, fieldRes, authRes, codeRes, logRes] = await Promise.all([
-        // Sắp theo `updated_at` GIẢM DẦN, không theo tên: item vừa tạo / vừa sửa
-        // phải nằm đầu danh sách để kiểm soát được việc mình vừa làm. Đây cũng
-        // là lý do mỗi dòng có cột thời gian ở bên phải. Muốn tìm theo tên thì
-        // dùng ô search / chip filter, không dựa vào thứ tự.
-        supabase.from('accounts')
-          .select('*, account_tags(tag_id, tags(id, name, color))')
-          .eq('user_id', userId).order('updated_at', { ascending: false }),
-        supabase.from('account_fields').select('*')
-          .eq('user_id', userId).order('sort_order', { ascending: true }),
-        supabase.from('account_auth').select('*')
-          .eq('user_id', userId).order('sort_order', { ascending: true }),
-        supabase.from('account_codes').select('*')
-          .eq('user_id', userId).order('sort_order', { ascending: true }),
-        supabase.from('account_logs').select('*')
-          .eq('user_id', userId).order('logged_at', { ascending: false }).limit(LOG_LIMIT),
-      ]);
+      const { data, error } = await supabase.from('accounts')
+        .select('id, user_id, encrypted_payload, encryption_nonce, encryption_version, created_at, updated_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      if (!isCurrent()) return false;
 
-      for (const r of [accRes, fieldRes, authRes, codeRes, logRes]) {
-        if (r.error) throw r.error;
+      const results = await Promise.allSettled((data || []).map(async (row) => (
+        hydrateItem(row, await decryptVaultItem(key, userId, row))
+      )));
+      if (!isCurrent()) return false;
+      const good = results.filter((result) => result.status === 'fulfilled').map((result) => result.value);
+      const bad = results.length - good.length;
+      setItems(good);
+      if (bad) {
+        setVaultError(`${bad} encrypted item${bad === 1 ? '' : 's'} could not be opened and were not modified.`);
       }
-
-      // Gom con theo account_id một lượt (O(n)) thay vì filter lại cho từng item
-      const group = (rows) => {
-        const m = new Map();
-        for (const r of rows || []) {
-          if (!m.has(r.account_id)) m.set(r.account_id, []);
-          m.get(r.account_id).push(r);
-        }
-        return m;
-      };
-      const byFields = group(fieldRes.data);
-      const byAuth = group(authRes.data);
-      const byCodes = group(codeRes.data);
-      const byLogs = group(logRes.data);
-
-      setItems((accRes.data || []).map((row) => ({
-        id: row.id,
-        tpl: row.tpl,
-        title: row.service_name,
-        favorite: row.favorite,
-        notes: row.notes || '',
-        updated: row.updated_at,
-        created: row.created_at,
-        tags: (row.account_tags || []).map((r) => r.tags).filter(Boolean),
-        fields: (byFields.get(row.id) || []).map(toField),
-        auth: (byAuth.get(row.id) || []).map((a) => ({
-          id: a.id, kind: a.kind, note: a.note || '', state: a.state,
-        })),
-        codes: (byCodes.get(row.id) || []).map((c) => ({
-          id: c.id, code: c.code, used: c.used,
-        })),
-        log: (byLogs.get(row.id) || []).map((l) => ({
-          id: l.id, at: l.logged_at, text: l.text, detail: l.detail || '',
-        })),
-      })));
-    } catch (err) {
-      logger.warn('[useAccounts] fetch error:', err.message);
+      return true;
+    } catch (error) {
+      if (!isCurrent()) return false;
+      logger.error('[useAccounts] encrypted fetch error:', error.message);
+      setVaultError('Could not load the encrypted Vault. Nothing was modified.');
+      return false;
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
+    }
+  }, [enabled, userId]);
+
+  const loadVaultConfig = useCallback(async () => {
+    if (!enabled) return;
+    const session = ++sessionRef.current;
+    fetchRef.current += 1;
+    setVaultStatus('loading');
+    setVaultError('');
+    setItems([]);
+    setIsLoading(false);
+    keyRef.current = null;
+    configRef.current = null;
+    try {
+      const { data, error } = await supabase.from('vault_config')
+        .select('*').eq('user_id', userId).maybeSingle();
+      if (error) throw error;
+      if (sessionRef.current !== session) return;
+      if (!data) {
+        const { count, error: countError } = await supabase.from('accounts')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId);
+        if (countError) throw countError;
+        if (sessionRef.current !== session) return;
+        if (count > 0) {
+          setVaultError(
+            'Vault configuration is missing while encrypted items still exist. '
+            + 'Do not create a new passphrase or delete anything; restore the original vault_config.'
+          );
+          setVaultStatus('error');
+          return;
+        }
+      }
+      configRef.current = data;
+      setVaultStatus(data ? 'locked' : 'setup');
+    } catch (error) {
+      if (sessionRef.current !== session) return;
+      logger.error('[useAccounts] config error:', error.message);
+      setVaultError('Vault encryption schema is not available yet. Run the v6.2 migration first.');
+      setVaultStatus('error');
     }
   }, [enabled, userId]);
 
   useEffect(() => {
-    if (enabled && !fetchedRef.current) {
-      fetchedRef.current = true;
-      fetchAll();
-    }
-    if (!enabled) {
-      fetchedRef.current = false;
+    if (enabled) loadVaultConfig();
+    else {
+      sessionRef.current += 1;
+      fetchRef.current += 1;
+      keyRef.current = null;
+      configRef.current = null;
       setItems([]);
+      setIsLoading(false);
+      setVaultStatus('signed-out');
+      setVaultError('');
     }
-  }, [enabled, fetchAll]);
+    return () => {
+      sessionRef.current += 1;
+      fetchRef.current += 1;
+      keyRef.current = null;
+      configRef.current = null;
+    };
+  }, [enabled, userId, loadVaultConfig]);
 
-  // { [itemId]: title } — diffLog cần để tả link ("Google — personal · a@x.com")
+  const setupVault = useCallback(async (passphrase) => {
+    if (!enabled || vaultStatus !== 'setup') return { ok: false, error: 'Vault cannot be set up now' };
+    const session = sessionRef.current;
+    try {
+      const { config, key } = await createVaultConfig(passphrase, userId);
+      if (sessionRef.current !== session) {
+        return { ok: false, error: 'Vault state changed; try again' };
+      }
+      const { error } = await supabase.from('vault_config').insert(config);
+      if (error) throw error;
+      if (sessionRef.current !== session) {
+        return { ok: false, error: 'Vault state changed; try again' };
+      }
+      configRef.current = config;
+      const unlockedSession = ++sessionRef.current;
+      keyRef.current = key;
+      setVaultStatus('loading');
+      setVaultError('');
+      const loaded = await fetchAll(key);
+      if (sessionRef.current !== unlockedSession || keyRef.current !== key) {
+        return { ok: false, error: 'Vault state changed; try again' };
+      }
+      if (!loaded) {
+        keyRef.current = null;
+        setItems([]);
+        setVaultStatus('locked');
+        return { ok: false, error: 'Could not load the encrypted Vault' };
+      }
+      setVaultStatus('unlocked');
+      return { ok: true };
+    } catch (error) {
+      if (sessionRef.current !== session) {
+        return { ok: false, error: 'Vault state changed; try again' };
+      }
+      logger.error('[useAccounts] setup error:', error.message);
+      return { ok: false, error: error.message };
+    }
+  }, [enabled, userId, vaultStatus, fetchAll]);
+
+  const unlockVault = useCallback(async (passphrase) => {
+    if (!enabled || vaultStatus !== 'locked' || !configRef.current) {
+      return { ok: false, error: 'Vault cannot be unlocked now' };
+    }
+    const session = sessionRef.current;
+    const config = configRef.current;
+    try {
+      const key = await unlockVaultKey(passphrase, userId, config);
+      if (sessionRef.current !== session || configRef.current !== config) {
+        return { ok: false, error: 'Vault state changed; try again' };
+      }
+      const unlockedSession = ++sessionRef.current;
+      keyRef.current = key;
+      setVaultStatus('loading');
+      setVaultError('');
+      const loaded = await fetchAll(key);
+      if (sessionRef.current !== unlockedSession || keyRef.current !== key) {
+        return { ok: false, error: 'Vault state changed; try again' };
+      }
+      if (!loaded) {
+        keyRef.current = null;
+        setItems([]);
+        setVaultStatus('locked');
+        return { ok: false, error: 'Could not load the encrypted Vault' };
+      }
+      setVaultStatus('unlocked');
+      return { ok: true };
+    } catch (error) {
+      if (sessionRef.current !== session) {
+        return { ok: false, error: 'Vault state changed; try again' };
+      }
+      return { ok: false, error: error.message };
+    }
+  }, [enabled, userId, vaultStatus, fetchAll]);
+
+  const lockVault = useCallback(() => {
+    sessionRef.current += 1;
+    fetchRef.current += 1;
+    keyRef.current = null;
+    setItems([]);
+    setIsLoading(false);
+    setVaultError('');
+    setVaultStatus(configRef.current ? 'locked' : 'setup');
+  }, []);
+
+  const writeItem = useCallback(async (item) => {
+    if (!enabled || !keyRef.current) throw new Error('Vault is locked');
+    if (!item.updated) throw new Error('Vault item has no revision timestamp');
+    const key = keyRef.current;
+    const session = sessionRef.current;
+    const isCurrent = () => sessionRef.current === session && keyRef.current === key;
+    const encrypted = await encryptVaultItem(key, userId, item.id, cleanItem(item));
+    if (!isCurrent()) return null;
+
+    const { data, error } = await supabase.from('accounts')
+      .update(encrypted)
+      .eq('id', item.id)
+      .eq('user_id', userId)
+      .eq('updated_at', item.updated)
+      .select('updated_at')
+      .maybeSingle();
+    if (!isCurrent()) return null;
+    if (error) throw error;
+    if (!data) throw new Error(VAULT_CONFLICT);
+
+    const saved = { ...item, updated: data.updated_at };
+    fetchRef.current += 1;
+    setIsLoading(false);
+    setItems((current) => [saved, ...current.filter((candidate) => candidate.id !== item.id)]);
+    return saved;
+  }, [enabled, userId]);
+
   const itemTitles = useMemo(
-    () => Object.fromEntries(items.map((i) => [i.id, i.title])),
+    () => Object.fromEntries(items.map((item) => [item.id, item.title])),
     [items]
   );
 
-  /**
-   * Ghi thêm dòng log. Bảng account_logs chỉ có policy INSERT + SELECT nên đây
-   * là đường ghi duy nhất và không có đường sửa/xoá.
-   *
-   * `touch` cũng chạm `accounts` để `updated_at` nhảy — bật/tắt một phương thức
-   * đăng nhập cũng là "vừa sửa item này", và danh sách sắp theo `updated_at` nên
-   * item đó phải lên đầu. Truyền `touch: false` khi row vừa được INSERT
-   * (updated_at đã bằng created_at rồi, chạm nữa là một round-trip lãng phí).
-   */
-  const appendLogs = useCallback(async (accountId, entries, { touch = true } = {}) => {
-    if (!entries.length) return;
-    const { error } = await supabase.from('account_logs').insert(
-      entries.map((e) => ({
-        user_id: userId, account_id: accountId,
-        text: e.text, detail: e.detail || null,
-      }))
-    );
-    if (error) throw error;
-    if (touch) {
-      await supabase.from('accounts')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', accountId).eq('user_id', userId);
-    }
-  }, [userId]);
-
-  /**
-   * Lưu draft của một item đã tồn tại.
-   *
-   * ⚠️ diffLog được gọi Ở ĐÂY, không phải ở component: không tồn tại đường lưu
-   *    mà không ghi log. Đó là "nothing may silently mutate an item without
-   *    logging" của đặc tả, ép bằng cấu trúc chứ không bằng nhắc nhở.
-   *
-   * fields / auth / codes / tags dùng chiến lược **thay cả cụm** (xoá hết của
-   * item đó rồi insert lại) thay vì diff từng dòng: mỗi item chỉ có vài chục
-   * dòng, diff đắt hơn phần nó tiết kiệm. Hệ quả đã cân nhắc: id của các dòng
-   * con đổi sau mỗi lần lưu — diffLog ghép field theo id nhưng chỉ trong PHẠM VI
-   * một lần sửa (before và after cùng đến từ một lần fetch) nên không ảnh hưởng.
-   *
-   * @param {object} draft item đã sửa (shape đặc tả)
-   * @param {string[]} tagIds
-   * @return {Promise<boolean>}
-   */
-  const saveItem = useCallback(async (draft, tagIds = []) => {
-    if (!enabled) return false;
-    const original = items.find((i) => i.id === draft.id);
+  const saveItem = useCallback(async (draft) => {
+    if (!enabled || !keyRef.current) return false;
+    const original = items.find((item) => item.id === draft.id);
     if (!original) return false;
-
     try {
       const entries = diffLog(original, draft, { itemTitles, authLabels: AUTH_LABELS });
-
-      const { error: accErr } = await supabase.from('accounts').update({
-        service_name: draft.title?.trim() || 'Untitled item',
-        tpl: draft.tpl,
-        favorite: !!draft.favorite,
-        notes: draft.notes?.trim() || null,
-      }).eq('id', draft.id).eq('user_id', userId);
-      if (accErr) throw accErr;
-
-      await replaceChildren(draft.id, userId, draft);
-
-      // Tag: thay cả cụm (bảng junction không có user_id, RLS kiểm qua 2 phía)
-      const { error: tagDelErr } = await supabase.from('account_tags')
-        .delete().eq('account_id', draft.id);
-      if (tagDelErr) throw tagDelErr;
-      if (tagIds.length) {
-        const { error } = await supabase.from('account_tags')
-          .insert(tagIds.map((tag_id) => ({ account_id: draft.id, tag_id })));
-        if (error) throw error;
-      }
-
-      await appendLogs(draft.id, entries);
-      await fetchAll();
-      return true;
-    } catch (err) {
-      logger.error('[useAccounts] save error:', err.message);
-      fetchAll();
+      return !!(await writeItem(addLogs({ ...draft, tags: draft.tags || [] }, entries)));
+    } catch (error) {
+      logger.error('[useAccounts] encrypted save error:', error.message);
+      setVaultError(error.message === VAULT_CONFLICT
+        ? VAULT_CONFLICT
+        : 'Save failed. The previous encrypted item was not changed.');
       return false;
     }
-  }, [enabled, userId, items, itemTitles, appendLogs, fetchAll]);
+  }, [enabled, items, itemTitles, writeItem]);
 
-  /**
-   * Tạo item mới từ một template. Field / phương thức đăng nhập / sheet mã đều
-   * được điền sẵn theo template, phần tử auth đầu tiên thành `primary`.
-   * @return {Promise<string|null>} id item mới
-   */
   const createItem = useCallback(async (tplKey) => {
-    if (!enabled) return null;
+    if (!enabled || !keyRef.current) return null;
     const tpl = TPL_BY_KEY.get(tplKey);
     if (!tpl) return null;
+    const key = keyRef.current;
+    const session = sessionRef.current;
+    const isCurrent = () => sessionRef.current === session && keyRef.current === key;
+
+    const id = newId();
+    const item = addLogs({
+      id,
+      title: `New ${tpl.name.toLowerCase()}`,
+      tpl: tplKey,
+      favorite: false,
+      notes: '',
+      tags: [],
+      fields: tpl.fields.map((field) => ({
+        id: newId(), label: field.label, type: field.type, value: '', values: [], links: [],
+      })),
+      auth: (tpl.auth || []).map((kind, index) => ({
+        id: newId(), kind, note: AUTH_KINDS[kind]?.note || '', state: index === 0 ? 'primary' : 'on',
+      })),
+      codes: tpl.codes ? codeSheet(tpl.codes) : [],
+      log: [],
+    }, [{ text: 'Item created', detail: `From template: ${tpl.name}` }]);
 
     try {
+      const payload = cleanItem(item);
+      const encrypted = await encryptVaultItem(key, userId, id, payload);
+      if (!isCurrent()) return null;
       const { data, error } = await supabase.from('accounts')
-        .insert({ user_id: userId, service_name: `New ${tpl.name.toLowerCase()}`, tpl: tplKey })
-        .select('id').single();
+        .insert({ id, user_id: userId, ...encrypted })
+        .select('created_at, updated_at')
+        .single();
+      if (!isCurrent()) return null;
       if (error) throw error;
-      const id = data.id;
-
-      // `fresh: true` — row vừa insert nên chưa có dòng con nào, bỏ 3 lệnh DELETE
-      // của replaceChildren. Tạo item là chỗ user chờ lâu nhất, mỗi round-trip
-      // cắt được đều thấy.
-      await replaceChildren(id, userId, {
-        fields: tpl.fields.map((f) => ({ label: f.label, type: f.type, value: '', values: [], links: [] })),
-        auth: (tpl.auth || []).map((kind, i) => ({
-          kind, note: AUTH_KINDS[kind]?.note || '', state: i === 0 ? 'primary' : 'on',
-        })),
-        codes: tpl.codes ? codeSheet(tpl.codes) : [],
-      }, { fresh: true });
-
-      await appendLogs(id, [{ text: 'Item created', detail: `From template: ${tpl.name}` }],
-        { touch: false });
-      await fetchAll();
+      const saved = hydrateItem({ id, ...data }, payload);
+      fetchRef.current += 1;
+      setIsLoading(false);
+      setItems((current) => [saved, ...current.filter((candidate) => candidate.id !== id)]);
       return id;
-    } catch (err) {
-      logger.error('[useAccounts] create error:', err.message);
+    } catch (error) {
+      if (!isCurrent()) return null;
+      logger.error('[useAccounts] encrypted create error:', error.message);
+      setVaultError('Could not create the encrypted item.');
       return null;
     }
-  }, [enabled, userId, appendLogs, fetchAll]);
+  }, [enabled, userId]);
 
-  // ── Xoá item (FK CASCADE dọn cả 5 bảng con) ──
-  // Link TỚI nó thành orphan và hiện "Missing item" — đã cân nhắc, xem
-  // migration_v5.2.0_vault.sql §2.
   const deleteItem = useCallback(async (id) => {
-    if (!enabled) return false;
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    if (!enabled || !keyRef.current) return false;
+    const item = items.find((candidate) => candidate.id === id);
+    if (!item?.updated) return false;
+    const key = keyRef.current;
+    const session = sessionRef.current;
+    const isCurrent = () => sessionRef.current === session && keyRef.current === key;
     try {
-      const { error } = await supabase.from('accounts')
-        .delete().eq('id', id).eq('user_id', userId);
+      const { data, error } = await supabase.from('accounts')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId)
+        .eq('updated_at', item.updated)
+        .select('id')
+        .maybeSingle();
+      if (!isCurrent()) return false;
       if (error) throw error;
-      // Refetch vì item khác đang trỏ tới nó vừa thành link chết
-      await fetchAll();
+      if (!data) throw new Error(VAULT_CONFLICT);
+      fetchRef.current += 1;
+      setIsLoading(false);
+      setItems((current) => current.filter((item) => item.id !== id));
       return true;
-    } catch (err) {
-      logger.error('[useAccounts] delete error:', err.message);
-      fetchAll();
+    } catch (error) {
+      if (!isCurrent()) return false;
+      logger.error('[useAccounts] delete error:', error.message);
+      setVaultError(error.message === VAULT_CONFLICT
+        ? VAULT_CONFLICT
+        : 'Delete failed. The encrypted item is still present.');
       return false;
     }
-  }, [enabled, userId, fetchAll]);
+  }, [enabled, userId, items]);
 
-  /** Bật/tắt favourite. Cố ý KHÔNG ghi log — đặc tả không coi đây là thay đổi
-   *  nội dung item, và log sẽ đầy rác nếu mỗi lần bấm sao lại thành một dòng. */
   const toggleFavorite = useCallback(async (id) => {
-    if (!enabled) return;
-    const next = !items.find((i) => i.id === id)?.favorite;
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, favorite: next } : i)));
-    const { error } = await supabase.from('accounts')
-      .update({ favorite: next }).eq('id', id).eq('user_id', userId);
-    if (error) {
+    const item = items.find((candidate) => candidate.id === id);
+    if (!item) return false;
+    try {
+      return !!(await writeItem({ ...item, favorite: !item.favorite }));
+    } catch (error) {
       logger.error('[useAccounts] favorite error:', error.message);
-      fetchAll();
+      setVaultError(error.message === VAULT_CONFLICT
+        ? VAULT_CONFLICT
+        : 'Could not update the encrypted item.');
+      return false;
     }
-  }, [enabled, userId, items, fetchAll]);
+  }, [items, writeItem]);
 
-  /**
-   * Đổi trạng thái một phương thức đăng nhập NGOÀI chế độ sửa (ghi log ngay).
-   *
-   * ⚠️ Nhánh 'primary' phải là MỘT câu UPDATE. Unique index
-   *    `unique_account_auth_primary` chỉ được kiểm ở cuối câu lệnh, nên hạ
-   *    primary cũ và nâng primary mới trong cùng một CASE là an toàn; tách
-   *    thành hai câu UPDATE sẽ vi phạm ràng buộc ở giữa.
-   */
   const setAuthState = useCallback(async (accountId, authId, state) => {
-    if (!enabled) return false;
-    const item = items.find((i) => i.id === accountId);
-    const a = item?.auth.find((x) => x.id === authId);
-    if (!a || a.state === state) return false;
+    const item = items.find((candidate) => candidate.id === accountId);
+    const auth = item?.auth.find((candidate) => candidate.id === authId);
+    if (!item || !auth || auth.state === state) return false;
 
+    const next = structuredClone(item);
+    if (state === 'primary') {
+      next.auth.forEach((candidate) => {
+        if (candidate.state === 'primary') candidate.state = 'on';
+      });
+    }
+    next.auth.find((candidate) => candidate.id === authId).state = state;
+    const label = AUTH_LABELS[auth.kind] || auth.kind;
+    const verb = state === 'off' ? 'disabled' : state === 'primary' ? 'made primary' : 'enabled';
     try {
-      if (state === 'primary') {
-        // supabase-js không gửi được UPDATE ... CASE, nên tách 2 lệnh theo
-        // THỨ TỰ AN TOÀN: hạ primary cũ TRƯỚC rồi mới nâng cái mới. Ở giữa 2
-        // lệnh item có 0 primary — unique index cho phép (nó ép "không quá 1",
-        // không ép "đúng 1"). Đảo thứ tự lại thì lệnh nâng vi phạm ngay.
-        // Nếu lệnh 2 lỗi thì item tạm thời không có primary, user bấm lại là xong.
-        const { error: downErr } = await supabase.from('account_auth')
-          .update({ state: 'on' })
-          .eq('account_id', accountId).eq('user_id', userId).eq('state', 'primary');
-        if (downErr) throw downErr;
-      }
-      const { error } = await supabase.from('account_auth')
-        .update({ state }).eq('id', authId).eq('user_id', userId);
-      if (error) throw error;
-
-      const label = AUTH_LABELS[a.kind] || a.kind;
-      const verb = state === 'off' ? 'disabled' : state === 'primary' ? 'made primary' : 'enabled';
-      await appendLogs(accountId, [{ text: `${label} ${verb}`, detail: a.note }]);
-      await fetchAll();
-      return true;
-    } catch (err) {
-      logger.error('[useAccounts] auth state error:', err.message);
-      fetchAll();
+      return !!(await writeItem(addLogs(next, [{ text: `${label} ${verb}`, detail: auth.note }])));
+    } catch (error) {
+      logger.error('[useAccounts] auth state error:', error.message);
+      setVaultError(error.message === VAULT_CONFLICT
+        ? VAULT_CONFLICT
+        : 'Could not update the encrypted sign-in method.');
       return false;
     }
-  }, [enabled, userId, items, appendLogs, fetchAll]);
+  }, [items, writeItem]);
 
-  /**
-   * Đánh dấu một mã dự phòng đã dùng / hoàn lại, NGOÀI chế độ sửa (ghi log ngay).
-   * Dòng log thứ hai đếm số mã còn lại — đó là con số user thật sự cần.
-   */
   const setCodeUsed = useCallback(async (accountId, codeId, used) => {
-    if (!enabled) return false;
-    const item = items.find((i) => i.id === accountId);
-    const codes = item?.codes || [];
-    const idx = codes.findIndex((c) => c.id === codeId);
-    if (idx === -1) return false;
+    const item = items.find((candidate) => candidate.id === accountId);
+    const index = item?.codes.findIndex((code) => code.id === codeId) ?? -1;
+    if (!item || index < 0) return false;
 
+    const next = structuredClone(item);
+    next.codes[index].used = used;
+    const remaining = next.codes.filter((code) => !code.used).length;
+    const number = String(index + 1).padStart(2, '0');
     try {
-      const { error } = await supabase.from('account_codes')
-        .update({ used }).eq('id', codeId).eq('user_id', userId);
-      if (error) throw error;
-
-      const remaining = codes.filter((c, i) => (i === idx ? !used : !c.used)).length;
-      const num = String(idx + 1).padStart(2, '0');
-      await appendLogs(accountId, [{
-        text: `Single-use code ${num} marked ${used ? 'used' : 'unused'}`,
-        detail: `Sheet: ${remaining} of ${codes.length} remaining`,
-      }]);
-      await fetchAll();
-      return true;
-    } catch (err) {
-      logger.error('[useAccounts] code error:', err.message);
-      fetchAll();
+      return !!(await writeItem(addLogs(next, [{
+        text: `Single-use code ${number} marked ${used ? 'used' : 'unused'}`,
+        detail: `Sheet: ${remaining} of ${next.codes.length} remaining`,
+      }])));
+    } catch (error) {
+      logger.error('[useAccounts] code error:', error.message);
+      setVaultError(error.message === VAULT_CONFLICT
+        ? VAULT_CONFLICT
+        : 'Could not update the encrypted recovery code.');
       return false;
     }
-  }, [enabled, userId, items, appendLogs, fetchAll]);
+  }, [items, writeItem]);
 
   return {
-    items,          // [Item] — shape đặc tả, đã ghép đủ fields/auth/codes/log/tags
+    items,
     isLoading,
     enabled,
-    fetchAll,       // () => Promise<void>
-    saveItem,       // (draft, tagIds) => Promise<boolean>  — tự ghi diff log
-    createItem,     // (tplKey) => Promise<id|null>
-    deleteItem,     // (id) => Promise<boolean>
-    toggleFavorite, // (id) => Promise<void>
-    setAuthState,   // (accountId, authId, 'primary'|'on'|'off') => Promise<boolean>
-    setCodeUsed,    // (accountId, codeId, used) => Promise<boolean>
+    vaultStatus,
+    vaultError,
+    setupVault,
+    unlockVault,
+    lockVault,
+    fetchAll,
+    saveItem,
+    createItem,
+    deleteItem,
+    toggleFavorite,
+    setAuthState,
+    setCodeUsed,
   };
-}
-
-/**
- * Thay cả cụm con của một item: fields, auth, codes.
- * Tách khỏi hook vì cả saveItem và createItem đều cần đúng logic này, và nó
- * không đọc state nào — chỉ nhận vào rồi ghi.
- */
-async function replaceChildren(accountId, userId, src, { fresh = false } = {}) {
-  // `fresh` = row vừa được INSERT → chắc chắn chưa có dòng con nào, bỏ hẳn 3
-  // lệnh DELETE thay vì gửi chúng đi để xoá 0 dòng.
-  if (!fresh) {
-    for (const table of ['account_fields', 'account_auth', 'account_codes']) {
-      const { error } = await supabase.from(table)
-        .delete().eq('account_id', accountId).eq('user_id', userId);
-      if (error) throw error;
-    }
-  }
-
-  const fields = (src.fields || [])
-    // Field không nhãn VÀ không giá trị là dòng user thêm rồi bỏ dở → bỏ đi.
-    // Có nhãn mà rỗng giá trị thì GIỮ: đó là field đang chờ điền, hợp lệ.
-    .filter((f) => f.label?.trim() || f.value?.trim() || f.values?.length || f.links?.length)
-    .map((f, i) => fromField(f, i, userId, accountId));
-  if (fields.length) {
-    const { error } = await supabase.from('account_fields').insert(fields);
-    if (error) throw error;
-  }
-
-  const auth = (src.auth || []).map((a, i) => ({
-    user_id: userId, account_id: accountId,
-    kind: a.kind, note: a.note?.trim() || null, state: a.state, sort_order: i,
-  }));
-  if (auth.length) {
-    const { error } = await supabase.from('account_auth').insert(auth);
-    if (error) throw error;
-  }
-
-  const codes = (src.codes || []).map((c, i) => ({
-    user_id: userId, account_id: accountId,
-    code: c.code, used: !!c.used, sort_order: i,
-  }));
-  if (codes.length) {
-    const { error } = await supabase.from('account_codes').insert(codes);
-    if (error) throw error;
-  }
 }

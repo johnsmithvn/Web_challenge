@@ -12,6 +12,7 @@ import {
   TYPES, isSecretType, maskValue, scorePassword, parseCodes, codeSheet,
   linkableValues, matchesQuery, itemSubtitle, diffLog, formatStamp, relativeUpdated,
   normalizeUrl, urlHost, itemUrl, faviconCandidates, avatarHue, avatarLetter,
+  generatePassword,
 } from '../utils/vaultLogic.js';
 
 /* ── TYPES phải khớp CHECK constraint trong migration ──────────────────── */
@@ -25,6 +26,13 @@ assert.deepEqual(
 /* ── isSecretType ─────────────────────────────────────────────────────── */
 assert.equal(isSecretType('password'), true);
 assert.equal(isSecretType('secret'), true);
+
+const generatedPassword = generatePassword();
+assert.equal(generatedPassword.length, 20);
+assert.match(generatedPassword, /[A-Z]/);
+assert.match(generatedPassword, /[a-z]/);
+assert.match(generatedPassword, /[0-9]/);
+assert.match(generatedPassword, /[^A-Za-z0-9]/);
 assert.equal(isSecretType('text'), false);
 assert.equal(isSecretType('multi'), false);
 // `number` cũng không phải secret dù người ta hay để số thẻ ở đó

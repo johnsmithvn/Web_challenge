@@ -5,18 +5,47 @@
 
 ## 🔥 Thứ tự tiếp tục hiện tại
 
-1. **Vault B1+B2 — mã hóa + khả năng cứu dữ liệu:** envelope KEK/DEK, KDF, AES-GCM + AAD,
-   `account_secrets`/`vault_config`, locked/unlocked UI, export/restore, đổi passphrase, rotate DEK,
-   version migration và phát hiện ciphertext hỏng. Làm liền một đợt; chưa đủ B2 thì không cho nhập
-   secret thật và không gỡ banner plaintext.
-2. **Vault hardening đi kèm:** thêm 6 bảng Vault vào `reset_user_data.sql`, authenticated smoke toàn
-   bộ `/accounts`, rồi user tự chạy migration trên production khi đã chốt bản cuối.
-3. **Finance hardening:** 7 RPC + RLS/rollback → liên kết Task/Inbox/tag/budget/CSV → QA dữ liệu dày.
-4. **Bug correctness còn thật:** thay ngày UTC còn sót ở Focus/Inbox bằng `toDateStr()` sau một smoke
+1. **Vault v6.2 production handoff:** code + local DB + reset + test + browser/RLS smoke đã xong;
+   user tự chạy migration production theo README sau khi kiểm tra `accounts` đang trống. Agent không
+   tự link/push database hosted và chưa đánh dấu production đã áp dụng.
+2. **Finance hardening:** 7 RPC + RLS/rollback → liên kết Task/Inbox/tag/budget/CSV → QA dữ liệu dày.
+3. **Bug correctness còn thật:** thay ngày UTC còn sót ở Focus/Inbox bằng `toDateStr()` sau một smoke
    timezone; kiểm tra tay upload/stream API. Refactor P3-P5 và taxonomy Task vẫn để icebox.
+4. **Vault follow-up (sau):** export/restore, đổi passphrase, rotate DEK, auto-lock, clipboard clear,
+   TOTP thật và nâng `encryption_version`. Không trộn các tính năng này vào cutover production v6.2.
 
-**Hai quyết định mở lúc bắt đầu Vault:** Argon2id (khuyến nghị bảo mật, thêm WASM) hay PBKDF2-SHA256
-≥600k (Web Crypto native, 0 dependency); auto-lock bao lâu (đề xuất 15 phút, thuộc B3).
+**Đã chốt cho v6.2:** PBKDF2-SHA256 600.000 vòng bằng Web Crypto native, không thêm dependency;
+toàn bộ nội dung do user nhập được mã hóa, không chỉ `password`/`secret`.
+
+---
+
+## v6.2.0 — ✅ CODE + LOCAL DB + AUTH/RLS SMOKE DONE / ⏳ PROD USER DEPLOY (2026-08-09) — Vault full-content encryption
+
+**Đã làm:** mỗi account được serialize thành một JSON rồi mã hóa AES-256-GCM phía client. Payload gồm
+title, template, favorite, notes, tags, fields và giá trị, sign-in methods, recovery codes, links và
+history/log. Supabase chỉ thấy `id`, `user_id`, ciphertext, nonce, version và timestamps; không còn
+metadata Vault do user nhập ở dạng plaintext.
+
+**Khóa:** passphrase riêng (tối thiểu 12 ký tự) → PBKDF2-SHA256 600.000 vòng với salt ngẫu nhiên theo
+user → KEK; DEK 256-bit ngẫu nhiên theo user được KEK bọc và lưu trong `vault_config`. DEK chỉ ở memory
+khi unlock; manual lock, sign-out hoặc reload đều trả Vault về locked. AES-GCM AAD gắn wrapped key với
+user/version và từng item với user/item/version; mỗi lần ghi dùng nonce ngẫu nhiên mới. Password generator
+đã bật vì mọi đường tạo/sửa item đều ghi ciphertext.
+
+**Cutover an toàn cho DB trống:** `data/migration_v6.2.0_vault_encryption.sql` abort toàn bộ transaction
+nếu `accounts` có dù chỉ một dòng; khi trống mới bỏ các bảng plaintext con và chuyển `accounts` sang
+`encrypted_payload`. Không có data migration vì user xác nhận local và production chưa có dữ liệu thật.
+
+**Đã xác minh local:** reset script đã dọn được `accounts` + `vault_config`; crypto/database contract và
+toàn bộ test pass; browser authenticated smoke qua setup → encrypted CRUD/tags/auth/codes/logs → manual
+lock → unlock → reload lock; RLS cô lập hai user và database/network không lộ nội dung payload.
+
+### Còn lại
+
+- [ ] **Production:** user tự chạy migration theo thứ tự ghi trong README, sau đó deploy code và smoke
+      `/accounts`. Chưa chạy trên hosted Supabase; không được đánh dấu đã deploy.
+- [ ] **Khả năng vận hành nâng cao:** export/restore, đổi passphrase, rotate DEK và nâng version.
+- [ ] **Hardening UX:** inactivity auto-lock, clipboard auto-clear và TOTP thật.
 
 ---
 
@@ -82,7 +111,7 @@ muốn mở Phase sau, không trộn vào hardening.
 
 ---
 
-## v5.2.0 — ✅ CODE + LOCAL SQL DONE / ⏳ PROD + VAULT SMOKE (2026-08-09) — Vault làm lại theo thiết kế Keyplate
+## v5.2.0 — ✅ UI FOUNDATION / SCHEMA SUPERSEDED LOCALLY BY v6.2.0 (2026-08-09) — Vault Keyplate
 
 **Đã làm** (chi tiết đầy đủ ở CHANGELOG.md v5.2.0, FEATURES.md §29, DATABASE.md, DESIGN.md
 § "Account vault"): 6 bảng `accounts`/`account_fields`/`account_auth`/`account_codes`/`account_logs`/
@@ -95,31 +124,14 @@ Lint 0 error, `npm test` pass (6/6), `npm run build` pass.
 Supabase). Đã xoá `migration_v5.1.0_accounts.sql`, `AccountForm.jsx`, `AccountAvatar.jsx`,
 `accountLinks.js` + test.
 
-### ⏳ Production + smoke còn lại
-- [ ] **Production:** user chạy `data/migration_v5.2.0_vault.sql` trên Supabase SQL Editor sau khi
-      chốt migration Vault cuối. Local baseline đã replay migration này; agent không tự link/push DB hosted.
-- [x] `npm run build` — pass lại 2026-08-09.
-- [ ] Smoke test:
-      (a) `/accounts` → **New item** → chọn **Platform account** → item mới có sẵn field + 4 phương
-          thức đăng nhập (password primary) + sheet 10 mã;
-      (b) **Edit** → đổi title, thêm/xoá field, đổi loại field (text→multi phải gieo giá trị cũ) →
-          **Save changes** → mở lại phải thấy **History** ghi từng thay đổi, secret hiện `•` không lộ
-          giá trị thật;
-      (c) field `password` có **strength bar**; nút **Generate** phải **disable**;
-      (d) tạo item thứ hai, ở item đầu Edit → field loại **link** → chọn item thứ hai + 1 giá trị →
-          Save → chip link bấm nhảy sang item kia; xoá item kia → chip thành **"Missing item"**;
-      (e) **Sign-in methods:** Make primary / Turn off ngoài chế độ sửa → History ghi ngay; đặt
-          primary cái khác → cái cũ tự về ENABLED (đúng ≤1 primary);
-      (f) **codes:** Reveal codes, bấm 1 mã → gạch ngang + mờ + History ghi "marked used"; Edit →
-          **Paste import** dán `1234 5678` (2 dòng) → đếm "2 codes detected" → Replace/Append;
-      (g) item loại **Credit card** → có **card preview**, số thẻ mask tới khi Reveal field Card number;
-      (h) search: gõ giá trị 1 field secret → **không** ra kết quả (secret loại khỏi search); gõ tiêu
-          đề/tag/nhãn field → ra đúng;
-      (i) filter chip Types + #Tags; nút Clear chỉ hiện khi có filter;
-      (j) **< 900px:** chọn item → list ẩn, có nút `← All items`; light theme không vỡ layout.
-- [ ] Kiểm tag: `/settings` → xoá 1 tag đang gắn item → hộp xác nhận phải ghi "N tài khoản".
+### Trạng thái kế thừa
 
-### Quyết định đã chốt trong đợt này (2026-08-05)
+v5.2 giữ vai trò migration nền để dựng UI/schema ban đầu. v6.2 chạy sau nó trên database trống, bỏ
+năm bảng con + junction tag plaintext và chuyển toàn bộ nội dung item vào ciphertext. Browser smoke
+v5.2 đã được chạy lại trên storage v6.2; production dùng chuỗi migration cuối trong README, không deploy
+riêng v5.2 rồi bắt đầu nhập dữ liệu.
+
+### Quyết định UI lịch sử của v5.2 (storage đã được v6.2 thay thế)
 | Câu hỏi | Chốt |
 |---|---|
 | Bám bản thiết kế tới đâu | **Y hệt Keyplate** — token riêng (#7c5cff, Plus Jakarta Sans, radius 18px) scope trong `.acc-vault`; chữ UI tiếng Anh |
@@ -128,18 +140,16 @@ Supabase). Đã xoá `migration_v5.1.0_accounts.sql`, `AccountForm.jsx`, `Accoun
 | CHECK constraint | Chỉ đặt trên giá trị code render phân nhánh theo (`type`, `state`); KHÔNG đặt trên giá trị chỉ tra bảng lấy nhãn (`tpl`, `kind`) — thêm template/kind mới không cần migration |
 | Link mồ côi khi xoá item đích | **jsonb không FK** → con trỏ mồ côi → UI "Missing item". Đúng hành vi đặc tả, FK không mua được gì |
 | `account_logs` | **Append-only ép bằng RLS** (chỉ SELECT + INSERT). `diffLog` mask secret trước khi ghi |
-| Password generator | **Render nhưng disable** tới khi có mã hoá — sinh mật khẩu thật để lưu plaintext là sai. Strength bar (chỉ đọc) thì bật |
+| Password generator | v5.2 từng disable; v6.2 đã bật sau khi mọi đường ghi chuyển sang ciphertext |
 | Guest mode | **Không có** — vault mất khi refresh thì vô nghĩa; chưa login thì hiện lời nhắc |
 
 ### Còn nợ
 - [x] ~~Gộp `migration_v5.2.0_vault.sql` vào master `schema_v4.24.0.sql`~~ — **không còn cần**:
       fresh local DB nay replay các timestamped migration theo thứ tự base → Vault → Finance. Giữ snapshot
       migration tách lớp; không retro-edit master.
-- [ ] **`data/reset_user_data.sql` chưa xoá dữ liệu vault** — 6 bảng `account_*` sinh sau khi script
-      đó được viết (đã ghim chip spawn_task cho việc này).
-- [ ] **Mã hoá client-side chưa làm** — vẫn plaintext. `password`/`secret` chỉ mask UI, là **rủi ro
-      đã biết và user chấp nhận tường minh** để dùng ngay. Banner cảnh báo cố ý; đừng "dọn" đi.
-      Thiết kế envelope encryption ở `docs/DESIGN_ACCOUNT_VAULT.md`.
+- [x] `data/reset_user_data.sql` đã cập nhật cho schema Vault v6.2 (`accounts` + `vault_config`).
+- [x] Mã hoá client-side full-content đã làm ở v6.2; không còn `password`/`secret` hoặc metadata user
+      nhập được ghi plaintext.
 
 ---
 
@@ -189,16 +199,13 @@ Lint 0 error, `npm test` pass.
 
 ---
 
-## 🔐 NEXT — Vault: mã hoá + tính năng thật (vault UI đã xong v5.2.0)
+## 🔐 Vault follow-up — sau v6.2 core
 
-Thiết kế envelope encryption ở `docs/DESIGN_ACCOUNT_VAULT.md`. Vault UI Keyplate xong 2026-08-05
-(xem block v5.2.0 đầu file) — còn lại (theo "Not in the prototype" của handoff):
-
-- [ ] **Mã hoá client-side** — envelope encryption (KEK/DEK, `crypto.subtle`, 0 dependency),
-      unlock modal + trạng thái locked, export ciphertext + đổi passphrase. Làm liền một đợt,
-      không bật từng phần (mất passphrase mà chưa có export = mất trắng).
-- [ ] Auto-lock timer (header đang ghi "no auto-lock yet"), TOTP thật cho phương thức authenticator,
-      clipboard auto-clear, dọn link mồ côi khi xoá item.
+- [x] Full-content AES-GCM, envelope KEK/DEK, setup/unlock/manual lock/reload lock, encrypted CRUD,
+      password generator, reset, local tests và authenticated browser/RLS smoke.
+- [ ] Export/restore ciphertext trước khi dùng Vault làm bản sao duy nhất của secret thật.
+- [ ] Đổi passphrase bằng cách re-wrap cùng DEK; rotate DEK khi nghi lộ; nâng `encryption_version`.
+- [ ] Auto-lock theo thời gian không hoạt động, clipboard auto-clear và TOTP thật.
 
 ---
 

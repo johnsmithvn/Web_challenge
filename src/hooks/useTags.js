@@ -20,7 +20,6 @@ const ENTITY_CONFIG = {
   finance:      { table: 'finance_transaction_tags', fk: 'transaction_id' },
   collection:   { table: 'collection_tags',   fk: 'collection_id' },
   task:         { table: 'task_tags',         fk: 'task_id' },
-  account:      { table: 'account_tags',      fk: 'account_id' },
 };
 
 export function useTags() {
@@ -250,32 +249,30 @@ export function useTags() {
 
   // ── Get usage breakdown for a tag, per entity type ──────────
   const getTagUsageBreakdown = useCallback(async (tagId) => {
-    if (!isAuth) return { finance: 0, collection: 0, task: 0, account: 0 };
+    if (!isAuth) return { finance: 0, collection: 0, task: 0 };
 
     try {
-      const [finance, collections, tasks, accounts] = await Promise.all([
+      const [finance, collections, tasks] = await Promise.all([
         supabase.from('finance_transaction_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
         supabase.from('collection_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
         supabase.from('task_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
-        supabase.from('account_tags').select('tag_id', { count: 'exact', head: true }).eq('tag_id', tagId),
       ]);
 
       return {
         finance: finance.count || 0,
         collection: collections.count || 0,
         task: tasks.count || 0,
-        account: accounts.count || 0,
       };
     } catch (err) {
       logger.error('[useTags] getTagUsageBreakdown exception:', err);
-      return { finance: 0, collection: 0, task: 0, account: 0 };
+      return { finance: 0, collection: 0, task: 0 };
     }
   }, [isAuth]);
 
   // ── Get usage count for a tag across all junction tables ───
   const getTagUsageCount = useCallback(async (tagId) => {
     const b = await getTagUsageBreakdown(tagId);
-    return b.finance + b.collection + b.task + b.account;
+    return b.finance + b.collection + b.task;
   }, [getTagUsageBreakdown]);
 
   // ── Batch get usage counts for all tags ───────────────────
@@ -283,12 +280,10 @@ export function useTags() {
     if (!isAuth || !userId) return {};
 
     try {
-      // Fetch all links from all 4 junction tables
-      const [finance, collections, tasks, accounts] = await Promise.all([
+      const [finance, collections, tasks] = await Promise.all([
         supabase.from('finance_transaction_tags').select('tag_id'),
         supabase.from('collection_tags').select('tag_id'),
         supabase.from('task_tags').select('tag_id'),
-        supabase.from('account_tags').select('tag_id'),
       ]);
 
       const counts = {};
@@ -296,7 +291,6 @@ export function useTags() {
         ...(finance.data || []),
         ...(collections.data || []),
         ...(tasks.data || []),
-        ...(accounts.data || []),
       ];
       for (const row of all) {
         counts[row.tag_id] = (counts[row.tag_id] || 0) + 1;

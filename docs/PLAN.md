@@ -1,11 +1,15 @@
 # PLAN.md — Life Hub (Personal Life OS)
 **Updated:** 2026-08-09
-**Current Version:** v6.1.0
+**Current Version:** v6.2.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 > **v6.0.0 (2026-08-08):** Module chi tiêu `/finance` làm lại từ đầu theo thiết kế Nocturne (handoff).
 > Thay hẳn expenses+subscriptions bằng 10 bảng `finance_*` + junction, 5 màn trong child bar của sidebar chính, liên kết Task +
 > Inbox. Thiết kế: `docs/DESIGN_FINANCE.md`. MAJOR (schema breaking).
+
+> **v6.2.0 (2026-08-09):** Vault chuyển sang full-content encryption: một AES-GCM ciphertext cho mỗi
+> account, PBKDF2-SHA256 600.000 vòng, envelope KEK/DEK và khóa phiên. Code + local DB + auth/RLS smoke
+> đã xong; production vẫn do user tự chạy.
 
 > ⚠️ Bảng version ở cuối file **thiếu v4.23.0 → v4.31.0** (nhảy từ v4.26.1 sang v5.0.0) — sai lệch
 > có từ trước, chưa fix vì ngoài scope. Nguồn đầy đủ: `CHANGELOG.md`.
@@ -16,15 +20,15 @@
 
 | Thứ tự | Milestone | Trạng thái |
 |---|---|---|
-| 1 | **Vault B1+B2:** envelope encryption + unlock + export/restore + đổi passphrase + rotate/version/corruption handling | 🔜 kế tiếp, chưa code |
-| 2 | Vault hardening: `reset_user_data.sql`, authenticated smoke, production migration do user chạy | ⏳ sau B1+B2 |
-| 3 | Finance hardening: 7 RPC/RLS/rollback → liên kết → responsive QA | ⏳ đã có plan |
-| 4 | Correctness còn lại: UTC Focus/Inbox + manual upload/stream API | ⏳ chưa làm |
+| 1 | **Vault v6.2 production:** user chạy ordered migration + deploy + smoke theo README | ⏳ user-run; local đã pass |
+| 2 | Finance hardening: 7 RPC/RLS/rollback → liên kết → responsive QA | ⏳ đã có plan |
+| 3 | Correctness còn lại: UTC Focus/Inbox + manual upload/stream API | ⏳ chưa làm |
+| 4 | Vault follow-up: export/restore, đổi passphrase, rotate DEK, auto-lock, clipboard, TOTP | ⏳ để sau core |
 | 5 | Refactor P3-P5 + taxonomy/subtask/dependency Task | 🧊 icebox, chưa approve |
 
-Vault đứng trước Finance hardening vì `password`/`secret` hiện chỉ mask UI nhưng vẫn là plaintext.
-B1 không được phát hành riêng: phải đủ B2 để có export/restore và đổi passphrase trước khi cho dùng
-secret thật. Chi tiết: `docs/DESIGN_ACCOUNT_VAULT.md`.
+Vault core không còn plaintext: toàn bộ nội dung user nhập nằm trong encrypted JSON payload. Trước khi
+dùng Vault làm **bản sao duy nhất** của secret thật vẫn nên hoàn thành export/restore. Kiến trúc và giới
+hạn hiện tại: `docs/DESIGN_ACCOUNT_VAULT.md`.
 
 ---
 
@@ -388,6 +392,7 @@ phục hồi 3 file bị corrupt 0-byte (v4.5.2) (chi tiết: CHANGELOG.md v4.5.
 | **v4.26.1** | **Refactor P2 (4/6) — bỏ `getSb()` lazy ở 3 hook, gộp `snoozedFilter`, gộp `isAudioUrl`/`isVideoUrl`, `dateUtils.toDateStr()` thay 4 bản copy, thêm `npm test`** |
 | **v5.0.0** | **Activity Log v2 + Task Detail Modal + gỡ Life Log; dọn 5 đợt module (schema 30 → 18 bảng), XP đổi nguồn sang Task, landing viết lại** |
 | **v5.2.0** | **🔐 Vault (`/accounts`) làm lại theo thiết kế Keyplate: 6 bảng, layout 2 pane, 10 template, 10 loại field, link nhiều-tới-một, sign-in methods, mã dự phòng, sửa inline + history. Chưa mã hoá. Thay bản Phase A1 v5.1.0 (chưa từng deploy)** |
+| **v6.2.0** | **🔐 Vault full-content encryption: một encrypted JSON/account, PBKDF2-SHA256 600k, envelope KEK/DEK, setup/unlock/lock, encrypted CRUD; local auth/RLS smoke pass, production user-run** |
 
 ---
 
@@ -418,22 +423,21 @@ Mỗi phase = 1 commit độc lập, revert được, `npm run build` xanh trư�
 
 ---
 
-## 🔐 Phase 13 — Vault (v5.2.0 → )
-*UI làm lại: 2026-08-05 theo bản thiết kế Keyplate · mã hoá: `docs/DESIGN_ACCOUNT_VAULT.md`*
+## 🔐 Phase 13 — Vault (v5.2.0 → v6.2.0)
+*UI Keyplate: 2026-08-05 · full-content encryption: 2026-08-09 · chi tiết: `docs/DESIGN_ACCOUNT_VAULT.md`*
 
-**Goal:** Vault lưu mọi thứ về một tài khoản (field theo loại, phương thức đăng nhập, mã dự phòng,
-lịch sử) theo bản thiết kế Keyplate. Chia 2 phần độc lập: **A = UI + metadata (không crypto)**,
-**B = mã hoá client-side**.
+**Goal:** Supabase không thấy bất kỳ nội dung Vault nào do user nhập. Mỗi account là một encrypted
+JSON payload; server chỉ giữ ownership, timestamps, nonce và version.
 
 | Phase | Nội dung | Trạng thái |
 |-------|----------|-----------|
-| A | 6 bảng + `useAccounts` + `/accounts` layout Keyplate + 10 template + 10 loại field + link nhiều-tới-một + sign-in methods + code sheet + sửa inline + history | ✅ v5.2.0 (local SQL done; production user-run) |
-| B1+B2 | Crypto core (envelope KEK/DEK, unlock modal) **và** vault operability (export/restore, đổi passphrase, rotate/version/corruption handling) — làm **liền một đợt** | 🔜 ưu tiên kế tiếp |
-| B3 | Auto-lock timer, TOTP thật, clipboard auto-clear | ⏳ sau B2 |
+| A | UI Keyplate + templates/fields/auth/codes/history trên schema normalized ban đầu | ✅ v5.2.0; storage được v6.2 thay |
+| B1 | Full-content AES-GCM; PBKDF2 600k; KEK bọc DEK; setup/unlock/manual lock/reload lock; encrypted CRUD + generator | ✅ v6.2 local |
+| B1 hardening | Empty-Vault fail-closed migration, reset script, crypto/contracts/browser/RLS smoke | ✅ local |
+| Production | User chạy migration + deploy + smoke theo README | ⏳ chưa áp dụng |
+| B2 | Export/restore, đổi passphrase, rotate DEK, version upgrade | ⏳ follow-up |
+| B3 | Inactivity auto-lock, TOTP thật, clipboard auto-clear | ⏳ follow-up |
 
-**Điều kiện gỡ banner "chưa mã hoá" ở `/accounts`:** xong B1 **và** B2. Bật crypto mà chưa có
-export + đổi passphrase = mất passphrase là mất trắng dữ liệu.
-
-**Quyết định đã chốt (2026-08-05):** làm lại vault y hệt bản thiết kế Keyplate, bỏ các tính năng
-chỉ Life Hub có (status, nhắc hạn đăng nhập, gom theo dịch vụ, favicon, 20 mẫu VN). Trong lúc chờ
-mã hoá, type `password`/`secret` chỉ mask UI và **user đã chấp nhận tường minh rủi ro plaintext**.
+**Quyết định v6.2:** database local/prod chưa có dữ liệu thật nên dùng cutover fail-closed cho Vault
+trống, không viết dual-read hoặc data migration. PBKDF2-SHA256 600.000 vòng được chọn để dùng Web
+Crypto native và không thêm dependency. Mã hóa **toàn bộ nội dung**, không phân loại plaintext/secret.

@@ -20,7 +20,7 @@ import { avatarHue, avatarLetter, faviconCandidates, itemUrl } from '../utils/va
  * hay đổi website không cần effect reset — URL mới thì đơn giản là chưa có
  * trong `failed`.
  */
-export default function AccountAvatar({ item, useFavicon = true }) {
+export default function AccountAvatar({ item, useFavicon = false }) {
   const [failed, setFailed] = useState({});
 
   const url = useFavicon ? itemUrl(item) : null;

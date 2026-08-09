@@ -255,11 +255,7 @@
   color: color-mix(in srgb, var(--color-text) 50%, transparent);
 }
 
-/* ══ Banner "chưa mã hoá" ══════════════════════════════════════════════════
-   KHÔNG thuộc thiết kế Keyplate — đây là phần của Life Hub nên nó cố ý dùng
-   token gold của global.css. Gold-alpha chứ không đỏ: điều kiện thường trực
-   của giai đoạn này, không phải lỗi. CỐ Ý không tắt được — nó là thứ duy nhất
-   đứng giữa user và việc gõ mật khẩu thật vào cột plaintext. */
+/* ══ Encryption status ═════════════════════════════════════════════════════ */
 .acc-warn {
   padding: 8px 20.4px;
   font-size: 11.5px; line-height: 1.5;
@@ -272,6 +268,66 @@
   background: rgba(217, 119, 6, .1);
   border-bottom-color: rgba(217, 119, 6, .25);
 }
+.acc-warn--secure {
+  color: #8de2b0;
+  background: rgba(45, 180, 105, .09);
+  border-bottom-color: rgba(45, 180, 105, .25);
+}
+[data-theme="light"] .acc-warn--secure {
+  color: #167344;
+  background: rgba(22, 163, 74, .08);
+  border-bottom-color: rgba(22, 163, 74, .22);
+}
+.acc-vault-error {
+  padding: 8px 20.4px;
+  color: #ffb4b4;
+  background: rgba(220, 38, 38, .12);
+  border-bottom: 1px solid rgba(220, 38, 38, .28);
+  font-size: 12px;
+}
+
+/* ══ Locked/setup gate ═════════════════════════════════════════════════════ */
+.acc-vault.acc-gate {
+  grid-template-rows: 1fr;
+  place-items: center;
+  padding: 24px;
+}
+.acc-gate__card {
+  display: grid;
+  width: min(420px, 100%);
+  gap: 12px;
+  padding: 28px;
+  border: 1px solid var(--color-divider);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--lift-2);
+}
+.acc-gate__card h1 { margin: 0; font-size: 24px; }
+.acc-gate__card p {
+  margin: 0 0 4px;
+  color: color-mix(in srgb, var(--color-text) 62%, transparent);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.acc-gate__card label { margin-top: 4px; font-size: 12px; font-weight: 700; }
+.acc-gate__icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  color: var(--color-accent-400);
+  background: var(--color-accent-100);
+}
+.acc-gate__warning,
+.acc-gate__error {
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.acc-gate__warning { color: var(--gold); background: rgba(255, 215, 0, .08); }
+.acc-gate__error { color: #ffb4b4; background: rgba(220, 38, 38, .12); }
 
 /* ══ Filter bar ════════════════════════════════════════════════════════════
    MỌI cell khai grid-column/grid-row tường minh. Nút Clear là có điều kiện —
@@ -535,6 +591,8 @@
   color: var(--color-accent-700); margin-top: 3px;
 }
 .acc-field__col { min-width: 0; }
+.acc-editvalue { display: flex; align-items: center; gap: 8px; }
+.acc-editvalue .acc-input { flex: 1; min-width: 0; }
 .acc-field__val { font-size: 14.5px; overflow-wrap: anywhere; }
 .acc-field__val--empty { color: color-mix(in srgb, var(--color-text) 35%, transparent); }
 .acc-field__val--mask { font-family: var(--acc-mono); letter-spacing: .12em; }

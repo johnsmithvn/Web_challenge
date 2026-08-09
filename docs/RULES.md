@@ -631,3 +631,45 @@ XP events are logged to `xp_logs` table (immutable append-only).
 - Bỏ tích task → `removeXp` (v5.0.0)
 - Compute `totalXp = SUM(amount)` from `xp_logs` at runtime
 - Never update/delete XP entries (except `removeXp` for un-tick)
+
+---
+
+# 17. 🚨🚨🚨 CẤM TUYỆT ĐỐI: HÀNH VI XOÁ / RESET DATABASE 🚨🚨🚨
+
+> **⛔ LUẬT NÀY CÓ MỨC ƯU TIÊN CAO NHẤT. KHÔNG NGOẠI LỆ.**
+>
+> Được thêm sau sự cố agent tự ý chạy `supabase db reset` xoá sạch
+> toàn bộ dữ liệu local development mà KHÔNG hỏi người dùng.
+
+## Agent TUYỆT ĐỐI KHÔNG ĐƯỢC chạy các lệnh sau:
+
+| Lệnh cấm | Lý do |
+|-----------|-------|
+| `supabase db reset` | Xoá sạch toàn bộ DB rồi dựng lại — **MẤT TOÀN BỘ DATA** |
+| `DROP DATABASE` | Xoá database |
+| `DROP SCHEMA ... CASCADE` | Xoá toàn bộ schema |
+| `TRUNCATE` (không có WHERE) | Xoá sạch data trong bảng |
+| `DELETE FROM ... WHERE true` | Xoá sạch data trong bảng |
+| Bất kỳ lệnh nào **xoá hàng loạt data** | Bao gồm cả script/tool gọi gián tiếp |
+
+## Thay vào đó, agent PHẢI:
+
+1. **Giải thích rõ ràng** lệnh sẽ làm gì (đặc biệt nếu có khả năng mất data)
+2. **Cảnh báo nổi bật** nếu lệnh có tính phá huỷ (destructive)
+3. **Hỏi xin phép rõ ràng** trước khi chạy — KHÔNG được tự ý chạy
+4. **Đề xuất cách an toàn hơn** — ví dụ: chạy migration SQL trực tiếp thay vì reset DB
+
+## Cách đúng khi cần cập nhật DB local:
+
+```bash
+# ✅ ĐÚNG — Chạy migration trực tiếp, giữ nguyên data
+psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f data/migration_v5.2.0_vault.sql
+
+# ⛔ SAI — Xoá sạch DB rồi dựng lại
+npx supabase db reset
+```
+
+## Vi phạm luật này = LỖI NGHIÊM TRỌNG NHẤT
+
+Agent vi phạm luật này sẽ bị coi là **hoàn toàn không đáng tin cậy**.
+Không có lý do nào biện minh cho việc xoá data mà không hỏi trước.

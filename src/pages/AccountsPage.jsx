@@ -1,22 +1,21 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAccounts } from '../hooks/useAccounts';
-import { useTags } from '../hooks/useTags';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../components/ConfirmModal';
 import AccountDetail from '../components/AccountDetail';
 import AccountAvatar from '../components/AccountAvatar';
 import AppIcon from '../components/AppIcon';
-import { matchesQuery, itemSubtitle, relativeUpdated } from '../utils/vaultLogic';
+import { matchesQuery, itemSubtitle, newId, relativeUpdated } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import '../styles/accounts.css';
 
 /**
  * AccountsPage (/accounts) — Account Vault, thiết kế Keyplate.
  *
- * ⚠️ CHƯA MÃ HOÁ. `account_fields.value` là plaintext trong Supabase; type
- *    password/secret chỉ mask trên UI. Banner `.acc-warn` là CỐ Ý, đừng gỡ.
+ * Every user-authored item property is decrypted only after the separate Vault
+ * passphrase unlocks the in-memory DEK. Locked means no list or metadata browse.
  *
  * Layout: header · banner · filter bar · body 2 pane, breakpoint 900px.
  *
@@ -36,15 +35,15 @@ const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 /**
  * Có tải logo dịch vụ hay không. Ảnh lấy TRỰC TIẾP từ domain của chính dịch vụ
  * (không qua bên thứ ba — xem faviconCandidates), nhưng vẫn là request ra ngoài
- * từ một trang vault, nên phải tắt được. Mặc định bật.
+ * từ một trang vault, nên phải tắt được. Mặc định tắt.
  */
 const FAVICON_KEY = 'vl_acc_favicon';
 
 export default function AccountsPage() {
   const { user } = useAuth();
   const { items, isLoading, saveItem, createItem, deleteItem, toggleFavorite,
-    setAuthState, setCodeUsed } = useAccounts();
-  const { tags, addTag } = useTags();
+    setAuthState, setCodeUsed, vaultStatus, vaultError,
+    setupVault, unlockVault, lockVault } = useAccounts();
   const { showToast } = useToast();
   const { confirm, ConfirmModal } = useConfirm();
 
@@ -58,7 +57,8 @@ export default function AccountsPage() {
   const [autoEditId, setAutoEditId] = useState(null); // item vừa tạo → mở sẵn edit
   const [revealed, setRevealed] = useState({});   // { [fieldId]: true }
   const [copied, setCopied] = useState(null);     // 1 key tại một thời điểm
-  const [useFavicon, setUseFavicon] = useState(() => localStorage.getItem(FAVICON_KEY) !== '0');
+  const [pendingTags, setPendingTags] = useState([]);
+  const [useFavicon, setUseFavicon] = useState(() => localStorage.getItem(FAVICON_KEY) === '1');
   const copyTimer = useRef(null);
 
   const toggleFavicon = () => setUseFavicon((v) => {
@@ -103,6 +103,23 @@ export default function AccountsPage() {
     return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [items]);
 
+  // Vault tags live inside encrypted item payloads. Pending tags only exist in
+  // memory until the edited item is saved; they never enter the global plaintext tag table.
+  const tags = useMemo(() => {
+    const byId = new Map(pendingTags.map((candidate) => [candidate.id, candidate]));
+    for (const item of items) for (const candidate of item.tags) byId.set(candidate.id, candidate);
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [items, pendingTags]);
+
+  const addTag = useCallback(async (name) => {
+    const clean = name.trim();
+    const existing = tags.find((candidate) => candidate.name.toLowerCase() === clean.toLowerCase());
+    if (existing) return existing;
+    const created = { id: newId(), name: clean, color: '#8b5cf6' };
+    setPendingTags((current) => [...current, created]);
+    return created;
+  }, [tags]);
+
   const dirty = cat !== 'all' || !!tag || !!query;
   const listTitle = tag
     ? `#${usedTags.find((t) => t.id === tag)?.name || 'tag'}`
@@ -140,10 +157,22 @@ export default function AccountsPage() {
   }, []);
 
   const handleSave = useCallback(async (draft, tagIds) => {
-    const ok = await saveItem(draft, tagIds);
+    const selectedTags = tags.filter((candidate) => tagIds.includes(candidate.id));
+    const ok = await saveItem({ ...draft, tags: selectedTags });
     if (!ok) showToast('Save failed', { icon: 'warning' });
+    if (ok) setPendingTags([]);
     return ok;
-  }, [saveItem, showToast]);
+  }, [saveItem, showToast, tags]);
+
+  const handleLock = () => {
+    setSelectedId(null);
+    setScreen('list');
+    setRevealed({});
+    setCopied(null);
+    setPickerOpen(false);
+    setPendingTags([]);
+    lockVault();
+  };
 
   /**
    * Tạo item từ template. Dialog **ở nguyên** trong lúc chờ và card được bấm
@@ -196,6 +225,17 @@ export default function AccountsPage() {
     );
   }
 
+  if (vaultStatus !== 'unlocked') {
+    return (
+      <VaultGate
+        status={vaultStatus}
+        error={vaultError}
+        onSetup={setupVault}
+        onUnlock={unlockVault}
+      />
+    );
+  }
+
   return (
     <div className="acc-vault">
       {/* ── Header ── */}
@@ -218,7 +258,8 @@ export default function AccountsPage() {
         </div>
 
         <div className="acc-head__right">
-          <span className="acc-head__lock">Unlocked · no auto-lock yet</span>
+          <span className="acc-head__lock">Unlocked · key in memory</span>
+          <button className="acc-act" onClick={handleLock}>Lock</button>
           <button
             className={`acc-act${useFavicon ? ' acc-act--on' : ''}`}
             onClick={toggleFavicon}
@@ -231,12 +272,12 @@ export default function AccountsPage() {
         </div>
       </header>
 
-      {/* Không tắt được — xem accounts.css § banner */}
-      <div className="acc-warn">
-        <AppIcon name="warning" size={16} /> Not encrypted yet — values are stored as plain text in Supabase. Masked fields only
-        hide values on screen; they do not protect them. Keep real passwords in Bitwarden until
-        client-side encryption ships.
+      <div className="acc-warn acc-warn--secure">
+        <AppIcon name="lock" size={16} /> Full-content encryption is active. Titles, usernames,
+        URLs, notes, tags, fields, codes and history are sent to Supabase only as AES-GCM ciphertext.
       </div>
+
+      {vaultError && <div className="acc-vault-error" role="alert">{vaultError}</div>}
 
       {/* ── Filter bar ── */}
       <div className="acc-filters">
@@ -381,6 +422,101 @@ export default function AccountsPage() {
       )}
 
       {ConfirmModal}
+    </div>
+  );
+}
+
+function VaultGate({ status, error, onSetup, onUnlock }) {
+  const [passphrase, setPassphrase] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [formError, setFormError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  if (status === 'loading') {
+    return (
+      <div className="acc-vault acc-gate">
+        <div className="acc-gate__card" aria-live="polite">Checking encrypted Vault…</div>
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="acc-vault acc-gate">
+        <div className="acc-gate__card">
+          <AppIcon name="warning" size={24} />
+          <h1>Vault unavailable</h1>
+          <p role="alert">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const setup = status === 'setup';
+  const submit = async (event) => {
+    event.preventDefault();
+    setFormError('');
+    if (setup && passphrase !== confirmation) {
+      setFormError('Passphrases do not match.');
+      return;
+    }
+    setBusy(true);
+    const result = setup ? await onSetup(passphrase) : await onUnlock(passphrase);
+    setBusy(false);
+    if (!result.ok) setFormError(result.error || 'Could not open the Vault.');
+  };
+
+  return (
+    <div className="acc-vault acc-gate">
+      <form className="acc-gate__card" onSubmit={submit}>
+        <div className="acc-gate__icon"><AppIcon name="lock" size={24} /></div>
+        <div className="acc-brand__name">Keyplate</div>
+        <h1>{setup ? 'Create Vault passphrase' : 'Unlock Vault'}</h1>
+        <p>
+          {setup
+            ? 'This separate passphrase encrypts every item property before it reaches Supabase.'
+            : 'Your account list stays encrypted until this passphrase unwraps the key in this browser.'}
+        </p>
+
+        <label htmlFor="vault-passphrase">Vault passphrase</label>
+        <input
+          id="vault-passphrase"
+          className="acc-input"
+          type="password"
+          minLength={12}
+          autoComplete={setup ? 'new-password' : 'current-password'}
+          value={passphrase}
+          onChange={(event) => setPassphrase(event.target.value)}
+          autoFocus
+          required
+        />
+
+        {setup && (
+          <>
+            <label htmlFor="vault-passphrase-confirm">Confirm passphrase</label>
+            <input
+              id="vault-passphrase-confirm"
+              className="acc-input"
+              type="password"
+              minLength={12}
+              autoComplete="new-password"
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              required
+            />
+            <div className="acc-gate__warning">
+              There is no reset or recovery path if this passphrase is lost.
+            </div>
+          </>
+        )}
+
+        {(formError || error) && (
+          <div className="acc-gate__error" role="alert">{formError || error}</div>
+        )}
+        <button className="acc-btn acc-btn--primary" type="submit" disabled={busy}>
+          {busy ? 'Working…' : setup ? 'Create encrypted Vault' : 'Unlock'}
+        </button>
+      </form>
     </div>
   );
 }

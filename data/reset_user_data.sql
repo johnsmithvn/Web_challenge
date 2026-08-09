@@ -1,10 +1,14 @@
 -- ═══════════════════════════════════════════════════════════════
 -- RESET USER DATA — Xóa toàn bộ data app, GIỮ lại auth accounts
--- Synced with: schema_v4.24.0.sql + migration_v6.0.0_finance.sql
--- Last updated: 2026-08-08
+-- Synced with: schema_v4.24.0.sql + Vault v6.2.0 + Finance v6.0.0
+-- Last updated: 2026-08-09
 -- Chạy trong Supabase SQL Editor
 -- ⚠️  KHÔNG THỂ HOÀN TÁC — chỉ chạy khi chắc chắn muốn reset
 -- ═══════════════════════════════════════════════════════════════
+
+-- 0. Encrypted Account Vault (items first, then the wrapped-key configuration)
+DELETE FROM accounts;
+DELETE FROM vault_config;
 
 -- 1. Tag junctions (must go before tags and their entities)
 DELETE FROM collection_tags;
@@ -78,7 +82,7 @@ DELETE FROM inspirational_quotes;
 
 -- ═══════════════════════════════════════════════════════════════
 -- DONE — Auth accounts (auth.users) được giữ nguyên
--- Tables reset: collection_tags, finance_transaction_tags,
+-- Tables reset: accounts, vault_config, collection_tags, finance_transaction_tags,
 --   intention_logs, intentions, habit_logs, journey_habits, user_journeys,
 --   program_habits, programs, habits, tags, knowledge_groups, user_tasks,
 --   collections (+ cascade: collection_groups, collection_notes), finance_transactions,

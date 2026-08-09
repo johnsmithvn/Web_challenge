@@ -1,4 +1,4 @@
-# Life Hub — Personal Life OS v6.1.0
+# Life Hub — Personal Life OS v6.2.0
 
 > **Kỷ Luật = Hệ Thống, Không Phải Ý Chí**
 
@@ -36,7 +36,7 @@ npm test
 
 ## ⚙️ Environment Variables
 
-File `.env.local.example` chứa tất cả biến. Copy sang `.env.local` rồi điền giá trị.
+File [`.env.local.example`](./.env.local.example) chứa tất cả biến. Copy sang `.env.local` rồi điền giá trị.
 
 ### Bắt buộc
 
@@ -53,7 +53,9 @@ File `.env.local.example` chứa tất cả biến. Copy sang `.env.local` rồi
 
 ### Tùy chọn — Google Drive (upload ảnh / audio / video / file)
 
-Mọi file được upload qua **Google Drive Service Account** (Vercel serverless `api/upload.js`) và phát lại qua proxy `api/stream.js`. Upload **yêu cầu người dùng đã đăng nhập** (xác thực Supabase JWT).
+Mọi file được upload qua **Google Drive Service Account** (Vercel serverless
+[`api/upload.js`](./api/upload.js)) và phát lại qua proxy [`api/stream.js`](./api/stream.js).
+Upload **yêu cầu người dùng đã đăng nhập** (xác thực Supabase JWT).
 
 | Biến | Ở đâu | Mục đích |
 |------|--------|----------|
@@ -75,6 +77,10 @@ Mọi file được upload qua **Google Drive Service Account** (Vercel serverle
 
 ## 🗄 Database Setup (Supabase)
 
+README gốc này là runbook duy nhất cho cả local và production. Các snapshot trong
+[`supabase/migrations/`](./supabase/migrations/) chỉ dùng để dựng database local và được xem là
+**bất biến**; mọi thay đổi database mới phải nằm trong một migration timestamp mới.
+
 ### Local development
 
 Docker phải đang chạy. Từ thư mục dự án:
@@ -83,11 +89,19 @@ Docker phải đang chạy. Từ thư mục dự án:
 npm run db:local:start
 npm run db:local:reset
 npm run db:local:status
+# Khi làm xong:
+npm run db:local:stop
 ```
 
-Ba migration trong `supabase/migrations/` sẽ dựng lại toàn bộ 31 bảng theo đúng thứ tự
-base → Vault → Finance. Sau lệnh `db:local:start`, tạo file `.env.development.local`
-(file này được Git bỏ qua) bằng URL và Publishable key hiện trong kết quả:
+Bốn migration local được chạy tự động theo timestamp:
+
+1. [`20260802000000_base_v5_0_0.sql`](./supabase/migrations/20260802000000_base_v5_0_0.sql)
+2. [`20260805000000_vault_v5_2_0.sql`](./supabase/migrations/20260805000000_vault_v5_2_0.sql)
+3. [`20260808000000_finance_v6_0_0.sql`](./supabase/migrations/20260808000000_finance_v6_0_0.sql)
+4. [`20260809000000_vault_encryption_v6_2_0.sql`](./supabase/migrations/20260809000000_vault_encryption_v6_2_0.sql)
+
+Sau `npm run db:local:start`, tạo file `.env.development.local` (Git bỏ qua) bằng Project URL và
+Publishable key hiện trong kết quả:
 
 ```env
 VITE_SUPABASE_URL=http://127.0.0.1:54321
@@ -97,9 +111,10 @@ VITE_SUPABASE_ANON_KEY=<local Publishable key>
 Vite sẽ ưu tiên file này trong development; `.env.local` hosted vẫn được giữ nguyên cho
 môi trường hiện có.
 
-> Chỉ dùng các script `db:local:*`. Không chạy `supabase db push`,
-> `supabase db reset --linked` hoặc truyền hosted `--db-url`. Production từng được cập nhật
-> thủ công qua SQL Editor nên chưa ghi nhận các timestamp baseline này.
+> Chỉ dùng các script `db:local:*`. **Không chạy** `supabase db push`,
+> `supabase db reset --linked` hoặc lệnh có hosted `--db-url`. Production từng được cập nhật thủ
+> công qua SQL Editor nên chưa có các timestamp baseline; phải đối soát migration history riêng
+> trước khi cân nhắc remote push trong tương lai.
 
 ### Hosted project mới (Fresh Install)
 
@@ -107,20 +122,49 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 
 | Thứ tự | File | Nội dung |
 |:------:|------|----------|
-| 1 | **`data/schema_v4.24.0.sql`** | Master schema đã hợp nhất tới v5.0: bảng lõi, RLS, index, trigger, RPC, Task activity log. Idempotent. |
-| 2 | **`data/migration_v5.2.0_vault.sql`** | 6 bảng Account Vault + mở rộng `tagged_items`. Idempotent. |
-| 3 | **`data/migration_v6.0.0_finance.sql`** | Finance v6 clean rebuild, 10 bảng + junction + RPC. File tự kiểm tra hai bước trước và rollback nếu thiếu. |
+| 1 | [`data/schema_v4.24.0.sql`](./data/schema_v4.24.0.sql) | Master schema đã hợp nhất tới v5.0: bảng lõi, RLS, index, trigger, RPC, Task activity log. Idempotent. |
+| 2 | [`data/migration_v5.2.0_vault.sql`](./data/migration_v5.2.0_vault.sql) | Schema Vault trung gian bắt buộc để v6.2 cutover. Idempotent. |
+| 3 | [`data/migration_v6.0.0_finance.sql`](./data/migration_v6.0.0_finance.sql) | Finance v6 clean rebuild, 10 bảng + junction + RPC. Có kiểm tra và rollback khi thiếu. |
+| 4 | [`data/migration_v6.2.0_vault_encryption.sql`](./data/migration_v6.2.0_vault_encryption.sql) | Cutover Vault trống sang full-content encryption. Chạy đúng một lần. |
 
 > Không chạy thêm `migration_v5.0.0_activity_logs_v2.sql` trên fresh install vì thay đổi đó đã nằm
 > trong master schema. Finance v6 sẽ xóa dữ liệu Finance legacy (`expenses`, `subscriptions`);
 > xem phần VERIFY cuối từng file trước khi dùng trên DB đang có dữ liệu.
 
-### Reset dữ liệu user (giữ nguyên schema)
+### Nâng production hiện có lên Vault v6.2 — user tự chạy
 
-```sql
--- Xóa dữ liệu của 1 user cụ thể (giữ bảng + schema)
--- File: data/reset_user_data.sql
-```
+Vault v6.2 mã hóa **toàn bộ nội dung do người dùng nhập** ngay trong trình duyệt bằng AES-GCM:
+tiêu đề, username, URL, notes, tags, fields, phương thức đăng nhập, recovery codes và history.
+Supabase chỉ nhận owner/id, timestamps, ciphertext, nonce và version. Vault passphrase, KEK và DEK
+thô không được lưu trên server.
+
+Migration này là cutover dành riêng cho **Vault trống**. Nó chủ động dừng và rollback nếu bảng
+`accounts` có bất kỳ dòng nào; không có quá trình chuyển plaintext cũ.
+
+1. Trong **Supabase → SQL Editor**, xác nhận Vault production đang trống:
+
+   ```sql
+   SELECT COUNT(*) AS vault_items FROM public.accounts;
+   ```
+
+2. Chỉ tiếp tục khi kết quả là `0`. Nếu lớn hơn `0`, dừng lại; export/kiểm tra dữ liệu trước và
+   không xóa dữ liệu thật chỉ để ép migration chạy.
+3. Mở [`data/migration_v6.2.0_vault_encryption.sql`](./data/migration_v6.2.0_vault_encryption.sql),
+   copy toàn bộ nội dung vào SQL Editor và bấm **Run đúng một lần**.
+4. Deploy/redeploy frontend v6.2 trên Vercel ngay sau khi SQL thành công.
+5. Đăng nhập, vào `/accounts`, tạo một **Vault passphrase riêng tối thiểu 12 ký tự**, rồi lưu nó ở
+   nơi an toàn. Passphrase này khác mật khẩu đăng nhập Supabase.
+6. Tạo một item thử, khóa Vault, reload trang và mở lại để xác nhận passphrase/ciphertext hoạt động.
+
+> ⚠️ Vault passphrase không có reset hoặc recovery. Mất passphrase đồng nghĩa mất khả năng giải mã
+> item đã lưu. Không xóa `vault_config` khi còn ciphertext trong `accounts`.
+
+### Reset dữ liệu app (giữ nguyên schema và tài khoản đăng nhập)
+
+[`data/reset_user_data.sql`](./data/reset_user_data.sql) xóa dữ liệu ứng dụng của **tất cả user**,
+bao gồm ciphertext Vault và `vault_config`, nhưng giữ `auth.users`. Script không có `WHERE` và
+không thể hoàn tác; chỉ dùng cho local/test hoặc khi chủ động muốn xóa sạch production. XP,
+friendships và profiles chỉ bị xóa nếu tự mở các dòng tùy chọn ở cuối file.
 
 ---
 
@@ -178,7 +222,7 @@ src/
   contexts/                 ← Auth, Theme, Toast
   data/                     ← JSON tĩnh: UI strings, holidays, taxonomy, templates
   styles/                   ← CSS per domain (global.css = tokens)
-  __tests__/                ← 8 self-check chạy qua npm test
+  __tests__/                ← Self-check chạy qua npm test
   utils/                    ← Pure logic + self-check
   lib/supabase.js           ← Singleton Supabase client
 api/
@@ -191,7 +235,10 @@ data/
   schema_v4.24.0.sql        ← Master schema lõi (đã gộp tới v5.0)
   migration_v5.2.0_vault.sql
   migration_v6.0.0_finance.sql
-  reset_user_data.sql       ← Wipe one user's rows (dev helper)
+  migration_v6.2.0_vault_encryption.sql
+  reset_user_data.sql       ← Wipe toàn bộ app data, giữ auth users
+supabase/
+  migrations/               ← Chuỗi migration timestamp chỉ dùng local
 docs/
   PROJECT.md                ← Bản đồ cấp cao
   ARCHITECTURE.md           ← Module structure + data flow
@@ -201,6 +248,25 @@ docs/
 DESIGN.md                   ← Design system và component contract
 CHANGELOG.md                ← Lịch sử phiên bản
 ```
+
+---
+
+## 🧭 Tài liệu và đường dẫn
+
+| Nội dung | File chính |
+|----------|------------|
+| Cấu hình môi trường mẫu | [`.env.local.example`](./.env.local.example) |
+| Scripts chạy/test/build/database | [`package.json`](./package.json) |
+| Cấu hình deploy Vercel | [`vercel.json`](./vercel.json) |
+| Bản đồ dự án | [`docs/PROJECT.md`](./docs/PROJECT.md) |
+| Kiến trúc và data flow | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) |
+| Database, RLS và RPC | [`docs/DATABASE.md`](./docs/DATABASE.md) |
+| Hành vi tính năng | [`docs/FEATURES.md`](./docs/FEATURES.md) |
+| Thiết kế Account Vault | [`docs/DESIGN_ACCOUNT_VAULT.md`](./docs/DESIGN_ACCOUNT_VAULT.md) |
+| Thiết kế Finance | [`docs/DESIGN_FINANCE.md`](./docs/DESIGN_FINANCE.md) |
+| Trạng thái/backlog | [`docs/TASKS.md`](./docs/TASKS.md) và [`docs/PLAN.md`](./docs/PLAN.md) |
+| Design system | [`DESIGN.md`](./DESIGN.md) |
+| Lịch sử phiên bản | [`CHANGELOG.md`](./CHANGELOG.md) |
 
 ---
 
@@ -226,7 +292,8 @@ CHANGELOG.md                ← Lịch sử phiên bản
 ### 🏠 Core
 - **Nhiệm vụ:** danh sách full-bleed, lịch tháng, task lặp, priority, tag, liên kết Knowledge và lịch sử thay đổi
 - **Finance:** giao dịch, ngân sách/thống kê, danh mục, hóa đơn, khoản vay, thẻ và quỹ tiết kiệm; liên kết Task/Inbox
-- **Account Vault:** item/field linh hoạt, phương thức đăng nhập, mã dự phòng và history append-only
+- **Account Vault:** full-content AES-GCM phía client; phải unlock mới tải/hiện title, username, URL,
+  notes, tags, fields, mã dự phòng và history
 - **Knowledge Base:** editor Tiptap + Markdown, multimedia, slash command, tag và sub-note
 - **Inbox:** Quick capture → phân loại
 - **Incubator:** Someday/maybe ideas with friction defer + multi-output execute
@@ -272,6 +339,7 @@ CHANGELOG.md                ← Lịch sử phiên bản
 
 | Version | Mô tả |
 |---------|-------|
+| **v6.2.0** | Account Vault full-content encryption: PBKDF2-SHA256 600.000 vòng, DEK bọc bằng passphrase, AES-GCM + AAD theo user/item; key chỉ giữ trong memory |
 | **v6.1.0** | Tasks full-bleed; completed range; edit trong detail popup; lịch âm/ngày lễ; giới hạn 4/3 task theo sức chứa ô |
 | **v6.0.0** | Finance Nocturne clean rebuild, 10 bảng + junction/RPC, liên kết Task và Inbox |
 | **v5.2.0** | Account Vault Keyplate, 6 bảng, field/auth/code/history |
@@ -319,10 +387,12 @@ git push origin feat/ten-feature
 | App trắng, không load | Kiểm tra `VITE_SUPABASE_URL` trong `.env.local` |
 | Upload ảnh/file thất bại | Đăng nhập trước; kiểm tra `GOOGLE_SERVICE_ACCOUNT_JSON` + `DRIVE_FOLDER_ID` trên Vercel |
 | Audio/video Drive không phát | Kiểm tra `DRIVE_FOLDER_ID` (stream proxy fail-closed nếu thiếu) |
-| Quotes tab trống / Collect lỗi khi lưu | Chạy lại `data/schema_v4.24.0.sql` trong Supabase (idempotent) |
-| Account Vault trắng | Đăng nhập và chạy `data/migration_v5.2.0_vault.sql` |
-| Finance báo không tải được dữ liệu | Chạy DB đúng thứ tự: master → Vault v5.2 → Finance v6; dùng nút Thử lại sau khi migration thành công |
-| 404 khi refresh | Kiểm tra `vercel.json` có rewrite rule |
+| Quotes tab trống / Collect lỗi khi lưu | Chạy lại [`data/schema_v4.24.0.sql`](./data/schema_v4.24.0.sql) trong Supabase (idempotent) |
+| Vault báo thiếu `vault_config`/cột ciphertext | Với fresh install chạy đủ master → Vault v5.2 → Finance v6 → Vault encryption v6.2; với project hiện có làm đúng runbook nâng production phía trên |
+| Vault migration báo `accounts is not empty` | Dừng lại: migration đang bảo vệ dữ liệu cũ. Chỉ xóa/export khi đã xác nhận đó là test data |
+| Quên Vault passphrase | Không có reset/recovery; không xóa config vì sẽ làm ciphertext còn lại không thể giải mã |
+| Finance báo không tải được dữ liệu | Chạy DB đúng thứ tự: master → Vault v5.2 → Finance v6 → Vault encryption v6.2; dùng nút Thử lại sau khi migration thành công |
+| 404 khi refresh | Kiểm tra [`vercel.json`](./vercel.json) có rewrite rule |
 | Build fail | `npm run build` — check console errors |
 
 ---
