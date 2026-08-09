@@ -1,5 +1,22 @@
 # TASKS — Personal Life Hub (formerly Thử Thách Vượt Lười)
-**Updated:** 2026-08-08
+**Updated:** 2026-08-09
+
+---
+
+## 🔥 Thứ tự tiếp tục hiện tại
+
+1. **Vault B1+B2 — mã hóa + khả năng cứu dữ liệu:** envelope KEK/DEK, KDF, AES-GCM + AAD,
+   `account_secrets`/`vault_config`, locked/unlocked UI, export/restore, đổi passphrase, rotate DEK,
+   version migration và phát hiện ciphertext hỏng. Làm liền một đợt; chưa đủ B2 thì không cho nhập
+   secret thật và không gỡ banner plaintext.
+2. **Vault hardening đi kèm:** thêm 6 bảng Vault vào `reset_user_data.sql`, authenticated smoke toàn
+   bộ `/accounts`, rồi user tự chạy migration trên production khi đã chốt bản cuối.
+3. **Finance hardening:** 7 RPC + RLS/rollback → liên kết Task/Inbox/tag/budget/CSV → QA dữ liệu dày.
+4. **Bug correctness còn thật:** thay ngày UTC còn sót ở Focus/Inbox bằng `toDateStr()` sau một smoke
+   timezone; kiểm tra tay upload/stream API. Refactor P3-P5 và taxonomy Task vẫn để icebox.
+
+**Hai quyết định mở lúc bắt đầu Vault:** Argon2id (khuyến nghị bảo mật, thêm WASM) hay PBKDF2-SHA256
+≥600k (Web Crypto native, 0 dependency); auto-lock bao lâu (đề xuất 15 phút, thuộc B3).
 
 ---
 
@@ -30,7 +47,7 @@ click-through không có overlap.
 
 ---
 
-## v6.0.0 — ✅ CODE + BUILD DONE / ⏳ SQL + SMOKE TEST CHỜ USER (2026-08-08) — Module chi tiêu làm lại (Nocturne)
+## v6.0.0 — ✅ CODE + LOCAL DB + AUTH SMOKE DONE / ⏳ PROD USER DEPLOY (2026-08-09) — Module chi tiêu làm lại (Nocturne)
 
 **Đã làm** (chi tiết: CHANGELOG.md v6.0.0, DESIGN_FINANCE.md, DATABASE.md, FEATURES.md §23): drop
 `expenses`+`subscriptions`, dựng 10 bảng `finance_*` + junction (`migration_v6.0.0_finance.sql`),
@@ -43,13 +60,29 @@ gửi, đáo hạn tự tính, rút khóa kỳ hạn chờ đúng 48 giờ và t
 ownership FK và 7 RPC nguyên khối; sao kê dùng đúng chu kỳ chốt; bỏ hóa đơn theo kỳ được lưu bền.
 Lint 0 error, `npm test` pass, `npm run build` pass (2026-08-08).
 
-**Chờ user:** (1) chạy `migration_v6.0.0_finance.sql` trên Supabase; (2) test 5 màn với dữ liệu thật.
+**Đã xác minh local (2026-08-09):** migration Finance đã replay trong Supabase local; đăng nhập bằng
+tài khoản test và mở đủ 5 màn; giao dịch tạo → đọc → sửa → xóa làm báo cáo cập nhật đúng. Tất cả 8
+nút xóa dữ liệu bền (giao dịch, shortcut, hóa đơn, khoản thu, khoản vay, thẻ, quỹ, nơi gửi) nay dùng
+chung một bước xác nhận; hủy giữ nguyên dữ liệu, detail chỉ đóng khi xóa thành công. Test account/data
+được dọn sau smoke test. `npm test`, build, lint và `git diff --check` đều pass; lint còn warning có sẵn.
 
-🔜 Hoãn: tự sinh task nhắc từ nghĩa vụ; activity_logs khi trả.
+### Plan tiếp theo — Finance hardening
+
+- [ ] **P0 — RPC integration local:** chạy đủ 7 RPC với user đã auth; kiểm tra trả/nhận trùng kỳ,
+  ownership/RLS, rollback và các nhánh bill → income → loan → card → saving.
+- [ ] **P1 — Luồng liên kết:** smoke Task ↔ giao dịch, Inbox → giao dịch/hóa đơn, tag, danh mục override,
+  ngân sách và CSV bằng dữ liệu local có dọn sạch sau test.
+- [ ] **P2 — QA hoàn thiện:** desktop + mobile với dữ liệu dày; kiểm tra keyboard/accessibility và lỗi
+  console riêng của Finance.
+- [ ] **Deploy production:** user tự chạy migration đã chốt trong Supabase SQL Editor rồi smoke lại;
+  agent không tự push/link database hosted.
+
+**Cố ý hoãn (YAGNI):** tự sinh task nhắc từ nghĩa vụ và ghi `activity_logs` khi trả; chỉ làm khi user
+muốn mở Phase sau, không trộn vào hardening.
 
 ---
 
-## v5.2.0 — ✅ CODE DONE / ⏳ SQL CHỜ USER CHẠY (2026-08-05) — Vault làm lại theo thiết kế Keyplate
+## v5.2.0 — ✅ CODE + LOCAL SQL DONE / ⏳ PROD + VAULT SMOKE (2026-08-09) — Vault làm lại theo thiết kế Keyplate
 
 **Đã làm** (chi tiết đầy đủ ở CHANGELOG.md v5.2.0, FEATURES.md §29, DATABASE.md, DESIGN.md
 § "Account vault"): 6 bảng `accounts`/`account_fields`/`account_auth`/`account_codes`/`account_logs`/
@@ -62,11 +95,10 @@ Lint 0 error, `npm test` pass (6/6), `npm run build` pass.
 Supabase). Đã xoá `migration_v5.1.0_accounts.sql`, `AccountForm.jsx`, `AccountAvatar.jsx`,
 `accountLinks.js` + test.
 
-### ⏳ User phải tự chạy / tự kiểm
-- [ ] **Chạy `data/migration_v5.2.0_vault.sql`** trên Supabase SQL Editor. Idempotent, có sẵn câu
-      VERIFY ở cuối file. **Chưa chạy thì `/accounts` sẽ trắng** (mọi query fail, hook nuốt lỗi vào
-      `logger.warn`). 6 bảng này chưa từng tồn tại trên DB nên chạy lúc nào cũng an toàn.
-- [ ] `npm run build` (tao đã chạy pass, nhưng chạy lại trên máy mày cho chắc).
+### ⏳ Production + smoke còn lại
+- [ ] **Production:** user chạy `data/migration_v5.2.0_vault.sql` trên Supabase SQL Editor sau khi
+      chốt migration Vault cuối. Local baseline đã replay migration này; agent không tự link/push DB hosted.
+- [x] `npm run build` — pass lại 2026-08-09.
 - [ ] Smoke test:
       (a) `/accounts` → **New item** → chọn **Platform account** → item mới có sẵn field + 4 phương
           thức đăng nhập (password primary) + sheet 10 mã;
@@ -100,8 +132,9 @@ Supabase). Đã xoá `migration_v5.1.0_accounts.sql`, `AccountForm.jsx`, `Accoun
 | Guest mode | **Không có** — vault mất khi refresh thì vô nghĩa; chưa login thì hiện lời nhắc |
 
 ### Còn nợ
-- [ ] **Chưa gộp `migration_v5.2.0_vault.sql` vào master `schema_v4.24.0.sql`** — RULES §3 cần chỉ
-      thị tường minh. Hệ quả: cài mới từ master sẽ **thiếu 6 bảng vault**.
+- [x] ~~Gộp `migration_v5.2.0_vault.sql` vào master `schema_v4.24.0.sql`~~ — **không còn cần**:
+      fresh local DB nay replay các timestamped migration theo thứ tự base → Vault → Finance. Giữ snapshot
+      migration tách lớp; không retro-edit master.
 - [ ] **`data/reset_user_data.sql` chưa xoá dữ liệu vault** — 6 bảng `account_*` sinh sau khi script
       đó được viết (đã ghim chip spawn_task cho việc này).
 - [ ] **Mã hoá client-side chưa làm** — vẫn plaintext. `password`/`secret` chỉ mask UI, là **rủi ro
@@ -156,7 +189,7 @@ Lint 0 error, `npm test` pass.
 
 ---
 
-## 🧊 Backlog — Vault: mã hoá + tính năng thật (vault UI đã xong v5.2.0)
+## 🔐 NEXT — Vault: mã hoá + tính năng thật (vault UI đã xong v5.2.0)
 
 Thiết kế envelope encryption ở `docs/DESIGN_ACCOUNT_VAULT.md`. Vault UI Keyplate xong 2026-08-05
 (xem block v5.2.0 đầu file) — còn lại (theo "Not in the prototype" của handoff):

@@ -1,6 +1,6 @@
 # DESIGN — Vault: mã hoá client-side (việc tương lai)
 
-**Trạng thái:** 🧊 Backlog — thiết kế đã review kỹ, **CHƯA code**.
+**Trạng thái:** 🔜 Milestone kế tiếp — thiết kế đã review kỹ, **CHƯA code**.
 
 > **Phạm vi file này CHỈ còn phần mã hoá.** UI + metadata của vault đã làm xong ở v5.2.0 theo
 > **bản thiết kế Keyplate** (bundle `design_handoff_keyplate_vault`) — mô tả trạng thái hiện tại ở

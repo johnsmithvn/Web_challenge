@@ -511,7 +511,7 @@ export default function AddScreen({ fin, nav }) {
                         <span><strong>{shortcut.name}<i style={{ color: need.color }}>{need.label}</i></strong><small>{info.label}{subLabel(shortcut.subcategory_id, cats) ? ` › ${subLabel(shortcut.subcategory_id, cats)}` : ''}</small></span>
                         <em>{parseCurrencyInput(quickAmount) ? `ghi ${money(parseCurrencyInput(quickAmount))}` : shortcut.recent_amounts?.[0] ? `thường ${money(shortcut.recent_amounts[0])}` : 'gõ số tiền'}</em>
                       </button>
-                      {shortcutEditing && !shortcut.seed && <button type="button" className="fin-shortcut-delete" aria-label={`Xóa ${shortcut.name}`} onClick={() => fin.deleteShortcut(shortcut.id)}><AppIcon name="trash" size={14} /></button>}
+                      {shortcutEditing && !shortcut.seed && <button type="button" className="fin-shortcut-delete" aria-label={`Xóa ${shortcut.name}`} onClick={async () => { if (await nav.confirmDelete(`shortcut “${shortcut.name}”`)) await fin.deleteShortcut(shortcut.id); }}><AppIcon name="trash" size={14} /></button>}
                     </div>
                     {armed && <div className="fin-shortcut-armed">
                       <div><input autoFocus inputMode="numeric" pattern="[0-9]*" value={quickAmount} onChange={event => setQuickAmount(sanitizeDigits(event.target.value))} placeholder="Số tiền" /><span>₫</span><button type="button" onClick={() => recordShortcut(shortcut)} disabled={!parseCurrencyInput(quickAmount)}><AppIcon name="check" size={14} /> Ghi</button></div>

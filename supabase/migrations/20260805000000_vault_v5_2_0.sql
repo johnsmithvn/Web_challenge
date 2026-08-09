@@ -245,12 +245,12 @@ CREATE POLICY "account_tags_own" ON account_tags FOR ALL
 -- ── 7. VIEW tagged_items — thêm 'account' vào mặt đọc hợp nhất ─────────────
 -- useTags.js đọc view này để đếm tag đang được dùng ở đâu. Phải chạy SAU §6,
 -- view tham chiếu account_tags.
+-- NOTE: expense_tags / subscription_tags đã bỏ — Finance v6.0.0 sẽ rebuild
+-- view này ở cuối migration với finance_transaction_tags thay thế.
 DROP VIEW IF EXISTS tagged_items;
 CREATE VIEW tagged_items WITH (security_invoker = true) AS
       SELECT tag_id, 'collection'::text   AS kind, collection_id   AS item_id FROM collection_tags
 UNION ALL SELECT tag_id, 'task'::text,          task_id         FROM task_tags
-UNION ALL SELECT tag_id, 'expense'::text,       expense_id      FROM expense_tags
-UNION ALL SELECT tag_id, 'subscription'::text,  subscription_id FROM subscription_tags
 UNION ALL SELECT tag_id, 'account'::text,       account_id      FROM account_tags;
 
 -- Explicit Data API privileges; row access remains restricted by the RLS above.

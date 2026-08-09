@@ -1,6 +1,6 @@
 # DESIGN — Finance v2 (module chi tiêu, thiết kế Nocturne)
 
-**Trạng thái:** ✅ Đã triển khai code + migration clean-rebuild; chờ user chạy `data/migration_v6.0.0_finance.sql` trên Supabase.
+**Trạng thái:** ✅ Đã triển khai code + migration clean-rebuild; đã replay và smoke authenticated trên Supabase local. Production vẫn chờ user tự chạy `data/migration_v6.0.0_finance.sql`.
 **Nguồn:** handoff `_ds_bundle` (Chi tieu.dc.html + README) — thay HẲN module Finance cũ.
 **Version dự kiến:** v6.0.0 (MAJOR — đổi schema breaking, drop 2 bảng cũ, kiến trúc mới).
 

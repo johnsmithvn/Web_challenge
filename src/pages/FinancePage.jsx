@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useFinance } from '../hooks/useFinance';
 import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../components/ConfirmModal';
 import {
   listPeriodOptions, currentMonthPeriod, periodFromKey, periodTotals,
 } from '../utils/financeLogic';
@@ -28,6 +29,7 @@ const OVERVIEW_TABS = new Set(['overview', 'budget', 'stats']);
 export default function FinancePage() {
   const fin = useFinance();
   const { showToast } = useToast();
+  const { confirm, ConfirmModal } = useConfirm();
   const location = useLocation();
   const navigate = useNavigate();
   const { screen: routeScreen } = useParams();
@@ -62,6 +64,12 @@ export default function FinancePage() {
     setSavingAsExpenseState(next);
     localStorage.setItem('lh_finance_saving_as_expense', String(next));
   }, []);
+  const confirmDelete = useCallback((label) => confirm({
+    title: `Xóa ${label}?`,
+    message: 'Dữ liệu này sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.',
+    confirmLabel: 'Xóa',
+    danger: true,
+  }), [confirm]);
 
   const overviewTab = useMemo(() => {
     const requested = new URLSearchParams(location.search).get('view') || 'overview';
@@ -138,6 +146,7 @@ export default function FinancePage() {
     recurringSeg, setRecurringSeg, overviewTab, setOverviewTab, analyzeParams,
     catsTab, setCatsTab, handoff, startHandoff: setHandoff,
     clearHandoff: () => setHandoff(null), showToast,
+    confirmDelete,
     savingAsExpense, setSavingAsExpense,
   };
   const active = SCREENS.find(s => s.key === screen);
@@ -197,6 +206,7 @@ export default function FinancePage() {
           {screen === 'recurring' && <RecurringScreen fin={fin} nav={nav} />}
         </div>
       </section>
+      {ConfirmModal}
     </div>
   );
 }

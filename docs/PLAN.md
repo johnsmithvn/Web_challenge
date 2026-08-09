@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub (Personal Life OS)
-**Updated:** 2026-08-08
-**Current Version:** v6.0.0
+**Updated:** 2026-08-09
+**Current Version:** v6.1.0
 **Rule:** Cập nhật khi milestone hoặc phase thay đổi.
 
 > **v6.0.0 (2026-08-08):** Module chi tiêu `/finance` làm lại từ đầu theo thiết kế Nocturne (handoff).
@@ -9,6 +9,39 @@
 
 > ⚠️ Bảng version ở cuối file **thiếu v4.23.0 → v4.31.0** (nhảy từ v4.26.1 sang v5.0.0) — sai lệch
 > có từ trước, chưa fix vì ngoài scope. Nguồn đầy đủ: `CHANGELOG.md`.
+
+---
+
+## 🎯 Thứ tự thực hiện hiện tại
+
+| Thứ tự | Milestone | Trạng thái |
+|---|---|---|
+| 1 | **Vault B1+B2:** envelope encryption + unlock + export/restore + đổi passphrase + rotate/version/corruption handling | 🔜 kế tiếp, chưa code |
+| 2 | Vault hardening: `reset_user_data.sql`, authenticated smoke, production migration do user chạy | ⏳ sau B1+B2 |
+| 3 | Finance hardening: 7 RPC/RLS/rollback → liên kết → responsive QA | ⏳ đã có plan |
+| 4 | Correctness còn lại: UTC Focus/Inbox + manual upload/stream API | ⏳ chưa làm |
+| 5 | Refactor P3-P5 + taxonomy/subtask/dependency Task | 🧊 icebox, chưa approve |
+
+Vault đứng trước Finance hardening vì `password`/`secret` hiện chỉ mask UI nhưng vẫn là plaintext.
+B1 không được phát hành riêng: phải đủ B2 để có export/restore và đổi passphrase trước khi cho dùng
+secret thật. Chi tiết: `docs/DESIGN_ACCOUNT_VAULT.md`.
+
+---
+
+## 🔄 Finance hardening — sau v6.0.0
+
+**Đã xong local:** clean migration replay; auth smoke đủ 5 màn; transaction CRUD; xác nhận dùng chung
+cho toàn bộ 8 thao tác xóa bền; unit/build/lint/diff check pass.
+
+| Ưu tiên | Việc tiếp theo | Done khi |
+|---|---|---|
+| P0 | Integration test 7 Finance RPC trên Supabase local | happy path + duplicate kỳ + ownership/RLS + rollback đều được kiểm tra và test data được dọn |
+| P1 | Smoke liên kết Task/Inbox, tag, category override, budget, CSV | các luồng đọc/ghi qua đúng bảng/FK và báo cáo cập nhật sau sửa |
+| P2 | QA authenticated desktop/mobile với dữ liệu dày | không overflow, keyboard dùng được, không có console error thuộc Finance |
+| Deploy | User chạy migration trên production rồi smoke lại | chỉ làm sau khi user chủ động xác nhận; không link/push hosted DB từ agent |
+
+**Không đưa vào hardening:** auto-sinh Task nhắc nghĩa vụ và `activity_logs` khi thanh toán. Đây là
+Phase sau đã hoãn, chưa có nhu cầu thực tế thì không thêm.
 
 ---
 
@@ -394,8 +427,8 @@ lịch sử) theo bản thiết kế Keyplate. Chia 2 phần độc lập: **A =
 
 | Phase | Nội dung | Trạng thái |
 |-------|----------|-----------|
-| A | 6 bảng + `useAccounts` + `/accounts` layout Keyplate + 10 template + 10 loại field + link nhiều-tới-một + sign-in methods + code sheet + sửa inline + history | ✅ v5.2.0 (SQL chờ user chạy) |
-| B1+B2 | Crypto core (envelope KEK/DEK, `crypto.subtle`, unlock modal) **và** vault operability (export ciphertext, đổi passphrase) — làm **liền một đợt** | ⏳ chưa làm |
+| A | 6 bảng + `useAccounts` + `/accounts` layout Keyplate + 10 template + 10 loại field + link nhiều-tới-một + sign-in methods + code sheet + sửa inline + history | ✅ v5.2.0 (local SQL done; production user-run) |
+| B1+B2 | Crypto core (envelope KEK/DEK, unlock modal) **và** vault operability (export/restore, đổi passphrase, rotate/version/corruption handling) — làm **liền một đợt** | 🔜 ưu tiên kế tiếp |
 | B3 | Auto-lock timer, TOTP thật, clipboard auto-clear | ⏳ sau B2 |
 
 **Điều kiện gỡ banner "chưa mã hoá" ở `/accounts`:** xong B1 **và** B2. Bật crypto mà chưa có

@@ -144,8 +144,8 @@ function SavingsWorkspace({ fin, nav, total, monthTotals }) {
         <button className="fin-btn fin-btn--secondary fin-btn--sm" onClick={() => setPanel({ kind: 'goal' })}><AppIcon name="plus" size={14} /> Tạo quỹ mới</button>
       </div>
 
-      {panel?.kind === 'goal' && <GoalForm fin={fin} goal={panel.goal} onDone={close} />}
-      {panel?.kind === 'deposit' && <DepositForm fin={fin} goal={panel.goal} deposit={panel.deposit} onDone={close} />}
+      {panel?.kind === 'goal' && <GoalForm fin={fin} nav={nav} goal={panel.goal} onDone={close} />}
+      {panel?.kind === 'deposit' && <DepositForm fin={fin} nav={nav} goal={panel.goal} deposit={panel.deposit} onDone={close} />}
       {panel?.kind === 'move' && <SavingMoveForm fin={fin} goal={panel.goal} dir={panel.dir} onDone={close} />}
 
       <label className="fin-saving-toggle">
@@ -210,7 +210,7 @@ function SavingsWorkspace({ fin, nav, total, monthTotals }) {
   );
 }
 
-function GoalForm({ fin, goal, onDone }) {
+function GoalForm({ fin, nav, goal, onDone }) {
   const [name, setName] = useState(goal?.name || '');
   const [target, setTarget] = useState(goal?.goal ? String(goal.goal) : '');
   const [lockMode, setLockMode] = useState(goal?.lock_mode || 'soft');
@@ -235,11 +235,11 @@ function GoalForm({ fin, goal, onDone }) {
     <div className="fin-form__row"><label className="fin-label">Mức ma sát khi rút<select className="fin-input" value={lockMode} onChange={e => setLockMode(e.target.value)}><option value="soft">Mềm · rút một chạm</option><option value="term">Có kỳ hạn · rút sớm chờ 48 giờ</option><option value="external">Ngoài app · cảnh báo mất lãi</option></select></label>{lockMode === 'term' && <label className="fin-label">Ngày mở khóa<input className="fin-input" type="date" value={lockUntil} onChange={e => setLockUntil(e.target.value)} required /></label>}</div>
     <label className="fin-check-row"><input type="checkbox" checked={inWallet} onChange={e => setInWallet(e.target.checked)} /><span><strong>Tiền còn ở tài khoản thường</strong><small>Dùng để giải thích phần đã để dành nhưng chưa chuyển vào sổ kỳ hạn.</small></span></label>
     <p className="fin-note">Tạo quỹ chưa cần biết tiền nằm ở đâu. Khi gửi thật vào sổ hoặc tài khoản nào, hãy thêm nơi gửi ở bảng bên dưới.</p>
-    <div className="fin-editor__actions"><button className="fin-btn fin-btn--primary fin-btn--sm"><AppIcon name="save" size={14} /> Lưu</button>{goal && <button type="button" className="fin-btn fin-btn--danger fin-btn--sm" onClick={async () => { await fin.deleteGoal(goal.id); onDone(); }}><AppIcon name="trash" size={14} /> Xóa quỹ</button>}</div>
+    <div className="fin-editor__actions"><button className="fin-btn fin-btn--primary fin-btn--sm"><AppIcon name="save" size={14} /> Lưu</button>{goal && <button type="button" className="fin-btn fin-btn--danger fin-btn--sm" onClick={async () => { if (await nav.confirmDelete(`quỹ “${goal.name}”`) && await fin.deleteGoal(goal.id)) onDone(); }}><AppIcon name="trash" size={14} /> Xóa quỹ</button>}</div>
   </form>;
 }
 
-function DepositForm({ fin, goal, deposit, onDone }) {
+function DepositForm({ fin, nav, goal, deposit, onDone }) {
   const [form, setForm] = useState(() => deposit || { name: '', bank: '', account_no: '', amount: '', rate: '', term: '', opened_at: '', closed_on: '' });
   const field = (key, sanitize = value => value) => e => setForm(prev => ({ ...prev, [key]: sanitize(e.target.value) }));
   const maturity = projectedMaturity(form.opened_at, Number(form.term));
@@ -261,7 +261,7 @@ function DepositForm({ fin, goal, deposit, onDone }) {
     <div className="fin-form__row"><label className="fin-label">Ngày gửi<input className="fin-input" type="date" value={form.opened_at || ''} onChange={field('opened_at')} required={Number(form.term) > 0} /></label><label className="fin-label">Ngày đáo hạn<span className="fin-input fin-input--readonly">{maturity || 'Không kỳ hạn · rút lúc nào cũng được'}</span></label></div>
     {deposit && <label className="fin-label">Ngày tất toán<input className="fin-input" type="date" value={form.closed_on || ''} onChange={field('closed_on')} /></label>}
     <p className="fin-note">Ngày đáo hạn được tự tính từ ngày gửi và kỳ hạn, không nhập tay để tránh dữ liệu lệch.</p>
-    <div className="fin-editor__actions"><button className="fin-btn fin-btn--primary fin-btn--sm"><AppIcon name="save" size={14} /> Lưu</button>{deposit && <button type="button" className="fin-btn fin-btn--danger fin-btn--sm" onClick={async () => { await fin.deleteDeposit(deposit.id); onDone(); }}><AppIcon name="trash" size={14} /> Xóa</button>}</div>
+    <div className="fin-editor__actions"><button className="fin-btn fin-btn--primary fin-btn--sm"><AppIcon name="save" size={14} /> Lưu</button>{deposit && <button type="button" className="fin-btn fin-btn--danger fin-btn--sm" onClick={async () => { if (await nav.confirmDelete(`nơi gửi “${deposit.name}”`) && await fin.deleteDeposit(deposit.id)) onDone(); }}><AppIcon name="trash" size={14} /> Xóa</button>}</div>
   </form>;
 }
 

@@ -4,6 +4,14 @@ import { readFileSync } from 'node:fs';
 const sql = readFileSync(new URL('../../data/migration_v6.0.0_finance.sql', import.meta.url), 'utf8');
 const hook = readFileSync(new URL('../hooks/useFinance.js', import.meta.url), 'utf8');
 const recurring = readFileSync(new URL('../components/finance/RecurringScreen.jsx', import.meta.url), 'utf8');
+const list = readFileSync(new URL('../components/finance/ListScreen.jsx', import.meta.url), 'utf8');
+const page = readFileSync(new URL('../pages/FinancePage.jsx', import.meta.url), 'utf8');
+const destructiveScreens = [
+  list,
+  recurring,
+  readFileSync(new URL('../components/finance/AddScreen.jsx', import.meta.url), 'utf8'),
+  readFileSync(new URL('../components/finance/AnalyzeScreen.jsx', import.meta.url), 'utf8'),
+].join('\n');
 
 const TABLES = [
   'finance_cards', 'finance_bills', 'finance_loans', 'finance_saving_goals',
@@ -67,6 +75,14 @@ assert.match(recurring, /fin\.skipBillPeriod\(bill\.id, currentPeriod\)/,
   'nút Bỏ kỳ này phải gọi RPC đúng kỳ đang chạy');
 assert.match(recurring, /const actionable = b\.enabled && !paid && !skipped/,
   'hóa đơn tắt, đã trả hoặc đã bỏ không được hiện thao tác thanh toán');
+assert.match(page, /const confirmDelete = useCallback\(/,
+  'Finance phải có một luồng xác nhận xóa dùng chung');
+assert.equal((destructiveScreens.match(/nav\.confirmDelete\(/g) || []).length, 8,
+  'mọi nút xóa dữ liệu Finance phải đi qua xác nhận dùng chung');
+assert.doesNotMatch(destructiveScreens, /onClick=\{\(\) => fin\.delete/,
+  'không được xóa dữ liệu Finance trực tiếp từ nút bấm');
+assert.match(list, /if \(await fin\.deleteTransaction\(tx\.id\)\) onClose\(\)/,
+  'chi tiết giao dịch chỉ được đóng khi xóa thành công');
 assert.match(sql, /p_income_period TEXT DEFAULT NULL/, 'kỳ thu định kỳ phải tách khỏi ngày nhận thật');
 assert.match(sql, /p_loan_period TEXT DEFAULT NULL/, 'kỳ trả vay phải tách khỏi ngày trả thật');
 assert.match(hook, /p_income_period: period \|\| today\.slice\(0, 7\)/,

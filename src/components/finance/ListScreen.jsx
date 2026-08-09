@@ -230,6 +230,11 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
     }
   };
 
+  const deleteTx = async () => {
+    if (!await nav.confirmDelete('giao dịch')) return;
+    if (await fin.deleteTransaction(tx.id)) onClose();
+  };
+
   if (editing) {
     return (
       <div className="fin-detail fin-detail--editing">
@@ -275,7 +280,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
       <div className="fin-detail__actions fin-detail__actions--view">
         <button className="fin-btn fin-btn--secondary" onClick={() => setEditing(true)}><AppIcon name="pencil" size={15} /> Sửa</button>
         {tx.type !== 'saving' && <button className="fin-btn fin-btn--secondary" onClick={duplicate}><AppIcon name="copy" size={15} /> Nhân bản</button>}
-        <button className="fin-btn fin-btn--secondary fin-detail__delete" aria-label="Xóa giao dịch" onClick={async () => { await fin.deleteTransaction(tx.id); onClose(); }}><AppIcon name="trash" size={15} /></button>
+        <button className="fin-btn fin-btn--secondary fin-detail__delete" aria-label="Xóa giao dịch" onClick={deleteTx}><AppIcon name="trash" size={15} /></button>
       </div>
     </div>
   );

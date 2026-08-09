@@ -347,7 +347,7 @@ function BillsList({ fin, nav, tasks, daysUntilDay }) {
                 </div>}
                 {skipped && <span className="fin-badge fin-badge--muted">Đã bỏ kỳ này</span>}
                 <Toggle on={b.enabled} onChange={(enabled) => toggle(b, enabled)} label={b.enabled ? 'Đang bật' : 'Đang tắt'} />
-                <button className="fin-icon-btn" title="Xóa" onClick={() => fin.deleteBill(b.id)}><AppIcon name="trash" size={15} /></button>
+                <button className="fin-icon-btn" title="Xóa" onClick={async () => { if (await nav.confirmDelete(`hóa đơn “${b.name}”`)) await fin.deleteBill(b.id); }}><AppIcon name="trash" size={15} /></button>
               </div>
             </div>
             {openId === b.id && <BillHistory bill={b} transactions={fin.transactions} />}
@@ -418,7 +418,7 @@ function IncomeList({ fin, nav, tasks }) {
                 : received ? <span className="fin-badge">đã nhận kỳ này</span>
                 : <PayInline fin={fin} tasks={tasks} defaultAmount={r.amount} label="Đã nhận" onPay={(payload) => receive(r, payload)} />}
               <Toggle on={r.enabled} onChange={(enabled) => toggle(r, enabled)} label={r.enabled ? 'Đang bật' : 'Đang tắt'} />
-              <button className="fin-icon-btn" title="Xóa" onClick={() => fin.deleteIncomeRule(r.id)}><AppIcon name="trash" size={15} /></button>
+              <button className="fin-icon-btn" title="Xóa" onClick={async () => { if (await nav.confirmDelete(`khoản thu “${r.name}”`)) await fin.deleteIncomeRule(r.id); }}><AppIcon name="trash" size={15} /></button>
             </div>
           </div>
         );
@@ -477,7 +477,7 @@ function LoansList({ fin, nav, tasks }) {
                 </div>
               </>
             )}
-            <button className="fin-icon-btn fin-rule__del" title="Xóa" onClick={() => fin.deleteLoan(l.id)}><AppIcon name="trash" size={15} /></button>
+            <button className="fin-icon-btn fin-rule__del" title="Xóa" onClick={async () => { if (await nav.confirmDelete(`khoản vay “${l.name}”`)) await fin.deleteLoan(l.id); }}><AppIcon name="trash" size={15} /></button>
           </div>
         );
       })}
@@ -515,7 +515,7 @@ function CardsList({ fin, nav, tasks }) {
                 return !!tx;
               }} /> : <span className="fin-badge">Sao kê đã thanh toán</span>}
             </div>
-            <button className="fin-icon-btn fin-rule__del" title="Xóa" onClick={() => fin.deleteCard(c.id)}><AppIcon name="trash" size={15} /></button>
+            <button className="fin-icon-btn fin-rule__del" title="Xóa" onClick={async () => { if (await nav.confirmDelete(`thẻ “${c.name}”`)) await fin.deleteCard(c.id); }}><AppIcon name="trash" size={15} /></button>
           </div>
         );
       })}
