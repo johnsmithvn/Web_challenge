@@ -1,234 +1,202 @@
-# DATABASE DESIGN — Life Hub (Personal Life OS)
-**Target:** Supabase (PostgreSQL)
-**Version:** v6.2.0
-**Updated:** 2026-08-09
-**Strategy:** Production-ready from day 1
-**Source of Truth:** chuỗi SQL theo thứ tự trong **`README.md`**:
-`data/schema_v4.24.0.sql` → Vault v5.2 → Finance v6.0 → Vault encryption v6.2.
+# DATABASE.md — Life Hub
 
-Master schema có **18 `CREATE TABLE`**. Các migration sau master thêm/thay schema theo domain; không
-dùng con số của riêng master để suy ra trạng thái cuối. v5.0.0 DROP 12 bảng: 8 bảng Habit + Lộ Trình
-(`progress`, `habits`, `habit_logs`, `programs`, `program_habits`, `user_journeys`,
-`journey_habits`, `skip_reasons`), `streaks`, `notification_settings`, `friendships`,
-`fitness_logs`.
-`mood_logs` is NOT in this schema (dropped in v4.10.1, folded into the consolidated file).
-`data/RUNBOOK.sql` vẫn giữ lại làm hồ sơ lịch sử SQL đã chạy trên DB thật (2026-08-02) — không cần
-chạy lại, `schema_v4.24.0.sql` giờ đã phản ánh đúng trạng thái cuối cùng cho fresh install.
+**Target:** Supabase PostgreSQL · **Version:** v6.2.0 · **Updated:** 2026-08-09
 
----
+Runbook cài đặt duy nhất nằm trong [`README.md`](../README.md). File này mô tả trạng thái schema cuối,
+không thay thế SQL thật.
 
-## Entity Overview
+## Trạng thái schema cuối
 
-```
-auth.users (Supabase built-in)
-    │
-    ▼
-profiles ──────────────────────────────────────┐
-    │                                           │
-    ├──► xp_logs           (immutable events)   │
-    ├──► focus_sessions    (pomodoro)           │
-    │                                           │
-    │                                           │
-    ├──► user_tasks ◄──► task_collections ──► collections
-    │                                    (M:N junction v4.5.0)
-    ├──► collections       (inbox + knowledge)  │
-    ├──► finance_transactions (bảng chi tiêu DUY NHẤT — v6.0.0)
-    │        ├─ FK bill_id/loan_id/card_id/saving_goal_id/shortcut_id
-    │        ├─ FK inbox_item_id → collections  (liên kết Inbox)
-    │        └─ FK task_id       → user_tasks   (liên kết Task)
-    ├──► finance_bills / finance_loans / finance_cards / finance_saving_goals
-    │    finance_deposits / finance_income_rules / finance_shortcuts / finance_budgets
-    │    finance_category_overrides (taxonomy riêng theo user)
-    ├──► activity_logs     (task history + notes)│
-    ├──► intentions / intention_logs (incubator)│
-    │                                           │
-    ├──► accounts       (một AES-GCM ciphertext / Vault item)
-    ├──► vault_config   (một wrapped DEK / user) │
-    │                                           │
-    ├──► tags ◄──► collection_tags              │
-    │         ◄──► task_tags        (v4.28.0)    │
-    │         ◄──► finance_transaction_tags (v6.0.0)
-    │              └─ cả 3 ──► VIEW tagged_items │
-    │                                           │
-    ├──► collection_notes  (threaded sub-notes) │
-    ├──► inspirational_quotes (user quotes)     │
-    │                                           │
-    └────────────────────────────────────────────┘
+Sau khi chạy đủ baseline và ba migration domain, database có **27 bảng public đang hoạt động**:
+
+- 14 bảng core
+- 11 bảng Finance (10 bảng chính + junction tag)
+- 2 bảng Vault
+
+`data/schema_v4.24.0.sql` tự nó chỉ là baseline đã hợp nhất tới v5.0. Nó không phải snapshot độc lập
+của toàn bộ v6.2.
+
+```text
+auth.users
+└─ profiles
+   ├─ user_tasks ── task_collections ── collections
+   │      │                              ├─ collection_notes
+   │      └─ activity_logs               └─ collection_tags ── tags
+   │      └─ task_tags ────────────────────────────────┘
+   ├─ focus_sessions
+   ├─ xp_logs
+   ├─ intentions ── intention_logs
+   ├─ inspirational_quotes
+   ├─ finance_* ── finance_transaction_tags ── tags
+   ├─ accounts
+   └─ vault_config
 ```
 
----
+## Inventory
 
-## Full SQL Schema
+### Core — 14 bảng
 
-> ⚠️ Do NOT duplicate SQL here. Read [`data/schema_v4.24.0.sql`](../data/schema_v4.24.0.sql) directly for
-> column definitions, RLS policies, triggers, and indexes. `schema_v4.4.0.sql` and the per-version
-> `migration_*.sql` files no longer exist — they were folded into the consolidated file (history in git).
+| Table | Vai trò | Ràng buộc đáng chú ý |
+|---|---|---|
+| `profiles` | Profile 1:1 với `auth.users` | PK = user id; trigger tạo khi đăng ký |
+| `focus_sessions` | Lịch sử Pomodoro | own-row RLS |
+| `xp_logs` | Event XP | amount giới hạn; app có thể xóa event khi bỏ hoàn thành Task |
+| `user_tasks` | Task cá nhân | priority, recurrence JSON, recurrence parent, completion/timestamps |
+| `collections` | Inbox + Knowledge | type/status được CHECK; updated-at trigger |
+| `task_collections` | Task ↔ Knowledge M:N | FK hai phía, cascade, RLS hai phía |
+| `activity_logs` | Field diff + note của Task | FK `task_id` cascade; chỉ note được update |
+| `tags` | Tag dùng chung | unique theo `(user_id, name)` |
+| `collection_tags` | Knowledge ↔ Tag | FK/RLS hai phía |
+| `task_tags` | Task ↔ Tag | FK/RLS hai phía |
+| `intentions` | Incubator | status lifecycle |
+| `intention_logs` | Lịch sử Incubator | FK về intention |
+| `collection_notes` | Sub-note của bài Knowledge | FK về collection/user |
+| `inspirational_quotes` | Quote cá nhân | Quote hệ thống nằm ở `src/data/quotes.json`, không ở bảng này |
 
-### Table Inventory (21 bảng — không còn bảng chết)
+### Finance — 11 bảng
 
-| # | Table | Purpose | Key constraints |
-|---|-------|---------|-----------------|
-| 1 | `profiles` | Extends `auth.users` (1:1) | PK = `auth.users.id`, auto-created by trigger |
-| 2 | `xp_logs` | Immutable XP event log | CHECK(amount BETWEEN -200 AND 200). v5.0.0: nguồn XP đổi sang `task_done` + `focus_session`; dòng cũ của habit/quiz/challenge **giữ nguyên** (append-only) |
-| 3 | `focus_sessions` | Pomodoro sessions | v5.0.0: DROP 2 cột `habit_id` + `journey_id` — Focus không còn gắn habit/lộ trình |
-| 4 | `user_tasks` | Personal to-do items | priority SMALLINT, recurrence_rule JSONB, `recurrence_parent_id` UUID self-FK ON DELETE CASCADE (v4.31.0 — link "task này được sinh ra TỪ task nào", khác cột `parent_id` subtask đang có kế hoạch riêng), `updated_at` TIMESTAMPTZ + trigger `user_tasks_updated_at` tái dùng hàm chung `update_updated_at()` (v5.0.0; backfill = `created_at` cho task cũ) |
-| 5 | `task_collections` | Junction: Task ↔ KB (M:N) | Composite PK(task_id, collection_id), CASCADE |
-| 6 | `collections` | Inbox + Knowledge Base | type CHECK (8, **sửa v4.28.0**): `inbox`, `note`, `quote`, `learn`, `idea`, `ai`, `entertainment`, `podcast`. ⚠️ Trước v4.28.0 CHECK có `emotion` (không tồn tại trong `src/`) và **thiếu `podcast`** (có trong `knowledge.json`) → classify sang Podcast fail constraint |
-| 7–8 | ~~`expenses`~~ ~~`subscriptions`~~ | **[DROPPED v6.0.0]** — thay bằng module Finance mới (bảng `finance_*` bên dưới). Xem `data/migration_v6.0.0_finance.sql`. |
-| 9 | `activity_logs` | Lịch sử thay đổi + ghi chú cá nhân của **Task** | **Dựng lại ở v5.0.0**, dữ liệu cũ xoá hết theo chủ ý: `task_id` UUID FK → `user_tasks` ON DELETE CASCADE (mọi dòng đều gắn task), `action`, `field`, `old_value`, `new_value`, `note`. Bỏ `label`/`amount`/`meta` (không nơi nào đọc; tiền/XP đã có nguồn thật ở `expenses`/`subscriptions`/`xp_logs`). 4 policy: SELECT/INSERT/DELETE own + UPDATE chỉ dòng `action='note'` kèm `GRANT UPDATE (note)` cấp cột → dòng field-diff bất biến. 1 index `idx_activity_logs_task` phục vụ truy vấn đọc duy nhất. **Không còn** dòng "sự kiện rời rạc" (expense_add, inbox_*, focus_done…) — Life Log/heatmap là người đọc duy nhất của chúng và đã gỡ hẳn ở v5.0.0 |
-| 10 | `intentions` | Incubator (someday-maybe) | status: incubating/deferred/executed/abandoned |
-| 11 | `intention_logs` | Incubator audit trail | FK → intentions |
-| 12 | `tags` | Central tag system | UNIQUE(user_id, name). Cột `emoji`/`description` (thêm tạm ở RUNBOOK.sql Phần 2) đã **DROP lại** ở Phần 3, xác nhận 2026-08-02 — feature "Nhóm" bỏ hẳn khỏi UI, 2 cột này không còn ai đọc/ghi |
-| 13 | `collection_tags` | Junction: KB ↔ Tags | Composite PK |
-| 14–15 | ~~`expense_tags`~~ ~~`subscription_tags`~~ | **[DROPPED v6.0.0]** — thay bằng `finance_transaction_tags`. |
-| 16 | `task_tags` | Junction: Task ↔ Tags | **v4.28.0.** Composite PK(task_id, tag_id), CASCADE. RLS kiểm ownership **cả 2 phía**. Chỉ index `tag_id` (task_id đã là cột dẫn đầu của PK) |
-| 17 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
-| 18 | `inspirational_quotes` | User + system quotes | FK → profiles, `is_active` toggle, `audio_url` optional |
-| 19 | `accounts` | **v6.2.0.** Một encrypted Vault item | `id`, `user_id`, `created_at`, `updated_at`, `encrypted_payload`, `encryption_nonce`, `encryption_version=1`. Toàn bộ title/template/favorite/notes/tags/fields/auth/codes/links/log nằm trong JSON AES-256-GCM. RLS own-row; index `(user_id, updated_at DESC)`. |
-| 20 | `vault_config` | **v6.2.0.** Envelope config một row/user | PBKDF2 algorithm/salt/iterations, wrapped DEK + nonce, version và timestamps. Không lưu passphrase, KEK hoặc raw DEK. Authenticated chỉ có SELECT/INSERT; RLS own-row. |
-| — | `account_fields`, `account_auth`, `account_codes`, `account_logs`, `account_tags` | **[DROPPED v6.2.0]** | Schema plaintext trung gian v5.2 bị bỏ trong empty-Vault cutover; dữ liệu tương ứng nằm trong ciphertext `accounts`. |
-| — | `knowledge_groups` | **[DROPPED v4.31.0, 2026-08-02]** KB folder/group metadata | Quyết định P2-7 (2026-08-01): trùng việc với `tags`. Ban đầu định gộp hiển thị (tag có emoji = "nhóm"), nhưng chốt cuối là **bỏ hẳn tính năng Nhóm khỏi UI**. Data đã copy sang `tags`/`collection_tags` (Phase 1) trước khi drop — bài viết không mất liên kết, chỉ mất hiển thị folder. Frontend không còn dùng (`useKnowledgeGroups.js` đã xoá). **Bảng đã DROP** qua RUNBOOK.sql Phần 3, xác nhận `information_schema.tables` 0 dòng. |
-| — | `collection_groups` | **[DROPPED v4.31.0, 2026-08-02]** Junction: KB ↔ Groups (M:N) | Cùng lý do với `knowledge_groups` ở trên. |
+| Table | Vai trò |
+|---|---|
+| `finance_transactions` | Sổ giao dịch duy nhất; expense/income/saving; liên kết rule/Task/Inbox |
+| `finance_bills` | Hóa đơn/chi định kỳ |
+| `finance_loans` | Khoản vay và kỳ trả |
+| `finance_cards` | Chu kỳ sao kê và thanh toán thẻ |
+| `finance_saving_goals` | Quỹ tiết kiệm và chính sách khóa |
+| `finance_deposits` | Nơi gửi thuộc quỹ; đáo hạn suy ra từ kỳ hạn |
+| `finance_income_rules` | Thu định kỳ |
+| `finance_shortcuts` | Mẫu nhập nhanh, không giữ số tiền cố định |
+| `finance_budgets` | Hạn mức theo category |
+| `finance_category_overrides` | Nhãn/màu/icon/subcategory tùy biến theo user |
+| `finance_transaction_tags` | Giao dịch ↔ Tag |
 
-### Module Finance (v6.0.0 — `data/migration_v6.0.0_finance.sql`)
+Nguyên lý Finance:
 
-Thiết kế: `docs/DESIGN_FINANCE.md`. Nguyên lý: app **không tính số dư**; **một bảng giao dịch, mọi
-báo cáo = đếm lại lọc theo `occurred_at`**; **app không trả hộ — chỉ nhắc, tới ngày user ghi ra 1
-giao dịch mang FK trỏ về quy tắc**. Tất cả bật RLS, policy `FOR ALL USING (user_id = auth.uid())`
-(junction kiểm 2 phía). Migration là **clean rebuild phá hủy dữ liệu Finance cũ**, bọc
-`BEGIN/COMMIT`; parent category là tập đóng và được CHECK theo taxonomy handoff.
+1. Không lưu số tổng/balance toàn app.
+2. Báo cáo tính lại từ `finance_transactions.occurred_at` theo kỳ.
+3. Nghĩa vụ chỉ tạo transaction khi user xác nhận; RPC xử lý write nhiều bảng nguyên khối.
+4. Trigger/constraint chặn reference khác owner, kỳ trùng và payload phân nhánh không hợp lệ.
 
-| Table | Purpose | Key constraints |
-|-------|---------|-----------------|
-| `finance_transactions` | Bảng DUY NHẤT | `amount > 0`; `type` expense/income/saving; chi/thu chỉ nhận parent category thuộc tập đóng, saving không có category; `items`/`attachments`; generated `source_kind`; liên kết Task/Inbox; cặp FK+kỳ cho bill/income/loan/card; `loan_part`; CHECK phân loại `excluded`; UNIQUE bill period, income period và loan part/period. Trigger kiểm ownership mọi FK Finance/Task/Inbox |
-| `finance_bills` | Hóa đơn phải trả | Category chi hợp lệ + subcategory không rỗng; `rrule` hợp lệ; fixed phải có amount, ask lấy trung bình 3 giao dịch gần nhất ở runtime; `skipped_periods`; `term_done`/`finished_at` suy từ giao dịch; kỳ nghĩa vụ tách khỏi ngày trả thật |
-| `finance_loans` | Khoản vay | `kind` interest/amort; lãi là chi, gốc `excluded`; gốc không vượt dư; `done` suy từ `loan_period`/`loan_part` |
-| `finance_cards` | Thẻ tín dụng | Ngày chốt/đến hạn bắt buộc; RPC tính đúng khoảng sao kê, hỗ trợ trả một phần, chặn trả vượt dư sao kê |
-| `finance_saving_goals` | Quỹ tiết kiệm | `lock_mode` soft/term/external; term bắt buộc `lock_until`; `auto_deposit` là `{amount,day}` hợp lệ; yêu cầu rút sớm khóa kỳ hạn chờ đúng 48h; **KHÔNG có cột số dư** (= SUM deposits) |
-| `finance_deposits` | Nơi gửi (sổ của quỹ) | FK `(fund_id,user_id)` CASCADE chống nối chéo owner; `rate`; `matures_at` là generated column từ `opened_at + term`; `closed_on` |
-| `finance_income_rules` | Thu định kỳ | `rrule`; `category_id` thuộc đúng 7 nhóm thu handoff; `received_periods` được suy từ transaction và UNIQUE theo kỳ; **không quá hạn** |
-| `finance_shortcuts` | Nút nhập nhanh | Category chi hợp lệ + subcategory không rỗng; `recent_amounts` jsonb; **KHÔNG có cột số tiền** |
-| `finance_budgets` | Hạn mức tháng | Category thuộc đúng 11 nhóm chi; UNIQUE `(user_id, category_id)`; ngưỡng cố định 50/30/20 của tổng hạn mức |
-| `finance_category_overrides` | Phần taxonomy người dùng tuỳ biến | Parent group đóng (11 chi + 7 thu); màu chỉ nhận palette handoff; `subs` được kiểm tra cấu trúc/key/necessity; chỉ sửa nhãn/màu/Phosphor icon/ẩn/mức cần thiết/tính chất/`subs` |
-| `finance_transaction_tags` | Junction: giao dịch ↔ tags | Composite PK, RLS 2 phía |
+Chi tiết sản phẩm: [`DESIGN_FINANCE.md`](DESIGN_FINANCE.md).
 
-### Views
+### Vault — 2 bảng
 
-| View | Mục đích | Ghi chú |
-|------|----------|---------|
-| `tagged_items` | **Tạo lại v6.2.0.** Mặt đọc hợp nhất cho tag plaintext: `UNION ALL` 3 junction → `(tag_id, kind, item_id)` với `kind ∈ {collection, task, finance}`. Vault tags nằm trong ciphertext nên không có branch account. | ⚠️ `WITH (security_invoker = true)` là bắt buộc để giữ RLS của bảng dưới. |
+| Table | Vai trò | Quyền authenticated |
+|---|---|---|
+| `accounts` | Một AES-GCM ciphertext cho mỗi item | SELECT/INSERT/UPDATE/DELETE own-row |
+| `vault_config` | KDF metadata + DEK đã wrap, một row/user | SELECT/INSERT own-row |
 
-### Kiến trúc Tag — tại sao N junction, không phải 1 bảng polymorphic
+`accounts` chỉ giữ `id`, `user_id`, `created_at`, `updated_at`, `encrypted_payload`,
+`encryption_nonce`, `encryption_version`. Title, template, favorite, note, tag, field, auth method,
+recovery code, link và history đều nằm trong encrypted JSON.
 
-`tags` là bảng trung tâm cho các module server-readable. Collection, Task và Finance nối qua
-`collection_tags`, `task_tags`, `finance_transaction_tags`. Vault là ngoại lệ có chủ ý:
-tag của Vault nằm trong encrypted payload để tên tag không lộ ra Supabase.
+`vault_config` giữ PBKDF2 algorithm/salt/iterations, wrapped DEK, wrap nonce và version. Passphrase,
+KEK và raw DEK không được lưu. Raw DEK chỉ tồn tại trong memory của phiên unlock.
 
-Nhìn có vẻ dư (N loại → N bảng), nhưng **đó là giá của referential integrity**: mỗi junction có `REFERENCES ... ON DELETE CASCADE` cả 2 phía, nên xoá entity thì link tự biến mất.
+AES-GCM AAD:
 
-**Cố ý KHÔNG dùng** `taggables(tag_id, entity_type, entity_id)` polymorphic: `entity_id` không thể có FK → xoá entity không xoá link → **rác vĩnh viễn**.
+```text
+vault-key|v{version}|{user_id}
+vault-item|v{version}|{user_id}|{item_id}
+```
 
-> **v5.0.0:** `activity_logs` từng là ví dụ điển hình của bệnh này (row `fitness_done` treo mãi sau khi feature bị xoá ở v4.26.0). Khi dựng lại bảng, đã **bỏ hẳn hướng polymorphic** (`entity_type`/`entity_id`) để dùng FK thật `task_id → user_tasks(id) ON DELETE CASCADE`. Đánh đổi đã chốt: DB tự dọn, không bao giờ có dòng mồ côi — nhưng xoá 1 task là mất luôn lịch sử + ghi chú của nó.
+Migration v6.2 fail-closed nếu `accounts` có row. Nếu config mất nhưng ciphertext còn, app hard-error
+thay vì tạo DEK mới. Update/delete item dùng `updated_at` như optimistic revision.
 
-Nguyên tắc: **N junction để GHI (giữ FK), 1 view để ĐỌC (unified filter).**
+Chi tiết: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md).
 
-### Account Vault — full-content envelope encryption (v6.2.0)
+## View
 
-Mỗi user có một DEK 256-bit ngẫu nhiên. Vault passphrase không lưu ở server: browser dùng
-PBKDF2-SHA256 600.000 vòng + salt trong `vault_config` để tạo KEK, rồi KEK mở `wrapped_key`.
-Raw DEK được import thành AES-GCM key không extractable và chỉ giữ trong memory.
+`tagged_items` hợp nhất ba junction plaintext:
 
-Mỗi `accounts` row mã hóa **một JSON hoàn chỉnh**. AES-GCM AAD là
-`vault-item|v1|user_id|item_id`; wrapped DEK dùng `vault-key|v1|user_id`. Vì vậy ciphertext bị
-tráo sang user/id/version khác hoặc bị sửa byte sẽ không giải mã được. Nonce 12 byte mới được sinh
-cho mọi lần ghi.
+```text
+collection_tags → kind=collection
+task_tags       → kind=task
+finance_transaction_tags → kind=finance
+```
 
-Database vẫn thấy technical metadata cần để đồng bộ: owner/id, timestamps, ciphertext length, nonce
-và version. Database **không** thấy title, URL, username, notes, tag, field label/value, auth note,
-recovery code, link hay history.
+View bắt buộc dùng `security_invoker=true` để giữ RLS của bảng dưới. Vault không có branch vì tên tag
+nằm trong ciphertext.
 
-`useAccounts` chỉ query item sau unlock. Request có epoch + sequence guard nên response cũ không thể
-đưa plaintext trở lại sau Lock/sign-out/đổi user. Whole-row update và delete dùng `updated_at` làm
-revision; zero-row response là conflict giữa tab/device, không được overwrite.
+## RPC và function
 
-Nếu `vault_config` mất nhưng `accounts` còn row, app hard-error thay vì tạo DEK mới. Migration v6.2
-cũng abort transaction nếu Vault không trống trước khi bỏ schema plaintext v5.2.
+### Auth boundary
 
-Giới hạn: chưa có export/restore, passphrase change/recovery, DEK rotation, auto-lock inactivity,
-clipboard auto-clear hay TOTP generator. Xem `docs/DESIGN_ACCOUNT_VAULT.md`.
+- `login_email(text)`
+- `username_exists(text)`
+- `email_exists(text)`
 
-### Deprecated Columns
+Ba function này phục vụ lookup trước đăng nhập; quyền execute được cấp có chủ ý. `profiles` vẫn
+own-row và không public-select.
 
-| Table | Column | Status | Replacement |
-|-------|--------|--------|-------------|
-| `user_tasks` | `collection_id` | **DEPRECATED v4.5.0 → code ngừng ghi v4.28.0 → xác nhận KHÔNG CÒN TỒN TẠI trên DB 2026-08-02** (`information_schema.columns` trả 0 dòng) | `task_collections` junction (M:N). v4.28.0 đã bỏ tham số `collectionId` khỏi `addTask` và chuyển `CollectPage.onCreateTask` sang `linkCollection()`. **Trước v4.28.0 link tạo từ Knowledge coi như mất** vì cột 1:1 không được đọc ở đâu. |
-| `collections` | `resolved`, `course_name`, `duration_min`, `reviewed_at`, `priority` | **CỘT CHẾT — xác nhận KHÔNG CÒN TỒN TẠI trên DB 2026-08-02** (`information_schema.columns` trả 0 dòng, cả 5 cột) | Không cột nào được đọc/render (grep 0 hit trong `useCollections`/`CollectPage`/`InboxPage`/`ArticleCard`). `priority` chỉ được passthrough lúc INSERT — v4.28.0 đã bỏ. Lưu ý `collections.priority` là `TEXT`, khác hẳn `user_tasks.priority` (`SMALLINT`) dù trùng tên. |
-| `user_tasks` | `energy_level`, `duration_est` | **DROPPED v4.9.0** | Replaced by `priority SMALLINT` (0=None … 5=Urgent). The schema file explicitly `DROP COLUMN IF EXISTS` both. |
-| `collections` | `tags` (TEXT[]) | **GONE v4.1.0** | Use `collection_tags` junction. Not created by `schema_v4.24.0.sql` at all — a fresh install has no such column. Docs claiming it is "kept for backward compat" are stale. |
+### Finance write RPC
 
-### Tables That Do NOT Exist
+- `finance_pay_bill`
+- `finance_skip_bill_period`
+- `finance_receive_income`
+- `finance_record_loan_payment`
+- `finance_pay_card_statement`
+- `finance_request_saving_withdrawal`
+- `finance_move_saving`
 
-Named in older docs / older `ARCHITECTURE.md` revisions, but **never** in the current schema file:
+Migration còn có helper validate/refresh/cycle và trigger sync progress. Không gọi RPC write trực tiếp
+từ UI ngoài data owner `useFinance`.
 
-| Table | Reality |
-|-------|---------|
-| `teams`, `reactions`, `partner_queue` | Team feature cancelled v3.0.0 — frontend code deleted v4.25.0 |
-| `quiz_attempts` | Quiz đã gỡ hẳn ở v5.0.0 |
-| `daily_challenge_completions` | Challenge XP goes to `xp_logs` |
-| `mood_logs` | Existed until v4.10.1, dropped — not in `schema_v4.24.0.sql` |
+## RLS và grants
 
-<a id="streak-source-of-truth"></a>
-### Streak — Source of Truth
+- Tất cả bảng public user-owned bật RLS.
+- Policy cơ bản: `auth.uid() = user_id`; `profiles` dùng `auth.uid() = id`.
+- Junction kiểm ownership cả hai đầu, không chỉ entity đang hiển thị.
+- `activity_logs`: SELECT/INSERT/DELETE own-row; UPDATE chỉ row note và chỉ cột `note`.
+- Finance RPC tự kiểm owner; trigger kiểm các FK/reference chéo domain.
+- Vault migration `REVOKE ALL` trước khi cấp đúng verb, tránh ACL mặc định như TRUNCATE/REFERENCES.
+- `anon` không được đọc dữ liệu app. Service role chỉ dùng ở server/admin boundary phù hợp.
 
-- **v5.0.0: không còn khái niệm streak trong app.** Habit tracker + bảng `streaks`
-  đều đã gỡ. Nếu sau này cần lại: tính runtime từ dữ liệu gốc, đừng dựng bảng cache
-  (bảng `streaks` cũ chính là ví dụ — dựng ra rồi không ai update, luôn = 0).
+Schema có đưa `profiles`, `focus_sessions`, `xp_logs` vào publication Realtime, nhưng frontend hiện
+không tạo channel/subscription. UI đồng bộ bằng fetch và optimistic state.
 
-## ~~Leaderboard~~ — GỠ HẲN v5.0.0
+## File SQL và thứ tự
 
-`get_leaderboard()` (`SECURITY DEFINER`, JOIN `profiles` + `streaks` + `xp_logs` + `progress`) đã
-`DROP FUNCTION`. Trang `/leaderboard` xoá cùng đợt. 3 hàm RPC còn lại (`login_email`,
-`username_exists`, `email_exists`) giữ nguyên — chúng phục vụ luồng đăng nhập/đăng ký, không liên
-quan bảng xếp hạng.
+### Local
 
-## Migration Strategy (localStorage → Supabase)
+`supabase db reset --local` replay bốn snapshot timestamp theo thứ tự:
 
-**v1.6.2+ architecture:** Supabase is primary for ALL user data. localStorage only stores UI flags.
+1. `20260802000000_base_v5_0_0.sql`
+2. `20260805000000_vault_v5_2_0.sql`
+3. `20260808000000_finance_v6_0_0.sql`
+4. `20260809000000_vault_encryption_v6_2_0.sql`
 
-On first login (one-time per data type):
-1. Read `vl_habit_data` from localStorage → upsert into `progress` → wipe local
-2. Read `vl_custom_habits` → upsert into `habits` → wipe local
-3. Read `vl_xp_store` → insert into `xp_logs` → wipe local
-4. Read `vl_habit_progress` → insert into `habit_logs` → wipe local
-5. Read `vl_focus_sessions` → insert into `focus_sessions` → wipe local
-6. Set `vl_migrated_v2 = userId` flag in localStorage
-7. Subsequent reads → Supabase only
+Snapshot đã tồn tại là bất biến. Schema change mới phải dùng migration timestamp mới.
 
-## Migration Files
+### Hosted fresh install / handoff
 
-> **v4.24.0:** ALL migrations are now consolidated into a single file —
-> **`data/schema_v4.24.0.sql`**. The old `schema_v4.4.0.sql` + the v4.7.2 → v4.14.0
-> migrations + the v4.24.0 RLS patch have been merged and removed (history in git).
-> The consolidated file is idempotent — run it once; re-running is safe.
+1. `data/schema_v4.24.0.sql`
+2. `data/migration_v5.2.0_vault.sql`
+3. `data/migration_v6.0.0_finance.sql`
+4. `data/migration_v6.2.0_vault_encryption.sql`
 
-| File | Purpose |
-|------|---------|
-| **`data/schema_v4.24.0.sql`** | **Single source of truth** — all 29 tables + RLS + indexes + triggers + 3 RPC functions (login_email/username_exists/email_exists) + seed 5 programs. Idempotent. **Đã gộp v5.0.0** (2026-08-02): `user_tasks.updated_at` + trigger, `activity_logs` schema v2, DROP `streaks` + `get_leaderboard()` |
-| `data/migration_v5.0.0_activity_logs_v2.sql` | Bản **DROP + CREATE** của cùng thay đổi trên. **Chỉ chạy 1 lần.** Hai file tới cùng 1 schema cuối và **cùng xoá sạch log cũ** — master dùng `DELETE FROM activity_logs WHERE task_id IS NULL`, mà mọi dòng của schema v1 đều không gắn task. Chạy file nào cũng được; đừng chạy cả hai |
-| **`data/migration_v5.2.0_vault.sql`** | **v5.2.0 — CHƯA gộp vào master** (RULES §3: chỉ sửa master khi có chỉ thị rõ ràng). 6 bảng Account Vault (`accounts`, `account_fields`, `account_auth`, `account_codes`, `account_logs`, `account_tags`) + `tagged_items` thêm `kind='account'`. Idempotent, dựng từ trạng thái trắng (bản v5.1.0 chưa từng chạy trên Supabase → đã xoá file đó). Có sẵn câu VERIFY ở cuối file |
-| **`data/migration_v6.0.0_finance.sql`** | **v6.0.0 — CHƯA gộp vào master.** Clean rebuild toàn bộ Finance và tạo lại `tagged_items`. Phải chạy sau v5.2.0 vì view dùng `account_tags`; migration kiểm tra tiền đề và rollback toàn bộ nếu thiếu. |
-| **`data/migration_v6.2.0_vault_encryption.sql`** | Empty-Vault cutover sang full-content encryption. Abort nếu `accounts` có row; khi trống mới drop 5 bảng con plaintext, đổi `accounts`, tạo `vault_config`, thu hẹp ACL và tạo lại `tagged_items` không có account. Chạy đúng một lần sau Finance v6.0. |
-| `data/reset_user_data.sql` | **Reset script** — DELETE all user data, keep auth accounts |
+Không chạy `data/migration_v5.0.0_activity_logs_v2.sql` sau baseline fresh vì thay đổi đã nằm trong
+baseline. `data/migration_v4.31.0_recurrence_chain.sql` và `data/RUNBOOK.sql` là hồ sơ/upgrade cũ,
+không thuộc fresh-install order hiện tại.
 
-## Supabase Setup Checklist
+**Không chạy lại baseline một mình trên database đã ở v6.x.** Baseline vẫn tạo các bảng Finance legacy
+trước khi migration Finance xóa chúng; chạy riêng sẽ làm schema cuối bị drift. Khi cần dựng lại, luôn
+dùng toàn bộ ordered chain trong README trên database phù hợp và chỉ khi user chủ động cho phép.
 
-- [ ] Create project (region: Southeast Asia – Singapore)
-- [ ] Run `data/schema_v4.24.0.sql` in SQL Editor
-- [ ] Run `data/migration_v5.2.0_vault.sql`
-- [ ] Run `data/migration_v6.0.0_finance.sql`
-- [ ] Confirm `SELECT COUNT(*) FROM accounts` is 0, then run `data/migration_v6.2.0_vault_encryption.sql`
-- [ ] Enable Realtime for: profiles, progress, habits, focus_sessions, xp_logs
-- [ ] Enable Google OAuth (Auth → Providers → Google)
-- [ ] Get URL + anon key from Project Settings → API
-- [ ] Create `.env.local` with the two keys
-- [ ] Verify `on_auth_user_created` trigger fires on test signup
+Production Finance/Vault chưa được tài liệu này đánh dấu đã áp dụng. User tự chạy runbook và xác nhận
+smoke trước khi đổi trạng thái.
+
+## Reset dữ liệu
+
+`data/reset_user_data.sql` xóa dữ liệu app của **tất cả user**, gồm ciphertext Vault và
+`vault_config`, nhưng giữ `auth.users`; profile/XP chỉ xóa khi user tự mở phần tùy chọn. Script được bọc
+transaction nhưng vẫn không thể hoàn tác sau commit.
+
+Agent không tự chạy reset, truncate, drop schema/database hoặc delete hàng loạt. Phải giải thích target,
+cảnh báo mất dữ liệu và xin phép rõ ràng trước.
+
+## Nguồn sự thật
+
+- Column, CHECK, trigger, policy, grant: đọc SQL theo ordered chain.
+- Thứ tự thao tác local/hosted: [`README.md`](../README.md).
+- Hành vi UI: [`FEATURES.md`](FEATURES.md).
+- Lịch sử bảng/cột đã xóa: [`CHANGELOG.md`](../CHANGELOG.md), không lặp lại trong inventory hiện hành.

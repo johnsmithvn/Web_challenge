@@ -71,12 +71,12 @@ self.addEventListener('notificationclick', (event) => {
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       // Focus existing tab if open
       for (const client of clients) {
-        if (client.url.includes('/tracker') && 'focus' in client) {
+        if (client.url.includes('/tasks') && 'focus' in client) {
           return client.focus();
         }
       }
       // Otherwise open new tab
-      return self.clients.openWindow('/tracker');
+      return self.clients.openWindow('/tasks');
     })
   );
 });

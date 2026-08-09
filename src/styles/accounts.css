@@ -73,7 +73,7 @@
 
   /* ⚠️ Breakpoint 900px của bản thiết kế là bề rộng CỦA VAULT, không phải của
      viewport. Prototype chiếm trọn viewport nên hai thứ đó bằng nhau; ở đây
-     vault nằm cạnh sidebar 220px nên chúng lệch 220px. Dùng container query để
+     vault nằm cạnh sidebar 232px nên chúng lệch 232px. Dùng container query để
      đo đúng bề rộng của chính nó — nếu dùng @media thì ở viewport 1100px vault
      chỉ rộng 880px mà vẫn cố giữ 2 pane, sinh ra thanh cuộn ngang.
      Hệ quả đã xử: `container-type` kéo theo `contain: layout`, biến vault thành

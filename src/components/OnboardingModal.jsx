@@ -4,9 +4,6 @@ import AppIcon from './AppIcon';
 
 const ONBOARDED_KEY = 'vl_onboarded';
 
-// v5.0.0: viết lại toàn bộ. Nội dung cũ hướng dẫn sản phẩm "Thử Thách Vượt Lười
-// 21 ngày" — nói về MVA, streak, trang Habits, Daily Challenge. Cả 4 thứ đó đã
-// gỡ hẳn, nên onboarding đang chỉ đường tới những nơi không còn tồn tại.
 const STEPS = [
   {
     icon: 'sparkle',
@@ -15,7 +12,7 @@ const STEPS = [
     highlight: (
       <>
         Đây là <strong>hệ thống riêng của bạn</strong>. Không mạng xã hội,
-        không bảng xếp hạng, không ai nhìn thấy dữ liệu của bạn.
+        không bảng xếp hạng và không công khai dữ liệu theo mặc định.
       </>
     ),
   },
@@ -34,7 +31,7 @@ const STEPS = [
   },
   {
     icon: 'mapPin',
-    title: 'Sáu Chỗ Để Đi',
+    title: 'Bảy Chỗ Để Đi',
     desc: 'Mỗi module làm đúng một việc. Bắt đầu từ Inbox, phần còn lại dùng tới đâu khám phá tới đó.',
     highlight: (
       <>
@@ -44,6 +41,7 @@ const STEPS = [
         <span><AppIcon name="money" size={14} /> <strong>Finance</strong> — chi tiêu</span>
         <span><AppIcon name="egg" size={14} /> <strong>Incubator</strong> — dự định</span>
         <span><AppIcon name="timer" size={14} /> <strong>Focus</strong> — Pomodoro</span>
+        <span><AppIcon name="key" size={14} /> <strong>Account Vault</strong> — secret đã mã hóa</span>
       </>
     ),
   },

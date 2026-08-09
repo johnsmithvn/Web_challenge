@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useFocusTimer } from '../hooks/useFocusTimer';
 import AppIcon from './AppIcon';
 import '../styles/focus.css';
 
@@ -9,13 +8,13 @@ const PHASE_LABELS = {
   long_break:  { label: 'Nghỉ Dài', icon: 'tree', color: 'var(--green)' },
 };
 
-export default function FocusTimer() {
+export default function FocusTimer({ timer }) {
   const {
     phase, running, mins, secs, pct, session,
     settings, todayMinutes,
     start, pause, reset, skip,
     updateSettings,
-  } = useFocusTimer();
+  } = timer;
 
   const [showSettings, setShowSettings] = useState(false);
   const [ws, setWs] = useState(settings.workMin);

@@ -25,6 +25,20 @@
   collection/task/finance.
 - **README hợp nhất:** runbook gốc chứa local, fresh install và production handoff; README phụ trong
   `supabase/` đã được gộp và xóa.
+- **Reset script:** chỉ còn table tồn tại ở schema v6.2, thêm `task_tags` và bọc transaction để lỗi
+  không để database ở trạng thái reset dở dang.
+- **Tài liệu hiện hành được hợp nhất theo vai trò:** PROJECT/ARCHITECTURE/DATABASE/FEATURES/RULES được
+  đối chiếu lại với route, hook, browser storage và schema 27 bảng; PLAN/TASKS chỉ giữ roadmap và
+  checkbox còn mở, lịch sử hoàn thành chỉ còn trong CHANGELOG.
+- **Runbook an toàn hơn:** README nói rõ guest chỉ có Task/Focus, bổ sung `vault_config` vào threat
+  model, cấm chạy baseline riêng trên DB v6.x và bỏ hướng dẫn có thể tạo lại bảng Finance legacy.
+- **Copy/comment hiện hành:** Landing và onboarding mô tả đúng 7 loại Knowledge, Finance v6,
+  phạm vi guest và quyền riêng tư; comment nguồn không còn dẫn tới Habit/Tracker/Dashboard đã xóa.
+
+### Removed
+- **Audit snapshot v4.29.1 đã hết hiệu lực:** xóa
+  `docs/AUDIT_REPORT_2026-08-01_duplicate_logic.md`; cả 10 phát hiện gốc đã được xử lý từ v4.29.1 và
+  phần lớn file/module được báo cáo đã không còn tồn tại.
 
 ### Security
 - Migration fail-closed nếu `accounts` có bất kỳ row nào, nên giả định “Vault trống” sai không thể
@@ -519,9 +533,9 @@
 ---
 
 ## v4.29.1 — 2026-08-01
-> Audit "duplicate-logic" (`docs/AUDIT_REPORT_2026-08-01_duplicate_logic.md`): 10 phát hiện, tất cả
-> đã fix. Chủ đề chung: 1 sự thật (giá trị hợp lệ hoặc phép tính) từng được giữ độc lập ở ≥2 nơi,
-> không có cơ chế đồng bộ — sửa 1 nơi mà quên nơi kia là hỏng, thường hỏng âm thầm.
+> Audit duplicate-logic: 10 phát hiện, tất cả đã fix. Báo cáo snapshot từng nằm tại
+> `docs/AUDIT_REPORT_2026-08-01_duplicate_logic.md` và được xóa ở v6.2 khi toàn bộ nội dung đã hết
+> hiệu lực. Chủ đề chung: một sự thật từng được giữ độc lập ở nhiều nơi.
 
 ### Fixed
 - **Lệch ngày UTC (66 chỗ, 21 file)** — `new Date().toISOString().split('T')[0]` bị thay bằng `toDateStr()` (local) ở mọi nơi tính "hôm nay" cho logic nghiệp vụ (`useUserTasks`, `useSubscriptions`, `useJourney`, `useHabitLogs`, `useCollections`, `useHabitStore`, `FinancePage`). Trước đây từ 00:00–06:59 giờ VN, task "Hôm nay" có thể biến mất khỏi list, subscription auto-advance sai
@@ -541,7 +555,8 @@
 - **`FinancePage`** — input ngày gia hạn subscription: native `<input type="date">` → `DatePickerPopover` (đúng RULES.md, đồng bộ với `TaskListSection`)
 
 ### Docs
-- **`docs/AUDIT_REPORT_2026-08-01_duplicate_logic.md`** — báo cáo audit đầy đủ 10 phát hiện, severity, file:line, hướng sửa
+- **Audit snapshot duplicate-logic** — tại thời điểm release có báo cáo đầy đủ 10 phát hiện; file được
+  xóa trong đợt dọn tài liệu v6.2 sau khi không còn phản ánh source hiện tại.
 - **`docs/TASKS.md`, `docs/PLAN.md`** — rút gọn ~1140 dòng lịch sử đã trùng với CHANGELOG.md thành pointer 1 dòng (verify riêng: không mất task/decision nào đang mở)
 - **`project_analysis.md`** (root) — xoá, đã lỗi thời (v4.22.0) và trùng nội dung với `PROJECT.md`/`docs/AUDIT_REPORT_2026-06-27.md`
 
@@ -616,7 +631,9 @@
 ### Added — `data/migration_v5.0.0_cleanup_dead_columns.sql` (🚨 BREAKING, CHƯA CHẠY)
 - DROP 5 cột chết trên `collections`: `resolved`, `course_name`, `duration_min`, `reviewed_at`, `priority` (grep 0 hit; `priority` chỉ passthrough INSERT)
 - DROP `user_tasks.collection_id` + FK + index, kèm backfill nốt vào junction trước khi xoá
-- Chuẩn hoá `collections.status` → CHECK `(unread, read, archived)`. **Giữ `archived`** — đó là soft-delete đang dùng thật ([CollectPage.jsx:1075](src/pages/CollectPage.jsx:1075), [useCollections.js:32](src/hooks/useCollections.js:32)); chuẩn hoá về `unread|read` như dự định ban đầu **sẽ xoá mất chức năng archive**
+- Chuẩn hoá `collections.status` → CHECK `(unread, read, archived)`. **Giữ `archived`** — đó là
+  soft-delete đang dùng thật trong `CollectPage.jsx` và `useCollections.js`; chuẩn hoá về
+  `unread|read` như dự định ban đầu **sẽ xoá mất chức năng archive**
 - File có mục "KIỂM TRƯỚC" (6 câu SELECT phải = 0), điều kiện tiên quyết, và smoke test 5 bước
 
 ### Notes
@@ -636,7 +653,9 @@
 
 ## v4.27.0 — 2026-07-29
 ### Added
-- **Route `/tasks` — Task thành module độc lập.** Trước đây `TaskListSection` **chỉ** render bên trong `TrackerPage` tab "⚡ Hôm Nay" ([TrackerPage.jsx:782](src/pages/TrackerPage.jsx:782)), nghĩa là module Task bị ràng cứng vào trang habit — không thể cắt habit mà không mất Task. Nay:
+- **Route `/tasks` — Task thành module độc lập.** Trước đây `TaskListSection` **chỉ** render bên trong
+  `TrackerPage` tab "⚡ Hôm Nay"; file lịch sử đó đã bị xóa. Module Task từng bị ràng cứng vào trang
+  habit nên không thể cắt habit mà không mất Task. Nay:
   - `src/pages/TasksPage.jsx` — container mỏng, lazy-loaded. **Không** thêm `<h1>` vì card của `TaskListSection` đã có header (tiêu đề + đếm + nút "+ Thêm") — thêm nữa là trùng tiêu đề
   - `src/styles/tasks.css` — tách 105 dòng CSS task (`.task-item`, `.task-checkbox-btn`, `.task-option-btn`, `.task-form-rec-panel`, `.task-desc-box` + light-mode overrides) khỏi `tracker.css`, `TaskListSection` tự import (theo tiền lệ `TrackerSection.jsx`). Lý do tách: `tracker.css` sẽ bị xoá khi cắt feature habit
   - `ROUTE_META['/tasks']` cho SEO title/description

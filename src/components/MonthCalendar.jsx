@@ -22,12 +22,8 @@ function getFirstDayOfWeek(year, month) {
 }
 
 /**
- * MonthCalendar — lịch tháng cho /tasks: ô tô theo số task đã xong hôm đó, hiện
- * chip tên task ngay trong ô (v4.29.0).
- *
- * v5.0.0: gỡ hẳn "habit mode" (prop `habitData` + `skipLog`). Người gọi duy nhất
- * của nhánh đó là TrackerPage — đã xoá cùng Habit tracker. Đúng như comment cũ
- * dự liệu: cắt feature habit thì xoá nhánh habit là xong.
+ * MonthCalendar — lịch tháng cho /tasks: hiển thị task pending/completed,
+ * ngày âm và holiday; chip dư được gom theo sức chứa cố định của ô.
  */
 export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pendingTasks, onDayClick }) {
   const today = new Date();

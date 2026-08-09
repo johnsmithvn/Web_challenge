@@ -18,6 +18,7 @@ const core = read('../../data/schema_v4.24.0.sql');
 const vault = read('../../data/migration_v5.2.0_vault.sql');
 const vaultEncryption = read('../../data/migration_v6.2.0_vault_encryption.sql');
 const finance = read('../../data/migration_v6.0.0_finance.sql');
+const reset = read('../../data/reset_user_data.sql');
 
 assert.match(config, /^auto_expose_new_tables = false$/m);
 assert.match(config, /\[db\.seed\][\s\S]*?enabled = false/);
@@ -37,6 +38,12 @@ assert.match(vaultEncryption, /GRANT SELECT, INSERT ON TABLE vault_config TO aut
 assert.doesNotMatch(vaultEncryption, /vault_config_(?:update|delete)_own/);
 assert.match(vaultEncryption, /DROP VIEW IF EXISTS tagged_items;[\s\S]*DROP TABLE IF EXISTS account_tags;/);
 assert.doesNotMatch(vaultEncryption, /'account'::TEXT/);
+assert.match(reset, /^BEGIN;[\s\S]*COMMIT;/m);
+assert.match(reset, /DELETE FROM task_tags;/);
+assert.doesNotMatch(
+  reset,
+  /DELETE FROM (?:habit_logs|journey_habits|user_journeys|program_habits|programs|habits|knowledge_groups|fitness_logs|skip_reasons|progress|streaks|notification_settings);/
+);
 assert.equal(
   (finance.match(/subcategory_id TEXT CHECK \(subcategory_id IS NULL OR BTRIM\(subcategory_id\) <> ''\)/g) || []).length,
   2,

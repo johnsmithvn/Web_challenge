@@ -29,14 +29,15 @@ npm run dev
 npm test
 ```
 
-> **Không có Supabase?** Các module cơ bản vẫn có thể chạy guest bằng state in-memory. Finance và
-> Account Vault yêu cầu đăng nhập vì dữ liệu có nhiều quan hệ và không có guest fallback.
+> **Không có Supabase?** Task list và Focus vẫn chạy guest bằng state in-memory và mất khi reload.
+> Inbox, Knowledge, Finance, Incubator, Settings và Account Vault yêu cầu đăng nhập.
 
 ---
 
 ## ⚙️ Environment Variables
 
-File [`.env.local.example`](./.env.local.example) chứa tất cả biến. Copy sang `.env.local` rồi điền giá trị.
+File [`.env.local.example`](./.env.local.example) liệt kê biến bắt buộc và tùy chọn. Copy sang
+`.env.local` rồi điền giá trị phù hợp môi trường.
 
 ### Bắt buộc
 
@@ -93,6 +94,9 @@ npm run db:local:status
 npm run db:local:stop
 ```
 
+> `db:local:reset` xóa toàn bộ dữ liệu database local trước khi replay migration. Đây là lệnh user
+> chủ động chạy cho môi trường test trắng; agent không tự chạy và không được dùng với hosted project.
+
 Bốn migration local được chạy tự động theo timestamp:
 
 1. [`20260802000000_base_v5_0_0.sql`](./supabase/migrations/20260802000000_base_v5_0_0.sql)
@@ -122,24 +126,29 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 
 | Thứ tự | File | Nội dung |
 |:------:|------|----------|
-| 1 | [`data/schema_v4.24.0.sql`](./data/schema_v4.24.0.sql) | Master schema đã hợp nhất tới v5.0: bảng lõi, RLS, index, trigger, RPC, Task activity log. Idempotent. |
+| 1 | [`data/schema_v4.24.0.sql`](./data/schema_v4.24.0.sql) | Baseline đã hợp nhất tới v5.0: bảng lõi, RLS, index, trigger, RPC, Task activity log. |
 | 2 | [`data/migration_v5.2.0_vault.sql`](./data/migration_v5.2.0_vault.sql) | Schema Vault trung gian bắt buộc để v6.2 cutover. Idempotent. |
 | 3 | [`data/migration_v6.0.0_finance.sql`](./data/migration_v6.0.0_finance.sql) | Finance v6 clean rebuild, 10 bảng + junction + RPC. Có kiểm tra và rollback khi thiếu. |
 | 4 | [`data/migration_v6.2.0_vault_encryption.sql`](./data/migration_v6.2.0_vault_encryption.sql) | Cutover Vault trống sang full-content encryption. Chạy đúng một lần. |
 
 > Không chạy thêm `migration_v5.0.0_activity_logs_v2.sql` trên fresh install vì thay đổi đó đã nằm
-> trong master schema. Finance v6 sẽ xóa dữ liệu Finance legacy (`expenses`, `subscriptions`);
-> xem phần VERIFY cuối từng file trước khi dùng trên DB đang có dữ liệu.
+> trong baseline. Không chạy lại baseline một mình trên database đã ở v6.x: nó có thể tạo lại bảng
+> Finance legacy trước khi migration v6 xóa chúng. Finance v6 sẽ xóa dữ liệu `expenses` và
+> `subscriptions`; xem preflight/VERIFY trước khi dùng trên DB đang có dữ liệu.
 
 ### Nâng production hiện có lên Vault v6.2 — user tự chạy
 
 Vault v6.2 mã hóa **toàn bộ nội dung do người dùng nhập** ngay trong trình duyệt bằng AES-GCM:
 tiêu đề, username, URL, notes, tags, fields, phương thức đăng nhập, recovery codes và history.
-Supabase chỉ nhận owner/id, timestamps, ciphertext, nonce và version. Vault passphrase, KEK và DEK
-thô không được lưu trên server.
+Supabase nhận owner/id, timestamps, ciphertext, nonce, version và `vault_config` gồm KDF metadata +
+DEK đã wrap. Vault passphrase, KEK và raw DEK không được lưu trên server.
 
 Migration này là cutover dành riêng cho **Vault trống**. Nó chủ động dừng và rollback nếu bảng
 `accounts` có bất kỳ dòng nào; không có quá trình chuyển plaintext cũ.
+
+Trước khi nâng Vault, xác minh Finance v6 đã được áp dụng. Nếu production chưa có các bảng
+`finance_*`, user phải backup/đối soát schema rồi chạy migration Finance v6 trước; migration đó xóa
+Finance legacy nên không được chạy chỉ dựa trên phỏng đoán “chắc là chưa có dữ liệu”.
 
 1. Trong **Supabase → SQL Editor**, xác nhận Vault production đang trống:
 
@@ -165,8 +174,8 @@ Migration này là cutover dành riêng cho **Vault trống**. Nó chủ động
 
 [`data/reset_user_data.sql`](./data/reset_user_data.sql) xóa dữ liệu ứng dụng của **tất cả user**,
 bao gồm ciphertext Vault và `vault_config`, nhưng giữ `auth.users`. Script không có `WHERE` và
-không thể hoàn tác; chỉ dùng cho local/test hoặc khi chủ động muốn xóa sạch production. XP,
-friendships và profiles chỉ bị xóa nếu tự mở các dòng tùy chọn ở cuối file.
+không thể hoàn tác; chỉ dùng cho local/test hoặc khi chủ động muốn xóa sạch production. XP và
+profiles chỉ bị xóa nếu tự mở các dòng tùy chọn ở cuối file.
 
 ---
 
@@ -234,7 +243,7 @@ api/
   _lib/driveToken.js        ← Drive Service Account token, cached per scope (not a route)
   _lib/smoke.test.js        ← Self-check: `node api/_lib/smoke.test.js`
 data/
-  schema_v4.24.0.sql        ← Master schema lõi (đã gộp tới v5.0)
+  schema_v4.24.0.sql        ← Baseline schema lõi (đã gộp tới v5.0)
   migration_v5.2.0_vault.sql
   migration_v6.0.0_finance.sql
   migration_v6.2.0_vault_encryption.sql
@@ -246,7 +255,11 @@ docs/
   ARCHITECTURE.md           ← Module structure + data flow
   DATABASE.md               ← SQL, RLS, RPC và thứ tự migration
   FEATURES.md               ← Toàn bộ hành vi tính năng
-  TASKS.md                  ← Trạng thái + backlog
+  DESIGN_ACCOUNT_VAULT.md  ← Hợp đồng thiết kế Vault
+  DESIGN_FINANCE.md        ← Hợp đồng thiết kế Finance
+  TASKS.md                  ← Các việc còn mở, có thể thực hiện
+  PLAN.md                   ← Thứ tự ưu tiên và roadmap
+  RULES.md                  ← Quy tắc phát triển và an toàn
 DESIGN.md                   ← Design system và component contract
 CHANGELOG.md                ← Lịch sử phiên bản
 ```
@@ -267,6 +280,7 @@ CHANGELOG.md                ← Lịch sử phiên bản
 | Thiết kế Account Vault | [`docs/DESIGN_ACCOUNT_VAULT.md`](./docs/DESIGN_ACCOUNT_VAULT.md) |
 | Thiết kế Finance | [`docs/DESIGN_FINANCE.md`](./docs/DESIGN_FINANCE.md) |
 | Trạng thái/backlog | [`docs/TASKS.md`](./docs/TASKS.md) và [`docs/PLAN.md`](./docs/PLAN.md) |
+| Quy tắc phát triển và an toàn | [`docs/RULES.md`](./docs/RULES.md) |
 | Design system | [`DESIGN.md`](./DESIGN.md) |
 | Lịch sử phiên bản | [`CHANGELOG.md`](./CHANGELOG.md) |
 
@@ -309,16 +323,16 @@ CHANGELOG.md                ← Lịch sử phiên bản
 
 ### 🎵 Media Infrastructure (v4.23.0)
 - **Upload:** Paste / drop / toolbar → Google Drive (Service Account) qua `api/upload.js` — **yêu cầu đăng nhập**
-- **Image / YouTube / Audio / Video:** toolbar + slash command; YouTube nhúng player, Drive media phát qua custom HTML5 player
+- **Image / YouTube / Audio:** có toolbar + slash command; Drive/video URL vẫn được media layer nhận diện và render, nhưng không có nút Video riêng
 - **Stream proxy:** `api/stream.js` proxy media Drive (hỗ trợ Range/seek) — chỉ phục vụ file nằm trong thư mục app
 - **MediaNode (Tiptap v3):** tự nhận diện URL Drive / YouTube / audio / video khi paste
-- **QuoteWidget:** Daily-seeded random, shuffle 🔀, audio support (Today / Inbox / KB)
+- **QuoteWidget:** Daily-seeded random, shuffle 🔀, audio support trong Inbox và Knowledge
 - **Quote Manager:** Settings → CRUD personal quotes + view system quotes
 
 ### 🔐 Auth & Sync
 - Email/Password + Google OAuth (Supabase)
 - RLS own-row cho dữ liệu người dùng
-- Guest in-memory ở các module hỗ trợ; Finance và Account Vault yêu cầu đăng nhập
+- Task list và Focus có guest in-memory; các module dữ liệu còn lại yêu cầu đăng nhập
 
 ---
 
@@ -337,48 +351,15 @@ CHANGELOG.md                ← Lịch sử phiên bản
 
 ---
 
-## 📦 Phiên Bản
+## 📦 Phiên bản hiện hành
 
 | Version | Mô tả |
 |---------|-------|
 | **v6.2.0** | Account Vault full-content encryption: PBKDF2-SHA256 600.000 vòng, DEK bọc bằng passphrase, AES-GCM + AAD theo user/item; key chỉ giữ trong memory |
 | **v6.1.0** | Tasks full-bleed; completed range; edit trong detail popup; lịch âm/ngày lễ; giới hạn 4/3 task theo sức chứa ô |
 | **v6.0.0** | Finance Nocturne clean rebuild, 10 bảng + junction/RPC, liên kết Task và Inbox |
-| **v5.2.0** | Account Vault Keyplate, 6 bảng, field/auth/code/history |
-| **v5.0.0** | Task Detail + activity log v2; gỡ Habit, Journey, Life Log, Dashboard, Quiz và Leaderboard |
-| **v4.23.0** | Drive stream proxy (`api/stream.js`) + custom audio player + API hardening (auth/CORS/rate-limit) |
-| **v4.16.1** | Unified Google Drive upload — thay thế Imgur + Cloudflare R2 |
-| **v4.13.0–v4.22.0** | GlobalAudioPlayer + useRandomPodcast, MediaNode (thay AudioNode), CustomAudioPlayer, currency settings, GenericModal, dateUtils |
-| **v4.12.0** | Media Infrastructure: Image/YouTube/Audio + QuoteWidget + Quote Manager |
-| **v4.11.0** | Knowledge Groups M:N + Sub-Notes |
-| **v4.9.0** | Task priority system + ClickUp DatePicker |
-| **v4.5.0** | M:M Task↔KB linking + LinkKBModal |
-| **v4.1.0** | Tag Unification + Settings Page |
-| **v4.0.0** | Fitness Log + OG metadata API |
-| **v3.9.0** | Incubator (someday/maybe + friction defer) |
-| **v3.7.0** | PARA Tags + Cashflow Calendar |
-| **v3.3.0** | Tiptap WYSIWYG + Slash Commands + Shortcuts |
-| **v3.0.0** | Personal Life Hub: Inbox+Collect+Finance+LifeLog |
-| **v2.2.0** | Life Journey + Theme toggle |
-| **v2.0.0** | Journey Owns Habits + MyJourneys |
-| **v1.0.0** | MVP — landing, tracker, dashboard |
 
----
-
-## 🌿 Git Workflow
-
-```bash
-# Feature branch
-git checkout -b feat/ten-feature
-
-# Commit theo Conventional Commits
-git commit -m "feat(media): v4.12.0 — Image/YouTube/Audio + QuoteWidget"
-git commit -m "fix(finance): subscription date filter"
-git commit -m "docs: update README v4.12.0"
-
-# Push và tạo PR
-git push origin feat/ten-feature
-```
+Lịch sử đầy đủ và các feature đã xóa chỉ nằm trong [`CHANGELOG.md`](./CHANGELOG.md).
 
 ---
 
@@ -389,11 +370,11 @@ git push origin feat/ten-feature
 | App trắng, không load | Kiểm tra `VITE_SUPABASE_URL` trong `.env.local` |
 | Upload ảnh/file thất bại | Đăng nhập trước; kiểm tra `GOOGLE_SERVICE_ACCOUNT_JSON` + `DRIVE_FOLDER_ID` trên Vercel |
 | Audio/video Drive không phát | Kiểm tra `DRIVE_FOLDER_ID` (stream proxy fail-closed nếu thiếu) |
-| Quotes tab trống / Collect lỗi khi lưu | Chạy lại [`data/schema_v4.24.0.sql`](./data/schema_v4.24.0.sql) trong Supabase (idempotent) |
-| Vault báo thiếu `vault_config`/cột ciphertext | Với fresh install chạy đủ master → Vault v5.2 → Finance v6 → Vault encryption v6.2; với project hiện có làm đúng runbook nâng production phía trên |
+| Quotes tab trống / Collect lỗi khi lưu | Đối chiếu schema với ordered chain phía trên. Không chạy baseline một mình trên database v6.x |
+| Vault báo thiếu `vault_config`/cột ciphertext | Với fresh install chạy đủ baseline → Vault v5.2 → Finance v6 → Vault encryption v6.2; với project hiện có làm đúng runbook nâng production phía trên |
 | Vault migration báo `accounts is not empty` | Dừng lại: migration đang bảo vệ dữ liệu cũ. Chỉ xóa/export khi đã xác nhận đó là test data |
 | Quên Vault passphrase | Không có reset/recovery; không xóa config vì sẽ làm ciphertext còn lại không thể giải mã |
-| Finance báo không tải được dữ liệu | Chạy DB đúng thứ tự: master → Vault v5.2 → Finance v6 → Vault encryption v6.2; dùng nút Thử lại sau khi migration thành công |
+| Finance báo không tải được dữ liệu | Chạy DB đúng thứ tự: baseline → Vault v5.2 → Finance v6 → Vault encryption v6.2; dùng nút Thử lại sau khi migration thành công |
 | 404 khi refresh | Kiểm tra [`vercel.json`](./vercel.json) có rewrite rule |
 | Build fail | `npm run build` — check console errors |
 

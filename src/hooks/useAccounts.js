@@ -272,7 +272,8 @@ export function useAccounts() {
     const key = keyRef.current;
     const session = sessionRef.current;
     const isCurrent = () => sessionRef.current === session && keyRef.current === key;
-    const encrypted = await encryptVaultItem(key, userId, item.id, cleanItem(item));
+    const payload = cleanItem(item);
+    const encrypted = await encryptVaultItem(key, userId, item.id, payload);
     if (!isCurrent()) return null;
 
     const { data, error } = await supabase.from('accounts')
@@ -286,7 +287,11 @@ export function useAccounts() {
     if (error) throw error;
     if (!data) throw new Error(VAULT_CONFLICT);
 
-    const saved = { ...item, updated: data.updated_at };
+    const saved = hydrateItem({
+      id: item.id,
+      created_at: item.created,
+      updated_at: data.updated_at,
+    }, payload);
     fetchRef.current += 1;
     setIsLoading(false);
     setItems((current) => [saved, ...current.filter((candidate) => candidate.id !== item.id)]);

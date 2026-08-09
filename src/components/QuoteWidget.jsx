@@ -3,7 +3,7 @@
  *
  * Sources:
  *   1. System quotes (src/data/quotes.json) — always available
- *   2. User DB quotes (inspirational_quotes table) — future: Phase 4b
+ *   2. Optional Knowledge quote items passed through `kbQuotes`
  *
  * Behavior:
  *   - On mount: picks a random quote (seed = date + pageKey for daily consistency)
@@ -17,16 +17,16 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import QUOTES_DATA from '../data/quotes.json';
 import AppIcon from './AppIcon';
+import { toDateStr } from '../utils/dateUtils';
 import '../styles/quote-widget.css';
 
 const SYSTEM_QUOTES = QUOTES_DATA.dailyQuotes;
 
 /** Simple deterministic hash for daily seed */
 function dailySeed(pageKey = '') {
-  const d = new Date();
-  const day = Math.floor(d.getTime() / 86400000); // days since epoch
-  let h = day * 31 + pageKey.length;
-  for (let i = 0; i < pageKey.length; i++) h = (h * 37 + pageKey.charCodeAt(i)) | 0;
+  const key = `${toDateStr()}|${pageKey}`;
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 37 + key.charCodeAt(i)) | 0;
   return Math.abs(h);
 }
 

@@ -6,11 +6,13 @@ import { useCollections } from '../hooks/useCollections';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useIntentions } from '../hooks/useIntentions';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
 import QuoteWidget from '../components/QuoteWidget';
 import CustomSelect from '../components/CustomSelect';
 import AppIcon from '../components/AppIcon';
 import { parseCurrencyInput } from '../utils/currencyUtils';
+import { toDateStr } from '../utils/dateUtils';
 import '../styles/inbox.css';
 import '../styles/collect.css';
 
@@ -32,6 +34,7 @@ function extractAmount(text) {
 
 export default function InboxPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const { items, isLoading, fetchItems, classifyItem, deleteItem, addItem, updateItem, snoozeItem, getSnoozedCount, fetchSnoozedItems } = useCollections();
   const { addTask } = useUserTasks();
@@ -88,7 +91,7 @@ export default function InboxPage() {
   const handleSnooze = async (itemId, days) => {
     const d = new Date();
     d.setDate(d.getDate() + days);
-    const until = d.toISOString().split('T')[0];
+    const until = toDateStr(d);
     await snoozeItem(itemId, until);
     setSnoozeMenu(null);
     setSnoozedCount(prev => prev + 1);
@@ -112,7 +115,6 @@ export default function InboxPage() {
     const isLong = words.length > 25 || trimmed.length > 100;
 
     // Auto-split: long text → truncated title + full body
-    // TODO: future — AI summarize title from body content
     let title = trimmed;
     let autoBody = '';
     if (isLong && !isUrl) {
@@ -148,6 +150,28 @@ export default function InboxPage() {
     fetchItems({ type: 'inbox' });
   }, [fetchItems]);
 
+  const finalizeConversion = useCallback(async (created, itemId, targetLabel) => {
+    if (!created) {
+      showToast(`Không thể tạo ${targetLabel}. Mục Inbox vẫn được giữ.`, { icon: 'warning' });
+      return false;
+    }
+    const deleted = await deleteItem(itemId);
+    if (!deleted) {
+      showToast(`${targetLabel} đã được tạo nhưng mục Inbox chưa xóa được.`, { icon: 'warning' });
+      return false;
+    }
+    return true;
+  }, [deleteItem, showToast]);
+
+  const convertToTask = useCallback(async (item, { description, completed = false } = {}) => {
+    const created = await addTask({
+      title: item.title,
+      description: description ?? item.body ?? item.url ?? '',
+      ...(completed ? { completed: true, completedAt: new Date().toISOString() } : {}),
+    });
+    return finalizeConversion(created, item.id, completed ? 'Task đã hoàn thành' : 'Task');
+  }, [addTask, finalizeConversion]);
+
   const handleDetailBodyChange = useCallback((val) => {
     setDetailBody(val || '');
   }, []);
@@ -182,25 +206,20 @@ export default function InboxPage() {
 
   const handleDetailToTask = useCallback(async () => {
     if (!detailItem) return;
-    await addTask({ title: detailItem.title, description: detailBody || detailItem.url || '' });
-    await deleteItem(detailItem.id);
+    const converted = await convertToTask(detailItem, { description: detailBody || detailItem.url || '' });
+    if (!converted) return;
     closeDetail();
-    fetchItems({ type: 'inbox' });
-  }, [detailItem, detailBody, addTask, deleteItem, closeDetail, fetchItems]);
+  }, [detailItem, detailBody, convertToTask, closeDetail]);
 
   const handleDetailQuickDone = useCallback(async () => {
     if (!detailItem) return;
-    const now = new Date().toISOString();
-    await addTask({
-      title: detailItem.title,
+    const converted = await convertToTask(detailItem, {
       description: detailBody || detailItem.url || '',
       completed: true,
-      completedAt: now,
     });
-    await deleteItem(detailItem.id);
+    if (!converted) return;
     closeDetail();
-    fetchItems({ type: 'inbox' });
-  }, [detailItem, detailBody, addTask, deleteItem, closeDetail, fetchItems]);
+  }, [detailItem, detailBody, convertToTask, closeDetail]);
 
   const handleClassify = async (itemId, newType) => {
     await classifyItem(itemId, newType);
@@ -214,22 +233,20 @@ export default function InboxPage() {
 
   // Convert inbox item → Task
   const handleToTask = async (item) => {
-    await addTask({ title: item.title, description: item.body || item.url || '' });
-    await deleteItem(item.id);
-    fetchItems({ type: 'inbox' });
+    await convertToTask(item);
   };
 
   // Convert inbox item → Completed Task today immediately
   const handleQuickDone = async (item) => {
-    const now = new Date().toISOString();
-    await addTask({
+    await convertToTask(item, { completed: true });
+  };
+
+  const handleToIntention = async (item) => {
+    const created = await addIntention({
       title: item.title,
-      description: item.body || item.url || '',
-      completed: true,
-      completedAt: now,
+      description: item.body || item.url || null,
     });
-    await deleteItem(item.id);
-    fetchItems({ type: 'inbox' });
+    if (await finalizeConversion(created, item.id, 'dự định')) setOverflowMenu(null);
   };
 
   // Inbox → Giao dịch: sang module Chi tiêu, prefill form Nhập nhanh. Module xoá
@@ -625,15 +642,7 @@ export default function InboxPage() {
                           <button className="inbox-overflow-item" onClick={() => { handleToRule(item); setOverflowMenu(null); }}>
                             <AppIcon name="refresh" size={14} /> Hóa đơn
                           </button>
-                          <button className="inbox-overflow-item" onClick={async () => {
-                            await addIntention({ 
-                              title: item.title,
-                              description: item.body || item.url || null 
-                            });
-                            await deleteItem(item.id);
-                            fetchItems({ type: 'inbox' });
-                            setOverflowMenu(null);
-                          }}>
+                          <button className="inbox-overflow-item" onClick={() => handleToIntention(item)}>
                             <AppIcon name="egg" size={14} /> Ấp Trứng
                           </button>
                           <button className="inbox-overflow-item" onClick={() => { setSnoozeMenu(item.id); setOverflowMenu(null); }}>

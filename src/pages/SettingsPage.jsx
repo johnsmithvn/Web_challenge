@@ -9,7 +9,6 @@ import {
   Quotes as QuoteIcon, ToggleLeft, ToggleRight, Coins,
 } from '@phosphor-icons/react';
 import AppIcon from '../components/AppIcon';
-import { supabase } from '../lib/supabase';
 import { getUsdRate, getAutoK, setUsdRate, setAutoK } from '../utils/currencyUtils';
 import '../styles/settings.css';
 import { logger } from '../utils/logger';
@@ -357,7 +356,6 @@ function TagManagerSection({ user }) {
 function ProfileSection({ user, profile, updateProfile }) {
   const [form, setForm] = useState({
     display_name: '',
-    email: '',
     bio: '',
   });
   const [saving, setSaving] = useState(false);
@@ -369,7 +367,6 @@ function ProfileSection({ user, profile, updateProfile }) {
     if (profile) {
       setForm({
         display_name: profile.display_name || '',
-        email: profile.email || '',
         bio: profile.bio || '',
       });
       setDirty(false);
@@ -382,35 +379,12 @@ function ProfileSection({ user, profile, updateProfile }) {
     setSaveMsg('');
   };
 
-  const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-
   const handleSave = async () => {
     setSaving(true);
     setSaveMsg('');
     const updates = {};
     if (form.display_name.trim() !== (profile?.display_name || '')) {
       updates.display_name = form.display_name.trim();
-    }
-    const newEmail = form.email.trim().toLowerCase();
-    const oldEmail = (profile?.email || '').toLowerCase();
-    if (newEmail !== oldEmail) {
-      // Validate format (skip for placeholder emails)
-      if (newEmail && !newEmail.endsWith('@lifehub.local') && !isValidEmail(newEmail)) {
-        setSaving(false);
-        setSaveMsg('invalid_email');
-        return;
-      }
-      // Check duplicate email (rpc excludes the caller's own row via auth.uid())
-      if (newEmail && !newEmail.endsWith('@lifehub.local')) {
-        const { data: emailTaken } = await supabase
-          .rpc('email_exists', { p_email: newEmail });
-        if (emailTaken) {
-          setSaving(false);
-          setSaveMsg('email_taken');
-          return;
-        }
-      }
-      updates.email = newEmail;
     }
     if (form.bio.trim() !== (profile?.bio || '')) {
       updates.bio = form.bio.trim();
@@ -484,12 +458,12 @@ function ProfileSection({ user, profile, updateProfile }) {
           <input
             id="prof-email"
             type="email"
-            value={form.email}
-            onChange={e => handleChange('email', e.target.value)}
-            placeholder="your@email.com"
+            value={user?.email || ''}
+            readOnly
+            aria-readonly="true"
             className="settings-profile-input"
           />
-          <span className="settings-profile-field__hint">Dùng để khôi phục mật khẩu</span>
+          <span className="settings-profile-field__hint">Email đăng nhập do Supabase Auth quản lý; app chưa hỗ trợ đổi email.</span>
         </div>
 
         <div className="settings-profile-field">
@@ -523,8 +497,6 @@ function ProfileSection({ user, profile, updateProfile }) {
         {saveMsg === 'success' && <span className="settings-profile-msg settings-profile-msg--ok"><AppIcon name="checkCircle" size={14} /> Đã lưu</span>}
         {saveMsg === 'error' && <span className="settings-profile-msg settings-profile-msg--err"><AppIcon name="warning" size={14} /> Lỗi, thử lại</span>}
         {saveMsg === 'nothing' && <span className="settings-profile-msg settings-profile-msg--ok">Không có gì thay đổi</span>}
-        {saveMsg === 'email_taken' && <span className="settings-profile-msg settings-profile-msg--err"><AppIcon name="warning" size={14} /> Email này đã được dùng bởi tài khoản khác</span>}
-        {saveMsg === 'invalid_email' && <span className="settings-profile-msg settings-profile-msg--err"><AppIcon name="warning" size={14} /> Email không hợp lệ</span>}
       </div>
 
       {/* Read-only info */}

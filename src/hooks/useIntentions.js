@@ -134,7 +134,7 @@ export function useIntentions() {
     }
   }, [isAuth, userId]);
 
-  // ── Execute intention (multi-output: Task + Expense + Habit) ────
+  // ── Execute intention (multi-output: Task + Finance expense) ────
   const executeIntention = useCallback(async (id, { convertedTypes, convertedIds }) => {
     if (!isAuth) return false;
     try {

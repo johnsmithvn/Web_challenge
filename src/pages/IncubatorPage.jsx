@@ -171,7 +171,6 @@ export default function IncubatorPage() {
 
   // Execute modal
   const [executeModal, setExecuteModal] = useState(null);
-  // v5.0.0: bỏ lựa chọn 'habit' — Habit tracker đã gỡ hẳn.
   const [execOptions, setExecOptions] = useState({ expense: false, task: false });
   const [expenseCategory, setExpenseCategory] = useState('shopping');
   const [execLogs, setExecLogs] = useState([]);

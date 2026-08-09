@@ -24,45 +24,39 @@ function addDays(date, days) {
  *
  * Guest = in-memory (reset on refresh).
  *
- * ── Activity log (v5.0.0) ────────────────────────────────────────────────
- * Mọi đường ghi xuống `user_tasks` đều phải phát 1 dòng `activity_logs`, nếu
- * không thì tab Activity của Task Detail thủng lỗ chỗ. Có 5 cửa, KHÔNG phải 1
- * — hook diff cắm riêng ở từng chỗ:
+ * Authenticated writes log only after the database write succeeds:
  *   1. addTask + spawnRecurringTask  → task_created
  *   2. completeTask                  → task_completed
  *   3. uncompleteTask                → task_uncompleted
  *   4. updateTask                    → task_update (1 dòng / field đổi)
  *   5. link/unlinkTaskTag + link/unlinkCollection → task_tag_* / task_link_*
  *
- * completeTask/uncompleteTask cũng cộng/trừ XP (v5.0.0) — dedup theo `taskId`.
- *
- * Hai quy tắc bắt buộc khi thêm đường ghi mới:
- *   - Ghi log SAU khi biết `error == null`. Các hàm ở đây đều optimistic +
- *     rollback, log trước sẽ để lại dòng ma cho thay đổi chưa từng xảy ra.
- *   - Ghi log TRONG khối `if (isAuth)`. Guest không có auth.uid() nên RLS chặn.
- *
- * KHÔNG log việc xoá task: FK `activity_logs.task_id ON DELETE CASCADE` xoá
- * sạch log của task ngay khi task biến mất, nên dòng "đã xoá" sẽ tự xoá chính
- * nó (và đó là hành vi mong muốn).
+ * Guest writes stay in memory and do not log or award XP. Delete intentionally
+ * has no event because its task history is removed by FK cascade.
  */
 export function useUserTasks() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { logTaskEvent, logFieldChanges, logTaskRelation } = useActivityLog();
-  // v5.0.0: hoàn thành task là nguồn XP chính. Trước đây Task CỐ Ý không tính XP
-  // (FEATURES §16) vì XP thuộc về Habit; giờ Habit đã gỡ nên đảo lại quyết định.
+  // Hoàn thành/bỏ hoàn thành Task cộng hoặc gỡ đúng XP event đã dedup.
   const { addXp, removeXp } = useXpStore();
   const isAuth = isSupabaseEnabled && !!user;
   const userId = user?.id;
 
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const fetchedRef = useRef(false);
+  const fetchEpochRef = useRef(0);
+  const sessionKey = isAuth ? userId : 'guest';
+  const sessionKeyRef = useRef(sessionKey);
+  if (sessionKeyRef.current !== sessionKey) {
+    sessionKeyRef.current = sessionKey;
+    fetchEpochRef.current += 1;
+  }
 
   // ── Fetch tasks: pending + completed today ─────────────
   // v4.5.0: Embedded select for task_collections junction with graceful fallback
-  const fetchTasks = useCallback(async () => {
-    if (!isAuth || !userId) return;
+  const fetchTasks = useCallback(async (epoch) => {
+    if (!isAuth || !userId || epoch !== fetchEpochRef.current) return;
     setIsLoading(true);
     try {
       const today = todayStr();
@@ -92,7 +86,7 @@ export function useUserTasks() {
 
         if (result.error) {
           logger.error('[useUserTasks] fallback fetch error:', result.error.message);
-        } else {
+        } else if (epoch === fetchEpochRef.current) {
           setTasks((result.data || []).map(t => ({ ...t, _collections: [], _tags: [] })));
         }
         return;
@@ -110,30 +104,26 @@ export function useUserTasks() {
       }));
       // Remove raw junction data
       mapped.forEach(t => { delete t.task_collections; delete t.task_tags; });
-      setTasks(mapped);
+      if (epoch === fetchEpochRef.current) setTasks(mapped);
     } catch (err) {
       logger.error('[useUserTasks] fetch exception:', err);
     } finally {
-      setIsLoading(false);
+      if (epoch === fetchEpochRef.current) setIsLoading(false);
     }
   }, [isAuth, userId]);
 
   useEffect(() => {
-    if (isAuth && !fetchedRef.current) {
-      fetchedRef.current = true;
-      fetchTasks();
-    }
-    if (!isAuth) {
-      fetchedRef.current = false;
-    }
-  }, [isAuth, fetchTasks]);
+    const epoch = ++fetchEpochRef.current;
+    setTasks([]);
+    setIsLoading(false);
+    if (isAuth && userId) fetchTasks(epoch);
+    return () => {
+      if (fetchEpochRef.current === epoch) fetchEpochRef.current += 1;
+    };
+  }, [isAuth, userId, fetchTasks]);
 
   // ── Add task ───────────────────────────────────────────
-  // v4.28.0: bỏ tham số `collectionId` + cột `collection_id`. Cột này đã
-  // DEPRECATED từ v4.5.0 (thay bằng junction task_collections) — schema có
-  // COMMENT nói rõ, nhưng addTask vẫn ghi vào, tạo 2 đường link song song cho
-  // cùng 1 quan hệ. Không caller nào từng truyền collectionId (đã grep).
-  // Dùng linkCollection(taskId, collectionId) thay thế. DROP ở migration_v5.0.0.
+  // Knowledge links are created separately through task_collections/linkCollection.
   const addTask = useCallback(async ({ title, description, dueDate, dueTime, priority, recurrenceRule, completed, completedAt }) => {
     const newTask = {
       id: crypto.randomUUID ? crypto.randomUUID() : `local_${Date.now()}`,
@@ -296,9 +286,7 @@ export function useUserTasks() {
           return false; // Don't spawn if complete failed
         }
 
-        // Sự kiện rời rạc, KHÔNG phải field-diff `completed: false → true` —
-        // để nó vẫn được đếm vào heatmap (hoàn thành task theo đường bình
-        // thường trước v5.0.0 không hề lên heatmap, đây là chỗ bịt lỗ đó).
+        // Completion is a discrete event, not a generic field-diff row.
         logTaskEvent(ACTIONS.TASK_COMPLETED, taskId);
         // Dedup theo taskId — tích/bỏ tích/tích lại không cộng XP nhiều lần
         // (addXp tự kiểm `reason` + `meta` trên xp_logs trước khi ghi).
@@ -332,6 +320,7 @@ export function useUserTasks() {
   // được rule bất đối xứng này — task gốc phải được "cắt dây" con trước khi xoá
   // để CASCADE không bị kích hoạt xuống hậu duệ.
   const deleteTask = useCallback(async (taskId) => {
+    const sessionAtStart = sessionKeyRef.current;
     // Best-effort dựa trên state cục bộ hiện có (có thể thiếu — vd 1 task lịch sử
     // chưa từng vào `tasks` — không sao, DB call bên dưới vẫn xử lý đúng dù state
     // cục bộ không đầy đủ).
@@ -373,12 +362,16 @@ export function useUserTasks() {
 
         if (error) {
           logger.error('[useUserTasks] delete error:', error.message);
-          if (backups.length) setTasks(prev => [...prev, ...backups]);
+          if (backups.length && sessionKeyRef.current === sessionAtStart) {
+            setTasks(prev => [...prev, ...backups]);
+          }
           return false;
         }
       } catch (err) {
         logger.error('[useUserTasks] delete exception:', err);
-        if (backups.length) setTasks(prev => [...prev, ...backups]);
+        if (backups.length && sessionKeyRef.current === sessionAtStart) {
+          setTasks(prev => [...prev, ...backups]);
+        }
         return false;
       }
     }

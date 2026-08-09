@@ -37,8 +37,6 @@ const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
  * (không qua bên thứ ba — xem faviconCandidates), nhưng vẫn là request ra ngoài
  * từ một trang vault, nên phải tắt được. Mặc định tắt.
  */
-const FAVICON_KEY = 'vl_acc_favicon';
-
 export default function AccountsPage() {
   const { user } = useAuth();
   const { items, isLoading, saveItem, createItem, deleteItem, toggleFavorite,
@@ -58,13 +56,10 @@ export default function AccountsPage() {
   const [revealed, setRevealed] = useState({});   // { [fieldId]: true }
   const [copied, setCopied] = useState(null);     // 1 key tại một thời điểm
   const [pendingTags, setPendingTags] = useState([]);
-  const [useFavicon, setUseFavicon] = useState(() => localStorage.getItem(FAVICON_KEY) === '1');
+  const [useFavicon, setUseFavicon] = useState(false);
   const copyTimer = useRef(null);
 
-  const toggleFavicon = () => setUseFavicon((v) => {
-    localStorage.setItem(FAVICON_KEY, v ? '0' : '1');
-    return !v;
-  });
+  const toggleFavicon = () => setUseFavicon((value) => !value);
 
   useEffect(() => () => clearTimeout(copyTimer.current), []);
 
@@ -171,6 +166,7 @@ export default function AccountsPage() {
     setCopied(null);
     setPickerOpen(false);
     setPendingTags([]);
+    setUseFavicon(false);
     lockVault();
   };
 
@@ -265,8 +261,8 @@ export default function AccountsPage() {
             onClick={toggleFavicon}
             aria-pressed={useFavicon}
             title={useFavicon
-              ? 'Loading each service icon straight from its own domain (never through a third-party favicon service). Click to stop all outbound image requests.'
-              : 'Letter plates only — this page makes no outbound requests. Click to load service icons.'}
+              ? 'Loading each service icon straight from its own domain (never through a third-party favicon service). Click to stop outbound icon requests.'
+              : 'Letter plates only — no outbound icon requests. Click to load service icons for this unlocked session.'}
           >Logos</button>
           <button className="acc-btn" onClick={() => setPickerOpen(true)}>New item</button>
         </div>

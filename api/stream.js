@@ -92,7 +92,7 @@ async function getAllowedFolders(accessToken, rootId) {
   let ok = false;
   try {
     const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&pageSize=1000`,
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true`,
       { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(8000) }
     );
     if (res.ok) {
@@ -118,7 +118,7 @@ async function isFileAuthorized(accessToken, fileId, rootId) {
   if (cachedExp && Date.now() < cachedExp) return true;
 
   const metaRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents`,
+    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents&supportsAllDrives=true`,
     { headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(8000) }
   );
   if (!metaRes.ok) return false;
@@ -163,7 +163,7 @@ export default async function handler(req, res) {
     }
 
     // Build request to Google Drive API
-    const driveUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+    const driveUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`;
     const headers = { 'Authorization': `Bearer ${accessToken}` };
 
     // Forward Range header for seeking support
@@ -190,7 +190,8 @@ export default async function handler(req, res) {
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Accept-Ranges', acceptRanges || 'bytes');
-    // Private media — short browser cache, no long-lived shared CDN caching.
+    // Private browser-cache directive only; possession of the Drive URL/file ID
+    // still grants read access under the documented Anyone-with-link setup.
     res.setHeader('Cache-Control', 'private, max-age=600');
 
     if (contentLength) res.setHeader('Content-Length', contentLength);

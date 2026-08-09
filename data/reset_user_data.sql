@@ -3,45 +3,33 @@
 -- Synced with: schema_v4.24.0.sql + Vault v6.2.0 + Finance v6.0.0
 -- Last updated: 2026-08-09
 -- Chạy trong Supabase SQL Editor
--- ⚠️  KHÔNG THỂ HOÀN TÁC — chỉ chạy khi chắc chắn muốn reset
+-- ⚠️  KHÔNG THỂ HOÀN TÁC SAU COMMIT — chỉ chạy khi chắc chắn muốn reset
 -- ═══════════════════════════════════════════════════════════════
 
--- 0. Encrypted Account Vault (items first, then the wrapped-key configuration)
+BEGIN;
+
+-- 0. Encrypted Account Vault
 DELETE FROM accounts;
 DELETE FROM vault_config;
 
--- 1. Tag junctions (must go before tags and their entities)
+-- 1. Tag junctions, trước tags và entity
 DELETE FROM collection_tags;
+DELETE FROM task_tags;
 DELETE FROM finance_transaction_tags;
 
--- 2. Intention logs (must go before intentions)
+-- 2. Logs/junctions trước parent
 DELETE FROM intention_logs;
 DELETE FROM intentions;
-
--- 3. Habit tracking (order matters: habit_logs → journey_habits → user_journeys → habits)
-DELETE FROM habit_logs;
-DELETE FROM journey_habits;
-DELETE FROM user_journeys;
-DELETE FROM program_habits;
-DELETE FROM programs;
-DELETE FROM habits;
-
--- 4. Tags (after all junction tables)
-DELETE FROM tags;
-
--- 5. Task↔Collection junction (v4.5.0, must go before user_tasks + collections)
+DELETE FROM activity_logs;
 DELETE FROM task_collections;
+DELETE FROM collection_notes;
 
--- 5b. Knowledge groups (v4.11.0) — collection_groups/collection_notes cascade via
--- collections FK ON DELETE CASCADE, nhưng knowledge_groups chỉ có user_id FK nên
--- phải xoá tay, không thì "reset toàn bộ" để sót
-DELETE FROM knowledge_groups;
-
--- 6. Collections & tasks (task FK → collection, must delete tasks first)
+-- 3. Tags, tasks và Knowledge
+DELETE FROM tags;
 DELETE FROM user_tasks;
 DELETE FROM collections;
 
--- 6. Finance
+-- 4. Finance: transactions trước các row được tham chiếu
 DELETE FROM finance_transactions;
 DELETE FROM finance_deposits;
 DELETE FROM finance_shortcuts;
@@ -53,41 +41,15 @@ DELETE FROM finance_saving_goals;
 DELETE FROM finance_budgets;
 DELETE FROM finance_category_overrides;
 
--- 7. Activity & sessions
-DELETE FROM activity_logs;
+-- 5. Sessions và nội dung độc lập
 DELETE FROM focus_sessions;
-DELETE FROM fitness_logs;
-
--- 8. Mood & motivation
-DELETE FROM skip_reasons;
-
--- 9. Progress (legacy day-done table)
-DELETE FROM progress;
-
--- 10. Streaks & notification settings (per-user config, reset to clean state)
-DELETE FROM streaks;
-DELETE FROM notification_settings;
-
--- 10b. Inspirational quotes (v4.12.0) — độc lập hoàn toàn, chỉ có user_id FK
 DELETE FROM inspirational_quotes;
 
--- 11. XP (optional — uncomment nếu muốn reset XP luôn)
+-- 6. Tùy chọn: mở comment nếu muốn xóa cả XP/profile
 -- DELETE FROM xp_logs;
+-- DELETE FROM profiles;
 
--- 12. Friendships (optional — uncomment nếu muốn xóa connections)
--- DELETE FROM friendships;
+COMMIT;
 
--- 13. Profiles (optional — uncomment nếu muốn reset profile info)
--- DELETE FROM profiles WHERE id NOT IN (SELECT id FROM auth.users WHERE deleted_at IS NOT NULL);
-
--- ═══════════════════════════════════════════════════════════════
--- DONE — Auth accounts (auth.users) được giữ nguyên
--- Tables reset: accounts, vault_config, collection_tags, finance_transaction_tags,
---   intention_logs, intentions, habit_logs, journey_habits, user_journeys,
---   program_habits, programs, habits, tags, knowledge_groups, user_tasks,
---   collections (+ cascade: collection_groups, collection_notes), finance_transactions,
---   finance_deposits, finance_shortcuts, finance_bills, finance_income_rules,
---   finance_loans, finance_cards, finance_saving_goals, finance_budgets,
---   finance_category_overrides, activity_logs, focus_sessions, fitness_logs, skip_reasons,
---   progress, streaks, notification_settings, inspirational_quotes
--- ═══════════════════════════════════════════════════════════════
+-- DONE: giữ nguyên auth.users. Nếu bất kỳ statement nào lỗi trước COMMIT,
+-- PostgreSQL abort toàn transaction và không reset dở dang.

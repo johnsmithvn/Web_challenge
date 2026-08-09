@@ -10,11 +10,8 @@
  *   - PHÍA ĐỌC: TaskDetailModal hiển thị nhãn + giá trị + câu mô tả.
  * Một nguồn duy nhất nên hai phía không bao giờ lệch nhau.
  *
- * ACTIONS nằm ở đây (dù có cả action ngoài phạm vi task như expense_add) vì
- * migration v5.0.0 CỐ Ý không đặt CHECK constraint cho cột `action` — mọi lệnh
- * ghi log đều fire-and-forget nuốt lỗi, nên CHECK bị vi phạm sẽ làm log biến
- * mất âm thầm. Hằng số dùng chung là thứ thay thế: gõ sai thì lỗi ở tầng JS,
- * thấy ngay.
+ * ACTIONS nằm ở đây vì database không đặt CHECK constraint cho `action`; phía
+ * ghi và phía đọc phải dùng chung một vocabulary để không lệch nhau.
  */
 
 // ── Tuỳ chọn field của task (dời từ TaskListSection.jsx v5.0.0) ─────────────
@@ -33,10 +30,7 @@ export const PRIORITY_OPTIONS = [
 export const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
 // ── Vốn từ của activity_logs.action ────────────────────────────────────────
-// MỌI action đều gắn với 1 task (activity_logs.task_id luôn có giá trị).
-// v5.0.0 đã bỏ hết action rời rạc (expense_add, inbox_*, focus_done,
-// challenge_done, habit_done…): heatmap Life Log là người đọc duy nhất của
-// chúng, mà Life Log + KPI "Hoạt động hôm nay" đã bị gỡ.
+// Mọi action đều gắn với một task (`activity_logs.task_id` luôn có giá trị).
 export const ACTIONS = {
   TASK_CREATED: 'task_created',
   TASK_COMPLETED: 'task_completed',

@@ -19,11 +19,7 @@ import { ACTIONS } from '../utils/taskFields';
  * MỌI dòng đều gắn `task_id` (FK ON DELETE CASCADE) — xoá task là DB tự dọn
  * sạch lịch sử của nó, không bao giờ có dòng mồ côi.
  *
- * v5.0.0 (dọn sau khi xoá Life Log): bảng này KHÔNG còn ghi sự kiện rời rạc
- * (expense_add, inbox_*, focus_done, challenge_done, habit_done…). Heatmap Life
- * Log là người đọc duy nhất của chúng, mà Life Log + KPI "Hoạt động hôm nay"
- * trên Dashboard đều đã bị gỡ → giữ lại thì thành ghi-mà-không-ai-đọc, đúng cái
- * bệnh của schema v1. Cùng lý do: `getHeatmapData`/`getTodayCount` đã xoá.
+ * Bảng chỉ lưu lịch sử gắn với Task; Finance, Inbox và Focus có data owner riêng.
  *
  * `action` KHÔNG có CHECK constraint dưới DB (cố ý — mọi lệnh ghi ở đây đều
  * fire-and-forget nuốt lỗi, nên constraint bị vi phạm sẽ làm log biến mất âm

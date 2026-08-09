@@ -98,8 +98,9 @@ export function AuthProvider({ children }) {
     const trimmed = loginId.trim();
     let emailToUse = trimmed;
 
-    // If no @ → it's a username → resolve email via SECURITY DEFINER rpc
-    // (profiles.email is no longer directly readable by other users).
+    // If no @ → resolve the auth email via the pre-login SECURITY DEFINER RPC.
+    // The RPC returns the raw email, so it is an intentional enumeration/privacy
+    // boundary that must stay documented and tightly granted.
     if (!trimmed.includes('@')) {
       const { data: email, error: lookupErr } = await supabase
         .rpc('login_email', { p_username: trimmed.toLowerCase() });

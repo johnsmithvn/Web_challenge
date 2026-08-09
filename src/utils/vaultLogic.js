@@ -12,19 +12,15 @@
  *   Auth  { id, kind, note, state: 'primary'|'on'|'off' }
  *   Code  { id, code, used }
  *   Log   { id, at, text, detail }
- * Tầng hook (useAccounts) chịu trách nhiệm map DB ↔ shape này:
- *   accounts.service_name → title · account_fields.multi_values → values
- *   account_logs.logged_at → at
- * Làm vậy để mọi component và mọi hàm dưới đây trùng khít đặc tả, đổi lại 1
- * hàm map duy nhất nằm trong hook — rẻ hơn là để shape lệch nhau ở 8 chỗ.
+ * `useAccounts` maps each encrypted `accounts` row to/from this payload shape.
+ * Components never depend on the ciphertext envelope or database columns.
  */
 
 /**
  * 10 loại field. `value` là giá trị máy dùng, `label` là chữ hiển thị.
  *
- * ⚠️ NGUỒN DUY NHẤT của danh sách này. Phải khớp CHECK constraint
- *    `account_fields_type_check` trong data/migration_v5.2.0_vault.sql —
- *    gõ lệch là insert fail lúc runtime.
+ * This is the payload/UI contract; v6.2 no longer stores field types in a
+ * plaintext table or database CHECK constraint.
  *
  * `password` vs `secret` là phân biệt mà sản phẩm dựa vào, KHÔNG gộp:
  * cả hai cùng mask + reveal được, nhưng chỉ `password` được tính điểm mạnh/yếu

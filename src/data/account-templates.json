@@ -1,6 +1,6 @@
 {
-  "_note": "Mẫu item cho /accounts (RULES §14 — 1 JSON per feature). Port từ bộ design handoff Keyplate. `key` là giá trị lưu trong cột accounts.tpl — CỐ Ý không có CHECK constraint trong DB nên thêm/bớt mẫu ở đây KHÔNG cần migration. `code` là mã 3 chữ, không dịch: nó hiện ở kicker, chip filter, chip link và ô 36px của phương thức đăng nhập. `chip` là nhãn ngắn cho thanh filter. `icon` là tên semantic của Phosphor qua AppIcon. `fields` là bộ field điền sẵn khi tạo item mới, user vẫn sửa/thêm/bớt được. `auth` là các phương thức đăng nhập tạo sẵn, phần tử đầu thành `primary`. `codes` = số mã dự phòng sinh sẵn. Chữ giữ TIẾNG ANH theo quyết định 2026-08-05.",
-  "_warning": "CHƯA MÃ HOÁ. Field type `password`/`secret` chỉ mask trên UI, giá trị vẫn là plaintext trong Supabase.",
+  "_note": "Mẫu item cho /accounts (RULES §6 — 1 JSON per feature). Port từ bộ design handoff Keyplate. `key` được lưu trong encrypted payload `tpl`; không có CHECK constraint DB nên thêm/bớt mẫu ở đây không cần migration. `code` là mã 3 chữ, không dịch: nó hiện ở kicker, chip filter, chip link và phương thức đăng nhập. `chip` là nhãn ngắn cho thanh filter. `icon` là tên semantic của Phosphor qua AppIcon. `fields` là bộ field điền sẵn khi tạo item mới, user vẫn sửa/thêm/bớt được. `auth` là các phương thức đăng nhập tạo sẵn, phần tử đầu thành `primary`. `codes` = số mã dự phòng sinh sẵn. Chữ giữ tiếng Anh theo quyết định 2026-08-05.",
+  "_security": "v6.2 mã hóa toàn bộ template/title/field/auth/code/tag/note/log trong một AES-GCM payload trước khi gửi Supabase; password/secret vẫn được mask mặc định ở UI.",
 
   "templates": [
     {

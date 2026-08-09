@@ -7,10 +7,10 @@ import { toDateStr } from '../utils/dateUtils';
 /**
  * useCollections — CRUD for the `collections` table.
  *
- * Types: 'inbox' | 'note' | 'link' | 'quote' | 'learn' | 'idea'
- * Status: 'inbox' | 'unread' | 'read' | 'starred' | 'archived'
+ * Types: inbox plus the seven keys in `src/data/knowledge.json`.
+ * Status: inbox | unread | read | archived.
  *
- * Used by: InboxPage (type='inbox'), CollectPage (all other types)
+ * Used by: InboxPage (type='inbox'), CollectPage (all Knowledge types).
  */
 export function useCollections() {
   const { user, isAuthenticated } = useAuth();

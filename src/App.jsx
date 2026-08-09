@@ -13,7 +13,7 @@ import './styles/global.css';
 import './index.css';
 
 // ── Lazy-loaded pages (each becomes its own JS chunk) ──────────────
-// LandingPage eager (entry point). TrackerPage cũng từng eager — đã xoá ở v5.0.0.
+// LandingPage eager (entry point); eight domain pages are split into lazy chunks.
 import LandingPage from './pages/LandingPage';
 
 const FocusPage         = lazy(() => import('./pages/FocusPage'));
@@ -27,20 +27,20 @@ const SettingsPage      = lazy(() => import('./pages/SettingsPage'));
 
 // ── SEO meta per route ─────────────────────────────────────────────
 const ROUTE_META = {
-  '/':           { title: 'Life Hub — Personal Life OS',                                     desc: 'Hệ điều hành cuộc sống cá nhân. Quản lý thói quen, tài chính, kiến thức và mục tiêu.' },
+  '/':           { title: 'Life Hub — Personal Life OS',                                     desc: 'Inbox, nhiệm vụ, tài chính, kiến thức, Focus và Account Vault trong một ứng dụng cá nhân.' },
   '/inbox':      { title: 'Inbox — Life Hub',                                                 desc: 'Ghi nhanh mọi thứ chưa phân loại. Phân loại sau.' },
   '/tasks':      { title: 'Nhiệm Vụ — Life Hub',                                              desc: 'Danh sách nhiệm vụ cá nhân: quá hạn, hôm nay, sắp tới.' },
   '/collect':    { title: 'Knowledge Base — Life Hub',                                          desc: 'Kho tàng kiến thức cá nhân. Viết bài, đọc lại, phân loại theo tag.' },
-  '/finance':    { title: 'Finance — Life Hub',                                               desc: 'Quản lý chi tiêu cá nhân và đăng ký gói dịch vụ.' },
-  '/focus':      { title: 'Focus Timer — Life Hub',                                           desc: 'Dùng Pomodoro để tập trung sâu và liên kết với thói quen của bạn.' },
+  '/finance':    { title: 'Finance — Life Hub',                                               desc: 'Ghi giao dịch, ngân sách, hóa đơn, khoản vay, thẻ và quỹ tiết kiệm.' },
+  '/focus':      { title: 'Focus Timer — Life Hub',                                           desc: 'Pomodoro tập trung, lịch sử session và XP.' },
   '/incubator':  { title: 'Trạm Ấp Trứng — Life Hub',                                          desc: 'Nuôi dưỡng dự định, dời lại phải có lý do, theo dõi timeline quyết định.' },
-  '/accounts':   { title: 'Vault — Life Hub',                                                  desc: 'Hồ sơ từng tài khoản: field theo loại, phương thức đăng nhập, mã dự phòng, lịch sử thay đổi.' },
-  '/settings':   { title: 'Cài Đặt — Life Hub',                                                  desc: 'Quản lý tags, giao diện và tùy chỉnh hệ thống.' },
+  '/accounts':   { title: 'Vault — Life Hub',                                                  desc: 'Account Vault mã hóa toàn bộ nội dung bằng AES-GCM phía client.' },
+  '/settings':   { title: 'Cài Đặt — Life Hub',                                                  desc: 'Quản lý tags, quotes và hồ sơ cá nhân.' },
 };
 
 function PageMeta() {
   const { pathname } = useLocation();
-  const meta = ROUTE_META[pathname] || ROUTE_META['/'];
+  const meta = pathname.startsWith('/finance/') ? ROUTE_META['/finance'] : ROUTE_META[pathname] || ROUTE_META['/'];
   document.title = meta.title;
   const descEl = document.querySelector('meta[name="description"]');
   if (descEl) descEl.setAttribute('content', meta.desc);

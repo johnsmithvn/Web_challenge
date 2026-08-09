@@ -33,7 +33,6 @@ Load documentation only when relevant.
 | Architecture | docs/ARCHITECTURE.md |
 | Features | docs/FEATURES.md |
 | Tasks | docs/TASKS.md |
-| Audit | docs/AUDIT_REPORT_*.md |
 
 Never load unrelated documentation.
 
@@ -191,4 +190,4 @@ For architecture decisions, historical context, previous bugs, conventions, and 
 
 Cách đúng để cập nhật DB: chạy file migration SQL trực tiếp (`psql -f`), **không** reset.
 
-Chi tiết đầy đủ: xem `docs/RULES.md` mục **#17**.
+Chi tiết đầy đủ: xem `docs/RULES.md` mục **#12**.

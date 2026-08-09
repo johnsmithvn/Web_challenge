@@ -1,15 +1,15 @@
 import FocusTimer from '../components/FocusTimer';
 import { useFocusTimer } from '../hooks/useFocusTimer';
 import AppIcon from '../components/AppIcon';
+import { toDateStr } from '../utils/dateUtils';
 import '../styles/focus.css';
 
 export default function FocusPage() {
-  const { sessions, todaySessions, todayMinutes } = useFocusTimer();
+  const timer = useFocusTimer();
+  const { sessions, todaySessions, todayMinutes } = timer;
 
-  // v5.0.0: bỏ phần "breakdown theo habit" — Habit tracker đã gỡ hẳn, session
-  // không còn cột habit_id để nhóm.
   const recentSessions = [...sessions].reverse().slice(0, 10);
-  const today = new Date().toISOString().split('T')[0];
+  const today = toDateStr();
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', padding: '6rem 0 4rem' }}>
@@ -26,7 +26,7 @@ export default function FocusPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', alignItems: 'start' }}>
           {/* Timer card */}
-          <FocusTimer />
+          <FocusTimer timer={timer} />
 
           {/* Right side */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

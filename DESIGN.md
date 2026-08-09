@@ -1,5 +1,5 @@
 ---
-version: alpha
+version: 6.2.0
 name: Life Hub
 description: >-
   Dark-first glassmorphic design system for Life Hub (Personal Life OS).
@@ -177,7 +177,6 @@ typography:
 # SHAPES — Source: src/styles/global.css (--radius-*)
 # ─────────────────────────────────────────────────────────────────
 rounded:
-  checkbox: 6px # .habit-checkbox — literal, not a --radius token
   sm: 8px
   md: 12px
   lg: 16px
@@ -204,7 +203,7 @@ spacing:
   container-gutter-mobile: 1rem # ≤768px — var(--space-md)
   section-block: 6rem # .section padding — var(--space-4xl)
   section-block-mobile: 4rem # ≤768px — var(--space-3xl)
-  sidebar-width: 220px
+  sidebar-width: 232px
   topbar-height: 52px
   bottom-tabs-height: 60px
   breakpoint-desktop: 769px
@@ -213,8 +212,7 @@ spacing:
 
 # ─────────────────────────────────────────────────────────────────
 # COMPONENTS
-# Sources: global.css (.btn/.card/.badge/.modal-*/.habit-checkbox/
-#   .progress-bar-*/.glass-panel/.section-label), generic-modal.css,
+# Sources: global.css (.btn/.card/.progress-bar-*/.section-label), generic-modal.css,
 #   confirm-modal.css, datepicker.css, collect.css (CustomSelect),
 #   navbar.css (shell)
 # ─────────────────────────────────────────────────────────────────
@@ -240,19 +238,7 @@ components:
     backgroundColor: "rgba(139, 92, 246, 0.1)"
     textColor: "{colors.purple-light}"
     borderColor: "{colors.purple-light}"
-  button-neon:
-    backgroundColor: transparent
-    textColor: "{colors.green}"
-    borderColor: "{colors.green}"
-    rounded: "{rounded.full}"
-  button-neon-hover:
-    backgroundColor: "rgba(0, 255, 136, 0.1)"
-  button-gold:
-    backgroundColor: "{colors.gold}" # start stop of --grad-gold
-    textColor: "{colors.on-gold}"
-    rounded: "{rounded.full}"
-
-  # ── Card / glass surfaces — global.css ──
+  # ── Card surface — global.css ──
   card:
     backgroundColor: "{colors.bg-card}"
     borderColor: "{colors.bg-glass-border}"
@@ -261,16 +247,7 @@ components:
   card-hover:
     backgroundColor: "{colors.bg-card-hover}"
     borderColor: "rgba(139, 92, 246, 0.3)"
-  glass-panel:
-    backgroundColor: "{colors.bg-glass}"
-    borderColor: "{colors.bg-glass-border}"
-    rounded: "{rounded.xl}"
-
-  # ── Badge / section label — global.css ──
-  badge:
-    typography: "{typography.label-sm}"
-    rounded: "{rounded.full}"
-    padding: 0.25rem 0.75rem
+  # ── Section label — global.css ──
   section-label:
     backgroundColor: "rgba(139, 92, 246, 0.12)"
     textColor: "{colors.purple-light}"
@@ -278,21 +255,6 @@ components:
     typography: "{typography.label-caps}"
     rounded: "{rounded.full}"
     padding: 0.4rem 1rem
-
-  # ── Base modal (.modal-overlay / .modal-content) — global.css ──
-  modal-overlay:
-    backgroundColor: "rgba(0, 0, 0, 0.8)"
-    padding: "{spacing.xl}"
-  modal-content:
-    backgroundColor: "{colors.bg-secondary}"
-    borderColor: "{colors.bg-glass-border}"
-    rounded: "{rounded.xl}"
-    padding: "{spacing.2xl}"
-    width: 560px # max-width
-  modal-close:
-    backgroundColor: "rgba(255, 255, 255, 0.08)"
-    textColor: "{colors.text-secondary}"
-    size: 36px
 
   # ── GenericModal — generic-modal.css ──
   generic-modal-backdrop:
@@ -430,17 +392,6 @@ components:
     rounded: "{rounded.sm}"
     padding: 0.3rem 0.5rem
 
-  # ── Checkbox — global.css (.habit-checkbox) ──
-  checkbox:
-    backgroundColor: transparent
-    borderColor: "{colors.text-muted}"
-    rounded: "{rounded.checkbox}"
-    size: 28px
-  checkbox-checked:
-    backgroundColor: "{colors.green}" # start stop of --grad-green
-    borderColor: "{colors.green}"
-    textColor: "{colors.on-gold}"
-
   # ── Progress bar — global.css ──
   progress-track:
     backgroundColor: "rgba(255, 255, 255, 0.08)"
@@ -497,11 +448,13 @@ components:
 
 # Life Hub — Design System
 
+**Version:** v6.2.0 · **Updated:** 2026-08-09
+
 ## Overview
 
 Life Hub is a **Personal Life OS** single-page app (React 19 + Vite + Supabase).
-The interface is a productivity dashboard: habit tracking, finance, inbox,
-knowledge collection and focus timers. It is meant to feel like a private,
+The interface combines task management, finance, inbox, encrypted account
+storage, knowledge collection and focus timers. It is meant to feel like a private,
 slightly futuristic control room — dense with information but calm to look at.
 
 Character:
@@ -512,7 +465,7 @@ Character:
   near-black navy page, softened by `backdrop-filter: blur()`.
 - **Neon accents, quiet chrome.** Purple → cyan gradients carry brand and
   primary actions; neon green marks completion/success; gold marks reward and
-  gamification (XP, streaks). Navigation chrome stays muted.
+  XP. Navigation chrome stays muted.
 - **Playful motion.** Interactions use a spring curve
   (`cubic-bezier(0.34, 1.56, 0.64, 1)`); cards lift 2px on hover; modals
   slide-and-scale in.
@@ -560,7 +513,7 @@ rather than washed out.
 - **Indigo (`#6366f1`, `--blue`)** — the opening stop of the hero gradient.
 - **Cyan (`#06b6d4`, light `#0891b2`)** — the closing stop of the hero
   gradient and secondary accent.
-- **Neon Green (`#00ff88`, light `#16a34a`)** — completion, streaks, "done".
+- **Neon Green (`#00ff88`, light `#16a34a`)** — completion, success, "done".
   The dark value is a deliberately electric green; light mode swaps to a
   readable forest green.
 - **Gold (`#ffd700`, light `#d97706`)** — XP, rewards, premium.
@@ -572,16 +525,13 @@ a bright background. It does **not** re-tint `--blue`, `--purple-dark`,
 `--cyan-light`, or `--green` gradients baked into `--grad-*` — see
 *Do's and Don'ts*.
 
-**Gradients** (`--grad-*`, all `135deg`) are colour compositions, not tokens
-in the front matter:
+**Active gradients** (`--grad-*`, all `135deg`) are colour compositions, not
+tokens in the front matter:
 
 | Variable | Stops | Used for |
 | --- | --- | --- |
 | `--grad-hero` | `#6366f1` → `#8b5cf6` → `#06b6d4` | `.btn-primary`, restore FAB |
-| `--grad-card` | `rgba(99,102,241,.15)` → `rgba(139,92,246,.08)` | feature card fills |
 | `--grad-text` | `#a78bfa` → `#06b6d4` | `.gradient-text`, logo, progress fill |
-| `--grad-green` | `#00ff88` → `#06b6d4` | `.gradient-text-green`, checked checkbox |
-| `--grad-gold` | `#ffd700` → `#f97316` | `.gradient-text-gold`, `.btn-gold` |
 
 ## Typography
 
@@ -629,7 +579,7 @@ Sources: `index.html`, `src/styles/global.css`, `navbar.css`,
 **App shell** (`src/App.jsx`, `src/styles/navbar.css`) — a fixed sidebar plus a
 content column, swapping to a mobile top-bar + bottom-tabs pattern at 768px:
 
-- **Desktop (`min-width: 769px`)** — fixed `.sidebar`, `220px`
+- **Desktop (`min-width: 769px`)** — fixed `.sidebar`, `232px`
   (`--sidebar-width`), `z-index: 100`, padded `1.25rem 0.75rem`. `.app-content`
   takes `margin-left: var(--sidebar-width)`. `.topbar` and `.bottom-tabs` are
   force-hidden.
@@ -655,9 +605,11 @@ Cards pad at `--space-xl` (2rem), modals at `--space-2xl` (3rem).
 Note: component-internal padding in the shared components is written as raw
 rem values (e.g. `0.6rem 0.85rem`, `1rem 1.25rem`), not `--space-*` tokens.
 
-**Stacking order** — `.dp-backdrop` 999 · global audio player 999 · nav chrome
-100 · task overflow menu 800 · `.modal-overlay` / `.generic-modal-backdrop` /
-`.dp-popover` 1000 · `.kb-sort-dropdown` 9999 · `.cm-overlay` 9000.
+**Shared stacking order** — nav chrome 100 · task overflow menu 800 ·
+`.dp-backdrop` and global audio player 999 · `.generic-modal-backdrop` and
+`.dp-popover` 1000 · `.cm-overlay` 9000 · `.kb-sort-dropdown` 9999. Scoped
+dialogs such as Auth, onboarding, quick capture, editor overlays and Vault own
+their stacking context; inspect their module CSS before nesting dialogs.
 
 ## Elevation & Depth
 
@@ -686,10 +638,10 @@ The coloured glows are **spread-only** (`0 0 Npx`) — they signal state
 2. a 1px hairline border (`--bg-glass-border` or `rgba(255,255,255,0.06–0.1)`),
 3. `backdrop-filter: blur()` with the `-webkit-` prefix alongside.
 
-Observed blur radii, by role: `4px` modal backdrops (`.generic-modal-backdrop`,
-`.cm-overlay`) · `8px` `.modal-overlay` · `12px` `.card`, audio player ·
-`16px` `.kb-sort-dropdown` · `20px` `.glass-panel`, `.topbar`, nav menus ·
-`24px` `.sidebar`, `.bottom-tabs`. Chrome blurs hardest, content blurs least.
+Observed blur radii, by active shared role: `4px` modal backdrops
+(`.generic-modal-backdrop`, `.cm-overlay`) · `12px` `.card`, audio player ·
+`16px` `.kb-sort-dropdown` · `20px` `.topbar`, nav menus · `24px` `.sidebar`,
+`.bottom-tabs`. Scoped domains keep their own values; Vault scrim uses `6px`.
 
 **Layer order** — page (`--bg-primary`) → glass card (white-alpha + blur) →
 solid panel (`--bg-secondary`, modals/dropdowns) → coloured glow on state.
@@ -712,20 +664,18 @@ Everything is soft-cornered. Radii come from `--radius-*` in `global.css`:
 | `--radius-sm` | `8px` | dropdown options, datepicker cells/tabs/inputs, nav menu items |
 | `--radius-md` | `12px` | inputs, sidebar links, bottom-tab items, overflow menu, select dropdown |
 | `--radius-lg` | `16px` | `.card`, `.generic-modal`, `.dp-popover`, nav menus, select trigger |
-| `--radius-xl` | `24px` | `.glass-panel`, `.modal-content`, `.cm-dialog`, audio player |
+| `--radius-xl` | `24px` | `.cm-dialog`, audio player |
 | `--radius-full` | `9999px` | buttons, badges, pills, progress bars, `.section-label` |
 
-Exceptions present in the code: `.habit-checkbox` uses a literal `6px`;
-circular controls (`.modal-close`, `.gap-btn`, `.nav-avatar`,
-`.sidebar__theme-toggle`, `.tracker-status-dot`, status dots) use
+Circular controls (`.gap-btn`, `.nav-avatar`,
+`.sidebar__theme-toggle`, status dots) use
 `border-radius: 50%`; the webkit scrollbar thumb uses `3px`.
 
 **Pill vs rounded rectangle** is a semantic distinction: *actions and
 statuses* are pills (`--radius-full`); *containers and fields* are rounded
 rectangles.
 
-Border weight is `1px` almost everywhere. `.habit-checkbox` uses `2px`;
-datepicker read-only dots use `1.5px`.
+Border weight is `1px` almost everywhere; datepicker read-only dots use `1.5px`.
 
 ## Components
 
@@ -740,8 +690,6 @@ scales to `0.97`.
 | --- | --- | --- | --- |
 | `.btn-primary` | `--grad-hero` | `white` | `0 4px 24px rgba(99,102,241,0.4)` → `0 8px 40px …0.6` on hover, lifts `-2px` |
 | `.btn-ghost` | transparent, `1px --bg-glass-border` | `--text-primary` → `--purple-light` | none |
-| `.btn-neon` | transparent, `1px --green` | `--green` | `0 0 12px rgba(0,255,136,0.2)` → `0 0 24px …0.4` |
-| `.btn-gold` | `--grad-gold` | `#000`, weight 700 | `0 4px 24px rgba(255,215,0,0.3)` → `0 8px 40px …0.5`, lifts `-2px` |
 
 Disabled (`.btn-primary:disabled`) is `opacity: 0.4`, `cursor: not-allowed`,
 transform and shadow forced off, `pointer-events: none`.
@@ -751,19 +699,10 @@ transform and shadow forced off, `pointer-events: none`.
 `--bg-card` fill, `1px --bg-glass-border`, `--radius-lg`, `--space-xl`
 padding, `blur(12px)`, `--transition-base`. Hover → `--bg-card-hover`,
 border `rgba(139,92,246,0.3)`, `translateY(-2px)`, `--shadow-purple`.
-Glow modifiers `.card-glow-green` / `-cyan` / `-gold` swap the hover glow and
-border tint.
 
-### Modal — three coexisting implementations
+### Modal — two shared implementations
 
-**1. `.modal-overlay` / `.modal-content` (`global.css`)** — the base pattern.
-Overlay `rgba(0,0,0,0.8)` + `blur(8px)`, `z-index: 1000`, `--space-xl`
-padding, `fadeIn 0.2s`. Content `--bg-secondary`, `1px --bg-glass-border`,
-`--radius-xl`, `--space-2xl` padding, `max-width: 560px`, `slideUp 0.3s`
-spring. `.modal-close` is a `36px` circle at `--space-md` inset.
-Below 768px the content padding drops to `--space-xl`.
-
-**2. `GenericModal` (`generic-modal.css`)** — the reusable
+`GenericModal` (`generic-modal.css`) is the reusable
 header/body/footer dialog. Backdrop `rgba(0,0,0,0.55)` + `blur(4px)`,
 `1rem` padding. Panel `--bg-secondary`, `1px rgba(255,255,255,0.08)`,
 `--radius-lg`, `max-width: 440px`, `max-height: 90vh` scrollable,
@@ -771,7 +710,7 @@ header/body/footer dialog. Backdrop `rgba(0,0,0,0.55)` + `blur(4px)`,
 display font `700/1rem`; body `1.25rem` flex column `gap: 0.75rem`; footer
 `0.75rem 1.25rem`, right-aligned, `gap: 0.5rem`, top hairline.
 
-**3. `ConfirmModal` (`confirm-modal.css`)** — the centred alert. Overlay
+`ConfirmModal` (`confirm-modal.css`) is the centred alert. Overlay
 `rgba(0,0,0,0.55)` + `blur(4px)` at `z-index: 9000`. Dialog `--bg-secondary`,
 `1px rgba(255,255,255,0.1)`, `--radius-xl` (with a `16px` fallback),
 `2rem 1.75rem 1.5rem` padding, `max-width: 400px`, double shadow
@@ -782,6 +721,12 @@ Its buttons are **not** `.btn`: `.cm-btn` is `flex: 1`, `max-width: 160px`,
 cancel (white-alpha), confirm (purple-alpha, text `#c4b5fd`), danger
 (red-alpha, text `#fca5a5`) — and a `2px` outline on `:focus`, offset `2px`.
 Light mode overrides dialog, cancel, confirm and danger separately.
+
+AuthModal, onboarding, quick capture, Tiptap shortcut UI and the Vault template
+dialog use scoped backdrops/dialogs rather than these shared primitives. Keep
+those exceptions inside their module. The `.modal-overlay`/`.modal-content`
+block still present in `global.css` has no JSX consumer and is tracked as debt
+below, not as an active component.
 
 ### Input — `.generic-modal__input` (`generic-modal.css`)
 
@@ -1000,8 +945,7 @@ form. Built **on `GenericModal`**, not a fourth modal system.
 
 ### Calendar task mode — `.cal-cell--tasks` / `.cal-chip` (`calendar.css`)
 
-`MonthCalendar` is task-only since v5.0.0; the former `habitData`/`skipLog` mode
-was removed with TrackerPage. It renders completed and pending tasks together.
+`MonthCalendar` renders completed and pending tasks together.
 
 - **`.cal-grid`** — must be `repeat(7, minmax(0, 1fr))`, **never** `repeat(7, 1fr)`.
   `1fr` is `minmax(auto, 1fr)`, so a non-wrapping child (the `nowrap` task chip)
@@ -1012,17 +956,16 @@ was removed with TrackerPage. It renders completed and pending tasks together.
   `1px --bg-glass-border` hairline over `--bg-card`: without the hairline the
   grid stops reading as a grid and becomes floating numerals.
 - **`.cal-cell--tasks.cal-cell--done`** — keeps the plain `--bg-card` fill and
-  only lifts its border to `rgba(0,255,136,0.28)`. The habit-mode green fill is
-  deliberately *not* reused here: a green cell behind a green chip collapses
-  into one heavy block. Colour belongs to the chip, weight belongs to the border.
+  only lifts its border to `rgba(0,255,136,0.28)`. A green cell behind a green
+  chip would collapse into one heavy block: colour belongs to the chip, weight
+  belongs to the border.
 - **`.cal-chip`** — `0.6rem/500`, `3px` radius, `rgba(0,255,136,0.14)` fill with
   `--green` text, single-line ellipsis. Normal days show four task chips;
   holidays show three to reserve one row for the label. Overflow uses a
   `.cal-chip--more` counter computed from that cell's limit. Light theme swaps to
   `rgba(22,163,74,0.12)` on `#15803d`.
 - **`.cal-cell--empty`** — a past day with no completed task keeps the hairline
-  but takes no fill, and is **not** `.cal-cell--miss` red. Missing a habit is a
-  failure; having no task that day is not.
+  but takes no fill. Having no task that day is not an error state.
 - **`.cal-cell--tasks.cal-cell--future`** — `dashed` border at `opacity: 0.45`.
   The cell stays present so the grid rhythm is unbroken.
 - **Equal rows, not square cells** (v6.1.0) — `.cal-grid` sets
@@ -1053,8 +996,9 @@ was removed with TrackerPage. It renders completed and pending tasks together.
 Rebuilt v5.2.0 for `/accounts` to the **Keyplate** design handoff. Header · filter
 bar · two-pane body (item list · detail), breakpoint 900px.
 
-- **This module owns its own token set — the one deliberate exception in the
-  system.** Everything else on the page reads `--purple` / `--radius-*` from
+- **This module owns a scoped token set — one of two deliberate domain
+  exceptions alongside Finance Nocturne (`--n-*`).** Everything inside Vault
+  otherwise reads its Keyplate tokens instead of `--purple` / `--radius-*` from
   `global.css`; the vault instead declares a *scoped* Keyplate palette on
   `.acc-vault` (`--color-accent: #7c5cff`, `--surface`, radius `18px`,
   `--lift-1/2`, a full dark set and a `[data-theme="light"] .acc-vault` override).
@@ -1072,11 +1016,9 @@ bar · two-pane body (item list · detail), breakpoint 900px.
 - **Muted text is always `color-mix(in srgb, var(--color-text) N%, transparent)`,
   never a hard grey** — flipping `--color-text` fixes the whole muted ramp at once
   so it survives the theme flip untouched.
-- **`.acc-warn`** — the "not encrypted yet" banner. This one element deliberately
-  uses the **Life Hub** `--gold` token, not the vault palette: it is a Life Hub
-  concern layered over a Keyplate page. Gold-alpha (`0.08` fill / `0.25` border)
-  reads as a standing condition, not a failure. **Not dismissible** — the only
-  thing between the user and typing a real password into a plaintext column.
+- **`.acc-warn--secure`** — the non-dismissible encryption status banner. It uses
+  a green success treatment to state that full-content AES-GCM is active and
+  enumerates which user-entered fields reach Supabase only as ciphertext.
 - **Row panel (`.acc-panel`) — the module's core container,** shared by fields,
   sign-in methods and the code sheet. Built as `display: grid; gap: 1px;
   background: divider` so the 1px gaps *are* the row rules and each row sits on
@@ -1123,8 +1065,8 @@ bar · two-pane body (item list · detail), breakpoint 900px.
   - Icons are fetched **straight from each service's own origin, never through a
     third-party favicon service.** This is a vault: handing one aggregator the
     full list of domains you hold accounts at is self-disclosure of which bank and
-    which exchange you use. The `Logos` toggle in the header (`vl_acc_favicon`)
-    turns image requests off entirely.
+    which exchange you use. `Logos` starts off for every unlocked session; the
+    toggle only changes React state and is never persisted to browser storage.
 - **`.acc-link`** — the pointer to another item: accent-alpha pill with a small
   code badge, target title, borrowed value and a trailing `↗`. Pill because it
   navigates. A link whose target is gone becomes `.acc-link--dead` (divider
@@ -1141,22 +1083,21 @@ bar · two-pane body (item list · detail), breakpoint 900px.
   carrying a 3px `--color-bg` halo; timestamps 11px `.08em` uppercase tabular,
   detail lines switch to monospace when they contain masked bullets.
 - **Native `<select>` (`.acc-select`) and a hand-built dialog, not `CustomSelect`
-  / `GenericModal`.** RULES §4 says dropdowns use `CustomSelect` and modals use
-  `GenericModal`; the vault overrides both **on purpose** — those components are
+  / `GenericModal`.** RULES §5 recommends the shared controls, but the vault
+  overrides both **on purpose** — those components are
   styled to Life Hub tokens and would break the scoped Keyplate look. Native
   controls styled with vault tokens (select arrow via inline SVG background) keep
   fidelity and are less code. Exception noted in `AccountDetail.jsx`.
 - **`.acc-act` (Reveal / Copy / Generate) never hover-reveals** — permanent
   `62%`-text pills, same reasoning as `.td-del`: touch has no hover, and
-  reveal/copy are the two controls a phone user reaches for. **Generate is
-  rendered but `disabled`** until encryption ships — generating a real password
-  into a plaintext column is the wrong default.
+  reveal/copy are the two controls a phone user reaches for. Generate is enabled
+  and uses Web Crypto CSPRNG because every save path now writes ciphertext.
 - **Two-pane, CSS-only breakpoint — and it is a `@container` query, not
   `@media`.** `.acc-body` is `minmax(300px,360px) minmax(520px,1fr)`; React holds
   only `selectedId` + `screen`. The handoff's 900px breakpoint measures **the
   vault's own width**; the prototype filled the viewport so the two were the same,
-  but here the vault sits beside the 220px sidebar. Measured against the viewport,
-  a 1100px window gives the vault 880px while it still tries to hold two panes —
+  but here the vault sits beside the 232px sidebar. Measured against the viewport,
+  a 1100px window gives the vault 868px while it still tries to hold two panes —
   a horizontal scrollbar. So `.acc-vault` declares `container-type: inline-size`
   and the narrow rules live in `@container (max-width: 899px)`. The prototype's
   `min-width: 1040px` floor is **dropped** for the same reason; the real floor is
@@ -1168,7 +1109,7 @@ bar · two-pane body (item list · detail), breakpoint 900px.
   leave the sidebar showing through. Because the portal breaks DOM inheritance,
   the token block is declared on **`.acc-vault, .acc-scrim`** rather than the
   vault alone, and the dialog's narrow rules use `@media` (no ancestor container).
-  It is a hand-built dialog, not `GenericModal` — see the RULES §4 note below.
+  It is a hand-built dialog, not `GenericModal` — see the scoped exception above.
 - **Filter-bar cells carry explicit `grid-column`/`grid-row`.** The Clear button
   is conditional; without explicit placement, auto-placement reflows the whole bar
   when it appears or disappears.
@@ -1179,27 +1120,14 @@ bar · two-pane body (item list · detail), breakpoint 900px.
 - Motion collapses to `1ms` under `prefers-reduced-motion: reduce` via a single
   `--acc-dur` override on `.acc-vault`.
 
-### Other shared atoms (`global.css`)
+### Other active shared atoms (`global.css`)
 
-- **`.badge`** — pill, `0.25rem 0.75rem`, `0.8rem/600` display font, four
-  tints following one formula: `0.15` alpha fill, `0.3` alpha border, solid
-  brand text (`green`, `gold`, `purple`, `cyan`).
 - **`.section-label`** — uppercase pill, `0.4rem 1rem`,
   `rgba(139,92,246,0.12)` on `rgba(139,92,246,0.25)`, `--purple-light`,
   `0.85rem/600`, `0.05em` tracking.
-- **`.habit-checkbox`** — `28px`, `2px --text-muted` border at `opacity: 0.6`,
-  `6px` radius, `--transition-spring`. Checked → `--grad-green` fill,
-  `--green` border, `--shadow-green`, black `✓` at `14px/900`.
-  Locked/disabled → `opacity: 0.35` with purple-alpha border and fill.
 - **`.progress-bar-track` / `-fill`** — `6px` tall, `--radius-full`,
   `rgba(255,255,255,0.08)` track, `--grad-text` fill, width eased over `0.8s`
   on the spring curve, with a `40px` `shimmer 1.5s` highlight.
-- **`.glass-panel`** — `--bg-glass`, `1px --bg-glass-border`, `--radius-xl`,
-  `blur(20px)`.
-- **`.divider`** — `1px`, `linear-gradient(90deg, transparent,
-  rgba(255,255,255,0.08), transparent)`, `--space-2xl` vertical margin.
-- **`.fade-up` / `.visible`** — scroll reveal: `opacity 0` +
-  `translateY(30px)` → settled, `0.6s ease`.
 - **Scrollbar** — `6px` wide, `--bg-secondary` track,
   `rgba(139,92,246,0.4)` thumb at `3px` radius, `--purple` on hover.
 
@@ -1207,9 +1135,9 @@ bar · two-pane body (item list · detail), breakpoint 900px.
 
 **Tokens**
 
-- **Do** read every colour, radius, spacing and shadow from the `--*`
-  variables in `src/styles/global.css`; that file is the only place they are
-  declared.
+- **Do** use `src/styles/global.css` as the default source for colour, radius,
+  spacing and shadow tokens. The only domain-scoped token systems are Vault
+  Keyplate in `accounts.css` and Finance Nocturne (`--n-*`) in `finance.css`.
 - **Don't** hard-code a hex or rgba for something a token already covers.
   Existing exceptions (`#c4b5fd`, `#fca5a5`, `#f87171`, `#a78bfa` written
   literally in `datepicker.css`) are debt, not precedent.
@@ -1269,8 +1197,8 @@ bar · two-pane body (item list · detail), breakpoint 900px.
 - **Do** keep a visible focus indicator: the `.generic-modal__input` ring
   (`0 0 0 3px rgba(139,92,246,0.15)`) or the `.cm-btn` `2px` outline with
   `2px` offset.
-- **Don't** communicate state with colour alone — the tracker pairs colour
-  with distinct glyphs (`✓`, `○`, `·`, lock).
+- **Don't** communicate state with colour alone — pair colour with text, icon,
+  shape or an explicit selected/disabled state.
 - **Do** re-check contrast in both themes; `--text-muted` (`#5a5a80` on
   `#08080f`) is already at the low end for small text.
 
@@ -1295,37 +1223,41 @@ silently resolved; pick a direction before touching the files involved.
 3. **`.cm-dialog` vs other dialogs.** ConfirmModal uses `--radius-xl` and a
    `2rem 1.75rem 1.5rem` asymmetric padding while `GenericModal` uses
    `--radius-lg` and `1.25rem`. TODO: decide whether ConfirmModal should align.
-4. **Three modal systems.** `.modal-overlay`/`.modal-content` (global),
-   `.generic-modal-*`, and `.cm-*` differ in backdrop alpha (`0.8` vs `0.55`),
-   blur (`8px` vs `4px`), z-index (`1000` vs `9000`) and border alpha
-   (`0.1` vs `0.08`). TODO: decide which is canonical.
-5. **Duplicate `fadeIn` keyframes.** Defined in both `global.css` and
-   `generic-modal.css`. TODO: remove one.
-6. **Buttons bypass `.btn`.** `.cm-btn`, `.dp-footer__save`,
+4. **Two shared modal systems, scoped dialogs and dead global CSS.**
+   `GenericModal` and `ConfirmModal` intentionally serve different interaction
+   types. Auth, onboarding, quick capture, Tiptap and Vault retain module-scoped
+   dialogs, while `.modal-overlay`/`.modal-content` in `global.css` has no JSX
+   consumer. TODO: remove the dead block, then decide which backdrop/focus
+   primitives should actually be shared.
+5. **Buttons bypass `.btn`.** `.cm-btn`, `.dp-footer__save`,
    `.dp-footer__cancel`, `.kb-sort-trigger` and `.sidebar__link` each
    re-implement padding, radius and font instead of extending `.btn`.
    TODO: decision needed on whether a shared button base should absorb them.
-7. **Component padding ignores the spacing scale.** Shared components use raw
+6. **Component padding ignores the spacing scale.** Shared components use raw
    rem values (`0.6rem 0.85rem`, `0.55rem 0.75rem`, `1rem 1.25rem`,
    `0.4rem 0.65rem`, …) rather than `--space-*`. TODO: decide whether to add
    sub-`0.5rem` spacing tokens or accept raw values in components.
-8. **CustomSelect lives in a page stylesheet.** The shared `CustomSelect`
+7. **CustomSelect lives in a page stylesheet.** The shared `CustomSelect`
    component depends on `.kb-sort-*` classes defined in
    `src/styles/collect.css`, and hard-codes layout in inline `style` props.
    TODO: decide whether to extract a `select.css` the way `generic-modal.css`
    was extracted.
-9. **Eight blur radii.** `4/6/8/10/12/16/20/24px` are all in use with no
+8. **Eight blur radii.** `4/6/8/10/12/16/20/24px` are all in use with no
    `--blur-*` token. TODO: decide whether to tokenise.
-10. **Light theme coverage is partial.** `[data-theme="light"]` overrides
+9. **Light theme coverage is partial.** `[data-theme="light"]` overrides
     `--bg-*`, `--text-*`, `--shadow-*` and six brand colours, but not
     `--blue`, `--purple-dark`, `--cyan-light`, `--green-dim` (only
     partially), or any `--grad-*`. TODO: decision needed on completing it.
-11. **No global form-control baseline.** There is no `input`/`textarea`/
+10. **No global form-control baseline.** There is no `input`/`textarea`/
     `select` element rule; each module restyles fields, and the "shared"
     reference is `.generic-modal__input`. TODO: decide whether to promote it.
-12. **`.tracker-status-dot` and `.dp-grid__cell--other` use raw
-    `rgba(255,255,255,…)` foregrounds** (`0.2`, `0.12`, `0.08`) that do not
-    invert in light mode. TODO: decision needed.
+11. **`.dp-grid__cell--other` uses raw white-alpha foregrounds** that need a
+    dedicated light-mode check rather than relying on dark-theme material.
+12. **Unused global utilities remain in CSS.** `.btn-neon`, `.btn-gold`,
+    `.card-glow-*`, `.badge`, `.glass-panel`, `.divider` and `.fade-up` have no
+    JSX consumer. The same applies to `--grad-card`, `.gradient-text-green` and
+    `.gradient-text-gold`. They are excluded from the active catalog above;
+    remove the CSS unless a real use appears.
 
 **Expected linter warnings**
 

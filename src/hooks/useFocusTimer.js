@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
+import { toDateStr } from '../utils/dateUtils';
 
 // XP for completing a focus session.
 // Written directly to Supabase xp_logs to avoid circular import with useXpStore.
@@ -46,6 +47,7 @@ const DEFAULT_SETTINGS = {
 export function useFocusTimer() {
   const { user, isAuthenticated } = useAuth();
   const useDB = isSupabaseEnabled && isAuthenticated;
+  const userId = user?.id;
 
   const [settings, setSettings] = useState(() => {
     try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }
@@ -60,17 +62,21 @@ export function useFocusTimer() {
   // In-memory session log (loaded from Supabase on login)
   const [sessions, setSessions] = useState([]);
 
-  // Load today's sessions from Supabase on login
+  // Load today's sessions for the current user. Ignore a response that finishes
+  // after logout or an account switch.
   useEffect(() => {
-    if (!useDB || !user) return;
-    const today = new Date().toISOString().split('T')[0];
+    let active = true;
+    setSessions([]);
+    if (!useDB || !userId) return () => { active = false; };
+
+    const today = toDateStr();
     supabase
       .from('focus_sessions')
       .select('id, duration_min, date, completed_at')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('date', today)
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (active && !error && data) {
           setSessions(data.map(r => ({
             id:          r.id,
             date:        r.date,
@@ -79,12 +85,8 @@ export function useFocusTimer() {
           })));
         }
       });
-  }, [useDB, user?.id]);
-
-  // Clear on logout
-  useEffect(() => {
-    if (!useDB) setSessions([]);
-  }, [useDB]);
+    return () => { active = false; };
+  }, [useDB, userId]);
 
   const totalSec = phase === 'work'
     ? settings.workMin * 60
@@ -116,7 +118,7 @@ export function useFocusTimer() {
       const newSession = session + 1;
       setSession(newSession);
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = toDateStr();
       const log = {
         id:          crypto.randomUUID(),
         date:        today,
@@ -127,12 +129,10 @@ export function useFocusTimer() {
       setSessions(next);
 
       // Persist to Supabase (fire-and-forget)
-      if (useDB && user) {
-        // v5.0.0: bỏ habit_id + journey_id. Habit tracker và Lộ Trình đã gỡ hẳn;
-        // 2 cột đó trên `focus_sessions` cũng DROP theo (xem schema § 7).
+      if (useDB && userId) {
         supabase.from('focus_sessions').insert({
           id:           log.id,
-          user_id:      user.id,
+          user_id:      userId,
           duration_min: settings.workMin,
           date:         today,
           completed_at: log.completedAt,
@@ -141,16 +141,8 @@ export function useFocusTimer() {
         });
 
         // Award XP via Supabase (deduped)
-        awardFocusXp(user.id, log.id, useDB);
-
-        // v5.0.0: bỏ hẳn insert vào `activity_logs`. Bảng đó giờ chỉ phục vụ
-        // lịch sử + ghi chú của Task; Life Log/heatmap — người đọc duy nhất của
-        // dòng `focus_done` — đã bị xoá. Không mất dữ liệu: session nằm ở
-        // `focus_sessions` (insert ngay trên), XP ở `xp_logs` qua awardFocusXp().
+        awardFocusXp(userId, log.id, useDB);
       }
-
-      // v5.0.0: bỏ CustomEvent 'focus:habit-tick' (auto-tick habit khi đủ giờ
-      // focus). Người nghe duy nhất là useHabitLogs — đã xoá cùng Habit tracker.
 
       // Determine next phase
       if (newSession % settings.sessionsBeforeLong === 0) {
@@ -172,7 +164,7 @@ export function useFocusTimer() {
         new Notification('Bắt đầu lại!', { body: 'Nghỉ xong rồi. Focus tiếp nào!' });
       }
     }
-  }, [phase, session, sessions, settings, useDB, user]);
+  }, [phase, session, sessions, settings, useDB, userId]);
 
   // Keep the ref pointing at the freshest handlePhaseEnd for the tick interval.
   useEffect(() => { handlePhaseEndRef.current = handlePhaseEnd; }, [handlePhaseEnd]);
@@ -195,7 +187,7 @@ export function useFocusTimer() {
   const mins = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
   const secs = String(secondsLeft % 60).padStart(2, '0');
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = toDateStr();
   const todaySessions = sessions.filter(s => s.date === today);
   const todayMinutes  = todaySessions.reduce((a, s) => a + s.durationMin, 0);
 

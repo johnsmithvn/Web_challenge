@@ -18,6 +18,11 @@ assert.equal(
   'both whole-row update and delete must use the loaded revision timestamp'
 );
 assert.match(hook, /\.update\(encrypted\)[\s\S]*\.select\('updated_at'\)[\s\S]*\.maybeSingle\(\)/);
+assert.match(
+  hook,
+  /const payload = cleanItem\(item\);[\s\S]*encryptVaultItem\(key, userId, item\.id, payload\)[\s\S]*hydrateItem\([\s\S]*payload\)/,
+  'local state must use the same normalized payload that was encrypted'
+);
 assert.doesNotMatch(
   hook,
   /await fetchAll\(\);/,

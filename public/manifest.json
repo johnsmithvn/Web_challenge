@@ -1,7 +1,7 @@
 {
   "name": "Life Hub",
   "short_name": "LifeHub",
-  "description": "Hệ điều hành cá nhân — thói quen, chi tiêu, ghi chú, lịch sử cuộc sống",
+  "description": "Hệ điều hành cá nhân — nhiệm vụ, kiến thức, tài chính, tập trung và Account Vault mã hóa",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f0f13",
@@ -15,5 +15,5 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["health", "lifestyle", "productivity", "finance"]
+  "categories": ["lifestyle", "productivity", "finance"]
 }

@@ -8,7 +8,7 @@
  *   import { logger } from '../utils/logger';
  *   logger.error('[useUserTasks] fetch failed:', err);
  *   logger.warn('[useTags] linkTag: unknown entityType');
- *   logger.info('[useSubscriptions] auto-advanced 3 subs');
+ *   logger.info('[useFinance] refreshed the active period');
  */
 
 const isDev = import.meta.env.DEV;

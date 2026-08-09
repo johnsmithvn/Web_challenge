@@ -1,126 +1,92 @@
 # PROJECT.md — Life Hub
 
-**Bản đồ cấp cao của repo.** Chỉ trả lời "cái gì ở đâu" và "đọc file nào tiếp".
-Chi tiết nằm ở các file được trỏ tới — cố tình KHÔNG lặp lại ở đây.
-
 **Version:** v6.2.0 · **Updated:** 2026-08-09
 
----
+Bản đồ cấp cao của repo. File này chỉ trả lời “cái gì ở đâu”; chi tiết nằm trong tài liệu được trỏ tới.
 
-## 1. Là cái gì
+## Sản phẩm
 
-SPA "Personal Life OS": Inbox, Nhiệm vụ, Knowledge Base, Finance, Incubator, Focus và Account
-Vault mã hóa. Phần lớn module có **guest mode** in-memory; Finance và Vault yêu cầu đăng nhập.
+Life Hub là SPA quản lý cá nhân gồm Inbox, Nhiệm vụ, Knowledge Base, Finance, Incubator, Focus và
+Account Vault mã hóa. Frontend dùng React/Vite; dữ liệu đồng bộ dùng Supabase Auth + PostgreSQL + RLS.
 
-| Layer | Chọn gì |
-|-------|---------|
-| UI | React 19 + Vite 8, vanilla CSS (CSS variables + glassmorphism), không Tailwind |
-| Routing | React Router v7, page theo domain và lazy-load |
-| Data | Supabase (PostgreSQL + Auth + Realtime), RLS own-row |
-| Serverless | 2 Vercel function: `api/upload.js`, `api/stream.js` (Google Drive) |
-| Editor | Tiptap 3 + slash command + custom `MediaNode` |
-| Hosting | Vercel (`vercel.json` SPA rewrite) |
-| localStorage | UI flag/preference, prefix `vl_`. User data **không** được vào đây. v5.0.0: không còn ngoại lệ legacy nào (Life Journey đã gỡ) |
+| Layer | Công nghệ / quy ước |
+|---|---|
+| UI | React 19, Vite 8, React Router 7, vanilla CSS |
+| Data | Supabase; dữ liệu theo user được bảo vệ bằng RLS |
+| Media | Vercel Functions → Google Drive |
+| Editor | Tiptap 3 + Markdown + custom `MediaNode` |
+| Deploy | Vercel SPA + serverless functions |
+| Client storage | Chỉ preference, UI state, session handoff và cờ migration; không lưu secret Vault |
 
----
+## Đọc tài liệu nào
 
-## 2. Đọc file nào
+| Cần biết | Nguồn chính |
+|---|---|
+| Cài local, env, database, deploy, production runbook | [`README.md`](../README.md) |
+| Route, module, data flow, browser storage | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) |
+| Bảng, quan hệ, RLS, RPC, migration | [`docs/DATABASE.md`](DATABASE.md) |
+| Hành vi đang chạy của từng tính năng | [`docs/FEATURES.md`](FEATURES.md) |
+| Việc còn mở | [`docs/TASKS.md`](TASKS.md) |
+| Thứ tự roadmap | [`docs/PLAN.md`](PLAN.md) |
+| Quy tắc làm việc trong repo | [`docs/RULES.md`](RULES.md) |
+| Design system | [`DESIGN.md`](../DESIGN.md) |
+| Hợp đồng Finance / Vault | [`docs/DESIGN_FINANCE.md`](DESIGN_FINANCE.md) · [`docs/DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md) |
+| Lịch sử phiên bản | [`CHANGELOG.md`](../CHANGELOG.md) |
 
-| Cần biết | File |
-|----------|------|
-| Bảng, cột, RLS, RPC, XP, migration | `docs/DATABASE.md` → thứ tự chạy thực tế ở `README.md` |
-| Từng tính năng làm gì, tính năng nào đã bỏ | `docs/FEATURES.md` (cuối file là Archived) |
-| Thư mục, data flow, localStorage key, quyết định kiến trúc | `docs/ARCHITECTURE.md` |
-| Quy tắc cho AI agent / dev (scope, versioning, doc sync) | `docs/RULES.md` |
-| Design token, component pattern, responsive, theme | `DESIGN.md` |
-| Backlog + trạng thái task | `docs/TASKS.md` · roadmap: `docs/PLAN.md` |
-| Lịch sử thay đổi theo version | `CHANGELOG.md` |
-| Vấn đề bảo mật/logic đã audit | `docs/AUDIT_REPORT_2026-06-27.md` |
-| Cách chạy từ máy trắng | `README.md` |
+`CHANGELOG.md` là nơi duy nhất giữ lịch sử feature đã xóa. Tài liệu hiện hành không lặp lại các
+release block cũ.
 
----
+## Bản đồ module
 
-## 3. Bản đồ module
+| Route | Page | Data owner | Storage / quyền truy cập |
+|---|---|---|---|
+| `/` | `LandingPage` | — | Public |
+| `/tasks` | `TasksPage` | `useUserTasks`, `useActivityLog` | Guest in-memory; đăng nhập để sync và xem lịch sử hoàn thành |
+| `/focus` | `FocusPage` | `useFocusTimer`, `useXpStore` | Guest in-memory; đăng nhập để sync |
+| `/inbox` | `InboxPage` | `useCollections` | Yêu cầu đăng nhập |
+| `/collect` | `CollectPage` | `useCollections`, `useCollectionNotes`, `useTags` | Yêu cầu đăng nhập |
+| `/finance`, `/finance/:screen` | `FinancePage` | `useFinance` | Yêu cầu đăng nhập; 10 bảng chính + junction tag |
+| `/incubator` | `IncubatorPage` | `useIntentions` | Yêu cầu đăng nhập |
+| `/accounts` | `AccountsPage` | `useAccounts` | Yêu cầu đăng nhập + Vault passphrase |
+| `/settings` | `SettingsPage` | `useTags`, `useQuotes`, profile | Yêu cầu đăng nhập |
 
-Mỗi route = 1 page trong `src/pages/`. Hook chứa toàn bộ logic Supabase; component chỉ nhận props.
+Các bookmark `/tracker`, `/habits`, `/dashboard`, `/journey` được chuyển về `/tasks`. URL khác không
+khớp route sẽ mở Landing Page.
 
-| Route | Page | Hook chính | Bảng chính |
-|-------|------|-----------|-----------|
-| `/` | LandingPage | — | — |
-| `/focus` | FocusPage | useFocusTimer | focus_sessions, xp_logs |
-| `/inbox` | InboxPage | useCollections, useUserTasks, useIntentions | collections (type=inbox), user_tasks, intentions; handoff sang Finance qua sessionStorage |
-| `/tasks` | TasksPage (2 view: Danh sách / Lịch) | useUserTasks, useCollections | user_tasks, task_collections |
-| `/collect` | CollectPage | useCollections, useCollectionNotes, useTags | collections, collection_notes, collection_tags |
-| `/finance`, `/finance/:screen` | FinancePage | useFinance | 10 bảng `finance_*` + finance_transaction_tags |
-| `/incubator` | IncubatorPage | useIntentions | intentions, intention_logs |
-| `/accounts` | AccountsPage | useAccounts | accounts (ciphertext) + vault_config (wrapped DEK) |
-| `/settings` | SettingsPage | useTags, useQuotes | tags, inspirational_quotes |
-| `/tracker`, `/habits`, `/dashboard`, `/journey` | redirect `/tasks` (route đã gỡ v5.0.0) | — | — |
+## Luồng dữ liệu quan trọng
 
-Xuyên suốt mọi trang: `Navbar`, `QuickCapture` (nút [+] → `collections`),
-`GlobalAudioPlayer`, `ErrorBoundary`, `XpBar`, `ConfirmModal`, `GenericModal`, `CustomSelect`.
+- **Task:** thao tác → `useUserTasks` → optimistic state → Supabase khi đã đăng nhập; lỗi ghi sẽ
+  rollback. Mọi thay đổi Task đi qua `activity_logs`; hoàn thành/bỏ hoàn thành cộng/trừ XP có dedup.
+- **Inbox / Knowledge:** cùng dùng `collections`; Task liên kết Knowledge qua `task_collections`.
+- **Finance:** `useFinance` giữ state cho toàn module; báo cáo luôn tính lại từ giao dịch theo kỳ.
+  Inbox có thể handoff sang giao dịch/hóa đơn qua `sessionStorage`; giao dịch có thể gắn Task.
+- **Vault:** chỉ đọc `vault_config` trước unlock. Passphrase mở DEK trong memory; sau đó mới query và
+  giải mã `accounts`. Lock, sign-out, đổi user hoặc reload xóa key/plaintext khỏi state. Ghi cả item
+  dùng `updated_at` làm revision chống ghi đè giữa tab/device.
+- **Media:** client gửi Supabase JWT tới `api/upload.js`; `api/stream.js` chỉ stream file nằm dưới
+  `DRIVE_FOLDER_ID` và hỗ trợ HTTP Range.
 
----
+## Quy tắc không được phá
 
-## 4. Data flow
+1. Không đưa user data hoặc Vault key/passphrase vào `localStorage`.
+2. CRUD domain ưu tiên nằm trong hook; giữ các ngoại lệ boundary hiện có của Auth, profile và media
+   thay vì tạo thêm đường truy cập Supabase tùy tiện.
+3. Mọi bảng user-owned phải bật RLS và kiểm đúng owner ở cả hai phía của junction/FK.
+4. Không tự chạy reset/xóa hàng loạt database. Migration production do user chủ động thực hiện.
+5. Không sửa snapshot migration timestamp đã tồn tại; thay đổi mới dùng migration mới.
+6. Thay đổi hành vi/schema phải cập nhật đúng tài liệu hiện hành và `CHANGELOG.md`.
 
-```
-User action → hook → isAuthenticated ? Supabase (optimistic + rollback khi lỗi)
-                                     : state in-memory
-           → setState → re-render
-```
-
-- Ghi XP: append vào `xp_logs`, luôn dedup bằng `hasMilestone(reason, meta)` trước khi `addXp`.
-  Tổng XP tính runtime = `SUM(amount)`.
-- Lịch sử Task: `useActivityLog` ghi `activity_logs` (field-diff + ghi chú) → tab Hoạt động/Ghi chú của Task Detail. Life Log/heatmap đã gỡ ở v5.0.0.
-- Cross-user (leaderboard, login bằng username): **chỉ** qua RPC `SECURITY DEFINER`,
-  vì từ v4.24.0 `profiles` chỉ đọc được hàng của chính mình.
-- Vault: login → chỉ tải `vault_config` → user nhập passphrase → Web Crypto mở DEK trong memory →
-  query/decrypt `accounts`. Lock/sign-out/reload xóa key + plaintext state; mọi write mã hóa lại
-  toàn item và dùng `updated_at` làm revision chống ghi đè giữa hai tab.
-
----
-
-## 5. Luật không được phá
-
-1. Không đặt user data vào localStorage. Chỉ UI flag/settings, prefix `vl_`. v5.0.0: **không còn ngoại lệ nào** — 2 key legacy của Life Journey đã hết hiệu lực khi feature bị gỡ.
-2. Component không gọi `supabase` trực tiếp. v5.0.0: ngoại lệ duy nhất (FocusBreakdown trong DashboardPage) đã biến mất cùng trang đó — quy tắc giờ không có ngoại lệ.
-3. Content tĩnh (>3 item cùng schema) phải ra `src/data/<feature>.json`, không hardcode trong component.
-4. Dùng lại component có sẵn: `GenericModal`, `ConfirmModal` + `useConfirm()`, `CustomSelect`,
-   `DatePickerPopover`, `TagPicker`. Không `window.confirm/alert/prompt`.
-5. RLS bật cho mọi bảng; `auth.uid() = user_id`. v5.0.0: 2 bảng từng cho public SELECT (`programs`, `program_habits`) đã DROP — giờ không bảng nào đọc chéo được.
-6. Mọi retry phải có giới hạn (`MAX_RETRIES`, `MAX_ADVANCE = 24`, `lazyRetry` 1 lần).
-7. Không tự ý sửa `data/schema_v4.24.0.sql`.
-8. Đổi tính năng → cập nhật `docs/FEATURES.md` + `CHANGELOG.md` (RULES.md §8, §13).
-9. `npm run build` phải 0 lỗi trước khi coi task là xong.
-
----
-
-## 6. Chạy
+## Chạy và kiểm tra
 
 ```bash
 npm install
-npm run dev      # vite dev server
-npm run build    # bắt buộc pass trước khi kết thúc task
+npm run dev
+npm test
 npm run lint
-npm test         # 3 self-check bằng node:assert (không có test framework)
 ```
 
-Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (client) ·
-`GOOGLE_SERVICE_ACCOUNT_JSON`, `DRIVE_FOLDER_ID` (chỉ server). Mẫu: `.env.local.example`.
-Thiếu env Supabase → app vẫn chạy ở chế độ in-memory.
-DB: làm đúng thứ tự master → Vault v5.2 → Finance v6.0 → Vault encryption v6.2 trong `README.md`.
+`npm test` hiện chạy 14 self-check bằng `node:assert`; không dùng Jest/Vitest. Theo workflow repo,
+user chạy production build thủ công trừ khi họ yêu cầu agent điều tra lỗi build.
 
----
-
-## 7. Sai lệch đã biết (cập nhật khi fix)
-
-- **`streaks` không bao giờ được cập nhật** — không có trigger `refresh_streak()`, không hook nào ghi.
-  Streak người dùng thấy là tính client-side; cột streak của leaderboard vì vậy đứng ở 0.
-  Chi tiết + hướng xử lý: `docs/DATABASE.md` § Streak — Source of Truth.
-- **`CHANGELOG.md` thiếu entry `v4.24.0`** — bản vá RLS/rò email (chỉ sửa `data/schema_v4.24.0.sql`,
-  không bump `package.json`) chưa bao giờ được ghi changelog. Changelog nhảy từ v4.23.0 sang v4.24.1.
-- ~~Life Journey lưu trong localStorage~~ — feature đã gỡ ở v5.0.0, ngoại lệ legacy hết hiệu lực
-  đã được ghi rõ, chưa migrate. Không sync đa thiết bị, mất khi xoá browser data.
-- **Tên file schema giữ nguyên `schema_v4.24.0.sql`** dù docs đã lên v4.26.1 — cố ý, để không phải
-  đổi tên file mỗi lần bump patch tài liệu.
+Production Finance v6.0 và Vault v6.2 vẫn là bước **user-run**. Trạng thái và thứ tự thực hiện hiện tại
+nằm trong [`docs/TASKS.md`](TASKS.md) và runbook chính xác nằm trong [`README.md`](../README.md).

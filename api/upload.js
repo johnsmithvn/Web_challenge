@@ -24,6 +24,11 @@ let folderCache = {};
 // user-controlled `folder` field. Anything else is coerced to 'uploads'.
 const ALLOWED_FOLDERS = new Set(['images', 'audio', 'video', 'documents', 'uploads']);
 
+// Vercel Functions cap the whole request body at 4.5 MB. Keep room for the
+// multipart envelope and reject early locally instead of advertising 50 MB.
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+const MAX_REQUEST_BYTES = MAX_UPLOAD_BYTES + 256 * 1024;
+
 // Allowed CORS origins (comma-separated env). Same-origin app calls (relative
 // '/api/upload') don't need CORS at all; this only governs cross-origin access.
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
@@ -49,8 +54,20 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
+    const declaredLength = Number(req.headers['content-length'] || 0);
+    if (declaredLength > MAX_REQUEST_BYTES) {
+      return res.status(413).json({ error: 'File too large. Max 4 MB' });
+    }
+
     const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
+    let received = 0;
+    for await (const chunk of req) {
+      received += chunk.length;
+      if (received > MAX_REQUEST_BYTES) {
+        return res.status(413).json({ error: 'File too large. Max 4 MB' });
+      }
+      chunks.push(chunk);
+    }
     const body = Buffer.concat(chunks);
 
     const contentType = req.headers['content-type'] || '';
@@ -63,10 +80,8 @@ export default async function handler(req, res) {
     // Coerce folder to the whitelist (defense-in-depth against Drive query injection)
     const safeFolder = ALLOWED_FOLDERS.has(folder) ? folder : 'uploads';
 
-    // Validate file size (max 50MB for Drive)
-    const MAX_SIZE = 50 * 1024 * 1024;
-    if (file.length > MAX_SIZE) {
-      return res.status(413).json({ error: `File too large. Max 50MB` });
+    if (file.length > MAX_UPLOAD_BYTES) {
+      return res.status(413).json({ error: 'File too large. Max 4 MB' });
     }
 
     return await handleDrive(req, res, file, mimeType, filename, safeFolder);
@@ -85,7 +100,7 @@ async function getOrCreateSubfolder(accessToken, rootFolderId, folderName) {
 
   // Search if folder exists
   const query = `name='${folderName}' and '${rootFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id)`, {
+  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id)&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
     headers: { 'Authorization': `Bearer ${accessToken}` }
   });
   const searchData = await searchRes.json();
@@ -97,7 +112,7 @@ async function getOrCreateSubfolder(accessToken, rootFolderId, folderName) {
   }
 
   // Create folder if not found
-  const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
@@ -168,7 +183,7 @@ async function handleDrive(req, res, file, mimeType, originalFilename, folder) {
 
     const payload = Buffer.concat([prefix, file, suffix]);
 
-    const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,

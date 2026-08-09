@@ -1,19 +1,8 @@
 /**
- * LandingPage — trang "/" cho app 1 người dùng.
+ * LandingPage — cửa đăng nhập và bản đồ workflow chính của Life Hub.
  *
- * KHÔNG phải landing marketing. Bản cũ (v2.x) là 7 section quảng cáo cho sản
- * phẩm "Thử Thách Vượt Lười 21 ngày": Hero typewriter, Problem, Knowledge,
- * Roadmap, demo Tracker, Reverse, Testimonials (đánh giá bịa), Pricing (bảng
- * giá cho app không bán) — 923 dòng mô tả một sản phẩm không còn tồn tại.
- *
- * Bản này làm đúng 2 việc: cửa đăng nhập cho khách, và bản đồ module cho chủ
- * nhà. Navbar tự ẩn ở "/" khi chưa đăng nhập (Navbar.jsx:154) nên trang này
- * phải tự chứa nút đăng nhập và nút đổi theme.
- *
- * 6 module liệt kê ở đây là TOÀN BỘ những gì còn lại sau khi dọn xong 5 đợt
- * (xem docs/TASKS.md § KẾ HOẠCH DỌN MODULE — Habit, Lộ Trình, Dashboard, Quiz,
- * BXH, Life Log, Hành Trình đều đã gỡ hẳn ở v5.0.0). Thêm module mới thì thêm
- * vào MODULES bên dưới, đừng để trang này mô tả thiếu.
+ * MODULES là bản đồ workflow gọn trên landing; module mới phải cập nhật cả
+ * mảng này và docs/FEATURES.md để copy không lệch source.
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -48,7 +37,7 @@ const MODULES = [
       '5 mức ưu tiên, dải màu nhìn là biết việc gấp',
       'Lặp theo ngày / tuần / tháng, tự sinh lần kế tiếp',
       'Lịch tháng xem việc đã xong',
-      'Mở chi tiết: lịch sử mọi thay đổi + ghi chú riêng',
+      'Mở chi tiết: các thay đổi đã ghi nhận + ghi chú riêng',
     ],
   },
   {
@@ -56,19 +45,19 @@ const MODULES = [
     desc: 'Kho bài viết cá nhân, viết và đọc lại.',
     points: [
       'Trình soạn thảo đầy đủ: bảng, checklist, ảnh, YouTube, audio',
-      'Phân loại theo 8 kiểu: ghi chú, trích dẫn, bài học, ý tưởng…',
+      'Phân loại theo 7 kiểu: ghi chú, trích dẫn, học, ý tưởng…',
       'Gắn tag, thêm ghi chú phụ cho từng bài',
       'Liên kết bài viết với nhiệm vụ',
     ],
   },
   {
     to: '/finance', icon: 'money', name: 'Finance', accent: '#00cc6e',
-    desc: 'Chi tiêu và các gói đăng ký định kỳ.',
+    desc: 'Sổ tiền cá nhân theo kỳ, nghĩa vụ và mục tiêu.',
     points: [
-      'Nhập tiền kiểu tự do: 50k, 89$ đều hiểu',
-      'Chia theo danh mục, biểu đồ tròn theo tháng',
-      'Đăng ký định kỳ tự đẩy ngày đến hạn kế tiếp',
-      'Dải 30 ngày tới xem tiền sắp ra lúc nào',
+      'Ghi khoản chi, thu nhập và tiết kiệm; hiểu 50k, 89$',
+      'Tổng quan, ngân sách, thống kê và danh mục theo kỳ',
+      'Theo dõi hóa đơn, thu nhập định kỳ, khoản vay và thẻ',
+      'Quỹ tiết kiệm, CSV và liên kết Nhiệm vụ / Inbox',
     ],
   },
   {
@@ -87,6 +76,16 @@ const MODULES = [
       'Vòng đếm ngược, tự chuyển phiên làm / nghỉ',
       'Tự chỉnh độ dài từng phiên',
       'Thống kê số phiên và số phút hôm nay',
+    ],
+  },
+  {
+    to: '/accounts', icon: 'key', name: 'Account Vault', accent: '#ec4899',
+    desc: 'Kho tài khoản và secret được mã hóa trước khi rời trình duyệt.',
+    points: [
+      'Mở khóa riêng bằng Vault passphrase',
+      'Mã hóa toàn bộ nội dung item bằng AES-GCM',
+      'Lưu field, mã khôi phục, lịch sử và liên kết item',
+      'Tạo password ngẫu nhiên bằng Web Crypto',
     ],
   },
 ];
@@ -144,8 +143,8 @@ export default function LandingPage() {
 
           {!user && (
             <p className="lp-hero__note">
-              Chưa đăng nhập vẫn dùng được, nhưng dữ liệu chỉ nằm trong bộ nhớ tạm —
-              tải lại trang là mất.
+              Chưa đăng nhập vẫn dùng thử Nhiệm vụ và Focus; dữ liệu chỉ nằm trong
+              bộ nhớ tạm nên tải lại trang là mất.
             </p>
           )}
         </div>
@@ -173,7 +172,7 @@ export default function LandingPage() {
       {/* ── Module ── */}
       <section className="container lp-section">
         <h2 className="lp-section__title h2">Có những gì</h2>
-        <p className="lp-section__sub">Sáu module, mỗi cái làm đúng một việc.</p>
+        <p className="lp-section__sub">Bảy module, mỗi cái làm đúng một việc.</p>
 
         <div className="lp-grid">
           {MODULES.map(m => (

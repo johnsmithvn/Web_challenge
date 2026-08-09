@@ -384,7 +384,7 @@
 .kb-reader__bar {
   position: fixed;
   top: 0;
-  left: var(--sidebar-width, 220px);
+  left: var(--sidebar-width, 232px);
   right: 0;
   height: 4rem;
   background: rgba(10,10,18,0.85);

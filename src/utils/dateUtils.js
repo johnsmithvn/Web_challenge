@@ -8,9 +8,7 @@ const LOCALE = 'vi-VN';
  * yyyy-MM-dd theo giờ **địa phương**.
  *
  * KHÔNG dùng `new Date().toISOString().split('T')[0]` cho việc này: toISOString trả UTC,
- * nên ở GMT+7 khoảng 00:00–06:59 nó cho ra ngày *hôm qua*. Đây là hàm duy nhất trong repo
- * sinh chuỗi ngày local — trước v4.27.0 có 4 bản copy giống nhau ở TaskListSection,
- * useIntentions, IncubatorPage và DatePickerPopover.
+ * nên ở GMT+7 khoảng 00:00–06:59 nó cho ra ngày *hôm qua*.
  *
  * @param {Date} [date] — mặc định là hôm nay
  * @returns {string} e.g. "2026-07-28"
@@ -22,11 +20,7 @@ export function toDateStr(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
-/**
- * Chuyển `Date.getDay()` (0=Chủ Nhật..6=Thứ Bảy) sang index tuần bắt đầu Thứ
- * Hai (0=T2..6=CN). Trước v4.29.1 công thức `day===0?6:day-1` bị viết lại độc
- * lập ở 5 nơi (useHabitStore, TrackerPage, DashboardPage x2, MonthCalendar).
- */
+/** Chuyển `Date.getDay()` (0=CN..6=T7) sang index tuần bắt đầu Thứ Hai (0=T2..6=CN). */
 export function mondayIndex(date = new Date()) {
   const day = date.getDay();
   return day === 0 ? 6 : day - 1;

@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
 import { useCollections } from '../hooks/useCollections';
 import { useTags } from '../hooks/useTags';
@@ -19,7 +18,7 @@ import '../styles/tasks.css';
 
 const fmtDMY = (d) => new Date(d + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-export default function TaskListSection({ showForm, setShowForm }) {
+export default function TaskListSection({ taskModel, showForm, setShowForm }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const {
@@ -29,7 +28,7 @@ export default function TaskListSection({ showForm, setShowForm }) {
     linkTaskTag, unlinkTaskTag,
     getCompletedTasksRange,
     isLoading,
-  } = useUserTasks();
+  } = taskModel;
   const { items: allCollections, fetchItems: fetchCollections } = useCollections();
   const { tags: allTags, addTag } = useTags();
   const { confirm, ConfirmModal } = useConfirm();

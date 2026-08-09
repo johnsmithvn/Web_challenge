@@ -6,16 +6,12 @@ import { logger } from '../utils/logger';
 /**
  * useTags — Central tag CRUD, Supabase-first.
  *
- * v3.7.0: expenses, subscriptions
- * v4.1.0: + collections, updateTag, getTagUsageCount, getTagsForEntity
- *
- * Shared across modules (expenses, subscriptions, collections).
+ * Shared across Finance transactions, Knowledge collections and Tasks.
  * All tags belong to the authenticated user.
  */
 
 /* ── Entity type → junction table mapping ─────────────────── */
-// v6.0.0: expense/subscription bị gỡ (module Finance viết lại) → 'finance' trỏ
-// vào finance_transaction_tags. Xem docs/DESIGN_FINANCE.md §11.
+// Finance tags use finance_transaction_tags. See docs/DESIGN_FINANCE.md §8.
 const ENTITY_CONFIG = {
   finance:      { table: 'finance_transaction_tags', fk: 'transaction_id' },
   collection:   { table: 'collection_tags',   fk: 'collection_id' },

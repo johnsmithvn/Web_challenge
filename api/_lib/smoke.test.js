@@ -10,7 +10,8 @@
  */
 import assert from 'node:assert/strict';
 import { createSign, createVerify, generateKeyPairSync } from 'node:crypto';
-import { generateFileName } from '../upload.js';
+import { readFileSync } from 'node:fs';
+import { generateFileName, MAX_UPLOAD_BYTES } from '../upload.js';
 
 /* 1 — base64url === old manual chain */
 const oldChain = (buf) =>
@@ -37,6 +38,14 @@ assert.match(
 );
 assert.match(generateFileName('noext', 'uploads'), /^LifeHub_uploads_\d{8}_\d{6}_[0-9a-f]{6}\.bin$/);
 assert.match(generateFileName('a.tar.gz', 'documents'), /_[0-9a-f]{6}\.gz$/);
+assert.equal(MAX_UPLOAD_BYTES, 4 * 1024 * 1024, 'upload limit must fit inside Vercel 4.5 MB request cap');
+
+const uploadSource = readFileSync(new URL('../upload.js', import.meta.url), 'utf8');
+const streamSource = readFileSync(new URL('../stream.js', import.meta.url), 'utf8');
+assert.ok((uploadSource.match(/supportsAllDrives=true/g) || []).length >= 3,
+  'upload must opt into Shared Drive support for list/create/upload');
+assert.ok((streamSource.match(/supportsAllDrives=true/g) || []).length >= 3,
+  'stream must opt into Shared Drive support for list/get/media');
 // hex is always 6 chars — Math.random() can produce short fractions, padStart guards it
 for (let i = 0; i < 500; i++) {
   assert.match(generateFileName('x.mp3', 'audio'), /_[0-9a-f]{6}\.mp3$/);
