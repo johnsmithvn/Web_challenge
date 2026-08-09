@@ -120,8 +120,9 @@ created_at
 updated_at
 ```
 
-Passphrase, KEK và raw DEK **không được lưu**. Bảng bật RLS đủ SELECT/INSERT/UPDATE/DELETE với điều kiện
-`user_id = auth.uid()`; `anon` không có quyền.
+Passphrase, KEK và raw DEK **không được lưu**. Bảng bật RLS own-row; authenticated chỉ được
+SELECT/INSERT vì app v6.2 chưa có đổi/xóa config. `anon` không có quyền. Migration revoke ACL mặc
+định rộng trước khi grant để không sót TRUNCATE/REFERENCES/TRIGGER ngoài RLS.
 
 ---
 
@@ -140,6 +141,7 @@ Luồng phiên:
 
 1. Setup tạo config và mở Vault lần đầu.
 2. Lần sau, passphrase derive lại KEK để unwrap DEK. Passphrase sai hoặc config hỏng đều fail đóng.
+   Nếu config mất trong khi còn ciphertext, app hard-error và tuyệt đối không tạo DEK mới.
 3. Manual lock xóa reference đến DEK và xóa item đã giải mã khỏi React state.
 4. Sign-out và reload cũng làm mất DEK, nên Vault trở lại locked.
 5. Password generator đã bật; password sinh ra chỉ đi qua encrypted CRUD.
@@ -153,8 +155,13 @@ memory. Đây là best-effort ở tầng ứng dụng.
 
 - `create`: client tạo UUID trước, dựng payload, mã hóa với AAD chứa UUID rồi mới INSERT ciphertext.
 - `update`, favorite, auth state, code used và history: sửa bản giải mã trong memory rồi mã hóa/UPDATE
-  lại toàn bộ payload trong một row.
-- `delete`: xóa đúng row theo cả `id` và `user_id`.
+  lại toàn bộ payload trong một row. UPDATE kèm `updated_at` đã đọc làm revision; nếu row không còn
+  khớp thì báo conflict, không ghi đè thay đổi từ tab/device khác.
+- `delete`: xóa đúng row theo `id`, `user_id` và revision `updated_at`.
+- Sau write thành công, hook dùng chính plaintext vừa mã hóa + timestamp server trả về để cập nhật
+  state; không refetch snapshot có thể cũ.
+- Mọi config/fetch/mutation giữ epoch phiên. Lock, sign-out, đổi user hoặc fetch mới làm request cũ
+  mất quyền commit ref/state/finally, nên plaintext không thể quay lại UI sau khi khóa.
 - Khi một item hỏng, các item giải mã được vẫn hiển thị; item hỏng không bị sửa/xóa và UI báo số item
   không mở được.
 - Không có fallback đọc/ghi schema plaintext. Thiếu schema v6.2 đưa UI về error thay vì làm rò dữ liệu.

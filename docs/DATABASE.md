@@ -1,13 +1,17 @@
 # DATABASE DESIGN — Life Hub (Personal Life OS)
 **Target:** Supabase (PostgreSQL)
-**Version:** v5.0.0
-**Updated:** 2026-08-02
+**Version:** v6.2.0
+**Updated:** 2026-08-09
 **Strategy:** Production-ready from day 1
-**Source of Truth:** **`data/schema_v4.24.0.sql`** — single consolidated schema (all migrations v4.4.0 → v5.0.0 folded in, bao gồm `data/RUNBOOK.sql`). Idempotent — run once on a fresh project.
+**Source of Truth:** chuỗi SQL theo thứ tự trong **`README.md`**:
+`data/schema_v4.24.0.sql` → Vault v5.2 → Finance v6.0 → Vault encryption v6.2.
 
-**Table count (verified against the `.sql` file):** **18 `CREATE TABLE`** — **tất cả đều đang được dùng**, không còn bảng archived nào. v5.0.0 DROP 12 bảng: 8 bảng Habit + Lộ Trình (`progress`, `habits`, `habit_logs`, `programs`, `program_habits`, `user_journeys`, `journey_habits`, `skip_reasons`), `streaks` (BXH), và 3 bảng chết sẵn (`notification_settings`, `friendships`, `fitness_logs`).
+Master schema có **18 `CREATE TABLE`**. Các migration sau master thêm/thay schema theo domain; không
+dùng con số của riêng master để suy ra trạng thái cuối. v5.0.0 DROP 12 bảng: 8 bảng Habit + Lộ Trình
+(`progress`, `habits`, `habit_logs`, `programs`, `program_habits`, `user_journeys`,
+`journey_habits`, `skip_reasons`), `streaks`, `notification_settings`, `friendships`,
+`fitness_logs`.
 `mood_logs` is NOT in this schema (dropped in v4.10.1, folded into the consolidated file).
-Every other doc that says 26 / 28 / 29 / 31 tables is stale — this line is the count.
 `data/RUNBOOK.sql` vẫn giữ lại làm hồ sơ lịch sử SQL đã chạy trên DB thật (2026-08-02) — không cần
 chạy lại, `schema_v4.24.0.sql` giờ đã phản ánh đúng trạng thái cuối cùng cho fresh install.
 
@@ -38,17 +42,13 @@ profiles ───────────────────────�
     ├──► activity_logs     (task history + notes)│
     ├──► intentions / intention_logs (incubator)│
     │                                           │
-    ├──► accounts ──► account_fields (field theo loại; multi + link là jsonb)
-    │            ├──► account_auth  (phương thức đăng nhập)  (v5.2.0)
-    │            ├──► account_codes (mã dự phòng dùng 1 lần)
-    │            ├──► account_logs  (lịch sử, append-only)
-    │            └──► account_tags              │
+    ├──► accounts       (một AES-GCM ciphertext / Vault item)
+    ├──► vault_config   (một wrapped DEK / user) │
     │                                           │
     ├──► tags ◄──► collection_tags              │
     │         ◄──► task_tags        (v4.28.0)    │
-    │         ◄──► account_tags     (v5.1.0)     │
     │         ◄──► finance_transaction_tags (v6.0.0)
-    │              └─ all 4 ──► VIEW tagged_items │
+    │              └─ cả 3 ──► VIEW tagged_items │
     │                                           │
     ├──► collection_notes  (threaded sub-notes) │
     ├──► inspirational_quotes (user quotes)     │
@@ -84,12 +84,9 @@ profiles ───────────────────────�
 | 16 | `task_tags` | Junction: Task ↔ Tags | **v4.28.0.** Composite PK(task_id, tag_id), CASCADE. RLS kiểm ownership **cả 2 phía**. Chỉ index `tag_id` (task_id đã là cột dẫn đầu của PK) |
 | 17 | `collection_notes` | Threaded sub-notes per article | FK → collections, FK → profiles, plain text |
 | 18 | `inspirational_quotes` | User + system quotes | FK → profiles, `is_active` toggle, `audio_url` optional |
-| 19 | `accounts` | **v5.2.0.** 1 item trong vault (thiết kế Keyplate) | `service_name` (= `Item.title` của đặc tả — giữ tên cột, không thêm cột `title`), `tpl` (key template, **KHÔNG CHECK** — template là content trong JSON, thêm mẫu mới không cần migration), `favorite`, `notes`, `updated_at` + trigger `accounts_updated_at` tái dùng `update_updated_at()`. **KHÔNG chứa secret** — xem `account_fields` |
-| 20 | `account_fields` | **v5.2.0.** Field của item, phân nhánh render theo `type` | `label` + `type` CHECK(10 loại: text/password/secret/url/email/phone/multi/link/number/date — khớp `TYPES` trong `vaultLogic.js`), `value` (**PLAINTEXT**; password/secret chỉ mask UI), `multi_values` jsonb (loại `multi`), `links` jsonb `[{id,itemId,value}]` (loại `link`, **nhiều link/field**; jsonb không FK nên xoá item đích → link mồ côi "Missing item", đúng đặc tả). RLS kiểm ownership 2 phía (row + account chứa; phía đích không kiểm được vì jsonb — không leak, UI resolve trong bộ đã fetch của chính user) |
-| 21 | `account_auth` | **v5.2.0.** Phương thức đăng nhập của item | `kind` (**KHÔNG CHECK** — 9 kiểu trong `authKinds` JSON), `note`, `state` CHECK(primary/on/off), `sort_order`. Partial UNIQUE `unique_account_auth_primary(account_id) WHERE state='primary'` → ép **≤1 primary**; đổi primary = hạ cũ trước, nâng mới sau |
-| 22 | `account_codes` | **v5.2.0.** Mã dự phòng dùng 1 lần | `code`, `used`, `sort_order`. Đánh dấu đã dùng/hoàn ghi log ngay ngoài chế độ sửa |
-| 23 | `account_logs` | **v5.2.0.** Lịch sử thay đổi từng field | `logged_at` (tên `at` là từ khoá SQL; hook map → `at`), `text`, `detail`. **APPEND-ONLY ép bằng RLS**: chỉ có policy SELECT + INSERT, **không** UPDATE/DELETE. `diffLog` mask secret trước khi ghi |
-| 24 | `account_tags` | **v5.1.0.** Junction: Account ↔ Tags | Composite PK(account_id, tag_id), CASCADE. RLS kiểm ownership cả 2 phía. Chỉ index `tag_id` |
+| 19 | `accounts` | **v6.2.0.** Một encrypted Vault item | `id`, `user_id`, `created_at`, `updated_at`, `encrypted_payload`, `encryption_nonce`, `encryption_version=1`. Toàn bộ title/template/favorite/notes/tags/fields/auth/codes/links/log nằm trong JSON AES-256-GCM. RLS own-row; index `(user_id, updated_at DESC)`. |
+| 20 | `vault_config` | **v6.2.0.** Envelope config một row/user | PBKDF2 algorithm/salt/iterations, wrapped DEK + nonce, version và timestamps. Không lưu passphrase, KEK hoặc raw DEK. Authenticated chỉ có SELECT/INSERT; RLS own-row. |
+| — | `account_fields`, `account_auth`, `account_codes`, `account_logs`, `account_tags` | **[DROPPED v6.2.0]** | Schema plaintext trung gian v5.2 bị bỏ trong empty-Vault cutover; dữ liệu tương ứng nằm trong ciphertext `accounts`. |
 | — | `knowledge_groups` | **[DROPPED v4.31.0, 2026-08-02]** KB folder/group metadata | Quyết định P2-7 (2026-08-01): trùng việc với `tags`. Ban đầu định gộp hiển thị (tag có emoji = "nhóm"), nhưng chốt cuối là **bỏ hẳn tính năng Nhóm khỏi UI**. Data đã copy sang `tags`/`collection_tags` (Phase 1) trước khi drop — bài viết không mất liên kết, chỉ mất hiển thị folder. Frontend không còn dùng (`useKnowledgeGroups.js` đã xoá). **Bảng đã DROP** qua RUNBOOK.sql Phần 3, xác nhận `information_schema.tables` 0 dòng. |
 | — | `collection_groups` | **[DROPPED v4.31.0, 2026-08-02]** Junction: KB ↔ Groups (M:N) | Cùng lý do với `knowledge_groups` ở trên. |
 
@@ -119,11 +116,13 @@ giao dịch mang FK trỏ về quy tắc**. Tất cả bật RLS, policy `FOR AL
 
 | View | Mục đích | Ghi chú |
 |------|----------|---------|
-| `tagged_items` | **v4.28.0, mở rộng v5.1.0, tạo lại v6.0.0.** 1 mặt đọc hợp nhất cho filter/search theo tag: `UNION ALL` 4 junction → `(tag_id, kind, item_id)` với `kind ∈ {collection, task, account, finance}` (v6.0.0 bỏ expense/subscription, thêm finance) | ⚠️ Tạo với `WITH (security_invoker = true)` — **bắt buộc**. Mặc định view chạy bằng quyền OWNER (postgres) và **bỏ qua RLS** của bảng dưới → leak data mọi user. Cần PostgreSQL ≥ 15. |
+| `tagged_items` | **Tạo lại v6.2.0.** Mặt đọc hợp nhất cho tag plaintext: `UNION ALL` 3 junction → `(tag_id, kind, item_id)` với `kind ∈ {collection, task, finance}`. Vault tags nằm trong ciphertext nên không có branch account. | ⚠️ `WITH (security_invoker = true)` là bắt buộc để giữ RLS của bảng dưới. |
 
 ### Kiến trúc Tag — tại sao N junction, không phải 1 bảng polymorphic
 
-`tags` là **1 bảng trung tâm duy nhất** (`UNIQUE(user_id, name)`), không có cột `tags TEXT[]` lặp ở đâu. Mỗi loại entity nối vào qua 1 junction riêng: `collection_tags`, `task_tags`, `account_tags`, `finance_transaction_tags`.
+`tags` là bảng trung tâm cho các module server-readable. Collection, Task và Finance nối qua
+`collection_tags`, `task_tags`, `finance_transaction_tags`. Vault là ngoại lệ có chủ ý:
+tag của Vault nằm trong encrypted payload để tên tag không lộ ra Supabase.
 
 Nhìn có vẻ dư (N loại → N bảng), nhưng **đó là giá của referential integrity**: mỗi junction có `REFERENCES ... ON DELETE CASCADE` cả 2 phía, nên xoá entity thì link tự biến mất.
 
@@ -133,38 +132,30 @@ Nhìn có vẻ dư (N loại → N bảng), nhưng **đó là giá của referen
 
 Nguyên tắc: **N junction để GHI (giữ FK), 1 view để ĐỌC (unified filter).**
 
-### Account Vault — link là jsonb, không phải bảng con (v5.2.0)
+### Account Vault — full-content envelope encryption (v6.2.0)
 
-Quy tắc quyết bảng-vs-cột của module: **có lifecycle/ràng buộc riêng → bảng; là giá trị của một
-field → cột.** Vì thế `account_auth`/`account_codes`/`account_logs` là bảng (bật/tắt, đánh dấu đã
-dùng, ghi log đều xảy ra độc lập với việc sửa item), còn `multi_values`/`links` là cột jsonb trên
-`account_fields` (chỉ đổi cùng chính field chứa nó).
+Mỗi user có một DEK 256-bit ngẫu nhiên. Vault passphrase không lưu ở server: browser dùng
+PBKDF2-SHA256 600.000 vòng + salt trong `vault_config` để tạo KEK, rồi KEK mở `wrapped_key`.
+Raw DEK được import thành AES-GCM key không extractable và chỉ giữ trong memory.
 
-`links` là jsonb `[{id,itemId,value}]`, **nhiều link/field**, cố ý **không** làm bảng con + FK:
+Mỗi `accounts` row mã hóa **một JSON hoàn chỉnh**. AES-GCM AAD là
+`vault-item|v1|user_id|item_id`; wrapped DEK dùng `vault-key|v1|user_id`. Vì vậy ciphertext bị
+tráo sang user/id/version khác hoặc bị sửa byte sẽ không giải mã được. Nonce 12 byte mới được sinh
+cho mọi lần ghi.
 
-| | Bảng con + FK | jsonb `links` (đang dùng) |
-|---|---|---|
-| Xoá item đích | ON DELETE CASCADE/SET NULL tự dọn | con trỏ mồ côi → UI hiện "Missing item" |
-| Đảm bảo ownership phía đích | FK + RLS kiểm được | **không** kiểm được (jsonb) |
-| Số bảng / query thêm | +1 bảng, +1 RLS, +1 query | 0 |
+Database vẫn thấy technical metadata cần để đồng bộ: owner/id, timestamps, ciphertext length, nonce
+và version. Database **không** thấy title, URL, username, notes, tag, field label/value, auth note,
+recovery code, link hay history.
 
-"Missing item" **đúng** là hành vi đặc tả yêu cầu (link tới item đã xoá phải hiện gãy), nên FK ở đây
-không mua được gì. Rủi ro ownership phía đích: user tự sửa payload nhét id người khác vào — **không
-leak**, UI resolve itemId trong đúng bộ item đã fetch của chính user (id lạ → "Missing item"), RLS
-trên `accounts` vẫn chặn mọi đường đọc dòng người khác. Nâng cấp khi cần dọn orphan tự động: bảng
-`account_field_links` + FK ON DELETE CASCADE.
+`useAccounts` chỉ query item sau unlock. Request có epoch + sequence guard nên response cũ không thể
+đưa plaintext trở lại sau Lock/sign-out/đổi user. Whole-row update và delete dùng `updated_at` làm
+revision; zero-row response là conflict giữa tab/device, không được overwrite.
 
-**`account_auth` — đúng ≤1 primary/item, ép bằng partial UNIQUE** `... WHERE state='primary'`. Index
-ép "không quá 1" chứ không "đúng 1" (0 primary là hợp lệ). Hệ quả cho code: đổi primary phải **hạ
-cái cũ trước rồi nâng cái mới** (`setAuthState` trong `useAccounts.js`) — đảo thứ tự thì vi phạm.
+Nếu `vault_config` mất nhưng `accounts` còn row, app hard-error thay vì tạo DEK mới. Migration v6.2
+cũng abort transaction nếu Vault không trống trước khi bỏ schema plaintext v5.2.
 
-**`account_logs` — append-only ép bằng RLS**, không bằng quy ước: bảng chỉ có policy SELECT + INSERT,
-**không** UPDATE/DELETE → client không sửa/xoá được một dòng log nào kể cả khi code có bug. `diffLog`
-(`vaultLogic.js`) mask secret = `•` × min(len,24) **trước khi** tạo dòng log — bất biến có test khoá.
-
-> ⚠️ **`account_fields.value` là PLAINTEXT.** Type `password`/`secret` chỉ mask trên UI, **không mã
-> hoá gì**. Không nhập mật khẩu/PIN/số thẻ thật vào bản này. Mã hoá client-side (envelope encryption
-> KEK/DEK + AES-GCM) là việc tương lai — xem `DESIGN_ACCOUNT_VAULT.md`.
+Giới hạn: chưa có export/restore, passphrase change/recovery, DEK rotation, auto-lock inactivity,
+clipboard auto-clear hay TOTP generator. Xem `docs/DESIGN_ACCOUNT_VAULT.md`.
 
 ### Deprecated Columns
 
@@ -226,6 +217,7 @@ On first login (one-time per data type):
 | `data/migration_v5.0.0_activity_logs_v2.sql` | Bản **DROP + CREATE** của cùng thay đổi trên. **Chỉ chạy 1 lần.** Hai file tới cùng 1 schema cuối và **cùng xoá sạch log cũ** — master dùng `DELETE FROM activity_logs WHERE task_id IS NULL`, mà mọi dòng của schema v1 đều không gắn task. Chạy file nào cũng được; đừng chạy cả hai |
 | **`data/migration_v5.2.0_vault.sql`** | **v5.2.0 — CHƯA gộp vào master** (RULES §3: chỉ sửa master khi có chỉ thị rõ ràng). 6 bảng Account Vault (`accounts`, `account_fields`, `account_auth`, `account_codes`, `account_logs`, `account_tags`) + `tagged_items` thêm `kind='account'`. Idempotent, dựng từ trạng thái trắng (bản v5.1.0 chưa từng chạy trên Supabase → đã xoá file đó). Có sẵn câu VERIFY ở cuối file |
 | **`data/migration_v6.0.0_finance.sql`** | **v6.0.0 — CHƯA gộp vào master.** Clean rebuild toàn bộ Finance và tạo lại `tagged_items`. Phải chạy sau v5.2.0 vì view dùng `account_tags`; migration kiểm tra tiền đề và rollback toàn bộ nếu thiếu. |
+| **`data/migration_v6.2.0_vault_encryption.sql`** | Empty-Vault cutover sang full-content encryption. Abort nếu `accounts` có row; khi trống mới drop 5 bảng con plaintext, đổi `accounts`, tạo `vault_config`, thu hẹp ACL và tạo lại `tagged_items` không có account. Chạy đúng một lần sau Finance v6.0. |
 | `data/reset_user_data.sql` | **Reset script** — DELETE all user data, keep auth accounts |
 
 ## Supabase Setup Checklist
@@ -234,6 +226,7 @@ On first login (one-time per data type):
 - [ ] Run `data/schema_v4.24.0.sql` in SQL Editor
 - [ ] Run `data/migration_v5.2.0_vault.sql`
 - [ ] Run `data/migration_v6.0.0_finance.sql`
+- [ ] Confirm `SELECT COUNT(*) FROM accounts` is 0, then run `data/migration_v6.2.0_vault_encryption.sql`
 - [ ] Enable Realtime for: profiles, progress, habits, focus_sessions, xp_logs
 - [ ] Enable Google OAuth (Auth → Providers → Google)
 - [ ] Get URL + anon key from Project Settings → API

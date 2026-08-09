@@ -40,6 +40,11 @@ nếu `accounts` có dù chỉ một dòng; khi trống mới bỏ các bảng p
 toàn bộ test pass; browser authenticated smoke qua setup → encrypted CRUD/tags/auth/codes/logs → manual
 lock → unlock → reload lock; RLS cô lập hai user và database/network không lộ nội dung payload.
 
+**Security review fix:** request epoch + latest-fetch guard chặn plaintext quay lại sau Lock/sign-out/đổi
+user; update/delete dùng `updated_at` làm optimistic revision và cập nhật local từ write response thay vì
+refetch snapshot cũ. Thiếu config khi còn ciphertext là hard error. ACL được revoke mặc định rộng rồi chỉ
+cấp đúng thao tác app dùng; favicon mặc định tắt và secret input mặc định mask.
+
 ### Còn lại
 
 - [ ] **Production:** user tự chạy migration theo thứ tự ghi trong README, sau đó deploy code và smoke

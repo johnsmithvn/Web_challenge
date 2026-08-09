@@ -3,21 +3,19 @@
 **Bản đồ cấp cao của repo.** Chỉ trả lời "cái gì ở đâu" và "đọc file nào tiếp".
 Chi tiết nằm ở các file được trỏ tới — cố tình KHÔNG lặp lại ở đây.
 
-**Version:** v4.26.1 · **Updated:** 2026-07-28
+**Version:** v6.2.0 · **Updated:** 2026-08-09
 
 ---
 
 ## 1. Là cái gì
 
-SPA "Personal Life OS" một người dùng: Inbox thu gom, Nhiệm vụ, Knowledge Base, chi tiêu,
-task, knowledge base có editor WYSIWYG, chi tiêu + subscription, incubator cho ý tưởng, và
-heatmap lịch sử hoạt động. Chạy được ở 2 chế độ: **guest** (in-memory, mất khi refresh) và
-**authenticated** (Supabase là primary store).
+SPA "Personal Life OS": Inbox, Nhiệm vụ, Knowledge Base, Finance, Incubator, Focus và Account
+Vault mã hóa. Phần lớn module có **guest mode** in-memory; Finance và Vault yêu cầu đăng nhập.
 
 | Layer | Chọn gì |
 |-------|---------|
 | UI | React 19 + Vite 8, vanilla CSS (CSS variables + glassmorphism), không Tailwind |
-| Routing | React Router v7, 13 page lazy + 2 eager |
+| Routing | React Router v7, page theo domain và lazy-load |
 | Data | Supabase (PostgreSQL + Auth + Realtime), RLS own-row |
 | Serverless | 2 Vercel function: `api/upload.js`, `api/stream.js` (Google Drive) |
 | Editor | Tiptap 3 + slash command + custom `MediaNode` |
@@ -30,8 +28,8 @@ heatmap lịch sử hoạt động. Chạy được ở 2 chế độ: **guest**
 
 | Cần biết | File |
 |----------|------|
-| Bảng, cột, RLS, RPC, XP, migration | `docs/DATABASE.md` → source of truth: `data/schema_v4.24.0.sql` |
-| Từng tính năng làm gì, tính năng nào đã bỏ | `docs/FEATURES.md` (§1–§27 active, cuối file là Archived) |
+| Bảng, cột, RLS, RPC, XP, migration | `docs/DATABASE.md` → thứ tự chạy thực tế ở `README.md` |
+| Từng tính năng làm gì, tính năng nào đã bỏ | `docs/FEATURES.md` (cuối file là Archived) |
 | Thư mục, data flow, localStorage key, quyết định kiến trúc | `docs/ARCHITECTURE.md` |
 | Quy tắc cho AI agent / dev (scope, versioning, doc sync) | `docs/RULES.md` |
 | Design token, component pattern, responsive, theme | `DESIGN.md` |
@@ -55,6 +53,7 @@ Mỗi route = 1 page trong `src/pages/`. Hook chứa toàn bộ logic Supabase; 
 | `/collect` | CollectPage | useCollections, useCollectionNotes, useTags | collections, collection_notes, collection_tags |
 | `/finance`, `/finance/:screen` | FinancePage | useFinance | 10 bảng `finance_*` + finance_transaction_tags |
 | `/incubator` | IncubatorPage | useIntentions | intentions, intention_logs |
+| `/accounts` | AccountsPage | useAccounts | accounts (ciphertext) + vault_config (wrapped DEK) |
 | `/settings` | SettingsPage | useTags, useQuotes | tags, inspirational_quotes |
 | `/tracker`, `/habits`, `/dashboard`, `/journey` | redirect `/tasks` (route đã gỡ v5.0.0) | — | — |
 
@@ -76,6 +75,9 @@ User action → hook → isAuthenticated ? Supabase (optimistic + rollback khi l
 - Lịch sử Task: `useActivityLog` ghi `activity_logs` (field-diff + ghi chú) → tab Hoạt động/Ghi chú của Task Detail. Life Log/heatmap đã gỡ ở v5.0.0.
 - Cross-user (leaderboard, login bằng username): **chỉ** qua RPC `SECURITY DEFINER`,
   vì từ v4.24.0 `profiles` chỉ đọc được hàng của chính mình.
+- Vault: login → chỉ tải `vault_config` → user nhập passphrase → Web Crypto mở DEK trong memory →
+  query/decrypt `accounts`. Lock/sign-out/reload xóa key + plaintext state; mọi write mã hóa lại
+  toàn item và dùng `updated_at` làm revision chống ghi đè giữa hai tab.
 
 ---
 
@@ -107,7 +109,7 @@ npm test         # 3 self-check bằng node:assert (không có test framework)
 Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (client) ·
 `GOOGLE_SERVICE_ACCOUNT_JSON`, `DRIVE_FOLDER_ID` (chỉ server). Mẫu: `.env.local.example`.
 Thiếu env Supabase → app vẫn chạy ở chế độ in-memory.
-DB: chạy `data/schema_v4.24.0.sql` một lần trong Supabase SQL Editor (idempotent).
+DB: làm đúng thứ tự master → Vault v5.2 → Finance v6.0 → Vault encryption v6.2 trong `README.md`.
 
 ---
 

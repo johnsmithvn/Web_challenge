@@ -725,8 +725,8 @@ của item, không cần cột riêng. **Không lưu ảnh** — hotlink lúc re
 favicon vì CORS chặn đọc byte ảnh cross-origin.
 **Cố ý KHÔNG dùng dịch vụ favicon bên thứ ba** (`google.com/s2/favicons`, DuckDuckGo, Clearbit,
 logo.dev): đây là vault, gửi cả danh sách domain mình có tài khoản cho một bên là tự khai mình
-dùng dịch vụ nào. Nút **Logos** ở header tắt hẳn việc gọi ảnh (`vl_acc_favicon`, mặc định bật) —
-tắt là trang không phát request nào ra ngoài. Site không có icon → rơi về chữ cái, **console có
+dùng dịch vụ nào. Nút **Logos** ở header bật/tắt việc gọi ảnh (`vl_acc_favicon`, mặc định tắt) —
+khi tắt, trang không phát request favicon nào ra ngoài. Site không có icon → rơi về chữ cái, **console có
 404 là bình thường, không phải bug**. Mã 3 chữ của template vẫn hiện dạng badge nhỏ cạnh tiêu đề.
 
 **Data source:** `accounts` (một ciphertext/item) + `vault_config` (một wrapped DEK/user) trên

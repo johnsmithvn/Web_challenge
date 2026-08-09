@@ -157,7 +157,9 @@ Migration này là cutover dành riêng cho **Vault trống**. Nó chủ động
 6. Tạo một item thử, khóa Vault, reload trang và mở lại để xác nhận passphrase/ciphertext hoạt động.
 
 > ⚠️ Vault passphrase không có reset hoặc recovery. Mất passphrase đồng nghĩa mất khả năng giải mã
-> item đã lưu. Không xóa `vault_config` khi còn ciphertext trong `accounts`.
+> item đã lưu. Không xóa `vault_config` khi còn ciphertext trong `accounts`. Bản v6.2 chưa có
+> export/restore hoặc đổi passphrase, nên chưa dùng Vault làm **bản sao duy nhất** của secret quan
+> trọng; luôn giữ một bản khôi phục độc lập.
 
 ### Reset dữ liệu app (giữ nguyên schema và tài khoản đăng nhập)
 

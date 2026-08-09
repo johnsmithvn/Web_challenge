@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## v6.2.0 — 2026-08-09
+> **Account Vault chuyển từ schema plaintext sang full-content encryption phía client.** Mỗi item là
+> một AES-256-GCM ciphertext; production migration được bàn giao để user tự chạy và chưa được agent
+> áp dụng lên hosted Supabase.
+
+### Added
+- **Envelope encryption native Web Crypto:** Vault passphrase tối thiểu 12 ký tự → PBKDF2-SHA256
+  600.000 vòng → KEK; DEK 256-bit ngẫu nhiên được KEK bọc trong `vault_config`. Raw DEK chỉ tồn tại
+  trong memory sau unlock; AES-GCM AAD gắn key theo user/version và item theo user/id/version.
+- **Setup / unlock / manual lock:** locked state không query/hiện nội dung item; lock, sign-out,
+  đổi user hoặc reload làm mất key và xóa plaintext khỏi React state.
+- **CSPRNG password generator** 12–128 ký tự, bảo đảm đủ upper/lower/digit/symbol.
+- **Security contracts:** test wrong passphrase, wrong user/item AAD, tamper, nonce, request epoch,
+  optimistic concurrency, empty-Vault migration và least-privilege grants.
+
+### Changed
+- **Toàn bộ nội dung user nhập được mã hóa:** title, template, favorite, notes, tags, fields,
+  sign-in methods, recovery codes, links và history cùng nằm trong một encrypted JSON/item.
+- **Schema Vault:** `accounts` chỉ còn owner/id, timestamps, ciphertext, nonce, version;
+  `vault_config` giữ KDF metadata + wrapped DEK. Các bảng plaintext `account_fields`,
+  `account_auth`, `account_codes`, `account_logs`, `account_tags` bị bỏ khi Vault trống.
+- **Tag Vault tách khỏi tag server:** tag item nằm trong ciphertext; `tagged_items` chỉ còn
+  collection/task/finance.
+- **README hợp nhất:** runbook gốc chứa local, fresh install và production handoff; README phụ trong
+  `supabase/` đã được gộp và xóa.
+
+### Security
+- Migration fail-closed nếu `accounts` có bất kỳ row nào, nên giả định “Vault trống” sai không thể
+  âm thầm xóa dữ liệu.
+- Request cũ không được commit state sau Lock/sign-out/đổi user. Whole-row update/delete dùng
+  `updated_at` làm revision; conflict giữa hai tab bị chặn thay vì ghi đè ciphertext mới hơn.
+- Thiếu `vault_config` trong khi còn ciphertext là hard error; không được tạo DEK thay thế.
+- Quyền `authenticated` bị revoke mặc định rộng rồi chỉ cấp CRUD cho `accounts` và
+  SELECT/INSERT cho `vault_config`; favicon ngoài mạng mặc định tắt; input secret mặc định che.
+
+### Known limits
+- Chưa có export/restore, đổi passphrase, rotate DEK, inactivity auto-lock, clipboard auto-clear
+  hoặc TOTP generator. Không dùng bản này làm bản sao duy nhất của secret quan trọng.
+
 ## v6.1.0 — 2026-08-08
 > **`/tasks` full-bleed + khối "Đã hoàn thành" tách khung riêng.** Trang bỏ khổ đọc 900px, chiếm trọn
 > cả bề ngang lẫn bề dọc body; nút Thêm lên hàng tab; header nhóm hết nhạt; khối đã xong đổi hẳn ngôn

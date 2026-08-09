@@ -9,7 +9,8 @@
 
 > **v6.2.0 (2026-08-09):** Vault chuyển sang full-content encryption: một AES-GCM ciphertext cho mỗi
 > account, PBKDF2-SHA256 600.000 vòng, envelope KEK/DEK và khóa phiên. Code + local DB + auth/RLS smoke
-> đã xong; production vẫn do user tự chạy.
+> đã xong; security review đã khóa race sau Lock, lost update giữa hai tab và ACL thừa; production vẫn
+> do user tự chạy.
 
 > ⚠️ Bảng version ở cuối file **thiếu v4.23.0 → v4.31.0** (nhảy từ v4.26.1 sang v5.0.0) — sai lệch
 > có từ trước, chưa fix vì ngoài scope. Nguồn đầy đủ: `CHANGELOG.md`.

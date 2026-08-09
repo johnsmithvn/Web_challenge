@@ -208,7 +208,7 @@ nút hoặc contract DB để tạo parent group mới.
 
 **10 bảng chính + 1 junction (11 bảng Finance).** RLS bật hết. Bảng con (transactions/bills/loans/cards/goals/deposits/
 income/shortcuts/budgets/category_overrides/junction) policy `FOR ALL USING (user_id = auth.uid())`; junction kiểm
-ownership 2 phía như `account_tags`. File có block VERIFY + 3 phép thử phải-báo-lỗi như Vault.
+ownership 2 phía như `task_tags`. File có block VERIFY + 3 phép thử phải-báo-lỗi như Vault.
 
 ---
 
