@@ -75,7 +75,33 @@ Mọi file được upload qua **Google Drive Service Account** (Vercel serverle
 
 ## 🗄 Database Setup (Supabase)
 
-### Cài lần đầu (Fresh Install)
+### Local development
+
+Docker phải đang chạy. Từ thư mục dự án:
+
+```bash
+npm run db:local:start
+npm run db:local:reset
+npm run db:local:status
+```
+
+Ba migration trong `supabase/migrations/` sẽ dựng lại toàn bộ 31 bảng theo đúng thứ tự
+base → Vault → Finance. Sau lệnh `db:local:start`, tạo file `.env.development.local`
+(file này được Git bỏ qua) bằng URL và Publishable key hiện trong kết quả:
+
+```env
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_ANON_KEY=<local Publishable key>
+```
+
+Vite sẽ ưu tiên file này trong development; `.env.local` hosted vẫn được giữ nguyên cho
+môi trường hiện có.
+
+> Chỉ dùng các script `db:local:*`. Không chạy `supabase db push`,
+> `supabase db reset --linked` hoặc truyền hosted `--db-url`. Production từng được cập nhật
+> thủ công qua SQL Editor nên chưa ghi nhận các timestamp baseline này.
+
+### Hosted project mới (Fresh Install)
 
 Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 
