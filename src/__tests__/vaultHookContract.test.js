@@ -32,5 +32,13 @@ assert.match(
   hook,
   /if \(!data\) \{[\s\S]*count > 0[\s\S]*Vault configuration is missing/
 );
+// Gộp template 2026-08-11: item cũ lưu `tpl: 'login'` phải được alias sang
+// `account` trong cleanItem — chạy cả lúc đọc và lúc ghi, nên item cũ hiện đúng
+// loại và tự lưu key mới. Bỏ dòng này là item cũ rơi về kicker "Item · ···".
+assert.match(
+  hook,
+  /tpl: item\.tpl === 'login' \? 'account' : \(item\.tpl \|\| 'account'\)/,
+  'legacy tpl key must alias to the merged one inside cleanItem'
+);
 
 console.log('vault hook security contract: OK');

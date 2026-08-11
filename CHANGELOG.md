@@ -1,5 +1,43 @@
 # CHANGELOG
 
+## v6.3.0 — 2026-08-11
+> **Vault UX + gộp template, KHÔNG đổi schema.** Không có migration SQL nào trong bản này: mọi thay đổi
+> nằm ở client và ở nội dung encrypted payload. Deploy frontend là đủ.
+
+### Changed
+- **Gộp `Website login` + `Platform account` thành một loại `Account`, template Vault còn 9:** hai
+  template cũ cùng một hình dạng dữ liệu (url + username + password), chỉ khác số field điền sẵn, nên
+  tách ra chỉ làm chip filter mất ý nghĩa (item chia nhóm theo "lúc tạo bấm cái nào") và sinh sẵn 10
+  backup code rác cho item không dùng tới. Loại còn lại giữ key `account`, nhãn `Account · ACC`, field
+  thu về bộ gọn 4 field và bỏ `codes: 10` — **không ảnh hưởng item đã tạo**, template chỉ điền sẵn lúc
+  `createItem`.
+- **Item cũ lưu `tpl: 'login'` được đồng bộ hai tầng:** alias trong `cleanItem` (chạy cả lúc đọc và
+  lúc ghi) làm UI đúng ngay từ lần unlock đầu; thêm một pass ghi lại **một lần mỗi lần unlock** để
+  ciphertext cũng mang key mới, dùng `writeItem` nên không sinh dòng History (dọn nội bộ, không phải
+  thay đổi do user). Cả pass đó, cờ `staleTpl` và alias đều là **tạm** — xoá khi không còn item nào lưu
+  key cũ. Hệ quả một lần: item được ghi lại sẽ có `updated_at` mới, tức "Updated hôm nay"; mốc sửa thật
+  vẫn còn trong History vì mỗi dòng log có timestamp riêng.
+- **`tpl` nằm trong ciphertext nên KHÔNG có cách migration bằng SQL:** Supabase không có key. Mọi
+  migration nội dung Vault buộc phải chạy client-side sau unlock — ghi lại trong `_merge` của
+  `account-templates.json` để lần sau không ai đi tìm file `.sql`.
+
+### Added
+- **Đổi Type của item ngay trong chế độ Edit:** select ở vị trí kicker. Đổi type KHÔNG thêm/bớt field
+  (field thuộc item, template chỉ điền sẵn lúc tạo) nên là thao tác không mất dữ liệu, và có vào
+  History qua `diffLog`. Trước đây tạo sai loại thì chỉ còn cách xoá và tạo lại.
+- **Sắp xếp thứ tự field trong Vault:** ở chế độ Edit, kéo thả bằng handle bên trái hoặc dùng nút mũi
+  tên lên/xuống. Thứ tự nằm trong encrypted payload nên lưu chung với item, không có cột `position`.
+  `draggable` chỉ đặt trên handle (không trên cả row) để không cướp thao tác bôi đen text trong input,
+  và `dragstart` có `setData` để Firefox chịu start drag.
+
+### Fixed
+- **Finance — nhãn "Hôm qua" lệch 1 ngày ở GMT+7:** `dayLabel` trong `ListScreen` tính ngày hôm qua
+  bằng `toISOString()` (UTC) nên nhãn rơi vào hôm-trước-hôm-qua; đổi sang `toDateStr()`. Đây là chỗ
+  UTC-date cuối cùng còn sót của Milestone 3.
+- **Vault — logo dịch vụ không hiện trên production:** `faviconCandidates` giữ nguyên scheme user gõ,
+  nên field Website dạng `http://` sinh ảnh `http://…/favicon.ico` → https prod chặn mixed-content im
+  lặng (localhost http thì vẫn load, vì thế chỉ hỏng ở prod). Giờ luôn dựng origin bằng `https://`.
+
 ## v6.2.0 — 2026-08-09
 > **Account Vault chuyển từ schema plaintext sang full-content encryption phía client.** Mỗi item là
 > một AES-256-GCM ciphertext; production migration được bàn giao để user tự chạy và chưa được agent

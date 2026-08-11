@@ -76,6 +76,18 @@ export default function AccountDetail({
     if (ok) setDraft(null);
   };
 
+  const [draggedFieldIdx, setDraggedFieldIdx] = useState(null);
+  const [dragOverFieldIdx, setDragOverFieldIdx] = useState(null);
+
+  // moveField: Thay đổi vị trí field trong bản nháp (Reorder)
+  const moveField = (fromIdx, toIdx) => {
+    if (toIdx < 0 || toIdx >= (draft?.fields?.length || 0) || fromIdx === toIdx) return;
+    patch((d) => {
+      const [moved] = d.fields.splice(fromIdx, 1);
+      d.fields.splice(toIdx, 0, moved);
+    });
+  };
+
   const codes = shown.codes || [];
   const showCodes = codes.length > 0 || shown.auth.some((a) => a.kind === 'codes');
 
@@ -87,7 +99,23 @@ export default function AccountDetail({
           {/* CSS ẩn nút này từ 900px trở lên — desktop có cả 2 pane cùng lúc */}
           <button className="acc-btn acc-btn--ghost acc-back" onClick={onBack}>← All items</button>
 
-          <div className="acc-title__kicker">{tpl?.name || 'Item'} · {tpl?.code || '···'}</div>
+          {/* Đổi Type KHÔNG thêm/bớt field: field thuộc item, template chỉ điền sẵn
+              lúc tạo. Mọi `tpl` đọc lên đều là key hợp lệ nhờ alias trong
+              cleanItem (useAccounts.js), nên select luôn khớp một option. */}
+          {editing ? (
+            <select
+              className="acc-select acc-select--tpl"
+              value={shown.tpl}
+              onChange={(e) => patch((d) => { d.tpl = e.target.value; })}
+              aria-label="Item type"
+            >
+              {TEMPLATES.map((t) => (
+                <option key={t.key} value={t.key}>{t.name} · {t.code}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="acc-title__kicker">{tpl?.name || 'Item'} · {tpl?.code || '···'}</div>
+          )}
 
           {editing ? (
             <input
@@ -150,9 +178,33 @@ export default function AccountDetail({
           {shown.fields.map((f, idx) => (
             <FieldRow
               key={f.id}
-              field={f} idx={idx} editing={editing} items={items} ownerId={item.id}
+              field={f} idx={idx} totalFields={shown.fields.length} editing={editing} items={items} ownerId={item.id}
               revealed={!!revealed[f.id]} copied={copied}
               onCopy={onCopy} onToggleReveal={onToggleReveal} onOpen={onOpen} patch={patch}
+              onMoveField={moveField}
+              isDragging={draggedFieldIdx === idx}
+              isDragOver={dragOverFieldIdx === idx}
+              // Firefox KHÔNG start drag nếu dragstart không setData — đừng bỏ dòng đó.
+              onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', String(idx));
+                e.dataTransfer.effectAllowed = 'move';
+                setDraggedFieldIdx(idx);
+              }}
+              // Chỉ nhận drag do chính handle khởi tạo. Không gác thì kéo text
+              // trong input value cũng bubble lên đây → đổi thứ tự ngoài ý muốn.
+              onDragOver={(e) => {
+                if (draggedFieldIdx === null) return;
+                e.preventDefault();
+                setDragOverFieldIdx(idx);
+              }}
+              onDragEnd={() => { setDraggedFieldIdx(null); setDragOverFieldIdx(null); }}
+              onDrop={(e) => {
+                if (draggedFieldIdx === null) return;
+                e.preventDefault();
+                if (draggedFieldIdx !== idx) moveField(draggedFieldIdx, idx);
+                setDraggedFieldIdx(null);
+                setDragOverFieldIdx(null);
+              }}
             />
           ))}
           {shown.fields.length === 0 && (
@@ -365,8 +417,9 @@ function CardPreview({ item, revealed }) {
 }
 
 /* ══ Một dòng field ══════════════════════════════════════════════ */
-function FieldRow({ field: f, idx, editing, items, ownerId, revealed, copied,
-  onCopy, onToggleReveal, onOpen, patch }) {
+function FieldRow({ field: f, idx, totalFields, editing, items, ownerId, revealed, copied,
+  onCopy, onToggleReveal, onOpen, patch, onMoveField,
+  isDragging, isDragOver, onDragStart, onDragOver, onDragEnd, onDrop }) {
   const secret = isSecretType(f.type);
 
   const setType = (v) => patch((d) => {
@@ -378,7 +431,45 @@ function FieldRow({ field: f, idx, editing, items, ownerId, revealed, copied,
   });
 
   return (
-    <div className={`acc-field${editing ? ' acc-field--edit' : ''}`}>
+    <div
+      className={`acc-field${editing ? ' acc-field--edit' : ''}${isDragging ? ' acc-field--dragging' : ''}${isDragOver ? ' acc-field--dragover' : ''}`}
+      onDragOver={editing ? onDragOver : undefined}
+      onDragEnd={editing ? onDragEnd : undefined}
+      onDrop={editing ? onDrop : undefined}
+    >
+      {/* Cột 0 (chế độ sửa): Nút + handle kéo thả vị trí.
+          `draggable` nằm ở ĐÚNG handle, KHÔNG ở cả row: row chứa input, mà
+          draggable trên ancestor thì cướp luôn thao tác bôi đen text bằng chuột
+          (Firefox/Safari) và biến mọi cú kéo text thành lệnh đổi thứ tự. */}
+      {editing && (
+        <div className="acc-field__reorder">
+          <span className="acc-field__drag-handle" title="Kéo thả để sắp xếp vị trí"
+            draggable onDragStart={onDragStart}>
+            <AppIcon name="dots" size={16} />
+          </span>
+          <button
+            type="button"
+            className="acc-act acc-act--icon"
+            title="Di chuyển lên"
+            aria-label="Di chuyển lên"
+            disabled={idx === 0}
+            onClick={() => onMoveField(idx, idx - 1)}
+          >
+            <AppIcon name="arrowUp" size={12} />
+          </button>
+          <button
+            type="button"
+            className="acc-act acc-act--icon"
+            title="Di chuyển xuống"
+            aria-label="Di chuyển xuống"
+            disabled={idx === totalFields - 1}
+            onClick={() => onMoveField(idx, idx + 1)}
+          >
+            <AppIcon name="arrowDown" size={12} />
+          </button>
+        </div>
+      )}
+
       {/* Cột 1: nhãn */}
       <div className="acc-field__label">
         {editing ? (

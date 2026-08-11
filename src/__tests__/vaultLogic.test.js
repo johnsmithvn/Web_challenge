@@ -206,6 +206,12 @@ assert.deepEqual(faviconCandidates('https://www.bank.com/login?a=1'), [
   'https://www.bank.com/apple-touch-icon.png',
   'https://www.bank.com/favicon.ico',
 ]);
+// http:// PHẢI được nâng lên https: prod chạy https, ảnh http bị chặn
+// mixed-content im lặng → icon "không hoạt động trên prod mà local vẫn chạy".
+assert.deepEqual(faviconCandidates('http://insecure.com/login'), [
+  'https://insecure.com/apple-touch-icon.png',
+  'https://insecure.com/favicon.ico',
+]);
 assert.deepEqual(faviconCandidates('javascript:alert(1)'), []);
 assert.deepEqual(faviconCandidates(''), []);
 

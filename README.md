@@ -39,6 +39,16 @@ npm test
 File [`.env.local.example`](./.env.local.example) liệt kê biến bắt buộc và tùy chọn. Copy sang
 `.env.local` rồi điền giá trị phù hợp môi trường.
 
+### Các file `.env` trong project
+
+| File | Vai trò | Git | Dùng khi |
+|------|---------|:---:|----------|
+| `.env.local.example` | **Mẫu** — liệt kê tên biến, không chứa secret | ✅ Tracked | Người mới clone xem để biết cần điền gì |
+| `.env.local` | **Production** — trỏ tới Supabase cloud | ❌ Ignored | `npm run dev` kết nối DB production |
+| `.env.development.local` | **Local Docker** — trỏ tới `localhost:54321` | ❌ Ignored | `npm run dev` kết nối DB local (Docker) |
+
+> Vite ưu tiên: `.env.development.local` > `.env.local` trong dev mode. Khi có cả 2 file, app tự dùng local Docker. Xoá `.env.development.local` nếu muốn dev trực tiếp trên production.
+
 ### Bắt buộc
 
 | Biến | Ở đâu | Mục đích |
@@ -54,9 +64,7 @@ File [`.env.local.example`](./.env.local.example) liệt kê biến bắt buộc
 
 ### Tùy chọn — Google Drive (upload ảnh / audio / video / file)
 
-Mọi file được upload qua **Google Drive Service Account** (Vercel serverless
-[`api/upload.js`](./api/upload.js)) và phát lại qua proxy [`api/stream.js`](./api/stream.js).
-Upload **yêu cầu người dùng đã đăng nhập** (xác thực Supabase JWT).
+Mọi file được upload qua **Google Drive Service Account** (Vercel serverless [`api/upload.js`](./api/upload.js)) và phát lại qua proxy [`api/stream.js`](./api/stream.js). Upload **yêu cầu người dùng đã đăng nhập** (xác thực Supabase JWT).
 
 | Biến | Ở đâu | Mục đích |
 |------|--------|----------|

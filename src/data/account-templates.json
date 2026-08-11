@@ -1,14 +1,15 @@
 {
   "_note": "Mẫu item cho /accounts (RULES §6 — 1 JSON per feature). Port từ bộ design handoff Keyplate. `key` được lưu trong encrypted payload `tpl`; không có CHECK constraint DB nên thêm/bớt mẫu ở đây không cần migration. `code` là mã 3 chữ, không dịch: nó hiện ở kicker, chip filter, chip link và phương thức đăng nhập. `chip` là nhãn ngắn cho thanh filter. `icon` là tên semantic của Phosphor qua AppIcon. `fields` là bộ field điền sẵn khi tạo item mới, user vẫn sửa/thêm/bớt được. `auth` là các phương thức đăng nhập tạo sẵn, phần tử đầu thành `primary`. `codes` = số mã dự phòng sinh sẵn. Chữ giữ tiếng Anh theo quyết định 2026-08-05.",
   "_security": "v6.2 mã hóa toàn bộ template/title/field/auth/code/tag/note/log trong một AES-GCM payload trước khi gửi Supabase; password/secret vẫn được mask mặc định ở UI.",
+  "_merge": "2026-08-11: `login` (Website login) và `account` (Platform account) là CÙNG một hình dạng dữ liệu (url + username + password), chỉ khác số field điền sẵn → gộp còn MỘT loại `account`, nhãn `Account · ACC`. Tách ra gây 2 tác hại thật: chip filter chia item theo tiêu chí 'lúc tạo bấm cái nào' nên vô nghĩa, và `account` cũ có `codes: 10` nên sinh sẵn 10 backup code cho MỌI item → mã bịa nằm lẫn mã thật. Bộ field/auth của entry này đã thu về bộ gọn và bỏ `codes`; đổi bộ field KHÔNG ảnh hưởng item đã tạo vì template chỉ điền sẵn lúc createItem.\n\nItem cũ còn lưu `tpl: 'login'` trong ciphertext được ALIAS sang `account` trong `cleanItem` (useAccounts.js) — chạy cả lúc đọc và lúc ghi, nên item hiện đúng loại ngay và tự lưu key mới ở lần Save kế tiếp. KHÔNG cần entry legacy, KHÔNG cần migration hàng loạt. `tpl` nằm trong ciphertext nên SQL cũng không migration được: Supabase không có key, mọi migration nội dung Vault buộc phải chạy client-side sau unlock. Xoá alias đó chỉ khi chắc chắn không còn item nào lưu key `login`.",
 
   "templates": [
     {
-      "key": "login",
-      "name": "Website login",
-      "code": "LGN",
-      "chip": "Logins",
-      "summary": "URL, username, password and linked mailbox.",
+      "key": "account",
+      "name": "Account",
+      "code": "ACC",
+      "chip": "Accounts",
+      "summary": "Website, username, password — bank, app or platform account.",
       "icon": "lock",
       "fields": [
         { "label": "Website", "type": "url" },
@@ -17,24 +18,6 @@
         { "label": "Recovery email", "type": "link" }
       ],
       "auth": ["password"]
-    },
-    {
-      "key": "account",
-      "name": "Platform account",
-      "code": "ACC",
-      "chip": "Accounts",
-      "summary": "Multi-email, phone, prompts, codes — for Google-scale accounts.",
-      "icon": "user",
-      "fields": [
-        { "label": "Website", "type": "url" },
-        { "label": "Primary email", "type": "multi" },
-        { "label": "Password", "type": "password" },
-        { "label": "Phone numbers", "type": "multi" },
-        { "label": "Recovery email", "type": "link" },
-        { "label": "Linked cards", "type": "link" }
-      ],
-      "auth": ["password", "prompt", "totp", "codes"],
-      "codes": 10
     },
     {
       "key": "card",

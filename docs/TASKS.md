@@ -1,6 +1,6 @@
 # TASKS — Life Hub
 
-**Version:** v6.2.0 · **Updated:** 2026-08-09
+**Version:** v6.3.0 · **Updated:** 2026-08-11
 
 Chỉ giữ việc còn mở. Việc đã hoàn thành xem [`CHANGELOG.md`](../CHANGELOG.md); thứ tự roadmap xem
 [`PLAN.md`](PLAN.md).
@@ -8,32 +8,39 @@ Chỉ giữ việc còn mở. Việc đã hoàn thành xem [`CHANGELOG.md`](../C
 ## 1. Production handoff — user tự chạy
 
 Local đã replay ordered migrations; Vault crypto/contracts và authenticated RLS smoke đã pass.
-Hosted Supabase **chưa được đánh dấu đã nâng v6.0/v6.2**.
 
-- [ ] Xác định schema production hiện tại và đối chiếu ordered chain trong README; không dùng
+**User xác nhận 2026-08-11:** SQL migration đã chạy lên hosted Supabase, frontend v6.2 đã deploy trên
+Vercel, và đã smoke thật Auth/Task/Finance/Vault trên production. Các dòng dưới đây tick theo lời user,
+không phải do agent kiểm chứng.
+
+- [x] Xác định schema production hiện tại và đối chiếu ordered chain trong README; không dùng
   `supabase db push`, linked reset hoặc chạy baseline riêng lẻ.
-- [ ] Trước Vault v6.2, chạy `SELECT COUNT(*) FROM public.accounts` và chỉ tiếp tục khi kết quả `0`.
-- [ ] User chạy đúng SQL còn thiếu theo thứ tự README. Migration Vault phải rollback nếu bảng không trống.
-- [ ] Deploy/redeploy frontend v6.2 ngay sau schema tương thích.
-- [ ] Smoke production: Auth → Task CRUD → năm màn Finance → Vault setup/create/lock/reload/unlock/delete.
+- [x] Trước Vault v6.2, chạy `SELECT COUNT(*) FROM public.accounts` và chỉ tiếp tục khi kết quả `0`.
+- [x] User chạy đúng SQL còn thiếu theo thứ tự README. Migration Vault phải rollback nếu bảng không trống.
+- [x] Deploy/redeploy frontend v6.2 ngay sau schema tương thích.
+- [x] Smoke production: Auth → Task CRUD → năm màn Finance → Vault setup/create/lock/reload/unlock/delete.
 - [ ] Xác nhận network/database chỉ nhận ciphertext cho nội dung Vault, rồi mới ghi production “done”.
+      (Việc còn lại duy nhất của mục 1: mở DevTools → Network trên prod, xem body request `accounts`.)
 
 ## 2. Finance hardening
 
+**User xác nhận 2026-08-11:** đã smoke Finance trên production, kết quả OK. P0/P1 đóng theo lời user;
+agent không tự kiểm chứng được RPC trên hosted DB.
+
 ### P0 — RPC/RLS/transaction
 
-- [ ] Chạy đủ bảy RPC với user authenticated: pay/skip bill, receive income, loan payment, card
+- [x] Chạy đủ bảy RPC với user authenticated: pay/skip bill, receive income, loan payment, card
   statement payment, saving withdrawal và saving move.
-- [ ] Mỗi RPC có happy path, duplicate period, reference khác owner và rollback khi một bước lỗi.
-- [ ] Dọn sạch test data sau smoke; không reset toàn database.
+- [x] Mỗi RPC có happy path, duplicate period, reference khác owner và rollback khi một bước lỗi.
+- [x] Dọn sạch test data sau smoke; không reset toàn database.
 
 ### P1 — liên kết và báo cáo
 
-- [ ] Smoke Task ↔ transaction: chọn/sửa `task_id`; xác nhận không hứa navigation/tổng chi theo Task
+- [x] Smoke Task ↔ transaction: chọn/sửa `task_id`; xác nhận không hứa navigation/tổng chi theo Task
   vì UI chưa có hai feature đó.
-- [ ] Smoke Inbox → transaction/hóa đơn; xác nhận Inbox bị xóa sau conversion và FK source trở về null.
-- [ ] Smoke tag, category override, budget, saving-as-expense preference và CSV export.
-- [ ] Sau sửa/xóa transaction, xác nhận Tổng quan/Ngân sách/Thống kê tính lại đúng kỳ.
+- [x] Smoke Inbox → transaction/hóa đơn; xác nhận Inbox bị xóa sau conversion và FK source trở về null.
+- [x] Smoke tag, category override, budget, saving-as-expense preference và CSV export.
+- [x] Sau sửa/xóa transaction, xác nhận Tổng quan/Ngân sách/Thống kê tính lại đúng kỳ.
 
 ### P2 — UI
 
@@ -42,14 +49,16 @@ Hosted Supabase **chưa được đánh dấu đã nâng v6.0/v6.2**.
 
 ## 3. Correctness còn lại
 
-### Local date
+### Local date — xong 2026-08-11
 
-Các chỗ logic “hôm nay” còn dùng UTC nằm trong Focus, Inbox và Finance list.
+- [x] Đổi `FocusPage` và các phép ngày trong `useFocusTimer` sang `toDateStr()`.
+- [x] Đổi grouping/filter ngày còn sót trong `InboxPage` và `components/finance/ListScreen` sang helper
+  local-date dùng chung. (`ListScreen.dayLabel` là chỗ cuối, sửa 2026-08-11.)
+- [x] Thêm một self-check GMT+7 qua mốc 00:00–06:59 để ngăn regression.
+  (`src/utils/dateUtils.test.js` case 00:30 — đã có sẵn, không cần thêm file test.)
 
-- [ ] Đổi `FocusPage` và các phép ngày trong `useFocusTimer` sang `toDateStr()`.
-- [ ] Đổi grouping/filter ngày còn sót trong `InboxPage` và `components/finance/ListScreen` sang helper
-  local-date dùng chung.
-- [ ] Thêm một self-check GMT+7 qua mốc 00:00–06:59 để ngăn regression.
+`InboxPage:418` còn một `toISOString()` nhưng là mốc **timestamp** so với `created_at` (timestamptz),
+không phải date-string — đúng cách dùng, đừng "dọn" sang `toDateStr()`.
 
 ### Media API smoke
 

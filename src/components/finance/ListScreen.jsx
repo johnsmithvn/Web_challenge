@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { useTags } from '../../hooks/useTags';
 import { parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
+import { toDateStr } from '../../utils/dateUtils';
 import { periodTotals, groupByDate } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon,
@@ -18,8 +19,9 @@ const FILTERS = [
 ];
 
 function dayLabel(dateStr, today) {
-  const yesterday = new Date(new Date(`${today}T00:00:00`).getTime() - 86400000)
-    .toISOString().slice(0, 10);
+  // toDateStr, KHÔNG toISOString: ở GMT+7 toISOString lùi thêm 1 ngày nữa nên
+  // nhãn "Hôm qua" rơi vào hôm-trước-hôm-qua. Xem dateUtils.test.js case 00:30.
+  const yesterday = toDateStr(new Date(new Date(`${today}T00:00:00`).getTime() - 86400000));
   if (dateStr === today) return `Hôm nay · ${new Date(`${dateStr}T00:00:00`).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' })}`;
   if (dateStr === yesterday) return `Hôm qua · ${new Date(`${dateStr}T00:00:00`).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' })}`;
   return new Date(`${dateStr}T00:00:00`).toLocaleDateString('vi-VN',

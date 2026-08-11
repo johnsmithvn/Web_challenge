@@ -162,6 +162,8 @@
 /* Ô nhỏ trong cột hành động của dòng field */
 .acc-select--type { width: 104px; font-size: 12px; flex: none; }
 .acc-select--kind { width: 190px; font-size: 12px; flex: none; }
+/* Đứng ở vị trí kicker (dòng "Account · ACC") nên phải nhỏ như kicker */
+.acc-select--tpl { width: 100%; max-width: 260px; font-size: 12px; margin-bottom: 6px; }
 
 /* ══ Nút ═══════════════════════════════════════════════════════════════════ */
 .acc-btn {
@@ -579,7 +581,52 @@
   background: var(--surface);
   transition: grid-template-columns 200ms ease, padding 200ms ease;
 }
-.acc-field--edit { grid-template-columns: minmax(110px, 160px) minmax(0, 1fr) auto; }
+.acc-field--edit {
+  grid-template-columns: auto minmax(110px, 150px) minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.acc-field__reorder {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-top: 3px;
+  user-select: none;
+}
+.acc-field__drag-handle {
+  cursor: grab;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  border-radius: 4px;
+  transition: color 150ms ease, background 150ms ease;
+}
+.acc-field__drag-handle:hover {
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+}
+.acc-field__drag-handle:active {
+  cursor: grabbing;
+}
+.acc-field--dragging {
+  opacity: 0.4;
+  background: color-mix(in srgb, var(--surface) 80%, var(--color-accent-500));
+}
+/* inset shadow chứ KHÔNG border-top: border làm row cao thêm 2px, cả list nhảy
+   dưới con trỏ và drop target chạy khỏi chỗ đang nhắm. */
+.acc-field--dragover {
+  box-shadow: inset 0 2px 0 0 var(--color-accent-500);
+}
+.acc-act--icon {
+  padding: 4px 5px !important;
+  min-width: 0 !important;
+  line-height: 1;
+}
+.acc-act--icon:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
 .acc-field__label {
   font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
   color: color-mix(in srgb, var(--color-text) 50%, transparent);

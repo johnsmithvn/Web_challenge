@@ -309,7 +309,11 @@ export function itemUrl(item) {
 export function faviconCandidates(input) {
   const url = normalizeUrl(input);
   if (!url) return [];
-  const { origin } = new URL(url);
+  // LUÔN https, kể cả khi field Website gõ `http://`: prod chạy https nên ảnh
+  // http bị chặn mixed-content — chặn IM LẶNG, chỉ thấy rơi về plate chữ cái.
+  // Trên localhost (http) thì ảnh http lại load được, nên bug chỉ hiện ở prod.
+  // Site nào không có https thì cũng chỉ mất icon, đã có sẵn 2 tầng fallback.
+  const origin = `https://${new URL(url).host}`;
   return [`${origin}/apple-touch-icon.png`, `${origin}/favicon.ico`];
 }
 
@@ -400,6 +404,11 @@ export function diffLog(before, after, { itemTitles = {}, authLabels = {} } = {}
   }
   if (before.notes !== after.notes) {
     out.push({ text: 'Notes edited', detail: '' });
+  }
+  // Đổi type là đổi NHÃN, không đổi field — nhưng vẫn phải vào log, nếu không
+  // item tự nhiên đổi mã/chip mà History không giải thích được vì sao.
+  if (before.tpl !== after.tpl) {
+    out.push({ text: 'Item type changed', detail: `${before.tpl} → ${after.tpl}` });
   }
 
   // ── Field ──

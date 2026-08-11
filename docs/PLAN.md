@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub
 
-**Current version:** v6.2.0 · **Updated:** 2026-08-09
+**Current version:** v6.3.0 · **Updated:** 2026-08-11
 
 PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy nằm trong [`TASKS.md`](TASKS.md); lịch sử
 đã hoàn thành nằm trong [`CHANGELOG.md`](../CHANGELOG.md).
@@ -9,9 +9,9 @@ PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy n�
 
 | Ưu tiên | Milestone | Trạng thái |
 |---:|---|---|
-| 1 | Production handoff cho ordered schema v6.0/v6.2 + deploy + smoke | User-run; local đã xác minh |
-| 2 | Finance hardening: RPC/RLS/rollback → liên kết → responsive/accessibility QA | Chưa hoàn tất |
-| 3 | Correctness còn lại: local-date trong Focus/Inbox/Finance + smoke upload/stream | Chưa làm |
+| 1 | Production handoff cho ordered schema v6.0/v6.2 + deploy + smoke | SQL + deploy + smoke xong (user, 2026-08-11); còn xác nhận ciphertext trên Network |
+| 2 | Finance hardening: RPC/RLS/rollback → liên kết → responsive/accessibility QA | P0/P1 xong (user smoke production); còn P2 UI/a11y QA |
+| 3 | Correctness còn lại: local-date trong Focus/Inbox/Finance + smoke upload/stream | Local-date xong 2026-08-11; còn media smoke |
 | 4 | Vault vận hành: export/restore → đổi passphrase/version → rotate DEK | Follow-up |
 | 5 | Vault UX security: inactivity auto-lock, clipboard clear, TOTP | Follow-up |
 | 6 | Task model và refactor UI lớn | Icebox; cần quyết định riêng |
@@ -43,7 +43,8 @@ này chỉ làm khi có nhu cầu dùng thật.
 
 ## Milestone 3 — correctness và media
 
-- Thống nhất mọi logic “hôm nay” còn sót sang `toDateStr()` để không lệch UTC ở GMT+7.
+- ~~Thống nhất mọi logic “hôm nay” còn sót sang `toDateStr()`~~ — xong 2026-08-11 (`ListScreen.dayLabel`
+  là chỗ cuối). Chỉ còn mốc timestamp so với `timestamptz`, không được đổi.
 - Smoke upload ảnh, audio, Range/206 và unauthorized/401 trên môi trường có Drive env.
 - Chỉ đơn giản hóa multipart/stream implementation nếu smoke chứng minh native API thay thế an toàn.
 
