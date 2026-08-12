@@ -587,6 +587,18 @@
   grid-template-columns: 18px minmax(110px, 150px) minmax(0, 1fr) auto;
   gap: 8px;
 }
+/* ── Chọn logo cho item (chỉ chế độ sửa) ─────────────────────────── */
+.acc-logoedit {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 10.2px;
+}
+.acc-logoedit label.acc-act { cursor: pointer; }
+.acc-logoedit__hint {
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+.acc-logoedit__err { font-size: 11.5px; color: #ef6a6a; }
+
 .acc-field__drag-handle {
   cursor: grab;
   color: color-mix(in srgb, var(--color-text) 28%, transparent);

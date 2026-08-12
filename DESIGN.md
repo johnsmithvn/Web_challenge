@@ -1045,28 +1045,34 @@ bar · two-pane body (item list · detail), breakpoint 900px.
 - **`.acc-avatar` — the list row's 36px identity plate, and a deliberate
   departure from the handoff.** The prototype puts the 3-letter template code in
   this slot; with twenty `ACC` items that makes every row identical and unscannable.
-  So the slot holds, in falling order: the service's own favicon
-  (`/apple-touch-icon.png` → `/favicon.ico`), then a **letter plate**. The code
-  survives as a small `.acc-row__code` badge beside the title — it shares one rule
-  with `.acc-link__code` so "item type" reads the same everywhere.
+  So the slot holds, in falling order: the item's **stored logo** (a 48×48 PNG data
+  URI the user picked in edit mode, living inside the encrypted payload), then a
+  **letter plate**. The code survives as a small `.acc-row__code` badge beside the
+  title — it shares one rule with `.acc-link__code` so "item type" reads the same
+  everywhere.
   - **Colour is a hashed hue, not a brand palette.** JS returns only a hue
     (`avatarHue`) into `--h`; CSS picks the lightness per theme
     (`hsl(var(--h) 62% 70%)` dark / `58% 36%` light), because a single letter
     needs different lightness on a dark vs light ground. Deliberately not the
     seven Life Hub brand tokens — those are tuned to the app's purple/cyan and
     would fight the vault's violet.
-  - **`img` sits at `68%` with `object-fit: contain`,** not edge to edge. Most
-    `favicon.ico` files are 16px; stretching one to fill 36px turns it to mush,
+  - **`img` sits at `68%` with `object-fit: contain`,** not edge to edge. Logos are
+    square-ish marks, not photos; stretching one to fill 36px turns it to mush,
     while insetting it reads as a logo on a plate.
-  - **The plate is identical across all three tiers.** Falling back to a letter is
-    a *normal state, not an error state* — many sites have no icon and the console
-    will show 404s. It must look deliberate, which is why nothing about the plate
-    changes when the image is missing.
-  - Icons are fetched **straight from each service's own origin, never through a
-    third-party favicon service.** This is a vault: handing one aggregator the
-    full list of domains you hold accounts at is self-disclosure of which bank and
-    which exchange you use. `Logos` starts off for every unlocked session; the
-    toggle only changes React state and is never persisted to browser storage.
+  - **The plate is identical in both tiers.** Falling back to a letter is a *normal
+    state, not an error state* — an item simply may not have a logo yet. It must
+    look deliberate, which is why nothing about the plate changes when the image is
+    absent.
+  - **Nothing here touches the network.** Earlier versions fetched each service's
+    own favicon (`/apple-touch-icon.png` → `/favicon.ico`) behind a `Logos` toggle;
+    that whole path is gone. Opening a vault meant N requests to N domains, so those
+    domains learned this IP had just opened a vault holding their account — a toggle
+    only delays that, it does not remove it. And items with no URL field (bank
+    cards, IDs) could never get a logo at all. The user picks the image once, it is
+    encrypted with the item, works offline, and applies to any item type.
+    Never reintroduce a favicon aggregator (google.com/s2, DuckDuckGo, Clearbit,
+    logo.dev): handing one party the full list of domains you hold accounts at is
+    self-disclosure of which bank and which exchange you use.
 - **`.acc-link`** — the pointer to another item: accent-alpha pill with a small
   code badge, target title, borrowed value and a trailing `↗`. Pill because it
   navigates. A link whose target is gone becomes `.acc-link--dead` (divider

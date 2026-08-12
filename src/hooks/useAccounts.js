@@ -18,6 +18,10 @@ const AUTH_LABELS = Object.fromEntries(
 );
 const LOG_LIMIT = 500;
 const ITEM_SCHEMA = 1;
+// Logo item = data URI PNG 48×48 do canvas xuất ra (xem fileToLogo trong
+// AccountDetail). Cap ở ĐÂY, không chỉ ở UI: cleanItem là chỗ duy nhất mọi đường
+// ghi đều đi qua, và payload phình lên là mỗi lần mở vault phải tải + giải mã lại.
+const LOGO_LIMIT = 16 * 1024;
 const VAULT_CONFLICT = 'This Vault item changed in another session. Reload and unlock again before retrying.';
 
 function cleanItem(item) {
@@ -30,6 +34,7 @@ function cleanItem(item) {
     // đó rơi về kicker "Item · ···" và biến khỏi chip filter. Giá bằng 0, đừng dọn.
     tpl: item.tpl === 'login' ? 'account' : (item.tpl || 'account'),
     favorite: !!item.favorite,
+    logo: typeof item.logo === 'string' && item.logo.length <= LOGO_LIMIT ? item.logo : '',
     notes: item.notes || '',
     tags: Array.isArray(item.tags) ? item.tags : [],
     fields: Array.isArray(item.fields) ? item.fields : [],

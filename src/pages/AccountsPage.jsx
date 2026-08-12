@@ -32,11 +32,6 @@ import '../styles/accounts.css';
 const { templates: TEMPLATES, filterIcons: FILTER_ICONS } = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 
-/**
- * Có tải logo dịch vụ hay không. Ảnh lấy TRỰC TIẾP từ domain của chính dịch vụ
- * (không qua bên thứ ba — xem faviconCandidates), nhưng vẫn là request ra ngoài
- * từ một trang vault, nên phải tắt được. Mặc định tắt.
- */
 export default function AccountsPage() {
   const { user } = useAuth();
   const { items, isLoading, saveItem, createItem, deleteItem, toggleFavorite,
@@ -56,10 +51,7 @@ export default function AccountsPage() {
   const [revealed, setRevealed] = useState({});   // { [fieldId]: true }
   const [copied, setCopied] = useState(null);     // 1 key tại một thời điểm
   const [pendingTags, setPendingTags] = useState([]);
-  const [useFavicon, setUseFavicon] = useState(false);
   const copyTimer = useRef(null);
-
-  const toggleFavicon = () => setUseFavicon((value) => !value);
 
   useEffect(() => () => clearTimeout(copyTimer.current), []);
 
@@ -166,7 +158,6 @@ export default function AccountsPage() {
     setCopied(null);
     setPickerOpen(false);
     setPendingTags([]);
-    setUseFavicon(false);
     lockVault();
   };
 
@@ -256,14 +247,6 @@ export default function AccountsPage() {
         <div className="acc-head__right">
           <span className="acc-head__lock">Unlocked · key in memory</span>
           <button className="acc-act" onClick={handleLock}>Lock</button>
-          <button
-            className={`acc-act${useFavicon ? ' acc-act--on' : ''}`}
-            onClick={toggleFavicon}
-            aria-pressed={useFavicon}
-            title={useFavicon
-              ? 'Loading each service icon straight from its own domain (never through a third-party favicon service). Click to stop outbound icon requests.'
-              : 'Letter plates only — no outbound icon requests. Click to load service icons for this unlocked session.'}
-          >Logos</button>
           <button className="acc-btn" onClick={() => setPickerOpen(true)}>New item</button>
         </div>
       </header>
@@ -344,8 +327,7 @@ export default function AccountsPage() {
           )}
 
           {visible.map((i) => (
-            <ListRow key={i.id} item={i} on={i.id === selectedId}
-              useFavicon={useFavicon} onOpen={() => open(i.id)} />
+            <ListRow key={i.id} item={i} on={i.id === selectedId} onOpen={() => open(i.id)} />
           ))}
         </section>
 
@@ -533,11 +515,11 @@ function Chip({ icon, label, count, on, onClick }) {
    mà cùng in "ACC" thì không quét được bằng mắt. Mã vẫn giữ, xuống thành badge
    nhỏ cạnh tiêu đề: nó vẫn cần để nhận loại, và chip link + dòng sign-in đang
    dùng cùng ngôn ngữ thị giác đó. */
-function ListRow({ item, on, useFavicon, onOpen }) {
+function ListRow({ item, on, onOpen }) {
   const tpl = TPL_BY_KEY.get(item.tpl);
   return (
     <button className={`acc-row${on ? ' acc-row--on' : ''}`} onClick={onOpen}>
-      <AccountAvatar item={item} useFavicon={useFavicon} />
+      <AccountAvatar item={item} />
       <span className="acc-row__body">
         <span className="acc-row__top">
           <span className="acc-row__title">{item.title}</span>

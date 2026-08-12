@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import {
   TYPES, isSecretType, maskValue, scorePassword, parseCodes, codeSheet,
   linkableValues, matchesQuery, itemSubtitle, diffLog, formatStamp, relativeUpdated,
-  normalizeUrl, urlHost, itemUrl, faviconCandidates, avatarHue, avatarLetter,
+  normalizeUrl, urlHost, avatarHue, avatarLetter,
   generatePassword,
 } from '../utils/vaultLogic.js';
 
@@ -182,38 +182,6 @@ assert.equal(urlHost('https://www.google.com/x'), 'google.com');
 assert.equal(urlHost('shopee.vn'), 'shopee.vn');
 assert.equal(urlHost('javascript:alert(1)'), '');
 assert.equal(urlHost(''), '');
-
-/* ── itemUrl / faviconCandidates ──────────────────────────────────────── */
-// Lấy field type='url' ĐẦU TIÊN có giá trị, bỏ qua field rỗng
-assert.equal(itemUrl({
-  fields: [
-    { type: 'text', value: 'not-a-url.com' },
-    { type: 'url', value: '   ' },
-    { type: 'url', value: 'figma.com' },
-    { type: 'url', value: 'later.com' },
-  ],
-}), 'https://figma.com/');
-assert.equal(itemUrl({ fields: [{ type: 'text', value: 'x.com' }] }), null);
-assert.equal(itemUrl({ fields: [] }), null);
-assert.equal(itemUrl(null), null);
-
-assert.deepEqual(faviconCandidates('figma.com'), [
-  'https://figma.com/apple-touch-icon.png',
-  'https://figma.com/favicon.ico',
-]);
-// Origin bỏ path/query — favicon nằm ở gốc site, không nằm cạnh trang con
-assert.deepEqual(faviconCandidates('https://www.bank.com/login?a=1'), [
-  'https://www.bank.com/apple-touch-icon.png',
-  'https://www.bank.com/favicon.ico',
-]);
-// http:// PHẢI được nâng lên https: prod chạy https, ảnh http bị chặn
-// mixed-content im lặng → icon "không hoạt động trên prod mà local vẫn chạy".
-assert.deepEqual(faviconCandidates('http://insecure.com/login'), [
-  'https://insecure.com/apple-touch-icon.png',
-  'https://insecure.com/favicon.ico',
-]);
-assert.deepEqual(faviconCandidates('javascript:alert(1)'), []);
-assert.deepEqual(faviconCandidates(''), []);
 
 /* ── avatarHue / avatarLetter ─────────────────────────────────────────── */
 // Ổn định: cùng tên luôn ra cùng hue ở mọi máy, mọi lần chạy

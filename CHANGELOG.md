@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Added
+- **Logo riêng cho từng item, lưu mã hoá trong payload:** Edit → `Choose a logo` → ảnh được **vẽ lại
+  qua canvas thành PNG 48×48** rồi lưu dạng data URI trong encrypted payload. Vẽ lại nghĩa là không giữ
+  một byte nào của file gốc, nên script trong SVG / EXIF / payload lạ bay hết — **bước thu nhỏ đồng thời
+  là bước diệt trùng**, và vì thế tuyệt đối không lưu bytes gốc.
+  - Cố ý **KHÔNG** dùng Supabase Storage hay Google Drive: URL công khai ở hai chỗ đó là tự khai user có
+    tài khoản dịch vụ nào, phá mô hình threat của Vault. Đổi lại phải chịu base64 hai lần — đáng.
+  - Cap **16 KB** đặt ở `cleanItem` (chỗ duy nhất mọi đường ghi đều đi qua), không chỉ ở UI. Payload
+    phình là mỗi lần mở vault phải tải + giải mã lại: 50 item × ~4 KB = 200 KB/lần unlock, tức ~0.8%
+    quota egress free — chi phí thật là **0.1–0.3s tốc độ load**, không phải quota.
+  - `AccountAvatar` còn đúng 2 tầng: logo đã lưu → plate màu + chữ cái. **Không tầng nào gọi mạng.**
+
 ### Changed
 - **Sắp xếp field: 3 icon → 1 grip.** Handle + 2 nút mũi tên ăn gần hết cột nhãn. Giờ chỉ còn một grip
   (`DotsSixVertical`) rộng 18px, là `<button>` nên tab tới được và **↑ / ↓ khi đang focus cũng đổi vị
@@ -27,6 +39,16 @@
   Service, Full name, Host, Product) nên không có đường lôi giá trị secret vào dropdown.
 
 ### Removed
+- **Xoá hẳn cơ chế lấy favicon trực tiếp: Vault không còn gọi mạng ra ngoài.** Bỏ `faviconCandidates`,
+  `itemUrl`, nút `Logos`, state `useFavicon` và toàn bộ đường truyền prop của nó. Lý do:
+  - Mỗi lần mở vault là **N request tới N domain** → chính các domain đó biết IP này vừa mở một vault có
+    tài khoản của họ. Nút toggle chỉ **trì hoãn** chuyện đó, không loại bỏ nó, và nó reset mỗi lần reload
+    nên thực tế user tưởng tính năng không hoạt động.
+  - Chỉ đoán được 2 đường `/apple-touch-icon.png` và `/favicon.ico` → đa số site 404, tức gọi mạng mà
+    phần lớn không ra kết quả.
+  - Item không có field URL (thẻ ngân hàng, giấy tờ) thì **không bao giờ** có logo.
+  Logo lưu trong payload xử được cả ba. **Không dựng lại favicon aggregator** — đã ghi lý do vào
+  `AccountAvatar.jsx`, `DESIGN.md` và `docs/FEATURES.md`.
 - **Dọn pass đồng bộ key template:** pass ghi lại `tpl` một-lần-mỗi-unlock (v6.3.0) đã chạy xong trên
   production nên đã xoá cùng cờ transient `staleTpl` trong `fetchAll`. **Giữ lại một dòng shim** alias
   `login` → `account` trong `cleanItem`: nó là thứ duy nhất chặn trường hợp sót một item lưu key cũ —

@@ -197,8 +197,18 @@ nhập không tự trở thành mẫu số ngân sách.
 - Search/filter chỉ chạy client-side sau decrypt. Vault tag không đi qua bảng `tags`.
 - Link item là pointer trong encrypted JSON; target đã xóa hiển thị “Missing item”.
 - Bố cục hai pane, chuyển thành list/detail một cột ở container hẹp.
-- Logos mặc định tắt. Nếu user bật, favicon được gọi thẳng tới origin của service trong phiên unlock
-  hiện tại; không dùng aggregator và không persist lựa chọn.
+- **Logo item do user tự chọn, lưu mã hoá, KHÔNG gọi mạng.** Edit → `Choose a logo` → ảnh được vẽ lại
+  qua canvas thành PNG 48×48 rồi lưu dạng data URI trong encrypted payload (cap 16 KB ở `cleanItem`).
+  Item chưa đặt logo thì hiện plate màu + chữ cái đầu — trạng thái bình thường, không phải lỗi.
+  - Vẽ lại qua canvas nên không giữ byte nào của file gốc → script trong SVG / EXIF bay hết. **Bước thu
+    nhỏ đồng thời là bước diệt trùng**, vì thế không bao giờ lưu bytes gốc.
+  - v6.3.0 trở về trước lấy favicon trực tiếp từ origin dịch vụ, gác sau nút `Logos`. **Đã xoá hẳn**
+    (`faviconCandidates`, `itemUrl`, toggle): mỗi lần mở vault là N request tới N domain, tức chính các
+    domain đó biết IP này vừa mở vault có tài khoản của họ; và item không có field URL thì không bao giờ
+    có logo. Không dùng aggregator (google.com/s2, DuckDuckGo, Clearbit) — gửi danh sách domain cho một
+    bên thứ ba là tự khai user dùng ngân hàng nào, sàn nào.
+- Logo nằm trong payload, **không** ở Supabase Storage hay Drive: URL công khai ở hai chỗ đó phá đúng
+  mô hình threat vừa nói. Đổi lại chịu base64 hai lần (~4 KB/item; 50 item = 200 KB mỗi lần unlock).
 
 **Data:** `accounts` ciphertext + `vault_config`. Không có guest mode.
 

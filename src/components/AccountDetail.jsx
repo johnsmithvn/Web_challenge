@@ -5,6 +5,7 @@ import {
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import AppIcon from './AppIcon';
+import AccountAvatar from './AccountAvatar';
 
 /**
  * AccountDetail — pane chi tiết một item, cả chế độ XEM và SỬA.
@@ -36,6 +37,44 @@ const AUTH_KIND_LIST = Object.entries(AUTH_KINDS).map(([value, v]) => ({ value, 
 
 const clone = (x) => structuredClone(x);
 
+/* ══ Logo item ═══════════════════════════════════════════════════
+   File ảnh → data URI PNG 48×48. Vẽ lại qua canvas nên KHÔNG giữ một byte nào
+   của file gốc: script trong SVG, EXIF, payload lạ đều biến mất. Bước thu nhỏ
+   đồng thời là bước diệt trùng — vì thế không bao giờ lưu bytes gốc.
+
+   48px vì logo chỉ hiện ở ô 36px. Ảnh gốc 180×180 lưu nguyên là ~55 KB base64
+   nằm trong ciphertext, phải tải + giải mã lại MỖI lần mở vault; 48×48 là ~3 KB.
+   Cap 16 KB là lưới an toàn, canvas 48×48 thực tế không bao giờ chạm tới. */
+const LOGO_PX = 48;
+const LOGO_LIMIT = 16 * 1024;
+
+function fileToLogo(file) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const canvas = document.createElement('canvas');
+      canvas.width = LOGO_PX;
+      canvas.height = LOGO_PX;
+      // contain: giữ tỉ lệ, canh giữa — logo vuông thì lấp đầy, logo dài thì
+      // thu vừa khung chứ không bị bóp méo
+      const scale = Math.min(LOGO_PX / img.width, LOGO_PX / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      canvas.getContext('2d').drawImage(img, (LOGO_PX - w) / 2, (LOGO_PX - h) / 2, w, h);
+      const out = canvas.toDataURL('image/png');
+      if (out.length > LOGO_LIMIT) reject(new Error('Image is too complex — try a simpler one'));
+      else resolve(out);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('That file is not an image the browser can read'));
+    };
+    img.src = objectUrl;
+  });
+}
+
 export default function AccountDetail({
   item, items, tags, revealed, copied, autoEdit = false,
   onBack, onOpen, onCopy, onToggleReveal, onToggleFavorite, onSave, onDelete,
@@ -50,6 +89,7 @@ export default function AccountDetail({
   const [codesRevealed, setCodesRevealed] = useState(false);
   const [newAuthKind, setNewAuthKind] = useState('password');
   const [newTag, setNewTag] = useState('');
+  const [logoError, setLogoError] = useState('');
   const titleRef = useRef(null);
   const editing = !!draft;
   const shown = draft || item;
@@ -88,6 +128,19 @@ export default function AccountDetail({
     });
   };
 
+  const pickLogo = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';   // reset để chọn LẠI cùng một file vẫn kích hoạt onChange
+    if (!file) return;
+    setLogoError('');
+    try {
+      const logo = await fileToLogo(file);
+      patch((d) => { d.logo = logo; });
+    } catch (error) {
+      setLogoError(error.message);
+    }
+  };
+
   const codes = shown.codes || [];
   const showCodes = codes.length > 0 || shown.auth.some((a) => a.kind === 'codes');
 
@@ -98,6 +151,27 @@ export default function AccountDetail({
         <div className="acc-title__main">
           {/* CSS ẩn nút này từ 900px trở lên — desktop có cả 2 pane cùng lúc */}
           <button className="acc-btn acc-btn--ghost acc-back" onClick={onBack}>← All items</button>
+
+          {/* Logo lưu TRONG encrypted payload, không phải Storage/Drive: URL công
+              khai ở hai chỗ đó là tự khai bạn có tài khoản dịch vụ nào. Đổi lại
+              phải chịu base64 hai lần — đáng, vì logo cũng được mã hoá như password. */}
+          {editing && (
+            <div className="acc-logoedit">
+              <AccountAvatar item={draft} />
+              <label className="acc-act">
+                <input type="file" accept="image/*" hidden onChange={pickLogo} />
+                {draft.logo ? 'Replace logo' : 'Choose a logo'}
+              </label>
+              {draft.logo && (
+                <button className="acc-act acc-act--x" onClick={() => patch((d) => { d.logo = ''; })}>
+                  <AppIcon name="x" size={14} /> Remove
+                </button>
+              )}
+              {logoError
+                ? <span className="acc-logoedit__err">{logoError}</span>
+                : <span className="acc-logoedit__hint">Resized to 48×48 PNG and stored encrypted.</span>}
+            </div>
+          )}
 
           {/* Đổi Type KHÔNG thêm/bớt field: field thuộc item, template chỉ điền sẵn
               lúc tạo. Mọi `tpl` đọc lên đều là key hợp lệ nhờ alias trong

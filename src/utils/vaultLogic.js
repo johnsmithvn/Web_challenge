@@ -284,38 +284,10 @@ export function urlHost(input) {
   return url ? new URL(url).hostname.replace(/^www\./, '') : '';
 }
 
-/**
- * URL của một item = field `url` đầu tiên có giá trị (template login/account có
- * field "Website"). Không cần cột riêng trên `accounts`.
- */
-export function itemUrl(item) {
-  const f = (item?.fields || []).find((x) => x.type === 'url' && x.value?.trim());
-  return f ? normalizeUrl(f.value) : null;
-}
-
-/**
- * Ứng viên icon của website, thử theo thứ tự chất lượng giảm dần.
- *
- * ⚠️ CỐ Ý chỉ gọi trực tiếp domain của chính dịch vụ đó — KHÔNG dùng
- *    google.com/s2/favicons, icons.duckduckgo.com, Clearbit hay logo.dev:
- *    đây là vault, gửi danh sách domain mình có tài khoản cho MỘT bên thứ ba là
- *    tự khai mình dùng dịch vụ nào (ngân hàng nào, sàn crypto nào).
- *    Gọi trực tiếp thì domain đó chỉ biết IP này xin favicon của họ — mà họ vốn
- *    đã biết IP này vào site họ.
- *
- * Đổi lại: nhiều site không có `apple-touch-icon.png` → rơi về `favicon.ico` →
- * rơi về plate chữ cái. **Ảnh hỏng là trạng thái bình thường, không phải lỗi.**
- */
-export function faviconCandidates(input) {
-  const url = normalizeUrl(input);
-  if (!url) return [];
-  // LUÔN https, kể cả khi field Website gõ `http://`: prod chạy https nên ảnh
-  // http bị chặn mixed-content — chặn IM LẶNG, chỉ thấy rơi về plate chữ cái.
-  // Trên localhost (http) thì ảnh http lại load được, nên bug chỉ hiện ở prod.
-  // Site nào không có https thì cũng chỉ mất icon, đã có sẵn 2 tầng fallback.
-  const origin = `https://${new URL(url).host}`;
-  return [`${origin}/apple-touch-icon.png`, `${origin}/favicon.ico`];
-}
+/* `itemUrl` + `faviconCandidates` đã XOÁ (2026-08-11). Logo item giờ là data URI
+   PNG 48×48 nằm trong encrypted payload, chọn tay ở chế độ Edit — không còn tầng
+   nào gọi mạng. Lý do đầy đủ xem comment đầu `AccountAvatar.jsx`. Đừng dựng lại
+   favicon aggregator: nó tiết lộ danh sách dịch vụ user có tài khoản. */
 
 /**
  * Hue 0–359 suy từ tên, để cùng một dịch vụ luôn ra cùng một màu ở mọi máy.

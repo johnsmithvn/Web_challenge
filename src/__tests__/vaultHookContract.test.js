@@ -40,5 +40,12 @@ assert.match(
   /tpl: item\.tpl === 'login' \? 'account' : \(item\.tpl \|\| 'account'\)/,
   'legacy tpl key must alias to the merged one inside cleanItem'
 );
+// Logo đi vào ciphertext nên payload phình là mỗi lần mở vault tải + giải mã lại.
+// Cap PHẢI ở cleanItem (chỗ duy nhất mọi đường ghi đi qua), không chỉ ở UI.
+assert.match(
+  hook,
+  /logo: typeof item\.logo === 'string' && item\.logo\.length <= LOGO_LIMIT/,
+  'item logo must be size-capped where every write path passes through'
+);
 
 console.log('vault hook security contract: OK');
