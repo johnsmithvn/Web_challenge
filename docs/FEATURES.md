@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub
 
-**Version:** v6.2.0 · **Updated:** 2026-08-09
+**Version:** v6.3.0 · **Updated:** 2026-08-11
 
 Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và chi tiết release nằm trong
 [`CHANGELOG.md`](../CHANGELOG.md).
@@ -188,8 +188,11 @@ nhập không tự trở thành mẫu số ngân sách.
 
 ### Dữ liệu và UI
 
-- 10 template và 10 field type; password/secret che mặc định, có reveal/copy và password generator
-  dùng Web Crypto CSPRNG.
+- 9 template và 10 field type; password/secret che mặc định, có reveal/copy và password generator
+  dùng Web Crypto CSPRNG. `Website login` + `Platform account` đã gộp thành một loại `Account` ở
+  v6.3.0 — hai loại đó cùng hình dạng dữ liệu, tách ra chỉ làm chip filter mất nghĩa.
+- Field sắp xếp được bằng kéo thả (handle bên trái) hoặc nút mũi tên; thứ tự nằm trong encrypted
+  payload. Đổi Type của item ngay trong chế độ Edit — không thêm/bớt field nào.
 - Sign-in method, primary state, one-time recovery code, paste import, encrypted history/diff log.
 - Search/filter chỉ chạy client-side sau decrypt. Vault tag không đi qua bảng `tags`.
 - Link item là pointer trong encrypted JSON; target đã xóa hiển thị “Missing item”.

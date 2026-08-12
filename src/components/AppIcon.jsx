@@ -3,7 +3,7 @@ import {
   ArrowUp, Bank, Bell, BookOpen, BowlFood, Brain, Briefcase, Buildings, CalendarBlank,
   Calculator, Camera, CaretDown, CaretLeft, CaretRight, ChartDonut, ChartLineUp, ChatTeardropText, Check,
   CheckCircle, CheckSquare, Clock, Cloud, Coffee, Copy, CreditCard, Crown, CurrencyCircleDollar,
-  DeviceMobile, DotsThree, DownloadSimple, Egg, Envelope, Eye, EyeSlash, FileText,
+  DeviceMobile, DotsThree, DotsSixVertical, DownloadSimple, Egg, Envelope, Eye, EyeSlash, FileText,
   FilmSlate, Fire, FirstAid, FloppyDisk, FolderOpen, Funnel, GameController, GasPump,
   GearSix, Gift, GoogleLogo, GraduationCap, HandCoins, HardDrives, Heart, House, IdentificationCard, Image, Key,
   Headphones, Highlighter, Infinity as InfinityIcon, Keyboard, Lightbulb, Link, List, ListBullets, ListChecks, ListNumbers, LockKey, MagnifyingGlass, MapPin, Megaphone,
@@ -45,6 +45,7 @@ const ICONS = {
   currency: CurrencyCircleDollar,
   deviceMobile: DeviceMobile,
   dots: DotsThree,
+  dotsSix: DotsSixVertical,   // grip kéo thả — affordance chuẩn, không dùng cho menu
   download: DownloadSimple,
   egg: Egg,
   envelope: Envelope,

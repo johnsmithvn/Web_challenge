@@ -9,7 +9,7 @@ PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy n�
 
 | Ưu tiên | Milestone | Trạng thái |
 |---:|---|---|
-| 1 | Production handoff cho ordered schema v6.0/v6.2 + deploy + smoke | SQL + deploy + smoke xong (user, 2026-08-11); còn xác nhận ciphertext trên Network |
+| 1 | Production handoff cho ordered schema v6.0/v6.2 + deploy + smoke | **XONG 2026-08-11** — SQL, deploy v6.3.0, smoke, ciphertext đều đã xác nhận |
 | 2 | Finance hardening: RPC/RLS/rollback → liên kết → responsive/accessibility QA | P0/P1 xong (user smoke production); còn P2 UI/a11y QA |
 | 3 | Correctness còn lại: local-date trong Focus/Inbox/Finance + smoke upload/stream | Local-date xong 2026-08-11; còn media smoke |
 | 4 | Vault vận hành: export/restore → đổi passphrase/version → rotate DEK | Follow-up |

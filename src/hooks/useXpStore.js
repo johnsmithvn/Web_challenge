@@ -70,6 +70,10 @@ async function migrateXpToSupabase(userId) {
 export function useXpStore() {
   const { user, isAuthenticated } = useAuth();
   const useDB = isSupabaseEnabled && isAuthenticated;
+  // Tách id ra biến riêng: Supabase phát object `user` MỚI mỗi lần refresh token,
+  // nên để `user` trong deps là load lại toàn bộ xp_logs không lý do. Cùng pattern
+  // với useFocusTimer.
+  const userId = user?.id;
 
   // In-memory log: [{ amount, reason, meta, ts }]
   const [log, setLog] = useState([]);
@@ -78,17 +82,17 @@ export function useXpStore() {
 
   // On login: migrate then load
   useEffect(() => {
-    if (!useDB || !user) {
+    if (!useDB || !userId) {
       setIsReady(true); // guest mode — nothing to load
       return;
     }
     setIsReady(false);
 
-    migrateXpToSupabase(user.id).then(async () => {
+    migrateXpToSupabase(userId).then(async () => {
       const { data, error } = await supabase
         .from('xp_logs')
         .select('amount, reason, meta, created_at')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('created_at');
 
       if (!error && data) {
@@ -101,7 +105,7 @@ export function useXpStore() {
       }
       setIsReady(true);
     });
-  }, [useDB, user?.id]);
+  }, [useDB, userId]);
 
   // Clear on logout
   useEffect(() => {

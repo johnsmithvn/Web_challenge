@@ -24,11 +24,10 @@ function cleanItem(item) {
   return {
     schema: ITEM_SCHEMA,
     title: item.title?.trim() || 'Untitled item',
-    // Key `login` đã gộp vào `account` (2026-08-11). Alias đặt ở ĐÂY vì cleanItem
-    // chạy cả lúc ĐỌC (hydrateItem) và lúc GHI (writeItem/createItem): item cũ
-    // hiện ra đúng loại ngay từ lần unlock đầu, và tự lưu key mới ở lần Save kế
-    // tiếp — không cần migration hàng loạt. Nhắc lại: `tpl` nằm trong ciphertext
-    // nên SQL không migration được, mọi thứ phải chạy client-side sau unlock.
+    // Shim GIỮ LẠI VĨNH VIỄN: key `login` đã gộp vào `account` (v6.3.0) và pass
+    // ghi lại hàng loạt đã chạy xong trên production, nhưng một dòng này là thứ
+    // duy nhất chặn được trường hợp còn sót một item lưu key cũ — mất nó thì item
+    // đó rơi về kicker "Item · ···" và biến khỏi chip filter. Giá bằng 0, đừng dọn.
     tpl: item.tpl === 'login' ? 'account' : (item.tpl || 'account'),
     favorite: !!item.favorite,
     notes: item.notes || '',
@@ -106,15 +105,9 @@ export function useAccounts() {
       if (error) throw error;
       if (!isCurrent()) return false;
 
-      const results = await Promise.allSettled((data || []).map(async (row) => {
-        const payload = await decryptVaultItem(key, userId, row);
-        const item = hydrateItem(row, payload);
-        // `cleanItem` alias key template cũ → lệch nghĩa là ciphertext còn key cũ.
-        // Cờ này TẠM và chỉ sống trong memory: cleanItem trả về object có key cố
-        // định nên nó không bao giờ đi vào payload được mã hoá.
-        if (payload.tpl !== item.tpl) item.staleTpl = true;
-        return item;
-      }));
+      const results = await Promise.allSettled((data || []).map(async (row) => (
+        hydrateItem(row, await decryptVaultItem(key, userId, row))
+      )));
       if (!isCurrent()) return false;
       const good = results.filter((result) => result.status === 'fulfilled').map((result) => result.value);
       const bad = results.length - good.length;
@@ -308,34 +301,6 @@ export function useAccounts() {
     setItems((current) => [saved, ...current.filter((candidate) => candidate.id !== item.id)]);
     return saved;
   }, [enabled, userId]);
-
-  /* ── TẠM: đồng bộ key template cũ trong ciphertext ────────────────
-     Alias trong `cleanItem` đủ để UI đúng, nhưng ciphertext thì vẫn còn key cũ.
-     Chỗ này ghi lại đúng một lần mỗi lần unlock để dữ liệu lưu cũng đồng bộ.
-
-     Dùng `writeItem` (không phải `saveItem`) nên KHÔNG sinh dòng History: đây là
-     dọn nội bộ, không phải thay đổi do user. Ref khoá một-lần-mỗi-load để lần
-     setItems của chính vòng lặp không kích hoạt vòng thứ hai ghi trùng item →
-     VAULT_CONFLICT. Lỗi thì bỏ qua, lần unlock sau thử lại.
-
-     XOÁ CẢ BLOCK NÀY + cờ `staleTpl` trong fetchAll + alias trong `cleanItem`
-     khi chắc chắn không còn item nào lưu key cũ. */
-  const tplSyncRef = useRef(false);
-  useEffect(() => {
-    if (tplSyncRef.current) return;
-    const stale = items.filter((item) => item.staleTpl);
-    if (!stale.length) return;
-    tplSyncRef.current = true;
-    (async () => {
-      for (const item of stale) {
-        try {
-          await writeItem({ ...item, staleTpl: undefined });
-        } catch (error) {
-          logger.error('[useAccounts] tpl sync skipped:', error.message);
-        }
-      }
-    })();
-  }, [items, writeItem]);
 
   const itemTitles = useMemo(
     () => Object.fromEntries(items.map((item) => [item.id, item.title])),

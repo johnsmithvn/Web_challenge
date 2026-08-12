@@ -39,7 +39,9 @@ export function AuthProvider({ children }) {
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+    // `fetchProfile` là useCallback deps rỗng nên identity không đổi — để trong
+    // deps cho đúng luật, effect vẫn chỉ chạy một lần.
+  }, [fetchProfile]);
 
   // ── Sign Up ─────────────────────────────────────────────────────
   // Fields: username (required), email (required), password, displayName (optional)

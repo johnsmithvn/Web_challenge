@@ -53,11 +53,14 @@ const SLASH_ITEMS = [
 
 /* ── SlashCommandList (React UI) ──────────────────────────────── */
 const SlashCommandList = forwardRef(function SlashCommandList(props, ref) {
+  // Destructure ngoài hook: dep dạng `props.items` làm exhaustive-deps không
+  // kiểm được nên nó đòi cả `props` — mà `props` đổi khi BẤT KỲ prop nào đổi.
+  const { items, command } = props;
   const [selectedIndex, setSelectedIndex] = useState(0);
   const listRef = useRef(null);
 
   // Reset selected index when items change
-  useEffect(() => setSelectedIndex(0), [props.items]);
+  useEffect(() => setSelectedIndex(0), [items]);
 
   // Scroll active item into view
   useEffect(() => {
@@ -69,11 +72,11 @@ const SlashCommandList = forwardRef(function SlashCommandList(props, ref) {
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }) => {
       if (event.key === 'ArrowUp') {
-        setSelectedIndex(i => (i + props.items.length - 1) % props.items.length);
+        setSelectedIndex(i => (i + items.length - 1) % items.length);
         return true;
       }
       if (event.key === 'ArrowDown') {
-        setSelectedIndex(i => (i + 1) % props.items.length);
+        setSelectedIndex(i => (i + 1) % items.length);
         return true;
       }
       if (event.key === 'Enter') {
@@ -85,11 +88,11 @@ const SlashCommandList = forwardRef(function SlashCommandList(props, ref) {
   }));
 
   const selectItem = useCallback((index) => {
-    const item = props.items[index];
-    if (item) props.command(item);
-  }, [props.items, props.command]);
+    const item = items[index];
+    if (item) command(item);
+  }, [items, command]);
 
-  if (!props.items.length) {
+  if (!items.length) {
     return (
       <div className="tp-slash-menu">
         <div className="tp-slash-empty">Không tìm thấy lệnh</div>
@@ -99,7 +102,7 @@ const SlashCommandList = forwardRef(function SlashCommandList(props, ref) {
 
   return (
     <div className="tp-slash-menu" ref={listRef}>
-      {props.items.map((item, i) => (
+      {items.map((item, i) => (
         <button
           key={item.title}
           className={`tp-slash-item${i === selectedIndex ? ' tp-slash-item--active' : ''}`}

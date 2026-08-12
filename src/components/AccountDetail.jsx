@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   TYPES, TYPE_HINT, isSecretType, scorePassword, generatePassword, parseCodes, codeSheet,
-  linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl,
+  linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl, itemSubtitle,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import AppIcon from './AppIcon';
@@ -437,37 +437,30 @@ function FieldRow({ field: f, idx, totalFields, editing, items, ownerId, reveale
       onDragEnd={editing ? onDragEnd : undefined}
       onDrop={editing ? onDrop : undefined}
     >
-      {/* Cột 0 (chế độ sửa): Nút + handle kéo thả vị trí.
-          `draggable` nằm ở ĐÚNG handle, KHÔNG ở cả row: row chứa input, mà
-          draggable trên ancestor thì cướp luôn thao tác bôi đen text bằng chuột
+      {/* Cột 0 (chế độ sửa): MỘT grip lo cả chuột và bàn phím.
+          Trước đây là handle + 2 nút mũi tên = 3 icon, chiếm gần hết cột nhãn.
+          Grip là <button> nên tab tới được, và ↑/↓ khi đang focus cũng đổi vị trí
+          → bỏ 2 nút mà không mất đường dùng bàn phím.
+
+          `draggable` nằm ở ĐÚNG grip, KHÔNG ở cả row: row chứa input, mà draggable
+          trên ancestor thì cướp luôn thao tác bôi đen text bằng chuột
           (Firefox/Safari) và biến mọi cú kéo text thành lệnh đổi thứ tự. */}
       {editing && (
-        <div className="acc-field__reorder">
-          <span className="acc-field__drag-handle" title="Kéo thả để sắp xếp vị trí"
-            draggable onDragStart={onDragStart}>
-            <AppIcon name="dots" size={16} />
-          </span>
-          <button
-            type="button"
-            className="acc-act acc-act--icon"
-            title="Di chuyển lên"
-            aria-label="Di chuyển lên"
-            disabled={idx === 0}
-            onClick={() => onMoveField(idx, idx - 1)}
-          >
-            <AppIcon name="arrowUp" size={12} />
-          </button>
-          <button
-            type="button"
-            className="acc-act acc-act--icon"
-            title="Di chuyển xuống"
-            aria-label="Di chuyển xuống"
-            disabled={idx === totalFields - 1}
-            onClick={() => onMoveField(idx, idx + 1)}
-          >
-            <AppIcon name="arrowDown" size={12} />
-          </button>
-        </div>
+        <button
+          type="button"
+          className="acc-field__drag-handle"
+          draggable
+          onDragStart={onDragStart}
+          title={`Kéo để sắp xếp, hoặc dùng ↑ ↓ (${idx + 1}/${totalFields})`}
+          aria-label={`Sắp xếp trường ${f.label || 'không tên'}, vị trí ${idx + 1} trên ${totalFields}. Kéo, hoặc dùng mũi tên lên xuống.`}
+          onKeyDown={(e) => {
+            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+            e.preventDefault();
+            onMoveField(idx, e.key === 'ArrowUp' ? idx - 1 : idx + 1);
+          }}
+        >
+          <AppIcon name="dotsSix" size={16} />
+        </button>
       )}
 
       {/* Cột 1: nhãn */}
@@ -708,9 +701,18 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
                 d.fields[idx].links[li].value = '';
               })}>
               <option value="">— choose an item —</option>
+              {/* Kèm subtitle (username/email nhận diện) — chỉ `code · title` thì
+                  nhiều tài khoản cùng dịch vụ ra mấy dòng GIỐNG HỆT nhau, không
+                  chọn được. itemSubtitle chỉ đọc SUBTITLE_LABELS nên không bao giờ
+                  lôi giá trị secret vào đây. */}
               {linkOptions.map((it) => {
                 const t = TPL_BY_KEY.get(it.tpl);
-                return <option key={it.id} value={it.id}>{t?.code || '···'} · {it.title}</option>;
+                const sub = itemSubtitle(it);
+                return (
+                  <option key={it.id} value={it.id}>
+                    {t?.code || '···'} · {it.title}{sub ? ` · ${sub}` : ''}
+                  </option>
+                );
               })}
             </select>
             <select className="acc-select" value={L.value || ''} disabled={!target}
@@ -864,6 +866,16 @@ function CodeSheet({ codes, editing, accountId, revealed, onReveal, copied, onCo
             <button className="acc-act"
               onClick={() => patch((d) => { d.codes = codeSheet(Math.max((d.codes || []).length, 10)); })}>
               Regenerate
+            </button>
+          )}
+          {/* Xoá ✕ ở dòng auth `codes` chỉ bỏ PHƯƠNG THỨC; section vẫn hiện vì
+              `showCodes` còn thấy `codes.length > 0`. Không có nút này thì sheet mã
+              (kể cả 10 mã do template cũ tự sinh) không có đường nào xoá. */}
+          {editing && codes.length > 0 && (
+            <button className="acc-act acc-act--x" title="Clear the whole sheet"
+              aria-label="Xoá toàn bộ mã dự phòng"
+              onClick={() => patch((d) => { d.codes = []; })}>
+              <AppIcon name="x" size={14} /> Clear sheet
             </button>
           )}
         </div>

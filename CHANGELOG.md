@@ -1,5 +1,37 @@
 # CHANGELOG
 
+## Unreleased
+
+### Changed
+- **Sắp xếp field: 3 icon → 1 grip.** Handle + 2 nút mũi tên ăn gần hết cột nhãn. Giờ chỉ còn một grip
+  (`DotsSixVertical`) rộng 18px, là `<button>` nên tab tới được và **↑ / ↓ khi đang focus cũng đổi vị
+  trí** — bỏ 2 nút mà không mất đường dùng bàn phím. Grip mờ khi nghỉ, rõ khi trỏ vào dòng. Xoá luôn
+  `.acc-act--icon` (chỉ 2 nút cũ dùng, và nó phải `!important` để đè `.acc-act`).
+
+### Fixed
+- **Sheet mã dự phòng không có đường xoá:** nút ✕ ở dòng auth `Single-use codes` chỉ bỏ **phương thức**,
+  còn section vẫn hiện vì `showCodes` thấy `codes.length > 0` — nên 10 mã do template `Platform account`
+  cũ tự sinh không cách nào bỏ được, nằm lẫn với mã thật của provider. Thêm nút **Clear sheet** (chỉ ở
+  chế độ Edit, chỉ khi còn mã) đặt cạnh Regenerate.
+
+### Changed
+- **Dọn 3 cảnh báo `react-hooks/exhaustive-deps` (36 → 33 warning, 0 error), không đổi hành vi:**
+  `AuthContext` đưa `fetchProfile` vào deps (nó là `useCallback` deps rỗng nên identity không đổi);
+  `useXpStore` tách `const userId = user?.id` như `useFocusTimer` đã làm — để `user` vào deps là load
+  lại toàn bộ `xp_logs` mỗi lần Supabase refresh token phát ra object user mới; `SlashCommand`
+  destructure `{ items, command }` ngoài hook thay vì để dep dạng `props.items`.
+- **Dropdown chọn item để link hiện thêm subtitle:** trước chỉ `code · title`, nên nhiều tài khoản cùng
+  một dịch vụ (5 tài khoản Google) ra mấy dòng giống hệt nhau và không chọn được — buộc user phải nhồi
+  email vào title. Giờ là `ACC · Google · abc@gmail.com` qua `itemSubtitle()` đã có sẵn, nên title để
+  gọn được. `itemSubtitle` chỉ đọc `SUBTITLE_LABELS` (Primary email, Username, Emails, Email, SSID,
+  Service, Full name, Host, Product) nên không có đường lôi giá trị secret vào dropdown.
+
+### Removed
+- **Dọn pass đồng bộ key template:** pass ghi lại `tpl` một-lần-mỗi-unlock (v6.3.0) đã chạy xong trên
+  production nên đã xoá cùng cờ transient `staleTpl` trong `fetchAll`. **Giữ lại một dòng shim** alias
+  `login` → `account` trong `cleanItem`: nó là thứ duy nhất chặn trường hợp sót một item lưu key cũ —
+  mất nó thì item đó rơi về kicker `Item · ···` và biến khỏi chip filter. Giá bằng 0, không dọn tiếp.
+
 ## v6.3.0 — 2026-08-11
 > **Vault UX + gộp template, KHÔNG đổi schema.** Không có migration SQL nào trong bản này: mọi thay đổi
 > nằm ở client và ở nội dung encrypted payload. Deploy frontend là đủ.

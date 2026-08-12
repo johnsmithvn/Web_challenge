@@ -1,4 +1,4 @@
-# Life Hub — Personal Life OS v6.2.0
+# Life Hub — Personal Life OS v6.3.0
 
 > **Kỷ Luật = Hệ Thống, Không Phải Ý Chí**
 
@@ -363,6 +363,7 @@ CHANGELOG.md                ← Lịch sử phiên bản
 
 | Version | Mô tả |
 |---------|-------|
+| **v6.3.0** | Vault UX: gộp `Website login` + `Platform account` thành một loại `Account` (còn 9 template), kéo thả sắp xếp field, đổi Type trong Edit, dropdown link hiện subtitle. Không đổi schema |
 | **v6.2.0** | Account Vault full-content encryption: PBKDF2-SHA256 600.000 vòng, DEK bọc bằng passphrase, AES-GCM + AAD theo user/item; key chỉ giữ trong memory |
 | **v6.1.0** | Tasks full-bleed; completed range; edit trong detail popup; lịch âm/ngày lễ; giới hạn 4/3 task theo sức chứa ô |
 | **v6.0.0** | Finance Nocturne clean rebuild, 10 bảng + junction/RPC, liên kết Task và Inbox |

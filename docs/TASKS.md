@@ -19,8 +19,13 @@ không phải do agent kiểm chứng.
 - [x] User chạy đúng SQL còn thiếu theo thứ tự README. Migration Vault phải rollback nếu bảng không trống.
 - [x] Deploy/redeploy frontend v6.2 ngay sau schema tương thích.
 - [x] Smoke production: Auth → Task CRUD → năm màn Finance → Vault setup/create/lock/reload/unlock/delete.
-- [ ] Xác nhận network/database chỉ nhận ciphertext cho nội dung Vault, rồi mới ghi production “done”.
-      (Việc còn lại duy nhất của mục 1: mở DevTools → Network trên prod, xem body request `accounts`.)
+- [x] Xác nhận network/database chỉ nhận ciphertext cho nội dung Vault, rồi mới ghi production “done”.
+      Kiểm 2026-08-11 trên DevTools → Network prod: response `accounts?select=…` chỉ có `id`, `user_id`,
+      `encrypted_payload` (base64), `encryption_nonce`, `encryption_version`, `created_at`, `updated_at`.
+      Không tồn tại cột nội dung nào → không rò được về mặt cấu trúc, không phải chỉ "lần này không thấy".
+
+**MỤC 1 ĐÓNG 2026-08-11.** Production chạy đúng ordered schema v6.0/v6.2, frontend v6.3.0 đã deploy,
+Vault đã smoke thật và chỉ nhận ciphertext.
 
 ## 2. Finance hardening
 

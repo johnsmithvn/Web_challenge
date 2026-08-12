@@ -34,7 +34,7 @@ await assert.rejects(
 const payload = {
   schema: 1,
   title: 'Private bank',
-  tpl: 'login',
+  tpl: 'account',
   favorite: true,
   notes: 'Security answer: blue',
   tags: [{ id: 'tag-1', name: 'Finance', color: '#123456' }],

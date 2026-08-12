@@ -135,7 +135,7 @@ assert.deepEqual(linkableValues(null), [{ value: '', label: '— whole item —'
 
 /* ── matchesQuery ─────────────────────────────────────────────────────── */
 const item = {
-  id: 'i2', tpl: 'login', title: 'Figma', notes: 'Team seat billed annually',
+  id: 'i2', tpl: 'account', title: 'Figma', notes: 'Team seat billed annually',
   tags: ['work', 'design'],
   fields: [
     { id: 'f1', label: 'Username', type: 'text', value: 'tao@studio.vn' },
@@ -251,7 +251,7 @@ assert.equal(relativeUpdated(new Date(2026, 6, 1, 10, 0), NOW), '01 Jul 2026 · 
 assert.equal(relativeUpdated('không phải ngày', NOW), '');
 
 /* ── itemSubtitle ─────────────────────────────────────────────────────── */
-assert.equal(itemSubtitle(item, 'Website login'), 'tao@studio.vn'); // Username
+assert.equal(itemSubtitle(item, 'Account'), 'tao@studio.vn'); // Username
 // Ưu tiên theo thứ tự nhãn: Primary email trước Username
 assert.equal(itemSubtitle({
   tpl: 'account',
