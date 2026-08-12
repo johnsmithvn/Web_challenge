@@ -12,7 +12,7 @@ PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy n�
 | 1 | Production handoff cho ordered schema v6.0/v6.2 + deploy + smoke | **XONG 2026-08-11** — SQL, deploy v6.3.0, smoke, ciphertext đều đã xác nhận |
 | 2 | Finance hardening: RPC/RLS/rollback → liên kết → responsive/accessibility QA | P0/P1 xong (user smoke production); còn P2 UI/a11y QA |
 | 3 | Correctness còn lại: local-date trong Focus/Inbox/Finance + smoke upload/stream | Local-date xong 2026-08-11; còn media smoke |
-| 4 | Vault vận hành: export/restore → đổi passphrase/version → rotate DEK | Follow-up |
+| 4 | Vault vận hành: export/restore → đổi passphrase/version → rotate DEK | Export/restore code xong 2026-08-11, chờ diễn tập phục hồi; phần còn lại chưa làm |
 | 5 | Vault UX security: inactivity auto-lock, clipboard clear, TOTP | Follow-up |
 | 6 | Task model và refactor UI lớn | Icebox; cần quyết định riêng |
 
@@ -52,7 +52,8 @@ này chỉ làm khi có nhu cầu dùng thật.
 
 Thứ tự an toàn:
 
-1. Export/restore có version check và hướng phục hồi thử được.
+1. ~~Export/restore có version check~~ — code xong 2026-08-11. **Còn phải diễn tập phục hồi thật**
+   (export → restore → unlock → đọc được item); xem TASKS §4 cho 3 bước.
 2. Đổi passphrase bằng re-wrap cùng DEK.
 3. Nâng payload/KDF/encryption version có migration rõ ràng.
 4. Rotate DEK và re-encrypt item khi nghi lộ.

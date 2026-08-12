@@ -278,13 +278,7 @@ export function normalizeUrl(input) {
   }
 }
 
-/** Hostname gọn để hiển thị: "https://www.google.com/x" → "google.com". */
-export function urlHost(input) {
-  const url = normalizeUrl(input);
-  return url ? new URL(url).hostname.replace(/^www\./, '') : '';
-}
-
-/* `itemUrl` + `faviconCandidates` đã XOÁ (2026-08-11). Logo item giờ là data URI
+/* `itemUrl`, `faviconCandidates` và `urlHost` đã XOÁ (2026-08-11). Logo item giờ là data URI
    PNG 48×48 nằm trong encrypted payload, chọn tay ở chế độ Edit — không còn tầng
    nào gọi mạng. Lý do đầy đủ xem comment đầu `AccountAvatar.jsx`. Đừng dựng lại
    favicon aggregator: nó tiết lộ danh sách dịch vụ user có tài khoản. */

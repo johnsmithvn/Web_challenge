@@ -47,5 +47,33 @@ assert.match(
   /logo: typeof item\.logo === 'string' && item\.logo\.length <= LOGO_LIMIT/,
   'item logo must be size-capped where every write path passes through'
 );
+// ── Backup / restore ───────────────────────────────────────────────────────
+// AAD gắn wrapped key VÀ từng item vào user id, nên restore sang account khác ghi
+// xong mới phát hiện không giải mã được gì — phải chặn TRƯỚC khi ghi.
+assert.match(
+  hook,
+  /if \(backup\.userId !== userId\) \{[\s\S]*?return \{[\s\S]*?ok: false/,
+  'restore must refuse a backup made under a different user id'
+);
+// Restore CHỈ vào Vault trống → không có đường mất data. Bỏ guard này là biến
+// restore thành lệnh ghi đè im lặng.
+assert.match(
+  hook,
+  /count: 'exact', head: true \}\)\.eq\('user_id', userId\);[\s\S]*?if \(count > 0\) \{[\s\S]*?ok: false/,
+  'restore must refuse to run into a non-empty Vault'
+);
+// Key đang giữ trong memory là của config CŨ; không khoá lại thì user tưởng đã
+// khôi phục xong mà mọi item đều "could not be opened".
+assert.match(
+  hook,
+  /lockVault\(\);\s*\n\s*return \{ ok: true, restored:/,
+  'restore must lock the Vault so the backup passphrase is required next'
+);
+// Export không được cần key: mục đích là sao lưu được KHI ĐANG KHOÁ.
+assert.doesNotMatch(
+  hook,
+  /const exportVault = useCallback\(async \(\) => \{\s*\n\s*if \([^)]*keyRef/,
+  'export must not require an unwrapped key — backing up a locked Vault is the point'
+);
 
 console.log('vault hook security contract: OK');

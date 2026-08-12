@@ -75,7 +75,15 @@ không phải date-string — đúng cách dùng, đừng "dọn" sang `toDateSt
 
 ## 4. Vault follow-up
 
-- [ ] Export/restore ciphertext + `vault_config`, có version check và diễn tập phục hồi.
+- [x] Export/restore ciphertext + `vault_config`, có version check. **Code xong 2026-08-11** — nút ở màn
+  hình khoá; export chạy được khi đang khoá; restore chặn `userId` lệch (AAD gắn key + item vào user id),
+  chỉ chạy vào Vault trống, và khoá lại sau khi xong.
+- [ ] **Diễn tập phục hồi thật** — chưa làm, và đây là phần khiến export có nghĩa hay không:
+  1. Export ở màn hình khoá, giữ file.
+  2. Xoá hết item trong Vault (hoặc dùng account test), rồi Restore đúng file đó.
+  3. Unlock bằng passphrase gốc và xác nhận **mở được đủ item, đọc được nội dung**.
+  Chưa qua bước 3 thì UI vẫn phải cảnh báo mất passphrase là mất quyền giải mã, và Vault vẫn không được
+  dùng làm bản sao duy nhất.
 - [ ] Đổi passphrase bằng re-wrap cùng DEK; không re-encrypt item không cần thiết.
 - [ ] Nâng KDF/payload/encryption version có migration và rollback rõ ràng.
 - [ ] Rotate DEK + re-encrypt toàn item khi nghi lộ khóa.

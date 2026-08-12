@@ -312,6 +312,21 @@
   line-height: 1.55;
 }
 .acc-gate__card label { margin-top: 4px; font-size: 12px; font-weight: 700; }
+/* Backup nằm NGOÀI card, cùng bề rộng: nó không phải một bước của form unlock,
+   và không được trông như thế. */
+.acc-gate__backup {
+  width: min(420px, 100%);
+  margin-top: 13.6px;
+  display: grid; gap: 6px;
+}
+.acc-gate__backup-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.acc-gate__backup-row label.acc-act { cursor: pointer; }
+.acc-gate__backup-note {
+  margin: 0;
+  font-size: 11.5px; line-height: 1.5;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+.acc-gate__backup-note--err { color: #ef6a6a; }
 .acc-gate__icon {
   display: grid;
   place-items: center;

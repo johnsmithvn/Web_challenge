@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import {
   TYPES, isSecretType, maskValue, scorePassword, parseCodes, codeSheet,
   linkableValues, matchesQuery, itemSubtitle, diffLog, formatStamp, relativeUpdated,
-  normalizeUrl, urlHost, avatarHue, avatarLetter,
+  normalizeUrl, avatarHue, avatarLetter,
   generatePassword,
 } from '../utils/vaultLogic.js';
 
@@ -161,7 +161,7 @@ assert.equal(matchesQuery(item, 'password'), true);
 assert.equal(matchesQuery({ ...item, tags: [{ id: 't1', name: 'design', color: '#fff' }] }, 'design'), true);
 assert.equal(matchesQuery({ ...item, tags: [{ id: 't1', name: 'design', color: '#fff' }] }, 'object'), false);
 
-/* ── normalizeUrl / urlHost ───────────────────────────────────────────── */
+/* ── normalizeUrl ───────────────────────────────────────────── */
 assert.equal(normalizeUrl('google.com'), 'https://google.com/');
 assert.equal(normalizeUrl('  shopee.vn  '), 'https://shopee.vn/');
 assert.equal(normalizeUrl('http://x.com/a?b=1'), 'http://x.com/a?b=1');
@@ -178,10 +178,6 @@ assert.equal(normalizeUrl('data:text/html,<script>x</script>'), null);
 assert.equal(normalizeUrl('file:///etc/passwd'), null);
 assert.equal(normalizeUrl('vbscript:msgbox'), null);
 
-assert.equal(urlHost('https://www.google.com/x'), 'google.com');
-assert.equal(urlHost('shopee.vn'), 'shopee.vn');
-assert.equal(urlHost('javascript:alert(1)'), '');
-assert.equal(urlHost(''), '');
 
 /* ── avatarHue / avatarLetter ─────────────────────────────────────────── */
 // Ổn định: cùng tên luôn ra cùng hue ở mọi máy, mọi lần chạy

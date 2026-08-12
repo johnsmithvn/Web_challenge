@@ -194,6 +194,13 @@ nhập không tự trở thành mẫu số ngân sách.
 - Field sắp xếp được bằng kéo thả (handle bên trái) hoặc nút mũi tên; thứ tự nằm trong encrypted
   payload. Đổi Type của item ngay trong chế độ Edit — không thêm/bớt field nào.
 - Sign-in method, primary state, one-time recovery code, paste import, encrypted history/diff log.
+- **Backup / restore ở màn hình khoá.** Export copy `encrypted_payload` + nonce + version +
+  `vault_config` nên **chạy được khi Vault đang khoá** và file vẫn là ciphertext (cần passphrase gốc mới
+  mở). Restore chặn 3 điều trước khi ghi: `format`/`version` lạ, `userId` lệch (AAD gắn key + item vào
+  user id → account khác thì không giải mã được gì), và Vault không trống (restore **chỉ** vào vault
+  trống nên không có đường ghi đè). Xong thì khoá lại để bắt unlock bằng passphrase của bản backup —
+  đó cũng là bước tự kiểm chứng. **Chưa diễn tập phục hồi thật** nên Vault vẫn không được dùng làm bản
+  sao duy nhất; xem TASKS §4.
 - Search/filter chỉ chạy client-side sau decrypt. Vault tag không đi qua bảng `tags`.
 - Link item là pointer trong encrypted JSON; target đã xóa hiển thị “Missing item”.
 - Bố cục hai pane, chuyển thành list/detail một cột ở container hẹp.

@@ -36,7 +36,7 @@ export default function AccountsPage() {
   const { user } = useAuth();
   const { items, isLoading, saveItem, createItem, deleteItem, toggleFavorite,
     setAuthState, setCodeUsed, vaultStatus, vaultError,
-    setupVault, unlockVault, lockVault } = useAccounts();
+    setupVault, unlockVault, lockVault, exportVault, restoreVault } = useAccounts();
   const { showToast } = useToast();
   const { confirm, ConfirmModal } = useConfirm();
 
@@ -219,6 +219,8 @@ export default function AccountsPage() {
         error={vaultError}
         onSetup={setupVault}
         onUnlock={unlockVault}
+        onExport={exportVault}
+        onRestore={restoreVault}
       />
     );
   }
@@ -404,7 +406,7 @@ export default function AccountsPage() {
   );
 }
 
-function VaultGate({ status, error, onSetup, onUnlock }) {
+function VaultGate({ status, error, onSetup, onUnlock, onExport, onRestore }) {
   const [passphrase, setPassphrase] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [formError, setFormError] = useState('');
@@ -495,6 +497,79 @@ function VaultGate({ status, error, onSetup, onUnlock }) {
           {busy ? 'Working…' : setup ? 'Create encrypted Vault' : 'Unlock'}
         </button>
       </form>
+
+      <VaultBackup onExport={onExport} onRestore={onRestore} />
+    </div>
+  );
+}
+
+/* ── Backup / restore ────────────────────────────────────────────
+   Đặt ở MÀN HÌNH KHOÁ, không ở header đã unlock: đây đúng là lúc cần khôi phục
+   (máy mới → màn setup), và export không cần key nên không có lý do phải vào
+   trong mới sao lưu được. Đang unlock mà muốn backup thì bấm Lock trước — thêm
+   một bước, nhưng bước đó cũng buộc bạn xác nhận mình còn mở lại được.
+
+   File backup KHÔNG phải plaintext: nó chứa ciphertext + wrapped DEK, ai lấy được
+   vẫn cần passphrase gốc. Nhưng mất passphrase thì file cũng vô dụng — đó là lý do
+   dòng cảnh báo dưới đây không được bỏ. */
+function VaultBackup({ onExport, onRestore }) {
+  const [busy, setBusy] = useState('');
+  const [note, setNote] = useState(null);   // { ok, text }
+
+  const download = async () => {
+    setBusy('export');
+    setNote(null);
+    const result = await onExport();
+    setBusy('');
+    if (!result.ok) return setNote({ ok: false, text: result.error });
+
+    const blob = new Blob([JSON.stringify(result.backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lifehub-vault-${result.backup.exportedAt.slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setNote({ ok: true, text: `Exported ${result.backup.items.length} encrypted item(s). Keep the file and the passphrase apart.` });
+  };
+
+  const upload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setBusy('restore');
+    setNote(null);
+    let backup;
+    try {
+      backup = JSON.parse(await file.text());
+    } catch {
+      setBusy('');
+      return setNote({ ok: false, text: 'That file is not valid JSON.' });
+    }
+    const result = await onRestore(backup);
+    setBusy('');
+    setNote(result.ok
+      ? { ok: true, text: `Restored ${result.restored} item(s). Unlock with the passphrase that backup was made with.` }
+      : { ok: false, text: result.error });
+  };
+
+  return (
+    <div className="acc-gate__backup">
+      <div className="acc-gate__backup-row">
+        <button type="button" className="acc-act" onClick={download} disabled={!!busy}>
+          {busy === 'export' ? 'Exporting…' : 'Export backup'}
+        </button>
+        <label className="acc-act">
+          <input type="file" accept="application/json,.json" hidden onChange={upload} disabled={!!busy} />
+          {busy === 'restore' ? 'Restoring…' : 'Restore from backup'}
+        </label>
+      </div>
+      <p className={`acc-gate__backup-note${note && !note.ok ? ' acc-gate__backup-note--err' : ''}`}>
+        {note
+          ? note.text
+          : 'The backup holds ciphertext only — it still needs this passphrase to open, and restore only '
+            + 'runs into an empty Vault so it can never overwrite anything.'}
+      </p>
     </div>
   );
 }

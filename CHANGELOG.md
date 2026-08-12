@@ -3,6 +3,24 @@
 ## Unreleased
 
 ### Added
+- **Vault backup / restore (Milestone 4 bước 1):** nút `Export backup` / `Restore from backup` ở **màn
+  hình khoá**, không ở header đã unlock — đây đúng là lúc cần khôi phục (máy mới → màn setup), và export
+  không cần key nên không có lý do phải vào trong mới sao lưu được.
+  - **Export chạy được khi Vault ĐANG KHOÁ:** nó chỉ copy `encrypted_payload` + `encryption_nonce` +
+    `encryption_version` + `vault_config`. File backup **không phải plaintext** — ai lấy được vẫn cần
+    passphrase gốc. Có `format` + `version` để restore từ chối shape lạ thay vì đoán.
+  - **Restore CHẶN khi `backup.userId !== userId`.** AAD gắn cả wrapped key (`vault-key|v1|userId`) lẫn
+    từng item (`vault-item|v1|userId|itemId`) vào user id, nên khôi phục sang account khác thì file mở
+    ra bình thường mà **không giải mã được gì**. Phát hiện sau khi đã ghi chính là "recovery giả" mà
+    RULES cấm → phải chặn trước khi ghi.
+  - **Restore CHỈ chạy vào Vault trống**, không xoá gì → không có đường mất data, nên không cần dialog
+    "bạn có chắc". Cùng pattern migration v6.2 đã dùng. Ghi đè vault đang có item là nhu cầu khác, hiếm
+    hơn, để làm riêng khi cần.
+  - **Restore xong thì khoá Vault lại:** key trong memory là của config CŨ. Bắt unlock lại bằng
+    passphrase của bản backup cũng chính là bước tự kiểm chứng backup dùng được.
+  - Không khôi phục `created_at`/`updated_at` (DB tự quản, grant least-privilege không cho ghi). Mốc
+    thời gian thật nằm trong `log` bên trong payload nên không mất.
+  - 4 assertion mới trong `vaultHookContract.test.js` khoá cả 4 bất biến trên.
 - **Logo riêng cho từng item, lưu mã hoá trong payload:** Edit → `Choose a logo` → ảnh được **vẽ lại
   qua canvas thành PNG 48×48** rồi lưu dạng data URI trong encrypted payload. Vẽ lại nghĩa là không giữ
   một byte nào của file gốc, nên script trong SVG / EXIF / payload lạ bay hết — **bước thu nhỏ đồng thời

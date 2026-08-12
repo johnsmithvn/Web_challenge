@@ -23,6 +23,10 @@ const ITEM_SCHEMA = 1;
 // ghi đều đi qua, và payload phình lên là mỗi lần mở vault phải tải + giải mã lại.
 const LOGO_LIMIT = 16 * 1024;
 const VAULT_CONFLICT = 'This Vault item changed in another session. Reload and unlock again before retrying.';
+// Định dạng file backup. Bump VERSION khi shape đổi — restore từ chối version lạ
+// thay vì đoán, vì đoán sai ở đây là ghi ciphertext không mở được.
+const BACKUP_FORMAT = 'lifehub-vault-backup';
+const BACKUP_VERSION = 1;
 
 function cleanItem(item) {
   return {
@@ -265,6 +269,47 @@ export function useAccounts() {
     }
   }, [enabled, userId, vaultStatus, fetchAll]);
 
+  /* ── Backup / restore ─────────────────────────────────────────────
+     Export KHÔNG cần key: nó chỉ copy ciphertext + vault_config, nên sao lưu
+     được cả khi Vault đang khoá. Chính vì thế file backup KHÔNG phải plaintext —
+     ai lấy được nó vẫn cần passphrase gốc.
+
+     ⚠️ AAD gắn CẢ wrapped key (`vault-key|v1|userId`) LẪN từng item
+     (`vault-item|v1|userId|itemId`) vào user id — xem vaultCrypto.js. Nên backup
+     PHẢI ghi `userId`, và restore phải chặn khi lệch: khôi phục sang account khác
+     thì file mở ra bình thường mà không giải mã được gì. Phát hiện sau khi đã ghi
+     là đúng loại "recovery giả" mà RULES cấm. */
+  const exportVault = useCallback(async () => {
+    if (!enabled) return { ok: false, error: 'Sign in before exporting.' };
+    try {
+      const config = await supabase.from('vault_config')
+        .select('*').eq('user_id', userId).maybeSingle();
+      if (config.error) throw config.error;
+      if (!config.data) return { ok: false, error: 'There is no Vault to export yet.' };
+
+      const rows = await supabase.from('accounts')
+        .select('id, encrypted_payload, encryption_nonce, encryption_version')
+        .eq('user_id', userId)
+        .order('created_at');
+      if (rows.error) throw rows.error;
+
+      return {
+        ok: true,
+        backup: {
+          format: BACKUP_FORMAT,
+          version: BACKUP_VERSION,
+          exportedAt: new Date().toISOString(),
+          userId,
+          config: config.data,
+          items: rows.data || [],
+        },
+      };
+    } catch (error) {
+      logger.error('[useAccounts] export error:', error.message);
+      return { ok: false, error: 'Could not read the Vault for export.' };
+    }
+  }, [enabled, userId]);
+
   const lockVault = useCallback(() => {
     sessionRef.current += 1;
     fetchRef.current += 1;
@@ -274,6 +319,75 @@ export function useAccounts() {
     setVaultError('');
     setVaultStatus(configRef.current ? 'locked' : 'setup');
   }, []);
+
+  /* Restore CHỈ chạy vào Vault TRỐNG. Không xoá gì cả → không có đường mất data,
+     nên không cần dialog "bạn có chắc". Cùng pattern migration v6.2 đã dùng
+     (rollback nếu bảng không trống). Ghi đè một vault đang có item là nhu cầu
+     khác và hiếm hơn nhiều; khi nào cần thì làm riêng, có confirm riêng. */
+  const restoreVault = useCallback(async (backup) => {
+    if (!enabled) return { ok: false, error: 'Sign in before restoring.' };
+    if (backup?.format !== BACKUP_FORMAT) {
+      return { ok: false, error: 'That file is not a Vault backup.' };
+    }
+    if (backup.version !== BACKUP_VERSION) {
+      return {
+        ok: false,
+        error: `Backup format v${backup.version} is not supported by this build (expects v${BACKUP_VERSION}).`,
+      };
+    }
+    if (backup.userId !== userId) {
+      return {
+        ok: false,
+        error: 'This backup belongs to a different account. Its encryption is bound to the original '
+          + 'user id, so nothing in it could be decrypted here.',
+      };
+    }
+    if (!backup.config?.wrapped_dek) {
+      return { ok: false, error: 'Backup is missing its vault_config — it cannot be unlocked.' };
+    }
+
+    try {
+      const { count, error: countError } = await supabase.from('accounts')
+        .select('id', { count: 'exact', head: true }).eq('user_id', userId);
+      if (countError) throw countError;
+      if (count > 0) {
+        return {
+          ok: false,
+          error: `Vault already holds ${count} item${count === 1 ? '' : 's'}. Restore only runs into an `
+            + 'empty Vault so it can never overwrite anything — delete those items first.',
+        };
+      }
+
+      const { error: configError } = await supabase.from('vault_config')
+        .upsert({ ...backup.config, user_id: userId }, { onConflict: 'user_id' });
+      if (configError) throw configError;
+
+      if (backup.items.length) {
+        // KHÔNG khôi phục created_at/updated_at: DB tự quản chúng và grant
+        // least-privilege không cho ghi. Mốc thời gian thật nằm trong `log` bên
+        // trong payload, không mất.
+        const { error: itemsError } = await supabase.from('accounts').insert(
+          backup.items.map((row) => ({
+            id: row.id,
+            user_id: userId,
+            encrypted_payload: row.encrypted_payload,
+            encryption_nonce: row.encryption_nonce,
+            encryption_version: row.encryption_version,
+          }))
+        );
+        if (itemsError) throw itemsError;
+      }
+
+      // Khoá lại: key đang giữ trong memory (nếu có) là của config CŨ. Bắt unlock
+      // lại bằng passphrase của bản backup cũng là bước tự kiểm chứng backup dùng được.
+      lockVault();
+      return { ok: true, restored: backup.items.length };
+    } catch (error) {
+      logger.error('[useAccounts] restore error:', error.message);
+      return { ok: false, error: `Restore failed and nothing was replaced: ${error.message}` };
+    }
+  }, [enabled, userId, lockVault]);
+
 
   const writeItem = useCallback(async (item) => {
     if (!enabled || !keyRef.current) throw new Error('Vault is locked');
@@ -480,6 +594,8 @@ export function useAccounts() {
     setupVault,
     unlockVault,
     lockVault,
+    exportVault,
+    restoreVault,
     fetchAll,
     saveItem,
     createItem,
