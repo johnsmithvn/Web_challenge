@@ -2,6 +2,57 @@
 
 ## Unreleased
 
+### Fixed
+- **Finance · "Ghim thành shortcut" im lặng không làm gì.** `pinCurrentShortcut` có `if (type !== 'expense')
+  return;` — bấm ở tab Thu / Để dành thì không toast, không lỗi, không gì cả. Giờ báo rõ
+  "Shortcut chỉ dùng cho khoản Chi".
+- **Shortcut ghim ra tên vô nghĩa.** Tên tự sinh từ danh mục con, chưa chọn danh mục con thì ra **tên
+  nhóm** ("Ăn uống"). Giờ lấy từ ô **Tiêu đề** bạn vừa gõ (fallback về danh mục con → nhóm) — không cần
+  thêm UI đặt tên nào, vì Tiêu đề vốn đã ở đầu form.
+- **Không xoá được 4 shortcut mặc định.** Nút xoá có điều kiện `!shortcut.seed`, mà `shortcutSeed` là
+  JSON trong `finance-categories.json` chứ không phải row DB → không có gì để `DELETE`. Giờ nút của seed
+  là **ẩn** (lưu key `category:sub` vào localStorage — vài cái key, không phải data, và là lựa chọn của
+  từng máy). Kèm nút **"Hiện lại N shortcut mặc định"** ở cuối panel: ẩn mà không hiện lại được thì đó là
+  cửa một chiều.
+
+### Removed
+- **Bỏ nút "Ghim thành shortcut" trùng lặp trong khối "Thông tin thêm".** Panel Shortcut đã có
+  "Tạo shortcut từ form" và nó **luôn hiện**; bản trong "Thông tin thêm" nằm sau một khối đang đóng nên
+  chỉ góp phần làm user tưởng tính năng không tồn tại.
+- **Bỏ ô "Smart" (gõ câu tự nhiên) khỏi form thêm khoản.** Sau khi `Tiêu đề` + `Số tiền` lên đầu form,
+  ô Smart bắt user gõ một câu rồi bấm "Hiểu là" **để đổ vào đúng hai ô nằm ngay bên dưới nó** — thêm một
+  bước cho việc gõ thẳng còn nhanh hơn. Xoá `nl`/`nlGuess`/`applyNl` + CSS `.fin-smart-input`,
+  `.fin-smart-result`.
+  - **Logic đọc câu tự nhiên KHÔNG bị xoá**, chỉ dồn về chỗ duy nhất nó có giá trị: **handoff từ Inbox**.
+    Text đó không do user gõ trong form nên đoán hộ mới đáng — giờ parse thẳng vào Tiêu đề + Số tiền +
+    nhóm (`stripAmountWords` + `parseCurrencyInput` + `matchCategory`), không qua ô trung gian nào.
+    `handoff.amount` (số Inbox đã chốt) được tin trước, không có thì mới đoán từ câu.
+
+### Changed
+- **Finance · form thêm khoản: "Ghi chú" thành "Tiêu đề" và lên đầu form, cùng nút Lưu.** Trước đây nó
+  nằm gần cuối form dưới nhãn `Ghi chú · Tùy chọn` nên gần như không ai điền → dòng trong danh sách rơi
+  về fallback là tên nhóm ([ListScreen:145](src/components/finance/ListScreen.jsx#L145)
+  `tx.note || subLabel || catLabel`) và 20 khoản "Ăn uống" trông y hệt nhau. Đổi nhãn thôi không đủ: nó
+  phải nằm ở chỗ user thấy **trước khi** bấm Lưu. Giờ đầu form là một khối gọn: `Tiêu đề` + `Số tiền`
+  một hàng, dưới là nút bước tiền + `Lưu` / `Lưu & nhập tiếp`. Nhãn đổi đồng bộ ở ListScreen,
+  AnalyzeScreen, CatsScreen và header CSV.
+  - Đánh đổi: form dài, chọn nhóm xong phải cuộn lên mới thấy nút Lưu. Bù lại `Enter` vẫn lưu được.
+- **Ô nhập tiền có dấu phân cách nghìn:** `groupDigits()` format lúc hiển thị (`45000` → `45.000`) trong
+  khi state vẫn là chuỗi digit thuần, nên `parseCurrencyInput` không phải biết gì về dấu `.`. Áp cho cả
+  ô số tiền chính, ô nhập nhanh của shortcut, ô đơn giá từng món và ô trả hoá đơn. **`pattern` của mấy ô
+  đó phải đổi sang `[0-9.]*`** — `pattern` là constraint validation thật, để `[0-9]*` là submit bị chặn
+  ở giá trị `45.000`.
+
+### Fixed
+- **"50 nghìn" chỉ đúng nhờ ăn may, và làm bẩn tiêu đề.** `parseCurrencyInput` chỉ hiểu `k`/`m`; "50
+  nghìn" ra 50.000 nhờ heuristic auto-k (`val < 10000` → ×1000) — **tắt auto-k trong Cài đặt là nó lưu
+  50 đồng**. Giờ có bảng `MAGNITUDE` tường minh (`k/nghìn/ngàn` = ×1000, `m/triệu/tr/củ` = ×1e6).
+  Cùng bảng đó dùng cho `stripAmountWords()`, nên "xăng 50 nghìn" ra tiêu đề `xăng` chứ không phải
+  `xăng nghìn` (chữ "nghìn" trước đây không bị bóc — mà đó là đúng ví dụ trong placeholder của ô Smart).
+  - Lookahead `(?![\p{L}])` là phần không được bỏ: thiếu nó thì "2 cuốn sách" → `ốn sách` (khớp `cu`) và
+    "1 trứng" → `ứng` (khớp `tr`). `\b` không cứu được vì chữ Việt có dấu không phải `\w`.
+  - `currencyInput.test.js` stub `localStorage` để test được cả trạng thái **tắt** auto-k — chỗ bug thật.
+
 ### Added
 - **Vault backup / restore (Milestone 4 bước 1):** nút `Export backup` / `Restore from backup` ở **màn
   hình khoá**, không ở header đã unlock — đây đúng là lúc cần khôi phục (máy mới → màn setup), và export

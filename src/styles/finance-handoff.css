@@ -271,17 +271,21 @@
 .fin-entry-card__head .fin-seg { margin: 0 0 0 auto; padding: 0; overflow: hidden; border: 1px solid var(--n-border); background: transparent; }
 .fin-entry-card__head .fin-seg__btn { min-height: 34px; border-left: 1px solid var(--n-border); border-radius: 0; }
 .fin-entry-card__head .fin-seg__btn:first-child { border-left: 0; }
-.fin-smart-input { display: flex; align-items: center; gap: 9px; min-height: 58px; padding: 10px 12px; border: 1px solid #423a6a; border-radius: 8px; background: var(--n-sink); color: var(--n-accent); }
-.fin-smart-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--n-txt); font: inherit; font-size: 14.5px; }
-.fin-smart-input input::placeholder { color: var(--n-txt3); }
-.fin-smart-result { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 0; border: 0; background: transparent; color: var(--n-txt2); font: inherit; font-size: 11.5px; cursor: pointer; text-align: left; animation: fin-rise .16s ease both; }
-.fin-smart-result b { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 6px; background: var(--n-accent-soft); color: var(--n-on-accent); font-size: 12px; }
-.fin-smart-result small { color: var(--n-txt3); }
 .fin-entry-section { display: grid; gap: 8px; }
 .fin-entry-section > label, .fin-field-heading > label, .fin-entry-meta label { color: var(--n-txt2); font-size: 11.5px; }
 .fin-field-heading { display: flex; align-items: baseline; gap: 8px; }
 .fin-field-heading small { color: var(--n-txt3); font-size: 10.5px; }
-.fin-amount-field { gap: 4px; }
+/* Tiêu đề + Số tiền một hàng, số tiền hẹp hơn vì nó là ô 42px đã tự nổi bật.
+   Nút Lưu nằm ngay dưới ở `.fin-entry-topbar` → cả ba thứ bắt buộc gọn trong một
+   khối ở đầu form, không phải cuộn xuống cuối mới lưu được. */
+.fin-entry-head-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); gap: 12px; align-items: end; }
+.fin-entry-title-field { display: grid; gap: 5px; min-width: 0; }
+.fin-entry-title-field > label { color: var(--n-txt2); font-size: 11.5px; }
+.fin-entry-title-field > input { font-size: 15px; }
+.fin-entry-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.fin-entry-topbar .fin-entry-actions { padding-top: 0; margin-left: auto; }
+
+.fin-amount-field { display: grid; gap: 4px; min-width: 0; }
 .fin-amount-field > div:nth-child(2) { display: flex; align-items: baseline; gap: 8px; }
 .fin-amount-field input { flex: 1; min-width: 0; padding: 0; border: 0; outline: 0; background: transparent; color: var(--n-txt); font: 500 42px/1.15 Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 .fin-amount-field input::placeholder { color: var(--n-txt3); }
@@ -490,6 +494,10 @@
   .fin-entry-card__head .fin-seg { width: 100%; margin: 0; }
   .fin-entry-card__head .fin-seg__btn { flex: 1; }
   .fin-entry-meta { grid-template-columns: 1fr; }
+  /* Hẹp thì tiêu đề và số tiền xuống 2 dòng — ô số 42px không chia đôi được */
+  .fin-entry-head-grid { grid-template-columns: 1fr; gap: 9px; }
+  .fin-entry-topbar { align-items: stretch; }
+  .fin-entry-topbar .fin-entry-actions { margin-left: 0; }
   .fin-task-link-row { align-items: stretch; flex-direction: column; }
   .fin-task-link-row .fin-taskpick { width: 100%; margin-left: 0; }
   .fin-task-link-row .fin-taskpick__btn { flex: 1; }

@@ -192,7 +192,7 @@ const transactionFields = [
   ['3', 'Không tính chi', 'excluded', 'BOOLEAN', 'Chỉ trả nợ gốc và trả sao kê; vẫn có trên dòng thời gian.'],
   ['2', 'Mức cần thiết', 'necessity', 'must / need / want', 'Cơ sở cho giới hạn 50/30/20.'],
   ['3', 'Tính chất', 'is_fixed', 'BOOLEAN', 'Phân biệt phần chi cố định và biến đổi.'],
-  ['2', 'Ghi chú', 'note', 'TEXT', 'Tìm kiếm và gợi ý nhập lần sau.'],
+  ['2', 'Tiêu đề', 'note', 'TEXT', 'Tìm kiếm và gợi ý nhập lần sau.'],
   ['3', 'Nơi / người nhận', 'merchant', 'TEXT', 'Xem nơi nào tiêu nhiều và đăng ký quên hủy.'],
   ['3', 'Chi tiết món', 'items', 'JSONB[]', 'Lưu tên, số lượng và giá cho hóa đơn nhiều món.'],
   ['3', 'Ảnh hóa đơn', 'attachments', 'JSONB[]', 'Đối soát, bảo hành và hoàn tiền.'],

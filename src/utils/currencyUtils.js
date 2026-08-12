@@ -20,6 +20,21 @@ export function sanitizeDigits(value, maxLength = 18) {
   return String(value ?? '').replace(/\D/g, '').slice(0, maxLength);
 }
 
+/**
+ * Chèn dấu phân cách nghìn để HIỂN THỊ trong ô nhập tiền: "45000" → "45.000".
+ *
+ * State vẫn giữ chuỗi digit thuần (`sanitizeDigits` lọc lại mọi thứ không phải
+ * số ở onChange), nên `parseCurrencyInput` không cần biết gì về dấu `.` và không
+ * có đường nào lưu sai số. Dấu `.` theo quy ước VN, khớp với `formatVND`.
+ *
+ * ponytail: sửa ở GIỮA chuỗi thì caret nhảy về cuối, vì value được format lại
+ * mỗi lần render. Chấp nhận được với ô tiền (người ta gõ trái→phải rồi xoá cả
+ * cụm). Muốn caret đúng thì phải tự quản `selectionStart` — không đáng.
+ */
+export function groupDigits(value) {
+  return String(value ?? '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 export function sanitizeDecimal(value, maxIntegerDigits = 6, maxFractionDigits = 4) {
   const raw = String(value ?? '').replace(',', '.').replace(/[^\d.]/g, '');
   if (!raw) return '';
@@ -37,11 +52,41 @@ export function formatVND(amount) {
 }
 
 /**
+ * Chữ chỉ độ lớn mà người Việt gõ sau số tiền. NGUỒN DUY NHẤT — cả
+ * `parseCurrencyInput` (để nhân) và `stripAmountWords` (để bóc khỏi tiêu đề) đều
+ * đọc từ đây, nên không có đường lệch nhau.
+ *
+ * Trước đây chỉ hiểu `k`/`m`, còn "50 nghìn" ra đúng 50.000 CHỈ NHỜ heuristic
+ * auto-k (`val < 10000` → ×1000). Tắt auto-k trong Cài đặt là nó lưu 50 đồng.
+ */
+const MAGNITUDE = {
+  k: 1e3, nghìn: 1e3, nghin: 1e3, ngàn: 1e3, ngan: 1e3,
+  m: 1e6, triệu: 1e6, trieu: 1e6, tr: 1e6, củ: 1e6, cu: 1e6,
+};
+const MAGNITUDE_ALT = Object.keys(MAGNITUDE).sort((a, b) => b.length - a.length).join('|');
+
+/**
+ * Bóc số tiền + chữ chỉ độ lớn khỏi câu gõ tự nhiên, để phần còn lại làm tiêu đề:
+ * "xăng 50 nghìn" → "xăng", "netflix 260k" → "netflix".
+ *
+ * `(?![\p{L}])` là phần KHÔNG ĐƯỢC BỎ: chữ chỉ độ lớn chỉ bóc khi nó không dính
+ * vào một từ khác. Thiếu nó thì "2 cuốn sách" → "ốn sách" (khớp `cu`) và
+ * "1 trứng" → "ứng" (khớp `tr`). `\b` không cứu được vì chữ Việt có dấu không
+ * phải `\w` nên chỗ nào cũng thành boundary.
+ */
+export function stripAmountWords(text) {
+  return String(text ?? '')
+    .replace(new RegExp(`\\d[\\d.,]*\\s*(?:${MAGNITUDE_ALT})?(?![\\p{L}])`, 'giu'), '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Chuyển chuỗi nhập liệu của người dùng thành số nguyên VND.
  * Ví dụ:
  * - "50" -> 50000 (tự động nhân 1000 đối với số ngắn < 10000 khi getAutoK() bật)
- * - "50k" -> 50000
- * - "1.5m" -> 1500000
+ * - "50k" / "50 nghìn" -> 50000
+ * - "1.5m" / "1.5 triệu" / "1.5tr" -> 1500000
  * - "89$" hoặc "89 usd" -> 2260600 (sử dụng tỷ giá cấu hình)
  * - "120.000" -> 120000
  */
@@ -51,22 +96,20 @@ export function parseCurrencyInput(value) {
   const str = String(value).trim().replace(/\s+/g, '');
   const isUsd = /[$]|usd/i.test(str);
 
-  // Tách phần số (hỗ trợ cả chấm/phẩy thập phân) và hậu tố nhân (k, m) nếu có
-  const m = str.match(/(\d[\d.,]*)[\s]*([kKmM]?)/);
+  // Tách phần số (hỗ trợ cả chấm/phẩy thập phân) và chữ chỉ độ lớn nếu có
+  const m = str.match(new RegExp(`(\\d[\\d.,]*)\\s*(${MAGNITUDE_ALT})?`, 'i'));
   if (!m) return 0;
 
   const { num: val, hasDecimal } = parseNumericPart(m[1]);
   if (isNaN(val)) return 0;
 
   let result = val;
-  const suffix = m[2];
+  const multiplier = MAGNITUDE[(m[2] || '').toLowerCase()];
 
   if (isUsd) {
     result = val * getUsdRate();
-  } else if (/[kK]/.test(suffix)) {
-    result *= 1000;
-  } else if (/[mM]/.test(suffix)) {
-    result *= 1000000;
+  } else if (multiplier) {
+    result *= multiplier;
   } else if (!hasDecimal && getAutoK() && val < 10000) {
     // Auto-K: số nguyên ngắn như "50" nghĩa là 50.000.
     // Bỏ qua khi người dùng nhập số thập phân rõ ràng (vd "12.50") để tránh nhân nhầm 1000.

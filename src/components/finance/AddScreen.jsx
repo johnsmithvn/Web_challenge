@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
-import { parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
+import { groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
 import { matchCategory, deriveNecessity, currentMonthPeriod, cardBalance, billAmountEstimate } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, NECESSITY_META, Segmented, TaskPicker, FinanceIcon,
@@ -12,6 +12,17 @@ const TYPE_OPTS = [
   { value: 'income', label: 'Thu' },
   { value: 'saving', label: 'Để dành' },
 ];
+
+/* Shortcut mặc định (`shortcutSeed` trong finance-categories.json) KHÔNG phải row
+   DB — chúng được sinh lại mỗi lần render, nên không có gì để DELETE. Danh sách
+   ẩn giữ ở localStorage: nó chỉ là vài cái key `category:sub`, không phải data, và
+   ẩn một mặc định là lựa chọn của từng máy chứ không phải nội dung cần đồng bộ. */
+const HIDDEN_SEEDS_KEY = 'lh_fin_hidden_seed_shortcuts';
+const seedPath = (shortcut) => `${shortcut.category_id}:${shortcut.subcategory_id || ''}`;
+
+function readHiddenSeeds() {
+  try { return JSON.parse(localStorage.getItem(HIDDEN_SEEDS_KEY) || '[]'); } catch { return []; }
+}
 
 const AMOUNT_STEPS = [10000, 20000, 50000, 100000, 200000];
 const QUICK_STEPS = [5000, 10000, 20000, 50000, 100000];
@@ -30,7 +41,6 @@ function amountStepLabel(value) {
 export default function AddScreen({ fin, nav }) {
   const { pendingTasks } = useUserTasks();
   const cats = fin.cats;
-  const [nl, setNl] = useState('');
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('food');
@@ -50,18 +60,41 @@ export default function AddScreen({ fin, nav }) {
   const [quickAmount, setQuickAmount] = useState('');
   const [armedShortcutId, setArmedShortcutId] = useState(null);
   const [shortcutEditing, setShortcutEditing] = useState(false);
+  const [hiddenSeeds, setHiddenSeeds] = useState(readHiddenSeeds);
 
+  const setHidden = (next) => {
+    setHiddenSeeds(next);
+    try { localStorage.setItem(HIDDEN_SEEDS_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+  };
+
+  /* Handoff từ Inbox — chỗ DUY NHẤT còn dùng logic đọc câu tự nhiên.
+     Ô "Smart" trong form đã bỏ: nó bắt gõ câu rồi bấm "Hiểu là" để đổ vào đúng
+     hai ô Tiêu đề + Số tiền vừa nằm ngay trên nó — thêm một bước cho việc user
+     làm nhanh hơn nếu gõ thẳng. Còn text từ Inbox thì KHÔNG do user gõ ở đây, nên
+     đoán hộ mới có giá trị: parse luôn và điền sẵn, không qua ô trung gian nào. */
   useEffect(() => {
     if (nav.handoff?.kind !== 'tx') return;
-    if (nav.handoff.title) setNl(nav.handoff.title);
+    const text = nav.handoff.title || '';
+    if (text) {
+      setNote(stripAmountWords(text) || text);
+      const guess = matchCategory(text);
+      if (guess) {
+        setType('expense');
+        setCategoryId(guess.categoryId);
+        setSubId(guess.subId);
+      }
+    }
+    // `handoff.amount` là số Inbox đã chốt → tin nó trước; không có thì mới đoán
+    // từ chính câu đó ("cà phê 35k").
+    const amountFromText = parseCurrencyInput(text);
     if (nav.handoff.amount) setAmount(String(nav.handoff.amount));
+    else if (amountFromText) setAmount(String(amountFromText));
   }, [nav.handoff]);
 
   const expenseGroup = cats.expenseGroups.find(group => group.key === categoryId);
   const parsedAmount = parseCurrencyInput(amount);
   const autoNecessity = deriveNecessity(categoryId, subId, cats);
   const appliedNecessity = necessity || autoNecessity;
-  const nlGuess = useMemo(() => matchCategory(nl), [nl]);
   const currentMonth = currentMonthPeriod(fin.today);
   const currentPeriodKey = currentMonth.from.slice(0, 7);
   const selectedGoal = fin.goals.find(goal => goal.id === savingGoalId);
@@ -94,29 +127,20 @@ export default function AddScreen({ fin, nav }) {
   }, [fin.transactions, fin.bills, currentPeriodKey, currentMonth.to, fin.today]);
 
   const shortcuts = useMemo(() => {
-    const defaults = cats.shortcutSeed.map((shortcut, index) => ({
-      ...shortcut, id: `seed-${index}`, seed: true, recent_amounts: [], use_count: 0,
-      necessity: deriveNecessity(shortcut.category_id, shortcut.subcategory_id, cats),
-    }));
+    const defaults = cats.shortcutSeed
+      .filter(shortcut => !hiddenSeeds.includes(seedPath(shortcut)))
+      .map((shortcut, index) => ({
+        ...shortcut, id: `seed-${index}`, seed: true, recent_amounts: [], use_count: 0,
+        necessity: deriveNecessity(shortcut.category_id, shortcut.subcategory_id, cats),
+      }));
     if (!fin.shortcuts.length) return defaults;
-    const savedPaths = new Set(fin.shortcuts.map(shortcut => `${shortcut.category_id}:${shortcut.subcategory_id || ''}`));
-    return [...fin.shortcuts, ...defaults.filter(shortcut => !savedPaths.has(`${shortcut.category_id}:${shortcut.subcategory_id || ''}`))];
-  }, [fin.shortcuts, cats]);
+    const savedPaths = new Set(fin.shortcuts.map(seedPath));
+    return [...fin.shortcuts, ...defaults.filter(shortcut => !savedPaths.has(seedPath(shortcut)))];
+  }, [fin.shortcuts, cats, hiddenSeeds]);
 
   const duplicateBill = type === 'expense' && subId
     ? fin.bills.find(bill => bill.enabled && bill.subcategory_id === subId)
     : null;
-
-  const applyNl = () => {
-    if (nlGuess) {
-      setCategoryId(nlGuess.categoryId);
-      setSubId(nlGuess.subId);
-      setType('expense');
-    }
-    const parsed = parseCurrencyInput(nl);
-    if (parsed) setAmount(String(parsed));
-    if (!note) setNote(nl.replace(/\d[\d.,]*\s*[kKmM]?/g, '').trim());
-  };
 
   const addAmount = (setter, raw, step) => {
     const next = (parseCurrencyInput(raw) || 0) + step;
@@ -134,7 +158,6 @@ export default function AddScreen({ fin, nav }) {
   };
 
   const reset = () => {
-    setNl('');
     setAmount('');
     setNote('');
     setSubId('');
@@ -265,8 +288,15 @@ export default function AddScreen({ fin, nav }) {
   };
 
   const pinCurrentShortcut = async () => {
-    if (type !== 'expense') return;
-    const name = subLabel(subId, cats) || catInfo(categoryId, cats).label;
+    // Trước đây `return` im lặng ở đây: bấm nút ở tab Thu / Để dành thì không
+    // toast, không lỗi, không gì cả — đúng nghĩa "nút chả có tác dụng gì".
+    if (type !== 'expense') {
+      nav.showToast('Shortcut chỉ dùng cho khoản Chi', { icon: 'warning' });
+      return;
+    }
+    // Tên lấy từ ô Tiêu đề bạn vừa gõ. Trước đây tên tự sinh từ danh mục con —
+    // chưa chọn danh mục con thì ra tên NHÓM ("Ăn uống"), một shortcut vô nghĩa.
+    const name = note.trim() || subLabel(subId, cats) || catInfo(categoryId, cats).label;
     const duplicate = fin.shortcuts.some(shortcut => shortcut.name.toLowerCase() === name.toLowerCase()
       && shortcut.category_id === categoryId && (shortcut.subcategory_id || '') === subId);
     if (duplicate) {
@@ -318,29 +348,40 @@ export default function AddScreen({ fin, nav }) {
             <Segmented options={TYPE_OPTS} value={type} onChange={setType} />
           </div>
 
-          <div className="fin-smart-input">
-            <AppIcon name="sparkle" size={17} weight="fill" />
-            <input value={nl} onChange={event => setNl(event.target.value)}
-              onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); applyNl(); } }}
-              placeholder="Gõ tự nhiên: “nước ép 45k”, “xăng 50 nghìn”, “netflix 260k”…" />
-          </div>
-          {(nlGuess || parseCurrencyInput(nl) > 0) && (
-            <button type="button" className="fin-smart-result" onClick={applyNl}>
-              <span>Hiểu là</span>
-              {parseCurrencyInput(nl) > 0 && <b>{money(parseCurrencyInput(nl))}</b>}
-              {nlGuess && <b><FinanceIcon categoryId={nlGuess.categoryId} cats={cats} size={13} /> {subLabel(nlGuess.subId, cats) || catInfo(nlGuess.categoryId, cats).label}</b>}
-              <small>chạm để điền form</small>
-            </button>
-          )}
+          {/* Tiêu đề + số tiền + nút lưu đứng NGAY ĐẦU form: đó là ba thứ duy nhất
+              buộc phải có để ghi một khoản. Nhóm / danh mục con / mức cần thiết /
+              nguồn tiền / ngày ở dưới đều là tinh chỉnh, bỏ qua vẫn lưu được.
 
-          <section className="fin-entry-section fin-amount-field">
-            <label>Số tiền</label>
-            <div><input autoFocus inputMode="numeric" pattern="[0-9]*" placeholder="0" value={amount}
-              onChange={event => setAmount(sanitizeDigits(event.target.value))} /><span>₫</span></div>
+              Trước đây tiêu đề nằm gần cuối form dưới nhãn "Ghi chú · Tùy chọn"
+              nên gần như không ai điền → mọi dòng trong danh sách rơi về tên nhóm
+              và 20 khoản "Ăn uống" trông y hệt nhau. Đổi nhãn thôi không đủ; nó
+              phải nằm ở chỗ user thấy trước khi bấm Lưu. */}
+          <section className="fin-entry-head-grid">
+            <div className="fin-entry-title-field">
+              <label htmlFor="fin-tx-title">Tiêu đề</label>
+              <input id="fin-tx-title" className="fin-input" value={note} maxLength={200}
+                onChange={event => setNote(event.target.value)} placeholder="nước ép, xăng, Netflix…" />
+            </div>
+            <div className="fin-amount-field">
+              <label htmlFor="fin-tx-amount">Số tiền</label>
+              {/* value đã format nên `pattern` PHẢI cho phép dấu `.`: pattern là
+                  constraint validation thật, `[0-9]*` sẽ chặn submit ở "45.000". */}
+              <div><input id="fin-tx-amount" autoFocus inputMode="numeric" pattern="[0-9.]*" placeholder="0"
+                value={groupDigits(amount)}
+                onChange={event => setAmount(sanitizeDigits(event.target.value))} /><span>₫</span></div>
+            </div>
+          </section>
+
+          <div className="fin-entry-topbar">
             <div className="fin-step-row">
               {AMOUNT_STEPS.map(step => <button key={step} type="button" onClick={() => addAmount(setAmount, amount, step)}>{amountStepLabel(step)}</button>)}
             </div>
-          </section>
+            <div className="fin-entry-actions">
+              <button type="submit" className="fin-btn fin-btn--primary" disabled={!parsedAmount || (type === 'saving' && (!selectedGoal || !selectedDeposit || (savingDir === 'out' && parsedAmount > selectedDeposit.amount)))}><AppIcon name="check" size={16} weight="bold" /> Lưu</button>
+              <button type="button" className="fin-btn fin-btn--secondary" disabled={!parsedAmount || (type === 'saving' && (!selectedGoal || !selectedDeposit))} onClick={() => saveTransaction(true)}>Lưu &amp; nhập tiếp</button>
+              <small>Enter để lưu · Esc để hủy</small>
+            </div>
+          </div>
 
           {type !== 'saving' && (
             <>
@@ -440,17 +481,15 @@ export default function AddScreen({ fin, nav }) {
             </section>
           )}
 
-          <div className="fin-entry-meta">
-            <div>
-              <label>Ngày</label>
-              <div className="fin-date-choice">
-                <button type="button" className={occurredAt === fin.today ? 'is-active' : ''} onClick={() => setOccurredAt(fin.today)}>Hôm nay</button>
-                <button type="button" className={occurredAt === yesterday ? 'is-active' : ''} onClick={() => setOccurredAt(yesterday)}>Hôm qua</button>
-                <input type="date" value={occurredAt} max={fin.today} onChange={event => setOccurredAt(event.target.value)} aria-label="Chọn ngày khác" />
-              </div>
+          {/* Tiêu đề đã lên đầu form — ở đây chỉ còn Ngày, nên không cần grid 2 cột */}
+          <section className="fin-entry-section">
+            <label>Ngày</label>
+            <div className="fin-date-choice">
+              <button type="button" className={occurredAt === fin.today ? 'is-active' : ''} onClick={() => setOccurredAt(fin.today)}>Hôm nay</button>
+              <button type="button" className={occurredAt === yesterday ? 'is-active' : ''} onClick={() => setOccurredAt(yesterday)}>Hôm qua</button>
+              <input type="date" value={occurredAt} max={fin.today} onChange={event => setOccurredAt(event.target.value)} aria-label="Chọn ngày khác" />
             </div>
-            <div><label>Ghi chú</label><input className="fin-input" value={note} maxLength={200} onChange={event => setNote(event.target.value)} placeholder="Tùy chọn" /></div>
-          </div>
+          </section>
 
           <div className="fin-task-link-row">
             <span><AppIcon name="pushPin" size={15} /> Nhiệm vụ liên quan</span>
@@ -470,24 +509,18 @@ export default function AddScreen({ fin, nav }) {
                   <div className="fin-item-row" key={index}>
                     <input className="fin-input" value={item.name} onChange={event => updateDraftItem(index, 'name', event.target.value)} placeholder="Tên món" />
                     <input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={item.qty} onChange={event => updateDraftItem(index, 'qty', event.target.value)} aria-label="Số lượng" />
-                    <input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={item.price} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="Đơn giá" />
+                    <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="Đơn giá" />
                     <button type="button" aria-label="Xóa món" onClick={() => setDraftItems(current => current.filter((_, itemIndex) => itemIndex !== index))}><AppIcon name="x" size={14} /></button>
                   </div>
                 ))}
                 <button type="button" className="fin-inline-command" onClick={() => setDraftItems(current => [...current, { name: '', qty: '1', price: '' }])}><AppIcon name="plus" size={14} /> Thêm món</button>
               </div>
               <div className="fin-more-actions">
-                {type === 'expense' && <button type="button" onClick={pinCurrentShortcut}><AppIcon name="pushPin" size={15} /> Ghim thành shortcut</button>}
                 <button type="button" onClick={() => nav.go('recurring')}><AppIcon name="arrowsClockwise" size={15} /> Biến thành khoản định kỳ</button>
               </div>
             </div>
           )}
 
-          <div className="fin-entry-actions">
-            <button type="submit" className="fin-btn fin-btn--primary" disabled={!parsedAmount || (type === 'saving' && (!selectedGoal || !selectedDeposit || (savingDir === 'out' && parsedAmount > selectedDeposit.amount)))}><AppIcon name="check" size={16} weight="bold" /> Lưu</button>
-            <button type="button" className="fin-btn fin-btn--secondary" disabled={!parsedAmount || (type === 'saving' && (!selectedGoal || !selectedDeposit))} onClick={() => saveTransaction(true)}>Lưu & nhập tiếp</button>
-            <small>Enter để lưu · Esc để hủy</small>
-          </div>
         </form>
 
         <aside className="fin-add-aside">
@@ -496,7 +529,7 @@ export default function AddScreen({ fin, nav }) {
               <div className="fin-shortcut-panel__head"><span><AppIcon name="lightning" size={16} weight="fill" /> Shortcut</span><button type="button" onClick={() => setShortcutEditing(current => !current)}>{shortcutEditing ? 'Xong' : 'Sửa shortcut'}</button></div>
               <div className="fin-quick-amount">
                 <div><span>Gõ số một lần rồi chạm khoản bên dưới</span>{quickAmount && <button type="button" onClick={() => setQuickAmount('')}>xóa</button>}</div>
-                <label><input inputMode="numeric" pattern="[0-9]*" value={quickAmount} onChange={event => setQuickAmount(sanitizeDigits(event.target.value))} placeholder="0" /><span>₫</span></label>
+                <label><input inputMode="numeric" pattern="[0-9.]*" value={groupDigits(quickAmount)} onChange={event => setQuickAmount(sanitizeDigits(event.target.value))} placeholder="0" /><span>₫</span></label>
                 <div className="fin-step-row">{QUICK_STEPS.map(step => <button key={step} type="button" onClick={() => addAmount(setQuickAmount, quickAmount, step)}>{amountStepLabel(step)}</button>)}</div>
               </div>
               <div className="fin-shortcut-list">
@@ -511,16 +544,30 @@ export default function AddScreen({ fin, nav }) {
                         <span><strong>{shortcut.name}<i style={{ color: need.color }}>{need.label}</i></strong><small>{info.label}{subLabel(shortcut.subcategory_id, cats) ? ` › ${subLabel(shortcut.subcategory_id, cats)}` : ''}</small></span>
                         <em>{parseCurrencyInput(quickAmount) ? `ghi ${money(parseCurrencyInput(quickAmount))}` : shortcut.recent_amounts?.[0] ? `thường ${money(shortcut.recent_amounts[0])}` : 'gõ số tiền'}</em>
                       </button>
-                      {shortcutEditing && !shortcut.seed && <button type="button" className="fin-shortcut-delete" aria-label={`Xóa ${shortcut.name}`} onClick={async () => { if (await nav.confirmDelete(`shortcut “${shortcut.name}”`)) await fin.deleteShortcut(shortcut.id); }}><AppIcon name="trash" size={14} /></button>}
+                      {/* Seed không xoá được (nó là JSON, không phải row DB) nên nút
+                          của seed là ẨN, và bắt buộc phải có đường hiện lại ở cuối
+                          panel — không có thì đó là cửa một chiều. */}
+                      {shortcutEditing && (shortcut.seed
+                        ? <button type="button" className="fin-shortcut-delete" title="An shortcut mac dinh nay"
+                            aria-label={`An ${shortcut.name}`}
+                            onClick={() => setHidden([...hiddenSeeds, seedPath(shortcut)])}><AppIcon name="eyeSlash" size={14} /></button>
+                        : <button type="button" className="fin-shortcut-delete" aria-label={`Xoa ${shortcut.name}`}
+                            onClick={async () => { if (await nav.confirmDelete(`shortcut “${shortcut.name}”`)) await fin.deleteShortcut(shortcut.id); }}><AppIcon name="trash" size={14} /></button>
+                      )}
                     </div>
                     {armed && <div className="fin-shortcut-armed">
-                      <div><input autoFocus inputMode="numeric" pattern="[0-9]*" value={quickAmount} onChange={event => setQuickAmount(sanitizeDigits(event.target.value))} placeholder="Số tiền" /><span>₫</span><button type="button" onClick={() => recordShortcut(shortcut)} disabled={!parseCurrencyInput(quickAmount)}><AppIcon name="check" size={14} /> Ghi</button></div>
+                      <div><input autoFocus inputMode="numeric" pattern="[0-9.]*" value={groupDigits(quickAmount)} onChange={event => setQuickAmount(sanitizeDigits(event.target.value))} placeholder="Số tiền" /><span>₫</span><button type="button" onClick={() => recordShortcut(shortcut)} disabled={!parseCurrencyInput(quickAmount)}><AppIcon name="check" size={14} /> Ghi</button></div>
                       <footer><span>hay nhập:</span>{(shortcut.recent_amounts || []).map(value => <button type="button" key={value} onClick={() => recordShortcut(shortcut, String(value))}>{money(value)}</button>)}<button type="button" onClick={() => openShortcutInForm(shortcut)}>mở form đầy đủ</button></footer>
                     </div>}
                   </article>;
                 })}
               </div>
               <button type="button" className="fin-inline-command" onClick={pinCurrentShortcut}><AppIcon name="plus" size={14} /> Tạo shortcut từ form</button>
+              {hiddenSeeds.length > 0 && (
+                <button type="button" className="fin-inline-command" onClick={() => setHidden([])}>
+                  <AppIcon name="arrowsClockwise" size={14} /> Hiện lại {hiddenSeeds.length} shortcut mặc định
+                </button>
+              )}
             </section>
           )}
           <section className="fin-card fin-entry-help"><strong>Ba cách ghi, chọn cách nào cũng được</strong><p>Gõ tự nhiên một dòng, chạm shortcut, hoặc điền form. Cả ba đều tạo cùng một bản ghi chuẩn và đều có thể gắn với nhiệm vụ.</p></section>
@@ -539,7 +586,7 @@ function PendingBillRow({ bill, estimate, cats, onPay, onDismiss }) {
       <span className="fin-pending-bill__icon" style={{ color: info.color }}><FinanceIcon name={info.icon} cats={cats} size={14} /></span>
       <span><strong>{bill.name}</strong><small className={bill.days < 0 ? 'is-late' : ''}>{status} · {info.label}{subLabel(bill.subcategory_id, cats) ? ` › ${subLabel(bill.subcategory_id, cats)}` : ''}</small></span>
       {bill.amount_mode === 'ask'
-        ? <input inputMode="numeric" pattern="[0-9]*" value={value} onChange={event => setValue(sanitizeDigits(event.target.value))} placeholder={estimate ? `~ ${money(estimate)}` : 'Số tiền'} />
+        ? <input inputMode="numeric" pattern="[0-9.]*" value={groupDigits(value)} onChange={event => setValue(sanitizeDigits(event.target.value))} placeholder={estimate ? `~ ${money(estimate)}` : 'Số tiền'} />
         : <b>{money(bill.amount)}</b>}
       <button type="button" onClick={() => onPay(bill, value)} disabled={!parseCurrencyInput(value)}>Thanh toán</button>
       <button type="button" className="fin-pending-bill__dismiss" onClick={onDismiss} aria-label={`Bỏ ${bill.name} trong kỳ này`}><AppIcon name="x" size={13} /></button>

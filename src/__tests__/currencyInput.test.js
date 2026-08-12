@@ -1,5 +1,16 @@
 import assert from 'node:assert/strict';
-import { sanitizeDecimal, sanitizeDigits } from '../utils/currencyUtils.js';
+
+// `parseCurrencyInput` đọc localStorage (auto-k, tỷ giá USD) mà node không có →
+// stub tối thiểu, `getItem` trả null nghĩa là dùng mặc định (auto-k BẬT).
+// `autoK` để test được cả trạng thái TẮT — đó mới là chỗ bug thật nằm.
+let autoK = null;
+globalThis.localStorage = {
+  getItem: (key) => (key === 'lh_auto_k' ? autoK : null),
+  setItem: () => {},
+};
+
+const { groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits, stripAmountWords } =
+  await import('../utils/currencyUtils.js');
 
 assert.equal(sanitizeDigits('12abc.345 ₫'), '12345');
 assert.equal(sanitizeDigits('123456', 4), '1234');
@@ -10,5 +21,52 @@ assert.equal(sanitizeDecimal('1.2.3abc'), '1.23');
 assert.equal(sanitizeDecimal('.75'), '0.75');
 assert.equal(sanitizeDecimal('1234567.89123', 6, 4), '123456.8912');
 assert.equal(sanitizeDecimal(''), '');
+
+/* groupDigits — chỉ để HIỂN THỊ, state vẫn là digit thuần */
+assert.equal(groupDigits('45000'), '45.000');
+assert.equal(groupDigits('1234567'), '1.234.567');
+assert.equal(groupDigits('999'), '999');       // dưới 4 số thì không có dấu nào
+assert.equal(groupDigits('1000'), '1.000');    // biên 4 số
+assert.equal(groupDigits(''), '');
+assert.equal(groupDigits(null), '');
+// Bất biến: sanitizeDigits phải huỷ được đúng cái groupDigits vừa thêm, nếu không
+// thì gõ lần thứ hai vào ô tiền là số bị nhân lên.
+assert.equal(sanitizeDigits(groupDigits('45000')), '45000');
+assert.equal(sanitizeDigits(groupDigits('1234567')), '1234567');
+
+/* stripAmountWords — bóc số + chữ chỉ độ lớn, giữ lại phần làm tiêu đề */
+assert.equal(stripAmountWords('nước ép 45k'), 'nước ép');
+assert.equal(stripAmountWords('xăng 50 nghìn'), 'xăng');   // bug cũ: ra "xăng nghìn"
+assert.equal(stripAmountWords('netflix 260k'), 'netflix');
+assert.equal(stripAmountWords('vé máy bay 2.5 triệu'), 'vé máy bay');
+assert.equal(stripAmountWords('tiền nhà 3tr'), 'tiền nhà');
+assert.equal(stripAmountWords('lì xì 1 củ'), 'lì xì');
+// ⚠️ Bất biến: chữ chỉ độ lớn CHỈ bóc khi không dính vào từ khác. Không có
+//    lookahead `(?![\p{L}])` thì "cu"/"tr" ăn vào giữa chữ và tiêu đề thành rác.
+assert.equal(stripAmountWords('2 cuốn sách 90k'), 'cuốn sách');
+assert.equal(stripAmountWords('1 trứng'), 'trứng');
+assert.equal(stripAmountWords('cà phê'), 'cà phê');        // không có số thì giữ nguyên
+assert.equal(stripAmountWords(''), '');
+
+/* parseCurrencyInput — chữ chỉ độ lớn tiếng Việt phải TƯỜNG MINH, không dựa
+   vào heuristic auto-k (tắt auto-k là "50 nghìn" thành 50 đồng) */
+assert.equal(parseCurrencyInput('50k'), 50000);
+assert.equal(parseCurrencyInput('50 nghìn'), 50000);
+assert.equal(parseCurrencyInput('50 ngàn'), 50000);
+assert.equal(parseCurrencyInput('2.5 triệu'), 2500000);
+assert.equal(parseCurrencyInput('3tr'), 3000000);
+assert.equal(parseCurrencyInput('1 củ'), 1000000);
+assert.equal(parseCurrencyInput('1.5m'), 1500000);
+assert.equal(parseCurrencyInput('120.000'), 120000);
+assert.equal(parseCurrencyInput(''), 0);
+
+// ⚠️ Đây là bug thật đã sửa: TẮT auto-k thì "50 nghìn" vẫn phải là 50.000. Trước
+//    đây parser chỉ hiểu k/m nên "nghìn" ra đúng CHỈ nhờ heuristic auto-k.
+autoK = 'false';
+assert.equal(parseCurrencyInput('50 nghìn'), 50000);
+assert.equal(parseCurrencyInput('2 triệu'), 2000000);
+assert.equal(parseCurrencyInput('50'), 50);      // không có chữ nào → đúng là 50 đồng
+autoK = null;
+assert.equal(parseCurrencyInput('50'), 50000);   // auto-k bật lại → 50 nghĩa là 50k
 
 console.log('currency input tests passed');
