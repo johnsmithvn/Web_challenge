@@ -13,7 +13,7 @@ import {
   deriveNecessity, periodTotals, comparePeriods, matchCategory, budgetBreakdown,
   cardCycle, cardBalance, cardStatementSummary, loanSchedule, fundBalance, spendingRhythm, listPeriodOptions,
   suggestedDailySpend, maturityWarn, groupByDate, daysInclusive, currentMonthPeriod, periodFromKey, billAmountEstimate,
-  dueDateInMonth, daysUntilDue, nextAnnualFee,
+  dueDateInMonth, daysUntilDue, nextAnnualFee, nextDueDate, billCycle,
 } from '../utils/financeLogic.js';
 
 // Stub cats tối giản (không import JSON để chạy được bằng node).
@@ -239,6 +239,39 @@ assert.equal(dueDateInMonth(null, '2026-08-13'), null, 'không có ngày trả t
 assert.equal(daysUntilDue(31, '2026-02-10'), 18, 'còn 18 ngày tới 28/02, KHÔNG phải 21 ngày tới 03/03');
 assert.equal(daysUntilDue(13, '2026-08-13'), 0, 'đúng ngày → 0');
 assert.equal(daysUntilDue(5, '2026-08-13'), -8, 'quá hạn 8 ngày → âm');
+// nextDueDate: khác daysUntilDue ở chỗ qua hạn thì nhảy kỳ sau, không trả số âm.
+assert.equal(nextDueDate(5, '2026-08-13'), '2026-09-05', 'qua ngày 5 rồi → kỳ tháng sau');
+assert.equal(nextDueDate(15, '2026-08-13'), '2026-08-15', 'chưa tới thì vẫn ở tháng này');
+assert.equal(nextDueDate(13, '2026-08-13'), '2026-08-13', 'đúng hôm nay vẫn là kỳ này');
+assert.equal(nextDueDate(31, '2026-01-31'), '2026-01-31');
+assert.equal(nextDueDate(31, '2026-02-01'), '2026-02-28', 'nhảy sang tháng 2 phải kẹp về 28');
+assert.equal(nextDueDate(null, '2026-08-13'), null);
 console.log('dueDateInMonth/daysUntilDue check: OK');
+
+/* ── billCycle: hóa đơn nhiều tháng một lần ── */
+// every = 1 phải giữ NGUYÊN hành vi cũ, kể cả số âm khi quá hạn.
+assert.deepEqual(billCycle({ due_day: 15 }, '2026-08-13'),
+  { period: '2026-08', due: '2026-08-15', days: 2, thisMonth: true });
+assert.equal(billCycle({ due_day: 5 }, '2026-08-13').days, -8, 'quá hạn vẫn âm để màn Hóa đơn tô đỏ');
+assert.equal(billCycle({ due_day: null }, '2026-08-13'), null);
+
+const q = { due_day: 5, anchor_date: '2026-08-01', rrule: { type: 'monthly', day: 5, every: 3 } };
+assert.equal(billCycle(q, '2026-08-13').thisMonth, true, 'đúng tháng mốc → là kỳ');
+assert.equal(billCycle(q, '2026-08-13').days, -8, 'kỳ này quá hạn vẫn báo quá hạn');
+const skipMonth = billCycle(q, '2026-09-13');
+assert.equal(skipMonth.thisMonth, false, 'tháng 9 không phải kỳ của chu kỳ 3 tháng');
+assert.equal(skipMonth.due, '2026-11-05', 'nhảy thẳng tới kỳ kế, không phải tháng sau');
+assert.equal(billCycle(q, '2026-11-01').thisMonth, true, 'tháng 11 = mốc + 3 tháng');
+// Ngày bắt đầu nằm ở tương lai: chưa tới kỳ nào cả, đếm tới đúng ngày bắt đầu.
+assert.equal(billCycle({ due_day: 20, anchor_date: '2026-10-20', rrule: { every: 3 } }, '2026-08-13').due,
+  '2026-10-20');
+// Ngày cố định THẮNG ngày bắt đầu: mốc ngày 1 nhưng due_day 31 → cuối tháng, kẹp theo tháng.
+assert.equal(billCycle({ due_day: 31, anchor_date: '2026-08-01', rrule: { every: 3 } }, '2026-09-13').due,
+  '2026-11-30');
+assert.equal(billCycle({ due_day: 10, anchor_date: '2026-03-10', rrule: { every: 12 } }, '2026-08-13').due,
+  '2027-03-10', 'theo năm');
+// every > 1 mà thiếu ngày bắt đầu thì coi như hằng tháng, không được trả null/NaN.
+assert.equal(billCycle({ due_day: 5, rrule: { every: 3 } }, '2026-08-13').thisMonth, true);
+console.log('billCycle check: OK');
 
 console.log('\n✅ financeLogic — tất cả self-check PASS');

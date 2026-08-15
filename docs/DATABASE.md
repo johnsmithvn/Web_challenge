@@ -58,7 +58,7 @@ auth.users
 | Table | Vai trò |
 |---|---|
 | `finance_transactions` | Sổ giao dịch duy nhất; expense/income/saving; liên kết rule/Task/Inbox |
-| `finance_bills` | Hóa đơn/chi định kỳ. `note` là ghi chú của quy tắc (số công tơ, ai đứng tên) — **không** sao chép xuống `finance_transactions`. `icon` NULL = suy từ `category_id` |
+| `finance_bills` | Hóa đơn/chi định kỳ. `note` là ghi chú của quy tắc (số công tơ, ai đứng tên) — **không** sao chép xuống `finance_transactions`. `icon` NULL = suy từ `category_id`. Chu kỳ nhiều tháng nằm ở `rrule.every` (1/2/3/6/12) + `anchor_date` (mốc đếm tháng); ngày trong tháng luôn là `due_day` — ngày cố định thắng ngày bắt đầu |
 | `finance_loans` | Khoản vay và kỳ trả (mình đi vay) |
 | `finance_lendings` | Cho vay — tiền mình cho người khác mượn. Thu về nhiều lần; số đã thu suy từ `finance_transactions.lending_id`. Giao dịch thu về `excluded` nên không bị tính là thu nhập |
 | `finance_cards` | Chu kỳ sao kê và thanh toán thẻ. `annual_fee_on` là DATE (không phải ngày-trong-tháng như `statement_day`/`due_day`) vì phí thường niên lặp mỗi năm; NULL = không nhắc |

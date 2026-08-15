@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
-import { matchCategory, deriveNecessity, currentMonthPeriod, cardBalance, billAmountEstimate } from '../../utils/financeLogic';
+import { matchCategory, deriveNecessity, currentMonthPeriod, cardBalance, billAmountEstimate, billCycle } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, NECESSITY_META, Segmented, TaskPicker, FinanceIcon,
 } from './parts';
@@ -116,8 +116,10 @@ export default function AddScreen({ fin, nav }) {
     const todayDate = new Date(`${fin.today}T12:00:00`);
     const lastDay = Number(currentMonth.to.slice(-2));
     return fin.bills
+      // Hóa đơn nhiều tháng một lần: tháng không tới lượt thì không phải việc của Nhập nhanh.
       .filter(bill => bill.enabled && !bill.finished_at && !paidIds.has(bill.id)
-        && !(bill.skipped_periods || []).includes(currentPeriodKey))
+        && !(bill.skipped_periods || []).includes(currentPeriodKey)
+        && billCycle(bill, fin.today)?.thisMonth)
       .map(bill => {
         const day = Math.min(lastDay, Math.max(1, Number(bill.due_day) || 1));
         const dueDate = `${currentPeriodKey}-${String(day).padStart(2, '0')}`;

@@ -69,6 +69,51 @@ export function daysUntilDue(dueDay, refStr) {
   const due = dueDateInMonth(dueDay, refStr);
   return due == null ? null : daysInclusive(refStr, due) - 1;
 }
+/**
+ * Ngày đến hạn KẾ TIẾP: qua ngày trong tháng này rồi thì nhảy sang tháng sau.
+ * Khác `dueDateInMonth` (luôn nằm trong tháng của `refStr`) — dùng cho chỗ hỏi
+ * "còn mấy ngày nữa", đồng thời cho biết ngày đó thuộc KỲ nào để tra đã trả chưa.
+ */
+export function nextDueDate(dueDay, refStr) {
+  const inMonth = dueDateInMonth(dueDay, refStr);
+  if (inMonth == null || inMonth >= refStr) return inMonth;
+  const ref = parseYmd(refStr);
+  return dueDateInMonth(dueDay, ymd(new Date(ref.getFullYear(), ref.getMonth() + 1, 1)));
+}
+
+/** Ngày mùng 1 của tháng cách `refStr` đúng `months` tháng (âm = lùi). */
+export function shiftMonth(refStr, months) {
+  const d = parseYmd(refStr);
+  return ymd(new Date(d.getFullYear(), d.getMonth() + months, 1));
+}
+
+/**
+ * Kỳ đang tính của một hóa đơn — chỗ DUY NHẤT quyết định "kỳ nào" cho hóa đơn,
+ * thay cho việc lấy đại `today.slice(0,7)`.
+ *
+ * `rrule.every` = số tháng một kỳ (1 = hằng tháng, 3 = quý, 12 = năm); `anchor_date`
+ * là ngày bắt đầu trả, chỉ dùng để biết THÁNG nào tới lượt. Ngày trong tháng luôn
+ * lấy theo `due_day` — ngày cố định thắng ngày bắt đầu.
+ *
+ * Tháng này đúng kỳ → `thisMonth: true` và `days` ÂM khi đã quá hạn (màn Hóa đơn
+ * dựa vào đó để tô đỏ). Tháng này không phải kỳ → nhảy tới kỳ gần nhất phía trước,
+ * `days` luôn dương.
+ */
+export function billCycle(bill, refStr) {
+  const due = dueDateInMonth(bill.due_day, refStr);
+  if (due == null) return null;
+  const at = (d) => ({ period: d.slice(0, 7), due: d, days: daysInclusive(refStr, d) - 1,
+    thisMonth: d.slice(0, 7) === refStr.slice(0, 7) });
+
+  const every = Math.max(1, Number(bill.rrule?.every) || 1);
+  if (every === 1 || !bill.anchor_date) return at(due);
+
+  const anchor = parseYmd(bill.anchor_date), ref = parseYmd(refStr);
+  const diff = (ref.getFullYear() - anchor.getFullYear()) * 12 + (ref.getMonth() - anchor.getMonth());
+  if (diff >= 0 && diff % every === 0) return at(due);
+  const ahead = diff < 0 ? -diff : every - (diff % every);
+  return at(dueDateInMonth(bill.due_day, shiftMonth(refStr, ahead)));
+}
 
 const VN_MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
   'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];

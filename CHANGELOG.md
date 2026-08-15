@@ -3,6 +3,23 @@
 ## Unreleased
 
 ### Added
+- **Hóa đơn nhiều tháng một lần** (`finance_bills.anchor_date` + `rrule.every`, migration
+  `data/migration_v6.7.0_finance_bill_multi_month.sql` — user tự chạy trên hosted). Netflix trả theo
+  quý, bảo hiểm theo năm: trước đó chỉ có "Mỗi tháng" nên phải nhớ ngoài app. Chu kỳ 1/2/3/6/12 tháng;
+  `anchor_date` chỉ quyết định **tháng nào tới lượt**, ngày trong tháng vẫn lấy `due_day` — **ngày cố
+  định thắng ngày bắt đầu**, bỏ trống ô ngày thì app lấy ngày của mốc bắt đầu.
+  - `rrule.every` không cần sửa CHECK: `finance_valid_rrule` không cấm key thừa. Kỳ vẫn là `YYYY-MM`
+    nên `bill_period` và `unique_finance_tx_bill_period` giữ nguyên — mỗi tháng vẫn tối đa một kỳ.
+  - `billCycle()` thành **nơi duy nhất** quyết định kỳ của một hóa đơn, thay cho `today.slice(0,7)` rải
+    rác. Tháng không tới lượt thì dòng ghi "kỳ sau 11/2026", Nhập nhanh không liệt kê, danh sách kỳ cũ
+    trong khối trả lùi theo đúng chu kỳ (hóa đơn quý không liệt kê 6 tháng liền).
+
+### Fixed
+- **Sidebar "Sắp tới hạn" nhắc cả những khoản vừa trả xong.** `SubAlert` chỉ đọc `due_day` của hóa đơn
+  và ngày đến hạn của thẻ, **không hề query `finance_transactions`** nên không biết kỳ này đã trả hay
+  chưa — hóa đơn nước trả sáng nay vẫn nằm đó tới cuối tháng. Giờ widget đọc thêm giao dịch 90 ngày gần
+  nhất (đủ phủ kỳ hóa đơn + một chu kỳ sao kê, không kéo cả sổ) và bỏ qua: kỳ đã trả, kỳ đã bỏ, và thẻ
+  có sao kê 0đ. Thêm nhãn "Quá N ngày" vì nay số ngày có thể âm.
 - **Nhắc phí thường niên của thẻ** (`finance_cards.annual_fee_on`, migration
   `data/migration_v6.6.0_finance_card_annual_fee.sql` — user tự chạy trên hosted). Trước đó app biết
   SỐ TIỀN phí nhưng không biết NGÀY thu, nên phí luôn về bất ngờ — mà đây là khoản duy nhất của thẻ

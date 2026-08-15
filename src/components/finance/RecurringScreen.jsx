@@ -3,7 +3,7 @@ import { groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from
 import { useUserTasks } from '../../hooks/useUserTasks';
 import {
   billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule,
-  currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
+  currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee, billCycle,
 } from '../../utils/financeLogic';
 import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo } from './parts';
 import AppIcon from '../AppIcon';
@@ -82,8 +82,16 @@ function billDraft(bill) {
     provider: bill.provider, customer_code: bill.customer_code,
     category_id: bill.category_id, subcategory_id: bill.subcategory_id,
     amount_mode: bill.amount_mode, amount: bill.amount, icon: bill.icon,
-    due_day: bill.due_day, term_total: bill.term_total, note: bill.note,
+    due_day: bill.due_day, rrule: bill.rrule, anchor_date: bill.anchor_date,
+    term_total: bill.term_total, note: bill.note,
   };
+}
+
+/** "mỗi 3 tháng ngày 20" — nhãn chu kỳ dùng chung cho dòng hóa đơn. */
+function cycleLabel(bill) {
+  const every = Math.max(1, Number(bill.rrule?.every) || 1);
+  const when = every === 1 ? 'mỗi tháng' : every === 12 ? 'mỗi năm' : `mỗi ${every} tháng`;
+  return bill.due_day ? `${when} ngày ${bill.due_day}` : when;
 }
 
 function RulesEmpty({ icon, title, description }) {
@@ -224,8 +232,10 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
   const noteRef = useRef(null);
   const [hasTerm, setHasTerm] = useState(() => Boolean(initial?.term_total));
   const [f, setF] = useState(() => (initial
-    ? Object.fromEntries(Object.entries(initial).map(([k, v]) => [k, v == null ? '' : v]))
-    : { name: nav.handoff?.kind === seg ? nav.handoff.title || '' : '' }));
+    // `every` (số tháng một kỳ) sống trong rrule dưới DB, kéo lên thành field phẳng cho form.
+    ? { ...Object.fromEntries(Object.entries(initial).map(([k, v]) => [k, v == null ? '' : v])),
+        every: initial.rrule?.every || 1 }
+    : { name: nav.handoff?.kind === seg ? nav.handoff.title || '' : '', every: 1 }));
   const set = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
   const setDigits = (k, maxLength = 18) => (e) => setF(p => ({ ...p, [k]: sanitizeDigits(e.target.value, maxLength) }));
   const setDecimal = (k, maxIntegerDigits = 3, maxFractionDigits = 4) => (e) => setF(p => ({
@@ -249,7 +259,15 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
     if (seg === 'out') {
       const amountMode = f.amount_mode || 'fixed';
       const billAmount = parseCurrencyInput(f.amount);
-      if (!positiveDay || (amountMode === 'fixed' && !billAmount)) {
+      const every = Math.max(1, Number(f.every) || 1);
+      const anchor = f.anchor_date || null;
+      // Ngày cố định thắng ngày bắt đầu; bỏ trống ô ngày thì lấy ngày của mốc bắt đầu.
+      const billDay = positiveDay ? dueDay : (anchor ? Number(anchor.slice(8, 10)) : 0);
+      if (every > 1 && !anchor) {
+        nav.showToast('Hóa đơn nhiều tháng một lần cần ngày bắt đầu để biết tháng nào tới lượt');
+        return;
+      }
+      if (!billDay || (amountMode === 'fixed' && !billAmount)) {
         nav.showToast('Hóa đơn cần ngày trả hợp lệ và số tiền dương');
         return;
       }
@@ -257,7 +275,8 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
         name: f.name.trim(), provider: f.provider || null, customer_code: f.customer_code || null,
         category_id: f.category_id || 'housing', subcategory_id: f.subcategory_id || null,
         amount_mode: amountMode, amount: amountMode === 'ask' ? null : billAmount,
-        rrule: { type: 'monthly', day: dueDay }, due_day: dueDay,
+        rrule: { type: 'monthly', day: billDay, ...(every > 1 ? { every } : {}) },
+        due_day: billDay, anchor_date: anchor,
         icon: f.icon || null,
         term_total: hasTerm ? Number(f.term_total) || null : null,
         term_done: hasTerm ? Number(f.term_done) || 0 : 0,
@@ -385,12 +404,21 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
               {(grp?.subs || []).map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select></label>
           <label className="fin-field"><span>Lặp lại</span>
-            <select className="fin-input" value="monthly" onChange={() => {}}>
-              <option value="monthly">Mỗi tháng</option>
+            <select className="fin-input" value={f.every || 1} onChange={set('every')}>
+              <option value={1}>Mỗi tháng</option>
+              <option value={2}>Mỗi 2 tháng</option>
+              <option value={3}>Mỗi 3 tháng · quý</option>
+              <option value={6}>Mỗi 6 tháng</option>
+              <option value={12}>Mỗi năm</option>
             </select></label>
           <label className="fin-field"><span>Vào ngày</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="5" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
+          {Number(f.every) > 1 && (
+            <label className="fin-field"><span>Ngày bắt đầu trả</span>
+              <input className="fin-input" type="date" value={f.anchor_date || ''} onChange={set('anchor_date')} /></label>
+          )}
         </div>
+        {Number(f.every) > 1 && <small className="fin-field__hint">Ngày bắt đầu chỉ để đếm <strong>tháng nào tới lượt</strong>; ngày trong tháng vẫn lấy theo ô <strong>Vào ngày</strong>. Bỏ trống ô đó thì app lấy luôn ngày của mốc bắt đầu. Netflix bắt đầu 20/08 chu kỳ 3 tháng → kỳ sau 20/11, tháng 9 và 10 không nhắc.</small>}
 
         <div className="fin-field"><span>Icon</span>
           <div className="fin-iconpick">
@@ -658,15 +686,17 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
   const [editId, setEditId] = useState(null);   // đang sửa
   const [noteFocus, setNoteFocus] = useState(false); // mở form sửa từ link "Thêm ghi chú"
   const [payId, setPayId] = useState(null);     // mỗi lúc chỉ một khối trả
-  const currentPeriod = fin.today.slice(0, 7);
+  // Kỳ KHÔNG phải lúc nào cũng là tháng đang chạy: hóa đơn 3 tháng/lần ở tháng
+  // không tới lượt thì kỳ của nó nằm phía trước. `billCycle` là chỗ duy nhất biết.
+  const periodOf = (bill) => billCycle(bill, fin.today).period;
 
   const pay = async (bill, payload) => {
-    const tx = await fin.payBill(bill, { ...payload, period: payload.period || currentPeriod });
+    const tx = await fin.payBill(bill, { ...payload, period: payload.period || periodOf(bill) });
     nav.showToast(tx ? `Đã ghi ${bill.name} — giờ là giao dịch bình thường, lên báo cáo` : `Không thể ghi ${bill.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: tx ? 'note' : 'warning' });
     return !!tx;
   };
   const skip = async (bill) => {
-    const skipped = await fin.skipBillPeriod(bill.id, currentPeriod);
+    const skipped = await fin.skipBillPeriod(bill.id, periodOf(bill));
     nav.showToast(skipped
       ? `Đã bỏ kỳ này của ${bill.name} — không sinh giao dịch, kỳ sau vẫn nhắc`
       : `Không thể bỏ kỳ này của ${bill.name}. Kiểm tra dữ liệu Finance rồi thử lại.`,
@@ -677,8 +707,11 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
   // bỏ kỳ, nên nếu không có nút này thì bấm nhầm là kẹt tới tháng sau.
   // 6 kỳ gần nhất để bổ sung kỳ cũ. Kỳ đã có giao dịch thì khóa lại —
   // `unique_finance_tx_bill_period` cũng chặn ở DB, nhưng chặn sớm ở UI thì đỡ một vòng lỗi.
+  // Bước lùi = đúng chu kỳ của hóa đơn: hóa đơn quý không được liệt kê 6 THÁNG gần nhất.
   const periodsFor = (bill) => Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(Number(currentPeriod.slice(0, 4)), Number(currentPeriod.slice(5, 7)) - 1 - i, 1);
+    const base = periodOf(bill);
+    const every = Math.max(1, Number(bill.rrule?.every) || 1);
+    const d = new Date(Number(base.slice(0, 4)), Number(base.slice(5, 7)) - 1 - i * every, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     return {
       key,
@@ -687,7 +720,7 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
     };
   });
   const unskip = async (bill) => {
-    const rest = (bill.skipped_periods || []).filter(p => p !== currentPeriod);
+    const rest = (bill.skipped_periods || []).filter(p => p !== periodOf(bill));
     const updated = await fin.updateBill(bill.id, { skipped_periods: rest });
     nav.showToast(updated
       ? `Đã bỏ đánh dấu — ${bill.name} hiện lại nút Thanh toán cho kỳ này`
@@ -721,10 +754,11 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
       {active.length === 0 && <RulesEmpty icon="receipt" title="Chưa có hóa đơn"
         description="Thêm hóa đơn để theo dõi ngày đến hạn và lịch sử thanh toán." />}
       {active.map(b => {
-        const d = daysUntilDue(b.due_day, fin.today);
-        const paidTx = fin.transactions.find(t => t.bill_id === b.id && t.bill_period === currentPeriod);
+        const cyc = billCycle(b, fin.today);
+        const d = cyc.days;
+        const paidTx = fin.transactions.find(t => t.bill_id === b.id && t.bill_period === cyc.period);
         const paid = Boolean(paidTx);
-        const skipped = (b.skipped_periods || []).includes(currentPeriod);
+        const skipped = (b.skipped_periods || []).includes(cyc.period);
         const estimate = billAmountEstimate(b, fin.transactions);
         const state = dueState({
           days: d, enabled: b.enabled, done: paid, skipped,
@@ -738,7 +772,8 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
           <RuleCard key={b.id} tone={state.tone} off={!b.enabled} categoryId={b.category_id} cats={fin.cats}
             icon={b.icon || null} iconColor={catInfo(b.category_id, fin.cats).color}
             title={b.name} badge={b.term_total ? `${b.term_done || 0}/${b.term_total}` : null}
-            meta={[b.provider, b.customer_code, b.due_day ? `mỗi tháng ngày ${b.due_day}` : null].filter(Boolean).join(' · ')}
+            meta={[b.provider, b.customer_code, cycleLabel(b),
+              cyc.thisMonth ? null : `kỳ sau ${cyc.period.slice(5)}/${cyc.period.slice(0, 4)}`].filter(Boolean).join(' · ')}
             amount={b.amount_mode === 'ask' ? (estimate ? `~ ${money(estimate)}` : 'hỏi mỗi kỳ') : money(b.amount)}
             state={state}
             onOpen={() => setOpenId(openId === b.id ? null : b.id)}
