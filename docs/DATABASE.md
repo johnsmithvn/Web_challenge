@@ -53,13 +53,14 @@ auth.users
 | `collection_notes` | Sub-note của bài Knowledge | FK về collection/user |
 | `inspirational_quotes` | Quote cá nhân | Quote hệ thống nằm ở `src/data/quotes.json`, không ở bảng này |
 
-### Finance — 11 bảng
+### Finance — 12 bảng
 
 | Table | Vai trò |
 |---|---|
 | `finance_transactions` | Sổ giao dịch duy nhất; expense/income/saving; liên kết rule/Task/Inbox |
 | `finance_bills` | Hóa đơn/chi định kỳ. `note` là ghi chú của quy tắc (số công tơ, ai đứng tên) — **không** sao chép xuống `finance_transactions` |
-| `finance_loans` | Khoản vay và kỳ trả |
+| `finance_loans` | Khoản vay và kỳ trả (mình đi vay) |
+| `finance_lendings` | Cho vay — tiền mình cho người khác mượn. Thu về nhiều lần; số đã thu suy từ `finance_transactions.lending_id`. Giao dịch thu về `excluded` nên không bị tính là thu nhập |
 | `finance_cards` | Chu kỳ sao kê và thanh toán thẻ |
 | `finance_saving_goals` | Quỹ tiết kiệm và chính sách khóa |
 | `finance_deposits` | Nơi gửi thuộc quỹ; đáo hạn suy ra từ kỳ hạn |
@@ -158,13 +159,14 @@ không tạo channel/subscription. UI đồng bộ bằng fetch và optimistic s
 
 ### Local
 
-`supabase db reset --local` replay năm snapshot timestamp theo thứ tự:
+`supabase db reset --local` replay sáu snapshot timestamp theo thứ tự:
 
 1. `20260802000000_base_v5_0_0.sql`
 2. `20260805000000_vault_v5_2_0.sql`
 3. `20260808000000_finance_v6_0_0.sql`
 4. `20260809000000_vault_encryption_v6_2_0.sql`
 5. `20260815000000_finance_bill_note_v6_3_0.sql`
+6. `20260815010000_finance_lending_v6_4_0.sql`
 
 Snapshot đã tồn tại là bất biến. Schema change mới phải dùng migration timestamp mới.
 
@@ -175,6 +177,7 @@ Snapshot đã tồn tại là bất biến. Schema change mới phải dùng mig
 3. `data/migration_v6.0.0_finance.sql`
 4. `data/migration_v6.2.0_vault_encryption.sql`
 5. `data/migration_v6.3.0_finance_bill_note.sql`
+6. `data/migration_v6.4.0_finance_lending.sql`
 
 Không chạy `data/migration_v5.0.0_activity_logs_v2.sql` sau baseline fresh vì thay đổi đã nằm trong
 baseline. `data/migration_v4.31.0_recurrence_chain.sql` và `data/RUNBOOK.sql` là hồ sơ/upgrade cũ,

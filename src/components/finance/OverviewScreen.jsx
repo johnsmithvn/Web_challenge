@@ -45,7 +45,7 @@ function previousRange(period) {
 }
 
 function OverviewDashboard({ fin, nav }) {
-  const { transactions, cards, deposits, goals, bills, today } = fin;
+  const { transactions, cards, deposits, goals, bills, lendings, today } = fin;
   const period = nav.period;
 
   const totals = useMemo(
@@ -68,6 +68,16 @@ function OverviewDashboard({ fin, nav }) {
     .filter(x => x.cyc.outstanding > 0
       && (x.cyc.overdue || (x.cyc.daysUntilDue >= 0 && x.cyc.daysUntilDue <= 7))),
   [cards, transactions, today]);
+
+  // Cho vay tới hẹn (≤7 ngày hoặc quá hẹn) — chưa thu đủ mới nhắc.
+  const lendAlerts = useMemo(() => (lendings || [])
+    .filter(l => !l.closed_at && l.due_on)
+    .map(l => {
+      const got = transactions.filter(t => t.lending_id === l.id).reduce((sum, t) => sum + t.amount, 0);
+      return { lend: l, left: Math.max(0, l.principal - got), got, days: daysInclusive(today, l.due_on) - 1 };
+    })
+    .filter(x => x.left > 0 && x.days <= 7),
+  [lendings, transactions, today]);
 
   // Donut byCategory.
   const donutData = useMemo(() => Object.entries(totals.byCategory)
@@ -98,6 +108,17 @@ function OverviewDashboard({ fin, nav }) {
           <span><strong>Sao kê {card.name} {cyc.overdue ? `quá hạn ${Math.abs(cyc.daysUntilDue)} ngày` : `tới hạn trong ${cyc.daysUntilDue} ngày`}</strong>
             <small>Phải trả trước {cyc.due} · trả đủ để không phát sinh lãi trên toàn bộ sao kê.</small></span>
           <b>{money(balance)}</b>
+          <AppIcon name="caretRight" size={14} />
+        </button>
+      ))}
+
+      {lendAlerts.map(({ lend, left, got, days }) => (
+        <button key={lend.id} className="fin-alert fin-alert--warn fin-alert--detail"
+          onClick={() => nav.go('recurring', { recurringSeg: 'lend' })}>
+          <AppIcon name="handCoins" size={17} weight="fill" />
+          <span><strong>{lend.name} {days < 0 ? `quá hẹn ${Math.abs(days)} ngày` : days === 0 ? 'hẹn trả hôm nay' : `hẹn trả sau ${days} ngày`}</strong>
+            <small>Cho mượn {money(lend.principal)} ngày {lend.lent_on.split('-').reverse().join('/')} · {got > 0 ? `đã thu ${money(got)}` : 'chưa thu đồng nào'}</small></span>
+          <b>{money(left)}</b>
           <AppIcon name="caretRight" size={14} />
         </button>
       ))}

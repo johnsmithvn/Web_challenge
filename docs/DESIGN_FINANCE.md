@@ -22,7 +22,7 @@ README. · **Updated:** 2026-08-09
 |---|---|
 | Tổng quan + Giao dịch | Bộ chọn tháng/năm/tất cả dùng chung trong session |
 | Ngân sách | Tháng đang chạy |
-| Hóa đơn / Thu / Vay / Thẻ | Tháng đang chạy |
+| Hóa đơn / Thu / Vay / Thẻ / Cho vay | Tháng đang chạy |
 | Thống kê | Bộ chọn riêng 3/6/12 tháng |
 
 So sánh kỳ:
@@ -41,6 +41,7 @@ Migration: `data/migration_v6.0.0_finance.sql`.
 | `finance_bills` | Khoản phải trả fixed/ask + recurrence/skip + `note` của quy tắc |
 | `finance_income_rules` | Thu định kỳ |
 | `finance_loans` | Vay interest/amort và progress |
+| `finance_lendings` | Cho vay — khoản phải thu, thu về nhiều lần |
 | `finance_cards` | Ngày chốt/đến hạn/sao kê |
 | `finance_saving_goals` | Quỹ + lock policy/withdrawal request |
 | `finance_deposits` | Nơi gửi thuộc quỹ + rate/term/maturity |
@@ -57,7 +58,7 @@ chưa được user chấp thuận.
 
 - `amount > 0`; `type ∈ expense|income|saving`.
 - Expense/income phải dùng parent category thuộc tập đóng; saving không dùng category.
-- `excluded=true` dùng cho principal/card statement payment không được đếm lại như chi mới.
+- `excluded=true` dùng cho principal/card statement payment và thu về khoản cho vay — không được đếm lại như chi mới hay thu nhập mới.
 - Bill/income/loan/card period có uniqueness để chặn ghi cùng nghĩa vụ hai lần.
 - Trigger validate ownership các FK Finance/Task/Inbox.
 - `source_kind` được suy từ reference, không do UI tự gán tùy ý.
@@ -90,7 +91,7 @@ và subcategory hợp lệ; không tạo parent tùy ý.
 | `add` | Nhập nhanh, shortcut, form transaction |
 | `list` | Search/filter/group/edit/delete/export CSV |
 | `cats` | Category editor và schema reference |
-| `recurring` | Phải trả, Sẽ nhận, Khoản vay, Thẻ |
+| `recurring` | Phải trả, Sẽ nhận, Khoản vay, Thẻ, Cho vay |
 
 ### Tổng quan
 
@@ -113,8 +114,10 @@ và subcategory hợp lệ; không tạo parent tùy ý.
 - Income rule ghi nhận đã thu, không gọi là overdue.
 - Loan interest/amort tách principal/interest.
 - Card statement dùng đúng khoảng giữa hai ngày chốt, hỗ trợ trả một phần và chặn vượt outstanding.
+- Lending (Cho vay) là segment thứ năm: cho mượn **không** phải chi tiêu, thu về **không** phải thu nhập.
+  Giao dịch thu về mang `excluded=true`; chặn thu quá số đã cho mượn; thu đủ thì tự đóng.
 
-Bốn segment dùng chung một cấu trúc dòng (`RuleCard`): icon nhóm · tên + phụ đề · số tiền + trạng thái ·
+Năm segment dùng chung một cấu trúc dòng (`RuleCard`): icon nhóm · tên + phụ đề · số tiền + trạng thái ·
 sửa/công tắc/xóa, phần mở thêm (khối ghi kỳ, form sửa, lịch sử) nằm ngay dưới dòng đó.
 
 - Sáu trạng thái chỉ đổi **vạch màu trái + dòng chữ**, cấu trúc dòng giữ nguyên: quá hạn · tới hạn hôm
@@ -149,13 +152,14 @@ không phụ thuộc JSON loader.
 `useFinance` sở hữu state/action của toàn module thay vì mười hook CRUD gần giống nhau. Lý do: các màn
 đọc nhiều bảng cùng lúc và RPC ghi chéo transaction/rule.
 
-Bảy RPC user-facing:
+Tám RPC user-facing:
 
 - `finance_pay_bill`
 - `finance_skip_bill_period`
 - `finance_receive_income`
 - `finance_record_loan_payment`
 - `finance_pay_card_statement`
+- `finance_record_lending_repayment`
 - `finance_request_saving_withdrawal`
 - `finance_move_saving`
 

@@ -7,6 +7,7 @@ const recurring = readFileSync(new URL('../components/finance/RecurringScreen.js
 const list = readFileSync(new URL('../components/finance/ListScreen.jsx', import.meta.url), 'utf8');
 const page = readFileSync(new URL('../pages/FinancePage.jsx', import.meta.url), 'utf8');
 const billNote = readFileSync(new URL('../../data/migration_v6.3.0_finance_bill_note.sql', import.meta.url), 'utf8');
+const lending = readFileSync(new URL('../../data/migration_v6.4.0_finance_lending.sql', import.meta.url), 'utf8');
 const destructiveScreens = [
   list,
   recurring,
@@ -78,7 +79,9 @@ assert.match(recurring, /const actionable = b\.enabled && !paid && !skipped/,
   'hóa đơn tắt, đã trả hoặc đã bỏ không được hiện thao tác thanh toán');
 assert.match(page, /const confirmDelete = useCallback\(/,
   'Finance phải có một luồng xác nhận xóa dùng chung');
-assert.equal((destructiveScreens.match(/nav\.confirmDelete\(/g) || []).length, 8,
+// 9 luồng xóa: giao dịch · hóa đơn · khoản thu · vay · thẻ · CHO VAY · quỹ · nơi gửi · shortcut.
+// Con số này chỉ được tăng khi thêm một loại dữ liệu mới có nút xóa, không bao giờ giảm.
+assert.equal((destructiveScreens.match(/nav\.confirmDelete\(/g) || []).length, 9,
   'mọi nút xóa dữ liệu Finance phải đi qua xác nhận dùng chung');
 assert.doesNotMatch(destructiveScreens, /onClick=\{\(\) => fin\.delete/,
   'không được xóa dữ liệu Finance trực tiếp từ nút bấm');
@@ -94,6 +97,18 @@ assert.match(recurring, /t\.loan_period === period && t\.loan_part === 'principa
   'màn Khoản vay phải khóa kỳ đã ghi');
 assert.match(billNote, /ADD COLUMN IF NOT EXISTS note TEXT/,
   'ghi chú hóa đơn phải là cột nullable thêm bằng migration riêng, idempotent');
+assert.match(lending, /lending_id IS NOT NULL/,
+  'excluded phải mở đúng thêm một trường hợp: giao dịch thu về của khoản cho vay');
+assert.match(lending, /'income', 'hoantien', TRUE/,
+  'thu về từ khoản cho vay là income NHƯNG excluded — nếu tính là thu nhập thì tỉ lệ tiết kiệm sai');
+assert.match(lending, /ON DELETE SET NULL/,
+  'xóa khoản cho vay không được xóa lịch sử các lần đã thu');
+assert.match(lending, /IF v_got \+ p_amount > v_lend\.principal THEN/,
+  'không cho thu về nhiều hơn số đã cho mượn');
+assert.match(lending, /finance_lendings WHERE id = NEW\.lending_id AND user_id = NEW\.user_id/,
+  'khóa ngoại mới phải được ownership guard kiểm');
+assert.match(lending, /REVOKE ALL ON TABLE finance_lendings FROM anon/,
+  'anon không được truy cập bảng cho vay');
 assert.doesNotMatch(sql, /v_bill\.note/,
   'ghi chú của hóa đơn KHÔNG được sao chép xuống giao dịch — mỗi kỳ sẽ mang một bản sao giống hệt');
 assert.match(sql, /unique_finance_tx_income_period/, 'phải chống nhận trùng thu nhập theo kỳ');

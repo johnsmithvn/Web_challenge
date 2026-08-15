@@ -3,6 +3,19 @@
 ## Unreleased
 
 ### Added
+- **Segment thứ năm: Cho vay** (`finance_lendings`, migration `data/migration_v6.4.0_finance_lending.sql`
+  — user tự chạy trên hosted). Tiền mình cho người khác mượn, thu về **nhiều lần** với số tiền khác nhau
+  nên không nhét vào `finance_loans` được. Kèm dải tổng (đang cho vay · đã thu về · hẹn gần nhất), nút
+  "Trả hết · X", lịch sử từng lần thu, và **banner ở Tổng quan** khi tới hẹn ≤7 ngày hoặc quá hẹn.
+  - Cho mượn **không sinh giao dịch chi** — tiền rời ví nhưng đổi thành khoản phải thu, donut và hạn mức
+    nhóm không đổi. Họ trả lại **không tính là thu nhập** (`excluded=true`), nếu tính thì tháng đó thu
+    nhập vọt lên ảo và tỉ lệ tiết kiệm sai.
+  - Migration sửa hai CHECK của `finance_transactions` (trước chỉ cho `excluded` với trả gốc vay và trả
+    sao kê thẻ) và dựng lại chúng thành constraint **có tên** — `finance_tx_branch_shape`,
+    `finance_tx_excluded_scope`, `finance_tx_lending_scope`.
+  - RPC `finance_record_lending_repayment` chặn thu về quá số đã cho mượn và tự đóng khoản khi thu đủ.
+- **Dải tổng cho tab Khoản vay**: tổng dư nợ gốc · lãi phải trả tháng này · hạn tất toán gần nhất, kèm
+  câu giải thích vì sao lãi là chi phí còn trả gốc thì không.
 - **Ghi chú cho hóa đơn** (`finance_bills.note`, migration `data/migration_v6.3.0_finance_bill_note.sql`
   — user tự chạy trên hosted). Chỗ chứa mọi thứ không đáng có trường riêng: số công tơ, ai đứng tên,
   cách chia tiền với bạn cùng phòng. Hiện trong panel khi bấm mở dòng, sửa trong form, có link
@@ -22,6 +35,10 @@
   message; hóa đơn chỉ là quy tắc nhắc nên các kỳ đã ghi vẫn nằm nguyên ở màn Giao dịch.
 
 ### Changed
+- **Form thêm dựng lại theo đúng prototype handoff** (`Chi tieu.dc.html`): khối "Chọn loại hóa đơn" với
+  20 chip mẫu có icon, lưới 4 cột có nhãn, ghi chú, số tiền dạng segmented `Cố định | Thay đổi từng kỳ`,
+  và checkbox "Hóa đơn này có số kỳ hữu hạn" mở ra Tổng số kỳ + Đã trả bao nhiêu kỳ. Bản trước dựng theo
+  mô tả trong `HOA-DON.md` — file đó không đặc tả layout form nên nó ra khác handoff.
 - **Màn Hóa đơn: bốn segment dùng chung một cấu trúc dòng** (`RuleCard`) — icon 34px, tên + phụ đề,
   số tiền + trạng thái, nút sửa/công tắc/xóa, phần mở thêm nằm dưới. Trước đó Phải trả là một layout,
   Khoản vay và Thẻ là layout khác (`fin-rule--col` + nút xóa `position: absolute` đè lên góc thẻ).

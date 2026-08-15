@@ -3,34 +3,45 @@ import { parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils
 import { useUserTasks } from '../../hooks/useUserTasks';
 import {
   billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule,
-  currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr,
+  currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive,
 } from '../../utils/financeLogic';
 import { money, Segmented, FinanceIcon, TaskPicker, Toggle } from './parts';
 import AppIcon from '../AppIcon';
 
 const SEGMENTS = [
-  { value: 'out',  label: 'Phải trả',   addLabel: 'Thêm hóa đơn', editLabel: 'Sửa hóa đơn' },
-  { value: 'in',   label: 'Sẽ nhận',    addLabel: 'Thêm khoản thu', editLabel: 'Sửa khoản thu' },
-  { value: 'loan', label: 'Khoản vay',  addLabel: 'Thêm khoản vay', editLabel: 'Sửa khoản vay' },
-  { value: 'card', label: 'Thẻ tín dụng', addLabel: 'Thêm thẻ', editLabel: 'Sửa thẻ' },
+  { value: 'out',  label: 'Phải trả',   addLabel: 'Thêm hóa đơn', editLabel: 'Sửa hóa đơn', createLabel: 'Tạo hóa đơn' },
+  { value: 'in',   label: 'Sẽ nhận',    addLabel: 'Thêm khoản thu', editLabel: 'Sửa khoản thu', createLabel: 'Tạo khoản thu' },
+  { value: 'loan', label: 'Khoản vay',  addLabel: 'Thêm khoản vay', editLabel: 'Sửa khoản vay', createLabel: 'Tạo khoản vay' },
+  { value: 'card', label: 'Thẻ tín dụng', addLabel: 'Thêm thẻ', editLabel: 'Sửa thẻ', createLabel: 'Tạo thẻ' },
+  { value: 'lend', label: 'Cho vay',   addLabel: 'Thêm khoản cho vay', editLabel: 'Sửa khoản cho vay', createLabel: 'Ghi khoản cho vay' },
 ];
 
 /**
- * Mẫu chỉ điền TÊN + NHÓM + kiểu số tiền để đỡ gõ. Không mẫu nào điền sẵn số tiền:
- * số tiền là thứ duy nhất người dùng buộc phải tự quyết.
+ * 20 mẫu chỉ để tiết kiệm gõ chữ: điền TÊN + NHÓM + danh mục con + kiểu số tiền.
+ * Không mẫu nào điền sẵn số tiền — bấm qua nhanh mà lưu một con số mặc định thì
+ * nó không đúng với ai cả.
  */
 const BILL_TEMPLATES = [
-  { label: 'Tiền điện',      category_id: 'housing', subcategory_id: 'housing.electric', amount_mode: 'ask' },
-  { label: 'Tiền nước',      category_id: 'housing', subcategory_id: 'housing.water', amount_mode: 'ask' },
-  { label: 'Internet',       category_id: 'housing', subcategory_id: 'housing.internet', amount_mode: 'fixed' },
-  { label: 'Điện thoại & 4G', category_id: 'housing', subcategory_id: 'housing.mobile', amount_mode: 'fixed' },
-  { label: 'Tiền thuê nhà',  category_id: 'housing', subcategory_id: 'housing.rent', amount_mode: 'fixed' },
-  { label: 'Phí quản lý',    category_id: 'housing', subcategory_id: 'housing.management', amount_mode: 'fixed' },
-  { label: 'Netflix',        category_id: 'subscription', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
-  { label: 'Gói phần mềm',   category_id: 'subscription', subcategory_id: 'subscription.software', amount_mode: 'fixed' },
-  { label: 'Trả góp',        category_id: 'finance', subcategory_id: 'finance.installment', amount_mode: 'fixed' },
-  { label: 'Bảo hiểm',       category_id: 'health', subcategory_id: 'health.insurance', amount_mode: 'fixed' },
-  { label: 'Học phí',        category_id: 'family', subcategory_id: 'family.tuition', amount_mode: 'fixed' },
+  { label: 'Điện',         icon: 'lightning',    category_id: 'housing', subcategory_id: 'housing.electric', amount_mode: 'ask' },
+  { label: 'Nước',         icon: 'drop',         category_id: 'housing', subcategory_id: 'housing.water', amount_mode: 'ask' },
+  { label: 'Internet',     icon: 'wifi',         category_id: 'housing', subcategory_id: 'housing.internet', amount_mode: 'fixed' },
+  { label: 'Tiền thuê nhà', icon: 'house',       category_id: 'housing', subcategory_id: 'housing.rent', amount_mode: 'fixed' },
+  { label: 'Truyền hình',  icon: 'television',   category_id: 'subscription', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'Điện thoại / 4G', icon: 'deviceMobile', category_id: 'housing', subcategory_id: 'housing.mobile', amount_mode: 'fixed' },
+  { label: 'Phí vệ sinh',  icon: 'trash',        category_id: 'housing', subcategory_id: 'housing.cleaning', amount_mode: 'fixed' },
+  { label: 'Phí quản lý chung cư', icon: 'buildings', category_id: 'housing', subcategory_id: 'housing.management', amount_mode: 'fixed' },
+  { label: 'Netflix',      icon: 'film',         category_id: 'subscription', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'Spotify',      icon: 'music',        category_id: 'subscription', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'YouTube Premium', icon: 'video',     category_id: 'subscription', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'Google One',   icon: 'cloud',        category_id: 'subscription', subcategory_id: 'subscription.cloud', amount_mode: 'fixed' },
+  { label: 'iCloud',       icon: 'cloud',        category_id: 'subscription', subcategory_id: 'subscription.cloud', amount_mode: 'fixed' },
+  { label: 'ChatGPT',      icon: 'sparkle',      category_id: 'subscription', subcategory_id: 'subscription.software', amount_mode: 'fixed' },
+  { label: 'Học phí',      icon: 'graduation',   category_id: 'family', subcategory_id: 'family.tuition', amount_mode: 'fixed' },
+  { label: 'Bảo hiểm',     icon: 'certificate',  category_id: 'health', subcategory_id: 'health.insurance', amount_mode: 'fixed' },
+  { label: 'Trả góp',      icon: 'receipt',      category_id: 'finance', subcategory_id: 'finance.installment', amount_mode: 'fixed' },
+  { label: 'Trả nợ',       icon: 'handCoins',    category_id: 'finance', subcategory_id: 'finance.debt', amount_mode: 'fixed' },
+  { label: 'Gửi xe tháng', icon: 'gas',          category_id: 'transport', subcategory_id: 'transport.parking', amount_mode: 'fixed' },
+  { label: 'Khác',         icon: 'dots',         category_id: 'other', subcategory_id: 'other.unclassified', amount_mode: 'fixed' },
 ];
 
 /**
@@ -57,6 +68,23 @@ function RulesEmpty({ icon, title, description }) {
       <strong>{title}</strong>
       <small>{description}</small>
     </div>
+  );
+}
+
+const dmy = (iso) => (iso ? iso.split('-').reverse().join('/') : '—');
+
+/** Dải tổng đầu tab (Khoản vay, Cho vay) + câu giải thích cách tiền được tính. */
+function SummaryStrip({ items, note }) {
+  return (
+    <section className="fin-summary-strip">
+      <div>{items.map(item => (
+        <div key={item.label}>
+          <span>{item.label}</span>
+          <strong className={item.tone ? `is-${item.tone}` : ''}>{item.value}</strong>
+        </div>
+      ))}</div>
+      {note && <p>{note}</p>}
+    </section>
   );
 }
 
@@ -126,6 +154,7 @@ export default function RecurringScreen({ fin, nav }) {
     in: fin.incomeRules.length,
     loan: fin.loans.filter(loan => !loan.closed_at).length,
     card: fin.cards.filter(card => !card.closed_at).length,
+    lend: fin.lendings.filter(l => !l.closed_at).length,
   };
   const segmentOptions = SEGMENTS.map(option => ({ ...option, label: `${option.label} ${counts[option.value]}` }));
 
@@ -152,6 +181,7 @@ export default function RecurringScreen({ fin, nav }) {
       {seg === 'in'   && <IncomeList fin={fin} nav={nav} tasks={pendingTasks} />}
       {seg === 'loan' && <LoansList fin={fin} nav={nav} tasks={pendingTasks} />}
       {seg === 'card' && <CardsList fin={fin} nav={nav} tasks={pendingTasks} />}
+      {seg === 'lend' && <LendsList fin={fin} nav={nav} tasks={pendingTasks} />}
     </div>
   );
 }
@@ -160,6 +190,7 @@ export default function RecurringScreen({ fin, nav }) {
 function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
   const editing = Boolean(initial?.id);
   const noteRef = useRef(null);
+  const [hasTerm, setHasTerm] = useState(() => Boolean(initial?.term_total));
   const [f, setF] = useState(() => (initial
     ? Object.fromEntries(Object.entries(initial).map(([k, v]) => [k, v == null ? '' : v]))
     : { name: nav.handoff?.kind === seg ? nav.handoff.title || '' : '' }));
@@ -195,7 +226,8 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
         category_id: f.category_id || 'housing', subcategory_id: f.subcategory_id || null,
         amount_mode: amountMode, amount: amountMode === 'ask' ? null : billAmount,
         rrule: { type: 'monthly', day: dueDay }, due_day: dueDay,
-        term_total: Number(f.term_total) || null,
+        term_total: hasTerm ? Number(f.term_total) || null : null,
+        term_done: hasTerm ? Number(f.term_done) || 0 : 0,
         note: f.note?.trim() || null,
       };
     } else if (seg === 'in') {
@@ -223,6 +255,21 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
         rate: Number(f.rate) || 0, kind: f.kind || 'amort', term,
         pay_day: payDay, opened_at: f.opened_at || fin.today, due_at: f.due_at || null,
       };
+    } else if (seg === 'lend') {
+      const principal = parseCurrencyInput(f.principal);
+      const lentOn = f.lent_on || fin.today;
+      if (!principal || Number(f.rate || 0) < 0) {
+        nav.showToast('Khoản cho vay cần số tiền dương và lãi suất không âm');
+        return;
+      }
+      if (f.due_on && f.due_on < lentOn) {
+        nav.showToast('Ngày hẹn trả phải sau ngày đưa tiền');
+        return;
+      }
+      payload = {
+        name: f.name.trim(), note: f.note?.trim() || null, principal,
+        rate: Number(f.rate) || 0, lent_on: lentOn, due_on: f.due_on || null,
+      };
     } else if (seg === 'card') {
       const statementDay = Number(f.statement_day);
       const cardDueDay = Number(f.due_day);
@@ -245,6 +292,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
       in: editing ? (p) => fin.updateIncomeRule(initial.id, p) : fin.addIncomeRule,
       loan: editing ? (p) => fin.updateLoan(initial.id, p) : fin.addLoan,
       card: editing ? (p) => fin.updateCard(initial.id, p) : fin.addCard,
+      lend: editing ? (p) => fin.updateLending(initial.id, p) : fin.addLending,
     }[seg];
     const ok = await save(payload);
     if (!ok) {
@@ -255,6 +303,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
       editing ? 'Số mới áp dụng từ kỳ sau — các kỳ đã ghi giữ nguyên'
       : seg === 'loan' ? 'Đã tạo khoản vay — mỗi tháng app nhắc trả lãi, tách gốc riêng khỏi chi tiêu'
       : seg === 'card' ? 'Đã thêm thẻ — app theo dõi ngày chốt, đến hạn và số ngày float'
+      : seg === 'lend' ? 'Đã ghi khoản cho vay — tiền rời ví nhưng không tính là chi tiêu'
       : seg === 'in' ? 'Đã thêm khoản thu — app chỉ nhắc, không tô đỏ khi chưa nhận'
       : 'Đã thêm hóa đơn — tới ngày app hiện nút để bạn ghi', { icon: 'checkCircle' });
     onDone();
@@ -265,33 +314,34 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
 
   return (
     <form className={`fin-card fin-form fin-ruleform${editing ? ' fin-ruleform--edit' : ''}`} onSubmit={submit}>
-      <div className="fin-ruleform__head">
-        <strong>{editing ? segMeta.editLabel : segMeta.addLabel}</strong>
-        {editing && <button type="button" className="fin-icon-btn" onClick={onDone} aria-label="Đóng"><AppIcon name="x" size={15} /></button>}
-      </div>
-
       {seg === 'out' && !editing && (
         <div className="fin-templates">
-          <small>Mẫu — chỉ điền tên và nhóm, không điền số tiền</small>
-          <div>{BILL_TEMPLATES.map(t => (
+          <div className="fin-templates__head">
+            <strong>Chọn loại hóa đơn</strong>
+            <small>Mẫu chỉ điền sẵn tên, danh mục và chu kỳ — số tiền vẫn do bạn nhập</small>
+          </div>
+          <div className="fin-templates__chips">{BILL_TEMPLATES.map(t => (
             <button type="button" key={t.label} className={f.name === t.label ? 'is-active' : ''}
-              onClick={() => applyTemplate(t)}>{t.label}</button>
+              onClick={() => applyTemplate(t)}><AppIcon name={t.icon} size={14} /> {t.label}</button>
           ))}</div>
         </div>
       )}
-
-      <label className="fin-field"><span>Tên</span>
-        <input className="fin-input" placeholder="Tiền điện, Netflix, Trả góp máy giặt…" value={f.name || ''} onChange={set('name')} autoFocus={!focusNote} /></label>
+      {(seg !== 'out' || editing) && (
+        <div className="fin-ruleform__head">
+          <strong>{editing ? segMeta.editLabel : segMeta.addLabel}</strong>
+          {editing && <button type="button" className="fin-icon-btn" onClick={onDone} aria-label="Đóng"><AppIcon name="x" size={15} /></button>}
+        </div>
+      )}
 
       {seg === 'out' && (<>
-        <div className="fin-form__row">
+        <div className="fin-ruleform__grid">
+          <label className="fin-field"><span>Tên hóa đơn</span>
+            <input className="fin-input" placeholder="Tiền điện" value={f.name || ''} onChange={set('name')} autoFocus={!focusNote} /></label>
           <label className="fin-field"><span>Nhà cung cấp</span>
-            <input className="fin-input" placeholder="EVN, FPT…" value={f.provider || ''} onChange={set('provider')} /></label>
-          <label className="fin-field"><span>Mã khách hàng</span>
-            <input className="fin-input" placeholder="Phân biệt khi có nhiều đồng hồ" value={f.customer_code || ''} onChange={set('customer_code')} /></label>
-        </div>
-        <div className="fin-form__row">
-          <label className="fin-field"><span>Nhóm</span>
+            <input className="fin-input" placeholder="EVN Hà Nội" value={f.provider || ''} onChange={set('provider')} /></label>
+          <label className="fin-field"><span>Mã khách hàng · tùy chọn</span>
+            <input className="fin-input" placeholder="PD07000018579" value={f.customer_code || ''} onChange={set('customer_code')} /></label>
+          <label className="fin-field"><span>Danh mục</span>
             <select className="fin-input" value={f.category_id || 'housing'} onChange={set('category_id')}>
               {fin.cats.expenseGroups.filter(g => !g.hidden).map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
             </select></label>
@@ -300,104 +350,138 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
               <option value="">— không chọn —</option>
               {(grp?.subs || []).map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select></label>
-        </div>
-        <div className="fin-form__row">
-          <label className="fin-field"><span>Kiểu số tiền</span>
-            <select className="fin-input" value={f.amount_mode || 'fixed'} onChange={set('amount_mode')}>
-              <option value="fixed">Số tiền cố định</option>
-              <option value="ask">Hỏi mỗi kỳ (điện/nước)</option>
+          <label className="fin-field"><span>Lặp lại</span>
+            <select className="fin-input" value="monthly" onChange={() => {}}>
+              <option value="monthly">Mỗi tháng</option>
             </select></label>
-          <label className="fin-field"><span>Số tiền</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder={f.amount_mode === 'ask' ? 'app hỏi mỗi kỳ' : 'vd 220000'}
-              value={f.amount || ''} onChange={setDigits('amount')} disabled={f.amount_mode === 'ask'} /></label>
+          <label className="fin-field"><span>Vào ngày</span>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="5" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
         </div>
-        <div className="fin-form__row">
-          <label className="fin-field"><span>Ngày trả trong tháng</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="1–31" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
-          <label className="fin-field"><span>Số kỳ trả góp</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="để trống nếu chạy vô hạn" value={f.term_total || ''} onChange={setDigits('term_total', 3)} /></label>
-        </div>
-        <label className="fin-field"><span>Ghi chú</span>
+
+        <label className="fin-field"><span>Ghi chú · tùy chọn</span>
           <textarea ref={noteRef} className="fin-input fin-textarea" rows={3}
-            placeholder="Số công tơ, ai đứng tên, cách chia tiền với bạn cùng phòng…"
-            value={f.note || ''} onChange={set('note')} />
-          <small className="fin-field__hint">Ghi chú nằm ở hóa đơn, không rơi xuống từng giao dịch.</small></label>
+            placeholder="Số công tơ, mật khẩu trang thanh toán, ai đứng tên, cách chia tiền với người khác…"
+            value={f.note || ''} onChange={set('note')} /></label>
+        <small className="fin-field__hint">Chỗ để mọi thứ không có trường riêng. Ghi chú đi theo hóa đơn, hiện ở đầu màn chi tiết — không rơi vào từng giao dịch.</small>
+
+        <div className="fin-field"><span>Số tiền</span>
+          <Segmented ariaLabel="Kiểu số tiền" value={f.amount_mode || 'fixed'}
+            onChange={(v) => setF(p => ({ ...p, amount_mode: v, amount: v === 'ask' ? '' : p.amount }))}
+            options={[{ value: 'fixed', label: 'Cố định' }, { value: 'ask', label: 'Thay đổi từng kỳ' }]} />
+          {f.amount_mode !== 'ask' && <input className="fin-input fin-ruleform__amount" inputMode="numeric" pattern="[0-9]*"
+            placeholder="220.000" value={f.amount || ''} onChange={setDigits('amount')} />}
+          <small className="fin-field__hint">{f.amount_mode === 'ask'
+            ? 'Tới ngày, app hỏi số tiền và gợi ý bằng trung bình 3 kỳ gần nhất — chưa có kỳ nào thì để trống.'
+            : 'Tới ngày, nút Thanh toán điền sẵn số này — bạn chỉ cần bấm.'}</small>
+        </div>
+
+        <label className="fin-check-row">
+          <input type="checkbox" checked={hasTerm}
+            onChange={e => { setHasTerm(e.target.checked); if (!e.target.checked) setF(p => ({ ...p, term_total: '', term_done: '' })); }} />
+          <strong>Hóa đơn này có số kỳ hữu hạn (trả góp, trả nợ)</strong>
+        </label>
+        {hasTerm && (<>
+          <div className="fin-form__row">
+            <label className="fin-field"><span>Tổng số kỳ</span>
+              <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="12" autoFocus
+                value={f.term_total || ''} onChange={setDigits('term_total', 3)} /></label>
+            <label className="fin-field"><span>Đã trả bao nhiêu kỳ</span>
+              <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="0"
+                value={f.term_done ?? ''} onChange={setDigits('term_done', 3)} /></label>
+          </div>
+          <small className="fin-field__hint">Trả đủ kỳ cuối thì hóa đơn tự dừng và chuyển xuống mục đã kết thúc.</small>
+        </>)}
       </>)}
 
       {seg === 'in' && (<>
-        <label className="fin-field"><span>Nhóm thu</span>
-          <select className="fin-input" value={f.category_id || 'luong'} onChange={set('category_id')}>
-            {fin.cats.incomeGroups.filter(g => !g.hidden).map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
-          </select></label>
-        <div className="fin-form__row">
-          <label className="fin-field"><span>Nguồn</span>
-            <input className="fin-input" placeholder="công ty, người thuê…" value={f.source || ''} onChange={set('source')} /></label>
+        <div className="fin-ruleform__grid">
+          <label className="fin-field"><span>Tên khoản thu</span>
+            <input className="fin-input" placeholder="Lương tháng" value={f.name || ''} onChange={set('name')} autoFocus /></label>
+          <label className="fin-field"><span>Nguồn thu</span>
+            <select className="fin-input" value={f.category_id || 'luong'} onChange={set('category_id')}>
+              {fin.cats.incomeGroups.filter(g => !g.hidden).map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
+            </select></label>
+          <label className="fin-field"><span>Nơi trả · tùy chọn</span>
+            <input className="fin-input" placeholder="Công ty ABC" value={f.source || ''} onChange={set('source')} /></label>
+          <label className="fin-field"><span>Lặp lại</span>
+            <select className="fin-input" value="monthly" onChange={() => {}}>
+              <option value="monthly">Mỗi tháng</option>
+            </select></label>
+          <label className="fin-field"><span>Vào ngày</span>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="3" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
           <label className="fin-field"><span>Số tiền</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="vd 15000000" value={f.amount || ''} onChange={setDigits('amount')} /></label>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="20.000.000" value={f.amount || ''} onChange={setDigits('amount')} /></label>
         </div>
-        <label className="fin-field"><span>Ngày nhận trong tháng</span>
-          <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="1–31" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
+        <small className="fin-field__hint">Tới ngày, khoản này hiện nút <strong>Đã nhận</strong> ở danh sách dưới. Bấm mới sinh giao dịch — app không tự ghi thay bạn.</small>
       </>)}
 
       {seg === 'loan' && (<>
-        <div className="fin-form__row">
+        <div className="fin-ruleform__grid">
+          <label className="fin-field"><span>Tên khoản vay</span>
+            <input className="fin-input" placeholder="Vay ngân hàng" value={f.name || ''} onChange={set('name')} autoFocus /></label>
           <label className="fin-field"><span>Bên cho vay</span>
-            <input className="fin-input" placeholder="ngân hàng, người thân…" value={f.lender || ''} onChange={set('lender')} /></label>
+            <input className="fin-input" placeholder="VPBank" value={f.lender || ''} onChange={set('lender')} /></label>
           <label className="fin-field"><span>Số tiền gốc</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="vd 200000000" value={f.principal || ''} onChange={setDigits('principal')} /></label>
-        </div>
-        <div className="fin-form__row">
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="100.000.000" value={f.principal || ''} onChange={setDigits('principal')} /></label>
+          <label className="fin-field"><span>Lãi suất · %/năm</span>
+            <input className="fin-input" inputMode="decimal" placeholder="4,8" value={f.rate || ''} onChange={setDecimal('rate')} /></label>
           <label className="fin-field"><span>Kiểu trả</span>
             <select className="fin-input" value={f.kind || 'amort'} onChange={set('kind')}>
               <option value="amort">Trả đều gốc + lãi</option>
-              <option value="interest">Chỉ trả lãi, gốc cuối kỳ</option>
+              <option value="interest">Chỉ trả lãi · gốc cuối kỳ</option>
             </select></label>
-          <label className="fin-field"><span>Lãi %/năm</span>
-            <input className="fin-input" inputMode="decimal" placeholder="vd 9.5" value={f.rate || ''} onChange={setDecimal('rate')} /></label>
-        </div>
-        <div className="fin-form__row">
-          <label className="fin-field"><span>Số kỳ (tháng)</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="vd 24" value={f.term || ''} onChange={setDigits('term', 3)} /></label>
-          <label className="fin-field"><span>Ngày trả trong tháng</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="1–31" value={f.pay_day || ''} onChange={setDigits('pay_day', 2)} /></label>
-        </div>
-        <div className="fin-form__row">
-          <label className="fin-field"><span>Mở ngày</span>
+          <label className="fin-field"><span>Ngày vay</span>
             <input className="fin-input" type="date" value={f.opened_at || ''} onChange={set('opened_at')} /></label>
-          <label className="fin-field"><span>Tất toán gốc</span>
+          <label className="fin-field"><span>Hạn tất toán</span>
             <input className="fin-input" type="date" value={f.due_at || ''} onChange={set('due_at')} /></label>
+          <label className="fin-field"><span>Số kỳ (tháng)</span>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="12" value={f.term || ''} onChange={setDigits('term', 3)} /></label>
+          <label className="fin-field"><span>Ngày trả trong tháng</span>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="15" value={f.pay_day || ''} onChange={setDigits('pay_day', 2)} /></label>
         </div>
-        <p className="fin-form__note"><AppIcon name="lightbulb" size={14} /> Lãi là chi tiêu, gốc thì không — khoản gốc vẫn hiện ở Giao dịch nhưng đứng ngoài mọi tổng chi.</p>
+        <small className="fin-field__hint">Trả góp mua đồ — số tiền như nhau mỗi kỳ, không tính lãi riêng — thì để ở <strong>Phải trả</strong> như một hóa đơn có số kỳ, không phải khoản vay.</small>
       </>)}
 
       {seg === 'card' && (<>
-        <div className="fin-form__row">
+        <div className="fin-ruleform__grid">
+          <label className="fin-field"><span>Tên thẻ</span>
+            <input className="fin-input" placeholder="VIB Cash Back" value={f.name || ''} onChange={set('name')} autoFocus /></label>
           <label className="fin-field"><span>Ngân hàng</span>
-            <input className="fin-input" placeholder="VIB, TPBank…" value={f.bank || ''} onChange={set('bank')} /></label>
-          <label className="fin-field"><span>4 số cuối</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="1234" value={f.last4 || ''} onChange={setDigits('last4', 4)} /></label>
-        </div>
-        <label className="fin-field"><span>Hạn mức</span>
-          <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="vd 50000000" value={f.credit_limit || ''} onChange={setDigits('credit_limit')} /></label>
-        <div className="fin-form__row">
+            <input className="fin-input" placeholder="VIB" value={f.bank || ''} onChange={set('bank')} /></label>
+          <label className="fin-field"><span>4 số cuối · tùy chọn</span>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="4602" value={f.last4 || ''} onChange={setDigits('last4', 4)} /></label>
+          <label className="fin-field"><span>Hạn mức</span>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="50.000.000" value={f.credit_limit || ''} onChange={setDigits('credit_limit')} /></label>
           <label className="fin-field"><span>Ngày chốt sao kê</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="1–31" value={f.statement_day || ''} onChange={setDigits('statement_day', 2)} /></label>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="5" value={f.statement_day || ''} onChange={setDigits('statement_day', 2)} /></label>
           <label className="fin-field"><span>Ngày đến hạn</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="1–31" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
-        </div>
-        <div className="fin-form__row">
-          <label className="fin-field"><span>Ân hạn (ngày)</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="vd 15" value={f.grace || ''} onChange={setDigits('grace', 3)} /></label>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="20" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
           <label className="fin-field"><span>Phí thường niên</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="vd 500000" value={f.annual_fee || ''} onChange={setDigits('annual_fee')} /></label>
-        </div>
-        <div className="fin-form__row">
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="500.000" value={f.annual_fee || ''} onChange={setDigits('annual_fee')} /></label>
           <label className="fin-field"><span>Phí rút tiền mặt</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="vd 100000" value={f.cash_advance_fee || ''} onChange={setDigits('cash_advance_fee')} /></label>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="100.000" value={f.cash_advance_fee || ''} onChange={setDigits('cash_advance_fee')} /></label>
           <label className="fin-field"><span>% trả tối thiểu</span>
-            <input className="fin-input" inputMode="decimal" placeholder="vd 5" value={f.min_pct || ''} onChange={setDecimal('min_pct')} /></label>
+            <input className="fin-input" inputMode="decimal" placeholder="5" value={f.min_pct || ''} onChange={setDecimal('min_pct')} /></label>
         </div>
-        <p className="fin-form__note"><AppIcon name="lightbulb" size={14} /> Ngày chốt và ngày đến hạn là hai ngày khác nhau — khoảng giữa chúng là số ngày tiền ngân hàng nằm trong tay bạn.</p>
+        <small className="fin-field__hint">Ngày chốt và ngày đến hạn là <strong>hai ngày khác nhau</strong> — khoảng giữa chúng là số ngày tiền của ngân hàng nằm trong tay bạn mà không mất lãi.</small>
+      </>)}
+
+      {seg === 'lend' && (<>
+        <div className="fin-ruleform__grid">
+          <label className="fin-field"><span>Cho ai mượn</span>
+            <input className="fin-input" placeholder="Em trai" value={f.name || ''} onChange={set('name')} autoFocus /></label>
+          <label className="fin-field"><span>Số tiền</span>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="100.000.000" value={f.principal || ''} onChange={setDigits('principal')} /></label>
+          <label className="fin-field"><span>Ngày đưa tiền</span>
+            <input className="fin-input" type="date" max={fin.today} value={f.lent_on || fin.today} onChange={set('lent_on')} /></label>
+          <label className="fin-field"><span>Hẹn trả ngày</span>
+            <input className="fin-input" type="date" value={f.due_on || ''} onChange={set('due_on')} /></label>
+          <label className="fin-field"><span>Lãi · %/năm</span>
+            <input className="fin-input" inputMode="decimal" placeholder="0 nếu không tính lãi" value={f.rate || ''} onChange={setDecimal('rate')} /></label>
+        </div>
+        <label className="fin-field"><span>Ghi chú</span>
+          <input className="fin-input" placeholder="Sửa nhà · hẹn miệng" value={f.note || ''} onChange={set('note')} /></label>
+        <small className="fin-field__hint">Khoản này <strong>không sinh giao dịch chi</strong> — cho mượn chỉ đổi tiền trong ví thành khoản phải thu, donut và hạn mức nhóm không đổi.</small>
       </>)}
 
       {editing && (seg === 'out' || seg === 'in') && (
@@ -405,8 +489,10 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
       )}
 
       <div className="fin-ruleform__actions">
-        {editing && <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={onDone}>Hủy</button>}
-        <button type="submit" className="fin-btn fin-btn--primary fin-btn--sm"><AppIcon name="save" size={15} /> Lưu</button>
+        <button type="submit" className="fin-btn fin-btn--primary fin-btn--sm">
+          {editing ? <><AppIcon name="save" size={15} /> Lưu thay đổi</> : segMeta.createLabel}
+        </button>
+        <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={onDone}>Hủy</button>
       </div>
     </form>
   );
@@ -415,8 +501,8 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
 // ── Khối ghi một kỳ ──────────────────────────────────────────────────────────
 // Mở ngay dưới dòng, không đẩy sang màn khác và không mở modal: người dùng
 // thường trả liền ba bốn khoản, rời danh sách mỗi lần là hỏng nhịp.
-function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
-  confirmLabel = 'Xác nhận thanh toán', onPay, onCancel }) {
+function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false, amountLabel = 'Số tiền đã trả',
+  quickAmount = null, confirmLabel = 'Xác nhận thanh toán', onPay, onCancel }) {
   const amountRef = useRef(null);
   const [amount, setAmount] = useState(defaultAmount ? String(defaultAmount) : '');
   const [occurredAt, setOccurredAt] = useState(fin.today);
@@ -444,9 +530,12 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
   return (
     <div className="fin-payblock">
       <div className="fin-payblock__grid">
-        <label className="fin-field"><span>Số tiền đã trả</span>
+        <label className="fin-field"><span>{amountLabel}</span>
           <input ref={amountRef} className="fin-input" inputMode="numeric" pattern="[0-9]*" autoFocus
-            placeholder="chưa có kỳ nào để gợi ý" value={amount} onChange={e => setAmount(sanitizeDigits(e.target.value))} /></label>
+            placeholder="chưa có kỳ nào để gợi ý" value={amount} onChange={e => setAmount(sanitizeDigits(e.target.value))} />
+          {quickAmount > 0 && <button type="button" className="fin-inline-command" onClick={() => setAmount(String(quickAmount))}>
+            Trả hết · {money(quickAmount)}
+          </button>}</label>
         <div className="fin-field"><span>Ngày đã trả thật</span>
           <div className="fin-payblock__dates">
             <input className="fin-input" type="date" max={fin.today} value={occurredAt} onChange={e => setOccurredAt(e.target.value)} />
@@ -689,8 +778,26 @@ function LoansList({ fin, nav, tasks }) {
   const period = fin.today.slice(0, 7);
   const [editId, setEditId] = useState(null);
   const [payId, setPayId] = useState(null);
+  const openLoans = fin.loans.filter(l => !l.closed_at);
+  const monthlyInterest = openLoans.reduce((sum, l) => {
+    const sch = loanSchedule(l);
+    return sum + (sch.kind === 'interest' ? sch.monthlyInterest : sch.interestPart);
+  }, 0);
+  const nextSettle = openLoans.filter(l => l.due_at).sort((a, b) => a.due_at.localeCompare(b.due_at))[0];
+
   return (
     <div className="fin-rules">
+      <SummaryStrip
+        items={[
+          { label: 'Tổng dư nợ gốc', value: money(openLoans.reduce((sum, l) => {
+            const sch = loanSchedule(l);
+            return sum + (sch.kind === 'interest' ? sch.principalDue : sch.principalRemaining);
+          }, 0)) },
+          { label: 'Lãi phải trả tháng này', value: money(monthlyInterest) },
+          { label: 'Hạn tất toán gần nhất', value: nextSettle ? dmy(nextSettle.due_at) : '—' },
+        ]}
+        note="Khoản vay không phải hóa đơn: mỗi kỳ tách thành hai phần khác nhau. Lãi là chi phí thật — ghi vào Tài chính & Nợ › Lãi & phí ngân hàng, lên báo cáo. Trả gốc không phải chi tiêu — nó chỉ chuyển tiền từ ví sang giảm dư nợ, nên không tính vào hạn mức tháng."
+      />
       {fin.loans.length === 0 && <RulesEmpty icon="bank" title="Chưa có khoản vay"
         description="Thêm khoản vay để tách phần gốc và lãi trong mỗi lần trả." />}
       {fin.loans.map(l => {
@@ -771,6 +878,116 @@ function LoansList({ fin, nav, tasks }) {
               }} />}
 
             {editId === l.id && <RuleForm seg="loan" fin={fin} nav={nav} initial={l} onDone={() => setEditId(null)} />}
+          </RuleCard>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── lend: Cho vay (khoản phải thu) ───────────────────────────────────────────
+// Cho mượn KHÔNG phải chi tiêu, họ trả lại KHÔNG phải thu nhập — cả hai chỉ đổi
+// chỗ của tiền. Giao dịch thu về mang cờ excluded nên đứng ngoài mọi tổng.
+function LendsList({ fin, nav, tasks }) {
+  const [editId, setEditId] = useState(null);
+  const [payId, setPayId] = useState(null);
+  const [histId, setHistId] = useState(null);
+
+  const rows = fin.lendings.map(l => {
+    const repayments = fin.transactions.filter(t => t.lending_id === l.id)
+      .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
+    const got = Math.min(l.principal, repayments.reduce((sum, t) => sum + t.amount, 0));
+    const left = Math.max(0, l.principal - got);
+    const done = left === 0;
+    const days = l.due_on ? daysInclusive(fin.today, l.due_on) - 1 : null;
+    return { l, repayments, got, left, done, days };
+  }).sort((a, b) => (a.l.due_on || '9999').localeCompare(b.l.due_on || '9999'));
+
+  const open = rows.filter(r => !r.done);
+  const nextDue = open.filter(r => r.l.due_on)[0];
+
+  const record = async (l, payload) => {
+    const tx = await fin.recordLendingRepayment(l, payload);
+    nav.showToast(tx
+      ? `Đã ghi ${money(payload.amount)} thu về từ ${l.name} — không tính là thu nhập`
+      : `Không thể ghi khoản thu về từ ${l.name}. Kiểm tra dữ liệu Finance rồi thử lại.`,
+    { icon: tx ? 'handCoins' : 'warning' });
+    return !!tx;
+  };
+
+  return (
+    <div className="fin-rules">
+      <SummaryStrip
+        items={[
+          { label: 'Đang cho vay · chưa thu', value: money(rows.reduce((s, r) => s + r.left, 0)) },
+          { label: 'Đã thu về', value: money(rows.reduce((s, r) => s + r.got, 0)), tone: 'good' },
+          { label: 'Hẹn gần nhất', value: nextDue ? dmy(nextDue.l.due_on) : '—' },
+        ]}
+        note="Cho mượn không phải chi tiêu — tiền rời ví nhưng đổi thành khoản phải thu, nên donut, hạn mức nhóm và mức 50/30/20 không đổi. Khi họ trả, tiền về ví và số này giảm đúng bằng đó — không tính là thu nhập, nếu tính thì tháng đó thu nhập vọt lên ảo và tỉ lệ tiết kiệm sai. Chỉ phần lãi, nếu có, mới là thu nhập thật."
+      />
+
+      {rows.length === 0 && <RulesEmpty icon="handCoins" title="Chưa cho ai mượn tiền"
+        description="Ghi khoản cho vay để biết ai còn nợ bao nhiêu và hẹn trả ngày nào." />}
+
+      {rows.map(({ l, repayments, got, left, done, days }) => {
+        const state = done ? { tone: 'paid', text: `thu xong ${dmy(repayments.at(-1)?.occurred_at)}` }
+          : days == null ? { tone: 'soon', text: 'không hẹn ngày' }
+          : days < 0 ? { tone: 'over', text: `quá hẹn ${Math.abs(days)} ngày` }
+          : days === 0 ? { tone: 'today', text: 'đến hẹn hôm nay' }
+          : { tone: days <= 14 ? 'today' : 'soon', text: `còn ${days} ngày` };
+        return (
+          <RuleCard key={l.id} tone={state.tone} icon={done ? 'checkCircle' : 'handCoins'}
+            title={l.name} badge={l.rate > 0 ? `${l.rate}%/năm` : 'không lãi'}
+            meta={[l.note, `cho mượn ${dmy(l.lent_on)}`, l.due_on ? `hẹn trả ${dmy(l.due_on)}` : null].filter(Boolean).join(' · ')}
+            amount={done ? money(l.principal) : money(left)} state={state} openTitle="Sửa khoản cho vay"
+            onOpen={() => setEditId(editId === l.id ? null : l.id)}
+            onEdit={() => { setEditId(editId === l.id ? null : l.id); setPayId(null); }}
+            onDelete={async () => {
+              const kept = repayments.length;
+              if (await nav.confirmDelete(`khoản cho vay “${l.name}”`,
+                kept > 0 ? `${kept} giao dịch thu về vẫn được giữ lại ở màn Giao dịch.` : 'Chưa có lần thu nào được ghi.')) {
+                await fin.deleteLending(l.id);
+              }
+            }}>
+
+            <div className="fin-loan-split">
+              <span>{done ? 'Đã thu đủ' : 'Còn phải thu'} <strong className={done ? 'is-good' : ''}>{money(done ? l.principal : left)}</strong></span>
+              <span>Cho mượn <strong>{money(l.principal)}</strong></span>
+              <span>Hẹn trả <strong>{dmy(l.due_on)}</strong></span>
+            </div>
+
+            <RuleProgress pct={l.principal ? got / l.principal * 100 : 0}
+              label={`Đã thu ${money(got)} / ${money(l.principal)}`} />
+
+            {payId !== l.id && (
+              <div className="fin-rule__foot">
+                {!done && <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm"
+                  onClick={() => { setPayId(l.id); setEditId(null); }}>
+                  <AppIcon name="handCoins" size={15} /> Ghi khoản họ trả
+                </button>}
+                <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm"
+                  onClick={() => setHistId(histId === l.id ? null : l.id)}>
+                  <AppIcon name="clock" size={14} /> {repayments.length ? `Lịch sử · ${repayments.length} lần` : 'Chưa có lần trả nào'}
+                </button>
+              </div>
+            )}
+
+            {payId === l.id && <PayBlock fin={fin} tasks={tasks} defaultAmount="" quickAmount={left}
+              amountLabel="Họ vừa trả bao nhiêu" confirmLabel="Ghi nhận"
+              onCancel={() => setPayId(null)} onPay={(payload) => record(l, payload)} />}
+
+            {histId === l.id && repayments.length > 0 && (
+              <div className="fin-bill-history">
+                <div className="fin-bill-history__list">
+                  {repayments.map((t, i) => (
+                    <div key={t.id}><span>Lần {i + 1} · {dmy(t.occurred_at)}</span><strong>{money(t.amount)}</strong></div>
+                  ))}
+                </div>
+                <small className="fin-bill-history__note">Mỗi lần nhận là một giao dịch không tính vào thu nhập ở màn Giao dịch — xóa khoản cho vay không xóa lịch sử này.</small>
+              </div>
+            )}
+
+            {editId === l.id && <RuleForm seg="lend" fin={fin} nav={nav} initial={l} onDone={() => setEditId(null)} />}
           </RuleCard>
         );
       })}

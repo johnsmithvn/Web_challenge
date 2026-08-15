@@ -29,6 +29,7 @@ export function useFinance({ autoFetch = true } = {}) {
   const [transactions, setTransactions] = useState([]);
   const [bills, setBills] = useState([]);
   const [loans, setLoans] = useState([]);
+  const [lendings, setLendings] = useState([]);
   const [cards, setCards] = useState([]);
   const [goals, setGoals] = useState([]);
   const [deposits, setDeposits] = useState([]);
@@ -48,7 +49,7 @@ export function useFinance({ autoFetch = true } = {}) {
     try {
       const q = (table, order = 'created_at') =>
         supabase.from(table).select('*').eq('user_id', userId).order(order, { ascending: false });
-      const [tx, bl, ln, cd, gl, dp, ir, sc, bg, co] = await Promise.all([
+      const [tx, bl, ln, cd, gl, dp, ir, sc, bg, co, le] = await Promise.all([
         supabase.from('finance_transactions').select('*').eq('user_id', userId)
           .order('occurred_at', { ascending: false }).order('created_at', { ascending: false }),
         q('finance_bills'), q('finance_loans'), q('finance_cards'),
@@ -57,8 +58,9 @@ export function useFinance({ autoFetch = true } = {}) {
           .eq('user_id', userId).order('sort_order', { ascending: true }),
         q('finance_budgets'),
         q('finance_category_overrides'),
+        q('finance_lendings'),
       ]);
-      const failed = [tx, bl, ln, cd, gl, dp, ir, sc, bg, co].find(result => result.error);
+      const failed = [tx, bl, ln, cd, gl, dp, ir, sc, bg, co, le].find(result => result.error);
       if (failed) throw failed.error;
       setTransactions(tx.data || []);
       setBills(bl.data || []);
@@ -70,6 +72,7 @@ export function useFinance({ autoFetch = true } = {}) {
       setShortcuts(sc.data || []);
       setBudgets(bg.data || []);
       setCategoryOverrides(co.data || []);
+      setLendings(le.data || []);
     } catch (err) {
       logger.warn('[useFinance] fetchAll error:', err.message);
       setError(err.message);
@@ -208,6 +211,10 @@ export function useFinance({ autoFetch = true } = {}) {
   const addBill    = useCallback((r) => insertRow('finance_bills', setBills, r), [insertRow]);
   const updateBill = useCallback((id, u) => updateRow('finance_bills', setBills, id, u), [updateRow]);
   const deleteBill = useCallback((id) => deleteRow('finance_bills', setBills, id), [deleteRow]);
+
+  const addLending    = useCallback((r) => insertRow('finance_lendings', setLendings, r), [insertRow]);
+  const updateLending = useCallback((id, u) => updateRow('finance_lendings', setLendings, id, u), [updateRow]);
+  const deleteLending = useCallback((id) => deleteRow('finance_lendings', setLendings, id), [deleteRow]);
 
   const addLoan    = useCallback((r) => insertRow('finance_loans', setLoans, r), [insertRow]);
   const updateLoan = useCallback((id, u) => updateRow('finance_loans', setLoans, id, u), [updateRow]);
@@ -394,14 +401,24 @@ export function useFinance({ autoFetch = true } = {}) {
     });
   }, [enabled, today, callFinanceRpc]);
 
+  // Cho vay: app không tự thu hộ — user bấm thì mới sinh giao dịch thu về.
+  const recordLendingRepayment = useCallback((lending, { amount, occurredAt, taskId } = {}) =>
+    callFinanceRpc('finance_record_lending_repayment', {
+      p_lending_id: lending.id,
+      p_amount: amount,
+      p_occurred_at: occurredAt || today,
+      p_task_id: taskId || null,
+    }), [today, callFinanceRpc]);
+
   return {
     enabled, isLoading, error, today, cats, categoryOverrides,
-    transactions, bills, loans, cards, goals, deposits, incomeRules, shortcuts, budgets,
+    transactions, bills, loans, lendings, cards, goals, deposits, incomeRules, shortcuts, budgets,
     blendedRate: blendedRate(deposits),
     fetchAll,
     addTransaction, updateTransaction, deleteTransaction,
     addBill, updateBill, deleteBill,
     addLoan, updateLoan, deleteLoan,
+    addLending, updateLending, deleteLending,
     addCard, updateCard, deleteCard,
     addGoal, updateGoal, deleteGoal,
     addDeposit, updateDeposit, deleteDeposit,
@@ -410,6 +427,6 @@ export function useFinance({ autoFetch = true } = {}) {
     upsertBudget,
     upsertCategoryOverride,
     payBill, skipBillPeriod, receiveIncome, payLoanInterest, payLoanPrincipal, payLoanInstallment,
-    payCardStatement, requestSavingWithdrawal, moveSaving,
+    payCardStatement, recordLendingRepayment, requestSavingWithdrawal, moveSaving,
   };
 }
