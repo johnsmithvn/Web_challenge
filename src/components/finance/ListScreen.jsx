@@ -3,7 +3,7 @@ import { useUserTasks } from '../../hooks/useUserTasks';
 import { useTags } from '../../hooks/useTags';
 import { parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
 import { toDateStr } from '../../utils/dateUtils';
-import { periodTotals, groupByDate } from '../../utils/financeLogic';
+import { periodTotals, groupByDate, billPeriods } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon, DateField,
 } from './parts';
@@ -180,7 +180,15 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
   const [categoryId, setCategoryId] = useState(tx.category_id || (tx.type === 'income' ? 'luong' : 'other'));
   const [subcategoryId, setSubcategoryId] = useState(tx.subcategory_id || '');
   const [sourceCardId, setSourceCardId] = useState(tx.source_card_id || '');
+  const [billPeriod, setBillPeriod] = useState(tx.bill_period || '');
   const [txTags, setTxTags] = useState([]);
+  // Giao dịch sinh từ hóa đơn: cho sửa KỲ ngay tại đây. Gắn nhầm kỳ là hóa đơn báo
+  // quá hạn dù đã trả, mà trước đó đường sửa duy nhất là xóa rồi ghi lại từ đầu.
+  const linkedBill = tx.bill_id ? fin.bills.find(bill => bill.id === tx.bill_id) : null;
+  const periodChoices = linkedBill
+    ? Array.from(new Set([...billPeriods(linkedBill, tx.bill_period || fin.today.slice(0, 7), 8),
+      tx.bill_period].filter(Boolean))).sort().reverse()
+    : [];
   const info = catInfo(categoryId, fin.cats);
   const categoryOptions = tx.type === 'income' ? fin.cats.incomeGroups : fin.cats.expenseGroups;
   const subOptions = fin.cats.expenseGroups.find(group => group.key === categoryId)?.subs || [];
@@ -195,6 +203,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
       amount: parsed || tx.amount, note: note || null, occurred_at: occurredAt,
       necessity: necessity || null, category_id: categoryId || null,
       subcategory_id: subcategoryId || null, source_card_id: sourceCardId || null,
+      ...(linkedBill && billPeriod !== tx.bill_period ? { bill_period: billPeriod } : {}),
     });
     nav.showToast('Đã cập nhật — báo cáo tự tính lại', { icon: 'checkCircle' });
     setEditing(false);
@@ -253,6 +262,13 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
           <label className="fin-label">Nguồn tiền</label><select className="fin-input" value={sourceCardId} onChange={event => setSourceCardId(event.target.value)}><option value="">Tiền có sẵn</option>{fin.cards.map(card => <option key={card.id} value={card.id}>{card.name} {card.last4 ? `••${card.last4}` : ''}</option>)}</select>
           {!tx.excluded && <><label className="fin-label">Mức cần thiết</label><select className="fin-input" value={necessity} onChange={event => setNecessity(event.target.value)}><option value="">— chưa đặt —</option>{Object.entries(NECESSITY_META).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></>}
         </>}
+        {linkedBill && <>
+          <label className="fin-label">Thuộc kỳ của {linkedBill.name}</label>
+          <select className="fin-input" value={billPeriod} onChange={event => setBillPeriod(event.target.value)}>
+            {periodChoices.map(key => <option key={key} value={key}>{key.slice(5)}/{key.slice(0, 4)}</option>)}
+          </select>
+          <small className="fin-field__hint">Kỳ tách khỏi ngày trả: trả kỳ tháng 7 vào tháng 8 thì kỳ vẫn là 07. Gắn sai kỳ thì hóa đơn báo quá hạn dù tiền đã ra khỏi ví.</small>
+        </>}
         <label className="fin-label">Nhiệm vụ liên quan</label><TaskPicker tasks={tasks} value={tx.task_id} onPick={id => fin.updateTransaction(tx.id, { task_id: id })} />
         <label className="fin-label">Tag</label><div className="fin-tags">{txTags.map(tag => <button key={tag.id} className="fin-tag" style={{ '--tc': tag.color }} onClick={() => toggleTag(tag)}>#{tag.name} <AppIcon name="x" size={11} /></button>)}<TagAdd tags={tags} txTags={txTags} onAdd={addAndLink} /></div>
         <div className="fin-detail__actions"><button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="save" size={15} /> Lưu thay đổi</button><button className="fin-btn fin-btn--secondary" onClick={() => setEditing(false)}>Hủy</button></div>
@@ -269,6 +285,10 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
     ['Trả bằng', source],
     ['Nguồn tạo', tx.bill_id ? 'Hóa đơn định kỳ' : tx.loan_id ? 'Khoản vay' : tx.card_id ? 'Sao kê thẻ' : tx.shortcut_id ? 'Shortcut' : tx.inbox_item_id ? 'Inbox' : 'Nhập tay'],
   ];
+  // Kỳ nghĩa vụ tách khỏi ngày ghi (trả hóa đơn tháng 7 vào tháng 8 vẫn thuộc kỳ 7).
+  // Không hiện ra thì không có cách nào biết một khoản đã trả đang gắn nhầm kỳ nào.
+  const period = tx.bill_period || tx.income_period || tx.loan_period || tx.card_period;
+  if (period) meta.push(['Thuộc kỳ', `${period.slice(5)}/${period.slice(0, 4)}`]);
 
   return (
     <div className="fin-detail">

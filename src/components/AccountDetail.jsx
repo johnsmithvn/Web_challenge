@@ -145,6 +145,19 @@ export default function AccountDetail({
   const codes = shown.codes || [];
   const showCodes = codes.length > 0 || shown.auth.some((a) => a.kind === 'codes');
 
+  // Link là một chiều: field `link` chỉ sống ở item NGUỒN, item đích không biết
+  // ai trỏ tới mình. Quét ngược `items` (đã giải mã sẵn trong AccountsPage) để
+  // item đích thấy được — không thêm cột/bảng nào, một item link 2 field thì ra
+  // 2 dòng vì đó là 2 đường dẫn khác nhau.
+  const backlinks = items.flatMap((x) => (
+    x.id === item.id ? [] : (x.fields || [])
+      .filter((f) => (f.links || []).some((L) => L.itemId === item.id))
+      .map((f) => ({
+        key: `${x.id}:${f.id}`, id: x.id, title: x.title,
+        code: TPL_BY_KEY.get(x.tpl)?.code || '···', via: f.label,
+      }))
+  ));
+
   return (
     <article className="acc-detail">
       {/* ── 1. Khối tiêu đề ── */}
@@ -291,6 +304,29 @@ export default function AccountDetail({
 
         {editing && <AddFieldPanel patch={patch} />}
       </section>
+
+      {/* ── 3b. Được link từ item khác. Ẩn khi đang sửa: bấm sang item khác là
+             remount detail → mất draft mà không hỏi. */}
+      {!editing && backlinks.length > 0 && (
+        <section className="acc-sect">
+          <div className="acc-sect__head">
+            <h3 className="acc-sect__title">Linked from</h3>
+            <span className="acc-sect__meta">{backlinks.length} incoming</span>
+          </div>
+          <div className="acc-panel">
+            <div className="acc-links acc-links--panel">
+              {backlinks.map((b) => (
+                <button key={b.key} className="acc-link" onClick={() => onOpen(b.id)}>
+                  <span className="acc-link__code">{b.code}</span>
+                  <span className="acc-link__title">{b.title}</span>
+                  <span className="acc-link__sub">{b.via}</span>
+                  <span className="acc-link__arrow" aria-hidden="true">↗</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── 4. Sign-in methods ── */}
       <section className="acc-sect">

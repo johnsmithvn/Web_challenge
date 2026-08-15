@@ -4,7 +4,7 @@ import { useUserTasks } from '../../hooks/useUserTasks';
 import {
   billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule,
   currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
-  billCycle, billSettled,
+  billCycle, billSettled, billPeriods,
 } from '../../utils/financeLogic';
 import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField } from './parts';
 import AppIcon from '../AppIcon';
@@ -178,6 +178,15 @@ export default function RecurringScreen({ fin, nav }) {
   const [adding, setAdding] = useState(false);
   // Bản nháp điền sẵn khi bấm Nhân bản: chỉ chép QUY TẮC, chưa ghi gì xuống DB.
   const [draft, setDraft] = useState(null);
+  // Form thêm đang gõ dở: đóng nó (đổi segment, bấm Đóng, bấm Hủy) phải hỏi trước,
+  // vì trước đây bấm nhầm một cái là mất sạch những gì đã nhập.
+  const [dirty, setDirty] = useState(false);
+  const discardAddForm = () => { setAdding(false); setDraft(null); setDirty(false); return true; };
+  const closeAddForm = async () => {
+    if (!adding || !dirty) return discardAddForm();
+    if (!await nav.confirmDiscard()) return false;
+    return discardAddForm();
+  };
   const segMeta = SEGMENTS.find(s => s.value === seg);
   const period = fin.today.slice(0, 7);
   // "Còn phải trả" = kỳ rơi vào tháng này + mọi kỳ đã quá hạn. Hóa đơn quý đến hạn
@@ -214,14 +223,20 @@ export default function RecurringScreen({ fin, nav }) {
         <small>Hôm nay {fin.today.split('-').reverse().join('/')}</small>
       </section>
       <div className="fin-recurring__bar">
-        <Segmented options={segmentOptions} value={seg} onChange={(v) => { nav.setRecurringSeg(v); setAdding(false); setDraft(null); }} />
-        <button className="fin-btn fin-btn--primary fin-btn--sm" onClick={() => { setAdding(a => !a); setDraft(null); }}>
+        <Segmented options={segmentOptions} value={seg} onChange={async (v) => {
+          if (!await closeAddForm()) return;
+          nav.setRecurringSeg(v);
+        }} />
+        <button className="fin-btn fin-btn--primary fin-btn--sm" onClick={async () => {
+          if (adding) { await closeAddForm(); return; }
+          setAdding(true); setDraft(null);
+        }}>
           <AppIcon name={adding ? 'x' : 'plus'} size={15} /> {adding ? 'Đóng' : segMeta.addLabel}
         </button>
       </div>
 
-      {adding && <RuleForm seg={seg} fin={fin} nav={nav} initial={draft}
-        onDone={() => { setAdding(false); setDraft(null); }} />}
+      {adding && <RuleForm seg={seg} fin={fin} nav={nav} initial={draft} onDirty={setDirty}
+        onDone={(saved) => (saved ? discardAddForm() : closeAddForm())} />}
 
       {seg === 'out'  && <BillsList fin={fin} nav={nav} tasks={pendingTasks}
         onDuplicate={(bill) => { setDraft(billDraft(bill)); setAdding(true); }} />}
@@ -234,7 +249,7 @@ export default function RecurringScreen({ fin, nav }) {
 }
 
 // ── Form thêm / sửa (cùng một form, khác nhau ở `initial`) ────────────────────
-function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
+function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }) {
   const editing = Boolean(initial?.id);
   const noteRef = useRef(null);
   const [hasTerm, setHasTerm] = useState(() => Boolean(initial?.term_total));
@@ -250,6 +265,11 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
     ...p, [k]: sanitizeDecimal(e.target.value, maxIntegerDigits, maxFractionDigits),
   }));
   useEffect(() => { if (!editing && nav.handoff?.kind === seg) nav.clearHandoff(); }, []); // eslint-disable-line
+  // "Đã gõ gì chưa" = so với ảnh chụp lúc mở form. So cả object một lần rẻ hơn và
+  // chắc hơn là gắn cờ vào từng setter (form này có 5 kiểu setter khác nhau).
+  const pristine = useRef();
+  if (pristine.current === undefined) pristine.current = JSON.stringify(f);
+  useEffect(() => { onDirty?.(JSON.stringify(f) !== pristine.current); }, [f]); // eslint-disable-line
   // Mở từ link "Thêm ghi chú" thì con trỏ nhảy thẳng vào ô ghi chú.
   useEffect(() => { if (focusNote) noteRef.current?.focus(); }, [focusNote]);
 
@@ -367,7 +387,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
       : seg === 'lend' ? 'Đã ghi khoản cho vay — tiền rời ví nhưng không tính là chi tiêu'
       : seg === 'in' ? 'Đã thêm khoản thu — app chỉ nhắc, không tô đỏ khi chưa nhận'
       : 'Đã thêm hóa đơn — tới ngày app hiện nút để bạn ghi', { icon: 'checkCircle' });
-    onDone();
+    onDone(true);   // đã lưu → đóng thẳng, không hỏi "bỏ nội dung?"
   };
 
   const grp = fin.cats.expenseGroups.find(g => g.key === (f.category_id || 'housing'));
@@ -390,7 +410,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
       {(seg !== 'out' || editing) && (
         <div className="fin-ruleform__head">
           <strong>{editing ? segMeta.editLabel : segMeta.addLabel}</strong>
-          {editing && <button type="button" className="fin-icon-btn" onClick={onDone} aria-label="Đóng"><AppIcon name="x" size={15} /></button>}
+          {editing && <button type="button" className="fin-icon-btn" onClick={() => onDone()} aria-label="Đóng"><AppIcon name="x" size={15} /></button>}
         </div>
       )}
 
@@ -583,7 +603,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
         <button type="submit" className="fin-btn fin-btn--primary fin-btn--sm">
           {editing ? <><AppIcon name="save" size={15} /> Lưu thay đổi</> : segMeta.createLabel}
         </button>
-        <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={onDone}>Hủy</button>
+        <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={() => onDone()}>Hủy</button>
       </div>
     </form>
   );
@@ -717,18 +737,11 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
   // bỏ kỳ, nên nếu không có nút này thì bấm nhầm là kẹt tới tháng sau.
   // 6 kỳ gần nhất để bổ sung kỳ cũ. Kỳ đã có giao dịch thì khóa lại —
   // `unique_finance_tx_bill_period` cũng chặn ở DB, nhưng chặn sớm ở UI thì đỡ một vòng lỗi.
-  // Bước lùi = đúng chu kỳ của hóa đơn: hóa đơn quý không được liệt kê 6 THÁNG gần nhất.
-  const periodsFor = (bill) => Array.from({ length: 6 }, (_, i) => {
-    const base = periodOf(bill);
-    const every = Math.max(1, Number(bill.rrule?.every) || 1);
-    const d = new Date(Number(base.slice(0, 4)), Number(base.slice(5, 7)) - 1 - i * every, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    return {
-      key,
-      label: i === 0 ? `Kỳ này · ${key.slice(5)}/${key.slice(2, 4)}` : `${key.slice(5)}/${key.slice(2, 4)}`,
-      done: fin.transactions.some(t => t.bill_id === bill.id && t.bill_period === key),
-    };
-  });
+  const periodsFor = (bill) => billPeriods(bill, periodOf(bill)).map((key, i) => ({
+    key,
+    label: i === 0 ? `Kỳ này · ${key.slice(5)}/${key.slice(2, 4)}` : `${key.slice(5)}/${key.slice(2, 4)}`,
+    done: fin.transactions.some(t => t.bill_id === bill.id && t.bill_period === key),
+  }));
   const unskip = async (bill) => {
     const rest = (bill.skipped_periods || []).filter(p => p !== periodOf(bill));
     const updated = await fin.updateBill(bill.id, { skipped_periods: rest });

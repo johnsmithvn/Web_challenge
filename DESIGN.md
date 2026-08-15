@@ -1085,6 +1085,13 @@ bar · two-pane body (item list · detail), breakpoint 900px.
   navigates. A link whose target is gone becomes `.acc-link--dead` (divider
   border, no hover, "Missing item / link broken") — a normal state (jsonb links
   have no FK), not an error.
+  - **"Linked from" section** — the same `.acc-link` chips, this time listing items
+    that point *at* the open item, in a `.acc-links--panel` (the chip row needs its
+    own padding once it leaves a field's value column). A link is stored only on the
+    source item, so without this the target — a bank account every card links to —
+    looked unconnected. Sub-label is the source **field name**, not a borrowed value:
+    the useful fact is *which* slot points here ("Bank login"). Section is hidden in
+    edit mode, since navigating away drops the draft without asking.
 - **`.acc-strength`** — a `180×5px` pill track at `9%` text with a pill fill whose
   `width` and `background-color` transition over 320ms. View-mode only, and only
   for `type="password"`; `secret` is never scored.

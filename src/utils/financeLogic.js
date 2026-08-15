@@ -125,6 +125,19 @@ export function billCycle(bill, refStr, isSettled) {
   return at(dueDateInMonth(bill.due_day, shiftMonth(refStr, ahead)));
 }
 
+/**
+ * `count` kỳ gần nhất tính lùi từ `fromPeriod`, mới nhất trước. Bước lùi bằng đúng
+ * chu kỳ của hóa đơn — hóa đơn quý phải ra 10/26 · 07/26 · 04/26, không phải 6 tháng liền.
+ */
+export function billPeriods(bill, fromPeriod, count = 6) {
+  const every = Math.max(1, Number(bill.rrule?.every) || 1);
+  const year = Number(fromPeriod.slice(0, 4)), month = Number(fromPeriod.slice(5, 7)) - 1;
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(year, month - i * every, 1);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  });
+}
+
 /** Kỳ đã xong = đã ghi giao dịch cho kỳ đó, hoặc đã bấm bỏ kỳ. */
 export function billSettled(bill, txs) {
   const skipped = bill.skipped_periods || [];

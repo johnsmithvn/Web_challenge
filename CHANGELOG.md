@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Added
+- **Khối "Linked from" trong Vault — item đích thấy được ai đang trỏ tới mình.** Field `link` chỉ lưu
+  ở item **nguồn**, nên tài khoản ngân hàng bị 5 thẻ link tới vẫn hiện ra như chẳng liên quan gì. Giờ
+  quét ngược mảng `items` (đã giải mã sẵn ở `AccountsPage`, không thêm query/bảng/cột) và liệt kê chip
+  `.acc-link` dẫn ngược lại. Sub-label là **tên field nguồn** (`Bank login`) — cái cần biết là link đi
+  từ ô nào. Một item link qua 2 field thì ra 2 dòng. Ẩn khi đang sửa vì bấm đi là mất draft.
 - **Hóa đơn nhiều tháng một lần** (`finance_bills.anchor_date` + `rrule.every`, migration
   `data/migration_v6.7.0_finance_bill_multi_month.sql` — user tự chạy trên hosted). Netflix trả theo
   quý, bảo hiểm theo năm: trước đó chỉ có "Mỗi tháng" nên phải nhớ ngoài app. Chu kỳ 1/2/3/6/12 tháng;
@@ -15,6 +20,10 @@
     trong khối trả lùi theo đúng chu kỳ (hóa đơn quý không liệt kê 6 tháng liền).
 
 ### Changed
+- **Form thêm ở màn Hóa đơn hỏi trước khi vứt nội dung đang gõ.** Đổi segment hoặc bấm Đóng/Hủy giữa
+  chừng là mất sạch, không cảnh báo gì. Giờ `nav.confirmDiscard()` (dùng chung `ConfirmModal` sẵn có)
+  chặn lại khi form đã có thay đổi so với lúc mở; lưu thành công thì đóng thẳng, không hỏi. "Đã gõ gì
+  chưa" so bằng ảnh chụp state lúc mở form — rẻ và chắc hơn gắn cờ vào từng setter.
 - **Ô `Brand` của thẻ tín dụng (Vault) gợi ý sẵn tổ chức thẻ.** `<datalist>` native trên `.acc-input`
   (Visa, Mastercard, JCB, American Express, UnionPay, Napas, Discover) — click là chọn, nhưng vẫn gõ
   tay được brand ngoài danh sách nên value cũ không mất. Không thêm field type mới.

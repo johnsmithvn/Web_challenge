@@ -66,6 +66,13 @@ export default function FinancePage() {
     setSavingAsExpenseState(next);
     localStorage.setItem('lh_finance_saving_as_expense', String(next));
   }, []);
+  // Form đang gõ dở mà bấm sang chỗ khác thì mất trắng — hỏi trước khi bỏ.
+  const confirmDiscard = useCallback(() => confirm({
+    title: 'Bỏ nội dung đang nhập?',
+    message: 'Form này đang có dữ liệu chưa lưu. Rời khỏi đây là mất những gì bạn vừa gõ.',
+    confirmLabel: 'Bỏ nội dung',
+    danger: true,
+  }), [confirm]);
   const confirmDelete = useCallback((label, message) => confirm({
     title: `Xóa ${label}?`,
     message: message || 'Dữ liệu này sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.',
@@ -150,7 +157,7 @@ export default function FinancePage() {
     recurringSeg, setRecurringSeg, overviewTab, setOverviewTab, analyzeParams,
     catsTab, setCatsTab, handoff, startHandoff: setHandoff,
     clearHandoff: () => setHandoff(null), showToast,
-    confirmDelete,
+    confirmDelete, confirmDiscard,
     savingAsExpense, setSavingAsExpense,
   };
   const active = SCREENS.find(s => s.key === screen);

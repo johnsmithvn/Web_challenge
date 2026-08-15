@@ -710,6 +710,9 @@
 
 /* ── Chip link ── */
 .acc-links { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+/* Cùng chip đó nhưng đứng một mình trong panel (khối "Linked from"), không nằm
+   trong cột giá trị của field nên phải tự có padding. */
+.acc-links--panel { padding: 13.6px; background: var(--surface); }
 .acc-link {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 5px 11px; border-radius: 999px;
