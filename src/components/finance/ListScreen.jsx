@@ -131,6 +131,9 @@ export default function ListScreen({ fin, nav }) {
               <div className="fin-daygroup__label"><strong>{dayLabel(date, fin.today)}</strong><i /><span>{money(groupTotal)}</span></div>
               {items.map(tx => {
                 const info = catInfo(tx.category_id, fin.cats);
+                // Hóa đơn cho phép chọn icon riêng; giao dịch nó sinh ra phải theo cùng,
+                // không thì đổi icon ở màn Hóa đơn xong sang đây vẫn thấy icon của nhóm.
+                const billIcon = tx.bill_id ? fin.bills.find(b => b.id === tx.bill_id)?.icon : null;
                 const automated = tx.bill_id || tx.loan_id || tx.card_id;
                 const sign = tx.type === 'income' ? '+' : tx.type === 'saving' ? '→ ' : '-';
                 const source = tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn';
@@ -138,7 +141,7 @@ export default function ListScreen({ fin, nav }) {
                   <button key={tx.id} className={`fin-txrow${selected?.id === tx.id ? ' fin-txrow--sel' : ''}`}
                     onClick={() => setSelId(tx.id)}>
                     <span className="fin-txrow__ico" style={{ color: info.color }}>
-                      <FinanceIcon name={tx.type === 'income' ? 'money' : tx.type === 'saving' ? 'bank' : info.icon} cats={fin.cats} size={17} weight="fill" />
+                      <FinanceIcon name={tx.type === 'income' ? 'money' : tx.type === 'saving' ? 'bank' : (billIcon || info.icon)} cats={fin.cats} size={17} weight="fill" />
                     </span>
                     <span className="fin-txrow__mid">
                       <span className="fin-txrow__note">

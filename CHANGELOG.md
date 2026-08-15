@@ -112,6 +112,23 @@
   (`fin-rule__state--${tone}`, `fin-txrow__amt--${type}`, `fin-detail__amount--${type}`).
 
 ### Fixed
+- **Đổi icon hóa đơn nhưng giao dịch của nó vẫn giữ icon cũ.** `ListScreen` lấy icon từ
+  `catInfo(tx.category_id)`, không biết `finance_bills.icon`. Giờ giao dịch có `bill_id` sẽ tra icon
+  của hóa đơn và ưu tiên dùng nó; hóa đơn bị xóa hoặc không đặt icon thì về icon nhóm như cũ. Suy lúc
+  render, không sao chép icon xuống từng giao dịch.
+- **Xóa hóa đơn đã có giao dịch: thất bại trong im lặng.** FK là
+  `bill_id … ON DELETE RESTRICT` nên Postgres chặn (`23503`), `deleteRow` nuốt lỗi trả `false`, mà nút
+  xóa lại không kiểm kết quả — bấm Xóa xong không có gì xảy ra và không có thông báo. Tệ hơn: hộp xác
+  nhận đang hứa "N giao dịch vẫn được giữ lại", tức là hứa một hành vi mà DB đang cấm. Trước mắt đã
+  thêm toast nói đúng lý do và lối thoát; **cách sửa thật cần migration** (xem TODO bên dưới).
+- **Biểu đồ "Lịch sử các kỳ" vỡ khi hóa đơn mới có 1 kỳ.** Cột dùng `flex: 1` nên một kỳ duy nhất kéo
+  rộng hết panel, và thanh cao `amount/max*72 = 72px` cộng nhãn ~14px vượt khung `height: 70px` nên nó
+  **tràn ngược lên đè dòng tiêu đề**. Kẹp bề ngang cột (`flex: 0 1 44px`), hạ trần thanh còn 52px,
+  khung đổi sang `min-height` + `overflow: hidden`.
+- **Ô nhập tiền ở màn Hóa đơn không có dấu ngăn cách nghìn** — gõ `345345345345` phải tự đếm số 0.
+  Bảy ô tiền (số tiền hóa đơn · khoản thu · gốc vay · gốc cho vay · hạn mức thẻ · phí thường niên ·
+  phí rút tiền mặt) và ô "Số tiền đã trả" trong khối ghi kỳ giờ dùng `groupDigits` như màn Nhập nhanh:
+  hiển thị `345.345.345.345`, lưu xuống vẫn là số nguyên.
 - **"Mở form đầy đủ" từ shortcut không điền tiêu đề.** `openShortcutInForm` đặt nhóm, danh mục con,
   mức cần thiết, nguồn tiền và số tiền — nhưng bỏ sót `note`. Đường ghi nhanh thì luôn ghi
   `note: shortcut.name`, nên cùng một shortcut ra hai loại giao dịch: bấm nhanh thì có tên, mở form

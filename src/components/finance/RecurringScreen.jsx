@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils/currencyUtils';
+import { groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils/currencyUtils';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import {
   billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule,
@@ -417,7 +417,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
             onChange={(v) => setF(p => ({ ...p, amount_mode: v, amount: v === 'ask' ? '' : p.amount }))}
             options={[{ value: 'fixed', label: 'Cố định' }, { value: 'ask', label: 'Thay đổi từng kỳ' }]} />
           {f.amount_mode !== 'ask' && <input className="fin-input fin-ruleform__amount" inputMode="numeric" pattern="[0-9]*"
-            placeholder="220.000" value={f.amount || ''} onChange={setDigits('amount')} />}
+            placeholder="220.000" value={groupDigits(f.amount || '')} onChange={setDigits('amount')} />}
           <small className="fin-field__hint">{f.amount_mode === 'ask'
             ? 'Tới ngày, app hỏi số tiền và gợi ý bằng trung bình 3 kỳ gần nhất — chưa có kỳ nào thì để trống.'
             : 'Tới ngày, nút Thanh toán điền sẵn số này — bạn chỉ cần bấm.'}</small>
@@ -461,7 +461,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
           <label className="fin-field"><span>Vào ngày</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="3" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
           <label className="fin-field"><span>Số tiền</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="20.000.000" value={f.amount || ''} onChange={setDigits('amount')} /></label>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="20.000.000" value={groupDigits(f.amount || '')} onChange={setDigits('amount')} /></label>
         </div>
         <small className="fin-field__hint">Tới ngày, khoản này hiện nút <strong>Đã nhận</strong> ở danh sách dưới. Bấm mới sinh giao dịch — app không tự ghi thay bạn.</small>
       </>)}
@@ -473,7 +473,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
           <label className="fin-field"><span>Bên cho vay</span>
             <input className="fin-input" placeholder="VPBank" value={f.lender || ''} onChange={set('lender')} /></label>
           <label className="fin-field"><span>Số tiền gốc</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="100.000.000" value={f.principal || ''} onChange={setDigits('principal')} /></label>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="100.000.000" value={groupDigits(f.principal || '')} onChange={setDigits('principal')} /></label>
           <label className="fin-field"><span>Lãi suất · %/năm</span>
             <input className="fin-input" inputMode="decimal" placeholder="4,8" value={f.rate || ''} onChange={setDecimal('rate')} /></label>
           <label className="fin-field"><span>Kiểu trả</span>
@@ -502,7 +502,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
           <label className="fin-field"><span>4 số cuối · tùy chọn</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="4602" value={f.last4 || ''} onChange={setDigits('last4', 4)} /></label>
           <label className="fin-field"><span>Hạn mức</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="50.000.000" value={f.credit_limit || ''} onChange={setDigits('credit_limit')} /></label>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="50.000.000" value={groupDigits(f.credit_limit || '')} onChange={setDigits('credit_limit')} /></label>
           <label className="fin-field"><span>Ngày chốt sao kê</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="5" value={f.statement_day || ''} onChange={setDigits('statement_day', 2)} /></label>
           <label className="fin-field"><span>Ngày đến hạn</span>
@@ -510,11 +510,11 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
           <label className="fin-field"><span>Số ngày miễn lãi</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="45" value={f.grace || ''} onChange={setDigits('grace', 3)} /></label>
           <label className="fin-field"><span>Phí thường niên</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="500.000" value={f.annual_fee || ''} onChange={setDigits('annual_fee')} /></label>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="500.000" value={groupDigits(f.annual_fee || '')} onChange={setDigits('annual_fee')} /></label>
           <label className="fin-field"><span>Ngày thu phí · tùy chọn</span>
             <input className="fin-input" type="date" value={f.annual_fee_on || ''} onChange={set('annual_fee_on')} /></label>
           <label className="fin-field"><span>Phí rút tiền mặt</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="100.000" value={f.cash_advance_fee || ''} onChange={setDigits('cash_advance_fee')} /></label>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="100.000" value={groupDigits(f.cash_advance_fee || '')} onChange={setDigits('cash_advance_fee')} /></label>
           <label className="fin-field"><span>% trả tối thiểu</span>
             <input className="fin-input" inputMode="decimal" placeholder="5" value={f.min_pct || ''} onChange={setDecimal('min_pct')} /></label>
         </div>
@@ -526,7 +526,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
           <label className="fin-field"><span>Cho ai mượn</span>
             <input className="fin-input" placeholder="Em trai" value={f.name || ''} onChange={set('name')} autoFocus /></label>
           <label className="fin-field"><span>Số tiền</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="100.000.000" value={f.principal || ''} onChange={setDigits('principal')} /></label>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="100.000.000" value={groupDigits(f.principal || '')} onChange={setDigits('principal')} /></label>
           <label className="fin-field"><span>Ngày đưa tiền</span>
             <input className="fin-input" type="date" max={fin.today} value={f.lent_on || fin.today} onChange={set('lent_on')} /></label>
           <label className="fin-field"><span>Hẹn trả ngày</span>
@@ -557,12 +557,13 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
 // Mở ngay dưới dòng, không đẩy sang màn khác và không mở modal: người dùng
 // thường trả liền ba bốn khoản, rời danh sách mỗi lần là hỏng nhịp.
 function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false, amountLabel = 'Số tiền đã trả',
-  quickAmount = null, note = null, confirmLabel = 'Xác nhận thanh toán', onPay, onCancel }) {
+  quickAmount = null, note = null, periods = null, confirmLabel = 'Xác nhận thanh toán', onPay, onCancel }) {
   const amountRef = useRef(null);
   const [amount, setAmount] = useState(defaultAmount ? String(defaultAmount) : '');
   const [occurredAt, setOccurredAt] = useState(fin.today);
   const [sourceCardId, setSourceCardId] = useState('');
   const [taskId, setTaskId] = useState(null);
+  const [period, setPeriod] = useState(() => periods?.find(p => !p.done)?.key || periods?.[0]?.key || null);
   const [busy, setBusy] = useState(false);
   useEffect(() => { amountRef.current?.select(); }, []);
 
@@ -577,7 +578,7 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
 
   const confirm = async () => {
     setBusy(true);
-    const result = await onPay({ amount: parseCurrencyInput(amount), occurredAt, sourceCardId: sourceCardId || null, taskId });
+    const result = await onPay({ amount: parseCurrencyInput(amount), occurredAt, sourceCardId: sourceCardId || null, taskId, period });
     setBusy(false);
     if (result !== false) onCancel();
   };
@@ -586,8 +587,8 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
     <div className="fin-payblock">
       <div className="fin-payblock__grid">
         <label className="fin-field"><span>{amountLabel}</span>
-          <input ref={amountRef} className="fin-input" inputMode="numeric" pattern="[0-9]*" autoFocus
-            placeholder="chưa có kỳ nào để gợi ý" value={amount} onChange={e => setAmount(sanitizeDigits(e.target.value))} />
+          <input ref={amountRef} className="fin-input" inputMode="numeric" pattern="[0-9.]*" autoFocus
+            placeholder="chưa có kỳ nào để gợi ý" value={groupDigits(amount)} onChange={e => setAmount(sanitizeDigits(e.target.value))} />
           {quickAmount > 0 && <button type="button" className="fin-inline-command" onClick={() => setAmount(String(quickAmount))}>
             Trả hết · {money(quickAmount)}
           </button>}</label>
@@ -601,6 +602,20 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
           </div>
         </div>
       </div>
+
+      {periods && periods.length > 1 && (
+        <div className="fin-field"><span>Ghi vào kỳ</span>
+          <div className="fin-source-picker">
+            {periods.map(p => (
+              <button type="button" key={p.key} disabled={p.done}
+                className={period === p.key ? 'is-active' : ''}
+                title={p.done ? 'Kỳ này đã ghi rồi' : undefined}
+                onClick={() => setPeriod(p.key)}>{p.label}</button>
+            ))}
+          </div>
+          <small className="fin-payblock__hint">Kỳ nghĩa vụ tách khỏi ngày trả thật: trả hóa đơn tháng 7 vào đầu tháng 8 thì vẫn chọn kỳ tháng 7, báo cáo mới không lệch. Chọn kỳ cũ để bổ sung những kỳ đã trả trước khi khai hóa đơn.</small>
+        </div>
+      )}
 
       {allowSource && (
         <div className="fin-field"><span>Trả bằng</span>
@@ -646,7 +661,7 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
   const currentPeriod = fin.today.slice(0, 7);
 
   const pay = async (bill, payload) => {
-    const tx = await fin.payBill(bill, { ...payload, period: currentPeriod });
+    const tx = await fin.payBill(bill, { ...payload, period: payload.period || currentPeriod });
     nav.showToast(tx ? `Đã ghi ${bill.name} — giờ là giao dịch bình thường, lên báo cáo` : `Không thể ghi ${bill.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: tx ? 'note' : 'warning' });
     return !!tx;
   };
@@ -660,6 +675,17 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
   // RPC finance_skip_bill_period chỉ THÊM kỳ vào skipped_periods, không bao giờ gỡ.
   // Đường gỡ duy nhất trong DB là finance_pay_bill — mà nút Thanh toán lại bị ẩn khi đã
   // bỏ kỳ, nên nếu không có nút này thì bấm nhầm là kẹt tới tháng sau.
+  // 6 kỳ gần nhất để bổ sung kỳ cũ. Kỳ đã có giao dịch thì khóa lại —
+  // `unique_finance_tx_bill_period` cũng chặn ở DB, nhưng chặn sớm ở UI thì đỡ một vòng lỗi.
+  const periodsFor = (bill) => Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(Number(currentPeriod.slice(0, 4)), Number(currentPeriod.slice(5, 7)) - 1 - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    return {
+      key,
+      label: i === 0 ? `Kỳ này · ${key.slice(5)}/${key.slice(2, 4)}` : `${key.slice(5)}/${key.slice(2, 4)}`,
+      done: fin.transactions.some(t => t.bill_id === bill.id && t.bill_period === key),
+    };
+  });
   const unskip = async (bill) => {
     const rest = (bill.skipped_periods || []).filter(p => p !== currentPeriod);
     const updated = await fin.updateBill(bill.id, { skipped_periods: rest });
@@ -679,7 +705,15 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
     const kept = fin.transactions.filter(t => t.bill_id === bill.id).length;
     const ok = await nav.confirmDelete(`hóa đơn “${bill.name}”`,
       `Hóa đơn chỉ là quy tắc nhắc. ${kept > 0 ? `${kept} giao dịch đã ghi vẫn được giữ lại ở màn Giao dịch.` : 'Chưa có giao dịch nào sinh ra từ hóa đơn này.'}`);
-    if (ok) await fin.deleteBill(bill.id);
+    if (!ok) return;
+    // FK bill_id đang là ON DELETE RESTRICT nên xóa hóa đơn ĐÃ CÓ giao dịch sẽ thất bại.
+    // Trước đây thất bại im lặng: hộp xác nhận hứa giữ giao dịch, bấm Xóa xong không có gì xảy ra.
+    const gone = await fin.deleteBill(bill.id);
+    if (!gone) {
+      nav.showToast(kept > 0
+        ? `Chưa xóa được ${bill.name} vì còn ${kept} giao dịch tham chiếu tới nó. Tắt hóa đơn để ngừng nhắc, hoặc xóa các giao dịch đó trước.`
+        : `Không thể xóa ${bill.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
+    }
   };
 
   return (
@@ -739,7 +773,7 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
                 </button>
               </div>
             )}
-            {payId === b.id && <PayBlock fin={fin} tasks={tasks} allowSource dueDay={b.due_day}
+            {payId === b.id && <PayBlock fin={fin} tasks={tasks} allowSource dueDay={b.due_day} periods={periodsFor(b)}
               defaultAmount={estimate || ''} onCancel={() => setPayId(null)} onPay={(payload) => pay(b, payload)}
               note={b.amount_mode === 'ask'
                 ? 'Số điền sẵn là mức trung bình 3 kỳ gần nhất — sửa lại theo hóa đơn thật trước khi xác nhận.'
@@ -795,7 +829,7 @@ function BillHistory({ bill, transactions }) {
       {history.length === 0 ? <div className="fin-empty">Chưa có kỳ nào được thanh toán</div> : <>
         <div className="fin-bill-chart">
           {history.map(t => <div key={t.id} className="fin-bill-chart__col" title={`${t.occurred_at}: ${money(t.amount)}`}>
-            <i style={{ height: `${Math.max(8, t.amount / max * 72)}px` }} /><small>{t.bill_period?.slice(5) || t.occurred_at.slice(5, 7)}</small>
+            <i style={{ height: `${Math.max(6, Math.round(t.amount / max * 52))}px` }} /><small>{t.bill_period?.slice(5) || t.occurred_at.slice(5, 7)}</small>
           </div>)}
         </div>
         <div className="fin-bill-history__list">{history.slice().reverse().slice(0, 6).map(t =>

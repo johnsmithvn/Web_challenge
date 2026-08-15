@@ -54,6 +54,12 @@ agent không tự kiểm chứng được RPC trên hosted DB.
   2026-08-15; bốn màn kia dựng theo bản mô tả nên nhiều khả năng còn lệch.
 - [ ] Smoke segment Cho vay trên hosted sau khi chạy `migration_v6.4.0_finance_lending.sql`: tạo khoản,
   ghi vài lần thu, xác nhận giao dịch thu về `excluded` và không lọt vào tổng thu nhập.
+- [ ] **Sửa FK `finance_transactions.bill_id` từ `ON DELETE RESTRICT` sang giữ được giao dịch.**
+  Hợp đồng (`DESIGN_FINANCE`, handoff §8.5) nói xóa hóa đơn KHÔNG xóa giao dịch, nhưng RESTRICT làm
+  xóa thất bại hoàn toàn. Cần migration: trigger `BEFORE DELETE ON finance_bills` set
+  `bill_id = NULL, bill_period = NULL` cho giao dịch liên quan (phải null CẢ HAI vì CHECK ràng chúng
+  đi cùng nhau), rồi đổi FK sang `ON DELETE SET NULL`. Kiểm luôn `loan_id`/`card_id` có dính RESTRICT
+  tương tự không.
 - [ ] QA desktop/mobile bằng dữ liệu dày: overflow, bottom sheet, sidebar, chart/legend và form dài.
 - [ ] QA keyboard, focus indicator, screen-reader label và console error thuộc Finance.
 
