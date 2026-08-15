@@ -164,6 +164,8 @@
 .fin-btn--ghost { background: none; color: var(--n-txt2); }
 .fin-btn--ghost:hover { background: rgba(233,233,237,0.06); color: var(--n-on-accent); }
 .fin-btn--danger { background: rgba(224,127,147,0.16); color: var(--n-danger); }
+.fin-btn--outline { background: transparent; color: var(--n-on-accent); box-shadow: inset 0 0 0 1px var(--n-accent); }
+.fin-btn--outline:hover:not(:disabled) { background: var(--n-accent-soft); }
 .fin-btn--sm { padding: 6px 11px; margin-top: 0; font-size: 12.5px; }
 .fin-icon-btn { display: inline-grid; place-items: center; min-width: 30px; min-height: 30px; padding: 5px; background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--n-txt2); cursor: pointer; font-size: 14px; opacity: .72; }
 .fin-icon-btn:hover { opacity: 1; }
@@ -216,7 +218,7 @@
 .fin-recurring__bar .fin-seg { margin-bottom: 0; }
 .fin-rules { margin-top: 0; display: flex; flex-direction: column; gap: 8px; }
 /* Dòng nghĩa vụ: khung chung; phần bên trong xem finance-handoff.css */
-.fin-rule { display: grid; gap: 9px; padding: 11px 12px 11px 11px; background: var(--n-card); border: 1px solid var(--n-border); border-left: 3px solid var(--n-border); border-radius: 8px; }
+.fin-rule { display: grid; gap: 9px; padding: 11px 12px 11px 11px; background: var(--n-card); border: 1px solid var(--n-border); border-left: 3px solid transparent; border-radius: 8px; }
 .fin-due-soon { color: var(--n-warn); }
 .fin-archived { background: var(--n-arch); border-radius: var(--n-r); padding: 10px 14px; color: var(--n-txt2); font-size: 12.5px; }
 

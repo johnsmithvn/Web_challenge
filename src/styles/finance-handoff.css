@@ -38,11 +38,12 @@
 /* Dòng nghĩa vụ — cấu trúc chung cho hóa đơn / khoản thu / vay / thẻ.
    Sáu trạng thái chỉ khác nhau ở MÀU VẠCH TRÁI và dòng chữ; bố cục không đổi để
    mắt không phải học lại mỗi lần. Màu không đứng một mình: luôn kèm chữ. */
-.fin-rule[data-tone="over"]  { border-left-color: var(--n-danger); }
-.fin-rule[data-tone="today"] { border-left-color: var(--n-warn); }
-.fin-rule[data-tone="soon"]  { border-left-color: var(--n-accent); }
-.fin-rule[data-tone="paid"]  { border-left-color: #7fc060; }
-.fin-rule[data-tone="off"]   { border-left-color: #6b6f80; }
+/* Chỉ ba trạng thái CẦN HÀNH ĐỘNG mới được tô — cả viền thẻ lẫn vạch trái. Tô hết
+   mọi dòng thì không dòng nào nổi, và đỏ dùng cho cả trễ một ngày thì nhìn mãi
+   thành quen, tới lúc trễ thật hết tác dụng cảnh báo. */
+.fin-rule[data-tone="over"] { border-color: rgba(224,127,147,.45); border-left-color: #e07f93; }
+.fin-rule[data-tone="late"] { border-color: rgba(226,169,78,.4); border-left-color: #e2a94e; }
+.fin-rule[data-tone="due"]  { border-color: rgba(145,132,217,.45); border-left-color: #9184d9; }
 .fin-rule--off { opacity: .5; }
 .fin-rule__line { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
 .fin-rule__ico { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border: 0; border-radius: 9px; background: var(--n-sink-2); color: var(--n-txt); cursor: pointer; transition: background .14s ease; }
@@ -53,20 +54,22 @@
 .fin-rule__right { display: grid; gap: 2px; justify-items: end; text-align: right; }
 .fin-rule__amt { font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .fin-rule__state { font-size: 11px; }
-.fin-rule__state--over  { color: var(--n-danger); }
-.fin-rule__state--today { color: var(--n-warn); }
-.fin-rule__state--paid  { color: #7fc060; }
-.fin-rule__state--soon, .fin-rule__state--off { color: var(--n-txt3); }
+.fin-rule__state--over { color: #e07f93; }
+.fin-rule__state--late { color: #e2a94e; }
+.fin-rule__state--due  { color: #d2cefd; }
+.fin-rule__state--paid { color: #7fc060; }
+.fin-rule__state--wait, .fin-rule__state--off { color: var(--n-txt3); }
 .fin-rule__tools { display: flex; align-items: center; gap: 4px; }
 .fin-rule__tools .fin-icon-btn { min-width: 26px; min-height: 26px; }
 .fin-rule__foot { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-.fin-progress { display: grid; gap: 4px; }
-.fin-progress > div { height: 5px; overflow: hidden; border-radius: 4px; background: var(--n-sink); }
+.fin-progress { display: grid; gap: 5px; }
+.fin-progress__labels { display: flex; align-items: baseline; gap: 8px; font-size: 11.5px; color: var(--n-txt2); }
+.fin-progress__labels > span:last-child { margin-left: auto; color: var(--n-txt); font-variant-numeric: tabular-nums; }
+.fin-progress > div:last-child { height: 5px; overflow: hidden; border-radius: 20px; background: var(--n-sink-2); }
 .fin-progress i { display: block; height: 100%; border-radius: inherit; background: var(--n-accent-2); }
-.fin-progress small { color: var(--n-txt3); font-size: 10.5px; }
 
 /* Ghi một kỳ: mở ngay dưới dòng, không modal, không rời danh sách. */
-.fin-payblock { display: grid; gap: 10px; padding: 11px; border: 1px solid var(--n-accent-3); border-radius: 8px; background: var(--n-sink); animation: fin-rise .15s ease both; }
+.fin-payblock { display: grid; gap: 9px; padding: 11px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-bg); animation: fin-rise .15s ease both; }
 .fin-payblock__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; }
 .fin-payblock__dates { display: flex; gap: 5px; flex-wrap: wrap; }
 .fin-payblock__dates .fin-input { width: auto; min-width: 132px; color-scheme: dark; }
@@ -79,7 +82,14 @@
 .fin-payblock .fin-source-picker > button { min-height: 32px; font-size: 11.5px; }
 
 /* Form thêm / sửa dùng chung một component; bản sửa mở ngay trong dòng. */
-.fin-ruleform { gap: 11px; }
+.fin-ruleform { gap: 11px; border-color: var(--n-accent-3); }
+.fin-ruleform__section { display: grid; gap: 8px; padding-top: 11px; border-top: 1px solid var(--n-line); }
+.fin-checkline { display: inline-flex; align-items: center; gap: 8px; justify-self: start; padding: 0; border: 0; background: transparent; color: var(--n-txt2); font: inherit; font-size: 12.5px; cursor: pointer; }
+.fin-checkline:hover { color: var(--n-on-accent); }
+.fin-checkline > span { display: grid; place-items: center; width: 15px; height: 15px; border-radius: 4px; background: transparent; box-shadow: inset 0 0 0 1px var(--n-border); color: var(--n-bg); }
+.fin-checkline > span svg { opacity: 0; }
+.fin-checkline.is-on > span { background: var(--n-accent-2); box-shadow: inset 0 0 0 1px var(--n-accent-2); }
+.fin-checkline.is-on > span svg { opacity: 1; }
 .fin-ruleform__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
 .fin-ruleform__actions { display: flex; justify-content: flex-end; gap: 7px; }
 .fin-ruleform--edit { margin: 0; padding: 12px; border: 1px solid var(--n-accent-3); border-radius: 8px; background: var(--n-sink); box-shadow: none; animation: fin-rise .15s ease both; }
@@ -89,9 +99,12 @@
 .fin-form__warn { padding: 8px 10px; border-radius: 8px; background: rgba(226,169,78,.12); color: var(--n-warn); }
 .fin-ruleform__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 12px; }
 .fin-ruleform__amount { max-width: 260px; }
-.fin-ruleform .fin-check-row { margin-top: 0; }
 .fin-ruleform .fin-seg { justify-self: start; margin: 0; padding: 3px; border: 1px solid var(--n-border); border-radius: 8px; background: transparent; }
 .fin-ruleform .fin-seg__btn { min-height: 32px; font-size: 12px; }
+.fin-iconpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 5px; }
+.fin-iconpick button { display: grid; place-items: center; min-height: 38px; border: 1px solid var(--n-border); border-radius: 8px; background: transparent; color: var(--n-txt3); cursor: pointer; transition: border-color .14s ease, color .14s ease, background .14s ease; }
+.fin-iconpick button:hover { border-color: var(--c); color: var(--c); }
+.fin-iconpick button.is-active { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); }
 .fin-templates { display: grid; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--n-line); }
 .fin-templates__head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .fin-templates__head strong { font-size: 13px; }
@@ -136,8 +149,10 @@
 .fin-rules-empty small { max-width: 360px; margin-top: 5px; color: var(--n-txt3); font-size: 11.5px; line-height: 1.5; }
 .fin-loan-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 0; padding: 11px 12px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-sink); }
 .fin-loan-split > span { display: grid; gap: 2px; color: var(--n-txt3); font-size: 11px; }
-.fin-loan-split strong { color: var(--n-txt); font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.fin-loan-split strong { color: var(--n-txt); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .fin-loan-split strong.is-good { color: var(--n-good); }
+.fin-loan-split strong.is-accent { color: var(--n-on-accent); }
+.fin-loan-split small { color: var(--n-txt3); font-size: 10.5px; line-height: 1.4; text-wrap: pretty; }
 
 /* Dải tổng đầu tab Khoản vay / Cho vay. */
 .fin-summary-strip { display: grid; gap: 11px; padding: 14px 16px; border: 1px solid var(--n-border); border-radius: 14px; background: var(--n-card); box-shadow: 0 10px 28px rgba(4,5,12,.12); }
@@ -182,7 +197,7 @@
 .fin-check-row small { margin-top: 2px; color: var(--n-txt3); font-size: 10.5px; }
 
 .fin-icon-btn { display: inline-grid; place-items: center; min-width: 30px; min-height: 30px; color: var(--n-txt2); border-radius: 7px; transition: background .14s ease, color .14s ease; }
-.fin-icon-btn:hover { background: rgba(233,233,237,.07); color: var(--n-txt); }
+.fin-icon-btn:hover { background: rgba(233,233,237,.08); color: var(--n-on-accent); }
 .fin-btn { display: inline-flex; align-items: center; gap: 7px; }
 
 /* Overview fidelity */

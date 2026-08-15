@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Added
+- **Nhắc phí thường niên của thẻ** (`finance_cards.annual_fee_on`, migration
+  `data/migration_v6.6.0_finance_card_annual_fee.sql` — user tự chạy trên hosted). Trước đó app biết
+  SỐ TIỀN phí nhưng không biết NGÀY thu, nên phí luôn về bất ngờ — mà đây là khoản duy nhất của thẻ
+  có thể xin miễn/giảm nếu biết trước. Cột là DATE chứ không phải ngày-trong-tháng như
+  `statement_day`/`due_day`: phí lặp mỗi năm nên cần cả tháng. `nextAnnualFee()` bỏ năm đã lưu và
+  tính lại từ hôm nay (29/2 ở năm thường lùi về 28/2). Dòng thẻ hiện ngày thu + đếm ngược, tô cảnh
+  báo khi còn ≤30 ngày; sidebar "Sắp tới hạn" nhận thêm mục này khi ≤7 ngày như các nghĩa vụ khác.
 - **Segment thứ năm: Cho vay** (`finance_lendings`, migration `data/migration_v6.4.0_finance_lending.sql`
   — user tự chạy trên hosted). Tiền mình cho người khác mượn, thu về **nhiều lần** với số tiền khác nhau
   nên không nhét vào `finance_loans` được. Kèm dải tổng (đang cho vay · đã thu về · hẹn gần nhất), nút
@@ -39,6 +46,18 @@
   20 chip mẫu có icon, lưới 4 cột có nhãn, ghi chú, số tiền dạng segmented `Cố định | Thay đổi từng kỳ`,
   và checkbox "Hóa đơn này có số kỳ hữu hạn" mở ra Tổng số kỳ + Đã trả bao nhiêu kỳ. Bản trước dựng theo
   mô tả trong `HOA-DON.md` — file đó không đặc tả layout form nên nó ra khác handoff.
+- **Trạng thái hóa đơn tô đúng như handoff.** Trước: mọi dòng đều có vạch trái nên không dòng nào nổi,
+  và mọi mức trễ đều đỏ. Giờ theo đúng bảng màu của prototype — **chỉ ba trạng thái cần hành động** mới
+  được tô, tô cả **viền thẻ** lẫn vạch trái: quá hạn ≥4 ngày đỏ · trễ 1–3 ngày vàng · đúng ngày tím.
+  Đã trả/chưa tới/đang tắt dùng viền mặc định, vạch trong suốt. Đỏ mà dùng cho cả trễ một ngày thì nhìn
+  mãi thành quen, tới lúc trễ thật hết tác dụng cảnh báo.
+- **Bảy chi tiết còn lệch prototype ở màn Hóa đơn** (đối chiếu markup gốc, không đoán theo ảnh):
+  thanh tiến độ đổi sang nhãn hai đầu (`kỳ 4/12` trái · `còn 20.000.000 đ` phải) và **ruột thanh lấy màu
+  nhóm** thay vì tím cố định · khối ghi kỳ đổi sang viền trung tính + nền chìm (viền accent để dành cho
+  form thêm/sửa) và có thêm **dòng giải thích theo `amount_mode`** mà bản cũ thiếu hẳn · checkbox "số kỳ
+  hữu hạn" thay `input[type=checkbox]` bằng hộp 15px tự vẽ có dấu check mờ/tỏ · form thêm có vòng accent
+  và đường ngăn trước mục số kỳ · `.fin-icon-btn:hover` đổi chữ sang `--n-on-accent`.
+- **Nút Thanh toán** đổi sang kiểu outline accent (`.fin-btn--outline`) thay vì nút xám `--secondary`.
 - **Màn Hóa đơn: bốn segment dùng chung một cấu trúc dòng** (`RuleCard`) — icon 34px, tên + phụ đề,
   số tiền + trạng thái, nút sửa/công tắc/xóa, phần mở thêm nằm dưới. Trước đó Phải trả là một layout,
   Khoản vay và Thẻ là layout khác (`fin-rule--col` + nút xóa `position: absolute` đè lên góc thẻ).
@@ -71,6 +90,12 @@
 - **Số đếm trên tab** (`Phải trả 2`) chuyển sang `hint` nên hiển thị xám nhạt như tab Danh mục/Schema,
   thay vì dính liền vào nhãn.
 
+- **Icon riêng cho từng hóa đơn** (`finance_bills.icon`, migration
+  `data/migration_v6.5.0_finance_bill_icon.sql` — user tự chạy trên hosted). Trước đó icon suy từ nhóm,
+  nên ba đồng hồ điện + tiền nước + internet + tiền thuê nhà đều là "Nhà ở & Hóa đơn" → **cùng một icon
+  cái nhà**, quét danh sách không phân biệt được dòng nào là dòng nào. Giờ chọn trong 32 icon, bỏ chọn
+  thì về icon của nhóm. **Màu icon vẫn theo nhóm**, không cho chọn riêng — để donut, danh sách và biểu
+  đồ dùng chung một bảng màu. 20 mẫu hóa đơn điền sẵn icon tương ứng.
 - **Nhân bản hóa đơn.** Nút copy trên mỗi dòng chép **quy tắc** sang form thêm ở đầu màn: tên (+ "(bản
   sao)"), nhà cung cấp, mã khách hàng, danh mục, kiểu/số tiền, ngày trả, số kỳ, ghi chú. **Không chép
   lịch sử** — các kỳ đã ghi là giao dịch mang `bill_id` của hóa đơn cũ nên chúng ở nguyên đó; tiến độ

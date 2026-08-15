@@ -13,7 +13,7 @@ import {
   deriveNecessity, periodTotals, comparePeriods, matchCategory, budgetBreakdown,
   cardCycle, cardBalance, cardStatementSummary, loanSchedule, fundBalance, spendingRhythm, listPeriodOptions,
   suggestedDailySpend, maturityWarn, groupByDate, daysInclusive, currentMonthPeriod, periodFromKey, billAmountEstimate,
-  dueDateInMonth, daysUntilDue,
+  dueDateInMonth, daysUntilDue, nextAnnualFee,
 } from '../utils/financeLogic.js';
 
 // Stub cats tối giản (không import JSON để chạy được bằng node).
@@ -154,6 +154,18 @@ assert.equal(statement.paid, 50000);
 assert.equal(statement.outstanding, 250000);
 assert.equal(cardBalance('card-1', cardTxs), 650000, 'dư nợ chạy gồm cả giao dịch sau ngày chốt');
 console.log('card statement check: OK');
+
+/* ── nextAnnualFee: lặp hằng năm theo ngày/tháng, không theo năm đã lưu ── */
+assert.equal(nextAnnualFee(null, '2026-08-15'), null, 'không khai ngày thu → không nhắc');
+const feeLater = nextAnnualFee('2020-09-12', '2026-08-15');
+assert.equal(feeLater.date, '2026-09-12', 'năm cũ trong DB không dùng, luôn tính lại theo hôm nay');
+assert.equal(feeLater.days, 28);
+const feeRolled = nextAnnualFee('2020-03-10', '2026-08-15');
+assert.equal(feeRolled.date, '2027-03-10', 'qua ngày thu năm nay → nhảy sang năm sau');
+assert.equal(nextAnnualFee('2026-08-15', '2026-08-15').days, 0, 'thu đúng hôm nay');
+assert.equal(nextAnnualFee('2027-01-05', '2026-08-15').date, '2027-01-05', 'ngày thu đầu tiên nằm ở tương lai');
+assert.equal(nextAnnualFee('2024-02-29', '2026-08-15').date, '2027-02-28', '29/2 ở năm thường lùi về 28/2');
+console.log('nextAnnualFee check: OK');
 
 /* ── loanSchedule: interest vs amort ── */
 const li = loanSchedule({ kind: 'interest', principal: 100000000, rate: 12, term: 12, due_at: '2027-08-01' });

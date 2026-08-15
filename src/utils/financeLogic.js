@@ -310,6 +310,26 @@ export function cardCycle(card, refStr) {
   };
 }
 
+/**
+ * Lần thu phí thường niên kế tiếp. `feeOn` là ngày thu (yyyy-MM-dd, thường là ngày
+ * mở thẻ); phí lặp lại đúng ngày/tháng đó MỖI NĂM nên chỉ tháng+ngày được dùng,
+ * năm luôn tính lại từ `refStr`. 29/2 rơi vào năm thường thì lùi về 28/2.
+ * Trả { date, days } — days 0 = thu hôm nay, null nếu thẻ không khai ngày.
+ */
+export function nextAnnualFee(feeOn, refStr) {
+  if (!feeOn || !refStr) return null;
+  const fee = parseYmd(feeOn);
+  const month = fee.getMonth(), day = fee.getDate();
+  const at = (year) => {
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return ymd(new Date(year, month, Math.min(day, lastDay)));
+  };
+  const year = parseYmd(refStr).getFullYear();
+  let date = at(year);
+  if (date < refStr) date = at(year + 1);
+  return { date, days: daysInclusive(refStr, date) - 1 };
+}
+
 /** Tổng dư nợ đang theo dõi = mọi lần quẹt thẻ - mọi lần trả sao kê đã ghi. */
 export function cardBalance(cardId, txs) {
   const purchases = txs

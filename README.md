@@ -140,6 +140,7 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 | 4 | [`data/migration_v6.2.0_vault_encryption.sql`](./data/migration_v6.2.0_vault_encryption.sql) | Cutover Vault trống sang full-content encryption. Chạy đúng một lần. |
 | 5 | [`data/migration_v6.3.0_finance_bill_note.sql`](./data/migration_v6.3.0_finance_bill_note.sql) | Thêm cột `finance_bills.note` (ghi chú hóa đơn). Idempotent, không đụng dữ liệu. |
 | 6 | [`data/migration_v6.4.0_finance_lending.sql`](./data/migration_v6.4.0_finance_lending.sql) | Bảng `finance_lendings` (Cho vay) + cột `finance_transactions.lending_id`. Sửa hai CHECK để giao dịch thu về được `excluded`. Idempotent. |
+| 7 | [`data/migration_v6.5.0_finance_bill_icon.sql`](./data/migration_v6.5.0_finance_bill_icon.sql) | Cột `finance_bills.icon` để user chọn icon riêng cho từng hóa đơn. Idempotent. |
 
 > Không chạy thêm `migration_v5.0.0_activity_logs_v2.sql` trên fresh install vì thay đổi đó đã nằm
 > trong baseline. Không chạy lại baseline một mình trên database đã ở v6.x: nó có thể tạo lại bảng
@@ -259,6 +260,7 @@ data/
   migration_v6.2.0_vault_encryption.sql
   migration_v6.3.0_finance_bill_note.sql
   migration_v6.4.0_finance_lending.sql
+  migration_v6.5.0_finance_bill_icon.sql
   reset_user_data.sql       ← Wipe toàn bộ app data, giữ auth users
 supabase/
   migrations/               ← Chuỗi migration timestamp chỉ dùng local

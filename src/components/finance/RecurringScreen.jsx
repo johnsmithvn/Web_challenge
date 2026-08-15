@@ -3,9 +3,9 @@ import { parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils
 import { useUserTasks } from '../../hooks/useUserTasks';
 import {
   billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule,
-  currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive,
+  currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
 } from '../../utils/financeLogic';
-import { money, Segmented, FinanceIcon, TaskPicker, Toggle } from './parts';
+import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo } from './parts';
 import AppIcon from '../AppIcon';
 
 const SEGMENTS = [
@@ -44,6 +44,15 @@ const BILL_TEMPLATES = [
   { label: 'Khác',         icon: 'dots',         category_id: 'other', subcategory_id: 'other.unclassified', amount_mode: 'fixed' },
 ];
 
+/** Icon người dùng chọn được cho hóa đơn. Không mở toàn bộ bộ Phosphor:
+ *  danh sách ngắn chọn nhanh hơn, và mỗi cái phải nhận ra được ở cỡ 17px. */
+const BILL_ICONS = [
+  'lightning', 'drop', 'wifi', 'house', 'television', 'deviceMobile', 'trash', 'buildings',
+  'film', 'music', 'video', 'cloud', 'sparkle', 'robot', 'graduation', 'certificate',
+  'receipt', 'handCoins', 'bank', 'creditCard', 'gas', 'piggyBank', 'bowlFood', 'coffee',
+  'firstAid', 'heart', 'game', 'shopping', 'gift', 'plant', 'key', 'package',
+];
+
 /**
  * Sáu trạng thái của một dòng nghĩa vụ. Chỉ màu vạch trái và dòng chữ đổi —
  * cấu trúc dòng giữ nguyên để mắt không phải học lại bố cục mỗi lần.
@@ -53,12 +62,13 @@ function dueState({ days, enabled = true, done = false, doneText, skipped = fals
   if (!enabled) return { tone: 'off', text: 'đang tắt' };
   if (done) return { tone: 'paid', text: doneText || 'đã trả kỳ này' };
   if (skipped) return { tone: 'off', text: 'đã bỏ kỳ này' };
-  if (days == null) return { tone: 'soon', text: '' };
-  if (days > 0) return { tone: 'soon', text: `còn ${days} ngày` };
-  if (days === 0) return { tone: 'today', text: 'tới hạn hôm nay' };
-  return neverLate
-    ? { tone: 'soon', text: 'chưa nhận' }
-    : { tone: 'over', text: `quá hạn ${Math.abs(days)} ngày` };
+  if (days == null) return { tone: 'wait', text: '' };
+  if (days > 0) return { tone: 'wait', text: `còn ${days} ngày` };
+  if (days === 0) return { tone: 'due', text: 'tới hạn hôm nay' };
+  if (neverLate) return { tone: 'wait', text: 'chưa nhận' };
+  // Trễ 1–3 ngày là vàng, từ 4 ngày mới đỏ: đỏ mà dùng cho cả trễ một ngày thì
+  // nhìn mãi thành quen, tới lúc trễ thật không còn tác dụng cảnh báo.
+  return { tone: days <= -4 ? 'over' : 'late', text: `quá hạn ${Math.abs(days)} ngày` };
 }
 
 /**
@@ -71,7 +81,7 @@ function billDraft(bill) {
     name: `${bill.name} (bản sao)`,
     provider: bill.provider, customer_code: bill.customer_code,
     category_id: bill.category_id, subcategory_id: bill.subcategory_id,
-    amount_mode: bill.amount_mode, amount: bill.amount,
+    amount_mode: bill.amount_mode, amount: bill.amount, icon: bill.icon,
     due_day: bill.due_day, term_total: bill.term_total, note: bill.note,
   };
 }
@@ -104,11 +114,11 @@ function SummaryStrip({ items, note }) {
 }
 
 /** Thanh tiến độ dùng chung: trả góp của hóa đơn, kỳ vay, hạn mức thẻ. */
-function RuleProgress({ pct, label }) {
+function RuleProgress({ pct, label, right, color }) {
   return (
     <div className="fin-progress">
-      <div><i style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} /></div>
-      <small>{label}</small>
+      <div className="fin-progress__labels"><span>{label}</span>{right && <span>{right}</span>}</div>
+      <div><i style={{ width: `${Math.max(0, Math.min(100, pct))}%`, background: color || undefined }} /></div>
     </div>
   );
 }
@@ -119,16 +129,17 @@ function RuleProgress({ pct, label }) {
  * nằm NGAY dưới dòng đó nên danh sách không nhảy chỗ.
  */
 function RuleCard({
-  tone = 'soon', off, icon, categoryId, cats, title, badge, meta, amount, state, hasNote,
+  tone = 'wait', off, icon, iconColor, categoryId, cats, title, badge, meta, amount, state, hasNote,
   onOpen, openTitle = 'Xem lịch sử', onEdit, onDuplicate, enabled, onToggle, onDelete, children,
 }) {
   return (
     <article className={`fin-rule${off ? ' fin-rule--off' : ''}`} data-tone={tone}>
       <div className="fin-rule__line">
-        <button type="button" className="fin-rule__ico" onClick={onOpen} title={openTitle} aria-label={`${openTitle} — ${title}`}>
-          {categoryId
-            ? <FinanceIcon categoryId={categoryId} cats={cats} size={17} weight="fill" />
-            : <AppIcon name={icon} size={17} weight="fill" />}
+        <button type="button" className="fin-rule__ico" onClick={onOpen} title={openTitle}
+          aria-label={`${openTitle} — ${title}`} style={iconColor ? { color: iconColor } : undefined}>
+          {icon
+            ? <AppIcon name={icon} size={17} weight="fill" />
+            : <FinanceIcon categoryId={categoryId} cats={cats} size={17} weight="fill" />}
         </button>
         <button type="button" className="fin-rule__main" onClick={onOpen}>
           <span className="fin-rule__name">{title}
@@ -225,7 +236,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
   useEffect(() => { if (focusNote) noteRef.current?.focus(); }, [focusNote]);
 
   const applyTemplate = (t) => setF(p => ({
-    ...p, name: t.label, category_id: t.category_id, subcategory_id: t.subcategory_id,
+    ...p, name: t.label, category_id: t.category_id, subcategory_id: t.subcategory_id, icon: t.icon,
     amount_mode: t.amount_mode, amount: t.amount_mode === 'ask' ? '' : p.amount || '',
   }));
 
@@ -247,6 +258,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
         category_id: f.category_id || 'housing', subcategory_id: f.subcategory_id || null,
         amount_mode: amountMode, amount: amountMode === 'ask' ? null : billAmount,
         rrule: { type: 'monthly', day: dueDay }, due_day: dueDay,
+        icon: f.icon || null,
         term_total: hasTerm ? Number(f.term_total) || null : null,
         term_done: hasTerm ? Number(f.term_done) || 0 : 0,
         note: f.note?.trim() || null,
@@ -305,6 +317,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
         credit_limit: parseCurrencyInput(f.credit_limit) || 0,
         statement_day: statementDay, due_day: cardDueDay,
         grace: Number(f.grace) || null, annual_fee: parseCurrencyInput(f.annual_fee) || 0,
+        annual_fee_on: f.annual_fee_on || null,
         cash_advance_fee: parseCurrencyInput(f.cash_advance_fee) || 0, min_pct: Number(f.min_pct) || 0,
       };
     }
@@ -379,6 +392,20 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="5" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
         </div>
 
+        <div className="fin-field"><span>Icon</span>
+          <div className="fin-iconpick">
+            {BILL_ICONS.map(name => (
+              <button type="button" key={name} title={name}
+                className={(f.icon || '') === name ? 'is-active' : ''}
+                style={{ '--c': catInfo(f.category_id || 'housing', fin.cats).color }}
+                onClick={() => setF(p => ({ ...p, icon: p.icon === name ? '' : name }))}>
+                <AppIcon name={name} size={16} weight="fill" />
+              </button>
+            ))}
+          </div>
+          <small className="fin-field__hint">Bỏ chọn thì dùng icon của nhóm. Màu icon luôn theo nhóm để donut và danh sách khớp nhau.</small>
+        </div>
+
         <label className="fin-field"><span>Ghi chú · tùy chọn</span>
           <textarea ref={noteRef} className="fin-input fin-textarea" rows={3}
             placeholder="Số công tơ, mật khẩu trang thanh toán, ai đứng tên, cách chia tiền với người khác…"
@@ -396,11 +423,13 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
             : 'Tới ngày, nút Thanh toán điền sẵn số này — bạn chỉ cần bấm.'}</small>
         </div>
 
-        <label className="fin-check-row">
-          <input type="checkbox" checked={hasTerm}
-            onChange={e => { setHasTerm(e.target.checked); if (!e.target.checked) setF(p => ({ ...p, term_total: '', term_done: '' })); }} />
-          <strong>Hóa đơn này có số kỳ hữu hạn (trả góp, trả nợ)</strong>
-        </label>
+        <div className="fin-ruleform__section">
+          <button type="button" className={`fin-checkline${hasTerm ? ' is-on' : ''}`}
+            aria-pressed={hasTerm}
+            onClick={() => { setHasTerm(on => { if (on) setF(p => ({ ...p, term_total: '', term_done: '' })); return !on; }); }}>
+            <span><AppIcon name="check" size={10} weight="bold" /></span>
+            Hóa đơn này có số kỳ hữu hạn (trả góp, trả nợ)
+          </button>
         {hasTerm && (<>
           <div className="fin-form__row">
             <label className="fin-field"><span>Tổng số kỳ</span>
@@ -412,6 +441,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
           </div>
           <small className="fin-field__hint">Trả đủ kỳ cuối thì hóa đơn tự dừng và chuyển xuống mục đã kết thúc.</small>
         </>)}
+        </div>
       </>)}
 
       {seg === 'in' && (<>
@@ -477,8 +507,12 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="5" value={f.statement_day || ''} onChange={setDigits('statement_day', 2)} /></label>
           <label className="fin-field"><span>Ngày đến hạn</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="20" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
+          <label className="fin-field"><span>Số ngày miễn lãi</span>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="45" value={f.grace || ''} onChange={setDigits('grace', 3)} /></label>
           <label className="fin-field"><span>Phí thường niên</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="500.000" value={f.annual_fee || ''} onChange={setDigits('annual_fee')} /></label>
+          <label className="fin-field"><span>Ngày thu phí · tùy chọn</span>
+            <input className="fin-input" type="date" value={f.annual_fee_on || ''} onChange={set('annual_fee_on')} /></label>
           <label className="fin-field"><span>Phí rút tiền mặt</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="100.000" value={f.cash_advance_fee || ''} onChange={setDigits('cash_advance_fee')} /></label>
           <label className="fin-field"><span>% trả tối thiểu</span>
@@ -523,7 +557,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
 // Mở ngay dưới dòng, không đẩy sang màn khác và không mở modal: người dùng
 // thường trả liền ba bốn khoản, rời danh sách mỗi lần là hỏng nhịp.
 function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false, amountLabel = 'Số tiền đã trả',
-  quickAmount = null, confirmLabel = 'Xác nhận thanh toán', onPay, onCancel }) {
+  quickAmount = null, note = null, confirmLabel = 'Xác nhận thanh toán', onPay, onCancel }) {
   const amountRef = useRef(null);
   const [amount, setAmount] = useState(defaultAmount ? String(defaultAmount) : '');
   const [occurredAt, setOccurredAt] = useState(fin.today);
@@ -585,6 +619,8 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
             : 'Tính thẳng vào chi tiêu của ngày bạn chọn.'}</small>
         </div>
       )}
+
+      {note && <small className="fin-payblock__hint">{note}</small>}
 
       <div className="fin-payblock__foot">
         <TaskPicker tasks={tasks} value={taskId} onPick={setTaskId} />
@@ -655,6 +691,7 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
         const left = b.term_total ? Math.max(0, b.term_total - (b.term_done || 0)) : 0;
         return (
           <RuleCard key={b.id} tone={state.tone} off={!b.enabled} categoryId={b.category_id} cats={fin.cats}
+            icon={b.icon || null} iconColor={catInfo(b.category_id, fin.cats).color}
             title={b.name} badge={b.term_total ? `${b.term_done || 0}/${b.term_total}` : null}
             meta={[b.provider, b.customer_code, b.due_day ? `mỗi tháng ngày ${b.due_day}` : null].filter(Boolean).join(' · ')}
             amount={b.amount_mode === 'ask' ? (estimate ? `~ ${money(estimate)}` : 'hỏi mỗi kỳ') : money(b.amount)}
@@ -670,11 +707,13 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
             hasNote={!!b.note}>
 
             {b.term_total > 0 && <RuleProgress pct={(b.term_done || 0) / b.term_total * 100}
-              label={`Đã trả ${b.term_done || 0}/${b.term_total} kỳ · còn ${left} kỳ ≈ ${money(left * estimate)}`} />}
+              color={catInfo(b.category_id, fin.cats).color}
+              label={`kỳ ${Math.min((b.term_done || 0) + 1, b.term_total)}/${b.term_total}`}
+              right={`còn ${money(left * estimate)}`} />}
 
             {actionable && payId !== b.id && (
               <div className="fin-rule__foot">
-                <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm" onClick={() => { setPayId(b.id); setEditId(null); }}>
+                <button type="button" className="fin-btn fin-btn--outline fin-btn--sm" onClick={() => { setPayId(b.id); setEditId(null); }}>
                   <AppIcon name="checkCircle" size={15} /> {b.term_total ? `Thanh toán kỳ ${(b.term_done || 0) + 1}/${b.term_total}` : 'Thanh toán'}
                 </button>
                 <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={() => skip(b)}>
@@ -683,7 +722,10 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
               </div>
             )}
             {payId === b.id && <PayBlock fin={fin} tasks={tasks} allowSource dueDay={b.due_day}
-              defaultAmount={estimate || ''} onCancel={() => setPayId(null)} onPay={(payload) => pay(b, payload)} />}
+              defaultAmount={estimate || ''} onCancel={() => setPayId(null)} onPay={(payload) => pay(b, payload)}
+              note={b.amount_mode === 'ask'
+                ? 'Số điền sẵn là mức trung bình 3 kỳ gần nhất — sửa lại theo hóa đơn thật trước khi xác nhận.'
+                : 'Số cố định theo hóa đơn — sửa nếu kỳ này khác. Ngày mặc định là hôm nay; nếu bạn đã trả từ mấy ngày trước thì chọn đúng ngày đó để báo cáo không lệch tháng.'} />}
             {editId === b.id && <RuleForm seg="out" fin={fin} nav={nav} initial={b} focusNote={noteFocus}
               onDone={() => { setEditId(null); setNoteFocus(false); }} />}
             {openId === b.id && <>
@@ -765,6 +807,13 @@ function IncomeList({ fin, nav, tasks }) {
   };
   return (
     <div className="fin-rules">
+      <SummaryStrip
+        items={[
+          { label: 'Sẽ nhận tháng này', value: money(fin.incomeRules.filter(r => r.enabled && !(r.received_periods || []).includes(period)).reduce((sum, r) => sum + r.amount, 0)) },
+          { label: 'Đã nhận', value: money(fin.incomeRules.filter(r => (r.received_periods || []).includes(period)).reduce((sum, r) => sum + r.amount, 0)), tone: 'good' },
+        ]}
+        note="Tiền vào — không phải hóa đơn, nên không có gì để trả và không bao giờ tô đỏ. Bấm Đã nhận sinh một giao dịch loại Thu mang đúng nguồn thu, ngày là ngày bạn chọn."
+      />
       {fin.incomeRules.length === 0 && <RulesEmpty icon="money" title="Chưa có khoản thu định kỳ"
         description="Khai khoản thu để app nhắc xác nhận theo từng kỳ." />}
       {fin.incomeRules.map(r => {
@@ -774,7 +823,7 @@ function IncomeList({ fin, nav, tasks }) {
           done: received, doneText: 'đã nhận kỳ này', neverLate: true,
         });
         return (
-          <RuleCard key={r.id} tone={state.tone} off={!r.enabled} icon="money" title={r.name}
+          <RuleCard key={r.id} tone={state.tone} off={!r.enabled} icon="money" iconColor="#7fc060" title={r.name}
             meta={[r.source, r.due_day ? `mỗi tháng ngày ${r.due_day}` : null].filter(Boolean).join(' · ')}
             amount={money(r.amount)} state={state} openTitle="Sửa khoản thu"
             onOpen={() => setEditId(editId === r.id ? null : r.id)}
@@ -834,8 +883,15 @@ function LoansList({ fin, nav, tasks }) {
         const principalDue = l.due_at && l.due_at <= fin.today;
         const state = dueState({ days: d, done: donePeriod, doneText: 'đã ghi kỳ này' });
         const dueAmount = sch.kind === 'interest' ? sch.monthlyInterest : sch.monthlyPayment;
+        const paidInterestTotal = fin.transactions
+          .filter(t => t.loan_id === l.id && t.loan_part === 'interest')
+          .reduce((sum, t) => sum + t.amount, 0);
+        // Lãi cả đời khoản vay: lãi-only trả đều mỗi kỳ; amort thì bằng tổng trả trừ gốc.
+        const totalInterest = sch.kind === 'interest'
+          ? sch.monthlyInterest * sch.progress.total
+          : Math.max(0, sch.monthlyPayment * sch.progress.total - l.principal);
         return (
-          <RuleCard key={l.id} tone={state.tone} icon="bank" title={l.name}
+          <RuleCard key={l.id} tone={state.tone} icon="bank" iconColor="#9184d9" title={l.name}
             badge={`${sch.progress.done}/${sch.progress.total} kỳ`}
             meta={[l.lender, `gốc ${money(l.principal)}`, `${l.rate}%/năm`,
               sch.kind === 'interest' ? 'chỉ trả lãi' : 'trả đều gốc + lãi'].filter(Boolean).join(' · ')}
@@ -845,17 +901,21 @@ function LoansList({ fin, nav, tasks }) {
             onDelete={async () => { if (await nav.confirmDelete(`khoản vay “${l.name}”`)) await fin.deleteLoan(l.id); }}>
 
             <RuleProgress pct={sch.progress.total ? sch.progress.done / sch.progress.total * 100 : 0}
-              label={`Kỳ ${Math.min(sch.progress.done + 1, sch.progress.total)}/${sch.progress.total} · trả ngày ${l.pay_day} hằng tháng · còn ${Math.max(0, sch.progress.total - sch.progress.done)} kỳ`} />
+              label={`kỳ ${Math.min(sch.progress.done + 1, sch.progress.total)}/${sch.progress.total} · trả ngày ${l.pay_day} hằng tháng`}
+              right={`còn ${Math.max(0, sch.progress.total - sch.progress.done)} kỳ`} />
 
             <div className="fin-loan-split">
-              {sch.kind === 'interest' ? <>
-                <span>Lãi mỗi kỳ <strong>{money(sch.monthlyInterest)}</strong></span>
-                <span>Gốc tất toán <strong>{l.due_at || '—'}</strong></span>
-              </> : <>
-                <span>Lãi kỳ tới <strong>{money(sch.interestPart)}</strong></span>
-                <span>Gốc kỳ tới <strong>{money(sch.principalPart)}</strong></span>
-                <span>Dư nợ gốc <strong>~{money(sch.principalRemaining)}</strong></span>
-              </>}
+              <span>{sch.kind === 'interest' ? 'Dư nợ gốc' : 'Dư nợ gốc còn lại'}
+                <strong>{money(sch.kind === 'interest' ? sch.principalDue : sch.principalRemaining)}</strong>
+                <small>{sch.kind === 'interest' ? 'gốc chưa giảm đồng nào cho tới khi tất toán' : `đã trả ${sch.progress.done}/${sch.progress.total} kỳ`}</small></span>
+              <span>Phải trả ngày {l.pay_day} tháng này
+                <strong className="is-accent">{money(dueAmount)}</strong>
+                <small>{sch.kind === 'interest'
+                  ? `toàn bộ là lãi — gốc vẫn nguyên ${money(sch.principalDue)}`
+                  : `gốc ${money(sch.principalPart)} + lãi ${money(sch.interestPart)}`}</small></span>
+              <span>Lãi đã trả đến giờ
+                <strong>{money(paidInterestTotal)}</strong>
+                <small>cả khoản vay ~{money(totalInterest)}</small></span>
             </div>
 
             {sch.kind === 'interest' && !paidPrincipal && l.due_at && (
@@ -956,10 +1016,11 @@ function LendsList({ fin, nav, tasks }) {
 
       {rows.map(({ l, repayments, got, left, done, days }) => {
         const state = done ? { tone: 'paid', text: `thu xong ${dmy(repayments.at(-1)?.occurred_at)}` }
-          : days == null ? { tone: 'soon', text: 'không hẹn ngày' }
-          : days < 0 ? { tone: 'over', text: `quá hẹn ${Math.abs(days)} ngày` }
-          : days === 0 ? { tone: 'today', text: 'đến hẹn hôm nay' }
-          : { tone: days <= 14 ? 'today' : 'soon', text: `còn ${days} ngày` };
+          : days == null ? { tone: 'wait', text: 'không hẹn ngày' }
+          : days <= -4 ? { tone: 'over', text: `quá hẹn ${Math.abs(days)} ngày` }
+          : days < 0 ? { tone: 'late', text: `quá hẹn ${Math.abs(days)} ngày` }
+          : days === 0 ? { tone: 'due', text: 'đến hẹn hôm nay' }
+          : { tone: days <= 14 ? 'late' : 'wait', text: `còn ${days} ngày` };
         return (
           <RuleCard key={l.id} tone={state.tone} icon={done ? 'checkCircle' : 'handCoins'}
             title={l.name} badge={l.rate > 0 ? `${l.rate}%/năm` : 'không lãi'}
@@ -982,7 +1043,7 @@ function LendsList({ fin, nav, tasks }) {
             </div>
 
             <RuleProgress pct={l.principal ? got / l.principal * 100 : 0}
-              label={`Đã thu ${money(got)} / ${money(l.principal)}`} />
+              label="Đã thu" right={`${money(got)} / ${money(l.principal)}`} />
 
             {payId !== l.id && (
               <div className="fin-rule__foot">
@@ -1026,6 +1087,14 @@ function CardsList({ fin, nav, tasks }) {
   const [payId, setPayId] = useState(null);
   return (
     <div className="fin-rules">
+      <SummaryStrip
+        items={[
+          { label: 'Đang nợ thẻ', value: money(fin.cards.reduce((sum, c) => sum + cardStatementSummary(c, fin.transactions, fin.today).outstanding, 0)) },
+          { label: 'Tổng hạn mức', value: money(fin.cards.reduce((sum, c) => sum + (c.credit_limit || 0), 0)) },
+          { label: 'Lãi suất gửi bình quân', value: `${fin.blendedRate}%/năm` },
+        ]}
+        note="Lãi suất gửi bình quân là mốc để đối chiếu phần tiền hoãn trả: giữ tiền tới ngày đến hạn rồi trả đủ thì phần lãi đó là thật, nhưng chỉ khi trả ĐÚNG HẠN — trễ một ngày là ngân hàng tính lãi trên toàn bộ sao kê, ăn đứt mọi khoản kiếm được."
+      />
       {fin.cards.length === 0 && <RulesEmpty icon="creditCard" title="Chưa có thẻ tín dụng"
         description="Thêm thẻ để theo dõi hạn mức, sao kê và ngày đến hạn." />}
       {fin.cards.map(c => {
@@ -1033,12 +1102,14 @@ function CardsList({ fin, nav, tasks }) {
         const balance = cardBalance(c.id, fin.transactions);
         const est = floatInterest(cyc.outstanding, cyc.floatDaysTotal, fin.blendedRate);
         const usedPct = c.credit_limit ? Math.round((balance / c.credit_limit) * 100) : 0;
+        const fee = nextAnnualFee(c.annual_fee_on, fin.today);
+        const feeSoon = fee && fee.days <= 30;
         const state = dueState({
           days: daysUntilDue(c.due_day, fin.today),
           done: cyc.outstanding <= 0, doneText: 'sao kê đã trả',
         });
         return (
-          <RuleCard key={c.id} tone={state.tone} icon="creditCard"
+          <RuleCard key={c.id} tone={state.tone} icon="creditCard" iconColor="#9184d9"
             title={`${c.name}${c.last4 ? ` ••${c.last4}` : ''}`}
             meta={[c.bank, `chốt ngày ${c.statement_day}`, `đến hạn ngày ${c.due_day}`].filter(Boolean).join(' · ')}
             amount={money(cyc.outstanding)} state={state} openTitle="Sửa thẻ"
@@ -1046,7 +1117,7 @@ function CardsList({ fin, nav, tasks }) {
             onEdit={() => { setEditId(editId === c.id ? null : c.id); setPayId(null); }}
             onDelete={async () => { if (await nav.confirmDelete(`thẻ “${c.name}”`)) await fin.deleteCard(c.id); }}>
 
-            <RuleProgress pct={usedPct} label={`Đã dùng ${money(balance)}/${money(c.credit_limit)} (${usedPct}%)`} />
+            <RuleProgress pct={usedPct} label={`Đã dùng ${money(balance)} / ${money(c.credit_limit)}`} right={`${usedPct}%`} />
 
             <div className="fin-loan-split">
               <span>Sao kê kỳ này <strong>{money(cyc.statementTotal)}</strong></span>
@@ -1060,7 +1131,13 @@ function CardsList({ fin, nav, tasks }) {
             </div>}
             {c.cash_advance_fee > 0 && <div className="fin-inline-message fin-inline-message--warn">
               <AppIcon name="warning" size={15} weight="fill" />
-              <span>Rút tiền mặt mất phí {money(c.cash_advance_fee)} — tránh.{c.annual_fee > 0 ? ` Phí thường niên ${money(c.annual_fee)}.` : ''}</span>
+              <span>Rút tiền mặt mất phí {money(c.cash_advance_fee)} — tránh.</span>
+            </div>}
+            {c.annual_fee > 0 && <div className={`fin-inline-message${feeSoon ? ' fin-inline-message--warn' : ''}`}>
+              <AppIcon name={feeSoon ? 'warning' : 'calendar'} size={15} weight="fill" />
+              <span>Phí thường niên {money(c.annual_fee)}{fee
+                ? ` · thu ngày ${dmy(fee.date)}, ${fee.days === 0 ? 'đúng hôm nay' : `còn ${fee.days} ngày`}.`
+                : ' · chưa có ngày thu nên app không nhắc trước được.'}</span>
             </div>}
 
             {cyc.outstanding > 0 && payId !== c.id && (

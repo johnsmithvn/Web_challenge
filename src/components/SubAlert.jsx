@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { cardCycle } from '../utils/financeLogic';
+import { cardCycle, nextAnnualFee } from '../utils/financeLogic';
 import { toDateStr } from '../utils/dateUtils';
 import AppIcon from './AppIcon';
 import '../styles/widgets.css';
@@ -31,7 +31,7 @@ export default function SubAlert() {
       try {
         const [bills, cards] = await Promise.all([
           supabase.from('finance_bills').select('name, due_day, enabled, finished_at').eq('user_id', user.id),
-          supabase.from('finance_cards').select('name, statement_day, due_day, grace').eq('user_id', user.id),
+          supabase.from('finance_cards').select('name, statement_day, due_day, grace, annual_fee, annual_fee_on').eq('user_id', user.id),
         ]);
         const list = [];
         for (const b of bills.data || []) {
@@ -42,6 +42,8 @@ export default function SubAlert() {
         for (const c of cards.data || []) {
           const cyc = cardCycle(c, today);
           if (cyc.daysUntilDue >= 0 && cyc.daysUntilDue <= 7) list.push({ key: `c${c.name}`, icon: 'creditCard', name: c.name, days: cyc.daysUntilDue });
+          const fee = c.annual_fee > 0 ? nextAnnualFee(c.annual_fee_on, today) : null;
+          if (fee && fee.days <= 7) list.push({ key: `f${c.name}`, icon: 'calendar', name: `${c.name} · phí thường niên`, days: fee.days });
         }
         list.sort((a, b) => a.days - b.days);
         setItems(list);

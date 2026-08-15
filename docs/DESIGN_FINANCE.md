@@ -120,14 +120,24 @@ và subcategory hợp lệ; không tạo parent tùy ý.
 Năm segment dùng chung một cấu trúc dòng (`RuleCard`): icon nhóm · tên + phụ đề · số tiền + trạng thái ·
 sửa/công tắc/xóa, phần mở thêm (khối ghi kỳ, form sửa, lịch sử) nằm ngay dưới dòng đó.
 
-- Sáu trạng thái chỉ đổi **vạch màu trái + dòng chữ**, cấu trúc dòng giữ nguyên: quá hạn · tới hạn hôm
-  nay · sắp tới · đã trả kỳ này · đang tắt · đã kết thúc. Màu luôn đi kèm chữ.
+- Sáu trạng thái chỉ đổi **màu viền thẻ + vạch trái + dòng chữ**, cấu trúc dòng giữ nguyên. Chỉ ba
+  trạng thái cần hành động mới được tô; `paid`/`wait`/`off` dùng viền mặc định và vạch trong suốt —
+  tô hết thì không dòng nào nổi:
+
+  | tone | Khi nào | Chữ | Viền thẻ | Vạch trái |
+  |---|---|---|---|---|
+  | `over` | quá hạn ≥ 4 ngày | `#e07f93` | `rgba(224,127,147,.45)` | `#e07f93` |
+  | `late` | quá hạn 1–3 ngày | `#e2a94e` | `rgba(226,169,78,.4)` | `#e2a94e` |
+  | `due` | đúng ngày đến hạn | `#d2cefd` | `rgba(145,132,217,.45)` | `#9184d9` |
+  | `paid` · `wait` · `off` | còn lại | `#7fc060` / `#75798c` | mặc định | trong suốt |
 - Danh sách sắp theo **ngày trong tháng**, không theo mức khẩn — vị trí một dòng không đổi theo ngày.
 - Ghi một kỳ mở **inline dưới dòng**, không modal: số tiền gợi ý bôi đen sẵn, ngày trả có nút nhanh
   (hôm nay / hôm qua / đúng hạn), nguồn tiền dạng chip. Trả sớm không bị chặn.
 - Sửa quy tắc dùng lại đúng form thêm (`RuleForm`, hai chế độ). Sửa số tiền **áp dụng từ kỳ sau**; kỳ đã
   ghi không bị viết lại, nên ô số tiền lúc sửa luôn kèm cảnh báo.
-- Mẫu hóa đơn chỉ điền tên/nhóm/danh mục con, **không điền số tiền**.
+- Mẫu hóa đơn chỉ điền tên/nhóm/danh mục con/icon, **không điền số tiền**.
+  - `finance_bills.icon` do user chọn từ 32 khóa icon; NULL thì suy từ `category_id`. **Màu icon luôn
+    theo nhóm**, không cho chọn riêng — để donut, danh sách và biểu đồ cùng một bảng màu.
 - `finance_bills.note` là ghi chú của **quy tắc**, hiện khi mở dòng và sửa trong form. `finance_pay_bill`
   vẫn ghi `note = bill.name` xuống transaction; ghi chú quy tắc **không** rơi xuống từng kỳ.
 - Nhân bản hóa đơn chép quy tắc sang form thêm (chưa ghi DB), reset `term_done`/`skipped_periods`/
