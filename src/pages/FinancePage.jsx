@@ -16,6 +16,8 @@ import RecurringScreen from '../components/finance/RecurringScreen';
 import '../styles/finance.css';
 import '../styles/finance-handoff.css';
 
+const RECURRING_SEGS = ['out', 'in', 'loan', 'card', 'lend'];
+
 const SCREENS = [
   { key: 'overview',  icon: 'chartDonut', label: 'Tổng quan', title: 'Hôm nay tiêu gì?' },
   { key: 'add',       icon: 'plusCircle', label: 'Nhập nhanh', title: 'Ghi một khoản' },
@@ -117,7 +119,9 @@ export default function FinancePage() {
       const data = JSON.parse(raw);   // { kind:'tx'|'out'|'in'|'loan'|'card', title, inboxId, amount? }
       setHandoff(data);
       if (data.kind === 'tx') navigate('/finance/add');
-      else { navigate('/finance/recurring'); setRecurringSeg(data.kind); }
+      // Payload đến từ sessionStorage nên phải kiểm: segment lạ làm RecurringScreen
+      // tìm không ra segMeta rồi crash trắng màn.
+      else if (RECURRING_SEGS.includes(data.kind)) { navigate('/finance/recurring'); setRecurringSeg(data.kind); }
     } catch { /* bỏ qua payload hỏng */ }
   }, [location.key, navigate]);
 
