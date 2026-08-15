@@ -71,6 +71,14 @@
 - **Số đếm trên tab** (`Phải trả 2`) chuyển sang `hint` nên hiển thị xám nhạt như tab Danh mục/Schema,
   thay vì dính liền vào nhãn.
 
+- **Nhân bản hóa đơn.** Nút copy trên mỗi dòng chép **quy tắc** sang form thêm ở đầu màn: tên (+ "(bản
+  sao)"), nhà cung cấp, mã khách hàng, danh mục, kiểu/số tiền, ngày trả, số kỳ, ghi chú. **Không chép
+  lịch sử** — các kỳ đã ghi là giao dịch mang `bill_id` của hóa đơn cũ nên chúng ở nguyên đó; tiến độ
+  trả góp, kỳ đã bỏ và mốc kết thúc đều về mặc định. Bản sao **chưa ghi xuống DB** cho tới khi bấm Tạo
+  hóa đơn, nên bấm nhầm không để lại rác. Dùng cho ca "ba đồng hồ điện": cùng nhà cung cấp, khác mã.
+- **Bỏ được một mức tiền đã lưu của shortcut.** `recent_amounts` là danh sách MRU cắt còn 3, nên một số
+  gõ nhầm (vd `123.123.123.123`) nằm lại tới khi ghi đủ 3 mức khác mới bị đẩy ra. Giờ mỗi chip có nút ×.
+
 ### Removed
 - **115 rule CSS chết trong `finance.css` + `finance-handoff.css`** (65 class không còn JSX nào dùng):
   accordion danh mục cũ `fin-catgroup*`, editor dạng modal `fin-modal*`/`fin-sub-editor*`, bảng schema

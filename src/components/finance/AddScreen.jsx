@@ -572,7 +572,19 @@ export default function AddScreen({ fin, nav }) {
                     </div>
                     {armed && <div className="fin-shortcut-armed">
                       <div><input autoFocus inputMode="numeric" pattern="[0-9.]*" value={groupDigits(quickAmount)} onChange={event => setQuickAmount(sanitizeDigits(event.target.value))} placeholder="Số tiền" /><span>₫</span><button type="button" onClick={() => recordShortcut(shortcut)} disabled={!parseCurrencyInput(quickAmount)}><AppIcon name="check" size={14} /> Ghi</button></div>
-                      <footer><span>hay nhập:</span>{(shortcut.recent_amounts || []).map(value => <button type="button" key={value} onClick={() => recordShortcut(shortcut, String(value))}>{money(value)}</button>)}<button type="button" onClick={() => openShortcutInForm(shortcut)}>mở form đầy đủ</button></footer>
+                      <footer><span>hay nhập:</span>
+                        {/* Danh sách là MRU cắt còn 3, nên một số gõ nhầm sẽ nằm lại
+                            tới khi ghi đủ 3 mức khác — phải có đường bỏ thẳng. */}
+                        {(shortcut.recent_amounts || []).map(value => (
+                          <span key={value} className="fin-recent-chip">
+                            <button type="button" onClick={() => recordShortcut(shortcut, String(value))}>{money(value)}</button>
+                            <button type="button" className="fin-recent-chip__x" aria-label={`Bỏ mức ${money(value)}`}
+                              onClick={() => fin.updateShortcut(shortcut.id, {
+                                recent_amounts: (shortcut.recent_amounts || []).filter(item => item !== value),
+                              })}><AppIcon name="x" size={11} /></button>
+                          </span>
+                        ))}
+                        <button type="button" onClick={() => openShortcutInForm(shortcut)}>mở form đầy đủ</button></footer>
                     </div>}
                   </article>;
                 })}

@@ -61,6 +61,21 @@ function dueState({ days, enabled = true, done = false, doneText, skipped = fals
     : { tone: 'over', text: `quá hạn ${Math.abs(days)} ngày` };
 }
 
+/**
+ * Bản sao của một hóa đơn: chép QUY TẮC, không chép lịch sử.
+ * Tiến độ trả góp, các kỳ đã bỏ và mốc kết thúc đều về mặc định — các kỳ đã ghi
+ * là giao dịch của hóa đơn CŨ, chúng giữ nguyên `bill_id` cũ và không theo sang.
+ */
+function billDraft(bill) {
+  return {
+    name: `${bill.name} (bản sao)`,
+    provider: bill.provider, customer_code: bill.customer_code,
+    category_id: bill.category_id, subcategory_id: bill.subcategory_id,
+    amount_mode: bill.amount_mode, amount: bill.amount,
+    due_day: bill.due_day, term_total: bill.term_total, note: bill.note,
+  };
+}
+
 function RulesEmpty({ icon, title, description }) {
   return (
     <div className="fin-rules-empty">
@@ -105,7 +120,7 @@ function RuleProgress({ pct, label }) {
  */
 function RuleCard({
   tone = 'soon', off, icon, categoryId, cats, title, badge, meta, amount, state, hasNote,
-  onOpen, openTitle = 'Xem lịch sử', onEdit, enabled, onToggle, onDelete, children,
+  onOpen, openTitle = 'Xem lịch sử', onEdit, onDuplicate, enabled, onToggle, onDelete, children,
 }) {
   return (
     <article className={`fin-rule${off ? ' fin-rule--off' : ''}`} data-tone={tone}>
@@ -127,6 +142,7 @@ function RuleCard({
         </div>
         <div className="fin-rule__tools">
           {onEdit && <button type="button" className="fin-icon-btn" title="Sửa" onClick={onEdit}><AppIcon name="pencil" size={14} /></button>}
+          {onDuplicate && <button type="button" className="fin-icon-btn" title="Nhân bản" onClick={onDuplicate}><AppIcon name="copy" size={14} /></button>}
           {onToggle && <Toggle on={enabled} onChange={onToggle} />}
           {onDelete && <button type="button" className="fin-icon-btn" title="Xóa" onClick={onDelete}><AppIcon name="trash" size={14} /></button>}
         </div>
@@ -140,6 +156,8 @@ export default function RecurringScreen({ fin, nav }) {
   const { pendingTasks } = useUserTasks();
   const seg = nav.recurringSeg;
   const [adding, setAdding] = useState(false);
+  // Bản nháp điền sẵn khi bấm Nhân bản: chỉ chép QUY TẮC, chưa ghi gì xuống DB.
+  const [draft, setDraft] = useState(null);
   const segMeta = SEGMENTS.find(s => s.value === seg);
   const period = fin.today.slice(0, 7);
   const unpaidBills = fin.bills.filter(bill => bill.enabled && !bill.finished_at
@@ -170,15 +188,17 @@ export default function RecurringScreen({ fin, nav }) {
         <small>Hôm nay {fin.today.split('-').reverse().join('/')}</small>
       </section>
       <div className="fin-recurring__bar">
-        <Segmented options={segmentOptions} value={seg} onChange={(v) => { nav.setRecurringSeg(v); setAdding(false); }} />
-        <button className="fin-btn fin-btn--primary fin-btn--sm" onClick={() => setAdding(a => !a)}>
+        <Segmented options={segmentOptions} value={seg} onChange={(v) => { nav.setRecurringSeg(v); setAdding(false); setDraft(null); }} />
+        <button className="fin-btn fin-btn--primary fin-btn--sm" onClick={() => { setAdding(a => !a); setDraft(null); }}>
           <AppIcon name={adding ? 'x' : 'plus'} size={15} /> {adding ? 'Đóng' : segMeta.addLabel}
         </button>
       </div>
 
-      {adding && <RuleForm seg={seg} fin={fin} nav={nav} onDone={() => setAdding(false)} />}
+      {adding && <RuleForm seg={seg} fin={fin} nav={nav} initial={draft}
+        onDone={() => { setAdding(false); setDraft(null); }} />}
 
-      {seg === 'out'  && <BillsList fin={fin} nav={nav} tasks={pendingTasks} />}
+      {seg === 'out'  && <BillsList fin={fin} nav={nav} tasks={pendingTasks}
+        onDuplicate={(bill) => { setDraft(billDraft(bill)); setAdding(true); }} />}
       {seg === 'in'   && <IncomeList fin={fin} nav={nav} tasks={pendingTasks} />}
       {seg === 'loan' && <LoansList fin={fin} nav={nav} tasks={pendingTasks} />}
       {seg === 'card' && <CardsList fin={fin} nav={nav} tasks={pendingTasks} />}
@@ -578,7 +598,7 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
 }
 
 // ── out: Phải trả ─────────────────────────────────────────────────────────────
-function BillsList({ fin, nav, tasks }) {
+function BillsList({ fin, nav, tasks, onDuplicate }) {
   // Sắp theo NGÀY TRONG THÁNG, không theo mức khẩn: vị trí một hóa đơn không đổi
   // từ ngày này sang ngày khác, chỉ màu vạch và dòng chữ đổi.
   const active = fin.bills.filter(b => !b.finished_at).sort((a, b) => (a.due_day || 99) - (b.due_day || 99));
@@ -641,6 +661,10 @@ function BillsList({ fin, nav, tasks }) {
             state={state}
             onOpen={() => setOpenId(openId === b.id ? null : b.id)}
             onEdit={() => { setEditId(editId === b.id ? null : b.id); setNoteFocus(false); setPayId(null); }}
+            onDuplicate={() => {
+              onDuplicate(b);
+              nav.showToast(`Đã chép quy tắc của ${b.name} — sửa rồi bấm Tạo hóa đơn. Lịch sử các kỳ không chép theo.`, { icon: 'copy' });
+            }}
             enabled={b.enabled} onToggle={(enabled) => toggle(b, enabled)}
             onDelete={() => remove(b)}
             hasNote={!!b.note}>

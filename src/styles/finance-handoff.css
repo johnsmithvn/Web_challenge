@@ -388,7 +388,13 @@
 .fin-shortcut-armed > div > button { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 7px 11px; border: 0; border-radius: 8px; background: var(--n-accent-2); color: white; font: inherit; cursor: pointer; }
 .fin-shortcut-armed footer { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; color: var(--n-txt3); font-size: 10.5px; }
 .fin-shortcut-armed footer button { padding: 3px 8px; border: 1px solid var(--n-border); border-radius: 14px; background: transparent; color: var(--n-txt2); font: inherit; font-size: 10.5px; cursor: pointer; }
-.fin-shortcut-armed footer button:last-child { margin-left: auto; border: 0; color: var(--n-accent); }
+.fin-shortcut-armed footer > button:last-child { margin-left: auto; border: 0; color: var(--n-accent); }
+.fin-recent-chip { display: inline-flex; align-items: center; overflow: hidden; border: 1px solid var(--n-border); border-radius: 14px; }
+.fin-shortcut-armed footer .fin-recent-chip button { border: 0; border-radius: 0; }
+.fin-shortcut-armed footer .fin-recent-chip > button:first-child { padding: 3px 5px 3px 9px; }
+.fin-recent-chip:hover { border-color: var(--n-accent); }
+.fin-shortcut-armed footer .fin-recent-chip__x { display: grid; place-items: center; padding: 3px 7px 3px 4px; color: var(--n-txt3); }
+.fin-shortcut-armed footer .fin-recent-chip__x:hover { color: var(--n-danger); }
 .fin-entry-help { padding: 14px; }
 .fin-entry-help strong { font-size: 12.5px; }
 .fin-entry-help p { margin: 6px 0 0; color: var(--n-txt2); font-size: 11px; line-height: 1.5; }

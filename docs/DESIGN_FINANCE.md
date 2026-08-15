@@ -130,6 +130,8 @@ sửa/công tắc/xóa, phần mở thêm (khối ghi kỳ, form sửa, lịch s
 - Mẫu hóa đơn chỉ điền tên/nhóm/danh mục con, **không điền số tiền**.
 - `finance_bills.note` là ghi chú của **quy tắc**, hiện khi mở dòng và sửa trong form. `finance_pay_bill`
   vẫn ghi `note = bill.name` xuống transaction; ghi chú quy tắc **không** rơi xuống từng kỳ.
+- Nhân bản hóa đơn chép quy tắc sang form thêm (chưa ghi DB), reset `term_done`/`skipped_periods`/
+  `finished_at`; giao dịch cũ giữ `bill_id` cũ nên lịch sử không theo sang bản sao.
 - Xóa quy tắc không xóa transaction; hộp xác nhận nói đúng số giao dịch được giữ lại.
 
 ## 6. Pure logic API
