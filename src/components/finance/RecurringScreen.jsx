@@ -888,13 +888,19 @@ function BillHistory({ bill, transactions }) {
       <div className="fin-bill-history__head"><strong>Lịch sử các kỳ</strong><span>{history.length} lần đã ghi</span></div>
       {history.length === 0 ? <div className="fin-empty">Chưa có kỳ nào được thanh toán</div> : <>
         <div className="fin-bill-chart">
-          {history.map(t => <div key={t.id} className="fin-bill-chart__col" title={`${dmy(t.occurred_at)}: ${money(t.amount)}`}>
+          {history.map(t => <div key={t.id} className="fin-bill-chart__col"
+            title={`Kỳ ${t.bill_period || '—'} · ghi ${dmy(t.occurred_at)}: ${money(t.amount)}`}>
             <i style={{ height: `${Math.max(6, Math.round(t.amount / max * 52))}px` }} /><small>{t.bill_period?.slice(5) || t.occurred_at.slice(5, 7)}</small>
           </div>)}
         </div>
+        {/* Kỳ ĐỨNG TRƯỚC ngày ghi: gắn nhầm kỳ là hóa đơn báo quá hạn dù tiền đã ra khỏi
+            ví, mà nhìn mỗi ngày ghi thì không tài nào thấy được. */}
         <div className="fin-bill-history__list">{history.slice().reverse().slice(0, 6).map(t =>
-          <div key={t.id}><span>{dmy(t.occurred_at)}</span><strong>{money(t.amount)}</strong></div>)}</div>
-        <small className="fin-bill-history__note">Sửa hoặc xóa một kỳ ở màn Giao dịch — xóa xong hóa đơn tự quay về “chưa trả”.</small>
+          <div key={t.id}>
+            <span>kỳ {t.bill_period ? `${t.bill_period.slice(5)}/${t.bill_period.slice(0, 4)}` : '—'} · ghi {dmy(t.occurred_at)}</span>
+            <strong>{money(t.amount)}</strong>
+          </div>)}</div>
+        <small className="fin-bill-history__note">Kỳ khác ngày ghi là bình thường (trả kỳ tháng 7 vào tháng 8). Nhưng gắn <strong>sai</strong> kỳ thì hóa đơn báo quá hạn dù đã trả — sửa kỳ ở màn Giao dịch, mục “Thuộc kỳ”.</small>
       </>}
     </div>
   );

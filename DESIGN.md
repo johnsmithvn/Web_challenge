@@ -1085,13 +1085,19 @@ bar · two-pane body (item list · detail), breakpoint 900px.
   navigates. A link whose target is gone becomes `.acc-link--dead` (divider
   border, no hover, "Missing item / link broken") — a normal state (jsonb links
   have no FK), not an error.
-  - **"Linked from" section** — the same `.acc-link` chips, this time listing items
-    that point *at* the open item, in a `.acc-links--panel` (the chip row needs its
-    own padding once it leaves a field's value column). A link is stored only on the
-    source item, so without this the target — a bank account every card links to —
-    looked unconnected. Sub-label is the source **field name**, not a borrowed value:
-    the useful fact is *which* slot points here ("Bank login"). Section is hidden in
-    edit mode, since navigating away drops the draft without asking.
+  - **"Linked from" section — an incoming link reads as a field row, not a chip in a
+    bag.** A link is stored only on the source item, so without this the target (a
+    bank account every card links to) looked unconnected. Each row reuses the
+    `.acc-field` grid: label column = the **source field** that points here ("Bank
+    login"), value column = the `.acc-link` chip for the source item, action column =
+    a `Details` toggle. Details expands `.acc-backdetail` — a `dt`/`dd` pair per
+    value, indented behind a divider rule so it reads as belonging to the chip above.
+    **Expand in place rather than navigate:** these links are consulted at a glance
+    ("which card of this bank, expiring when"), and jumping to the item loses where
+    you stood. Values come from `linkableValues()` — the single definition of what
+    may show without a Reveal step, so secrets can never leak in through this view.
+    Section is hidden in edit mode, since navigating away drops the draft without
+    asking.
 - **`.acc-strength`** — a `180×5px` pill track at `9%` text with a pill fill whose
   `width` and `background-color` transition over 320ms. View-mode only, and only
   for `type="password"`; `secret` is never scored.

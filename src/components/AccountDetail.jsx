@@ -152,10 +152,7 @@ export default function AccountDetail({
   const backlinks = items.flatMap((x) => (
     x.id === item.id ? [] : (x.fields || [])
       .filter((f) => (f.links || []).some((L) => L.itemId === item.id))
-      .map((f) => ({
-        key: `${x.id}:${f.id}`, id: x.id, title: x.title,
-        code: TPL_BY_KEY.get(x.tpl)?.code || '···', via: f.label,
-      }))
+      .map((f) => ({ key: `${x.id}:${f.id}`, src: x, via: f.label }))
   ));
 
   return (
@@ -314,16 +311,9 @@ export default function AccountDetail({
             <span className="acc-sect__meta">{backlinks.length} incoming</span>
           </div>
           <div className="acc-panel">
-            <div className="acc-links acc-links--panel">
-              {backlinks.map((b) => (
-                <button key={b.key} className="acc-link" onClick={() => onOpen(b.id)}>
-                  <span className="acc-link__code">{b.code}</span>
-                  <span className="acc-link__title">{b.title}</span>
-                  <span className="acc-link__sub">{b.via}</span>
-                  <span className="acc-link__arrow" aria-hidden="true">↗</span>
-                </button>
-              ))}
-            </div>
+            {backlinks.map((b) => (
+              <BacklinkRow key={b.key} src={b.src} via={b.via} onOpen={onOpen} />
+            ))}
           </div>
         </section>
       )}
@@ -522,6 +512,58 @@ function CardPreview({ item, revealed }) {
       <div className="acc-cardview__bot">
         <span>{field('Cardholder') || '—'}</span>
         <span>{field('Expires') || '—'}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ══ Một dòng "Linked from" ══════════════════════════════════════
+   Đọc như một field: cột trái là ô đã trỏ tới đây ("Bank login"), cột giữa là
+   item nguồn. "Details" xổ giá trị của nó NGAY TẠI CHỖ — link kiểu này hầu hết
+   dùng để liếc ("thẻ nào của bank này, hết hạn bao giờ"), mà nhảy sang item rồi
+   quay lại thì mất chỗ đang đứng.
+
+   Giá trị lấy qua linkableValues: nó đã là nơi duy nhất định nghĩa "cái gì được
+   phép hiện ra ngoài mà không cần Reveal" (secret bị loại) — tự duyệt fields ở
+   đây là mở một đường rò thứ hai. Phần tử [0] là "— whole item —", bỏ. */
+function BacklinkRow({ src, via, onOpen }) {
+  const [open, setOpen] = useState(false);
+  const tpl = TPL_BY_KEY.get(src.tpl);
+  const detail = linkableValues(src).slice(1);
+
+  return (
+    <div className="acc-field">
+      <div className="acc-field__label">{via}</div>
+
+      <div className="acc-field__col">
+        <button className="acc-link" onClick={() => onOpen(src.id)}>
+          <span className="acc-link__code">{tpl?.code || '···'}</span>
+          <span className="acc-link__title">{src.title}</span>
+          <span className="acc-link__sub">{itemSubtitle(src, tpl?.name || '')}</span>
+          <span className="acc-link__arrow" aria-hidden="true">↗</span>
+        </button>
+
+        {open && (
+          <dl className="acc-backdetail">
+            {detail.map((d) => (
+              <div className="acc-backdetail__row" key={`${d.field}:${d.value}`}>
+                <dt>{d.field}</dt>
+                <dd>{d.value}</dd>
+              </div>
+            ))}
+            {!detail.length && (
+              <div className="acc-backdetail__row acc-backdetail__row--empty">
+                Nothing to show — that item only holds secrets.
+              </div>
+            )}
+          </dl>
+        )}
+      </div>
+
+      <div className="acc-field__acts">
+        <button className="acc-act" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          {open ? 'Hide' : 'Details'}
+        </button>
       </div>
     </div>
   );

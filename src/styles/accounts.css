@@ -710,9 +710,25 @@
 
 /* ── Chip link ── */
 .acc-links { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-/* Cùng chip đó nhưng đứng một mình trong panel (khối "Linked from"), không nằm
-   trong cột giá trị của field nên phải tự có padding. */
-.acc-links--panel { padding: 13.6px; background: var(--surface); }
+/* Chi tiết xổ ra trong dòng "Linked from": hai cột nhãn/giá trị, thụt vào cho
+   thấy nó thuộc về chip phía trên chứ không phải một field ngang hàng. */
+.acc-backdetail {
+  display: grid; gap: 4px; margin: 8px 0 2px; padding-left: 11px;
+  border-left: 1px solid var(--color-divider);
+}
+.acc-backdetail__row {
+  display: grid; grid-template-columns: minmax(78px, 130px) minmax(0, 1fr); gap: 10px;
+  font-size: 13px;
+}
+.acc-backdetail dt {
+  font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 45%, transparent);
+  align-self: center;
+}
+.acc-backdetail dd { margin: 0; word-break: break-word; }
+.acc-backdetail__row--empty {
+  display: block; color: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
 .acc-link {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 5px 11px; border-radius: 999px;

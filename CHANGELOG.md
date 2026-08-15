@@ -6,8 +6,15 @@
 - **Khối "Linked from" trong Vault — item đích thấy được ai đang trỏ tới mình.** Field `link` chỉ lưu
   ở item **nguồn**, nên tài khoản ngân hàng bị 5 thẻ link tới vẫn hiện ra như chẳng liên quan gì. Giờ
   quét ngược mảng `items` (đã giải mã sẵn ở `AccountsPage`, không thêm query/bảng/cột) và liệt kê chip
-  `.acc-link` dẫn ngược lại. Sub-label là **tên field nguồn** (`Bank login`) — cái cần biết là link đi
-  từ ô nào. Một item link qua 2 field thì ra 2 dòng. Ẩn khi đang sửa vì bấm đi là mất draft.
+  `.acc-link` dẫn ngược lại. Một item link qua 2 field thì ra 2 dòng. Ẩn khi đang sửa vì bấm đi là mất
+  draft.
+  - **Mỗi link ngược đọc như một dòng field**, không phải chip nằm chung một rổ: cột nhãn là **ô đã
+    trỏ tới đây** (`Bank login`), cột giá trị là chip item nguồn, cột phải là nút `Details`. Bấm
+    Details **xổ giá trị ngay tại chỗ** (`.acc-backdetail`, dạng nhãn/giá trị) — link kiểu này hầu hết
+    để liếc ("thẻ nào của bank này, hết hạn bao giờ"), nhảy sang item rồi quay lại thì mất chỗ đứng.
+  - Giá trị xổ ra lấy qua `linkableValues()` — vốn đã là **nơi duy nhất** định nghĩa "cái gì được hiện
+    mà không cần Reveal", nên secret (mật khẩu, CVV, PIN) không thể rò qua đường này. Hàm trả thêm key
+    `field` để dựng hai cột, không phải cắt chuỗi `label` của `<option>`.
 - **Hóa đơn nhiều tháng một lần** (`finance_bills.anchor_date` + `rrule.every`, migration
   `data/migration_v6.7.0_finance_bill_multi_month.sql` — user tự chạy trên hosted). Netflix trả theo
   quý, bảo hiểm theo năm: trước đó chỉ có "Mỗi tháng" nên phải nhớ ngoài app. Chu kỳ 1/2/3/6/12 tháng;
@@ -20,6 +27,11 @@
     trong khối trả lùi theo đúng chu kỳ (hóa đơn quý không liệt kê 6 tháng liền).
 
 ### Changed
+- **Giao dịch hiện và sửa được "Thuộc kỳ".** `bill_period` là thứ quyết định hóa đơn có báo quá hạn hay
+  không, nhưng màn Giao dịch chưa bao giờ hiện nó — gắn nhầm kỳ là hóa đơn kêu quá hạn dù tiền đã ra
+  khỏi ví, mà đường sửa duy nhất là xóa giao dịch rồi ghi lại. Giờ bảng chi tiết có dòng **Thuộc kỳ**,
+  và form sửa có ô chọn kỳ (danh sách lùi theo đúng chu kỳ của hóa đơn qua `billPeriods()`, dùng chung
+  với khối Thanh toán).
 - **Form thêm ở màn Hóa đơn hỏi trước khi vứt nội dung đang gõ.** Đổi segment hoặc bấm Đóng/Hủy giữa
   chừng là mất sạch, không cảnh báo gì. Giờ `nav.confirmDiscard()` (dùng chung `ConfirmModal` sẵn có)
   chặn lại khi form đã có thay đổi so với lúc mở; lưu thành công thì đóng thẳng, không hỏi. "Đã gõ gì

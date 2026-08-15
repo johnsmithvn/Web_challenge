@@ -190,7 +190,10 @@ export function codeSheet(n) {
  * Chỉ nhận multi + text/email/phone/url có giá trị. `number`/`date` bị loại vì
  * mượn chúng ra ngoài không nói lên điều gì ("Port: 5432" trên một chip link).
  *
- * @return {Array<{value: string, label: string}>} phần tử đầu luôn là "— whole item —"
+ * `field` là nhãn của field nguồn, tách riêng cho nơi nào muốn dựng hai cột
+ * (khối "Linked from") thay vì đọc nguyên chuỗi `label` của một <option>.
+ *
+ * @return {Array<{value: string, label: string, field?: string}>} phần tử đầu luôn là "— whole item —"
  */
 export function linkableValues(target) {
   const out = [{ value: '', label: '— whole item —' }];
@@ -201,10 +204,10 @@ export function linkableValues(target) {
 
     if (f.type === 'multi') {
       for (const v of f.values || []) {
-        if (v) out.push({ value: v, label: `${f.label}: ${v}` });
+        if (v) out.push({ value: v, label: `${f.label}: ${v}`, field: f.label });
       }
     } else if (f.value && ['email', 'phone', 'text', 'url'].includes(f.type)) {
-      out.push({ value: f.value, label: `${f.label}: ${f.value}` });
+      out.push({ value: f.value, label: `${f.label}: ${f.value}`, field: f.label });
     }
   }
   return out;
