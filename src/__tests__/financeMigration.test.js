@@ -6,6 +6,7 @@ const hook = readFileSync(new URL('../hooks/useFinance.js', import.meta.url), 'u
 const recurring = readFileSync(new URL('../components/finance/RecurringScreen.jsx', import.meta.url), 'utf8');
 const list = readFileSync(new URL('../components/finance/ListScreen.jsx', import.meta.url), 'utf8');
 const page = readFileSync(new URL('../pages/FinancePage.jsx', import.meta.url), 'utf8');
+const billNote = readFileSync(new URL('../../data/migration_v6.3.0_finance_bill_note.sql', import.meta.url), 'utf8');
 const destructiveScreens = [
   list,
   recurring,
@@ -91,6 +92,10 @@ assert.match(hook, /p_loan_period: period \|\| today\.slice\(0, 7\)/,
   'useFinance phải truyền kỳ vay đang chạy');
 assert.match(recurring, /t\.loan_period === period && t\.loan_part === 'principal'/,
   'màn Khoản vay phải khóa kỳ đã ghi');
+assert.match(billNote, /ADD COLUMN IF NOT EXISTS note TEXT/,
+  'ghi chú hóa đơn phải là cột nullable thêm bằng migration riêng, idempotent');
+assert.doesNotMatch(sql, /v_bill\.note/,
+  'ghi chú của hóa đơn KHÔNG được sao chép xuống giao dịch — mỗi kỳ sẽ mang một bản sao giống hệt');
 assert.match(sql, /unique_finance_tx_income_period/, 'phải chống nhận trùng thu nhập theo kỳ');
 assert.match(sql, /unique_finance_tx_loan_part_period/, 'phải chống ghi trùng từng phần khoản vay');
 assert.match(sql, /finance_transaction_reference_guard/, 'phải kiểm ownership của mọi liên kết');

@@ -64,9 +64,9 @@ export default function FinancePage() {
     setSavingAsExpenseState(next);
     localStorage.setItem('lh_finance_saving_as_expense', String(next));
   }, []);
-  const confirmDelete = useCallback((label) => confirm({
+  const confirmDelete = useCallback((label, message) => confirm({
     title: `Xóa ${label}?`,
-    message: 'Dữ liệu này sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.',
+    message: message || 'Dữ liệu này sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.',
     confirmLabel: 'Xóa',
     danger: true,
   }), [confirm]);

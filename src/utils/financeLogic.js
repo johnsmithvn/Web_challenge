@@ -54,6 +54,22 @@ export function daysInclusive(from, to) {
 export function monthStart(year, month0) { return ymd(new Date(year, month0, 1)); }
 export function monthEnd(year, month0)   { return ymd(new Date(year, month0 + 1, 0)); }
 
+/**
+ * Ngày đến hạn thật của kỳ nằm trong tháng của `refStr`. Hóa đơn ngày 31 ở tháng 30
+ * hoặc 28 ngày rơi về NGÀY CUỐI THÁNG, không tràn sang tháng sau.
+ */
+export function dueDateInMonth(dueDay, refStr) {
+  if (!dueDay || !refStr) return null;
+  const ref = parseYmd(refStr);
+  const lastDay = new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate();
+  return `${refStr.slice(0, 8)}${pad(Math.min(dueDay, lastDay))}`;
+}
+/** Số ngày tới hạn trong tháng đang chạy: âm = quá hạn, 0 = đến hạn hôm nay. */
+export function daysUntilDue(dueDay, refStr) {
+  const due = dueDateInMonth(dueDay, refStr);
+  return due == null ? null : daysInclusive(refStr, due) - 1;
+}
+
 const VN_MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
   'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
 

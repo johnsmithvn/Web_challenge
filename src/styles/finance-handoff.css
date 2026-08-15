@@ -36,25 +36,82 @@
 .fin-fixed-split__bar > i:last-child { flex: 1; background: var(--n-good); }
 .fin-top-tx { display: flex; flex-direction: column; gap: 6px; }
 
-.fin-rule-wrap { border-radius: var(--n-r-lg); overflow: hidden; }
-.fin-rule-wrap > .fin-rule { border-radius: var(--n-r-lg); }
-.fin-rule-wrap:has(.fin-bill-history) > .fin-rule { border-radius: var(--n-r-lg) var(--n-r-lg) 0 0; }
+/* Dòng nghĩa vụ — cấu trúc chung cho hóa đơn / khoản thu / vay / thẻ.
+   Sáu trạng thái chỉ khác nhau ở MÀU VẠCH TRÁI và dòng chữ; bố cục không đổi để
+   mắt không phải học lại mỗi lần. Màu không đứng một mình: luôn kèm chữ. */
+.fin-rule[data-tone="over"]  { border-left-color: var(--n-danger); }
+.fin-rule[data-tone="today"] { border-left-color: var(--n-warn); }
+.fin-rule[data-tone="soon"]  { border-left-color: var(--n-accent); }
+.fin-rule[data-tone="paid"]  { border-left-color: #7fc060; }
+.fin-rule[data-tone="off"]   { border-left-color: #6b6f80; }
 .fin-rule--off { opacity: .5; }
-.fin-rule__actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
-.fin-rule__actions .fin-payinline { justify-content: flex-end; }
-.fin-rule__expand { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: var(--n-accent); padding: 3px 0; cursor: pointer; font: inherit; font-size: 11.5px; }
+.fin-rule__line { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+.fin-rule__ico { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border: 0; border-radius: 9px; background: var(--n-sink-2); color: var(--n-txt); cursor: pointer; transition: background .14s ease; }
+.fin-rule__ico:hover { background: #33363f; }
+.fin-rule__main { display: grid; gap: 2px; flex: 1; min-width: 150px; padding: 0; border: 0; background: none; color: var(--n-txt); font: inherit; text-align: left; cursor: pointer; }
+.fin-rule__name { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.fin-rule__meta { color: var(--n-txt3); font-size: 11px; }
+.fin-rule__right { display: grid; gap: 2px; justify-items: end; text-align: right; }
+.fin-rule__amt { font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fin-rule__state { font-size: 11px; }
+.fin-rule__state--over  { color: var(--n-danger); }
+.fin-rule__state--today { color: var(--n-warn); }
+.fin-rule__state--paid  { color: #7fc060; }
+.fin-rule__state--soon, .fin-rule__state--off { color: var(--n-txt3); }
+.fin-rule__tools { display: flex; align-items: center; gap: 4px; }
+.fin-rule__tools .fin-icon-btn { min-width: 26px; min-height: 26px; }
+.fin-rule__foot { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.fin-progress { display: grid; gap: 4px; }
+.fin-progress > div { height: 5px; overflow: hidden; border-radius: 4px; background: var(--n-sink); }
+.fin-progress i { display: block; height: 100%; border-radius: inherit; background: var(--n-accent-2); }
+.fin-progress small { color: var(--n-txt3); font-size: 10.5px; }
 .fin-overdue { color: var(--n-danger); }
+
+/* Ghi một kỳ: mở ngay dưới dòng, không modal, không rời danh sách. */
+.fin-payblock { display: grid; gap: 10px; padding: 11px; border: 1px solid var(--n-accent-3); border-radius: var(--n-r); background: var(--n-sink); animation: fin-rise .15s ease both; }
+.fin-payblock__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; }
+.fin-payblock__dates { display: flex; gap: 5px; flex-wrap: wrap; }
+.fin-payblock__dates .fin-input { width: auto; min-width: 132px; color-scheme: dark; }
+.fin-payblock__dates > button { min-height: 34px; padding: 6px 10px; border: 1px solid var(--n-border); border-radius: 8px; background: transparent; color: var(--n-txt2); font: inherit; font-size: 11.5px; cursor: pointer; }
+.fin-payblock__dates > button:hover { border-color: var(--n-accent); color: var(--n-on-accent); }
+.fin-payblock__dates > button.is-active { border-color: var(--n-accent); background: var(--n-accent-soft); color: var(--n-on-accent); }
+.fin-payblock__hint { color: var(--n-txt3); font-size: 10.5px; line-height: 1.45; }
+.fin-payblock__foot { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.fin-payblock__foot .fin-taskpick { margin-right: auto; }
+.fin-payblock .fin-source-picker > button { min-height: 32px; font-size: 11.5px; }
+
+/* Form thêm / sửa dùng chung một component; bản sửa mở ngay trong dòng. */
+.fin-ruleform { gap: 11px; }
+.fin-ruleform__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+.fin-ruleform__actions { display: flex; justify-content: flex-end; gap: 7px; }
+.fin-ruleform--edit { margin: 0; padding: 12px; border: 1px solid var(--n-accent-3); border-radius: var(--n-r); background: var(--n-sink); box-shadow: none; animation: fin-rise .15s ease both; }
+.fin-ruleform .fin-field > span { color: var(--n-txt2); font-size: 11.5px; }
+.fin-form__note, .fin-form__warn { display: flex; align-items: flex-start; gap: 7px; margin: 0; color: var(--n-txt3); font-size: 11px; line-height: 1.45; }
+.fin-form__note svg, .fin-form__warn svg { flex: none; margin-top: 1px; }
+.fin-form__warn { padding: 8px 10px; border-radius: 8px; background: rgba(226,169,78,.12); color: var(--n-warn); }
+.fin-templates { display: grid; gap: 6px; }
+.fin-templates > small { color: var(--n-txt3); font-size: 10.5px; }
+.fin-templates > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.fin-templates button { min-height: 30px; padding: 5px 10px; border: 1px solid var(--n-border); border-radius: 16px; background: transparent; color: var(--n-txt2); font: inherit; font-size: 11.5px; cursor: pointer; }
+.fin-templates button:hover { border-color: var(--n-accent); color: var(--n-on-accent); }
+.fin-templates button.is-active { border-color: var(--n-accent); background: var(--n-accent-soft); color: var(--n-on-accent); }
+.fin-inline-message--warn { background: rgba(226,169,78,.12); color: var(--n-warn); }
+.fin-bill-history__note { display: block; margin-top: 8px; color: var(--n-txt3); font-size: 10.5px; }
+
+/* Ghi chú hóa đơn — thuộc về quy tắc, không rơi xuống giao dịch. */
+.fin-billnote { display: flex; align-items: flex-start; gap: 9px; padding: 10px 11px; border: 1px solid rgba(145,132,217,.28); border-radius: var(--n-r); background: rgba(145,132,217,.09); }
+.fin-billnote > svg { flex: none; margin-top: 1px; color: var(--n-accent); }
+.fin-billnote p { flex: 1; min-width: 0; margin: 0; color: #cfd3e5; font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fin-rule__notedot { flex: none; color: var(--n-txt3); }
+.fin-textarea { min-height: 62px; padding: 8px 10px; line-height: 1.5; resize: vertical; }
+.fin-field__hint { color: var(--n-txt3); font-size: 10.5px; }
 .fin-obligation-summary { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; padding: 14px 16px; border: 1px solid var(--n-border); border-radius: 14px; background: var(--n-card); box-shadow: 0 10px 28px rgba(4,5,12,.12); }
 .fin-obligation-summary > div:first-child { display: grid; gap: 3px; flex: 1; min-width: 180px; }
 .fin-obligation-summary > div:first-child span { color: var(--n-txt2); font-size: 12px; }
 .fin-obligation-summary > div:first-child strong { font-size: 30px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .fin-obligation-summary > small { color: var(--n-txt3); font-size: 11px; }
 .fin-obligation-summary__overdue { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid color-mix(in srgb, var(--n-danger) 45%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--n-danger) 12%, transparent); color: var(--n-danger); font-size: 11.5px; }
-.fin-bill-term { display: grid; gap: 4px; max-width: 360px; margin-top: 7px; }
-.fin-bill-term > div { height: 5px; overflow: hidden; border-radius: 4px; background: var(--n-sink); }
-.fin-bill-term i { display: block; height: 100%; border-radius: inherit; background: var(--n-accent-2); }
-.fin-bill-term small { color: var(--n-txt3); font-size: 10.5px; }
-.fin-bill-history { padding: 12px 14px 14px; border: 1px solid var(--n-border); border-top: 0; border-radius: 0 0 var(--n-r-lg) var(--n-r-lg); background: color-mix(in srgb, var(--n-card) 80%, var(--n-sink)); animation: fin-rise .16s ease both; }
+.fin-bill-history { padding: 12px; border: 1px solid var(--n-border); border-radius: var(--n-r); background: var(--n-sink); animation: fin-rise .16s ease both; }
 .fin-bill-history__head { justify-content: space-between; margin-bottom: 9px; font-size: 12px; }
 .fin-bill-history__list { display: grid; gap: 5px; margin-top: 10px; }
 .fin-bill-history__list > div { display: flex; justify-content: space-between; color: var(--n-txt2); font-size: 11.5px; }
@@ -528,6 +585,12 @@
   .fin-obligation-summary > div:first-child strong { font-size: 25px; }
   .fin-obligation-summary > small { width: 100%; }
   .fin-rules-empty { min-height: 180px; padding: 28px 18px; }
+  .fin-payblock__grid { grid-template-columns: 1fr; }
+  .fin-payblock__dates .fin-input { width: 100%; }
+  .fin-rule__right { margin-left: auto; }
+  .fin-rule__foot { width: 100%; }
+  .fin-rule__foot .fin-btn { flex: 1; justify-content: center; min-height: 42px; }
+  .fin-ruleform__actions .fin-btn { flex: 1; justify-content: center; min-height: 42px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

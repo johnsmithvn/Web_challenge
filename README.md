@@ -138,6 +138,7 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 | 2 | [`data/migration_v5.2.0_vault.sql`](./data/migration_v5.2.0_vault.sql) | Schema Vault trung gian bắt buộc để v6.2 cutover. Idempotent. |
 | 3 | [`data/migration_v6.0.0_finance.sql`](./data/migration_v6.0.0_finance.sql) | Finance v6 clean rebuild, 10 bảng + junction + RPC. Có kiểm tra và rollback khi thiếu. |
 | 4 | [`data/migration_v6.2.0_vault_encryption.sql`](./data/migration_v6.2.0_vault_encryption.sql) | Cutover Vault trống sang full-content encryption. Chạy đúng một lần. |
+| 5 | [`data/migration_v6.3.0_finance_bill_note.sql`](./data/migration_v6.3.0_finance_bill_note.sql) | Thêm cột `finance_bills.note` (ghi chú hóa đơn). Idempotent, không đụng dữ liệu. |
 
 > Không chạy thêm `migration_v5.0.0_activity_logs_v2.sql` trên fresh install vì thay đổi đó đã nằm
 > trong baseline. Không chạy lại baseline một mình trên database đã ở v6.x: nó có thể tạo lại bảng
@@ -255,6 +256,7 @@ data/
   migration_v5.2.0_vault.sql
   migration_v6.0.0_finance.sql
   migration_v6.2.0_vault_encryption.sql
+  migration_v6.3.0_finance_bill_note.sql
   reset_user_data.sql       ← Wipe toàn bộ app data, giữ auth users
 supabase/
   migrations/               ← Chuỗi migration timestamp chỉ dùng local

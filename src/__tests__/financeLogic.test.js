@@ -13,6 +13,7 @@ import {
   deriveNecessity, periodTotals, comparePeriods, matchCategory, budgetBreakdown,
   cardCycle, cardBalance, cardStatementSummary, loanSchedule, fundBalance, spendingRhythm, listPeriodOptions,
   suggestedDailySpend, maturityWarn, groupByDate, daysInclusive, currentMonthPeriod, periodFromKey, billAmountEstimate,
+  dueDateInMonth, daysUntilDue,
 } from '../utils/financeLogic.js';
 
 // Stub cats tối giản (không import JSON để chạy được bằng node).
@@ -216,5 +217,16 @@ assert.equal(maturityWarn('2027-01-01', '2026-08-13').warn, false);
 assert.equal(daysInclusive('2026-08-01', '2026-08-31'), 31);
 assert.equal(groupByDate([{ occurred_at: '2026-08-01' }, { occurred_at: '2026-08-03' }])[0].date, '2026-08-03', 'mới nhất trước');
 console.log('misc check: OK');
+
+/* ── ngày đến hạn: ngày 31 phải rơi về ngày cuối tháng, không tràn tháng sau ── */
+assert.equal(dueDateInMonth(31, '2026-02-10'), '2026-02-28', 'tháng 2 thường → 28');
+assert.equal(dueDateInMonth(31, '2024-02-10'), '2024-02-29', 'năm nhuận → 29');
+assert.equal(dueDateInMonth(31, '2026-04-10'), '2026-04-30', 'tháng 30 ngày → 30');
+assert.equal(dueDateInMonth(5, '2026-08-13'), '2026-08-05');
+assert.equal(dueDateInMonth(null, '2026-08-13'), null, 'không có ngày trả thì không có hạn');
+assert.equal(daysUntilDue(31, '2026-02-10'), 18, 'còn 18 ngày tới 28/02, KHÔNG phải 21 ngày tới 03/03');
+assert.equal(daysUntilDue(13, '2026-08-13'), 0, 'đúng ngày → 0');
+assert.equal(daysUntilDue(5, '2026-08-13'), -8, 'quá hạn 8 ngày → âm');
+console.log('dueDateInMonth/daysUntilDue check: OK');
 
 console.log('\n✅ financeLogic — tất cả self-check PASS');

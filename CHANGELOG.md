@@ -2,7 +2,37 @@
 
 ## Unreleased
 
+### Added
+- **Ghi chú cho hóa đơn** (`finance_bills.note`, migration `data/migration_v6.3.0_finance_bill_note.sql`
+  — user tự chạy trên hosted). Chỗ chứa mọi thứ không đáng có trường riêng: số công tơ, ai đứng tên,
+  cách chia tiền với bạn cùng phòng. Hiện trong panel khi bấm mở dòng, sửa trong form, có link
+  "Thêm ghi chú" khi trống và dấu ghi chú nhỏ trên dòng. **Không sao chép xuống giao dịch** —
+  `finance_pay_bill` vẫn ghi `note = bill.name`, và có assert khoá lại điều đó trong
+  `financeMigration.test.js` (mỗi kỳ mang một bản sao ghi chú giống hệt thì rối màn Giao dịch và bảng lọc).
+- **Sửa hóa đơn / khoản thu / vay / thẻ ngay trong dòng.** Nút bút chì trên mỗi dòng mở đúng form đã
+  dùng để thêm (`RuleForm` một component, hai chế độ) — trước đó tạo xong là không sửa được gì, muốn
+  đổi số tiền phải xóa rồi tạo lại, mất luôn liên kết `bill_id` của các kỳ đã ghi. Ô số tiền khi sửa
+  kèm cảnh báo vàng **"Số mới áp dụng từ kỳ sau"** vì kỳ đã ghi không bị viết lại.
+- **11 mẫu hóa đơn** (Điện, Nước, Internet, Netflix, Trả góp…) điền sẵn tên + nhóm + danh mục con.
+  Mẫu **không bao giờ** điền số tiền: bấm qua nhanh mà lưu một con số mặc định thì sai với mọi người dùng.
+- **Khối ghi một kỳ mở ngay dưới dòng** thay cho hàng input chen trong cột phải: ô số tiền có nhãn và
+  được bôi đen sẵn, ngày trả có nút nhanh *Hôm nay / Hôm qua / Đúng hạn*, nguồn tiền là chip kèm dòng
+  giải thích hệ quả, và nút Hủy. Trả bốn hóa đơn liền không phải rời danh sách lần nào.
+- **Xóa hóa đơn nói rõ số giao dịch được giữ lại.** `nav.confirmDelete(label, message)` nhận thêm
+  message; hóa đơn chỉ là quy tắc nhắc nên các kỳ đã ghi vẫn nằm nguyên ở màn Giao dịch.
+
 ### Changed
+- **Màn Hóa đơn: bốn segment dùng chung một cấu trúc dòng** (`RuleCard`) — icon 34px, tên + phụ đề,
+  số tiền + trạng thái, nút sửa/công tắc/xóa, phần mở thêm nằm dưới. Trước đó Phải trả là một layout,
+  Khoản vay và Thẻ là layout khác (`fin-rule--col` + nút xóa `position: absolute` đè lên góc thẻ).
+- **Sáu trạng thái phân biệt bằng vạch màu bên trái** (quá hạn đỏ · hôm nay vàng · sắp tới tím · đã trả
+  xanh · tắt/kết thúc xám) thay vì chỉ đổi màu chữ. Màu không đứng một mình, luôn kèm chữ.
+- **Danh sách hóa đơn sắp theo ngày trong tháng**, không theo mức khẩn: vị trí một hóa đơn không đổi từ
+  ngày này sang ngày khác nên không bấm nhầm dòng bên cạnh.
+- **Trả trước hạn được.** Nút Thanh toán có mặt từ đầu kỳ thay vì chỉ hiện khi `d <= 0`.
+- **Khoản vay hiện đủ thông tin handoff:** thanh tiến độ kỳ, ngày trả hằng tháng, tách lãi/gốc kỳ tới,
+  dư nợ gốc, và với loại chỉ-trả-lãi thì có dải cảnh báo ngày tất toán gốc.
+
 - **Đầu form: tab Chi/Thu/Để dành sang trái, nút Lưu sang phải, bỏ dòng "Một khoản mới"** (cả trang đã
   tên "Ghi một khoản"). `.fin-seg` bỏ `margin-left: auto` — đó là thứ đẩy tab sang phải khi còn dòng chữ.
 
@@ -16,6 +46,10 @@
   `recent_amounts` mang đủ thông tin, và kể cả có cột đó thì vẫn dính đúng bước lùi ở trên.
 
 ### Fixed
+- **Hóa đơn ngày 31 đếm ngược sai ở tháng ngắn.** `new Date(y, m, 31)` trong tháng 2 tràn sang 03/03 →
+  màn Hóa đơn báo "còn 21 ngày" trong khi đúng ra là 18 ngày tới 28/02. `dueDateInMonth` kẹp về ngày
+  cuối tháng; `daysUntilDue` dùng nó. Cả hai là pure function, đã có self-check trong
+  `src/__tests__/financeLogic.test.js`.
 - **Ô "Số tiền" tràn ra ngoài thẻ.** Input `42px` có min-content rất rộng, mà grid item mặc định
   `min-width: auto` → ô tràn khỏi card, thấy rõ khi nó được focus. Thêm `min-width: 0` cho
   `.fin-amount-field > div:nth-child(2)`: chặn ở **cả hai tầng**, không chỉ ở input.
