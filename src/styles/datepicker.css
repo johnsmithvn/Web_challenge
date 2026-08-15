@@ -209,6 +209,18 @@
   color: rgba(255, 255, 255, 0.2);
 }
 
+/* Ngoài khoảng cho phép (prop `max`) — ô "đã xảy ra rồi" không nhận ngày tương lai. */
+.dp-grid__cell:disabled,
+.dp-shortcut:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.dp-grid__cell:disabled:hover,
+.dp-shortcut:disabled:hover {
+  background: transparent;
+}
+
 .dp-grid__cell--today {
   color: #ef4444;
   font-weight: 700;

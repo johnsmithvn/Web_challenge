@@ -71,10 +71,14 @@ assert.match(sql, /A paid bill period cannot be skipped/, 'không được bỏ 
 assert.match(sql, /WHEN skipped_periods \? p_period THEN skipped_periods/,
   'bỏ kỳ phải idempotent, không thêm trùng kỳ');
 assert.match(sql, /WHERE value <> v_period/, 'thanh toán một kỳ đã bỏ phải gỡ trạng thái bỏ kỳ');
-assert.match(recurring, /\(b\.skipped_periods \|\| \[\]\)\.includes\(currentPeriod\)/,
-  'màn Hóa đơn phải đọc trạng thái bỏ kỳ hiện tại');
-assert.match(recurring, /fin\.skipBillPeriod\(bill\.id, currentPeriod\)/,
-  'nút Bỏ kỳ này phải gọi RPC đúng kỳ đang chạy');
+// Kỳ của hóa đơn KHÔNG phải lúc nào cũng là tháng đang chạy: chu kỳ 3 tháng ở tháng
+// không tới lượt thì kỳ nằm phía trước. Mọi đường đọc/ghi kỳ phải đi qua billCycle.
+assert.match(recurring, /\(b\.skipped_periods \|\| \[\]\)\.includes\(cyc\.period\)/,
+  'màn Hóa đơn phải đọc trạng thái bỏ kỳ của ĐÚNG kỳ hóa đơn, không phải tháng đang chạy');
+assert.match(recurring, /fin\.skipBillPeriod\(bill\.id, periodOf\(bill\)\)/,
+  'nút Bỏ kỳ này phải gọi RPC đúng kỳ của hóa đơn — quý/năm không rơi vào tháng này');
+assert.match(recurring, /const periodOf = \(bill\) => billCycle\(bill, fin\.today\)\.period/,
+  'kỳ hóa đơn chỉ được suy từ billCycle, không lấy đại today.slice(0,7)');
 assert.match(recurring, /const actionable = b\.enabled && !paid && !skipped/,
   'hóa đơn tắt, đã trả hoặc đã bỏ không được hiện thao tác thanh toán');
 // Bỏ kỳ phải có đường quay lại: RPC skip chỉ THÊM vào skipped_periods, đường gỡ duy nhất

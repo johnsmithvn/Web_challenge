@@ -108,7 +108,7 @@ function buildCalendar(year, month) {
  * Click 1: đặt mốc đầu. Click 2: đặt mốc cuối (click trước mốc đầu thì tự
  * đảo). Click 3: bắt đầu khoảng mới.
  */
-export default function DatePickerPopover({ value, onChange, onClose, timeValue, onTimeChange, hideTime, mode = 'single', style }) {
+export default function DatePickerPopover({ value, onChange, onClose, timeValue, onTimeChange, hideTime, mode = 'single', max, style }) {
   const isRange = mode === 'range';
   const today = useMemo(() => new Date(), []);
   const todayStr = useMemo(() => toDateStr(today), [today]);
@@ -261,6 +261,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
           }) : shortcuts.map((s, i) => (
             <button
               key={i}
+              disabled={Boolean(max) && toDateStr(s.date) > max}
               className={`dp-shortcut${draft === toDateStr(s.date) ? ' dp-shortcut--active' : ''}`}
               onClick={() => {
                 setDraft(toDateStr(s.date));
@@ -309,9 +310,13 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
                 cls += ' dp-grid__cell--selected';
               }
 
+              // `max` chặn ngày tương lai cho các ô "đã xảy ra rồi" (ngày trả, ngày
+              // đưa tiền) — native input làm bằng attribute max, ở đây phải tự khoá.
+              const blocked = Boolean(max) && ds > max;
               return (
                 <button
                   key={i}
+                  disabled={blocked}
                   className={cls}
                   onClick={() => {
                     if (isRange) pickRange(ds); else setDraft(ds);

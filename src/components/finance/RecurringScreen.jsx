@@ -444,7 +444,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
           <Segmented ariaLabel="Kiểu số tiền" value={f.amount_mode || 'fixed'}
             onChange={(v) => setF(p => ({ ...p, amount_mode: v, amount: v === 'ask' ? '' : p.amount }))}
             options={[{ value: 'fixed', label: 'Cố định' }, { value: 'ask', label: 'Thay đổi từng kỳ' }]} />
-          {f.amount_mode !== 'ask' && <input className="fin-input fin-ruleform__amount" inputMode="numeric" pattern="[0-9]*"
+          {f.amount_mode !== 'ask' && <input className="fin-input fin-ruleform__amount" inputMode="numeric" pattern="[0-9.]*"
             placeholder="220.000" value={groupDigits(f.amount || '')} onChange={setDigits('amount')} />}
           <small className="fin-field__hint">{f.amount_mode === 'ask'
             ? 'Tới ngày, app hỏi số tiền và gợi ý bằng trung bình 3 kỳ gần nhất — chưa có kỳ nào thì để trống.'
@@ -863,12 +863,12 @@ function BillHistory({ bill, transactions }) {
       <div className="fin-bill-history__head"><strong>Lịch sử các kỳ</strong><span>{history.length} lần đã ghi</span></div>
       {history.length === 0 ? <div className="fin-empty">Chưa có kỳ nào được thanh toán</div> : <>
         <div className="fin-bill-chart">
-          {history.map(t => <div key={t.id} className="fin-bill-chart__col" title={`${t.occurred_at}: ${money(t.amount)}`}>
+          {history.map(t => <div key={t.id} className="fin-bill-chart__col" title={`${dmy(t.occurred_at)}: ${money(t.amount)}`}>
             <i style={{ height: `${Math.max(6, Math.round(t.amount / max * 52))}px` }} /><small>{t.bill_period?.slice(5) || t.occurred_at.slice(5, 7)}</small>
           </div>)}
         </div>
         <div className="fin-bill-history__list">{history.slice().reverse().slice(0, 6).map(t =>
-          <div key={t.id}><span>{t.occurred_at}</span><strong>{money(t.amount)}</strong></div>)}</div>
+          <div key={t.id}><span>{dmy(t.occurred_at)}</span><strong>{money(t.amount)}</strong></div>)}</div>
         <small className="fin-bill-history__note">Sửa hoặc xóa một kỳ ở màn Giao dịch — xóa xong hóa đơn tự quay về “chưa trả”.</small>
       </>}
     </div>

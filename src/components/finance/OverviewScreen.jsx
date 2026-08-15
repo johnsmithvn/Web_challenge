@@ -6,6 +6,7 @@ import {
 import {
   money, catInfo, NECESSITY_META, Donut, RhythmBars, PeriodPicker, Segmented, FinanceIcon,
 } from './parts';
+import { formatDate } from '../../utils/dateUtils';
 import AppIcon from '../AppIcon';
 import AnalyzeScreen from './AnalyzeScreen';
 
@@ -207,7 +208,7 @@ function OverviewDashboard({ fin, nav }) {
             const info = catInfo(t.category_id, fin.cats);
             return <button className="fin-biggest" key={t.id} onClick={() => nav.go('list')}>
               <span className="fin-biggest__ico" style={{ color: info.color }}><FinanceIcon name={info.icon} cats={fin.cats} size={17} /></span>
-              <span><span className="fin-biggest__note">{t.note || info.label}</span><span className="fin-biggest__date">{t.occurred_at}</span></span>
+              <span><span className="fin-biggest__note">{t.note || info.label}</span><span className="fin-biggest__date">{formatDate(t.occurred_at)}</span></span>
               <strong className="fin-biggest__amt">{money(t.amount)}</strong>
             </button>;
           })}</div> : <div className="fin-empty">Chưa có khoản nào trong kỳ</div>}
