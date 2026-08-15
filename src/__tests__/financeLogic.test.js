@@ -13,7 +13,7 @@ import {
   deriveNecessity, periodTotals, comparePeriods, matchCategory, budgetBreakdown,
   cardCycle, cardBalance, cardStatementSummary, loanSchedule, fundBalance, spendingRhythm, listPeriodOptions,
   suggestedDailySpend, maturityWarn, groupByDate, daysInclusive, currentMonthPeriod, periodFromKey, billAmountEstimate,
-  dueDateInMonth, daysUntilDue, nextAnnualFee, nextDueDate, billCycle, billSettled,
+  dueDateInMonth, daysUntilDue, nextAnnualFee, nextDueDate, billCycle, billSettled, billPeriodForDate,
 } from '../utils/financeLogic.js';
 
 // Stub cats tối giản (không import JSON để chạy được bằng node).
@@ -293,5 +293,21 @@ assert.equal(settled('2026-08'), true, 'đã ghi giao dịch');
 assert.equal(settled('2026-05'), true, 'đã bỏ kỳ');
 assert.equal(settled('2026-11'), false, 'giao dịch của hóa đơn khác không tính');
 console.log('billCycle check: OK');
+
+/* ── billPeriodForDate: ngày trả rơi vào kỳ nào ── */
+const netflix = { due_day: 25, anchor_date: '2026-07-25', rrule: { type: 'monthly', day: 25, every: 3 } };
+assert.equal(billPeriodForDate(netflix, '2026-07-25'), '2026-07', 'trả đúng ngày mốc');
+assert.equal(billPeriodForDate(netflix, '2026-08-02'), '2026-07', 'trả muộn 8 ngày vẫn là kỳ vừa rồi');
+assert.equal(billPeriodForDate(netflix, '2026-10-20'), '2026-10', 'trả sớm 5 ngày là kỳ sắp tới');
+assert.equal(billPeriodForDate(netflix, '2026-09-01'), '2026-07',
+  'giữa hai kỳ mà gần kỳ cũ hơn → kỳ cũ, không nhảy sang kỳ chưa tới');
+// Hằng tháng: hạn cuối tháng, trả sang đầu tháng sau vẫn thuộc kỳ cũ (luật có sẵn của app).
+const monthly = { due_day: 28 };
+assert.equal(billPeriodForDate(monthly, '2026-08-02'), '2026-07', 'hạn 28/07, trả 02/08 → kỳ 07');
+assert.equal(billPeriodForDate(monthly, '2026-08-26'), '2026-08', 'trả sớm 2 ngày → kỳ 08');
+assert.equal(billPeriodForDate({ due_day: 5 }, '2026-08-02'), '2026-08',
+  'hạn ngày 5, trả ngày 2 là trả sớm cho kỳ này chứ không phải trả muộn kỳ trước');
+assert.equal(billPeriodForDate({ due_day: null }, '2026-08-02'), null);
+console.log('billPeriodForDate check: OK');
 
 console.log('\n✅ financeLogic — tất cả self-check PASS');

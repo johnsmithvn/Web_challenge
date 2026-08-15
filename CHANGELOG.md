@@ -27,6 +27,20 @@
     trong khối trả lùi theo đúng chu kỳ (hóa đơn quý không liệt kê 6 tháng liền).
 
 ### Changed
+- **Nói thẳng cơ chế "kỳ" trên giao diện** thay vì để user tự suy: chip `⟳ 3 tháng/lần` cạnh tên hóa
+  đơn không chạy hằng tháng (hằng tháng cố tình không có chip — gắn cho mọi dòng thì chip vô nghĩa),
+  hộp gập **"Kỳ được tính thế nào"** ở đầu tab Phải trả (4 ý: kỳ ≠ ngày trả · kỳ chạy theo ngày trả ·
+  trả xong thì im tới kỳ kế, lỡ kỳ thì vẫn báo quá hạn · sửa nhầm kỳ ở đâu), và bảng schema màn Danh
+  mục bổ sung `rrule.every` + `anchor_date` + cách `billCycle()` chọn kỳ.
+- **Ô "Ghi vào kỳ" chạy theo ngày trả thay vì chốt cứng lúc mở khối.** Đây là nguồn gốc của cả chuỗi
+  "đã trả rồi mà vẫn nhắc": khai một hóa đơn quý hôm nay rồi lùi ngày về 25/07 để ghi lại khoản đã trả
+  thật, tiền vẫn bị gắn vào **kỳ sắp tới** vì kỳ chỉ được tính một lần lúc mở khối và không bao giờ nhìn
+  lại ngày. `billPeriodForDate()` chọn **mốc kỳ gần ngày trả nhất** — trả muộn vài ngày vẫn thuộc kỳ vừa
+  rồi (giữ đúng luật cũ "trả hóa đơn tháng 7 vào tháng 8 vẫn là kỳ 7"), trả sớm vài ngày thì thuộc kỳ
+  sắp tới, hòa thì ưu tiên kỳ cũ. Bấm tay một kỳ thì khóa lại, đổi ngày không làm nó nhảy nữa; kỳ suy ra
+  mà đã ghi rồi thì lùi về kỳ chưa trả thay vì để DB chặn.
+- **Lịch sử các kỳ hiện `kỳ MM/YYYY · ghi dd/mm/yyyy`** thay vì mỗi ngày ghi — hai mốc này khác nhau là
+  bình thường, nhưng gắn sai kỳ thì trước đây nhìn vào không tài nào thấy.
 - **Giao dịch hiện và sửa được "Thuộc kỳ".** `bill_period` là thứ quyết định hóa đơn có báo quá hạn hay
   không, nhưng màn Giao dịch chưa bao giờ hiện nó — gắn nhầm kỳ là hóa đơn kêu quá hạn dù tiền đã ra
   khỏi ví, mà đường sửa duy nhất là xóa giao dịch rồi ghi lại. Giờ bảng chi tiết có dòng **Thuộc kỳ**,

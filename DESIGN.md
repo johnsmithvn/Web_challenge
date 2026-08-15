@@ -774,6 +774,15 @@ and brightens through `--active` and `:hover`. Prop `max` (yyyy-MM-dd) khoá ng�
 sau mốc đó: cell và shortcut vượt mốc dùng `:disabled` — `opacity: 0.3`,
 `cursor: not-allowed`, không đổi nền khi hover.
 
+`.fin-badge` là chip nhỏ cạnh tên dòng, nền `--n-accent-soft`, `inline-flex` nên chứa
+được icon + chữ. `RuleCard` nhận `badge` là một nhãn HOẶC mảng nhãn — dòng hóa đơn có
+thể vừa mang chip chu kỳ (`⟳ 3 tháng/lần`, chỉ hiện khi hóa đơn KHÔNG phải hằng tháng)
+vừa mang chip số kỳ trả góp. Hằng tháng là mặc định nên cố tình không có chip: gắn nhãn
+cho mọi dòng thì chip mất tác dụng phân biệt.
+
+`.fin-explain` là hộp `<details>` giải thích cơ chế, gập mặc định, nền `--n-arch` như
+`.fin-archived`; `<em>` bên trong không in nghiêng mà được dùng làm nhãn tên trường.
+
 Trong Finance, mọi ô ngày đi qua `DateField` (`.fin-datefield`, `parts.jsx`):
 nút `.fin-input` căn trái có icon lịch, hiện **dd/mm/yyyy** qua `formatDate`, mở
 popover neo `top: 100%`. Không dùng `<input type="date">` ở module này — định

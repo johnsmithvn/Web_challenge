@@ -138,6 +138,31 @@ export function billPeriods(bill, fromPeriod, count = 6) {
   });
 }
 
+/**
+ * NGÀY TRẢ nằm ở kỳ nào — mốc kỳ gần ngày đó nhất.
+ *
+ * Không dùng "tháng của ngày trả" (trả hóa đơn hạn 28/07 vào 02/08 vẫn là kỳ 07) và
+ * cũng không dùng "kỳ đang chạy" (khai hóa đơn hôm nay rồi ghi lại khoản đã trả từ
+ * tháng 7 thì phải rơi vào kỳ tháng 7, không phải kỳ sắp tới). Gần nhất xử lý được
+ * cả trả muộn vài ngày lẫn trả sớm vài ngày; hòa thì ưu tiên kỳ CŨ hơn — trả nợ cũ
+ * là mặc định an toàn hơn trả trước cho kỳ chưa tới.
+ */
+export function billPeriodForDate(bill, dateStr) {
+  if (!bill?.due_day || !dateStr) return null;
+  const every = Math.max(1, Number(bill.rrule?.every) || 1);
+  const anchor = (every > 1 && bill.anchor_date) ? bill.anchor_date : dateStr;
+  const a = parseYmd(anchor), d = parseYmd(dateStr);
+  const diff = (d.getFullYear() - a.getFullYear()) * 12 + (d.getMonth() - a.getMonth());
+  const floor = diff - (((diff % every) + every) % every);
+  let best = null;
+  for (const k of [floor - every, floor, floor + every]) {
+    const at = dueDateInMonth(bill.due_day, shiftMonth(anchor, k));
+    const gap = Math.abs(parseYmd(at) - d);
+    if (best == null || gap < best.gap) best = { at, gap };
+  }
+  return best.at.slice(0, 7);
+}
+
 /** Kỳ đã xong = đã ghi giao dịch cho kỳ đó, hoặc đã bấm bỏ kỳ. */
 export function billSettled(bill, txs) {
   const skipped = bill.skipped_periods || [];

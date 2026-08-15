@@ -4,7 +4,7 @@ import { useUserTasks } from '../../hooks/useUserTasks';
 import {
   billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule,
   currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
-  billCycle, billSettled, billPeriods,
+  billCycle, billSettled, billPeriods, billPeriodForDate,
 } from '../../utils/financeLogic';
 import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField } from './parts';
 import AppIcon from '../AppIcon';
@@ -88,11 +88,23 @@ function billDraft(bill) {
   };
 }
 
+const everyOf = (bill) => Math.max(1, Number(bill.rrule?.every) || 1);
+
 /** "mỗi 3 tháng ngày 20" — nhãn chu kỳ dùng chung cho dòng hóa đơn. */
 function cycleLabel(bill) {
-  const every = Math.max(1, Number(bill.rrule?.every) || 1);
+  const every = everyOf(bill);
   const when = every === 1 ? 'mỗi tháng' : every === 12 ? 'mỗi năm' : `mỗi ${every} tháng`;
   return bill.due_day ? `${when} ngày ${bill.due_day}` : when;
+}
+
+/**
+ * Chip trên dòng hóa đơn nhiều tháng một lần. Hằng tháng thì KHÔNG có chip — nó là
+ * mặc định, gắn nhãn cho mọi dòng thì chip mất hết tác dụng phân biệt.
+ */
+function CycleBadge({ bill }) {
+  const every = everyOf(bill);
+  if (every === 1) return null;
+  return <><AppIcon name="arrowsClockwise" size={10} weight="bold" /> {every === 12 ? '1 năm/lần' : `${every} tháng/lần`}</>;
 }
 
 function RulesEmpty({ icon, title, description }) {
@@ -152,7 +164,8 @@ function RuleCard({
         </button>
         <button type="button" className="fin-rule__main" onClick={onOpen}>
           <span className="fin-rule__name">{title}
-            {badge && <span className="fin-badge">{badge}</span>}
+            {/* badge nhận một nhãn hoặc cả mảng — dòng hóa đơn có thể vừa theo kỳ vừa có số kỳ. */}
+            {[].concat(badge ?? []).filter(Boolean).map((item, i) => <span key={i} className="fin-badge">{item}</span>)}
             {hasNote && <AppIcon name="note" size={13} className="fin-rule__notedot" aria-label="Có ghi chú" />}</span>
           <span className="fin-rule__meta">{meta}</span>
         </button>
@@ -222,6 +235,25 @@ export default function RecurringScreen({ fin, nav }) {
         </div>}
         <small>Hôm nay {fin.today.split('-').reverse().join('/')}</small>
       </section>
+
+      {seg === 'out' && (
+        <details className="fin-explain">
+          <summary><AppIcon name="question" size={14} /> “Kỳ” được tính thế nào</summary>
+          <ul>
+            <li><strong>Kỳ là khoảng nghĩa vụ, không phải ngày bạn trả.</strong> Hóa đơn hằng tháng thì mỗi
+              tháng một kỳ. Hóa đơn 2/3/6/12 tháng thì <em>Ngày bắt đầu trả</em> quyết định tháng nào tới
+              lượt, còn <em>Vào ngày</em> quyết định ngày trong tháng đó.</li>
+            <li><strong>Ghi tiền: kỳ tự chạy theo ngày trả</strong> — app chọn mốc kỳ gần ngày đó nhất. Trả
+              muộn vài ngày vẫn tính kỳ vừa rồi; trả sớm vài ngày thì tính kỳ sắp tới. Bấm một kỳ trong
+              hàng <em>Ghi vào kỳ</em> nếu muốn tự quyết.</li>
+            <li><strong>Trả xong một kỳ thì im tới kỳ kế</strong> — hóa đơn quý trả tháng 7 sẽ không nhắc
+              tháng 8, 9. Nhưng kỳ bị <em>lỡ</em> thì vẫn nằm đó báo quá hạn cho tới khi trả hoặc bấm
+              “Bỏ kỳ này”.</li>
+            <li><strong>Lỡ ghi nhầm kỳ?</strong> Vào Giao dịch, mở khoản đó, bấm Sửa rồi đổi ô
+              <em>Thuộc kỳ</em> — không cần xóa đi ghi lại.</li>
+          </ul>
+        </details>
+      )}
       <div className="fin-recurring__bar">
         <Segmented options={segmentOptions} value={seg} onChange={async (v) => {
           if (!await closeAddForm()) return;
@@ -613,13 +645,22 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
 // Mở ngay dưới dòng, không đẩy sang màn khác và không mở modal: người dùng
 // thường trả liền ba bốn khoản, rời danh sách mỗi lần là hỏng nhịp.
 function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false, amountLabel = 'Số tiền đã trả',
-  quickAmount = null, note = null, periods = null, confirmLabel = 'Xác nhận thanh toán', onPay, onCancel }) {
+  quickAmount = null, note = null, periods = null, periodForDate = null,
+  confirmLabel = 'Xác nhận thanh toán', onPay, onCancel }) {
   const amountRef = useRef(null);
   const [amount, setAmount] = useState(defaultAmount ? String(defaultAmount) : '');
   const [occurredAt, setOccurredAt] = useState(fin.today);
   const [sourceCardId, setSourceCardId] = useState('');
   const [taskId, setTaskId] = useState(null);
-  const [period, setPeriod] = useState(() => periods?.find(p => !p.done)?.key || periods?.[0]?.key || null);
+  // Kỳ CHẠY THEO ngày trả cho tới khi người dùng tự bấm chọn một kỳ khác. Trước đây
+  // nó chốt cứng lúc mở khối: khai hóa đơn hôm nay rồi lùi ngày về 25/07 thì tiền
+  // vẫn bị ghi vào kỳ sắp tới, hóa đơn báo quá hạn dù đã trả — không có gì báo cho biết.
+  const [pickedPeriod, setPickedPeriod] = useState(null);
+  // Kỳ suy ra mà đã ghi rồi thì bỏ qua — `unique_finance_tx_bill_period` sẽ chặn ở DB,
+  // thà lùi về kỳ chưa trả còn hơn để người dùng bấm rồi ăn một lỗi khó hiểu.
+  const derived = periodForDate?.(occurredAt) || null;
+  const autoPeriod = periods?.find(p => p.key === derived)?.done ? null : derived;
+  const period = pickedPeriod || autoPeriod || periods?.find(p => !p.done)?.key || periods?.[0]?.key || null;
   const [busy, setBusy] = useState(false);
   useEffect(() => { amountRef.current?.select(); }, []);
 
@@ -666,10 +707,12 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
               <button type="button" key={p.key} disabled={p.done}
                 className={period === p.key ? 'is-active' : ''}
                 title={p.done ? 'Kỳ này đã ghi rồi' : undefined}
-                onClick={() => setPeriod(p.key)}>{p.label}</button>
+                onClick={() => setPickedPeriod(p.key)}>{p.label}</button>
             ))}
           </div>
-          <small className="fin-payblock__hint">Kỳ nghĩa vụ tách khỏi ngày trả thật: trả hóa đơn tháng 7 vào đầu tháng 8 thì vẫn chọn kỳ tháng 7, báo cáo mới không lệch. Chọn kỳ cũ để bổ sung những kỳ đã trả trước khi khai hóa đơn.</small>
+          <small className="fin-payblock__hint">{pickedPeriod
+            ? 'Bạn đang tự chọn kỳ — đổi ngày trả không làm nó nhảy nữa.'
+            : 'Kỳ tự chạy theo ngày trả bên trên (mốc kỳ gần ngày đó nhất), nên lùi ngày về lúc trả thật là kỳ tự đúng. Bấm một kỳ khác nếu muốn tự quyết.'}</small>
         </div>
       )}
 
@@ -794,7 +837,10 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
         return (
           <RuleCard key={b.id} tone={state.tone} off={!b.enabled} categoryId={b.category_id} cats={fin.cats}
             icon={b.icon || null} iconColor={catInfo(b.category_id, fin.cats).color}
-            title={b.name} badge={b.term_total ? `${b.term_done || 0}/${b.term_total}` : null}
+            title={b.name} badge={[
+              everyOf(b) > 1 ? <CycleBadge bill={b} /> : null,
+              b.term_total ? `${b.term_done || 0}/${b.term_total}` : null,
+            ]}
             meta={[b.provider, b.customer_code, cycleLabel(b),
               cyc.thisMonth ? null
                 : `${cyc.days < 0 ? 'kỳ' : 'kỳ sau'} ${cyc.period.slice(5)}/${cyc.period.slice(0, 4)}`]
@@ -834,6 +880,7 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
               </div>
             )}
             {payId === b.id && <PayBlock fin={fin} tasks={tasks} allowSource dueDay={b.due_day} periods={periodsFor(b)}
+              periodForDate={(date) => billPeriodForDate(b, date)}
               defaultAmount={estimate || ''} onCancel={() => setPayId(null)} onPay={(payload) => pay(b, payload)}
               note={b.amount_mode === 'ask'
                 ? 'Số điền sẵn là mức trung bình 3 kỳ gần nhất — sửa lại theo hóa đơn thật trước khi xác nhận.'
