@@ -96,10 +96,15 @@ export function shiftMonth(refStr, months) {
  * lấy theo `due_day` — ngày cố định thắng ngày bắt đầu.
  *
  * Tháng này đúng kỳ → `thisMonth: true` và `days` ÂM khi đã quá hạn (màn Hóa đơn
- * dựa vào đó để tô đỏ). Tháng này không phải kỳ → nhảy tới kỳ gần nhất phía trước,
- * `days` luôn dương.
+ * dựa vào đó để tô đỏ). Tháng này không phải kỳ (chỉ xảy ra khi `every > 1`) → BÁM
+ * LẠI kỳ vừa qua nếu nó chưa trả và chưa bỏ, chỉ khi kỳ đó xong mới nhảy tới kỳ
+ * kế. Không có bước bám này thì một kỳ quý bị lỡ sẽ biến mất khỏi màn hình vào
+ * đúng tháng sau đó — app im lặng quên một khoản nợ thật.
+ *
+ * @param isSettled — (period) => đã trả hoặc đã bỏ kỳ. Dựng bằng `billSettled()`.
+ *   Bỏ trống thì luôn nhảy tới kỳ kế (dùng cho chỗ chỉ cần biết lịch, không cần trạng thái).
  */
-export function billCycle(bill, refStr) {
+export function billCycle(bill, refStr, isSettled) {
   const due = dueDateInMonth(bill.due_day, refStr);
   if (due == null) return null;
   const at = (d) => ({ period: d.slice(0, 7), due: d, days: daysInclusive(refStr, d) - 1,
@@ -111,8 +116,20 @@ export function billCycle(bill, refStr) {
   const anchor = parseYmd(bill.anchor_date), ref = parseYmd(refStr);
   const diff = (ref.getFullYear() - anchor.getFullYear()) * 12 + (ref.getMonth() - anchor.getMonth());
   if (diff >= 0 && diff % every === 0) return at(due);
+
+  if (diff > 0 && isSettled) {
+    const previous = at(dueDateInMonth(bill.due_day, shiftMonth(refStr, -(diff % every))));
+    if (!isSettled(previous.period)) return previous;
+  }
   const ahead = diff < 0 ? -diff : every - (diff % every);
   return at(dueDateInMonth(bill.due_day, shiftMonth(refStr, ahead)));
+}
+
+/** Kỳ đã xong = đã ghi giao dịch cho kỳ đó, hoặc đã bấm bỏ kỳ. */
+export function billSettled(bill, txs) {
+  const skipped = bill.skipped_periods || [];
+  return (period) => skipped.includes(period)
+    || txs.some(t => t.bill_id === bill.id && t.bill_period === period);
 }
 
 const VN_MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',

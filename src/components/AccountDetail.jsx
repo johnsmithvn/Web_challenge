@@ -34,6 +34,7 @@ const { templates: TEMPLATES, authKinds: AUTH_KINDS } = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
 const AUTH_KIND_LIST = Object.entries(AUTH_KINDS).map(([value, v]) => ({ value, ...v }));
+const CARD_BRANDS = ['Visa', 'Mastercard', 'JCB', 'American Express', 'UnionPay', 'Napas', 'Discover'];
 
 const clone = (x) => structuredClone(x);
 
@@ -733,20 +734,29 @@ function EditValue({ field: f, idx, items, ownerId, patch }) {
   const type = sensitive && !showSensitive
     ? 'password'
     : f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text';
+  // Field `Brand` của template card: gợi ý tổ chức thẻ qua <datalist> native —
+  // chọn từ list nhưng vẫn gõ được brand ngoài list, khác <select> đóng cứng.
+  const suggest = f.label === 'Brand' && f.type === 'text';
   return (
     <div className="acc-editvalue">
       <input
         className="acc-input" type={type}
         value={f.value}
         onChange={(e) => patch((d) => { d.fields[idx].value = e.target.value; })}
-        placeholder={placeholderFor(f.type)}
+        placeholder={suggest ? 'Visa, Mastercard …' : placeholderFor(f.type)}
         aria-label="Field value"
+        list={suggest ? 'acc-brands' : undefined}
         inputMode={f.type === 'phone' ? 'tel' : f.type === 'url' ? 'url' : f.type === 'email' ? 'email' : undefined}
         autoComplete={sensitive ? 'new-password' : undefined}
         autoCorrect={sensitive ? 'off' : undefined}
         autoCapitalize={sensitive ? 'none' : undefined}
         spellCheck={sensitive ? false : undefined}
       />
+      {suggest && (
+        <datalist id="acc-brands">
+          {CARD_BRANDS.map((b) => <option key={b} value={b} />)}
+        </datalist>
+      )}
       {sensitive && (
         <button type="button" className="acc-act" onClick={() => setShowSensitive((value) => !value)}>
           {showSensitive ? 'Hide' : 'Reveal'}

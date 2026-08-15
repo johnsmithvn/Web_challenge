@@ -770,7 +770,14 @@ footer (Cancel / Save). Tabs and chips use purple-alpha tints
 `repeat(7, 1fr)` with `aspect-ratio: 1` cells at `--radius-sm`; today is
 `#ef4444` with a `4px` dot; selected is `rgba(139,92,246,0.25)` +
 `1px rgba(139,92,246,0.4)` + `#c4b5fd`. Save is disabled at `opacity: 0.4`
-and brightens through `--active` and `:hover`.
+and brightens through `--active` and `:hover`. Prop `max` (yyyy-MM-dd) khoá ngày
+sau mốc đó: cell và shortcut vượt mốc dùng `:disabled` — `opacity: 0.3`,
+`cursor: not-allowed`, không đổi nền khi hover.
+
+Trong Finance, mọi ô ngày đi qua `DateField` (`.fin-datefield`, `parts.jsx`):
+nút `.fin-input` căn trái có icon lịch, hiện **dd/mm/yyyy** qua `formatDate`, mở
+popover neo `top: 100%`. Không dùng `<input type="date">` ở module này — định
+dạng của nó do ngôn ngữ trình duyệt quyết định nên máy tiếng Anh ra mm/dd/yyyy.
 Below 520px it becomes a fixed bottom sheet: full width, top corners only,
 `max-height: 70vh`, shortcuts hidden, footer padded with
 `max(0.5rem, env(safe-area-inset-bottom))`.

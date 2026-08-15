@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { cardStatementSummary, nextAnnualFee, billCycle, addDaysStr } from '../utils/financeLogic';
+import { cardStatementSummary, nextAnnualFee, billCycle, billSettled, addDaysStr } from '../utils/financeLogic';
 import { toDateStr } from '../utils/dateUtils';
 import AppIcon from './AppIcon';
 import '../styles/widgets.css';
@@ -38,10 +38,10 @@ export default function SubAlert() {
         const list = [];
         for (const b of bills.data || []) {
           if (!b.enabled || b.finished_at) continue;
-          const cyc = billCycle(b, today);
+          const settled = billSettled(b, paid);
+          const cyc = billCycle(b, today, settled);
           if (cyc == null || cyc.days > 7) continue;   // kỳ còn xa (hóa đơn quý/năm) thì chưa nhắc
-          if ((b.skipped_periods || []).includes(cyc.period)) continue;
-          if (paid.some(t => t.bill_id === b.id && t.bill_period === cyc.period)) continue;
+          if (settled(cyc.period)) continue;
           list.push({ key: `b${b.name}`, icon: 'receipt', name: b.name, days: cyc.days });
         }
         for (const c of cards.data || []) {

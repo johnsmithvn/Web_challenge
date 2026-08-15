@@ -13,7 +13,7 @@ import {
   deriveNecessity, periodTotals, comparePeriods, matchCategory, budgetBreakdown,
   cardCycle, cardBalance, cardStatementSummary, loanSchedule, fundBalance, spendingRhythm, listPeriodOptions,
   suggestedDailySpend, maturityWarn, groupByDate, daysInclusive, currentMonthPeriod, periodFromKey, billAmountEstimate,
-  dueDateInMonth, daysUntilDue, nextAnnualFee, nextDueDate, billCycle,
+  dueDateInMonth, daysUntilDue, nextAnnualFee, nextDueDate, billCycle, billSettled,
 } from '../utils/financeLogic.js';
 
 // Stub cats tối giản (không import JSON để chạy được bằng node).
@@ -272,6 +272,26 @@ assert.equal(billCycle({ due_day: 10, anchor_date: '2026-03-10', rrule: { every:
   '2027-03-10', 'theo năm');
 // every > 1 mà thiếu ngày bắt đầu thì coi như hằng tháng, không được trả null/NaN.
 assert.equal(billCycle({ due_day: 5, rrule: { every: 3 } }, '2026-08-13').thisMonth, true);
+
+// Kỳ vừa qua CHƯA trả thì phải bám lại nó, không được nhảy tới kỳ kế — nếu nhảy thì
+// một kỳ quý bị lỡ biến mất khỏi màn hình ngay tháng sau đó.
+const missed = billCycle(q, '2026-09-13', () => false);
+assert.equal(missed.period, '2026-08', 'kỳ tháng 8 chưa trả → vẫn là kỳ đang tính');
+assert.ok(missed.days < 0, 'và phải báo quá hạn');
+assert.equal(missed.thisMonth, false);
+assert.equal(billCycle(q, '2026-09-13', p => p === '2026-08').period, '2026-11',
+  'kỳ cũ xong rồi mới nhảy tới kỳ kế');
+assert.equal(billCycle(q, '2026-09-13').period, '2026-11',
+  'không truyền isSettled thì giữ nguyên hành vi cũ');
+// Bám lại chỉ áp cho kỳ ĐÃ QUA: mốc nằm ở tương lai thì không có kỳ nào để bám.
+assert.equal(billCycle({ due_day: 20, anchor_date: '2026-10-20', rrule: { every: 3 } }, '2026-08-13', () => false).due,
+  '2026-10-20');
+
+const settled = billSettled({ id: 'b1', skipped_periods: ['2026-05'] },
+  [{ bill_id: 'b1', bill_period: '2026-08' }, { bill_id: 'b2', bill_period: '2026-11' }]);
+assert.equal(settled('2026-08'), true, 'đã ghi giao dịch');
+assert.equal(settled('2026-05'), true, 'đã bỏ kỳ');
+assert.equal(settled('2026-11'), false, 'giao dịch của hóa đơn khác không tính');
 console.log('billCycle check: OK');
 
 console.log('\n✅ financeLogic — tất cả self-check PASS');

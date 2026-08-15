@@ -3,7 +3,8 @@ import { groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from
 import { useUserTasks } from '../../hooks/useUserTasks';
 import {
   billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule,
-  currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee, billCycle,
+  currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
+  billCycle, billSettled,
 } from '../../utils/financeLogic';
 import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField } from './parts';
 import AppIcon from '../AppIcon';
@@ -179,10 +180,16 @@ export default function RecurringScreen({ fin, nav }) {
   const [draft, setDraft] = useState(null);
   const segMeta = SEGMENTS.find(s => s.value === seg);
   const period = fin.today.slice(0, 7);
-  const unpaidBills = fin.bills.filter(bill => bill.enabled && !bill.finished_at
-    && !(bill.skipped_periods || []).includes(period)
-    && !fin.transactions.some(tx => tx.bill_id === bill.id && tx.bill_period === period));
-  const overdueBills = unpaidBills.filter(bill => daysUntilDue(bill.due_day, fin.today) < 0);
+  // "Còn phải trả" = kỳ rơi vào tháng này + mọi kỳ đã quá hạn. Hóa đơn quý đến hạn
+  // tháng 10 không phải tiền của tháng 8; nhưng kỳ quý lỡ từ tháng 7 thì vẫn là nợ.
+  const cycleOf = (bill) => billCycle(bill, fin.today, billSettled(bill, fin.transactions));
+  const unpaidBills = fin.bills.filter(bill => {
+    if (!bill.enabled || bill.finished_at) return false;
+    const cyc = cycleOf(bill);
+    if (!cyc || (!cyc.thisMonth && cyc.days >= 0)) return false;
+    return !billSettled(bill, fin.transactions)(cyc.period);
+  });
+  const overdueBills = unpaidBills.filter(bill => cycleOf(bill).days < 0);
   const billTotal = unpaidBills.reduce((sum, bill) => sum + billAmountEstimate(bill, fin.transactions), 0);
   const overdueTotal = overdueBills.reduce((sum, bill) => sum + billAmountEstimate(bill, fin.transactions), 0);
   const [year, month] = period.split('-');
@@ -687,9 +694,11 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
   const [editId, setEditId] = useState(null);   // đang sửa
   const [noteFocus, setNoteFocus] = useState(false); // mở form sửa từ link "Thêm ghi chú"
   const [payId, setPayId] = useState(null);     // mỗi lúc chỉ một khối trả
-  // Kỳ KHÔNG phải lúc nào cũng là tháng đang chạy: hóa đơn 3 tháng/lần ở tháng
-  // không tới lượt thì kỳ của nó nằm phía trước. `billCycle` là chỗ duy nhất biết.
-  const periodOf = (bill) => billCycle(bill, fin.today).period;
+  // Kỳ KHÔNG phải lúc nào cũng là tháng đang chạy: hóa đơn 3 tháng/lần ở tháng không
+  // tới lượt thì kỳ của nó nằm phía trước — hoặc phía sau nếu kỳ vừa rồi chưa trả.
+  // `billCycle` là chỗ duy nhất biết, và nó cần biết kỳ nào đã xong mới quyết được.
+  const cycleOf = (bill) => billCycle(bill, fin.today, billSettled(bill, fin.transactions));
+  const periodOf = (bill) => cycleOf(bill).period;
 
   const pay = async (bill, payload) => {
     const tx = await fin.payBill(bill, { ...payload, period: payload.period || periodOf(bill) });
@@ -755,7 +764,7 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
       {active.length === 0 && <RulesEmpty icon="receipt" title="Chưa có hóa đơn"
         description="Thêm hóa đơn để theo dõi ngày đến hạn và lịch sử thanh toán." />}
       {active.map(b => {
-        const cyc = billCycle(b, fin.today);
+        const cyc = cycleOf(b);
         const d = cyc.days;
         const paidTx = fin.transactions.find(t => t.bill_id === b.id && t.bill_period === cyc.period);
         const paid = Boolean(paidTx);
@@ -774,7 +783,9 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
             icon={b.icon || null} iconColor={catInfo(b.category_id, fin.cats).color}
             title={b.name} badge={b.term_total ? `${b.term_done || 0}/${b.term_total}` : null}
             meta={[b.provider, b.customer_code, cycleLabel(b),
-              cyc.thisMonth ? null : `kỳ sau ${cyc.period.slice(5)}/${cyc.period.slice(0, 4)}`].filter(Boolean).join(' · ')}
+              cyc.thisMonth ? null
+                : `${cyc.days < 0 ? 'kỳ' : 'kỳ sau'} ${cyc.period.slice(5)}/${cyc.period.slice(0, 4)}`]
+              .filter(Boolean).join(' · ')}
             amount={b.amount_mode === 'ask' ? (estimate ? `~ ${money(estimate)}` : 'hỏi mỗi kỳ') : money(b.amount)}
             state={state}
             onOpen={() => setOpenId(openId === b.id ? null : b.id)}
@@ -1011,7 +1022,7 @@ function LoansList({ fin, nav, tasks }) {
                 <AppIcon name={principalDue ? 'warning' : 'calendar'} size={15} weight="fill" />
                 <span>{principalDue
                   ? `Đã tới ngày tất toán gốc ${l.due_at} — ${money(sch.principalDue)} chưa ghi.`
-                  : `Gốc ${money(sch.principalDue)} tất toán một lần vào ${l.due_at}.`}</span>
+                  : `Gốc ${money(sch.principalDue)} tất toán một lần vào ${dmy(l.due_at)}.`}</span>
               </div>
             )}
 

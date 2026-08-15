@@ -14,7 +14,30 @@
     rác. Tháng không tới lượt thì dòng ghi "kỳ sau 11/2026", Nhập nhanh không liệt kê, danh sách kỳ cũ
     trong khối trả lùi theo đúng chu kỳ (hóa đơn quý không liệt kê 6 tháng liền).
 
+### Changed
+- **Ô `Brand` của thẻ tín dụng (Vault) gợi ý sẵn tổ chức thẻ.** `<datalist>` native trên `.acc-input`
+  (Visa, Mastercard, JCB, American Express, UnionPay, Napas, Discover) — click là chọn, nhưng vẫn gõ
+  tay được brand ngoài danh sách nên value cũ không mất. Không thêm field type mới.
+- **Mọi ô ngày trong Finance luôn hiện dd/mm/yyyy.** 13 chỗ dùng `<input type="date">` — mà định dạng
+  hiển thị của control này do **ngôn ngữ trình duyệt** quyết định (Chrome tiếng Anh ra `07/25/2027`),
+  không ép được bằng HTML/CSS/JS. Thay bằng `DateField` (`parts.jsx`) bọc `DatePickerPopover` có sẵn,
+  đúng RULES.md §5. `DatePickerPopover` nhận thêm prop `max` để thay attribute `max` của native input
+  (ngày trả / ngày đưa tiền vẫn không chọn được tương lai). Ngày trong danh sách khoản lớn nhất và
+  lịch sử kỳ cũng đổi từ `2026-08-15` sang `15/08/2026`.
+
 ### Fixed
+- **Kỳ quý/năm bị lỡ thì biến mất khỏi màn hình.** `billCycle` nhảy thẳng tới kỳ kế mỗi khi tháng đang
+  chạy không phải tháng kỳ, nên hóa đơn quý đến hạn 25/07 mà quên trả thì sang 01/08 là mất tăm — không
+  quá hạn, không nằm trong tổng, không ai nhắc, tới tận 25/10 mới hiện lại. Giờ nó **bám lại kỳ vừa qua
+  khi kỳ đó chưa trả và chưa bỏ** (`billCycle(bill, today, billSettled(bill, txs))`), chỉ khi kỳ đó xong
+  mới nhảy tới. Dòng ghi `kỳ 07/2026` (quá hạn) thay vì `kỳ sau 10/2026`.
+- **Dải tổng "Tháng N còn phải trả" cộng cả hóa đơn không tới lượt.** Nó hỏi "có giao dịch nào kỳ
+  `2026-08` không" cho MỌI hóa đơn, nên hóa đơn quý có kỳ tháng 10 bị tính vào tháng 8. Giờ chỉ tính kỳ
+  rơi vào tháng đang xem **cộng** mọi kỳ đã quá hạn. Nhập nhanh và nút Bỏ qua ở đó cũng ghi đúng kỳ của
+  hóa đơn thay vì mặc định tháng đang chạy.
+- **Ô Số tiền của form hóa đơn chặn luôn nút Tạo.** `pattern="[0-9]*"` còn sót trong khi giá trị hiển
+  thị đã nhóm nghìn (`199.000`) → trình duyệt báo "Please match the requested format" và không submit.
+  11 ô tiền khác đã là `[0-9.]*` từ trước, chỉ ô này lệch.
 - **Sidebar "Sắp tới hạn" nhắc cả những khoản vừa trả xong.** `SubAlert` chỉ đọc `due_day` của hóa đơn
   và ngày đến hạn của thẻ, **không hề query `finance_transactions`** nên không biết kỳ này đã trả hay
   chưa — hóa đơn nước trả sáng nay vẫn nằm đó tới cuối tháng. Giờ widget đọc thêm giao dịch 90 ngày gần

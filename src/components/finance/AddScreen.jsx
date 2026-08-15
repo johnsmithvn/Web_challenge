@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
-import { matchCategory, deriveNecessity, currentMonthPeriod, cardBalance, billAmountEstimate, billCycle } from '../../utils/financeLogic';
+import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, NECESSITY_META, Segmented, TaskPicker, FinanceIcon, DateField,
 } from './parts';
@@ -96,8 +96,6 @@ export default function AddScreen({ fin, nav }) {
   const parsedAmount = parseCurrencyInput(amount);
   const autoNecessity = deriveNecessity(categoryId, subId, cats);
   const appliedNecessity = necessity || autoNecessity;
-  const currentMonth = currentMonthPeriod(fin.today);
-  const currentPeriodKey = currentMonth.from.slice(0, 7);
   const selectedGoal = fin.goals.find(goal => goal.id === savingGoalId);
   const selectedDeposit = fin.deposits.find(deposit => deposit.id === savingDepositId);
 
@@ -110,24 +108,16 @@ export default function AddScreen({ fin, nav }) {
   };
 
   const pendingBills = useMemo(() => {
-    const paidIds = new Set(fin.transactions
-      .filter(tx => tx.bill_period === currentPeriodKey && tx.bill_id)
-      .map(tx => tx.bill_id));
-    const todayDate = new Date(`${fin.today}T12:00:00`);
-    const lastDay = Number(currentMonth.to.slice(-2));
     return fin.bills
-      // Hóa đơn nhiều tháng một lần: tháng không tới lượt thì không phải việc của Nhập nhanh.
-      .filter(bill => bill.enabled && !bill.finished_at && !paidIds.has(bill.id)
-        && !(bill.skipped_periods || []).includes(currentPeriodKey)
-        && billCycle(bill, fin.today)?.thisMonth)
-      .map(bill => {
-        const day = Math.min(lastDay, Math.max(1, Number(bill.due_day) || 1));
-        const dueDate = `${currentPeriodKey}-${String(day).padStart(2, '0')}`;
-        const days = Math.round((new Date(`${dueDate}T12:00:00`) - todayDate) / 86400000);
-        return { ...bill, dueDate, days };
-      })
+      .filter(bill => bill.enabled && !bill.finished_at)
+      .map(bill => ({ bill, cyc: billCycle(bill, fin.today, billSettled(bill, fin.transactions)) }))
+      // Hóa đơn nhiều tháng một lần: tháng không tới lượt thì không phải việc của Nhập
+      // nhanh — trừ khi kỳ trước đó bị lỡ, lúc ấy nó là khoản quá hạn thật.
+      .filter(({ bill, cyc }) => cyc && (cyc.thisMonth || cyc.days < 0)
+        && !billSettled(bill, fin.transactions)(cyc.period))
+      .map(({ bill, cyc }) => ({ ...bill, dueDate: cyc.due, days: cyc.days, period: cyc.period }))
       .sort((a, b) => a.days - b.days);
-  }, [fin.transactions, fin.bills, currentPeriodKey, currentMonth.to, fin.today]);
+  }, [fin.transactions, fin.bills, fin.today]);
 
   const shortcuts = useMemo(() => {
     const defaults = cats.shortcutSeed
@@ -248,7 +238,8 @@ export default function AddScreen({ fin, nav }) {
   const payPendingBill = async (bill, rawAmount) => {
     const value = parseCurrencyInput(rawAmount);
     if (!value) return;
-    const tx = await fin.payBill(bill, { amount: value });
+    // Kỳ đi kèm dòng chờ (có thể là kỳ quý đã lỡ), KHÔNG mặc định là tháng đang chạy.
+    const tx = await fin.payBill(bill, { amount: value, period: bill.period });
     if (tx) nav.showToast(`Đã thanh toán ${bill.name} và cập nhật báo cáo`, { icon: 'checkCircle' });
   };
 
@@ -347,8 +338,8 @@ export default function AddScreen({ fin, nav }) {
               <PendingBillRow key={bill.id} bill={bill} estimate={estimateFor(bill.id)}
                 cats={cats} onPay={payPendingBill}
                 onDismiss={async () => {
-                  const skipped = await fin.skipBillPeriod(bill.id, currentPeriodKey);
-                  if (skipped) nav.showToast(`Đã bỏ qua ${bill.name} trong ${currentPeriodKey}`, { icon: 'calendar' });
+                  const skipped = await fin.skipBillPeriod(bill.id, bill.period);
+                  if (skipped) nav.showToast(`Đã bỏ qua ${bill.name} trong ${bill.period}`, { icon: 'calendar' });
                 }} />
             ))}
           </div>
