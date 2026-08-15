@@ -5,8 +5,10 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatVND } from '../../utils/currencyUtils';
+import { formatDate } from '../../utils/dateUtils';
 import CATS from '../../data/finance-categories.json';
 import AppIcon from '../AppIcon';
+import DatePickerPopover from '../DatePickerPopover';
 
 export { formatVND };
 export const money = (n) => formatVND(Math.round(n || 0));
@@ -105,6 +107,34 @@ export function Toggle({ on, onChange, label }) {
       <span className="fin-toggle__track"><span className="fin-toggle__knob" /></span>
       {label && <span className="fin-toggle__label">{label}</span>}
     </button>
+  );
+}
+
+/**
+ * Ô chọn ngày dùng chung cho Finance — LUÔN hiện dd/mm/yyyy.
+ *
+ * `<input type="date">` hiển thị theo NGÔN NGỮ TRÌNH DUYỆT (máy để tiếng Anh ra
+ * mm/dd/yyyy) và không có cách nào ép định dạng bằng HTML/CSS/JS, nên phải bỏ hẳn
+ * control gốc. Bên trong vẫn là `DatePickerPopover` có sẵn của app (RULES.md §5),
+ * chỉ bọc thêm nút hiển thị để mỗi call site vẫn gọn một dòng.
+ *
+ * `max` thay cho attribute `max` của native input: chặn chọn ngày tương lai.
+ */
+export function DateField({ value, onChange, max, placeholder = 'Chọn ngày', className = 'fin-input' }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="fin-datefield">
+      <button type="button" className={`${className} fin-datefield__btn${value ? '' : ' fin-datefield__btn--empty'}`}
+        onClick={() => setOpen(o => !o)}>
+        <AppIcon name="calendar" size={14} />
+        <span>{value ? formatDate(value) : placeholder}</span>
+      </button>
+      {open && (
+        <DatePickerPopover value={value || ''} hideTime max={max}
+          onChange={onChange} onClose={() => setOpen(false)}
+          style={{ top: '100%', left: 0, marginTop: '4px' }} />
+      )}
+    </span>
   );
 }
 
