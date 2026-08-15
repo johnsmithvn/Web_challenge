@@ -13,6 +13,7 @@ import CustomSelect from '../components/CustomSelect';
 import AppIcon from '../components/AppIcon';
 import { parseCurrencyInput } from '../utils/currencyUtils';
 import { toDateStr } from '../utils/dateUtils';
+import SkeletonList from '../components/SkeletonList';
 import '../styles/inbox.css';
 import '../styles/collect.css';
 
@@ -411,7 +412,7 @@ export default function InboxPage() {
 
       {/* Items list */}
       {isLoading ? (
-        <div className="inbox-page__loading">Đang tải...</div>
+        <SkeletonList rows={5} label="Đang tải hộp thư" />
       ) : (() => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);

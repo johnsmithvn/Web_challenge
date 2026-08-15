@@ -12,6 +12,7 @@ import { toDateStr } from '../utils/dateUtils';
 import CustomSelect from '../components/CustomSelect';
 import GenericModal from '../components/GenericModal';
 import AppIcon from '../components/AppIcon';
+import SkeletonList from '../components/SkeletonList';
 import '../styles/incubator.css';
 import '../styles/collect.css';
 
@@ -473,7 +474,7 @@ export default function IncubatorPage() {
 
             {/* Cards */}
             {isLoading ? (
-              <div className="incubator-empty"><AppIcon name="clock" size={18} /> Đang tải...</div>
+              <SkeletonList rows={4} label="Đang tải dự định" />
             ) : intentions.length === 0 ? (
               <div className="incubator-empty">
                 <div className="incubator-empty__icon"><AppIcon name="egg" size={34} weight="duotone" /></div>

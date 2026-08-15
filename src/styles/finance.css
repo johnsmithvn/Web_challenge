@@ -149,10 +149,14 @@
 .fin-input:disabled { opacity: .5; cursor: not-allowed; }
 .fin-input::placeholder { color: var(--n-txt3); }
 .fin-input--sm { padding: 6px 8px; font-size: 12.5px; width: auto; }
-/* Ô chọn ngày: nút hiển thị dd/mm/yyyy + popover lịch neo ngay dưới nút. */
+/* Ô ngày: gõ thẳng dd/mm/yyyy, nút lịch bên phải mở popover (lật lên khi dưới hết chỗ). */
 .fin-datefield { position: relative; display: block; }
-.fin-datefield__btn { display: flex; align-items: center; gap: 7px; text-align: left; cursor: pointer; }
-.fin-datefield__btn--empty { color: var(--n-txt3); }
+.fin-datefield__box { display: flex; align-items: center; gap: 4px; padding-right: 4px; }
+.fin-datefield__box:focus-within { border-color: var(--n-accent); box-shadow: 0 0 0 3px var(--n-accent-soft); }
+.fin-datefield__text { flex: 1; min-width: 0; background: none; border: none; outline: none; color: inherit; font: inherit; padding: 0; }
+.fin-datefield__text::placeholder { color: var(--n-txt3); }
+.fin-datefield__pick { display: flex; align-items: center; background: none; border: none; padding: 4px; border-radius: 6px; color: var(--n-txt3); cursor: pointer; }
+.fin-datefield__pick:hover { color: var(--n-txt); background: rgba(233,233,237,0.08); }
 .fin-label { display: block; color: var(--n-txt2); font-size: 12px; margin: 10px 0 4px; }
 .fin-form { display: flex; flex-direction: column; }
 .fin-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

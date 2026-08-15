@@ -194,18 +194,40 @@ export function useFinance({ autoFetch = true } = {}) {
       const { data, error } = await supabase.from('finance_transactions').insert(row).select().single();
       if (error) throw error;
       setTransactions(prev => [data, ...prev]);
+      // Giao dịch gắn rule thì tiến độ rule vừa bị trigger tính lại — kéo về cho khớp.
+      if (data.bill_id || data.loan_id || data.income_rule_id) await fetchAll();
       return data;
     } catch (err) {
       logger.warn('[useFinance] addTransaction:', err.message);
       setError(err.message);
       return null;
     }
-  }, [enabled, userId, today, cats]);
+  }, [enabled, userId, today, cats, fetchAll]);
 
-  const updateTransaction = useCallback((id, updates) =>
-    updateRow('finance_transactions', setTransactions, id, updates), [updateRow]);
-  const deleteTransaction = useCallback((id) =>
-    deleteRow('finance_transactions', setTransactions, id), [deleteRow]);
+  /**
+   * Tiến độ của hóa đơn / khoản vay / thu định kỳ (`term_done`, `finished_at`,
+   * `received_periods`, `done`) KHÔNG do client tính — trigger `finance_transaction_
+   * progress_sync` đếm lại từ giao dịch sau mỗi insert/update/delete. Nên sửa hay xóa
+   * một giao dịch xong là phải kéo rule về, không thì dòng hóa đơn vẫn hiện "kỳ 4/6 ·
+   * còn 5.028.000đ" trong khi lịch sử đã trống — số cũ đứng đó tới lúc F5.
+   *
+   * RPC thanh toán không cần đoạn này: `callFinanceRpc` đã `fetchAll()` sẵn.
+   */
+  const ruleLinked = (tx) => Boolean(tx && (tx.bill_id || tx.loan_id || tx.income_rule_id));
+
+  const updateTransaction = useCallback(async (id, updates) => {
+    const before = transactions.find(t => t.id === id);
+    const ok = await updateRow('finance_transactions', setTransactions, id, updates);
+    if (ok && (ruleLinked(before) || ruleLinked(updates))) await fetchAll();
+    return ok;
+  }, [transactions, updateRow, fetchAll]);
+
+  const deleteTransaction = useCallback(async (id) => {
+    const before = transactions.find(t => t.id === id);
+    const ok = await deleteRow('finance_transactions', setTransactions, id);
+    if (ok && ruleLinked(before)) await fetchAll();
+    return ok;
+  }, [transactions, deleteRow, fetchAll]);
 
   // ── CRUD 8 bảng phụ (thin wrappers) ───────────────────────────────────────
   const addBill    = useCallback((r) => insertRow('finance_bills', setBills, r), [insertRow]);

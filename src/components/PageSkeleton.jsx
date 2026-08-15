@@ -1,46 +1,16 @@
+import SkeletonList from './SkeletonList';
+
 /**
- * PageSkeleton — lightweight loading placeholder for lazy-loaded pages.
- * Shows a shimmer skeleton matching the general page layout.
+ * PageSkeleton — khung chờ cho page lazy-load (Suspense fallback ở App.jsx).
+ * Dùng chung `SkeletonList` với các màn list để hai trạng thái chờ nối tiếp nhau
+ * không đổi kiểu giữa chừng: chờ tải code rồi chờ tải data vẫn là một ngôn ngữ.
  */
 export default function PageSkeleton() {
   return (
     <div className="container" style={{ paddingTop: '6rem', paddingBottom: '4rem' }}>
       <div className="page-inner" style={{ maxWidth: 900, margin: '0 auto' }}>
-        {/* Title shimmer */}
-        <div style={{
-          height: 32, width: '40%', borderRadius: 8,
-          background: 'rgba(255,255,255,0.06)',
-          animation: 'skeleton-shimmer 1.4s infinite',
-          marginBottom: '1.5rem',
-        }} />
-        {/* Cards */}
-        {[1, 2, 3].map(i => (
-          <div key={i} className="card" style={{
-            padding: '1.5rem',
-            marginBottom: '1rem',
-            animation: 'skeleton-shimmer 1.4s infinite',
-            animationDelay: `${i * 0.1}s`,
-          }}>
-            <div style={{
-              height: 16, width: '60%', borderRadius: 6,
-              background: 'rgba(255,255,255,0.06)',
-              marginBottom: '0.75rem',
-            }} />
-            <div style={{
-              height: 12, width: '80%', borderRadius: 6,
-              background: 'rgba(255,255,255,0.04)',
-            }} />
-          </div>
-        ))}
+        <SkeletonList heading rows={4} gap="10px" label="Đang tải trang" />
       </div>
-
-      <style>{`
-        @keyframes skeleton-shimmer {
-          0%   { opacity: 1; }
-          50%  { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }

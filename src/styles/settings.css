@@ -192,13 +192,7 @@
   cursor: not-allowed;
 }
 
-/* ── Loading / Empty ───────────────────────────────────────── */
-.settings-loading {
-  text-align: center;
-  padding: 2rem;
-  color: var(--text-secondary, #94a3b8);
-}
-
+/* ── Empty ─────────────────────────────────────────────────── */
 .settings-empty {
   text-align: center;
   padding: 2.5rem 1rem;

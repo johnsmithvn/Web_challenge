@@ -7,7 +7,7 @@
  * fail ngay nếu ai đó "dọn" hàm này thành toISOString.
  */
 import assert from 'node:assert/strict';
-import { toDateStr, formatDate, formatDateTime } from './dateUtils.js';
+import { toDateStr, formatDate, formatDateTime, parseDmy } from './dateUtils.js';
 
 /* toDateStr — local, không UTC */
 assert.equal(toDateStr(new Date(2026, 6, 28)), '2026-07-28');       // tháng 0-index
@@ -29,5 +29,20 @@ assert.equal(formatDateTime(undefined), '—');
 assert.match(formatDate('2026-07-28T10:00:00Z'), /^\d{2}\/\d{2}\/\d{4}$/);
 // formatDateTime phải giữ được giờ:phút (dùng toLocaleString, không phải toLocaleDateString)
 assert.match(formatDateTime('2026-07-28T10:00:00Z'), /\d{2}:\d{2}/);
+
+/* parseDmy — ô ngày cho gõ tay, phải từ chối ngày không có thật */
+assert.equal(parseDmy('25/07/2026'), '2026-07-25');
+assert.equal(parseDmy('5/7/2026'), '2026-07-05', 'chấp nhận một chữ số');
+assert.equal(parseDmy(' 25/07/2026 '), '2026-07-25', 'bỏ khoảng trắng thừa');
+assert.equal(parseDmy('29/02/2024'), '2024-02-29', 'năm nhuận có 29/02');
+assert.equal(parseDmy('29/02/2026'), null, 'năm thường thì không — new Date tự tràn sang 01/03');
+assert.equal(parseDmy('31/04/2026'), null, 'tháng 4 không có ngày 31');
+assert.equal(parseDmy('00/07/2026'), null);
+assert.equal(parseDmy('25/13/2026'), null);
+assert.equal(parseDmy('2026-07-25'), null, 'chỉ nhận dd/mm/yyyy');
+assert.equal(parseDmy('25/07/26'), null, 'năm phải đủ 4 chữ số');
+assert.equal(parseDmy(''), null);
+assert.equal(parseDmy(null), null);
+assert.equal(parseDmy(formatDate('2026-07-25T00:00:00')), '2026-07-25', 'khứ hồi với formatDate');
 
 console.log('dateUtils check: OK');

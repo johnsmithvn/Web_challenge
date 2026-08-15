@@ -8,6 +8,7 @@ import {
 } from '../../utils/financeLogic';
 import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField } from './parts';
 import AppIcon from '../AppIcon';
+import SkeletonList from '../SkeletonList';
 
 const SEGMENTS = [
   { value: 'out',  label: 'Phải trả',   addLabel: 'Thêm hóa đơn', editLabel: 'Sửa hóa đơn', createLabel: 'Tạo hóa đơn' },
@@ -270,12 +271,16 @@ export default function RecurringScreen({ fin, nav }) {
       {adding && <RuleForm seg={seg} fin={fin} nav={nav} initial={draft} onDirty={setDirty}
         onDone={(saved) => (saved ? discardAddForm() : closeAddForm())} />}
 
-      {seg === 'out'  && <BillsList fin={fin} nav={nav} tasks={pendingTasks}
-        onDuplicate={(bill) => { setDraft(billDraft(bill)); setAdding(true); }} />}
-      {seg === 'in'   && <IncomeList fin={fin} nav={nav} tasks={pendingTasks} />}
-      {seg === 'loan' && <LoansList fin={fin} nav={nav} tasks={pendingTasks} />}
-      {seg === 'card' && <CardsList fin={fin} nav={nav} tasks={pendingTasks} />}
-      {seg === 'lend' && <LendsList fin={fin} nav={nav} tasks={pendingTasks} />}
+      {/* Tải xong mới biết có bao nhiêu dòng; chưa xong mà hiện "Chưa có hóa đơn nào"
+          thì user vừa đọc xong câu đó là list bật ra đè lên. */}
+      {fin.isLoading && fin.bills.length === 0 ? <SkeletonList rows={5} label="Đang tải nghĩa vụ" /> : <>
+        {seg === 'out'  && <BillsList fin={fin} nav={nav} tasks={pendingTasks}
+          onDuplicate={(bill) => { setDraft(billDraft(bill)); setAdding(true); }} />}
+        {seg === 'in'   && <IncomeList fin={fin} nav={nav} tasks={pendingTasks} />}
+        {seg === 'loan' && <LoansList fin={fin} nav={nav} tasks={pendingTasks} />}
+        {seg === 'card' && <CardsList fin={fin} nav={nav} tasks={pendingTasks} />}
+        {seg === 'lend' && <LendsList fin={fin} nav={nav} tasks={pendingTasks} />}
+      </>}
     </div>
   );
 }

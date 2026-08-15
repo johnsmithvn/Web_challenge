@@ -493,7 +493,7 @@ export default function AddScreen({ fin, nav }) {
             <div className="fin-date-choice">
               <button type="button" className={occurredAt === fin.today ? 'is-active' : ''} onClick={() => setOccurredAt(fin.today)}>Hôm nay</button>
               <button type="button" className={occurredAt === yesterday ? 'is-active' : ''} onClick={() => setOccurredAt(yesterday)}>Hôm qua</button>
-              <DateField value={occurredAt} onChange={setOccurredAt} max={fin.today} className="" />
+              <DateField value={occurredAt} onChange={setOccurredAt} max={fin.today} />
             </div>
           </section>
 

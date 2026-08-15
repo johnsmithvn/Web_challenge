@@ -14,6 +14,7 @@ import { toDateStr } from '../utils/dateUtils';
 import { PRIORITY_OPTIONS, WEEKDAYS } from '../utils/taskFields';
 import UI_STRINGS from '../data/ui-strings.json';
 import AppIcon from './AppIcon';
+import SkeletonList from './SkeletonList';
 import '../styles/tasks.css';
 
 const fmtDMY = (d) => new Date(d + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -825,11 +826,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
         </div>
       )}
 
-      {isLoading && (
-        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-          <AppIcon name="clock" size={15} /> Đang tải...
-        </div>
-      )}
+      {isLoading && <SkeletonList rows={4} gap="6px" label="Đang tải nhiệm vụ" />}
     </div>
 
       {/* ── Đã hoàn thành — KHUNG RIÊNG, nằm ngoài card danh sách ──
@@ -872,9 +869,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
               </span>
             </div>
 
-            {completedLoading && (
-              <div className="task-inline-status"><AppIcon name="clock" size={14} /> Đang tải...</div>
-            )}
+            {completedLoading && <SkeletonList rows={3} lines={1} gap="6px" label="Đang tải nhiệm vụ đã xong" />}
 
             {!completedLoading && completedList.length === 0 && (
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>

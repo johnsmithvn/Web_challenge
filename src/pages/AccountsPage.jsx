@@ -7,6 +7,7 @@ import { useConfirm } from '../components/ConfirmModal';
 import AccountDetail from '../components/AccountDetail';
 import AccountAvatar from '../components/AccountAvatar';
 import AppIcon from '../components/AppIcon';
+import SkeletonList from '../components/SkeletonList';
 import { matchesQuery, itemSubtitle, newId, relativeUpdated } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import '../styles/accounts.css';
@@ -311,7 +312,7 @@ export default function AccountsPage() {
           </div>
 
           {isLoading && items.length === 0 && (
-            <div className="acc-list__empty">Loading…</div>
+            <SkeletonList rows={6} lines={1} gap="4px" label="Đang tải tài khoản" />
           )}
 
           {!isLoading && items.length === 0 && (

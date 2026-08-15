@@ -26,7 +26,27 @@
     rác. Tháng không tới lượt thì dòng ghi "kỳ sau 11/2026", Nhập nhanh không liệt kê, danh sách kỳ cũ
     trong khối trả lùi theo đúng chu kỳ (hóa đơn quý không liệt kê 6 tháng liền).
 
+### Added
+- **`SkeletonList` — khung chờ dạng danh sách, áp cho toàn bộ màn list** (`src/components/SkeletonList.jsx`
+  + `src/styles/skeleton.css`). Trước đó Finance không hiện gì (trang trống rồi list bật ra), sáu màn
+  còn lại hiện đúng một dòng chữ "Đang tải…" — cả hai đều làm layout nhảy một cái khi data về.
+  - Dòng skeleton giữ **đúng chỗ** của dòng thật (icon 34px · hai dòng chữ · khối số bên phải), bề rộng
+    so le theo chu kỳ 3 để không thành khối chữ nhật đều tăm tắp.
+  - **Một** vệt sáng chạy ngang cả danh sách thay vì mỗi ô tự nhấp nháy — một layer animate, và mắt đọc
+    là "đang tải" chứ không phải "hỏng". Đảo màu ở light theme, `prefers-reduced-motion` tắt vệt sáng.
+  - Áp tại 11 chỗ: Hóa đơn · Giao dịch · Nhiệm vụ (cả khối đã hoàn thành) · Inbox · Knowledge · Ghi chú ·
+    Tài khoản · Incubator · Tag · Quote · `PageSkeleton` (Suspense của route lazy-load, viết lại để bỏ
+    inline style và thẻ `<style>` nhúng).
+  - **Đang tải thì không hiện empty state** — trước đây màn Giao dịch/Hóa đơn báo "chưa có gì" ngay cả
+    khi data đang trên đường về. Xóa luôn `.settings-loading`, `.inbox-page__loading`,
+    `.task-inline-status` đã thành CSS chết.
+
 ### Changed
+- **Ô ngày gõ tay được, và popover lật lên khi dưới hết chỗ.** Trước đó chỉ bấm chọn trong lịch (chậm
+  khi cần lùi vài tháng), và ô ngày nằm cuối trang thì popover mở xuống làm nút Lưu rơi ra ngoài vùng
+  cuộn — coi như không bấm được. Giờ ô nhận `dd/mm/yyyy` gõ thẳng (tự chèn `/`, `parseDmy()` từ chối
+  29/02 năm thường và 31/04 rồi trả ô về giá trị cũ khi rời ô), nút lịch nằm bên phải; popover đo chỗ
+  trống rồi mở lên hoặc xuống.
 - **Nói thẳng cơ chế "kỳ" trên giao diện** thay vì để user tự suy: chip `⟳ 3 tháng/lần` cạnh tên hóa
   đơn không chạy hằng tháng (hằng tháng cố tình không có chip — gắn cho mọi dòng thì chip vô nghĩa),
   hộp gập **"Kỳ được tính thế nào"** ở đầu tab Phải trả (4 ý: kỳ ≠ ngày trả · kỳ chạy theo ngày trả ·

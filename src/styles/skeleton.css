@@ -1,0 +1,88 @@
+/* ============================================================================
+   SKELETON — khung chờ dạng danh sách, dùng chung toàn app.
+
+   Nguyên tắc: skeleton phải giữ ĐÚNG CHỖ của nội dung sắp hiện (icon 34px, hai
+   dòng chữ, số tiền bên phải), không phải một cục xám chung chung. Sai chỗ thì
+   lúc data về mọi thứ nhảy một cái — đúng thứ khó chịu mà nó sinh ra để tránh.
+
+   Một vệt sáng chạy ngang CẢ danh sách (`.sk-list::after`) thay vì cho từng ô tự
+   nhấp nháy: một layer animate, mắt đọc là "đang tải" chứ không phải "hỏng".
+   ============================================================================ */
+
+.sk-list {
+  --sk-fill: rgba(255, 255, 255, 0.07);
+  --sk-glow: rgba(255, 255, 255, 0.055);
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: var(--sk-gap, 8px);
+}
+
+[data-theme="light"] .sk-list {
+  --sk-fill: rgba(15, 23, 42, 0.08);
+  --sk-glow: rgba(15, 23, 42, 0.05);
+}
+
+.sk-list::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 25%, var(--sk-glow) 50%, transparent 75%);
+  background-size: 220% 100%;
+  animation: sk-sweep 1.7s ease-in-out infinite;
+}
+
+@keyframes sk-sweep {
+  from { background-position: 130% 0; }
+  to   { background-position: -30% 0; }
+}
+
+/* Một dòng: [icon] [hai dòng chữ] [khối bên phải] — khớp bố cục dòng thật. */
+.sk-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 11px;
+  padding: var(--sk-row-pad, 11px 12px);
+  border: 1px solid var(--sk-border, rgba(255, 255, 255, 0.06));
+  border-radius: var(--sk-radius, 8px);
+}
+
+[data-theme="light"] .sk-row { --sk-border: rgba(15, 23, 42, 0.08); }
+
+/* Hai module có bảng màu riêng (Finance Nocturne, Vault Keyplate) — mượn đúng viền
+   của chúng để khung chờ không lệch tông so với dòng thật ngay bên dưới. */
+.finance-module .sk-row { --sk-border: var(--n-border); }
+.acc-vault .sk-row { --sk-border: rgba(255, 255, 255, 0.07); }
+
+.sk-row--plain { border: none; padding: 7px 0; }
+
+.sk-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--sk-fill);
+}
+
+.sk-lines { display: grid; gap: 7px; min-width: 0; }
+.sk-right { display: grid; gap: 7px; justify-items: end; }
+
+.sk-line {
+  height: 11px;
+  width: var(--w, 100%);
+  max-width: 100%;
+  border-radius: 5px;
+  background: var(--sk-fill);
+}
+
+.sk-line--title { height: 13px; }
+.sk-line--sm { height: 9px; }
+
+/* Tiêu đề trang: chỉ dùng cho skeleton toàn trang, không dùng trong dòng list. */
+.sk-heading { height: 22px; width: 36%; border-radius: 7px; background: var(--sk-fill); margin-bottom: 4px; }
+
+/* Không có data thì cũng không có gì để nhấp nháy: bỏ vệt sáng, giữ khung tĩnh. */
+@media (prefers-reduced-motion: reduce) {
+  .sk-list::after { animation: none; background: none; }
+}

@@ -58,6 +58,23 @@ export function formatDate(iso) {
 }
 
 /**
+ * "25/07/2026" → "2026-07-25". Chấp nhận cả "5/7/2026".
+ *
+ * Trả `null` khi chuỗi không phải một ngày CÓ THẬT — `new Date(2026, 1, 31)` tự tràn
+ * sang 03/03 chứ không báo lỗi, nên phải đối chiếu lại ba thành phần sau khi dựng.
+ * @param {string} str
+ * @returns {string|null} yyyy-MM-dd
+ */
+export function parseDmy(str) {
+  const parts = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(str ?? '').trim());
+  if (!parts) return null;
+  const day = Number(parts[1]), month = Number(parts[2]), year = Number(parts[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return toDateStr(date);
+}
+
+/**
  * Format ISO date to "dd/MM/yyyy, HH:mm"
  * @param {string} iso — ISO date string
  * @returns {string} e.g. "13/06/2026, 14:30"

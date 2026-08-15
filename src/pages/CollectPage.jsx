@@ -21,6 +21,7 @@ import { formatDate, formatDateTime } from '../utils/dateUtils';
 import MediaPreview from '../components/MediaPreview';
 import CustomSelect from '../components/CustomSelect';
 import AppIcon from '../components/AppIcon';
+import SkeletonList from '../components/SkeletonList';
 
 /* ── Constants ─────────────────────────────────────────────── */
 const TYPE_META = KNOWLEDGE_DATA.types.reduce((acc, t) => {
@@ -270,7 +271,7 @@ function SubNotesSection({ collectionId, notesHook }) {
         {notes.length > 0 && <span className="kb-subnotes__count">{notes.length}</span>}
       </div>
 
-      {isLoading && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Đang tải...</div>}
+      {isLoading && <SkeletonList rows={3} icon={false} right={false} gap="6px" label="Đang tải ghi chú" />}
 
       {notes.map(n => (
         <div key={n.id} className={`kb-subnote${editingId === n.id ? ' kb-subnote--editing' : ''}`}>
@@ -1345,7 +1346,7 @@ export default function CollectPage() {
 
           {/* List */}
           {isLoading ? (
-            <div className="kb-loading"><AppIcon name="clock" size={18} /> Đang tải...</div>
+            <SkeletonList rows={5} label="Đang tải kho kiến thức" />
           ) : filtered.length === 0 ? (
             <div className="kb-empty">
               <div className="kb-empty__icon"><AppIcon name={typeFilter === 'quote' ? 'quote' : 'brain'} size={34} weight="duotone" /></div>

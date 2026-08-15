@@ -756,6 +756,27 @@ Dropdown `.kb-sort-dropdown`: absolute under the trigger (`margin-top:
 `--active` → `--purple-light` at weight 600 with a `--purple` `✓`.
 Closes on outside `mousedown`.
 
+### SkeletonList — `.sk-*` (`skeleton.css`)
+
+Khung chờ dùng chung cho **mọi** màn list. Một dòng skeleton giữ đúng chỗ của dòng
+thật: ô icon `34px` bo `10px`, hai dòng chữ `13px`/`9px` bo `5px`, khối phải
+`68px`+`44px`. Bề rộng dòng chữ so le theo chu kỳ 3 (`62/38`, `48/54`, `70/30`) để
+khối skeleton không ra một hình chữ nhật đều tăm tắp.
+
+Hiệu ứng là **một** vệt sáng chạy ngang cả danh sách (`.sk-list::after`,
+`linear-gradient(100deg, …)` + `background-position` 1.7s), không phải mỗi ô tự
+nhấp nháy: một layer animate, và mắt đọc là "đang tải" chứ không phải "hỏng". Nền
+`--sk-fill` `rgba(255,255,255,0.07)`, đảo sang `rgba(15,23,42,0.08)` ở
+`[data-theme="light"]`. `prefers-reduced-motion` tắt vệt sáng, giữ khung tĩnh.
+
+Props: `rows` · `icon` · `lines` · `right` · `plain` (bỏ viền) · `heading` (thanh
+tiêu đề, chỉ dùng cho skeleton toàn trang) · `gap`. Container mang
+`role="status" aria-busy="true"` kèm `aria-label` mô tả đang tải cái gì.
+
+Luật: **đang tải thì không được hiện empty state**. Báo "chưa có gì" rồi một giây
+sau bung ra 20 dòng là kiểu nói dối gây mất niềm tin, và layout nhảy đúng lúc mắt
+vừa dừng lại đọc.
+
 ### DatePickerPopover — `.dp-*` (`datepicker.css`)
 
 Absolute popover, `380px` wide, `--bg-primary` fill, `1px
@@ -784,9 +805,14 @@ cho mọi dòng thì chip mất tác dụng phân biệt.
 `.fin-archived`; `<em>` bên trong không in nghiêng mà được dùng làm nhãn tên trường.
 
 Trong Finance, mọi ô ngày đi qua `DateField` (`.fin-datefield`, `parts.jsx`):
-nút `.fin-input` căn trái có icon lịch, hiện **dd/mm/yyyy** qua `formatDate`, mở
-popover neo `top: 100%`. Không dùng `<input type="date">` ở module này — định
-dạng của nó do ngôn ngữ trình duyệt quyết định nên máy tiếng Anh ra mm/dd/yyyy.
+khung `.fin-input` chứa ô chữ **gõ tay được** (mask `dd/mm/yyyy`, `parseDmy` từ
+chối ngày không có thật rồi trả ô về giá trị cũ khi blur) + nút lịch bên phải mở
+popover. Không dùng `<input type="date">` ở module này — định dạng của nó do ngôn
+ngữ trình duyệt quyết định nên máy tiếng Anh ra mm/dd/yyyy.
+
+Popover neo `top: 100%`, nhưng **lật lên `bottom: 100%`** khi khoảng trống dưới ô
+nhỏ hơn chiều cao popover (~430px) và phía trên đủ chỗ — ô ngày nằm cuối trang thì
+mở xuống sẽ đẩy nút Lưu ra ngoài vùng cuộn.
 Below 520px it becomes a fixed bottom sheet: full width, top corners only,
 `max-height: 70vh`, shortcuts hidden, footer padded with
 `max(0.5rem, env(safe-area-inset-bottom))`.

@@ -9,6 +9,7 @@ import {
   Quotes as QuoteIcon, ToggleLeft, ToggleRight, Coins,
 } from '@phosphor-icons/react';
 import AppIcon from '../components/AppIcon';
+import SkeletonList from '../components/SkeletonList';
 import { getUsdRate, getAutoK, setUsdRate, setAutoK } from '../utils/currencyUtils';
 import '../styles/settings.css';
 import { logger } from '../utils/logger';
@@ -255,7 +256,7 @@ function TagManagerSection({ user }) {
 
         {/* Tag list */}
         {isLoading ? (
-          <div className="settings-loading">⏳ Đang tải...</div>
+          <SkeletonList rows={4} lines={1} right={false} gap="6px" label="Đang tải tag" />
         ) : sortedTags.length === 0 ? (
           <div className="settings-empty">
             <Tag size={40} strokeWidth={1} />
@@ -624,7 +625,7 @@ function QuoteManagerSection() {
 
         {/* User quotes list */}
         {isLoading ? (
-          <div className="settings-loading">⏳ Đang tải...</div>
+          <SkeletonList rows={3} icon={false} right={false} label="Đang tải quote" />
         ) : userQuotes.length === 0 ? (
           <div className="settings-empty">
             <QuoteIcon size={40} strokeWidth={1} />

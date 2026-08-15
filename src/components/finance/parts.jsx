@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatVND } from '../../utils/currencyUtils';
-import { formatDate } from '../../utils/dateUtils';
+import { formatDate, parseDmy } from '../../utils/dateUtils';
 import CATS from '../../data/finance-categories.json';
 import AppIcon from '../AppIcon';
 import DatePickerPopover from '../DatePickerPopover';
@@ -120,19 +120,52 @@ export function Toggle({ on, onChange, label }) {
  *
  * `max` thay cho attribute `max` của native input: chặn chọn ngày tương lai.
  */
-export function DateField({ value, onChange, max, placeholder = 'Chọn ngày', className = 'fin-input' }) {
+const POPOVER_HEIGHT = 430;   // chiều cao thực tế của .dp-popover, dùng để chọn hướng mở
+
+export function DateField({ value, onChange, max, placeholder = 'dd/mm/yyyy', className = 'fin-input' }) {
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
+  const [text, setText] = useState(() => (value ? formatDate(value) : ''));
+  const boxRef = useRef(null);
+  // Ngày đổi từ bên ngoài (nút Hôm nay/Hôm qua, chọn trong lịch) thì ô chữ theo kịp.
+  useEffect(() => { setText(value ? formatDate(value) : ''); }, [value]);
+
+  const commit = (raw) => {
+    const iso = parseDmy(raw);
+    if (!iso || (max && iso > max)) return false;
+    onChange(iso);
+    return true;
+  };
+
+  // Gõ tới đâu chèn dấu "/" tới đó; đủ 8 chữ số mới ghi ra ngoài.
+  const type = (event) => {
+    const digits = event.target.value.replace(/\D/g, '').slice(0, 8);
+    setText([digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join('/'));
+    if (digits.length === 8) commit([digits.slice(0, 2), digits.slice(2, 4), digits.slice(4)].join('/'));
+  };
+  // Gõ dở dang hoặc ngày không có thật thì trả ô về giá trị đang lưu, không im lặng nuốt.
+  const blur = () => { if (!commit(text)) setText(value ? formatDate(value) : ''); };
+
+  const toggle = () => {
+    // Mở xuống dưới mà không đủ chỗ thì lật lên trên: trước đây popover tràn khỏi màn
+    // hình và nút Lưu nằm ngoài vùng cuộn được, coi như không bấm được.
+    const box = boxRef.current?.getBoundingClientRect();
+    if (box) setDropUp(window.innerHeight - box.bottom < POPOVER_HEIGHT && box.top > POPOVER_HEIGHT);
+    setOpen(o => !o);
+  };
+
   return (
-    <span className="fin-datefield">
-      <button type="button" className={`${className} fin-datefield__btn${value ? '' : ' fin-datefield__btn--empty'}`}
-        onClick={() => setOpen(o => !o)}>
-        <AppIcon name="calendar" size={14} />
-        <span>{value ? formatDate(value) : placeholder}</span>
-      </button>
+    <span className="fin-datefield" ref={boxRef}>
+      <span className={`${className} fin-datefield__box`}>
+        <input className="fin-datefield__text" value={text} onChange={type} onBlur={blur}
+          inputMode="numeric" placeholder={placeholder} aria-label="Ngày, dạng ngày/tháng/năm" />
+        <button type="button" className="fin-datefield__pick" onClick={toggle}
+          aria-label="Mở lịch" title="Mở lịch"><AppIcon name="calendar" size={15} /></button>
+      </span>
       {open && (
         <DatePickerPopover value={value || ''} hideTime max={max}
           onChange={onChange} onClose={() => setOpen(false)}
-          style={{ top: '100%', left: 0, marginTop: '4px' }} />
+          style={dropUp ? { bottom: '100%', left: 0, marginBottom: '4px' } : { top: '100%', left: 0, marginTop: '4px' }} />
       )}
     </span>
   );

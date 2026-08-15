@@ -26,24 +26,18 @@
 .task-list-card { flex: 1; }
 
 .task-option-btn, .task-overflow-item, .task-form-hint,
-.task-inline-status, .task-item span, .task-item button,
+.task-item span, .task-item button,
 .task-list-card .auth-input, .task-list-card .btn {
   align-items: center;
   gap: 0.35rem;
 }
 .task-option-btn, .task-overflow-item, .task-form-hint,
-.task-inline-status, .task-list-card button, .task-item span { display: inline-flex; }
+.task-list-card button, .task-item span { display: inline-flex; }
 .task-form-hint {
   color: var(--text-muted);
   font-size: 0.72rem;
   font-style: italic;
 }
-.task-inline-status {
-  padding: 0.5rem 0;
-  color: var(--text-muted);
-  font-size: 0.78rem;
-}
-
 .tasks-page--calendar { max-width: 100%; }
 
 /* ── Hero (v4.29.0) — điểm nhìn của trang. Trước đó mọi thứ cùng 0.8rem

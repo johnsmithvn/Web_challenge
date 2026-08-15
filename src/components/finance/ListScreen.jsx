@@ -7,6 +7,7 @@ import { periodTotals, groupByDate, billPeriods } from '../../utils/financeLogic
 import {
   money, catInfo, subLabel, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon, DateField,
 } from './parts';
+import SkeletonList from '../SkeletonList';
 import AppIcon from '../AppIcon';
 
 const FILTERS = [
@@ -112,7 +113,11 @@ export default function ListScreen({ fin, nav }) {
           {totals.income > 0 && ` · thu ${money(totals.income)}`}
         </div>
 
-        {groups.length === 0 && (
+        {/* Đang tải thì giữ chỗ bằng skeleton, KHÔNG hiện "chưa có giao dịch" — báo
+            trống rồi một giây sau bật ra 20 dòng là kiểu nói dối khó chịu nhất. */}
+        {fin.isLoading && groups.length === 0 && <SkeletonList rows={5} gap="6px" label="Đang tải giao dịch" />}
+
+        {!fin.isLoading && groups.length === 0 && (
           <section className="fin-list-empty">
             <span><AppIcon name="receipt" size={24} /></span>
             <strong>{q || filter !== 'all' ? 'Không tìm thấy giao dịch phù hợp' : 'Chưa có giao dịch trong kỳ này'}</strong>
