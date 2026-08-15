@@ -5,7 +5,7 @@ import { parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
 import { toDateStr } from '../../utils/dateUtils';
 import { periodTotals, groupByDate } from '../../utils/financeLogic';
 import {
-  money, catInfo, subLabel, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon,
+  money, catInfo, subLabel, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon, DateField,
 } from './parts';
 import AppIcon from '../AppIcon';
 
@@ -245,7 +245,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
       <div className="fin-detail fin-detail--editing">
         <div className="fin-detail__head"><strong>Sửa giao dịch</strong><button className="fin-detail__close" onClick={() => setEditing(false)} aria-label="Đóng chỉnh sửa"><AppIcon name="x" size={15} /></button></div>
         <label className="fin-label">Số tiền</label><input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={amount} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
-        <label className="fin-label">Ngày</label><input className="fin-input" type="date" value={occurredAt} onChange={event => setOccurredAt(event.target.value)} />
+        <label className="fin-label">Ngày</label><DateField value={occurredAt} onChange={setOccurredAt} />
         <label className="fin-label">Tiêu đề</label><input className="fin-input" value={note} onChange={event => setNote(event.target.value)} maxLength={200} />
         {tx.type !== 'saving' && <><label className="fin-label">Nhóm</label><select className="fin-input" value={categoryId} onChange={event => { setCategoryId(event.target.value); setSubcategoryId(''); }}>{categoryOptions.filter(group => !group.hidden).map(group => <option key={group.key} value={group.key}>{group.label}</option>)}</select></>}
         {tx.type === 'expense' && <>

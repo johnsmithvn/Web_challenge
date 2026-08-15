@@ -5,7 +5,7 @@ import {
   billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule,
   currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee, billCycle,
 } from '../../utils/financeLogic';
-import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo } from './parts';
+import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField } from './parts';
 import AppIcon from '../AppIcon';
 
 const SEGMENTS = [
@@ -237,6 +237,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
         every: initial.rrule?.every || 1 }
     : { name: nav.handoff?.kind === seg ? nav.handoff.title || '' : '', every: 1 }));
   const set = (k) => (e) => setF(p => ({ ...p, [k]: e.target.value }));
+  const setDate = (k) => (v) => setF(p => ({ ...p, [k]: v }));   // DateField trả thẳng chuỗi ngày
   const setDigits = (k, maxLength = 18) => (e) => setF(p => ({ ...p, [k]: sanitizeDigits(e.target.value, maxLength) }));
   const setDecimal = (k, maxIntegerDigits = 3, maxFractionDigits = 4) => (e) => setF(p => ({
     ...p, [k]: sanitizeDecimal(e.target.value, maxIntegerDigits, maxFractionDigits),
@@ -556,9 +557,9 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
           <label className="fin-field"><span>Số tiền</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="100.000.000" value={groupDigits(f.principal || '')} onChange={setDigits('principal')} /></label>
           <label className="fin-field"><span>Ngày đưa tiền</span>
-            <input className="fin-input" type="date" max={fin.today} value={f.lent_on || fin.today} onChange={set('lent_on')} /></label>
+            <DateField value={f.lent_on || fin.today} onChange={setDate('lent_on')} max={fin.today} /></label>
           <label className="fin-field"><span>Hẹn trả ngày</span>
-            <input className="fin-input" type="date" value={f.due_on || ''} onChange={set('due_on')} /></label>
+            <DateField value={f.due_on} onChange={setDate('due_on')} /></label>
           <label className="fin-field"><span>Lãi · %/năm</span>
             <input className="fin-input" inputMode="decimal" placeholder="0 nếu không tính lãi" value={f.rate || ''} onChange={setDecimal('rate')} /></label>
         </div>
@@ -622,7 +623,7 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
           </button>}</label>
         <div className="fin-field"><span>Ngày đã trả thật</span>
           <div className="fin-payblock__dates">
-            <input className="fin-input" type="date" max={fin.today} value={occurredAt} onChange={e => setOccurredAt(e.target.value)} />
+            <DateField value={occurredAt} onChange={setOccurredAt} max={fin.today} />
             {quickDates.map(d => (
               <button type="button" key={d.key} className={occurredAt === d.key ? 'is-active' : ''}
                 onClick={() => setOccurredAt(d.key)}>{d.label}</button>

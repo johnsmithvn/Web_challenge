@@ -3,7 +3,7 @@ import { useUserTasks } from '../../hooks/useUserTasks';
 import { groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
 import { matchCategory, deriveNecessity, currentMonthPeriod, cardBalance, billAmountEstimate, billCycle } from '../../utils/financeLogic';
 import {
-  money, catInfo, subLabel, NECESSITY_META, Segmented, TaskPicker, FinanceIcon,
+  money, catInfo, subLabel, NECESSITY_META, Segmented, TaskPicker, FinanceIcon, DateField,
 } from './parts';
 import AppIcon from '../AppIcon';
 
@@ -502,7 +502,7 @@ export default function AddScreen({ fin, nav }) {
             <div className="fin-date-choice">
               <button type="button" className={occurredAt === fin.today ? 'is-active' : ''} onClick={() => setOccurredAt(fin.today)}>Hôm nay</button>
               <button type="button" className={occurredAt === yesterday ? 'is-active' : ''} onClick={() => setOccurredAt(yesterday)}>Hôm qua</button>
-              <input type="date" value={occurredAt} max={fin.today} onChange={event => setOccurredAt(event.target.value)} aria-label="Chọn ngày khác" />
+              <DateField value={occurredAt} onChange={setOccurredAt} max={fin.today} className="" />
             </div>
           </section>
 
