@@ -512,7 +512,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
           <label className="fin-field"><span>Ngày vay</span>
             <DateField value={f.opened_at} onChange={setDate('opened_at')} /></label>
           <label className="fin-field"><span>Hạn tất toán</span>
-            <input className="fin-input" type="date" value={f.due_at || ''} onChange={set('due_at')} /></label>
+            <DateField value={f.due_at} onChange={setDate('due_at')} /></label>
           <label className="fin-field"><span>Số kỳ (tháng)</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="12" value={f.term || ''} onChange={setDigits('term', 3)} /></label>
           <label className="fin-field"><span>Ngày trả trong tháng</span>
@@ -540,7 +540,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
           <label className="fin-field"><span>Phí thường niên</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="500.000" value={groupDigits(f.annual_fee || '')} onChange={setDigits('annual_fee')} /></label>
           <label className="fin-field"><span>Ngày thu phí · tùy chọn</span>
-            <input className="fin-input" type="date" value={f.annual_fee_on || ''} onChange={set('annual_fee_on')} /></label>
+            <DateField value={f.annual_fee_on} onChange={setDate('annual_fee_on')} /></label>
           <label className="fin-field"><span>Phí rút tiền mặt</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="100.000" value={groupDigits(f.cash_advance_fee || '')} onChange={setDigits('cash_advance_fee')} /></label>
           <label className="fin-field"><span>% trả tối thiểu</span>
