@@ -564,7 +564,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fin-editor, .fin-bill-history, .fin-form__more, .fin-overview-view { animation: none; }
+  .finance-module *, .finance-module *::before, .finance-module *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important;
+  }
 }
 
 /* Finance taxonomy + schema: dense reference layout from the handoff. */

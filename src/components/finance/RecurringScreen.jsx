@@ -1023,6 +1023,7 @@ function LendsList({ fin, nav, tasks }) {
           : { tone: days <= 14 ? 'late' : 'wait', text: `còn ${days} ngày` };
         return (
           <RuleCard key={l.id} tone={state.tone} icon={done ? 'checkCircle' : 'handCoins'}
+            iconColor={done ? '#7fc060' : '#9184d9'}
             title={l.name} badge={l.rate > 0 ? `${l.rate}%/năm` : 'không lãi'}
             meta={[l.note, `cho mượn ${dmy(l.lent_on)}`, l.due_on ? `hẹn trả ${dmy(l.due_on)}` : null].filter(Boolean).join(' · ')}
             amount={done ? money(l.principal) : money(left)} state={state} openTitle="Sửa khoản cho vay"
