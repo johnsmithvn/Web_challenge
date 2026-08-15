@@ -415,7 +415,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="5" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
           {Number(f.every) > 1 && (
             <label className="fin-field"><span>Ngày bắt đầu trả</span>
-              <input className="fin-input" type="date" value={f.anchor_date || ''} onChange={set('anchor_date')} /></label>
+              <DateField value={f.anchor_date} onChange={setDate('anchor_date')} /></label>
           )}
         </div>
         {Number(f.every) > 1 && <small className="fin-field__hint">Ngày bắt đầu chỉ để đếm <strong>tháng nào tới lượt</strong>; ngày trong tháng vẫn lấy theo ô <strong>Vào ngày</strong>. Bỏ trống ô đó thì app lấy luôn ngày của mốc bắt đầu. Netflix bắt đầu 20/08 chu kỳ 3 tháng → kỳ sau 20/11, tháng 9 và 10 không nhắc.</small>}
@@ -510,7 +510,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDone }) {
               <option value="interest">Chỉ trả lãi · gốc cuối kỳ</option>
             </select></label>
           <label className="fin-field"><span>Ngày vay</span>
-            <input className="fin-input" type="date" value={f.opened_at || ''} onChange={set('opened_at')} /></label>
+            <DateField value={f.opened_at} onChange={setDate('opened_at')} /></label>
           <label className="fin-field"><span>Hạn tất toán</span>
             <input className="fin-input" type="date" value={f.due_at || ''} onChange={set('due_at')} /></label>
           <label className="fin-field"><span>Số kỳ (tháng)</span>
