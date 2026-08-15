@@ -27,6 +27,33 @@
     trong khối trả lùi theo đúng chu kỳ (hóa đơn quý không liệt kê 6 tháng liền).
 
 ### Added
+- **Trả góp: nhập tổng nợ + thanh tiến độ theo ô.** Ô *Tổng nợ · tùy chọn* chia đều cho số kỳ rồi điền
+  vào ô Số tiền — **không thêm cột DB**, thứ được lưu vẫn là số mỗi kỳ để mọi phép tính (ước lượng, còn
+  lại, báo cáo) chạy trên một con số duy nhất. Tiến độ đổi từ thanh liền 5px sang **mỗi kỳ một ô**
+  (`TermProgress`, ≤12 kỳ; nhiều hơn thì quay về thanh liền vì ô nhỏ như hạt gạo), kèm `đã trả X · còn Y`
+  — thanh liền không trả lời được câu hỏi thật của người đang trả góp là "còn mấy kỳ nữa".
+
+### Fixed
+- **Trả thêm một kỳ mà tiến độ trả góp LÙI LẠI** (`finance_bills.term_offset`, migration
+  `data/migration_v6.8.0_finance_bill_term_offset.sql` — user tự chạy trên hosted). `term_done` có hai
+  nguồn ghi cãi nhau: user gõ tay ô "Đã trả bao nhiêu kỳ" khi khai một khoản trả góp đang chạy dở (3/6,
+  các kỳ cũ không định ghi thành giao dịch), còn trigger `finance_refresh_bill_progress()` thì ghi đè
+  `term_done = COUNT(giao dịch)`. Bấm Thanh toán lần đầu là 3 bị thay bằng 1 — tiến độ lùi, số còn nợ
+  vọt lên, và số user nhập mất hẳn.
+  - Tách thành hai dữ liệu vốn khác nhau: `term_offset` (user nhập, app không đụng) và `term_done`
+    (thuần suy ra = `term_offset + COUNT`). Ô trong form đổi nhãn thành **"Đã trả trước khi dùng app"**
+    và ghi vào `term_offset`; client không còn gửi `term_done`.
+  - Migration backfill `term_offset = term_done - COUNT(giao dịch)` nên số đã nhập không mất, rồi tính
+    lại toàn bộ `term_done` và verify không hóa đơn nào lệch công thức trước khi COMMIT.
+  - Dải ô tiến độ tô **mờ** các kỳ có từ trước (viền accent, ruột nhạt) để phân biệt với kỳ đã ghi thành
+    giao dịch trong app — cùng là "đã trả" nhưng chỉ loại sau mới mở ra xem được.
+- **Sửa/xóa giao dịch xong, tiến độ hóa đơn vẫn đứng số cũ tới lúc F5.** `term_done` (và tiến độ khoản
+  vay, kỳ đã nhận của thu định kỳ) là số **suy ra** từ giao dịch — trigger `finance_transaction_progress_sync`
+  đếm lại trong DB. Nhưng `updateTransaction`/`deleteTransaction` chỉ sửa state giao dịch, không kéo rule
+  về, nên dòng hóa đơn hiện `kỳ 4/6 · còn 5.028.000đ` trong khi Lịch sử các kỳ đã trống trơn. Giờ giao
+  dịch có gắn rule thì sau khi sửa/xóa/thêm sẽ `fetchAll()` cho khớp DB (RPC thanh toán vốn đã làm việc này).
+
+### Added
 - **`SkeletonList` — khung chờ dạng danh sách, áp cho toàn bộ màn list** (`src/components/SkeletonList.jsx`
   + `src/styles/skeleton.css`). Trước đó Finance không hiện gì (trang trống rồi list bật ra), sáu màn
   còn lại hiện đúng một dòng chữ "Đang tải…" — cả hai đều làm layout nhảy một cái khi data về.

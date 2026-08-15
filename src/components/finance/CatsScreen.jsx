@@ -220,7 +220,7 @@ const schemaSections = [
     ['Nhiều tháng một lần', 'rrule.every, anchor_date', '1/2/3/6/12 + DATE', 'anchor_date quyết định THÁNG nào tới lượt; ngày trong tháng vẫn theo due_day.'],
     ['Kỳ đang tính', '(không lưu)', 'billCycle()', 'Tháng không tới lượt thì nhảy tới kỳ kế — trừ khi kỳ vừa qua chưa trả, lúc đó bám lại nó để báo quá hạn.'],
     ['Số tiền', 'amount_mode, amount', 'fixed/ask + BIGINT', 'ask bắt nhập lại khi thanh toán; fixed điền sẵn.'],
-    ['Số kỳ', 'term_total, term_done, finished_at', 'INT + DATE', 'Đủ kỳ cuối thì kết thúc vĩnh viễn.'],
+    ['Số kỳ', 'term_total, term_offset, term_done, finished_at', 'INT + DATE', 'term_offset là kỳ đã trả trước khi dùng app (user nhập); term_done = offset + số giao dịch, trigger tự tính. Đủ kỳ cuối thì kết thúc vĩnh viễn.'],
     ['Bỏ kỳ', 'skipped_periods', 'JSONB[]', 'Không sinh giao dịch cho kỳ bị bỏ, kỳ sau vẫn hoạt động.'],
   ]],
   ['Thẻ tín dụng', 'finance_cards', [

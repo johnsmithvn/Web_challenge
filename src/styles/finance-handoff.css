@@ -68,6 +68,22 @@
 .fin-progress > div:last-child { height: 5px; overflow: hidden; border-radius: 20px; background: var(--n-sink-2); }
 .fin-progress i { display: block; height: 100%; border-radius: inherit; background: var(--n-accent-2); }
 
+/* Trả góp: mỗi kỳ một ô, đếm ô ra ngay "còn mấy kỳ nữa" mà không phải trừ nhẩm. */
+.fin-term { display: grid; gap: 6px; }
+.fin-term__head { display: flex; align-items: baseline; gap: 8px; font-size: 11.5px; color: var(--n-txt2); }
+.fin-term__head strong { color: var(--n-txt); font-size: 12px; }
+.fin-term__head b { margin-left: auto; color: var(--n-txt); font-weight: 600; font-variant-numeric: tabular-nums; }
+.fin-term__cells { display: flex; gap: 3px; }
+.fin-term__cells i {
+  flex: 1; height: 9px; border-radius: 3px; background: var(--n-sink-2);
+  box-shadow: inset 0 0 0 1px rgba(233,233,237,0.05); transition: background .18s ease;
+}
+.fin-term__cells i.is-done { background: var(--n-accent-2); box-shadow: none; }
+/* Kỳ khai lúc tạo hóa đơn: vẫn tính là đã trả, nhưng mờ hơn vì không có giao dịch để mở ra xem. */
+.fin-term__cells i.is-prior { background: var(--n-accent-soft); box-shadow: inset 0 0 0 1px var(--n-accent-2); }
+.fin-term__bar { height: 9px; overflow: hidden; border-radius: 20px; background: var(--n-sink-2); }
+.fin-term__bar i { display: block; height: 100%; border-radius: inherit; background: var(--n-accent-2); }
+
 /* Ghi một kỳ: mở ngay dưới dòng, không modal, không rời danh sách. */
 .fin-payblock { display: grid; gap: 9px; padding: 11px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-bg); animation: fin-rise .15s ease both; }
 .fin-payblock__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; }

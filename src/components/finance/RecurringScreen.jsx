@@ -146,6 +146,40 @@ function RuleProgress({ pct, label, right, color }) {
 }
 
 /**
+ * Tiến độ trả góp: mỗi kỳ là một ô, kỳ đã trả thì đầy màu.
+ *
+ * Thanh liền mạch 5px không trả lời được câu hỏi thật của người đang trả góp —
+ * "còn mấy kỳ nữa" — bắt nhìn số rồi trừ nhẩm. Đếm ô thì ra ngay. Quá 12 kỳ thì
+ * ô nhỏ như hạt gạo nên quay về thanh liền, lúc đó phần trăm mới là thứ đọc được.
+ */
+function TermProgress({ done, total, offset = 0, paid, left, color }) {
+  const pct = total ? Math.min(100, (done / total) * 100) : 0;
+  return (
+    <div className="fin-term">
+      <div className="fin-term__head">
+        <strong>kỳ {Math.min(done + 1, total)}/{total}</strong>
+        <span>đã trả {money(paid)}{offset > 0 ? ` · ${offset} kỳ có từ trước` : ''}</span>
+        <b>còn {money(left)}</b>
+      </div>
+      {total <= 12 ? (
+        <div className="fin-term__cells">
+          {Array.from({ length: total }, (_, i) => {
+            // Ô mờ = kỳ khai lúc tạo hóa đơn, không có giao dịch nào trong app để mở ra xem.
+            const prior = i < offset;
+            const filled = i < done;
+            return <i key={i} className={filled ? (prior ? 'is-done is-prior' : 'is-done') : ''}
+              title={prior ? 'Đã trả trước khi dùng app' : filled ? 'Đã ghi trong app' : 'Chưa trả'}
+              style={filled && !prior && color ? { background: color } : undefined} />;
+          })}
+        </div>
+      ) : (
+        <div className="fin-term__bar"><i style={{ width: `${pct}%`, background: color || undefined }} /></div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Khung dòng dùng chung cho cả 4 segment: icon · tên + phụ đề · số tiền + trạng thái ·
  * nút sửa/công tắc/xóa. Mọi thứ mở thêm (khối trả, form sửa, lịch sử) là children,
  * nằm NGAY dưới dòng đó nên danh sách không nhảy chỗ.
@@ -344,7 +378,12 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
         due_day: billDay, anchor_date: anchor,
         icon: f.icon || null,
         term_total: hasTerm ? Number(f.term_total) || null : null,
-        term_done: hasTerm ? Number(f.term_done) || 0 : 0,
+        // Chỉ gửi `term_offset` (kỳ đã trả trước khi dùng app). `term_done` là số THUẦN
+        // SUY RA — trigger DB tính `term_offset + số giao dịch` — nên client gõ vào đó
+        // là bị ghi đè ngay lần thanh toán kế tiếp.
+        term_offset: hasTerm
+          ? Math.min(Number(f.term_offset) || 0, Number(f.term_total) || 0)
+          : 0,
         note: f.note?.trim() || null,
       };
     } else if (seg === 'in') {
@@ -519,7 +558,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
         <div className="fin-ruleform__section">
           <button type="button" className={`fin-checkline${hasTerm ? ' is-on' : ''}`}
             aria-pressed={hasTerm}
-            onClick={() => { setHasTerm(on => { if (on) setF(p => ({ ...p, term_total: '', term_done: '' })); return !on; }); }}>
+            onClick={() => { setHasTerm(on => { if (on) setF(p => ({ ...p, term_total: '', term_offset: '' })); return !on; }); }}>
             <span><AppIcon name="check" size={10} weight="bold" /></span>
             Hóa đơn này có số kỳ hữu hạn (trả góp, trả nợ)
           </button>
@@ -528,11 +567,26 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
             <label className="fin-field"><span>Tổng số kỳ</span>
               <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="12" autoFocus
                 value={f.term_total || ''} onChange={setDigits('term_total', 3)} /></label>
-            <label className="fin-field"><span>Đã trả bao nhiêu kỳ</span>
+            <label className="fin-field"><span>Đã trả trước khi dùng app</span>
               <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="0"
-                value={f.term_done ?? ''} onChange={setDigits('term_done', 3)} /></label>
+                value={f.term_offset ?? ''} onChange={setDigits('term_offset', 3)} /></label>
+            <label className="fin-field"><span>Tổng nợ · tùy chọn</span>
+              <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="10.056.000"
+                value={groupDigits(f.total_debt || '')} onChange={(e) => {
+                  const digits = sanitizeDigits(e.target.value);
+                  const terms = Number(f.term_total);
+                  // Nhớ tổng để hiện lại trong ô, nhưng thứ được LƯU vẫn là số mỗi kỳ:
+                  // mọi phép tính (ước lượng, còn lại, báo cáo) đều chạy trên số đó.
+                  setF(p => ({ ...p, total_debt: digits,
+                    ...(digits && terms > 0 ? { amount: String(Math.round(Number(digits) / terms)) } : {}) }));
+                }} /></label>
           </div>
-          <small className="fin-field__hint">Trả đủ kỳ cuối thì hóa đơn tự dừng và chuyển xuống mục đã kết thúc.</small>
+          <small className="fin-field__hint">
+            {f.total_debt && Number(f.term_total) > 0
+              ? <>Chia đều {Number(f.term_total)} kỳ → <strong>{money(Math.round(Number(f.total_debt) / Number(f.term_total)))}/kỳ</strong>, đã điền vào ô Số tiền ở trên. App lưu số mỗi kỳ, không lưu tổng.</>
+              : 'Gõ tổng nợ để app chia ra số tiền mỗi kỳ — hoặc bỏ trống nếu bạn đã biết số mỗi kỳ.'}
+          </small>
+          <small className="fin-field__hint"><strong>Đã trả trước khi dùng app</strong> là những kỳ bạn trả xong từ lâu và không định ghi lại thành giao dịch. App cộng thêm mỗi kỳ bạn bấm Thanh toán ở đây, nên số này không bao giờ bị đếm lại từ đầu. Trả đủ kỳ cuối thì hóa đơn tự dừng và chuyển xuống mục đã kết thúc.</small>
         </>)}
         </div>
       </>)}
@@ -862,10 +916,9 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
             onDelete={() => remove(b)}
             hasNote={!!b.note}>
 
-            {b.term_total > 0 && <RuleProgress pct={(b.term_done || 0) / b.term_total * 100}
-              color={catInfo(b.category_id, fin.cats).color}
-              label={`kỳ ${Math.min((b.term_done || 0) + 1, b.term_total)}/${b.term_total}`}
-              right={`còn ${money(left * estimate)}`} />}
+            {b.term_total > 0 && <TermProgress done={b.term_done || 0} total={b.term_total}
+              offset={b.term_offset || 0} paid={(b.term_done || 0) * estimate} left={left * estimate}
+              color={catInfo(b.category_id, fin.cats).color} />}
 
             {actionable && payId !== b.id && (
               <div className="fin-rule__foot">
