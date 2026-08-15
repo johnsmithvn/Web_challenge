@@ -112,6 +112,15 @@
   (`fin-rule__state--${tone}`, `fin-txrow__amt--${type}`, `fin-detail__amount--${type}`).
 
 ### Fixed
+- **"Mở form đầy đủ" từ shortcut không điền tiêu đề.** `openShortcutInForm` đặt nhóm, danh mục con,
+  mức cần thiết, nguồn tiền và số tiền — nhưng bỏ sót `note`. Đường ghi nhanh thì luôn ghi
+  `note: shortcut.name`, nên cùng một shortcut ra hai loại giao dịch: bấm nhanh thì có tên, mở form
+  thì trống tên.
+- **Bấm nhầm "Bỏ kỳ này" là cửa một chiều.** RPC `finance_skip_bill_period` chỉ THÊM kỳ vào
+  `skipped_periods`, không bao giờ gỡ; đường gỡ duy nhất trong DB là `finance_pay_bill` — mà nút Thanh
+  toán lại bị ẩn đúng khi kỳ đã bị bỏ (`actionable = enabled && !paid && !skipped`). Bấm nhầm là kẹt
+  tới tháng sau. Thêm nút **"Bỏ đánh dấu · trả lại kỳ này"** trên dòng đã bỏ kỳ; `skipped_periods` là
+  cột own-row RLS nên gỡ bằng UPDATE thẳng, không cần RPC mới và không cần migration.
 - **Biểu đồ "Lịch sử các kỳ" của hóa đơn vẽ sai.** `.fin-bill-chart__col` tự tô nền tím và không có
   rule nào cho `<i>` bên trong — mà `<i>` mới là thứ mang `style={{height}}`. Kết quả: mấy khối tím
   đặc bằng nhau, chữ tháng nằm trên nền tím, chiều cao cột vô nghĩa. Giờ cột là flex-column, `<i>` là

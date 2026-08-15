@@ -657,6 +657,17 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
       : `Không thể bỏ kỳ này của ${bill.name}. Kiểm tra dữ liệu Finance rồi thử lại.`,
     { icon: skipped ? 'skip' : 'warning' });
   };
+  // RPC finance_skip_bill_period chỉ THÊM kỳ vào skipped_periods, không bao giờ gỡ.
+  // Đường gỡ duy nhất trong DB là finance_pay_bill — mà nút Thanh toán lại bị ẩn khi đã
+  // bỏ kỳ, nên nếu không có nút này thì bấm nhầm là kẹt tới tháng sau.
+  const unskip = async (bill) => {
+    const rest = (bill.skipped_periods || []).filter(p => p !== currentPeriod);
+    const updated = await fin.updateBill(bill.id, { skipped_periods: rest });
+    nav.showToast(updated
+      ? `Đã bỏ đánh dấu — ${bill.name} hiện lại nút Thanh toán cho kỳ này`
+      : `Không thể bỏ đánh dấu ${bill.name}. Kiểm tra dữ liệu Finance rồi thử lại.`,
+    { icon: updated ? 'refresh' : 'warning' });
+  };
   const toggle = async (bill, enabled) => {
     const updated = await fin.updateBill(bill.id, { enabled });
     nav.showToast(updated
@@ -718,6 +729,13 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
                 </button>
                 <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={() => skip(b)}>
                   <AppIcon name="skip" size={14} /> Bỏ kỳ này
+                </button>
+              </div>
+            )}
+            {skipped && b.enabled && (
+              <div className="fin-rule__foot">
+                <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={() => unskip(b)}>
+                  <AppIcon name="refresh" size={14} /> Bỏ đánh dấu · trả lại kỳ này
                 </button>
               </div>
             )}

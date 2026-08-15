@@ -142,6 +142,8 @@ sửa/công tắc/xóa, phần mở thêm (khối ghi kỳ, form sửa, lịch s
   vẫn ghi `note = bill.name` xuống transaction; ghi chú quy tắc **không** rơi xuống từng kỳ.
 - Nhân bản hóa đơn chép quy tắc sang form thêm (chưa ghi DB), reset `term_done`/`skipped_periods`/
   `finished_at`; giao dịch cũ giữ `bill_id` cũ nên lịch sử không theo sang bản sao.
+- "Bỏ kỳ này" phải có đường quay lại: RPC chỉ thêm vào `skipped_periods`, UI gỡ bằng UPDATE own-row.
+  Không có nút gỡ thì một cú bấm nhầm khóa cả kỳ tới tháng sau.
 - Xóa quy tắc không xóa transaction; hộp xác nhận nói đúng số giao dịch được giữ lại.
 
 ## 6. Pure logic API

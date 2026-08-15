@@ -159,7 +159,7 @@ không tạo channel/subscription. UI đồng bộ bằng fetch và optimistic s
 
 ### Local
 
-`supabase db reset --local` replay bảy snapshot timestamp theo thứ tự:
+`supabase db reset --local` replay tám snapshot timestamp theo thứ tự:
 
 1. `20260802000000_base_v5_0_0.sql`
 2. `20260805000000_vault_v5_2_0.sql`
@@ -168,6 +168,7 @@ không tạo channel/subscription. UI đồng bộ bằng fetch và optimistic s
 5. `20260815000000_finance_bill_note_v6_3_0.sql`
 6. `20260815010000_finance_lending_v6_4_0.sql`
 7. `20260815020000_finance_bill_icon_v6_5_0.sql`
+8. `20260815030000_finance_card_annual_fee_on_v6_6_0.sql`
 
 Snapshot đã tồn tại là bất biến. Schema change mới phải dùng migration timestamp mới.
 
@@ -180,6 +181,7 @@ Snapshot đã tồn tại là bất biến. Schema change mới phải dùng mig
 5. `data/migration_v6.3.0_finance_bill_note.sql`
 6. `data/migration_v6.4.0_finance_lending.sql`
 7. `data/migration_v6.5.0_finance_bill_icon.sql`
+8. `data/migration_v6.6.0_finance_card_annual_fee.sql`
 
 Không chạy `data/migration_v5.0.0_activity_logs_v2.sql` sau baseline fresh vì thay đổi đã nằm trong
 baseline. `data/migration_v4.31.0_recurrence_chain.sql` và `data/RUNBOOK.sql` là hồ sơ/upgrade cũ,

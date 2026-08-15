@@ -286,6 +286,9 @@ export default function AddScreen({ fin, nav }) {
 
   const openShortcutInForm = (shortcut) => {
     setType('expense');
+    // Tiêu đề phải theo cùng: đường ghi nhanh luôn đặt `note: shortcut.name`, nên nếu
+    // mở form đầy đủ mà để trống thì cùng một shortcut ra hai loại giao dịch khác nhau.
+    setNote(shortcut.name);
     setCategoryId(shortcut.category_id);
     setSubId(shortcut.subcategory_id || '');
     setNecessity(shortcut.necessity || '');

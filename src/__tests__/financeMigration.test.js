@@ -77,6 +77,13 @@ assert.match(recurring, /fin\.skipBillPeriod\(bill\.id, currentPeriod\)/,
   'nút Bỏ kỳ này phải gọi RPC đúng kỳ đang chạy');
 assert.match(recurring, /const actionable = b\.enabled && !paid && !skipped/,
   'hóa đơn tắt, đã trả hoặc đã bỏ không được hiện thao tác thanh toán');
+// Bỏ kỳ phải có đường quay lại: RPC skip chỉ THÊM vào skipped_periods, đường gỡ duy nhất
+// trong DB là finance_pay_bill — mà nút Thanh toán bị ẩn khi đã bỏ kỳ. Không có nút gỡ
+// thì bấm nhầm là kẹt tới tháng sau.
+assert.match(recurring, /skipped_periods: rest/,
+  'màn Hóa đơn phải có đường bỏ đánh dấu một kỳ đã lỡ bỏ');
+assert.match(sql, /THEN skipped_periods[\s\S]{0,40}ELSE skipped_periods \|\| JSONB_BUILD_ARRAY/,
+  'RPC bỏ kỳ chỉ thêm, không tự gỡ — việc gỡ do UI làm qua UPDATE own-row');
 assert.match(page, /const confirmDelete = useCallback\(/,
   'Finance phải có một luồng xác nhận xóa dùng chung');
 // 9 luồng xóa: giao dịch · hóa đơn · khoản thu · vay · thẻ · CHO VAY · quỹ · nơi gửi · shortcut.
