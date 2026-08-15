@@ -69,6 +69,12 @@
     `.task-inline-status` đã thành CSS chết.
 
 ### Changed
+- **Form sửa nhóm danh mục xếp lại cho đúng thứ tự đọc.** Bốn lỗi bố cục: ô *Tên nhóm* bị nhét xuống
+  giữa form (sau cả khối thêm danh mục con) trong khi nó là danh tính của nhóm; nút **Thêm** lệch khỏi ô
+  nhập vì `.fin-btn` mang sẵn `margin-top: 12px`; ba ô mặc định dùng lưới 2 cột nên ô thứ ba trơ một
+  mình nửa hàng; và chú thích của ô *Ẩn nhóm này* nằm **dưới** cả nút Hủy/Xong. Giờ: tên → màu → ba ô
+  mặc định (lưới `auto-fit`) → danh mục con (chip + ô thêm gộp một khối có nhãn, kèm số lượng) → ẩn/hiện
+  kèm chú thích ngay dưới → Hủy/Xong sát phải một hàng riêng. Nút Thêm cũng disable khi ô trống.
 - **Ô ngày gõ tay được, và popover lật lên khi dưới hết chỗ.** Trước đó chỉ bấm chọn trong lịch (chậm
   khi cần lùi vài tháng), và ô ngày nằm cuối trang thì popover mở xuống làm nút Lưu rơi ra ngoài vùng
   cuộn — coi như không bấm được. Giờ ô nhận `dd/mm/yyyy` gõ thẳng (tự chèn `/`, `parseDmy()` từ chối

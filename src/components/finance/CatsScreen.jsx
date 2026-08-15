@@ -166,18 +166,34 @@ function CategoryEditor({ group, kind, fin, onClose }) {
     if (saved) onClose();
   };
 
+  // Thứ tự: danh tính nhóm (tên → màu → icon → mặc định) rồi mới tới danh mục con,
+  // cuối cùng là ẩn/hiện. Bản cũ nhét ô Tên nhóm xuống giữa, sau cả khối thêm mục con.
   return <form className="fin-category-inline-editor" onSubmit={save}>
-      <div className="fin-inline-subchips">{subs.map((sub, index) => <span key={sub.key}>{sub.label || 'Mục mới'}<button type="button" onClick={() => removeSub(index)} aria-label={`Xóa ${sub.label || 'mục mới'}`}><AppIcon name="x" size={9} /></button></span>)}</div>
-      <label className="fin-field"><span>Thêm danh mục con</span><span className="fin-inline-add"><input value={newSub} onChange={e => setNewSub(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); appendSub(); } }} placeholder="vd. Ăn khuya" /><button type="button" className="fin-btn fin-btn--secondary fin-btn--sm" onClick={appendSub}>Thêm</button></span></label>
       <label className="fin-field"><span>Tên nhóm</span><input value={label} onChange={e => setLabel(e.target.value)} autoFocus required /></label>
       <fieldset className="fin-swatches"><legend>Màu nhận diện</legend>{PALETTE.map(hex => <button key={hex} type="button" aria-label={`Chọn màu ${hex}`} className={color === hex ? 'is-active' : ''} style={{ background: hex }} onClick={() => setColor(hex)} />)}</fieldset>
-      <div className="fin-form__row">
+      <div className="fin-inline-editor__grid">
         <label className="fin-field"><span>Biểu tượng</span><select value={icon} onChange={e => setIcon(e.target.value)} aria-label="Icon danh mục">{ICONS.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
         {kind === 'expense' && <label className="fin-field"><span>Mức mặc định của nhóm</span><select value={necessity} onChange={e => setNecessity(e.target.value)}>{Object.entries(NECESSITY_META).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>}
         <label className="fin-field"><span>Tính chất mặc định</span><select value={nature} onChange={e => setNature(e.target.value)}><option value="variable">Biến đổi theo lần</option><option value="fixed">Cố định / định kỳ</option></select></label>
       </div>
-      <div className="fin-inline-editor__actions"><label><input type="checkbox" checked={hidden} onChange={e => setHidden(e.target.checked)} /><AppIcon name={hidden ? 'eyeOff' : 'eye'} size={13} /> {hidden ? 'Hiện nhóm này' : 'Ẩn nhóm này'}</label><span /><button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={onClose}>Hủy</button><button type="submit" className="fin-btn fin-btn--secondary fin-btn--sm" disabled={saving || !label.trim()}>{saving ? 'Đang lưu...' : 'Xong'}</button></div>
-      <small className="fin-inline-editor__note">Ẩn nhóm thì nó biến khỏi form nhập mới, nhưng giao dịch cũ vẫn giữ nguyên khóa và tiếp tục xuất hiện trong báo cáo.</small>
+
+      <div className="fin-field">
+        <span>Danh mục con {subs.length > 0 && <small>· {subs.length}</small>}</span>
+        {subs.length > 0 && <div className="fin-inline-subchips">{subs.map((sub, index) => <span key={sub.key}>{sub.label || 'Mục mới'}<button type="button" onClick={() => removeSub(index)} aria-label={`Xóa ${sub.label || 'mục mới'}`}><AppIcon name="x" size={9} /></button></span>)}</div>}
+        <span className="fin-inline-add">
+          <input value={newSub} onChange={e => setNewSub(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); appendSub(); } }} placeholder="Thêm mục con — vd. Sửa chữa & bảo hành" aria-label="Thêm danh mục con" />
+          <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm" onClick={appendSub} disabled={!newSub.trim()}>Thêm</button>
+        </span>
+      </div>
+
+      <div className="fin-inline-editor__hide">
+        <label><input type="checkbox" checked={hidden} onChange={e => setHidden(e.target.checked)} /><AppIcon name={hidden ? 'eyeOff' : 'eye'} size={13} /> {hidden ? 'Hiện nhóm này' : 'Ẩn nhóm này'}</label>
+        <small>Ẩn nhóm thì nó biến khỏi form nhập mới, nhưng giao dịch cũ vẫn giữ nguyên khóa và tiếp tục xuất hiện trong báo cáo.</small>
+      </div>
+      <div className="fin-inline-editor__actions">
+        <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={onClose}>Hủy</button>
+        <button type="submit" className="fin-btn fin-btn--secondary fin-btn--sm" disabled={saving || !label.trim()}>{saving ? 'Đang lưu...' : 'Xong'}</button>
+      </div>
     </form>
   ;
 }

@@ -650,12 +650,26 @@
 .fin-inline-subchips > span { display: inline-flex; align-items: center; gap: 4px; min-height: 22px; padding: 3px 6px 3px 8px; border-radius: 999px; background: var(--n-sink-2); color: var(--n-txt2); font-size: 10.5px; }
 .fin-inline-subchips button { display: grid; place-items: center; width: 15px; height: 15px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--n-txt3); cursor: pointer; }
 .fin-inline-subchips button:hover { background: rgba(224,127,147,.16); color: var(--n-bad); }
-.fin-inline-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
-.fin-inline-editor__actions { display: flex; align-items: center; gap: 6px; }
-.fin-inline-editor__actions > label { display: inline-flex; align-items: center; gap: 5px; color: var(--n-on-accent); font-size: 10.5px; cursor: pointer; }
-.fin-inline-editor__actions > label input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.fin-inline-editor__actions > span { flex: 1; }
-.fin-inline-editor__note { color: var(--n-txt3); font-size: 9.5px; line-height: 1.45; }
+/* Ô nhập + nút Thêm: `.fin-btn` có sẵn `margin-top: 12px` nên trong hàng này nút bị
+   tụt xuống và thấp hơn ô nhập — phải trả nó về 0 rồi căn giữa theo trục dọc. */
+.fin-inline-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; }
+.fin-inline-add .fin-btn { margin-top: 0; }
+
+/* Ba ô mặc định (icon · mức · tính chất) chia đều. Lưới 2 cột cũ để ô thứ ba trơ
+   một mình nửa hàng. */
+.fin-inline-editor__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 10px; }
+.fin-category-inline-editor .fin-field > span small { color: var(--n-txt3); font-size: 10.5px; }
+
+.fin-inline-editor__hide { display: grid; gap: 4px; padding: 9px 11px; border-radius: var(--n-r); background: var(--n-sink); }
+.fin-inline-editor__hide > label { display: inline-flex; align-items: center; gap: 6px; color: var(--n-on-accent); font-size: 11px; cursor: pointer; }
+.fin-inline-editor__hide input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.fin-inline-editor__hide input:focus-visible + svg { outline: 2px solid var(--n-accent); outline-offset: 2px; border-radius: 3px; }
+.fin-inline-editor__hide > small { color: var(--n-txt3); font-size: 10px; line-height: 1.45; }
+
+/* Nút hành động về sát phải và đứng riêng một hàng — trước đây chú thích của ô
+   "Ẩn nhóm" bị đẩy xuống DƯỚI cả Hủy/Xong, đọc xong thì nút đã trôi qua rồi. */
+.fin-inline-editor__actions { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
+.fin-inline-editor__actions .fin-btn { margin-top: 0; }
 @keyframes fin-inline-open { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 .fin-schema-notice { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--n-accent-3); border-radius: 8px; background: var(--n-accent-soft); color: var(--n-on-accent); }
 .fin-schema-notice > svg { flex: none; margin-top: 1px; }
