@@ -62,7 +62,30 @@
 - **`ALTER TABLE finance_shortcuts ADD COLUMN default_amount`.** Viết migration xong rồi xoá: bảng đã có
   `recent_amounts` mang đủ thông tin, và kể cả có cột đó thì vẫn dính đúng bước lùi ở trên.
 
+- **Màn Hóa đơn đồng bộ khung với bốn màn kia.** Nó đang bị `max-width: 900px` nên trên màn rộng thì
+  nội dung dồn về trái còn nửa phải bỏ trống, trong khi Tổng quan/Giao dịch/Nhập nhanh/Danh mục đều
+  tràn hết vùng nội dung — bỏ cap. Kèm theo: thanh tab về 12px + bóng nhẹ như `.fin-list__controls`
+  (đang là 16px + bóng đậm), dòng hóa đơn về 8px không bóng như `.fin-txrow`/`.fin-category-card`
+  (đang là 16px + bóng riêng cho từng dòng), empty state giống `.fin-list-empty`, và các khối mở trong
+  dòng không bo to hơn dòng chứa nó. Thang khung đã ghi thành bảng trong `DESIGN_FINANCE.md` §9.
+- **Số đếm trên tab** (`Phải trả 2`) chuyển sang `hint` nên hiển thị xám nhạt như tab Danh mục/Schema,
+  thay vì dính liền vào nhãn.
+
+### Removed
+- **115 rule CSS chết trong `finance.css` + `finance-handoff.css`** (65 class không còn JSX nào dùng):
+  accordion danh mục cũ `fin-catgroup*`, editor dạng modal `fin-modal*`/`fin-sub-editor*`, bảng schema
+  `fin-schema__*`, `fin-income-tile*`, `fin-ask__*`, `fin-level__*`… — tàn dư của các bản UI trước.
+  Xoá bằng cách đối chiếu từng class với toàn bộ `src/**/*.jsx`, có chừa các class ghép động
+  (`fin-rule__state--${tone}`, `fin-txrow__amt--${type}`, `fin-detail__amount--${type}`).
+
 ### Fixed
+- **Biểu đồ "Lịch sử các kỳ" của hóa đơn vẽ sai.** `.fin-bill-chart__col` tự tô nền tím và không có
+  rule nào cho `<i>` bên trong — mà `<i>` mới là thứ mang `style={{height}}`. Kết quả: mấy khối tím
+  đặc bằng nhau, chữ tháng nằm trên nền tím, chiều cao cột vô nghĩa. Giờ cột là flex-column, `<i>` là
+  thanh bar thật.
+- **Handoff Inbox với `kind` lạ làm trắng màn Hóa đơn.** Payload đọc từ `sessionStorage` được
+  `setRecurringSeg` nhận thẳng, segment không hợp lệ thì `SEGMENTS.find(...)` trả `undefined` rồi
+  `segMeta.addLabel` ném TypeError. Giờ kiểm giá trị trước khi set.
 - **Hóa đơn ngày 31 đếm ngược sai ở tháng ngắn.** `new Date(y, m, 31)` trong tháng 2 tràn sang 03/03 →
   màn Hóa đơn báo "còn 21 ngày" trong khi đúng ra là 18 ngày tới 28/02. `dueDateInMonth` kẹp về ngày
   cuối tháng; `daysUntilDue` dùng nó. Cả hai là pure function, đã có self-check trong

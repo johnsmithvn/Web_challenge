@@ -156,7 +156,8 @@ export default function RecurringScreen({ fin, nav }) {
     card: fin.cards.filter(card => !card.closed_at).length,
     lend: fin.lendings.filter(l => !l.closed_at).length,
   };
-  const segmentOptions = SEGMENTS.map(option => ({ ...option, label: `${option.label} ${counts[option.value]}` }));
+  // Số đếm là `hint` để nó xám nhạt như tab Danh mục/Schema, không dính liền vào nhãn.
+  const segmentOptions = SEGMENTS.map(option => ({ ...option, hint: String(counts[option.value]) }));
 
   return (
     <div className="fin-recurring">

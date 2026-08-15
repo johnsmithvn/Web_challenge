@@ -1,7 +1,7 @@
-# DESIGN — Finance v6.0 (Nocturne)
+# DESIGN — Finance v6.4 (Nocturne)
 
 **Trạng thái:** code + migration + local auth/CRUD smoke đã triển khai. Production vẫn user-run theo
-README. · **Updated:** 2026-08-09
+README. · **Updated:** 2026-08-15
 
 Đây là hợp đồng sản phẩm/kỹ thuật của module Finance hiện hành, không phải kế hoạch triển khai.
 
@@ -33,7 +33,7 @@ So sánh kỳ:
 
 ## 3. Data model
 
-Migration: `data/migration_v6.0.0_finance.sql`.
+Migration: `data/migration_v6.0.0_finance.sql` → `..._v6.3.0_finance_bill_note.sql` → `..._v6.4.0_finance_lending.sql`.
 
 | Table | Vai trò |
 |---|---|
@@ -138,7 +138,7 @@ sửa/công tắc/xóa, phần mở thêm (khối ghi kỳ, form sửa, lịch s
 
 | Nhóm | API hiện hành |
 |---|---|
-| Date/period | `ymd`, `parseYmd`, `addDaysStr`, `daysInclusive`, `listPeriodOptions`, `periodFromKey`, `currentMonthPeriod` |
+| Date/period | `ymd`, `parseYmd`, `addDaysStr`, `daysInclusive`, `dueDateInMonth`, `daysUntilDue`, `listPeriodOptions`, `periodFromKey`, `currentMonthPeriod` |
 | Totals/comparison | `periodTotals`, `comparePeriods`, `spendingRhythm`, `groupByDate` |
 | Category/budget | `deriveNecessity`, `matchCategory`, `budgetBreakdown`, `suggestedDailySpend` |
 | Card/loan/bill | `cardCycle`, `cardBalance`, `cardStatementSummary`, `floatInterest`, `loanSchedule`, `billAmountEstimate` |
@@ -186,6 +186,17 @@ kind `finance`. Vault tag không liên quan vì được mã hóa.
 ## 9. Nocturne visual contract
 
 - Scope trong `.finance-module`; không thay token global.
+- **Thang khung dùng chung cho cả năm màn** — lệch thang là thứ làm một màn trông "khác app":
+
+  | Vai trò | Radius | Bóng | Ví dụ |
+  |---|---|---|---|
+  | Thanh công cụ | 12px | `0 8px 22px rgba(4,5,12,.1)` | `.fin-period` · `.fin-list__controls` · `.fin-recurring__bar` |
+  | Thẻ tổng / hero | 14px | `0 10px 28px rgba(4,5,12,.12)` | `.fin-obligation-summary` · `.fin-summary-strip` · `.fin-entry-card` |
+  | Dòng danh sách | 8px | không bóng, chỉ viền 1px | `.fin-txrow` · `.fin-category-card` · `.fin-rule` |
+  | Khối mở trong dòng | 8px | không bóng | `.fin-payblock` · `.fin-bill-history` · `.fin-ruleform--edit` |
+  | Empty state | 10px | viền đứt, nền `rgba(35,37,50,.45)` | `.fin-list-empty` · `.fin-rules-empty` |
+
+- Không màn nào tự đặt `max-width` riêng; mọi màn tràn hết vùng nội dung và co bằng grid bên trong.
 - Dark Nocturne là bản thiết kế của module, nhưng mọi text/control vẫn phải đọc được trong shell app.
 - Phosphor icon qua `AppIcon`; emoji không dùng làm icon điều khiển.
 - Desktop có child navigation trong sidebar; mobile giữ vùng chạm và sheet/detail phù hợp.

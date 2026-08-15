@@ -1,6 +1,6 @@
 # TASKS — Life Hub
 
-**Version:** v6.3.0 · **Updated:** 2026-08-11
+**Version:** v6.4.0 · **Updated:** 2026-08-15
 
 Chỉ giữ việc còn mở. Việc đã hoàn thành xem [`CHANGELOG.md`](../CHANGELOG.md); thứ tự roadmap xem
 [`PLAN.md`](PLAN.md).
@@ -49,6 +49,11 @@ agent không tự kiểm chứng được RPC trên hosted DB.
 
 ### P2 — UI
 
+- [ ] Đối chiếu bốn màn còn lại với prototype handoff (`Chi tieu.dc.html` — file 370 KB được đính kèm
+  dưới tên `HOA-DON.md`): Tổng quan, Nhập nhanh, Giao dịch, Phân tích. Màn Hóa đơn đã đối chiếu xong
+  2026-08-15; bốn màn kia dựng theo bản mô tả nên nhiều khả năng còn lệch.
+- [ ] Smoke segment Cho vay trên hosted sau khi chạy `migration_v6.4.0_finance_lending.sql`: tạo khoản,
+  ghi vài lần thu, xác nhận giao dịch thu về `excluded` và không lọt vào tổng thu nhập.
 - [ ] QA desktop/mobile bằng dữ liệu dày: overflow, bottom sheet, sidebar, chart/legend và form dài.
 - [ ] QA keyboard, focus indicator, screen-reader label và console error thuộc Finance.
 

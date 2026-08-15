@@ -9,7 +9,6 @@
 .fin-source-card > span { display: flex; align-items: center; gap: 8px; color: var(--n-txt2); }
 .fin-more-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 7px 0; border: 0; background: none; color: var(--n-accent); cursor: pointer; font: inherit; font-size: 12.5px; }
 .fin-form__more { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--n-border); border-radius: var(--n-r); background: rgba(10,11,18,.2); animation: fin-rise .16s ease both; }
-.fin-submit { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 150px; }
 
 .finance-module--gate { display: grid; min-height: calc(100vh + .5rem); place-items: center; padding: 24px; }
 .finance-module--gate .fin-gate { padding: 18px 22px; border: 1px solid var(--n-border); border-radius: var(--n-r-lg); background: var(--n-card); box-shadow: 0 16px 40px rgba(4,5,12,.24); color: var(--n-txt2); }
@@ -67,7 +66,7 @@
 .fin-progress small { color: var(--n-txt3); font-size: 10.5px; }
 
 /* Ghi một kỳ: mở ngay dưới dòng, không modal, không rời danh sách. */
-.fin-payblock { display: grid; gap: 10px; padding: 11px; border: 1px solid var(--n-accent-3); border-radius: var(--n-r); background: var(--n-sink); animation: fin-rise .15s ease both; }
+.fin-payblock { display: grid; gap: 10px; padding: 11px; border: 1px solid var(--n-accent-3); border-radius: 8px; background: var(--n-sink); animation: fin-rise .15s ease both; }
 .fin-payblock__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 10px; }
 .fin-payblock__dates { display: flex; gap: 5px; flex-wrap: wrap; }
 .fin-payblock__dates .fin-input { width: auto; min-width: 132px; color-scheme: dark; }
@@ -83,7 +82,7 @@
 .fin-ruleform { gap: 11px; }
 .fin-ruleform__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
 .fin-ruleform__actions { display: flex; justify-content: flex-end; gap: 7px; }
-.fin-ruleform--edit { margin: 0; padding: 12px; border: 1px solid var(--n-accent-3); border-radius: var(--n-r); background: var(--n-sink); box-shadow: none; animation: fin-rise .15s ease both; }
+.fin-ruleform--edit { margin: 0; padding: 12px; border: 1px solid var(--n-accent-3); border-radius: 8px; background: var(--n-sink); box-shadow: none; animation: fin-rise .15s ease both; }
 .fin-ruleform .fin-field > span { color: var(--n-txt2); font-size: 11.5px; }
 .fin-form__warn { display: flex; align-items: flex-start; gap: 7px; margin: 0; font-size: 11px; line-height: 1.45; }
 .fin-form__warn svg { flex: none; margin-top: 1px; }
@@ -108,7 +107,7 @@
 .fin-bill-history__note { display: block; margin-top: 8px; color: var(--n-txt3); font-size: 10.5px; }
 
 /* Ghi chú hóa đơn — thuộc về quy tắc, không rơi xuống giao dịch. */
-.fin-billnote { display: flex; align-items: flex-start; gap: 9px; padding: 10px 11px; border: 1px solid rgba(145,132,217,.28); border-radius: var(--n-r); background: rgba(145,132,217,.09); }
+.fin-billnote { display: flex; align-items: flex-start; gap: 9px; padding: 10px 11px; border: 1px solid rgba(145,132,217,.28); border-radius: 8px; background: rgba(145,132,217,.09); }
 .fin-billnote > svg { flex: none; margin-top: 1px; color: var(--n-accent); }
 .fin-billnote p { flex: 1; min-width: 0; margin: 0; color: #cfd3e5; font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .fin-rule__notedot { flex: none; color: var(--n-txt3); }
@@ -120,7 +119,7 @@
 .fin-obligation-summary > div:first-child strong { font-size: 30px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .fin-obligation-summary > small { color: var(--n-txt3); font-size: 11px; }
 .fin-obligation-summary__overdue { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid color-mix(in srgb, var(--n-danger) 45%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--n-danger) 12%, transparent); color: var(--n-danger); font-size: 11.5px; }
-.fin-bill-history { padding: 12px; border: 1px solid var(--n-border); border-radius: var(--n-r); background: var(--n-sink); animation: fin-rise .16s ease both; }
+.fin-bill-history { padding: 12px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-sink); animation: fin-rise .16s ease both; }
 .fin-bill-history__head { justify-content: space-between; margin-bottom: 9px; font-size: 12px; }
 .fin-bill-history__list { display: grid; gap: 5px; margin-top: 10px; }
 .fin-bill-history__list > div { display: flex; justify-content: space-between; color: var(--n-txt2); font-size: 11.5px; }
@@ -130,9 +129,8 @@
 .fin-bill-chart__col small { color: var(--n-txt3); font-size: 9.5px; }
 .fin-archived__row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--n-line); }
 .fin-archived__row:first-child { border-top: 0; }
-.fin-recurring { max-width: 900px; }
 .fin-recurring > .fin-form { margin: 0; }
-.fin-rules-empty { display: grid; justify-items: center; align-content: center; min-height: 220px; padding: 34px; border: 1px dashed var(--n-border); border-radius: var(--n-r-lg); background: var(--n-card); text-align: center; box-shadow: 0 10px 28px rgba(4,5,12,.1); }
+.fin-rules-empty { display: grid; justify-items: center; align-content: center; min-height: 240px; padding: 34px; border: 1px dashed var(--n-border); border-radius: 10px; background: rgba(35,37,50,.45); text-align: center; }
 .fin-rules-empty > span { display: grid; place-items: center; width: 48px; height: 48px; margin-bottom: 12px; border-radius: 12px; background: var(--n-accent-soft); color: var(--n-accent); }
 .fin-rules-empty strong { font-size: 14px; }
 .fin-rules-empty small { max-width: 360px; margin-top: 5px; color: var(--n-txt3); font-size: 11.5px; line-height: 1.5; }
@@ -160,14 +158,10 @@
 .fin-fund__head > div { min-width: 0; }
 .fin-fund__head > div > strong { display: block; margin: 0; }
 .fin-fund__head > div > span { color: var(--n-txt3); font-size: 11.5px; }
-.fin-fund__amount { margin-left: auto; text-align: right; }
-.fin-fund__amount strong { display: block; font-size: 16px; }
-.fin-fund__amount span { color: var(--n-txt3); font-size: 11px; }
 .fin-fund__progress { height: 7px; margin: 12px 0 9px; overflow: hidden; border-radius: 5px; background: var(--n-sink); }
 .fin-fund__progress > div { height: 100%; border-radius: inherit; background: var(--n-accent-2); }
 .fin-fund__actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
 .fin-withdraw-request { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding: 9px 11px; border-radius: var(--n-r); background: rgba(229,129,89,.12); color: var(--n-warn); font-size: 11.5px; }
-.fin-deposit-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 7px; margin-top: 10px; }
 .fin-deposit { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid var(--n-border); border-radius: var(--n-r); background: var(--n-sink); }
 .fin-deposit > span:first-child { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: rgba(72,179,162,.12); color: var(--n-good); }
 .fin-deposit > div strong, .fin-deposit > div small { display: block; }
@@ -177,78 +171,15 @@
 .fin-editor__actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 11px; }
 
 /* Editable categories and schema */
-.fin-section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin: 7px 0 10px; }
-.fin-section-head--spaced { margin-top: 20px; }
-.fin-section-head h2, .fin-schema h2 { margin: 0; font-size: 15px; letter-spacing: 0; }
-.fin-section-head p { margin: 3px 0 0; color: var(--n-txt3); font-size: 11.5px; }
-.fin-category-list { padding: 4px 14px; }
-.fin-catgroup { border-bottom: 1px solid var(--n-line); opacity: 1; transition: opacity .15s ease; }
-.fin-catgroup:last-child { border-bottom: 0; }
-.fin-catgroup.is-hidden, .fin-income-tile.is-hidden { opacity: .56; }
-.fin-catgroup__head { display: flex; align-items: center; gap: 4px; width: 100%; padding: 7px 0; }
-.fin-catgroup__toggle { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 3px 0; border: 0; background: none; color: var(--n-txt); cursor: pointer; text-align: left; }
-.fin-catgroup__icon, .fin-income-tile__icon { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border-radius: 9px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
-.fin-catgroup__label { min-width: 90px; }
-.fin-catgroup__label strong, .fin-catgroup__label small { display: block; }
-.fin-catgroup__label strong { font-size: 13px; }
-.fin-catgroup__label small { color: var(--n-txt3); font-size: 10.5px; margin-top: 1px; }
-.fin-catgroup__caret { margin-left: auto; color: var(--n-txt3); }
-.fin-catgroup__body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .18s ease; }
-.fin-catgroup__body.is-open { grid-template-rows: 1fr; }
-.fin-catgroup__body > .fin-catgroup__subs { overflow: hidden; }
-.fin-catgroup__subs { padding: 0 42px; gap: 0; }
-.fin-catgroup__body.is-open .fin-catgroup__subs { padding-bottom: 9px; }
-.fin-catgroup__sub { padding: 5px 0; border-top: 1px solid var(--n-line); }
-.fin-hidden-chip { display: inline-flex; align-items: center; gap: 4px; color: var(--n-txt3); font-size: 10.5px; }
-.fin-income-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
-.fin-income-tile { display: flex; align-items: center; gap: 10px; padding: 11px; border: 1px solid var(--n-border); border-radius: var(--n-r); background: var(--n-card); color: var(--n-txt); cursor: pointer; text-align: left; transition: transform .14s ease, border-color .14s ease; }
-.fin-income-tile:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--c) 52%, var(--n-border)); }
-.fin-income-tile > span:nth-child(2) { flex: 1; }
-.fin-income-tile strong, .fin-income-tile small { display: block; }
-.fin-income-tile strong { font-size: 12.5px; }
-.fin-income-tile small { margin-top: 2px; color: var(--n-txt3); font-size: 10.5px; }
-.fin-income-tile__edit { color: var(--n-txt3); }
+.fin-schema h2 { margin: 0; font-size: 15px; letter-spacing: 0; }
 
-.fin-modal-backdrop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 18px; background: rgba(8,9,14,.72); backdrop-filter: blur(6px); animation: fin-fade .14s ease both; }
-.fin-modal { width: min(600px, 100%); max-height: min(780px, calc(100vh - 36px)); overflow-y: auto; padding: 18px; border: 1px solid var(--n-border); border-radius: var(--n-r-lg); background: var(--n-card); box-shadow: 0 24px 64px rgba(0,0,0,.5); animation: fin-rise .18s ease both; }
-.fin-modal__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
-.fin-modal__head strong, .fin-modal__head small { display: block; }
-.fin-modal__head strong { font-size: 15px; }
-.fin-modal__head small { color: var(--n-txt3); font-size: 11px; margin-top: 2px; }
-.fin-modal__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-.fin-cat-editor__identity { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 10px; margin-bottom: 12px; }
 .fin-field { display: grid; gap: 5px; color: var(--n-txt2); font-size: 11.5px; }
-.fin-field--grow { min-width: 0; }
 .fin-field input, .fin-field select, .fin-sub-editor input, .fin-sub-editor select,
-.fin-icon-preview select { width: 100%; min-height: 38px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-sink); color: var(--n-txt); padding: 8px 10px; font: inherit; font-size: 12.5px; }
-.fin-icon-preview { display: grid; grid-template-columns: 38px; gap: 5px; color: var(--c); }
-.fin-icon-preview > svg { box-sizing: border-box; width: 38px; height: 38px; padding: 7px; border-radius: 9px; background: color-mix(in srgb, var(--c) 14%, transparent); }
-.fin-icon-preview select { width: 38px; color: transparent; padding: 0; cursor: pointer; }
-.fin-color-field { display: grid; gap: 5px; color: var(--n-txt2); font-size: 11.5px; }
-.fin-color-field input { width: 42px; height: 38px; padding: 3px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-sink); cursor: pointer; }
-.fin-sub-editor { margin-top: 12px; padding: 10px; border: 1px solid var(--n-border); border-radius: var(--n-r); background: rgba(10,11,18,.22); }
-.fin-sub-editor__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; font-size: 12px; }
-.fin-sub-editor__head button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: var(--n-accent); cursor: pointer; }
-.fin-sub-editor__row { display: grid; grid-template-columns: minmax(0, 1fr) 116px auto; gap: 6px; margin-top: 6px; }
 .fin-check-row { display: flex; align-items: flex-start; gap: 9px; margin-top: 13px; padding: 10px; border-radius: var(--n-r); background: var(--n-sink); cursor: pointer; }
 .fin-check-row input { accent-color: var(--n-accent-2); margin-top: 3px; }
 .fin-check-row strong, .fin-check-row small { display: block; }
 .fin-check-row strong { font-size: 12.5px; }
 .fin-check-row small { margin-top: 2px; color: var(--n-txt3); font-size: 10.5px; }
-
-.fin-schema__intro { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 14px; }
-.fin-schema__intro > span { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border-radius: 10px; background: var(--n-accent-soft); color: var(--n-on-accent); }
-.fin-schema__intro p { margin: 4px 0 0; }
-.fin-schema__table { border: 1px solid var(--n-border); border-radius: var(--n-r); overflow: hidden; }
-.fin-schema__row { display: grid; grid-template-columns: minmax(170px, .75fr) .75fr 1.5fr; gap: 12px; align-items: center; padding: 9px 11px; border-top: 1px solid var(--n-line); }
-.fin-schema__row:first-child { border-top: 0; }
-.fin-schema__row strong { font-size: 11.5px; }
-.fin-schema__row span { color: var(--n-txt2); font-size: 11.5px; }
-.fin-schema__principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
-.fin-schema__principles > div { display: grid; gap: 3px; padding: 10px; border-radius: var(--n-r); background: var(--n-sink); }
-.fin-schema__principles svg { color: var(--n-accent); }
-.fin-schema__principles strong { font-size: 11.5px; }
-.fin-schema__principles span { color: var(--n-txt3); font-size: 10.5px; line-height: 1.4; }
 
 .fin-icon-btn { display: inline-grid; place-items: center; min-width: 30px; min-height: 30px; color: var(--n-txt2); border-radius: 7px; transition: background .14s ease, color .14s ease; }
 .fin-icon-btn:hover { background: rgba(233,233,237,.07); color: var(--n-txt); }
@@ -354,7 +285,7 @@
 .fin-entry-card__head .fin-seg__btn { min-height: 34px; border-left: 1px solid var(--n-border); border-radius: 0; }
 .fin-entry-card__head .fin-seg__btn:first-child { border-left: 0; }
 .fin-entry-section { display: grid; gap: 8px; }
-.fin-entry-section > label, .fin-field-heading > label, .fin-entry-meta label { color: var(--n-txt2); font-size: 11.5px; }
+.fin-entry-section > label, .fin-field-heading > label { color: var(--n-txt2); font-size: 11.5px; }
 .fin-field-heading { display: flex; align-items: baseline; gap: 8px; }
 .fin-field-heading small { color: var(--n-txt3); font-size: 10.5px; }
 /* Tiêu đề + Số tiền một hàng, số tiền hẹp hơn vì nó là ô 42px đã tự nổi bật.
@@ -407,8 +338,6 @@
 .fin-goal-picker > button.is-active { border-color: var(--n-accent); }
 .fin-goal-picker > button > span { display: grid; gap: 2px; }
 .fin-goal-picker small { color: var(--n-txt3); font-size: 10.5px; }
-.fin-entry-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-.fin-entry-meta > div { display: grid; gap: 5px; }
 .fin-date-choice { display: grid; grid-template-columns: auto auto minmax(40px, 1fr); gap: 4px; }
 .fin-date-choice button, .fin-date-choice input { min-height: 38px; padding: 7px 8px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-sink); color: var(--n-txt2); font: inherit; font-size: 11.5px; color-scheme: dark; cursor: pointer; }
 .fin-date-choice button.is-active { border-color: var(--n-accent); background: var(--n-accent-soft); color: var(--n-on-accent); }
@@ -542,18 +471,7 @@
 @media (max-width: 760px) {
   .finance-module--gate { min-height: calc(100vh - var(--topbar-height) - var(--bottom-tabs-height)); }
   .fin-header .fin-header__chip, .fin-header .fin-header__action { display: none; }
-  .fin-section-head { align-items: stretch; flex-direction: column; }
-  .fin-section-head .fin-btn { justify-content: center; }
-  .fin-catgroup__toggle { gap: 8px; }
-  .fin-catgroup__toggle .fin-nchip { display: none; }
-  .fin-hidden-chip { font-size: 0; }
-  .fin-hidden-chip svg { width: 14px; height: 14px; }
-  .fin-modal-backdrop { place-items: end center; padding: 0; }
-  .fin-modal { width: 100%; max-height: 88vh; border-radius: var(--n-r-lg) var(--n-r-lg) 0 0; padding: 16px; }
-  .fin-sub-editor__row { grid-template-columns: minmax(0, 1fr) 105px auto; }
-  .fin-schema__row { grid-template-columns: 1fr; gap: 4px; }
-  .fin-schema__principles { grid-template-columns: 1fr; }
-  .fin-deposit-list, .fin-fixed-split { grid-template-columns: 1fr; }
+  .fin-fixed-split { grid-template-columns: 1fr; }
   .fin-fixed-split__bar { grid-column: 1; }
   .fin-alert--detail { grid-template-columns: auto minmax(0, 1fr) auto; }
   .fin-alert--detail > b { grid-column: 2; }
@@ -579,7 +497,6 @@
   .fin-entry-card__head .fin-seg { width: 100%; margin: 0; }
   .fin-entry-card__head .fin-entry-actions { margin-left: 0; }
   .fin-entry-card__head .fin-seg__btn { flex: 1; }
-  .fin-entry-meta { grid-template-columns: 1fr; }
   /* Hẹp thì tiêu đề và số tiền xuống 2 dòng — ô số 42px không chia đôi được */
   .fin-entry-head-grid { grid-template-columns: 1fr; gap: 9px; }
   .fin-entry-topbar { align-items: stretch; }
@@ -626,7 +543,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fin-modal-backdrop, .fin-modal, .fin-editor, .fin-bill-history, .fin-form__more, .fin-overview-view { animation: none; }
+  .fin-editor, .fin-bill-history, .fin-form__more, .fin-overview-view { animation: none; }
 }
 
 /* Finance taxonomy + schema: dense reference layout from the handoff. */

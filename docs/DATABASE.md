@@ -1,13 +1,13 @@
 # DATABASE.md — Life Hub
 
-**Target:** Supabase PostgreSQL · **Version:** v6.2.0 · **Updated:** 2026-08-09
+**Target:** Supabase PostgreSQL · **Version:** v6.4.0 · **Updated:** 2026-08-15
 
 Runbook cài đặt duy nhất nằm trong [`README.md`](../README.md). File này mô tả trạng thái schema cuối,
 không thay thế SQL thật.
 
 ## Trạng thái schema cuối
 
-Sau khi chạy đủ baseline và ba migration domain, database có **27 bảng public đang hoạt động**:
+Sau khi chạy đủ baseline và bốn migration domain, database có **28 bảng public đang hoạt động**:
 
 - 14 bảng core
 - 11 bảng Finance (10 bảng chính + junction tag)
