@@ -266,9 +266,11 @@
 .fin-pending-bill__dismiss { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--n-txt3); cursor: pointer; }
 .fin-add-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }
 .fin-entry-card { display: flex; flex-direction: column; gap: 14px; min-width: 0; margin: 0; padding: 22px; border-radius: 14px; }
-.fin-entry-card__head { display: flex; align-items: center; gap: 8px; }
-.fin-entry-card__head > span { color: var(--n-txt3); font-size: 11.5px; }
-.fin-entry-card__head .fin-seg { margin: 0 0 0 auto; padding: 0; overflow: hidden; border: 1px solid var(--n-border); background: transparent; }
+/* Tab loai ben TRAI, nut luu ben PHAI. `.fin-seg` bo `margin-left: auto` cu — no
+   la thu day segmented sang phai khi con dong chu 'Mot khoan moi' o dau. */
+.fin-entry-card__head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.fin-entry-card__head .fin-entry-actions { margin-left: auto; padding-top: 0; }
+.fin-entry-card__head .fin-seg { margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--n-border); background: transparent; }
 .fin-entry-card__head .fin-seg__btn { min-height: 34px; border-left: 1px solid var(--n-border); border-radius: 0; }
 .fin-entry-card__head .fin-seg__btn:first-child { border-left: 0; }
 .fin-entry-section { display: grid; gap: 8px; }
@@ -283,10 +285,12 @@
 .fin-entry-title-field > label { color: var(--n-txt2); font-size: 11.5px; }
 .fin-entry-title-field > input { font-size: 15px; }
 .fin-entry-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.fin-entry-topbar .fin-entry-actions { padding-top: 0; margin-left: auto; }
+.fin-entry-hint { color: var(--n-txt3); font-size: 10.5px; margin-left: auto; }
 
 .fin-amount-field { display: grid; gap: 4px; min-width: 0; }
-.fin-amount-field > div:nth-child(2) { display: flex; align-items: baseline; gap: 8px; }
+/* `min-width: 0` o day la bat buoc: input 42px co min-content rat rong, grid item
+   mac dinh `min-width: auto` nen o so tien tran ra ngoai the (thay ro khi focus). */
+.fin-amount-field > div:nth-child(2) { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .fin-amount-field input { flex: 1; min-width: 0; padding: 0; border: 0; outline: 0; background: transparent; color: var(--n-txt); font: 500 42px/1.15 Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 .fin-amount-field input::placeholder { color: var(--n-txt3); }
 .fin-amount-field > div:nth-child(2) > span { color: var(--n-txt3); font-size: 22px; }
@@ -492,12 +496,13 @@
   .fin-entry-card { padding: 16px; }
   .fin-entry-card__head { align-items: stretch; flex-direction: column; }
   .fin-entry-card__head .fin-seg { width: 100%; margin: 0; }
+  .fin-entry-card__head .fin-entry-actions { margin-left: 0; }
   .fin-entry-card__head .fin-seg__btn { flex: 1; }
   .fin-entry-meta { grid-template-columns: 1fr; }
   /* Hẹp thì tiêu đề và số tiền xuống 2 dòng — ô số 42px không chia đôi được */
   .fin-entry-head-grid { grid-template-columns: 1fr; gap: 9px; }
   .fin-entry-topbar { align-items: stretch; }
-  .fin-entry-topbar .fin-entry-actions { margin-left: 0; }
+  .fin-entry-hint { margin-left: 0; }
   .fin-task-link-row { align-items: stretch; flex-direction: column; }
   .fin-task-link-row .fin-taskpick { width: 100%; margin-left: 0; }
   .fin-task-link-row .fin-taskpick__btn { flex: 1; }

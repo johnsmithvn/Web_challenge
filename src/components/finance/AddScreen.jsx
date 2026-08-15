@@ -77,12 +77,13 @@ export default function AddScreen({ fin, nav }) {
     const text = nav.handoff.title || '';
     if (text) {
       setNote(stripAmountWords(text) || text);
+      setType('expense');
       const guess = matchCategory(text);
-      if (guess) {
-        setType('expense');
-        setCategoryId(guess.categoryId);
-        setSubId(guess.subId);
-      }
+      // Không khớp luật nào thì vào `other.unclassified`, KHÔNG để nguyên mặc định
+      // của form (`food`). Trước đây "mua ổ cứng 2tr" từ Inbox im lặng thành khoản
+      // Ăn uống — sai mà không có dấu hiệu nào để nhận ra.
+      setCategoryId(guess ? guess.categoryId : 'other');
+      setSubId(guess ? guess.subId : 'other.unclassified');
     }
     // `handoff.amount` là số Inbox đã chốt → tin nó trước; không có thì mới đoán
     // từ chính câu đó ("cà phê 35k").
@@ -249,6 +250,12 @@ export default function AddScreen({ fin, nav }) {
     if (tx) nav.showToast(`Đã thanh toán ${bill.name} và cập nhật báo cáo`, { icon: 'checkCircle' });
   };
 
+  /* ⚠️ ĐỪNG cho shortcut tự ghi bằng `recent_amounts[0]` khi chưa gõ số.
+     Đã thử (2026-08-11) và đó là một BƯỚC LÙI: shortcut không còn "arm" nữa nên
+     mất luôn hai thứ của thiết kế cũ mà user dùng thật —
+       · ô nhập để ghi một mức tiền KHÁC lần trước,
+       · danh sách các mức đã lưu (`recent_amounts`, tối đa 3), bấm mức nào ghi mức đó.
+     Arm là đúng: nó biến 1 cú bấm thành 2, nhưng giữ được toàn bộ lựa chọn. */
   const recordShortcut = async (shortcut, rawAmount = quickAmount) => {
     const value = parseCurrencyInput(rawAmount);
     if (!value) {
@@ -306,6 +313,8 @@ export default function AddScreen({ fin, nav }) {
     const shortcut = await fin.addShortcut({
       name, category_id: categoryId, subcategory_id: subId || null,
       necessity: appliedNecessity, source_card_id: sourceCardId || null,
+      // Ghim từ form khi đã gõ số → shortcut mới có sẵn một mức tiền trong danh
+      // sách chọn nhanh, không phải ghi thử một lần mới có.
       recent_amounts: parsedAmount ? [parsedAmount] : [],
       sort_order: fin.shortcuts.length,
     });
@@ -343,9 +352,14 @@ export default function AddScreen({ fin, nav }) {
 
       <div className="fin-add-grid">
         <form className="fin-card fin-entry-card" onSubmit={(event) => { event.preventDefault(); saveTransaction(false); }}>
+          {/* Tab loại bên TRÁI, nút lưu bên PHẢI, không có tiêu đề "Một khoản mới":
+              cả trang đã tên là "Ghi một khoản" nên dòng đó chỉ chiếm chỗ. */}
           <div className="fin-entry-card__head">
-            <span>Một khoản mới</span>
             <Segmented options={TYPE_OPTS} value={type} onChange={setType} />
+            <div className="fin-entry-actions">
+              <button type="submit" className="fin-btn fin-btn--primary" disabled={!parsedAmount || (type === 'saving' && (!selectedGoal || !selectedDeposit || (savingDir === 'out' && parsedAmount > selectedDeposit.amount)))}><AppIcon name="check" size={16} weight="bold" /> Lưu</button>
+              <button type="button" className="fin-btn fin-btn--secondary" disabled={!parsedAmount || (type === 'saving' && (!selectedGoal || !selectedDeposit))} onClick={() => saveTransaction(true)}>Lưu &amp; nhập tiếp</button>
+            </div>
           </div>
 
           {/* Tiêu đề + số tiền + nút lưu đứng NGAY ĐẦU form: đó là ba thứ duy nhất
@@ -376,11 +390,7 @@ export default function AddScreen({ fin, nav }) {
             <div className="fin-step-row">
               {AMOUNT_STEPS.map(step => <button key={step} type="button" onClick={() => addAmount(setAmount, amount, step)}>{amountStepLabel(step)}</button>)}
             </div>
-            <div className="fin-entry-actions">
-              <button type="submit" className="fin-btn fin-btn--primary" disabled={!parsedAmount || (type === 'saving' && (!selectedGoal || !selectedDeposit || (savingDir === 'out' && parsedAmount > selectedDeposit.amount)))}><AppIcon name="check" size={16} weight="bold" /> Lưu</button>
-              <button type="button" className="fin-btn fin-btn--secondary" disabled={!parsedAmount || (type === 'saving' && (!selectedGoal || !selectedDeposit))} onClick={() => saveTransaction(true)}>Lưu &amp; nhập tiếp</button>
-              <small>Enter để lưu · Esc để hủy</small>
-            </div>
+            <small className="fin-entry-hint">Enter để lưu · Esc để hủy</small>
           </div>
 
           {type !== 'saving' && (
@@ -542,7 +552,12 @@ export default function AddScreen({ fin, nav }) {
                       <button type="button" className="fin-shortcut-main" onClick={() => recordShortcut(shortcut)}>
                         <span className="fin-shortcut-main__icon" style={{ color: info.color }}><FinanceIcon name={info.icon} cats={cats} size={16} /></span>
                         <span><strong>{shortcut.name}<i style={{ color: need.color }}>{need.label}</i></strong><small>{info.label}{subLabel(shortcut.subcategory_id, cats) ? ` › ${subLabel(shortcut.subcategory_id, cats)}` : ''}</small></span>
-                        <em>{parseCurrencyInput(quickAmount) ? `ghi ${money(parseCurrencyInput(quickAmount))}` : shortcut.recent_amounts?.[0] ? `thường ${money(shortcut.recent_amounts[0])}` : 'gõ số tiền'}</em>
+                        {/* "ghi X" chỉ khi đã gõ số vào ô nhập nhanh — lúc đó bấm là ghi
+                            thật. Còn lại là "thường X": số gợi ý, bấm vào sẽ mở ô chọn
+                            chứ chưa ghi. Đừng đổi thành "ghi" cho cả hai — nó nói dối. */}
+                        <em>{parseCurrencyInput(quickAmount) ? `ghi ${money(parseCurrencyInput(quickAmount))}`
+                          : shortcut.recent_amounts?.[0] ? `thường ${money(shortcut.recent_amounts[0])}`
+                            : 'gõ số tiền'}</em>
                       </button>
                       {/* Seed không xoá được (nó là JSON, không phải row DB) nên nút
                           của seed là ẨN, và bắt buộc phải có đường hiện lại ở cuối

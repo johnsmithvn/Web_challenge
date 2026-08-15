@@ -2,7 +2,28 @@
 
 ## Unreleased
 
+### Changed
+- **Đầu form: tab Chi/Thu/Để dành sang trái, nút Lưu sang phải, bỏ dòng "Một khoản mới"** (cả trang đã
+  tên "Ghi một khoản"). `.fin-seg` bỏ `margin-left: auto` — đó là thứ đẩy tab sang phải khi còn dòng chữ.
+
+### Đã thử rồi bỏ — đừng làm lại
+- **Cho shortcut tự ghi bằng `recent_amounts[0]` khi chưa gõ số.** Nghe như biến 3 động tác thành 1,
+  thực tế là **bước lùi**: shortcut không còn "arm" nữa nên mất hai thứ của thiết kế cũ đang được dùng
+  thật — ô nhập để ghi một mức tiền **khác** lần trước, và **danh sách các mức đã lưu** (`recent_amounts`,
+  tối đa 3) mà bấm mức nào ghi mức đó. Arm biến 1 cú bấm thành 2 nhưng giữ nguyên mọi lựa chọn.
+  Đã ghi cảnh báo ngay trên `recordShortcut`.
+- **`ALTER TABLE finance_shortcuts ADD COLUMN default_amount`.** Viết migration xong rồi xoá: bảng đã có
+  `recent_amounts` mang đủ thông tin, và kể cả có cột đó thì vẫn dính đúng bước lùi ở trên.
+
 ### Fixed
+- **Ô "Số tiền" tràn ra ngoài thẻ.** Input `42px` có min-content rất rộng, mà grid item mặc định
+  `min-width: auto` → ô tràn khỏi card, thấy rõ khi nó được focus. Thêm `min-width: 0` cho
+  `.fin-amount-field > div:nth-child(2)`: chặn ở **cả hai tầng**, không chỉ ở input.
+- **Convert Inbox không khớp từ điển thì im lặng thành khoản "Ăn uống".** `matchCategory` trả `null` khi
+  text không khớp luật nào trong `NL_DICT` (17 luật regex), và form giữ mặc định `categoryId = 'food'` →
+  "mua ổ cứng 2tr" từ Inbox thành khoản Ăn uống, sai mà không có dấu hiệu nào để nhận ra. Giờ rơi về
+  `other` › `other.unclassified` ("Khác › Chưa phân loại") — nhóm này đã có sẵn trong
+  `finance-categories.json`, không cần thêm gì.
 - **Finance · "Ghim thành shortcut" im lặng không làm gì.** `pinCurrentShortcut` có `if (type !== 'expense')
   return;` — bấm ở tab Thu / Để dành thì không toast, không lỗi, không gì cả. Giờ báo rõ
   "Shortcut chỉ dùng cho khoản Chi".

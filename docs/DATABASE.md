@@ -64,7 +64,7 @@ auth.users
 | `finance_saving_goals` | Quỹ tiết kiệm và chính sách khóa |
 | `finance_deposits` | Nơi gửi thuộc quỹ; đáo hạn suy ra từ kỳ hạn |
 | `finance_income_rules` | Thu định kỳ |
-| `finance_shortcuts` | Mẫu nhập nhanh, không giữ số tiền cố định |
+| `finance_shortcuts` | Mẫu nhập nhanh, không giữ số tiền cố định. `recent_amounts` (tối đa 3) là các mức đã dùng, hiện thành nút bấm-là-ghi khi mở shortcut. Đã cân nhắc thêm cột `default_amount` để bấm một cái ghi luôn và **bỏ** — xem mục "Đã thử rồi bỏ" trong CHANGELOG |
 | `finance_budgets` | Hạn mức theo category |
 | `finance_category_overrides` | Nhãn/màu/icon/subcategory tùy biến theo user |
 | `finance_transaction_tags` | Giao dịch ↔ Tag |
