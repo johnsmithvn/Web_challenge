@@ -166,7 +166,9 @@ export default function AddScreen({ fin, nav }) {
     setShowMore(false);
   };
 
-  const saveTransaction = async (stayOnForm = false) => {
+  // Lưu xong Ở LẠI trang: ghi tiền hiếm khi đi một mình, và sau khi lưu người ta
+  // muốn thấy form trống sẵn sàng cho khoản kế, không phải bị đá về Tổng quan.
+  const saveTransaction = async () => {
     if (!parsedAmount || parsedAmount <= 0) {
       nav.showToast('Nhập số tiền trước đã');
       return;
@@ -232,7 +234,6 @@ export default function AddScreen({ fin, nav }) {
     }
     nav.clearHandoff();
     reset();
-    if (!stayOnForm) nav.go('overview');
   };
 
   const payPendingBill = async (bill, rawAmount) => {
@@ -347,14 +348,13 @@ export default function AddScreen({ fin, nav }) {
       )}
 
       <div className="fin-add-grid">
-        <form className="fin-card fin-entry-card" onSubmit={(event) => { event.preventDefault(); saveTransaction(false); }}>
+        <form className="fin-card fin-entry-card" onSubmit={(event) => { event.preventDefault(); saveTransaction(); }}>
           {/* Tab loại bên TRÁI, nút lưu bên PHẢI, không có tiêu đề "Một khoản mới":
               cả trang đã tên là "Ghi một khoản" nên dòng đó chỉ chiếm chỗ. */}
           <div className="fin-entry-card__head">
             <Segmented options={TYPE_OPTS} value={type} onChange={setType} />
             <div className="fin-entry-actions">
               <button type="submit" className="fin-btn fin-btn--primary" disabled={!parsedAmount || (type === 'saving' && (!selectedGoal || !selectedDeposit || (savingDir === 'out' && parsedAmount > selectedDeposit.amount)))}><AppIcon name="check" size={16} weight="bold" /> Lưu</button>
-              <button type="button" className="fin-btn fin-btn--secondary" disabled={!parsedAmount || (type === 'saving' && (!selectedGoal || !selectedDeposit))} onClick={() => saveTransaction(true)}>Lưu &amp; nhập tiếp</button>
             </div>
           </div>
 

@@ -8,6 +8,7 @@ const list = readFileSync(new URL('../components/finance/ListScreen.jsx', import
 const page = readFileSync(new URL('../pages/FinancePage.jsx', import.meta.url), 'utf8');
 const billNote = readFileSync(new URL('../../data/migration_v6.3.0_finance_bill_note.sql', import.meta.url), 'utf8');
 const lending = readFileSync(new URL('../../data/migration_v6.4.0_finance_lending.sql', import.meta.url), 'utf8');
+const detach = readFileSync(new URL('../../data/migration_v6.9.0_finance_rule_detach.sql', import.meta.url), 'utf8');
 const destructiveScreens = [
   list,
   recurring,
@@ -128,6 +129,25 @@ assert.doesNotMatch(sql, /v_bill\.note/,
 assert.match(sql, /unique_finance_tx_income_period/, 'phải chống nhận trùng thu nhập theo kỳ');
 assert.match(sql, /unique_finance_tx_loan_part_period/, 'phải chống ghi trùng từng phần khoản vay');
 assert.match(sql, /finance_transaction_reference_guard/, 'phải kiểm ownership của mọi liên kết');
+// ── v6.9.0: xóa quy tắc chỉ gỡ liên kết, không xóa giao dịch ────────────────
+assert.match(detach, /BEGIN;[\s\S]*COMMIT;/, 'migration phải chạy trong một transaction DDL');
+assert.match(detach,
+  /ARRAY\['bill_id', 'income_rule_id', 'loan_id', 'card_id', 'source_card_id'\][\s\S]*ON DELETE SET NULL/,
+  'năm khóa ngoại quy tắc phải chuyển sang SET NULL — RESTRICT làm lệnh xóa hỏng hoàn toàn');
+// `loan_part`/`card_period` là bằng chứng duy nhất còn lại sau khi quy tắc bị xóa, cho phép
+// giao dịch tiếp tục excluded. Soi id thay vì soi chúng = trả gốc vay bị tính thành chi tiêu.
+assert.match(detach,
+  /ADD CONSTRAINT finance_tx_excluded_scope CHECK \(\s*excluded = FALSE\s*OR loan_part = 'principal'\s*OR card_period IS NOT NULL\s*OR lending_id IS NOT NULL/,
+  'excluded phải nhận diện qua loan_part/card_period, không qua loan_id/card_id');
+assert.match(detach, /saving_goal_id' AND c\.confdeltype = 'r'/,
+  'quỹ tiết kiệm phải giữ RESTRICT: giao dịch type=saving không tồn tại nếu mất quỹ');
+// Bốn nút xóa quy tắc phải ĐỌC kết quả. Trước v6.9.0 vay/thẻ/cho vay thất bại im lặng:
+// bấm Xóa, database từ chối, UI không nói gì.
+for (const fn of ['deleteBill', 'deleteLoan', 'deleteCard', 'deleteLending']) {
+  assert.match(recurring, new RegExp(`if \\(!await fin\\.${fn}\\(`),
+    `nút xóa phải xử lý khi ${fn} thất bại, không im lặng`);
+}
+
 assert.match(sql, /security_invoker = TRUE/, 'tagged_items phải chạy bằng quyền người gọi');
 assert.match(sql, /REVOKE ALL ON TABLE[\s\S]*FROM anon;/, 'anon không được truy cập bảng Finance');
 

@@ -1,6 +1,6 @@
 # TASKS — Life Hub
 
-**Version:** v6.4.0 · **Updated:** 2026-08-15
+**Version:** v6.9.0 · **Updated:** 2026-08-16
 
 Chỉ giữ việc còn mở. Việc đã hoàn thành xem [`CHANGELOG.md`](../CHANGELOG.md); thứ tự roadmap xem
 [`PLAN.md`](PLAN.md).
@@ -54,12 +54,17 @@ agent không tự kiểm chứng được RPC trên hosted DB.
   2026-08-15; bốn màn kia dựng theo bản mô tả nên nhiều khả năng còn lệch.
 - [ ] Smoke segment Cho vay trên hosted sau khi chạy `migration_v6.4.0_finance_lending.sql`: tạo khoản,
   ghi vài lần thu, xác nhận giao dịch thu về `excluded` và không lọt vào tổng thu nhập.
-- [ ] **Sửa FK `finance_transactions.bill_id` từ `ON DELETE RESTRICT` sang giữ được giao dịch.**
-  Hợp đồng (`DESIGN_FINANCE`, handoff §8.5) nói xóa hóa đơn KHÔNG xóa giao dịch, nhưng RESTRICT làm
-  xóa thất bại hoàn toàn. Cần migration: trigger `BEFORE DELETE ON finance_bills` set
-  `bill_id = NULL, bill_period = NULL` cho giao dịch liên quan (phải null CẢ HAI vì CHECK ràng chúng
-  đi cùng nhau), rồi đổi FK sang `ON DELETE SET NULL`. Kiểm luôn `loan_id`/`card_id` có dính RESTRICT
-  tương tự không.
+- [x] **Sửa FK `RESTRICT` chặn xóa quy tắc** — xong 2026-08-16, `migration_v6.9.0_finance_rule_detach.sql`.
+  `bill_id`, `income_rule_id`, `loan_id`, `card_id`, `source_card_id` sang `ON DELETE SET NULL`; CHECK
+  cặp được nới để cột kỳ ở lại làm lịch sử, `finance_tx_excluded_scope` soi `loan_part`/`card_period`
+  thay vì soi id. **User còn phải chạy SQL này trên hosted rồi smoke tay bốn nút xóa.**
+- [ ] **Quyết định: có nới invariant `excluded` để xóa được khoản cho vay đã có lần thu không?**
+  Giao dịch thu về là `income + excluded`, mà database chỉ cho phép cặp đó khi còn `lending_id` — khoản
+  cho vay không có cột kỳ nào để giữ lại làm bằng chứng như `loan_part`/`card_period`. Ba đường: (a) giữ
+  nguyên, UI đã nói thẳng phải xóa giao dịch thu về trước; (b) nới `finance_tx_branch_shape` cho phép
+  income + excluded không cần rule — mất guard "chỉ thu về từ cho vay mới được excluded", và phải sửa
+  assertion trong `financeMigration.test.js`; (c) thêm cột đánh dấu, tốn schema cho một trường hợp.
+  Quỹ tiết kiệm giữ `RESTRICT` vĩnh viễn — giao dịch `type='saving'` mất quỹ là dữ liệu vô nghĩa.
 - [ ] QA desktop/mobile bằng dữ liệu dày: overflow, bottom sheet, sidebar, chart/legend và form dài.
 - [ ] QA keyboard, focus indicator, screen-reader label và console error thuộc Finance.
 

@@ -864,13 +864,9 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
     const ok = await nav.confirmDelete(`hóa đơn “${bill.name}”`,
       `Hóa đơn chỉ là quy tắc nhắc. ${kept > 0 ? `${kept} giao dịch đã ghi vẫn được giữ lại ở màn Giao dịch.` : 'Chưa có giao dịch nào sinh ra từ hóa đơn này.'}`);
     if (!ok) return;
-    // FK bill_id đang là ON DELETE RESTRICT nên xóa hóa đơn ĐÃ CÓ giao dịch sẽ thất bại.
-    // Trước đây thất bại im lặng: hộp xác nhận hứa giữ giao dịch, bấm Xóa xong không có gì xảy ra.
-    const gone = await fin.deleteBill(bill.id);
-    if (!gone) {
-      nav.showToast(kept > 0
-        ? `Chưa xóa được ${bill.name} vì còn ${kept} giao dịch tham chiếu tới nó. Tắt hóa đơn để ngừng nhắc, hoặc xóa các giao dịch đó trước.`
-        : `Không thể xóa ${bill.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
+    // Từ v6.9.0 giao dịch chỉ bị gỡ khỏi hóa đơn (bill_id/bill_period về NULL), không bị xóa.
+    if (!await fin.deleteBill(bill.id)) {
+      nav.showToast(`Không thể xóa ${bill.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
     }
   };
 
@@ -1121,7 +1117,14 @@ function LoansList({ fin, nav, tasks }) {
             amount={money(dueAmount)} state={state} openTitle="Sửa khoản vay"
             onOpen={() => setEditId(editId === l.id ? null : l.id)}
             onEdit={() => { setEditId(editId === l.id ? null : l.id); setPayId(null); }}
-            onDelete={async () => { if (await nav.confirmDelete(`khoản vay “${l.name}”`)) await fin.deleteLoan(l.id); }}>
+            onDelete={async () => {
+              const kept = fin.transactions.filter(t => t.loan_id === l.id).length;
+              if (!await nav.confirmDelete(`khoản vay “${l.name}”`,
+                kept > 0 ? `${kept} giao dịch đã ghi vẫn được giữ lại ở màn Giao dịch.` : 'Chưa có kỳ nào được ghi.')) return;
+              if (!await fin.deleteLoan(l.id)) {
+                nav.showToast(`Không thể xóa ${l.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
+              }
+            }}>
 
             <RuleProgress pct={sch.progress.total ? sch.progress.done / sch.progress.total * 100 : 0}
               label={`kỳ ${Math.min(sch.progress.done + 1, sch.progress.total)}/${sch.progress.total} · trả ngày ${l.pay_day} hằng tháng`}
@@ -1253,10 +1256,17 @@ function LendsList({ fin, nav, tasks }) {
             onOpen={() => setEditId(editId === l.id ? null : l.id)}
             onEdit={() => { setEditId(editId === l.id ? null : l.id); setPayId(null); }}
             onDelete={async () => {
+              // Khác hóa đơn/vay/thẻ: giao dịch thu về là income + excluded, mà database chỉ
+              // cho phép cặp đó khi còn lending_id — không có cột kỳ nào giữ lại làm bằng chứng.
+              // Nên khoản cho vay đã có lần thu vẫn KHÔNG xóa được; nói thẳng thay vì hứa suông.
               const kept = repayments.length;
-              if (await nav.confirmDelete(`khoản cho vay “${l.name}”`,
-                kept > 0 ? `${kept} giao dịch thu về vẫn được giữ lại ở màn Giao dịch.` : 'Chưa có lần thu nào được ghi.')) {
-                await fin.deleteLending(l.id);
+              if (!await nav.confirmDelete(`khoản cho vay “${l.name}”`,
+                kept > 0 ? `${kept} giao dịch thu về đang gắn với khoản này. Phải xóa chúng ở màn Giao dịch trước, không thì database từ chối lệnh xóa.`
+                  : 'Chưa có lần thu nào được ghi.')) return;
+              if (!await fin.deleteLending(l.id)) {
+                nav.showToast(kept > 0
+                  ? `Chưa xóa được ${l.name} vì còn ${kept} giao dịch thu về. Xóa các giao dịch đó trước.`
+                  : `Không thể xóa ${l.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
               }
             }}>
 
@@ -1339,7 +1349,16 @@ function CardsList({ fin, nav, tasks }) {
             amount={money(cyc.outstanding)} state={state} openTitle="Sửa thẻ"
             onOpen={() => setEditId(editId === c.id ? null : c.id)}
             onEdit={() => { setEditId(editId === c.id ? null : c.id); setPayId(null); }}
-            onDelete={async () => { if (await nav.confirmDelete(`thẻ “${c.name}”`)) await fin.deleteCard(c.id); }}>
+            onDelete={async () => {
+              const kept = fin.transactions.filter(t => t.card_id === c.id || t.source_card_id === c.id).length;
+              // Khoản đã quẹt bằng thẻ mất `source_card_id` nên `source_kind` tự về 'cash' — nói trước.
+              if (!await nav.confirmDelete(`thẻ “${c.name}”`,
+                kept > 0 ? `${kept} giao dịch vẫn được giữ lại; khoản đã quẹt bằng thẻ này sẽ tính là chi tiền mặt.`
+                  : 'Chưa có giao dịch nào gắn với thẻ này.')) return;
+              if (!await fin.deleteCard(c.id)) {
+                nav.showToast(`Không thể xóa ${c.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
+              }
+            }}>
 
             <RuleProgress pct={usedPct} label={`Đã dùng ${money(balance)} / ${money(c.credit_limit)}`} right={`${usedPct}%`} />
 

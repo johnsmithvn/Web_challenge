@@ -76,6 +76,13 @@ Nguyên lý Finance:
 2. Báo cáo tính lại từ `finance_transactions.occurred_at` theo kỳ.
 3. Nghĩa vụ chỉ tạo transaction khi user xác nhận; RPC xử lý write nhiều bảng nguyên khối.
 4. Trigger/constraint chặn reference khác owner, kỳ trùng và payload phân nhánh không hợp lệ.
+5. Xóa quy tắc **không** xóa giao dịch (v6.9.0): `bill_id`, `income_rule_id`, `loan_id`, `card_id`
+   và `source_card_id` là `ON DELETE SET NULL`; cột kỳ đi kèm (`bill_period`, `loan_part`,
+   `card_period`…) **ở lại** làm lịch sử — `finance_tx_excluded_scope` soi `loan_part`/`card_period`
+   chứ không soi id, nên trả gốc vay và trả sao kê vẫn đứng ngoài tổng chi sau khi quy tắc biến mất.
+   Hai ngoại lệ còn chặn xóa: `saving_goal_id` giữ `RESTRICT` (giao dịch `type='saving'` mất quỹ là vô
+   nghĩa) và `finance_lendings` — `lending_id` là `SET NULL` nhưng income + `excluded` chỉ hợp lệ khi
+   còn `lending_id`, và khoản cho vay không có cột kỳ nào để giữ làm bằng chứng.
 
 Chi tiết sản phẩm: [`DESIGN_FINANCE.md`](DESIGN_FINANCE.md).
 

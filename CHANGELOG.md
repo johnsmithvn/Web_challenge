@@ -1,6 +1,36 @@
 # CHANGELOG
 
-## Unreleased
+## v6.9.0 — 2026-08-16
+
+### Fixed
+- **Xóa hóa đơn/khoản vay/thẻ đã có giao dịch là thất bại hoàn toàn** (migration
+  `data/migration_v6.9.0_finance_rule_detach.sql` — user tự chạy trên hosted). Hợp đồng
+  `DESIGN_FINANCE` nói xóa quy tắc **không** xóa transaction, nhưng cả năm khóa ngoại
+  `bill_id`, `income_rule_id`, `loan_id`, `card_id`, `source_card_id` đều là `ON DELETE RESTRICT`:
+  hộp xác nhận hứa "N giao dịch vẫn được giữ lại", bấm Xóa xong database từ chối và không có gì
+  xảy ra. Với khoản vay/thẻ/cho vay thì **thất bại im lặng** — UI không đọc kết quả nên không nói gì.
+  - Năm FK chuyển sang `ON DELETE SET NULL`. Chỉ đổi FK là chưa đủ: CHECK cặp bắt id và cột kỳ cùng
+    NULL hoặc cùng NOT NULL, nên RI action lại vi phạm CHECK và xóa vẫn hỏng. Bốn CHECK cặp được nới
+    (và đặt tên: `finance_tx_bill_shape`, `finance_tx_income_shape`, `finance_tx_loan_shape`,
+    `finance_tx_card_shape`) để **kỳ mồ côi được ở lại làm lịch sử**.
+  - `loan_part = 'principal'` và `card_period` không phải cột thừa mà là **bằng chứng** cho phép giao
+    dịch mang cờ `excluded`. Null chúng đi thì trả nợ gốc và trả sao kê đột nhiên bị tính thành chi
+    tiêu — sai báo cáo còn tệ hơn bug gốc. Nên `finance_tx_excluded_scope` soi hai cột đó thay vì soi
+    id; vẫn đúng ba trường hợp như trước, và cả hai cột vẫn chỉ do RPC thanh toán ghi.
+  - **Vẫn chặn xóa, có lý do:** `saving_goal_id` giữ `RESTRICT` (giao dịch `type='saving'` mất quỹ là
+    vô nghĩa) và **khoản cho vay** đã có lần thu — income + `excluded` chỉ hợp lệ khi còn `lending_id`,
+    mà khoản cho vay không có cột kỳ nào để giữ làm bằng chứng. Hộp xác nhận của khoản cho vay giờ nói
+    thẳng "phải xóa các giao dịch thu về trước" thay vì hứa giữ lại.
+  - Xóa xong client `fetchAll()`: database vừa null `bill_id`/`loan_id`/`card_id` của giao dịch mà
+    state không hay biết, không kéo lại thì dòng giao dịch treo id của một quy tắc đã mất.
+  - Xóa thẻ: khoản đã quẹt bằng thẻ mất `source_card_id` nên `source_kind` tự về `cash` — hộp xác nhận
+    nói trước điều này.
+
+### Changed
+- **Màn Ghi một khoản còn MỘT nút Lưu, và lưu xong ở lại trang.** Trước đó hai nút `Lưu` và
+  `Lưu & nhập tiếp` khác nhau đúng một chỗ — nút đầu đá về Tổng quan — nên phải đọc cả hai nhãn để
+  chọn. Ghi tiền hiếm khi đi một mình; sau khi lưu, thứ cần thấy là form trống sẵn sàng cho khoản kế.
+  Tham số `stayOnForm` của `saveTransaction()` bỏ luôn vì không còn nhánh nào dùng.
 
 ### Added
 - **Khối "Linked from" trong Vault — item đích thấy được ai đang trỏ tới mình.** Field `link` chỉ lưu

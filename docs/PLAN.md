@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub
 
-**Current version:** v6.3.0 · **Updated:** 2026-08-11
+**Current version:** v6.9.0 · **Updated:** 2026-08-16
 
 PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy nằm trong [`TASKS.md`](TASKS.md); lịch sử
 đã hoàn thành nằm trong [`CHANGELOG.md`](../CHANGELOG.md).

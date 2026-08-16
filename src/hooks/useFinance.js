@@ -229,10 +229,22 @@ export function useFinance({ autoFetch = true } = {}) {
     return ok;
   }, [transactions, deleteRow, fetchAll]);
 
+  /**
+   * Xóa hóa đơn/khoản vay/thẻ: từ v6.9.0 database KHÔNG chặn nữa mà null
+   * `bill_id`/`loan_id`/`card_id`/`source_card_id` của các giao dịch liên quan
+   * (giao dịch vẫn còn, chỉ rời khỏi quy tắc). Client không thấy được thay đổi đó
+   * nên phải kéo lại, không thì dòng giao dịch vẫn treo id của một quy tắc đã mất.
+   */
+  const deleteRule = useCallback(async (table, setList, id) => {
+    const ok = await deleteRow(table, setList, id);
+    if (ok) await fetchAll();
+    return ok;
+  }, [deleteRow, fetchAll]);
+
   // ── CRUD 8 bảng phụ (thin wrappers) ───────────────────────────────────────
   const addBill    = useCallback((r) => insertRow('finance_bills', setBills, r), [insertRow]);
   const updateBill = useCallback((id, u) => updateRow('finance_bills', setBills, id, u), [updateRow]);
-  const deleteBill = useCallback((id) => deleteRow('finance_bills', setBills, id), [deleteRow]);
+  const deleteBill = useCallback((id) => deleteRule('finance_bills', setBills, id), [deleteRule]);
 
   const addLending    = useCallback((r) => insertRow('finance_lendings', setLendings, r), [insertRow]);
   const updateLending = useCallback((id, u) => updateRow('finance_lendings', setLendings, id, u), [updateRow]);
@@ -240,11 +252,11 @@ export function useFinance({ autoFetch = true } = {}) {
 
   const addLoan    = useCallback((r) => insertRow('finance_loans', setLoans, r), [insertRow]);
   const updateLoan = useCallback((id, u) => updateRow('finance_loans', setLoans, id, u), [updateRow]);
-  const deleteLoan = useCallback((id) => deleteRow('finance_loans', setLoans, id), [deleteRow]);
+  const deleteLoan = useCallback((id) => deleteRule('finance_loans', setLoans, id), [deleteRule]);
 
   const addCard    = useCallback((r) => insertRow('finance_cards', setCards, r), [insertRow]);
   const updateCard = useCallback((id, u) => updateRow('finance_cards', setCards, id, u), [updateRow]);
-  const deleteCard = useCallback((id) => deleteRow('finance_cards', setCards, id), [deleteRow]);
+  const deleteCard = useCallback((id) => deleteRule('finance_cards', setCards, id), [deleteRule]);
 
   const addGoal    = useCallback((r) => insertRow('finance_saving_goals', setGoals, r), [insertRow]);
   const updateGoal = useCallback((id, u) => updateRow('finance_saving_goals', setGoals, id, u), [updateRow]);

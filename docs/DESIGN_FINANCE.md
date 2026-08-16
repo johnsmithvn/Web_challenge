@@ -144,7 +144,11 @@ sửa/công tắc/xóa, phần mở thêm (khối ghi kỳ, form sửa, lịch s
   `finished_at`; giao dịch cũ giữ `bill_id` cũ nên lịch sử không theo sang bản sao.
 - "Bỏ kỳ này" phải có đường quay lại: RPC chỉ thêm vào `skipped_periods`, UI gỡ bằng UPDATE own-row.
   Không có nút gỡ thì một cú bấm nhầm khóa cả kỳ tới tháng sau.
-- Xóa quy tắc không xóa transaction; hộp xác nhận nói đúng số giao dịch được giữ lại.
+- Xóa quy tắc không xóa transaction; hộp xác nhận nói đúng số giao dịch được giữ lại. Giao dịch chỉ
+  rời khỏi quy tắc (id về NULL, cột kỳ ở lại) và thao tác này **không hoàn tác được** — quy tắc mất
+  thì không còn đường gắn lại. Hai ngoại lệ vẫn chặn xóa và phải nói thẳng trong hộp xác nhận thay vì
+  hứa suông: **quỹ tiết kiệm** (giao dịch gửi quỹ mất quỹ là vô nghĩa) và **khoản cho vay** đã có lần
+  thu (income + `excluded` chỉ hợp lệ khi còn `lending_id`).
 
 ## 6. Pure logic API
 

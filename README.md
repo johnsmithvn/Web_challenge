@@ -142,6 +142,9 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 | 6 | [`data/migration_v6.4.0_finance_lending.sql`](./data/migration_v6.4.0_finance_lending.sql) | Bảng `finance_lendings` (Cho vay) + cột `finance_transactions.lending_id`. Sửa hai CHECK để giao dịch thu về được `excluded`. Idempotent. |
 | 7 | [`data/migration_v6.5.0_finance_bill_icon.sql`](./data/migration_v6.5.0_finance_bill_icon.sql) | Cột `finance_bills.icon` để user chọn icon riêng cho từng hóa đơn. Idempotent. |
 | 8 | [`data/migration_v6.6.0_finance_card_annual_fee.sql`](./data/migration_v6.6.0_finance_card_annual_fee.sql) | Cột `finance_cards.annual_fee_on` (ngày thu phí thường niên). **Bắt buộc** — thiếu là form thêm thẻ lỗi `PGRST204`. Idempotent. |
+| 9 | [`data/migration_v6.7.0_finance_bill_multi_month.sql`](./data/migration_v6.7.0_finance_bill_multi_month.sql) | Cột `finance_bills.anchor_date` cho hóa đơn nhiều tháng một lần (quý/năm); chu kỳ nằm trong `rrule.every`. Idempotent. |
+| 10 | [`data/migration_v6.8.0_finance_bill_term_offset.sql`](./data/migration_v6.8.0_finance_bill_term_offset.sql) | Cột `finance_bills.term_offset` (kỳ trả góp đã trả trước khi dùng app) + trigger tính lại `term_done`. Có backfill và verify. Idempotent. |
+| 11 | [`data/migration_v6.9.0_finance_rule_detach.sql`](./data/migration_v6.9.0_finance_rule_detach.sql) | Xóa hóa đơn/khoản vay/thẻ không còn bị `ON DELETE RESTRICT` chặn: năm FK sang `SET NULL`, nới CHECK cặp id↔kỳ. Thuần DDL, không đụng dữ liệu. Idempotent. |
 
 > Không chạy thêm `migration_v5.0.0_activity_logs_v2.sql` trên fresh install vì thay đổi đó đã nằm
 > trong baseline. Không chạy lại baseline một mình trên database đã ở v6.x: nó có thể tạo lại bảng
@@ -263,6 +266,9 @@ data/
   migration_v6.4.0_finance_lending.sql
   migration_v6.5.0_finance_bill_icon.sql
   migration_v6.6.0_finance_card_annual_fee.sql
+  migration_v6.7.0_finance_bill_multi_month.sql
+  migration_v6.8.0_finance_bill_term_offset.sql
+  migration_v6.9.0_finance_rule_detach.sql
   reset_user_data.sql       ← Wipe toàn bộ app data, giữ auth users
 supabase/
   migrations/               ← Chuỗi migration timestamp chỉ dùng local
