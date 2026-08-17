@@ -3,6 +3,61 @@
 ## v6.9.0 — 2026-08-16
 
 ### Fixed
+- **Ô tiền hiện một đằng, lưu một nẻo — sai gấp 1000 lần trong im lặng.** Auto-K nhân 1.000 cho mọi
+  số dưới 10.000, nên gõ `5000` (định ghi 5.000đ) thì ô vẫn hiện **"5.000 ₫"** mà giao dịch lưu
+  **5.000.000₫**. Không một tín hiệu nào trước khi bấm Lưu; chỉ lộ ra lúc xem báo cáo cuối tháng.
+  Nút bước tiền còn nhân tiếp: field đang `5000`, bấm `+10k` ra `5.010.000`.
+  - `autoKPreview()` (`src/utils/currencyUtils.js`) trả về số **sẽ thật sự được lưu**, và chỉ khi nó
+    KHÁC con số đang nhìn thấy — hiện thừa thì user học cách phớt lờ, rồi bỏ qua luôn lúc quan trọng.
+  - Dòng cảnh báo màu `--n-warn` (không phải màu chú thích mờ) ở ba chỗ ghi tiền thật: ô Số tiền màn
+    Nhập nhanh, ô shortcut đã bung, và ô số tiền của khối Thanh toán ở màn Hóa đơn.
+  - **Không đụng vào auto-K** — nó là thứ làm việc nhập nhanh và là preference user tự bật. Chỉ bắt
+    nó hiện mặt ra trước khi bấm Lưu. Self-check trong `currencyInput.test.js` chốt cả hai hướng:
+    dưới 10.000 phải cảnh báo, từ 10.000 trở lên phải im, tắt auto-K thì im hẳn.
+
+### Changed
+- **Chỉ kéo về cửa sổ giao dịch cần dùng, thay vì cả sổ.** `fetchAll` trước đây `SELECT` toàn bộ
+  `finance_transactions` không giới hạn, và mọi thao tác có gắn rule lại kéo lại từ đầu cả 11 bảng.
+  Giờ cửa sổ bắt đầu từ **01/01 năm ngoái** (`fin.dataFrom`).
+  - Không chọn "N tháng cố định": cửa sổ 18 tháng nghe hợp lý nhưng tới tháng 8 thì mục **"Cả năm
+    trước"** — có sẵn trong danh sách mặc định — đã thiếu mất tháng 1. Mốc 01/01 năm ngoái tự co giãn
+    13–24 tháng và luôn phủ đủ mọi kỳ mà bộ chọn mời user chọn.
+  - Điều kiện `OR` giữ lại **toàn bộ giao dịch gắn quy tắc** bất kể cũ tới đâu. Dư nợ thẻ, số đã thu
+    của khoản cho vay, lãi đã trả đều là tổng cộng dồn all-time; cắt bớt là báo động giả — một khoản
+    cho vay đã tất toán từ 2024 sẽ hiện "quá hẹn" chỉ vì các lần thu rơi ngoài cửa sổ.
+  - **Bộ chọn kỳ không còn mời chọn kỳ không có dữ liệu.** Trước đây nó cho lùi tới tận **2000** rồi
+    hiện "chưa có giao dịch trong kỳ này" — app nói dối, vì "chưa fetch" khác "không có". Nhãn của
+    mục "Tất cả" cũng đổi từ *Toàn bộ dữ liệu* thành **Từ mm/yyyy**, và CSV xuất từ state vì thế
+    khớp đúng những gì nó hứa.
+  - Ô "so với kỳ trước" ở Tổng quan **ẩn đi** khi kỳ liền trước nằm ngoài cửa sổ, thay vì bịa ra một
+    tỉ lệ phần trăm từ dữ liệu cụt.
+- **Accessibility: các control không có tên giờ đã có.** Screen reader trước đây đọc ra "button" hoặc
+  "switch" trống trơn ở: ba nút đóng form quỹ/nơi gửi/gửi-rút, công tắc bật-tắt của mọi dòng quy tắc,
+  ô tìm giao dịch, ô thêm tag, và 8 ô nhập của form quỹ/nơi gửi. Nút sửa/nhân bản/xóa/ghi chú giờ
+  đọc kèm **tên dòng** (`Xóa Internet`) — mười hóa đơn mà mười nút đều đọc là "Xóa" thì vô dụng.
+  - Thêm `.sr-only` vào `global.css`: `AppIcon` luôn tự đặt `aria-hidden`, nên `aria-label` gắn lên
+    nó **không có tác dụng gì** — chữ phải nằm ở một node thật. Chấm "có ghi chú" trên dòng hóa đơn
+    là ca đó, và `<span aria-label>` ở Vault cần thêm `role="img"` vì cùng lý do.
+  - 32 nút chọn icon hóa đơn có `title` là key tiếng Anh (`lightning`, `drop`); nay có `aria-label`
+    tiếng Việt và `aria-pressed` — trước đó trạng thái "đang chọn" chỉ báo bằng màu.
+- **Mô tả tỷ giá USD trong Cài Đặt nói đúng phạm vi.** Nó ghi "dùng khi nhập chi phí dạng $" ngay
+  trong khối *Cấu hình tiền tệ & chi tiêu*, nhưng mọi ô tiền của Chi tiêu đều lọc sạch ký tự `$`
+  trước khi parse — nơi duy nhất gõ được "10$" là ô chi phí dự kiến ở Ươm mầm.
+
+### Fixed
+- **"Failed to fetch dynamically imported module" sau mỗi lần deploy.** Tab đang mở giữ module
+  graph của build cũ; deploy xong hash đổi nên `assets/AccountsPage-<hash>.js` 404, và mọi trang
+  lazy bấm sau đó đều chết. Nút **Thử lại** của `ErrorBoundary` không cứu được đúng lỗi này —
+  `React.lazy` cache luôn promise đã reject nên reset state là ném lại y hệt, user kẹt tới khi tự F5.
+  - Bắt `vite:preloadError` (event sẵn có của Vite) trong `main.jsx` → tải lại trang trước khi
+    user kịp thấy màn lỗi. `ErrorBoundary` là lớp thứ hai cho các đường event không bắn.
+  - Reload **đúng một lần** (`sessionStorage`, cooldown 15s): reload xong vẫn lỗi nghĩa là nguyên
+    nhân khác (mất mạng, CDN chết) — reload tiếp chỉ thành vòng lặp trắng màn hình.
+  - Lỗi chunk giờ hiện đúng chuyện đang xảy ra ("Ứng dụng vừa được cập nhật… dữ liệu không mất gì")
+    và nút đổi thành **Tải lại trang**; lỗi thường vẫn giữ nguyên thông điệp và nút Thử lại.
+  - `isStaleChunkError` giữ cả ba cách viết của Chrome/Firefox/Safari và có self-check
+    (`src/__tests__/chunkReload.test.js`) chặn hai hướng: bỏ sót biến thể, và nuốt nhầm lỗi thật
+    thành reload vô tận.
 - **Xóa hóa đơn/khoản vay/thẻ đã có giao dịch là thất bại hoàn toàn** (migration
   `data/migration_v6.9.0_finance_rule_detach.sql` — user tự chạy trên hosted). Hợp đồng
   `DESIGN_FINANCE` nói xóa quy tắc **không** xóa transaction, nhưng cả năm khóa ngoại

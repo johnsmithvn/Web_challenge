@@ -35,6 +35,24 @@ export function groupDigits(value) {
   return String(value ?? '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
+/**
+ * Số THẬT SỰ SẼ ĐƯỢC LƯU khi ô tiền đang hiện `raw` — chỉ trả về khi nó KHÁC con
+ * số người dùng đang nhìn thấy, tức là lúc auto-K vừa lặng lẽ nhân thêm 1.000.
+ *
+ * Ô tiền hiện "5.000 ₫" nhưng lưu 5.000.000₫ là kiểu sai tệ nhất: im lặng, gấp
+ * 1000 lần, và chỉ lộ ra khi xem lại báo cáo cuối tháng. Auto-K vẫn giữ nguyên
+ * (nó là thứ làm việc nhập nhanh) — chỉ bắt nó hiện mặt ra trước khi bấm Lưu.
+ *
+ * @param {string} raw chuỗi digit thuần đang nằm trong state của ô nhập
+ * @returns {string} số đã chèn dấu nghìn, hoặc '' khi không có gì để cảnh báo
+ */
+export function autoKPreview(raw) {
+  const digits = String(raw ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  const parsed = parseCurrencyInput(digits);
+  return parsed && parsed !== Number(digits) ? groupDigits(String(parsed)) : '';
+}
+
 export function sanitizeDecimal(value, maxIntegerDigits = 6, maxFractionDigits = 4) {
   const raw = String(value ?? '').replace(',', '.').replace(/[^\d.]/g, '');
   if (!raw) return '';

@@ -618,6 +618,7 @@ export default function InboxPage() {
                       className="inbox-item__action-btn inbox-item__action-btn--delete"
                       onClick={() => handleDelete(item.id)}
                       title="Xóa"
+                      aria-label={`Xóa: ${item.title}`}
                       style={{ color: '#ef4444' }}
                     >
                       <AppIcon name="trash" size={14} />
@@ -629,6 +630,9 @@ export default function InboxPage() {
                         className="inbox-item__action-btn inbox-overflow-trigger"
                         onClick={() => setOverflowMenu(overflowMenu === item.id ? null : item.id)}
                         title="Thêm hành động"
+                        aria-label={`Thêm hành động cho: ${item.title}`}
+                        aria-haspopup="menu"
+                        aria-expanded={overflowMenu === item.id}
                       >
                         <AppIcon name="dots" size={17} />
                       </button>

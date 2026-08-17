@@ -9,7 +9,7 @@ globalThis.localStorage = {
   setItem: () => {},
 };
 
-const { groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits, stripAmountWords } =
+const { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits, stripAmountWords } =
   await import('../utils/currencyUtils.js');
 
 assert.equal(sanitizeDigits('12abc.345 ₫'), '12345');
@@ -68,5 +68,20 @@ assert.equal(parseCurrencyInput('2 triệu'), 2000000);
 assert.equal(parseCurrencyInput('50'), 50);      // không có chữ nào → đúng là 50 đồng
 autoK = null;
 assert.equal(parseCurrencyInput('50'), 50000);   // auto-k bật lại → 50 nghĩa là 50k
+
+/* ── autoKPreview: ô tiền phải nói ra khi auto-k vừa nhân thêm 1.000 ──
+   Ô hiện "5.000 ₫" mà lưu 5.000.000₫ là sai im lặng gấp 1000 lần. Preview chỉ
+   được hiện ĐÚNG lúc số lưu khác số đang nhìn thấy, không phải lúc nào cũng hiện
+   (hiện thừa thì user học cách phớt lờ, rồi bỏ qua luôn lúc nó quan trọng). */
+assert.equal(autoKPreview('5000'), '5.000.000', 'số dưới 10.000 bị nhân → phải cảnh báo');
+assert.equal(autoKPreview('50'), '50.000');
+assert.equal(autoKPreview('10000'), '', 'từ 10.000 trở lên auto-k không đụng → im lặng');
+assert.equal(autoKPreview('250000'), '');
+assert.equal(autoKPreview(''), '');
+assert.equal(autoKPreview('0'), '');
+assert.equal(autoKPreview('12.345'), '', 'chuỗi đã format vẫn đọc ra 12345, không cảnh báo nhầm');
+autoK = 'false';
+assert.equal(autoKPreview('5000'), '', 'tắt auto-k thì không còn gì để cảnh báo');
+autoK = null;
 
 console.log('currency input tests passed');

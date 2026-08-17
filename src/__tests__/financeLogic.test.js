@@ -220,6 +220,18 @@ assert.deepEqual(periodFromKey('2024-02', '2026-08-13'), {
 }, 'picker phải mở được tháng bất kỳ, kể cả năm nhuận');
 assert.equal(periodFromKey('year-2023', '2026-08-13').to, '2023-12-31');
 assert.equal(periodFromKey('key-hỏng', '2026-08-13').key, '2026-08', 'khóa hỏng fallback tháng hiện tại');
+
+/* "Tất cả" chỉ được hứa đúng phần dữ liệu useFinance thật sự kéo về (cửa sổ bắt
+   đầu 01/01 năm ngoái). Hứa 2000-01-01 rồi hiện 0đ cho kỳ cũ là app nói dối, và
+   CSV xuất từ state cũng thiếu dữ liệu mà không cảnh báo gì. */
+assert.equal(listPeriodOptions('2026-08-13', '2025-01-01').at(-1).from, '2025-01-01',
+  '"Tất cả" phải bắt đầu từ mốc cửa sổ đã fetch');
+assert.equal(periodFromKey('all', '2026-08-13', '2025-01-01').from, '2025-01-01');
+assert.equal(listPeriodOptions('2026-08-13').at(-1).from, '2000-01-01',
+  'không truyền mốc thì giữ hành vi cũ');
+// Cửa sổ 01/01 năm ngoái phải phủ trọn mục "Cả năm trước" — đây là lý do không
+// dùng "18 tháng cố định": tháng 8 thì 18 tháng đã cắt mất tháng 1 năm ngoái.
+assert.ok(listPeriodOptions('2026-08-13').find(o => o.key === 'year-2025').from >= '2025-01-01');
 console.log('listPeriodOptions check: OK');
 
 /* ── phụ trợ ── */

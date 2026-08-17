@@ -158,6 +158,7 @@ function TagInput({ tags = [], onChange, suggestions = [] }) {
       })}
       <input
         className="kb-tag-input__field"
+        aria-label="Thêm tag"
         value={input}
         onChange={e => { setInput(e.target.value); setOpen(true); setCursor(-1); }}
         onFocus={() => setOpen(true)}
@@ -279,6 +280,7 @@ function SubNotesSection({ collectionId, notesHook }) {
             <>
               <textarea
                 className="kb-subnote__edit-textarea"
+                aria-label="Sửa nội dung ghi chú"
                 value={editContent}
                 onChange={e => setEditContent(e.target.value)}
                 autoFocus
@@ -307,6 +309,7 @@ function SubNotesSection({ collectionId, notesHook }) {
       <div className={`kb-subnote-form ${isExpanded ? 'is-expanded' : ''}`}>
         <textarea
           className="kb-subnote-form__textarea"
+          aria-label="Nội dung ghi chú mới"
           value={newContent}
           onChange={e => setNewContent(e.target.value)}
           placeholder="Viết ghi chú..."
@@ -722,6 +725,7 @@ function MarkdownEditor({ value, onChange, onSave }) {
           <textarea
             id="kb-md-textarea"
             ref={ref}
+            aria-label="Nội dung Markdown"
             className="kb-split__textarea"
             value={value}
             onChange={e => onChange(e.target.value)}
@@ -835,6 +839,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
         />
         <input
           className="kb-editor__title"
+          aria-label="Tiêu đề bài viết"
           placeholder="Tiêu đề bài viết..."
           value={draft.title}
           onChange={e => set('title', e.target.value)}
@@ -850,6 +855,7 @@ function EditorView({ initial, onSave, onCancel, isSaving, suggestions = [], isN
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <input
             className="kb-editor__url"
+            aria-label="URL nguồn"
             placeholder="URL nguồn (tùy chọn)"
             value={draft.url || ''}
             onChange={e => set('url', e.target.value)}
@@ -1198,7 +1204,7 @@ export default function CollectPage() {
       {/* Search + Sort + Task Filter */}
       <div className="kb-toolbar">
         <div className="kb-search-wrap"><AppIcon name="search" size={16} />
-          <input className="kb-search" type="text" placeholder="Tìm kiếm tiêu đề, nội dung, tag..."
+          <input className="kb-search" type="text" aria-label="Tìm bài viết" placeholder="Tìm kiếm tiêu đề, nội dung, tag..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div ref={sortRef} style={{ position: 'relative' }}>
@@ -1264,6 +1270,7 @@ export default function CollectPage() {
                 <div className="kb-task-filter-search-container">
                   <input
                     type="text"
+                    aria-label="Tìm task"
                     placeholder="Tìm task..."
                     value={taskSearch}
                     onChange={e => setTaskSearch(e.target.value)}

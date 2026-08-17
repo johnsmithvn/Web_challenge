@@ -66,7 +66,33 @@ agent không tự kiểm chứng được RPC trên hosted DB.
   assertion trong `financeMigration.test.js`; (c) thêm cột đánh dấu, tốn schema cho một trường hợp.
   Quỹ tiết kiệm giữ `RESTRICT` vĩnh viễn — giao dịch `type='saving'` mất quỹ là dữ liệu vô nghĩa.
 - [ ] QA desktop/mobile bằng dữ liệu dày: overflow, bottom sheet, sidebar, chart/legend và form dài.
-- [ ] QA keyboard, focus indicator, screen-reader label và console error thuộc Finance.
+- [x] **Nhãn screen-reader cho control không tên** — xong 2026-08-16. Nút đóng form, công tắc dòng quy
+  tắc, ô tìm, ô thêm tag, form quỹ/nơi gửi, 32 nút icon; thêm `.sr-only` vào `global.css`.
+- [ ] **Còn ~20 ô form thiếu nhãn** (`AddScreen` nơi gửi/tên món/đơn giá, `ListScreen` ô kỳ,
+  `AnalyzeScreen` ô hạn mức + select hóa đơn, `RecurringScreen` các ô còn lại, và các trang ngoài
+  Finance). Cùng một kiểu sửa một dòng, chỉ là dài đuôi — gom vào một lượt.
+- [ ] QA keyboard + focus indicator + console error thuộc Finance (phần còn lại của a11y, cần bấm tay).
+
+## 2b. Phát hiện từ audit 2026-08-16 — chưa xử lý
+
+Bốn mảng được audit (cấu hình, a11y, responsive, tải dữ liệu). Phần đã sửa nằm trong CHANGELOG
+v6.9.0; dưới đây là phần còn mở, xếp theo mức đáng làm.
+
+- [ ] **Tab Quotes trong Cài Đặt ghi vào nơi không ai đọc.** `QuoteManagerSection` CRUD bảng
+  `inspirational_quotes`, nhưng `QuoteWidget` chỉ đọc `src/data/quotes.json` + quote từ Knowledge.
+  Nút bật/tắt `is_active` không điều khiển gì. Chọn một: (a) nối `QuoteWidget` vào `useQuotes()` —
+  gần như một dòng; (b) xóa cả tab + `useQuotes.js` + bảng. **Đừng để nguyên.**
+- [ ] **Trường `bio` trong Hồ sơ là write-only** — không màn nào hiển thị. Bỏ, hoặc hiện ở đâu đó.
+- [ ] **Auto-K đã mất phần lớn lý do tồn tại.** Bảng `MAGNITUDE` (`nghìn/triệu/tr/củ`) làm
+  "50 nghìn" ra đúng mà không cần auto-K; auto-K giờ chỉ còn phục vụ trường hợp gõ số trần "50" —
+  đúng cái ca gây hiểu nhầm. Cân nhắc mặc định TẮT cho user mới (không đụng ai đang bật).
+- [ ] **Áp dòng cảnh báo auto-K cho 11 ô tiền còn lại** (form hóa đơn/vay/thẻ/quỹ). Đã làm 3 ô ghi
+  tiền thật; phần còn lại là form cấu hình, cùng một rủi ro nhưng ít gặp hơn.
+- [ ] **Đóng vòng dữ liệu ngoài cửa sổ fetch.** Cửa sổ mới bắt đầu 01/01 năm ngoái và giữ mọi giao
+  dịch gắn quy tắc, nên không có tính toán nào sai. Nhưng khoản chi lẻ cũ hơn thì không ai xem lại
+  được nữa. Khi cần: thêm fetch theo yêu cầu lúc user chọn kỳ ngoài cửa sổ, hoặc một nút "tải thêm".
+- [ ] **Responsive**: `finance.css` chỉ 2 breakpoint trong khi `finance-handoff.css` có 8 — các màn
+  Finance cũ nhiều khả năng chưa được QA mobile như màn Hóa đơn. Cần bấm tay trên máy thật.
 
 ## 3. Correctness còn lại
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
-import { groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
+import { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
 import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, NECESSITY_META, Segmented, TaskPicker, FinanceIcon, DateField,
@@ -379,6 +379,13 @@ export default function AddScreen({ fin, nav }) {
               <div><input id="fin-tx-amount" autoFocus inputMode="numeric" pattern="[0-9.]*" placeholder="0"
                 value={groupDigits(amount)}
                 onChange={event => setAmount(sanitizeDigits(event.target.value))} /><span>₫</span></div>
+              {/* Auto-K nhân 1.000 cho số dưới 10.000: gõ "5000" là LƯU 5.000.000₫ trong khi ô
+                  vẫn hiện "5.000 ₫". Không có dòng này thì sai gấp 1000 lần mà không ai hay. */}
+              {autoKPreview(amount) && (
+                <small className="fin-amount-auto" aria-live="polite">
+                  Sẽ lưu <strong>{autoKPreview(amount)} ₫</strong> · Auto-K tự thêm 3 số 0
+                </small>
+              )}
             </div>
           </section>
 
@@ -430,7 +437,8 @@ export default function AddScreen({ fin, nav }) {
                 <span><strong>{selectedNeedMeta.label}</strong><small>{necessity ? 'Bạn đã chỉnh cho khoản này' : 'Tự suy từ danh mục con; chỉ sửa khi thấy chưa đúng'}</small></span>
                 <div>
                   {Object.entries(NECESSITY_META).map(([key, meta]) => (
-                    <button key={key} type="button" title={meta.label}
+                    <button key={key} type="button" title={meta.label} aria-label={meta.label}
+                      aria-pressed={appliedNecessity === key}
                       className={appliedNecessity === key ? 'is-active' : ''}
                       style={{ '--need-color': meta.color }} onClick={() => setNecessity(key)}>
                       <AppIcon name={NEED_ICONS[key]} size={14} weight={appliedNecessity === key ? 'fill' : 'regular'} />
@@ -478,7 +486,7 @@ export default function AddScreen({ fin, nav }) {
                 })}
               </div>
               <label className="fin-label">Nơi gửi</label>
-              <select className="fin-input" value={savingDepositId} onChange={event => setSavingDepositId(event.target.value)} disabled={!savingGoalId}>
+              <select className="fin-input" aria-label="Nơi gửi" value={savingDepositId} onChange={event => setSavingDepositId(event.target.value)} disabled={!savingGoalId}>
                 <option value="">— chọn sổ / nơi giữ —</option>
                 {fin.deposits.filter(deposit => deposit.fund_id === savingGoalId).map(deposit => <option key={deposit.id} value={deposit.id}>{deposit.name} · {money(deposit.amount)}</option>)}
               </select>
@@ -508,14 +516,14 @@ export default function AddScreen({ fin, nav }) {
           {showMore && (
             <div className="fin-form__more">
               <label className="fin-label">Nơi / người nhận</label>
-              <input className="fin-input" value={merchant} onChange={event => setMerchant(event.target.value)} placeholder="Quán nước Bà Ba" />
+              <input className="fin-input" aria-label="Nơi / người nhận" value={merchant} onChange={event => setMerchant(event.target.value)} placeholder="Quán nước Bà Ba" />
               <div className="fin-items-editor">
                 <div className="fin-items-editor__head"><AppIcon name="listBullets" size={16} /><strong>Chi tiết từng món</strong><small>tổng tự cộng lên số tiền</small></div>
                 {draftItems.map((item, index) => (
                   <div className="fin-item-row" key={index}>
-                    <input className="fin-input" value={item.name} onChange={event => updateDraftItem(index, 'name', event.target.value)} placeholder="Tên món" />
+                    <input className="fin-input" aria-label={`Tên món thứ ${index + 1}`} value={item.name} onChange={event => updateDraftItem(index, 'name', event.target.value)} placeholder="Tên món" />
                     <input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={item.qty} onChange={event => updateDraftItem(index, 'qty', event.target.value)} aria-label="Số lượng" />
-                    <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="Đơn giá" />
+                    <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" aria-label="Đơn giá" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="Đơn giá" />
                     <button type="button" aria-label="Xóa món" onClick={() => setDraftItems(current => current.filter((_, itemIndex) => itemIndex !== index))}><AppIcon name="x" size={14} /></button>
                   </div>
                 ))}
@@ -535,7 +543,9 @@ export default function AddScreen({ fin, nav }) {
               <div className="fin-shortcut-panel__head"><span><AppIcon name="lightning" size={16} weight="fill" /> Shortcut</span><button type="button" onClick={() => setShortcutEditing(current => !current)}>{shortcutEditing ? 'Xong' : 'Sửa shortcut'}</button></div>
               <div className="fin-quick-amount">
                 <div><span>Gõ số một lần rồi chạm khoản bên dưới</span>{quickAmount && <button type="button" onClick={() => setQuickAmount('')}>xóa</button>}</div>
-                <label><input inputMode="numeric" pattern="[0-9.]*" value={groupDigits(quickAmount)} onChange={event => setQuickAmount(sanitizeDigits(event.target.value))} placeholder="0" /><span>₫</span></label>
+                {/* <label> chỉ bọc "₫" nên tên của ô này với AT là đúng một ký tự tiền tệ. */}
+                <label><input inputMode="numeric" pattern="[0-9.]*" aria-label="Số tiền nhập nhanh cho shortcut" value={groupDigits(quickAmount)} onChange={event => setQuickAmount(sanitizeDigits(event.target.value))} placeholder="0" /><span>₫</span></label>
+                {autoKPreview(quickAmount) && <small className="fin-amount-auto">Sẽ ghi <strong>{autoKPreview(quickAmount)} ₫</strong> · Auto-K</small>}
                 <div className="fin-step-row">{QUICK_STEPS.map(step => <button key={step} type="button" onClick={() => addAmount(setQuickAmount, quickAmount, step)}>{amountStepLabel(step)}</button>)}</div>
               </div>
               <div className="fin-shortcut-list">
@@ -567,7 +577,8 @@ export default function AddScreen({ fin, nav }) {
                       )}
                     </div>
                     {armed && <div className="fin-shortcut-armed">
-                      <div><input autoFocus inputMode="numeric" pattern="[0-9.]*" value={groupDigits(quickAmount)} onChange={event => setQuickAmount(sanitizeDigits(event.target.value))} placeholder="Số tiền" /><span>₫</span><button type="button" onClick={() => recordShortcut(shortcut)} disabled={!parseCurrencyInput(quickAmount)}><AppIcon name="check" size={14} /> Ghi</button></div>
+                      <div><input autoFocus inputMode="numeric" pattern="[0-9.]*" aria-label={`Số tiền cho ${shortcut.name}`} value={groupDigits(quickAmount)} onChange={event => setQuickAmount(sanitizeDigits(event.target.value))} placeholder="Số tiền" /><span>₫</span><button type="button" onClick={() => recordShortcut(shortcut)} disabled={!parseCurrencyInput(quickAmount)}><AppIcon name="check" size={14} /> Ghi</button></div>
+                      {autoKPreview(quickAmount) && <small className="fin-amount-auto">Sẽ ghi <strong>{autoKPreview(quickAmount)} ₫</strong> · Auto-K</small>}
                       <footer><span>hay nhập:</span>
                         {/* Danh sách là MRU cắt còn 3, nên một số gõ nhầm sẽ nằm lại
                             tới khi ghi đủ 3 mức khác — phải có đường bỏ thẳng. */}
@@ -609,7 +620,7 @@ function PendingBillRow({ bill, estimate, cats, onPay, onDismiss }) {
       <span className="fin-pending-bill__icon" style={{ color: info.color }}><FinanceIcon name={info.icon} cats={cats} size={14} /></span>
       <span><strong>{bill.name}</strong><small className={bill.days < 0 ? 'is-late' : ''}>{status} · {info.label}{subLabel(bill.subcategory_id, cats) ? ` › ${subLabel(bill.subcategory_id, cats)}` : ''}</small></span>
       {bill.amount_mode === 'ask'
-        ? <input inputMode="numeric" pattern="[0-9.]*" value={groupDigits(value)} onChange={event => setValue(sanitizeDigits(event.target.value))} placeholder={estimate ? `~ ${money(estimate)}` : 'Số tiền'} />
+        ? <input inputMode="numeric" pattern="[0-9.]*" aria-label={`Số tiền trả cho ${bill.name}`} value={groupDigits(value)} onChange={event => setValue(sanitizeDigits(event.target.value))} placeholder={estimate ? `~ ${money(estimate)}` : 'Số tiền'} />
         : <b>{money(bill.amount)}</b>}
       <button type="button" onClick={() => onPay(bill, value)} disabled={!parseCurrencyInput(value)}>Thanh toán</button>
       <button type="button" className="fin-pending-bill__dismiss" onClick={onDismiss} aria-label={`Bỏ ${bill.name} trong kỳ này`}><AppIcon name="x" size={13} /></button>

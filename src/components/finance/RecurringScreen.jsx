@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils/currencyUtils';
+import { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils/currencyUtils';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import {
   billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule,
@@ -201,7 +201,9 @@ function RuleCard({
           <span className="fin-rule__name">{title}
             {/* badge nhận một nhãn hoặc cả mảng — dòng hóa đơn có thể vừa theo kỳ vừa có số kỳ. */}
             {[].concat(badge ?? []).filter(Boolean).map((item, i) => <span key={i} className="fin-badge">{item}</span>)}
-            {hasNote && <AppIcon name="note" size={13} className="fin-rule__notedot" aria-label="Có ghi chú" />}</span>
+            {/* aria-label trên AppIcon là VÔ HIỆU — AppIcon tự đặt aria-hidden nên AT bỏ qua
+                cả phần tử. Muốn đọc được thì chữ phải nằm ngoài, ở một node thật. */}
+            {hasNote && <><AppIcon name="note" size={13} className="fin-rule__notedot" /><span className="sr-only">Có ghi chú</span></>}</span>
           <span className="fin-rule__meta">{meta}</span>
         </button>
         <div className="fin-rule__right">
@@ -209,10 +211,12 @@ function RuleCard({
           {state?.text && <span className={`fin-rule__state fin-rule__state--${state.tone}`}>{state.text}</span>}
         </div>
         <div className="fin-rule__tools">
-          {onEdit && <button type="button" className="fin-icon-btn" title="Sửa" onClick={onEdit}><AppIcon name="pencil" size={14} /></button>}
-          {onDuplicate && <button type="button" className="fin-icon-btn" title="Nhân bản" onClick={onDuplicate}><AppIcon name="copy" size={14} /></button>}
-          {onToggle && <Toggle on={enabled} onChange={onToggle} />}
-          {onDelete && <button type="button" className="fin-icon-btn" title="Xóa" onClick={onDelete}><AppIcon name="trash" size={14} /></button>}
+          {/* Nhãn phải kèm TÊN dòng: một màn có 10 hóa đơn thì 10 nút đọc lên đều là
+              "Sửa" — screen reader không có cách nào biết đang sửa cái nào. */}
+          {onEdit && <button type="button" className="fin-icon-btn" title="Sửa" aria-label={`Sửa ${title}`} onClick={onEdit}><AppIcon name="pencil" size={14} /></button>}
+          {onDuplicate && <button type="button" className="fin-icon-btn" title="Nhân bản" aria-label={`Nhân bản ${title}`} onClick={onDuplicate}><AppIcon name="copy" size={14} /></button>}
+          {onToggle && <Toggle on={enabled} onChange={onToggle} ariaLabel={`Bật ${title}`} />}
+          {onDelete && <button type="button" className="fin-icon-btn" title="Xóa" aria-label={`Xóa ${title}`} onClick={onDelete}><AppIcon name="trash" size={14} /></button>}
         </div>
       </div>
       {children}
@@ -526,8 +530,11 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
 
         <div className="fin-field"><span>Icon</span>
           <div className="fin-iconpick">
+            {/* title={name} là key tiếng Anh ("lightning", "drop") — vô nghĩa khi đọc lên.
+                aria-pressed để biết icon nào đang được chọn, vì tín hiệu duy nhất là màu. */}
             {BILL_ICONS.map(name => (
-              <button type="button" key={name} title={name}
+              <button type="button" key={name} title={name} aria-label={`Chọn icon ${name}`}
+                aria-pressed={(f.icon || '') === name}
                 className={(f.icon || '') === name ? 'is-active' : ''}
                 style={{ '--c': catInfo(f.category_id || 'housing', fin.cats).color }}
                 onClick={() => setF(p => ({ ...p, icon: p.icon === name ? '' : name }))}>
@@ -549,7 +556,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
             onChange={(v) => setF(p => ({ ...p, amount_mode: v, amount: v === 'ask' ? '' : p.amount }))}
             options={[{ value: 'fixed', label: 'Cố định' }, { value: 'ask', label: 'Thay đổi từng kỳ' }]} />
           {f.amount_mode !== 'ask' && <input className="fin-input fin-ruleform__amount" inputMode="numeric" pattern="[0-9.]*"
-            placeholder="220.000" value={groupDigits(f.amount || '')} onChange={setDigits('amount')} />}
+            placeholder="220.000" aria-label="Số tiền hóa đơn" value={groupDigits(f.amount || '')} onChange={setDigits('amount')} />}
           <small className="fin-field__hint">{f.amount_mode === 'ask'
             ? 'Tới ngày, app hỏi số tiền và gợi ý bằng trung bình 3 kỳ gần nhất — chưa có kỳ nào thì để trống.'
             : 'Tới ngày, nút Thanh toán điền sẵn số này — bạn chỉ cần bấm.'}</small>
@@ -745,6 +752,8 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
         <label className="fin-field"><span>{amountLabel}</span>
           <input ref={amountRef} className="fin-input" inputMode="numeric" pattern="[0-9.]*" autoFocus
             placeholder="chưa có kỳ nào để gợi ý" value={groupDigits(amount)} onChange={e => setAmount(sanitizeDigits(e.target.value))} />
+          {/* Auto-K nhân 1.000 cho số dưới 10.000 — ô hiện "5.000" mà ghi 5.000.000₫. */}
+          {autoKPreview(amount) && <small className="fin-amount-auto">Sẽ ghi <strong>{autoKPreview(amount)} ₫</strong> · Auto-K</small>}
           {quickAmount > 0 && <button type="button" className="fin-inline-command" onClick={() => setAmount(String(quickAmount))}>
             Trả hết · {money(quickAmount)}
           </button>}</label>
@@ -975,7 +984,7 @@ function BillNote({ bill, onEdit }) {
     <div className="fin-billnote">
       <AppIcon name="note" size={15} />
       <p>{bill.note}</p>
-      <button type="button" className="fin-icon-btn" title="Sửa ghi chú" onClick={onEdit}><AppIcon name="pencil" size={13} /></button>
+      <button type="button" className="fin-icon-btn" title="Sửa ghi chú" aria-label={`Sửa ghi chú của ${bill.name}`} onClick={onEdit}><AppIcon name="pencil" size={13} /></button>
     </div>
   );
 }

@@ -16,6 +16,31 @@ PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy n�
 | 5 | Vault UX security: inactivity auto-lock, clipboard clear, TOTP | Follow-up |
 | 6 | Task model và refactor UI lớn | Icebox; cần quyết định riêng |
 
+## Thứ tự làm tiếp — chốt 2026-08-16
+
+**Làm trước** (nhỏ, độc lập, không chờ ai):
+
+1. Diễn tập phục hồi Vault đủ 3 bước (export → restore → unlock đọc được item). Rủi ro cao nhất toàn
+   app, tốn ~15 phút chứ không phải một sprint.
+2. Quyết Quotes: nối `QuoteWidget` vào `useQuotes()` hay xóa tab. Xem TASKS §2b.
+3. Quyết `excluded` cho khoản cho vay (TASKS §2 P2) — a/b/c, không trả lời thì mặc định (a).
+4. Dài đuôi nhãn a11y (~20 ô form) + bỏ trường `bio`.
+
+**Làm sau** (mỗi mục một sprint riêng, không trộn):
+
+5. Đối chiếu 4 màn Finance với handoff: Tổng quan · Nhập nhanh · Giao dịch · Phân tích.
+6. QA responsive/mobile bằng dữ liệu dày, bắt đầu từ các màn dùng `finance.css`.
+7. Media API smoke (upload ảnh, audio Range/206, 401).
+8. Vault follow-up: đổi passphrase re-wrap → auto-lock → clipboard clear → TOTP.
+9. Chẻ nhỏ `RecurringScreen.jsx` (1400 dòng) và `CollectPage.jsx` (1470 dòng) — **theo từng lần chạm
+   vào chúng**, không mở sprint rewrite.
+
+**Chỉ làm khi có nhu cầu thật** (đừng làm vì thấy thiếu):
+
+- Hoàn tác cho thao tác xóa quy tắc — hộp xác nhận đang là lớp bảo vệ duy nhất.
+- Đồng bộ nhiều thiết bị bằng Supabase Realtime — app một người dùng hiếm khi phiền.
+- Fetch theo yêu cầu cho kỳ cũ hơn cửa sổ dữ liệu.
+
 ## Milestone 1 — production handoff
 
 Mục tiêu: production dùng đúng ordered chain, không dùng remote push/reset và không đánh dấu đã deploy

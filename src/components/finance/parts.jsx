@@ -100,10 +100,14 @@ export function RhythmBars({ rows, avg, unit }) {
 }
 
 // ── Toggle Nocturne ──────────────────────────────────────────────────────────
-export function Toggle({ on, onChange, label }) {
+// `label` là chữ HIỆN RA cạnh công tắc; `ariaLabel` chỉ dành cho screen reader.
+// Công tắc trần (không label) mang role="switch" mà không có tên nào — AT đọc ra
+// đúng một chữ "switch", nên chỗ nào không có label thì bắt buộc có ariaLabel.
+export function Toggle({ on, onChange, label, ariaLabel }) {
   return (
     <button type="button" className={`fin-toggle${on ? ' fin-toggle--on' : ''}`}
-      onClick={() => onChange(!on)} role="switch" aria-checked={on}>
+      onClick={() => onChange(!on)} role="switch" aria-checked={on}
+      aria-label={ariaLabel || (label ? undefined : 'Bật / tắt')}>
       <span className="fin-toggle__track"><span className="fin-toggle__knob" /></span>
       {label && <span className="fin-toggle__label">{label}</span>}
     </button>
@@ -216,9 +220,16 @@ export function Segmented({ options, value, onChange, ariaLabel = 'Tùy chọn' 
 // ── Bộ lọc kỳ (dùng chung Tổng quan + Giao dịch, chung state qua nav) ────────
 const PERIOD_MONTHS = Array.from({ length: 12 }, (_, index) => `Tháng ${index + 1}`);
 
-export function PeriodPicker({ options, period, value, onChange }) {
+/**
+ * `dataFrom` = mốc đầu cửa sổ giao dịch đã fetch (YYYY-MM-DD). Picker KHÔNG mời
+ * chọn kỳ nằm ngoài cửa sổ đó: kỳ không có dữ liệu chỉ hiện "0đ · chưa có giao
+ * dịch", tức app nói dối. Bỏ trống thì lùi tới 2000 như trước.
+ */
+export function PeriodPicker({ options, period, value, onChange, dataFrom }) {
   const rootRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const minMonthKey = (dataFrom || '2000-01-01').slice(0, 7);
+  const minYear = Number(minMonthKey.slice(0, 4));
   const currentMonthKey = options.find(option => /^\d{4}-\d{2}$/.test(option.key))?.key;
   const currentYear = Number((currentMonthKey || '').slice(0, 4));
   const monthMatch = /^(\d{4})-(\d{2})$/.exec(value || '');
@@ -256,12 +267,12 @@ export function PeriodPicker({ options, period, value, onChange }) {
     }
   };
   const previousDisabled = value === 'all'
-    || (monthMatch ? value <= '2000-01' : Number(yearMatch?.[1]) <= 2000);
+    || (monthMatch ? value <= minMonthKey : Number(yearMatch?.[1]) <= minYear);
   const nextDisabled = value === 'all'
     || (monthMatch ? value >= currentMonthKey : Number(yearMatch?.[1]) >= currentYear);
   const years = useMemo(
-    () => Array.from({ length: Math.max(1, currentYear - 1999) }, (_, index) => currentYear - index),
-    [currentYear],
+    () => Array.from({ length: Math.max(1, currentYear - minYear + 1) }, (_, index) => currentYear - index),
+    [currentYear, minYear],
   );
 
   return (
@@ -276,8 +287,8 @@ export function PeriodPicker({ options, period, value, onChange }) {
         </button>
         {open && <div className="fin-period__popover" role="dialog" aria-label="Chọn tháng và năm">
           <div className="fin-period__yearbar">
-            <button type="button" onClick={() => setViewYear(year => Math.max(2000, year - 1))}
-              disabled={viewYear <= 2000} aria-label="Năm trước"><AppIcon name="caretLeft" size={14} /></button>
+            <button type="button" onClick={() => setViewYear(year => Math.max(minYear, year - 1))}
+              disabled={viewYear <= minYear} aria-label="Năm trước"><AppIcon name="caretLeft" size={14} /></button>
             <select value={viewYear} onChange={event => setViewYear(Number(event.target.value))} aria-label="Năm">
               {years.map(year => <option key={year} value={year}>{year}</option>)}
             </select>
@@ -287,7 +298,7 @@ export function PeriodPicker({ options, period, value, onChange }) {
           <div className="fin-period__months">
             {PERIOD_MONTHS.map((label, index) => {
               const key = `${viewYear}-${String(index + 1).padStart(2, '0')}`;
-              return <button type="button" key={key} disabled={key > currentMonthKey}
+              return <button type="button" key={key} disabled={key > currentMonthKey || key < minMonthKey}
                 className={value === key ? 'is-selected' : ''} onClick={() => choose(key)}>{label}</button>;
             })}
           </div>
@@ -299,7 +310,9 @@ export function PeriodPicker({ options, period, value, onChange }) {
           </div>
         </div>}
       </div>
-      <span className="fin-period__days">{value === 'all' ? 'Toàn bộ dữ liệu' : `${days} ngày`}</span>
+      <span className="fin-period__days">
+        {value === 'all' ? `Từ ${minMonthKey.slice(5)}/${minMonthKey.slice(0, 4)}` : `${days} ngày`}
+      </span>
       <div className="fin-period__nav">
         <button type="button" disabled={previousDisabled} onClick={() => shiftPeriod(-1)} aria-label="Kỳ trước"><AppIcon name="caretLeft" size={14} /></button>
         <button type="button" disabled={nextDisabled} onClick={() => shiftPeriod(1)} aria-label="Kỳ sau"><AppIcon name="caretRight" size={14} /></button>

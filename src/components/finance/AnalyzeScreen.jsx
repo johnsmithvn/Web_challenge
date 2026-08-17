@@ -122,7 +122,7 @@ function BudgetRow({ cat, cats, editing, onSave }) {
     <div className="fin-budgetrow">
       <div className="fin-budgetrow__head"><span className="fin-budgetrow__lbl"><FinanceIcon name={cat.icon} cats={cats} size={15} /> {cat.label}</span>{over && <span className="fin-budgetrow__state">Vượt {money(cat.spent - cat.limit)}</span>}<span>{money(cat.spent)} / {money(cat.limit)}</span></div>
       <div className="fin-budgetrow__bar"><div style={{ width: `${Math.min(100, pct)}%`, background: over ? '#b5abfc' : cat.color }} /></div>
-      {editing && <input className="fin-input fin-input--sm" inputMode="numeric" pattern="[0-9]*" placeholder="Nhập hạn mức" value={v}
+      {editing && <input className="fin-input fin-input--sm" inputMode="numeric" pattern="[0-9]*" placeholder="Nhập hạn mức" aria-label={`Hạn mức cho ${cat.label}`} value={v}
           onChange={e => setV(sanitizeDigits(e.target.value))}
           onBlur={() => onSave(parseCurrencyInput(v) || 0)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onSave(parseCurrencyInput(v) || 0); e.target.blur(); } }} />}
@@ -192,7 +192,7 @@ function SavingsWorkspace({ fin, nav, total, monthTotals }) {
             <div className="fin-fund__head">
               <span className="fin-fund__icon"><AppIcon name="piggyBank" size={18} weight="fill" /></span>
               <div><strong>{goal.name}</strong></div><span className="fin-fund__pct">{progress}%</span>
-              <button className="fin-icon-btn" onClick={() => setPanel({ kind: 'goal', goal })} aria-label="Sửa quỹ"><AppIcon name="pencil" size={15} /></button>
+              <button className="fin-icon-btn" onClick={() => setPanel({ kind: 'goal', goal })} aria-label={`Sửa quỹ ${goal.name}`}><AppIcon name="pencil" size={15} /></button>
             </div>
             {goal.goal > 0 && <div className="fin-fund__progress"><i style={{ width: `${progress}%` }} /></div>}
             <div className="fin-fund__figures"><span>{money(balance.total)} / {money(goal.goal)}</span><span>{plan}</span></div>
@@ -229,7 +229,7 @@ function GoalForm({ fin, nav, goal, onDone }) {
     if (ok) onDone();
   };
   return <form className="fin-editor" onSubmit={save}>
-    <div className="fin-editor__title"><strong>{goal ? 'Sửa quỹ' : 'Thêm quỹ'}</strong><button type="button" className="fin-icon-btn" onClick={onDone}><AppIcon name="x" size={14} /></button></div>
+    <div className="fin-editor__title"><strong>{goal ? 'Sửa quỹ' : 'Thêm quỹ'}</strong><button type="button" className="fin-icon-btn" aria-label="Đóng form quỹ" onClick={onDone}><AppIcon name="x" size={14} /></button></div>
     <div className="fin-form__row"><label className="fin-label">Tên quỹ<input className="fin-input" value={name} onChange={e => setName(e.target.value)} placeholder="Du lịch Nhật" autoFocus required /></label><label className="fin-label">Mục tiêu<input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={target} onChange={e => setTarget(sanitizeDigits(e.target.value))} placeholder="40.000.000" /></label></div>
     <div className="fin-form__row"><label className="fin-label">Gửi định kỳ mỗi tháng · tùy chọn<input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={autoAmount} onChange={e => setAutoAmount(sanitizeDigits(e.target.value))} placeholder="500.000" /></label><label className="fin-label">Ngày nhắc gửi<input className="fin-input" inputMode="numeric" pattern="[0-9]*" min="1" max="31" value={autoDay} onChange={e => { const digits = sanitizeDigits(e.target.value, 2); setAutoDay(digits ? String(Math.min(31, Math.max(1, Number(digits)))) : ''); }} /></label></div>
     <div className="fin-form__row"><label className="fin-label">Mức ma sát khi rút<select className="fin-input" value={lockMode} onChange={e => setLockMode(e.target.value)}><option value="soft">Mềm · rút một chạm</option><option value="term">Có kỳ hạn · rút sớm chờ 48 giờ</option><option value="external">Ngoài app · cảnh báo mất lãi</option></select></label>{lockMode === 'term' && <label className="fin-label">Ngày mở khóa<DateField value={lockUntil} onChange={setLockUntil} /></label>}</div>
@@ -254,9 +254,9 @@ function DepositForm({ fin, nav, goal, deposit, onDone }) {
     if (ok) onDone();
   };
   return <form className="fin-editor" onSubmit={save}>
-    <div className="fin-editor__title"><strong>{deposit ? 'Sửa nơi gửi' : `Thêm nơi gửi · ${goal.name}`}</strong><button type="button" className="fin-icon-btn" onClick={onDone}><AppIcon name="x" size={14} /></button></div>
-    <div className="fin-form__row"><input className="fin-input" value={form.name || ''} onChange={field('name')} placeholder="Tên sổ / tài khoản" autoFocus /><input className="fin-input" value={form.bank || ''} onChange={field('bank')} placeholder="Ngân hàng" /></div>
-    <div className="fin-form__row"><input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={form.account_no || ''} onChange={field('account_no', value => sanitizeDigits(value, 32))} placeholder="Số tài khoản" /><input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={form.amount || ''} onChange={field('amount', sanitizeDigits)} placeholder="Số tiền đang gửi" /></div>
+    <div className="fin-editor__title"><strong>{deposit ? 'Sửa nơi gửi' : `Thêm nơi gửi · ${goal.name}`}</strong><button type="button" className="fin-icon-btn" aria-label="Đóng form nơi gửi" onClick={onDone}><AppIcon name="x" size={14} /></button></div>
+    <div className="fin-form__row"><input className="fin-input" value={form.name || ''} onChange={field('name')} aria-label="Tên sổ / tài khoản" placeholder="Tên sổ / tài khoản" autoFocus /><input className="fin-input" value={form.bank || ''} onChange={field('bank')} aria-label="Ngân hàng" placeholder="Ngân hàng" /></div>
+    <div className="fin-form__row"><input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={form.account_no || ''} onChange={field('account_no', value => sanitizeDigits(value, 32))} aria-label="Số tài khoản" placeholder="Số tài khoản" /><input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={form.amount || ''} onChange={field('amount', sanitizeDigits)} aria-label="Số tiền đang gửi" placeholder="Số tiền đang gửi" /></div>
     <div className="fin-form__row"><label className="fin-label">Lãi suất · %/năm<input className="fin-input" inputMode="decimal" value={form.rate || ''} onChange={field('rate', value => sanitizeDecimal(value, 3, 4))} placeholder="5,2" /></label><label className="fin-label">Kỳ hạn<select className="fin-input" value={form.term || ''} onChange={field('term')}><option value="">Không kỳ hạn</option><option value="3">3 tháng</option><option value="6">6 tháng</option><option value="12">12 tháng</option><option value="24">24 tháng</option></select></label></div>
     <div className="fin-form__row"><label className="fin-label">Ngày gửi<DateField value={form.opened_at} onChange={(v) => setForm(p => ({ ...p, opened_at: v }))} /></label><label className="fin-label">Ngày đáo hạn<span className="fin-input fin-input--readonly">{maturity || 'Không kỳ hạn · rút lúc nào cũng được'}</span></label></div>
     {deposit && <label className="fin-label">Ngày tất toán<DateField value={form.closed_on} onChange={(v) => setForm(p => ({ ...p, closed_on: v }))} /></label>}
@@ -301,9 +301,9 @@ function SavingMoveForm({ fin, goal, dir, onDone }) {
     if (tx) onDone();
   };
   return <form className="fin-editor" onSubmit={submit}>
-    <div className="fin-editor__title"><strong>{dir === 'in' ? `Gửi thêm · ${goal.name}` : `Rút khỏi · ${goal.name}`}</strong><button type="button" className="fin-icon-btn" onClick={onDone}><AppIcon name="x" size={14} /></button></div>
-    <select className="fin-input" value={depositId} onChange={e => setDepositId(e.target.value)}>{deposits.map(d => <option key={d.id} value={d.id}>{d.name} · {money(d.amount)}</option>)}</select>
-    <input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={amount} onChange={e => setAmount(sanitizeDigits(e.target.value))} placeholder="Số tiền" />
+    <div className="fin-editor__title"><strong>{dir === 'in' ? `Gửi thêm · ${goal.name}` : `Rút khỏi · ${goal.name}`}</strong><button type="button" className="fin-icon-btn" aria-label="Đóng form gửi/rút" onClick={onDone}><AppIcon name="x" size={14} /></button></div>
+    <select className="fin-input" aria-label="Chọn nơi gửi" value={depositId} onChange={e => setDepositId(e.target.value)}>{deposits.map(d => <option key={d.id} value={d.id}>{d.name} · {money(d.amount)}</option>)}</select>
+    <input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={amount} onChange={e => setAmount(sanitizeDigits(e.target.value))} aria-label="Số tiền" placeholder="Số tiền" />
     <div className="fin-form__row"><label className="fin-label">Ngày thực hiện<DateField value={occurredAt} onChange={setOccurredAt} /></label><label className="fin-label">Tiêu đề<input className="fin-input" value={note} onChange={e => setNote(e.target.value)} placeholder="Tùy chọn" /></label></div>
     <label className="fin-label">Task liên quan</label><TaskPicker tasks={pendingTasks} value={taskId} onPick={setTaskId} />
     {dir === 'out' && effectiveLock === 'term' && !ready && <div className="fin-warn fin-inline-message"><AppIcon name="clock" size={15} /> Rút sớm cần một yêu cầu và chờ 48 giờ để bạn có thời gian đổi ý.</div>}
@@ -445,7 +445,7 @@ function StatsTab({ fin, nav }) {
 
       {mode === 'bill' && (
         <div className="fin-card">
-          <select className="fin-input" value={billId} onChange={e => setBillId(e.target.value)}>
+          <select className="fin-input" aria-label="Chọn hóa đơn để xem theo tháng" value={billId} onChange={e => setBillId(e.target.value)}>
             <option value="">— chọn hóa đơn —</option>
             {fin.bills.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>

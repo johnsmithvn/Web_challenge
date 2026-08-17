@@ -66,7 +66,10 @@ function FinanceSettingsSection() {
         <form onSubmit={handleSaveRate} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Tỷ giá quy đổi USD ➔ VND</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sử dụng để quy đổi khi nhập chi phí dạng $ (Ví dụ: 89$)</div>
+            {/* Ô tiền của Chi tiêu chạy `sanitizeDigits` (chỉ giữ chữ số) trước khi parse
+                nên ký tự `$` không bao giờ sống tới `parseCurrencyInput`. Nơi duy nhất
+                gõ được "10$" là ô chi phí dự kiến ở Ươm mầm — nói đúng chỗ đó. */}
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Dùng cho ô <strong>chi phí dự kiến ở Ươm mầm</strong>, nơi gõ được “10$”. Ô tiền trong Chi tiêu chỉ nhận chữ số.</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <input

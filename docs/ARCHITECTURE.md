@@ -150,6 +150,7 @@ instance; đây không phải quota phân tán toàn hệ thống.
 | `kb_editor_mode` | Markdown/Tiptap preference |
 | `lh_usd_rate`, `lh_auto_k` | preference nhập/đổi tiền |
 | `lh_finance_saving_as_expense` | preference báo cáo Finance |
+| `lh_fin_hidden_seed_shortcuts` | shortcut mẫu đã ẩn ở màn Nhập nhanh |
 
 ### `sessionStorage`
 
@@ -157,6 +158,7 @@ instance; đây không phải quota phân tán toàn hệ thống.
 |---|---|
 | `lh_finance_period` | kỳ Finance đang xem |
 | `lh_inbox_to_finance` | payload handoff một lần từ Inbox |
+| `lh_chunk_reload` | mốc lần tự tải lại gần nhất khi chunk cũ chết sau deploy (chống loop) |
 
 Các prefix cũ được giữ để không làm mất preference. Key mới nên dùng `vl_`, nhưng không rename key
 đang tồn tại chỉ để đẹp convention. Không key nào được chứa Vault passphrase, KEK, DEK hoặc decrypted

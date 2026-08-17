@@ -93,6 +93,7 @@ export default function LinkKBModal({ taskId, linkedIds = [], allCollections = [
           </span>
           <button
             onClick={onClose}
+            aria-label="Đóng"
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: 'var(--text-muted)', fontSize: '1.1rem', padding: '0.2rem',

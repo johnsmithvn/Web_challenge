@@ -91,12 +91,14 @@ export default function ListScreen({ fin, nav }) {
   return (
     <div className={`fin-list${selected ? ' fin-list--detail' : ''}`}>
       <div className="fin-list__main">
-        <PeriodPicker options={nav.periodOptions} period={nav.period} value={nav.periodKey} onChange={nav.setPeriodKey} />
+        <PeriodPicker options={nav.periodOptions} period={nav.period} value={nav.periodKey} onChange={nav.setPeriodKey} dataFrom={nav.dataFrom} />
 
         <div className="fin-list__controls">
           <label className="fin-list__search">
             <AppIcon name="search" size={15} />
-            <input placeholder="Tìm theo tên, nơi, tag…" value={q} onChange={event => setQ(event.target.value)} />
+            {/* <label> bọc ngoài chỉ chứa AppIcon (đã aria-hidden) nên ô này KHÔNG có
+                tên nào — screen reader đọc ra "edit text" trống trơn. */}
+            <input aria-label="Tìm giao dịch" placeholder="Tìm theo tên, nơi, tag…" value={q} onChange={event => setQ(event.target.value)} />
           </label>
           <div className="fin-filter-chips">
             {FILTERS.map(item => <button key={item.value} type="button"
@@ -258,18 +260,20 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
     return (
       <div className="fin-detail fin-detail--editing">
         <div className="fin-detail__head"><strong>Sửa giao dịch</strong><button className="fin-detail__close" onClick={() => setEditing(false)} aria-label="Đóng chỉnh sửa"><AppIcon name="x" size={15} /></button></div>
-        <label className="fin-label">Số tiền</label><input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={amount} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
+        {/* Các <label> ở đây là anh em kề chứ không bọc control và không có htmlFor,
+            nên chúng chỉ là chữ trang trí với AT — mỗi control phải tự mang nhãn. */}
+        <label className="fin-label">Số tiền</label><input className="fin-input" aria-label="Số tiền" inputMode="numeric" pattern="[0-9]*" value={amount} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
         <label className="fin-label">Ngày</label><DateField value={occurredAt} onChange={setOccurredAt} />
-        <label className="fin-label">Tiêu đề</label><input className="fin-input" value={note} onChange={event => setNote(event.target.value)} maxLength={200} />
-        {tx.type !== 'saving' && <><label className="fin-label">Nhóm</label><select className="fin-input" value={categoryId} onChange={event => { setCategoryId(event.target.value); setSubcategoryId(''); }}>{categoryOptions.filter(group => !group.hidden).map(group => <option key={group.key} value={group.key}>{group.label}</option>)}</select></>}
+        <label className="fin-label">Tiêu đề</label><input className="fin-input" aria-label="Tiêu đề giao dịch" value={note} onChange={event => setNote(event.target.value)} maxLength={200} />
+        {tx.type !== 'saving' && <><label className="fin-label">Nhóm</label><select className="fin-input" aria-label="Nhóm" value={categoryId} onChange={event => { setCategoryId(event.target.value); setSubcategoryId(''); }}>{categoryOptions.filter(group => !group.hidden).map(group => <option key={group.key} value={group.key}>{group.label}</option>)}</select></>}
         {tx.type === 'expense' && <>
-          <label className="fin-label">Danh mục con</label><select className="fin-input" value={subcategoryId} onChange={event => setSubcategoryId(event.target.value)}><option value="">— chưa chọn —</option>{subOptions.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}</select>
-          <label className="fin-label">Nguồn tiền</label><select className="fin-input" value={sourceCardId} onChange={event => setSourceCardId(event.target.value)}><option value="">Tiền có sẵn</option>{fin.cards.map(card => <option key={card.id} value={card.id}>{card.name} {card.last4 ? `••${card.last4}` : ''}</option>)}</select>
-          {!tx.excluded && <><label className="fin-label">Mức cần thiết</label><select className="fin-input" value={necessity} onChange={event => setNecessity(event.target.value)}><option value="">— chưa đặt —</option>{Object.entries(NECESSITY_META).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></>}
+          <label className="fin-label">Danh mục con</label><select className="fin-input" aria-label="Danh mục con" value={subcategoryId} onChange={event => setSubcategoryId(event.target.value)}><option value="">— chưa chọn —</option>{subOptions.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}</select>
+          <label className="fin-label">Nguồn tiền</label><select className="fin-input" aria-label="Nguồn tiền" value={sourceCardId} onChange={event => setSourceCardId(event.target.value)}><option value="">Tiền có sẵn</option>{fin.cards.map(card => <option key={card.id} value={card.id}>{card.name} {card.last4 ? `••${card.last4}` : ''}</option>)}</select>
+          {!tx.excluded && <><label className="fin-label">Mức cần thiết</label><select className="fin-input" aria-label="Mức cần thiết" value={necessity} onChange={event => setNecessity(event.target.value)}><option value="">— chưa đặt —</option>{Object.entries(NECESSITY_META).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></>}
         </>}
         {linkedBill && <>
           <label className="fin-label">Thuộc kỳ của {linkedBill.name}</label>
-          <select className="fin-input" value={billPeriod} onChange={event => setBillPeriod(event.target.value)}>
+          <select className="fin-input" aria-label={`Kỳ của ${linkedBill.name}`} value={billPeriod} onChange={event => setBillPeriod(event.target.value)}>
             {periodChoices.map(key => <option key={key} value={key}>{key.slice(5)}/{key.slice(0, 4)}</option>)}
           </select>
           <small className="fin-field__hint">Kỳ tách khỏi ngày trả: trả kỳ tháng 7 vào tháng 8 thì kỳ vẫn là 07. Gắn sai kỳ thì hóa đơn báo quá hạn dù tiền đã ra khỏi ví.</small>
@@ -321,7 +325,7 @@ function TagAdd({ tags, txTags, onAdd }) {
   const available = tags.filter(tag => !txTags.some(item => item.id === tag.id));
   return (
     <span className="fin-tagadd">
-      <input className="fin-input fin-input--sm" list="fin-tag-list" placeholder="+ tag"
+      <input className="fin-input fin-input--sm" list="fin-tag-list" placeholder="+ tag" aria-label="Thêm tag cho giao dịch"
         value={value} onChange={event => setValue(event.target.value)}
         onKeyDown={event => { if (event.key === 'Enter' && value.trim()) { event.preventDefault(); onAdd(value.trim()); setValue(''); } }} />
       <datalist id="fin-tag-list">{available.map(tag => <option key={tag.id} value={tag.name} />)}</datalist>

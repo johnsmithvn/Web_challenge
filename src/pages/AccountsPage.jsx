@@ -599,7 +599,8 @@ function ListRow({ item, on, onOpen }) {
       <span className="acc-row__body">
         <span className="acc-row__top">
           <span className="acc-row__title">{item.title}</span>
-          {item.favorite && <span className="acc-row__star" aria-label="Favourite"><AppIcon name="star" size={13} weight="fill" /></span>}
+          {/* <span> trần không có role thì aria-label bị AT bỏ qua — phải có role="img". */}
+          {item.favorite && <span className="acc-row__star" role="img" aria-label="Favourite"><AppIcon name="star" size={13} weight="fill" /></span>}
           <span className="acc-row__code">{tpl?.code || '···'}</span>
         </span>
         <span className="acc-row__sub">{itemSubtitle(item, tpl?.name || 'Item')}</span>

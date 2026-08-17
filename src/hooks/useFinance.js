@@ -26,6 +26,17 @@ export function useFinance({ autoFetch = true } = {}) {
   const userId = user?.id;
   const today = toDateStr();
 
+  /**
+   * Mốc đầu cửa sổ giao dịch được kéo về: 01/01 NĂM NGOÁI.
+   *
+   * Không chọn "N tháng cố định" vì con số phải bám đúng thứ `listPeriodOptions`
+   * mời user chọn: 12 mục tháng + "Cả năm nay" + "Cả năm trước". Cửa sổ 18 tháng
+   * nghe hợp lý nhưng tháng 8 thì "Cả năm trước" đã thiếu mất tháng 1 — mà đó là
+   * mục có sẵn trong danh sách mặc định, không phải kỳ hiếm. Mốc này tự co giãn
+   * từ 13 đến 24 tháng và luôn phủ đủ danh sách.
+   */
+  const dataFrom = `${Number(today.slice(0, 4)) - 1}-01-01`;
+
   const [transactions, setTransactions] = useState([]);
   const [bills, setBills] = useState([]);
   const [loans, setLoans] = useState([]);
@@ -50,7 +61,15 @@ export function useFinance({ autoFetch = true } = {}) {
       const q = (table, order = 'created_at') =>
         supabase.from(table).select('*').eq('user_id', userId).order(order, { ascending: false });
       const [tx, bl, ln, cd, gl, dp, ir, sc, bg, co, le] = await Promise.all([
+        // Cửa sổ dữ liệu thay cho "kéo cả sổ giao dịch về": xem DATA_FROM ở trên.
+        // Điều kiện OR giữ lại TOÀN BỘ giao dịch gắn quy tắc bất kể cũ tới đâu —
+        // dư nợ thẻ, số đã thu của khoản cho vay, lãi đã trả đều là tổng cộng dồn
+        // all-time; cắt bớt là báo sai số, mà kiểu sai tệ nhất là báo động giả
+        // ("khoản cho vay đã tất toán từ 2024" bỗng hiện quá hẹn).
         supabase.from('finance_transactions').select('*').eq('user_id', userId)
+          .or([`occurred_at.gte.${dataFrom}`, 'bill_id.not.is.null', 'income_rule_id.not.is.null',
+            'loan_id.not.is.null', 'card_id.not.is.null', 'source_card_id.not.is.null',
+            'lending_id.not.is.null'].join(','))
           .order('occurred_at', { ascending: false }).order('created_at', { ascending: false }),
         q('finance_bills'), q('finance_loans'), q('finance_cards'),
         q('finance_saving_goals'), q('finance_deposits'),
@@ -79,7 +98,7 @@ export function useFinance({ autoFetch = true } = {}) {
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, userId]);
+  }, [enabled, userId, dataFrom]);
 
   const cats = useMemo(() => {
     const merge = (base) => base.map(group => {
@@ -445,7 +464,7 @@ export function useFinance({ autoFetch = true } = {}) {
     }), [today, callFinanceRpc]);
 
   return {
-    enabled, isLoading, error, today, cats, categoryOverrides,
+    enabled, isLoading, error, today, dataFrom, cats, categoryOverrides,
     transactions, bills, loans, lendings, cards, goals, deposits, incomeRules, shortcuts, budgets,
     blendedRate: blendedRate(deposits),
     fetchAll,

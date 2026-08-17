@@ -179,7 +179,7 @@ const VN_MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Thán
  * `periodFromKey`, không bị giới hạn bởi danh sách này.
  * unit = đơn vị cột nhịp chi ('day' cho 1 tháng, 'month' cho kỳ dài).
  */
-export function listPeriodOptions(refStr) {
+export function listPeriodOptions(refStr, fromStr = '2000-01-01') {
   const ref = parseYmd(refStr);
   const y = ref.getFullYear();
   const opts = [];
@@ -191,14 +191,17 @@ export function listPeriodOptions(refStr) {
   }
   opts.push({ key: `year-${y}`,     label: `Cả năm ${y}`,     from: monthStart(y, 0),     to: monthEnd(y, 11),     unit: 'month' });
   opts.push({ key: `year-${y - 1}`, label: `Cả năm ${y - 1}`, from: monthStart(y - 1, 0), to: monthEnd(y - 1, 11), unit: 'month' });
-  opts.push({ key: 'all', label: 'Tất cả', from: '2000-01-01', to: refStr, unit: 'month' });
+  // "Tất cả" KHÔNG được hứa nhiều hơn số dữ liệu thật sự có trong state: `fromStr`
+  // là mốc đầu cửa sổ mà useFinance kéo về. Hứa 2000-01-01 rồi hiện 0đ cho kỳ cũ
+  // là app nói dối — và CSV xuất từ state cũng thiếu dữ liệu mà không cảnh báo.
+  opts.push({ key: 'all', label: 'Tất cả', from: fromStr, to: refStr, unit: 'month' });
   return opts;
 }
 
 /** Đổi khóa của month/year picker thành khoảng ngày để mọi màn dùng chung. */
-export function periodFromKey(key, refStr) {
+export function periodFromKey(key, refStr, fromStr = '2000-01-01') {
   const current = currentMonthPeriod(refStr);
-  if (key === 'all') return { key, label: 'Tất cả', from: '2000-01-01', to: refStr, unit: 'month' };
+  if (key === 'all') return { key, label: 'Tất cả', from: fromStr, to: refStr, unit: 'month' };
 
   const yearMatch = /^year-(\d{4})$/.exec(key || '');
   if (yearMatch) {

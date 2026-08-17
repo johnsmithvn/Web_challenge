@@ -329,6 +329,10 @@
 .fin-entry-title-field > input { font-size: 15px; }
 .fin-entry-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .fin-entry-hint { color: var(--n-txt3); font-size: 10.5px; margin-left: auto; }
+/* Auto-K sửa số của user (5.000 → 5.000.000). Dùng màu cảnh báo chứ không phải
+   màu chú thích mờ: đây là "app vừa đổi con số bạn gõ", không phải gợi ý. */
+.fin-amount-auto { display: block; margin-top: 2px; color: var(--n-warn, #e0a34a); font-size: 11.5px; line-height: 1.35; }
+.fin-amount-auto strong { font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .fin-amount-field { display: grid; gap: 4px; min-width: 0; }
 /* `min-width: 0` o day la bat buoc: input 42px co min-content rat rong, grid item

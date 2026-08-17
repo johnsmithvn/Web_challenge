@@ -53,7 +53,12 @@ function OverviewDashboard({ fin, nav }) {
     () => periodTotals(transactions, period, { savingAsExpense: nav.savingAsExpense }),
     [transactions, period, nav.savingAsExpense],
   );
-  const prevRange = useMemo(() => previousRange(period), [period]);
+  // Kỳ liền trước nằm ngoài cửa sổ đã fetch thì KHÔNG so sánh: state chỉ có giao
+  // dịch gắn quy tắc của kỳ đó, "giảm 80% so với kỳ trước" sẽ là con số bịa.
+  const prevRange = useMemo(() => {
+    const range = previousRange(period);
+    return range && nav.dataFrom && range.from < nav.dataFrom ? null : range;
+  }, [period, nav.dataFrom]);
   const cmp = useMemo(
     () => (prevRange ? comparePeriods(transactions, transactions, period, prevRange, today,
       { savingAsExpense: nav.savingAsExpense }) : null),
@@ -124,7 +129,7 @@ function OverviewDashboard({ fin, nav }) {
         </button>
       ))}
 
-      <PeriodPicker options={nav.periodOptions} period={nav.period} value={nav.periodKey} onChange={nav.setPeriodKey} />
+      <PeriodPicker options={nav.periodOptions} period={nav.period} value={nav.periodKey} onChange={nav.setPeriodKey} dataFrom={nav.dataFrom} />
 
       {/* 4 chỉ số */}
       <div className="fin-metrics">

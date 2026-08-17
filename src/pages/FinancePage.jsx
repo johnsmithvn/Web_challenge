@@ -36,7 +36,9 @@ export default function FinancePage() {
   const navigate = useNavigate();
   const { screen: routeScreen } = useParams();
 
-  const periodOptions = useMemo(() => listPeriodOptions(fin.today), [fin.today]);
+  // `fin.dataFrom` = mốc đầu cửa sổ giao dịch đã fetch. Truyền xuống để "Tất cả"
+  // và bộ chọn kỳ chỉ hứa đúng phần dữ liệu đang có trong state.
+  const periodOptions = useMemo(() => listPeriodOptions(fin.today, fin.dataFrom), [fin.today, fin.dataFrom]);
   // Mặc định: tháng đang chạy (mục thứ month0 trong danh sách).
   const defaultPeriodKey = currentMonthPeriod(fin.today).key;
   const [periodKey, setPeriodKeyState] = useState(() => {
@@ -48,7 +50,8 @@ export default function FinancePage() {
     setPeriodKeyState(next);
     sessionStorage.setItem('lh_finance_period', next);
   }, [defaultPeriodKey]);
-  const period = useMemo(() => periodFromKey(periodKey, fin.today), [periodKey, fin.today]);
+  const period = useMemo(() => periodFromKey(periodKey, fin.today, fin.dataFrom),
+    [periodKey, fin.today, fin.dataFrom]);
 
   const screen = routeScreen === 'analyze'
     ? 'overview'
@@ -153,7 +156,7 @@ export default function FinancePage() {
   }
 
   const nav = {
-    screen, setScreen, go, period, periodKey, setPeriodKey, periodOptions,
+    screen, setScreen, go, period, periodKey, setPeriodKey, periodOptions, dataFrom: fin.dataFrom,
     recurringSeg, setRecurringSeg, overviewTab, setOverviewTab, analyzeParams,
     catsTab, setCatsTab, handoff, startHandoff: setHandoff,
     clearHandoff: () => setHandoff(null), showToast,

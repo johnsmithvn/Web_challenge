@@ -101,7 +101,8 @@ export default function QuoteWidget({ pageKey = 'default', kbQuotes = [] }) {
         {/* Audio play button — only if quote has audio_url */}
         {quote.audio_url && (
           <>
-            <button className="qw__btn" onClick={toggleAudio} title={audioPlaying ? 'Dừng' : 'Nghe'}>
+            <button className="qw__btn" onClick={toggleAudio} title={audioPlaying ? 'Dừng' : 'Nghe'}
+              aria-label={audioPlaying ? 'Dừng đọc quote' : 'Nghe quote'}>
               <AppIcon name={audioPlaying ? 'pause' : 'headphones'} size={15} />
             </button>
             <audio
@@ -114,7 +115,7 @@ export default function QuoteWidget({ pageKey = 'default', kbQuotes = [] }) {
         )}
 
         {/* Shuffle button */}
-        <button className="qw__btn qw__btn--shuffle" onClick={shuffle} title="Câu khác">
+        <button className="qw__btn qw__btn--shuffle" onClick={shuffle} title="Câu khác" aria-label="Đổi quote khác">
           <AppIcon name="refresh" size={15} />
         </button>
       </div>

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node api/_lib/smoke.test.js && node src/utils/dateUtils.test.js && node src/utils/mediaUtils.test.js && node src/__tests__/recurrenceUtils.test.js && node src/__tests__/taskFields.test.js && node src/__tests__/taskUiContract.test.js && node src/__tests__/vaultLogic.test.js && node src/__tests__/vaultCrypto.test.js && node src/__tests__/vaultHookContract.test.js && node src/__tests__/financeLogic.test.js && node src/__tests__/financeMigration.test.js && node src/__tests__/databaseContract.test.js && node src/__tests__/currencyInput.test.js && node src/__tests__/lunarUtils.test.js",
+    "test": "node api/_lib/smoke.test.js && node src/utils/dateUtils.test.js && node src/utils/mediaUtils.test.js && node src/__tests__/recurrenceUtils.test.js && node src/__tests__/taskFields.test.js && node src/__tests__/taskUiContract.test.js && node src/__tests__/vaultLogic.test.js && node src/__tests__/vaultCrypto.test.js && node src/__tests__/vaultHookContract.test.js && node src/__tests__/financeLogic.test.js && node src/__tests__/financeMigration.test.js && node src/__tests__/databaseContract.test.js && node src/__tests__/currencyInput.test.js && node src/__tests__/lunarUtils.test.js && node src/__tests__/chunkReload.test.js",
     "db:local:start": "supabase start",
     "db:local:reset": "supabase db reset --local",
     "db:local:status": "supabase status",
