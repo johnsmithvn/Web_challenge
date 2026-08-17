@@ -316,6 +316,7 @@ export default function InboxPage() {
         <div className="inbox-quick-add__row">
           <textarea
             className="inbox-quick-add__input"
+            aria-label="Ghi nhanh vào Inbox"
             placeholder="Nhập nhanh ghi chú, link, ý tưởng..."
             value={quickText}
             onChange={(e) => setQuickText(e.target.value)}
@@ -747,6 +748,7 @@ export default function InboxPage() {
           <div className="kb-editor__meta">
             <input
               className="kb-editor__title"
+              aria-label="Tiêu đề"
               value={detailTitle}
               onChange={(e) => setDetailTitle(e.target.value)}
               placeholder="Tiêu đề..."
@@ -762,6 +764,7 @@ export default function InboxPage() {
                   <div className="kb-split__label"><AppIcon name="pencil" size={14} /> Viết</div>
                   <textarea
                     className="kb-split__textarea"
+                    aria-label="Nội dung Markdown"
                     value={detailBody}
                     onChange={(e) => handleDetailBodyChange(e.target.value)}
                     placeholder="Viết mô tả, ghi chú chi tiết bằng Markdown..."

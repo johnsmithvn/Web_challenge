@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import {
   GearSix as Settings, Tag, Plus, PencilSimple as Pencil, Trash as Trash2, Check, X,
-  Palette, User, FloppyDisk as Save, Envelope as Mail, At as AtSign, FileText,
+  Palette, User, FloppyDisk as Save, Envelope as Mail, At as AtSign,
   Quotes as QuoteIcon, ToggleLeft, ToggleRight, Coins,
 } from '@phosphor-icons/react';
 import AppIcon from '../components/AppIcon';
@@ -75,6 +75,7 @@ function FinanceSettingsSection() {
             <input
               type="number"
               className="settings-tag-form__input"
+              aria-label="Tỷ giá USD sang VND"
               style={{ width: '100px', textAlign: 'right', height: '36px', padding: '0 0.75rem' }}
               value={usdRate}
               onChange={e => setUsdRateState(e.target.value)}
@@ -242,6 +243,7 @@ function TagManagerSection({ user }) {
           </div>
           <input
             className="settings-tag-form__input"
+            aria-label="Tên tag mới"
             value={newTagName}
             onChange={e => setNewTagName(e.target.value)}
             placeholder="Tên tag mới..."
@@ -301,6 +303,7 @@ function TagManagerSection({ user }) {
                       </div>
                       <input
                         className="settings-tag-edit-input"
+                        aria-label="Sửa tên tag"
                         value={editName}
                         onChange={e => setEditName(e.target.value)}
                         onKeyDown={e => {
@@ -357,10 +360,12 @@ function TagManagerSection({ user }) {
 /* ══════════════════════════════════════════════════════════════
    PROFILE SECTION
    ══════════════════════════════════════════════════════════════ */
+// `bio` bị bỏ khỏi form 2026-08-16: không màn nào trong app hiển thị nó, nên đó là
+// một ô bắt người dùng gõ rồi ném vào hư không. Cột `profiles.bio` GIỮ NGUYÊN trong
+// database (xoá cột cần migration riêng); nếu sau này có trang hồ sơ thì nối lại.
 function ProfileSection({ user, profile, updateProfile }) {
   const [form, setForm] = useState({
     display_name: '',
-    bio: '',
   });
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState(''); // 'success' | 'error' | ''
@@ -371,7 +376,6 @@ function ProfileSection({ user, profile, updateProfile }) {
     if (profile) {
       setForm({
         display_name: profile.display_name || '',
-        bio: profile.bio || '',
       });
       setDirty(false);
     }
@@ -389,9 +393,6 @@ function ProfileSection({ user, profile, updateProfile }) {
     const updates = {};
     if (form.display_name.trim() !== (profile?.display_name || '')) {
       updates.display_name = form.display_name.trim();
-    }
-    if (form.bio.trim() !== (profile?.bio || '')) {
-      updates.bio = form.bio.trim();
     }
 
     if (Object.keys(updates).length === 0) {
@@ -470,22 +471,6 @@ function ProfileSection({ user, profile, updateProfile }) {
           <span className="settings-profile-field__hint">Email đăng nhập do Supabase Auth quản lý; app chưa hỗ trợ đổi email.</span>
         </div>
 
-        <div className="settings-profile-field">
-          <label htmlFor="prof-bio">
-            <FileText size={14} />
-            Giới thiệu
-          </label>
-          <textarea
-            id="prof-bio"
-            value={form.bio}
-            onChange={e => handleChange('bio', e.target.value)}
-            placeholder="Viết vài dòng về bạn..."
-            maxLength={200}
-            rows={3}
-            className="settings-profile-input settings-profile-textarea"
-          />
-          <span className="settings-profile-field__hint">{form.bio.length}/200</span>
-        </div>
       </div>
 
       {/* Save button + feedback */}

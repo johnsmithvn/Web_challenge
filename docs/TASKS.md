@@ -58,7 +58,10 @@ agent không tự kiểm chứng được RPC trên hosted DB.
   `bill_id`, `income_rule_id`, `loan_id`, `card_id`, `source_card_id` sang `ON DELETE SET NULL`; CHECK
   cặp được nới để cột kỳ ở lại làm lịch sử, `finance_tx_excluded_scope` soi `loan_part`/`card_period`
   thay vì soi id. **User còn phải chạy SQL này trên hosted rồi smoke tay bốn nút xóa.**
-- [ ] **Quyết định: có nới invariant `excluded` để xóa được khoản cho vay đã có lần thu không?**
+- [x] **Quyết định `excluded` cho khoản cho vay — chọn (a) 2026-08-16.** Giữ nguyên: khoản cho vay đã
+  có lần thu thì không xóa được, UI đã nói thẳng phải xóa các giao dịch thu về trước. Không nới
+  invariant, không thêm cột. Mở lại chỉ khi gặp nhu cầu thật. Ba phương án gốc để dưới đây làm tham
+  chiếu nếu cần quay lại:
   Giao dịch thu về là `income + excluded`, mà database chỉ cho phép cặp đó khi còn `lending_id` — khoản
   cho vay không có cột kỳ nào để giữ lại làm bằng chứng như `loan_part`/`card_period`. Ba đường: (a) giữ
   nguyên, UI đã nói thẳng phải xóa giao dịch thu về trước; (b) nới `finance_tx_branch_shape` cho phép
@@ -68,9 +71,8 @@ agent không tự kiểm chứng được RPC trên hosted DB.
 - [ ] QA desktop/mobile bằng dữ liệu dày: overflow, bottom sheet, sidebar, chart/legend và form dài.
 - [x] **Nhãn screen-reader cho control không tên** — xong 2026-08-16. Nút đóng form, công tắc dòng quy
   tắc, ô tìm, ô thêm tag, form quỹ/nơi gửi, 32 nút icon; thêm `.sr-only` vào `global.css`.
-- [ ] **Còn ~20 ô form thiếu nhãn** (`AddScreen` nơi gửi/tên món/đơn giá, `ListScreen` ô kỳ,
-  `AnalyzeScreen` ô hạn mức + select hóa đơn, `RecurringScreen` các ô còn lại, và các trang ngoài
-  Finance). Cùng một kiểu sửa một dòng, chỉ là dài đuôi — gom vào một lượt.
+- [x] **Dài đuôi nhãn form** — xong 2026-08-16. 25 ô ở Finance (nơi gửi, tên món, đơn giá, ô kỳ, hạn
+  mức, select hóa đơn) và ngoài Finance (Knowledge, Inbox, Ươm mầm, Cài Đặt, LinkKBModal).
 - [ ] QA keyboard + focus indicator + console error thuộc Finance (phần còn lại của a11y, cần bấm tay).
 
 ## 2b. Phát hiện từ audit 2026-08-16 — chưa xử lý
@@ -82,7 +84,8 @@ v6.9.0; dưới đây là phần còn mở, xếp theo mức đáng làm.
   `inspirational_quotes`, nhưng `QuoteWidget` chỉ đọc `src/data/quotes.json` + quote từ Knowledge.
   Nút bật/tắt `is_active` không điều khiển gì. Chọn một: (a) nối `QuoteWidget` vào `useQuotes()` —
   gần như một dòng; (b) xóa cả tab + `useQuotes.js` + bảng. **Đừng để nguyên.**
-- [ ] **Trường `bio` trong Hồ sơ là write-only** — không màn nào hiển thị. Bỏ, hoặc hiện ở đâu đó.
+- [x] **Trường `bio` write-only** — bỏ khỏi form Hồ sơ 2026-08-16. Cột `profiles.bio` giữ nguyên
+  trong database; xóa cột cần migration riêng, chỉ làm khi chắc không dùng lại.
 - [ ] **Auto-K đã mất phần lớn lý do tồn tại.** Bảng `MAGNITUDE` (`nghìn/triệu/tr/củ`) làm
   "50 nghìn" ra đúng mà không cần auto-K; auto-K giờ chỉ còn phục vụ trường hợp gõ số trần "50" —
   đúng cái ca gây hiểu nhầm. Cân nhắc mặc định TẮT cho user mới (không đụng ai đang bật).

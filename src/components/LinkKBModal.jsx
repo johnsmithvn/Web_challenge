@@ -104,7 +104,7 @@ export default function LinkKBModal({ taskId, linkedIds = [], allCollections = [
         {/* Search */}
         <input
           type="text"
-          placeholder="Tìm bài viết..."
+          aria-label="Tìm bài viết" placeholder="Tìm bài viết..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="auth-input"

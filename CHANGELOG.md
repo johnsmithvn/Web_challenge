@@ -31,6 +31,9 @@
     khớp đúng những gì nó hứa.
   - Ô "so với kỳ trước" ở Tổng quan **ẩn đi** khi kỳ liền trước nằm ngoài cửa sổ, thay vì bịa ra một
     tỉ lệ phần trăm từ dữ liệu cụt.
+- **Bỏ ô "Giới thiệu" (`bio`) khỏi Hồ sơ** — không màn nào trong app hiển thị nó, nên đó là một ô bắt
+  người dùng gõ 200 ký tự rồi ném vào hư không. Cột `profiles.bio` **giữ nguyên** trong database (xóa
+  cột cần migration riêng); có trang hồ sơ thật thì nối lại.
 - **Accessibility: các control không có tên giờ đã có.** Screen reader trước đây đọc ra "button" hoặc
   "switch" trống trơn ở: ba nút đóng form quỹ/nơi gửi/gửi-rút, công tắc bật-tắt của mọi dòng quy tắc,
   ô tìm giao dịch, ô thêm tag, và 8 ô nhập của form quỹ/nơi gửi. Nút sửa/nhân bản/xóa/ghi chú giờ
@@ -40,6 +43,11 @@
     là ca đó, và `<span aria-label>` ở Vault cần thêm `role="img"` vì cùng lý do.
   - 32 nút chọn icon hóa đơn có `title` là key tiếng Anh (`lightning`, `drop`); nay có `aria-label`
     tiếng Việt và `aria-pressed` — trước đó trạng thái "đang chọn" chỉ báo bằng màu.
+  - Thêm 25 ô nhập chỉ có `placeholder` làm nhãn (Finance: nơi gửi · tên món · đơn giá · ô kỳ · hạn
+    mức · chọn hóa đơn; ngoài Finance: Knowledge, Inbox, Ươm mầm, Cài Đặt, LinkKBModal).
+    `placeholder` **biến mất khi đã gõ chữ**, nên nó không phải nhãn — chỉ là gợi ý.
+  - `Toggle` nhận thêm prop `ariaLabel` tách khỏi `label`: `label` là chữ **hiện ra màn hình**, nên
+    dùng nó để đặt tên cho screen reader sẽ đổi layout mọi dòng quy tắc.
 - **Mô tả tỷ giá USD trong Cài Đặt nói đúng phạm vi.** Nó ghi "dùng khi nhập chi phí dạng $" ngay
   trong khối *Cấu hình tiền tệ & chi tiêu*, nhưng mọi ô tiền của Chi tiêu đều lọc sạch ký tự `$`
   trước khi parse — nơi duy nhất gõ được "10$" là ô chi phí dự kiến ở Ươm mầm.

@@ -18,22 +18,31 @@ PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy n�
 
 ## Thứ tự làm tiếp — chốt 2026-08-16
 
+**Đã chốt/đã xong 2026-08-16:** `excluded` chọn phương án (a) — giữ nguyên, không nới invariant. Dài
+đuôi nhãn a11y + bỏ trường `bio` đã làm.
+
 **Làm trước** (nhỏ, độc lập, không chờ ai):
 
-1. Diễn tập phục hồi Vault đủ 3 bước (export → restore → unlock đọc được item). Rủi ro cao nhất toàn
-   app, tốn ~15 phút chứ không phải một sprint.
-2. Quyết Quotes: nối `QuoteWidget` vào `useQuotes()` hay xóa tab. Xem TASKS §2b.
-3. Quyết `excluded` cho khoản cho vay (TASKS §2 P2) — a/b/c, không trả lời thì mặc định (a).
-4. Dài đuôi nhãn a11y (~20 ô form) + bỏ trường `bio`.
+1. Quyết Quotes: nối `QuoteWidget` vào `useQuotes()` hay xóa tab. Xem TASKS §2b.
+2. Đối chiếu 4 màn Finance với handoff — việc lớn nhất còn lại của module chính.
 
 **Làm sau** (mỗi mục một sprint riêng, không trộn):
 
-5. Đối chiếu 4 màn Finance với handoff: Tổng quan · Nhập nhanh · Giao dịch · Phân tích.
-6. QA responsive/mobile bằng dữ liệu dày, bắt đầu từ các màn dùng `finance.css`.
-7. Media API smoke (upload ảnh, audio Range/206, 401).
-8. Vault follow-up: đổi passphrase re-wrap → auto-lock → clipboard clear → TOTP.
-9. Chẻ nhỏ `RecurringScreen.jsx` (1400 dòng) và `CollectPage.jsx` (1470 dòng) — **theo từng lần chạm
+3. QA responsive/mobile bằng dữ liệu dày, bắt đầu từ các màn dùng `finance.css`.
+4. QA keyboard/focus + nhóm B của audit a11y: `role="button"` thiếu `tabIndex`/keydown (Navbar,
+   MonthCalendar), `<div onClick>` trần (Inbox, Ươm mầm), Esc để đóng cho `GenericModal` +
+   `DatePickerPopover` + `TaskPicker` + `AuthModal` + `LinkKBModal`, và một hook `useFocusTrap` dùng
+   chung (**không modal nào trong repo có focus trap** — Tab vẫn thoát ra nền sau).
+5. Media API smoke (upload ảnh, audio Range/206, 401).
+6. Chẻ nhỏ `RecurringScreen.jsx` (1400 dòng) và `CollectPage.jsx` (1470 dòng) — **theo từng lần chạm
    vào chúng**, không mở sprint rewrite.
+
+**Cuối cùng, sau khi app đã hoàn thiện** (user chốt 2026-08-16 — làm sau, không phải bỏ):
+
+7. **Diễn tập phục hồi Vault** đủ 3 bước (export → restore → unlock đọc được item). Tới lúc đó mới
+   được coi export là đường phục hồi thật; từ giờ đến đó UI vẫn phải cảnh báo mất passphrase là mất
+   quyền giải mã, và **Vault không được dùng làm bản sao duy nhất** của secret quan trọng.
+8. Vault follow-up: đổi passphrase re-wrap → auto-lock → clipboard clear → TOTP.
 
 **Chỉ làm khi có nhu cầu thật** (đừng làm vì thấy thiếu):
 

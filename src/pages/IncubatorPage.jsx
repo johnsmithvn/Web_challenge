@@ -437,6 +437,7 @@ export default function IncubatorPage() {
               <form className="incubator-form" onSubmit={handleAdd}>
                 <input
                   className="incubator-form__input"
+                  aria-label="Tên dự định"
                   placeholder="Tên dự định *"
                   value={title}
                   onChange={e => setTitle(e.target.value)}
@@ -445,6 +446,7 @@ export default function IncubatorPage() {
                 />
                 <input
                   className="incubator-form__input"
+                  aria-label="Lý do ban đầu"
                   placeholder="Lý do ban đầu (tuỳ chọn)"
                   value={reason}
                   onChange={e => setReason(e.target.value)}
@@ -453,6 +455,7 @@ export default function IncubatorPage() {
                   <input
                     className="incubator-form__input incubator-form__input--cost"
                     type="text"
+                    aria-label="Chi phí dự kiến"
                     placeholder="Chi phí dự kiến (Ví dụ: 50, 50k, 10$)"
                     value={cost}
                     onChange={e => setCost(e.target.value)}
@@ -637,6 +640,7 @@ export default function IncubatorPage() {
             <label className="incubator-modal__label">Lý do dời *</label>
             <textarea
               className="incubator-modal__input"
+              aria-label="Lý do dời lại"
               placeholder="Tại sao bạn muốn dời lại?"
               value={deferReason}
               onChange={e => setDeferReason(e.target.value)}
@@ -870,6 +874,7 @@ export default function IncubatorPage() {
           <div className="kb-editor__meta">
             <input
               className="kb-editor__title"
+              aria-label="Tên dự định"
               value={detailTitle}
               onChange={(e) => setDetailTitle(e.target.value)}
               placeholder="Tên dự định..."
@@ -885,6 +890,7 @@ export default function IncubatorPage() {
                 <textarea
                   className="incubator-modal__input"
                   rows={2}
+                  aria-label="Lý do ban đầu"
                   value={detailReason}
                   onChange={e => setDetailReason(e.target.value)}
                   placeholder="Tại sao bạn muốn làm điều này?"
@@ -898,6 +904,7 @@ export default function IncubatorPage() {
                   <input
                     className="incubator-modal__input"
                     type="text"
+                    aria-label="Chi phí dự kiến"
                     placeholder="Chi phí (Ví dụ: 50, 50k, 10$)"
                     value={detailCost}
                     onChange={e => setDetailCost(e.target.value)}
@@ -920,6 +927,7 @@ export default function IncubatorPage() {
                     <div className="kb-split__label"><AppIcon name="pencil" size={14} /> Viết Mô tả chi tiết</div>
                     <textarea
                       className="kb-split__textarea"
+                      aria-label="Mô tả chi tiết"
                       value={detailDescription}
                       onChange={(e) => setDetailDescription(e.target.value)}
                       placeholder="Viết mô tả, ghi chú chi tiết bằng Markdown..."
