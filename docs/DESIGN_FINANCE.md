@@ -144,6 +144,14 @@ sửa/công tắc/xóa, phần mở thêm (khối ghi kỳ, form sửa, lịch s
   `finished_at`; giao dịch cũ giữ `bill_id` cũ nên lịch sử không theo sang bản sao.
 - "Bỏ kỳ này" phải có đường quay lại: RPC chỉ thêm vào `skipped_periods`, UI gỡ bằng UPDATE own-row.
   Không có nút gỡ thì một cú bấm nhầm khóa cả kỳ tới tháng sau.
+- **Ba bậc `necessity` trả lời đúng một câu: "thiếu tiền thì cắt khoản nào trước?"** Nhãn hiển thị là
+  **Phải trả · Cắt bớt được · Không bắt buộc** (`NECESSITY_META` — nơi duy nhất giữ nhãn; key DB vẫn
+  `must/need/want`). Ranh giới không phải mức độ cần mà là **ai giữ quyền quyết định**: `must` người
+  khác quyết và không chi là có hậu quả từ bên ngoài; `need` mình quyết mức/thời điểm nhưng vẫn phải
+  chi gì đó; `want` được phép chọn không chi. Không đặt nhãn theo cảm xúc lúc mua ("muốn có") — quà
+  tặng và đồ ăn vặt không lọt vào khung đó, mà cả hai đều là khoản cắt được. Cũng không dùng "Bỏ
+  được" cho `want`: nhãn đó còn dán lên quà tặng, lì xì, đồ mua cho người trong nhà, đọc thành phán
+  xét về người nhận chứ không phải về dòng tiền.
 - Xóa quy tắc không xóa transaction; hộp xác nhận nói đúng số giao dịch được giữ lại. Giao dịch chỉ
   rời khỏi quy tắc (id về NULL, cột kỳ ở lại) và thao tác này **không hoàn tác được** — quy tắc mất
   thì không còn đường gắn lại. Hai ngoại lệ vẫn chặn xóa và phải nói thẳng trong hộp xác nhận thay vì

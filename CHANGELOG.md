@@ -36,6 +36,29 @@
     nó hiện mặt ra trước khi bấm Lưu. Self-check trong `currencyInput.test.js` chốt cả hai hướng:
     dưới 10.000 phải cảnh báo, từ 10.000 trở lên phải im, tắt auto-K thì im hẳn.
 
+### Changed
+- **Ba bậc necessity đổi nhãn: `Bắt buộc · Cần thiết · Muốn có` → `Phải trả · Cắt bớt được · Không bắt buộc`.**
+  Nhãn cũ hỏi sai câu. Ba bậc này trong app chỉ dùng cho đúng một việc — `cutable` ở
+  `budgetBreakdown`, tức là **"thiếu tiền thì cắt khoản nào trước"** — nhưng chữ "Muốn có" lại hỏi
+  *cảm xúc lúc mua*. Mua quà cho em gái thì không ai "muốn có" gì cả, gói ăn vặt lúc đói cũng không,
+  nên người dùng phải tự dịch từ câu hỏi này sang câu hỏi kia mỗi lần ghi tiền. Thêm nữa **"Bắt
+  buộc" và "Cần thiết" là hai từ gần đồng nghĩa đặt cạnh nhau** — ranh giới thật không phải mức độ
+  cần mà là *ai giữ quyền quyết định*: `must` người khác quyết (không trả là bị cắt điện, bị phạt),
+  `need` mình quyết mức và thời điểm nhưng vẫn phải chi gì đó, `want` mình được phép chọn không chi.
+  - Ba nhãn mới nằm trên **một trục duy nhất** và khớp luôn với câu app vẫn in ra ("Có thể cắt X").
+    Tiêu đề khối đổi theo: *Bắt buộc đến đâu* → **Cắt được tới đâu**; tên trường *Mức cần thiết* →
+    **Mức cắt được** (gồm cả cột trong CSV xuất ra).
+  - **Không đổi schema.** Key trong database vẫn là `must/need/want`, ba `CHECK` constraint và toàn
+    bộ `necessityByCat` giữ nguyên — đây là thay đổi chữ hiển thị, không mất một dòng dữ liệu nào.
+  - Bậc thứ ba **không** dùng chữ "Bỏ được" (bản đầu đã thử): nhãn đó còn dán lên quà tặng, lì xì,
+    đồ mua cho người trong nhà — đọc thành phán xét về người nhận chứ không phải về dòng tiền.
+    "Không bắt buộc" nói đúng cùng một điều mà không gọi món quà là thứ bỏ đi.
+  - Xóa `necessityLabels` trong `finance-categories.json`: nó là **bản sao thứ hai của nhãn mà không
+    ai đọc**, để lại là có ngày hai nơi nói hai chuyện khác nhau. Giờ `NECESSITY_META` là nơi duy nhất.
+  - **Cân nhắc rồi bỏ: gộp còn hai bậc** ("bắt buộc / không bắt buộc"). Nó làm sập tỉ lệ 50/30/20,
+    và gộp *ăn ngoài* với *trà sữa* vào một rổ thì mất đúng chỗ tiền hay rò — tầng giữa, tầng mình
+    tưởng là cần. Nếu vẫn muốn nhìn nhị phân thì gộp lúc HIỂN THỊ ở màn Phân tích, đừng đụng schema.
+
 ### Fixed
 - **Tổng quan vào là thấy 0đ rồi số mới nhảy vào.** Màn này không có khung chờ nào: nó vẽ ngay
   `periodTotals` của một mảng giao dịch còn rỗng, nên trong lúc fetch bạn đọc được **"Đã chi 0đ ·

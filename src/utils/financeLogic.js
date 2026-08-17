@@ -20,7 +20,7 @@
 export const NECESSITY_ORDER = ['must', 'need', 'want'];
 
 /**
- * Mức cần thiết suy tự động: sub đè cat (NEED_BY_SUB đè NEED_BY_CAT). Gửi xe là
+ * Mức cắt được suy tự động: sub đè cat (NEED_BY_SUB đè NEED_BY_CAT). Gửi xe là
  * `must`, quán nước là `want`, dù cùng nhóm Đi lại.
  * @param cats — object finance-categories.json (tiêm vào để test khỏi import JSON).
  */

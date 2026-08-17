@@ -1,6 +1,6 @@
 {
   "_note": "Danh muc Finance theo handoff Nocturne. Key la dinh danh ben, dung trong transaction/category override. Parent group dong; user chi sua ten, mau, icon, an/hien va danh muc con.",
-  "necessityLabels": { "must": "Bắt buộc", "need": "Cần thiết", "want": "Muốn có" },
+  "_necessityLabels": "Nhãn hiển thị của must/need/want nằm ở NECESSITY_META trong src/components/finance/parts.jsx — MỘT nơi duy nhất. Key ben-dinh-danh o duoi chi la khoa, khong phai chu hien ra.",
   "necessityByCat": {
     "food": "need", "transport": "need", "housing": "must", "shopping": "want",
     "subscription": "want", "health": "need", "entertainment": "want", "family": "need",

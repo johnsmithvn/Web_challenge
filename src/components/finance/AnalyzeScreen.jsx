@@ -99,7 +99,7 @@ function BudgetTab({ fin, nav }) {
             </article>;
           })}
         </div>
-        <small>Nếu tháng này cần thắt lưng, phần Muốn có là nhóm nên cắt trước. Các khoản Bắt buộc không được lấy làm “khoảng trống” giả.</small>
+        <small>Nếu tháng này cần thắt lưng, phần Không bắt buộc là nhóm nên cắt trước. Các khoản Phải trả không được lấy làm “khoảng trống” giả.</small>
       </section>
 
       <SavingsWorkspace fin={fin} nav={nav} total={fund} monthTotals={totals} />
@@ -111,7 +111,7 @@ function BudgetTab({ fin, nav }) {
 function needCopyFor(key) {
   if (key === 'must') return 'Không trả thì mất chỗ ở, mất việc, bị phạt. Tiền nhà, điện nước, trả góp, xăng đi làm.';
   if (key === 'need') return 'Phải chi nhưng số tiền tùy mình. Ăn uống hằng ngày, thuốc, quần áo cơ bản.';
-  return 'Bỏ được mà không ảnh hưởng gì. Quán nước, giải trí, đồ công nghệ mới.';
+  return 'Không chi cũng không ảnh hưởng gì. Quán nước, giải trí, đồ công nghệ mới.';
 }
 
 function BudgetRow({ cat, cats, editing, onSave }) {
@@ -150,7 +150,7 @@ function SavingsWorkspace({ fin, nav, total, monthTotals }) {
 
       <label className="fin-saving-toggle">
         <span className="fin-saving-toggle__icon"><AppIcon name="piggyBank" size={19} weight="duotone" /></span>
-        <span className="fin-saving-toggle__copy"><strong>Tính tiền để dành như một khoản chi</strong><small>{nav.savingAsExpense ? 'Đang bật: tiền gửi vào quỹ được tính là Bắt buộc; tiền rút ra không bị tính lại.' : 'Đang tắt: để dành nằm ngoài biểu đồ chi. Bật nếu bạn theo cách “trả cho mình trước”.'}</small></span>
+        <span className="fin-saving-toggle__copy"><strong>Tính tiền để dành như một khoản chi</strong><small>{nav.savingAsExpense ? 'Đang bật: tiền gửi vào quỹ được tính là Phải trả; tiền rút ra không bị tính lại.' : 'Đang tắt: để dành nằm ngoài biểu đồ chi. Bật nếu bạn theo cách “trả cho mình trước”.'}</small></span>
         <input type="checkbox" checked={nav.savingAsExpense} onChange={e => nav.setSavingAsExpense(e.target.checked)} /><span className="fin-switch" aria-hidden="true" />
       </label>
 

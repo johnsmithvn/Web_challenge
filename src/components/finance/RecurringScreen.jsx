@@ -1349,11 +1349,13 @@ function LendsList({ fin, nav, tasks }) {
                 <small>gốc, chưa gồm lãi</small></span>
               <span>Cho mượn <strong>{money(l.principal)}</strong></span>
               <span>Hẹn trả <strong>{dmy(l.due_on)}</strong></span>
+              {/* Không hẹn ngày thì mốc là HÔM NAY — nhãn phải nói đúng thế, không thì
+                  "Lãi tới hẹn 0đ" của khoản vừa cho mượn hôm nay đọc như một con bug. */}
               {l.rate > 0 && (<>
-                <span>Lãi tới hẹn <strong className="is-accent">{money(math.expected)}</strong>
-                  <small>{l.rate}%/năm × {math.days} ngày tới {dmy(math.to)}
+                <span>{l.due_on ? 'Lãi tới hẹn' : 'Lãi tới hôm nay'} <strong className="is-accent">{money(math.expected)}</strong>
+                  <small>{l.rate}%/năm × {math.days} ngày{l.due_on ? ` tới ${dmy(math.to)}` : ' · chưa hẹn ngày trả'}
                     {math.earned < math.expected ? ` · đã phát sinh ${money(math.earned)}` : ''}</small></span>
-                <span>Tổng sẽ nhận <strong>{money(math.total)}</strong>
+                <span>{l.due_on ? 'Tổng sẽ nhận' : 'Tổng nếu trả hôm nay'} <strong>{money(math.total)}</strong>
                   <small>gốc {money(l.principal)} + lãi {money(math.expected)}</small></span>
               </>)}
             </div>

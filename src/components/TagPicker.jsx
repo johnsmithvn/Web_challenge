@@ -111,6 +111,7 @@ export default function TagPicker({ tags = [], selected = [], onToggle, onAdd, c
               return (
                 <button
                   key={t.id}
+                  type="button"
                   onClick={() => onToggle(t.id)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '0.4rem',
@@ -139,6 +140,7 @@ export default function TagPicker({ tags = [], selected = [], onToggle, onAdd, c
             )}
             {canCreate && (
               <button
+                type="button"
                 onClick={handleCreate}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '0.3rem',

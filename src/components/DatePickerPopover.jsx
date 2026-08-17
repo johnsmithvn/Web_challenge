@@ -107,6 +107,12 @@ function buildCalendar(year, month) {
  *   ô giờ luôn ẩn (khoảng ngày không có giờ)
  * Click 1: đặt mốc đầu. Click 2: đặt mốc cuối (click trước mốc đầu thì tự
  * đảo). Click 3: bắt đầu khoảng mới.
+ *
+ * MỌI nút trong đây PHẢI có `type="button"`. Popover được render inline (không
+ * portal) nên ở màn Hóa đơn nó nằm ngay trong `<form>` sửa quy tắc — thiếu attribute
+ * đó thì button mặc định là `type="submit"`: bấm "8 tuần" hay một ô lịch là submit
+ * form, lưu bản ghi với ngày CŨ rồi đóng popover. Rất khó đoán vì trông như popover
+ * tự đóng.
  */
 export default function DatePickerPopover({ value, onChange, onClose, timeValue, onTimeChange, hideTime, mode = 'single', max, style }) {
   const isRange = mode === 'range';
@@ -218,7 +224,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
               <AppIcon name="calendar" size={14} /> Đến: {rTo ? fmtLong(rTo) : '—'}
             </span>
             {(rFrom || rTo) && (
-              <button className="dp-header__value-clear" onClick={() => { setRFrom(''); setRTo(''); }}
+              <button type="button" className="dp-header__value-clear" onClick={() => { setRFrom(''); setRTo(''); }}
                 title="Xoá khoảng" aria-label="Xoá khoảng"><AppIcon name="x" size={13} /></button>
             )}
           </>
@@ -229,7 +235,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
               <span className="dp-header__value">
                 {draftLabel}
                 {draftTime && <span style={{ opacity: 0.7, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}> · <AppIcon name="clock" size={13} /> {draftTime}</span>}
-                <button className="dp-header__value-clear" onClick={() => { setDraft(''); setDraftTime(''); }} title="Xoá" aria-label="Xóa ngày"><AppIcon name="x" size={13} /></button>
+                <button type="button" className="dp-header__value-clear" onClick={() => { setDraft(''); setDraftTime(''); }} title="Xoá" aria-label="Xóa ngày"><AppIcon name="x" size={13} /></button>
               </span>
             )}
           </>
@@ -246,6 +252,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
             return (
               <button
                 key={i}
+                type="button"
                 className={`dp-shortcut${active ? ' dp-shortcut--active' : ''}`}
                 onClick={() => {
                   setRFrom(r.from); setRTo(r.to);
@@ -261,6 +268,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
           }) : shortcuts.map((s, i) => (
             <button
               key={i}
+              type="button"
               disabled={Boolean(max) && toDateStr(s.date) > max}
               className={`dp-shortcut${draft === toDateStr(s.date) ? ' dp-shortcut--active' : ''}`}
               onClick={() => {
@@ -282,11 +290,11 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
               {MONTH_NAMES[viewMonth]}, {viewYear}
             </span>
             <div className="dp-calendar__nav-btns">
-              <button className="dp-calendar__nav-btn dp-calendar__today-btn" onClick={goToday}>
+              <button type="button" className="dp-calendar__nav-btn dp-calendar__today-btn" onClick={goToday}>
                 Hôm nay
               </button>
-              <button className="dp-calendar__nav-btn" onClick={prevMonth}>‹</button>
-              <button className="dp-calendar__nav-btn" onClick={nextMonth}>›</button>
+              <button type="button" className="dp-calendar__nav-btn" onClick={prevMonth}>‹</button>
+              <button type="button" className="dp-calendar__nav-btn" onClick={nextMonth}>›</button>
             </div>
           </div>
 
@@ -316,6 +324,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
               return (
                 <button
                   key={i}
+                  type="button"
                   disabled={blocked}
                   className={cls}
                   onClick={() => {
@@ -355,10 +364,11 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
 
       {/* ── Footer: Save / Close ── */}
       <div className="dp-footer">
-        <button className="dp-footer__cancel" onClick={onClose} title="Huỷ">
+        <button type="button" className="dp-footer__cancel" onClick={onClose} title="Huỷ">
           <AppIcon name="x" size={14} /> Huỷ
         </button>
         <button
+          type="button"
           className={`dp-footer__save${hasChanges ? ' dp-footer__save--active' : ''}`}
           onClick={handleSave}
           disabled={isRange ? !rFrom : !draft}

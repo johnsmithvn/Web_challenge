@@ -14,8 +14,8 @@ const FILTERS = [
   { value: 'all', label: 'Tất cả' },
   { value: 'expense', label: 'Chi' },
   { value: 'income', label: 'Thu' },
-  { value: 'must', label: 'Bắt buộc' },
-  { value: 'want', label: 'Muốn có' },
+  { value: 'must', label: 'Phải trả' },
+  { value: 'want', label: 'Không bắt buộc' },
   { value: 'auto', label: 'Do định kỳ sinh' },
 ];
 
@@ -67,7 +67,7 @@ export default function ListScreen({ fin, nav }) {
 
   const exportCsv = () => {
     if (!filtered.length) return;
-    const headers = ['Ngày', 'Loại', 'Số tiền', 'Nhóm', 'Danh mục con', 'Mức cần thiết', 'Nguồn tiền', 'Nơi / người nhận', 'Tiêu đề'];
+    const headers = ['Ngày', 'Loại', 'Số tiền', 'Nhóm', 'Danh mục con', 'Mức cắt được', 'Nguồn tiền', 'Nơi / người nhận', 'Tiêu đề'];
     const rows = filtered.map(tx => [
       tx.occurred_at,
       tx.type,
@@ -272,7 +272,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
         {tx.type === 'expense' && <>
           <label className="fin-label">Danh mục con</label><select className="fin-input" aria-label="Danh mục con" value={subcategoryId} onChange={event => setSubcategoryId(event.target.value)}><option value="">— chưa chọn —</option>{subOptions.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}</select>
           <label className="fin-label">Nguồn tiền</label><select className="fin-input" aria-label="Nguồn tiền" value={sourceCardId} onChange={event => setSourceCardId(event.target.value)}><option value="">Tiền có sẵn</option>{fin.cards.map(card => <option key={card.id} value={card.id}>{card.name} {card.last4 ? `••${card.last4}` : ''}</option>)}</select>
-          {!tx.excluded && <><label className="fin-label">Mức cần thiết</label><select className="fin-input" aria-label="Mức cần thiết" value={necessity} onChange={event => setNecessity(event.target.value)}><option value="">— chưa đặt —</option>{Object.entries(NECESSITY_META).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></>}
+          {!tx.excluded && <><label className="fin-label">Mức cắt được</label><select className="fin-input" aria-label="Mức cắt được" value={necessity} onChange={event => setNecessity(event.target.value)}><option value="">— chưa đặt —</option>{Object.entries(NECESSITY_META).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></>}
         </>}
         {linkedBill && <>
           <label className="fin-label">Thuộc kỳ của {linkedBill.name}</label>
@@ -292,7 +292,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
     ['Ngày', new Date(`${tx.occurred_at}T00:00:00`).toLocaleDateString('vi-VN')],
     ['Nơi', tx.merchant || '—'],
     ['Loại', typeLabel],
-    ['Mức cần thiết', NECESSITY_META[tx.necessity]?.label || '—'],
+    ['Mức cắt được', NECESSITY_META[tx.necessity]?.label || '—'],
     ['Tính chất', tx.is_fixed ? 'Cố định' : 'Biến đổi'],
     ['Trả bằng', source],
     ['Nguồn tạo', tx.bill_id ? 'Hóa đơn định kỳ' : tx.loan_id ? 'Khoản vay' : tx.card_id ? 'Sao kê thẻ' : tx.shortcut_id ? 'Shortcut' : tx.inbox_item_id ? 'Inbox' : 'Nhập tay'],
