@@ -14,6 +14,7 @@ import {
   cardCycle, cardBalance, cardStatementSummary, loanSchedule, fundBalance, spendingRhythm, listPeriodOptions,
   suggestedDailySpend, maturityWarn, groupByDate, daysInclusive, currentMonthPeriod, periodFromKey, billAmountEstimate,
   dueDateInMonth, daysUntilDue, nextAnnualFee, nextDueDate, billCycle, billSettled, billPeriodForDate,
+  lendingInterest,
 } from '../utils/financeLogic.js';
 
 // Stub cats tối giản (không import JSON để chạy được bằng node).
@@ -321,5 +322,44 @@ assert.equal(billPeriodForDate({ due_day: 5 }, '2026-08-02'), '2026-08',
   'hạn ngày 5, trả ngày 2 là trả sớm cho kỳ này chứ không phải trả muộn kỳ trước');
 assert.equal(billPeriodForDate({ due_day: null }, '2026-08-02'), null);
 console.log('billPeriodForDate check: OK');
+
+/* ── lendingInterest: lãi cho vay theo ngày trên dư nợ còn lại ── */
+const lend = { principal: 100_000_000, rate: 12, lent_on: '2026-01-01', due_on: '2026-07-01' };
+
+assert.deepEqual(
+  lendingInterest({ ...lend, rate: 0 }, [], '2026-03-01'),
+  { rate: 0, balance: 100_000_000, to: '2026-07-01', days: 181, earned: 0, expected: 0, total: 100_000_000 },
+  'không lãi thì tổng sẽ nhận đúng bằng gốc');
+
+const plain = lendingInterest(lend, [], '2026-03-01');
+assert.equal(plain.days, 181, '01/01 → 01/07 là 181 ngày');
+assert.equal(plain.expected, 5_950_685, '100tr · 12%/năm · 181 ngày');
+assert.equal(plain.total, 105_950_685, 'tổng sẽ nhận = gốc + lãi tới hẹn');
+assert.equal(plain.earned, 1_939_726, 'tới 01/03 mới phát sinh 59 ngày lãi');
+assert.ok(plain.earned < plain.expected, 'chưa tới hẹn thì lãi đã phát sinh phải nhỏ hơn lãi tới hẹn');
+
+// Đổi ngày hẹn là lãi đổi theo — đây là lý do con số không được lưu cứng vào database.
+assert.ok(lendingInterest({ ...lend, due_on: '2026-12-31' }, [], '2026-03-01').expected > plain.expected,
+  'hẹn xa hơn → lãi tới hẹn nhiều hơn');
+
+// Trả 50tr ngày 01/04: từ hôm đó lãi chỉ chạy trên 50tr còn lại, không phải 100tr.
+const partial = lendingInterest(lend, [{ occurred_at: '2026-04-01', amount: 50_000_000 }], '2026-05-01');
+assert.equal(partial.balance, 50_000_000);
+assert.equal(partial.expected, 4_454_795, '90 ngày trên 100tr + 91 ngày trên 50tr');
+assert.ok(partial.expected < plain.expected, 'trả bớt gốc thì lãi tới hẹn giảm');
+
+// Quá hẹn: lãi vẫn chạy tới hôm nay, không đóng băng ở ngày hẹn.
+const late = lendingInterest({ ...lend, due_on: '2026-02-01' }, [], '2026-03-01');
+assert.equal(late.to, '2026-03-01');
+assert.equal(late.earned, late.expected, 'quá hẹn thì lãi đã phát sinh chính là lãi phải nhận');
+
+// Chưa hẹn ngày trả → mốc là hôm nay, không phải null hay vô hạn.
+assert.equal(lendingInterest({ ...lend, due_on: null }, [], '2026-03-01').to, '2026-03-01');
+
+// Ngày thu về nằm trước ngày đưa tiền (gõ sai) không được sinh lãi âm.
+const backwards = lendingInterest(lend, [{ occurred_at: '2025-12-01', amount: 50_000_000 }], '2026-01-01');
+assert.equal(backwards.earned, 0);
+assert.equal(backwards.balance, 50_000_000);
+console.log('lendingInterest check: OK');
 
 console.log('\n✅ financeLogic — tất cả self-check PASS');

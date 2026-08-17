@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTags } from '../hooks/useTags';
-import { useQuotes } from '../hooks/useQuotes';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import {
   GearSix as Settings, Tag, Plus, PencilSimple as Pencil, Trash as Trash2, Check, X,
   Palette, User, FloppyDisk as Save, Envelope as Mail, At as AtSign,
-  Quotes as QuoteIcon, ToggleLeft, ToggleRight, Coins,
+  ToggleLeft, ToggleRight, Coins,
 } from '@phosphor-icons/react';
 import AppIcon from '../components/AppIcon';
 import SkeletonList from '../components/SkeletonList';
@@ -22,9 +21,12 @@ const TAG_COLORS = [
 ];
 
 /* ── Sidebar menu items (extensible) ──────────────────────── */
+// Tab "Quotes" bị bỏ 2026-08-16: nó CRUD bảng `inspirational_quotes` mà `QuoteWidget`
+// không bao giờ đọc (widget lấy từ `src/data/quotes.json` + item type='quote' trong
+// Knowledge), nên quote thêm ở đây không hiện ra ở đâu cả. Nơi thêm quote giờ là
+// Knowledge — đã user-facing, đã hiện thật. Bảng vẫn còn trong database.
 const MENU_ITEMS = [
   { key: 'general', label: 'Chung',   icon: Settings,   desc: 'Tags & hệ thống' },
-  { key: 'quotes',  label: 'Quotes',  icon: QuoteIcon,  desc: 'Câu nói truyền cảm hứng' },
   { key: 'profile', label: 'Hồ sơ',  icon: User,       desc: 'Thông tin cá nhân' },
 ];
 
@@ -507,209 +509,6 @@ function ProfileSection({ user, profile, updateProfile }) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   QUOTE MANAGER SECTION
-   ══════════════════════════════════════════════════════════════ */
-function QuoteManagerSection() {
-  const { userQuotes, systemQuotes, addQuote, updateQuote, deleteQuote, isLoading } = useQuotes();
-  const { confirm, ConfirmModal } = useConfirm();
-
-  const [newText, setNewText] = useState('');
-  const [newAuthor, setNewAuthor] = useState('');
-  const [newSource, setNewSource] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [editText, setEditText] = useState('');
-  const [editAuthor, setEditAuthor] = useState('');
-  const [showSystem, setShowSystem] = useState(false);
-
-  const handleAdd = async (e) => {
-    e.preventDefault();
-    if (!newText.trim()) return;
-    setIsAdding(true);
-    const result = await addQuote({
-      text: newText.trim(),
-      author: newAuthor.trim() || null,
-      source: newSource.trim() || null,
-      audio_url: null,
-    });
-    if (result) {
-      setNewText('');
-      setNewAuthor('');
-      setNewSource('');
-    }
-    setIsAdding(false);
-  };
-
-  const handleStartEdit = (q) => {
-    setEditingId(q.id);
-    setEditText(q.text);
-    setEditAuthor(q.author || '');
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingId || !editText.trim()) return;
-    await updateQuote(editingId, { text: editText.trim(), author: editAuthor.trim() || null });
-    setEditingId(null);
-  };
-
-  const handleDelete = async (q) => {
-    const ok = await confirm({
-      title: 'Xóa quote?',
-      message: `"${q.text.slice(0, 60)}${q.text.length > 60 ? '...' : ''}"`,
-      confirmLabel: 'Xóa',
-      danger: true,
-    });
-    if (ok) await deleteQuote(q.id);
-  };
-
-  const handleToggleActive = async (q) => {
-    await updateQuote(q.id, { is_active: !q.is_active });
-  };
-
-  return (
-    <>
-      {ConfirmModal}
-      <section className="settings-section">
-        <div className="settings-section__header">
-          <QuoteIcon size={20} />
-          <h2>Quản Lý Quotes</h2>
-          <span className="settings-section__count">{userQuotes.length} quotes cá nhân · {systemQuotes.length} hệ thống</span>
-        </div>
-
-        {/* Add form */}
-        <form className="settings-quote-form" onSubmit={handleAdd}>
-          <textarea
-            className="settings-quote-form__input"
-            value={newText}
-            onChange={e => setNewText(e.target.value)}
-            placeholder='"Kỷ luật là cầu nối giữa mục tiêu và thành tựu"'
-            maxLength={500}
-            rows={2}
-          />
-          <div className="settings-quote-form__row">
-            <input
-              className="settings-quote-form__small"
-              value={newAuthor}
-              onChange={e => setNewAuthor(e.target.value)}
-              placeholder="Tác giả (tùy chọn)"
-              maxLength={100}
-            />
-            <input
-              className="settings-quote-form__small"
-              value={newSource}
-              onChange={e => setNewSource(e.target.value)}
-              placeholder="Nguồn (tùy chọn)"
-              maxLength={100}
-            />
-            <button
-              type="submit"
-              className="btn btn-primary settings-quote-form__submit"
-              disabled={!newText.trim() || isAdding}
-            >
-              <Plus size={16} /> {isAdding ? '...' : 'Thêm'}
-            </button>
-          </div>
-        </form>
-
-        {/* User quotes list */}
-        {isLoading ? (
-          <SkeletonList rows={3} icon={false} right={false} label="Đang tải quote" />
-        ) : userQuotes.length === 0 ? (
-          <div className="settings-empty">
-            <QuoteIcon size={40} strokeWidth={1} />
-            <p>Chưa có quote cá nhân. Thêm quote đầu tiên ở trên.</p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-              {systemQuotes.length} câu hệ thống vẫn hiện trên các trang.
-            </p>
-          </div>
-        ) : (
-          <div className="settings-tag-list">
-            {userQuotes.map(q => {
-              if (editingId === q.id) {
-                return (
-                  <div key={q.id} className="settings-tag-item settings-tag-item--editing">
-                    <div style={{ flex: 1 }}>
-                      <textarea
-                        className="settings-quote-form__input"
-                        value={editText}
-                        onChange={e => setEditText(e.target.value)}
-                        rows={2}
-                        autoFocus
-                      />
-                      <input
-                        className="settings-quote-form__small"
-                        value={editAuthor}
-                        onChange={e => setEditAuthor(e.target.value)}
-                        placeholder="Tác giả"
-                        style={{ marginTop: '0.35rem' }}
-                      />
-                    </div>
-                    <div className="settings-tag-item__actions" style={{ alignSelf: 'flex-start' }}>
-                      <button className="settings-tag-action settings-tag-action--save" onClick={handleSaveEdit}><Check size={16} /></button>
-                      <button className="settings-tag-action settings-tag-action--cancel" onClick={() => setEditingId(null)}><X size={16} /></button>
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <div key={q.id} className={`settings-tag-item${!q.is_active ? ' settings-tag-item--muted' : ''}`}>
-                  <div className="settings-tag-item__info" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.15rem' }}>
-                    <span className="settings-quote-text">"{q.text}"</span>
-                    {q.author && <span className="settings-quote-author">— {q.author}</span>}
-                    {q.source && <span className="settings-quote-source">{q.source}</span>}
-                  </div>
-                  <div className="settings-tag-item__actions">
-                    <button
-                      className="settings-tag-action"
-                      onClick={() => handleToggleActive(q)}
-                      title={q.is_active ? 'Ẩn' : 'Hiện'}
-                    >
-                      {q.is_active ? <ToggleRight size={16} color="#22c55e" /> : <ToggleLeft size={16} />}
-                    </button>
-                    <button className="settings-tag-action settings-tag-action--edit" onClick={() => handleStartEdit(q)}>
-                      <Pencil size={14} />
-                    </button>
-                    <button className="settings-tag-action settings-tag-action--delete" onClick={() => handleDelete(q)}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* System quotes toggle */}
-        <button
-          className="settings-quote-sys-toggle"
-          onClick={() => setShowSystem(v => !v)}
-        >
-          {showSystem ? '▲' : '▼'} {systemQuotes.length} câu hệ thống
-        </button>
-        {showSystem && (
-          <div className="settings-tag-list" style={{ opacity: 0.6 }}>
-            {systemQuotes.slice(0, 15).map(q => (
-              <div key={q.id} className="settings-tag-item">
-                <div className="settings-tag-item__info" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.1rem' }}>
-                  <span className="settings-quote-text" style={{ fontSize: '0.8rem' }}>"{q.text}"</span>
-                  {q.author && <span className="settings-quote-author">— {q.author}</span>}
-                </div>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', flexShrink: 0 }}>Hệ thống</span>
-              </div>
-            ))}
-            {systemQuotes.length > 15 && (
-              <div style={{ padding: '0.5rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                ... và {systemQuotes.length - 15} câu khác
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-    </>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════════
    SETTINGS PAGE (main)
    ══════════════════════════════════════════════════════════════ */
 export default function SettingsPage() {
@@ -768,7 +567,6 @@ export default function SettingsPage() {
               <TagManagerSection user={user} />
             </>
           )}
-          {activeTab === 'quotes' && <QuoteManagerSection user={user} />}
           {activeTab === 'profile' && <ProfileSection user={user} profile={profile} updateProfile={updateProfile} />}
         </main>
       </div>

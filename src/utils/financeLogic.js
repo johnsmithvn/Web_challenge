@@ -499,6 +499,47 @@ export function loanSchedule(loan) {
     principalRemaining: Math.max(0, Math.round(bal)), progress: { done, total: n } };
 }
 
+// ── Cho vay: lãi theo ngày trên dư nợ còn lại ───────────────────────────────
+/**
+ * Lãi của một khoản CHO VAY. Không phải `principal * rate` một cục: mỗi lần họ trả
+ * gốc là dư nợ tụt xuống, nên lãi từ hôm đó phải tính trên số nhỏ hơn — vì vậy đổi
+ * ngày hẹn hay ghi thêm một lần họ trả đều làm con số này khác đi.
+ *
+ * Lãi ĐƠN, năm 365 ngày, đơn vị NGÀY (không quy về tháng như `loanSchedule`): vay tay
+ * đôi hiếm khi tròn tháng, và thứ người dùng gõ vào là một ngày hẹn cụ thể.
+ *
+ * @param repayments — giao dịch thu GỐC của khoản này (excluded, có `lending_id`).
+ *   Tiền lãi họ trả KHÔNG nằm trong danh sách này nên không làm giảm dư nợ gốc.
+ * @returns
+ *   earned   — lãi đã phát sinh tới `refStr`: số họ đang nợ thêm ngoài gốc.
+ *   expected — lãi tới NGÀY HẸN nếu dư nợ giữ nguyên từ giờ tới đó. Quá hẹn thì lãi
+ *              vẫn chạy, nên mốc là ngày xa hơn giữa ngày hẹn và hôm nay.
+ *   total    — tổng sẽ nhận trên cả khoản = gốc + expected.
+ */
+export function lendingInterest(lending, repayments = [], refStr) {
+  const rate = Number(lending.rate) || 0;
+  const principal = lending.principal || 0;
+  const start = lending.lent_on || refStr;
+  const accrue = (bal, from, to) =>
+    to <= from ? 0 : bal * (rate / 100) * ((daysInclusive(from, to) - 1) / 365);
+
+  let balance = principal, cursor = start, before = 0;
+  for (const t of [...repayments].sort((a, b) => a.occurred_at.localeCompare(b.occurred_at))) {
+    const at = t.occurred_at > cursor ? t.occurred_at : cursor;   // trả trước ngày đưa tiền → 0 ngày lãi
+    before += accrue(balance, cursor, at);
+    balance = Math.max(0, balance - t.amount);
+    cursor = at;
+  }
+  const now = refStr > cursor ? refStr : cursor;
+  const to = lending.due_on && lending.due_on > now ? lending.due_on : now;
+  const expected = Math.round(before + accrue(balance, cursor, to));
+  return {
+    rate, balance, to, days: Math.max(0, daysInclusive(start, to) - 1),
+    earned: Math.round(before + accrue(balance, cursor, now)),
+    expected, total: principal + expected,
+  };
+}
+
 /** Số tham chiếu của hóa đơn: cố định dùng giá khai báo, biến đổi lấy trung bình 3 kỳ gần nhất. */
 export function billAmountEstimate(bill, txs) {
   if (bill.amount_mode === 'fixed') return bill.amount || 0;

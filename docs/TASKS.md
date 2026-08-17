@@ -80,10 +80,11 @@ agent không tự kiểm chứng được RPC trên hosted DB.
 Bốn mảng được audit (cấu hình, a11y, responsive, tải dữ liệu). Phần đã sửa nằm trong CHANGELOG
 v6.9.0; dưới đây là phần còn mở, xếp theo mức đáng làm.
 
-- [ ] **Tab Quotes trong Cài Đặt ghi vào nơi không ai đọc.** `QuoteManagerSection` CRUD bảng
-  `inspirational_quotes`, nhưng `QuoteWidget` chỉ đọc `src/data/quotes.json` + quote từ Knowledge.
-  Nút bật/tắt `is_active` không điều khiển gì. Chọn một: (a) nối `QuoteWidget` vào `useQuotes()` —
-  gần như một dòng; (b) xóa cả tab + `useQuotes.js` + bảng. **Đừng để nguyên.**
+- [x] **Tab Quotes ghi vào nơi không ai đọc** — xóa 2026-08-16 (user xác nhận bảng rỗng). Bỏ
+  `QuoteManagerSection` + `useQuotes.js` + 100 dòng CSS chết; nơi thêm quote giờ là item Knowledge
+  `type='quote'`, đã hiện thật qua `QuoteWidget`.
+- [ ] **Drop bảng `inspirational_quotes`** — bảng còn trong database, không còn code nào chạm tới.
+  Cần migration riêng và user xác nhận lần nữa; không gấp, để lại không tốn gì.
 - [x] **Trường `bio` write-only** — bỏ khỏi form Hồ sơ 2026-08-16. Cột `profiles.bio` giữ nguyên
   trong database; xóa cột cần migration riêng, chỉ làm khi chắc không dùng lại.
 - [ ] **Auto-K đã mất phần lớn lý do tồn tại.** Bảng `MAGNITUDE` (`nghìn/triệu/tr/củ`) làm

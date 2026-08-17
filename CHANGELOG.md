@@ -15,6 +15,18 @@
     nó hiện mặt ra trước khi bấm Lưu. Self-check trong `currencyInput.test.js` chốt cả hai hướng:
     dưới 10.000 phải cảnh báo, từ 10.000 trở lên phải im, tắt auto-K thì im hẳn.
 
+### Removed
+- **Tab Quotes trong Cài Đặt — cả một khối CRUD ghi vào hư không.** `QuoteManagerSection` thêm/sửa/
+  xóa/bật-tắt bảng `inspirational_quotes`, nhưng `QuoteWidget` chưa bao giờ đọc bảng đó: nó lấy quote
+  hệ thống từ `src/data/quotes.json` và quote cá nhân từ item Knowledge `type='quote'`. Nên mọi quote
+  thêm ở tab này **không hiện ra ở đâu cả**, và nút bật/tắt `is_active` không điều khiển gì.
+  - Xóa `QuoteManagerSection` (200 dòng), `src/hooks/useQuotes.js` và 100 dòng CSS đã thành rác
+    (`.settings-quote-*`, `.settings-tag-item--muted`). Cài Đặt còn hai tab: **Chung** và **Hồ sơ**.
+  - **Không nối widget vào hook** dù chỉ mất một dòng: làm vậy là có hai chỗ thêm quote song song
+    (Knowledge và Cài Đặt), lần sau không nhớ mình đã thêm ở đâu. Một nơi thì không nhầm được.
+  - Bảng `inspirational_quotes` **để lại trong database** (user xác nhận chưa lưu gì trong đó); drop
+    cần migration riêng, để lại không tốn gì.
+
 ### Changed
 - **Chỉ kéo về cửa sổ giao dịch cần dùng, thay vì cả sổ.** `fetchAll` trước đây `SELECT` toàn bộ
   `finance_transactions` không giới hạn, và mọi thao tác có gắn rule lại kéo lại từ đầu cả 11 bảng.

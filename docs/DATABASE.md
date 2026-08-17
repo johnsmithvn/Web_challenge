@@ -51,7 +51,7 @@ auth.users
 | `intentions` | Incubator | status lifecycle |
 | `intention_logs` | Lịch sử Incubator | FK về intention |
 | `collection_notes` | Sub-note của bài Knowledge | FK về collection/user |
-| `inspirational_quotes` | Quote cá nhân | Quote hệ thống nằm ở `src/data/quotes.json`, không ở bảng này |
+| `inspirational_quotes` | **KHÔNG CÒN CONSUMER** từ v6.9.0 | Tab Quotes trong Cài Đặt đã bỏ vì `QuoteWidget` chưa bao giờ đọc bảng này (widget lấy từ `src/data/quotes.json` + item Knowledge `type='quote'`). Bảng để lại, chưa drop — xóa cần migration riêng |
 
 ### Finance — 12 bảng
 

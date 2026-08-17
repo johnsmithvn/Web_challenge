@@ -106,23 +106,25 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   layer; không có nút Video riêng trong toolbar/slash.
 - Upload image/audio/file yêu cầu Supabase access token và đi qua `api/upload.js`.
 - Sub-note theo bài; Task ↔ Knowledge M:N; tag nằm ở junction trung tâm.
-- QuoteWidget hiện ở Inbox và Knowledge; có quote hệ thống từ JSON và quote cá nhân từ Supabase.
+- QuoteWidget hiện ở Inbox và Knowledge. Hai nguồn: quote hệ thống trong `src/data/quotes.json` và
+  item Knowledge có `type='quote'`. **Không đọc bảng `inspirational_quotes`** — muốn thêm quote của
+  mình thì tạo item Knowledge kiểu quote.
 
-**Data:** `collections`, `collection_notes`, `collection_tags`, `task_collections`,
-`inspirational_quotes`.
+**Data:** `collections`, `collection_notes`, `collection_tags`, `task_collections`.
 
 ## 6. Tags và Cài đặt (`/settings`)
 
-**Files:** `src/pages/SettingsPage.jsx`, `src/hooks/useTags.js`, `src/hooks/useQuotes.js`
+**Files:** `src/pages/SettingsPage.jsx`, `src/hooks/useTags.js`
 
+- Hai tab: **Chung** (tiền tệ + tag) và **Hồ sơ**. Tab Quotes đã bỏ ở v6.9.0 — nó CRUD bảng
+  `inspirational_quotes` mà không màn nào đọc, nên quote thêm ở đó không hiện ra ở đâu.
+- Cấu hình tiền tệ: tỷ giá USD (chỉ dùng cho ô chi phí dự kiến ở Ươm mầm) và Auto-K.
 - Tag manager: tạo, đổi tên/màu, xem usage breakdown và xóa link có xác nhận.
 - Tag plaintext dùng cho Knowledge, Task và Finance transaction qua ba junction riêng để giữ FK.
 - Vault tag là ngoại lệ: nằm trong ciphertext và chỉ có sau unlock.
-- Quote manager: CRUD quote cá nhân, bật/tắt; quote hệ thống chỉ đọc từ `quotes.json`.
-- Profile: avatar, username, display name, email và bio với validation.
+- Profile: avatar, username, display name và email. Ô `bio` đã bỏ (không màn nào hiển thị).
 
-**Data:** `tags`, `collection_tags`, `task_tags`, `finance_transaction_tags`,
-`inspirational_quotes`, `profiles`.
+**Data:** `tags`, `collection_tags`, `task_tags`, `finance_transaction_tags`, `profiles`.
 
 ## 7. Incubator (`/incubator`)
 
