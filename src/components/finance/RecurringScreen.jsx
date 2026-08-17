@@ -2,12 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils/currencyUtils';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import {
-  billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule, lendingInterest,
+  billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule,
+  lendingInterest, forfeitedInterest,
   currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
   billCycle, billSettled, billPeriods, billPeriodForDate,
 } from '../../utils/financeLogic';
 import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField } from './parts';
 import AppIcon from '../AppIcon';
+import InfoTip from '../InfoTip';
 import SkeletonList from '../SkeletonList';
 
 const SEGMENTS = [
@@ -120,17 +122,21 @@ function RulesEmpty({ icon, title, description }) {
 
 const dmy = (iso) => (iso ? iso.split('-').reverse().join('/') : '—');
 
-/** Dải tổng đầu tab (Khoản vay, Cho vay) + câu giải thích cách tiền được tính. */
+/**
+ * Dải tổng đầu tab (Khoản vay, Cho vay) + câu giải thích cách tiền được tính.
+ * Câu giải thích nằm trong InfoTip cạnh nhãn ĐẦU TIÊN: để trần trong dải thì nó là
+ * một khối chữ nhỏ dày đặc cao gần bằng phần số, đọc một lần rồi lần nào mở màn cũng
+ * phải nhìn lại.
+ */
 function SummaryStrip({ items, note }) {
   return (
     <section className="fin-summary-strip">
-      <div>{items.map(item => (
+      <div>{items.map((item, i) => (
         <div key={item.label}>
-          <span>{item.label}</span>
+          <span>{item.label}{i === 0 && note && <InfoTip label="Cách app tính các số này">{note}</InfoTip>}</span>
           <strong className={item.tone ? `is-${item.tone}` : ''}>{item.value}</strong>
         </div>
       ))}</div>
-      {note && <p>{note}</p>}
     </section>
   );
 }
@@ -430,6 +436,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
       payload = {
         name: f.name.trim(), note: f.note?.trim() || null, principal,
         rate: Number(f.rate) || 0, lent_on: lentOn, due_on: f.due_on || null,
+        forfeited_interest: parseCurrencyInput(f.forfeited_interest) || 0,
       };
     } else if (seg === 'card') {
       const statementDay = Number(f.statement_day);
@@ -477,7 +484,15 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
   const lendMath = seg === 'lend' ? lendingInterest({
     principal: parseCurrencyInput(f.principal) || 0, rate: Number(f.rate) || 0,
     lent_on: f.lent_on || fin.today, due_on: f.due_on || null,
+    forfeited_interest: parseCurrencyInput(f.forfeited_interest) || 0,
   }, [], fin.today) : null;
+  // Sổ tiết kiệm đang mở, có ngày gửi và có lãi → đập cái nào cũng mất một cục lãi.
+  // Bấm để điền sẵn số đó; giấy rút của ngân hàng mới là số cuối nên ô vẫn sửa được.
+  const brokenDeposits = seg === 'lend'
+    ? fin.deposits.filter(d => !d.closed_on && d.opened_at && d.rate > 0 && d.amount > 0)
+      .map(d => ({ d, lost: forfeitedInterest(d, f.lent_on || fin.today) }))
+      .filter(x => x.lost > 0)
+    : [];
 
   return (
     <form className={`fin-card fin-form fin-ruleform${editing ? ' fin-ruleform--edit' : ''}`} onSubmit={submit}>
@@ -701,13 +716,35 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
                 Dùng lãi suất gửi bình quân · {fin.blendedRate}%/năm
               </button>
             )}</label>
+          <label className="fin-field"><span>Lãi mất do rút sớm · tùy chọn</span>
+            <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="0"
+              value={groupDigits(f.forfeited_interest || '')} onChange={setDigits('forfeited_interest')} /></label>
         </div>
+        {/* Cục lãi mất KHÔNG nhân với số ngày cho vay: nó mất xong ngay lúc đập sổ.
+            Nhét vào ô %/năm thì phải gõ 54,9%/năm cho một khoản 9% — và sai thêm mỗi
+            ngày họ trả muộn. */}
+        <small className="fin-field__hint">Đập sổ tiết kiệm trước hạn để có tiền cho vay thì bạn mất <strong>toàn bộ lãi đã tích</strong> của sổ — tổn thất đó không nằm trong lãi %/năm của mấy ngày cho vay, nên khai riêng ở đây. Nó được cộng thẳng vào tổng phải thu và không đổi khi dời ngày hẹn.</small>
+        {brokenDeposits.length > 0 && (
+          <div className="fin-source-picker">
+            {brokenDeposits.map(({ d, lost }) => (
+              <button type="button" key={d.id}
+                className={(parseCurrencyInput(f.forfeited_interest) || 0) === lost ? 'is-active' : ''}
+                onClick={() => setF(p => ({ ...p, forfeited_interest: String(lost) }))}>
+                <AppIcon name="piggyBank" size={14} /> Rút {d.name} · mất {money(lost)}
+              </button>
+            ))}
+          </div>
+        )}
         {lendMath && lendMath.total > 0 && (
           <div className="fin-loan-split">
             <span>Tổng sẽ nhận <strong>{money(lendMath.total)}</strong>
               <small>{f.due_on ? `tới hẹn ${dmy(f.due_on)}` : 'tính tới hôm nay — chưa hẹn ngày trả'}</small></span>
             <span>Tiền lãi <strong className={lendMath.expected > 0 ? 'is-accent' : ''}>{money(lendMath.expected)}</strong>
               <small>{lendMath.rate > 0 ? `${lendMath.rate}%/năm × ${lendMath.days} ngày` : 'không tính lãi'}</small></span>
+            {lendMath.forfeited > 0 && (
+              <span>Bù lãi mất <strong className="is-accent">{money(lendMath.forfeited)}</strong>
+                <small>một cục, không theo ngày</small></span>
+            )}
             <span>Tiền gốc <strong>{money(parseCurrencyInput(f.principal) || 0)}</strong>
               <small>cho mượn {dmy(f.lent_on || fin.today)}</small></span>
           </div>
@@ -805,7 +842,7 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
           <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="0"
             value={groupDigits(interest)} onChange={e => setInterest(sanitizeDigits(e.target.value))} />
           {interestQuick > 0 && <button type="button" className="fin-inline-command" onClick={() => setInterest(String(interestQuick))}>
-            Lãi tới hôm nay · {money(interestQuick)}
+            Lãi nợ tới hôm nay · {money(interestQuick)}
           </button>}
           <small className="fin-field__hint">Phần lãi là <strong>thu nhập thật</strong> — ghi thành giao dịch thu Đầu tư · Lãi tiết kiệm. Phần còn lại trừ vào gốc và không tính là thu nhập. Để 0 nếu lần này họ chỉ trả gốc.</small>
         </label>
@@ -1351,13 +1388,19 @@ function LendsList({ fin, nav, tasks }) {
               <span>Hẹn trả <strong>{dmy(l.due_on)}</strong></span>
               {/* Không hẹn ngày thì mốc là HÔM NAY — nhãn phải nói đúng thế, không thì
                   "Lãi tới hẹn 0đ" của khoản vừa cho mượn hôm nay đọc như một con bug. */}
-              {l.rate > 0 && (<>
+              {l.rate > 0 && (
                 <span>{l.due_on ? 'Lãi tới hẹn' : 'Lãi tới hôm nay'} <strong className="is-accent">{money(math.expected)}</strong>
                   <small>{l.rate}%/năm × {math.days} ngày{l.due_on ? ` tới ${dmy(math.to)}` : ' · chưa hẹn ngày trả'}
                     {math.earned < math.expected ? ` · đã phát sinh ${money(math.earned)}` : ''}</small></span>
+              )}
+              {math.forfeited > 0 && (
+                <span>Bù lãi mất <strong className="is-accent">{money(math.forfeited)}</strong>
+                  <small>lãi sổ tiết kiệm bị đập — một cục, không theo ngày</small></span>
+              )}
+              {(l.rate > 0 || math.forfeited > 0) && (
                 <span>{l.due_on ? 'Tổng sẽ nhận' : 'Tổng nếu trả hôm nay'} <strong>{money(math.total)}</strong>
-                  <small>gốc {money(l.principal)} + lãi {money(math.expected)}</small></span>
-              </>)}
+                  <small>gốc {money(l.principal)}{math.expected > 0 ? ` + lãi ${money(math.expected)}` : ''}{math.forfeited > 0 ? ` + bù ${money(math.forfeited)}` : ''}</small></span>
+              )}
             </div>
 
             <RuleProgress pct={l.principal ? got / l.principal * 100 : 0}
@@ -1377,8 +1420,8 @@ function LendsList({ fin, nav, tasks }) {
             )}
 
             {payId === l.id && <PayBlock fin={fin} tasks={tasks} defaultAmount=""
-              quickAmount={left + (l.rate > 0 ? math.earned : 0)}
-              interestQuick={l.rate > 0 ? math.earned : null}
+              quickAmount={left + math.dueNow}
+              interestQuick={l.rate > 0 || math.forfeited > 0 ? math.dueNow : null}
               amountLabel="Họ vừa trả bao nhiêu" confirmLabel="Ghi nhận"
               onCancel={() => setPayId(null)} onPay={(payload) => record(l, payload)} />}
 

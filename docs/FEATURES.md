@@ -164,6 +164,9 @@ nhập không tự trở thành mẫu số ngân sách.
   hoặc ghi một lần thu gốc là tính lại). Lúc ghi khoản họ trả có ô tách tiền lãi: phần gốc đi qua RPC
   và không tính là thu nhập, phần lãi thành giao dịch thu Đầu tư · Lãi tiết kiệm (chưa gắn `lending_id`,
   nên app không tổng được "đã thu lãi bao nhiêu").
+- Ô **Lãi mất do rút sớm** cho ca đập sổ tiết kiệm để có tiền cho vay: một cục tiền cộng vào tổng phải
+  thu, không nhân số ngày. Chọn sổ đang mở trong danh sách là app điền sẵn `số tiền × lãi × số ngày đã
+  gửi / 365`; số cuối vẫn do user sửa theo giấy rút của ngân hàng.
 - Quỹ tiết kiệm có nhiều nơi gửi, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ.
 - Budget theo nhóm chi; 50/30/20 tính trên tổng hạn mức user đặt, không trên income.
 - Transaction có thể gắn Task bằng `task_id`; UI hiện cho chọn/cập nhật liên kết, chưa có màn tổng chi

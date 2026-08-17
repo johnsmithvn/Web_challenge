@@ -795,6 +795,22 @@ and brightens through `--active` and `:hover`. Prop `max` (yyyy-MM-dd) khoá ng�
 sau mốc đó: cell và shortcut vượt mốc dùng `:disabled` — `opacity: 0.3`,
 `cursor: not-allowed`, không đổi nền khi hover.
 
+### InfoTip — `.infotip*` (`infotip.css`)
+
+Nút tròn `18px` mang icon `question`, nền accent `20%` + viền accent `50%` **sẵn từ
+đầu** (không chờ hover): chú thích phải bấm mới hiện thì cái nút buộc phải tự nói là
+bấm được. `is-open`/`:hover` đảo thành nền accent đặc. Bong bóng mở dưới nút
+(`top: 100% + 7px`, `max-width: min(340px, 74vw)`, `--shadow-md`, `infotip-rise .13s`),
+`align="right"` cho nút nằm sát lề phải.
+
+Toàn bộ màu đi qua bốn biến `--it-bg` / `--it-txt` / `--it-txt2` / `--it-border` +
+`--it-accent`; module có palette scoped chỉ đè bốn biến đó (`.finance-module .infotip`
+→ `--n-*`), không viết lại rule. Mọi rule viết dạng `.infotip .infotip__x` để thắng
+style của khung chứa (`.fin-summary-strip span` sẽ bóp cỡ chữ trong bong bóng).
+
+Dùng nó thay cho đoạn chú thích dài để trần trong layout — dải tổng màn Hóa đơn là ca
+đầu tiên. Không dùng `title` HTML: không mở được bằng cảm ứng, không xuống dòng.
+
 `.fin-badge` là chip nhỏ cạnh tên dòng, nền `--n-accent-soft`, `inline-flex` nên chứa
 được icon + chữ. `RuleCard` nhận `badge` là một nhãn HOẶC mảng nhãn — dòng hóa đơn có
 thể vừa mang chip chu kỳ (`⟳ 3 tháng/lần`, chỉ hiện khi hóa đơn KHÔNG phải hằng tháng)

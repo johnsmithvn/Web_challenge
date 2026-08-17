@@ -60,7 +60,7 @@ auth.users
 | `finance_transactions` | Sổ giao dịch duy nhất; expense/income/saving; liên kết rule/Task/Inbox |
 | `finance_bills` | Hóa đơn/chi định kỳ. `term_offset` = kỳ đã trả **trước khi dùng app** (user nhập); `term_done` = `term_offset + COUNT(giao dịch)` do trigger tính, client **không** được ghi vào. `note` là ghi chú của quy tắc (số công tơ, ai đứng tên) — **không** sao chép xuống `finance_transactions`. `icon` NULL = suy từ `category_id`. Chu kỳ nhiều tháng nằm ở `rrule.every` (1/2/3/6/12) + `anchor_date` (mốc đếm tháng); ngày trong tháng luôn là `due_day` — ngày cố định thắng ngày bắt đầu |
 | `finance_loans` | Khoản vay và kỳ trả (mình đi vay) |
-| `finance_lendings` | Cho vay — tiền mình cho người khác mượn. Thu về nhiều lần; số đã thu suy từ `finance_transactions.lending_id`. Giao dịch thu về `excluded` nên không bị tính là thu nhập |
+| `finance_lendings` | Cho vay — tiền mình cho người khác mượn. Thu về nhiều lần; số đã thu suy từ `finance_transactions.lending_id`. Giao dịch thu về `excluded` nên không bị tính là thu nhập. `rate` (%/năm) tính lãi theo NGÀY trên gốc còn lại; `forfeited_interest` là TIỀN TUYỆT ĐỐI (lãi mất do đập tiết kiệm trước hạn), cộng vào tổng phải thu và **không** nhân với số ngày. Lãi là số suy ra, không lưu cột nào |
 | `finance_cards` | Chu kỳ sao kê và thanh toán thẻ. `annual_fee_on` là DATE (không phải ngày-trong-tháng như `statement_day`/`due_day`) vì phí thường niên lặp mỗi năm; NULL = không nhắc |
 | `finance_saving_goals` | Quỹ tiết kiệm và chính sách khóa |
 | `finance_deposits` | Nơi gửi thuộc quỹ; đáo hạn suy ra từ kỳ hạn |

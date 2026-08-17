@@ -176,10 +176,11 @@
 .fin-summary-strip > div { display: flex; flex-wrap: wrap; gap: 14px; }
 .fin-summary-strip > div > div { display: grid; gap: 3px; flex: 1; min-width: 140px; }
 .fin-summary-strip span { color: var(--n-txt2); font-size: 11.5px; }
+/* Nhãn + nút chú thích trên một dòng; chỉ nhãn trực tiếp, không chạm chữ trong bong bóng. */
+.fin-summary-strip > div > div > span { display: inline-flex; align-items: center; gap: 6px; }
 .fin-summary-strip strong { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .fin-summary-strip > div > div:first-child strong { font-size: 24px; }
 .fin-summary-strip strong.is-good { color: var(--n-good); }
-.fin-summary-strip p { max-width: 78ch; margin: 0; color: var(--n-txt3); font-size: 11.5px; line-height: 1.55; text-wrap: pretty; }
 
 .fin-savings { display: grid; gap: 10px; }
 .fin-savings__header { justify-content: space-between; }

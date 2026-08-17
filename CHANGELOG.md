@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## v6.9.1 — 2026-08-17
+
+### Added
+- **Đập sổ tiết kiệm trước hạn để cho vay: app tính được tổn thất thật.** Khoản cho vay chỉ có `rate`
+  (%/năm), và mọi phép tính đều nhân nó với **số ngày cho vay**. Nhưng khi phải rút một sổ tiết kiệm
+  trước hạn để có tiền, tổn thất KHÔNG sinh ra trong mấy ngày đó: nó là toàn bộ lãi đã tích của sổ, mất
+  một lần đúng lúc rút. Gửi 100tr kỳ 6 tháng lãi 9%/năm, đã gửi 153 ngày rồi rút để cho vay 30 ngày →
+  mất **3.772.603đ** lãi sổ, trong khi lãi 30 ngày cho vay chỉ **739.726đ**. Ép cục đó vào ô %/năm thì
+  phải gõ **54,9%/năm** — và sai thêm mỗi ngày người vay trả muộn.
+  - Cột mới `finance_lendings.forfeited_interest` (`migration_v6.9.1_finance_lending_forfeited.sql`):
+    **tiền tuyệt đối**, cộng vào tổng phải thu và không nhân với số ngày, không đổi khi dời ngày hẹn.
+    Migration additive thuần — khoản cho vay cũ mang `0` và hành xử y như trước.
+  - `forfeitedInterest(deposit, withdrawOn)` tính sẵn `số tiền × lãi × số ngày đã gửi / 365` từ chính
+    các sổ đang mở (`finance_deposits` đã có `amount`, `rate`, `opened_at`), hiện thành hàng nút "Rút
+    {tên sổ} · mất {số tiền}". **Vẫn cho sửa tay**: giấy rút của ngân hàng mới là số cuối cùng, và app
+    cố tình KHÔNG trừ lãi không kỳ hạn (~0,1%/năm) — không đoán hộ mức đó của từng ngân hàng.
+  - `lendingInterest()` trả thêm `forfeited` và `dueNow` (= lãi theo thời gian tới hôm nay + cả cục);
+    nút "Trả hết" và ô "Trong đó tiền lãi" dùng `dueNow` nên tất toán một phát là đủ cả hai phần.
+- **InfoTip — nút "?" chung cho mọi đoạn chú thích dài** (`src/components/InfoTip.jsx` +
+  `infotip.css`). Dải tổng màn Hóa đơn có một khối chữ giải thích cách tính, để trần thì nó cao gần
+  bằng phần số và lần nào mở màn cũng phải nhìn lại. Giờ nó nằm sau một nút tròn accent cạnh nhãn đầu
+  tiên — chữ vẫn còn đủ cho người cần, màn hình thì gọn. Nút tô nền accent **sẵn từ đầu** (không chờ
+  hover) vì chú thích bấm mới hiện thì cái nút buộc phải tự nói là bấm được. Đóng bằng click ra ngoài
+  hoặc `Esc`; không dùng `title` HTML (không mở được bằng cảm ứng, không xuống dòng).
+
 ## v6.9.0 — 2026-08-16
 
 ### Added
@@ -24,6 +49,19 @@
     *đã* thu. Cần con số đó thì phải nới constraint bằng migration mới.
 
 ### Fixed
+- **Bấm một ngày trong lịch = lưu bản ghi với ngày CŨ.** 10 nút trong `DatePickerPopover`
+  thiếu `type="button"`, mà HTML mặc định `<button>` là `type="submit"` — popover render
+  inline nên nó nằm ngay trong `<form>` sửa quy tắc ở màn Hóa đơn. Bấm "8 tuần", một ô
+  lịch, mũi tên đổi tháng, thậm chí nút **Huỷ** đều submit form: bản ghi được lưu với ngày
+  chưa chọn rồi form đóng, popover biến mất theo. Trông y như popover tự đóng nên rất khó
+  đoán ra nguyên nhân thật.
+  - Ảnh hưởng mọi ô ngày trong form Finance: ngày bắt đầu trả của hóa đơn nhiều tháng/lần,
+    ngày vay và hạn tất toán, ngày thu phí thường niên, ngày đưa tiền và hẹn trả của khoản
+    cho vay.
+  - Quét cross-file tìm cùng lỗi: `TagPicker` (2 nút) render trong `<form>` ở
+    `TaskListSection` — chọn tag trong form thêm task cũng submit. Đã sửa. Quét lại: không
+    còn component nào có nút thiếu `type` mà nằm trong form. (3 nút thiếu `type` ở
+    `AnalyzeScreen` là nút submit thật, đúng như vậy.)
 - **Ô tiền hiện một đằng, lưu một nẻo — sai gấp 1000 lần trong im lặng.** Auto-K nhân 1.000 cho mọi
   số dưới 10.000, nên gõ `5000` (định ghi 5.000đ) thì ô vẫn hiện **"5.000 ₫"** mà giao dịch lưu
   **5.000.000₫**. Không một tín hiệu nào trước khi bấm Lưu; chỉ lộ ra lúc xem báo cáo cuối tháng.

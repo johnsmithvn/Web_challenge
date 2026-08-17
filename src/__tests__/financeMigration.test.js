@@ -9,6 +9,7 @@ const page = readFileSync(new URL('../pages/FinancePage.jsx', import.meta.url), 
 const billNote = readFileSync(new URL('../../data/migration_v6.3.0_finance_bill_note.sql', import.meta.url), 'utf8');
 const lending = readFileSync(new URL('../../data/migration_v6.4.0_finance_lending.sql', import.meta.url), 'utf8');
 const detach = readFileSync(new URL('../../data/migration_v6.9.0_finance_rule_detach.sql', import.meta.url), 'utf8');
+const forfeited = readFileSync(new URL('../../data/migration_v6.9.1_finance_lending_forfeited.sql', import.meta.url), 'utf8');
 const destructiveScreens = [
   list,
   recurring,
@@ -141,6 +142,16 @@ assert.match(detach,
   'excluded phải nhận diện qua loan_part/card_period, không qua loan_id/card_id');
 assert.match(detach, /saving_goal_id' AND c\.confdeltype = 'r'/,
   'quỹ tiết kiệm phải giữ RESTRICT: giao dịch type=saving không tồn tại nếu mất quỹ');
+// ── v6.9.1: lãi mất do rút tiết kiệm trước hạn ──────────────────────────────
+// Cột này phải là TIỀN TUYỆT ĐỐI cộng vào tổng phải thu, không phải một tỉ lệ: tổn
+// thất xảy ra một lần lúc đập sổ, nhân nó với số ngày cho vay là con số vô nghĩa.
+assert.match(forfeited, /BEGIN;[\s\S]*COMMIT;/, 'migration phải chạy trong một transaction DDL');
+assert.match(forfeited, /ADD COLUMN IF NOT EXISTS forfeited_interest BIGINT NOT NULL DEFAULT 0/,
+  'phải additive và idempotent: khoản cho vay cũ mang 0 và hành xử y như trước');
+assert.match(forfeited, /CHECK \(forfeited_interest >= 0\)/, 'không cho số âm');
+assert.match(recurring, /forfeited_interest: parseCurrencyInput\(f\.forfeited_interest\) \|\| 0/,
+  'form cho vay phải gửi cột mới, không thì ô nhập là trang trí');
+
 // Bốn nút xóa quy tắc phải ĐỌC kết quả. Trước v6.9.0 vay/thẻ/cho vay thất bại im lặng:
 // bấm Xóa, database từ chối, UI không nói gì.
 for (const fn of ['deleteBill', 'deleteLoan', 'deleteCard', 'deleteLending']) {

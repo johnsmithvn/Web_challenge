@@ -533,11 +533,28 @@ export function lendingInterest(lending, repayments = [], refStr) {
   const now = refStr > cursor ? refStr : cursor;
   const to = lending.due_on && lending.due_on > now ? lending.due_on : now;
   const expected = Math.round(before + accrue(balance, cursor, to));
+  const earned = Math.round(before + accrue(balance, cursor, now));
+  // Lãi mất do rút tiết kiệm trước hạn: TIỀN TUYỆT ĐỐI, không nhân với số ngày và
+  // không đổi khi dời ngày hẹn — nó đã mất xong ngay lúc đập sổ.
+  const forfeited = Math.max(0, Number(lending.forfeited_interest) || 0);
   return {
     rate, balance, to, days: Math.max(0, daysInclusive(start, to) - 1),
-    earned: Math.round(before + accrue(balance, cursor, now)),
-    expected, total: principal + expected,
+    earned, expected, forfeited,
+    dueNow: earned + forfeited,              // lãi họ đang nợ nếu tất toán hôm nay
+    total: principal + expected + forfeited,
   };
+}
+
+/**
+ * Lãi bị mất khi đập một khoản gửi trước hạn = TOÀN BỘ lãi đã tích từ ngày gửi tới
+ * ngày rút. Rút trước hạn thì ngân hàng trả lại theo lãi không kỳ hạn (~0,1%/năm),
+ * coi như bằng 0 — số này là mức trần để điền sẵn, giấy rút của ngân hàng mới là số
+ * cuối cùng nên ô nhập vẫn sửa được.
+ */
+export function forfeitedInterest(deposit, withdrawOn) {
+  if (!deposit?.opened_at || !withdrawOn || withdrawOn <= deposit.opened_at) return 0;
+  const days = daysInclusive(deposit.opened_at, withdrawOn) - 1;
+  return Math.round((deposit.amount || 0) * ((Number(deposit.rate) || 0) / 100) * (days / 365));
 }
 
 /** Số tham chiếu của hóa đơn: cố định dùng giá khai báo, biến đổi lấy trung bình 3 kỳ gần nhất. */

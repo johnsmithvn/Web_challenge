@@ -1,0 +1,83 @@
+/* ============================================================
+   InfoTip — nút "?" + bong bóng chú thích (src/components/InfoTip.jsx)
+   ============================================================
+   Bốn biến `--it-*` là toàn bộ giao diện của component. Module có palette riêng
+   (Finance Nocturne) chỉ cần đè bốn biến đó, không phải viết lại rule nào.
+
+   Rule nào cũng viết dạng `.infotip .infotip__x` để thắng style của khung chứa:
+   `.fin-summary-strip span` (1 class + 1 type) sẽ đè `.infotip__bubble` (1 class)
+   và bóp chữ trong bong bóng theo cỡ nhãn của dải tổng. */
+
+.infotip {
+  --it-bg: var(--bg-tertiary);
+  --it-txt: var(--text-primary);
+  --it-txt2: var(--text-secondary);
+  --it-border: var(--bg-glass-border);
+  --it-accent: var(--purple-light);
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+/* Finance dùng Nocturne (luôn tối, không theo theme) — đè đúng bốn biến. */
+.finance-module .infotip {
+  --it-bg: var(--n-card);
+  --it-txt: var(--n-txt);
+  --it-txt2: var(--n-txt2);
+  --it-border: var(--n-border);
+  --it-accent: var(--n-accent);
+}
+
+/* Nút tô nền accent sẵn, không chờ hover: chú thích bấm mới hiện thì cái nút phải
+   tự nói "bấm được", không thì nó thành thứ không ai thấy. */
+.infotip .infotip__btn {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--it-accent) 50%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--it-accent) 20%, transparent);
+  color: var(--it-accent);
+  line-height: 1;
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.infotip .infotip__btn:hover,
+.infotip .infotip__btn.is-open {
+  background: var(--it-accent);
+  color: var(--it-bg);
+}
+
+.infotip .infotip__bubble {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 7px);
+  width: max-content;
+  max-width: min(340px, 74vw);
+  padding: 10px 12px;
+  border: 1px solid var(--it-border);
+  border-radius: 10px;
+  background: var(--it-bg);
+  box-shadow: var(--shadow-md);
+  color: var(--it-txt2);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.55;
+  text-align: left;
+  text-wrap: pretty;
+  white-space: normal;
+  animation: infotip-rise .13s ease both;
+}
+.infotip .infotip__bubble strong { color: var(--it-txt); font-weight: 500; }
+.infotip .infotip__bubble--left  { left: -6px; }
+.infotip .infotip__bubble--right { right: -6px; }
+
+@keyframes infotip-rise {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .infotip .infotip__bubble { animation: none; }
+}

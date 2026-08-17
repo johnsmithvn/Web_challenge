@@ -14,7 +14,7 @@ import {
   cardCycle, cardBalance, cardStatementSummary, loanSchedule, fundBalance, spendingRhythm, listPeriodOptions,
   suggestedDailySpend, maturityWarn, groupByDate, daysInclusive, currentMonthPeriod, periodFromKey, billAmountEstimate,
   dueDateInMonth, daysUntilDue, nextAnnualFee, nextDueDate, billCycle, billSettled, billPeriodForDate,
-  lendingInterest,
+  lendingInterest, forfeitedInterest,
 } from '../utils/financeLogic.js';
 
 // Stub cats tối giản (không import JSON để chạy được bằng node).
@@ -328,7 +328,8 @@ const lend = { principal: 100_000_000, rate: 12, lent_on: '2026-01-01', due_on: 
 
 assert.deepEqual(
   lendingInterest({ ...lend, rate: 0 }, [], '2026-03-01'),
-  { rate: 0, balance: 100_000_000, to: '2026-07-01', days: 181, earned: 0, expected: 0, total: 100_000_000 },
+  { rate: 0, balance: 100_000_000, to: '2026-07-01', days: 181,
+    earned: 0, expected: 0, forfeited: 0, dueNow: 0, total: 100_000_000 },
   'không lãi thì tổng sẽ nhận đúng bằng gốc');
 
 const plain = lendingInterest(lend, [], '2026-03-01');
@@ -360,6 +361,29 @@ assert.equal(lendingInterest({ ...lend, due_on: null }, [], '2026-03-01').to, '2
 const backwards = lendingInterest(lend, [{ occurred_at: '2025-12-01', amount: 50_000_000 }], '2026-01-01');
 assert.equal(backwards.earned, 0);
 assert.equal(backwards.balance, 50_000_000);
+
+/* Lãi mất do rút tiết kiệm trước hạn: một CỤC, không nhân số ngày cho vay. */
+// Đập sổ 6 tháng 9%/năm đã gửi 153 ngày (mất 3.772.603đ) rồi cho vay đúng 30 ngày.
+const broke = { principal: 100_000_000, rate: 9, lent_on: '2026-08-17',
+  due_on: '2026-09-16', forfeited_interest: 3_772_603 };
+const b = lendingInterest(broke, [], '2026-08-17');
+assert.equal(b.forfeited, 3_772_603);
+assert.equal(b.expected, 739_726, 'lãi 30 ngày cho vay vẫn tính riêng theo rate');
+assert.equal(b.total, 104_512_329, 'tổng = gốc + lãi kỳ vay + cục lãi mất');
+assert.equal(b.dueNow, b.earned + b.forfeited, 'tất toán hôm nay: lãi tới hôm nay + cả cục');
+// Dời ngày hẹn thì CHỈ phần theo thời gian đổi, cục lãi mất đứng im.
+assert.equal(lendingInterest({ ...broke, due_on: '2026-12-16' }, [], '2026-08-17').forfeited, 3_772_603);
+assert.equal(lendingInterest(lend, [], '2026-03-01').forfeited, 0, 'không khai thì bằng 0');
 console.log('lendingInterest check: OK');
+
+/* ── forfeitedInterest: số điền sẵn khi đập một sổ tiết kiệm ── */
+const deposit = { amount: 100_000_000, rate: 9, opened_at: '2026-03-17' };
+assert.equal(forfeitedInterest(deposit, '2026-08-17'), 3_772_603, 'gửi 153 ngày ở 9%/năm');
+assert.equal(forfeitedInterest(deposit, '2026-03-17'), 0, 'rút ngay ngày gửi thì chưa mất gì');
+assert.equal(forfeitedInterest(deposit, '2026-03-01'), 0, 'ngày rút trước ngày gửi không ra số âm');
+assert.equal(forfeitedInterest({ ...deposit, opened_at: null }, '2026-08-17'), 0,
+  'sổ không khai ngày gửi thì app không đoán');
+assert.equal(forfeitedInterest({ ...deposit, rate: 0 }, '2026-08-17'), 0);
+console.log('forfeitedInterest check: OK');
 
 console.log('\n✅ financeLogic — tất cả self-check PASS');
