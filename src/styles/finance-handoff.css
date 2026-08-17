@@ -260,6 +260,12 @@
 .fin-metric { min-height: 128px; padding: 14px 16px; border-radius: 12px; box-shadow: 0 8px 22px rgba(4,5,12,.1); }
 .fin-metric__label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; }
 .fin-metric__value { margin: 9px 0 5px; font-size: 27px; line-height: 1; }
+/* Khung chờ Tổng quan: mượn nguyên lưới thật ở trên, chỉ đổi nội dung thành vạch
+   xám. Ô chỉ số phải là grid vì dòng thật là <div>, còn skeleton là <span> inline. */
+.fin-overview-skeleton { gap: 14px; }
+.fin-overview-skeleton .fin-metric { display: grid; align-content: center; gap: 10px; }
+.fin-overview-skeleton .fin-legend { display: grid; gap: 13px; flex: 1; }
+.fin-overview-skeleton .fin-overview-panel { display: grid; gap: 14px; }
 .fin-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .fin-overview-panel { min-width: 0; margin: 0; padding: 16px; }
 .fin-card__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }

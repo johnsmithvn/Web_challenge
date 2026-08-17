@@ -153,13 +153,17 @@ nhập không tự trở thành mẫu số ngân sách.
 - `add`: nhập nhanh bằng form, câu tự nhiên hoặc shortcut.
 - `list`: tìm/lọc/nhóm transaction, sửa/xóa, CSV export.
 - `cats`: taxonomy chi/thu và override label/màu/icon/subcategory.
-- `recurring`: hóa đơn, thu định kỳ, khoản vay và thẻ.
+- `recurring`: hóa đơn, thu định kỳ, khoản vay, thẻ và cho vay.
 
 ### Hành vi chính
 
 - Transaction type: expense, income, saving; số tiền dương; source/category/reference được constraint.
 - Hóa đơn fixed/ask, skip period, kỳ trả; thu định kỳ không mang trạng thái “quá hạn”.
 - Khoản vay tách gốc/lãi; thẻ tách ngày chốt/đến hạn và sao kê; RPC chặn trả vượt/trùng kỳ.
+- Cho vay hiện lãi và tổng sẽ nhận tới ngày hẹn (lãi đơn, theo ngày, trên gốc còn lại — đổi ngày hẹn
+  hoặc ghi một lần thu gốc là tính lại). Lúc ghi khoản họ trả có ô tách tiền lãi: phần gốc đi qua RPC
+  và không tính là thu nhập, phần lãi thành giao dịch thu Đầu tư · Lãi tiết kiệm (chưa gắn `lending_id`,
+  nên app không tổng được "đã thu lãi bao nhiêu").
 - Quỹ tiết kiệm có nhiều nơi gửi, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ.
 - Budget theo nhóm chi; 50/30/20 tính trên tổng hạn mức user đặt, không trên income.
 - Transaction có thể gắn Task bằng `task_id`; UI hiện cho chọn/cập nhật liên kết, chưa có màn tổng chi

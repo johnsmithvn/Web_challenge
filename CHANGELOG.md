@@ -2,6 +2,27 @@
 
 ## v6.9.0 — 2026-08-16
 
+### Added
+- **Khoản cho vay giờ nói được "đáng ra tôi nhận bao nhiêu".** Form và dòng cho vay chỉ có gốc, ngày
+  hẹn và lãi %/năm nhưng không bao giờ nhân ba số đó ra tiền — user phải tự tính lãi bằng máy tính.
+  - `lendingInterest()` (`src/utils/financeLogic.js`) tính **lãi đơn theo NGÀY** (năm 365 ngày) trên
+    **gốc còn lại**, không phải `principal * rate` một cục: mỗi lần họ trả gốc là dư nợ tụt xuống nên
+    lãi từ hôm đó phải chạy trên số nhỏ hơn. Vì vậy đổi ngày hẹn hoặc ghi thêm một lần thu là con số
+    tính lại ngay — nó là số **suy ra**, không lưu vào database.
+  - Quá hẹn thì lãi vẫn chạy tới hôm nay (không đóng băng ở ngày hẹn); chưa hẹn ngày thì mốc là hôm
+    nay. Self-check trong `financeLogic.test.js` chốt cả hai nhánh đó cùng ca trả bớt gốc giữa kỳ.
+  - Ô **Trong đó tiền lãi** ở khối ghi khoản họ trả: phần gốc đi qua RPC cũ (income + excluded, gắn
+    `lending_id`, thu đủ thì khoản tự đóng), phần lãi thành giao dịch **thu nhập thật** (Đầu tư · Lãi
+    tiết kiệm) vì lãi đúng là thu nhập. Mặc định để **trống** — đoán sẵn rồi tách sai thì tiền vào
+    nhầm loại mà không ai thấy. Hai lệnh ghi không cùng transaction nên gốc xong mà lãi lỗi thì toast
+    nói thẳng số còn thiếu, không báo thành công cho một nửa.
+  - Nút **dùng lãi suất gửi bình quân** cạnh ô lãi: tiền đang nằm ở ngân hàng với mức đó, rút ra cho
+    vay là mất đúng mức đó — đây là chi phí cơ hội có sẵn trong app (`fin.blendedRate`), không cần
+    thêm bảng hay cột nào.
+  - **Chưa gắn `lending_id` vào giao dịch lãi** (constraint `finance_tx_lending_scope` chỉ cho phép
+    `lending_id` đi cùng `excluded = TRUE`), nên app hiện được lãi *sẽ* nhận nhưng chưa tổng được lãi
+    *đã* thu. Cần con số đó thì phải nới constraint bằng migration mới.
+
 ### Fixed
 - **Ô tiền hiện một đằng, lưu một nẻo — sai gấp 1000 lần trong im lặng.** Auto-K nhân 1.000 cho mọi
   số dưới 10.000, nên gõ `5000` (định ghi 5.000đ) thì ô vẫn hiện **"5.000 ₫"** mà giao dịch lưu
@@ -14,6 +35,27 @@
   - **Không đụng vào auto-K** — nó là thứ làm việc nhập nhanh và là preference user tự bật. Chỉ bắt
     nó hiện mặt ra trước khi bấm Lưu. Self-check trong `currencyInput.test.js` chốt cả hai hướng:
     dưới 10.000 phải cảnh báo, từ 10.000 trở lên phải im, tắt auto-K thì im hẳn.
+
+### Fixed
+- **Tổng quan vào là thấy 0đ rồi số mới nhảy vào.** Màn này không có khung chờ nào: nó vẽ ngay
+  `periodTotals` của một mảng giao dịch còn rỗng, nên trong lúc fetch bạn đọc được **"Đã chi 0đ ·
+  0 khoản"** — đúng thông tin sai nhất có thể, vì nó trông y như "tháng này chưa chi gì".
+  - Nguyên nhân thật không phải "quên gate `isLoading`". `fetchAll` chạy trong `useEffect`, tức là
+    **sau lần paint đầu**, nên frame đầu tiên luôn có `isLoading === false` + mảng rỗng. Gate bằng
+    `isLoading` chỉ đổi một cú nháy thành hai: số 0 → khung chờ → số thật.
+  - Thêm cờ `hasLoaded` trong `useFinance`, bật **một lần** khi lượt fetch đầu kết thúc (kể cả khi
+    lỗi). Nó phân biệt "chưa từng có dữ liệu" với "đang tải lại" — refetch sau khi xóa/sửa không
+    được làm cả màn nhấp nháy.
+  - `OverviewSkeleton` mượn nguyên lưới thật (`fin-metrics`, `fin-overview-grid`, donut 132px) thay
+    vì dùng `SkeletonList` — hình dòng list đặt vào màn tiles + biểu đồ là sai chỗ, mà sai chỗ thì
+    lúc data về vẫn giật đúng như khi không có skeleton. Một cửa duy nhất cho cả ba tab (Tổng quan ·
+    Ngân sách · Thống kê) vì cả ba đều đọc `transactions`.
+  - **Hai màn list cũng sửa cùng gốc.** `ListScreen`/`RecurringScreen` đang gate bằng `isLoading`
+    nên vẫn kịp nháy empty state *"Chưa có giao dịch trong kỳ này"* / *"Chưa có hóa đơn"* ở frame
+    đầu — nay đổi sang `hasLoaded`.
+  - **Chip ngân sách ở header** hiện `sk-line` khi chưa tải xong, thay vì nói **"Chưa đặt"** (vì
+    `budgets` còn rỗng) rồi mới nhảy ra số — nó nằm trên mọi màn Finance nên là thứ nói dối đầu tiên
+    bạn đọc thấy.
 
 ### Removed
 - **Tab Quotes trong Cài Đặt — cả một khối CRUD ghi vào hư không.** `QuoteManagerSection` thêm/sửa/

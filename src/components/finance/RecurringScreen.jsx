@@ -310,8 +310,9 @@ export default function RecurringScreen({ fin, nav }) {
         onDone={(saved) => (saved ? discardAddForm() : closeAddForm())} />}
 
       {/* Tải xong mới biết có bao nhiêu dòng; chưa xong mà hiện "Chưa có hóa đơn nào"
-          thì user vừa đọc xong câu đó là list bật ra đè lên. */}
-      {fin.isLoading && fin.bills.length === 0 ? <SkeletonList rows={5} label="Đang tải nghĩa vụ" /> : <>
+          thì user vừa đọc xong câu đó là list bật ra đè lên. Dùng `hasLoaded` chứ không
+          phải `isLoading` — frame đầu (trước khi effect chạy) isLoading vẫn là false. */}
+      {!fin.hasLoaded ? <SkeletonList rows={5} label="Đang tải nghĩa vụ" /> : <>
         {seg === 'out'  && <BillsList fin={fin} nav={nav} tasks={pendingTasks}
           onDuplicate={(bill) => { setDraft(billDraft(bill)); setAdding(true); }} />}
         {seg === 'in'   && <IncomeList fin={fin} nav={nav} tasks={pendingTasks} />}

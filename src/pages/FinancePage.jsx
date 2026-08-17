@@ -15,6 +15,7 @@ import CatsScreen from '../components/finance/CatsScreen';
 import RecurringScreen from '../components/finance/RecurringScreen';
 import '../styles/finance.css';
 import '../styles/finance-handoff.css';
+import '../styles/skeleton.css';
 
 const RECURRING_SEGS = ['out', 'in', 'loan', 'card', 'lend'];
 
@@ -179,11 +180,19 @@ export default function FinancePage() {
             <h1 className="fin-header__title">{active?.title}</h1>
             <p className="fin-header__sub">{headerSub}</p>
           </div>
+          {/* Chưa tải xong thì chip này nói "Chưa đặt" (vì `budgets` còn rỗng) rồi mới
+              nhảy ra số thật — đọc như "bạn chưa đặt hạn mức nào", sai hẳn. */}
           <button className="fin-header__chip" onClick={() => go('overview', { overviewTab: 'budget' })}
-            title="Ngân sách tháng đang chạy">
-            <span><strong>{monthChip.limit ? money(monthChip.remaining) : 'Chưa đặt'}</strong><small>còn lại</small></span>
-            <i><b style={{ width: `${Math.min(100, monthChip.pct || 0)}%` }} /></i>
-            <small>{monthChip.daysLeft} ngày</small>
+            title="Ngân sách tháng đang chạy" aria-busy={!fin.hasLoaded}>
+            {fin.hasLoaded ? (
+              <>
+                <span><strong>{monthChip.limit ? money(monthChip.remaining) : 'Chưa đặt'}</strong><small>còn lại</small></span>
+                <i><b style={{ width: `${Math.min(100, monthChip.pct || 0)}%` }} /></i>
+                <small>{monthChip.daysLeft} ngày</small>
+              </>
+            ) : (
+              <span className="sk-list"><span className="sk-line" style={{ '--w': '82px' }} /></span>
+            )}
           </button>
           <button className="fin-btn fin-btn--secondary fin-header__action" onClick={() => go('list')}>
             <AppIcon name="search" size={16} /> Tìm

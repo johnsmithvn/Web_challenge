@@ -9,12 +9,56 @@ import {
 import { formatDate } from '../../utils/dateUtils';
 import AppIcon from '../AppIcon';
 import AnalyzeScreen from './AnalyzeScreen';
+import '../../styles/skeleton.css';   // dùng .sk-* trực tiếp, không qua SkeletonList
 
 const OVERVIEW_TABS = [
   { value: 'overview', label: 'Tổng quan', icon: 'chartDonut' },
   { value: 'budget', label: 'Ngân sách', icon: 'trend' },
   { value: 'stats', label: 'Thống kê', icon: 'chartLine' },
 ];
+
+/**
+ * Khung chờ của Tổng quan. Ba màn list đã có `SkeletonList`, nhưng Tổng quan là
+ * tiles + biểu đồ nên dùng nó vào đây sẽ ra hình sai chỗ. Thay vào đó mượn đúng
+ * lưới thật (`fin-metrics`, `fin-overview-grid`) và thay chữ bằng `.sk-line`, nên
+ * lúc số về không có cú giật nào.
+ *
+ * Trước đây màn này không chờ gì cả: vào là thấy **0đ · 0 khoản** rồi số mới nhảy
+ * vào — đọc như "tháng này chưa chi đồng nào", đúng thông tin sai nhất có thể.
+ */
+function OverviewSkeleton() {
+  return (
+    <div className="sk-list fin-overview-skeleton" role="status" aria-busy="true"
+      aria-label="Đang tải tổng quan">
+      <div className="fin-metrics">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div className="fin-metric" key={i}>
+            <span className="sk-line sk-line--sm" style={{ '--w': '56%' }} />
+            <span className="sk-line sk-value" style={{ '--w': `${76 - i * 6}%` }} />
+            <span className="sk-line sk-line--sm" style={{ '--w': '68%' }} />
+          </div>
+        ))}
+      </div>
+      <div className="fin-overview-grid">
+        <section className="fin-card fin-overview-panel">
+          <span className="sk-line sk-line--title" style={{ '--w': '32%' }} />
+          <div className="fin-donut-row">
+            <span className="sk-donut" />
+            <div className="fin-legend">
+              {Array.from({ length: 4 }, (_, i) => (
+                <span className="sk-line" key={i} style={{ '--w': `${74 - i * 11}%` }} />
+              ))}
+            </div>
+          </div>
+        </section>
+        <section className="fin-card fin-overview-panel">
+          <span className="sk-line sk-line--title" style={{ '--w': '26%' }} />
+          <span className="sk-block" />
+        </section>
+      </div>
+    </div>
+  );
+}
 
 export default function OverviewScreen({ fin, nav }) {
   return (
@@ -24,9 +68,13 @@ export default function OverviewScreen({ fin, nav }) {
           onChange={nav.setOverviewTab} ariaLabel="Chế độ Tổng quan" />
       </div>
       <div className="fin-overview-view" key={nav.overviewTab}>
-        {nav.overviewTab === 'overview'
-          ? <OverviewDashboard fin={fin} nav={nav} />
-          : <AnalyzeScreen fin={fin} nav={nav} mode={nav.overviewTab} />}
+        {/* Một cửa duy nhất cho cả ba tab: Ngân sách và Thống kê cũng đọc transactions,
+            cũng sẽ hiện 0đ nếu vẽ trước khi dữ liệu về. */}
+        {!fin.hasLoaded
+          ? <OverviewSkeleton />
+          : nav.overviewTab === 'overview'
+            ? <OverviewDashboard fin={fin} nav={nav} />
+            : <AnalyzeScreen fin={fin} nav={nav} mode={nav.overviewTab} />}
       </div>
     </div>
   );

@@ -116,10 +116,13 @@ export default function ListScreen({ fin, nav }) {
         </div>
 
         {/* Đang tải thì giữ chỗ bằng skeleton, KHÔNG hiện "chưa có giao dịch" — báo
-            trống rồi một giây sau bật ra 20 dòng là kiểu nói dối khó chịu nhất. */}
-        {fin.isLoading && groups.length === 0 && <SkeletonList rows={5} gap="6px" label="Đang tải giao dịch" />}
+            trống rồi một giây sau bật ra 20 dòng là kiểu nói dối khó chịu nhất.
+            Điều kiện phải là `hasLoaded`, không phải `isLoading`: fetch chạy trong
+            effect nên frame ĐẦU có isLoading=false và list rỗng, đủ để empty state
+            kịp nháy ra một cái. */}
+        {!fin.hasLoaded && groups.length === 0 && <SkeletonList rows={5} gap="6px" label="Đang tải giao dịch" />}
 
-        {!fin.isLoading && groups.length === 0 && (
+        {fin.hasLoaded && groups.length === 0 && (
           <section className="fin-list-empty">
             <span><AppIcon name="receipt" size={24} /></span>
             <strong>{q || filter !== 'all' ? 'Không tìm thấy giao dịch phù hợp' : 'Chưa có giao dịch trong kỳ này'}</strong>

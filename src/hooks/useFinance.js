@@ -49,6 +49,15 @@ export function useFinance({ autoFetch = true } = {}) {
   const [budgets, setBudgets] = useState([]);
   const [categoryOverrides, setCategoryOverrides] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  /**
+   * `isLoading` KHÔNG đủ để quyết định hiện khung chờ. `fetchAll` chạy trong
+   * `useEffect`, tức là SAU lần paint đầu — nên frame đầu tiên có `isLoading=false`
+   * và mảng dữ liệu rỗng, và màn hình kịp vẽ ra "0đ" hoặc "chưa có gì" trước khi
+   * khung chờ xuất hiện. Cờ này chỉ bật MỘT LẦN khi lượt fetch đầu kết thúc, nên
+   * nó phân biệt được "chưa từng có dữ liệu" với "đang tải lại" (refetch sau khi
+   * xóa/sửa không được làm cả màn nhấp nháy).
+   */
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState(null);
   const fetchedRef = useRef(false);
 
@@ -97,6 +106,7 @@ export function useFinance({ autoFetch = true } = {}) {
       setError(err.message);
     } finally {
       setIsLoading(false);
+      setHasLoaded(true);   // cả khi lỗi: đã hết "chưa biết gì", màn phải hiện lỗi/empty thật
     }
   }, [enabled, userId, dataFrom]);
 
@@ -117,7 +127,8 @@ export function useFinance({ autoFetch = true } = {}) {
 
   useEffect(() => {
     if (enabled && autoFetch && !fetchedRef.current) { fetchedRef.current = true; fetchAll(); }
-    if (!enabled) { fetchedRef.current = false; }
+    // Sign-out / đổi user: lượt fetch tới lại là lượt ĐẦU của dữ liệu người khác.
+    if (!enabled) { fetchedRef.current = false; setHasLoaded(false); }
   }, [enabled, autoFetch, fetchAll]);
 
   // ── Helper CRUD chung cho 8 bảng phụ (giảm lặp) ───────────────────────────
@@ -464,7 +475,7 @@ export function useFinance({ autoFetch = true } = {}) {
     }), [today, callFinanceRpc]);
 
   return {
-    enabled, isLoading, error, today, dataFrom, cats, categoryOverrides,
+    enabled, isLoading, hasLoaded, error, today, dataFrom, cats, categoryOverrides,
     transactions, bills, loans, lendings, cards, goals, deposits, incomeRules, shortcuts, budgets,
     blendedRate: blendedRate(deposits),
     fetchAll,

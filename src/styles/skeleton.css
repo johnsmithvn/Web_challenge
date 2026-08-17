@@ -82,6 +82,12 @@
 /* Tiêu đề trang: chỉ dùng cho skeleton toàn trang, không dùng trong dòng list. */
 .sk-heading { height: 22px; width: 36%; border-radius: 7px; background: var(--sk-fill); margin-bottom: 4px; }
 
+/* Ba khối cho màn dashboard (tiles + biểu đồ), nơi hình dòng list là sai chỗ.
+   Kích thước bám theo nội dung thật: số 27px, donut 132px, biểu đồ nhịp ~120px. */
+.sk-value { height: 24px; border-radius: 6px; }
+.sk-donut { width: 132px; height: 132px; min-width: 132px; border-radius: 50%; background: var(--sk-fill); }
+.sk-block { display: block; height: 120px; border-radius: 9px; background: var(--sk-fill); }
+
 /* Không có data thì cũng không có gì để nhấp nháy: bỏ vệt sáng, giữ khung tĩnh. */
 @media (prefers-reduced-motion: reduce) {
   .sk-list::after { animation: none; background: none; }
