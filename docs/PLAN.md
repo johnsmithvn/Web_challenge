@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub
 
-**Current version:** v6.9.0 · **Updated:** 2026-08-16
+**Current version:** v6.10.0 · **Updated:** 2026-08-18
 
 PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy nằm trong [`TASKS.md`](TASKS.md); lịch sử
 đã hoàn thành nằm trong [`CHANGELOG.md`](../CHANGELOG.md).
@@ -23,8 +23,8 @@ PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy n�
 
 **Làm trước** (nhỏ, độc lập, không chờ ai):
 
-1. Quyết Quotes: nối `QuoteWidget` vào `useQuotes()` hay xóa tab. Xem TASKS §2b.
-2. Đối chiếu 4 màn Finance với handoff — việc lớn nhất còn lại của module chính.
+1. **Đối chiếu 4 màn Finance với handoff** — việc lớn nhất còn lại của module chính. Bắt đầu từ Tổng quan.
+2. Áp cảnh báo Auto-K cho 11 ô tiền còn lại; cân nhắc mặc định TẮT Auto-K.
 
 **Làm sau** (mỗi mục một sprint riêng, không trộn):
 

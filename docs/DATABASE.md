@@ -1,16 +1,16 @@
 # DATABASE.md — Life Hub
 
-**Target:** Supabase PostgreSQL · **Version:** v6.4.0 · **Updated:** 2026-08-15
+**Target:** Supabase PostgreSQL · **Version:** v6.10.0 · **Updated:** 2026-08-18
 
 Runbook cài đặt duy nhất nằm trong [`README.md`](../README.md). File này mô tả trạng thái schema cuối,
 không thay thế SQL thật.
 
 ## Trạng thái schema cuối
 
-Sau khi chạy đủ baseline và bốn migration domain, database có **28 bảng public đang hoạt động**:
+Sau khi chạy đủ baseline và bốn migration domain, database có **27 bảng public đang hoạt động**:
 
-- 14 bảng core
-- 11 bảng Finance (10 bảng chính + junction tag)
+- 13 bảng core
+- 12 bảng Finance (11 bảng chính + junction tag)
 - 2 bảng Vault
 
 `data/schema_v4.24.0.sql` tự nó chỉ là baseline đã hợp nhất tới v5.0. Nó không phải snapshot độc lập
@@ -26,7 +26,6 @@ auth.users
    ├─ focus_sessions
    ├─ xp_logs
    ├─ intentions ── intention_logs
-   ├─ inspirational_quotes
    ├─ finance_* ── finance_transaction_tags ── tags
    ├─ accounts
    └─ vault_config
@@ -34,7 +33,7 @@ auth.users
 
 ## Inventory
 
-### Core — 14 bảng
+### Core — 13 bảng
 
 | Table | Vai trò | Ràng buộc đáng chú ý |
 |---|---|---|
@@ -51,7 +50,6 @@ auth.users
 | `intentions` | Incubator | status lifecycle |
 | `intention_logs` | Lịch sử Incubator | FK về intention |
 | `collection_notes` | Sub-note của bài Knowledge | FK về collection/user |
-| `inspirational_quotes` | **KHÔNG CÒN CONSUMER** từ v6.9.0 | Tab Quotes trong Cài Đặt đã bỏ vì `QuoteWidget` chưa bao giờ đọc bảng này (widget lấy từ `src/data/quotes.json` + item Knowledge `type='quote'`). Bảng để lại, chưa drop — xóa cần migration riêng |
 
 ### Finance — 12 bảng
 

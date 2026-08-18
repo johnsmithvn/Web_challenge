@@ -1,6 +1,6 @@
 # TASKS — Life Hub
 
-**Version:** v6.9.0 · **Updated:** 2026-08-16
+**Version:** v6.10.0 · **Updated:** 2026-08-18
 
 Chỉ giữ việc còn mở. Việc đã hoàn thành xem [`CHANGELOG.md`](../CHANGELOG.md); thứ tự roadmap xem
 [`PLAN.md`](PLAN.md).
@@ -83,8 +83,8 @@ v6.9.0; dưới đây là phần còn mở, xếp theo mức đáng làm.
 - [x] **Tab Quotes ghi vào nơi không ai đọc** — xóa 2026-08-16 (user xác nhận bảng rỗng). Bỏ
   `QuoteManagerSection` + `useQuotes.js` + 100 dòng CSS chết; nơi thêm quote giờ là item Knowledge
   `type='quote'`, đã hiện thật qua `QuoteWidget`.
-- [ ] **Drop bảng `inspirational_quotes`** — bảng còn trong database, không còn code nào chạm tới.
-  Cần migration riêng và user xác nhận lần nữa; không gấp, để lại không tốn gì.
+- [x] **Drop bảng `inspirational_quotes`** — xong 2026-08-16, `migration_v6.10.0_drop_inspirational_quotes.sql`
+  (user duyệt). Fail-closed: từ chối chạy nếu bảng còn dù một dòng. **User còn phải chạy trên hosted.**
 - [x] **Trường `bio` write-only** — bỏ khỏi form Hồ sơ 2026-08-16. Cột `profiles.bio` giữ nguyên
   trong database; xóa cột cần migration riêng, chỉ làm khi chắc không dùng lại.
 - [ ] **Auto-K đã mất phần lớn lý do tồn tại.** Bảng `MAGNITUDE` (`nghìn/triệu/tr/củ`) làm

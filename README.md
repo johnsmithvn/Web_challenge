@@ -1,4 +1,4 @@
-# Life Hub — Personal Life OS v6.3.0
+# Life Hub — Personal Life OS v6.10.0
 
 > **Kỷ Luật = Hệ Thống, Không Phải Ý Chí**
 
@@ -146,6 +146,7 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 | 10 | [`data/migration_v6.8.0_finance_bill_term_offset.sql`](./data/migration_v6.8.0_finance_bill_term_offset.sql) | Cột `finance_bills.term_offset` (kỳ trả góp đã trả trước khi dùng app) + trigger tính lại `term_done`. Có backfill và verify. Idempotent. |
 | 11 | [`data/migration_v6.9.0_finance_rule_detach.sql`](./data/migration_v6.9.0_finance_rule_detach.sql) | Xóa hóa đơn/khoản vay/thẻ không còn bị `ON DELETE RESTRICT` chặn: năm FK sang `SET NULL`, nới CHECK cặp id↔kỳ. Thuần DDL, không đụng dữ liệu. Idempotent. |
 | 12 | [`data/migration_v6.9.1_finance_lending_forfeited.sql`](./data/migration_v6.9.1_finance_lending_forfeited.sql) | Cột `finance_lendings.forfeited_interest` (lãi mất do đập tiết kiệm trước hạn — tiền tuyệt đối, không nhân số ngày). **Bắt buộc** — thiếu là lưu khoản cho vay lỗi `PGRST204`. Additive, idempotent. |
+| 13 | [`data/migration_v6.10.0_drop_inspirational_quotes.sql`](./data/migration_v6.10.0_drop_inspirational_quotes.sql) | Drop bảng `inspirational_quotes` (không còn consumer từ v6.9.0). **Fail-closed**: từ chối chạy nếu bảng còn dù một dòng. Idempotent. |
 
 > Không chạy thêm `migration_v5.0.0_activity_logs_v2.sql` trên fresh install vì thay đổi đó đã nằm
 > trong baseline. Không chạy lại baseline một mình trên database đã ở v6.x: nó có thể tạo lại bảng
@@ -270,6 +271,8 @@ data/
   migration_v6.7.0_finance_bill_multi_month.sql
   migration_v6.8.0_finance_bill_term_offset.sql
   migration_v6.9.0_finance_rule_detach.sql
+  migration_v6.9.1_finance_lending_forfeited.sql
+  migration_v6.10.0_drop_inspirational_quotes.sql
   reset_user_data.sql       ← Wipe toàn bộ app data, giữ auth users
 supabase/
   migrations/               ← Chuỗi migration timestamp chỉ dùng local

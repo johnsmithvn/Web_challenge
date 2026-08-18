@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v6.10.0 — 2026-08-18
+
+### Removed
+- **Drop bảng `inspirational_quotes`** (`data/migration_v6.10.0_drop_inspirational_quotes.sql` — user tự
+  chạy trên hosted). v6.9.0 đã xóa tab Quotes và `useQuotes.js`, nên từ đó tới giờ không còn một dòng
+  code nào chạm tới bảng này. Không view, FK hay trigger nào trỏ vào nó — chỉ index của chính nó và
+  FK `user_id` trỏ RA `auth.users`.
+  - **Fail-closed**: migration ĐẾM trước khi drop và **từ chối chạy nếu bảng còn dù một dòng**. Quote
+    là nội dung người dùng tự viết; mất là mất thật, không có đường lấy lại. Muốn giữ thì chuyển sang
+    Knowledge (item `type='quote'`) rồi chạy lại. Không dùng `CASCADE`: thà để lệnh lỗi còn hơn im
+    lặng kéo theo một object khác xuống.
+  - Bỏ `DELETE FROM inspirational_quotes` trong `data/reset_user_data.sql` — sau khi drop, dòng đó làm
+    cả script reset lỗi.
+  - Dọn số đếm bảng trong `DATABASE.md` — nó **đã lệch từ trước**: phần tóm tắt ghi 28 bảng = 14 core
+    + 11 Finance + 2 Vault (cộng ra 27), trong khi bảng Finance thật đã là 12 từ lúc thêm
+    `finance_lendings`. Giờ đúng: **27 = 13 core + 12 Finance + 2 Vault**.
+
 ## v6.9.1 — 2026-08-17
 
 ### Added

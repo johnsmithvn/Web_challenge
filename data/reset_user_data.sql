@@ -43,7 +43,6 @@ DELETE FROM finance_category_overrides;
 
 -- 5. Sessions và nội dung độc lập
 DELETE FROM focus_sessions;
-DELETE FROM inspirational_quotes;
 
 -- 6. Tùy chọn: mở comment nếu muốn xóa cả XP/profile
 -- DELETE FROM xp_logs;
