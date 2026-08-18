@@ -826,6 +826,11 @@ chối ngày không có thật rồi trả ô về giá trị cũ khi blur) + n�
 popover. Không dùng `<input type="date">` ở module này — định dạng của nó do ngôn
 ngữ trình duyệt quyết định nên máy tiếng Anh ra mm/dd/yyyy.
 
+`.fin-datefield__box` **không có padding dọc**: chiều cao do `min-height: 40px` của
+`.fin-input` quyết định, để ô ngày cao đúng bằng ô chữ nằm cạnh nó trong cùng hàng
+grid. Có padding dọc thì nút lịch (icon 15px + padding 4px) đẩy khung lên 41–43px và
+cả hàng trông như xếp lệch. Nút lịch giữ `line-height: 0` cùng lý do.
+
 Popover neo `top: 100%`, nhưng **lật lên `bottom: 100%`** khi khoảng trống dưới ô
 nhỏ hơn chiều cao popover (~430px) và phía trên đủ chỗ — ô ngày nằm cuối trang thì
 mở xuống sẽ đẩy nút Lưu ra ngoài vùng cuộn.

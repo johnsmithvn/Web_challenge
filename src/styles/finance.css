@@ -151,11 +151,16 @@
 .fin-input--sm { padding: 6px 8px; font-size: 12.5px; width: auto; }
 /* Ô ngày: gõ thẳng dd/mm/yyyy, nút lịch bên phải mở popover (lật lên khi dưới hết chỗ). */
 .fin-datefield { position: relative; display: block; }
-.fin-datefield__box { display: flex; align-items: center; gap: 4px; padding-right: 4px; }
+/* Ô ngày phải CAO ĐÚNG BẰNG ô chữ bên cạnh. Trước đây nó dùng nguyên padding dọc 9px
+   của .fin-input, cộng thêm nút lịch (icon 15px + padding 4px = 23px) nên cao 41–43px
+   trong khi <input> thường là 40px — hai ô nằm cạnh nhau trong cùng một hàng grid mà
+   lệch nhau vài pixel thì cả hàng trông như xếp sai. min-height của .fin-input giữ
+   nguyên chiều cao, nên bỏ padding dọc ở đây không làm ô bé lại. */
+.fin-datefield__box { display: flex; align-items: center; gap: 4px; padding-block: 0; padding-right: 4px; }
 .fin-datefield__box:focus-within { border-color: var(--n-accent); box-shadow: 0 0 0 3px var(--n-accent-soft); }
 .fin-datefield__text { flex: 1; min-width: 0; background: none; border: none; outline: none; color: inherit; font: inherit; padding: 0; }
 .fin-datefield__text::placeholder { color: var(--n-txt3); }
-.fin-datefield__pick { display: flex; align-items: center; background: none; border: none; padding: 4px; border-radius: 6px; color: var(--n-txt3); cursor: pointer; }
+.fin-datefield__pick { display: flex; align-items: center; background: none; border: none; padding: 4px; border-radius: 6px; color: var(--n-txt3); cursor: pointer; line-height: 0; }
 .fin-datefield__pick:hover { color: var(--n-txt); background: rgba(233,233,237,0.08); }
 .fin-label { display: block; color: var(--n-txt2); font-size: 12px; margin: 10px 0 4px; }
 .fin-form { display: flex; flex-direction: column; }

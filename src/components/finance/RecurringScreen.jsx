@@ -337,11 +337,15 @@ export default function RecurringScreen({ fin, nav }) {
  * State cục bộ và KHÔNG đi vào payload: đây là giấy nháp để ra một con số, không phải
  * dữ liệu của khoản cho vay. Muốn app nhớ sổ thì khai ở màn Quỹ tiết kiệm.
  */
-function ForfeitCalc({ withdrawOn, defaultAmount, onUse }) {
+function ForfeitCalc({ withdrawOn, today, defaultAmount, onUse }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [rate, setRate] = useState('');
   const [openedAt, setOpenedAt] = useState('');
+  // Ngày rút mặc định BÁM ngày đưa tiền (rút xong đưa luôn là ca thường gặp) nhưng phải
+  // sửa được: app không có cách nào biết bạn đập sổ hôm nào, và đoán sớm/muộn vài ngày
+  // là lệch tiền thật. Để trống thì theo ngày đưa tiền, gõ vào thì ưu tiên số bạn gõ.
+  const [brokeOn, setBrokeOn] = useState('');
 
   if (!open) {
     return (
@@ -352,9 +356,10 @@ function ForfeitCalc({ withdrawOn, defaultAmount, onUse }) {
     );
   }
 
+  const on = brokeOn || withdrawOn;
   const deposit = { amount: parseCurrencyInput(amount) || 0, rate: Number(rate) || 0, opened_at: openedAt || null };
-  const lost = forfeitedInterest(deposit, withdrawOn);
-  const days = openedAt && withdrawOn > openedAt ? daysInclusive(openedAt, withdrawOn) - 1 : 0;
+  const lost = forfeitedInterest(deposit, on);
+  const days = openedAt && on > openedAt ? daysInclusive(openedAt, on) - 1 : 0;
 
   return (
     <div className="fin-payblock">
@@ -367,11 +372,13 @@ function ForfeitCalc({ withdrawOn, defaultAmount, onUse }) {
           <input className="fin-input" inputMode="decimal" placeholder="9"
             value={rate} onChange={e => setRate(sanitizeDecimal(e.target.value, 3, 4))} /></label>
         <label className="fin-field"><span>Ngày gửi</span>
-          <DateField value={openedAt} onChange={setOpenedAt} max={withdrawOn} /></label>
+          <DateField value={openedAt} onChange={setOpenedAt} max={on} /></label>
+        <label className="fin-field"><span>Ngày rút sổ</span>
+          <DateField value={on} onChange={setBrokeOn} max={today} /></label>
       </div>
       <small className="fin-payblock__hint">{lost > 0
-        ? <>Gửi từ {dmy(openedAt)} tới ngày đưa tiền {dmy(withdrawOn)} là <strong>{days} ngày</strong> → lãi đã tích <strong>{money(lost)}</strong>. Rút trước hạn thì ngân hàng chỉ trả lãi không kỳ hạn (~0,1%/năm) nên coi như mất cả — nếu vẫn được trả một ít thì trừ ra ở ô trên theo giấy rút.</>
-        : <>Điền ba số của sổ tiết kiệm, app tính lãi đã tích tới <strong>ngày đưa tiền</strong> ({dmy(withdrawOn)}). Đổi ngày đưa tiền ở trên thì số này tính lại.</>}</small>
+        ? <>Gửi từ {dmy(openedAt)} tới ngày rút {dmy(on)} là <strong>{days} ngày</strong> → lãi đã tích <strong>{money(lost)}</strong>. Rút trước hạn thì ngân hàng chỉ trả lãi không kỳ hạn (~0,1%/năm) nên coi như mất cả — nếu vẫn được trả một ít thì trừ ra ở ô trên theo giấy rút.</>
+        : <>Điền số của sổ tiết kiệm, app đếm ngày từ <strong>ngày gửi</strong> tới <strong>ngày rút</strong>. Ngày rút để mặc định bằng ngày đưa tiền ({dmy(withdrawOn)}) — đập sổ hôm khác thì sửa lại, app không tự biết được.</>}</small>
       <div className="fin-payblock__foot">
         <button type="button" className="fin-btn fin-btn--primary fin-btn--sm" disabled={!lost}
           onClick={() => { onUse(lost); setOpen(false); }}>
@@ -789,12 +796,14 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
             ))}
           </div>
         )}
-        <ForfeitCalc withdrawOn={f.lent_on || fin.today} defaultAmount={parseCurrencyInput(f.principal) || 0}
+        <ForfeitCalc withdrawOn={f.lent_on || fin.today} today={fin.today} defaultAmount={parseCurrencyInput(f.principal) || 0}
           onUse={(lost) => setF(p => ({ ...p, forfeited_interest: String(lost) }))} />
         {lendMath && lendMath.total > 0 && (
           <div className="fin-loan-split">
-            <span>Tổng sẽ nhận <strong>{money(lendMath.total)}</strong>
-              <small>{f.due_on ? `tới hẹn ${dmy(f.due_on)}` : 'tính tới hôm nay — chưa hẹn ngày trả'}</small></span>
+            <span>{f.due_on && lendMath.to <= f.due_on ? 'Tổng sẽ nhận' : 'Tổng nếu trả hôm nay'} <strong>{money(lendMath.total)}</strong>
+              <small>{!f.due_on ? 'chưa hẹn ngày trả — tính tới hôm nay'
+                : lendMath.to > f.due_on ? `quá hẹn ${dmy(f.due_on)} — lãi tính tới hôm nay`
+                : `tới hẹn ${dmy(f.due_on)}`}</small></span>
             <span>Tiền lãi <strong className={lendMath.expected > 0 ? 'is-accent' : ''}>{money(lendMath.expected)}</strong>
               <small>{lendMath.rate > 0 ? `${lendMath.rate}%/năm × ${lendMath.days} ngày` : 'không tính lãi'}</small></span>
             {lendMath.forfeited > 0 && (
@@ -1414,6 +1423,7 @@ function LendsList({ fin, nav, tasks }) {
           : days < 0 ? { tone: 'late', text: `quá hẹn ${Math.abs(days)} ngày` }
           : days === 0 ? { tone: 'due', text: 'đến hẹn hôm nay' }
           : { tone: days <= 14 ? 'late' : 'wait', text: `còn ${days} ngày` };
+        const overdue = days != null && days < 0;
         return (
           <RuleCard key={l.id} tone={state.tone} icon={done ? 'checkCircle' : 'handCoins'}
             iconColor={done ? '#7fc060' : '#9184d9'}
@@ -1445,8 +1455,9 @@ function LendsList({ fin, nav, tasks }) {
               {/* Không hẹn ngày thì mốc là HÔM NAY — nhãn phải nói đúng thế, không thì
                   "Lãi tới hẹn 0đ" của khoản vừa cho mượn hôm nay đọc như một con bug. */}
               {l.rate > 0 && (
-                <span>{l.due_on ? 'Lãi tới hẹn' : 'Lãi tới hôm nay'} <strong className="is-accent">{money(math.expected)}</strong>
-                  <small>{l.rate}%/năm × {math.days} ngày{l.due_on ? ` tới ${dmy(math.to)}` : ' · chưa hẹn ngày trả'}
+                <span>{l.due_on && !overdue ? 'Lãi tới hẹn' : 'Lãi tới hôm nay'} <strong className="is-accent">{money(math.expected)}</strong>
+                  <small>{l.rate}%/năm × {math.days} ngày{overdue ? ` · quá hẹn nên lãi chạy tới ${dmy(math.to)}`
+                    : l.due_on ? ` tới ${dmy(math.to)}` : ' · chưa hẹn ngày trả'}
                     {math.earned < math.expected ? ` · đã phát sinh ${money(math.earned)}` : ''}</small></span>
               )}
               {math.forfeited > 0 && (
@@ -1454,7 +1465,7 @@ function LendsList({ fin, nav, tasks }) {
                   <small>lãi sổ tiết kiệm bị đập — một cục, không theo ngày</small></span>
               )}
               {(l.rate > 0 || math.forfeited > 0) && (
-                <span>{l.due_on ? 'Tổng sẽ nhận' : 'Tổng nếu trả hôm nay'} <strong>{money(math.total)}</strong>
+                <span>{l.due_on && !overdue ? 'Tổng sẽ nhận' : 'Tổng nếu trả hôm nay'} <strong>{money(math.total)}</strong>
                   <small>gốc {money(l.principal)}{math.expected > 0 ? ` + lãi ${money(math.expected)}` : ''}{math.forfeited > 0 ? ` + bù ${money(math.forfeited)}` : ''}</small></span>
               )}
             </div>
