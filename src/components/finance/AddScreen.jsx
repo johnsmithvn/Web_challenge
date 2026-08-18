@@ -87,13 +87,21 @@ export default function AddScreen({ fin, nav }) {
     }
     // `handoff.amount` là số Inbox đã chốt → tin nó trước; không có thì mới đoán
     // từ chính câu đó ("cà phê 35k").
-    const amountFromText = parseCurrencyInput(text);
+    const amountFromText = parseCurrencyInput(text, { autoK: false });
     if (nav.handoff.amount) setAmount(String(nav.handoff.amount));
     else if (amountFromText) setAmount(String(amountFromText));
   }, [nav.handoff]);
 
   const expenseGroup = cats.expenseGroups.find(group => group.key === categoryId);
-  const parsedAmount = parseCurrencyInput(amount);
+  /**
+   * Giao dịch đến từ Inbox: con số trong ghi chú LÀ số cuối cùng, nên cả form này
+   * tắt auto-K. Không tắt thì "đổ xăng 5000" ghi ở Inbox biến thành 5.000.000đ —
+   * Inbox parse đúng 5.000 rồi ô tiền parse lại lần nữa và nhân thêm 1.000.
+   * Ghi xong `nav.clearHandoff()` chạy, khoản kế tiếp gõ tay lại theo preference.
+   */
+  const fromInbox = nav.handoff?.kind === 'tx';
+  const parseOpts = fromInbox ? { autoK: false } : undefined;
+  const parsedAmount = parseCurrencyInput(amount, parseOpts);
   const autoNecessity = deriveNecessity(categoryId, subId, cats);
   const appliedNecessity = necessity || autoNecessity;
   const selectedGoal = fin.goals.find(goal => goal.id === savingGoalId);
@@ -135,8 +143,8 @@ export default function AddScreen({ fin, nav }) {
     ? fin.bills.find(bill => bill.enabled && bill.subcategory_id === subId)
     : null;
 
-  const addAmount = (setter, raw, step) => {
-    const next = (parseCurrencyInput(raw) || 0) + step;
+  const addAmount = (setter, raw, step, opts) => {
+    const next = (parseCurrencyInput(raw, opts) || 0) + step;
     setter(String(next));
   };
 
@@ -381,17 +389,18 @@ export default function AddScreen({ fin, nav }) {
                 onChange={event => setAmount(sanitizeDigits(event.target.value))} /><span>₫</span></div>
               {/* Auto-K nhân 1.000 cho số dưới 10.000: gõ "5000" là LƯU 5.000.000₫ trong khi ô
                   vẫn hiện "5.000 ₫". Không có dòng này thì sai gấp 1000 lần mà không ai hay. */}
-              {autoKPreview(amount) && (
+              {autoKPreview(amount, parseOpts) && (
                 <small className="fin-amount-auto" aria-live="polite">
-                  Sẽ lưu <strong>{autoKPreview(amount)} ₫</strong> · Auto-K tự thêm 3 số 0
+                  Sẽ lưu <strong>{autoKPreview(amount, parseOpts)} ₫</strong> · Auto-K tự thêm 3 số 0
                 </small>
               )}
+              {fromInbox && <small className="fin-entry-hint">Số lấy nguyên từ Inbox — không áp Auto-K</small>}
             </div>
           </section>
 
           <div className="fin-entry-topbar">
             <div className="fin-step-row">
-              {AMOUNT_STEPS.map(step => <button key={step} type="button" onClick={() => addAmount(setAmount, amount, step)}>{amountStepLabel(step)}</button>)}
+              {AMOUNT_STEPS.map(step => <button key={step} type="button" onClick={() => addAmount(setAmount, amount, step, parseOpts)}>{amountStepLabel(step)}</button>)}
             </div>
             <small className="fin-entry-hint">Enter để lưu · Esc để hủy</small>
           </div>

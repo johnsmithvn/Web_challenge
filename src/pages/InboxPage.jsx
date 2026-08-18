@@ -26,10 +26,13 @@ const TYPES = KNOWLEDGE_DATA.types;
  * "Grab 35K" → 35000
  */
 function extractAmount(text) {
-  // Reuse the canonical parser so Inbox and Finance agree on decimals/k/m/auto-K.
+  // Dùng chung parser để Inbox và Finance hiểu decimal/k/triệu y như nhau, nhưng
+  // TẮT auto-K: ghi chú Inbox là câu người dùng đã viết ra, không phải ô nhập nhanh.
+  // "đổ xăng 5000" phải thành 5.000đ; nhân thêm 1.000 ở đây là sửa số của họ.
+  // Muốn 50 nghìn thì viết "50k" / "50 nghìn" — parser vẫn hiểu.
   const m = text.match(/\d[\d.,]*\s*[kKmM]?/);
   if (!m) return '';
-  const n = parseCurrencyInput(m[0]);
+  const n = parseCurrencyInput(m[0], { autoK: false });
   return n || '';
 }
 

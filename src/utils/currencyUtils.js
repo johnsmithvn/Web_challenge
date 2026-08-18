@@ -46,10 +46,10 @@ export function groupDigits(value) {
  * @param {string} raw chuỗi digit thuần đang nằm trong state của ô nhập
  * @returns {string} số đã chèn dấu nghìn, hoặc '' khi không có gì để cảnh báo
  */
-export function autoKPreview(raw) {
+export function autoKPreview(raw, opts) {
   const digits = String(raw ?? '').replace(/\D/g, '');
   if (!digits) return '';
-  const parsed = parseCurrencyInput(digits);
+  const parsed = parseCurrencyInput(digits, opts);
   return parsed && parsed !== Number(digits) ? groupDigits(String(parsed)) : '';
 }
 
@@ -108,7 +108,11 @@ export function stripAmountWords(text) {
  * - "89$" hoặc "89 usd" -> 2260600 (sử dụng tỷ giá cấu hình)
  * - "120.000" -> 120000
  */
-export function parseCurrencyInput(value) {
+export function parseCurrencyInput(value, { autoK } = {}) {
+  // `autoK` bỏ trống = theo preference của user. Truyền `false` cho những đường mà
+  // con số ĐÃ LÀ số cuối cùng (Inbox → Giao dịch): ở đó nhân thêm 1.000 là sửa số
+  // người dùng đã viết ra, không phải giúp họ gõ nhanh.
+  const useAutoK = autoK === undefined ? getAutoK() : autoK;
   if (!value) return 0;
 
   const str = String(value).trim().replace(/\s+/g, '');
@@ -128,7 +132,7 @@ export function parseCurrencyInput(value) {
     result = val * getUsdRate();
   } else if (multiplier) {
     result *= multiplier;
-  } else if (!hasDecimal && getAutoK() && val < 10000) {
+  } else if (!hasDecimal && useAutoK && val < 10000) {
     // Auto-K: số nguyên ngắn như "50" nghĩa là 50.000.
     // Bỏ qua khi người dùng nhập số thập phân rõ ràng (vd "12.50") để tránh nhân nhầm 1000.
     result *= 1000;

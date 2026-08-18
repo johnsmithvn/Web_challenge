@@ -84,4 +84,23 @@ autoK = 'false';
 assert.equal(autoKPreview('5000'), '', 'tắt auto-k thì không còn gì để cảnh báo');
 autoK = null;
 
+/* ── option `autoK: false`: đường Inbox → Giao dịch ──
+   Ghi chú Inbox là câu user đã viết ra, không phải ô nhập nhanh: "đổ xăng 5000"
+   phải ra 5.000đ. Nhưng chữ chỉ độ lớn thì VẪN phải hiểu — tắt auto-K không có
+   nghĩa là làm parser ngu đi. */
+assert.equal(parseCurrencyInput('5000', { autoK: false }), 5000);
+assert.equal(parseCurrencyInput('50', { autoK: false }), 50);
+assert.equal(parseCurrencyInput('50k', { autoK: false }), 50000, 'chữ k vẫn nhân');
+assert.equal(parseCurrencyInput('2 triệu', { autoK: false }), 2000000);
+assert.equal(parseCurrencyInput('250000', { autoK: false }), 250000);
+// Truyền `true` = ép bật dù preference đang tắt; bỏ trống = theo preference.
+autoK = 'false';
+assert.equal(parseCurrencyInput('50'), 50, 'bỏ trống thì theo preference (đang tắt)');
+assert.equal(parseCurrencyInput('50', { autoK: true }), 50000, 'ép bật thắng preference');
+autoK = null;
+assert.equal(parseCurrencyInput('50', { autoK: false }), 50, 'ép tắt thắng preference');
+// Dòng cảnh báo phải im khi luồng đó vốn không áp auto-K — cảnh báo sai còn tệ hơn.
+assert.equal(autoKPreview('5000', { autoK: false }), '');
+assert.equal(autoKPreview('5000'), '5.000.000');
+
 console.log('currency input tests passed');

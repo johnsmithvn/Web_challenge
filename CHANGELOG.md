@@ -2,6 +2,24 @@
 
 ## v6.10.0 — 2026-08-18
 
+### Changed
+- **Auto-K chỉ còn phục vụ Chi tiêu và Ươm mầm; Inbox ghi bao nhiêu thì convert đúng bấy nhiêu.**
+  Ghi chú Inbox là câu người dùng đã viết ra, không phải ô nhập nhanh — "đổ xăng 5000" phải thành
+  **5.000đ**, mà trước đó nó ra **5.000.000đ**.
+  - Luồng Inbox → Giao dịch có **ba** chỗ parse, sửa một chỗ là không đủ: `extractAmount` ở Inbox,
+    đoán-từ-câu lúc prefill form, và `parsedAmount` lúc bấm Lưu. Chỗ thứ ba là chỗ chí tử — Inbox
+    parse ra đúng 5.000 rồi ô tiền **parse lại lần nữa** và nhân thêm 1.000.
+  - `parseCurrencyInput(value, { autoK })` — bỏ trống thì theo preference như cũ, truyền `false` cho
+    những đường mà con số ĐÃ LÀ số cuối cùng. `autoKPreview` nhận cùng option, nếu không thì dòng
+    cảnh báo sẽ nói một con số mà app không hề lưu.
+  - Form Nhập nhanh mở từ Inbox tắt auto-K cho **cả form** (kể cả nút bước tiền) và ghi rõ *"Số lấy
+    nguyên từ Inbox — không áp Auto-K"* dưới ô tiền. Ghi xong `clearHandoff()` chạy, khoản gõ tay kế
+    tiếp trở lại theo preference.
+  - Ô shortcut **giữ** auto-K theo preference: nó không phải đường Inbox, và `recordShortcut` vốn
+    parse theo preference — cho nút bước tiền của nó một luật khác là hai bên lệch nhau.
+  - Chữ chỉ độ lớn vẫn hiểu khi tắt auto-K: `50k`, `50 nghìn`, `2 triệu` trong ghi chú Inbox ra đúng.
+    Tắt auto-K không phải làm parser ngu đi.
+
 ### Removed
 - **Drop bảng `inspirational_quotes`** (`data/migration_v6.10.0_drop_inspirational_quotes.sql` — user tự
   chạy trên hosted). v6.9.0 đã xóa tab Quotes và `useQuotes.js`, nên từ đó tới giờ không còn một dòng

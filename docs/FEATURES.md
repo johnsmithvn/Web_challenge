@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub
 
-**Version:** v6.3.0 · **Updated:** 2026-08-11
+**Version:** v6.10.0 · **Updated:** 2026-08-18
 
 Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và chi tiết release nằm trong
 [`CHANGELOG.md`](../CHANGELOG.md).
@@ -84,6 +84,9 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 - Quick capture toàn app và form nhập nhanh trong Inbox.
 - Search, chọn nhiều, snooze, archive/delete và mở detail để sửa nội dung.
 - Phân loại item sang bảy loại Knowledge hiện hành.
+- Số tiền dò từ ghi chú Inbox **không áp Auto-K**: "đổ xăng 5000" ra 5.000đ, không phải 5 triệu.
+  Chữ chỉ độ lớn vẫn hiểu (`50k`, `2 triệu`). Form Nhập nhanh mở từ Inbox tắt Auto-K cho cả form
+  và nói rõ điều đó dưới ô tiền.
 - Chuyển thành Task pending hoặc completed; chuyển sang Finance transaction/hóa đơn bằng handoff một
   lần trong `sessionStorage`.
 - Khi Finance ghi thành công, item Inbox nguồn được xóa. `inbox_item_id` vì vậy là provenance tạm;
