@@ -48,10 +48,13 @@ COMMENT ON COLUMN finance_lendings.forfeited_interest IS
 -- ── VERIFY ───────────────────────────────────────────────────────────────────
 DO $$
 BEGIN
+  -- KHÔNG so `column_default` với chuỗi '0': Postgres lưu default của cột BIGINT thành
+  -- `'0'::bigint`, nên so chuỗi là VERIFY tự đánh sập một migration hoàn toàn đúng. Kiểm
+  -- như các migration ADD COLUMN khác của repo: cột có, NOT NULL, và có default.
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                  WHERE table_schema = 'public' AND table_name = 'finance_lendings'
                    AND column_name = 'forfeited_interest' AND is_nullable = 'NO'
-                   AND column_default = '0') THEN
+                   AND column_default IS NOT NULL) THEN
     RAISE EXCEPTION 'Forfeited-interest migration failed: column is missing, nullable or has no default.';
   END IF;
 

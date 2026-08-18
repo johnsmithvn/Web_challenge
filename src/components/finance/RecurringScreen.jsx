@@ -330,6 +330,59 @@ export default function RecurringScreen({ fin, nav }) {
   );
 }
 
+/**
+ * Máy tính lãi mất do rút sổ trước hạn — cho sổ KHÔNG khai trong app (sổ đã khai thì
+ * đã có nút "Rút {tên sổ}" điền sẵn, không cần gõ lại ba số).
+ *
+ * State cục bộ và KHÔNG đi vào payload: đây là giấy nháp để ra một con số, không phải
+ * dữ liệu của khoản cho vay. Muốn app nhớ sổ thì khai ở màn Quỹ tiết kiệm.
+ */
+function ForfeitCalc({ withdrawOn, defaultAmount, onUse }) {
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [rate, setRate] = useState('');
+  const [openedAt, setOpenedAt] = useState('');
+
+  if (!open) {
+    return (
+      <button type="button" className="fin-inline-command"
+        onClick={() => { setOpen(true); if (!amount && defaultAmount) setAmount(String(defaultAmount)); }}>
+        <AppIcon name="calculator" size={14} /> Tự tính từ ngày gửi và lãi suất của sổ
+      </button>
+    );
+  }
+
+  const deposit = { amount: parseCurrencyInput(amount) || 0, rate: Number(rate) || 0, opened_at: openedAt || null };
+  const lost = forfeitedInterest(deposit, withdrawOn);
+  const days = openedAt && withdrawOn > openedAt ? daysInclusive(openedAt, withdrawOn) - 1 : 0;
+
+  return (
+    <div className="fin-payblock">
+      <div className="fin-ruleform__grid">
+        <label className="fin-field"><span>Số tiền đã gửi</span>
+          <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="100.000.000" autoFocus
+            value={groupDigits(amount)} onChange={e => setAmount(sanitizeDigits(e.target.value))} />
+          {autoKPreview(amount) && <small className="fin-amount-auto">Tính trên <strong>{autoKPreview(amount)} ₫</strong> · Auto-K</small>}</label>
+        <label className="fin-field"><span>Lãi của sổ · %/năm</span>
+          <input className="fin-input" inputMode="decimal" placeholder="9"
+            value={rate} onChange={e => setRate(sanitizeDecimal(e.target.value, 3, 4))} /></label>
+        <label className="fin-field"><span>Ngày gửi</span>
+          <DateField value={openedAt} onChange={setOpenedAt} max={withdrawOn} /></label>
+      </div>
+      <small className="fin-payblock__hint">{lost > 0
+        ? <>Gửi từ {dmy(openedAt)} tới ngày đưa tiền {dmy(withdrawOn)} là <strong>{days} ngày</strong> → lãi đã tích <strong>{money(lost)}</strong>. Rút trước hạn thì ngân hàng chỉ trả lãi không kỳ hạn (~0,1%/năm) nên coi như mất cả — nếu vẫn được trả một ít thì trừ ra ở ô trên theo giấy rút.</>
+        : <>Điền ba số của sổ tiết kiệm, app tính lãi đã tích tới <strong>ngày đưa tiền</strong> ({dmy(withdrawOn)}). Đổi ngày đưa tiền ở trên thì số này tính lại.</>}</small>
+      <div className="fin-payblock__foot">
+        <button type="button" className="fin-btn fin-btn--primary fin-btn--sm" disabled={!lost}
+          onClick={() => { onUse(lost); setOpen(false); }}>
+          <AppIcon name="check" size={14} /> Dùng {money(lost)}
+        </button>
+        <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={() => setOpen(false)}>Đóng</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Form thêm / sửa (cùng một form, khác nhau ở `initial`) ────────────────────
 function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }) {
   const editing = Boolean(initial?.id);
@@ -718,7 +771,8 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
             )}</label>
           <label className="fin-field"><span>Lãi mất do rút sớm · tùy chọn</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="0"
-              value={groupDigits(f.forfeited_interest || '')} onChange={setDigits('forfeited_interest')} /></label>
+              value={groupDigits(f.forfeited_interest || '')} onChange={setDigits('forfeited_interest')} />
+            {autoKPreview(f.forfeited_interest) && <small className="fin-amount-auto">Sẽ ghi <strong>{autoKPreview(f.forfeited_interest)} ₫</strong> · Auto-K</small>}</label>
         </div>
         {/* Cục lãi mất KHÔNG nhân với số ngày cho vay: nó mất xong ngay lúc đập sổ.
             Nhét vào ô %/năm thì phải gõ 54,9%/năm cho một khoản 9% — và sai thêm mỗi
@@ -735,6 +789,8 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
             ))}
           </div>
         )}
+        <ForfeitCalc withdrawOn={f.lent_on || fin.today} defaultAmount={parseCurrencyInput(f.principal) || 0}
+          onUse={(lost) => setF(p => ({ ...p, forfeited_interest: String(lost) }))} />
         {lendMath && lendMath.total > 0 && (
           <div className="fin-loan-split">
             <span>Tổng sẽ nhận <strong>{money(lendMath.total)}</strong>
@@ -1342,10 +1398,10 @@ function LendsList({ fin, nav, tasks }) {
         items={[
           { label: 'Đang cho vay · chưa thu', value: money(rows.reduce((s, r) => s + r.left, 0)) },
           { label: 'Đã thu về', value: money(rows.reduce((s, r) => s + r.got, 0)), tone: 'good' },
-          { label: 'Lãi sẽ nhận · tới hẹn', value: money(open.reduce((s, r) => s + r.math.expected, 0)) },
+          { label: 'Lãi sẽ nhận', value: money(open.reduce((s, r) => s + r.math.expected + r.math.forfeited, 0)) },
           { label: 'Hẹn gần nhất', value: nextDue ? dmy(nextDue.l.due_on) : '—' },
         ]}
-        note="Cho mượn không phải chi tiêu — tiền rời ví nhưng đổi thành khoản phải thu, nên donut, hạn mức nhóm và mức 50/30/20 không đổi. Khi họ trả, tiền về ví và số này giảm đúng bằng đó — không tính là thu nhập, nếu tính thì tháng đó thu nhập vọt lên ảo và tỉ lệ tiết kiệm sai. Chỉ phần lãi, nếu có, mới là thu nhập thật. Lãi tính theo NGÀY trên gốc còn lại, nên đổi ngày hẹn hoặc ghi một lần họ trả gốc là số lãi tính lại ngay."
+        note="Cho mượn không phải chi tiêu — tiền rời ví nhưng đổi thành khoản phải thu, nên donut, hạn mức nhóm và mức 50/30/20 không đổi. Khi họ trả, tiền về ví và số này giảm đúng bằng đó — không tính là thu nhập, nếu tính thì tháng đó thu nhập vọt lên ảo và tỉ lệ tiết kiệm sai. Chỉ phần lãi, nếu có, mới là thu nhập thật. Lãi tính theo NGÀY trên gốc còn lại, nên đổi ngày hẹn hoặc ghi một lần họ trả gốc là số lãi tính lại ngay. Ô “Lãi sẽ nhận” gồm cả khoản bù lãi mất do rút tiết kiệm trước hạn — phần đó là một cục, không chạy theo ngày."
       />
 
       {rows.length === 0 && <RulesEmpty icon="handCoins" title="Chưa cho ai mượn tiền"

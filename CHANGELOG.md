@@ -16,6 +16,10 @@
     các sổ đang mở (`finance_deposits` đã có `amount`, `rate`, `opened_at`), hiện thành hàng nút "Rút
     {tên sổ} · mất {số tiền}". **Vẫn cho sửa tay**: giấy rút của ngân hàng mới là số cuối cùng, và app
     cố tình KHÔNG trừ lãi không kỳ hạn (~0,1%/năm) — không đoán hộ mức đó của từng ngân hàng.
+  - Sổ **chưa khai trong app** thì không có nút nào để bấm, mà bắt user mở máy tính cầm tay là thua.
+    Nên có `ForfeitCalc`: bấm *Tự tính từ ngày gửi và lãi suất của sổ* → ba ô (số tiền đã gửi · lãi
+    %/năm · ngày gửi), app đếm ngày tới **ngày đưa tiền** rồi hiện số, bấm *Dùng {số tiền}* mới điền
+    vào ô. State cục bộ, không đi vào payload — nó là giấy nháp, không phải dữ liệu của khoản cho vay.
   - `lendingInterest()` trả thêm `forfeited` và `dueNow` (= lãi theo thời gian tới hôm nay + cả cục);
     nút "Trả hết" và ô "Trong đó tiền lãi" dùng `dueNow` nên tất toán một phát là đủ cả hai phần.
 - **InfoTip — nút "?" chung cho mọi đoạn chú thích dài** (`src/components/InfoTip.jsx` +
