@@ -1,8 +1,8 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { useTags } from '../../hooks/useTags';
 import { parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
-import { toDateStr } from '../../utils/dateUtils';
+import { formatDate, toDateStr } from '../../utils/dateUtils';
 import { periodTotals, groupByDate, billPeriods } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon, DateField,
@@ -18,6 +18,8 @@ const FILTERS = [
   { value: 'want', label: 'Không bắt buộc' },
   { value: 'auto', label: 'Do định kỳ sinh' },
 ];
+
+const EMPTY_FILTER = { cat: '', sub: '', from: '', to: '' };
 
 function dayLabel(dateStr, today) {
   // toDateStr, KHÔNG toISOString: ở GMT+7 toISOString lùi thêm 1 ngày nữa nên
@@ -37,6 +39,7 @@ export default function ListScreen({ fin, nav }) {
   const { pendingTasks } = useUserTasks();
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');
+  const [flt, setFlt] = useState(EMPTY_FILTER);
   const [selId, setSelId] = useState(null);
   const period = nav.period;
 
@@ -59,11 +62,27 @@ export default function ListScreen({ fin, nav }) {
         subLabel(tx.subcategory_id, fin.cats)].filter(Boolean).join(' ').toLowerCase();
       if (!haystack.includes(q.toLowerCase())) return false;
     }
+    // Bộ lọc phễu cộng dồn (AND) với chip loại và ô tìm: chọn thêm điều kiện là thu hẹp
+    // dần, không điều kiện nào thay điều kiện nào.
+    if (flt.cat && tx.category_id !== flt.cat) return false;
+    if (flt.sub && tx.subcategory_id !== flt.sub) return false;
+    if (flt.from && tx.occurred_at < flt.from) return false;
+    if (flt.to && tx.occurred_at > flt.to) return false;
     return true;
-  }), [inPeriod, filter, q, fin.cats]);
+  }), [inPeriod, filter, q, flt, fin.cats]);
 
   const groups = useMemo(() => groupByDate(filtered), [filtered]);
   const selected = filtered.find(tx => tx.id === selId) || null;
+  // Một cờ duy nhất cho "đang lọc": empty state phải nói đúng lý do list rỗng, và nút
+  // Xóa bộ lọc phải xóa HẾT — sót một điều kiện là bấm xong list vẫn trống.
+  const hasFilter = Boolean(q || filter !== 'all' || flt.cat || flt.from || flt.to);
+  const clearFilters = () => { setQ(''); setFilter('all'); setFlt(EMPTY_FILTER); };
+  // `totals` là số của CẢ KỲ (dùng chung với Tổng quan), không phải của phần đang lọc.
+  // Đứng cạnh "3 khoản" nó đọc như tổng của 3 khoản đó, nên khi có lọc phải nói thêm
+  // tổng thật của phần đang xem. Cùng công thức với tổng mỗi ngày ở dưới.
+  const shownTotal = useMemo(() => filtered
+    .filter(tx => tx.type === 'expense' && !tx.excluded)
+    .reduce((sum, tx) => sum + tx.amount, 0), [filtered]);
 
   const exportCsv = () => {
     if (!filtered.length) return;
@@ -105,14 +124,20 @@ export default function ListScreen({ fin, nav }) {
               className={filter === item.value ? 'is-active' : ''}
               onClick={() => setFilter(item.value)}>{item.label}</button>)}
           </div>
+          <FilterPop cats={fin.cats} value={flt} onChange={setFlt} />
           <button type="button" className="fin-export" onClick={exportCsv} disabled={!filtered.length}>
             <AppIcon name="upload" size={15} /> Xuất CSV
           </button>
         </div>
 
+        {/* Điều kiện đang bật phải HIỆN RA ở đây. Bộ lọc nằm trong popover: đóng lại
+            rồi thì "26 khoản" tụt xuống "3 khoản" mà không có gì giải thích. */}
         <div className="fin-list__summary">
           {filtered.length} khoản · chi {money(totals.total)}
           {totals.income > 0 && ` · thu ${money(totals.income)}`}
+          {hasFilter && ` · phần đang lọc: chi ${money(shownTotal)}`}
+          {flt.cat && ` · ${catInfo(flt.cat, fin.cats).label}${flt.sub ? ` › ${subLabel(flt.sub, fin.cats)}` : ''}`}
+          {(flt.from || flt.to) && ` · ${flt.from ? formatDate(flt.from) : '…'} → ${flt.to ? formatDate(flt.to) : '…'}`}
         </div>
 
         {/* Đang tải thì giữ chỗ bằng skeleton, KHÔNG hiện "chưa có giao dịch" — báo
@@ -125,10 +150,10 @@ export default function ListScreen({ fin, nav }) {
         {fin.hasLoaded && groups.length === 0 && (
           <section className="fin-list-empty">
             <span><AppIcon name="receipt" size={24} /></span>
-            <strong>{q || filter !== 'all' ? 'Không tìm thấy giao dịch phù hợp' : 'Chưa có giao dịch trong kỳ này'}</strong>
-            <p>{q || filter !== 'all' ? 'Thử đổi bộ lọc hoặc từ khóa tìm kiếm.' : 'Ghi khoản đầu tiên để bắt đầu theo dõi tháng này.'}</p>
-            {q || filter !== 'all'
-              ? <button type="button" onClick={() => { setQ(''); setFilter('all'); }}>Xóa bộ lọc</button>
+            <strong>{hasFilter ? 'Không tìm thấy giao dịch phù hợp' : 'Chưa có giao dịch trong kỳ này'}</strong>
+            <p>{hasFilter ? 'Thử đổi bộ lọc hoặc từ khóa tìm kiếm.' : 'Ghi khoản đầu tiên để bắt đầu theo dõi tháng này.'}</p>
+            {hasFilter
+              ? <button type="button" onClick={clearFilters}>Xóa bộ lọc</button>
               : <button type="button" onClick={() => nav.go('add')}><AppIcon name="plus" size={15} /> Thêm giao dịch</button>}
           </section>
         )}
@@ -180,6 +205,97 @@ export default function ListScreen({ fin, nav }) {
   );
 }
 
+/**
+ * Bộ lọc chi tiết của màn Giao dịch: nhóm · danh mục con · khoảng ngày.
+ *
+ * Danh mục con CHỈ chọn được sau khi chọn nhóm cha. Key của con mang tiền tố nhóm
+ * (`transport.parking`) và chỉ nhóm CHI mới có con, nên một danh sách con phẳng vừa dài
+ * vừa mơ hồ. Đổi nhóm là bỏ luôn con đang chọn: giữ lại thì bộ lọc mô tả một cặp
+ * cha–con không tồn tại và list rỗng mà không ai hiểu tại sao.
+ *
+ * Khoảng ngày lọc TRONG kỳ đang xem ở trên chứ không thay kỳ đó — kỳ dùng chung với
+ * Tổng quan qua `nav`, sửa từ đây là đổi số của màn khác.
+ */
+function FilterPop({ cats, value, onChange }) {
+  const rootRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const subs = cats.expenseGroups.find(group => group.key === value.cat)?.subs || [];
+  const count = [value.cat, value.sub, value.from, value.to].filter(Boolean).length;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = event => {
+      if (event.key === 'Escape' || (event.type === 'mousedown' && !rootRef.current?.contains(event.target))) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', close);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', close);
+    };
+  }, [open]);
+
+  const patch = next => onChange({ ...value, ...next });
+
+  return (
+    <div className="fin-filterpop" ref={rootRef}>
+      <button type="button" className={`fin-filterpop__btn${count ? ' is-active' : ''}${open ? ' is-open' : ''}`}
+        aria-expanded={open} aria-label={count ? `Bộ lọc · ${count} điều kiện đang bật` : 'Bộ lọc'}
+        onClick={() => setOpen(o => !o)}>
+        <AppIcon name="funnel" size={15} weight={count ? 'fill' : 'regular'} />
+        <span>Lọc</span>
+        {count > 0 && <b>{count}</b>}
+      </button>
+      {open && (
+        <div className="fin-filterpop__panel">
+          <label className="fin-label" htmlFor="fin-flt-cat">Nhóm</label>
+          <select id="fin-flt-cat" className="fin-input" value={value.cat}
+            onChange={event => patch({ cat: event.target.value, sub: '' })}>
+            <option value="">Tất cả nhóm</option>
+            <optgroup label="Chi">
+              {cats.expenseGroups.filter(group => !group.hidden)
+                .map(group => <option key={group.key} value={group.key}>{group.label}</option>)}
+            </optgroup>
+            <optgroup label="Thu">
+              {cats.incomeGroups.filter(group => !group.hidden)
+                .map(group => <option key={group.key} value={group.key}>{group.label}</option>)}
+            </optgroup>
+          </select>
+
+          <label className="fin-label" htmlFor="fin-flt-sub">Danh mục con</label>
+          <select id="fin-flt-sub" className="fin-input" value={value.sub} disabled={!subs.length}
+            onChange={event => patch({ sub: event.target.value })}>
+            <option value="">{!value.cat ? 'Chọn nhóm trước'
+              : subs.length ? 'Tất cả danh mục con' : 'Nhóm này không có danh mục con'}</option>
+            {subs.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}
+          </select>
+
+          <div className="fin-filterpop__dates">
+            {/* Hai ô ngày cạnh nhau: DateField mặc định tự đọc là "Ngày" nên phải đặt tên
+                riêng, không thì screen reader đọc hai ô y như nhau. */}
+            <div><label className="fin-label">Từ ngày</label>
+              <DateField value={value.from} ariaLabel="Lọc từ ngày, dạng ngày/tháng/năm"
+                onChange={iso => patch({ from: iso, ...(value.to && iso > value.to ? { to: '' } : {}) })} /></div>
+            <div><label className="fin-label">Đến ngày</label>
+              <DateField value={value.to} ariaLabel="Lọc đến ngày, dạng ngày/tháng/năm"
+                onChange={iso => patch({ to: iso, ...(value.from && iso < value.from ? { from: '' } : {}) })} /></div>
+          </div>
+          <small className="fin-field__hint">Khoảng ngày lọc trong kỳ đang xem ở trên, không thay kỳ đó. Chọn ngược thứ tự thì ô kia được bỏ để bộ lọc không rỗng một cách vô hình.</small>
+
+          <div className="fin-filterpop__foot">
+            <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm" disabled={!count}
+              onClick={() => onChange(EMPTY_FILTER)}>Xóa lọc</button>
+            <button type="button" className="fin-btn fin-btn--primary fin-btn--sm"
+              onClick={() => setOpen(false)}>Xong</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
   const { tags, addTag, linkTag, unlinkTag, getTagsForEntity } = useTags();
   const [editing, setEditing] = useState(false);
@@ -208,7 +324,10 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
   useEffect(() => { getTagsForEntity(tx.id, 'finance').then(setTxTags); }, [tx.id, getTagsForEntity]);
 
   const save = async () => {
-    const parsed = parseCurrencyInput(amount);
+    // `autoK: false` — ô này được điền sẵn bằng SỐ ĐÃ LƯU, không phải số người dùng
+    // đang gõ nhanh. Bật auto-K ở đây là mỗi lần mở form sửa (kể cả chỉ sửa tiêu đề)
+    // một khoản 5.000đ lại thành 5.000.000đ. Chữ "k"/"triệu" vẫn nhân như thường.
+    const parsed = parseCurrencyInput(amount, { autoK: false });
     await fin.updateTransaction(tx.id, {
       amount: parsed || tx.amount, note: note || null, occurred_at: occurredAt,
       necessity: necessity || null, category_id: categoryId || null,

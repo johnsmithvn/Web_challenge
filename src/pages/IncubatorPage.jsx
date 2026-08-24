@@ -237,11 +237,15 @@ export default function IncubatorPage() {
   const handleDetailSave = useCallback(async () => {
     if (!detailItem || !detailTitle.trim()) return;
     setDetailSaving(true);
+    // `autoK: false` — ô chi phí ở panel chi tiết được điền sẵn bằng số ĐÃ LƯU, không phải
+    // số đang gõ nhanh. Để auto-K parse lại là 5.000đ thành 5.000.000đ chỉ vì mở detail ra
+    // sửa tiêu đề rồi bấm Lưu. Chữ "50k" / "2 triệu" / "10$" vẫn hiểu như thường.
+    const nextCost = detailCost ? parseCurrencyInput(detailCost, { autoK: false }) : null;
     const ok = await updateIntention(detailItem.id, {
       title: detailTitle,
       originalReason: detailReason,
       description: detailDescription,
-      estimatedCost: detailCost ? parseCurrencyInput(detailCost) : null,
+      estimatedCost: nextCost,
       estimatedTime: detailTime || null,
     });
     setDetailSaving(false);
@@ -251,7 +255,7 @@ export default function IncubatorPage() {
         title: detailTitle.trim(), 
         original_reason: detailReason.trim() || null, 
         description: detailDescription.trim() || null,
-        estimated_cost: detailCost ? parseCurrencyInput(detailCost) : null, 
+        estimated_cost: nextCost,
         estimated_time: detailTime ? parseInt(detailTime, 10) : null 
       } : null);
       setDetailEditing(false);
@@ -905,7 +909,7 @@ export default function IncubatorPage() {
                     className="incubator-modal__input"
                     type="text"
                     aria-label="Chi phí dự kiến"
-                    placeholder="Chi phí (Ví dụ: 50, 50k, 10$)"
+                    placeholder="Chi phí (Ví dụ: 50k, 500.000, 10$)"
                     value={detailCost}
                     onChange={e => setDetailCost(e.target.value)}
                     style={{ flex: 1 }}
@@ -914,7 +918,9 @@ export default function IncubatorPage() {
                 </div>
                 {detailCost && (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem', paddingLeft: '0.25rem' }}>
-                    Xem trước: <strong style={{ color: 'var(--text-primary)' }}>{formatVND(parseCurrencyInput(detailCost))}</strong>
+                    {/* Cùng `autoK: false` với lúc Lưu — xem trước một số khác số sẽ lưu thì
+                        dòng này còn tệ hơn là không có. */}
+                    Xem trước: <strong style={{ color: 'var(--text-primary)' }}>{formatVND(parseCurrencyInput(detailCost, { autoK: false }))}</strong>
                     {/[$]|usd/i.test(detailCost) && ' (Quy đổi tỷ giá)'}
                   </div>
                 )}

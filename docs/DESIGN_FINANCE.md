@@ -106,6 +106,9 @@ và subcategory hợp lệ; không tạo parent tùy ý.
 - Keyboard `N`, natural language, shortcut và full form.
 - Expense/income/saving; nguồn, necessity, Task link và Inbox provenance khi conversion.
 - List group theo ngày, có filter/search, edit detail, tag, CSV.
+- Lọc hai tầng: chip loại luôn hiện, còn nhóm · danh mục con · khoảng ngày nằm trong popover nút
+  **Lọc**. Điều kiện cộng dồn (AND); danh mục con phải có nhóm cha; khoảng ngày thu hẹp trong kỳ chứ
+  không thay bộ chọn kỳ (kỳ dùng chung với Tổng quan). Điều kiện đang bật phải đọc được ngoài popover.
 - Mobile detail dùng layout thay thế; desktop có detail column.
 
 ### Nghĩa vụ

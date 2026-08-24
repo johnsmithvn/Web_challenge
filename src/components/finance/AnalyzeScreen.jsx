@@ -116,6 +116,10 @@ function needCopyFor(key) {
 
 function BudgetRow({ cat, cats, editing, onSave }) {
   const [v, setV] = useState(cat.limit ? String(cat.limit) : '');
+  // Đã có hạn mức = ô này đang mang số ĐÃ LƯU, nên auto-K sẽ nhân nó thêm 1.000 lần chỉ
+  // vì con trỏ rời ô (onBlur lưu, không cần gõ gì). Chưa có hạn mức thì đây là ô nhập
+  // mới thật, giữ auto-K theo preference như các ô tiền khác.
+  const limitOpts = cat.limit ? { autoK: false } : undefined;
   const pct = cat.pct || 0;
   const over = cat.limit > 0 && cat.spent > cat.limit;
   return (
@@ -124,8 +128,8 @@ function BudgetRow({ cat, cats, editing, onSave }) {
       <div className="fin-budgetrow__bar"><div style={{ width: `${Math.min(100, pct)}%`, background: over ? '#b5abfc' : cat.color }} /></div>
       {editing && <input className="fin-input fin-input--sm" inputMode="numeric" pattern="[0-9]*" placeholder="Nhập hạn mức" aria-label={`Hạn mức cho ${cat.label}`} value={v}
           onChange={e => setV(sanitizeDigits(e.target.value))}
-          onBlur={() => onSave(parseCurrencyInput(v) || 0)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onSave(parseCurrencyInput(v) || 0); e.target.blur(); } }} />}
+          onBlur={() => onSave(parseCurrencyInput(v, limitOpts) || 0)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onSave(parseCurrencyInput(v, limitOpts) || 0); e.target.blur(); } }} />}
     </div>
   );
 }

@@ -460,6 +460,18 @@
 .fin-filter-chips button { min-height: 34px; padding: 6px 12px; border: 1px solid var(--n-border); border-radius: 18px; background: transparent; color: var(--n-txt2); font: inherit; font-size: 11.5px; cursor: pointer; }
 .fin-filter-chips button:hover { border-color: var(--n-accent); color: var(--n-on-accent); }
 .fin-filter-chips button.is-active { border-color: var(--n-accent); background: var(--n-accent-soft); color: var(--n-on-accent); }
+/* Bộ lọc chi tiết: nút cùng thang với .fin-export, panel cùng thang popover với
+   .fin-period__popover (radius 8px + bóng 18/46) để không lệch khung Nocturne. */
+.fin-filterpop { position: relative; }
+.fin-filterpop__btn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 7px 11px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-card); color: var(--n-txt); font: inherit; font-size: 11.5px; cursor: pointer; transition: border-color .14s ease, background .14s ease; }
+.fin-filterpop__btn:hover, .fin-filterpop__btn:focus-visible, .fin-filterpop__btn.is-open { border-color: var(--n-accent); background: color-mix(in srgb, var(--n-accent) 7%, var(--n-card)); outline: 0; }
+.fin-filterpop__btn.is-active { border-color: var(--n-accent); color: var(--n-on-accent); }
+.fin-filterpop__btn b { display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--n-accent-2); color: #fff; font-size: 10px; font-weight: 700; }
+.fin-filterpop__panel { position: absolute; top: calc(100% + 8px); left: 0; z-index: 120; display: grid; gap: 5px; width: min(320px, calc(100vw - 40px)); padding: 11px; border: 1px solid color-mix(in srgb, var(--n-accent) 34%, var(--n-border)); border-radius: 8px; background: var(--n-card); box-shadow: 0 18px 46px rgba(2,3,10,.48); animation: fin-period-open .15s ease-out; }
+.fin-filterpop__panel .fin-label { margin: 6px 0 0; }
+.fin-filterpop__panel > .fin-label:first-child { margin-top: 0; }
+.fin-filterpop__dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.fin-filterpop__foot { display: flex; justify-content: flex-end; gap: 7px; margin-top: 3px; padding-top: 9px; border-top: 1px solid var(--n-line); }
 .fin-export { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin-left: auto; padding: 7px 11px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-card); color: var(--n-txt); font: inherit; font-size: 11.5px; cursor: pointer; }
 .fin-export:disabled { opacity: .45; cursor: default; }
 .fin-list__summary { margin: -4px 0 0; color: var(--n-txt3); font-size: 11px; }
@@ -566,6 +578,9 @@
   .fin-filter-chips { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 3px; scrollbar-width: none; }
   .fin-filter-chips::-webkit-scrollbar { display: none; }
   .fin-filter-chips button { min-height: 40px; white-space: nowrap; }
+  /* Vùng chạm 40px như chip; panel mở gần hết bề ngang màn nhưng không tràn. */
+  .fin-filterpop__btn { min-height: 40px; }
+  .fin-filterpop__panel { width: calc(100vw - 32px); }
   .fin-export { margin-left: 0; }
   .fin-list.fin-list--detail { grid-template-columns: 1fr; }
   .fin-list__detail { position: fixed; inset: auto 0 0; z-index: 95; max-height: 82vh; overflow-y: auto; border-radius: 16px 16px 0 0; box-shadow: 0 -20px 50px rgba(0,0,0,.45); }

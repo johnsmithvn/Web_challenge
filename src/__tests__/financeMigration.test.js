@@ -149,7 +149,9 @@ assert.match(forfeited, /BEGIN;[\s\S]*COMMIT;/, 'migration phải chạy trong m
 assert.match(forfeited, /ADD COLUMN IF NOT EXISTS forfeited_interest BIGINT NOT NULL DEFAULT 0/,
   'phải additive và idempotent: khoản cho vay cũ mang 0 và hành xử y như trước');
 assert.match(forfeited, /CHECK \(forfeited_interest >= 0\)/, 'không cho số âm');
-assert.match(recurring, /forfeited_interest: parseCurrencyInput\(f\.forfeited_interest\) \|\| 0/,
+// `[^)]*` để chỗ ô tiền truyền thêm option parse (vd `amountOpts` tắt auto-K khi đang SỬA)
+// mà không vỡ test: điều cần chặn là form KHÔNG gửi cột này, không phải chữ ký của call.
+assert.match(recurring, /forfeited_interest: parseCurrencyInput\(f\.forfeited_interest[^)]*\) \|\| 0/,
   'form cho vay phải gửi cột mới, không thì ô nhập là trang trí');
 
 // Bốn nút xóa quy tắc phải ĐỌC kết quả. Trước v6.9.0 vay/thẻ/cho vay thất bại im lặng:

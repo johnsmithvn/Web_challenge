@@ -393,6 +393,10 @@ function ForfeitCalc({ withdrawOn, today, defaultAmount, onUse }) {
 // ── Form thêm / sửa (cùng một form, khác nhau ở `initial`) ────────────────────
 function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }) {
   const editing = Boolean(initial?.id);
+  // Form SỬA được điền sẵn bằng số ĐÃ LƯU, nên auto-K parse lại là nhân thêm 1.000 lần nữa
+  // (8.000đ → 8.000.000đ) chỉ vì mở form ra bấm Lưu — kể cả khi chỉ sửa cái tên. Lúc THÊM MỚI
+  // vẫn để auto-K theo preference: đó mới là ô nhập nhanh. Cùng luật với panel Sửa giao dịch.
+  const amountOpts = editing ? { autoK: false } : undefined;
   const noteRef = useRef(null);
   const [hasTerm, setHasTerm] = useState(() => Boolean(initial?.term_total));
   const [f, setF] = useState(() => (initial
@@ -428,7 +432,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
     let payload;
     if (seg === 'out') {
       const amountMode = f.amount_mode || 'fixed';
-      const billAmount = parseCurrencyInput(f.amount);
+      const billAmount = parseCurrencyInput(f.amount, amountOpts);
       const every = Math.max(1, Number(f.every) || 1);
       const anchor = f.anchor_date || null;
       // Ngày cố định thắng ngày bắt đầu; bỏ trống ô ngày thì lấy ngày của mốc bắt đầu.
@@ -458,7 +462,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
         note: f.note?.trim() || null,
       };
     } else if (seg === 'in') {
-      const incomeAmount = parseCurrencyInput(f.amount);
+      const incomeAmount = parseCurrencyInput(f.amount, amountOpts);
       if (!positiveDay || !incomeAmount) {
         nav.showToast('Khoản thu cần ngày nhận hợp lệ và số tiền dương');
         return;
@@ -468,7 +472,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
         amount: incomeAmount, rrule: { type: 'monthly', day: dueDay }, due_day: dueDay,
       };
     } else if (seg === 'loan') {
-      const principal = parseCurrencyInput(f.principal);
+      const principal = parseCurrencyInput(f.principal, amountOpts);
       const term = Number(f.term);
       const payDay = Number(f.pay_day);
       if (!principal || !Number.isInteger(term) || term <= 0
@@ -483,7 +487,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
         pay_day: payDay, opened_at: f.opened_at || fin.today, due_at: f.due_at || null,
       };
     } else if (seg === 'lend') {
-      const principal = parseCurrencyInput(f.principal);
+      const principal = parseCurrencyInput(f.principal, amountOpts);
       const lentOn = f.lent_on || fin.today;
       if (!principal || Number(f.rate || 0) < 0) {
         nav.showToast('Khoản cho vay cần số tiền dương và lãi suất không âm');
@@ -496,7 +500,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
       payload = {
         name: f.name.trim(), note: f.note?.trim() || null, principal,
         rate: Number(f.rate) || 0, lent_on: lentOn, due_on: f.due_on || null,
-        forfeited_interest: parseCurrencyInput(f.forfeited_interest) || 0,
+        forfeited_interest: parseCurrencyInput(f.forfeited_interest, amountOpts) || 0,
       };
     } else if (seg === 'card') {
       const statementDay = Number(f.statement_day);
@@ -509,11 +513,11 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
       }
       payload = {
         name: f.name.trim(), bank: f.bank || null, last4: f.last4 || null,
-        credit_limit: parseCurrencyInput(f.credit_limit) || 0,
+        credit_limit: parseCurrencyInput(f.credit_limit, amountOpts) || 0,
         statement_day: statementDay, due_day: cardDueDay,
-        grace: Number(f.grace) || null, annual_fee: parseCurrencyInput(f.annual_fee) || 0,
+        grace: Number(f.grace) || null, annual_fee: parseCurrencyInput(f.annual_fee, amountOpts) || 0,
         annual_fee_on: f.annual_fee_on || null,
-        cash_advance_fee: parseCurrencyInput(f.cash_advance_fee) || 0, min_pct: Number(f.min_pct) || 0,
+        cash_advance_fee: parseCurrencyInput(f.cash_advance_fee, amountOpts) || 0, min_pct: Number(f.min_pct) || 0,
       };
     }
     const save = {
@@ -542,9 +546,9 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
   const segMeta = SEGMENTS.find(s => s.value === seg);
   // Xem trước lãi khoản cho vay: chạy lại mỗi lần gõ số tiền, đổi ngày đưa hay ngày hẹn.
   const lendMath = seg === 'lend' ? lendingInterest({
-    principal: parseCurrencyInput(f.principal) || 0, rate: Number(f.rate) || 0,
+    principal: parseCurrencyInput(f.principal, amountOpts) || 0, rate: Number(f.rate) || 0,
     lent_on: f.lent_on || fin.today, due_on: f.due_on || null,
-    forfeited_interest: parseCurrencyInput(f.forfeited_interest) || 0,
+    forfeited_interest: parseCurrencyInput(f.forfeited_interest, amountOpts) || 0,
   }, [], fin.today) : null;
   // Sổ tiết kiệm đang mở, có ngày gửi và có lãi → đập cái nào cũng mất một cục lãi.
   // Bấm để điền sẵn số đó; giấy rút của ngân hàng mới là số cuối nên ô vẫn sửa được.
@@ -779,7 +783,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
           <label className="fin-field"><span>Lãi mất do rút sớm · tùy chọn</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="0"
               value={groupDigits(f.forfeited_interest || '')} onChange={setDigits('forfeited_interest')} />
-            {autoKPreview(f.forfeited_interest) && <small className="fin-amount-auto">Sẽ ghi <strong>{autoKPreview(f.forfeited_interest)} ₫</strong> · Auto-K</small>}</label>
+            {autoKPreview(f.forfeited_interest, amountOpts) && <small className="fin-amount-auto">Sẽ ghi <strong>{autoKPreview(f.forfeited_interest, amountOpts)} ₫</strong> · Auto-K</small>}</label>
         </div>
         {/* Cục lãi mất KHÔNG nhân với số ngày cho vay: nó mất xong ngay lúc đập sổ.
             Nhét vào ô %/năm thì phải gõ 54,9%/năm cho một khoản 9% — và sai thêm mỗi
@@ -789,14 +793,14 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
           <div className="fin-source-picker">
             {brokenDeposits.map(({ d, lost }) => (
               <button type="button" key={d.id}
-                className={(parseCurrencyInput(f.forfeited_interest) || 0) === lost ? 'is-active' : ''}
+                className={(parseCurrencyInput(f.forfeited_interest, amountOpts) || 0) === lost ? 'is-active' : ''}
                 onClick={() => setF(p => ({ ...p, forfeited_interest: String(lost) }))}>
                 <AppIcon name="piggyBank" size={14} /> Rút {d.name} · mất {money(lost)}
               </button>
             ))}
           </div>
         )}
-        <ForfeitCalc withdrawOn={f.lent_on || fin.today} today={fin.today} defaultAmount={parseCurrencyInput(f.principal) || 0}
+        <ForfeitCalc withdrawOn={f.lent_on || fin.today} today={fin.today} defaultAmount={parseCurrencyInput(f.principal, amountOpts) || 0}
           onUse={(lost) => setF(p => ({ ...p, forfeited_interest: String(lost) }))} />
         {lendMath && lendMath.total > 0 && (
           <div className="fin-loan-split">
@@ -810,7 +814,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
               <span>Bù lãi mất <strong className="is-accent">{money(lendMath.forfeited)}</strong>
                 <small>một cục, không theo ngày</small></span>
             )}
-            <span>Tiền gốc <strong>{money(parseCurrencyInput(f.principal) || 0)}</strong>
+            <span>Tiền gốc <strong>{money(parseCurrencyInput(f.principal, amountOpts) || 0)}</strong>
               <small>cho mượn {dmy(f.lent_on || fin.today)}</small></span>
           </div>
         )}

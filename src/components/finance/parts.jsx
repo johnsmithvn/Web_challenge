@@ -148,7 +148,8 @@ export function Toggle({ on, onChange, label, ariaLabel }) {
  */
 const POPOVER_HEIGHT = 430;   // chiều cao thực tế của .dp-popover, dùng để chọn hướng mở
 
-export function DateField({ value, onChange, max, placeholder = 'dd/mm/yyyy', className = 'fin-input' }) {
+export function DateField({ value, onChange, max, placeholder = 'dd/mm/yyyy', className = 'fin-input',
+  ariaLabel = 'Ngày, dạng ngày/tháng/năm' }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
   const [text, setText] = useState(() => (value ? formatDate(value) : ''));
@@ -184,7 +185,7 @@ export function DateField({ value, onChange, max, placeholder = 'dd/mm/yyyy', cl
     <span className="fin-datefield" ref={boxRef}>
       <span className={`${className} fin-datefield__box`}>
         <input className="fin-datefield__text" value={text} onChange={type} onBlur={blur}
-          inputMode="numeric" placeholder={placeholder} aria-label="Ngày, dạng ngày/tháng/năm" />
+          inputMode="numeric" placeholder={placeholder} aria-label={ariaLabel} />
         <button type="button" className="fin-datefield__pick" onClick={toggle}
           aria-label="Mở lịch" title="Mở lịch"><AppIcon name="calendar" size={15} /></button>
       </span>

@@ -2,6 +2,24 @@
 
 ## v6.10.0 — 2026-08-18
 
+### Added
+- **Nút Lọc (icon phễu) ở màn Giao dịch** — lọc theo **nhóm**, **danh mục con** và **khoảng ngày**, cộng
+  dồn (AND) với chip loại và ô tìm sẵn có, trong `FilterPop` mới ở `ListScreen.jsx`.
+  - Danh mục con **chỉ chọn được sau khi chọn nhóm cha**, và đổi nhóm là bỏ luôn con đang chọn: key con
+    mang tiền tố nhóm (`transport.parking`) nên một cặp cha–con lệch nhau chỉ cho ra list rỗng không
+    lý do. Nhóm THU không có danh mục con nên ô con tự khóa và nói rõ lý do thay vì im lặng.
+  - Khoảng ngày thu hẹp **trong** kỳ đang xem, không thay bộ chọn kỳ — kỳ đó dùng chung với Tổng quan
+    qua `nav`, sửa từ đây là đổi số của màn khác. Chọn ngược thứ tự (đến < từ) thì ô kia được bỏ.
+  - Điều kiện đang bật phải đọc được khi popover đã đóng: badge số trên nút, và dòng tổng hiện tên
+    nhóm/con + khoảng ngày. Dòng tổng thêm **tổng chi của phần đang lọc** — `totals` là số của cả kỳ,
+    đứng cạnh "3 khoản" nó đọc như tổng của 3 khoản đó.
+  - Nút *Xóa bộ lọc* ở empty state giờ xóa **cả ba** loại điều kiện (ô tìm, chip, bộ lọc phễu); trước
+    đây nó chỉ biết ô tìm và chip nên sẽ bấm xong mà list vẫn trống.
+  - `DateField` nhận thêm prop `ariaLabel` (mặc định giữ nguyên chuỗi cũ): hai ô ngày cạnh nhau mà
+    cùng đọc là "Ngày" thì screen reader không phân biệt được từ/đến.
+  - CSS `.fin-filterpop*` theo đúng thang Nocturne: nút cùng khung `.fin-export`, panel cùng khung
+    popover với `.fin-period__popover`. Không thêm token, không thêm dependency.
+
 ### Changed
 - **Auto-K chỉ còn phục vụ Chi tiêu và Ươm mầm; Inbox ghi bao nhiêu thì convert đúng bấy nhiêu.**
   Ghi chú Inbox là câu người dùng đã viết ra, không phải ô nhập nhanh — "đổ xăng 5000" phải thành
@@ -19,6 +37,32 @@
     parse theo preference — cho nút bước tiền của nó một luật khác là hai bên lệch nhau.
   - Chữ chỉ độ lớn vẫn hiểu khi tắt auto-K: `50k`, `50 nghìn`, `2 triệu` trong ghi chú Inbox ra đúng.
     Tắt auto-K không phải làm parser ngu đi.
+
+### Fixed
+- **Form SỬA không còn nhân số tiền thêm 1.000 lần.** Ô tiền trong một form sửa được điền sẵn bằng số
+  ĐÃ LƯU, nhưng lúc Lưu nó `parseCurrencyInput` lại theo preference — auto-K thấy `5000 < 10000` nên
+  ×1.000. Khoản 5.000đ thành 5.000.000đ, và chỉ cần mở form sửa **tiêu đề** rồi bấm Lưu cũng bị, không
+  cần chạm ô tiền. Cùng lỗi auto-K-parse-hai-lần mà v6.10.0 đã sửa cho luồng Inbox; bốn chỗ này bị bỏ
+  sót. Luật chung: **auto-K chỉ dành cho ô nhập mới**, form sửa là WYSIWYG.
+  - `ListScreen.jsx` — panel *Sửa giao dịch*: `{ autoK: false }`.
+  - `RecurringScreen.jsx` — form thêm/sửa hóa đơn · thu định kỳ · vay · thẻ · cho vay dùng chung một
+    component, nên option theo `editing`: `editing ? { autoK: false } : undefined`. Không hardcode
+    `autoK: true` cho nhánh thêm mới — làm vậy là ép bật auto-K kể cả khi user đã tắt trong Cài đặt.
+    Cả 15 chỗ đọc số tiền của form (submit **và** các dòng xem trước lãi/gốc/`autoKPreview`) dùng cùng
+    một option: xem trước một số khác số sẽ lưu còn tệ hơn là không xem trước.
+  - `AnalyzeScreen.jsx` — hạn mức budget: `onBlur` là lưu, nên chỉ cần con trỏ rời ô là hạn mức cũ bị
+    ×1.000 dù không gõ gì. Ô đã có hạn mức → tắt auto-K; ô trống vẫn là nhập mới → giữ preference.
+  - `IncubatorPage.jsx` — ô *Chi phí dự kiến* trong detail: tắt auto-K ở cả lúc Lưu và dòng "Xem
+    trước", bỏ ví dụ `50` khỏi placeholder (giờ `50` là 50đ). Form **thêm mới** giữ auto-K như cũ.
+  - Chữ chỉ độ lớn (`50k`, `2 triệu`, `10$`) vẫn hiểu ở những ô nhận chữ — tắt auto-K không làm parser
+    ngu đi. Riêng các ô `sanitizeDigits` (Sửa giao dịch, hạn mức, form định kỳ) vốn chỉ nhận chữ số
+    nên ở đó không gõ được `k`/`triệu` — số hiện trong ô là số được lưu, không hơn không kém.
+  - **Không đổi**: khối Thanh toán (`PayBlock`) và máy tính lãi mất (`ForfeitCalc`) vẫn theo preference
+    — chúng là ô nhập nhanh và đã hiện sẵn dòng cảnh báo *"Sẽ ghi X ₫ · Auto-K"*, nên không âm thầm.
+  - `currencyInput.test.js` thêm contract soi source cho cả bốn chỗ: chặn theo hướng *"không còn chỗ
+    nào parse trần"* nên thêm một ô tiền mới mà quên option là test đỏ. Đã đối chiếu với code ở HEAD:
+    cả bốn assertion đều fail trên bản chưa sửa. Regex ở `financeMigration.test.js` khớp nguyên văn
+    call site nên được nới `[^)]*` — nó cần chặn ca "form không gửi cột", không phải chữ ký của call.
 
 ### Removed
 - **Drop bảng `inspirational_quotes`** (`data/migration_v6.10.0_drop_inspirational_quotes.sql` — user tự

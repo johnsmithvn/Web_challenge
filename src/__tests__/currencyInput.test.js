@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 // `parseCurrencyInput` đọc localStorage (auto-k, tỷ giá USD) mà node không có →
 // stub tối thiểu, `getItem` trả null nghĩa là dùng mặc định (auto-k BẬT).
@@ -102,5 +103,32 @@ assert.equal(parseCurrencyInput('50', { autoK: false }), 50, 'ép tắt thắng 
 // Dòng cảnh báo phải im khi luồng đó vốn không áp auto-K — cảnh báo sai còn tệ hơn.
 assert.equal(autoKPreview('5000', { autoK: false }), '');
 assert.equal(autoKPreview('5000'), '5.000.000');
+
+/* ── Form SỬA không được parse LẠI số ĐÃ LƯU ──
+   Luật này đã sửa một lần ở v6.10.0 cho luồng Inbox nhưng bỏ sót bốn form sửa: ô tiền
+   điền sẵn bằng số đã lưu, mở ra bấm Lưu (kể cả chỉ sửa tiêu đề) là 5.000đ thành
+   5.000.000đ. Logic nằm trong component nên không import ra test trực tiếp được — soi
+   source, và soi theo hướng "không còn chỗ nào parse trần" để đổi tên/refactor không vỡ. */
+const src = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
+
+const listScreen = src('../components/finance/ListScreen.jsx');
+assert.match(listScreen, /autoK: false/, 'panel Sửa giao dịch phải tắt auto-K');
+assert.equal(/parseCurrencyInput\(amount\)/.test(listScreen), false,
+  'ô Số tiền của panel Sửa giao dịch mang số đã lưu, không được parse trần');
+
+const recurring = src('../components/finance/RecurringScreen.jsx');
+assert.match(recurring, /autoK: false/, 'form định kỳ phải tắt auto-K khi đang SỬA');
+assert.equal(/parseCurrencyInput\(f\.\w+\)/.test(recurring), false,
+  'mọi ô tiền của form định kỳ phải truyền option parse, kể cả các dòng xem trước');
+
+const analyze = src('../components/finance/AnalyzeScreen.jsx');
+assert.equal(/parseCurrencyInput\(v\)/.test(analyze), false,
+  'hạn mức đã đặt không được parse trần: onBlur là lưu, rời ô là ×1.000');
+
+const incubator = src('../pages/IncubatorPage.jsx');
+assert.equal(/parseCurrencyInput\(detailCost\)/.test(incubator), false,
+  'ô chi phí trong detail Ươm mầm (cả lúc Lưu và dòng Xem trước) phải tắt auto-K');
+
+console.log('edit-form auto-K contract: OK');
 
 console.log('currency input tests passed');

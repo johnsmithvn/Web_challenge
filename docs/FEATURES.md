@@ -122,6 +122,9 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 - Hai tab: **Chung** (tiền tệ + tag) và **Hồ sơ**. Tab Quotes đã bỏ ở v6.9.0 — nó CRUD bảng
   `inspirational_quotes` mà không màn nào đọc, nên quote thêm ở đó không hiện ra ở đâu.
 - Cấu hình tiền tệ: tỷ giá USD (chỉ dùng cho ô chi phí dự kiến ở Ươm mầm) và Auto-K.
+- Auto-K chỉ áp cho ô **nhập mới**. Form **sửa** (Sửa giao dịch, sửa hóa đơn/thu định kỳ/vay/thẻ/cho
+  vay, hạn mức đã đặt, chi phí dự kiến trong detail Ươm mầm) hiển thị số ĐÃ LƯU nên không áp Auto-K:
+  số trong ô là số sẽ lưu. Chữ chỉ độ lớn (`50k`, `2 triệu`, `10$`) vẫn hiểu ở những ô nhận chữ.
 - Tag manager: tạo, đổi tên/màu, xem usage breakdown và xóa link có xác nhận.
 - Tag plaintext dùng cho Knowledge, Task và Finance transaction qua ba junction riêng để giữ FK.
 - Vault tag là ngoại lệ: nằm trong ciphertext và chỉ có sau unlock.
@@ -154,7 +157,11 @@ nhập không tự trở thành mẫu số ngân sách.
 
 - `overview`: Tổng quan; query `view=budget|stats` mở Ngân sách hoặc Thống kê.
 - `add`: nhập nhanh bằng form, câu tự nhiên hoặc shortcut.
-- `list`: tìm/lọc/nhóm transaction, sửa/xóa, CSV export.
+- `list`: tìm/lọc/nhóm transaction, sửa/xóa, CSV export. Ngoài chip loại còn có nút **Lọc** (icon
+  phễu) mở bộ lọc nhóm · danh mục con · khoảng ngày; danh mục con chỉ chọn được sau khi chọn nhóm cha
+  và bị bỏ khi đổi nhóm. Mọi điều kiện cộng dồn (AND) với chip và ô tìm, khoảng ngày lọc **trong** kỳ
+  đang xem chứ không đổi kỳ. Dòng tổng hiện điều kiện đang bật + tổng chi của phần đang lọc; CSV xuất
+  đúng phần đang lọc.
 - `cats`: taxonomy chi/thu và override label/màu/icon/subcategory.
 - `recurring`: hóa đơn, thu định kỳ, khoản vay, thẻ và cho vay.
 
