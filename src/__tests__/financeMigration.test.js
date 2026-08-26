@@ -165,3 +165,29 @@ assert.match(sql, /security_invoker = TRUE/, 'tagged_items phải chạy bằng 
 assert.match(sql, /REVOKE ALL ON TABLE[\s\S]*FROM anon;/, 'anon không được truy cập bảng Finance');
 
 console.log('financeMigration contract check: OK');
+
+/* ── Taxonomy: sub hệ thống và sub đã đổi nhóm cha ────────────────────────── */
+const cats = JSON.parse(readFileSync(new URL('../data/finance-categories.json', import.meta.url), 'utf8'));
+const add = readFileSync(new URL('../components/finance/AddScreen.jsx', import.meta.url), 'utf8');
+const subs = cats.expenseGroups.flatMap(group => (group.subs || []).map(sub => ({ ...sub, group: group.key })));
+
+// `subLabel()` tra key trên TOÀN BỘ nhóm, nên key trùng nhau sẽ trả nhãn của nhóm khác.
+assert.equal(new Set(subs.map(sub => sub.key)).size, subs.length, 'key sub phải duy nhất trên cả taxonomy');
+
+// Hai sub này chỉ do RPC ghi, kèm excluded=TRUE. Gõ tay được là đếm trùng: mua 20tr rồi
+// ghi thêm "trả sao kê 20tr" thành chi 40tr.
+for (const key of ['finance.principal', 'finance.card']) {
+  assert.ok(subs.find(sub => sub.key === key)?.systemOnly === true,
+    `${key} phải giữ cờ systemOnly`);
+}
+
+// Ba ô chọn sub lúc GHI phải đi qua pickableSubs: nó bỏ sub systemOnly nhưng LUÔN giữ giá
+// trị dòng đang sửa — sub có thể đã đổi nhóm cha mà giữ nguyên key, dropdown trống thì bấm
+// lưu là xóa mất danh mục con của dòng cũ.
+for (const [name, src] of [['ListScreen', list], ['RecurringScreen', recurring], ['AddScreen', add]]) {
+  assert.match(src, /pickableSubs\(/, `${name} phải chọn sub qua pickableSubs`);
+}
+assert.doesNotMatch(add + list + recurring, /subs \|\| \[\]\)\.filter\(s(ub)? => !s(ub)?\.systemOnly/,
+  'lọc systemOnly tay ở màn hình sẽ bỏ mất nhánh giữ giá trị cũ — dùng pickableSubs');
+
+console.log('finance taxonomy contract: OK');

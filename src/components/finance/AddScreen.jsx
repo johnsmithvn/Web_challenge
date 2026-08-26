@@ -3,7 +3,7 @@ import { useUserTasks } from '../../hooks/useUserTasks';
 import { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
 import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled } from '../../utils/financeLogic';
 import {
-  money, catInfo, subLabel, NECESSITY_META, Segmented, TaskPicker, FinanceIcon, DateField,
+  money, catInfo, subLabel, pickableSubs, NECESSITY_META, Segmented, TaskPicker, FinanceIcon, DateField,
 } from './parts';
 import AppIcon from '../AppIcon';
 
@@ -426,7 +426,7 @@ export default function AddScreen({ fin, nav }) {
                 <section className="fin-entry-section">
                   <div className="fin-field-heading"><label>Danh mục con</label><small>bỏ qua cũng được — thống kê vẫn chạy ở cấp nhóm</small></div>
                   <div className="fin-subcategory-picker">
-                    {(expenseGroup?.subs || []).map(sub => (
+                    {pickableSubs(expenseGroup, subId, cats).map(sub => (
                       <button key={sub.key} type="button" className={subId === sub.key ? 'is-active' : ''}
                         onClick={() => setSubId(current => current === sub.key ? '' : sub.key)}>
                         <AppIcon name={NEED_ICONS[sub.necessity || deriveNecessity(categoryId, sub.key, cats)]} size={11} />

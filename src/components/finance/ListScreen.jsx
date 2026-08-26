@@ -5,7 +5,7 @@ import { parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
 import { formatDate, toDateStr } from '../../utils/dateUtils';
 import { periodTotals, groupByDate, billPeriods } from '../../utils/financeLogic';
 import {
-  money, catInfo, subLabel, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon, DateField,
+  money, catInfo, subLabel, pickableSubs, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon, DateField,
 } from './parts';
 import SkeletonList from '../SkeletonList';
 import AppIcon from '../AppIcon';
@@ -317,7 +317,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
     : [];
   const info = catInfo(categoryId, fin.cats);
   const categoryOptions = tx.type === 'income' ? fin.cats.incomeGroups : fin.cats.expenseGroups;
-  const subOptions = fin.cats.expenseGroups.find(group => group.key === categoryId)?.subs || [];
+  const subOptions = pickableSubs(fin.cats.expenseGroups.find(group => group.key === categoryId), tx.subcategory_id, fin.cats);
   const source = tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn';
   const typeLabel = tx.type === 'income' ? 'Thu' : tx.type === 'saving' ? 'Để dành' : 'Chi';
 

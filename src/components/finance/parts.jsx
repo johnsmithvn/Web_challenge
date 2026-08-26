@@ -34,6 +34,26 @@ export function subLabel(subId, cats = CATS) {
   return null;
 }
 
+/**
+ * Sub được phép CHỌN cho một nhóm — dùng cho mọi ô chọn lúc GHI (thêm giao dịch, sửa
+ * giao dịch, mẫu hóa đơn), không dùng cho ô lọc.
+ *
+ * Hai luật:
+ *   - Bỏ sub `systemOnly` (finance.principal / finance.card): chỉ RPC được ghi, kèm
+ *     `excluded=TRUE`. Gõ tay thì thành một khoản chi thật và đếm trùng với lúc quẹt thẻ.
+ *   - LUÔN giữ lại `current` — giá trị dòng đang sửa đang mang. Sub có thể đã đổi nhóm
+ *     cha mà giữ nguyên key (xem `_movedSubs` trong finance-categories.json), nên nó
+ *     không còn nằm trong `group.subs`. Mở form ra mà dropdown trống thì người dùng
+ *     tưởng chưa chọn gì, bấm lưu là xóa mất danh mục con của dòng cũ.
+ */
+export function pickableSubs(group, current, cats = CATS) {
+  const subs = (group?.subs || []).filter(sub => !sub.systemOnly || sub.key === current);
+  if (current && !subs.some(sub => sub.key === current)) {
+    subs.push({ key: current, label: subLabel(current, cats) || current });
+  }
+  return subs;
+}
+
 export function FinanceIcon({ categoryId, name, cats = CATS, size = 18, weight = 'regular', ...props }) {
   const iconName = name || catInfo(categoryId, cats).icon;
   return <AppIcon name={iconName} size={size} weight={weight} {...props} />;

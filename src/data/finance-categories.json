@@ -1,9 +1,11 @@
 {
   "_note": "Danh muc Finance theo handoff Nocturne. Key la dinh danh ben, dung trong transaction/category override. Parent group dong; user chi sua ten, mau, icon, an/hien va danh muc con.",
+  "_movedSubs": "Sub co the DOI NHOM CHA ma GIU NGUYEN key (housing.internet/housing.mobile o nhom `subscription`, subscription.streaming o `entertainment`, subscription.learning o `family`, subscription.membership o `health`). Key la dinh danh ben: doi key se lam MAT nhan cua giao dich/hoa don cu (subLabel tra null), nen key khong bat buoc trung tien to voi nhom dang chua no. Parent key `subscription` giu nguyen vi DB CHECK khoa tap 11 key — nhan hien ra la 'Lien lac & Dich vu so'.",
+  "_systemOnly":"Sub co `systemOnly: true` chi do RPC ghi (kem excluded=TRUE) nen KHONG hien o cac o chon luc GHI (AddScreen, sua giao dich, mau hoa don). Go tay se thanh mot khoan chi that va dem trung voi luc quet the / luc vay. Van hien o o LOC va o man Danh muc.",
   "_necessityLabels": "Nhãn hiển thị của must/need/want nằm ở NECESSITY_META trong src/components/finance/parts.jsx — MỘT nơi duy nhất. Key ben-dinh-danh o duoi chi la khoa, khong phai chu hien ra.",
   "necessityByCat": {
     "food": "need", "transport": "need", "housing": "must", "shopping": "want",
-    "subscription": "want", "health": "need", "entertainment": "want", "family": "need",
+    "subscription": "need", "health": "need", "entertainment": "want", "family": "need",
     "social": "want", "finance": "must", "other": "want"
   },
   "expenseGroups": [
@@ -25,11 +27,10 @@
       { "key": "housing.rent", "label": "Tiền thuê nhà", "necessity": "must" },
       { "key": "housing.electric", "label": "Điện", "necessity": "must" },
       { "key": "housing.water", "label": "Nước", "necessity": "must" },
-      { "key": "housing.internet", "label": "Internet", "necessity": "need" },
-      { "key": "housing.mobile", "label": "Điện thoại & 4G", "necessity": "need" },
       { "key": "housing.gas", "label": "Gas", "necessity": "must" },
       { "key": "housing.cleaning", "label": "Phí vệ sinh", "necessity": "must" },
-      { "key": "housing.management", "label": "Phí quản lý chung cư", "necessity": "must" }
+      { "key": "housing.management", "label": "Phí quản lý chung cư", "necessity": "must" },
+      { "key": "housing.repair", "label": "Sửa chữa & bảo trì nhà", "necessity": "need" }
     ] },
     { "key": "shopping", "label": "Mua sắm", "icon": "shopping", "color": "#e07f93", "nature": "variable", "subs": [
       { "key": "shopping.clothes", "label": "Quần áo & phụ kiện", "necessity": "need" },
@@ -38,22 +39,23 @@
       { "key": "shopping.electronics", "label": "Đồ điện tử", "necessity": "want" },
       { "key": "shopping.personal", "label": "Chăm sóc cá nhân", "necessity": "need" }
     ] },
-    { "key": "subscription", "label": "Dịch vụ đăng ký", "icon": "squares", "color": "#b47fd8", "nature": "fixed", "subs": [
-      { "key": "subscription.streaming", "label": "Phim & nhạc trực tuyến", "necessity": "want" },
+    { "key": "subscription", "label": "Liên lạc & Dịch vụ số", "icon": "deviceMobile", "color": "#b47fd8", "nature": "fixed", "subs": [
+      { "key": "housing.internet", "label": "Internet", "necessity": "need" },
+      { "key": "housing.mobile", "label": "Điện thoại & 4G", "necessity": "need" },
       { "key": "subscription.software", "label": "Phần mềm & AI", "necessity": "need" },
-      { "key": "subscription.cloud", "label": "Lưu trữ đám mây", "necessity": "need" },
-      { "key": "subscription.learning", "label": "Báo & khóa học online", "necessity": "need" },
-      { "key": "subscription.membership", "label": "Hội viên", "necessity": "want" }
+      { "key": "subscription.cloud", "label": "Lưu trữ đám mây", "necessity": "need" }
     ] },
     { "key": "health", "label": "Sức khỏe", "icon": "firstAid", "color": "#7fc060", "nature": "variable", "subs": [
       { "key": "health.doctor", "label": "Khám chữa bệnh", "necessity": "must" },
       { "key": "health.medicine", "label": "Thuốc", "necessity": "must" },
       { "key": "health.dental", "label": "Nha khoa", "necessity": "need" },
-      { "key": "health.insurance", "label": "Bảo hiểm sức khỏe", "necessity": "must" },
-      { "key": "health.gym", "label": "Gym & thể thao", "necessity": "want" }
+      { "key": "health.insurance", "label": "Bảo hiểm y tế (BHYT/BHXH)", "necessity": "must" },
+      { "key": "health.gym", "label": "Gym & thể thao", "necessity": "want" },
+      { "key": "subscription.membership", "label": "Hội viên (gym, club)", "necessity": "want" }
     ] },
     { "key": "entertainment", "label": "Giải trí & Sở thích", "icon": "game", "color": "#e58159", "nature": "variable", "subs": [
       { "key": "entertainment.events", "label": "Xem phim & sự kiện", "necessity": "want" },
+      { "key": "subscription.streaming", "label": "Phim & nhạc trực tuyến", "necessity": "want" },
       { "key": "entertainment.travel", "label": "Du lịch", "necessity": "want" },
       { "key": "entertainment.game", "label": "Game", "necessity": "want" },
       { "key": "entertainment.party", "label": "Tụ tập & nhậu", "necessity": "want" },
@@ -63,6 +65,7 @@
       { "key": "family.tuition", "label": "Học phí", "necessity": "must" },
       { "key": "family.books", "label": "Sách & tài liệu", "necessity": "need" },
       { "key": "family.course", "label": "Khóa học", "necessity": "need" },
+      { "key": "subscription.learning", "label": "Báo & khóa học online", "necessity": "need" },
       { "key": "family.children", "label": "Chi cho con", "necessity": "must" },
       { "key": "family.parents", "label": "Chi cho bố mẹ", "necessity": "must" },
       { "key": "family.helper", "label": "Giúp việc", "necessity": "need" }
@@ -78,9 +81,9 @@
       { "key": "finance.installment", "label": "Trả góp", "necessity": "must" },
       { "key": "finance.debt", "label": "Trả nợ", "necessity": "must" },
       { "key": "finance.interest", "label": "Lãi & phí ngân hàng", "necessity": "must" },
-      { "key": "finance.principal", "label": "Trả nợ gốc", "necessity": "must" },
-      { "key": "finance.card", "label": "Trả sao kê thẻ", "necessity": "must" },
-      { "key": "finance.insurance", "label": "Bảo hiểm", "necessity": "must" },
+      { "key": "finance.principal", "label": "Trả nợ gốc", "necessity": "must", "systemOnly": true },
+      { "key": "finance.card", "label": "Trả sao kê thẻ", "necessity": "must", "systemOnly": true },
+      { "key": "finance.insurance", "label": "Bảo hiểm khác (nhân thọ, xe, nhà)", "necessity": "must" },
       { "key": "finance.tax", "label": "Thuế", "necessity": "must" }
     ] },
     { "key": "other", "label": "Khác", "icon": "dots", "color": "#8b91a6", "nature": "variable", "subs": [

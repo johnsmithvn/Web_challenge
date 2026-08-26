@@ -76,6 +76,16 @@ chưa được user chấp thuận.
 cần thiết. Parent key là tập đóng để constraint/budget/report ổn định. User chỉ override presentation
 và subcategory hợp lệ; không tạo parent tùy ý.
 
+Phân loại theo **mục đích** của khoản chi, không theo hình thức thanh toán. "Định kỳ" là thuộc tính
+(`finance_bills` + `is_fixed`), không phải nhóm cha — nên Netflix nằm ở Giải trí, gym ở Sức khỏe, và
+`subscription` mang nhãn **Liên lạc & Dịch vụ số** (internet, 4G, phần mềm/AI, cloud).
+
+- Sub được đổi nhóm cha nhưng **giữ nguyên key** (`housing.internet` ở nhóm `subscription`,
+  `subscription.streaming` ở `entertainment`, `subscription.learning` ở `family`,
+  `subscription.membership` ở `health`). Đổi key làm `subLabel()` trả null → giao dịch/hóa đơn cũ mất
+  nhãn. Key là định danh bên, không cần trùng tiền tố với nhóm đang chứa nó.
+- Sub `systemOnly: true` (`finance.principal`, `finance.card`) chỉ do RPC ghi kèm `excluded=TRUE`; ẩn
+  khỏi mọi ô chọn lúc GHI (thêm mới, sửa giao dịch, mẫu hóa đơn) để không đếm trùng, vẫn hiện ở ô lọc.
 - Ô tiền/số nguyên sanitize về digit.
 - Ô lãi/phần trăm cho phép decimal.
 - Natural-language box dùng `parseCurrencyInput` cho amount và `matchCategory`/`NL_DICT` để đoán nhóm.

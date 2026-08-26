@@ -7,7 +7,7 @@ import {
   currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
   billCycle, billSettled, billPeriods, billPeriodForDate,
 } from '../../utils/financeLogic';
-import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField } from './parts';
+import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField, pickableSubs } from './parts';
 import AppIcon from '../AppIcon';
 import InfoTip from '../InfoTip';
 import SkeletonList from '../SkeletonList';
@@ -28,22 +28,21 @@ const SEGMENTS = [
 const BILL_TEMPLATES = [
   { label: 'Điện',         icon: 'lightning',    category_id: 'housing', subcategory_id: 'housing.electric', amount_mode: 'ask' },
   { label: 'Nước',         icon: 'drop',         category_id: 'housing', subcategory_id: 'housing.water', amount_mode: 'ask' },
-  { label: 'Internet',     icon: 'wifi',         category_id: 'housing', subcategory_id: 'housing.internet', amount_mode: 'fixed' },
+  { label: 'Internet',     icon: 'wifi',         category_id: 'subscription', subcategory_id: 'housing.internet', amount_mode: 'fixed' },
   { label: 'Tiền thuê nhà', icon: 'house',       category_id: 'housing', subcategory_id: 'housing.rent', amount_mode: 'fixed' },
-  { label: 'Truyền hình',  icon: 'television',   category_id: 'subscription', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
-  { label: 'Điện thoại / 4G', icon: 'deviceMobile', category_id: 'housing', subcategory_id: 'housing.mobile', amount_mode: 'fixed' },
+  { label: 'Truyền hình',  icon: 'television',   category_id: 'entertainment', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'Điện thoại / 4G', icon: 'deviceMobile', category_id: 'subscription', subcategory_id: 'housing.mobile', amount_mode: 'fixed' },
   { label: 'Phí vệ sinh',  icon: 'trash',        category_id: 'housing', subcategory_id: 'housing.cleaning', amount_mode: 'fixed' },
   { label: 'Phí quản lý chung cư', icon: 'buildings', category_id: 'housing', subcategory_id: 'housing.management', amount_mode: 'fixed' },
-  { label: 'Netflix',      icon: 'film',         category_id: 'subscription', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
-  { label: 'Spotify',      icon: 'music',        category_id: 'subscription', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
-  { label: 'YouTube Premium', icon: 'video',     category_id: 'subscription', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'Netflix',      icon: 'film',         category_id: 'entertainment', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'Spotify',      icon: 'music',        category_id: 'entertainment', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'YouTube Premium', icon: 'video',     category_id: 'entertainment', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
   { label: 'Google One',   icon: 'cloud',        category_id: 'subscription', subcategory_id: 'subscription.cloud', amount_mode: 'fixed' },
   { label: 'iCloud',       icon: 'cloud',        category_id: 'subscription', subcategory_id: 'subscription.cloud', amount_mode: 'fixed' },
   { label: 'ChatGPT',      icon: 'sparkle',      category_id: 'subscription', subcategory_id: 'subscription.software', amount_mode: 'fixed' },
   { label: 'Học phí',      icon: 'graduation',   category_id: 'family', subcategory_id: 'family.tuition', amount_mode: 'fixed' },
-  { label: 'Bảo hiểm',     icon: 'certificate',  category_id: 'health', subcategory_id: 'health.insurance', amount_mode: 'fixed' },
+  { label: 'Bảo hiểm',     icon: 'certificate',  category_id: 'finance', subcategory_id: 'finance.insurance', amount_mode: 'fixed' },
   { label: 'Trả góp',      icon: 'receipt',      category_id: 'finance', subcategory_id: 'finance.installment', amount_mode: 'fixed' },
-  { label: 'Trả nợ',       icon: 'handCoins',    category_id: 'finance', subcategory_id: 'finance.debt', amount_mode: 'fixed' },
   { label: 'Gửi xe tháng', icon: 'gas',          category_id: 'transport', subcategory_id: 'transport.parking', amount_mode: 'fixed' },
   { label: 'Khác',         icon: 'dots',         category_id: 'other', subcategory_id: 'other.unclassified', amount_mode: 'fixed' },
 ];
@@ -594,7 +593,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
           <label className="fin-field"><span>Danh mục con</span>
             <select className="fin-input" value={f.subcategory_id || ''} onChange={set('subcategory_id')}>
               <option value="">— không chọn —</option>
-              {(grp?.subs || []).map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+              {pickableSubs(grp, f.subcategory_id, fin.cats).map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
             </select></label>
           <label className="fin-field"><span>Lặp lại</span>
             <select className="fin-input" value={f.every || 1} onChange={set('every')}>
