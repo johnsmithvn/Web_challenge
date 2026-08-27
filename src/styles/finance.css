@@ -149,6 +149,7 @@
 .fin-input:disabled { opacity: .5; cursor: not-allowed; }
 .fin-input::placeholder { color: var(--n-txt3); }
 .fin-input--sm { padding: 6px 8px; font-size: 12.5px; width: auto; }
+select.fin-input { color-scheme: dark; cursor: pointer; }
 /* Ô ngày: gõ thẳng dd/mm/yyyy, nút lịch bên phải mở popover (lật lên khi dưới hết chỗ). */
 .fin-datefield { position: relative; display: block; }
 /* Ô ngày phải CAO ĐÚNG BẰNG ô chữ bên cạnh. Trước đây nó dùng nguyên padding dọc 9px

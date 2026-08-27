@@ -207,7 +207,6 @@
 .fin-schema h2 { margin: 0; font-size: 15px; letter-spacing: 0; }
 
 .fin-field { display: grid; gap: 5px; color: var(--n-txt2); font-size: 11.5px; }
-.fin-field input, .fin-field select, .fin-sub-editor input, .fin-sub-editor select,
 .fin-check-row { display: flex; align-items: flex-start; gap: 9px; margin-top: 13px; padding: 10px; border-radius: var(--n-r); background: var(--n-sink); cursor: pointer; }
 .fin-check-row input { accent-color: var(--n-accent-2); margin-top: 3px; }
 .fin-check-row strong, .fin-check-row small { display: block; }
