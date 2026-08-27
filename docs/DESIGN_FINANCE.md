@@ -72,17 +72,26 @@ chưa được user chấp thuận.
 
 ## 4. Taxonomy và input
 
-`src/data/finance-categories.json` là taxonomy mặc định: 11 nhóm chi, 7 nhóm thu, subcategory và mức
+`src/data/finance-categories.json` là taxonomy mặc định: 10 nhóm chi, 7 nhóm thu, subcategory và mức
 cần thiết. Parent key là tập đóng để constraint/budget/report ổn định. User chỉ override presentation
 và subcategory hợp lệ; không tạo parent tùy ý.
 
 Phân loại theo **mục đích** của khoản chi, không theo hình thức thanh toán. "Định kỳ" là thuộc tính
-(`finance_bills` + `is_fixed`), không phải nhóm cha — nên Netflix nằm ở Giải trí, gym ở Sức khỏe, và
-`subscription` mang nhãn **Liên lạc & Dịch vụ số** (internet, 4G, phần mềm/AI, cloud).
+(`finance_bills` + `is_fixed`), không phải nhóm cha — nên Netflix nằm ở Cá nhân & Giải trí, gym ở Sức
+khỏe, và `subscription` mang nhãn **Liên lạc & Dịch vụ số** (internet, 4G, phần mềm/AI, cloud).
+
+v6.11.0 hạ 11 nhóm chi xuống 10: `shopping` đổi key thành `personal` (nhãn **Cá nhân & Giải trí**) và
+nhóm `entertainment` bị bỏ hẳn, sub của nó dồn sang `personal` (riêng `entertainment.party` sang
+`food`). Đây là lần duy nhất một parent key đổi tên — phải đi kèm
+`data/migration_v6.11.0_finance_taxonomy.sql` vì hàm CHECK `finance_valid_expense_category` khóa tập
+key ở tầng database. Tập key đó và `expenseGroups` bị test `financeMigration.test.js` ép phải khớp
+nhau.
 
 - Sub được đổi nhóm cha nhưng **giữ nguyên key** (`housing.internet` ở nhóm `subscription`,
-  `subscription.streaming` ở `entertainment`, `subscription.learning` ở `family`,
-  `subscription.membership` ở `health`). Đổi key làm `subLabel()` trả null → giao dịch/hóa đơn cũ mất
+  `subscription.streaming` và `entertainment.*` ở `personal`, `entertainment.party` ở `food`,
+  `shopping.home` ở `family`, `subscription.learning` ở `family`, `subscription.membership` ở
+  `health`).  Migration v6.11.0 đổi `category_id` của dữ liệu cũ nhưng **không** đụng
+  `subcategory_id` vì đúng lý do này. Đổi key làm `subLabel()` trả null → giao dịch/hóa đơn cũ mất
   nhãn. Key là định danh bên, không cần trùng tiền tố với nhóm đang chứa nó.
 - Sub `systemOnly: true` (`finance.principal`, `finance.card`) chỉ do RPC ghi kèm `excluded=TRUE`; ẩn
   khỏi mọi ô chọn lúc GHI (thêm mới, sửa giao dịch, mẫu hóa đơn) để không đếm trùng, vẫn hiện ở ô lọc.

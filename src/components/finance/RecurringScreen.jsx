@@ -30,13 +30,13 @@ const BILL_TEMPLATES = [
   { label: 'Nước',         icon: 'drop',         category_id: 'housing', subcategory_id: 'housing.water', amount_mode: 'ask' },
   { label: 'Internet',     icon: 'wifi',         category_id: 'subscription', subcategory_id: 'housing.internet', amount_mode: 'fixed' },
   { label: 'Tiền thuê nhà', icon: 'house',       category_id: 'housing', subcategory_id: 'housing.rent', amount_mode: 'fixed' },
-  { label: 'Truyền hình',  icon: 'television',   category_id: 'entertainment', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'Truyền hình',  icon: 'television',   category_id: 'personal', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
   { label: 'Điện thoại / 4G', icon: 'deviceMobile', category_id: 'subscription', subcategory_id: 'housing.mobile', amount_mode: 'fixed' },
   { label: 'Phí vệ sinh',  icon: 'trash',        category_id: 'housing', subcategory_id: 'housing.cleaning', amount_mode: 'fixed' },
   { label: 'Phí quản lý chung cư', icon: 'buildings', category_id: 'housing', subcategory_id: 'housing.management', amount_mode: 'fixed' },
-  { label: 'Netflix',      icon: 'film',         category_id: 'entertainment', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
-  { label: 'Spotify',      icon: 'music',        category_id: 'entertainment', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
-  { label: 'YouTube Premium', icon: 'video',     category_id: 'entertainment', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'Netflix',      icon: 'film',         category_id: 'personal', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'Spotify',      icon: 'music',        category_id: 'personal', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
+  { label: 'YouTube Premium', icon: 'video',     category_id: 'personal', subcategory_id: 'subscription.streaming', amount_mode: 'fixed' },
   { label: 'Google One',   icon: 'cloud',        category_id: 'subscription', subcategory_id: 'subscription.cloud', amount_mode: 'fixed' },
   { label: 'iCloud',       icon: 'cloud',        category_id: 'subscription', subcategory_id: 'subscription.cloud', amount_mode: 'fixed' },
   { label: 'ChatGPT',      icon: 'sparkle',      category_id: 'subscription', subcategory_id: 'subscription.software', amount_mode: 'fixed' },
@@ -541,7 +541,14 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
     onDone(true);   // đã lưu → đóng thẳng, không hỏi "bỏ nội dung?"
   };
 
-  const grp = fin.cats.expenseGroups.find(g => g.key === (f.category_id || 'housing'));
+  // Nhóm cha có thể BIẾN MẤT khỏi taxonomy (v6.11.0 xóa `entertainment`). Select
+  // native không có option khớp thì trình duyệt hiện option ĐẦU TIÊN trong khi state
+  // vẫn giữ khóa cũ — bấm Lưu là ghi một khóa chết mà người dùng tưởng đã chọn đúng.
+  // Cùng luật với pickableSubs: luôn giữ lại giá trị dòng đang sửa làm một option.
+  const catId = f.category_id || 'housing';
+  const catOptions = fin.cats.expenseGroups.filter(g => !g.hidden || g.key === catId);
+  if (!catOptions.some(g => g.key === catId)) catOptions.push(catInfo(catId, fin.cats));
+  const grp = fin.cats.expenseGroups.find(g => g.key === catId);
   const segMeta = SEGMENTS.find(s => s.value === seg);
   // Xem trước lãi khoản cho vay: chạy lại mỗi lần gõ số tiền, đổi ngày đưa hay ngày hẹn.
   const lendMath = seg === 'lend' ? lendingInterest({
@@ -587,9 +594,12 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
           <label className="fin-field"><span>Mã khách hàng · tùy chọn</span>
             <input className="fin-input" placeholder="PD07000018579" value={f.customer_code || ''} onChange={set('customer_code')} /></label>
           <label className="fin-field"><span>Danh mục</span>
-            <select className="fin-input" value={f.category_id || 'housing'} onChange={set('category_id')}>
-              {fin.cats.expenseGroups.filter(g => !g.hidden).map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
-            </select></label>
+            <span className="fin-pickrow">
+              <FinanceIcon categoryId={catId} cats={fin.cats} size={17} weight="duotone" style={{ color: catInfo(catId, fin.cats).color }} />
+              <select className="fin-input" value={catId} onChange={set('category_id')}>
+                {catOptions.map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
+              </select>
+            </span></label>
           <label className="fin-field"><span>Danh mục con</span>
             <select className="fin-input" value={f.subcategory_id || ''} onChange={set('subcategory_id')}>
               <option value="">— không chọn —</option>
@@ -620,7 +630,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
               <button type="button" key={name} title={name} aria-label={`Chọn icon ${name}`}
                 aria-pressed={(f.icon || '') === name}
                 className={(f.icon || '') === name ? 'is-active' : ''}
-                style={{ '--c': catInfo(f.category_id || 'housing', fin.cats).color }}
+                style={{ '--c': catInfo(catId, fin.cats).color }}
                 onClick={() => setF(p => ({ ...p, icon: p.icon === name ? '' : name }))}>
                 <AppIcon name={name} size={16} weight="fill" />
               </button>

@@ -330,12 +330,12 @@ export const NL_DICT = [
   { re: /tiền nước|hóa đơn nước|(^|\s)nước(\s|$)/i,  cat: 'housing',       sub: 'housing.water' },
   { re: /internet|wifi|mạng|fpt|viettel/i,           cat: 'subscription',  sub: 'housing.internet' },
   { re: /tiền nhà|thuê nhà|thuê phòng/i,             cat: 'housing',       sub: 'housing.rent' },
-  { re: /netflix|spotify|youtube|đăng ký|subscri/i,  cat: 'entertainment', sub: 'subscription.streaming' },
+  { re: /netflix|spotify|youtube|đăng ký|subscri/i,  cat: 'personal',      sub: 'subscription.streaming' },
   { re: /thuốc|khám|bệnh viện|bác sĩ/i,              cat: 'health',        sub: 'health.medicine' },
-  { re: /phim|sự kiện/i,                              cat: 'entertainment', sub: 'entertainment.events' },
-  { re: /game/i,                                      cat: 'entertainment', sub: 'entertainment.game' },
-  { re: /du lịch/i,                                   cat: 'entertainment', sub: 'entertainment.travel' },
-  { re: /quần áo|áo|giày|mua sắm|shopee|lazada/i,    cat: 'shopping',      sub: 'shopping.clothes' },
+  { re: /phim|sự kiện/i,                              cat: 'personal',      sub: 'entertainment.events' },
+  { re: /game/i,                                      cat: 'personal',      sub: 'entertainment.game' },
+  { re: /du lịch/i,                                   cat: 'personal',      sub: 'entertainment.travel' },
+  { re: /quần áo|áo|giày|mua sắm|shopee|lazada/i,    cat: 'personal',      sub: 'shopping.clothes' },
 ];
 
 /** Đoán {categoryId, subId} từ text. Trả null nếu không khớp luật nào. */

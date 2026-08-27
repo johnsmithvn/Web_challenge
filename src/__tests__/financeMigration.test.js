@@ -190,4 +190,30 @@ for (const [name, src] of [['ListScreen', list], ['RecurringScreen', recurring],
 assert.doesNotMatch(add + list + recurring, /subs \|\| \[\]\)\.filter\(s(ub)? => !s(ub)?\.systemOnly/,
   'lọc systemOnly tay ở màn hình sẽ bỏ mất nhánh giữ giá trị cũ — dùng pickableSubs');
 
+/*
+ * Tập khóa nhóm cha nằm ở HAI nơi: hàm CHECK trong database và expenseGroups của
+ * template. Lệch nhau là hỏng ngầm — UI vẫn hiện nhóm, người dùng bấm lưu mới ăn
+ * lỗi CHECK; hoặc ngược lại, DB nhận một khóa mà template không có nhãn, select
+ * Danh mục không có option khớp nên trình duyệt hiện option đầu tiên trong khi
+ * state giữ khóa cũ. v6.11.0 hạ 11 khóa xuống 10 (shopping → personal, bỏ
+ * entertainment) nên phải khóa cả hai đầu lại.
+ */
+const taxonomySql = readFileSync(new URL('../../data/migration_v6.11.0_finance_taxonomy.sql', import.meta.url), 'utf8');
+const validCats = [...taxonomySql
+  .match(/CREATE OR REPLACE FUNCTION finance_valid_expense_category[\s\S]*?ARRAY\[([\s\S]*?)\]/)[1]
+  .matchAll(/'([^']+)'/g)].map(match => match[1]);
+
+assert.equal(validCats.length, 10, 'v6.11.0 chốt 10 nhóm cha chi');
+assert.ok(!validCats.includes('shopping') && !validCats.includes('entertainment'),
+  'shopping/entertainment phải biến mất khỏi tập khóa hợp lệ');
+assert.deepEqual(cats.expenseGroups.map(group => group.key).sort(), [...validCats].sort(),
+  'expenseGroups phải phủ đúng tập khóa DB nhận');
+assert.deepEqual(Object.keys(cats.necessityByCat).sort(), [...validCats].sort(),
+  'necessityByCat phải phủ đúng tập khóa DB nhận');
+
+// Sub key giữ nguyên tiền tố cũ sau khi đổi nhóm cha — đổi là giao dịch cũ mất nhãn.
+for (const key of ['shopping.clothes', 'entertainment.game', 'entertainment.party']) {
+  assert.ok(subs.some(sub => sub.key === key), `sub ${key} phải còn trong taxonomy sau v6.11.0`);
+}
+
 console.log('finance taxonomy contract: OK');

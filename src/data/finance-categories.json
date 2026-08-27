@@ -1,11 +1,11 @@
 {
   "_note": "Danh muc Finance theo handoff Nocturne. Key la dinh danh ben, dung trong transaction/category override. Parent group dong; user chi sua ten, mau, icon, an/hien va danh muc con.",
-  "_movedSubs": "Sub co the DOI NHOM CHA ma GIU NGUYEN key (housing.internet/housing.mobile o nhom `subscription`, subscription.streaming o `entertainment`, subscription.learning o `family`, subscription.membership o `health`). Key la dinh danh ben: doi key se lam MAT nhan cua giao dich/hoa don cu (subLabel tra null), nen key khong bat buoc trung tien to voi nhom dang chua no. Parent key `subscription` giu nguyen vi DB CHECK khoa tap 11 key — nhan hien ra la 'Lien lac & Dich vu so'.",
+  "_movedSubs": "Sub co the DOI NHOM CHA ma GIU NGUYEN key (housing.internet/housing.mobile o nhom `subscription`, subscription.streaming/entertainment.* o `personal`, entertainment.party o `food`, shopping.* o `personal`, shopping.home o `family`, subscription.learning o `family`, subscription.membership o `health`). Key la dinh danh ben: doi key se lam MAT nhan cua giao dich/hoa don cu (subLabel tra null), nen key khong bat buoc trung tien to voi nhom dang chua no. Parent key `subscription` giu nguyen vi DB CHECK khoa tap key — nhan hien ra la 'Lien lac & Dich vu so'. Nhom cha `shopping` DA DOI KEY thanh `personal` va nhom `entertainment` DA BI XOA o v6.11.0 (migration_v6.11.0_finance_taxonomy.sql doi du lieu cu sang `personal`); sub key cua chung GIU NGUYEN tien to cu de khong mat nhan.",
   "_systemOnly":"Sub co `systemOnly: true` chi do RPC ghi (kem excluded=TRUE) nen KHONG hien o cac o chon luc GHI (AddScreen, sua giao dich, mau hoa don). Go tay se thanh mot khoan chi that va dem trung voi luc quet the / luc vay. Van hien o o LOC va o man Danh muc.",
   "_necessityLabels": "Nhãn hiển thị của must/need/want nằm ở NECESSITY_META trong src/components/finance/parts.jsx — MỘT nơi duy nhất. Key ben-dinh-danh o duoi chi la khoa, khong phai chu hien ra.",
   "necessityByCat": {
-    "food": "need", "transport": "need", "housing": "must", "shopping": "want",
-    "subscription": "need", "health": "need", "entertainment": "want", "family": "need",
+    "food": "need", "transport": "need", "housing": "must", "personal": "want",
+    "subscription": "need", "health": "need", "family": "need",
     "social": "want", "finance": "must", "other": "want"
   },
   "expenseGroups": [
@@ -14,7 +14,8 @@
       { "key": "food.eatout", "label": "Ăn ngoài", "necessity": "need" },
       { "key": "food.drinks", "label": "Đồ uống & quán nước", "necessity": "want" },
       { "key": "food.snack", "label": "Ăn vặt", "necessity": "want" },
-      { "key": "food.delivery", "label": "Giao đồ ăn", "necessity": "want" }
+      { "key": "food.delivery", "label": "Giao đồ ăn", "necessity": "want" },
+      { "key": "entertainment.party", "label": "Liên hoan / Nhậu", "necessity": "want" }
     ] },
     { "key": "transport", "label": "Đi lại", "icon": "gas", "color": "#5aa3dd", "nature": "variable", "subs": [
       { "key": "transport.fuel", "label": "Xăng xe", "necessity": "must" },
@@ -32,12 +33,16 @@
       { "key": "housing.management", "label": "Phí quản lý chung cư", "necessity": "must" },
       { "key": "housing.repair", "label": "Sửa chữa & bảo trì nhà", "necessity": "need" }
     ] },
-    { "key": "shopping", "label": "Mua sắm", "icon": "shopping", "color": "#e07f93", "nature": "variable", "subs": [
+    { "key": "personal", "label": "Cá nhân & Giải trí", "icon": "game", "color": "#e07f93", "nature": "variable", "subs": [
       { "key": "shopping.clothes", "label": "Quần áo & phụ kiện", "necessity": "need" },
-      { "key": "shopping.home", "label": "Đồ dùng gia đình", "necessity": "need" },
       { "key": "shopping.tools", "label": "Dụng cụ & thiết bị", "necessity": "need" },
       { "key": "shopping.electronics", "label": "Đồ điện tử", "necessity": "want" },
-      { "key": "shopping.personal", "label": "Chăm sóc cá nhân", "necessity": "need" }
+      { "key": "shopping.personal", "label": "Chăm sóc cá nhân", "necessity": "need" },
+      { "key": "entertainment.events", "label": "Xem phim & sự kiện", "necessity": "want" },
+      { "key": "subscription.streaming", "label": "Phim & nhạc trực tuyến", "necessity": "want" },
+      { "key": "entertainment.travel", "label": "Du lịch", "necessity": "want" },
+      { "key": "entertainment.game", "label": "Game", "necessity": "want" },
+      { "key": "entertainment.hobby", "label": "Sở thích riêng", "necessity": "want" }
     ] },
     { "key": "subscription", "label": "Liên lạc & Dịch vụ số", "icon": "deviceMobile", "color": "#b47fd8", "nature": "fixed", "subs": [
       { "key": "housing.internet", "label": "Internet", "necessity": "need" },
@@ -53,14 +58,6 @@
       { "key": "health.gym", "label": "Gym & thể thao", "necessity": "want" },
       { "key": "subscription.membership", "label": "Hội viên (gym, club)", "necessity": "want" }
     ] },
-    { "key": "entertainment", "label": "Giải trí & Sở thích", "icon": "game", "color": "#e58159", "nature": "variable", "subs": [
-      { "key": "entertainment.events", "label": "Xem phim & sự kiện", "necessity": "want" },
-      { "key": "subscription.streaming", "label": "Phim & nhạc trực tuyến", "necessity": "want" },
-      { "key": "entertainment.travel", "label": "Du lịch", "necessity": "want" },
-      { "key": "entertainment.game", "label": "Game", "necessity": "want" },
-      { "key": "entertainment.party", "label": "Tụ tập & nhậu", "necessity": "want" },
-      { "key": "entertainment.hobby", "label": "Sở thích riêng", "necessity": "want" }
-    ] },
     { "key": "family", "label": "Gia đình & Học tập", "icon": "graduation", "color": "#6fd0c6", "nature": "fixed", "subs": [
       { "key": "family.tuition", "label": "Học phí", "necessity": "must" },
       { "key": "family.books", "label": "Sách & tài liệu", "necessity": "need" },
@@ -68,7 +65,8 @@
       { "key": "subscription.learning", "label": "Báo & khóa học online", "necessity": "need" },
       { "key": "family.children", "label": "Chi cho con", "necessity": "must" },
       { "key": "family.parents", "label": "Chi cho bố mẹ", "necessity": "must" },
-      { "key": "family.helper", "label": "Giúp việc", "necessity": "need" }
+      { "key": "family.helper", "label": "Giúp việc", "necessity": "need" },
+      { "key": "shopping.home", "label": "Đồ dùng gia đình", "necessity": "need" }
     ] },
     { "key": "social", "label": "Hiếu hỷ & Quà tặng", "icon": "gift", "color": "#dd76bd", "nature": "variable", "subs": [
       { "key": "social.wedding", "label": "Cưới hỏi", "necessity": "need" },

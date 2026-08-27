@@ -52,7 +52,7 @@ function CategoryPanel({ fin, editor, onEdit, onClose }) {
       </CategoryCard>)}
       <div className="fin-closed-group">
         <AppIcon name="lock" size={20} />
-        <strong>11 nhóm cha cố định</strong>
+        <strong>{fin.cats.expenseGroups.length} nhóm cha cố định</strong>
         <span>Giữ khóa báo cáo ổn định; hãy thêm mục con thay vì tạo nhóm cha mới.</span>
       </div>
     </div>
@@ -171,8 +171,17 @@ function CategoryEditor({ group, kind, fin, onClose }) {
   return <form className="fin-category-inline-editor" onSubmit={save}>
       <label className="fin-field"><span>Tên nhóm</span><input className="fin-input" value={label} onChange={e => setLabel(e.target.value)} autoFocus required /></label>
       <fieldset className="fin-swatches"><legend>Màu nhận diện</legend>{PALETTE.map(hex => <button key={hex} type="button" aria-label={`Chọn màu ${hex}`} className={color === hex ? 'is-active' : ''} style={{ background: hex }} onClick={() => setColor(hex)} />)}</fieldset>
+      <div className="fin-field"><span>Biểu tượng</span>
+        {/* Select cũ chỉ liệt kê TÊN icon ("squares", "dots") — không ai đoán được ra hình gì.
+            Lưới nút dùng lại .fin-iconpick của form hóa đơn: thấy hình, màu chạy theo màu nhóm. */}
+        <div className="fin-iconpick" style={{ '--c': color }}>
+          {ICONS.map(name => <button type="button" key={name} title={name} aria-label={`Chọn icon ${name}`}
+            aria-pressed={icon === name} className={icon === name ? 'is-active' : ''} onClick={() => setIcon(name)}>
+            <AppIcon name={name} size={16} weight="fill" />
+          </button>)}
+        </div>
+      </div>
       <div className="fin-inline-editor__grid">
-        <label className="fin-field"><span>Biểu tượng</span><select className="fin-input" value={icon} onChange={e => setIcon(e.target.value)} aria-label="Icon danh mục">{ICONS.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
         {kind === 'expense' && <label className="fin-field"><span>Mức mặc định của nhóm</span><select className="fin-input" value={necessity} onChange={e => setNecessity(e.target.value)}>{Object.entries(NECESSITY_META).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>}
         <label className="fin-field"><span>Tính chất mặc định</span><select className="fin-input" value={nature} onChange={e => setNature(e.target.value)}><option value="variable">Biến đổi theo lần</option><option value="fixed">Cố định / định kỳ</option></select></label>
       </div>

@@ -117,6 +117,7 @@
 .fin-ruleform__amount { max-width: 260px; }
 .fin-ruleform .fin-seg { justify-self: start; margin: 0; padding: 3px; border: 1px solid var(--n-border); border-radius: 8px; background: transparent; }
 .fin-ruleform .fin-seg__btn { min-height: 32px; font-size: 12px; }
+.fin-pickrow { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; }
 .fin-iconpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 5px; }
 .fin-iconpick button { display: grid; place-items: center; min-height: 38px; border: 1px solid var(--n-border); border-radius: 8px; background: transparent; color: var(--n-txt3); cursor: pointer; transition: border-color .14s ease, color .14s ease, background .14s ease; }
 .fin-iconpick button:hover { border-color: var(--c); color: var(--c); }

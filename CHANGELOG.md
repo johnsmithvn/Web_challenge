@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## v6.11.0 — 2026-08-27
+
+### Changed
+- **Taxonomy chi: 11 nhóm cha xuống 10.** `shopping` đổi key thành `personal` (nhãn **Cá nhân & Giải
+  trí**, icon tay cầm), nhóm `entertainment` bỏ hẳn — sub của nó dồn sang `personal`, riêng
+  `entertainment.party` sang `food` với nhãn *Liên hoan / Nhậu*, `shopping.home` sang `family`.
+  - Đi kèm `data/migration_v6.11.0_finance_taxonomy.sql`: đổi `category_id` trên 5 bảng, cộng dồn hạn
+    mức khi user có budget ở cả hai nhóm, và **xóa** dòng override của nhóm `entertainment` (UNIQUE
+    `(user_id, category_id)` không cho hai dòng `personal`). Giao dịch và số tiền không mất gì.
+  - `subcategory_id` **giữ nguyên tiền tố cũ** (`shopping.clothes`, `entertainment.game`). Đổi sub key
+    là `subLabel()` trả null → giao dịch/hóa đơn cũ mất nhãn danh mục con.
+  - Test mới trong `financeMigration.test.js` ép tập key của DB CHECK và `expenseGroups` phải khớp
+    nhau — lệch một khóa là UI hiện nhóm mà bấm lưu mới ăn lỗi CHECK.
+
+### Fixed
+- **Input và select trong form Finance hiện chữ đen, sai font trên nền tối.** Một commit trước đó xóa
+  block CSS modal editor nhưng bỏ sót dòng cuối của selector list nhiều dòng, để lại
+  `.fin-field input, .fin-field select, …,` mồ côi merge vào rule `.fin-check-row` — mọi control mất
+  `color`/`font: inherit` và rơi về mặc định của trình duyệt. Các control ở `CatsScreen` giờ dùng lại
+  class `.fin-input` sẵn có; thêm `select.fin-input { color-scheme: dark }` để dropdown native cũng tối.
+- **Mẫu hóa đơn trỏ vào nhóm đã bỏ thì select Danh mục hiện sai.** Select native không có option khớp
+  sẽ hiện option đầu tiên trong khi state giữ khóa cũ — bấm Lưu là ghi một khóa chết mà người dùng
+  tưởng đã chọn đúng. `RecurringScreen` giờ luôn giữ giá trị đang có làm một option (cùng luật
+  `pickableSubs`), và 4 mẫu streaming trỏ lại `personal`.
+
+### Improved
+- **Chọn biểu tượng ở màn Danh mục nhìn thấy hình.** Select cũ chỉ liệt kê tên icon (`squares`,
+  `dots`) — dùng lại lưới `.fin-iconpick` của form hóa đơn, màu chạy theo màu nhóm đang chọn.
+- Select **Danh mục** ở form hóa đơn có icon + màu nhóm đứng cạnh.
+- Thẻ "nhóm cha cố định" ở màn Danh mục đếm từ dữ liệu thay vì hardcode 11.
+
 ## v6.10.0 — 2026-08-18
 
 ### Added

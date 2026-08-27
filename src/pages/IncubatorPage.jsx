@@ -173,7 +173,7 @@ export default function IncubatorPage() {
   // Execute modal
   const [executeModal, setExecuteModal] = useState(null);
   const [execOptions, setExecOptions] = useState({ expense: false, task: false });
-  const [expenseCategory, setExpenseCategory] = useState('shopping');
+  const [expenseCategory, setExpenseCategory] = useState('personal');
   const [execLogs, setExecLogs] = useState([]);
   const [execError, setExecError] = useState('');
 
@@ -281,7 +281,7 @@ export default function IncubatorPage() {
       expense: !!item.estimated_cost,
       task: !item.estimated_cost, // mặc định nếu không có chi phí ước tính
     });
-    setExpenseCategory('shopping');
+    setExpenseCategory('personal');
     // Fetch logs for rich description when converting to Task
     const logs = await getLogs(item.id);
     setExecLogs(logs);
