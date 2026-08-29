@@ -233,11 +233,11 @@ function OverviewDashboard({ fin, nav }) {
           <div className="fin-card__divider" />
           <div className="fin-need">
             <div className="fin-need__head"><span>Cắt được tới đâu</span><span className="fin-need__cut">Có thể cắt {money(totals.byNecessity.want)}</span></div>
-            <div className="fin-need__bar">{['must', 'need', 'want'].map(k => {
+            <div className="fin-need__bar">{['must', 'want'].map(k => {
               const w = totals.total ? (totals.byNecessity[k] / totals.total) * 100 : 0;
               return <div key={k} style={{ width: `${w}%`, background: NECESSITY_META[k].color }} />;
             })}</div>
-            <div className="fin-need__rows">{['must', 'need', 'want'].map(k => {
+            <div className="fin-need__rows">{['must', 'want'].map(k => {
               const share = totals.total ? Math.round(totals.byNecessity[k] / totals.total * 100) : 0;
               return <div key={k} className="fin-need__row"><span className="fin-legend__dot" style={{ background: NECESSITY_META[k].color }} />
                 <span>{NECESSITY_META[k].label}</span><strong>{money(totals.byNecessity[k])}</strong><small>{share}%</small></div>;

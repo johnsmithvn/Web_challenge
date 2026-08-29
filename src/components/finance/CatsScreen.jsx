@@ -10,8 +10,7 @@ const PALETTE = ['#e2a94e', '#5aa3dd', '#48b3a2', '#e07f93', '#b47fd8', '#7fc060
 const makeKey = (prefix) => `${prefix}-${crypto.randomUUID()}`;
 const needCopy = {
   must: 'Không trả thì mất chỗ ở, mất việc, bị phạt. Tiền nhà, điện nước, trả góp, xăng đi làm.',
-  need: 'Phải chi nhưng số tiền tùy mình. Ăn uống hằng ngày, thuốc, quần áo cơ bản.',
-  want: 'Không chi cũng không ảnh hưởng gì. Quán nước, giải trí, đồ công nghệ mới.',
+  want: 'Tùy chọn chi nhiều, ít hoặc không chi. Ăn uống ngoài, mua sắm, giải trí, đồ công nghệ mới.',
 };
 
 export default function CatsScreen({ fin, nav }) {
@@ -39,7 +38,7 @@ function CategoryPanel({ fin, editor, onEdit, onClose }) {
         Đây là bộ mặc định app dựng sẵn, không phải bộ khóa. Nhóm cha đổi được tên, màu, icon và ẩn đi; chỉ không xóa được vì báo cáo cũ vẫn trỏ vào khóa đó. Danh mục con thêm, sửa, xóa tự do.
       </Explainer>
       <Explainer icon="calculator" title="Mức cắt được suy từ danh mục">
-        Ba bậc trả lời một câu: thiếu tiền thì cắt khoản nào trước. Mỗi nhóm và mục con có một bậc mặc định, bạn không phải chọn khi nhập, chỉ sửa ở giao dịch nào thấy sai. Xăng đi làm là Phải trả, ăn ngoài là Cắt bớt được, quán nước là Không bắt buộc.
+        Hai bậc trả lời một câu: thiếu tiền thì cắt khoản nào trước. Mỗi nhóm và mục con có một bậc mặc định, bạn không phải chọn khi nhập, chỉ sửa ở giao dịch nào thấy sai. Xăng xe, tiền nhà là Phải trả; ăn ngoài, quán nước là Tùy chọn.
       </Explainer>
       <Explainer icon="arrowsClockwise" title="Danh mục không phải định kỳ">
         Danh mục trả lời “tiền dùng vào việc gì”. Định kỳ trả lời “giao dịch được tạo ra lúc nào”. Netflix thuộc Dịch vụ đăng ký và có thêm quy tắc lặp, không phải hai khoản ghi riêng.
@@ -67,17 +66,16 @@ function CategoryPanel({ fin, editor, onEdit, onClose }) {
     </section>
 
     <section className="fin-taxonomy-band">
-      <div className="fin-taxonomy-band__head"><div><h2>Ba bậc cắt được - trục thứ hai, không phải danh mục</h2><p>Cắt gì trước khi hết tiền.</p></div></div>
+      <div className="fin-taxonomy-band__head"><div><h2>Hai bậc cắt được - trục thứ hai, không phải danh mục</h2><p>Cắt gì trước khi hết tiền.</p></div></div>
       <div className="fin-necessity-cards">
-        {Object.entries(NECESSITY_META).map(([key, meta], index) => <div key={key} className="fin-necessity-card" style={{ '--c': meta.color }}>
-          <div><AppIcon name={key === 'must' ? 'lock' : key === 'need' ? 'checkCircle' : 'sparkle'} size={16} /><strong>{meta.label}</strong><span>{[50, 30, 20][index]}% hạn mức</span></div>
+        {Object.entries(NECESSITY_META).map(([key, meta]) => <div key={key} className="fin-necessity-card" style={{ '--c': meta.color }}>
+          <div><AppIcon name={key === 'must' ? 'lock' : 'sparkle'} size={16} /><strong>{meta.label}</strong></div>
           <p>{needCopy[key]}</p>
         </div>)}
       </div>
       <div className="fin-rule-chips">
         <Rule icon="sparkle">Suy từ danh mục con, không hỏi user</Rule>
         <Rule icon="pencil">Sửa được từng giao dịch khi thấy sai</Rule>
-        <Rule icon="calculator">Mặc định theo tỉ lệ 50 / 30 / 20</Rule>
         <Rule icon="scissors">Trả lời được: cắt gì trước khi hết tiền</Rule>
       </div>
     </section>
@@ -116,7 +114,7 @@ function LockCard({ icon, title, children }) {
 }
 
 function CategoryCard({ group, income = false, necessityKey, editing = false, onEdit, children }) {
-  const necessity = NECESSITY_META[group.necessity || necessityKey] || NECESSITY_META.need;
+  const necessity = NECESSITY_META[group.necessity || necessityKey] || NECESSITY_META.want;
   return <article className={`fin-category-card${group.hidden ? ' is-hidden' : ''}${editing ? ' is-editing' : ''}`} style={{ '--c': group.color }}>
     <div className="fin-category-card__head">
       <span className="fin-category-card__icon"><AppIcon name={group.icon} size={17} weight="duotone" /></span>
@@ -138,7 +136,7 @@ function CategoryEditor({ group, kind, fin, onClose }) {
   const [color, setColor] = useState(group.color || '#9184d9');
   const [icon, setIcon] = useState(group.icon || 'package');
   const [hidden, setHidden] = useState(Boolean(group.hidden));
-  const [necessity, setNecessity] = useState(group.necessity || fin.cats.necessityByCat[group.key] || 'need');
+  const [necessity, setNecessity] = useState(group.necessity || fin.cats.necessityByCat[group.key] || 'want');
   const [nature, setNature] = useState(group.nature || 'variable');
   const [subs, setSubs] = useState((group.subs || []).map(item => ({ ...item })));
   const [newSub, setNewSub] = useState('');
@@ -215,7 +213,7 @@ const transactionFields = [
   ['2', 'Danh mục con', 'subcategory_id', 'TEXT', 'Bóc tách xăng, gửi xe, quán nước trong cùng nhóm.'],
   ['1', 'Trả bằng', 'source_card_id + source_kind', 'UUID + GENERATED', 'NULL là tiền có sẵn; có id là thẻ tín dụng.'],
   ['3', 'Không tính chi', 'excluded', 'BOOLEAN', 'Chỉ trả nợ gốc và trả sao kê; vẫn có trên dòng thời gian.'],
-  ['2', 'Mức cắt được', 'necessity', 'must / need / want', 'Cơ sở cho giới hạn 50/30/20.'],
+  ['2', 'Mức cắt được', 'necessity', 'must / want', 'Khoản bắt buộc trả hoặc tùy chọn.'],
   ['3', 'Tính chất', 'is_fixed', 'BOOLEAN', 'Phân biệt phần chi cố định và biến đổi.'],
   ['2', 'Tiêu đề', 'note', 'TEXT', 'Tìm kiếm và gợi ý nhập lần sau.'],
   ['3', 'Nơi / người nhận', 'merchant', 'TEXT', 'Xem nơi nào tiêu nhiều và đăng ký quên hủy.'],
@@ -284,7 +282,7 @@ const schemaSections = [
   ]],
   ['Nhập nhanh', 'finance_shortcuts', [
     ['Đích', 'category_id, subcategory_id', 'TEXT', 'Bỏ qua bước chọn nhóm.'],
-    ['Mức cắt được', 'necessity', 'must/need/want', 'Kế thừa hoặc ghi đè theo mục con.'],
+    ['Mức cắt được', 'necessity', 'must / want', 'Kế thừa hoặc ghi đè theo mục con.'],
     ['Mức hay nhập', 'recent_amounts', 'JSONB[]', 'Gợi ý ba số gần đây; không có số tiền cố định.'],
     ['Xếp hạng', 'use_count, sort_order', 'INT', 'Shortcut dùng nhiều được đẩy lên trước.'],
     ['Trả bằng', 'source_card_id', 'UUID hoặc NULL', 'Nhớ nguồn thanh toán khi cần.'],

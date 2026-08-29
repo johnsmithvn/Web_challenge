@@ -15,7 +15,7 @@ const FILTERS = [
   { value: 'expense', label: 'Chi' },
   { value: 'income', label: 'Thu' },
   { value: 'must', label: 'Phải trả' },
-  { value: 'want', label: 'Không bắt buộc' },
+  { value: 'want', label: 'Tùy chọn' },
   { value: 'auto', label: 'Do định kỳ sinh' },
 ];
 

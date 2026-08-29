@@ -19,30 +19,30 @@ import {
 
 // Stub cats tối giản (không import JSON để chạy được bằng node).
 const CATS = {
-  necessityByCat: { food: 'need', housing: 'must', entertainment: 'want' },
+  necessityByCat: { food: 'want', housing: 'must', entertainment: 'want' },
   expenseGroups: [
     { key: 'food', label: 'Ăn uống', color: '#e2a94e', icon: '🍜',
-      subs: [{ key: 'food.parking', necessity: 'want' }, { key: 'food.rice', necessity: 'need' }] },
+      subs: [{ key: 'food.parking', necessity: 'must' }, { key: 'food.rice', necessity: 'want' }] },
     { key: 'housing', label: 'Nhà', color: '#48b3a2', icon: '🏠', subs: [] },
     { key: 'entertainment', label: 'Giải trí', color: '#e58159', icon: '🎮', subs: [] },
   ],
 };
 
-/* ── deriveNecessity: sub đè cat, fallback cat, mặc định need ── */
-assert.equal(deriveNecessity('food', 'food.parking', CATS), 'want', 'sub đè cat');
-assert.equal(deriveNecessity('food', 'food.rice', CATS), 'need');
+/* ── deriveNecessity: sub đè cat, fallback cat, mặc định want ── */
+assert.equal(deriveNecessity('food', 'food.parking', CATS), 'must', 'sub đè cat');
+assert.equal(deriveNecessity('food', 'food.rice', CATS), 'want');
 assert.equal(deriveNecessity('housing', null, CATS), 'must', 'fallback theo cat');
-assert.equal(deriveNecessity('unknown', null, CATS), 'need', 'mặc định need');
+assert.equal(deriveNecessity('unknown', null, CATS), 'want', 'mặc định want');
 console.log('deriveNecessity check: OK');
 
 /* ── periodTotals: excluded & income & saving tách bạch ── */
 const txs = [
-  { occurred_at: '2026-08-05', type: 'expense', amount: 100000, category_id: 'food', necessity: 'need' },
+  { occurred_at: '2026-08-05', type: 'expense', amount: 100000, category_id: 'food', necessity: 'want' },
   { occurred_at: '2026-08-10', type: 'expense', amount: 200000, category_id: 'housing', necessity: 'must', is_fixed: true },
   { occurred_at: '2026-08-12', type: 'expense', amount: 999000, category_id: 'finance', necessity: 'must', excluded: true }, // trả gốc — NGOÀI tổng
   { occurred_at: '2026-08-15', type: 'income', amount: 5000000 },
   { occurred_at: '2026-08-20', type: 'saving', amount: 300000, saving_dir: 'in' },
-  { occurred_at: '2026-07-30', type: 'expense', amount: 50000, category_id: 'food', necessity: 'need' }, // ngoài kỳ
+  { occurred_at: '2026-07-30', type: 'expense', amount: 50000, category_id: 'food', necessity: 'want' }, // ngoài kỳ
 ];
 const t = periodTotals(txs, { from: '2026-08-01', to: '2026-08-31' });
 assert.equal(t.total, 300000, 'total chỉ gồm 2 expense không-excluded trong kỳ');
@@ -51,7 +51,7 @@ assert.equal(t.fixed, 200000, 'fixed = khoản is_fixed');
 assert.equal(t.income, 5000000, 'income tách riêng, KHÔNG trừ vào chi');
 assert.equal(t.savingIn, 300000);
 assert.equal(t.byNecessity.must, 200000, 'excluded không vào byNecessity');
-assert.equal(t.byNecessity.need, 100000);
+assert.equal(t.byNecessity.want, 100000);
 assert.equal(t.byCategory.food, 100000);
 assert.equal(t.biggest.amount, 200000, 'khoản lớn nhất bỏ qua excluded');
 assert.equal(t.days, 31);
@@ -107,9 +107,9 @@ assert.deepEqual(matchCategory('đổ xăng 50'), { categoryId: 'transport', sub
 assert.equal(matchCategory('abcxyz không khớp'), null);
 console.log('matchCategory check: OK');
 
-/* ── budgetBreakdown: 50/30/20 trên hạn mức ── */
+/* ── budgetBreakdown: hạn mức ── */
 const bt = periodTotals([
-  { occurred_at: '2026-08-05', type: 'expense', amount: 300000, category_id: 'food', necessity: 'need' },
+  { occurred_at: '2026-08-05', type: 'expense', amount: 300000, category_id: 'food', necessity: 'want' },
   { occurred_at: '2026-08-06', type: 'expense', amount: 500000, category_id: 'housing', necessity: 'must' },
   { occurred_at: '2026-08-07', type: 'expense', amount: 200000, category_id: 'entertainment', necessity: 'want' },
 ], { from: '2026-08-01', to: '2026-08-31' });
@@ -120,11 +120,7 @@ const bb = budgetBreakdown(bt, [
 ], CATS);
 assert.equal(bb.totalLimit, 3500000);
 assert.equal(bb.totalSpent, 1000000);
-assert.equal(bb.levels.must.limit, 1750000, 'must = 50% tổng hạn mức');
-assert.equal(bb.levels.need.limit, 1050000, 'need = 30% tổng hạn mức');
-assert.equal(bb.levels.want.limit, 700000, 'want = 20% tổng hạn mức');
-assert.equal(bb.levels.want.spent, 200000, 'entertainment → want');
-assert.equal(bb.cutable, 200000, 'cắt được = nhóm muốn có');
+assert.equal(bb.cutable, 500000, 'cắt được = nhóm tùy chọn (food 300k + entertainment 200k)');
 const foodRow = bb.categories.find(c => c.categoryId === 'food');
 assert.equal(foodRow.pct, 30);
 console.log('budgetBreakdown check: OK');

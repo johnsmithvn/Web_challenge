@@ -60,31 +60,17 @@ export function FinanceIcon({ categoryId, name, cats = CATS, size = 18, weight =
 }
 
 /**
- * Ba bậc này trả lời ĐÚNG MỘT câu: "tháng này thiếu tiền thì cắt khoản nào trước?"
- * — `want` chính là con số `cutable` mà Tổng quan in ra ("Có thể cắt X").
- *
- * Nhãn cũ (Bắt buộc · Cần thiết · Muốn có) hỏi sai câu: nó hỏi CẢM XÚC LÚC MUA,
- * còn app cần biết HỆ QUẢ LÚC CẮT. Mua quà cho em gái thì không ai "muốn có" gì,
- * nhưng vẫn là khoản dừng được; gói ăn vặt lúc đói cũng vậy. Thêm nữa "Bắt buộc"
- * và "Cần thiết" là hai từ gần đồng nghĩa đặt cạnh nhau — người dùng phải đoán ý.
- *
- * Nhãn mới nằm trên một trục duy nhất, phân biệt bằng AI GIỮ QUYỀN QUYẾT ĐỊNH:
+ * Hai bậc cắt được — trả lời "thiếu tiền thì cắt khoản nào trước":
  *   must — người khác quyết, không trả là có hậu quả từ bên ngoài (cắt điện, phạt)
- *   need — mình quyết mức và thời điểm, nhưng vẫn phải chi gì đó (vẫn phải ăn)
- *   want — mình quyết, và được phép chọn không chi
+ *   want — mình quyết, được phép chi nhiều/ít/không chi
  *
- * Key trong database vẫn là must/need/want — đổi nhãn KHÔNG cần migration.
- */
-/*
- * `want` KHÔNG dùng chữ "Bỏ được": nhãn này còn dán lên quà tặng, lì xì, tiền
- * mua đồ cho người trong nhà — đọc như phán xét về người nhận, không phải về
- * dòng tiền. "Không bắt buộc" nói đúng cùng một điều (bạn được phép không chi)
- * mà không gọi món quà là thứ bỏ đi.
+ * Trước v6.12 có 3 bậc (must/need/want). Gộp need+want thành want vì ranh giới
+ * giữa "cắt bớt được" và "không bắt buộc" mờ — cả hai đều do mình quyết.
+ * Migration đổi mọi `need` cũ → `want`. Key `need` không còn hợp lệ trong DB.
  */
 export const NECESSITY_META = {
-  must: { label: 'Phải trả',       color: '#48b3a2' },
-  need: { label: 'Cắt bớt được',   color: '#9184d9' },
-  want: { label: 'Không bắt buộc', color: '#e58159' },
+  must: { label: 'Phải trả', color: '#48b3a2' },
+  want: { label: 'Tùy chọn', color: '#e58159' },
 };
 
 // ── Donut SVG + legend bấm được ──────────────────────────────────────────────

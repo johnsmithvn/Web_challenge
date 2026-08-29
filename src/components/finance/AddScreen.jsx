@@ -26,7 +26,7 @@ function readHiddenSeeds() {
 
 const AMOUNT_STEPS = [10000, 20000, 50000, 100000, 200000];
 const QUICK_STEPS = [5000, 10000, 20000, 50000, 100000];
-const NEED_ICONS = { must: 'lock', need: 'checkCircle', want: 'sparkle' };
+const NEED_ICONS = { must: 'lock', want: 'sparkle' };
 
 function shiftDate(ymd, days) {
   const date = new Date(`${ymd}T12:00:00`);

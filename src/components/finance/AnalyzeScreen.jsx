@@ -5,7 +5,7 @@ import {
   periodTotals, budgetBreakdown, currentMonthPeriod, suggestedDailySpend,
   monthStart, monthEnd, parseYmd, fundBalance, maturityWarn,
 } from '../../utils/financeLogic';
-import { money, catInfo, NECESSITY_META, Segmented, TaskPicker, FinanceIcon, DateField } from './parts';
+import { money, catInfo, Segmented, TaskPicker, FinanceIcon, DateField } from './parts';
 import AppIcon from '../AppIcon';
 
 function lastNMonths(refStr, n) {
@@ -84,34 +84,10 @@ function BudgetTab({ fin, nav }) {
         </section>
       </div>
 
-      <section className="fin-necessity-budget">
-        <div className="fin-necessity-budget__head"><div><h2>Hạn mức theo mức cần thiết <span>50 / 30 / 20</span></h2></div><p>Tỉ trọng thực tế của tháng đang chạy so với mục tiêu tính trên tổng hạn mức tự đặt, không dùng thu nhập làm gốc.</p></div>
-        <div className="fin-necessity-budget__grid">
-          {['must', 'need', 'want'].map((key, index) => {
-            const level = bb.levels[key];
-            const pct = level.limit ? Math.round(level.spent / level.limit * 100) : 0;
-            const over = level.spent > level.limit;
-            return <article key={key} style={{ '--c': NECESSITY_META[key].color }}>
-              <div className="fin-necessity-budget__title"><AppIcon name={key === 'must' ? 'lock' : key === 'need' ? 'checkCircle' : 'sparkle'} size={15} /><strong>{NECESSITY_META[key].label}</strong><span>{over ? `Vượt ${money(level.spent - level.limit)}` : 'Trong mức'}</span></div>
-              <div className="fin-level__bar"><div style={{ width: `${Math.min(100, pct)}%`, background: NECESSITY_META[key].color }} /></div>
-              <div className="fin-necessity-budget__figures"><span>{money(level.spent)} / {money(level.limit)}</span><span>{[50, 30, 20][index]}% hạn mức</span></div>
-              <p>{needCopyFor(key)}</p>
-            </article>;
-          })}
-        </div>
-        <small>Nếu tháng này cần thắt lưng, phần Không bắt buộc là nhóm nên cắt trước. Các khoản Phải trả không được lấy làm “khoảng trống” giả.</small>
-      </section>
-
       <SavingsWorkspace fin={fin} nav={nav} total={fund} monthTotals={totals} />
       <BudgetFit fin={fin} bb={bb} />
     </div>
   );
-}
-
-function needCopyFor(key) {
-  if (key === 'must') return 'Không trả thì mất chỗ ở, mất việc, bị phạt. Tiền nhà, điện nước, trả góp, xăng đi làm.';
-  if (key === 'need') return 'Phải chi nhưng số tiền tùy mình. Ăn uống hằng ngày, thuốc, quần áo cơ bản.';
-  return 'Không chi cũng không ảnh hưởng gì. Quán nước, giải trí, đồ công nghệ mới.';
 }
 
 function BudgetRow({ cat, cats, editing, onSave }) {

@@ -17,7 +17,7 @@
  * Giao dịch `excluded=true` (trả gốc vay, trả sao kê thẻ) đứng NGOÀI mọi tổng chi.
  */
 
-export const NECESSITY_ORDER = ['must', 'need', 'want'];
+export const NECESSITY_ORDER = ['must', 'want'];
 
 /**
  * Mức cắt được suy tự động: sub đè cat (NEED_BY_SUB đè NEED_BY_CAT). Gửi xe là
@@ -31,7 +31,7 @@ export function deriveNecessity(categoryId, subcategoryId, cats) {
       if (s && s.necessity) return s.necessity;
     }
   }
-  return (cats && cats.necessityByCat && cats.necessityByCat[categoryId]) || 'need';
+  return (cats && cats.necessityByCat && cats.necessityByCat[categoryId]) || 'want';
 }
 
 // ── Date helpers thuần (chuỗi 'yyyy-MM-dd', so sánh chuỗi ISO là đủ) ─────────
@@ -231,13 +231,13 @@ function inRange(str, from, to) { return str >= from && str <= to; }
 /**
  * NƠI TÍNH TỔNG DUY NHẤT. Lọc `txs` theo occurred_at ∈ [from, to] rồi đếm.
  * excluded=true không vào bất kỳ tổng nào. income/saving tách riêng, KHÔNG trừ chi.
- * necessity đọc từ t.necessity (hook đã suy lúc ghi); thiếu thì rơi về 'need'.
+ * necessity đọc từ t.necessity (hook đã suy lúc ghi); thiếu thì rơi về 'want'.
  */
 export function periodTotals(txs, { from, to }, { savingAsExpense = false } = {}) {
   const out = {
     total: 0, income: 0, savingIn: 0, savingOut: 0, fixed: 0,
     count: 0, txCount: 0, days: daysInclusive(from, to),
-    byCategory: {}, byNecessity: { must: 0, need: 0, want: 0 }, biggest: null,
+    byCategory: {}, byNecessity: { must: 0, want: 0 }, biggest: null,
   };
   for (const t of txs) {
     if (!inRange(t.occurred_at, from, to)) continue;
@@ -262,7 +262,7 @@ export function periodTotals(txs, { from, to }, { savingAsExpense = false } = {}
     if (t.is_fixed) out.fixed += t.amount;
     const cat = t.category_id || 'other';
     out.byCategory[cat] = (out.byCategory[cat] || 0) + t.amount;
-    const nec = t.necessity || 'need';
+    const nec = t.necessity || 'want';
     out.byNecessity[nec] = (out.byNecessity[nec] || 0) + t.amount;
     if (!out.biggest || t.amount > out.biggest.amount) out.biggest = t;
   }
@@ -347,7 +347,7 @@ export function matchCategory(text) {
   return null;
 }
 
-// ── Ngân sách 50/30/20 — tính trên HẠN MỨC, không trên thu nhập ─────────────
+// ── Ngân sách — tính trên HẠN MỨC, không trên thu nhập ───────────────────────
 /**
  * @param totals — kết quả periodTotals của tháng đang chạy.
  * @param budgets — [{category_id, limit_amount}] hạn mức từng nhóm.
@@ -365,16 +365,10 @@ export function budgetBreakdown(totals, budgets, cats) {
       limit, spent, pct: limit ? Math.round((spent / limit) * 100) : null };
   });
 
-  const levels = {
-    must: { limit: Math.round(totalLimit * 0.5), spent: totals.byNecessity.must },
-    need: { limit: Math.round(totalLimit * 0.3), spent: totals.byNecessity.need },
-    want: { limit: totalLimit - Math.round(totalLimit * 0.5) - Math.round(totalLimit * 0.3), spent: totals.byNecessity.want },
-  };
-
   return {
     totalLimit, totalSpent: totals.total, remaining: totalLimit - totals.total,
     pct: totalLimit ? Math.round((totals.total / totalLimit) * 100) : null,
-    categories, levels, cutable: totals.byNecessity.want,
+    categories, cutable: totals.byNecessity.want,
   };
 }
 
