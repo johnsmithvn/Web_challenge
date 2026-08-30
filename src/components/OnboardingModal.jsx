@@ -24,14 +24,12 @@ const STEPS = [
       <>
         Lúc rảnh mới mở Inbox ra dọn: cái này thành <strong>Nhiệm vụ</strong>,
         cái kia thành <strong>Bài viết</strong>, cái nọ là <strong>Khoản chi</strong>.
-        <br /><br />
-        Chưa quyết được? Đẩy sang <strong>Incubator</strong> để đó, hẹn ngày xem lại.
       </>
     ),
   },
   {
     icon: 'mapPin',
-    title: 'Bảy Chỗ Để Đi',
+    title: 'Sáu Chỗ Để Đi',
     desc: 'Mỗi module làm đúng một việc. Bắt đầu từ Inbox, phần còn lại dùng tới đâu khám phá tới đó.',
     highlight: (
       <>
@@ -39,7 +37,7 @@ const STEPS = [
         <span><AppIcon name="pushPin" size={14} /> <strong>Nhiệm Vụ</strong> — việc cần làm</span>
         <span><AppIcon name="brain" size={14} /> <strong>Knowledge</strong> — bài viết</span>
         <span><AppIcon name="money" size={14} /> <strong>Finance</strong> — chi tiêu</span>
-        <span><AppIcon name="egg" size={14} /> <strong>Incubator</strong> — dự định</span>
+
         <span><AppIcon name="timer" size={14} /> <strong>Focus</strong> — Pomodoro</span>
         <span><AppIcon name="key" size={14} /> <strong>Account Vault</strong> — secret đã mã hóa</span>
       </>

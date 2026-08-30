@@ -6,7 +6,7 @@ Bản đồ cấp cao của repo. File này chỉ trả lời “cái gì ở đ
 
 ## Sản phẩm
 
-Life Hub là SPA quản lý cá nhân gồm Inbox, Nhiệm vụ, Knowledge Base, Finance, Incubator, Focus và
+Life Hub là SPA quản lý cá nhân gồm Inbox, Nhiệm vụ, Knowledge Base, Finance, Focus và
 Account Vault mã hóa. Frontend dùng React/Vite; dữ liệu đồng bộ dùng Supabase Auth + PostgreSQL + RLS.
 
 | Layer | Công nghệ / quy ước |
@@ -46,7 +46,6 @@ release block cũ.
 | `/inbox` | `InboxPage` | `useCollections` | Yêu cầu đăng nhập |
 | `/collect` | `CollectPage` | `useCollections`, `useCollectionNotes`, `useTags` | Yêu cầu đăng nhập |
 | `/finance`, `/finance/:screen` | `FinancePage` | `useFinance` | Yêu cầu đăng nhập; 10 bảng chính + junction tag |
-| `/incubator` | `IncubatorPage` | `useIntentions` | Yêu cầu đăng nhập |
 | `/accounts` | `AccountsPage` | `useAccounts` | Yêu cầu đăng nhập + Vault passphrase |
 | `/settings` | `SettingsPage` | `useTags`, `useQuotes`, profile | Yêu cầu đăng nhập |
 

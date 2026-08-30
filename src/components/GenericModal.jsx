@@ -1,8 +1,8 @@
 /**
  * GenericModal — Shared modal backdrop + container component.
  * 
- * Replaces `incubator-modal-backdrop` / `incubator-modal` CSS class coupling
- * across FinancePage and IncubatorPage with a proper shared component.
+ * Replaces ad-hoc modal CSS class coupling
+ * across FinancePage (and formerly IncubatorPage) with a proper shared component.
  *
  * Usage:
  *   <GenericModal onClose={handleClose} title="✏️ Sửa chi tiêu" maxWidth={380}>

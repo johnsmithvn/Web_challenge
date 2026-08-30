@@ -21,7 +21,6 @@ const PRIMARY_NAV = [
   { to: '/collect',   icon: 'brain', label: 'Knowledge' },
   { to: '/finance',   icon: 'wallet', label: 'Finance' },
   { to: '/accounts',  icon: 'lock', label: 'Tài Khoản' },
-  { to: '/incubator', icon: 'egg', label: 'Incubator' },
 ];
 
 // Bottom tabs giữ 5 workflow thường dùng để vùng chạm không bị co quá nhỏ.

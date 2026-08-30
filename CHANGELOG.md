@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v6.12.0 — 2026-08-30
+
+### Removed
+- **Module Incubator (Ấp Trứng) gỡ hoàn toàn khỏi frontend.** Xóa `IncubatorPage.jsx`,
+  `useIntentions.js`, `incubator.css`. Gỡ route, navigation, tích hợp Inbox → Ấp Trứng, onboarding
+  mention, landing page card. `/incubator` redirect về `/tasks`. Bảng `intentions` + `intention_logs`
+  giữ nguyên trên DB; chạy `data/drop_incubator_tables.sql` nếu muốn dọn.
+
 ## v6.11.0 — 2026-08-27
 
 ### Changed

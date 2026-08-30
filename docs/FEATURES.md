@@ -15,7 +15,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 | Inbox | `/inbox` | — | ✅ |
 | Knowledge | `/collect` | — | ✅ |
 | Finance | `/finance/:screen?` | — | ✅ |
-| Incubator | `/incubator` | — | ✅ |
+
 | Vault | `/accounts` | — | Login + Vault unlock |
 | Cài đặt | `/settings` | — | ✅ |
 
@@ -132,20 +132,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 
 **Data:** `tags`, `collection_tags`, `task_tags`, `finance_transaction_tags`, `profiles`.
 
-## 7. Incubator (`/incubator`)
-
-**Files:** `src/pages/IncubatorPage.jsx`, `src/hooks/useIntentions.js`
-
-- Lưu ý định “someday/maybe” với lý do ban đầu, mô tả, chi phí và thời gian dự kiến.
-- Defer bắt buộc ghi lý do; lifecycle và timeline nằm trong `intention_logs`.
-- Execute có thể tạo Task và/hoặc Finance expense. Nếu không output nào tạo thành công, intention không
-  bị đánh dấu executed để tránh mất dữ liệu âm thầm.
-- Abandon chuyển vào khu Đã bỏ qua; item có thể restore hoặc xóa vĩnh viễn có xác nhận.
-- Yêu cầu đăng nhập.
-
-**Data:** `intentions`, `intention_logs`, cộng output ở `user_tasks`/`finance_transactions`.
-
-## 8. Finance (`/finance`)
+## 7. Finance (`/finance`)
 
 **Files:** `src/pages/FinancePage.jsx`, `src/components/finance/*`, `src/hooks/useFinance.js`,
 `src/utils/financeLogic.js`, `src/data/finance-categories.json`
@@ -189,7 +176,7 @@ nhập không tự trở thành mẫu số ngân sách.
 **Data:** 10 bảng `finance_*` chính + `finance_transaction_tags`. Schema chi tiết ở
 [`DATABASE.md`](DATABASE.md), hợp đồng sản phẩm ở [`DESIGN_FINANCE.md`](DESIGN_FINANCE.md).
 
-## 9. Account Vault (`/accounts`)
+## 8. Account Vault (`/accounts`)
 
 **Files:** `src/pages/AccountsPage.jsx`, `src/components/AccountDetail.jsx`,
 `src/components/AccountAvatar.jsx`, `src/hooks/useAccounts.js`, `src/utils/vaultCrypto.js`,
@@ -243,7 +230,7 @@ nhập không tự trở thành mẫu số ngân sách.
 DEK, inactivity auto-lock, clipboard auto-clear hoặc TOTP generator. Không dùng Vault làm bản sao duy
 nhất của secret quan trọng. Chi tiết: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md).
 
-## 10. Media, widget và PWA
+## 9. Media, widget và PWA
 
 - `api/upload.js`: authenticated multipart upload vào Google Drive folder đã cấu hình.
 - `api/stream.js`: folder-scoped readonly proxy, hỗ trợ HTTP Range/seek cho media.

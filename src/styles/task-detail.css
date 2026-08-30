@@ -5,8 +5,7 @@
  * modal song song là nợ sẵn có). Chỉ 2 thứ phải đè lên GenericModal:
  *   1. Một vùng cuộn duy nhất — mặc định `.generic-modal` đặt overflow-y trên
  *      CẢ PANEL, nên header sẽ cuộn mất khi lịch sử dài. Đổi sang flex column +
- *      overflow hidden ở panel, cuộn dồn vào `__body` (đúng công thức
- *      `.incubator-detail` đang dùng).
+ *      overflow hidden ở panel, cuộn dồn vào `__body`.
  *   2. Bottom sheet dưới 520px — cùng mốc mà `.task-actions--mobile` và
  *      `.dp-popover` đang dùng, không đẻ breakpoint mới.
  *

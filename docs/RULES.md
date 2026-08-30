@@ -38,7 +38,7 @@ một blocker mà user phải quyết định.
 ### Auth/guest đúng hiện tại
 
 - Task list và Focus có guest in-memory.
-- Inbox, Knowledge, Tags/Quotes/Profile, Finance, Incubator và Vault là auth-only.
+- Inbox, Knowledge, Tags/Quotes/Profile, Finance và Vault là auth-only.
 - Vault còn cần passphrase unlock sau Supabase Auth.
 
 Không áp một “dual-mode pattern” giả cho mọi hook.

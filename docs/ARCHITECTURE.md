@@ -55,7 +55,6 @@ không bị stale khi thêm/xóa component.
 | `/inbox` | `InboxPage` | Lazy | Auth-only |
 | `/collect` | `CollectPage` | Lazy | Auth-only |
 | `/finance`, `/finance/:screen` | `FinancePage` | Lazy | Auth-only |
-| `/incubator` | `IncubatorPage` | Lazy | Auth-only |
 | `/accounts` | `AccountsPage` | Lazy | Auth-only + Vault unlock |
 | `/settings` | `SettingsPage` | Lazy | Auth-only |
 | `/tracker`, `/habits`, `/dashboard`, `/journey` | redirect `/tasks` | — | Bookmark cũ |
@@ -73,7 +72,7 @@ Không có một “dual-mode” áp dụng cho mọi hook.
 | Task list | State in-memory, mất khi reload | `user_tasks` + quan hệ/log/XP trên Supabase |
 | Focus + XP | State in-memory | `focus_sessions`, `xp_logs` |
 | Inbox / Knowledge / Tags / Quotes | Không cho thao tác dữ liệu | Supabase |
-| Finance / Incubator | Không cho thao tác dữ liệu | Supabase |
+| Finance | Không cho thao tác dữ liệu | Supabase |
 | Vault | Không khả dụng | Supabase ciphertext; phải unlock client-side |
 
 Các hook CRUD thường làm optimistic update rồi rollback khi write lỗi. Không áp dụng giả định này cho

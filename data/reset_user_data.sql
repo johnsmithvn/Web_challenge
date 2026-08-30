@@ -17,9 +17,9 @@ DELETE FROM collection_tags;
 DELETE FROM task_tags;
 DELETE FROM finance_transaction_tags;
 
--- 2. Logs/junctions trước parent
-DELETE FROM intention_logs;
-DELETE FROM intentions;
+-- Incubator (module đã gỡ khỏi frontend v6.3.0; bỏ comment nếu bảng còn tồn tại)
+-- DELETE FROM intention_logs;
+-- DELETE FROM intentions;
 DELETE FROM activity_logs;
 DELETE FROM task_collections;
 DELETE FROM collection_notes;

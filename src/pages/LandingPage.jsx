@@ -61,15 +61,6 @@ const MODULES = [
     ],
   },
   {
-    to: '/incubator', icon: 'egg', name: 'Incubator', accent: '#eab308',
-    desc: 'Nơi ấp những dự định chưa tới lúc làm.',
-    points: [
-      'Hoãn phải nêu lý do — chống hoãn vô thức',
-      'Nhắc review khi tới hạn đã hẹn',
-      'Chín rồi thì chuyển thành Nhiệm vụ hoặc Khoản chi',
-    ],
-  },
-  {
     to: '/focus', icon: '⏱', name: 'Focus', accent: '#f97316',
     desc: 'Pomodoro 25/5/15 để làm việc sâu.',
     points: [

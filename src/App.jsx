@@ -21,7 +21,7 @@ const InboxPage         = lazy(() => import('./pages/InboxPage'));
 const TasksPage         = lazy(() => import('./pages/TasksPage'));
 const CollectPage       = lazy(() => import('./pages/CollectPage'));
 const FinancePage       = lazy(() => import('./pages/FinancePage'));
-const IncubatorPage     = lazy(() => import('./pages/IncubatorPage'));
+
 const AccountsPage      = lazy(() => import('./pages/AccountsPage'));
 const SettingsPage      = lazy(() => import('./pages/SettingsPage'));
 
@@ -33,7 +33,6 @@ const ROUTE_META = {
   '/collect':    { title: 'Knowledge Base — Life Hub',                                          desc: 'Kho tàng kiến thức cá nhân. Viết bài, đọc lại, phân loại theo tag.' },
   '/finance':    { title: 'Finance — Life Hub',                                               desc: 'Ghi giao dịch, ngân sách, hóa đơn, khoản vay, thẻ và quỹ tiết kiệm.' },
   '/focus':      { title: 'Focus Timer — Life Hub',                                           desc: 'Pomodoro tập trung, lịch sử session và XP.' },
-  '/incubator':  { title: 'Trạm Ấp Trứng — Life Hub',                                          desc: 'Nuôi dưỡng dự định, dời lại phải có lý do, theo dõi timeline quyết định.' },
   '/accounts':   { title: 'Vault — Life Hub',                                                  desc: 'Account Vault mã hóa toàn bộ nội dung bằng AES-GCM phía client.' },
   '/settings':   { title: 'Cài Đặt — Life Hub',                                                  desc: 'Quản lý tags, quotes và hồ sơ cá nhân.' },
 };
@@ -73,7 +72,7 @@ function AppShell() {
                 <Route path="/collect"      element={<CollectPage />} />
                 <Route path="/finance"          element={<FinancePage />} />
                 <Route path="/finance/:screen"  element={<FinancePage />} />
-                <Route path="/incubator"    element={<IncubatorPage />} />
+                <Route path="/incubator"    element={<Navigate to="/tasks" replace />} />
                 <Route path="/accounts"     element={<AccountsPage key={user?.id || 'guest'} />} />
                 <Route path="/settings"     element={<SettingsPage />} />
                 <Route path="/focus"        element={<FocusPage />} />

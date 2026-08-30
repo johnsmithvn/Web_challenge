@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useCollections } from '../hooks/useCollections';
 import { useUserTasks } from '../hooks/useUserTasks';
-import { useIntentions } from '../hooks/useIntentions';
+
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import KNOWLEDGE_DATA from '../data/knowledge.json';
@@ -42,7 +42,7 @@ export default function InboxPage() {
   const navigate = useNavigate();
   const { items, isLoading, fetchItems, classifyItem, deleteItem, addItem, updateItem, snoozeItem, getSnoozedCount, fetchSnoozedItems } = useCollections();
   const { addTask } = useUserTasks();
-  const { addIntention } = useIntentions();
+
   const [quickText, setQuickText] = useState('');
   const [classifying, setClassifying] = useState(null);
   const [snoozeMenu, setSnoozeMenu] = useState(null); // item.id or null
@@ -245,13 +245,8 @@ export default function InboxPage() {
     await convertToTask(item, { completed: true });
   };
 
-  const handleToIntention = async (item) => {
-    const created = await addIntention({
-      title: item.title,
-      description: item.body || item.url || null,
-    });
-    if (await finalizeConversion(created, item.id, 'dự định')) setOverflowMenu(null);
-  };
+
+
 
   // Inbox → Giao dịch: sang module Chi tiêu, prefill form Nhập nhanh. Module xoá
   // mục Inbox sau khi ghi thành công (mang theo inboxId qua sessionStorage).
@@ -651,9 +646,7 @@ export default function InboxPage() {
                           <button className="inbox-overflow-item" onClick={() => { handleToRule(item); setOverflowMenu(null); }}>
                             <AppIcon name="refresh" size={14} /> Hóa đơn
                           </button>
-                          <button className="inbox-overflow-item" onClick={() => handleToIntention(item)}>
-                            <AppIcon name="egg" size={14} /> Ấp Trứng
-                          </button>
+
                           <button className="inbox-overflow-item" onClick={() => { setSnoozeMenu(item.id); setOverflowMenu(null); }}>
                             <AppIcon name="clock" size={14} /> Snooze
                           </button>

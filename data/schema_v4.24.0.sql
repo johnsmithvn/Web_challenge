@@ -457,7 +457,9 @@ UNION ALL SELECT tag_id, 'task'::text,          task_id         FROM task_tags
 UNION ALL SELECT tag_id, 'expense'::text,       expense_id      FROM expense_tags
 UNION ALL SELECT tag_id, 'subscription'::text,  subscription_id FROM subscription_tags;
 
--- ── 22. intentions + intention_logs (Incubator; description từ v4.7.2) ───────
+-- ── 22. intentions + intention_logs — Module Incubator ĐÃ GỠ khỏi frontend ──
+-- Frontend gỡ Incubator từ v6.3.0. Bảng giữ lại trong baseline để DB hiện có
+-- không lỗi. Chạy data/drop_incubator_tables.sql khi muốn dọn.
 CREATE TABLE IF NOT EXISTS intentions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,

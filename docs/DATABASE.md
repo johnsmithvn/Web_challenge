@@ -25,7 +25,6 @@ auth.users
    │      └─ task_tags ────────────────────────────────┘
    ├─ focus_sessions
    ├─ xp_logs
-   ├─ intentions ── intention_logs
    ├─ finance_* ── finance_transaction_tags ── tags
    ├─ accounts
    └─ vault_config
@@ -33,7 +32,7 @@ auth.users
 
 ## Inventory
 
-### Core — 13 bảng
+### Core — 11 bảng
 
 | Table | Vai trò | Ràng buộc đáng chú ý |
 |---|---|---|
@@ -47,8 +46,6 @@ auth.users
 | `tags` | Tag dùng chung | unique theo `(user_id, name)` |
 | `collection_tags` | Knowledge ↔ Tag | FK/RLS hai phía |
 | `task_tags` | Task ↔ Tag | FK/RLS hai phía |
-| `intentions` | Incubator | status lifecycle |
-| `intention_logs` | Lịch sử Incubator | FK về intention |
 | `collection_notes` | Sub-note của bài Knowledge | FK về collection/user |
 
 ### Finance — 12 bảng

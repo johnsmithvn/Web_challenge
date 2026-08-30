@@ -5,13 +5,17 @@ import { readFileSync } from 'node:fs';
 // stub tối thiểu, `getItem` trả null nghĩa là dùng mặc định (auto-k BẬT).
 // `autoK` để test được cả trạng thái TẮT — đó mới là chỗ bug thật nằm.
 let autoK = null;
+const memoryStore = {};
 globalThis.localStorage = {
-  getItem: (key) => (key === 'lh_auto_k' ? autoK : null),
-  setItem: () => {},
+  getItem: (key) => (key in memoryStore ? memoryStore[key] : (key === 'lh_auto_k' ? autoK : null)),
+  setItem: (key, val) => { memoryStore[key] = String(val); },
+  removeItem: (key) => { delete memoryStore[key]; },
 };
 
-const { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits, stripAmountWords } =
-  await import('../utils/currencyUtils.js');
+const {
+  autoKPreview, groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits, stripAmountWords,
+  formatVND, getUsdRate, setUsdRate, getAutoK, setAutoK,
+} = await import('../utils/currencyUtils.js');
 
 assert.equal(sanitizeDigits('12abc.345 ₫'), '12345');
 assert.equal(sanitizeDigits('123456', 4), '1234');
@@ -125,9 +129,22 @@ const analyze = src('../components/finance/AnalyzeScreen.jsx');
 assert.equal(/parseCurrencyInput\(v\)/.test(analyze), false,
   'hạn mức đã đặt không được parse trần: onBlur là lưu, rời ô là ×1.000');
 
-const incubator = src('../pages/IncubatorPage.jsx');
-assert.equal(/parseCurrencyInput\(detailCost\)/.test(incubator), false,
-  'ô chi phí trong detail Ươm mầm (cả lúc Lưu và dòng Xem trước) phải tắt auto-K');
+/* ── formatVND, USD rate & AutoK storage ── */
+assert.ok(formatVND(50000).endsWith('₫'));
+assert.ok(formatVND(50000).replace(/\s/g, '').includes('50.000'));
+assert.ok(formatVND(0).endsWith('₫'));
+
+assert.equal(getUsdRate(), 25400, 'tỷ giá USD mặc định 25.400');
+setUsdRate(26000);
+assert.equal(getUsdRate(), 26000);
+assert.equal(parseCurrencyInput('10$'), 260000, 'nhận diện ký hiệu $ và nhân tỷ giá');
+assert.equal(parseCurrencyInput('2.5 usd'), 65000, 'nhận diện chữ usd');
+setUsdRate(25400);
+
+setAutoK(false);
+assert.equal(getAutoK(), false);
+setAutoK(true);
+assert.equal(getAutoK(), true);
 
 console.log('edit-form auto-K contract: OK');
 

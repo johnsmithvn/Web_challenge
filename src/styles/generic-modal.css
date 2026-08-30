@@ -1,6 +1,5 @@
 /* ──────────────────────────────────────────────────────────────
    GenericModal — Shared modal styles
-   Extracted from incubator.css to break cross-module coupling.
    ────────────────────────────────────────────────────────────── */
 
 .generic-modal-backdrop {
