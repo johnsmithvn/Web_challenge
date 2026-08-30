@@ -972,8 +972,7 @@ form. Built **on `GenericModal`**, not a fourth modal system.
   panel, so the header scrolls away once the history is long. `.task-detail-modal`
   flips to `display: flex; flex-direction: column; overflow: hidden;
   max-height: 88vh` and moves the scroll to `.generic-modal__body`
-  (`flex: 1; min-height: 0; overflow-y: auto`) — the same recipe
-  `.incubator-detail` already uses. Nested scroll areas are deliberately
+  (`flex: 1; min-height: 0; overflow-y: auto`). Nested scroll areas are deliberately
   avoided: one scrollbar, not two.
 - **Tabs reuse `.tasks-viewbar__tab`** verbatim — same pill, same
   `rgba(139,92,246,.18)` active tint as the Danh sách/Lịch switcher directly

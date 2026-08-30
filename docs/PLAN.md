@@ -1,6 +1,6 @@
 # PLAN.md — Life Hub
 
-**Current version:** v6.10.0 · **Updated:** 2026-08-18
+**Current version:** v6.12.0 · **Updated:** 2026-08-30
 
 PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy nằm trong [`TASKS.md`](TASKS.md); lịch sử
 đã hoàn thành nằm trong [`CHANGELOG.md`](../CHANGELOG.md).
@@ -30,7 +30,7 @@ PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy n�
 
 3. QA responsive/mobile bằng dữ liệu dày, bắt đầu từ các màn dùng `finance.css`.
 4. QA keyboard/focus + nhóm B của audit a11y: `role="button"` thiếu `tabIndex`/keydown (Navbar,
-   MonthCalendar), `<div onClick>` trần (Inbox, Ươm mầm), Esc để đóng cho `GenericModal` +
+   MonthCalendar), `<div onClick>` trần (Inbox), Esc để đóng cho `GenericModal` +
    `DatePickerPopover` + `TaskPicker` + `AuthModal` + `LinkKBModal`, và một hook `useFocusTrap` dùng
    chung (**không modal nào trong repo có focus trap** — Tab vẫn thoát ra nền sau).
 5. Media API smoke (upload ảnh, audio Range/206, 401).

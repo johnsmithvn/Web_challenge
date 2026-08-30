@@ -138,8 +138,30 @@ assert.equal(getUsdRate(), 25400, 'tỷ giá USD mặc định 25.400');
 setUsdRate(26000);
 assert.equal(getUsdRate(), 26000);
 assert.equal(parseCurrencyInput('10$'), 260000, 'nhận diện ký hiệu $ và nhân tỷ giá');
+assert.equal(parseCurrencyInput('$10'), 260000, 'ký hiệu $ đứng trước số');
+assert.equal(parseCurrencyInput('$ 2.5'), 65000, 'ký hiệu $ có khoảng trắng và số lẻ');
 assert.equal(parseCurrencyInput('2.5 usd'), 65000, 'nhận diện chữ usd');
+assert.equal(parseCurrencyInput('100 USD'), 2600000, 'USD chữ hoa');
 setUsdRate(25400);
+
+/* Các biến thể không dấu tiếng Việt của độ lớn */
+assert.equal(parseCurrencyInput('50 nghin'), 50000);
+assert.equal(parseCurrencyInput('50 ngan'), 50000);
+assert.equal(parseCurrencyInput('2 trieu'), 2000000);
+assert.equal(parseCurrencyInput('2 cu'), 2000000);
+assert.equal(parseCurrencyInput('1,5tr'), 1500000, 'dấu phẩy thập phân với tr');
+assert.equal(parseCurrencyInput('1.5tr'), 1500000, 'dấu chấm thập phân với tr');
+assert.equal(parseCurrencyInput('1,234,567'), 1234567, 'dấu phẩy ngăn cách hàng nghìn');
+assert.equal(parseCurrencyInput('1.234.567'), 1234567, 'dấu chấm ngăn cách hàng nghìn');
+assert.equal(parseCurrencyInput('0'), 0);
+assert.equal(parseCurrencyInput('text khong co so'), 0);
+
+/* stripAmountWords đa dạng */
+assert.equal(stripAmountWords('cơm tấm 35k'), 'cơm tấm');
+assert.equal(stripAmountWords('mua cafe 25 ngàn'), 'mua cafe');
+assert.equal(stripAmountWords('tiền trọ 3.5 triệu'), 'tiền trọ');
+assert.equal(stripAmountWords('tiền thưởng 10tr'), 'tiền thưởng');
+assert.equal(stripAmountWords('mượn 2 củ'), 'mượn');
 
 setAutoK(false);
 assert.equal(getAutoK(), false);
@@ -149,3 +171,4 @@ assert.equal(getAutoK(), true);
 console.log('edit-form auto-K contract: OK');
 
 console.log('currency input tests passed');
+

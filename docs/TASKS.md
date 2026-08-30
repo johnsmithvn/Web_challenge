@@ -1,6 +1,6 @@
 # TASKS — Life Hub
 
-**Version:** v6.10.0 · **Updated:** 2026-08-18
+**Version:** v6.12.0 · **Updated:** 2026-08-30
 
 Chỉ giữ việc còn mở. Việc đã hoàn thành xem [`CHANGELOG.md`](../CHANGELOG.md); thứ tự roadmap xem
 [`PLAN.md`](PLAN.md).
@@ -72,7 +72,7 @@ agent không tự kiểm chứng được RPC trên hosted DB.
 - [x] **Nhãn screen-reader cho control không tên** — xong 2026-08-16. Nút đóng form, công tắc dòng quy
   tắc, ô tìm, ô thêm tag, form quỹ/nơi gửi, 32 nút icon; thêm `.sr-only` vào `global.css`.
 - [x] **Dài đuôi nhãn form** — xong 2026-08-16. 25 ô ở Finance (nơi gửi, tên món, đơn giá, ô kỳ, hạn
-  mức, select hóa đơn) và ngoài Finance (Knowledge, Inbox, Ươm mầm, Cài Đặt, LinkKBModal).
+  mức, select hóa đơn) và ngoài Finance (Knowledge, Inbox, Focus, Cài Đặt, LinkKBModal).
 - [ ] QA keyboard + focus indicator + console error thuộc Finance (phần còn lại của a11y, cần bấm tay).
 
 ## 2b. Phát hiện từ audit 2026-08-16 — chưa xử lý

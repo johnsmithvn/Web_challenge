@@ -428,6 +428,17 @@ assert.equal(statement.outstanding, 250000);
 assert.equal(cardBalance('card-1', cardTxs), 650000, 'dư nợ chạy gồm cả giao dịch sau ngày chốt, trừ payment');
 assert.equal(cardBalance('card-none', cardTxs), 0, 'thẻ chưa từng chi tiêu dư nợ 0đ');
 
+// Thẻ có ngày đến hạn tháng sau (due_day <= statement_day)
+const cardCrossMonth = { id: 'card-cross', statement_day: 25, due_day: 10 };
+const cycleCross = cardCycle(cardCrossMonth, '2026-08-26');
+assert.equal(cycleCross.statement, '2026-08-25');
+assert.equal(cycleCross.due, '2026-09-10', 'hạn ngày 10 của kỳ chốt ngày 25 phải rơi vào tháng sau');
+
+// Khi refStr nằm trước ngày chốt trong tháng -> kỳ trước đó
+const cycleBeforeStmt = cardCycle(cardCrossMonth, '2026-08-10');
+assert.equal(cycleBeforeStmt.statement, '2026-07-25');
+assert.equal(cycleBeforeStmt.due, '2026-08-10');
+
 // Trả thừa sao kê -> outstanding = 0, không âm
 const cardTxsOverpaid = [
   { occurred_at: '2026-08-02', type: 'expense', amount: 100000, source_card_id: 'card-2' },
@@ -441,6 +452,8 @@ assert.equal(floatInterest(0, 30, 6), 0);
 assert.equal(floatInterest(100_000_000, 0, 6), 0);
 assert.equal(floatInterest(100_000_000, 30, 0), 0);
 assert.equal(floatInterest(null, 30, 6), 0);
+assert.equal(floatInterest(100_000_000, -5, 6), 0, 'ngày float âm thì lãi float bằng 0');
+assert.equal(floatInterest(-100_000_000, 30, 6), 0, 'dư nợ âm thì lãi float bằng 0');
 console.log('card statement and float check: OK');
 
 /* ── 8. nextAnnualFee ──────────────────────────────────────── */
@@ -590,7 +603,14 @@ assert.equal(nextDueDate(13, '2026-08-13'), '2026-08-13', 'đúng hôm nay vẫn
 assert.equal(nextDueDate(31, '2026-01-31'), '2026-01-31');
 assert.equal(nextDueDate(31, '2026-02-01'), '2026-02-28', 'nhảy sang tháng 2 phải kẹp về 28');
 assert.equal(nextDueDate(null, '2026-08-13'), null);
-console.log('dueDateInMonth/daysUntilDue check: OK');
+
+/* shiftMonth — nhảy tháng đưa về ngày mùng 1 */
+assert.equal(shiftMonth('2026-08-15', 1), '2026-09-01', 'tiến 1 tháng đưa về ngày mùng 1');
+assert.equal(shiftMonth('2026-08-15', -2), '2026-06-01', 'lùi 2 tháng');
+assert.equal(shiftMonth('2026-01-15', -1), '2025-12-01', 'lùi qua năm');
+assert.equal(shiftMonth('2026-12-15', 2), '2027-02-01', 'tiến qua năm');
+assert.equal(shiftMonth('2026-08-15', 0), '2026-08-01', '0 tháng là mùng 1 tháng hiện tại');
+console.log('dueDateInMonth/daysUntilDue/shiftMonth check: OK');
 
 /* ── 16. billCycle: hóa đơn nhiều tháng một lần ────────────── */
 assert.deepEqual(billCycle({ due_day: 15 }, '2026-08-13'),
@@ -739,4 +759,355 @@ assert.equal(forfeitedInterest(null, '2026-08-17'), 0);
 assert.equal(forfeitedInterest(deposit, null), 0);
 console.log('forfeitedInterest check: OK');
 
+/* ── 21. Kịch bản đời thực tổng hợp (Comprehensive Real-world Month) ── */
+// Một tháng chi tiêu thực tế đầy đủ nghiệp vụ:
+// - Thu: lương 25tr + thưởng 5tr
+// - Chi tiêu bắt buộc (must): tiền nhà 6tr, điện nước 1.2tr
+// - Chi tiêu tùy chọn (want): ăn uống 4.5tr, mua sắm 3tr
+// - Gửi tiết kiệm: 5tr
+// - Quẹt thẻ tín dụng: mua máy tính 12tr
+// - Trả sao kê thẻ tháng trước: 8tr (excluded)
+// - Trả nợ ngân hàng: gốc 3tr (excluded) + lãi 500k (chi tiêu)
+// - Thu hồi nợ cho bạn mượn: 2tr (excluded)
+const realMonthTxs = [
+  // Thu nhập
+  { id: 'in-1', occurred_at: '2026-08-01', type: 'income', category: 'luong', amount: 25_000_000 },
+  { id: 'in-2', occurred_at: '2026-08-15', type: 'income', category: 'thuong', amount: 5_000_000 },
+  // Chi bắt buộc (must)
+  { id: 'ex-1', occurred_at: '2026-08-02', type: 'expense', category: 'housing', subcategory: 'housing.rent', amount: 6_000_000 },
+  { id: 'ex-2', occurred_at: '2026-08-05', type: 'expense', category: 'housing', subcategory: 'housing.utilities', amount: 1_200_000 },
+  // Chi tùy chọn (want)
+  { id: 'ex-3', occurred_at: '2026-08-03', type: 'expense', category: 'food', amount: 4_500_000 },
+  { id: 'ex-4', occurred_at: '2026-08-10', type: 'expense', category: 'personal', amount: 3_000_000 },
+  // Gửi tiết kiệm
+  { id: 'sav-1', occurred_at: '2026-08-02', type: 'saving', amount: 5_000_000 },
+  // Quẹt thẻ tín dụng mua máy tính
+  { id: 'card-tx-1', occurred_at: '2026-08-12', type: 'expense', category: 'work', amount: 12_000_000, source_card_id: 'card-main' },
+  // Trả sao kê kỳ trước (excluded - không đếm vào tổng chi tiêu)
+  { id: 'pay-stmt-1', occurred_at: '2026-08-20', type: 'expense', amount: 8_000_000, excluded: true, card_id: 'card-main', card_period: '2026-07' },
+  // Trả nợ ngân hàng: gốc (excluded) + lãi (chi tiêu)
+  { id: 'loan-p-1', occurred_at: '2026-08-25', type: 'expense', amount: 3_000_000, excluded: true, loan_id: 'loan-1', loan_part: 'principal' },
+  { id: 'loan-i-1', occurred_at: '2026-08-25', type: 'expense', category: 'finance', amount: 500_000, loan_id: 'loan-1', loan_part: 'interest' },
+  // Thu hồi nợ cho bạn mượn (excluded - không đếm vào thu nhập để tránh sai tỷ lệ tiết kiệm)
+  { id: 'lend-repay-1', occurred_at: '2026-08-28', type: 'income', category: 'hoantien', amount: 2_000_000, excluded: true, lending_id: 'lend-1' },
+];
+
+const augTotals = periodTotals(realMonthTxs, { from: '2026-08-01', to: '2026-08-31' });
+
+// 1. Thu nhập: 25tr + 5tr = 30tr (khoản thu nợ 2tr bị excluded nên KHÔNG được cộng vào)
+assert.equal(augTotals.income, 30_000_000, 'thu nhập đúng 30tr, loại trừ khoản thu hồi nợ');
+
+// 2. Tiết kiệm: 5tr
+assert.equal(augTotals.savingIn, 5_000_000, 'tiết kiệm đúng 5tr');
+
+// 3. Tổng chi tiêu: tiền nhà (6tr) + điện nước (1.2tr) + ăn uống (4.5tr) + mua sắm (3tr) + máy tính (12tr) + lãi vay (500k) = 27.200.000đ
+// Các khoản trả gốc vay (3tr) và trả sao kê (8tr) PHẢI bị loại trừ hoàn toàn
+assert.equal(augTotals.total, 27_200_000, 'tổng chi tiêu đúng 27.200.000đ, không đếm trùng gốc vay và trả sao kê');
+
+// 4. Option savingAsExpense = true: chi tiêu cộng thêm 5tr tiết kiệm = 32.200.000đ
+const augWithSaving = periodTotals(realMonthTxs, { from: '2026-08-01', to: '2026-08-31' }, { savingAsExpense: true });
+assert.equal(augWithSaving.total, 32_200_000);
+
+// 5. Kiểm tra phân bổ chi tiêu theo ngày (spendingRhythm):
+const rhythmAug = spendingRhythm(realMonthTxs, { from: '2026-08-01', to: '2026-08-31', unit: 'day' });
+assert.equal(rhythmAug.rows.length, 31, 'tháng 8 đủ 31 ngày');
+const day12 = rhythmAug.rows.find(r => r.key === '2026-08-12');
+assert.equal(day12.amount, 12_000_000, 'ngày 12 có khoản chi máy tính 12tr');
+assert.ok(day12.amount > rhythmAug.avg, 'ngày 12 vượt trung bình ngày');
+
+// 6. Gợi ý chi tiêu mỗi ngày (suggestedDailySpend):
+// Hạn mức tháng là 30tr, đã chi 27.2tr vào ngày 28/08 -> còn 2.8tr cho 4 ngày (28, 29, 30, 31)
+const dailySugg = suggestedDailySpend(30_000_000, 27_200_000, '2026-08-28', '2026-08-31');
+assert.equal(dailySugg.daysLeft, 4);
+assert.equal(dailySugg.perDay, Math.round(2_800_000 / 4)); // 700.000đ/ngày
+console.log('comprehensive real-world scenario check: OK');
+
+/* ── 22. Thẻ tín dụng chu kỳ cuối tháng & năm nhuận phức tạp ── */
+// Thẻ chốt vào ngày 31 hàng tháng
+const card31 = { id: 'card-31', statement_day: 31, due_day: 15 };
+
+// Tháng 1 (31 ngày) -> chốt đúng 31/01
+const cycleJan = cardCycle(card31, '2026-01-31');
+assert.equal(cycleJan.statement, '2026-01-31');
+assert.equal(cycleJan.due, '2026-02-15');
+
+// Thẻ sDay=31: ở tháng 2 (28 ngày), sang đầu tháng 3 (01/03/2026) chốt kỳ gần nhất kẹp về 28/02
+const cycleAfterFebNormal = cardCycle(card31, '2026-03-01');
+assert.equal(cycleAfterFebNormal.statement, '2026-02-28', 'kỳ tháng 2 kẹp về 28/02');
+assert.equal(cycleAfterFebNormal.due, '2026-03-15');
+
+// Năm nhuận 2024: sang đầu tháng 3 (01/03/2024) chốt kỳ gần nhất kẹp về 29/02
+const cycleAfterFebLeap = cardCycle(card31, '2024-03-01');
+assert.equal(cycleAfterFebLeap.statement, '2024-02-29', 'kỳ tháng 2 năm nhuận kẹp về 29/02');
+assert.equal(cycleAfterFebLeap.due, '2024-03-15');
+
+// Tháng 4 (30 ngày): sang đầu tháng 5 (01/05/2026) chốt kỳ gần nhất kẹp về 30/04
+const cycleAfterApr = cardCycle(card31, '2026-05-01');
+assert.equal(cycleAfterApr.statement, '2026-04-30');
+assert.equal(cycleAfterApr.due, '2026-05-15');
+
+// Tính float interest thực tế: quẹt 50tr ngày 01/08, chốt 25/08, đến hạn 15/09 (float 45 ngày)
+const card45Float = floatInterest(50_000_000, 45, 6.5); // 6.5%/năm
+assert.equal(card45Float, Math.round(50_000_000 * 0.065 * (45 / 365)));
+assert.ok(card45Float > 400_000, 'tiền lời float trên 400k trong 45 ngày');
+console.log('leap year and complex credit cycles check: OK');
+
+/* ── 23. Trả góp vay mua nhà/xe nhiều kỳ (Amortization Multi-year) ── */
+// Vay 500 triệu, lãi suất 10.5%/năm, kỳ hạn 60 tháng (5 năm)
+const loanCar = {
+  kind: 'amort',
+  principal: 500_000_000,
+  rate: 10.5,
+  term: 60,
+  due_at: '2031-08-01',
+  done: 0,
+};
+
+const carSchedStart = loanSchedule(loanCar);
+// Số tiền trả mỗi tháng cố định (annuity)
+const monthlyPmt = carSchedStart.monthlyPayment;
+assert.ok(monthlyPmt > 10_000_000 && monthlyPmt < 11_000_000, 'khoảng 10.7tr/tháng');
+
+// Kỳ 1: lãi tháng đầu tính trên toàn bộ 500tr
+assert.equal(carSchedStart.interestPart, 4_375_000, 'lãi kỳ đầu = 500tr * 10.5% / 12');
+assert.ok(carSchedStart.principalPart > carSchedStart.interestPart);
+
+// Kỳ 35 (hơn nửa chặng đường): phần lãi đã giảm, phần gốc trả tăng lên
+const carSchedMid = loanSchedule({ ...loanCar, done: 35 });
+assert.ok(carSchedMid.interestPart < carSchedStart.interestPart, 'dư nợ giảm làm tiền lãi mỗi tháng giảm');
+assert.ok(carSchedMid.principalPart > carSchedStart.principalPart, 'phần gốc tăng tương ứng');
+assert.ok(carSchedMid.principalRemaining < 250_000_000, 'dư nợ gốc còn lại dưới 1 nửa');
+
+// Kỳ cuối cùng (kỳ 59 đã trả xong, còn kỳ 60):
+const carSchedEnd = loanSchedule({ ...loanCar, done: 59 });
+assert.ok(carSchedEnd.principalRemaining <= monthlyPmt, 'dư nợ kỳ cuối bằng đúng phần gốc còn lại');
+console.log('amortization multi-year schedule check: OK');
+
+/* ── 24. Cho vay đa kỳ & trả góp linh hoạt (Complex Lending Partial Repayments) ── */
+// Cho vay 30 triệu ngày 01/01/2026, lãi suất 12%/năm (khoảng 1%/tháng), hẹn trả 01/07/2026
+const flexLend = {
+  principal: 30_000_000,
+  rate: 12,
+  lent_on: '2026-01-01',
+  due_on: '2026-07-01',
+};
+
+// Người vay trả bớt:
+// - Ngày 01/03 trả 10 triệu
+// - Ngày 01/05 trả 10 triệu
+// - Ngày 01/07 tất toán nốt 10 triệu còn lại
+const repayments = [
+  { occurred_at: '2026-03-01', amount: 10_000_000 },
+  { occurred_at: '2026-05-01', amount: 10_000_000 },
+];
+
+const lendEvalMid = lendingInterest(flexLend, repayments, '2026-05-01');
+assert.equal(lendEvalMid.balance, 10_000_000, 'dư nợ gốc còn lại đúng 10 triệu');
+assert.ok(lendEvalMid.earned > 0, 'đã tích lũy lãi qua 2 giai đoạn');
+
+// Nếu trả nốt 10tr vào 01/07:
+const fullRepayments = [
+  ...repayments,
+  { occurred_at: '2026-07-01', amount: 10_000_000 },
+];
+const lendEvalDone = lendingInterest(flexLend, fullRepayments, '2026-07-01');
+assert.equal(lendEvalDone.balance, 0, 'gốc đã thu hồi 100%');
+assert.ok(lendEvalDone.expected < 30_000_000 * 0.12 * (181 / 365), 'lãi thực tế ít hơn lãi nếu không trả bớt');
+console.log('complex lending partial repayments check: OK');
+
+/* ── 25. Hóa đơn đa chu kỳ lồng ghép (Multi-cycle Recurring Matrix) ── */
+// 4 loại hóa đơn khác chu kỳ:
+const billMonthly   = { id: 'bm', due_day: 10, anchor_date: '2026-01-10', rrule: { every: 1 } };
+const billQuarterly = { id: 'bq', due_day: 10, anchor_date: '2026-01-10', rrule: { every: 3 } };
+const billSemi      = { id: 'bs', due_day: 10, anchor_date: '2026-01-10', rrule: { every: 6 } };
+const billYearly    = { id: 'by', due_day: 10, anchor_date: '2026-01-10', rrule: { every: 12 } };
+
+// Tháng 1 (2026-01-05): CẢ 4 hóa đơn đều đến lượt trong tháng này!
+assert.equal(billCycle(billMonthly, '2026-01-05').thisMonth, true);
+assert.equal(billCycle(billQuarterly, '2026-01-05').thisMonth, true);
+assert.equal(billCycle(billSemi, '2026-01-05').thisMonth, true);
+assert.equal(billCycle(billYearly, '2026-01-05').thisMonth, true);
+
+// Tháng 2 (2026-02-05): CHỈ hóa đơn tháng đến lượt, 3 hóa đơn kia chưa tới
+assert.equal(billCycle(billMonthly, '2026-02-05').thisMonth, true);
+assert.equal(billCycle(billQuarterly, '2026-02-05').thisMonth, false);
+assert.equal(billCycle(billSemi, '2026-02-05').thisMonth, false);
+assert.equal(billCycle(billYearly, '2026-02-05').thisMonth, false);
+
+// Tháng 4 (2026-04-05): Hóa đơn tháng + Quý đến lượt; Nửa năm + Năm chưa tới
+assert.equal(billCycle(billMonthly, '2026-04-05').thisMonth, true);
+assert.equal(billCycle(billQuarterly, '2026-04-05').thisMonth, true);
+assert.equal(billCycle(billSemi, '2026-04-05').thisMonth, false);
+assert.equal(billCycle(billYearly, '2026-04-05').thisMonth, false);
+
+// Tháng 7 (2026-07-05): Hóa đơn tháng + Quý + Nửa năm đến lượt; Năm chưa tới
+assert.equal(billCycle(billMonthly, '2026-07-05').thisMonth, true);
+assert.equal(billCycle(billQuarterly, '2026-07-05').thisMonth, true);
+assert.equal(billCycle(billSemi, '2026-07-05').thisMonth, true);
+assert.equal(billCycle(billYearly, '2026-07-05').thisMonth, false);
+
+// Kỳ lùi của hóa đơn nửa năm và năm:
+assert.deepEqual(billPeriods(billSemi, '2026-07', 3), ['2026-07', '2026-01', '2025-07']);
+assert.deepEqual(billPeriods(billYearly, '2026-01', 3), ['2026-01', '2025-01', '2024-01']);
+console.log('multi-cycle recurring bills matrix check: OK');
+
+/* ── 26. Khả năng nhận diện ngữ cảnh tiếng Việt thực tế (matchCategory) ── */
+// Đồ uống
+assert.deepEqual(matchCategory('mua trà sữa toco'), { categoryId: 'food', subId: 'food.drinks' });
+assert.deepEqual(matchCategory('highlands coffee'), { categoryId: 'food', subId: 'food.drinks' });
+assert.deepEqual(matchCategory('uống ca phe sáng'), { categoryId: 'food', subId: 'food.drinks' });
+
+// Ăn uống hàng quán
+assert.deepEqual(matchCategory('ăn phở tái lăn'), { categoryId: 'food', subId: 'food.eatout' });
+assert.deepEqual(matchCategory('bún chả hà nội'), { categoryId: 'food', subId: 'food.eatout' });
+assert.deepEqual(matchCategory('bữa tối gia đình'), { categoryId: 'food', subId: 'food.eatout' });
+
+// Mua sắm thực phẩm
+assert.deepEqual(matchCategory('đi siêu thị coopmart'), { categoryId: 'food', subId: 'food.grocery' });
+assert.deepEqual(matchCategory('mua rau thịt cá'), { categoryId: 'food', subId: 'food.grocery' });
+
+// Di chuyển & xe cộ
+assert.deepEqual(matchCategory('đổ xăng 50k'), { categoryId: 'transport', subId: 'transport.fuel' });
+assert.deepEqual(matchCategory('vé gửi xe máy'), { categoryId: 'transport', subId: 'transport.parking' });
+assert.deepEqual(matchCategory('đi grab về nhà'), { categoryId: 'transport', subId: 'transport.taxi' });
+
+// Sinh hoạt & điện nước mạng
+assert.deepEqual(matchCategory('đóng tiền điện tháng 8'), { categoryId: 'housing', subId: 'housing.electric' });
+assert.deepEqual(matchCategory('hóa đơn nước sinh hoạt'), { categoryId: 'housing', subId: 'housing.water' });
+assert.deepEqual(matchCategory('nạp mạng viettel 4g'), { categoryId: 'subscription', subId: 'housing.internet' });
+assert.deepEqual(matchCategory('tiền thuê nhà tháng 8'), { categoryId: 'housing', subId: 'housing.rent' });
+
+// Giải trí, streaming, công nghệ, mua sắm
+assert.deepEqual(matchCategory('netflix gói 4k'), { categoryId: 'personal', subId: 'subscription.streaming' });
+assert.deepEqual(matchCategory('mua game steam sale'), { categoryId: 'personal', subId: 'entertainment.game' });
+assert.deepEqual(matchCategory('vé xem phim rạp cgv'), { categoryId: 'personal', subId: 'entertainment.events' });
+assert.deepEqual(matchCategory('mua đồ shopee'), { categoryId: 'personal', subId: 'shopping.clothes' });
+assert.deepEqual(matchCategory('chuyến du lịch đà lạt'), { categoryId: 'personal', subId: 'entertainment.travel' });
+
+// Y tế & sức khỏe
+assert.deepEqual(matchCategory('mua thuốc cảm cúm'), { categoryId: 'health', subId: 'health.medicine' });
+assert.deepEqual(matchCategory('khám răng nha khoa'), { categoryId: 'health', subId: 'health.medicine' });
+
+// Không khớp
+assert.equal(matchCategory('chuyển tiền cho mẹ'), null);
+assert.equal(matchCategory(''), null);
+assert.equal(matchCategory(null), null);
+console.log('comprehensive natural language matching check: OK');
+
+/* ── 27. So sánh kỳ chi tiêu nâng cao (comparePeriods) ──────── */
+// Trường hợp 1: Tháng đang chạy (running month) -> So cùng cửa sổ ngày!
+// Giả sử hôm nay là ngày 10/08/2026.
+// Kỳ này: 01/08 - 31/08 (tháng đang chạy).
+// Kỳ trước: 01/07 - 31/07.
+// Cửa sổ: đúng 10 ngày đầu tháng (01 đến 10)!
+const runningCurTxs = [
+  { occurred_at: '2026-08-05', type: 'expense', amount: 2_000_000 },
+  { occurred_at: '2026-08-10', type: 'expense', amount: 1_000_000 },
+];
+const runningPrevTxs = [
+  { occurred_at: '2026-07-02', type: 'expense', amount: 1_500_000 }, // trong cửa sổ (≤ 10/07)
+  { occurred_at: '2026-07-08', type: 'expense', amount: 500_000 },   // trong cửa sổ (≤ 10/07)
+  { occurred_at: '2026-07-20', type: 'expense', amount: 9_000_000 }, // NGOÀI cửa sổ (> 10/07)
+];
+
+const cmpRunning = comparePeriods(
+  runningCurTxs, runningPrevTxs,
+  { from: '2026-08-01', to: '2026-08-31' },
+  { from: '2026-07-01', to: '2026-07-31' },
+  '2026-08-10'
+);
+assert.equal(cmpRunning.mode, 'window');
+assert.equal(cmpRunning.dayN, 10, 'cửa sổ đúng 10 ngày');
+assert.equal(cmpRunning.curValue, 3_000_000);
+assert.equal(cmpRunning.prevValue, 2_000_000, 'chỉ tính giao dịch trong 10 ngày đầu của tháng 7');
+assert.equal(cmpRunning.deltaPct, 50, 'tăng 50% so với cùng kỳ 10 ngày trước');
+
+// Trường hợp 2: Hai tháng lịch đã trọn trong quá khứ -> So tổng cả tháng!
+const fullCmp = comparePeriods(
+  [{ occurred_at: '2026-06-15', type: 'expense', amount: 4_000_000 }],
+  [{ occurred_at: '2026-05-15', type: 'expense', amount: 5_000_000 }],
+  { from: '2026-06-01', to: '2026-06-30' },
+  { from: '2026-05-01', to: '2026-05-31' },
+  '2026-08-10'
+);
+assert.equal(fullCmp.mode, 'total');
+assert.equal(fullCmp.curValue, 4_000_000);
+assert.equal(fullCmp.prevValue, 5_000_000);
+assert.equal(fullCmp.deltaPct, -20, 'giảm 20%');
+
+// Trường hợp 3: Kỳ trước chi 0đ -> deltaPct = null (không chia cho 0)
+const zeroPrevCmp = comparePeriods(
+  [{ occurred_at: '2026-06-15', type: 'expense', amount: 4_000_000 }],
+  [],
+  { from: '2026-06-01', to: '2026-06-30' },
+  { from: '2026-05-01', to: '2026-05-31' },
+  '2026-08-10'
+);
+assert.equal(zeroPrevCmp.deltaPct, null, 'không có mẫu số thì deltaPct là null');
+
+// Trường hợp 4: Kỳ nhiều tháng (ví dụ so quý) -> So theo mức trung bình mỗi ngày (avgPerDay)
+const qCmp = comparePeriods(
+  [{ occurred_at: '2026-04-01', type: 'expense', amount: 9_100_000 }], // Q2: 91 ngày -> 100k/ngày
+  [{ occurred_at: '2026-01-01', type: 'expense', amount: 9_000_000 }], // Q1: 90 ngày -> 100k/ngày
+  { from: '2026-04-01', to: '2026-06-30' },
+  { from: '2026-01-01', to: '2026-03-31' },
+  '2026-08-10'
+);
+assert.equal(qCmp.mode, 'avgPerDay');
+assert.equal(qCmp.curValue, 100_000);
+assert.equal(qCmp.prevValue, 100_000);
+assert.equal(qCmp.deltaPct, 0);
+console.log('advanced comparePeriods check: OK');
+
+/* ── 28. Phân nhóm giao dịch theo ngày (groupByDate) ────────── */
+const scatteredTxs = [
+  { id: '1', occurred_at: '2026-08-05', amount: 50000 },
+  { id: '2', occurred_at: '2026-08-01', amount: 100000 },
+  { id: '3', occurred_at: '2026-08-05', amount: 150000 },
+  { id: '4', occurred_at: '2026-08-10', amount: 200000 },
+  { id: '5', occurred_at: '2026-08-01', amount: 25000 },
+];
+
+const dateGroups = groupByDate(scatteredTxs);
+assert.equal(dateGroups.length, 3, 'có 3 ngày khác nhau (10, 05, 01)');
+assert.equal(dateGroups[0].date, '2026-08-10', 'ngày mới nhất xếp đầu');
+assert.equal(dateGroups[0].items.length, 1);
+assert.equal(dateGroups[1].date, '2026-08-05', 'ngày 05 ở giữa');
+assert.equal(dateGroups[1].items.length, 2);
+assert.equal(dateGroups[2].date, '2026-08-01', 'ngày 01 xếp cuối');
+assert.equal(dateGroups[2].items.length, 2);
+console.log('groupByDate grouping and ordering check: OK');
+
+/* ── 29. Quỹ tiết kiệm & Tiền gửi phức tạp ─────────────────── */
+const multiDeposits = [
+  { id: 'd1', amount: 100_000_000, rate: 5.5, matures_at: '2026-08-25' },
+  { id: 'd2', amount: 200_000_000, rate: 6.8, matures_at: '2027-02-15' },
+  { id: 'd3', amount: 50_000_000, rate: 0.5, matures_at: null },
+];
+
+// 1. Tổng tiền gửi và lãi suất bình quân gia quyền:
+const fbMulti = fundBalance(multiDeposits);
+assert.equal(fbMulti.total, 350_000_000);
+// (100*5.5 + 200*6.8 + 50*0.5) / 350 = (550 + 1360 + 25) / 350 = 1935 / 350 ≈ 5.53%
+assert.equal(fbMulti.weightedRate, 5.53);
+assert.equal(blendedRate(multiDeposits), 5.53);
+
+// 2. Cảnh báo đáo hạn:
+// Hôm nay là 15/08/2026:
+// d1 đáo hạn 25/08 (còn 10 ngày) -> phải cảnh báo
+const warnD1 = maturityWarn('2026-08-25', '2026-08-15');
+assert.equal(warnD1.warn, true);
+assert.equal(warnD1.days, 10);
+
+// d2 đáo hạn 15/02/2027 (còn 184 ngày) -> không cảnh báo
+const warnD2 = maturityWarn('2027-02-15', '2026-08-15');
+assert.equal(warnD2.warn, false);
+assert.equal(warnD2.days, 184);
+
+// Sổ không kỳ hạn (null) -> không cảnh báo
+assert.equal(maturityWarn(null, '2026-08-15'), null);
+console.log('complex fundBalance and maturityWarn check: OK');
+
 console.log('\n✅ financeLogic — tất cả self-check PASS (100% functions & rules covered)');
+
+

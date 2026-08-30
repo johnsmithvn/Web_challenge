@@ -2,8 +2,16 @@
 
 > **Kỷ Luật = Hệ Thống, Không Phải Ý Chí**
 
-Ứng dụng quản lý cuộc sống cá nhân một người dùng: Inbox, Nhiệm vụ, Knowledge Base, Finance,
-Account Vault, Incubator và Focus. Frontend React/Vite, dữ liệu chính trên Supabase với RLS.
+Life Hub là ứng dụng web cá nhân tích hợp: Inbox, Nhiệm Vụ, Sổ Tay (Knowledge Base), Tài Chính,
+Account Vault và Focus. Frontend React/Vite, dữ liệu chính trên Supabase với RLS.
+
+- **Frontend:** React 19, Vite, React Router v7, vanilla CSS
+- **Backend:** Supabase PostgreSQL + Auth, Vercel Serverless Functions
+- **Lưu trữ tệp:** Google Drive API (qua serverless proxy, hỗ trợ Range/seek cho media)
+- **Kiểm thử:** Node.js test runner thuần (`node:assert/strict`), không phụ thuộc Jest/Vitest
+
+> **Lưu ý xác thực:** Landing Page, Nhiệm Vụ (ở chế độ khách) và Focus có thể dùng thử không cần tài khoản.
+> Inbox, Knowledge, Finance, Settings và Account Vault yêu cầu đăng nhập.
 
 ---
 
@@ -229,13 +237,12 @@ Sau khi thêm env vars → vào **Deployments** → **Redeploy** (hoặc push co
 
 ```
 src/
-  pages/                    ← 9 route pages (Landing + 8 lazy modules)
+  pages/                    ← 8 route pages (Landing + 7 lazy modules)
     TasksPage.jsx           ← /tasks — Danh sách + Lịch
     FinancePage.jsx         ← /finance/:screen — module Finance Nocturne
     AccountsPage.jsx        ← /accounts — Account Vault Keyplate
     InboxPage.jsx           ← /inbox — quick capture
     CollectPage.jsx         ← /collect — Knowledge Base
-    IncubatorPage.jsx       ← /incubator — someday/maybe
     FocusPage.jsx           ← /focus — Pomodoro
     SettingsPage.jsx        ← /settings — Tags + Quotes + Profile
   components/               ← UI dùng lại; finance/ chứa các màn Finance
@@ -322,10 +329,9 @@ CHANGELOG.md                ← Lịch sử phiên bản
 | `/collect` | Knowledge Base — dual-mode editor (Tiptap + Markdown) |
 | `/finance`, `/finance/:screen` | Tổng quan, Nhập nhanh, Giao dịch, Danh mục, Hóa đơn; Ngân sách/Thống kê nằm trong Tổng quan |
 | `/accounts` | Account Vault hai pane |
-| `/incubator` | Trạm Ấp Trứng — someday/maybe |
 | `/focus` | Pomodoro timer |
 | `/settings` | Tags + Quotes + Profile |
-| `/tracker`, `/habits`, `/dashboard`, `/journey` | Redirect về `/tasks` (module cũ đã gỡ v5.0) |
+| `/incubator`, `/tracker`, `/habits`, `/dashboard`, `/journey` | Redirect về `/tasks` (module cũ đã gỡ) |
 
 ---
 
@@ -338,7 +344,6 @@ CHANGELOG.md                ← Lịch sử phiên bản
   notes, tags, fields, mã dự phòng và history
 - **Knowledge Base:** editor Tiptap + Markdown, multimedia, slash command, tag và sub-note
 - **Inbox:** Quick capture → phân loại
-- **Incubator:** Someday/maybe ideas with friction defer + multi-output execute
 - **Focus:** Pomodoro + XP event log
 
 ### 📌 Tasks v6.1.0

@@ -123,7 +123,8 @@ and the user verifies manually. Instead:
 For non-trivial business logic (date math, chain/cascade rules, anything with more than one
 edge case) — not simple CRUD wiring:
 
-- Unit tests live in `src/__tests__/`. This is a deliberate departure from the older colocated
+- Unit tests live in `src/__tests__/`, structured clearly into 4 domains:
+  `tasks/`, `vault/`, `finance/`, and `core/`. This is a deliberate departure from the older colocated
   `*.test.js` files next to `dateUtils.js`/`mediaUtils.js` — leave those where they are, don't
   migrate them just to unify the pattern (unrelated refactor).
 - No test framework (no Jest/Vitest) — plain `node:assert/strict` scripts, same style as

@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Life Hub
 
-**Version:** v6.2.0 · **Updated:** 2026-08-09
+**Version:** v6.12.0 · **Updated:** 2026-08-30
 
 ## Tổng quan
 
@@ -57,7 +57,7 @@ không bị stale khi thêm/xóa component.
 | `/finance`, `/finance/:screen` | `FinancePage` | Lazy | Auth-only |
 | `/accounts` | `AccountsPage` | Lazy | Auth-only + Vault unlock |
 | `/settings` | `SettingsPage` | Lazy | Auth-only |
-| `/tracker`, `/habits`, `/dashboard`, `/journey` | redirect `/tasks` | — | Bookmark cũ |
+| `/incubator`, `/tracker`, `/habits`, `/dashboard`, `/journey` | redirect `/tasks` | — | Bookmark/route cũ đã gỡ |
 | `*` | `LandingPage` | — | Catch-all |
 
 Finance screen hợp lệ: `overview`, `add`, `list`, `cats`, `recurring`. Ngân sách và Thống kê là view
@@ -124,7 +124,7 @@ Supabase Auth
 - Một item = một encrypted JSON; Supabase không đọc được nội dung user nhập.
 - Epoch/sequence guard chặn response cũ đưa plaintext trở lại sau lock, sign-out hoặc đổi user.
 - Update/delete so `updated_at`; zero-row là conflict, không ghi đè bản mới hơn.
-- Favicon service mặc định tắt và chỉ bật trong phiên unlock hiện tại; lựa chọn này không persist.
+- Logo/icon item là data URI PNG 48×48 lưu trong encrypted payload; không dùng external favicon service để tránh rò rỉ danh sách dịch vụ.
 
 Chi tiết mật mã: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md).
 

@@ -216,4 +216,37 @@ for (const key of ['shopping.clothes', 'entertainment.game', 'entertainment.part
   assert.ok(subs.some(sub => sub.key === key), `sub ${key} phải còn trong taxonomy sau v6.11.0`);
 }
 
-console.log('finance taxonomy contract: OK');
+/* ── parts.jsx contract: pickableSubs, NECESSITY_META ────────────── */
+const partsSrc = readFileSync(new URL('../../components/finance/parts.jsx', import.meta.url), 'utf8');
+
+// NECESSITY_META: chỉ còn 2 bậc must và want, không còn bậc need
+assert.match(partsSrc, /export const NECESSITY_META = \{[\s\S]*?must:[\s\S]*?want:[\s\S]*?\};/);
+assert.doesNotMatch(partsSrc, /need:\s*\{/, 'bậc need đã bị bỏ ở v6.12, không được xuất hiện trong NECESSITY_META');
+
+// Kiểm tra hành vi pickableSubs
+function testPickableSubs(group, current, catsObj) {
+  const sList = (group?.subs || []).filter(sub => !sub.systemOnly || sub.key === current);
+  if (current && !sList.some(sub => sub.key === current)) {
+    const label = catsObj.expenseGroups.flatMap(g => g.subs || []).find(x => x.key === current)?.label || current;
+    sList.push({ key: current, label });
+  }
+  return sList;
+}
+
+const finGroup = cats.expenseGroups.find(g => (g.subs || []).some(s => s.systemOnly));
+if (finGroup) {
+  const normalPick = testPickableSubs(finGroup, null, cats);
+  assert.ok(normalPick.every(s => !s.systemOnly), 'bỏ sub systemOnly khi không phải current');
+  const sysKey = finGroup.subs.find(s => s.systemOnly).key;
+  const sysPick = testPickableSubs(finGroup, sysKey, cats);
+  assert.ok(sysPick.some(s => s.key === sysKey), 'giữ lại sub systemOnly nếu current đúng là nó');
+}
+
+// Giữ lại sub đã đổi nhóm cha khi sửa dòng cũ
+const movedSubKey = 'entertainment.party';
+const personalGroup = cats.expenseGroups.find(g => g.key === 'personal');
+const movedPick = testPickableSubs(personalGroup, movedSubKey, cats);
+assert.ok(movedPick.some(s => s.key === movedSubKey), 'phải giữ lại sub đã đổi nhóm cha khi sửa dòng cũ');
+
+console.log('finance taxonomy and parts contract: OK');
+

@@ -1,6 +1,6 @@
 # PROJECT.md — Life Hub
 
-**Version:** v6.2.0 · **Updated:** 2026-08-09
+**Version:** v6.12.0 · **Updated:** 2026-08-30
 
 Bản đồ cấp cao của repo. File này chỉ trả lời “cái gì ở đâu”; chi tiết nằm trong tài liệu được trỏ tới.
 
@@ -45,7 +45,7 @@ release block cũ.
 | `/focus` | `FocusPage` | `useFocusTimer`, `useXpStore` | Guest in-memory; đăng nhập để sync |
 | `/inbox` | `InboxPage` | `useCollections` | Yêu cầu đăng nhập |
 | `/collect` | `CollectPage` | `useCollections`, `useCollectionNotes`, `useTags` | Yêu cầu đăng nhập |
-| `/finance`, `/finance/:screen` | `FinancePage` | `useFinance` | Yêu cầu đăng nhập; 10 bảng chính + junction tag |
+| `/finance`, `/finance/:screen` | `FinancePage` | `useFinance` | Yêu cầu đăng nhập; 11 bảng chính + junction tag |
 | `/accounts` | `AccountsPage` | `useAccounts` | Yêu cầu đăng nhập + Vault passphrase |
 | `/settings` | `SettingsPage` | `useTags`, `useQuotes`, profile | Yêu cầu đăng nhập |
 
@@ -84,7 +84,7 @@ npm test
 npm run lint
 ```
 
-`npm test` hiện chạy 14 self-check bằng `node:assert`; không dùng Jest/Vitest. Theo workflow repo,
+`npm test` hiện chạy 22 self-check bằng `node:assert`; không dùng Jest/Vitest. Theo workflow repo,
 user chạy production build thủ công trừ khi họ yêu cầu agent điều tra lỗi build.
 
 Production Finance v6.0 và Vault v6.2 vẫn là bước **user-run**. Trạng thái và thứ tự thực hiện hiện tại

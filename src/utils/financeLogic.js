@@ -465,7 +465,7 @@ export function cardStatementSummary(card, txs, refStr) {
 
 /** Lãi ước kiếm được từ float: giữ `balance` thêm `days` ngày ở lãi suất `blendedRate`%/năm. */
 export function floatInterest(balance, days, blendedRate) {
-  if (!balance || !days || !blendedRate) return 0;
+  if (!balance || !days || !blendedRate || balance <= 0 || days <= 0 || blendedRate <= 0) return 0;
   return Math.round(balance * (blendedRate / 100) * (days / 365));
 }
 

@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub
 
-**Version:** v6.10.0 · **Updated:** 2026-08-18
+**Version:** v6.12.0 · **Updated:** 2026-08-30
 
 Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và chi tiết release nằm trong
 [`CHANGELOG.md`](../CHANGELOG.md).
