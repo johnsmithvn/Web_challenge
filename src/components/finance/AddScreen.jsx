@@ -277,7 +277,17 @@ export default function AddScreen({ fin, nav }) {
       note: shortcut.name,
     });
     if (!tx) return;
-    if (!shortcut.seed) {
+    if (shortcut.seed) {
+      // Seed đến từ JSON, không có row DB — tự động pin thành shortcut DB để
+      // lưu `recent_amounts`. Lần ghi sau sẽ update như shortcut thường.
+      await fin.addShortcut({
+        name: shortcut.name, category_id: shortcut.category_id,
+        subcategory_id: shortcut.subcategory_id || null,
+        necessity: shortcut.necessity || deriveNecessity(shortcut.category_id, shortcut.subcategory_id, cats),
+        source_card_id: shortcut.source_card_id || null,
+        recent_amounts: [value], sort_order: fin.shortcuts.length,
+      });
+    } else {
       const recent = [value, ...(shortcut.recent_amounts || []).filter(item => item !== value)].slice(0, 3);
       await fin.updateShortcut(shortcut.id, { recent_amounts: recent, use_count: (shortcut.use_count || 0) + 1 });
     }
@@ -558,7 +568,7 @@ export default function AddScreen({ fin, nav }) {
                 <div className="fin-step-row">{QUICK_STEPS.map(step => <button key={step} type="button" onClick={() => addAmount(setQuickAmount, quickAmount, step)}>{amountStepLabel(step)}</button>)}</div>
               </div>
               <div className="fin-shortcut-list">
-                {shortcuts.map(shortcut => {
+                {!fin.hasLoaded ? <div className="fin-shortcut-loading"><AppIcon name="lightning" size={14} /> Đang tải shortcut…</div> : shortcuts.map(shortcut => {
                   const info = catInfo(shortcut.category_id, cats);
                   const need = NECESSITY_META[shortcut.necessity || deriveNecessity(shortcut.category_id, shortcut.subcategory_id, cats)];
                   const armed = armedShortcutId === shortcut.id;

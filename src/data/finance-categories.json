@@ -1,6 +1,6 @@
 {
   "_note": "Danh muc Finance theo handoff Nocturne. Key la dinh danh ben, dung trong transaction/category override. Parent group dong; user chi sua ten, mau, icon, an/hien va danh muc con.",
-  "_movedSubs": "Sub co the DOI NHOM CHA ma GIU NGUYEN key (housing.internet/housing.mobile o nhom `subscription`, subscription.streaming/entertainment.* o `personal`, entertainment.party o `food`, shopping.* o `personal`, shopping.home o `family`, subscription.learning o `family`, subscription.membership o `health`). Key la dinh danh ben: doi key se lam MAT nhan cua giao dich/hoa don cu (subLabel tra null), nen key khong bat buoc trung tien to voi nhom dang chua no. Parent key `subscription` giu nguyen vi DB CHECK khoa tap key — nhan hien ra la 'Lien lac & Dich vu so'. Nhom cha `shopping` DA DOI KEY thanh `personal` va nhom `entertainment` DA BI XOA o v6.11.0 (migration_v6.11.0_finance_taxonomy.sql doi du lieu cu sang `personal`); sub key cua chung GIU NGUYEN tien to cu de khong mat nhan.",
+  "_movedSubs": "Sub co the DOI NHOM CHA ma GIU NGUYEN key (housing.internet/housing.mobile o nhom `subscription`, entertainment.party o `food`, shopping.* o `personal`, shopping.home o `family`). Key la dinh danh ben: doi key se lam MAT nhan cua giao dich/hoa don cu (subLabel tra null), nen key khong bat buoc trung tien to voi nhom dang chua no. Parent key `subscription` giu nguyen vi DB CHECK khoa tap key — nhan hien ra la 'Lien lac & Dich vu so'. Nhom cha `shopping` DA DOI KEY thanh `personal` va nhom `entertainment` DA BI XOA o v6.11.0 (migration_v6.11.0_finance_taxonomy.sql doi du lieu cu sang `personal`); sub key cua chung GIU NGUYEN tien to cu de khong mat nhan. Cac key da xoa khoi template mac dinh (food.delivery, entertainment.events, subscription.streaming, entertainment.hobby, health.gym, subscription.membership, subscription.learning, social.charity) van hop le trong giao dich cu va DB override.",
   "_systemOnly":"Sub co `systemOnly: true` chi do RPC ghi (kem excluded=TRUE) nen KHONG hien o cac o chon luc GHI (AddScreen, sua giao dich, mau hoa don). Go tay se thanh mot khoan chi that va dem trung voi luc quet the / luc vay. Van hien o o LOC va o man Danh muc.",
   "_necessityLabels": "Nhãn hiển thị của must/want nằm ở NECESSITY_META trong src/components/finance/parts.jsx — MỘT nơi duy nhất. Trước v6.12 có 3 bậc (must/need/want); giờ chỉ còn 2 bậc: must (Phải trả) và want (Tùy chọn).",
   "necessityByCat": {
@@ -14,7 +14,6 @@
       { "key": "food.eatout", "label": "Ăn ngoài", "necessity": "want" },
       { "key": "food.drinks", "label": "Đồ uống & quán nước", "necessity": "want" },
       { "key": "food.snack", "label": "Ăn vặt", "necessity": "want" },
-      { "key": "food.delivery", "label": "Giao đồ ăn", "necessity": "want" },
       { "key": "entertainment.party", "label": "Liên hoan / Nhậu", "necessity": "want" }
     ] },
     { "key": "transport", "label": "Đi lại", "icon": "gas", "color": "#5aa3dd", "nature": "variable", "subs": [
@@ -38,11 +37,11 @@
       { "key": "shopping.tools", "label": "Dụng cụ & thiết bị", "necessity": "want" },
       { "key": "shopping.electronics", "label": "Đồ điện tử", "necessity": "want" },
       { "key": "shopping.personal", "label": "Chăm sóc cá nhân", "necessity": "want" },
-      { "key": "entertainment.events", "label": "Xem phim & sự kiện", "necessity": "want" },
-      { "key": "subscription.streaming", "label": "Phim & nhạc trực tuyến", "necessity": "want" },
+      { "key": "personal.repair", "label": "Sửa chữa & bảo hành", "necessity": "want" },
+      { "key": "personal.toys", "label": "Đồ dùng / Đồ chơi", "necessity": "want" },
       { "key": "entertainment.travel", "label": "Du lịch", "necessity": "want" },
       { "key": "entertainment.game", "label": "Game", "necessity": "want" },
-      { "key": "entertainment.hobby", "label": "Sở thích riêng", "necessity": "want" }
+      { "key": "personal.sports", "label": "Thể thao", "necessity": "want" }
     ] },
     { "key": "subscription", "label": "Liên lạc & Dịch vụ số", "icon": "deviceMobile", "color": "#b47fd8", "nature": "fixed", "subs": [
       { "key": "housing.internet", "label": "Internet", "necessity": "want" },
@@ -54,26 +53,22 @@
       { "key": "health.doctor", "label": "Khám chữa bệnh", "necessity": "must" },
       { "key": "health.medicine", "label": "Thuốc", "necessity": "must" },
       { "key": "health.dental", "label": "Nha khoa", "necessity": "want" },
-      { "key": "health.insurance", "label": "Bảo hiểm y tế (BHYT/BHXH)", "necessity": "must" },
-      { "key": "health.gym", "label": "Gym & thể thao", "necessity": "want" },
-      { "key": "subscription.membership", "label": "Hội viên (gym, club)", "necessity": "want" }
+      { "key": "health.insurance", "label": "Bảo hiểm y tế (BHYT/BHXH)", "necessity": "must" }
     ] },
     { "key": "family", "label": "Gia đình & Học tập", "icon": "graduation", "color": "#6fd0c6", "nature": "fixed", "subs": [
       { "key": "family.tuition", "label": "Học phí", "necessity": "must" },
       { "key": "family.books", "label": "Sách & tài liệu", "necessity": "want" },
       { "key": "family.course", "label": "Khóa học", "necessity": "want" },
-      { "key": "subscription.learning", "label": "Báo & khóa học online", "necessity": "want" },
       { "key": "family.children", "label": "Chi cho con", "necessity": "must" },
       { "key": "family.parents", "label": "Chi cho bố mẹ", "necessity": "must" },
-      { "key": "family.helper", "label": "Giúp việc", "necessity": "want" },
+      { "key": "family.helper", "label": "Chi cho người thân", "necessity": "want" },
       { "key": "shopping.home", "label": "Đồ dùng gia đình", "necessity": "want" }
     ] },
     { "key": "social", "label": "Hiếu hỷ & Quà tặng", "icon": "gift", "color": "#dd76bd", "nature": "variable", "subs": [
       { "key": "social.wedding", "label": "Cưới hỏi", "necessity": "want" },
       { "key": "social.visit", "label": "Thăm hỏi & ốm đau", "necessity": "want" },
       { "key": "social.gift", "label": "Quà tặng", "necessity": "want" },
-      { "key": "social.lucky", "label": "Lì xì", "necessity": "want" },
-      { "key": "social.charity", "label": "Từ thiện", "necessity": "want" }
+      { "key": "social.lucky", "label": "Lì xì", "necessity": "want" }
     ] },
     { "key": "finance", "label": "Tài chính & Nợ", "icon": "bank", "color": "#9184d9", "nature": "fixed", "subs": [
       { "key": "finance.installment", "label": "Trả góp", "necessity": "must" },

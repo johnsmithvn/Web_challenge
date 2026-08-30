@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NECESSITY_META, Segmented } from './parts';
 import AppIcon from '../AppIcon';
+import SkeletonList from '../SkeletonList';
 
 const ICONS = [
   'bowlFood', 'gas', 'house', 'shopping', 'squares', 'firstAid', 'game', 'graduation',
@@ -32,6 +33,7 @@ export default function CatsScreen({ fin, nav }) {
 }
 
 function CategoryPanel({ fin, editor, onEdit, onClose }) {
+  if (!fin.hasLoaded) return <div className="fin-taxonomy"><SkeletonList rows={6} lines={2} gap="10px" label="Đang tải danh mục" /></div>;
   return <div className="fin-taxonomy">
     <div className="fin-explainer-grid">
       <Explainer icon="pencil" title="Bộ này sửa được">
