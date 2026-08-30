@@ -204,3 +204,16 @@ Không suy ra quyền xóa từ câu “test”, “local” hoặc “làm toà
 - [ ] `CHANGELOG.md` có entry ngắn dưới version hiện tại.
 - [ ] Production/manual work còn lại được ghi rõ là user-run.
 - [ ] Không stage/commit/push/deploy/reset nếu user chưa yêu cầu.
+
+## 14. Quy chuẩn Layout & Thiết kế UX/UI (Design System)
+
+Chi tiết quy chuẩn nằm tại `docs/DESIGN_SYSTEM.md`. Mọi thay đổi giao diện phải tuân thủ:
+
+1. **Workspace vs Document pattern**:
+   - Các màn hình tương tác cao (Lịch, Editor, Finance, Vault) phải dùng Workspace Pattern (`100dvh` trên desktop, header ghim tĩnh, cuộn nội bộ). Cấm cuộn toàn trang `body` trên desktop.
+2. **CSS Grid an toàn**:
+   - Cột động trong CSS Grid bắt buộc dùng `minmax(0, 1fr)` thay vì `1fr` trơn để chống vỡ layout khi nội dung dài.
+3. **Khoảng cách & Né FAB**:
+   - Đệm né nút tròn `+` (`QuickCapture FAB`) luôn nằm nội bộ bên trong vùng cuộn (`padding-bottom: 40px`), không được thu hẹp khung ngoài làm hụt chân trang.
+4. **Form tạo mới**:
+   - Phải có AutoFocus, điền sẵn ngữ cảnh (Smart Prefill), phím tắt `Ctrl + Enter` lưu nhanh và `Escape` đóng.

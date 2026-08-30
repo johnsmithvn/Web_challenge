@@ -248,16 +248,19 @@ export default function AccountsPage() {
         </div>
 
         <div className="acc-head__right">
-          <span className="acc-head__lock">Unlocked · key in memory</span>
+          <div className="acc-head__secure-tip" tabIndex={0} role="note" aria-label="End-to-end encryption status">
+            <span className="acc-head__secure-badge">
+              <AppIcon name="lock" size={13} /> AES-GCM Active
+            </span>
+            <div className="acc-head__secure-popup">
+              <strong><AppIcon name="shieldCheck" size={14} /> Full-content encryption active</strong>
+              <p>Titles, usernames, URLs, notes, tags, fields, codes and history are sent to Supabase only as AES-GCM ciphertext.</p>
+            </div>
+          </div>
           <button className="acc-act" onClick={handleLock}>Lock</button>
           <button className="acc-btn" onClick={() => setPickerOpen(true)}>New item</button>
         </div>
       </header>
-
-      <div className="acc-warn acc-warn--secure">
-        <AppIcon name="lock" size={16} /> Full-content encryption is active. Titles, usernames,
-        URLs, notes, tags, fields, codes and history are sent to Supabase only as AES-GCM ciphertext.
-      </div>
 
       {vaultError && <div className="acc-vault-error" role="alert">{vaultError}</div>}
 

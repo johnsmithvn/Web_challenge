@@ -864,3 +864,82 @@ h1, h2, h3, h4, h5, h6 {
   white-space: nowrap;
   border: 0;
 }
+
+/* ==========================================================================
+   LAYOUT ARCHITECTURE UTILITIES — DESIGN_SYSTEM.md Standards
+   Hệ thống quy chuẩn không gian Desktop App-like, ghim Header tĩnh,
+   vùng cuộn nội bộ và lưới CSS Grid an toàn không bị phình cột.
+   ========================================================================== */
+
+:root {
+  --topbar-height: 0px; /* Mặc định 0px trên Desktop (không có topbar) */
+  --bottom-fab-pad: 40px; /* Đệm đáy nội bộ né nút Floating Action Button */
+}
+
+@media (max-width: 768px) {
+  :root {
+    --topbar-height: 52px;
+  }
+}
+
+/* 1. Mẫu Layout Workspace (Lịch, Finance Dashboard, Knowledge Editor, Vault) */
+.app-workspace {
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.5rem clamp(0.5rem, 1.5vw, 1.25rem) 0.6rem;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .app-workspace {
+    height: calc(100dvh - var(--topbar-height, 52px) - var(--bottom-tabs-height, 60px));
+    padding: 0.25rem;
+  }
+}
+
+/* 2. Header độc lập bất biến (không bị dịch chuyển hay dính scroll khi đổi view) */
+.app-workspace-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 3. Vùng cuộn nội bộ mượt mà (có đệm đáy né nút FAB) */
+.app-workspace-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: var(--bottom-fab-pad);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 4. Khung Card bao bọc toàn diện */
+.app-card-full {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* 5. Tiện ích Lưới an toàn chống phình cột (Safe Grid Columns) */
+.grid-safe-cols {
+  display: grid;
+  min-width: 0;
+}
+.grid-safe-cols > * {
+  min-width: 0;
+  box-sizing: border-box;
+}

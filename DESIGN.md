@@ -1,5 +1,5 @@
 ---
-version: 6.2.0
+version: 6.12.0
 name: Life Hub
 description: >-
   Dark-first glassmorphic design system for Life Hub (Personal Life OS).
@@ -448,7 +448,7 @@ components:
 
 # Life Hub — Design System
 
-**Version:** v6.2.0 · **Updated:** 2026-08-09
+**Version:** v6.12.0 · **Updated:** 2026-08-30
 
 ## Overview
 
@@ -1257,6 +1257,19 @@ bar · two-pane body (item list · detail), breakpoint 900px.
   bottom-tabs below it, with matching `body` padding.
 - **Do** honour `env(safe-area-inset-bottom)` for anything fixed to the bottom
   edge.
+- **Do** use the Workspace Pattern (`height: 100dvh; overflow: hidden;`) for dense
+  interactive views (Calendar, Knowledge Editor, Vault Manager, Finance Dashboard)
+  on desktop to eliminate full-page body scrolling.
+- **Do** keep navigation toolbars and filter bars sticky/static (`flex-shrink: 0;`)
+  above internal scrolling containers (`.app-workspace-scroll`) to prevent layout jumps
+  and scroll-traps.
+- **Do** declare CSS Grid columns with `repeat(N, minmax(0, 1fr))` instead of raw `1fr`,
+  preventing cells from ballooning when wide text or multi-column overlapping chips
+  are rendered.
+- **Do** pad the interior of scrolling containers (`padding-bottom: var(--bottom-fab-pad, 40px)`)
+  to clear the QuickCapture Floating Action Button, rather than shrinking the outer card boundary.
+- **Don't** allow two nested scrollbars to fight for mousewheel control; scroll occurs
+  inside the content viewport only.
 - **Do** use `--radius-full` for actions and statuses, and
   `--radius-sm/md/lg/xl` for containers and fields.
 - **Don't** mix a pill and a rounded rectangle in the same control group.
