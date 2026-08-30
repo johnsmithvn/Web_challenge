@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { solarToLunar, lunarLabel } from '../utils/lunarUtils.js';
+import { solarToLunar, lunarLabel } from '../../utils/lunarUtils.js';
 
 // ── Mốc đối chiếu (tra được ở mọi lịch vạn niên) ──────────────────────────
 // Ví dụ chuẩn trên trang thuật toán gốc: 1/1/2000 = 25/11 âm năm Kỷ Mão 1999.

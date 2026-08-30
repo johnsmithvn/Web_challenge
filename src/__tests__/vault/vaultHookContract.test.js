@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const hook = readFileSync(new URL('../hooks/useAccounts.js', import.meta.url), 'utf8');
+const hook = readFileSync(new URL('../../hooks/useAccounts.js', import.meta.url), 'utf8');
 
 assert.match(hook, /const sessionRef = useRef\(0\);[\s\S]*const fetchRef = useRef\(0\);/);
 assert.match(

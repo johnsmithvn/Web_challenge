@@ -7,7 +7,7 @@ import {
   validateVaultPassphrase,
   VAULT_ENCRYPTION_VERSION,
   VAULT_KDF_ITERATIONS,
-} from '../utils/vaultCrypto.js';
+} from '../../utils/vaultCrypto.js';
 
 const userId = '00000000-0000-4000-8000-000000000001';
 const otherUserId = '00000000-0000-4000-8000-000000000099';

@@ -15,7 +15,7 @@ globalThis.localStorage = {
 const {
   autoKPreview, groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits, stripAmountWords,
   formatVND, getUsdRate, setUsdRate, getAutoK, setAutoK,
-} = await import('../utils/currencyUtils.js');
+} = await import('../../utils/currencyUtils.js');
 
 assert.equal(sanitizeDigits('12abc.345 ₫'), '12345');
 assert.equal(sanitizeDigits('123456', 4), '1234');
@@ -115,17 +115,17 @@ assert.equal(autoKPreview('5000'), '5.000.000');
    source, và soi theo hướng "không còn chỗ nào parse trần" để đổi tên/refactor không vỡ. */
 const src = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
-const listScreen = src('../components/finance/ListScreen.jsx');
+const listScreen = src('../../components/finance/ListScreen.jsx');
 assert.match(listScreen, /autoK: false/, 'panel Sửa giao dịch phải tắt auto-K');
 assert.equal(/parseCurrencyInput\(amount\)/.test(listScreen), false,
   'ô Số tiền của panel Sửa giao dịch mang số đã lưu, không được parse trần');
 
-const recurring = src('../components/finance/RecurringScreen.jsx');
+const recurring = src('../../components/finance/RecurringScreen.jsx');
 assert.match(recurring, /autoK: false/, 'form định kỳ phải tắt auto-K khi đang SỬA');
 assert.equal(/parseCurrencyInput\(f\.\w+\)/.test(recurring), false,
   'mọi ô tiền của form định kỳ phải truyền option parse, kể cả các dòng xem trước');
 
-const analyze = src('../components/finance/AnalyzeScreen.jsx');
+const analyze = src('../../components/finance/AnalyzeScreen.jsx');
 assert.equal(/parseCurrencyInput\(v\)/.test(analyze), false,
   'hạn mức đã đặt không được parse trần: onBlur là lưu, rời ô là ×1.000');
 

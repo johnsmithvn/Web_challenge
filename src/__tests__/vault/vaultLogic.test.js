@@ -13,7 +13,7 @@ import {
   linkableValues, matchesQuery, itemSubtitle, diffLog, formatStamp, relativeUpdated,
   normalizeUrl, avatarHue, avatarLetter,
   generatePassword,
-} from '../utils/vaultLogic.js';
+} from '../../utils/vaultLogic.js';
 
 /* ── TYPES phải khớp CHECK constraint trong migration ──────────────────── */
 // Gõ lệch danh sách này với data/migration_v5.2.0_vault.sql là insert fail

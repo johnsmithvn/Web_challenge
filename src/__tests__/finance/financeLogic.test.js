@@ -52,7 +52,7 @@ import {
   maturityWarn,
   spendingRhythm,
   groupByDate,
-} from '../utils/financeLogic.js';
+} from '../../utils/financeLogic.js';
 
 // Stub cats tối giản (không import JSON để chạy được bằng node).
 const CATS = {

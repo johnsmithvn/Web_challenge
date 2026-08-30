@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const list = readFileSync(new URL('../components/TaskListSection.jsx', import.meta.url), 'utf8');
-const detail = readFileSync(new URL('../components/TaskDetailModal.jsx', import.meta.url), 'utf8');
-const calendar = readFileSync(new URL('../components/MonthCalendar.jsx', import.meta.url), 'utf8');
-const calendarCss = readFileSync(new URL('../styles/calendar.css', import.meta.url), 'utf8');
-const tasksHook = readFileSync(new URL('../hooks/useUserTasks.js', import.meta.url), 'utf8');
+const list = readFileSync(new URL('../../components/TaskListSection.jsx', import.meta.url), 'utf8');
+const detail = readFileSync(new URL('../../components/TaskDetailModal.jsx', import.meta.url), 'utf8');
+const calendar = readFileSync(new URL('../../components/MonthCalendar.jsx', import.meta.url), 'utf8');
+const calendarCss = readFileSync(new URL('../../styles/calendar.css', import.meta.url), 'utf8');
+const tasksHook = readFileSync(new URL('../../hooks/useUserTasks.js', import.meta.url), 'utf8');
 
 assert.match(list, /editContent=\{editId === task\.id \? renderTask\(task, \{ insideDetail: true \}\) : null\}/,
   'popup chi tiết phải dùng lại đúng form edit đang render ở list');

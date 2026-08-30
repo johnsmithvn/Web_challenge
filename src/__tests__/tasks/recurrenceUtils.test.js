@@ -6,7 +6,7 @@
  * bất đối xứng gốc/không-gốc (mục 3 — xoá gốc KHÔNG cascade, xoá không-gốc CÓ cascade).
  */
 import assert from 'node:assert/strict';
-import { computeNextDueDate, resolveDeletionIds } from '../utils/recurrenceUtils.js';
+import { computeNextDueDate, resolveDeletionIds } from '../../utils/recurrenceUtils.js';
 
 /* ── computeNextDueDate: interval ────────────────────────── */
 assert.equal(computeNextDueDate({ type: 'interval', days: 7 }, '2026-08-01'), '2026-08-08');

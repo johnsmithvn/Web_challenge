@@ -3,22 +3,22 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const snapshots = [
-  ['../../data/schema_v4.24.0.sql', '../../supabase/migrations/20260802000000_base_v5_0_0.sql'],
-  ['../../data/migration_v5.2.0_vault.sql', '../../supabase/migrations/20260805000000_vault_v5_2_0.sql'],
-  ['../../data/migration_v6.0.0_finance.sql', '../../supabase/migrations/20260808000000_finance_v6_0_0.sql'],
-  ['../../data/migration_v6.2.0_vault_encryption.sql', '../../supabase/migrations/20260809000000_vault_encryption_v6_2_0.sql'],
+  ['../../../data/schema_v4.24.0.sql', '../../../supabase/migrations/20260802000000_base_v5_0_0.sql'],
+  ['../../../data/migration_v5.2.0_vault.sql', '../../../supabase/migrations/20260805000000_vault_v5_2_0.sql'],
+  ['../../../data/migration_v6.0.0_finance.sql', '../../../supabase/migrations/20260808000000_finance_v6_0_0.sql'],
+  ['../../../data/migration_v6.2.0_vault_encryption.sql', '../../../supabase/migrations/20260809000000_vault_encryption_v6_2_0.sql'],
 ];
 
 for (const [source, migration] of snapshots) {
   assert.equal(read(migration), read(source), `${migration} must mirror ${source}`);
 }
 
-const config = read('../../supabase/config.toml');
-const core = read('../../data/schema_v4.24.0.sql');
-const vault = read('../../data/migration_v5.2.0_vault.sql');
-const vaultEncryption = read('../../data/migration_v6.2.0_vault_encryption.sql');
-const finance = read('../../data/migration_v6.0.0_finance.sql');
-const reset = read('../../data/reset_user_data.sql');
+const config = read('../../../supabase/config.toml');
+const core = read('../../../data/schema_v4.24.0.sql');
+const vault = read('../../../data/migration_v5.2.0_vault.sql');
+const vaultEncryption = read('../../../data/migration_v6.2.0_vault_encryption.sql');
+const finance = read('../../../data/migration_v6.0.0_finance.sql');
+const reset = read('../../../data/reset_user_data.sql');
 
 assert.match(config, /^auto_expose_new_tables = false$/m);
 assert.match(config, /\[db\.seed\][\s\S]*?enabled = false/);

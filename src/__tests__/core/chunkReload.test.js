@@ -6,7 +6,7 @@
  * người dùng kẹt ở màn "Có lỗi xảy ra" cho tới khi tự F5.
  */
 import assert from 'node:assert/strict';
-import { isStaleChunkError } from '../utils/chunkReload.js';
+import { isStaleChunkError } from '../../utils/chunkReload.js';
 
 // Chrome / Edge
 assert.ok(isStaleChunkError(new Error(

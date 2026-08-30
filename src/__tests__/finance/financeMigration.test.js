@@ -1,20 +1,20 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const sql = readFileSync(new URL('../../data/migration_v6.0.0_finance.sql', import.meta.url), 'utf8');
-const hook = readFileSync(new URL('../hooks/useFinance.js', import.meta.url), 'utf8');
-const recurring = readFileSync(new URL('../components/finance/RecurringScreen.jsx', import.meta.url), 'utf8');
-const list = readFileSync(new URL('../components/finance/ListScreen.jsx', import.meta.url), 'utf8');
-const page = readFileSync(new URL('../pages/FinancePage.jsx', import.meta.url), 'utf8');
-const billNote = readFileSync(new URL('../../data/migration_v6.3.0_finance_bill_note.sql', import.meta.url), 'utf8');
-const lending = readFileSync(new URL('../../data/migration_v6.4.0_finance_lending.sql', import.meta.url), 'utf8');
-const detach = readFileSync(new URL('../../data/migration_v6.9.0_finance_rule_detach.sql', import.meta.url), 'utf8');
-const forfeited = readFileSync(new URL('../../data/migration_v6.9.1_finance_lending_forfeited.sql', import.meta.url), 'utf8');
+const sql = readFileSync(new URL('../../../data/migration_v6.0.0_finance.sql', import.meta.url), 'utf8');
+const hook = readFileSync(new URL('../../hooks/useFinance.js', import.meta.url), 'utf8');
+const recurring = readFileSync(new URL('../../components/finance/RecurringScreen.jsx', import.meta.url), 'utf8');
+const list = readFileSync(new URL('../../components/finance/ListScreen.jsx', import.meta.url), 'utf8');
+const page = readFileSync(new URL('../../pages/FinancePage.jsx', import.meta.url), 'utf8');
+const billNote = readFileSync(new URL('../../../data/migration_v6.3.0_finance_bill_note.sql', import.meta.url), 'utf8');
+const lending = readFileSync(new URL('../../../data/migration_v6.4.0_finance_lending.sql', import.meta.url), 'utf8');
+const detach = readFileSync(new URL('../../../data/migration_v6.9.0_finance_rule_detach.sql', import.meta.url), 'utf8');
+const forfeited = readFileSync(new URL('../../../data/migration_v6.9.1_finance_lending_forfeited.sql', import.meta.url), 'utf8');
 const destructiveScreens = [
   list,
   recurring,
-  readFileSync(new URL('../components/finance/AddScreen.jsx', import.meta.url), 'utf8'),
-  readFileSync(new URL('../components/finance/AnalyzeScreen.jsx', import.meta.url), 'utf8'),
+  readFileSync(new URL('../../components/finance/AddScreen.jsx', import.meta.url), 'utf8'),
+  readFileSync(new URL('../../components/finance/AnalyzeScreen.jsx', import.meta.url), 'utf8'),
 ].join('\n');
 
 const TABLES = [
@@ -167,8 +167,8 @@ assert.match(sql, /REVOKE ALL ON TABLE[\s\S]*FROM anon;/, 'anon không được 
 console.log('financeMigration contract check: OK');
 
 /* ── Taxonomy: sub hệ thống và sub đã đổi nhóm cha ────────────────────────── */
-const cats = JSON.parse(readFileSync(new URL('../data/finance-categories.json', import.meta.url), 'utf8'));
-const add = readFileSync(new URL('../components/finance/AddScreen.jsx', import.meta.url), 'utf8');
+const cats = JSON.parse(readFileSync(new URL('../../data/finance-categories.json', import.meta.url), 'utf8'));
+const add = readFileSync(new URL('../../components/finance/AddScreen.jsx', import.meta.url), 'utf8');
 const subs = cats.expenseGroups.flatMap(group => (group.subs || []).map(sub => ({ ...sub, group: group.key })));
 
 // `subLabel()` tra key trên TOÀN BỘ nhóm, nên key trùng nhau sẽ trả nhãn của nhóm khác.
@@ -198,7 +198,7 @@ assert.doesNotMatch(add + list + recurring, /subs \|\| \[\]\)\.filter\(s(ub)? =>
  * state giữ khóa cũ. v6.11.0 hạ 11 khóa xuống 10 (shopping → personal, bỏ
  * entertainment) nên phải khóa cả hai đầu lại.
  */
-const taxonomySql = readFileSync(new URL('../../data/migration_v6.11.0_finance_taxonomy.sql', import.meta.url), 'utf8');
+const taxonomySql = readFileSync(new URL('../../../data/migration_v6.11.0_finance_taxonomy.sql', import.meta.url), 'utf8');
 const validCats = [...taxonomySql
   .match(/CREATE OR REPLACE FUNCTION finance_valid_expense_category[\s\S]*?ARRAY\[([\s\S]*?)\]/)[1]
   .matchAll(/'([^']+)'/g)].map(match => match[1]);
