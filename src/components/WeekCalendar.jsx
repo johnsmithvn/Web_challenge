@@ -25,9 +25,14 @@ export default function WeekCalendar({
   onQuickCreate,
   calendarView = 'week',
   onSwitchView,
+  currentDate,
+  startOnSunday: propStartOnSunday,
+  hideToolbar = false,
 }) {
   const today = new Date();
-  const [baseDate, setBaseDate] = useState(today);
+  const [internalBaseDate, setBaseDate] = useState(today);
+  const baseDate = currentDate || internalBaseDate;
+
   const [completedByDay, setCompletedByDay] = useState({});
   const [nowMinutes, setNowMinutes] = useState(() => {
     const d = new Date();
@@ -35,17 +40,19 @@ export default function WeekCalendar({
   });
 
   // Mặc định tuần bắt đầu từ Chủ Nhật (Sunday) giống Google Calendar trong ảnh của user
-  const [startOnSunday, setStartOnSunday] = useState(() => {
+  const [internalStartOnSunday, setInternalStartOnSunday] = useState(() => {
     const saved = localStorage.getItem('lh_cal_start_sun');
     return saved !== null ? saved === 'true' : true;
   });
+
+  const startOnSunday = propStartOnSunday !== undefined ? propStartOnSunday : internalStartOnSunday;
 
   const scrollRef = useRef(null);
   const hasAutoScrolled = useRef(false);
   const todayStr = useMemo(() => toDateStr(new Date()), []);
 
   const toggleStartDay = () => {
-    setStartOnSunday((prev) => {
+    setInternalStartOnSunday((prev) => {
       const next = !prev;
       localStorage.setItem('lh_cal_start_sun', String(next));
       return next;
@@ -60,6 +67,17 @@ export default function WeekCalendar({
     }, 60000);
     return () => clearInterval(timer);
   }, []);
+
+  // Tự động cuộn mượt đến khung giờ hiện tại khi mở Lịch Tuần
+  useEffect(() => {
+    if (scrollRef.current && !hasAutoScrolled.current) {
+      hasAutoScrolled.current = true;
+      // Cuộn đến trước giờ hiện tại 2 tiếng (hoặc tối thiểu mốc 7h sáng nếu dậy sớm)
+      const targetMinutes = Math.max(0, nowMinutes - 120);
+      const targetScrollTop = (targetMinutes / 60) * 54;
+      scrollRef.current.scrollTop = targetScrollTop;
+    }
+  }, [nowMinutes]);
 
   // Mảng 7 ngày của tuần đang chọn kèm tính toán Âm lịch
   const weekDays = useMemo(() => {
@@ -218,93 +236,95 @@ export default function WeekCalendar({
 
   return (
     <div className="week-cal">
-      {/* ── Toolbar điều hướng trên cùng ────────────────────────────────── */}
-      <div className="week-cal__toolbar">
-        <div className="week-cal__nav-group">
-          <button
-            type="button"
-            className="week-cal__btn-today"
-            onClick={goToday}
-          >
-            Hôm nay
-          </button>
-          <div className="week-cal__nav-arrows">
+      {/* ── Toolbar điều hướng trên cùng (ẩn khi dùng CalendarToolbar chung) ── */}
+      {!hideToolbar && (
+        <div className="week-cal__toolbar">
+          <div className="week-cal__nav-group">
             <button
               type="button"
-              className="week-cal__btn-nav"
-              onClick={prevWeek}
-              aria-label="Tuần trước"
+              className="week-cal__btn-today"
+              onClick={goToday}
             >
-              <AppIcon name="caretLeft" size={16} />
+              Hôm nay
             </button>
-            <button
-              type="button"
-              className="week-cal__btn-nav"
-              onClick={nextWeek}
-              aria-label="Tuần sau"
-            >
-              <AppIcon name="caretRight" size={16} />
-            </button>
+            <div className="week-cal__nav-arrows">
+              <button
+                type="button"
+                className="week-cal__btn-nav"
+                onClick={prevWeek}
+                aria-label="Tuần trước"
+              >
+                <AppIcon name="caretLeft" size={16} />
+              </button>
+              <button
+                type="button"
+                className="week-cal__btn-nav"
+                onClick={nextWeek}
+                aria-label="Tuần sau"
+              >
+                <AppIcon name="caretRight" size={16} />
+              </button>
+            </div>
+            <span className="week-cal__title">{weekLabel}</span>
           </div>
-          <span className="week-cal__title">{weekLabel}</span>
+
+          {/* Tùy chọn đầu tuần & Legend màu sắc */}
+          <div className="week-cal__toolbar-right">
+            <button
+              type="button"
+              className="week-cal__btn-startday"
+              onClick={toggleStartDay}
+              title="Đổi ngày bắt đầu tuần"
+            >
+              Bắt đầu: <strong>{startOnSunday ? 'Chủ Nhật' : 'Thứ 2'}</strong>
+            </button>
+
+            <div className="week-cal__color-legend">
+              <span className="week-cal__legend-item week-cal__legend-item--holiday">
+                <span className="week-cal__legend-dot" /> Ngày lễ
+              </span>
+              <span className="week-cal__legend-item week-cal__legend-item--fun">
+                <span className="week-cal__legend-dot" /> Dịp đặc biệt / Dev
+              </span>
+              <span className="week-cal__legend-item week-cal__legend-item--overdue">
+                <span className="week-cal__legend-dot" /> Quá hạn
+              </span>
+              <span className="week-cal__legend-item week-cal__legend-item--done">
+                <span className="week-cal__legend-dot" /> Đã xong
+              </span>
+            </div>
+
+            {/* Bộ chuyển đổi Tuần / Tháng */}
+            <div className="week-cal__view-switch" role="tablist" aria-label="Chế độ lịch">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={calendarView === 'week'}
+                className={`week-cal__view-btn${calendarView === 'week' ? ' week-cal__view-btn--active' : ''}`}
+                onClick={() => onSwitchView?.('week')}
+              >
+                Tuần
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={calendarView === 'month'}
+                className={`week-cal__view-btn${calendarView === 'month' ? ' week-cal__view-btn--active' : ''}`}
+                onClick={() => onSwitchView?.('month')}
+              >
+                Tháng
+              </button>
+            </div>
+          </div>
         </div>
-
-        {/* Tùy chọn đầu tuần & Legend màu sắc */}
-        <div className="week-cal__toolbar-right">
-          <button
-            type="button"
-            className="week-cal__btn-startday"
-            onClick={toggleStartDay}
-            title="Đổi ngày bắt đầu tuần"
-          >
-            Bắt đầu: <strong>{startOnSunday ? 'Chủ Nhật' : 'Thứ 2'}</strong>
-          </button>
-
-          <div className="week-cal__color-legend">
-            <span className="week-cal__legend-item week-cal__legend-item--holiday">
-              <span className="week-cal__legend-dot" /> Ngày lễ
-            </span>
-            <span className="week-cal__legend-item week-cal__legend-item--fun">
-              <span className="week-cal__legend-dot" /> Dịp đặc biệt / Dev
-            </span>
-            <span className="week-cal__legend-item week-cal__legend-item--overdue">
-              <span className="week-cal__legend-dot" /> Quá hạn
-            </span>
-            <span className="week-cal__legend-item week-cal__legend-item--done">
-              <span className="week-cal__legend-dot" /> Đã xong
-            </span>
-          </div>
-
-          {/* Bộ chuyển đổi Tuần / Tháng */}
-          <div className="week-cal__view-switch" role="tablist" aria-label="Chế độ lịch">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={calendarView === 'week'}
-              className={`week-cal__view-btn${calendarView === 'week' ? ' week-cal__view-btn--active' : ''}`}
-              onClick={() => onSwitchView?.('week')}
-            >
-              Tuần
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={calendarView === 'month'}
-              className={`week-cal__view-btn${calendarView === 'month' ? ' week-cal__view-btn--active' : ''}`}
-              onClick={() => onSwitchView?.('month')}
-            >
-              Tháng
-            </button>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* ── Scrollable Horizontal Wrapper ───────────────────────────────── */}
       <div className="week-cal__horizontal-scroll">
         <div className="week-cal__inner-container">
           {/* ── Header 7 ngày ─────────────────────────────────────────────── */}
           <div className="week-cal__days-header">
-            <div className="week-cal__timezone-slot">GMT+07</div>
+            <div className="week-cal__timezone-slot" />
             {weekDays.map((day) => (
               <div
                 key={day.dateStr}
@@ -313,19 +333,26 @@ export default function WeekCalendar({
                 title={`Dương lịch: ${day.dateStr} — Âm lịch: ${day.lunar ? `${day.lunar.day}/${day.lunar.month}${day.lunar.leap ? ' (nhuận)' : ''}` : 'N/A'}`}
               >
                 <span className="week-cal__day-name">{day.weekdayName}</span>
-                <span className="week-cal__day-num">{day.dayNum}</span>
-                {day.lunarText && (
-                  <span className={`week-cal__day-lunar${day.isFirstLunarDay ? ' week-cal__day-lunar--first' : ''}`}>
-                    {day.lunarText}
-                  </span>
-                )}
+                <div className="week-cal__day-num-container">
+                  <span className="week-cal__day-num">{day.dayNum}</span>
+                  {day.lunarText && (
+                    <span
+                      className={`week-cal__day-lunar${day.isFirstLunarDay ? ' week-cal__day-lunar--first' : ''}`}
+                      title={`Âm lịch: ${day.lunarText}`}
+                    >
+                      {day.isFirstLunarDay ? day.lunarText : day.lunar?.day}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
 
           {/* ── All-day Row (Ngày lễ Quốc Khánh + Công việc cả ngày) ────────── */}
           <div className="week-cal__allday-row">
-            <div className="week-cal__allday-label" />
+            <div className="week-cal__allday-label">
+              <span className="week-cal__gmt-text">GMT+07</span>
+            </div>
             {weekDays.map((day) => {
               const layout = dayLayouts[day.dateStr] || { allDayTasks: [] };
               const holidayInfo = holidaysMap[day.dateStr];
@@ -338,9 +365,9 @@ export default function WeekCalendar({
                       className={`week-cal__holiday-chip week-cal__holiday-chip--${holidayInfo.type}`}
                       title={`${holidayInfo.type === 'fun' ? 'Dịp đặc biệt / Dev: ' : 'Ngày lễ: '}${holidayInfo.name}`}
                     >
-                      <div className="week-cal__holiday-title">
+                      <span className="week-cal__holiday-title">
                         {holidayInfo.type === 'fun' ? '⚡ ' : ''}{holidayInfo.name}
-                      </div>
+                      </span>
                     </div>
                   )}
 

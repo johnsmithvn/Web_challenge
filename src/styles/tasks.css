@@ -33,12 +33,31 @@
 }
 .task-option-btn, .task-overflow-item, .task-form-hint,
 .task-list-card button, .task-item span { display: inline-flex; }
-.task-form-hint {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-style: italic;
+.tasks-page--calendar {
+  max-width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  padding: 0.5rem clamp(0.5rem, 1.5vw, 1.25rem) 0.6rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
-.tasks-page--calendar { max-width: 100%; }
+
+@media (max-width: 768px) {
+  .tasks-page--calendar {
+    height: calc(100dvh - var(--topbar-height, 52px) - var(--bottom-tabs-height, 60px));
+    padding: 0.25rem;
+  }
+}
+
+.tasks-page--calendar .tasks-hero {
+  display: none;
+}
+
+.tasks-page--calendar .tasks-viewbar {
+  margin-bottom: 0.45rem;
+}
 
 /* ── Hero (v4.29.0) — điểm nhìn của trang. Trước đó mọi thứ cùng 0.8rem
       nên không có phân cấp thị giác. ── */

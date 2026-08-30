@@ -53,16 +53,6 @@ export default function TaskCreateModal({
     }
   }, [isOpen, initialDate, initialTime]);
 
-  // Đóng modal khi bấm Escape
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose?.();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
   const handleSubmit = useCallback(async (e) => {
     if (e) e.preventDefault();
     if (!title.trim() || isSubmitting) return;
@@ -112,6 +102,21 @@ export default function TaskCreateModal({
     onClose,
     isSubmitting,
   ]);
+
+  // Phím tắt bàn phím: Escape để đóng, Ctrl+Enter (hoặc Cmd+Enter) để lưu nhanh
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose?.();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, handleSubmit]);
 
   if (!isOpen) return null;
 
@@ -338,24 +343,33 @@ export default function TaskCreateModal({
           </div>
 
           {/* Actions */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={!title.trim() || isSubmitting}
-              id="task-create-modal-submit"
-            >
-              <AppIcon name="pushPin" size={15} />
-              <span>{isSubmitting ? 'Đang tạo...' : 'Tạo việc'}</span>
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+              <kbd style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-glass)', borderRadius: '3px', padding: '1px 5px', fontSize: '0.68rem', fontFamily: 'monospace' }}>Ctrl</kbd>
+              <span>+</span>
+              <kbd style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-glass)', borderRadius: '3px', padding: '1px 5px', fontSize: '0.68rem', fontFamily: 'monospace' }}>Enter</kbd>
+              <span style={{ marginLeft: '2px' }}>để tạo nhanh</span>
+            </span>
+
+            <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={!title.trim() || isSubmitting}
+                id="task-create-modal-submit"
+              >
+                <AppIcon name="pushPin" size={15} />
+                <span>{isSubmitting ? 'Đang tạo...' : 'Tạo việc'}</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

@@ -32,7 +32,10 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
-  margin-top: 1rem;
+  margin-top: 0;
+  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 /* ── Toolbar điều hướng trên cùng ────────────────────────────────────────── */
@@ -40,11 +43,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1.25rem;
+  padding: 0.65rem 1.25rem;
   border-bottom: 1px solid var(--cal-border-grid);
   background: var(--cal-head-bg);
   gap: 0.75rem;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .week-cal__nav-group {
@@ -215,12 +219,18 @@
 /* ── Wrapper cuộn ngang ──────────────────────────────────────────────────── */
 .week-cal__horizontal-scroll {
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .week-cal__inner-container {
   min-width: 840px;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -231,28 +241,21 @@
   grid-template-columns: 60px repeat(7, 1fr);
   border-bottom: 1px solid var(--cal-border-col);
   background: var(--cal-head-bg);
+  flex-shrink: 0;
 }
 
 .week-cal__timezone-slot {
   border-right: 1px solid var(--cal-border-col);
-  padding: 0.5rem;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  font-size: 0.65rem;
-  color: var(--cal-time-color);
-  font-weight: 500;
-  padding-bottom: 0.75rem;
 }
 
 .week-cal__day-head {
-  padding: 0.65rem 0.25rem 0.5rem;
+  padding: 0.6rem 0.25rem 0.45rem;
   text-align: center;
   border-right: 1px solid var(--cal-border-col);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.2rem;
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -269,25 +272,33 @@
 }
 
 .week-cal__day-name {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 500;
   text-transform: uppercase;
   color: var(--cal-time-color);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+}
+
+.week-cal__day-num-container {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
 }
 
 .week-cal__day-num {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  font-size: 1.45rem;
+  font-size: 1.55rem;
   font-weight: 400;
   color: var(--text-primary);
   transition: all 0.15s ease;
   font-family: inherit;
+  line-height: 1;
 }
 
 /* Hôm nay highlight bằng hình tròn xanh Google */
@@ -297,17 +308,16 @@
 }
 
 .week-cal__day-head--today .week-cal__day-num {
-  background: var(--cal-today-circle);
-  color: #ffffff;
-  font-weight: 600;
+  background: #1a73e8 !important;
+  color: #ffffff !important;
+  font-weight: 500;
 }
 
-/* Nhãn âm lịch nhỏ tinh tế bên dưới số ngày */
+/* Nhãn âm lịch nhỏ tinh tế bên cạnh số ngày */
 .week-cal__day-lunar {
   font-size: 0.65rem;
   font-weight: 500;
   color: var(--cal-time-color);
-  margin-top: 1px;
   letter-spacing: -0.01em;
   user-select: none;
 }
@@ -320,52 +330,59 @@
   color: #fbbf24;
 }
 
-.week-cal__day-head--today .week-cal__day-lunar {
-  color: #1a73e8;
-  font-weight: 600;
-}
-[data-theme="dark"] .week-cal__day-head--today .week-cal__day-lunar {
-  color: #8ab4f8;
-}
-
 /* ── All-day Row (Ngày lễ Quốc Khánh + Việc cả ngày) ─────────────────────── */
 .week-cal__allday-row {
   display: grid;
   grid-template-columns: 60px repeat(7, 1fr);
   border-bottom: 1px solid var(--cal-border-col);
   background: var(--cal-allday-bg);
-  min-height: 48px;
+  min-height: 34px;
+  flex-shrink: 0;
 }
 
 .week-cal__allday-label {
   border-right: 1px solid var(--cal-border-col);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+}
+
+.week-cal__gmt-text {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--cal-time-color);
+  letter-spacing: -0.01em;
 }
 
 .week-cal__allday-cell {
   border-right: 1px solid var(--cal-border-col);
-  padding: 4px 6px;
+  padding: 3px 6px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
+  justify-content: center;
 }
 
 .week-cal__allday-cell:last-child {
   border-right: none;
 }
 
-/* Khối Ngày Lễ (Holiday Banner) */
+/* Khối Ngày Lễ (Holiday Banner) chuẩn phẳng Google Calendar */
 .week-cal__holiday-chip {
   border-radius: 4px;
-  padding: 3px 6px;
+  padding: 0 8px;
+  height: 22px;
   font-size: 0.72rem;
-  font-weight: 600;
-  line-height: 1.25;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  font-weight: 500;
+  line-height: 22px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: default;
-  transition: all 0.15s ease;
+  transition: opacity 0.15s ease;
+  display: flex;
+  align-items: center;
 }
 
 /* 1. Ngày lễ chính thống — Xanh lá đậm chuẩn Google Calendar */
@@ -374,17 +391,16 @@
   color: #ffffff;
 }
 
-/* 2. Dịp kỷ niệm vui / Dev / Quốc tế Nam giới — Phong cách Geek Tím Neon / Nét đứt */
+/* 2. Dịp kỷ niệm vui / Dev / Quốc tế Nam giới — Tím tinh tế phẳng */
 .week-cal__holiday-chip--fun {
-  background: rgba(139, 92, 246, 0.14);
-  border: 1px dashed #8b5cf6;
-  color: #6d28d9;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: #7c3aed;
 }
 [data-theme="dark"] .week-cal__holiday-chip--fun {
-  background: rgba(139, 92, 246, 0.22);
-  border-color: #a78bfa;
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(167, 139, 250, 0.4);
   color: #e9d5ff;
-  box-shadow: 0 0 8px rgba(139, 92, 246, 0.25);
 }
 
 .week-cal__holiday-title {
@@ -435,17 +451,20 @@
 /* ── Time Grid (Lưới thời gian 24 giờ cuộn được) ────────────────────────── */
 .week-cal__grid-scroll {
   position: relative;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  height: 640px;
   background: var(--bg-card);
-  padding-bottom: 80px; /* Đệm đáy chống che */
+  padding-bottom: 40px; /* Đệm đáy nhẹ chống che */
+  scroll-behavior: smooth;
 }
 
 .week-cal__grid-body {
   position: relative;
   display: grid;
-  grid-template-columns: 60px repeat(7, 1fr);
+  grid-template-columns: 60px repeat(7, minmax(0, 1fr));
   height: 1296px; /* 24 giờ * 54px */
 }
 
@@ -469,6 +488,7 @@
 .week-cal__day-col {
   position: relative;
   border-right: 1px solid var(--cal-border-col);
+  min-width: 0;
 }
 
 .week-cal__day-col:last-child {
@@ -515,7 +535,7 @@
 .week-cal__event {
   position: absolute;
   border-radius: 4px;
-  padding: 4px 8px;
+  padding: 4px 6px;
   cursor: pointer;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
@@ -525,6 +545,8 @@
   transition: filter 0.15s ease, box-shadow 0.15s ease;
   z-index: 2;
   color: #ffffff !important;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .week-cal__event:hover {
@@ -548,6 +570,9 @@
   font-weight: 500;
   margin-top: 2px;
   color: rgba(255, 255, 255, 0.9) !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 1. TASK QUÁ HẠN — ĐỎ THẪM GOOGLE */
@@ -609,3 +634,228 @@
     display: none;
   }
 }
+
+/* ── Calendar Toolbar chung (Google Calendar Top Bar) ───────────────────── */
+.cal-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-bottom: 1px solid var(--cal-border-grid);
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+  flex-shrink: 0;
+  min-height: 54px;
+  gap: 1rem;
+  z-index: 5;
+}
+
+.cal-header-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cal-header-bar__btn-today {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 4px;
+  border: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cal-header-bar__btn-today:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] .cal-header-bar__btn-today {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  color: #3c4043;
+}
+[data-theme="light"] .cal-header-bar__btn-today:hover {
+  background: #f1f3f4;
+}
+
+.cal-header-bar__nav-arrows {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cal-header-bar__arrow-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.cal-header-bar__arrow-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .cal-header-bar__arrow-btn:hover {
+  background: #f1f3f4;
+  color: #202124;
+}
+
+.cal-header-bar__title {
+  font-size: 1.28rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0 0.4rem;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.cal-header-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.cal-header-bar__btn-startday {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  border-radius: 4px;
+  padding: 0 10px;
+  height: 36px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s ease;
+}
+
+.cal-header-bar__btn-startday:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.cal-header-bar__dropdown-wrapper {
+  position: relative;
+}
+
+.cal-header-bar__view-dropdown-btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 4px;
+  border: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.cal-header-bar__view-dropdown-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] .cal-header-bar__view-dropdown-btn {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  color: #3c4043;
+}
+[data-theme="light"] .cal-header-bar__view-dropdown-btn:hover {
+  background: #f1f3f4;
+}
+
+.cal-header-bar__dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  min-width: 140px;
+  z-index: 1000;
+  padding: 4px 0;
+  overflow: hidden;
+  animation: fadeIn 0.12s ease;
+}
+
+.cal-header-bar__menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  font-size: 0.84rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease;
+  gap: 8px;
+}
+
+.cal-header-bar__menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cal-header-bar__menu-check {
+  width: 14px;
+  font-size: 0.85rem;
+  color: #1a73e8;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.cal-header-bar__menu-label {
+  flex: 1;
+  font-weight: 500;
+}
+
+.cal-header-bar__menu-shortcut {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+/* Container bọc Lịch (khi có Toolbar chung bên ngoài) */
+.calendar-view-container {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-glass);
+  border-top: none;
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+  background: var(--bg-card);
+}
+
+.calendar-view-container .week-cal {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border: none;
+}
+

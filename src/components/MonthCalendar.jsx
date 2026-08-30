@@ -1,51 +1,91 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { toDateStr, mondayIndex } from '../utils/dateUtils';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
 import { useConfirm } from './ConfirmModal';
 import UI_STRINGS from '../data/ui-strings.json';
 import HOLIDAYS from '../data/holidays.json';
 import AppIcon from './AppIcon';
 import '../styles/calendar.css';
+import '../styles/week-calendar.css';
 
-const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-
-// Số chip task hiện tối đa trong 1 ô — chiều cao ô cố định (calendar.css) được
-// tính vừa đúng 4 chip + dòng "+N nữa", đổi số này thì đổi luôn chiều cao đó.
+const WEEKDAYS_MON = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+const WEEKDAYS_SUN = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const MAX_CHIPS = 4;
 
 function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
 }
 
-function getFirstDayOfWeek(year, month) {
-  return mondayIndex(new Date(year, month, 1)); // Monday = 0
+function getFirstDayOfWeek(year, month, startOnSunday = false) {
+  const d = new Date(year, month, 1).getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  if (startOnSunday) return d;
+  return (d + 6) % 7; // Monday = 0
 }
 
 /**
- * MonthCalendar — lịch tháng cho /tasks: hiển thị task pending/completed,
- * ngày âm và holiday; chip dư được gom theo sức chứa cố định của ô.
+ * MonthCalendar — Giao diện Lịch Tháng Full-Height App-like chuẩn Google Calendar.
+ * Cứng cáp 100vh, hoàn toàn triệt tiêu thanh cuộn trang ngoài,
+ * các ô chia đều khít khung nhìn, đồng bộ ngày bắt đầu tuần, ngày lễ và phím tắt.
  */
-export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pendingTasks, onDayClick }) {
-  const today = new Date();
-  const [viewYear,  setViewYear]  = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
-  const [selected,  setSelected]  = useState(null);
+export default function MonthCalendar({
+  getCompletedTasksRange,
+  onDeleteTask,
+  pendingTasks,
+  onSelectTask,
+  onQuickCreate,
+  calendarView = 'month',
+  onSwitchView,
+  currentDate,
+  setCurrentDate,
+  startOnSunday: propStartOnSunday,
+  hideToolbar = false,
+}) {
+  const today = useMemo(() => new Date(), []);
+  const [viewYear, setViewYear] = useState(() => (currentDate ? currentDate.getFullYear() : today.getFullYear()));
+  const [viewMonth, setViewMonth] = useState(() => (currentDate ? currentDate.getMonth() : today.getMonth()));
+
+  // Đồng bộ viewYear/viewMonth khi currentDate bên ngoài thay đổi
+  useEffect(() => {
+    if (currentDate) {
+      setViewYear(currentDate.getFullYear());
+      setViewMonth(currentDate.getMonth());
+    }
+  }, [currentDate]);
+
+  const [selectedDayModal, setSelectedDayModal] = useState(null); // dateStr mở popup chi tiết ngày
   const [tasksByDay, setTasksByDay] = useState({});
-  const [expandedTaskId, setExpandedTaskId] = useState(null);
   const { confirm, ConfirmModal } = useConfirm();
 
-  const daysInMonth  = getDaysInMonth(viewYear, viewMonth);
-  const firstDayOfW  = getFirstDayOfWeek(viewYear, viewMonth);
-  const monthLabel   = new Date(viewYear, viewMonth).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+  // Đồng bộ tùy chọn đầu tuần với Lịch Tuần (lưu trong localStorage)
+  const [internalStartOnSunday, setInternalStartOnSunday] = useState(() => {
+    const saved = localStorage.getItem('lh_cal_start_sun');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  const startOnSunday = propStartOnSunday !== undefined ? propStartOnSunday : internalStartOnSunday;
+
+  const toggleStartDay = () => {
+    setInternalStartOnSunday((prev) => {
+      const next = !prev;
+      localStorage.setItem('lh_cal_start_sun', String(next));
+      return next;
+    });
+  };
+
+  const weekdays = startOnSunday ? WEEKDAYS_SUN : WEEKDAYS_MON;
+  const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+  const firstDayOfW = getFirstDayOfWeek(viewYear, viewMonth, startOnSunday);
+  const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
   const pad = (n) => String(n).padStart(2, '0');
 
-  // 1 query cho cả tháng rồi group theo ngày ĐỊA PHƯƠNG (không phải UTC).
+  // Tải task hoàn thành trong tháng
   useEffect(() => {
     if (!getCompletedTasksRange) return;
     let stale = false;
-    const start = `${viewYear}-${pad(viewMonth + 1)}-01`;
-    const end   = `${viewYear}-${pad(viewMonth + 1)}-${pad(getDaysInMonth(viewYear, viewMonth))}`;
-    getCompletedTasksRange(start, end).then(rows => {
+    const from = `${viewYear}-${pad(viewMonth + 1)}-01`;
+    const to = `${viewYear}-${pad(viewMonth + 1)}-${pad(daysInMonth)}`;
+
+    getCompletedTasksRange(from, to).then((rows) => {
       if (stale) return;
       const map = {};
       for (const r of rows) {
@@ -56,10 +96,9 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
       setTasksByDay(map);
     });
     return () => { stale = true; };
-  }, [viewYear, viewMonth, getCompletedTasksRange]);
+  }, [viewYear, viewMonth, daysInMonth, getCompletedTasksRange]);
 
-  // Task chưa hoàn thành, group theo due_date — pendingTasks đã fetch đầy đủ
-  // (không giới hạn ngày) ở useUserTasks nên không cần query riêng cho lịch.
+  // Gom pending tasks theo due_date
   const pendingByDay = useMemo(() => {
     if (!pendingTasks) return {};
     const map = {};
@@ -70,13 +109,12 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
     return map;
   }, [pendingTasks]);
 
-  // Compute day data — kèm âm lịch + ngày lễ (lễ dương HOẶC lễ âm).
+  // Dữ liệu từng ngày trong tháng
   const dayData = useMemo(() => {
     const map = {};
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${viewYear}-${pad(viewMonth + 1)}-${pad(d)}`;
-      const lunar   = solarToLunar(d, viewMonth + 1, viewYear);
-      // Tháng nhuận KHÔNG tính lễ: Tết tháng 1 nhuận không phải Tết.
+      const lunar = solarToLunar(d, viewMonth + 1, viewYear);
       const lunarKey = lunar.leap ? null : `${pad(lunar.month)}-${pad(lunar.day)}`;
       const holidayOfficial = HOLIDAYS.solar[`${pad(viewMonth + 1)}-${pad(d)}`]
         || (lunarKey ? HOLIDAYS.lunar[lunarKey] : null)
@@ -87,9 +125,9 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
       const holiday = holidayOfficial || holidayFun;
       const holidayType = holidayOfficial ? 'official' : (holidayFun ? 'fun' : null);
 
-      const tasks   = tasksByDay[dateStr] || [];
+      const tasks = tasksByDay[dateStr] || [];
       const pending = pendingByDay[dateStr] || [];
-      const done    = tasks.length > 0;
+      const done = tasks.length > 0;
       map[d] = { dateStr, done, holiday, holidayType, lunar, tasks, pending };
     }
     return map;
@@ -97,36 +135,79 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
 
   const todayStr = toDateStr(today);
 
-  const prevMonth = () => {
-    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
-    else setViewMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
-    else setViewMonth(m => m + 1);
-  };
-  const goToday = () => { setViewYear(today.getFullYear()); setViewMonth(today.getMonth()); };
+  const prevMonth = useCallback(() => {
+    if (setCurrentDate) {
+      setCurrentDate((prev) => {
+        const d = new Date(prev);
+        d.setMonth(d.getMonth() - 1);
+        return d;
+      });
+    } else {
+      if (viewMonth === 0) { setViewYear((y) => y - 1); setViewMonth(11); }
+      else setViewMonth((m) => m - 1);
+    }
+  }, [setCurrentDate, viewMonth]);
 
-  // Stats for this month
-  const doneCount   = Object.values(dayData).filter(d => d.done).length;
-  const taskTotal   = Object.values(dayData).reduce((s, d) => s + d.tasks.length, 0);
+  const nextMonth = useCallback(() => {
+    if (setCurrentDate) {
+      setCurrentDate((prev) => {
+        const d = new Date(prev);
+        d.setMonth(d.getMonth() + 1);
+        return d;
+      });
+    } else {
+      if (viewMonth === 11) { setViewYear((y) => y + 1); setViewMonth(0); }
+      else setViewMonth((m) => m + 1);
+    }
+  }, [setCurrentDate, viewMonth]);
 
-  // Build grid: blanks + days
-  const cells = [...Array(firstDayOfW).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  const goToday = useCallback(() => {
+    if (setCurrentDate) {
+      setCurrentDate(new Date());
+    } else {
+      setViewYear(today.getFullYear());
+      setViewMonth(today.getMonth());
+    }
+  }, [setCurrentDate, today]);
 
-  // Data cho cả tháng đã có sẵn → chọn ngày chỉ là toggle, không fetch.
-  const handleSelectDay = useCallback((dateStr) => {
-    setExpandedTaskId(null);
-    setSelected(prev => (prev === dateStr ? null : dateStr));
-    onDayClick?.(dateStr);
-  }, [onDayClick]);
+  // Cuộn chuột trong Lịch Tháng để chuyển tháng trước / tháng sau (chuẩn Google Calendar UX)
+  const wheelLockRef = useRef(false);
+  const handleWheel = useCallback((e) => {
+    // Không chuyển tháng nếu đang mở modal chi tiết ngày
+    if (selectedDayModal) return;
 
-  const selectedTasks   = selected ? (tasksByDay[selected] || []) : [];
-  const selectedPending = selected ? (pendingByDay[selected] || []) : [];
+    // Ngưỡng lăn chuột đủ rõ ràng, tránh rung nhẹ trên touchpad
+    if (Math.abs(e.deltaY) < 25) return;
 
-  // Xoá task đã hoàn thành ngay từ panel chi tiết ngày (task mode only).
+    if (wheelLockRef.current) return;
+    wheelLockRef.current = true;
+
+    if (e.deltaY > 0) {
+      nextMonth();
+    } else {
+      prevMonth();
+    }
+
+    // Khóa đệm 450ms để không bị nhảy cóc nhiều tháng liên tiếp do quán tính chuột
+    setTimeout(() => {
+      wheelLockRef.current = false;
+    }, 450);
+  }, [selectedDayModal, nextMonth, prevMonth]);
+
+  // Mảng ô của tháng gồm ô trống đầu + các ngày + ô trống cuối
+  const cells = useMemo(() => {
+    const list = [];
+    for (let i = 0; i < firstDayOfW; i++) list.push(null);
+    for (let d = 1; d <= daysInMonth; d++) list.push(d);
+    while (list.length % 7 !== 0) {
+      list.push(null);
+    }
+    return list;
+  }, [firstDayOfW, daysInMonth]);
+
+  const weeksCount = Math.ceil(cells.length / 7) || 5;
+
   const handleDeleteTask = useCallback(async (task, dateStr) => {
-    if (!onDeleteTask) return;
     const cfg = UI_STRINGS.confirm.deleteTask;
     const ok = await confirm({
       ...cfg,
@@ -135,83 +216,149 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
     if (!ok) return;
     const deleted = await onDeleteTask(task.id);
     if (deleted !== false) {
-      setTasksByDay(prev => ({
+      setTasksByDay((prev) => ({
         ...prev,
-        [dateStr]: (prev[dateStr] || []).filter(t => t.id !== task.id),
+        [dateStr]: (prev[dateStr] || []).filter((t) => t.id !== task.id),
       }));
-      setExpandedTaskId(prev => (prev === task.id ? null : prev));
     }
   }, [confirm, onDeleteTask]);
 
-  // Reset selection when changing months
+  // Đóng modal chi tiết ngày bằng Escape
   useEffect(() => {
-    setSelected(null);
-    setExpandedTaskId(null);
-  }, [viewYear, viewMonth]);
+    if (!selectedDayModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setSelectedDayModal(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedDayModal]);
 
   return (
-    <div className="month-calendar card">
+    <div className="month-cal week-cal" onWheel={handleWheel}>
       {ConfirmModal}
-      {/* Header */}
-      <div className="cal-header">
-        <button className="cal-nav-btn" onClick={prevMonth} id="cal-prev">‹</button>
-        <div className="cal-title-group">
-          <h3 className="cal-title">{monthLabel}</h3>
-          <button className="btn btn-ghost" style={{ fontSize: '0.78rem', padding: '0.25rem 0.75rem' }}
-            onClick={goToday} id="cal-today-btn">
-            Hôm nay
-          </button>
-        </div>
-        <button className="cal-nav-btn" onClick={nextMonth} id="cal-next">›</button>
-      </div>
 
-      {/* Month stats */}
-      <div className="cal-month-stats">
-        <div className="cal-stat">
-          <span className="cal-stat__val" style={{ color: 'var(--green)' }}>{taskTotal}</span>
-          <span className="cal-stat__label">Task xong</span>
-        </div>
-        {/* Cố ý KHÔNG có progress bar: % ngày-có-task không phải mục tiêu nào cả,
-            và thanh 6% trong track rộng nhìn như đang lỗi. */}
-        <div className="cal-stat-bar">
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            {doneCount} ngày có việc xong
-          </span>
-        </div>
-        <div className="cal-stat">
-          <span className="cal-stat__val" style={{ color: 'var(--purple-light)' }}>
-            {doneCount ? Math.round(taskTotal / doneCount * 10) / 10 : 0}
-          </span>
-          <span className="cal-stat__label">TB / ngày</span>
-        </div>
-      </div>
+      {/* ── Toolbar điều hướng trên cùng — Ẩn khi dùng CalendarToolbar chung ──── */}
+      {!hideToolbar && (
+        <div className="week-cal__toolbar">
+          <div className="week-cal__nav-group">
+            <button
+              type="button"
+              className="week-cal__btn-today"
+              onClick={goToday}
+            >
+              Hôm nay
+            </button>
+            <div className="week-cal__nav-arrows">
+              <button
+                type="button"
+                className="week-cal__btn-nav"
+                onClick={prevMonth}
+                aria-label="Tháng trước"
+              >
+                <AppIcon name="caretLeft" size={16} />
+              </button>
+              <button
+                type="button"
+                className="week-cal__btn-nav"
+                onClick={nextMonth}
+                aria-label="Tháng sau"
+              >
+                <AppIcon name="caretRight" size={16} />
+              </button>
+            </div>
+            <span className="week-cal__title" style={{ textTransform: 'capitalize' }}>
+              {monthLabel}
+            </span>
+          </div>
 
-      {/* Weekday labels */}
+          {/* Bắt đầu tuần, Legend & Bộ chuyển view */}
+          <div className="week-cal__toolbar-right">
+            <button
+              type="button"
+              className="week-cal__btn-startday"
+              onClick={toggleStartDay}
+              title="Đổi ngày bắt đầu tuần"
+            >
+              Bắt đầu: <strong>{startOnSunday ? 'Chủ Nhật' : 'Thứ 2'}</strong>
+            </button>
+
+            <div className="week-cal__color-legend">
+              <span className="week-cal__legend-item week-cal__legend-item--holiday">
+                <span className="week-cal__legend-dot" /> Ngày lễ
+              </span>
+              <span className="week-cal__legend-item week-cal__legend-item--fun">
+                <span className="week-cal__legend-dot" /> Dịp đặc biệt / Dev
+              </span>
+              <span className="week-cal__legend-item week-cal__legend-item--overdue">
+                <span className="week-cal__legend-dot" /> Quá hạn
+              </span>
+              <span className="week-cal__legend-item week-cal__legend-item--done">
+                <span className="week-cal__legend-dot" /> Đã xong
+              </span>
+            </div>
+
+            {onSwitchView && (
+              <div className="week-cal__view-switch" role="tablist" aria-label="Chế độ lịch">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={calendarView === 'week'}
+                  className={`week-cal__view-btn${calendarView === 'week' ? ' week-cal__view-btn--active' : ''}`}
+                  onClick={() => onSwitchView('week')}
+                >
+                  Tuần
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={calendarView === 'month'}
+                  className={`week-cal__view-btn${calendarView === 'month' ? ' week-cal__view-btn--active' : ''}`}
+                  onClick={() => onSwitchView('month')}
+                >
+                  Tháng
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Hàng Thứ 7 ngày trong tuần ─────────────────────────────────── */}
       <div className="cal-weekdays">
-        {WEEKDAYS.map(d => <div key={d} className="cal-weekday">{d}</div>)}
+        {weekdays.map((d) => (
+          <div key={d} className="cal-weekday">
+            {d}
+          </div>
+        ))}
       </div>
 
-      {/* Day grid */}
-      <div className="cal-grid">
+      {/* ── Lưới Lịch Tháng Full-Height (Chia đều tỷ lệ 1fr cho các tuần) ── */}
+      <div
+        className="cal-grid"
+        style={{ gridTemplateRows: `repeat(${weeksCount}, minmax(0, 1fr))` }}
+      >
         {cells.map((day, i) => {
-          if (!day) return <div key={`blank-${i}`} className="cal-cell cal-cell--blank" />;
+          if (!day) {
+            return (
+              <div
+                key={`blank-${i}`}
+                className="cal-cell cal-cell--blank"
+              />
+            );
+          }
 
-          const info     = dayData[day];
-          const isToday  = info.dateStr === todayStr;
+          const info = dayData[day];
+          const isToday = info.dateStr === todayStr;
           const isFuture = new Date(info.dateStr) > today;
-          const isSelected = selected === info.dateStr;
 
-          // Ô trống là bình thường (không phải "miss"), nên không tô đỏ.
-          const stateClass = info.done
-            ? 'cal-cell--done'
-            : isFuture ? 'cal-cell--future' : 'cal-cell--empty';
-
-          // 1 danh sách chip: xong trước (xanh), sắp tới sau (tím) — trước đây
-          // ngày vừa có việc xong vừa có việc sắp tới thì chip tím bị nuốt hẳn.
           const chips = [
-            ...info.tasks.map(t => ({ ...t, _done: true })),
-            ...info.pending.map(t => ({ ...t, _done: false })),
+            ...info.tasks.map((t) => ({ ...t, _done: true })),
+            ...info.pending.map((t) => {
+              const overdue = !t.completed && t.due_date && t.due_date < todayStr;
+              return { ...t, _done: false, _overdue: overdue };
+            }),
           ];
+
           const chipLimit = info.holiday ? MAX_CHIPS - 1 : MAX_CHIPS;
           const shown = chips.slice(0, chipLimit);
 
@@ -220,13 +367,12 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
               key={day}
               className={[
                 'cal-cell',
-                stateClass,
-                'cal-cell--tasks',
-                isToday    ? 'cal-cell--today'    : '',
-                isSelected ? 'cal-cell--selected' : '',
+                info.done ? 'cal-cell--done' : isFuture ? 'cal-cell--future' : 'cal-cell--empty',
+                isToday ? 'cal-cell--today' : '',
                 info.holiday ? `cal-cell--holiday cal-cell--holiday-${info.holidayType}` : '',
               ].join(' ')}
-              onClick={() => handleSelectDay(info.dateStr)}
+              onClick={() => setSelectedDayModal(info.dateStr)}
+              onDoubleClick={() => onQuickCreate?.(info.dateStr, '09:00')}
               id={`cal-day-${info.dateStr}`}
               role="button"
               title={[
@@ -234,25 +380,20 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
                 `Âm lịch ${info.lunar.day}/${info.lunar.month}${info.lunar.leap ? ' (nhuận)' : ''}`,
                 info.holiday,
                 info.tasks.length ? `${info.tasks.length} task xong` : null,
+                'Nhấp đúp để tạo việc nhanh',
               ].filter(Boolean).join(' — ')}
             >
-              <span className="cal-cell__head">
-                <span className="cal-cell__num">{day}</span>
-                <span className="cal-cell__lunar">{lunarLabel(info.lunar)}</span>
-              </span>
-
-              {/* Chip tên task như Google Calendar */}
-              {shown.length > 0 && (
-                <span className="cal-cell__chips">
-                  {shown.map(t => (
-                    <span key={t.id} className={`cal-chip${t._done ? '' : ' cal-chip--pending'}`} title={t.title}>{t.title}</span>
-                  ))}
-                  {chips.length > chipLimit && (
-                    <span className="cal-chip cal-chip--more">+{chips.length - chipLimit} nữa…</span>
-                  )}
+              {/* Header ngày: Số ngày dương + Âm lịch */}
+              <div className="cal-cell__head">
+                <span className={`cal-cell__num ${isToday ? 'cal-cell__num--today' : ''}`}>
+                  {day}
                 </span>
-              )}
+                <span className={`cal-cell__lunar ${info.lunar.day === 1 ? 'cal-cell__lunar--first' : ''}`}>
+                  {lunarLabel(info.lunar)}
+                </span>
+              </div>
 
+              {/* Banner Ngày Lễ trong ô */}
               {info.holiday && (
                 <span
                   className={`cal-cell__holiday cal-cell__holiday--${info.holidayType}`}
@@ -262,134 +403,223 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
                   <span className="cal-cell__holiday-name">{info.holiday}</span>
                 </span>
               )}
+
+              {/* Danh sách Task Chips phẳng kiểu Google Calendar */}
+              <div className="cal-cell__chips">
+                {shown.map((t) => {
+                  const chipClass = t._done
+                    ? 'cal-chip--done'
+                    : t._overdue
+                    ? 'cal-chip--overdue'
+                    : 'cal-chip--active';
+
+                  return (
+                    <div
+                      key={t.id}
+                      className={`cal-chip ${chipClass}`}
+                      title={t.title}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectTask?.(t);
+                      }}
+                    >
+                      <span className="cal-chip__title">
+                        {t._done ? '✓ ' : t._overdue ? '⚠️ ' : ''}{t.title}
+                      </span>
+                    </div>
+                  );
+                })}
+
+                {chips.length > chipLimit && (
+                  <div
+                    className="cal-chip cal-chip--more"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDayModal(info.dateStr);
+                    }}
+                  >
+                    +{chips.length - chipLimit} nữa…
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* Selected day detail */}
-      {selected && (
-        <div className="cal-day-detail">
-          {/* Cắt chuỗi thay vì new Date(selected).getDate(): chuỗi 'YYYY-MM-DD'
-          {(() => {
-            const info = dayData[Number(selected.slice(8, 10))];
-            return (
-              <div className="cal-day-detail__head">
-                <strong>{new Date(selected + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</strong>
-                {info && (
-                  <span className="cal-day-detail__lunar">
-                    <AppIcon name="moon" size={13} weight="fill" /> Âm lịch {info.lunar.day}/{info.lunar.month}{info.lunar.leap ? ' (nhuận)' : ''}
-                  </span>
-                )}
-                {info?.holiday && (
-                  <span className={`cal-day-detail__holiday cal-day-detail__holiday--${info.holidayType}`}>
-                    <AppIcon name={info.holidayType === 'fun' ? 'lightning' : 'star'} size={13} weight="fill" /> {info.holiday}
-                  </span>
-                )}
-              </div>
-            );
-          })()}
+      {/* ── Modal Chi Tiết Ngày Nổi (Day Detail Modal) — Không phá vỡ 100vh ── */}
+      {selectedDayModal && (() => {
+        const dayNum = Number(selectedDayModal.slice(8, 10));
+        const info = dayData[dayNum];
+        const selectedTasks = info?.tasks || [];
+        const selectedPending = info?.pending || [];
 
-
-
-          {/* Tasks ngày này — 1 danh sách duy nhất (đã xong + chưa xong trộn chung).
-              Trạng thái đã thể hiện qua màu chip trên lưới lịch rồi nên không tách
-              tiêu đề riêng ở đây nữa, chỉ liệt kê hết task của ngày. */}
-          {selectedTasks.length === 0 && selectedPending.length === 0 && (
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.5rem', display: 'block' }}>
-              Không có task nào ngày này.
-            </span>
-          )}
-          {(selectedTasks.length > 0 || selectedPending.length > 0) && (
-            <div style={{ marginTop: '0.75rem' }}>
-              <div style={{
-                fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)',
-                marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.3rem',
-              }}>
-                <AppIcon name="pushPin" size={14} /> Nhiệm vụ ngày này ({selectedTasks.length + selectedPending.length})
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                {selectedTasks.map(task => (
-                  <div key={task.id} style={{
-                    background: 'rgba(0,255,136,0.04)',
-                    border: '1px solid rgba(0,255,136,0.1)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '0.5rem 0.6rem',
-                    cursor: task.description ? 'pointer' : 'default',
-                  }}
-                  onClick={() => task.description && setExpandedTaskId(expandedTaskId === task.id ? null : task.id)}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                        <AppIcon name="checkCircle" size={14} /> {task.title}
-                        {task.description && (
-                          <span style={{ fontSize: '0.68rem', marginLeft: '0.3rem', color: 'var(--text-muted)' }}>
-                            {expandedTaskId === task.id ? '▾' : '▸'}
-                          </span>
-                        )}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-                        {task.completed_at && (
-                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                            {new Date(task.completed_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        )}
-                        {onDeleteTask && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteTask(task, selected); }}
-                            title="Xoá task này"
-                            style={{
-                              background: 'none', border: 'none', cursor: 'pointer',
-                              fontSize: '0.78rem', color: 'var(--text-muted)', opacity: 0.6,
-                              padding: '0.1rem 0.2rem',
-                            }}
-                          ><AppIcon name="trash" size={14} /></button>
-                        )}
-                      </div>
+        return (
+          <div
+            className="qc-backdrop"
+            onClick={() => setSelectedDayModal(null)}
+            style={{ zIndex: 9999 }}
+          >
+            <div
+              className="card cal-day-modal"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: '480px',
+                maxHeight: '85vh',
+                display: 'flex',
+                flexDirection: 'column',
+                padding: '1.25rem',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: '0 16px 48px rgba(0, 0, 0, 0.4)',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-glass)',
+              }}
+            >
+              {/* Header ngày modal */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>
+                    {new Date(selectedDayModal + 'T00:00:00').toLocaleDateString('vi-VN', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </div>
+                  {info?.lunar && (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <AppIcon name="moon" size={13} weight="fill" />
+                      <span>Âm lịch {info.lunar.day}/{info.lunar.month}{info.lunar.leap ? ' (nhuận)' : ''}</span>
+                      {info.holiday && (
+                        <span style={{ color: info.holidayType === 'fun' ? 'var(--purple-light)' : 'var(--gold-dim)', fontWeight: 600, marginLeft: '0.35rem' }}>
+                          · {info.holidayType === 'fun' ? '⚡ ' : '★ '}{info.holiday}
+                        </span>
+                      )}
                     </div>
-                    {expandedTaskId === task.id && task.description && (
-                      <div style={{
-                        marginTop: '0.35rem',
-                        padding: '0.4rem 0.5rem',
-                        background: 'rgba(255,255,255,0.03)',
-                        borderRadius: 'var(--radius-sm)',
-                        fontSize: '0.75rem',
-                        color: 'var(--text-muted)',
-                        lineHeight: 1.5,
-                        whiteSpace: 'pre-wrap',
-                      }}>
-                        {task.description}
-                      </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setSelectedDayModal(null)}
+                  style={{ padding: '4px', borderRadius: '50%' }}
+                  aria-label="Đóng"
+                >
+                  <AppIcon name="x" size={16} />
+                </button>
+              </div>
+
+              {/* Nút thêm việc */}
+              <div style={{ marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setSelectedDayModal(null);
+                    onQuickCreate?.(selectedDayModal, '09:00');
+                  }}
+                  style={{ width: '100%', justifyContent: 'center', padding: '0.45rem', fontSize: '0.84rem' }}
+                >
+                  <AppIcon name="plus" size={15} /> Thêm nhiệm vụ ngày này
+                </button>
+              </div>
+
+              {/* Danh sách công việc của ngày */}
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingRight: '2px' }}>
+                {selectedTasks.length === 0 && selectedPending.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
+                    Không có nhiệm vụ nào trong ngày này.
+                  </div>
+                )}
+
+                {/* Tasks đang chờ làm */}
+                {selectedPending.map((task) => (
+                  <div
+                    key={task.id}
+                    className="cal-day-modal__task-item"
+                    onClick={() => {
+                      setSelectedDayModal(null);
+                      onSelectTask?.(task);
+                    }}
+                    style={{
+                      background: 'rgba(3, 155, 229, 0.08)',
+                      border: '1px solid rgba(3, 155, 229, 0.25)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '0.6rem 0.75rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <AppIcon name="clock" size={15} style={{ color: '#039be5' }} />
+                      <span>{task.title}</span>
+                    </div>
+                    {task.due_time && (
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                        {task.due_time.substring(0, 5)}
+                      </span>
                     )}
                   </div>
                 ))}
-                {selectedPending.map(task => (
-                  <div key={task.id} style={{
-                    background: 'rgba(139,92,246,0.04)',
-                    border: '1px solid rgba(139,92,246,0.12)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '0.5rem 0.6rem',
-                    fontSize: '0.82rem', color: 'var(--text-secondary)',
-                    display: 'flex', alignItems: 'center', gap: '0.35rem',
-                  }}>
-                    <AppIcon name="clock" size={14} weight="bold" /> {task.title}
+
+                {/* Tasks đã hoàn thành */}
+                {selectedTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="cal-day-modal__task-item"
+                    onClick={() => {
+                      setSelectedDayModal(null);
+                      onSelectTask?.(task);
+                    }}
+                    style={{
+                      background: 'rgba(24, 128, 56, 0.08)',
+                      border: '1px solid rgba(24, 128, 56, 0.25)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '0.6rem 0.75rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', textDecoration: 'line-through', color: 'var(--text-muted)' }}>
+                      <AppIcon name="checkCircle" size={15} style={{ color: '#188038' }} />
+                      <span>{task.title}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      {task.completed_at && (
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {new Date(task.completed_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                      {onDeleteTask && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTask(task, selectedDayModal);
+                          }}
+                          className="btn btn-ghost"
+                          style={{ padding: '2px 4px', color: 'var(--text-muted)' }}
+                          title="Xóa"
+                        >
+                          <AppIcon name="trash" size={13} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Legend */}
-      <div className="cal-legend">
-        <span><span className="cal-dot cal-dot--done"/> Có task xong</span>
-        <span><span className="cal-dot cal-dot--pending"/> Sắp tới / chưa xong</span>
-        <span><span className="cal-dot cal-dot--future"/> Chưa tới</span>
-        <span><AppIcon name="star" size={11} weight="fill" /> Ngày lễ</span>
-        <span><AppIcon name="lightning" size={11} weight="fill" /> Dịp đặc biệt / Dev</span>
-        <span><AppIcon name="moon" size={11} weight="fill" /> Số nhỏ góc phải = ngày âm</span>
-      </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -1,7 +1,15 @@
 /* ============================================================
-   MONTH CALENDAR
+   MONTH CALENDAR — Full-Height App-like chuẩn Google Calendar
    ============================================================ */
-.month-calendar { padding: 1.5rem; }
+.month-cal.week-cal {
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-top: 0;
+}
 
 .cal-header {
   display: flex;
@@ -78,71 +86,190 @@
 /* Weekdays */
 .cal-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-  margin-bottom: 3px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  background: var(--cal-head-bg);
+  border-bottom: 1px solid var(--cal-border-col);
+  flex-shrink: 0;
+  margin-bottom: 0;
 }
 
 .cal-weekday {
   text-align: center;
   font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  padding: 0.25rem 0;
+  font-weight: 600;
+  color: var(--cal-time-color);
+  padding: 0.45rem 0;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-right: 1px solid var(--cal-border-col);
 }
 
-/* Grid */
+.cal-weekday:last-child {
+  border-right: none;
+}
+
+/* Grid Full-Height — Chia đều theo số tuần */
 .cal-grid {
   display: grid;
-  /* minmax(0, 1fr) chứ KHÔNG phải 1fr: `1fr` = `minmax(auto, 1fr)`, nên nội dung
-     không wrap được (chip task `white-space: nowrap`) sẽ đẩy cột rộng ra và làm
-     lệch cả 7 cột. Đây là nguyên nhân ô lệch nhau ở v4.29.0 trước khi sửa. */
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  /* Chiều cao hàng CỐ ĐỊNH (v6.1.0). Trước đây ô ăn `aspect-ratio: 1` nên trên
-     màn rộng ô vuông = cột rộng → hàng đầu (toàn ô trống) cao vọt so với các
-     hàng khác. 124px = số ngày + 4 chip + dòng "+N nữa". */
-  grid-auto-rows: 124px;
-  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  background: var(--cal-border-grid);
+  gap: 1px;
+  overflow: hidden;
 }
 
 .cal-cell {
-  aspect-ratio: 1;
-  border-radius: var(--radius-sm);
+  background: var(--bg-card);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 4px 6px;
+  overflow: hidden;
   cursor: pointer;
   position: relative;
-  transition: var(--transition-base);
-  font-size: 0.82rem;
-  font-weight: 500;
+  transition: background 0.12s ease;
+  min-height: 0;
+  height: 100%;
 }
 
-/* Ô trống KHÔNG được giữ aspect-ratio — nó chính là thứ kéo hàng đầu cao vọt. */
-.cal-cell--blank  { cursor: default; aspect-ratio: auto; }
-.cal-cell--done   { background: rgba(0,255,136,0.15); color: var(--green); }
-.cal-cell--miss   { background: rgba(255,255,255,0.03); color: var(--text-muted); }
-.cal-cell--future { background: transparent; color: rgba(255,255,255,0.2); cursor: default; }
+.cal-cell:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+[data-theme="light"] .cal-cell:hover {
+  background: #f1f3f4;
+}
+
+.cal-cell--blank {
+  background: rgba(0, 0, 0, 0.08);
+  cursor: default;
+}
+[data-theme="light"] .cal-cell--blank {
+  background: #f8f9fa;
+}
 
 .cal-cell--today {
-  border: 2px solid var(--cyan);
-  color: var(--cyan);
-  font-weight: 800;
+  outline: 2px solid #1a73e8;
+  outline-offset: -2px;
 }
 
-.cal-cell--selected {
-  outline: 2px solid var(--purple);
-  outline-offset: 1px;
+/* Header ô ngày: Số ngày + Âm lịch */
+.cal-cell__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
-.cal-cell:not(.cal-cell--blank):not(.cal-cell--future):hover {
-  background: rgba(139,92,246,0.12);
+.cal-cell__num {
+  font-size: 0.82rem;
+  font-weight: 500;
   color: var(--text-primary);
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
-.cal-cell__num { font-size: 0.82rem; line-height: 1; }
+/* Hôm nay tròn xanh Google */
+.cal-cell__num--today {
+  background: #1a73e8;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.cal-cell__lunar {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--cal-time-color);
+  letter-spacing: -0.01em;
+}
+
+.cal-cell__lunar--first {
+  color: #d97706;
+  font-weight: 700;
+}
+[data-theme="dark"] .cal-cell__lunar--first {
+  color: #fbbf24;
+}
+
+/* Banner ngày lễ trong ô */
+.cal-cell__holiday-chip {
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+/* Container chứa danh sách chip */
+.cal-cell__chips {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Thẻ sự kiện phẳng Flat kiểu Google Calendar */
+.cal-chip {
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+}
+
+.cal-chip:hover {
+  opacity: 0.9;
+}
+
+.cal-chip--active {
+  background: #039be5;
+  color: #ffffff;
+}
+
+.cal-chip--done {
+  background: #188038;
+  color: #ffffff;
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+
+.cal-chip--overdue {
+  background: #d93025;
+  color: #ffffff;
+}
+
+.cal-chip--more {
+  background: transparent;
+  color: var(--cal-time-color);
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.cal-chip--more:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
 
 .cal-cell__dot {
   position: absolute;

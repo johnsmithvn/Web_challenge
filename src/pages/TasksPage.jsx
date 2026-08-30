@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AppIcon from '../components/AppIcon';
 import TaskDetailModal from '../components/TaskDetailModal';
 import TaskCreateModal from '../components/TaskCreateModal';
+import CalendarToolbar from '../components/CalendarToolbar';
 import '../styles/tasks.css';
 
 const MonthCalendar = lazy(() => import('../components/MonthCalendar'));
@@ -36,6 +37,13 @@ export default function TasksPage() {
   const [calendarMode, setCalendarMode] = useState('week'); // 'week' | 'month'
   const [showForm, setShowForm] = useState(false);
 
+  // State ngày neo và tùy chọn đầu tuần dùng chung giữa Tuần & Tháng (đồng bộ chuẩn Google Calendar)
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [startOnSunday, setStartOnSunday] = useState(() => {
+    const saved = localStorage.getItem('lh_cal_start_sun');
+    return saved !== null ? saved === 'true' : true;
+  });
+
   // State xem chi tiết task từ lịch
   const [selectedTask, setSelectedTask] = useState(null);
 
@@ -53,7 +61,7 @@ export default function TasksPage() {
   }, []);
 
   return (
-    <div className={`tasks-page${view === 'calendar' ? ' tasks-page--calendar' : ''}`}>
+    <div className={`tasks-page${view === 'calendar' ? ` tasks-page--calendar tasks-page--calendar-${calendarMode}` : ''}`}>
       <div className="tasks-hero">
         <div className="tasks-hero__count">
           <span className="tasks-hero__num gradient-text">{due}</span>
@@ -117,47 +125,41 @@ export default function TasksPage() {
         </div>
       ) : (
         <Suspense fallback={<div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>⏳ Đang tải lịch...</div>}>
-          {calendarMode === 'week' ? (
-            <WeekCalendar
-              pendingTasks={pendingTasks}
-              getCompletedTasksRange={getCompletedTasksRange}
-              onSelectTask={handleSelectTaskFromCalendar}
-              onQuickCreate={handleOpenCreateModal}
-              calendarView={calendarMode}
-              onSwitchView={setCalendarMode}
-            />
-          ) : (
-            <div style={{ position: 'relative' }}>
-              {/* Header chuyển nhanh về Tuần ngay trên Lịch tháng */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
-                <div className="week-cal__view-switch" role="tablist" aria-label="Chế độ lịch">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={calendarMode === 'week'}
-                    className={`week-cal__view-btn${calendarMode === 'week' ? ' week-cal__view-btn--active' : ''}`}
-                    onClick={() => setCalendarMode('week')}
-                  >
-                    Tuần
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={calendarMode === 'month'}
-                    className={`week-cal__view-btn${calendarMode === 'month' ? ' week-cal__view-btn--active' : ''}`}
-                    onClick={() => setCalendarMode('month')}
-                  >
-                    Tháng
-                  </button>
-                </div>
-              </div>
+          {/* Thanh Toolbar Google Calendar chung — cố định 100% không bị giật hay dính scroll khi chuyển view */}
+          <CalendarToolbar
+            currentDate={currentDate}
+            setCurrentDate={setCurrentDate}
+            calendarMode={calendarMode}
+            setCalendarMode={setCalendarMode}
+            startOnSunday={startOnSunday}
+            setStartOnSunday={setStartOnSunday}
+          />
+
+          <div className="calendar-view-container">
+            {calendarMode === 'week' ? (
+              <WeekCalendar
+                pendingTasks={pendingTasks}
+                getCompletedTasksRange={getCompletedTasksRange}
+                onSelectTask={handleSelectTaskFromCalendar}
+                onQuickCreate={handleOpenCreateModal}
+                currentDate={currentDate}
+                startOnSunday={startOnSunday}
+                hideToolbar={true}
+              />
+            ) : (
               <MonthCalendar
                 getCompletedTasksRange={getCompletedTasksRange}
                 onDeleteTask={deleteTask}
                 pendingTasks={pendingTasks}
+                onSelectTask={handleSelectTaskFromCalendar}
+                onQuickCreate={handleOpenCreateModal}
+                currentDate={currentDate}
+                setCurrentDate={setCurrentDate}
+                startOnSunday={startOnSunday}
+                hideToolbar={true}
               />
-            </div>
-          )}
+            )}
+          </div>
         </Suspense>
       )}
 
