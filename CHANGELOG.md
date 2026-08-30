@@ -2,11 +2,18 @@
 
 ## v6.12.0 — 2026-08-30
 
-### Removed
-- **Module Incubator (Ấp Trứng) gỡ hoàn toàn khỏi frontend.** Xóa `IncubatorPage.jsx`,
-  `useIntentions.js`, `incubator.css`. Gỡ route, navigation, tích hợp Inbox → Ấp Trứng, onboarding
-  mention, landing page card. `/incubator` redirect về `/tasks`. Bảng `intentions` + `intention_logs`
-  giữ nguyên trên DB; chạy `data/drop_incubator_tables.sql` nếu muốn dọn.
+### Added
+- **Chi tiết giao dịch trong form Sửa (ListScreen):** Bổ sung ô nhập *Nơi / người nhận* (`merchant`)
+  và trình chỉnh sửa *Chi tiết từng món* (`items`: tên món, số lượng, đơn giá, tự động tính tổng tiền)
+  vào form sửa giao dịch trong `TxDetail`. Trước đó người dùng chỉ có thể thêm chi tiết lúc tạo mới ở `AddScreen`.
+
+### Fixed
+- **Chống nhấp nháy màn Danh mục & Shortcut:** Thêm cờ `hasLoaded` và skeleton chờ cho `CategoryPanel`
+  và shortcut list của `AddScreen`, loại bỏ hiện tượng load đè danh mục gốc rồi mới nhảy override.
+- **Lưu số tiền cho shortcut template (seed):** Tự động pin seed shortcut vào database khi người dùng ghi
+  lần đầu, giúp lưu mức tiền vừa ghi vào `recent_amounts` thay vì bỏ qua.
+- **Đồng bộ template danh mục mặc định:** Cập nhật `finance-categories.json` theo đúng cấu trúc nhóm và danh mục con thực tế.
+
 
 ## v6.11.0 — 2026-08-27
 

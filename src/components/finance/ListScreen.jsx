@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { useTags } from '../../hooks/useTags';
-import { parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
+import { groupDigits, parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
 import { formatDate, toDateStr } from '../../utils/dateUtils';
 import { periodTotals, groupByDate, billPeriods } from '../../utils/financeLogic';
 import {
@@ -307,6 +307,17 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
   const [subcategoryId, setSubcategoryId] = useState(tx.subcategory_id || '');
   const [sourceCardId, setSourceCardId] = useState(tx.source_card_id || '');
   const [billPeriod, setBillPeriod] = useState(tx.bill_period || '');
+  const [merchant, setMerchant] = useState(tx.merchant || '');
+  const [draftItems, setDraftItems] = useState(() =>
+    Array.isArray(tx.items)
+      ? tx.items.map(item => ({
+          name: item.name || '',
+          qty: String(item.qty || 1),
+          price: String(item.price || ''),
+        }))
+      : [],
+  );
+  const [showMore, setShowMore] = useState(() => Boolean(tx.merchant || (tx.items && tx.items.length > 0)));
   const [txTags, setTxTags] = useState([]);
   // Giao dịch sinh từ hóa đơn: cho sửa KỲ ngay tại đây. Gắn nhầm kỳ là hóa đơn báo
   // quá hạn dù đã trả, mà trước đó đường sửa duy nhất là xóa rồi ghi lại từ đầu.
@@ -323,15 +334,53 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
 
   useEffect(() => { getTagsForEntity(tx.id, 'finance').then(setTxTags); }, [tx.id, getTagsForEntity]);
 
+  const updateDraftItem = (index, key, value) => {
+    const normalized = key === 'qty' ? sanitizeDigits(value, 3)
+      : key === 'price' ? sanitizeDigits(value) : value;
+    const next = draftItems.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: normalized } : item);
+    setDraftItems(next);
+    const total = next.reduce((sum, item) => sum
+      + (Math.max(1, Number(item.qty) || 1) * (parseCurrencyInput(item.price) || 0)), 0);
+    if (total > 0) setAmount(String(total));
+  };
+
+  const cancelEdit = () => {
+    setAmount(String(tx.amount));
+    setNote(tx.note || '');
+    setOccurredAt(tx.occurred_at);
+    setNecessity(tx.necessity || '');
+    setCategoryId(tx.category_id || (tx.type === 'income' ? 'luong' : 'other'));
+    setSubcategoryId(tx.subcategory_id || '');
+    setSourceCardId(tx.source_card_id || '');
+    setBillPeriod(tx.bill_period || '');
+    setMerchant(tx.merchant || '');
+    setDraftItems(Array.isArray(tx.items) ? tx.items.map(item => ({ name: item.name || '', qty: String(item.qty || 1), price: String(item.price || '') })) : []);
+    setEditing(false);
+  };
+
   const save = async () => {
     // `autoK: false` — ô này được điền sẵn bằng SỐ ĐÃ LƯU, không phải số người dùng
     // đang gõ nhanh. Bật auto-K ở đây là mỗi lần mở form sửa (kể cả chỉ sửa tiêu đề)
     // một khoản 5.000đ lại thành 5.000.000đ. Chữ "k"/"triệu" vẫn nhân như thường.
     const parsed = parseCurrencyInput(amount, { autoK: false });
+    const cleanItems = draftItems
+      .filter(item => item.name?.trim() || parseCurrencyInput(item.price))
+      .map(item => ({
+        name: item.name?.trim() || 'Mục chưa đặt tên',
+        qty: Math.max(1, Number(item.qty) || 1),
+        price: parseCurrencyInput(item.price) || 0,
+      }));
+
     await fin.updateTransaction(tx.id, {
-      amount: parsed || tx.amount, note: note || null, occurred_at: occurredAt,
-      necessity: necessity || null, category_id: categoryId || null,
-      subcategory_id: subcategoryId || null, source_card_id: sourceCardId || null,
+      amount: parsed || tx.amount,
+      note: note || null,
+      merchant: merchant.trim() || null,
+      items: cleanItems,
+      occurred_at: occurredAt,
+      necessity: necessity || null,
+      category_id: categoryId || null,
+      subcategory_id: subcategoryId || null,
+      source_card_id: sourceCardId || null,
       ...(linkedBill && billPeriod !== tx.bill_period ? { bill_period: billPeriod } : {}),
     });
     nav.showToast('Đã cập nhật — báo cáo tự tính lại', { icon: 'checkCircle' });
@@ -381,7 +430,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
   if (editing) {
     return (
       <div className="fin-detail fin-detail--editing">
-        <div className="fin-detail__head"><strong>Sửa giao dịch</strong><button className="fin-detail__close" onClick={() => setEditing(false)} aria-label="Đóng chỉnh sửa"><AppIcon name="x" size={15} /></button></div>
+        <div className="fin-detail__head"><strong>Sửa giao dịch</strong><button className="fin-detail__close" onClick={cancelEdit} aria-label="Đóng chỉnh sửa"><AppIcon name="x" size={15} /></button></div>
         {/* Các <label> ở đây là anh em kề chứ không bọc control và không có htmlFor,
             nên chúng chỉ là chữ trang trí với AT — mỗi control phải tự mang nhãn. */}
         <label className="fin-label">Số tiền</label><input className="fin-input" aria-label="Số tiền" inputMode="numeric" pattern="[0-9]*" value={amount} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
@@ -402,7 +451,30 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
         </>}
         <label className="fin-label">Nhiệm vụ liên quan</label><TaskPicker tasks={tasks} value={tx.task_id} onPick={id => fin.updateTransaction(tx.id, { task_id: id })} />
         <label className="fin-label">Tag</label><div className="fin-tags">{txTags.map(tag => <button key={tag.id} className="fin-tag" style={{ '--tc': tag.color }} onClick={() => toggleTag(tag)}>#{tag.name} <AppIcon name="x" size={11} /></button>)}<TagAdd tags={tags} txTags={txTags} onAdd={addAndLink} /></div>
-        <div className="fin-detail__actions"><button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="save" size={15} /> Lưu thay đổi</button><button className="fin-btn fin-btn--secondary" onClick={() => setEditing(false)}>Hủy</button></div>
+
+        <button type="button" className="fin-more-toggle" onClick={() => setShowMore(current => !current)}>
+          <AppIcon name={showMore ? 'caretDown' : 'caretRight'} size={14} /> {showMore ? 'Ẩn chi tiết giao dịch' : 'Thêm chi tiết (nơi nhận, món…)'}
+        </button>
+        {showMore && (
+          <div className="fin-form__more">
+            <label className="fin-label">Nơi / người nhận</label>
+            <input className="fin-input" aria-label="Nơi / người nhận" value={merchant} onChange={event => setMerchant(event.target.value)} placeholder="Quán nước Bà Ba, Shopee…" />
+            <div className="fin-items-editor">
+              <div className="fin-items-editor__head"><AppIcon name="listBullets" size={16} /><strong>Chi tiết từng món</strong><small>tổng tự cộng lên số tiền</small></div>
+              {draftItems.map((item, index) => (
+                <div className="fin-item-row" key={index}>
+                  <input className="fin-input" aria-label={`Tên món thứ ${index + 1}`} value={item.name} onChange={event => updateDraftItem(index, 'name', event.target.value)} placeholder="Tên món" />
+                  <input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={item.qty} onChange={event => updateDraftItem(index, 'qty', event.target.value)} aria-label="Số lượng" />
+                  <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" aria-label="Đơn giá" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="Đơn giá" />
+                  <button type="button" aria-label="Xóa món" onClick={() => setDraftItems(current => current.filter((_, itemIndex) => itemIndex !== index))}><AppIcon name="x" size={14} /></button>
+                </div>
+              ))}
+              <button type="button" className="fin-inline-command" onClick={() => setDraftItems(current => [...current, { name: '', qty: '1', price: '' }])}><AppIcon name="plus" size={14} /> Thêm món</button>
+            </div>
+          </div>
+        )}
+
+        <div className="fin-detail__actions"><button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="save" size={15} /> Lưu thay đổi</button><button className="fin-btn fin-btn--secondary" onClick={cancelEdit}>Hủy</button></div>
       </div>
     );
   }
