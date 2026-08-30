@@ -1,0 +1,611 @@
+/* ==========================================================================
+   week-calendar.css — Chuẩn phong cách thiết kế Google Calendar
+   Tích hợp Highlight Ngày lễ Quốc khánh, tuần bắt đầu Chủ Nhật/Thứ 2,
+   lưới 24h sắc nét cả Light & Dark mode, thẻ sự kiện phẳng chữ trắng tương phản cao
+   ========================================================================== */
+
+:root {
+  --cal-border-grid: rgba(255, 255, 255, 0.08);
+  --cal-border-col: rgba(255, 255, 255, 0.1);
+  --cal-allday-bg: rgba(0, 0, 0, 0.18);
+  --cal-head-bg: rgba(255, 255, 255, 0.02);
+  --cal-time-color: #9aa0a6;
+  --cal-hour-line: rgba(255, 255, 255, 0.06);
+  --cal-today-circle: #1a73e8;
+}
+
+[data-theme="light"] {
+  --cal-border-grid: #dadce0; /* Đường kẻ ngang sắc nét kiểu Google */
+  --cal-border-col: #dadce0;  /* Đường kẻ dọc phân cột ngày */
+  --cal-allday-bg: #f8f9fa;
+  --cal-head-bg: #ffffff;
+  --cal-time-color: #70757a;
+  --cal-hour-line: #e8eaed;
+  --cal-today-circle: #1a73e8;
+}
+
+.week-cal {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  margin-top: 1rem;
+}
+
+/* ── Toolbar điều hướng trên cùng ────────────────────────────────────────── */
+.week-cal__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--cal-border-grid);
+  background: var(--cal-head-bg);
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.week-cal__nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.week-cal__btn-today {
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-glass);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.week-cal__btn-today:hover {
+  background: rgba(26, 115, 232, 0.08);
+  border-color: #1a73e8;
+  color: #1a73e8;
+}
+
+.week-cal__nav-arrows {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.week-cal__btn-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.week-cal__btn-nav:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+}
+[data-theme="dark"] .week-cal__btn-nav:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.week-cal__title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin-left: 0.25rem;
+}
+
+/* Toolbar bên phải: Nút đổi Thứ/Chủ nhật & Legend */
+.week-cal__toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.week-cal__btn-startday {
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-glass);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.week-cal__btn-startday:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+/* Legend màu sắc */
+.week-cal__color-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+
+.week-cal__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.week-cal__legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.week-cal__legend-item--holiday {
+  color: #0b8043;
+}
+.week-cal__legend-item--holiday .week-cal__legend-dot {
+  background: #0b8043;
+}
+
+.week-cal__legend-item--fun {
+  color: #8b5cf6;
+}
+.week-cal__legend-item--fun .week-cal__legend-dot {
+  background: #8b5cf6;
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.6);
+}
+
+.week-cal__legend-item--overdue {
+  color: #d93025;
+}
+.week-cal__legend-item--overdue .week-cal__legend-dot {
+  background: #d93025;
+}
+
+.week-cal__legend-item--done {
+  color: #188038;
+}
+.week-cal__legend-item--done .week-cal__legend-dot {
+  background: #188038;
+}
+
+/* Switcher Tuần / Tháng */
+.week-cal__view-switch {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 2px;
+  border-radius: 4px;
+  border: 1px solid var(--border-glass);
+}
+[data-theme="dark"] .week-cal__view-switch {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.week-cal__view-btn {
+  padding: 0.3rem 0.75rem;
+  border-radius: 3px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.week-cal__view-btn--active {
+  background: #1a73e8;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── Wrapper cuộn ngang ──────────────────────────────────────────────────── */
+.week-cal__horizontal-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.week-cal__inner-container {
+  min-width: 840px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header 7 ngày trong tuần — Y hệt Google Calendar ────────────────────── */
+.week-cal__days-header {
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+  border-bottom: 1px solid var(--cal-border-col);
+  background: var(--cal-head-bg);
+}
+
+.week-cal__timezone-slot {
+  border-right: 1px solid var(--cal-border-col);
+  padding: 0.5rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  font-size: 0.65rem;
+  color: var(--cal-time-color);
+  font-weight: 500;
+  padding-bottom: 0.75rem;
+}
+
+.week-cal__day-head {
+  padding: 0.65rem 0.25rem 0.5rem;
+  text-align: center;
+  border-right: 1px solid var(--cal-border-col);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.week-cal__day-head:last-child {
+  border-right: none;
+}
+
+.week-cal__day-head:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+[data-theme="dark"] .week-cal__day-head:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.week-cal__day-name {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--cal-time-color);
+  letter-spacing: 0.04em;
+}
+
+.week-cal__day-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 1.45rem;
+  font-weight: 400;
+  color: var(--text-primary);
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+/* Hôm nay highlight bằng hình tròn xanh Google */
+.week-cal__day-head--today .week-cal__day-name {
+  color: #1a73e8;
+  font-weight: 600;
+}
+
+.week-cal__day-head--today .week-cal__day-num {
+  background: var(--cal-today-circle);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Nhãn âm lịch nhỏ tinh tế bên dưới số ngày */
+.week-cal__day-lunar {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--cal-time-color);
+  margin-top: 1px;
+  letter-spacing: -0.01em;
+  user-select: none;
+}
+
+.week-cal__day-lunar--first {
+  color: #d97706; /* Màu vàng cam cho ngày mùng 1 âm lịch (ví dụ 1/8) */
+  font-weight: 700;
+}
+[data-theme="dark"] .week-cal__day-lunar--first {
+  color: #fbbf24;
+}
+
+.week-cal__day-head--today .week-cal__day-lunar {
+  color: #1a73e8;
+  font-weight: 600;
+}
+[data-theme="dark"] .week-cal__day-head--today .week-cal__day-lunar {
+  color: #8ab4f8;
+}
+
+/* ── All-day Row (Ngày lễ Quốc Khánh + Việc cả ngày) ─────────────────────── */
+.week-cal__allday-row {
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+  border-bottom: 1px solid var(--cal-border-col);
+  background: var(--cal-allday-bg);
+  min-height: 48px;
+}
+
+.week-cal__allday-label {
+  border-right: 1px solid var(--cal-border-col);
+}
+
+.week-cal__allday-cell {
+  border-right: 1px solid var(--cal-border-col);
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.week-cal__allday-cell:last-child {
+  border-right: none;
+}
+
+/* Khối Ngày Lễ (Holiday Banner) */
+.week-cal__holiday-chip {
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.25;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+/* 1. Ngày lễ chính thống — Xanh lá đậm chuẩn Google Calendar */
+.week-cal__holiday-chip--official {
+  background: #0b8043;
+  color: #ffffff;
+}
+
+/* 2. Dịp kỷ niệm vui / Dev / Quốc tế Nam giới — Phong cách Geek Tím Neon / Nét đứt */
+.week-cal__holiday-chip--fun {
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px dashed #8b5cf6;
+  color: #6d28d9;
+}
+[data-theme="dark"] .week-cal__holiday-chip--fun {
+  background: rgba(139, 92, 246, 0.22);
+  border-color: #a78bfa;
+  color: #e9d5ff;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.25);
+}
+
+.week-cal__holiday-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* All-day task chips */
+.week-cal__chip-allday {
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.week-cal__chip-allday--overdue {
+  background: #d93025;
+  color: #ffffff;
+}
+
+.week-cal__chip-allday--done {
+  background: #188038;
+  color: #ffffff;
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+
+.week-cal__chip-allday--p5,
+.week-cal__chip-allday--p4 {
+  background: #e37400;
+  color: #ffffff;
+}
+
+.week-cal__chip-allday--p3,
+.week-cal__chip-allday--p2,
+.week-cal__chip-allday--p1,
+.week-cal__chip-allday--p0 {
+  background: #0288d1;
+  color: #ffffff;
+}
+
+/* ── Time Grid (Lưới thời gian 24 giờ cuộn được) ────────────────────────── */
+.week-cal__grid-scroll {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 640px;
+  background: var(--bg-card);
+  padding-bottom: 80px; /* Đệm đáy chống che */
+}
+
+.week-cal__grid-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+  height: 1296px; /* 24 giờ * 54px */
+}
+
+/* Cột mốc giờ bên trái */
+.week-cal__time-col {
+  position: relative;
+  border-right: 1px solid var(--cal-border-col);
+  user-select: none;
+}
+
+.week-cal__hour-label {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--cal-time-color);
+}
+
+/* Cột 1 ngày */
+.week-cal__day-col {
+  position: relative;
+  border-right: 1px solid var(--cal-border-col);
+}
+
+.week-cal__day-col:last-child {
+  border-right: none;
+}
+
+/* Đường kẻ ngang phân chia từng giờ — MẢNH VÀ SẮC NÉT */
+.week-cal__grid-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.week-cal__hour-row {
+  height: 54px;
+  border-bottom: 1px solid var(--cal-hour-line);
+}
+
+/* Vạch đỏ thời gian thực tế hiện tại (Red Live Line) */
+.week-cal__now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ea4335;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.week-cal__now-dot {
+  position: absolute;
+  left: -5px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ea4335;
+}
+
+/* ── Thẻ sự kiện phẳng (Flat Google Calendar Event Block) ────────────────── */
+.week-cal__event {
+  position: absolute;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+  z-index: 2;
+  color: #ffffff !important;
+}
+
+.week-cal__event:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 8;
+}
+
+.week-cal__event-title {
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ffffff !important;
+}
+
+.week-cal__event-time {
+  font-size: 0.68rem;
+  font-weight: 500;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* 1. TASK QUÁ HẠN — ĐỎ THẪM GOOGLE */
+.week-cal__event--overdue {
+  background: #d93025 !important;
+}
+
+/* 2. TASK HOÀN THÀNH — XANH LÁ GOOGLE */
+.week-cal__event--done {
+  background: #188038 !important;
+}
+.week-cal__event--done .week-cal__event-title {
+  text-decoration: line-through;
+  opacity: 0.9;
+}
+
+/* 3. TASK BÌNH THƯỜNG — XANH DƯƠNG GOOGLE CYAN / PEACOCK */
+.week-cal__event--p0,
+.week-cal__event--p1,
+.week-cal__event--p2 {
+  background: #039be5 !important; /* Xanh dương chuẩn Google Calendar trong ảnh của user */
+}
+
+.week-cal__event--p3 {
+  background: #f6bf26 !important; /* Vàng hổ phách */
+  color: #202124 !important;
+}
+.week-cal__event--p3 .week-cal__event-title,
+.week-cal__event--p3 .week-cal__event-time {
+  color: #202124 !important;
+}
+
+.week-cal__event--p4 {
+  background: #f4511e !important; /* Cam Tangerine */
+}
+
+.week-cal__event--p5 {
+  background: #d50000 !important; /* Đỏ khẩn cấp */
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .week-cal__grid-scroll {
+    height: 520px;
+    padding-bottom: 90px;
+  }
+  .week-cal__day-name {
+    font-size: 0.65rem;
+  }
+  .week-cal__day-num {
+    width: 32px;
+    height: 32px;
+    font-size: 1.2rem;
+  }
+  .week-cal__event-title {
+    font-size: 0.7rem;
+  }
+  .week-cal__event-time {
+    display: none;
+  }
+}

@@ -78,13 +78,19 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
       const lunar   = solarToLunar(d, viewMonth + 1, viewYear);
       // Tháng nhuận KHÔNG tính lễ: Tết tháng 1 nhuận không phải Tết.
       const lunarKey = lunar.leap ? null : `${pad(lunar.month)}-${pad(lunar.day)}`;
-      const holiday = HOLIDAYS.solar[`${pad(viewMonth + 1)}-${pad(d)}`]
+      const holidayOfficial = HOLIDAYS.solar[`${pad(viewMonth + 1)}-${pad(d)}`]
         || (lunarKey ? HOLIDAYS.lunar[lunarKey] : null)
         || null;
+      const holidayFun = (!holidayOfficial && HOLIDAYS.fun)
+        ? (HOLIDAYS.fun[`${pad(viewMonth + 1)}-${pad(d)}`] || null)
+        : null;
+      const holiday = holidayOfficial || holidayFun;
+      const holidayType = holidayOfficial ? 'official' : (holidayFun ? 'fun' : null);
+
       const tasks   = tasksByDay[dateStr] || [];
       const pending = pendingByDay[dateStr] || [];
       const done    = tasks.length > 0;
-      map[d] = { dateStr, done, holiday, lunar, tasks, pending };
+      map[d] = { dateStr, done, holiday, holidayType, lunar, tasks, pending };
     }
     return map;
   }, [viewYear, viewMonth, daysInMonth, tasksByDay, pendingByDay]);
@@ -218,7 +224,7 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
                 'cal-cell--tasks',
                 isToday    ? 'cal-cell--today'    : '',
                 isSelected ? 'cal-cell--selected' : '',
-                info.holiday ? 'cal-cell--holiday' : '',
+                info.holiday ? `cal-cell--holiday cal-cell--holiday-${info.holidayType}` : '',
               ].join(' ')}
               onClick={() => handleSelectDay(info.dateStr)}
               id={`cal-day-${info.dateStr}`}
@@ -248,8 +254,11 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
               )}
 
               {info.holiday && (
-                <span className="cal-cell__holiday" title={info.holiday}>
-                  <AppIcon name="star" size={11} weight="fill" />
+                <span
+                  className={`cal-cell__holiday cal-cell__holiday--${info.holidayType}`}
+                  title={`${info.holidayType === 'fun' ? 'Dịp đặc biệt / Dev: ' : 'Ngày lễ: '}${info.holiday}`}
+                >
+                  <AppIcon name={info.holidayType === 'fun' ? 'lightning' : 'star'} size={11} weight="fill" />
                   <span className="cal-cell__holiday-name">{info.holiday}</span>
                 </span>
               )}
@@ -262,7 +271,6 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
       {selected && (
         <div className="cal-day-detail">
           {/* Cắt chuỗi thay vì new Date(selected).getDate(): chuỗi 'YYYY-MM-DD'
-              được parse theo UTC nên getDate() lệch 1 ngày ở múi âm. */}
           {(() => {
             const info = dayData[Number(selected.slice(8, 10))];
             return (
@@ -274,8 +282,8 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
                   </span>
                 )}
                 {info?.holiday && (
-                  <span className="cal-day-detail__holiday">
-                    <AppIcon name="star" size={13} weight="fill" /> {info.holiday}
+                  <span className={`cal-day-detail__holiday cal-day-detail__holiday--${info.holidayType}`}>
+                    <AppIcon name={info.holidayType === 'fun' ? 'lightning' : 'star'} size={13} weight="fill" /> {info.holiday}
                   </span>
                 )}
               </div>
@@ -379,6 +387,7 @@ export default function MonthCalendar({ getCompletedTasksRange, onDeleteTask, pe
         <span><span className="cal-dot cal-dot--pending"/> Sắp tới / chưa xong</span>
         <span><span className="cal-dot cal-dot--future"/> Chưa tới</span>
         <span><AppIcon name="star" size={11} weight="fill" /> Ngày lễ</span>
+        <span><AppIcon name="lightning" size={11} weight="fill" /> Dịp đặc biệt / Dev</span>
         <span><AppIcon name="moon" size={11} weight="fill" /> Số nhỏ góc phải = ngày âm</span>
       </div>
     </div>

@@ -508,13 +508,32 @@
   color: var(--gold-dim);
 }
 
-/* ── Light mode: bản trước gần như mất viền + chữ mờ. Mọi bề mặt dùng
-      rgba(255,255,255,…) đều vô hình trên nền sáng → thay bằng cặp tím/xám đặc. ── */
+/* Phân biệt Dịp đặc biệt / Dev / Nam giới trong Lịch Tháng */
+.cal-cell--tasks.cal-cell--holiday-fun {
+  border-color: rgba(139, 92, 246, 0.55);
+  border-style: dashed;
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.cal-cell--tasks.cal-cell--holiday-fun .cal-cell__num {
+  color: var(--purple-light);
+}
+
+.cal-cell__holiday--fun {
+  color: var(--purple-light);
+}
+
+.cal-day-detail__holiday--fun {
+  background: rgba(139, 92, 246, 0.18);
+  border: 1px dashed rgba(139, 92, 246, 0.55);
+  color: var(--purple-light);
+}
+
+/* Light mode styles */
 [data-theme="light"] .cal-cell--tasks {
   background: #fff;
   border-color: rgba(99, 102, 241, 0.22);
 }
-
 [data-theme="light"] .cal-cell--tasks.cal-cell--done { border-color: rgba(22, 163, 74, 0.4); }
 [data-theme="light"] .cal-cell--tasks.cal-cell--future {
   background: rgba(99, 102, 241, 0.03);
