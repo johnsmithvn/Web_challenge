@@ -111,7 +111,8 @@ const rekeyed = await rekeyVaultItems({
   targetKey,
 });
 assert.equal(rekeyed.length, 1);
-assert.equal(rekeyed[0].id, itemId);
+assert.notEqual(rekeyed[0].id, itemId);
+assert.match(rekeyed[0].id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
 // 3. Target user can decrypt the rekeyed item with target key and targetUserId!
 const targetUnlockedKey = await unlockVaultKey(targetPassphrase, targetUserId, targetConfig);

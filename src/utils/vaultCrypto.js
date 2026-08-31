@@ -215,15 +215,44 @@ export async function rekeyVaultItems({ backup, sourcePassphrase, targetUserId, 
 
   const sourceDek = await unlockVaultKey(sourcePassphrase, backup.userId, backup.config);
 
-  const rekeyedItems = [];
+  // Map old item IDs to new random UUIDs so they never collide with the source user's rows in accounts table
+  const idMap = new Map();
+  for (const item of backup.items) {
+    idMap.set(item.id, crypto.randomUUID());
+  }
+
+  // Decrypt all items first
+  const decryptedItems = [];
   for (const item of backup.items) {
     const plaintext = await decryptVaultItem(sourceDek, backup.userId, item);
-    const reencrypted = await encryptVaultItem(targetKey, targetUserId, item.id, plaintext);
+    decryptedItems.push({ oldId: item.id, newId: idMap.get(item.id), payload: plaintext });
+  }
+
+  // Update any internal links between items to point to the new IDs
+  for (const { payload } of decryptedItems) {
+    if (Array.isArray(payload?.fields)) {
+      for (const field of payload.fields) {
+        if (Array.isArray(field?.links)) {
+          for (const link of field.links) {
+            if (link?.itemId && idMap.has(link.itemId)) {
+              link.itemId = idMap.get(link.itemId);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Re-encrypt each item with targetKey, targetUserId, and the new item ID
+  const rekeyedItems = [];
+  for (const { newId, payload } of decryptedItems) {
+    const reencrypted = await encryptVaultItem(targetKey, targetUserId, newId, payload);
     rekeyedItems.push({
-      id: item.id,
+      id: newId,
       ...reencrypted,
     });
   }
 
   return rekeyedItems;
 }
+
