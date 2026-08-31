@@ -6,9 +6,9 @@ import { useConfirm } from '../components/ConfirmModal';
 import {
   listPeriodOptions, currentMonthPeriod, periodFromKey, periodTotals,
 } from '../utils/financeLogic';
-import { money } from '../components/finance/parts';
+import { money, Segmented, PeriodPicker } from '../components/finance/parts';
 import AppIcon from '../components/AppIcon';
-import OverviewScreen from '../components/finance/OverviewScreen';
+import OverviewScreen, { OVERVIEW_TAB_OPTIONS } from '../components/finance/OverviewScreen';
 import AddScreen from '../components/finance/AddScreen';
 import ListScreen from '../components/finance/ListScreen';
 import CatsScreen from '../components/finance/CatsScreen';
@@ -62,6 +62,7 @@ export default function FinancePage() {
   const [analyzeParams, setAnalyzeParams] = useState({ group: null });
   const [catsTab, setCatsTab] = useState('cats');
   const [handoff, setHandoff] = useState(null);   // prefill từ Inbox
+  const [searchQuery, setSearchQuery] = useState('');
   const [savingAsExpense, setSavingAsExpenseState] = useState(
     () => localStorage.getItem('lh_finance_saving_as_expense') === 'true',
   );
@@ -163,10 +164,10 @@ export default function FinancePage() {
     clearHandoff: () => setHandoff(null), showToast,
     confirmDelete, confirmDiscard,
     savingAsExpense, setSavingAsExpense,
+    searchQuery, setSearchQuery,
   };
   const active = SCREENS.find(s => s.key === screen);
-  const headerSub = screen === 'overview'
-    ? 'Hạn mức cho tháng đang chạy · thống kê nhiều tháng có bộ chọn riêng'
+  const headerSub = screen === 'overview' ? `${period.label} · hạn mức tháng đang chạy`
     : screen === 'add' ? 'Số tiền trước — mọi trường còn lại đều đã có sẵn giá trị mặc định'
     : screen === 'list' ? `${period.label} · lọc cùng kỳ với Tổng quan`
     : screen === 'cats' ? '11 nhóm chi · 7 nhóm thu · cấu trúc dữ liệu'
@@ -176,27 +177,69 @@ export default function FinancePage() {
     <div className="finance-module">
       <section className="fin-content">
         <header className="fin-header">
-          <div className="fin-header__copy">
-            <h1 className="fin-header__title">{active?.title}</h1>
-            <p className="fin-header__sub">{headerSub}</p>
-          </div>
-          {/* Chưa tải xong thì chip này nói "Chưa đặt" (vì `budgets` còn rỗng) rồi mới
-              nhảy ra số thật — đọc như "bạn chưa đặt hạn mức nào", sai hẳn. */}
-          <button className="fin-header__chip" onClick={() => go('overview', { overviewTab: 'budget' })}
-            title="Ngân sách tháng đang chạy" aria-busy={!fin.hasLoaded}>
-            {fin.hasLoaded ? (
-              <>
-                <span><strong>{monthChip.limit ? money(monthChip.remaining) : 'Chưa đặt'}</strong><small>còn lại</small></span>
-                <i><b style={{ width: `${Math.min(100, monthChip.pct || 0)}%` }} /></i>
-                <small>{monthChip.daysLeft} ngày</small>
-              </>
-            ) : (
-              <span className="sk-list"><span className="sk-line" style={{ '--w': '82px' }} /></span>
+          <div className="fin-header__brand">
+            <div className="fin-header__copy">
+              <h1 className="fin-header__title">{active?.title}</h1>
+              {!(screen === 'overview' && nav.overviewTab === 'overview') && (
+                <p className="fin-header__sub">{headerSub}</p>
+              )}
+            </div>
+            {screen === 'overview' && nav.overviewTab === 'overview' && (
+              <PeriodPicker
+                options={periodOptions}
+                period={period}
+                value={periodKey}
+                onChange={setPeriodKey}
+                dataFrom={fin.dataFrom}
+                compact
+              />
             )}
-          </button>
-          <button className="fin-btn fin-btn--secondary fin-header__action" onClick={() => go('list')}>
-            <AppIcon name="search" size={16} /> Tìm
-          </button>
+          </div>
+
+          {screen === 'overview' && (
+            <div className="fin-header__segmented">
+              <Segmented
+                options={OVERVIEW_TAB_OPTIONS}
+                value={nav.overviewTab}
+                onChange={nav.setOverviewTab}
+                ariaLabel="Chế độ Tổng quan"
+              />
+            </div>
+          )}
+
+          {Boolean(monthChip.limit) && (
+            <button className="fin-header__chip" onClick={() => go('overview', { overviewTab: 'budget' })}
+              title="Ngân sách tháng đang chạy" aria-busy={!fin.hasLoaded}>
+              {fin.hasLoaded ? (
+                <>
+                  <span><strong>{money(monthChip.remaining)}</strong><small>còn lại</small></span>
+                  <i><b style={{ width: `${Math.min(100, monthChip.pct || 0)}%` }} /></i>
+                  <small>{monthChip.daysLeft} ngày</small>
+                </>
+              ) : (
+                <span className="sk-list"><span className="sk-line" style={{ '--w': '82px' }} /></span>
+              )}
+            </button>
+          )}
+
+          {screen === 'list' && (
+            <div className="fin-header__search">
+              <AppIcon name="search" size={15} />
+              <input
+                type="text"
+                placeholder="Tìm giao dịch, nơi, tag…"
+                value={searchQuery}
+                onChange={event => setSearchQuery(event.target.value)}
+                aria-label="Tìm giao dịch"
+              />
+              {searchQuery && (
+                <button type="button" className="fin-header__search-clear" onClick={() => setSearchQuery('')} aria-label="Xóa tìm kiếm">
+                  <AppIcon name="x" size={13} />
+                </button>
+              )}
+            </div>
+          )}
+
           <button className="fin-btn fin-btn--primary fin-header__action" onClick={() => go('add')}>
             <AppIcon name="plus" size={16} /> Thêm chi tiêu
           </button>

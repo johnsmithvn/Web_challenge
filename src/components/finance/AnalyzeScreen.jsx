@@ -357,13 +357,18 @@ function StatsTab({ fin, nav }) {
   return (
     <div className="fin-stats">
       <div className="fin-stats__controls">
-        <div className="fin-stats__range"><span>Khoảng</span><Segmented ariaLabel="Khoảng thống kê"
-          options={[{ value: 3, label: '3 tháng' }, { value: 6, label: '6 tháng' }, { value: 12, label: 'Tất cả 12 tháng' }]}
-          value={range} onChange={setRange} /></div>
-        <Segmented options={[
-          { value: 'category', label: 'Theo danh mục' }, { value: 'compare', label: 'So sánh' },
-          { value: 'bill', label: 'Theo hóa đơn' }, { value: 'card', label: 'Theo thẻ' }]}
-          value={mode} onChange={setMode} ariaLabel="Kiểu thống kê" />
+        <div className="fin-stats__bar">
+          <Segmented options={[
+            { value: 'category', label: 'Theo danh mục' }, { value: 'compare', label: 'So sánh' },
+            { value: 'bill', label: 'Theo hóa đơn' }, { value: 'card', label: 'Theo thẻ' }]}
+            value={mode} onChange={setMode} ariaLabel="Kiểu thống kê" />
+          <div className="fin-stats__range">
+            <span>Khoảng</span>
+            <Segmented ariaLabel="Khoảng thống kê"
+              options={[{ value: 3, label: '3 tháng' }, { value: 6, label: '6 tháng' }, { value: 12, label: '12 tháng' }]}
+              value={range} onChange={setRange} />
+          </div>
+        </div>
         {mode === 'category' && <div className="fin-stats__categories" aria-label="Danh mục chi tiêu">
           {expenseGroups.map(item => <button key={item.key} type="button"
             className={group === item.key ? 'is-active' : ''} style={{ '--cat': item.color }}

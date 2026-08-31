@@ -3,11 +3,31 @@
 ## v6.12.0 — 2026-08-30
 
 ### Added
-- **Mở rộng Sidebar sửa giao dịch lên tới 50% màn hình & di chuyển nút Lọc lên đầu:**
-  - Sidebar sửa giao dịch (`ListScreen.jsx`) giờ tự động mở rộng chiếm tới **50% màn hình** (`minmax(560px, 50%)`)
-    khi ở desktop màn hình rộng, giúp bảng chi tiết từng món cực kỳ thoáng đãng, không bị gò bó.
-  - Nút **Bộ lọc (FilterPop)** được chuyển lên đặt ngay cạnh ô Tìm kiếm (trước danh sách chip lọc)
-    thay vì nằm khuất ở cuối, giúp thao tác lọc trực quan và thuận tay hơn.
+- **Tái cấu trúc Header phân hệ Tài chính cực kỳ tinh gọn (Phương án A):**
+  - **Góc trái**: Tiêu đề trang `Hôm nay tiêu gì?` gắn liền với bộ chọn tháng gọn gàng `[ < ] [ 📅 Tháng 8/2026 ▾ 31 ngày ] [ > ]`, loại bỏ dòng subtext lặp lại ngày tháng.
+  - **Ở giữa**: Cụm tab con `[ 🧭 Tổng quan ] [ 📈 Ngân sách ] [ 📊 Thống kê ]` đứng độc lập, cân đối.
+  - **Góc phải**: Chỉ giữ duy nhất nút chính `[ ➕ Thêm chi tiêu ]` (và ô tìm kiếm khi ở tab Giao dịch).
+  - Ẩn hoàn toàn chip *"Chưa đặt"* khi chưa cài hạn mức ngân sách và ẩn nút *"Tìm"* tĩnh dư thừa ở màn Tổng quan, giúp Header cực kỳ thoáng đãng, phân chia 3 vùng rõ ràng, đúng chuẩn SaaS cao cấp.
+- **Đưa thanh Tab con Tổng quan lên Header ghim (`FinancePage.jsx` & `OverviewScreen.jsx`):**
+  - Cụm chọn tab `[ 🧭 Tổng quan ] [ 📈 Ngân sách ] [ 📊 Thống kê ]` được chuyển thẳng lên
+    thanh **Header ghim** của trang, đặt cạnh tiêu đề.
+  - Loại bỏ hoàn toàn hàng tab trơ trọi ở đầu trang `OverviewScreen`, tiết kiệm thêm 48px chiều dọc,
+    cho phép người dùng chuyển tab con bất kỳ lúc nào ngay trên header cố định.
+- **Gộp hàng chọn chế độ & khoảng thời gian trong Thống kê (`AnalyzeScreen.jsx`):**
+  - Đưa nhóm chọn chế độ phân tích (`Theo danh mục`, `So sánh`, `Theo hóa đơn`, `Theo thẻ`) và
+    nhóm chọn khoảng thời gian (`3 tháng`, `6 tháng`, `12 tháng`) lên **cùng 1 hàng ngang cân đối** (`.fin-stats__bar`).
+  - Tiết kiệm 45px chiều dọc, loại bỏ hoàn toàn khoảng trống thừa thãi, kéo các thẻ số liệu và biểu đồ lên cao hơn.
+- **Tối ưu hóa bố cục & hợp nhất thanh công cụ (Unified Toolbar & Header Search):**
+  - **Căn Drawer Sửa giao dịch nằm dưới Header ghim:** Đặt `.fin-drawer-overlay` với `top: 64px`,
+    giúp thanh header của trang vẫn giữ nguyên ở đỉnh, còn phần đầu của Drawer (tiêu đề *Sửa giao dịch* và nút X)
+    hiển thị đầy đủ, không bị che khuất.
+  - **Tích hợp ô Tìm kiếm trực tiếp lên Header chính (`FinancePage.jsx`):** Khi ở màn Giao dịch,
+    ô tìm kiếm hiển thị ngay trên Header của trang cạnh nút *Thêm chi tiêu*, có icon tìm và nút xóa nhanh,
+    đồng bộ tự động với danh sách.
+  - **Hợp nhất thành 1 hàng Toolbar duy nhất (`.fin-list__toolbar`):**
+    Gộp bộ chọn kỳ (`PeriodPicker compact` với các nút `<` và `>` kẹp 2 bên dropdown tháng),
+    bộ lọc chuyên sâu (`FilterPop`), các chip phân loại (`Tất cả`, `Chi`, `Thu`...) và nút `Xuất CSV`
+    vào **1 Card duy nhất**, tiết kiệm hơn 80px chiều dọc màn hình, đưa danh sách giao dịch lên tầm mắt ngay lập tức.
 - **Trường Ghi chú tự do (Note nhiều dòng) cho giao dịch:** Bổ sung cột `description TEXT` vào bảng
   `finance_transactions` (migration `20260831000000_finance_transaction_description_v6_13_0.sql`),
   tách biệt với tiêu đề ngắn (`note`). Cho phép người dùng ghi chú tự do nhiều dòng ở cả form **Sửa giao dịch**

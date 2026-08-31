@@ -38,7 +38,9 @@ function csvCell(value) {
 export default function ListScreen({ fin, nav }) {
   const { pendingTasks } = useUserTasks();
   const [filter, setFilter] = useState('all');
-  const [q, setQ] = useState('');
+  const [localQ, setLocalQ] = useState('');
+  const q = nav.searchQuery !== undefined ? nav.searchQuery : localQ;
+  const setQ = nav.setSearchQuery || setLocalQ;
   const [flt, setFlt] = useState(EMPTY_FILTER);
   const [selId, setSelId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -104,23 +106,24 @@ export default function ListScreen({ fin, nav }) {
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `giao-dich-${period.key}.csv`;
+    link.download = `finance-${period.label.replaceAll(' ', '-').toLowerCase()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   return (
-    <div className={`fin-list${selected ? (isEditing ? ' fin-list--detail fin-list--editing' : ' fin-list--detail') : ''}`}>
+    <div className={`fin-list${selected ? ' fin-list--detail' : ''}`}>
       <div className="fin-list__main">
-        <PeriodPicker options={nav.periodOptions} period={nav.period} value={nav.periodKey} onChange={nav.setPeriodKey} dataFrom={nav.dataFrom} />
-
-        <div className="fin-list__controls">
-          <label className="fin-list__search">
-            <AppIcon name="search" size={15} />
-            {/* <label> bọc ngoài chỉ chứa AppIcon (đã aria-hidden) nên ô này KHÔNG có
-                tên nào — screen reader đọc ra "edit text" trống trơn. */}
-            <input aria-label="Tìm giao dịch" placeholder="Tìm theo tên, nơi, tag…" value={q} onChange={event => setQ(event.target.value)} />
-          </label>
+        <div className="fin-list__toolbar">
+          <PeriodPicker
+            options={nav.periodOptions}
+            period={nav.period}
+            value={nav.periodKey}
+            onChange={nav.setPeriodKey}
+            dataFrom={nav.dataFrom}
+            compact
+          />
+          <span className="fin-toolbar-sep" aria-hidden="true" />
           <FilterPop cats={fin.cats} value={flt} onChange={setFlt} />
           <div className="fin-filter-chips">
             {FILTERS.map(item => <button key={item.value} type="button"
@@ -447,145 +450,150 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
 
   if (isEditing) {
     return (
-      <div className="fin-detail fin-detail--editing">
-        <div className="fin-detail__head">
-          <div className="fin-detail__head-title">
-            <AppIcon name="pencil" size={16} />
-            <strong>Sửa giao dịch</strong>
-          </div>
-          <button className="fin-detail__close" onClick={cancelEdit} aria-label="Đóng chỉnh sửa"><AppIcon name="x" size={15} /></button>
-        </div>
-
-        <div className="fin-edit-grid">
-          <div className="fin-edit-field fin-edit-field--full">
-            <label className="fin-label">Tiêu đề</label>
-            <input className="fin-input" aria-label="Tiêu đề giao dịch" value={note} onChange={event => setNote(event.target.value)} maxLength={200} placeholder="Ví dụ: Xăng xe, Cơm trưa, Siêu thị..." />
-          </div>
-
-          <div className="fin-edit-field">
-            <label className="fin-label">Số tiền</label>
-            <div className="fin-input-money">
-              <input className="fin-input" aria-label="Số tiền" inputMode="numeric" pattern="[0-9]*" value={groupDigits(amount)} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
-              <span>₫</span>
+      <div className="fin-drawer-overlay">
+        <div className="fin-drawer-backdrop" onClick={cancelEdit} aria-hidden="true" />
+        <div className="fin-slide-drawer" role="dialog" aria-modal="true" aria-label="Sửa giao dịch">
+          <div className="fin-slide-drawer__head">
+            <div className="fin-detail__head-title">
+              <AppIcon name="pencil" size={17} />
+              <strong>Sửa giao dịch</strong>
             </div>
+            <button className="fin-detail__close" onClick={cancelEdit} aria-label="Đóng chỉnh sửa"><AppIcon name="x" size={15} /></button>
           </div>
 
-          <div className="fin-edit-field">
-            <label className="fin-label">Ngày</label>
-            <DateField value={occurredAt} onChange={setOccurredAt} />
-          </div>
-
-          {tx.type !== 'saving' && (
-            <div className="fin-edit-field">
-              <label className="fin-label">{tx.type === 'income' ? 'Nguồn thu' : 'Nhóm'}</label>
-              <select className="fin-input" aria-label="Nhóm" value={categoryId} onChange={event => { setCategoryId(event.target.value); setSubcategoryId(''); }}>
-                {categoryOptions.filter(group => !group.hidden).map(group => <option key={group.key} value={group.key}>{group.label}</option>)}
-              </select>
-            </div>
-          )}
-
-          {tx.type === 'expense' && (
-            <div className="fin-edit-field">
-              <label className="fin-label">Danh mục con</label>
-              <select className="fin-input" aria-label="Danh mục con" value={subcategoryId} onChange={event => setSubcategoryId(event.target.value)}>
-                <option value="">— chưa chọn —</option>
-                {subOptions.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}
-              </select>
-            </div>
-          )}
-
-          {tx.type === 'expense' && (
-            <div className="fin-edit-field">
-              <label className="fin-label">Nguồn tiền</label>
-              <select className="fin-input" aria-label="Nguồn tiền" value={sourceCardId} onChange={event => setSourceCardId(event.target.value)}>
-                <option value="">Tiền có sẵn</option>
-                {fin.cards.map(card => <option key={card.id} value={card.id}>{card.name} {card.last4 ? `••${card.last4}` : ''}</option>)}
-              </select>
-            </div>
-          )}
-
-          {tx.type === 'expense' && !tx.excluded && (
-            <div className="fin-edit-field">
-              <label className="fin-label">Mức cắt được</label>
-              <select className="fin-input" aria-label="Mức cắt được" value={necessity} onChange={event => setNecessity(event.target.value)}>
-                <option value="">— chưa đặt —</option>
-                {Object.entries(NECESSITY_META).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}
-              </select>
-            </div>
-          )}
-
-          {linkedBill && (
-            <div className="fin-edit-field fin-edit-field--full">
-              <label className="fin-label">Thuộc kỳ của {linkedBill.name}</label>
-              <select className="fin-input" aria-label={`Kỳ của ${linkedBill.name}`} value={billPeriod} onChange={event => setBillPeriod(event.target.value)}>
-                {periodChoices.map(key => <option key={key} value={key}>{key.slice(5)}/{key.slice(0, 4)}</option>)}
-              </select>
-              <small className="fin-field__hint">Kỳ tách khỏi ngày trả: trả kỳ tháng 7 vào tháng 8 thì kỳ vẫn là 07.</small>
-            </div>
-          )}
-
-          <div className="fin-edit-field">
-            <label className="fin-label">Nhiệm vụ liên quan</label>
-            <TaskPicker tasks={tasks} value={tx.task_id} onPick={id => fin.updateTransaction(tx.id, { task_id: id })} />
-          </div>
-
-          <div className="fin-edit-field">
-            <label className="fin-label">Tag</label>
-            <div className="fin-tags">
-              {txTags.map(tag => <button key={tag.id} className="fin-tag" style={{ '--tc': tag.color }} onClick={() => toggleTag(tag)}>#{tag.name} <AppIcon name="x" size={11} /></button>)}
-              <TagAdd tags={tags} txTags={txTags} onAdd={addAndLink} />
-            </div>
-          </div>
-        </div>
-
-        <div className="fin-edit-section">
-          <div className="fin-edit-section__title">
-            <AppIcon name="receipt" size={15} />
-            <span>Chi tiết bổ sung & món hàng</span>
-          </div>
-
-          <div className="fin-edit-field">
-            <label className="fin-label">Nơi / người nhận</label>
-            <input className="fin-input" aria-label="Nơi / người nhận" value={merchant} onChange={event => setMerchant(event.target.value)} placeholder="Quán nước Bà Ba, Shopee, Cửa hàng xăng dầu..." />
-          </div>
-
-          <div className="fin-edit-field">
-            <label className="fin-label">Ghi chú (Note tự do)</label>
-            <textarea className="fin-input fin-textarea" aria-label="Ghi chú tự do" value={description} onChange={event => setDescription(event.target.value)} placeholder="Ghi chú tự do (nhiều dòng, lưu ý chi tiết...)" rows={3} />
-          </div>
-
-          <div className="fin-items-editor">
-            <div className="fin-items-editor__head">
-              <AppIcon name="listBullets" size={16} />
-              <strong>Chi tiết từng món</strong>
-              <small>tổng tự cộng lên số tiền</small>
-            </div>
-            {draftItems.length > 0 && (
-              <div className="fin-items-editor__col-labels">
-                <span>Tên món / dịch vụ</span>
-                <span>SL</span>
-                <span>Đơn giá</span>
-                <span></span>
+          <div className="fin-slide-drawer__body">
+            <div className="fin-edit-grid">
+              <div className="fin-edit-field fin-edit-field--full">
+                <label className="fin-label">Tiêu đề</label>
+                <input className="fin-input" aria-label="Tiêu đề giao dịch" value={note} onChange={event => setNote(event.target.value)} maxLength={200} placeholder="Ví dụ: Xăng xe, Cơm trưa, Siêu thị..." />
               </div>
-            )}
-            {draftItems.map((item, index) => (
-              <div className="fin-item-row" key={index}>
-                <input className="fin-input" aria-label={`Tên món thứ ${index + 1}`} value={item.name} onChange={event => updateDraftItem(index, 'name', event.target.value)} placeholder="Tên món (bảo dưỡng, dầu nhớt...)" />
-                <input className="fin-input fin-item-qty" inputMode="numeric" pattern="[0-9]*" value={item.qty} onChange={event => updateDraftItem(index, 'qty', event.target.value)} aria-label="Số lượng" placeholder="1" />
-                <div className="fin-item-price-wrap">
-                  <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" aria-label="Đơn giá" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="0" />
+
+              <div className="fin-edit-field">
+                <label className="fin-label">Số tiền</label>
+                <div className="fin-input-money">
+                  <input className="fin-input" aria-label="Số tiền" inputMode="numeric" pattern="[0-9]*" value={groupDigits(amount)} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
                   <span>₫</span>
                 </div>
-                <button type="button" className="fin-item-del-btn" aria-label="Xóa món" onClick={() => setDraftItems(current => current.filter((_, itemIndex) => itemIndex !== index))}><AppIcon name="x" size={14} /></button>
               </div>
-            ))}
-            <button type="button" className="fin-inline-command" onClick={() => setDraftItems(current => [...current, { name: '', qty: '1', price: '' }])}><AppIcon name="plus" size={14} /> Thêm món</button>
-          </div>
-        </div>
 
-        <div className="fin-detail__actions">
-          <button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="save" size={15} /> Lưu thay đổi</button>
-          <button className="fin-btn fin-btn--secondary" onClick={cancelEdit}>Hủy</button>
+              <div className="fin-edit-field">
+                <label className="fin-label">Ngày</label>
+                <DateField value={occurredAt} onChange={setOccurredAt} />
+              </div>
+
+              {tx.type !== 'saving' && (
+                <div className="fin-edit-field">
+                  <label className="fin-label">{tx.type === 'income' ? 'Nguồn thu' : 'Nhóm'}</label>
+                  <select className="fin-input" aria-label="Nhóm" value={categoryId} onChange={event => { setCategoryId(event.target.value); setSubcategoryId(''); }}>
+                    {categoryOptions.filter(group => !group.hidden).map(group => <option key={group.key} value={group.key}>{group.label}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {tx.type === 'expense' && (
+                <div className="fin-edit-field">
+                  <label className="fin-label">Danh mục con</label>
+                  <select className="fin-input" aria-label="Danh mục con" value={subcategoryId} onChange={event => setSubcategoryId(event.target.value)}>
+                    <option value="">— chưa chọn —</option>
+                    {subOptions.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {tx.type === 'expense' && (
+                <div className="fin-edit-field">
+                  <label className="fin-label">Nguồn tiền</label>
+                  <select className="fin-input" aria-label="Nguồn tiền" value={sourceCardId} onChange={event => setSourceCardId(event.target.value)}>
+                    <option value="">Tiền có sẵn</option>
+                    {fin.cards.map(card => <option key={card.id} value={card.id}>{card.name} {card.last4 ? `••${card.last4}` : ''}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {tx.type === 'expense' && !tx.excluded && (
+                <div className="fin-edit-field">
+                  <label className="fin-label">Mức cắt được</label>
+                  <select className="fin-input" aria-label="Mức cắt được" value={necessity} onChange={event => setNecessity(event.target.value)}>
+                    <option value="">— chưa đặt —</option>
+                    {Object.entries(NECESSITY_META).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {linkedBill && (
+                <div className="fin-edit-field fin-edit-field--full">
+                  <label className="fin-label">Thuộc kỳ của {linkedBill.name}</label>
+                  <select className="fin-input" aria-label={`Kỳ của ${linkedBill.name}`} value={billPeriod} onChange={event => setBillPeriod(event.target.value)}>
+                    {periodChoices.map(key => <option key={key} value={key}>{key.slice(5)}/{key.slice(0, 4)}</option>)}
+                  </select>
+                  <small className="fin-field__hint">Kỳ tách khỏi ngày trả: trả kỳ tháng 7 vào tháng 8 thì kỳ vẫn là 07.</small>
+                </div>
+              )}
+
+              <div className="fin-edit-field">
+                <label className="fin-label">Nhiệm vụ liên quan</label>
+                <TaskPicker tasks={tasks} value={tx.task_id} onPick={id => fin.updateTransaction(tx.id, { task_id: id })} />
+              </div>
+
+              <div className="fin-edit-field">
+                <label className="fin-label">Tag</label>
+                <div className="fin-tags">
+                  {txTags.map(tag => <button key={tag.id} className="fin-tag" style={{ '--tc': tag.color }} onClick={() => toggleTag(tag)}>#{tag.name} <AppIcon name="x" size={11} /></button>)}
+                  <TagAdd tags={tags} txTags={txTags} onAdd={addAndLink} />
+                </div>
+              </div>
+            </div>
+
+            <div className="fin-edit-section">
+              <div className="fin-edit-section__title">
+                <AppIcon name="receipt" size={15} />
+                <span>Chi tiết bổ sung & món hàng</span>
+              </div>
+
+              <div className="fin-edit-field">
+                <label className="fin-label">Nơi / người nhận</label>
+                <input className="fin-input" aria-label="Nơi / người nhận" value={merchant} onChange={event => setMerchant(event.target.value)} placeholder="Quán nước Bà Ba, Shopee, Cửa hàng xăng dầu..." />
+              </div>
+
+              <div className="fin-edit-field">
+                <label className="fin-label">Ghi chú (Note tự do)</label>
+                <textarea className="fin-input fin-textarea" aria-label="Ghi chú tự do" value={description} onChange={event => setDescription(event.target.value)} placeholder="Ghi chú tự do (nhiều dòng, lưu ý chi tiết...)" rows={3} />
+              </div>
+
+              <div className="fin-items-editor">
+                <div className="fin-items-editor__head">
+                  <AppIcon name="listBullets" size={16} />
+                  <strong>Chi tiết từng món</strong>
+                  <small>tổng tự cộng lên số tiền</small>
+                </div>
+                {draftItems.length > 0 && (
+                  <div className="fin-items-editor__col-labels">
+                    <span>Tên món / dịch vụ</span>
+                    <span>SL</span>
+                    <span>Đơn giá</span>
+                    <span></span>
+                  </div>
+                )}
+                {draftItems.map((item, index) => (
+                  <div className="fin-item-row" key={index}>
+                    <input className="fin-input" aria-label={`Tên món thứ ${index + 1}`} value={item.name} onChange={event => updateDraftItem(index, 'name', event.target.value)} placeholder="Tên món (bảo dưỡng, dầu nhớt...)" />
+                    <input className="fin-input fin-item-qty" inputMode="numeric" pattern="[0-9]*" value={item.qty} onChange={event => updateDraftItem(index, 'qty', event.target.value)} aria-label="Số lượng" placeholder="1" />
+                    <div className="fin-item-price-wrap">
+                      <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" aria-label="Đơn giá" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="0" />
+                      <span>₫</span>
+                    </div>
+                    <button type="button" className="fin-item-del-btn" aria-label="Xóa món" onClick={() => setDraftItems(current => current.filter((_, itemIndex) => itemIndex !== index))}><AppIcon name="x" size={14} /></button>
+                  </div>
+                ))}
+                <button type="button" className="fin-inline-command" onClick={() => setDraftItems(current => [...current, { name: '', qty: '1', price: '' }])}><AppIcon name="plus" size={14} /> Thêm món</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="fin-slide-drawer__foot">
+            <button className="fin-btn fin-btn--secondary" onClick={cancelEdit}>Hủy (Esc)</button>
+            <button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="save" size={15} /> Lưu thay đổi (Ctrl+Enter)</button>
+          </div>
         </div>
       </div>
     );

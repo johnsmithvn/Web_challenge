@@ -254,7 +254,7 @@ const PERIOD_MONTHS = Array.from({ length: 12 }, (_, index) => `Tháng ${index +
  * chọn kỳ nằm ngoài cửa sổ đó: kỳ không có dữ liệu chỉ hiện "0đ · chưa có giao
  * dịch", tức app nói dối. Bỏ trống thì lùi tới 2000 như trước.
  */
-export function PeriodPicker({ options, period, value, onChange, dataFrom }) {
+export function PeriodPicker({ options, period, value, onChange, dataFrom, compact }) {
   const rootRef = useRef(null);
   const [open, setOpen] = useState(false);
   const minMonthKey = (dataFrom || '2000-01-01').slice(0, 7);
@@ -304,6 +304,57 @@ export function PeriodPicker({ options, period, value, onChange, dataFrom }) {
     [currentYear, minYear],
   );
 
+  const renderPopover = () => (
+    <div className="fin-period__popover" role="dialog" aria-label="Chọn tháng và năm">
+      <div className="fin-period__yearbar">
+        <button type="button" onClick={() => setViewYear(year => Math.max(minYear, year - 1))}
+          disabled={viewYear <= minYear} aria-label="Năm trước"><AppIcon name="caretLeft" size={14} /></button>
+        <select value={viewYear} onChange={event => setViewYear(Number(event.target.value))} aria-label="Năm">
+          {years.map(year => <option key={year} value={year}>{year}</option>)}
+        </select>
+        <button type="button" onClick={() => setViewYear(year => Math.min(currentYear, year + 1))}
+          disabled={viewYear >= currentYear} aria-label="Năm sau"><AppIcon name="caretRight" size={14} /></button>
+      </div>
+      <div className="fin-period__months">
+        {PERIOD_MONTHS.map((label, index) => {
+          const key = `${viewYear}-${String(index + 1).padStart(2, '0')}`;
+          return <button type="button" key={key} disabled={key > currentMonthKey || key < minMonthKey}
+            className={value === key ? 'is-selected' : ''} onClick={() => choose(key)}>{label}</button>;
+        })}
+      </div>
+      <div className="fin-period__presets">
+        <button type="button" className={value === `year-${viewYear}` ? 'is-selected' : ''}
+          onClick={() => choose(`year-${viewYear}`)}><AppIcon name="calendar" size={14} /> Cả năm {viewYear}</button>
+        <button type="button" className={value === 'all' ? 'is-selected' : ''}
+          onClick={() => choose('all')}><AppIcon name="infinity" size={14} /> Tất cả</button>
+      </div>
+    </div>
+  );
+
+  if (compact) {
+    return (
+      <div className="fin-period-compact" ref={rootRef}>
+        <button type="button" className="fin-period-compact__nav" disabled={previousDisabled} onClick={() => shiftPeriod(-1)} aria-label="Kỳ trước">
+          <AppIcon name="caretLeft" size={13} />
+        </button>
+        <button type="button" className={`fin-period-compact__trigger${open ? ' is-open' : ''}`}
+          aria-haspopup="dialog" aria-expanded={open}
+          onClick={() => { if (!open) setViewYear(selectedYear); setOpen(active => !active); }}>
+          <AppIcon name="calendarBlank" size={14} />
+          <strong>{cur?.label}</strong>
+          <small className="fin-period-compact__days">
+            {value === 'all' ? `Từ ${minMonthKey.slice(5)}/${minMonthKey.slice(0, 4)}` : `${days} ngày`}
+          </small>
+          <AppIcon name="caretDown" size={11} />
+        </button>
+        <button type="button" className="fin-period-compact__nav" disabled={nextDisabled} onClick={() => shiftPeriod(1)} aria-label="Kỳ sau">
+          <AppIcon name="caretRight" size={13} />
+        </button>
+        {open && renderPopover()}
+      </div>
+    );
+  }
+
   return (
     <div className="fin-period">
       <AppIcon name="calendar" size={17} className="fin-period__ico" />
@@ -314,30 +365,7 @@ export function PeriodPicker({ options, period, value, onChange, dataFrom }) {
           onClick={() => { if (!open) setViewYear(selectedYear); setOpen(active => !active); }}>
           <strong>{cur?.label}</strong><AppIcon name="caretDown" size={13} />
         </button>
-        {open && <div className="fin-period__popover" role="dialog" aria-label="Chọn tháng và năm">
-          <div className="fin-period__yearbar">
-            <button type="button" onClick={() => setViewYear(year => Math.max(minYear, year - 1))}
-              disabled={viewYear <= minYear} aria-label="Năm trước"><AppIcon name="caretLeft" size={14} /></button>
-            <select value={viewYear} onChange={event => setViewYear(Number(event.target.value))} aria-label="Năm">
-              {years.map(year => <option key={year} value={year}>{year}</option>)}
-            </select>
-            <button type="button" onClick={() => setViewYear(year => Math.min(currentYear, year + 1))}
-              disabled={viewYear >= currentYear} aria-label="Năm sau"><AppIcon name="caretRight" size={14} /></button>
-          </div>
-          <div className="fin-period__months">
-            {PERIOD_MONTHS.map((label, index) => {
-              const key = `${viewYear}-${String(index + 1).padStart(2, '0')}`;
-              return <button type="button" key={key} disabled={key > currentMonthKey || key < minMonthKey}
-                className={value === key ? 'is-selected' : ''} onClick={() => choose(key)}>{label}</button>;
-            })}
-          </div>
-          <div className="fin-period__presets">
-            <button type="button" className={value === `year-${viewYear}` ? 'is-selected' : ''}
-              onClick={() => choose(`year-${viewYear}`)}><AppIcon name="calendar" size={14} /> Cả năm {viewYear}</button>
-            <button type="button" className={value === 'all' ? 'is-selected' : ''}
-              onClick={() => choose('all')}><AppIcon name="infinity" size={14} /> Tất cả</button>
-          </div>
-        </div>}
+        {open && renderPopover()}
       </div>
       <span className="fin-period__days">
         {value === 'all' ? `Từ ${minMonthKey.slice(5)}/${minMonthKey.slice(0, 4)}` : `${days} ngày`}
