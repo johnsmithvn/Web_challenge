@@ -126,6 +126,40 @@ await assert.rejects(
   /Could not decrypt/
 );
 
+// 5. Test internal item link remapping when multiple items are rekeyed
+const item2Id = '00000000-0000-4000-8000-000000000009';
+const payloadWithLink = {
+  ...payload,
+  title: 'Linked account',
+  fields: [
+    { id: 'f-link', label: 'Parent', type: 'link', value: 'Bank', links: [{ itemId, value: 'Primary' }] },
+  ],
+};
+const encryptedItem2 = await encryptVaultItem(key, userId, item2Id, payloadWithLink);
+const multiBackup = {
+  format: 'lifehub-vault-v6.2',
+  version: 1,
+  userId,
+  config,
+  items: [
+    { id: itemId, ...encrypted },
+    { id: item2Id, ...encryptedItem2 },
+  ],
+};
+
+const rekeyedMulti = await rekeyVaultItems({
+  backup: multiBackup,
+  sourcePassphrase: passphrase,
+  targetUserId,
+  targetKey,
+});
+assert.equal(rekeyedMulti.length, 2);
+
+const decItem2 = await decryptVaultItem(targetUnlockedKey, targetUserId, rekeyedMulti[1]);
+assert.equal(decItem2.fields[0].links[0].itemId, rekeyedMulti[0].id);
+assert.notEqual(decItem2.fields[0].links[0].itemId, itemId);
+
+
 // ── Passphrase rotation tests ──
 const newPassphrase = 'brand new very secure passphrase 123';
 

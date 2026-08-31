@@ -207,4 +207,43 @@ assert.ok(authLog, 'phải ghi nhận bật 2FA');
 
 console.log('diffLog privacy and masking audit invariants: OK');
 
+/* ── 5. Màn hình Vault: Hợp đồng Đổi mật khẩu & Chuyển giao dữ liệu ── */
+// Nút Đổi mật khẩu trên Header
+assert.match(
+  accountsPageSrc,
+  /<button className="acc-act" onClick=\{[^}]*setChangePassOpen\(true\)[^}]*\}>/,
+  'header phải có nút mở modal Đổi mật khẩu'
+);
+
+// Modal Đổi mật khẩu
+assert.match(
+  accountsPageSrc,
+  /function ChangePassphraseModal\(/,
+  'AccountsPage phải có component ChangePassphraseModal'
+);
+assert.match(
+  accountsPageSrc,
+  /onChangePassphrase\(currentPass, newPass\)/,
+  'ChangePassphraseModal phải gọi callback đổi mật khẩu'
+);
+assert.match(
+  accountsPageSrc,
+  /minLength=\{12\}/,
+  'form đổi mật khẩu phải bắt buộc tối thiểu 12 ký tự'
+);
+
+// UI Chuyển giao dữ liệu từ tài khoản khác (Cross-Account Migration)
+assert.match(
+  accountsPageSrc,
+  /acc-gate__migration/,
+  'VaultBackup phải có khối giao diện acc-gate__migration'
+);
+assert.match(
+  accountsPageSrc,
+  /migration\.sourcePassphrase/,
+  'VaultBackup phải có input nhập mật khẩu gốc'
+);
+console.log('vault header and migration UI contract: OK');
+
 console.log('\n✅ vaultScreensContract — tất cả hợp đồng màn hình Vault PASS (100% covered)');
+

@@ -76,4 +76,39 @@ assert.doesNotMatch(
   'export must not require an unwrapped key — backing up a locked Vault is the point'
 );
 
+// ── Change Passphrase ───────────────────────────────────────────────────────
+assert.match(
+  hook,
+  /const changePassphrase = useCallback\(async \(currentPassphrase, newPassphrase\) =>/,
+  'hook must provide changePassphrase callback'
+);
+assert.match(
+  hook,
+  /rotateVaultPassphrase\(\s*currentPassphrase,\s*newPassphrase/,
+  'changePassphrase must invoke rotateVaultPassphrase'
+);
+assert.match(
+  hook,
+  /\.from\('vault_config'\)\s*\.update\(/,
+  'changePassphrase must update vault_config row'
+);
+assert.match(
+  hook,
+  /return \{[\s\S]*?changePassphrase,[\s\S]*?\};/,
+  'hook must export changePassphrase'
+);
+
+// ── Cross-Account Re-keying ─────────────────────────────────────────────────
+assert.match(
+  hook,
+  /if \(isDifferentUser\) \{[\s\S]*?rekeyVaultItems\(/,
+  'restore must trigger rekeyVaultItems for foreign backups'
+);
+assert.match(
+  hook,
+  /\.from\('vault_config'\)\s*\.insert\(targetConfig\)/,
+  'vault_config creation must use insert instead of upsert to respect least privilege'
+);
+
 console.log('vault hook security contract: OK');
+
