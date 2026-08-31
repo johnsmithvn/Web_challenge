@@ -268,7 +268,9 @@ export default function AccountsPage() {
           </div>
           <button className="acc-act" onClick={() => setChangePassOpen(true)}>Đổi mật khẩu</button>
           <button className="acc-act" onClick={handleLock}>Lock</button>
-          <button className="acc-btn" onClick={() => setPickerOpen(true)}>New item</button>
+          <button className="acc-btn acc-btn--primary" onClick={() => setPickerOpen(true)}>
+            <AppIcon name="plus" size={15} /> New item
+          </button>
         </div>
       </header>
 

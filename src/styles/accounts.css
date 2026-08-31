@@ -167,30 +167,36 @@
 
 /* ══ Nút ═══════════════════════════════════════════════════════════════════ */
 .acc-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   font: inherit; font-size: 13px; font-weight: 600;
-  padding: 9px 15px; border-radius: 12px; cursor: pointer;
+  padding: 8px 18px; border-radius: 9999px; cursor: pointer;
   color: var(--color-text);
   background: var(--surface);
   border: 1px solid var(--color-divider);
-  transition: transform 140ms var(--acc-ease), box-shadow 180ms ease,
+  transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 180ms ease,
               background-color 140ms ease, border-color 140ms ease, color 140ms ease;
 }
-.acc-btn:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--color-accent-300); }
-.acc-btn:active:not(:disabled) { transform: translateY(0); }
-.acc-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.acc-btn:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--color-accent-300); }
+.acc-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.acc-btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
-/* Glow là thứ làm nút primary không bẹt — bản trước thiếu nó */
+/* Glow + Hero Gradient làm nút nổi bật, mềm mại và chuẩn Modern UI */
 .acc-btn--primary {
-  color: #fff;
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  box-shadow: var(--glow);
+  color: #fff !important;
+  background: var(--grad-hero, linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%)) !important;
+  border: none !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.42) !important;
+  font-weight: 600;
 }
 .acc-btn--primary:hover:not(:disabled) {
-  background: var(--color-accent-600);
-  border-color: var(--color-accent-600);
-  box-shadow: var(--glow-hover);
+  background: var(--grad-hero, linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #0891b2 100%)) !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 28px rgba(99, 102, 241, 0.65) !important;
+  transform: translateY(-2px) !important;
+}
+.acc-btn--primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98) !important;
 }
 
 .acc-btn--ghost {
