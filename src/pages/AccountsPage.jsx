@@ -37,7 +37,7 @@ export default function AccountsPage() {
   const { user } = useAuth();
   const { items, isLoading, saveItem, createItem, deleteItem, toggleFavorite,
     setAuthState, setCodeUsed, vaultStatus, vaultError,
-    setupVault, unlockVault, lockVault, exportVault, restoreVault } = useAccounts();
+    setupVault, unlockVault, lockVault, changePassphrase, exportVault, restoreVault } = useAccounts();
   const { showToast } = useToast();
   const { confirm, ConfirmModal } = useConfirm();
 
@@ -47,6 +47,7 @@ export default function AccountsPage() {
   const [selectedId, setSelectedId] = useState(null);
   const [screen, setScreen] = useState('list');   // chỉ có nghĩa dưới 900px
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [changePassOpen, setChangePassOpen] = useState(false);
   const [creating, setCreating] = useState(null); // tplKey đang tạo, null = rảnh
   const [autoEditId, setAutoEditId] = useState(null); // item vừa tạo → mở sẵn edit
   const [revealed, setRevealed] = useState({});   // { [fieldId]: true }
@@ -257,6 +258,7 @@ export default function AccountsPage() {
               <p>Titles, usernames, URLs, notes, tags, fields, codes and history are sent to Supabase only as AES-GCM ciphertext.</p>
             </div>
           </div>
+          <button className="acc-act" onClick={() => setChangePassOpen(true)}>Đổi mật khẩu</button>
           <button className="acc-act" onClick={handleLock}>Lock</button>
           <button className="acc-btn" onClick={() => setPickerOpen(true)}>New item</button>
         </div>
@@ -406,7 +408,137 @@ export default function AccountsPage() {
       )}
 
       {ConfirmModal}
+
+      <ChangePassphraseModal
+        isOpen={changePassOpen}
+        onClose={(success) => {
+          setChangePassOpen(false);
+          if (success) showToast('Đã đổi mật khẩu Vault thành công!', { icon: 'check' });
+        }}
+        onChangePassphrase={changePassphrase}
+      />
     </div>
+  );
+}
+
+function ChangePassphraseModal({ isOpen, onClose, onChangePassphrase }) {
+  const [currentPass, setCurrentPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCurrentPass('');
+      setNewPass('');
+      setConfirmPass('');
+      setError('');
+      setBusy(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (newPass.length < 12) {
+      setError('Mật khẩu mới phải có ít nhất 12 ký tự.');
+      return;
+    }
+    if (newPass !== confirmPass) {
+      setError('Mật khẩu xác nhận không khớp.');
+      return;
+    }
+    if (newPass === currentPass) {
+      setError('Mật khẩu mới phải khác mật khẩu hiện tại.');
+      return;
+    }
+    setBusy(true);
+    const result = await onChangePassphrase(currentPass, newPass);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error || 'Đổi mật khẩu thất bại.');
+      return;
+    }
+    onClose(true);
+  };
+
+  return createPortal(
+    <div className="acc-scrim" onClick={() => !busy && onClose(false)} role="dialog" aria-modal="true" aria-label="Change Vault Passphrase">
+      <div className="acc-dialog" style={{ maxWidth: '420px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="acc-dialog__head">
+          <h3 className="acc-dialog__title">Đổi mật khẩu mã hóa Vault</h3>
+          <button className="acc-btn acc-btn--ghost" disabled={busy} onClick={() => onClose(false)}>Đóng</button>
+        </div>
+        <p className="acc-dialog__lede">
+          Khóa mã hóa của bạn sẽ được niêm phong lại bằng mật khẩu mới. Mọi tài khoản hiện có vẫn được giữ nguyên vẹn.
+        </p>
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
+          <div>
+            <label className="acc-sect__meta" style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }} htmlFor="curr-pass">
+              Mật khẩu hiện tại:
+            </label>
+            <input
+              id="curr-pass"
+              type="password"
+              className="acc-input"
+              value={currentPass}
+              onChange={(e) => setCurrentPass(e.target.value)}
+              placeholder="Nhập mật khẩu Vault hiện tại"
+              required
+              autoFocus
+              disabled={busy}
+            />
+          </div>
+          <div>
+            <label className="acc-sect__meta" style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }} htmlFor="new-pass">
+              Mật khẩu mới (tối thiểu 12 ký tự):
+            </label>
+            <input
+              id="new-pass"
+              type="password"
+              className="acc-input"
+              value={newPass}
+              minLength={12}
+              onChange={(e) => setNewPass(e.target.value)}
+              placeholder="Nhập mật khẩu mới"
+              required
+              disabled={busy}
+            />
+          </div>
+          <div>
+            <label className="acc-sect__meta" style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }} htmlFor="conf-pass">
+              Xác nhận mật khẩu mới:
+            </label>
+            <input
+              id="conf-pass"
+              type="password"
+              className="acc-input"
+              value={confirmPass}
+              minLength={12}
+              onChange={(e) => setConfirmPass(e.target.value)}
+              placeholder="Nhập lại mật khẩu mới"
+              required
+              disabled={busy}
+            />
+          </div>
+          {error && (
+            <div className="acc-gate__error" role="alert">{error}</div>
+          )}
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '6px' }}>
+            <button type="button" className="acc-btn acc-btn--ghost" disabled={busy} onClick={() => onClose(false)}>
+              Huỷ
+            </button>
+            <button type="submit" className="acc-btn acc-btn--primary" disabled={busy || !currentPass || !newPass || !confirmPass}>
+              {busy ? 'Đang cập nhật…' : 'Đổi mật khẩu'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
   );
 }
 

@@ -9,6 +9,7 @@ import {
   encryptVaultItem,
   unlockVaultKey,
   rekeyVaultItems,
+  rotateVaultPassphrase,
 } from '../utils/vaultCrypto';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 
@@ -277,6 +278,38 @@ export function useAccounts() {
       return { ok: false, error: error.message };
     }
   }, [enabled, userId, vaultStatus, fetchAll]);
+
+  const changePassphrase = useCallback(async (currentPassphrase, newPassphrase) => {
+    if (!enabled || !configRef.current) {
+      return { ok: false, error: 'Vault is not ready' };
+    }
+    try {
+      const { key: newKey, config: newConfig } = await rotateVaultPassphrase(
+        currentPassphrase,
+        newPassphrase,
+        userId,
+        configRef.current
+      );
+      const { error } = await supabase.from('vault_config')
+        .update({
+          kdf_algorithm: newConfig.kdf_algorithm,
+          kdf_salt: newConfig.kdf_salt,
+          kdf_iterations: newConfig.kdf_iterations,
+          wrapped_key: newConfig.wrapped_key,
+          wrapped_key_nonce: newConfig.wrapped_key_nonce,
+          encryption_version: newConfig.encryption_version,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId);
+      if (error) throw error;
+      configRef.current = newConfig;
+      keyRef.current = newKey;
+      return { ok: true };
+    } catch (err) {
+      logger.error('[useAccounts] changePassphrase error:', err.message);
+      return { ok: false, error: err.message || 'Could not change passphrase' };
+    }
+  }, [enabled, userId]);
 
   /* ── Backup / restore ─────────────────────────────────────────────
      Export KHÔNG cần key: nó chỉ copy ciphertext + vault_config, nên sao lưu
@@ -686,6 +719,7 @@ export function useAccounts() {
     setupVault,
     unlockVault,
     lockVault,
+    changePassphrase,
     exportVault,
     restoreVault,
     fetchAll,

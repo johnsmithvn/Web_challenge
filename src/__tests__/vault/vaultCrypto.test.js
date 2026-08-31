@@ -6,6 +6,7 @@ import {
   unlockVaultKey,
   validateVaultPassphrase,
   rekeyVaultItems,
+  rotateVaultPassphrase,
   VAULT_ENCRYPTION_VERSION,
   VAULT_KDF_ITERATIONS,
 } from '../../utils/vaultCrypto.js';
@@ -125,4 +126,38 @@ await assert.rejects(
   /Could not decrypt/
 );
 
+// ── Passphrase rotation tests ──
+const newPassphrase = 'brand new very secure passphrase 123';
+
+// 1. Wrong current passphrase -> rejects
+await assert.rejects(
+  rotateVaultPassphrase('wrong current passphrase', newPassphrase, userId, config),
+  /Current passphrase is incorrect/
+);
+
+// 2. New passphrase too short -> rejects
+await assert.rejects(
+  rotateVaultPassphrase(passphrase, 'short-pass', userId, config),
+  /at least 12/
+);
+
+// 3. Rotate successfully
+const rotated = await rotateVaultPassphrase(passphrase, newPassphrase, userId, config);
+assert.equal(rotated.config.encryption_version, VAULT_ENCRYPTION_VERSION);
+assert.notEqual(rotated.config.wrapped_key, config.wrapped_key);
+
+// 4. Old passphrase can NO LONGER unlock the rotated config
+await assert.rejects(
+  unlockVaultKey(passphrase, userId, rotated.config),
+  /Wrong passphrase/
+);
+
+// 5. New passphrase unlocks successfully!
+const keyFromNewPass = await unlockVaultKey(newPassphrase, userId, rotated.config);
+
+// 6. Old item encrypted before rotation is STILL DECRYPTABLE with keyFromNewPass!
+const decryptedAfterRotation = await decryptVaultItem(keyFromNewPass, userId, { id: itemId, ...encrypted });
+assert.deepEqual(decryptedAfterRotation, payload);
+
 console.log('vault crypto checks: OK');
+

@@ -256,3 +256,65 @@ export async function rekeyVaultItems({ backup, sourcePassphrase, targetUserId, 
   return rekeyedItems;
 }
 
+/**
+ * Rotate the Vault passphrase.
+ * Re-wraps the existing DEK with a new passphrase without modifying any encrypted items.
+ */
+export async function rotateVaultPassphrase(currentPassphrase, newPassphrase, userId, config) {
+  validateVaultPassphrase(newPassphrase);
+  requireId(userId, 'userId');
+  validateConfig(config);
+
+  const salt = fromBase64(config.kdf_salt, 'KDF salt');
+  const nonce = fromBase64(config.wrapped_key_nonce, 'wrapped key nonce');
+  const wrapped = fromBase64(config.wrapped_key, 'wrapped key');
+  if (salt.byteLength !== SALT_BYTES || nonce.byteLength !== NONCE_BYTES) {
+    throw new Error('Invalid vault configuration');
+  }
+
+  // 1. Unwrap raw DEK using current passphrase
+  let rawDekBuffer;
+  try {
+    const oldKek = await deriveKek(currentPassphrase, salt, config.kdf_iterations);
+    rawDekBuffer = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: nonce,
+        additionalData: keyAad(userId, config.encryption_version),
+      },
+      oldKek,
+      wrapped
+    );
+  } catch {
+    throw new Error('Current passphrase is incorrect');
+  }
+
+  // 2. Derive new KEK from new passphrase and re-wrap the SAME raw DEK
+  const newSalt = randomBytes(SALT_BYTES);
+  const newWrapNonce = randomBytes(NONCE_BYTES);
+  const newKek = await deriveKek(newPassphrase, newSalt, VAULT_KDF_ITERATIONS);
+  const newWrapped = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: newWrapNonce,
+      additionalData: keyAad(userId, VAULT_ENCRYPTION_VERSION),
+    },
+    newKek,
+    rawDekBuffer
+  );
+
+  return {
+    key: await importDek(new Uint8Array(rawDekBuffer)),
+    config: {
+      ...config,
+      user_id: userId,
+      kdf_algorithm: VAULT_KDF_ALGORITHM,
+      kdf_salt: toBase64(newSalt),
+      kdf_iterations: VAULT_KDF_ITERATIONS,
+      wrapped_key: toBase64(new Uint8Array(newWrapped)),
+      wrapped_key_nonce: toBase64(newWrapNonce),
+      encryption_version: VAULT_ENCRYPTION_VERSION,
+    },
+  };
+}
+
