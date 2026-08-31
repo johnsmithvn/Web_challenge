@@ -519,10 +519,13 @@ function VaultGate({ status, error, onSetup, onUnlock, onExport, onRestore }) {
 function VaultBackup({ onExport, onRestore }) {
   const [busy, setBusy] = useState('');
   const [note, setNote] = useState(null);   // { ok, text }
+  const [migration, setMigration] = useState(null); // { backup, sourcePassphrase }
+  const [migrationError, setMigrationError] = useState('');
 
   const download = async () => {
     setBusy('export');
     setNote(null);
+    setMigration(null);
     const result = await onExport();
     setBusy('');
     if (!result.ok) return setNote({ ok: false, text: result.error });
@@ -543,6 +546,8 @@ function VaultBackup({ onExport, onRestore }) {
     if (!file) return;
     setBusy('restore');
     setNote(null);
+    setMigration(null);
+    setMigrationError('');
     let backup;
     try {
       backup = JSON.parse(await file.text());
@@ -552,9 +557,34 @@ function VaultBackup({ onExport, onRestore }) {
     }
     const result = await onRestore(backup);
     setBusy('');
+
+    if (result.needSourcePassphrase) {
+      setMigration({ backup, sourcePassphrase: '' });
+      return;
+    }
+
     setNote(result.ok
       ? { ok: true, text: `Restored ${result.restored} item(s). Unlock with the passphrase that backup was made with.` }
       : { ok: false, text: result.error });
+  };
+
+  const handleMigrationConfirm = async () => {
+    if (!migration?.sourcePassphrase || !migration?.backup) return;
+    setBusy('restore');
+    setMigrationError('');
+    const result = await onRestore(migration.backup, {
+      sourcePassphrase: migration.sourcePassphrase,
+    });
+    setBusy('');
+    if (result.ok) {
+      setMigration(null);
+      setNote({
+        ok: true,
+        text: `Đã chuyển giao và tái mã hóa thành công ${result.restored} mục sang tài khoản này! Hãy mở khóa bằng mật khẩu Vault.`,
+      });
+    } else {
+      setMigrationError(result.error || 'Giải mã thất bại. Vui lòng kiểm tra lại mật khẩu Vault gốc.');
+    }
   };
 
   return (
@@ -568,6 +598,56 @@ function VaultBackup({ onExport, onRestore }) {
           {busy === 'restore' ? 'Restoring…' : 'Restore from backup'}
         </label>
       </div>
+
+      {migration && (
+        <div className="acc-gate__migration">
+          <div className="acc-gate__migration-head">
+            <AppIcon name="arrowsClockwise" size={15} />
+            <span>Chuyển giao dữ liệu từ tài khoản khác</span>
+          </div>
+          <p className="acc-gate__backup-note">
+            Bản sao lưu này thuộc về tài khoản khác ({migration.backup.items?.length || 0} mục).
+            Nhập mật khẩu Vault của tài khoản gốc để giải mã và mã hóa lại sang tài khoản này:
+          </p>
+          <div className="acc-gate__migration-field">
+            <label htmlFor="mig-pass">Mật khẩu Vault gốc:</label>
+            <input
+              id="mig-pass"
+              type="password"
+              className="acc-input"
+              value={migration.sourcePassphrase}
+              onChange={(e) => setMigration((m) => ({ ...m, sourcePassphrase: e.target.value }))}
+              placeholder="Nhập mật khẩu Vault cũ"
+              disabled={!!busy}
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') handleMigrationConfirm(); }}
+            />
+          </div>
+          {migrationError && (
+            <div className="acc-gate__error">{migrationError}</div>
+          )}
+          <div className="acc-gate__backup-row">
+            <button
+              type="button"
+              className="acc-act"
+              style={{ fontWeight: 700, color: 'var(--color-accent-400)' }}
+              disabled={!migration.sourcePassphrase.trim() || !!busy}
+              onClick={handleMigrationConfirm}
+            >
+              {busy === 'restore' ? 'Đang giải mã & tái mã hóa…' : 'Xác nhận chuyển giao'}
+            </button>
+            <button
+              type="button"
+              className="acc-act"
+              disabled={!!busy}
+              onClick={() => { setMigration(null); setMigrationError(''); }}
+            >
+              Huỷ
+            </button>
+          </div>
+        </div>
+      )}
+
       <p className={`acc-gate__backup-note${note && !note.ok ? ' acc-gate__backup-note--err' : ''}`}>
         {note
           ? note.text

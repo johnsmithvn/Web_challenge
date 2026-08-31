@@ -199,3 +199,31 @@ export async function decryptVaultItem(key, userId, row) {
     throw new Error(`Could not decrypt vault item ${row.id}`);
   }
 }
+
+/**
+ * Re-key a foreign Vault backup for a new user.
+ * Decrypts all items using the source passphrase and source userId,
+ * then re-encrypts every item using the target user's key and target userId.
+ */
+export async function rekeyVaultItems({ backup, sourcePassphrase, targetUserId, targetKey }) {
+  if (!backup?.config || !Array.isArray(backup?.items)) {
+    throw new Error('Invalid backup structure');
+  }
+  requireId(backup.userId, 'sourceUserId');
+  requireId(targetUserId, 'targetUserId');
+  if (!targetKey) throw new Error('Target vault key is required');
+
+  const sourceDek = await unlockVaultKey(sourcePassphrase, backup.userId, backup.config);
+
+  const rekeyedItems = [];
+  for (const item of backup.items) {
+    const plaintext = await decryptVaultItem(sourceDek, backup.userId, item);
+    const reencrypted = await encryptVaultItem(targetKey, targetUserId, item.id, plaintext);
+    rekeyedItems.push({
+      id: item.id,
+      ...reencrypted,
+    });
+  }
+
+  return rekeyedItems;
+}

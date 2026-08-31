@@ -5,6 +5,7 @@ import {
   encryptVaultItem,
   unlockVaultKey,
   validateVaultPassphrase,
+  rekeyVaultItems,
   VAULT_ENCRYPTION_VERSION,
   VAULT_KDF_ITERATIONS,
 } from '../../utils/vaultCrypto.js';
@@ -77,5 +78,50 @@ for (let i = 0; i < 12; i++) {
   nonces.add((await encryptVaultItem(key, userId, itemId, { ...payload, i })).encryption_nonce);
 }
 assert.equal(nonces.size, 12);
+
+// ── Cross-account re-keying test ──
+const targetUserId = '00000000-0000-4000-8000-000000000003';
+const targetPassphrase = 'target user unique secure passphrase';
+const { key: targetKey, config: targetConfig } = await createVaultConfig(targetPassphrase, targetUserId);
+
+const mockBackup = {
+  format: 'lifehub-vault-v6.2',
+  version: 1,
+  userId,
+  config,
+  items: [{ id: itemId, ...encrypted }],
+};
+
+// 1. Wrong source passphrase -> rejects
+await assert.rejects(
+  rekeyVaultItems({
+    backup: mockBackup,
+    sourcePassphrase: 'wrong source passphrase',
+    targetUserId,
+    targetKey,
+  }),
+  /Wrong passphrase/
+);
+
+// 2. Correct source passphrase -> successfully re-keys into target user
+const rekeyed = await rekeyVaultItems({
+  backup: mockBackup,
+  sourcePassphrase: passphrase,
+  targetUserId,
+  targetKey,
+});
+assert.equal(rekeyed.length, 1);
+assert.equal(rekeyed[0].id, itemId);
+
+// 3. Target user can decrypt the rekeyed item with target key and targetUserId!
+const targetUnlockedKey = await unlockVaultKey(targetPassphrase, targetUserId, targetConfig);
+const decryptedByTarget = await decryptVaultItem(targetUnlockedKey, targetUserId, rekeyed[0]);
+assert.deepEqual(decryptedByTarget, payload);
+
+// 4. Source user CANNOT decrypt the rekeyed item anymore
+await assert.rejects(
+  decryptVaultItem(unlockedKey, userId, rekeyed[0]),
+  /Could not decrypt/
+);
 
 console.log('vault crypto checks: OK');

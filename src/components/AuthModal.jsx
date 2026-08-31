@@ -115,6 +115,8 @@ export default function AuthModal({ onClose }) {
           setError('Email này đã được đăng ký');
         else if (msg.includes('Password should') || msg.includes('password'))
           setError('Mật khẩu tối thiểu 6 ký tự');
+        else if (msg.includes('Database error saving new user'))
+          setError('Lỗi cơ sở dữ liệu khi tạo user (kiểm tra trigger handle_new_user hoặc tắt Confirm email trong Supabase Auth)');
         else
           setError(msg);
       } else {
@@ -139,7 +141,7 @@ export default function AuthModal({ onClose }) {
         {/* Logo */}
         <div className="auth-modal__logo">
           <AppIcon name="sparkle" size={21} weight="duotone" />
-          <span className="gradient-text">Vượt Lười</span>
+          <span className="gradient-text">Life Hub</span>
         </div>
 
         {/* Tabs */}

@@ -8,6 +8,7 @@ import {
   decryptVaultItem,
   encryptVaultItem,
   unlockVaultKey,
+  rekeyVaultItems,
 } from '../utils/vaultCrypto';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 
@@ -324,7 +325,13 @@ export function useAccounts() {
      nên không cần dialog "bạn có chắc". Cùng pattern migration v6.2 đã dùng
      (rollback nếu bảng không trống). Ghi đè một vault đang có item là nhu cầu
      khác và hiếm hơn nhiều; khi nào cần thì làm riêng, có confirm riêng. */
-  const restoreVault = useCallback(async (backup) => {
+  /* Restore CHỈ chạy vào Vault TRỐNG. Không xoá gì cả → không có đường mất data,
+     nên không cần dialog "bạn có chắc". Cùng pattern migration v6.2 đã dùng
+     (rollback nếu bảng không trống). Ghi đè một vault đang có item là nhu cầu
+     khác và hiếm hơn nhiều; khi nào cần thì làm riêng, có confirm riêng.
+     Nếu backup thuộc user khác, yêu cầu sourcePassphrase để giải mã và re-encrypt
+     sang user id mới trong RAM mà không lộ plaintext. */
+  const restoreVault = useCallback(async (backup, options = {}) => {
     if (!enabled) return { ok: false, error: 'Sign in before restoring.' };
     if (backup?.format !== BACKUP_FORMAT) {
       return { ok: false, error: 'That file is not a Vault backup.' };
@@ -335,14 +342,20 @@ export function useAccounts() {
         error: `Backup format v${backup.version} is not supported by this build (expects v${BACKUP_VERSION}).`,
       };
     }
+    const isDifferentUser = backup.userId !== userId;
     if (backup.userId !== userId) {
-      return {
-        ok: false,
-        error: 'This backup belongs to a different account. Its encryption is bound to the original '
-          + 'user id, so nothing in it could be decrypted here.',
-      };
+      if (!options?.sourcePassphrase) {
+        return {
+          ok: false,
+          needSourcePassphrase: true,
+          sourceUserId: backup.userId,
+          itemCount: backup.items?.length || 0,
+          error: 'This backup belongs to a different account. Its encryption is bound to the original '
+            + 'user id, so nothing in it could be decrypted here.',
+        };
+      }
     }
-    if (!backup.config?.wrapped_dek) {
+    if (!backup.config?.wrapped_key && !backup.config?.wrapped_dek) {
       return { ok: false, error: 'Backup is missing its vault_config — it cannot be unlocked.' };
     }
 
@@ -358,6 +371,62 @@ export function useAccounts() {
         };
       }
 
+      // ── Cross-account re-keying ──
+      if (isDifferentUser) {
+        let targetKey = keyRef.current;
+        let targetConfig = configRef.current;
+
+        // Nếu user hiện tại chưa có vault_config (chế độ setup):
+        // Sinh cấu hình vault mới cho user hiện tại bằng targetPassphrase (hoặc dùng sourcePassphrase)
+        if (!targetConfig) {
+          const passphraseToUse = options.targetPassphrase || options.sourcePassphrase;
+          const created = await createVaultConfig(passphraseToUse, userId);
+          targetKey = created.key;
+          targetConfig = created.config;
+          const { error: cfgErr } = await supabase.from('vault_config')
+            .upsert(targetConfig, { onConflict: 'user_id' });
+          if (cfgErr) throw cfgErr;
+          configRef.current = targetConfig;
+        } else if (!targetKey) {
+          // Vault đã có config nhưng đang khóa: mở khóa bằng targetPassphrase (hoặc sourcePassphrase)
+          const passphraseToUse = options.targetPassphrase || options.sourcePassphrase;
+          try {
+            targetKey = await unlockVaultKey(passphraseToUse, userId, targetConfig);
+            keyRef.current = targetKey;
+          } catch {
+            return {
+              ok: false,
+              error: 'Current Vault passphrase is required to re-encrypt and import into this vault.',
+            };
+          }
+        }
+
+        // Tái mã hóa toàn bộ item từ user cũ sang user mới trong RAM
+        const rekeyedItems = await rekeyVaultItems({
+          backup,
+          sourcePassphrase: options.sourcePassphrase,
+          targetUserId: userId,
+          targetKey,
+        });
+
+        if (rekeyedItems.length) {
+          const { error: itemsError } = await supabase.from('accounts').insert(
+            rekeyedItems.map((row) => ({
+              id: row.id,
+              user_id: userId,
+              encrypted_payload: row.encrypted_payload,
+              encryption_nonce: row.encryption_nonce,
+              encryption_version: row.encryption_version,
+            }))
+          );
+          if (itemsError) throw itemsError;
+        }
+
+        lockVault();
+        return { ok: true, restored: rekeyedItems.length, rekeyed: true };
+      }
+
+      // ── Same-account standard restore ──
       const { error: configError } = await supabase.from('vault_config')
         .upsert({ ...backup.config, user_id: userId }, { onConflict: 'user_id' });
       if (configError) throw configError;
