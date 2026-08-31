@@ -46,6 +46,10 @@ function itemAad(userId, itemId, version) {
   return encoder.encode(`vault-item|v${version}|${userId}|${itemId}`);
 }
 
+function recoveryAad(userId, version) {
+  return encoder.encode(`vault-recovery|v${version}|${userId}`);
+}
+
 function validateConfig(config) {
   if (!config || config.kdf_algorithm !== VAULT_KDF_ALGORITHM) {
     throw new Error('Unsupported vault KDF');
@@ -100,8 +104,12 @@ export async function createVaultConfig(passphrase, userId) {
     rawDek
   );
 
+  const recoveryKey = generateRecoveryKey();
+  const recoveryWrap = await wrapDekWithRecoveryKey(rawDek, recoveryKey, userId, salt);
+
   return {
     key: await importDek(rawDek),
+    recoveryKey,
     config: {
       user_id: userId,
       kdf_algorithm: VAULT_KDF_ALGORITHM,
@@ -109,6 +117,8 @@ export async function createVaultConfig(passphrase, userId) {
       kdf_iterations: VAULT_KDF_ITERATIONS,
       wrapped_key: toBase64(new Uint8Array(wrapped)),
       wrapped_key_nonce: toBase64(wrapNonce),
+      recovery_wrapped_key: recoveryWrap.recovery_wrapped_key,
+      recovery_wrapped_key_nonce: recoveryWrap.recovery_wrapped_key_nonce,
       encryption_version: version,
     },
   };
@@ -303,8 +313,12 @@ export async function rotateVaultPassphrase(currentPassphrase, newPassphrase, us
     rawDekBuffer
   );
 
+  const freshRecoveryKey = generateRecoveryKey();
+  const recoveryWrap = await wrapDekWithRecoveryKey(rawDekBuffer, freshRecoveryKey, userId, newSalt);
+
   return {
     key: await importDek(new Uint8Array(rawDekBuffer)),
+    newRecoveryKey: freshRecoveryKey,
     config: {
       ...config,
       user_id: userId,
@@ -313,6 +327,113 @@ export async function rotateVaultPassphrase(currentPassphrase, newPassphrase, us
       kdf_iterations: VAULT_KDF_ITERATIONS,
       wrapped_key: toBase64(new Uint8Array(newWrapped)),
       wrapped_key_nonce: toBase64(newWrapNonce),
+      recovery_wrapped_key: recoveryWrap.recovery_wrapped_key,
+      recovery_wrapped_key_nonce: recoveryWrap.recovery_wrapped_key_nonce,
+      encryption_version: VAULT_ENCRYPTION_VERSION,
+    },
+  };
+}
+
+/**
+ * Generate a cryptographically strong 128-bit emergency recovery key.
+ * Format: LHV1-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX
+ */
+export function generateRecoveryKey() {
+  const bytes = randomBytes(16);
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+  const parts = ['LHV1'];
+  for (let i = 0; i < 32; i += 4) {
+    parts.push(hex.slice(i, i + 4));
+  }
+  return parts.join('-');
+}
+
+/**
+ * Wrap raw DEK bytes using an emergency recovery key.
+ */
+export async function wrapDekWithRecoveryKey(rawDekBuffer, recoveryKey, userId, salt) {
+  const cleanKey = recoveryKey.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const recoveryKek = await deriveKek(cleanKey, salt, VAULT_KDF_ITERATIONS);
+  const nonce = randomBytes(NONCE_BYTES);
+  const wrapped = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: nonce,
+      additionalData: recoveryAad(userId, VAULT_ENCRYPTION_VERSION),
+    },
+    recoveryKek,
+    rawDekBuffer
+  );
+  return {
+    recovery_wrapped_key: toBase64(new Uint8Array(wrapped)),
+    recovery_wrapped_key_nonce: toBase64(nonce),
+  };
+}
+
+/**
+ * Recover a Vault using an emergency recovery key when the user forgot their passphrase.
+ * Unwraps the DEK using the recovery key and re-wraps it with a new passphrase.
+ */
+export async function recoverVaultWithKey(recoveryKey, newPassphrase, userId, config) {
+  validateVaultPassphrase(newPassphrase);
+  requireId(userId, 'userId');
+  validateConfig(config);
+  if (!config.recovery_wrapped_key || !config.recovery_wrapped_key_nonce) {
+    throw new Error('Chưa có mã khôi phục (Recovery Key) nào được thiết lập cho Vault này');
+  }
+
+  const salt = fromBase64(config.kdf_salt, 'KDF salt');
+  const nonce = fromBase64(config.recovery_wrapped_key_nonce, 'recovery nonce');
+  const wrapped = fromBase64(config.recovery_wrapped_key, 'recovery wrapped key');
+  const cleanKey = recoveryKey.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+
+  let rawDekBuffer;
+  try {
+    const recoveryKek = await deriveKek(cleanKey, salt, config.kdf_iterations);
+    rawDekBuffer = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: nonce,
+        additionalData: recoveryAad(userId, config.encryption_version),
+      },
+      recoveryKek,
+      wrapped
+    );
+  } catch {
+    throw new Error('Mã khôi phục (Recovery Key) không chính xác hoặc không khớp');
+  }
+
+  // Generate new salt and nonce for the new passphrase
+  const newSalt = randomBytes(SALT_BYTES);
+  const newWrapNonce = randomBytes(NONCE_BYTES);
+  const newKek = await deriveKek(newPassphrase, newSalt, VAULT_KDF_ITERATIONS);
+  const newWrapped = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: newWrapNonce,
+      additionalData: keyAad(userId, VAULT_ENCRYPTION_VERSION),
+    },
+    newKek,
+    rawDekBuffer
+  );
+
+  // Generate fresh recovery key so the old used recovery key is rotated
+  const freshRecoveryKey = generateRecoveryKey();
+  const recoveryWrap = await wrapDekWithRecoveryKey(rawDekBuffer, freshRecoveryKey, userId, newSalt);
+
+  return {
+    key: await importDek(new Uint8Array(rawDekBuffer)),
+    newRecoveryKey: freshRecoveryKey,
+    config: {
+      ...config,
+      user_id: userId,
+      kdf_algorithm: VAULT_KDF_ALGORITHM,
+      kdf_salt: toBase64(newSalt),
+      kdf_iterations: VAULT_KDF_ITERATIONS,
+      wrapped_key: toBase64(new Uint8Array(newWrapped)),
+      wrapped_key_nonce: toBase64(newWrapNonce),
+      recovery_wrapped_key: recoveryWrap.recovery_wrapped_key,
+      recovery_wrapped_key_nonce: recoveryWrap.recovery_wrapped_key_nonce,
       encryption_version: VAULT_ENCRYPTION_VERSION,
     },
   };

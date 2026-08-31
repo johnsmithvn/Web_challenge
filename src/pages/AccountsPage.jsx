@@ -37,7 +37,7 @@ export default function AccountsPage() {
   const { user } = useAuth();
   const { items, isLoading, saveItem, createItem, deleteItem, toggleFavorite,
     setAuthState, setCodeUsed, vaultStatus, vaultError,
-    setupVault, unlockVault, lockVault, changePassphrase, exportVault, restoreVault } = useAccounts();
+    setupVault, unlockVault, lockVault, changePassphrase, recoverVault, recoveryKey, exportVault, restoreVault } = useAccounts();
   const { showToast } = useToast();
   const { confirm, ConfirmModal } = useConfirm();
 
@@ -48,6 +48,13 @@ export default function AccountsPage() {
   const [screen, setScreen] = useState('list');   // chỉ có nghĩa dưới 900px
   const [pickerOpen, setPickerOpen] = useState(false);
   const [changePassOpen, setChangePassOpen] = useState(false);
+  const [recoveryKitKey, setRecoveryKitKey] = useState(null);
+
+  useEffect(() => {
+    if (recoveryKey) {
+      setRecoveryKitKey(recoveryKey);
+    }
+  }, [recoveryKey]);
   const [creating, setCreating] = useState(null); // tplKey đang tạo, null = rảnh
   const [autoEditId, setAutoEditId] = useState(null); // item vừa tạo → mở sẵn edit
   const [revealed, setRevealed] = useState({});   // { [fieldId]: true }
@@ -221,6 +228,7 @@ export default function AccountsPage() {
         error={vaultError}
         onSetup={setupVault}
         onUnlock={unlockVault}
+        onRecover={recoverVault}
         onExport={exportVault}
         onRestore={restoreVault}
       />
@@ -417,6 +425,11 @@ export default function AccountsPage() {
         }}
         onChangePassphrase={changePassphrase}
       />
+
+      <RecoveryKeyModal
+        recoveryKey={recoveryKitKey}
+        onClose={() => setRecoveryKitKey(null)}
+      />
     </div>
   );
 }
@@ -542,9 +555,86 @@ function ChangePassphraseModal({ isOpen, onClose, onChangePassphrase }) {
   );
 }
 
-function VaultGate({ status, error, onSetup, onUnlock, onExport, onRestore }) {
+function RecoveryKeyModal({ recoveryKey, onClose }) {
+  const [copied, setCopied] = useState(false);
+
+  if (!recoveryKey) return null;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(recoveryKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownload = () => {
+    const content = `LIFE HUB VAULT - EMERGENCY RECOVERY KEY\n`
+      + `========================================\n`
+      + `Recovery Key: ${recoveryKey}\n`
+      + `Created: ${new Date().toISOString()}\n\n`
+      + `IMPORTANT: Keep this key safe. If you ever forget your Vault passphrase, `
+      + `this key is the ONLY way to recover your encrypted accounts.\n`;
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lifehub-vault-recovery-key.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return createPortal(
+    <div className="acc-scrim" role="dialog" aria-modal="true" aria-label="Emergency Recovery Key">
+      <div className="acc-dialog" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="acc-dialog__head">
+          <h3 className="acc-dialog__title">Khóa khôi phục dự phòng (Recovery Key)</h3>
+          <button className="acc-btn acc-btn--ghost" onClick={onClose}>Đóng</button>
+        </div>
+        <p className="acc-dialog__lede">
+          Nếu bạn quên mật khẩu Vault, khóa này là cách <strong>duy nhất</strong> để lấy lại quyền truy cập vào danh sách tài khoản của bạn.
+        </p>
+
+        <div style={{
+          background: 'var(--bg-card-subtle, rgba(0,0,0,0.15))',
+          padding: '14px',
+          borderRadius: '8px',
+          fontFamily: 'monospace',
+          fontSize: '0.95rem',
+          fontWeight: 700,
+          letterSpacing: '1px',
+          textAlign: 'center',
+          wordBreak: 'break-all',
+          border: '1px solid var(--border-subtle, rgba(255,255,255,0.1))',
+          color: 'var(--purple, #a78bfa)',
+          margin: '12px 0'
+        }}>
+          {recoveryKey}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', margin: '14px 0' }}>
+          <button type="button" className="acc-btn" onClick={handleCopy}>
+            {copied ? '✓ Đã sao chép' : 'Sao chép khóa'}
+          </button>
+          <button type="button" className="acc-btn acc-btn--primary" onClick={handleDownload}>
+            Tải file .txt về máy
+          </button>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <button type="button" className="acc-btn acc-btn--ghost" onClick={onClose}>
+            Tôi đã lưu khóa an toàn
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function VaultGate({ status, error, onSetup, onUnlock, onRecover, onExport, onRestore }) {
+  const [mode, setMode] = useState('standard'); // 'standard' | 'recover'
   const [passphrase, setPassphrase] = useState('');
   const [confirmation, setConfirmation] = useState('');
+  const [recoveryKeyInput, setRecoveryKeyInput] = useState('');
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -572,6 +662,27 @@ function VaultGate({ status, error, onSetup, onUnlock, onExport, onRestore }) {
   const submit = async (event) => {
     event.preventDefault();
     setFormError('');
+
+    if (mode === 'recover') {
+      if (!recoveryKeyInput.trim()) {
+        setFormError('Vui lòng nhập mã Recovery Key.');
+        return;
+      }
+      if (passphrase.length < 12) {
+        setFormError('Mật khẩu Vault mới phải có ít nhất 12 ký tự.');
+        return;
+      }
+      if (passphrase !== confirmation) {
+        setFormError('Mật khẩu xác nhận không khớp.');
+        return;
+      }
+      setBusy(true);
+      const result = await onRecover(recoveryKeyInput.trim(), passphrase);
+      setBusy(false);
+      if (!result.ok) setFormError(result.error || 'Khôi phục Vault thất bại.');
+      return;
+    }
+
     if (setup && passphrase !== confirmation) {
       setFormError('Passphrases do not match.');
       return;
@@ -585,33 +696,40 @@ function VaultGate({ status, error, onSetup, onUnlock, onExport, onRestore }) {
   return (
     <div className="acc-vault acc-gate">
       <form className="acc-gate__card" onSubmit={submit}>
-        <div className="acc-gate__icon"><AppIcon name="lock" size={24} /></div>
-        <div className="acc-brand__name">Keyplate</div>
-        <h1>{setup ? 'Create Vault passphrase' : 'Unlock Vault'}</h1>
-        <p>
-          {setup
-            ? 'This separate passphrase encrypts every item property before it reaches Supabase.'
-            : 'Your account list stays encrypted until this passphrase unwraps the key in this browser.'}
-        </p>
-
-        <label htmlFor="vault-passphrase">Vault passphrase</label>
-        <input
-          id="vault-passphrase"
-          className="acc-input"
-          type="password"
-          minLength={12}
-          autoComplete={setup ? 'new-password' : 'current-password'}
-          value={passphrase}
-          onChange={(event) => setPassphrase(event.target.value)}
-          autoFocus
-          required
-        />
-
-        {setup && (
+        {mode === 'recover' ? (
           <>
-            <label htmlFor="vault-passphrase-confirm">Confirm passphrase</label>
+            <div className="acc-gate__icon"><AppIcon name="shieldCheck" size={24} /></div>
+            <div className="acc-brand__name">Keyplate</div>
+            <h1>Khôi phục Vault</h1>
+            <p>Nhập mã Recovery Key dự phòng và đặt một mật khẩu Vault mới.</p>
+
+            <label htmlFor="vault-rec-key">Mã Recovery Key</label>
             <input
-              id="vault-passphrase-confirm"
+              id="vault-rec-key"
+              className="acc-input"
+              type="text"
+              placeholder="LHV1-XXXX-XXXX-..."
+              value={recoveryKeyInput}
+              onChange={(e) => setRecoveryKeyInput(e.target.value)}
+              required
+              autoFocus
+            />
+
+            <label htmlFor="vault-passphrase-new">Mật khẩu Vault mới (tối thiểu 12 ký tự)</label>
+            <input
+              id="vault-passphrase-new"
+              className="acc-input"
+              type="password"
+              minLength={12}
+              autoComplete="new-password"
+              value={passphrase}
+              onChange={(event) => setPassphrase(event.target.value)}
+              required
+            />
+
+            <label htmlFor="vault-passphrase-new-confirm">Xác nhận mật khẩu mới</label>
+            <input
+              id="vault-passphrase-new-confirm"
               className="acc-input"
               type="password"
               minLength={12}
@@ -620,18 +738,89 @@ function VaultGate({ status, error, onSetup, onUnlock, onExport, onRestore }) {
               onChange={(event) => setConfirmation(event.target.value)}
               required
             />
-            <div className="acc-gate__warning">
-              There is no reset or recovery path if this passphrase is lost.
+
+            {(formError || error) && (
+              <div className="acc-gate__error" role="alert">{formError || error}</div>
+            )}
+            <button className="acc-btn acc-btn--primary" type="submit" disabled={busy}>
+              {busy ? 'Đang khôi phục…' : 'Khôi phục và Mở khóa'}
+            </button>
+
+            <div style={{ textAlign: 'center', marginTop: '10px' }}>
+              <button
+                type="button"
+                className="acc-btn acc-btn--ghost"
+                style={{ fontSize: '0.85rem' }}
+                onClick={() => { setMode('standard'); setFormError(''); }}
+              >
+                ← Quay lại Mở khóa bằng mật khẩu
+              </button>
             </div>
           </>
-        )}
+        ) : (
+          <>
+            <div className="acc-gate__icon"><AppIcon name="lock" size={24} /></div>
+            <div className="acc-brand__name">Keyplate</div>
+            <h1>{setup ? 'Create Vault passphrase' : 'Unlock Vault'}</h1>
+            <p>
+              {setup
+                ? 'This separate passphrase encrypts every item property before it reaches Supabase.'
+                : 'Your account list stays encrypted until this passphrase unwraps the key in this browser.'}
+            </p>
 
-        {(formError || error) && (
-          <div className="acc-gate__error" role="alert">{formError || error}</div>
+            <label htmlFor="vault-passphrase">Vault passphrase</label>
+            <input
+              id="vault-passphrase"
+              className="acc-input"
+              type="password"
+              minLength={12}
+              autoComplete={setup ? 'new-password' : 'current-password'}
+              value={passphrase}
+              onChange={(event) => setPassphrase(event.target.value)}
+              autoFocus
+              required
+            />
+
+            {setup && (
+              <>
+                <label htmlFor="vault-passphrase-confirm">Confirm passphrase</label>
+                <input
+                  id="vault-passphrase-confirm"
+                  className="acc-input"
+                  type="password"
+                  minLength={12}
+                  autoComplete="new-password"
+                  value={confirmation}
+                  onChange={(event) => setConfirmation(event.target.value)}
+                  required
+                />
+                <div className="acc-gate__warning">
+                  Khóa khôi phục dự phòng (Recovery Key) sẽ được cấp ngay sau khi bạn tạo Vault.
+                </div>
+              </>
+            )}
+
+            {(formError || error) && (
+              <div className="acc-gate__error" role="alert">{formError || error}</div>
+            )}
+            <button className="acc-btn acc-btn--primary" type="submit" disabled={busy}>
+              {busy ? 'Working…' : setup ? 'Create encrypted Vault' : 'Unlock'}
+            </button>
+
+            {!setup && (
+              <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  className="acc-btn acc-btn--ghost"
+                  style={{ fontSize: '0.82rem' }}
+                  onClick={() => { setMode('recover'); setFormError(''); }}
+                >
+                  Quên mật khẩu Vault? Khôi phục bằng Recovery Key
+                </button>
+              </div>
+            )}
+          </>
         )}
-        <button className="acc-btn acc-btn--primary" type="submit" disabled={busy}>
-          {busy ? 'Working…' : setup ? 'Create encrypted Vault' : 'Unlock'}
-        </button>
       </form>
 
       <VaultBackup onExport={onExport} onRestore={onRestore} />

@@ -10,6 +10,7 @@ import {
   unlockVaultKey,
   rekeyVaultItems,
   rotateVaultPassphrase,
+  recoverVaultWithKey,
 } from '../utils/vaultCrypto';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 
@@ -92,6 +93,7 @@ export function useAccounts() {
   const [isLoading, setIsLoading] = useState(false);
   const [vaultStatus, setVaultStatus] = useState(enabled ? 'loading' : 'signed-out');
   const [vaultError, setVaultError] = useState('');
+  const [recoveryKey, setRecoveryKey] = useState(null);
   const keyRef = useRef(null);
   const configRef = useRef(null);
   const sessionRef = useRef(0);
@@ -209,12 +211,17 @@ export function useAccounts() {
         return { ok: false, error: 'Vault is already configured for this account. Please unlock with your passphrase.' };
       }
 
-      const { config, key } = await createVaultConfig(passphrase, userId);
+      const { config, key, recoveryKey: initialKey } = await createVaultConfig(passphrase, userId);
       if (sessionRef.current !== session) {
         return { ok: false, error: 'Vault state changed; try again' };
       }
-      const { error } = await supabase.from('vault_config').insert(config);
+      let { error } = await supabase.from('vault_config').insert(config);
+      if (error && error.message?.includes('column "recovery_wrapped_key"')) {
+        const { recovery_wrapped_key, recovery_wrapped_key_nonce, ...baseConfig } = config;
+        error = (await supabase.from('vault_config').insert(baseConfig)).error;
+      }
       if (error) throw error;
+      setRecoveryKey(initialKey);
       if (sessionRef.current !== session) {
         return { ok: false, error: 'Vault state changed; try again' };
       }
@@ -310,6 +317,58 @@ export function useAccounts() {
       return { ok: false, error: err.message || 'Could not change passphrase' };
     }
   }, [enabled, userId]);
+
+  const recoverVault = useCallback(async (recoveryKeyInput, newPassphrase) => {
+    if (!enabled || !configRef.current) {
+      return { ok: false, error: 'Vault is not ready for recovery' };
+    }
+    try {
+      const { key: newKey, config: newConfig, newRecoveryKey } = await recoverVaultWithKey(
+        recoveryKeyInput,
+        newPassphrase,
+        userId,
+        configRef.current
+      );
+      const updatePayload = {
+        kdf_algorithm: newConfig.kdf_algorithm,
+        kdf_salt: newConfig.kdf_salt,
+        kdf_iterations: newConfig.kdf_iterations,
+        wrapped_key: newConfig.wrapped_key,
+        wrapped_key_nonce: newConfig.wrapped_key_nonce,
+        recovery_wrapped_key: newConfig.recovery_wrapped_key,
+        recovery_wrapped_key_nonce: newConfig.recovery_wrapped_key_nonce,
+        encryption_version: newConfig.encryption_version,
+        updated_at: new Date().toISOString(),
+      };
+      let { error } = await supabase.from('vault_config')
+        .update(updatePayload)
+        .eq('user_id', userId);
+      if (error && error.message?.includes('column "recovery_wrapped_key"')) {
+        delete updatePayload.recovery_wrapped_key;
+        delete updatePayload.recovery_wrapped_key_nonce;
+        error = (await supabase.from('vault_config').update(updatePayload).eq('user_id', userId)).error;
+      }
+      if (error) throw error;
+
+      configRef.current = newConfig;
+      keyRef.current = newKey;
+      setRecoveryKey(newRecoveryKey);
+      setVaultStatus('loading');
+      setVaultError('');
+      const loaded = await fetchAll(newKey);
+      if (!loaded) {
+        keyRef.current = null;
+        setItems([]);
+        setVaultStatus('locked');
+        return { ok: false, error: 'Could not load the encrypted Vault' };
+      }
+      setVaultStatus('unlocked');
+      return { ok: true, newRecoveryKey };
+    } catch (err) {
+      logger.error('[useAccounts] recoverVault error:', err.message);
+      return { ok: false, error: err.message || 'Could not recover Vault' };
+    }
+  }, [enabled, userId, fetchAll]);
 
   /* ── Backup / restore ─────────────────────────────────────────────
      Export KHÔNG cần key: nó chỉ copy ciphertext + vault_config, nên sao lưu
@@ -434,8 +493,11 @@ export function useAccounts() {
           const created = await createVaultConfig(passphraseToUse, userId);
           targetKey = created.key;
           targetConfig = created.config;
-          const { error: cfgErr } = await supabase.from('vault_config')
-            .insert(targetConfig);
+          let { error: cfgErr } = await supabase.from('vault_config').insert(targetConfig);
+          if (cfgErr && cfgErr.message?.includes('column "recovery_wrapped_key"')) {
+            const { recovery_wrapped_key, recovery_wrapped_key_nonce, ...baseCfg } = targetConfig;
+            cfgErr = (await supabase.from('vault_config').insert(baseCfg)).error;
+          }
           if (cfgErr) throw cfgErr;
           configRef.current = targetConfig;
         }
@@ -481,8 +543,25 @@ export function useAccounts() {
 
       // ── Same-account standard restore ──
       if (!configRef.current) {
-        const { error: configError } = await supabase.from('vault_config')
-          .insert({ ...backup.config, user_id: userId });
+        const cfgToInsert = {
+          user_id: userId,
+          kdf_algorithm: backup.config.kdf_algorithm,
+          kdf_salt: backup.config.kdf_salt,
+          kdf_iterations: backup.config.kdf_iterations,
+          wrapped_key: backup.config.wrapped_key,
+          wrapped_key_nonce: backup.config.wrapped_key_nonce,
+          encryption_version: backup.config.encryption_version,
+        };
+        if (backup.config.recovery_wrapped_key) {
+          cfgToInsert.recovery_wrapped_key = backup.config.recovery_wrapped_key;
+          cfgToInsert.recovery_wrapped_key_nonce = backup.config.recovery_wrapped_key_nonce;
+        }
+        let { error: configError } = await supabase.from('vault_config').insert(cfgToInsert);
+        if (configError && configError.message?.includes('column "recovery_wrapped_key"')) {
+          delete cfgToInsert.recovery_wrapped_key;
+          delete cfgToInsert.recovery_wrapped_key_nonce;
+          configError = (await supabase.from('vault_config').insert(cfgToInsert)).error;
+        }
         if (configError) throw configError;
       }
 
@@ -720,6 +799,8 @@ export function useAccounts() {
     unlockVault,
     lockVault,
     changePassphrase,
+    recoverVault,
+    recoveryKey,
     exportVault,
     restoreVault,
     fetchAll,

@@ -147,9 +147,16 @@ export default function Navbar() {
   const [financeOpen, setFinanceOpen] = useState(() => location.pathname.startsWith('/finance'));
   const [showAuth, setShowAuth] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const { user, profile, signOut, loading } = useAuth();
+  const { user, profile, signOut, loading, isRecoveringPassword } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const moreRef = useRef(null);
+
+  // Auto-open AuthModal in password recovery mode when redirected from recovery email
+  useEffect(() => {
+    if (isRecoveringPassword) {
+      setShowAuth(true);
+    }
+  }, [isRecoveringPassword]);
 
   // Close "more" dropdown on route change
   useEffect(() => { setMoreOpen(false); }, [location]);

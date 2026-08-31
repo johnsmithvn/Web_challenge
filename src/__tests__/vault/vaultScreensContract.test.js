@@ -243,7 +243,49 @@ assert.match(
   /migration\.sourcePassphrase/,
   'VaultBackup phải có input nhập mật khẩu gốc'
 );
-console.log('vault header and migration UI contract: OK');
+
+// UI Khóa khôi phục dự phòng (Emergency Recovery Key)
+assert.match(
+  accountsPageSrc,
+  /function RecoveryKeyModal\(/,
+  'AccountsPage phải có component RecoveryKeyModal'
+);
+assert.match(
+  accountsPageSrc,
+  /lifehub-vault-recovery-key\.txt/,
+  'RecoveryKeyModal phải hỗ trợ tải file txt dự phòng'
+);
+assert.match(
+  accountsPageSrc,
+  /setMode\('recover'\)/,
+  'VaultGate phải có nút chuyển sang chế độ recover'
+);
+assert.match(
+  accountsPageSrc,
+  /onRecover\(recoveryKeyInput\.trim\(\),\s*passphrase\)/,
+  'VaultGate phải gọi onRecover khi người dùng khôi phục bằng Recovery Key'
+);
+
+// UI Quên mật khẩu & Đặt lại mật khẩu Auth
+const authModalSrc = readFileSync(new URL('../../components/AuthModal.jsx', import.meta.url), 'utf8');
+assert.match(
+  authModalSrc,
+  /setTab\('forgot'\)/,
+  'AuthModal phải có nút chuyển sang tab forgot password'
+);
+assert.match(
+  authModalSrc,
+  /resetPassword\(forgotId\)/,
+  'AuthModal phải gọi resetPassword khi submit'
+);
+assert.match(
+  authModalSrc,
+  /updatePassword\(newPassword\)/,
+  'AuthModal phải gọi updatePassword khi submit mật khẩu mới'
+);
+
+console.log('vault header, recovery and auth UI contract: OK');
 
 console.log('\n✅ vaultScreensContract — tất cả hợp đồng màn hình Vault PASS (100% covered)');
+
 

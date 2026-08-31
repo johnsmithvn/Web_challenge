@@ -7,6 +7,8 @@ import {
   validateVaultPassphrase,
   rekeyVaultItems,
   rotateVaultPassphrase,
+  recoverVaultWithKey,
+  generateRecoveryKey,
   VAULT_ENCRYPTION_VERSION,
   VAULT_KDF_ITERATIONS,
 } from '../../utils/vaultCrypto.js';
@@ -18,10 +20,14 @@ const passphrase = 'correct horse battery staple';
 
 assert.throws(() => validateVaultPassphrase('too-short'), /at least 12/);
 
-const { config, key } = await createVaultConfig(passphrase, userId);
+const { config, key, recoveryKey } = await createVaultConfig(passphrase, userId);
 assert.equal(config.kdf_iterations, VAULT_KDF_ITERATIONS);
 assert.equal(config.encryption_version, VAULT_ENCRYPTION_VERSION);
 assert.equal(JSON.stringify(config).includes(passphrase), false);
+assert.ok(recoveryKey, 'createVaultConfig must return a recoveryKey');
+assert.match(recoveryKey, /^LHV1(-[0-9A-F]{4}){8}$/);
+assert.ok(config.recovery_wrapped_key, 'config must contain recovery_wrapped_key');
+assert.ok(config.recovery_wrapped_key_nonce, 'config must contain recovery_wrapped_key_nonce');
 
 const unlockedKey = await unlockVaultKey(passphrase, userId, config);
 await assert.rejects(
@@ -193,5 +199,55 @@ const keyFromNewPass = await unlockVaultKey(newPassphrase, userId, rotated.confi
 const decryptedAfterRotation = await decryptVaultItem(keyFromNewPass, userId, { id: itemId, ...encrypted });
 assert.deepEqual(decryptedAfterRotation, payload);
 
+// ── Recovery Key tests ──
+// 1. Wrong recovery key -> rejects
+await assert.rejects(
+  recoverVaultWithKey('LHV1-0000-0000-0000-0000-0000-0000-0000-0000', 'new recovery pass 123', userId, config),
+  /không chính xác hoặc không khớp/
+);
+
+// 2. Short new passphrase -> rejects
+await assert.rejects(
+  recoverVaultWithKey(recoveryKey, 'short-pass', userId, config),
+  /at least 12/
+);
+
+// 3. Successful recovery with Recovery Key
+const recovered = await recoverVaultWithKey(recoveryKey, 'my brand new recovered passphrase 123', userId, config);
+assert.ok(recovered.newRecoveryKey);
+assert.notEqual(recovered.newRecoveryKey, recoveryKey);
+assert.ok(recovered.config.wrapped_key);
+
+// 4. Can unlock with new passphrase
+const keyFromRecoveredPass = await unlockVaultKey('my brand new recovered passphrase 123', userId, recovered.config);
+
+// 5. Old item is STILL DECRYPTABLE with keyFromRecoveredPass!
+const decRecovered = await decryptVaultItem(keyFromRecoveredPass, userId, { id: itemId, ...encrypted });
+assert.deepEqual(decRecovered, payload);
+
+// 6. Old recovery key CANNOT be reused on the recovered config (old key invalidated)
+await assert.rejects(
+  recoverVaultWithKey(recoveryKey, 'attempt with old recovery key 123', userId, recovered.config),
+  /không chính xác hoặc không khớp/
+);
+
+// 7. Old passphrase CANNOT unlock the recovered config
+await assert.rejects(
+  unlockVaultKey(passphrase, userId, recovered.config),
+  /Wrong passphrase/
+);
+
+// 8. Missing recovery key in config -> rejects cleanly
+await assert.rejects(
+  recoverVaultWithKey(recoveryKey, 'attempt with missing config 123', userId, { ...config, recovery_wrapped_key: null }),
+  /Chưa có mã khôi phục/
+);
+
+// 9. Case-insensitivity and formatting tolerance (dashes, spaces, lowercase)
+const tolerantKey = recoveryKey.toLowerCase().replace(/-/g, ' ');
+const recoveredTolerant = await recoverVaultWithKey(tolerantKey, 'yet another brand new passphrase 123', userId, config);
+assert.ok(recoveredTolerant.config.wrapped_key);
+
 console.log('vault crypto checks: OK');
+
 

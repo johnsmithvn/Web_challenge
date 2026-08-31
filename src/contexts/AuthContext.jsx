@@ -8,6 +8,7 @@ export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isRecoveringPassword, setIsRecoveringPassword] = useState(false);
 
   // Fetch profile from DB
   const fetchProfile = useCallback(async (userId) => {
@@ -31,8 +32,11 @@ export function AuthProvider({ children }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setUser(session?.user ?? null);
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsRecoveringPassword(true);
+        }
         if (session?.user) fetchProfile(session.user.id);
         else setProfile(null);
       }
@@ -151,16 +155,59 @@ export function AuthProvider({ children }) {
     return { data, error };
   }, [user]);
 
+  // ── Reset Password for Email ──────────────────────────────────
+  const resetPassword = useCallback(async (loginId) => {
+    if (!isSupabaseEnabled) return { error: { message: 'Supabase chưa được cấu hình' } };
+    const trimmed = loginId.trim();
+    let emailToUse = trimmed;
+
+    if (!trimmed.includes('@')) {
+      const { data: email, error: lookupErr } = await supabase
+        .rpc('login_email', { p_username: trimmed.toLowerCase() });
+      if (lookupErr || !email) {
+        return { error: { message: 'username_not_found' } };
+      }
+      emailToUse = email;
+    }
+
+    if (emailToUse.endsWith('@lifehub.local')) {
+      return {
+        error: {
+          message: 'Tài khoản này được đăng ký không kèm email thực, không thể nhận liên kết đặt lại mật khẩu.',
+        },
+      };
+    }
+
+    const { data, error } = await supabase.auth.resetPasswordForEmail(emailToUse, {
+      redirectTo: `${window.location.origin}/#reset-password`,
+    });
+    return { data, error };
+  }, []);
+
+  // ── Update Password (used after clicking reset email link) ────
+  const updatePassword = useCallback(async (newPassword) => {
+    if (!isSupabaseEnabled) return { error: { message: 'Supabase chưa được cấu hình' } };
+    const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+    if (!error) {
+      setIsRecoveringPassword(false);
+    }
+    return { data, error };
+  }, []);
+
   const value = {
     user,
     profile,
     loading,
     isAuthenticated: !!user,
     isSupabaseEnabled,
+    isRecoveringPassword,
+    setIsRecoveringPassword,
     signUp,
     signIn,
     signInWithGoogle,
     signOut,
+    resetPassword,
+    updatePassword,
     updateProfile,
     fetchProfile,
   };

@@ -110,5 +110,23 @@ assert.match(
   'vault_config creation must use insert instead of upsert to respect least privilege'
 );
 
+// ── Emergency Recovery Key ──────────────────────────────────────────────────
+assert.match(
+  hook,
+  /const recoverVault = useCallback\(async \(recoveryKeyInput, newPassphrase\) =>/,
+  'hook must provide recoverVault callback'
+);
+assert.match(
+  hook,
+  /recoverVaultWithKey\(\s*recoveryKeyInput,\s*newPassphrase/,
+  'recoverVault must invoke recoverVaultWithKey'
+);
+assert.match(
+  hook,
+  /return \{[\s\S]*?recoverVault,[\s\S]*?recoveryKey,[\s\S]*?\};/,
+  'hook must export recoverVault and recoveryKey'
+);
+
 console.log('vault hook security contract: OK');
+
 
