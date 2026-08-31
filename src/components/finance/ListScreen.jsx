@@ -41,6 +41,7 @@ export default function ListScreen({ fin, nav }) {
   const [q, setQ] = useState('');
   const [flt, setFlt] = useState(EMPTY_FILTER);
   const [selId, setSelId] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   const period = nav.period;
 
   const inPeriod = useMemo(
@@ -108,7 +109,7 @@ export default function ListScreen({ fin, nav }) {
   };
 
   return (
-    <div className={`fin-list${selected ? ' fin-list--detail' : ''}`}>
+    <div className={`fin-list${selected ? (isEditing ? ' fin-list--detail fin-list--editing' : ' fin-list--detail') : ''}`}>
       <div className="fin-list__main">
         <PeriodPicker options={nav.periodOptions} period={nav.period} value={nav.periodKey} onChange={nav.setPeriodKey} dataFrom={nav.dataFrom} />
 
@@ -174,7 +175,7 @@ export default function ListScreen({ fin, nav }) {
                 const source = tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn';
                 return (
                   <button key={tx.id} className={`fin-txrow${selected?.id === tx.id ? ' fin-txrow--sel' : ''}`}
-                    onClick={() => setSelId(tx.id)}>
+                    onClick={() => { setSelId(tx.id); setIsEditing(false); }}>
                     <span className="fin-txrow__ico" style={{ color: info.color }}>
                       <FinanceIcon name={tx.type === 'income' ? 'money' : tx.type === 'saving' ? 'bank' : (billIcon || info.icon)} cats={fin.cats} size={17} weight="fill" />
                     </span>
@@ -198,7 +199,9 @@ export default function ListScreen({ fin, nav }) {
       {selected && (
         <aside className="fin-list__detail">
           <TxDetail key={selected.id} tx={selected} fin={fin} nav={nav} tasks={pendingTasks}
-            onClose={() => setSelId(null)} onSelect={(id) => setSelId(id)} />
+            onClose={() => { setSelId(null); setIsEditing(false); }}
+            onSelect={(id) => { setSelId(id); setIsEditing(false); }}
+            isEditing={isEditing} onEditingChange={setIsEditing} />
         </aside>
       )}
     </div>
@@ -296,9 +299,8 @@ function FilterPop({ cats, value, onChange }) {
   );
 }
 
-function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
+function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditingChange }) {
   const { tags, addTag, linkTag, unlinkTag, getTagsForEntity } = useTags();
-  const [editing, setEditing] = useState(false);
   const [amount, setAmount] = useState(String(tx.amount));
   const [note, setNote] = useState(tx.note || '');
   const [occurredAt, setOccurredAt] = useState(tx.occurred_at);
@@ -317,7 +319,6 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
         }))
       : [],
   );
-  const [showMore, setShowMore] = useState(() => Boolean(tx.merchant || (tx.items && tx.items.length > 0)));
   const [txTags, setTxTags] = useState([]);
   // Giao dịch sinh từ hóa đơn: cho sửa KỲ ngay tại đây. Gắn nhầm kỳ là hóa đơn báo
   // quá hạn dù đã trả, mà trước đó đường sửa duy nhất là xóa rồi ghi lại từ đầu.
@@ -355,13 +356,10 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
     setBillPeriod(tx.bill_period || '');
     setMerchant(tx.merchant || '');
     setDraftItems(Array.isArray(tx.items) ? tx.items.map(item => ({ name: item.name || '', qty: String(item.qty || 1), price: String(item.price || '') })) : []);
-    setEditing(false);
+    onEditingChange(false);
   };
 
   const save = async () => {
-    // `autoK: false` — ô này được điền sẵn bằng SỐ ĐÃ LƯU, không phải số người dùng
-    // đang gõ nhanh. Bật auto-K ở đây là mỗi lần mở form sửa (kể cả chỉ sửa tiêu đề)
-    // một khoản 5.000đ lại thành 5.000.000đ. Chữ "k"/"triệu" vẫn nhân như thường.
     const parsed = parseCurrencyInput(amount, { autoK: false });
     const cleanItems = draftItems
       .filter(item => item.name?.trim() || parseCurrencyInput(item.price))
@@ -384,8 +382,23 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
       ...(linkedBill && billPeriod !== tx.bill_period ? { bill_period: billPeriod } : {}),
     });
     nav.showToast('Đã cập nhật — báo cáo tự tính lại', { icon: 'checkCircle' });
-    setEditing(false);
+    onEditingChange(false);
   };
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        save();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelEdit();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  });
 
   const duplicate = async () => {
     const copy = await fin.addTransaction({
@@ -427,54 +440,143 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
     if (await fin.deleteTransaction(tx.id)) onClose();
   };
 
-  if (editing) {
+  if (isEditing) {
     return (
       <div className="fin-detail fin-detail--editing">
-        <div className="fin-detail__head"><strong>Sửa giao dịch</strong><button className="fin-detail__close" onClick={cancelEdit} aria-label="Đóng chỉnh sửa"><AppIcon name="x" size={15} /></button></div>
-        {/* Các <label> ở đây là anh em kề chứ không bọc control và không có htmlFor,
-            nên chúng chỉ là chữ trang trí với AT — mỗi control phải tự mang nhãn. */}
-        <label className="fin-label">Số tiền</label><input className="fin-input" aria-label="Số tiền" inputMode="numeric" pattern="[0-9]*" value={amount} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
-        <label className="fin-label">Ngày</label><DateField value={occurredAt} onChange={setOccurredAt} />
-        <label className="fin-label">Tiêu đề</label><input className="fin-input" aria-label="Tiêu đề giao dịch" value={note} onChange={event => setNote(event.target.value)} maxLength={200} />
-        {tx.type !== 'saving' && <><label className="fin-label">Nhóm</label><select className="fin-input" aria-label="Nhóm" value={categoryId} onChange={event => { setCategoryId(event.target.value); setSubcategoryId(''); }}>{categoryOptions.filter(group => !group.hidden).map(group => <option key={group.key} value={group.key}>{group.label}</option>)}</select></>}
-        {tx.type === 'expense' && <>
-          <label className="fin-label">Danh mục con</label><select className="fin-input" aria-label="Danh mục con" value={subcategoryId} onChange={event => setSubcategoryId(event.target.value)}><option value="">— chưa chọn —</option>{subOptions.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}</select>
-          <label className="fin-label">Nguồn tiền</label><select className="fin-input" aria-label="Nguồn tiền" value={sourceCardId} onChange={event => setSourceCardId(event.target.value)}><option value="">Tiền có sẵn</option>{fin.cards.map(card => <option key={card.id} value={card.id}>{card.name} {card.last4 ? `••${card.last4}` : ''}</option>)}</select>
-          {!tx.excluded && <><label className="fin-label">Mức cắt được</label><select className="fin-input" aria-label="Mức cắt được" value={necessity} onChange={event => setNecessity(event.target.value)}><option value="">— chưa đặt —</option>{Object.entries(NECESSITY_META).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></>}
-        </>}
-        {linkedBill && <>
-          <label className="fin-label">Thuộc kỳ của {linkedBill.name}</label>
-          <select className="fin-input" aria-label={`Kỳ của ${linkedBill.name}`} value={billPeriod} onChange={event => setBillPeriod(event.target.value)}>
-            {periodChoices.map(key => <option key={key} value={key}>{key.slice(5)}/{key.slice(0, 4)}</option>)}
-          </select>
-          <small className="fin-field__hint">Kỳ tách khỏi ngày trả: trả kỳ tháng 7 vào tháng 8 thì kỳ vẫn là 07. Gắn sai kỳ thì hóa đơn báo quá hạn dù tiền đã ra khỏi ví.</small>
-        </>}
-        <label className="fin-label">Nhiệm vụ liên quan</label><TaskPicker tasks={tasks} value={tx.task_id} onPick={id => fin.updateTransaction(tx.id, { task_id: id })} />
-        <label className="fin-label">Tag</label><div className="fin-tags">{txTags.map(tag => <button key={tag.id} className="fin-tag" style={{ '--tc': tag.color }} onClick={() => toggleTag(tag)}>#{tag.name} <AppIcon name="x" size={11} /></button>)}<TagAdd tags={tags} txTags={txTags} onAdd={addAndLink} /></div>
+        <div className="fin-detail__head">
+          <div className="fin-detail__head-title">
+            <AppIcon name="pencil" size={16} />
+            <strong>Sửa giao dịch</strong>
+          </div>
+          <button className="fin-detail__close" onClick={cancelEdit} aria-label="Đóng chỉnh sửa"><AppIcon name="x" size={15} /></button>
+        </div>
 
-        <button type="button" className="fin-more-toggle" onClick={() => setShowMore(current => !current)}>
-          <AppIcon name={showMore ? 'caretDown' : 'caretRight'} size={14} /> {showMore ? 'Ẩn chi tiết giao dịch' : 'Thêm chi tiết (nơi nhận, món…)'}
-        </button>
-        {showMore && (
-          <div className="fin-form__more">
-            <label className="fin-label">Nơi / người nhận</label>
-            <input className="fin-input" aria-label="Nơi / người nhận" value={merchant} onChange={event => setMerchant(event.target.value)} placeholder="Quán nước Bà Ba, Shopee…" />
-            <div className="fin-items-editor">
-              <div className="fin-items-editor__head"><AppIcon name="listBullets" size={16} /><strong>Chi tiết từng món</strong><small>tổng tự cộng lên số tiền</small></div>
-              {draftItems.map((item, index) => (
-                <div className="fin-item-row" key={index}>
-                  <input className="fin-input" aria-label={`Tên món thứ ${index + 1}`} value={item.name} onChange={event => updateDraftItem(index, 'name', event.target.value)} placeholder="Tên món" />
-                  <input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={item.qty} onChange={event => updateDraftItem(index, 'qty', event.target.value)} aria-label="Số lượng" />
-                  <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" aria-label="Đơn giá" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="Đơn giá" />
-                  <button type="button" aria-label="Xóa món" onClick={() => setDraftItems(current => current.filter((_, itemIndex) => itemIndex !== index))}><AppIcon name="x" size={14} /></button>
-                </div>
-              ))}
-              <button type="button" className="fin-inline-command" onClick={() => setDraftItems(current => [...current, { name: '', qty: '1', price: '' }])}><AppIcon name="plus" size={14} /> Thêm món</button>
+        <div className="fin-edit-grid">
+          <div className="fin-edit-field fin-edit-field--full">
+            <label className="fin-label">Tiêu đề</label>
+            <input className="fin-input" aria-label="Tiêu đề giao dịch" value={note} onChange={event => setNote(event.target.value)} maxLength={200} placeholder="Ví dụ: Xăng xe, Cơm trưa, Siêu thị..." />
+          </div>
+
+          <div className="fin-edit-field">
+            <label className="fin-label">Số tiền</label>
+            <div className="fin-input-money">
+              <input className="fin-input" aria-label="Số tiền" inputMode="numeric" pattern="[0-9]*" value={groupDigits(amount)} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
+              <span>₫</span>
             </div>
           </div>
-        )}
 
-        <div className="fin-detail__actions"><button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="save" size={15} /> Lưu thay đổi</button><button className="fin-btn fin-btn--secondary" onClick={cancelEdit}>Hủy</button></div>
+          <div className="fin-edit-field">
+            <label className="fin-label">Ngày</label>
+            <DateField value={occurredAt} onChange={setOccurredAt} />
+          </div>
+
+          {tx.type !== 'saving' && (
+            <div className="fin-edit-field">
+              <label className="fin-label">{tx.type === 'income' ? 'Nguồn thu' : 'Nhóm'}</label>
+              <select className="fin-input" aria-label="Nhóm" value={categoryId} onChange={event => { setCategoryId(event.target.value); setSubcategoryId(''); }}>
+                {categoryOptions.filter(group => !group.hidden).map(group => <option key={group.key} value={group.key}>{group.label}</option>)}
+              </select>
+            </div>
+          )}
+
+          {tx.type === 'expense' && (
+            <div className="fin-edit-field">
+              <label className="fin-label">Danh mục con</label>
+              <select className="fin-input" aria-label="Danh mục con" value={subcategoryId} onChange={event => setSubcategoryId(event.target.value)}>
+                <option value="">— chưa chọn —</option>
+                {subOptions.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}
+              </select>
+            </div>
+          )}
+
+          {tx.type === 'expense' && (
+            <div className="fin-edit-field">
+              <label className="fin-label">Nguồn tiền</label>
+              <select className="fin-input" aria-label="Nguồn tiền" value={sourceCardId} onChange={event => setSourceCardId(event.target.value)}>
+                <option value="">Tiền có sẵn</option>
+                {fin.cards.map(card => <option key={card.id} value={card.id}>{card.name} {card.last4 ? `••${card.last4}` : ''}</option>)}
+              </select>
+            </div>
+          )}
+
+          {tx.type === 'expense' && !tx.excluded && (
+            <div className="fin-edit-field">
+              <label className="fin-label">Mức cắt được</label>
+              <select className="fin-input" aria-label="Mức cắt được" value={necessity} onChange={event => setNecessity(event.target.value)}>
+                <option value="">— chưa đặt —</option>
+                {Object.entries(NECESSITY_META).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}
+              </select>
+            </div>
+          )}
+
+          {linkedBill && (
+            <div className="fin-edit-field fin-edit-field--full">
+              <label className="fin-label">Thuộc kỳ của {linkedBill.name}</label>
+              <select className="fin-input" aria-label={`Kỳ của ${linkedBill.name}`} value={billPeriod} onChange={event => setBillPeriod(event.target.value)}>
+                {periodChoices.map(key => <option key={key} value={key}>{key.slice(5)}/{key.slice(0, 4)}</option>)}
+              </select>
+              <small className="fin-field__hint">Kỳ tách khỏi ngày trả: trả kỳ tháng 7 vào tháng 8 thì kỳ vẫn là 07.</small>
+            </div>
+          )}
+
+          <div className="fin-edit-field">
+            <label className="fin-label">Nhiệm vụ liên quan</label>
+            <TaskPicker tasks={tasks} value={tx.task_id} onPick={id => fin.updateTransaction(tx.id, { task_id: id })} />
+          </div>
+
+          <div className="fin-edit-field">
+            <label className="fin-label">Tag</label>
+            <div className="fin-tags">
+              {txTags.map(tag => <button key={tag.id} className="fin-tag" style={{ '--tc': tag.color }} onClick={() => toggleTag(tag)}>#{tag.name} <AppIcon name="x" size={11} /></button>)}
+              <TagAdd tags={tags} txTags={txTags} onAdd={addAndLink} />
+            </div>
+          </div>
+        </div>
+
+        <div className="fin-edit-section">
+          <div className="fin-edit-section__title">
+            <AppIcon name="receipt" size={15} />
+            <span>Chi tiết bổ sung & món hàng</span>
+          </div>
+
+          <div className="fin-edit-field">
+            <label className="fin-label">Nơi / người nhận</label>
+            <input className="fin-input" aria-label="Nơi / người nhận" value={merchant} onChange={event => setMerchant(event.target.value)} placeholder="Quán nước Bà Ba, Shopee, Cửa hàng xăng dầu..." />
+          </div>
+
+          <div className="fin-items-editor">
+            <div className="fin-items-editor__head">
+              <AppIcon name="listBullets" size={16} />
+              <strong>Chi tiết từng món</strong>
+              <small>tổng tự cộng lên số tiền</small>
+            </div>
+            {draftItems.length > 0 && (
+              <div className="fin-items-editor__col-labels">
+                <span>Tên món / dịch vụ</span>
+                <span>SL</span>
+                <span>Đơn giá</span>
+                <span></span>
+              </div>
+            )}
+            {draftItems.map((item, index) => (
+              <div className="fin-item-row" key={index}>
+                <input className="fin-input" aria-label={`Tên món thứ ${index + 1}`} value={item.name} onChange={event => updateDraftItem(index, 'name', event.target.value)} placeholder="Tên món (bảo dưỡng, dầu nhớt...)" />
+                <input className="fin-input fin-item-qty" inputMode="numeric" pattern="[0-9]*" value={item.qty} onChange={event => updateDraftItem(index, 'qty', event.target.value)} aria-label="Số lượng" placeholder="1" />
+                <div className="fin-item-price-wrap">
+                  <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" aria-label="Đơn giá" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="0" />
+                  <span>₫</span>
+                </div>
+                <button type="button" className="fin-item-del-btn" aria-label="Xóa món" onClick={() => setDraftItems(current => current.filter((_, itemIndex) => itemIndex !== index))}><AppIcon name="x" size={14} /></button>
+              </div>
+            ))}
+            <button type="button" className="fin-inline-command" onClick={() => setDraftItems(current => [...current, { name: '', qty: '1', price: '' }])}><AppIcon name="plus" size={14} /> Thêm món</button>
+          </div>
+        </div>
+
+        <div className="fin-detail__actions">
+          <button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="save" size={15} /> Lưu thay đổi</button>
+          <button className="fin-btn fin-btn--secondary" onClick={cancelEdit}>Hủy</button>
+        </div>
       </div>
     );
   }
@@ -506,7 +608,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect }) {
       {txTags.length > 0 && <div className="fin-tags">{txTags.map(tag => <span key={tag.id} className="fin-tag" style={{ '--tc': tag.color }}>#{tag.name}</span>)}</div>}
       {tx.task_id && <div className="fin-detail__linked"><AppIcon name="pushPin" size={14} /> Đã gắn với một nhiệm vụ</div>}
       <div className="fin-detail__actions fin-detail__actions--view">
-        <button className="fin-btn fin-btn--secondary" onClick={() => setEditing(true)}><AppIcon name="pencil" size={15} /> Sửa</button>
+        <button className="fin-btn fin-btn--secondary" onClick={() => onEditingChange(true)}><AppIcon name="pencil" size={15} /> Sửa</button>
         {tx.type !== 'saving' && <button className="fin-btn fin-btn--secondary" onClick={duplicate}><AppIcon name="copy" size={15} /> Nhân bản</button>}
         <button className="fin-btn fin-btn--secondary fin-detail__delete" aria-label="Xóa giao dịch" onClick={deleteTx}><AppIcon name="trash" size={15} /></button>
       </div>

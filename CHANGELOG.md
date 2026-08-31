@@ -3,9 +3,14 @@
 ## v6.12.0 — 2026-08-30
 
 ### Added
+- **Mở rộng Sidebar thành Drawer 560px khi Sửa giao dịch (ListScreen):** Khi người dùng bấm *Sửa*,
+  panel bên phải chuyển động mượt mà (transition 0.28s) mở rộng từ 342px ra 560px. Các trường được
+  bố trí dạng lưới 2 cột khoa học, bảng *Chi tiết từng món* có nhãn cột rõ ràng (`Tên món`, `SL`, `Đơn giá`)
+  và không gian rộng rãi không bị co giật hay cắt chữ. Hỗ trợ phím tắt `Ctrl + Enter` (hoặc `Cmd + Enter`)
+  để lưu nhanh và `Escape` để hủy.
 - **Chi tiết giao dịch trong form Sửa (ListScreen):** Bổ sung ô nhập *Nơi / người nhận* (`merchant`)
   và trình chỉnh sửa *Chi tiết từng món* (`items`: tên món, số lượng, đơn giá, tự động tính tổng tiền)
-  vào form sửa giao dịch trong `TxDetail`. Trước đó người dùng chỉ có thể thêm chi tiết lúc tạo mới ở `AddScreen`.
+  vào form sửa giao dịch trong `TxDetail`.
 
 ### Fixed
 - **Chống nhấp nháy màn Danh mục & Shortcut:** Thêm cờ `hasLoaded` và skeleton chờ cho `CategoryPanel`
