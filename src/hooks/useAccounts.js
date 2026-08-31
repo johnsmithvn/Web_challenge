@@ -384,7 +384,7 @@ export function useAccounts() {
           targetKey = created.key;
           targetConfig = created.config;
           const { error: cfgErr } = await supabase.from('vault_config')
-            .upsert(targetConfig, { onConflict: 'user_id' });
+            .insert(targetConfig);
           if (cfgErr) throw cfgErr;
           configRef.current = targetConfig;
         } else if (!targetKey) {
@@ -427,9 +427,11 @@ export function useAccounts() {
       }
 
       // ── Same-account standard restore ──
-      const { error: configError } = await supabase.from('vault_config')
-        .upsert({ ...backup.config, user_id: userId }, { onConflict: 'user_id' });
-      if (configError) throw configError;
+      if (!configRef.current) {
+        const { error: configError } = await supabase.from('vault_config')
+          .insert({ ...backup.config, user_id: userId });
+        if (configError) throw configError;
+      }
 
       if (backup.items.length) {
         // KHÔNG khôi phục created_at/updated_at: DB tự quản chúng và grant
