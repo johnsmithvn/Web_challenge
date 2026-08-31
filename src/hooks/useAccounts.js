@@ -200,6 +200,14 @@ export function useAccounts() {
     if (!enabled || vaultStatus !== 'setup') return { ok: false, error: 'Vault cannot be set up now' };
     const session = sessionRef.current;
     try {
+      const { data: existing } = await supabase.from('vault_config')
+        .select('*').eq('user_id', userId).maybeSingle();
+      if (existing) {
+        configRef.current = existing;
+        setVaultStatus('locked');
+        return { ok: false, error: 'Vault is already configured for this account. Please unlock with your passphrase.' };
+      }
+
       const { config, key } = await createVaultConfig(passphrase, userId);
       if (sessionRef.current !== session) {
         return { ok: false, error: 'Vault state changed; try again' };
@@ -376,6 +384,16 @@ export function useAccounts() {
         let targetKey = keyRef.current;
         let targetConfig = configRef.current;
 
+        // Kiểm tra xem database đã có sẵn vault_config chưa nếu memory chưa tải
+        if (!targetConfig) {
+          const { data: existingConfig } = await supabase.from('vault_config')
+            .select('*').eq('user_id', userId).maybeSingle();
+          if (existingConfig) {
+            targetConfig = existingConfig;
+            configRef.current = existingConfig;
+          }
+        }
+
         // Nếu user hiện tại chưa có vault_config (chế độ setup):
         // Sinh cấu hình vault mới cho user hiện tại bằng targetPassphrase (hoặc dùng sourcePassphrase)
         if (!targetConfig) {
@@ -387,7 +405,9 @@ export function useAccounts() {
             .insert(targetConfig);
           if (cfgErr) throw cfgErr;
           configRef.current = targetConfig;
-        } else if (!targetKey) {
+        }
+
+        if (!targetKey) {
           // Vault đã có config nhưng đang khóa: mở khóa bằng targetPassphrase (hoặc sourcePassphrase)
           const passphraseToUse = options.targetPassphrase || options.sourcePassphrase;
           try {
@@ -455,9 +475,10 @@ export function useAccounts() {
       return { ok: true, restored: backup.items.length };
     } catch (error) {
       logger.error('[useAccounts] restore error:', error.message);
+      loadVaultConfig();
       return { ok: false, error: `Restore failed and nothing was replaced: ${error.message}` };
     }
-  }, [enabled, userId, lockVault]);
+  }, [enabled, userId, lockVault, loadVaultConfig]);
 
 
   const writeItem = useCallback(async (item) => {
