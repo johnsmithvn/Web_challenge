@@ -3,6 +3,16 @@
 ## v6.12.0 — 2026-08-30
 
 ### Added
+- **Mở rộng Sidebar sửa giao dịch lên tới 50% màn hình & di chuyển nút Lọc lên đầu:**
+  - Sidebar sửa giao dịch (`ListScreen.jsx`) giờ tự động mở rộng chiếm tới **50% màn hình** (`minmax(560px, 50%)`)
+    khi ở desktop màn hình rộng, giúp bảng chi tiết từng món cực kỳ thoáng đãng, không bị gò bó.
+  - Nút **Bộ lọc (FilterPop)** được chuyển lên đặt ngay cạnh ô Tìm kiếm (trước danh sách chip lọc)
+    thay vì nằm khuất ở cuối, giúp thao tác lọc trực quan và thuận tay hơn.
+- **Trường Ghi chú tự do (Note nhiều dòng) cho giao dịch:** Bổ sung cột `description TEXT` vào bảng
+  `finance_transactions` (migration `20260831000000_finance_transaction_description_v6_13_0.sql`),
+  tách biệt với tiêu đề ngắn (`note`). Cho phép người dùng ghi chú tự do nhiều dòng ở cả form **Sửa giao dịch**
+  (`ListScreen.jsx`) và form **Nhập nhanh** (`AddScreen.jsx`). Hiển thị khối ghi chú trong màn xem chi tiết
+  và đưa vào nội dung tìm kiếm nhanh cũng như xuất file CSV.
 - **Mở rộng Sidebar thành Drawer 560px khi Sửa giao dịch (ListScreen):** Khi người dùng bấm *Sửa*,
   panel bên phải chuyển động mượt mà (transition 0.28s) mở rộng từ 342px ra 560px. Các trường được
   bố trí dạng lưới 2 cột khoa học, bảng *Chi tiết từng món* có nhãn cột rõ ràng (`Tên món`, `SL`, `Đơn giá`)

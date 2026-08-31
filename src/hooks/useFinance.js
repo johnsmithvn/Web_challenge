@@ -201,6 +201,7 @@ export function useFinance({ autoFetch = true } = {}) {
       necessity,
       is_fixed: tx.is_fixed || false,
       note: tx.note || null,
+      description: tx.description || null,
       merchant: tx.merchant || null,
       items: tx.items || [],
       attachments: tx.attachments || [],

@@ -55,6 +55,7 @@ export default function AddScreen({ fin, nav }) {
   const [taskId, setTaskId] = useState(null);
   const [occurredAt, setOccurredAt] = useState(fin.today);
   const [merchant, setMerchant] = useState('');
+  const [description, setDescription] = useState('');
   const [draftItems, setDraftItems] = useState([]);
   const [showMore, setShowMore] = useState(false);
   const [quickAmount, setQuickAmount] = useState('');
@@ -170,6 +171,7 @@ export default function AddScreen({ fin, nav }) {
     setTaskId(null);
     setOccurredAt(fin.today);
     setMerchant('');
+    setDescription('');
     setDraftItems([]);
     setShowMore(false);
   };
@@ -198,7 +200,7 @@ export default function AddScreen({ fin, nav }) {
         return;
       }
       tx = await fin.moveSaving(selectedGoal, selectedDeposit, savingDir, {
-        amount: parsedAmount, occurredAt, note: note || null, taskId,
+        amount: parsedAmount, occurredAt, note: note || null, description: description.trim() || null, taskId,
       });
     } else {
       const row = {
@@ -206,6 +208,7 @@ export default function AddScreen({ fin, nav }) {
         amount: parsedAmount,
         occurred_at: occurredAt,
         note: note || null,
+        description: description.trim() || null,
         merchant: merchant || null,
         items: draftItems
           .filter(item => item.name?.trim() || parseCurrencyInput(item.price))
@@ -535,7 +538,9 @@ export default function AddScreen({ fin, nav }) {
           {showMore && (
             <div className="fin-form__more">
               <label className="fin-label">Nơi / người nhận</label>
-              <input className="fin-input" aria-label="Nơi / người nhận" value={merchant} onChange={event => setMerchant(event.target.value)} placeholder="Quán nước Bà Ba" />
+              <input className="fin-input" aria-label="Nơi / người nhận" value={merchant} onChange={event => setMerchant(event.target.value)} placeholder="Quán nước Bà Ba, Shopee, Cửa hàng..." />
+              <label className="fin-label">Ghi chú (Note tự do)</label>
+              <textarea className="fin-input fin-textarea" aria-label="Ghi chú tự do" value={description} onChange={event => setDescription(event.target.value)} placeholder="Ghi chú tự do (nhiều dòng, diễn giải chi tiết)..." rows={3} />
               <div className="fin-items-editor">
                 <div className="fin-items-editor__head"><AppIcon name="listBullets" size={16} /><strong>Chi tiết từng món</strong><small>tổng tự cộng lên số tiền</small></div>
                 {draftItems.map((item, index) => (

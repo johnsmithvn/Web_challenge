@@ -59,7 +59,7 @@ export default function ListScreen({ fin, nav }) {
     if (filter === 'expense' && tx.type !== 'expense') return false;
     if (filter === 'income' && tx.type !== 'income') return false;
     if (q) {
-      const haystack = [tx.note, tx.merchant, catInfo(tx.category_id, fin.cats).label,
+      const haystack = [tx.note, tx.description, tx.merchant, catInfo(tx.category_id, fin.cats).label,
         subLabel(tx.subcategory_id, fin.cats)].filter(Boolean).join(' ').toLowerCase();
       if (!haystack.includes(q.toLowerCase())) return false;
     }
@@ -87,7 +87,7 @@ export default function ListScreen({ fin, nav }) {
 
   const exportCsv = () => {
     if (!filtered.length) return;
-    const headers = ['Ngày', 'Loại', 'Số tiền', 'Nhóm', 'Danh mục con', 'Mức cắt được', 'Nguồn tiền', 'Nơi / người nhận', 'Tiêu đề'];
+    const headers = ['Ngày', 'Loại', 'Số tiền', 'Nhóm', 'Danh mục con', 'Mức cắt được', 'Nguồn tiền', 'Tiêu đề', 'Ghi chú', 'Nơi / người nhận'];
     const rows = filtered.map(tx => [
       tx.occurred_at,
       tx.type,
@@ -96,8 +96,9 @@ export default function ListScreen({ fin, nav }) {
       subLabel(tx.subcategory_id, fin.cats) || '',
       NECESSITY_META[tx.necessity]?.label || '',
       tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn',
-      tx.merchant || '',
       tx.note || '',
+      tx.description || '',
+      tx.merchant || '',
     ]);
     const csv = `\uFEFF${[headers, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n')}`;
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -120,12 +121,12 @@ export default function ListScreen({ fin, nav }) {
                 tên nào — screen reader đọc ra "edit text" trống trơn. */}
             <input aria-label="Tìm giao dịch" placeholder="Tìm theo tên, nơi, tag…" value={q} onChange={event => setQ(event.target.value)} />
           </label>
+          <FilterPop cats={fin.cats} value={flt} onChange={setFlt} />
           <div className="fin-filter-chips">
             {FILTERS.map(item => <button key={item.value} type="button"
               className={filter === item.value ? 'is-active' : ''}
               onClick={() => setFilter(item.value)}>{item.label}</button>)}
           </div>
-          <FilterPop cats={fin.cats} value={flt} onChange={setFlt} />
           <button type="button" className="fin-export" onClick={exportCsv} disabled={!filtered.length}>
             <AppIcon name="upload" size={15} /> Xuất CSV
           </button>
@@ -303,6 +304,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
   const { tags, addTag, linkTag, unlinkTag, getTagsForEntity } = useTags();
   const [amount, setAmount] = useState(String(tx.amount));
   const [note, setNote] = useState(tx.note || '');
+  const [description, setDescription] = useState(tx.description || '');
   const [occurredAt, setOccurredAt] = useState(tx.occurred_at);
   const [necessity, setNecessity] = useState(tx.necessity || '');
   const [categoryId, setCategoryId] = useState(tx.category_id || (tx.type === 'income' ? 'luong' : 'other'));
@@ -348,6 +350,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
   const cancelEdit = () => {
     setAmount(String(tx.amount));
     setNote(tx.note || '');
+    setDescription(tx.description || '');
     setOccurredAt(tx.occurred_at);
     setNecessity(tx.necessity || '');
     setCategoryId(tx.category_id || (tx.type === 'income' ? 'luong' : 'other'));
@@ -372,6 +375,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
     await fin.updateTransaction(tx.id, {
       amount: parsed || tx.amount,
       note: note || null,
+      description: description.trim() || null,
       merchant: merchant.trim() || null,
       items: cleanItems,
       occurred_at: occurredAt,
@@ -407,6 +411,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
       source_card_id: tx.source_card_id, excluded: tx.excluded,
       necessity: tx.necessity, is_fixed: false,
       note: tx.note ? `${tx.note} · bản sao` : null,
+      description: tx.description || null,
       merchant: tx.merchant, items: tx.items || [], task_id: tx.task_id,
       saving_goal_id: tx.saving_goal_id, saving_dir: tx.saving_dir,
     });
@@ -544,6 +549,11 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
             <input className="fin-input" aria-label="Nơi / người nhận" value={merchant} onChange={event => setMerchant(event.target.value)} placeholder="Quán nước Bà Ba, Shopee, Cửa hàng xăng dầu..." />
           </div>
 
+          <div className="fin-edit-field">
+            <label className="fin-label">Ghi chú (Note tự do)</label>
+            <textarea className="fin-input fin-textarea" aria-label="Ghi chú tự do" value={description} onChange={event => setDescription(event.target.value)} placeholder="Ghi chú tự do (nhiều dòng, lưu ý chi tiết...)" rows={3} />
+          </div>
+
           <div className="fin-items-editor">
             <div className="fin-items-editor__head">
               <AppIcon name="listBullets" size={16} />
@@ -604,6 +614,12 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
       </div>
       <div className={`fin-detail__amount fin-detail__amount--${tx.type}`}>{tx.type === 'income' ? '+' : tx.type === 'saving' ? '' : '-'}{money(tx.amount)}</div>
       <div className="fin-detail__meta">{meta.map(([key, value]) => <div key={key}><span>{key}</span><strong>{value}</strong></div>)}</div>
+      {tx.description && (
+        <div className="fin-detail__desc">
+          <strong>Ghi chú</strong>
+          <p>{tx.description}</p>
+        </div>
+      )}
       {(tx.items || []).length > 0 && <div className="fin-detail__items"><strong>Chi tiết {tx.items.length} món</strong>{tx.items.map((item, index) => <div key={`${item.name}-${index}`}><span>{item.qty > 1 ? `${item.qty} × ` : ''}{item.name}</span><b>{money((item.qty || 1) * (item.price || 0))}</b></div>)}</div>}
       {txTags.length > 0 && <div className="fin-tags">{txTags.map(tag => <span key={tag.id} className="fin-tag" style={{ '--tc': tag.color }}>#{tag.name}</span>)}</div>}
       {tx.task_id && <div className="fin-detail__linked"><AppIcon name="pushPin" size={14} /> Đã gắn với một nhiệm vụ</div>}
