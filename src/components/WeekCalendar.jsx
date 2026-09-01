@@ -28,6 +28,8 @@ export default function WeekCalendar({
   currentDate,
   startOnSunday: propStartOnSunday,
   hideToolbar = false,
+  holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
+  customAnniversaries = [],
 }) {
   const today = new Date();
   const [internalBaseDate, setBaseDate] = useState(today);
@@ -110,33 +112,73 @@ export default function WeekCalendar({
       const y = d.getFullYear();
       const solarKey = `${pad(m)}-${pad(dt)}`;
 
+      // 0. Kiểm tra ngày kỷ niệm cá nhân (ưu tiên cao nhất)
+      if (holidayToggles?.custom !== false && Array.isArray(customAnniversaries)) {
+        let foundCustom = null;
+        let lunar = null;
+        for (const anniv of customAnniversaries) {
+          if (!anniv || !anniv.title) continue;
+          if (anniv.calType === 'solar' && Number(anniv.day) === dt && Number(anniv.month) === m) {
+            foundCustom = anniv;
+            break;
+          }
+          if (anniv.calType === 'lunar') {
+            if (!lunar) {
+              try { lunar = solarToLunar(dt, m, y); } catch { /* Safe */ }
+            }
+            if (lunar && Number(anniv.day) === lunar.day && Number(anniv.month) === lunar.month) {
+              foundCustom = anniv;
+              break;
+            }
+          }
+        }
+        if (foundCustom) {
+          map[day.dateStr] = { name: `${foundCustom.icon || '💖'} ${foundCustom.title}`, type: 'custom' };
+          continue;
+        }
+      }
+
       // 1. Kiểm tra ngày lễ chính thống dương lịch
-      if (HOLIDAYS.solar[solarKey]) {
+      if (holidayToggles?.solar !== false && HOLIDAYS.solar[solarKey]) {
         map[day.dateStr] = { name: HOLIDAYS.solar[solarKey], type: 'official' };
         continue;
       }
 
       // 2. Kiểm tra ngày lễ âm lịch
-      try {
-        const lunar = solarToLunar(dt, m, y);
-        if (lunar && !lunar.leap) {
-          const lunarKey = `${pad(lunar.month)}-${pad(lunar.day)}`;
-          if (HOLIDAYS.lunar[lunarKey]) {
-            map[day.dateStr] = { name: HOLIDAYS.lunar[lunarKey], type: 'official' };
-            continue;
+      if (holidayToggles?.lunar !== false) {
+        try {
+          const lunar = solarToLunar(dt, m, y);
+          if (lunar && !lunar.leap) {
+            const lunarKey = `${pad(lunar.month)}-${pad(lunar.day)}`;
+            if (HOLIDAYS.lunar[lunarKey]) {
+              map[day.dateStr] = { name: HOLIDAYS.lunar[lunarKey], type: 'official' };
+              continue;
+            }
           }
+        } catch {
+          // Safe catch
         }
-      } catch {
-        // Safe catch
       }
 
-      // 3. Kiểm tra ngày lễ kỷ niệm vui / Dev / Quốc tế Nam giới
-      if (HOLIDAYS.fun && HOLIDAYS.fun[solarKey]) {
+      // 3. Kiểm tra ngày lễ quốc tế (LHQ & Thế giới)
+      if (holidayToggles?.international !== false && HOLIDAYS.international?.[solarKey]) {
+        map[day.dateStr] = { name: HOLIDAYS.international[solarKey], type: 'international' };
+        continue;
+      }
+
+      // 4. Kiểm tra ngày lễ Nhật Bản
+      if (holidayToggles?.japan && HOLIDAYS.japan?.[solarKey]) {
+        map[day.dateStr] = { name: HOLIDAYS.japan[solarKey], type: 'japan' };
+        continue;
+      }
+
+      // 5. Kiểm tra ngày lễ kỷ niệm vui / Dev / Coder
+      if (holidayToggles?.fun && HOLIDAYS.fun && HOLIDAYS.fun[solarKey]) {
         map[day.dateStr] = { name: HOLIDAYS.fun[solarKey], type: 'fun' };
       }
     }
     return map;
-  }, [weekDays]);
+  }, [weekDays, holidayToggles, customAnniversaries]);
 
   // Tự động tải task hoàn thành trong dải 7 ngày của tuần
   useEffect(() => {

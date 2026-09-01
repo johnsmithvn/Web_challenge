@@ -141,3 +141,305 @@ export function solarToLunar(dd, mm, yy, timeZone = TIMEZONE) {
 export function lunarLabel(lunar) {
   return lunar.day === 1 ? `${lunar.day}/${lunar.month}` : String(lunar.day);
 }
+
+export { jdFromDate };
+
+export const CAN = ['Giáp', 'Ất', 'Bính', 'Đinh', 'Mậu', 'Kỷ', 'Canh', 'Tân', 'Nhâm', 'Quý'];
+export const CHI = ['Tý', 'Sửu', 'Dần', 'Mão', 'Thìn', 'Tỵ', 'Ngọ', 'Mùi', 'Thân', 'Dậu', 'Tuất', 'Hợi'];
+
+export const ZODIAC_PERIODS = [
+  { chiIndex: 0, name: 'Tý', range: '23-1', icon: '🐭', startHour: 23, endHour: 1 },
+  { chiIndex: 1, name: 'Sửu', range: '1-3', icon: '🐮', startHour: 1, endHour: 3 },
+  { chiIndex: 2, name: 'Dần', range: '3-5', icon: '🐯', startHour: 3, endHour: 5 },
+  { chiIndex: 3, name: 'Mão', range: '5-7', icon: '🐱', startHour: 5, endHour: 7 },
+  { chiIndex: 4, name: 'Thìn', range: '7-9', icon: '🐲', startHour: 7, endHour: 9 },
+  { chiIndex: 5, name: 'Tỵ', range: '9-11', icon: '🐍', startHour: 9, endHour: 11 },
+  { chiIndex: 6, name: 'Ngọ', range: '11-13', icon: '🐴', startHour: 11, endHour: 13 },
+  { chiIndex: 7, name: 'Mùi', range: '13-15', icon: '🐐', startHour: 13, endHour: 15 },
+  { chiIndex: 8, name: 'Thân', range: '15-17', icon: '🐵', startHour: 15, endHour: 17 },
+  { chiIndex: 9, name: 'Dậu', range: '17-19', icon: '🐔', startHour: 17, endHour: 19 },
+  { chiIndex: 10, name: 'Tuất', range: '19-21', icon: '🐶', startHour: 19, endHour: 21 },
+  { chiIndex: 11, name: 'Hợi', range: '21-23', icon: '🐷', startHour: 21, endHour: 23 },
+];
+
+/**
+ * Tính Can Chi năm âm lịch
+ * @param {number} lunarYear
+ * @returns {string} VD: "Bính Ngọ"
+ */
+export function getCanChiYear(lunarYear) {
+  const can = CAN[(lunarYear + 6) % 10];
+  const chi = CHI[(lunarYear + 8) % 12];
+  return `${can} ${chi}`;
+}
+
+/**
+ * Tính Can Chi tháng âm lịch theo Ngũ Hổ Độn
+ * @param {number} lunarYear
+ * @param {number} lunarMonth (1-12)
+ * @returns {string} VD: "Bính Thân"
+ */
+export function getCanChiMonth(lunarYear, lunarMonth) {
+  const canYearIndex = (lunarYear + 6) % 10;
+  const startCanMonth1 = ((canYearIndex % 5) * 2 + 2) % 10;
+  const canMonth = CAN[(startCanMonth1 + (lunarMonth - 1)) % 10];
+  const chiMonth = CHI[(lunarMonth + 1) % 12];
+  return `${canMonth} ${chiMonth}`;
+}
+
+/**
+ * Tính Can Chi ngày theo số ngày Julian
+ * @param {number} dd
+ * @param {number} mm
+ * @param {number} yy
+ * @returns {{ can: string, chi: string, full: string, chiIndex: number }}
+ */
+export function getCanChiDay(dd, mm, yy) {
+  const jd = jdFromDate(dd, mm, yy);
+  const canIdx = (jd + 9) % 10;
+  const chiIdx = (jd + 1) % 12;
+  return {
+    can: CAN[canIdx],
+    chi: CHI[chiIdx],
+    full: `${CAN[canIdx]} ${CHI[chiIdx]}`,
+    chiIndex: chiIdx,
+  };
+}
+
+/**
+ * 6 nhóm giờ hoàng đạo theo Chi của ngày
+ */
+const ZODIAC_HOANG_DAO_MAP = {
+  0: [0, 1, 3, 6, 8, 9],    // Ngày Tý: Tý, Sửu, Mão, Ngọ, Thân, Dậu
+  6: [0, 1, 3, 6, 8, 9],    // Ngày Ngọ
+  1: [2, 3, 5, 8, 10, 11],  // Ngày Sửu: Dần, Mão, Tỵ, Thân, Tuất, Hợi
+  7: [2, 3, 5, 8, 10, 11],  // Ngày Mùi
+  2: [0, 1, 4, 5, 7, 10],   // Ngày Dần: Tý, Sửu, Thìn, Tỵ, Mùi, Tuất
+  8: [0, 1, 4, 5, 7, 10],   // Ngày Thân
+  3: [0, 2, 3, 6, 7, 9],    // Ngày Mão: Tý, Dần, Mão, Ngọ, Mùi, Dậu
+  9: [0, 2, 3, 6, 7, 9],    // Ngày Dậu
+  4: [2, 4, 5, 8, 9, 11],   // Ngày Thìn: Dần, Thìn, Tỵ, Thân, Dậu, Hợi
+  10: [2, 4, 5, 8, 9, 11],  // Ngày Tuất
+  5: [1, 4, 6, 7, 10, 11],  // Ngày Tỵ: Sửu, Thìn, Ngọ, Mùi, Tuất, Hợi
+  11: [1, 4, 6, 7, 10, 11], // Ngày Hợi
+};
+
+/**
+ * Lấy 12 khung giờ kèm đánh dấu Hoàng Đạo / Hắc Đạo cho ngày cụ thể
+ * @param {number} dd
+ * @param {number} mm
+ * @param {number} yy
+ * @param {number} [currentHour] - Giờ hiện tại (0-23) để đánh dấu isNow
+ */
+export function getZodiacHours(dd, mm, yy, currentHour = null) {
+  const { chiIndex } = getCanChiDay(dd, mm, yy);
+  const hoangDaoIndices = new Set(ZODIAC_HOANG_DAO_MAP[chiIndex] || []);
+
+  return ZODIAC_PERIODS.map((period) => {
+    const isHoangDao = hoangDaoIndices.has(period.chiIndex);
+    let isNow = false;
+    if (currentHour !== null) {
+      if (period.startHour === 23) {
+        isNow = currentHour === 23 || currentHour === 0;
+      } else {
+        isNow = currentHour >= period.startHour && currentHour < period.endHour;
+      }
+    }
+
+    return {
+      ...period,
+      isHoangDao,
+      isNow,
+    };
+  });
+}
+
+/**
+ * Lấy danh sách các sự kiện / ngày lễ sắp tới (dương lịch & âm lịch) kèm số ngày đếm ngược
+ * @param {Date} [baseDate]
+ * @param {Object} [holidays] - { solar: Record<string, string>, lunar: Record<string, string> }
+ * @param {number} [maxDaysAhead=60]
+ * @returns {Array<{ title: string, type: 'solar'|'lunar', targetDate: Date, dateStr: string, diffDays: number, countdownLabel: string, solarText: string, lunarText: string, dayOfWeek: string }>}
+ */
+export function getUpcomingEvents(
+  baseDate = new Date(),
+  holidays = { solar: {}, lunar: {}, international: {}, japan: {}, fun: {} },
+  maxDaysAhead = 60,
+  enabledTypes = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
+  customEvents = []
+) {
+  const start = new Date(baseDate);
+  start.setHours(0, 0, 0, 0);
+
+  const events = [];
+  const solarHolidays = holidays?.solar || {};
+  const lunarHolidays = holidays?.lunar || {};
+  const internationalHolidays = holidays?.international || {};
+  const japanHolidays = holidays?.japan || {};
+  const funHolidays = holidays?.fun || {};
+
+  const isSolarOn = enabledTypes?.solar !== false;
+  const isLunarOn = enabledTypes?.lunar !== false;
+  const isInternationalOn = enabledTypes?.international !== false;
+  const isJapanOn = Boolean(enabledTypes?.japan);
+  const isFunOn = Boolean(enabledTypes?.fun);
+  const isCustomOn = enabledTypes?.custom !== false;
+
+  for (let offset = 0; offset <= maxDaysAhead; offset++) {
+    const current = new Date(start);
+    current.setDate(start.getDate() + offset);
+
+    const dd = current.getDate();
+    const mm = current.getMonth() + 1;
+    const yy = current.getFullYear();
+    const solarKey = `${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+    const dateStr = `${yy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+    const countdownLabel = offset === 0 ? 'Hôm nay' : offset === 1 ? 'Còn 1 ngày' : `Còn ${offset} ngày`;
+    const solarText = `${String(dd).padStart(2, '0')}/${String(mm).padStart(2, '0')}/${yy}`;
+    const dayOfWeek = current.toLocaleDateString('vi-VN', { weekday: 'short' });
+
+    let lunarCache = null;
+    const getLunar = () => {
+      if (!lunarCache) {
+        lunarCache = solarToLunar(dd, mm, yy);
+      }
+      return lunarCache;
+    };
+
+    // 1. Kiểm tra lễ dương Việt Nam
+    if (isSolarOn && solarHolidays[solarKey]) {
+      const lunar = getLunar();
+      const canChiYear = getCanChiYear(lunar.year);
+      events.push({
+        title: solarHolidays[solarKey],
+        type: 'solar',
+        category: 'vietnam',
+        targetDate: current,
+        dateStr,
+        diffDays: offset,
+        countdownLabel,
+        solarText,
+        lunarText: `${lunar.day}/${lunar.month}, ${canChiYear}`,
+        dayOfWeek,
+      });
+    }
+
+    // 2. Kiểm tra lễ âm lịch Việt Nam & Á Đông
+    if (isLunarOn) {
+      const lunar = getLunar();
+      const lunarKey = `${String(lunar.month).padStart(2, '0')}-${String(lunar.day).padStart(2, '0')}`;
+      if (lunarHolidays[lunarKey]) {
+        const canChiYear = getCanChiYear(lunar.year);
+        events.push({
+          title: lunarHolidays[lunarKey],
+          type: 'lunar',
+          category: 'lunar',
+          targetDate: current,
+          dateStr,
+          diffDays: offset,
+          countdownLabel,
+          solarText,
+          lunarText: `${lunar.day}/${lunar.month}, ${canChiYear}`,
+          dayOfWeek,
+        });
+      }
+    }
+
+    // 3. Kiểm tra lễ quốc tế (LHQ & Thế giới)
+    if (isInternationalOn && internationalHolidays[solarKey]) {
+      const lunar = getLunar();
+      const canChiYear = getCanChiYear(lunar.year);
+      events.push({
+        title: internationalHolidays[solarKey],
+        type: 'international',
+        category: 'international',
+        targetDate: current,
+        dateStr,
+        diffDays: offset,
+        countdownLabel,
+        solarText,
+        lunarText: `${lunar.day}/${lunar.month}, ${canChiYear}`,
+        dayOfWeek,
+      });
+    }
+
+    // 4. Kiểm tra lễ Nhật Bản
+    if (isJapanOn && japanHolidays[solarKey]) {
+      const lunar = getLunar();
+      const canChiYear = getCanChiYear(lunar.year);
+      events.push({
+        title: japanHolidays[solarKey],
+        type: 'japan',
+        category: 'japan',
+        targetDate: current,
+        dateStr,
+        diffDays: offset,
+        countdownLabel,
+        solarText,
+        lunarText: `${lunar.day}/${lunar.month}, ${canChiYear}`,
+        dayOfWeek,
+      });
+    }
+
+    // 4. Kiểm tra ngày đặc biệt & Dev
+    if (isFunOn && funHolidays[solarKey]) {
+      const lunar = getLunar();
+      const canChiYear = getCanChiYear(lunar.year);
+      events.push({
+        title: funHolidays[solarKey],
+        type: 'fun',
+        category: 'fun',
+        targetDate: current,
+        dateStr,
+        diffDays: offset,
+        countdownLabel,
+        solarText,
+        lunarText: `${lunar.day}/${lunar.month}, ${canChiYear}`,
+        dayOfWeek,
+      });
+    }
+
+    // 5. Kiểm tra ngày kỷ niệm cá nhân (Custom Anniversaries)
+    if (isCustomOn && Array.isArray(customEvents) && customEvents.length > 0) {
+      const lunar = getLunar();
+      for (const anniv of customEvents) {
+        if (!anniv || !anniv.title) continue;
+        let isMatch = false;
+        if (anniv.calType === 'solar') {
+          isMatch = Number(anniv.day) === dd && Number(anniv.month) === mm;
+        } else if (anniv.calType === 'lunar') {
+          isMatch = Number(anniv.day) === lunar.day && Number(anniv.month) === lunar.month;
+        }
+        if (isMatch) {
+          const canChiYear = getCanChiYear(lunar.year);
+          let extraNote = '';
+          if (anniv.year && Number(anniv.year) > 0) {
+            const passedYears = yy - Number(anniv.year);
+            if (passedYears > 0) {
+              extraNote = ` (${passedYears} năm)`;
+            }
+          }
+          events.push({
+            id: anniv.id,
+            title: `${anniv.icon || '💖'} ${anniv.title}${extraNote}`,
+            type: 'custom',
+            category: 'custom',
+            targetDate: current,
+            dateStr,
+            diffDays: offset,
+            countdownLabel,
+            solarText,
+            lunarText: `${lunar.day}/${lunar.month}, ${canChiYear}`,
+            dayOfWeek,
+            isCustom: true,
+          });
+        }
+      }
+    }
+  }
+
+  events.sort((a, b) => a.diffDays - b.diffDays);
+  return events;
+}
+
+

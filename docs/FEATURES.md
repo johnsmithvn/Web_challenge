@@ -47,14 +47,26 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 - Khối Đã hoàn thành lọc theo khoảng ngày với preset; có thể bỏ hoàn thành hoặc xóa.
 - Guest có Task in-memory và mất khi reload. Đăng nhập mới sync Supabase, activity log, tag/link và XP.
 
-### Lặp lại, lịch và thông báo
+### Chế độ xem & Workspace Lịch
+- **5 chế độ xem linh hoạt:**
+  - `list` (Danh sách công việc): Chia việc theo Quá hạn, Hôm nay, Sắp tới; kèm thanh Mini Summary Bar (`Quá hạn | Hôm nay | Sắp tới`).
+  - `agenda` (Lịch biểu): Dải ngày 45 ngày quanh ngày chọn, hiển thị cả ngày lễ và task theo timeline dọc.
+  - `day` (Lịch Ngày): Lưới 24 giờ với trục thời gian thực (vạch đỏ), gom task cả ngày (All-day) và task có giờ.
+  - `week` (Lịch Tuần): 7 cột ngày tương thích cả Chủ Nhật hoặc Thứ Hai khởi đầu, bố trí overlapping task thông minh.
+  - `month` (Lịch Tháng): Hiển thị Task pending + completed, song song Dương lịch & Âm lịch Việt Nam, giới hạn chip thông minh và popup chi tiết ngày.
+- **Header cố định (Workspace pattern):** `CalendarToolbar` cố định ở đỉnh trang (100dvh workspace, cuộn nội bộ), không bị giật/nhảy layout khi chuyển giữa danh sách và các chế độ lịch.
 
-- Recurrence hỗ trợ interval/weekly/monthly; occurrence kế tiếp chỉ sinh sau khi hoàn thành occurrence
-  hiện tại và giữ recurrence chain.
-- Lịch tháng hiển thị Task pending + completed, ngày âm và holiday từ `holidays.json`. Ô ngày giới hạn
-  số chip theo sức chứa; phần dư hiện `+N nữa…`; panel ngày cho xem chi tiết.
-- Service worker nhận snapshot Task từ tab và có thể hiện thông báo khi còn được browser đánh thức.
-  Không bảo đảm timer chạy mỗi phút khi tab đóng vì browser có quyền suspend service worker.
+### Cột tiện ích Lịch Việt & Sự kiện (`CalendarWidgetPanel`)
+- **Lịch vạn niên & Can Chi:** Tra cứu ngày Dương lịch, Âm lịch, Can Chi Năm/Tháng/Ngày.
+- **Giờ Hoàng Đạo:** 12 khung giờ hoàng đạo theo Chi của ngày, tự động highlight giờ tốt và định vị giờ hiện tại.
+- **Đếm ngược sự kiện & Bật/Tắt danh mục:**
+  - 🟢 Ngày lễ Việt Nam (`solar`).
+  - 🟡 Ngày lễ Âm lịch (`lunar`).
+  - 🌐 Ngày lễ Quốc tế LHQ & Thế giới (`international`) với hơn 55 ngày lễ chính thức.
+  - 🔴 Ngày lễ Nhật Bản (`japan`).
+  - 🟣 Lễ hội Coder & Dân Geek 👾 (`fun`).
+  - 💖 Kỷ niệm của tôi (`custom`): Cho phép người dùng tự thêm ngày kỷ niệm (ngày cưới, hẹn hò, sinh nhật, ngày giỗ...) hỗ trợ cả Dương lịch và Âm lịch, tự động tính số năm đã trôi qua, lưu trữ an toàn trong `localStorage ('lh_custom_anniversaries')`.
+- Các toggle bật/tắt lễ phản hồi tức thì và đồng bộ sang toàn bộ 5 chế độ xem lịch.
 
 ### Detail, lịch sử và XP
 

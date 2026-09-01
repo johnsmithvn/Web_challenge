@@ -39,6 +39,8 @@ export default function MonthCalendar({
   setCurrentDate,
   startOnSunday: propStartOnSunday,
   hideToolbar = false,
+  holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
+  customAnniversaries = [],
 }) {
   const today = useMemo(() => new Date(), []);
   const [viewYear, setViewYear] = useState(() => (currentDate ? currentDate.getFullYear() : today.getFullYear()));
@@ -116,14 +118,45 @@ export default function MonthCalendar({
       const dateStr = `${viewYear}-${pad(viewMonth + 1)}-${pad(d)}`;
       const lunar = solarToLunar(d, viewMonth + 1, viewYear);
       const lunarKey = lunar.leap ? null : `${pad(lunar.month)}-${pad(lunar.day)}`;
-      const holidayOfficial = HOLIDAYS.solar[`${pad(viewMonth + 1)}-${pad(d)}`]
-        || (lunarKey ? HOLIDAYS.lunar[lunarKey] : null)
-        || null;
-      const holidayFun = (!holidayOfficial && HOLIDAYS.fun)
-        ? (HOLIDAYS.fun[`${pad(viewMonth + 1)}-${pad(d)}`] || null)
-        : null;
-      const holiday = holidayOfficial || holidayFun;
-      const holidayType = holidayOfficial ? 'official' : (holidayFun ? 'fun' : null);
+      const solarKey = `${pad(viewMonth + 1)}-${pad(d)}`;
+      let holiday = null;
+      let holidayType = null;
+
+      // 0. Ngày kỷ niệm cá nhân (ưu tiên cao nhất)
+      if (holidayToggles?.custom !== false && Array.isArray(customAnniversaries)) {
+        for (const anniv of customAnniversaries) {
+          if (!anniv || !anniv.title) continue;
+          if (anniv.calType === 'solar' && Number(anniv.day) === d && Number(anniv.month) === viewMonth + 1) {
+            holiday = `${anniv.icon || '💖'} ${anniv.title}`;
+            holidayType = 'custom';
+            break;
+          }
+          if (anniv.calType === 'lunar' && lunar && Number(anniv.day) === lunar.day && Number(anniv.month) === lunar.month) {
+            holiday = `${anniv.icon || '💖'} ${anniv.title}`;
+            holidayType = 'custom';
+            break;
+          }
+        }
+      }
+
+      if (!holiday) {
+        if (holidayToggles?.solar !== false && HOLIDAYS.solar[solarKey]) {
+          holiday = HOLIDAYS.solar[solarKey];
+          holidayType = 'official';
+        } else if (holidayToggles?.lunar !== false && lunarKey && HOLIDAYS.lunar[lunarKey]) {
+          holiday = HOLIDAYS.lunar[lunarKey];
+          holidayType = 'official';
+        } else if (holidayToggles?.international !== false && HOLIDAYS.international && HOLIDAYS.international[solarKey]) {
+          holiday = HOLIDAYS.international[solarKey];
+          holidayType = 'international';
+        } else if (holidayToggles?.japan && HOLIDAYS.japan && HOLIDAYS.japan[solarKey]) {
+          holiday = HOLIDAYS.japan[solarKey];
+          holidayType = 'japan';
+        } else if (holidayToggles?.fun && HOLIDAYS.fun && HOLIDAYS.fun[solarKey]) {
+          holiday = HOLIDAYS.fun[solarKey];
+          holidayType = 'fun';
+        }
+      }
 
       const tasks = tasksByDay[dateStr] || [];
       const pending = pendingByDay[dateStr] || [];
@@ -131,7 +164,7 @@ export default function MonthCalendar({
       map[d] = { dateStr, done, holiday, holidayType, lunar, tasks, pending };
     }
     return map;
-  }, [viewYear, viewMonth, daysInMonth, tasksByDay, pendingByDay]);
+  }, [viewYear, viewMonth, daysInMonth, tasksByDay, pendingByDay, holidayToggles, customAnniversaries]);
 
   const todayStr = toDateStr(today);
 
