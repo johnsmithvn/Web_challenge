@@ -154,15 +154,15 @@ nhập không tự trở thành mẫu số ngân sách.
 
 ### Điều hướng
 
-- `overview`: Tổng quan; query `view=budget|stats` mở Ngân sách hoặc Thống kê.
+- `overview`: Tổng quan (dashboard thu chi, nhịp chi) và query `view=stats` mở Thống kê. Tab Ngân sách cứng đã được lược bỏ để tinh gọn trải nghiệm.
 - `add`: nhập nhanh bằng form, câu tự nhiên hoặc shortcut.
 - `list`: tìm/lọc/nhóm transaction, sửa/xóa, CSV export. Ngoài chip loại còn có nút **Lọc** (icon
   phễu) mở bộ lọc nhóm · danh mục con · khoảng ngày; danh mục con chỉ chọn được sau khi chọn nhóm cha
   và bị bỏ khi đổi nhóm. Mọi điều kiện cộng dồn (AND) với chip và ô tìm, khoảng ngày lọc **trong** kỳ
   đang xem chứ không đổi kỳ. Dòng tổng hiện điều kiện đang bật + tổng chi của phần đang lọc; CSV xuất
   đúng phần đang lọc.
-- `cats`: taxonomy chi/thu và override label/màu/icon/subcategory.
-- `recurring`: hóa đơn, thu định kỳ, khoản vay, thẻ và cho vay.
+- `recurring`: **Định kỳ & Quỹ** (hóa đơn, thu định kỳ, khoản vay, thẻ tín dụng, cho vay và Quỹ tiết kiệm).
+- `cats`: taxonomy chi/thu và override label/màu/icon/subcategory (đặt ở vị trí dưới cùng thanh điều hướng).
 
 ### Hành vi chính
 
@@ -177,8 +177,8 @@ nhập không tự trở thành mẫu số ngân sách.
   thu, không nhân số ngày. Chọn sổ đang mở trong danh sách là app điền sẵn `số tiền × lãi × số ngày đã
   gửi / 365`; sổ chưa khai trong app thì có máy tính tại chỗ (số tiền · lãi %/năm · ngày gửi). Số cuối
   vẫn do user sửa theo giấy rút của ngân hàng.
-- Quỹ tiết kiệm có nhiều nơi gửi, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ.
-- Budget theo nhóm chi; 50/30/20 tính trên tổng hạn mức user đặt, không trên income.
+- Quỹ tiết kiệm: Nằm thành một phân đoạn (tab) riêng trong màn **Định kỳ & Quỹ** (`/finance/recurring`), quản lý nhiều nơi gửi/sổ ngân hàng, lãi suất bình quân, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ. Nút tóm tắt quỹ trên Dashboard Tổng quan điều hướng thẳng vào tab này.
+- Module Ngân sách (hạn mức cứng) đã được lược bỏ; hệ thống tập trung vào theo dõi nhịp chi thực tế, phân tích xu hướng và tích lũy quỹ.
 - Transaction có thể gắn Task bằng `task_id`; UI hiện cho chọn/cập nhật liên kết, chưa có màn tổng chi
   theo Task hoặc điều hướng mở Task từ Finance.
 - Inbox conversion có thể prefill transaction/hóa đơn; sau khi source Inbox bị xóa, reference được

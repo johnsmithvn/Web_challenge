@@ -4,9 +4,9 @@ import { useFinance } from '../hooks/useFinance';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../components/ConfirmModal';
 import {
-  listPeriodOptions, currentMonthPeriod, periodFromKey, periodTotals,
+  listPeriodOptions, currentMonthPeriod, periodFromKey,
 } from '../utils/financeLogic';
-import { money, Segmented, PeriodPicker } from '../components/finance/parts';
+import { Segmented, PeriodPicker } from '../components/finance/parts';
 import AppIcon from '../components/AppIcon';
 import OverviewScreen, { OVERVIEW_TAB_OPTIONS } from '../components/finance/OverviewScreen';
 import AddScreen from '../components/finance/AddScreen';
@@ -17,17 +17,17 @@ import '../styles/finance.css';
 import '../styles/finance-handoff.css';
 import '../styles/skeleton.css';
 
-const RECURRING_SEGS = ['out', 'in', 'loan', 'card', 'lend'];
+const RECURRING_SEGS = ['out', 'in', 'loan', 'card', 'lend', 'saving'];
 
 const SCREENS = [
   { key: 'overview',  icon: 'chartDonut', label: 'Tổng quan', title: 'Hôm nay tiêu gì?' },
   { key: 'add',       icon: 'plusCircle', label: 'Nhập nhanh', title: 'Ghi một khoản' },
   { key: 'list',      icon: 'receipt', label: 'Giao dịch', title: 'Giao dịch' },
+  { key: 'recurring', icon: 'calendar', label: 'Định kỳ & Quỹ', title: 'Định kỳ, nghĩa vụ & Quỹ tiết kiệm' },
   { key: 'cats',      icon: 'tree', label: 'Danh mục', title: 'Danh mục & schema' },
-  { key: 'recurring', icon: 'calendar', label: 'Hóa đơn', title: 'Hóa đơn & nghĩa vụ' },
 ];
 const VALID_PERIOD_KEY = /^(?:\d{4}-(?:0[1-9]|1[0-2])|year-\d{4}|all)$/;
-const OVERVIEW_TABS = new Set(['overview', 'budget', 'stats']);
+const OVERVIEW_TABS = new Set(['overview', 'stats']);
 
 export default function FinancePage() {
   const fin = useFinance();
@@ -63,14 +63,6 @@ export default function FinancePage() {
   const [catsTab, setCatsTab] = useState('cats');
   const [handoff, setHandoff] = useState(null);   // prefill từ Inbox
   const [searchQuery, setSearchQuery] = useState('');
-  const [savingAsExpense, setSavingAsExpenseState] = useState(
-    () => localStorage.getItem('lh_finance_saving_as_expense') === 'true',
-  );
-  const setSavingAsExpense = useCallback((enabled) => {
-    const next = Boolean(enabled);
-    setSavingAsExpenseState(next);
-    localStorage.setItem('lh_finance_saving_as_expense', String(next));
-  }, []);
   // Form đang gõ dở mà bấm sang chỗ khác thì mất trắng — hỏi trước khi bỏ.
   const confirmDiscard = useCallback(() => confirm({
     title: 'Bỏ nội dung đang nhập?',
@@ -107,7 +99,7 @@ export default function FinancePage() {
 
   // Bookmark cũ vẫn mở đúng nội dung, nhưng Phân tích không còn là một màn riêng.
   useEffect(() => {
-    if (routeScreen === 'analyze') navigate('/finance/overview?view=budget', { replace: true });
+    if (routeScreen === 'analyze') navigate('/finance/overview?view=stats', { replace: true });
   }, [navigate, routeScreen]);
 
   // Phím tắt N → Nhập nhanh (bỏ qua khi đang gõ trong input).
@@ -137,18 +129,6 @@ export default function FinancePage() {
     } catch { /* bỏ qua payload hỏng */ }
   }, [location.key, navigate]);
 
-  // Chip ngân sách header — LUÔN tháng đang chạy, kể cả khi Tổng quan xem cả năm.
-  const monthChip = useMemo(() => {
-    const cur = currentMonthPeriod(fin.today);
-    const t = periodTotals(fin.transactions, cur, { savingAsExpense });
-    const limit = fin.budgets.reduce((s, b) => s + b.limit_amount, 0);
-    const end = new Date(`${cur.to}T00:00:00`);
-    const now = new Date(`${fin.today}T00:00:00`);
-    const daysLeft = Math.max(0, Math.round((end - now) / 86400000) + 1);
-    return { spent: t.total, limit, remaining: Math.max(0, limit - t.total),
-      pct: limit ? Math.round((t.total / limit) * 100) : null, daysLeft };
-  }, [fin.transactions, fin.budgets, fin.today, savingAsExpense]);
-
   if (!fin.enabled) {
     return (
       <div className="finance-module finance-module--gate">
@@ -163,15 +143,14 @@ export default function FinancePage() {
     catsTab, setCatsTab, handoff, startHandoff: setHandoff,
     clearHandoff: () => setHandoff(null), showToast,
     confirmDelete, confirmDiscard,
-    savingAsExpense, setSavingAsExpense,
     searchQuery, setSearchQuery,
   };
   const active = SCREENS.find(s => s.key === screen);
-  const headerSub = screen === 'overview' ? `${period.label} · hạn mức tháng đang chạy`
+  const headerSub = screen === 'overview' ? `${period.label} · tổng quan chi tiêu`
     : screen === 'add' ? 'Số tiền trước — mọi trường còn lại đều đã có sẵn giá trị mặc định'
     : screen === 'list' ? `${period.label} · lọc cùng kỳ với Tổng quan`
     : screen === 'cats' ? '11 nhóm chi · 7 nhóm thu · cấu trúc dữ liệu'
-    : 'Hóa đơn, khoản thu, khoản vay và thẻ tín dụng';
+    : 'Định kỳ, nghĩa vụ và Quỹ tiết kiệm';
 
   return (
     <div className="finance-module">
@@ -205,21 +184,6 @@ export default function FinancePage() {
                 ariaLabel="Chế độ Tổng quan"
               />
             </div>
-          )}
-
-          {Boolean(monthChip.limit) && (
-            <button className="fin-header__chip" onClick={() => go('overview', { overviewTab: 'budget' })}
-              title="Ngân sách tháng đang chạy" aria-busy={!fin.hasLoaded}>
-              {fin.hasLoaded ? (
-                <>
-                  <span><strong>{money(monthChip.remaining)}</strong><small>còn lại</small></span>
-                  <i><b style={{ width: `${Math.min(100, monthChip.pct || 0)}%` }} /></i>
-                  <small>{monthChip.daysLeft} ngày</small>
-                </>
-              ) : (
-                <span className="sk-list"><span className="sk-line" style={{ '--w': '82px' }} /></span>
-              )}
-            </button>
           )}
 
           {screen === 'list' && (

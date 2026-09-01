@@ -11,13 +11,15 @@ import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField, 
 import AppIcon from '../AppIcon';
 import InfoTip from '../InfoTip';
 import SkeletonList from '../SkeletonList';
+import { SavingsWorkspace } from './AnalyzeScreen';
 
 const SEGMENTS = [
-  { value: 'out',  label: 'Phải trả',   addLabel: 'Thêm hóa đơn', editLabel: 'Sửa hóa đơn', createLabel: 'Tạo hóa đơn' },
-  { value: 'in',   label: 'Sẽ nhận',    addLabel: 'Thêm khoản thu', editLabel: 'Sửa khoản thu', createLabel: 'Tạo khoản thu' },
-  { value: 'loan', label: 'Khoản vay',  addLabel: 'Thêm khoản vay', editLabel: 'Sửa khoản vay', createLabel: 'Tạo khoản vay' },
-  { value: 'card', label: 'Thẻ tín dụng', addLabel: 'Thêm thẻ', editLabel: 'Sửa thẻ', createLabel: 'Tạo thẻ' },
-  { value: 'lend', label: 'Cho vay',   addLabel: 'Thêm khoản cho vay', editLabel: 'Sửa khoản cho vay', createLabel: 'Ghi khoản cho vay' },
+  { value: 'out',    label: 'Phải trả',      addLabel: 'Thêm hóa đơn', editLabel: 'Sửa hóa đơn', createLabel: 'Tạo hóa đơn' },
+  { value: 'in',     label: 'Sẽ nhận',       addLabel: 'Thêm khoản thu', editLabel: 'Sửa khoản thu', createLabel: 'Tạo khoản thu' },
+  { value: 'loan',   label: 'Khoản vay',     addLabel: 'Thêm khoản vay', editLabel: 'Sửa khoản vay', createLabel: 'Tạo khoản vay' },
+  { value: 'card',   label: 'Thẻ tín dụng',  addLabel: 'Thêm thẻ', editLabel: 'Sửa thẻ', createLabel: 'Tạo thẻ' },
+  { value: 'lend',   label: 'Cho vay',       addLabel: 'Thêm khoản cho vay', editLabel: 'Sửa khoản cho vay', createLabel: 'Ghi khoản cho vay' },
+  { value: 'saving', label: 'Quỹ tiết kiệm', addLabel: 'Tạo quỹ mới', editLabel: 'Sửa quỹ', createLabel: 'Tạo quỹ' },
 ];
 
 /**
@@ -265,20 +267,23 @@ export default function RecurringScreen({ fin, nav }) {
     loan: fin.loans.filter(loan => !loan.closed_at).length,
     card: fin.cards.filter(card => !card.closed_at).length,
     lend: fin.lendings.filter(l => !l.closed_at).length,
+    saving: fin.goals.filter(goal => !goal.closed_at).length,
   };
   // Số đếm là `hint` để nó xám nhạt như tab Danh mục/Schema, không dính liền vào nhãn.
   const segmentOptions = SEGMENTS.map(option => ({ ...option, hint: String(counts[option.value]) }));
 
   return (
     <div className="fin-recurring">
-      <section className="fin-obligation-summary">
-        <div><span>Tháng {Number(month)}/{year} còn phải trả</span><strong>{money(billTotal)}</strong></div>
-        {overdueBills.length > 0 && <div className="fin-obligation-summary__overdue">
-          <AppIcon name="warning" size={16} weight="fill" />
-          <strong>{overdueBills.length} hóa đơn quá hạn · {money(overdueTotal)}</strong>
-        </div>}
-        <small>Hôm nay {fin.today.split('-').reverse().join('/')}</small>
-      </section>
+      {seg !== 'saving' && (
+        <section className="fin-obligation-summary">
+          <div><span>Tháng {Number(month)}/{year} còn phải trả</span><strong>{money(billTotal)}</strong></div>
+          {overdueBills.length > 0 && <div className="fin-obligation-summary__overdue">
+            <AppIcon name="warning" size={16} weight="fill" />
+            <strong>{overdueBills.length} hóa đơn quá hạn · {money(overdueTotal)}</strong>
+          </div>}
+          <small>Hôm nay {fin.today.split('-').reverse().join('/')}</small>
+        </section>
+      )}
 
       {seg === 'out' && (
         <details className="fin-explain">
@@ -311,7 +316,7 @@ export default function RecurringScreen({ fin, nav }) {
         </button>
       </div>
 
-      {adding && <RuleForm seg={seg} fin={fin} nav={nav} initial={draft} onDirty={setDirty}
+      {adding && seg !== 'saving' && <RuleForm seg={seg} fin={fin} nav={nav} initial={draft} onDirty={setDirty}
         onDone={(saved) => (saved ? discardAddForm() : closeAddForm())} />}
 
       {/* Tải xong mới biết có bao nhiêu dòng; chưa xong mà hiện "Chưa có hóa đơn nào"
@@ -324,6 +329,7 @@ export default function RecurringScreen({ fin, nav }) {
         {seg === 'loan' && <LoansList fin={fin} nav={nav} tasks={pendingTasks} />}
         {seg === 'card' && <CardsList fin={fin} nav={nav} tasks={pendingTasks} />}
         {seg === 'lend' && <LendsList fin={fin} nav={nav} tasks={pendingTasks} />}
+        {seg === 'saving' && <SavingsWorkspace fin={fin} nav={nav} addingGoal={adding} onDoneGoal={discardAddForm} />}
       </>}
     </div>
   );

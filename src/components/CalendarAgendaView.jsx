@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar } from '../utils/lunarUtils';
 import HOLIDAYS from '../data/holidays.json';
@@ -11,6 +11,7 @@ import '../styles/calendar-widget.css';
  * - Cột trái: Số ngày, Thứ, Tháng
  * - Cột phải: Sự kiện cả ngày (Lễ Tết) + Danh sách công việc có deadline
  * - Nếu trống: Hiển thị "Không có sự kiện"
+ * - Cuộn xuống đáy tự động nạp thêm 10 ngày liên tiếp
  */
 export default function CalendarAgendaView({
   pendingTasks = [],
@@ -22,8 +23,27 @@ export default function CalendarAgendaView({
   customAnniversaries = [],
 }) {
   const [completedByDay, setCompletedByDay] = useState({});
+  const [daysCount, setDaysCount] = useState(45);
+  const isLoadingMore = useRef(false);
 
-  // Tạo dải ngày: từ 3 ngày trước đến 45 ngày tới quanh currentDate
+  // Reset daysCount về 45 khi currentDate thay đổi
+  useEffect(() => {
+    setDaysCount(45);
+  }, [currentDate]);
+
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    // Khi cuộn gần tới đáy (< 250px) thì tự động load thêm 10 ngày
+    if (scrollHeight - scrollTop - clientHeight < 250 && !isLoadingMore.current) {
+      isLoadingMore.current = true;
+      setDaysCount((prev) => prev + 10);
+      setTimeout(() => {
+        isLoadingMore.current = false;
+      }, 300);
+    }
+  };
+
+  // Tạo dải ngày: từ 2 ngày trước đến daysCount ngày tới quanh currentDate
   const days = useMemo(() => {
     const start = new Date(currentDate || new Date());
     start.setDate(start.getDate() - 2);
@@ -32,7 +52,7 @@ export default function CalendarAgendaView({
     const result = [];
     const todayStr = toDateStr(new Date());
 
-    for (let i = 0; i < 45; i++) {
+    for (let i = 0; i < daysCount; i++) {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       const dateStr = toDateStr(d);
@@ -95,7 +115,7 @@ export default function CalendarAgendaView({
       });
     }
     return result;
-  }, [currentDate, holidayToggles, customAnniversaries]);
+  }, [currentDate, holidayToggles, customAnniversaries, daysCount]);
 
   // Tải completed tasks cho khoảng ngày hiển thị
   useEffect(() => {
@@ -128,7 +148,12 @@ export default function CalendarAgendaView({
   }, [pendingTasks]);
 
   return (
-    <div className="cal-agenda-view" role="region" aria-label="Lịch biểu chi tiết">
+    <div
+      className="cal-agenda-view"
+      role="region"
+      aria-label="Lịch biểu chi tiết"
+      onScroll={handleScroll}
+    >
       <div className="cal-agenda-list">
         {days.map((day) => {
           const dayTasks = pendingByDay[day.dateStr] || [];
@@ -215,6 +240,11 @@ export default function CalendarAgendaView({
             </div>
           );
         })}
+
+        <div className="cal-agenda-load-more">
+          <AppIcon name="arrowsClockwise" size={13} className="spin-slow" />
+          <span>Đang hiển thị {daysCount} ngày · Cuộn xuống để tự động nạp thêm 10 ngày tiếp theo</span>
+        </div>
       </div>
     </div>
   );

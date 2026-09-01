@@ -230,4 +230,26 @@ assert.doesNotMatch(allScreensCode, /onClick=\{\(\) => fin\.delete/,
   'tuyệt đối không được xóa dữ liệu trực tiếp khi click nút mà bỏ qua modal xác nhận');
 console.log('destructive action confirmation guards: OK');
 
+/* ── 7. Kiến trúc & Hợp đồng Navigation Finance ───────────── */
+const navbarSrc = readFileSync(new URL('../../components/Navbar.jsx', import.meta.url), 'utf8');
+const overviewSrc = readFileSync(new URL('../../components/finance/OverviewScreen.jsx', import.meta.url), 'utf8');
+
+// 1. RecurringScreen phải có segment 'saving' (Quỹ tiết kiệm)
+assert.match(recurringSrc, /value:\s*'saving'/, 'RecurringScreen phải có segment saving');
+
+// 2. OverviewScreen tuyệt đối không còn tab 'budget'
+assert.doesNotMatch(overviewSrc, /value:\s*'budget'/, 'OverviewScreen không còn tab budget');
+
+// 3. Navbar FINANCE_NAV: cats ở cuối cùng, recurring đổi tên Định kỳ & Quỹ
+assert.match(navbarSrc, /to:\s*'\/finance\/recurring',\s*icon:\s*'calendar',\s*label:\s*'Định kỳ & Quỹ'/, 'recurring được đổi tên thành Định kỳ & Quỹ');
+const catsIdxNavbar = navbarSrc.indexOf("to: '/finance/cats'");
+const recurringIdxNavbar = navbarSrc.indexOf("to: '/finance/recurring'");
+assert.ok(catsIdxNavbar > recurringIdxNavbar, 'Danh mục phải nằm dưới Định kỳ & Quỹ trong Navbar');
+
+// 4. FinancePage SCREENS: cats ở cuối cùng
+const catsIdxPage = pageSrc.indexOf("key: 'cats'");
+const recurringIdxPage = pageSrc.indexOf("key: 'recurring'");
+assert.ok(catsIdxPage > recurringIdxPage, 'Danh mục phải nằm dưới Định kỳ & Quỹ trong FinancePage');
+console.log('finance navigation and segment contract: OK');
+
 console.log('\n✅ financeScreensContract — tất cả hợp đồng màn hình PASS (100% covered)');

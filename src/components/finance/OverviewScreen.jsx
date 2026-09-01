@@ -13,7 +13,6 @@ import '../../styles/skeleton.css';   // dùng .sk-* trực tiếp, không qua S
 
 export const OVERVIEW_TAB_OPTIONS = [
   { value: 'overview', label: 'Tổng quan', icon: 'chartDonut' },
-  { value: 'budget', label: 'Ngân sách', icon: 'trend' },
   { value: 'stats', label: 'Thống kê', icon: 'chartLine' },
 ];
 
@@ -62,7 +61,7 @@ export default function OverviewScreen({ fin, nav }) {
           ? <OverviewSkeleton />
           : nav.overviewTab === 'overview'
             ? <OverviewDashboard fin={fin} nav={nav} />
-            : <AnalyzeScreen fin={fin} nav={nav} mode={nav.overviewTab} />}
+            : <AnalyzeScreen fin={fin} nav={nav} />}
       </div>
     </div>
   );
@@ -86,8 +85,8 @@ function OverviewDashboard({ fin, nav }) {
   const period = nav.period;
 
   const totals = useMemo(
-    () => periodTotals(transactions, period, { savingAsExpense: nav.savingAsExpense }),
-    [transactions, period, nav.savingAsExpense],
+    () => periodTotals(transactions, period),
+    [transactions, period],
   );
   // Kỳ liền trước nằm ngoài cửa sổ đã fetch thì KHÔNG so sánh: state chỉ có giao
   // dịch gắn quy tắc của kỳ đó, "giảm 80% so với kỳ trước" sẽ là con số bịa.
@@ -96,13 +95,11 @@ function OverviewDashboard({ fin, nav }) {
     return range && nav.dataFrom && range.from < nav.dataFrom ? null : range;
   }, [period, nav.dataFrom]);
   const cmp = useMemo(
-    () => (prevRange ? comparePeriods(transactions, transactions, period, prevRange, today,
-      { savingAsExpense: nav.savingAsExpense }) : null),
-    [transactions, period, prevRange, today, nav.savingAsExpense]);
+    () => (prevRange ? comparePeriods(transactions, transactions, period, prevRange, today) : null),
+    [transactions, period, prevRange, today]);
   const rhythm = useMemo(
-    () => spendingRhythm(transactions, { from: period.from, to: period.to, unit: period.unit },
-      { savingAsExpense: nav.savingAsExpense }),
-    [transactions, period, nav.savingAsExpense]);
+    () => spendingRhythm(transactions, { from: period.from, to: period.to, unit: period.unit }),
+    [transactions, period]);
 
   // Cảnh báo thẻ tới hạn (≤7 ngày hoặc quá hạn).
   const cardAlerts = useMemo(() => cards
@@ -254,7 +251,7 @@ function OverviewDashboard({ fin, nav }) {
         </section>
       </div>
 
-      <button className="fin-card fin-card--btn fin-fund-summary" onClick={() => nav.go('overview', { overviewTab: 'budget' })}>
+      <button className="fin-card fin-card--btn fin-fund-summary" onClick={() => nav.go('recurring', { recurringSeg: 'saving' })}>
         <span className="fin-fund-summary__icon"><AppIcon name="piggyBank" size={19} weight="duotone" /></span>
         <span><strong>Quỹ tiết kiệm</strong><small>{goals.length} quỹ · lãi bình quân {fund.weightedRate}%/năm</small></span>
         <b>{money(fund.total)}</b><AppIcon name="caretRight" size={14} />

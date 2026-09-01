@@ -20,11 +20,13 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Desktop: bottom-right of content area */
+/* Desktop: góc dưới bên trái của khu vực làm việc (ngay cạnh Sidebar)
+   Tránh hoàn toàn việc che khuất Right Widget Panel, thanh cuộn và các công tắc góc phải */
 @media (min-width: 769px) {
   .qc-fab {
     bottom: 2rem;
-    right: 2rem;
+    left: calc(var(--sidebar-width, 232px) + 1.75rem);
+    right: auto;
   }
 }
 

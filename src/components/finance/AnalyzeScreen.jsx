@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils/currencyUtils';
 import {
-  periodTotals, budgetBreakdown, currentMonthPeriod, suggestedDailySpend,
+  periodTotals, currentMonthPeriod,
   monthStart, monthEnd, parseYmd, fundBalance, maturityWarn,
 } from '../../utils/financeLogic';
 import { money, catInfo, Segmented, TaskPicker, FinanceIcon, DateField } from './parts';
@@ -27,96 +27,34 @@ function compactMoney(value) {
   return money(amount);
 }
 
-function Ring({ pct, color = '#9184d9', size = 148 }) {
-  const r = 58, c = 2 * Math.PI * r, p = Math.min(100, pct || 0);
-  return (
-    <svg width={size} height={size} viewBox="0 0 148 148" className="fin-ring" role="img" aria-label={`Đã dùng ${pct ?? 0}% hạn mức`}>
-      <circle cx="74" cy="74" r={r} fill="none" stroke="#4b4e5b" strokeWidth="14" />
-      <circle cx="74" cy="74" r={r} fill="none" stroke={color} strokeWidth="14" strokeLinecap="butt"
-        strokeDasharray={c} strokeDashoffset={c * (1 - p / 100)} transform="rotate(-90 74 74)" />
-      <text x="74" y="72" textAnchor="middle" fill="#fff" fontSize="24" fontWeight="600">{pct == null ? '—' : `${pct}%`}</text>
-      <text x="74" y="91" textAnchor="middle" fill="#b2b6ca" fontSize="10">đã dùng</text>
-    </svg>
-  );
-}
-
-export default function AnalyzeScreen({ fin, nav, mode = 'budget' }) {
+export default function AnalyzeScreen({ fin, nav }) {
   return (
     <div className="fin-analyze">
-      {mode === 'budget' ? <BudgetTab fin={fin} nav={nav} /> : <StatsTab fin={fin} nav={nav} />}
+      <StatsTab fin={fin} nav={nav} />
     </div>
   );
 }
 
-// ── Tab Ngân sách (ghim tháng đang chạy) ─────────────────────────────────────
-function BudgetTab({ fin, nav }) {
-  const [editingBudgets, setEditingBudgets] = useState(false);
-  const cur = currentMonthPeriod(fin.today);
-  const totals = useMemo(
-    () => periodTotals(fin.transactions, cur, { savingAsExpense: nav.savingAsExpense }),
-    [fin.transactions, cur, nav.savingAsExpense],
-  );
-  const bb = useMemo(() => budgetBreakdown(totals, fin.budgets, fin.cats), [totals, fin.budgets, fin.cats]);
-  const daily = suggestedDailySpend(bb.totalLimit, bb.totalSpent, fin.today, cur.to);
-  const fund = fundBalance(fin.deposits.filter(deposit => !deposit.closed_on));
-
-  return (
-    <div className="fin-budget">
-      <p className="fin-note">Ngân sách luôn tính cho <strong>tháng đang chạy</strong> ({cur.label}) — là công cụ điều khiển, không phải báo cáo.</p>
-
-      <div className="fin-budget-overview">
-        <section className="fin-budget-hero">
-          <div className="fin-budget-hero__month">{cur.label}</div>
-          <Ring pct={bb.pct} />
-          <div className="fin-budget-hero__figures"><strong>{money(bb.totalSpent)}</strong><span>/ {money(bb.totalLimit)}</span></div>
-          <p>Hạn mức luôn tính cho tháng đang chạy, không đổi theo kỳ báo cáo ở Tổng quan.</p>
-          <div className="fin-budget-hero__metrics">
-            <span><strong>{daily.daysLeft}</strong><small>ngày còn lại</small></span>
-            <span><strong>{money(daily.perDay)}</strong><small>nên tiêu / ngày</small></span>
-          </div>
-        </section>
-
-        <section className="fin-budget-limits">
-          <div className="fin-budget-limits__head"><div><h2>Hạn mức theo nhóm</h2><p>Tổng hạn mức hiện tại {money(bb.totalLimit)}</p></div><button className="fin-btn fin-btn--ghost fin-btn--sm" onClick={() => setEditingBudgets(v => !v)}><AppIcon name={editingBudgets ? 'check' : 'gear'} size={14} /> {editingBudgets ? 'Xong' : 'Chỉnh hạn mức'}</button></div>
-          <div className="fin-budget-limits__rows">
-            {bb.categories.map(c => <BudgetRow key={c.categoryId} cat={c} cats={fin.cats} editing={editingBudgets} onSave={(v) => fin.upsertBudget(c.categoryId, v)} />)}
-          </div>
-        </section>
-      </div>
-
-      <SavingsWorkspace fin={fin} nav={nav} total={fund} monthTotals={totals} />
-      <BudgetFit fin={fin} bb={bb} />
-    </div>
-  );
-}
-
-function BudgetRow({ cat, cats, editing, onSave }) {
-  const [v, setV] = useState(cat.limit ? String(cat.limit) : '');
-  // Đã có hạn mức = ô này đang mang số ĐÃ LƯU, nên auto-K sẽ nhân nó thêm 1.000 lần chỉ
-  // vì con trỏ rời ô (onBlur lưu, không cần gõ gì). Chưa có hạn mức thì đây là ô nhập
-  // mới thật, giữ auto-K theo preference như các ô tiền khác.
-  const limitOpts = cat.limit ? { autoK: false } : undefined;
-  const pct = cat.pct || 0;
-  const over = cat.limit > 0 && cat.spent > cat.limit;
-  return (
-    <div className="fin-budgetrow">
-      <div className="fin-budgetrow__head"><span className="fin-budgetrow__lbl"><FinanceIcon name={cat.icon} cats={cats} size={15} /> {cat.label}</span>{over && <span className="fin-budgetrow__state">Vượt {money(cat.spent - cat.limit)}</span>}<span>{money(cat.spent)} / {money(cat.limit)}</span></div>
-      <div className="fin-budgetrow__bar"><div style={{ width: `${Math.min(100, pct)}%`, background: over ? '#b5abfc' : cat.color }} /></div>
-      {editing && <input className="fin-input fin-input--sm" inputMode="numeric" pattern="[0-9]*" placeholder="Nhập hạn mức" aria-label={`Hạn mức cho ${cat.label}`} value={v}
-          onChange={e => setV(sanitizeDigits(e.target.value))}
-          onBlur={() => onSave(parseCurrencyInput(v, limitOpts) || 0)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onSave(parseCurrencyInput(v, limitOpts) || 0); e.target.blur(); } }} />}
-    </div>
-  );
-}
-
-function SavingsWorkspace({ fin, nav, total, monthTotals }) {
+export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
   const [panel, setPanel] = useState(null);
-  const close = () => setPanel(null);
-  const activeGoals = fin.goals.filter(goal => !goal.closed_at);
-  const activeDeposits = fin.deposits.filter(deposit => !deposit.closed_on);
+  const close = () => {
+    setPanel(null);
+    if (onDoneGoal) onDoneGoal();
+  };
+  const activeGoals = useMemo(() => fin.goals.filter(goal => !goal.closed_at), [fin.goals]);
+  const activeDeposits = useMemo(() => fin.deposits.filter(deposit => !deposit.closed_on), [fin.deposits]);
   const yearlyInterest = activeDeposits.reduce((sum, deposit) => sum + deposit.amount * (deposit.rate || 0) / 100, 0);
   const banks = new Set(activeDeposits.map(deposit => deposit.bank).filter(Boolean)).size;
+
+  const cur = useMemo(() => currentMonthPeriod(fin.today), [fin.today]);
+  const monthTotals = useMemo(
+    () => periodTotals(fin.transactions, cur),
+    [fin.transactions, cur],
+  );
+  const total = useMemo(
+    () => fundBalance(activeDeposits),
+    [activeDeposits],
+  );
   return (
     <section className="fin-savings-workspace">
       <div className="fin-savings__header">
@@ -124,15 +62,9 @@ function SavingsWorkspace({ fin, nav, total, monthTotals }) {
         <button className="fin-btn fin-btn--secondary fin-btn--sm" onClick={() => setPanel({ kind: 'goal' })}><AppIcon name="plus" size={14} /> Tạo quỹ mới</button>
       </div>
 
-      {panel?.kind === 'goal' && <GoalForm fin={fin} nav={nav} goal={panel.goal} onDone={close} />}
+      {(panel?.kind === 'goal' || addingGoal) && <GoalForm fin={fin} nav={nav} goal={panel?.goal} onDone={close} />}
       {panel?.kind === 'deposit' && <DepositForm fin={fin} nav={nav} goal={panel.goal} deposit={panel.deposit} onDone={close} />}
       {panel?.kind === 'move' && <SavingMoveForm fin={fin} goal={panel.goal} dir={panel.dir} onDone={close} />}
-
-      <label className="fin-saving-toggle">
-        <span className="fin-saving-toggle__icon"><AppIcon name="piggyBank" size={19} weight="duotone" /></span>
-        <span className="fin-saving-toggle__copy"><strong>Tính tiền để dành như một khoản chi</strong><small>{nav.savingAsExpense ? 'Đang bật: tiền gửi vào quỹ được tính là Phải trả; tiền rút ra không bị tính lại.' : 'Đang tắt: để dành nằm ngoài biểu đồ chi. Bật nếu bạn theo cách “trả cho mình trước”.'}</small></span>
-        <input type="checkbox" checked={nav.savingAsExpense} onChange={e => nav.setSavingAsExpense(e.target.checked)} /><span className="fin-switch" aria-hidden="true" />
-      </label>
 
       <div className="fin-deposit-ledger">
         <div className="fin-deposit-ledger__head"><div><h3>Tiền đang gửi ở đâu</h3><p>{activeDeposits.length} nơi · {banks} ngân hàng</p></div><button className="fin-btn fin-btn--secondary fin-btn--sm" disabled={!activeGoals.length} onClick={() => setPanel({ kind: 'deposit', goal: activeGoals[0] })}><AppIcon name="plus" size={14} /> Thêm nơi gửi</button></div>
@@ -190,7 +122,7 @@ function SavingsWorkspace({ fin, nav, total, monthTotals }) {
   );
 }
 
-function GoalForm({ fin, nav, goal, onDone }) {
+export function GoalForm({ fin, nav, goal, onDone }) {
   const [name, setName] = useState(goal?.name || '');
   const [target, setTarget] = useState(goal?.goal ? String(goal.goal) : '');
   const [lockMode, setLockMode] = useState(goal?.lock_mode || 'soft');
@@ -292,32 +224,6 @@ function SavingMoveForm({ fin, goal, dir, onDone }) {
   </form>;
 }
 
-function BudgetFit({ fin, bb }) {
-  const months = useMemo(() => lastNMonths(fin.today, 6).slice(0, 5), [fin.today]);
-  const rows = useMemo(() => bb.categories.map(category => {
-    const values = months.map(month => periodTotals(fin.transactions, month).byCategory[category.categoryId] || 0);
-    const hasData = values.some(Boolean);
-    const average = hasData ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
-    const limit = category.limit;
-    const max = Math.max(average, limit, 1);
-    let verdict = 'Sát thực tế', tone = 'good';
-    if (!hasData) { verdict = 'Chưa đủ dữ liệu'; tone = 'neutral'; }
-    else if (!limit) { verdict = 'Cần đặt hạn mức'; tone = 'warn'; }
-    else if (average > limit * 1.08) { verdict = `Nên nới ${money(average - limit)}`; tone = 'bad'; }
-    else if (average < limit * 0.55) { verdict = 'Có thể siết'; tone = 'warn'; }
-    return { ...category, average, avgWidth: average / max * 100, limitAt: limit / max * 100, verdict, tone };
-  }), [bb.categories, fin.transactions, months]);
-
-  return <section className="fin-budget-fit">
-    <div className="fin-budget-fit__head"><div><h2>Hạn mức có sát thực chi không</h2><p>Hạn mức quá cao không cản được gì; quá thấp thì tháng nào cũng báo vượt.</p></div><span>So với trung bình 5 tháng đã trọn</span></div>
-    <div className="fin-budget-fit__rows">{rows.map(row => <article key={row.categoryId}>
-      <div><span className="fin-legend__dot" style={{ background: row.color }} /><strong>{row.label}</strong><span>TB <b>{money(row.average)}</b></span><span>hạn mức <b>{money(row.limit)}</b></span><em className={`is-${row.tone}`}>{row.verdict}</em></div>
-      <div className="fin-budget-fit__bar"><i style={{ width: `${row.avgWidth}%`, background: row.color }} /><b style={{ left: `${row.limitAt}%` }} /></div>
-    </article>)}</div>
-    <small>Vạch trắng là hạn mức, dải màu là mức chi trung bình. Chỉ đưa khuyến nghị khi đã có dữ liệu thực tế.</small>
-  </section>;
-}
-
 // ── Tab Thống kê ──────────────────────────────────────────────────────────────
 function StatsTab({ fin, nav }) {
   const [range, setRange] = useState(6);
@@ -327,9 +233,8 @@ function StatsTab({ fin, nav }) {
   const months = useMemo(() => lastNMonths(fin.today, range), [fin.today, range]);
 
   const monthTotals = useMemo(
-    () => months.map(m => ({ m, t: periodTotals(fin.transactions, m,
-      { savingAsExpense: nav.savingAsExpense }) })),
-    [months, fin.transactions, nav.savingAsExpense]);
+    () => months.map(m => ({ m, t: periodTotals(fin.transactions, m) })),
+    [months, fin.transactions]);
 
   const maxMonth = Math.max(1, ...monthTotals.map(x => x.t.total));
   const expenseGroups = fin.cats.expenseGroups.filter(item => !item.hidden);

@@ -30,8 +30,8 @@ const FINANCE_NAV = [
   { to: '/finance/overview', icon: 'chartDonut', label: 'Tổng quan' },
   { to: '/finance/add', icon: 'plusCircle', label: 'Nhập nhanh', hint: 'N' },
   { to: '/finance/list', icon: 'receipt', label: 'Giao dịch' },
+  { to: '/finance/recurring', icon: 'calendar', label: 'Định kỳ & Quỹ' },
   { to: '/finance/cats', icon: 'tree', label: 'Danh mục' },
-  { to: '/finance/recurring', icon: 'calendar', label: 'Hóa đơn' },
 ];
 
 // Secondary: visible in sidebar, hidden in bottom tabs (dropdown)

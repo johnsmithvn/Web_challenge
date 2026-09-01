@@ -130,6 +130,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0.85rem;
+  padding-bottom: 5.5rem; /* Đệm né nút FAB và cuộn thoáng mọi switch */
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -1365,6 +1366,29 @@
   color: #10b981;
   font-weight: 800;
   font-size: 0.8rem;
+}
+
+.cal-agenda-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.25rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  border-top: 1px dashed var(--border-glass, rgba(255, 255, 255, 0.08));
+  margin-top: 0.5rem;
+}
+
+.cal-agenda-load-more .spin-slow {
+  animation: calSpin 3s linear infinite;
+  color: var(--primary, #818cf8);
+}
+
+@keyframes calSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* ── Chế độ xem Lịch Ngày (Day View) ── */

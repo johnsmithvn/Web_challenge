@@ -50,8 +50,8 @@ export default function ListScreen({ fin, nav }) {
     () => fin.transactions.filter(tx => tx.occurred_at >= period.from && tx.occurred_at <= period.to),
     [fin.transactions, period]);
   const totals = useMemo(
-    () => periodTotals(fin.transactions, period, { savingAsExpense: nav.savingAsExpense }),
-    [fin.transactions, period, nav.savingAsExpense],
+    () => periodTotals(fin.transactions, period),
+    [fin.transactions, period],
   );
 
   const filtered = useMemo(() => inPeriod.filter(tx => {
