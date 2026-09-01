@@ -107,12 +107,11 @@ export default function TasksPage() {
         {view === 'list' && (
           <button
             type="button"
-            className="tasks-viewbar__add"
+            className={`tasks-viewbar__add ${showForm ? 'tasks-viewbar__add--close' : ''}`}
             onClick={() => setShowForm(!showForm)}
             id="task-add-btn"
-            style={{ color: showForm ? 'var(--red)' : 'var(--purple-light)' }}
           >
-            <AppIcon name={showForm ? 'x' : 'plus'} size={15} /> {showForm ? 'Đóng' : 'Thêm'}
+            <AppIcon name={showForm ? 'x' : 'plus'} size={15} /> {showForm ? 'Đóng' : 'Thêm nhiệm vụ'}
           </button>
         )}
       </div>

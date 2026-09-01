@@ -243,13 +243,19 @@ h1, h2, h3, h4, h5, h6 {
 .btn:active { transform: scale(0.97); }
 
 .btn-primary {
-  background: var(--grad-hero);
-  color: white;
-  box-shadow: 0 4px 24px rgba(99,102,241,0.4);
+  background: var(--grad-hero) !important;
+  color: white !important;
+  border-radius: var(--radius-full) !important;
+  border: none !important;
+  box-shadow: 0 4px 20px rgba(99,102,241,0.42);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
 }
 .btn-primary:hover {
-  box-shadow: 0 8px 40px rgba(99,102,241,0.6);
+  box-shadow: 0 8px 32px rgba(99,102,241,0.65);
   transform: translateY(-2px);
+}
+.btn-primary:active {
+  transform: translateY(0) scale(0.98);
 }
 .btn-primary:disabled,
 .btn-primary[disabled] {
@@ -260,15 +266,29 @@ h1, h2, h3, h4, h5, h6 {
   pointer-events: none;
 }
 
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-full);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  border-color: rgba(255,255,255,0.2);
+  transform: translateY(-1px);
+}
+
 .btn-ghost {
   background: transparent;
   color: var(--text-primary);
   border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-full);
 }
 .btn-ghost:hover {
   border-color: var(--purple-light);
   color: var(--purple-light);
   background: rgba(139,92,246,0.1);
+  transform: translateY(-1px);
 }
 
 .btn-neon {

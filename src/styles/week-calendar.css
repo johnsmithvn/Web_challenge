@@ -660,28 +660,30 @@
 
 .cal-header-bar__btn-today {
   height: 36px;
-  padding: 0 16px;
-  border-radius: 4px;
+  padding: 0 18px;
+  border-radius: 9999px;
   border: 1px solid var(--border-glass);
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
   display: inline-flex;
   align-items: center;
 }
 
 .cal-header-bar__btn-today:hover {
   background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
 }
 
 [data-theme="light"] .cal-header-bar__btn-today {
   background: #ffffff;
   border: 1px solid #dadce0;
   color: #3c4043;
+  border-radius: 9999px;
 }
 [data-theme="light"] .cal-header-bar__btn-today:hover {
   background: #f1f3f4;
@@ -736,8 +738,8 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-glass);
   color: var(--text-secondary);
-  border-radius: 4px;
-  padding: 0 10px;
+  border-radius: 9999px;
+  padding: 0 12px;
   height: 36px;
   font-size: 0.78rem;
   cursor: pointer;
@@ -757,13 +759,13 @@
 
 .cal-header-bar__view-dropdown-btn {
   height: 36px;
-  padding: 0 14px;
-  border-radius: 4px;
+  padding: 0 16px;
+  border-radius: 9999px;
   border: 1px solid var(--border-glass);
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
