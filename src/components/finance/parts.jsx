@@ -9,8 +9,9 @@ import { formatDate, parseDmy } from '../../utils/dateUtils';
 import CATS from '../../data/finance-categories.json';
 import AppIcon from '../AppIcon';
 import DatePickerPopover from '../DatePickerPopover';
+import BankSelect, { BANKS } from '../BankSelect';
 
-export { formatVND };
+export { formatVND, BankSelect, BANKS };
 export const money = (n) => formatVND(Math.round(n || 0));
 
 // ── Tra danh mục ────────────────────────────────────────────────────────────

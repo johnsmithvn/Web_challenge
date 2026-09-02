@@ -7,7 +7,7 @@ import {
   currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
   billCycle, billSettled, billPeriods, billPeriodForDate,
 } from '../../utils/financeLogic';
-import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField, pickableSubs } from './parts';
+import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField, pickableSubs, BankSelect } from './parts';
 import AppIcon from '../AppIcon';
 import InfoTip from '../InfoTip';
 import SkeletonList from '../SkeletonList';
@@ -724,8 +724,8 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
         <div className="fin-ruleform__grid">
           <label className="fin-field"><span>Tên khoản vay</span>
             <input className="fin-input" placeholder="Vay ngân hàng" value={f.name || ''} onChange={set('name')} autoFocus /></label>
-          <label className="fin-field"><span>Bên cho vay</span>
-            <input className="fin-input" placeholder="VPBank" value={f.lender || ''} onChange={set('lender')} /></label>
+          <label className="fin-field"><span>Bên cho vay / Ngân hàng</span>
+            <BankSelect value={f.lender || ''} onChange={val => setF(p => ({ ...p, lender: val }))} placeholder="Chọn ngân hàng hoặc nhập tên" /></label>
           <label className="fin-field"><span>Số tiền gốc</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="100.000.000" value={groupDigits(f.principal || '')} onChange={setDigits('principal')} /></label>
           <label className="fin-field"><span>Lãi suất · %/năm</span>
@@ -751,8 +751,8 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
         <div className="fin-ruleform__grid">
           <label className="fin-field"><span>Tên thẻ</span>
             <input className="fin-input" placeholder="VIB Cash Back" value={f.name || ''} onChange={set('name')} autoFocus /></label>
-          <label className="fin-field"><span>Ngân hàng</span>
-            <input className="fin-input" placeholder="VIB" value={f.bank || ''} onChange={set('bank')} /></label>
+          <label className="fin-field"><span>Ngân hàng phát hành</span>
+            <BankSelect value={f.bank || ''} onChange={val => setF(p => ({ ...p, bank: val }))} placeholder="Chọn ngân hàng" /></label>
           <label className="fin-field"><span>4 số cuối · tùy chọn</span>
             <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="4602" value={f.last4 || ''} onChange={setDigits('last4', 4)} /></label>
           <label className="fin-field"><span>Hạn mức</span>

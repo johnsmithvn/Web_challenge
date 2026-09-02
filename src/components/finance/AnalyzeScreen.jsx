@@ -5,7 +5,7 @@ import {
   periodTotals, currentMonthPeriod,
   monthStart, monthEnd, parseYmd, fundBalance, maturityWarn,
 } from '../../utils/financeLogic';
-import { money, catInfo, Segmented, TaskPicker, FinanceIcon, DateField } from './parts';
+import { money, catInfo, Segmented, TaskPicker, FinanceIcon, DateField, BankSelect } from './parts';
 import AppIcon from '../AppIcon';
 
 function lastNMonths(refStr, n) {
@@ -353,12 +353,10 @@ function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone }) {
         </label>
         <label className="fin-label" style={{ flex: 1 }}>
           Ngân hàng
-          <input
-            className="fin-input"
+          <BankSelect
             value={form.bank || ''}
-            onChange={field('bank')}
-            aria-label="Ngân hàng"
-            placeholder="Ví dụ: Vietcombank, Techcombank, MB"
+            onChange={val => setForm(p => ({ ...p, bank: val }))}
+            placeholder="Chọn ngân hàng"
           />
         </label>
       </div>
