@@ -3,6 +3,10 @@
 ## v6.16.0 — 2026-09-02
 
 ### Changed
+- **Nâng cấp toàn diện Trải nghiệm Quỹ tiết kiệm & Nơi gửi tiền (`AnalyzeScreen.jsx` & `finance-handoff.css`):**
+  - **Form Thêm nơi gửi thông minh**: Bổ sung bộ chọn nhanh Loại hình tiền gửi (`Chứng chỉ tiền gửi (CD)`, `Sổ tiết kiệm`, `Tích lũy linh hoạt`) với gợi ý tự động tên sổ, nút chọn nhanh kỳ hạn (1T, 2T, 3T, 6T, 12T...) và tính năng gắn vào Quỹ mục tiêu tùy chọn.
+  - **Dải phân bổ tài sản & Ngân hàng**: Thống kê trực quan số tiền đang gửi phân mảnh tại từng ngân hàng/ví/app (`ABBANK`, `Cake`, `ZaloPay`...).
+  - **Hệ thống Huy hiệu cảnh báo đáo hạn (`fin-due-badge`)**: Đếm ngược trực quan ngày tiền về (Đáo hạn hôm nay, Còn X ngày) giúp kịp thời gom tiền, xoay vòng vốn và tối ưu lãi suất.
 - **Chuẩn hóa quy chuẩn hiển thị ngày tháng (`dd/MM/yyyy` toàn dự án):**
   - Đồng bộ hiển thị ngày dạng `dd/MM/yyyy` (chuẩn tiếng Việt) tại form nơi gửi tiền, ngày đáo hạn sổ, cảnh báo khóa quỹ và lịch trả nợ (`AnalyzeScreen.jsx`, `RecurringScreen.jsx`, `dateUtils.js`).
 - **Tối ưu UX Form sửa giao dịch Tài chính (`ListScreen.jsx`):**

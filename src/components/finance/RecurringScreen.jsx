@@ -307,13 +307,14 @@ export default function RecurringScreen({ fin, nav }) {
         <Segmented options={segmentOptions} value={seg} onChange={async (v) => {
           if (!await closeAddForm()) return;
           nav.setRecurringSeg(v);
-        }} />
-        <button className="fin-btn fin-btn--primary fin-btn--sm" onClick={async () => {
-          if (adding) { await closeAddForm(); return; }
-          setAdding(true); setDraft(null);
-        }}>
-          <AppIcon name={adding ? 'x' : 'plus'} size={15} /> {adding ? 'Đóng' : segMeta.addLabel}
-        </button>
+        {seg !== 'saving' && (
+          <button className="fin-btn fin-btn--primary fin-btn--sm" onClick={async () => {
+            if (adding) { await closeAddForm(); return; }
+            setAdding(true); setDraft(null);
+          }}>
+            <AppIcon name={adding ? 'x' : 'plus'} size={15} /> {adding ? 'Đóng' : segMeta.addLabel}
+          </button>
+        )}
       </div>
 
       {adding && seg !== 'saving' && <RuleForm seg={seg} fin={fin} nav={nav} initial={draft} onDirty={setDirty}
