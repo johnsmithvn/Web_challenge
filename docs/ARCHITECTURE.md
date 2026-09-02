@@ -1,10 +1,10 @@
 # ARCHITECTURE.md — Life Hub
 
-**Version:** v6.12.0 · **Updated:** 2026-08-30
+**Version:** v6.16.0 · **Updated:** 2026-09-02
 
 ## Tổng quan
 
-Life Hub là một React SPA. `LandingPage` nằm trong entry chunk; tám page còn lại được lazy-load.
+Life Hub là một React SPA. `LandingPage` nằm trong entry chunk; bảy page còn lại được lazy-load.
 Supabase cung cấp Auth, PostgreSQL và RLS. Frontend hiện dùng fetch + optimistic state, không đăng ký
 `postgres_changes`; publication Realtime của schema không đồng nghĩa app đang subscribe realtime.
 
@@ -24,16 +24,16 @@ ThemeProvider
 ```text
 src/
 ├─ App.jsx             route, shell, provider wiring
-├─ pages/              một page theo route
-├─ components/         UI dùng lại; components/finance chứa các màn Finance
+├─ pages/              một page theo route (Tasks, Finance, Accounts, Inbox, Collect, Focus, Settings)
+├─ components/         UI dùng lại; components/finance (màn Finance), components/kb (màn Knowledge PKM)
 ├─ hooks/              state + Supabase/domain actions
 ├─ contexts/           Auth, Theme, Toast
-├─ utils/              logic thuần, gồm Finance/Task/Vault crypto
+├─ utils/              logic thuần: kbDeriveUtils, calendarTimeUtils, lunarUtils, financeLogic, vaultCrypto
 ├─ data/               JSON tĩnh: taxonomy, template, holiday, quote, UI copy
-├─ styles/             CSS theo domain; global.css giữ token chung
+├─ styles/             CSS theo domain (kb-tokens, calendar-widget, week-calendar...); global.css giữ token chung
 ├─ extensions/         Tiptap MediaNode
 ├─ lib/supabase.js     Supabase singleton + graceful disabled mode
-└─ __tests__/          self-check node:assert
+└─ __tests__/          self-check node:assert phân theo 4 domain: tasks/, vault/, finance/, core/
 
 api/                   Vercel Functions cho upload/stream Google Drive
 data/                  SQL dùng cho fresh install/production handoff
@@ -80,10 +80,13 @@ mọi thao tác: Finance RPC, Vault CAS và các flow nhiều bảng tuân theo 
 
 ## Data flow theo domain
 
-### Task
+### Task và Không gian Lịch
 
 ```text
-TaskListSection / MonthCalendar
+TasksPage (CalendarToolbar)
+  ├─ List View (TaskListSection)
+  ├─ Agenda / Day / Week / Month Calendar
+  └─ CalendarWidgetPanel (Lịch vạn niên, Can Chi, Giờ Hoàng đạo, Ngày lễ, Kỷ niệm)
         ↓
 useUserTasks
   ├─ user_tasks
@@ -95,13 +98,27 @@ useUserTasks
 - Task lặp chỉ sinh occurrence kế tiếp sau khi occurrence hiện tại hoàn thành.
 - `completed_at` do một action tạo và dùng nhất quán cho pending/completed state.
 - Activity diff và note gắn FK thật vào `task_id`; xóa Task sẽ cascade log.
+- 5 chế độ xem chia sẻ chung state `tasks`, tính toán layout thời gian thực client-side qua `calendarTimeUtils.js` và `lunarUtils.js`.
 
-### Inbox và Knowledge
+### Inbox và Knowledge Base (PKM)
 
-`collections` chứa cả Inbox và Knowledge; `type`/`status` phân nhánh UI. `collection_tags` và
+```text
+CollectPage
+  ├─ KbListView (Filter by type, tag, collections, search)
+  ├─ KbGraphView (Interactive Canvas Node Graph)
+  ├─ KbReader (TOC / Headings extraction, Read Time, Backlinks)
+  ├─ KbSplitEditor (Markdown + Live Preview + Sync Scroll)
+  └─ KbVisualEditor (Tiptap Rich Text)
+        ↓
+kbDeriveUtils (pure: parseWikiLinks, deriveGraph, findBacklinks)
+        ↓
+useCollections / useCollectionNotes / useTags
+```
+
+- `collections` chứa cả Inbox và Knowledge; `type`/`status` phân nhánh UI. `collection_tags` và
 `task_collections` giữ tag/link M:N. `collection_notes` là sub-note của bài Knowledge.
-
-Inbox có hai handoff sang Finance qua `sessionStorage`: giao dịch (`kind=tx`) và hóa đơn/quy tắc
+- Wiki-links cú pháp `[[Tên trang]]` được phân tích tự động bằng `parseWikiLinks` và `slugifyVi` để dựng mạng lưới liên kết 2 chiều và Backlinks client-side mà không cần cột dữ liệu phụ trợ trên server.
+- Inbox có hai handoff sang Finance qua `sessionStorage`: giao dịch (`kind=tx`) và hóa đơn/quy tắc
 (`kind=out`). Handoff chỉ là dữ liệu tạm của thao tác điều hướng, không phải nguồn dữ liệu bền.
 
 ### Finance
@@ -115,16 +132,17 @@ trả vay/thẻ và chuyển tiền tiết kiệm. Không có balance tổng lư
 ```text
 Supabase Auth
   → load vault_config only
-  → passphrase + PBKDF2 derive KEK
-  → unwrap DEK vào memory
-  → query accounts ciphertext
-  → AES-GCM decrypt trong browser
+  → Cách 1 (Mật khẩu chính): Passphrase + PBKDF2 derive KEK → unwrap DEK
+  → Cách 2 (Khóa khôi phục): Recovery Key 24 từ / base64 + PBKDF2 → unwrap DEK
+  → Đổi mật khẩu: unwrap DEK → derive KEK mới → re-wrap DEK → UPDATE vault_config
+  → DEK giải mã accounts ciphertext bằng AES-GCM trong browser memory
 ```
 
 - Một item = một encrypted JSON; Supabase không đọc được nội dung user nhập.
 - Epoch/sequence guard chặn response cũ đưa plaintext trở lại sau lock, sign-out hoặc đổi user.
 - Update/delete so `updated_at`; zero-row là conflict, không ghi đè bản mới hơn.
 - Logo/icon item là data URI PNG 48×48 lưu trong encrypted payload; không dùng external favicon service để tránh rò rỉ danh sách dịch vụ.
+- Hỗ trợ đổi Master Passphrase (re-wrap DEK) và tạo Emergency Recovery Key khẩn cấp.
 
 Chi tiết mật mã: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md).
 
@@ -146,10 +164,12 @@ instance; đây không phải quota phân tán toàn hệ thống.
 | `vl_focus_settings` | thời lượng Focus/break |
 | `vl_xp_store` | dữ liệu XP legacy chỉ để migrate rồi xóa |
 | `vl_xp_migrated` | cờ migration XP theo user |
-| `kb_editor_mode` | Markdown/Tiptap preference |
+| `kb_editor_mode` | Markdown/Tiptap visual preference |
 | `lh_usd_rate`, `lh_auto_k` | preference nhập/đổi tiền |
 | `lh_finance_saving_as_expense` | preference báo cáo Finance |
 | `lh_fin_hidden_seed_shortcuts` | shortcut mẫu đã ẩn ở màn Nhập nhanh |
+| `lh_custom_anniversaries` | danh sách ngày kỷ niệm cá nhân người dùng tự thêm (Lịch / Tasks) |
+| `lh_cal_filters` | trạng thái bật/tắt các danh mục ngày lễ trên Lịch |
 
 ### `sessionStorage`
 
@@ -169,7 +189,7 @@ Vault item.
 - `profiles` chỉ đọc/sửa row chính mình. Ba RPC Auth (`login_email`, `username_exists`, `email_exists`)
   là boundary có chủ ý cho lookup trước đăng nhập.
 - `tagged_items` dùng `security_invoker=true`; Vault tag không tham gia view vì nằm trong ciphertext.
-- `vault_config` chỉ cấp SELECT/INSERT cho authenticated ở v6.2; app không có đường update/delete config.
+- `vault_config` cấp SELECT/INSERT/UPDATE cho authenticated; UPDATE chỉ cho phép cập nhật KDF/wrap metadata khi đổi mật khẩu hoặc lưu recovery key.
 - Component thường nhận props và gọi hook, nhưng repo có boundary component gọi trực tiếp Auth/profile,
   media upload hoặc query nhỏ. Không mở rộng ngoại lệ nếu logic đã có data owner phù hợp.
 

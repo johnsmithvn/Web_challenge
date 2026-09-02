@@ -110,19 +110,22 @@ Một dòng cho mỗi authenticated user:
 
 ```text
 user_id
-kdf_algorithm       # PBKDF2-SHA256
+kdf_algorithm          # PBKDF2-SHA256
 kdf_salt
-kdf_iterations      # 600000 hiện tại; DB chấp nhận 600000..5000000
+kdf_iterations         # 600000 hiện tại; DB chấp nhận 600000..5000000
 wrapped_key
 wrapped_key_nonce
-encryption_version  # 1
+encryption_version     # 1
+recovery_wrapped_key   # (v6.15.0) DEK bọc bởi Recovery Key
+recovery_wrapped_nonce # (v6.15.0) Nonce của Recovery Key wrap
+recovery_salt          # (v6.15.0) Salt tạo KEK từ Recovery Key
 created_at
 updated_at
 ```
 
-Passphrase, KEK và raw DEK **không được lưu**. Bảng bật RLS own-row; authenticated chỉ được
-SELECT/INSERT vì app v6.2 chưa có đổi/xóa config. `anon` không có quyền. Migration revoke ACL mặc
-định rộng trước khi grant để không sót TRUNCATE/REFERENCES/TRIGGER ngoài RLS.
+Passphrase, KEK và raw DEK **không được lưu**. Bảng bật RLS own-row; authenticated được cấp
+SELECT/INSERT/UPDATE (v6.14.0). Quyền UPDATE chỉ cho phép người dùng cập nhật KDF metadata, wrapped DEK
+mới khi đổi mật khẩu hoặc thiết lập Recovery Key. `anon` không có quyền.
 
 ---
 
@@ -140,11 +143,17 @@ Vault có các trạng thái thực tế:
 Luồng phiên:
 
 1. Setup tạo config và mở Vault lần đầu.
-2. Lần sau, passphrase derive lại KEK để unwrap DEK. Passphrase sai hoặc config hỏng đều fail đóng.
-   Nếu config mất trong khi còn ciphertext, app hard-error và tuyệt đối không tạo DEK mới.
-3. Manual lock xóa reference đến DEK và xóa item đã giải mã khỏi React state.
-4. Sign-out và reload cũng làm mất DEK, nên Vault trở lại locked.
-5. Password generator đã bật; password sinh ra chỉ đi qua encrypted CRUD.
+2. Mở khóa hàng ngày:
+   - **Cách 1 (Mật khẩu chính):** Passphrase derive lại KEK để unwrap DEK. Passphrase sai hoặc config hỏng đều fail đóng.
+   - **Cách 2 (Khóa khôi phục):** Sử dụng 24-từ / base64 Recovery Key để derive KEK khôi phục và unwrap DEK khi quên mật khẩu chính.
+3. Đổi mật khẩu chính (v6.14.0):
+   - Nhập mật khẩu cũ (unwrap DEK) → nhập mật khẩu mới → sinh salt mới → derive KEK mới → re-wrap DEK → ghi lại `vault_config`. Toàn bộ item không cần mã hóa lại.
+4. Sao lưu & Phục hồi (v6.15.0):
+   - **Ciphertext Backup / Restore:** Xuất file JSON mã hóa (chạy được khi Vault đang khóa). Restore chỉ ghi vào Vault trống với đúng `userId`.
+   - **Plaintext JSON Export:** Xuất toàn bộ dữ liệu rõ nghĩa sau khi nhập đúng Master Passphrase để xác thực lại.
+5. Manual lock xóa reference đến DEK và xóa item đã giải mã khỏi React state.
+6. Sign-out và reload cũng làm mất DEK, nên Vault trở lại locked.
+7. Password generator đã bật; password sinh ra chỉ đi qua encrypted CRUD.
 
 Không tuyên bố zero-out RAM tuyệt đối: JavaScript runtime không bảo đảm xóa vật lý mọi bản sao trong
 memory. Đây là best-effort ở tầng ứng dụng.
@@ -189,9 +198,6 @@ Chỉ khi không có account nó mới drop schema plaintext cũ, đổi `accoun
 view. Vì vậy giả định “DB trống” sai sẽ làm migration dừng, không âm thầm xóa dữ liệu. Không có dual-read,
 dual-write hay data migration cho dữ liệu không tồn tại.
 
-Production chưa chạy. User phải dùng đúng thứ tự migration trong README và kiểm tra `accounts` trống;
-agent không tự link/push hosted Supabase.
-
 ---
 
 ## 7. Kiểm chứng hiện tại
@@ -199,35 +205,29 @@ agent không tự link/push hosted Supabase.
 Đã pass local:
 
 - Crypto round-trip; wrong passphrase; tamper; wrong user/item AAD; nonce mới khi ghi lại.
+- Change passphrase re-wrapping DEK round-trip pass.
+- Recovery key generation, unwrap DEK và recovery flow pass.
 - Database contract cho empty-Vault guard, schema ciphertext, KDF constraint, grants và RLS.
 - Reset user data với `accounts` + `vault_config`.
 - Authenticated browser: setup, create/read/update/delete, tags, auth methods, recovery codes, history,
   password generator, manual lock/unlock và reload lock.
 - Hai user bị cô lập bởi RLS; database/network chỉ nhận ciphertext cho nội dung item.
 
-Đây chưa phải audit mật mã độc lập và không được mô tả là tương đương Bitwarden.
-
 ---
 
 ## 8. Rủi ro và giới hạn
 
-- Quên passphrase hiện đồng nghĩa không mở lại được DEK; chưa có recovery/reset cho dữ liệu cũ.
+- Quên passphrase mà không thiết lập Recovery Key đồng nghĩa không thể mở lại DEK.
 - XSS, extension độc hại, keylogger hoặc frontend/dependency bị thay khi Vault đang mở vẫn có thể lấy
   plaintext/passphrase.
 - RLS là lớp phòng thủ bổ sung, không thay thế crypto; crypto cũng không thay thế bảo mật frontend.
-- Chưa có export/restore, nên chưa nên dùng Vault làm **bản sao duy nhất** của secret quan trọng.
 
 ---
 
-## 9. Follow-up, chưa nằm trong v6.2 core
+## 9. Follow-up, tính năng tương lai
 
-- **Export/restore:** backup ciphertext/config có kiểm tra version và quy trình phục hồi rõ ràng.
-- **Đổi passphrase:** derive KEK mới rồi re-wrap cùng DEK; không cần mã hóa lại item.
 - **Rotate DEK:** tạo DEK mới và mã hóa lại toàn bộ item khi nghi lộ khóa.
 - **Version migration:** nâng KDF/payload/encryption version mà không làm mất dữ liệu.
-- **Auto-lock:** khóa sau thời gian không hoạt động; thời lượng chưa chốt.
+- **Auto-lock:** khóa sau thời gian không hoạt động; thời lượng user chọn.
 - **Clipboard auto-clear:** xóa secret đã copy sau timeout.
 - **TOTP thật:** lưu seed trong encrypted payload và sinh mã phía client.
-
-Các mục trên phải được triển khai + test riêng; tài liệu không đánh dấu chúng đã xong và production cũng
-không được đánh dấu đã áp dụng cho tới khi user xác nhận.

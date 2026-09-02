@@ -1,0 +1,128 @@
+/* ================================================================
+   KNOWLEDGE BASE — Design Tokens (scoped to .kb-page)
+   Spec: Handoff "Kho Tàng Kiến Thức"
+   ================================================================ */
+
+/* ── Font families ─────────────────────────────────────────── */
+.kb-page {
+  --kb-serif: 'Spectral', Georgia, serif;
+  --kb-mono:  'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ── Dark theme (default) ──────────────────────────────────── */
+.kb-page {
+  --kb-bg:    oklch(0.168 0.010 275);
+  --kb-p1:    oklch(0.208 0.012 275);
+  --kb-p2:    oklch(0.252 0.014 275);
+  --kb-line:  oklch(0.312 0.014 275);
+  --kb-tx:    oklch(0.945 0.008 275);
+  --kb-dim:   oklch(0.715 0.010 275);
+  --kb-faint: oklch(0.555 0.012 275);
+  --kb-brass: oklch(0.78 0.11 72);
+  --kb-sage:  oklch(0.74 0.09 165);
+  --kb-red:   oklch(0.70 0.14 22);
+}
+
+/* ── Light theme ───────────────────────────────────────────── */
+[data-theme="light"] .kb-page,
+.kb-page[data-theme="light"] {
+  --kb-bg:    oklch(0.978 0.006 85);
+  --kb-p1:    oklch(0.949 0.008 85);
+  --kb-p2:    oklch(0.908 0.011 85);
+  --kb-line:  oklch(0.858 0.012 85);
+  --kb-tx:    oklch(0.248 0.014 60);
+  --kb-dim:   oklch(0.445 0.012 60);
+  --kb-faint: oklch(0.615 0.010 60);
+  --kb-brass: oklch(0.52 0.11 60);
+  --kb-sage:  oklch(0.46 0.09 160);
+  --kb-red:   oklch(0.52 0.16 22);
+}
+
+/* ── Type hues ─────────────────────────────────────────────── */
+.kb-page {
+  --kb-hue-note:          oklch(0.74 0.10 250);
+  --kb-hue-quote:         oklch(0.78 0.11 72);
+  --kb-hue-learn:         oklch(0.74 0.09 165);
+  --kb-hue-idea:          oklch(0.74 0.10 300);
+  --kb-hue-ai:            oklch(0.74 0.10 300);
+  --kb-hue-entertainment: oklch(0.72 0.13 22);
+  --kb-hue-podcast:       oklch(0.74 0.10 300);
+}
+
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes kb-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes kb-up {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes kb-pop {
+  from { opacity: 0; transform: translateY(-7px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+.kb-page ::-webkit-scrollbar { width: 9px; }
+.kb-page ::-webkit-scrollbar-track { background: transparent; }
+.kb-page ::-webkit-scrollbar-thumb {
+  background: var(--kb-line);
+  border-radius: 9px;
+  border: 2px solid var(--kb-bg);
+}
+
+/* ── Prose (reader + preview) ──────────────────────────────── */
+.kb-prose { font-family: var(--kb-serif); max-width: 72ch; }
+.kb-prose h2 {
+  font-family: var(--kb-serif);
+  font-size: 1.55rem; font-weight: 500; margin: 36px 0 14px;
+  letter-spacing: -0.012em; scroll-margin-top: 86px;
+  color: var(--kb-tx);
+}
+.kb-prose h3 {
+  font-family: var(--kb-serif);
+  font-size: 1.25rem; font-weight: 500; margin: 28px 0 10px;
+  scroll-margin-top: 86px; color: var(--kb-tx);
+}
+.kb-prose p {
+  font-size: 1.05rem; line-height: 1.8; margin: 0 0 20px;
+  color: color-mix(in oklab, var(--kb-tx) 94%, var(--kb-bg));
+  text-wrap: pretty;
+}
+.kb-prose blockquote {
+  margin: 26px 0; padding: 4px 0 4px 22px;
+  border-left: 3px solid var(--kb-brass);
+  font-style: italic; font-size: 1.15rem; line-height: 1.7;
+  color: var(--kb-dim);
+}
+.kb-prose code {
+  font-family: var(--kb-mono); font-size: 0.9rem;
+  background: var(--kb-p2); padding: 2px 6px;
+  border-radius: 4px; color: var(--kb-sage);
+}
+.kb-prose pre {
+  background: var(--kb-p1); border: 1px solid var(--kb-line);
+  padding: 16px 18px; border-radius: 6px; overflow: auto;
+  font-family: var(--kb-mono); font-size: 0.88rem;
+  line-height: 1.65; color: var(--kb-dim);
+}
+.kb-prose ul, .kb-prose ol { padding-left: 24px; margin: 0 0 20px; }
+.kb-prose li { font-size: 1.05rem; line-height: 1.75; margin-bottom: 8px; }
+.kb-prose hr { border: none; border-top: 1px solid var(--kb-line); margin: 32px 0; }
+.kb-prose strong { font-weight: 600; color: var(--kb-tx); }
+.kb-prose:first-child > :first-child { margin-top: 0; }
+
+/* ── Wiki-link ─────────────────────────────────────────────── */
+.kb-wl {
+  color: var(--kb-brass);
+  border-bottom: 1px dashed color-mix(in oklab, var(--kb-brass) 50%, transparent);
+  cursor: pointer; padding: 0 1px;
+  transition: background 0.12s;
+}
+.kb-wl:hover {
+  background: color-mix(in oklab, var(--kb-brass) 16%, transparent);
+}
+.kb-wl--missing {
+  opacity: 0.5;
+}

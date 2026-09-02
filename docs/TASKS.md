@@ -1,6 +1,6 @@
 # TASKS — Life Hub
 
-**Version:** v6.12.0 · **Updated:** 2026-08-30
+**Version:** v6.16.0 · **Updated:** 2026-09-02
 
 Chỉ giữ việc còn mở. Việc đã hoàn thành xem [`CHANGELOG.md`](../CHANGELOG.md); thứ tự roadmap xem
 [`PLAN.md`](PLAN.md).
@@ -124,13 +124,15 @@ không phải date-string — đúng cách dùng, đừng "dọn" sang `toDateSt
 - [x] Export/restore ciphertext + `vault_config`, có version check. **Code xong 2026-08-11** — nút ở màn
   hình khoá; export chạy được khi đang khoá; restore chặn `userId` lệch (AAD gắn key + item vào user id),
   chỉ chạy vào Vault trống, và khoá lại sau khi xong.
+- [x] **Đổi passphrase bằng re-wrap cùng DEK** — xong 2026-08-31 (`migration_v6.14.0_vault_change_passphrase.sql`).
+- [x] **Khóa khôi phục khẩn cấp (Recovery Key 24 từ)** — xong 2026-08-31 (`migration_v6.15.0_vault_recovery_key.sql`).
+- [x] **Xuất file Plaintext JSON** có bước xác thực lại Master Passphrase — xong 2026-08-31 (v6.15.0).
 - [ ] **Diễn tập phục hồi thật** — chưa làm, và đây là phần khiến export có nghĩa hay không:
   1. Export ở màn hình khoá, giữ file.
   2. Xoá hết item trong Vault (hoặc dùng account test), rồi Restore đúng file đó.
   3. Unlock bằng passphrase gốc và xác nhận **mở được đủ item, đọc được nội dung**.
   Chưa qua bước 3 thì UI vẫn phải cảnh báo mất passphrase là mất quyền giải mã, và Vault vẫn không được
   dùng làm bản sao duy nhất.
-- [ ] Đổi passphrase bằng re-wrap cùng DEK; không re-encrypt item không cần thiết.
 - [ ] Nâng KDF/payload/encryption version có migration và rollback rõ ràng.
 - [ ] Rotate DEK + re-encrypt toàn item khi nghi lộ khóa.
 - [ ] Inactivity auto-lock với thời lượng user chọn.

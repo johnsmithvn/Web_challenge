@@ -1,12 +1,12 @@
 # PROJECT.md — Life Hub
 
-**Version:** v6.12.0 · **Updated:** 2026-08-30
+**Version:** v6.16.0 · **Updated:** 2026-09-02
 
 Bản đồ cấp cao của repo. File này chỉ trả lời “cái gì ở đâu”; chi tiết nằm trong tài liệu được trỏ tới.
 
 ## Sản phẩm
 
-Life Hub là SPA quản lý cá nhân gồm Inbox, Nhiệm vụ, Knowledge Base, Finance, Focus và
+Life Hub là SPA quản lý cá nhân gồm Inbox, Nhiệm vụ (kèm Không gian Lịch 5 chế độ), Knowledge Base (PKM / Athenaeum), Tài chính (Finance), Focus và
 Account Vault mã hóa. Frontend dùng React/Vite; dữ liệu đồng bộ dùng Supabase Auth + PostgreSQL + RLS.
 
 | Layer | Công nghệ / quy ước |
@@ -14,7 +14,7 @@ Account Vault mã hóa. Frontend dùng React/Vite; dữ liệu đồng bộ dùn
 | UI | React 19, Vite 8, React Router 7, vanilla CSS |
 | Data | Supabase; dữ liệu theo user được bảo vệ bằng RLS |
 | Media | Vercel Functions → Google Drive |
-| Editor | Tiptap 3 + Markdown + custom `MediaNode` |
+| Editor | Tiptap 3 + Markdown + custom `MediaNode` + PKM Obsidian/Wiki-links |
 | Deploy | Vercel SPA + serverless functions |
 | Client storage | Chỉ preference, UI state, session handoff và cờ migration; không lưu secret Vault |
 
@@ -26,10 +26,11 @@ Account Vault mã hóa. Frontend dùng React/Vite; dữ liệu đồng bộ dùn
 | Route, module, data flow, browser storage | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) |
 | Bảng, quan hệ, RLS, RPC, migration | [`docs/DATABASE.md`](DATABASE.md) |
 | Hành vi đang chạy của từng tính năng | [`docs/FEATURES.md`](FEATURES.md) |
+| Hướng dẫn chuyên sâu Không gian Tri thức PKM | [`docs/MODULE_KNOWLEDGE.md`](MODULE_KNOWLEDGE.md) |
 | Việc còn mở | [`docs/TASKS.md`](TASKS.md) |
 | Thứ tự roadmap | [`docs/PLAN.md`](PLAN.md) |
 | Quy tắc làm việc trong repo | [`docs/RULES.md`](RULES.md) |
-| Design system | [`DESIGN.md`](../DESIGN.md) |
+| Design system | [`DESIGN.md`](../DESIGN.md) · [`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) |
 | Hợp đồng Finance / Vault | [`docs/DESIGN_FINANCE.md`](DESIGN_FINANCE.md) · [`docs/DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md) |
 | Lịch sử phiên bản | [`CHANGELOG.md`](../CHANGELOG.md) |
 
@@ -84,8 +85,9 @@ npm test
 npm run lint
 ```
 
-`npm test` hiện chạy 22 self-check bằng `node:assert`; không dùng Jest/Vitest. Theo workflow repo,
-user chạy production build thủ công trừ khi họ yêu cầu agent điều tra lỗi build.
+`npm test` hiện chạy **24 self-check** thuần bằng `node:assert`, phân bổ cấu trúc chặt chẽ theo 4 domain
+(`tasks/`, `vault/`, `finance/`, `core/`); không dùng Jest/Vitest. Theo workflow repo, user chạy
+production build thủ công trừ khi họ yêu cầu agent điều tra lỗi build.
 
 Production Finance v6.0 và Vault v6.2 vẫn là bước **user-run**. Trạng thái và thứ tự thực hiện hiện tại
 nằm trong [`docs/TASKS.md`](TASKS.md) và runbook chính xác nằm trong [`README.md`](../README.md).

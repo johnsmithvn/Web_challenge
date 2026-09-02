@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub
 
-**Version:** v6.12.0 · **Updated:** 2026-08-30
+**Version:** v6.16.0 · **Updated:** 2026-09-02
 
 Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và chi tiết release nằm trong
 [`CHANGELOG.md`](../CHANGELOG.md).
@@ -10,12 +10,11 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 | Module | Route | Guest | Đăng nhập |
 |---|---|:---:|:---:|
 | Landing | `/` | ✅ | ✅ |
-| Nhiệm vụ | `/tasks` | List in-memory | Full sync + lịch sử/lịch tháng |
+| Nhiệm vụ | `/tasks` | List in-memory | Full sync + Lịch 5 chế độ |
 | Focus | `/focus` | In-memory | Sync session + XP |
 | Inbox | `/inbox` | — | ✅ |
-| Knowledge | `/collect` | — | ✅ |
+| Knowledge (PKM) | `/collect` | — | ✅ |
 | Finance | `/finance/:screen?` | — | ✅ |
-
 | Vault | `/accounts` | — | Login + Vault unlock |
 | Cài đặt | `/settings` | — | ✅ |
 
@@ -25,6 +24,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 `src/components/Navbar.jsx`, `src/components/OnboardingModal.jsx`
 
 - Email/password và Google OAuth qua Supabase Auth.
+- **Quên mật khẩu & Khôi phục tài khoản:** Hỗ trợ luồng gửi email khôi phục mật khẩu (OTP / reset password link) trực tiếp từ modal đăng nhập.
 - Đăng nhập bằng username dùng RPC lookup email; kiểm tra username/email tồn tại cũng đi qua RPC.
 - Navbar có sidebar desktop, topbar + bottom tabs mobile, user menu, XP bar và cảnh báo Finance.
 - Landing là entry public; page khác lazy-load với `Suspense` và `ErrorBoundary`.
@@ -36,11 +36,13 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 ## 2. Nhiệm vụ (`/tasks`)
 
 **Files:** `src/pages/TasksPage.jsx`, `src/components/TaskListSection.jsx`,
-`src/components/TaskDetailModal.jsx`, `src/components/MonthCalendar.jsx`,
+`src/components/TaskDetailModal.jsx`, `src/components/TaskCreateModal.jsx`,
+`src/components/CalendarToolbar.jsx`, `src/components/CalendarWidgetPanel.jsx`,
+`src/components/CalendarAgendaView.jsx`, `src/components/CalendarDayView.jsx`,
+`src/components/WeekCalendar.jsx`, `src/components/MonthCalendar.jsx`,
 `src/hooks/useUserTasks.js`, `src/hooks/useActivityLog.js`
 
 ### Danh sách
-
 - Chia Task chưa xong thành Quá hạn, Hôm nay và Sắp tới; sắp theo ngày/giờ/priority.
 - Tạo và sửa title, description, due date/time, priority, recurrence, tag và liên kết Knowledge.
 - Hoàn thành dùng optimistic state; write lỗi rollback cả danh sách đang làm và khối đã hoàn thành.
@@ -55,6 +57,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   - `week` (Lịch Tuần): 7 cột ngày tương thích cả Chủ Nhật hoặc Thứ Hai khởi đầu, bố trí overlapping task thông minh.
   - `month` (Lịch Tháng): Hiển thị Task pending + completed, song song Dương lịch & Âm lịch Việt Nam, giới hạn chip thông minh và popup chi tiết ngày.
 - **Header cố định (Workspace pattern):** `CalendarToolbar` cố định ở đỉnh trang (100dvh workspace, cuộn nội bộ), không bị giật/nhảy layout khi chuyển giữa danh sách và các chế độ lịch.
+- **Modal tạo nhanh Task (`TaskCreateModal`):** Tự động kích hoạt khi click vào ô trống trong các chế độ lịch, tự động điền sẵn ngày và khung giờ click (Smart Context Prefill), phím tắt `Ctrl + Enter` lưu nhanh và `Escape` đóng.
 
 ### Cột tiện ích Lịch Việt & Sự kiện (`CalendarWidgetPanel`)
 - **Lịch vạn niên & Can Chi:** Tra cứu ngày Dương lịch, Âm lịch, Can Chi Năm/Tháng/Ngày.
@@ -69,7 +72,6 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 - Các toggle bật/tắt lễ phản hồi tức thì và đồng bộ sang toàn bộ 5 chế độ xem lịch.
 
 ### Detail, lịch sử và XP
-
 - Detail modal cho xem/sửa Task, activity field-diff và note cá nhân.
 - `activity_logs` gắn `task_id`; xóa Task cascade lịch sử. Note sửa được, field-diff không sửa.
 - Hoàn thành qua `completeTask` cộng `+10 XP` có dedup; bỏ hoàn thành xóa event tương ứng.
@@ -107,23 +109,25 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 
 **Data:** `collections`; handoff tạm: `lh_inbox_to_finance`.
 
-## 5. Knowledge Base (`/collect`)
+## 5. Knowledge Base — PKM Athenaeum (`/collect`)
 
-**Files:** `src/pages/CollectPage.jsx`, `src/components/TiptapEditor.jsx`,
-`src/components/SlashCommand.jsx`, `src/extensions/MediaNode.jsx`,
-`src/hooks/useCollections.js`, `src/hooks/useCollectionNotes.js`
+**Files:** `src/pages/CollectPage.jsx`, `src/components/kb/*`, `src/utils/kbDeriveUtils.js`,
+`src/styles/kb-tokens.css`, `src/hooks/useCollections.js`, `src/hooks/useCollectionNotes.js`
 
-- Bảy loại: Ghi chú, Trích dẫn, Học, Ý tưởng, AI, Giải trí, Podcast; có view All.
-- List/card, search, type/tag/task filter, archive, reader view và editor view.
-- Hai chế độ editor: Markdown portable và Tiptap rich text; preference nằm ở `kb_editor_mode`.
-- Tiptap có formatting, table, task list, slash menu 15 lệnh và keyboard shortcut panel.
-- Media toolbar/slash có Image, YouTube và Audio. Drive/video URL vẫn được nhận diện/render qua media
-  layer; không có nút Video riêng trong toolbar/slash.
-- Upload image/audio/file yêu cầu Supabase access token và đi qua `api/upload.js`.
-- Sub-note theo bài; Task ↔ Knowledge M:N; tag nằm ở junction trung tâm.
-- QuoteWidget hiện ở Inbox và Knowledge. Hai nguồn: quote hệ thống trong `src/data/quotes.json` và
-  item Knowledge có `type='quote'`. **Không đọc bảng `inspirational_quotes`** — muốn thêm quote của
-  mình thì tạo item Knowledge kiểu quote.
+Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KNOWLEDGE.md).
+
+### Tính năng Quản trị Tri thức PKM (Obsidian / Zettelkasten)
+- **Liên kết 2 chiều (`[[Wiki-links]]`):** Trích dẫn bài viết khác trong nội dung bằng cú pháp `[[Tên bài viết]]`. Hệ thống tự động phân tích và tạo siêu liên kết điều hướng mượt mà giữa các bài viết.
+- **Biểu đồ tri thức tương tác (`KbGraphView`):** Canvas tương tác mô phỏng mạng lưới các bài viết (nodes) và liên kết liên trang (edges). Hỗ trợ zoom, pan, hover xem tên bài và click để mở bài viết.
+- **Bảng Backlinks ngữ cảnh (`KbBacklinks`):** Tự động phát hiện và trích đoạn câu chứa liên kết từ tất cả các bài viết khác đang trỏ tới bài hiện tại.
+- **Chế độ đọc tập trung (`KbReader`):** Giao diện đọc tĩnh tinh tế, tự động trích xuất Mục lục (TOC / Headings navigation), hiển thị ước tính thời gian đọc (read time) và khối Backlinks cuối trang.
+- **Trình soạn thảo kép (Dual-mode Editor):**
+  - **Split Markdown Editor (`KbSplitEditor`):** Soạn thảo Markdown với đồng bộ cuộn thời gian thực (sync scroll) và khung xem trước (live preview).
+  - **Visual Editor (`KbVisualEditor`):** Soạn thảo trực quan phong phú dựa trên Tiptap Rich Text.
+- **Bảng Thống kê tri thức (`KbStats`):** Thống kê định lượng toàn bộ kho kiến thức: tổng số bài, tổng số từ, liên kết nội bộ, thời gian đọc trung bình.
+- **Phím tắt nhanh (`KbShortcutsModal`):** Hỗ trợ tra cứu nhanh toàn bộ phím tắt thao tác.
+- **Phân loại & Lọc chuyên sâu:** 7 danh mục (Ghi chú, Trích dẫn, Học tập, Ý tưởng, AI, Giải trí, Podcast), lọc theo tag, tìm kiếm tức thì theo từ khóa.
+- **Media & Attachment:** Hỗ trợ chèn ảnh, YouTube, Audio player inline; tải tệp lên Google Drive qua `api/upload.js`.
 
 **Data:** `collections`, `collection_notes`, `collection_tags`, `task_collections`.
 
@@ -131,16 +135,14 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 
 **Files:** `src/pages/SettingsPage.jsx`, `src/hooks/useTags.js`
 
-- Hai tab: **Chung** (tiền tệ + tag) và **Hồ sơ**. Tab Quotes đã bỏ ở v6.9.0 — nó CRUD bảng
-  `inspirational_quotes` mà không màn nào đọc, nên quote thêm ở đó không hiện ra ở đâu.
-- Cấu hình tiền tệ: tỷ giá USD (chỉ dùng cho ô chi phí dự kiến ở Ươm mầm) và Auto-K.
+- Hai tab: **Chung** (tiền tệ + tag) và **Hồ sơ**.
+- Cấu hình tiền tệ: tỷ giá USD và Auto-K.
 - Auto-K chỉ áp cho ô **nhập mới**. Form **sửa** (Sửa giao dịch, sửa hóa đơn/thu định kỳ/vay/thẻ/cho
-  vay, hạn mức đã đặt, chi phí dự kiến trong detail Ươm mầm) hiển thị số ĐÃ LƯU nên không áp Auto-K:
-  số trong ô là số sẽ lưu. Chữ chỉ độ lớn (`50k`, `2 triệu`, `10$`) vẫn hiểu ở những ô nhận chữ.
+  vay, hạn mức đã đặt) hiển thị số ĐÃ LƯU nên không áp Auto-K: số trong ô là số sẽ lưu. Chữ chỉ độ lớn (`50k`, `2 triệu`, `10$`) vẫn hiểu ở những ô nhận chữ.
 - Tag manager: tạo, đổi tên/màu, xem usage breakdown và xóa link có xác nhận.
 - Tag plaintext dùng cho Knowledge, Task và Finance transaction qua ba junction riêng để giữ FK.
 - Vault tag là ngoại lệ: nằm trong ciphertext và chỉ có sau unlock.
-- Profile: avatar, username, display name và email. Ô `bio` đã bỏ (không màn nào hiển thị).
+- Profile: avatar, username, display name và email.
 
 **Data:** `tags`, `collection_tags`, `task_tags`, `finance_transaction_tags`, `profiles`.
 
@@ -149,41 +151,20 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 **Files:** `src/pages/FinancePage.jsx`, `src/components/finance/*`, `src/hooks/useFinance.js`,
 `src/utils/financeLogic.js`, `src/data/finance-categories.json`
 
-Finance không cố tính “tôi còn bao nhiêu tiền”. Mọi báo cáo được tính lại từ transaction theo kỳ; thu
-nhập không tự trở thành mẫu số ngân sách.
-
-### Điều hướng
-
-- `overview`: Tổng quan (dashboard thu chi, nhịp chi) và query `view=stats` mở Thống kê. Tab Ngân sách cứng đã được lược bỏ để tinh gọn trải nghiệm.
-- `add`: nhập nhanh bằng form, câu tự nhiên hoặc shortcut.
-- `list`: tìm/lọc/nhóm transaction, sửa/xóa, CSV export. Ngoài chip loại còn có nút **Lọc** (icon
-  phễu) mở bộ lọc nhóm · danh mục con · khoảng ngày; danh mục con chỉ chọn được sau khi chọn nhóm cha
-  và bị bỏ khi đổi nhóm. Mọi điều kiện cộng dồn (AND) với chip và ô tìm, khoảng ngày lọc **trong** kỳ
-  đang xem chứ không đổi kỳ. Dòng tổng hiện điều kiện đang bật + tổng chi của phần đang lọc; CSV xuất
-  đúng phần đang lọc.
+### Điều hướng & Bố cục
+- `overview`: Tổng quan (dashboard thu chi, nhịp chi) và query `view=stats` mở Thống kê.
+- `add`: Nhập nhanh bằng form, câu tự nhiên hoặc shortcut.
+- `list`: Danh sách giao dịch với thanh Toolbar hợp nhất (`.fin-list__toolbar`), ô tìm kiếm ghim trên Header, bộ lọc đa cấp `FilterPop` (nhóm cha, danh mục con, khoảng ngày), xuất CSV.
 - `recurring`: **Định kỳ & Quỹ** (hóa đơn, thu định kỳ, khoản vay, thẻ tín dụng, cho vay và Quỹ tiết kiệm).
-- `cats`: taxonomy chi/thu và override label/màu/icon/subcategory (đặt ở vị trí dưới cùng thanh điều hướng).
+- `cats`: Taxonomy chi (10 nhóm chuẩn) / thu và override label/màu/icon/subcategory.
 
 ### Hành vi chính
-
-- Transaction type: expense, income, saving; số tiền dương; source/category/reference được constraint.
-- Hóa đơn fixed/ask, skip period, kỳ trả; thu định kỳ không mang trạng thái “quá hạn”.
-- Khoản vay tách gốc/lãi; thẻ tách ngày chốt/đến hạn và sao kê; RPC chặn trả vượt/trùng kỳ.
-- Cho vay hiện lãi và tổng sẽ nhận tới ngày hẹn (lãi đơn, theo ngày, trên gốc còn lại — đổi ngày hẹn
-  hoặc ghi một lần thu gốc là tính lại). Lúc ghi khoản họ trả có ô tách tiền lãi: phần gốc đi qua RPC
-  và không tính là thu nhập, phần lãi thành giao dịch thu Đầu tư · Lãi tiết kiệm (chưa gắn `lending_id`,
-  nên app không tổng được "đã thu lãi bao nhiêu").
-- Ô **Lãi mất do rút sớm** cho ca đập sổ tiết kiệm để có tiền cho vay: một cục tiền cộng vào tổng phải
-  thu, không nhân số ngày. Chọn sổ đang mở trong danh sách là app điền sẵn `số tiền × lãi × số ngày đã
-  gửi / 365`; sổ chưa khai trong app thì có máy tính tại chỗ (số tiền · lãi %/năm · ngày gửi). Số cuối
-  vẫn do user sửa theo giấy rút của ngân hàng.
-- Quỹ tiết kiệm: Nằm thành một phân đoạn (tab) riêng trong màn **Định kỳ & Quỹ** (`/finance/recurring`), quản lý nhiều nơi gửi/sổ ngân hàng, lãi suất bình quân, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ. Nút tóm tắt quỹ trên Dashboard Tổng quan điều hướng thẳng vào tab này.
-- Module Ngân sách (hạn mức cứng) đã được lược bỏ; hệ thống tập trung vào theo dõi nhịp chi thực tế, phân tích xu hướng và tích lũy quỹ.
-- Transaction có thể gắn Task bằng `task_id`; UI hiện cho chọn/cập nhật liên kết, chưa có màn tổng chi
-  theo Task hoặc điều hướng mở Task từ Finance.
-- Inbox conversion có thể prefill transaction/hóa đơn; sau khi source Inbox bị xóa, reference được
-  set null như mô tả ở phần Inbox.
-- Module auth-only; không có Finance guest mode.
+- **Mức độ thiết yếu 2 cấp (2-tier necessity):** Phân loại chi tiêu thành **Thiết yếu** (`need`) và **Linh hoạt / Mong muốn** (`want`).
+- **Ghi chú nhiều dòng (`description`):** Cột `description TEXT` cho phép ghi chú tự do nhiều dòng, tách rời tiêu đề ngắn `note`.
+- **Drawer Sửa giao dịch 560px:** Mở rộng mượt mà khi chỉnh sửa giao dịch, hỗ trợ nhập *Nơi / người nhận* (`merchant`) và bảng *Chi tiết từng món* (`items`: tên món, số lượng, đơn giá, tự động tính tổng). Phím tắt `Ctrl + Enter` lưu nhanh, `Escape` đóng.
+- Hóa đơn fixed/ask, skip period, kỳ trả; thu định kỳ; khoản vay và thẻ tín dụng.
+- Cho vay hiện lãi đơn theo ngày trên gốc còn lại, hỗ trợ tính lãi mất do rút tiết kiệm sớm (`forfeited_interest`).
+- Quỹ tiết kiệm: Quản lý nhiều nơi gửi/sổ ngân hàng, lãi suất bình quân, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ.
 
 **Data:** 10 bảng `finance_*` chính + `finance_transaction_tags`. Schema chi tiết ở
 [`DATABASE.md`](DATABASE.md), hợp đồng sản phẩm ở [`DESIGN_FINANCE.md`](DESIGN_FINANCE.md).
@@ -195,52 +176,20 @@ nhập không tự trở thành mẫu số ngân sách.
 `src/utils/vaultLogic.js`, `src/data/account-templates.json`
 
 ### Mã hóa và khóa
-
 - Mỗi item là một JSON AES-256-GCM gồm title, template, favorite, note, tag, field, auth method,
   recovery code, link và history.
 - Passphrase Vault riêng, tối thiểu 12 ký tự. PBKDF2-SHA256 600.000 vòng tạo KEK; KEK mở DEK ngẫu
   nhiên của user. Server chỉ giữ KDF metadata và DEK đã wrap.
 - DEK chỉ ở memory. Lock, sign-out, đổi user hoặc reload xóa key/plaintext khỏi React state.
-- Chỉ query item sau unlock. Sai passphrase/config lỗi fail-closed; item ciphertext hỏng bị bỏ qua và
-  báo số lượng, không tự sửa/xóa.
+- **Đổi Mật khẩu chính (Change Passphrase):** Cho phép đổi Master Passphrase ngay trong Két mật mã bằng cách giải mã DEK bằng KEK cũ, sinh KEK mới từ mật khẩu mới và salt mới, re-wrap DEK và cập nhật `vault_config` mà không cần re-encrypt toàn bộ item.
+- **Khóa khôi phục khẩn cấp (Emergency Recovery Key):** Hỗ trợ tạo khóa khôi phục 24 từ / base64 ngẫu nhiên để mở DEK và khôi phục quyền truy cập khi quên Master Passphrase.
+- **Sao lưu & Phục hồi:**
+  - **Ciphertext Backup / Restore:** Xuất và phục hồi file JSON mã hóa (an toàn, có thể chạy khi Vault đang khóa).
+  - **Plaintext JSON Export:** Xuất toàn bộ dữ liệu ra file JSON rõ nghĩa sau khi xác thực lại Master Passphrase thành công.
 - Update/delete dùng `updated_at` làm revision để chặn ghi đè giữa tab/device.
-
-### Dữ liệu và UI
-
-- 9 template và 10 field type; password/secret che mặc định, có reveal/copy và password generator
-  dùng Web Crypto CSPRNG. `Website login` + `Platform account` đã gộp thành một loại `Account` ở
-  v6.3.0 — hai loại đó cùng hình dạng dữ liệu, tách ra chỉ làm chip filter mất nghĩa.
-- Field sắp xếp được bằng kéo thả (handle bên trái) hoặc nút mũi tên; thứ tự nằm trong encrypted
-  payload. Đổi Type của item ngay trong chế độ Edit — không thêm/bớt field nào.
-- Sign-in method, primary state, one-time recovery code, paste import, encrypted history/diff log.
-- **Backup / restore ở màn hình khoá.** Export copy `encrypted_payload` + nonce + version +
-  `vault_config` nên **chạy được khi Vault đang khoá** và file vẫn là ciphertext (cần passphrase gốc mới
-  mở). Restore chặn 3 điều trước khi ghi: `format`/`version` lạ, `userId` lệch (AAD gắn key + item vào
-  user id → account khác thì không giải mã được gì), và Vault không trống (restore **chỉ** vào vault
-  trống nên không có đường ghi đè). Xong thì khoá lại để bắt unlock bằng passphrase của bản backup —
-  đó cũng là bước tự kiểm chứng. **Chưa diễn tập phục hồi thật** nên Vault vẫn không được dùng làm bản
-  sao duy nhất; xem TASKS §4.
-- Search/filter chỉ chạy client-side sau decrypt. Vault tag không đi qua bảng `tags`.
-- Link item là pointer trong encrypted JSON; target đã xóa hiển thị “Missing item”.
-- Bố cục hai pane, chuyển thành list/detail một cột ở container hẹp.
-- **Logo item do user tự chọn, lưu mã hoá, KHÔNG gọi mạng.** Edit → `Choose a logo` → ảnh được vẽ lại
-  qua canvas thành PNG 48×48 rồi lưu dạng data URI trong encrypted payload (cap 16 KB ở `cleanItem`).
-  Item chưa đặt logo thì hiện plate màu + chữ cái đầu — trạng thái bình thường, không phải lỗi.
-  - Vẽ lại qua canvas nên không giữ byte nào của file gốc → script trong SVG / EXIF bay hết. **Bước thu
-    nhỏ đồng thời là bước diệt trùng**, vì thế không bao giờ lưu bytes gốc.
-  - v6.3.0 trở về trước lấy favicon trực tiếp từ origin dịch vụ, gác sau nút `Logos`. **Đã xoá hẳn**
-    (`faviconCandidates`, `itemUrl`, toggle): mỗi lần mở vault là N request tới N domain, tức chính các
-    domain đó biết IP này vừa mở vault có tài khoản của họ; và item không có field URL thì không bao giờ
-    có logo. Không dùng aggregator (google.com/s2, DuckDuckGo, Clearbit) — gửi danh sách domain cho một
-    bên thứ ba là tự khai user dùng ngân hàng nào, sàn nào.
-- Logo nằm trong payload, **không** ở Supabase Storage hay Drive: URL công khai ở hai chỗ đó phá đúng
-  mô hình threat vừa nói. Đổi lại chịu base64 hai lần (~4 KB/item; 50 item = 200 KB mỗi lần unlock).
+- Logo item do user tự chọn, vẽ qua canvas thành PNG 48×48 lưu trong encrypted payload; không gọi mạng bên ngoài.
 
 **Data:** `accounts` ciphertext + `vault_config`. Không có guest mode.
-
-**Giới hạn:** chưa có export/restore, recovery/reset passphrase cho dữ liệu cũ, đổi passphrase, rotate
-DEK, inactivity auto-lock, clipboard auto-clear hoặc TOTP generator. Không dùng Vault làm bản sao duy
-nhất của secret quan trọng. Chi tiết: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md).
 
 ## 9. Media, widget và PWA
 
@@ -255,11 +204,11 @@ nhất của secret quan trọng. Chi tiết: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN
 
 | Route | Hành vi hiện tại |
 |---|---|
+| `/incubator` | Redirect `/tasks` (module Ươm mầm đã gỡ bỏ hoàn toàn) |
 | `/tracker` | Redirect `/tasks` |
 | `/habits` | Redirect `/tasks` |
 | `/dashboard` | Redirect `/tasks` |
 | `/journey` | Redirect `/tasks` |
 
-Habit, Journey, Dashboard, Quiz, Leaderboard, Life Log, Team/Friends và Finance legacy không còn là
-feature hiện hành. Muốn xem lý do/thời điểm xóa, đọc `CHANGELOG.md`; không khôi phục bằng cách chạy lại
-SQL/file lịch sử riêng lẻ.
+Habit, Journey, Dashboard, Quiz, Leaderboard, Life Log, Team/Friends, Incubator và Finance legacy không còn là
+feature hiện hành. Muốn xem lý do/thời điểm xóa, đọc `CHANGELOG.md`.

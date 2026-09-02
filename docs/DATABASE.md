@@ -1,6 +1,6 @@
 # DATABASE.md — Life Hub
 
-**Target:** Supabase PostgreSQL · **Version:** v6.12.0 · **Updated:** 2026-08-30
+**Target:** Supabase PostgreSQL · **Version:** v6.16.0 · **Updated:** 2026-09-02
 
 Runbook cài đặt duy nhất nằm trong [`README.md`](../README.md). File này mô tả trạng thái schema cuối,
 không thay thế SQL thật.
@@ -52,7 +52,7 @@ auth.users
 
 | Table | Vai trò |
 |---|---|
-| `finance_transactions` | Sổ giao dịch duy nhất; expense/income/saving; liên kết rule/Task/Inbox |
+| `finance_transactions` | Sổ giao dịch duy nhất; expense/income/saving; liên kết rule/Task/Inbox. Cột `description TEXT` lưu ghi chú tự do nhiều dòng (tách biệt `note` tiêu đề ngắn). Cột `necessity` ràng buộc 2 mức `CHECK (necessity IN ('need', 'want'))` |
 | `finance_bills` | Hóa đơn/chi định kỳ. `term_offset` = kỳ đã trả **trước khi dùng app** (user nhập); `term_done` = `term_offset + COUNT(giao dịch)` do trigger tính, client **không** được ghi vào. `note` là ghi chú của quy tắc (số công tơ, ai đứng tên) — **không** sao chép xuống `finance_transactions`. `icon` NULL = suy từ `category_id`. Chu kỳ nhiều tháng nằm ở `rrule.every` (1/2/3/6/12) + `anchor_date` (mốc đếm tháng); ngày trong tháng luôn là `due_day` — ngày cố định thắng ngày bắt đầu |
 | `finance_loans` | Khoản vay và kỳ trả (mình đi vay) |
 | `finance_lendings` | Cho vay — tiền mình cho người khác mượn. Thu về nhiều lần; số đã thu suy từ `finance_transactions.lending_id`. Giao dịch thu về `excluded` nên không bị tính là thu nhập. `rate` (%/năm) tính lãi theo NGÀY trên gốc còn lại; `forfeited_interest` là TIỀN TUYỆT ĐỐI (lãi mất do đập tiết kiệm trước hạn), cộng vào tổng phải thu và **không** nhân với số ngày. Lãi là số suy ra, không lưu cột nào |
@@ -62,7 +62,7 @@ auth.users
 | `finance_income_rules` | Thu định kỳ |
 | `finance_shortcuts` | Mẫu nhập nhanh, không giữ số tiền cố định. `recent_amounts` (tối đa 3) là các mức đã dùng, hiện thành nút bấm-là-ghi khi mở shortcut. Đã cân nhắc thêm cột `default_amount` để bấm một cái ghi luôn và **bỏ** — xem mục "Đã thử rồi bỏ" trong CHANGELOG |
 | `finance_budgets` | Hạn mức theo category |
-| `finance_category_overrides` | Nhãn/màu/icon/subcategory tùy biến theo user |
+| `finance_category_overrides` | Nhãn/màu/icon/subcategory tùy biến theo user (10 nhóm chi chính) |
 | `finance_transaction_tags` | Giao dịch ↔ Tag |
 
 Nguyên lý Finance:
@@ -86,13 +86,14 @@ Chi tiết sản phẩm: [`DESIGN_FINANCE.md`](DESIGN_FINANCE.md).
 | Table | Vai trò | Quyền authenticated |
 |---|---|---|
 | `accounts` | Một AES-GCM ciphertext cho mỗi item | SELECT/INSERT/UPDATE/DELETE own-row |
-| `vault_config` | KDF metadata + DEK đã wrap, một row/user | SELECT/INSERT own-row |
+| `vault_config` | KDF metadata + DEK đã wrap + Recovery Key metadata, một row/user | SELECT/INSERT/UPDATE own-row |
 
 `accounts` chỉ giữ `id`, `user_id`, `created_at`, `updated_at`, `encrypted_payload`,
 `encryption_nonce`, `encryption_version`. Title, template, favorite, note, tag, field, auth method,
 recovery code, link và history đều nằm trong encrypted JSON.
 
-`vault_config` giữ PBKDF2 algorithm/salt/iterations, wrapped DEK, wrap nonce và version. Passphrase,
+`vault_config` giữ PBKDF2 algorithm/salt/iterations, wrapped DEK, wrap nonce, version và các cột khóa
+khôi phục khẩn cấp (`recovery_wrapped_key`, `recovery_wrapped_nonce`, `recovery_salt`). Passphrase,
 KEK và raw DEK không được lưu. Raw DEK chỉ tồn tại trong memory của phiên unlock.
 
 AES-GCM AAD:
@@ -161,7 +162,7 @@ không tạo channel/subscription. UI đồng bộ bằng fetch và optimistic s
 
 ### Local
 
-`supabase db reset --local` replay tám snapshot timestamp theo thứ tự:
+`supabase db reset --local` replay 18 snapshot timestamp theo thứ tự:
 
 1. `20260802000000_base_v5_0_0.sql`
 2. `20260805000000_vault_v5_2_0.sql`
@@ -171,6 +172,16 @@ không tạo channel/subscription. UI đồng bộ bằng fetch và optimistic s
 6. `20260815010000_finance_lending_v6_4_0.sql`
 7. `20260815020000_finance_bill_icon_v6_5_0.sql`
 8. `20260815030000_finance_card_annual_fee_on_v6_6_0.sql`
+9. `20260815040000_finance_bill_multi_month_v6_7_0.sql`
+10. `20260815050000_finance_bill_term_offset_v6_8_0.sql`
+11. `20260816000000_finance_rule_detach_v6_9_0.sql`
+12. `20260817000000_finance_lending_forfeited_v6_9_1.sql`
+13. `20260818000000_drop_inspirational_quotes_v6_10_0.sql`
+14. `20260827000000_finance_taxonomy_v6_11_0.sql`
+15. `20260829000000_finance_necessity_two_tiers_v6_12_0.sql`
+16. `20260831000000_finance_transaction_description_v6_13_0.sql`
+17. `20260831010000_vault_change_passphrase_v6_14_0.sql`
+18. `20260831020000_vault_recovery_key_v6_15_0.sql`
 
 Snapshot đã tồn tại là bất biến. Schema change mới phải dùng migration timestamp mới.
 
@@ -184,6 +195,19 @@ Snapshot đã tồn tại là bất biến. Schema change mới phải dùng mig
 6. `data/migration_v6.4.0_finance_lending.sql`
 7. `data/migration_v6.5.0_finance_bill_icon.sql`
 8. `data/migration_v6.6.0_finance_card_annual_fee.sql`
+9. `data/migration_v6.7.0_finance_bill_multi_month.sql`
+10. `data/migration_v6.8.0_finance_bill_term_offset.sql`
+11. `data/migration_v6.9.0_finance_rule_detach.sql`
+12. `data/migration_v6.9.1_finance_lending_forfeited.sql`
+13. `data/migration_v6.10.0_drop_inspirational_quotes.sql`
+14. `data/migration_v6.11.0_finance_taxonomy.sql`
+15. `data/migration_v6.12.0_finance_necessity_two_tiers.sql`
+16. `data/migration_v6.13.0_finance_transaction_description.sql`
+17. `data/migration_v6.14.0_vault_change_passphrase.sql`
+18. `data/migration_v6.15.0_vault_recovery_key.sql`
+
+Dọn dẹp bảng cũ (tùy chọn):
+- `data/drop_incubator_tables.sql` (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).
 
 Không chạy `data/migration_v5.0.0_activity_logs_v2.sql` sau baseline fresh vì thay đổi đã nằm trong
 baseline. `data/migration_v4.31.0_recurrence_chain.sql` và `data/RUNBOOK.sql` là hồ sơ/upgrade cũ,

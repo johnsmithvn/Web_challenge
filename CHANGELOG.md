@@ -1,5 +1,74 @@
 # CHANGELOG
 
+## v6.16.0 — 2026-09-02
+
+### Added
+- **Đại tu phân hệ Sổ tay Kiến thức thành Không gian Quản trị Tri thức Cá nhân PKM (Athenaeum / Obsidian Workspace — `/collect`):**
+  - **Liên kết 2 chiều (`[[Wiki-links]]`):** Cho phép trích dẫn và liên kết trực tiếp giữa các bài viết bằng cú pháp `[[Tên trang]]`, tự động resolve slug tiếng Việt và hiển thị liên kết tương tác.
+  - **Biểu đồ tri thức tương tác (`KbGraphView`):** Trực quan hóa toàn bộ mạng lưới bài viết và liên kết nội bộ dưới dạng Canvas Network Graph, hỗ trợ zoom, pan, hover node và click để mở bài viết ngay lập tức.
+  - **Bảng Backlinks ngữ cảnh (`KbBacklinks`):** Tự động phát hiện và trích xuất ngữ cảnh (context snippets) của tất cả các bài viết khác đang trỏ đến bài viết hiện tại.
+  - **Chế độ đọc chuyên sâu (`KbReader`):** Giao diện đọc tĩnh, sạch sẽ, tự động trích xuất Mục lục (TOC / Headings navigation) và ước tính thời gian đọc (read time).
+  - **Trình soạn thảo kép (Dual-mode Editor):**
+    - `Split Markdown Editor` (`KbSplitEditor`): Hỗ trợ soạn thảo Markdown thuần, đồng bộ cuộn (sync scroll) và xem trước trực tiếp.
+    - `Visual Editor` (`KbVisualEditor`): Trình soạn thảo trực quan dựa trên Tiptap Rich Text.
+  - **Bảng Thống kê tri thức (`KbStats`) & Phím tắt (`KbShortcutsModal`):** Thống kê tổng số từ, số bài, liên kết; tra cứu toàn bộ phím tắt thao tác nhanh.
+  - **Bộ Design Tokens PKM riêng biệt (`kb-tokens.css`):** Font Playfair Display tiêu đề, JetBrains Mono code/tag, Plus Jakarta Sans giao diện; hỗ trợ cả Dark và Light mode.
+  - **Bộ hàm thuần & Self-check 100%:** `src/utils/kbDeriveUtils.js` với 100% test coverage tại `src/__tests__/core/kbDeriveUtils.test.js`.
+  - **Tài liệu hướng dẫn module chi tiết:** Bổ sung [`docs/MODULE_KNOWLEDGE.md`](docs/MODULE_KNOWLEDGE.md).
+- **Hệ thống Lịch đa chế độ & Không gian làm việc Lịch 5 chế độ (`TasksPage.jsx`):**
+  - **5 Chế độ xem linh hoạt:** `list` (Danh sách), `agenda` (Lịch biểu 45 ngày), `day` (Lịch Ngày 24h với vạch thời gian thực), `week` (Lịch Tuần 7 cột tương thích CN/T2 và chia cột overlapping task), `month` (Lịch Tháng kết hợp Dương & Âm lịch).
+  - **Thanh công cụ Workspace ghim đỉnh (`CalendarToolbar`):** Chuẩn Workspace Pattern `100dvh`, cuộn nội bộ, không giật trang khi chuyển đổi view.
+  - **Cột tiện ích Lịch Việt & Sự kiện (`CalendarWidgetPanel`):**
+    - Lịch Vạn Niên & Can Chi Năm/Tháng/Ngày.
+    - 12 Khung Giờ Hoàng Đạo theo Chi của ngày, highlight giờ tốt và định vị giờ hiện tại.
+    - Đếm ngược sự kiện & Bật/Tắt danh mục ngày lễ: Lễ Việt Nam (solar), Lễ Âm lịch (lunar), Lễ Quốc tế LHQ 55+ ngày (international), Lễ Nhật Bản (japan), Lễ Coder & Geek (fun).
+    - **Kỷ niệm của tôi (`custom`):** Cho phép tự lưu ngày kỷ niệm cá nhân (ngày cưới, sinh nhật, giỗ chạp...) hỗ trợ cả Dương lịch & Âm lịch, tự động tính số năm trôi qua, lưu trữ an toàn trong `localStorage ('lh_custom_anniversaries')`.
+  - **Modal tạo nhanh Task (`TaskCreateModal`):** Auto-focus, tự động điền sẵn ngữ cảnh ngày/giờ khi click vào ô lịch, phím tắt `Ctrl + Enter` lưu nhanh và `Escape` đóng.
+  - Bộ tiện ích `src/utils/calendarTimeUtils.js`, `src/utils/lunarUtils.js` và kiểm thử `weekCalendarLogic.test.js`, `lunarUtils.test.js`.
+
+### Removed
+- **Gỡ bỏ hoàn toàn phân hệ Ươm mầm ý tưởng (Incubator):**
+  - Xóa bỏ module `/incubator`, `IncubatorPage.jsx`, `incubator.css`, `useIntentions.js`.
+  - Bổ sung migration dọn dẹp bảng cũ: [`data/drop_incubator_tables.sql`](data/drop_incubator_tables.sql).
+  - Điều hướng toàn bộ URL `/incubator` về `/tasks`.
+
+---
+
+## v6.15.0 — 2026-08-31
+
+### Added
+- **Khóa khôi phục khẩn cấp Két mật mã (Vault Emergency Recovery Key):**
+  - Cho phép người dùng tạo Khóa khôi phục 24 từ / base64 ngẫu nhiên trong màn hình Cài đặt Vault.
+  - Khóa khôi phục được dùng để mở DEK và đặt lại quyền truy cập khi quên Mật khẩu chính (Master Passphrase).
+  - Bổ sung các cột `recovery_wrapped_key`, `recovery_wrapped_nonce`, `recovery_salt` vào bảng `vault_config` (Migration `20260831020000_vault_recovery_key_v6_15_0.sql` / `data/migration_v6.15.0_vault_recovery_key.sql`).
+  - Hỗ trợ xuất dữ liệu Plaintext JSON (có bước xác thực lại mật khẩu chính) và sao lưu / phục hồi Ciphertext JSON an toàn.
+
+---
+
+## v6.14.0 — 2026-08-31
+
+### Added
+- **Đổi mật khẩu chính Két mật mã (Vault Change Passphrase):**
+  - Cho phép đổi Master Passphrase ngay trong Két mật mã mà không cần mã hóa lại toàn bộ item: giải mã DEK bằng KEK cũ, sinh KEK mới từ mật khẩu mới và salt mới, re-wrap DEK và cập nhật `vault_config`.
+  - Migration `20260831010000_vault_change_passphrase_v6_14_0.sql` / `data/migration_v6.14.0_vault_change_passphrase.sql` thêm policy UPDATE cho bảng `vault_config`.
+- **Phục hồi mật khẩu tài khoản đăng nhập (Forgot Password Flow):**
+  - Tích hợp luồng Quên mật khẩu qua email OTP / Reset link trong `AuthModal.jsx` và `AuthContext.jsx`.
+
+---
+
+## v6.13.0 — 2026-08-31
+
+### Added
+- **Ghi chú nhiều dòng (`description`) cho Giao dịch Tài chính:**
+  - Bổ sung cột `description TEXT` trong `finance_transactions` (Migration `20260831000000_finance_transaction_description_v6_13_0.sql` / `data/migration_v6.13.0_finance_transaction_description.sql`), tách biệt với tiêu đề ngắn `note`.
+- **Drawer Sửa giao dịch 560px & Chi tiết từng món / Nơi nhận:**
+  - Drawer sửa giao dịch mở rộng 560px mượt mà, hỗ trợ ô nhập *Nơi / người nhận* (`merchant`) và bảng *Chi tiết từng món* (`items`: tên món, số lượng, đơn giá, tự động tính tổng).
+  - Hỗ trợ phím tắt `Ctrl + Enter` lưu nhanh và `Escape` đóng.
+- **Tái cấu trúc bộ kiểm thử thành 4 Domain chuyên biệt (`src/__tests__/`):**
+  - Gom toàn bộ test thành 4 thư mục: `tasks/`, `vault/`, `finance/`, `core/`, đạt 100% self-check pass (24 bài test độc lập).
+
+---
+
 ## v6.12.0 — 2026-08-30
 
 ### Added

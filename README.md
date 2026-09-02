@@ -1,8 +1,8 @@
-# Life Hub — Personal Life OS v6.10.0
+# Life Hub — Personal Life OS v6.16.0
 
 > **Kỷ Luật = Hệ Thống, Không Phải Ý Chí**
 
-Life Hub là ứng dụng web cá nhân tích hợp: Inbox, Nhiệm Vụ, Sổ Tay (Knowledge Base), Tài Chính,
+Life Hub là ứng dụng web cá nhân tích hợp: Inbox, Nhiệm Vụ (kèm Không gian Lịch 5 chế độ), Sổ Tay Tri Thức (Knowledge Base PKM / Athenaeum), Tài Chính,
 Account Vault và Focus. Frontend React/Vite, dữ liệu chính trên Supabase với RLS.
 
 - **Frontend:** React 19, Vite, React Router v7, vanilla CSS
@@ -33,12 +33,12 @@ cp .env.local.example .env.local
 npm run dev
 # → http://localhost:5173
 
-# (tuỳ chọn) Self-check nhanh — node:assert, không cần cài gì thêm
+# (tuỳ chọn) Self-check nhanh — node:assert (24 test suites), không cần cài gì thêm
 npm test
 ```
 
 > **Không có Supabase?** Task list và Focus vẫn chạy guest bằng state in-memory và mất khi reload.
-> Inbox, Knowledge, Finance, Incubator, Settings và Account Vault yêu cầu đăng nhập.
+> Inbox, Knowledge, Finance, Settings và Account Vault yêu cầu đăng nhập.
 
 ---
 
@@ -113,12 +113,26 @@ npm run db:local:stop
 > `db:local:reset` xóa toàn bộ dữ liệu database local trước khi replay migration. Đây là lệnh user
 > chủ động chạy cho môi trường test trắng; agent không tự chạy và không được dùng với hosted project.
 
-Bốn migration local được chạy tự động theo timestamp:
+18 migration local được chạy tự động theo timestamp:
 
 1. [`20260802000000_base_v5_0_0.sql`](./supabase/migrations/20260802000000_base_v5_0_0.sql)
 2. [`20260805000000_vault_v5_2_0.sql`](./supabase/migrations/20260805000000_vault_v5_2_0.sql)
 3. [`20260808000000_finance_v6_0_0.sql`](./supabase/migrations/20260808000000_finance_v6_0_0.sql)
 4. [`20260809000000_vault_encryption_v6_2_0.sql`](./supabase/migrations/20260809000000_vault_encryption_v6_2_0.sql)
+5. [`20260815000000_finance_bill_note_v6_3_0.sql`](./supabase/migrations/20260815000000_finance_bill_note_v6_3_0.sql)
+6. [`20260815010000_finance_lending_v6_4_0.sql`](./supabase/migrations/20260815010000_finance_lending_v6_4_0.sql)
+7. [`20260815020000_finance_bill_icon_v6_5_0.sql`](./supabase/migrations/20260815020000_finance_bill_icon_v6_5_0.sql)
+8. [`20260815030000_finance_card_annual_fee_on_v6_6_0.sql`](./supabase/migrations/20260815030000_finance_card_annual_fee_on_v6_6_0.sql)
+9. [`20260815040000_finance_bill_multi_month_v6_7_0.sql`](./supabase/migrations/20260815040000_finance_bill_multi_month_v6_7_0.sql)
+10. [`20260815050000_finance_bill_term_offset_v6_8_0.sql`](./supabase/migrations/20260815050000_finance_bill_term_offset_v6_8_0.sql)
+11. [`20260816000000_finance_rule_detach_v6_9_0.sql`](./supabase/migrations/20260816000000_finance_rule_detach_v6_9_0.sql)
+12. [`20260817000000_finance_lending_forfeited_v6_9_1.sql`](./supabase/migrations/20260817000000_finance_lending_forfeited_v6_9_1.sql)
+13. [`20260818000000_drop_inspirational_quotes_v6_10_0.sql`](./supabase/migrations/20260818000000_drop_inspirational_quotes_v6_10_0.sql)
+14. [`20260827000000_finance_taxonomy_v6_11_0.sql`](./supabase/migrations/20260827000000_finance_taxonomy_v6_11_0.sql)
+15. [`20260829000000_finance_necessity_two_tiers_v6_12_0.sql`](./supabase/migrations/20260829000000_finance_necessity_two_tiers_v6_12_0.sql)
+16. [`20260831000000_finance_transaction_description_v6_13_0.sql`](./supabase/migrations/20260831000000_finance_transaction_description_v6_13_0.sql)
+17. [`20260831010000_vault_change_passphrase_v6_14_0.sql`](./supabase/migrations/20260831010000_vault_change_passphrase_v6_14_0.sql)
+18. [`20260831020000_vault_recovery_key_v6_15_0.sql`](./supabase/migrations/20260831020000_vault_recovery_key_v6_15_0.sql)
 
 Sau `npm run db:local:start`, tạo file `.env.development.local` (Git bỏ qua) bằng Project URL và
 Publishable key hiện trong kết quả:
@@ -155,6 +169,14 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 | 11 | [`data/migration_v6.9.0_finance_rule_detach.sql`](./data/migration_v6.9.0_finance_rule_detach.sql) | Xóa hóa đơn/khoản vay/thẻ không còn bị `ON DELETE RESTRICT` chặn: năm FK sang `SET NULL`, nới CHECK cặp id↔kỳ. Thuần DDL, không đụng dữ liệu. Idempotent. |
 | 12 | [`data/migration_v6.9.1_finance_lending_forfeited.sql`](./data/migration_v6.9.1_finance_lending_forfeited.sql) | Cột `finance_lendings.forfeited_interest` (lãi mất do đập tiết kiệm trước hạn — tiền tuyệt đối, không nhân số ngày). **Bắt buộc** — thiếu là lưu khoản cho vay lỗi `PGRST204`. Additive, idempotent. |
 | 13 | [`data/migration_v6.10.0_drop_inspirational_quotes.sql`](./data/migration_v6.10.0_drop_inspirational_quotes.sql) | Drop bảng `inspirational_quotes` (không còn consumer từ v6.9.0). **Fail-closed**: từ chối chạy nếu bảng còn dù một dòng. Idempotent. |
+| 14 | [`data/migration_v6.11.0_finance_taxonomy.sql`](./data/migration_v6.11.0_finance_taxonomy.sql) | Cập nhật taxonomy 10 nhóm chi chính và subcategories. Idempotent. |
+| 15 | [`data/migration_v6.12.0_finance_necessity_two_tiers.sql`](./data/migration_v6.12.0_finance_necessity_two_tiers.sql) | Hợp nhất mức độ thiết yếu thành 2 cấp (`need` và `want`). Idempotent. |
+| 16 | [`data/migration_v6.13.0_finance_transaction_description.sql`](./data/migration_v6.13.0_finance_transaction_description.sql) | Cột `finance_transactions.description` cho ghi chú tự do nhiều dòng. Idempotent. |
+| 17 | [`data/migration_v6.14.0_vault_change_passphrase.sql`](./data/migration_v6.14.0_vault_change_passphrase.sql) | Policy UPDATE cho bảng `vault_config` phục vụ đổi Mật khẩu chính. Idempotent. |
+| 18 | [`data/migration_v6.15.0_vault_recovery_key.sql`](./data/migration_v6.15.0_vault_recovery_key.sql) | Thêm cột `recovery_wrapped_key`, `recovery_wrapped_nonce`, `recovery_salt` vào `vault_config`. Idempotent. |
+
+Dọn dẹp bảng cũ (tùy chọn):
+- [`data/drop_incubator_tables.sql`](./data/drop_incubator_tables.sql) (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).
 
 > Không chạy thêm `migration_v5.0.0_activity_logs_v2.sql` trên fresh install vì thay đổi đó đã nằm
 > trong baseline. Không chạy lại baseline một mình trên database đã ở v6.x: nó có thể tạo lại bảng
@@ -237,28 +259,31 @@ Sau khi thêm env vars → vào **Deployments** → **Redeploy** (hoặc push co
 
 ```
 src/
-  pages/                    ← 8 route pages (Landing + 7 lazy modules)
-    TasksPage.jsx           ← /tasks — Danh sách + Lịch
+  pages/                    ← 7 route pages (Landing + 6 lazy modules)
+    TasksPage.jsx           ← /tasks — Danh sách + Lịch 5 chế độ
     FinancePage.jsx         ← /finance/:screen — module Finance Nocturne
     AccountsPage.jsx        ← /accounts — Account Vault Keyplate
     InboxPage.jsx           ← /inbox — quick capture
-    CollectPage.jsx         ← /collect — Knowledge Base
+    CollectPage.jsx         ← /collect — Sổ tay Kiến thức PKM / Athenaeum
     FocusPage.jsx           ← /focus — Pomodoro
-    SettingsPage.jsx        ← /settings — Tags + Quotes + Profile
-  components/               ← UI dùng lại; finance/ chứa các màn Finance
-    TaskListSection.jsx     ← CRUD task + completed range
-    TaskDetailModal.jsx     ← Detail/log/note + edit tại chỗ
-    MonthCalendar.jsx       ← Lịch task, âm lịch và ngày lễ
+    SettingsPage.jsx        ← /settings — Tags + Profile
+  components/               ← UI dùng lại; finance/ (Finance), kb/ (Knowledge PKM)
+    CalendarToolbar.jsx     ← Toolbar ghim đỉnh đa chế độ Lịch
+    CalendarWidgetPanel.jsx ← Lịch vạn niên, Can Chi, Giờ Hoàng đạo, Ngày lễ & Kỷ niệm
+    WeekCalendar.jsx        ← Lịch Tuần 7 cột thông minh
+    MonthCalendar.jsx       ← Lịch Tháng kết hợp Dương & Âm lịch
+    TaskCreateModal.jsx     ← Modal tạo nhanh Task có smart prefill
     AppIcon.jsx             ← Phosphor icon adapter dùng toàn app
   hooks/                    ← Supabase/data logic, không đặt trong component
     useUserTasks.js         ← Task CRUD, recurrence, optimistic state
     useFinance.js           ← 10 bảng Finance
     useAccounts.js          ← Account Vault
+    useCollections.js       ← Inbox & Knowledge Base
   contexts/                 ← Auth, Theme, Toast
   data/                     ← JSON tĩnh: UI strings, holidays, taxonomy, templates
-  styles/                   ← CSS per domain (global.css = tokens)
-  __tests__/                ← Self-check chạy qua npm test
-  utils/                    ← Pure logic + self-check
+  styles/                   ← CSS per domain (global.css = tokens, kb-tokens.css, calendar-widget.css...)
+  __tests__/                ← Self-check 24 bài test phân theo 4 domain (tasks/, vault/, finance/, core/)
+  utils/                    ← Pure logic: kbDeriveUtils, calendarTimeUtils, lunarUtils, financeLogic, vaultCrypto
   lib/supabase.js           ← Singleton Supabase client
 api/
   upload.js                 ← File upload proxy → Google Drive (Supabase JWT required)
@@ -280,6 +305,12 @@ data/
   migration_v6.9.0_finance_rule_detach.sql
   migration_v6.9.1_finance_lending_forfeited.sql
   migration_v6.10.0_drop_inspirational_quotes.sql
+  migration_v6.11.0_finance_taxonomy.sql
+  migration_v6.12.0_finance_necessity_two_tiers.sql
+  migration_v6.13.0_finance_transaction_description.sql
+  migration_v6.14.0_vault_change_passphrase.sql
+  migration_v6.15.0_vault_recovery_key.sql
+  drop_incubator_tables.sql ← Dọn dẹp bảng cũ Ươm mầm
   reset_user_data.sql       ← Wipe toàn bộ app data, giữ auth users
 supabase/
   migrations/               ← Chuỗi migration timestamp chỉ dùng local
@@ -288,6 +319,8 @@ docs/
   ARCHITECTURE.md           ← Module structure + data flow
   DATABASE.md               ← SQL, RLS, RPC và thứ tự migration
   FEATURES.md               ← Toàn bộ hành vi tính năng
+  MODULE_KNOWLEDGE.md       ← Hướng dẫn chuyên sâu Knowledge PKM
+  DESIGN_SYSTEM.md          ← Quy chuẩn layout & thiết kế giao diện
   DESIGN_ACCOUNT_VAULT.md  ← Hợp đồng thiết kế Vault
   DESIGN_FINANCE.md        ← Hợp đồng thiết kế Finance
   TASKS.md                  ← Các việc còn mở, có thể thực hiện
@@ -310,6 +343,8 @@ CHANGELOG.md                ← Lịch sử phiên bản
 | Kiến trúc và data flow | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) |
 | Database, RLS và RPC | [`docs/DATABASE.md`](./docs/DATABASE.md) |
 | Hành vi tính năng | [`docs/FEATURES.md`](./docs/FEATURES.md) |
+| Không gian Quản trị Tri thức PKM | [`docs/MODULE_KNOWLEDGE.md`](./docs/MODULE_KNOWLEDGE.md) |
+| Quy chuẩn Thiết kế & Bố cục | [`docs/DESIGN_SYSTEM.md`](./docs/DESIGN_SYSTEM.md) |
 | Thiết kế Account Vault | [`docs/DESIGN_ACCOUNT_VAULT.md`](./docs/DESIGN_ACCOUNT_VAULT.md) |
 | Thiết kế Finance | [`docs/DESIGN_FINANCE.md`](./docs/DESIGN_FINANCE.md) |
 | Trạng thái/backlog | [`docs/TASKS.md`](./docs/TASKS.md) và [`docs/PLAN.md`](./docs/PLAN.md) |
@@ -325,12 +360,12 @@ CHANGELOG.md                ← Lịch sử phiên bản
 |-----|-------|
 | `/` | Landing / đăng nhập |
 | `/inbox` | Quick-capture inbox |
-| `/tasks` | Nhiệm vụ: Danh sách + Lịch tháng |
-| `/collect` | Knowledge Base — dual-mode editor (Tiptap + Markdown) |
-| `/finance`, `/finance/:screen` | Tổng quan, Nhập nhanh, Giao dịch, Danh mục, Hóa đơn; Ngân sách/Thống kê nằm trong Tổng quan |
-| `/accounts` | Account Vault hai pane |
-| `/focus` | Pomodoro timer |
-| `/settings` | Tags + Quotes + Profile |
+| `/tasks` | Nhiệm vụ & Không gian Lịch 5 chế độ |
+| `/collect` | Sổ tay Tri thức PKM (Athenaeum / Wiki-links / Graph View) |
+| `/finance`, `/finance/:screen` | Tổng quan, Nhập nhanh, Giao dịch, Danh mục, Hóa đơn; Thống kê nằm trong Tổng quan |
+| `/accounts` | Account Vault mã hóa hai pane + Emergency Recovery Key |
+| `/focus` | Pomodoro timer + XP |
+| `/settings` | Tags + Profile |
 | `/incubator`, `/tracker`, `/habits`, `/dashboard`, `/journey` | Redirect về `/tasks` (module cũ đã gỡ) |
 
 ---
@@ -338,32 +373,12 @@ CHANGELOG.md                ← Lịch sử phiên bản
 ## ✨ Tính Năng Chính
 
 ### 🏠 Core
-- **Nhiệm vụ:** danh sách full-bleed, lịch tháng, task lặp, priority, tag, liên kết Knowledge và lịch sử thay đổi
-- **Finance:** giao dịch, ngân sách/thống kê, danh mục, hóa đơn, khoản vay, thẻ và quỹ tiết kiệm; liên kết Task/Inbox
-- **Account Vault:** full-content AES-GCM phía client; phải unlock mới tải/hiện title, username, URL,
-  notes, tags, fields, mã dự phòng và history
-- **Knowledge Base:** editor Tiptap + Markdown, multimedia, slash command, tag và sub-note
+- **Nhiệm vụ & Lịch:** 5 chế độ xem (List, Agenda, Day, Week, Month), Lịch vạn niên, Can Chi, Giờ hoàng đạo, Ngày lễ, Kỷ niệm cá nhân
+- **Finance:** giao dịch, phân loại thiết yếu 2 cấp, ghi chú nhiều dòng, drawer 560px, danh mục, hóa đơn, khoản vay, thẻ và quỹ tiết kiệm
+- **Account Vault:** full-content AES-GCM phía client, đổi Master Passphrase, Khóa khôi phục khẩn cấp 24 từ, xuất JSON rõ nghĩa và backup/restore mã hóa
+- **Knowledge Base (PKM):** Liên kết 2 chiều `[[Wiki-links]]`, Graph Network View canvas, Backlinks ngữ cảnh, Reader TOC & Read Time, Dual-mode editor (Markdown + Tiptap Visual)
 - **Inbox:** Quick capture → phân loại
 - **Focus:** Pomodoro + XP event log
-
-### 📌 Tasks v6.1.0
-- **Task Detail:** nút Sửa dùng lại form edit ngay trong popup; không đóng popup hoặc navigate về list
-- **Hoàn thành tức thời:** task vừa tick xuất hiện ngay trong khối Đã hoàn thành; lỗi DB rollback cả hai state
-- **Lịch:** ngày dương + ngày âm + tên ngày lễ trong ô, không chồng chữ; panel ngày liệt kê task xong và sắp tới
-- **Sức chứa:** ngày thường tối đa 4 task, ngày lễ 3 task để dành một dòng cho tên lễ; phần còn lại hiện đúng `+N nữa…`
-
-### 🎵 Media Infrastructure (v4.23.0)
-- **Upload:** Paste / drop / toolbar → Google Drive (Service Account) qua `api/upload.js` — **yêu cầu đăng nhập**
-- **Image / YouTube / Audio:** có toolbar + slash command; Drive/video URL vẫn được media layer nhận diện và render, nhưng không có nút Video riêng
-- **Stream proxy:** `api/stream.js` proxy media Drive (hỗ trợ Range/seek) — chỉ phục vụ file nằm trong thư mục app
-- **MediaNode (Tiptap v3):** tự nhận diện URL Drive / YouTube / audio / video khi paste
-- **QuoteWidget:** Daily-seeded random, shuffle 🔀, audio support trong Inbox và Knowledge
-- **Quote Manager:** Settings → CRUD personal quotes + view system quotes
-
-### 🔐 Auth & Sync
-- Email/Password + Google OAuth (Supabase)
-- RLS own-row cho dữ liệu người dùng
-- Task list và Focus có guest in-memory; các module dữ liệu còn lại yêu cầu đăng nhập
 
 ---
 
@@ -372,8 +387,8 @@ CHANGELOG.md                ← Lịch sử phiên bản
 | | |
 |--|--|
 | **Frontend** | React 19, Vite 8, React Router 7 |
-| **Editor** | Tiptap v3 (ProseMirror) + custom extensions |
-| **Styling** | Vanilla CSS, Dark/Light mode, Glassmorphism |
+| **Editor** | Tiptap v3 (ProseMirror) + Markdown + PKM Wiki-links |
+| **Styling** | Vanilla CSS, Dark/Light mode, Glassmorphism, 100dvh Workspace Pattern |
 | **Backend** | Supabase (PostgreSQL + Auth + RLS) |
 | **Serverless** | Vercel Functions (`api/upload.js`, `api/stream.js`) |
 | **Media Storage** | Google Drive (Service Account, server-side upload + stream proxy) |
@@ -386,10 +401,11 @@ CHANGELOG.md                ← Lịch sử phiên bản
 
 | Version | Mô tả |
 |---------|-------|
-| **v6.3.0** | Vault UX: gộp `Website login` + `Platform account` thành một loại `Account` (còn 9 template), kéo thả sắp xếp field, đổi Type trong Edit, dropdown link hiện subtitle. Không đổi schema |
-| **v6.2.0** | Account Vault full-content encryption: PBKDF2-SHA256 600.000 vòng, DEK bọc bằng passphrase, AES-GCM + AAD theo user/item; key chỉ giữ trong memory |
-| **v6.1.0** | Tasks full-bleed; completed range; edit trong detail popup; lịch âm/ngày lễ; giới hạn 4/3 task theo sức chứa ô |
-| **v6.0.0** | Finance Nocturne clean rebuild, 10 bảng + junction/RPC, liên kết Task và Inbox |
+| **v6.16.0** | Đại tu Knowledge Base thành PKM Athenaeum (Wiki-links, Graph View, Backlinks, Split Editor); Không gian Lịch 5 chế độ (`list`, `agenda`, `day`, `week`, `month`) kết hợp Lịch Vạn Niên & Can Chi; gỡ bỏ hoàn toàn module Ươm mầm |
+| **v6.15.0** | Khóa khôi phục khẩn cấp Két mật mã (Emergency Recovery Key 24 từ / base64); xuất Plaintext JSON có xác thực Master Passphrase; Ciphertext Backup & Restore |
+| **v6.14.0** | Đổi Master Passphrase Két mật mã (re-wrap DEK với salt/KEK mới); luồng Quên mật khẩu đăng nhập (Forgot Password OTP/Email) |
+| **v6.13.0** | Ghi chú nhiều dòng (`description`) cho Giao dịch Tài chính; Drawer Sửa giao dịch 560px hỗ trợ nơi nhận và bảng chi tiết từng món; gom test thành 4 domain |
+| **v6.12.0** | Tái cấu trúc Header Tài chính tinh gọn (Phương án A); hợp nhất Toolbar giao dịch; gom phân loại thiết yếu thành 2 cấp (`need` và `want`) |
 
 Lịch sử đầy đủ và các feature đã xóa chỉ nằm trong [`CHANGELOG.md`](./CHANGELOG.md).
 
