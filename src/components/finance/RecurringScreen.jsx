@@ -307,6 +307,7 @@ export default function RecurringScreen({ fin, nav }) {
         <Segmented options={segmentOptions} value={seg} onChange={async (v) => {
           if (!await closeAddForm()) return;
           nav.setRecurringSeg(v);
+        }} />
         {seg !== 'saving' && (
           <button className="fin-btn fin-btn--primary fin-btn--sm" onClick={async () => {
             if (adding) { await closeAddForm(); return; }
