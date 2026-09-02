@@ -287,13 +287,14 @@ export default function KBReaderView({
       </div>
 
       {/* Main Reader Layout */}
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="kb-reader__layout"
-      >
+      <div className="kb-reader__layout">
         {/* Main Prose Column */}
-        <article className="kb-reader__main" style={{ maxWidth: focusMode ? '900px' : undefined, margin: focusMode ? '0 auto' : undefined }}>
+        <article
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="kb-reader__main"
+          style={{ maxWidth: focusMode ? '900px' : undefined, margin: focusMode ? '0 auto' : undefined }}
+        >
           <div className="kb-reader__paper">
             {/* Metadata line */}
             <div className="kb-reader__hero-meta">
