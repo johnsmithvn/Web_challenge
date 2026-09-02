@@ -400,17 +400,31 @@ function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone }) {
           />
         </label>
         <label className="fin-label">
-          Kỳ hạn
-          <select className="fin-input" value={form.term || ''} onChange={field('term')}>
-            <option value="">Không kỳ hạn</option>
-            <option value="1">1 tháng</option>
-            <option value="3">3 tháng</option>
-            <option value="6">6 tháng</option>
-            <option value="12">12 tháng</option>
-            <option value="18">18 tháng</option>
-            <option value="24">24 tháng</option>
-            <option value="36">36 tháng</option>
-          </select>
+          Kỳ hạn · tháng
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input
+              className="fin-input"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={form.term || ''}
+              onChange={field('term', val => sanitizeDigits(val, 3))}
+              placeholder="Ví dụ: 1, 2, 6, 12... (để trống nếu không kỳ hạn)"
+              style={{ width: '100%', paddingRight: form.term ? '52px' : '12px' }}
+            />
+            {form.term ? (
+              <span
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  fontSize: '12px',
+                  color: 'var(--n-txt3, #888)',
+                  pointerEvents: 'none',
+                }}
+              >
+                tháng
+              </span>
+            ) : null}
+          </div>
         </label>
       </div>
 

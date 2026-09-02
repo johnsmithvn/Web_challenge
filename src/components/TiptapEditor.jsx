@@ -312,13 +312,27 @@ function TiptapToolbar({ editor }) {
         <TBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough (Ctrl+Shift+X)"><Strikethrough size={15} /></TBtn>
 
         {/* Colors */}
-        <div className="tp-color-picker" title="Text Color">
+        <div className="tp-color-picker" title={editor.getAttributes('textStyle').color ? "Màu chữ đã chọn (bấm × để đặt lại theo nền)" : "Chọn màu chữ"}>
           <Palette size={15} style={{ color: editor.getAttributes('textStyle').color || 'currentColor' }} />
           <input 
             type="color" 
             onInput={event => editor.chain().focus().setColor(event.target.value).run()}
-            value={editor.getAttributes('textStyle').color || '#000000'}
+            value={editor.getAttributes('textStyle').color || '#8b5cf6'}
           />
+          {editor.getAttributes('textStyle').color && (
+            <button
+              type="button"
+              className="tp-color-reset-btn"
+              title="Đặt lại màu chữ mặc định theo nền"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                editor.chain().focus().unsetColor().run();
+              }}
+            >
+              ×
+            </button>
+          )}
         </div>
         <TBtn onClick={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')} title="Highlight Color (Ctrl+Shift+H)"><Highlighter size={15} /></TBtn>
 
@@ -412,7 +426,33 @@ async function uploadAndInsertImage(tr, view, file) {
   }
 }
 
-/* ── Backward Compatibility Migration Helper ────────────────── */
+/* ── Backward Compatibility & Theme Adaptation Helper ───────── */
+const isMonochromeColor = (color) => {
+  if (!color || typeof color !== 'string') return false;
+  const c = color.trim().toLowerCase();
+  return (
+    c === '#000' ||
+    c === '#000000' ||
+    c === 'black' ||
+    c === 'rgb(0,0,0)' ||
+    c === 'rgb(0, 0, 0)' ||
+    c === 'rgba(0,0,0,1)' ||
+    c === 'rgba(0, 0, 0, 1)' ||
+    c === '#fff' ||
+    c === '#ffffff' ||
+    c === 'white' ||
+    c === 'rgb(255,255,255)' ||
+    c === 'rgb(255, 255, 255)' ||
+    c === 'rgba(255,255,255,1)' ||
+    c === 'rgba(255, 255, 255, 1)' ||
+    c === '#0f172a' ||
+    c === '#1e1b4b' ||
+    c === '#111827' ||
+    c === '#1f2937' ||
+    c === '#f0f0ff'
+  );
+};
+
 function migrateJson(node) {
   if (!node) return node;
   if (Array.isArray(node)) {
@@ -422,6 +462,17 @@ function migrateJson(node) {
     const updated = { ...node };
     if (updated.type === 'audioBlock') {
       updated.type = 'mediaBlock';
+    }
+    // Remove monochrome color marks that break light/dark mode contrast
+    if (Array.isArray(updated.marks)) {
+      updated.marks = updated.marks.filter(mark => {
+        if (mark.type === 'textStyle' && mark.attrs?.color && isMonochromeColor(mark.attrs.color)) {
+          const otherAttrs = Object.keys(mark.attrs).filter(k => k !== 'color');
+          if (otherAttrs.length === 0) return false;
+          delete mark.attrs.color;
+        }
+        return true;
+      });
     }
     if (updated.content) {
       updated.content = migrateJson(updated.content);

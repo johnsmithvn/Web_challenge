@@ -293,7 +293,7 @@ export default function KBReaderView({
           ref={scrollRef}
           onScroll={handleScroll}
           className="kb-reader__main"
-          style={{ maxWidth: focusMode ? '900px' : undefined, margin: focusMode ? '0 auto' : undefined }}
+          style={{ maxWidth: focusMode ? '1080px' : undefined, margin: focusMode ? '0 auto' : undefined }}
         >
           <div className="kb-reader__paper">
             {/* Metadata line */}

@@ -73,7 +73,24 @@
 }
 
 /* ── Prose (reader + preview) ──────────────────────────────── */
-.kb-prose { font-family: var(--kb-serif); max-width: 72ch; }
+.kb-prose {
+  font-family: var(--kb-serif);
+  width: 100%;
+  max-width: 100%;
+  color: var(--kb-tx);
+}
+.kb-prose .tp-content {
+  font-family: inherit;
+  color: var(--kb-tx);
+  min-height: auto;
+  width: 100%;
+  max-width: 100%;
+}
+.kb-prose h1 {
+  font-family: var(--kb-serif);
+  font-size: 2rem; font-weight: 600; margin: 36px 0 16px;
+  color: var(--kb-tx);
+}
 .kb-prose h2 {
   font-family: var(--kb-serif);
   font-size: 1.55rem; font-weight: 500; margin: 36px 0 14px;
@@ -87,14 +104,16 @@
 }
 .kb-prose p {
   font-size: 1.05rem; line-height: 1.8; margin: 0 0 20px;
-  color: color-mix(in oklab, var(--kb-tx) 94%, var(--kb-bg));
+  color: var(--kb-tx);
   text-wrap: pretty;
+  max-width: 82ch;
 }
 .kb-prose blockquote {
-  margin: 26px 0; padding: 4px 0 4px 22px;
+  margin: 26px 0; padding: 6px 0 6px 22px;
   border-left: 3px solid var(--kb-brass);
   font-style: italic; font-size: 1.15rem; line-height: 1.7;
   color: var(--kb-dim);
+  max-width: 82ch;
 }
 .kb-prose code {
   font-family: var(--kb-mono); font-size: 0.9rem;
@@ -102,12 +121,80 @@
   border-radius: 4px; color: var(--kb-sage);
 }
 .kb-prose pre {
-  background: var(--kb-p1); border: 1px solid var(--kb-line);
-  padding: 16px 18px; border-radius: 6px; overflow: auto;
-  font-family: var(--kb-mono); font-size: 0.88rem;
-  line-height: 1.65; color: var(--kb-dim);
+  background: color-mix(in oklab, var(--kb-p1) 40%, var(--kb-p2));
+  border: 1px solid var(--kb-line);
+  padding: 18px 22px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: var(--kb-mono);
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: var(--kb-dim);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 24px 0;
 }
-.kb-prose ul, .kb-prose ol { padding-left: 24px; margin: 0 0 20px; }
+.kb-prose pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  font-size: inherit;
+}
+.kb-prose table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0;
+  font-size: 0.95rem;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--kb-line);
+}
+.kb-prose th,
+.kb-prose td {
+  padding: 11px 16px;
+  border: 1px solid var(--kb-line);
+  text-align: left;
+  line-height: 1.5;
+  color: var(--kb-tx);
+}
+.kb-prose th {
+  background: var(--kb-p2);
+  font-weight: 600;
+  color: var(--kb-tx);
+}
+.kb-prose tr:nth-child(even) td {
+  background: color-mix(in oklab, var(--kb-p1) 70%, var(--kb-p2));
+}
+.kb-prose ul, .kb-prose ol { padding-left: 24px; margin: 0 0 20px; max-width: 82ch; }
+
+/* ── Inline color contrast adaptivity ──────────────────────── */
+:root:not([data-theme="light"]) .kb-prose span[style*="color: #000"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: #111"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: #222"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: #333"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: #1a1a1a"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: #0f172a"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: #1e1b4b"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: #1f2937"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: #2e2e2e"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: rgb(0, 0, 0)"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: rgb(15, 23, 42)"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: rgb(30, 27, 75)"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: rgb(31, 41, 55)"],
+:root:not([data-theme="light"]) .kb-prose span[style*="color: rgb(55, 65, 81)"] {
+  color: var(--kb-tx) !important;
+}
+
+[data-theme="light"] .kb-prose span[style*="color: #fff"],
+[data-theme="light"] .kb-prose span[style*="color: #f8fafc"],
+[data-theme="light"] .kb-prose span[style*="color: #f1f5f9"],
+[data-theme="light"] .kb-prose span[style*="color: #f0f0ff"],
+[data-theme="light"] .kb-prose span[style*="color: rgb(255, 255, 255)"] {
+  color: var(--kb-tx) !important;
+}
 .kb-prose li { font-size: 1.05rem; line-height: 1.75; margin-bottom: 8px; }
 .kb-prose hr { border: none; border-top: 1px solid var(--kb-line); margin: 32px 0; }
 .kb-prose strong { font-weight: 600; color: var(--kb-tx); }

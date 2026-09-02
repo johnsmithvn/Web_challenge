@@ -198,11 +198,16 @@
 .tp-content {
   outline: none;
   min-height: 300px;
-  color: var(--text-primary);
+  color: var(--kb-tx, var(--text-primary, #f0f0ff));
   font-size: 1rem;
   line-height: 1.85;
   font-family: var(--font-body, 'Inter', sans-serif);
   caret-color: var(--purple-light, #c4b5fd);
+}
+
+.kb-prose .tp-content,
+.tp-readonly .tp-content {
+  font-family: inherit;
 }
 
 /* Placeholder */
@@ -214,14 +219,21 @@
   height: 0;
 }
 
-/* ── Prose styles for Tiptap content ────────────────────────── */
-.tp-content h1 { font-family: var(--font-display); font-size: 2rem; font-weight: 800; color: var(--text-primary); margin: 1.75rem 0 0.65rem; line-height: 1.2; }
-.tp-content h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 1.5rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
-.tp-content h3 { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin: 1.25rem 0 0.4rem; }
-.tp-content h4, .tp-content h5, .tp-content h6 { font-weight: 600; color: var(--text-primary); margin: 1rem 0 0.35rem; }
+/* ── Prose styles for Tiptap content (Dark theme default) ────── */
+.tp-content h1 { font-family: var(--font-display); font-size: 2rem; font-weight: 800; color: var(--kb-tx, var(--text-primary, #f0f0ff)); margin: 1.75rem 0 0.65rem; line-height: 1.2; }
+.tp-content h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--kb-tx, var(--text-primary, #f0f0ff)); margin: 1.5rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.tp-content h3 { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; color: var(--kb-tx, var(--text-primary, #f0f0ff)); margin: 1.25rem 0 0.4rem; }
+.tp-content h4, .tp-content h5, .tp-content h6 { font-weight: 600; color: var(--kb-tx, var(--text-primary, #f0f0ff)); margin: 1rem 0 0.35rem; }
+
+.tp-content p,
+.tp-content li,
+.tp-content td,
+.tp-content th {
+  color: var(--kb-tx, var(--text-primary, #f0f0ff));
+}
 
 .tp-content p { margin: 0 0 1rem; }
-.tp-content strong { color: var(--text-primary); font-weight: 700; }
+.tp-content strong { color: var(--kb-tx, var(--text-primary, #f0f0ff)); font-weight: 700; }
 .tp-content em { color: var(--purple-light, #c4b5fd); font-style: italic; }
 .tp-content s { opacity: 0.5; }
 .tp-content mark { background: rgba(250,204,21,0.2); color: #fde68a; border-radius: 2px; padding: 0 2px; }
@@ -471,6 +483,57 @@
 
 /* Selection */
 [data-theme="light"] .tp-content ::selection { background: rgba(99,102,241,0.2); }
+
+/* ── Inline color mode adaptation for Tiptap content ─────────── */
+:root:not([data-theme="light"]) .tp-content span[style*="color: #000"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: #111"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: #222"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: #333"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: #1a1a1a"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: #0f172a"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: #1e1b4b"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: #1f2937"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: #2e2e2e"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: rgb(0, 0, 0)"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: rgb(15, 23, 42)"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: rgb(30, 27, 75)"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: rgb(31, 41, 55)"],
+:root:not([data-theme="light"]) .tp-content span[style*="color: rgb(55, 65, 81)"] {
+  color: var(--kb-tx, var(--text-primary, #f0f0ff)) !important;
+}
+
+[data-theme="light"] .tp-content span[style*="color: #fff"],
+[data-theme="light"] .tp-content span[style*="color: #f8fafc"],
+[data-theme="light"] .tp-content span[style*="color: #f1f5f9"],
+[data-theme="light"] .tp-content span[style*="color: #f0f0ff"],
+[data-theme="light"] .tp-content span[style*="color: rgb(255, 255, 255)"] {
+  color: var(--kb-tx, var(--text-primary, #1e1b4b)) !important;
+}
+
+.tp-color-reset-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--purple, #8b5cf6);
+  color: white;
+  border: none;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.tp-color-reset-btn:hover {
+  background: #ef4444;
+}
 
 /* ── Toolbar ──────────────────────────────────────────────────── */
 [data-theme="light"] .tp-toolbar {
