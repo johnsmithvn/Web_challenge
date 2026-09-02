@@ -117,12 +117,16 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
         <div className="fin-data-table-wrap">
           <table className="fin-data-table fin-deposit-table">
             <thead>
-              <tr><th>Nơi gửi</th><th>Thuộc quỹ</th><th>Số tiền</th><th>Lãi suất</th><th>Kỳ hạn</th><th>Đáo hạn</th><th>Lãi/năm</th></tr>
+              <tr><th>Nơi gửi</th><th>Thuộc quỹ</th><th>Số tiền</th><th>Lãi suất</th><th>Kỳ hạn</th><th>Đáo hạn</th><th style={{ textAlign: 'right' }}>Lãi khi đến hạn</th></tr>
             </thead>
             <tbody>
               {activeDeposits.map(deposit => {
                 const goal = activeGoals.find(item => item.id === deposit.fund_id) || fin.goals.find(item => item.id === deposit.fund_id);
                 const warning = maturityWarn(deposit.matures_at, fin.today);
+                const termMonths = deposit.term ? Number(deposit.term) : null;
+                const termInterest = termMonths
+                  ? Math.round(deposit.amount * (deposit.rate || 0) / 100 * (termMonths / 12))
+                  : Math.round(deposit.amount * (deposit.rate || 0) / 100);
                 const yearly = Math.round(deposit.amount * (deposit.rate || 0) / 100);
                 const openDeposit = () => setPanel({ kind: 'deposit', goal, deposit });
                 const depType = guessDepositType(deposit);
@@ -174,7 +178,14 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
                         <span className="fin-due-badge fin-due-badge--flex">Linh hoạt</span>
                       )}
                     </td>
-                    <td className="is-positive">+ {money(yearly)}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <strong className="is-positive">+ {money(termInterest)}</strong>
+                      {termMonths && termMonths !== 12 ? (
+                        <div style={{ marginTop: '1px' }}>
+                          <small style={{ color: 'var(--n-txt3)', fontSize: '10px' }}>({money(yearly)}/năm)</small>
+                        </div>
+                      ) : null}
+                    </td>
                   </tr>
                 );
               })}
@@ -523,6 +534,36 @@ function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone }) {
           </div>
         </label>
       </div>
+
+      {parseCurrencyInput(form.amount) > 0 && Number(form.rate) > 0 && (
+        <div style={{
+          padding: '8px 12px',
+          borderRadius: '8px',
+          background: 'rgba(72, 179, 162, 0.1)',
+          border: '1px solid rgba(72, 179, 162, 0.25)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '12px',
+          color: 'var(--n-txt1)'
+        }}>
+          <span>
+            {depositType !== 'flex' && form.term ? `Lãi thực nhận khi đáo hạn (${form.term} tháng):` : 'Lãi ước tính 1 năm:'}
+            <strong className="is-positive" style={{ marginLeft: '6px' }}>
+              + {money(depositType !== 'flex' && Number(form.term)
+                ? Math.round(parseCurrencyInput(form.amount) * Number(form.rate) / 100 * (Number(form.term) / 12))
+                : Math.round(parseCurrencyInput(form.amount) * Number(form.rate) / 100))}
+            </strong>
+          </span>
+          <span style={{ color: 'var(--n-txt2)' }}>
+            Tổng nhận về: <strong>
+              {money(parseCurrencyInput(form.amount) + (depositType !== 'flex' && Number(form.term)
+                ? Math.round(parseCurrencyInput(form.amount) * Number(form.rate) / 100 * (Number(form.term) / 12))
+                : Math.round(parseCurrencyInput(form.amount) * Number(form.rate) / 100)))}
+            </strong>
+          </span>
+        </div>
+      )}
 
       <div className="fin-form__row">
         {activeGoals.length > 0 && (
