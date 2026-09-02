@@ -18,9 +18,29 @@
   min-height: 0;
   background: var(--n-bg); color: var(--n-txt);
   font-family: var(--font-body), system-ui, sans-serif; font-size: 13.5px; font-weight: 400;
-  border-radius: var(--n-r-lg); overflow: hidden; margin: 0;
+  border-radius: 0; overflow: hidden; margin: 0;
   font-variant-numeric: tabular-nums;
   box-sizing: border-box;
+}
+
+/* ── Workspace Pattern: Khóa cuộn Desktop triệt tiêu thanh cuộn kép ────────── */
+@media (min-width: 769px) {
+  html:has(.finance-module),
+  body:has(.finance-module),
+  body.in-finance-workspace {
+    overflow: hidden !important;
+    height: 100dvh !important;
+  }
+  .app-content:has(.finance-module),
+  body.in-finance-workspace .app-content {
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .app-content:has(.finance-module) > .page-transition,
+  body.in-finance-workspace .app-content > .page-transition {
+    height: 100%;
+    overflow: hidden;
+  }
 }
 
 /* ── LIGHT THEME OVERRIDE (chuẩn DESIGN.md) ── */
@@ -457,9 +477,14 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-taskpick__opt:hover { background: rgba(233,233,237,0.06); }
 .fin-taskpick__empty { color: var(--n-txt3); font-size: 12px; padding: 8px 10px; }
 
-/* ── Responsive < 760px ───────────────────────────────────────────────────── */
-@media (max-width: 760px) {
-  .finance-module { border-radius: 0; margin: 0; min-height: calc(100vh - var(--topbar-height) - var(--bottom-tabs-height)); }
+/* ── Responsive <= 768px ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .finance-module {
+    border-radius: 0;
+    margin: 0;
+    height: calc(100dvh - var(--topbar-height, 52px) - var(--bottom-tabs-height, 60px));
+    max-height: calc(100dvh - var(--topbar-height, 52px) - var(--bottom-tabs-height, 60px));
+  }
   .fin-header { padding: 10px 14px; }
   .fin-header__chip, .fin-header__action { display: none; }
   .fin-screen { padding: 12px; }

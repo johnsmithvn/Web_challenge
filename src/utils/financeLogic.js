@@ -582,6 +582,20 @@ export function maturityWarn(matures_at, refStr) {
   return { days, warn: days >= 0 && days <= 45 };
 }
 
+/** Phân loại nơi gửi: 'cd' (Chứng chỉ tiền gửi), 'term' (Sổ tiết kiệm có kỳ hạn), 'flex' (Tích lũy linh hoạt không kỳ hạn) */
+export function guessDepositType(deposit) {
+  if (!deposit) return 'cd';
+  if (deposit.term === null || deposit.term === undefined || deposit.term === '' || Number(deposit.term) === 0) return 'flex';
+  const name = (deposit.name || '').toLowerCase();
+  if (name.includes('chứng chỉ') || name.includes('cd') || name.includes('cc tiền gửi')) return 'cd';
+  return 'term';
+}
+
+/** Kiểm tra nơi gửi có cho phép nạp thêm tiền (gửi thêm) không. Chỉ 'flex' mới cho nạp thêm; 'term' và 'cd' đã khóa gốc. */
+export function canDepositTopUp(deposit) {
+  return guessDepositType(deposit) === 'flex';
+}
+
 // ── Nhịp chi: cột theo ngày (1 tháng) hoặc theo tháng (kỳ dài) ───────────────
 export function spendingRhythm(txs, { from, to, unit }, { savingAsExpense = false } = {}) {
   const buckets = new Map();

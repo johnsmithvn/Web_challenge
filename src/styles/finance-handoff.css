@@ -621,7 +621,7 @@
   .fin-edit-grid { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .finance-module--gate { min-height: calc(100vh - var(--topbar-height) - var(--bottom-tabs-height)); }
   .fin-header .fin-header__chip, .fin-header .fin-header__action { display: none; }
   .fin-fixed-split { grid-template-columns: 1fr; }
@@ -931,7 +931,7 @@
   .fin-budget-hero { min-height: 350px; }
   .fin-fund-grid { grid-template-columns: repeat(2, minmax(250px, 1fr)); }
 }
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .fin-necessity-budget__head, .fin-budget-fit__head { flex-direction: column; }
   .fin-necessity-budget__grid, .fin-deposit-metrics { grid-template-columns: 1fr; }
   .fin-deposit-metrics { gap: 0; }

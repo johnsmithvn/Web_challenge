@@ -50,6 +50,8 @@ import {
   fundBalance,
   blendedRate,
   maturityWarn,
+  guessDepositType,
+  canDepositTopUp,
   spendingRhythm,
   groupByDate,
 } from '../../utils/financeLogic.js';
@@ -1107,6 +1109,22 @@ assert.equal(warnD2.days, 184);
 // Sổ không kỳ hạn (null) -> không cảnh báo
 assert.equal(maturityWarn(null, '2026-08-15'), null);
 console.log('complex fundBalance and maturityWarn check: OK');
+
+// 3. Phân loại nơi gửi và quy tắc nạp thêm tiền (canDepositTopUp):
+// - Sổ có kỳ hạn (term > 0): term deposit -> không cho nạp thêm
+assert.equal(guessDepositType({ name: 'ABBank · Sổ tiết kiệm 6T', term: 6 }), 'term');
+assert.equal(canDepositTopUp({ name: 'ABBank · Sổ tiết kiệm 6T', term: 6 }), false);
+
+// - Chứng chỉ tiền gửi (name có 'chứng chỉ' / 'cd'): cd -> không cho nạp thêm
+assert.equal(guessDepositType({ name: 'Bản Việt · Chứng chỉ tiền gửi 1T', term: 1 }), 'cd');
+assert.equal(canDepositTopUp({ name: 'Bản Việt · Chứng chỉ tiền gửi 1T', term: 1 }), false);
+
+// - Tích lũy linh hoạt (term là null, 0 hoặc undefined): flex -> CHO PHÉP nạp thêm
+assert.equal(guessDepositType({ name: 'MoMo · Túi Thần Tài', term: null }), 'flex');
+assert.equal(canDepositTopUp({ name: 'MoMo · Túi Thần Tài', term: null }), true);
+assert.equal(canDepositTopUp({ name: 'Finhay Tích lũy', term: 0 }), true);
+assert.equal(canDepositTopUp({ name: 'Tiết kiệm không kỳ hạn', term: '' }), true);
+console.log('guessDepositType and canDepositTopUp check: OK');
 
 console.log('\n✅ financeLogic — tất cả self-check PASS (100% functions & rules covered)');
 

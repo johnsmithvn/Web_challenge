@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
-import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled } from '../../utils/financeLogic';
+import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled, canDepositTopUp } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, pickableSubs, NECESSITY_META, Segmented, TaskPicker, FinanceIcon, DateField,
 } from './parts';
@@ -187,6 +187,10 @@ export default function AddScreen({ fin, nav }) {
     let tx = null;
     if (type === 'saving') {
       if (!selectedGoal || !selectedDeposit) return;
+      if (savingDir === 'in' && !canDepositTopUp(selectedDeposit)) {
+        nav.showToast('Sổ kỳ hạn đã khóa gốc, không thể nạp thêm', { icon: 'lock' });
+        return;
+      }
       const request = selectedGoal.withdrawal_request;
       const requestReady = request
         && request.deposit_id === selectedDeposit.id
@@ -507,11 +511,23 @@ export default function AddScreen({ fin, nav }) {
                   </button>;
                 })}
               </div>
-              <label className="fin-label">Nơi gửi</label>
+              <label className="fin-label">{savingDir === 'in' ? 'Nơi nhận tiền (Tích lũy linh hoạt)' : 'Sổ / Nơi rút tiền'}</label>
               <select className="fin-input" aria-label="Nơi gửi" value={savingDepositId} onChange={event => setSavingDepositId(event.target.value)} disabled={!savingGoalId}>
                 <option value="">— chọn sổ / nơi giữ —</option>
-                {fin.deposits.filter(deposit => deposit.fund_id === savingGoalId).map(deposit => <option key={deposit.id} value={deposit.id}>{deposit.name} · {money(deposit.amount)}</option>)}
+                {fin.deposits.filter(deposit => deposit.fund_id === savingGoalId).map(deposit => {
+                  const isLocked = savingDir === 'in' && !canDepositTopUp(deposit);
+                  return (
+                    <option key={deposit.id} value={deposit.id} disabled={isLocked}>
+                      {deposit.name} · {money(deposit.amount)}{isLocked ? ' (Đã khóa gốc · Không thể nạp thêm)' : ''}
+                    </option>
+                  );
+                })}
               </select>
+              {savingDir === 'in' && savingGoalId && fin.deposits.filter(d => d.fund_id === savingGoalId && canDepositTopUp(d)).length === 0 && (
+                <div className="fin-warn fin-inline-message" style={{ marginTop: '8px' }}>
+                  <AppIcon name="lock" size={15} /> Quỹ này chỉ có sổ kỳ hạn đã khóa gốc. Sổ kỳ hạn không thể nạp thêm — hãy vào mục Tiền gửi để tạo sổ mới.
+                </div>
+              )}
               {selectedGoal?.lock_mode === 'term' && savingDir === 'out' && <div className="fin-warn fin-inline-message"><AppIcon name="clock" size={15} /> Lệnh rút từ quỹ kỳ hạn phải chờ 48 giờ.</div>}
               {selectedGoal?.lock_mode === 'external' && savingDir === 'out' && <div className="fin-warn fin-inline-message"><AppIcon name="warning" size={15} /> Rút sổ ngoài app trước hạn có thể mất lãi.</div>}
             </section>

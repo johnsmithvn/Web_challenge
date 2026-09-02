@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
-import { parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils/currencyUtils';
+import { parseCurrencyInput, sanitizeDecimal, sanitizeDigits, groupDigits } from '../../utils/currencyUtils';
 import { formatDate } from '../../utils/dateUtils';
 import {
   periodTotals, currentMonthPeriod,
   monthStart, monthEnd, parseYmd, fundBalance, maturityWarn,
+  guessDepositType, canDepositTopUp,
 } from '../../utils/financeLogic';
 import { money, catInfo, Segmented, TaskPicker, FinanceIcon, DateField, BankSelect } from './parts';
 import AppIcon from '../AppIcon';
@@ -83,7 +84,6 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
 
       {(panel?.kind === 'goal' || addingGoal) && <GoalForm fin={fin} nav={nav} goal={panel?.goal} onDone={close} />}
       {panel?.kind === 'deposit' && <DepositForm fin={fin} nav={nav} goal={panel.goal} deposit={panel.deposit} activeGoals={activeGoals} onDone={close} />}
-      {panel?.kind === 'move' && <SavingMoveForm fin={fin} goal={panel.goal} dir={panel.dir} onDone={close} />}
 
       {/* KHỐI 1: DANH SÁCH NƠI GỬI TIỀN & SỔ TIẾT KIỆM */}
       <div className="fin-deposit-ledger">
@@ -227,6 +227,18 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
           </button>
         </div>
 
+        {panel?.kind === 'move' && (
+          <div style={{ marginBottom: '14px' }}>
+            <SavingMoveForm
+              fin={fin}
+              goal={panel.goal}
+              dir={panel.dir}
+              onDone={close}
+              onOpenNewDeposit={(g) => setPanel({ kind: 'deposit', goal: g })}
+            />
+          </div>
+        )}
+
         {activeGoals.length === 0 ? (
           <div className="fin-empty fin-empty--saving" style={{ border: 'none', minHeight: '80px', padding: '16px' }}>
             <AppIcon name="piggyBank" size={20} />
@@ -295,14 +307,6 @@ export function GoalForm({ fin, nav, goal, onDone }) {
     <label className="fin-check-row"><input type="checkbox" checked={inWallet} onChange={e => setInWallet(e.target.checked)} /><span><strong>Tiền còn ở tài khoản thường</strong><small>Dùng để giải thích phần đã để dành nhưng chưa chuyển vào sổ kỳ hạn.</small></span></label>
     <div className="fin-editor__actions"><button className="fin-btn fin-btn--primary fin-btn--sm"><AppIcon name="save" size={14} /> Lưu</button>{goal && <button type="button" className="fin-btn fin-btn--danger fin-btn--sm" onClick={async () => { if (await nav.confirmDelete(`quỹ “${goal.name}”`) && await fin.deleteGoal(goal.id)) onDone(); }}><AppIcon name="trash" size={14} /> Xóa quỹ</button>}</div>
   </form>;
-}
-
-function guessDepositType(deposit) {
-  if (!deposit) return 'cd';
-  if (deposit.term === null || deposit.term === undefined || deposit.term === '' || Number(deposit.term) === 0) return 'flex';
-  const name = (deposit.name || '').toLowerCase();
-  if (name.includes('chứng chỉ') || name.includes('cd') || name.includes('cc tiền gửi')) return 'cd';
-  return 'term';
 }
 
 const DEPOSIT_TYPES = [
@@ -662,41 +666,194 @@ function projectedMaturity(openedAt, term) {
   return `${targetYear}-${String(normalizedMonth + 1).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
 }
 
-function SavingMoveForm({ fin, goal, dir, onDone }) {
+function SavingMoveForm({ fin, goal, dir, onDone, onOpenNewDeposit }) {
   const { pendingTasks } = useUserTasks();
-  const deposits = fin.deposits.filter(d => d.fund_id === goal.id);
+  const deposits = fin.deposits.filter(d => d.fund_id === goal.id && !d.closed_on);
+  const flexDeposits = deposits.filter(d => canDepositTopUp(d));
+  const hasFlex = flexDeposits.length > 0;
+
   const request = goal.withdrawal_request;
-  const [depositId, setDepositId] = useState(request?.deposit_id || deposits[0]?.id || '');
+  const effectiveLock = goal.lock_mode === 'term' && goal.lock_until && goal.lock_until <= fin.today ? 'soft' : goal.lock_mode;
+
+  const [depositId, setDepositId] = useState(() => {
+    if (request?.deposit_id) return request.deposit_id;
+    if (dir === 'in' && hasFlex) return flexDeposits[0].id;
+    return deposits[0]?.id || '';
+  });
   const [amount, setAmount] = useState(request?.amount ? String(request.amount) : '');
   const [occurredAt, setOccurredAt] = useState(fin.today);
   const [note, setNote] = useState('');
   const [taskId, setTaskId] = useState(null);
   const [openedAt] = useState(() => Date.now());
+
   const deposit = deposits.find(d => d.id === depositId);
   const ready = request && openedAt >= new Date(request.available_at).getTime();
-  const effectiveLock = goal.lock_mode === 'term' && goal.lock_until && goal.lock_until <= fin.today ? 'soft' : goal.lock_mode;
+
+  // Chiều GỬI THÊM nhưng quỹ KHÔNG có nơi gửi linh hoạt (toàn bộ là sổ kỳ hạn / CD đã khóa gốc)
+  if (dir === 'in' && !hasFlex) {
+    return (
+      <div className="fin-editor">
+        <div className="fin-editor__title">
+          <strong>Gửi thêm · {goal.name}</strong>
+          <button type="button" className="fin-icon-btn" aria-label="Đóng form" onClick={onDone}>
+            <AppIcon name="x" size={14} />
+          </button>
+        </div>
+        <div className="fin-info-strip" style={{ marginBottom: '12px', alignItems: 'flex-start' }}>
+          <span style={{ color: 'var(--n-accent, #9184d9)', marginTop: '2px', flexShrink: 0 }}>
+            <AppIcon name="lock" size={18} />
+          </span>
+          <div>
+            <strong style={{ display: 'block', marginBottom: '3px' }}>Không thể nạp thêm vào sổ tiết kiệm có kỳ hạn</strong>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--n-txt2)', lineHeight: 1.5 }}>
+              Quỹ này hiện chỉ có <strong>Sổ tiết kiệm kỳ hạn</strong> hoặc <strong>Chứng chỉ tiền gửi</strong>. Tiền gốc của các sổ này đã được cố định theo hợp đồng ngân hàng, không thể nạp thêm tiền vào sổ cũ.
+            </p>
+          </div>
+        </div>
+        <div style={{ background: 'var(--n-card)', border: '1px solid var(--n-border)', borderRadius: 'var(--n-r)', padding: '12px', marginBottom: '12px' }}>
+          <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--n-txt)', lineHeight: 1.5 }}>
+            Để để dành thêm tiền vào quỹ <strong>{goal.name}</strong>, bạn hãy <strong>tạo một sổ tiết kiệm mới</strong> (hoặc thêm nơi gửi <em>Tích lũy linh hoạt</em> để nạp rút tự do bất kỳ lúc nào).
+          </p>
+        </div>
+        <div className="fin-editor__actions">
+          <button
+            type="button"
+            className="fin-btn fin-btn--primary fin-btn--sm"
+            onClick={() => (onOpenNewDeposit ? onOpenNewDeposit(goal) : onDone())}
+          >
+            <AppIcon name="plus" size={14} /> Mở sổ mới cho quỹ này
+          </button>
+          <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm" onClick={onDone}>
+            Đóng
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const parsedAmount = parseCurrencyInput(amount);
+  const isDepositLocked = dir === 'in' && deposit && !canDepositTopUp(deposit);
+  const isOutExceeded = dir === 'out' && parsedAmount > (deposit?.amount || 0);
+
   const submit = async (e) => {
     e.preventDefault();
-    const parsed = parseCurrencyInput(amount);
-    if (!deposit || !parsed) return;
+    if (!deposit || !parsedAmount || isDepositLocked || isOutExceeded) return;
     if (dir === 'out' && effectiveLock === 'term' && !ready) {
-      const created = await fin.requestSavingWithdrawal(goal.id, deposit.id, parsed);
+      const created = await fin.requestSavingWithdrawal(goal.id, deposit.id, parsedAmount);
       if (created) onDone();
       return;
     }
-    const tx = await fin.moveSaving(goal, deposit, dir, { amount: parsed, occurredAt, note, taskId });
+    const tx = await fin.moveSaving(goal, deposit, dir, { amount: parsedAmount, occurredAt, note, taskId });
     if (tx) onDone();
   };
-  return <form className="fin-editor" onSubmit={submit}>
-    <div className="fin-editor__title"><strong>{dir === 'in' ? `Gửi thêm · ${goal.name}` : `Rút khỏi · ${goal.name}`}</strong><button type="button" className="fin-icon-btn" aria-label="Đóng form gửi/rút" onClick={onDone}><AppIcon name="x" size={14} /></button></div>
-    <select className="fin-input" aria-label="Chọn nơi gửi" value={depositId} onChange={e => setDepositId(e.target.value)}>{deposits.map(d => <option key={d.id} value={d.id}>{d.name} · {money(d.amount)}</option>)}</select>
-    <input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={amount} onChange={e => setAmount(sanitizeDigits(e.target.value))} aria-label="Số tiền" placeholder="Số tiền" />
-    <div className="fin-form__row"><label className="fin-label">Ngày thực hiện<DateField value={occurredAt} onChange={setOccurredAt} /></label><label className="fin-label">Tiêu đề<input className="fin-input" value={note} onChange={e => setNote(e.target.value)} placeholder="Tùy chọn" /></label></div>
-    <label className="fin-label">Task liên quan</label><TaskPicker tasks={pendingTasks} value={taskId} onPick={setTaskId} />
-    {dir === 'out' && effectiveLock === 'term' && !ready && <div className="fin-warn fin-inline-message"><AppIcon name="clock" size={15} /> Rút sớm cần một yêu cầu và chờ 48 giờ để bạn có thời gian đổi ý.</div>}
-    {dir === 'out' && effectiveLock === 'external' && <div className="fin-warn fin-inline-message"><AppIcon name="warning" size={15} /> Đây là sổ thật ngoài app. Rút trước hạn có thể mất toàn bộ lãi.</div>}
-    <button className="fin-btn fin-btn--primary fin-btn--sm" disabled={!deposit || !parseCurrencyInput(amount) || (dir === 'out' && parseCurrencyInput(amount) > (deposit?.amount || 0))}><AppIcon name={dir === 'in' ? 'arrowDown' : 'arrowUp'} size={14} /> {dir === 'out' && effectiveLock === 'term' && !ready ? 'Gửi yêu cầu rút' : 'Xác nhận'}</button>
-  </form>;
+
+  return (
+    <form className="fin-editor" onSubmit={submit}>
+      <div className="fin-editor__title">
+        <strong>{dir === 'in' ? `Gửi thêm vào · ${goal.name}` : `Rút khỏi · ${goal.name}`}</strong>
+        <button type="button" className="fin-icon-btn" aria-label="Đóng form gửi/rút" onClick={onDone}>
+          <AppIcon name="x" size={14} />
+        </button>
+      </div>
+
+      <div className="fin-form__row">
+        <label className="fin-label" style={{ flex: 1 }}>
+          {dir === 'in' ? 'Nơi nhận tiền (Tích lũy linh hoạt)' : 'Sổ / Nơi rút tiền'}
+          <select
+            className="fin-input"
+            aria-label={dir === 'in' ? 'Chọn nơi nhận tiền' : 'Chọn nơi rút tiền'}
+            value={depositId}
+            onChange={e => setDepositId(e.target.value)}
+          >
+            {deposits.map(d => {
+              const isLocked = dir === 'in' && !canDepositTopUp(d);
+              return (
+                <option key={d.id} value={d.id} disabled={isLocked}>
+                  {d.name} · {money(d.amount)}{isLocked ? ' (Đã khóa gốc · Không thể nạp thêm)' : ''}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+
+        <label className="fin-label" style={{ flex: 1 }}>
+          {dir === 'in' ? 'Số tiền gửi thêm (VNĐ)' : 'Số tiền rút (VNĐ)'}
+          <input
+            className="fin-input"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={amount ? groupDigits(amount) : ''}
+            onChange={e => setAmount(sanitizeDigits(e.target.value))}
+            aria-label="Số tiền"
+            placeholder={dir === 'out' && deposit ? `Tối đa ${money(deposit.amount)}` : 'Ví dụ: 5.000.000'}
+            autoFocus
+            required
+          />
+        </label>
+      </div>
+
+      {dir === 'in' && onOpenNewDeposit && (
+        <div style={{ margin: '-4px 0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+          <small style={{ color: 'var(--n-txt3)', fontSize: '11.5px' }}>
+            * Chỉ tài khoản tích lũy không kỳ hạn mới có thể nạp thêm.
+          </small>
+          <button
+            type="button"
+            className="fin-icon-btn"
+            style={{ fontSize: '12px', color: 'var(--n-accent, #9184d9)', padding: '2px 6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            onClick={() => onOpenNewDeposit(goal)}
+          >
+            <AppIcon name="plus" size={12} /> Muốn gửi kỳ hạn? Tạo sổ mới
+          </button>
+        </div>
+      )}
+
+      <div className="fin-form__row">
+        <label className="fin-label" style={{ flex: 1 }}>
+          Ngày thực hiện
+          <DateField value={occurredAt} onChange={setOccurredAt} />
+        </label>
+        <label className="fin-label" style={{ flex: 1 }}>
+          Tiêu đề
+          <input
+            className="fin-input"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder={dir === 'in' ? 'VD: Trích lương tháng này, Tiết kiệm thêm...' : 'Tùy chọn'}
+          />
+        </label>
+      </div>
+
+      <div style={{ marginBottom: '12px' }}>
+        <span className="fin-label" style={{ marginBottom: '6px', display: 'block' }}>Task liên quan</span>
+        <TaskPicker tasks={pendingTasks} value={taskId} onPick={setTaskId} />
+      </div>
+
+      {dir === 'out' && effectiveLock === 'term' && !ready && (
+        <div className="fin-warn fin-inline-message" style={{ marginBottom: '10px' }}>
+          <AppIcon name="clock" size={15} /> Rút sớm cần một yêu cầu và chờ 48 giờ để bạn có thời gian đổi ý.
+        </div>
+      )}
+      {dir === 'out' && effectiveLock === 'external' && (
+        <div className="fin-warn fin-inline-message" style={{ marginBottom: '10px' }}>
+          <AppIcon name="warning" size={15} /> Đây là sổ thật ngoài app. Rút trước hạn có thể mất toàn bộ lãi.
+        </div>
+      )}
+
+      <div className="fin-editor__actions">
+        <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm" onClick={onDone}>
+          Hủy
+        </button>
+        <button
+          className="fin-btn fin-btn--primary fin-btn--sm"
+          disabled={!deposit || !parsedAmount || isDepositLocked || isOutExceeded}
+        >
+          <AppIcon name={dir === 'in' ? 'arrowDown' : 'arrowUp'} size={14} />
+          {dir === 'out' && effectiveLock === 'term' && !ready ? 'Gửi yêu cầu rút' : 'Xác nhận'}
+        </button>
+      </div>
+    </form>
+  );
 }
 
 // ── Tab Thống kê ──────────────────────────────────────────────────────────────

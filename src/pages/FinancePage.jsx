@@ -97,6 +97,14 @@ export default function FinancePage() {
     if (opts.period) setPeriodKey(opts.period);
   }, [navigate, setPeriodKey]);
 
+  // Khóa cuộn desktop chống tràn (Workspace Pattern) khi ở phân hệ Finance
+  useEffect(() => {
+    document.body.classList.add('in-finance-workspace');
+    return () => {
+      document.body.classList.remove('in-finance-workspace');
+    };
+  }, []);
+
   // Bookmark cũ vẫn mở đúng nội dung, nhưng Phân tích không còn là một màn riêng.
   useEffect(() => {
     if (routeScreen === 'analyze') navigate('/finance/overview?view=stats', { replace: true });
@@ -228,7 +236,7 @@ export default function FinancePage() {
           </div>
         )}
 
-        <div className="fin-screen page-transition" key={screen}>
+        <div className="fin-screen" key={screen}>
           {screen === 'overview'  && <OverviewScreen  fin={fin} nav={nav} />}
           {screen === 'add'       && <AddScreen       fin={fin} nav={nav} />}
           {screen === 'list'      && <ListScreen      fin={fin} nav={nav} />}
