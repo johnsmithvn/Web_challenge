@@ -45,12 +45,21 @@ export function getWeekDates(date = new Date()) {
 
 /**
  * Format ISO date to "dd/MM/yyyy"
- * @param {string} iso — ISO date string
+ * @param {string|Date} iso — ISO date string (YYYY-MM-DD hoặc full ISO) hoặc Date object
  * @returns {string} e.g. "13/06/2026"
  */
 export function formatDate(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(LOCALE, {
+  if (typeof iso === 'string') {
+    const trimmed = iso.trim();
+    const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+    if (ymd) {
+      return `${ymd[3]}/${ymd[2]}/${ymd[1]}`;
+    }
+  }
+  const d = iso instanceof Date ? iso : new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(LOCALE, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

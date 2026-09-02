@@ -2,6 +2,13 @@
 
 ## v6.16.0 — 2026-09-02
 
+### Changed
+- **Chuẩn hóa quy chuẩn hiển thị ngày tháng (`dd/MM/yyyy` toàn dự án):**
+  - Đồng bộ hiển thị ngày dạng `dd/MM/yyyy` (chuẩn tiếng Việt) tại form nơi gửi tiền, ngày đáo hạn sổ, cảnh báo khóa quỹ và lịch trả nợ (`AnalyzeScreen.jsx`, `RecurringScreen.jsx`, `dateUtils.js`).
+- **Tối ưu UX Form sửa giao dịch Tài chính (`ListScreen.jsx`):**
+  - Chuyển đổi 2 ô chọn ít tùy chọn (`Nguồn tiền` và `Mức cắt được`) từ thẻ `<select>` dropdown sang nút bấm / chip chọn nhanh 1-chạm (`fin-source-picker` & `fin-necessity-toggle`).
+  - Lược bỏ tính năng gắn thẻ Tag trong giao dịch (giữ form gọn gàng, dành toàn bộ hàng cho `Nhiệm vụ liên quan`).
+
 ### Added
 - **Đại tu phân hệ Sổ tay Kiến thức thành Không gian Quản trị Tri thức Cá nhân PKM (Athenaeum / Obsidian Workspace — `/collect`):**
   - **Liên kết 2 chiều (`[[Wiki-links]]`):** Cho phép trích dẫn và liên kết trực tiếp giữa các bài viết bằng cú pháp `[[Tên trang]]`, tự động resolve slug tiếng Việt và hiển thị liên kết tương tác.

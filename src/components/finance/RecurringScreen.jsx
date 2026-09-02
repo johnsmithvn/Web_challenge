@@ -1400,7 +1400,7 @@ function LoansList({ fin, nav, tasks }) {
         <div className={`fin-inline-message${principalDue ? ' fin-inline-message--warn' : ''}`}>
           <AppIcon name={principalDue ? 'warning' : 'calendar'} size={15} weight="fill" />
           <span>{principalDue
-            ? `Đã tới ngày tất toán gốc ${l.due_at} — ${money(sch.principalDue)} chưa ghi.`
+            ? `Đã tới ngày tất toán gốc ${dmy(l.due_at)} — ${money(sch.principalDue)} chưa ghi.`
             : `Gốc ${money(sch.principalDue)} tất toán một lần vào ${dmy(l.due_at)}.`}</span>
         </div>
       )}

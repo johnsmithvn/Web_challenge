@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
-import { useTags } from '../../hooks/useTags';
 import { groupDigits, parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
 import { formatDate, toDateStr } from '../../utils/dateUtils';
 import { periodTotals, groupByDate, billPeriods } from '../../utils/financeLogic';
@@ -304,7 +303,6 @@ function FilterPop({ cats, value, onChange }) {
 }
 
 function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditingChange }) {
-  const { tags, addTag, linkTag, unlinkTag, getTagsForEntity } = useTags();
   const [amount, setAmount] = useState(String(tx.amount));
   const [note, setNote] = useState(tx.note || '');
   const [description, setDescription] = useState(tx.description || '');
@@ -324,7 +322,6 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
         }))
       : [],
   );
-  const [txTags, setTxTags] = useState([]);
   // Giao dịch sinh từ hóa đơn: cho sửa KỲ ngay tại đây. Gắn nhầm kỳ là hóa đơn báo
   // quá hạn dù đã trả, mà trước đó đường sửa duy nhất là xóa rồi ghi lại từ đầu.
   const linkedBill = tx.bill_id ? fin.bills.find(bill => bill.id === tx.bill_id) : null;
@@ -337,8 +334,6 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
   const subOptions = pickableSubs(fin.cats.expenseGroups.find(group => group.key === categoryId), tx.subcategory_id, fin.cats);
   const source = tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn';
   const typeLabel = tx.type === 'income' ? 'Thu' : tx.type === 'saving' ? 'Để dành' : 'Chi';
-
-  useEffect(() => { getTagsForEntity(tx.id, 'finance').then(setTxTags); }, [tx.id, getTagsForEntity]);
 
   const updateDraftItem = (index, key, value) => {
     const normalized = key === 'qty' ? sanitizeDigits(value, 3)
@@ -424,25 +419,6 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
     }
   };
 
-  const toggleTag = async (tag) => {
-    const hasTag = txTags.some(item => item.id === tag.id);
-    if (hasTag) {
-      await unlinkTag(tx.id, tag.id, 'finance');
-      setTxTags(current => current.filter(item => item.id !== tag.id));
-    } else {
-      await linkTag(tx.id, tag.id, 'finance');
-      setTxTags(current => [...current, tag]);
-    }
-  };
-
-  const addAndLink = async (name) => {
-    const tag = await addTag(name);
-    if (tag && !txTags.some(item => item.id === tag.id)) {
-      await linkTag(tx.id, tag.id, 'finance');
-      setTxTags(current => [...current, tag]);
-    }
-  };
-
   const deleteTx = async () => {
     if (!await nav.confirmDelete('giao dịch')) return;
     if (await fin.deleteTransaction(tx.id)) onClose();
@@ -503,20 +479,47 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
               {tx.type === 'expense' && (
                 <div className="fin-edit-field">
                   <label className="fin-label">Nguồn tiền</label>
-                  <select className="fin-input" aria-label="Nguồn tiền" value={sourceCardId} onChange={event => setSourceCardId(event.target.value)}>
-                    <option value="">Tiền có sẵn</option>
-                    {fin.cards.map(card => <option key={card.id} value={card.id}>{card.name} {card.last4 ? `••${card.last4}` : ''}</option>)}
-                  </select>
+                  <div className="fin-source-picker" role="group" aria-label="Nguồn tiền">
+                    <button
+                      type="button"
+                      className={!sourceCardId ? 'is-active' : ''}
+                      onClick={() => setSourceCardId('')}
+                    >
+                      <AppIcon name="wallet" size={14} />
+                      <span>Tiền có sẵn</span>
+                    </button>
+                    {fin.cards.map(card => (
+                      <button
+                        key={card.id}
+                        type="button"
+                        className={sourceCardId === card.id ? 'is-active' : ''}
+                        onClick={() => setSourceCardId(card.id)}
+                      >
+                        <AppIcon name="creditCard" size={14} />
+                        <span>{card.name}{card.last4 ? ` ••${card.last4}` : ''}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
               {tx.type === 'expense' && !tx.excluded && (
                 <div className="fin-edit-field">
                   <label className="fin-label">Mức cắt được</label>
-                  <select className="fin-input" aria-label="Mức cắt được" value={necessity} onChange={event => setNecessity(event.target.value)}>
-                    <option value="">— chưa đặt —</option>
-                    {Object.entries(NECESSITY_META).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}
-                  </select>
+                  <div className="fin-necessity-toggle" role="group" aria-label="Mức cắt được">
+                    {Object.entries(NECESSITY_META).map(([key, value]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        className={`fin-necessity-toggle__btn${necessity === key ? ' is-active' : ''}`}
+                        style={{ '--need-color': value.color }}
+                        onClick={() => setNecessity(key)}
+                      >
+                        <span className="fin-necessity-toggle__dot" style={{ backgroundColor: value.color }} />
+                        <span>{value.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -530,17 +533,9 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
                 </div>
               )}
 
-              <div className="fin-edit-field">
+              <div className="fin-edit-field fin-edit-field--full">
                 <label className="fin-label">Nhiệm vụ liên quan</label>
                 <TaskPicker tasks={tasks} value={tx.task_id} onPick={id => fin.updateTransaction(tx.id, { task_id: id })} />
-              </div>
-
-              <div className="fin-edit-field">
-                <label className="fin-label">Tag</label>
-                <div className="fin-tags">
-                  {txTags.map(tag => <button key={tag.id} className="fin-tag" style={{ '--tc': tag.color }} onClick={() => toggleTag(tag)}>#{tag.name} <AppIcon name="x" size={11} /></button>)}
-                  <TagAdd tags={tags} txTags={txTags} onAdd={addAndLink} />
-                </div>
               </div>
             </div>
 
@@ -629,7 +624,6 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
         </div>
       )}
       {(tx.items || []).length > 0 && <div className="fin-detail__items"><strong>Chi tiết {tx.items.length} món</strong>{tx.items.map((item, index) => <div key={`${item.name}-${index}`}><span>{item.qty > 1 ? `${item.qty} × ` : ''}{item.name}</span><b>{money((item.qty || 1) * (item.price || 0))}</b></div>)}</div>}
-      {txTags.length > 0 && <div className="fin-tags">{txTags.map(tag => <span key={tag.id} className="fin-tag" style={{ '--tc': tag.color }}>#{tag.name}</span>)}</div>}
       {tx.task_id && <div className="fin-detail__linked"><AppIcon name="pushPin" size={14} /> Đã gắn với một nhiệm vụ</div>}
       <div className="fin-detail__actions fin-detail__actions--view">
         <button className="fin-btn fin-btn--secondary" onClick={() => onEditingChange(true)}><AppIcon name="pencil" size={15} /> Sửa</button>
@@ -637,18 +631,5 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
         <button className="fin-btn fin-btn--secondary fin-detail__delete" aria-label="Xóa giao dịch" onClick={deleteTx}><AppIcon name="trash" size={15} /></button>
       </div>
     </div>
-  );
-}
-
-function TagAdd({ tags, txTags, onAdd }) {
-  const [value, setValue] = useState('');
-  const available = tags.filter(tag => !txTags.some(item => item.id === tag.id));
-  return (
-    <span className="fin-tagadd">
-      <input className="fin-input fin-input--sm" list="fin-tag-list" placeholder="+ tag" aria-label="Thêm tag cho giao dịch"
-        value={value} onChange={event => setValue(event.target.value)}
-        onKeyDown={event => { if (event.key === 'Enter' && value.trim()) { event.preventDefault(); onAdd(value.trim()); setValue(''); } }} />
-      <datalist id="fin-tag-list">{available.map(tag => <option key={tag.id} value={tag.name} />)}</datalist>
-    </span>
   );
 }
