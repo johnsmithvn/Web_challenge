@@ -44,7 +44,13 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
   };
   const activeGoals = useMemo(() => fin.goals.filter(goal => !goal.closed_at), [fin.goals]);
   const activeDeposits = useMemo(() => fin.deposits.filter(deposit => !deposit.closed_on), [fin.deposits]);
-  const yearlyInterest = activeDeposits.reduce((sum, deposit) => sum + deposit.amount * (deposit.rate || 0) / 100, 0);
+  const totalMaturityInterest = activeDeposits.reduce((sum, deposit) => {
+    const termMonths = deposit.term ? Number(deposit.term) : null;
+    const interest = termMonths
+      ? Math.round(deposit.amount * (deposit.rate || 0) / 100 * (termMonths / 12))
+      : Math.round(deposit.amount * (deposit.rate || 0) / 100);
+    return sum + interest;
+  }, 0);
   const banks = new Set(activeDeposits.map(deposit => deposit.bank).filter(Boolean)).size;
 
   const cur = useMemo(() => currentMonthPeriod(fin.today), [fin.today]);
@@ -97,7 +103,7 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
 
         <div className="fin-deposit-metrics">
           <span><small>Tổng đang gửi</small><strong>{money(total.total)}</strong></span>
-          <span><small>Lãi dự kiến một năm</small><strong className="is-positive">~ {money(yearlyInterest)}</strong></span>
+          <span><small>Tổng lãi khi đến hạn</small><strong className="is-positive">+ {money(totalMaturityInterest)}</strong></span>
           <span><small>Lãi suất bình quân</small><strong>{total.weightedRate}%/năm</strong></span>
         </div>
 
