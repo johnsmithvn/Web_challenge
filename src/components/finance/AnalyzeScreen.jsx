@@ -70,7 +70,7 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
     <section className="fin-savings-workspace">
       <div className="fin-savings__header">
         <div>
-          <h2>Quỹ tiết kiệm & Tiền gửi</h2>
+          <h2>Tiền gửi & Tiết kiệm</h2>
           <p>Đã để dành tháng này <strong>{money(monthTotals.savingIn)}</strong> · tổng tiền gửi <strong>{money(total.total)}</strong></p>
         </div>
       </div>
@@ -116,7 +116,7 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
         <div className="fin-data-table-wrap">
           <table className="fin-data-table fin-deposit-table">
             <thead>
-              <tr><th>Nơi gửi</th><th>Thuộc quỹ</th><th>Số tiền</th><th>Lãi suất</th><th>Kỳ hạn</th><th>Đáo hạn</th><th>Lãi/năm</th></tr>
+              <tr><th>Nơi gửi</th><th>Số tiền</th><th>Lãi suất</th><th>Kỳ hạn</th><th>Đáo hạn</th><th>Lãi/năm</th></tr>
             </thead>
             <tbody>
               {activeDeposits.map(deposit => {
@@ -149,7 +149,6 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
                         </div>
                       </div>
                     </td>
-                    <td><span style={{ fontSize: '11px', color: 'var(--n-txt2)' }}>{goal?.name || 'Quỹ đã đóng'}</span></td>
                     <td><strong>{money(deposit.amount)}</strong></td>
                     <td>{deposit.rate || 0}%/năm</td>
                     <td>{deposit.term ? `${deposit.term} tháng` : 'Không kỳ hạn'}</td>
@@ -179,7 +178,7 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
               })}
               {!activeDeposits.length && (
                 <tr>
-                  <td colSpan="7">
+                  <td colSpan="6">
                     <div className="fin-table-empty">
                       <AppIcon name="bank" size={19} />
                       <span>Chưa có nơi gửi. Khai báo chứng chỉ tiền gửi, sổ tiết kiệm hoặc tài khoản đang giữ tiền.</span>
@@ -190,59 +189,7 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
             </tbody>
           </table>
         </div>
-        <small>Một quỹ có thể chia ra nhiều sổ ở nhiều ngân hàng. Lãi nhận về ghi là Thu › Đầu tư › Lãi tiết kiệm; tiền gốc quay lại không phải thu nhập.</small>
-      </div>
-
-      <div className="fin-deposit-ledger" style={{ marginTop: '6px' }}>
-        <div className="fin-deposit-ledger__head">
-          <div>
-            <h3>Quỹ mục tiêu</h3>
-            <p>Mục tiêu gom tiền và thanh tiến độ tích lũy</p>
-          </div>
-          <button
-            type="button"
-            className="fin-btn fin-btn--secondary fin-btn--sm"
-            onClick={() => setPanel({ kind: 'goal' })}
-          >
-            <AppIcon name="plus" size={14} /> Tạo quỹ mục tiêu
-          </button>
-        </div>
-
-        {activeGoals.length === 0 ? (
-          <div className="fin-empty fin-empty--saving" style={{ border: 'none', minHeight: '90px' }}>
-            <AppIcon name="piggyBank" size={20} />
-            <strong>Chưa có quỹ mục tiêu</strong>
-            <span>Tạo mục tiêu (VD: Quỹ khẩn cấp, Mua xe...) để gom các sổ tiền gửi vào theo dõi % hoàn thành.</span>
-          </div>
-        ) : (
-          <div className="fin-fund-grid">{activeGoals.map(goal => {
-            const deposits = fin.deposits.filter(d => d.fund_id === goal.id && !d.closed_on);
-            const balance = fundBalance(deposits);
-            const progress = goal.goal ? Math.min(100, Math.round(balance.total / goal.goal * 100)) : 0;
-            const request = goal.withdrawal_request;
-            const effectiveLock = goal.lock_mode === 'term' && goal.lock_until && goal.lock_until <= fin.today ? 'soft' : goal.lock_mode;
-            const lockLabel = effectiveLock === 'soft' ? 'Khóa mềm · rút một chạm' : goal.lock_mode === 'term' ? `Khóa kỳ hạn${goal.lock_until ? ` · mở ${formatDate(goal.lock_until)}` : ''}` : 'Khóa thật · ngoài app';
-            const plan = goal.auto_deposit?.amount ? `+${money(goal.auto_deposit.amount)} / tháng` : 'gửi tay';
-            return (
-              <section key={goal.id} className="fin-fund">
-                <div className="fin-fund__head">
-                  <span className="fin-fund__icon"><AppIcon name="piggyBank" size={18} weight="fill" /></span>
-                  <div><strong>{goal.name}</strong></div><span className="fin-fund__pct">{progress}%</span>
-                  <button className="fin-icon-btn" onClick={() => setPanel({ kind: 'goal', goal })} aria-label={`Sửa quỹ ${goal.name}`}><AppIcon name="pencil" size={15} /></button>
-                </div>
-                {goal.goal > 0 && <div className="fin-fund__progress"><i style={{ width: `${progress}%` }} /></div>}
-                <div className="fin-fund__figures"><span>{money(balance.total)} / {money(goal.goal)}</span><span>{plan}</span></div>
-                <span className="fin-fund__lock"><AppIcon name={effectiveLock === 'soft' ? 'key' : 'lock'} size={12} /> {lockLabel}</span>
-                <div className="fin-fund__details"><span><AppIcon name="mapPin" size={12} />{deposits.length ? `${deposits.length} nơi gửi · ${new Set(deposits.map(d => d.bank).filter(Boolean)).size} ngân hàng` : 'Chưa khai nơi gửi'}</span><span><AppIcon name="arrowsClockwise" size={12} />{goal.auto_deposit?.amount ? `Nhắc gửi ngày ${goal.auto_deposit.day} hằng tháng` : 'Chưa đặt gửi định kỳ'}</span><span><AppIcon name="warning" size={12} />{goal.break_count ? `Đã rút giữa chừng ${goal.break_count} lần` : 'Chưa lần nào rút giữa chừng'}</span></div>
-                <div className="fin-fund__actions">
-                  <button className="fin-btn fin-btn--primary fin-btn--sm" disabled={!deposits.length} onClick={() => setPanel({ kind: 'move', goal, dir: 'in' })}><AppIcon name="plus" size={14} /> Gửi thêm</button>
-                  <button className="fin-btn fin-btn--secondary fin-btn--sm" disabled={!balance.total} onClick={() => setPanel({ kind: 'move', goal, dir: 'out' })}>{effectiveLock === 'term' ? 'Yêu cầu rút · chờ 48h' : effectiveLock === 'external' ? 'Rút trước hạn' : 'Rút ra'}</button>
-                </div>
-                {request && <div className="fin-withdraw-request"><AppIcon name="clock" size={15} /> Yêu cầu rút {money(request.amount)} sẵn sàng lúc {new Date(request.available_at).toLocaleString('vi-VN')}</div>}
-              </section>
-            );
-          })}</div>
-        )}
+        <small>Lãi nhận về ghi là Thu › Đầu tư › Lãi tiết kiệm; tiền gốc quay lại không phải thu nhập.</small>
       </div>
     </section>
   );
@@ -272,7 +219,6 @@ export function GoalForm({ fin, nav, goal, onDone }) {
     <div className="fin-form__row"><label className="fin-label">Gửi định kỳ mỗi tháng · tùy chọn<input className="fin-input" inputMode="numeric" pattern="[0-9]*" value={autoAmount} onChange={e => setAutoAmount(sanitizeDigits(e.target.value))} placeholder="500.000" /></label><label className="fin-label">Ngày nhắc gửi<input className="fin-input" inputMode="numeric" pattern="[0-9]*" min="1" max="31" value={autoDay} onChange={e => { const digits = sanitizeDigits(e.target.value, 2); setAutoDay(digits ? String(Math.min(31, Math.max(1, Number(digits)))) : ''); }} /></label></div>
     <div className="fin-form__row"><label className="fin-label">Mức ma sát khi rút<select className="fin-input" value={lockMode} onChange={e => setLockMode(e.target.value)}><option value="soft">Mềm · rút một chạm</option><option value="term">Có kỳ hạn · rút sớm chờ 48 giờ</option><option value="external">Ngoài app · cảnh báo mất lãi</option></select></label>{lockMode === 'term' && <label className="fin-label">Ngày mở khóa<DateField value={lockUntil} onChange={setLockUntil} /></label>}</div>
     <label className="fin-check-row"><input type="checkbox" checked={inWallet} onChange={e => setInWallet(e.target.checked)} /><span><strong>Tiền còn ở tài khoản thường</strong><small>Dùng để giải thích phần đã để dành nhưng chưa chuyển vào sổ kỳ hạn.</small></span></label>
-    <p className="fin-note">Tạo quỹ chưa cần biết tiền nằm ở đâu. Khi gửi thật vào sổ hoặc tài khoản nào, hãy thêm nơi gửi ở bảng bên dưới.</p>
     <div className="fin-editor__actions"><button className="fin-btn fin-btn--primary fin-btn--sm"><AppIcon name="save" size={14} /> Lưu</button>{goal && <button type="button" className="fin-btn fin-btn--danger fin-btn--sm" onClick={async () => { if (await nav.confirmDelete(`quỹ “${goal.name}”`) && await fin.deleteGoal(goal.id)) onDone(); }}><AppIcon name="trash" size={14} /> Xóa quỹ</button>}</div>
   </form>;
 }
@@ -295,8 +241,6 @@ const QUICK_TERMS = ['1', '2', '3', '6', '12', '24'];
 
 function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone }) {
   const [depositType, setDepositType] = useState(() => guessDepositType(deposit));
-  const [selectedGoalId, setSelectedGoalId] = useState(() => goal?.id || deposit?.fund_id || activeGoals[0]?.id || '__new__');
-  const [newGoalName, setNewGoalName] = useState('Quỹ tích lũy & Tiết kiệm');
   const [isNameCustomized, setIsNameCustomized] = useState(() => !!deposit?.name);
   const [showAdvanced, setShowAdvanced] = useState(() => !!deposit?.account_no);
   const [form, setForm] = useState(() => {
@@ -305,7 +249,6 @@ function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone }) {
   });
   const [isSaving, setIsSaving] = useState(false);
 
-  const isCreatingNewGoal = selectedGoalId === '__new__' || (!activeGoals.length && !deposit);
   const maturity = projectedMaturity(form.opened_at, Number(form.term));
   const warning = maturity ? maturityWarn(maturity, fin.today) : null;
 
@@ -353,27 +296,26 @@ function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone }) {
     const finalName = form.name?.trim() || `${form.bank || 'Ngân hàng'} · ${depositType === 'cd' ? 'Chứng chỉ tiền gửi' : depositType === 'term' ? 'Sổ tiết kiệm' : 'Tích lũy'}`;
     if (!finalName || (Number(form.term) > 0 && !form.opened_at) || isSaving) return;
 
-    let targetFundId = selectedGoalId;
-    if (isCreatingNewGoal) {
-      const gName = newGoalName.trim() || 'Quỹ tích lũy & Tiết kiệm';
-      setIsSaving(true);
-      const createdGoal = await fin.addGoal({
-        name: gName,
-        goal: 0,
-        lock_mode: 'soft',
-        in_wallet: false,
-      });
-      if (!createdGoal) {
-        setIsSaving(false);
-        nav.showToast('Không thể tạo quỹ tiết kiệm. Vui lòng thử lại.', { icon: 'warning' });
-        return;
+    let targetFundId = deposit?.fund_id || goal?.id || activeGoals[0]?.id;
+    if (!targetFundId) {
+      const existing = fin.goals[0];
+      if (existing) {
+        targetFundId = existing.id;
+      } else {
+        setIsSaving(true);
+        const createdGoal = await fin.addGoal({
+          name: 'Tích lũy & Tiết kiệm',
+          goal: 0,
+          lock_mode: 'soft',
+          in_wallet: false,
+        });
+        if (!createdGoal) {
+          setIsSaving(false);
+          nav.showToast('Không thể lưu nơi gửi. Vui lòng thử lại.', { icon: 'warning' });
+          return;
+        }
+        targetFundId = createdGoal.id;
       }
-      targetFundId = createdGoal.id;
-    }
-
-    if (!targetFundId || targetFundId === '__new__') {
-      nav.showToast('Vui lòng chọn hoặc tạo quỹ tiết kiệm.', { icon: 'warning' });
-      return;
     }
 
     setIsSaving(true);
@@ -398,12 +340,10 @@ function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone }) {
     }
   };
 
-  const currentGoalName = activeGoals.find(g => g.id === selectedGoalId)?.name;
-
   return (
     <form className="fin-editor" onSubmit={save}>
       <div className="fin-editor__title">
-        <strong>{deposit ? `Sửa nơi gửi · ${deposit.name}` : (currentGoalName ? `Thêm nơi gửi · ${currentGoalName}` : 'Thêm nơi gửi tiền')}</strong>
+        <strong>{deposit ? `Sửa nơi gửi · ${deposit.name}` : 'Thêm nơi gửi tiền'}</strong>
         <button type="button" className="fin-icon-btn" aria-label="Đóng form nơi gửi" onClick={onDone}>
           <AppIcon name="x" size={14} />
         </button>
@@ -528,54 +468,15 @@ function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone }) {
 
       <div className="fin-form__row">
         <label className="fin-label" style={{ flex: 1 }}>
-          Thuộc quỹ mục tiêu (để tính % tiến độ)
-          {activeGoals.length > 0 ? (
-            <select
-              className="fin-input"
-              value={selectedGoalId}
-              onChange={e => setSelectedGoalId(e.target.value)}
-            >
-              {activeGoals.map(g => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-              <option value="__new__">+ Tạo quỹ mục tiêu mới...</option>
-            </select>
-          ) : (
-            <input
-              className="fin-input"
-              value={newGoalName}
-              onChange={e => setNewGoalName(e.target.value)}
-              placeholder="Ví dụ: Quỹ tích lũy & Tiết kiệm"
-              required
-            />
-          )}
-        </label>
-        <label className="fin-label" style={{ flex: 1 }}>
           Tên gợi nhớ / Tên sổ
           <input
             className="fin-input"
             value={form.name || ''}
             onChange={field('name')}
-            placeholder={form.bank ? `${form.bank} · ${depositType === 'cd' ? 'Chứng chỉ tiền gửi' : depositType === 'term' ? 'Sổ tiết kiệm' : 'Tích lũy'}` : 'Ví dụ: Sổ tiết kiệm Cake 12T'}
+            placeholder={form.bank ? `${form.bank} · ${depositType === 'cd' ? 'Chứng chỉ tiền gửi' : depositType === 'term' ? 'Sổ tiết kiệm' : 'Tích lũy'}` : 'Ví dụ: ABBank · Chứng chỉ tiền gửi 1T'}
           />
         </label>
       </div>
-
-      {activeGoals.length > 0 && selectedGoalId === '__new__' && (
-        <div className="fin-form__row">
-          <label className="fin-label" style={{ flex: 1 }}>
-            Tên quỹ mục tiêu mới
-            <input
-              className="fin-input"
-              value={newGoalName}
-              onChange={e => setNewGoalName(e.target.value)}
-              placeholder="Ví dụ: Quỹ khẩn cấp, Mua xe, Đám cưới..."
-              required
-              autoFocus
-            />
-          </label>
-        </div>
-      )}
 
       {deposit && (
         <label className="fin-label">
