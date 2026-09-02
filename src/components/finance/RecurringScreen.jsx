@@ -983,12 +983,14 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
 function BillsList({ fin, nav, tasks, onDuplicate }) {
   // Sắp theo NGÀY TRONG THÁNG, không theo mức khẩn: vị trí một hóa đơn không đổi
   // từ ngày này sang ngày khác, chỉ màu vạch và dòng chữ đổi.
-  const active = fin.bills.filter(b => !b.finished_at).sort((a, b) => (a.due_day || 99) - (b.due_day || 99));
+  const active = fin.bills.filter(b => !b.finished_at && b.enabled).sort((a, b) => (a.due_day || 99) - (b.due_day || 99));
+  const disabled = fin.bills.filter(b => !b.finished_at && !b.enabled).sort((a, b) => (a.due_day || 99) - (b.due_day || 99));
   const finished = fin.bills.filter(b => b.finished_at);
   const [openId, setOpenId] = useState(null);   // đang mở lịch sử
   const [editId, setEditId] = useState(null);   // đang sửa
   const [noteFocus, setNoteFocus] = useState(false); // mở form sửa từ link "Thêm ghi chú"
   const [payId, setPayId] = useState(null);     // mỗi lúc chỉ một khối trả
+  const [showDisabled, setShowDisabled] = useState(false); // thu gọn quy tắc đang tắt
   // Kỳ KHÔNG phải lúc nào cũng là tháng đang chạy: hóa đơn 3 tháng/lần ở tháng không
   // tới lượt thì kỳ của nó nằm phía trước — hoặc phía sau nếu kỳ vừa rồi chưa trả.
   // `billCycle` là chỗ duy nhất biết, và nó cần biết kỳ nào đã xong mới quyết được.
@@ -1043,86 +1045,126 @@ function BillsList({ fin, nav, tasks, onDuplicate }) {
     }
   };
 
+  const renderBillCard = (b) => {
+    const cyc = cycleOf(b);
+    const d = cyc.days;
+    const paidTx = fin.transactions.find(t => t.bill_id === b.id && t.bill_period === cyc.period);
+    const paid = Boolean(paidTx);
+    const skipped = (b.skipped_periods || []).includes(cyc.period);
+    const estimate = billAmountEstimate(b, fin.transactions);
+    const state = dueState({
+      days: d, enabled: b.enabled, done: paid, skipped,
+      doneText: paidTx ? `đã trả ${paidTx.occurred_at.slice(8)}/${paidTx.occurred_at.slice(5, 7)}` : null,
+    });
+    // Hóa đơn tắt, đã trả hoặc đã bỏ kỳ thì không có thao tác thanh toán.
+    // Trả SỚM thì được: nút có mặt từ đầu kỳ, không đợi tới ngày đến hạn.
+    const actionable = b.enabled && !paid && !skipped;
+    const left = b.term_total ? Math.max(0, b.term_total - (b.term_done || 0)) : 0;
+    return (
+      <RuleCard key={b.id} tone={state.tone} off={!b.enabled} categoryId={b.category_id} cats={fin.cats}
+        icon={b.icon || null} iconColor={catInfo(b.category_id, fin.cats).color}
+        title={b.name} badge={[
+          everyOf(b) > 1 ? <CycleBadge bill={b} /> : null,
+          b.term_total ? `${b.term_done || 0}/${b.term_total}` : null,
+        ]}
+        meta={[b.provider, b.customer_code, cycleLabel(b),
+          cyc.thisMonth ? null
+            : `${cyc.days < 0 ? 'kỳ' : 'kỳ sau'} ${cyc.period.slice(5)}/${cyc.period.slice(0, 4)}`]
+          .filter(Boolean).join(' · ')}
+        amount={b.amount_mode === 'ask' ? (estimate ? `~ ${money(estimate)}` : 'hỏi mỗi kỳ') : money(b.amount)}
+        state={state}
+        onOpen={() => setOpenId(openId === b.id ? null : b.id)}
+        onEdit={() => { setEditId(editId === b.id ? null : b.id); setNoteFocus(false); setPayId(null); }}
+        onDuplicate={() => {
+          onDuplicate(b);
+          nav.showToast(`Đã chép quy tắc của ${b.name} — sửa rồi bấm Tạo hóa đơn. Lịch sử các kỳ không chép theo.`, { icon: 'copy' });
+        }}
+        enabled={b.enabled} onToggle={(enabled) => toggle(b, enabled)}
+        onDelete={() => remove(b)}
+        hasNote={!!b.note}>
+
+        {b.term_total > 0 && <TermProgress done={b.term_done || 0} total={b.term_total}
+          offset={b.term_offset || 0} paid={(b.term_done || 0) * estimate} left={left * estimate}
+          color={catInfo(b.category_id, fin.cats).color} />}
+
+        {actionable && payId !== b.id && (
+          <div className="fin-rule__foot">
+            <button type="button" className="fin-btn fin-btn--outline fin-btn--sm" onClick={() => { setPayId(b.id); setEditId(null); }}>
+              <AppIcon name="checkCircle" size={15} /> {b.term_total ? `Thanh toán kỳ ${(b.term_done || 0) + 1}/${b.term_total}` : 'Thanh toán'}
+            </button>
+            <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={() => skip(b)}>
+              <AppIcon name="skip" size={14} /> Bỏ kỳ này
+            </button>
+          </div>
+        )}
+        {skipped && b.enabled && (
+          <div className="fin-rule__foot">
+            <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={() => unskip(b)}>
+              <AppIcon name="refresh" size={14} /> Bỏ đánh dấu · trả lại kỳ này
+            </button>
+          </div>
+        )}
+        {payId === b.id && <PayBlock fin={fin} tasks={tasks} allowSource dueDay={b.due_day} periods={periodsFor(b)}
+          periodForDate={(date) => billPeriodForDate(b, date)}
+          defaultAmount={estimate || ''} onCancel={() => setPayId(null)} onPay={(payload) => pay(b, payload)}
+          note={b.amount_mode === 'ask'
+            ? 'Số điền sẵn là mức trung bình 3 kỳ gần nhất — sửa lại theo hóa đơn thật trước khi xác nhận.'
+            : 'Số cố định theo hóa đơn — sửa nếu kỳ này khác. Ngày mặc định là hôm nay; nếu bạn đã trả từ mấy ngày trước thì chọn đúng ngày đó để báo cáo không lệch tháng.'} />}
+        {editId === b.id && <RuleForm seg="out" fin={fin} nav={nav} initial={b} focusNote={noteFocus}
+          onDone={() => { setEditId(null); setNoteFocus(false); }} />}
+        {openId === b.id && <>
+          <BillNote bill={b} onEdit={() => { setEditId(b.id); setNoteFocus(true); setPayId(null); }} />
+          <BillHistory bill={b} transactions={fin.transactions} />
+        </>}
+      </RuleCard>
+    );
+  };
+
   return (
     <div className="fin-rules">
-      {active.length === 0 && <RulesEmpty icon="receipt" title="Chưa có hóa đơn"
-        description="Thêm hóa đơn để theo dõi ngày đến hạn và lịch sử thanh toán." />}
-      {active.map(b => {
-        const cyc = cycleOf(b);
-        const d = cyc.days;
-        const paidTx = fin.transactions.find(t => t.bill_id === b.id && t.bill_period === cyc.period);
-        const paid = Boolean(paidTx);
-        const skipped = (b.skipped_periods || []).includes(cyc.period);
-        const estimate = billAmountEstimate(b, fin.transactions);
-        const state = dueState({
-          days: d, enabled: b.enabled, done: paid, skipped,
-          doneText: paidTx ? `đã trả ${paidTx.occurred_at.slice(8)}/${paidTx.occurred_at.slice(5, 7)}` : null,
-        });
-        // Hóa đơn tắt, đã trả hoặc đã bỏ kỳ thì không có thao tác thanh toán.
-        // Trả SỚM thì được: nút có mặt từ đầu kỳ, không đợi tới ngày đến hạn.
-        const actionable = b.enabled && !paid && !skipped;
-        const left = b.term_total ? Math.max(0, b.term_total - (b.term_done || 0)) : 0;
-        return (
-          <RuleCard key={b.id} tone={state.tone} off={!b.enabled} categoryId={b.category_id} cats={fin.cats}
-            icon={b.icon || null} iconColor={catInfo(b.category_id, fin.cats).color}
-            title={b.name} badge={[
-              everyOf(b) > 1 ? <CycleBadge bill={b} /> : null,
-              b.term_total ? `${b.term_done || 0}/${b.term_total}` : null,
-            ]}
-            meta={[b.provider, b.customer_code, cycleLabel(b),
-              cyc.thisMonth ? null
-                : `${cyc.days < 0 ? 'kỳ' : 'kỳ sau'} ${cyc.period.slice(5)}/${cyc.period.slice(0, 4)}`]
-              .filter(Boolean).join(' · ')}
-            amount={b.amount_mode === 'ask' ? (estimate ? `~ ${money(estimate)}` : 'hỏi mỗi kỳ') : money(b.amount)}
-            state={state}
-            onOpen={() => setOpenId(openId === b.id ? null : b.id)}
-            onEdit={() => { setEditId(editId === b.id ? null : b.id); setNoteFocus(false); setPayId(null); }}
-            onDuplicate={() => {
-              onDuplicate(b);
-              nav.showToast(`Đã chép quy tắc của ${b.name} — sửa rồi bấm Tạo hóa đơn. Lịch sử các kỳ không chép theo.`, { icon: 'copy' });
-            }}
-            enabled={b.enabled} onToggle={(enabled) => toggle(b, enabled)}
-            onDelete={() => remove(b)}
-            hasNote={!!b.note}>
+      {active.length === 0 && disabled.length === 0 && finished.length === 0 && (
+        <RulesEmpty icon="receipt" title="Chưa có hóa đơn"
+          description="Thêm hóa đơn để theo dõi ngày đến hạn và lịch sử thanh toán." />
+      )}
+      {active.map(renderBillCard)}
 
-            {b.term_total > 0 && <TermProgress done={b.term_done || 0} total={b.term_total}
-              offset={b.term_offset || 0} paid={(b.term_done || 0) * estimate} left={left * estimate}
-              color={catInfo(b.category_id, fin.cats).color} />}
+      {active.length === 0 && disabled.length > 0 && (
+        <div className="fin-inline-message" style={{ margin: '8px 0 14px' }}>
+          <AppIcon name="info" size={16} />
+          <span>Tất cả hóa đơn hiện tại đang được tắt. Bạn có thể bật lại ở danh sách bên dưới.</span>
+        </div>
+      )}
 
-            {actionable && payId !== b.id && (
-              <div className="fin-rule__foot">
-                <button type="button" className="fin-btn fin-btn--outline fin-btn--sm" onClick={() => { setPayId(b.id); setEditId(null); }}>
-                  <AppIcon name="checkCircle" size={15} /> {b.term_total ? `Thanh toán kỳ ${(b.term_done || 0) + 1}/${b.term_total}` : 'Thanh toán'}
-                </button>
-                <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={() => skip(b)}>
-                  <AppIcon name="skip" size={14} /> Bỏ kỳ này
-                </button>
-              </div>
-            )}
-            {skipped && b.enabled && (
-              <div className="fin-rule__foot">
-                <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={() => unskip(b)}>
-                  <AppIcon name="refresh" size={14} /> Bỏ đánh dấu · trả lại kỳ này
-                </button>
-              </div>
-            )}
-            {payId === b.id && <PayBlock fin={fin} tasks={tasks} allowSource dueDay={b.due_day} periods={periodsFor(b)}
-              periodForDate={(date) => billPeriodForDate(b, date)}
-              defaultAmount={estimate || ''} onCancel={() => setPayId(null)} onPay={(payload) => pay(b, payload)}
-              note={b.amount_mode === 'ask'
-                ? 'Số điền sẵn là mức trung bình 3 kỳ gần nhất — sửa lại theo hóa đơn thật trước khi xác nhận.'
-                : 'Số cố định theo hóa đơn — sửa nếu kỳ này khác. Ngày mặc định là hôm nay; nếu bạn đã trả từ mấy ngày trước thì chọn đúng ngày đó để báo cáo không lệch tháng.'} />}
-            {editId === b.id && <RuleForm seg="out" fin={fin} nav={nav} initial={b} focusNote={noteFocus}
-              onDone={() => { setEditId(null); setNoteFocus(false); }} />}
-            {openId === b.id && <>
-              <BillNote bill={b} onEdit={() => { setEditId(b.id); setNoteFocus(true); setPayId(null); }} />
-              <BillHistory bill={b} transactions={fin.transactions} />
-            </>}
-          </RuleCard>
-        );
-      })}
+      {disabled.length > 0 && (
+        <div className="fin-history-section">
+          <button
+            type="button"
+            className="fin-history-section__toggle"
+            onClick={() => setShowDisabled(v => !v)}
+          >
+            <div className="fin-history-section__left">
+              <AppIcon name={showDisabled ? 'caretDown' : 'caretRight'} size={14} />
+              <span className="fin-history-section__title">Quy tắc đang tắt</span>
+              <span className="fin-history-section__badge" style={{ background: 'rgba(145, 132, 217, 0.15)', color: 'var(--n-txt2)' }}>
+                {disabled.length}
+              </span>
+            </div>
+            <div className="fin-history-section__right">
+              <span>{disabled.length} hóa đơn tạm ngưng</span>
+              <small>{showDisabled ? 'Thu gọn' : 'Xem chi tiết'}</small>
+            </div>
+          </button>
+
+          {showDisabled && (
+            <div className="fin-history-section__content">
+              {disabled.map(renderBillCard)}
+            </div>
+          )}
+        </div>
+      )}
+
       {finished.length > 0 && (
-        <details className="fin-archived">
+        <details className="fin-archived" style={{ marginTop: '16px' }}>
           <summary><AppIcon name="tray" size={15} /> {finished.length} quy tắc đã kết thúc</summary>
           <p>Các kỳ đã trả vẫn ở Giao dịch và không thể bật lại quy tắc đã hoàn tất.</p>
           {finished.map(b => <div key={b.id} className="fin-archived__row"><span>{b.name}</span><strong>{b.term_done}/{b.term_total} kỳ</strong></div>)}
@@ -1185,6 +1227,11 @@ function IncomeList({ fin, nav, tasks }) {
   const period = currentMonthPeriod(fin.today).key.slice(0, 7);
   const [editId, setEditId] = useState(null);
   const [payId, setPayId] = useState(null);
+  const [showDisabled, setShowDisabled] = useState(false);
+
+  const active = fin.incomeRules.filter(r => r.enabled);
+  const disabled = fin.incomeRules.filter(r => !r.enabled);
+
   const receive = async (rule, payload) => {
     const tx = await fin.receiveIncome(rule, { ...payload, period });
     nav.showToast(tx ? `Đã nhận ${rule.name} — ghi vào khoản thu` : `Không thể ghi ${rule.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: tx ? 'money' : 'warning' });
@@ -1197,44 +1244,83 @@ function IncomeList({ fin, nav, tasks }) {
       : `Không thể cập nhật ${rule.name}. Kiểm tra dữ liệu Finance rồi thử lại.`,
     { icon: updated ? 'money' : 'warning' });
   };
+
+  const renderIncomeCard = (r) => {
+    const received = (r.received_periods || []).includes(period);
+    const state = dueState({
+      days: daysUntilDue(r.due_day, fin.today), enabled: r.enabled,
+      done: received, doneText: 'đã nhận kỳ này', neverLate: true,
+    });
+    return (
+      <RuleCard key={r.id} tone={state.tone} off={!r.enabled} icon="money" iconColor="#7fc060" title={r.name}
+        meta={[r.source, r.due_day ? `mỗi tháng ngày ${r.due_day}` : null].filter(Boolean).join(' · ')}
+        amount={money(r.amount)} state={state} openTitle="Sửa khoản thu"
+        onOpen={() => setEditId(editId === r.id ? null : r.id)}
+        onEdit={() => { setEditId(editId === r.id ? null : r.id); setPayId(null); }}
+        enabled={r.enabled} onToggle={(enabled) => toggle(r, enabled)}
+        onDelete={async () => { if (await nav.confirmDelete(`khoản thu “${r.name}”`)) await fin.deleteIncomeRule(r.id); }}>
+        {r.enabled && !received && payId !== r.id && (
+          <div className="fin-rule__foot">
+            <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm" onClick={() => { setPayId(r.id); setEditId(null); }}>
+              <AppIcon name="checkCircle" size={15} /> Đã nhận
+            </button>
+          </div>
+        )}
+        {payId === r.id && <PayBlock fin={fin} tasks={tasks} dueDay={r.due_day} defaultAmount={r.amount}
+          confirmLabel="Xác nhận đã nhận" onCancel={() => setPayId(null)} onPay={(payload) => receive(r, payload)} />}
+        {editId === r.id && <RuleForm seg="in" fin={fin} nav={nav} initial={r} onDone={() => setEditId(null)} />}
+      </RuleCard>
+    );
+  };
+
   return (
     <div className="fin-rules">
       <SummaryStrip
         items={[
-          { label: 'Sẽ nhận tháng này', value: money(fin.incomeRules.filter(r => r.enabled && !(r.received_periods || []).includes(period)).reduce((sum, r) => sum + r.amount, 0)) },
-          { label: 'Đã nhận', value: money(fin.incomeRules.filter(r => (r.received_periods || []).includes(period)).reduce((sum, r) => sum + r.amount, 0)), tone: 'good' },
+          { label: 'Sẽ nhận tháng này', value: money(active.filter(r => !(r.received_periods || []).includes(period)).reduce((sum, r) => sum + r.amount, 0)) },
+          { label: 'Đã nhận', value: money(active.filter(r => (r.received_periods || []).includes(period)).reduce((sum, r) => sum + r.amount, 0)), tone: 'good' },
         ]}
         note="Tiền vào — không phải hóa đơn, nên không có gì để trả và không bao giờ tô đỏ. Bấm Đã nhận sinh một giao dịch loại Thu mang đúng nguồn thu, ngày là ngày bạn chọn."
       />
       {fin.incomeRules.length === 0 && <RulesEmpty icon="money" title="Chưa có khoản thu định kỳ"
         description="Khai khoản thu để app nhắc xác nhận theo từng kỳ." />}
-      {fin.incomeRules.map(r => {
-        const received = (r.received_periods || []).includes(period);
-        const state = dueState({
-          days: daysUntilDue(r.due_day, fin.today), enabled: r.enabled,
-          done: received, doneText: 'đã nhận kỳ này', neverLate: true,
-        });
-        return (
-          <RuleCard key={r.id} tone={state.tone} off={!r.enabled} icon="money" iconColor="#7fc060" title={r.name}
-            meta={[r.source, r.due_day ? `mỗi tháng ngày ${r.due_day}` : null].filter(Boolean).join(' · ')}
-            amount={money(r.amount)} state={state} openTitle="Sửa khoản thu"
-            onOpen={() => setEditId(editId === r.id ? null : r.id)}
-            onEdit={() => { setEditId(editId === r.id ? null : r.id); setPayId(null); }}
-            enabled={r.enabled} onToggle={(enabled) => toggle(r, enabled)}
-            onDelete={async () => { if (await nav.confirmDelete(`khoản thu “${r.name}”`)) await fin.deleteIncomeRule(r.id); }}>
-            {r.enabled && !received && payId !== r.id && (
-              <div className="fin-rule__foot">
-                <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm" onClick={() => { setPayId(r.id); setEditId(null); }}>
-                  <AppIcon name="checkCircle" size={15} /> Đã nhận
-                </button>
-              </div>
-            )}
-            {payId === r.id && <PayBlock fin={fin} tasks={tasks} dueDay={r.due_day} defaultAmount={r.amount}
-              confirmLabel="Xác nhận đã nhận" onCancel={() => setPayId(null)} onPay={(payload) => receive(r, payload)} />}
-            {editId === r.id && <RuleForm seg="in" fin={fin} nav={nav} initial={r} onDone={() => setEditId(null)} />}
-          </RuleCard>
-        );
-      })}
+
+      {active.map(renderIncomeCard)}
+
+      {active.length === 0 && disabled.length > 0 && (
+        <div className="fin-inline-message" style={{ margin: '8px 0 14px' }}>
+          <AppIcon name="info" size={16} />
+          <span>Tất cả khoản thu hiện tại đang được tắt. Bạn có thể bật lại ở danh sách bên dưới.</span>
+        </div>
+      )}
+
+      {disabled.length > 0 && (
+        <div className="fin-history-section">
+          <button
+            type="button"
+            className="fin-history-section__toggle"
+            onClick={() => setShowDisabled(v => !v)}
+          >
+            <div className="fin-history-section__left">
+              <AppIcon name={showDisabled ? 'caretDown' : 'caretRight'} size={14} />
+              <span className="fin-history-section__title">Khoản thu đang tắt</span>
+              <span className="fin-history-section__badge" style={{ background: 'rgba(145, 132, 217, 0.15)', color: 'var(--n-txt2)' }}>
+                {disabled.length}
+              </span>
+            </div>
+            <div className="fin-history-section__right">
+              <span>{disabled.length} nguồn thu tạm ngưng</span>
+              <small>{showDisabled ? 'Thu gọn' : 'Xem chi tiết'}</small>
+            </div>
+          </button>
+
+          {showDisabled && (
+            <div className="fin-history-section__content">
+              {disabled.map(renderIncomeCard)}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
