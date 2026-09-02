@@ -1244,12 +1244,119 @@ function LoansList({ fin, nav, tasks }) {
   const period = fin.today.slice(0, 7);
   const [editId, setEditId] = useState(null);
   const [payId, setPayId] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
   const openLoans = fin.loans.filter(l => !l.closed_at);
   const monthlyInterest = openLoans.reduce((sum, l) => {
     const sch = loanSchedule(l);
     return sum + (sch.kind === 'interest' ? sch.monthlyInterest : sch.interestPart);
   }, 0);
   const nextSettle = openLoans.filter(l => l.due_at).sort((a, b) => a.due_at.localeCompare(b.due_at))[0];
+
+  const loanRows = fin.loans.map(l => {
+    const sch = loanSchedule(l);
+    const d = daysUntilDue(l.pay_day, fin.today);
+    const paidInterest = fin.transactions.some(t => t.loan_id === l.id && t.loan_period === period && t.loan_part === 'interest');
+    const paidPrincipal = fin.transactions.some(t => t.loan_id === l.id && t.loan_period === period && t.loan_part === 'principal');
+    const donePeriod = sch.kind === 'interest' ? paidInterest : paidPrincipal;
+    const principalDue = l.due_at && l.due_at <= fin.today;
+    const isCompleted = !!l.closed_at || (sch.progress.total > 0 && sch.progress.done >= sch.progress.total && (sch.kind === 'amort' || paidPrincipal));
+    const state = isCompleted ? { tone: 'paid', text: 'đã tất toán' } : dueState({ days: d, done: donePeriod, doneText: 'đã ghi kỳ này' });
+    const dueAmount = sch.kind === 'interest' ? sch.monthlyInterest : sch.monthlyPayment;
+    const paidInterestTotal = fin.transactions
+      .filter(t => t.loan_id === l.id && t.loan_part === 'interest')
+      .reduce((sum, t) => sum + t.amount, 0);
+    // Lãi cả đời khoản vay: lãi-only trả đều mỗi kỳ; amort thì bằng tổng trả trừ gốc.
+    const totalInterest = sch.kind === 'interest'
+      ? sch.monthlyInterest * sch.progress.total
+      : Math.max(0, sch.monthlyPayment * sch.progress.total - l.principal);
+    return { l, sch, d, paidInterest, paidPrincipal, donePeriod, principalDue, isCompleted, state, dueAmount, paidInterestTotal, totalInterest };
+  });
+
+  const activeLoans = loanRows.filter(r => !r.isCompleted);
+  const completedLoans = loanRows.filter(r => r.isCompleted);
+
+  const renderLoanCard = ({ l, sch, d, paidInterest, paidPrincipal, donePeriod, principalDue, isCompleted, state, dueAmount, paidInterestTotal, totalInterest }) => (
+    <RuleCard key={l.id} tone={state.tone} icon="bank" iconColor={isCompleted ? '#7fc060' : '#9184d9'} title={l.name}
+      badge={`${sch.progress.done}/${sch.progress.total} kỳ`}
+      meta={[l.lender, `gốc ${money(l.principal)}`, `${l.rate}%/năm`,
+        sch.kind === 'interest' ? 'chỉ trả lãi' : 'trả đều gốc + lãi'].filter(Boolean).join(' · ')}
+      amount={money(dueAmount)} state={state} openTitle="Sửa khoản vay"
+      onOpen={() => setEditId(editId === l.id ? null : l.id)}
+      onEdit={() => { setEditId(editId === l.id ? null : l.id); setPayId(null); }}
+      onDelete={async () => {
+        const kept = fin.transactions.filter(t => t.loan_id === l.id).length;
+        if (!await nav.confirmDelete(`khoản vay “${l.name}”`,
+          kept > 0 ? `${kept} giao dịch đã ghi vẫn được giữ lại ở màn Giao dịch.` : 'Chưa có kỳ nào được ghi.')) return;
+        if (!await fin.deleteLoan(l.id)) {
+          nav.showToast(`Không thể xóa ${l.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
+        }
+      }}>
+
+      <RuleProgress pct={sch.progress.total ? sch.progress.done / sch.progress.total * 100 : 0}
+        label={`kỳ ${Math.min(sch.progress.done + 1, sch.progress.total)}/${sch.progress.total} · trả ngày ${l.pay_day} hằng tháng`}
+        right={`còn ${Math.max(0, sch.progress.total - sch.progress.done)} kỳ`} />
+
+      <div className="fin-loan-split">
+        <span>{sch.kind === 'interest' ? 'Dư nợ gốc' : 'Dư nợ gốc còn lại'}
+          <strong>{money(sch.kind === 'interest' ? sch.principalDue : sch.principalRemaining)}</strong>
+          <small>{sch.kind === 'interest' ? 'gốc chưa giảm đồng nào cho tới khi tất toán' : `đã trả ${sch.progress.done}/${sch.progress.total} kỳ`}</small></span>
+        <span>Phải trả ngày {l.pay_day} tháng này
+          <strong className="is-accent">{money(dueAmount)}</strong>
+          <small>{sch.kind === 'interest'
+            ? `toàn bộ là lãi — gốc vẫn nguyên ${money(sch.principalDue)}`
+            : `gốc ${money(sch.principalPart)} + lãi ${money(sch.interestPart)}`}</small></span>
+        <span>Lãi đã trả đến giờ
+          <strong>{money(paidInterestTotal)}</strong>
+          <small>cả khoản vay ~{money(totalInterest)}</small></span>
+      </div>
+
+      {sch.kind === 'interest' && !paidPrincipal && l.due_at && (
+        <div className={`fin-inline-message${principalDue ? ' fin-inline-message--warn' : ''}`}>
+          <AppIcon name={principalDue ? 'warning' : 'calendar'} size={15} weight="fill" />
+          <span>{principalDue
+            ? `Đã tới ngày tất toán gốc ${l.due_at} — ${money(sch.principalDue)} chưa ghi.`
+            : `Gốc ${money(sch.principalDue)} tất toán một lần vào ${dmy(l.due_at)}.`}</span>
+        </div>
+      )}
+
+      {payId !== l.id && (!donePeriod || (principalDue && !paidPrincipal && sch.kind === 'interest')) && !isCompleted && (
+        <div className="fin-rule__foot">
+          {!donePeriod && <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm"
+            onClick={() => { setPayId(l.id); setEditId(null); }}>
+            <AppIcon name="handCoins" size={15} /> {sch.kind === 'interest' ? 'Trả lãi kỳ này' : 'Trả kỳ này'}
+          </button>}
+          {sch.kind === 'interest' && principalDue && !paidPrincipal && (
+            <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm"
+              onClick={() => { setPayId(`${l.id}:principal`); setEditId(null); }}>
+              <AppIcon name="bank" size={14} /> Tất toán gốc
+            </button>
+          )}
+        </div>
+      )}
+
+      {payId === l.id && <PayBlock fin={fin} tasks={tasks} dueDay={l.pay_day} defaultAmount={dueAmount}
+        onCancel={() => setPayId(null)} onPay={async (payload) => {
+          if (sch.kind === 'interest') {
+            const tx = await fin.payLoanInterest(l, { ...payload, period });
+            nav.showToast(tx ? 'Đã ghi lãi vay — tính vào chi tiêu' : 'Không thể ghi lãi vay. Kiểm tra dữ liệu Finance rồi thử lại.', { icon: tx ? 'handCoins' : 'warning' });
+            return !!tx;
+          }
+          const result = await fin.payLoanInstallment(l, { ...payload, period });
+          if (result) nav.showToast(`Đã tách ${money(result.interest)} lãi và ${money(result.principal)} gốc`, { icon: 'handCoins' });
+          else nav.showToast('Không thể ghi kỳ vay. Kiểm tra dữ liệu Finance rồi thử lại.', { icon: 'warning' });
+          return !!result;
+        }} />}
+
+      {payId === `${l.id}:principal` && <PayBlock fin={fin} tasks={tasks} defaultAmount={sch.principalDue}
+        confirmLabel="Xác nhận tất toán gốc" onCancel={() => setPayId(null)} onPay={async (payload) => {
+          const tx = await fin.payLoanPrincipal(l, { ...payload, period });
+          nav.showToast(tx ? 'Đã tất toán gốc — đứng ngoài tổng chi' : 'Không thể tất toán gốc. Kiểm tra dữ liệu Finance rồi thử lại.', { icon: tx ? 'bank' : 'warning' });
+          return !!tx;
+        }} />}
+
+      {editId === l.id && <RuleForm seg="loan" fin={fin} nav={nav} initial={l} onDone={() => setEditId(null)} />}
+    </RuleCard>
+  );
 
   return (
     <div className="fin-rules">
@@ -1266,105 +1373,41 @@ function LoansList({ fin, nav, tasks }) {
       />
       {fin.loans.length === 0 && <RulesEmpty icon="bank" title="Chưa có khoản vay"
         description="Thêm khoản vay để tách phần gốc và lãi trong mỗi lần trả." />}
-      {fin.loans.map(l => {
-        const sch = loanSchedule(l);
-        const d = daysUntilDue(l.pay_day, fin.today);
-        const paidInterest = fin.transactions.some(t => t.loan_id === l.id && t.loan_period === period && t.loan_part === 'interest');
-        const paidPrincipal = fin.transactions.some(t => t.loan_id === l.id && t.loan_period === period && t.loan_part === 'principal');
-        const donePeriod = sch.kind === 'interest' ? paidInterest : paidPrincipal;
-        const principalDue = l.due_at && l.due_at <= fin.today;
-        const state = dueState({ days: d, done: donePeriod, doneText: 'đã ghi kỳ này' });
-        const dueAmount = sch.kind === 'interest' ? sch.monthlyInterest : sch.monthlyPayment;
-        const paidInterestTotal = fin.transactions
-          .filter(t => t.loan_id === l.id && t.loan_part === 'interest')
-          .reduce((sum, t) => sum + t.amount, 0);
-        // Lãi cả đời khoản vay: lãi-only trả đều mỗi kỳ; amort thì bằng tổng trả trừ gốc.
-        const totalInterest = sch.kind === 'interest'
-          ? sch.monthlyInterest * sch.progress.total
-          : Math.max(0, sch.monthlyPayment * sch.progress.total - l.principal);
-        return (
-          <RuleCard key={l.id} tone={state.tone} icon="bank" iconColor="#9184d9" title={l.name}
-            badge={`${sch.progress.done}/${sch.progress.total} kỳ`}
-            meta={[l.lender, `gốc ${money(l.principal)}`, `${l.rate}%/năm`,
-              sch.kind === 'interest' ? 'chỉ trả lãi' : 'trả đều gốc + lãi'].filter(Boolean).join(' · ')}
-            amount={money(dueAmount)} state={state} openTitle="Sửa khoản vay"
-            onOpen={() => setEditId(editId === l.id ? null : l.id)}
-            onEdit={() => { setEditId(editId === l.id ? null : l.id); setPayId(null); }}
-            onDelete={async () => {
-              const kept = fin.transactions.filter(t => t.loan_id === l.id).length;
-              if (!await nav.confirmDelete(`khoản vay “${l.name}”`,
-                kept > 0 ? `${kept} giao dịch đã ghi vẫn được giữ lại ở màn Giao dịch.` : 'Chưa có kỳ nào được ghi.')) return;
-              if (!await fin.deleteLoan(l.id)) {
-                nav.showToast(`Không thể xóa ${l.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
-              }
-            }}>
 
-            <RuleProgress pct={sch.progress.total ? sch.progress.done / sch.progress.total * 100 : 0}
-              label={`kỳ ${Math.min(sch.progress.done + 1, sch.progress.total)}/${sch.progress.total} · trả ngày ${l.pay_day} hằng tháng`}
-              right={`còn ${Math.max(0, sch.progress.total - sch.progress.done)} kỳ`} />
+      {activeLoans.map(renderLoanCard)}
 
-            <div className="fin-loan-split">
-              <span>{sch.kind === 'interest' ? 'Dư nợ gốc' : 'Dư nợ gốc còn lại'}
-                <strong>{money(sch.kind === 'interest' ? sch.principalDue : sch.principalRemaining)}</strong>
-                <small>{sch.kind === 'interest' ? 'gốc chưa giảm đồng nào cho tới khi tất toán' : `đã trả ${sch.progress.done}/${sch.progress.total} kỳ`}</small></span>
-              <span>Phải trả ngày {l.pay_day} tháng này
-                <strong className="is-accent">{money(dueAmount)}</strong>
-                <small>{sch.kind === 'interest'
-                  ? `toàn bộ là lãi — gốc vẫn nguyên ${money(sch.principalDue)}`
-                  : `gốc ${money(sch.principalPart)} + lãi ${money(sch.interestPart)}`}</small></span>
-              <span>Lãi đã trả đến giờ
-                <strong>{money(paidInterestTotal)}</strong>
-                <small>cả khoản vay ~{money(totalInterest)}</small></span>
+      {activeLoans.length === 0 && completedLoans.length > 0 && (
+        <div className="fin-inline-message" style={{ margin: '8px 0 14px' }}>
+          <AppIcon name="checkCircle" size={16} weight="fill" />
+          <span>Tất cả khoản vay hiện tại đều đã tất toán.</span>
+        </div>
+      )}
+
+      {completedLoans.length > 0 && (
+        <div className="fin-history-section">
+          <button
+            type="button"
+            className="fin-history-section__toggle"
+            onClick={() => setShowHistory(v => !v)}
+          >
+            <div className="fin-history-section__left">
+              <AppIcon name={showHistory ? 'caretDown' : 'caretRight'} size={14} />
+              <span className="fin-history-section__title">Lịch sử đã tất toán</span>
+              <span className="fin-history-section__badge">{completedLoans.length}</span>
             </div>
+            <div className="fin-history-section__right">
+              <span>{completedLoans.length} khoản vay đã xong</span>
+              <small>{showHistory ? 'Thu gọn' : 'Xem chi tiết'}</small>
+            </div>
+          </button>
 
-            {sch.kind === 'interest' && !paidPrincipal && l.due_at && (
-              <div className={`fin-inline-message${principalDue ? ' fin-inline-message--warn' : ''}`}>
-                <AppIcon name={principalDue ? 'warning' : 'calendar'} size={15} weight="fill" />
-                <span>{principalDue
-                  ? `Đã tới ngày tất toán gốc ${l.due_at} — ${money(sch.principalDue)} chưa ghi.`
-                  : `Gốc ${money(sch.principalDue)} tất toán một lần vào ${dmy(l.due_at)}.`}</span>
-              </div>
-            )}
-
-            {payId !== l.id && (!donePeriod || (principalDue && !paidPrincipal && sch.kind === 'interest')) && (
-              <div className="fin-rule__foot">
-                {!donePeriod && <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm"
-                  onClick={() => { setPayId(l.id); setEditId(null); }}>
-                  <AppIcon name="handCoins" size={15} /> {sch.kind === 'interest' ? 'Trả lãi kỳ này' : 'Trả kỳ này'}
-                </button>}
-                {sch.kind === 'interest' && principalDue && !paidPrincipal && (
-                  <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm"
-                    onClick={() => { setPayId(`${l.id}:principal`); setEditId(null); }}>
-                    <AppIcon name="bank" size={14} /> Tất toán gốc
-                  </button>
-                )}
-              </div>
-            )}
-
-            {payId === l.id && <PayBlock fin={fin} tasks={tasks} dueDay={l.pay_day} defaultAmount={dueAmount}
-              onCancel={() => setPayId(null)} onPay={async (payload) => {
-                if (sch.kind === 'interest') {
-                  const tx = await fin.payLoanInterest(l, { ...payload, period });
-                  nav.showToast(tx ? 'Đã ghi lãi vay — tính vào chi tiêu' : 'Không thể ghi lãi vay. Kiểm tra dữ liệu Finance rồi thử lại.', { icon: tx ? 'handCoins' : 'warning' });
-                  return !!tx;
-                }
-                const result = await fin.payLoanInstallment(l, { ...payload, period });
-                if (result) nav.showToast(`Đã tách ${money(result.interest)} lãi và ${money(result.principal)} gốc`, { icon: 'handCoins' });
-                else nav.showToast('Không thể ghi kỳ vay. Kiểm tra dữ liệu Finance rồi thử lại.', { icon: 'warning' });
-                return !!result;
-              }} />}
-
-            {payId === `${l.id}:principal` && <PayBlock fin={fin} tasks={tasks} defaultAmount={sch.principalDue}
-              confirmLabel="Xác nhận tất toán gốc" onCancel={() => setPayId(null)} onPay={async (payload) => {
-                const tx = await fin.payLoanPrincipal(l, { ...payload, period });
-                nav.showToast(tx ? 'Đã tất toán gốc — đứng ngoài tổng chi' : 'Không thể tất toán gốc. Kiểm tra dữ liệu Finance rồi thử lại.', { icon: tx ? 'bank' : 'warning' });
-                return !!tx;
-              }} />}
-
-            {editId === l.id && <RuleForm seg="loan" fin={fin} nav={nav} initial={l} onDone={() => setEditId(null)} />}
-          </RuleCard>
-        );
-      })}
+          {showHistory && (
+            <div className="fin-history-section__content">
+              {completedLoans.map(renderLoanCard)}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1376,6 +1419,7 @@ function LendsList({ fin, nav, tasks }) {
   const [editId, setEditId] = useState(null);
   const [payId, setPayId] = useState(null);
   const [histId, setHistId] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   const rows = fin.lendings.map(l => {
     const repayments = fin.transactions.filter(t => t.lending_id === l.id)
@@ -1385,9 +1429,14 @@ function LendsList({ fin, nav, tasks }) {
     const done = left === 0;
     const days = l.due_on ? daysInclusive(fin.today, l.due_on) - 1 : null;
     return { l, repayments, got, left, done, days, math: lendingInterest(l, repayments, fin.today) };
-  }).sort((a, b) => (a.l.due_on || '9999').localeCompare(b.l.due_on || '9999'));
+  });
 
-  const open = rows.filter(r => !r.done);
+  const open = rows.filter(r => !r.done).sort((a, b) => (a.l.due_on || '9999').localeCompare(b.l.due_on || '9999'));
+  const doneRows = rows.filter(r => r.done).sort((a, b) => {
+    const lastA = a.repayments.at(-1)?.occurred_at || a.l.due_on || '';
+    const lastB = b.repayments.at(-1)?.occurred_at || b.l.due_on || '';
+    return lastB.localeCompare(lastA);
+  });
   const nextDue = open.filter(r => r.l.due_on)[0];
 
   /**
@@ -1420,11 +1469,103 @@ function LendsList({ fin, nav, tasks }) {
     return true;
   };
 
+  const renderLendCard = ({ l, repayments, got, left, done, days, math }) => {
+    const state = done ? { tone: 'paid', text: `thu xong ${dmy(repayments.at(-1)?.occurred_at)}` }
+      : days == null ? { tone: 'wait', text: 'không hẹn ngày' }
+      : days <= -4 ? { tone: 'over', text: `quá hẹn ${Math.abs(days)} ngày` }
+      : days < 0 ? { tone: 'late', text: `quá hẹn ${Math.abs(days)} ngày` }
+      : days === 0 ? { tone: 'due', text: 'đến hẹn hôm nay' }
+      : { tone: days <= 14 ? 'late' : 'wait', text: `còn ${days} ngày` };
+    const overdue = days != null && days < 0;
+    return (
+      <RuleCard key={l.id} tone={state.tone} icon={done ? 'checkCircle' : 'handCoins'}
+        iconColor={done ? '#7fc060' : '#9184d9'}
+        title={l.name} badge={l.rate > 0 ? `${l.rate}%/năm` : 'không lãi'}
+        meta={[l.note, `cho mượn ${dmy(l.lent_on)}`, l.due_on ? `hẹn trả ${dmy(l.due_on)}` : null].filter(Boolean).join(' · ')}
+        amount={done ? money(l.principal) : money(left)} state={state} openTitle="Sửa khoản cho vay"
+        onOpen={() => setEditId(editId === l.id ? null : l.id)}
+        onEdit={() => { setEditId(editId === l.id ? null : l.id); setPayId(null); }}
+        onDelete={async () => {
+          // Khác hóa đơn/vay/thẻ: giao dịch thu về là income + excluded, mà database chỉ
+          // cho phép cặp đó khi còn lending_id — không có cột kỳ nào giữ lại làm bằng chứng.
+          // Nên khoản cho vay đã có lần thu vẫn KHÔNG xóa được; nói thẳng thay vì hứa suông.
+          const kept = repayments.length;
+          if (!await nav.confirmDelete(`khoản cho vay “${l.name}”`,
+            kept > 0 ? `${kept} giao dịch thu về đang gắn với khoản này. Phải xóa chúng ở màn Giao dịch trước, không thì database từ chối lệnh xóa.`
+              : 'Chưa có lần thu nào được ghi.')) return;
+          if (!await fin.deleteLending(l.id)) {
+            nav.showToast(kept > 0
+              ? `Chưa xóa được ${l.name} vì còn ${kept} giao dịch thu về. Xóa các giao dịch đó trước.`
+              : `Không thể xóa ${l.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
+          }
+        }}>
+
+        <div className="fin-loan-split">
+          <span>{done ? 'Đã thu đủ' : 'Còn phải thu'} <strong className={done ? 'is-good' : ''}>{money(done ? l.principal : left)}</strong>
+            <small>gốc, chưa gồm lãi</small></span>
+          <span>Cho mượn <strong>{money(l.principal)}</strong></span>
+          <span>Hẹn trả <strong>{dmy(l.due_on)}</strong></span>
+          {/* Không hẹn ngày thì mốc là HÔM NAY — nhãn phải nói đúng thế, không thì
+              "Lãi tới hẹn 0đ" của khoản vừa cho mượn hôm nay đọc như một con bug. */}
+          {l.rate > 0 && (
+            <span>{l.due_on && !overdue ? 'Lãi tới hẹn' : 'Lãi tới hôm nay'} <strong className="is-accent">{money(math.expected)}</strong>
+              <small>{l.rate}%/năm × {math.days} ngày{overdue ? ` · quá hẹn nên lãi chạy tới ${dmy(math.to)}`
+                : l.due_on ? ` tới ${dmy(math.to)}` : ' · chưa hẹn ngày trả'}
+                {math.earned < math.expected ? ` · đã phát sinh ${money(math.earned)}` : ''}</small></span>
+          )}
+          {math.forfeited > 0 && (
+            <span>Bù lãi mất <strong className="is-accent">{money(math.forfeited)}</strong>
+              <small>lãi sổ tiết kiệm bị đập — một cục, không theo ngày</small></span>
+          )}
+          {(l.rate > 0 || math.forfeited > 0) && (
+            <span>{l.due_on && !overdue ? 'Tổng sẽ nhận' : 'Tổng nếu trả hôm nay'} <strong>{money(math.total)}</strong>
+              <small>gốc {money(l.principal)}{math.expected > 0 ? ` + lãi ${money(math.expected)}` : ''}{math.forfeited > 0 ? ` + bù ${money(math.forfeited)}` : ''}</small></span>
+          )}
+        </div>
+
+        <RuleProgress pct={l.principal ? got / l.principal * 100 : 0}
+          label="Đã thu" right={`${money(got)} / ${money(l.principal)}`} />
+
+        {payId !== l.id && (
+          <div className="fin-rule__foot">
+            {!done && <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm"
+              onClick={() => { setPayId(l.id); setEditId(null); }}>
+              <AppIcon name="handCoins" size={15} /> Ghi khoản họ trả
+            </button>}
+            <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm"
+              onClick={() => setHistId(histId === l.id ? null : l.id)}>
+              <AppIcon name="clock" size={14} /> {repayments.length ? `Lịch sử · ${repayments.length} lần` : 'Chưa có lần trả nào'}
+            </button>
+          </div>
+        )}
+
+        {payId === l.id && <PayBlock fin={fin} tasks={tasks} defaultAmount=""
+          quickAmount={left + math.dueNow}
+          interestQuick={l.rate > 0 || math.forfeited > 0 ? math.dueNow : null}
+          amountLabel="Họ vừa trả bao nhiêu" confirmLabel="Ghi nhận"
+          onCancel={() => setPayId(null)} onPay={(payload) => record(l, payload)} />}
+
+        {histId === l.id && repayments.length > 0 && (
+          <div className="fin-bill-history">
+            <div className="fin-bill-history__list">
+              {repayments.map((t, i) => (
+                <div key={t.id}><span>Lần {i + 1} · {dmy(t.occurred_at)}</span><strong>{money(t.amount)}</strong></div>
+              ))}
+            </div>
+            <small className="fin-bill-history__note">Mỗi lần nhận là một giao dịch không tính vào thu nhập ở màn Giao dịch — xóa khoản cho vay không xóa lịch sử này.</small>
+          </div>
+        )}
+
+        {editId === l.id && <RuleForm seg="lend" fin={fin} nav={nav} initial={l} onDone={() => setEditId(null)} />}
+      </RuleCard>
+    );
+  };
+
   return (
     <div className="fin-rules">
       <SummaryStrip
         items={[
-          { label: 'Đang cho vay · chưa thu', value: money(rows.reduce((s, r) => s + r.left, 0)) },
+          { label: 'Đang cho vay · chưa thu', value: money(open.reduce((s, r) => s + r.left, 0)) },
           { label: 'Đã thu về', value: money(rows.reduce((s, r) => s + r.got, 0)), tone: 'good' },
           { label: 'Lãi sẽ nhận', value: money(open.reduce((s, r) => s + r.math.expected + r.math.forfeited, 0)) },
           { label: 'Hẹn gần nhất', value: nextDue ? dmy(nextDue.l.due_on) : '—' },
@@ -1435,97 +1576,40 @@ function LendsList({ fin, nav, tasks }) {
       {rows.length === 0 && <RulesEmpty icon="handCoins" title="Chưa cho ai mượn tiền"
         description="Ghi khoản cho vay để biết ai còn nợ bao nhiêu và hẹn trả ngày nào." />}
 
-      {rows.map(({ l, repayments, got, left, done, days, math }) => {
-        const state = done ? { tone: 'paid', text: `thu xong ${dmy(repayments.at(-1)?.occurred_at)}` }
-          : days == null ? { tone: 'wait', text: 'không hẹn ngày' }
-          : days <= -4 ? { tone: 'over', text: `quá hẹn ${Math.abs(days)} ngày` }
-          : days < 0 ? { tone: 'late', text: `quá hẹn ${Math.abs(days)} ngày` }
-          : days === 0 ? { tone: 'due', text: 'đến hẹn hôm nay' }
-          : { tone: days <= 14 ? 'late' : 'wait', text: `còn ${days} ngày` };
-        const overdue = days != null && days < 0;
-        return (
-          <RuleCard key={l.id} tone={state.tone} icon={done ? 'checkCircle' : 'handCoins'}
-            iconColor={done ? '#7fc060' : '#9184d9'}
-            title={l.name} badge={l.rate > 0 ? `${l.rate}%/năm` : 'không lãi'}
-            meta={[l.note, `cho mượn ${dmy(l.lent_on)}`, l.due_on ? `hẹn trả ${dmy(l.due_on)}` : null].filter(Boolean).join(' · ')}
-            amount={done ? money(l.principal) : money(left)} state={state} openTitle="Sửa khoản cho vay"
-            onOpen={() => setEditId(editId === l.id ? null : l.id)}
-            onEdit={() => { setEditId(editId === l.id ? null : l.id); setPayId(null); }}
-            onDelete={async () => {
-              // Khác hóa đơn/vay/thẻ: giao dịch thu về là income + excluded, mà database chỉ
-              // cho phép cặp đó khi còn lending_id — không có cột kỳ nào giữ lại làm bằng chứng.
-              // Nên khoản cho vay đã có lần thu vẫn KHÔNG xóa được; nói thẳng thay vì hứa suông.
-              const kept = repayments.length;
-              if (!await nav.confirmDelete(`khoản cho vay “${l.name}”`,
-                kept > 0 ? `${kept} giao dịch thu về đang gắn với khoản này. Phải xóa chúng ở màn Giao dịch trước, không thì database từ chối lệnh xóa.`
-                  : 'Chưa có lần thu nào được ghi.')) return;
-              if (!await fin.deleteLending(l.id)) {
-                nav.showToast(kept > 0
-                  ? `Chưa xóa được ${l.name} vì còn ${kept} giao dịch thu về. Xóa các giao dịch đó trước.`
-                  : `Không thể xóa ${l.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
-              }
-            }}>
+      {open.map(renderLendCard)}
 
-            <div className="fin-loan-split">
-              <span>{done ? 'Đã thu đủ' : 'Còn phải thu'} <strong className={done ? 'is-good' : ''}>{money(done ? l.principal : left)}</strong>
-                <small>gốc, chưa gồm lãi</small></span>
-              <span>Cho mượn <strong>{money(l.principal)}</strong></span>
-              <span>Hẹn trả <strong>{dmy(l.due_on)}</strong></span>
-              {/* Không hẹn ngày thì mốc là HÔM NAY — nhãn phải nói đúng thế, không thì
-                  "Lãi tới hẹn 0đ" của khoản vừa cho mượn hôm nay đọc như một con bug. */}
-              {l.rate > 0 && (
-                <span>{l.due_on && !overdue ? 'Lãi tới hẹn' : 'Lãi tới hôm nay'} <strong className="is-accent">{money(math.expected)}</strong>
-                  <small>{l.rate}%/năm × {math.days} ngày{overdue ? ` · quá hẹn nên lãi chạy tới ${dmy(math.to)}`
-                    : l.due_on ? ` tới ${dmy(math.to)}` : ' · chưa hẹn ngày trả'}
-                    {math.earned < math.expected ? ` · đã phát sinh ${money(math.earned)}` : ''}</small></span>
-              )}
-              {math.forfeited > 0 && (
-                <span>Bù lãi mất <strong className="is-accent">{money(math.forfeited)}</strong>
-                  <small>lãi sổ tiết kiệm bị đập — một cục, không theo ngày</small></span>
-              )}
-              {(l.rate > 0 || math.forfeited > 0) && (
-                <span>{l.due_on && !overdue ? 'Tổng sẽ nhận' : 'Tổng nếu trả hôm nay'} <strong>{money(math.total)}</strong>
-                  <small>gốc {money(l.principal)}{math.expected > 0 ? ` + lãi ${money(math.expected)}` : ''}{math.forfeited > 0 ? ` + bù ${money(math.forfeited)}` : ''}</small></span>
-              )}
+      {open.length === 0 && doneRows.length > 0 && (
+        <div className="fin-inline-message" style={{ margin: '8px 0 14px' }}>
+          <AppIcon name="checkCircle" size={16} weight="fill" />
+          <span>Tất cả khoản cho vay hiện tại đều đã thu đủ gốc.</span>
+        </div>
+      )}
+
+      {doneRows.length > 0 && (
+        <div className="fin-history-section">
+          <button
+            type="button"
+            className="fin-history-section__toggle"
+            onClick={() => setShowHistory(v => !v)}
+          >
+            <div className="fin-history-section__left">
+              <AppIcon name={showHistory ? 'caretDown' : 'caretRight'} size={14} />
+              <span className="fin-history-section__title">Lịch sử đã thu xong</span>
+              <span className="fin-history-section__badge">{doneRows.length}</span>
             </div>
+            <div className="fin-history-section__right">
+              <span>Đã thu đủ {money(doneRows.reduce((s, r) => s + r.got, 0))}</span>
+              <small>{showHistory ? 'Thu gọn' : 'Xem chi tiết'}</small>
+            </div>
+          </button>
 
-            <RuleProgress pct={l.principal ? got / l.principal * 100 : 0}
-              label="Đã thu" right={`${money(got)} / ${money(l.principal)}`} />
-
-            {payId !== l.id && (
-              <div className="fin-rule__foot">
-                {!done && <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm"
-                  onClick={() => { setPayId(l.id); setEditId(null); }}>
-                  <AppIcon name="handCoins" size={15} /> Ghi khoản họ trả
-                </button>}
-                <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm"
-                  onClick={() => setHistId(histId === l.id ? null : l.id)}>
-                  <AppIcon name="clock" size={14} /> {repayments.length ? `Lịch sử · ${repayments.length} lần` : 'Chưa có lần trả nào'}
-                </button>
-              </div>
-            )}
-
-            {payId === l.id && <PayBlock fin={fin} tasks={tasks} defaultAmount=""
-              quickAmount={left + math.dueNow}
-              interestQuick={l.rate > 0 || math.forfeited > 0 ? math.dueNow : null}
-              amountLabel="Họ vừa trả bao nhiêu" confirmLabel="Ghi nhận"
-              onCancel={() => setPayId(null)} onPay={(payload) => record(l, payload)} />}
-
-            {histId === l.id && repayments.length > 0 && (
-              <div className="fin-bill-history">
-                <div className="fin-bill-history__list">
-                  {repayments.map((t, i) => (
-                    <div key={t.id}><span>Lần {i + 1} · {dmy(t.occurred_at)}</span><strong>{money(t.amount)}</strong></div>
-                  ))}
-                </div>
-                <small className="fin-bill-history__note">Mỗi lần nhận là một giao dịch không tính vào thu nhập ở màn Giao dịch — xóa khoản cho vay không xóa lịch sử này.</small>
-              </div>
-            )}
-
-            {editId === l.id && <RuleForm seg="lend" fin={fin} nav={nav} initial={l} onDone={() => setEditId(null)} />}
-          </RuleCard>
-        );
-      })}
+          {showHistory && (
+            <div className="fin-history-section__content">
+              {doneRows.map(renderLendCard)}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
