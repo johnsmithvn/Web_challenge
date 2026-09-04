@@ -2,6 +2,7 @@ import { useEffect, useCallback, useMemo } from 'react';
 import { getWeekDays } from '../utils/calendarTimeUtils';
 import { solarToLunar, getCanChiYear, getCanChiDay } from '../utils/lunarUtils';
 import AppIcon from './AppIcon';
+import '../styles/week-calendar.css';
 
 /**
  * CalendarToolbar — Thanh điều hướng lịch All-in-one chuẩn Google Calendar & Notion Calendar.

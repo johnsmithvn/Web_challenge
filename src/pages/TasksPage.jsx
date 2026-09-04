@@ -9,6 +9,7 @@ import CalendarToolbar from '../components/CalendarToolbar';
 import { toDateStr } from '../utils/dateUtils';
 import '../styles/tasks.css';
 import '../styles/calendar-widget.css';
+import '../styles/week-calendar.css';
 
 const MonthCalendar = lazy(() => import('../components/MonthCalendar'));
 const WeekCalendar = lazy(() => import('../components/WeekCalendar'));

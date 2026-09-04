@@ -5,7 +5,6 @@ import HOLIDAYS from '../data/holidays.json';
 import {
   computeDayLayout,
   getTaskVisualStatus,
-  formatTimeRange,
 } from '../utils/calendarTimeUtils';
 import AppIcon from './AppIcon';
 import '../styles/week-calendar.css';
@@ -216,29 +215,36 @@ export default function CalendarDayView({
             )}
 
             {/* Các task có giờ */}
-            {timedTasks.map(({ task, top, height, left, width }) => {
-              const visualStatus = getTaskVisualStatus(task, todayStr, nowMinutes);
-              const timeRangeStr = formatTimeRange(task.due_time, task.duration || 45);
+            {timedTasks.map((t) => {
+              const visualStatus = getTaskVisualStatus(t, todayStr, nowMinutes);
+              const p = Math.max(0, Math.min(5, Number(t.priority) || 0));
+              const statusClass = visualStatus === 'done'
+                ? 'week-cal__event--done'
+                : visualStatus === 'overdue'
+                ? 'week-cal__event--overdue'
+                : `week-cal__event--p${p}`;
 
               return (
                 <div
-                  key={task.id}
-                  className={`week-cal__task-block week-cal__task-block--p${task.priority || 4} week-cal__task-block--${visualStatus}`}
+                  key={t.id}
+                  className={`week-cal__event ${statusClass}`}
                   style={{
-                    top: `${top}px`,
-                    height: `${Math.max(26, height)}px`,
-                    left: `${left}%`,
-                    width: `calc(${width}% - 6px)`,
+                    top: `${t._layout.top}px`,
+                    height: `${Math.max(26, t._layout.height)}px`,
+                    left: t._layout.left,
+                    width: t._layout.width,
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (onSelectTask) onSelectTask(task);
+                    if (onSelectTask) onSelectTask(t);
                   }}
-                  title={`${task.title} (${timeRangeStr})`}
+                  title={`${t.title} (${t._layout.timeRangeLabel})`}
                 >
-                  <div className="week-cal__task-title">{task.title}</div>
-                  {height >= 38 && (
-                    <div className="week-cal__task-time">{timeRangeStr}</div>
+                  <div className="week-cal__event-title">
+                    {visualStatus === 'done' ? '✓ ' : visualStatus === 'overdue' ? '⚠️ ' : ''}{t.title}
+                  </div>
+                  {t._layout.height >= 34 && (
+                    <div className="week-cal__event-time">{t._layout.timeRangeLabel}</div>
                   )}
                 </div>
               );
