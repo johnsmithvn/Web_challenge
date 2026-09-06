@@ -9,6 +9,7 @@ import {
 } from '../../utils/financeLogic';
 import { money, catInfo, Segmented, TaskPicker, FinanceIcon, DateField, BankSelect } from './parts';
 import AppIcon from '../AppIcon';
+import ReportScreen from './ReportScreen';
 
 function lastNMonths(refStr, n) {
   const ref = parseYmd(refStr);
@@ -30,11 +31,7 @@ function compactMoney(value) {
 }
 
 export default function AnalyzeScreen({ fin, nav }) {
-  return (
-    <div className="fin-analyze">
-      <StatsTab fin={fin} nav={nav} />
-    </div>
-  );
+  return <ReportScreen fin={fin} nav={nav} />;
 }
 
 export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {

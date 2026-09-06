@@ -2,6 +2,18 @@
 
 ## v6.16.0 — 2026-09-02
 
+### Added
+- **Redesign toàn diện màn hình Báo cáo chi tiêu (`ReportScreen.jsx`, `finance-report.css`):**
+  - Tái thiết kế bám sát 100% bản thiết kế canvas chốt cho cả Desktop (1440px) và Mobile (390px).
+  - Thẻ tối Hero đầu trang: Tổng chi kỳ, badge % so sánh YoY/kỳ trước, biểu đồ Donut SVG và top 3 nhóm chi tiêu lớn nhất.
+  - Dải Sparklines 6 nhóm: Thống kê chi tiêu 6 tháng gần nhất, tính toán độ biến động %, đường sparkline thu nhỏ.
+  - Cặp thẻ Chi 12 tháng (trend 2/3 với diện tích tím, đường trung bình nét đứt và highlight tháng hiện tại) & Xếp hạng nhóm (rank 1/3).
+  - Hàng 3 thẻ: Chi theo thứ (DOW bars highlight ngày chi nhiều nhất), Bản đồ danh mục (Treemap gradient) và Pareto 80/20.
+  - Thẻ tùy chọn bổ sung: Phân bố số tiền (Histogram) và Nơi chi nhiều nhất (Top nhà cung cấp).
+  - Bộ quản lý Thẻ hiển thị (Desktop Popover & Mobile Bottom Sheet) lưu cấu hình vào `localStorage`.
+  - Tính năng Xuất dữ liệu báo cáo chi tiêu ra file CSV (chuẩn UTF-8 BOM, RFC 4180).
+  - Tích hợp điều hướng `/finance/report` vào thanh điều hướng Sidebar và các tab phân hệ Finance.
+
 ### Fixed
 - **Sửa lỗi layout chi tiết giao dịch (`ListScreen.jsx` & `finance-handoff.css`):**
   - Sửa lỗi panel chi tiết giao dịch (`.fin-list__detail`) bị đẩy xuống hàng 4 dưới đáy danh sách giao dịch và bị tràn/cắt mất các nút thao tác bên dưới.

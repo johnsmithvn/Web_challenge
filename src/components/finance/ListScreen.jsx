@@ -8,7 +8,7 @@ import {
 } from './parts';
 import SkeletonList from '../SkeletonList';
 import AppIcon from '../AppIcon';
-import '../../styles/finance-nhipchi.css';
+import '../../styles/finance-list.css';
 
 const EMPTY_FILTER = { cat: '', sub: '', from: '', to: '' };
 
@@ -138,16 +138,6 @@ export default function ListScreen({ fin, nav }) {
     return Math.round(shownTotal / (activeDays || 1));
   }, [shownTotal, activeDays]);
 
-  // Forecast month end
-  const forecast = useMemo(() => {
-    const unpaidBills = fin.bills.filter(b => !b.archived && !b.is_income && !inPeriod.some(tx => tx.bill_id === b.id));
-    const remainingBillsAmount = unpaidBills.reduce((s, b) => s + (b.amount || 0), 0);
-    const estTotal = totals.total + remainingBillsAmount;
-    return {
-      total: estTotal,
-      unpaidCount: unpaidBills.length,
-    };
-  }, [fin.bills, inPeriod, totals.total]);
 
   // Notable Insight card (ĐÁNG CHÚ Ý)
   const insight = useMemo(() => {
@@ -354,14 +344,6 @@ export default function ListScreen({ fin, nav }) {
             <span className="fin-nhipchi__stat-sub">tính trên {activeDays} ngày có chi</span>
           </div>
 
-          {/* Card 3 */}
-          <div className="fin-nhipchi__stat-card fin-nhipchi__stat-card--forecast">
-            <span className="fin-nhipchi__stat-label">DỰ BÁO CUỐI THÁNG</span>
-            <div className="fin-nhipchi__stat-val">{money(forecast.total)}</div>
-            <span className="fin-nhipchi__stat-sub">
-              {forecast.unpaidCount > 0 ? `còn ${forecast.unpaidCount} hóa đơn định kỳ chưa ghi` : 'ước tính chi kỳ này ổn định'}
-            </span>
-          </div>
 
           {/* Card 4 (Dark Notable Insight) */}
           <div className="fin-nhipchi__stat-card fin-nhipchi__stat-card--dark">
@@ -499,7 +481,7 @@ export default function ListScreen({ fin, nav }) {
         </div>
 
         {/* Right 352px Desktop Detail Pane */}
-        {selected && (
+        {selected && !isEditing && (
           <aside className="fin-nhipchi__right">
             <TxDetail
               key={selected.id}
@@ -510,7 +492,7 @@ export default function ListScreen({ fin, nav }) {
               inPeriod={inPeriod}
               onClose={() => { setSelId(null); setIsEditing(false); }}
               onSelect={id => { setSelId(id); setIsEditing(false); }}
-              isEditing={isEditing}
+              isEditing={false}
               onEditingChange={setIsEditing}
               onFilterCat={catKey => setFlt(prev => ({ ...prev, cat: prev.cat === catKey ? '' : catKey }))}
             />
@@ -518,7 +500,24 @@ export default function ListScreen({ fin, nav }) {
         )}
       </div>
 
-      {/* Mobile Bottom Sheet (shown when item selected on mobile screens) */}
+      {/* Edit Drawer (shown on both Desktop & Mobile when isEditing is true) */}
+      {selected && isEditing && (
+        <TxDetail
+          key={`edit-${selected.id}`}
+          tx={selected}
+          fin={fin}
+          nav={nav}
+          tasks={pendingTasks}
+          inPeriod={inPeriod}
+          onClose={() => { setSelId(null); setIsEditing(false); }}
+          onSelect={id => { setSelId(id); setIsEditing(false); }}
+          isEditing={true}
+          onEditingChange={setIsEditing}
+          onFilterCat={catKey => setFlt(prev => ({ ...prev, cat: prev.cat === catKey ? '' : catKey }))}
+        />
+      )}
+
+      {/* Mobile Bottom Sheet (shown when item selected on mobile screens and not editing) */}
       {selected && !isEditing && (
         <div className="fin-nhipchi-sheet-overlay" onClick={() => { setSelId(null); setIsEditing(false); }}>
           <div
@@ -539,7 +538,7 @@ export default function ListScreen({ fin, nav }) {
               isMobileSheet
               onClose={() => { setSelId(null); setIsEditing(false); }}
               onSelect={id => { setSelId(id); setIsEditing(false); }}
-              isEditing={isEditing}
+              isEditing={false}
               onEditingChange={setIsEditing}
               onFilterCat={catKey => {
                 setFlt(prev => ({ ...prev, cat: prev.cat === catKey ? '' : catKey }));

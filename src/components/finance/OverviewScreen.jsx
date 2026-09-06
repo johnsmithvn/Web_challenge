@@ -13,7 +13,7 @@ import '../../styles/skeleton.css';   // dùng .sk-* trực tiếp, không qua S
 
 export const OVERVIEW_TAB_OPTIONS = [
   { value: 'overview', label: 'Tổng quan', icon: 'chartDonut' },
-  { value: 'stats', label: 'Thống kê', icon: 'chartLine' },
+  { value: 'stats', label: 'Báo cáo', icon: 'chartLine' },
 ];
 
 /**

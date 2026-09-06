@@ -13,6 +13,7 @@ import AddScreen from '../components/finance/AddScreen';
 import ListScreen from '../components/finance/ListScreen';
 import CatsScreen from '../components/finance/CatsScreen';
 import RecurringScreen from '../components/finance/RecurringScreen';
+import ReportScreen from '../components/finance/ReportScreen';
 import '../styles/finance.css';
 import '../styles/finance-handoff.css';
 import '../styles/skeleton.css';
@@ -21,10 +22,11 @@ const RECURRING_SEGS = ['out', 'in', 'loan', 'card', 'lend', 'saving'];
 
 const SCREENS = [
   { key: 'overview',  icon: 'chartDonut', label: 'Tổng quan', title: 'Hôm nay tiêu gì?' },
+  { key: 'report',    icon: 'chartLine',  label: 'Báo cáo',   title: 'Báo cáo chi tiêu' },
   { key: 'add',       icon: 'plusCircle', label: 'Nhập nhanh', title: 'Ghi một khoản' },
-  { key: 'list',      icon: 'receipt', label: 'Giao dịch', title: 'Giao dịch' },
-  { key: 'recurring', icon: 'calendar', label: 'Định kỳ & Quỹ', title: 'Định kỳ, nghĩa vụ & Quỹ tiết kiệm' },
-  { key: 'cats',      icon: 'tree', label: 'Danh mục', title: 'Danh mục & schema' },
+  { key: 'list',      icon: 'receipt',    label: 'Giao dịch',  title: 'Giao dịch' },
+  { key: 'recurring', icon: 'calendar',   label: 'Định kỳ & Quỹ', title: 'Định kỳ, nghĩa vụ & Quỹ tiết kiệm' },
+  { key: 'cats',      icon: 'tree',       label: 'Danh mục',   title: 'Danh mục & schema' },
 ];
 const VALID_PERIOD_KEY = /^(?:\d{4}-(?:0[1-9]|1[0-2])|year-\d{4}|all)$/;
 const OVERVIEW_TABS = new Set(['overview', 'stats']);
@@ -55,7 +57,7 @@ export default function FinancePage() {
     [periodKey, fin.today, fin.dataFrom]);
 
   const screen = routeScreen === 'analyze'
-    ? 'overview'
+    ? 'report'
     : SCREENS.some(s => s.key === routeScreen) ? routeScreen : 'overview';
   const setScreen = useCallback((target) => navigate(`/finance/${target}`), [navigate]);
   const [recurringSeg, setRecurringSeg] = useState('out');
@@ -105,9 +107,9 @@ export default function FinancePage() {
     };
   }, []);
 
-  // Bookmark cũ vẫn mở đúng nội dung, nhưng Phân tích không còn là một màn riêng.
+  // Bookmark cũ vẫn mở đúng nội dung
   useEffect(() => {
-    if (routeScreen === 'analyze') navigate('/finance/overview?view=stats', { replace: true });
+    if (routeScreen === 'analyze') navigate('/finance/report', { replace: true });
   }, [navigate, routeScreen]);
 
   // Phím tắt N → Nhập nhanh (bỏ qua khi đang gõ trong input).
@@ -155,6 +157,7 @@ export default function FinancePage() {
   };
   const active = SCREENS.find(s => s.key === screen);
   const headerSub = screen === 'overview' ? `${period.label} · tổng quan chi tiêu`
+    : screen === 'report' ? 'Tổng hợp chi tiêu, phân bổ danh mục và nhịp chi'
     : screen === 'add' ? 'Số tiền trước — mọi trường còn lại đều đã có sẵn giá trị mặc định'
     : screen === 'list' ? `${period.label} · lọc cùng kỳ với Tổng quan`
     : screen === 'cats' ? '11 nhóm chi · 7 nhóm thu · cấu trúc dữ liệu'
@@ -163,59 +166,43 @@ export default function FinancePage() {
   return (
     <div className="finance-module">
       <section className="fin-content">
-        <header className="fin-header">
-          <div className="fin-header__brand">
-            <div className="fin-header__copy">
-              <h1 className="fin-header__title">{active?.title}</h1>
-              {!(screen === 'overview' && nav.overviewTab === 'overview') && (
-                <p className="fin-header__sub">{headerSub}</p>
+        {screen !== 'list' && screen !== 'report' && (
+          <header className="fin-header">
+            <div className="fin-header__brand">
+              <div className="fin-header__copy">
+                <h1 className="fin-header__title">{active?.title}</h1>
+                {!(screen === 'overview' && nav.overviewTab === 'overview') && (
+                  <p className="fin-header__sub">{headerSub}</p>
+                )}
+              </div>
+              {screen === 'overview' && nav.overviewTab === 'overview' && (
+                <PeriodPicker
+                  options={periodOptions}
+                  period={period}
+                  value={periodKey}
+                  onChange={setPeriodKey}
+                  dataFrom={fin.dataFrom}
+                  compact
+                />
               )}
             </div>
-            {screen === 'overview' && nav.overviewTab === 'overview' && (
-              <PeriodPicker
-                options={periodOptions}
-                period={period}
-                value={periodKey}
-                onChange={setPeriodKey}
-                dataFrom={fin.dataFrom}
-                compact
-              />
+
+            {screen === 'overview' && (
+              <div className="fin-header__segmented">
+                <Segmented
+                  options={OVERVIEW_TAB_OPTIONS}
+                  value={nav.overviewTab}
+                  onChange={nav.setOverviewTab}
+                  ariaLabel="Chế độ Tổng quan"
+                />
+              </div>
             )}
-          </div>
 
-          {screen === 'overview' && (
-            <div className="fin-header__segmented">
-              <Segmented
-                options={OVERVIEW_TAB_OPTIONS}
-                value={nav.overviewTab}
-                onChange={nav.setOverviewTab}
-                ariaLabel="Chế độ Tổng quan"
-              />
-            </div>
-          )}
-
-          {screen === 'list' && (
-            <div className="fin-header__search">
-              <AppIcon name="search" size={15} />
-              <input
-                type="text"
-                placeholder="Tìm giao dịch, nơi, tag…"
-                value={searchQuery}
-                onChange={event => setSearchQuery(event.target.value)}
-                aria-label="Tìm giao dịch"
-              />
-              {searchQuery && (
-                <button type="button" className="fin-header__search-clear" onClick={() => setSearchQuery('')} aria-label="Xóa tìm kiếm">
-                  <AppIcon name="x" size={13} />
-                </button>
-              )}
-            </div>
-          )}
-
-          <button className="fin-btn fin-btn--primary fin-header__action" onClick={() => go('add')}>
-            <AppIcon name="plus" size={16} /> Thêm chi tiêu
-          </button>
-        </header>
+            <button className="fin-btn fin-btn--primary fin-header__action" onClick={() => go('add')}>
+              <AppIcon name="plus" size={16} /> Thêm chi tiêu
+            </button>
+          </header>
+        )}
 
         {/* Sub-tab ngang (mobile thay child sidebar) */}
         <nav className="fin-subtabs">
@@ -238,6 +225,7 @@ export default function FinancePage() {
 
         <div className="fin-screen" key={screen}>
           {screen === 'overview'  && <OverviewScreen  fin={fin} nav={nav} />}
+          {screen === 'report'    && <ReportScreen    fin={fin} nav={nav} />}
           {screen === 'add'       && <AddScreen       fin={fin} nav={nav} />}
           {screen === 'list'      && <ListScreen      fin={fin} nav={nav} />}
           {screen === 'cats'      && <CatsScreen      fin={fin} nav={nav} />}

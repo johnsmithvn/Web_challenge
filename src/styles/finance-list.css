@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Nhịp chi — Bản chi tiết (Canvas Redesign)
+   Danh sách giao dịch (ListScreen) — Bản Canvas Redesign
    Matching the exact canvas design: 'Be Vietnam Pro', 'JetBrains Mono',
    1-row filter bar, daily sparkline, stat cards, desktop 352px sidebar,
    and slide-up mobile bottom sheet.
@@ -11,7 +11,7 @@
   background: #FBFAF8;
   border: 1px solid #EDEAE4;
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
   font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #1C1917;
   min-height: 100%;
@@ -30,6 +30,7 @@
   padding: 0 32px;
   border-bottom: 1px solid #EDEAE4;
   background: #fff;
+  border-radius: 15px 15px 0 0;
 }
 
 .fin-nhipchi__header-title-wrap {
@@ -125,6 +126,9 @@
   padding: 14px 32px;
   border-bottom: 1px solid #EDEAE4;
   background: #fff;
+  position: relative;
+  z-index: 40;
+  overflow: visible;
 }
 
 .fin-nhipchi__period-wrap {
@@ -192,7 +196,8 @@
 /* Filter popover button */
 .fin-filterpop {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  flex: none;
 }
 
 .fin-filterpop__btn {
@@ -240,16 +245,68 @@
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  z-index: 120;
+  z-index: 300;
   width: 320px;
-  background: #fff;
+  background: #ffffff;
   border: 1px solid #EDEAE4;
   border-radius: 14px;
   padding: 16px;
-  box-shadow: 0 12px 32px rgba(28, 25, 23, 0.14);
+  box-shadow: 0 16px 40px rgba(28, 25, 23, 0.16);
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.fin-filterpop__panel .fin-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #78716C;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 6px 0;
+}
+
+.fin-filterpop__panel .fin-input {
+  width: 100%;
+  height: 38px;
+  min-height: 38px;
+  border: 1px solid #E3DFD8;
+  border-radius: 9px;
+  background: #FAF8F5;
+  color: #1C1917;
+  font-size: 13px;
+  padding: 0 10px;
+  color-scheme: light;
+  box-sizing: border-box;
+}
+.fin-filterpop__panel .fin-input:focus {
+  background: #fff;
+  border-color: #6C5CE7;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+}
+
+.fin-filterpop__panel .fin-datefield__box {
+  height: 38px;
+  min-height: 38px;
+  border: 1px solid #E3DFD8;
+  border-radius: 9px;
+  background: #FAF8F5;
+  padding: 0 6px 0 10px;
+  box-sizing: border-box;
+}
+.fin-filterpop__panel .fin-datefield__box:focus-within {
+  background: #fff;
+  border-color: #6C5CE7;
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+}
+
+.fin-filterpop__panel .fin-field__hint {
+  font-size: 11px;
+  color: #8A857D;
+  margin: -4px 0 0;
+  line-height: 1.4;
 }
 
 .fin-filterpop__dates {
@@ -398,7 +455,7 @@
 
 .fin-nhipchi__stat-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 1fr 1fr 1.25fr;
   gap: 14px;
   margin-top: 20px;
 }
@@ -1027,17 +1084,23 @@
 }
 
 /* --------------------------------------------------------------------------
-   Mobile Slide-Up Bottom Sheet
+   Mobile Slide-Up Bottom Sheet (Chỉ hiển thị trên mobile <= 900px)
    -------------------------------------------------------------------------- */
 .fin-nhipchi-sheet-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(28, 25, 23, 0.55);
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  backdrop-filter: blur(2px);
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .fin-nhipchi-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 25, 23, 0.55);
+    z-index: 1000;
+    display: flex !important;
+    flex-direction: column;
+    justify-content: flex-end;
+    backdrop-filter: blur(2px);
+  }
 }
 
 .fin-nhipchi-sheet {
@@ -1094,6 +1157,125 @@
   gap: 11px;
 }
 
+
+
+/* --------------------------------------------------------------------------
+   Edit Transaction Drawer (Slide-Over)
+   -------------------------------------------------------------------------- */
+.fin-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fin-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(28, 25, 23, 0.55);
+  backdrop-filter: blur(3px);
+  animation: finFadeIn 0.2s ease-out;
+}
+
+@keyframes finFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fin-slide-drawer {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 90vw);
+  height: 100%;
+  background: #ffffff;
+  border-left: 1px solid #EDEAE4;
+  box-shadow: -16px 0 48px rgba(28, 25, 23, 0.2);
+  animation: finSlideInDrawer 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes finSlideInDrawer {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.fin-slide-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 28px;
+  border-bottom: 1px solid #EDEAE4;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.fin-detail__head-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1C1917;
+}
+
+.fin-detail__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #8A857D;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.fin-detail__close:hover {
+  background: #F3F0EB;
+  color: #1C1917;
+}
+
+.fin-slide-drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 28px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fin-slide-drawer__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 28px;
+  border-top: 1px solid #EDEAE4;
+  background: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
+}
+
+@media (max-width: 768px) {
+  .fin-slide-drawer {
+    width: 100vw;
+    border-left: none;
+  }
+  .fin-slide-drawer__head {
+    padding: 14px 18px;
+  }
+  .fin-slide-drawer__body {
+    padding: 18px 18px 28px;
+  }
+  .fin-slide-drawer__foot {
+    padding: 14px 18px;
+  }
+}
+
 /* --------------------------------------------------------------------------
    Responsive Adaptations
    -------------------------------------------------------------------------- */
@@ -1107,7 +1289,13 @@
   }
   .fin-nhipchi__bar {
     padding: 10px 16px;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    overflow: visible;
+    gap: 8px;
+  }
+  .fin-nhipchi__search {
+    flex: 1 1 100%;
+    max-width: none;
   }
   .fin-nhipchi__spark-section {
     padding: 14px 16px 12px;
@@ -1128,5 +1316,18 @@
   }
   .fin-nhipchi__row-actions {
     display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .fin-filterpop {
+    position: static;
+  }
+  .fin-filterpop__panel {
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+    top: calc(100% + 6px) !important;
   }
 }

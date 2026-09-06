@@ -28,6 +28,7 @@ const MOBILE_PRIMARY_NAV = PRIMARY_NAV.filter(link => link.to !== '/accounts');
 
 const FINANCE_NAV = [
   { to: '/finance/overview', icon: 'chartDonut', label: 'Tổng quan' },
+  { to: '/finance/report', icon: 'chartLine', label: 'Báo cáo' },
   { to: '/finance/add', icon: 'plusCircle', label: 'Nhập nhanh', hint: 'N' },
   { to: '/finance/list', icon: 'receipt', label: 'Giao dịch' },
   { to: '/finance/recurring', icon: 'calendar', label: 'Định kỳ & Quỹ' },
