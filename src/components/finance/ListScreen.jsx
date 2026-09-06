@@ -8,15 +8,7 @@ import {
 } from './parts';
 import SkeletonList from '../SkeletonList';
 import AppIcon from '../AppIcon';
-
-const FILTERS = [
-  { value: 'all', label: 'Tất cả' },
-  { value: 'expense', label: 'Chi' },
-  { value: 'income', label: 'Thu' },
-  { value: 'must', label: 'Phải trả' },
-  { value: 'want', label: 'Tùy chọn' },
-  { value: 'auto', label: 'Do định kỳ sinh' },
-];
+import '../../styles/finance-nhipchi.css';
 
 const EMPTY_FILTER = { cat: '', sub: '', from: '', to: '' };
 
@@ -36,7 +28,9 @@ function csvCell(value) {
 
 export default function ListScreen({ fin, nav }) {
   const { pendingTasks } = useUserTasks();
-  const [filter, setFilter] = useState('all');
+  const [quickFilter, setQuickFilter] = useState('all'); // 'all' | 'today' | 'yesterday' | '7d'
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [expandedClusters, setExpandedClusters] = useState(() => new Set());
   const [localQ, setLocalQ] = useState('');
   const q = nav.searchQuery !== undefined ? nav.searchQuery : localQ;
   const setQ = nav.setSearchQuery || setLocalQ;
@@ -48,47 +42,142 @@ export default function ListScreen({ fin, nav }) {
   const inPeriod = useMemo(
     () => fin.transactions.filter(tx => tx.occurred_at >= period.from && tx.occurred_at <= period.to),
     [fin.transactions, period]);
+
   const totals = useMemo(
     () => periodTotals(fin.transactions, period),
     [fin.transactions, period],
   );
 
+  // Quick filter helpers
+  const yesterday = useMemo(() => {
+    return toDateStr(new Date(new Date(`${fin.today}T00:00:00`).getTime() - 86400000));
+  }, [fin.today]);
+
+  const sevenDaysAgo = useMemo(() => {
+    return toDateStr(new Date(new Date(`${fin.today}T00:00:00`).getTime() - 6 * 86400000));
+  }, [fin.today]);
+
   const filtered = useMemo(() => inPeriod.filter(tx => {
-    if (filter === 'auto' && !(tx.bill_id || tx.loan_id || tx.card_id)) return false;
-    if (filter === 'must' && tx.necessity !== 'must') return false;
-    if (filter === 'want' && tx.necessity !== 'want') return false;
-    if (filter === 'expense' && tx.type !== 'expense') return false;
-    if (filter === 'income' && tx.type !== 'income') return false;
+    // Quick time filter
+    if (quickFilter === 'today' && tx.occurred_at !== fin.today) return false;
+    if (quickFilter === 'yesterday' && tx.occurred_at !== yesterday) return false;
+    if (quickFilter === '7d' && (tx.occurred_at < sevenDaysAgo || tx.occurred_at > fin.today)) return false;
+
+    // Single day click filter from sparkline
+    if (selectedDay && tx.occurred_at !== selectedDay) return false;
+
+    // Search query
     if (q) {
       const haystack = [tx.note, tx.description, tx.merchant, catInfo(tx.category_id, fin.cats).label,
         subLabel(tx.subcategory_id, fin.cats)].filter(Boolean).join(' ').toLowerCase();
       if (!haystack.includes(q.toLowerCase())) return false;
     }
-    // Bộ lọc phễu cộng dồn (AND) với chip loại và ô tìm: chọn thêm điều kiện là thu hẹp
-    // dần, không điều kiện nào thay điều kiện nào.
+
+    // FilterPop conditions
     if (flt.cat && tx.category_id !== flt.cat) return false;
     if (flt.sub && tx.subcategory_id !== flt.sub) return false;
     if (flt.from && tx.occurred_at < flt.from) return false;
     if (flt.to && tx.occurred_at > flt.to) return false;
+
     return true;
-  }), [inPeriod, filter, q, flt, fin.cats]);
+  }), [inPeriod, quickFilter, selectedDay, q, flt, fin.cats, fin.today, yesterday, sevenDaysAgo]);
 
   const groups = useMemo(() => groupByDate(filtered), [filtered]);
-  const selected = filtered.find(tx => tx.id === selId) || null;
-  // Một cờ duy nhất cho "đang lọc": empty state phải nói đúng lý do list rỗng, và nút
-  // Xóa bộ lọc phải xóa HẾT — sót một điều kiện là bấm xong list vẫn trống.
-  const hasFilter = Boolean(q || filter !== 'all' || flt.cat || flt.from || flt.to);
-  const clearFilters = () => { setQ(''); setFilter('all'); setFlt(EMPTY_FILTER); };
-  // `totals` là số của CẢ KỲ (dùng chung với Tổng quan), không phải của phần đang lọc.
-  // Đứng cạnh "3 khoản" nó đọc như tổng của 3 khoản đó, nên khi có lọc phải nói thêm
-  // tổng thật của phần đang xem. Cùng công thức với tổng mỗi ngày ở dưới.
+  const selected = fin.transactions.find(tx => tx.id === selId) || null;
+
+  const hasFilter = Boolean(q || quickFilter !== 'all' || selectedDay || flt.cat || flt.sub || flt.from || flt.to);
+  const clearFilters = () => {
+    setQ('');
+    setQuickFilter('all');
+    setSelectedDay(null);
+    setFlt(EMPTY_FILTER);
+  };
+
   const shownTotal = useMemo(() => filtered
     .filter(tx => tx.type === 'expense' && !tx.excluded)
     .reduce((sum, tx) => sum + tx.amount, 0), [filtered]);
 
+  // Days list for period daily sparkline
+  const dayList = useMemo(() => {
+    if (!period?.from || !period?.to) return [];
+    const list = [];
+    let cur = new Date(`${period.from}T00:00:00`);
+    const end = new Date(`${period.to}T00:00:00`);
+    while (cur <= end) {
+      list.push(toDateStr(cur));
+      cur = new Date(cur.getTime() + 86400000);
+    }
+    return list;
+  }, [period.from, period.to]);
+
+  const dailyTotals = useMemo(() => {
+    const map = {};
+    for (const tx of inPeriod) {
+      if (tx.type === 'expense' && !tx.excluded) {
+        map[tx.occurred_at] = (map[tx.occurred_at] || 0) + tx.amount;
+      }
+    }
+    return map;
+  }, [inPeriod]);
+
+  const maxDailyExpense = useMemo(() => {
+    const values = Object.values(dailyTotals);
+    return values.length ? Math.max(1, ...values) : 1;
+  }, [dailyTotals]);
+
+  // Active days count & avg
+  const activeDays = useMemo(() => {
+    const set = new Set();
+    for (const tx of filtered) {
+      if (tx.type === 'expense' && !tx.excluded) set.add(tx.occurred_at);
+    }
+    return set.size;
+  }, [filtered]);
+
+  const avgPerDay = useMemo(() => {
+    return Math.round(shownTotal / (activeDays || 1));
+  }, [shownTotal, activeDays]);
+
+  // Forecast month end
+  const forecast = useMemo(() => {
+    const unpaidBills = fin.bills.filter(b => !b.archived && !b.is_income && !inPeriod.some(tx => tx.bill_id === b.id));
+    const remainingBillsAmount = unpaidBills.reduce((s, b) => s + (b.amount || 0), 0);
+    const estTotal = totals.total + remainingBillsAmount;
+    return {
+      total: estTotal,
+      unpaidCount: unpaidBills.length,
+    };
+  }, [fin.bills, inPeriod, totals.total]);
+
+  // Notable Insight card (ĐÁNG CHÚ Ý)
+  const insight = useMemo(() => {
+    if (!inPeriod.length || shownTotal === 0) {
+      return { text: 'Chưa có biến động chi tiêu nổi bật trong kỳ này.' };
+    }
+    let maxDay = '';
+    let maxDayAmt = 0;
+    for (const [d, amt] of Object.entries(dailyTotals)) {
+      if (amt > maxDayAmt) {
+        maxDayAmt = amt;
+        maxDay = d;
+      }
+    }
+    if (!maxDayAmt) {
+      return { text: 'Các khoản chi tiêu kỳ này đều ở mức ổn định.' };
+    }
+    const pct = Math.round((maxDayAmt / shownTotal) * 100);
+    const dayStr = maxDay.slice(8) + '/' + maxDay.slice(5, 7);
+    const txsOnMaxDay = inPeriod.filter(t => t.occurred_at === maxDay && t.type === 'expense' && !t.excluded);
+    const topCatId = txsOnMaxDay[0]?.category_id;
+    const catName = topCatId ? catInfo(topCatId, fin.cats).label : 'Chi tiêu';
+    return {
+      text: `${catName} ngày ${dayStr} cộng lại ${money(maxDayAmt)} — bằng ${pct}% cả kỳ.`,
+    };
+  }, [inPeriod, shownTotal, dailyTotals, fin.cats]);
+
   const exportCsv = () => {
     if (!filtered.length) return;
-    const headers = ['Ngày', 'Loại', 'Số tiền', 'Nhóm', 'Danh mục con', 'Mức cắt được', 'Nguồn tiền', 'Tiêu đề', 'Ghi chú', 'Nơi / người nhận'];
+    const headers = ['Ngày', 'Loại', 'Số tiền', 'Nhóm', 'Danh mục con', 'Mức cần thiết', 'Nguồn tiền', 'Tiêu đề', 'Ghi chú', 'Nơi / người nhận'];
     const rows = filtered.map(tx => [
       tx.occurred_at,
       tx.type,
@@ -110,10 +199,40 @@ export default function ListScreen({ fin, nav }) {
     URL.revokeObjectURL(url);
   };
 
+  const toggleCluster = (txId, e) => {
+    e.stopPropagation();
+    setExpandedClusters(prev => {
+      const next = new Set(prev);
+      if (next.has(txId)) next.delete(txId);
+      else next.add(txId);
+      return next;
+    });
+  };
+
   return (
-    <div className={`fin-list${selected ? ' fin-list--detail' : ''}`}>
-      <div className="fin-list__main">
-        <div className="fin-list__toolbar">
+    <div className="fin-nhipchi">
+      {/* 1. Header: Title, CSV, Add button */}
+      <div className="fin-nhipchi__header">
+        <div className="fin-nhipchi__header-title-wrap">
+          <span className="fin-nhipchi__header-title">Giao dịch</span>
+          <span className="fin-nhipchi__header-sub">
+            {filtered.length} khoản chi · {period.label}
+          </span>
+        </div>
+        <div className="fin-nhipchi__header-actions">
+          <button type="button" className="fin-canvas-btn fin-canvas-btn--outline" onClick={exportCsv} disabled={!filtered.length}>
+            <AppIcon name="upload" size={14} /> Xuất CSV
+          </button>
+          <button type="button" className="fin-canvas-btn fin-canvas-btn--primary" onClick={() => nav.go('add')}>
+            <AppIcon name="plus" size={14} /> Ghi một khoản
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Exactly 1-Row Filter Bar (Like Image 2) */}
+      <div className="fin-nhipchi__bar">
+        {/* Month Navigator */}
+        <div className="fin-nhipchi__period-wrap">
           <PeriodPicker
             options={nav.periodOptions}
             period={nav.period}
@@ -122,105 +241,320 @@ export default function ListScreen({ fin, nav }) {
             dataFrom={nav.dataFrom}
             compact
           />
-          <span className="fin-toolbar-sep" aria-hidden="true" />
-          <FilterPop cats={fin.cats} value={flt} onChange={setFlt} />
-          <div className="fin-filter-chips">
-            {FILTERS.map(item => <button key={item.value} type="button"
-              className={filter === item.value ? 'is-active' : ''}
-              onClick={() => setFilter(item.value)}>{item.label}</button>)}
-          </div>
-          <button type="button" className="fin-export" onClick={exportCsv} disabled={!filtered.length}>
-            <AppIcon name="upload" size={15} /> Xuất CSV
+        </div>
+
+        <span className="fin-nhipchi__sep" aria-hidden="true" />
+
+        {/* Filter Popover Button */}
+        <FilterPop cats={fin.cats} value={flt} onChange={setFlt} />
+
+        {/* Quick Time Tabs */}
+        <div className="fin-nhipchi__quicktabs" role="group" aria-label="Lọc thời gian nhanh">
+          <button
+            type="button"
+            className={`fin-nhipchi__quicktab${quickFilter === 'all' && !selectedDay ? ' is-active' : ''}`}
+            onClick={() => { setQuickFilter('all'); setSelectedDay(null); }}
+          >
+            Tất cả
+          </button>
+          <button
+            type="button"
+            className={`fin-nhipchi__quicktab${quickFilter === 'today' ? ' is-active' : ''}`}
+            onClick={() => { setQuickFilter('today'); setSelectedDay(null); }}
+          >
+            Hôm nay
+          </button>
+          <button
+            type="button"
+            className={`fin-nhipchi__quicktab${quickFilter === 'yesterday' ? ' is-active' : ''}`}
+            onClick={() => { setQuickFilter('yesterday'); setSelectedDay(null); }}
+          >
+            Hôm qua
+          </button>
+          <button
+            type="button"
+            className={`fin-nhipchi__quicktab${quickFilter === '7d' ? ' is-active' : ''}`}
+            onClick={() => { setQuickFilter('7d'); setSelectedDay(null); }}
+          >
+            7 ngày
           </button>
         </div>
 
-        {/* Điều kiện đang bật phải HIỆN RA ở đây. Bộ lọc nằm trong popover: đóng lại
-            rồi thì "26 khoản" tụt xuống "3 khoản" mà không có gì giải thích. */}
-        <div className="fin-list__summary">
-          {filtered.length} khoản · chi {money(totals.total)}
-          {totals.income > 0 && ` · thu ${money(totals.income)}`}
-          {hasFilter && ` · phần đang lọc: chi ${money(shownTotal)}`}
-          {flt.cat && ` · ${catInfo(flt.cat, fin.cats).label}${flt.sub ? ` › ${subLabel(flt.sub, fin.cats)}` : ''}`}
-          {(flt.from || flt.to) && ` · ${flt.from ? formatDate(flt.from) : '…'} → ${flt.to ? formatDate(flt.to) : '…'}`}
-        </div>
-
-        {/* Đang tải thì giữ chỗ bằng skeleton, KHÔNG hiện "chưa có giao dịch" — báo
-            trống rồi một giây sau bật ra 20 dòng là kiểu nói dối khó chịu nhất.
-            Điều kiện phải là `hasLoaded`, không phải `isLoading`: fetch chạy trong
-            effect nên frame ĐẦU có isLoading=false và list rỗng, đủ để empty state
-            kịp nháy ra một cái. */}
-        {!fin.hasLoaded && groups.length === 0 && <SkeletonList rows={5} gap="6px" label="Đang tải giao dịch" />}
-
-        {fin.hasLoaded && groups.length === 0 && (
-          <section className="fin-list-empty">
-            <span><AppIcon name="receipt" size={24} /></span>
-            <strong>{hasFilter ? 'Không tìm thấy giao dịch phù hợp' : 'Chưa có giao dịch trong kỳ này'}</strong>
-            <p>{hasFilter ? 'Thử đổi bộ lọc hoặc từ khóa tìm kiếm.' : 'Ghi khoản đầu tiên để bắt đầu theo dõi tháng này.'}</p>
-            {hasFilter
-              ? <button type="button" onClick={clearFilters}>Xóa bộ lọc</button>
-              : <button type="button" onClick={() => nav.go('add')}><AppIcon name="plus" size={15} /> Thêm giao dịch</button>}
-          </section>
-        )}
-
-        <div className="fin-timeline">
-          {groups.map(({ date, items }) => {
-            const groupTotal = items.filter(tx => tx.type === 'expense' && !tx.excluded)
-              .reduce((sum, tx) => sum + tx.amount, 0);
-            return <section key={date} className="fin-daygroup">
-              <div className="fin-daygroup__label"><strong>{dayLabel(date, fin.today)}</strong><i /><span>{money(groupTotal)}</span></div>
-              {items.map(tx => {
-                const info = catInfo(tx.category_id, fin.cats);
-                // Hóa đơn cho phép chọn icon riêng; giao dịch nó sinh ra phải theo cùng,
-                // không thì đổi icon ở màn Hóa đơn xong sang đây vẫn thấy icon của nhóm.
-                const billIcon = tx.bill_id ? fin.bills.find(b => b.id === tx.bill_id)?.icon : null;
-                const automated = tx.bill_id || tx.loan_id || tx.card_id;
-                const sign = tx.type === 'income' ? '+' : tx.type === 'saving' ? '→ ' : '-';
-                const source = tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn';
-                return (
-                  <button key={tx.id} className={`fin-txrow${selected?.id === tx.id ? ' fin-txrow--sel' : ''}`}
-                    onClick={() => { setSelId(tx.id); setIsEditing(false); }}>
-                    <span className="fin-txrow__ico" style={{ color: info.color }}>
-                      <FinanceIcon name={tx.type === 'income' ? 'money' : tx.type === 'saving' ? 'bank' : (billIcon || info.icon)} cats={fin.cats} size={17} weight="fill" />
-                    </span>
-                    <span className="fin-txrow__mid">
-                      <span className="fin-txrow__note">
-                        {tx.note || subLabel(tx.subcategory_id, fin.cats) || info.label}
-                        {automated && <AppIcon name="arrowsClockwise" size={12} />}
-                        {tx.excluded && <span className="fin-badge fin-badge--muted">ngoài tổng</span>}
-                      </span>
-                      <span className="fin-txrow__src">{info.label}{subLabel(tx.subcategory_id, fin.cats) ? ` › ${subLabel(tx.subcategory_id, fin.cats)}` : ''} · {tx.merchant || source}</span>
-                    </span>
-                    <span className={`fin-txrow__amt fin-txrow__amt--${tx.type}`}>{sign}{money(tx.amount)}</span>
-                  </button>
-                );
-              })}
-            </section>;
-          })}
+        {/* Compact Search Input */}
+        <div className="fin-nhipchi__search">
+          <AppIcon name="magnifyingGlass" size={14} />
+          <input
+            type="text"
+            placeholder="Tìm khoản chi…"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            aria-label="Tìm kiếm khoản chi"
+          />
+          {q && (
+            <button type="button" className="fin-nhipchi__search-clear" onClick={() => setQ('')} aria-label="Xóa tìm kiếm">
+              <AppIcon name="x" size={12} />
+            </button>
+          )}
         </div>
       </div>
 
-      {selected && (
-        <aside className="fin-list__detail">
-          <TxDetail key={selected.id} tx={selected} fin={fin} nav={nav} tasks={pendingTasks}
-            onClose={() => { setSelId(null); setIsEditing(false); }}
-            onSelect={(id) => { setSelId(id); setIsEditing(false); }}
-            isEditing={isEditing} onEditingChange={setIsEditing} />
-        </aside>
+      {/* 3. Daily Sparkline Bar Chart & 4 Stat Cards */}
+      <div className="fin-nhipchi__spark-section">
+        <div className="fin-nhipchi__bars" role="region" aria-label="Biểu đồ chi tiêu theo ngày">
+          {dayList.map(d => {
+            const amt = dailyTotals[d] || 0;
+            const hPct = amt > 0 ? Math.max(8, Math.round((amt / maxDailyExpense) * 100)) : 3;
+            const isToday = d === fin.today;
+            const isSelDay = selectedDay === d;
+            const dayNum = d.slice(8);
+            const showLbl = dayNum === '01' || dayNum === '05' || dayNum === '10' || dayNum === '15' || dayNum === '20' || dayNum === '25' || dayNum === '30' || d === period.to;
+
+            let bgColor = '#E8E5DF';
+            if (isSelDay) bgColor = '#6C5CE7';
+            else if (isToday) bgColor = '#1C1917';
+            else if (amt > 0) bgColor = '#D6D0C7';
+
+            return (
+              <div
+                key={d}
+                className="fin-nhipchi__bar-col"
+                onClick={() => setSelectedDay(prev => prev === d ? null : d)}
+                title={`${formatDate(d)}: ${money(amt)}`}
+              >
+                <span
+                  className="fin-nhipchi__bar-fill"
+                  style={{
+                    height: `${hPct}%`,
+                    backgroundColor: bgColor,
+                  }}
+                />
+                <span className="fin-nhipchi__bar-lbl" style={{ color: isToday ? '#1C1917' : isSelDay ? '#6C5CE7' : undefined, fontWeight: (isToday || isSelDay) ? 600 : 400 }}>
+                  {showLbl ? dayNum : ''}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 4 Stat Cards */}
+        <div className="fin-nhipchi__stat-cards">
+          {/* Card 1 */}
+          <div className="fin-nhipchi__stat-card">
+            <span className="fin-nhipchi__stat-label">ĐÃ CHI KỲ NÀY</span>
+            <div className="fin-nhipchi__stat-val">{money(shownTotal)}</div>
+            <span className="fin-nhipchi__stat-sub">
+              {filtered.filter(tx => tx.type === 'expense' && !tx.excluded).length} khoản trong {activeDays} ngày
+            </span>
+          </div>
+
+          {/* Card 2 */}
+          <div className="fin-nhipchi__stat-card">
+            <span className="fin-nhipchi__stat-label">BÌNH QUÂN MỖI NGÀY</span>
+            <div className="fin-nhipchi__stat-val">{money(avgPerDay)}</div>
+            <span className="fin-nhipchi__stat-sub">tính trên {activeDays} ngày có chi</span>
+          </div>
+
+          {/* Card 3 */}
+          <div className="fin-nhipchi__stat-card fin-nhipchi__stat-card--forecast">
+            <span className="fin-nhipchi__stat-label">DỰ BÁO CUỐI THÁNG</span>
+            <div className="fin-nhipchi__stat-val">{money(forecast.total)}</div>
+            <span className="fin-nhipchi__stat-sub">
+              {forecast.unpaidCount > 0 ? `còn ${forecast.unpaidCount} hóa đơn định kỳ chưa ghi` : 'ước tính chi kỳ này ổn định'}
+            </span>
+          </div>
+
+          {/* Card 4 (Dark Notable Insight) */}
+          <div className="fin-nhipchi__stat-card fin-nhipchi__stat-card--dark">
+            <span className="fin-nhipchi__stat-label">ĐÁNG CHÚ Ý</span>
+            <div className="fin-nhipchi__stat-insight">{insight.text}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Main Body: Left Transactions List & Right 352px Detail Pane */}
+      <div className="fin-nhipchi__body">
+        {/* Left Transactions List */}
+        <div className="fin-nhipchi__left">
+          {!fin.hasLoaded && groups.length === 0 && <SkeletonList rows={5} gap="6px" label="Đang tải giao dịch" />}
+
+          {fin.hasLoaded && groups.length === 0 && (
+            <section className="fin-nhipchi__empty">
+              <span className="fin-nhipchi__empty-icon"><AppIcon name="receipt" size={26} /></span>
+              <strong>{hasFilter ? 'Không tìm thấy giao dịch phù hợp' : 'Chưa có giao dịch trong kỳ này'}</strong>
+              <p>{hasFilter ? 'Thử đổi bộ lọc hoặc từ khóa tìm kiếm.' : 'Ghi khoản đầu tiên để bắt đầu theo dõi tháng này.'}</p>
+              {hasFilter
+                ? <button type="button" className="fin-canvas-btn fin-canvas-btn--outline" onClick={clearFilters}>Xóa bộ lọc</button>
+                : <button type="button" className="fin-canvas-btn fin-canvas-btn--primary" onClick={() => nav.go('add')}><AppIcon name="plus" size={14} /> Thêm giao dịch</button>}
+            </section>
+          )}
+
+          {groups.map(({ date, items }) => {
+            const groupTotal = items
+              .filter(tx => tx.type === 'expense' && !tx.excluded)
+              .reduce((sum, tx) => sum + tx.amount, 0);
+
+            return (
+              <section key={date} className="fin-nhipchi__day-group">
+                <div className="fin-nhipchi__day-header">
+                  <span className="fin-nhipchi__day-title">{dayLabel(date, fin.today)}</span>
+                  <span className="fin-nhipchi__day-sep" />
+                  <span className="fin-nhipchi__day-total">{money(groupTotal)}</span>
+                </div>
+
+                <div className="fin-nhipchi__tx-card">
+                  {items.map(tx => {
+                    const info = catInfo(tx.category_id, fin.cats);
+                    const isAutomated = Boolean(tx.bill_id || tx.loan_id || tx.card_id);
+                    const isCluster = Array.isArray(tx.items) && tx.items.length > 0;
+                    const isExpanded = expandedClusters.has(tx.id);
+                    const source = tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn';
+                    const sign = tx.type === 'income' ? '+' : tx.type === 'saving' ? '' : '-';
+
+                    return (
+                      <div key={tx.id}>
+                        <div
+                          className={`fin-nhipchi__row${selected?.id === tx.id ? ' is-selected' : ''}`}
+                          onClick={() => { setSelId(tx.id); setIsEditing(false); }}
+                        >
+                          {/* Color stripe */}
+                          <span className="fin-nhipchi__stripe" style={{ backgroundColor: info.color || '#A8A29E' }} />
+
+                          {/* Info */}
+                          <div className="fin-nhipchi__row-content">
+                            <div className="fin-nhipchi__row-title-line">
+                              <span className="fin-nhipchi__row-title">
+                                {tx.note || subLabel(tx.subcategory_id, fin.cats) || info.label}
+                              </span>
+                              {isAutomated && <span className="fin-nhipchi__badge">ĐỊNH KỲ</span>}
+                              {isCluster && (
+                                <span className="fin-nhipchi__badge fin-nhipchi__badge--cluster" onClick={e => toggleCluster(tx.id, e)}>
+                                  GOM CỤM {tx.items.length}
+                                </span>
+                              )}
+                              {tx.excluded && <span className="fin-nhipchi__badge">ngoài tổng</span>}
+                            </div>
+                            <div className="fin-nhipchi__row-sub">
+                              {info.label}
+                              {subLabel(tx.subcategory_id, fin.cats) ? ` · ${subLabel(tx.subcategory_id, fin.cats)}` : ''}
+                              ` · ${tx.merchant || source}`
+                            </div>
+                          </div>
+
+                          {/* Hover quick action buttons */}
+                          <div className="fin-nhipchi__row-actions" onClick={e => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              className="fin-nhipchi__row-act-btn"
+                              onClick={() => { setSelId(tx.id); setIsEditing(true); }}
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              type="button"
+                              className="fin-nhipchi__row-act-btn"
+                              onClick={() => { setSelId(tx.id); setIsEditing(false); }}
+                            >
+                              Chi tiết
+                            </button>
+                          </div>
+
+                          {/* Amount */}
+                          <span className={`fin-nhipchi__row-amount fin-nhipchi__row-amount--${tx.type}`}>
+                            {sign}{money(tx.amount)}
+                          </span>
+
+                          {/* Chevron / Cluster toggle */}
+                          {isCluster ? (
+                            <span className="fin-nhipchi__caret" onClick={e => toggleCluster(tx.id, e)} title="Mở rộng chi tiết gom cụm">
+                              <AppIcon name={isExpanded ? 'caretDown' : 'caretRight'} size={12} />
+                            </span>
+                          ) : (
+                            <span className="fin-nhipchi__caret">›</span>
+                          )}
+                        </div>
+
+                        {/* Expanded Cluster Items */}
+                        {isCluster && isExpanded && (
+                          <div className="fin-nhipchi__cluster-kids">
+                            {tx.items.map((item, idx) => (
+                              <div key={idx} className="fin-nhipchi__cluster-kid">
+                                <span className="fin-nhipchi__cluster-kid-name">{item.name || 'Mục chưa đặt tên'}</span>
+                                <span className="fin-nhipchi__cluster-kid-qty">
+                                  {item.qty > 1 ? `${item.qty} × ` : ''}{item.price ? money(item.price) : ''}
+                                </span>
+                                <span className="fin-nhipchi__cluster-kid-val">
+                                  {money((Math.max(1, Number(item.qty) || 1)) * (parseCurrencyInput(item.price, { autoK: false }) || 0))}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+
+        {/* Right 352px Desktop Detail Pane */}
+        {selected && (
+          <aside className="fin-nhipchi__right">
+            <TxDetail
+              key={selected.id}
+              tx={selected}
+              fin={fin}
+              nav={nav}
+              tasks={pendingTasks}
+              inPeriod={inPeriod}
+              onClose={() => { setSelId(null); setIsEditing(false); }}
+              onSelect={id => { setSelId(id); setIsEditing(false); }}
+              isEditing={isEditing}
+              onEditingChange={setIsEditing}
+              onFilterCat={catKey => setFlt(prev => ({ ...prev, cat: prev.cat === catKey ? '' : catKey }))}
+            />
+          </aside>
+        )}
+      </div>
+
+      {/* Mobile Bottom Sheet (shown when item selected on mobile screens) */}
+      {selected && !isEditing && (
+        <div className="fin-nhipchi-sheet-overlay" onClick={() => { setSelId(null); setIsEditing(false); }}>
+          <div
+            className="fin-nhipchi-sheet"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Chi tiết giao dịch"
+          >
+            <span className="fin-nhipchi-sheet__handle" />
+            <TxDetail
+              key={selected.id}
+              tx={selected}
+              fin={fin}
+              nav={nav}
+              tasks={pendingTasks}
+              inPeriod={inPeriod}
+              isMobileSheet
+              onClose={() => { setSelId(null); setIsEditing(false); }}
+              onSelect={id => { setSelId(id); setIsEditing(false); }}
+              isEditing={isEditing}
+              onEditingChange={setIsEditing}
+              onFilterCat={catKey => {
+                setFlt(prev => ({ ...prev, cat: prev.cat === catKey ? '' : catKey }));
+                setSelId(null);
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
 /**
- * Bộ lọc chi tiết của màn Giao dịch: nhóm · danh mục con · khoảng ngày.
- *
- * Danh mục con CHỈ chọn được sau khi chọn nhóm cha. Key của con mang tiền tố nhóm
- * (`transport.parking`) và chỉ nhóm CHI mới có con, nên một danh sách con phẳng vừa dài
- * vừa mơ hồ. Đổi nhóm là bỏ luôn con đang chọn: giữ lại thì bộ lọc mô tả một cặp
- * cha–con không tồn tại và list rỗng mà không ai hiểu tại sao.
- *
- * Khoảng ngày lọc TRONG kỳ đang xem ở trên chứ không thay kỳ đó — kỳ dùng chung với
- * Tổng quan qua `nav`, sửa từ đây là đổi số của màn khác.
+ * FilterPop Component
  */
 function FilterPop({ cats, value, onChange }) {
   const rootRef = useRef(null);
@@ -247,54 +581,89 @@ function FilterPop({ cats, value, onChange }) {
 
   return (
     <div className="fin-filterpop" ref={rootRef}>
-      <button type="button" className={`fin-filterpop__btn${count ? ' is-active' : ''}${open ? ' is-open' : ''}`}
-        aria-expanded={open} aria-label={count ? `Bộ lọc · ${count} điều kiện đang bật` : 'Bộ lọc'}
-        onClick={() => setOpen(o => !o)}>
-        <AppIcon name="funnel" size={15} weight={count ? 'fill' : 'regular'} />
+      <button
+        type="button"
+        className={`fin-filterpop__btn${count ? ' is-active' : ''}`}
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-label={`Bộ lọc chi tiết, có ${count} điều kiện đang bật`}
+      >
+        <AppIcon name="funnel" size={14} />
         <span>Lọc</span>
-        {count > 0 && <b>{count}</b>}
+        {count > 0 && <span className="fin-filterpop__badge">{count}</span>}
       </button>
-      {open && (
-        <div className="fin-filterpop__panel">
-          <label className="fin-label" htmlFor="fin-flt-cat">Nhóm</label>
-          <select id="fin-flt-cat" className="fin-input" value={value.cat}
-            onChange={event => patch({ cat: event.target.value, sub: '' })}>
-            <option value="">Tất cả nhóm</option>
-            <optgroup label="Chi">
-              {cats.expenseGroups.filter(group => !group.hidden)
-                .map(group => <option key={group.key} value={group.key}>{group.label}</option>)}
-            </optgroup>
-            <optgroup label="Thu">
-              {cats.incomeGroups.filter(group => !group.hidden)
-                .map(group => <option key={group.key} value={group.key}>{group.label}</option>)}
-            </optgroup>
-          </select>
 
-          <label className="fin-label" htmlFor="fin-flt-sub">Danh mục con</label>
-          <select id="fin-flt-sub" className="fin-input" value={value.sub} disabled={!subs.length}
-            onChange={event => patch({ sub: event.target.value })}>
-            <option value="">{!value.cat ? 'Chọn nhóm trước'
-              : subs.length ? 'Tất cả danh mục con' : 'Nhóm này không có danh mục con'}</option>
-            {subs.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}
-          </select>
+      {open && (
+        <div className="fin-filterpop__panel" role="dialog" aria-label="Bộ lọc giao dịch">
+          <div>
+            <label className="fin-label">Nhóm chi</label>
+            <select
+              className="fin-input"
+              value={value.cat}
+              onChange={event => patch({ cat: event.target.value, sub: '' })}
+              aria-label="Lọc theo nhóm chi"
+            >
+              <option value="">Tất cả các nhóm chi</option>
+              {cats.expenseGroups.filter(group => !group.hidden).map(group => (
+                <option key={group.key} value={group.key}>{group.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="fin-label">Danh mục con</label>
+            <select
+              className="fin-input"
+              disabled={!value.cat || !subs.length}
+              value={value.sub}
+              onChange={event => patch({ sub: event.target.value })}
+              aria-label="Lọc theo danh mục con"
+            >
+              <option value="">
+                {!value.cat
+                  ? '— Chọn nhóm trước —'
+                  : subs.length ? 'Tất cả danh mục con' : 'Nhóm này không có danh mục con'}
+              </option>
+              {subs.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}
+            </select>
+          </div>
 
           <div className="fin-filterpop__dates">
-            {/* Hai ô ngày cạnh nhau: DateField mặc định tự đọc là "Ngày" nên phải đặt tên
-                riêng, không thì screen reader đọc hai ô y như nhau. */}
-            <div><label className="fin-label">Từ ngày</label>
-              <DateField value={value.from} ariaLabel="Lọc từ ngày, dạng ngày/tháng/năm"
-                onChange={iso => patch({ from: iso, ...(value.to && iso > value.to ? { to: '' } : {}) })} /></div>
-            <div><label className="fin-label">Đến ngày</label>
-              <DateField value={value.to} ariaLabel="Lọc đến ngày, dạng ngày/tháng/năm"
-                onChange={iso => patch({ to: iso, ...(value.from && iso < value.from ? { from: '' } : {}) })} /></div>
+            <div>
+              <label className="fin-label">Từ ngày</label>
+              <DateField
+                value={value.from}
+                ariaLabel="Lọc từ ngày, dạng ngày/tháng/năm"
+                onChange={iso => patch({ from: iso, ...(value.to && iso > value.to ? { to: '' } : {}) })}
+              />
+            </div>
+            <div>
+              <label className="fin-label">Đến ngày</label>
+              <DateField
+                value={value.to}
+                ariaLabel="Lọc đến ngày, dạng ngày/tháng/năm"
+                onChange={iso => patch({ to: iso, ...(value.from && iso < value.from ? { from: '' } : {}) })}
+              />
+            </div>
           </div>
-          <small className="fin-field__hint">Khoảng ngày lọc trong kỳ đang xem ở trên, không thay kỳ đó. Chọn ngược thứ tự thì ô kia được bỏ để bộ lọc không rỗng một cách vô hình.</small>
+          <small className="fin-field__hint">Khoảng ngày lọc trong kỳ đang xem ở trên, không thay kỳ đó.</small>
 
           <div className="fin-filterpop__foot">
-            <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm" disabled={!count}
-              onClick={() => onChange(EMPTY_FILTER)}>Xóa lọc</button>
-            <button type="button" className="fin-btn fin-btn--primary fin-btn--sm"
-              onClick={() => setOpen(false)}>Xong</button>
+            <button
+              type="button"
+              className="fin-btn fin-btn--secondary fin-btn--sm"
+              disabled={!count}
+              onClick={() => onChange(EMPTY_FILTER)}
+            >
+              Xóa lọc
+            </button>
+            <button
+              type="button"
+              className="fin-btn fin-btn--primary fin-btn--sm"
+              onClick={() => setOpen(false)}
+            >
+              Xong
+            </button>
           </div>
         </div>
       )}
@@ -302,7 +671,10 @@ function FilterPop({ cats, value, onChange }) {
   );
 }
 
-function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditingChange }) {
+/**
+ * TxDetail Component (Desktop & Mobile Sheet & Edit Drawer)
+ */
+function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, onClose, onSelect, isEditing, onEditingChange, onFilterCat }) {
   const [amount, setAmount] = useState(String(tx.amount));
   const [note, setNote] = useState(tx.note || '');
   const [description, setDescription] = useState(tx.description || '');
@@ -322,8 +694,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
         }))
       : [],
   );
-  // Giao dịch sinh từ hóa đơn: cho sửa KỲ ngay tại đây. Gắn nhầm kỳ là hóa đơn báo
-  // quá hạn dù đã trả, mà trước đó đường sửa duy nhất là xóa rồi ghi lại từ đầu.
+
   const linkedBill = tx.bill_id ? fin.bills.find(bill => bill.id === tx.bill_id) : null;
   const periodChoices = linkedBill
     ? Array.from(new Set([...billPeriods(linkedBill, tx.bill_period || fin.today.slice(0, 7), 8),
@@ -335,13 +706,69 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
   const source = tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn';
   const typeLabel = tx.type === 'income' ? 'Thu' : tx.type === 'saving' ? 'Để dành' : 'Chi';
 
+  // 6-Month Historical Sparkline for this category
+  const sixMonthsHistory = useMemo(() => {
+    const curMonthKey = nav.periodKey && /^\d{4}-\d{2}$/.test(nav.periodKey) ? nav.periodKey : fin.today.slice(0, 7);
+    const parts = curMonthKey.split('-').map(Number);
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(parts[0], parts[1] - 1 - i, 1);
+      const mStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = `T${String(d.getMonth() + 1).padStart(2, '0')}`;
+      months.push({ mStr, label });
+    }
+    const cat = tx.category_id;
+    const hist = months.map(({ mStr, label }) => {
+      const sum = fin.transactions
+        .filter(t => t.type === 'expense' && !t.excluded && t.category_id === cat && t.occurred_at.startsWith(mStr))
+        .reduce((s, t) => s + t.amount, 0);
+      return { mStr, label, sum };
+    });
+    const max = Math.max(1, ...hist.map(h => h.sum));
+    return hist.map(h => ({
+      ...h,
+      percent: h.sum > 0 ? Math.max(10, Math.round((h.sum / max) * 100)) : 4,
+    }));
+  }, [tx.category_id, fin.transactions, nav.periodKey, fin.today]);
+
+  const trendText = useMemo(() => {
+    if (sixMonthsHistory.length < 2) return '';
+    const cur = sixMonthsHistory[sixMonthsHistory.length - 1]?.sum || 0;
+    const prev = sixMonthsHistory[sixMonthsHistory.length - 2]?.sum || 0;
+    if (!prev && !cur) return 'ổn định';
+    if (!prev) return 'mới phát sinh';
+    const diff = Math.round(((cur - prev) / prev) * 100);
+    if (diff === 0) return 'ổn định';
+    return `${diff > 0 ? '+' : ''}${diff}% so với ${sixMonthsHistory[sixMonthsHistory.length - 2].label}`;
+  }, [sixMonthsHistory]);
+
+  // Top categories in current period
+  const topCategories = useMemo(() => {
+    const map = {};
+    for (const t of inPeriod) {
+      if (t.type === 'expense' && !t.excluded) {
+        const cat = t.category_id || 'other';
+        map[cat] = (map[cat] || 0) + t.amount;
+      }
+    }
+    const totalExp = Object.values(map).reduce((s, a) => s + a, 0) || 1;
+    return Object.entries(map)
+      .map(([catId, amt]) => {
+        const cat = catInfo(catId, fin.cats);
+        const pct = Math.round((amt / totalExp) * 100);
+        return { catId, label: cat.label, color: cat.color, amount: amt, pct };
+      })
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 6);
+  }, [inPeriod, fin.cats]);
+
   const updateDraftItem = (index, key, value) => {
     const normalized = key === 'qty' ? sanitizeDigits(value, 3)
       : key === 'price' ? sanitizeDigits(value) : value;
     const next = draftItems.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: normalized } : item);
     setDraftItems(next);
     const total = next.reduce((sum, item) => sum
-      + (Math.max(1, Number(item.qty) || 1) * (parseCurrencyInput(item.price) || 0)), 0);
+      + (Math.max(1, Number(item.qty) || 1) * (parseCurrencyInput(item.price, { autoK: false }) || 0)), 0);
     if (total > 0) setAmount(String(total));
   };
 
@@ -363,11 +790,11 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
   const save = async () => {
     const parsed = parseCurrencyInput(amount, { autoK: false });
     const cleanItems = draftItems
-      .filter(item => item.name?.trim() || parseCurrencyInput(item.price))
+      .filter(item => item.name?.trim() || parseCurrencyInput(item.price, { autoK: false }))
       .map(item => ({
         name: item.name?.trim() || 'Mục chưa đặt tên',
         qty: Math.max(1, Number(item.qty) || 1),
-        price: parseCurrencyInput(item.price) || 0,
+        price: parseCurrencyInput(item.price, { autoK: false }) || 0,
       }));
 
     await fin.updateTransaction(tx.id, {
@@ -500,7 +927,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
                         onClick={() => setSourceCardId(card.id)}
                       >
                         <AppIcon name="creditCard" size={14} />
-                        <span>{card.name}{card.last4 ? ` ••${card.last4}` : ''}</span>
+                        <span>{card.name}{card.last4 ? ` ···${card.last4}` : ''}</span>
                       </button>
                     ))}
                   </div>
@@ -509,8 +936,8 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
 
               {tx.type === 'expense' && !tx.excluded && (
                 <div className="fin-edit-field">
-                  <label className="fin-label">Mức cắt được</label>
-                  <div className="fin-necessity-toggle" role="group" aria-label="Mức cắt được">
+                  <label className="fin-label">Mức cần thiết</label>
+                  <div className="fin-necessity-toggle" role="group" aria-label="Mức cần thiết">
                     {Object.entries(NECESSITY_META).map(([key, value]) => (
                       <button
                         key={key}
@@ -591,7 +1018,7 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
 
           <div className="fin-slide-drawer__foot">
             <button className="fin-btn fin-btn--secondary" onClick={cancelEdit}>Hủy (Esc)</button>
-            <button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="save" size={15} /> Lưu thay đổi (Ctrl+Enter)</button>
+            <button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="floppyDisk" size={15} /> Lưu thay đổi (Ctrl+Enter)</button>
           </div>
         </div>
       </div>
@@ -599,41 +1026,132 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
   }
 
   const meta = [
-    ['Ngày', new Date(`${tx.occurred_at}T00:00:00`).toLocaleDateString('vi-VN')],
+    ['Ngày', formatDate(tx.occurred_at)],
     ['Nơi', tx.merchant || '—'],
     ['Loại', typeLabel],
-    ['Mức cắt được', NECESSITY_META[tx.necessity]?.label || '—'],
+    ['Mức cần thiết', NECESSITY_META[tx.necessity]?.label || '—'],
     ['Tính chất', tx.is_fixed ? 'Cố định' : 'Biến đổi'],
     ['Trả bằng', source],
-    ['Nguồn tạo', tx.bill_id ? 'Hóa đơn định kỳ' : tx.loan_id ? 'Khoản vay' : tx.card_id ? 'Sao kê thẻ' : tx.shortcut_id ? 'Shortcut' : tx.inbox_item_id ? 'Inbox' : 'Nhập tay'],
+    ['Nguồn tạo', tx.bill_id ? 'Hóa đơn định kỳ' : tx.loan_id ? 'Khoản vay' : tx.card_id ? 'Sao kê thẻ' : tx.shortcut_id ? 'Shortcut' : 'Nhập tay'],
   ];
-  // Kỳ nghĩa vụ tách khỏi ngày ghi (trả hóa đơn tháng 7 vào tháng 8 vẫn thuộc kỳ 7).
-  // Không hiện ra thì không có cách nào biết một khoản đã trả đang gắn nhầm kỳ nào.
-  const period = tx.bill_period || tx.income_period || tx.loan_period || tx.card_period;
-  if (period) meta.push(['Thuộc kỳ', `${period.slice(5)}/${period.slice(0, 4)}`]);
+  const linkedPeriod = tx.bill_period || tx.income_period || tx.loan_period || tx.card_period;
+  if (linkedPeriod) meta.push(['Thuộc kỳ', `${linkedPeriod.slice(5)}/${linkedPeriod.slice(0, 4)}`]);
 
   return (
-    <div className="fin-detail">
-      <div className="fin-detail__hero">
-        <span className="fin-detail__ico" style={{ color: info.color }}><FinanceIcon name={info.icon} cats={fin.cats} size={19} weight="fill" /></span>
-        <span><strong>{tx.note || subLabel(tx.subcategory_id, fin.cats) || info.label}</strong><small>{info.label}{subLabel(tx.subcategory_id, fin.cats) ? ` › ${subLabel(tx.subcategory_id, fin.cats)}` : ''}</small></span>
-        <button className="fin-detail__close" onClick={onClose} aria-label="Đóng chi tiết"><AppIcon name="x" size={15} /></button>
+    <>
+      <div className="fin-nhipchi__detail-card">
+        {/* Head */}
+        <div className="fin-nhipchi__detail-head">
+          <div className="fin-nhipchi__detail-top">
+            <span className="fin-nhipchi__detail-title-sm">CHI TIẾT KHOẢN CHI</span>
+            <button className="fin-nhipchi__detail-close" onClick={onClose} aria-label="Đóng chi tiết">
+              <AppIcon name="x" size={15} />
+            </button>
+          </div>
+
+          <div className="fin-nhipchi__detail-banner">
+            <span className="fin-nhipchi__detail-banner-stripe" style={{ backgroundColor: info.color }} />
+            <div style={{ minWidth: 0 }}>
+              <div className="fin-nhipchi__detail-main-name">
+                {tx.note || subLabel(tx.subcategory_id, fin.cats) || info.label}
+              </div>
+              <div className="fin-nhipchi__detail-sub-name">
+                {info.label}{subLabel(tx.subcategory_id, fin.cats) ? ` · ${subLabel(tx.subcategory_id, fin.cats)}` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div className={`fin-nhipchi__detail-big-amount${tx.type === 'income' ? ' fin-nhipchi__detail-big-amount--income' : ''}`}>
+            {tx.type === 'income' ? '+' : tx.type === 'saving' ? '' : '-'}{money(tx.amount)}
+          </div>
+
+          <div className="fin-nhipchi__detail-actions">
+            <button className="fin-nhipchi__detail-btn-edit" onClick={() => onEditingChange(true)}>
+              <AppIcon name="pencil" size={14} /> Sửa khoản này
+            </button>
+            {tx.type !== 'saving' && (
+              <button className="fin-nhipchi__detail-btn-icon" onClick={duplicate} title="Nhân bản">
+                <AppIcon name="copy" size={15} />
+              </button>
+            )}
+            <button className="fin-nhipchi__detail-btn-icon fin-nhipchi__detail-btn-icon--del" onClick={deleteTx} title="Xóa giao dịch">
+              <AppIcon name="trash" size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Fields list */}
+        <div className="fin-nhipchi__detail-fields">
+          {meta.map(([key, value]) => (
+            <div className="fin-nhipchi__field-row" key={key}>
+              <span className="fin-nhipchi__field-k">{key}</span>
+              <span className="fin-nhipchi__field-v">{value}</span>
+            </div>
+          ))}
+          {tx.description && (
+            <div className="fin-nhipchi__field-row">
+              <span className="fin-nhipchi__field-k">Ghi chú</span>
+              <span className="fin-nhipchi__field-v">{tx.description}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 6-Month Trend Sparkline */}
+        <div className="fin-nhipchi__detail-trend">
+          <div className="fin-nhipchi__trend-top">
+            <span className="fin-nhipchi__detail-title-sm">KHOẢN NÀY 6 THÁNG QUA</span>
+            <span style={{ fontSize: '12px', color: '#8A857D' }}>{trendText}</span>
+          </div>
+          <div className="fin-nhipchi__trend-bars">
+            {sixMonthsHistory.map(h => (
+              <div key={h.mStr} className="fin-nhipchi__trend-col" title={`${h.label}: ${money(h.sum)}`}>
+                <span
+                  className="fin-nhipchi__trend-fill"
+                  style={{
+                    height: `${h.percent}%`,
+                    backgroundColor: h.mStr === (nav.periodKey || fin.today.slice(0, 7)) ? info.color : '#E8E5DF',
+                  }}
+                />
+                <span className="fin-nhipchi__trend-lbl">{h.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      <div className={`fin-detail__amount fin-detail__amount--${tx.type}`}>{tx.type === 'income' ? '+' : tx.type === 'saving' ? '' : '-'}{money(tx.amount)}</div>
-      <div className="fin-detail__meta">{meta.map(([key, value]) => <div key={key}><span>{key}</span><strong>{value}</strong></div>)}</div>
-      {tx.description && (
-        <div className="fin-detail__desc">
-          <strong>Ghi chú</strong>
-          <p>{tx.description}</p>
+
+      {/* Category Breakdown Card (only in desktop sidebar) */}
+      {!isMobileSheet && topCategories.length > 0 && (
+        <div className="fin-nhipchi__cats-card">
+          <div className="fin-nhipchi__cats-header">
+            <span className="fin-nhipchi__cats-title">Nhóm chi kỳ này</span>
+            <span className="fin-nhipchi__cats-sub">{topCategories.length} nhóm</span>
+          </div>
+
+          <div className="fin-nhipchi__cats-list">
+            {topCategories.map(c => (
+              <div
+                key={c.catId}
+                className="fin-nhipchi__cat-item"
+                onClick={() => onFilterCat(c.catId)}
+                title={`Bấm để lọc theo ${c.label}`}
+              >
+                <div className="fin-nhipchi__cat-item-top">
+                  <span className="fin-nhipchi__cat-dot" style={{ backgroundColor: c.color }} />
+                  <span className="fin-nhipchi__cat-name">{c.label}</span>
+                  <span className="fin-nhipchi__cat-pct">{c.pct}%</span>
+                  <span className="fin-nhipchi__cat-amt">{money(c.amount)}</span>
+                </div>
+                <div className="fin-nhipchi__cat-bar">
+                  <div
+                    className="fin-nhipchi__cat-bar-fill"
+                    style={{ width: `${c.pct}%`, backgroundColor: c.color }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
-      {(tx.items || []).length > 0 && <div className="fin-detail__items"><strong>Chi tiết {tx.items.length} món</strong>{tx.items.map((item, index) => <div key={`${item.name}-${index}`}><span>{item.qty > 1 ? `${item.qty} × ` : ''}{item.name}</span><b>{money((item.qty || 1) * (item.price || 0))}</b></div>)}</div>}
-      {tx.task_id && <div className="fin-detail__linked"><AppIcon name="pushPin" size={14} /> Đã gắn với một nhiệm vụ</div>}
-      <div className="fin-detail__actions fin-detail__actions--view">
-        <button className="fin-btn fin-btn--secondary" onClick={() => onEditingChange(true)}><AppIcon name="pencil" size={15} /> Sửa</button>
-        {tx.type !== 'saving' && <button className="fin-btn fin-btn--secondary" onClick={duplicate}><AppIcon name="copy" size={15} /> Nhân bản</button>}
-        <button className="fin-btn fin-btn--secondary fin-detail__delete" aria-label="Xóa giao dịch" onClick={deleteTx}><AppIcon name="trash" size={15} /></button>
-      </div>
-    </div>
+    </>
   );
 }
