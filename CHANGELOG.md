@@ -2,6 +2,13 @@
 
 ## v6.16.0 — 2026-09-02
 
+### Fixed
+- **Sửa lỗi layout chi tiết giao dịch (`ListScreen.jsx` & `finance-handoff.css`):**
+  - Sửa lỗi panel chi tiết giao dịch (`.fin-list__detail`) bị đẩy xuống hàng 4 dưới đáy danh sách giao dịch và bị tràn/cắt mất các nút thao tác bên dưới.
+  - Căn chỉnh `.fin-list__detail` và `.fin-timeline` cùng ở hàng 3 (grid-row 3) trên Desktop, ghim đỉnh (`top: 14px; position: sticky;`) kèm `max-height` và thanh cuộn nội bộ chống tràn màn hình.
+  - Trên màn hình hẹp (≤ 1100px), hiển thị dạng bottom sheet cố định thay vì rớt xuống đáy trang.
+  - Hỗ trợ phím tắt `Escape` để đóng panel chi tiết ngay lập tức ở chế độ xem.
+
 ### Changed
 - **Nâng cấp toàn diện Trải nghiệm Quỹ tiết kiệm & Nơi gửi tiền (`AnalyzeScreen.jsx` & `finance-handoff.css`):**
   - **Cột Lãi khi đến hạn chính xác:** Tính toán và hiển thị số tiền lãi thực tế sẽ nhận về tại ngày đáo hạn (theo đúng kỳ hạn 1T, 2T, 6T, 12T...) kèm số lãi/năm tham chiếu bên dưới.

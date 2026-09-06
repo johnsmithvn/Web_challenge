@@ -388,14 +388,18 @@ function TxDetail({ tx, fin, nav, tasks, onClose, onSelect, isEditing, onEditing
   };
 
   useEffect(() => {
-    if (!isEditing) return;
     const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        save();
+      if (isEditing) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          save();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          cancelEdit();
+        }
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        cancelEdit();
+        onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
