@@ -3,6 +3,9 @@
 ## v6.16.0 — 2026-09-02
 
 ### Added
+- **Bộ lọc theo Nguồn tiền ở màn Giao dịch (`ListScreen.jsx`):**
+  - Bổ sung tùy chọn lọc theo "Nguồn tiền" vào popover bộ lọc (`FilterPop`): hỗ trợ lọc "Tiền có sẵn" hoặc theo từng thẻ tín dụng đã tạo.
+  - Tích hợp tên nguồn tiền vào thanh tìm kiếm nhanh để người dùng có thể gõ tìm trực tiếp tên thẻ hoặc tiền có sẵn.
 - **Redesign toàn diện màn hình Báo cáo chi tiêu (`ReportScreen.jsx`, `finance-report.css`):**
   - Tái thiết kế bám sát 100% bản thiết kế canvas chốt cho cả Desktop (1440px) và Mobile (390px).
   - Thẻ tối Hero đầu trang: Tổng chi kỳ, badge % so sánh YoY/kỳ trước, biểu đồ Donut SVG và top 3 nhóm chi tiêu lớn nhất.
@@ -15,6 +18,12 @@
   - Tích hợp điều hướng `/finance/report` vào thanh điều hướng Sidebar và các tab phân hệ Finance.
 
 ### Fixed
+- **Sửa lỗi thao tác trên Modal Chi tiết Nhiệm Vụ từ các chế độ xem Lịch (`TasksPage.jsx`):**
+  - Khắc phục lỗi bấm hoàn thành (done icon) hoặc xoá task trên popup chi tiết khi đang ở chế độ xem Lịch (Agenda, Ngày, Tuần, Tháng) không cập nhật dữ liệu.
+  - Khắc phục lỗi bấm nút "Sửa" không hoạt động trong modal chi tiết từ giao diện Lịch bằng cách tích hợp form sửa trực tiếp tại chỗ (`TaskEditForm`) kèm đồng bộ tag và quy tắc lặp lại.
+- **Hỗ trợ Dark Mode toàn diện cho màn hình Giao dịch (`finance-list.css`, `ListScreen.jsx`):**
+  - Xây dựng hệ thống CSS Variables (`--nhip-*`) tự động thích ứng giữa Light và Dark mode (`data-theme="dark"` / `data-theme="light"`).
+  - Khắc phục tình trạng toàn bộ màn hình Giao dịch bị chói sáng trên nền tối của ứng dụng; đồng bộ màu nền, viền hairline, văn bản, các ô input/popover, drawer sửa giao dịch và mobile sheet theo chuẩn Nocturne Finance.
 - **Sửa lỗi layout chi tiết giao dịch (`ListScreen.jsx` & `finance-handoff.css`):**
   - Sửa lỗi panel chi tiết giao dịch (`.fin-list__detail`) bị đẩy xuống hàng 4 dưới đáy danh sách giao dịch và bị tràn/cắt mất các nút thao tác bên dưới.
   - Căn chỉnh `.fin-list__detail` và `.fin-timeline` cùng ở hàng 3 (grid-row 3) trên Desktop, ghim đỉnh (`top: 14px; position: sticky;`) kèm `max-height` và thanh cuộn nội bộ chống tràn màn hình.

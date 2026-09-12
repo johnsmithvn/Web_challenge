@@ -10,7 +10,7 @@ import SkeletonList from '../SkeletonList';
 import AppIcon from '../AppIcon';
 import '../../styles/finance-list.css';
 
-const EMPTY_FILTER = { cat: '', sub: '', from: '', to: '' };
+const EMPTY_FILTER = { cat: '', sub: '', from: '', to: '', source: '' };
 
 function dayLabel(dateStr, today) {
   // toDateStr, KHÔNG toISOString: ở GMT+7 toISOString lùi thêm 1 ngày nữa nên
@@ -68,8 +68,9 @@ export default function ListScreen({ fin, nav }) {
 
     // Search query
     if (q) {
+      const sourceName = tx.source_card_id ? (fin.cards.find(card => card.id === tx.source_card_id)?.name || 'Thẻ') : 'Tiền có sẵn';
       const haystack = [tx.note, tx.description, tx.merchant, catInfo(tx.category_id, fin.cats).label,
-        subLabel(tx.subcategory_id, fin.cats)].filter(Boolean).join(' ').toLowerCase();
+        subLabel(tx.subcategory_id, fin.cats), sourceName].filter(Boolean).join(' ').toLowerCase();
       if (!haystack.includes(q.toLowerCase())) return false;
     }
 
@@ -78,14 +79,21 @@ export default function ListScreen({ fin, nav }) {
     if (flt.sub && tx.subcategory_id !== flt.sub) return false;
     if (flt.from && tx.occurred_at < flt.from) return false;
     if (flt.to && tx.occurred_at > flt.to) return false;
+    if (flt.source) {
+      if (flt.source === 'cash') {
+        if (tx.source_card_id) return false;
+      } else if (tx.source_card_id !== flt.source) {
+        return false;
+      }
+    }
 
     return true;
-  }), [inPeriod, quickFilter, selectedDay, q, flt, fin.cats, fin.today, yesterday, sevenDaysAgo]);
+  }), [inPeriod, quickFilter, selectedDay, q, flt, fin.cats, fin.cards, fin.today, yesterday, sevenDaysAgo]);
 
   const groups = useMemo(() => groupByDate(filtered), [filtered]);
   const selected = fin.transactions.find(tx => tx.id === selId) || null;
 
-  const hasFilter = Boolean(q || quickFilter !== 'all' || selectedDay || flt.cat || flt.sub || flt.from || flt.to);
+  const hasFilter = Boolean(q || quickFilter !== 'all' || selectedDay || flt.cat || flt.sub || flt.from || flt.to || flt.source);
   const clearFilters = () => {
     setQ('');
     setQuickFilter('all');
@@ -236,7 +244,7 @@ export default function ListScreen({ fin, nav }) {
         <span className="fin-nhipchi__sep" aria-hidden="true" />
 
         {/* Filter Popover Button */}
-        <FilterPop cats={fin.cats} value={flt} onChange={setFlt} />
+        <FilterPop cats={fin.cats} cards={fin.cards} value={flt} onChange={setFlt} />
 
         {/* Quick Time Tabs */}
         <div className="fin-nhipchi__quicktabs" role="group" aria-label="Lọc thời gian nhanh">
@@ -299,10 +307,10 @@ export default function ListScreen({ fin, nav }) {
             const dayNum = d.slice(8);
             const showLbl = dayNum === '01' || dayNum === '05' || dayNum === '10' || dayNum === '15' || dayNum === '20' || dayNum === '25' || dayNum === '30' || d === period.to;
 
-            let bgColor = '#E8E5DF';
-            if (isSelDay) bgColor = '#6C5CE7';
-            else if (isToday) bgColor = '#1C1917';
-            else if (amt > 0) bgColor = '#D6D0C7';
+            let bgColor = 'var(--nhip-bar-empty, #E8E5DF)';
+            if (isSelDay) bgColor = 'var(--nhip-accent, #6C5CE7)';
+            else if (isToday) bgColor = 'var(--nhip-txt, #1C1917)';
+            else if (amt > 0) bgColor = 'var(--nhip-bar-fill, #D6D0C7)';
 
             return (
               <div
@@ -318,7 +326,7 @@ export default function ListScreen({ fin, nav }) {
                     backgroundColor: bgColor,
                   }}
                 />
-                <span className="fin-nhipchi__bar-lbl" style={{ color: isToday ? '#1C1917' : isSelDay ? '#6C5CE7' : undefined, fontWeight: (isToday || isSelDay) ? 600 : 400 }}>
+                <span className="fin-nhipchi__bar-lbl" style={{ color: isToday ? 'var(--nhip-txt, #1C1917)' : isSelDay ? 'var(--nhip-accent, #6C5CE7)' : undefined, fontWeight: (isToday || isSelDay) ? 600 : 400 }}>
                   {showLbl ? dayNum : ''}
                 </span>
               </div>
@@ -555,11 +563,11 @@ export default function ListScreen({ fin, nav }) {
 /**
  * FilterPop Component
  */
-function FilterPop({ cats, value, onChange }) {
+function FilterPop({ cats, cards = [], value, onChange }) {
   const rootRef = useRef(null);
   const [open, setOpen] = useState(false);
   const subs = cats.expenseGroups.find(group => group.key === value.cat)?.subs || [];
-  const count = [value.cat, value.sub, value.from, value.to].filter(Boolean).length;
+  const count = [value.cat, value.sub, value.from, value.to, value.source].filter(Boolean).length;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -624,6 +632,24 @@ function FilterPop({ cats, value, onChange }) {
                   : subs.length ? 'Tất cả danh mục con' : 'Nhóm này không có danh mục con'}
               </option>
               {subs.map(sub => <option key={sub.key} value={sub.key}>{sub.label}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="fin-label">Nguồn tiền</label>
+            <select
+              className="fin-input"
+              value={value.source || ''}
+              onChange={event => patch({ source: event.target.value })}
+              aria-label="Lọc theo nguồn tiền"
+            >
+              <option value="">Tất cả nguồn tiền</option>
+              <option value="cash">Tiền có sẵn</option>
+              {cards.map(card => (
+                <option key={card.id} value={card.id}>
+                  {card.name}{card.last4 ? ` ···${card.last4}` : ''}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -1099,7 +1125,7 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, o
         <div className="fin-nhipchi__detail-trend">
           <div className="fin-nhipchi__trend-top">
             <span className="fin-nhipchi__detail-title-sm">KHOẢN NÀY 6 THÁNG QUA</span>
-            <span style={{ fontSize: '12px', color: '#8A857D' }}>{trendText}</span>
+            <span style={{ fontSize: '12px', color: 'var(--nhip-txt-muted, #8A857D)' }}>{trendText}</span>
           </div>
           <div className="fin-nhipchi__trend-bars">
             {sixMonthsHistory.map(h => (
@@ -1108,7 +1134,7 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, o
                   className="fin-nhipchi__trend-fill"
                   style={{
                     height: `${h.percent}%`,
-                    backgroundColor: h.mStr === (nav.periodKey || fin.today.slice(0, 7)) ? info.color : '#E8E5DF',
+                    backgroundColor: h.mStr === (nav.periodKey || fin.today.slice(0, 7)) ? info.color : 'var(--nhip-bar-empty, #E8E5DF)',
                   }}
                 />
                 <span className="fin-nhipchi__trend-lbl">{h.label}</span>

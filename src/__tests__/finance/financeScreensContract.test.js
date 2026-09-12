@@ -164,13 +164,13 @@ console.log('dayLabel and csvCell export formatting: OK');
 /* ── 5. Màn Danh sách: Bộ lọc phễu cộng dồn (AND filter logic) ── */
 const sampleListTxs = [
   { id: '1', occurred_at: '2026-08-05', type: 'expense', amount: 50_000, category_id: 'food', subcategory_id: 'food.drinks', necessity: 'want', note: 'Trà sữa' },
-  { id: '2', occurred_at: '2026-08-10', type: 'expense', amount: 6_000_000, category_id: 'housing', subcategory_id: 'housing.rent', necessity: 'must', note: 'Tiền phòng trọ', merchant: 'Chủ nhà' },
+  { id: '2', occurred_at: '2026-08-10', type: 'expense', amount: 6_000_000, category_id: 'housing', subcategory_id: 'housing.rent', necessity: 'must', note: 'Tiền phòng trọ', merchant: 'Chủ nhà', source_card_id: 'card-1' },
   { id: '3', occurred_at: '2026-08-12', type: 'expense', amount: 200_000, category_id: 'food', subcategory_id: 'food.eatout', necessity: 'want', note: 'Ăn tối nhà hàng' },
   { id: '4', occurred_at: '2026-08-15', type: 'income', amount: 20_000_000, category_id: 'luong', necessity: null, note: 'Lương công ty' },
   { id: '5', occurred_at: '2026-08-20', type: 'expense', amount: 300_000, category_id: 'transport', subcategory_id: 'transport.fuel', necessity: 'must', note: 'Đổ xăng xe', bill_id: 'b1' },
 ];
 
-function applyListFilter(txs, { filter = 'all', q = '', cat = '', sub = '', from = '', to = '' }) {
+function applyListFilter(txs, { filter = 'all', q = '', cat = '', sub = '', from = '', to = '', source = '' }) {
   return txs.filter(tx => {
     if (filter === 'auto' && !(tx.bill_id || tx.loan_id || tx.card_id)) return false;
     if (filter === 'must' && tx.necessity !== 'must') return false;
@@ -185,6 +185,13 @@ function applyListFilter(txs, { filter = 'all', q = '', cat = '', sub = '', from
     if (sub && tx.subcategory_id !== sub) return false;
     if (from && tx.occurred_at < from) return false;
     if (to && tx.occurred_at > to) return false;
+    if (source) {
+      if (source === 'cash') {
+        if (tx.source_card_id) return false;
+      } else if (tx.source_card_id !== source) {
+        return false;
+      }
+    }
     return true;
   });
 }
@@ -210,7 +217,14 @@ assert.equal(applyListFilter(sampleListTxs, { from: '2026-08-01', to: '2026-08-1
 const filteredFood = applyListFilter(sampleListTxs, { cat: 'food' });
 const foodTotal = filteredFood.filter(t => t.type === 'expense' && !t.excluded).reduce((s, t) => s + t.amount, 0);
 assert.equal(foodTotal, 250_000, '50k trà sữa + 200k ăn tối');
-console.log('multi-criteria list filtering and shownTotal: OK');
+
+// 6. Lọc theo nguồn tiền:
+assert.equal(applyListFilter(sampleListTxs, { source: 'cash' }).length, 4);
+assert.equal(applyListFilter(sampleListTxs, { source: 'card-1' }).length, 1);
+assert.equal(applyListFilter(sampleListTxs, { source: 'card-1' })[0].note, 'Tiền phòng trọ');
+assert.match(listSrc, /aria-label="Lọc theo nguồn tiền"/, 'ListScreen phải có select lọc theo nguồn tiền');
+assert.match(listSrc, /flt\.source/, 'ListScreen phải có điều kiện lọc flt.source');
+console.log('multi-criteria list filtering (including source) and shownTotal: OK');
 
 /* ── 6. An toàn dữ liệu: Modal xác nhận xóa dùng chung ──────── */
 assert.match(pageSrc, /const confirmDelete = useCallback\(/,
