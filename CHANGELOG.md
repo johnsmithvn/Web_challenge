@@ -3,8 +3,12 @@
 ## v6.16.0 — 2026-09-02
 
 ### Added
-- **Chế độ xem Bảng Kanban 3 Cột (To Do - Doing - Done), Kéo thả & Bộ lọc nâng cấp (`TasksPage.jsx`, `TaskKanbanView.jsx`, `kanban.css`):**
-  - Tích hợp chế độ xem Bảng Kanban với 3 cột chính: **To Do (Cần làm)**, **Doing (Đang làm)**, và **Done (Đã hoàn thành)** vào thanh điều hướng Segmented Switcher (phím tắt `K`).
+- **Chế độ xem Bảng Kanban 3 Cột (To Do - Doing - Done), Kéo thả, Default View & Mobile Responsive (`TasksPage.jsx`, `TaskKanbanView.jsx`, `kanban.css`):**
+  - **Mặc định mở Bảng Kanban**: Đặt Kanban làm chế độ xem mặc định khi người dùng truy cập phân hệ Nhiệm vụ (`/tasks`).
+  - **Trải nghiệm Responsive tối ưu trên Mobile (≤ 768px)**:
+    - Thanh **Tab chuyển cột Mobile** (`To Do`, `Doing`, `Done`) hiển thị trên cùng giúp chuyển hoặc trượt mượt mà tới cột mục tiêu.
+    - Cuộn vuốt ngang tự nhiên với **Horizontal Touch Snap Scroll** (`scroll-snap-type: x mandatory`).
+    - Nút **1-tap thao tác nhanh** (`Sang Doing →`, `← Về To Do`, `Xong ✓`, `↺ To Do`) giúp di chuyển task trên màn hình cảm ứng điện thoại mà không cần thao tác kéo thả phức tạp.
   - Tính năng **HTML5 Drag & Drop (Kéo - Thả)**: Người dùng có thể kéo thả thẻ công việc trực tiếp giữa các cột để chuyển trạng thái tức thì.
   - Kéo thả vào cột **Done** tự động tích hoàn thành task và cộng điểm XP; đồng thời lưu giữ công việc trong cột Done theo dải thời gian lọc mà không bị ẩn/mất đi.
   - **🔒 Modal Xác nhận Xóa an toàn (`ConfirmModal`)**: Bắt buộc xác nhận trước khi xóa bất kỳ task nào trên Kanban và Danh sách, triệt tiêu nguy cơ bấm nhầm xóa mất dữ liệu.

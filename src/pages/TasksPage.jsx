@@ -304,9 +304,9 @@ export default function TasksPage() {
     unlinkTaskTag,
   } = taskModel;
 
-  // Chế độ xem: 'list' | 'agenda' | 'day' | 'week' | 'month'
+  // Chế độ xem: 'kanban' | 'list' | 'agenda' | 'day' | 'week' | 'month'
   const [activeView, setActiveView] = useState(() => {
-    return localStorage.getItem('lh_tasks_active_view') || 'list';
+    return localStorage.getItem('lh_tasks_active_view') || 'kanban';
   });
 
   const handleSetActiveView = useCallback((v) => {

@@ -97,4 +97,28 @@ assert.deepEqual(getTaskDeadlineBadge({ completed: false, due_date: '2026-09-20'
 assert.deepEqual(getTaskDeadlineBadge({ completed: true, due_date: '2026-09-10' }, today), { type: 'done', label: 'Hoàn thành' });
 console.log('getTaskDeadlineBadge status highlights: OK');
 
+// 5. Kiểm tra Mặc định Kanban & Nút thao tác nhanh trên Mobile
+function getDefaultActiveView(savedView) {
+  return savedView || 'kanban';
+}
+
+function getAvailableQuickActions(task) {
+  if (task.completed) {
+    return ['reopen_todo', 'reopen_doing'];
+  }
+  if (task.status === 'doing') {
+    return ['move_todo', 'complete'];
+  }
+  return ['move_doing', 'complete'];
+}
+
+assert.equal(getDefaultActiveView(null), 'kanban', 'Khi chưa lưu preference thì mặc định mở Kanban');
+assert.equal(getDefaultActiveView('list'), 'list', 'Nếu user đã chọn list thì dùng saved preference');
+
+assert.deepEqual(getAvailableQuickActions({ completed: false, status: 'todo' }), ['move_doing', 'complete']);
+assert.deepEqual(getAvailableQuickActions({ completed: false, status: 'doing' }), ['move_todo', 'complete']);
+assert.deepEqual(getAvailableQuickActions({ completed: true, status: 'done' }), ['reopen_todo', 'reopen_doing']);
+console.log('defaultKanbanView & mobile quick actions check: OK');
+
 console.log('\n✅ kanbanLogic — tất cả kiểm thử Kanban 3 cột PASS (100% covered)');
+

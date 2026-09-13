@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import AppIcon from './AppIcon';
 import DatePickerPopover from './DatePickerPopover';
 import { useConfirm } from './ConfirmModal';
@@ -16,10 +16,11 @@ import '../styles/kanban.css';
  * Tính năng chính:
  * 1. Confirm Modal an toàn khi xóa.
  * 2. Cột Done hiển thị đầy đủ task đã hoàn thành theo dải ngày.
- * 3. Layout 3 cột trải rộng 100% canvas.
- * 4. Mở rộng & Tích chọn subtasks trực tiếp trên card.
- * 5. Icon bút chì kích hoạt chỉnh sửa trực tiếp.
- * 6. Thanh bộ lọc thời gian (Tất cả [mặc định] / Hôm nay / 7 ngày / Tùy chọn).
+ * 3. Layout 3 cột trải rộng 100% canvas & Responsive linh hoạt trên mobile.
+ * 4. Tab chuyển cột nhanh & Nút 1-tap chuyển status trên Mobile.
+ * 5. Mở rộng & Tích chọn subtasks trực tiếp trên card.
+ * 6. Icon bút chì kích hoạt chỉnh sửa trực tiếp.
+ * 7. Thanh bộ lọc thời gian (Tất cả [mặc định] / Hôm nay / 7 ngày / Tùy chọn).
  */
 export default function TaskKanbanView({
   taskModel,
@@ -57,6 +58,19 @@ export default function TaskKanbanView({
   // HTML5 Drag & Drop states
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
+
+  // Responsive mobile column tab state & scroll refs
+  const [activeMobileTab, setActiveMobileTab] = useState('todo');
+  const boardContainerRef = useRef(null);
+  const colRefs = useRef({});
+
+  const handleSelectMobileTab = useCallback((key) => {
+    setActiveMobileTab(key);
+    const targetEl = colRefs.current[key];
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    }
+  }, []);
 
   // Tính 7 ngày tới
   const sevenDaysLater = useMemo(() => {
@@ -409,6 +423,60 @@ export default function TaskKanbanView({
             )}
           </div>
         )}
+
+        {/* Quick Column Move Buttons (Rất hữu ích cho Mobile & 1-tap UX) */}
+        <div className="kanban-card-quick-move" onClick={(e) => e.stopPropagation()}>
+          {!isCompleted && task.status !== 'doing' && (
+            <button
+              type="button"
+              className="kanban-quick-btn kanban-quick-btn--doing"
+              onClick={async () => await updateTask(task.id, { status: 'doing' })}
+              title="Chuyển sang Doing"
+            >
+              Sang Doing →
+            </button>
+          )}
+          {!isCompleted && task.status === 'doing' && (
+            <button
+              type="button"
+              className="kanban-quick-btn kanban-quick-btn--todo"
+              onClick={async () => await updateTask(task.id, { status: 'todo' })}
+              title="Chuyển về To Do"
+            >
+              ← Về To Do
+            </button>
+          )}
+          {!isCompleted && (
+            <button
+              type="button"
+              className="kanban-quick-btn kanban-quick-btn--done"
+              onClick={async () => await completeTask(task.id)}
+              title="Đánh dấu đã xong"
+            >
+              Xong ✓
+            </button>
+          )}
+          {isCompleted && (
+            <>
+              <button
+                type="button"
+                className="kanban-quick-btn kanban-quick-btn--todo"
+                onClick={async () => await uncompleteTask(task.id, 'todo')}
+                title="Trả lại To Do"
+              >
+                ↺ To Do
+              </button>
+              <button
+                type="button"
+                className="kanban-quick-btn kanban-quick-btn--doing"
+                onClick={async () => await uncompleteTask(task.id, 'doing')}
+                title="Trả lại Doing"
+              >
+                ↺ Doing
+              </button>
+            </>
+          )}
+        </div>
       </div>
     );
   };
@@ -417,18 +485,21 @@ export default function TaskKanbanView({
     {
       key: 'todo',
       title: 'To Do (Cần làm)',
+      shortTitle: 'To Do',
       dotClass: 'kanban-column-dot--todo',
       items: todoList,
     },
     {
       key: 'doing',
       title: 'Doing (Đang làm)',
+      shortTitle: 'Doing',
       dotClass: 'kanban-column-dot--doing',
       items: doingList,
     },
     {
       key: 'done',
       title: 'Done (Đã xong)',
+      shortTitle: 'Done',
       dotClass: 'kanban-column-dot--done',
       items: doneList,
     },
@@ -497,13 +568,34 @@ export default function TaskKanbanView({
         </div>
       </div>
 
+      {/* Mobile Column Switcher Bar */}
+      <div className="kanban-mobile-tabs">
+        {columns.map((col) => (
+          <button
+            key={col.key}
+            type="button"
+            className={`kanban-mobile-tab-btn${activeMobileTab === col.key ? ' is-active' : ''}`}
+            onClick={() => handleSelectMobileTab(col.key)}
+          >
+            <span className={`kanban-column-dot ${col.dotClass}`} />
+            <span>{col.shortTitle}</span>
+            <span className="kanban-column-badge">{col.items.length}</span>
+          </button>
+        ))}
+      </div>
+
       {/* 3 Columns Canvas */}
-      <div className="kanban-board-container">
+      <div className="kanban-board-container" ref={boardContainerRef}>
         {columns.map((col) => {
           const isOver = dragOverCol === col.key;
+          const isMobileActive = activeMobileTab === col.key;
 
           return (
-            <div key={col.key} className="kanban-column">
+            <div
+              key={col.key}
+              ref={(el) => (colRefs.current[col.key] = el)}
+              className={`kanban-column${isMobileActive ? ' is-mobile-active' : ''}`}
+            >
               {/* Column Header */}
               <div className="kanban-column-header">
                 <div className="kanban-column-title-group">
