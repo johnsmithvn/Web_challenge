@@ -24,6 +24,9 @@
   - Tích hợp điều hướng `/finance/report` vào thanh điều hướng Sidebar và các tab phân hệ Finance.
 
 ### Fixed
+- **Sửa lỗi hiển thị đầy đủ tất cả ngày lễ/sự kiện trùng ngày trên Lịch Tháng & Lịch Tuần (`MonthCalendar.jsx`, `WeekCalendar.jsx`):**
+  - Khắc phục tình trạng khi bật nhiều loại lịch sự kiện (Dương lịch, Âm lịch, Quốc tế, Nhật Bản, Dev/Dịp đặc biệt, Kỷ niệm cá nhân), ô ngày chỉ hiển thị 1 ngày lễ đầu tiên tìm thấy do cơ chế ngắt sớm (`if (!holiday)` / `continue`).
+  - Nâng cấp thu thập mảng `holidays` đầy đủ và hiển thị toàn bộ danh sách banner ngày lễ/sự kiện xếp chồng trực quan trong ô ngày của Lịch Tháng và dải All-day của Lịch Tuần, đồng thời hiển thị chi tiết đầy đủ trong Day Detail Modal.
 - **Sửa lỗi thao tác trên Modal Chi tiết Nhiệm Vụ từ các chế độ xem Lịch (`TasksPage.jsx`):**
   - Khắc phục lỗi bấm hoàn thành (done icon) hoặc xoá task trên popup chi tiết khi đang ở chế độ xem Lịch (Agenda, Ngày, Tuần, Tháng) không cập nhật dữ liệu.
   - Khắc phục lỗi bấm nút "Sửa" không hoạt động trong modal chi tiết từ giao diện Lịch bằng cách tích hợp form sửa trực tiếp tại chỗ (`TaskEditForm`) kèm đồng bộ tag và quy tắc lặp lại.

@@ -16,12 +16,12 @@ assert.doesNotMatch(detail, /onClose\(\);\s*onEdit\(task\)/,
 assert.match(detail, /editContent \? editContent :/,
   'popup phải chuyển nội dung sang form edit tại chỗ');
 
-assert.match(calendar, /cal-cell__holiday-name[^>]*>\{info\.holiday\}/,
+assert.match(calendar, /cal-cell__holiday-name[^>]*>\{h\.name/,
   'ô lịch phải hiện tên ngày lễ, không chỉ hiện icon');
 
 assert.match(calendarCss, /\.cal-cell__holiday \{\s*position: static;\s*display: flex;/,
   'holiday label must stay in document flow so it cannot cover the lunar date');
-assert.match(calendar, /const chipLimit = info\.holiday \? MAX_CHIPS - 1 : MAX_CHIPS;[\s\S]*?chips\.slice\(0, chipLimit\)[\s\S]*?chips\.length - chipLimit/,
+assert.match(calendar, /const chipLimit = Math\.max\(1, MAX_CHIPS - holidayCount\);[\s\S]*?chips\.slice\(0, chipLimit\)[\s\S]*?chips\.length - chipLimit/,
   'holiday cells must reserve one content row and keep the hidden task count accurate');
 
 assert.match(list, /\{ \.\.\.task, completed: true, completed_at: completedAt \}/,

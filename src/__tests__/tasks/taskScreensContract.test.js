@@ -91,12 +91,12 @@ console.log('task list and detail modal integration contract: OK');
 assert.match(calendarCss, /\.cal-cell__holiday \{\s*position: static;\s*display: flex;/,
   'holiday label must stay in document flow so it cannot cover the lunar date');
 
-// Holiday cell phải bớt 1 chip để nhường chỗ cho dòng ngày lễ
-assert.match(calendarSrc, /const chipLimit = info\.holiday \? MAX_CHIPS - 1 : MAX_CHIPS;/,
-  'holiday cell phải dành riêng 1 hàng nội dung');
+// Holiday cell phải dành chỗ cho danh sách ngày lễ
+assert.match(calendarSrc, /const chipLimit = Math\.max\(1, MAX_CHIPS - holidayCount\);/,
+  'holiday cell phải dành riêng hàng nội dung cho ngày lễ');
 
 // Hiển thị tên ngày lễ trong ô lịch
-assert.match(calendarSrc, /cal-cell__holiday-name[^>]*>\{info\.holiday\}/,
+assert.match(calendarSrc, /cal-cell__holiday-name[^>]*>\{h\.name/,
   'ô lịch phải hiện tên ngày lễ, không chỉ hiện icon');
 console.log('month calendar visual and layout contract: OK');
 

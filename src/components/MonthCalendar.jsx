@@ -119,49 +119,72 @@ export default function MonthCalendar({
       const lunar = solarToLunar(d, viewMonth + 1, viewYear);
       const lunarKey = lunar.leap ? null : `${pad(lunar.month)}-${pad(lunar.day)}`;
       const solarKey = `${pad(viewMonth + 1)}-${pad(d)}`;
-      let holiday = null;
-      let holidayType = null;
+      const holidays = [];
 
       // 0. Ngày kỷ niệm cá nhân (ưu tiên cao nhất)
       if (holidayToggles?.custom !== false && Array.isArray(customAnniversaries)) {
         for (const anniv of customAnniversaries) {
           if (!anniv || !anniv.title) continue;
-          if (anniv.calType === 'solar' && Number(anniv.day) === d && Number(anniv.month) === viewMonth + 1) {
-            holiday = `${anniv.icon || '💖'} ${anniv.title}`;
-            holidayType = 'custom';
-            break;
+          let isMatch = false;
+          if (anniv.calType === 'solar') {
+            isMatch = Number(anniv.day) === d && Number(anniv.month) === viewMonth + 1;
+          } else if (anniv.calType === 'lunar' && lunar) {
+            isMatch = Number(anniv.day) === lunar.day && Number(anniv.month) === lunar.month;
           }
-          if (anniv.calType === 'lunar' && lunar && Number(anniv.day) === lunar.day && Number(anniv.month) === lunar.month) {
-            holiday = `${anniv.icon || '💖'} ${anniv.title}`;
-            holidayType = 'custom';
-            break;
+          if (isMatch) {
+            let extraNote = '';
+            if (anniv.year && Number(anniv.year) > 0) {
+              const passedYears = viewYear - Number(anniv.year);
+              if (passedYears > 0) extraNote = ` (${passedYears} năm)`;
+            }
+            holidays.push({
+              name: `${anniv.icon || '💖'} ${anniv.title}${extraNote}`,
+              type: 'custom',
+            });
           }
         }
       }
 
-      if (!holiday) {
-        if (holidayToggles?.solar !== false && HOLIDAYS.solar[solarKey]) {
-          holiday = HOLIDAYS.solar[solarKey];
-          holidayType = 'official';
-        } else if (holidayToggles?.lunar !== false && lunarKey && HOLIDAYS.lunar[lunarKey]) {
-          holiday = HOLIDAYS.lunar[lunarKey];
-          holidayType = 'official';
-        } else if (holidayToggles?.international !== false && HOLIDAYS.international && HOLIDAYS.international[solarKey]) {
-          holiday = HOLIDAYS.international[solarKey];
-          holidayType = 'international';
-        } else if (holidayToggles?.japan && HOLIDAYS.japan && HOLIDAYS.japan[solarKey]) {
-          holiday = HOLIDAYS.japan[solarKey];
-          holidayType = 'japan';
-        } else if (holidayToggles?.fun && HOLIDAYS.fun && HOLIDAYS.fun[solarKey]) {
-          holiday = HOLIDAYS.fun[solarKey];
-          holidayType = 'fun';
-        }
+      // 1. Ngày lễ Dương lịch
+      if (holidayToggles?.solar !== false && HOLIDAYS.solar[solarKey]) {
+        holidays.push({ name: HOLIDAYS.solar[solarKey], type: 'official' });
       }
+
+      // 2. Ngày lễ Âm lịch
+      if (holidayToggles?.lunar !== false && lunarKey && HOLIDAYS.lunar[lunarKey]) {
+        holidays.push({ name: HOLIDAYS.lunar[lunarKey], type: 'official' });
+      }
+
+      // 3. Ngày lễ Quốc tế
+      if (holidayToggles?.international !== false && HOLIDAYS.international?.[solarKey]) {
+        holidays.push({ name: HOLIDAYS.international[solarKey], type: 'international' });
+      }
+
+      // 4. Ngày lễ Nhật Bản
+      if (holidayToggles?.japan && HOLIDAYS.japan?.[solarKey]) {
+        holidays.push({ name: HOLIDAYS.japan[solarKey], type: 'japan' });
+      }
+
+      // 5. Dịp đặc biệt / Dev
+      if (holidayToggles?.fun && HOLIDAYS.fun?.[solarKey]) {
+        holidays.push({ name: HOLIDAYS.fun[solarKey], type: 'fun' });
+      }
+
+      const primaryHoliday = holidays[0] || null;
 
       const tasks = tasksByDay[dateStr] || [];
       const pending = pendingByDay[dateStr] || [];
       const done = tasks.length > 0;
-      map[d] = { dateStr, done, holiday, holidayType, lunar, tasks, pending };
+      map[d] = {
+        dateStr,
+        done,
+        holidays,
+        holiday: primaryHoliday?.name || null,
+        holidayType: primaryHoliday?.type || null,
+        lunar,
+        tasks,
+        pending,
+      };
     }
     return map;
   }, [viewYear, viewMonth, daysInMonth, tasksByDay, pendingByDay, holidayToggles, customAnniversaries]);
@@ -392,7 +415,8 @@ export default function MonthCalendar({
             }),
           ];
 
-          const chipLimit = info.holiday ? MAX_CHIPS - 1 : MAX_CHIPS;
+          const holidayCount = info.holidays ? info.holidays.length : 0;
+          const chipLimit = Math.max(1, MAX_CHIPS - holidayCount);
           const shown = chips.slice(0, chipLimit);
 
           return (
@@ -411,7 +435,7 @@ export default function MonthCalendar({
               title={[
                 info.dateStr,
                 `Âm lịch ${info.lunar.day}/${info.lunar.month}${info.lunar.leap ? ' (nhuận)' : ''}`,
-                info.holiday,
+                info.holidays?.map((h) => h.name).join(', '),
                 info.tasks.length ? `${info.tasks.length} task xong` : null,
                 'Nhấp đúp để tạo việc nhanh',
               ].filter(Boolean).join(' — ')}
@@ -426,15 +450,20 @@ export default function MonthCalendar({
                 </span>
               </div>
 
-              {/* Banner Ngày Lễ trong ô */}
-              {info.holiday && (
-                <span
-                  className={`cal-cell__holiday cal-cell__holiday--${info.holidayType}`}
-                  title={`${info.holidayType === 'fun' ? 'Dịp đặc biệt / Dev: ' : 'Ngày lễ: '}${info.holiday}`}
-                >
-                  <AppIcon name={info.holidayType === 'fun' ? 'lightning' : 'star'} size={11} weight="fill" />
-                  <span className="cal-cell__holiday-name">{info.holiday}</span>
-                </span>
+              {/* Banners Ngày Lễ trong ô */}
+              {info.holidays && info.holidays.length > 0 && (
+                <div className="cal-cell__holidays-wrapper">
+                  {info.holidays.map((h, hIdx) => (
+                    <span
+                      key={hIdx}
+                      className={`cal-cell__holiday cal-cell__holiday--${h.type}`}
+                      title={`${h.type === 'fun' ? 'Dịp đặc biệt / Dev: ' : h.type === 'custom' ? 'Kỷ niệm: ' : 'Ngày lễ: '}${h.name}`}
+                    >
+                      <AppIcon name={h.type === 'fun' ? 'lightning' : h.type === 'custom' ? 'heart' : 'star'} size={11} weight="fill" />
+                      <span className="cal-cell__holiday-name">{h.name}</span>
+                    </span>
+                  ))}
+                </div>
               )}
 
               {/* Danh sách Task Chips phẳng kiểu Google Calendar */}
@@ -524,10 +553,25 @@ export default function MonthCalendar({
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                       <AppIcon name="moon" size={13} weight="fill" />
                       <span>Âm lịch {info.lunar.day}/{info.lunar.month}{info.lunar.leap ? ' (nhuận)' : ''}</span>
-                      {info.holiday && (
-                        <span style={{ color: info.holidayType === 'fun' ? 'var(--purple-light)' : 'var(--gold-dim)', fontWeight: 600, marginLeft: '0.35rem' }}>
-                          · {info.holidayType === 'fun' ? '⚡ ' : '★ '}{info.holiday}
-                        </span>
+                      {info.holidays && info.holidays.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
+                          {info.holidays.map((h, hIdx) => (
+                            <span
+                              key={hIdx}
+                              style={{
+                                color: h.type === 'fun' ? 'var(--purple-light)' : h.type === 'custom' ? '#EC4899' : 'var(--gold-dim)',
+                                fontWeight: 600,
+                                fontSize: '0.8rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.38rem',
+                              }}
+                            >
+                              <AppIcon name={h.type === 'fun' ? 'lightning' : h.type === 'custom' ? 'heart' : 'star'} size={12} weight="fill" />
+                              <span>{h.name}</span>
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}

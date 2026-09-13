@@ -112,36 +112,38 @@ export default function WeekCalendar({
       const y = d.getFullYear();
       const solarKey = `${pad(m)}-${pad(dt)}`;
 
+      const holidays = [];
+
       // 0. Kiểm tra ngày kỷ niệm cá nhân (ưu tiên cao nhất)
       if (holidayToggles?.custom !== false && Array.isArray(customAnniversaries)) {
-        let foundCustom = null;
         let lunar = null;
         for (const anniv of customAnniversaries) {
           if (!anniv || !anniv.title) continue;
+          let isMatch = false;
           if (anniv.calType === 'solar' && Number(anniv.day) === dt && Number(anniv.month) === m) {
-            foundCustom = anniv;
-            break;
-          }
-          if (anniv.calType === 'lunar') {
+            isMatch = true;
+          } else if (anniv.calType === 'lunar') {
             if (!lunar) {
               try { lunar = solarToLunar(dt, m, y); } catch { /* Safe */ }
             }
             if (lunar && Number(anniv.day) === lunar.day && Number(anniv.month) === lunar.month) {
-              foundCustom = anniv;
-              break;
+              isMatch = true;
             }
           }
-        }
-        if (foundCustom) {
-          map[day.dateStr] = { name: `${foundCustom.icon || '💖'} ${foundCustom.title}`, type: 'custom' };
-          continue;
+          if (isMatch) {
+            let extraNote = '';
+            if (anniv.year && Number(anniv.year) > 0) {
+              const passedYears = y - Number(anniv.year);
+              if (passedYears > 0) extraNote = ` (${passedYears} năm)`;
+            }
+            holidays.push({ name: `${anniv.icon || '💖'} ${anniv.title}${extraNote}`, type: 'custom' });
+          }
         }
       }
 
       // 1. Kiểm tra ngày lễ chính thống dương lịch
       if (holidayToggles?.solar !== false && HOLIDAYS.solar[solarKey]) {
-        map[day.dateStr] = { name: HOLIDAYS.solar[solarKey], type: 'official' };
-        continue;
+        holidays.push({ name: HOLIDAYS.solar[solarKey], type: 'official' });
       }
 
       // 2. Kiểm tra ngày lễ âm lịch
@@ -151,8 +153,7 @@ export default function WeekCalendar({
           if (lunar && !lunar.leap) {
             const lunarKey = `${pad(lunar.month)}-${pad(lunar.day)}`;
             if (HOLIDAYS.lunar[lunarKey]) {
-              map[day.dateStr] = { name: HOLIDAYS.lunar[lunarKey], type: 'official' };
-              continue;
+              holidays.push({ name: HOLIDAYS.lunar[lunarKey], type: 'official' });
             }
           }
         } catch {
@@ -162,19 +163,21 @@ export default function WeekCalendar({
 
       // 3. Kiểm tra ngày lễ quốc tế (LHQ & Thế giới)
       if (holidayToggles?.international !== false && HOLIDAYS.international?.[solarKey]) {
-        map[day.dateStr] = { name: HOLIDAYS.international[solarKey], type: 'international' };
-        continue;
+        holidays.push({ name: HOLIDAYS.international[solarKey], type: 'international' });
       }
 
       // 4. Kiểm tra ngày lễ Nhật Bản
       if (holidayToggles?.japan && HOLIDAYS.japan?.[solarKey]) {
-        map[day.dateStr] = { name: HOLIDAYS.japan[solarKey], type: 'japan' };
-        continue;
+        holidays.push({ name: HOLIDAYS.japan[solarKey], type: 'japan' });
       }
 
       // 5. Kiểm tra ngày lễ kỷ niệm vui / Dev / Coder
       if (holidayToggles?.fun && HOLIDAYS.fun && HOLIDAYS.fun[solarKey]) {
-        map[day.dateStr] = { name: HOLIDAYS.fun[solarKey], type: 'fun' };
+        holidays.push({ name: HOLIDAYS.fun[solarKey], type: 'fun' });
+      }
+
+      if (holidays.length > 0) {
+        map[day.dateStr] = holidays;
       }
     }
     return map;
@@ -402,16 +405,17 @@ export default function WeekCalendar({
               return (
                 <div key={`allday-${day.dateStr}`} className="week-cal__allday-cell">
                   {/* Highlight Ngày lễ chính thức HOẶC Ngày kỷ niệm vui / Dev */}
-                  {holidayInfo && (
+                  {Array.isArray(holidayInfo) && holidayInfo.map((h, hIdx) => (
                     <div
-                      className={`week-cal__holiday-chip week-cal__holiday-chip--${holidayInfo.type}`}
-                      title={`${holidayInfo.type === 'fun' ? 'Dịp đặc biệt / Dev: ' : 'Ngày lễ: '}${holidayInfo.name}`}
+                      key={hIdx}
+                      className={`week-cal__holiday-chip week-cal__holiday-chip--${h.type}`}
+                      title={`${h.type === 'fun' ? 'Dịp đặc biệt / Dev: ' : h.type === 'custom' ? 'Kỷ niệm: ' : 'Ngày lễ: '}${h.name}`}
                     >
                       <span className="week-cal__holiday-title">
-                        {holidayInfo.type === 'fun' ? '⚡ ' : ''}{holidayInfo.name}
+                        {h.type === 'fun' ? '⚡ ' : h.type === 'custom' ? '💖 ' : ''}{h.name}
                       </span>
                     </div>
-                  )}
+                  ))}
 
                   {/* Tasks cả ngày */}
                   {layout.allDayTasks.map((t) => {
