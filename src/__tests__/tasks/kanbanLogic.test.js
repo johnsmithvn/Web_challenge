@@ -1,8 +1,7 @@
 /**
- /**
-  * Unit Test cho Chế độ Kanban 3 cột & Drag & Drop Nhiệm vụ (v6.16.0).
-  * Chạy: `node src/__tests__/tasks/kanbanLogic.test.js`
-  */
+ * Unit Test cho Chế độ Kanban 3 cột & Drag & Drop Nhiệm vụ (v6.16.1).
+ * Chạy: `node src/__tests__/tasks/kanbanLogic.test.js`
+ */
 import assert from 'node:assert/strict';
 
 // Helper phân loại task vào 3 cột Kanban
@@ -21,6 +20,16 @@ function classifyKanbanTasks(tasks) {
     }
   }
   return { todo, doing, done };
+}
+
+// Helper lọc thời gian cho Kanban
+function filterKanbanByTime(tasks, filterMode, todayStr, fromStr, toStr) {
+  return tasks.filter((t) => {
+    if (filterMode === 'all') return true;
+    if (filterMode === 'today') return t.due_date === todayStr;
+    if (filterMode === 'custom') return t.due_date >= fromStr && t.due_date <= toStr;
+    return true;
+  });
 }
 
 // Helper xác định highlight badge cho task card
@@ -74,8 +83,14 @@ assert.equal(movedBackToTodo.status, 'todo');
 assert.equal(movedBackToTodo.completed, false);
 console.log('handleKanbanMove Drag&Drop transitions: OK');
 
-// 3. Kiểm tra Deadline Highlight Badges
+// 3. Kiểm tra lọc thời gian (Tất cả / Hôm nay / Khoảng ngày)
 const today = '2026-09-13';
+assert.equal(filterKanbanByTime(sampleTasks, 'all', today).length, 4, 'Chế độ All giữ nguyên tất cả 4 tasks');
+assert.equal(filterKanbanByTime(sampleTasks, 'today', today).length, 1, 'Chế độ Hôm nay chỉ lọc 1 task đúng ngày 2026-09-13');
+assert.equal(filterKanbanByTime(sampleTasks, 'custom', today, '2026-09-10', '2026-09-12').length, 2, 'Lọc khoảng ngày 10-12/09 có 2 tasks');
+console.log('filterKanbanByTime date filtering: OK');
+
+// 4. Kiểm tra Deadline Highlight Badges
 assert.deepEqual(getTaskDeadlineBadge({ completed: false, due_date: '2026-09-10' }, today), { type: 'overdue', label: 'Quá hạn' });
 assert.deepEqual(getTaskDeadlineBadge({ completed: false, due_date: '2026-09-13' }, today), { type: 'today', label: 'Hôm nay' });
 assert.deepEqual(getTaskDeadlineBadge({ completed: false, due_date: '2026-09-20' }, today), { type: 'future', label: '2026-09-20' });

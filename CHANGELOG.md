@@ -3,11 +3,15 @@
 ## v6.16.0 — 2026-09-02
 
 ### Added
-- **Chế độ xem Bảng Kanban 3 Cột (To Do - Doing - Done) & Kéo thả (`TasksPage.jsx`, `TaskKanbanView.jsx`, `kanban.css`):**
+- **Chế độ xem Bảng Kanban 3 Cột (To Do - Doing - Done), Kéo thả & Bộ lọc nâng cấp (`TasksPage.jsx`, `TaskKanbanView.jsx`, `kanban.css`):**
   - Tích hợp chế độ xem Bảng Kanban với 3 cột chính: **To Do (Cần làm)**, **Doing (Đang làm)**, và **Done (Đã hoàn thành)** vào thanh điều hướng Segmented Switcher (phím tắt `K`).
   - Tính năng **HTML5 Drag & Drop (Kéo - Thả)**: Người dùng có thể kéo thả thẻ công việc trực tiếp giữa các cột để chuyển trạng thái tức thì.
-  - Kéo thả vào cột **Done** tự động tích hoàn thành task và cộng điểm XP; kéo thả sang **Doing** hoặc **To Do** sẽ chuyển lại việc chưa xong và cập nhật trạng thái tương ứng.
-  - **Badge Highlight Trạng thái Deadline trực tiếp trên Task Card**: Hiển thị viền mờ rực rỡ và badge nhãn nổi bật cho các việc **🔴 Quá hạn** (Overdue), **🟡 Hôm nay** (Today), **🔵 Sắp tới** (Upcoming), giúp nhận diện thời hạn khẩn cấp mà không phụ thuộc vào phân nhóm cột.
+  - Kéo thả vào cột **Done** tự động tích hoàn thành task và cộng điểm XP; đồng thời lưu giữ công việc trong cột Done theo dải thời gian lọc mà không bị ẩn/mất đi.
+  - **🔒 Modal Xác nhận Xóa an toàn (`ConfirmModal`)**: Bắt buộc xác nhận trước khi xóa bất kỳ task nào trên Kanban và Danh sách, triệt tiêu nguy cơ bấm nhầm xóa mất dữ liệu.
+  - **📐 Layout 3 Cột lấp đầy Canvas**: Bỏ giới hạn chiều rộng 380px cố định, 3 cột mở rộng linh hoạt trải đều 100% diện tích canvas (`flex: 1 1 0%`).
+  - **🔽 Mở rộng & Tích chọn Subtask (Checklist)**: Hỗ trợ nút caret toggle danh sách việc con trực tiếp trên từng card.
+  - **✏️ Sửa Tức thì**: Icon bút chì kích hoạt trực tiếp form/modal chỉnh sửa nội dung.
+  - **📅 Thanh Bộ lọc Thời gian**: Tích hợp thanh lọc thời gian trên đỉnh Bảng Kanban (*Tất cả [mặc định]*, *Hôm nay*, *7 ngày*, *Chọn khoảng ngày*).
   - File migration SQL `20260913000000_task_status_v6_16_0.sql` bổ sung cột `status` vào bảng `user_tasks` kèm fallback an toàn cho Guest & DB cũ.
 - **Bộ lọc theo Nguồn tiền ở màn Giao dịch (`ListScreen.jsx`):**
   - Bổ sung tùy chọn lọc theo "Nguồn tiền" vào popover bộ lọc (`FilterPop`): hỗ trợ lọc "Tiền có sẵn" hoặc theo từng thẻ tín dụng đã tạo.

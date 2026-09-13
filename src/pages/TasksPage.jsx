@@ -499,6 +499,10 @@ export default function TasksPage() {
                 <TaskKanbanView
                   taskModel={taskModel}
                   onSelectTask={handleSelectTaskFromCalendar}
+                  onEditTask={(task) => {
+                    setSelectedTask(task);
+                    setIsEditingSelected(true);
+                  }}
                   onQuickCreate={handleOpenCreateModal}
                 />
               )}

@@ -1,27 +1,95 @@
-/* ── Kanban Board (/tasks Kanban View) — v6.16.0 ── */
+/* ── Kanban Board (/tasks Kanban View) — v6.16.1 ── */
+
+.kanban-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  gap: 0.5rem;
+}
+
+/* Header Time Filter Bar */
+.kanban-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.75rem;
+  background: var(--surface-card, rgba(255, 255, 255, 0.65));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  border-radius: var(--radius-md, 12px);
+  flex-wrap: wrap;
+}
+
+[data-theme="dark"] .kanban-filter-bar {
+  background: rgba(30, 27, 46, 0.7);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.kanban-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.kanban-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.25rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted, #6B7280);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.kanban-filter-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-color, #1F2937);
+}
+
+.kanban-filter-btn.is-active {
+  background: rgba(139, 92, 246, 0.12);
+  color: #7C3AED;
+  border-color: rgba(139, 92, 246, 0.3);
+  font-weight: 600;
+}
+
+[data-theme="dark"] .kanban-filter-btn.is-active {
+  background: rgba(139, 92, 246, 0.25);
+  color: #A78BFA;
+}
 
 .kanban-board-container {
   display: flex;
   gap: 1rem;
   width: 100%;
   height: 100%;
+  flex: 1;
   min-height: 0;
   overflow-x: auto;
-  padding: 0.5rem 0.25rem 0.75rem;
+  padding: 0.25rem 0 0.5rem;
   box-sizing: border-box;
 }
 
-/* Responsive 3 columns */
+/* 3 Columns stretch evenly across full canvas width */
 .kanban-column {
-  flex: 1;
-  min-width: 280px;
-  max-width: 380px;
+  flex: 1 1 0%;
+  min-width: 260px;
+  max-width: none;
   display: flex;
   flex-direction: column;
   background: var(--surface-card, rgba(255, 255, 255, 0.65));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
   border-radius: var(--radius-lg, 16px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
   overflow: hidden;
@@ -205,7 +273,7 @@
 }
 
 .kanban-card--done {
-  opacity: 0.75;
+  opacity: 0.85;
   border-left: 4px solid #10B981 !important;
 }
 
@@ -329,6 +397,51 @@
   margin-left: 1.55rem;
 }
 
+/* Subtasks inline checklist */
+.kanban-subtasks-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: #7C3AED;
+  font-weight: 600;
+  background: rgba(139, 92, 246, 0.08);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  margin-left: 1.55rem;
+  width: fit-content;
+}
+
+.kanban-subtasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-left: 1.55rem;
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  background: rgba(0, 0, 0, 0.025);
+  border-radius: var(--radius-sm, 6px);
+}
+
+[data-theme="dark"] .kanban-subtasks-list {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.kanban-subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-color, #374151);
+}
+
+.kanban-subtask-item.is-done span {
+  text-decoration: line-through;
+  color: var(--text-muted, #9CA3AF);
+}
+
 /* Card Tags & Collections Footer */
 .kanban-card-footer {
   display: flex;
@@ -362,7 +475,7 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  opacity: 0.7;
+  opacity: 0.75;
   transition: opacity 0.15s ease;
 }
 

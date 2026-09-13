@@ -1,20 +1,30 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import AppIcon from './AppIcon';
+import DatePickerPopover from './DatePickerPopover';
+import { useConfirm } from './ConfirmModal';
+import UI_STRINGS from '../data/ui-strings.json';
 import { toDateStr } from '../utils/dateUtils';
 import { PRIORITY_OPTIONS } from '../utils/taskFields';
 import '../styles/kanban.css';
 
 /**
- * TaskKanbanView — Chế độ xem Kanban 3 cột (v6.16.0).
+ * TaskKanbanView — Bảng Kanban 3 cột nâng cấp (v6.16.1).
  * Cột 1: To Do (Cần làm)
  * Cột 2: Doing (Đang làm)
- * Cột 3: Done (Đã hoàn thành)
+ * Cột 3: Done (Đã xong — lưu giữ task không bị biến mất)
  *
- * Hỗ trợ HTML5 Drag & Drop mượt mà + Highlight trạng thái thời hạn (Quá hạn / Hôm nay / Sắp tới)
+ * Tính năng chính:
+ * 1. Confirm Modal an toàn khi xóa.
+ * 2. Cột Done hiển thị đầy đủ task đã hoàn thành theo dải ngày.
+ * 3. Layout 3 cột trải rộng 100% canvas.
+ * 4. Mở rộng & Tích chọn subtasks trực tiếp trên card.
+ * 5. Icon bút chì kích hoạt chỉnh sửa trực tiếp.
+ * 6. Thanh bộ lọc thời gian (Tất cả [mặc định] / Hôm nay / 7 ngày / Tùy chọn).
  */
 export default function TaskKanbanView({
   taskModel,
   onSelectTask,
+  onEditTask,
   onQuickCreate,
 }) {
   const {
@@ -22,34 +32,99 @@ export default function TaskKanbanView({
     overdueTasks = [],
     futureTasks = [],
     pendingTasks = [],
+    getCompletedTasksRange,
     completeTask,
     uncompleteTask,
     updateTask,
     deleteTask,
   } = taskModel;
 
+  const { confirm, ConfirmModal } = useConfirm();
   const today = useMemo(() => toDateStr(), []);
+
+  // State bộ lọc thời gian: 'all' | 'today' | '7d' | 'custom'
+  const [timeFilter, setTimeFilter] = useState('all');
+  const [customFrom, setCustomFrom] = useState(today);
+  const [customTo, setCustomTo] = useState(today);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // State mở rộng subtasks/ghi chú cho từng task card
+  const [expandedSubtaskIds, setExpandedSubtaskIds] = useState(() => new Set());
+
+  // Task hoàn thành tải từ DB/range
+  const [completedRangeTasks, setCompletedRangeTasks] = useState([]);
 
   // HTML5 Drag & Drop states
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
 
-  // Phân loại task vào 3 cột: To Do / Doing / Done
+  // Tính 7 ngày tới
+  const sevenDaysLater = useMemo(() => {
+    const d = new Date(`${today}T00:00:00`);
+    d.setDate(d.getDate() + 7);
+    return toDateStr(d);
+  }, [today]);
+
+  // Tải danh sách task đã hoàn thành theo khoảng thời gian để cột Done không bị rỗng
+  useEffect(() => {
+    if (!getCompletedTasksRange) return;
+    let stale = false;
+    let from = '2020-01-01';
+    let to = '2099-12-31';
+
+    if (timeFilter === 'today') {
+      from = today;
+      to = today;
+    } else if (timeFilter === '7d') {
+      from = today;
+      to = sevenDaysLater;
+    } else if (timeFilter === 'custom') {
+      from = customFrom;
+      to = customTo;
+    }
+
+    getCompletedTasksRange(from, to).then((rows) => {
+      if (stale) return;
+      setCompletedRangeTasks(rows || []);
+    });
+    return () => { stale = true; };
+  }, [timeFilter, customFrom, customTo, today, sevenDaysLater, getCompletedTasksRange]);
+
+  // Phân loại task vào 3 cột dựa trên status, completed và timeFilter
   const { todoList, doingList, doneList } = useMemo(() => {
     const todo = [];
     const doing = [];
-    const done = [];
+    const doneMap = new Map();
 
-    // Duyệt qua tất cả pending tasks
+    // Thêm các task completed từ range vào map Done
+    for (const t of completedRangeTasks) {
+      if (t.completed) doneMap.set(t.id, t);
+    }
+
+    // Duyệt qua pendingTasks
     for (const task of pendingTasks) {
+      // Đánh giá bộ lọc thời gian
+      let dateMatch = true;
+      if (timeFilter === 'today') {
+        dateMatch = task.due_date === today;
+      } else if (timeFilter === '7d') {
+        dateMatch = task.due_date >= today && task.due_date <= sevenDaysLater;
+      } else if (timeFilter === 'custom') {
+        dateMatch = task.due_date >= customFrom && task.due_date <= customTo;
+      }
+
+      if (!dateMatch && timeFilter !== 'all') continue;
+
       if (task.completed) {
-        done.push(task);
+        doneMap.set(task.id, task);
       } else if (task.status === 'doing') {
         doing.push(task);
       } else {
         todo.push(task);
       }
     }
+
+    const done = Array.from(doneMap.values());
 
     // Sắp xếp các cột: Quá hạn lên trước, sau đó theo độ ưu tiên
     const sortFn = (a, b) => {
@@ -62,7 +137,30 @@ export default function TaskKanbanView({
     done.sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
 
     return { todoList: todo, doingList: doing, doneList: done };
-  }, [pendingTasks]);
+  }, [pendingTasks, completedRangeTasks, timeFilter, today, sevenDaysLater, customFrom, customTo]);
+
+  // Xóa an toàn qua Confirm Modal
+  const confirmDeleteTask = useCallback((task) => {
+    const cfg = UI_STRINGS.confirm.deleteTask;
+    return confirm({ ...cfg, message: cfg.message.replace('{name}', task.title) });
+  }, [confirm]);
+
+  const handleDeleteTaskClick = useCallback(async (e, task) => {
+    e.stopPropagation();
+    if (!(await confirmDeleteTask(task))) return;
+    await deleteTask(task.id);
+  }, [confirmDeleteTask, deleteTask]);
+
+  // Toggle expand subtasks
+  const toggleExpandSubtasks = useCallback((e, taskId) => {
+    e.stopPropagation();
+    setExpandedSubtaskIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  }, []);
 
   // Xử lý sự kiện Kéo (Drag)
   const handleDragStart = useCallback((e, taskId) => {
@@ -99,7 +197,8 @@ export default function TaskKanbanView({
     const taskId = e.dataTransfer.getData('text/plain') || draggedTaskId;
     if (!taskId) return;
 
-    const task = pendingTasks.find((t) => t.id === taskId);
+    // Tìm task trong pendingTasks hoặc completedRangeTasks
+    const task = pendingTasks.find((t) => t.id === taskId) || completedRangeTasks.find((t) => t.id === taskId);
     if (!task) return;
 
     if (targetColKey === 'done') {
@@ -120,7 +219,7 @@ export default function TaskKanbanView({
       }
     }
     setDraggedTaskId(null);
-  }, [draggedTaskId, pendingTasks, completeTask, uncompleteTask, updateTask]);
+  }, [draggedTaskId, pendingTasks, completedRangeTasks, completeTask, uncompleteTask, updateTask]);
 
   // Render 1 Kanban Task Card
   const renderCard = (task) => {
@@ -128,6 +227,11 @@ export default function TaskKanbanView({
     const isOverdue = !isCompleted && task.due_date < today;
     const isToday = !isCompleted && task.due_date === today;
     const isFuture = !isCompleted && task.due_date > today;
+
+    // Phân tích subtasks từ description nếu có dạng "- [ ] task"
+    const subtaskLines = (task.description || '').split('\n').filter((l) => l.trim().startsWith('- [') || l.trim().startsWith('* ['));
+    const hasSubtasks = subtaskLines.length > 0;
+    const isExpanded = expandedSubtaskIds.has(task.id);
 
     // Xác định class highlight theo thời hạn
     let cardClass = 'kanban-card';
@@ -199,16 +303,19 @@ export default function TaskKanbanView({
             <button
               type="button"
               className="kanban-card-btn"
-              onClick={() => onSelectTask && onSelectTask(task)}
-              title="Xem & Sửa chi tiết"
+              onClick={() => {
+                if (onEditTask) onEditTask(task);
+                else if (onSelectTask) onSelectTask(task);
+              }}
+              title="Chỉnh sửa công việc"
             >
               <AppIcon name="pencil" size={13} />
             </button>
             <button
               type="button"
               className="kanban-card-btn kanban-card-btn--delete"
-              onClick={() => deleteTask(task.id)}
-              title="Xóa công việc"
+              onClick={(e) => handleDeleteTaskClick(e, task)}
+              title="Xóa công việc (Cần xác nhận)"
             >
               <AppIcon name="trash" size={13} />
             </button>
@@ -235,8 +342,41 @@ export default function TaskKanbanView({
           <span className="kanban-card-title">{task.title}</span>
         </div>
 
+        {/* Subtasks expander toggle */}
+        {hasSubtasks && (
+          <button
+            type="button"
+            className="kanban-subtasks-toggle"
+            onClick={(e) => toggleExpandSubtasks(e, task.id)}
+          >
+            <AppIcon name={isExpanded ? 'caretDown' : 'caretRight'} size={11} />
+            <span>{subtaskLines.length} việc con</span>
+          </button>
+        )}
+
+        {/* Subtasks checklist rendered */}
+        {hasSubtasks && isExpanded && (
+          <div className="kanban-subtasks-list" onClick={(e) => e.stopPropagation()}>
+            {subtaskLines.map((line, idx) => {
+              const checked = line.includes('[x]') || line.includes('[X]');
+              const text = line.replace(/^[-*]\s*\[[ xX]\]\s*/, '');
+              return (
+                <div key={idx} className={`kanban-subtask-item${checked ? ' is-done' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    readOnly
+                    style={{ width: '13px', height: '13px' }}
+                  />
+                  <span>{text}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Description preview */}
-        {task.description && (
+        {task.description && !hasSubtasks && (
           <div className="kanban-card-desc">{task.description}</div>
         )}
 
@@ -295,50 +435,114 @@ export default function TaskKanbanView({
   ];
 
   return (
-    <div className="kanban-board-container">
-      {columns.map((col) => {
-        const isOver = dragOverCol === col.key;
+    <div className="kanban-wrapper">
+      {ConfirmModal}
 
-        return (
-          <div key={col.key} className="kanban-column">
-            {/* Column Header */}
-            <div className="kanban-column-header">
-              <div className="kanban-column-title-group">
-                <span className={`kanban-column-dot ${col.dotClass}`} />
-                <h3 className="kanban-column-title">{col.title}</h3>
-                <span className="kanban-column-badge">{col.items.length}</span>
+      {/* Header Time Filter Bar */}
+      <div className="kanban-filter-bar">
+        <div className="kanban-filter-group">
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600, marginRight: '0.2rem' }}>
+            <AppIcon name="funnel" size={13} /> Lọc thời gian:
+          </span>
+          <button
+            type="button"
+            className={`kanban-filter-btn${timeFilter === 'all' ? ' is-active' : ''}`}
+            onClick={() => setTimeFilter('all')}
+          >
+            Tất cả
+          </button>
+          <button
+            type="button"
+            className={`kanban-filter-btn${timeFilter === 'today' ? ' is-active' : ''}`}
+            onClick={() => setTimeFilter('today')}
+          >
+            Hôm nay
+          </button>
+          <button
+            type="button"
+            className={`kanban-filter-btn${timeFilter === '7d' ? ' is-active' : ''}`}
+            onClick={() => setTimeFilter('7d')}
+          >
+            7 ngày tới
+          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className={`kanban-filter-btn${timeFilter === 'custom' ? ' is-active' : ''}`}
+              onClick={() => {
+                setTimeFilter('custom');
+                setShowDatePicker(!showDatePicker);
+              }}
+            >
+              <AppIcon name="calendar" size={13} />{' '}
+              {timeFilter === 'custom' ? `${customFrom} – ${customTo}` : 'Chọn ngày'}
+            </button>
+            {showDatePicker && (
+              <DatePickerPopover
+                value={customFrom}
+                onChange={(d) => {
+                  setCustomFrom(d);
+                  setCustomTo(d);
+                  setShowDatePicker(false);
+                }}
+                onClose={() => setShowDatePicker(false)}
+                style={{ top: '100%', left: 0, marginTop: '0.25rem', zIndex: 100 }}
+              />
+            )}
+          </div>
+        </div>
+
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          Tổng cộng: <strong>{todoList.length + doingList.length + doneList.length}</strong> nhiệm vụ
+        </div>
+      </div>
+
+      {/* 3 Columns Canvas */}
+      <div className="kanban-board-container">
+        {columns.map((col) => {
+          const isOver = dragOverCol === col.key;
+
+          return (
+            <div key={col.key} className="kanban-column">
+              {/* Column Header */}
+              <div className="kanban-column-header">
+                <div className="kanban-column-title-group">
+                  <span className={`kanban-column-dot ${col.dotClass}`} />
+                  <h3 className="kanban-column-title">{col.title}</h3>
+                  <span className="kanban-column-badge">{col.items.length}</span>
+                </div>
+
+                {onQuickCreate && col.key !== 'done' && (
+                  <button
+                    type="button"
+                    className="kanban-column-add-btn"
+                    onClick={() => onQuickCreate(today, '09:00')}
+                    title={`Thêm việc vào ${col.title}`}
+                  >
+                    <AppIcon name="plus" size={14} />
+                  </button>
+                )}
               </div>
 
-              {onQuickCreate && col.key !== 'done' && (
-                <button
-                  type="button"
-                  className="kanban-column-add-btn"
-                  onClick={() => onQuickCreate(today, '09:00')}
-                  title={`Thêm việc vào ${col.title}`}
-                >
-                  <AppIcon name="plus" size={14} />
-                </button>
-              )}
+              {/* Drop Zone Body */}
+              <div
+                className={`kanban-column-body${isOver ? ' is-drag-over' : ''}`}
+                onDragOver={(e) => handleDragOver(e, col.key)}
+                onDragLeave={(e) => handleDragLeave(e, col.key)}
+                onDrop={(e) => handleDrop(e, col.key)}
+              >
+                {col.items.length === 0 ? (
+                  <div className="kanban-empty-state">
+                    <span>Kéo công việc thả vào đây</span>
+                  </div>
+                ) : (
+                  col.items.map(renderCard)
+                )}
+              </div>
             </div>
-
-            {/* Drop Zone Body */}
-            <div
-              className={`kanban-column-body${isOver ? ' is-drag-over' : ''}`}
-              onDragOver={(e) => handleDragOver(e, col.key)}
-              onDragLeave={(e) => handleDragLeave(e, col.key)}
-              onDrop={(e) => handleDrop(e, col.key)}
-            >
-              {col.items.length === 0 ? (
-                <div className="kanban-empty-state">
-                  <span>Kéo công việc thả vào đây</span>
-                </div>
-              ) : (
-                col.items.map(renderCard)
-              )}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
