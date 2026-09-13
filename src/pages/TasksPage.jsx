@@ -20,6 +20,7 @@ const WeekCalendar = lazy(() => import('../components/WeekCalendar'));
 const CalendarAgendaView = lazy(() => import('../components/CalendarAgendaView'));
 const CalendarDayView = lazy(() => import('../components/CalendarDayView'));
 const CalendarWidgetPanel = lazy(() => import('../components/CalendarWidgetPanel'));
+const TaskKanbanView = lazy(() => import('../components/TaskKanbanView'));
 
 /**
  * TasksPage (/tasks) — Trung tâm Quản lý Nhiệm vụ & Lịch Công việc (v6.13.0).
@@ -435,7 +436,7 @@ export default function TasksPage() {
   }, []);
 
   const handleAddNewTask = useCallback(() => {
-    if (activeView === 'list') {
+    if (activeView === 'list' || activeView === 'kanban') {
       setShowForm((prev) => !prev);
     } else {
       setCreateModalState({
@@ -493,7 +494,15 @@ export default function TasksPage() {
               <div className="task-empty__hint">Đăng nhập để xem lịch nhiệm vụ.</div>
             </div>
           ) : (
-            <Suspense fallback={<div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>⏳ Đang tải lịch...</div>}>
+            <Suspense fallback={<div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>⏳ Đang tải...</div>}>
+              {activeView === 'kanban' && (
+                <TaskKanbanView
+                  taskModel={taskModel}
+                  onSelectTask={handleSelectTaskFromCalendar}
+                  onQuickCreate={handleOpenCreateModal}
+                />
+              )}
+
               {activeView === 'agenda' && (
                 <CalendarAgendaView
                   pendingTasks={pendingTasks}

@@ -266,22 +266,31 @@ export function useUserTasks() {
 
     // Optimistic
     setTasks(prev => prev.map(t =>
-      t.id === taskId ? { ...t, completed: true, completed_at: now } : t
+      t.id === taskId ? { ...t, completed: true, completed_at: now, status: 'done' } : t
     ));
 
     if (isAuth) {
       try {
-        const { error } = await supabase
+        let { error } = await supabase
           .from('user_tasks')
-          .update({ completed: true, completed_at: now })
+          .update({ completed: true, completed_at: now, status: 'done' })
           .eq('id', taskId)
           .eq('user_id', userId);
+
+        if (error && error.message?.includes('status')) {
+          const res = await supabase
+            .from('user_tasks')
+            .update({ completed: true, completed_at: now })
+            .eq('id', taskId)
+            .eq('user_id', userId);
+          error = res.error;
+        }
 
         if (error) {
           logger.error('[useUserTasks] complete error:', error.message);
           // Rollback
           setTasks(prev => prev.map(t =>
-            t.id === taskId ? { ...t, completed: false, completed_at: null } : t
+            t.id === taskId ? { ...t, completed: false, completed_at: null, status: task?.status || 'todo' } : t
           ));
           return false; // Don't spawn if complete failed
         }
@@ -299,7 +308,7 @@ export function useUserTasks() {
       } catch (err) {
         logger.error('[useUserTasks] complete exception:', err);
         setTasks(prev => prev.map(t =>
-          t.id === taskId ? { ...t, completed: false, completed_at: null } : t
+          t.id === taskId ? { ...t, completed: false, completed_at: null, status: task?.status || 'todo' } : t
         ));
         return false;
       }
@@ -384,21 +393,31 @@ export function useUserTasks() {
   // trùng khi user tích/bỏ tích/tích lại. Occurrence đó luôn KHÔNG PHẢI gốc
   // (recurrence_parent_id = taskId) nên xoá thẳng, để CASCADE tự lo hậu duệ xa
   // hơn nếu chính occurrence đó cũng đã hoàn thành và sinh tiếp.
-  const uncompleteTask = useCallback(async (taskId) => {
+  const uncompleteTask = useCallback(async (taskId, targetStatus = 'todo') => {
     const backup = tasks.find(t => t.id === taskId);
+    const nextStatus = targetStatus === 'doing' ? 'doing' : 'todo';
 
     // Optimistic
     setTasks(prev => prev.map(t =>
-      t.id === taskId ? { ...t, completed: false, completed_at: null } : t
+      t.id === taskId ? { ...t, completed: false, completed_at: null, status: nextStatus } : t
     ));
 
     if (isAuth) {
       try {
-        const { error } = await supabase
+        let { error } = await supabase
           .from('user_tasks')
-          .update({ completed: false, completed_at: null })
+          .update({ completed: false, completed_at: null, status: nextStatus })
           .eq('id', taskId)
           .eq('user_id', userId);
+
+        if (error && error.message?.includes('status')) {
+          const res = await supabase
+            .from('user_tasks')
+            .update({ completed: false, completed_at: null })
+            .eq('id', taskId)
+            .eq('user_id', userId);
+          error = res.error;
+        }
 
         if (error) {
           logger.error('[useUserTasks] uncomplete error:', error.message);
@@ -463,11 +482,25 @@ export function useUserTasks() {
 
     if (isAuth) {
       try {
-        const { error } = await supabase
+        let { error } = await supabase
           .from('user_tasks')
           .update(changes)
           .eq('id', taskId)
           .eq('user_id', userId);
+
+        if (error && error.message?.includes('status') && 'status' in changes) {
+          const { status, ...rest } = changes;
+          if (Object.keys(rest).length > 0) {
+            const res = await supabase
+              .from('user_tasks')
+              .update(rest)
+              .eq('id', taskId)
+              .eq('user_id', userId);
+            error = res.error;
+          } else {
+            error = null;
+          }
+        }
 
         if (error) {
           logger.error('[useUserTasks] update error:', error.message);

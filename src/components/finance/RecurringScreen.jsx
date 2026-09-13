@@ -276,7 +276,7 @@ export default function RecurringScreen({ fin, nav }) {
     <div className="fin-recurring">
       {seg !== 'saving' && (
         <section className="fin-obligation-summary">
-          <div><span>Tháng {Number(month)}/{year} còn phải trả</span><strong>{money(billTotal)}</strong></div>
+          <div><span>Số tiền hóa đơn còn phải trả cho tới cuối tháng ({Number(month)}/{year})</span><strong>{money(billTotal)}</strong></div>
           {overdueBills.length > 0 && <div className="fin-obligation-summary__overdue">
             <AppIcon name="warning" size={16} weight="fill" />
             <strong>{overdueBills.length} hóa đơn quá hạn · {money(overdueTotal)}</strong>

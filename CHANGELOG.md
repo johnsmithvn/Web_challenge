@@ -3,6 +3,12 @@
 ## v6.16.0 — 2026-09-02
 
 ### Added
+- **Chế độ xem Bảng Kanban 3 Cột (To Do - Doing - Done) & Kéo thả (`TasksPage.jsx`, `TaskKanbanView.jsx`, `kanban.css`):**
+  - Tích hợp chế độ xem Bảng Kanban với 3 cột chính: **To Do (Cần làm)**, **Doing (Đang làm)**, và **Done (Đã hoàn thành)** vào thanh điều hướng Segmented Switcher (phím tắt `K`).
+  - Tính năng **HTML5 Drag & Drop (Kéo - Thả)**: Người dùng có thể kéo thả thẻ công việc trực tiếp giữa các cột để chuyển trạng thái tức thì.
+  - Kéo thả vào cột **Done** tự động tích hoàn thành task và cộng điểm XP; kéo thả sang **Doing** hoặc **To Do** sẽ chuyển lại việc chưa xong và cập nhật trạng thái tương ứng.
+  - **Badge Highlight Trạng thái Deadline trực tiếp trên Task Card**: Hiển thị viền mờ rực rỡ và badge nhãn nổi bật cho các việc **🔴 Quá hạn** (Overdue), **🟡 Hôm nay** (Today), **🔵 Sắp tới** (Upcoming), giúp nhận diện thời hạn khẩn cấp mà không phụ thuộc vào phân nhóm cột.
+  - File migration SQL `20260913000000_task_status_v6_16_0.sql` bổ sung cột `status` vào bảng `user_tasks` kèm fallback an toàn cho Guest & DB cũ.
 - **Bộ lọc theo Nguồn tiền ở màn Giao dịch (`ListScreen.jsx`):**
   - Bổ sung tùy chọn lọc theo "Nguồn tiền" vào popover bộ lọc (`FilterPop`): hỗ trợ lọc "Tiền có sẵn" hoặc theo từng thẻ tín dụng đã tạo.
   - Tích hợp tên nguồn tiền vào thanh tìm kiếm nhanh để người dùng có thể gõ tìm trực tiếp tên thẻ hoặc tiền có sẵn.
@@ -31,6 +37,8 @@
   - Hỗ trợ phím tắt `Escape` để đóng panel chi tiết ngay lập tức ở chế độ xem.
 
 ### Changed
+- **Cập nhật nhãn dải tổng quan nghĩa vụ (`RecurringScreen.jsx`):**
+  - Chuyển nhãn tổng quan số tiền cần trả thành "Số tiền hóa đơn còn phải trả cho tới cuối tháng" để phản ánh chính xác tổng giá trị thực tế các hóa đơn cần thanh toán đến hết tháng hiện tại (kèm các kỳ quá hạn chưa trả).
 - **Nâng cấp toàn diện Trải nghiệm Quỹ tiết kiệm & Nơi gửi tiền (`AnalyzeScreen.jsx` & `finance-handoff.css`):**
   - **Cột Lãi khi đến hạn chính xác:** Tính toán và hiển thị số tiền lãi thực tế sẽ nhận về tại ngày đáo hạn (theo đúng kỳ hạn 1T, 2T, 6T, 12T...) kèm số lãi/năm tham chiếu bên dưới.
   - **Form Thêm nơi gửi thông minh & Xem trước tiền về:** Gợi ý tự động tên sổ, nút chọn nhanh kỳ hạn (1T, 2T, 3T, 6T, 12T...), xem trước ngay lập tức *Lãi thực nhận khi đáo hạn* và *Tổng tiền nhận về (gốc + lãi)* khi đang nhập.

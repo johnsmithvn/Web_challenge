@@ -46,6 +46,9 @@ export default function CalendarToolbar({
       } else if (key === 'l') {
         e.preventDefault();
         setActiveView('list');
+      } else if (key === 'k') {
+        e.preventDefault();
+        setActiveView('kanban');
       } else if (key === 't') {
         e.preventDefault();
         setCurrentDate(new Date());
@@ -192,6 +195,16 @@ export default function CalendarToolbar({
         >
           <AppIcon name="list" size={14} /> Danh sách
           {taskCount > 0 && <span className="cal-segmented-badge">{taskCount}</span>}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeView === 'kanban'}
+          className={`cal-segmented-btn${activeView === 'kanban' ? ' cal-segmented-btn--active' : ''}`}
+          onClick={() => setActiveView('kanban')}
+          title="Bảng Kanban 3 cột (Phím tắt: K)"
+        >
+          📋 Kanban
         </button>
         <button
           type="button"
