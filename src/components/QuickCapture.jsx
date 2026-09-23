@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useCollections } from '../hooks/useCollections';
+import { useUserTasks } from '../hooks/useUserTasks';
+import { toDateStr } from '../utils/dateUtils';
 import AuthModal from './AuthModal';
 import AppIcon from './AppIcon';
 import '../styles/quick-capture.css';
@@ -10,8 +11,7 @@ import { logger } from '../utils/logger';
 /**
  * QuickCapture — Global floating [+] button.
  * Appears on every page (except landing).
- * Captures raw text → inserts into `collections` table as type='inbox'.
- * Uses useCollections.addItem() for consistency with InboxPage.
+ * Captures raw text → inserts into `user_tasks` table as status='todo'.
  * Guest users see a prompt to login.
  */
 export default function QuickCapture() {
@@ -22,7 +22,7 @@ export default function QuickCapture() {
 
 function QuickCaptureCore() {
   const { user } = useAuth();
-  const { addItem } = useCollections();
+  const { addTask } = useUserTasks();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -64,11 +64,12 @@ function QuickCaptureCore() {
         body = trimmed; // full original text preserved in body
       }
 
-      const result = await addItem({
-        type: 'inbox',
+      const result = await addTask({
         title,
-        url: isUrl ? trimmed : null,
-        body: body || null,
+        description: body || (isUrl ? trimmed : null),
+        dueDate: toDateStr(),
+        dueTime: '09:00',
+        status: 'todo',
       });
 
       if (result) {
@@ -119,13 +120,13 @@ function QuickCaptureCore() {
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleSubmit}
           >
-            <div className="qc-modal__header"><AppIcon name="inbox" size={17} /> Ghi nhanh vào Inbox</div>
+            <div className="qc-modal__header"><AppIcon name="pushPin" size={17} /> Thêm nhanh việc cần làm</div>
             {user ? (
               <>
                 <textarea
                   ref={inputRef}
                   className="qc-modal__input"
-                  placeholder="Nhập ý tưởng, link, ghi chú..."
+                  placeholder="Tên nhiệm vụ hoặc việc cần làm..."
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={handleKeyDown}

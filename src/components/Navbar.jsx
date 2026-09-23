@@ -16,7 +16,6 @@ import '../styles/auth.css';
 /* ── Navigation Structure ──────────────────────────────────── */
 // Primary: always visible (bottom tabs on mobile, sidebar on desktop)
 const PRIMARY_NAV = [
-  { to: '/inbox',     icon: 'inbox', label: 'Inbox' },
   { to: '/tasks',     icon: 'pushPin', label: 'Nhiệm Vụ' },
   { to: '/collect',   icon: 'brain', label: 'Knowledge' },
   { to: '/finance',   icon: 'wallet', label: 'Finance' },

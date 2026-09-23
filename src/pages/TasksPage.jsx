@@ -431,8 +431,8 @@ export default function TasksPage() {
     setIsEditingSelected(false);
   }, []);
 
-  const handleOpenCreateModal = useCallback((dateStr, timeStr) => {
-    setCreateModalState({ date: dateStr, time: timeStr });
+  const handleOpenCreateModal = useCallback((dateStr, timeStr, initialStatus = 'todo') => {
+    setCreateModalState({ date: dateStr, time: timeStr, status: initialStatus });
   }, []);
 
   const handleAddNewTask = useCallback(() => {
@@ -619,6 +619,7 @@ export default function TasksPage() {
         isOpen={!!createModalState}
         initialDate={createModalState?.date}
         initialTime={createModalState?.time}
+        initialStatus={createModalState?.status || 'todo'}
         onClose={() => setCreateModalState(null)}
         taskModel={taskModel}
       />

@@ -15,16 +15,18 @@ export default function TaskCreateModal({
   isOpen,
   initialDate,
   initialTime,
+  initialStatus = 'todo',
   onClose,
   taskModel,
 }) {
-  const { allTags, addTag, linkTaskTag } = useTags();
-  const { addTask } = taskModel;
+  const { tags: allTags, addTag } = useTags();
+  const { addTask, linkTaskTag } = taskModel;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState(initialDate || toDateStr());
   const [dueTime, setDueTime] = useState(initialTime || '09:00');
+  const [taskStatus, setTaskStatus] = useState(initialStatus || 'todo');
   const [priority, setPriority] = useState(0);
   const [tagIds, setTagIds] = useState([]);
   const [showDP, setShowDP] = useState(false);
@@ -38,20 +40,21 @@ export default function TaskCreateModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Đồng bộ initialDate / initialTime khi modal mở
+  // Đồng bộ initialDate / initialTime / initialStatus khi modal mở
   useEffect(() => {
     if (isOpen) {
       setTitle('');
       setDescription('');
       setDueDate(initialDate || toDateStr());
       setDueTime(initialTime || '09:00');
+      setTaskStatus(initialStatus || 'todo');
       setPriority(0);
       setTagIds([]);
       setShowRecurrence(false);
       setShowDP(false);
       setIsSubmitting(false);
     }
-  }, [isOpen, initialDate, initialTime]);
+  }, [isOpen, initialDate, initialTime, initialStatus]);
 
   const handleSubmit = useCallback(async (e) => {
     if (e) e.preventDefault();
@@ -73,10 +76,11 @@ export default function TaskCreateModal({
         dueTime: dueTime || '09:00',
         priority,
         recurrenceRule,
+        status: taskStatus || 'todo',
       });
 
-      if (created && tagIds.length > 0) {
-        const selectedTags = allTags.filter((t) => tagIds.includes(t.id));
+      if (created && tagIds.length > 0 && linkTaskTag) {
+        const selectedTags = (allTags || []).filter((t) => tagIds.includes(t.id));
         await Promise.all(selectedTags.map((tag) => linkTaskTag(created.id, tag)));
       }
 
@@ -89,6 +93,7 @@ export default function TaskCreateModal({
     description,
     dueDate,
     dueTime,
+    taskStatus,
     priority,
     showRecurrence,
     recType,

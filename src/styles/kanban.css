@@ -144,6 +144,11 @@
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
 }
 
+.kanban-column-dot--skip {
+  background: #94A3B8;
+  box-shadow: 0 0 8px rgba(148, 163, 184, 0.4);
+}
+
 .kanban-column-title {
   font-size: 0.9rem;
   font-weight: 700;
@@ -562,6 +567,16 @@
 
 .kanban-quick-btn--done:hover {
   background: rgba(16, 185, 129, 0.18);
+}
+
+.kanban-quick-btn--skip {
+  color: #64748B;
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.kanban-quick-btn--skip:hover {
+  background: rgba(148, 163, 184, 0.2);
 }
 
 /* Mobile Column Selector Tabs (desktop hidden) */

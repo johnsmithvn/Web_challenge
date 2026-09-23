@@ -3,6 +3,14 @@
 ## v6.16.0 — 2026-09-02
 
 ### Added
+- **Nâng cấp Bảng Kanban 4 Cột & Đưa Nhiệm Vụ làm trung tâm (`TaskKanbanView.jsx`, `TasksPage.jsx`, `useUserTasks.js`, `kanban.css`):**
+  - **Bổ sung cột Skip (Bỏ qua / Tạm gác)**: Mở rộng Kanban thành 4 cột (*To Do* - *Doing* - *Done* - *Skip*), hỗ trợ kéo thả và nút di chuyển 1-tap chuyển trạng thái giữa tất cả các cột.
+  - **Tạo task đúng cột**: Nút `+` trên header từng cột (To Do, Doing, Skip) truyền chính xác trạng thái cột tương ứng khi mở form tạo việc mới, không còn bị mặc định về To Do.
+  - **Dọn dẹp hệ thống & định tuyến tinh gọn**: Gỡ bỏ Inbox khỏi thanh điều hướng chính, chuyển hướng `/inbox` sang `/tasks`; tái định tuyến nút nổi `QuickCapture` (`[+]`) để nạp thẳng việc cần làm vào cột To Do của Task.
+
+### Fixed
+- **Sửa lỗi gắn Tag trên Task mới (`TaskCreateModal.jsx`):**
+  - Sửa lỗi mapping biến `tags` và kết nối hàm `linkTaskTag` từ hook `taskModel`, khắc phục triệt để lỗi không chọn được tag hoặc tạo xong task không hiển thị tag.
 - **Chế độ xem Bảng Kanban 3 Cột (To Do - Doing - Done), Kéo thả, Default View & Mobile Responsive (`TasksPage.jsx`, `TaskKanbanView.jsx`, `kanban.css`):**
   - **Mặc định mở Bảng Kanban**: Đặt Kanban làm chế độ xem mặc định khi người dùng truy cập phân hệ Nhiệm vụ (`/tasks`).
   - **Trải nghiệm Responsive tối ưu trên Mobile (≤ 768px)**:

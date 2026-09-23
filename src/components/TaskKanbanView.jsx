@@ -104,10 +104,11 @@ export default function TaskKanbanView({
     return () => { stale = true; };
   }, [timeFilter, customFrom, customTo, today, sevenDaysLater, getCompletedTasksRange]);
 
-  // Phân loại task vào 3 cột dựa trên status, completed và timeFilter
-  const { todoList, doingList, doneList } = useMemo(() => {
+  // Phân loại task vào 4 cột dựa trên status, completed và timeFilter
+  const { todoList, doingList, doneList, skipList } = useMemo(() => {
     const todo = [];
     const doing = [];
+    const skip = [];
     const doneMap = new Map();
 
     // Thêm các task completed từ range vào map Done
@@ -133,6 +134,8 @@ export default function TaskKanbanView({
         doneMap.set(task.id, task);
       } else if (task.status === 'doing') {
         doing.push(task);
+      } else if (task.status === 'skip') {
+        skip.push(task);
       } else {
         todo.push(task);
       }
@@ -148,9 +151,10 @@ export default function TaskKanbanView({
 
     todo.sort(sortFn);
     doing.sort(sortFn);
+    skip.sort(sortFn);
     done.sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
 
-    return { todoList: todo, doingList: doing, doneList: done };
+    return { todoList: todo, doingList: doing, doneList: done, skipList: skip };
   }, [pendingTasks, completedRangeTasks, timeFilter, today, sevenDaysLater, customFrom, customTo]);
 
   // Xóa an toàn qua Confirm Modal
@@ -225,10 +229,16 @@ export default function TaskKanbanView({
       } else if (task.status !== 'doing') {
         await updateTask(taskId, { status: 'doing' });
       }
+    } else if (targetColKey === 'skip') {
+      if (task.completed) {
+        await uncompleteTask(taskId, 'skip');
+      } else if (task.status !== 'skip') {
+        await updateTask(taskId, { status: 'skip' });
+      }
     } else if (targetColKey === 'todo') {
       if (task.completed) {
         await uncompleteTask(taskId, 'todo');
-      } else if (task.status === 'doing') {
+      } else if (task.status !== 'todo') {
         await updateTask(taskId, { status: 'todo' });
       }
     }
@@ -426,35 +436,89 @@ export default function TaskKanbanView({
 
         {/* Quick Column Move Buttons (Rất hữu ích cho Mobile & 1-tap UX) */}
         <div className="kanban-card-quick-move" onClick={(e) => e.stopPropagation()}>
-          {!isCompleted && task.status !== 'doing' && (
-            <button
-              type="button"
-              className="kanban-quick-btn kanban-quick-btn--doing"
-              onClick={async () => await updateTask(task.id, { status: 'doing' })}
-              title="Chuyển sang Doing"
-            >
-              Sang Doing →
-            </button>
+          {!isCompleted && task.status === 'skip' && (
+            <>
+              <button
+                type="button"
+                className="kanban-quick-btn kanban-quick-btn--todo"
+                onClick={async () => await updateTask(task.id, { status: 'todo' })}
+                title="Khôi phục về To Do"
+              >
+                ← Về To Do
+              </button>
+              <button
+                type="button"
+                className="kanban-quick-btn kanban-quick-btn--doing"
+                onClick={async () => await updateTask(task.id, { status: 'doing' })}
+                title="Chuyển sang Doing"
+              >
+                Sang Doing →
+              </button>
+              <button
+                type="button"
+                className="kanban-quick-btn kanban-quick-btn--done"
+                onClick={async () => await completeTask(task.id)}
+                title="Đánh dấu đã xong"
+              >
+                Xong ✓
+              </button>
+            </>
+          )}
+          {!isCompleted && task.status !== 'doing' && task.status !== 'skip' && (
+            <>
+              <button
+                type="button"
+                className="kanban-quick-btn kanban-quick-btn--doing"
+                onClick={async () => await updateTask(task.id, { status: 'doing' })}
+                title="Chuyển sang Doing"
+              >
+                Sang Doing →
+              </button>
+              <button
+                type="button"
+                className="kanban-quick-btn kanban-quick-btn--done"
+                onClick={async () => await completeTask(task.id)}
+                title="Đánh dấu đã xong"
+              >
+                Xong ✓
+              </button>
+              <button
+                type="button"
+                className="kanban-quick-btn kanban-quick-btn--skip"
+                onClick={async () => await updateTask(task.id, { status: 'skip' })}
+                title="Tạm gác / Bỏ qua"
+              >
+                Bỏ qua
+              </button>
+            </>
           )}
           {!isCompleted && task.status === 'doing' && (
-            <button
-              type="button"
-              className="kanban-quick-btn kanban-quick-btn--todo"
-              onClick={async () => await updateTask(task.id, { status: 'todo' })}
-              title="Chuyển về To Do"
-            >
-              ← Về To Do
-            </button>
-          )}
-          {!isCompleted && (
-            <button
-              type="button"
-              className="kanban-quick-btn kanban-quick-btn--done"
-              onClick={async () => await completeTask(task.id)}
-              title="Đánh dấu đã xong"
-            >
-              Xong ✓
-            </button>
+            <>
+              <button
+                type="button"
+                className="kanban-quick-btn kanban-quick-btn--todo"
+                onClick={async () => await updateTask(task.id, { status: 'todo' })}
+                title="Chuyển về To Do"
+              >
+                ← Về To Do
+              </button>
+              <button
+                type="button"
+                className="kanban-quick-btn kanban-quick-btn--done"
+                onClick={async () => await completeTask(task.id)}
+                title="Đánh dấu đã xong"
+              >
+                Xong ✓
+              </button>
+              <button
+                type="button"
+                className="kanban-quick-btn kanban-quick-btn--skip"
+                onClick={async () => await updateTask(task.id, { status: 'skip' })}
+                title="Tạm gác / Bỏ qua"
+              >
+                Bỏ qua
+              </button>
+            </>
           )}
           {isCompleted && (
             <>
@@ -502,6 +566,13 @@ export default function TaskKanbanView({
       shortTitle: 'Done',
       dotClass: 'kanban-column-dot--done',
       items: doneList,
+    },
+    {
+      key: 'skip',
+      title: 'Skip (Bỏ qua)',
+      shortTitle: 'Skip',
+      dotClass: 'kanban-column-dot--skip',
+      items: skipList,
     },
   ];
 
@@ -564,7 +635,7 @@ export default function TaskKanbanView({
         </div>
 
         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          Tổng cộng: <strong>{todoList.length + doingList.length + doneList.length}</strong> nhiệm vụ
+          Tổng cộng: <strong>{todoList.length + doingList.length + doneList.length + skipList.length}</strong> nhiệm vụ
         </div>
       </div>
 
@@ -608,7 +679,7 @@ export default function TaskKanbanView({
                   <button
                     type="button"
                     className="kanban-column-add-btn"
-                    onClick={() => onQuickCreate(today, '09:00')}
+                    onClick={() => onQuickCreate(today, '09:00', col.key)}
                     title={`Thêm việc vào ${col.title}`}
                   >
                     <AppIcon name="plus" size={14} />

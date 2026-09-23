@@ -67,7 +67,7 @@ function AppShell() {
             <div className="page-transition" key={location.pathname}>
               <Routes>
                 <Route path="/"             element={<LandingPage />} />
-                <Route path="/inbox"        element={<InboxPage />} />
+                <Route path="/inbox"        element={<Navigate to="/tasks" replace />} />
                 <Route path="/tasks"        element={<TasksPage />} />
                 <Route path="/collect"      element={<CollectPage />} />
                 <Route path="/finance"          element={<FinancePage />} />

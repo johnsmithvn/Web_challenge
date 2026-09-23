@@ -124,7 +124,8 @@ export function useUserTasks() {
 
   // ── Add task ───────────────────────────────────────────
   // Knowledge links are created separately through task_collections/linkCollection.
-  const addTask = useCallback(async ({ title, description, dueDate, dueTime, priority, recurrenceRule, completed, completedAt }) => {
+  const addTask = useCallback(async ({ title, description, dueDate, dueTime, priority, recurrenceRule, completed, completedAt, status }) => {
+    const taskStatus = status || (completed ? 'done' : 'todo');
     const newTask = {
       id: crypto.randomUUID ? crypto.randomUUID() : `local_${Date.now()}`,
       user_id: userId,
@@ -136,6 +137,7 @@ export function useUserTasks() {
       recurrence_rule: recurrenceRule || null,
       completed: completed || false,
       completed_at: completedAt || null,
+      status: taskStatus,
       notified: false,
       created_at: new Date().toISOString(),
     };
@@ -146,11 +148,22 @@ export function useUserTasks() {
     if (isAuth) {
       try {
         const { id, user_id, ...rest } = newTask;
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from('user_tasks')
           .insert({ ...rest, user_id: userId })
           .select()
           .single();
+
+        if (error && error.message?.includes('status')) {
+          const { status: _s, ...restWithoutStatus } = rest;
+          const fallbackRes = await supabase
+            .from('user_tasks')
+            .insert({ ...restWithoutStatus, user_id: userId })
+            .select()
+            .single();
+          data = fallbackRes.data;
+          error = fallbackRes.error;
+        }
 
         if (error) {
           logger.error('[useUserTasks] add error:', error.message);
@@ -395,7 +408,7 @@ export function useUserTasks() {
   // hơn nếu chính occurrence đó cũng đã hoàn thành và sinh tiếp.
   const uncompleteTask = useCallback(async (taskId, targetStatus = 'todo') => {
     const backup = tasks.find(t => t.id === taskId);
-    const nextStatus = targetStatus === 'doing' ? 'doing' : 'todo';
+    const nextStatus = ['doing', 'skip'].includes(targetStatus) ? targetStatus : 'todo';
 
     // Optimistic
     setTasks(prev => prev.map(t =>
