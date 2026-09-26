@@ -18,12 +18,12 @@
 // Dời ra đây để TaskDetailModal dùng lại mà không phải import ngược
 // TaskListSection (vòng tròn import — vỡ với Vite HMR).
 export const PRIORITY_OPTIONS = [
-  { value: 0, label: 'Không', icon: 'minus', color: 'var(--text-muted)' },
-  { value: 1, label: 'Rất thấp', icon: 'arrowDown', color: '#94a3b8' },
-  { value: 2, label: 'Thấp', icon: 'arrowDown', color: '#60a5fa' },
-  { value: 3, label: 'Trung bình', icon: 'arrowRight', color: '#eab308' },
-  { value: 4, label: 'Cao', icon: 'arrowUp', color: '#f97316' },
-  { value: 5, label: 'Khẩn cấp', icon: 'fire', color: '#ef4444' },
+  { value: 0, label: 'None', icon: 'minus', color: 'var(--text-muted)' },
+  { value: 1, label: 'Lowest', icon: 'arrowDown', color: '#94a3b8' },
+  { value: 2, label: 'Low', icon: 'arrowDown', color: '#3b82f6' },
+  { value: 3, label: 'Medium', icon: 'arrowRight', color: '#eab308' },
+  { value: 4, label: 'High', icon: 'arrowUp', color: '#f97316' },
+  { value: 5, label: 'Urgent', icon: 'fire', color: '#ef4444' },
 ];
 
 /** Index = Date.getDay() (0 = Chủ Nhật), khớp `recurrence_rule.weekday`. */

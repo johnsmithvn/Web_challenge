@@ -338,8 +338,8 @@ assert.equal(describeRecurrence('invalid-json'), 'invalid-json', 'JSON lỗi tr�
 // 6.4 formatTaskFieldValue
 assert.equal(formatTaskFieldValue('due_date', '2026-08-15'), '15/08/2026', 'format ngày Việt Nam');
 assert.equal(formatTaskFieldValue('due_time', '08:30:00'), '08:30');
-assert.equal(formatTaskFieldValue('priority', 5), 'Khẩn cấp');
-assert.equal(formatTaskFieldValue('priority', 0), 'Không');
+assert.equal(formatTaskFieldValue('priority', 5), 'Urgent');
+assert.equal(formatTaskFieldValue('priority', 0), 'None');
 assert.equal(formatTaskFieldValue('completed', 'true'), 'Đã hoàn thành');
 assert.equal(formatTaskFieldValue('completed', 'false'), 'Chưa hoàn thành');
 assert.equal(formatTaskFieldValue('description', null), 'trống');
