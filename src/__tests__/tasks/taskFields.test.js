@@ -132,8 +132,8 @@ assert.equal(formatTaskFieldValue('due_date', null), 'trống');
 // Ở GMT+7, parse 'yyyy-MM-dd' trần sẽ ra ngày 04 — phải giữ đúng 05
 assert.equal(formatTaskFieldValue('due_date', '2026-08-05'), '05/08/2026');
 assert.equal(formatTaskFieldValue('due_time', '14:30:00'), '14:30');
-assert.equal(formatTaskFieldValue('priority', '0'), 'Không');
-assert.equal(formatTaskFieldValue('priority', '4'), 'Cao');
+assert.equal(formatTaskFieldValue('priority', '0'), 'None');
+assert.equal(formatTaskFieldValue('priority', '4'), 'High');
 assert.equal(formatTaskFieldValue('completed', 'true'), 'Đã hoàn thành');
 assert.equal(formatTaskFieldValue('completed', 'false'), 'Chưa hoàn thành');
 assert.equal(formatTaskFieldValue('title', 'Xin chào'), 'Xin chào');

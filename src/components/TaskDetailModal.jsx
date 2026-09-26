@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import GenericModal from './GenericModal';
 import AppIcon from './AppIcon';
+import PriorityPicker from './PriorityPicker';
 import { useConfirm } from './ConfirmModal';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
@@ -54,7 +55,7 @@ function LogValue({ value, variant, expanded, onToggle }) {
   );
 }
 
-export default function TaskDetailModal({ task, onClose, onEdit, editContent, onComplete, onDelete }) {
+export default function TaskDetailModal({ task, onClose, onEdit, editContent, onComplete, onDelete, onUpdatePriority }) {
   const { user } = useAuth();
   const { confirm, ConfirmModal } = useConfirm();
   const { getTaskLogs, addNote, updateNote, deleteLog } = useActivityLog();
@@ -200,10 +201,12 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
                 {overdue && <span className="td-pill td-pill--overdue">Quá hạn</span>}
               </>
             ))}
-            {row('Độ ưu tiên', pri && (
-              task.priority > 0
-                ? <span className="td-pill" style={{ background: `${pri.color}1f`, color: pri.color }}><AppIcon name={pri.icon} size={13} /> {pri.label}</span>
-                : <span className="td-muted">Không</span>
+            {row('Độ ưu tiên', (
+              <PriorityPicker
+                value={task.priority}
+                onChange={onUpdatePriority ? onUpdatePriority : undefined}
+                disabled={!onUpdatePriority}
+              />
             ))}
             {row('Lặp lại', task.recurrence_rule !== undefined && (
               task.recurrence_rule

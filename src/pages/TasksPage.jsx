@@ -8,6 +8,7 @@ import TaskDetailModal from '../components/TaskDetailModal';
 import TaskCreateModal from '../components/TaskCreateModal';
 import CalendarToolbar from '../components/CalendarToolbar';
 import DatePickerPopover from '../components/DatePickerPopover';
+import PriorityPicker from '../components/PriorityPicker';
 import TagPicker from '../components/TagPicker';
 import { PRIORITY_OPTIONS, WEEKDAYS } from '../utils/taskFields';
 import { toDateStr } from '../utils/dateUtils';
@@ -147,27 +148,10 @@ function TaskEditForm({ task, onSave, onCancel, allTags, addTag }) {
         <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>
           Độ ưu tiên
         </label>
-        <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-          {PRIORITY_OPTIONS.filter((o) => o.value > 0).map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setEditPriority(editPriority === opt.value ? 0 : opt.value)}
-              className={`task-option-btn ${editPriority === opt.value ? 'active' : ''}`}
-              style={
-                editPriority === opt.value
-                  ? {
-                      background: `${opt.color}20`,
-                      borderColor: `${opt.color}60`,
-                      color: opt.color,
-                    }
-                  : {}
-              }
-            >
-              <AppIcon name={opt.icon} size={14} /> {opt.label}
-            </button>
-          ))}
-        </div>
+        <PriorityPicker
+          value={editPriority}
+          onChange={setEditPriority}
+        />
       </div>
 
       {/* Recurrence toggle */}
@@ -610,6 +594,10 @@ export default function TasksPage() {
           onDelete={async (task) => {
             await deleteTask(task.id);
             handleCloseSelectedModal();
+          }}
+          onUpdatePriority={async (newPri) => {
+            await updateTask(selectedTask.id, { priority: newPri });
+            setSelectedTask((prev) => (prev ? { ...prev, priority: newPri } : prev));
           }}
         />
       )}

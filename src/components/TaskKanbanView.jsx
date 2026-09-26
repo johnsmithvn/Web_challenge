@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import AppIcon from './AppIcon';
 import DatePickerPopover from './DatePickerPopover';
+import PriorityPicker from './PriorityPicker';
 import { useConfirm } from './ConfirmModal';
 import UI_STRINGS from '../data/ui-strings.json';
 import { toDateStr } from '../utils/dateUtils';
@@ -308,18 +309,15 @@ export default function TaskKanbanView({
               </span>
             )}
 
-            {priorityOpt && priorityOpt.value > 0 && (
-              <span
-                className="kanban-priority-badge"
-                style={{
-                  background: `${priorityOpt.color}15`,
-                  color: priorityOpt.color,
-                  border: `1px solid ${priorityOpt.color}35`,
-                }}
-              >
-                <AppIcon name={priorityOpt.icon} size={11} /> {priorityOpt.label}
-              </span>
-            )}
+            <PriorityPicker
+              value={task.priority}
+              compact={true}
+              onChange={async (newPri) => {
+                if (updateTask) {
+                  await updateTask(task.id, { priority: newPri });
+                }
+              }}
+            />
           </div>
 
           {/* Quick Action buttons */}

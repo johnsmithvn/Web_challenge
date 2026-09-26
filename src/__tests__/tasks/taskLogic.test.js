@@ -370,8 +370,8 @@ assert.equal(actRemove.text, 'Xoá Hạn chót');
 
 const actChange = describeActivity({ action: ACTIONS.TASK_UPDATE, field: 'priority', old_value: '1', new_value: '4' });
 assert.equal(actChange.text, 'Đổi Độ ưu tiên');
-assert.equal(actChange.oldText, 'Rất thấp');
-assert.equal(actChange.newText, 'Cao');
+assert.equal(actChange.oldText, 'Lowest');
+assert.equal(actChange.newText, 'High');
 
 // Fallback action lạ
 assert.equal(describeActivity({ action: 'unknown_custom_action' }).text, 'unknown_custom_action');

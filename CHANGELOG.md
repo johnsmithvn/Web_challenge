@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v6.16.3 — 2026-09-26
+
+### Added
+- **Tái thiết kế Độ ưu tiên (Priority) phong cách Linear/ClickUp (`PriorityPicker.jsx`, `priority-picker.css`, `taskFields.js`):**
+  - **Tên tiếng Anh chuẩn hóa**: Chuyển nhãn độ ưu tiên sang tiếng Anh gồm `Urgent` (5 - Đỏ), `High` (4 - Cam), `Medium` (3 - Vàng), `Low` (2 - Xanh dương), `Lowest` (1 - Xám xanh), `None` (0 - Mờ), đồng thời giữ nguyên thang giá trị số nguyên `0..5` trong DB đảm bảo tương thích tuyệt đối với queries và sắp xếp multi-criteria.
+  - **Component `PriorityPicker`**: Dropdown popover badge pill nhỏ gọn, hỗ trợ tìm kiếm nhanh, phím tắt Escape, đóng khi click ngoài, cùng bảng màu highlight tinh tế thích ứng cả dark mode và light mode.
+  - **Đổi nhanh 1-click ở mọi nơi**: Tích hợp picker trực tiếp trên thẻ Kanban (`TaskKanbanView.jsx`), danh sách nhiệm vụ (`TaskListSection.jsx`), form tạo nhanh (`TaskCreateModal.jsx`), modal chi tiết (`TaskDetailModal.jsx`) và form chỉnh sửa (`TasksPage.jsx`).
+
 ## v6.16.2 — 2026-09-26
 
 ### Changed

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useTags } from '../hooks/useTags';
 import DatePickerPopover from './DatePickerPopover';
+import PriorityPicker from './PriorityPicker';
 import TagPicker from './TagPicker';
 import { PRIORITY_OPTIONS, WEEKDAYS } from '../utils/taskFields';
 import { toDateStr } from '../utils/dateUtils';
@@ -224,28 +225,10 @@ export default function TaskCreateModal({
             <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 600 }}>
               Độ ưu tiên
             </label>
-            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-              {PRIORITY_OPTIONS.filter((o) => o.value > 0).map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setPriority(priority === opt.value ? 0 : opt.value)}
-                  className={`task-option-btn ${priority === opt.value ? 'active' : ''}`}
-                  style={
-                    priority === opt.value
-                      ? {
-                          background: `${opt.color}22`,
-                          borderColor: opt.color,
-                          color: opt.color,
-                          fontWeight: 700,
-                        }
-                      : {}
-                  }
-                >
-                  <AppIcon name={opt.icon} size={14} /> {opt.label}
-                </button>
-              ))}
-            </div>
+            <PriorityPicker
+              value={priority}
+              onChange={setPriority}
+            />
           </div>
 
           {/* Lặp lại (Recurrence) */}

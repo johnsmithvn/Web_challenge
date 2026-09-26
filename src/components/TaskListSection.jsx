@@ -5,6 +5,7 @@ import { useCollections } from '../hooks/useCollections';
 import { useTags } from '../hooks/useTags';
 import LinkKBModal from './LinkKBModal';
 import DatePickerPopover from './DatePickerPopover';
+import PriorityPicker from './PriorityPicker';
 import TagPicker from './TagPicker';
 import TaskDetailModal from './TaskDetailModal';
 import { useConfirm } from './ConfirmModal';
@@ -357,19 +358,10 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
             {/* Priority */}
             <div>
               <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Độ ưu tiên</label>
-              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                {PRIORITY_OPTIONS.filter(o => o.value > 0).map(opt => (
-                  <button key={opt.value} type="button"
-                    onClick={() => setEditPriority(editPriority === opt.value ? 0 : opt.value)}
-                    className={`task-option-btn ${editPriority === opt.value ? 'active' : ''}`}
-                    style={editPriority === opt.value ? {
-                      background: `${opt.color}20`,
-                      borderColor: `${opt.color}60`,
-                      color: opt.color,
-                    } : {}}><AppIcon name={opt.icon} size={14} /> {opt.label}
-                  </button>
-                ))}
-              </div>
+              <PriorityPicker
+                value={editPriority}
+                onChange={setEditPriority}
+              />
             </div>
 
             {/* Recurrence toggle */}
@@ -517,14 +509,13 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
                     background: 'rgba(6,182,212,0.1)', color: '#22d3ee',
                   }}><AppIcon name="refresh" size={12} weight="bold" /> {task.recurrence_rule.type === 'interval' ? `${task.recurrence_rule.days}d` : task.recurrence_rule.type === 'weekly' ? WEEKDAYS[task.recurrence_rule.weekday] : `D${task.recurrence_rule.day}`}</span>
                 )}
-                {task.priority > 0 && (() => {
-                  const p = PRIORITY_OPTIONS.find(o => o.value === task.priority);
-                  return p ? (
-                    <span className="task-chip" style={{ background: `${p.color}18`, color: p.color }}>
-                      <AppIcon name={p.icon} size={12} weight="bold" /> {p.label}
-                    </span>
-                  ) : null;
-                })()}
+                <PriorityPicker
+                  value={task.priority}
+                  compact={true}
+                  onChange={async (newPri) => {
+                    await updateTask(task.id, { priority: newPri });
+                  }}
+                />
                 {(task._collections || []).length > 0 && (
                   <span className="task-chip"
                     onClick={(e) => { e.stopPropagation(); navigate('/collect'); }}
@@ -665,20 +656,10 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
           {/* ── Priority ── */}
           <div>
             <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Độ ưu tiên</label>
-            <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-              {PRIORITY_OPTIONS.filter(o => o.value > 0).map(opt => (
-                <button key={opt.value} type="button"
-                  onClick={() => setPriority(priority === opt.value ? 0 : opt.value)}
-                  className={`task-option-btn ${priority === opt.value ? 'active' : ''}`}
-                  style={priority === opt.value ? {
-                    background: `${opt.color}20`,
-                    borderColor: `${opt.color}60`,
-                    color: opt.color,
-                  } : {}}>
-                  <AppIcon name={opt.icon} size={14} /> {opt.label}
-                </button>
-              ))}
-            </div>
+            <PriorityPicker
+              value={priority}
+              onChange={setPriority}
+            />
           </div>
 
           {/* ── Tags ── */}
@@ -931,6 +912,9 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
             editContent={editId === task.id ? renderTask(task, { insideDetail: true }) : null}
             onComplete={handleComplete}
             onDelete={task.completed ? handleDeleteCompleted : handleDeleteTask}
+            onUpdatePriority={async (newPri) => {
+              await updateTask(task.id, { priority: newPri });
+            }}
           />
         );
       })()}
