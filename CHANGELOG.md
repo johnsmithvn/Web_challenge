@@ -12,6 +12,11 @@
   - **Nút "+ Thêm việc mới..." ở đáy cột**: Tương tự Trello, dưới cùng mỗi danh sách thẻ luôn có nút bấm tạo việc tiện lợi và trực quan.
   - **Chuẩn hóa thời hạn & ô mô tả**: Sửa giờ mặc định khi tạo mới thành 23:59 (cuối ngày) tránh báo đỏ Quá hạn oan lúc 9h sáng; tăng kích thước ô mô tả/ghi chú rộng rãi gấp đôi.
 
+### Changed
+- **Giao diện Task Hoàn Thành (`kanban.css`, `task-detail.css`, `week-calendar.css`, `calendar.css`):**
+  - **Bỏ gạch ngang (line-through)**: Tiêu đề công việc đã hoàn thành không còn bị gạch bỏ và làm mờ xám.
+  - **Highlight màu xanh lá (Green)**: Tiêu đề chuyển sang màu xanh lá `#10B981` (hoặc `#059669` ở Light mode) rõ nét, dễ đọc và đẹp mắt trên toàn bộ thẻ Kanban, Lịch tuần, Lịch tháng và Modal chi tiết.
+
 ## v6.16.2 — 2026-09-26
 
 ### Changed

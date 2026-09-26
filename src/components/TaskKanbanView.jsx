@@ -158,7 +158,37 @@ export default function TaskKanbanView({
     return { todoList: todo, doingList: doing, doneList: done, skipList: skip };
   }, [pendingTasks, completedRangeTasks, timeFilter, today, sevenDaysLater, customFrom, customTo]);
 
-  // Xóa an toàn qua Confirm Modal
+  // Xử lý Hoàn thành Task (Optimistic)
+  const handleCompleteTask = useCallback(async (task) => {
+    const now = new Date().toISOString();
+    const completedItem = { ...task, completed: true, completed_at: now, status: 'done' };
+    setCompletedRangeTasks((prev) => [completedItem, ...prev.filter((t) => t.id !== task.id)]);
+
+    const ok = await completeTask(task.id, now);
+    if (!ok) {
+      setCompletedRangeTasks((prev) => prev.filter((t) => t.id !== task.id));
+    }
+  }, [completeTask]);
+
+  // Xử lý Bỏ hoàn thành Task (Optimistic)
+  const handleUncompleteTask = useCallback(async (task, targetStatus = 'todo') => {
+    setCompletedRangeTasks((prev) => prev.filter((t) => t.id !== task.id));
+
+    const ok = await uncompleteTask(task.id, targetStatus);
+    if (!ok) {
+      setCompletedRangeTasks((prev) => [...prev, task]);
+    }
+  }, [uncompleteTask]);
+
+  // Xử lý Cập nhật Task (Optimistic)
+  const handleUpdateTask = useCallback(async (taskId, changes) => {
+    setCompletedRangeTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, ...changes } : t))
+    );
+    await updateTask(taskId, changes);
+  }, [updateTask]);
+
+  // Xóa an toàn qua Confirm Modal (Optimistic)
   const confirmDeleteTask = useCallback((task) => {
     const cfg = UI_STRINGS.confirm.deleteTask;
     return confirm({ ...cfg, message: cfg.message.replace('{name}', task.title) });
@@ -167,7 +197,15 @@ export default function TaskKanbanView({
   const handleDeleteTaskClick = useCallback(async (e, task) => {
     e.stopPropagation();
     if (!(await confirmDeleteTask(task))) return;
-    await deleteTask(task.id);
+
+    // Optimistic xóa ngay tức thì khỏi state giao diện
+    setCompletedRangeTasks((prev) => prev.filter((t) => t.id !== task.id));
+
+    const ok = await deleteTask(task.id);
+    if (!ok) {
+      // Rollback nếu API xóa thất bại
+      setCompletedRangeTasks((prev) => [...prev, task]);
+    }
   }, [confirmDeleteTask, deleteTask]);
 
   // Toggle expand subtasks
@@ -222,29 +260,29 @@ export default function TaskKanbanView({
 
     if (targetColKey === 'done') {
       if (!task.completed) {
-        await completeTask(taskId);
+        await handleCompleteTask(task);
       }
     } else if (targetColKey === 'doing') {
       if (task.completed) {
-        await uncompleteTask(taskId, 'doing');
+        await handleUncompleteTask(task, 'doing');
       } else if (task.status !== 'doing') {
-        await updateTask(taskId, { status: 'doing' });
+        await handleUpdateTask(taskId, { status: 'doing' });
       }
     } else if (targetColKey === 'skip') {
       if (task.completed) {
-        await uncompleteTask(taskId, 'skip');
+        await handleUncompleteTask(task, 'skip');
       } else if (task.status !== 'skip') {
-        await updateTask(taskId, { status: 'skip' });
+        await handleUpdateTask(taskId, { status: 'skip' });
       }
     } else if (targetColKey === 'todo') {
       if (task.completed) {
-        await uncompleteTask(taskId, 'todo');
+        await handleUncompleteTask(task, 'todo');
       } else if (task.status !== 'todo') {
-        await updateTask(taskId, { status: 'todo' });
+        await handleUpdateTask(taskId, { status: 'todo' });
       }
     }
     setDraggedTaskId(null);
-  }, [draggedTaskId, pendingTasks, completedRangeTasks, completeTask, uncompleteTask, updateTask]);
+  }, [draggedTaskId, pendingTasks, completedRangeTasks, handleCompleteTask, handleUncompleteTask, handleUpdateTask]);
 
   // Xử lý Double Click vào vùng trống của cột Kanban (Trello-style quick add)
   const handleColumnDoubleClick = useCallback((e, colKey) => {
@@ -323,9 +361,7 @@ export default function TaskKanbanView({
               value={task.priority}
               compact={true}
               onChange={async (newPri) => {
-                if (updateTask) {
-                  await updateTask(task.id, { priority: newPri });
-                }
+                await handleUpdateTask(task.id, { priority: newPri });
               }}
             />
           </div>
@@ -362,9 +398,9 @@ export default function TaskKanbanView({
             onClick={async (e) => {
               e.stopPropagation();
               if (isCompleted) {
-                await uncompleteTask(task.id, task.status || 'todo');
+                await handleUncompleteTask(task, task.status || 'todo');
               } else {
-                await completeTask(task.id);
+                await handleCompleteTask(task);
               }
             }}
             title={isCompleted ? 'Đánh dấu chưa xong' : 'Đánh dấu xong'}
@@ -477,7 +513,7 @@ export default function TaskKanbanView({
               <button
                 type="button"
                 className="kanban-quick-btn kanban-quick-btn--doing"
-                onClick={async () => await updateTask(task.id, { status: 'doing' })}
+                onClick={async () => await handleUpdateTask(task.id, { status: 'doing' })}
                 title="Chuyển sang Doing"
               >
                 Sang Doing →
@@ -485,7 +521,7 @@ export default function TaskKanbanView({
               <button
                 type="button"
                 className="kanban-quick-btn kanban-quick-btn--done"
-                onClick={async () => await completeTask(task.id)}
+                onClick={async () => await handleCompleteTask(task)}
                 title="Đánh dấu đã xong"
               >
                 Xong ✓
@@ -493,7 +529,7 @@ export default function TaskKanbanView({
               <button
                 type="button"
                 className="kanban-quick-btn kanban-quick-btn--skip"
-                onClick={async () => await updateTask(task.id, { status: 'skip' })}
+                onClick={async () => await handleUpdateTask(task.id, { status: 'skip' })}
                 title="Tạm gác / Bỏ qua"
               >
                 Bỏ qua
@@ -505,7 +541,7 @@ export default function TaskKanbanView({
               <button
                 type="button"
                 className="kanban-quick-btn kanban-quick-btn--todo"
-                onClick={async () => await updateTask(task.id, { status: 'todo' })}
+                onClick={async () => await handleUpdateTask(task.id, { status: 'todo' })}
                 title="Chuyển về To Do"
               >
                 ← Về To Do
@@ -513,7 +549,7 @@ export default function TaskKanbanView({
               <button
                 type="button"
                 className="kanban-quick-btn kanban-quick-btn--done"
-                onClick={async () => await completeTask(task.id)}
+                onClick={async () => await handleCompleteTask(task)}
                 title="Đánh dấu đã xong"
               >
                 Xong ✓
@@ -521,7 +557,7 @@ export default function TaskKanbanView({
               <button
                 type="button"
                 className="kanban-quick-btn kanban-quick-btn--skip"
-                onClick={async () => await updateTask(task.id, { status: 'skip' })}
+                onClick={async () => await handleUpdateTask(task.id, { status: 'skip' })}
                 title="Tạm gác / Bỏ qua"
               >
                 Bỏ qua
@@ -533,7 +569,7 @@ export default function TaskKanbanView({
               <button
                 type="button"
                 className="kanban-quick-btn kanban-quick-btn--todo"
-                onClick={async () => await uncompleteTask(task.id, 'todo')}
+                onClick={async () => await handleUncompleteTask(task, 'todo')}
                 title="Trả lại To Do"
               >
                 ↺ To Do
@@ -541,7 +577,7 @@ export default function TaskKanbanView({
               <button
                 type="button"
                 className="kanban-quick-btn kanban-quick-btn--doing"
-                onClick={async () => await uncompleteTask(task.id, 'doing')}
+                onClick={async () => await handleUncompleteTask(task, 'doing')}
                 title="Trả lại Doing"
               >
                 ↺ Doing
