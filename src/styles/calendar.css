@@ -248,7 +248,7 @@
 .cal-chip--done {
   background: #188038;
   color: #ffffff;
-  text-decoration: line-through;
+  text-decoration: none;
   opacity: 0.85;
 }
 

@@ -246,6 +246,16 @@ export default function TaskKanbanView({
     setDraggedTaskId(null);
   }, [draggedTaskId, pendingTasks, completedRangeTasks, completeTask, uncompleteTask, updateTask]);
 
+  // Xử lý Double Click vào vùng trống của cột Kanban (Trello-style quick add)
+  const handleColumnDoubleClick = useCallback((e, colKey) => {
+    if (e.target.closest('.kanban-card') || e.target.closest('button') || e.target.closest('input')) {
+      return;
+    }
+    if (onQuickCreate) {
+      onQuickCreate(today, '23:59', colKey);
+    }
+  }, [onQuickCreate, today]);
+
   // Render 1 Kanban Task Card
   const renderCard = (task) => {
     const isCompleted = Boolean(task.completed);
@@ -673,11 +683,11 @@ export default function TaskKanbanView({
                   <span className="kanban-column-badge">{col.items.length}</span>
                 </div>
 
-                {onQuickCreate && col.key !== 'done' && (
+                {onQuickCreate && (
                   <button
                     type="button"
                     className="kanban-column-add-btn"
-                    onClick={() => onQuickCreate(today, '09:00', col.key)}
+                    onClick={() => onQuickCreate(today, '23:59', col.key)}
                     title={`Thêm việc vào ${col.title}`}
                   >
                     <AppIcon name="plus" size={14} />
@@ -691,13 +701,33 @@ export default function TaskKanbanView({
                 onDragOver={(e) => handleDragOver(e, col.key)}
                 onDragLeave={(e) => handleDragLeave(e, col.key)}
                 onDrop={(e) => handleDrop(e, col.key)}
+                onDoubleClick={(e) => handleColumnDoubleClick(e, col.key)}
+                title="Nhấp đúp vào vùng trống để tạo nhanh công việc"
               >
                 {col.items.length === 0 ? (
-                  <div className="kanban-empty-state">
-                    <span>Kéo công việc thả vào đây</span>
+                  <div
+                    className="kanban-empty-state"
+                    onClick={() => onQuickCreate && onQuickCreate(today, '23:59', col.key)}
+                    title="Bấm hoặc nhấp đúp để tạo công việc mới"
+                  >
+                    <AppIcon name="plusCircle" size={18} style={{ marginBottom: '0.3rem', opacity: 0.6 }} />
+                    <span>Nhấp đúp hoặc bấm để thêm việc</span>
                   </div>
                 ) : (
-                  col.items.map(renderCard)
+                  <>
+                    {col.items.map(renderCard)}
+                    {onQuickCreate && (
+                      <button
+                        type="button"
+                        className="kanban-quick-add-bottom"
+                        onClick={() => onQuickCreate(today, '23:59', col.key)}
+                        title={`Thêm việc vào ${col.title}`}
+                      >
+                        <AppIcon name="plus" size={13} />
+                        <span>Thêm việc mới...</span>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

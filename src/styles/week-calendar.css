@@ -430,8 +430,8 @@
 .week-cal__chip-allday--done {
   background: #188038;
   color: #ffffff;
-  text-decoration: line-through;
-  opacity: 0.85;
+  text-decoration: none;
+  opacity: 0.9;
 }
 
 .week-cal__chip-allday--p5,
@@ -585,8 +585,8 @@
   background: #188038 !important;
 }
 .week-cal__event--done .week-cal__event-title {
-  text-decoration: line-through;
-  opacity: 0.9;
+  text-decoration: none;
+  opacity: 0.95;
 }
 
 /* 3. TASK BÌNH THƯỜNG — XANH DƯƠNG GOOGLE CYAN / PEACOCK */

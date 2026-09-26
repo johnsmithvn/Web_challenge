@@ -26,7 +26,7 @@ export default function TaskCreateModal({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState(initialDate || toDateStr());
-  const [dueTime, setDueTime] = useState(initialTime || '09:00');
+  const [dueTime, setDueTime] = useState(initialTime || '23:59');
   const [taskStatus, setTaskStatus] = useState(initialStatus || 'todo');
   const [priority, setPriority] = useState(0);
   const [tagIds, setTagIds] = useState([]);
@@ -47,7 +47,7 @@ export default function TaskCreateModal({
       setTitle('');
       setDescription('');
       setDueDate(initialDate || toDateStr());
-      setDueTime(initialTime || '09:00');
+      setDueTime(initialTime || '23:59');
       setTaskStatus(initialStatus || 'todo');
       setPriority(0);
       setTagIds([]);
@@ -74,10 +74,12 @@ export default function TaskCreateModal({
         title: title.trim(),
         description: description.trim() || null,
         dueDate: dueDate || toDateStr(),
-        dueTime: dueTime || '09:00',
+        dueTime: dueTime || '23:59',
         priority,
         recurrenceRule,
         status: taskStatus || 'todo',
+        completed: taskStatus === 'done',
+        completedAt: taskStatus === 'done' ? new Date().toISOString() : null,
       });
 
       if (created && tagIds.length > 0 && linkTaskTag) {
@@ -173,15 +175,15 @@ export default function TaskCreateModal({
             />
           </div>
 
-          {/* Mô tả chi tiết */}
+          {/* Mô tả chi tiết (phóng to rộng rãi dễ nhìn) */}
           <div>
             <textarea
               className="auth-input task-desc-input"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={2}
+              rows={4}
               placeholder="Thêm mô tả hoặc ghi chú..."
-              style={{ fontSize: '0.84rem' }}
+              style={{ fontSize: '0.86rem', minHeight: '88px', resize: 'vertical', lineHeight: '1.45' }}
             />
           </div>
 
@@ -204,7 +206,7 @@ export default function TaskCreateModal({
                 <>
                   <span>·</span>
                   <AppIcon name="clock" size={14} />
-                  <span>{dueTime}</span>
+                  <span>{dueTime === '23:59' ? '23:59 (Hết ngày)' : dueTime}</span>
                 </>
               )}
             </button>

@@ -56,8 +56,12 @@
 }
 
 .td-title--done {
-  text-decoration: line-through;
-  color: var(--text-secondary);
+  text-decoration: none;
+  color: #10B981;
+}
+
+[data-theme="light"] .td-title--done {
+  color: #059669;
 }
 
 /* ── Lưới field chỉ đọc ──────────────────────────────────────────────── */

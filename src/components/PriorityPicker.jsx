@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import AppIcon from './AppIcon';
 import { PRIORITY_OPTIONS } from '../utils/taskFields';
 import '../styles/priority-picker.css';
 
 /**
  * PriorityPicker — Dropdown popover for selecting task priority (Linear/ClickUp style).
+ * Rendered via createPortal to prevent overflow clipping in modals and stacking context issues.
  *
  * Props:
  *   value        — number (0..5)
@@ -24,6 +26,9 @@ export default function PriorityPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [coords, setCoords] = useState(null);
+
+  const triggerRef = useRef(null);
   const popoverRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -31,11 +36,56 @@ export default function PriorityPicker({
     return PRIORITY_OPTIONS.find((o) => o.value === Number(value)) || PRIORITY_OPTIONS[0];
   }, [value]);
 
+  // Calculate coordinates for smart dropdown / dropup
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const POPOVER_WIDTH = 205;
+    const POPOVER_HEIGHT = 265;
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    // If not enough space below (< 265px) and above has more space -> flip to dropup
+    const openUpward = spaceBelow < POPOVER_HEIGHT && spaceAbove > spaceBelow;
+
+    let top = openUpward
+      ? Math.max(8, rect.top - POPOVER_HEIGHT - 4)
+      : Math.min(window.innerHeight - POPOVER_HEIGHT - 8, rect.bottom + 4);
+
+    let left = align === 'right' ? rect.right - POPOVER_WIDTH : rect.left;
+    if (left + POPOVER_WIDTH > window.innerWidth - 10) {
+      left = window.innerWidth - POPOVER_WIDTH - 10;
+    }
+    if (left < 10) left = 10;
+
+    setCoords({ top, left, openUpward });
+  }, [align]);
+
+  // Reposition on scroll/resize when open
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+
+    const handleUpdate = () => updatePosition();
+    window.addEventListener('scroll', handleUpdate, true);
+    window.addEventListener('resize', handleUpdate);
+
+    return () => {
+      window.removeEventListener('scroll', handleUpdate, true);
+      window.removeEventListener('resize', handleUpdate);
+    };
+  }, [open, updatePosition]);
+
   // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target)
+      ) {
         setOpen(false);
       }
     };
@@ -73,29 +123,40 @@ export default function PriorityPicker({
   }, [search]);
 
   return (
-    <div
-      className="priority-picker"
-      ref={popoverRef}
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div className="priority-picker" onClick={(e) => e.stopPropagation()}>
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
-        className={`priority-badge-btn ${compact ? 'priority-badge-btn--compact' : ''}`}
+        className={`priority-badge-btn ${compact ? 'priority-badge-btn--compact' : ''} ${
+          currentOpt.value === 0 ? 'priority-badge-btn--none' : ''
+        }`}
         data-priority={currentOpt.value}
         onClick={(e) => {
           e.stopPropagation();
-          if (!disabled) setOpen((prev) => !prev);
+          if (!disabled) {
+            updatePosition();
+            setOpen((prev) => !prev);
+          }
         }}
         title={`Priority: ${currentOpt.label}`}
       >
-        <AppIcon name={currentOpt.icon} size={compact ? 12 : 14} weight="bold" />
-        <span>{currentOpt.value > 0 ? currentOpt.label : (compact ? 'Priority' : placeholder)}</span>
+        <AppIcon name={currentOpt.icon} size={compact ? 11 : 13} weight="bold" />
+        <span className="priority-badge-btn__text">
+          {currentOpt.value > 0 ? currentOpt.label : (compact ? 'None' : placeholder)}
+        </span>
       </button>
 
-      {open && (
+      {open && coords && createPortal(
         <div
-          className={`priority-popover ${align === 'right' ? 'priority-popover--right' : ''}`}
+          ref={popoverRef}
+          className={`priority-popover ${coords.openUpward ? 'priority-popover--upward' : ''}`}
+          style={{
+            position: 'fixed',
+            top: `${coords.top}px`,
+            left: `${coords.left}px`,
+            zIndex: 999999,
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="priority-popover__header">
@@ -104,6 +165,7 @@ export default function PriorityPicker({
               type="button"
               className="priority-popover__close-btn"
               onClick={() => setOpen(false)}
+              title="Close"
             >
               <AppIcon name="x" size={13} />
             </button>
@@ -159,7 +221,8 @@ export default function PriorityPicker({
               );
             })}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

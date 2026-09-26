@@ -215,13 +215,58 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2.5rem 1rem;
+  padding: 2rem 1rem;
   text-align: center;
   color: var(--text-muted, #9CA3AF);
-  font-size: 0.82rem;
-  border: 1px dashed var(--border-color, rgba(0, 0, 0, 0.1));
+  font-size: 0.8rem;
+  border: 1px dashed var(--border-color, rgba(0, 0, 0, 0.12));
   border-radius: var(--radius-md, 10px);
   background: rgba(0, 0, 0, 0.015);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.kanban-empty-state:hover {
+  background: rgba(139, 92, 246, 0.04);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: #8B5CF6;
+}
+
+/* Trello-style Quick Add Button at bottom of column */
+.kanban-quick-add-bottom {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px dashed var(--border-color, rgba(0, 0, 0, 0.1));
+  background: transparent;
+  color: var(--text-muted, #6B7280);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+  margin-top: 0.2rem;
+  user-select: none;
+}
+
+.kanban-quick-add-bottom:hover {
+  background: rgba(139, 92, 246, 0.08);
+  color: #8B5CF6;
+  border-color: rgba(139, 92, 246, 0.35);
+  border-style: solid;
+}
+
+[data-theme="dark"] .kanban-quick-add-bottom {
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #9CA3AF;
+}
+
+[data-theme="dark"] .kanban-quick-add-bottom:hover {
+  background: rgba(139, 92, 246, 0.15);
+  color: #A78BFA;
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 /* Kanban Task Card */
@@ -278,13 +323,18 @@
 }
 
 .kanban-card--done {
-  opacity: 0.85;
   border-left: 4px solid #10B981 !important;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, var(--surface-elevated, #FFFFFF) 100%);
 }
 
 .kanban-card--done .kanban-card-title {
-  text-decoration: line-through;
-  color: var(--text-muted, #9CA3AF);
+  text-decoration: none;
+  color: #10B981;
+  font-weight: 600;
+}
+
+[data-theme="light"] .kanban-card--done .kanban-card-title {
+  color: #059669;
 }
 
 /* Card Header: Badges & Actions */
@@ -392,14 +442,15 @@
 }
 
 .kanban-card-desc {
-  font-size: 0.78rem;
-  color: var(--text-muted, #6B7280);
-  line-height: 1.35;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #475569);
+  line-height: 1.4;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-left: 1.55rem;
+  white-space: pre-line;
 }
 
 /* Subtasks inline checklist */
