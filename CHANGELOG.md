@@ -17,6 +17,11 @@
   - **Bỏ gạch ngang (line-through)**: Tiêu đề công việc đã hoàn thành không còn bị gạch bỏ và làm mờ xám.
   - **Highlight màu xanh lá (Green)**: Tiêu đề chuyển sang màu xanh lá `#10B981` (hoặc `#059669` ở Light mode) rõ nét, dễ đọc và đẹp mắt trên toàn bộ thẻ Kanban, Lịch tuần, Lịch tháng và Modal chi tiết.
 
+### Fixed
+- **Bổ sung Optimistic Updates toàn diện cho Bảng Kanban (`TaskKanbanView.jsx`):**
+  - **Sửa lỗi xoá task nhưng vẫn hiển thị**: Trước đây các task đã hoàn thành được nạp vào state cục bộ `completedRangeTasks`. Khi bấm xoá, `deleteTask` chỉ lọc state `tasks` của hook mà bỏ quên `completedRangeTasks`, khiến task đã xoá vẫn hiển thị (phải tải lại trang mới biến mất).
+  - **Đồng bộ tức thì mọi thao tác**: Bổ sung cập nhật state tức thời (optimistic) cho cả xoá task, đánh dấu hoàn thành, bỏ hoàn thành (quay lại To Do / Doing), kéo thả chuyển cột và đổi độ ưu tiên.
+
 ## v6.16.2 — 2026-09-26
 
 ### Changed
