@@ -32,6 +32,7 @@ export function subLabel(subId, cats = CATS) {
     const sub = (group.subs || []).find(item => item.key === subId);
     if (sub) return sub.label;
   }
+  if (subId === 'family.parents') return 'Chi cho người thân';
   return null;
 }
 

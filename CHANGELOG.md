@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v6.16.2 — 2026-09-26
+
+### Changed
+- **Quy hoạch lại Danh mục & Danh mục con Finance (`finance-categories.json`, `parts.jsx`, `20260926010000_merge_family_parents_and_move_learning_to_personal.sql`):**
+  - **Gộp Chi cho bố mẹ vào Chi cho người thân**: Bỏ `family.parents`, gộp chung vào `family.helper` ("Chi cho người thân"). Thêm fallback an toàn trong `subLabel()`.
+  - **Chuyển Học tập sang Cá nhân**: Di chuyển 3 danh mục con `family.course` ("Khóa học"), `family.tuition` ("Học phí"), `family.books` ("Sách & tài liệu") từ nhóm *Gia đình* sang nhóm *Cá nhân & Giải trí* (`personal`).
+  - **Tinh gọn nhóm Gia đình**: Đổi tên nhóm `family` thành "Gia đình" với biểu tượng `users`.
+  - **Migration Database**: Tạo file migration SQL `20260926010000_merge_family_parents_and_move_learning_to_personal.sql` cập nhật các giao dịch cũ sang `family.helper` và nhóm `personal`.
+
 ## v6.16.1 — 2026-09-26
 
 ### Removed

@@ -1,6 +1,6 @@
 {
   "_note": "Danh muc Finance theo handoff Nocturne. Key la dinh danh ben, dung trong transaction/category override. Parent group dong; user chi sua ten, mau, icon, an/hien va danh muc con.",
-  "_movedSubs": "Sub co the DOI NHOM CHA ma GIU NGUYEN key (housing.internet/housing.mobile o nhom `subscription`, entertainment.party o `food`, shopping.* o `personal`, shopping.home o `family`). Key la dinh danh ben: doi key se lam MAT nhan cua giao dich/hoa don cu (subLabel tra null), nen key khong bat buoc trung tien to voi nhom dang chua no. Parent key `subscription` giu nguyen vi DB CHECK khoa tap key — nhan hien ra la 'Lien lac & Dich vu so'. Nhom cha `shopping` DA DOI KEY thanh `personal` va nhom `entertainment` DA BI XOA o v6.11.0 (migration_v6.11.0_finance_taxonomy.sql doi du lieu cu sang `personal`); sub key cua chung GIU NGUYEN tien to cu de khong mat nhan. Cac key da xoa khoi template mac dinh (food.delivery, entertainment.events, subscription.streaming, entertainment.hobby, health.gym, subscription.membership, subscription.learning, social.charity) van hop le trong giao dich cu va DB override.",
+  "_movedSubs": "Sub co the DOI NHOM CHA ma GIU NGUYEN key (housing.internet/housing.mobile o nhom `subscription`, entertainment.party o `food`, shopping.* o `personal`, shopping.home o `family`, family.course/family.tuition/family.books o `personal`). Key la dinh danh ben: doi key se lam MAT nhan cua giao dich/hoa don cu (subLabel tra null), nen key khong bat buoc trung tien to voi nhom dang chua no. Parent key `subscription` giu nguyen vi DB CHECK khoa tap key — nhan hien ra la 'Lien lac & Dich vu so'. Nhom cha `shopping` DA DOI KEY thanh `personal` va nhom `entertainment` DA BI XOA o v6.11.0 (migration_v6.11.0_finance_taxonomy.sql doi du lieu cu sang `personal`); sub key cua chung GIU NGUYEN tien to cu de khong mat nhan. Cac key da xoa khoi template mac dinh (food.delivery, entertainment.events, subscription.streaming, entertainment.hobby, health.gym, subscription.membership, subscription.learning, social.charity, family.parents) van hop le trong giao dich cu va DB override.",
   "_systemOnly":"Sub co `systemOnly: true` chi do RPC ghi (kem excluded=TRUE) nen KHONG hien o cac o chon luc GHI (AddScreen, sua giao dich, mau hoa don). Go tay se thanh mot khoan chi that va dem trung voi luc quet the / luc vay. Van hien o o LOC va o man Danh muc.",
   "_necessityLabels": "Nhãn hiển thị của must/want nằm ở NECESSITY_META trong src/components/finance/parts.jsx — MỘT nơi duy nhất. Trước v6.12 có 3 bậc (must/need/want); giờ chỉ còn 2 bậc: must (Phải trả) và want (Tùy chọn).",
   "necessityByCat": {
@@ -37,6 +37,9 @@
       { "key": "shopping.tools", "label": "Dụng cụ & thiết bị", "necessity": "want" },
       { "key": "shopping.electronics", "label": "Đồ điện tử", "necessity": "want" },
       { "key": "shopping.personal", "label": "Chăm sóc cá nhân", "necessity": "want" },
+      { "key": "family.course", "label": "Khóa học", "necessity": "want" },
+      { "key": "family.tuition", "label": "Học phí", "necessity": "must" },
+      { "key": "family.books", "label": "Sách & tài liệu", "necessity": "want" },
       { "key": "personal.repair", "label": "Sửa chữa & bảo hành", "necessity": "want" },
       { "key": "personal.toys", "label": "Đồ dùng / Đồ chơi", "necessity": "want" },
       { "key": "entertainment.travel", "label": "Du lịch", "necessity": "want" },
@@ -55,12 +58,8 @@
       { "key": "health.dental", "label": "Nha khoa", "necessity": "want" },
       { "key": "health.insurance", "label": "Bảo hiểm y tế (BHYT/BHXH)", "necessity": "must" }
     ] },
-    { "key": "family", "label": "Gia đình & Học tập", "icon": "graduation", "color": "#6fd0c6", "nature": "fixed", "subs": [
-      { "key": "family.tuition", "label": "Học phí", "necessity": "must" },
-      { "key": "family.books", "label": "Sách & tài liệu", "necessity": "want" },
-      { "key": "family.course", "label": "Khóa học", "necessity": "want" },
+    { "key": "family", "label": "Gia đình", "icon": "users", "color": "#6fd0c6", "nature": "fixed", "subs": [
       { "key": "family.children", "label": "Chi cho con", "necessity": "must" },
-      { "key": "family.parents", "label": "Chi cho bố mẹ", "necessity": "must" },
       { "key": "family.helper", "label": "Chi cho người thân", "necessity": "want" },
       { "key": "shopping.home", "label": "Đồ dùng gia đình", "necessity": "want" }
     ] },
