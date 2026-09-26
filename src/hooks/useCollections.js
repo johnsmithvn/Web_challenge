@@ -2,15 +2,14 @@ import { useState, useCallback } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
-import { toDateStr } from '../utils/dateUtils';
 
 /**
  * useCollections — CRUD for the `collections` table.
  *
- * Types: inbox plus the seven keys in `src/data/knowledge.json`.
- * Status: inbox | unread | read | archived.
+ * Types: the seven keys in `src/data/knowledge.json`.
+ * Status: unread | read | archived.
  *
- * Used by: InboxPage (type='inbox'), CollectPage (all Knowledge types).
+ * Used by: CollectPage (Knowledge types), TaskListSection (for linking).
  */
 export function useCollections() {
   const { user, isAuthenticated } = useAuth();
@@ -20,8 +19,6 @@ export function useCollections() {
   const [isLoading, setIsLoading] = useState(false);
 
   // ── Fetch all items (recent 500) — joins collection_tags + task_collections ──
-  // v4.5.0: Adds task_collections(task_id) join for _linkedTaskIds/_linkedTaskCount.
-  // 2-step fallback: try full join → try without task_collections → plain select.
   const fetchItems = useCallback(async (filters = {}) => {
     if (!enabled) return;
     setIsLoading(true);
@@ -29,13 +26,7 @@ export function useCollections() {
     const applyFilters = (q, f) => {
       if (f.type)   q = q.eq('type', f.type);
       if (f.status) q = q.eq('status', f.status);
-      if (f.type && f.type !== 'inbox') {
-        if (!f.status) q = q.neq('status', 'archived');
-      }
-      if (f.type === 'inbox') {
-        const today = toDateStr();
-        q = q.or(`snoozed_until.is.null,snoozed_until.lte.${today}`);
-      }
+      else          q = q.neq('status', 'archived');
       return q;
     };
 
@@ -118,14 +109,12 @@ export function useCollections() {
   }, [enabled, user]);
 
   // ── Add item ────────────────────────────────────────────────
-  // v4.1.0: No longer writes to collections.tags TEXT[] column.
-  // Tags are linked via collection_tags junction (caller uses useTags.linkTag).
   const addItem = useCallback(async (item) => {
     if (!enabled) return null;
 
     const newItem = {
       user_id:        user.id,
-      type:           item.type    || 'inbox',
+      type:           item.type    || 'note',
       title:          item.title,
       url:            item.url     || null,
       body:           item.body    || '',
@@ -133,11 +122,6 @@ export function useCollections() {
       word_count:     item.word_count || 0,
       content_format: item.content_format || 'markdown',
       source:         item.source  || null,
-      // v4.28.0: bỏ ghi `priority` — cột chết, không đọc/render ở đâu, và trùng
-      // tên với user_tasks.priority (SMALLINT) dù đây là TEXT.
-      // DROP ở migration_v5.0.0.
-      // v4.28.0: default 'unread' thay 'inbox' — status='inbox' trùng nghĩa với
-      // type='inbox' và không query nào filter theo nó.
       status:         item.status  || 'unread',
     };
 
@@ -214,75 +198,6 @@ export function useCollections() {
     }
   }, [enabled, user, fetchItems]);
 
-  // ── Move inbox item → typed collection ──────────────────────
-  const classifyItem = useCallback(async (id, newType) => {
-    // v4.28.0: status luôn 'unread' — bỏ giá trị 'inbox' (trùng nghĩa với
-    // type='inbox'). Hành vi không đổi: nhánh cũ cũng set 'unread' cho mọi
-    // type khác inbox, và không query nào filter status='inbox'.
-    return updateItem(id, { type: newType, status: 'unread' });
-  }, [updateItem]);
-
-  // ── Snooze inbox item ──────────────────────────────
-  const snoozeItem = useCallback(async (id, untilDate) => {
-    if (!enabled) return false;
-
-    // Optimistic: remove from view
-    setItems(prev => prev.filter(item => item.id !== id));
-
-    try {
-      const { error } = await supabase
-        .from('collections')
-        .update({ snoozed_until: untilDate })
-        .eq('id', id)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      return true;
-    } catch (err) {
-      logger.warn('[useCollections] snooze error:', err.message);
-      fetchItems({ type: 'inbox' });
-      return false;
-    }
-  }, [enabled, user, fetchItems]);
-
-  // ── "Snoozed" = item inbox có snoozed_until ở tương lai ─────────
-  // Định nghĩa duy nhất, dùng cho cả count và list. Điều kiện ngược lại
-  // (chưa snooze / đã hết snooze) nằm trong applyFilters của fetchItems.
-  const snoozedFilter = useCallback((query) => query
-    .eq('user_id', user.id)
-    .eq('type', 'inbox')
-    .gt('snoozed_until', toDateStr()),
-  [user]);
-
-  const getSnoozedCount = useCallback(async () => {
-    if (!enabled) return 0;
-    try {
-      const { count, error } = await snoozedFilter(
-        supabase.from('collections').select('id', { count: 'exact', head: true })
-      );
-      if (error) throw error;
-      return count || 0;
-    } catch (err) {
-      logger.warn('[useCollections] snoozedCount error:', err.message);
-      return 0;
-    }
-  }, [enabled, snoozedFilter]);
-
-  // ── Fetch snoozed items (for review panel) ──────────────────
-  const fetchSnoozedItems = useCallback(async () => {
-    if (!enabled) return [];
-    try {
-      const { data, error } = await snoozedFilter(
-        supabase.from('collections').select('*')
-      ).order('snoozed_until', { ascending: true });
-      if (error) throw error;
-      return (data || []).map(item => ({ ...item, _tags: [] }));
-    } catch (err) {
-      logger.warn('[useCollections] fetchSnoozed error:', err.message);
-      return [];
-    }
-  }, [enabled, snoozedFilter]);
-
   return {
     items,         // current fetched items
     isLoading,
@@ -290,10 +205,6 @@ export function useCollections() {
     addItem,       // (item) => Promise<row|null>
     updateItem,    // (id, updates) => Promise<boolean>
     deleteItem,    // (id) => Promise<boolean>
-    classifyItem,  // (id, newType) => Promise<boolean>
-    snoozeItem,    // (id, untilDate) => Promise<boolean>
-    getSnoozedCount, // () => Promise<number>
-    fetchSnoozedItems, // () => Promise<item[]>
     enabled,       // boolean
   };
 }

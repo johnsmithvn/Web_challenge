@@ -13,11 +13,10 @@ import './styles/global.css';
 import './index.css';
 
 // ── Lazy-loaded pages (each becomes its own JS chunk) ──────────────
-// LandingPage eager (entry point); eight domain pages are split into lazy chunks.
+// LandingPage eager (entry point); domain pages are split into lazy chunks.
 import LandingPage from './pages/LandingPage';
 
 const FocusPage         = lazy(() => import('./pages/FocusPage'));
-const InboxPage         = lazy(() => import('./pages/InboxPage'));
 const TasksPage         = lazy(() => import('./pages/TasksPage'));
 const CollectPage       = lazy(() => import('./pages/CollectPage'));
 const FinancePage       = lazy(() => import('./pages/FinancePage'));
@@ -27,8 +26,7 @@ const SettingsPage      = lazy(() => import('./pages/SettingsPage'));
 
 // ── SEO meta per route ─────────────────────────────────────────────
 const ROUTE_META = {
-  '/':           { title: 'Life Hub — Personal Life OS',                                     desc: 'Inbox, nhiệm vụ, tài chính, kiến thức, Focus và Account Vault trong một ứng dụng cá nhân.' },
-  '/inbox':      { title: 'Inbox — Life Hub',                                                 desc: 'Ghi nhanh mọi thứ chưa phân loại. Phân loại sau.' },
+  '/':           { title: 'Life Hub — Personal Life OS',                                     desc: 'Nhiệm vụ, tài chính, kiến thức, Focus và Account Vault trong một ứng dụng cá nhân.' },
   '/tasks':      { title: 'Nhiệm Vụ — Life Hub',                                              desc: 'Danh sách nhiệm vụ cá nhân: quá hạn, hôm nay, sắp tới.' },
   '/collect':    { title: 'Knowledge Base — Life Hub',                                          desc: 'Kho tàng kiến thức cá nhân. Viết bài, đọc lại, phân loại theo tag.' },
   '/finance':    { title: 'Finance — Life Hub',                                               desc: 'Ghi giao dịch, ngân sách, hóa đơn, khoản vay, thẻ và quỹ tiết kiệm.' },

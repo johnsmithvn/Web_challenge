@@ -56,7 +56,7 @@ function QuickCaptureCore() {
       const words = trimmed.split(/\s+/);
       const isLong = words.length > 25 || trimmed.length > 100;
 
-      // Auto-split: long text → truncated title + full body (same logic as InboxPage)
+      // Auto-split: long text → truncated title + full body
       let title = trimmed;
       let body = '';
       if (isLong && !isUrl) {

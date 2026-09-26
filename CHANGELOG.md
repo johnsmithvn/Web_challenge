@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v6.16.1 — 2026-09-26
+
+### Removed
+- **Dọn dẹp triệt để Module Inbox & Migrate dữ liệu sang Nhiệm Vụ (`InboxPage.jsx`, `inbox.css`, `useCollections.js`, `App.jsx`, `20260926000000_migrate_inbox_to_tasks.sql`):**
+  - **Migration SQL (`20260926000000_migrate_inbox_to_tasks.sql`)**: Chuyển toàn bộ các ghi chú cũ có `type = 'inbox'` trong bảng `collections` sang `user_tasks` với trạng thái `status = 'todo'`, hạn chót `due_date = CURRENT_DATE` và giờ `09:00`, sau đó dọn sạch các dòng inbox cũ khỏi `collections`.
+  - **Xoá Dead Code Frontend**: Xoá file `InboxPage.jsx` (~788 dòng) và `inbox.css` (~485 dòng); loại bỏ lazy-import trong `App.jsx`.
+  - **Dọn sạch `useCollections.js`**: Loại bỏ các hàm chết không còn dùng (`snoozeItem`, `getSnoozedCount`, `fetchSnoozedItems`, `classifyItem`) và logic lọc snooze; đổi fallback mặc định sang `type = 'note'`.
+  - **Dọn sạch QuickCapture**: Gỡ bỏ các comment cũ liên quan đến `InboxPage`.
+
 ## v6.16.0 — 2026-09-02
 
 ### Added
