@@ -33,12 +33,33 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null);
+        const nextUser = session?.user ?? null;
+
+        // Tránh gán reference mới khi user không đổi (ví dụ TOKEN_REFRESHED khi quay lại tab),
+        // ngăn kích hoạt re-render toàn app và tải lại dữ liệu không cần thiết.
+        setUser(prev => {
+          if (!prev && !nextUser) return null;
+          if (prev && nextUser && prev.id === nextUser.id && prev.updated_at === nextUser.updated_at) {
+            return prev;
+          }
+          return nextUser;
+        });
+
         if (event === 'PASSWORD_RECOVERY') {
           setIsRecoveringPassword(true);
         }
-        if (session?.user) fetchProfile(session.user.id);
-        else setProfile(null);
+
+        if (nextUser) {
+          // Chỉ fetch lại profile nếu chưa có hoặc id user đổi
+          setProfile(prev => {
+            if (!prev || prev.id !== nextUser.id) {
+              fetchProfile(nextUser.id);
+            }
+            return prev;
+          });
+        } else {
+          setProfile(null);
+        }
       }
     );
 
