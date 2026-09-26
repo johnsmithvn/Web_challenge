@@ -5,11 +5,7 @@ UPDATE finance_transactions
 SET subcategory_id = 'family.helper'
 WHERE subcategory_id = 'family.parents';
 
-UPDATE finance_recurring_bills
-SET subcategory_id = 'family.helper'
-WHERE subcategory_id = 'family.parents';
-
-UPDATE finance_budget_targets
+UPDATE finance_bills
 SET subcategory_id = 'family.helper'
 WHERE subcategory_id = 'family.parents';
 
@@ -23,7 +19,7 @@ SET category_id = 'personal'
 WHERE category_id = 'family'
   AND subcategory_id IN ('family.tuition', 'family.books', 'family.course');
 
-UPDATE finance_recurring_bills
+UPDATE finance_bills
 SET category_id = 'personal'
 WHERE category_id = 'family'
   AND subcategory_id IN ('family.tuition', 'family.books', 'family.course');
