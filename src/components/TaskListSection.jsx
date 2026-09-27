@@ -318,9 +318,12 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
         } : {}),
       }}>
         {isEditing ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem',
-            background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)',
-            borderRadius: 'var(--radius-md)', padding: '0.85rem', marginBottom: '0.25rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem',
+            background: insideDetail ? 'transparent' : 'rgba(139,92,246,0.06)',
+            border: insideDetail ? 'none' : '1px solid rgba(139,92,246,0.18)',
+            borderRadius: 'var(--radius-md)',
+            padding: insideDetail ? '0.2rem 0' : '0.85rem',
+            marginBottom: '0.25rem' }}>
 
             {/* Title */}
             <input className="auth-input" value={editTitle}
@@ -331,7 +334,9 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
             {/* Description */}
             <textarea className="auth-input task-desc-input" value={editDesc}
               onChange={e => setEditDesc(e.target.value)}
-              rows={2} placeholder="Mô tả..." style={{ fontSize: '0.82rem' }} />
+              rows={insideDetail ? 3 : 2}
+              placeholder="Mô tả..."
+              style={{ fontSize: '0.84rem', ...(insideDetail ? { minHeight: '76px', lineHeight: '1.45' } : {}) }} />
 
             {/* Date + Time (DatePicker) */}
             <div style={{ position: 'relative' }}>
@@ -438,16 +443,34 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              ...(insideDetail ? {
+                justifyContent: 'flex-end',
+                marginTop: '0.5rem',
+                paddingTop: '0.75rem',
+                borderTop: '1px solid var(--border-glass, rgba(255,255,255,0.08))',
+              } : {})
+            }}>
+              {insideDetail && (
+                <button type="button" onClick={cancelEdit} className="btn btn-secondary"
+                  style={{ fontSize: '0.82rem', padding: '0.4rem 0.95rem' }}>
+                  Huỷ
+                </button>
+              )}
               <button onClick={() => saveEdit(task.id)} className="btn btn-primary"
-                style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
+                style={{ fontSize: '0.82rem', padding: '0.4rem 1.15rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                 disabled={!editTitle.trim()}>
-                <AppIcon name="save" size={14} /> Lưu
+                <AppIcon name="save" size={14} /> {insideDetail ? 'Lưu thay đổi' : 'Lưu'}
               </button>
-              <button onClick={cancelEdit} className="btn btn-ghost"
-                style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', color: 'var(--text-muted)' }}>
-                Huỷ
-              </button>
+              {!insideDetail && (
+                <button onClick={cancelEdit} className="btn btn-ghost"
+                  style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', color: 'var(--text-muted)' }}>
+                  Huỷ
+                </button>
+              )}
             </div>
           </div>
         ) : (

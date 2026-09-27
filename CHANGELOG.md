@@ -23,6 +23,11 @@
   - **Gom toàn bộ phân tích/báo cáo vào "Tổng quan"**: Giữ nguyên tab "Báo cáo" (`?view=stats`) trong thanh Segmented Control trên đầu màn hình Tổng quan (`OverviewScreen`). Khi cần xem báo cáo chi tiêu 12 tháng, xếp hạng và nhịp chi, người dùng chỉ cần chuyển tab ngay trong Tổng quan.
   - **Tương thích ngược & chuyển hướng mượt mà**: Người dùng truy cập liên kết cũ `/finance/report` hoặc bookmark sẽ được tự động chuyển hướng an toàn về `/finance/overview?view=stats`.
 
+### Fixed
+- **Khắc phục Lỗi Popup Sửa Nhiệm Vụ & Dropdown Nhãn Dán (`TagPicker.jsx`, `TasksPage.jsx`, `TaskListSection.jsx`, `tasks.css`):**
+  - **Smart Dropup & React Portal cho `TagPicker`**: Khắc phục triệt để lỗi khi người dùng mở dropdown chọn nhãn dán ở cuối form, menu rơi xuống che kín hoàn toàn các nút hành động (Lưu, Huỷ) và tràn qua mép dưới của popup. Dropdown nay render qua React Portal với cơ chế smart positioning: tự động lật lên trên (dropup) khi ở gần đáy modal, đóng êm khi nhấn Escape mà không tắt nhầm modal cha, và thoát hoàn toàn khỏi hiện tượng overflow clipping.
+  - **Tái thiết kế Form Sửa Task trong Popup**: Bỏ khung viền tím lồng chật chội ("hộp trong hộp"); mở rộng ô mô tả/ghi chú dễ đọc; sắp xếp hàng nút Lưu / Huỷ chuẩn UX nổi bật ở chân form kèm đường phân cách nhẹ; bổ sung phím tắt `Ctrl + Enter` (hoặc `Cmd + Enter`) để lưu nhanh.
+
 ## v6.16.3 — 2026-09-26
 
 ### Added

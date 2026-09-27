@@ -75,46 +75,63 @@ function TaskEditForm({ task, onSave, onCancel, allTags, addTag }) {
     );
   };
 
+  const handleKeyDown = (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
   return (
     <div
+      onKeyDown={handleKeyDown}
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '0.55rem',
-        background: 'rgba(139,92,246,0.06)',
-        border: '1px solid rgba(139,92,246,0.18)',
-        borderRadius: 'var(--radius-md)',
-        padding: '0.85rem',
-        marginBottom: '0.25rem',
+        gap: '0.75rem',
+        padding: '0.2rem 0',
       }}
     >
       {/* Title */}
-      <input
-        className="auth-input"
-        value={editTitle}
-        onChange={(e) => setEditTitle(e.target.value)}
-        style={{ fontSize: '0.88rem', fontWeight: 600 }}
-        autoFocus
-        placeholder="Tên nhiệm vụ *"
-      />
+      <div>
+        <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 600 }}>
+          Tiêu đề nhiệm vụ *
+        </label>
+        <input
+          className="auth-input"
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          style={{ fontSize: '0.92rem', fontWeight: 600 }}
+          autoFocus
+          placeholder="Tên nhiệm vụ *"
+        />
+      </div>
 
       {/* Description */}
-      <textarea
-        className="auth-input task-desc-input"
-        value={editDesc}
-        onChange={(e) => setEditDesc(e.target.value)}
-        rows={2}
-        placeholder="Mô tả..."
-        style={{ fontSize: '0.82rem' }}
-      />
+      <div>
+        <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 600 }}>
+          Mô tả / Ghi chú
+        </label>
+        <textarea
+          className="auth-input task-desc-input"
+          value={editDesc}
+          onChange={(e) => setEditDesc(e.target.value)}
+          rows={3}
+          placeholder="Thêm mô tả hoặc ghi chú..."
+          style={{ fontSize: '0.85rem', minHeight: '76px', resize: 'vertical', lineHeight: '1.45' }}
+        />
+      </div>
 
       {/* Date + Time (DatePicker) */}
       <div style={{ position: 'relative' }}>
+        <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 600 }}>
+          Thời hạn
+        </label>
         <button
           type="button"
           onClick={() => setShowEditDP(!showEditDP)}
           className="auth-input"
-          style={{ width: '100%', textAlign: 'left', cursor: 'pointer', fontSize: '0.82rem' }}
+          style={{ width: '100%', textAlign: 'left', cursor: 'pointer', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
         >
           <AppIcon name="calendar" size={14} />{' '}
           {editDate
@@ -127,7 +144,7 @@ function TaskEditForm({ task, onSave, onCancel, allTags, addTag }) {
           {editTime && editTime !== '00:00' && (
             <>
               {' '}
-              · <AppIcon name="clock" size={14} /> {editTime}
+              · <AppIcon name="clock" size={14} /> {editTime === '23:59' ? '23:59 (Hết ngày)' : editTime}
             </>
           )}
         </button>
@@ -145,7 +162,7 @@ function TaskEditForm({ task, onSave, onCancel, allTags, addTag }) {
 
       {/* Priority */}
       <div>
-        <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>
+        <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 600 }}>
           Độ ưu tiên
         </label>
         <PriorityPicker
@@ -236,7 +253,7 @@ function TaskEditForm({ task, onSave, onCancel, allTags, addTag }) {
 
       {/* Tags */}
       <div>
-        <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>
+        <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem', fontWeight: 600 }}>
           Tag
         </label>
         <TagPicker
@@ -250,21 +267,31 @@ function TaskEditForm({ task, onSave, onCancel, allTags, addTag }) {
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: '0.4rem' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: '0.5rem',
+        marginTop: '0.5rem',
+        paddingTop: '0.75rem',
+        borderTop: '1px solid var(--border-glass, rgba(255,255,255,0.08))',
+      }}>
         <button
-          onClick={handleSave}
-          className="btn btn-primary"
-          style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
-          disabled={!editTitle.trim()}
-        >
-          <AppIcon name="save" size={14} /> Lưu
-        </button>
-        <button
+          type="button"
           onClick={onCancel}
-          className="btn btn-ghost"
-          style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', color: 'var(--text-muted)' }}
+          className="btn btn-secondary"
+          style={{ fontSize: '0.82rem', padding: '0.4rem 0.95rem' }}
         >
           Huỷ
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          className="btn btn-primary"
+          style={{ fontSize: '0.82rem', padding: '0.4rem 1.15rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+          disabled={!editTitle.trim()}
+        >
+          <AppIcon name="save" size={14} /> Lưu thay đổi
         </button>
       </div>
     </div>
