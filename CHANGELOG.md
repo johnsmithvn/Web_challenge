@@ -6,8 +6,15 @@
 - **Chi tiết Danh mục con (Subcategories Breakdown) trong Báo cáo (`ReportScreen.jsx`, `finance-report.css`, `AppIcon.jsx`):**
   - **Mở rộng/Thu gọn theo nhóm**: Cho phép người dùng nhấp vào từng nhóm trong bảng Xếp hạng nhóm để xem chi tiết bên trong nhóm đó đã chi tiêu cho những danh mục con nào.
   - **Thông số chi tiết**: Mỗi danh mục con hiển thị tên, số tiền (monospace), % tỷ trọng trong nhóm cha và thanh mini track trực quan.
+- **Tính năng Thu Gọn Cột Kanban Phong Cách Trello (`TaskKanbanView.jsx`, `kanban.css`):**
+  - **Collapse / Expand linh hoạt**: Cho phép người dùng thu gọn bất kỳ cột nào trên bảng Kanban với nút bấm thu gọn ở đầu cột hoặc click mở lại ở thanh cột thu gọn. Cột thu gọn hiển thị xoay dọc gọn gàng (46px) kèm badge đếm số lượng task.
+  - **Mặc định thu gọn `Done` & `Skip`**: Mặc định 2 cột hoàn thành và bỏ qua được thu gọn sang mép phải, nhường toàn bộ diện tích (`flex: 1`) để 2 cột hoạt động chính `To Do` và `Doing` dãn rộng, hiển thị nội dung thẻ to rõ, thoáng đãng.
+  - **Lưu trạng thái & tương thích Mobile**: Ghi nhớ trạng thái thu gọn vào `localStorage` (`vl_kanban_collapsed_cols`); trên giao diện điện thoại, khi chuyển tab sang cột đang bị thu gọn, hệ thống tự động mở bung cột đó.
 
 ### Changed
+- **Chuẩn Hóa Nút Thao Tác & Tinh Gọn Thẻ Task Kanban (`TaskKanbanView.jsx`):**
+  - **Bỏ icon chấm tròn (`kanban-checkbox`)**: Loại bỏ nút tròn ở đầu tiêu đề công việc, tránh xung đột UX với hàng nút chuyển trạng thái ở chân thẻ và nhường không gian tiêu đề thẳng thắn từ lề trái.
+  - **Đồng nhất nút chuyển trạng thái tiếng Anh 100%**: Thay thế toàn bộ các nhãn hỗn hợp trước đây ("Về To Do", "Sang Doing", "Xong ✓", "Bỏ qua", "↺ Làm lại") thành các nút ngắn gọn, chuẩn mực: `To Do`, `Doing`, `Done`, `Skip` (loại bỏ sạch các tiền tố "về", "sang", mũi tên). Mỗi thẻ luôn cung cấp đầy đủ 3 nút tương ứng với 3 cột còn lại.
 - **Nâng cấp Thẻ Xếp Hạng Nhóm Báo Cáo (`ReportScreen.jsx`, `finance-report.css`):**
   - **Khắc phục tình trạng thiếu nhóm**: Bỏ giới hạn cứng Top 6 trước đây (`.slice(0, 6)`); hiển thị đầy đủ mọi nhóm có phát sinh chi tiêu trong kỳ, đảm bảo tổng tiền các nhóm khớp 100% với tổng chi đầu trang.
   - **Nút xem thêm thông minh**: Nếu có trên 6 nhóm chi tiêu, mặc định hiển thị Top 6 kèm nút *"Xem thêm N nhóm khác (kèm số tiền)"* / *"Thu gọn về Top 6"* giữ bố cục hài hòa với biểu đồ Chi 12 tháng bên cạnh.

@@ -53,6 +53,37 @@ export default function TaskKanbanView({
   // State mở rộng subtasks/ghi chú cho từng task card
   const [expandedSubtaskIds, setExpandedSubtaskIds] = useState(() => new Set());
 
+  // Quản lý các cột bị thu gọn (Collapse columns phong cách Trello).
+  // Mặc định luôn thu gọn Done và Skip để 2 cột To Do và Doing dãn rộng ra nhìn rõ hơn.
+  const [collapsedCols, setCollapsedCols] = useState(() => {
+    try {
+      const saved = localStorage.getItem('vl_kanban_collapsed_cols');
+      if (saved) {
+        return new Set(JSON.parse(saved));
+      }
+    } catch {
+      // fallback to default
+    }
+    return new Set(['done', 'skip']);
+  });
+
+  const toggleCollapseCol = useCallback((colKey) => {
+    setCollapsedCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(colKey)) {
+        next.delete(colKey);
+      } else {
+        next.add(colKey);
+      }
+      try {
+        localStorage.setItem('vl_kanban_collapsed_cols', JSON.stringify([...next]));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
   // Task hoàn thành tải từ DB/range
   const [completedRangeTasks, setCompletedRangeTasks] = useState([]);
 
@@ -67,6 +98,18 @@ export default function TaskKanbanView({
 
   const handleSelectMobileTab = useCallback((key) => {
     setActiveMobileTab(key);
+    // Khi chọn tab trên mobile, tự động mở cột nếu đang bị collapse
+    setCollapsedCols((prev) => {
+      if (prev.has(key)) {
+        const next = new Set(prev);
+        next.delete(key);
+        try {
+          localStorage.setItem('vl_kanban_collapsed_cols', JSON.stringify([...next]));
+        } catch {}
+        return next;
+      }
+      return prev;
+    });
     const targetEl = colRefs.current[key];
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
@@ -284,6 +327,19 @@ export default function TaskKanbanView({
     setDraggedTaskId(null);
   }, [draggedTaskId, pendingTasks, completedRangeTasks, handleCompleteTask, handleUncompleteTask, handleUpdateTask]);
 
+  // Chuyển nhanh trạng thái task sang cột mục tiêu (To Do, Doing, Done, Skip)
+  const handleMoveTo = useCallback(async (task, targetCol) => {
+    if (targetCol === 'done') {
+      if (!task.completed) await handleCompleteTask(task);
+    } else {
+      if (task.completed) {
+        await handleUncompleteTask(task, targetCol);
+      } else {
+        await handleUpdateTask(task.id, { status: targetCol });
+      }
+    }
+  }, [handleCompleteTask, handleUncompleteTask, handleUpdateTask]);
+
   // Xử lý Double Click vào vùng trống của cột Kanban (Trello-style quick add)
   const handleColumnDoubleClick = useCallback((e, colKey) => {
     if (e.target.closest('.kanban-card') || e.target.closest('button') || e.target.closest('input')) {
@@ -390,23 +446,8 @@ export default function TaskKanbanView({
           </div>
         </div>
 
-        {/* Checkbox & Title */}
+        {/* Title */}
         <div className="kanban-card-title-row">
-          <button
-            type="button"
-            className={`kanban-checkbox${isCompleted ? ' is-checked' : ''}`}
-            onClick={async (e) => {
-              e.stopPropagation();
-              if (isCompleted) {
-                await handleUncompleteTask(task, task.status || 'todo');
-              } else {
-                await handleCompleteTask(task);
-              }
-            }}
-            title={isCompleted ? 'Đánh dấu chưa xong' : 'Đánh dấu xong'}
-          >
-            {isCompleted && <AppIcon name="check" size={11} />}
-          </button>
           <span className="kanban-card-title">{task.title}</span>
         </div>
 
@@ -478,112 +519,29 @@ export default function TaskKanbanView({
           </div>
         )}
 
-        {/* Quick Column Move Buttons (Rất hữu ích cho Mobile & 1-tap UX) */}
+        {/* Quick Column Move Buttons (Đồng nhất tiếng Anh: To Do, Doing, Done, Skip) */}
         <div className="kanban-card-quick-move" onClick={(e) => e.stopPropagation()}>
-          {!isCompleted && task.status === 'skip' && (
-            <>
+          {(() => {
+            const currentCol = isCompleted ? 'done' : (task.status === 'skip' ? 'skip' : (task.status === 'doing' ? 'doing' : 'todo'));
+            const targetCols = [
+              { key: 'todo', label: 'To Do', btnClass: 'kanban-quick-btn--todo' },
+              { key: 'doing', label: 'Doing', btnClass: 'kanban-quick-btn--doing' },
+              { key: 'done', label: 'Done', btnClass: 'kanban-quick-btn--done' },
+              { key: 'skip', label: 'Skip', btnClass: 'kanban-quick-btn--skip' },
+            ].filter((c) => c.key !== currentCol);
+
+            return targetCols.map((c) => (
               <button
+                key={c.key}
                 type="button"
-                className="kanban-quick-btn kanban-quick-btn--todo"
-                onClick={async () => await updateTask(task.id, { status: 'todo' })}
-                title="Khôi phục về To Do"
+                className={`kanban-quick-btn ${c.btnClass}`}
+                onClick={async () => await handleMoveTo(task, c.key)}
+                title={`Chuyển sang ${c.label}`}
               >
-                ← Về To Do
+                {c.label}
               </button>
-              <button
-                type="button"
-                className="kanban-quick-btn kanban-quick-btn--doing"
-                onClick={async () => await updateTask(task.id, { status: 'doing' })}
-                title="Chuyển sang Doing"
-              >
-                Sang Doing →
-              </button>
-              <button
-                type="button"
-                className="kanban-quick-btn kanban-quick-btn--done"
-                onClick={async () => await completeTask(task.id)}
-                title="Đánh dấu đã xong"
-              >
-                Xong ✓
-              </button>
-            </>
-          )}
-          {!isCompleted && task.status !== 'doing' && task.status !== 'skip' && (
-            <>
-              <button
-                type="button"
-                className="kanban-quick-btn kanban-quick-btn--doing"
-                onClick={async () => await handleUpdateTask(task.id, { status: 'doing' })}
-                title="Chuyển sang Doing"
-              >
-                Sang Doing →
-              </button>
-              <button
-                type="button"
-                className="kanban-quick-btn kanban-quick-btn--done"
-                onClick={async () => await handleCompleteTask(task)}
-                title="Đánh dấu đã xong"
-              >
-                Xong ✓
-              </button>
-              <button
-                type="button"
-                className="kanban-quick-btn kanban-quick-btn--skip"
-                onClick={async () => await handleUpdateTask(task.id, { status: 'skip' })}
-                title="Tạm gác / Bỏ qua"
-              >
-                Bỏ qua
-              </button>
-            </>
-          )}
-          {!isCompleted && task.status === 'doing' && (
-            <>
-              <button
-                type="button"
-                className="kanban-quick-btn kanban-quick-btn--todo"
-                onClick={async () => await handleUpdateTask(task.id, { status: 'todo' })}
-                title="Chuyển về To Do"
-              >
-                ← Về To Do
-              </button>
-              <button
-                type="button"
-                className="kanban-quick-btn kanban-quick-btn--done"
-                onClick={async () => await handleCompleteTask(task)}
-                title="Đánh dấu đã xong"
-              >
-                Xong ✓
-              </button>
-              <button
-                type="button"
-                className="kanban-quick-btn kanban-quick-btn--skip"
-                onClick={async () => await handleUpdateTask(task.id, { status: 'skip' })}
-                title="Tạm gác / Bỏ qua"
-              >
-                Bỏ qua
-              </button>
-            </>
-          )}
-          {isCompleted && (
-            <>
-              <button
-                type="button"
-                className="kanban-quick-btn kanban-quick-btn--todo"
-                onClick={async () => await handleUncompleteTask(task, 'todo')}
-                title="Trả lại To Do"
-              >
-                ↺ To Do
-              </button>
-              <button
-                type="button"
-                className="kanban-quick-btn kanban-quick-btn--doing"
-                onClick={async () => await handleUncompleteTask(task, 'doing')}
-                title="Trả lại Doing"
-              >
-                ↺ Doing
-              </button>
-            </>
-          )}
+            ));
+          })()}
         </div>
       </div>
     );
@@ -704,6 +662,49 @@ export default function TaskKanbanView({
         {columns.map((col) => {
           const isOver = dragOverCol === col.key;
           const isMobileActive = activeMobileTab === col.key;
+          const isCollapsed = collapsedCols.has(col.key);
+
+          // Cột ở trạng thái Thu Gọn (Collapse phong cách Trello)
+          if (isCollapsed) {
+            return (
+              <div
+                key={col.key}
+                ref={(el) => (colRefs.current[col.key] = el)}
+                className={`kanban-column kanban-column--collapsed${isMobileActive ? ' is-mobile-active' : ''}`}
+                onClick={() => toggleCollapseCol(col.key)}
+                onDragOver={(e) => handleDragOver(e, col.key)}
+                onDragLeave={(e) => handleDragLeave(e, col.key)}
+                onDrop={(e) => handleDrop(e, col.key)}
+                title={`Cột đang thu gọn. Bấm để mở rộng ${col.title}`}
+              >
+                <div className="kanban-collapsed-inner">
+                  <div className="kanban-collapsed-top">
+                    <span className={`kanban-column-dot ${col.dotClass}`} />
+                    <button
+                      type="button"
+                      className="kanban-column-collapse-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleCollapseCol(col.key);
+                      }}
+                      title={`Mở rộng ${col.title}`}
+                      aria-label={`Mở rộng ${col.title}`}
+                    >
+                      <AppIcon name="caretRight" size={13} />
+                    </button>
+                  </div>
+
+                  <div className="kanban-collapsed-title-wrap">
+                    <span className="kanban-collapsed-title">{col.shortTitle}</span>
+                  </div>
+
+                  <div className="kanban-collapsed-bottom">
+                    <span className="kanban-column-badge">{col.items.length}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div
@@ -719,16 +720,27 @@ export default function TaskKanbanView({
                   <span className="kanban-column-badge">{col.items.length}</span>
                 </div>
 
-                {onQuickCreate && (
+                <div className="kanban-column-header-actions">
+                  {onQuickCreate && (
+                    <button
+                      type="button"
+                      className="kanban-column-add-btn"
+                      onClick={() => onQuickCreate(today, '23:59', col.key)}
+                      title={`Thêm việc vào ${col.title}`}
+                    >
+                      <AppIcon name="plus" size={14} />
+                    </button>
+                  )}
                   <button
                     type="button"
-                    className="kanban-column-add-btn"
-                    onClick={() => onQuickCreate(today, '23:59', col.key)}
-                    title={`Thêm việc vào ${col.title}`}
+                    className="kanban-column-collapse-btn"
+                    onClick={() => toggleCollapseCol(col.key)}
+                    title={`Thu gọn cột ${col.title}`}
+                    aria-label={`Thu gọn cột ${col.title}`}
                   >
-                    <AppIcon name="plus" size={14} />
+                    <AppIcon name="caretLeft" size={13} />
                   </button>
-                )}
+                </div>
               </div>
 
               {/* Drop Zone Body */}

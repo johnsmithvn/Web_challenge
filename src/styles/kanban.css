@@ -122,6 +122,114 @@
   gap: 0.5rem;
 }
 
+.kanban-column-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.kanban-column-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #6B7280);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.kanban-column-collapse-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-color, #111827);
+  transform: scale(1.08);
+}
+
+[data-theme="dark"] .kanban-column-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #F3F4F6;
+}
+
+/* ── Column Collapse Styles (Trello-style) ── */
+.kanban-column--collapsed {
+  flex: 0 0 46px !important;
+  min-width: 46px !important;
+  max-width: 46px !important;
+  cursor: pointer;
+  user-select: none;
+  background: var(--surface-card, rgba(255, 255, 255, 0.55));
+  border-color: var(--border-color, rgba(0, 0, 0, 0.08));
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.kanban-column--collapsed:hover {
+  background: var(--surface-card, rgba(255, 255, 255, 0.85));
+  border-color: rgba(139, 92, 246, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .kanban-column--collapsed {
+  background: rgba(30, 27, 46, 0.5);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .kanban-column--collapsed:hover {
+  background: rgba(30, 27, 46, 0.8);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.kanban-collapsed-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0.85rem 0.3rem;
+  box-sizing: border-box;
+  gap: 0.75rem;
+}
+
+.kanban-collapsed-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.kanban-collapsed-title-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+}
+
+.kanban-collapsed-title {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-color, #1F2937);
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .kanban-collapsed-title {
+  color: #F3F4F6;
+}
+
+.kanban-collapsed-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .kanban-column-dot {
   width: 10px;
   height: 10px;
