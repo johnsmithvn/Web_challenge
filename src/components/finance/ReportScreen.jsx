@@ -3,7 +3,7 @@ import { toDateStr } from '../../utils/dateUtils';
 import {
   parseYmd, monthStart, monthEnd,
 } from '../../utils/financeLogic';
-import { money, catInfo } from './parts';
+import { money, catInfo, subLabel } from './parts';
 import AppIcon from '../AppIcon';
 import '../../styles/finance-report.css';
 
@@ -58,6 +58,21 @@ function csvCell(value) {
 export default function ReportScreen({ fin, nav }) {
   // ── 1. Quản lý chế độ & kỳ báo cáo ─────────────────────────────────────────
   const [mode, setMode] = useState('month'); // 'month' | 'quarter' | 'year'
+  const [showAllRanks, setShowAllRanks] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState(() => new Set());
+
+  const toggleExpandGroup = (groupKey) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
+  };
+
   const todayDate = useMemo(() => parseYmd(fin.today), [fin.today]);
   const [targetYear, setTargetYear] = useState(() => todayDate.getFullYear());
   const [targetMonth, setTargetMonth] = useState(() => todayDate.getMonth()); // 0 - 11
@@ -223,6 +238,34 @@ export default function ReportScreen({ fin, nav }) {
       const amount = catSums[g.key] || 0;
       const pct = totalSpend ? (amount / totalSpend) * 100 : 0;
       const palette = GROUP_PALETTE[g.key] || { col: g.color || '#6949E8', soft: '#EFEBFE' };
+
+      // Breakdown danh mục con trong nhóm này
+      const groupTxs = periodTxs.filter(t => (t.category_id || 'other') === g.key);
+      const subMap = {};
+      let unassignedAmount = 0;
+      for (const t of groupTxs) {
+        if (t.subcategory_id) {
+          subMap[t.subcategory_id] = (subMap[t.subcategory_id] || 0) + t.amount;
+        } else {
+          unassignedAmount += t.amount;
+        }
+      }
+      const subRows = Object.entries(subMap).map(([subId, subAmt]) => ({
+        key: subId,
+        name: subLabel(subId, fin.cats) || subId,
+        amount: subAmt,
+        pct: amount ? (subAmt / amount) * 100 : 0,
+      })).sort((a, b) => b.amount - a.amount);
+
+      if (unassignedAmount > 0) {
+        subRows.push({
+          key: `${g.key}.other`,
+          name: 'Chưa phân loại con',
+          amount: unassignedAmount,
+          pct: amount ? (unassignedAmount / amount) * 100 : 0,
+        });
+      }
+
       return {
         key: g.key,
         name: g.label,
@@ -230,9 +273,19 @@ export default function ReportScreen({ fin, nav }) {
         pct,
         col: palette.col,
         soft: palette.soft,
+        subs: subRows,
       };
     }).sort((a, b) => b.amount - a.amount);
-  }, [expenseGroups, catSums, totalSpend]);
+  }, [expenseGroups, catSums, totalSpend, periodTxs, fin.cats]);
+
+  // Các nhóm có chi tiêu trong kỳ & số lượng ẩn
+  const activeCatRows = useMemo(() => catRows.filter(c => c.amount > 0), [catRows]);
+  const displayedRankRows = showAllRanks ? activeCatRows : activeCatRows.slice(0, 6);
+  const hiddenCount = Math.max(0, activeCatRows.length - 6);
+  const hiddenAmount = useMemo(() => {
+    if (hiddenCount <= 0) return 0;
+    return activeCatRows.slice(6).reduce((sum, c) => sum + c.amount, 0);
+  }, [activeCatRows, hiddenCount]);
 
   const topCategory = catRows[0] || { name: 'Chưa có', amount: 0, pct: 0, col: '#6949E8' };
   const maxCategoryAmount = topCategory.amount || 1;
@@ -784,26 +837,112 @@ export default function ReportScreen({ fin, nav }) {
 
           {cards.rank && (
             <div className="fin-report__card">
-              <div className="fin-report__card-title">Xếp hạng nhóm</div>
-              <div className="fin-report__card-sub">Kỳ này, theo số tiền</div>
-              <div className="fin-report__rank-list">
-                {catRows.slice(0, 6).map(c => (
-                  <div key={c.key}>
-                    <div className="fin-report__rank-row-head">
-                      <span className="fin-report__rank-name">{c.name}</span>
-                      <span className="fin-report__rank-val">{money(c.amount)}</span>
-                    </div>
-                    <div className="fin-report__rank-track">
-                      <span
-                        className="fin-report__rank-fill"
-                        style={{
-                          background: c.col,
-                          width: `${Math.max(2, Math.round((c.amount / maxCategoryAmount) * 100))}%`,
-                        }}
-                      />
-                    </div>
+              <div className="fin-report__card-head">
+                <div>
+                  <div className="fin-report__card-title">Xếp hạng nhóm</div>
+                  <div className="fin-report__card-sub">
+                    Kỳ này, theo số tiền · Bấm nhóm để xem danh mục con
                   </div>
-                ))}
+                </div>
+                {activeCatRows.length > 0 && (
+                  <span className="fin-report__card-unit">
+                    {activeCatRows.length} NHÓM
+                  </span>
+                )}
+              </div>
+
+              <div className="fin-report__rank-list">
+                {displayedRankRows.length === 0 ? (
+                  <div className="fin-report__empty-hint">Chưa có chi tiêu trong kỳ này</div>
+                ) : (
+                  displayedRankRows.map(c => {
+                    const isExpanded = expandedGroups.has(c.key);
+                    const hasSubs = c.subs && c.subs.length > 0;
+                    return (
+                      <div key={c.key} className={`fin-report__rank-item ${isExpanded ? 'is-expanded' : ''}`}>
+                        <div
+                          className={`fin-report__rank-row-head ${hasSubs ? 'has-subs' : ''}`}
+                          onClick={() => hasSubs && toggleExpandGroup(c.key)}
+                          role={hasSubs ? 'button' : undefined}
+                          tabIndex={hasSubs ? 0 : undefined}
+                          onKeyDown={(e) => {
+                            if (hasSubs && (e.key === 'Enter' || e.key === ' ')) {
+                              e.preventDefault();
+                              toggleExpandGroup(c.key);
+                            }
+                          }}
+                          title={hasSubs ? (isExpanded ? 'Thu gọn danh mục con' : 'Xem chi tiết danh mục con') : undefined}
+                        >
+                          <div className="fin-report__rank-name-wrap">
+                            {hasSubs && (
+                              <span className="fin-report__rank-chevron" aria-hidden="true">
+                                <AppIcon name={isExpanded ? 'caretDown' : 'caretRight'} size={11} />
+                              </span>
+                            )}
+                            <span className="fin-report__rank-name">{c.name}</span>
+                            {hasSubs && (
+                              <span className="fin-report__rank-sub-count">
+                                {c.subs.length}
+                              </span>
+                            )}
+                          </div>
+                          <span className="fin-report__rank-val">{money(c.amount)}</span>
+                        </div>
+                        <div className="fin-report__rank-track">
+                          <span
+                            className="fin-report__rank-fill"
+                            style={{
+                              background: c.col,
+                              width: `${Math.max(2, Math.round((c.amount / maxCategoryAmount) * 100))}%`,
+                            }}
+                          />
+                        </div>
+
+                        {/* Danh mục con bung ra khi nhóm được mở */}
+                        {isExpanded && hasSubs && (
+                          <div className="fin-report__rank-subs">
+                            {c.subs.map(s => (
+                              <div key={s.key} className="fin-report__rank-sub-item">
+                                <div className="fin-report__rank-sub-head">
+                                  <span className="fin-report__rank-sub-name">{s.name}</span>
+                                  <div className="fin-report__rank-sub-meta">
+                                    <span className="fin-report__rank-sub-pct">{Math.round(s.pct)}%</span>
+                                    <span className="fin-report__rank-sub-val">{money(s.amount)}</span>
+                                  </div>
+                                </div>
+                                <div className="fin-report__rank-sub-track">
+                                  <span
+                                    className="fin-report__rank-sub-fill"
+                                    style={{
+                                      background: c.col,
+                                      opacity: 0.75,
+                                      width: `${Math.max(2, Math.round(s.pct))}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+
+                {hiddenCount > 0 && (
+                  <button
+                    type="button"
+                    className="fin-report__rank-toggle-btn"
+                    onClick={() => setShowAllRanks(!showAllRanks)}
+                  >
+                    <AppIcon name={showAllRanks ? 'caretUp' : 'caretDown'} size={13} />
+                    <span>
+                      {showAllRanks
+                        ? 'Thu gọn về Top 6'
+                        : `Xem thêm ${hiddenCount} nhóm khác (${compactVND(hiddenAmount)})`}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
           )}

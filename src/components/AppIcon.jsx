@@ -1,7 +1,7 @@
 import {
   Archive, ArrowClockwise, ArrowDown, ArrowLeft, ArrowRight, ArrowSquareOut,
   ArrowUp, Bank, Bell, BookOpen, BowlFood, Brain, Briefcase, Buildings, CalendarBlank,
-  Calculator, Camera, CaretDown, CaretLeft, CaretRight, ChartDonut, ChartLineUp, ChatTeardropText, Check,
+  Calculator, Camera, CaretDown, CaretLeft, CaretRight, CaretUp, ChartDonut, ChartLineUp, ChatTeardropText, Check,
   CheckCircle, CheckSquare, Clock, Cloud, Coffee, Copy, CreditCard, Crown, CurrencyCircleDollar,
   DeviceMobile, DotsThree, Drop, Television, DotsSixVertical, DownloadSimple, Egg, Envelope, Eye, EyeSlash, FileText,
   FilmSlate, Fire, FirstAid, FloppyDisk, FolderOpen, Funnel, GameController, GasPump,
@@ -28,6 +28,7 @@ const ICONS = {
   calculator: Calculator,
   camera: Camera,
   caretDown: CaretDown,
+  caretUp: CaretUp,
   caretLeft: CaretLeft,
   caretRight: CaretRight,
   chartDonut: ChartDonut,

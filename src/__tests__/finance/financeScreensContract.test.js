@@ -254,16 +254,25 @@ assert.match(recurringSrc, /value:\s*'saving'/, 'RecurringScreen phải có segm
 // 2. OverviewScreen tuyệt đối không còn tab 'budget'
 assert.doesNotMatch(overviewSrc, /value:\s*'budget'/, 'OverviewScreen không còn tab budget');
 
-// 3. Navbar FINANCE_NAV: cats ở cuối cùng, recurring đổi tên Định kỳ & Quỹ
+// 3. Navbar FINANCE_NAV: cats ở cuối cùng, recurring đổi tên Định kỳ & Quỹ, không có tab report thừa
+assert.doesNotMatch(navbarSrc, /to:\s*'\/finance\/report'/, 'Sidebar Navbar tuyệt đối không có tab Báo cáo độc lập (đã gom vào Tổng quan)');
 assert.match(navbarSrc, /to:\s*'\/finance\/recurring',\s*icon:\s*'calendar',\s*label:\s*'Định kỳ & Quỹ'/, 'recurring được đổi tên thành Định kỳ & Quỹ');
 const catsIdxNavbar = navbarSrc.indexOf("to: '/finance/cats'");
 const recurringIdxNavbar = navbarSrc.indexOf("to: '/finance/recurring'");
 assert.ok(catsIdxNavbar > recurringIdxNavbar, 'Danh mục phải nằm dưới Định kỳ & Quỹ trong Navbar');
 
-// 4. FinancePage SCREENS: cats ở cuối cùng
+// 4. FinancePage SCREENS: cats ở cuối cùng, không có key report, có redirect về overview?view=stats
+assert.doesNotMatch(pageSrc, /key:\s*'report'/, 'FinancePage SCREENS không có key report độc lập');
+assert.match(pageSrc, /routeScreen === 'report'/, 'FinancePage phải có cơ chế nhận diện và redirect route /finance/report cũ');
 const catsIdxPage = pageSrc.indexOf("key: 'cats'");
 const recurringIdxPage = pageSrc.indexOf("key: 'recurring'");
 assert.ok(catsIdxPage > recurringIdxPage, 'Danh mục phải nằm dưới Định kỳ & Quỹ trong FinancePage');
+
+// 5. ReportScreen: Xếp hạng nhóm phải hỗ trợ mở rộng danh mục con và xem đầy đủ nhóm
+const reportSrc = readFileSync(new URL('../../components/finance/ReportScreen.jsx', import.meta.url), 'utf8');
+assert.match(reportSrc, /subLabel\(subId,\s*fin\.cats\)/, 'ReportScreen phải tính nhãn danh mục con từ subLabel');
+assert.match(reportSrc, /toggleExpandGroup/, 'ReportScreen phải có hàm mở rộng nhóm xem danh mục con');
+assert.match(reportSrc, /showAllRanks/, 'ReportScreen phải có cơ chế xem toàn bộ các nhóm ngoài top 6');
 console.log('finance navigation and segment contract: OK');
 
 console.log('\n✅ financeScreensContract — tất cả hợp đồng màn hình PASS (100% covered)');

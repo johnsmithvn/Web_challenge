@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v6.16.4 — 2026-09-27
+
+### Added
+- **Chi tiết Danh mục con (Subcategories Breakdown) trong Báo cáo (`ReportScreen.jsx`, `finance-report.css`, `AppIcon.jsx`):**
+  - **Mở rộng/Thu gọn theo nhóm**: Cho phép người dùng nhấp vào từng nhóm trong bảng Xếp hạng nhóm để xem chi tiết bên trong nhóm đó đã chi tiêu cho những danh mục con nào.
+  - **Thông số chi tiết**: Mỗi danh mục con hiển thị tên, số tiền (monospace), % tỷ trọng trong nhóm cha và thanh mini track trực quan.
+
+### Changed
+- **Nâng cấp Thẻ Xếp Hạng Nhóm Báo Cáo (`ReportScreen.jsx`, `finance-report.css`):**
+  - **Khắc phục tình trạng thiếu nhóm**: Bỏ giới hạn cứng Top 6 trước đây (`.slice(0, 6)`); hiển thị đầy đủ mọi nhóm có phát sinh chi tiêu trong kỳ, đảm bảo tổng tiền các nhóm khớp 100% với tổng chi đầu trang.
+  - **Nút xem thêm thông minh**: Nếu có trên 6 nhóm chi tiêu, mặc định hiển thị Top 6 kèm nút *"Xem thêm N nhóm khác (kèm số tiền)"* / *"Thu gọn về Top 6"* giữ bố cục hài hòa với biểu đồ Chi 12 tháng bên cạnh.
+- **Tinh gọn Sidebar Điều Hướng Phân Hệ Finance (`Navbar.jsx`, `FinancePage.jsx`):**
+  - **Bỏ tab "Báo cáo" độc lập trên Sidebar**: Loại bỏ mục `/finance/report` khỏi `FINANCE_NAV` trong Sidebar desktop và thanh subtabs mobile để tránh dư thừa và phân mảnh điều hướng. Sidebar Finance chỉ còn 5 mục chính mạch lạc: *Tổng quan, Nhập nhanh, Giao dịch, Định kỳ & Quỹ, Danh mục*.
+  - **Gom toàn bộ phân tích/báo cáo vào "Tổng quan"**: Giữ nguyên tab "Báo cáo" (`?view=stats`) trong thanh Segmented Control trên đầu màn hình Tổng quan (`OverviewScreen`). Khi cần xem báo cáo chi tiêu 12 tháng, xếp hạng và nhịp chi, người dùng chỉ cần chuyển tab ngay trong Tổng quan.
+  - **Tương thích ngược & chuyển hướng mượt mà**: Người dùng truy cập liên kết cũ `/finance/report` hoặc bookmark sẽ được tự động chuyển hướng an toàn về `/finance/overview?view=stats`.
+
 ## v6.16.3 — 2026-09-26
 
 ### Added

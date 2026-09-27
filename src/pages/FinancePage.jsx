@@ -13,7 +13,6 @@ import AddScreen from '../components/finance/AddScreen';
 import ListScreen from '../components/finance/ListScreen';
 import CatsScreen from '../components/finance/CatsScreen';
 import RecurringScreen from '../components/finance/RecurringScreen';
-import ReportScreen from '../components/finance/ReportScreen';
 import '../styles/finance.css';
 import '../styles/finance-handoff.css';
 import '../styles/skeleton.css';
@@ -22,7 +21,6 @@ const RECURRING_SEGS = ['out', 'in', 'loan', 'card', 'lend', 'saving'];
 
 const SCREENS = [
   { key: 'overview',  icon: 'chartDonut', label: 'Tổng quan', title: 'Hôm nay tiêu gì?' },
-  { key: 'report',    icon: 'chartLine',  label: 'Báo cáo',   title: 'Báo cáo chi tiêu' },
   { key: 'add',       icon: 'plusCircle', label: 'Nhập nhanh', title: 'Ghi một khoản' },
   { key: 'list',      icon: 'receipt',    label: 'Giao dịch',  title: 'Giao dịch' },
   { key: 'recurring', icon: 'calendar',   label: 'Định kỳ & Quỹ', title: 'Định kỳ, nghĩa vụ & Quỹ tiết kiệm' },
@@ -56,8 +54,8 @@ export default function FinancePage() {
   const period = useMemo(() => periodFromKey(periodKey, fin.today, fin.dataFrom),
     [periodKey, fin.today, fin.dataFrom]);
 
-  const screen = routeScreen === 'analyze'
-    ? 'report'
+  const screen = (routeScreen === 'analyze' || routeScreen === 'report')
+    ? 'overview'
     : SCREENS.some(s => s.key === routeScreen) ? routeScreen : 'overview';
   const setScreen = useCallback((target) => navigate(`/finance/${target}`), [navigate]);
   const [recurringSeg, setRecurringSeg] = useState('out');
@@ -80,9 +78,11 @@ export default function FinancePage() {
   }), [confirm]);
 
   const overviewTab = useMemo(() => {
-    const requested = new URLSearchParams(location.search).get('view') || 'overview';
-    return OVERVIEW_TABS.has(requested) ? requested : 'overview';
-  }, [location.search]);
+    const requested = new URLSearchParams(location.search).get('view');
+    if (requested && OVERVIEW_TABS.has(requested)) return requested;
+    if (routeScreen === 'analyze' || routeScreen === 'report') return 'stats';
+    return 'overview';
+  }, [location.search, routeScreen]);
   const setOverviewTab = useCallback((tab) => {
     const next = OVERVIEW_TABS.has(tab) ? tab : 'overview';
     navigate(next === 'overview' ? '/finance/overview' : `/finance/overview?view=${next}`);
@@ -107,9 +107,11 @@ export default function FinancePage() {
     };
   }, []);
 
-  // Bookmark cũ vẫn mở đúng nội dung
+  // Bookmark cũ vẫn mở đúng nội dung (chuyển hướng vào tab Báo cáo của Tổng quan)
   useEffect(() => {
-    if (routeScreen === 'analyze') navigate('/finance/report', { replace: true });
+    if (routeScreen === 'analyze' || routeScreen === 'report') {
+      navigate('/finance/overview?view=stats', { replace: true });
+    }
   }, [navigate, routeScreen]);
 
   // Phím tắt N → Nhập nhanh (bỏ qua khi đang gõ trong input).
@@ -156,8 +158,8 @@ export default function FinancePage() {
     searchQuery, setSearchQuery,
   };
   const active = SCREENS.find(s => s.key === screen);
-  const headerSub = screen === 'overview' ? `${period.label} · tổng quan chi tiêu`
-    : screen === 'report' ? 'Tổng hợp chi tiêu, phân bổ danh mục và nhịp chi'
+  const headerSub = screen === 'overview'
+    ? (overviewTab === 'stats' ? 'Tổng hợp chi tiêu, phân bổ danh mục và nhịp chi' : `${period.label} · tổng quan chi tiêu`)
     : screen === 'add' ? 'Số tiền trước — mọi trường còn lại đều đã có sẵn giá trị mặc định'
     : screen === 'list' ? `${period.label} · lọc cùng kỳ với Tổng quan`
     : screen === 'cats' ? '11 nhóm chi · 7 nhóm thu · cấu trúc dữ liệu'
@@ -166,7 +168,7 @@ export default function FinancePage() {
   return (
     <div className="finance-module">
       <section className="fin-content">
-        {screen !== 'list' && screen !== 'report' && (
+        {screen !== 'list' && (
           <header className="fin-header">
             <div className="fin-header__brand">
               <div className="fin-header__copy">
@@ -225,7 +227,6 @@ export default function FinancePage() {
 
         <div className="fin-screen" key={screen}>
           {screen === 'overview'  && <OverviewScreen  fin={fin} nav={nav} />}
-          {screen === 'report'    && <ReportScreen    fin={fin} nav={nav} />}
           {screen === 'add'       && <AddScreen       fin={fin} nav={nav} />}
           {screen === 'list'      && <ListScreen      fin={fin} nav={nav} />}
           {screen === 'cats'      && <CatsScreen      fin={fin} nav={nav} />}
