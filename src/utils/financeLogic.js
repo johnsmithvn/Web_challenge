@@ -453,6 +453,26 @@ export function cardStatementSummary(card, txs, refStr) {
   const paid = txs
     .filter(t => t.card_id === card.id && t.card_period === period && t.excluded)
     .reduce((sum, t) => sum + t.amount, 0);
+
+  // Chi tiêu chu kỳ hiện tại (sau ngày chốt gần nhất, chưa lên sao kê)
+  const unbilled = txs
+    .filter(t => t.source_card_id === card.id && t.type === 'expense' && !t.excluded
+      && t.occurred_at > cycle.statement && t.occurred_at <= refStr)
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Ngày chốt kế tiếp
+  const ref = parseYmd(refStr);
+  const y = ref.getFullYear(), m = ref.getMonth();
+  const clampDay = (yy, mm, day) => Math.min(day, new Date(yy, mm + 1, 0).getDate());
+  const sDay = card.statement_day || 1;
+  let nextY = y, nextM = m;
+  if (ref.getDate() >= sDay) {
+    nextM = m + 1;
+    if (nextM > 11) { nextM = 0; nextY++; }
+  }
+  const nextStatement = ymd(new Date(nextY, nextM, clampDay(nextY, nextM, sDay)));
+  const daysUntilNextStatement = Math.max(0, daysInclusive(refStr, nextStatement) - 1);
+
   return {
     ...cycle,
     period,
@@ -460,6 +480,9 @@ export function cardStatementSummary(card, txs, refStr) {
     statementTotal,
     paid,
     outstanding: Math.max(0, statementTotal - paid),
+    unbilled,
+    nextStatement,
+    daysUntilNextStatement,
   };
 }
 
