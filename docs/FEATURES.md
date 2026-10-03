@@ -153,7 +153,7 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 
 ### Điều hướng & Bố cục
 - `overview`: Tổng quan (dashboard thu chi, nhịp chi) và query `view=stats` mở Thống kê.
-- `add`: Nhập nhanh bằng form, câu tự nhiên hoặc shortcut.
+- `add`: Nhập nhanh **khoản chi** bằng form, câu tự nhiên hoặc shortcut (thu và gửi/rút quỹ nằm ở `recurring`).
 - `list`: Danh sách giao dịch với thanh Toolbar hợp nhất (`.fin-list__toolbar`), ô tìm kiếm ghim trên Header, bộ lọc đa cấp `FilterPop` (nhóm cha, danh mục con, khoảng ngày), xuất CSV.
 - `recurring`: **Định kỳ & Quỹ** (hóa đơn, thu định kỳ, khoản vay, thẻ tín dụng, cho vay và Quỹ tiết kiệm).
 - `cats`: Taxonomy chi (10 nhóm chuẩn) / thu và override label/màu/icon/subcategory.

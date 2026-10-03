@@ -2,17 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
-import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled, canDepositTopUp } from '../../utils/financeLogic';
+import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled } from '../../utils/financeLogic';
 import {
-  money, catInfo, subLabel, pickableSubs, NECESSITY_META, Segmented, TaskPicker, FinanceIcon, DateField,
+  money, catInfo, subLabel, pickableSubs, NECESSITY_META, TaskPicker, FinanceIcon, DateField,
 } from './parts';
 import AppIcon from '../AppIcon';
 
-const TYPE_OPTS = [
-  { value: 'expense', label: 'Chi' },
-  { value: 'income', label: 'Thu' },
-  { value: 'saving', label: 'Để dành' },
-];
+// Form này chỉ ghi khoản CHI. Thu định kỳ đi qua Định kỳ → Sẽ nhận; gửi/rút quỹ qua
+// Định kỳ & Quỹ → Quỹ tiết kiệm (SavingMoveForm) — không lặp lại ở đây.
 
 const HIDDEN_SEEDS_KEY = 'lh_fin_hidden_seed_shortcuts';
 const seedPath = (shortcut) => `${shortcut.category_id}:${shortcut.subcategory_id || ''}`;
@@ -22,7 +19,6 @@ function readHiddenSeeds() {
 }
 
 const QUICK_CHIPS = [10000, 20000, 50000, 100000];
-const NEED_ICONS = { must: 'lock', want: 'sparkle' };
 
 function shiftDate(ymd, days) {
   const date = new Date(`${ymd}T12:00:00`);
@@ -35,16 +31,11 @@ export default function AddScreen({ fin, nav }) {
   const cats = fin.cats;
 
   // Form states
-  const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('food');
-  const [incomeCategoryId, setIncomeCategoryId] = useState('luong');
   const [subId, setSubId] = useState('');
   const [necessity, setNecessity] = useState('');
   const [sourceCardId, setSourceCardId] = useState('');
-  const [savingGoalId, setSavingGoalId] = useState('');
-  const [savingDepositId, setSavingDepositId] = useState('');
-  const [savingDir, setSavingDir] = useState('in');
   const [note, setNote] = useState('');
   const [taskId, setTaskId] = useState(null);
   const [occurredAt, setOccurredAt] = useState(fin.today);
@@ -110,7 +101,6 @@ export default function AddScreen({ fin, nav }) {
     const text = nav.handoff.title || '';
     if (text) {
       setNote(stripAmountWords(text) || text);
-      setType('expense');
       const guess = matchCategory(text);
       setCategoryId(guess ? guess.categoryId : 'other');
       setSubId(guess ? guess.subId : 'other.unclassified');
@@ -126,8 +116,6 @@ export default function AddScreen({ fin, nav }) {
   const parsedAmount = parseCurrencyInput(amount, parseOpts);
   const autoNecessity = deriveNecessity(categoryId, subId, cats);
   const appliedNecessity = necessity || autoNecessity;
-  const selectedGoal = fin.goals.find(goal => goal.id === savingGoalId);
-  const selectedDeposit = fin.deposits.find(deposit => deposit.id === savingDepositId);
 
   const selectedCard = fin.cards.find(card => card.id === sourceCardId);
   const selectedCardUsed = selectedCard ? cardBalance(selectedCard.id, fin.transactions) : 0;
@@ -173,7 +161,7 @@ export default function AddScreen({ fin, nav }) {
     return [...fin.shortcuts, ...defaults.filter(shortcut => !savedPaths.has(seedPath(shortcut)))];
   }, [fin.shortcuts, cats, hiddenSeeds]);
 
-  const duplicateBill = type === 'expense' && subId
+  const duplicateBill = subId
     ? fin.bills.find(bill => bill.enabled && bill.subcategory_id === subId)
     : null;
 
@@ -198,9 +186,6 @@ export default function AddScreen({ fin, nav }) {
     setSubId('');
     setNecessity('');
     setSourceCardId('');
-    setSavingGoalId('');
-    setSavingDepositId('');
-    setSavingDir('in');
     setTaskId(null);
     setOccurredAt(fin.today);
     setMerchant('');
@@ -216,66 +201,32 @@ export default function AddScreen({ fin, nav }) {
       return;
     }
 
-    let tx = null;
-    if (type === 'saving') {
-      if (!selectedGoal || !selectedDeposit) return;
-      if (savingDir === 'in' && !canDepositTopUp(selectedDeposit)) {
-        nav.showToast('Sổ kỳ hạn đã khóa gốc, không thể nạp thêm', { icon: 'lock' });
-        return;
-      }
-      const request = selectedGoal.withdrawal_request;
-      const requestReady = request
-        && request.deposit_id === selectedDeposit.id
-        && new Date(request.available_at).getTime() <= Date.now();
-      if (savingDir === 'out' && selectedGoal.lock_mode === 'term' && !requestReady) {
-        const created = await fin.requestSavingWithdrawal(selectedGoal.id, selectedDeposit.id, parsedAmount);
-        if (created) {
-          nav.showToast('Đã tạo yêu cầu rút — có thể hoàn tất sau 48 giờ', { icon: 'clock' });
-          reset();
-        }
-        return;
-      }
-      tx = await fin.moveSaving(selectedGoal, selectedDeposit, savingDir, {
-        amount: parsedAmount, occurredAt, note: note || null, description: description.trim() || null, taskId,
-      });
-    } else {
-      const row = {
-        type,
-        amount: parsedAmount,
-        occurred_at: occurredAt,
-        note: note || null,
-        description: description.trim() || null,
-        merchant: merchant || null,
-        items: draftItems
-          .filter(item => item.name?.trim() || parseCurrencyInput(item.price))
-          .map(item => ({
-            name: item.name?.trim() || 'Mục chưa đặt tên',
-            qty: Math.max(1, Number(item.qty) || 1),
-            price: parseCurrencyInput(item.price) || 0,
-          })),
-        inbox_item_id: nav.handoff?.kind === 'tx' ? nav.handoff.inboxId : null,
-        task_id: taskId,
-        bill_id: pendingBillId || null,
-      };
-      if (type === 'expense') Object.assign(row, {
-        category_id: categoryId,
-        subcategory_id: subId || null,
-        necessity: appliedNecessity,
-        source_card_id: sourceCardId || null,
-      });
-      if (type === 'income') row.category_id = incomeCategoryId;
-      tx = await fin.addTransaction(row);
-    }
+    const tx = await fin.addTransaction({
+      type: 'expense',
+      amount: parsedAmount,
+      occurred_at: occurredAt,
+      note: note || null,
+      description: description.trim() || null,
+      merchant: merchant || null,
+      items: draftItems
+        .filter(item => item.name?.trim() || parseCurrencyInput(item.price))
+        .map(item => ({
+          name: item.name?.trim() || 'Mục chưa đặt tên',
+          qty: Math.max(1, Number(item.qty) || 1),
+          price: parseCurrencyInput(item.price) || 0,
+        })),
+      inbox_item_id: nav.handoff?.kind === 'tx' ? nav.handoff.inboxId : null,
+      task_id: taskId,
+      bill_id: pendingBillId || null,
+      category_id: categoryId,
+      subcategory_id: subId || null,
+      necessity: appliedNecessity,
+      source_card_id: sourceCardId || null,
+    });
 
     if (!tx) return;
 
-    const toastMsg = type === 'income'
-      ? `Đã ghi khoản thu · ${money(parsedAmount)}`
-      : type === 'saving'
-        ? `Đã ${savingDir === 'out' ? 'rút khỏi' : 'gửi vào'} quỹ · ${money(parsedAmount)}`
-        : `Đã ghi ${note.trim() || subLabel(subId, cats) || catInfo(categoryId, cats).label} · ${money(parsedAmount)}`;
-
-    showUndoToast(toastMsg, tx.id);
+    showUndoToast(`Đã ghi ${note.trim() || subLabel(subId, cats) || catInfo(categoryId, cats).label} · ${money(parsedAmount)}`, tx.id);
 
     if (nav.handoff?.kind === 'tx' && nav.handoff.inboxId) {
       try {
@@ -299,7 +250,6 @@ export default function AddScreen({ fin, nav }) {
   };
 
   const fillBillIntoForm = (bill) => {
-    setType('expense');
     setNote(bill.name);
     const est = bill.amount_mode === 'fixed' ? String(bill.amount || '') : estimateFor(bill.id);
     if (est) setAmount(String(est));
@@ -359,7 +309,6 @@ export default function AddScreen({ fin, nav }) {
   };
 
   const openShortcutInForm = (shortcut) => {
-    setType('expense');
     setNote(shortcut.name);
     setCategoryId(shortcut.category_id);
     setSubId(shortcut.subcategory_id || '');
@@ -376,10 +325,6 @@ export default function AddScreen({ fin, nav }) {
   };
 
   const pinCurrentShortcut = async () => {
-    if (type !== 'expense') {
-      nav.showToast('Shortcut chỉ dùng cho khoản Chi', { icon: 'warning' });
-      return;
-    }
     const name = note.trim() || subLabel(subId, cats) || catInfo(categoryId, cats).label;
     const duplicate = fin.shortcuts.some(shortcut => shortcut.name.toLowerCase() === name.toLowerCase()
       && shortcut.category_id === categoryId && (shortcut.subcategory_id || '') === subId);
@@ -399,10 +344,7 @@ export default function AddScreen({ fin, nav }) {
     if (shortcut) nav.showToast(`Đã ghim ${name} vào Shortcut`, { icon: 'pushPin' });
   };
 
-  const categoryOptions = type === 'income'
-    ? cats.incomeGroups.filter(group => !group.hidden)
-    : cats.expenseGroups.filter(group => !group.hidden);
-  const activeCategoryId = type === 'income' ? incomeCategoryId : categoryId;
+  const categoryOptions = cats.expenseGroups.filter(group => !group.hidden);
   const yesterday = shiftDate(fin.today, -1);
   // Có gì đang gõ dở thì rời màn phải hỏi trước, không mất trắng.
   const isDirty = Boolean(amount || note.trim() || merchant || description || draftItems.length || taskId);
@@ -495,40 +437,36 @@ export default function AddScreen({ fin, nav }) {
             className="fin-card fin-entry-card"
             onSubmit={(event) => { event.preventDefault(); saveTransaction(); }}
           >
-            {/* Hàng 1: Segmented Loại & Phân loại Phải trả / Tùy chọn */}
+            {/* Hàng 1: Phân loại Phải trả / Tùy chọn */}
             <div className="fin-entry-card__top">
-              <Segmented options={TYPE_OPTS} value={type} onChange={setType} />
-
-              {type === 'expense' && (
-                <div className="fin-cls-picker">
-                  <span className="fin-cls-picker__label">Phân loại</span>
-                  <div className="fin-cls-picker__opts">
-                    <button
-                      type="button"
-                      className={`fin-cls-picker__btn ${appliedNecessity === 'must' ? 'is-active-must' : ''}`}
-                      onClick={() => setNecessity('must')}
-                    >
-                      Phải trả
-                    </button>
-                    <button
-                      type="button"
-                      className={`fin-cls-picker__btn ${appliedNecessity === 'want' ? 'is-active-want' : ''}`}
-                      onClick={() => setNecessity('want')}
-                    >
-                      Tùy chọn
-                    </button>
-                  </div>
+              <div className="fin-cls-picker">
+                <span className="fin-cls-picker__label">Phân loại</span>
+                <div className="fin-cls-picker__opts">
                   <button
                     type="button"
-                    className={`fin-cls-picker__lock ${necessity ? 'is-locked' : ''}`}
-                    title={necessity ? 'Bạn đã chọn tay · bấm để app tự đoán lại' : 'App tự đoán theo danh mục con'}
-                    onClick={() => setNecessity('')}
-                    aria-label={necessity ? 'Đặt lại phân loại tự động' : 'Tự động đoán phân loại'}
+                    className={`fin-cls-picker__btn ${appliedNecessity === 'must' ? 'is-active-must' : ''}`}
+                    onClick={() => setNecessity('must')}
                   >
-                    <AppIcon name={necessity ? 'lock' : 'sparkle'} size={15} />
+                    Phải trả
+                  </button>
+                  <button
+                    type="button"
+                    className={`fin-cls-picker__btn ${appliedNecessity === 'want' ? 'is-active-want' : ''}`}
+                    onClick={() => setNecessity('want')}
+                  >
+                    Tùy chọn
                   </button>
                 </div>
-              )}
+                <button
+                  type="button"
+                  className={`fin-cls-picker__lock ${necessity ? 'is-locked' : ''}`}
+                  title={necessity ? 'Bạn đã chọn tay · bấm để app tự đoán lại' : 'App tự đoán theo danh mục con'}
+                  onClick={() => setNecessity('')}
+                  aria-label={necessity ? 'Đặt lại phân loại tự động' : 'Tự động đoán phân loại'}
+                >
+                  <AppIcon name={necessity ? 'lock' : 'sparkle'} size={15} />
+                </button>
+              </div>
             </div>
 
             {/* Hàng 2: Grid 2 cột: Tiêu đề & Số tiền */}
@@ -583,199 +521,109 @@ export default function AddScreen({ fin, nav }) {
               </div>
             </div>
 
-            {/* Hàng 3: Nhóm (Chi tiêu hoặc Thu nhập) */}
-            {type !== 'saving' && (
-              <>
-                <div className="fin-entry-section">
-                  <div className="fin-field-heading">
-                    <label>{type === 'income' ? 'Nhóm thu' : 'Nhóm'}</label>
-                    <small>{categoryOptions.length} nhóm, xếp theo cách bạn dùng</small>
-                  </div>
-                  <div className="fin-groups-grid">
-                    {categoryOptions.map(category => (
-                      <button
-                        key={category.key}
-                        type="button"
-                        className={activeCategoryId === category.key ? 'is-active' : ''}
-                        style={{
-                          '--cat-color': category.color,
-                        }}
-                        onClick={() => type === 'income'
-                          ? setIncomeCategoryId(category.key)
-                          : (setCategoryId(category.key), setSubId(''))}
-                      >
-                        <FinanceIcon
-                          name={category.icon}
-                          cats={cats}
-                          size={16}
-                          style={{ color: category.color, flex: 'none' }}
-                          weight={activeCategoryId === category.key ? 'fill' : 'regular'}
-                        />
-                        <span>{category.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            {/* Hàng 3: Nhóm */}
+            <div className="fin-entry-section">
+              <div className="fin-field-heading">
+                <label>Nhóm</label>
+                <small>{categoryOptions.length} nhóm, xếp theo cách bạn dùng</small>
+              </div>
+              <div className="fin-groups-grid">
+                {categoryOptions.map(category => (
+                  <button
+                    key={category.key}
+                    type="button"
+                    className={categoryId === category.key ? 'is-active' : ''}
+                    style={{
+                      '--cat-color': category.color,
+                    }}
+                    onClick={() => { setCategoryId(category.key); setSubId(''); }}
+                  >
+                    <FinanceIcon
+                      name={category.icon}
+                      cats={cats}
+                      size={16}
+                      style={{ color: category.color, flex: 'none' }}
+                      weight={categoryId === category.key ? 'fill' : 'regular'}
+                    />
+                    <span>{category.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                {/* Hàng 4: Danh mục con (khi type === 'expense') */}
-                {type === 'expense' && (
-                  <div className="fin-entry-section">
-                    <div className="fin-field-heading">
-                      <label>
-                        Danh mục con <span style={{ fontWeight: 400, color: 'var(--n-txt3)' }}>· {expenseGroup?.label}</span>
-                      </label>
-                      <small>bỏ qua cũng được — thống kê vẫn chạy ở cấp nhóm</small>
-                    </div>
-                    <div className="fin-subs-strip">
-                      {pickableSubs(expenseGroup, subId, cats).map(sub => {
-                        const subNeed = sub.necessity || deriveNecessity(categoryId, sub.key, cats);
-                        return (
-                          <button
-                            key={sub.key}
-                            type="button"
-                            className={subId === sub.key ? 'is-active' : ''}
-                            onClick={() => setSubId(current => current === sub.key ? '' : sub.key)}
-                          >
-                            <span>{sub.label}</span>
-                            <span
-                              className="fin-sub-dot"
-                              style={{ background: subNeed === 'must' ? '#7FB0D6' : '#E7A9B6' }}
-                            />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+            {/* Hàng 4: Danh mục con */}
+            <div className="fin-entry-section">
+              <div className="fin-field-heading">
+                <label>
+                  Danh mục con <span style={{ fontWeight: 400, color: 'var(--n-txt3)' }}>· {expenseGroup?.label}</span>
+                </label>
+                <small>bỏ qua cũng được — thống kê vẫn chạy ở cấp nhóm</small>
+              </div>
+              <div className="fin-subs-strip">
+                {pickableSubs(expenseGroup, subId, cats).map(sub => {
+                  const subNeed = sub.necessity || deriveNecessity(categoryId, sub.key, cats);
+                  return (
+                    <button
+                      key={sub.key}
+                      type="button"
+                      className={subId === sub.key ? 'is-active' : ''}
+                      onClick={() => setSubId(current => current === sub.key ? '' : sub.key)}
+                    >
+                      <span>{sub.label}</span>
+                      <span
+                        className="fin-sub-dot"
+                        style={{ background: subNeed === 'must' ? '#7FB0D6' : '#E7A9B6' }}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Hàng 5: Trả bằng (Nguồn tiền) */}
-            {type === 'expense' && (
-              <div className="fin-entry-section">
-                <label className="fin-entry-section__label">Trả bằng</label>
-                <div className="fin-chips-row">
+            <div className="fin-entry-section">
+              <label className="fin-entry-section__label">Trả bằng</label>
+              <div className="fin-chips-row">
+                <button
+                  type="button"
+                  className={!sourceCardId ? 'is-active' : ''}
+                  onClick={() => setSourceCardId('')}
+                >
+                  <AppIcon name="cash" size={15} /> Tiền có sẵn
+                </button>
+                {fin.cards.map(card => (
                   <button
+                    key={card.id}
                     type="button"
-                    className={!sourceCardId ? 'is-active' : ''}
-                    onClick={() => setSourceCardId('')}
+                    className={sourceCardId === card.id ? 'is-active' : ''}
+                    onClick={() => setSourceCardId(card.id)}
                   >
-                    <AppIcon name="cash" size={15} /> Tiền có sẵn
+                    <AppIcon name="creditCard" size={15} />
+                    {card.name}{card.last4 ? ` ••${card.last4}` : ''}
                   </button>
-                  {fin.cards.map(card => (
-                    <button
-                      key={card.id}
-                      type="button"
-                      className={sourceCardId === card.id ? 'is-active' : ''}
-                      onClick={() => setSourceCardId(card.id)}
-                    >
-                      <AppIcon name="creditCard" size={15} />
-                      {card.name}{card.last4 ? ` ••${card.last4}` : ''}
-                    </button>
-                  ))}
-                </div>
-                <div className="fin-source-card-info">
-                  <AppIcon name={selectedCard ? 'creditCard' : 'wallet'} size={15} />
-                  {selectedCard ? (
-                    <span>
-                      Còn {money(Math.max(0, selectedCard.credit_limit - selectedCardUsed))} · Hạn mức {money(selectedCard.credit_limit)} · Chốt ngày {selectedCard.statement_day} · Đến hạn ngày {selectedCard.due_day}
-                    </span>
-                  ) : (
-                    <span>Trừ ngay khỏi số tiền bạn đang có, không tạo ngày phải trả.</span>
-                  )}
-                </div>
-                {duplicateBill && (
-                  <div className="fin-recurring-match">
-                    <AppIcon name="arrowsClockwise" size={16} />
-                    <span>
-                      <strong>Có thể trùng {duplicateBill.name}</strong>
-                      <small>Khoản định kỳ cùng danh mục đang chờ. Thanh toán từ Hóa đơn để gắn đúng kỳ.</small>
-                    </span>
-                    <button type="button" onClick={() => nav.go('recurring')}>Mở hóa đơn</button>
-                  </div>
+                ))}
+              </div>
+              <div className="fin-source-card-info">
+                <AppIcon name={selectedCard ? 'creditCard' : 'wallet'} size={15} />
+                {selectedCard ? (
+                  <span>
+                    Còn {money(Math.max(0, selectedCard.credit_limit - selectedCardUsed))} · Hạn mức {money(selectedCard.credit_limit)} · Chốt ngày {selectedCard.statement_day} · Đến hạn ngày {selectedCard.due_day}
+                  </span>
+                ) : (
+                  <span>Trừ ngay khỏi số tiền bạn đang có, không tạo ngày phải trả.</span>
                 )}
               </div>
-            )}
-
-            {/* Khi type === 'saving' (Quỹ tiết kiệm) */}
-            {type === 'saving' && (
-              <section className="fin-saving-entry">
-                <div className="fin-info-strip">
-                  <AppIcon name="piggyBank" size={17} />
-                  <span>Để dành không phải chi tiêu — tiền chỉ đổi chỗ và đứng ngoài mọi biểu đồ chi.</span>
+              {duplicateBill && (
+                <div className="fin-recurring-match">
+                  <AppIcon name="arrowsClockwise" size={16} />
+                  <span>
+                    <strong>Có thể trùng {duplicateBill.name}</strong>
+                    <small>Khoản định kỳ cùng danh mục đang chờ. Thanh toán từ Hóa đơn để gắn đúng kỳ.</small>
+                  </span>
+                  <button type="button" onClick={() => nav.go('recurring')}>Mở hóa đơn</button>
                 </div>
-                <div className="fin-saving-dir">
-                  <button
-                    type="button"
-                    className={savingDir === 'in' ? 'is-active' : ''}
-                    onClick={() => setSavingDir('in')}
-                  >
-                    <AppIcon name="arrowDown" size={15} /> Gửi vào quỹ
-                  </button>
-                  <button
-                    type="button"
-                    className={savingDir === 'out' ? 'is-active' : ''}
-                    onClick={() => setSavingDir('out')}
-                  >
-                    <AppIcon name="arrowUp" size={15} /> Rút khỏi quỹ
-                  </button>
-                </div>
-                <div className="fin-goal-picker">
-                  {fin.goals.map(goal => {
-                    const balance = fin.deposits.filter(deposit => deposit.fund_id === goal.id).reduce((sum, deposit) => sum + deposit.amount, 0);
-                    return (
-                      <button
-                        key={goal.id}
-                        type="button"
-                        className={savingGoalId === goal.id ? 'is-active' : ''}
-                        onClick={() => { setSavingGoalId(goal.id); setSavingDepositId(''); }}
-                      >
-                        <AppIcon name="piggyBank" size={16} />
-                        <span>
-                          <strong>{goal.name}</strong>
-                          <small>{money(balance)}{goal.goal ? ` / ${money(goal.goal)}` : ''}</small>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <label className="fin-label">
-                  {savingDir === 'in' ? 'Nơi nhận tiền (Tích lũy linh hoạt)' : 'Sổ / Nơi rút tiền'}
-                </label>
-                <select
-                  className="fin-input"
-                  aria-label="Nơi gửi"
-                  value={savingDepositId}
-                  onChange={event => setSavingDepositId(event.target.value)}
-                  disabled={!savingGoalId}
-                >
-                  <option value="">— chọn sổ / nơi giữ —</option>
-                  {fin.deposits.filter(deposit => deposit.fund_id === savingGoalId).map(deposit => {
-                    const isLocked = savingDir === 'in' && !canDepositTopUp(deposit);
-                    return (
-                      <option key={deposit.id} value={deposit.id} disabled={isLocked}>
-                        {deposit.name} · {money(deposit.amount)}{isLocked ? ' (Đã khóa gốc · Không thể nạp thêm)' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-                {savingDir === 'in' && savingGoalId && fin.deposits.filter(d => d.fund_id === savingGoalId && canDepositTopUp(d)).length === 0 && (
-                  <div className="fin-warn fin-inline-message" style={{ marginTop: '8px' }}>
-                    <AppIcon name="lock" size={15} /> Quỹ này chỉ có sổ kỳ hạn đã khóa gốc. Sổ kỳ hạn không thể nạp thêm — hãy vào mục Tiền gửi để tạo sổ mới.
-                  </div>
-                )}
-                {selectedGoal?.lock_mode === 'term' && savingDir === 'out' && (
-                  <div className="fin-warn fin-inline-message">
-                    <AppIcon name="clock" size={15} /> Lệnh rút từ quỹ kỳ hạn phải chờ 48 giờ.
-                  </div>
-                )}
-                {selectedGoal?.lock_mode === 'external' && savingDir === 'out' && (
-                  <div className="fin-warn fin-inline-message">
-                    <AppIcon name="warning" size={15} /> Rút sổ ngoài app trước hạn có thể mất lãi.
-                  </div>
-                )}
-              </section>
-            )}
+              )}
+            </div>
 
             {/* Hàng 6: Ngày */}
             <div className="fin-entry-section">
@@ -917,18 +765,10 @@ export default function AddScreen({ fin, nav }) {
               <button
                 type="submit"
                 className="fin-entry-foot__btn"
-                disabled={!parsedAmount || (type === 'saving' && (!selectedGoal || !selectedDeposit || (savingDir === 'out' && parsedAmount > selectedDeposit.amount)))}
+                disabled={!parsedAmount}
               >
                 <AppIcon name="check" size={16} weight="bold" />
-                <span>
-                  {pendingBillId
-                    ? 'Lưu & thanh toán'
-                    : type === 'income'
-                      ? 'Lưu khoản thu'
-                      : type === 'saving'
-                        ? 'Lưu khoản để dành'
-                        : 'Lưu khoản chi'}
-                </span>
+                <span>{pendingBillId ? 'Lưu & thanh toán' : 'Lưu khoản chi'}</span>
                 <span className="fin-kbd">Enter</span>
               </button>
             </div>
@@ -937,196 +777,196 @@ export default function AddScreen({ fin, nav }) {
 
         {/* CỘT PHẢI: SHORTCUT ACCORDION PANEL — luôn hiện (design 4a/4b); mobile là màn đầu */}
         <aside className={`fin-add-aside ${mobileView === 'form' ? 'fin-hide-mobile' : ''}`}>
-            <section className="fin-shortcut-card">
-              <div className="fin-shortcut-card__head">
-                <span className="fin-shortcut-card__head-title">
-                  <AppIcon name="lightning" size={16} weight="fill" style={{ color: 'var(--n-accent, #6366F1)' }} />
-                  Shortcut
-                </span>
-                <div className="fin-shortcut-card__head-actions">
-                  <button type="button" onClick={pinCurrentShortcut}>+ Tạo từ form</button>
-                  <button type="button" onClick={() => setShortcutEditing(current => !current)}>
-                    {shortcutEditing ? 'Xong' : 'Sửa'}
-                  </button>
-                </div>
+          <section className="fin-shortcut-card">
+            <div className="fin-shortcut-card__head">
+              <span className="fin-shortcut-card__head-title">
+                <AppIcon name="lightning" size={16} weight="fill" style={{ color: 'var(--n-accent, #6366F1)' }} />
+                Shortcut
+              </span>
+              <div className="fin-shortcut-card__head-actions">
+                <button type="button" onClick={pinCurrentShortcut}>+ Tạo từ form</button>
+                <button type="button" onClick={() => setShortcutEditing(current => !current)}>
+                  {shortcutEditing ? 'Xong' : 'Sửa'}
+                </button>
               </div>
+            </div>
 
-              <div className="fin-shortcut-list">
-                {!fin.hasLoaded ? (
-                  <div className="fin-shortcut-loading">
-                    <AppIcon name="lightning" size={14} /> Đang tải shortcut…
-                  </div>
-                ) : (
-                  shortcuts.map(shortcut => {
-                    const info = catInfo(shortcut.category_id, cats);
-                    const need = NECESSITY_META[shortcut.necessity || deriveNecessity(shortcut.category_id, shortcut.subcategory_id, cats)];
-                    const isOpen = expandedShortcutId === shortcut.id;
-                    const usual = shortcut.recent_amounts?.[0] ? money(shortcut.recent_amounts[0]) : null;
+            <div className="fin-shortcut-list">
+              {!fin.hasLoaded ? (
+                <div className="fin-shortcut-loading">
+                  <AppIcon name="lightning" size={14} /> Đang tải shortcut…
+                </div>
+              ) : (
+                shortcuts.map(shortcut => {
+                  const info = catInfo(shortcut.category_id, cats);
+                  const need = NECESSITY_META[shortcut.necessity || deriveNecessity(shortcut.category_id, shortcut.subcategory_id, cats)];
+                  const isOpen = expandedShortcutId === shortcut.id;
+                  const usual = shortcut.recent_amounts?.[0] ? money(shortcut.recent_amounts[0]) : null;
 
-                    return (
-                      <div key={shortcut.id} className="fin-shortcut-item">
-                        {/* Khi đóng: dòng gọn 44px */}
-                        {!isOpen && (
-                          <button
-                            type="button"
-                            className="fin-sc-row-closed"
-                            onClick={() => {
-                              setExpandedShortcutId(shortcut.id);
-                              setShortcutAmount('');
-                            }}
-                          >
-                            <span className="fin-sc-row-closed__icon">
-                              <FinanceIcon name={info.icon} cats={cats} size={15} style={{ color: info.color }} />
-                            </span>
-                            <span className="fin-sc-row-closed__name">
-                              <strong>{shortcut.name}</strong>
-                              <small>{subLabel(shortcut.subcategory_id, cats) || info.label}</small>
-                            </span>
-                            <span className={`fin-sc-tag ${need.label === 'Phải trả' ? 'fin-sc-tag--must' : 'fin-sc-tag--want'}`}>
-                              {need.label}
-                            </span>
-                            {shortcutEditing && (shortcut.seed ? (
-                              <button
-                                type="button"
-                                className="fin-sc-delete-btn"
-                                title="Ẩn shortcut mặc định này"
-                                aria-label={`Ẩn ${shortcut.name}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setHidden([...hiddenSeeds, seedPath(shortcut)]);
-                                }}
-                              >
-                                <AppIcon name="eyeSlash" size={14} />
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                className="fin-sc-delete-btn"
-                                aria-label={`Xóa ${shortcut.name}`}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (await nav.confirmDelete(`shortcut “${shortcut.name}”`)) {
-                                    await fin.deleteShortcut(shortcut.id);
-                                  }
-                                }}
-                              >
-                                <AppIcon name="trash" size={14} />
-                              </button>
-                            ))}
-                          </button>
-                        )}
-
-                        {/* Khi mở: Box viền tím bo tròn */}
-                        {isOpen && (
-                          <div className="fin-sc-box-open">
+                  return (
+                    <div key={shortcut.id} className="fin-shortcut-item">
+                      {/* Khi đóng: dòng gọn 44px */}
+                      {!isOpen && (
+                        <button
+                          type="button"
+                          className="fin-sc-row-closed"
+                          onClick={() => {
+                            setExpandedShortcutId(shortcut.id);
+                            setShortcutAmount('');
+                          }}
+                        >
+                          <span className="fin-sc-row-closed__icon">
+                            <FinanceIcon name={info.icon} cats={cats} size={15} style={{ color: info.color }} />
+                          </span>
+                          <span className="fin-sc-row-closed__name">
+                            <strong>{shortcut.name}</strong>
+                            <small>{subLabel(shortcut.subcategory_id, cats) || info.label}</small>
+                          </span>
+                          <span className={`fin-sc-tag ${need.label === 'Phải trả' ? 'fin-sc-tag--must' : 'fin-sc-tag--want'}`}>
+                            {need.label}
+                          </span>
+                          {shortcutEditing && (shortcut.seed ? (
                             <button
                               type="button"
-                              className="fin-sc-box-open__head"
-                              onClick={() => setExpandedShortcutId(null)}
+                              className="fin-sc-delete-btn"
+                              title="Ẩn shortcut mặc định này"
+                              aria-label={`Ẩn ${shortcut.name}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setHidden([...hiddenSeeds, seedPath(shortcut)]);
+                              }}
                             >
-                              <div className="fin-sc-box-open__icon">
-                                <FinanceIcon name={info.icon} cats={cats} size={17} style={{ color: info.color }} />
-                              </div>
-                              <div className="fin-sc-box-open__meta">
-                                <div className="fin-sc-box-open__meta-row">
-                                  <strong>{shortcut.name}</strong>
-                                  <span className={`fin-sc-tag ${need.label === 'Phải trả' ? 'fin-sc-tag--must' : 'fin-sc-tag--want'}`}>
-                                    {need.label}
-                                  </span>
-                                </div>
-                                <span className="fin-sc-box-open__path">
-                                  {info.label} › {subLabel(shortcut.subcategory_id, cats) || shortcut.name} · Tiền có sẵn
-                                </span>
-                              </div>
-                              {usual && <span className="fin-sc-box-open__usual">{usual}</span>}
+                              <AppIcon name="eyeSlash" size={14} />
                             </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="fin-sc-delete-btn"
+                              aria-label={`Xóa ${shortcut.name}`}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (await nav.confirmDelete(`shortcut “${shortcut.name}”`)) {
+                                  await fin.deleteShortcut(shortcut.id);
+                                }
+                              }}
+                            >
+                              <AppIcon name="trash" size={14} />
+                            </button>
+                          ))}
+                        </button>
+                      )}
 
-                            <div className="fin-sc-box-open__input-row">
-                              <div className="fin-sc-box-open__input-wrap">
-                                <input
-                                  ref={shortcutInputRef}
-                                  autoComplete="off"
-                                  inputMode="numeric"
-                                  pattern="[0-9.]*"
-                                  placeholder={usual ? usual : 'Số tiền'}
-                                  value={groupDigits(shortcutAmount)}
-                                  onChange={e => setShortcutAmount(sanitizeDigits(e.target.value))}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') recordShortcut(shortcut);
-                                    if (e.key === 'Escape') setExpandedShortcutId(null);
-                                  }}
-                                />
-                                <span>₫</span>
+                      {/* Khi mở: Box viền tím bo tròn */}
+                      {isOpen && (
+                        <div className="fin-sc-box-open">
+                          <button
+                            type="button"
+                            className="fin-sc-box-open__head"
+                            onClick={() => setExpandedShortcutId(null)}
+                          >
+                            <div className="fin-sc-box-open__icon">
+                              <FinanceIcon name={info.icon} cats={cats} size={17} style={{ color: info.color }} />
+                            </div>
+                            <div className="fin-sc-box-open__meta">
+                              <div className="fin-sc-box-open__meta-row">
+                                <strong>{shortcut.name}</strong>
+                                <span className={`fin-sc-tag ${need.label === 'Phải trả' ? 'fin-sc-tag--must' : 'fin-sc-tag--want'}`}>
+                                  {need.label}
+                                </span>
                               </div>
-                              <button
-                                type="button"
-                                className="fin-sc-box-open__btn-rec"
-                                onClick={() => recordShortcut(shortcut)}
-                              >
-                                <AppIcon name="check" size={15} weight="bold" />
-                                Ghi
-                              </button>
+                              <span className="fin-sc-box-open__path">
+                                {info.label} › {subLabel(shortcut.subcategory_id, cats) || shortcut.name} · Tiền có sẵn
+                              </span>
                             </div>
+                            {usual && <span className="fin-sc-box-open__usual">{usual}</span>}
+                          </button>
 
-                            <div className="fin-sc-box-open__chips-row">
-                              <span className="fin-sc-box-open__chips-label">hay nhập:</span>
-                              {(shortcut.recent_amounts || []).map(val => (
-                                <span
-                                  key={val}
-                                  className="fin-sc-recent-chip"
-                                  title="Bấm để ghi luôn"
-                                  onClick={() => recordShortcut(shortcut, String(val))}
-                                >
-                                  {money(val)}
-                                  <button
-                                    type="button"
-                                    className="fin-sc-recent-chip__x"
-                                    aria-label={`Bỏ mức ${money(val)}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      fin.updateShortcut(shortcut.id, {
-                                        recent_amounts: (shortcut.recent_amounts || []).filter(item => item !== val),
-                                      });
-                                    }}
-                                  >
-                                    <AppIcon name="x" size={10} />
-                                  </button>
-                                </span>
-                              ))}
-                              {(!shortcut.recent_amounts || shortcut.recent_amounts.length === 0) && (
-                                <span style={{ fontSize: '11.5px', color: 'var(--n-txt3)' }}>
-                                  chưa có, ghi lần đầu sẽ nhớ
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                className="fin-sc-box-open__link-full"
-                                onClick={() => openShortcutInForm(shortcut)}
-                              >
-                                mở form đầy đủ
-                              </button>
+                          <div className="fin-sc-box-open__input-row">
+                            <div className="fin-sc-box-open__input-wrap">
+                              <input
+                                ref={shortcutInputRef}
+                                autoComplete="off"
+                                inputMode="numeric"
+                                pattern="[0-9.]*"
+                                placeholder={usual ? usual : 'Số tiền'}
+                                value={groupDigits(shortcutAmount)}
+                                onChange={e => setShortcutAmount(sanitizeDigits(e.target.value))}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') recordShortcut(shortcut);
+                                  if (e.key === 'Escape') setExpandedShortcutId(null);
+                                }}
+                              />
+                              <span>₫</span>
                             </div>
+                            <button
+                              type="button"
+                              className="fin-sc-box-open__btn-rec"
+                              onClick={() => recordShortcut(shortcut)}
+                            >
+                              <AppIcon name="check" size={15} weight="bold" />
+                              Ghi
+                            </button>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
 
-              {hiddenSeeds.length > 0 && (
-                <div style={{ padding: '8px 16px' }}>
-                  <button
-                    type="button"
-                    className="fin-inline-command"
-                    onClick={() => setHidden([])}
-                  >
-                    <AppIcon name="arrowsClockwise" size={14} /> Hiện lại {hiddenSeeds.length} shortcut mặc định
-                  </button>
-                </div>
+                          <div className="fin-sc-box-open__chips-row">
+                            <span className="fin-sc-box-open__chips-label">hay nhập:</span>
+                            {(shortcut.recent_amounts || []).map(val => (
+                              <span
+                                key={val}
+                                className="fin-sc-recent-chip"
+                                title="Bấm để ghi luôn"
+                                onClick={() => recordShortcut(shortcut, String(val))}
+                              >
+                                {money(val)}
+                                <button
+                                  type="button"
+                                  className="fin-sc-recent-chip__x"
+                                  aria-label={`Bỏ mức ${money(val)}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    fin.updateShortcut(shortcut.id, {
+                                      recent_amounts: (shortcut.recent_amounts || []).filter(item => item !== val),
+                                    });
+                                  }}
+                                >
+                                  <AppIcon name="x" size={10} />
+                                </button>
+                              </span>
+                            ))}
+                            {(!shortcut.recent_amounts || shortcut.recent_amounts.length === 0) && (
+                              <span style={{ fontSize: '11.5px', color: 'var(--n-txt3)' }}>
+                                chưa có, ghi lần đầu sẽ nhớ
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              className="fin-sc-box-open__link-full"
+                              onClick={() => openShortcutInForm(shortcut)}
+                            >
+                              mở form đầy đủ
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               )}
-            </section>
-          </aside>
+            </div>
+
+            {hiddenSeeds.length > 0 && (
+              <div style={{ padding: '8px 16px' }}>
+                <button
+                  type="button"
+                  className="fin-inline-command"
+                  onClick={() => setHidden([])}
+                >
+                  <AppIcon name="arrowsClockwise" size={14} /> Hiện lại {hiddenSeeds.length} shortcut mặc định
+                </button>
+              </div>
+            )}
+          </section>
+        </aside>
       </div>
 
       {/* ── Mobile Nút "Ghi khoản khác" cố định chân trang ── */}

@@ -123,7 +123,8 @@ nhau.
 ### Nhập nhanh và giao dịch
 
 - Keyboard `N`, natural language, shortcut và full form.
-- Expense/income/saving; nguồn, necessity, Task link và Inbox provenance khi conversion.
+- Form Nhập nhanh chỉ ghi **khoản chi** (nguồn, necessity, Task link, Inbox provenance khi conversion).
+  Thu đi qua Định kỳ → Sẽ nhận; gửi/rút quỹ đi qua Định kỳ & Quỹ → Quỹ tiết kiệm.
 - List group theo ngày, có filter/search, edit detail, tag, CSV.
 - Lọc hai tầng: chip loại luôn hiện, còn nhóm · danh mục con · khoảng ngày nằm trong popover nút
   **Lọc**. Điều kiện cộng dồn (AND); danh mục con phải có nhóm cha; khoảng ngày thu hẹp trong kỳ chứ
