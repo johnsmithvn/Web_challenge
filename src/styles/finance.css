@@ -11,6 +11,7 @@
   --n-accent: #9184d9; --n-accent-2: #6b5fb8; --n-accent-3: #766ac0; --n-accent-soft: rgba(145,132,217,0.14);
   --n-warn: #e2a94e; --n-danger: #e07f93; --n-good: #48b3a2;
   --n-r-chip: 8px; --n-r: 10px; --n-r-lg: 16px;
+  --font-mono: 'JetBrains Mono', monospace; /* số tiền; trước đây chưa định nghĩa nên rơi về Consolas */
 
   display: flex;
   flex-direction: column;
@@ -132,6 +133,9 @@
 .finance-module *::before,
 .finance-module *::after { box-sizing: border-box; }
 .finance-module :focus-visible { outline: 2px solid var(--n-accent); outline-offset: 2px; }
+/* Form control không tự kế thừa font (UA dùng font hệ thống). :where = specificity 0,
+   rule nào đặt font-family riêng (ô số tiền mono…) vẫn thắng. */
+:where(.finance-module) :where(button, input, textarea, select) { font-family: inherit; }
 .finance-module strong { font-weight: 500; }
 
 @keyframes riseIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -813,10 +817,12 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 /* Quick add fidelity */
 .fin-add { display: flex; flex-direction: column; gap: 16px; position: relative; }
 
-/* â”€â”€ Topbar: TiÃªu Ä‘á» trang & Pill HÃ³a Ä‘Æ¡n thÃ´ng minh â”€â”€ */
-.fin-add__topbar { display: flex; align-items: center; justify-content: flex-end; gap: 16px; position: relative; margin-bottom: 4px; }
+/* ── Pill Hóa đơn: AddScreen portal vào .fin-header__slot của header chung ── */
+.fin-header__slot { min-width: 0; }
+.fin-add__topbar { display: flex; align-items: center; min-width: 0; position: relative; }
 
 .fin-bill-pill {
+  min-width: 0; max-width: 100%;
   height: 38px; padding: 0 10px 0 12px; border-radius: 12px;
   display: inline-flex; align-items: center; gap: 8px;
   cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600;
@@ -834,6 +840,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   position: absolute; top: -2px; right: -3px; width: 7px; height: 7px;
   border-radius: 4px; background: #E03131; border: 1.5px solid #FDECE7;
 }
+.fin-bill-pill__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fin-bill-pill__count {
   font-family: var(--font-mono, monospace); font-size: 11.5px; font-weight: 600;
   color: #fff; background: #D9480F; padding: 3px 6px; border-radius: 6px; line-height: 1;
@@ -844,7 +851,8 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 
 /* Popover HÃ³a Ä‘Æ¡n Ä‘áº¿n háº¡n (Desktop) */
 .fin-bills-popover {
-  position: absolute; top: calc(100% + 8px); right: 0; width: 600px; max-width: 95vw;
+  /* +19px = 13px đệm dưới pill trong header 64px + 6px hở như design */
+  position: absolute; top: calc(100% + 19px); right: 0; width: 600px; max-width: 95vw;
   background: var(--n-card, #fff); border-radius: 16px; border: 1px solid var(--n-border, #ECECF1);
   box-shadow: 0 20px 50px -12px rgba(16, 17, 20, 0.28); z-index: 100; overflow: hidden;
   animation: fin-rise 0.16s ease both;
@@ -896,7 +904,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   font-weight: 600; font-size: 13.5px; color: var(--n-txt); outline: none;
 }
 .fin-bills-popover__input:focus {
-  border-color: var(--n-accent, #6366F1); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  outline: none; border-color: var(--n-accent, #6366F1); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 .fin-bills-popover__fixed {
   width: 120px; text-align: right; padding-right: 8px; font-family: var(--font-mono, monospace);
@@ -1052,6 +1060,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-amount-auto strong { font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* Hàng 3: Nhóm Categories Grid 5 cột */
+.fin-entry-section { display: flex; flex-direction: column; gap: 8px; }
 .fin-field-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .fin-field-heading > label { font-size: 12.5px; font-weight: 600; color: var(--n-txt2); }
 .fin-field-heading > small { font-size: 11px; color: var(--n-txt3); }
@@ -1097,13 +1106,13 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 
 /* HÃ ng 5 & 6: Chips Row (Tráº£ báº±ng & NgÃ y) */
 .fin-chips-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.fin-chips-row button {
+.fin-chips-row > button {
   height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--n-border, #E4E4EC);
   background: var(--n-card, #fff); display: flex; align-items: center; gap: 6px;
   font-family: inherit; font-weight: 500; font-size: 12.5px; line-height: 1;
   color: var(--n-txt2); white-space: nowrap; cursor: pointer; transition: all 0.15s ease;
 }
-.fin-chips-row button.is-active {
+.fin-chips-row > button.is-active {
   border-color: var(--n-accent, #6366F1); background: var(--n-accent-soft, #EEF0FE);
   color: var(--n-on-accent, #4F46E5);
 }
@@ -1166,7 +1175,15 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-item-row input {
   height: 36px; box-sizing: border-box; border-radius: 8px;
   border: 1px solid var(--n-border, #E8E8EF); padding: 0 10px; font-size: 13px; outline: none;
+  background: var(--n-card); color: var(--n-txt);
 }
+.fin-recurring-btn {
+  align-self: flex-start; height: 36px; padding: 0 12px; border-radius: 10px;
+  border: 1px solid var(--n-border); background: var(--n-card); color: var(--n-txt2);
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  font-size: 12.5px; font-weight: 500;
+}
+.fin-recurring-btn:hover { border-color: var(--n-accent); color: var(--n-txt); }
 .fin-item-row > button {
   width: 28px; height: 28px; border: none; background: transparent;
   border-radius: 7px; cursor: pointer; color: var(--n-txt3);
@@ -1231,10 +1248,6 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 }
 .fin-sc-tag--must { color: #2C6E9E; background: #E7F1FA; }
 .fin-sc-tag--want { color: #B4485F; background: #FBEDF0; }
-.fin-sc-row-closed__amount {
-  min-width: 60px; text-align: right; font-family: var(--font-mono, monospace);
-  font-size: 12.5px; font-weight: 600; color: var(--n-txt); white-space: nowrap;
-}
 .fin-sc-delete-btn {
   width: 28px; height: 28px; border: none; border-radius: 7px;
   background: rgba(224, 127, 147, 0.12); color: var(--n-danger, #E03131);

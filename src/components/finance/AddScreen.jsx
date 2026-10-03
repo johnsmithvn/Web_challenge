@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
 import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled, canDepositTopUp } from '../../utils/financeLogic';
@@ -399,18 +400,13 @@ export default function AddScreen({ fin, nav }) {
     : cats.expenseGroups.filter(group => !group.hidden);
   const activeCategoryId = type === 'income' ? incomeCategoryId : categoryId;
   const yesterday = shiftDate(fin.today, -1);
-
-  const filledDetails = [
-    merchant && 'Nơi nhận',
-    description && 'Ghi chú',
-    draftItems.length > 0 && `${draftItems.length} món`,
-    taskId && 'Nhiệm vụ',
-  ].filter(Boolean);
-  const detailsSummary = showMore ? '' : (filledDetails.length ? filledDetails.join(' · ') : 'Nơi nhận · Ghi chú · Từng món · Nhiệm vụ · Định kỳ');
+  // Có gì đang gõ dở thì rời màn phải hỏi trước, không mất trắng.
+  const isDirty = Boolean(amount || note.trim() || merchant || description || draftItems.length || taskId);
 
   return (
     <div className="fin-add">
-      {/* ── Topbar: Pill Hóa đơn (căn phải) ── */}
+      {/* ── Pill Hóa đơn: portal lên header chung của Finance (design: 1 thanh tiêu đề + pill) ── */}
+      {nav.headerSlot && createPortal(
       <div className="fin-add__topbar">
         {pendingBills.length > 0 ? (
           <button
@@ -425,7 +421,7 @@ export default function AddScreen({ fin, nav }) {
               <AppIcon name="bellRinging" size={17} weight="fill" />
               <span className="fin-bill-pill__dot"></span>
             </span>
-            <span>{pillText}</span>
+            <span className="fin-bill-pill__text">{pillText}</span>
             <span className="fin-bill-pill__count">{pendingBills.length}</span>
             <AppIcon name={billsOpen ? 'caretUp' : 'caretDown'} size={13} />
           </button>
@@ -472,7 +468,8 @@ export default function AddScreen({ fin, nav }) {
             </div>
           </div>
         )}
-      </div>
+      </div>,
+      nav.headerSlot)}
 
       {/* ── Mobile View Controls ── */}
       <div className="fin-mobile-bar">
@@ -896,14 +893,13 @@ export default function AddScreen({ fin, nav }) {
 
                 <button
                   type="button"
-                  className="fin-chips-row"
-                  style={{ background: 'none', border: 'none', padding: 0 }}
-                  onClick={() => nav.go('recurring')}
+                  className="fin-recurring-btn"
+                  onClick={async () => {
+                    if (!isDirty || await nav.confirmDiscard()) nav.go('recurring');
+                  }}
                 >
-                  <span className="fin-cls-picker__btn is-active-must" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <AppIcon name="arrowsClockwise" size={14} />
-                    Biến thành khoản định kỳ
-                  </span>
+                  <AppIcon name="arrowsClockwise" size={14} />
+                  Biến thành khoản định kỳ
                 </button>
               </div>
             )}
@@ -911,7 +907,7 @@ export default function AddScreen({ fin, nav }) {
             {/* Hàng 8: Chân Form Submit */}
             <div className="fin-entry-foot">
               <span className="fin-entry-foot__hint">
-                {pendingBillId ? 'Lưu xong sẽ gỡ hóa đơn này khỏi danh sách chờ' : 'Enter để lưu · Esc để hủy'}
+                {pendingBillId ? 'Lưu xong sẽ gỡ hóa đơn này khỏi danh sách chờ' : 'Enter để lưu'}
               </span>
               <button
                 type="submit"
@@ -987,9 +983,6 @@ export default function AddScreen({ fin, nav }) {
                             </span>
                             <span className={`fin-sc-tag ${need.label === 'Phải trả' ? 'fin-sc-tag--must' : 'fin-sc-tag--want'}`}>
                               {need.label}
-                            </span>
-                            <span className="fin-sc-row-closed__amount">
-                              {usual || '—'}
                             </span>
                             {shortcutEditing && (shortcut.seed ? (
                               <button
@@ -1131,11 +1124,6 @@ export default function AddScreen({ fin, nav }) {
                   </button>
                 </div>
               )}
-            </section>
-
-            <section className="fin-card fin-entry-help">
-              <strong>Ba cách ghi, chọn cách nào cũng được</strong>
-              <p>Chạm shortcut để ghi ngay trong 2 giây, thanh toán hóa đơn đến hạn từ nút chuông, hoặc điền form chi tiết.</p>
             </section>
           </aside>
         )}

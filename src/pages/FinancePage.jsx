@@ -62,6 +62,8 @@ export default function FinancePage() {
   const [catsTab, setCatsTab] = useState('cats');
   const [handoff, setHandoff] = useState(null);   // prefill từ Inbox
   const [searchQuery, setSearchQuery] = useState('');
+  // Ô bên phải header để màn con portal control vào (AddScreen đặt pill hóa đơn ở đây).
+  const [headerSlot, setHeaderSlot] = useState(null);
   // Form đang gõ dở mà bấm sang chỗ khác thì mất trắng — hỏi trước khi bỏ.
   const confirmDiscard = useCallback(() => confirm({
     title: 'Bỏ nội dung đang nhập?',
@@ -154,12 +156,11 @@ export default function FinancePage() {
     catsTab, setCatsTab, handoff, startHandoff: setHandoff,
     clearHandoff: () => setHandoff(null), showToast,
     confirmDelete, confirmDiscard,
-    searchQuery, setSearchQuery,
+    searchQuery, setSearchQuery, headerSlot,
   };
   const active = SCREENS.find(s => s.key === screen);
   const headerSub = screen === 'overview'
     ? (overviewTab === 'stats' ? 'Tổng hợp chi tiêu, phân bổ danh mục và nhịp chi' : `${period.label} · tổng quan chi tiêu`)
-    : screen === 'add' ? 'Số tiền trước — mọi trường còn lại đều đã có sẵn giá trị mặc định'
     : screen === 'list' ? `${period.label} · lọc cùng kỳ với Tổng quan`
     : screen === 'cats' ? '11 nhóm chi · 7 nhóm thu · cấu trúc dữ liệu'
     : 'Định kỳ, nghĩa vụ và Quỹ tiết kiệm';
@@ -172,7 +173,7 @@ export default function FinancePage() {
             <div className="fin-header__brand">
               <div className="fin-header__copy">
                 <h1 className="fin-header__title">{active?.title}</h1>
-                {!(screen === 'overview' && nav.overviewTab === 'overview') && (
+                {!(screen === 'overview' && nav.overviewTab === 'overview') && screen !== 'add' && (
                   <p className="fin-header__sub">{headerSub}</p>
                 )}
               </div>
@@ -199,9 +200,13 @@ export default function FinancePage() {
               </div>
             )}
 
-            <button className="fin-btn fin-btn--primary fin-header__action" onClick={() => go('add')}>
-              <AppIcon name="plus" size={16} /> Thêm chi tiêu
-            </button>
+            {screen === 'add' ? (
+              <div className="fin-header__slot" ref={setHeaderSlot} />
+            ) : (
+              <button className="fin-btn fin-btn--primary fin-header__action" onClick={() => go('add')}>
+                <AppIcon name="plus" size={16} /> Thêm chi tiêu
+              </button>
+            )}
           </header>
         )}
 
