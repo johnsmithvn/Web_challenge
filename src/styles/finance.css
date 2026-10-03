@@ -1376,7 +1376,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 }
 .fin-undo-toast__btn:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
 
-/* â”€â”€ Mobile Bottom Sheet HÃ³a Ä‘Æ¡n â”€â”€ */
+/* ── Mobile Bottom Sheet Hóa đơn ── */
 .fin-bills-sheet-backdrop {
   position: fixed; inset: 0; background: rgba(16, 17, 22, 0.42); z-index: 120;
   display: flex; flex-direction: column;
@@ -1390,37 +1390,174 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-bills-sheet-handle { display: flex; justify-content: center; padding: 10px 0 4px; }
 .fin-bills-sheet-handle span { width: 38px; height: 5px; border-radius: 3px; background: var(--n-border, #DADAE2); }
 
-/* â”€â”€ Mobile View Controls â”€â”€ */
-.fin-mobile-bar {
-  display: none; height: 50px; align-items: center; justify-content: space-between;
-  padding: 0 4px; margin-bottom: 8px;
-}
+/* ── Mobile 4b: thanh ← Ghi khoản mới + nút Ghi khoản khác dính đáy ── */
+.fin-mobile-bar { display: none; }
 .fin-mobile-fixed-footer {
-  display: none; position: sticky; bottom: 0; left: 0; right: 0;
-  padding: 10px 14px; background: var(--n-card, #fff); border-top: 1px solid var(--n-border, #ECECF1);
-  z-index: 50;
+  display: none; position: sticky; bottom: 0; z-index: 50;
+  padding: 10px 14px; background: var(--n-bg); border-top: 1px solid var(--n-border);
 }
 .fin-mobile-fixed-footer button {
-  width: 100%; height: 50px; border-radius: 14px; border: none;
+  width: 100%; height: 52px; border-radius: 14px; border: none;
   background: var(--n-accent); display: flex; align-items: center;
   justify-content: center; gap: 8px; cursor: pointer; font-size: 15px; font-weight: 600;
   color: #fff; box-shadow: 0 6px 16px -4px color-mix(in srgb, var(--n-accent) 45%, transparent);
 }
+.fin-sc-row-closed__icon { display: flex; flex: none; }
+.fin-bills-popover__pay:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ≤960px theo design 4b: màn đầu là Shortcut, form mở riêng; vùng chạm ≥44px. */
 @media (max-width: 960px) {
-  .fin-hide-mobile { display: none; } /* Segmented Ghi nhanh / Form: trước đây class này không có CSS */
-  .fin-add-grid { flex-direction: column; }
+  .fin-hide-mobile { display: none; }
+  /* Màn này đã có nút ghi dính đáy — FAB QuickCapture đè lên nút đó và thừa chức năng */
+  body:has(.fin-add) .qc-fab { display: none; }
+  .fin-screen:has(.fin-add) { padding-bottom: 0; }
+  .fin-add { gap: 12px; }
+  .fin-add-grid { flex-direction: column; gap: 14px; }
   .fin-add-aside { flex: none; width: 100%; }
-  .fin-mobile-bar { display: flex; }
-  .fin-mobile-fixed-footer { display: block; }
-  .fin-entry-head-grid { grid-template-columns: 1fr; }
-  .fin-groups-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .fin-details-grid { grid-template-columns: 1fr; }
-  .fin-item-row { grid-template-columns: minmax(0, 1fr) 48px 90px 28px; }
+
+  /* Pill trên header: "3 hết hạn ngày mai" */
+  .fin-bill-pill { height: 36px; padding: 0 6px 0 10px; gap: 7px; font-size: 12px; }
+  .fin-bill-pill__noun, .fin-bill-pill__caret { display: none; }
+
+  .fin-mobile-bar { display: flex; align-items: center; gap: 4px; height: 52px; margin: -6px 0 -4px -8px; }
+  .fin-mobile-bar__back {
+    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    border: 0; border-radius: 12px; background: transparent; color: var(--n-txt); cursor: pointer;
+  }
+  .fin-mobile-bar__back:hover { background: var(--n-sink); }
+  .fin-mobile-bar__title { font-size: 17px; font-weight: 700; color: var(--n-txt); }
+  .fin-mobile-fixed-footer { display: block; margin: 0 -22px; }
+
+  /* Shortcut: dòng 56px, icon trong ô 34px, tên/nhóm xếp dọc */
+  .fin-shortcut-card__head { padding: 6px 16px 2px; }
+  .fin-shortcut-card__head-actions button { min-height: 44px; }
+  .fin-sc-row-closed { height: 56px; gap: 12px; padding: 0 14px; }
+  .fin-sc-row-closed__icon {
+    width: 34px; height: 34px; border-radius: 10px; background: var(--n-sink);
+    align-items: center; justify-content: center;
+  }
+  .fin-sc-row-closed__icon svg { width: 17px; height: 17px; }
+  .fin-sc-row-closed__name { flex-direction: column; align-items: flex-start; gap: 5px; }
+  .fin-sc-row-closed__name strong { max-width: 100%; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; }
+  .fin-sc-row-closed__name small { max-width: 100%; font-size: 12px; }
+  .fin-sc-delete-btn { width: 40px; height: 40px; }
+  .fin-sc-box-open { border-radius: 16px; gap: 12px; }
+  .fin-sc-box-open__meta-row strong { font-size: 14.5px; }
+  .fin-sc-box-open__path { font-size: 12px; }
+  .fin-sc-box-open__input-wrap { height: 50px; }
+  .fin-sc-box-open__input-wrap input,
+  .fin-sc-box-open__input-wrap input:focus,
+  .fin-sc-box-open__input-wrap input:focus-visible { font-size: 19px; }
+  .fin-sc-box-open__btn-rec { height: 50px; padding: 0 18px; font-size: 15px; }
+  .fin-sc-box-open__chips-label { flex-basis: 100%; font-size: 12px; }
+  .fin-sc-recent-chip { height: 44px; padding: 0 2px 0 14px; border-radius: 12px; gap: 2px; font-size: 14px; font-weight: 600; }
+  .fin-sc-recent-chip__x { width: 34px; height: 40px; }
+  .fin-sc-box-open__link-full {
+    flex-basis: 100%; margin-left: 0; height: 44px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--n-border); border-radius: 12px; background: var(--n-sink);
+    text-decoration: none; font-size: 13px; color: var(--n-txt2);
+  }
+
+  /* Form */
+  .fin-entry-card { padding: 16px; gap: 18px; }
+  .fin-entry-card__top { flex-direction: column; align-items: stretch; gap: 18px; }
+  .fin-entry-card__top .fin-seg { display: flex; border-radius: 12px; }
+  .fin-entry-card__top .fin-seg__btn { flex: 1; height: 38px; padding: 0; border-radius: 9px; font-size: 14px; }
+  .fin-cls-picker { gap: 6px; }
+  .fin-cls-picker__opts { margin-left: auto; border-radius: 11px; }
+  .fin-cls-picker__btn { height: 38px; padding: 0 12px; border-radius: 9px; font-size: 13px; }
+  .fin-cls-picker__lock { width: 44px; height: 44px; border-radius: 11px; }
+  .fin-cls-picker__label, .fin-entry-title-field > label, .fin-field-heading > label, .fin-amount-field__head { font-size: 13px; }
+  .fin-entry-head-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .fin-entry-title-field > input { font-size: 15.5px; }
+  /* Số tiền: ô 56px, 4 nút +k xuống dưới thành lưới 44px */
+  .fin-amount-field { gap: 8px; }
+  .fin-amount-field__head { display: contents; }
+  .fin-amount-field__box { order: 1; height: 56px; border-radius: 14px; }
+  .fin-amount-field__box input,
+  .fin-amount-field__box input:focus,
+  .fin-amount-field__box input:focus-visible { font-size: 25px; }
+  .fin-amount-field__box span { font-size: 16px; }
+  .fin-amount-field__quick { order: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .fin-amount-field__quick-btn {
+    height: 44px; border: 1px solid var(--n-border); border-radius: 11px; background: var(--n-card);
+    font-size: 13px; color: var(--n-on-accent);
+  }
+  .fin-amount-field__quick-btn:hover { text-decoration: none; border-color: var(--n-accent); }
+  .fin-amount-auto, .fin-entry-hint { order: 3; }
+  /* Nhóm: 5 cột ô dọc 62px, icon trên chữ dưới */
+  .fin-groups-grid button {
+    height: 62px; padding: 0 2px; border-radius: 12px; flex-direction: column; justify-content: center;
+    gap: 6px; font-size: 10.5px; line-height: 1.15; white-space: normal; text-align: center;
+  }
+  .fin-groups-grid button svg { width: 20px; height: 20px; }
+  .fin-groups-grid button > span {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .fin-subs-strip button { height: 44px; padding: 0 14px; border-radius: 11px; font-size: 13.5px; }
+  .fin-chips-row > button { height: 44px; padding: 0 13px; border-radius: 11px; gap: 7px; font-size: 13.5px; }
+  .fin-chips-row .fin-datefield__box { min-height: 44px; border-radius: 11px; }
+  .fin-saving-dir > button { min-height: 44px; }
+  /* Thêm chi tiết: không đóng khung, ô 46px nền chìm */
+  .fin-details-toggle { min-height: 44px; margin: -10px 0; font-size: 14px; }
+  .fin-details-box { padding: 0; margin-top: 0; background: none; border: 0; }
+  .fin-details-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .fin-details-field > input { height: 46px; }
+  .fin-details-field > input, .fin-details-field > textarea { border-radius: 12px; background: var(--n-sink); font-size: 14px; }
+  .fin-details-field > input:focus, .fin-details-field > textarea:focus { background: var(--n-card); }
+  .fin-details-field .fin-taskpick, .fin-details-field .fin-taskpick__btn { width: 100%; }
+  .fin-details-field .fin-taskpick__btn { min-height: 46px; border-radius: 12px; font-size: 14px; }
+  .fin-items-editor { background: var(--n-sink); border-radius: 12px; }
+  .fin-item-row { grid-template-columns: minmax(0, 1fr) 48px 96px 36px; }
+  .fin-item-row input { height: 44px; border-radius: 10px; font-size: 14px; }
+  .fin-item-row > button { width: 36px; height: 44px; }
+  .fin-inline-command { min-height: 36px; font-size: 13.5px; }
+  .fin-recurring-btn { height: 44px; padding: 0 14px; border-radius: 12px; font-size: 13.5px; }
+  /* Nút Lưu dính đáy màn khi cuộn form */
+  .fin-entry-foot {
+    position: sticky; bottom: 0; z-index: 2; flex-direction: column; align-items: stretch; gap: 8px;
+    margin: 0 -16px -16px; padding: 10px 14px; background: var(--n-card);
+    border-top: 1px solid var(--n-line); border-radius: 0 0 18px 18px;
+  }
+  .fin-entry-foot__hint { text-align: center; font-size: 12px; }
+  .fin-entry-foot__hint--kbd, .fin-entry-foot__btn span.fin-kbd { display: none; }
+  .fin-entry-foot__btn { height: 52px; border-radius: 14px; justify-content: center; font-size: 15px; }
+
+  /* Bottom sheet hóa đơn: tên ở trên, [ô tiền | Thanh toán | ×] ở dưới */
+  .fin-bills-sheet-panel { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .fin-bills-sheet-panel .fin-bills-popover__head { padding: 6px 6px 8px 18px; }
+  .fin-bills-sheet-panel .fin-bills-popover__head strong { font-size: 16px; font-weight: 700; }
+  .fin-bills-sheet-panel .fin-bills-popover__close { width: 44px; height: 44px; border-radius: 12px; }
+  .fin-bills-sheet-panel .fin-bills-popover__list { flex: 1; min-height: 0; max-height: none; }
+  .fin-bills-sheet-panel .fin-bills-popover__row {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto 44px; grid-template-areas: "name name badge" "input pay skip";
+    align-items: center; gap: 10px 8px; height: auto; padding: 12px 14px 12px 18px;
+  }
+  .fin-bills-sheet-panel .fin-bills-popover__badge { grid-area: badge; justify-self: end; min-width: 0; padding: 4px 6px; border-radius: 6px; font-size: 10.5px; }
+  .fin-bills-sheet-panel .fin-bills-popover__name { grid-area: name; gap: 5px; }
+  .fin-bills-sheet-panel .fin-bills-popover__name strong { font-size: 14.5px; font-weight: 600; }
+  .fin-bills-sheet-panel .fin-bills-popover__name small { font-size: 12px; }
+  .fin-bills-sheet-panel .fin-bills-popover__input,
+  .fin-bills-sheet-panel .fin-bills-popover__fixed { grid-area: input; width: auto; height: 46px; font-size: 16px; }
+  .fin-bills-sheet-panel .fin-bills-popover__input { padding: 0 12px; border-radius: 12px; }
+  .fin-bills-sheet-panel .fin-bills-popover__fixed { display: flex; align-items: center; justify-content: flex-end; }
+  .fin-bills-sheet-panel .fin-bills-popover__pay {
+    grid-area: pay; height: 46px; padding: 0 16px; border-radius: 12px;
+    border-color: var(--n-accent); background: var(--n-accent); color: #fff; font-size: 14px;
+  }
+  .fin-bills-sheet-panel .fin-bills-popover__skip { grid-area: skip; width: 44px; height: 46px; border: 1px solid var(--n-border); border-radius: 12px; }
+  .fin-bills-sheet-panel .fin-bills-popover__foot { padding: 12px 18px; line-height: 1.45; }
 }
 
-@media (max-width: 600px) {
-  .fin-groups-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* ≤768px: có bottom-tabs, .fin-screen đệm 12px */
+@media (max-width: 768px) {
+  .fin-mobile-fixed-footer { margin: 0 -12px; }
+  .fin-undo-toast {
+    left: 12px; right: 12px; transform: none; gap: 10px; padding: 10px 8px 10px 14px;
+    bottom: calc(var(--bottom-tabs-height, 60px) + 16px + env(safe-area-inset-bottom, 0px));
+  }
+  .fin-undo-toast__text { flex: 1; min-width: 0; white-space: normal; font-size: 13px; line-height: 1.35; }
+  .fin-undo-toast__btn { flex: none; height: 44px; border-radius: 10px; font-size: 13px; }
 }
 
 /* Transaction list fidelity */
@@ -1632,19 +1769,15 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-pending-bill > input, .fin-pending-bill > b { grid-column: 2; width: 100%; }
   .fin-pending-bill > button:not(.fin-pending-bill__dismiss) { grid-column: 2; }
   .fin-pending-bill__dismiss { grid-column: 3; grid-row: 1; }
-  .fin-entry-card { padding: 16px; }
   .fin-entry-card__head { align-items: stretch; flex-direction: column; }
   .fin-entry-card__head .fin-seg { width: 100%; margin: 0; }
   .fin-entry-card__head .fin-entry-actions { margin-left: 0; }
   .fin-entry-card__head .fin-seg__btn { flex: 1; }
-  /* Háº¹p thÃ¬ tiÃªu Ä‘á» vÃ  sá»‘ tiá»n xuá»‘ng 2 dÃ²ng â€” Ã´ sá»‘ 42px khÃ´ng chia Ä‘Ã´i Ä‘Æ°á»£c */
-  .fin-entry-head-grid { grid-template-columns: 1fr; gap: 9px; }
   .fin-entry-topbar { align-items: stretch; }
   .fin-entry-hint { margin-left: 0; }
   .fin-task-link-row { align-items: stretch; flex-direction: column; }
   .fin-task-link-row .fin-taskpick { width: 100%; margin-left: 0; }
   .fin-task-link-row .fin-taskpick__btn { flex: 1; }
-  .fin-item-row { grid-template-columns: minmax(0, 1fr) 48px 90px 30px; }
   .fin-entry-actions { align-items: stretch; flex-wrap: wrap; }
   .fin-entry-actions .fin-btn { flex: 1; justify-content: center; }
   .fin-entry-actions small { width: 100%; margin: 0; }

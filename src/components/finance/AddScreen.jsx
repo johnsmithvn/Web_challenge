@@ -154,11 +154,12 @@ export default function AddScreen({ fin, nav }) {
     return sum + (Number(val) || 0);
   }, 0);
 
-  const pillText = overdueBills > 0
-    ? `${overdueBills} hóa đơn quá hạn`
+  // Tách số + đuôi để mobile ẩn chữ "hóa đơn" (design 4b: "3 hết hạn ngày mai").
+  const [pillCount, pillRest] = overdueBills > 0
+    ? [overdueBills, 'quá hạn']
     : urgentBills > 0
-      ? `${urgentBills} hóa đơn hết hạn ngày mai`
-      : `${pendingBills.length} hóa đơn sắp đến hạn`;
+      ? [urgentBills, 'hết hạn ngày mai']
+      : [pendingBills.length, 'sắp đến hạn'];
 
   const shortcuts = useMemo(() => {
     const defaults = cats.shortcutSeed
@@ -362,7 +363,10 @@ export default function AddScreen({ fin, nav }) {
     setNote(shortcut.name);
     setCategoryId(shortcut.category_id);
     setSubId(shortcut.subcategory_id || '');
-    setNecessity(shortcut.necessity || '');
+    // Chỉ khóa khi shortcut lưu phân loại KHÁC giá trị tự đoán; trùng thì để auto
+    // để đổi nhóm/danh mục con trong form vẫn tự đoán lại (design: full() để cls = null).
+    const autoNeed = deriveNecessity(shortcut.category_id, shortcut.subcategory_id, cats);
+    setNecessity(shortcut.necessity && shortcut.necessity !== autoNeed ? shortcut.necessity : '');
     setSourceCardId(shortcut.source_card_id || '');
     const amtToFill = parseCurrencyInput(shortcutAmount) || (shortcut.recent_amounts?.[0] ? shortcut.recent_amounts[0] : null);
     if (amtToFill) setAmount(String(amtToFill));
@@ -421,9 +425,11 @@ export default function AddScreen({ fin, nav }) {
               <AppIcon name="bellRinging" size={17} weight="fill" />
               <span className="fin-bill-pill__dot"></span>
             </span>
-            <span className="fin-bill-pill__text">{pillText}</span>
+            <span className="fin-bill-pill__text">
+              {pillCount} <span className="fin-bill-pill__noun">hóa đơn </span>{pillRest}
+            </span>
             <span className="fin-bill-pill__count">{pendingBills.length}</span>
-            <AppIcon name={billsOpen ? 'caretUp' : 'caretDown'} size={13} />
+            <AppIcon name={billsOpen ? 'caretUp' : 'caretDown'} size={13} className="fin-bill-pill__caret" />
           </button>
         ) : (
           <span className="fin-bill-pill fin-bill-pill--empty">
@@ -471,17 +477,15 @@ export default function AddScreen({ fin, nav }) {
       </div>,
       nav.headerSlot)}
 
-      {/* ── Mobile View Controls ── */}
-      <div className="fin-mobile-bar">
-        <Segmented
-          options={[
-            { value: 'quick', label: 'Ghi nhanh (Shortcut)' },
-            { value: 'form', label: 'Form chi tiết' },
-          ]}
-          value={mobileView}
-          onChange={setMobileView}
-        />
-      </div>
+      {/* ── Mobile (design 4b): màn đầu là Shortcut, form mở bằng "Ghi khoản khác", quay lại bằng ← ── */}
+      {mobileView === 'form' && (
+        <div className="fin-mobile-bar">
+          <button type="button" className="fin-mobile-bar__back" onClick={() => setMobileView('quick')} aria-label="Quay lại Shortcut">
+            <AppIcon name="back" size={20} />
+          </button>
+          <span className="fin-mobile-bar__title">Ghi khoản mới</span>
+        </div>
+      )}
 
       {/* ── 2-Cột Layout Grid: Form Trái, Shortcut Phải ── */}
       <div className="fin-add-grid">
@@ -906,7 +910,8 @@ export default function AddScreen({ fin, nav }) {
 
             {/* Hàng 8: Chân Form Submit */}
             <div className="fin-entry-foot">
-              <span className="fin-entry-foot__hint">
+              {/* --kbd: gợi ý phím, ẩn trên mobile; hint hóa đơn thì luôn hiện */}
+              <span className={`fin-entry-foot__hint${pendingBillId ? '' : ' fin-entry-foot__hint--kbd'}`}>
                 {pendingBillId ? 'Lưu xong sẽ gỡ hóa đơn này khỏi danh sách chờ' : 'Enter để lưu'}
               </span>
               <button
@@ -930,9 +935,8 @@ export default function AddScreen({ fin, nav }) {
           </form>
         </div>
 
-        {/* CỘT PHẢI: SHORTCUT ACCORDION PANEL */}
-        {type === 'expense' && (
-          <aside className={`fin-add-aside ${mobileView === 'form' ? 'fin-hide-mobile' : ''}`}>
+        {/* CỘT PHẢI: SHORTCUT ACCORDION PANEL — luôn hiện (design 4a/4b); mobile là màn đầu */}
+        <aside className={`fin-add-aside ${mobileView === 'form' ? 'fin-hide-mobile' : ''}`}>
             <section className="fin-shortcut-card">
               <div className="fin-shortcut-card__head">
                 <span className="fin-shortcut-card__head-title">
@@ -971,12 +975,9 @@ export default function AddScreen({ fin, nav }) {
                               setShortcutAmount('');
                             }}
                           >
-                            <FinanceIcon
-                              name={info.icon}
-                              cats={cats}
-                              size={15}
-                              style={{ color: info.color, flex: 'none' }}
-                            />
+                            <span className="fin-sc-row-closed__icon">
+                              <FinanceIcon name={info.icon} cats={cats} size={15} style={{ color: info.color }} />
+                            </span>
                             <span className="fin-sc-row-closed__name">
                               <strong>{shortcut.name}</strong>
                               <small>{subLabel(shortcut.subcategory_id, cats) || info.label}</small>
@@ -1126,7 +1127,6 @@ export default function AddScreen({ fin, nav }) {
               )}
             </section>
           </aside>
-        )}
       </div>
 
       {/* ── Mobile Nút "Ghi khoản khác" cố định chân trang ── */}
