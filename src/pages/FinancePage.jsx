@@ -14,7 +14,6 @@ import ListScreen from '../components/finance/ListScreen';
 import CatsScreen from '../components/finance/CatsScreen';
 import RecurringScreen from '../components/finance/RecurringScreen';
 import '../styles/finance.css';
-import '../styles/finance-handoff.css';
 import '../styles/skeleton.css';
 
 const RECURRING_SEGS = ['out', 'in', 'loan', 'card', 'lend', 'saving'];

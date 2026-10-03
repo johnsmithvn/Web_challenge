@@ -410,10 +410,8 @@ export default function AddScreen({ fin, nav }) {
 
   return (
     <div className="fin-add">
-      {/* ── Topbar: Tiêu đề trang & Pill Hóa đơn ── */}
+      {/* ── Topbar: Pill Hóa đơn (căn phải) ── */}
       <div className="fin-add__topbar">
-        <h1 className="fin-add__title">Ghi một khoản</h1>
-
         {pendingBills.length > 0 ? (
           <button
             type="button"
@@ -540,6 +538,7 @@ export default function AddScreen({ fin, nav }) {
                   id="fin-tx-title"
                   value={note}
                   maxLength={200}
+                  autoComplete="off"
                   onChange={event => setNote(event.target.value)}
                   placeholder={subLabel(subId, cats) || 'Cà phê sữa, xăng, Netflix…'}
                 />
@@ -565,6 +564,7 @@ export default function AddScreen({ fin, nav }) {
                   <input
                     id="fin-tx-amount"
                     autoFocus
+                    autoComplete="off"
                     inputMode="numeric"
                     pattern="[0-9.]*"
                     placeholder="0"
@@ -597,7 +597,7 @@ export default function AddScreen({ fin, nav }) {
                         type="button"
                         className={activeCategoryId === category.key ? 'is-active' : ''}
                         style={{
-                          borderColor: activeCategoryId === category.key ? category.color : undefined,
+                          '--cat-color': category.color,
                         }}
                         onClick={() => type === 'income'
                           ? setIncomeCategoryId(category.key)
@@ -652,7 +652,7 @@ export default function AddScreen({ fin, nav }) {
             {/* Hàng 5: Trả bằng (Nguồn tiền) */}
             {type === 'expense' && (
               <div className="fin-entry-section">
-                <label className="fin-cls-picker__label">Trả bằng</label>
+                <label className="fin-entry-section__label">Trả bằng</label>
                 <div className="fin-chips-row">
                   <button
                     type="button"
@@ -778,7 +778,7 @@ export default function AddScreen({ fin, nav }) {
 
             {/* Hàng 6: Ngày */}
             <div className="fin-entry-section">
-              <label className="fin-cls-picker__label">Ngày</label>
+              <label className="fin-entry-section__label">Ngày</label>
               <div className="fin-chips-row">
                 <button
                   type="button"
@@ -797,10 +797,9 @@ export default function AddScreen({ fin, nav }) {
                 <DateField value={occurredAt} onChange={setOccurredAt} max={fin.today} />
               </div>
             </div>
-
             <div className="fin-divider"></div>
 
-            {/* Hàng 7: Collapsible "Thêm chi tiết" */}
+            {/* Hàng 7: Collapsible "Thêm chi tiết" (chỉ có nút, không có text phụ) */}
             <button
               type="button"
               className="fin-details-toggle"
@@ -808,7 +807,6 @@ export default function AddScreen({ fin, nav }) {
             >
               <AppIcon name={showMore ? 'caretDown' : 'plus'} size={14} />
               <span>{showMore ? 'Ẩn chi tiết' : 'Thêm chi tiết'}</span>
-              <small>{detailsSummary}</small>
             </button>
 
             {showMore && (
@@ -819,6 +817,7 @@ export default function AddScreen({ fin, nav }) {
                     <input
                       id="fin-merchant"
                       value={merchant}
+                      autoComplete="off"
                       onChange={event => setMerchant(event.target.value)}
                       placeholder="Quán nước Bà Ba, Shopee, cửa hàng…"
                     />
@@ -990,7 +989,7 @@ export default function AddScreen({ fin, nav }) {
                               {need.label}
                             </span>
                             <span className="fin-sc-row-closed__amount">
-                              {usual ? `thường ${usual}` : '—'}
+                              {usual || '—'}
                             </span>
                             {shortcutEditing && (shortcut.seed ? (
                               <button
@@ -1045,16 +1044,17 @@ export default function AddScreen({ fin, nav }) {
                                   {info.label} › {subLabel(shortcut.subcategory_id, cats) || shortcut.name} · Tiền có sẵn
                                 </span>
                               </div>
-                              {usual && <span className="fin-sc-box-open__usual">thường {usual}</span>}
+                              {usual && <span className="fin-sc-box-open__usual">{usual}</span>}
                             </button>
 
                             <div className="fin-sc-box-open__input-row">
                               <div className="fin-sc-box-open__input-wrap">
                                 <input
                                   ref={shortcutInputRef}
+                                  autoComplete="off"
                                   inputMode="numeric"
                                   pattern="[0-9.]*"
-                                  placeholder={usual ? `~ ${usual}` : 'Số tiền'}
+                                  placeholder={usual ? usual : 'Số tiền'}
                                   value={groupDigits(shortcutAmount)}
                                   onChange={e => setShortcutAmount(sanitizeDigits(e.target.value))}
                                   onKeyDown={e => {
