@@ -16,7 +16,7 @@ const needCopy = {
 
 export default function CatsScreen({ fin, nav }) {
   const [editor, setEditor] = useState(null);
-  const edit = (group, kind) => setEditor(current => current?.group.key === group.key ? null : { group, kind });
+  const edit = (group) => setEditor(current => current?.group.key === group.key ? null : { group });
 
   return (
     <div className="fin-cats">
@@ -48,8 +48,8 @@ function CategoryPanel({ fin, editor, onEdit, onClose }) {
     </div>
 
     <div className="fin-taxonomy-grid">
-      {fin.cats.expenseGroups.map(group => <CategoryCard key={group.key} group={group} necessityKey={fin.cats.necessityByCat[group.key]} editing={editor?.group.key === group.key} onEdit={() => onEdit(group, 'expense')}>
-        {editor?.group.key === group.key && <CategoryEditor key={group.key} group={group} kind="expense" fin={fin} onClose={onClose} />}
+      {fin.cats.expenseGroups.map(group => <CategoryCard key={group.key} group={group} necessityKey={fin.cats.necessityByCat[group.key]} editing={editor?.group.key === group.key} onEdit={() => onEdit(group)}>
+        {editor?.group.key === group.key && <CategoryEditor key={group.key} group={group} fin={fin} onClose={onClose} />}
       </CategoryCard>)}
       <div className="fin-closed-group">
         <AppIcon name="lock" size={20} />
@@ -57,15 +57,6 @@ function CategoryPanel({ fin, editor, onEdit, onClose }) {
         <span>Giữ khóa báo cáo ổn định; hãy thêm mục con thay vì tạo nhóm cha mới.</span>
       </div>
     </div>
-
-    <section className="fin-taxonomy-band">
-      <div className="fin-taxonomy-band__head"><div><h2>Nguồn thu - bộ danh mục riêng</h2><p>Thu không bao giờ dùng chung danh mục với chi.</p></div></div>
-      <div className="fin-income-cards">
-        {fin.cats.incomeGroups.map(group => <CategoryCard key={group.key} group={group} income editing={editor?.group.key === group.key} onEdit={() => onEdit(group, 'income')}>
-          {editor?.group.key === group.key && <CategoryEditor key={group.key} group={group} kind="income" fin={fin} onClose={onClose} />}
-        </CategoryCard>)}
-      </div>
-    </section>
 
     <section className="fin-taxonomy-band">
       <div className="fin-taxonomy-band__head"><div><h2>Hai bậc cắt được - trục thứ hai, không phải danh mục</h2><p>Cắt gì trước khi hết tiền.</p></div></div>
@@ -115,13 +106,13 @@ function LockCard({ icon, title, children }) {
   return <article><AppIcon name={icon} size={17} /><strong>{title}</strong><p>{children}</p></article>;
 }
 
-function CategoryCard({ group, income = false, necessityKey, editing = false, onEdit, children }) {
+function CategoryCard({ group, necessityKey, editing = false, onEdit, children }) {
   const necessity = NECESSITY_META[group.necessity || necessityKey] || NECESSITY_META.want;
   return <article className={`fin-category-card${group.hidden ? ' is-hidden' : ''}${editing ? ' is-editing' : ''}`} style={{ '--c': group.color }}>
     <div className="fin-category-card__head">
       <span className="fin-category-card__icon"><AppIcon name={group.icon} size={17} weight="duotone" /></span>
       <span className="fin-category-card__title"><strong>{group.label}</strong><small>{group.key}</small></span>
-      <span className="fin-category-card__tag">{income ? (group.nature === 'fixed' ? 'Cố định' : 'Biến đổi') : necessity.label}</span>
+      <span className="fin-category-card__tag">{necessity.label}</span>
       <button type="button" className={`fin-icon-btn${editing ? ' is-active' : ''}`} onClick={onEdit} title={`Sửa ${group.label}`} aria-label={`Sửa ${group.label}`}><AppIcon name={editing ? 'x' : 'pencil'} size={14} /></button>
     </div>
     {!editing && <div className="fin-category-card__subs">
@@ -133,7 +124,8 @@ function CategoryCard({ group, income = false, necessityKey, editing = false, on
   </article>;
 }
 
-function CategoryEditor({ group, kind, fin, onClose }) {
+// Màn Danh mục chỉ sửa nhóm CHI; nguồn thu giữ bộ mặc định (chỉ "Sẽ nhận" dùng tới).
+function CategoryEditor({ group, fin, onClose }) {
   const [label, setLabel] = useState(group.label || '');
   const [color, setColor] = useState(group.color || '#9184d9');
   const [icon, setIcon] = useState(group.icon || 'package');
@@ -148,7 +140,7 @@ function CategoryEditor({ group, kind, fin, onClose }) {
   const appendSub = () => {
     const label = newSub.trim();
     if (!label) return;
-    setSubs(rows => [...rows, { key: makeKey(`${group.key}.sub`), label, necessity: kind === 'expense' ? necessity : undefined }]);
+    setSubs(rows => [...rows, { key: makeKey(`${group.key}.sub`), label, necessity }]);
     setNewSub('');
   };
   const save = async (event) => {
@@ -156,10 +148,10 @@ function CategoryEditor({ group, kind, fin, onClose }) {
     if (!label.trim()) return;
     setSaving(true);
     const cleanSubs = subs.filter(sub => sub.label.trim()).map(sub => ({
-      ...sub, label: sub.label.trim(), ...(kind === 'expense' ? { necessity: sub.necessity || necessity } : {}),
+      ...sub, label: sub.label.trim(), necessity: sub.necessity || necessity,
     }));
-    const saved = await fin.upsertCategoryOverride(group.key, kind, {
-      label: label.trim(), color, icon, hidden, necessity: kind === 'expense' ? necessity : null,
+    const saved = await fin.upsertCategoryOverride(group.key, 'expense', {
+      label: label.trim(), color, icon, hidden, necessity,
       nature, subs: cleanSubs,
     });
     setSaving(false);
@@ -182,7 +174,7 @@ function CategoryEditor({ group, kind, fin, onClose }) {
         </div>
       </div>
       <div className="fin-inline-editor__grid">
-        {kind === 'expense' && <label className="fin-field"><span>Mức mặc định của nhóm</span><select className="fin-input" value={necessity} onChange={e => setNecessity(e.target.value)}>{Object.entries(NECESSITY_META).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>}
+        <label className="fin-field"><span>Mức mặc định của nhóm</span><select className="fin-input" value={necessity} onChange={e => setNecessity(e.target.value)}>{Object.entries(NECESSITY_META).map(([key, meta]) => <option key={key} value={key}>{meta.label}</option>)}</select></label>
         <label className="fin-field"><span>Tính chất mặc định</span><select className="fin-input" value={nature} onChange={e => setNature(e.target.value)}><option value="variable">Biến đổi theo lần</option><option value="fixed">Cố định / định kỳ</option></select></label>
       </div>
 

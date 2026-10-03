@@ -437,39 +437,7 @@ export default function AddScreen({ fin, nav }) {
             className="fin-card fin-entry-card"
             onSubmit={(event) => { event.preventDefault(); saveTransaction(); }}
           >
-            {/* Hàng 1: Phân loại Phải trả / Tùy chọn */}
-            <div className="fin-entry-card__top">
-              <div className="fin-cls-picker">
-                <span className="fin-cls-picker__label">Phân loại</span>
-                <div className="fin-cls-picker__opts">
-                  <button
-                    type="button"
-                    className={`fin-cls-picker__btn ${appliedNecessity === 'must' ? 'is-active-must' : ''}`}
-                    onClick={() => setNecessity('must')}
-                  >
-                    Phải trả
-                  </button>
-                  <button
-                    type="button"
-                    className={`fin-cls-picker__btn ${appliedNecessity === 'want' ? 'is-active-want' : ''}`}
-                    onClick={() => setNecessity('want')}
-                  >
-                    Tùy chọn
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className={`fin-cls-picker__lock ${necessity ? 'is-locked' : ''}`}
-                  title={necessity ? 'Bạn đã chọn tay · bấm để app tự đoán lại' : 'App tự đoán theo danh mục con'}
-                  onClick={() => setNecessity('')}
-                  aria-label={necessity ? 'Đặt lại phân loại tự động' : 'Tự động đoán phân loại'}
-                >
-                  <AppIcon name={necessity ? 'lock' : 'sparkle'} size={15} />
-                </button>
-              </div>
-            </div>
-
-            {/* Hàng 2: Grid 2 cột: Tiêu đề & Số tiền */}
+            {/* Hàng 1: Grid 2 cột: Tiêu đề & Số tiền */}
             <div className="fin-entry-head-grid">
               <div className="fin-entry-title-field">
                 <label htmlFor="fin-tx-title">Tiêu đề</label>
@@ -536,7 +504,8 @@ export default function AddScreen({ fin, nav }) {
                     style={{
                       '--cat-color': category.color,
                     }}
-                    onClick={() => { setCategoryId(category.key); setSubId(''); }}
+                    // Đổi nhóm/danh mục con = quay về tự đoán; chọn tay chỉ giữ cho danh mục đang chọn.
+                  onClick={() => { setCategoryId(category.key); setSubId(''); setNecessity(''); }}
                   >
                     <FinanceIcon
                       name={category.icon}
@@ -567,7 +536,7 @@ export default function AddScreen({ fin, nav }) {
                       key={sub.key}
                       type="button"
                       className={subId === sub.key ? 'is-active' : ''}
-                      onClick={() => setSubId(current => current === sub.key ? '' : sub.key)}
+                      onClick={() => { setSubId(current => current === sub.key ? '' : sub.key); setNecessity(''); }}
                     >
                       <span>{sub.label}</span>
                       <span
@@ -625,25 +594,58 @@ export default function AddScreen({ fin, nav }) {
               )}
             </div>
 
-            {/* Hàng 6: Ngày */}
-            <div className="fin-entry-section">
-              <label className="fin-entry-section__label">Ngày</label>
-              <div className="fin-chips-row">
-                <button
-                  type="button"
-                  className={occurredAt === fin.today ? 'is-active' : ''}
-                  onClick={() => setOccurredAt(fin.today)}
-                >
-                  Hôm nay
-                </button>
-                <button
-                  type="button"
-                  className={occurredAt === yesterday ? 'is-active' : ''}
-                  onClick={() => setOccurredAt(yesterday)}
-                >
-                  Hôm qua
-                </button>
-                <DateField value={occurredAt} onChange={setOccurredAt} max={fin.today} />
+            {/* Hàng 6: Ngày (trái) + Phân loại Phải trả / Tùy chọn (phải) chung một hàng */}
+            <div className="fin-entry-split">
+              <div className="fin-entry-section">
+                <label className="fin-entry-section__label">Ngày</label>
+                <div className="fin-chips-row">
+                  <button
+                    type="button"
+                    className={occurredAt === fin.today ? 'is-active' : ''}
+                    onClick={() => setOccurredAt(fin.today)}
+                  >
+                    Hôm nay
+                  </button>
+                  <button
+                    type="button"
+                    className={occurredAt === yesterday ? 'is-active' : ''}
+                    onClick={() => setOccurredAt(yesterday)}
+                  >
+                    Hôm qua
+                  </button>
+                  <DateField value={occurredAt} onChange={setOccurredAt} max={fin.today} />
+                </div>
+              </div>
+
+              <div className="fin-entry-section">
+                <span className="fin-entry-section__label">Phân loại</span>
+                <div className="fin-cls-picker">
+                  <div className="fin-cls-picker__opts">
+                    <button
+                      type="button"
+                      className={`fin-cls-picker__btn ${appliedNecessity === 'must' ? 'is-active-must' : ''}`}
+                      onClick={() => setNecessity('must')}
+                    >
+                      Phải trả
+                    </button>
+                    <button
+                      type="button"
+                      className={`fin-cls-picker__btn ${appliedNecessity === 'want' ? 'is-active-want' : ''}`}
+                      onClick={() => setNecessity('want')}
+                    >
+                      Tùy chọn
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className={`fin-cls-picker__lock ${necessity ? 'is-locked' : ''}`}
+                    title={necessity ? 'Bạn đã chọn tay · đổi danh mục hoặc bấm đây để app tự đoán lại' : 'App tự đoán theo danh mục con'}
+                    onClick={() => setNecessity('')}
+                    aria-label={necessity ? 'Đặt lại phân loại tự động' : 'Tự động đoán phân loại'}
+                  >
+                    <AppIcon name={necessity ? 'lock' : 'sparkle'} size={15} />
+                  </button>
+                </div>
               </div>
             </div>
             <div className="fin-divider"></div>

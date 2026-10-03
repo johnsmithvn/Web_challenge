@@ -162,7 +162,7 @@ export default function FinancePage() {
   const headerSub = screen === 'overview'
     ? (overviewTab === 'stats' ? 'Tổng hợp chi tiêu, phân bổ danh mục và nhịp chi' : `${period.label} · tổng quan chi tiêu`)
     : screen === 'list' ? `${period.label} · lọc cùng kỳ với Tổng quan`
-    : screen === 'cats' ? '11 nhóm chi · 7 nhóm thu · cấu trúc dữ liệu'
+    : screen === 'cats' ? `${fin.cats.expenseGroups.length} nhóm chi · cấu trúc dữ liệu`
     : 'Định kỳ, nghĩa vụ và Quỹ tiết kiệm';
 
   return (
