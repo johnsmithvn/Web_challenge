@@ -49,8 +49,8 @@ setInterval(() => {
     if (dueHHMM <= currentTime) {
       self.registration.showNotification('📌 Nhiệm Vụ Đến Hạn', {
         body: task.title,
-        icon: '/favicon.svg',
-        badge: '/favicon.svg',
+        icon: '/pwa-192x192.png',
+        badge: '/favicon.png',
         tag: `task-${task.id}`, // coalesce duplicates with the same tag
         renotify: false,        // if the SW restarts, don't re-alert an already-shown task
         data: { taskId: task.id },
