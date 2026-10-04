@@ -81,11 +81,84 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// ── Offline Shell Caching ────────────────────────────────
+const CACHE_NAME = 'lh-pwa-v1.3.0';
+const STATIC_PRECACHE = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/favicon.svg',
+  '/favicon.png',
+  '/apple-touch-icon.png',
+  '/pwa-192x192.png',
+  '/pwa-512x512.png',
+];
+
 // ── Install & Activate ───────────────────────────────────
-self.addEventListener('install', () => {
-  self.skipWaiting();
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(STATIC_PRECACHE))
+      .then(() => self.skipWaiting())
+      .catch(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) => (
+      Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      )
+    )).then(() => self.clients.claim())
+  );
+});
+
+// ── Fetch Handler: Network-First cho HTML, Cache-First cho Assets ──
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+
+  // Bỏ qua các API bên ngoài như Supabase REST
+  if (url.pathname.startsWith('/rest/v1') || url.pathname.startsWith('/auth/v1')) {
+    return;
+  }
+
+  // 1. Navigation requests (mở trang SPA: /, /tasks, /finance, /accounts...)
+  // Network-First: Ưu tiên mạng để luôn lấy bản mới nhất; mất mạng thì fallback về index.html
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/', clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match('/') || caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // 2. Static assets cùng domain (JS, CSS, icons, fonts)
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      caches.match(req).then((cachedResponse) => {
+        const fetchPromise = fetch(req)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.ok) {
+              const clone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+            }
+            return networkResponse;
+          })
+          .catch(() => null);
+
+        return cachedResponse || fetchPromise;
+      })
+    );
+  }
 });

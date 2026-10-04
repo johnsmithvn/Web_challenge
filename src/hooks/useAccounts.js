@@ -31,6 +31,35 @@ const VAULT_CONFLICT = 'This Vault item changed in another session. Reload and u
 const BACKUP_FORMAT = 'lifehub-vault-backup';
 const BACKUP_VERSION = 1;
 
+const VAULT_CACHE_PREFIX = 'vl_vault_cache_';
+
+// Chỉ lưu ciphertext đã mã hoá (config, items) vào cache máy — KHÔNG lưu key, passphrase hay plaintext.
+function saveVaultCache(userId, config, items) {
+  if (!userId) return;
+  try {
+    const raw = localStorage.getItem(`${VAULT_CACHE_PREFIX}${userId}`);
+    const existing = raw ? JSON.parse(raw) : {};
+    const updated = {
+      config: config !== undefined ? config : existing.config,
+      items: items !== undefined ? items : existing.items,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(`${VAULT_CACHE_PREFIX}${userId}`, JSON.stringify(updated));
+  } catch (e) {
+    logger.warn('[useAccounts] failed to save vault cache:', e);
+  }
+}
+
+function loadVaultCache(userId) {
+  if (!userId) return null;
+  try {
+    const raw = localStorage.getItem(`${VAULT_CACHE_PREFIX}${userId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 function cleanItem(item) {
   return {
     schema: ITEM_SCHEMA,
@@ -128,9 +157,25 @@ export function useAccounts() {
       if (bad) {
         setVaultError(`${bad} encrypted item${bad === 1 ? '' : 's'} could not be opened and were not modified.`);
       }
+      saveVaultCache(userId, undefined, data || []);
       return true;
     } catch (error) {
       if (!isCurrent()) return false;
+      const cached = loadVaultCache(userId);
+      if (cached?.items && Array.isArray(cached.items)) {
+        try {
+          const results = await Promise.allSettled(cached.items.map(async (row) => (
+            hydrateItem(row, await decryptVaultItem(key, userId, row))
+          )));
+          if (!isCurrent()) return false;
+          const good = results.filter((result) => result.status === 'fulfilled').map((result) => result.value);
+          setItems(good);
+          setVaultError(cached.items.length === 0 ? '' : 'Đang mở két ở chế độ ngoại tuyến (dữ liệu lưu trên máy).');
+          return true;
+        } catch (decryptErr) {
+          logger.error('[useAccounts] offline decrypt error:', decryptErr);
+        }
+      }
       logger.error('[useAccounts] encrypted fetch error:', error.message);
       setVaultError('Could not load the encrypted Vault. Nothing was modified.');
       return false;
@@ -171,8 +216,15 @@ export function useAccounts() {
       }
       configRef.current = data;
       setVaultStatus(data ? 'locked' : 'setup');
+      saveVaultCache(userId, data, undefined);
     } catch (error) {
       if (sessionRef.current !== session) return;
+      const cached = loadVaultCache(userId);
+      if (cached?.config) {
+        configRef.current = cached.config;
+        setVaultStatus('locked');
+        return;
+      }
       logger.error('[useAccounts] config error:', error.message);
       setVaultError('Vault encryption schema is not available yet. Run the v6.2 migration first.');
       setVaultStatus('error');

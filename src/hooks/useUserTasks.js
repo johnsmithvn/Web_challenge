@@ -10,6 +10,8 @@ import { useXpStore, XP_REWARDS } from './useXpStore';
 import { diffTaskFields, ACTIONS } from '../utils/taskFields';
 import UI_STRINGS from '../data/ui-strings.json';
 
+const TASKS_CACHE_PREFIX = 'vl_tasks_cache_';
+
 const todayStr = () => toDateStr();
 
 // ── Date helper (dùng ở nhiều chỗ trong file, không chỉ recurrence) ──
@@ -86,8 +88,19 @@ export function useUserTasks() {
 
         if (result.error) {
           logger.error('[useUserTasks] fallback fetch error:', result.error.message);
+          try {
+            const raw = localStorage.getItem(`${TASKS_CACHE_PREFIX}${userId}`);
+            if (raw) {
+              const cached = JSON.parse(raw);
+              if (Array.isArray(cached) && epoch === fetchEpochRef.current) setTasks(cached);
+            }
+          } catch { /* ignore fallback error */ }
         } else if (epoch === fetchEpochRef.current) {
-          setTasks((result.data || []).map(t => ({ ...t, _collections: [], _tags: [] })));
+          const fallbackMapped = (result.data || []).map(t => ({ ...t, _collections: [], _tags: [] }));
+          setTasks(fallbackMapped);
+          try {
+            localStorage.setItem(`${TASKS_CACHE_PREFIX}${userId}`, JSON.stringify(fallbackMapped));
+          } catch { /* ignore cache write error */ }
         }
         return;
       }
@@ -104,9 +117,21 @@ export function useUserTasks() {
       }));
       // Remove raw junction data
       mapped.forEach(t => { delete t.task_collections; delete t.task_tags; });
-      if (epoch === fetchEpochRef.current) setTasks(mapped);
+      if (epoch === fetchEpochRef.current) {
+        setTasks(mapped);
+        try {
+          localStorage.setItem(`${TASKS_CACHE_PREFIX}${userId}`, JSON.stringify(mapped));
+        } catch { /* ignore cache write error */ }
+      }
     } catch (err) {
       logger.error('[useUserTasks] fetch exception:', err);
+      try {
+        const raw = localStorage.getItem(`${TASKS_CACHE_PREFIX}${userId}`);
+        if (raw) {
+          const cached = JSON.parse(raw);
+          if (Array.isArray(cached) && epoch === fetchEpochRef.current) setTasks(cached);
+        }
+      } catch { /* ignore fallback error */ }
     } finally {
       if (epoch === fetchEpochRef.current) setIsLoading(false);
     }
