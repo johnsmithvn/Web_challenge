@@ -526,7 +526,6 @@ export default function AddScreen({ fin, nav }) {
                 <label>
                   Danh mục con <span style={{ fontWeight: 400, color: 'var(--n-txt3)' }}>· {expenseGroup?.label}</span>
                 </label>
-                <small>bỏ qua cũng được — thống kê vẫn chạy ở cấp nhóm</small>
               </div>
               <div className="fin-subs-strip">
                 {pickableSubs(expenseGroup, subId, cats).map(sub => {
