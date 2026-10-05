@@ -4,9 +4,8 @@ import {
   parseYmd, monthStart, monthEnd, daysInclusive,
 } from '../../utils/financeLogic';
 import {
-  money, catInfo, RhythmBars, FinanceIcon,
+  money, RhythmBars,
 } from './parts';
-import { formatDate } from '../../utils/dateUtils';
 import AppIcon from '../AppIcon';
 import AnalyzeScreen from './AnalyzeScreen';
 import '../../styles/skeleton.css';   // dùng .sk-* trực tiếp, không qua SkeletonList
@@ -59,7 +58,7 @@ export default function OverviewScreen({ fin, nav }) {
         {!fin.hasLoaded
           ? <OverviewSkeleton />
           : <AnalyzeScreen fin={fin} nav={nav}
-            lead={period => <OverviewDashboard fin={fin} nav={nav} period={period} />} />}
+            lead={(period, slots) => <OverviewDashboard fin={fin} nav={nav} period={period} slots={slots} />} />}
       </div>
     </div>
   );
@@ -74,8 +73,10 @@ function previousRange(period) {
   return { from: monthStart(y, m - 1), to: monthEnd(y, m - 1) };
 }
 
-function OverviewDashboard({ fin, nav, period }) {
-  const { transactions, cards, deposits, goals, bills, lendings, today } = fin;
+// `slots` = { hero, sparks, rank, cards } do Báo cáo dựng sẵn (state thẻ/xếp hạng nằm bên đó);
+// ở đây chỉ quyết định thứ tự: Tổng chi → cảnh báo → 4 chỉ số → Sparkline → Nhịp chi | Xếp hạng → Quỹ.
+function OverviewDashboard({ fin, nav, period, slots }) {
+  const { transactions, cards, deposits, goals, lendings, today } = fin;
 
   const totals = useMemo(
     () => periodTotals(transactions, period),
@@ -112,8 +113,6 @@ function OverviewDashboard({ fin, nav, period }) {
   [lendings, transactions, today]);
 
   const fund = useMemo(() => fundBalance(deposits), [deposits]);
-  // "Cần bạn ghi": hóa đơn 'ask' đang bật (nhắc user tự nhập số).
-  const askBills = bills.filter(b => b.enabled && b.amount_mode === 'ask' && !b.finished_at);
 
   const fixedPct = totals.total ? Math.round((totals.fixed / totals.total) * 100) : 0;
   const effectiveDays = today >= period.from && today <= period.to
@@ -122,12 +121,10 @@ function OverviewDashboard({ fin, nav, period }) {
   const cardAlertRows = cardAlerts.map(({ card, cyc }) => ({
     card, cyc, balance: cyc.outstanding,
   }));
-  const topTransactions = useMemo(() => transactions
-    .filter(t => t.type === 'expense' && !t.excluded
-      && t.occurred_at >= period.from && t.occurred_at <= period.to)
-    .sort((a, b) => b.amount - a.amount).slice(0, 4), [transactions, period]);
   return (
     <div className="fin-overview">
+      {slots.hero}
+
       {cardAlertRows.map(({ card, cyc, balance }) => (
         <button key={card.id} className="fin-alert fin-alert--warn fin-alert--detail"
           onClick={() => nav.go('recurring', { recurringSeg: 'card' })}>
@@ -151,7 +148,7 @@ function OverviewDashboard({ fin, nav, period }) {
       ))}
 
       {/* 4 chỉ số */}
-      <div className="fin-metrics">
+      {slots.cards.metrics && <div className="fin-metrics">
         <div className="fin-metric">
           <div className="fin-metric__label">Đã chi {period.label}</div>
           <div className="fin-metric__value">{money(totals.total)}</div>
@@ -178,7 +175,9 @@ function OverviewDashboard({ fin, nav, period }) {
           <div className="fin-metric__value">{fixedPct}%</div>
           <div className="fin-metric__hint">{money(totals.fixed)} hóa đơn + đăng ký + lãi</div>
         </div>
-      </div>
+      </div>}
+
+      {slots.sparks}
 
       <div className="fin-overview-grid">
         <section className="fin-card fin-overview-panel">
@@ -186,17 +185,7 @@ function OverviewDashboard({ fin, nav, period }) {
           <RhythmBars rows={rhythm.rows} avg={rhythm.avg} unit={period.unit} />
         </section>
 
-        <section className="fin-card fin-overview-panel">
-          <div className="fin-card__head"><div className="fin-card__title">Khoản lớn nhất kỳ này</div></div>
-          {topTransactions.length ? <div className="fin-top-tx">{topTransactions.map(t => {
-            const info = catInfo(t.category_id, fin.cats);
-            return <button className="fin-biggest" key={t.id} onClick={() => nav.go('list')}>
-              <span className="fin-biggest__ico" style={{ color: info.color }}><FinanceIcon name={info.icon} cats={fin.cats} size={17} /></span>
-              <span><span className="fin-biggest__note">{t.note || info.label}</span><span className="fin-biggest__date">{formatDate(t.occurred_at)}</span></span>
-              <strong className="fin-biggest__amt">{money(t.amount)}</strong>
-            </button>;
-          })}</div> : <div className="fin-empty">Chưa có khoản nào trong kỳ</div>}
-        </section>
+        {slots.rank}
       </div>
 
       <button className="fin-card fin-card--btn fin-fund-summary" onClick={() => nav.go('recurring', { recurringSeg: 'saving' })}>
@@ -204,13 +193,6 @@ function OverviewDashboard({ fin, nav, period }) {
         <span><strong>Quỹ tiết kiệm</strong><small>{goals.length} quỹ · lãi bình quân {fund.weightedRate}%/năm</small></span>
         <b>{money(fund.total)}</b><AppIcon name="caretRight" size={14} />
       </button>
-
-      {/* Cần bạn ghi (Inbox nghiệp vụ) */}
-      {askBills.length > 0 && (
-        <button className="fin-alert" onClick={() => nav.go('add')}>
-          <AppIcon name="note" size={17} /><span>{askBills.length} hóa đơn cần bạn ghi số tiền — sang Nhập nhanh</span><AppIcon name="caretRight" size={14} />
-        </button>
-      )}
     </div>
   );
 }

@@ -151,7 +151,7 @@ export default function FinancePage() {
   return (
     <div className="finance-module">
       <section className="fin-content">
-        {screen !== 'list' && (
+        {screen !== 'list' && screen !== 'overview' && (
           <header className="fin-header">
             <div className="fin-header__brand">
               <div className="fin-header__copy">

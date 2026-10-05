@@ -12,7 +12,14 @@
   - **Lưu trạng thái & tương thích Mobile**: Ghi nhớ trạng thái thu gọn vào `localStorage` (`vl_kanban_collapsed_cols`); trên giao diện điện thoại, khi chuyển tab sang cột đang bị thu gọn, hệ thống tự động mở bung cột đó.
 
 ### Changed
-- **Gộp Tổng quan + Báo cáo thành một trang (`OverviewScreen.jsx`, `ReportScreen.jsx`, `AnalyzeScreen.jsx`, `FinancePage.jsx`):** bỏ thanh chuyển tab Tổng quan/Báo cáo và `PeriodPicker` trên header; phần Tổng quan (cảnh báo thẻ/cho vay, 4 chỉ số, Nhịp chi, Khoản lớn nhất, Quỹ tiết kiệm) vẽ ngay trên nội dung Báo cáo và dùng chung bộ chọn kỳ Tháng/Quý/Năm của Báo cáo. "So với kỳ trước" so với tháng/quý/năm liền trước. Xóa card "Tiền đi đâu" (donut, Cắt được tới đâu, Cố định/Biến đổi) vì Báo cáo đã có cơ cấu nhóm. `?view=stats` và `/finance/report` đều về `/finance/overview`.
+- **Tái cấu trúc bố cục Tổng quan & Báo cáo chi tiêu (`FinancePage.jsx`, `OverviewScreen.jsx`, `ReportScreen.jsx`, `finance-report.css`):**
+  - **Gộp và tinh gọn Header**: Ẩn header cũ của FinancePage ("Hôm nay tiêu gì?", dòng mô tả phụ và nút "+ Thêm chi tiêu") trên màn Tổng quan; đưa thanh điều khiển báo cáo (chọn Tháng/Quý/Năm, Stepper, Thẻ hiển thị, Xuất CSV) lên đầu trang.
+  - **Thẻ đen Tổng chi tháng lên đầu**: Thẻ Hero (Tổng chi trong kỳ + Vòng cơ cấu donut + Top 3 nhóm) hiển thị ngay dưới thanh điều khiển.
+  - **Bố cục thẻ thông số & Sparklines**: 4 chỉ số chi tiêu (Đã chi, So với kỳ trước, Trung bình mỗi ngày, Phần cố định) đặt ngay dưới thẻ Hero; dải Sparkline 6 nhóm đặt liền dưới 4 chỉ số chi tiêu.
+  - **Tích hợp Xếp hạng nhóm vào lưới Tổng quan**: Bỏ card "Khoản lớn nhất kỳ này", đưa "Xếp hạng nhóm" lên xếp ngang hàng cạnh "Nhịp chi theo ngày/tháng".
+  - **Bỏ thông báo hóa đơn**: Gỡ bỏ thanh cảnh báo "6 hóa đơn cần bạn ghi số tiền — sang Nhập nhanh".
+  - **Thêm tùy chọn bật/tắt Bốn chỉ số chi tiêu**: Bổ sung mục "Bốn chỉ số chi tiêu" vào menu popover *Thẻ hiển thị*.
+  - **Mở rộng biểu đồ Chi 12 tháng**: Biểu đồ Chi 12 tháng dãn trọn hàng (100% width) thoáng đãng, cân đối.
 - **Chuẩn Hóa Nút Thao Tác & Tinh Gọn Thẻ Task Kanban (`TaskKanbanView.jsx`):**
   - **Bỏ icon chấm tròn (`kanban-checkbox`)**: Loại bỏ nút tròn ở đầu tiêu đề công việc, tránh xung đột UX với hàng nút chuyển trạng thái ở chân thẻ và nhường không gian tiêu đề thẳng thắn từ lề trái.
   - **Đồng nhất nút chuyển trạng thái tiếng Anh 100%**: Thay thế toàn bộ các nhãn hỗn hợp trước đây ("Về To Do", "Sang Doing", "Xong ✓", "Bỏ qua", "↺ Làm lại") thành các nút ngắn gọn, chuẩn mực: `To Do`, `Doing`, `Done`, `Skip` (loại bỏ sạch các tiền tố "về", "sang", mũi tên). Mỗi thẻ luôn cung cấp đầy đủ 3 nút tương ứng với 3 cột còn lại.
