@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
+import { formatDate } from '../../utils/dateUtils';
 import {
   parseYmd, monthStart, monthEnd,
 } from '../../utils/financeLogic';
@@ -19,23 +20,33 @@ const GROUP_PALETTE = {
 const DEFAULT_CARDS = {
   metrics: true,
   sparks: true,
+  periodDiff: true,
+  outliers: true,
   trend: true,
+  yoy: true,
   rank: true,
   dow: true,
   treemap: true,
   pareto: true,
+  necessity: true,
+  calHeatmap: true,
   hist: false,
-  merchants: false,
+  merchants: true,
 };
 
 const CARD_DEFS = [
   { id: 'metrics', name: 'So kỳ trước & Cố định', size: '1/2' },
   { id: 'sparks', name: 'Sparkline sáu nhóm', size: 'full' },
+  { id: 'periodDiff', name: 'Kỳ này với kỳ trước', size: 'full' },
+  { id: 'outliers', name: 'Khoản lớn bất thường', size: '1/2' },
   { id: 'trend', name: 'Chi 12 tháng', size: 'full' },
+  { id: 'yoy', name: 'Cùng kỳ năm trước', size: 'full' },
   { id: 'rank', name: 'Xếp hạng nhóm', size: '1/2' },
   { id: 'dow', name: 'Chi theo thứ', size: '1/3' },
   { id: 'treemap', name: 'Bản đồ danh mục', size: '1/3' },
   { id: 'pareto', name: 'Pareto 80/20', size: '1/3' },
+  { id: 'necessity', name: 'Phải trả và Tùy chọn', size: '1/3' },
+  { id: 'calHeatmap', name: 'Lịch chi tháng', size: '1/3' },
   { id: 'hist', name: 'Phân bố số tiền', size: '1/3' },
   { id: 'merchants', name: 'Nơi chi nhiều nhất', size: '1/3' },
 ];
@@ -57,7 +68,17 @@ function csvCell(value) {
 }
 
 // `lead(period)`: nội dung Tổng quan vẽ phía trên Báo cáo, dùng chung bộ chọn kỳ.
-export default function ReportScreen({ fin, nav, lead }) {
+export default function ReportScreen({ fin, nav, lead, footer }) {
+  const [expandedDiffGroups, setExpandedDiffGroups] = useState(() => new Set());
+
+  const toggleExpandDiffGroup = (groupKey) => {
+    setExpandedDiffGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  };
   // ── 1. Quản lý chế độ & kỳ báo cáo ─────────────────────────────────────────
   const [mode, setMode] = useState('month'); // 'month' | 'quarter' | 'year'
   const [showAllRanks, setShowAllRanks] = useState(false);
@@ -221,6 +242,32 @@ export default function ReportScreen({ fin, nav, lead }) {
     if (!prevTotal) return null;
     return Math.round(((totalSpend - prevTotal) / prevTotal) * 100);
   }, [totalSpend, prevTotal]);
+
+  // Giao dịch kỳ liền trước (dành cho so sánh Kỳ này với kỳ trước: T9 vs T8, Q3 vs Q2, Năm N vs Năm N-1)
+  const prevPeriodTxs = useMemo(() => {
+    let pFrom = '';
+    let pTo = '';
+    if (mode === 'year') {
+      pFrom = `${targetYear - 1}-01-01`;
+      pTo = `${targetYear - 1}-12-31`;
+    } else if (mode === 'quarter') {
+      const q = Math.floor(targetMonth / 3);
+      const prevQ = q === 0 ? 3 : q - 1;
+      const prevY = q === 0 ? targetYear - 1 : targetYear;
+      pFrom = monthStart(prevY, prevQ * 3);
+      pTo = monthEnd(prevY, prevQ * 3 + 2);
+    } else {
+      const prevM = targetMonth === 0 ? 11 : targetMonth - 1;
+      const prevY = targetMonth === 0 ? targetYear - 1 : targetYear;
+      pFrom = monthStart(prevY, prevM);
+      pTo = monthEnd(prevY, prevM);
+    }
+
+    return fin.transactions.filter(t =>
+      t.type === 'expense' && !t.excluded &&
+      t.occurred_at >= pFrom && t.occurred_at <= pTo
+    );
+  }, [fin.transactions, mode, targetYear, targetMonth]);
 
   // Nhóm chi tiêu và màu sắc
   const expenseGroups = useMemo(() => {
@@ -570,6 +617,335 @@ export default function ReportScreen({ fin, nav, lead }) {
     }));
   }, [periodTxs]);
 
+  // ── 10b. Biểu đồ Kỳ này với kỳ trước (so sánh từng nhóm và danh mục con) ───
+  const periodDiffData = useMemo(() => {
+    const curLabel = period.label.split('/')[0] || period.label;
+    const curLabelShort = mode === 'month' ? `T${targetMonth + 1}` : mode === 'quarter' ? `Q${Math.floor(targetMonth / 3) + 1}` : `${targetYear}`;
+    let prevLabelShort = 'Kỳ trước';
+    if (mode === 'month') {
+      const pm = targetMonth === 0 ? 12 : targetMonth;
+      prevLabelShort = `T${pm}`;
+    } else if (mode === 'quarter') {
+      const pq = Math.floor(targetMonth / 3) === 0 ? 4 : Math.floor(targetMonth / 3);
+      prevLabelShort = `Q${pq}`;
+    } else {
+      prevLabelShort = `${targetYear - 1}`;
+    }
+    const prevLabel = `Kỳ trước (${prevLabelShort})`;
+
+    const groupRows = expenseGroups.map(g => {
+      const palette = GROUP_PALETTE[g.key] || { col: '#6949E8' };
+      const curGroupTxs = periodTxs.filter(t => (t.category_id || 'other') === g.key);
+      const prevGroupTxs = prevPeriodTxs.filter(t => (t.category_id || 'other') === g.key);
+
+      const curAmt = curGroupTxs.reduce((s, t) => s + t.amount, 0);
+      const prevAmt = prevGroupTxs.reduce((s, t) => s + t.amount, 0);
+
+      // Chi tiết theo subcategory
+      const subKeys = new Set([
+        ...curGroupTxs.map(t => t.subcategory_id || 'other'),
+        ...prevGroupTxs.map(t => t.subcategory_id || 'other'),
+      ]);
+
+      const subs = Array.from(subKeys).map(subId => {
+        const cSubAmt = curGroupTxs
+          .filter(t => (t.subcategory_id || 'other') === subId)
+          .reduce((s, t) => s + t.amount, 0);
+        const pSubAmt = prevGroupTxs
+          .filter(t => (t.subcategory_id || 'other') === subId)
+          .reduce((s, t) => s + t.amount, 0);
+
+        const sDelta = cSubAmt - pSubAmt;
+        const sPct = pSubAmt > 0 ? Math.round((sDelta / pSubAmt) * 100) : 0;
+        const sName = subId === 'other' ? 'Chưa phân loại' : (subLabel(subId, fin.cats) || subId);
+
+        return {
+          key: subId,
+          name: sName,
+          curAmt: cSubAmt,
+          prevAmt: pSubAmt,
+          delta: sDelta,
+          pct: sPct,
+          isNew: pSubAmt === 0 && cSubAmt > 0,
+        };
+      }).filter(s => s.curAmt > 0 || s.prevAmt > 0)
+        .sort((a, b) => b.curAmt - a.curAmt);
+
+      const delta = curAmt - prevAmt;
+      const pct = prevAmt > 0 ? Math.round((delta / prevAmt) * 100) : 0;
+
+      return {
+        key: g.key,
+        name: g.label,
+        col: palette.col,
+        curAmt,
+        prevAmt,
+        delta,
+        pct,
+        isNew: prevAmt === 0 && curAmt > 0,
+        subs,
+      };
+    }).filter(r => r.curAmt > 0 || r.prevAmt > 0)
+      .sort((a, b) => b.curAmt - a.curAmt);
+
+    const maxRowVal = Math.max(
+      ...groupRows.flatMap(r => [r.curAmt, r.prevAmt]),
+      1
+    );
+
+    return {
+      curLabel,
+      curLabelShort,
+      prevLabel,
+      prevLabelShort,
+      rows: groupRows,
+      maxRowVal,
+    };
+  }, [period.label, mode, targetMonth, targetYear, expenseGroups, periodTxs, prevPeriodTxs, fin.cats]);
+
+  // ── 10c. Biểu đồ Khoản lớn bất thường (Outliers so với mức thường 3 tháng) ──
+  const outlierData = useMemo(() => {
+    const threeMonthsAgoStart = monthStart(targetYear, targetMonth - 3);
+    const prevMonthEnd = monthEnd(targetYear, targetMonth - 1);
+
+    const past3mTxs = fin.transactions.filter(t =>
+      t.type === 'expense' && !t.excluded &&
+      t.occurred_at >= threeMonthsAgoStart && t.occurred_at <= prevMonthEnd
+    );
+
+    const subStats = {};
+    for (const t of past3mTxs) {
+      const k = t.subcategory_id || t.category_id || 'other';
+      if (!subStats[k]) subStats[k] = { total: 0, count: 0 };
+      subStats[k].total += t.amount;
+      subStats[k].count += 1;
+    }
+
+    const items = [];
+    let normalCount = 0;
+
+    for (const t of periodTxs) {
+      const k = t.subcategory_id || t.category_id || 'other';
+      const stats = subStats[k];
+      const avg3m = stats && stats.count > 0 ? Math.round(stats.total / stats.count) : 0;
+      const subName = subLabel(t.subcategory_id, fin.cats) || catInfo(t.category_id, fin.cats).label;
+      const name = (t.merchant || t.note || subName).trim();
+      const dateStr = t.occurred_at ? formatDate(t.occurred_at, 'dd/MM') : '';
+
+      if (avg3m > 0 && t.amount >= avg3m * 1.4 && t.amount >= 200_000) {
+        const ratio = (t.amount / avg3m).toFixed(1).replace('.', ',');
+        items.push({
+          id: t.id,
+          date: dateStr,
+          subName,
+          name,
+          amount: t.amount,
+          avg3m,
+          ratio,
+          type: 'surge',
+          badge: `×${ratio}`,
+          note: `Mức thường 3 tháng: ${money(avg3m)} (vạch đen)`,
+        });
+      } else if (!stats && t.amount >= 500_000) {
+        items.push({
+          id: t.id,
+          date: dateStr,
+          subName,
+          name,
+          amount: t.amount,
+          avg3m: 0,
+          type: 'new',
+          badge: 'Lần đầu',
+          note: 'Chưa có khoản này trong các tháng trước',
+        });
+      } else {
+        normalCount += 1;
+      }
+    }
+
+    items.sort((a, b) => b.amount - a.amount);
+
+    return {
+      items: items.slice(0, 5),
+      normalCount,
+    };
+  }, [fin.transactions, periodTxs, targetYear, targetMonth, fin.cats]);
+
+  // ── 10d. Biểu đồ Cùng kỳ năm trước (YoY 12 tháng năm nay vs năm trước) ──────
+  const yoyMonthsData = useMemo(() => {
+    const curYear = targetYear;
+    const prevYear = targetYear - 1;
+
+    let totalCurYTD = 0;
+    let totalPrevYTD = 0;
+
+    const months = [];
+    for (let m = 0; m < 12; m++) {
+      const curFrom = monthStart(curYear, m);
+      const curTo = monthEnd(curYear, m);
+      const prevFrom = monthStart(prevYear, m);
+      const prevTo = monthEnd(prevYear, m);
+
+      const cAmt = fin.transactions
+        .filter(t => t.type === 'expense' && !t.excluded && t.occurred_at >= curFrom && t.occurred_at <= curTo)
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const pAmt = fin.transactions
+        .filter(t => t.type === 'expense' && !t.excluded && t.occurred_at >= prevFrom && t.occurred_at <= prevTo)
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const delta = cAmt - pAmt;
+      const pct = pAmt > 0 ? Math.round((delta / pAmt) * 100) : null;
+      const isCur = m === targetMonth;
+
+      if (m <= targetMonth) {
+        totalCurYTD += cAmt;
+        totalPrevYTD += pAmt;
+      }
+
+      months.push({
+        m: `T${m + 1}`,
+        mNum: m + 1,
+        cAmt,
+        pAmt,
+        pct,
+        isCur,
+      });
+    }
+
+    const maxVal = Math.max(...months.flatMap(m => [m.cAmt, m.pAmt]), 1);
+    const totalCurMillions = totalCurYTD > 0 ? (totalCurYTD / 1_000_000).toFixed(1).replace('.', ',') : null;
+    const deltaYTD = totalPrevYTD > 0 ? Math.round(((totalCurYTD - totalPrevYTD) / totalPrevYTD) * 100) : null;
+
+    return {
+      curYear,
+      prevYear,
+      months,
+      maxVal,
+      totalCurMillions,
+      deltaYTD,
+      monthsCount: targetMonth + 1,
+    };
+  }, [fin.transactions, targetYear, targetMonth]);
+
+  // ── 10e. Biểu đồ Phải trả và Tùy chọn (Stacked bars 12 tháng) ───────────────
+  const necessityData = useMemo(() => {
+    const MUST_CATEGORIES = new Set(['debt', 'housing', 'bills', 'utilities', 'rent', 'loan']);
+
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(targetYear, targetMonth - i, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const f = monthStart(y, m);
+      const t = monthEnd(y, m);
+
+      const txs = fin.transactions.filter(tr =>
+        tr.type === 'expense' && !tr.excluded && tr.occurred_at >= f && tr.occurred_at <= t
+      );
+
+      let mustAmt = 0;
+      let wantAmt = 0;
+      for (const tr of txs) {
+        if (MUST_CATEGORIES.has(tr.category_id)) {
+          mustAmt += tr.amount;
+        } else {
+          wantAmt += tr.amount;
+        }
+      }
+
+      const total = mustAmt + wantAmt;
+      const isCurrent = i === 0;
+
+      months.push({
+        n: `${m + 1}`,
+        total,
+        mustAmt,
+        wantAmt,
+        isCurrent,
+      });
+    }
+
+    const maxMonthSpend = Math.max(...months.map(m => m.total), 1);
+    const formattedMonths = months.map(m => ({
+      ...m,
+      mustH: Math.max(m.mustAmt > 0 ? 3 : 0, Math.round((m.mustAmt / maxMonthSpend) * 100)),
+      wantH: Math.max(m.wantAmt > 0 ? 3 : 0, Math.round((m.wantAmt / maxMonthSpend) * 100)),
+    }));
+
+    const curMonth = formattedMonths[formattedMonths.length - 1];
+    const curMustPct = curMonth && curMonth.total > 0 ? Math.round((curMonth.mustAmt / curMonth.total) * 100) : 0;
+    const curMustStr = curMonth ? compactVND(curMonth.mustAmt) : '0';
+    const curWantStr = curMonth ? compactVND(curMonth.wantAmt) : '0';
+
+    return {
+      months: formattedMonths,
+      curMonthNum: targetMonth + 1,
+      curMustPct,
+      curMustStr,
+      curWantStr,
+    };
+  }, [fin.transactions, targetYear, targetMonth]);
+
+  // ── 10f. Lịch chi tháng (Calendar Heatmap) ─────────────────────────────────
+  const calHeatmapData = useMemo(() => {
+    const y = targetYear;
+    const m = targetMonth;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+    const dailyMap = {};
+    for (const t of periodTxs) {
+      const day = parseYmd(t.occurred_at).getDate();
+      dailyMap[day] = (dailyMap[day] || 0) + t.amount;
+    }
+
+    const firstDayDow = new Date(y, m, 1).getDay();
+    const blankCount = firstDayDow === 0 ? 6 : firstDayDow - 1;
+
+    let daysWithSpend = 0;
+    let daysOver1m = 0;
+    let peakDay = 1;
+    let peakAmount = 0;
+
+    const cells = [];
+    for (let i = 0; i < blankCount; i++) {
+      cells.push({ key: `blank-${i}`, isEmpty: true });
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const amt = dailyMap[d] || 0;
+      if (amt > 0) daysWithSpend += 1;
+      if (amt >= 1_000_000) daysOver1m += 1;
+      if (amt > peakAmount) {
+        peakAmount = amt;
+        peakDay = d;
+      }
+
+      let level = 0;
+      if (amt > 1_500_000) level = 4;
+      else if (amt >= 800_000) level = 3;
+      else if (amt >= 300_000) level = 2;
+      else if (amt > 0) level = 1;
+
+      cells.push({
+        key: `d-${d}`,
+        day: d,
+        amount: amt,
+        level,
+        isEmpty: false,
+      });
+    }
+
+    return {
+      monthNum: m + 1,
+      cells,
+      daysWithSpend,
+      daysOver1m,
+      peakDay: `${peakDay}/${m + 1}`,
+      peakAmount,
+    };
+  }, [periodTxs, targetYear, targetMonth]);
+
   // ── 11. Xuất file CSV ─────────────────────────────────────────────────────
   const handleExportCSV = () => {
     if (!periodTxs.length) {
@@ -899,8 +1275,199 @@ export default function ReportScreen({ fin, nav, lead }) {
       <div className="fin-report__body">
         {lead?.({ ...period, mode, unit: mode === 'month' ? 'day' : 'month' }, { hero, sparks, rank, cards })}
 
+        {/* 2b. Row: Kỳ này với kỳ trước & Khoản lớn bất thường */}
+        {(cards.periodDiff || cards.outliers) && (
+          <div className="fin-report__diff-row">
+            {cards.periodDiff && (
+              <div className="fin-report__card fin-report__card--diff">
+                <div className="fin-report__card-head">
+                  <div>
+                    <div className="fin-report__card-title">Kỳ này với kỳ trước</div>
+                    <div className="fin-report__card-sub">
+                      Bấm một nhóm để so từng danh mục con
+                    </div>
+                  </div>
+                  <div className="fin-report__diff-legend">
+                    <span className="fin-report__diff-legend-item">
+                      <span className="fin-report__diff-legend-dot" style={{ background: '#6949E8' }} />
+                      <span>{periodDiffData.curLabel} · màu nhóm</span>
+                    </span>
+                    <span className="fin-report__diff-legend-item">
+                      <span className="fin-report__diff-legend-bar-sample" />
+                      <span>{periodDiffData.prevLabel}</span>
+                    </span>
+                  </div>
+                </div>
 
-        {/* 3. Row 2: Chi 12 tháng & Xếp hạng nhóm */}
+                <div className="fin-report__diff-table-wrap">
+                  <table className="fin-report__diff-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '38%' }}>NHÓM</th>
+                        <th style={{ textAlign: 'right', width: '18%' }}>{periodDiffData.curLabelShort}</th>
+                        <th style={{ textAlign: 'right', width: '18%' }}>{periodDiffData.prevLabelShort}</th>
+                        <th style={{ textAlign: 'right', width: '26%' }}>CHÊNH LỆCH</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {periodDiffData.rows.map(r => {
+                        const isOpen = expandedDiffGroups.has(r.key);
+                        const curW = Math.max(3, Math.round((r.curAmt / periodDiffData.maxRowVal) * 100));
+                        const prevW = Math.max(3, Math.round((r.prevAmt / periodDiffData.maxRowVal) * 100));
+
+                        return (
+                          <Fragment key={r.key}>
+                            <tr
+                              className={`fin-report__diff-row-tr ${isOpen ? 'is-open' : ''}`}
+                              onClick={() => toggleExpandDiffGroup(r.key)}
+                            >
+                              <td>
+                                <div className="fin-report__diff-group-cell">
+                                  <span className="fin-report__diff-caret">
+                                    <AppIcon name={isOpen ? 'caretDown' : 'caretRight'} size={12} />
+                                  </span>
+                                  <span className="fin-report__diff-dot" style={{ background: r.col }} />
+                                  <strong className="fin-report__diff-name">{r.name}</strong>
+                                  <div className="fin-report__diff-minibars">
+                                    <span className="fin-report__diff-bar-cur" style={{ background: r.col, width: `${curW}%` }} />
+                                    <span className="fin-report__diff-bar-prev" style={{ width: `${prevW}%` }} />
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                <span className="fin-report__diff-val">{r.curAmt ? compactVND(r.curAmt) : '—'}</span>
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                <span className="fin-report__diff-prev-val">{r.prevAmt ? compactVND(r.prevAmt) : '—'}</span>
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                {r.isNew ? (
+                                  <span className="fin-diff-badge fin-diff-badge--new">
+                                    +{compactVND(r.curAmt)} · mới
+                                  </span>
+                                ) : r.delta > 0 ? (
+                                  <span className="fin-diff-badge fin-diff-badge--up">
+                                    +{compactVND(r.delta)} · +{r.pct}%
+                                  </span>
+                                ) : r.delta < 0 ? (
+                                  <span className="fin-diff-badge fin-diff-badge--down">
+                                    -{compactVND(Math.abs(r.delta))} · {r.pct}%
+                                  </span>
+                                ) : (
+                                  <span className="fin-diff-badge fin-diff-badge--same">0%</span>
+                                )}
+                              </td>
+                            </tr>
+
+                            {isOpen && r.subs.map(s => {
+                              const subCurW = Math.max(3, Math.round((s.curAmt / (r.curAmt || 1)) * 100));
+                              const subPrevW = Math.max(3, Math.round((s.prevAmt / (r.prevAmt || 1)) * 100));
+                              return (
+                                <tr key={s.key} className="fin-report__diff-sub-tr">
+                                  <td style={{ paddingLeft: '32px' }}>
+                                    <div className="fin-report__diff-sub-cell">
+                                      <span className="fin-report__diff-sub-name">{s.name}</span>
+                                      <div className="fin-report__diff-minibars">
+                                        <span className="fin-report__diff-bar-cur" style={{ background: r.col, width: `${subCurW}%` }} />
+                                        <span className="fin-report__diff-bar-prev" style={{ width: `${subPrevW}%` }} />
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td style={{ textAlign: 'right' }}>
+                                    <span className="fin-report__diff-sub-val">{s.curAmt ? compactVND(s.curAmt) : '—'}</span>
+                                  </td>
+                                  <td style={{ textAlign: 'right' }}>
+                                    <span className="fin-report__diff-sub-prev-val">{s.prevAmt ? compactVND(s.prevAmt) : '—'}</span>
+                                  </td>
+                                  <td style={{ textAlign: 'right' }}>
+                                    {s.isNew ? (
+                                      <span className="fin-diff-badge fin-diff-badge--new fin-diff-badge--sm">mới</span>
+                                    ) : s.delta > 0 ? (
+                                      <span className="fin-diff-badge fin-diff-badge--up fin-diff-badge--sm">+{compactVND(s.delta)}</span>
+                                    ) : s.delta < 0 ? (
+                                      <span className="fin-diff-badge fin-diff-badge--down fin-diff-badge--sm">-{compactVND(Math.abs(s.delta))}</span>
+                                    ) : (
+                                      <span className="fin-diff-badge fin-diff-badge--same fin-diff-badge--sm">0%</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {cards.outliers && (
+              <div className="fin-report__card fin-report__card--outlier">
+                <div className="fin-report__card-head">
+                  <div>
+                    <div className="fin-report__card-title">Khoản lớn bất thường</div>
+                    <div className="fin-report__card-sub">
+                      So với mức thường của cùng danh mục
+                    </div>
+                  </div>
+                </div>
+
+                <div className="fin-report__outlier-list">
+                  {outlierData.items.map(item => (
+                    <div key={item.id} className="fin-report__outlier-item">
+                      <div className="fin-report__outlier-top">
+                        <div className="fin-report__outlier-meta">
+                          <span>{item.date} · {item.subName}</span>
+                        </div>
+                        <span className={`fin-outlier-badge fin-outlier-badge--${item.type}`}>
+                          {item.badge}
+                        </span>
+                      </div>
+
+                      <div className="fin-report__outlier-row">
+                        <strong className="fin-report__outlier-name">{item.name}</strong>
+                        <span className="fin-report__outlier-amount">{money(item.amount)}</span>
+                      </div>
+
+                      {item.type === 'surge' ? (
+                        <div className="fin-report__outlier-bar-wrap">
+                          <div className="fin-report__outlier-bar">
+                            <span
+                              className="fin-report__outlier-marker"
+                              style={{ left: `${Math.min(90, Math.max(10, Math.round((item.avg3m / item.amount) * 100)))}%` }}
+                              title={item.note}
+                            />
+                          </div>
+                          <small className="fin-report__outlier-hint">{item.note}</small>
+                        </div>
+                      ) : (
+                        <small className="fin-report__outlier-hint" style={{ color: '#E08A20' }}>
+                          {item.note}
+                        </small>
+                      )}
+                    </div>
+                  ))}
+
+                  {!outlierData.items.length && (
+                    <div style={{ color: '#93938C', fontSize: '12px', textAlign: 'center', padding: '24px 0' }}>
+                      Tất cả các khoản chi trong kỳ đều nằm trong mức thông thường
+                    </div>
+                  )}
+                </div>
+
+                {outlierData.normalCount > 0 && (
+                  <div className="fin-report__outlier-footer">
+                    {outlierData.normalCount} khoản còn lại nằm trong mức thường
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {/* 3. Chi 12 tháng */}
         <div className="fin-report__row-2">
           {cards.trend && (
             <div className="fin-report__card">
@@ -953,8 +1520,83 @@ export default function ReportScreen({ fin, nav, lead }) {
               </div>
             </div>
           )}
-
         </div>
+
+        {/* 4. Cùng kỳ năm trước (YoY 12 tháng) */}
+        {cards.yoy && (
+          <div className="fin-report__card fin-report__card--yoy">
+            <div className="fin-report__card-head">
+              <div>
+                <div className="fin-report__card-title">Cùng kỳ năm trước</div>
+                <div className="fin-report__card-sub">
+                  Mỗi tháng {yoyMonthsData.curYear} đặt cạnh cùng tháng {yoyMonthsData.prevYear} · triệu ₫
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '11.5px', color: '#6A6A64' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: '#DEDCD5' }} />
+                  <span>{yoyMonthsData.prevYear}</span>
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: '#6949E8' }} />
+                  <strong style={{ color: '#15161A' }}>{yoyMonthsData.curYear}</strong>
+                </span>
+                {yoyMonthsData.totalCurMillions && (
+                  <span style={{ borderLeft: '1px solid #E8E7E2', paddingLeft: '12px', color: '#15161A' }}>
+                    {yoyMonthsData.monthsCount} tháng {yoyMonthsData.curYear} <strong>{yoyMonthsData.totalCurMillions}tr</strong>{' '}
+                    {yoyMonthsData.deltaYTD != null && (
+                      <span style={{ color: yoyMonthsData.deltaYTD > 0 ? '#E0446D' : '#12A594', fontWeight: 600 }}>
+                        {yoyMonthsData.deltaYTD > 0 ? '+' : ''}{yoyMonthsData.deltaYTD}%
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="fin-report__yoy-grid">
+              {yoyMonthsData.months.map(m => {
+                const pH = Math.max(4, Math.round((m.pAmt / yoyMonthsData.maxVal) * 100));
+                const cH = Math.max(4, Math.round((m.cAmt / yoyMonthsData.maxVal) * 100));
+                const isCurrent = m.isCur;
+
+                return (
+                  <div key={m.m} className={`fin-report__yoy-col ${isCurrent ? 'is-current' : ''}`}>
+                    <div className="fin-report__yoy-bars-pair">
+                      <div className="fin-report__yoy-bar-wrap" title={`${yoyMonthsData.prevYear}: ${money(m.pAmt)}`}>
+                        <span
+                          className="fin-report__yoy-bar fin-report__yoy-bar--prev"
+                          style={{ height: m.pAmt > 0 ? `${pH}%` : '0px' }}
+                        />
+                      </div>
+                      <div className="fin-report__yoy-bar-wrap" title={`${yoyMonthsData.curYear}: ${money(m.cAmt)}`}>
+                        <span
+                          className="fin-report__yoy-bar fin-report__yoy-bar--cur"
+                          style={{
+                            height: m.cAmt > 0 ? `${cH}%` : '0px',
+                            background: isCurrent ? '#6949E8' : '#A594F9',
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <span className="fin-report__yoy-lbl" style={{ color: isCurrent ? '#6949E8' : '#73736C', fontWeight: isCurrent ? 600 : 500 }}>
+                      {m.m}
+                    </span>
+                    <span
+                      className="fin-report__yoy-pct"
+                      style={{
+                        color: m.pct == null ? '#C4C2BA' : m.pct > 0 ? '#E0446D' : '#12A594',
+                        fontWeight: m.pct != null ? 600 : 400,
+                      }}
+                    >
+                      {m.pct == null ? '—' : `${m.pct > 0 ? '+' : ''}${m.pct}%`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 4. Row 3: Chi theo thứ, Bản đồ danh mục, Pareto 80/20 */}
         <div className="fin-report__row-3">
@@ -1077,6 +1719,109 @@ export default function ReportScreen({ fin, nav, lead }) {
             </div>
           )}
 
+          {cards.necessity && (
+            <div className="fin-report__card">
+              <div className="fin-report__card-head">
+                <div>
+                  <div className="fin-report__card-title">Phải trả và Tùy chọn</div>
+                  <div className="fin-report__card-sub">
+                    12 tháng · tháng {necessityData.curMonthNum} có {necessityData.curMustPct}% là phải trả
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', margin: '8px 0 14px', fontSize: '11px' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#15161A' }} />
+                  <span>Phải trả <strong>{necessityData.curMustStr}</strong></span>
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#E8D5B5' }} />
+                  <span>Tùy chọn <strong>{necessityData.curWantStr}</strong></span>
+                </span>
+              </div>
+
+              <div className="fin-report__stacked-bars">
+                {necessityData.months.map(m => (
+                  <div key={m.n} className="fin-report__stacked-col">
+                    <div className="fin-report__stacked-bar-wrap">
+                      <span
+                        className="fin-report__stacked-bar-want"
+                        style={{
+                          height: `${m.wantH}%`,
+                          background: m.isCurrent ? '#F2DEB9' : '#EAE4D5',
+                        }}
+                        title={`Tùy chọn: ${money(m.wantAmt)}`}
+                      />
+                      <span
+                        className="fin-report__stacked-bar-must"
+                        style={{
+                          height: `${m.mustH}%`,
+                          background: m.isCurrent ? '#15161A' : '#8A8A85',
+                        }}
+                        title={`Phải trả: ${money(m.mustAmt)}`}
+                      />
+                    </div>
+                    <span className="fin-report__stacked-lbl" style={{ color: m.isCurrent ? '#15161A' : '#A8A8A2', fontWeight: m.isCurrent ? 600 : 400 }}>
+                      {m.n}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {cards.calHeatmap && calHeatmapData && (
+            <div className="fin-report__card">
+              <div className="fin-report__card-head">
+                <div>
+                  <div className="fin-report__card-title">Lịch chi tháng {calHeatmapData.monthNum}</div>
+                  <div className="fin-report__card-sub">
+                    {calHeatmapData.daysWithSpend} ngày có chi · {calHeatmapData.daysOver1m} ngày trên 1 triệu
+                  </div>
+                </div>
+              </div>
+
+              <div className="fin-report__cal-wrap">
+                <div className="fin-report__cal-dow-row">
+                  {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(d => (
+                    <span key={d} className="fin-report__cal-dow">{d}</span>
+                  ))}
+                </div>
+                <div className="fin-report__cal-grid">
+                  {calHeatmapData.cells.map(c => {
+                    if (c.isEmpty) {
+                      return <div key={c.key} className="fin-report__cal-cell fin-report__cal-cell--empty" />;
+                    }
+                    return (
+                      <div
+                        key={c.key}
+                        className={`fin-report__cal-cell fin-report__cal-cell--lvl${c.level}`}
+                        title={`${c.day}/${calHeatmapData.monthNum}: ${money(c.amount)}`}
+                      >
+                        <span>{c.day}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="fin-report__cal-footer">
+                <span className="fin-report__cal-peak">
+                  Đậm nhất {calHeatmapData.peakDay} · {compactVND(calHeatmapData.peakAmount)}
+                </span>
+                <div className="fin-report__cal-legend">
+                  <span>Ít</span>
+                  <span className="fin-report__cal-swatch fin-report__cal-cell--lvl0" />
+                  <span className="fin-report__cal-swatch fin-report__cal-cell--lvl1" />
+                  <span className="fin-report__cal-swatch fin-report__cal-cell--lvl2" />
+                  <span className="fin-report__cal-swatch fin-report__cal-cell--lvl3" />
+                  <span className="fin-report__cal-swatch fin-report__cal-cell--lvl4" />
+                  <span>Nhiều</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Thẻ Phân bố số tiền (Histogram) */}
           {cards.hist && (
             <div className="fin-report__card">
@@ -1123,6 +1868,8 @@ export default function ReportScreen({ fin, nav, lead }) {
             </div>
           )}
         </div>
+
+        {footer}
       </div>
 
       {/* ── Mobile Bottom Sheet (Card Manager) ──────────────────────────────── */}
