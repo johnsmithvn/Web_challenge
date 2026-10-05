@@ -555,6 +555,14 @@
   z-index: 8;
 }
 
+/* Task chỉ có giờ HẠN (không có khung giờ làm): mốc ngắn, viền trái đậm để
+   phân biệt với khối thời lượng thật (start_time → end_time). */
+.week-cal__event--deadline {
+  justify-content: center;
+  padding: 2px 6px;
+  border-left: 3px solid rgba(255, 255, 255, 0.85);
+}
+
 .week-cal__event-title {
   font-size: 0.76rem;
   font-weight: 600;

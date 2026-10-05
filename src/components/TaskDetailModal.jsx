@@ -201,6 +201,9 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
                 {overdue && <span className="td-pill td-pill--overdue">Quá hạn</span>}
               </>
             ))}
+            {task.start_time && task.end_time
+              ? row('Khung giờ làm', <><AppIcon name="timer" size={14} /> {task.start_time.substring(0, 5)} – {task.end_time.substring(0, 5)}</>)
+              : null}
             {row('Độ ưu tiên', (
               <PriorityPicker
                 value={task.priority}

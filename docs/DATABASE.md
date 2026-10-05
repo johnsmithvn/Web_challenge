@@ -39,7 +39,7 @@ auth.users
 | `profiles` | Profile 1:1 với `auth.users` | PK = user id; trigger tạo khi đăng ký |
 | `focus_sessions` | Lịch sử Pomodoro | own-row RLS |
 | `xp_logs` | Event XP | amount giới hạn; app có thể xóa event khi bỏ hoàn thành Task |
-| `user_tasks` | Task cá nhân | priority, recurrence JSON, recurrence parent, completion/timestamps |
+| `user_tasks` | Task cá nhân | priority, recurrence JSON, recurrence parent, completion/timestamps. `due_time` = giờ HẠN (`23:59`/`00:00` = không đặt giờ). `start_time`/`end_time` (v6.17.0) = khung giờ làm cùng ngày `due_date`, CHECK cả hai NULL hoặc `end_time > start_time` |
 | `collections` | Inbox + Knowledge | type/status được CHECK; updated-at trigger |
 | `task_collections` | Task ↔ Knowledge M:N | FK hai phía, cascade, RLS hai phía |
 | `activity_logs` | Field diff + note của Task | FK `task_id` cascade; chỉ note được update |

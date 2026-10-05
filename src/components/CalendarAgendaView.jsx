@@ -219,8 +219,12 @@ export default function CalendarAgendaView({
                           className="cal-agenda-task-priority-dot"
                           style={{ background: (PRIORITY_OPTIONS.find((p) => p.value === t.priority) || PRIORITY_OPTIONS[0]).color }}
                         />
-                        {hasExplicitTime(t.due_time) ? (
-                          <span className="cal-agenda-time-pill">{t.due_time.substring(0, 5)}</span>
+                        {t.start_time && t.end_time ? (
+                          <span className="cal-agenda-time-pill" title="Khung giờ làm">
+                            {t.start_time.substring(0, 5)}–{t.end_time.substring(0, 5)}
+                          </span>
+                        ) : hasExplicitTime(t.due_time) ? (
+                          <span className="cal-agenda-time-pill" title="Giờ hạn">{t.due_time.substring(0, 5)}</span>
                         ) : (
                           <span className="cal-agenda-badge-allday">Trong ngày</span>
                         )}

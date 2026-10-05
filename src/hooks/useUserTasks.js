@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { logger } from '../utils/logger';
 import { toDateStr } from '../utils/dateUtils';
 import { computeNextDueDate, resolveDeletionIds } from '../utils/recurrenceUtils';
+import { buildTodayReminders } from '../utils/calendarTimeUtils';
 import { useActivityLog } from './useActivityLog';
 import { useXpStore, XP_REWARDS } from './useXpStore';
 import { diffTaskFields, ACTIONS } from '../utils/taskFields';
@@ -149,7 +150,7 @@ export function useUserTasks() {
 
   // ── Add task ───────────────────────────────────────────
   // Knowledge links are created separately through task_collections/linkCollection.
-  const addTask = useCallback(async ({ title, description, dueDate, dueTime, priority, recurrenceRule, completed, completedAt, status }) => {
+  const addTask = useCallback(async ({ title, description, dueDate, dueTime, startTime, endTime, priority, recurrenceRule, completed, completedAt, status }) => {
     const taskStatus = status || (completed ? 'done' : 'todo');
     const newTask = {
       id: crypto.randomUUID ? crypto.randomUUID() : `local_${Date.now()}`,
@@ -158,6 +159,9 @@ export function useUserTasks() {
       description: description || null,
       due_date: dueDate || todayStr(),
       due_time: dueTime || '23:59',
+      // Khung giờ làm (v6.17.0) chỉ gửi khi có: DB chưa chạy migration thì task
+      // không đặt khung giờ vẫn tạo được.
+      ...(startTime && endTime ? { start_time: startTime, end_time: endTime } : {}),
       priority: priority || 0,
       recurrence_rule: recurrenceRule || null,
       completed: completed || false,
@@ -242,6 +246,10 @@ export function useUserTasks() {
           description: task.description,
           due_date: nextDate,
           due_time: task.due_time,
+          // Khung giờ làm theo task sang kỳ sau. Task tải trước migration không có
+          // 2 key này → undefined bị JSON bỏ qua, insert không đụng cột chưa có.
+          start_time: task.start_time,
+          end_time: task.end_time,
           priority: task.priority || 0,
           recurrence_rule: task.recurrence_rule, // clone rule for chain
           recurrence_parent_id: task.id,
@@ -603,21 +611,12 @@ export function useUserTasks() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    const todayTasks = tasks.filter(t =>
-      !t.completed && t.due_date === todayStr() && t.due_time && t.due_time.substring(0, 5) !== '00:00'
-    ).map(t => ({
-      id: t.id,
-      title: t.title,
-      due_time: t.due_time,
-      notified: t.notified,
-    }));
+    // Nhắc lúc bắt đầu khung giờ làm + lúc đến hạn — logic thuần, xem buildTodayReminders.
+    const reminders = buildTodayReminders(tasks, todayStr());
 
     navigator.serviceWorker.ready.then(reg => {
       if (reg.active) {
-        reg.active.postMessage({
-          type: 'SYNC_TASKS',
-          tasks: todayTasks,
-        });
+        reg.active.postMessage({ type: 'SYNC_REMINDERS', reminders });
       }
     }).catch(() => {});
   }, [tasks]);
@@ -762,8 +761,12 @@ export function useUserTasks() {
     }
   }, [isAuth, tasks, logTaskRelation]);
 
-  // Derived: split pending vs completed today
-  const pendingTasks = tasks.filter(t => !t.completed);
+  // Derived: split pending vs completed today.
+  // status 'skip' (cột Bỏ qua của Kanban) = user chủ động gác lại → KHÔNG còn là việc
+  // cần làm: ra khỏi Quá hạn/Hôm nay/Sắp tới, số đếm, Lịch và bộ chọn task của
+  // Finance/Knowledge. Chỉ Kanban đọc `skippedTasks` để dựng cột Bỏ qua.
+  const pendingTasks = tasks.filter(t => !t.completed && t.status !== 'skip');
+  const skippedTasks = tasks.filter(t => !t.completed && t.status === 'skip');
   const completedToday = tasks.filter(t => t.completed);
 
   // ── Overdue Triage splits ─────────────────────────────────
@@ -780,6 +783,7 @@ export function useUserTasks() {
   return {
     tasks,
     pendingTasks,
+    skippedTasks,
     completedToday,
     todayTasks,
     overdueTasks,

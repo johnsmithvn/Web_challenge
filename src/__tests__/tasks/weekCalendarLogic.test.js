@@ -10,6 +10,7 @@ import {
   getWeekDays,
   computeDayLayout,
   hasExplicitTime,
+  buildTodayReminders,
 } from '../../utils/calendarTimeUtils.js';
 
 /* ── 1. timeToMinutes & minutesTo12h ──────────────────────────── */
@@ -71,8 +72,8 @@ console.log('getWeekDays range and sunday-start invariant: OK');
 
 /* ── 3. computeDayLayout & Overlapping Events Resolution ───────── */
 const sampleTasks = [
-  { id: 't1', title: 'Họp sáng', due_time: '09:00', duration: 60 },
-  { id: 't2', title: 'Ăn trưa', due_time: '12:00', duration: 45 },
+  { id: 't1', title: 'Họp sáng', start_time: '09:00', end_time: '10:00' },
+  { id: 't2', title: 'Ăn trưa', start_time: '12:00:00', end_time: '12:45:00' },
   { id: 't3', title: 'Task cả ngày 1', due_time: null },
   { id: 't4', title: 'Task cả ngày 2', due_time: '' },
 ];
@@ -105,12 +106,50 @@ assert.deepEqual(sentinelRes.allDayTasks.map((t) => t.id), ['s1', 's2']);
 assert.deepEqual(sentinelRes.timedTasks.map((t) => t.id), ['s3']);
 console.log('no-time sentinel (23:59/00:00) → all-day: OK');
 
+// Khung giờ làm (v6.17.0) vs mốc giờ hạn: chỉ có giờ hạn thì là mốc ngắn
+// `markerMinutes`, không phải khối thời lượng giả.
+const kindRes = computeDayLayout([
+  { id: 'b', start_time: '09:00:00', end_time: '11:00:00', due_time: '23:59:00' },
+  { id: 'd', due_time: '14:00:00' },
+  { id: 'bad', start_time: '11:00', end_time: '10:00' }, // khung hỏng → không giờ
+], 30, 60);
+const kb = kindRes.timedTasks.find((t) => t.id === 'b');
+const kd = kindRes.timedTasks.find((t) => t.id === 'd');
+assert.equal(kb._layout.kind, 'block');
+assert.equal(kb._layout.top, 540);
+assert.equal(kb._layout.height, 118);
+assert.equal(kb._layout.timeRangeLabel, '9am - 11am');
+assert.equal(kd._layout.kind, 'deadline');
+assert.equal(kd._layout.height, 28);
+assert.equal(kd._layout.timeRangeLabel, 'Hạn 2pm');
+assert.deepEqual(kindRes.allDayTasks.map((t) => t.id), ['bad']);
+console.log('time block vs deadline marker: OK');
+
+// Nhắc giờ hôm nay cho Service Worker: bắt đầu khung giờ (kèm `until`) + giờ hạn;
+// bỏ task đã xong, task đã Bỏ qua (status 'skip'), task ngày khác và giờ hạn
+// '00:00' (quy tắc cũ của sw.js).
+const reminders = buildTodayReminders([
+  { id: 'a', title: 'Viết báo cáo', due_date: '2026-10-05', start_time: '09:00:00', end_time: '10:30:00', due_time: '23:59:00' },
+  { id: 'b', title: 'Nộp form', due_date: '2026-10-05', due_time: '14:00:00' },
+  { id: 'c', title: 'Không giờ', due_date: '2026-10-05', due_time: '00:00:00' },
+  { id: 'd', title: 'Đã xong', due_date: '2026-10-05', completed: true, start_time: '08:00', end_time: '09:00' },
+  { id: 'e', title: 'Ngày mai', due_date: '2026-10-06', start_time: '08:00', end_time: '09:00' },
+  { id: 'f', title: 'Bỏ qua', due_date: '2026-10-05', status: 'skip', start_time: '15:00', end_time: '16:00', due_time: '17:00' },
+], '2026-10-05');
+assert.deepEqual(reminders.map((r) => [r.tag, r.at, r.until]), [
+  ['task-start-a', '09:00', '10:30'],
+  ['task-a', '23:59', undefined],
+  ['task-b', '14:00', undefined],
+]);
+assert.equal(reminders[0].body, 'Viết báo cáo (09:00–10:30)');
+console.log('buildTodayReminders (block start + deadline): OK');
+
 // Kịch bản 2 task trùng giờ (Overlapping):
 // Task A: 14:00 - 15:30 (90 phút)
 // Task B: 14:30 - 16:00 (90 phút)
 const overlapTasks = [
-  { id: 'oa', title: 'Code tính năng', due_time: '14:00', duration: 90 },
-  { id: 'ob', title: 'Họp dự án', due_time: '14:30', duration: 90 },
+  { id: 'oa', title: 'Code tính năng', start_time: '14:00', end_time: '15:30' },
+  { id: 'ob', title: 'Họp dự án', start_time: '14:30', end_time: '16:00' },
 ];
 const overlapRes = computeDayLayout(overlapTasks, 45, 60);
 assert.equal(overlapRes.timedTasks.length, 2);
@@ -130,9 +169,9 @@ console.log('2-column overlapping split: OK');
 // Task 2: 10:15 - 11:15
 // Task 3: 10:30 - 11:30
 const tripleOverlap = [
-  { id: '1', due_time: '10:00', duration: 60 },
-  { id: '2', due_time: '10:15', duration: 60 },
-  { id: '3', due_time: '10:30', duration: 60 },
+  { id: '1', start_time: '10:00', end_time: '11:00' },
+  { id: '2', start_time: '10:15', end_time: '11:15' },
+  { id: '3', start_time: '10:30', end_time: '11:30' },
 ];
 const tripleRes = computeDayLayout(tripleOverlap, 45, 60);
 assert.equal(tripleRes.timedTasks.length, 3);

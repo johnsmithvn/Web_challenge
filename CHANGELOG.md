@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## v6.17.0 — 2026-10-05
+
+### Added
+- **Tasks GĐ3 — Khung giờ làm (`data/migration_v6.17.0_task_time_block.sql` + bản local `supabase/migrations/20261005000000_task_time_block_v6_17_0.sql`, `TaskForm.jsx`, `useUserTasks.js`, `calendarTimeUtils.js`, `taskFields.js`, `CalendarDayView.jsx`, `WeekCalendar.jsx`, `CalendarAgendaView.jsx`, `TaskListSection.jsx`, `TaskKanbanView.jsx`, `TaskDetailModal.jsx`, `tasks.css`, `week-calendar.css`):**
+  - Cột mới `user_tasks.start_time`/`end_time` (TIME, tuỳ chọn) = khung giờ làm trong cùng ngày `due_date`; CHECK cả hai NULL hoặc `end_time > start_time`. `due_time` giữ nghĩa giờ HẠN.
+  - Form: nút **⏱ Khung giờ làm** (input giờ native, chặn lưu khi kết thúc ≤ bắt đầu). Payload chỉ chạm 2 cột mới khi task dùng khung giờ — task thường vẫn tạo/sửa được khi DB chưa chạy migration.
+  - Lịch Ngày/Tuần: khối thật `start→end`; task chỉ có giờ hạn thành **mốc ngắn ⏰** tại giờ hạn (trước là khối 45 phút giả bắt đầu từ giờ hạn; code còn đọc cột `duration` đã xoá từ v4.9).
+  - Hiện khung giờ ở Danh sách, Kanban, Lịch biểu, popup Chi tiết. Kanban không còn hiện đồng hồ `23:59` cho task không đặt giờ.
+  - Task lặp copy khung giờ sang kỳ sau. Field-diff chuẩn hoá `HH:MM:SS`/`HH:MM` cho 2 cột mới (không đẻ log giả).
+  - Test: fixture `weekCalendarLogic` đổi từ `duration` (cột không tồn tại) sang `start_time`/`end_time` cùng khoảng thời gian; thêm case khối vs mốc giờ hạn; `taskFields` thêm case cột TIME mới.
+- **Click ô giờ trống kiểu Google Calendar (`TasksPage.jsx`, `CalendarDayView.jsx`, `WeekCalendar.jsx`, `TaskCreateModal.jsx`, `TaskForm.jsx`):** click 9:00 trên lưới Ngày/Tuần → modal tạo task có sẵn khung giờ làm 9:00–10:00 (giờ hạn để mặc định, chặn 23:59). Header ngày, Lịch biểu, Lịch tháng và Kanban vẫn tạo task thường.
+- **Nhắc lúc bắt đầu khung giờ (`public/sw.js` v1.2.0, `useUserTasks.js`, `calendarTimeUtils.js`):** main thread dựng danh sách nhắc bằng hàm thuần `buildTodayReminders` (có test) và gửi `SYNC_REMINDERS` (thay `SYNC_TASKS`). Mỗi task hôm nay có tối đa 2 nhắc: "⏱ Đến giờ làm" lúc `start_time` (bỏ qua nếu khung đã kết thúc) và "📌 Nhiệm Vụ Đến Hạn" lúc `due_time` (giữ quy tắc cũ: bỏ `00:00`). SW nhớ tag đã nhắc trong ngày → không nhắc lại mỗi lần app đồng bộ.
+
+### Changed
+- **Tasks GĐ4 — trạng thái "Bỏ qua" (`useUserTasks.js`, `calendarTimeUtils.js`, `TaskKanbanView.jsx`):** task `status = 'skip'` không còn là việc cần làm. `pendingTasks` loại nó ra (→ không vào Quá hạn/Hôm nay/Sắp tới, số đếm toolbar, 4 view Lịch, bộ chọn task của Finance/Knowledge); `buildTodayReminders` không nhắc. Hook trả thêm `skippedTasks` chỉ để Kanban dựng cột Skip.
+- **Kanban: logic chia cột tách ra `src/utils/kanbanUtils.js`** (`getKanbanRange`, `groupKanbanColumns`). `kanbanLogic.test.js` viết lại để test đúng hàm component gọi — bản cũ test một bản copy logic định nghĩa ngay trong file test.
+
+### Fixed
+- **Kanban cột Done lọc "Hôm nay"/khoảng ngày lẫn task xong hôm trước/hôm sau** (query `completed_at` đệm ±1 ngày mà không lọc lại — cùng lỗi Lịch Ngày ở GĐ1). `groupKanbanColumns` lọc lại theo ngày hoàn thành địa phương.
+- **`TaskKanbanView.jsx` — 5 lỗi ESLint có sẵn:** bỏ `todayTasks`/`overdueTasks`/`futureTasks`/`priorityOpt` không dùng (kèm import `PRIORITY_OPTIONS`), `catch {}` rỗng có comment.
+
+### Notes
+- **Thứ tự:** chạy `data/migration_v6.17.0_task_time_block.sql` trên Supabase SQL Editor **trước** khi deploy. Additive nên chạy trước là an toàn với code cũ.
+
 ## v6.16.4 — 2026-09-27
 
 ### Added

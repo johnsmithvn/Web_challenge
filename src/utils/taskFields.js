@@ -51,6 +51,8 @@ export const TASK_FIELD_LABELS = {
   description: 'Mô tả',
   due_date: 'Hạn chót',
   due_time: 'Giờ hẹn',
+  start_time: 'Bắt đầu làm',
+  end_time: 'Kết thúc làm',
   priority: 'Độ ưu tiên',
   recurrence_rule: 'Lặp lại',
   recurrence_parent_id: 'Chuỗi lặp',
@@ -77,20 +79,23 @@ export function fieldLabel(field) {
  */
 const DIFF_IGNORED = new Set(['id', 'user_id', 'created_at', 'updated_at']);
 
+/** Cột TIME của user_tasks. */
+const TIME_FIELDS = new Set(['due_time', 'start_time', 'end_time']);
+
 /**
  * Chuẩn hoá 1 giá trị về chuỗi (hoặc null) để so sánh VÀ để lưu xuống
  * old_value/new_value — cả 2 cột đều là TEXT.
  *
  * Ba cái bẫy thật đã gặp trong repo này, xử lý hết ở đây:
- *  - `due_time`: DB trả 'HH:MM:SS' còn form gửi 'HH:MM' → không cắt thì mỗi lần
- *    bấm Lưu đẻ 1 dòng log giả.
+ *  - Cột TIME (`due_time`, `start_time`, `end_time`): DB trả 'HH:MM:SS' còn form
+ *    gửi 'HH:MM' → không cắt thì mỗi lần bấm Lưu đẻ 1 dòng log giả.
  *  - `recurrence_rule`: JSONB, so sánh bằng === luôn khác nhau kể cả nội dung
  *    y hệt → phải stringify.
  *  - description trống: chỗ thì `''`, chỗ thì `null` → gộp về null.
  */
 export function normalizeFieldValue(field, value) {
   if (value === undefined || value === null || value === '') return null;
-  if (field === 'due_time') return String(value).substring(0, 5);
+  if (TIME_FIELDS.has(field)) return String(value).substring(0, 5);
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }
@@ -169,6 +174,8 @@ export function formatTaskFieldValue(field, raw) {
         : str;
     }
     case 'due_time':
+    case 'start_time':
+    case 'end_time':
       return String(raw).substring(0, 5);
     case 'priority': {
       const opt = PRIORITY_OPTIONS.find(p => p.value === Number(raw));

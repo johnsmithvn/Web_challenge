@@ -157,6 +157,8 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
       description: fields.description,
       dueDate: fields.due_date,
       dueTime: fields.due_time,
+      startTime: fields.start_time,
+      endTime: fields.end_time,
       priority: fields.priority,
       recurrenceRule: fields.recurrence_rule,
     });
@@ -298,6 +300,11 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
                     background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(139,92,246,0.1)',
                     color: overdue ? '#f87171' : '#a78bfa',
                   }}><AppIcon name="calendar" size={12} weight="bold" /> {fmtDate(task.due_date)}</span>
+                )}
+                {task.start_time && task.end_time && (
+                  <span className="task-chip" title="Khung giờ làm" style={{
+                    background: 'rgba(6,182,212,0.1)', color: '#22d3ee',
+                  }}><AppIcon name="timer" size={12} weight="bold" /> {fmtTime(task.start_time)}–{fmtTime(task.end_time)}</span>
                 )}
                 {task.due_time && task.due_time.substring(0,5) !== '00:00' && task.due_time.substring(0,5) !== '23:59' && (
                   <span className="task-chip" style={{

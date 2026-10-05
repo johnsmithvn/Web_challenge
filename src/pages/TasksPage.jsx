@@ -188,6 +188,12 @@ export default function TasksPage() {
     setCreateModalState({ date: dateStr, time: timeStr, status: initialStatus });
   }, []);
 
+  // Click ô giờ trống trên lưới Ngày/Tuần → tạo task có khung giờ làm 1 tiếng bắt
+  // đầu từ ô đó (kiểu Google Calendar). Giờ hạn để mặc định (không đặt giờ).
+  const handleSlotCreate = useCallback((dateStr, startTime) => {
+    setCreateModalState({ date: dateStr, blockStart: startTime, status: 'todo' });
+  }, []);
+
   const handleAddNewTask = useCallback(() => {
     if (activeView === 'list') {
       setShowForm((prev) => !prev);
@@ -282,6 +288,7 @@ export default function TasksPage() {
                   getCompletedTasksRange={getCompletedTasksRange}
                   onSelectTask={handleSelectTaskFromCalendar}
                   onQuickCreate={handleOpenCreateModal}
+                  onSlotCreate={handleSlotCreate}
                   currentDate={currentDate}
                   holidayToggles={holidayToggles}
                   customAnniversaries={customAnniversaries}
@@ -295,6 +302,7 @@ export default function TasksPage() {
                   getCompletedTasksRange={getCompletedTasksRange}
                   onSelectTask={handleSelectTaskFromCalendar}
                   onQuickCreate={handleOpenCreateModal}
+                  onSlotCreate={handleSlotCreate}
                   currentDate={currentDate}
                   startOnSunday={startOnSunday}
                   hideToolbar={true}
@@ -386,6 +394,7 @@ export default function TasksPage() {
         isOpen={!!createModalState}
         initialDate={createModalState?.date}
         initialTime={createModalState?.time}
+        initialBlockStart={createModalState?.blockStart}
         initialStatus={createModalState?.status || 'todo'}
         onClose={() => setCreateModalState(null)}
         taskModel={taskModel}

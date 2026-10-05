@@ -392,6 +392,23 @@
   text-align: center;
 }
 
+/* Input giờ native: theme mặc định tối nên phải báo color-scheme, không thì icon
+   đồng hồ của trình duyệt bị đen trên nền tối. */
+.task-form__time {
+  width: 7.5rem;
+  font-size: 0.84rem;
+  color-scheme: dark;
+}
+
+[data-theme="light"] .task-form__time {
+  color-scheme: light;
+}
+
+.task-form__error {
+  font-size: 0.74rem;
+  color: #f87171;
+}
+
 .task-option-btn--sm {
   padding: 0.22rem 0.45rem;
   font-size: 0.72rem;

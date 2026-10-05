@@ -12,6 +12,7 @@ export default function TaskCreateModal({
   isOpen,
   initialDate,
   initialTime,
+  initialBlockStart,
   initialStatus = 'todo',
   onClose,
   taskModel,
@@ -38,6 +39,8 @@ export default function TaskCreateModal({
       description: fields.description,
       dueDate: fields.due_date,
       dueTime: fields.due_time,
+      startTime: fields.start_time,
+      endTime: fields.end_time,
       priority: fields.priority,
       recurrenceRule: fields.recurrence_rule,
       status,
@@ -89,6 +92,7 @@ export default function TaskCreateModal({
         <TaskForm
           initialDate={initialDate}
           initialTime={initialTime}
+          initialBlockStart={initialBlockStart}
           allTags={allTags}
           addTag={addTag}
           onSubmit={handleCreate}

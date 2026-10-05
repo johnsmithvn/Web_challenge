@@ -23,6 +23,7 @@ export default function WeekCalendar({
   getCompletedTasksRange,
   onSelectTask,
   onQuickCreate,
+  onSlotCreate,
   calendarView = 'week',
   onSwitchView,
   currentDate,
@@ -259,7 +260,7 @@ export default function WeekCalendar({
         ...(pendingByDay[dStr] || []),
         ...(completedByDay[dStr] || []),
       ];
-      result[dStr] = computeDayLayout(combined, 45, PX_PER_HOUR);
+      result[dStr] = computeDayLayout(combined, 30, PX_PER_HOUR);
     }
     return result;
   }, [weekDays, pendingByDay, completedByDay]);
@@ -277,8 +278,10 @@ export default function WeekCalendar({
     const m = String(roundedMins % 60).padStart(2, '0');
     const timeStr = `${h}:${m}`;
 
-    onQuickCreate?.(dateStr, timeStr);
-  }, [onQuickCreate]);
+    // Ô giờ → khung giờ làm 1 tiếng (kiểu Google Calendar); thiếu prop thì về tạo thường.
+    if (onSlotCreate) onSlotCreate(dateStr, timeStr);
+    else onQuickCreate?.(dateStr, timeStr);
+  }, [onQuickCreate, onSlotCreate]);
 
   return (
     <div className="week-cal">
@@ -506,7 +509,7 @@ export default function WeekCalendar({
                       return (
                         <div
                           key={t.id}
-                          className={`week-cal__event ${statusClass}`}
+                          className={`week-cal__event ${statusClass}${t._layout.kind === 'deadline' ? ' week-cal__event--deadline' : ''}`}
                           style={{
                             top: `${t._layout.top}px`,
                             height: `${t._layout.height}px`,
@@ -520,7 +523,7 @@ export default function WeekCalendar({
                           title={`${t.title} (${t._layout.timeRangeLabel})`}
                         >
                           <div className="week-cal__event-title">
-                            {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : ''}{t.title}
+                            {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : t._layout.kind === 'deadline' ? '⏰ ' : ''}{t.title}
                           </div>
                           {t._layout.height >= 34 && (
                             <div className="week-cal__event-time">

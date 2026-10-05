@@ -5,14 +5,15 @@ import PriorityPicker from './PriorityPicker';
 import { useConfirm } from './ConfirmModal';
 import UI_STRINGS from '../data/ui-strings.json';
 import { toDateStr } from '../utils/dateUtils';
-import { PRIORITY_OPTIONS } from '../utils/taskFields';
+import { hasExplicitTime } from '../utils/calendarTimeUtils';
+import { getKanbanRange, groupKanbanColumns } from '../utils/kanbanUtils';
 import '../styles/kanban.css';
 
 /**
- * TaskKanbanView — Bảng Kanban 3 cột nâng cấp (v6.16.1).
- * Cột 1: To Do (Cần làm)
- * Cột 2: Doing (Đang làm)
- * Cột 3: Done (Đã xong — lưu giữ task không bị biến mất)
+ * TaskKanbanView — Bảng Kanban 4 cột.
+ * To Do · Doing · Done (đã xong, lọc theo ngày hoàn thành) · Skip (đã bỏ qua —
+ * không còn là việc cần làm ở Danh sách/Lịch/nhắc giờ, xem useUserTasks.skippedTasks).
+ * Chia cột là logic thuần ở utils/kanbanUtils.js (có test).
  *
  * Tính năng chính:
  * 1. Confirm Modal an toàn khi xóa.
@@ -30,10 +31,8 @@ export default function TaskKanbanView({
   onQuickCreate,
 }) {
   const {
-    todayTasks = [],
-    overdueTasks = [],
-    futureTasks = [],
     pendingTasks = [],
+    skippedTasks = [],
     getCompletedTasksRange,
     completeTask,
     uncompleteTask,
@@ -105,7 +104,7 @@ export default function TaskKanbanView({
         next.delete(key);
         try {
           localStorage.setItem('vl_kanban_collapsed_cols', JSON.stringify([...next]));
-        } catch {}
+        } catch { /* ignore storage error */ }
         return next;
       }
       return prev;
@@ -116,90 +115,30 @@ export default function TaskKanbanView({
     }
   }, []);
 
-  // Tính 7 ngày tới
-  const sevenDaysLater = useMemo(() => {
-    const d = new Date(`${today}T00:00:00`);
-    d.setDate(d.getDate() + 7);
-    return toDateStr(d);
-  }, [today]);
+  // Khoảng ngày của bộ lọc thời gian (null = Tất cả) — logic thuần ở utils/kanbanUtils.
+  const range = useMemo(
+    () => getKanbanRange(timeFilter, today, { customFrom, customTo }),
+    [timeFilter, today, customFrom, customTo]
+  );
 
   // Tải danh sách task đã hoàn thành theo khoảng thời gian để cột Done không bị rỗng
   useEffect(() => {
     if (!getCompletedTasksRange) return;
     let stale = false;
-    let from = '2020-01-01';
-    let to = '2099-12-31';
-
-    if (timeFilter === 'today') {
-      from = today;
-      to = today;
-    } else if (timeFilter === '7d') {
-      from = today;
-      to = sevenDaysLater;
-    } else if (timeFilter === 'custom') {
-      from = customFrom;
-      to = customTo;
-    }
-
-    getCompletedTasksRange(from, to).then((rows) => {
+    getCompletedTasksRange(range?.from ?? '2020-01-01', range?.to ?? '2099-12-31').then((rows) => {
       if (stale) return;
       setCompletedRangeTasks(rows || []);
     });
     return () => { stale = true; };
-  }, [timeFilter, customFrom, customTo, today, sevenDaysLater, getCompletedTasksRange]);
+  }, [range, getCompletedTasksRange]);
 
-  // Phân loại task vào 4 cột dựa trên status, completed và timeFilter
-  const { todoList, doingList, doneList, skipList } = useMemo(() => {
-    const todo = [];
-    const doing = [];
-    const skip = [];
-    const doneMap = new Map();
-
-    // Thêm các task completed từ range vào map Done
-    for (const t of completedRangeTasks) {
-      if (t.completed) doneMap.set(t.id, t);
-    }
-
-    // Duyệt qua pendingTasks
-    for (const task of pendingTasks) {
-      // Đánh giá bộ lọc thời gian
-      let dateMatch = true;
-      if (timeFilter === 'today') {
-        dateMatch = task.due_date === today;
-      } else if (timeFilter === '7d') {
-        dateMatch = task.due_date >= today && task.due_date <= sevenDaysLater;
-      } else if (timeFilter === 'custom') {
-        dateMatch = task.due_date >= customFrom && task.due_date <= customTo;
-      }
-
-      if (!dateMatch && timeFilter !== 'all') continue;
-
-      if (task.completed) {
-        doneMap.set(task.id, task);
-      } else if (task.status === 'doing') {
-        doing.push(task);
-      } else if (task.status === 'skip') {
-        skip.push(task);
-      } else {
-        todo.push(task);
-      }
-    }
-
-    const done = Array.from(doneMap.values());
-
-    // Sắp xếp các cột: Quá hạn lên trước, sau đó theo độ ưu tiên
-    const sortFn = (a, b) => {
-      if (a.due_date !== b.due_date) return a.due_date.localeCompare(b.due_date);
-      return (b.priority || 0) - (a.priority || 0);
-    };
-
-    todo.sort(sortFn);
-    doing.sort(sortFn);
-    skip.sort(sortFn);
-    done.sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
-
-    return { todoList: todo, doingList: doing, doneList: done, skipList: skip };
-  }, [pendingTasks, completedRangeTasks, timeFilter, today, sevenDaysLater, customFrom, customTo]);
+  // Chia 4 cột (To Do / Doing / Skip theo status, Done theo ngày hoàn thành).
+  // Task "Bỏ qua" không còn trong pendingTasks (xem useUserTasks) nên ghép skippedTasks vào.
+  const openTasks = useMemo(() => [...pendingTasks, ...skippedTasks], [pendingTasks, skippedTasks]);
+  const { todo: todoList, doing: doingList, done: doneList, skip: skipList } = useMemo(
+    () => groupKanbanColumns(openTasks, completedRangeTasks, range),
+    [openTasks, completedRangeTasks, range]
+  );
 
   // Xử lý Hoàn thành Task (Optimistic)
   const handleCompleteTask = useCallback(async (task) => {
@@ -297,8 +236,8 @@ export default function TaskKanbanView({
     const taskId = e.dataTransfer.getData('text/plain') || draggedTaskId;
     if (!taskId) return;
 
-    // Tìm task trong pendingTasks hoặc completedRangeTasks
-    const task = pendingTasks.find((t) => t.id === taskId) || completedRangeTasks.find((t) => t.id === taskId);
+    // Tìm task trong các cột đang mở (kể cả Bỏ qua) hoặc completedRangeTasks
+    const task = openTasks.find((t) => t.id === taskId) || completedRangeTasks.find((t) => t.id === taskId);
     if (!task) return;
 
     if (targetColKey === 'done') {
@@ -325,7 +264,7 @@ export default function TaskKanbanView({
       }
     }
     setDraggedTaskId(null);
-  }, [draggedTaskId, pendingTasks, completedRangeTasks, handleCompleteTask, handleUncompleteTask, handleUpdateTask]);
+  }, [draggedTaskId, openTasks, completedRangeTasks, handleCompleteTask, handleUncompleteTask, handleUpdateTask]);
 
   // Chuyển nhanh trạng thái task sang cột mục tiêu (To Do, Doing, Done, Skip)
   const handleMoveTo = useCallback(async (task, targetCol) => {
@@ -370,9 +309,6 @@ export default function TaskKanbanView({
     else if (isFuture) cardClass += ' kanban-card--future';
 
     if (draggedTaskId === task.id) cardClass += ' is-dragging';
-
-    // Thông tin priority
-    const priorityOpt = PRIORITY_OPTIONS.find((p) => p.value === task.priority);
 
     // Định dạng nhãn ngày
     const formattedDate = new Date(task.due_date + 'T00:00:00').toLocaleDateString('vi-VN', {
@@ -489,8 +425,9 @@ export default function TaskKanbanView({
           <div className="kanban-card-desc">{task.description}</div>
         )}
 
-        {/* Card Footer: Tags & Time */}
-        {((task._tags && task._tags.length > 0) || task.due_time) && (
+        {/* Card Footer: Tags & Time — ưu tiên khung giờ làm; giờ hạn chỉ hiện khi
+            đặt thật (23:59/00:00 = không đặt giờ, xem hasExplicitTime) */}
+        {((task._tags && task._tags.length > 0) || (task.start_time && task.end_time) || hasExplicitTime(task.due_time)) && (
           <div className="kanban-card-footer">
             <div className="kanban-card-tags">
               {(task._tags || []).map((tag) => (
@@ -511,8 +448,12 @@ export default function TaskKanbanView({
               ))}
             </div>
 
-            {task.due_time && (
-              <span style={{ fontSize: '0.7rem' }}>
+            {task.start_time && task.end_time ? (
+              <span style={{ fontSize: '0.7rem' }} title="Khung giờ làm">
+                <AppIcon name="timer" size={11} /> {task.start_time.substring(0, 5)}–{task.end_time.substring(0, 5)}
+              </span>
+            ) : hasExplicitTime(task.due_time) && (
+              <span style={{ fontSize: '0.7rem' }} title="Giờ hạn">
                 <AppIcon name="clock" size={11} /> {task.due_time.substring(0, 5)}
               </span>
             )}

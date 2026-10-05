@@ -33,6 +33,34 @@ export function hasExplicitTime(dueTime) {
 }
 
 /**
+ * Danh sách nhắc giờ HÔM NAY gửi cho Service Worker (public/sw.js), mỗi nhắc 1 tag riêng:
+ *   - Khung giờ làm → nhắc lúc BẮT ĐẦU (kiểu Google Calendar); `until` = giờ kết thúc,
+ *     khung đã qua thì SW không nhắc muộn nữa.
+ *   - Giờ hạn → nhắc lúc đến hạn, giữ quy tắc cũ của sw.js: bỏ qua '00:00'
+ *     (23:59 vẫn nhắc "hết ngày").
+ * @param {Array<Object>} tasks - task trong state (pending + xong hôm nay)
+ * @param {string} todayStr - YYYY-MM-DD địa phương
+ * @returns {Array<{tag:string, taskId:string, at:string, until?:string, title:string, body:string}>}
+ */
+export function buildTodayReminders(tasks = [], todayStr) {
+  const out = [];
+  for (const t of tasks) {
+    // 'skip' = đã chủ động bỏ qua → không nhắc.
+    if (t.completed || t.status === 'skip' || t.due_date !== todayStr) continue;
+    const start = t.start_time ? t.start_time.substring(0, 5) : null;
+    const end = t.end_time ? t.end_time.substring(0, 5) : null;
+    if (start && end) {
+      out.push({ tag: `task-start-${t.id}`, taskId: t.id, at: start, until: end, title: '⏱ Đến giờ làm', body: `${t.title} (${start}–${end})` });
+    }
+    const due = t.due_time ? t.due_time.substring(0, 5) : null;
+    if (due && due !== '00:00') {
+      out.push({ tag: `task-${t.id}`, taskId: t.id, at: due, title: '📌 Nhiệm Vụ Đến Hạn', body: t.title });
+    }
+  }
+  return out;
+}
+
+/**
  * Chuyển số phút sang chuỗi hiển thị 12h thân thiện (VD: 870 -> "2:30pm", 720 -> "12pm").
  * @param {number} totalMinutes
  * @returns {string}
@@ -139,28 +167,31 @@ export function getWeekDays(baseDate = new Date(), startOnSunday = false) {
  * 3. Gán chỉ số cột `colIndex` (0, 1, ...) và tổng số cột `totalCols` cho mỗi task.
  * 4. Tính tọa độ CSS `top`, `height`, `left`, `width`.
  *
+ * Ba loại task trong ngày:
+ *   - Có khung giờ làm (start_time < end_time, v6.17.0) → khối thật start→end (`kind: 'block'`).
+ *   - Chỉ có giờ HẠN đặt tay → mốc ngắn tại giờ hạn (`kind: 'deadline'`), không
+ *     phải khối thời lượng — giờ hạn không nói task kéo dài bao lâu.
+ *   - Không giờ (23:59/00:00/rỗng) → hàng Cả ngày.
+ *
  * @param {Array<Object>} tasks - Danh sách task trong ngày
- * @param {number} defaultDurationMinutes - Mặc định 45 phút nếu task không có duration
+ * @param {number} markerMinutes - Chiều cao (quy ra phút) của mốc giờ hạn
  * @param {number} pxPerHour - Chiều cao 1 giờ bằng pixel (mặc định 56px)
  * @returns {{ allDayTasks: Array<Object>, timedTasks: Array<Object> }}
  */
-export function computeDayLayout(tasks = [], defaultDurationMinutes = 45, pxPerHour = 56) {
+export function computeDayLayout(tasks = [], markerMinutes = 30, pxPerHour = 56) {
   const allDayTasks = [];
   const timed = [];
 
   for (const t of tasks) {
-    if (!hasExplicitTime(t.due_time)) {
-      allDayTasks.push(t);
-    } else {
+    const blockStart = timeToMinutes(t.start_time);
+    const blockEnd = timeToMinutes(t.end_time);
+    if (blockStart !== null && blockEnd !== null && blockEnd > blockStart) {
+      timed.push({ task: t, start: blockStart, end: blockEnd, kind: 'block' });
+    } else if (hasExplicitTime(t.due_time)) {
       const start = timeToMinutes(t.due_time);
-      const dur = Math.max(15, Number(t.duration) || defaultDurationMinutes);
-      const end = Math.min(1440, start + dur);
-      timed.push({
-        task: t,
-        start,
-        end,
-        duration: dur,
-      });
+      timed.push({ task: t, start, end: Math.min(1440, start + markerMinutes), kind: 'deadline' });
+    } else {
+      allDayTasks.push(t);
     }
   }
 
@@ -217,7 +248,7 @@ export function computeDayLayout(tasks = [], defaultDurationMinutes = 45, pxPerH
     const totalCols = Math.max(1, columns.length);
     for (const ev of cluster) {
       const top = Math.round(ev.start * pxPerMinute);
-      const height = Math.max(22, Math.round(ev.duration * pxPerMinute) - 2); // Trừ 2px khoảng cách viền
+      const height = Math.max(22, Math.round((ev.end - ev.start) * pxPerMinute) - 2); // Trừ 2px khoảng cách viền
       const widthPct = 100 / totalCols;
       const leftPct = ev.colIndex * widthPct;
 
@@ -230,7 +261,10 @@ export function computeDayLayout(tasks = [], defaultDurationMinutes = 45, pxPerH
           width: `calc(${widthPct}% - 4px)`,
           startMinutes: ev.start,
           endMinutes: ev.end,
-          timeRangeLabel: formatTimeRange(ev.task.due_time, ev.duration),
+          kind: ev.kind,
+          timeRangeLabel: ev.kind === 'block'
+            ? formatTimeRange(ev.task.start_time, ev.end - ev.start)
+            : `Hạn ${minutesTo12h(ev.start)}`,
         },
       });
     }

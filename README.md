@@ -113,7 +113,7 @@ npm run db:local:stop
 > `db:local:reset` xóa toàn bộ dữ liệu database local trước khi replay migration. Đây là lệnh user
 > chủ động chạy cho môi trường test trắng; agent không tự chạy và không được dùng với hosted project.
 
-18 migration local được chạy tự động theo timestamp:
+22 migration local được chạy tự động theo timestamp:
 
 1. [`20260802000000_base_v5_0_0.sql`](./supabase/migrations/20260802000000_base_v5_0_0.sql)
 2. [`20260805000000_vault_v5_2_0.sql`](./supabase/migrations/20260805000000_vault_v5_2_0.sql)
@@ -133,6 +133,10 @@ npm run db:local:stop
 16. [`20260831000000_finance_transaction_description_v6_13_0.sql`](./supabase/migrations/20260831000000_finance_transaction_description_v6_13_0.sql)
 17. [`20260831010000_vault_change_passphrase_v6_14_0.sql`](./supabase/migrations/20260831010000_vault_change_passphrase_v6_14_0.sql)
 18. [`20260831020000_vault_recovery_key_v6_15_0.sql`](./supabase/migrations/20260831020000_vault_recovery_key_v6_15_0.sql)
+19. [`20260913000000_task_status_v6_16_0.sql`](./supabase/migrations/20260913000000_task_status_v6_16_0.sql)
+20. [`20260926000000_migrate_inbox_to_tasks.sql`](./supabase/migrations/20260926000000_migrate_inbox_to_tasks.sql)
+21. [`20260926010000_merge_family_parents_and_move_learning_to_personal.sql`](./supabase/migrations/20260926010000_merge_family_parents_and_move_learning_to_personal.sql)
+22. [`20261005000000_task_time_block_v6_17_0.sql`](./supabase/migrations/20261005000000_task_time_block_v6_17_0.sql)
 
 Sau `npm run db:local:start`, tạo file `.env.development.local` (Git bỏ qua) bằng Project URL và
 Publishable key hiện trong kết quả:
@@ -174,6 +178,7 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 | 16 | [`data/migration_v6.13.0_finance_transaction_description.sql`](./data/migration_v6.13.0_finance_transaction_description.sql) | Cột `finance_transactions.description` cho ghi chú tự do nhiều dòng. Idempotent. |
 | 17 | [`data/migration_v6.14.0_vault_change_passphrase.sql`](./data/migration_v6.14.0_vault_change_passphrase.sql) | Policy UPDATE cho bảng `vault_config` phục vụ đổi Mật khẩu chính. Idempotent. |
 | 18 | [`data/migration_v6.15.0_vault_recovery_key.sql`](./data/migration_v6.15.0_vault_recovery_key.sql) | Thêm cột `recovery_wrapped_key`, `recovery_wrapped_nonce`, `recovery_salt` vào `vault_config`. Idempotent. |
+| 19 | [`data/migration_v6.17.0_task_time_block.sql`](./data/migration_v6.17.0_task_time_block.sql) | Cột `user_tasks.start_time`/`end_time` (khung giờ làm, cùng ngày `due_date`) + CHECK `end_time > start_time`. Additive, idempotent; chạy trước khi deploy frontend v6.17.0 là an toàn. |
 
 Dọn dẹp bảng cũ (tùy chọn):
 - [`data/drop_incubator_tables.sql`](./data/drop_incubator_tables.sql) (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).

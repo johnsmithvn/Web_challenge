@@ -21,6 +21,7 @@ export default function CalendarDayView({
   getCompletedTasksRange,
   onSelectTask,
   onQuickCreate,
+  onSlotCreate,
   currentDate = new Date(),
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   customAnniversaries = [],
@@ -131,7 +132,7 @@ export default function CalendarDayView({
   }, [dayPending, completedTasks]);
 
   const { allDayTasks, timedTasks } = useMemo(() => {
-    return computeDayLayout(combinedTasks, 45, PX_PER_HOUR);
+    return computeDayLayout(combinedTasks, 30, PX_PER_HOUR);
   }, [combinedTasks]);
 
   const canChiDay = useMemo(() => {
@@ -211,7 +212,9 @@ export default function CalendarDayView({
                   const clickY = e.clientY - rect.top;
                   const isBottomHalf = clickY > PX_PER_HOUR / 2;
                   const timeStr = `${String(h).padStart(2, '0')}:${isBottomHalf ? '30' : '00'}`;
-                  if (onQuickCreate) onQuickCreate(dateStr, timeStr);
+                  // Ô giờ → khung giờ làm 1 tiếng (kiểu Google Calendar); thiếu prop thì về tạo thường.
+                  if (onSlotCreate) onSlotCreate(dateStr, timeStr);
+                  else if (onQuickCreate) onQuickCreate(dateStr, timeStr);
                 }}
                 title={`Nhấn để tạo công việc lúc ${String(h).padStart(2, '0')}:00`}
               >
@@ -242,7 +245,7 @@ export default function CalendarDayView({
               return (
                 <div
                   key={t.id}
-                  className={`week-cal__event ${statusClass}`}
+                  className={`week-cal__event ${statusClass}${t._layout.kind === 'deadline' ? ' week-cal__event--deadline' : ''}`}
                   style={{
                     top: `${t._layout.top}px`,
                     height: `${Math.max(26, t._layout.height)}px`,
@@ -256,7 +259,7 @@ export default function CalendarDayView({
                   title={`${t.title} (${t._layout.timeRangeLabel})`}
                 >
                   <div className="week-cal__event-title">
-                    {visualStatus === 'done' ? '✓ ' : visualStatus === 'overdue' ? '⚠️ ' : ''}{t.title}
+                    {visualStatus === 'done' ? '✓ ' : visualStatus === 'overdue' ? '⚠️ ' : t._layout.kind === 'deadline' ? '⏰ ' : ''}{t.title}
                   </div>
                   {t._layout.height >= 34 && (
                     <div className="week-cal__event-time">{t._layout.timeRangeLabel}</div>

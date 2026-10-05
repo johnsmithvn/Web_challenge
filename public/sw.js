@@ -1,65 +1,67 @@
 /**
  * Service Worker — Task Notification Scheduler
  *
- * Receives the current day's pending tasks from the main thread via postMessage
- * and shows a notification when one is due.
+ * Receives today's reminders from the main thread via postMessage
+ * (built by buildTodayReminders in src/utils/calendarTimeUtils.js):
+ *   - start of a task's time block ("⏱ Đến giờ làm", Google Calendar style)
+ *   - task deadline ("📌 Nhiệm Vụ Đến Hạn")
  *
  * NOTE: browsers suspend idle service workers, so this 60s timer is best-effort —
- * it is NOT guaranteed to run when no tab is open. The synced task list is only
+ * it is NOT guaranteed to run when no tab is open. The synced list is only
  * valid for the day it was synced (see the day-rollover guard below).
  */
 
-const SW_VERSION = '1.1.0';
-let pendingTasks = [];
-let syncDay = null; // local YYYY-MM-DD when tasks were last synced
+const SW_VERSION = '1.2.0';
+let reminders = [];
+let syncDay = null; // local YYYY-MM-DD when reminders were last synced
+// Tags already shown today. The app re-syncs on every task change, so without
+// this a reminder whose time has passed would fire again after each sync.
+const firedTags = new Set();
+let firedDay = null;
 
 function localDay(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// ── Receive tasks from main thread ───────────────────────
+// ── Receive reminders from main thread ───────────────────
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SYNC_TASKS') {
-    pendingTasks = event.data.tasks || [];
+  if (event.data && event.data.type === 'SYNC_REMINDERS') {
+    reminders = event.data.reminders || [];
     syncDay = localDay();
   }
 });
 
-// ── Check tasks every 60 seconds ─────────────────────────
+// ── Check reminders every 60 seconds ─────────────────────
 setInterval(() => {
-  if (pendingTasks.length === 0) return;
-
   const now = new Date();
-  // The synced tasks are only for `syncDay`. If the day has rolled over (tab left
-  // open past midnight), don't fire stale tasks — wait for a fresh SYNC_TASKS.
-  if (syncDay && localDay(now) !== syncDay) return;
+  const today = localDay(now);
+  if (firedDay !== today) {
+    firedTags.clear();
+    firedDay = today;
+  }
+  if (reminders.length === 0) return;
+  // The synced reminders are only for `syncDay`. If the day has rolled over (tab left
+  // open past midnight), don't fire stale ones — wait for a fresh SYNC_REMINDERS.
+  if (syncDay && today !== syncDay) return;
 
   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  pendingTasks.forEach((task) => {
-    if (task.notified) return;
-    if (!task.due_time) return;
+  reminders.forEach((r) => {
+    if (firedTags.has(r.tag)) return;
+    if (r.at > currentTime) return;
+    // Time block already over → a late "start working" ping is just noise.
+    if (r.until && currentTime >= r.until) return;
 
-    // Compare HH:MM (due_time from DB is "HH:MM:SS", trim seconds)
-    const dueHHMM = task.due_time.substring(0, 5);
-
-    // Skip tasks with default '00:00' time (no explicit time set by user)
-    if (dueHHMM === '00:00') return;
-
-    if (dueHHMM <= currentTime) {
-      self.registration.showNotification('📌 Nhiệm Vụ Đến Hạn', {
-        body: task.title,
-        icon: '/pwa-192x192.png',
-        badge: '/favicon.png',
-        tag: `task-${task.id}`, // coalesce duplicates with the same tag
-        renotify: false,        // if the SW restarts, don't re-alert an already-shown task
-        data: { taskId: task.id },
-        requireInteraction: true,
-      });
-
-      // Mark as notified locally (prevent re-fire within this SW lifetime)
-      task.notified = true;
-    }
+    self.registration.showNotification(r.title, {
+      body: r.body,
+      icon: '/pwa-192x192.png',
+      badge: '/favicon.png',
+      tag: r.tag,             // coalesce duplicates with the same tag
+      renotify: false,        // if the SW restarts, don't re-alert an already-shown reminder
+      data: { taskId: r.taskId },
+      requireInteraction: true,
+    });
+    firedTags.add(r.tag);
   });
 }, 60_000); // every 60 seconds
 

@@ -5,6 +5,7 @@ import TagPicker from './TagPicker';
 import AppIcon from './AppIcon';
 import { WEEKDAYS } from '../utils/taskFields';
 import { toDateStr } from '../utils/dateUtils';
+import { timeToMinutes } from '../utils/calendarTimeUtils';
 import '../styles/tasks.css';
 
 const REC_TYPES = [
@@ -30,6 +31,7 @@ export default function TaskForm({
   task,          // có = sửa, không có = tạo mới
   initialDate,   // Smart Prefill khi tạo từ ô Lịch
   initialTime,
+  initialBlockStart, // click ô giờ trên lưới Ngày/Tuần → khung giờ làm 1 tiếng (kiểu Google Calendar)
   allTags = [],
   addTag,
   onSubmit,      // async (fields, tagIds) => void
@@ -47,6 +49,18 @@ export default function TaskForm({
   const [dueTime, setDueTime] = useState(
     task ? (task.due_time ? task.due_time.substring(0, 5) : '') : (initialTime || '23:59')
   );
+  // Khung giờ làm (v6.17.0) — cùng ngày với dueDate, tách khỏi giờ HẠN dueTime.
+  const [showBlock, setShowBlock] = useState(Boolean(task?.start_time || initialBlockStart));
+  const [startTime, setStartTime] = useState(
+    task?.start_time ? task.start_time.substring(0, 5) : (initialBlockStart || '09:00')
+  );
+  const [endTime, setEndTime] = useState(() => {
+    if (task?.end_time) return task.end_time.substring(0, 5);
+    if (!initialBlockStart) return '10:00';
+    // +1 giờ, chặn ở 23:59 (khung không được qua đêm — CHECK dưới DB).
+    const end = Math.min(timeToMinutes(initialBlockStart) + 60, 1439);
+    return `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
+  });
   const [priority, setPriority] = useState(task?.priority || 0);
   const [tagIds, setTagIds] = useState(() => (task?._tags || []).map((t) => t.id));
   const [showRec, setShowRec] = useState(!!rec);
@@ -57,7 +71,9 @@ export default function TaskForm({
   const [showDP, setShowDP] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const canSubmit = Boolean(title.trim()) && !saving;
+  // 'HH:MM' so sánh chuỗi được; khớp CHECK end_time > start_time dưới DB.
+  const blockInvalid = showBlock && !(startTime && endTime && endTime > startTime);
+  const canSubmit = Boolean(title.trim()) && !saving && !blockInvalid;
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -70,19 +86,24 @@ export default function TaskForm({
       else recurrenceRule = { type: 'monthly', day: recMonthDay };
     }
 
+    const fields = {
+      title: title.trim(),
+      description: description.trim() || null,
+      due_date: dueDate || toDateStr(),
+      due_time: dueTime || null,
+      priority,
+      recurrence_rule: recurrenceRule,
+    };
+    // Chỉ gửi khung giờ khi đang có hoặc vừa bỏ — task không dùng khung giờ thì
+    // payload không chạm 2 cột này (an toàn cả khi DB chưa chạy migration v6.17.0).
+    if (showBlock || task?.start_time) {
+      fields.start_time = showBlock ? startTime : null;
+      fields.end_time = showBlock ? endTime : null;
+    }
+
     setSaving(true);
     try {
-      await onSubmit(
-        {
-          title: title.trim(),
-          description: description.trim() || null,
-          due_date: dueDate || toDateStr(),
-          due_time: dueTime || null,
-          priority,
-          recurrence_rule: recurrenceRule,
-        },
-        tagIds
-      );
+      await onSubmit(fields, tagIds);
     } finally {
       setSaving(false);
     }
@@ -143,6 +164,41 @@ export default function TaskForm({
             onTimeChange={setDueTime}
             style={{ top: '100%', left: 0, marginTop: '0.25rem' }}
           />
+        )}
+      </div>
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowBlock(!showBlock)}
+          className={`task-option-btn ${showBlock ? 'task-option-btn--active-cyan' : ''}`}
+        >
+          <AppIcon name="timer" size={14} /> Khung giờ làm {showBlock && <AppIcon name="check" size={12} />}
+        </button>
+        {showBlock && (
+          <div className="task-form-rec-panel">
+            <div className="task-form__row">
+              <label className="task-form__muted" htmlFor={`${id}-start`}>Từ</label>
+              <input
+                id={`${id}-start`}
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="auth-input task-form__time"
+              />
+              <label className="task-form__muted" htmlFor={`${id}-end`}>đến</label>
+              <input
+                id={`${id}-end`}
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="auth-input task-form__time"
+              />
+            </div>
+            {blockInvalid && (
+              <span className="task-form__error">Giờ kết thúc phải sau giờ bắt đầu (cùng ngày).</span>
+            )}
+          </div>
         )}
       </div>
 
