@@ -86,21 +86,21 @@ function OverviewDashboard({ fin, nav, period, slots }) {
     () => spendingRhythm(transactions, { from: period.from, to: period.to, unit: period.unit }),
     [transactions, period]);
 
-  // Cảnh báo thẻ tới hạn (≤7 ngày hoặc quá hạn).
+  // Cảnh báo thẻ tới hạn (≤5 ngày hoặc quá hạn).
   const cardAlerts = useMemo(() => cards
     .map(c => ({ card: c, cyc: cardStatementSummary(c, transactions, today) }))
     .filter(x => x.cyc.outstanding > 0
-      && (x.cyc.overdue || (x.cyc.daysUntilDue >= 0 && x.cyc.daysUntilDue <= 7))),
+      && (x.cyc.overdue || (x.cyc.daysUntilDue >= 0 && x.cyc.daysUntilDue <= 5))),
   [cards, transactions, today]);
 
-  // Cho vay tới hẹn (≤7 ngày hoặc quá hẹn) — chưa thu đủ mới nhắc.
+  // Cho vay tới hẹn (≤5 ngày hoặc quá hẹn) — chưa thu đủ mới nhắc.
   const lendAlerts = useMemo(() => (lendings || [])
     .filter(l => !l.closed_at && l.due_on)
     .map(l => {
       const got = transactions.filter(t => t.lending_id === l.id).reduce((sum, t) => sum + t.amount, 0);
       return { lend: l, left: Math.max(0, l.principal - got), got, days: daysInclusive(today, l.due_on) - 1 };
     })
-    .filter(x => x.left > 0 && x.days <= 7),
+    .filter(x => x.left > 0 && x.days <= 5),
   [lendings, transactions, today]);
 
   const fund = useMemo(() => fundBalance(deposits), [deposits]);

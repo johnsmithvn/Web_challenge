@@ -40,18 +40,18 @@ export default function SubAlert() {
           if (!b.enabled || b.finished_at) continue;
           const settled = billSettled(b, paid);
           const cyc = billCycle(b, today, settled);
-          if (cyc == null || cyc.days > 7) continue;   // kỳ còn xa (hóa đơn quý/năm) thì chưa nhắc
+          if (cyc == null || cyc.days > 5) continue;   // kỳ còn xa (hóa đơn quý/năm) thì chưa nhắc
           if (settled(cyc.period)) continue;
           list.push({ key: `b${b.name}`, icon: 'receipt', name: b.name, days: cyc.days });
         }
         for (const c of cards.data || []) {
           const cyc = cardStatementSummary(c, paid, today);
           // Sao kê 0đ (chưa quẹt gì, hoặc đã trả hết) thì ngày đến hạn không phải việc phải làm.
-          if (cyc.outstanding > 0 && cyc.daysUntilDue >= 0 && cyc.daysUntilDue <= 7) {
+          if (cyc.outstanding > 0 && cyc.daysUntilDue >= 0 && cyc.daysUntilDue <= 5) {
             list.push({ key: `c${c.name}`, icon: 'creditCard', name: c.name, days: cyc.daysUntilDue });
           }
           const fee = c.annual_fee > 0 ? nextAnnualFee(c.annual_fee_on, today) : null;
-          if (fee && fee.days <= 7) list.push({ key: `f${c.name}`, icon: 'calendar', name: `${c.name} · phí thường niên`, days: fee.days });
+          if (fee && fee.days <= 5) list.push({ key: `f${c.name}`, icon: 'calendar', name: `${c.name} · phí thường niên`, days: fee.days });
         }
         list.sort((a, b) => a.days - b.days);
         setItems(list);

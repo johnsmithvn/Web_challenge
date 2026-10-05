@@ -19,6 +19,7 @@
   - **Đẩy Nhịp chi xuống dưới Quỹ tiết kiệm**: Thẻ "Nhịp chi theo ngày/tháng" được đưa xuống phía dưới thẻ "Quỹ tiết kiệm" và dãn full hàng, giúp biểu đồ các cột ngày rộng rãi, không bị chèn ép.
   - **Thêm tùy chọn bật/tắt Chỉ số so kỳ & cố định**: Bổ sung mục "So kỳ trước & Cố định" vào menu popover *Thẻ hiển thị*.
   - **Mở rộng biểu đồ Chi 12 tháng**: Biểu đồ Chi 12 tháng dãn trọn hàng (100% width) thoáng đãng, cân đối.
+  - **Điều chỉnh ngưỡng nhắc nhở**: Giảm ngưỡng cảnh báo sao kê thẻ tín dụng và khoản cho vay tới hạn từ 7 ngày xuống còn **≤ 5 ngày** (hoặc quá hạn).
 - **Chuẩn Hóa Nút Thao Tác & Tinh Gọn Thẻ Task Kanban (`TaskKanbanView.jsx`):**
   - **Bỏ icon chấm tròn (`kanban-checkbox`)**: Loại bỏ nút tròn ở đầu tiêu đề công việc, tránh xung đột UX với hàng nút chuyển trạng thái ở chân thẻ và nhường không gian tiêu đề thẳng thắn từ lề trái.
   - **Đồng nhất nút chuyển trạng thái tiếng Anh 100%**: Thay thế toàn bộ các nhãn hỗn hợp trước đây ("Về To Do", "Sang Doing", "Xong ✓", "Bỏ qua", "↺ Làm lại") thành các nút ngắn gọn, chuẩn mực: `To Do`, `Doing`, `Done`, `Skip` (loại bỏ sạch các tiền tố "về", "sang", mũi tên). Mỗi thẻ luôn cung cấp đầy đủ 3 nút tương ứng với 3 cột còn lại.
