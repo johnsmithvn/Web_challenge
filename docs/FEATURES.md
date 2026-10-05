@@ -45,6 +45,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 ### Danh sách
 - Task **Bỏ qua** (cột Skip của Kanban, `status = 'skip'`) không còn là việc cần làm: không vào Quá hạn/Hôm nay/
   Sắp tới, không đếm, không hiện trên Lịch, không nhắc giờ. Kéo về To Do/Doing để làm lại.
+  Bỏ qua một task **lặp lại** = bỏ qua kỳ này: kỳ sau vẫn được sinh (không cộng XP), chuỗi lặp không bị đứt.
 - Chia Task chưa xong thành Quá hạn, Hôm nay và Sắp tới; sắp theo ngày/giờ/priority.
 - Tạo và sửa title, description, due date/time, priority, recurrence, tag và liên kết Knowledge.
   Một form dùng chung (`TaskForm`) cho form thêm, sửa tại hàng, popup Chi tiết và modal tạo từ Lịch/Kanban;

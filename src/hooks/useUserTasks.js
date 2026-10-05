@@ -255,12 +255,16 @@ export function useUserTasks() {
           recurrence_parent_id: task.id,
           completed: false,
           notified: false,
-        }).select('id').single();
+        }).select().single();
 
         if (!error) {
           // Copy tag + link KB sang occurrence mới (best-effort — task chính đã
           // tạo thành công nên không rollback nếu bước copy này lỗi, chỉ log warn)
           if (inserted?.id) {
+            // Đưa kỳ mới vào state ngay — trước đây phải reload mới thấy kỳ sau.
+            setTasks(prev => prev.some(t => t.id === inserted.id)
+              ? prev
+              : [...prev, { ...inserted, _tags: task._tags || [], _collections: task._collections || [] }]);
             logTaskEvent(ACTIONS.TASK_CREATED, inserted.id);
             if ((task._tags || []).length > 0) {
               const { error: tagError } = await supabase.from('task_tags').insert(
@@ -439,6 +443,7 @@ export function useUserTasks() {
   // trùng khi user tích/bỏ tích/tích lại. Occurrence đó luôn KHÔNG PHẢI gốc
   // (recurrence_parent_id = taskId) nên xoá thẳng, để CASCADE tự lo hậu duệ xa
   // hơn nếu chính occurrence đó cũng đã hoàn thành và sinh tiếp.
+  // Ngoại lệ: targetStatus 'skip' (Done → Bỏ qua trên Kanban) GIỮ occurrence đó.
   const uncompleteTask = useCallback(async (taskId, targetStatus = 'todo') => {
     const backup = tasks.find(t => t.id === taskId);
     const nextStatus = ['doing', 'skip'].includes(targetStatus) ? targetStatus : 'todo';
@@ -474,30 +479,36 @@ export function useUserTasks() {
         logTaskEvent(ACTIONS.TASK_UNCOMPLETED, taskId);
         removeXp('task_done', { taskId });
 
-        const { data: child, error: findError } = await supabase
-          .from('user_tasks')
-          .select('id')
-          .eq('recurrence_parent_id', taskId)
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        if (findError) {
-          logger.warn('[useUserTasks] uncomplete: tìm task lặp con thất bại:', findError.message);
-        } else if (child?.id) {
-          const { error: delError } = await supabase
+        if (nextStatus === 'skip') {
+          // Đã xong → Bỏ qua: bỏ qua KỲ NÀY vẫn giữ chuỗi lặp — KHÔNG xoá kỳ sau đã sinh
+          // lúc hoàn thành; chưa có thì sinh (spawnRecurringTask tự chống trùng).
+          if (backup?.recurrence_rule) spawnRecurringTask(backup);
+        } else {
+          const { data: child, error: findError } = await supabase
             .from('user_tasks')
-            .delete()
-            .eq('id', child.id)
-            .eq('user_id', userId);
+            .select('id')
+            .eq('recurrence_parent_id', taskId)
+            .eq('user_id', userId)
+            .maybeSingle();
 
-          if (delError) {
-            logger.warn('[useUserTasks] uncomplete: xoá task lặp con thất bại:', delError.message);
-          } else {
-            setTasks(prev => {
-              const ids = resolveDeletionIds(prev, child.id);
-              return prev.filter(t => !ids.includes(t.id));
-            });
-            showToast(UI_STRINGS.toast.recurrenceChildRemoved, { icon: 'trash' });
+          if (findError) {
+            logger.warn('[useUserTasks] uncomplete: tìm task lặp con thất bại:', findError.message);
+          } else if (child?.id) {
+            const { error: delError } = await supabase
+              .from('user_tasks')
+              .delete()
+              .eq('id', child.id)
+              .eq('user_id', userId);
+
+            if (delError) {
+              logger.warn('[useUserTasks] uncomplete: xoá task lặp con thất bại:', delError.message);
+            } else {
+              setTasks(prev => {
+                const ids = resolveDeletionIds(prev, child.id);
+                return prev.filter(t => !ids.includes(t.id));
+              });
+              showToast(UI_STRINGS.toast.recurrenceChildRemoved, { icon: 'trash' });
+            }
           }
         }
       } catch (err) {
@@ -508,7 +519,7 @@ export function useUserTasks() {
     }
     // Trả true/false như completeTask — Kanban dựa vào đây để quyết định rollback.
     return true;
-  }, [isAuth, userId, tasks, showToast, logTaskEvent, removeXp]);
+  }, [isAuth, userId, tasks, showToast, logTaskEvent, removeXp, spawnRecurringTask]);
 
   // ── Update task (title / description / date / time) ───
   const updateTask = useCallback(async (taskId, changes) => {
@@ -558,6 +569,11 @@ export function useUserTasks() {
         }
 
         logFieldChanges(taskId, diffs);
+        // Bỏ qua 1 task lặp = bỏ qua KỲ NÀY (kiểu TickTick/Todoist "skip occurrence"):
+        // vẫn sinh kỳ sau, không cộng XP. spawnRecurringTask tự chống sinh trùng.
+        if (changes.status === 'skip' && backup && backup.status !== 'skip' && backup.recurrence_rule) {
+          spawnRecurringTask({ ...backup, ...changes });
+        }
       } catch (err) {
         logger.error('[useUserTasks] update exception:', err);
         if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
@@ -565,7 +581,7 @@ export function useUserTasks() {
       }
     }
     return true;
-  }, [isAuth, userId, tasks, logFieldChanges]);
+  }, [isAuth, userId, tasks, logFieldChanges, spawnRecurringTask]);
 
   // ── Get completed tasks in a date range (for calendar) ────────
   // v4.29.0: thay `getCompletedTasks(dateStr)` (1 query/ngày → 30 query/tháng khi

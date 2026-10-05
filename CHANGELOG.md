@@ -15,6 +15,8 @@
 
 ### Changed
 - **Tasks GĐ4 — trạng thái "Bỏ qua" (`useUserTasks.js`, `calendarTimeUtils.js`, `TaskKanbanView.jsx`):** task `status = 'skip'` không còn là việc cần làm. `pendingTasks` loại nó ra (→ không vào Quá hạn/Hôm nay/Sắp tới, số đếm toolbar, 4 view Lịch, bộ chọn task của Finance/Knowledge); `buildTodayReminders` không nhắc. Hook trả thêm `skippedTasks` chỉ để Kanban dựng cột Skip.
+- **Bỏ qua task lặp = bỏ qua KỲ NÀY, chuỗi lặp vẫn chạy (`useUserTasks.js`):** trước đây chỉ hoàn thành mới sinh kỳ sau nên Bỏ qua task "mỗi ngày" là chuỗi dừng hẳn. Nay `updateTask` (task đang mở → Skip) sinh kỳ sau; `uncompleteTask(…, 'skip')` (Done → Skip) **giữ** kỳ sau thay vì xoá như bỏ tích thường. Không cộng XP; `spawnRecurringTask` tự chống sinh trùng.
+- **Kỳ lặp mới hiện ngay**: `spawnRecurringTask` đưa row vừa insert vào state (trước đây phải reload mới thấy kỳ sau — áp dụng cả khi hoàn thành).
 - **Kanban: logic chia cột tách ra `src/utils/kanbanUtils.js`** (`getKanbanRange`, `groupKanbanColumns`). `kanbanLogic.test.js` viết lại để test đúng hàm component gọi — bản cũ test một bản copy logic định nghĩa ngay trong file test.
 
 ### Fixed
