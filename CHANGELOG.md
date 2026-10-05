@@ -15,10 +15,9 @@
 - **Tái cấu trúc bố cục Tổng quan & Báo cáo chi tiêu (`FinancePage.jsx`, `OverviewScreen.jsx`, `ReportScreen.jsx`, `finance-report.css`):**
   - **Gộp và tinh gọn Header**: Ẩn header cũ của FinancePage ("Hôm nay tiêu gì?", dòng mô tả phụ và nút "+ Thêm chi tiêu") trên màn Tổng quan; đưa thanh điều khiển báo cáo (chọn Tháng/Quý/Năm, Stepper, Thẻ hiển thị, Xuất CSV) lên đầu trang.
   - **Thẻ đen Tổng chi tháng lên đầu**: Thẻ Hero (Tổng chi trong kỳ + Vòng cơ cấu donut + Top 3 nhóm) hiển thị ngay dưới thanh điều khiển.
-  - **Bố cục thẻ thông số & Sparklines**: 4 chỉ số chi tiêu (Đã chi, So với kỳ trước, Trung bình mỗi ngày, Phần cố định) đặt ngay dưới thẻ Hero; dải Sparkline 6 nhóm đặt liền dưới 4 chỉ số chi tiêu.
-  - **Tích hợp Xếp hạng nhóm vào lưới Tổng quan**: Bỏ card "Khoản lớn nhất kỳ này", đưa "Xếp hạng nhóm" lên xếp ngang hàng cạnh "Nhịp chi theo ngày/tháng".
-  - **Bỏ thông báo hóa đơn**: Gỡ bỏ thanh cảnh báo "6 hóa đơn cần bạn ghi số tiền — sang Nhập nhanh".
-  - **Thêm tùy chọn bật/tắt Bốn chỉ số chi tiêu**: Bổ sung mục "Bốn chỉ số chi tiêu" vào menu popover *Thẻ hiển thị*.
+  - **Bố cục thẻ thông số & Sparklines**: Loại bỏ 2 thẻ trùng lặp/dư thừa ("Đã chi" và "Trung bình mỗi ngày"); đưa dải Sparkline 6 nhóm lên ngay dưới thẻ Hero; đưa 2 chỉ số còn lại ("So với kỳ trước" và "Phần cố định") vào cột trái lưới Tổng quan để xếp cạnh "Xếp hạng nhóm".
+  - **Đẩy Nhịp chi xuống dưới Quỹ tiết kiệm**: Thẻ "Nhịp chi theo ngày/tháng" được đưa xuống phía dưới thẻ "Quỹ tiết kiệm" và dãn full hàng, giúp biểu đồ các cột ngày rộng rãi, không bị chèn ép.
+  - **Thêm tùy chọn bật/tắt Chỉ số so kỳ & cố định**: Bổ sung mục "So kỳ trước & Cố định" vào menu popover *Thẻ hiển thị*.
   - **Mở rộng biểu đồ Chi 12 tháng**: Biểu đồ Chi 12 tháng dãn trọn hàng (100% width) thoáng đãng, cân đối.
 - **Chuẩn Hóa Nút Thao Tác & Tinh Gọn Thẻ Task Kanban (`TaskKanbanView.jsx`):**
   - **Bỏ icon chấm tròn (`kanban-checkbox`)**: Loại bỏ nút tròn ở đầu tiêu đề công việc, tránh xung đột UX với hàng nút chuyển trạng thái ở chân thẻ và nhường không gian tiêu đề thẳng thắn từ lề trái.

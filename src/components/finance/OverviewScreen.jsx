@@ -22,15 +22,6 @@ import '../../styles/skeleton.css';   // dùng .sk-* trực tiếp, không qua S
 function OverviewSkeleton() {
   return (
     <div className="fin-overview-dashboard">
-      <div className="fin-metrics">
-        {[1, 2, 3, 4].map(key => (
-          <div className="fin-metric sk-metric" key={key}>
-            <span className="sk-line sk-line--title" style={{ '--w': '38%' }} />
-            <span className="sk-line sk-line--lg" style={{ '--w': '60%' }} />
-            <span className="sk-line" style={{ '--w': '48%' }} />
-          </div>
-        ))}
-      </div>
       <div className="fin-overview-grid">
         <section className="fin-card sk-card">
           <span className="sk-line sk-line--title" style={{ '--w': '32%' }} />
@@ -115,9 +106,6 @@ function OverviewDashboard({ fin, nav, period, slots }) {
   const fund = useMemo(() => fundBalance(deposits), [deposits]);
 
   const fixedPct = totals.total ? Math.round((totals.fixed / totals.total) * 100) : 0;
-  const effectiveDays = today >= period.from && today <= period.to
-    ? daysInclusive(period.from, today) : totals.days;
-  const avgPerDay = effectiveDays ? Math.round(totals.total / effectiveDays) : 0;
   const cardAlertRows = cardAlerts.map(({ card, cyc }) => ({
     card, cyc, balance: cyc.outstanding,
   }));
@@ -147,43 +135,30 @@ function OverviewDashboard({ fin, nav, period, slots }) {
         </button>
       ))}
 
-      {/* 4 chỉ số */}
-      {slots.cards.metrics && <div className="fin-metrics">
-        <div className="fin-metric">
-          <div className="fin-metric__label">Đã chi {period.label}</div>
-          <div className="fin-metric__value">{money(totals.total)}</div>
-          <div className="fin-metric__hint">{totals.count} khoản · {effectiveDays} ngày</div>
-        </div>
-        <div className="fin-metric">
-          <div className="fin-metric__label">So với kỳ trước</div>
-          {cmp ? (
-            <>
-              <div className={`fin-metric__value ${cmp.deltaPct > 0 ? 'fin-up' : cmp.deltaPct < 0 ? 'fin-down' : ''}`}>
-                {cmp.deltaPct == null ? '—' : `${cmp.deltaPct > 0 ? '+' : ''}${cmp.deltaPct}%`}
-              </div>
-              <div className="fin-metric__hint">{cmp.note} · {money(cmp.prevValue)}</div>
-            </>
-          ) : <div className="fin-metric__value">—</div>}
-        </div>
-        <div className="fin-metric">
-          <div className="fin-metric__label">Trung bình mỗi ngày</div>
-          <div className="fin-metric__value">{money(avgPerDay)}</div>
-          <div className="fin-metric__hint">trên {effectiveDays} ngày của kỳ này</div>
-        </div>
-        <div className="fin-metric">
-          <div className="fin-metric__label">Phần cố định</div>
-          <div className="fin-metric__value">{fixedPct}%</div>
-          <div className="fin-metric__hint">{money(totals.fixed)} hóa đơn + đăng ký + lãi</div>
-        </div>
-      </div>}
-
       {slots.sparks}
 
       <div className="fin-overview-grid">
-        <section className="fin-card fin-overview-panel">
-          <div className="fin-card__head"><div className="fin-card__title">Nhịp chi {period.unit === 'month' ? 'theo tháng' : 'theo ngày'}</div><small>đường mờ là mức trung bình của kỳ này</small></div>
-          <RhythmBars rows={rhythm.rows} avg={rhythm.avg} unit={period.unit} />
-        </section>
+        {slots.cards.metrics && (
+          <div className="fin-metrics-pair">
+            <div className="fin-metric">
+              <div className="fin-metric__label">So với kỳ trước</div>
+              {cmp ? (
+                <>
+                  <div className={`fin-metric__value ${cmp.deltaPct > 0 ? 'fin-up' : cmp.deltaPct < 0 ? 'fin-down' : ''}`}>
+                    {cmp.deltaPct == null ? '—' : `${cmp.deltaPct > 0 ? '+' : ''}${cmp.deltaPct}%`}
+                  </div>
+                  <div className="fin-metric__hint">{cmp.note} · {money(cmp.prevValue)}</div>
+                </>
+              ) : <div className="fin-metric__value">—</div>}
+            </div>
+
+            <div className="fin-metric">
+              <div className="fin-metric__label">Phần cố định</div>
+              <div className="fin-metric__value">{fixedPct}%</div>
+              <div className="fin-metric__hint">{money(totals.fixed)} hóa đơn + đăng ký + lãi</div>
+            </div>
+          </div>
+        )}
 
         {slots.rank}
       </div>
@@ -193,6 +168,11 @@ function OverviewDashboard({ fin, nav, period, slots }) {
         <span><strong>Quỹ tiết kiệm</strong><small>{goals.length} quỹ · lãi bình quân {fund.weightedRate}%/năm</small></span>
         <b>{money(fund.total)}</b><AppIcon name="caretRight" size={14} />
       </button>
+
+      <section className="fin-card fin-overview-panel">
+        <div className="fin-card__head"><div className="fin-card__title">Nhịp chi {period.unit === 'month' ? 'theo tháng' : 'theo ngày'}</div><small>đường mờ là mức trung bình của kỳ này</small></div>
+        <RhythmBars rows={rhythm.rows} avg={rhythm.avg} unit={period.unit} />
+      </section>
     </div>
   );
 }

@@ -782,6 +782,9 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 @keyframes fin-period-open { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 .fin-period__nav button { display: grid; place-items: center; }
 .fin-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; margin: 0; }
+.fin-metrics-pair { display: flex; flex-direction: column; gap: 14px; height: 100%; }
+.fin-metrics-pair .fin-metric { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.fin-overview-grid:has(> :only-child) { grid-template-columns: 1fr; }
 .fin-metric { min-height: 128px; padding: 14px 16px; border-radius: 12px; box-shadow: 0 8px 22px rgba(4,5,12,.1); }
 .fin-metric__label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; }
 .fin-metric__value { margin: 9px 0 5px; font-size: 27px; line-height: 1; }

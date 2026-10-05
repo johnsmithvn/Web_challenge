@@ -29,7 +29,7 @@ const DEFAULT_CARDS = {
 };
 
 const CARD_DEFS = [
-  { id: 'metrics', name: 'Bốn chỉ số chi tiêu', size: 'full' },
+  { id: 'metrics', name: 'So kỳ trước & Cố định', size: '1/2' },
   { id: 'sparks', name: 'Sparkline sáu nhóm', size: 'full' },
   { id: 'trend', name: 'Chi 12 tháng', size: 'full' },
   { id: 'rank', name: 'Xếp hạng nhóm', size: '1/2' },
