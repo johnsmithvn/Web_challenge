@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import GenericModal from './GenericModal';
 import AppIcon from './AppIcon';
 import PriorityPicker from './PriorityPicker';
+import SubtaskList from './SubtaskList';
 import { useConfirm } from './ConfirmModal';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
@@ -55,7 +56,7 @@ function LogValue({ value, variant, expanded, onToggle }) {
   );
 }
 
-export default function TaskDetailModal({ task, onClose, onEdit, editContent, onComplete, onDelete, onUpdatePriority }) {
+export default function TaskDetailModal({ task, onClose, onEdit, editContent, onComplete, onDelete, onUpdatePriority, onUpdateSubtasks, onConvertSubtask }) {
   const { user } = useAuth();
   const { confirm, ConfirmModal } = useConfirm();
   const { getTaskLogs, addNote, updateNote, deleteLog } = useActivityLog();
@@ -240,6 +241,17 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
           {task.description
             ? <div className="task-desc-box">{task.description}</div>
             : <div className="task-desc-box td-muted td-desc--empty">Chưa có mô tả</div>}
+
+          {/* Checklist việc con — sửa trực tiếp, mỗi thao tác lưu ngay (kiểu mặt sau card Trello) */}
+          {onUpdateSubtasks && (
+            <div className="td-subtasks">
+              <SubtaskList
+                items={task.subtasks}
+                onChange={onUpdateSubtasks}
+                onConvert={onConvertSubtask}
+              />
+            </div>
+          )}
 
           {/* ── Tab ── */}
           <div className="tasks-viewbar td-tabs" role="tablist">

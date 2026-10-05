@@ -14,6 +14,8 @@
  * ghi và phía đọc phải dùng chung một vocabulary để không lệch nhau.
  */
 
+import { summarizeSubtaskChange } from './subtaskUtils.js';
+
 // ── Tuỳ chọn field của task (dời từ TaskListSection.jsx v5.0.0) ─────────────
 // Dời ra đây để TaskDetailModal dùng lại mà không phải import ngược
 // TaskListSection (vòng tròn import — vỡ với Vite HMR).
@@ -62,6 +64,7 @@ export const TASK_FIELD_LABELS = {
   created_at: 'Ngày tạo',
   updated_at: 'Cập nhật lúc',
   tags: 'Tag',
+  subtasks: 'Việc con',
   collections: 'Bài viết liên kết',
 };
 
@@ -123,6 +126,14 @@ export function diffTaskFields(oldTask, changes) {
     // phải cột DB. Chặn theo tiền tố nên key join thêm sau này tự động đúng.
     if (field.startsWith('_')) continue;
     if (DIFF_IGNORED.has(field)) continue;
+
+    // Checklist việc con: ghi 1 câu tóm tắt ("Xong: Làm slide") thay vì 2 cục JSON
+    // — dòng log bất biến, JSON nguyên mảng vừa nặng vừa không đọc được.
+    if (field === 'subtasks') {
+      const summary = summarizeSubtaskChange(oldTask?.subtasks, changes.subtasks);
+      if (summary) diffs.push({ field, old_value: null, new_value: summary });
+      continue;
+    }
 
     const oldValue = normalizeFieldValue(field, oldTask ? oldTask[field] : undefined);
     const newValue = normalizeFieldValue(field, changes[field]);
@@ -237,6 +248,9 @@ export function describeActivity(row) {
       return { icon: 'link', text: `Bỏ liên kết: ${oldValue}`, oldText: null, newText: null };
 
     case ACTIONS.TASK_UPDATE: {
+      if (field === 'subtasks') {
+        return { icon: 'listChecks', text: `Việc con — ${newValue}`, oldText: null, newText: null };
+      }
       const label = fieldLabel(field);
       const before = oldValue == null ? null : formatTaskFieldValue(field, oldValue);
       const after = newValue == null ? null : formatTaskFieldValue(field, newValue);

@@ -144,9 +144,6 @@ passphrase là mất quyền giải mã và không dùng Vault làm bản sao du
 
 ## 5. Quyết định sản phẩm đang mở
 
-- [ ] **Subtask:** chọn một trong hai mô hình trước khi viết migration:
-  - row Task con đầy đủ nếu thật sự cần deadline/priority/recurrence riêng;
-  - checklist trong Task nếu chỉ cần các bước nhỏ.
 - [ ] **Dependency:** xác nhận có use case “Task B bị chặn bởi Task A” trước khi thêm self-FK mới.
 
 Priority + tag đã đủ hai trục phân loại hiện tại; không thêm `type/category` thứ ba nếu chưa có truy vấn

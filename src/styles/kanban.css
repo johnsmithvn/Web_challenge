@@ -593,17 +593,15 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
-.kanban-subtask-item {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  color: var(--text-color, #374151);
+/* Checklist trên card dùng SubtaskList (tasks.css) — chỉ thu nhỏ cho vừa thẻ */
+.kanban-subtasks-toggle .subtask-badge {
+  padding: 0;
+  background: none;
 }
 
-.kanban-subtask-item.is-done span {
-  text-decoration: line-through;
-  color: var(--text-muted, #9CA3AF);
+.kanban-subtasks-list .subtask-row {
+  min-height: 24px;
+  font-size: 0.76rem;
 }
 
 /* Card Tags & Collections Footer */

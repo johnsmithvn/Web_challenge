@@ -8,6 +8,7 @@ import DatePickerPopover from './DatePickerPopover';
 import PriorityPicker from './PriorityPicker';
 import TaskDetailModal from './TaskDetailModal';
 import TaskForm from './TaskForm';
+import SubtaskList, { SubtaskBadge } from './SubtaskList';
 import { useConfirm } from './ConfirmModal';
 import { toDateStr } from '../utils/dateUtils';
 // v5.0.0: PRIORITY_OPTIONS/WEEKDAYS dời sang utils/taskFields để TaskDetailModal
@@ -25,7 +26,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
   const navigate = useNavigate();
   const {
     todayTasks, overdueTasks, futureTasks,
-    addTask, completeTask, uncompleteTask, updateTask, deleteTask,
+    addTask, completeTask, uncompleteTask, updateTask, deleteTask, convertSubtaskToTask,
     linkCollection, unlinkCollection,
     linkTaskTag, unlinkTaskTag,
     getCompletedTasksRange,
@@ -159,6 +160,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
       dueTime: fields.due_time,
       startTime: fields.start_time,
       endTime: fields.end_time,
+      subtasks: fields.subtasks,
       priority: fields.priority,
       recurrenceRule: fields.recurrence_rule,
     });
@@ -295,6 +297,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
                   style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
                   {task.title}
                 </span>
+                <SubtaskBadge items={task.subtasks} />
                 {task.due_date !== toDateStr() && (
                   <span className="task-chip" style={{
                     background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(139,92,246,0.1)',
@@ -352,6 +355,15 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
               {expanded && (
                 <div className="task-desc-box">
                   {task.description || <span style={{ color: 'var(--text-muted)' }}>Nhiệm vụ này chưa có mô tả.</span>}
+                </div>
+              )}
+              {expanded && (task.subtasks || []).length > 0 && (
+                <div className="task-row-subtasks">
+                  <SubtaskList
+                    mode="tick"
+                    items={task.subtasks}
+                    onChange={(next) => updateTask(task.id, { subtasks: next })}
+                  />
                 </div>
               )}
             </div>
@@ -625,6 +637,15 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
             onDelete={task.completed ? handleDeleteCompleted : handleDeleteTask}
             onUpdatePriority={async (newPri) => {
               await updateTask(task.id, { priority: newPri });
+            }}
+            // completedList là dữ liệu tải riêng (task đã xong ngày cũ) → đồng bộ tay như saveEdit.
+            onUpdateSubtasks={async (next) => {
+              setCompletedList(prev => prev.map(t => t.id === task.id ? { ...t, subtasks: next } : t));
+              await updateTask(task.id, { subtasks: next });
+            }}
+            onConvertSubtask={async (item) => {
+              const next = await convertSubtaskToTask(task, item.id);
+              if (next) setCompletedList(prev => prev.map(t => t.id === task.id ? { ...t, subtasks: next } : t));
             }}
           />
         );

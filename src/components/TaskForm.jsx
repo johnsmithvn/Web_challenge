@@ -2,6 +2,7 @@ import { useState, useId } from 'react';
 import DatePickerPopover from './DatePickerPopover';
 import PriorityPicker from './PriorityPicker';
 import TagPicker from './TagPicker';
+import SubtaskList from './SubtaskList';
 import AppIcon from './AppIcon';
 import { WEEKDAYS } from '../utils/taskFields';
 import { toDateStr } from '../utils/dateUtils';
@@ -61,6 +62,7 @@ export default function TaskForm({
     const end = Math.min(timeToMinutes(initialBlockStart) + 60, 1439);
     return `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
   });
+  const [subtasks, setSubtasks] = useState(() => task?.subtasks || []);
   const [priority, setPriority] = useState(task?.priority || 0);
   const [tagIds, setTagIds] = useState(() => (task?._tags || []).map((t) => t.id));
   const [showRec, setShowRec] = useState(!!rec);
@@ -100,6 +102,8 @@ export default function TaskForm({
       fields.start_time = showBlock ? startTime : null;
       fields.end_time = showBlock ? endTime : null;
     }
+    // Checklist việc con (v6.18.0): cùng quy tắc — task không dùng thì không chạm cột.
+    if (subtasks.length || task?.subtasks?.length) fields.subtasks = subtasks;
 
     setSaving(true);
     try {
@@ -141,6 +145,8 @@ export default function TaskForm({
           placeholder="Thêm mô tả hoặc ghi chú..."
         />
       </div>
+
+      <SubtaskList items={subtasks} onChange={setSubtasks} />
 
       <div style={{ position: 'relative' }}>
         <span className="task-form__label">Thời hạn</span>

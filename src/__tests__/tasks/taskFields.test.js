@@ -200,4 +200,18 @@ assert.deepEqual(
 assert.equal(describeActivity({}).text, 'Hoạt động');
 assert.equal(describeActivity(null).text, 'Hoạt động');
 
+// Checklist việc con (v6.18.0): 1 dòng tóm tắt, không phải 2 cục JSON; không đổi → không log
+const subA = [{ id: 'a', title: 'Làm slide', done: false, due_date: null }];
+const subADone = [{ id: 'a', title: 'Làm slide', done: true, due_date: null }];
+assert.deepEqual(
+  diffTaskFields({ subtasks: subA }, { subtasks: subADone }),
+  [{ field: 'subtasks', old_value: null, new_value: 'Xong: Làm slide' }]
+);
+assert.deepEqual(diffTaskFields({ subtasks: subA }, { subtasks: subA }), []);
+assert.deepEqual(diffTaskFields({}, { subtasks: [] }), [], 'task cũ chưa có cột + mảng rỗng → không log');
+assert.deepEqual(
+  describeActivity({ action: ACTIONS.TASK_UPDATE, field: 'subtasks', new_value: 'Xong: Làm slide' }),
+  { icon: 'listChecks', text: 'Việc con — Xong: Làm slide', oldText: null, newText: null }
+);
+
 console.log('taskFields check: OK');

@@ -104,6 +104,9 @@
 .td-muted { color: var(--text-muted); }
 .td-desc--empty { font-style: italic; }
 
+/* Checklist việc con dưới mô tả (SubtaskList mode edit) */
+.td-subtasks { margin-top: 0.85rem; }
+
 /* ── Tab ─────────────────────────────────────────────────────────────── */
 /* Dùng lại nguyên .tasks-viewbar__tab của trang /tasks — cùng pill, cùng tint
    tím, người dùng đã bấm nó hàng ngày ở thanh Danh sách/Lịch ngay phía trên. */

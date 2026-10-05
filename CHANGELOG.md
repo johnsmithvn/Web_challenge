@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## v6.18.0 — 2026-10-05
+
+### Added
+- **Tasks GĐ5 — Việc con / checklist kiểu Trello (`data/migration_v6.18.0_task_subtasks.sql` + bản local `supabase/migrations/20261005010000_task_subtasks_v6_18_0.sql`, `SubtaskList.jsx` mới, `subtaskUtils.js` mới, `TaskForm.jsx`, `TaskDetailModal.jsx`, `TaskKanbanView.jsx`, `TaskListSection.jsx`, `TaskCreateModal.jsx`, `TasksPage.jsx`, `useUserTasks.js`, `taskFields.js`, `tasks.css`, `task-detail.css`, `kanban.css`):**
+  - Cột `user_tasks.subtasks JSONB NOT NULL DEFAULT '[]'` (CHECK là mảng); phần tử `{id, title, done, due_date}`. Chọn JSONB thay vì row con `parent_id` để không đụng Lịch/Kanban/recurrence/XP (6 chỗ vỡ của `parent_id` ghi ở Notes v4.28.0).
+  - `SubtaskList` 2 chế độ: `edit` (popup Chi tiết + TaskForm: thêm Enter-thêm-tiếp, tick, đổi tên, hạn riêng, kéo thả + Alt+↑/↓, xoá, chuyển thành task) và `tick` (thẻ Kanban, hàng Danh sách mở rộng). `SubtaskBadge` `☑ 2/4`.
+  - `useUserTasks.convertSubtaskToTask` — tạo task trước rồi mới gỡ việc con (lỗi giữa chừng không mất dữ liệu).
+  - Task lặp: kỳ sau mang checklist, bỏ tick hết, hạn riêng dời theo `daysBetween(due cũ, due mới)`.
+  - Activity log: `diffTaskFields` ghi 1 câu tóm tắt (`summarizeSubtaskChange`) thay cho 2 cục JSON; mảng rỗng ↔ chưa có cột không sinh log.
+  - Payload chỉ chạm cột `subtasks` khi task dùng checklist → task thường vẫn tạo/sửa được khi DB chưa chạy migration.
+  - Test mới `src/__tests__/tasks/subtaskUtils.test.js` (wire vào `npm test`); `taskFields.test.js` thêm case diff checklist.
+
+### Removed
+- Kanban không còn đọc dòng `- [ ]`/`- [x]` trong mô tả để hiện checklist chỉ-xem (thay bằng cột `subtasks`); CSS `.kanban-subtask-item` bỏ.
+
+### Notes
+- **Thứ tự:** chạy `data/migration_v6.18.0_task_subtasks.sql` trên Supabase SQL Editor **trước** khi deploy (sau v6.17.0 nếu chưa chạy).
+- Kéo thả việc con dùng HTML5 drag & drop → chạy trên chuột; màn cảm ứng chưa kéo được (bàn phím Alt+↑/↓ vẫn dùng được).
+
 ## v6.17.0 — 2026-10-05
 
 ### Added

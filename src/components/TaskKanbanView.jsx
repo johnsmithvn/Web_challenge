@@ -7,6 +7,7 @@ import UI_STRINGS from '../data/ui-strings.json';
 import { toDateStr } from '../utils/dateUtils';
 import { hasExplicitTime } from '../utils/calendarTimeUtils';
 import { getKanbanRange, groupKanbanColumns } from '../utils/kanbanUtils';
+import SubtaskList, { SubtaskBadge } from './SubtaskList';
 import '../styles/kanban.css';
 
 /**
@@ -20,7 +21,7 @@ import '../styles/kanban.css';
  * 2. Cột Done hiển thị đầy đủ task đã hoàn thành theo dải ngày.
  * 3. Layout 3 cột trải rộng 100% canvas & Responsive linh hoạt trên mobile.
  * 4. Tab chuyển cột nhanh & Nút 1-tap chuyển status trên Mobile.
- * 5. Mở rộng & Tích chọn subtasks trực tiếp trên card.
+ * 5. Badge việc con `☑ 2/4` trên card, mở ra tick trực tiếp (SubtaskList mode tick).
  * 6. Icon bút chì kích hoạt chỉnh sửa trực tiếp.
  * 7. Thanh bộ lọc thời gian (Tất cả [mặc định] / Hôm nay / 7 ngày / Tùy chọn).
  */
@@ -296,9 +297,8 @@ export default function TaskKanbanView({
     const isToday = !isCompleted && task.due_date === today;
     const isFuture = !isCompleted && task.due_date > today;
 
-    // Phân tích subtasks từ description nếu có dạng "- [ ] task"
-    const subtaskLines = (task.description || '').split('\n').filter((l) => l.trim().startsWith('- [') || l.trim().startsWith('* ['));
-    const hasSubtasks = subtaskLines.length > 0;
+    // Checklist việc con (cột subtasks, v6.18.0) — thay cho cách đọc dòng "- [ ]" trong mô tả.
+    const hasSubtasks = (task.subtasks || []).length > 0;
     const isExpanded = expandedSubtaskIds.has(task.id);
 
     // Xác định class highlight theo thời hạn
@@ -387,41 +387,31 @@ export default function TaskKanbanView({
           <span className="kanban-card-title">{task.title}</span>
         </div>
 
-        {/* Subtasks expander toggle */}
+        {/* Mặt trước thẻ: badge tiến độ, bấm để mở và tick ngay (sửa đầy đủ ở popup Chi tiết) */}
         {hasSubtasks && (
           <button
             type="button"
             className="kanban-subtasks-toggle"
             onClick={(e) => toggleExpandSubtasks(e, task.id)}
+            aria-expanded={isExpanded}
           >
             <AppIcon name={isExpanded ? 'caretDown' : 'caretRight'} size={11} />
-            <span>{subtaskLines.length} việc con</span>
+            <SubtaskBadge items={task.subtasks} />
           </button>
         )}
 
-        {/* Subtasks checklist rendered */}
         {hasSubtasks && isExpanded && (
-          <div className="kanban-subtasks-list" onClick={(e) => e.stopPropagation()}>
-            {subtaskLines.map((line, idx) => {
-              const checked = line.includes('[x]') || line.includes('[X]');
-              const text = line.replace(/^[-*]\s*\[[ xX]\]\s*/, '');
-              return (
-                <div key={idx} className={`kanban-subtask-item${checked ? ' is-done' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    readOnly
-                    style={{ width: '13px', height: '13px' }}
-                  />
-                  <span>{text}</span>
-                </div>
-              );
-            })}
+          <div className="kanban-subtasks-list">
+            <SubtaskList
+              mode="tick"
+              items={task.subtasks}
+              onChange={(next) => handleUpdateTask(task.id, { subtasks: next })}
+            />
           </div>
         )}
 
         {/* Description preview */}
-        {task.description && !hasSubtasks && (
+        {task.description && (
           <div className="kanban-card-desc">{task.description}</div>
         )}
 

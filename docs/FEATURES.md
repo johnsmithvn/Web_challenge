@@ -42,6 +42,17 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 `src/components/WeekCalendar.jsx`, `src/components/MonthCalendar.jsx`,
 `src/hooks/useUserTasks.js`, `src/hooks/useActivityLog.js`
 
+### Việc con (checklist, v6.18.0)
+- Checklist bên trong task, kiểu checklist của card Trello: mỗi việc con có tên, ô tick và **hạn riêng** tuỳ chọn
+  (quá hạn tô đỏ). Không phải task riêng: không hiện trên Lịch/Kanban, không cộng XP.
+- **Mặt trước** (thẻ Kanban, hàng Danh sách): badge `☑ 2/4`; mở ra tick trực tiếp.
+- **Popup Chi tiết** và form tạo/sửa: thêm (Enter thêm tiếp), đổi tên (bấm vào tên), đặt hạn, **kéo thả sắp xếp**
+  (bàn phím: Alt + ↑/↓ trên tay nắm), xoá. Popup Chi tiết có thêm **Chuyển thành task riêng** (task mới lấy hạn
+  của việc con, không có thì lấy hạn task cha; tạo xong mới gỡ khỏi checklist).
+- Tick hết **không** tự hoàn thành task cha. Task lặp sang kỳ sau: bỏ tick hết, hạn riêng dời cùng khoảng.
+- Tab Hoạt động ghi câu ngắn ("Việc con — Xong: Làm slide"), không lưu nguyên mảng.
+- Dòng `- [ ]` cũ trong mô tả không còn hiện thành checklist trên Kanban (giữ nguyên trong mô tả, không tự chuyển).
+
 ### Danh sách
 - Task **Bỏ qua** (cột Skip của Kanban, `status = 'skip'`) không còn là việc cần làm: không vào Quá hạn/Hôm nay/
   Sắp tới, không đếm, không hiện trên Lịch, không nhắc giờ. Kéo về To Do/Doing để làm lại.

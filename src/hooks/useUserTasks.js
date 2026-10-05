@@ -6,6 +6,7 @@ import { logger } from '../utils/logger';
 import { toDateStr } from '../utils/dateUtils';
 import { computeNextDueDate, resolveDeletionIds } from '../utils/recurrenceUtils';
 import { buildTodayReminders } from '../utils/calendarTimeUtils';
+import { resetSubtasksForNextOccurrence, daysBetween, removeSubtask } from '../utils/subtaskUtils';
 import { useActivityLog } from './useActivityLog';
 import { useXpStore, XP_REWARDS } from './useXpStore';
 import { diffTaskFields, ACTIONS } from '../utils/taskFields';
@@ -150,7 +151,7 @@ export function useUserTasks() {
 
   // ── Add task ───────────────────────────────────────────
   // Knowledge links are created separately through task_collections/linkCollection.
-  const addTask = useCallback(async ({ title, description, dueDate, dueTime, startTime, endTime, priority, recurrenceRule, completed, completedAt, status }) => {
+  const addTask = useCallback(async ({ title, description, dueDate, dueTime, startTime, endTime, subtasks, priority, recurrenceRule, completed, completedAt, status }) => {
     const taskStatus = status || (completed ? 'done' : 'todo');
     const newTask = {
       id: crypto.randomUUID ? crypto.randomUUID() : `local_${Date.now()}`,
@@ -162,6 +163,8 @@ export function useUserTasks() {
       // Khung giờ làm (v6.17.0) chỉ gửi khi có: DB chưa chạy migration thì task
       // không đặt khung giờ vẫn tạo được.
       ...(startTime && endTime ? { start_time: startTime, end_time: endTime } : {}),
+      // Checklist việc con (v6.18.0) — cùng lý do: chỉ gửi khi có.
+      ...(subtasks?.length ? { subtasks } : {}),
       priority: priority || 0,
       recurrence_rule: recurrenceRule || null,
       completed: completed || false,
@@ -250,6 +253,10 @@ export function useUserTasks() {
           // 2 key này → undefined bị JSON bỏ qua, insert không đụng cột chưa có.
           start_time: task.start_time,
           end_time: task.end_time,
+          // Checklist sang kỳ sau: bỏ tick hết, hạn riêng dời cùng khoảng với hạn task.
+          subtasks: task.subtasks?.length
+            ? resetSubtasksForNextOccurrence(task.subtasks, daysBetween(task.due_date, nextDate))
+            : undefined,
           priority: task.priority || 0,
           recurrence_rule: task.recurrence_rule, // clone rule for chain
           recurrence_parent_id: task.id,
@@ -583,6 +590,20 @@ export function useUserTasks() {
     return true;
   }, [isAuth, userId, tasks, logFieldChanges, spawnRecurringTask]);
 
+  // ── Chuyển 1 việc con thành task riêng (kiểu "Convert to card" của Trello) ──
+  // Tạo task TRƯỚC rồi mới gỡ khỏi checklist: lỗi giữa chừng thì việc con vẫn còn.
+  // Task mới lấy hạn riêng của việc con, không có thì lấy ngày hạn của task cha.
+  // Trả checklist mới của task cha (null nếu thất bại) để nơi gọi đồng bộ bản chụp.
+  const convertSubtaskToTask = useCallback(async (parentTask, subtaskId) => {
+    const item = (parentTask?.subtasks || []).find(s => s.id === subtaskId);
+    if (!item) return null;
+    const created = await addTask({ title: item.title, dueDate: item.due_date || parentTask.due_date });
+    if (!created) return null;
+    const next = removeSubtask(parentTask.subtasks, subtaskId);
+    await updateTask(parentTask.id, { subtasks: next });
+    return next;
+  }, [addTask, updateTask]);
+
   // ── Get completed tasks in a date range (for calendar) ────────
   // v4.29.0: thay `getCompletedTasks(dateStr)` (1 query/ngày → 30 query/tháng khi
   // calendar cần chip trên mọi ô). Caller fetch 1 lần/tháng rồi tự group.
@@ -810,6 +831,7 @@ export function useUserTasks() {
     uncompleteTask,
     updateTask,
     deleteTask,
+    convertSubtaskToTask,
     rolloverTask,
     getCompletedTasksRange,
     linkCollection,

@@ -41,6 +41,7 @@ export default function TaskCreateModal({
       dueTime: fields.due_time,
       startTime: fields.start_time,
       endTime: fields.end_time,
+      subtasks: fields.subtasks,
       priority: fields.priority,
       recurrenceRule: fields.recurrence_rule,
       status,

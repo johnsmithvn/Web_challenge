@@ -91,7 +91,6 @@ Cho tới khi bước 1 hoàn tất, Vault không được dùng làm bản sao 
 
 ## Icebox
 
-- Task subtask: chọn rõ row con đầy đủ hay checklist JSON trước khi đụng schema.
 - Task dependency: chỉ làm khi có use case thực tế; tránh thêm quan hệ self-FK thứ ba theo suy đoán.
 - Xóa fallback migration cũ chỉ sau khi production schema được xác minh ở trạng thái cuối.
 - Refactor form/modal/inline CSS theo từng phạm vi nhỏ; không gom thành rewrite toàn app.
