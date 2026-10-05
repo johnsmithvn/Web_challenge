@@ -20,6 +20,19 @@ export function timeToMinutes(timeStr) {
 }
 
 /**
+ * Task có giờ do user đặt hay không. App lưu "không đặt giờ" bằng giá trị giả:
+ * 23:59 (mặc định khi tạo, "Hết ngày") hoặc 00:00 (xoá giờ ở Danh sách) — cùng
+ * quy ước với TaskListSection và public/sw.js. Task không giờ thuộc hàng "Cả ngày".
+ * @param {string|null|undefined} dueTime - "HH:mm" hoặc "HH:mm:ss" (DB)
+ * @returns {boolean}
+ */
+export function hasExplicitTime(dueTime) {
+  if (timeToMinutes(dueTime) === null) return false;
+  const hhmm = dueTime.trim().substring(0, 5);
+  return hhmm !== '23:59' && hhmm !== '00:00';
+}
+
+/**
  * Chuyển số phút sang chuỗi hiển thị 12h thân thiện (VD: 870 -> "2:30pm", 720 -> "12pm").
  * @param {number} totalMinutes
  * @returns {string}
@@ -63,7 +76,8 @@ export function getTaskVisualStatus(task, todayStr = toDateStr(new Date()), nowM
 
   if (task.due_date < todayStr) return 'overdue';
 
-  if (task.due_date === todayStr && task.due_time && typeof nowMinutes === 'number') {
+  // Task không đặt giờ (23:59/00:00) hạn hôm nay thì chưa quá hạn trong ngày.
+  if (task.due_date === todayStr && hasExplicitTime(task.due_time) && typeof nowMinutes === 'number') {
     const taskMins = timeToMinutes(task.due_time);
     if (taskMins !== null && taskMins < nowMinutes) {
       return 'overdue';
@@ -135,10 +149,10 @@ export function computeDayLayout(tasks = [], defaultDurationMinutes = 45, pxPerH
   const timed = [];
 
   for (const t of tasks) {
-    const start = timeToMinutes(t.due_time);
-    if (start === null) {
+    if (!hasExplicitTime(t.due_time)) {
       allDayTasks.push(t);
     } else {
+      const start = timeToMinutes(t.due_time);
       const dur = Math.max(15, Number(t.duration) || defaultDurationMinutes);
       const end = Math.min(1440, start + dur);
       timed.push({

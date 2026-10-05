@@ -30,6 +30,7 @@ export default function WeekCalendar({
   hideToolbar = false,
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   customAnniversaries = [],
+  refreshKey = 0,
 }) {
   const today = new Date();
   const [internalBaseDate, setBaseDate] = useState(today);
@@ -187,18 +188,18 @@ export default function WeekCalendar({
   useEffect(() => {
     if (!getCompletedTasksRange || !startWeekStr || !endWeekStr) return;
     let stale = false;
-    getCompletedTasksRange(startWeekStr, endWeekStr).then((rows) => {
+    // Gom theo ngày KẾ HOẠCH (due_date): task đã xong nằm đúng ô đã lên lịch,
+    // không nhảy sang ngày bấm hoàn thành.
+    getCompletedTasksRange(startWeekStr, endWeekStr, { byDueDate: true }).then((rows) => {
       if (stale) return;
       const map = {};
       for (const r of rows || []) {
-        if (!r.completed_at) continue;
-        const key = toDateStr(new Date(r.completed_at));
-        (map[key] ||= []).push(r);
+        (map[r.due_date] ||= []).push(r);
       }
       setCompletedByDay(map);
     });
     return () => { stale = true; };
-  }, [startWeekStr, endWeekStr, getCompletedTasksRange]);
+  }, [startWeekStr, endWeekStr, getCompletedTasksRange, refreshKey]);
 
   // Gom nhóm pending tasks theo due_date
   const pendingByDay = useMemo(() => {

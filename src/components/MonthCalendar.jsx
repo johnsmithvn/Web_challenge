@@ -41,6 +41,7 @@ export default function MonthCalendar({
   hideToolbar = false,
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   customAnniversaries = [],
+  refreshKey = 0,
 }) {
   const today = useMemo(() => new Date(), []);
   const [viewYear, setViewYear] = useState(() => (currentDate ? currentDate.getFullYear() : today.getFullYear()));
@@ -87,18 +88,17 @@ export default function MonthCalendar({
     const from = `${viewYear}-${pad(viewMonth + 1)}-01`;
     const to = `${viewYear}-${pad(viewMonth + 1)}-${pad(daysInMonth)}`;
 
-    getCompletedTasksRange(from, to).then((rows) => {
+    // Gom theo ngày KẾ HOẠCH (due_date), cùng trục với task chờ làm.
+    getCompletedTasksRange(from, to, { byDueDate: true }).then((rows) => {
       if (stale) return;
       const map = {};
       for (const r of rows) {
-        if (!r.completed_at) continue;
-        const key = toDateStr(new Date(r.completed_at));
-        (map[key] ||= []).push(r);
+        (map[r.due_date] ||= []).push(r);
       }
       setTasksByDay(map);
     });
     return () => { stale = true; };
-  }, [viewYear, viewMonth, daysInMonth, getCompletedTasksRange]);
+  }, [viewYear, viewMonth, daysInMonth, getCompletedTasksRange, refreshKey]);
 
   // Gom pending tasks theo due_date
   const pendingByDay = useMemo(() => {

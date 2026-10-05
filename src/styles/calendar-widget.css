@@ -1340,12 +1340,8 @@
   height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
+  /* Màu lấy inline từ PRIORITY_OPTIONS (utils/taskFields) — một nguồn với Danh sách. */
 }
-
-.cal-agenda-task-priority-dot--p1 { background: #ef4444; }
-.cal-agenda-task-priority-dot--p2 { background: #f59e0b; }
-.cal-agenda-task-priority-dot--p3 { background: #3b82f6; }
-.cal-agenda-task-priority-dot--p4 { background: #9ca3af; }
 
 .cal-agenda-item-title {
   font-size: 0.82rem;

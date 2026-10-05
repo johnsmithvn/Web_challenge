@@ -730,7 +730,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
       const avg3m = stats && stats.count > 0 ? Math.round(stats.total / stats.count) : 0;
       const subName = subLabel(t.subcategory_id, fin.cats) || catInfo(t.category_id, fin.cats).label;
       const name = (t.merchant || t.note || subName).trim();
-      const dateStr = t.occurred_at ? formatDate(t.occurred_at, 'dd/MM') : '';
+      const dateStr = t.occurred_at ? formatDate(t.occurred_at).slice(0, 5) : '';
 
       if (avg3m > 0 && t.amount >= avg3m * 1.4 && t.amount >= 200_000) {
         const ratio = (t.amount / avg3m).toFixed(1).replace('.', ',');
@@ -895,8 +895,10 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
 
     const dailyMap = {};
     for (const t of periodTxs) {
-      const day = parseYmd(t.occurred_at).getDate();
-      dailyMap[day] = (dailyMap[day] || 0) + t.amount;
+      const day = t.occurred_at ? Number(t.occurred_at.slice(8, 10)) : null;
+      if (day && day >= 1 && day <= daysInMonth) {
+        dailyMap[day] = (dailyMap[day] || 0) + t.amount;
+      }
     }
 
     const firstDayDow = new Date(y, m, 1).getDay();
@@ -1163,6 +1165,38 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
       </div>
   );
 
+  const merchants = cards.merchants && (
+    <div className="fin-report__card">
+      <div className="fin-report__card-head">
+        <div>
+          <div className="fin-report__card-title">Nơi chi nhiều nhất</div>
+          <div className="fin-report__card-sub">Gộp theo nhà cung cấp</div>
+        </div>
+      </div>
+      <div className="fin-report__merchants-list">
+        {merchantData.map(m => (
+          <div key={m.n}>
+            <div className="fin-report__rank-row-head">
+              <span className="fin-report__merchants-name">{m.n}</span>
+              <span className="fin-report__rank-val">{m.v}</span>
+            </div>
+            <div className="fin-report__rank-track">
+              <span
+                className="fin-report__rank-fill"
+                style={{ background: m.col, width: `${m.p}%` }}
+              />
+            </div>
+          </div>
+        ))}
+        {!merchantData.length && (
+          <div style={{ color: '#93938C', fontSize: '12px', textAlign: 'center', padding: '24px 0' }}>
+            Chưa có giao dịch nào trong kỳ
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="fin-report">
       {/* ── Header ────────────────────────────────────────────────────────── */}
@@ -1273,7 +1307,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
 
       {/* ── Nội dung Báo cáo ────────────────────────────────────────────────── */}
       <div className="fin-report__body">
-        {lead?.({ ...period, mode, unit: mode === 'month' ? 'day' : 'month' }, { hero, sparks, rank, cards })}
+        {lead?.({ ...period, mode, unit: mode === 'month' ? 'day' : 'month' }, { hero, sparks, rank, merchants, cards })}
 
         {/* 2b. Row: Kỳ này với kỳ trước & Khoản lớn bất thường */}
         {(cards.periodDiff || cards.outliers) && (
@@ -1312,8 +1346,8 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                     <tbody>
                       {periodDiffData.rows.map(r => {
                         const isOpen = expandedDiffGroups.has(r.key);
-                        const curW = Math.max(3, Math.round((r.curAmt / periodDiffData.maxRowVal) * 100));
-                        const prevW = Math.max(3, Math.round((r.prevAmt / periodDiffData.maxRowVal) * 100));
+                        const curW = r.curAmt > 0 ? Math.max(3, Math.round((r.curAmt / periodDiffData.maxRowVal) * 100)) : 0;
+                        const prevW = r.prevAmt > 0 ? Math.max(3, Math.round((r.prevAmt / periodDiffData.maxRowVal) * 100)) : 0;
 
                         return (
                           <Fragment key={r.key}>
@@ -1360,8 +1394,8 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                             </tr>
 
                             {isOpen && r.subs.map(s => {
-                              const subCurW = Math.max(3, Math.round((s.curAmt / (r.curAmt || 1)) * 100));
-                              const subPrevW = Math.max(3, Math.round((s.prevAmt / (r.prevAmt || 1)) * 100));
+                              const subCurW = s.curAmt > 0 ? Math.max(3, Math.round((s.curAmt / (r.curAmt || 1)) * 100)) : 0;
+                              const subPrevW = s.prevAmt > 0 ? Math.max(3, Math.round((s.prevAmt / (r.prevAmt || 1)) * 100)) : 0;
                               return (
                                 <tr key={s.key} className="fin-report__diff-sub-tr">
                                   <td style={{ paddingLeft: '32px' }}>
@@ -1396,6 +1430,13 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                           </Fragment>
                         );
                       })}
+                      {periodDiffData.rows.length === 0 && (
+                        <tr>
+                          <td colSpan={4} style={{ textAlign: 'center', padding: '28px 0', color: '#93938C', fontSize: '12px' }}>
+                            Chưa có dữ liệu chi tiêu trong kỳ này
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1770,7 +1811,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
             </div>
           )}
 
-          {cards.calHeatmap && calHeatmapData && (
+          {cards.calHeatmap && mode === 'month' && calHeatmapData && (
             <div className="fin-report__card">
               <div className="fin-report__card-head">
                 <div>
@@ -1839,34 +1880,8 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
             </div>
           )}
 
-          {/* Thẻ Nơi chi nhiều nhất (Merchants) */}
-          {cards.merchants && (
-            <div className="fin-report__card">
-              <div className="fin-report__card-title">Nơi chi nhiều nhất</div>
-              <div className="fin-report__card-sub">Gộp theo nhà cung cấp</div>
-              <div className="fin-report__merchants-list">
-                {merchantData.map(m => (
-                  <div key={m.n}>
-                    <div className="fin-report__rank-row-head">
-                      <span className="fin-report__merchants-name">{m.n}</span>
-                      <span className="fin-report__rank-val">{m.v}</span>
-                    </div>
-                    <div className="fin-report__rank-track">
-                      <span
-                        className="fin-report__rank-fill"
-                        style={{ background: m.col, width: `${m.p}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-                {!merchantData.length && (
-                  <div style={{ color: '#93938C', fontSize: '12px', textAlign: 'center', padding: '24px 0' }}>
-                    Chưa có giao dịch nào trong kỳ
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Thẻ Nơi chi nhiều nhất (Merchants) — chỉ vẽ ở đáy nếu không có lead */}
+          {!lead && cards.merchants && merchants}
         </div>
 
         {footer}

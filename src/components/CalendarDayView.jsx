@@ -24,6 +24,7 @@ export default function CalendarDayView({
   currentDate = new Date(),
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   customAnniversaries = [],
+  refreshKey = 0,
 }) {
   const [completedTasks, setCompletedTasks] = useState([]);
   const [nowMinutes, setNowMinutes] = useState(() => {
@@ -61,13 +62,16 @@ export default function CalendarDayView({
     hasAutoScrolled.current = true;
   }, [isToday, nowMinutes]);
 
-  // Tải completed tasks cho ngày đang chọn
+  // Tải completed tasks có ngày KẾ HOẠCH = ngày đang chọn (lọc đúng 1 ngày, không
+  // đệm ±1 ngày như query theo completed_at — trước đây lọt task của ngày bên cạnh).
   useEffect(() => {
     if (!getCompletedTasksRange) return;
-    getCompletedTasksRange(dateStr, dateStr).then((res) => {
-      setCompletedTasks(res || []);
+    let stale = false;
+    getCompletedTasksRange(dateStr, dateStr, { byDueDate: true }).then((res) => {
+      if (!stale) setCompletedTasks(res || []);
     });
-  }, [getCompletedTasksRange, dateStr]);
+    return () => { stale = true; };
+  }, [getCompletedTasksRange, dateStr, refreshKey]);
 
   // Gom tasks của ngày
   const dayPending = useMemo(() => {
@@ -158,15 +162,26 @@ export default function CalendarDayView({
                   {h.title}
                 </div>
               ))}
-              {allDayTasks.map((t) => (
-                <div
-                  key={t.id}
-                  className={`week-cal__task-chip week-cal__task-chip--p${t.priority || 4}${t.completed ? ' week-cal__task-chip--done' : ''}`}
-                  onClick={() => onSelectTask && onSelectTask(t)}
-                >
-                  {t.title}
-                </div>
-              ))}
+              {/* Cùng chip với hàng Cả ngày của Lịch Tuần (class cũ week-cal__task-chip không có CSS) */}
+              {allDayTasks.map((t) => {
+                const status = getTaskVisualStatus(t, todayStr, nowMinutes);
+                const p = Math.max(0, Math.min(5, Number(t.priority) || 0));
+                const statusClass = status === 'done'
+                  ? 'week-cal__chip-allday--done'
+                  : status === 'overdue'
+                  ? 'week-cal__chip-allday--overdue'
+                  : `week-cal__chip-allday--p${p}`;
+                return (
+                  <div
+                    key={t.id}
+                    className={`week-cal__chip-allday ${statusClass}`}
+                    onClick={() => onSelectTask && onSelectTask(t)}
+                    title={t.title}
+                  >
+                    {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : ''}{t.title}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

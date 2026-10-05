@@ -9,6 +9,7 @@ import {
   formatTimeRange,
   getWeekDays,
   computeDayLayout,
+  hasExplicitTime,
 } from '../../utils/calendarTimeUtils.js';
 
 /* ── 1. timeToMinutes & minutesTo12h ──────────────────────────── */
@@ -43,6 +44,8 @@ assert.equal(getTaskVisualStatus({ due_date: '2026-08-20' }, '2026-08-30'), 'ove
 assert.equal(getTaskVisualStatus({ due_date: '2026-08-30', due_time: '10:00' }, '2026-08-30', 720), 'overdue');
 assert.equal(getTaskVisualStatus({ due_date: '2026-08-30', due_time: '15:00' }, '2026-08-30', 720), 'active');
 assert.equal(getTaskVisualStatus({ due_date: '2026-09-01' }, '2026-08-30'), 'active');
+// Task không đặt giờ (00:00 = đã xoá giờ) hạn hôm nay: chưa quá hạn dù đã qua 00:00
+assert.equal(getTaskVisualStatus({ due_date: '2026-08-30', due_time: '00:00:00' }, '2026-08-30', 720), 'active');
 console.log('getTaskVisualStatus classification: OK');
 
 /* ── 2. getWeekDays ───────────────────────────────────────────── */
@@ -85,6 +88,22 @@ assert.equal(t1Result._layout.top, 540);
 assert.equal(t1Result._layout.height, 58);
 assert.equal(t1Result._layout.left, '0%');
 assert.ok(t1Result._layout.width.includes('100%'));
+
+// Giờ giả "không đặt giờ" (23:59 mặc định, 00:00 khi xoá giờ — DB trả HH:MM:SS)
+// phải vào hàng Cả ngày, không thành khối ở cuối/đầu lưới.
+assert.equal(hasExplicitTime('09:00:00'), true);
+assert.equal(hasExplicitTime('23:59'), false);
+assert.equal(hasExplicitTime('23:59:00'), false);
+assert.equal(hasExplicitTime('00:00:00'), false);
+assert.equal(hasExplicitTime(null), false);
+const sentinelRes = computeDayLayout([
+  { id: 's1', due_time: '23:59:00' },
+  { id: 's2', due_time: '00:00' },
+  { id: 's3', due_time: '08:30:00' },
+], 45, 60);
+assert.deepEqual(sentinelRes.allDayTasks.map((t) => t.id), ['s1', 's2']);
+assert.deepEqual(sentinelRes.timedTasks.map((t) => t.id), ['s3']);
+console.log('no-time sentinel (23:59/00:00) → all-day: OK');
 
 // Kịch bản 2 task trùng giờ (Overlapping):
 // Task A: 14:00 - 15:30 (90 phút)

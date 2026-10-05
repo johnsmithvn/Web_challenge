@@ -243,11 +243,13 @@ function computeCumulativeRhythm(transactions, period, prevPeriod, today) {
 
   const prevPoints = [];
   let prevAcc = 0;
-  for (let i = 0; i < prevDays; i++) {
-    const d = new Date(prevFromDate.getFullYear(), prevFromDate.getMonth(), prevFromDate.getDate() + i);
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    prevAcc += (prevDaySums[iso] || 0);
-    prevPoints.push({ day: i + 1, val: prevAcc, iso });
+  if (prevPeriod && prevFromDate) {
+    for (let i = 0; i < prevDays; i++) {
+      const d = new Date(prevFromDate.getFullYear(), prevFromDate.getMonth(), prevFromDate.getDate() + i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      prevAcc += (prevDaySums[iso] || 0);
+      prevPoints.push({ day: i + 1, val: prevAcc, iso });
+    }
   }
 
   for (let i = 0; i < Math.min(curPoints.length, prevPoints.length); i++) {
@@ -260,12 +262,12 @@ function computeCumulativeRhythm(transactions, period, prevPeriod, today) {
   const lastPrevVal = prevPoints[prevPoints.length - 1]?.val || 0;
 
   const curLabel = period.label || 'Kỳ này';
-  const prevLabel = prevPeriod ? (prevPeriod.from.slice(0, 4) === period.from.slice(0, 4) ? `Tháng ${Number(prevPeriod.from.slice(5, 7))}` : prevPeriod.from.slice(0, 7)) : 'Kỳ trước';
+  const prevLabel = prevPeriod ? (prevPeriod.from.slice(0, 4) === period.from.slice(0, 4) ? `Tháng ${Number(prevPeriod.from.slice(5, 7))}` : prevPeriod.from.slice(0, 7)) : '';
 
   let subNote = '';
-  if (crossDay) {
+  if (crossDay && prevLabel) {
     subNote = `${curLabel.toLowerCase()} vượt ${prevLabel.toLowerCase()} từ ngày ${crossDay}`;
-  } else if (lastCurVal < lastPrevVal) {
+  } else if (prevPeriod && lastCurVal < lastPrevVal) {
     subNote = `${curLabel.toLowerCase()} luôn thấp hơn ${prevLabel.toLowerCase()}`;
   } else {
     subNote = `Lũy kế theo ngày`;
@@ -402,7 +404,13 @@ function CumulativeRhythmChart({ transactions, period, prevPeriod, today }) {
           {lastPrev && (
             <g>
               <circle cx={lastPrev.x} cy={lastPrev.y} r="3" fill="#A8A8A2" />
-              <text x={lastPrev.x + 6} y={lastPrev.y + 4} fill="#8A8A84" fontSize="10.5" fontFamily="'JetBrains Mono', monospace">
+              <text
+                x={lastPrev.x + 6}
+                y={lastCur && Math.abs(lastCur.y - lastPrev.y) < 14 && lastCur.y <= lastPrev.y ? lastPrev.y + 11 : lastPrev.y + 4}
+                fill="#8A8A84"
+                fontSize="10.5"
+                fontFamily="'JetBrains Mono', monospace"
+              >
                 {compactVND(lastPrev.val)}
               </text>
             </g>
@@ -412,7 +420,14 @@ function CumulativeRhythmChart({ transactions, period, prevPeriod, today }) {
           {lastCur && (
             <g>
               <circle cx={lastCur.x} cy={lastCur.y} r="4.5" fill="#6949E8" stroke="#fff" strokeWidth="2" />
-              <text x={lastCur.x + 6} y={lastCur.y - 3} fill="#6949E8" fontWeight="600" fontSize="11" fontFamily="'JetBrains Mono', monospace">
+              <text
+                x={lastCur.x + 6}
+                y={lastPrev && Math.abs(lastCur.y - lastPrev.y) < 14 && lastCur.y > lastPrev.y ? lastCur.y + 11 : lastCur.y - 3}
+                fill="#6949E8"
+                fontWeight="600"
+                fontSize="11"
+                fontFamily="'JetBrains Mono', monospace"
+              >
                 {compactVND(lastCur.val)}
               </text>
             </g>

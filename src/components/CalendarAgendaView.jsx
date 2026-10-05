@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar } from '../utils/lunarUtils';
+import { hasExplicitTime } from '../utils/calendarTimeUtils';
+import { PRIORITY_OPTIONS } from '../utils/taskFields';
 import HOLIDAYS from '../data/holidays.json';
 import AppIcon from './AppIcon';
 import '../styles/calendar-widget.css';
@@ -21,6 +23,7 @@ export default function CalendarAgendaView({
   currentDate = new Date(),
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   customAnniversaries = [],
+  refreshKey = 0,
 }) {
   const [completedByDay, setCompletedByDay] = useState({});
   const [daysCount, setDaysCount] = useState(45);
@@ -117,23 +120,24 @@ export default function CalendarAgendaView({
     return result;
   }, [currentDate, holidayToggles, customAnniversaries, daysCount]);
 
-  // Tải completed tasks cho khoảng ngày hiển thị
+  // Tải completed tasks cho khoảng ngày hiển thị — gom theo ngày KẾ HOẠCH (due_date),
+  // cùng trục với task chờ làm, nên bấm hoàn thành muộn không làm task nhảy ngày.
   useEffect(() => {
     if (!getCompletedTasksRange || days.length === 0) return;
+    let stale = false;
     const startStr = days[0].dateStr;
     const endStr = days[days.length - 1].dateStr;
 
-    getCompletedTasksRange(startStr, endStr).then((res) => {
+    getCompletedTasksRange(startStr, endStr, { byDueDate: true }).then((res) => {
+      if (stale) return;
       const map = {};
       for (const t of res || []) {
-        if (t.completed_date) {
-          if (!map[t.completed_date]) map[t.completed_date] = [];
-          map[t.completed_date].push(t);
-        }
+        (map[t.due_date] ||= []).push(t);
       }
       setCompletedByDay(map);
     });
-  }, [getCompletedTasksRange, days]);
+    return () => { stale = true; };
+  }, [getCompletedTasksRange, days, refreshKey]);
 
   // Gom pending tasks theo ngày
   const pendingByDay = useMemo(() => {
@@ -206,14 +210,17 @@ export default function CalendarAgendaView({
                     {dayTasks.map((t) => (
                       <div
                         key={t.id}
-                        className={`cal-agenda-item cal-agenda-item--task cal-agenda-item--p${t.priority || 4}`}
+                        className="cal-agenda-item cal-agenda-item--task"
                         onClick={() => onSelectTask && onSelectTask(t)}
                         role="button"
                         tabIndex={0}
                       >
-                        <span className={`cal-agenda-task-priority-dot cal-agenda-task-priority-dot--p${t.priority || 4}`} />
-                        {t.due_time ? (
-                          <span className="cal-agenda-time-pill">{t.due_time}</span>
+                        <span
+                          className="cal-agenda-task-priority-dot"
+                          style={{ background: (PRIORITY_OPTIONS.find((p) => p.value === t.priority) || PRIORITY_OPTIONS[0]).color }}
+                        />
+                        {hasExplicitTime(t.due_time) ? (
+                          <span className="cal-agenda-time-pill">{t.due_time.substring(0, 5)}</span>
                         ) : (
                           <span className="cal-agenda-badge-allday">Trong ngày</span>
                         )}

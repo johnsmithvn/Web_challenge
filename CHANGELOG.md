@@ -35,6 +35,13 @@
 - **Khắc phục Lỗi Popup Sửa Nhiệm Vụ & Dropdown Nhãn Dán (`TagPicker.jsx`, `TasksPage.jsx`, `TaskListSection.jsx`, `tasks.css`):**
   - **Smart Dropup & React Portal cho `TagPicker`**: Khắc phục triệt để lỗi khi người dùng mở dropdown chọn nhãn dán ở cuối form, menu rơi xuống che kín hoàn toàn các nút hành động (Lưu, Huỷ) và tràn qua mép dưới của popup. Dropdown nay render qua React Portal với cơ chế smart positioning: tự động lật lên trên (dropup) khi ở gần đáy modal, đóng êm khi nhấn Escape mà không tắt nhầm modal cha, và thoát hoàn toàn khỏi hiện tượng overflow clipping.
   - **Tái thiết kế Form Sửa Task trong Popup**: Bỏ khung viền tím lồng chật chội ("hộp trong hộp"); mở rộng ô mô tả/ghi chú dễ đọc; sắp xếp hàng nút Lưu / Huỷ chuẩn UX nổi bật ở chân form kèm đường phân cách nhẹ; bổ sung phím tắt `Ctrl + Enter` (hoặc `Cmd + Enter`) để lưu nhanh.
+- **Tasks GĐ1 — sửa lỗi Lịch & Kanban (`useUserTasks.js`, `calendarTimeUtils.js`, `TasksPage.jsx`, `CalendarAgendaView.jsx`, `CalendarDayView.jsx`, `WeekCalendar.jsx`, `MonthCalendar.jsx`, `calendar-widget.css`):**
+  - **Task đã xong nằm ở ngày kế hoạch**: 4 view Lịch tải task đã xong theo `due_date` (`getCompletedTasksRange(..., { byDueDate: true })`) thay vì `completed_at` — bấm hoàn thành muộn không còn làm task nhảy sang ngày bấm. Danh sách "Đã xong" và Kanban vẫn lọc theo `completed_at`.
+  - **Lịch biểu**: trước đây đọc cột không tồn tại `completed_date` nên không bao giờ hiện task đã xong; giờ hiện `HH:MM` thay vì `23:59:00`; màu độ ưu tiên dùng `PRIORITY_OPTIONS` (trước dùng quy ước Todoist p1=đỏ nên bị ngược: Lowest hiện đỏ, Urgent không màu).
+  - **Lịch Ngày**: không còn lẫn task xong của ngày bên cạnh (query cũ đệm ±1 ngày mà view không lọc lại); chip "Cả ngày" dùng chung style với Lịch Tuần (class cũ không có CSS).
+  - **Giờ giả `23:59`/`00:00` = không đặt giờ** (`hasExplicitTime`): lưới Ngày/Tuần đưa vào hàng "Cả ngày" thay vì vẽ khối 45 phút ở 23:59; task `00:00` hạn hôm nay không còn bị tô "quá hạn" cả ngày.
+  - **Lịch tải lại sau thao tác ở modal** (hoàn thành/xoá/sửa) — trước đây task vừa hoàn thành biến mất khỏi lịch tới khi đổi trang.
+  - **Kanban**: `uncompleteTask` trả `true/false` (trước luôn `undefined` → Kanban tưởng lỗi, nhét lại task vào cột Done → card hiện 2 cột); nút "Thêm việc" trên toolbar mở modal tạo task (trước bấm không có tác dụng ở Kanban).
 
 ## v6.16.3 — 2026-09-26
 

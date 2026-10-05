@@ -406,6 +406,11 @@ export default function TasksPage() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isEditingSelected, setIsEditingSelected] = useState(false);
 
+  // Các view Lịch tự tải task đã xong 1 lần theo khoảng ngày → tăng key sau mỗi
+  // thao tác ở modal để chúng tải lại (không thì task vừa hoàn thành biến mất khỏi lịch).
+  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
+  const refreshCalendars = useCallback(() => setCalendarRefreshKey((k) => k + 1), []);
+
   const handleCloseSelectedModal = useCallback(() => {
     setSelectedTask(null);
     setIsEditingSelected(false);
@@ -428,8 +433,9 @@ export default function TasksPage() {
       }
       setIsEditingSelected(false);
       setSelectedTask(null);
+      refreshCalendars();
     },
-    [selectedTask, updateTask, allTags, linkTaskTag, unlinkTaskTag]
+    [selectedTask, updateTask, allTags, linkTaskTag, unlinkTaskTag, refreshCalendars]
   );
 
   // State mở Modal tạo Task
@@ -447,8 +453,11 @@ export default function TasksPage() {
   }, []);
 
   const handleAddNewTask = useCallback(() => {
-    if (activeView === 'list' || activeView === 'kanban') {
+    if (activeView === 'list') {
       setShowForm((prev) => !prev);
+    } else if (activeView === 'kanban') {
+      // Kanban không có form inline — mở modal giống double-click cột To Do.
+      setCreateModalState({ date: toDateStr(), time: '23:59', status: 'todo' });
     } else {
       setCreateModalState({
         date: toDateStr(currentDate || new Date()),
@@ -527,6 +536,7 @@ export default function TasksPage() {
                   currentDate={currentDate}
                   holidayToggles={holidayToggles}
                   customAnniversaries={customAnniversaries}
+                  refreshKey={calendarRefreshKey}
                 />
               )}
 
@@ -539,6 +549,7 @@ export default function TasksPage() {
                   currentDate={currentDate}
                   holidayToggles={holidayToggles}
                   customAnniversaries={customAnniversaries}
+                  refreshKey={calendarRefreshKey}
                 />
               )}
 
@@ -553,6 +564,7 @@ export default function TasksPage() {
                   hideToolbar={true}
                   holidayToggles={holidayToggles}
                   customAnniversaries={customAnniversaries}
+                  refreshKey={calendarRefreshKey}
                 />
               )}
 
@@ -569,6 +581,7 @@ export default function TasksPage() {
                   hideToolbar={true}
                   holidayToggles={holidayToggles}
                   customAnniversaries={customAnniversaries}
+                  refreshKey={calendarRefreshKey}
                 />
               )}
             </Suspense>
@@ -617,14 +630,17 @@ export default function TasksPage() {
           onComplete={async (task) => {
             await completeTask(task.id);
             handleCloseSelectedModal();
+            refreshCalendars();
           }}
           onDelete={async (task) => {
             await deleteTask(task.id);
             handleCloseSelectedModal();
+            refreshCalendars();
           }}
           onUpdatePriority={async (newPri) => {
             await updateTask(selectedTask.id, { priority: newPri });
             setSelectedTask((prev) => (prev ? { ...prev, priority: newPri } : prev));
+            refreshCalendars();
           }}
         />
       )}

@@ -460,7 +460,7 @@ export function useUserTasks() {
         if (error) {
           logger.error('[useUserTasks] uncomplete error:', error.message);
           if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
-          return;
+          return false;
         }
 
         logTaskEvent(ACTIONS.TASK_UNCOMPLETED, taskId);
@@ -495,8 +495,11 @@ export function useUserTasks() {
       } catch (err) {
         logger.error('[useUserTasks] uncomplete exception:', err);
         if (backup) setTasks(prev => prev.map(t => t.id === taskId ? backup : t));
+        return false;
       }
     }
+    // Trả true/false như completeTask — Kanban dựa vào đây để quyết định rollback.
+    return true;
   }, [isAuth, userId, tasks, showToast, logTaskEvent, removeXp]);
 
   // ── Update task (title / description / date / time) ───
@@ -563,18 +566,27 @@ export function useUserTasks() {
   // Đệm ±1 ngày: `completed_at` là timestamptz, chuỗi không có timezone nên
   // Postgres so sánh theo UTC — còn caller group theo ngày ĐỊA PHƯƠNG. Task xong
   // lúc 00:30 giờ VN (+07) có completed_at UTC là ngày hôm trước, không đệm thì mất.
-  const getCompletedTasksRange = useCallback(async (startDate, endDate) => {
+  //
+  // `byDueDate`: lọc theo NGÀY KẾ HOẠCH thay vì lúc bấm hoàn thành — các view Lịch
+  // đặt task đã xong ở đúng ô đã lên lịch (kiểu Google Calendar), bấm hoàn thành
+  // muộn không làm task nhảy sang ngày khác. due_date là DATE nên không cần đệm.
+  // Danh sách "Đã xong" và Kanban vẫn lọc theo completed_at (đó là lịch sử).
+  const getCompletedTasksRange = useCallback(async (startDate, endDate, { byDueDate = false } = {}) => {
     if (!isAuth || !userId) return [];
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('user_tasks')
         .select('*')
         .eq('user_id', userId)
-        .eq('completed', true)
-        .gte('completed_at', `${addDays(startDate, -1)}T00:00:00`)
-        .lt('completed_at', `${addDays(endDate, 2)}T00:00:00`)
-        .order('completed_at', { ascending: true });
+        .eq('completed', true);
+      query = byDueDate
+        ? query.gte('due_date', startDate).lte('due_date', endDate).order('due_date', { ascending: true })
+        : query
+          .gte('completed_at', `${addDays(startDate, -1)}T00:00:00`)
+          .lt('completed_at', `${addDays(endDate, 2)}T00:00:00`)
+          .order('completed_at', { ascending: true });
+      const { data, error } = await query;
 
       if (error) {
         logger.error('[useUserTasks] getCompletedRange error:', error.message);

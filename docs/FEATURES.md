@@ -56,6 +56,9 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   - `day` (Lịch Ngày): Lưới 24 giờ với trục thời gian thực (vạch đỏ), gom task cả ngày (All-day) và task có giờ.
   - `week` (Lịch Tuần): 7 cột ngày tương thích cả Chủ Nhật hoặc Thứ Hai khởi đầu, bố trí overlapping task thông minh.
   - `month` (Lịch Tháng): Hiển thị Task pending + completed, song song Dương lịch & Âm lịch Việt Nam, giới hạn chip thông minh và popup chi tiết ngày.
+- **Task đã xong trên Lịch** nằm ở ngày kế hoạch (`due_date`), gạch/đánh dấu ✓ — không nhảy sang ngày bấm
+  hoàn thành. Thời điểm hoàn thành (`completed_at`) là lịch sử: xem ở khối "Đã xong" của Danh sách và Kanban.
+- Task không đặt giờ (lưu `23:59` mặc định hoặc `00:00`) nằm ở hàng "Cả ngày" của lưới Ngày/Tuần.
 - **Header cố định (Workspace pattern):** `CalendarToolbar` cố định ở đỉnh trang (100dvh workspace, cuộn nội bộ), không bị giật/nhảy layout khi chuyển giữa danh sách và các chế độ lịch.
 - **Modal tạo nhanh Task (`TaskCreateModal`):** Tự động kích hoạt khi click vào ô trống trong các chế độ lịch, tự động điền sẵn ngày và khung giờ click (Smart Context Prefill), phím tắt `Ctrl + Enter` lưu nhanh và `Escape` đóng.
 
