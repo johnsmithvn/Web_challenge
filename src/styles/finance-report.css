@@ -1297,6 +1297,25 @@
   }
 }
 
+/* ── Lưới 3 cột Tổng quan (So kỳ trước & Cố định | Xếp hạng nhóm | Nơi chi nhiều nhất) */
+.fin-overview-grid.fin-overview-grid--3cols {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+}
+
+.fin-overview-grid.fin-overview-grid--3cols > * {
+  min-width: 0;
+  height: 100%;
+}
+
+@media (max-width: 860px) {
+  .fin-overview-grid.fin-overview-grid--3cols {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* ── Thẻ Kỳ này với kỳ trước & Khoản lớn bất thường ───────────────────────── */
 .fin-report__diff-row {
   display: grid;

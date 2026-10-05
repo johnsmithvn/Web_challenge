@@ -40,7 +40,6 @@ const CARD_DEFS = [
   { id: 'periodDiff', name: 'Kỳ này với kỳ trước', size: 'full' },
   { id: 'outliers', name: 'Khoản lớn bất thường', size: '1/2' },
   { id: 'trend', name: 'Chi 12 tháng', size: 'full' },
-  { id: 'yoy', name: 'Cùng kỳ năm trước', size: 'full' },
   { id: 'rank', name: 'Xếp hạng nhóm', size: '1/2' },
   { id: 'dow', name: 'Chi theo thứ', size: '1/3' },
   { id: 'treemap', name: 'Bản đồ danh mục', size: '1/3' },
@@ -49,6 +48,7 @@ const CARD_DEFS = [
   { id: 'calHeatmap', name: 'Lịch chi tháng', size: '1/3' },
   { id: 'hist', name: 'Phân bố số tiền', size: '1/3' },
   { id: 'merchants', name: 'Nơi chi nhiều nhất', size: '1/3' },
+  { id: 'yoy', name: 'Cùng kỳ năm trước', size: 'full' },
 ];
 
 function compactVND(val) {
@@ -1563,81 +1563,6 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
           )}
         </div>
 
-        {/* 4. Cùng kỳ năm trước (YoY 12 tháng) */}
-        {cards.yoy && (
-          <div className="fin-report__card fin-report__card--yoy">
-            <div className="fin-report__card-head">
-              <div>
-                <div className="fin-report__card-title">Cùng kỳ năm trước</div>
-                <div className="fin-report__card-sub">
-                  Mỗi tháng {yoyMonthsData.curYear} đặt cạnh cùng tháng {yoyMonthsData.prevYear} · triệu ₫
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '11.5px', color: '#6A6A64' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: '#DEDCD5' }} />
-                  <span>{yoyMonthsData.prevYear}</span>
-                </span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: '#6949E8' }} />
-                  <strong style={{ color: '#15161A' }}>{yoyMonthsData.curYear}</strong>
-                </span>
-                {yoyMonthsData.totalCurMillions && (
-                  <span style={{ borderLeft: '1px solid #E8E7E2', paddingLeft: '12px', color: '#15161A' }}>
-                    {yoyMonthsData.monthsCount} tháng {yoyMonthsData.curYear} <strong>{yoyMonthsData.totalCurMillions}tr</strong>{' '}
-                    {yoyMonthsData.deltaYTD != null && (
-                      <span style={{ color: yoyMonthsData.deltaYTD > 0 ? '#E0446D' : '#12A594', fontWeight: 600 }}>
-                        {yoyMonthsData.deltaYTD > 0 ? '+' : ''}{yoyMonthsData.deltaYTD}%
-                      </span>
-                    )}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="fin-report__yoy-grid">
-              {yoyMonthsData.months.map(m => {
-                const pH = Math.max(4, Math.round((m.pAmt / yoyMonthsData.maxVal) * 100));
-                const cH = Math.max(4, Math.round((m.cAmt / yoyMonthsData.maxVal) * 100));
-                const isCurrent = m.isCur;
-
-                return (
-                  <div key={m.m} className={`fin-report__yoy-col ${isCurrent ? 'is-current' : ''}`}>
-                    <div className="fin-report__yoy-bars-pair">
-                      <div className="fin-report__yoy-bar-wrap" title={`${yoyMonthsData.prevYear}: ${money(m.pAmt)}`}>
-                        <span
-                          className="fin-report__yoy-bar fin-report__yoy-bar--prev"
-                          style={{ height: m.pAmt > 0 ? `${pH}%` : '0px' }}
-                        />
-                      </div>
-                      <div className="fin-report__yoy-bar-wrap" title={`${yoyMonthsData.curYear}: ${money(m.cAmt)}`}>
-                        <span
-                          className="fin-report__yoy-bar fin-report__yoy-bar--cur"
-                          style={{
-                            height: m.cAmt > 0 ? `${cH}%` : '0px',
-                            background: isCurrent ? '#6949E8' : '#A594F9',
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <span className="fin-report__yoy-lbl" style={{ color: isCurrent ? '#6949E8' : '#73736C', fontWeight: isCurrent ? 600 : 500 }}>
-                      {m.m}
-                    </span>
-                    <span
-                      className="fin-report__yoy-pct"
-                      style={{
-                        color: m.pct == null ? '#C4C2BA' : m.pct > 0 ? '#E0446D' : '#12A594',
-                        fontWeight: m.pct != null ? 600 : 400,
-                      }}
-                    >
-                      {m.pct == null ? '—' : `${m.pct > 0 ? '+' : ''}${m.pct}%`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* 4. Row 3: Chi theo thứ, Bản đồ danh mục, Pareto 80/20 */}
         <div className="fin-report__row-3">
@@ -1883,6 +1808,82 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
           {/* Thẻ Nơi chi nhiều nhất (Merchants) — chỉ vẽ ở đáy nếu không có lead */}
           {!lead && cards.merchants && merchants}
         </div>
+
+        {/* 5. Cùng kỳ năm trước (YoY 12 tháng) — đưa xuống cuối theo yêu cầu */}
+        {cards.yoy && (
+          <div className="fin-report__card fin-report__card--yoy">
+            <div className="fin-report__card-head">
+              <div>
+                <div className="fin-report__card-title">Cùng kỳ năm trước</div>
+                <div className="fin-report__card-sub">
+                  Mỗi tháng {yoyMonthsData.curYear} đặt cạnh cùng tháng {yoyMonthsData.prevYear} · triệu ₫
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '11.5px', color: '#6A6A64' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: '#DEDCD5' }} />
+                  <span>{yoyMonthsData.prevYear}</span>
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: '#6949E8' }} />
+                  <strong style={{ color: '#15161A' }}>{yoyMonthsData.curYear}</strong>
+                </span>
+                {yoyMonthsData.totalCurMillions && (
+                  <span style={{ borderLeft: '1px solid #E8E7E2', paddingLeft: '12px', color: '#15161A' }}>
+                    {yoyMonthsData.monthsCount} tháng {yoyMonthsData.curYear} <strong>{yoyMonthsData.totalCurMillions}tr</strong>{' '}
+                    {yoyMonthsData.deltaYTD != null && (
+                      <span style={{ color: yoyMonthsData.deltaYTD > 0 ? '#E0446D' : '#12A594', fontWeight: 600 }}>
+                        {yoyMonthsData.deltaYTD > 0 ? '+' : ''}{yoyMonthsData.deltaYTD}%
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="fin-report__yoy-grid">
+              {yoyMonthsData.months.map(m => {
+                const pH = Math.max(4, Math.round((m.pAmt / yoyMonthsData.maxVal) * 100));
+                const cH = Math.max(4, Math.round((m.cAmt / yoyMonthsData.maxVal) * 100));
+                const isCurrent = m.isCur;
+
+                return (
+                  <div key={m.m} className={`fin-report__yoy-col ${isCurrent ? 'is-current' : ''}`}>
+                    <div className="fin-report__yoy-bars-pair">
+                      <div className="fin-report__yoy-bar-wrap" title={`${yoyMonthsData.prevYear}: ${money(m.pAmt)}`}>
+                        <span
+                          className="fin-report__yoy-bar fin-report__yoy-bar--prev"
+                          style={{ height: m.pAmt > 0 ? `${pH}%` : '0px' }}
+                        />
+                      </div>
+                      <div className="fin-report__yoy-bar-wrap" title={`${yoyMonthsData.curYear}: ${money(m.cAmt)}`}>
+                        <span
+                          className="fin-report__yoy-bar fin-report__yoy-bar--cur"
+                          style={{
+                            height: m.cAmt > 0 ? `${cH}%` : '0px',
+                            background: isCurrent ? '#6949E8' : '#A594F9',
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <span className="fin-report__yoy-lbl" style={{ color: isCurrent ? '#6949E8' : '#73736C', fontWeight: isCurrent ? 600 : 500 }}>
+                      {m.m}
+                    </span>
+                    <span
+                      className="fin-report__yoy-pct"
+                      style={{
+                        color: m.pct == null ? '#C4C2BA' : m.pct > 0 ? '#E0446D' : '#12A594',
+                        fontWeight: m.pct != null ? 600 : 400,
+                      }}
+                    >
+                      {m.pct == null ? '—' : `${m.pct > 0 ? '+' : ''}${m.pct}%`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {footer}
       </div>

@@ -30,6 +30,12 @@
   - **Bỏ tab "Báo cáo" độc lập trên Sidebar**: Loại bỏ mục `/finance/report` khỏi `FINANCE_NAV` trong Sidebar desktop và thanh subtabs mobile để tránh dư thừa và phân mảnh điều hướng. Sidebar Finance chỉ còn 5 mục chính mạch lạc: *Tổng quan, Nhập nhanh, Giao dịch, Định kỳ & Quỹ, Danh mục*.
   - **Gom toàn bộ phân tích/báo cáo vào "Tổng quan"**: Giữ nguyên tab "Báo cáo" (`?view=stats`) trong thanh Segmented Control trên đầu màn hình Tổng quan (`OverviewScreen`). Khi cần xem báo cáo chi tiêu 12 tháng, xếp hạng và nhịp chi, người dùng chỉ cần chuyển tab ngay trong Tổng quan.
   - **Tương thích ngược & chuyển hướng mượt mà**: Người dùng truy cập liên kết cũ `/finance/report` hoặc bookmark sẽ được tự động chuyển hướng an toàn về `/finance/overview?view=stats`.
+- **Tasks GĐ2 — gộp 4 form Task thành 1 (`TaskForm.jsx` mới, `TaskListSection.jsx`, `TasksPage.jsx`, `TaskCreateModal.jsx`, `tasks.css`):**
+  - Trước đây form tạo/sửa bị copy 4 lần (thêm + sửa trong Danh sách, `TaskEditForm` trong TasksPage, `TaskCreateModal`), mỗi bản tự dựng lại phần Lặp lại và recurrence rule. Nay chỉ còn `TaskForm` — field mới (khung giờ, subtask) chỉ thêm 1 chỗ. Vị trí form giữ nguyên.
+  - `TaskForm` không tự ghi DB: trả payload snake_case + tagIds, nơi gọi chọn `addTask`/`updateTask`.
+  - Thêm nhanh: tiêu đề tự focus ở mọi nơi (form thêm của Danh sách trước đây không focus), **Enter ở ô tiêu đề là lưu**, `Ctrl/Cmd + Enter` lưu từ bất kỳ ô nào; form thêm của Danh sách có nút Huỷ.
+  - Task không đặt giờ tạo từ Danh sách giờ lưu `23:59` như các nơi khác (trước là `00:00`) — cả hai đều được hiểu là "không đặt giờ".
+  - Giao diện lấy theo form sửa trong popup (thiết kế v6.16.4); inline style chuyển thành class `.task-form*` trong `tasks.css`.
 
 ### Fixed
 - **Khắc phục Lỗi Popup Sửa Nhiệm Vụ & Dropdown Nhãn Dán (`TagPicker.jsx`, `TasksPage.jsx`, `TaskListSection.jsx`, `tasks.css`):**

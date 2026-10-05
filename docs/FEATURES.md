@@ -45,6 +45,8 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 ### Danh sách
 - Chia Task chưa xong thành Quá hạn, Hôm nay và Sắp tới; sắp theo ngày/giờ/priority.
 - Tạo và sửa title, description, due date/time, priority, recurrence, tag và liên kết Knowledge.
+  Một form dùng chung (`TaskForm`) cho form thêm, sửa tại hàng, popup Chi tiết và modal tạo từ Lịch/Kanban;
+  Enter ở ô tiêu đề hoặc `Ctrl + Enter` để lưu.
 - Hoàn thành dùng optimistic state; write lỗi rollback cả danh sách đang làm và khối đã hoàn thành.
 - Khối Đã hoàn thành lọc theo khoảng ngày với preset; có thể bỏ hoàn thành hoặc xóa.
 - Guest có Task in-memory và mất khi reload. Đăng nhập mới sync Supabase, activity log, tag/link và XP.
