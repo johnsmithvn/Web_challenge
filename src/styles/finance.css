@@ -619,7 +619,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-payblock__hint { color: var(--n-txt3); font-size: 10.5px; line-height: 1.45; }
 .fin-payblock__foot { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .fin-payblock__foot .fin-taskpick { margin-right: auto; }
-.fin-payblock .fin-source-picker > button { min-height: 32px; font-size: 11.5px; }
+.fin-payblock .fin-source-picker > button { min-height: 32px; font-size: 11.5px; padding: 5px 10px; }
 
 /* Form thÃªm / sá»­a dÃ¹ng chung má»™t component; báº£n sá»­a má»Ÿ ngay trong dÃ²ng. */
 .fin-ruleform { gap: 11px; border-color: var(--n-accent-3); }
@@ -1646,11 +1646,11 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 
 .fin-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
 .fin-edit-field { display: flex; flex-direction: column; gap: 4px; }
-.fin-edit-field--full { grid-column: 1 / -1; }
-.fin-edit-field .fin-source-picker { display: flex; flex-wrap: wrap; gap: 6px; }
-.fin-edit-field .fin-source-picker > button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 11px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-sink); color: var(--n-txt2); font: inherit; font-size: 12px; cursor: pointer; transition: all 0.15s ease; }
-.fin-edit-field .fin-source-picker > button:hover { border-color: rgba(255, 255, 255, 0.2); color: var(--n-txt); }
-.fin-edit-field .fin-source-picker > button.is-active { border-color: var(--n-accent); background: var(--n-accent-soft); color: var(--n-on-accent); font-weight: 600; }
+.fin-source-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.fin-source-picker > button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 11px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-sink); color: var(--n-txt2); font: inherit; font-size: 12px; cursor: pointer; transition: all 0.15s ease; }
+.fin-source-picker > button:hover:not(:disabled) { border-color: var(--n-accent); color: var(--n-on-accent); }
+.fin-source-picker > button.is-active { border-color: var(--n-accent); background: var(--n-accent-soft); color: var(--n-on-accent); font-weight: 600; }
+.fin-source-picker > button:disabled { opacity: 0.45; cursor: not-allowed; border-color: var(--n-border); background: transparent; }
 .fin-necessity-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .fin-necessity-toggle__btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 6px 10px; border: 1px solid var(--n-border); border-radius: 8px; background: var(--n-sink); color: var(--n-txt2); font: inherit; font-size: 12px; cursor: pointer; transition: all 0.15s ease; }
 .fin-necessity-toggle__btn:hover { border-color: rgba(255, 255, 255, 0.2); color: var(--n-txt); }

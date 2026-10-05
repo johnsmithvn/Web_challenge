@@ -44,6 +44,7 @@ export default function AddScreen({ fin, nav }) {
   const [draftItems, setDraftItems] = useState([]);
   const [showMore, setShowMore] = useState(false);
   const [pendingBillId, setPendingBillId] = useState(null);
+  const [pendingBillPeriod, setPendingBillPeriod] = useState(null);
 
   // Popover bills state
   const [billsOpen, setBillsOpen] = useState(false);
@@ -193,6 +194,7 @@ export default function AddScreen({ fin, nav }) {
     setDraftItems([]);
     setShowMore(false);
     setPendingBillId(null);
+    setPendingBillPeriod(null);
   };
 
   const saveTransaction = async () => {
@@ -218,6 +220,7 @@ export default function AddScreen({ fin, nav }) {
       inbox_item_id: nav.handoff?.kind === 'tx' ? nav.handoff.inboxId : null,
       task_id: taskId,
       bill_id: pendingBillId || null,
+      bill_period: pendingBillPeriod || null,
       category_id: categoryId,
       subcategory_id: subId || null,
       necessity: appliedNecessity,
@@ -256,6 +259,7 @@ export default function AddScreen({ fin, nav }) {
     setCategoryId(bill.category_id);
     setSubId(bill.subcategory_id || '');
     setPendingBillId(bill.id);
+    setPendingBillPeriod(bill.period || null);
     setBillsOpen(false);
     setMobileSheetOpen(false);
     setMobileView('form');
