@@ -6,8 +6,8 @@ import { useTags } from '../hooks/useTags';
 import LinkKBModal from './LinkKBModal';
 import DatePickerPopover from './DatePickerPopover';
 import PriorityPicker from './PriorityPicker';
-import TagPicker from './TagPicker';
 import TaskDetailModal from './TaskDetailModal';
+import TaskForm from './TaskForm';
 import { useConfirm } from './ConfirmModal';
 import { toDateStr } from '../utils/dateUtils';
 // v5.0.0: PRIORITY_OPTIONS/WEEKDAYS dời sang utils/taskFields để TaskDetailModal
@@ -35,33 +35,8 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
   const { tags: allTags, addTag } = useTags();
   const { confirm, ConfirmModal } = useConfirm();
 
-  const [title, setTitle]           = useState('');
-  const [description, setDescription] = useState('');
-  const [dueDate, setDueDate]       = useState(toDateStr());
-  const [dueTime, setDueTime]       = useState('23:59');
-
-  // Priority + Recurrence + Tags form state
-  const [priority, setPriority]         = useState(0);
-  const [tagIds, setTagIds]             = useState([]);
-  const [showRecurrence, setShowRecurrence] = useState(false);
-  const [recType, setRecType]           = useState('interval');
-  const [recDays, setRecDays]           = useState(7);
-  const [recWeekday, setRecWeekday]     = useState(1);
-  const [recMonthDay, setRecMonthDay]   = useState(1);
-
-  // Edit state — full fields
+  // Task đang sửa — state của field nằm trong TaskForm, ở đây chỉ cần biết task nào.
   const [editId, setEditId]               = useState(null);
-  const [editTitle, setEditTitle]         = useState('');
-  const [editDesc, setEditDesc]           = useState('');
-  const [editDate, setEditDate]           = useState('');
-  const [editTime, setEditTime]           = useState('');
-  const [editPriority, setEditPriority]   = useState(0);
-  const [editTagIds, setEditTagIds]       = useState([]);
-  const [editShowRec, setEditShowRec]     = useState(false);
-  const [editRecType, setEditRecType]     = useState('interval');
-  const [editRecDays, setEditRecDays]     = useState(7);
-  const [editRecWeekday, setEditRecWeekday] = useState(1);
-  const [editRecMonthDay, setEditRecMonthDay] = useState(1);
 
   const [showFuture, setShowFuture]     = useState(false);
   const [detailTaskId, setDetailTaskId] = useState(null);
@@ -75,8 +50,6 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
   const [completedList, setCompletedList]   = useState([]);
   const [completedLoading, setCompletedLoading] = useState(false);
   const [showRangeDP, setShowRangeDP]   = useState(false);
-  const [showAddDP, setShowAddDP]       = useState(false);
-  const [showEditDP, setShowEditDP]     = useState(false);
   const [quickDateTaskId, setQuickDateTaskId] = useState(null);
   const [overflowTaskId, setOverflowTaskId]   = useState(null); // mobile "..." action menu
   const [linkTaskId, setLinkTaskId]     = useState(null); // task ID for LinkKBModal
@@ -177,82 +150,35 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
     setExpandedId(prev => prev === taskId ? null : taskId);
   }, [overflowTaskId]);
 
-  /* ── Add ── */
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-
-    let recurrenceRule = null;
-    if (showRecurrence) {
-      if (recType === 'interval') recurrenceRule = { type: 'interval', days: recDays };
-      else if (recType === 'weekly') recurrenceRule = { type: 'weekly', weekday: recWeekday };
-      else if (recType === 'monthly') recurrenceRule = { type: 'monthly', day: recMonthDay };
-    }
-
+  /* ── Add ── (field do TaskForm gom, payload snake_case → đổi sang tham số addTask) */
+  const handleAdd = useCallback(async (fields, tagIds) => {
     const created = await addTask({
-      title: title.trim(),
-      description: description.trim() || null,
-      dueDate: dueDate || toDateStr(),
-      dueTime: dueTime || '00:00',
-      priority,
-      recurrenceRule,
+      title: fields.title,
+      description: fields.description,
+      dueDate: fields.due_date,
+      dueTime: fields.due_time,
+      priority: fields.priority,
+      recurrenceRule: fields.recurrence_rule,
     });
     if (created && tagIds.length > 0) {
       const selectedTags = allTags.filter(t => tagIds.includes(t.id));
       await Promise.all(selectedTags.map(tag => linkTaskTag(created.id, tag)));
     }
-    setTitle(''); setDescription(''); setDueDate(toDateStr()); setDueTime('23:59');
-    setPriority(0); setTagIds([]);
-    setShowRecurrence(false); setRecType('interval'); setRecDays(7);
     setShowForm(false);
-  }, [title, description, dueDate, dueTime, priority, tagIds, allTags, showRecurrence, recType, recDays, recWeekday, recMonthDay, addTask, linkTaskTag, setShowForm]);
+  }, [allTags, addTask, linkTaskTag, setShowForm]);
 
   /* ── Inline edit ── */
-  const startEdit = (task) => {
-    setEditId(task.id);
-    setEditTitle(task.title);
-    setEditDesc(task.description || '');
-    setEditDate(task.due_date || toDateStr());
-    setEditTime(task.due_time ? task.due_time.substring(0,5) : '');
-    setEditPriority(task.priority || 0);
-    setEditTagIds((task._tags || []).map(t => t.id));
-    const rec = task.recurrence_rule;
-    if (rec) {
-      setEditShowRec(true);
-      setEditRecType(rec.type || 'interval');
-      setEditRecDays(rec.days || 7);
-      setEditRecWeekday(rec.weekday ?? 1);
-      setEditRecMonthDay(rec.day || 1);
-    } else {
-      setEditShowRec(false);
-      setEditRecType('interval'); setEditRecDays(7);
-    }
-  };
+  const startEdit = (task) => setEditId(task.id);
 
-  const saveEdit = async (taskId) => {
-    if (!editTitle.trim()) return;
-    let recurrenceRule = null;
-    if (editShowRec) {
-      if (editRecType === 'interval') recurrenceRule = { type: 'interval', days: editRecDays };
-      else if (editRecType === 'weekly')   recurrenceRule = { type: 'weekly',   weekday: editRecWeekday };
-      else if (editRecType === 'monthly')  recurrenceRule = { type: 'monthly',  day: editRecMonthDay };
-    }
-    // updateTask passes changes directly to Supabase → must be snake_case
-    const changes = {
-      title:            editTitle.trim(),
-      description:      editDesc.trim() || null,
-      due_date:         editDate || toDateStr(),
-      due_time:         editTime || null,
-      priority:         editPriority,
-      recurrence_rule:  recurrenceRule,
-    };
+  // `changes` là payload snake_case của TaskForm → đưa thẳng cho updateTask/Supabase.
+  const saveEdit = async (task, changes, editTagIds) => {
+    const taskId = task.id;
     const saved = await updateTask(taskId, changes);
     if (!saved) return;
-    setCompletedList(prev => prev.map(task => task.id === taskId ? { ...task, ...changes } : task));
+    setCompletedList(prev => prev.map(t => t.id === taskId ? { ...t, ...changes } : t));
 
     // Diff tags against current state → link mới thêm, unlink cái bị bỏ chọn
-    const task = [...todayTasks, ...overdueTasks, ...futureTasks, ...completedList].find(t => t.id === taskId);
-    const currentTagIds = (task?._tags || []).map(t => t.id);
+    const currentTagIds = (task._tags || []).map(t => t.id);
     const toAdd = editTagIds.filter(id => !currentTagIds.includes(id));
     const toRemove = currentTagIds.filter(id => !editTagIds.includes(id));
     const tagsToAdd = allTags.filter(t => toAdd.includes(t.id));
@@ -318,160 +244,23 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
         } : {}),
       }}>
         {isEditing ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem',
-            background: insideDetail ? 'transparent' : 'rgba(139,92,246,0.06)',
-            border: insideDetail ? 'none' : '1px solid rgba(139,92,246,0.18)',
-            borderRadius: 'var(--radius-md)',
-            padding: insideDetail ? '0.2rem 0' : '0.85rem',
-            marginBottom: '0.25rem' }}>
-
-            {/* Title */}
-            <input className="auth-input" value={editTitle}
-              onChange={e => setEditTitle(e.target.value)}
-              style={{ fontSize: '0.88rem', fontWeight: 600 }} autoFocus
-              placeholder="Tên nhiệm vụ *" />
-
-            {/* Description */}
-            <textarea className="auth-input task-desc-input" value={editDesc}
-              onChange={e => setEditDesc(e.target.value)}
-              rows={insideDetail ? 3 : 2}
-              placeholder="Mô tả..."
-              style={{ fontSize: '0.84rem', ...(insideDetail ? { minHeight: '76px', lineHeight: '1.45' } : {}) }} />
-
-            {/* Date + Time (DatePicker) */}
-            <div style={{ position: 'relative' }}>
-              <button type="button" onClick={() => setShowEditDP(!showEditDP)}
-                className="auth-input"
-                style={{
-                  width: '100%', textAlign: 'left', cursor: 'pointer', fontSize: '0.82rem',
-                }}>
-                <AppIcon name="calendar" size={14} /> {editDate ? new Date(editDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
-                {editTime && editTime !== '00:00' && <> · <AppIcon name="clock" size={14} /> {editTime}</>}
-              </button>
-              {showEditDP && (
-                <DatePickerPopover
-                  value={editDate}
-                  onChange={(d) => setEditDate(d)}
-                  onClose={() => setShowEditDP(false)}
-                  timeValue={editTime}
-                  onTimeChange={setEditTime}
-                  style={{ top: '100%', left: 0, marginTop: '0.25rem' }}
-                />
-              )}
-            </div>
-
-            {/* Priority */}
-            <div>
-              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Độ ưu tiên</label>
-              <PriorityPicker
-                value={editPriority}
-                onChange={setEditPriority}
-              />
-            </div>
-
-            {/* Recurrence toggle */}
-            <div>
-              <button type="button"
-                onClick={() => setEditShowRec(!editShowRec)}
-                className={`task-option-btn ${editShowRec ? 'task-option-btn--active-cyan' : ''}`}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-              ><AppIcon name="refresh" size={14} /> {editShowRec ? 'Lặp lại' : 'Lặp lại'} {editShowRec && <AppIcon name="check" size={12} />}
-              </button>
-              {editShowRec && (
-                <div className="task-form-rec-panel">
-                  <div style={{ display: 'flex', gap: '0.3rem' }}>
-                    {[{ key: 'interval', label: 'Mỗi N ngày' }, { key: 'weekly', label: 'Hàng tuần' }, { key: 'monthly', label: 'Hàng tháng' }].map(rt => (
-                      <button key={rt.key} type="button" onClick={() => setEditRecType(rt.key)}
-                        className={`task-option-btn ${editRecType === rt.key ? 'task-option-btn--active-cyan' : ''}`}
-                        style={{ padding: '0.22rem 0.45rem', fontSize: '0.72rem' }}
-                      >{rt.label}
-                      </button>
-                    ))}
-                  </div>
-                  {editRecType === 'interval' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mỗi</span>
-                      <input type="number" min="1" max="365" value={editRecDays}
-                        onChange={e => setEditRecDays(Math.max(1, parseInt(e.target.value)||1))}
-                        className="auth-input" style={{ width: '60px', fontSize: '0.82rem', textAlign: 'center' }} />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ngày</span>
-                    </div>
-                  )}
-                  {editRecType === 'weekly' && (
-                    <div style={{ display: 'flex', gap: '0.25rem' }}>
-                      {WEEKDAYS.map((day, i) => (
-                        <button key={i} type="button" onClick={() => setEditRecWeekday(i)}
-                          className={`task-option-btn ${editRecWeekday === i ? 'task-option-btn--active-cyan' : ''}`}
-                          style={{ padding: '0.22rem 0.38rem', fontSize: '0.72rem' }}
-                        >{day}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {editRecType === 'monthly' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ngày</span>
-                      <input type="number" min="1" max="31" value={editRecMonthDay}
-                        onChange={e => setEditRecMonthDay(Math.min(31, Math.max(1, parseInt(e.target.value)||1)))}
-                        className="auth-input" style={{ width: '55px', fontSize: '0.82rem', textAlign: 'center' }} />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>mỗi tháng</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Tags */}
-            <div>
-              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Tag</label>
-              <TagPicker
-                tags={allTags}
-                selected={editTagIds}
-                onToggle={(tagId) => setEditTagIds(prev => prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId])}
-                onAdd={addTag}
-              />
-            </div>
-
-            {/* KB Link */}
-            <div>
-              <button type="button"
-                onClick={() => setLinkTaskId(task.id)}
-                className={`task-option-btn ${(task._collections || []).length > 0 ? 'task-option-btn--active-cyan' : ''}`}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-              ><AppIcon name="link" size={14} /> {(task._collections || []).length > 0 ? `${(task._collections || []).length} bài viết liên kết` : 'Liên kết bài viết'}
-              </button>
-            </div>
-
-            {/* Actions */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              ...(insideDetail ? {
-                justifyContent: 'flex-end',
-                marginTop: '0.5rem',
-                paddingTop: '0.75rem',
-                borderTop: '1px solid var(--border-glass, rgba(255,255,255,0.08))',
-              } : {})
-            }}>
-              {insideDetail && (
-                <button type="button" onClick={cancelEdit} className="btn btn-secondary"
-                  style={{ fontSize: '0.82rem', padding: '0.4rem 0.95rem' }}>
-                  Huỷ
+          <div className={insideDetail ? undefined : 'task-form-box'}>
+            <TaskForm
+              task={task}
+              allTags={allTags}
+              addTag={addTag}
+              onSubmit={(changes, tagIds) => saveEdit(task, changes, tagIds)}
+              onCancel={cancelEdit}
+            >
+              {/* Liên kết KB là quan hệ junction, ghi ngay qua LinkKBModal — không đi theo nút Lưu */}
+              <div>
+                <button type="button"
+                  onClick={() => setLinkTaskId(task.id)}
+                  className={`task-option-btn ${(task._collections || []).length > 0 ? 'task-option-btn--active-cyan' : ''}`}
+                ><AppIcon name="link" size={14} /> {(task._collections || []).length > 0 ? `${(task._collections || []).length} bài viết liên kết` : 'Liên kết bài viết'}
                 </button>
-              )}
-              <button onClick={() => saveEdit(task.id)} className="btn btn-primary"
-                style={{ fontSize: '0.82rem', padding: '0.4rem 1.15rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                disabled={!editTitle.trim()}>
-                <AppIcon name="save" size={14} /> {insideDetail ? 'Lưu thay đổi' : 'Lưu'}
-              </button>
-              {!insideDetail && (
-                <button onClick={cancelEdit} className="btn btn-ghost"
-                  style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', color: 'var(--text-muted)' }}>
-                  Huỷ
-                </button>
-              )}
-            </div>
+              </div>
+            </TaskForm>
           </div>
         ) : (
           /* ── View mode ── */
@@ -646,128 +435,20 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
 
       {/* ── Add Form ── */}
       {showForm && (
-        <form onSubmit={handleSubmit} style={{
-          background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)',
-          borderRadius: 'var(--radius-md)', padding: '1rem', marginBottom: '0.75rem',
-          display: 'flex', flexDirection: 'column', gap: '0.6rem',
-        }}>
-          <input type="text" placeholder="Tên nhiệm vụ *" value={title} onChange={e => setTitle(e.target.value)}
-            required id="task-title-input" className="auth-input" style={{ fontSize: '0.88rem' }} />
-          <textarea placeholder="Mô tả (tuỳ chọn)..." value={description} onChange={e => setDescription(e.target.value)}
-            id="task-desc-input" className="auth-input task-desc-input" rows={2} style={{ fontSize: '0.82rem' }} />
-          {/* Date + Time (DatePicker) */}
-          <div style={{ position: 'relative' }}>
-            <button type="button" onClick={() => setShowAddDP(!showAddDP)} id="task-date-input"
-              className="auth-input"
-              style={{
-                width: '100%', textAlign: 'left', cursor: 'pointer', fontSize: '0.82rem',
-              }}>
-              <AppIcon name="calendar" size={14} /> {dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Chọn ngày'}
-              {dueTime && dueTime !== '00:00' && <> · <AppIcon name="clock" size={14} /> {dueTime}</>}
-            </button>
-            {showAddDP && (
-              <DatePickerPopover
-                value={dueDate}
-                onChange={(d) => setDueDate(d)}
-                onClose={() => setShowAddDP(false)}
-                timeValue={dueTime}
-                onTimeChange={setDueTime}
-                style={{ top: '100%', left: 0, marginTop: '0.25rem' }}
-              />
-            )}
-          </div>
-          {/* ── Priority ── */}
-          <div>
-            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Độ ưu tiên</label>
-            <PriorityPicker
-              value={priority}
-              onChange={setPriority}
-            />
-          </div>
-
-          {/* ── Tags ── */}
-          <div>
-            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.3rem' }}>Tag</label>
-            <TagPicker
-              tags={allTags}
-              selected={tagIds}
-              onToggle={(tagId) => setTagIds(prev => prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId])}
-              onAdd={addTag}
-            />
-          </div>
-
-          {/* ── Recurrence ── */}
-          <div>
-            <button type="button"
-              onClick={() => setShowRecurrence(!showRecurrence)}
-              className={`task-option-btn ${showRecurrence ? 'task-option-btn--active-cyan' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-            >
-              <AppIcon name="refresh" size={14} /> Lặp lại {showRecurrence && <AppIcon name="check" size={12} />}
-            </button>
-            {showRecurrence && (
-              <div className="task-form-rec-panel">
-                <div style={{ display: 'flex', gap: '0.3rem' }}>
-                  {[
-                    { key: 'interval', label: 'Mỗi N ngày' },
-                    { key: 'weekly', label: 'Hàng tuần' },
-                    { key: 'monthly', label: 'Hàng tháng' },
-                  ].map(rt => (
-                    <button key={rt.key} type="button"
-                      onClick={() => setRecType(rt.key)}
-                      className={`task-option-btn ${recType === rt.key ? 'task-option-btn--active-cyan' : ''}`}
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.72rem' }}
-                    >
-                      {rt.label}
-                    </button>
-                  ))}
-                </div>
-                {recType === 'interval' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mỗi</span>
-                    <input type="number" min="1" max="365" value={recDays}
-                      onChange={e => setRecDays(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="auth-input" style={{ width: '60px', fontSize: '0.82rem', textAlign: 'center' }} />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ngày</span>
-                  </div>
-                )}
-                {recType === 'weekly' && (
-                  <div style={{ display: 'flex', gap: '0.25rem' }}>
-                    {WEEKDAYS.map((day, i) => (
-                      <button key={i} type="button" onClick={() => setRecWeekday(i)}
-                        className={`task-option-btn ${recWeekday === i ? 'task-option-btn--active-cyan' : ''}`}
-                        style={{ padding: '0.25rem 0.4rem', fontSize: '0.72rem' }}
-                      >
-                        {day}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {recType === 'monthly' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ngày</span>
-                    <input type="number" min="1" max="31" value={recMonthDay}
-                      onChange={e => setRecMonthDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
-                      className="auth-input" style={{ width: '55px', fontSize: '0.82rem', textAlign: 'center' }} />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>mỗi tháng</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* KB Link hint */}
-          <div className="task-form-hint">
-            <AppIcon name="lightbulb" size={14} /> Tạo xong nhiệm vụ rồi chọn <AppIcon name="link" size={13} /> để liên kết bài viết Knowledge
-          </div>
-
-          <button type="submit" className="btn btn-primary" disabled={!title.trim()} id="task-submit-btn"
-            style={{ justifyContent: 'center', padding: '0.65rem', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-            <AppIcon name="pushPin" size={15} /> Thêm Nhiệm Vụ
-          </button>
-        </form>
+        <div className="task-form-box">
+          <TaskForm
+            allTags={allTags}
+            addTag={addTag}
+            onSubmit={handleAdd}
+            onCancel={() => setShowForm(false)}
+            submitLabel="Thêm nhiệm vụ"
+          >
+            <div className="task-form-hint">
+              <AppIcon name="lightbulb" size={14} /> Tạo xong nhiệm vụ rồi chọn <AppIcon name="link" size={13} /> để liên kết bài viết Knowledge
+            </div>
+          </TaskForm>
+        </div>
       )}
-
 
       {/* ── Overdue Section ── */}
       {overdueTasks.length > 0 && (

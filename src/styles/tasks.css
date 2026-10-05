@@ -330,6 +330,110 @@
   border: 1px solid rgba(6, 182, 212, 0.12);
 }
 
+/* ── TaskForm — form tạo/sửa Task dùng chung (components/TaskForm.jsx) ── */
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Khung tím bao form khi nằm trực tiếp trong Danh sách (thêm mới / sửa tại hàng) */
+.task-form-box {
+  background: rgba(139, 92, 246, 0.06);
+  border: 1px solid rgba(139, 92, 246, 0.16);
+  border-radius: var(--radius-md);
+  padding: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.task-form__label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.task-form__title {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.task-form__desc {
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.task-form__date-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.84rem;
+}
+
+.task-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.task-form__muted {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.task-form__num {
+  width: 60px;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.task-option-btn--sm {
+  padding: 0.22rem 0.45rem;
+  font-size: 0.72rem;
+}
+
+.task-form__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-glass, rgba(255, 255, 255, 0.08));
+}
+
+.task-form__hint {
+  margin-right: auto;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.task-form__hint kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--border-glass, rgba(255, 255, 255, 0.12));
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.68rem;
+}
+
+.task-form__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 520px) {
+  .task-form__hint { display: none; }
+}
+
 .task-desc-box {
   margin-top: 0.4rem;
   padding: 0.5rem 0.6rem;
