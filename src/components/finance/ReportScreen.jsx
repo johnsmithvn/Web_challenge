@@ -55,7 +55,8 @@ function csvCell(value) {
   return `"${String(value ?? '').replaceAll('"', '""')}"`;
 }
 
-export default function ReportScreen({ fin, nav }) {
+// `lead(period)`: nội dung Tổng quan vẽ phía trên Báo cáo, dùng chung bộ chọn kỳ.
+export default function ReportScreen({ fin, nav, lead }) {
   // ── 1. Quản lý chế độ & kỳ báo cáo ─────────────────────────────────────────
   const [mode, setMode] = useState('month'); // 'month' | 'quarter' | 'year'
   const [showAllRanks, setShowAllRanks] = useState(false);
@@ -705,6 +706,8 @@ export default function ReportScreen({ fin, nav }) {
 
       {/* ── Nội dung Báo cáo ────────────────────────────────────────────────── */}
       <div className="fin-report__body">
+        {lead?.({ ...period, mode, unit: mode === 'month' ? 'day' : 'month' })}
+
         {/* 1. Thẻ tối đầu trang (Hero dark card) */}
         <div className="fin-report__hero">
           <div className="fin-report__hero-total">

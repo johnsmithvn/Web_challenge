@@ -4,17 +4,12 @@ import {
   parseYmd, monthStart, monthEnd, daysInclusive,
 } from '../../utils/financeLogic';
 import {
-  money, catInfo, NECESSITY_META, Donut, RhythmBars, PeriodPicker, Segmented, FinanceIcon,
+  money, catInfo, RhythmBars, FinanceIcon,
 } from './parts';
 import { formatDate } from '../../utils/dateUtils';
 import AppIcon from '../AppIcon';
 import AnalyzeScreen from './AnalyzeScreen';
 import '../../styles/skeleton.css';   // dùng .sk-* trực tiếp, không qua SkeletonList
-
-export const OVERVIEW_TAB_OPTIONS = [
-  { value: 'overview', label: 'Tổng quan', icon: 'chartDonut' },
-  { value: 'stats', label: 'Báo cáo', icon: 'chartLine' },
-];
 
 /**
  * Khung chờ của Tổng quan. Ba màn list đã có `SkeletonList`, nhưng Tổng quan là
@@ -51,38 +46,36 @@ function OverviewSkeleton() {
   );
 }
 
+/**
+ * Tổng quan + Báo cáo gộp một trang: Báo cáo giữ bộ chọn kỳ (Tháng/Quý/Năm) và
+ * vẽ phần Tổng quan (`OverviewDashboard`) ngay phía trên nội dung của nó.
+ */
 export default function OverviewScreen({ fin, nav }) {
   return (
     <div className="fin-overview-hub">
-      <div className="fin-overview-view" key={nav.overviewTab}>
-        {/* Một cửa duy nhất cho cả ba tab: Ngân sách và Thống kê cũng đọc transactions,
+      <div className="fin-overview-view">
+        {/* Một cửa duy nhất: cả Tổng quan lẫn Báo cáo đều đọc transactions,
             cũng sẽ hiện 0đ nếu vẽ trước khi dữ liệu về. */}
         {!fin.hasLoaded
           ? <OverviewSkeleton />
-          : nav.overviewTab === 'overview'
-            ? <OverviewDashboard fin={fin} nav={nav} />
-            : <AnalyzeScreen fin={fin} nav={nav} />}
+          : <AnalyzeScreen fin={fin} nav={nav}
+            lead={period => <OverviewDashboard fin={fin} nav={nav} period={period} />} />}
       </div>
     </div>
   );
 }
 
-// Kỳ liền trước của `period` (để so sánh). null nếu là "Tất cả".
+// Kỳ liền trước của `period` (để so sánh): tháng → tháng trước, quý → quý trước, năm → năm trước.
 function previousRange(period) {
-  if (period.key === 'all') return null;
-  if (period.key.startsWith('year-')) {
-    const y = Number(period.key.slice(5)) - 1;
-    return { from: monthStart(y, 0), to: monthEnd(y, 11) };
-  }
-  const f = parseYmd(period.from);           // mục tháng
+  const f = parseYmd(period.from);
   const y = f.getFullYear(), m = f.getMonth();
-  const pm = m === 0 ? 11 : m - 1, py = m === 0 ? y - 1 : y;
-  return { from: monthStart(py, pm), to: monthEnd(py, pm) };
+  if (period.mode === 'year') return { from: monthStart(y - 1, 0), to: monthEnd(y - 1, 11) };
+  if (period.mode === 'quarter') return { from: monthStart(y, m - 3), to: monthEnd(y, m - 1) };
+  return { from: monthStart(y, m - 1), to: monthEnd(y, m - 1) };
 }
 
-function OverviewDashboard({ fin, nav }) {
+function OverviewDashboard({ fin, nav, period }) {
   const { transactions, cards, deposits, goals, bills, lendings, today } = fin;
-  const period = nav.period;
 
   const totals = useMemo(
     () => periodTotals(transactions, period),
@@ -92,7 +85,7 @@ function OverviewDashboard({ fin, nav }) {
   // dịch gắn quy tắc của kỳ đó, "giảm 80% so với kỳ trước" sẽ là con số bịa.
   const prevRange = useMemo(() => {
     const range = previousRange(period);
-    return range && nav.dataFrom && range.from < nav.dataFrom ? null : range;
+    return nav.dataFrom && range.from < nav.dataFrom ? null : range;
   }, [period, nav.dataFrom]);
   const cmp = useMemo(
     () => (prevRange ? comparePeriods(transactions, transactions, period, prevRange, today) : null),
@@ -117,11 +110,6 @@ function OverviewDashboard({ fin, nav }) {
     })
     .filter(x => x.left > 0 && x.days <= 7),
   [lendings, transactions, today]);
-
-  // Donut byCategory.
-  const donutData = useMemo(() => Object.entries(totals.byCategory)
-    .map(([key, amount]) => ({ key, amount, color: catInfo(key, fin.cats).color }))
-    .sort((a, b) => b.amount - a.amount), [totals, fin.cats]);
 
   const fund = useMemo(() => fundBalance(deposits), [deposits]);
   // "Cần bạn ghi": hóa đơn 'ask' đang bật (nhắc user tự nhập số).
@@ -194,52 +182,12 @@ function OverviewDashboard({ fin, nav }) {
 
       <div className="fin-overview-grid">
         <section className="fin-card fin-overview-panel">
-          <div className="fin-card__head"><div className="fin-card__title">Tiền đi đâu</div><small>Tiền để dành nằm ngoài biểu đồ này</small></div>
-          <div className="fin-donut-row">
-            <Donut data={donutData} total={totals.total} size={132}
-              onSlice={(key) => nav.go('overview', { overviewTab: 'stats', group: key })} />
-            <div className="fin-legend">
-              {donutData.length === 0 && <div className="fin-empty">Chưa có chi tiêu trong kỳ</div>}
-              {donutData.map(d => {
-                const info = catInfo(d.key, fin.cats);
-                const pct = totals.total ? Math.round((d.amount / totals.total) * 100) : 0;
-                return <button key={d.key} className="fin-legend__row"
-                  onClick={() => nav.go('overview', { overviewTab: 'stats', group: d.key })}>
-                  <span className="fin-legend__dot" style={{ background: d.color }} />
-                  <span className="fin-legend__lbl"><FinanceIcon name={info.icon} cats={fin.cats} size={14} /> {info.label}</span>
-                  <span className="fin-legend__amt">{money(d.amount)}</span>
-                  <span className="fin-legend__pct">{pct}%</span><AppIcon name="caretRight" size={11} />
-                </button>;
-              })}
-            </div>
-          </div>
-          <div className="fin-card__divider" />
-          <div className="fin-need">
-            <div className="fin-need__head"><span>Cắt được tới đâu</span><span className="fin-need__cut">Có thể cắt {money(totals.byNecessity.want)}</span></div>
-            <div className="fin-need__bar">{['must', 'want'].map(k => {
-              const w = totals.total ? (totals.byNecessity[k] / totals.total) * 100 : 0;
-              return <div key={k} style={{ width: `${w}%`, background: NECESSITY_META[k].color }} />;
-            })}</div>
-            <div className="fin-need__rows">{['must', 'want'].map(k => {
-              const share = totals.total ? Math.round(totals.byNecessity[k] / totals.total * 100) : 0;
-              return <div key={k} className="fin-need__row"><span className="fin-legend__dot" style={{ background: NECESSITY_META[k].color }} />
-                <span>{NECESSITY_META[k].label}</span><strong>{money(totals.byNecessity[k])}</strong><small>{share}%</small></div>;
-            })}</div>
-          </div>
-          <div className="fin-card__divider" />
-          <div className="fin-fixed-split">
-            <div><span>Cố định</span><strong>{money(totals.fixed)}</strong></div>
-            <div><span>Biến đổi</span><strong>{money(Math.max(0, totals.total - totals.fixed))}</strong></div>
-            <div className="fin-fixed-split__bar"><i style={{ width: `${fixedPct}%` }} /><i /></div>
-            <p>Cố định trả lời “đoán trước được không”; mức cần thiết trả lời “bỏ được không”.</p>
-          </div>
+          <div className="fin-card__head"><div className="fin-card__title">Nhịp chi {period.unit === 'month' ? 'theo tháng' : 'theo ngày'}</div><small>đường mờ là mức trung bình của kỳ này</small></div>
+          <RhythmBars rows={rhythm.rows} avg={rhythm.avg} unit={period.unit} />
         </section>
 
         <section className="fin-card fin-overview-panel">
-          <div className="fin-card__head"><div className="fin-card__title">Nhịp chi {period.unit === 'month' ? 'theo tháng' : 'theo ngày'}</div><small>đường mờ là mức trung bình của kỳ này</small></div>
-          <RhythmBars rows={rhythm.rows} avg={rhythm.avg} unit={period.unit} />
-          <div className="fin-card__divider" />
-          <div className="fin-card__eyebrow">Khoản lớn nhất kỳ này</div>
+          <div className="fin-card__head"><div className="fin-card__title">Khoản lớn nhất kỳ này</div></div>
           {topTransactions.length ? <div className="fin-top-tx">{topTransactions.map(t => {
             const info = catInfo(t.category_id, fin.cats);
             return <button className="fin-biggest" key={t.id} onClick={() => nav.go('list')}>

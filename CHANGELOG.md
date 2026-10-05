@@ -12,6 +12,7 @@
   - **Lưu trạng thái & tương thích Mobile**: Ghi nhớ trạng thái thu gọn vào `localStorage` (`vl_kanban_collapsed_cols`); trên giao diện điện thoại, khi chuyển tab sang cột đang bị thu gọn, hệ thống tự động mở bung cột đó.
 
 ### Changed
+- **Gộp Tổng quan + Báo cáo thành một trang (`OverviewScreen.jsx`, `ReportScreen.jsx`, `AnalyzeScreen.jsx`, `FinancePage.jsx`):** bỏ thanh chuyển tab Tổng quan/Báo cáo và `PeriodPicker` trên header; phần Tổng quan (cảnh báo thẻ/cho vay, 4 chỉ số, Nhịp chi, Khoản lớn nhất, Quỹ tiết kiệm) vẽ ngay trên nội dung Báo cáo và dùng chung bộ chọn kỳ Tháng/Quý/Năm của Báo cáo. "So với kỳ trước" so với tháng/quý/năm liền trước. Xóa card "Tiền đi đâu" (donut, Cắt được tới đâu, Cố định/Biến đổi) vì Báo cáo đã có cơ cấu nhóm. `?view=stats` và `/finance/report` đều về `/finance/overview`.
 - **Chuẩn Hóa Nút Thao Tác & Tinh Gọn Thẻ Task Kanban (`TaskKanbanView.jsx`):**
   - **Bỏ icon chấm tròn (`kanban-checkbox`)**: Loại bỏ nút tròn ở đầu tiêu đề công việc, tránh xung đột UX với hàng nút chuyển trạng thái ở chân thẻ và nhường không gian tiêu đề thẳng thắn từ lề trái.
   - **Đồng nhất nút chuyển trạng thái tiếng Anh 100%**: Thay thế toàn bộ các nhãn hỗn hợp trước đây ("Về To Do", "Sang Doing", "Xong ✓", "Bỏ qua", "↺ Làm lại") thành các nút ngắn gọn, chuẩn mực: `To Do`, `Doing`, `Done`, `Skip` (loại bỏ sạch các tiền tố "về", "sang", mũi tên). Mỗi thẻ luôn cung cấp đầy đủ 3 nút tương ứng với 3 cột còn lại.

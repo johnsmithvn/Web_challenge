@@ -30,8 +30,8 @@ function compactMoney(value) {
   return money(amount);
 }
 
-export default function AnalyzeScreen({ fin, nav }) {
-  return <ReportScreen fin={fin} nav={nav} />;
+export default function AnalyzeScreen({ fin, nav, lead }) {
+  return <ReportScreen fin={fin} nav={nav} lead={lead} />;
 }
 
 export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {

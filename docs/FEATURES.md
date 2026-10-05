@@ -152,7 +152,7 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 `src/utils/financeLogic.js`, `src/data/finance-categories.json`
 
 ### Điều hướng & Bố cục
-- `overview`: Tổng quan (dashboard thu chi, nhịp chi) và query `view=stats` mở Thống kê.
+- `overview`: Tổng quan + Báo cáo gộp một trang, dùng chung bộ chọn kỳ Tháng/Quý/Năm (cảnh báo, chỉ số, nhịp chi, khoản lớn nhất, quỹ tiết kiệm, rồi các thẻ Báo cáo). `/finance/report` và `?view=stats` chuyển về đây.
 - `add`: Nhập nhanh **khoản chi** bằng form, câu tự nhiên hoặc shortcut (thu và gửi/rút quỹ nằm ở `recurring`).
 - `list`: Danh sách giao dịch với thanh Toolbar hợp nhất (`.fin-list__toolbar`), ô tìm kiếm ghim trên Header, bộ lọc đa cấp `FilterPop` (nhóm cha, danh mục con, khoảng ngày), xuất CSV.
 - `recurring`: **Định kỳ & Quỹ** (hóa đơn, thu định kỳ, khoản vay, thẻ tín dụng, cho vay và Quỹ tiết kiệm).

@@ -261,7 +261,7 @@ const catsIdxNavbar = navbarSrc.indexOf("to: '/finance/cats'");
 const recurringIdxNavbar = navbarSrc.indexOf("to: '/finance/recurring'");
 assert.ok(catsIdxNavbar > recurringIdxNavbar, 'Danh mục phải nằm dưới Định kỳ & Quỹ trong Navbar');
 
-// 4. FinancePage SCREENS: cats ở cuối cùng, không có key report, có redirect về overview?view=stats
+// 4. FinancePage SCREENS: cats ở cuối cùng, không có key report, có redirect về /finance/overview
 assert.doesNotMatch(pageSrc, /key:\s*'report'/, 'FinancePage SCREENS không có key report độc lập');
 assert.match(pageSrc, /routeScreen === 'report'/, 'FinancePage phải có cơ chế nhận diện và redirect route /finance/report cũ');
 const catsIdxPage = pageSrc.indexOf("key: 'cats'");

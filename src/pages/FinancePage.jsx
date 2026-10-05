@@ -6,9 +6,8 @@ import { useConfirm } from '../components/ConfirmModal';
 import {
   listPeriodOptions, currentMonthPeriod, periodFromKey,
 } from '../utils/financeLogic';
-import { Segmented, PeriodPicker } from '../components/finance/parts';
 import AppIcon from '../components/AppIcon';
-import OverviewScreen, { OVERVIEW_TAB_OPTIONS } from '../components/finance/OverviewScreen';
+import OverviewScreen from '../components/finance/OverviewScreen';
 import AddScreen from '../components/finance/AddScreen';
 import ListScreen from '../components/finance/ListScreen';
 import CatsScreen from '../components/finance/CatsScreen';
@@ -26,7 +25,6 @@ const SCREENS = [
   { key: 'cats',      icon: 'tree',       label: 'Danh mục',   title: 'Danh mục & schema' },
 ];
 const VALID_PERIOD_KEY = /^(?:\d{4}-(?:0[1-9]|1[0-2])|year-\d{4}|all)$/;
-const OVERVIEW_TABS = new Set(['overview', 'stats']);
 
 export default function FinancePage() {
   const fin = useFinance();
@@ -78,23 +76,9 @@ export default function FinancePage() {
     danger: true,
   }), [confirm]);
 
-  const overviewTab = useMemo(() => {
-    const requested = new URLSearchParams(location.search).get('view');
-    if (requested && OVERVIEW_TABS.has(requested)) return requested;
-    if (routeScreen === 'analyze' || routeScreen === 'report') return 'stats';
-    return 'overview';
-  }, [location.search, routeScreen]);
-  const setOverviewTab = useCallback((tab) => {
-    const next = OVERVIEW_TABS.has(tab) ? tab : 'overview';
-    navigate(next === 'overview' ? '/finance/overview' : `/finance/overview?view=${next}`);
-  }, [navigate]);
-
   // Điều hướng chéo giữa các màn (giữ module dính vào nhau).
   const go = useCallback((target, opts = {}) => {
-    const overviewView = OVERVIEW_TABS.has(opts.overviewTab) ? opts.overviewTab : 'overview';
-    navigate(target === 'overview' && overviewView !== 'overview'
-      ? `/finance/overview?view=${overviewView}`
-      : `/finance/${target}`);
+    navigate(`/finance/${target}`);
     if (opts.recurringSeg) setRecurringSeg(opts.recurringSeg);
     if (opts.group !== undefined) setAnalyzeParams({ group: opts.group });
     if (opts.period) setPeriodKey(opts.period);
@@ -108,10 +92,10 @@ export default function FinancePage() {
     };
   }, []);
 
-  // Bookmark cũ vẫn mở đúng nội dung (chuyển hướng vào tab Báo cáo của Tổng quan)
+  // Bookmark cũ vẫn mở đúng nội dung (Báo cáo đã gộp vào Tổng quan)
   useEffect(() => {
     if (routeScreen === 'analyze' || routeScreen === 'report') {
-      navigate('/finance/overview?view=stats', { replace: true });
+      navigate('/finance/overview', { replace: true });
     }
   }, [navigate, routeScreen]);
 
@@ -152,15 +136,14 @@ export default function FinancePage() {
 
   const nav = {
     screen, setScreen, go, period, periodKey, setPeriodKey, periodOptions, dataFrom: fin.dataFrom,
-    recurringSeg, setRecurringSeg, overviewTab, setOverviewTab, analyzeParams,
+    recurringSeg, setRecurringSeg, analyzeParams,
     catsTab, setCatsTab, handoff, startHandoff: setHandoff,
     clearHandoff: () => setHandoff(null), showToast,
     confirmDelete, confirmDiscard,
     searchQuery, setSearchQuery, headerSlot,
   };
   const active = SCREENS.find(s => s.key === screen);
-  const headerSub = screen === 'overview'
-    ? (overviewTab === 'stats' ? 'Tổng hợp chi tiêu, phân bổ danh mục và nhịp chi' : `${period.label} · tổng quan chi tiêu`)
+  const headerSub = screen === 'overview' ? 'Tổng quan và báo cáo chi tiêu theo kỳ'
     : screen === 'list' ? `${period.label} · lọc cùng kỳ với Tổng quan`
     : screen === 'cats' ? `${fin.cats.expenseGroups.length} nhóm chi · cấu trúc dữ liệu`
     : 'Định kỳ, nghĩa vụ và Quỹ tiết kiệm';
@@ -173,32 +156,11 @@ export default function FinancePage() {
             <div className="fin-header__brand">
               <div className="fin-header__copy">
                 <h1 className="fin-header__title">{active?.title}</h1>
-                {!(screen === 'overview' && nav.overviewTab === 'overview') && screen !== 'add' && (
+                {screen !== 'add' && (
                   <p className="fin-header__sub">{headerSub}</p>
                 )}
               </div>
-              {screen === 'overview' && nav.overviewTab === 'overview' && (
-                <PeriodPicker
-                  options={periodOptions}
-                  period={period}
-                  value={periodKey}
-                  onChange={setPeriodKey}
-                  dataFrom={fin.dataFrom}
-                  compact
-                />
-              )}
             </div>
-
-            {screen === 'overview' && (
-              <div className="fin-header__segmented">
-                <Segmented
-                  options={OVERVIEW_TAB_OPTIONS}
-                  value={nav.overviewTab}
-                  onChange={nav.setOverviewTab}
-                  ariaLabel="Chế độ Tổng quan"
-                />
-              </div>
-            )}
 
             {screen === 'add' ? (
               <div className="fin-header__slot" ref={setHeaderSlot} />
