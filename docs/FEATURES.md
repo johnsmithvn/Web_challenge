@@ -47,11 +47,21 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   (quá hạn tô đỏ). Không phải task riêng: không hiện trên Lịch/Kanban, không cộng XP.
 - **Mặt trước** (thẻ Kanban, hàng Danh sách): badge `☑ 2/4`; mở ra tick trực tiếp.
 - **Popup Chi tiết** và form tạo/sửa: thêm (Enter thêm tiếp), đổi tên (bấm vào tên), đặt hạn, **kéo thả sắp xếp**
-  (bàn phím: Alt + ↑/↓ trên tay nắm), xoá. Popup Chi tiết có thêm **Chuyển thành task riêng** (task mới lấy hạn
+  (bàn phím: Alt + ↑/↓ trên tay nắm), xoá. Popup Chi tiết có thêm **Chuyển thành task con** (xem dưới; hạn lấy
   của việc con, không có thì lấy hạn task cha; tạo xong mới gỡ khỏi checklist).
 - Tick hết **không** tự hoàn thành task cha. Task lặp sang kỳ sau: bỏ tick hết, hạn riêng dời cùng khoảng.
 - Tab Hoạt động ghi câu ngắn ("Việc con — Xong: Làm slide"), không lưu nguyên mảng.
 - Dòng `- [ ]` cũ trong mô tả không còn hiện thành checklist trên Kanban (giữ nguyên trong mô tả, không tự chuyển).
+
+### Task con liên kết (v6.19.0)
+- Task con là **task thật** (`parent_task_id`): đủ mô tả, hạn + khung giờ, ưu tiên, tag, nhắc giờ, lịch sử, XP khi
+  xong; hiện trên Kanban/Danh sách/Lịch như task thường với chip **↳ Task cha** (bấm để mở popup task cha). Task
+  cha có badge số task con chưa xong.
+- Popup Chi tiết của task cha có khu **Task con · x/y**: tick = hoàn thành/bỏ hoàn thành task con, bấm tên = mở
+  popup task con, Enter ở ô cuối = tạo task con (hạn = hạn task cha). Dùng song song với checklist: bước nhỏ ở
+  checklist, việc cần chi tiết ở task con.
+- 1 cấp (task con không có task con). Xoá task cha → task con thành task độc lập. Hoàn thành task cha không chặn
+  dù còn task con. Task cha lặp không nhân bản task con; task con tự lặp thì kỳ sau vẫn thuộc task cha.
 
 ### Danh sách
 - Task **Bỏ qua** (cột Skip của Kanban, `status = 'skip'`) không còn là việc cần làm: không vào Quá hạn/Hôm nay/

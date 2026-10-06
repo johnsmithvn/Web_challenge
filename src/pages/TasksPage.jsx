@@ -148,8 +148,16 @@ export default function TasksPage() {
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const refreshCalendars = useCallback(() => setCalendarRefreshKey((k) => k + 1), []);
 
+  // Đóng popup luôn làm mới Lịch: trong popup có thể đã tick/thêm task con.
   const handleCloseSelectedModal = useCallback(() => {
     setSelectedTask(null);
+    setIsEditingSelected(false);
+    refreshCalendars();
+  }, [refreshCalendars]);
+
+  // Mở popup của task khác (task con ↔ task cha) ngay trong popup đang mở.
+  const handleOpenTaskInModal = useCallback((task) => {
+    setSelectedTask(task);
     setIsEditingSelected(false);
   }, []);
 
@@ -267,6 +275,7 @@ export default function TasksPage() {
                     setIsEditingSelected(true);
                   }}
                   onQuickCreate={handleOpenCreateModal}
+                  refreshKey={calendarRefreshKey}
                 />
               )}
 
@@ -358,7 +367,10 @@ export default function TasksPage() {
       {/* Modal chi tiết Task khi click vào sự kiện trên Lịch */}
       {selectedTask && (
         <TaskDetailModal
+          key={selectedTask.id}
           task={selectedTask}
+          taskModel={taskModel}
+          onOpenTask={handleOpenTaskInModal}
           onClose={handleCloseSelectedModal}
           onEdit={() => setIsEditingSelected(true)}
           editContent={

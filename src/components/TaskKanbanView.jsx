@@ -8,6 +8,8 @@ import { toDateStr } from '../utils/dateUtils';
 import { hasExplicitTime } from '../utils/calendarTimeUtils';
 import { getKanbanRange, groupKanbanColumns } from '../utils/kanbanUtils';
 import SubtaskList, { SubtaskBadge } from './SubtaskList';
+import { ParentChip, ChildCountBadge } from './ChildTaskList';
+import { countOpenChildren } from '../utils/subtaskUtils';
 import '../styles/kanban.css';
 
 /**
@@ -30,10 +32,12 @@ export default function TaskKanbanView({
   onSelectTask,
   onEditTask,
   onQuickCreate,
+  refreshKey = 0, // TasksPage tăng sau khi đóng popup Chi tiết → tải lại cột Done
 }) {
   const {
     pendingTasks = [],
     skippedTasks = [],
+    tasks = [],
     getCompletedTasksRange,
     completeTask,
     uncompleteTask,
@@ -131,11 +135,14 @@ export default function TaskKanbanView({
       setCompletedRangeTasks(rows || []);
     });
     return () => { stale = true; };
-  }, [range, getCompletedTasksRange]);
+  }, [range, getCompletedTasksRange, refreshKey]);
 
   // Chia 4 cột (To Do / Doing / Skip theo status, Done theo ngày hoàn thành).
   // Task "Bỏ qua" không còn trong pendingTasks (xem useUserTasks) nên ghép skippedTasks vào.
   const openTasks = useMemo(() => [...pendingTasks, ...skippedTasks], [pendingTasks, skippedTasks]);
+  // Tra task cha + đếm task con chưa xong (mọi task chưa xong đều nằm trong state `tasks`).
+  const tasksById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
+  const openChildCounts = useMemo(() => countOpenChildren(tasks), [tasks]);
   const { todo: todoList, doing: doingList, done: doneList, skip: skipList } = useMemo(
     () => groupKanbanColumns(openTasks, completedRangeTasks, range),
     [openTasks, completedRangeTasks, range]
@@ -386,6 +393,16 @@ export default function TaskKanbanView({
         <div className="kanban-card-title-row">
           <span className="kanban-card-title">{task.title}</span>
         </div>
+
+        {/* Task con liên kết (v6.19.0): chip về task cha / số task con chưa xong */}
+        {(task.parent_task_id || openChildCounts.get(task.id)) && (
+          <div className="kanban-card-relations">
+            {task.parent_task_id && (
+              <ParentChip parent={tasksById.get(task.parent_task_id)} onOpen={onSelectTask} />
+            )}
+            <ChildCountBadge count={openChildCounts.get(task.id)} />
+          </div>
+        )}
 
         {/* Mặt trước thẻ: badge tiến độ, bấm để mở và tick ngay (sửa đầy đủ ở popup Chi tiết) */}
         {hasSubtasks && (

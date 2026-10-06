@@ -552,6 +552,60 @@
   .subtask-list__bar > span { transition: none; }
 }
 
+/* ── Task con liên kết (components/ChildTaskList.jsx, v6.19.0) ── */
+.task-parent-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 14rem;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: rgba(6, 182, 212, 0.1);
+  color: #22d3ee;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-parent-chip--link { cursor: pointer; }
+.task-parent-chip--link:hover,
+.task-parent-chip--link:focus-visible { text-decoration: underline; }
+
+.task-child-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: rgba(6, 182, 212, 0.1);
+  color: #22d3ee;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.child-task-list__open {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.child-task-list__open:hover,
+.child-task-list__open:focus-visible { text-decoration: underline; }
+
+.child-task-list__pri {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+[data-theme="light"] .task-parent-chip,
+[data-theme="light"] .task-child-badge { color: #0e7490; }
+
 .task-option-btn--sm {
   padding: 0.22rem 0.45rem;
   font-size: 0.72rem;

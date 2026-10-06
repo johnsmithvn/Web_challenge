@@ -214,4 +214,8 @@ assert.deepEqual(
   { icon: 'listChecks', text: 'Việc con — Xong: Làm slide', oldText: null, newText: null }
 );
 
+// Liên kết task cha (v6.19.0): không hiện uuid
+assert.equal(describeActivity({ action: ACTIONS.TASK_UPDATE, field: 'parent_task_id', new_value: 'uuid-1' }).text, 'Gắn vào task cha');
+assert.equal(describeActivity({ action: ACTIONS.TASK_UPDATE, field: 'parent_task_id', old_value: 'uuid-1', new_value: null }).text, 'Gỡ khỏi task cha');
+
 console.log('taskFields check: OK');

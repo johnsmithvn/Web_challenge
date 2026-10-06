@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {
   addSubtask, toggleSubtask, renameSubtask, setSubtaskDue, removeSubtask, moveSubtask,
   subtaskProgress, isSubtaskOverdue, resetSubtasksForNextOccurrence, daysBetween,
-  summarizeSubtaskChange,
+  summarizeSubtaskChange, mergeChildTasks, countOpenChildren,
 } from '../../utils/subtaskUtils.js';
 
 const titles = (list) => list.map((s) => s.title);
@@ -74,4 +74,32 @@ const many = summarizeSubtaskChange([], ['1', '2', '3', '4', '5'].map((t) => ({ 
 assert.equal(many, 'Thêm: 1; Thêm: 2; Thêm: 3 (+2)');
 console.log('summarizeSubtaskChange: OK');
 
-console.log('\n✅ subtaskUtils — checklist việc con PASS');
+
+/* ── 6. Task con liên kết (parent_task_id, v6.19.0) ─────────────── */
+{
+  const P = 'parent';
+  const fetched = [
+    { id: 'old', parent_task_id: P, completed: true, completed_at: '2026-10-01T10:00:00Z', due_date: '2026-10-01' },
+    { id: 'k1', parent_task_id: P, completed: false, due_date: '2026-10-09', priority: 1 },
+    { id: 'gone', parent_task_id: P, completed: false, due_date: '2026-10-08' },
+  ];
+  const state = [
+    { id: 'k1', parent_task_id: P, completed: true, completed_at: '2026-10-06T08:00:00Z', due_date: '2026-10-09' }, // vừa tick trong state
+    { id: 'gone', parent_task_id: null, completed: false, due_date: '2026-10-08' },                                  // vừa gỡ khỏi cha
+    { id: 'new', parent_task_id: P, completed: false, due_date: '2026-10-07', priority: 3 },                         // vừa tạo, DB chưa có trong fetched
+    { id: 'n2', parent_task_id: P, completed: false, due_date: '2026-10-07', priority: 5 },
+    { id: 'other', parent_task_id: 'x', completed: false, due_date: '2026-10-07' },
+  ];
+  const merged = mergeChildTasks(P, fetched, state);
+  assert.deepEqual(merged.map((t) => t.id), ['n2', 'new', 'k1', 'old'],
+    'chưa xong trước (hạn sớm, ưu tiên cao), rồi đã xong (mới nhất trước); bản state thắng; task đã gỡ bị loại');
+  assert.equal(merged.find((t) => t.id === 'k1').completed, true);
+
+  const counts = countOpenChildren(state);
+  assert.equal(counts.get(P), 2, 'chỉ đếm task con chưa xong');
+  assert.equal(counts.get('x'), 1);
+  assert.equal(counts.get('k1'), undefined);
+  console.log('mergeChildTasks & countOpenChildren: OK');
+}
+
+console.log('\n✅ subtaskUtils — checklist việc con + task con PASS');

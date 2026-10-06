@@ -106,6 +106,7 @@
 
 /* Checklist việc con dưới mô tả (SubtaskList mode edit) */
 .td-subtasks { margin-top: 0.85rem; }
+.td-parent { margin-bottom: 0.5rem; }
 
 /* ── Tab ─────────────────────────────────────────────────────────────── */
 /* Dùng lại nguyên .tasks-viewbar__tab của trang /tasks — cùng pill, cùng tint

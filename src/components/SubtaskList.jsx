@@ -25,7 +25,7 @@ export function SubtaskBadge({ items }) {
  *
  * mode="edit": thêm (Enter thêm tiếp), tick, đổi tên (bấm vào tên), hạn riêng,
  *   kéo thả sắp xếp (Alt+↑/↓ trên tay nắm khi dùng phím), xoá, và — nếu có
- *   `onConvert` — chuyển thành task riêng. Dùng ở popup Chi tiết và TaskForm.
+ *   `onConvert` — chuyển thành task con (task thật có parent_task_id). Dùng ở popup Chi tiết và TaskForm.
  * mode="tick": chỉ tick, cho mặt trước thẻ.
  *
  * Không tự ghi DB: mọi thao tác gọi `onChange(mảngMới)`; nơi gọi lưu (updateTask)
@@ -161,7 +161,7 @@ export default function SubtaskList({ items, onChange, mode = 'edit', onConvert 
             )}
 
             {editable && onConvert && (
-              <button type="button" className="subtask-row__icon" onClick={() => onConvert(s)} aria-label={`Chuyển thành task: ${s.title}`} title="Chuyển thành task riêng">
+              <button type="button" className="subtask-row__icon" onClick={() => onConvert(s)} aria-label={`Chuyển thành task con: ${s.title}`} title="Chuyển thành task con (đủ chi tiết, vẫn thuộc task này)">
                 <AppIcon name="external" size={13} />
               </button>
             )}

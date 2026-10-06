@@ -109,3 +109,38 @@ export function summarizeSubtaskChange(oldList, newList) {
   }
   return parts.length > 3 ? `${parts.slice(0, 3).join('; ')} (+${parts.length - 3})` : parts.join('; ');
 }
+
+// ── Task con liên kết (`user_tasks.parent_task_id`, v6.19.0) ────────────────
+// Khác checklist ở trên: task con là row user_tasks thật, chỉ mang thêm parent_task_id.
+
+/**
+ * Danh sách task con của 1 task cha để hiện trong popup Chi tiết.
+ * `fetched` = query DB theo parent_task_id (đủ cả task con đã xong ngày cũ);
+ * `stateTasks` = state của useUserTasks (mới hơn: optimistic tick/sửa/tạo). Bản
+ * trong state thắng; task trong state đã bị gỡ khỏi cha thì loại.
+ * Sắp xếp: chưa xong trước (hạn sớm, ưu tiên cao), đã xong sau (xong gần nhất trước).
+ */
+export function mergeChildTasks(parentId, fetched = [], stateTasks = []) {
+  const byId = new Map();
+  for (const t of fetched) byId.set(t.id, t);
+  for (const t of stateTasks) {
+    if (t.parent_task_id === parentId) byId.set(t.id, t);
+    else if (byId.has(t.id)) byId.delete(t.id);
+  }
+  const open = [];
+  const done = [];
+  for (const t of byId.values()) (t.completed ? done : open).push(t);
+  open.sort((a, b) =>
+    (a.due_date || '').localeCompare(b.due_date || '') || (b.priority || 0) - (a.priority || 0));
+  done.sort((a, b) => (b.completed_at || '').localeCompare(a.completed_at || ''));
+  return [...open, ...done];
+}
+
+/** Map parentId → số task con CHƯA xong, từ state (mọi task chưa xong đều nằm trong state). */
+export function countOpenChildren(tasks = []) {
+  const counts = new Map();
+  for (const t of tasks) {
+    if (t.parent_task_id && !t.completed) counts.set(t.parent_task_id, (counts.get(t.parent_task_id) || 0) + 1);
+  }
+  return counts;
+}

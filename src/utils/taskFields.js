@@ -65,6 +65,7 @@ export const TASK_FIELD_LABELS = {
   updated_at: 'Cập nhật lúc',
   tags: 'Tag',
   subtasks: 'Việc con',
+  parent_task_id: 'Task cha',
   collections: 'Bài viết liên kết',
 };
 
@@ -250,6 +251,10 @@ export function describeActivity(row) {
     case ACTIONS.TASK_UPDATE: {
       if (field === 'subtasks') {
         return { icon: 'listChecks', text: `Việc con — ${newValue}`, oldText: null, newText: null };
+      }
+      // parent_task_id là uuid — hiện uuid vô nghĩa, chỉ nói gắn hay gỡ.
+      if (field === 'parent_task_id') {
+        return { icon: 'link', text: newValue ? 'Gắn vào task cha' : 'Gỡ khỏi task cha', oldText: null, newText: null };
       }
       const label = fieldLabel(field);
       const before = oldValue == null ? null : formatTaskFieldValue(field, oldValue);

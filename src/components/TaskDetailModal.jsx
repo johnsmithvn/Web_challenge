@@ -15,6 +15,7 @@ import GenericModal from './GenericModal';
 import AppIcon from './AppIcon';
 import PriorityPicker from './PriorityPicker';
 import SubtaskList from './SubtaskList';
+import ChildTaskList, { ParentChip } from './ChildTaskList';
 import { useConfirm } from './ConfirmModal';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
@@ -56,7 +57,7 @@ function LogValue({ value, variant, expanded, onToggle }) {
   );
 }
 
-export default function TaskDetailModal({ task, onClose, onEdit, editContent, onComplete, onDelete, onUpdatePriority, onUpdateSubtasks, onConvertSubtask }) {
+export default function TaskDetailModal({ task, onClose, onEdit, editContent, onComplete, onDelete, onUpdatePriority, onUpdateSubtasks, onConvertSubtask, taskModel, onOpenTask }) {
   const { user } = useAuth();
   const { confirm, ConfirmModal } = useConfirm();
   const { getTaskLogs, addNote, updateNote, deleteLog } = useActivityLog();
@@ -176,6 +177,15 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
       >
         <GenericModal.Body>
           {editContent ? editContent : <>
+          {/* Task con: chip về task cha (bấm để mở popup task cha) */}
+          {task.parent_task_id && (
+            <div className="td-parent">
+              <ParentChip
+                parent={taskModel?.tasks?.find((t) => t.id === task.parent_task_id)}
+                onOpen={onOpenTask}
+              />
+            </div>
+          )}
           {/* ── Đầu: tick + tiêu đề, dải màu priority như trên card ── */}
           <div
             className="td-head"
@@ -250,6 +260,13 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
                 onChange={onUpdateSubtasks}
                 onConvert={onConvertSubtask}
               />
+            </div>
+          )}
+
+          {/* Task con liên kết (v6.19.0) — chỉ 1 cấp: task con không có task con */}
+          {taskModel && onOpenTask && !task.parent_task_id && (
+            <div className="td-subtasks">
+              <ChildTaskList parent={task} taskModel={taskModel} onOpenTask={onOpenTask} />
             </div>
           )}
 

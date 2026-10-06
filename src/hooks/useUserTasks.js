@@ -151,7 +151,7 @@ export function useUserTasks() {
 
   // ── Add task ───────────────────────────────────────────
   // Knowledge links are created separately through task_collections/linkCollection.
-  const addTask = useCallback(async ({ title, description, dueDate, dueTime, startTime, endTime, subtasks, priority, recurrenceRule, completed, completedAt, status }) => {
+  const addTask = useCallback(async ({ title, description, dueDate, dueTime, startTime, endTime, subtasks, parentTaskId, priority, recurrenceRule, completed, completedAt, status }) => {
     const taskStatus = status || (completed ? 'done' : 'todo');
     const newTask = {
       id: crypto.randomUUID ? crypto.randomUUID() : `local_${Date.now()}`,
@@ -165,6 +165,8 @@ export function useUserTasks() {
       ...(startTime && endTime ? { start_time: startTime, end_time: endTime } : {}),
       // Checklist việc con (v6.18.0) — cùng lý do: chỉ gửi khi có.
       ...(subtasks?.length ? { subtasks } : {}),
+      // Task con liên kết (v6.19.0) — cùng lý do: chỉ gửi khi có.
+      ...(parentTaskId ? { parent_task_id: parentTaskId } : {}),
       priority: priority || 0,
       recurrence_rule: recurrenceRule || null,
       completed: completed || false,
@@ -257,6 +259,8 @@ export function useUserTasks() {
           subtasks: task.subtasks?.length
             ? resetSubtasksForNextOccurrence(task.subtasks, daysBetween(task.due_date, nextDate))
             : undefined,
+          // Task con tự lặp: kỳ sau vẫn thuộc cùng task cha (undefined trước migration → bỏ qua).
+          parent_task_id: task.parent_task_id,
           priority: task.priority || 0,
           recurrence_rule: task.recurrence_rule, // clone rule for chain
           recurrence_parent_id: task.id,
@@ -394,7 +398,10 @@ export function useUserTasks() {
     const backups = tasks.filter(t => localIds.includes(t.id));
 
     // Optimistic
-    setTasks(prev => prev.filter(t => !localIds.includes(t.id)));
+    // Task con của task bị xoá: DB tự SET NULL parent_task_id (v6.19.0) → state làm theo.
+    setTasks(prev => prev
+      .filter(t => !localIds.includes(t.id))
+      .map(t => (t.parent_task_id && localIds.includes(t.parent_task_id) ? { ...t, parent_task_id: null } : t)));
 
     if (isAuth) {
       try {
@@ -590,19 +597,40 @@ export function useUserTasks() {
     return true;
   }, [isAuth, userId, tasks, logFieldChanges, spawnRecurringTask]);
 
-  // ── Chuyển 1 việc con thành task riêng (kiểu "Convert to card" của Trello) ──
-  // Tạo task TRƯỚC rồi mới gỡ khỏi checklist: lỗi giữa chừng thì việc con vẫn còn.
-  // Task mới lấy hạn riêng của việc con, không có thì lấy ngày hạn của task cha.
+  // ── Chuyển 1 việc con (checklist) thành TASK CON liên kết ──
+  // Tạo task con TRƯỚC rồi mới gỡ khỏi checklist: lỗi giữa chừng thì việc con vẫn còn.
+  // Task con lấy hạn riêng của việc con, không có thì lấy ngày hạn của task cha.
   // Trả checklist mới của task cha (null nếu thất bại) để nơi gọi đồng bộ bản chụp.
   const convertSubtaskToTask = useCallback(async (parentTask, subtaskId) => {
     const item = (parentTask?.subtasks || []).find(s => s.id === subtaskId);
     if (!item) return null;
-    const created = await addTask({ title: item.title, dueDate: item.due_date || parentTask.due_date });
+    const created = await addTask({
+      title: item.title,
+      dueDate: item.due_date || parentTask.due_date,
+      parentTaskId: parentTask.parent_task_id ? null : parentTask.id, // chỉ 1 cấp
+    });
     if (!created) return null;
     const next = removeSubtask(parentTask.subtasks, subtaskId);
     await updateTask(parentTask.id, { subtasks: next });
     return next;
   }, [addTask, updateTask]);
+
+  // ── Task con của 1 task (v6.19.0) — đủ cả task con đã xong ngày cũ (không có
+  // trong state). Guest/lỗi → [] (popup gộp thêm task con từ state, xem mergeChildTasks).
+  const getChildTasks = useCallback(async (parentId) => {
+    if (!isAuth || !userId || !parentId) return [];
+    const { data, error } = await supabase
+      .from('user_tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('parent_task_id', parentId)
+      .order('created_at', { ascending: true });
+    if (error) {
+      logger.warn('[useUserTasks] getChildTasks error:', error.message);
+      return [];
+    }
+    return data || [];
+  }, [isAuth, userId]);
 
   // ── Get completed tasks in a date range (for calendar) ────────
   // v4.29.0: thay `getCompletedTasks(dateStr)` (1 query/ngày → 30 query/tháng khi
@@ -832,6 +860,7 @@ export function useUserTasks() {
     updateTask,
     deleteTask,
     convertSubtaskToTask,
+    getChildTasks,
     rolloverTask,
     getCompletedTasksRange,
     linkCollection,

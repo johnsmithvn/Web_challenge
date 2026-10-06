@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCollections } from '../hooks/useCollections';
@@ -9,6 +9,8 @@ import PriorityPicker from './PriorityPicker';
 import TaskDetailModal from './TaskDetailModal';
 import TaskForm from './TaskForm';
 import SubtaskList, { SubtaskBadge } from './SubtaskList';
+import { ParentChip, ChildCountBadge } from './ChildTaskList';
+import { countOpenChildren } from '../utils/subtaskUtils';
 import { useConfirm } from './ConfirmModal';
 import { toDateStr } from '../utils/dateUtils';
 // v5.0.0: PRIORITY_OPTIONS/WEEKDAYS dời sang utils/taskFields để TaskDetailModal
@@ -41,6 +43,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
 
   const [showFuture, setShowFuture]     = useState(false);
   const [detailTaskId, setDetailTaskId] = useState(null);
+  const [detailFallback, setDetailFallback] = useState(null); // bản chụp task mở từ popup (task con/cha)
   // v6.1.0: mở lại cơ chế expand mô tả tại chỗ (v5.0.0 từng bỏ vì 1 click có 2
   // nghĩa). Giờ không còn xung đột: popup Chi tiết đã có nút con mắt riêng.
   const [expandedId, setExpandedId]     = useState(null);
@@ -150,6 +153,18 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
     if (overflowTaskId) { setOverflowTaskId(null); return; }
     setExpandedId(prev => prev === taskId ? null : taskId);
   }, [overflowTaskId]);
+
+  // Task con liên kết (v6.19.0): tra task cha + đếm task con chưa xong từ state.
+  const allTasks = taskModel.tasks;
+  const tasksById = useMemo(() => new Map((allTasks || []).map(t => [t.id, t])), [allTasks]);
+  const openChildCounts = useMemo(() => countOpenChildren(allTasks || []), [allTasks]);
+
+  // Mở popup của 1 task bất kỳ (chip task cha, task con trong popup).
+  const openTaskDetail = useCallback((t) => {
+    setDetailFallback(t);
+    setDetailTaskId(t.id);
+    setEditId(null);
+  }, []);
 
   /* ── Add ── (field do TaskForm gom, payload snake_case → đổi sang tham số addTask) */
   const handleAdd = useCallback(async (fields, tagIds) => {
@@ -298,6 +313,10 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
                   {task.title}
                 </span>
                 <SubtaskBadge items={task.subtasks} />
+                {task.parent_task_id && (
+                  <ParentChip parent={tasksById.get(task.parent_task_id)} onOpen={openTaskDetail} />
+                )}
+                <ChildCountBadge count={openChildCounts.get(task.id)} />
                 {task.due_date !== toDateStr() && (
                   <span className="task-chip" style={{
                     background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(139,92,246,0.1)',
@@ -624,12 +643,19 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
           Task lịch sử chỉ có 5 cột nên lưới field tự ẩn hàng thiếu, không hiện
           "—" sai sự thật. */}
       {detailTaskId && (() => {
+        // Task con/cha mở từ trong popup có thể không nằm trong các nhóm trên (đã xong
+        // ngày cũ, Bỏ qua…) → tìm tiếp trong state, cuối cùng dùng bản chụp lúc bấm mở.
         const task = [...todayTasks, ...overdueTasks, ...futureTasks, ...completedList]
-          .find(t => t.id === detailTaskId);
+          .find(t => t.id === detailTaskId)
+          || (taskModel.tasks || []).find(t => t.id === detailTaskId)
+          || (detailFallback?.id === detailTaskId ? detailFallback : null);
         if (!task) return null;
         return (
           <TaskDetailModal
+            key={task.id}
             task={task}
+            taskModel={taskModel}
+            onOpenTask={openTaskDetail}
             onClose={() => { setDetailTaskId(null); setEditId(null); }}
             onEdit={startEdit}
             editContent={editId === task.id ? renderTask(task, { insideDetail: true }) : null}

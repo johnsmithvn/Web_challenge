@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## v6.19.0 — 2026-10-06
+
+### Added
+- **Task con liên kết — kiểu ClickUp/Asana, hay dán link card vào checklist Trello (`data/migration_v6.19.0_task_parent.sql` + bản local `supabase/migrations/20261006000000_task_parent_v6_19_0.sql`, `ChildTaskList.jsx` mới, `TaskDetailModal.jsx`, `TaskKanbanView.jsx`, `TaskListSection.jsx`, `TasksPage.jsx`, `SubtaskList.jsx`, `useUserTasks.js`, `subtaskUtils.js`, `taskFields.js`, `tasks.css`, `task-detail.css`, `kanban.css`):**
+  - Cột `user_tasks.parent_task_id` + FK composite `(parent_task_id, user_id) → (id, user_id)` (ép task cha cùng chủ — FK bỏ qua RLS) `ON DELETE SET NULL (parent_task_id)` (Postgres 15+, migration tự từ chối nếu thấp hơn), CHECK không tự trỏ, index partial.
+  - Task con là row `user_tasks` thật → mở đúng popup Chi tiết, có đủ field/nhắc/XP/lịch sử; hiện ở mọi view với chip `↳ Task cha`, task cha có badge số task con chưa xong.
+  - Popup Chi tiết task cha: khu **Task con** (tick = complete/uncomplete, bấm tên = mở task con, Enter = tạo). Dữ liệu = `getChildTasks` (DB, đủ task con xong ngày cũ) gộp state bằng `mergeChildTasks` (có test).
+  - Checklist: nút ↗ đổi thành **Chuyển thành task con** (giữ liên kết thay vì tạo task độc lập).
+  - Hook: `addTask({ parentTaskId })` (chỉ gửi khi có), `getChildTasks`, `deleteTask` gỡ `parent_task_id` của task con trong state, `spawnRecurringTask` giữ `parent_task_id`.
+  - Activity log: `parent_task_id` hiện "Gắn vào / Gỡ khỏi task cha" thay vì uuid.
+
+### Fixed
+- Kanban nhận `refreshKey` → cột Done tải lại khi đóng popup Chi tiết (trước đây task hoàn thành trong popup, và badge checklist của thẻ Done sửa qua popup, chỉ cập nhật sau khi đổi bộ lọc/reload).
+- Popup Chi tiết mount lại theo `key={task.id}` khi chuyển giữa task cha ↔ task con (không lẫn log/tab của task trước).
+
+### Notes
+- **Thứ tự:** chạy `data/migration_v6.19.0_task_parent.sql` trên Supabase SQL Editor **trước** khi deploy (sau v6.17.0 và v6.18.0 nếu chưa chạy).
+
 ## v6.18.0 — 2026-10-05
 
 ### Added
