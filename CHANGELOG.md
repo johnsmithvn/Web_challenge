@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v6.20.0 — 2026-10-06
+
+### Changed
+- **Subtask = task đầy đủ chi tiết, chỉ sống bên trong task cha — thay checklist JSONB (`data/migration_v6.20.0_subtask_order.sql` + bản local `supabase/migrations/20261006010000_subtask_order_v6_20_0.sql`, `SubtaskList.jsx` viết lại, `subtaskUtils.js` viết lại, `useUserTasks.js`, `TaskForm.jsx`, `TaskDetailModal.jsx`, `TaskKanbanView.jsx`, `TaskListSection.jsx`, `TaskCreateModal.jsx`, `TasksPage.jsx`, `taskFields.js`, `tasks.css`, `task-detail.css`, `kanban.css`):**
+  - Subtask là row `user_tasks` có `parent_task_id` (v6.19.0) → bấm tên mở đúng popup Chi tiết (mô tả, hạn, giờ, ưu tiên, tag, ghi chú, lịch sử). Nhưng **ẩn khỏi mọi view bên ngoài**: hook loại subtask khỏi `pendingTasks`/`skippedTasks`/`completedToday`/các nhóm Danh sách, `getCompletedTasksRange` lọc ở client → Kanban, Danh sách, 4 view Lịch, số đếm, bộ chọn task Finance/Knowledge không thấy subtask. Bỏ chip `↳`/badge task con ngoài thẻ của v6.19.0.
+  - `fetchTasks` tải thêm mọi subtask của các task cha đã tải (lô 100 id) để badge `☑ x/y` đúng cả subtask đã xong ngày cũ.
+  - `SubtaskList` (mode `edit`: popup Chi tiết + form sửa; mode `tick`: thẻ Kanban, hàng Danh sách mở rộng): tick = complete/uncomplete, bấm tên = mở popup, kéo thả (+ Alt+↑/↓) ghi `sort_order` qua `reorderSubtasks` (ghi thẳng, không sinh activity log, có rollback), xoá có xác nhận, Enter = thêm. Form tạo task: subtask nháp, tạo cùng task cha qua `addSubtasks`.
+  - Migration v6.20.0: cột `sort_order`, FK task cha đổi `SET NULL` → **`ON DELETE CASCADE`** (xoá task cha xoá subtask; `deleteTask` gỡ subtask khỏi state).
+  - Subtask **vẫn được nhắc giờ**; **không cộng XP**. Task cha lặp → kỳ sau copy subtask (chưa xong, hạn dời theo, không mang recurrence riêng — `subtaskCopiesForNextOccurrence`).
+  - Cột `subtasks` JSONB (v6.18.0) không còn dùng (không có dữ liệu thật); giữ trong DB, chưa xoá. Bỏ code checklist: `summarizeSubtaskChange`, diff field `subtasks`, `convertSubtaskToTask`; xoá `ChildTaskList.jsx`.
+  - Test `subtaskUtils.test.js` viết lại theo mô hình mới (sắp xếp, gộp DB+state, tiến độ, kéo thả chỉ ghi phần đổi, copy kỳ lặp).
+- **Popup Chi tiết: khu Hoạt động & Ghi chú thu gọn mặc định** (`TaskDetailModal.jsx`, `task-detail.css`) — nút hiện số dòng, bấm để mở tab.
+
+### Notes
+- **Thứ tự:** chạy `data/migration_v6.20.0_subtask_order.sql` trên Supabase SQL Editor **sau** v6.19.0 và **trước** khi deploy.
+
 ## v6.19.0 — 2026-10-06
 
 ### Added

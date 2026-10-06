@@ -6,13 +6,15 @@ import { logger } from '../utils/logger';
 import { toDateStr } from '../utils/dateUtils';
 import { computeNextDueDate, resolveDeletionIds } from '../utils/recurrenceUtils';
 import { buildTodayReminders } from '../utils/calendarTimeUtils';
-import { resetSubtasksForNextOccurrence, daysBetween, removeSubtask } from '../utils/subtaskUtils';
+import { daysBetween, isSubtask, reorderChanges, subtaskCopiesForNextOccurrence } from '../utils/subtaskUtils';
 import { useActivityLog } from './useActivityLog';
 import { useXpStore, XP_REWARDS } from './useXpStore';
 import { diffTaskFields, ACTIONS } from '../utils/taskFields';
 import UI_STRINGS from '../data/ui-strings.json';
 
 const TASKS_CACHE_PREFIX = 'vl_tasks_cache_';
+// Task + junction KB/tag (flatten thành _collections/_tags trong fetchTasks).
+const TASK_SELECT = '*, task_collections(collection_id, collections(id, title, type)), task_tags(tag_id, tags(id, name, color))';
 
 const todayStr = () => toDateStr();
 
@@ -71,7 +73,7 @@ export function useUserTasks() {
       // Try with task_collections + task_tags join first (v4.5.0 / v4.31.0)
       let { data, error } = await supabase
         .from('user_tasks')
-        .select('*, task_collections(collection_id, collections(id, title, type)), task_tags(tag_id, tags(id, name, color))')
+        .select(TASK_SELECT)
         .eq('user_id', userId)
         .or(filter)
         .order('due_date', { ascending: true })
@@ -107,18 +109,40 @@ export function useUserTasks() {
         return;
       }
 
-      // Flatten junction joins → task._collections / task._tags
-      const mapped = (data || []).map(task => ({
-        ...task,
-        _collections: (task.task_collections || [])
-          .map(tc => tc.collections)
-          .filter(Boolean),
-        _tags: (task.task_tags || [])
-          .map(tt => tt.tags)
-          .filter(Boolean),
-      }));
-      // Remove raw junction data
-      mapped.forEach(t => { delete t.task_collections; delete t.task_tags; });
+      // Flatten junction joins → task._collections / task._tags (bỏ dữ liệu junction thô)
+      const flatten = (row) => {
+        const t = {
+          ...row,
+          _collections: (row.task_collections || []).map(tc => tc.collections).filter(Boolean),
+          _tags: (row.task_tags || []).map(tt => tt.tags).filter(Boolean),
+        };
+        delete t.task_collections;
+        delete t.task_tags;
+        return t;
+      };
+      const mapped = (data || []).map(flatten);
+
+      // Subtask (v6.20.0) ẩn khỏi mọi view, nhưng badge `☑ 2/4` trên task cha cần ĐỦ
+      // subtask — query trên chỉ lấy task chưa xong + xong hôm nay → tải thêm mọi
+      // subtask của các task cha vừa tải. Lô 100 id (giới hạn độ dài URL), số lô hữu
+      // hạn. Lỗi (vd DB chưa chạy migration v6.19.0) → bỏ qua, phần còn lại vẫn chạy.
+      const parentIds = mapped.filter(t => !t.parent_task_id).map(t => t.id);
+      const seen = new Set(mapped.map(t => t.id));
+      for (let i = 0; i < parentIds.length; i += 100) {
+        const { data: kids, error: kidsError } = await supabase
+          .from('user_tasks')
+          .select(TASK_SELECT)
+          .eq('user_id', userId)
+          .in('parent_task_id', parentIds.slice(i, i + 100));
+        if (kidsError) {
+          logger.warn('[useUserTasks] subtask fetch skipped:', kidsError.message);
+          break;
+        }
+        for (const k of kids || []) {
+          if (!seen.has(k.id)) { seen.add(k.id); mapped.push(flatten(k)); }
+        }
+      }
+
       if (epoch === fetchEpochRef.current) {
         setTasks(mapped);
         try {
@@ -151,7 +175,7 @@ export function useUserTasks() {
 
   // ── Add task ───────────────────────────────────────────
   // Knowledge links are created separately through task_collections/linkCollection.
-  const addTask = useCallback(async ({ title, description, dueDate, dueTime, startTime, endTime, subtasks, parentTaskId, priority, recurrenceRule, completed, completedAt, status }) => {
+  const addTask = useCallback(async ({ title, description, dueDate, dueTime, startTime, endTime, parentTaskId, priority, recurrenceRule, completed, completedAt, status }) => {
     const taskStatus = status || (completed ? 'done' : 'todo');
     const newTask = {
       id: crypto.randomUUID ? crypto.randomUUID() : `local_${Date.now()}`,
@@ -163,9 +187,7 @@ export function useUserTasks() {
       // Khung giờ làm (v6.17.0) chỉ gửi khi có: DB chưa chạy migration thì task
       // không đặt khung giờ vẫn tạo được.
       ...(startTime && endTime ? { start_time: startTime, end_time: endTime } : {}),
-      // Checklist việc con (v6.18.0) — cùng lý do: chỉ gửi khi có.
-      ...(subtasks?.length ? { subtasks } : {}),
-      // Task con liên kết (v6.19.0) — cùng lý do: chỉ gửi khi có.
+      // Subtask (v6.19.0+) — cùng lý do: chỉ gửi khi có.
       ...(parentTaskId ? { parent_task_id: parentTaskId } : {}),
       priority: priority || 0,
       recurrence_rule: recurrenceRule || null,
@@ -255,12 +277,9 @@ export function useUserTasks() {
           // 2 key này → undefined bị JSON bỏ qua, insert không đụng cột chưa có.
           start_time: task.start_time,
           end_time: task.end_time,
-          // Checklist sang kỳ sau: bỏ tick hết, hạn riêng dời cùng khoảng với hạn task.
-          subtasks: task.subtasks?.length
-            ? resetSubtasksForNextOccurrence(task.subtasks, daysBetween(task.due_date, nextDate))
-            : undefined,
-          // Task con tự lặp: kỳ sau vẫn thuộc cùng task cha (undefined trước migration → bỏ qua).
+          // Subtask tự lặp: kỳ sau vẫn thuộc cùng task cha (undefined trước migration → bỏ qua).
           parent_task_id: task.parent_task_id,
+          sort_order: task.sort_order,
           priority: task.priority || 0,
           recurrence_rule: task.recurrence_rule, // clone rule for chain
           recurrence_parent_id: task.id,
@@ -288,6 +307,22 @@ export function useUserTasks() {
                 task._collections.map(c => ({ task_id: inserted.id, collection_id: c.id }))
               );
               if (collError) logger.warn('[useUserTasks] spawnRecurring: copy KB links failed:', collError.message);
+            }
+            // Task cha lặp: kỳ sau mang theo subtask (chưa xong, hạn dời theo) — giống
+            // checklist cũ. Đọc từ DB để có đủ cả subtask không nằm trong state.
+            // Best-effort như tag/KB ở trên.
+            if (!task.parent_task_id) {
+              const { data: kids, error: kidsError } = await supabase
+                .from('user_tasks').select('*').eq('user_id', userId).eq('parent_task_id', task.id);
+              if (kidsError) {
+                logger.warn('[useUserTasks] spawnRecurring: read subtasks failed:', kidsError.message);
+              } else if (kids?.length) {
+                const copies = subtaskCopiesForNextOccurrence(kids, inserted.id, daysBetween(task.due_date, nextDate))
+                  .map(c => ({ ...c, user_id: userId }));
+                const { data: copied, error: copyError } = await supabase.from('user_tasks').insert(copies).select();
+                if (copyError) logger.warn('[useUserTasks] spawnRecurring: copy subtasks failed:', copyError.message);
+                else setTasks(prev => [...prev, ...(copied || []).map(c => ({ ...c, _tags: [], _collections: [] }))]);
+              }
             }
           }
           return true; // Success
@@ -360,7 +395,8 @@ export function useUserTasks() {
         logTaskEvent(ACTIONS.TASK_COMPLETED, taskId);
         // Dedup theo taskId — tích/bỏ tích/tích lại không cộng XP nhiều lần
         // (addXp tự kiểm `reason` + `meta` trên xp_logs trước khi ghi).
-        addXp(XP_REWARDS.task_done, 'task_done', { taskId });
+        // Subtask không cộng XP — XP chỉ tính khi xong task cha (v6.20.0).
+        if (!task?.parent_task_id) addXp(XP_REWARDS.task_done, 'task_done', { taskId });
 
         // Spawn next recurring task (fire-and-forget, non-blocking)
         if (task?.recurrence_rule) {
@@ -394,14 +430,13 @@ export function useUserTasks() {
     // Best-effort dựa trên state cục bộ hiện có (có thể thiếu — vd 1 task lịch sử
     // chưa từng vào `tasks` — không sao, DB call bên dưới vẫn xử lý đúng dù state
     // cục bộ không đầy đủ).
-    const localIds = resolveDeletionIds(tasks, taskId);
+    // + subtask của các task bị xoá: DB tự xoá theo (FK CASCADE, v6.20.0) → state làm theo.
+    const chainIds = resolveDeletionIds(tasks, taskId);
+    const localIds = [...chainIds, ...tasks.filter(t => chainIds.includes(t.parent_task_id)).map(t => t.id)];
     const backups = tasks.filter(t => localIds.includes(t.id));
 
     // Optimistic
-    // Task con của task bị xoá: DB tự SET NULL parent_task_id (v6.19.0) → state làm theo.
-    setTasks(prev => prev
-      .filter(t => !localIds.includes(t.id))
-      .map(t => (t.parent_task_id && localIds.includes(t.parent_task_id) ? { ...t, parent_task_id: null } : t)));
+    setTasks(prev => prev.filter(t => !localIds.includes(t.id)));
 
     if (isAuth) {
       try {
@@ -597,27 +632,46 @@ export function useUserTasks() {
     return true;
   }, [isAuth, userId, tasks, logFieldChanges, spawnRecurringTask]);
 
-  // ── Chuyển 1 việc con (checklist) thành TASK CON liên kết ──
-  // Tạo task con TRƯỚC rồi mới gỡ khỏi checklist: lỗi giữa chừng thì việc con vẫn còn.
-  // Task con lấy hạn riêng của việc con, không có thì lấy ngày hạn của task cha.
-  // Trả checklist mới của task cha (null nếu thất bại) để nơi gọi đồng bộ bản chụp.
-  const convertSubtaskToTask = useCallback(async (parentTask, subtaskId) => {
-    const item = (parentTask?.subtasks || []).find(s => s.id === subtaskId);
-    if (!item) return null;
-    const created = await addTask({
-      title: item.title,
-      dueDate: item.due_date || parentTask.due_date,
-      parentTaskId: parentTask.parent_task_id ? null : parentTask.id, // chỉ 1 cấp
-    });
-    if (!created) return null;
-    const next = removeSubtask(parentTask.subtasks, subtaskId);
-    await updateTask(parentTask.id, { subtasks: next });
-    return next;
-  }, [addTask, updateTask]);
+  // ── Subtask (v6.20.0): row user_tasks có parent_task_id, ẩn trong task cha ──
 
-  // ── Task con của 1 task (v6.19.0) — đủ cả task con đã xong ngày cũ (không có
-  // trong state). Guest/lỗi → [] (popup gộp thêm task con từ state, xem mergeChildTasks).
-  const getChildTasks = useCallback(async (parentId) => {
+  // Tạo nhiều subtask cho 1 task cha (form tạo task). Tuần tự để thứ tự tạo = thứ
+  // tự gõ (subtask chưa kéo thả xếp theo created_at). Hạn = hạn task cha.
+  const addSubtasks = useCallback(async (parent, titles) => {
+    const created = [];
+    for (const title of titles) {
+      const t = await addTask({ title, dueDate: parent.due_date, parentTaskId: parent.id });
+      if (t) created.push(t);
+    }
+    return created;
+  }, [addTask]);
+
+  // Kéo thả: ghi sort_order mới. Ghi thẳng Supabase, KHÔNG qua updateTask — thứ tự
+  // không phải "sửa field" cần activity log. Optimistic, lỗi thì trả thứ tự cũ.
+  const reorderSubtasks = useCallback(async (ordered) => {
+    const changes = reorderChanges(ordered);
+    if (changes.length === 0) return true;
+    const next = new Map(changes.map(c => [c.id, c.sort_order]));
+    const before = new Map(ordered.map(t => [t.id, t.sort_order ?? null]));
+    setTasks(prev => prev.map(t => (next.has(t.id) ? { ...t, sort_order: next.get(t.id) } : t)));
+    if (!isAuth) return true;
+
+    const results = await Promise.all(changes.map(c => supabase
+      .from('user_tasks')
+      .update({ sort_order: c.sort_order })
+      .eq('id', c.id)
+      .eq('user_id', userId)));
+    const failed = results.find(r => r.error);
+    if (failed) {
+      logger.error('[useUserTasks] reorderSubtasks error:', failed.error.message);
+      setTasks(prev => prev.map(t => (next.has(t.id) ? { ...t, sort_order: before.get(t.id) } : t)));
+      return false;
+    }
+    return true;
+  }, [isAuth, userId]);
+
+  // Subtask của 1 task cha, đủ cả subtask không nằm trong state (task cha đã xong
+  // ngày cũ, mở từ Lịch). Guest/lỗi → [] (popup gộp thêm từ state, xem mergeSubtasks).
+  const getSubtasks = useCallback(async (parentId) => {
     if (!isAuth || !userId || !parentId) return [];
     const { data, error } = await supabase
       .from('user_tasks')
@@ -626,7 +680,7 @@ export function useUserTasks() {
       .eq('parent_task_id', parentId)
       .order('created_at', { ascending: true });
     if (error) {
-      logger.warn('[useUserTasks] getChildTasks error:', error.message);
+      logger.warn('[useUserTasks] getSubtasks error:', error.message);
       return [];
     }
     return data || [];
@@ -665,7 +719,9 @@ export function useUserTasks() {
         logger.error('[useUserTasks] getCompletedRange error:', error.message);
         return [];
       }
-      return data || [];
+      // Subtask ẩn khỏi Lịch/Kanban/Đã xong. Lọc ở client (không .is() trong query)
+      // để vẫn chạy khi DB chưa có cột parent_task_id.
+      return (data || []).filter(t => !isSubtask(t));
     } catch (err) {
       logger.error('[useUserTasks] getCompletedRange exception:', err);
       return [];
@@ -830,9 +886,12 @@ export function useUserTasks() {
   // status 'skip' (cột Bỏ qua của Kanban) = user chủ động gác lại → KHÔNG còn là việc
   // cần làm: ra khỏi Quá hạn/Hôm nay/Sắp tới, số đếm, Lịch và bộ chọn task của
   // Finance/Knowledge. Chỉ Kanban đọc `skippedTasks` để dựng cột Bỏ qua.
-  const pendingTasks = tasks.filter(t => !t.completed && t.status !== 'skip');
-  const skippedTasks = tasks.filter(t => !t.completed && t.status === 'skip');
-  const completedToday = tasks.filter(t => t.completed);
+  // Subtask (parent_task_id, v6.20.0) chỉ sống bên trong task cha → loại khỏi MỌI
+  // danh sách dẫn xuất; ai cần subtask thì đọc `tasks` (badge, popup, nhắc giờ).
+  const topLevel = tasks.filter(t => !isSubtask(t));
+  const pendingTasks = topLevel.filter(t => !t.completed && t.status !== 'skip');
+  const skippedTasks = topLevel.filter(t => !t.completed && t.status === 'skip');
+  const completedToday = topLevel.filter(t => t.completed);
 
   // ── Overdue Triage splits ─────────────────────────────────
   const today = todayStr();
@@ -859,8 +918,9 @@ export function useUserTasks() {
     uncompleteTask,
     updateTask,
     deleteTask,
-    convertSubtaskToTask,
-    getChildTasks,
+    addSubtasks,
+    reorderSubtasks,
+    getSubtasks,
     rolloverTask,
     getCompletedTasksRange,
     linkCollection,

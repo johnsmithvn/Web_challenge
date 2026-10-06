@@ -513,14 +513,6 @@
   align-items: flex-start;
   gap: 0.45rem;
 }
-
-/* Chip task cha / badge task con (ChildTaskList.jsx, style trong tasks.css) */
-.kanban-card-relations {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-
 .kanban-checkbox {
   width: 17px;
   height: 17px;

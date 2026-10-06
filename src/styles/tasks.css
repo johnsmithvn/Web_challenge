@@ -481,16 +481,36 @@
   overflow-wrap: anywhere;
 }
 
-.subtask-list--edit .subtask-row__title { cursor: text; }
-
 .subtask-row--done .subtask-row__title {
   color: var(--text-muted);
   text-decoration: line-through;
 }
 
-.subtask-row__rename { flex: 1; min-width: 0; padding: 0.2rem 0.45rem; font-size: 0.84rem; }
-.subtask-row__date { width: 9rem; padding: 0.2rem 0.4rem; font-size: 0.78rem; color-scheme: dark; }
-[data-theme="light"] .subtask-row__date { color-scheme: light; }
+/* Tên subtask là nút mở popup Chi tiết của chính nó */
+.subtask-row__open {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.subtask-row__open:hover,
+.subtask-row__open:focus-visible { text-decoration: underline; }
+
+.subtask-row__pri {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.subtask-row__time {
+  font-size: 0.7rem;
+  color: #22d3ee;
+  white-space: nowrap;
+}
 
 .subtask-row__icon {
   display: inline-flex;
@@ -518,11 +538,9 @@
   background: rgba(139, 92, 246, 0.08);
   color: #a78bfa;
   font-size: 0.7rem;
-  font-family: inherit;
-  cursor: pointer;
+  white-space: nowrap;
 }
 
-.subtask-due:disabled { cursor: default; }
 .subtask-due--overdue { border-color: rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.12); color: #f87171; }
 
 .subtask-list__add {
@@ -545,18 +563,31 @@
 
 .subtask-badge--done { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
 
-/* Checklist tick nhanh khi mở rộng hàng Danh sách */
+/* Subtask tick nhanh khi mở rộng hàng Danh sách */
 .task-row-subtasks { margin-top: 0.4rem; }
+
+/* Form tạo task: danh sách subtask nháp (tạo cùng task cha khi bấm Lưu) */
+.subtask-draft-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 28px;
+  padding: 2px 4px;
+  font-size: 0.84rem;
+  color: var(--text-primary);
+}
+
+.subtask-draft-row > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 
 @media (prefers-reduced-motion: reduce) {
   .subtask-list__bar > span { transition: none; }
 }
 
-/* ── Task con liên kết (components/ChildTaskList.jsx, v6.19.0) ── */
+/* Chip "↳ Task cha" ở đầu popup Chi tiết của subtask */
 .task-parent-chip {
   display: inline-flex;
   align-items: center;
-  max-width: 14rem;
+  max-width: 16rem;
   padding: 1px 7px;
   border-radius: var(--radius-full);
   background: rgba(6, 182, 212, 0.1);
@@ -572,39 +603,8 @@
 .task-parent-chip--link:hover,
 .task-parent-chip--link:focus-visible { text-decoration: underline; }
 
-.task-child-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 7px;
-  border-radius: var(--radius-full);
-  background: rgba(6, 182, 212, 0.1);
-  color: #22d3ee;
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.child-task-list__open {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.child-task-list__open:hover,
-.child-task-list__open:focus-visible { text-decoration: underline; }
-
-.child-task-list__pri {
-  width: 7px;
-  height: 7px;
-  flex-shrink: 0;
-  border-radius: 50%;
-}
-
 [data-theme="light"] .task-parent-chip,
-[data-theme="light"] .task-child-badge { color: #0e7490; }
+[data-theme="light"] .subtask-row__time { color: #0e7490; }
 
 .task-option-btn--sm {
   padding: 0.22rem 0.45rem;

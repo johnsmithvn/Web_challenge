@@ -18,7 +18,7 @@ export default function TaskCreateModal({
   taskModel,
 }) {
   const { tags: allTags, addTag } = useTags();
-  const { addTask, linkTaskTag } = taskModel;
+  const { addTask, addSubtasks, linkTaskTag } = taskModel;
 
   // Escape đóng modal. Ctrl/Cmd+Enter do TaskForm tự xử lý.
   useEffect(() => {
@@ -32,7 +32,7 @@ export default function TaskCreateModal({
 
   if (!isOpen) return null;
 
-  const handleCreate = async (fields, tagIds) => {
+  const handleCreate = async (fields, tagIds, subtaskTitles = []) => {
     const status = initialStatus || 'todo';
     const created = await addTask({
       title: fields.title,
@@ -41,7 +41,6 @@ export default function TaskCreateModal({
       dueTime: fields.due_time,
       startTime: fields.start_time,
       endTime: fields.end_time,
-      subtasks: fields.subtasks,
       priority: fields.priority,
       recurrenceRule: fields.recurrence_rule,
       status,
@@ -53,6 +52,7 @@ export default function TaskCreateModal({
       const selectedTags = (allTags || []).filter((t) => tagIds.includes(t.id));
       await Promise.all(selectedTags.map((tag) => linkTaskTag(created.id, tag)));
     }
+    if (created && subtaskTitles.length > 0) await addSubtasks(created, subtaskTitles);
 
     onClose?.();
   };

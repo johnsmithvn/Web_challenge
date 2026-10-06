@@ -14,8 +14,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import GenericModal from './GenericModal';
 import AppIcon from './AppIcon';
 import PriorityPicker from './PriorityPicker';
-import SubtaskList from './SubtaskList';
-import ChildTaskList, { ParentChip } from './ChildTaskList';
+import SubtaskList, { ParentChip } from './SubtaskList';
 import { useConfirm } from './ConfirmModal';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
@@ -57,12 +56,13 @@ function LogValue({ value, variant, expanded, onToggle }) {
   );
 }
 
-export default function TaskDetailModal({ task, onClose, onEdit, editContent, onComplete, onDelete, onUpdatePriority, onUpdateSubtasks, onConvertSubtask, taskModel, onOpenTask }) {
+export default function TaskDetailModal({ task, onClose, onEdit, editContent, onComplete, onDelete, onUpdatePriority, taskModel, onOpenTask }) {
   const { user } = useAuth();
   const { confirm, ConfirmModal } = useConfirm();
   const { getTaskLogs, addNote, updateNote, deleteLog } = useActivityLog();
 
   const [tab, setTab] = useState('activity');
+  const [showActivity, setShowActivity] = useState(false); // khu Hoạt động/Ghi chú thu gọn mặc định
   const [rows, setRows] = useState([]);
   // Modal mount lại mỗi lần mở (render có điều kiện ở TaskListSection) nên khởi
   // tạo đúng ngay từ đầu — không cần setState đồng bộ trong effect.
@@ -177,7 +177,7 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
       >
         <GenericModal.Body>
           {editContent ? editContent : <>
-          {/* Task con: chip về task cha (bấm để mở popup task cha) */}
+          {/* Subtask: chip về task cha (bấm để mở popup task cha) */}
           {task.parent_task_id && (
             <div className="td-parent">
               <ParentChip
@@ -252,24 +252,25 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
             ? <div className="task-desc-box">{task.description}</div>
             : <div className="task-desc-box td-muted td-desc--empty">Chưa có mô tả</div>}
 
-          {/* Checklist việc con — sửa trực tiếp, mỗi thao tác lưu ngay (kiểu mặt sau card Trello) */}
-          {onUpdateSubtasks && (
-            <div className="td-subtasks">
-              <SubtaskList
-                items={task.subtasks}
-                onChange={onUpdateSubtasks}
-                onConvert={onConvertSubtask}
-              />
-            </div>
-          )}
-
-          {/* Task con liên kết (v6.19.0) — chỉ 1 cấp: task con không có task con */}
+          {/* Subtask (v6.20.0) — mỗi thao tác lưu ngay; chỉ 1 cấp: subtask không có subtask */}
           {taskModel && onOpenTask && !task.parent_task_id && (
             <div className="td-subtasks">
-              <ChildTaskList parent={task} taskModel={taskModel} onOpenTask={onOpenTask} />
+              <SubtaskList parent={task} taskModel={taskModel} onOpenTask={onOpenTask} />
             </div>
           )}
 
+          {/* Hoạt động & Ghi chú — thu gọn mặc định cho popup gọn; bấm để mở */}
+          <button
+            type="button"
+            className="td-section-toggle"
+            aria-expanded={showActivity}
+            onClick={() => setShowActivity((v) => !v)}
+          >
+            <AppIcon name={showActivity ? 'caretDown' : 'caretRight'} size={13} />
+            {loading ? 'Hoạt động & ghi chú' : `Hoạt động · ${activityRows.length}  ·  Ghi chú · ${noteRows.length}`}
+          </button>
+
+          {showActivity && (<>
           {/* ── Tab ── */}
           <div className="tasks-viewbar td-tabs" role="tablist">
             <button
@@ -412,6 +413,7 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
               </>
             )}
           </div>
+          </>)}
           </>}
         </GenericModal.Body>
 

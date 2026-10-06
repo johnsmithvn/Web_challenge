@@ -35,9 +35,11 @@ export default function TaskForm({
   initialBlockStart, // click ô giờ trên lưới Ngày/Tuần → khung giờ làm 1 tiếng (kiểu Google Calendar)
   allTags = [],
   addTag,
-  onSubmit,      // async (fields, tagIds) => void
+  onSubmit,      // async (fields, tagIds, subtaskTitles) => void — subtaskTitles chỉ có khi TẠO
   onCancel,
   submitLabel,
+  taskModel,     // khi SỬA: có thì hiện subtask thật (lưu ngay, xem SubtaskList)
+  onOpenTask,    // mở popup Chi tiết của 1 subtask
   children,      // phần riêng của nơi gọi, hiện trên hàng nút (vd liên kết KB)
 }) {
   const id = useId();
@@ -62,7 +64,9 @@ export default function TaskForm({
     const end = Math.min(timeToMinutes(initialBlockStart) + 60, 1439);
     return `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
   });
-  const [subtasks, setSubtasks] = useState(() => task?.subtasks || []);
+  // Subtask nháp khi TẠO task (chưa có task cha để gắn) — tạo thật sau khi lưu task cha.
+  const [subtaskTitles, setSubtaskTitles] = useState([]);
+  const [subtaskDraft, setSubtaskDraft] = useState('');
   const [priority, setPriority] = useState(task?.priority || 0);
   const [tagIds, setTagIds] = useState(() => (task?._tags || []).map((t) => t.id));
   const [showRec, setShowRec] = useState(!!rec);
@@ -102,12 +106,12 @@ export default function TaskForm({
       fields.start_time = showBlock ? startTime : null;
       fields.end_time = showBlock ? endTime : null;
     }
-    // Checklist việc con (v6.18.0): cùng quy tắc — task không dùng thì không chạm cột.
-    if (subtasks.length || task?.subtasks?.length) fields.subtasks = subtasks;
+    // Ô subtask nháp còn chữ mà chưa Enter → vẫn tính (không lặng lẽ mất).
+    const pendingTitles = subtaskDraft.trim() ? [...subtaskTitles, subtaskDraft.trim()] : subtaskTitles;
 
     setSaving(true);
     try {
-      await onSubmit(fields, tagIds);
+      await onSubmit(fields, tagIds, task ? undefined : pendingTitles);
     } finally {
       setSaving(false);
     }
@@ -146,7 +150,49 @@ export default function TaskForm({
         />
       </div>
 
-      <SubtaskList items={subtasks} onChange={setSubtasks} />
+      {/* Subtask: SỬA → danh sách thật, lưu ngay. TẠO → nháp, tạo cùng task cha khi Lưu.
+          Subtask không có subtask (1 cấp). */}
+      {task && taskModel && !task.parent_task_id && (
+        <SubtaskList parent={task} taskModel={taskModel} onOpenTask={onOpenTask} />
+      )}
+      {!task && (
+        <div className="subtask-list subtask-list--edit">
+          <div className="subtask-list__head">
+            <span><AppIcon name="listChecks" size={14} /> Subtask{subtaskTitles.length > 0 && ` · ${subtaskTitles.length}`}</span>
+          </div>
+          {subtaskTitles.map((t, i) => (
+            <div key={`${i}-${t}`} className="subtask-draft-row">
+              <AppIcon name="checkSquare" size={13} />
+              <span>{t}</span>
+              <button
+                type="button"
+                className="subtask-row__icon subtask-row__icon--danger"
+                onClick={() => setSubtaskTitles((prev) => prev.filter((_, j) => j !== i))}
+                aria-label={`Bỏ subtask: ${t}`}
+              >
+                <AppIcon name="x" size={13} />
+              </button>
+            </div>
+          ))}
+          <input
+            className="auth-input subtask-list__add"
+            value={subtaskDraft}
+            onChange={(e) => setSubtaskDraft(e.target.value)}
+            placeholder="Thêm subtask… (Enter để thêm tiếp)"
+            aria-label="Thêm subtask"
+            onKeyDown={(e) => {
+              // Enter thêm subtask nháp, KHÔNG submit form.
+              if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                if (subtaskDraft.trim()) {
+                  setSubtaskTitles((prev) => [...prev, subtaskDraft.trim()]);
+                  setSubtaskDraft('');
+                }
+              }
+            }}
+          />
+        </div>
+      )}
 
       <div style={{ position: 'relative' }}>
         <span className="task-form__label">Thời hạn</span>

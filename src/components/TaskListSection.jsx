@@ -9,8 +9,7 @@ import PriorityPicker from './PriorityPicker';
 import TaskDetailModal from './TaskDetailModal';
 import TaskForm from './TaskForm';
 import SubtaskList, { SubtaskBadge } from './SubtaskList';
-import { ParentChip, ChildCountBadge } from './ChildTaskList';
-import { countOpenChildren } from '../utils/subtaskUtils';
+import { subtaskProgressByParent } from '../utils/subtaskUtils';
 import { useConfirm } from './ConfirmModal';
 import { toDateStr } from '../utils/dateUtils';
 // v5.0.0: PRIORITY_OPTIONS/WEEKDAYS dời sang utils/taskFields để TaskDetailModal
@@ -28,7 +27,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
   const navigate = useNavigate();
   const {
     todayTasks, overdueTasks, futureTasks,
-    addTask, completeTask, uncompleteTask, updateTask, deleteTask, convertSubtaskToTask,
+    addTask, completeTask, uncompleteTask, updateTask, deleteTask, addSubtasks,
     linkCollection, unlinkCollection,
     linkTaskTag, unlinkTaskTag,
     getCompletedTasksRange,
@@ -154,12 +153,11 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
     setExpandedId(prev => prev === taskId ? null : taskId);
   }, [overflowTaskId]);
 
-  // Task con liên kết (v6.19.0): tra task cha + đếm task con chưa xong từ state.
+  // Subtask (v6.20.0) ẩn khỏi danh sách; badge `☑ 2/4` trên task cha tính từ state.
   const allTasks = taskModel.tasks;
-  const tasksById = useMemo(() => new Map((allTasks || []).map(t => [t.id, t])), [allTasks]);
-  const openChildCounts = useMemo(() => countOpenChildren(allTasks || []), [allTasks]);
+  const subtaskProgress = useMemo(() => subtaskProgressByParent(allTasks || []), [allTasks]);
 
-  // Mở popup của 1 task bất kỳ (chip task cha, task con trong popup).
+  // Mở popup của 1 task bất kỳ (subtask từ trong popup task cha, chip task cha).
   const openTaskDetail = useCallback((t) => {
     setDetailFallback(t);
     setDetailTaskId(t.id);
@@ -167,7 +165,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
   }, []);
 
   /* ── Add ── (field do TaskForm gom, payload snake_case → đổi sang tham số addTask) */
-  const handleAdd = useCallback(async (fields, tagIds) => {
+  const handleAdd = useCallback(async (fields, tagIds, subtaskTitles = []) => {
     const created = await addTask({
       title: fields.title,
       description: fields.description,
@@ -175,7 +173,6 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
       dueTime: fields.due_time,
       startTime: fields.start_time,
       endTime: fields.end_time,
-      subtasks: fields.subtasks,
       priority: fields.priority,
       recurrenceRule: fields.recurrence_rule,
     });
@@ -183,8 +180,9 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
       const selectedTags = allTags.filter(t => tagIds.includes(t.id));
       await Promise.all(selectedTags.map(tag => linkTaskTag(created.id, tag)));
     }
+    if (created && subtaskTitles.length > 0) await addSubtasks(created, subtaskTitles);
     setShowForm(false);
-  }, [allTags, addTask, linkTaskTag, setShowForm]);
+  }, [allTags, addTask, addSubtasks, linkTaskTag, setShowForm]);
 
   /* ── Inline edit ── */
   const startEdit = (task) => setEditId(task.id);
@@ -270,6 +268,8 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
               addTag={addTag}
               onSubmit={(changes, tagIds) => saveEdit(task, changes, tagIds)}
               onCancel={cancelEdit}
+              taskModel={taskModel}
+              onOpenTask={openTaskDetail}
             >
               {/* Liên kết KB là quan hệ junction, ghi ngay qua LinkKBModal — không đi theo nút Lưu */}
               <div>
@@ -312,11 +312,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
                   style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
                   {task.title}
                 </span>
-                <SubtaskBadge items={task.subtasks} />
-                {task.parent_task_id && (
-                  <ParentChip parent={tasksById.get(task.parent_task_id)} onOpen={openTaskDetail} />
-                )}
-                <ChildCountBadge count={openChildCounts.get(task.id)} />
+                <SubtaskBadge progress={subtaskProgress.get(task.id)} />
                 {task.due_date !== toDateStr() && (
                   <span className="task-chip" style={{
                     background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(139,92,246,0.1)',
@@ -376,12 +372,13 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
                   {task.description || <span style={{ color: 'var(--text-muted)' }}>Nhiệm vụ này chưa có mô tả.</span>}
                 </div>
               )}
-              {expanded && (task.subtasks || []).length > 0 && (
+              {expanded && subtaskProgress.get(task.id) && (
                 <div className="task-row-subtasks">
                   <SubtaskList
                     mode="tick"
-                    items={task.subtasks}
-                    onChange={(next) => updateTask(task.id, { subtasks: next })}
+                    parent={task}
+                    taskModel={taskModel}
+                    onOpenTask={openTaskDetail}
                   />
                 </div>
               )}
@@ -663,15 +660,6 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
             onDelete={task.completed ? handleDeleteCompleted : handleDeleteTask}
             onUpdatePriority={async (newPri) => {
               await updateTask(task.id, { priority: newPri });
-            }}
-            // completedList là dữ liệu tải riêng (task đã xong ngày cũ) → đồng bộ tay như saveEdit.
-            onUpdateSubtasks={async (next) => {
-              setCompletedList(prev => prev.map(t => t.id === task.id ? { ...t, subtasks: next } : t));
-              await updateTask(task.id, { subtasks: next });
-            }}
-            onConvertSubtask={async (item) => {
-              const next = await convertSubtaskToTask(task, item.id);
-              if (next) setCompletedList(prev => prev.map(t => t.id === task.id ? { ...t, subtasks: next } : t));
             }}
           />
         );

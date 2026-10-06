@@ -113,7 +113,7 @@ npm run db:local:stop
 > `db:local:reset` xóa toàn bộ dữ liệu database local trước khi replay migration. Đây là lệnh user
 > chủ động chạy cho môi trường test trắng; agent không tự chạy và không được dùng với hosted project.
 
-24 migration local được chạy tự động theo timestamp:
+25 migration local được chạy tự động theo timestamp:
 
 1. [`20260802000000_base_v5_0_0.sql`](./supabase/migrations/20260802000000_base_v5_0_0.sql)
 2. [`20260805000000_vault_v5_2_0.sql`](./supabase/migrations/20260805000000_vault_v5_2_0.sql)
@@ -139,6 +139,7 @@ npm run db:local:stop
 22. [`20261005000000_task_time_block_v6_17_0.sql`](./supabase/migrations/20261005000000_task_time_block_v6_17_0.sql)
 23. [`20261005010000_task_subtasks_v6_18_0.sql`](./supabase/migrations/20261005010000_task_subtasks_v6_18_0.sql)
 24. [`20261006000000_task_parent_v6_19_0.sql`](./supabase/migrations/20261006000000_task_parent_v6_19_0.sql)
+25. [`20261006010000_subtask_order_v6_20_0.sql`](./supabase/migrations/20261006010000_subtask_order_v6_20_0.sql)
 
 Sau `npm run db:local:start`, tạo file `.env.development.local` (Git bỏ qua) bằng Project URL và
 Publishable key hiện trong kết quả:
@@ -183,6 +184,7 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 | 19 | [`data/migration_v6.17.0_task_time_block.sql`](./data/migration_v6.17.0_task_time_block.sql) | Cột `user_tasks.start_time`/`end_time` (khung giờ làm, cùng ngày `due_date`) + CHECK `end_time > start_time`. Additive, idempotent; chạy trước khi deploy frontend v6.17.0 là an toàn. |
 | 20 | [`data/migration_v6.18.0_task_subtasks.sql`](./data/migration_v6.18.0_task_subtasks.sql) | Cột `user_tasks.subtasks JSONB NOT NULL DEFAULT '[]'` (checklist việc con) + CHECK là mảng. Additive, idempotent; chạy trước khi deploy frontend v6.18.0 là an toàn. |
 | 21 | [`data/migration_v6.19.0_task_parent.sql`](./data/migration_v6.19.0_task_parent.sql) | Cột `user_tasks.parent_task_id` (task con liên kết) + FK composite `(parent_task_id, user_id)` ép cùng chủ, `ON DELETE SET NULL (parent_task_id)`. **Cần Postgres 15+** (tự từ chối nếu thấp hơn). Additive, idempotent. |
+| 22 | [`data/migration_v6.20.0_subtask_order.sql`](./data/migration_v6.20.0_subtask_order.sql) | Cột `user_tasks.sort_order` (thứ tự kéo thả subtask) + đổi FK task cha sang `ON DELETE CASCADE` (xoá task cha → xoá subtask). Cần chạy v6.19.0 trước (tự từ chối nếu thiếu). Idempotent. |
 
 Dọn dẹp bảng cũ (tùy chọn):
 - [`data/drop_incubator_tables.sql`](./data/drop_incubator_tables.sql) (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).

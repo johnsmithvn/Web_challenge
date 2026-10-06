@@ -47,7 +47,6 @@ export default function TasksPage() {
     deleteTask,
     completeTask,
     updateTask,
-    convertSubtaskToTask,
     linkTaskTag,
     unlinkTaskTag,
   } = taskModel;
@@ -379,6 +378,8 @@ export default function TasksPage() {
                 task={selectedTask}
                 onSubmit={handleSaveSelectedTaskEdit}
                 onCancel={() => setIsEditingSelected(false)}
+                taskModel={taskModel}
+                onOpenTask={handleOpenTaskInModal}
                 allTags={allTags}
                 addTag={addTag}
               />
@@ -398,15 +399,6 @@ export default function TasksPage() {
             await updateTask(selectedTask.id, { priority: newPri });
             setSelectedTask((prev) => (prev ? { ...prev, priority: newPri } : prev));
             refreshCalendars();
-          }}
-          // selectedTask là bản chụp lúc mở popup → tự cập nhật để checklist hiện đúng ngay.
-          onUpdateSubtasks={async (next) => {
-            setSelectedTask((prev) => (prev ? { ...prev, subtasks: next } : prev));
-            await updateTask(selectedTask.id, { subtasks: next });
-          }}
-          onConvertSubtask={async (item) => {
-            const next = await convertSubtaskToTask(selectedTask, item.id);
-            if (next) setSelectedTask((prev) => (prev ? { ...prev, subtasks: next } : prev));
           }}
         />
       )}

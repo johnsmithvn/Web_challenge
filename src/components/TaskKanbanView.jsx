@@ -8,8 +8,7 @@ import { toDateStr } from '../utils/dateUtils';
 import { hasExplicitTime } from '../utils/calendarTimeUtils';
 import { getKanbanRange, groupKanbanColumns } from '../utils/kanbanUtils';
 import SubtaskList, { SubtaskBadge } from './SubtaskList';
-import { ParentChip, ChildCountBadge } from './ChildTaskList';
-import { countOpenChildren } from '../utils/subtaskUtils';
+import { subtaskProgressByParent } from '../utils/subtaskUtils';
 import '../styles/kanban.css';
 
 /**
@@ -23,7 +22,8 @@ import '../styles/kanban.css';
  * 2. Cột Done hiển thị đầy đủ task đã hoàn thành theo dải ngày.
  * 3. Layout 3 cột trải rộng 100% canvas & Responsive linh hoạt trên mobile.
  * 4. Tab chuyển cột nhanh & Nút 1-tap chuyển status trên Mobile.
- * 5. Badge việc con `☑ 2/4` trên card, mở ra tick trực tiếp (SubtaskList mode tick).
+ * 5. Badge subtask `☑ 2/4` trên card, mở ra tick trực tiếp (SubtaskList mode tick);
+ *    subtask không thành thẻ riêng.
  * 6. Icon bút chì kích hoạt chỉnh sửa trực tiếp.
  * 7. Thanh bộ lọc thời gian (Tất cả [mặc định] / Hôm nay / 7 ngày / Tùy chọn).
  */
@@ -140,9 +140,8 @@ export default function TaskKanbanView({
   // Chia 4 cột (To Do / Doing / Skip theo status, Done theo ngày hoàn thành).
   // Task "Bỏ qua" không còn trong pendingTasks (xem useUserTasks) nên ghép skippedTasks vào.
   const openTasks = useMemo(() => [...pendingTasks, ...skippedTasks], [pendingTasks, skippedTasks]);
-  // Tra task cha + đếm task con chưa xong (mọi task chưa xong đều nằm trong state `tasks`).
-  const tasksById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
-  const openChildCounts = useMemo(() => countOpenChildren(tasks), [tasks]);
+  // Subtask (v6.20.0) không thành thẻ riêng; badge `☑ 2/4` trên thẻ cha tính từ state `tasks`.
+  const subtaskProgress = useMemo(() => subtaskProgressByParent(tasks), [tasks]);
   const { todo: todoList, doing: doingList, done: doneList, skip: skipList } = useMemo(
     () => groupKanbanColumns(openTasks, completedRangeTasks, range),
     [openTasks, completedRangeTasks, range]
@@ -304,8 +303,8 @@ export default function TaskKanbanView({
     const isToday = !isCompleted && task.due_date === today;
     const isFuture = !isCompleted && task.due_date > today;
 
-    // Checklist việc con (cột subtasks, v6.18.0) — thay cho cách đọc dòng "- [ ]" trong mô tả.
-    const hasSubtasks = (task.subtasks || []).length > 0;
+    // Subtask (parent_task_id) — thay cho cách đọc dòng "- [ ]" trong mô tả trước đây.
+    const hasSubtasks = Boolean(subtaskProgress.get(task.id));
     const isExpanded = expandedSubtaskIds.has(task.id);
 
     // Xác định class highlight theo thời hạn
@@ -394,17 +393,7 @@ export default function TaskKanbanView({
           <span className="kanban-card-title">{task.title}</span>
         </div>
 
-        {/* Task con liên kết (v6.19.0): chip về task cha / số task con chưa xong */}
-        {(task.parent_task_id || openChildCounts.get(task.id)) && (
-          <div className="kanban-card-relations">
-            {task.parent_task_id && (
-              <ParentChip parent={tasksById.get(task.parent_task_id)} onOpen={onSelectTask} />
-            )}
-            <ChildCountBadge count={openChildCounts.get(task.id)} />
-          </div>
-        )}
-
-        {/* Mặt trước thẻ: badge tiến độ, bấm để mở và tick ngay (sửa đầy đủ ở popup Chi tiết) */}
+        {/* Mặt trước thẻ: badge subtask, bấm để mở và tick ngay; bấm tên subtask = popup của nó */}
         {hasSubtasks && (
           <button
             type="button"
@@ -413,17 +402,13 @@ export default function TaskKanbanView({
             aria-expanded={isExpanded}
           >
             <AppIcon name={isExpanded ? 'caretDown' : 'caretRight'} size={11} />
-            <SubtaskBadge items={task.subtasks} />
+            <SubtaskBadge progress={subtaskProgress.get(task.id)} />
           </button>
         )}
 
         {hasSubtasks && isExpanded && (
           <div className="kanban-subtasks-list">
-            <SubtaskList
-              mode="tick"
-              items={task.subtasks}
-              onChange={(next) => handleUpdateTask(task.id, { subtasks: next })}
-            />
+            <SubtaskList mode="tick" parent={task} taskModel={taskModel} onOpenTask={onSelectTask} />
           </div>
         )}
 
