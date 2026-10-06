@@ -58,6 +58,8 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   mang chuỗi lặp riêng của subtask).
 
 ### Thời gian của task (v6.21.0)
+- Form có 1 dòng **Thời gian** mở popover chọn cả 2 mốc: ô Bắt đầu / ô Hạn (ô đang chọn nhận lần bấm lịch, mặc
+  định Hạn; đặt Bắt đầu xong tự sang Hạn), lịch tô khoảng giữa, giờ ẩn sau nút **Thêm giờ**.
 - 2 mốc, **đều tuỳ chọn** (ngày và giờ trong mỗi mốc cũng tuỳ chọn): **Bắt đầu** (`start_date` + `start_time`) và
   **Hạn** (`due_date` + `due_time`). Không có "kết thúc" riêng — kết thúc = Hạn (khung 9–10h = Bắt đầu 9:00, Hạn
   10:00). Bắt đầu phải trước Hạn; task lặp bắt buộc có Hạn. Không giờ = để trống (không còn "23:59 = Hết ngày").

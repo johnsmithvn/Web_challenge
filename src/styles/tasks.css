@@ -367,6 +367,7 @@
 .task-form__date-btn {
   width: 100%;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
   text-align: left;
@@ -394,7 +395,7 @@
 
 /* Input giờ native: theme mặc định tối nên phải báo color-scheme, không thì icon
    đồng hồ của trình duyệt bị đen trên nền tối. */
-/* Bắt đầu / Hạn (v6.21.0): nút mở DatePickerPopover + nút ✕ bỏ mốc */
+/* Dòng Thời gian (v6.21.0): nút mở DatePickerPopover mode="task" + nút ✕ bỏ Bắt đầu và Hạn */
 .task-form__when {
   position: relative;
 }

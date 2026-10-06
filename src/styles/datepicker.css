@@ -79,6 +79,101 @@
   color: #ef4444;
 }
 
+/* ── mode="task": 2 ô Bắt đầu / Hạn — ô đang chọn nhận lần bấm lịch kế tiếp ── */
+.dp-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dp-field {
+  position: relative;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm, 8px);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dp-field--active {
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.1);
+}
+
+/* Viền trắng mờ vô hình trên nền sáng */
+[data-theme="light"] .dp-field:not(.dp-field--active) {
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.dp-field__pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.3rem 1.5rem 0.3rem 0.55rem;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dp-field__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+.dp-field__value {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.dp-field__value--empty {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.dp-field__clear {
+  position: absolute;
+  top: 50%;
+  right: 0.3rem;
+  transform: translateY(-50%);
+}
+
+.dp-time__pair {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.dp-time__input:disabled {
+  opacity: 0.4;
+}
+
+.dp-footer__time-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: auto;
+}
+
+.dp-error {
+  padding: 0 0.75rem 0.4rem;
+  font-size: 0.72rem;
+  color: #f87171;
+}
+
 /* ── Body: 2-column layout ── */
 .dp-body {
   display: flex;

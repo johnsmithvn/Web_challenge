@@ -848,6 +848,16 @@ the run reads as one bar rather than a scatter of selected days. The presets
 live **in** the popover rather than as chips beside it because a preset must
 set *both* ends, which a single-date shortcut cannot.
 
+**`mode="task"`** (v6.21.0) — Bắt đầu → Hạn của task trong 1 popover (kiểu
+Plane/ClickUp), dùng ở dòng **Thời gian** của `TaskForm`. Header là `.dp-fields`:
+2 ô `.dp-field` cạnh nhau (`minmax(0, 1fr)` ×2), mỗi ô gồm nhãn nhỏ + giá trị
+(ellipsis) + nút ✕ riêng. Ô **đang chọn** (`.dp-field--active`, viền purple `0.6`,
+nền `0.1`; mặc định là Hạn) nhận lần bấm lịch / phím tắt kế tiếp; vừa đặt Bắt đầu
+thì tự chuyển sang Hạn. Cột phím tắt giữ bản nhìn tới. Lịch tô khoảng như
+`mode="range"`. Giờ ẩn sau nút **Thêm giờ** ở trái footer (`.dp-footer__time-toggle`,
+`margin-right: auto`); bật lên thì hàng `.dp-time` có 2 cặp nhãn + ô giờ, ô giờ của
+mốc chưa có ngày bị `:disabled`. Bắt đầu sau Hạn → dòng `.dp-error` đỏ, Lưu bị khoá.
+
 ### Navigation — `.sidebar` / `.topbar` / `.bottom-tabs` (`navbar.css`)
 
 Sidebar: `rgba(8,8,15,0.92)` + `blur(24px)`, right hairline

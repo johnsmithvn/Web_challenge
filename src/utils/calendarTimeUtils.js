@@ -66,6 +66,18 @@ export function buildTodayReminders(tasks = [], todayStr) {
 }
 
 /**
+ * Bắt đầu sau (hoặc trùng giờ) Hạn — khớp CHECK `user_tasks_start_before_due` dưới DB.
+ * Cùng ngày mà 1 trong 2 không giờ thì hợp lệ. 'YYYY-MM-DD' / 'HH:MM' so sánh chuỗi được.
+ * @param {{startDate?: string, startTime?: string, dueDate?: string, dueTime?: string}} d - '' = không đặt
+ * @returns {boolean}
+ */
+export function isStartAfterDue({ startDate, startTime, dueDate, dueTime }) {
+  if (!startDate || !dueDate) return false;
+  if (startDate !== dueDate) return startDate > dueDate;
+  return Boolean(startTime && dueTime) && startTime >= dueTime;
+}
+
+/**
  * Nhãn ngắn của 1 mốc (Bắt đầu / Hạn / lúc bắt đầu làm) trên thẻ task:
  * "09:00" nếu hôm nay, "6/10 09:00", "6/10"; hôm nay không giờ → "Hôm nay".
  * @param {string|null} date - YYYY-MM-DD

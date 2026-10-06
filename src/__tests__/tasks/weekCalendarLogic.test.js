@@ -17,6 +17,7 @@ import {
   taskDayRole,
   taskDayMark,
   bucketTasksByDay,
+  isStartAfterDue,
 } from '../../utils/calendarTimeUtils.js';
 
 // v6.21.0: khối thời gian = Bắt đầu → Hạn CÙNG ngày (không còn end_time).
@@ -214,6 +215,15 @@ assert.equal(formatSpent('2026-10-05T09:00:00Z', '2026-10-05T11:00:00Z'), '2h');
 assert.equal(formatSpent('2026-10-05T09:00:00Z', '2026-10-08T13:00:00Z'), '3 ngày 4h');
 assert.equal(formatSpent('2026-10-05T09:00:00Z', '2026-10-05T08:00:00Z'), '0p');
 console.log('formatWhenShort + formatSpent: OK');
+
+// Bắt đầu sau Hạn (khớp CHECK user_tasks_start_before_due) — picker + form khoá Lưu.
+assert.equal(isStartAfterDue({ startDate: '2026-10-06', dueDate: '2026-10-05' }), true);
+assert.equal(isStartAfterDue({ startDate: '2026-10-05', dueDate: '2026-10-06' }), false);
+assert.equal(isStartAfterDue({ startDate: D, startTime: '10:00', dueDate: D, dueTime: '10:00' }), true, 'trùng giờ');
+assert.equal(isStartAfterDue({ startDate: D, startTime: '09:00', dueDate: D, dueTime: '10:00' }), false);
+assert.equal(isStartAfterDue({ startDate: D, startTime: '23:00', dueDate: D, dueTime: '' }), false, 'Hạn không giờ = hết ngày');
+assert.equal(isStartAfterDue({ startDate: '2026-10-06', dueDate: '' }), false, 'thiếu 1 mốc');
+console.log('isStartAfterDue: OK');
 
 // Kịch bản 2 task trùng giờ (Overlapping):
 // Task A: 14:00 - 15:30 (90 phút)

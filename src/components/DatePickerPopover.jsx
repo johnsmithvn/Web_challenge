@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import '../styles/datepicker.css';
 import { toDateStr } from '../utils/dateUtils';
+import { isStartAfterDue } from '../utils/calendarTimeUtils';
 import AppIcon from './AppIcon';
 
 // ── Date helpers ──────────────────────────────────────────
@@ -109,6 +110,14 @@ function buildCalendar(year, month) {
  * Click 1: đặt mốc đầu. Click 2: đặt mốc cuối (click trước mốc đầu thì tự
  * đảo). Click 3: bắt đầu khoảng mới.
  *
+ * ── mode="task" (v6.21.0) ────────────────────────────────────────────────
+ * Bắt đầu → Hạn của task trong 1 popover (kiểu Plane/ClickUp):
+ *   value    — { startDate, startTime, dueDate, dueTime } ('' / null = không đặt)
+ *   onChange — nhận cùng dạng khi Lưu ('' = không đặt)
+ *   2 ô trên cùng: ô đang chọn nhận lần bấm lịch/phím tắt kế tiếp (mặc định Hạn);
+ *   vừa đặt Bắt đầu thì tự chuyển sang Hạn. Lịch tô khoảng giữa 2 ngày. Giờ ẩn sau
+ *   nút "Thêm giờ". Bắt đầu sau Hạn → báo lỗi, khoá Lưu (khớp CHECK DB).
+ *
  * MỌI nút trong đây PHẢI có `type="button"`. Popover được render inline (không
  * portal) nên ở màn Hóa đơn nó nằm ngay trong `<form>` sửa quy tắc — thiếu attribute
  * đó thì button mặc định là `type="submit"`: bấm "8 tuần" hay một ô lịch là submit
@@ -117,6 +126,7 @@ function buildCalendar(year, month) {
  */
 export default function DatePickerPopover({ value, onChange, onClose, timeValue, onTimeChange, hideTime, mode = 'single', max, style, label = 'Bắt đầu lúc' }) {
   const isRange = mode === 'range';
+  const isTask = mode === 'task';
   const today = useMemo(() => new Date(), []);
   const todayStr = useMemo(() => toDateStr(today), [today]);
 
@@ -126,9 +136,18 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
   const [rTo, setRTo]     = useState(isRange ? (value?.to || '') : '');
   // Không có giờ thì để trống (task không giờ = cả ngày, v6.21.0) — "Bây giờ" để điền nhanh.
   const [draftTime, setDraftTime] = useState(timeValue || '');
+  // mode="task": nháp 2 mốc + ô đang chọn + có hiện ô giờ không
+  const [td, setTd] = useState(() => ({
+    startDate: (isTask && value?.startDate) || '',
+    startTime: (isTask && value?.startTime) || '',
+    dueDate: (isTask && value?.dueDate) || '',
+    dueTime: (isTask && value?.dueTime) || '',
+  }));
+  const [active, setActive] = useState('due');
+  const [showTime, setShowTime] = useState(Boolean(td.startTime || td.dueTime));
 
   // Calendar view month
-  const initialSeed = isRange ? (value?.from || todayStr) : value;
+  const initialSeed = isRange ? (value?.from || todayStr) : isTask ? (td.dueDate || td.startDate) : value;
   const initialDate = initialSeed ? new Date(initialSeed + 'T00:00:00') : today;
   const [viewYear, setViewYear] = useState(initialDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth());
@@ -185,8 +204,32 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
     else setRTo(ds);
   };
 
+  // mode="task": điền ngày vào ô đang chọn; vừa đặt Bắt đầu → tự sang ô Hạn.
+  const pickTask = (ds) => {
+    setTd((prev) => ({ ...prev, [active === 'start' ? 'startDate' : 'dueDate']: ds }));
+    setActive('due');
+  };
+  const clearTask = (key) => setTd((prev) => ({ ...prev, [`${key}Date`]: '', [`${key}Time`]: '' }));
+  const taskInvalid = isTask && isStartAfterDue(td);
+  const pickDate = (ds) => {
+    if (isRange) pickRange(ds);
+    else if (isTask) pickTask(ds);
+    else setDraft(ds);
+  };
+  const activeDate = isTask ? td[`${active}Date`] : draft;
+
   // ── Save / Cancel ──
   const handleSave = useCallback(() => {
+    if (isTask) {
+      onChange({
+        startDate: td.startDate,
+        startTime: td.startDate && showTime ? td.startTime : '',
+        dueDate: td.dueDate,
+        dueTime: td.dueDate && showTime ? td.dueTime : '',
+      });
+      onClose();
+      return;
+    }
     if (isRange) {
       // Chưa chọn mốc cuối → coi như khoảng 1 ngày.
       onChange({ from: rFrom, to: rTo || rFrom });
@@ -196,7 +239,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
     onChange(draft);
     if (onTimeChange) onTimeChange(draftTime);
     onClose();
-  }, [isRange, rFrom, rTo, draft, draftTime, onChange, onTimeChange, onClose]);
+  }, [isTask, td, showTime, isRange, rFrom, rTo, draft, draftTime, onChange, onTimeChange, onClose]);
 
   const fmtLong = (ds) => new Date(ds + 'T00:00:00').toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -204,14 +247,39 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
     ? new Date(draft + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'short' })
     : null;
 
-  const hasChanges = isRange
+  const hasChanges = isTask
+    ? ['startDate', 'startTime', 'dueDate', 'dueTime'].some((k) => td[k] !== (value?.[k] || ''))
+    : isRange
     ? (rFrom !== (value?.from || '') || (rTo || rFrom) !== (value?.to || ''))
     : (draft !== (value || '') || draftTime !== (timeValue || ''));
-  const showTimeInput = !hideTime && !isRange;
+  const showTimeInput = !hideTime && !isRange && !isTask;
+  const fmtTaskDate = (ds) => new Date(ds + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'numeric' });
 
   return (
     <div ref={popoverRef} className="dp-popover" style={style}>
       {/* ── Header ── */}
+      {isTask ? (
+        <div className="dp-fields">
+          {[['start', 'Bắt đầu', 'play'], ['due', 'Hạn', 'calendar']].map(([key, text, icon]) => {
+            const date = td[`${key}Date`];
+            const time = td[`${key}Time`];
+            return (
+              <div key={key} className={`dp-field${active === key ? ' dp-field--active' : ''}`}>
+                <button type="button" className="dp-field__pick" onClick={() => setActive(key)} aria-pressed={active === key}>
+                  <span className="dp-field__label"><AppIcon name={icon} size={12} /> {text}</span>
+                  <span className={`dp-field__value${date ? '' : ' dp-field__value--empty'}`}>
+                    {date ? `${fmtTaskDate(date)}${showTime && time ? ` · ${time}` : ''}` : 'Chưa đặt'}
+                  </span>
+                </button>
+                {date && (
+                  <button type="button" className="dp-header__value-clear dp-field__clear" onClick={() => clearTask(key)}
+                    title={`Bỏ ${text}`} aria-label={`Bỏ ${text}`}><AppIcon name="x" size={13} /></button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
       <div className="dp-header">
         {isRange ? (
           <>
@@ -239,6 +307,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
           </>
         )}
       </div>
+      )}
 
       {/* ── Body ── */}
       <div className="dp-body">
@@ -268,9 +337,9 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
               key={i}
               type="button"
               disabled={Boolean(max) && toDateStr(s.date) > max}
-              className={`dp-shortcut${draft === toDateStr(s.date) ? ' dp-shortcut--active' : ''}`}
+              className={`dp-shortcut${activeDate === toDateStr(s.date) ? ' dp-shortcut--active' : ''}`}
               onClick={() => {
-                setDraft(toDateStr(s.date));
+                pickDate(toDateStr(s.date));
                 setViewYear(s.date.getFullYear());
                 setViewMonth(s.date.getMonth());
               }}
@@ -312,6 +381,9 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
               if (isRange) {
                 if (ds === rFrom || (rTo && ds === rTo)) cls += ' dp-grid__cell--selected';
                 if (rTo && ds > rFrom && ds < rTo) cls += ' dp-grid__cell--in-range';
+              } else if (isTask) {
+                if (ds === td.startDate || ds === td.dueDate) cls += ' dp-grid__cell--selected';
+                if (td.startDate && td.dueDate && ds > td.startDate && ds < td.dueDate) cls += ' dp-grid__cell--in-range';
               } else if (ds === draft) {
                 cls += ' dp-grid__cell--selected';
               }
@@ -326,7 +398,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
                   disabled={blocked}
                   className={cls}
                   onClick={() => {
-                    if (isRange) pickRange(ds); else setDraft(ds);
+                    pickDate(ds);
                     if (cell.other) {
                       setViewYear(cell.date.getFullYear());
                       setViewMonth(cell.date.getMonth());
@@ -368,8 +440,39 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
         </div>
       )}
 
+      {/* ── mode="task": giờ của 2 mốc (ẩn sau "Thêm giờ") ── */}
+      {isTask && showTime && (
+        <div className="dp-time">
+          {[['start', '▶ Bắt đầu'], ['due', '⏰ Hạn']].map(([key, text]) => (
+            <label key={key} className="dp-time__pair">
+              <span className="dp-time__label">{text}</span>
+              <input
+                type="time"
+                className="dp-time__input"
+                value={td[`${key}Time`]}
+                disabled={!td[`${key}Date`]}
+                onChange={(e) => setTd((prev) => ({ ...prev, [`${key}Time`]: e.target.value }))}
+              />
+            </label>
+          ))}
+        </div>
+      )}
+      {taskInvalid && <div className="dp-error" role="alert">Bắt đầu phải trước Hạn.</div>}
+
       {/* ── Footer: Save / Close ── */}
       <div className="dp-footer">
+        {isTask && (
+          <button
+            type="button"
+            className="dp-time__now-btn dp-footer__time-toggle"
+            onClick={() => {
+              if (showTime) setTd((prev) => ({ ...prev, startTime: '', dueTime: '' }));
+              setShowTime(!showTime);
+            }}
+          >
+            <AppIcon name="clock" size={13} /> {showTime ? 'Bỏ giờ' : 'Thêm giờ'}
+          </button>
+        )}
         <button type="button" className="dp-footer__cancel" onClick={onClose} title="Huỷ">
           <AppIcon name="x" size={14} /> Huỷ
         </button>
@@ -377,7 +480,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
           type="button"
           className={`dp-footer__save${hasChanges ? ' dp-footer__save--active' : ''}`}
           onClick={handleSave}
-          disabled={isRange ? !rFrom : !draft}
+          disabled={isTask ? taskInvalid : isRange ? !rFrom : !draft}
           title="Lưu"
         >
           <AppIcon name="check" size={14} /> Lưu

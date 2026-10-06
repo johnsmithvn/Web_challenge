@@ -5,10 +5,13 @@ import TagPicker from './TagPicker';
 import SubtaskList from './SubtaskList';
 import AppIcon from './AppIcon';
 import { WEEKDAYS } from '../utils/taskFields';
-import { hasExplicitTime, timeToMinutes } from '../utils/calendarTimeUtils';
+import { hasExplicitTime, isStartAfterDue, timeToMinutes } from '../utils/calendarTimeUtils';
 import '../styles/tasks.css';
 
 const hhmm = (t) => (hasExplicitTime(t) ? t.substring(0, 5) : '');
+// "T2, 5/10 · 09:00" — 1 mốc trên dòng Thời gian
+const fmtWhen = (date, time) =>
+  `${new Date(date + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'numeric' })}${time ? ` · ${time}` : ''}`;
 
 const REC_TYPES = [
   { key: 'interval', label: 'Mỗi N ngày' },
@@ -60,7 +63,7 @@ export default function TaskForm({
   });
   const [startDate, setStartDate] = useState(task ? (task.start_date || '') : (initialStart && initialDate) || '');
   const [startTime, setStartTime] = useState(task?.start_time ? task.start_time.substring(0, 5) : (initialStart || ''));
-  const [picker, setPicker] = useState(null); // 'start' | 'due' | null — popover chọn ngày đang mở
+  const [showDates, setShowDates] = useState(false); // popover Bắt đầu → Hạn
   // Subtask nháp khi TẠO task (chưa có task cha để gắn) — tạo thật sau khi lưu task cha.
   const [subtaskTitles, setSubtaskTitles] = useState([]);
   const [subtaskDraft, setSubtaskDraft] = useState('');
@@ -73,10 +76,8 @@ export default function TaskForm({
   const [recMonthDay, setRecMonthDay] = useState(rec?.day || 1);
   const [saving, setSaving] = useState(false);
 
-  // Khớp CHECK user_tasks_start_before_due dưới DB ('YYYY-MM-DD'/'HH:MM' so sánh chuỗi được).
-  const startAfterDue = Boolean(startDate && dueDate) && (
-    startDate > dueDate || (startDate === dueDate && Boolean(startTime && dueTime) && startTime >= dueTime)
-  );
+  // Khớp CHECK user_tasks_start_before_due dưới DB (popover đã chặn, đây là chốt cuối).
+  const startAfterDue = isStartAfterDue({ startDate, startTime, dueDate, dueTime });
   // Kỳ lặp sau dời theo ngày Hạn → task lặp phải có Hạn.
   const recNeedsDue = showRec && !dueDate;
   const canSubmit = Boolean(title.trim()) && !saving && !startAfterDue && !recNeedsDue;
@@ -123,42 +124,42 @@ export default function TaskForm({
     }
   };
 
-  // 1 mốc thời gian (Bắt đầu / Hạn): nút mở popover chọn ngày + giờ, ✕ để bỏ.
-  const renderWhen = (key, label, icon, date, time, setDate, setTime) => (
+  // Dòng Thời gian: 1 nút mở popover Bắt đầu → Hạn (DatePickerPopover mode="task"), ✕ bỏ cả hai.
+  const hasDates = Boolean(startDate || dueDate);
+  const setDates = (v) => {
+    setStartDate(v.startDate);
+    setStartTime(v.startTime);
+    setDueDate(v.dueDate);
+    setDueTime(v.dueTime);
+  };
+  const renderDates = () => (
     <div className="task-form__when">
-      <span className="task-form__label">{label}</span>
+      <span className="task-form__label">Thời gian</span>
       <div className="task-form__when-row">
-        <button type="button" className="auth-input task-form__date-btn" onClick={() => setPicker(picker === key ? null : key)}>
-          <AppIcon name={icon} size={14} />
-          {date ? (
-            <>
-              {new Date(date + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' })}
-              {time && <> · <AppIcon name="clock" size={14} /> {time}</>}
-            </>
-          ) : (
-            <span className="task-form__muted">Không đặt</span>
-          )}
+        <button type="button" className="auth-input task-form__date-btn" onClick={() => setShowDates(!showDates)}>
+          {!hasDates && <><AppIcon name="calendar" size={14} /> <span className="task-form__muted">Không đặt</span></>}
+          {startDate && <span title="Bắt đầu"><AppIcon name="play" size={13} /> {fmtWhen(startDate, startTime)}</span>}
+          {startDate && dueDate && <span className="task-form__muted">→</span>}
+          {dueDate && <span title="Hạn"><AppIcon name="calendar" size={13} /> {fmtWhen(dueDate, dueTime)}</span>}
         </button>
-        {date && (
+        {hasDates && (
           <button
             type="button"
             className="task-form__clear"
-            onClick={() => { setDate(''); setTime(''); }}
-            title={`Bỏ ${label}`}
-            aria-label={`Bỏ ${label}`}
+            onClick={() => setDates({ startDate: '', startTime: '', dueDate: '', dueTime: '' })}
+            title="Bỏ Bắt đầu và Hạn"
+            aria-label="Bỏ Bắt đầu và Hạn"
           >
             <AppIcon name="x" size={14} />
           </button>
         )}
       </div>
-      {picker === key && (
+      {showDates && (
         <DatePickerPopover
-          label={label}
-          value={date}
-          onChange={setDate}
-          onClose={() => setPicker(null)}
-          timeValue={time}
-          onTimeChange={setTime}
+          mode="task"
+          value={{ startDate, startTime, dueDate, dueTime }}
+          onChange={setDates}
+          onClose={() => setShowDates(false)}
           style={{ top: '100%', left: 0, marginTop: '0.25rem' }}
         />
       )}
@@ -235,8 +236,7 @@ export default function TaskForm({
         </div>
       )}
 
-      {renderWhen('start', 'Bắt đầu', 'play', startDate, startTime, setStartDate, setStartTime)}
-      {renderWhen('due', 'Hạn', 'calendar', dueDate, dueTime, setDueDate, setDueTime)}
+      {renderDates()}
       {startAfterDue && <span className="task-form__error">Bắt đầu phải trước Hạn.</span>}
 
       <div>
