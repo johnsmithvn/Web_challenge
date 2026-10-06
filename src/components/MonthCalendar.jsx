@@ -1,12 +1,15 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
+import { bucketTasksByDay, taskDayMark } from '../utils/calendarTimeUtils';
 import { useConfirm } from './ConfirmModal';
 import UI_STRINGS from '../data/ui-strings.json';
 import HOLIDAYS from '../data/holidays.json';
 import AppIcon from './AppIcon';
 import '../styles/calendar.css';
 import '../styles/week-calendar.css';
+
+const pad = (n) => String(n).padStart(2, '0');
 
 const WEEKDAYS_MON = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const WEEKDAYS_SUN = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -79,37 +82,26 @@ export default function MonthCalendar({
   const daysInMonth = getDaysInMonth(viewYear, viewMonth);
   const firstDayOfW = getFirstDayOfWeek(viewYear, viewMonth, startOnSunday);
   const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
-  const pad = (n) => String(n).padStart(2, '0');
+  const monthFrom = `${viewYear}-${pad(viewMonth + 1)}-01`;
+  const monthTo = `${viewYear}-${pad(viewMonth + 1)}-${pad(daysInMonth)}`;
 
   // Tải task hoàn thành trong tháng
   useEffect(() => {
     if (!getCompletedTasksRange) return;
     let stale = false;
-    const from = `${viewYear}-${pad(viewMonth + 1)}-01`;
-    const to = `${viewYear}-${pad(viewMonth + 1)}-${pad(daysInMonth)}`;
-
-    // Gom theo ngày KẾ HOẠCH (due_date), cùng trục với task chờ làm.
-    getCompletedTasksRange(from, to, { byDueDate: true }).then((rows) => {
+    // Gom theo ngày KẾ HOẠCH (Bắt đầu→Hạn), cùng trục với task chờ làm.
+    getCompletedTasksRange(monthFrom, monthTo, { byPlan: true }).then((rows) => {
       if (stale) return;
-      const map = {};
-      for (const r of rows) {
-        (map[r.due_date] ||= []).push(r);
-      }
-      setTasksByDay(map);
+      setTasksByDay(bucketTasksByDay(rows || [], monthFrom, monthTo));
     });
     return () => { stale = true; };
-  }, [viewYear, viewMonth, daysInMonth, getCompletedTasksRange, refreshKey]);
+  }, [monthFrom, monthTo, getCompletedTasksRange, refreshKey]);
 
-  // Gom pending tasks theo due_date
-  const pendingByDay = useMemo(() => {
-    if (!pendingTasks) return {};
-    const map = {};
-    for (const t of pendingTasks) {
-      if (!t.due_date) continue;
-      (map[t.due_date] ||= []).push(t);
-    }
-    return map;
-  }, [pendingTasks]);
+  // Gom pending tasks vào mọi ngày trong tháng mà khoảng Bắt đầu→Hạn đi qua
+  const pendingByDay = useMemo(
+    () => bucketTasksByDay(pendingTasks || [], monthFrom, monthTo),
+    [pendingTasks, monthFrom, monthTo]
+  );
 
   // Dữ liệu từng ngày trong tháng
   const dayData = useMemo(() => {
@@ -486,7 +478,7 @@ export default function MonthCalendar({
                       }}
                     >
                       <span className="cal-chip__title">
-                        {t._done ? '✓ ' : t._overdue ? '⚠️ ' : ''}{t.title}
+                        {t._done ? '✓ ' : t._overdue ? '⚠️ ' : taskDayMark(t, info.dateStr)}{t.title}
                       </span>
                     </div>
                   );

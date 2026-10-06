@@ -94,8 +94,9 @@ function buildCalendar(year, month) {
  *   value        — current date string (YYYY-MM-DD) or ''
  *   onChange      — (dateStr) => void — called on Save
  *   onClose       — () => void — called on Cancel/X
- *   timeValue    — current time string (HH:MM) or ''
- *   onTimeChange  — (timeStr) => void — called on Save with time
+ *   timeValue    — current time string (HH:MM) or '' (= không đặt giờ)
+ *   onTimeChange  — (timeStr) => void — called on Save with time; '' = không đặt giờ
+ *   label        — nhãn tab đầu popover (mặc định "Bắt đầu lúc"), vd "Hạn"
  *   hideTime     — if true, hide time input (for quick date-only pickers)
  *   style        — optional positioning styles for the popover
  *
@@ -114,7 +115,7 @@ function buildCalendar(year, month) {
  * form, lưu bản ghi với ngày CŨ rồi đóng popover. Rất khó đoán vì trông như popover
  * tự đóng.
  */
-export default function DatePickerPopover({ value, onChange, onClose, timeValue, onTimeChange, hideTime, mode = 'single', max, style }) {
+export default function DatePickerPopover({ value, onChange, onClose, timeValue, onTimeChange, hideTime, mode = 'single', max, style, label = 'Bắt đầu lúc' }) {
   const isRange = mode === 'range';
   const today = useMemo(() => new Date(), []);
   const todayStr = useMemo(() => toDateStr(today), [today]);
@@ -123,8 +124,8 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
   const [draft, setDraft] = useState(isRange ? '' : (value || ''));
   const [rFrom, setRFrom] = useState(isRange ? (value?.from || '') : '');
   const [rTo, setRTo]     = useState(isRange ? (value?.to || '') : '');
-  // Default time: use provided value, or current HH:MM if none
-  const [draftTime, setDraftTime] = useState(timeValue || nowHHMM());
+  // Không có giờ thì để trống (task không giờ = cả ngày, v6.21.0) — "Bây giờ" để điền nhanh.
+  const [draftTime, setDraftTime] = useState(timeValue || '');
 
   // Calendar view month
   const initialSeed = isRange ? (value?.from || todayStr) : value;
@@ -193,10 +194,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
       return;
     }
     onChange(draft);
-    if (onTimeChange) {
-      // Always save time — default to '00:00' if user cleared it
-      onTimeChange(draftTime || '00:00');
-    }
+    if (onTimeChange) onTimeChange(draftTime);
     onClose();
   }, [isRange, rFrom, rTo, draft, draftTime, onChange, onTimeChange, onClose]);
 
@@ -208,7 +206,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
 
   const hasChanges = isRange
     ? (rFrom !== (value?.from || '') || (rTo || rFrom) !== (value?.to || ''))
-    : (draft !== (value || '') || draftTime !== (timeValue || nowHHMM()));
+    : (draft !== (value || '') || draftTime !== (timeValue || ''));
   const showTimeInput = !hideTime && !isRange;
 
   return (
@@ -230,7 +228,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
           </>
         ) : (
           <>
-            <span className="dp-header__tab dp-header__tab--active"><AppIcon name="calendar" size={14} /> Bắt đầu lúc</span>
+            <span className="dp-header__tab dp-header__tab--active"><AppIcon name="calendar" size={14} /> {label}</span>
             {draftLabel && (
               <span className="dp-header__value">
                 {draftLabel}
@@ -346,7 +344,7 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
       {/* ── Time input (always visible unless hideTime) ── */}
       {showTimeInput && (
         <div className="dp-time">
-          <span className="dp-time__label"><AppIcon name="clock" size={14} /> Giờ bắt đầu</span>
+          <span className="dp-time__label"><AppIcon name="clock" size={14} /> Giờ</span>
           <input
             type="time"
             className="dp-time__input"
@@ -359,6 +357,14 @@ export default function DatePickerPopover({ value, onChange, onClose, timeValue,
             onClick={() => setDraftTime(nowHHMM())}
             title="Đặt giờ hiện tại"
           >Bây giờ</button>
+          {draftTime && (
+            <button
+              type="button"
+              className="dp-time__now-btn"
+              onClick={() => setDraftTime('')}
+              title="Không đặt giờ (cả ngày)"
+            >Bỏ giờ</button>
+          )}
         </div>
       )}
 

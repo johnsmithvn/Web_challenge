@@ -22,14 +22,22 @@ export function getKanbanRange(timeFilter, today, { customFrom, customTo } = {})
   return null;
 }
 
-const byDueThenPriority = (a, b) =>
-  a.due_date !== b.due_date
-    ? a.due_date.localeCompare(b.due_date)
-    : (b.priority || 0) - (a.priority || 0);
+// Task không hạn xếp cuối cột.
+const byDueThenPriority = (a, b) => {
+  const ad = a.due_date || '';
+  const bd = b.due_date || '';
+  if (ad !== bd) {
+    if (!ad) return 1;
+    if (!bd) return -1;
+    return ad.localeCompare(bd);
+  }
+  return (b.priority || 0) - (a.priority || 0);
+};
 
 /**
  * Chia task vào 4 cột.
- *   - To Do / Doing / Skip: task chưa xong theo `status`, lọc theo `due_date`.
+ *   - To Do / Doing / Skip: task chưa xong theo `status`, lọc theo `due_date` — task
+ *     không hạn chỉ hiện khi không lọc ('all'), lọc theo ngày thì không có ngày để khớp.
  *   - Done: task đã xong, lọc theo NGÀY HOÀN THÀNH địa phương. Query
  *     getCompletedTasksRange đệm ±1 ngày (lệch múi giờ) nên phải lọc lại ở đây —
  *     không thì "Hôm nay" lẫn task xong hôm qua/hôm sau.

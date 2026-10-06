@@ -11,7 +11,7 @@
  * valid for the day it was synced (see the day-rollover guard below).
  */
 
-const SW_VERSION = '1.2.0';
+const SW_VERSION = '1.3.0';
 let reminders = [];
 let syncDay = null; // local YYYY-MM-DD when reminders were last synced
 // Tags already shown today. The app re-syncs on every task change, so without
@@ -84,7 +84,8 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // ── Offline Shell Caching ────────────────────────────────
-const CACHE_NAME = 'lh-pwa-v1.3.0';
+// Đổi tên cache → bước activate xoá cache cũ (v1.3.0 còn giữ file /src/… cũ của dev server).
+const CACHE_NAME = 'lh-pwa-v1.4.0';
 const STATIC_PRECACHE = [
   '/',
   '/index.html',
@@ -145,8 +146,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Static assets cùng domain (JS, CSS, icons, fonts)
-  if (url.origin === self.location.origin) {
+  // 2. Cache-first CHỈ cho file build có hash (/assets/…, tên đổi mỗi bản build nên
+  // không bao giờ cũ) và icon precache. File không hash — dev server Vite (/src/…,
+  // /@vite/…, /node_modules/.vite/…) — đi thẳng mạng: trước đây chúng bị cache-first
+  // nên sửa code xong reload vẫn thấy giao diện cũ.
+  if (url.origin === self.location.origin
+    && (url.pathname.startsWith('/assets/') || STATIC_PRECACHE.includes(url.pathname))) {
     event.respondWith(
       caches.match(req).then((cachedResponse) => {
         const fetchPromise = fetch(req)

@@ -43,7 +43,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 `src/hooks/useUserTasks.js`, `src/hooks/useActivityLog.js`
 
 ### Subtask (v6.20.0)
-- Subtask là **task đầy đủ chi tiết** (`user_tasks.parent_task_id`): mô tả, hạn + giờ, khung giờ, ưu tiên, tag, ghi
+- Subtask là **task đầy đủ chi tiết** (`user_tasks.parent_task_id`): mô tả, Bắt đầu, Hạn, ưu tiên, tag, ghi
   chú, lịch sử — nhưng **chỉ sống bên trong task cha**: không hiện ở Kanban, Danh sách, Lịch, số đếm hay bộ chọn
   task của Finance/Knowledge. Thay checklist JSONB `subtasks` của v6.18.0 (cột cũ không còn dùng).
 - **Mặt trước** (thẻ Kanban, hàng Danh sách): badge `☑ 2/4`; mở ra tick trực tiếp, bấm tên → popup Chi tiết
@@ -52,17 +52,30 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   Alt + ↑/↓ trên tay nắm), xoá (có xác nhận), Enter ở ô cuối để thêm (hạn = hạn task cha). Mọi thao tác lưu ngay.
 - Form **tạo** task: thêm subtask nháp (Enter thêm tiếp), tạo cùng task cha khi bấm Lưu.
 - Popup của subtask có chip **↳ Task cha** để quay về. Chỉ 1 cấp (subtask không có subtask).
-- Subtask đặt giờ/khung giờ **vẫn được nhắc giờ**. Hoàn thành subtask **không** cộng XP; tick hết không tự hoàn
+- Subtask đặt giờ Bắt đầu/Hạn **vẫn được nhắc giờ**. Hoàn thành subtask **không** cộng XP; tick hết không tự hoàn
   thành task cha.
 - Xoá task cha → **xoá luôn subtask**. Task cha lặp → kỳ sau mang theo subtask (chưa xong, hạn dời theo, không
   mang chuỗi lặp riêng của subtask).
+
+### Thời gian của task (v6.21.0)
+- 2 mốc, **đều tuỳ chọn** (ngày và giờ trong mỗi mốc cũng tuỳ chọn): **Bắt đầu** (`start_date` + `start_time`) và
+  **Hạn** (`due_date` + `due_time`). Không có "kết thúc" riêng — kết thúc = Hạn (khung 9–10h = Bắt đầu 9:00, Hạn
+  10:00). Bắt đầu phải trước Hạn; task lặp bắt buộc có Hạn. Không giờ = để trống (không còn "23:59 = Hết ngày").
+- Task mới **mặc định không ngày** (form Danh sách, nút thêm Kanban, QuickCapture); tạo từ Lịch thì điền sẵn ngày,
+  bấm ô giờ trống trên lưới Ngày/Tuần → Bắt đầu = ô đó, Hạn +1 giờ (kiểu Google Calendar).
+- **Lúc bắt đầu làm thật** (`started_at`) do app tự ghi khi task sang Doing **lần đầu** (kéo thẻ, nút nhanh, popup,
+  hoặc tạo thẳng vào cột Doing) — không đè Bắt đầu kế hoạch, không theo sang kỳ lặp sau. Thẻ Doing hiện
+  `▶ từ 14:05`; popup Chi tiết hiện "Bắt đầu làm" và "mất 2h25p" khi xong.
+- Thông báo (PWA service worker, best-effort, cho task chưa xong): "⏱ Đến giờ làm" lúc Bắt đầu (bỏ qua nếu task đã
+  ở Doing, không nhắc muộn sau giờ Hạn cùng ngày) và "📌 Nhiệm Vụ Đến Hạn" lúc Hạn — chỉ khi mốc có giờ; mỗi nhắc
+  1 lần/ngày.
 
 ### Danh sách
 - Task **Bỏ qua** (cột Skip của Kanban, `status = 'skip'`) không còn là việc cần làm: không vào Quá hạn/Hôm nay/
   Sắp tới, không đếm, không hiện trên Lịch, không nhắc giờ. Kéo về To Do/Doing để làm lại.
   Bỏ qua một task **lặp lại** = bỏ qua kỳ này: kỳ sau vẫn được sinh (không cộng XP), chuỗi lặp không bị đứt.
-- Chia Task chưa xong thành Quá hạn, Hôm nay và Sắp tới; sắp theo ngày/giờ/priority.
-- Tạo và sửa title, description, due date/time, priority, recurrence, tag và liên kết Knowledge.
+- Chia Task chưa xong thành Quá hạn, Hôm nay, Sắp tới và **Không hạn**; sắp theo ngày/giờ/priority.
+- Tạo và sửa title, description, Bắt đầu, Hạn, priority, recurrence, tag và liên kết Knowledge.
   Một form dùng chung (`TaskForm`) cho form thêm, sửa tại hàng, popup Chi tiết và modal tạo từ Lịch/Kanban;
   Enter ở ô tiêu đề hoặc `Ctrl + Enter` để lưu.
 - Hoàn thành dùng optimistic state; write lỗi rollback cả danh sách đang làm và khối đã hoàn thành.
@@ -73,22 +86,20 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 - **6 chế độ xem** (mặc định `kanban`, nhớ lựa chọn trong `lh_tasks_active_view`):
   - `kanban` (Bảng Kanban): 4 cột To Do · Doing · Done · Skip, kéo thả hoặc nút chuyển cột trên mobile, thu gọn
     cột, bộ lọc thời gian (Tất cả / Hôm nay / 7 ngày / Tuỳ chọn — To Do/Doing/Skip lọc theo ngày hạn, Done theo
-    ngày hoàn thành), double-click cột hoặc nút "Thêm việc" để tạo nhanh. Chỉ khi đăng nhập.
+    ngày hoàn thành; task không hạn chỉ hiện ở Tất cả, xếp cuối cột), double-click cột hoặc nút "Thêm việc" để
+    tạo nhanh (không ngày). Chỉ khi đăng nhập.
   - `list` (Danh sách công việc): Chia việc theo Quá hạn, Hôm nay, Sắp tới; kèm thanh Mini Summary Bar (`Quá hạn | Hôm nay | Sắp tới`).
   - `agenda` (Lịch biểu): Dải ngày 45 ngày quanh ngày chọn, hiển thị cả ngày lễ và task theo timeline dọc.
   - `day` (Lịch Ngày): Lưới 24 giờ với trục thời gian thực (vạch đỏ), gom task cả ngày (All-day) và task có giờ.
   - `week` (Lịch Tuần): 7 cột ngày tương thích cả Chủ Nhật hoặc Thứ Hai khởi đầu, bố trí overlapping task thông minh.
   - `month` (Lịch Tháng): Hiển thị Task pending + completed, song song Dương lịch & Âm lịch Việt Nam, giới hạn chip thông minh và popup chi tiết ngày.
-- **Task đã xong trên Lịch** nằm ở ngày kế hoạch (`due_date`), gạch/đánh dấu ✓ — không nhảy sang ngày bấm
+- **Task đã xong trên Lịch** nằm ở ngày kế hoạch (Bắt đầu→Hạn), gạch/đánh dấu ✓ — không nhảy sang ngày bấm
   hoàn thành. Thời điểm hoàn thành (`completed_at`) là lịch sử: xem ở khối "Đã xong" của Danh sách và Kanban.
-- Task không đặt giờ (lưu `23:59` mặc định hoặc `00:00`) nằm ở hàng "Cả ngày" của lưới Ngày/Tuần.
-- **Khung giờ làm** (tuỳ chọn, v6.17.0): giờ bắt đầu → kết thúc trong cùng ngày hạn, tách khỏi giờ hạn.
-  Lưới Ngày/Tuần vẽ khối thật theo khung giờ; task chỉ có giờ hạn hiện mốc ngắn `⏰` tại giờ hạn
-  (không còn khối 45 phút giả). Danh sách, Kanban, Lịch biểu và popup Chi tiết hiện `⏱ 09:00–10:00`.
-  Task lặp mang khung giờ sang kỳ sau.
-- Click ô giờ trống trên lưới Ngày/Tuần → tạo task với khung giờ 1 tiếng từ ô đó (kiểu Google Calendar).
-- Thông báo (PWA service worker, best-effort): "⏱ Đến giờ làm" lúc bắt đầu khung giờ và "📌 Nhiệm Vụ Đến Hạn" lúc
-  giờ hạn, cho task hôm nay chưa xong; mỗi nhắc chỉ 1 lần/ngày.
+- Task hiện trên lịch ở **mọi ngày từ Bắt đầu đến Hạn** (chỉ 1 mốc → đúng ngày đó; không ngày → không lên lịch).
+  Lưới Ngày/Tuần: Bắt đầu + Hạn cùng ngày, cả hai có giờ → khối thật Bắt đầu→Hạn; ngày Hạn có giờ → mốc ngắn `⏰`;
+  ngày Bắt đầu có giờ → mốc ngắn `▶` (không vẽ khối tới nửa đêm); ngày giữa của task nhiều ngày hoặc không giờ →
+  hàng "Cả ngày". Chip Cả ngày / Lịch Tháng của task nhiều ngày có `▶` (ngày đầu), `↔` (ngày giữa), `⏰` (ngày Hạn);
+  Lịch biểu hiện `▶ 09:00`, `⏰ 17:00` hoặc "↔ Nhiều ngày".
 - **Header cố định (Workspace pattern):** `CalendarToolbar` cố định ở đỉnh trang (100dvh workspace, cuộn nội bộ), không bị giật/nhảy layout khi chuyển giữa danh sách và các chế độ lịch.
 - **Modal tạo nhanh Task (`TaskCreateModal`):** Tự động kích hoạt khi click vào ô trống trong các chế độ lịch, tự động điền sẵn ngày và khung giờ click (Smart Context Prefill), phím tắt `Ctrl + Enter` lưu nhanh và `Escape` đóng.
 

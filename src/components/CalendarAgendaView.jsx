@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar } from '../utils/lunarUtils';
-import { hasExplicitTime } from '../utils/calendarTimeUtils';
+import { bucketTasksByDay, hasExplicitTime, taskDayRole } from '../utils/calendarTimeUtils';
 import { PRIORITY_OPTIONS } from '../utils/taskFields';
 import HOLIDAYS from '../data/holidays.json';
 import AppIcon from './AppIcon';
 import '../styles/calendar-widget.css';
+
+// Nhãn task không giờ trong ngày, theo vai của ngày (taskDayRole) với task nhiều ngày.
+const AGENDA_DAY_LABEL = { single: 'Trong ngày', start: '▶ Bắt đầu', middle: '↔ Nhiều ngày', end: '⏰ Hạn' };
 
 /**
  * CalendarAgendaView — Chế độ xem "Lịch biểu" (Agenda View) theo phong cách lichamviet (Ảnh 1).
@@ -120,7 +123,7 @@ export default function CalendarAgendaView({
     return result;
   }, [currentDate, holidayToggles, customAnniversaries, daysCount]);
 
-  // Tải completed tasks cho khoảng ngày hiển thị — gom theo ngày KẾ HOẠCH (due_date),
+  // Tải completed tasks cho khoảng ngày hiển thị — gom theo ngày KẾ HOẠCH (Bắt đầu→Hạn),
   // cùng trục với task chờ làm, nên bấm hoàn thành muộn không làm task nhảy ngày.
   useEffect(() => {
     if (!getCompletedTasksRange || days.length === 0) return;
@@ -128,28 +131,18 @@ export default function CalendarAgendaView({
     const startStr = days[0].dateStr;
     const endStr = days[days.length - 1].dateStr;
 
-    getCompletedTasksRange(startStr, endStr, { byDueDate: true }).then((res) => {
+    getCompletedTasksRange(startStr, endStr, { byPlan: true }).then((res) => {
       if (stale) return;
-      const map = {};
-      for (const t of res || []) {
-        (map[t.due_date] ||= []).push(t);
-      }
-      setCompletedByDay(map);
+      setCompletedByDay(bucketTasksByDay(res || [], startStr, endStr));
     });
     return () => { stale = true; };
   }, [getCompletedTasksRange, days, refreshKey]);
 
-  // Gom pending tasks theo ngày
-  const pendingByDay = useMemo(() => {
-    const map = {};
-    for (const t of pendingTasks) {
-      if (t.due_date) {
-        if (!map[t.due_date]) map[t.due_date] = [];
-        map[t.due_date].push(t);
-      }
-    }
-    return map;
-  }, [pendingTasks]);
+  // Gom pending tasks vào mọi ngày đang hiện mà khoảng Bắt đầu→Hạn đi qua
+  const pendingByDay = useMemo(
+    () => (days.length ? bucketTasksByDay(pendingTasks, days[0].dateStr, days[days.length - 1].dateStr) : {}),
+    [pendingTasks, days]
+  );
 
   return (
     <div
@@ -219,14 +212,18 @@ export default function CalendarAgendaView({
                           className="cal-agenda-task-priority-dot"
                           style={{ background: (PRIORITY_OPTIONS.find((p) => p.value === t.priority) || PRIORITY_OPTIONS[0]).color }}
                         />
-                        {t.start_time && t.end_time ? (
-                          <span className="cal-agenda-time-pill" title="Khung giờ làm">
-                            {t.start_time.substring(0, 5)}–{t.end_time.substring(0, 5)}
+                        {t.start_date === t.due_date && t.start_time && hasExplicitTime(t.due_time) ? (
+                          <span className="cal-agenda-time-pill" title="Bắt đầu – Hạn">
+                            {t.start_time.substring(0, 5)}–{t.due_time.substring(0, 5)}
                           </span>
-                        ) : hasExplicitTime(t.due_time) ? (
-                          <span className="cal-agenda-time-pill" title="Giờ hạn">{t.due_time.substring(0, 5)}</span>
+                        ) : t.due_date === day.dateStr && hasExplicitTime(t.due_time) ? (
+                          <span className="cal-agenda-time-pill" title="Giờ hạn">⏰ {t.due_time.substring(0, 5)}</span>
+                        ) : t.start_date === day.dateStr && t.start_time ? (
+                          <span className="cal-agenda-time-pill" title="Giờ bắt đầu">▶ {t.start_time.substring(0, 5)}</span>
                         ) : (
-                          <span className="cal-agenda-badge-allday">Trong ngày</span>
+                          <span className="cal-agenda-badge-allday">
+                            {AGENDA_DAY_LABEL[taskDayRole(t, day.dateStr)]}
+                          </span>
                         )}
                         <span className="cal-agenda-item-title">{t.title}</span>
                       </div>

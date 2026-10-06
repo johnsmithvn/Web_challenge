@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserTasks } from '../hooks/useUserTasks';
-import { toDateStr } from '../utils/dateUtils';
 import AuthModal from './AuthModal';
 import AppIcon from './AppIcon';
 import '../styles/quick-capture.css';
@@ -67,8 +66,7 @@ function QuickCaptureCore() {
       const result = await addTask({
         title,
         description: body || (isUrl ? trimmed : null),
-        dueDate: toDateStr(),
-        dueTime: '09:00',
+        // Ghi nhanh = task không ngày (v6.21.0); đặt Bắt đầu/Hạn sau ở Tasks.
         status: 'todo',
       });
 

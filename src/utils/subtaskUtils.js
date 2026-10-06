@@ -74,15 +74,17 @@ export function daysBetween(a, b) {
   return Math.round(ms / 86_400_000);
 }
 
+/** Dời ngày YYYY-MM-DD đi `days` ngày; không có ngày (task không hạn) → null. */
 export function shiftDate(dateStr, days) {
+  if (!dateStr) return null;
   const d = new Date(`${dateStr}T00:00:00`);
   d.setDate(d.getDate() + days);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /**
- * Payload insert subtask cho kỳ lặp tiếp theo của task cha: chưa xong, hạn dời cùng
- * khoảng với hạn task cha, giữ thứ tự. Bản copy KHÔNG mang recurrence riêng (tránh
+ * Payload insert subtask cho kỳ lặp tiếp theo của task cha: chưa xong, Hạn và Bắt đầu
+ * dời cùng khoảng với hạn task cha, giữ thứ tự. Bản copy KHÔNG mang recurrence riêng (tránh
  * mỗi kỳ cha lại đẻ thêm 1 chuỗi lặp con). Thiếu `user_id` — hook tự thêm.
  */
 export function subtaskCopiesForNextOccurrence(children = [], newParentId, shiftDays = 0) {
@@ -91,8 +93,8 @@ export function subtaskCopiesForNextOccurrence(children = [], newParentId, shift
     description: c.description ?? null,
     due_date: shiftDate(c.due_date, shiftDays),
     due_time: c.due_time ?? null,
+    start_date: shiftDate(c.start_date, shiftDays),
     start_time: c.start_time ?? null,
-    end_time: c.end_time ?? null,
     priority: c.priority || 0,
     parent_task_id: newParentId,
     sort_order: c.sort_order ?? null,

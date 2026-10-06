@@ -6,7 +6,7 @@ import { logger } from '../utils/logger';
 import { toDateStr } from '../utils/dateUtils';
 import { computeNextDueDate, resolveDeletionIds } from '../utils/recurrenceUtils';
 import { buildTodayReminders } from '../utils/calendarTimeUtils';
-import { daysBetween, isSubtask, reorderChanges, subtaskCopiesForNextOccurrence } from '../utils/subtaskUtils';
+import { daysBetween, isSubtask, reorderChanges, shiftDate, subtaskCopiesForNextOccurrence } from '../utils/subtaskUtils';
 import { useActivityLog } from './useActivityLog';
 import { useXpStore, XP_REWARDS } from './useXpStore';
 import { diffTaskFields, ACTIONS } from '../utils/taskFields';
@@ -175,18 +175,21 @@ export function useUserTasks() {
 
   // ── Add task ───────────────────────────────────────────
   // Knowledge links are created separately through task_collections/linkCollection.
-  const addTask = useCallback(async ({ title, description, dueDate, dueTime, startTime, endTime, parentTaskId, priority, recurrenceRule, completed, completedAt, status }) => {
+  // Thời gian (v6.21.0): Hạn (dueDate/dueTime) và Bắt đầu (startDate/startTime) đều tuỳ
+  // chọn — không truyền ngày = task không ngày. Giờ không có ngày thì bỏ (CHECK dưới DB).
+  const addTask = useCallback(async ({ title, description, dueDate, dueTime, startDate, startTime, parentTaskId, priority, recurrenceRule, completed, completedAt, status }) => {
     const taskStatus = status || (completed ? 'done' : 'todo');
+    const nowIso = new Date().toISOString();
     const newTask = {
       id: crypto.randomUUID ? crypto.randomUUID() : `local_${Date.now()}`,
       user_id: userId,
       title,
       description: description || null,
-      due_date: dueDate || todayStr(),
-      due_time: dueTime || '23:59',
-      // Khung giờ làm (v6.17.0) chỉ gửi khi có: DB chưa chạy migration thì task
-      // không đặt khung giờ vẫn tạo được.
-      ...(startTime && endTime ? { start_time: startTime, end_time: endTime } : {}),
+      due_date: dueDate || null,
+      due_time: dueDate && dueTime ? dueTime : null,
+      ...(startDate ? { start_date: startDate, start_time: startTime || null } : {}),
+      // Tạo thẳng vào cột Doing = bắt đầu làm luôn.
+      ...(taskStatus === 'doing' ? { started_at: nowIso } : {}),
       // Subtask (v6.19.0+) — cùng lý do: chỉ gửi khi có.
       ...(parentTaskId ? { parent_task_id: parentTaskId } : {}),
       priority: priority || 0,
@@ -195,7 +198,7 @@ export function useUserTasks() {
       completed_at: completedAt || null,
       status: taskStatus,
       notified: false,
-      created_at: new Date().toISOString(),
+      created_at: nowIso,
     };
 
     // Optimistic
@@ -264,6 +267,9 @@ export function useUserTasks() {
 
     const MAX_RETRIES = 2;
     const BACKOFF_MS = 1000;
+    // Kỳ sau dời Bắt đầu + subtask cùng khoảng với Hạn. Task lặp luôn có Hạn (form bắt
+    // buộc); thiếu thì không dời được → bỏ Bắt đầu.
+    const shift = task.due_date ? daysBetween(task.due_date, nextDate) : null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
@@ -273,10 +279,10 @@ export function useUserTasks() {
           description: task.description,
           due_date: nextDate,
           due_time: task.due_time,
-          // Khung giờ làm theo task sang kỳ sau. Task tải trước migration không có
-          // 2 key này → undefined bị JSON bỏ qua, insert không đụng cột chưa có.
-          start_time: task.start_time,
-          end_time: task.end_time,
+          // Bắt đầu (kế hoạch) theo sang kỳ sau; started_at (thực tế) thì KHÔNG.
+          ...(task.start_date && shift !== null
+            ? { start_date: shiftDate(task.start_date, shift), start_time: task.start_time ?? null }
+            : {}),
           // Subtask tự lặp: kỳ sau vẫn thuộc cùng task cha (undefined trước migration → bỏ qua).
           parent_task_id: task.parent_task_id,
           sort_order: task.sort_order,
@@ -317,7 +323,7 @@ export function useUserTasks() {
               if (kidsError) {
                 logger.warn('[useUserTasks] spawnRecurring: read subtasks failed:', kidsError.message);
               } else if (kids?.length) {
-                const copies = subtaskCopiesForNextOccurrence(kids, inserted.id, daysBetween(task.due_date, nextDate))
+                const copies = subtaskCopiesForNextOccurrence(kids, inserted.id, shift ?? 0)
                   .map(c => ({ ...c, user_id: userId }));
                 const { data: copied, error: copyError } = await supabase.from('user_tasks').insert(copies).select();
                 if (copyError) logger.warn('[useUserTasks] spawnRecurring: copy subtasks failed:', copyError.message);
@@ -496,17 +502,21 @@ export function useUserTasks() {
   const uncompleteTask = useCallback(async (taskId, targetStatus = 'todo') => {
     const backup = tasks.find(t => t.id === taskId);
     const nextStatus = ['doing', 'skip'].includes(targetStatus) ? targetStatus : 'todo';
+    // Done → Doing lần đầu cũng là bắt đầu làm (cùng quy tắc updateTask).
+    const startedPatch = nextStatus === 'doing' && backup && !backup.started_at
+      ? { started_at: new Date().toISOString() }
+      : {};
 
     // Optimistic
     setTasks(prev => prev.map(t =>
-      t.id === taskId ? { ...t, completed: false, completed_at: null, status: nextStatus } : t
+      t.id === taskId ? { ...t, completed: false, completed_at: null, status: nextStatus, ...startedPatch } : t
     ));
 
     if (isAuth) {
       try {
         let { error } = await supabase
           .from('user_tasks')
-          .update({ completed: false, completed_at: null, status: nextStatus })
+          .update({ completed: false, completed_at: null, status: nextStatus, ...startedPatch })
           .eq('id', taskId)
           .eq('user_id', userId);
 
@@ -571,7 +581,7 @@ export function useUserTasks() {
   }, [isAuth, userId, tasks, showToast, logTaskEvent, removeXp, spawnRecurringTask]);
 
   // ── Update task (title / description / date / time) ───
-  const updateTask = useCallback(async (taskId, changes) => {
+  const updateTask = useCallback(async (taskId, rawChanges) => {
     const backup = tasks.find(t => t.id === taskId);
 
     // Tính diff TRƯỚC khi optimistic merge — sau đó `backup` vẫn là object cũ
@@ -582,7 +592,12 @@ export function useUserTasks() {
     //
     // `backup` undefined khi task không nằm trong state cục bộ (vd task lịch sử
     // mở từ Lịch) — khi đó old_value = null, log vẫn ghi được, chỉ thiếu vế cũ.
-    const diffs = diffTaskFields(backup, changes);
+    const diffs = diffTaskFields(backup, rawChanges);
+    // Sang Doing lần đầu → ghi lúc bắt đầu làm THẬT (v6.21.0). Mọi đường đổi status
+    // (kéo thẻ, nút nhanh, popup) đều qua đây. Thêm SAU diff: đổi status đã có dòng log.
+    const changes = rawChanges.status === 'doing' && backup && !backup.started_at
+      ? { ...rawChanges, started_at: new Date().toISOString() }
+      : rawChanges;
 
     // Optimistic
     setTasks(prev => prev.map(t =>
@@ -635,7 +650,7 @@ export function useUserTasks() {
   // ── Subtask (v6.20.0): row user_tasks có parent_task_id, ẩn trong task cha ──
 
   // Tạo nhiều subtask cho 1 task cha (form tạo task). Tuần tự để thứ tự tạo = thứ
-  // tự gõ (subtask chưa kéo thả xếp theo created_at). Hạn = hạn task cha.
+  // tự gõ (subtask chưa kéo thả xếp theo created_at). Hạn = ngày hạn task cha (có thể trống).
   const addSubtasks = useCallback(async (parent, titles) => {
     const created = [];
     for (const title of titles) {
@@ -694,11 +709,13 @@ export function useUserTasks() {
   // Postgres so sánh theo UTC — còn caller group theo ngày ĐỊA PHƯƠNG. Task xong
   // lúc 00:30 giờ VN (+07) có completed_at UTC là ngày hôm trước, không đệm thì mất.
   //
-  // `byDueDate`: lọc theo NGÀY KẾ HOẠCH thay vì lúc bấm hoàn thành — các view Lịch
+  // `byPlan`: lọc theo NGÀY KẾ HOẠCH thay vì lúc bấm hoàn thành — các view Lịch
   // đặt task đã xong ở đúng ô đã lên lịch (kiểu Google Calendar), bấm hoàn thành
-  // muộn không làm task nhảy sang ngày khác. due_date là DATE nên không cần đệm.
+  // muộn không làm task nhảy sang ngày khác. Khoảng Bắt đầu→Hạn (v6.21.0) giao với
+  // [startDate, endDate]: Hạn trong khoảng, Bắt đầu trong khoảng, hoặc trùm cả khoảng.
+  // Cột DATE nên không cần đệm.
   // Danh sách "Đã xong" và Kanban vẫn lọc theo completed_at (đó là lịch sử).
-  const getCompletedTasksRange = useCallback(async (startDate, endDate, { byDueDate = false } = {}) => {
+  const getCompletedTasksRange = useCallback(async (startDate, endDate, { byPlan = false } = {}) => {
     if (!isAuth || !userId) return [];
 
     try {
@@ -707,8 +724,10 @@ export function useUserTasks() {
         .select('*')
         .eq('user_id', userId)
         .eq('completed', true);
-      query = byDueDate
-        ? query.gte('due_date', startDate).lte('due_date', endDate).order('due_date', { ascending: true })
+      query = byPlan
+        ? query
+          .or(`and(due_date.gte.${startDate},due_date.lte.${endDate}),and(start_date.gte.${startDate},start_date.lte.${endDate}),and(start_date.lt.${startDate},due_date.gt.${endDate})`)
+          .order('due_date', { ascending: true })
         : query
           .gte('completed_at', `${addDays(startDate, -1)}T00:00:00`)
           .lt('completed_at', `${addDays(endDate, 2)}T00:00:00`)
@@ -896,8 +915,9 @@ export function useUserTasks() {
   // ── Overdue Triage splits ─────────────────────────────────
   const today = todayStr();
   const todayTasks   = pendingTasks.filter(t => t.due_date === today);
-  const overdueTasks = pendingTasks.filter(t => t.due_date < today);
-  const futureTasks  = pendingTasks.filter(t => t.due_date > today);
+  const overdueTasks = pendingTasks.filter(t => t.due_date && t.due_date < today);
+  const futureTasks  = pendingTasks.filter(t => t.due_date && t.due_date > today);
+  const noDateTasks  = pendingTasks.filter(t => !t.due_date);
 
   // ── Rollover: move overdue task to today ──────────────────
   const rolloverTask = useCallback(async (taskId) => {
@@ -912,6 +932,7 @@ export function useUserTasks() {
     todayTasks,
     overdueTasks,
     futureTasks,
+    noDateTasks,
     isLoading,
     addTask,
     completeTask,

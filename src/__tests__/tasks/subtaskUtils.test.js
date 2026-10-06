@@ -93,6 +93,18 @@ assert.equal(shiftDate('2026-10-30', 7), '2026-11-06');
   assert.equal(copies[0].description, 'ghi chú');
   assert.equal('recurrence_rule' in copies[1], false, 'bản copy không mang chuỗi lặp riêng');
 }
+{
+  // v6.21.0: Bắt đầu dời cùng khoảng; subtask không ngày giữ không ngày.
+  const [withStart, noDate] = subtaskCopiesForNextOccurrence([
+    { id: 's', title: 'S', start_date: '2026-10-04', start_time: '09:00', due_date: '2026-10-05', due_time: '10:00', sort_order: 0 },
+    { id: 'n', title: 'N', due_date: null, sort_order: 1 },
+  ], 'p2', 7);
+  assert.deepEqual([withStart.start_date, withStart.start_time, withStart.due_date, withStart.due_time],
+    ['2026-10-11', '09:00', '2026-10-12', '10:00']);
+  assert.deepEqual([noDate.start_date, noDate.due_date], [null, null]);
+  assert.equal('end_time' in withStart, false, 'end_time bỏ từ v6.21.0');
+  assert.equal(shiftDate(null, 7), null);
+}
 console.log('subtaskCopiesForNextOccurrence: OK');
 
 console.log('\n✅ subtaskUtils — subtask trong task cha PASS');

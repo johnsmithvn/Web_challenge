@@ -43,6 +43,17 @@ assert.deepEqual(ids(todayCols.doing), ['2']);
 assert.deepEqual(ids(todayCols.todo), []);
 const customCols = groupKanbanColumns(open, [], getKanbanRange('custom', today, { customFrom: '2026-09-10', customTo: '2026-09-12' }));
 assert.deepEqual(ids(customCols.todo), ['6', '1']);
+// Task không hạn (v6.21.0): xếp cuối cột khi xem Tất cả; lọc theo ngày thì không hiện.
+const undated = [
+  { id: 'u1', status: 'todo', due_date: null, priority: 5 },
+  { id: 'd1', status: 'todo', due_date: '2026-09-20' },
+  { id: 'u2', status: 'doing' },
+];
+const undatedAll = groupKanbanColumns(undated, [], null);
+assert.deepEqual(ids(undatedAll.todo), ['d1', 'u1']);
+assert.deepEqual(ids(undatedAll.doing), ['u2']);
+const undatedToday = groupKanbanColumns(undated, [], getKanbanRange('today', today));
+assert.deepEqual([ids(undatedToday.todo), ids(undatedToday.doing)], [[], []]);
 console.log('groupKanbanColumns time filter on due_date: OK');
 
 /* ── 4. Cột Done lọc theo NGÀY HOÀN THÀNH địa phương ──────────────── */

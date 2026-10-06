@@ -11,7 +11,19 @@ import {
   computeDayLayout,
   hasExplicitTime,
   buildTodayReminders,
+  formatWhenShort,
+  formatSpent,
+  taskSpan,
+  taskDayRole,
+  taskDayMark,
+  bucketTasksByDay,
 } from '../../utils/calendarTimeUtils.js';
+
+// v6.21.0: khối thời gian = Bắt đầu → Hạn CÙNG ngày (không còn end_time).
+const D = '2026-10-05';
+const block = (id, start, end, extra = {}) => ({
+  id, start_date: D, start_time: start, due_date: D, due_time: end, ...extra,
+});
 
 /* ── 1. timeToMinutes & minutesTo12h ──────────────────────────── */
 assert.equal(timeToMinutes('00:00'), 0);
@@ -72,13 +84,13 @@ console.log('getWeekDays range and sunday-start invariant: OK');
 
 /* ── 3. computeDayLayout & Overlapping Events Resolution ───────── */
 const sampleTasks = [
-  { id: 't1', title: 'Họp sáng', start_time: '09:00', end_time: '10:00' },
-  { id: 't2', title: 'Ăn trưa', start_time: '12:00:00', end_time: '12:45:00' },
+  block('t1', '09:00', '10:00', { title: 'Họp sáng' }),
+  block('t2', '12:00:00', '12:45:00', { title: 'Ăn trưa' }),
   { id: 't3', title: 'Task cả ngày 1', due_time: null },
   { id: 't4', title: 'Task cả ngày 2', due_time: '' },
 ];
 
-const { allDayTasks, timedTasks } = computeDayLayout(sampleTasks, 45, 60);
+const { allDayTasks, timedTasks } = computeDayLayout(sampleTasks, D, 45, 60);
 assert.equal(allDayTasks.length, 2, 'Có đúng 2 task cả ngày');
 assert.equal(timedTasks.length, 2, 'Có đúng 2 task có giờ');
 
@@ -98,21 +110,23 @@ assert.equal(hasExplicitTime('23:59:00'), false);
 assert.equal(hasExplicitTime('00:00:00'), false);
 assert.equal(hasExplicitTime(null), false);
 const sentinelRes = computeDayLayout([
-  { id: 's1', due_time: '23:59:00' },
-  { id: 's2', due_time: '00:00' },
-  { id: 's3', due_time: '08:30:00' },
-], 45, 60);
+  { id: 's1', due_date: D, due_time: '23:59:00' },
+  { id: 's2', due_date: D, due_time: '00:00' },
+  { id: 's3', due_date: D, due_time: '08:30:00' },
+], D, 45, 60);
 assert.deepEqual(sentinelRes.allDayTasks.map((t) => t.id), ['s1', 's2']);
 assert.deepEqual(sentinelRes.timedTasks.map((t) => t.id), ['s3']);
 console.log('no-time sentinel (23:59/00:00) → all-day: OK');
 
-// Khung giờ làm (v6.17.0) vs mốc giờ hạn: chỉ có giờ hạn thì là mốc ngắn
-// `markerMinutes`, không phải khối thời lượng giả.
+// Khối Bắt đầu→Hạn vs mốc: chỉ có giờ hạn (hoặc Bắt đầu khác ngày Hạn) thì là mốc ngắn
+// `markerMinutes`, không phải khối thời lượng giả. Bắt đầu có giờ mà Hạn không giờ → mốc ▶.
 const kindRes = computeDayLayout([
-  { id: 'b', start_time: '09:00:00', end_time: '11:00:00', due_time: '23:59:00' },
-  { id: 'd', due_time: '14:00:00' },
-  { id: 'bad', start_time: '11:00', end_time: '10:00' }, // khung hỏng → không giờ
-], 30, 60);
+  block('b', '09:00:00', '11:00:00'),
+  { id: 'd', due_date: D, due_time: '14:00:00' },
+  { id: 'other', start_date: '2026-10-04', start_time: '09:00', due_date: D, due_time: '15:00' }, // bắt đầu hôm trước → mốc hạn
+  { id: 'st', start_date: D, start_time: '11:00', due_date: D, due_time: null }, // Hạn không giờ → mốc bắt đầu
+  { id: 'none', due_date: D, due_time: null },
+], D, 30, 60);
 const kb = kindRes.timedTasks.find((t) => t.id === 'b');
 const kd = kindRes.timedTasks.find((t) => t.id === 'd');
 assert.equal(kb._layout.kind, 'block');
@@ -122,36 +136,93 @@ assert.equal(kb._layout.timeRangeLabel, '9am - 11am');
 assert.equal(kd._layout.kind, 'deadline');
 assert.equal(kd._layout.height, 28);
 assert.equal(kd._layout.timeRangeLabel, 'Hạn 2pm');
-assert.deepEqual(kindRes.allDayTasks.map((t) => t.id), ['bad']);
-console.log('time block vs deadline marker: OK');
+assert.equal(kindRes.timedTasks.find((t) => t.id === 'other')._layout.kind, 'deadline');
+const kst = kindRes.timedTasks.find((t) => t.id === 'st');
+assert.equal(kst._layout.kind, 'start');
+assert.equal(kst._layout.timeRangeLabel, 'Bắt đầu 11am');
+assert.deepEqual(kindRes.allDayTasks.map((t) => t.id), ['none']);
+console.log('time block vs deadline/start marker: OK');
 
-// Nhắc giờ hôm nay cho Service Worker: bắt đầu khung giờ (kèm `until`) + giờ hạn;
-// bỏ task đã xong, task đã Bỏ qua (status 'skip'), task ngày khác và giờ hạn
-// '00:00' (quy tắc cũ của sw.js).
+// Task nhiều ngày (Bắt đầu T2 09:00 → Hạn T5 17:00): ngày đầu mốc ▶, ngày giữa cả ngày,
+// ngày cuối mốc ⏰ — không vẽ khối kéo tới nửa đêm.
+const multi = { id: 'm', start_date: '2026-10-05', start_time: '09:00', due_date: '2026-10-08', due_time: '17:00' };
+const kindOn = (day) => {
+  const r = computeDayLayout([multi], day, 30, 60);
+  return r.timedTasks.length ? r.timedTasks[0]._layout.kind : 'allday';
+};
+assert.deepEqual(['2026-10-05', '2026-10-06', '2026-10-08'].map(kindOn), ['start', 'allday', 'deadline']);
+assert.deepEqual(taskSpan(multi), { from: '2026-10-05', to: '2026-10-08' });
+assert.deepEqual(taskSpan({ start_date: '2026-10-05' }), { from: '2026-10-05', to: '2026-10-05' });
+assert.deepEqual(taskSpan({ due_date: '2026-10-07' }), { from: '2026-10-07', to: '2026-10-07' });
+assert.equal(taskSpan({}), null);
+assert.deepEqual(taskSpan({ start_date: '2026-10-09', due_date: '2026-10-07' }), { from: '2026-10-07', to: '2026-10-07' });
+assert.deepEqual(['2026-10-05', '2026-10-06', '2026-10-08'].map((d) => taskDayRole(multi, d)), ['start', 'middle', 'end']);
+assert.equal(taskDayRole({ due_date: D }, D), 'single');
+assert.deepEqual(['2026-10-05', '2026-10-07', '2026-10-08'].map((d) => taskDayMark(multi, d)), ['▶ ', '↔ ', '⏰ ']);
+assert.equal(taskDayMark({ due_date: D }, D), '');
+console.log('multi-day span → start / all-day / deadline: OK');
+
+// Gom theo ngày: task vào MỌI ngày trong khoảng của nó, cắt theo khoảng đang xem.
+const buckets = bucketTasksByDay([
+  multi,
+  { id: 'one', due_date: '2026-10-06' },
+  { id: 'nodate' },
+  { id: 'before', due_date: '2026-09-01' },
+  { id: 'long', start_date: '2026-01-01', due_date: '2026-12-31' },
+], '2026-10-06', '2026-10-07');
+assert.deepEqual(Object.keys(buckets).sort(), ['2026-10-06', '2026-10-07']);
+assert.deepEqual(buckets['2026-10-06'].map((t) => t.id), ['m', 'one', 'long']);
+assert.deepEqual(buckets['2026-10-07'].map((t) => t.id), ['m', 'long']);
+const monthEdge = bucketTasksByDay([{ id: 'x', start_date: '2026-10-30', due_date: '2026-11-02' }], '2026-10-01', '2026-11-30');
+assert.deepEqual(Object.keys(monthEdge), ['2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02'], 'qua tháng');
+console.log('bucketTasksByDay: OK');
+
+// Nhắc giờ hôm nay cho Service Worker: lúc Bắt đầu (kèm `until` = giờ Hạn cùng ngày) +
+// lúc Hạn. Bỏ task đã xong, đã Bỏ qua, ngày khác, Hạn không giờ (kể cả 23:59/00:00 cũ),
+// và nhắc "Đến giờ làm" của task đã sang Doing (đã bắt đầu thật).
 const reminders = buildTodayReminders([
-  { id: 'a', title: 'Viết báo cáo', due_date: '2026-10-05', start_time: '09:00:00', end_time: '10:30:00', due_time: '23:59:00' },
-  { id: 'b', title: 'Nộp form', due_date: '2026-10-05', due_time: '14:00:00' },
-  { id: 'c', title: 'Không giờ', due_date: '2026-10-05', due_time: '00:00:00' },
-  { id: 'd', title: 'Đã xong', due_date: '2026-10-05', completed: true, start_time: '08:00', end_time: '09:00' },
-  { id: 'e', title: 'Ngày mai', due_date: '2026-10-06', start_time: '08:00', end_time: '09:00' },
-  { id: 'f', title: 'Bỏ qua', due_date: '2026-10-05', status: 'skip', start_time: '15:00', end_time: '16:00', due_time: '17:00' },
-], '2026-10-05');
+  block('a', '09:00:00', '10:30:00', { title: 'Viết báo cáo' }),
+  { id: 'b', title: 'Nộp form', due_date: D, due_time: '14:00:00' },
+  { id: 'c', title: 'Không giờ', due_date: D, due_time: '00:00:00' },
+  { id: 'c2', title: 'Hết ngày cũ', due_date: D, due_time: '23:59:00' },
+  block('d', '08:00', '09:00', { title: 'Đã xong', completed: true }),
+  { id: 'e', title: 'Ngày mai', due_date: '2026-10-06', due_time: '08:00' },
+  block('f', '15:00', '17:00', { title: 'Bỏ qua', status: 'skip' }),
+  { id: 'g', title: 'Chỉ bắt đầu', start_date: D, start_time: '07:00', due_date: null },
+  block('h', '11:00', '12:00', { title: 'Đang làm', status: 'doing' }),
+], D);
 assert.deepEqual(reminders.map((r) => [r.tag, r.at, r.until]), [
   ['task-start-a', '09:00', '10:30'],
-  ['task-a', '23:59', undefined],
+  ['task-a', '10:30', undefined],
   ['task-b', '14:00', undefined],
+  ['task-start-g', '07:00', undefined],
+  ['task-h', '12:00', undefined],
 ]);
 assert.equal(reminders[0].body, 'Viết báo cáo (09:00–10:30)');
-console.log('buildTodayReminders (block start + deadline): OK');
+assert.equal(reminders[3].body, 'Chỉ bắt đầu');
+console.log('buildTodayReminders (start + deadline): OK');
+
+// Nhãn ngắn của mốc trên thẻ + thời gian làm thật.
+assert.equal(formatWhenShort(D, '09:00:00', D), '09:00');
+assert.equal(formatWhenShort(D, null, D), 'Hôm nay');
+assert.equal(formatWhenShort('2026-10-06', '14:30', D), '6/10 14:30');
+assert.equal(formatWhenShort('2026-10-06', '23:59:00', D), '6/10');
+assert.equal(formatWhenShort(null, '09:00', D), '');
+assert.equal(formatSpent('2026-10-05T09:00:00Z', '2026-10-05T09:25:00Z'), '25p');
+assert.equal(formatSpent('2026-10-05T09:00:00Z', '2026-10-05T11:25:00Z'), '2h25p');
+assert.equal(formatSpent('2026-10-05T09:00:00Z', '2026-10-05T11:00:00Z'), '2h');
+assert.equal(formatSpent('2026-10-05T09:00:00Z', '2026-10-08T13:00:00Z'), '3 ngày 4h');
+assert.equal(formatSpent('2026-10-05T09:00:00Z', '2026-10-05T08:00:00Z'), '0p');
+console.log('formatWhenShort + formatSpent: OK');
 
 // Kịch bản 2 task trùng giờ (Overlapping):
 // Task A: 14:00 - 15:30 (90 phút)
 // Task B: 14:30 - 16:00 (90 phút)
 const overlapTasks = [
-  { id: 'oa', title: 'Code tính năng', start_time: '14:00', end_time: '15:30' },
-  { id: 'ob', title: 'Họp dự án', start_time: '14:30', end_time: '16:00' },
+  block('oa', '14:00', '15:30', { title: 'Code tính năng' }),
+  block('ob', '14:30', '16:00', { title: 'Họp dự án' }),
 ];
-const overlapRes = computeDayLayout(overlapTasks, 45, 60);
+const overlapRes = computeDayLayout(overlapTasks, D, 45, 60);
 assert.equal(overlapRes.timedTasks.length, 2);
 const oa = overlapRes.timedTasks.find((t) => t.id === 'oa');
 const ob = overlapRes.timedTasks.find((t) => t.id === 'ob');
@@ -169,11 +240,11 @@ console.log('2-column overlapping split: OK');
 // Task 2: 10:15 - 11:15
 // Task 3: 10:30 - 11:30
 const tripleOverlap = [
-  { id: '1', start_time: '10:00', end_time: '11:00' },
-  { id: '2', start_time: '10:15', end_time: '11:15' },
-  { id: '3', start_time: '10:30', end_time: '11:30' },
+  block('1', '10:00', '11:00'),
+  block('2', '10:15', '11:15'),
+  block('3', '10:30', '11:30'),
 ];
-const tripleRes = computeDayLayout(tripleOverlap, 45, 60);
+const tripleRes = computeDayLayout(tripleOverlap, D, 45, 60);
 assert.equal(tripleRes.timedTasks.length, 3);
 assert.ok(tripleRes.timedTasks[0]._layout.width.includes('33.333333333333336%') || tripleRes.timedTasks[0]._layout.width.includes('33.33%'));
 console.log('3-column overlapping split: OK');

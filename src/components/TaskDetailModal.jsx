@@ -19,6 +19,7 @@ import { useConfirm } from './ConfirmModal';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
 import { toDateStr, formatDate, formatDateTime } from '../utils/dateUtils';
+import { formatSpent, hasExplicitTime } from '../utils/calendarTimeUtils';
 import {
   ACTIONS,
   PRIORITY_OPTIONS,
@@ -40,6 +41,14 @@ function dayLabel(dateStr) {
 
 const hhmm = (iso) =>
   new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+/** 1 mốc Bắt đầu / Hạn: ngày (+ giờ nếu có). */
+const whenLabel = (date, time) => (
+  <>
+    <AppIcon name="calendar" size={14} /> {formatDate(`${date}T00:00:00`)}
+    {hasExplicitTime(time) && <> · <AppIcon name="clock" size={14} /> {time.substring(0, 5)}</>}
+  </>
+);
 
 /** Một giá trị cũ/mới trong feed — dài thì cắt, bấm để bung full. */
 function LogValue({ value, variant, expanded, onToggle }) {
@@ -152,10 +161,6 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
 
   const pri = PRIORITY_OPTIONS.find(p => p.value === (task.priority || 0));
   const overdue = !task.completed && task.due_date && task.due_date < toDateStr();
-  const hasTime =
-    task.due_time &&
-    task.due_time.substring(0, 5) !== '00:00' &&
-    task.due_time.substring(0, 5) !== '23:59';
 
   /** Chỉ render hàng khi field thật sự có mặt — task mở từ Lịch chỉ có 5 cột,
    *  hiện "—" ở những hàng thiếu là nói sai sự thật. */
@@ -205,16 +210,13 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
 
           {/* ── Lưới field (chỉ đọc) ── */}
           <div className="td-grid">
-            {row('Hạn chót', task.due_date && (
+            {task.start_date ? row('Bắt đầu', whenLabel(task.start_date, task.start_time)) : null}
+            {row('Hạn chót', task.due_date ? (
               <>
-                <AppIcon name="calendar" size={14} /> {formatDate(`${task.due_date}T00:00:00`)}
-                {hasTime && <> · <AppIcon name="clock" size={14} /> {task.due_time.substring(0, 5)}</>}
+                {whenLabel(task.due_date, task.due_time)}
                 {overdue && <span className="td-pill td-pill--overdue">Quá hạn</span>}
               </>
-            ))}
-            {task.start_time && task.end_time
-              ? row('Khung giờ làm', <><AppIcon name="timer" size={14} /> {task.start_time.substring(0, 5)} – {task.end_time.substring(0, 5)}</>)
-              : null}
+            ) : <span className="td-muted">Không có hạn</span>)}
             {row('Độ ưu tiên', (
               <PriorityPicker
                 value={task.priority}
@@ -239,8 +241,17 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
                 ? <><AppIcon name="link" size={14} /> {task._collections.length} bài viết</>
                 : <span className="td-muted">Chưa liên kết</span>
             ))}
+            {/* Thời gian THẬT (app tự ghi): sang Doing lần đầu → started_at; xong → completed_at */}
+            {task.started_at
+              ? row('Bắt đầu làm', <><AppIcon name="play" size={14} /> {formatDateTime(task.started_at)}</>)
+              : null}
             {task.completed && task.completed_at
-              ? row('Hoàn thành lúc', <><AppIcon name="checkCircle" size={14} /> {formatDateTime(task.completed_at)}</>)
+              ? row('Hoàn thành lúc', (
+                <>
+                  <AppIcon name="checkCircle" size={14} /> {formatDateTime(task.completed_at)}
+                  {task.started_at && <span className="td-muted"> · mất {formatSpent(task.started_at, task.completed_at)}</span>}
+                </>
+              ))
               : null}
             {row('Tạo lúc', task.created_at && formatDateTime(task.created_at))}
             {/* Cột updated_at đến từ migration v5.0.0; task cũ trong state chưa

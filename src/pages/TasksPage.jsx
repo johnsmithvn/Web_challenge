@@ -196,18 +196,18 @@ export default function TasksPage() {
     setCreateModalState({ date: dateStr, time: timeStr, status: initialStatus });
   }, []);
 
-  // Click ô giờ trống trên lưới Ngày/Tuần → tạo task có khung giờ làm 1 tiếng bắt
-  // đầu từ ô đó (kiểu Google Calendar). Giờ hạn để mặc định (không đặt giờ).
+  // Click ô giờ trống trên lưới Ngày/Tuần → task Bắt đầu tại ô đó, Hạn +1 giờ
+  // (kiểu Google Calendar), xem TaskForm `initialStart`.
   const handleSlotCreate = useCallback((dateStr, startTime) => {
-    setCreateModalState({ date: dateStr, blockStart: startTime, status: 'todo' });
+    setCreateModalState({ date: dateStr, start: startTime, status: 'todo' });
   }, []);
 
   const handleAddNewTask = useCallback(() => {
     if (activeView === 'list') {
       setShowForm((prev) => !prev);
     } else if (activeView === 'kanban') {
-      // Kanban không có form inline — mở modal giống double-click cột To Do.
-      setCreateModalState({ date: toDateStr(), time: '23:59', status: 'todo' });
+      // Kanban không có form inline — mở modal giống double-click cột To Do (không ngày).
+      setCreateModalState({ status: 'todo' });
     } else {
       setCreateModalState({
         date: toDateStr(currentDate || new Date()),
@@ -408,7 +408,7 @@ export default function TasksPage() {
         isOpen={!!createModalState}
         initialDate={createModalState?.date}
         initialTime={createModalState?.time}
-        initialBlockStart={createModalState?.blockStart}
+        initialStart={createModalState?.start}
         initialStatus={createModalState?.status || 'todo'}
         onClose={() => setCreateModalState(null)}
         taskModel={taskModel}

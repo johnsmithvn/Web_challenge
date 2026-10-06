@@ -131,11 +131,12 @@ export default function SubtaskList({ parent, taskModel, onOpenTask, mode = 'edi
       )}
 
       {items.map((s, i) => {
-        const overdue = !s.completed && s.due_date < today;
+        const overdue = !s.completed && Boolean(s.due_date) && s.due_date < today;
         const pri = PRIORITY_OPTIONS.find((p) => p.value === (s.priority || 0));
-        const time = s.start_time && s.end_time
-          ? `${s.start_time.substring(0, 5)}–${s.end_time.substring(0, 5)}`
-          : hasExplicitTime(s.due_time) ? s.due_time.substring(0, 5) : null;
+        // Giờ Hạn; cùng ngày có giờ Bắt đầu thì hiện dạng khoảng "09:00–10:00".
+        const due = hasExplicitTime(s.due_time) ? s.due_time.substring(0, 5) : null;
+        const start = s.start_date && s.start_date === s.due_date && s.start_time ? s.start_time.substring(0, 5) : null;
+        const time = start && due ? `${start}–${due}` : due;
         return (
           <div
             key={s.id}

@@ -20,9 +20,9 @@ export function timeToMinutes(timeStr) {
 }
 
 /**
- * Task có giờ do user đặt hay không. App lưu "không đặt giờ" bằng giá trị giả:
- * 23:59 (mặc định khi tạo, "Hết ngày") hoặc 00:00 (xoá giờ ở Danh sách) — cùng
- * quy ước với TaskListSection và public/sw.js. Task không giờ thuộc hàng "Cả ngày".
+ * Task có giờ do user đặt hay không. Từ v6.21.0 "không giờ" là NULL; 23:59/00:00 là
+ * giá trị giả của bản cũ (migration v6.21.0 đã đổi về NULL) — vẫn coi là không giờ
+ * cho dữ liệu cache/khách còn sót. Task không giờ thuộc hàng "Cả ngày".
  * @param {string|null|undefined} dueTime - "HH:mm" hoặc "HH:mm:ss" (DB)
  * @returns {boolean}
  */
@@ -34,10 +34,9 @@ export function hasExplicitTime(dueTime) {
 
 /**
  * Danh sách nhắc giờ HÔM NAY gửi cho Service Worker (public/sw.js), mỗi nhắc 1 tag riêng:
- *   - Khung giờ làm → nhắc lúc BẮT ĐẦU (kiểu Google Calendar); `until` = giờ kết thúc,
- *     khung đã qua thì SW không nhắc muộn nữa.
- *   - Giờ hạn → nhắc lúc đến hạn, giữ quy tắc cũ của sw.js: bỏ qua '00:00'
- *     (23:59 vẫn nhắc "hết ngày").
+ *   - Bắt đầu (start_date hôm nay, có giờ) → "Đến giờ làm" — trừ khi task đã sang Doing
+ *     (đã bắt đầu thật). `until` = giờ Hạn cùng ngày: quá giờ đó thì SW không nhắc muộn.
+ *   - Hạn (due_date hôm nay, có giờ) → "Đến hạn". Không đặt giờ thì không nhắc.
  * @param {Array<Object>} tasks - task trong state (pending + xong hôm nay)
  * @param {string} todayStr - YYYY-MM-DD địa phương
  * @returns {Array<{tag:string, taskId:string, at:string, until?:string, title:string, body:string}>}
@@ -46,18 +45,56 @@ export function buildTodayReminders(tasks = [], todayStr) {
   const out = [];
   for (const t of tasks) {
     // 'skip' = đã chủ động bỏ qua → không nhắc.
-    if (t.completed || t.status === 'skip' || t.due_date !== todayStr) continue;
-    const start = t.start_time ? t.start_time.substring(0, 5) : null;
-    const end = t.end_time ? t.end_time.substring(0, 5) : null;
-    if (start && end) {
-      out.push({ tag: `task-start-${t.id}`, taskId: t.id, at: start, until: end, title: '⏱ Đến giờ làm', body: `${t.title} (${start}–${end})` });
+    if (t.completed || t.status === 'skip') continue;
+    const due = t.due_date === todayStr && hasExplicitTime(t.due_time) ? t.due_time.substring(0, 5) : null;
+    const start = t.start_date === todayStr && t.start_time ? t.start_time.substring(0, 5) : null;
+    if (start && t.status !== 'doing') {
+      out.push({
+        tag: `task-start-${t.id}`,
+        taskId: t.id,
+        at: start,
+        ...(due && due > start ? { until: due } : {}),
+        title: '⏱ Đến giờ làm',
+        body: due ? `${t.title} (${start}–${due})` : t.title,
+      });
     }
-    const due = t.due_time ? t.due_time.substring(0, 5) : null;
-    if (due && due !== '00:00') {
+    if (due) {
       out.push({ tag: `task-${t.id}`, taskId: t.id, at: due, title: '📌 Nhiệm Vụ Đến Hạn', body: t.title });
     }
   }
   return out;
+}
+
+/**
+ * Nhãn ngắn của 1 mốc (Bắt đầu / Hạn / lúc bắt đầu làm) trên thẻ task:
+ * "09:00" nếu hôm nay, "6/10 09:00", "6/10"; hôm nay không giờ → "Hôm nay".
+ * @param {string|null} date - YYYY-MM-DD
+ * @param {string|null} time - HH:mm(:ss)
+ * @param {string} todayStr - YYYY-MM-DD địa phương
+ * @returns {string} '' khi không có ngày
+ */
+export function formatWhenShort(date, time, todayStr) {
+  if (!date) return '';
+  const [, m, d] = date.split('-');
+  const day = date === todayStr ? '' : `${Number(d)}/${Number(m)}`;
+  const hm = hasExplicitTime(time) ? time.substring(0, 5) : '';
+  return [day, hm].filter(Boolean).join(' ') || 'Hôm nay';
+}
+
+/**
+ * Thời gian làm thật từ started_at đến completed_at, vd "25p", "2h25p", "3 ngày 4h".
+ * @param {string} fromIso
+ * @param {string} toIso
+ * @returns {string}
+ */
+export function formatSpent(fromIso, toIso) {
+  const mins = Math.max(0, Math.round((new Date(toIso) - new Date(fromIso)) / 60000));
+  const d = Math.floor(mins / 1440);
+  const h = Math.floor((mins % 1440) / 60);
+  const m = mins % 60;
+  if (d) return `${d} ngày${h ? ` ${h}h` : ''}`;
+  if (h) return `${h}h${m ? `${m}p` : ''}`;
+  return `${m}p`;
 }
 
 /**
@@ -160,6 +197,60 @@ export function getWeekDays(baseDate = new Date(), startOnSunday = false) {
 }
 
 /**
+ * Khoảng ngày task chiếm trên Lịch (v6.21.0): từ ngày Bắt đầu đến ngày Hạn. Chỉ có 1 mốc
+ * → đúng ngày đó; không ngày → null. Bắt đầu sau Hạn (dữ liệu hỏng, DB đã CHECK) → ngày Hạn.
+ * @param {Object} task
+ * @returns {{from: string, to: string} | null}
+ */
+export function taskSpan(task) {
+  const from = task?.start_date || task?.due_date;
+  const to = task?.due_date || task?.start_date;
+  if (!from) return null;
+  return from <= to ? { from, to } : { from: to, to };
+}
+
+/**
+ * Vai của 1 ngày với task: 'single' (task 1 ngày), 'start' / 'middle' / 'end' (task nhiều ngày).
+ * @param {Object} task
+ * @param {string} dateStr - YYYY-MM-DD
+ * @returns {'single'|'start'|'middle'|'end'}
+ */
+export function taskDayRole(task, dateStr) {
+  const span = taskSpan(task);
+  if (!span || span.from === span.to) return 'single';
+  if (dateStr === span.from) return 'start';
+  if (dateStr === span.to) return 'end';
+  return 'middle';
+}
+
+/** Ký hiệu đầu chip của task nhiều ngày: ▶ ngày Bắt đầu, ↔ ngày giữa, ⏰ ngày Hạn. */
+export function taskDayMark(task, dateStr) {
+  return { start: '▶ ', middle: '↔ ', end: '⏰ ' }[taskDayRole(task, dateStr)] || '';
+}
+
+/**
+ * Gom task vào MỌI ngày nó chiếm (taskSpan) nằm trong [from, to] — các view Lịch.
+ * Vòng lặp bị chặn trong khoảng đang xem, task kéo dài cả năm cũng chỉ lặp vài chục ngày.
+ * @param {Array<Object>} tasks
+ * @param {string} from - YYYY-MM-DD
+ * @param {string} to - YYYY-MM-DD
+ * @returns {Object<string, Array<Object>>} dateStr → task[]
+ */
+export function bucketTasksByDay(tasks = [], from, to) {
+  const map = {};
+  for (const t of tasks) {
+    const span = taskSpan(t);
+    if (!span || span.to < from || span.from > to) continue;
+    const d = new Date(`${span.from < from ? from : span.from}T00:00:00`);
+    const end = span.to > to ? to : span.to;
+    for (let ds = toDateStr(d); ds <= end; d.setDate(d.getDate() + 1), ds = toDateStr(d)) {
+      (map[ds] ||= []).push(t);
+    }
+  }
+  return map;
+}
+
+/**
  * Thuật toán giải quyết sự kiện trùng giờ (Overlapping Event Column Allocation).
  * Tương tự thuật toán của Google Calendar:
  * 1. Tách các task có giờ cụ thể trong ngày.
@@ -167,29 +258,33 @@ export function getWeekDays(baseDate = new Date(), startOnSunday = false) {
  * 3. Gán chỉ số cột `colIndex` (0, 1, ...) và tổng số cột `totalCols` cho mỗi task.
  * 4. Tính tọa độ CSS `top`, `height`, `left`, `width`.
  *
- * Ba loại task trong ngày:
- *   - Có khung giờ làm (start_time < end_time, v6.17.0) → khối thật start→end (`kind: 'block'`).
- *   - Chỉ có giờ HẠN đặt tay → mốc ngắn tại giờ hạn (`kind: 'deadline'`), không
- *     phải khối thời lượng — giờ hạn không nói task kéo dài bao lâu.
- *   - Không giờ (23:59/00:00/rỗng) → hàng Cả ngày.
+ * Loại của task trong NGÀY `dateStr` (task đã gom bằng bucketTasksByDay, v6.21.0):
+ *   - Bắt đầu và Hạn cùng là ngày này, cả hai có giờ → khối thật Bắt đầu→Hạn (`kind: 'block'`).
+ *   - Ngày Hạn có giờ → mốc ngắn tại giờ hạn (`kind: 'deadline'`), không phải khối
+ *     thời lượng — giờ hạn không nói task kéo dài bao lâu.
+ *   - Ngày Bắt đầu có giờ → mốc ngắn tại giờ bắt đầu (`kind: 'start'`) — không vẽ khối
+ *     tới nửa đêm / sang ngày Hạn.
+ *   - Còn lại (không giờ, ngày giữa của task nhiều ngày) → hàng Cả ngày.
  *
  * @param {Array<Object>} tasks - Danh sách task trong ngày
+ * @param {string} dateStr - Ngày đang dựng (YYYY-MM-DD)
  * @param {number} markerMinutes - Chiều cao (quy ra phút) của mốc giờ hạn
  * @param {number} pxPerHour - Chiều cao 1 giờ bằng pixel (mặc định 56px)
  * @returns {{ allDayTasks: Array<Object>, timedTasks: Array<Object> }}
  */
-export function computeDayLayout(tasks = [], markerMinutes = 30, pxPerHour = 56) {
+export function computeDayLayout(tasks = [], dateStr, markerMinutes = 30, pxPerHour = 56) {
   const allDayTasks = [];
   const timed = [];
 
   for (const t of tasks) {
-    const blockStart = timeToMinutes(t.start_time);
-    const blockEnd = timeToMinutes(t.end_time);
-    if (blockStart !== null && blockEnd !== null && blockEnd > blockStart) {
-      timed.push({ task: t, start: blockStart, end: blockEnd, kind: 'block' });
-    } else if (hasExplicitTime(t.due_time)) {
-      const start = timeToMinutes(t.due_time);
-      timed.push({ task: t, start, end: Math.min(1440, start + markerMinutes), kind: 'deadline' });
+    const due = t.due_date === dateStr && hasExplicitTime(t.due_time) ? timeToMinutes(t.due_time) : null;
+    const start = t.start_date === dateStr ? timeToMinutes(t.start_time) : null;
+    if (start !== null && due !== null && due > start) {
+      timed.push({ task: t, start, end: due, kind: 'block' });
+    } else if (due !== null) {
+      timed.push({ task: t, start: due, end: Math.min(1440, due + markerMinutes), kind: 'deadline' });
+    } else if (start !== null) {
+      timed.push({ task: t, start, end: Math.min(1440, start + markerMinutes), kind: 'start' });
     } else {
       allDayTasks.push(t);
     }
@@ -264,7 +359,7 @@ export function computeDayLayout(tasks = [], markerMinutes = 30, pxPerHour = 56)
           kind: ev.kind,
           timeRangeLabel: ev.kind === 'block'
             ? formatTimeRange(ev.task.start_time, ev.end - ev.start)
-            : `Hạn ${minutesTo12h(ev.start)}`,
+            : `${ev.kind === 'start' ? 'Bắt đầu' : 'Hạn'} ${minutesTo12h(ev.start)}`,
         },
       });
     }

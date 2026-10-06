@@ -5,7 +5,7 @@ import PriorityPicker from './PriorityPicker';
 import { useConfirm } from './ConfirmModal';
 import UI_STRINGS from '../data/ui-strings.json';
 import { toDateStr } from '../utils/dateUtils';
-import { hasExplicitTime } from '../utils/calendarTimeUtils';
+import { formatWhenShort, hasExplicitTime } from '../utils/calendarTimeUtils';
 import { getKanbanRange, groupKanbanColumns } from '../utils/kanbanUtils';
 import SubtaskList, { SubtaskBadge } from './SubtaskList';
 import { subtaskProgressByParent } from '../utils/subtaskUtils';
@@ -292,16 +292,17 @@ export default function TaskKanbanView({
       return;
     }
     if (onQuickCreate) {
-      onQuickCreate(today, '23:59', colKey);
+      onQuickCreate(null, null, colKey); // tạo từ Kanban = task không ngày
     }
-  }, [onQuickCreate, today]);
+  }, [onQuickCreate]);
 
   // Render 1 Kanban Task Card
   const renderCard = (task) => {
     const isCompleted = Boolean(task.completed);
-    const isOverdue = !isCompleted && task.due_date < today;
+    // Task không hạn: không badge ngày.
+    const isOverdue = !isCompleted && Boolean(task.due_date) && task.due_date < today;
     const isToday = !isCompleted && task.due_date === today;
-    const isFuture = !isCompleted && task.due_date > today;
+    const isFuture = !isCompleted && Boolean(task.due_date) && task.due_date > today;
 
     // Subtask (parent_task_id) — thay cho cách đọc dòng "- [ ]" trong mô tả trước đây.
     const hasSubtasks = Boolean(subtaskProgress.get(task.id));
@@ -317,10 +318,16 @@ export default function TaskKanbanView({
     if (draggedTaskId === task.id) cardClass += ' is-dragging';
 
     // Định dạng nhãn ngày
-    const formattedDate = new Date(task.due_date + 'T00:00:00').toLocaleDateString('vi-VN', {
+    const formattedDate = task.due_date && new Date(task.due_date + 'T00:00:00').toLocaleDateString('vi-VN', {
       day: 'numeric',
       month: 'short',
     });
+
+    // Đang làm → lúc bắt đầu làm THẬT (started_at); chưa làm → Bắt đầu dự định.
+    const startedAt = task.status === 'doing' && !isCompleted && task.started_at ? new Date(task.started_at) : null;
+    const startLabel = startedAt
+      ? `từ ${formatWhenShort(toDateStr(startedAt), startedAt.toTimeString().slice(0, 5), today)}`
+      : formatWhenShort(task.start_date, task.start_time, today);
 
     return (
       <div
@@ -417,9 +424,8 @@ export default function TaskKanbanView({
           <div className="kanban-card-desc">{task.description}</div>
         )}
 
-        {/* Card Footer: Tags & Time — ưu tiên khung giờ làm; giờ hạn chỉ hiện khi
-            đặt thật (23:59/00:00 = không đặt giờ, xem hasExplicitTime) */}
-        {((task._tags && task._tags.length > 0) || (task.start_time && task.end_time) || hasExplicitTime(task.due_time)) && (
+        {/* Card Footer: Tags & Time — Bắt đầu (▶) và giờ Hạn (ngày Hạn đã ở badge trên) */}
+        {((task._tags && task._tags.length > 0) || startLabel || hasExplicitTime(task.due_time)) && (
           <div className="kanban-card-footer">
             <div className="kanban-card-tags">
               {(task._tags || []).map((tag) => (
@@ -440,15 +446,18 @@ export default function TaskKanbanView({
               ))}
             </div>
 
-            {task.start_time && task.end_time ? (
-              <span style={{ fontSize: '0.7rem' }} title="Khung giờ làm">
-                <AppIcon name="timer" size={11} /> {task.start_time.substring(0, 5)}–{task.end_time.substring(0, 5)}
-              </span>
-            ) : hasExplicitTime(task.due_time) && (
-              <span style={{ fontSize: '0.7rem' }} title="Giờ hạn">
-                <AppIcon name="clock" size={11} /> {task.due_time.substring(0, 5)}
-              </span>
-            )}
+            <span style={{ display: 'inline-flex', gap: '0.45rem', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+              {startLabel && (
+                <span title={startedAt ? 'Bắt đầu làm lúc' : 'Bắt đầu'}>
+                  <AppIcon name="play" size={11} /> {startLabel}
+                </span>
+              )}
+              {hasExplicitTime(task.due_time) && (
+                <span title="Giờ hạn">
+                  <AppIcon name="clock" size={11} /> {task.due_time.substring(0, 5)}
+                </span>
+              )}
+            </span>
           </div>
         )}
 
@@ -658,7 +667,7 @@ export default function TaskKanbanView({
                     <button
                       type="button"
                       className="kanban-column-add-btn"
-                      onClick={() => onQuickCreate(today, '23:59', col.key)}
+                      onClick={() => onQuickCreate(null, null, col.key)}
                       title={`Thêm việc vào ${col.title}`}
                     >
                       <AppIcon name="plus" size={14} />
@@ -688,7 +697,7 @@ export default function TaskKanbanView({
                 {col.items.length === 0 ? (
                   <div
                     className="kanban-empty-state"
-                    onClick={() => onQuickCreate && onQuickCreate(today, '23:59', col.key)}
+                    onClick={() => onQuickCreate && onQuickCreate(null, null, col.key)}
                     title="Bấm hoặc nhấp đúp để tạo công việc mới"
                   >
                     <AppIcon name="plusCircle" size={18} style={{ marginBottom: '0.3rem', opacity: 0.6 }} />
@@ -701,7 +710,7 @@ export default function TaskKanbanView({
                       <button
                         type="button"
                         className="kanban-quick-add-bottom"
-                        onClick={() => onQuickCreate(today, '23:59', col.key)}
+                        onClick={() => onQuickCreate(null, null, col.key)}
                         title={`Thêm việc vào ${col.title}`}
                       >
                         <AppIcon name="plus" size={13} />

@@ -51,8 +51,9 @@ export const TASK_FIELD_LABELS = {
   description: 'Mô tả',
   due_date: 'Hạn chót',
   due_time: 'Giờ hẹn',
-  start_time: 'Bắt đầu làm',
-  end_time: 'Kết thúc làm',
+  start_date: 'Ngày bắt đầu',
+  start_time: 'Giờ bắt đầu',
+  end_time: 'Kết thúc làm', // cột bỏ ở v6.21.0 — giữ nhãn cho log cũ
   priority: 'Độ ưu tiên',
   recurrence_rule: 'Lặp lại',
   recurrence_parent_id: 'Chuỗi lặp',
@@ -164,7 +165,8 @@ export function formatTaskFieldValue(field, raw) {
   if (raw === undefined || raw === null || raw === '') return 'trống';
 
   switch (field) {
-    case 'due_date': {
+    case 'due_date':
+    case 'start_date': {
       // Chuỗi 'yyyy-MM-dd' phải ghép 'T00:00:00' mới được hiểu là giờ ĐỊA PHƯƠNG;
       // để trần thì new Date() parse như UTC và lùi 1 ngày ở GMT+7.
       const str = String(raw);

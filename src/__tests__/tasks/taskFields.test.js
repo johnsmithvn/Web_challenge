@@ -31,6 +31,7 @@ assert.equal(normalizeFieldValue('due_time', '14:30'), '14:30');
 // Khung giờ làm (v6.17.0) cũng là cột TIME → cùng quy tắc, không đẻ log giả
 assert.equal(normalizeFieldValue('start_time', '09:00:00'), '09:00');
 assert.equal(normalizeFieldValue('end_time', '10:30:00'), '10:30');
+assert.equal(formatTaskFieldValue('start_date', '2026-10-06'), '06/10/2026');
 // object (recurrence_rule JSONB) → chuỗi JSON
 assert.equal(
   normalizeFieldValue('recurrence_rule', { type: 'interval', days: 7 }),

@@ -3,14 +3,17 @@ import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, getCanChiDay } from '../utils/lunarUtils';
 import HOLIDAYS from '../data/holidays.json';
 import {
+  bucketTasksByDay,
   computeDayLayout,
   getTaskVisualStatus,
+  taskDayMark,
 } from '../utils/calendarTimeUtils';
 import AppIcon from './AppIcon';
 import '../styles/week-calendar.css';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const PX_PER_HOUR = 60; // 60px cho 1 giờ ở view ngày rộng rãi
+const MARKER_ICON = { deadline: '⏰ ', start: '▶ ' }; // mốc ngắn (computeDayLayout `kind`)
 
 /**
  * CalendarDayView — Chế độ xem Lịch Ngày 1 cột với timeline 24h chi tiết (Ảnh 2).
@@ -63,20 +66,20 @@ export default function CalendarDayView({
     hasAutoScrolled.current = true;
   }, [isToday, nowMinutes]);
 
-  // Tải completed tasks có ngày KẾ HOẠCH = ngày đang chọn (lọc đúng 1 ngày, không
+  // Tải completed tasks có khoảng KẾ HOẠCH (Bắt đầu→Hạn) chứa ngày đang chọn (không
   // đệm ±1 ngày như query theo completed_at — trước đây lọt task của ngày bên cạnh).
   useEffect(() => {
     if (!getCompletedTasksRange) return;
     let stale = false;
-    getCompletedTasksRange(dateStr, dateStr, { byDueDate: true }).then((res) => {
+    getCompletedTasksRange(dateStr, dateStr, { byPlan: true }).then((res) => {
       if (!stale) setCompletedTasks(res || []);
     });
     return () => { stale = true; };
   }, [getCompletedTasksRange, dateStr, refreshKey]);
 
-  // Gom tasks của ngày
+  // Gom tasks của ngày — kể cả task nhiều ngày đi qua ngày này (Bắt đầu→Hạn)
   const dayPending = useMemo(() => {
-    return pendingTasks.filter((t) => t.due_date === dateStr);
+    return bucketTasksByDay(pendingTasks, dateStr, dateStr)[dateStr] || [];
   }, [pendingTasks, dateStr]);
 
   const allDayHolidays = useMemo(() => {
@@ -132,8 +135,8 @@ export default function CalendarDayView({
   }, [dayPending, completedTasks]);
 
   const { allDayTasks, timedTasks } = useMemo(() => {
-    return computeDayLayout(combinedTasks, 30, PX_PER_HOUR);
-  }, [combinedTasks]);
+    return computeDayLayout(combinedTasks, dateStr, 30, PX_PER_HOUR);
+  }, [combinedTasks, dateStr]);
 
   const canChiDay = useMemo(() => {
     return getCanChiDay(targetDate.getDate(), targetDate.getMonth() + 1, targetDate.getFullYear());
@@ -179,7 +182,7 @@ export default function CalendarDayView({
                     onClick={() => onSelectTask && onSelectTask(t)}
                     title={t.title}
                   >
-                    {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : ''}{t.title}
+                    {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : taskDayMark(t, dateStr)}{t.title}
                   </div>
                 );
               })}
@@ -212,7 +215,7 @@ export default function CalendarDayView({
                   const clickY = e.clientY - rect.top;
                   const isBottomHalf = clickY > PX_PER_HOUR / 2;
                   const timeStr = `${String(h).padStart(2, '0')}:${isBottomHalf ? '30' : '00'}`;
-                  // Ô giờ → khung giờ làm 1 tiếng (kiểu Google Calendar); thiếu prop thì về tạo thường.
+                  // Ô giờ → Bắt đầu tại ô, Hạn +1 giờ (kiểu Google Calendar); thiếu prop thì về tạo thường.
                   if (onSlotCreate) onSlotCreate(dateStr, timeStr);
                   else if (onQuickCreate) onQuickCreate(dateStr, timeStr);
                 }}
@@ -245,7 +248,7 @@ export default function CalendarDayView({
               return (
                 <div
                   key={t.id}
-                  className={`week-cal__event ${statusClass}${t._layout.kind === 'deadline' ? ' week-cal__event--deadline' : ''}`}
+                  className={`week-cal__event ${statusClass}${t._layout.kind !== 'block' ? ' week-cal__event--marker' : ''}`}
                   style={{
                     top: `${t._layout.top}px`,
                     height: `${Math.max(26, t._layout.height)}px`,
@@ -259,7 +262,7 @@ export default function CalendarDayView({
                   title={`${t.title} (${t._layout.timeRangeLabel})`}
                 >
                   <div className="week-cal__event-title">
-                    {visualStatus === 'done' ? '✓ ' : visualStatus === 'overdue' ? '⚠️ ' : t._layout.kind === 'deadline' ? '⏰ ' : ''}{t.title}
+                    {visualStatus === 'done' ? '✓ ' : visualStatus === 'overdue' ? '⚠️ ' : MARKER_ICON[t._layout.kind] || ''}{t.title}
                   </div>
                   {t._layout.height >= 34 && (
                     <div className="week-cal__event-time">{t._layout.timeRangeLabel}</div>

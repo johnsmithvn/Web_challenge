@@ -5,9 +5,10 @@ import TagPicker from './TagPicker';
 import SubtaskList from './SubtaskList';
 import AppIcon from './AppIcon';
 import { WEEKDAYS } from '../utils/taskFields';
-import { toDateStr } from '../utils/dateUtils';
-import { timeToMinutes } from '../utils/calendarTimeUtils';
+import { hasExplicitTime, timeToMinutes } from '../utils/calendarTimeUtils';
 import '../styles/tasks.css';
+
+const hhmm = (t) => (hasExplicitTime(t) ? t.substring(0, 5) : '');
 
 const REC_TYPES = [
   { key: 'interval', label: 'Mỗi N ngày' },
@@ -32,7 +33,7 @@ export default function TaskForm({
   task,          // có = sửa, không có = tạo mới
   initialDate,   // Smart Prefill khi tạo từ ô Lịch
   initialTime,
-  initialBlockStart, // click ô giờ trên lưới Ngày/Tuần → khung giờ làm 1 tiếng (kiểu Google Calendar)
+  initialStart,  // click ô giờ trên lưới Ngày/Tuần → Bắt đầu = ô đó, Hạn = +1 giờ (kiểu Google Calendar)
   allTags = [],
   addTag,
   onSubmit,      // async (fields, tagIds, subtaskTitles) => void — subtaskTitles chỉ có khi TẠO
@@ -47,23 +48,19 @@ export default function TaskForm({
 
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
-  const [dueDate, setDueDate] = useState(task?.due_date || initialDate || toDateStr());
-  // Sửa: giữ đúng giờ đang lưu (null → rỗng). Tạo: mặc định 23:59 = "Hết ngày".
-  const [dueTime, setDueTime] = useState(
-    task ? (task.due_time ? task.due_time.substring(0, 5) : '') : (initialTime || '23:59')
-  );
-  // Khung giờ làm (v6.17.0) — cùng ngày với dueDate, tách khỏi giờ HẠN dueTime.
-  const [showBlock, setShowBlock] = useState(Boolean(task?.start_time || initialBlockStart));
-  const [startTime, setStartTime] = useState(
-    task?.start_time ? task.start_time.substring(0, 5) : (initialBlockStart || '09:00')
-  );
-  const [endTime, setEndTime] = useState(() => {
-    if (task?.end_time) return task.end_time.substring(0, 5);
-    if (!initialBlockStart) return '10:00';
-    // +1 giờ, chặn ở 23:59 (khung không được qua đêm — CHECK dưới DB).
-    const end = Math.min(timeToMinutes(initialBlockStart) + 60, 1439);
+  // Thời gian (v6.21.0): 2 mốc đều tuỳ chọn — Bắt đầu và Hạn ('' = không đặt).
+  // Tạo mới mặc định KHÔNG ngày; tạo từ ô Lịch thì điền sẵn ngày/giờ của ô đó.
+  const [dueDate, setDueDate] = useState(task ? (task.due_date || '') : (initialDate || ''));
+  const [dueTime, setDueTime] = useState(() => {
+    if (task) return hhmm(task.due_time);
+    if (!initialStart) return hhmm(initialTime);
+    // Hạn = Bắt đầu +1 giờ, chặn ở 23:59 (không qua đêm).
+    const end = Math.min(timeToMinutes(initialStart) + 60, 1439);
     return `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
   });
+  const [startDate, setStartDate] = useState(task ? (task.start_date || '') : (initialStart && initialDate) || '');
+  const [startTime, setStartTime] = useState(task?.start_time ? task.start_time.substring(0, 5) : (initialStart || ''));
+  const [picker, setPicker] = useState(null); // 'start' | 'due' | null — popover chọn ngày đang mở
   // Subtask nháp khi TẠO task (chưa có task cha để gắn) — tạo thật sau khi lưu task cha.
   const [subtaskTitles, setSubtaskTitles] = useState([]);
   const [subtaskDraft, setSubtaskDraft] = useState('');
@@ -74,12 +71,15 @@ export default function TaskForm({
   const [recDays, setRecDays] = useState(rec?.days || 7);
   const [recWeekday, setRecWeekday] = useState(rec?.weekday ?? 1);
   const [recMonthDay, setRecMonthDay] = useState(rec?.day || 1);
-  const [showDP, setShowDP] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // 'HH:MM' so sánh chuỗi được; khớp CHECK end_time > start_time dưới DB.
-  const blockInvalid = showBlock && !(startTime && endTime && endTime > startTime);
-  const canSubmit = Boolean(title.trim()) && !saving && !blockInvalid;
+  // Khớp CHECK user_tasks_start_before_due dưới DB ('YYYY-MM-DD'/'HH:MM' so sánh chuỗi được).
+  const startAfterDue = Boolean(startDate && dueDate) && (
+    startDate > dueDate || (startDate === dueDate && Boolean(startTime && dueTime) && startTime >= dueTime)
+  );
+  // Kỳ lặp sau dời theo ngày Hạn → task lặp phải có Hạn.
+  const recNeedsDue = showRec && !dueDate;
+  const canSubmit = Boolean(title.trim()) && !saving && !startAfterDue && !recNeedsDue;
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -95,16 +95,15 @@ export default function TaskForm({
     const fields = {
       title: title.trim(),
       description: description.trim() || null,
-      due_date: dueDate || toDateStr(),
-      due_time: dueTime || null,
+      due_date: dueDate || null,
+      due_time: dueDate && dueTime ? dueTime : null,
       priority,
       recurrence_rule: recurrenceRule,
     };
-    // Chỉ gửi khung giờ khi đang có hoặc vừa bỏ — task không dùng khung giờ thì
-    // payload không chạm 2 cột này (an toàn cả khi DB chưa chạy migration v6.17.0).
-    if (showBlock || task?.start_time) {
-      fields.start_time = showBlock ? startTime : null;
-      fields.end_time = showBlock ? endTime : null;
+    // Bắt đầu chỉ gửi khi đang có hoặc vừa bỏ — task không dùng thì payload không chạm cột.
+    if (startDate || task?.start_date) {
+      fields.start_date = startDate || null;
+      fields.start_time = startDate && startTime ? startTime : null;
     }
     // Ô subtask nháp còn chữ mà chưa Enter → vẫn tính (không lặng lẽ mất).
     const pendingTitles = subtaskDraft.trim() ? [...subtaskTitles, subtaskDraft.trim()] : subtaskTitles;
@@ -123,6 +122,48 @@ export default function TaskForm({
       handleSubmit();
     }
   };
+
+  // 1 mốc thời gian (Bắt đầu / Hạn): nút mở popover chọn ngày + giờ, ✕ để bỏ.
+  const renderWhen = (key, label, icon, date, time, setDate, setTime) => (
+    <div className="task-form__when">
+      <span className="task-form__label">{label}</span>
+      <div className="task-form__when-row">
+        <button type="button" className="auth-input task-form__date-btn" onClick={() => setPicker(picker === key ? null : key)}>
+          <AppIcon name={icon} size={14} />
+          {date ? (
+            <>
+              {new Date(date + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' })}
+              {time && <> · <AppIcon name="clock" size={14} /> {time}</>}
+            </>
+          ) : (
+            <span className="task-form__muted">Không đặt</span>
+          )}
+        </button>
+        {date && (
+          <button
+            type="button"
+            className="task-form__clear"
+            onClick={() => { setDate(''); setTime(''); }}
+            title={`Bỏ ${label}`}
+            aria-label={`Bỏ ${label}`}
+          >
+            <AppIcon name="x" size={14} />
+          </button>
+        )}
+      </div>
+      {picker === key && (
+        <DatePickerPopover
+          label={label}
+          value={date}
+          onChange={setDate}
+          onClose={() => setPicker(null)}
+          timeValue={time}
+          onTimeChange={setTime}
+          style={{ top: '100%', left: 0, marginTop: '0.25rem' }}
+        />
+      )}
+    </div>
+  );
 
   return (
     <form className="task-form" onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
@@ -194,65 +235,9 @@ export default function TaskForm({
         </div>
       )}
 
-      <div style={{ position: 'relative' }}>
-        <span className="task-form__label">Thời hạn</span>
-        <button type="button" className="auth-input task-form__date-btn" onClick={() => setShowDP(!showDP)}>
-          <AppIcon name="calendar" size={14} />
-          {dueDate
-            ? new Date(dueDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' })
-            : 'Chọn ngày'}
-          {dueTime && dueTime !== '00:00' && (
-            <>
-              {' '}· <AppIcon name="clock" size={14} /> {dueTime === '23:59' ? '23:59 (Hết ngày)' : dueTime}
-            </>
-          )}
-        </button>
-        {showDP && (
-          <DatePickerPopover
-            value={dueDate}
-            onChange={(d) => setDueDate(d)}
-            onClose={() => setShowDP(false)}
-            timeValue={dueTime}
-            onTimeChange={setDueTime}
-            style={{ top: '100%', left: 0, marginTop: '0.25rem' }}
-          />
-        )}
-      </div>
-
-      <div>
-        <button
-          type="button"
-          onClick={() => setShowBlock(!showBlock)}
-          className={`task-option-btn ${showBlock ? 'task-option-btn--active-cyan' : ''}`}
-        >
-          <AppIcon name="timer" size={14} /> Khung giờ làm {showBlock && <AppIcon name="check" size={12} />}
-        </button>
-        {showBlock && (
-          <div className="task-form-rec-panel">
-            <div className="task-form__row">
-              <label className="task-form__muted" htmlFor={`${id}-start`}>Từ</label>
-              <input
-                id={`${id}-start`}
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="auth-input task-form__time"
-              />
-              <label className="task-form__muted" htmlFor={`${id}-end`}>đến</label>
-              <input
-                id={`${id}-end`}
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="auth-input task-form__time"
-              />
-            </div>
-            {blockInvalid && (
-              <span className="task-form__error">Giờ kết thúc phải sau giờ bắt đầu (cùng ngày).</span>
-            )}
-          </div>
-        )}
-      </div>
+      {renderWhen('start', 'Bắt đầu', 'play', startDate, startTime, setStartDate, setStartTime)}
+      {renderWhen('due', 'Hạn', 'calendar', dueDate, dueTime, setDueDate, setDueTime)}
+      {startAfterDue && <span className="task-form__error">Bắt đầu phải trước Hạn.</span>}
 
       <div>
         <span className="task-form__label">Độ ưu tiên</span>
@@ -323,6 +308,7 @@ export default function TaskForm({
                 <span className="task-form__muted">mỗi tháng</span>
               </div>
             )}
+            {recNeedsDue && <span className="task-form__error">Task lặp cần có ngày Hạn.</span>}
           </div>
         )}
       </div>

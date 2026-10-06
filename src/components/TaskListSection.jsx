@@ -12,6 +12,7 @@ import SubtaskList, { SubtaskBadge } from './SubtaskList';
 import { subtaskProgressByParent } from '../utils/subtaskUtils';
 import { useConfirm } from './ConfirmModal';
 import { toDateStr } from '../utils/dateUtils';
+import { formatWhenShort, hasExplicitTime } from '../utils/calendarTimeUtils';
 // v5.0.0: PRIORITY_OPTIONS/WEEKDAYS dời sang utils/taskFields để TaskDetailModal
 // dùng chung mà không phải import ngược file này (vòng tròn import).
 import { PRIORITY_OPTIONS, WEEKDAYS } from '../utils/taskFields';
@@ -26,7 +27,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const {
-    todayTasks, overdueTasks, futureTasks,
+    todayTasks, overdueTasks, futureTasks, noDateTasks,
     addTask, completeTask, uncompleteTask, updateTask, deleteTask, addSubtasks,
     linkCollection, unlinkCollection,
     linkTaskTag, unlinkTaskTag,
@@ -171,8 +172,8 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
       description: fields.description,
       dueDate: fields.due_date,
       dueTime: fields.due_time,
+      startDate: fields.start_date,
       startTime: fields.start_time,
-      endTime: fields.end_time,
       priority: fields.priority,
       recurrenceRule: fields.recurrence_rule,
     });
@@ -211,10 +212,11 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
 
   /* ── Helpers ── */
   const isOverdue = (task) => {
+    if (!task.due_date) return false;
     const now = new Date();
     const taskDate = new Date(task.due_date + 'T00:00:00');
     if (taskDate < new Date(toDateStr() + 'T00:00:00')) return true;
-    if (task.due_time && task.due_time.substring(0, 5) !== '00:00' && task.due_time.substring(0, 5) !== '23:59' && task.due_date === toDateStr()) {
+    if (hasExplicitTime(task.due_time) && task.due_date === toDateStr()) {
       const [h, m] = task.due_time.split(':').map(Number);
       if (now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m)) return true;
     }
@@ -234,7 +236,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
   };
 
 
-  const totalPending = todayTasks.length + overdueTasks.length + futureTasks.length;
+  const totalPending = todayTasks.length + overdueTasks.length + futureTasks.length + noDateTasks.length;
 
 
   /* ── Render a single task card ── */
@@ -313,18 +315,18 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
                   {task.title}
                 </span>
                 <SubtaskBadge progress={subtaskProgress.get(task.id)} />
-                {task.due_date !== toDateStr() && (
+                {task.due_date && task.due_date !== toDateStr() && (
                   <span className="task-chip" style={{
                     background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(139,92,246,0.1)',
                     color: overdue ? '#f87171' : '#a78bfa',
                   }}><AppIcon name="calendar" size={12} weight="bold" /> {fmtDate(task.due_date)}</span>
                 )}
-                {task.start_time && task.end_time && (
-                  <span className="task-chip" title="Khung giờ làm" style={{
+                {task.start_date && (
+                  <span className="task-chip" title="Bắt đầu" style={{
                     background: 'rgba(6,182,212,0.1)', color: '#22d3ee',
-                  }}><AppIcon name="timer" size={12} weight="bold" /> {fmtTime(task.start_time)}–{fmtTime(task.end_time)}</span>
+                  }}><AppIcon name="play" size={12} weight="bold" /> {formatWhenShort(task.start_date, task.start_time, toDateStr())}</span>
                 )}
-                {task.due_time && task.due_time.substring(0,5) !== '00:00' && task.due_time.substring(0,5) !== '23:59' && (
+                {hasExplicitTime(task.due_time) && (
                   <span className="task-chip" style={{
                     background: overdue ? 'rgba(239,68,68,0.12)' : 'rgba(6,182,212,0.1)',
                     color: overdue ? '#f87171' : '#22d3ee',
@@ -442,13 +444,14 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
               {/* Quick date popover (shared between desktop/mobile) */}
               {quickDateTaskId === task.id && (
                 <DatePickerPopover
+                  label="Hạn"
                   value={task.due_date}
                   onChange={(d) => {
                     if (d) updateTask(task.id, { due_date: d });
                   }}
                   onClose={() => setQuickDateTaskId(null)}
-                  timeValue={task.due_time ? task.due_time.substring(0, 5) : ''}
-                  onTimeChange={(t) => updateTask(task.id, { due_time: t || '00:00' })}
+                  timeValue={hasExplicitTime(task.due_time) ? task.due_time.substring(0, 5) : ''}
+                  onTimeChange={(t) => updateTask(task.id, { due_time: t || null })}
                   style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.25rem' }}
                 />
               )}
@@ -528,6 +531,19 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
               {futureTasks.map(task => renderTask(task))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Không hạn (v6.21.0): task chưa đặt ngày Hạn ── */}
+      {noDateTasks.length > 0 && (
+        <div className="task-group">
+          <div className="task-group__head task-group__head--future">
+            <AppIcon name="inbox" size={16} /> Không hạn
+            <span className="task-group__count">{noDateTasks.length}</span>
+          </div>
+          <div className="task-group__rows">
+            {noDateTasks.map(task => renderTask(task))}
+          </div>
         </div>
       )}
 
@@ -642,7 +658,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
       {detailTaskId && (() => {
         // Task con/cha mở từ trong popup có thể không nằm trong các nhóm trên (đã xong
         // ngày cũ, Bỏ qua…) → tìm tiếp trong state, cuối cùng dùng bản chụp lúc bấm mở.
-        const task = [...todayTasks, ...overdueTasks, ...futureTasks, ...completedList]
+        const task = [...todayTasks, ...overdueTasks, ...futureTasks, ...noDateTasks, ...completedList]
           .find(t => t.id === detailTaskId)
           || (taskModel.tasks || []).find(t => t.id === detailTaskId)
           || (detailFallback?.id === detailTaskId ? detailFallback : null);
@@ -667,7 +683,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
 
       {/* Link KB Modal */}
       {linkTaskId && (() => {
-        const task = [...todayTasks, ...overdueTasks, ...futureTasks].find(t => t.id === linkTaskId);
+        const task = [...todayTasks, ...overdueTasks, ...futureTasks, ...noDateTasks].find(t => t.id === linkTaskId);
         if (!task) return null;
         return (
           <LinkKBModal

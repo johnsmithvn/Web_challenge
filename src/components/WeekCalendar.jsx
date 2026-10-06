@@ -4,14 +4,17 @@ import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
 import HOLIDAYS from '../data/holidays.json';
 import {
   getWeekDays,
+  bucketTasksByDay,
   computeDayLayout,
   getTaskVisualStatus,
+  taskDayMark,
 } from '../utils/calendarTimeUtils';
 import AppIcon from './AppIcon';
 import '../styles/week-calendar.css';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const PX_PER_HOUR = 54; // Chiều cao 1 giờ chuẩn Google Calendar
+const MARKER_ICON = { deadline: '⏰ ', start: '▶ ' }; // mốc ngắn (computeDayLayout `kind`)
 
 /**
  * WeekCalendar — Lịch Tuần Time-Grid chuẩn phong cách Google Calendar.
@@ -189,28 +192,20 @@ export default function WeekCalendar({
   useEffect(() => {
     if (!getCompletedTasksRange || !startWeekStr || !endWeekStr) return;
     let stale = false;
-    // Gom theo ngày KẾ HOẠCH (due_date): task đã xong nằm đúng ô đã lên lịch,
+    // Gom theo ngày KẾ HOẠCH (Bắt đầu→Hạn): task đã xong nằm đúng ô đã lên lịch,
     // không nhảy sang ngày bấm hoàn thành.
-    getCompletedTasksRange(startWeekStr, endWeekStr, { byDueDate: true }).then((rows) => {
+    getCompletedTasksRange(startWeekStr, endWeekStr, { byPlan: true }).then((rows) => {
       if (stale) return;
-      const map = {};
-      for (const r of rows || []) {
-        (map[r.due_date] ||= []).push(r);
-      }
-      setCompletedByDay(map);
+      setCompletedByDay(bucketTasksByDay(rows || [], startWeekStr, endWeekStr));
     });
     return () => { stale = true; };
   }, [startWeekStr, endWeekStr, getCompletedTasksRange, refreshKey]);
 
-  // Gom nhóm pending tasks theo due_date
-  const pendingByDay = useMemo(() => {
-    const map = {};
-    for (const t of pendingTasks) {
-      if (!t.due_date) continue;
-      (map[t.due_date] ||= []).push(t);
-    }
-    return map;
-  }, [pendingTasks]);
+  // Gom pending tasks vào mọi ngày trong tuần mà khoảng Bắt đầu→Hạn đi qua
+  const pendingByDay = useMemo(
+    () => (startWeekStr && endWeekStr ? bucketTasksByDay(pendingTasks, startWeekStr, endWeekStr) : {}),
+    [pendingTasks, startWeekStr, endWeekStr]
+  );
 
   // Tự động cuộn đến 7:00 AM (hoặc giờ hiện tại nếu trong khoảng 7h-21h) lúc mở lần đầu
   useEffect(() => {
@@ -260,7 +255,7 @@ export default function WeekCalendar({
         ...(pendingByDay[dStr] || []),
         ...(completedByDay[dStr] || []),
       ];
-      result[dStr] = computeDayLayout(combined, 30, PX_PER_HOUR);
+      result[dStr] = computeDayLayout(combined, dStr, 30, PX_PER_HOUR);
     }
     return result;
   }, [weekDays, pendingByDay, completedByDay]);
@@ -278,7 +273,7 @@ export default function WeekCalendar({
     const m = String(roundedMins % 60).padStart(2, '0');
     const timeStr = `${h}:${m}`;
 
-    // Ô giờ → khung giờ làm 1 tiếng (kiểu Google Calendar); thiếu prop thì về tạo thường.
+    // Ô giờ → Bắt đầu tại ô, Hạn +1 giờ (kiểu Google Calendar); thiếu prop thì về tạo thường.
     if (onSlotCreate) onSlotCreate(dateStr, timeStr);
     else onQuickCreate?.(dateStr, timeStr);
   }, [onQuickCreate, onSlotCreate]);
@@ -441,7 +436,7 @@ export default function WeekCalendar({
                         }}
                         title={t.title}
                       >
-                        {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : ''}{t.title}
+                        {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : taskDayMark(t, day.dateStr)}{t.title}
                       </div>
                     );
                   })}
@@ -509,7 +504,7 @@ export default function WeekCalendar({
                       return (
                         <div
                           key={t.id}
-                          className={`week-cal__event ${statusClass}${t._layout.kind === 'deadline' ? ' week-cal__event--deadline' : ''}`}
+                          className={`week-cal__event ${statusClass}${t._layout.kind !== 'block' ? ' week-cal__event--marker' : ''}`}
                           style={{
                             top: `${t._layout.top}px`,
                             height: `${t._layout.height}px`,
@@ -523,7 +518,7 @@ export default function WeekCalendar({
                           title={`${t.title} (${t._layout.timeRangeLabel})`}
                         >
                           <div className="week-cal__event-title">
-                            {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : t._layout.kind === 'deadline' ? '⏰ ' : ''}{t.title}
+                            {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : MARKER_ICON[t._layout.kind] || ''}{t.title}
                           </div>
                           {t._layout.height >= 34 && (
                             <div className="week-cal__event-time">

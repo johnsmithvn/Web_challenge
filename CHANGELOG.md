@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v6.21.0 — 2026-10-06
+
+### Changed
+- **Thời gian task = 2 mốc tuỳ chọn: Bắt đầu + Hạn — thay "Khung giờ làm" Từ–đến của v6.17.0 (Bước A + B; `data/migration_v6.21.0_task_start_deadline.sql` + bản local `supabase/migrations/20261006020000_task_start_deadline_v6_21_0.sql`, `useUserTasks.js`, `calendarTimeUtils.js`, `kanbanUtils.js`, `subtaskUtils.js`, `taskFields.js`, `TaskForm.jsx`, `DatePickerPopover.jsx`, `TaskCreateModal.jsx`, `TaskListSection.jsx`, `TaskKanbanView.jsx`, `TaskDetailModal.jsx`, `SubtaskList.jsx`, `CalendarAgendaView.jsx`, `QuickCapture.jsx`, `TasksPage.jsx`, `tasks.css`):**
+  - Form: 2 dòng **Bắt đầu** / **Hạn** (ngày + giờ đều tuỳ chọn, ✕ để bỏ). Kết thúc = Hạn — khung 9–10h = Bắt đầu 9:00, Hạn 10:00; bấm ô giờ trên lịch Ngày/Tuần điền sẵn như vậy. Bắt đầu sau Hạn → không cho lưu (khớp CHECK DB). Task lặp bắt buộc có Hạn.
+  - **Task không ngày**: task mới mặc định không ngày (QuickCapture, nút thêm Kanban, form Danh sách); tạo từ Lịch thì điền sẵn ngày. Danh sách có nhóm **Không hạn**; Kanban chỉ hiện task không hạn ở bộ lọc Tất cả (xếp cuối cột); Lịch không hiện.
+  - Bỏ quy ước "23:59 = Hết ngày": không giờ = NULL. Hết nhắc lúc 23:59; DatePickerPopover không tự điền giờ hiện tại, có nút **Bỏ giờ**, nhãn header theo prop `label`.
+  - **Giờ bắt đầu làm thật** (`started_at`): `updateTask`/`uncompleteTask` ghi khi task sang Doing **lần đầu** (mọi đường: kéo thẻ, nút nhanh, popup; tạo thẳng vào cột Doing cũng ghi). Không đè kế hoạch Bắt đầu, không copy sang kỳ lặp sau, không sinh dòng log riêng. Thẻ Kanban Doing hiện `▶ từ 14:05`; popup Chi tiết hiện Bắt đầu làm + "mất 2h25p" khi xong (`formatSpent`).
+  - Nhắc giờ: "Đến giờ làm" lúc Bắt đầu (bỏ qua nếu task đã ở Doing; `until` = giờ Hạn cùng ngày), "Đến hạn" chỉ khi Hạn có giờ.
+  - **Lịch (Bước B — `CalendarDayView.jsx`, `WeekCalendar.jsx`, `MonthCalendar.jsx`, `CalendarAgendaView.jsx`, `week-calendar.css`):** task nằm ở MỌI ngày từ Bắt đầu đến Hạn (`taskSpan` / `bucketTasksByDay`, vòng lặp cắt theo khoảng đang xem). Lưới Ngày/Tuần (`computeDayLayout(tasks, dateStr, …)`): Bắt đầu + Hạn cùng ngày, cả hai có giờ → khối; ngày Hạn có giờ → mốc ⏰; ngày Bắt đầu có giờ → mốc ▶ (`kind: 'start'`, không vẽ khối tới nửa đêm); ngày giữa / không giờ → hàng Cả ngày. Chip cả ngày, chip Tháng mang ký hiệu ▶ / ↔ / ⏰ của task nhiều ngày (`taskDayMark`); Lịch biểu hiện `▶ 09:00`, `⏰ 17:00`, "↔ Nhiều ngày". `getCompletedTasksRange` option `byDueDate` → `byPlan`: lấy task đã xong có khoảng Bắt đầu→Hạn giao khoảng xem. Class `.week-cal__event--deadline` → `--marker` (dùng cho cả 2 loại mốc). `MonthCalendar`: `pad` ra module scope.
+  - Task lặp: kỳ sau dời Bắt đầu cùng khoảng với Hạn; subtask copy dời cả Bắt đầu.
+  - Test cập nhật theo mô hình mới (`weekCalendarLogic`, `kanbanLogic`, `subtaskUtils`, `taskFields`): fixture khối giờ chuyển từ `start_time/end_time` sang `start_date+start_time → due_date+due_time`, giữ nguyên khoảng giờ; `computeDayLayout` nhận thêm `dateStr`; thêm case mốc ▶, task nhiều ngày, gom theo ngày qua tháng.
+
+### Notes
+- **Migration v6.21.0 sửa dữ liệu (user đã đồng ý):** giờ hạn 23:59/00:00 → NULL; khung giờ cũ → Bắt đầu = ngày hạn + giờ bắt đầu, giờ Hạn = giờ kết thúc (nếu chưa có giờ hạn hợp lệ); **xoá cột `end_time`**; `due_date` bỏ NOT NULL; thêm `start_date`, `started_at` và 3 CHECK. Chạy trên Supabase SQL Editor **trước** khi deploy (code mới gửi `due_date = null` / `started_at`, DB cũ sẽ từ chối).
+
 ## v6.20.0 — 2026-10-06
 
 ### Changed
@@ -12,6 +28,9 @@
   - Cột `subtasks` JSONB (v6.18.0) không còn dùng (không có dữ liệu thật); giữ trong DB, chưa xoá. Bỏ code checklist: `summarizeSubtaskChange`, diff field `subtasks`, `convertSubtaskToTask`; xoá `ChildTaskList.jsx`.
   - Test `subtaskUtils.test.js` viết lại theo mô hình mới (sắp xếp, gộp DB+state, tiến độ, kéo thả chỉ ghi phần đổi, copy kỳ lặp).
 - **Popup Chi tiết: khu Hoạt động & Ghi chú thu gọn mặc định** (`TaskDetailModal.jsx`, `task-detail.css`) — nút hiện số dòng, bấm để mở tab.
+
+### Fixed
+- **Service worker trả code cũ ở dev server (`public/sw.js` v1.3.0, cache `lh-pwa-v1.4.0`):** SW đăng ký cả khi `npm run dev` và cache-first MỌI file cùng domain — kể cả module không hash của Vite (`/src/…`) → sửa code, reload vẫn thấy giao diện cũ. Nay cache-first chỉ cho `/assets/…` (file build có hash) + icon precache; đổi tên cache để bản cũ bị xoá khi SW mới kích hoạt.
 
 ### Notes
 - **Thứ tự:** chạy `data/migration_v6.20.0_subtask_order.sql` trên Supabase SQL Editor **sau** v6.19.0 và **trước** khi deploy.
