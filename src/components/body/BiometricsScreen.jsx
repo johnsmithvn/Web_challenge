@@ -530,12 +530,7 @@ export default function BiometricsScreen() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
           {/* ── TOP ROW: GAUGE CARD (360px) + TREND CHART (FLEX: 1) ── */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-            gap: '16px',
-            alignItems: 'stretch'
-          }}>
+          <div className="body-cothe-top-grid">
 
             {/* GAUGE CARD CÂN NẶNG & BMI (360px) */}
             <div className="body-card" style={{
@@ -602,11 +597,11 @@ export default function BiometricsScreen() {
                 </div>
               </div>
 
-              {/* Legend 4 mốc màu */}
-              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {/* Legend 4 mốc màu (luôn nằm trên 1 hàng gọn gàng) */}
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', width: '100%', flexWrap: 'nowrap' }}>
                 {gaugeData.legend.map(l => (
-                  <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--body-text-sub)' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: l.color }} />
+                  <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--body-text-sub)', whiteSpace: 'nowrap' }}>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: l.color, flex: 'none' }} />
                     {l.label}
                   </span>
                 ))}
@@ -740,7 +735,7 @@ export default function BiometricsScreen() {
                     <span style={{ height: '1px', background: 'var(--body-card-border)' }} />
                   </div>
 
-                  <svg viewBox="0 0 600 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}>
+                  <svg viewBox="0 0 600 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'hidden' }}>
                     <path d={trendData.area} fill="rgba(105, 73, 232, 0.08)" />
                     <path
                       d={`M 0 ${trendData.goalY} L 600 ${trendData.goalY}`}
@@ -756,34 +751,28 @@ export default function BiometricsScreen() {
                       strokeWidth="2.5"
                       strokeLinejoin="round"
                     />
+                    {/* Nhãn Mục tiêu nằm an toàn bên trong SVG, không bị tràn ra ngoài */}
+                    <text
+                      x="590"
+                      y={Math.max(16, Math.min(185, Number(trendData.goalY) - 6))}
+                      textAnchor="end"
+                      fill="#2F8A57"
+                      fontSize="12"
+                      fontWeight="600"
+                      fontFamily="var(--body-font)"
+                    >
+                      {trendData.goalLabel}
+                    </text>
+                    {/* Điểm dot tại giá trị cuối cùng bên trong SVG */}
+                    <circle
+                      cx="598"
+                      cy={trendData.lastY}
+                      r="5"
+                      fill="#FFFFFF"
+                      stroke="#6949E8"
+                      strokeWidth="3"
+                    />
                   </svg>
-
-                  {/* Điểm dot tại giá trị cuối cùng */}
-                  <span style={{
-                    position: 'absolute',
-                    right: '0%',
-                    top: `${trendData.lastY / 2}%`,
-                    width: '11px',
-                    height: '11px',
-                    margin: '-6px -5px 0 0',
-                    borderRadius: '50%',
-                    background: '#FFFFFF',
-                    border: '2.5px solid #6949E8',
-                    boxSizing: 'border-box'
-                  }} />
-
-                  {/* Nhãn Mục tiêu */}
-                  <span style={{
-                    position: 'absolute',
-                    right: '8px',
-                    top: `${trendData.goalY / 2}%`,
-                    transform: 'translateY(-120%)',
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    color: '#2F8A57'
-                  }}>
-                    {trendData.goalLabel}
-                  </span>
                 </div>
 
                 {/* Trục Y */}
@@ -805,19 +794,10 @@ export default function BiometricsScreen() {
           </div>
 
           {/* ── BOTTOM ROW: 10 METRICS (5x2) + BODY COMPOSITION DONUT (360px) ── */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) 360px',
-            gap: '16px',
-            alignItems: 'stretch'
-          }}>
+          <div className="body-cothe-bottom-grid">
 
             {/* 10 THẺ CHỈ SỐ CƠ THỂ CHI TIẾT (GRID 5x2) */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              gap: '10px'
-            }}>
+            <div className="body-metrics-10-grid">
               {metricsGrid.map(m => (
                 <div
                   key={m.name}
@@ -1506,14 +1486,14 @@ export default function BiometricsScreen() {
                   type="number"
                   step="0.05"
                   required
-                  placeholder="Ví dụ: 65.05"
+                  placeholder="65.05"
                   value={newWeight}
                   onChange={e => setNewWeight(e.target.value)}
                   style={{
                     height: '42px',
                     borderRadius: '8px',
-                    border: '1px solid var(--body-card-border)',
-                    background: 'var(--body-shell-bg)',
+                    border: '1.5px solid #D5D4CE',
+                    background: '#FFFFFF',
                     padding: '0 12px',
                     fontSize: '15px',
                     fontFamily: 'var(--body-mono)',
@@ -1531,14 +1511,14 @@ export default function BiometricsScreen() {
                   <input
                     type="number"
                     step="0.1"
-                    placeholder="Ví dụ: 15.2"
+                    placeholder="15.2"
                     value={newFat}
                     onChange={e => setNewFat(e.target.value)}
                     style={{
                       height: '38px',
                       borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-shell-bg)',
+                      border: '1.5px solid #D5D4CE',
+                      background: '#FFFFFF',
                       padding: '0 10px',
                       fontSize: '14px',
                       fontFamily: 'var(--body-mono)',
@@ -1555,14 +1535,14 @@ export default function BiometricsScreen() {
                   <input
                     type="number"
                     step="0.1"
-                    placeholder="Ví dụ: 29.6"
+                    placeholder="29.6"
                     value={newMuscle}
                     onChange={e => setNewMuscle(e.target.value)}
                     style={{
                       height: '38px',
                       borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-shell-bg)',
+                      border: '1.5px solid #D5D4CE',
+                      background: '#FFFFFF',
                       padding: '0 10px',
                       fontSize: '14px',
                       fontFamily: 'var(--body-mono)',
@@ -1581,14 +1561,14 @@ export default function BiometricsScreen() {
                   <input
                     type="number"
                     step="0.1"
-                    placeholder="Ví dụ: 58.9"
+                    placeholder="58.9"
                     value={newWater}
                     onChange={e => setNewWater(e.target.value)}
                     style={{
                       height: '38px',
                       borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-shell-bg)',
+                      border: '1.5px solid #D5D4CE',
+                      background: '#FFFFFF',
                       padding: '0 10px',
                       fontSize: '14px',
                       fontFamily: 'var(--body-mono)',
@@ -1605,14 +1585,14 @@ export default function BiometricsScreen() {
                   <input
                     type="number"
                     step="0.05"
-                    placeholder="Ví dụ: 2.82"
+                    placeholder="2.82"
                     value={newBone}
                     onChange={e => setNewBone(e.target.value)}
                     style={{
                       height: '38px',
                       borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-shell-bg)',
+                      border: '1.5px solid #D5D4CE',
+                      background: '#FFFFFF',
                       padding: '0 10px',
                       fontSize: '14px',
                       fontFamily: 'var(--body-mono)',

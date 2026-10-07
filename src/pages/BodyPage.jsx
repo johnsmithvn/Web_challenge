@@ -18,7 +18,6 @@ import '../styles/body.css';
 const SCREENS = [
   { key: 'overview', label: 'Tổng quan', icon: 'chartDonut' },
   { key: 'routine', label: 'Lộ trình', icon: 'listChecks' },
-  { key: 'session', label: 'Buổi tập', icon: 'barbell' },
   { key: 'history', label: 'Tiến bộ', icon: 'calendar' },
   { key: 'biometrics', label: 'Cơ thể', icon: 'user' },
   { key: 'nutrition', label: 'Dinh dưỡng', icon: 'bowlFood' },
@@ -58,8 +57,12 @@ export default function BodyPage() {
     abandonSession
   } = useWorkouts();
 
-  // Active sub-screen (default to overview)
-  const currentScreen = SCREENS.some(s => s.key === routeScreen) ? routeScreen : 'overview';
+  // Active sub-screen: nếu routeScreen === 'session' thì giữ 'session', còn lại map theo SCREENS (mặc định 'overview')
+  const isSessionRoute = routeScreen === 'session';
+  const currentScreen = isSessionRoute
+    ? 'session'
+    : (SCREENS.some(s => s.key === routeScreen) ? routeScreen : 'overview');
+
   const setScreen = useCallback((target) => {
     navigate(`/body/${target}`);
   }, [navigate]);
@@ -70,6 +73,13 @@ export default function BodyPage() {
 
   // Check for existing in-progress session in database
   const inProgressSession = sessions.find(s => s.status === 'in_progress');
+
+  // Tự động chuyển về Lộ trình nếu người dùng truy cập /body/session mà không có phiên tập nào đang diễn ra
+  useEffect(() => {
+    if (routeScreen === 'session' && !currentSessionObj && !inProgressSession) {
+      navigate('/body/routine', { replace: true });
+    }
+  }, [routeScreen, currentSessionObj, inProgressSession, navigate]);
 
   // Lock document body scroll on desktop (Workspace Pattern)
   useEffect(() => {
