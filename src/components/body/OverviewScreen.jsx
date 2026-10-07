@@ -6,6 +6,7 @@ import { useNutrition } from '../../hooks/useNutrition';
 import { useWorkouts } from '../../hooks/useWorkouts';
 import MuscleBodyCanvas from './MuscleBodyCanvas';
 import { estimateRecoveryState } from '../../utils/workoutLogic';
+import { getWeekDates, toDateStr } from '../../utils/dateUtils';
 
 const VN_MUSCLES = {
   chest: 'Ngực',
@@ -24,24 +25,18 @@ const VN_MUSCLES = {
   lats: 'Xô'
 };
 
-const DEFAULT_REC = {
-  chest: 'low', shoulders: 'low', triceps: 'low',
-  quads: 'mid', glutes: 'mid', hamstrings: 'mid', calves: 'mid', lowerback: 'mid',
-  biceps: 'ready', forearms: 'ready', abs: 'ready', obliques: 'ready', traps: 'ready', lats: 'ready'
-};
-
 export default function OverviewScreen({ onNavigateTab, onStartSession }) {
   const { user } = useAuth();
-  const { latest: latestWeight, addMeasurement, history: weightHistory } = useBiometrics();
+  const { latest: latestWeight, addMeasurement, measurements, profile, tdee } = useBiometrics();
   const { mealLogs, addMealLog } = useNutrition();
-  const { activeRoutine, routineItems, sessions, recentSets } = useWorkouts();
+  const { activeRoutine, routineItems, sessions, recentSets, exerciseMap } = useWorkouts();
 
   const [quickModal, setQuickModal] = useState(false);
   const [weightInput, setWeightInput] = useState(latestWeight?.weight ? String(latestWeight.weight) : '');
   const [kcalInput, setKcalInput] = useState('');
   const [mealNameInput, setMealNameInput] = useState('Bữa ăn');
 
-  // Lắng nghe sự kiện "Ghi nhanh" từ Header chung (chuẩn 1 header duy nhất)
+  // Lắng nghe sự kiện "Ghi nhanh" từ Header chung
   useEffect(() => {
     const handleOpenQuick = () => setQuickModal(true);
     window.addEventListener('body:open-quick-capture', handleOpenQuick);
@@ -64,12 +59,8 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     return 'Tối nay';
   }, [today]);
 
-  const displayName = user?.user_metadata?.full_name?.split(' ').pop() || user?.email?.split('@')[0] || 'Minh';
-
-  const todayDateStr = useMemo(() => {
-    const d = new Date(now);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, [now]);
+  const displayName = user?.user_metadata?.full_name?.split(' ').pop() || user?.email?.split('@')[0] || 'bạn';
+  const todayDateStr = useMemo(() => toDateStr(today), [today]);
 
   // Buổi tập hoàn thành hôm nay
   const todayCompletedSession = useMemo(() => {
@@ -97,105 +88,236 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
   // ── THẺ 1: BUỔI TẬP HÔM NAY ──────────────────────────────────
   const sessionStats = useMemo(() => {
     const isDone = Boolean(todayCompletedSession);
-    const durationMin = isDone ? Math.max(1, Math.round(todayCompletedSession.duration_seconds / 60)) : 42;
-    const exercisesCount = isDone ? 6 : Math.max(1, todayRoutineItems.length || 6);
-    const setsCount = isDone ? todaySetsCount || 16 : todayRoutineItems.reduce((acc, it) => acc + (it.target_sets || 3), 0) || 16;
-    const volumeKg = isDone ? (todayCompletedSession.total_volume || 1240) : 1240;
+    const hasPlan = todayRoutineItems.length > 0;
 
-    let title = 'Đẩy · Ngực, Vai, Tay sau';
-    if (isDone && todayCompletedSession.title) {
-      title = todayCompletedSession.title;
-    } else if (todayRoutineItems.length > 0 && todayRoutineItems[0]?.day_name) {
-      title = todayRoutineItems[0].day_name;
+    if (isDone) {
+      const durationMin = Math.max(1, Math.round((todayCompletedSession.duration_seconds || 0) / 60));
+      const exercisesCount = todayCompletedSession.exercises_count || 1;
+      const setsCount = todayCompletedSession.sets_count || todaySetsCount || 1;
+      const volumeKg = todayCompletedSession.total_volume || 0;
+      const title = todayCompletedSession.title || 'Buổi tập hôm nay';
+      const weekText = activeRoutine
+        ? `Tuần ${activeRoutine.current_week || 1} / ${activeRoutine.target_weeks || 8} · ${activeRoutine.name}`
+        : 'Buổi tập tự do';
+      const finishTime = todayCompletedSession.completed_at || todayCompletedSession.ended_at
+        ? new Date(todayCompletedSession.completed_at || todayCompletedSession.ended_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+        : 'Hoàn thành';
+
+      return { isDone: true, hasPlan: true, durationMin, exercisesCount, setsCount, volumeKg, title, weekText, finishTime };
     }
 
-    const weekText = `Tuần ${activeRoutine?.current_week || 3} / ${activeRoutine?.target_weeks || 8} của kế hoạch ${activeRoutine?.name || 'Giảm mỡ giữ cơ'}`;
-    const finishTime = todayCompletedSession?.completed_at
-      ? new Date(todayCompletedSession.completed_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-      : '18:42';
+    if (hasPlan) {
+      const exercisesCount = todayRoutineItems.length;
+      const setsCount = todayRoutineItems.reduce((acc, it) => acc + (it.target_sets || 3), 0);
+      const title = todayRoutineItems[0]?.day_name || 'Buổi tập hôm nay';
+      const weekText = activeRoutine
+        ? `Tuần ${activeRoutine.current_week || 1} / ${activeRoutine.target_weeks || 8} · ${activeRoutine.name}`
+        : 'Kế hoạch tập luyện';
 
-    return { isDone, durationMin, exercisesCount, setsCount, volumeKg, title, weekText, finishTime };
-  }, [todayCompletedSession, todaySetsCount, todayRoutineItems, activeRoutine]);
-
-  // ── THẺ 2: CÂN NẶNG & SPARKLINE ─────────────────────────────
-  const weightData = useMemo(() => {
-    const currentWeight = latestWeight?.weight ? Number(latestWeight.weight) : 64.95;
-    const targetWeight = 63.0;
-    const startWeight = 66.6;
-
-    // Tính đường cong biểu đồ chuẩn 2a
-    const n = 30;
-    const pts = [];
-    for (let i = 0; i < n; i++) {
-      const t = i / (n - 1);
-      pts.push(65.95 - 1.0 * t + 0.25 * Math.sin(i * 1.7) + 0.15 * Math.sin(i * 0.43));
+      return {
+        isDone: false,
+        hasPlan: true,
+        durationMin: 0,
+        exercisesCount,
+        setsCount,
+        volumeKg: 0,
+        title,
+        weekText,
+        finishTime: null
+      };
     }
-    pts[n - 3] = 64.75;
-    pts[n - 2] = 64.28;
-    pts[n - 1] = currentWeight;
-
-    const lo = 62.6, hi = 66.6;
-    const X = i => (i / (n - 1)) * 300;
-    const Y = v => (1 - (v - lo) / (hi - lo)) * 80;
-    const line = pts.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
-    const spark = {
-      line,
-      area: `${line} L300 80 L0 80 Z`,
-      goal: `M0 ${Y(targetWeight).toFixed(1)} L300 ${Y(targetWeight).toFixed(1)}`
-    };
-
-    const remainKg = Math.max(0, currentWeight - targetWeight).toFixed(2).replace('.', ',');
-    const progressPercent = Math.min(100, Math.max(10, Math.round(((startWeight - currentWeight) / (startWeight - targetWeight)) * 100)));
 
     return {
+      isDone: false,
+      hasPlan: false,
+      durationMin: 0,
+      exercisesCount: 0,
+      setsCount: 0,
+      volumeKg: 0,
+      title: 'Hôm nay không có lịch tập',
+      weekText: activeRoutine ? `Lộ trình: ${activeRoutine.name} · Nghỉ ngơi phục hồi` : 'Chưa chọn lộ trình nào',
+      finishTime: null
+    };
+  }, [todayCompletedSession, todayRoutineItems, todaySetsCount, activeRoutine]);
+
+  // ── THẺ 2: CÂN NẶNG & SPARKLINE THẬT ─────────────────────────
+  const weightData = useMemo(() => {
+    if (!latestWeight || !latestWeight.weight) {
+      return {
+        hasData: false,
+        currentStr: '—',
+        diffText: '',
+        time: '',
+        spark: null,
+        startStr: '—',
+        remainText: '',
+        progressPercent: 0
+      };
+    }
+
+    const currentWeight = Number(latestWeight.weight);
+    const targetWeight = profile?.target_weight ? Number(profile.target_weight) : null;
+    const startWeight = profile?.start_weight
+      ? Number(profile.start_weight)
+      : (measurements && measurements.length > 0 ? Number(measurements[measurements.length - 1].weight) : currentWeight);
+
+    let diffText = 'Lần đo đầu tiên';
+    if (measurements && measurements.length >= 2) {
+      const prevWeight = Number(measurements[1].weight);
+      const diff = currentWeight - prevWeight;
+      const diffSign = diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2);
+      diffText = `${diffSign.replace('.', ',')} kg`;
+    }
+
+    // Sparkline từ các lần đo thật
+    const recentM = (measurements || []).slice(0, 20).reverse();
+    let spark = null;
+    if (recentM.length >= 2) {
+      const weights = recentM.map(m => Number(m.weight));
+      const minW = Math.min(...weights) - 0.5;
+      const maxW = Math.max(...weights) + 0.5;
+      const range = maxW - minW || 1;
+      const n = weights.length;
+
+      const X = i => (i / (n - 1)) * 300;
+      const Y = v => Math.max(5, Math.min(75, (1 - (v - minW) / range) * 80));
+
+      const line = weights.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
+      spark = {
+        line,
+        area: `${line} L300 80 L0 80 Z`,
+        goal: targetWeight ? `M0 ${Y(targetWeight).toFixed(1)} L300 ${Y(targetWeight).toFixed(1)}` : null
+      };
+    } else {
+      spark = {
+        line: 'M0 40 L300 40',
+        area: 'M0 40 L300 40 L300 80 L0 80 Z',
+        goal: null
+      };
+    }
+
+    let progressPercent = 0;
+    let remainText = '';
+    if (targetWeight) {
+      const remain = Math.abs(currentWeight - targetWeight);
+      remainText = `còn ${remain.toFixed(1).replace('.', ',')} kg tới ${targetWeight.toFixed(1).replace('.', ',')} kg`;
+      if (startWeight !== targetWeight) {
+        progressPercent = Math.min(100, Math.max(0, Math.round(((startWeight - currentWeight) / (startWeight - targetWeight)) * 100)));
+      }
+    } else {
+      remainText = 'Chưa đặt mục tiêu';
+    }
+
+    const timeStr = latestWeight.measured_at
+      ? new Date(latestWeight.measured_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+      : '';
+
+    return {
+      hasData: true,
       currentStr: currentWeight.toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 2 }),
-      diffText: '−0,42 kg / 7 ngày',
-      time: latestWeight?.created_at ? new Date(latestWeight.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '22:10',
+      diffText,
+      time: timeStr,
       spark,
-      startStr: '66,6 kg',
-      remainText: `còn ${remainKg} kg tới 63,0 kg`,
+      startStr: `${startWeight.toFixed(1).replace('.', ',')} kg`,
+      remainText,
       progressPercent
     };
-  }, [latestWeight]);
+  }, [latestWeight, measurements, profile]);
 
-  // ── THẺ 3: DINH DƯỠNG & MACROS ──────────────────────────────
+  // ── THẺ 3: DINH DƯỠNG & MACROS THẬT ──────────────────────────
   const nutritionData = useMemo(() => {
-    const totalKcal = mealLogs.reduce((sum, m) => sum + (m.calories || 0), 0) || 1780;
-    const goalKcal = 2050;
+    const totalKcal = (mealLogs || []).reduce((sum, m) => sum + (m.calories || 0), 0);
+    const goalKcal = tdee ? Math.round(tdee) : (profile?.target_calories ? Number(profile.target_calories) : 2050);
     const C44 = 2 * Math.PI * 44;
-    const kcalDash = `${(C44 * Math.min(1, totalKcal / goalKcal)).toFixed(1)} ${C44.toFixed(1)}`;
+    const ratio = goalKcal > 0 ? Math.min(1, totalKcal / goalKcal) : 0;
+    const kcalDash = `${(C44 * ratio).toFixed(1)} ${C44.toFixed(1)}`;
 
-    const totalProt = mealLogs.reduce((sum, m) => sum + (Number(m.protein) || 0), 0) || 128;
-    const goalProt = 140;
-    const totalCarb = mealLogs.reduce((sum, m) => sum + (Number(m.carbs) || 0), 0) || 196;
-    const goalCarb = 230;
-    const totalFatVal = mealLogs.reduce((sum, m) => sum + (Number(m.fat) || 0), 0) || 58;
-    const goalFatVal = 65;
+    const totalProt = (mealLogs || []).reduce((sum, m) => sum + (Number(m.protein) || 0), 0);
+    const goalProt = Math.round((goalKcal * 0.3) / 4);
+    const totalCarb = (mealLogs || []).reduce((sum, m) => sum + (Number(m.carbs) || 0), 0);
+    const goalCarb = Math.round((goalKcal * 0.45) / 4);
+    const totalFatVal = (mealLogs || []).reduce((sum, m) => sum + (Number(m.fat) || 0), 0);
+    const goalFatVal = Math.round((goalKcal * 0.25) / 9);
 
     const macros = [
-      { n: 'Đạm', v: `${totalProt}/${goalProt} g`, p: `${Math.round(totalProt / goalProt * 100)}%`, c: '#6949E8' },
-      { n: 'Tinh bột', v: `${totalCarb}/${goalCarb} g`, p: `${Math.round(totalCarb / goalCarb * 100)}%`, c: '#E0A23C' },
-      { n: 'Chất béo', v: `${totalFatVal}/${goalFatVal} g`, p: `${Math.round(totalFatVal / goalFatVal * 100)}%`, c: '#E26A5A' }
+      {
+        n: 'Đạm',
+        v: `${Math.round(totalProt)}/${goalProt} g`,
+        p: `${goalProt > 0 ? Math.min(100, Math.round(totalProt / goalProt * 100)) : 0}%`,
+        c: '#6949E8'
+      },
+      {
+        n: 'Tinh bột',
+        v: `${Math.round(totalCarb)}/${goalCarb} g`,
+        p: `${goalCarb > 0 ? Math.min(100, Math.round(totalCarb / goalCarb * 100)) : 0}%`,
+        c: '#E0A23C'
+      },
+      {
+        n: 'Chất béo',
+        v: `${Math.round(totalFatVal)}/${goalFatVal} g`,
+        p: `${goalFatVal > 0 ? Math.min(100, Math.round(totalFatVal / goalFatVal * 100)) : 0}%`,
+        c: '#E26A5A'
+      }
     ];
 
-    const remainKcal = Math.max(0, goalKcal - totalKcal);
-    const remainProt = Math.max(0, goalProt - totalProt);
+    const mealsCount = (mealLogs || []).length;
+    let note = 'Chưa ghi bữa ăn nào hôm nay.';
+    if (mealsCount > 0) {
+      const remainKcal = goalKcal - totalKcal;
+      const remainProt = Math.max(0, goalProt - Math.round(totalProt));
+      note = remainKcal >= 0
+        ? `Còn ${remainKcal} kcal và ${remainProt} g đạm cho hôm nay.`
+        : `Vượt mục tiêu ${Math.abs(remainKcal)} kcal hôm nay.`;
+    }
 
     return {
       totalKcal,
       goalKcal,
       kcalDash,
       macros,
-      mealsCount: mealLogs.length || 4,
-      note: `Còn ${remainKcal} kcal và ${remainProt} g đạm cho hôm nay.`
+      mealsCount,
+      note
     };
-  }, [mealLogs]);
+  }, [mealLogs, tdee, profile]);
 
-  // ── THẺ 4: PHỤC HỒI CƠ (BẢN ĐỒ CƠ) ──────────────────────────
+  // ── THẺ 4: PHỤC HỒI CƠ (BẢN ĐỒ CƠ THẬT) ─────────────────────
   const recoveryData = useMemo(() => {
-    const realRec = estimateRecoveryState(recentSets);
-    const hasData = Object.keys(realRec || {}).length > 0;
-    const map = hasData ? realRec : DEFAULT_REC;
+    const map = {};
+    const muscleKeys = Object.keys(VN_MUSCLES);
+
+    if (!recentSets || recentSets.length === 0) {
+      muscleKeys.forEach(k => { map[k] = 'ready'; });
+    } else {
+      const stats = {};
+      muscleKeys.forEach(k => {
+        stats[k] = { totalSets: 0, lastTime: null };
+      });
+      const sevenDaysAgo = now - 7 * 24 * 3600 * 1000;
+
+      recentSets.forEach(s => {
+        if (s.actual_val == null && s.weight == null && s.reps == null) return;
+        const ex = exerciseMap?.get(s.exercise_key);
+        if (!ex) return;
+        const targetMuscles = [ex.primary, ...(ex.secondary || [])].filter(Boolean);
+        const setTime = s.completed_at ? new Date(s.completed_at).getTime() : null;
+
+        targetMuscles.forEach(mId => {
+          if (!stats[mId]) return;
+          if (setTime && setTime >= sevenDaysAgo) {
+            stats[mId].totalSets += 1;
+          }
+          if (setTime && (!stats[mId].lastTime || setTime > stats[mId].lastTime)) {
+            stats[mId].lastTime = setTime;
+          }
+        });
+      });
+
+      muscleKeys.forEach(k => {
+        const st = stats[k];
+        const hoursSince = st.lastTime ? Math.max(0, Math.round((now - st.lastTime) / (3600 * 1000))) : null;
+        map[k] = estimateRecoveryState(st.totalSets, hoursSince);
+      });
+    }
 
     const recGroups = [
       { id: 'low', n: 'Cần nghỉ', c: '#C23B22', items: [], joined: '' },
@@ -203,12 +325,10 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       { id: 'ready', n: 'Sẵn sàng', c: '#2F8A57', items: [], joined: '' }
     ];
 
-    Object.keys(DEFAULT_REC).forEach(muscleKey => {
-      const state = map[muscleKey] || 'ready';
+    muscleKeys.forEach(k => {
+      const state = map[k] || 'ready';
       const grp = recGroups.find(g => g.id === state);
-      if (grp) {
-        grp.items.push(VN_MUSCLES[muscleKey] || muscleKey);
-      }
+      if (grp) grp.items.push(VN_MUSCLES[k] || k);
     });
 
     recGroups.forEach(g => {
@@ -216,28 +336,68 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     });
 
     return { map, recGroups };
-  }, [recentSets]);
+  }, [recentSets, exerciseMap, now]);
 
-  // ── THẺ 5: TUẦN NÀY (7-NGÀY CỘT) ────────────────────────────
+  // ── THẺ 5: TUẦN NÀY (7-NGÀY CỘT THẬT) ───────────────────────
   const weekData = useMemo(() => {
-    const weekSchedule = [
-      { d: 'T2', s: 20, st: 'done' },
-      { d: 'T3', s: 16, st: 'done' },
-      { d: 'T4', s: 16, st: 'plan' },
-      { d: 'T5', s: 0, st: 'rest' },
-      { d: 'T6', s: 15, st: 'plan' },
-      { d: 'T7', s: 0, st: 'rest' },
-      { d: 'CN', s: 0, st: 'rest' }
-    ];
+    const weekDates = getWeekDates(today);
+    const mondayStr = new Date(weekDates[0]);
+    const sundayStr = new Date(weekDates[6]);
+    const dateRange = `${mondayStr.getDate()}/${mondayStr.getMonth() + 1} – ${sundayStr.getDate()}/${sundayStr.getMonth() + 1}`;
 
-    const max = 22;
-    const columns = weekSchedule.map((item, idx) => {
-      const isTodayCol = idx === 1; // Thứ Ba trong bản mẫu prototype
+    const DAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+    const weekCompletedSessions = (sessions || []).filter(
+      s => s.status === 'completed' && weekDates.includes(s.local_date)
+    );
+
+    const weekSets = weekCompletedSessions.reduce((acc, s) => acc + (s.sets_count || 0), 0);
+    const weekDurationSec = weekCompletedSessions.reduce((acc, s) => acc + (s.duration_seconds || 0), 0);
+    const weekDurationMin = Math.round(weekDurationSec / 60);
+
+    const timeText = weekDurationMin >= 60
+      ? `${Math.floor(weekDurationMin / 60)}g ${weekDurationMin % 60}`
+      : `${weekDurationMin}`;
+    const timeUnit = weekDurationMin >= 60 ? 'p' : ' phút';
+
+    const plannedWeekdays = new Set((routineItems || []).map(it => it.weekday));
+    const targetSessions = activeRoutine?.target_days_per_week || plannedWeekdays.size || 4;
+
+    const dayStats = weekDates.map((dateStr, idx) => {
+      const weekdayNum = idx + 1;
+      const daySessions = (sessions || []).filter(
+        s => s.status === 'completed' && s.local_date === dateStr
+      );
+      const setsOnDay = daySessions.reduce((acc, s) => acc + (s.sets_count || 0), 0);
+      const isDone = daySessions.length > 0;
+      const isPlanned = plannedWeekdays.has(weekdayNum);
+
+      let st = 'rest';
+      if (isDone) {
+        st = 'done';
+      } else if (isPlanned) {
+        st = dateStr >= todayDateStr ? 'plan' : 'missed';
+      }
+
+      return {
+        d: DAY_LABELS[idx],
+        dateStr,
+        s: setsOnDay,
+        st
+      };
+    });
+
+    const maxSets = Math.max(16, ...dayStats.map(d => d.s));
+
+    const columns = dayStats.map((item) => {
+      const isTodayCol = item.dateStr === todayDateStr;
       return {
         d: item.d,
-        lbl: item.s && item.st === 'done' ? item.s : '',
-        h: item.st === 'rest' ? '4px' : `${Math.round(item.s / max * 100)}%`,
-        bg: item.st === 'done' ? (isTodayCol ? '#6949E8' : '#C4B6F4') : item.st === 'plan' ? 'transparent' : '#F0EEE9',
+        lbl: item.s > 0 ? item.s : '',
+        h: item.st === 'rest' ? '4px' : `${Math.max(8, Math.round(item.s / maxSets * 100))}%`,
+        bg: item.st === 'done'
+          ? (isTodayCol ? '#6949E8' : '#C4B6F4')
+          : item.st === 'plan' ? 'transparent' : '#F0EEE9',
         bd: item.st === 'plan' ? '1.5px dashed #C9C6BE' : '0',
         fg: isTodayCol ? '#15161A' : '#8A8A84',
         font: `${isTodayCol ? 600 : 500} 11px/1 'Be Vietnam Pro', sans-serif`
@@ -245,34 +405,57 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     });
 
     return {
-      dateRange: '5/10 – 11/10',
+      dateRange,
       stats: [
-        { n: 'Buổi', v: '2', u: ' / 4' },
-        { n: 'Set', v: '36', u: '' },
-        { n: 'Thời gian', v: '1g 26', u: 'p' }
+        { n: 'Buổi', v: `${weekCompletedSessions.length}`, u: ` / ${targetSessions}` },
+        { n: 'Set', v: `${weekSets}`, u: '' },
+        { n: 'Thời gian', v: timeText, u: timeUnit }
       ],
       columns
     };
-  }, []);
+  }, [today, todayDateStr, sessions, routineItems, activeRoutine]);
 
-  // ── THẺ 6: CHECK-IN TUẦN & NGÀY MAI ─────────────────────────
+  // ── THẺ 6: CHECK-IN TUẦN & NGÀY MAI THẬT ────────────────────
   const checkinTomorrowData = useMemo(() => {
-    const tomorrowExercises = [
-      { n: 'Inverted Row', rx: '3 × 10' },
-      { n: 'One-arm Dumbbell Row', rx: '3 × 12' },
-      { n: 'Chin-up', rx: '3 × 6' },
-      { n: 'Dumbbell Curl', rx: '3 × 12' }
-    ];
+    const daysLeft = Math.max(0, 7 - todayWeekday);
+    const weekDates = getWeekDates(today);
+    const sundayDate = new Date(weekDates[6]);
+    const checkinDate = `CN ${sundayDate.getDate()}/${sundayDate.getMonth() + 1}`;
+
+    const tomorrowWeekday = todayWeekday === 7 ? 1 : todayWeekday + 1;
+    const tomorrowWeekdayLabel = tomorrowWeekday === 1 ? 'Thứ Hai' : tomorrowWeekday === 2 ? 'Thứ Ba' : tomorrowWeekday === 3 ? 'Thứ Tư' : tomorrowWeekday === 4 ? 'Thứ Năm' : tomorrowWeekday === 5 ? 'Thứ Sáu' : tomorrowWeekday === 6 ? 'Thứ Bảy' : 'Chủ Nhật';
+    const tomorrowDateObj = new Date(today);
+    tomorrowDateObj.setDate(tomorrowDateObj.getDate() + 1);
+    const tomorrowDateStr = `${tomorrowWeekdayLabel} ${tomorrowDateObj.getDate()}/${tomorrowDateObj.getMonth() + 1}`;
+
+    const tomorrowItems = (routineItems || []).filter(it => it.weekday === tomorrowWeekday);
+    const hasTomorrowPlan = tomorrowItems.length > 0;
+
+    let tomorrowTitle = 'Ngày nghỉ (Rest day)';
+    let tomorrowExercises = [];
+    let recoveryNote = 'Không có lịch tập vào ngày mai. Hãy nghỉ ngơi và nạp đủ dinh dưỡng!';
+
+    if (hasTomorrowPlan) {
+      tomorrowTitle = tomorrowItems[0]?.day_name || 'Buổi tập theo lịch';
+      tomorrowExercises = tomorrowItems.slice(0, 4).map(it => {
+        const ex = exerciseMap?.get(it.exercise_id);
+        const name = it.exercise_name || ex?.name || it.exercise_id;
+        const target = it.target_sets ? `${it.target_sets} × ${it.target_reps || 10}` : '3 × 10';
+        return { n: name, rx: target };
+      });
+      recoveryNote = 'Sẵn sàng cho buổi tập ngày mai!';
+    }
 
     return {
-      daysLeft: 5,
-      checkinDate: 'CN 11/10',
-      tomorrowTitle: 'Kéo · Xô, Tay trước, Cầu vai',
-      tomorrowDate: 'Thứ Tư 7/10',
+      daysLeft,
+      checkinDate,
+      hasTomorrowPlan,
+      tomorrowTitle,
+      tomorrowDate: tomorrowDateStr,
       tomorrowExercises,
-      recoveryNote: 'Xô đã hồi 96%, sẵn sàng cho buổi Kéo'
+      recoveryNote
     };
-  }, []);
+  }, [today, todayWeekday, routineItems, exerciseMap]);
 
   // Xử lý lưu Modal Ghi nhanh
   const handleSaveQuick = async () => {
@@ -314,10 +497,22 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             <span style={{ font: "500 10.5px/1 var(--body-mono)", letterSpacing: "0.09em", color: "#9C9AA8" }}>
               BUỔI TẬP HÔM NAY
             </span>
-            <span style={{ padding: "5px 9px", borderRadius: "20px", background: "rgba(62,158,104,0.22)", font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#7FD3A2", display: "flex", alignItems: "center", gap: "5px" }}>
-              <AppIcon name="checkCircle" size={13} weight="fill" />
-              Xong {sessionStats.finishTime}
-            </span>
+            {sessionStats.isDone ? (
+              <span style={{ padding: "5px 9px", borderRadius: "20px", background: "rgba(62,158,104,0.22)", font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#7FD3A2", display: "flex", alignItems: "center", gap: "5px" }}>
+                <AppIcon name="checkCircle" size={13} weight="fill" />
+                Xong {sessionStats.finishTime}
+              </span>
+            ) : sessionStats.hasPlan ? (
+              <span style={{ padding: "5px 9px", borderRadius: "20px", background: "rgba(105,73,232,0.25)", font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#B3A2F0", display: "flex", alignItems: "center", gap: "5px" }}>
+                <AppIcon name="calendar" size={13} />
+                Lên lịch hôm nay
+              </span>
+            ) : (
+              <span style={{ padding: "5px 9px", borderRadius: "20px", background: "rgba(255,255,255,0.1)", font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8", display: "flex", alignItems: "center", gap: "5px" }}>
+                <AppIcon name="moon" size={13} />
+                Nghỉ ngơi
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
@@ -332,33 +527,83 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Thời gian</span>
-              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>{sessionStats.durationMin} phút</span>
+              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>
+                {sessionStats.isDone ? `${sessionStats.durationMin} phút` : (sessionStats.hasPlan ? '~45p' : '0p')}
+              </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Bài</span>
-              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>{sessionStats.exercisesCount}</span>
+              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>
+                {sessionStats.isDone || sessionStats.hasPlan ? sessionStats.exercisesCount : '—'}
+              </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Set</span>
-              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>{sessionStats.setsCount}</span>
+              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>
+                {sessionStats.isDone || sessionStats.hasPlan ? sessionStats.setsCount : '—'}
+              </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Khối lượng</span>
-              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>{sessionStats.volumeKg.toLocaleString('vi-VN')} kg</span>
+              <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>
+                {sessionStats.isDone ? `${sessionStats.volumeKg.toLocaleString('vi-VN')} kg` : '—'}
+              </span>
             </div>
           </div>
 
           <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '12px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <AppIcon name="trophy" size={17} weight="fill" style={{ color: "#E0A23C" }} />
-            <span style={{ flex: 1, font: "400 12.5px/1.3 'Be Vietnam Pro',sans-serif", color: "#D8D6E0" }}>
-              Kỷ lục mới: Push-up 22 reps
-            </span>
-            <button
-              onClick={() => onNavigateTab?.('history')}
-              style={{ font: "600 12.5px/1 'Be Vietnam Pro',sans-serif", color: "#B3A2F0", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-            >
-              Xem buổi tập
-            </button>
+            {sessionStats.isDone ? (
+              <>
+                <AppIcon name="trophy" size={17} weight="fill" style={{ color: "#E0A23C" }} />
+                <span style={{ flex: 1, font: "400 12.5px/1.3 'Be Vietnam Pro',sans-serif", color: "#D8D6E0" }}>
+                  Buổi tập đã hoàn thành xuất sắc!
+                </span>
+                <button
+                  onClick={() => onNavigateTab?.('history')}
+                  style={{ font: "600 12.5px/1 'Be Vietnam Pro',sans-serif", color: "#B3A2F0", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                >
+                  Xem buổi tập
+                </button>
+              </>
+            ) : sessionStats.hasPlan ? (
+              <button
+                onClick={() => onStartSession ? onStartSession(todayRoutineItems) : onNavigateTab?.('routine')}
+                style={{
+                  height: '34px',
+                  padding: '0 16px',
+                  borderRadius: '8px',
+                  background: '#6949E8',
+                  color: '#FFF',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <AppIcon name="play" size={14} weight="fill" />
+                Bắt đầu tập hôm nay
+              </button>
+            ) : (
+              <button
+                onClick={() => onNavigateTab?.('routine')}
+                style={{
+                  height: '34px',
+                  padding: '0 14px',
+                  borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.12)',
+                  color: '#FFF',
+                  fontWeight: 600,
+                  fontSize: '12.5px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Xem lộ trình tập
+              </button>
+            )}
           </div>
         </div>
 
@@ -366,42 +611,68 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
         <div className="body-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <span style={{ font: "600 14px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Cân nặng</span>
-            <span style={{ font: "400 12px/1 var(--body-mono)", color: "var(--body-text-muted)" }}>{weightData.time}</span>
+            <span style={{ font: "400 12px/1 var(--body-mono)", color: "var(--body-text-muted)" }}>
+              {weightData.hasData ? weightData.time : 'Chưa đo'}
+            </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
             <span style={{ font: "600 32px/1 'Be Vietnam Pro',sans-serif", letterSpacing: "-0.01em", color: "var(--body-text-main)" }}>
               {weightData.currentStr}<span style={{ font: "400 14px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}> kg</span>
             </span>
-            <span style={{ font: "600 12.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-green)" }}>
-              {weightData.diffText}
-            </span>
+            {weightData.hasData && (
+              <span style={{ font: "600 12.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-green)" }}>
+                {weightData.diffText}
+              </span>
+            )}
           </div>
 
-          <div style={{ flex: 1, minHeight: '65px', position: 'relative' }}>
-            <svg viewBox="0 0 300 80" preserveAspectRatio="none" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' }}>
-              <path d={weightData.spark.area} fill="rgba(105,73,232,0.08)" />
-              <path d={weightData.spark.goal} fill="none" stroke="#2F8A57" strokeWidth="1.25" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
-              <path d={weightData.spark.line} fill="none" stroke="#6949E8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-            </svg>
-          </div>
+          {weightData.hasData ? (
+            <>
+              <div style={{ flex: 1, minHeight: '65px', position: 'relative' }}>
+                <svg viewBox="0 0 300 80" preserveAspectRatio="none" style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' }}>
+                  <path d={weightData.spark.area} fill="rgba(105,73,232,0.08)" />
+                  {weightData.spark.goal && (
+                    <path d={weightData.spark.goal} fill="none" stroke="#2F8A57" strokeWidth="1.25" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+                  )}
+                  <path d={weightData.spark.line} fill="none" stroke="#6949E8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                </svg>
+              </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-            <span style={{ height: '6px', borderRadius: '3px', background: '#F0EEE9', overflow: 'hidden' }}>
-              <span style={{ display: 'block', height: '100%', width: `${weightData.progressPercent}%`, background: '#6949E8', borderRadius: '3px' }} />
-            </span>
-            <div style={{ display: 'flex', justifyContent: 'space-between', font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
-              <span>{weightData.startStr}</span>
-              <span>{weightData.remainText}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                <span style={{ height: '6px', borderRadius: '3px', background: '#F0EEE9', overflow: 'hidden' }}>
+                  <span style={{ display: 'block', height: '100%', width: `${weightData.progressPercent}%`, background: '#6949E8', borderRadius: '3px' }} />
+                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
+                  <span>{weightData.startStr}</span>
+                  <span>{weightData.remainText}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '10px', background: 'var(--body-shell-bg)', borderRadius: '10px', padding: '14px', textAlign: 'center' }}>
+              <span style={{ font: "400 12px/1.4 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
+                Ghi lần cân đầu tiên để bắt đầu vẽ biểu đồ tiến độ & tính BMI, TDEE
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuickModal(true)}
+                className="body-btn body-btn-secondary"
+                style={{ width: '100%', height: '32px', fontSize: '12px', fontWeight: 600 }}
+              >
+                + Ghi cân nặng ngay
+              </button>
             </div>
-          </div>
+          )}
         </div>
 
         {/* ── CARD 3: DINH DƯỠNG ── */}
         <div className="body-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <span style={{ font: "600 14px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Dinh dưỡng</span>
-            <span style={{ font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>{nutritionData.mealsCount} bữa đã ghi</span>
+            <span style={{ font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
+              {nutritionData.mealsCount} bữa đã ghi
+            </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
@@ -435,9 +706,17 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             </div>
           </div>
 
-          <span style={{ marginTop: 'auto', font: "400 12.5px/1.45 'Be Vietnam Pro',sans-serif", color: "var(--body-text-sub)" }}>
-            {nutritionData.note}
-          </span>
+          <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ font: "400 12.5px/1.45 'Be Vietnam Pro',sans-serif", color: "var(--body-text-sub)" }}>
+              {nutritionData.note}
+            </span>
+            <button
+              onClick={() => onNavigateTab?.('nutrition')}
+              style={{ font: "600 12px/1 'Be Vietnam Pro',sans-serif", color: "#6949E8", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              Xem thực đơn
+            </button>
+          </div>
         </div>
 
         {/* ── CARD 4: PHỤC HỒI CƠ (CANVAS 3D + DANH SÁCH) ── */}
@@ -461,14 +740,18 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               <div key={g.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '7px', font: `600 12px/1 'Be Vietnam Pro',sans-serif`, color: g.c }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '4px', background: g.c }} />
-                  {g.n}
+                  {g.n} ({g.items.length})
                 </span>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                  {g.items.map(item => (
-                    <span key={item} className="body-2a-chip">
-                      {item}
-                    </span>
-                  ))}
+                  {g.items.length === 0 ? (
+                    <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>—</span>
+                  ) : (
+                    g.items.map(item => (
+                      <span key={item} className="body-2a-chip">
+                        {item}
+                      </span>
+                    ))
+                  )}
                 </div>
               </div>
             ))}
@@ -517,7 +800,9 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               <span style={{ font: "500 11.5px/1 var(--body-mono)", color: "#5238C9" }}>{checkinTomorrowData.checkinDate}</span>
             </div>
             <span style={{ font: "400 13px/1.5 'Be Vietnam Pro',sans-serif", color: "#4A3AA8" }}>
-              Còn {checkinTomorrowData.daysLeft} ngày. Cần 2 thứ: cân buổi sáng Chủ nhật và số đo vòng eo.
+              {checkinTomorrowData.daysLeft === 0
+                ? 'Hôm nay là ngày check-in! Cân buổi sáng và đo vòng eo.'
+                : `Còn ${checkinTomorrowData.daysLeft} ngày. Cần 2 thứ: cân buổi sáng Chủ nhật và số đo vòng eo.`}
             </span>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ height: '28px', padding: '0 10px', borderRadius: '8px', background: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px', font: "500 12px/1 'Be Vietnam Pro',sans-serif", color: "#2D2270" }}>
@@ -542,12 +827,18 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               {checkinTomorrowData.tomorrowTitle}
             </span>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {checkinTomorrowData.tomorrowExercises.map((e, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '8px 0', borderTop: '1px solid var(--body-card-border)' }}>
-                  <span style={{ font: "400 13px/1.2 'Be Vietnam Pro',sans-serif", color: "var(--body-text-sub)" }}>{e.n}</span>
-                  <span style={{ font: "500 12px/1 var(--body-mono)", color: "var(--body-text-muted)" }}>{e.rx}</span>
+              {checkinTomorrowData.tomorrowExercises.length === 0 ? (
+                <div style={{ padding: '8px 0', fontSize: '13px', color: 'var(--body-text-muted)' }}>
+                  Không có bài tập nào được lên lịch cho ngày mai.
                 </div>
-              ))}
+              ) : (
+                checkinTomorrowData.tomorrowExercises.map((e, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '8px 0', borderTop: '1px solid var(--body-card-border)' }}>
+                    <span style={{ font: "400 13px/1.2 'Be Vietnam Pro',sans-serif", color: "var(--body-text-sub)" }}>{e.n}</span>
+                    <span style={{ font: "500 12px/1 var(--body-mono)", color: "var(--body-text-muted)" }}>{e.rx}</span>
+                  </div>
+                ))
+              )}
             </div>
             <span style={{ marginTop: 'auto', font: "400 12px/1.4 'Be Vietnam Pro',sans-serif", color: "var(--body-green)" }}>
               {checkinTomorrowData.recoveryNote}
@@ -558,7 +849,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          PHƯƠNG ÁN 2A: MOBILE CHUẨN THIẾT KẾ
+          PHƯƠNG ÁN 2A: MOBILE CHUẨN THIẾT KẾ (DỮ LIỆU THẬT)
           ══════════════════════════════════════════════════════════════════ */}
       <div className="body-2a-mobile">
 
@@ -568,9 +859,19 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             <span style={{ font: "500 10px/1 var(--body-mono)", letterSpacing: "0.09em", color: "#9C9AA8" }}>
               BUỔI TẬP HÔM NAY
             </span>
-            <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(62,158,104,0.22)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#7FD3A2" }}>
-              Xong {sessionStats.finishTime}
-            </span>
+            {sessionStats.isDone ? (
+              <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(62,158,104,0.22)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#7FD3A2" }}>
+                Xong {sessionStats.finishTime}
+              </span>
+            ) : sessionStats.hasPlan ? (
+              <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(105,73,232,0.25)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#B3A2F0" }}>
+                Lên lịch hôm nay
+              </span>
+            ) : (
+              <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(255,255,255,0.1)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>
+                Nghỉ ngơi
+              </span>
+            )}
           </div>
           <span style={{ font: "600 19px/1.2 'Be Vietnam Pro',sans-serif", color: "#FFFFFF" }}>
             {sessionStats.title}
@@ -578,21 +879,53 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <span style={{ font: "400 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Thời gian</span>
-              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>{sessionStats.durationMin}p</span>
+              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>
+                {sessionStats.isDone ? `${sessionStats.durationMin}p` : (sessionStats.hasPlan ? '~45p' : '0p')}
+              </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <span style={{ font: "400 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Bài</span>
-              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>{sessionStats.exercisesCount}</span>
+              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>
+                {sessionStats.isDone || sessionStats.hasPlan ? sessionStats.exercisesCount : '—'}
+              </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <span style={{ font: "400 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Set</span>
-              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>{sessionStats.setsCount}</span>
+              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>
+                {sessionStats.isDone || sessionStats.hasPlan ? sessionStats.setsCount : '—'}
+              </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <span style={{ font: "400 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Khối lượng</span>
-              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>{sessionStats.volumeKg.toLocaleString('vi-VN')}</span>
+              <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>
+                {sessionStats.isDone ? `${sessionStats.volumeKg.toLocaleString('vi-VN')}` : '—'}
+              </span>
             </div>
           </div>
+          {!sessionStats.isDone && sessionStats.hasPlan && (
+            <button
+              onClick={() => onStartSession ? onStartSession(todayRoutineItems) : onNavigateTab?.('routine')}
+              style={{
+                marginTop: '10px',
+                height: '36px',
+                width: '100%',
+                borderRadius: '8px',
+                background: '#6949E8',
+                color: '#FFF',
+                fontWeight: 600,
+                fontSize: '13px',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
+            >
+              <AppIcon name="play" size={14} weight="fill" />
+              Bắt đầu tập hôm nay
+            </button>
+          )}
         </div>
 
         {/* 2. Grid 2 cột: Cân nặng + Năng lượng */}
@@ -603,11 +936,17 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             <span style={{ font: "600 22px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
               {weightData.currentStr}<span style={{ font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}> kg</span>
             </span>
-            <svg viewBox="0 0 300 80" preserveAspectRatio="none" style={{ width: '100%', height: '38px', display: 'block' }}>
-              <path d={weightData.spark.line} fill="none" stroke="#6949E8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-            </svg>
+            {weightData.hasData && weightData.spark ? (
+              <svg viewBox="0 0 300 80" preserveAspectRatio="none" style={{ width: '100%', height: '38px', display: 'block' }}>
+                <path d={weightData.spark.line} fill="none" stroke="#6949E8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+              </svg>
+            ) : (
+              <div style={{ height: '38px', display: 'flex', alignItems: 'center', fontSize: '11px', color: 'var(--body-text-muted)' }}>
+                Chưa có số đo
+              </div>
+            )}
             <span style={{ font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-green)" }}>
-              {weightData.diffText}
+              {weightData.diffText || '—'}
             </span>
           </div>
 
@@ -625,7 +964,9 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               ))}
             </div>
             <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
-              còn {nutritionData.goalKcal - nutritionData.totalKcal} kcal
+              {nutritionData.goalKcal > nutritionData.totalKcal
+                ? `còn ${nutritionData.goalKcal - nutritionData.totalKcal} kcal`
+                : `vượt ${nutritionData.totalKcal - nutritionData.goalKcal} kcal`}
             </span>
           </div>
         </div>
@@ -641,10 +982,10 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               <div key={g.id} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px', font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: g.c }}>
                   <span style={{ width: '7px', height: '7px', borderRadius: '4px', background: g.c }} />
-                  {g.n}
+                  {g.n} ({g.items.length})
                 </span>
                 <span style={{ font: "400 12px/1.35 'Be Vietnam Pro',sans-serif", color: "var(--body-text-sub)" }}>
-                  {g.joined}
+                  {g.items.length === 0 ? '—' : g.joined}
                 </span>
               </div>
             ))}
@@ -655,7 +996,9 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
         <div className="body-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <span style={{ font: "600 13.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Tuần này</span>
-            <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>2 / 4 buổi · 36 set</span>
+            <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
+              {weekData.stats[0].v}{weekData.stats[0].u} buổi · {weekData.stats[1].v} set
+            </span>
           </div>
           <div style={{ height: '96px', display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px', alignItems: 'end' }}>
             {weekData.columns.map((c, i) => (
@@ -675,7 +1018,9 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               Check-in tuần · {checkinTomorrowData.checkinDate}
             </span>
             <span style={{ font: "400 12px/1.3 'Be Vietnam Pro',sans-serif", color: "#4A3AA8" }}>
-              Còn {checkinTomorrowData.daysLeft} ngày · cần cân sáng và vòng eo
+              {checkinTomorrowData.daysLeft === 0
+                ? 'Hôm nay check-in: cân sáng và vòng eo'
+                : `Còn ${checkinTomorrowData.daysLeft} ngày · cần cân sáng và vòng eo`}
             </span>
           </div>
           <AppIcon name="caretRight" size={14} style={{ color: "#5238C9", flexShrink: 0 }} />

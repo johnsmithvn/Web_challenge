@@ -651,25 +651,34 @@ export default function BiometricsScreen() {
 
       {/* ── TAB 3: HỒ SƠ THỂ TRẠNG & TDEE (PROFILE) ──────────────── */}
       {activeTab === 'profile' && (
-        <div className="body-card" style={{ padding: '24px', maxWidth: '640px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="body-card" style={{ padding: '24px', maxWidth: '680px', width: '100%', display: 'flex', flexDirection: 'column', gap: '20px', boxSizing: 'border-box' }}>
           <div>
-            <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px 0' }}>Hồ sơ thể trạng & Năng lượng</h3>
-            <div style={{ fontSize: '12.5px', color: 'var(--body-text-muted)' }}>
-              Thông số dùng để tính chỉ số BMI, BMR (Mifflin-St Jeor) và lượng calo tiêu hao TDEE
+            <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--body-text-main)' }}>
+              Hồ sơ thể trạng & Năng lượng
+            </h3>
+            <div style={{ fontSize: '12.5px', color: 'var(--body-text-muted)', lineHeight: 1.5 }}>
+              Thông số thể chất dùng để tính chỉ số BMI, mức trao đổi chất cơ bản BMR (Mifflin-St Jeor) và tổng năng lượng tiêu hao hàng ngày TDEE.
             </div>
           </div>
 
-          <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>Chiều cao (cm)</label>
+          <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+            {/* Hàng 1: Chiều cao & Cân nặng mục tiêu */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', width: '100%', boxSizing: 'border-box' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                  Chiều cao (cm) *
+                </label>
                 <input
                   type="number"
                   step="0.5"
+                  required
+                  placeholder="Ví dụ: 170"
                   value={editHeight}
                   onChange={e => setEditHeight(e.target.value)}
                   style={{
-                    height: '38px',
+                    height: '40px',
+                    width: '100%',
+                    boxSizing: 'border-box',
                     borderRadius: '8px',
                     border: '1px solid var(--body-card-border)',
                     background: 'var(--body-shell-bg)',
@@ -682,15 +691,20 @@ export default function BiometricsScreen() {
                 />
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>Cân nặng mục tiêu (kg)</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                  Cân nặng mục tiêu (kg)
+                </label>
                 <input
                   type="number"
                   step="0.5"
+                  placeholder="Ví dụ: 63.0"
                   value={editGoalWeight}
                   onChange={e => setEditGoalWeight(e.target.value)}
                   style={{
-                    height: '38px',
+                    height: '40px',
+                    width: '100%',
+                    boxSizing: 'border-box',
                     borderRadius: '8px',
                     border: '1px solid var(--body-card-border)',
                     background: 'var(--body-shell-bg)',
@@ -704,14 +718,19 @@ export default function BiometricsScreen() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>Giới tính</label>
+            {/* Hàng 2: Giới tính & Năm sinh */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', width: '100%', boxSizing: 'border-box' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                  Giới tính (theo sinh học)
+                </label>
                 <select
                   value={editGender}
                   onChange={e => setEditGender(e.target.value)}
                   style={{
-                    height: '38px',
+                    height: '40px',
+                    width: '100%',
+                    boxSizing: 'border-box',
                     borderRadius: '8px',
                     border: '1px solid var(--body-card-border)',
                     background: 'var(--body-shell-bg)',
@@ -726,16 +745,21 @@ export default function BiometricsScreen() {
                 </select>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>Năm sinh</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                  Năm sinh
+                </label>
                 <input
                   type="number"
                   min="1940"
                   max="2025"
+                  placeholder="Ví dụ: 2000"
                   value={editBirthYear}
                   onChange={e => setEditBirthYear(e.target.value)}
                   style={{
-                    height: '38px',
+                    height: '40px',
+                    width: '100%',
+                    boxSizing: 'border-box',
                     borderRadius: '8px',
                     border: '1px solid var(--body-card-border)',
                     background: 'var(--body-shell-bg)',
@@ -749,13 +773,18 @@ export default function BiometricsScreen() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>Mức độ vận động hàng ngày</label>
+            {/* Hàng 3: Mức độ vận động (PAL) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+              <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                Thói quen vận động thực tế hàng tuần
+              </label>
               <select
                 value={editActivity}
                 onChange={e => setEditActivity(e.target.value)}
                 style={{
-                  height: '40px',
+                  height: '42px',
+                  width: '100%',
+                  boxSizing: 'border-box',
                   borderRadius: '8px',
                   border: '1px solid var(--body-card-border)',
                   background: 'var(--body-shell-bg)',
@@ -765,41 +794,57 @@ export default function BiometricsScreen() {
                   outline: 'none'
                 }}
               >
-                <option value="sedentary">Ít vận động (ngồi văn phòng, không tập)</option>
-                <option value="light">Vận động nhẹ (tập 1–3 ngày/tuần)</option>
-                <option value="moderate">Vận động vừa (tập 3–5 ngày/tuần · khuyến nghị)</option>
-                <option value="active">Vận động nhiều (tập nặng 6–7 ngày/tuần)</option>
-                <option value="very_active">Cường độ rất cao (vận động viên)</option>
+                <option value="sedentary">Ít vận động (làm việc văn phòng, ít hoặc không tập thể thao - PAL 1.2)</option>
+                <option value="light">Vận động nhẹ (tập 1–3 buổi/tuần, đi bộ nhẹ nhàng - PAL 1.375)</option>
+                <option value="moderate">Vận động vừa (tập 3–5 buổi/tuần, thể thao đều đặn - PAL 1.55)</option>
+                <option value="active">Vận động nhiều (tập 6–7 buổi/tuần, cường độ cao - PAL 1.725)</option>
+                <option value="very_active">Cường độ rất cao (vận động viên, tập 2 buổi/ngày hoặc lao động nặng - PAL 1.9)</option>
               </select>
+              <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', lineHeight: 1.45, marginTop: '2px' }}>
+                💡 Đây là câu hỏi khảo sát <strong>thói quen sinh hoạt thực tế</strong> của bạn để nhân hệ số PAL (1.2 – 1.9), tính đúng calo tiêu hao hàng ngày (TDEE). Không có mức nào là &quot;khuyến nghị&quot; chung — hãy chọn đúng với thực tế để số liệu không bị lệch.
+              </div>
             </div>
 
+            {/* Khối hiển thị BMR / TDEE / Thâm hụt calo */}
             {bmr && tdee && (
-              <div style={{ padding: '14px', borderRadius: '10px', background: 'var(--body-accent-soft)', border: '1px solid var(--body-accent-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{
+                padding: '16px',
+                borderRadius: '12px',
+                background: 'var(--body-accent-soft)',
+                border: '1px solid var(--body-accent-border)',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gap: '14px',
+                alignItems: 'center',
+                boxSizing: 'border-box'
+              }}>
                 <div>
                   <div style={{ fontSize: '12px', color: 'var(--body-text-sub)' }}>BMR cơ bản</div>
-                  <div style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-accent)' }}>
-                    {bmr} kcal
+                  <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-accent)' }}>
+                    {bmr} <span style={{ fontSize: '13px', fontWeight: 400 }}>kcal</span>
                   </div>
                 </div>
-                <div style={{ width: '1px', height: '28px', background: 'var(--body-accent-border)' }} />
                 <div>
-                  <div style={{ fontSize: '12px', color: 'var(--body-text-sub)' }}>TDEE duy trì</div>
-                  <div style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-accent)' }}>
-                    {tdee} kcal
+                  <div style={{ fontSize: '12px', color: 'var(--body-text-sub)' }}>TDEE tiêu hao mỗi ngày</div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-accent)' }}>
+                    {tdee} <span style={{ fontSize: '13px', fontWeight: 400 }}>kcal</span>
                   </div>
                 </div>
-                <div style={{ width: '1px', height: '28px', background: 'var(--body-accent-border)' }} />
                 <div>
-                  <div style={{ fontSize: '12px', color: 'var(--body-text-sub)' }}>Thâm hụt giảm mỡ (-500)</div>
-                  <div style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-green)' }}>
-                    {Math.max(1200, tdee - 500)} kcal
+                  <div style={{ fontSize: '12px', color: 'var(--body-text-sub)' }}>Mục tiêu giảm mỡ (-500 kcal)</div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-green)' }}>
+                    {Math.max(1200, tdee - 500)} <span style={{ fontSize: '13px', fontWeight: 400 }}>kcal</span>
                   </div>
                 </div>
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button type="submit" className="body-btn body-btn-accent" style={{ height: '40px', padding: '0 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px' }}>
+              <button
+                type="submit"
+                className="body-btn body-btn-accent"
+                style={{ height: '40px', padding: '0 22px', fontSize: '13px', fontWeight: 600, borderRadius: '9px' }}
+              >
                 Lưu hồ sơ thể trạng
               </button>
               {profileSaved && (
@@ -812,7 +857,7 @@ export default function BiometricsScreen() {
         </div>
       )}
 
-      {/* ── MODAL THÊM CÂN ĐO MỚI ───────────────────────────────── */}
+      {/* ── MODAL THÊM CÂN ĐO MỚI (FIX TRÀN VIỀN & RESPONSIVE) ───── */}
       {showAddModal && (
         <div style={{
           position: 'fixed',
@@ -823,22 +868,37 @@ export default function BiometricsScreen() {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: '20px'
+          padding: '16px',
+          boxSizing: 'border-box'
         }}>
-          <div className="body-card" style={{ width: '100%', maxWidth: '420px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="body-card" style={{
+            width: '100%',
+            maxWidth: '440px',
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            boxSizing: 'border-box',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+          }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Thêm lần cân đo mới</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--body-text-main)' }}>
+                Thêm lần cân đo mới
+              </h3>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--body-text-muted)', display: 'flex' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--body-text-muted)', display: 'flex', padding: '4px' }}
               >
                 <AppIcon name="x" size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveMeasurement} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>Cân nặng (kg) *</label>
+            <form onSubmit={handleSaveMeasurement} style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                  Cân nặng (kg) *
+                </label>
                 <input
                   type="number"
                   step="0.05"
@@ -847,7 +907,9 @@ export default function BiometricsScreen() {
                   value={newWeight}
                   onChange={e => setNewWeight(e.target.value)}
                   style={{
-                    height: '40px',
+                    height: '42px',
+                    width: '100%',
+                    boxSizing: 'border-box',
                     borderRadius: '8px',
                     border: '1px solid var(--body-card-border)',
                     background: 'var(--body-shell-bg)',
@@ -860,17 +922,22 @@ export default function BiometricsScreen() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>Tỷ lệ mỡ (%)</label>
+              {/* Grid 2 cột minmax(0, 1fr) chống tràn */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px', width: '100%', boxSizing: 'border-box' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                    Tỷ lệ mỡ (%)
+                  </label>
                   <input
                     type="number"
                     step="0.1"
-                    placeholder="17.2"
+                    placeholder="Ví dụ: 17.2"
                     value={newFat}
                     onChange={e => setNewFat(e.target.value)}
                     style={{
                       height: '40px',
+                      width: '100%',
+                      boxSizing: 'border-box',
                       borderRadius: '8px',
                       border: '1px solid var(--body-card-border)',
                       background: 'var(--body-shell-bg)',
@@ -883,16 +950,20 @@ export default function BiometricsScreen() {
                   />
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>Cơ xương (kg)</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                    Cơ xương (kg)
+                  </label>
                   <input
                     type="number"
                     step="0.1"
-                    placeholder="29.8"
+                    placeholder="Ví dụ: 29.8"
                     value={newMuscle}
                     onChange={e => setNewMuscle(e.target.value)}
                     style={{
                       height: '40px',
+                      width: '100%',
+                      boxSizing: 'border-box',
                       borderRadius: '8px',
                       border: '1px solid var(--body-card-border)',
                       background: 'var(--body-shell-bg)',
@@ -906,45 +977,62 @@ export default function BiometricsScreen() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>Thời điểm cân</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="slot"
-                      value="morning"
-                      checked={newTimeSlot === 'morning'}
-                      onChange={() => setNewTimeSlot('morning')}
-                    />
-                    Sáng sớm (sau khi thức dậy)
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="slot"
-                      value="evening"
-                      checked={newTimeSlot === 'evening'}
-                      onChange={() => setNewTimeSlot('evening')}
-                    />
-                    Buổi tối (đo lệch giờ)
-                  </label>
+              {/* Segmented Selector cho thời điểm cân */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                  Thời điểm cân
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
+                  <button
+                    type="button"
+                    onClick={() => setNewTimeSlot('morning')}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: `1.5px solid ${newTimeSlot === 'morning' ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
+                      background: newTimeSlot === 'morning' ? 'var(--body-accent-soft)' : 'var(--body-shell-bg)',
+                      color: newTimeSlot === 'morning' ? 'var(--body-accent)' : 'var(--body-text-main)',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'center'
+                    }}
+                  >
+                    ☀️ Sáng sớm (khi dậy)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewTimeSlot('evening')}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: `1.5px solid ${newTimeSlot === 'evening' ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
+                      background: newTimeSlot === 'evening' ? 'var(--body-accent-soft)' : 'var(--body-shell-bg)',
+                      color: newTimeSlot === 'evening' ? 'var(--body-accent)' : 'var(--body-text-main)',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'center'
+                    }}
+                  >
+                    🌙 Buổi tối (lệch giờ)
+                  </button>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                 <button
                   type="button"
                   className="body-btn body-btn-secondary"
                   onClick={() => setShowAddModal(false)}
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, height: '40px', borderRadius: '8px', fontWeight: 600 }}
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   className="body-btn body-btn-accent"
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, height: '40px', borderRadius: '8px', fontWeight: 600 }}
                 >
                   Lưu số đo
                 </button>

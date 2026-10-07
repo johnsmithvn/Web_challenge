@@ -21,11 +21,9 @@ export default function NutritionScreen() {
     setSelectedDate,
     mealLogs,
     savedMeals,
-    waterCups,
     weeklyCheckins,
     addMealLog,
     deleteMealLog,
-    updateWater,
     saveWeeklyCheckin,
     saveMealTemplate
   } = useNutrition();
@@ -218,8 +216,8 @@ export default function NutritionScreen() {
       {activeTab === 'daily' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
-          {/* 3 CARD MACRO VÀ CALO */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+          {/* 2 CARD MACRO VÀ CALO */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
 
             {/* Calo Progress */}
             <div className="body-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -284,56 +282,6 @@ export default function NutritionScreen() {
                   <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>
                     {goalFat ? `/${goalFat}g` : ''}
                   </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Nước uống */}
-            <div className="body-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--body-text-main)' }}>Uống nước</span>
-                <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>{waterCups * 250} / 2.000 ml</span>
-              </div>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                {Array.from({ length: 8 }).map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => updateWater(idx + 1 === waterCups ? idx : idx + 1)}
-                    style={{
-                      flex: 1,
-                      height: '32px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      background: idx < waterCups ? 'var(--body-blue, #3A82F6)' : 'var(--body-shell-bg)',
-                      color: idx < waterCups ? '#fff' : 'var(--body-text-muted)',
-                      display: 'grid',
-                      placeItems: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                    title={`${(idx + 1) * 250} ml`}
-                  >
-                    <AppIcon name="drop" size={14} />
-                  </button>
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', color: 'var(--body-text-sub)' }}>
-                  {waterCups >= 8 ? 'Đã đạt mục tiêu 2L' : `Còn thiếu ${8 - waterCups} ly nữa`}
-                </span>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  <button
-                    onClick={() => updateWater(Math.max(0, waterCups - 1))}
-                    style={{ padding: '3px 8px', borderRadius: '5px', border: '1px solid var(--body-card-border)', background: 'transparent', color: 'var(--body-text-main)', cursor: 'pointer', fontSize: '12px' }}
-                  >
-                    -1 ly
-                  </button>
-                  <button
-                    onClick={() => updateWater(waterCups + 1)}
-                    style={{ padding: '3px 8px', borderRadius: '5px', border: '1px solid var(--body-card-border)', background: 'transparent', color: 'var(--body-text-main)', cursor: 'pointer', fontSize: '12px' }}
-                  >
-                    +1 ly
-                  </button>
                 </div>
               </div>
             </div>
