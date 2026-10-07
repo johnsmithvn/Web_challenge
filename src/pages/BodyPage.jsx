@@ -158,6 +158,27 @@ export default function BodyPage() {
     return 'Tối nay';
   }, [today]);
 
+  const jsDay = today.getDay();
+  const todayWeekday = jsDay === 0 ? 7 : jsDay;
+  const todayRoutineItems = useMemo(() => {
+    return (routineItems || []).filter(item => item.weekday === todayWeekday);
+  }, [routineItems, todayWeekday]);
+
+  const availableRoutineDays = useMemo(() => {
+    const daysMap = new Map();
+    (routineItems || []).forEach(it => {
+      if (!daysMap.has(it.weekday)) {
+        daysMap.set(it.weekday, {
+          weekday: it.weekday,
+          dayName: it.day_name || `Thứ ${it.weekday === 7 ? 'CN' : it.weekday + 1}`,
+          items: []
+        });
+      }
+      daysMap.get(it.weekday).items.push(it);
+    });
+    return Array.from(daysMap.values()).sort((a, b) => a.weekday - b.weekday);
+  }, [routineItems]);
+
   const isoWeek = useMemo(() => {
     const d = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
     const dayNum = d.getUTCDay() || 7;
@@ -386,23 +407,153 @@ export default function BodyPage() {
                 </button>
               </div>
             </div>
+          ) : todayRoutineItems.length > 0 ? (
+            <div className="body-card" style={{ maxWidth: '520px', margin: '30px auto', padding: '28px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'var(--body-accent-soft)', color: 'var(--body-accent)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                  <AppIcon name="barbell" size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--body-accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    SẴN SÀNG CHO HÔM NAY · {todayRoutineItems[0]?.day_name || 'BUỔI TẬP'}
+                  </div>
+                  <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '2px 0 0', color: 'var(--body-text-main)' }}>
+                    {activeRoutine?.name || 'Lộ trình đang theo'}
+                  </h2>
+                </div>
+              </div>
+
+              <div style={{ background: 'var(--body-shell-bg)', borderRadius: '12px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                    Các bài tập hôm nay ({todayRoutineItems.length} bài):
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
+                    Dự kiến ~{Math.max(20, todayRoutineItems.length * 6)} phút
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {todayRoutineItems.map((item, idx) => {
+                    const ex = exerciseMap?.get(item.exercise_id);
+                    const name = item.exercise_name || ex?.name || item.exercise_id;
+                    const rx = `${item.target_sets || 3} hiệp × ${item.target_reps || 10} rep`;
+                    return (
+                      <div key={item.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                        <span style={{ fontWeight: 500, color: 'var(--body-text-main)' }}>
+                          {idx + 1}. {name}
+                        </span>
+                        <span style={{ fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)', fontSize: '12px' }}>
+                          {rx}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="body-btn body-btn-primary"
+                  onClick={() => handleStartSession({
+                    weekday: todayWeekday,
+                    day: todayWeekday,
+                    name: todayRoutineItems[0]?.day_name || 'Buổi tập hôm nay'
+                  })}
+                  style={{ flex: 2, height: '42px', fontSize: '13.5px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  <AppIcon name="play" size={15} weight="fill" />
+                  <span>Bắt đầu buổi tập ngay</span>
+                </button>
+                <button
+                  type="button"
+                  className="body-btn body-btn-secondary"
+                  onClick={() => setScreen('routine')}
+                  style={{ flex: 1, height: '42px', fontSize: '13px', fontWeight: 600 }}
+                >
+                  Xem lộ trình
+                </button>
+              </div>
+            </div>
+          ) : availableRoutineDays.length > 0 ? (
+            <div className="body-card" style={{ maxWidth: '520px', margin: '30px auto', padding: '28px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'var(--body-shell-bg)', color: 'var(--body-text-muted)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                  <AppIcon name="moon" size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--body-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    HÔM NAY LÀ NGÀY NGHỈ
+                  </div>
+                  <h2 style={{ fontSize: '18px', fontWeight: 700, margin: '2px 0 0', color: 'var(--body-text-main)' }}>
+                    {activeRoutine?.name || 'Lộ trình đang theo'}
+                  </h2>
+                </div>
+              </div>
+
+              <p style={{ fontSize: '13px', color: 'var(--body-text-muted)', lineHeight: 1.5, margin: 0 }}>
+                Hôm nay không có lịch tập theo kế hoạch. Bạn có thể nghỉ ngơi để cơ bắp phục hồi hoặc chọn tập một ngày khác:
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {availableRoutineDays.map(d => (
+                  <div
+                    key={d.weekday}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: 'var(--body-shell-bg)',
+                      border: '1px solid var(--body-card-border)'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                        {d.dayName}
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
+                        {d.items.length} bài tập
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="body-btn body-btn-primary"
+                      onClick={() => handleStartSession({
+                        weekday: d.weekday,
+                        day: d.weekday,
+                        name: d.dayName
+                      })}
+                      style={{ height: '32px', padding: '0 12px', fontSize: '12px', fontWeight: 600 }}
+                    >
+                      Tập buổi này
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className="body-btn body-btn-secondary"
+                onClick={() => setScreen('routine')}
+                style={{ height: '38px', fontSize: '13px', fontWeight: 600 }}
+              >
+                Mở Lộ trình chi tiết
+              </button>
+            </div>
           ) : (
             <div className="body-card" style={{ maxWidth: '480px', margin: '40px auto', padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
               <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'var(--body-shell-bg)', color: 'var(--body-text-muted)', display: 'grid', placeItems: 'center' }}>
                 <AppIcon name="barbell" size={28} />
               </div>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>Chưa có buổi tập nào</h2>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>Chưa chọn lộ trình nào</h2>
               <p style={{ fontSize: '13.5px', color: 'var(--body-text-muted)', lineHeight: 1.5, margin: 0 }}>
-                Hãy chọn một ngày trong Lộ trình để bắt đầu hoặc mở Tổng quan để xem buổi tập hôm nay.
+                Bạn chưa kích hoạt lộ trình tập luyện. Hãy chọn một lộ trình mẫu hoặc tạo mới để bắt đầu tập.
               </p>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                <button className="body-btn" onClick={() => setScreen('overview')}>
-                  Về Tổng quan
-                </button>
-                <button className="body-btn body-btn-primary" onClick={() => setScreen('routine')}>
-                  Mở Lộ trình
-                </button>
-              </div>
+              <button className="body-btn body-btn-primary" onClick={() => setScreen('routine')}>
+                Khám phá Lộ trình mẫu
+              </button>
             </div>
           )
         )}
