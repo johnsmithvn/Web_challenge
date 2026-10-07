@@ -43,17 +43,26 @@ export default function RoutineScreen({
 
   // Chế độ xem trước template (Preview mode)
   const [previewTemplate, setPreviewTemplate] = useState(null);
+  const [previewDays, setPreviewDays] = useState([]);
   const [expandedTplKey, setExpandedTplKey] = useState(null);
 
-  // Modal tạo & sửa lộ trình
+  // Modal tạo lộ trình tự do & sửa lộ trình hiện tại
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // Form states cho Tạo lộ trình
+  // Modal Tùy chỉnh chi tiết Hiệp/Rep của Template trước khi áp dụng
+  const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+  const [customizingTpl, setCustomizingTpl] = useState(null);
+  const [customizedDays, setCustomizedDays] = useState([]);
+  const [customizedWeeks, setCustomizedWeeks] = useState(4);
+  const [customizedName, setCustomizedName] = useState('');
+  const [customizedGoal, setCustomizedGoal] = useState('');
+
+  // Form states cho Tạo lộ trình tự do
   const [customName, setCustomName] = useState('Lộ trình tập luyện mới');
   const [customGoal, setCustomGoal] = useState('Tăng cơ giảm mỡ & thể lực toàn diện');
   const [customWeeks, setCustomWeeks] = useState(8);
-  const [customSplit, setCustomSplit] = useState('upper-lower'); // 'empty', 'upper-lower', 'ppl', 'fullbody'
+  const [customSplit, setCustomSplit] = useState('upper-lower');
 
   // Form states cho Sửa lộ trình
   const [editName, setEditName] = useState(routine?.name || '');
@@ -74,33 +83,86 @@ export default function RoutineScreen({
     }
   }, [routine]);
 
-  // Nếu đang xem trước template thì lấy items từ template
+  // Khởi tạo previewDays khi chọn template để preview
+  const handleStartPreview = (tmpl) => {
+    setPreviewTemplate(tmpl);
+    const cloned = (tmpl.days || []).map(d => ({
+      weekday: d.weekday,
+      day_name: d.day_name,
+      focus: d.focus,
+      items: (d.items || []).map(it => ({
+        id: `prev-${d.weekday}-${it.exercise_key}-${Math.random().toString(36).substr(2, 5)}`,
+        exercise_key: it.exercise_key,
+        target_sets: it.target_sets || 3,
+        target_val: it.target_val || 10,
+        unit: it.unit || 'rep',
+        kg: it.kg || 0,
+        rest_seconds: it.rest_seconds || 90
+      }))
+    }));
+    setPreviewDays(cloned);
+  };
+
+  const handleStopPreview = () => {
+    setPreviewTemplate(null);
+    setPreviewDays([]);
+  };
+
+  // Mở modal tùy chỉnh Hiệp / Rep của template
+  const handleOpenCustomizeTemplate = (tmpl) => {
+    setCustomizingTpl(tmpl);
+    setCustomizedName(tmpl.name);
+    setCustomizedGoal(tmpl.goal);
+    setCustomizedWeeks(tmpl.weeks || 4);
+
+    const sourceDays = (previewTemplate?.key === tmpl.key && previewDays.length > 0)
+      ? previewDays
+      : (tmpl.days || []);
+
+    const cloned = sourceDays.map(d => ({
+      weekday: d.weekday,
+      day_name: d.day_name,
+      focus: d.focus,
+      items: (d.items || []).map(it => ({
+        exercise_key: it.exercise_key,
+        target_sets: Number(it.target_sets) || 3,
+        target_val: Number(it.target_val) || 10,
+        unit: it.unit || 'rep',
+        kg: Number(it.kg) || 0,
+        rest_seconds: Number(it.rest_seconds) || 90
+      }))
+    }));
+
+    setCustomizedDays(cloned);
+    setShowCustomizeModal(true);
+  };
+
   const isPreviewing = Boolean(previewTemplate);
   const activeRoutineData = isPreviewing ? previewTemplate : routine;
 
+  // Danh sách items hiển thị trên bảng
   const currentDisplayItems = useMemo(() => {
-    if (isPreviewing && previewTemplate) {
+    if (isPreviewing && previewDays.length > 0) {
       const items = [];
-      let idCounter = 1;
-      (previewTemplate.days || []).forEach(day => {
+      previewDays.forEach(day => {
         (day.items || []).forEach(it => {
           items.push({
-            id: `preview-${idCounter++}`,
+            id: it.id,
             weekday: day.weekday,
             day_name: day.day_name,
             exercise_key: it.exercise_key,
-            target_sets: it.target_sets || 3,
-            target_val: it.target_val || 10,
-            unit: it.unit || 'rep',
-            kg: it.kg || 0,
-            rest_seconds: it.rest_seconds || 60
+            target_sets: it.target_sets,
+            target_val: it.target_val,
+            unit: it.unit,
+            kg: it.kg,
+            rest_seconds: it.rest_seconds
           });
         });
       });
       return items;
     }
     return localItems;
-  }, [isPreviewing, previewTemplate, localItems]);
+  }, [isPreviewing, previewDays, localItems]);
 
   // Dữ liệu 7 ngày trong tuần
   const weekdaysData = useMemo(() => {
@@ -117,7 +179,6 @@ export default function RoutineScreen({
           if (m && !muscles.includes(m)) muscles.push(m);
         });
 
-        // Xác định màu dot trạng thái
         let dotColor = '#6949E8';
         if (dayName.includes('Chân')) dotColor = '#2F8A57';
         else if (dayName.includes('Đẩy')) dotColor = '#E0822C';
@@ -174,30 +235,70 @@ export default function RoutineScreen({
     return recentSets.filter(s => s.is_pr).length || 3;
   }, [recentSets]);
 
-  // Hành động với bài tập
+  // Hành động với bài tập (Hỗ trợ cả chế độ xem trước và chế độ đang theo)
   const handleStepChange = (item, delta) => {
-    if (isPreviewing) return;
     const step = stepOfUnit(item.unit);
     const nextVal = Math.max(step, Number(item.target_val) + delta * step);
-    setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, target_val: nextVal } : it));
-    onUpdateTarget?.(item.id, nextVal);
+
+    if (isPreviewing) {
+      setPreviewDays(prev => prev.map(d => ({
+        ...d,
+        items: (d.items || []).map(it => it.id === item.id ? { ...it, target_val: nextVal } : it)
+      })));
+    } else {
+      setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, target_val: nextVal } : it));
+      onUpdateTarget?.(item.id, nextVal);
+    }
   };
 
   const handleSetChange = (item, delta) => {
-    if (isPreviewing) return;
     const nextSets = Math.max(1, Number(item.target_sets) + delta);
-    setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, target_sets: nextSets } : it));
-    onUpdateSets?.(item.id, nextSets);
+
+    if (isPreviewing) {
+      setPreviewDays(prev => prev.map(d => ({
+        ...d,
+        items: (d.items || []).map(it => it.id === item.id ? { ...it, target_sets: nextSets } : it)
+      })));
+    } else {
+      setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, target_sets: nextSets } : it));
+      onUpdateSets?.(item.id, nextSets);
+    }
   };
 
   const handleDeleteItem = (itemId) => {
-    if (isPreviewing) return;
-    setLocalItems(prev => prev.filter(it => it.id !== itemId));
-    onDeleteExercise?.(itemId);
+    if (isPreviewing) {
+      setPreviewDays(prev => prev.map(d => ({
+        ...d,
+        items: (d.items || []).filter(it => it.id !== itemId)
+      })));
+    } else {
+      setLocalItems(prev => prev.filter(it => it.id !== itemId));
+      onDeleteExercise?.(itemId);
+    }
   };
 
   const handleAddExercise = (exercise) => {
-    if (isPreviewing) return;
+    if (isPreviewing) {
+      const newItem = {
+        id: `prev-${selectedDay}-${exercise.key}-${Math.random().toString(36).substr(2, 5)}`,
+        exercise_key: exercise.key,
+        target_sets: exercise.defaultSets || 3,
+        target_val: exercise.defaultTarget || 10,
+        unit: exercise.metric || 'rep',
+        kg: exercise.defaultKg != null ? exercise.defaultKg : (exercise.equipment === 'db' ? 5 : 0),
+        rest_seconds: 60
+      };
+      setPreviewDays(prev => {
+        const foundDay = prev.find(d => d.weekday === selectedDay);
+        if (foundDay) {
+          return prev.map(d => d.weekday === selectedDay ? { ...d, items: [...d.items, newItem] } : d);
+        }
+        return [...prev, { weekday: selectedDay, day_name: activeDay.name, items: [newItem] }];
+      });
+      setShowPicker(false);
+      return;
+    }
+
     onAddExercise?.({
       weekday: selectedDay,
       dayName: activeDay.name,
@@ -219,14 +320,32 @@ export default function RoutineScreen({
     onToggleAutoProgress?.(routine?.id, next);
   };
 
-  // Áp dụng mẫu khi đang preview
+  // Áp dụng mẫu từ chế độ xem trước (Lấy đúng các số hiệp/rep đã sửa)
   const handleApplyPreviewTemplate = () => {
     if (!previewTemplate) return;
-    onCreateRoutineFromTemplate?.(previewTemplate.key);
-    setPreviewTemplate(null);
+    onCreateCustomRoutine?.({
+      name: previewTemplate.name,
+      goal: previewTemplate.goal,
+      weeks: previewTemplate.weeks || 4,
+      days: previewDays
+    });
+    handleStopPreview();
   };
 
-  // Tạo lộ trình tùy chỉnh
+  // Áp dụng sau khi tùy chỉnh trong Modal Customize
+  const handleSaveCustomizedTemplate = (e) => {
+    e.preventDefault();
+    onCreateCustomRoutine?.({
+      name: customizedName,
+      goal: customizedGoal,
+      weeks: customizedWeeks,
+      days: customizedDays
+    });
+    setShowCustomizeModal(false);
+    handleStopPreview();
+  };
+
+  // Tạo lộ trình tùy chỉnh từ form tự do
   const handleCreateCustomSubmit = (e) => {
     e.preventDefault();
     let initialDays = [];
@@ -237,32 +356,32 @@ export default function RoutineScreen({
           weekday: 1,
           day_name: 'Thân trên',
           items: [
-            { exercise_key: 'push-up', target_sets: 3, target_val: 15, unit: 'rep', kg: 0, rest_seconds: 60 },
-            { exercise_key: 'dumbbell-floor-press', target_sets: 3, target_val: 12, unit: 'rep', kg: 5, rest_seconds: 75 }
+            { exercise_key: 'push-up', target_sets: 3, target_val: 12, unit: 'rep', kg: 0, rest_seconds: 90 },
+            { exercise_key: 'pike-push-up', target_sets: 3, target_val: 8, unit: 'rep', kg: 0, rest_seconds: 90 }
           ]
         },
         {
           weekday: 2,
           day_name: 'Thân dưới',
           items: [
-            { exercise_key: 'goblet-squat', target_sets: 3, target_val: 15, unit: 'rep', kg: 5, rest_seconds: 75 },
-            { exercise_key: 'romanian-deadlift', target_sets: 3, target_val: 12, unit: 'rep', kg: 5, rest_seconds: 75 }
+            { exercise_key: 'slow-squat', target_sets: 3, target_val: 12, unit: 'rep', kg: 0, rest_seconds: 90 },
+            { exercise_key: 'glute-bridge', target_sets: 3, target_val: 15, unit: 'rep', kg: 0, rest_seconds: 90 }
           ]
         },
         {
           weekday: 4,
           day_name: 'Thân trên B',
           items: [
-            { exercise_key: 'inverted-row', target_sets: 3, target_val: 10, unit: 'rep', kg: 0, rest_seconds: 60 },
-            { exercise_key: 'lateral-raise', target_sets: 3, target_val: 15, unit: 'rep', kg: 5, rest_seconds: 60 }
+            { exercise_key: 'assisted-pull-up', target_sets: 3, target_val: 6, unit: 'rep', kg: 0, rest_seconds: 90 },
+            { exercise_key: 'plank', target_sets: 3, target_val: 40, unit: 's', kg: 0, rest_seconds: 90 }
           ]
         },
         {
           weekday: 5,
-          day_name: 'Thân dưới & Bụng',
+          day_name: 'Thân dưới & Lõi',
           items: [
-            { exercise_key: 'bulgarian-split-squat', target_sets: 3, target_val: 10, unit: 'rep', kg: 5, rest_seconds: 75 },
-            { exercise_key: 'plank', target_sets: 3, target_val: 45, unit: 's', kg: 0, rest_seconds: 45 }
+            { exercise_key: 'slow-squat', target_sets: 2, target_val: 10, unit: 'rep', kg: 0, rest_seconds: 90 },
+            { exercise_key: 'dead-bug', target_sets: 3, target_val: 10, unit: 'rep', kg: 0, rest_seconds: 90 }
           ]
         }
       ];
@@ -272,24 +391,24 @@ export default function RoutineScreen({
           weekday: 1,
           day_name: 'Toàn thân A',
           items: [
-            { exercise_key: 'goblet-squat', target_sets: 3, target_val: 15, unit: 'rep', kg: 5, rest_seconds: 75 },
-            { exercise_key: 'push-up', target_sets: 3, target_val: 15, unit: 'rep', kg: 0, rest_seconds: 60 }
+            { exercise_key: 'push-up', target_sets: 3, target_val: 10, unit: 'rep', kg: 0, rest_seconds: 90 },
+            { exercise_key: 'slow-squat', target_sets: 3, target_val: 12, unit: 'rep', kg: 0, rest_seconds: 90 }
           ]
         },
         {
           weekday: 3,
           day_name: 'Toàn thân B',
           items: [
-            { exercise_key: 'dumbbell-hip-thrust', target_sets: 3, target_val: 15, unit: 'rep', kg: 5, rest_seconds: 75 },
-            { exercise_key: 'inverted-row', target_sets: 3, target_val: 10, unit: 'rep', kg: 0, rest_seconds: 60 }
+            { exercise_key: 'assisted-pull-up', target_sets: 3, target_val: 6, unit: 'rep', kg: 0, rest_seconds: 90 },
+            { exercise_key: 'glute-bridge', target_sets: 3, target_val: 15, unit: 'rep', kg: 0, rest_seconds: 90 }
           ]
         },
         {
           weekday: 5,
-          day_name: 'Toàn thân C',
+          day_name: 'Toàn thân C (Nhẹ)',
           items: [
-            { exercise_key: 'bulgarian-split-squat', target_sets: 3, target_val: 10, unit: 'rep', kg: 5, rest_seconds: 75 },
-            { exercise_key: 'plank', target_sets: 3, target_val: 45, unit: 's', kg: 0, rest_seconds: 45 }
+            { exercise_key: 'push-up', target_sets: 2, target_val: 10, unit: 'rep', kg: 0, rest_seconds: 90 },
+            { exercise_key: 'plank', target_sets: 2, target_val: 35, unit: 's', kg: 0, rest_seconds: 90 }
           ]
         }
       ];
@@ -299,24 +418,24 @@ export default function RoutineScreen({
           weekday: 1,
           day_name: 'Đẩy (Push)',
           items: [
-            { exercise_key: 'push-up', target_sets: 3, target_val: 15, unit: 'rep', kg: 0, rest_seconds: 60 },
-            { exercise_key: 'dumbbell-floor-press', target_sets: 3, target_val: 12, unit: 'rep', kg: 5, rest_seconds: 75 }
+            { exercise_key: 'push-up', target_sets: 3, target_val: 12, unit: 'rep', kg: 0, rest_seconds: 90 },
+            { exercise_key: 'pike-push-up', target_sets: 3, target_val: 8, unit: 'rep', kg: 0, rest_seconds: 90 }
           ]
         },
         {
           weekday: 3,
           day_name: 'Kéo (Pull)',
           items: [
-            { exercise_key: 'inverted-row', target_sets: 3, target_val: 10, unit: 'rep', kg: 0, rest_seconds: 60 },
-            { exercise_key: 'chin-up', target_sets: 3, target_val: 6, unit: 'rep', kg: 0, rest_seconds: 60 }
+            { exercise_key: 'assisted-pull-up', target_sets: 3, target_val: 6, unit: 'rep', kg: 0, rest_seconds: 90 },
+            { exercise_key: 'dead-bug', target_sets: 3, target_val: 10, unit: 'rep', kg: 0, rest_seconds: 90 }
           ]
         },
         {
           weekday: 5,
           day_name: 'Chân (Legs)',
           items: [
-            { exercise_key: 'goblet-squat', target_sets: 3, target_val: 15, unit: 'rep', kg: 5, rest_seconds: 75 },
-            { exercise_key: 'romanian-deadlift', target_sets: 3, target_val: 12, unit: 'rep', kg: 5, rest_seconds: 75 }
+            { exercise_key: 'slow-squat', target_sets: 3, target_val: 12, unit: 'rep', kg: 0, rest_seconds: 90 },
+            { exercise_key: 'glute-bridge', target_sets: 3, target_val: 15, unit: 'rep', kg: 0, rest_seconds: 90 }
           ]
         }
       ];
@@ -330,7 +449,7 @@ export default function RoutineScreen({
     });
 
     setShowCreateModal(false);
-    setPreviewTemplate(null);
+    handleStopPreview();
   };
 
   // Lưu thông tin chỉnh sửa lộ trình
@@ -373,7 +492,6 @@ export default function RoutineScreen({
             Lộ trình
           </h2>
 
-          {/* Nếu user có nhiều hơn 1 lộ trình, hiển thị selector chuyển đổi */}
           {routines.length > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)' }}>Lộ trình:</span>
@@ -404,7 +522,6 @@ export default function RoutineScreen({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Nút Tạo lộ trình mới */}
           <button
             type="button"
             onClick={() => setShowCreateModal(true)}
@@ -458,6 +575,9 @@ export default function RoutineScreen({
             <div>
               <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
                 Đang xem trước mẫu: <span style={{ color: 'var(--body-accent)' }}>{previewTemplate.name}</span>
+                <span style={{ marginLeft: '8px', fontSize: '12px', fontWeight: 400, color: 'var(--body-text-sub)' }}>
+                  (Bạn có thể chỉnh sửa số hiệp, số rep trực tiếp ở bảng bên dưới)
+                </span>
               </div>
               <div style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
                 {previewTemplate.weeks} tuần · {previewTemplate.days?.length || 4} buổi/tuần · {previewTemplate.goal}
@@ -468,7 +588,7 @@ export default function RoutineScreen({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               type="button"
-              onClick={() => setPreviewTemplate(null)}
+              onClick={handleStopPreview}
               style={{
                 height: '34px',
                 padding: '0 14px',
@@ -486,6 +606,28 @@ export default function RoutineScreen({
             >
               <AppIcon name="back" size={13} />
               <span>Quay lại lộ trình của tôi</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleOpenCustomizeTemplate(previewTemplate)}
+              style={{
+                height: '34px',
+                padding: '0 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--body-accent)',
+                background: 'var(--body-card-bg)',
+                color: 'var(--body-accent)',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              <AppIcon name="pencil" size={13} />
+              <span>Tùy chỉnh số hiệp & rep</span>
             </button>
 
             <button
@@ -531,7 +673,7 @@ export default function RoutineScreen({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <h3 className="body-routine-dark-title">
-                  {routine?.name || 'Giảm mỡ giữ cơ'}
+                  {routine?.name || 'Chưa chọn lộ trình'}
                 </h3>
                 {routine?.id && (
                   <button
@@ -644,7 +786,7 @@ export default function RoutineScreen({
                     fontWeight: 500,
                     color: 'var(--body-text-sub)'
                   }}>
-                    {t.key.includes('calisthenics') ? 'Bodyweight' : 'Kháng lực'}
+                    {t.key.includes('calisthenics') ? 'Bodyweight' : (t.key.includes('30min') ? 'Nghỉ 90s' : 'Kháng lực')}
                   </span>
                   <span style={{
                     height: '22px',
@@ -657,41 +799,61 @@ export default function RoutineScreen({
                     fontWeight: 500,
                     color: 'var(--body-text-sub)'
                   }}>
-                    Tạ đơn 5 kg
+                    {t.days?.length || 3} buổi / tuần
                   </span>
                 </div>
 
-                {/* Nút Xem trước và Dùng mẫu */}
+                {/* Nút Xem trước, Tùy chỉnh và Dùng mẫu */}
                 {isExpanded && (
                   <div
-                    style={{ display: 'flex', gap: '6px', paddingTop: '6px' }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '6px' }}
                     onClick={e => e.stopPropagation()}
                   >
-                    <button
-                      type="button"
-                      onClick={() => setPreviewTemplate(t)}
-                      style={{
-                        flex: 1,
-                        height: '32px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--body-border-subtle)',
-                        background: 'var(--body-card-bg)',
-                        color: 'var(--body-text-main)',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Xem trước
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleStartPreview(t)}
+                        style={{
+                          flex: 1,
+                          height: '32px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--body-border-subtle)',
+                          background: 'var(--body-card-bg)',
+                          color: 'var(--body-text-main)',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Xem trước
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCustomizeTemplate(t)}
+                        style={{
+                          flex: 1.2,
+                          height: '32px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--body-accent)',
+                          background: 'var(--body-accent-tint)',
+                          color: 'var(--body-accent)',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Sửa rep & hiệp
+                      </button>
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => {
                         onCreateRoutineFromTemplate?.(t.key);
-                        setPreviewTemplate(null);
+                        handleStopPreview();
                       }}
                       style={{
-                        flex: 1,
+                        width: '100%',
                         height: '32px',
                         borderRadius: '8px',
                         border: 'none',
@@ -702,7 +864,7 @@ export default function RoutineScreen({
                         cursor: 'pointer'
                       }}
                     >
-                      Dùng mẫu này
+                      Dùng mẫu này ngay
                     </button>
                   </div>
                 )}
@@ -719,7 +881,7 @@ export default function RoutineScreen({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '22px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                  {activeRoutineData?.name || 'Giảm mỡ giữ cơ'}
+                  {activeRoutineData?.name || 'Chưa chọn lộ trình'}
                 </span>
                 {!isPreviewing && (
                   <button
@@ -744,18 +906,18 @@ export default function RoutineScreen({
               {/* Tags thông tin tóm tắt */}
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 <span className="body-routine-pill">
-                  {activeRoutineData?.weeks || 8} tuần · {weekdaysData.filter(w => w.isTrain).length} buổi/tuần
+                  {activeRoutineData?.weeks || 4} tuần · {weekdaysData.filter(w => w.isTrain).length} buổi/tuần
                 </span>
                 <span className="body-routine-pill">
-                  Mục tiêu: {activeRoutineData?.goal || 'Giảm mỡ, giữ cơ'}
+                  Mục tiêu: {activeRoutineData?.goal || 'Rèn luyện sức khỏe'}
                 </span>
                 <span className="body-routine-pill">
-                  Tạ đơn 5 kg · xà cửa · thảm
+                  Nghỉ 90s giữa hiệp · Bodyweight & Tạ đơn
                 </span>
               </div>
             </div>
 
-            {/* Trạng thái đã lưu & Nút bắt đầu tập */}
+            {/* Trạng thái & Nút hành động */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{
                 display: 'flex',
@@ -876,19 +1038,18 @@ export default function RoutineScreen({
             {/* Nếu là ngày tập */}
             {activeDay.isTrain ? (
               <div className="body-routine-table-wrap">
-                {/* Header bảng bài tập */}
                 <div className="body-routine-row body-routine-header-row">
                   <span></span>
                   <span>BÀI TẬP</span>
                   <span>KIỂU MỤC TIÊU</span>
-                  <span style={{ textAlign: 'center' }}>SET</span>
-                  <span style={{ textAlign: 'center' }}>MỤC TIÊU</span>
+                  <span style={{ textAlign: 'center' }}>HIỆP (SET)</span>
+                  <span style={{ textAlign: 'center' }}>MỤC TIÊU (REP/S)</span>
                   <span>TẠ</span>
                   <span>NGHỈ</span>
                   <span></span>
                 </div>
 
-                {/* Hàng bài tập */}
+                {/* Hàng bài tập (Cho phép bấm -/+ sửa cả khi xem trước và khi đang theo) */}
                 {dayItems.map((item) => {
                   const exDef = BASE_EXERCISES.find(e => e.key === item.exercise_key);
                   const muscleVn = MUSCLE_MAP[exDef?.primary]?.name || exDef?.primary || '';
@@ -930,13 +1091,13 @@ export default function RoutineScreen({
                         {item.unit === 's' ? 'Set × Giây' : 'Set × Rep'}
                       </span>
 
-                      {/* Counter Sets */}
+                      {/* Bộ đếm SET */}
                       <div className="body-routine-counter">
                         <button
                           type="button"
                           className="body-routine-counter-btn"
                           onClick={() => handleSetChange(item, -1)}
-                          disabled={isPreviewing}
+                          title="Giảm 1 hiệp"
                         >
                           <AppIcon name="minus" size={11} />
                         </button>
@@ -953,19 +1114,19 @@ export default function RoutineScreen({
                           type="button"
                           className="body-routine-counter-btn"
                           onClick={() => handleSetChange(item, 1)}
-                          disabled={isPreviewing}
+                          title="Tăng 1 hiệp"
                         >
                           <AppIcon name="plus" size={11} />
                         </button>
                       </div>
 
-                      {/* Counter Target (Rep / s) */}
+                      {/* Bộ đếm Mục tiêu (REP/GIÂY) */}
                       <div className="body-routine-counter-target">
                         <button
                           type="button"
                           className="body-routine-counter-btn"
                           onClick={() => handleStepChange(item, -1)}
-                          disabled={isPreviewing}
+                          title="Giảm mục tiêu"
                         >
                           <AppIcon name="minus" size={11} />
                         </button>
@@ -986,7 +1147,7 @@ export default function RoutineScreen({
                           type="button"
                           className="body-routine-counter-btn"
                           onClick={() => handleStepChange(item, 1)}
-                          disabled={isPreviewing}
+                          title="Tăng mục tiêu"
                         >
                           <AppIcon name="plus" size={11} />
                         </button>
@@ -999,14 +1160,13 @@ export default function RoutineScreen({
 
                       {/* Nghỉ */}
                       <span style={{ fontFamily: 'var(--body-mono)', fontSize: '12px', color: 'var(--body-text-muted)' }}>
-                        {item.rest_seconds}s
+                        {item.rest_seconds || 90}s
                       </span>
 
                       {/* Xóa */}
                       <button
                         type="button"
                         onClick={() => handleDeleteItem(item.id)}
-                        disabled={isPreviewing}
                         style={{
                           width: '30px',
                           height: '30px',
@@ -1027,7 +1187,7 @@ export default function RoutineScreen({
                 })}
 
                 {/* Nút dashed thêm bài */}
-                {!showPicker && !isPreviewing && (
+                {!showPicker && (
                   <button
                     type="button"
                     className="body-routine-dashed-btn"
@@ -1039,7 +1199,7 @@ export default function RoutineScreen({
                 )}
 
                 {/* Inline Exercise Picker */}
-                {showPicker && !isPreviewing && (
+                {showPicker && (
                   <div style={{
                     margin: '12px 0 16px',
                     padding: '14px',
@@ -1143,7 +1303,7 @@ export default function RoutineScreen({
                   {activeDay.note}
                 </p>
 
-                {!showPicker && !isPreviewing && (
+                {!showPicker && (
                   <button
                     type="button"
                     onClick={() => setShowPicker(true)}
@@ -1168,8 +1328,7 @@ export default function RoutineScreen({
                   </button>
                 )}
 
-                {/* Inline picker khi muốn tập bù */}
-                {showPicker && !isPreviewing && (
+                {showPicker && (
                   <div style={{
                     maxWidth: '560px',
                     padding: '14px',
@@ -1302,7 +1461,303 @@ export default function RoutineScreen({
         </div>
       </div>
 
-      {/* ── MODAL TẠO LỘ TRÌNH MỚI ───────────────────────────────── */}
+      {/* ── MODAL TÙY CHỈNH HIỆP & REP CỦA TEMPLATE TRƯỚC KHI ÁP DỤNG ─ */}
+      {showCustomizeModal && (
+        <div className="body-modal-backdrop" onClick={() => setShowCustomizeModal(false)}>
+          <div
+            className="body-modal-box"
+            style={{ maxWidth: '640px' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{
+              padding: '18px 22px',
+              borderBottom: '1px solid var(--body-card-border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <span style={{ fontSize: '17px', fontWeight: 700, color: 'var(--body-text-main)' }}>
+                  Tùy chỉnh số hiệp & rep khi áp dụng
+                </span>
+                <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
+                  {customizingTpl?.name} · Tự do tăng giảm theo thể trạng của bạn
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCustomizeModal(false)}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--body-text-muted)',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                <AppIcon name="x" size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCustomizedTemplate} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <div style={{ padding: '18px 22px', overflowY: 'auto', maxHeight: '60vh', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                {/* Thông tin chung */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: 'var(--body-text-main)' }}>
+                      Tên lộ trình
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={customizedName}
+                      onChange={e => setCustomizedName(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '36px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--body-border-subtle)',
+                        padding: '0 10px',
+                        fontSize: '13px',
+                        background: 'var(--body-card-bg)',
+                        color: 'var(--body-text-main)',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '5px', color: 'var(--body-text-main)' }}>
+                      Số tuần
+                    </label>
+                    <select
+                      value={customizedWeeks}
+                      onChange={e => setCustomizedWeeks(Number(e.target.value))}
+                      style={{
+                        width: '100%',
+                        height: '36px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--body-border-subtle)',
+                        padding: '0 8px',
+                        fontSize: '13px',
+                        background: 'var(--body-card-bg)',
+                        color: 'var(--body-text-main)',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <option value={4}>4 tuần</option>
+                      <option value={6}>6 tuần</option>
+                      <option value={8}>8 tuần</option>
+                      <option value={12}>12 tuần</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Danh sách các buổi tập và bài tập */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--body-text-main)' }}>
+                    Cấu hình bài tập theo từng thứ:
+                  </span>
+
+                  {customizedDays.map((day, dIdx) => {
+                    const dayDef = BASE_WEEKDAY_DEFS.find(w => w.day === day.weekday) || { short: `Thứ ${day.weekday}` };
+
+                    return (
+                      <div
+                        key={day.weekday}
+                        style={{
+                          background: 'var(--body-shell-bg)',
+                          borderRadius: '12px',
+                          padding: '12px 14px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                            {dayDef.short}: {day.day_name}
+                          </span>
+                          <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
+                            {day.items.length} bài
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {day.items.map((it, itIdx) => {
+                            const ex = BASE_EXERCISES.find(e => e.key === it.exercise_key);
+
+                            const updateItem = (newSets, newTarget) => {
+                              setCustomizedDays(prev => prev.map((d, di) => {
+                                if (di !== dIdx) return d;
+                                return {
+                                  ...d,
+                                  items: d.items.map((item, ii) => {
+                                    if (ii !== itIdx) return item;
+                                    return {
+                                      ...item,
+                                      target_sets: newSets !== undefined ? Math.max(1, newSets) : item.target_sets,
+                                      target_val: newTarget !== undefined ? Math.max(1, newTarget) : item.target_val
+                                    };
+                                  })
+                                };
+                              }));
+                            };
+
+                            const removeItem = () => {
+                              setCustomizedDays(prev => prev.map((d, di) => {
+                                if (di !== dIdx) return d;
+                                return {
+                                  ...d,
+                                  items: d.items.filter((_, ii) => ii !== itIdx)
+                                };
+                              }));
+                            };
+
+                            return (
+                              <div
+                                key={it.exercise_key + itIdx}
+                                style={{
+                                  background: 'var(--body-card-bg)',
+                                  borderRadius: '8px',
+                                  padding: '8px 10px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '8px'
+                                }}
+                              >
+                                <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                                  {ex?.name || it.exercise_key}
+                                </span>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  {/* Sửa Hiệp */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>Hiệp:</span>
+                                    <div className="body-routine-counter" style={{ height: '28px' }}>
+                                      <button
+                                        type="button"
+                                        className="body-routine-counter-btn"
+                                        style={{ width: '24px' }}
+                                        onClick={() => updateItem(it.target_sets - 1, undefined)}
+                                      >
+                                        −
+                                      </button>
+                                      <span style={{ width: '22px', textAlign: 'center', fontSize: '12px', fontWeight: 600, fontFamily: 'var(--body-mono)' }}>
+                                        {it.target_sets}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className="body-routine-counter-btn"
+                                        style={{ width: '24px' }}
+                                        onClick={() => updateItem(it.target_sets + 1, undefined)}
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Sửa Rep/s */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>Mục tiêu:</span>
+                                    <div className="body-routine-counter-target" style={{ height: '28px' }}>
+                                      <button
+                                        type="button"
+                                        className="body-routine-counter-btn"
+                                        style={{ width: '24px' }}
+                                        onClick={() => updateItem(undefined, it.target_val - (it.unit === 's' ? 5 : 1))}
+                                      >
+                                        −
+                                      </button>
+                                      <span style={{ minWidth: '40px', textAlign: 'center', fontSize: '12px', fontWeight: 600, fontFamily: 'var(--body-mono)', color: 'var(--body-accent)' }}>
+                                        {it.target_val} {it.unit}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className="body-routine-counter-btn"
+                                        style={{ width: '24px' }}
+                                        onClick={() => updateItem(undefined, it.target_val + (it.unit === 's' ? 5 : 1))}
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Nút Xoá */}
+                                  <button
+                                    type="button"
+                                    onClick={removeItem}
+                                    style={{
+                                      border: 'none',
+                                      background: 'transparent',
+                                      color: '#B5B4AE',
+                                      cursor: 'pointer',
+                                      padding: '4px'
+                                    }}
+                                    title="Xóa bài khỏi ngày này"
+                                  >
+                                    <AppIcon name="trash" size={13} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{
+                padding: '14px 22px',
+                borderTop: '1px solid var(--body-card-border)',
+                display: 'flex',
+                gap: '8px',
+                background: 'var(--body-card-bg)'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCustomizeModal(false)}
+                  style={{
+                    flex: 1,
+                    height: '38px',
+                    borderRadius: '9px',
+                    border: '1px solid var(--body-border-subtle)',
+                    background: 'var(--body-shell-bg)',
+                    color: 'var(--body-text-main)',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    flex: 1.5,
+                    height: '38px',
+                    borderRadius: '9px',
+                    border: 'none',
+                    background: 'var(--body-accent)',
+                    color: '#fff',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Lưu & Bắt đầu lộ trình này
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL TẠO LỘ TRÌNH MỚI TỰ DO ─────────────────────────── */}
       {showCreateModal && (
         <div className="body-modal-backdrop" onClick={() => setShowCreateModal(false)}>
           <div className="body-modal-box" onClick={e => e.stopPropagation()}>
@@ -1341,7 +1796,7 @@ export default function RoutineScreen({
                   required
                   value={customName}
                   onChange={e => setCustomName(e.target.value)}
-                  placeholder="Ví dụ: Tập ngực & cơ bắp săn chắc"
+                  placeholder="Ví dụ: Lịch tập A/B buổi sáng"
                   style={{
                     width: '100%',
                     height: '38px',
@@ -1365,7 +1820,7 @@ export default function RoutineScreen({
                   type="text"
                   value={customGoal}
                   onChange={e => setCustomGoal(e.target.value)}
-                  placeholder="Ví dụ: Tăng cơ ngực, giảm mỡ bụng"
+                  placeholder="Ví dụ: Tăng cơ ngực vai, bảo vệ khớp gối"
                   style={{
                     width: '100%',
                     height: '38px',
@@ -1414,9 +1869,9 @@ export default function RoutineScreen({
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {[
-                    { key: 'upper-lower', label: 'Thân trên / Thân dưới', desc: '4 buổi/tuần (T2, T3, T5, T6 tập, các ngày khác nghỉ)' },
-                    { key: 'ppl', label: 'Đẩy / Kéo / Chân (Push Pull Legs)', desc: '3 buổi/tuần (T2 Đẩy, T4 Kéo, T6 Chân)' },
-                    { key: 'fullbody', label: 'Toàn thân (Full Body)', desc: '3 buổi/tuần (T2, T4, T6 tập toàn diện)' },
+                    { key: 'upper-lower', label: 'Thân trên / Thân dưới (4 buổi)', desc: 'T2 Thân trên, T3 Thân dưới, T5 Thân trên B, T6 Thân dưới & Lõi' },
+                    { key: 'fullbody', label: 'Toàn thân (Full Body 3 buổi)', desc: 'T2, T4, T6 tập toàn thân. Nghỉ ngơi T3, T5, T7, CN' },
+                    { key: 'ppl', label: 'Đẩy / Kéo / Chân (Push Pull Legs)', desc: 'T2 Đẩy, T4 Kéo, T6 Chân' },
                     { key: 'empty', label: 'Lịch trống hoàn toàn', desc: '7 ngày nghỉ sẵn, tự lên bài tập từ đầu' }
                   ].map(s => (
                     <div

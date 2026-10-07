@@ -426,5 +426,87 @@
       "Giữ, rồi đổi bên."
     ],
     "tip": "Hông chùng xuống, người ngả về trước."
+  },
+  {
+    "key": "assisted-pull-up",
+    "name": "Đu xà trợ lực chân",
+    "primary": "lats",
+    "secondary": [
+      "biceps",
+      "forearms"
+    ],
+    "equipment": "bar",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 6,
+    "defaultKg": 0,
+    "steps": [
+      "Treo người trên xà đơn, đặt nhẹ một hoặc hai mũi chân chạm ghế hoặc sàn trợ lực.",
+      "Gồng cơ lưng xô kéo người lên, chân chỉ hỗ trợ vừa đủ bù lực thiếu.",
+      "Hạ người xuống chậm trong 3–4 giây để tối ưu kích thích cơ."
+    ],
+    "tip": "Đạp chân quá mạnh thay vì dùng cơ xô kéo người."
+  },
+  {
+    "key": "slow-squat",
+    "name": "Squat chậm (Tempo 3s)",
+    "primary": "quads",
+    "secondary": [
+      "glutes",
+      "calves"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 0,
+    "steps": [
+      "Đứng chân rộng bằng vai, mũi chân mở nhẹ 15–30 độ.",
+      "Hạ người xuống chậm rãi đếm thầm 3 giây, giữ đầu gối mở theo hướng mũi chân.",
+      "Dừng 1 nhịp ở đáy và đẩy gót đứng dứt khoát lên trong 1 giây."
+    ],
+    "tip": "Tránh sụp gối vào trong; không thả rơi người tự do xuống đáy."
+  },
+  {
+    "key": "dead-bug",
+    "name": "Dead Bug (Bọ chết)",
+    "primary": "abs",
+    "secondary": [
+      "lowerback"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 10,
+    "defaultKg": 0,
+    "steps": [
+      "Nằm ngửa trên thảm, co chân 90 độ, hai tay giơ thẳng lên trần nhà.",
+      "Ép chặt thắt lưng xuống sàn, hạ tay phải và duỗi chân trái từ từ xuống sát sàn.",
+      "Giữ lưng không bị võng, thu về và đổi bên đối diện."
+    ],
+    "tip": "Lưng dưới bị nhấc hổng khỏi sàn làm áp lực dồn vào cột sống."
+  },
+  {
+    "key": "box-squat",
+    "name": "Box Squat chậm & nhẹ",
+    "primary": "quads",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 2,
+    "defaultTarget": 10,
+    "defaultKg": 0,
+    "steps": [
+      "Đặt ghế hoặc hộp phía sau, đứng mở chân bằng vai.",
+      "Đẩy hông ra sau ngồi nhẹ xuống mép ghế, không thả phịch người.",
+      "Dừng 1 giây rồi dồn lực vào gót chân và cơ mông đẩy thẳng người lên."
+    ],
+    "tip": "Ngồi ngửa ra sau hoặc thả lỏng hoàn toàn cơ khi chạm ghế."
   }
 ]

@@ -153,5 +153,115 @@
         ]
       }
     ]
+  },
+  {
+    "key": "split-ab-5day-30min",
+    "name": "Lịch A/B 5 ngày (30p sáng)",
+    "goal": "Phân chia A/B 30 phút mỗi sáng, nghỉ 90s, giữ sức Cầu lông & Yosakoi cuối tuần",
+    "weeks": 4,
+    "level": "Cơ bản",
+    "description": "Lịch tập 5 buổi/tuần, mỗi buổi 30 phút. Nghỉ 90 giây giữa hiệp. Thứ 5 & 6 tập nhẹ dưỡng gối và cơ bắp trước ngày hoạt động thể thao.",
+    "days": [
+      {
+        "weekday": 1,
+        "day_name": "Ngày A - Ngực, Vai & Lõi",
+        "focus": "Ngực, Vai, Tay sau, Bụng",
+        "items": [
+          { "exercise_key": "push-up", "target_sets": 3, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "pike-push-up", "target_sets": 3, "target_val": 8, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "diamond-push-up", "target_sets": 2, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "plank", "target_sets": 3, "target_val": 40, "unit": "s", "kg": 0, "rest_seconds": 90 }
+        ]
+      },
+      {
+        "weekday": 2,
+        "day_name": "Ngày B - Lưng Xô & Chân",
+        "focus": "Lưng xô, Đùi trước, Mông, Khung chậu",
+        "items": [
+          { "exercise_key": "assisted-pull-up", "target_sets": 3, "target_val": 6, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "slow-squat", "target_sets": 3, "target_val": 12, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "glute-bridge", "target_sets": 3, "target_val": 15, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "dead-bug", "target_sets": 3, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 }
+        ]
+      },
+      {
+        "weekday": 3,
+        "day_name": "Ngày A - Ngực, Vai & Lõi",
+        "focus": "Ngực, Vai, Tay sau, Bụng",
+        "items": [
+          { "exercise_key": "push-up", "target_sets": 3, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "pike-push-up", "target_sets": 3, "target_val": 8, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "diamond-push-up", "target_sets": 2, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "plank", "target_sets": 3, "target_val": 40, "unit": "s", "kg": 0, "rest_seconds": 90 }
+        ]
+      },
+      {
+        "weekday": 4,
+        "day_name": "Ngày B - Dưỡng gối giữ chân",
+        "focus": "Lưng xô, Đùi nhẹ, Khung chậu dưỡng khớp",
+        "items": [
+          { "exercise_key": "assisted-pull-up", "target_sets": 3, "target_val": 6, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "slow-squat", "target_sets": 2, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "glute-bridge", "target_sets": 3, "target_val": 15, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "dead-bug", "target_sets": 3, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 }
+        ]
+      },
+      {
+        "weekday": 5,
+        "day_name": "Ngày A - Giữ tay cầu lông",
+        "focus": "Khối lượng nhẹ giữ sức cho vai và khớp tay",
+        "items": [
+          { "exercise_key": "push-up", "target_sets": 2, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "pike-push-up", "target_sets": 2, "target_val": 8, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "plank", "target_sets": 2, "target_val": 35, "unit": "s", "kg": 0, "rest_seconds": 90 }
+        ]
+      }
+    ]
+  },
+  {
+    "key": "fullbody-4week-express",
+    "name": "Toàn thân 4 tuần cấp tốc",
+    "goal": "Full-body 3 buổi sáng T2-T4-T6, nghỉ 90s, cơ bắp căng phồng an toàn khớp",
+    "weeks": 4,
+    "level": "Cơ bản",
+    "description": "Lịch toàn thân 3 buổi/tuần (sáng Thứ 2 - Thứ 4 - Thứ 6). Nghỉ 90 giây giữa các hiệp, không tập xoay vòng, bảo toàn thể lực cuối tuần.",
+    "days": [
+      {
+        "weekday": 1,
+        "day_name": "Xây nền toàn thân",
+        "focus": "Ngực, Xô, Đùi, Vai, Bụng",
+        "items": [
+          { "exercise_key": "push-up", "target_sets": 3, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "assisted-pull-up", "target_sets": 3, "target_val": 6, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "slow-squat", "target_sets": 3, "target_val": 12, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "pike-push-up", "target_sets": 2, "target_val": 8, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "plank", "target_sets": 3, "target_val": 40, "unit": "s", "kg": 0, "rest_seconds": 90 }
+        ]
+      },
+      {
+        "weekday": 3,
+        "day_name": "Toàn thân & Siết bụng",
+        "focus": "Ngực, Xô, Chân, Mông, Bụng an toàn lưng",
+        "items": [
+          { "exercise_key": "push-up", "target_sets": 3, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "assisted-pull-up", "target_sets": 3, "target_val": 6, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "slow-squat", "target_sets": 3, "target_val": 12, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "glute-bridge", "target_sets": 3, "target_val": 15, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "dead-bug", "target_sets": 3, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 }
+        ]
+      },
+      {
+        "weekday": 5,
+        "day_name": "Tập nhẹ giữ sức cuối tuần",
+        "focus": "Khối lượng nhẹ để tối đánh cầu lông & nhảy Yosakoi",
+        "items": [
+          { "exercise_key": "push-up", "target_sets": 2, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "assisted-pull-up", "target_sets": 2, "target_val": 6, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "slow-squat", "target_sets": 2, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "pike-push-up", "target_sets": 2, "target_val": 8, "unit": "rep", "kg": 0, "rest_seconds": 90 },
+          { "exercise_key": "plank", "target_sets": 2, "target_val": 35, "unit": "s", "kg": 0, "rest_seconds": 90 }
+        ]
+      }
+    ]
   }
 ]
