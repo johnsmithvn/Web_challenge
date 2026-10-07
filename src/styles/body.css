@@ -517,18 +517,38 @@
 /* ── RESPONSIVE MOBILE TWEAKS (RULES §14) ───────────────────────── */
 @media (max-width: 840px) {
   .body-header {
-    padding: 0 16px;
-    height: 60px;
+    padding: 0 14px;
+    height: 54px;
+  }
+  .body-header-title {
+    font-size: 17px;
+  }
+  .body-header-sub {
+    display: none;
   }
   .body-content {
-    padding: 16px 16px 80px;
+    padding: 12px 12px 76px;
+  }
+  .body-subnav {
+    padding: 2px;
+    gap: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .body-subnav::-webkit-scrollbar {
+    display: none;
+  }
+  .body-subnav-btn {
+    padding: 5px 10px;
+    font-size: 11.5px;
+    white-space: nowrap;
   }
   .body-days-strip {
     grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 6px;
+    gap: 4px;
   }
   .body-day-chip {
-    padding: 8px 6px;
+    padding: 6px 4px;
     align-items: center;
     text-align: center;
   }
@@ -536,3 +556,295 @@
     display: none;
   }
 }
+
+/* ── ATLAS UI/UX (BẢN ĐỒ CƠ 3D — PHƯƠNG ÁN ATLAS 1B/2B) ───────────── */
+.body-atlas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: calc(100vh - 120px);
+  background: radial-gradient(ellipse 65% 55% at 50% 40%, var(--body-card-bg) 0%, var(--body-shell-bg) 60%, var(--body-bg) 100%);
+  border-radius: var(--body-radius-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.body-atlas-watermark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 140px;
+  text-align: center;
+  font-family: var(--body-font);
+  font-weight: 800;
+  font-size: clamp(72px, 13vw, 180px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--body-border-subtle);
+  opacity: 0.65;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .body-atlas-watermark {
+  opacity: 0.22;
+}
+
+.body-atlas-chips-bar {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 16px;
+  z-index: 5;
+  box-sizing: border-box;
+}
+
+.body-atlas-chips-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.body-atlas-chip {
+  height: 32px;
+  flex: none;
+  padding: 0 13px;
+  border-radius: 16px;
+  border: 1px solid var(--body-card-border);
+  background: var(--body-card-bg);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--body-font);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--body-text-sub);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+  user-select: none;
+}
+
+.body-atlas-chip:hover {
+  border-color: var(--body-accent-border);
+  color: var(--body-text-main);
+}
+
+.body-atlas-chip.active {
+  background: var(--body-text-main);
+  border-color: var(--body-text-main);
+  color: var(--body-bg);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.body-atlas-floating-tools {
+  position: absolute;
+  right: 14px;
+  top: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 6;
+}
+
+.body-atlas-tool-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--body-card-bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--body-card-border);
+  display: grid;
+  place-items: center;
+  color: var(--body-text-sub);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.body-atlas-tool-btn:hover {
+  color: var(--body-text-main);
+  border-color: var(--body-accent-border);
+  transform: translateY(-1px);
+}
+
+.body-atlas-tool-btn.active {
+  background: var(--body-accent);
+  color: #FFFFFF;
+  border-color: var(--body-accent);
+  box-shadow: 0 4px 14px rgba(105, 73, 232, 0.35);
+}
+
+/* Bottom Sheet trên Mobile (390px) */
+.body-atlas-sheet-mobile {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--body-card-bg);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -10px 30px -12px rgba(16, 17, 20, 0.2);
+  display: flex;
+  flex-direction: column;
+  z-index: 7;
+  transition: height 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 85vh;
+}
+
+.body-atlas-sheet-handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--body-border-subtle);
+  margin: 10px auto 4px;
+  flex: none;
+  cursor: pointer;
+}
+
+.body-atlas-sheet-tab {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--body-text-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  padding: 0 4px;
+  transition: all 0.15s ease;
+}
+
+.body-atlas-sheet-tab.active {
+  font-weight: 700;
+  color: var(--body-text-main);
+  border-bottom-color: var(--body-text-main);
+}
+
+/* ── OVERVIEW 2B (NHỊP NGÀY TIMELINE & 3 RINGS) ───────────────────── */
+.body-ring-svg {
+  transform: rotate(-90deg);
+  display: block;
+}
+
+.body-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.body-timeline-item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  position: relative;
+}
+
+.body-timeline-icon-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: stretch;
+}
+
+.body-timeline-icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+}
+
+.body-timeline-line {
+  flex: 1;
+  width: 2px;
+  min-height: 16px;
+  background: var(--body-border-subtle);
+  margin: 4px 0;
+}
+
+/* ── DESKTOP ATLAS FLOATING CARDS & RESPONSIVE VISIBILITY ─────────── */
+.body-atlas-desktop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.body-atlas-desktop-card {
+  pointer-events: auto;
+  background: color-mix(in srgb, var(--body-card-bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--body-card-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+}
+
+.body-atlas-desktop-left {
+  position: absolute;
+  left: 24px;
+  top: 60px;
+  width: 290px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.body-atlas-desktop-right {
+  position: absolute;
+  right: 68px;
+  top: 60px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.body-atlas-desktop-bottom {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+@media (min-width: 841px) {
+  .body-atlas-sheet-mobile {
+    display: none !important;
+  }
+  .body-atlas-desktop {
+    display: block !important;
+  }
+}
+
+@media (max-width: 840px) {
+  .body-atlas-desktop {
+    display: none !important;
+  }
+  .body-atlas-sheet-mobile {
+    display: flex !important;
+  }
+}
+
+
