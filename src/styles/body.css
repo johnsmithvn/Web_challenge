@@ -180,6 +180,13 @@
   box-sizing: border-box;
 }
 
+.body-container-constrained {
+  width: 100%;
+  max-width: 1380px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
 /* Custom Sleek Scrollbar */
 .body-content::-webkit-scrollbar {
   width: 6px;

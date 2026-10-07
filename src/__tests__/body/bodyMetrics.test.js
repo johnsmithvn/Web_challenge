@@ -5,6 +5,7 @@ import {
   calculateTDEE,
   calculateBodyScore,
   isMeasurementOutlier,
+  calculateBodyComposition,
   BMI_CATEGORIES
 } from '../../utils/bodyMetrics.js';
 
@@ -67,6 +68,17 @@ console.log('Testing bodyMetrics pure functions...');
   assert.equal(isMeasurementOutlier(65.2, recentWeights, 1.5), false);
   assert.equal(isMeasurementOutlier(66.8, recentWeights, 1.5), true); // evening or fluctuation
   console.log('  ✓ isMeasurementOutlier OK');
+}
+
+// 6. Body composition
+{
+  const comp = calculateBodyComposition(65.0, 15.0, 58.0, 2.8);
+  assert.equal(comp.fatKg, 9.75);
+  assert.equal(comp.waterKg, 37.7);
+  assert.equal(comp.boneKg, 2.8);
+  assert.ok(comp.proteinKg > 0);
+  assert.equal(Number((comp.fatKg + comp.waterKg + comp.boneKg + comp.proteinKg).toFixed(1)), 65.0);
+  console.log('  ✓ calculateBodyComposition OK');
 }
 
 console.log('ALL BODY METRICS TESTS PASSED!');

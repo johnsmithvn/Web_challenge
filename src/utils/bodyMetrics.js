@@ -97,3 +97,23 @@ export function isMeasurementOutlier(newWeight, recentWeights = [], maxDelta = 1
   const avg = recentWeights.reduce((a, b) => a + b, 0) / recentWeights.length;
   return Math.abs(newWeight - avg) >= maxDelta;
 }
+
+/**
+ * Calculate 4-part body composition (Water, Protein, Fat, Bone mineral)
+ * Sum of parts equals total weight
+ */
+export function calculateBodyComposition(weightKg, bodyFatPct, waterPct, boneMassKg) {
+  if (!weightKg || weightKg <= 0) return null;
+  const w = Number(weightKg);
+  const fat = bodyFatPct ? Number((w * (bodyFatPct / 100)).toFixed(2)) : Number((w * 0.15).toFixed(2));
+  const water = waterPct ? Number((w * (waterPct / 100)).toFixed(2)) : Number((w * 0.589).toFixed(2));
+  const bone = boneMassKg ? Number(Number(boneMassKg).toFixed(2)) : Number((w * 0.0434).toFixed(2));
+  const protein = Math.max(1, Number((w - fat - water - bone).toFixed(2)));
+  return {
+    waterKg: water,
+    proteinKg: protein,
+    fatKg: fat,
+    boneKg: bone,
+    totalKg: w
+  };
+}
