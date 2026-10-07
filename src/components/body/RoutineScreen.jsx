@@ -1289,6 +1289,39 @@ export default function RoutineScreen({
                     </div>
                   </div>
                 )}
+
+                {/* Nút Bắt đầu buổi tập thuận tiện ở cuối bảng bài */}
+                {!isPreviewing && dayItems.length > 0 && (
+                  <div style={{ marginTop: '16px', marginBottom: '10px', display: 'flex', justifyContent: 'flex-start' }}>
+                    <button
+                      type="button"
+                      onClick={() => onStartSession?.({
+                        weekday: selectedDay,
+                        day: selectedDay,
+                        name: activeDay.name,
+                        focus: activeDay.focus
+                      })}
+                      style={{
+                        height: '42px',
+                        padding: '0 20px',
+                        borderRadius: '10px',
+                        background: 'var(--body-accent)',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
+                      }}
+                    >
+                      <AppIcon name="play" size={15} weight="fill" />
+                      <span>Bắt đầu buổi tập {activeDay.name} ngay ({dayItems.length} bài)</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               /* Nếu là ngày nghỉ */
