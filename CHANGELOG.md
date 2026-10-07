@@ -13,6 +13,8 @@
   - Bộ test thuần `workoutLogic.test.js`, `bodyMetrics.test.js`, `bodyContract.test.js` đạt 100% độ bao phủ hợp đồng.
 
 ### Fixed
+- **Đồng nhất Header & Điều hướng phân hệ Body:** Ẩn hoàn toàn header mặc định (`topbar`) và thanh bottom tabs của Life Hub khi truy cập `/body`, chỉ hiển thị 1 header và bottom nav chuyên biệt của Body; xóa bỏ đè giao diện và padding thừa trên mobile.
+- **Tương tác Bản đồ cơ 3D (`MuscleMapScreen`):** Bổ sung nút đóng (✕), thanh kéo thu gọn thành pill 48px và nút bật/tắt (eye/eyeSlash) trên floating toolbar, giải phóng toàn bộ vùng hiển thị và raycast sự kiện chạm cho chi dưới (đùi trước, đùi sau, bắp chân, bàn chân); chạm cơ trên mô hình 3D tự động bung mở lại bảng chi tiết tương ứng.
 - **PostgreSQL 15+ Composite Foreign Key:** Sửa lỗi cú pháp `ON DELETE SET NULL (routine_id)` và `ON DELETE SET NULL (routine_item_id)` trên các khóa ngoại composite có `user_id NOT NULL`.
 - **An toàn phiên tập & Unique Constraint:** Xử lý `idx_body_sessions_one_in_progress` ngăn ngừa crash khi có buổi tập dở dang từ trước; đổi `logSet` sang `upsert` trên composite key `(id, user_id)` tránh duplicate key vi phạm.
 - **Loại bỏ dữ liệu giả:** Toàn bộ thành tích bài tập, lịch sử tập, tải cơ và trạng thái phục hồi được tính toán động từ `recentSets` và `body_routine_items` thực tế của người dùng, không còn số liệu ngụy tạo.

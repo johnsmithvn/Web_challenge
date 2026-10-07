@@ -4,6 +4,7 @@ import AppIcon from '../components/AppIcon';
 import { useWorkouts } from '../hooks/useWorkouts';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import OverviewScreen from '../components/body/OverviewScreen';
 import RoutineScreen from '../components/body/RoutineScreen';
 import LiveSessionScreen from '../components/body/LiveSessionScreen';
@@ -27,6 +28,7 @@ const SCREENS = [
 
 export default function BodyPage() {
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { screen: routeScreen } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -170,8 +172,93 @@ export default function BodyPage() {
         </div>
       </header>
 
+      {/* ── MOBILE TOPBAR (52px CHUẨN PROTOTYPE) ────────────────────── */}
+      <div className="body-mobile-topbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            className="body-mobile-back-hub"
+            onClick={() => navigate('/')}
+            title="Về Life Hub"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--body-text-muted)',
+              cursor: 'pointer',
+              display: 'grid',
+              placeItems: 'center',
+              padding: '4px',
+              borderRadius: '8px'
+            }}
+          >
+            <AppIcon name="sparkle" size={18} weight="fill" />
+          </button>
+          <AppIcon name="barbell" size={20} style={{ color: 'var(--body-accent)' }} />
+          <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--body-text-main)', letterSpacing: '-0.02em' }}>
+            Body
+          </span>
+          <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
+            · {SCREENS.find(s => s.key === currentScreen)?.label || 'Tổng quan'}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            style={{
+              background: 'none',
+              border: '1px solid var(--body-card-border)',
+              borderRadius: '8px',
+              width: '32px',
+              height: '32px',
+              display: 'grid',
+              placeItems: 'center',
+              color: 'var(--body-text-sub)',
+              cursor: 'pointer'
+            }}
+            title="Đổi giao diện Sáng / Tối"
+          >
+            <AppIcon name={theme === 'dark' ? 'sun' : 'moon'} size={15} weight="fill" />
+          </button>
+          <span style={{
+            width: '30px',
+            height: '30px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, var(--body-accent), #22D3EE)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#FFFFFF',
+            fontSize: '12px',
+            fontWeight: 700
+          }}>
+            {(user?.user_metadata?.full_name || user?.email || 'M')[0].toUpperCase()}
+          </span>
+        </div>
+      </div>
+
       {/* ── CONTENT SCROLL NỘI BỘ ────────────────────────────────── */}
-      <main className="body-content">
+      <main className={`body-content ${currentScreen === 'muscles' ? 'body-content-atlas' : ''}`}>
+        {/* Mobile Pills cho nhóm màn Tập luyện */}
+        {['routine', 'session', 'history', 'library'].includes(currentScreen) && (
+          <div className="body-subnav-mobile-pills">
+            {[
+              { key: 'routine', label: 'Lộ trình' },
+              { key: 'session', label: 'Buổi tập' },
+              { key: 'history', label: 'Tiến bộ' },
+              { key: 'library', label: 'Thư viện bài' }
+            ].map(p => (
+              <button
+                key={p.key}
+                className={`body-subnav-mobile-pill ${currentScreen === p.key ? 'active' : ''}`}
+                onClick={() => setScreen(p.key)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
         {currentScreen === 'overview' && (
           <OverviewScreen
             onNavigateTab={setScreen}
@@ -300,6 +387,29 @@ export default function BodyPage() {
           />
         )}
       </main>
+
+      {/* ── MOBILE BOTTOM NAVIGATION (64px — 5 TABS CHUẨN DESIGN) ──── */}
+      <nav className="body-mobile-bottom-nav">
+        {[
+          { key: 'overview', label: 'Tổng quan', icon: 'chartDonut', match: ['overview'] },
+          { key: 'biometrics', label: 'Cơ thể', icon: 'user', match: ['biometrics'] },
+          { key: 'muscles', label: 'Bản đồ cơ', icon: 'trophy', match: ['muscles'] },
+          { key: 'routine', label: 'Tập', icon: 'barbell', match: ['routine', 'session', 'history', 'library'] },
+          { key: 'nutrition', label: 'Ăn', icon: 'bowlFood', match: ['nutrition'] }
+        ].map(tab => {
+          const isActive = tab.match.includes(currentScreen);
+          return (
+            <button
+              key={tab.key}
+              className={`body-mobile-nav-item ${isActive ? 'active' : ''}`}
+              onClick={() => setScreen(tab.key)}
+            >
+              <AppIcon name={tab.icon} size={20} weight={isActive ? 'fill' : 'regular'} />
+              <span className="body-mobile-nav-label">{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }

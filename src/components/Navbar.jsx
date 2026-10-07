@@ -170,8 +170,8 @@ export default function Navbar() {
 
   const isActive = (to) => location.pathname === to || location.pathname.startsWith(to + '/');
 
-  // Hide navbar entirely on landing page when not logged in
   const isLanding = location.pathname === '/';
+  const isBody = location.pathname.startsWith('/body');
   if (isLanding && !user) return showAuth ? <AuthModal onClose={() => setShowAuth(false)} /> : null;
 
   return (
@@ -269,73 +269,77 @@ export default function Navbar() {
       </aside>
 
       {/* ── MOBILE TOP BAR (<769px) ──────────────────────────── */}
-      <header className="topbar">
-        <Link to="/" className="topbar__logo">
-          <AppIcon name="sparkle" size={18} weight="fill" /> Life Hub
-        </Link>
+      {!isBody && (
+        <header className="topbar">
+          <Link to="/" className="topbar__logo">
+            <AppIcon name="sparkle" size={18} weight="fill" /> Life Hub
+          </Link>
 
-        <div className="topbar__right">
-          <button
-            className="topbar__theme-toggle"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-          >
-            <AppIcon name={theme === 'dark' ? 'sun' : 'moon'} size={17} weight="fill" />
-          </button>
-          {user
-            ? <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="down" />
-            : (
-              <button
-                className="btn btn-primary topbar__login"
-                onClick={() => setShowAuth(true)}
-                id="mobile-login"
-              >
-                <AppIcon name="key" size={16} />
-              </button>
-            )
-          }
-        </div>
-      </header>
+          <div className="topbar__right">
+            <button
+              className="topbar__theme-toggle"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+            >
+              <AppIcon name={theme === 'dark' ? 'sun' : 'moon'} size={17} weight="fill" />
+            </button>
+            {user
+              ? <UserAvatar profile={profile} user={user} onSignOut={signOut} onOpenShortcuts={() => setShortcutsOpen(true)} direction="down" />
+              : (
+                <button
+                  className="btn btn-primary topbar__login"
+                  onClick={() => setShowAuth(true)}
+                  id="mobile-login"
+                >
+                  <AppIcon name="key" size={16} />
+                </button>
+              )
+            }
+          </div>
+        </header>
+      )}
 
       {/* ── MOBILE BOTTOM TABS (<769px) ──────────────────────── */}
-      <nav className="bottom-tabs">
-        {MOBILE_PRIMARY_NAV.map(link => (
-          <Link
-            key={link.to}
-            to={link.to}
-            className={`bottom-tabs__tab${isActive(link.to) ? ' bottom-tabs__tab--active' : ''}`}
-          >
-            <span className="bottom-tabs__icon"><AppIcon name={link.icon} size={21} weight={isActive(link.to) ? 'fill' : 'regular'} /></span>
-            <span className="bottom-tabs__label">{link.label}</span>
-          </Link>
-        ))}
+      {!isBody && (
+        <nav className="bottom-tabs">
+          {MOBILE_PRIMARY_NAV.map(link => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className={`bottom-tabs__tab${isActive(link.to) ? ' bottom-tabs__tab--active' : ''}`}
+            >
+              <span className="bottom-tabs__icon"><AppIcon name={link.icon} size={21} weight={isActive(link.to) ? 'fill' : 'regular'} /></span>
+              <span className="bottom-tabs__label">{link.label}</span>
+            </Link>
+          ))}
 
-        {/* More button for secondary nav */}
-        <div className="bottom-tabs__more-wrapper" ref={moreRef}>
-          <button
-            className={`bottom-tabs__tab${moreOpen ? ' bottom-tabs__tab--active' : ''}`}
-            onClick={() => setMoreOpen(v => !v)}
-          >
-            <span className="bottom-tabs__icon"><AppIcon name="list" size={21} /></span>
-            <span className="bottom-tabs__label">Thêm</span>
-          </button>
+          {/* More button for secondary nav */}
+          <div className="bottom-tabs__more-wrapper" ref={moreRef}>
+            <button
+              className={`bottom-tabs__tab${moreOpen ? ' bottom-tabs__tab--active' : ''}`}
+              onClick={() => setMoreOpen(v => !v)}
+            >
+              <span className="bottom-tabs__icon"><AppIcon name="list" size={21} /></span>
+              <span className="bottom-tabs__label">Thêm</span>
+            </button>
 
-          {moreOpen && (
-            <div className="bottom-tabs__dropdown">
-              {MOBILE_MORE_NAV.map(link => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className={`bottom-tabs__dropdown-item${isActive(link.to) ? ' active' : ''}`}
-                  onClick={() => setMoreOpen(false)}
-                >
-                  <AppIcon name={link.icon} size={17} /> {link.label}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      </nav>
+            {moreOpen && (
+              <div className="bottom-tabs__dropdown">
+                {MOBILE_MORE_NAV.map(link => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={`bottom-tabs__dropdown-item${isActive(link.to) ? ' active' : ''}`}
+                    onClick={() => setMoreOpen(false)}
+                  >
+                    <AppIcon name={link.icon} size={17} /> {link.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </nav>
+      )}
 
       {/* Auth Modal */}
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}

@@ -16,6 +16,7 @@ import { logger } from '../utils/logger';
 export default function QuickCapture() {
   const { pathname } = useLocation();
   if (pathname.startsWith('/finance')) return null;
+  if (pathname.startsWith('/body')) return null;
   return <QuickCaptureCore />;
 }
 

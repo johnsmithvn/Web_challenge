@@ -182,6 +182,8 @@ export default function MuscleMapScreen({ onSelectExercise }) {
   const [selectedEquip, setSelectedEquip] = useState('all');
   const [sheetTab, setSheetTab] = useState('ov'); // 'ov' | 'ex' | 'pr'
   const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
+  const [desktopCardsHidden, setDesktopCardsHidden] = useState(false);
   const [now] = useState(() => Date.now());
 
   // 1. Phân tích dữ liệu thực tế từ recentSets trong 7 ngày
@@ -306,6 +308,8 @@ export default function MuscleMapScreen({ onSelectExercise }) {
   // Đổi nhóm cơ + tự động xoay mặt trước/sau nếu cần
   const handlePickMuscle = (id, forceRotate = true) => {
     setSelectedMuscleId(id);
+    setSheetCollapsed(false); // Tự động mở lại bảng chi tiết khi người dùng chọn/bấm vào bất kỳ cơ nào
+    setDesktopCardsHidden(false);
     const m = MUSCLE_ANATOMY.find(item => item.id === id);
     if (m && forceRotate) {
       setSideView(m.side);
@@ -388,6 +392,19 @@ export default function MuscleMapScreen({ onSelectExercise }) {
         >
           <AppIcon name="pencil" size={18} />
         </button>
+
+        {/* Ẩn / Hiện bảng thông tin để ngắm toàn thân & bấm chân */}
+        <button
+          className={`body-atlas-tool-btn ${sheetCollapsed || desktopCardsHidden ? 'active' : ''}`}
+          onClick={() => {
+            setSheetCollapsed(c => !c);
+            setDesktopCardsHidden(h => !h);
+          }}
+          title={sheetCollapsed || desktopCardsHidden ? "Hiện lại bảng thông tin nhóm cơ" : "Thu gọn bảng để nhìn và bấm vào chân"}
+          style={{ marginTop: '2px' }}
+        >
+          <AppIcon name={sheetCollapsed || desktopCardsHidden ? "eye" : "eyeSlash"} size={18} />
+        </button>
       </div>
 
       {/* ── CANVAS 3D THREE.JS ────────────────────────────────────────── */}
@@ -410,7 +427,7 @@ export default function MuscleMapScreen({ onSelectExercise }) {
       </div>
 
       {/* ── DESKTOP ATLAS: CÁC CARD NỔI FLOATING HAI BÊN (min-width: 841px) ── */}
-      <div className="body-atlas-desktop">
+      <div className={`body-atlas-desktop ${desktopCardsHidden ? 'hidden-cards' : ''}`}>
         {/* CỘT NỔI BÊN TRÁI: TÊN CƠ, MÔ TẢ & GAUGE PHỤC HỒI */}
         <div className="body-atlas-desktop-left">
           <div className="body-atlas-desktop-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -658,40 +675,96 @@ export default function MuscleMapScreen({ onSelectExercise }) {
 
       {/* ── MOBILE ATLAS: BOTTOM SHEET 3 TABS (max-width: 840px) ─────── */}
       <div
-        className="body-atlas-sheet-mobile"
+        className={`body-atlas-sheet-mobile ${sheetCollapsed ? 'collapsed' : ''}`}
         style={{
-          height: sheetExpanded ? '80vh' : '390px'
+          height: sheetCollapsed ? '48px' : sheetExpanded ? '80vh' : '390px'
         }}
       >
-        {/* Thanh kéo vuốt mở rộng / thu gọn */}
-        <div
-          className="body-atlas-sheet-handle"
-          onClick={() => setSheetExpanded(!sheetExpanded)}
-          title="Nhấn để mở rộng hoặc thu gọn"
-        />
+        {sheetCollapsed ? (
+          /* Trạng thái thu gọn: Thanh pill mỏng 48px nhường 100% không gian cho canvas 3D bấm chân */
+          <div
+            style={{
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 16px',
+              cursor: 'pointer'
+            }}
+            onClick={() => setSheetCollapsed(false)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: selectedMuscle.recFg,
+                flexShrink: 0
+              }} />
+              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--body-text-main)', whiteSpace: 'nowrap' }}>
+                {selectedMuscle.vn}
+              </span>
+              <span style={{
+                padding: '2px 8px',
+                borderRadius: '12px',
+                background: selectedMuscle.recBg,
+                fontSize: '11px',
+                fontWeight: 700,
+                color: selectedMuscle.recFg,
+                whiteSpace: 'nowrap'
+              }}>
+                {selectedMuscle.recLabel} · {selectedMuscle.recPct}%
+              </span>
+            </div>
 
-        {/* Header Bottom Sheet */}
-        <div style={{ padding: '8px 18px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '10px', flex: 'none' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-            <span style={{ fontSize: '23px', fontWeight: 700, color: 'var(--body-text-main)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-              {selectedMuscle.vn}
-            </span>
-            <span style={{ fontSize: '11.5px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>
-              {selectedMuscle.en}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--body-accent)', fontSize: '12px', fontWeight: 600 }}>
+              <span>Xem chi tiết</span>
+              <AppIcon name="caretDown" size={14} style={{ transform: 'rotate(180deg)' }} />
+            </div>
           </div>
-          <span style={{
-            padding: '5px 11px',
-            borderRadius: '20px',
-            background: selectedMuscle.recBg,
-            fontSize: '11.5px',
-            fontWeight: 700,
-            color: selectedMuscle.recFg,
-            flexShrink: 0
-          }}>
-            {selectedMuscle.recLabel} · {selectedMuscle.recPct}%
-          </span>
-        </div>
+        ) : (
+          <>
+            {/* Thanh kéo vuốt mở rộng / thu gọn */}
+            <div
+              className="body-atlas-sheet-handle"
+              onClick={() => setSheetExpanded(!sheetExpanded)}
+              title="Nhấn để mở rộng hoặc thu gọn"
+            />
+
+            {/* Header Bottom Sheet */}
+            <div style={{ padding: '6px 18px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flex: 'none' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                <span style={{ fontSize: '22px', fontWeight: 700, color: 'var(--body-text-main)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+                  {selectedMuscle.vn}
+                </span>
+                <span style={{ fontSize: '11.5px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>
+                  {selectedMuscle.en}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                <span style={{
+                  padding: '5px 11px',
+                  borderRadius: '20px',
+                  background: selectedMuscle.recBg,
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  color: selectedMuscle.recFg
+                }}>
+                  {selectedMuscle.recLabel} · {selectedMuscle.recPct}%
+                </span>
+
+                {/* NÚT ĐÓNG / THU GỌN SHEET ĐỂ BẤM CHÂN */}
+                <button
+                  type="button"
+                  className="body-atlas-sheet-close-btn"
+                  onClick={() => setSheetCollapsed(true)}
+                  title="Thu gọn bảng để nhìn và bấm vào chân"
+                  aria-label="Thu gọn bảng chi tiết"
+                >
+                  <AppIcon name="x" size={16} />
+                </button>
+              </div>
+            </div>
 
         {/* 3 Tabs: Tổng quan | Bài tập | Kỷ lục & Cơ phụ */}
         <div style={{ display: 'flex', gap: '22px', padding: '0 18px', borderBottom: '1px solid var(--body-card-border)', flex: 'none', marginTop: '10px' }}>
@@ -922,6 +995,8 @@ export default function MuscleMapScreen({ onSelectExercise }) {
             </>
           )}
         </div>
+          </>
+        )}
       </div>
     </div>
   );

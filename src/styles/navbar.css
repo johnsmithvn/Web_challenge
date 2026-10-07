@@ -559,6 +559,15 @@
     padding-top: var(--topbar-height);
     padding-bottom: var(--bottom-tabs-height);
   }
+
+  body.in-body-workspace {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  body.in-body-workspace .topbar,
+  body.in-body-workspace .bottom-tabs {
+    display: none !important;
+  }
 }
 
 /* Hide legacy .navbar if any remains */
