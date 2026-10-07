@@ -273,6 +273,11 @@ const reportSrc = readFileSync(new URL('../../components/finance/ReportScreen.js
 assert.match(reportSrc, /subLabel\(subId,\s*fin\.cats\)/, 'ReportScreen phải tính nhãn danh mục con từ subLabel');
 assert.match(reportSrc, /toggleExpandGroup/, 'ReportScreen phải có hàm mở rộng nhóm xem danh mục con');
 assert.match(reportSrc, /showAllRanks/, 'ReportScreen phải có cơ chế xem toàn bộ các nhóm ngoài top 6');
+
+// 6. Nhập nhanh (AddScreen): Hóa đơn sắp đến hạn chỉ hiện khi <= 3 ngày hoặc quá hạn
+assert.match(addSrc, /cyc\.days\s*<=\s*3/,
+  'AddScreen chỉ lọc hóa đơn khi gần đến hạn <= 3 ngày hoặc đã quá hạn');
+
 console.log('finance navigation and segment contract: OK');
 
 console.log('\n✅ financeScreensContract — tất cả hợp đồng màn hình PASS (100% covered)');

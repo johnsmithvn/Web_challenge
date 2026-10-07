@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AppIcon from '../components/AppIcon';
 import { useWorkouts } from '../hooks/useWorkouts';
@@ -42,6 +42,10 @@ export default function BodyPage() {
     exerciseMap,
     routineTemplates,
     createRoutineFromTemplate,
+    createCustomRoutine,
+    switchRoutine,
+    updateRoutineDetails,
+    deleteRoutine,
     updateRoutineTarget,
     updateRoutineSets,
     addRoutineItem,
@@ -141,34 +145,84 @@ export default function BodyPage() {
     setScreen('routine');
   }, [currentSessionObj, abandonSession, showToast, setScreen]);
 
+  const [now] = useState(() => Date.now());
+  const today = useMemo(() => new Date(now), [now]);
+  const todayStr = useMemo(() => {
+    return today.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' });
+  }, [today]);
+
+  const timeGreeting = useMemo(() => {
+    const hr = today.getHours();
+    if (hr < 12) return 'Sáng nay';
+    if (hr < 18) return 'Chiều nay';
+    return 'Tối nay';
+  }, [today]);
+
+  const isoWeek = useMemo(() => {
+    const d = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  }, [today]);
+
+  const displayName = user?.user_metadata?.full_name?.split(' ').pop() || user?.email?.split('@')[0] || 'bạn';
+
   return (
     <div className="body-workspace">
-      {/* ── HEADER GHIM TĨNH ────────────────────────────────────── */}
+      {/* ── HEADER GHIM TĨNH (CHỈ 1 HEADER DUY NHẤT CHUẨN PROTOTYPE 2A) ── */}
       <header className="body-header">
         <div className="body-header-left">
-          <div>
-            <h1 className="body-header-title">Body · Sức Khỏe & Thể Hình</h1>
-            <div className="body-header-sub">
-              Kế hoạch · Tập luyện · Nhật ký · So sánh tiến bộ
+          {currentScreen === 'overview' ? (
+            <div>
+              <h1 className="body-header-title">{timeGreeting}, {displayName}</h1>
+              <div className="body-header-sub">
+                {todayStr} · tuần {isoWeek}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div>
+              <h1 className="body-header-title">
+                {SCREENS.find(s => s.key === currentScreen)?.label || 'Body'} · Sức Khỏe & Thể Hình
+              </h1>
+              <div className="body-header-sub">
+                Kế hoạch · Tập luyện · Nhật ký · So sánh tiến bộ
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Sub-nav Tab Strip */}
-        <div className="body-subnav">
-          {SCREENS.map(s => {
-            const isActive = currentScreen === s.key;
-            return (
-              <button
-                key={s.key}
-                className={`body-subnav-btn ${isActive ? 'active' : ''}`}
-                onClick={() => setScreen(s.key)}
-              >
-                <AppIcon name={s.icon} size={15} />
-                <span>{s.label}</span>
-              </button>
-            );
-          })}
+        {/* Sub-nav Tab Strip + Nút Ghi nhanh */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="body-subnav">
+            {SCREENS.map(s => {
+              const isActive = currentScreen === s.key;
+              return (
+                <button
+                  key={s.key}
+                  className={`body-subnav-btn ${isActive ? 'active' : ''}`}
+                  onClick={() => setScreen(s.key)}
+                >
+                  <AppIcon name={s.icon} size={15} />
+                  <span>{s.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {currentScreen === 'overview' && (
+            <button
+              type="button"
+              className="body-header-quick-btn"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('body:open-quick-capture'));
+              }}
+              title="Ghi nhanh cân nặng hoặc dinh dưỡng"
+            >
+              <AppIcon name="plus" size={14} />
+              <span>Ghi nhanh</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -272,7 +326,13 @@ export default function BodyPage() {
             routineItems={routineItems}
             routines={routines}
             routineTemplates={routineTemplates}
+            sessions={sessions}
+            recentSets={recentSets}
             onCreateRoutineFromTemplate={createRoutineFromTemplate}
+            onCreateCustomRoutine={createCustomRoutine}
+            onSwitchRoutine={switchRoutine}
+            onUpdateRoutineDetails={updateRoutineDetails}
+            onDeleteRoutine={deleteRoutine}
             onStartSession={handleStartSession}
             onUpdateTarget={updateRoutineTarget}
             onUpdateSets={updateRoutineSets}

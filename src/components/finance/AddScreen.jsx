@@ -130,14 +130,24 @@ export default function AddScreen({ fin, nav }) {
     return fin.bills
       .filter(bill => bill.enabled && !bill.finished_at)
       .map(bill => ({ bill, cyc: billCycle(bill, fin.today, billSettled(bill, fin.transactions)) }))
-      .filter(({ bill, cyc }) => cyc && (cyc.thisMonth || cyc.days < 0)
+      // Gần đến hạn 3 ngày (days <= 3) hoặc đã quá hạn (days < 0) mới hiện
+      .filter(({ bill, cyc }) => cyc && cyc.days <= 3
         && !billSettled(bill, fin.transactions)(cyc.period))
       .map(({ bill, cyc }) => ({ ...bill, dueDate: cyc.due, days: cyc.days, period: cyc.period }))
       .sort((a, b) => a.days - b.days);
   }, [fin.transactions, fin.bills, fin.today]);
 
-  const urgentBills = pendingBills.filter(bill => bill.days <= 1).length;
+  const hasLaterBills = useMemo(() => {
+    return fin.bills.some(bill => {
+      if (!bill.enabled || bill.finished_at) return false;
+      const cyc = billCycle(bill, fin.today, billSettled(bill, fin.transactions));
+      return cyc && cyc.days > 3 && !billSettled(bill, fin.transactions)(cyc.period);
+    });
+  }, [fin.transactions, fin.bills, fin.today]);
+
   const overdueBills = pendingBills.filter(bill => bill.days < 0).length;
+  const todayBills = pendingBills.filter(bill => bill.days === 0).length;
+  const urgentBills = pendingBills.filter(bill => bill.days === 1).length;
   const billTotal = pendingBills.reduce((sum, b) => {
     const val = b.amount_mode === 'fixed' ? b.amount : parseCurrencyInput(estimateFor(b.id));
     return sum + (Number(val) || 0);
@@ -146,9 +156,11 @@ export default function AddScreen({ fin, nav }) {
   // Tách số + đuôi để mobile ẩn chữ "hóa đơn" (design 4b: "3 hết hạn ngày mai").
   const [pillCount, pillRest] = overdueBills > 0
     ? [overdueBills, 'quá hạn']
-    : urgentBills > 0
-      ? [urgentBills, 'hết hạn ngày mai']
-      : [pendingBills.length, 'sắp đến hạn'];
+    : todayBills > 0
+      ? [todayBills, 'đến hạn hôm nay']
+      : urgentBills > 0
+        ? [urgentBills, 'hết hạn ngày mai']
+        : [pendingBills.length, 'sắp đến hạn'];
 
   const shortcuts = useMemo(() => {
     const defaults = cats.shortcutSeed
@@ -380,7 +392,7 @@ export default function AddScreen({ fin, nav }) {
         ) : (
           <span className="fin-bill-pill fin-bill-pill--empty">
             <AppIcon name="checkCircle" size={16} />
-            Đã trả hết hóa đơn
+            {hasLaterBills ? 'Không có hóa đơn đến hạn' : 'Đã trả hết hóa đơn'}
           </span>
         )}
 

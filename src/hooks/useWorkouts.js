@@ -238,6 +238,221 @@ export function useWorkouts() {
     return newRoutine;
   }, [enabled, userId, routines, activeRoutine, routineItems]);
 
+  // Tạo lộ trình tùy chỉnh mới (tự đặt tên, số tuần, chia lịch theo ngày)
+  const createCustomRoutine = useCallback(async ({ name, goal, weeks = 8, days = [] }) => {
+    const newRoutineId = crypto.randomUUID();
+    const todayStr = toDateStr(new Date());
+
+    const newRoutine = {
+      id: newRoutineId,
+      user_id: userId,
+      name: name?.trim() || 'Lộ trình mới',
+      goal: goal?.trim() || 'Rèn luyện sức khỏe & thể hình',
+      weeks: Number(weeks) || 8,
+      start_date: todayStr,
+      auto_progress: true,
+      is_active: true,
+      created_at: new Date().toISOString()
+    };
+
+    const items = [];
+    let pos = 1;
+    (days || []).forEach(day => {
+      (day.items || []).forEach(it => {
+        items.push({
+          id: crypto.randomUUID(),
+          routine_id: newRoutineId,
+          user_id: userId,
+          weekday: day.weekday,
+          day_name: day.day_name || '',
+          position: pos++,
+          exercise_key: it.exercise_key,
+          target_sets: Number(it.target_sets) || 3,
+          target_val: Number(it.target_val) || 10,
+          unit: it.unit || 'rep',
+          kg: Number(it.kg) || 0,
+          rest_seconds: Number(it.rest_seconds) || 60,
+          created_at: new Date().toISOString()
+        });
+      });
+    });
+
+    const prevRoutines = routines;
+    const prevActive = activeRoutine;
+    const prevItems = routineItems;
+
+    setRoutines(prev => [newRoutine, ...prev.map(r => ({ ...r, is_active: false }))]);
+    setActiveRoutine(newRoutine);
+    setRoutineItems(items);
+
+    if (enabled) {
+      try {
+        await supabase
+          .from('body_routines')
+          .update({ is_active: false })
+          .eq('user_id', userId);
+
+        const { error: rErr } = await supabase
+          .from('body_routines')
+          .insert(newRoutine);
+
+        if (rErr) throw rErr;
+
+        if (items.length > 0) {
+          const { error: itemErr } = await supabase
+            .from('body_routine_items')
+            .insert(items);
+
+          if (itemErr) throw itemErr;
+        }
+      } catch (err) {
+        logger.error('Failed to create custom routine, rolling back:', err);
+        setRoutines(prevRoutines);
+        setActiveRoutine(prevActive);
+        setRoutineItems(prevItems);
+        throw err;
+      }
+    }
+
+    return newRoutine;
+  }, [enabled, userId, routines, activeRoutine, routineItems]);
+
+  // Chuyển đổi sang lộ trình khác đã có trong danh sách
+  const switchRoutine = useCallback(async (routineId) => {
+    const target = routines.find(r => r.id === routineId);
+    if (!target) return;
+
+    const prevRoutines = routines;
+    const prevActive = activeRoutine;
+    const prevItems = routineItems;
+
+    setRoutines(prev => prev.map(r => ({ ...r, is_active: r.id === routineId })));
+    setActiveRoutine({ ...target, is_active: true });
+
+    if (enabled) {
+      try {
+        await supabase
+          .from('body_routines')
+          .update({ is_active: false })
+          .eq('user_id', userId);
+
+        const { error } = await supabase
+          .from('body_routines')
+          .update({ is_active: true })
+          .eq('id', routineId)
+          .eq('user_id', userId);
+
+        if (error) throw error;
+
+        const { data: itemData, error: itemErr } = await supabase
+          .from('body_routine_items')
+          .select('*')
+          .eq('routine_id', routineId)
+          .eq('user_id', userId)
+          .order('position', { ascending: true });
+
+        if (!itemErr && itemData) {
+          setRoutineItems(itemData);
+        }
+      } catch (err) {
+        logger.error('Failed to switch routine, rolling back:', err);
+        setRoutines(prevRoutines);
+        setActiveRoutine(prevActive);
+        setRoutineItems(prevItems);
+        throw err;
+      }
+    }
+  }, [enabled, userId, routines, activeRoutine, routineItems]);
+
+  // Cập nhật thông tin lộ trình (tên, mục tiêu, số tuần)
+  const updateRoutineDetails = useCallback(async (routineId, { name, goal, weeks }) => {
+    const prevRoutines = routines;
+    const prevActive = activeRoutine;
+
+    const updates = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (goal !== undefined) updates.goal = goal.trim();
+    if (weeks !== undefined) updates.weeks = Number(weeks);
+    updates.updated_at = new Date().toISOString();
+
+    setRoutines(prev => prev.map(r => r.id === routineId ? { ...r, ...updates } : r));
+    if (activeRoutine?.id === routineId) {
+      setActiveRoutine(prev => prev ? { ...prev, ...updates } : prev);
+    }
+
+    if (enabled && routineId) {
+      try {
+        const { error } = await supabase
+          .from('body_routines')
+          .update(updates)
+          .eq('id', routineId)
+          .eq('user_id', userId);
+
+        if (error) throw error;
+      } catch (err) {
+        logger.error('Failed to update routine details, rolling back:', err);
+        setRoutines(prevRoutines);
+        setActiveRoutine(prevActive);
+        throw err;
+      }
+    }
+  }, [enabled, userId, routines, activeRoutine]);
+
+  // Xóa lộ trình
+  const deleteRoutine = useCallback(async (routineId) => {
+    const prevRoutines = routines;
+    const prevActive = activeRoutine;
+    const prevItems = routineItems;
+
+    const remaining = routines.filter(r => r.id !== routineId);
+    let nextActive = null;
+    if (activeRoutine?.id === routineId) {
+      nextActive = remaining[0] || null;
+    } else {
+      nextActive = activeRoutine;
+    }
+
+    setRoutines(remaining);
+    setActiveRoutine(nextActive);
+
+    if (enabled) {
+      try {
+        const { error } = await supabase
+          .from('body_routines')
+          .delete()
+          .eq('id', routineId)
+          .eq('user_id', userId);
+
+        if (error) throw error;
+
+        if (nextActive && nextActive.id !== activeRoutine?.id) {
+          await supabase
+            .from('body_routines')
+            .update({ is_active: true })
+            .eq('id', nextActive.id)
+            .eq('user_id', userId);
+
+          const { data: itemData } = await supabase
+            .from('body_routine_items')
+            .select('*')
+            .eq('routine_id', nextActive.id)
+            .eq('user_id', userId)
+            .order('position', { ascending: true });
+
+          setRoutineItems(itemData || []);
+        } else if (!nextActive) {
+          setRoutineItems([]);
+        }
+      } catch (err) {
+        logger.error('Failed to delete routine, rolling back:', err);
+        setRoutines(prevRoutines);
+        setActiveRoutine(prevActive);
+        setRoutineItems(prevItems);
+        throw err;
+      }
+    }
+  }, [enabled, userId, routines, activeRoutine, routineItems]);
+
   // Cập nhật target_val của 1 routine item (optimistic with rollback)
   const updateRoutineTarget = useCallback(async (itemId, newTargetVal) => {
     const prevItems = routineItems;
@@ -552,6 +767,10 @@ export function useWorkouts() {
     hasLoaded,
     fetchData,
     createRoutineFromTemplate,
+    createCustomRoutine,
+    switchRoutine,
+    updateRoutineDetails,
+    deleteRoutine,
     updateRoutineTarget,
     updateRoutineSets,
     addRoutineItem,
