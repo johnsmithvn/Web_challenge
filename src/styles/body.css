@@ -187,6 +187,56 @@
   box-sizing: border-box;
 }
 
+/* ── CƠ THỂ (BIOMETRICS) GRID & LAYOUT ─────────────────────────── */
+.body-cothe-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.body-cothe-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.body-cothe-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.body-cothe-tabs {
+  display: flex;
+  background: var(--body-shell-bg);
+  border-radius: 10px;
+  padding: 3px;
+  border: 1px solid var(--body-card-border);
+}
+
+.body-cothe-tab-btn {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--body-text-sub);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--body-font);
+}
+
+.body-cothe-tab-btn.active {
+  background: var(--body-card-bg);
+  color: var(--body-text-main);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(16, 17, 20, 0.08);
+}
+
 .body-cothe-top-grid {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
@@ -201,10 +251,48 @@
   align-items: stretch;
 }
 
+.body-cothe-gauge-card {
+  min-height: 380px;
+}
+
+.body-cothe-trend-card {
+  min-height: 380px;
+}
+
 .body-metrics-10-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
+}
+
+.body-cothe-history-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 18px 24px;
+}
+
+.body-cothe-history-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 16px;
+  align-items: start;
+}
+
+.body-cothe-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.body-cothe-profile-bottom-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
 }
 
 @media (max-width: 1024px) {
@@ -217,7 +305,89 @@
   .body-metrics-10-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .body-cothe-profile-grid {
+    grid-template-columns: 1fr;
+  }
+  .body-cothe-profile-bottom-grid {
+    grid-template-columns: 1fr;
+  }
 }
+
+@media (max-width: 840px) {
+  .body-cothe-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .body-cothe-header-left {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .body-cothe-title {
+    display: none; /* Đã có trên mobile topbar */
+  }
+  .body-cothe-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+    padding: 3px;
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+  .body-cothe-tab-btn {
+    height: 32px;
+    padding: 0 4px;
+    font-size: 12.5px;
+    text-align: center;
+    line-height: 32px;
+  }
+  .body-cothe-header-right {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+  .body-cothe-gauge-card {
+    min-height: auto !important;
+    padding: 16px 14px !important;
+  }
+  .body-cothe-trend-card {
+    min-height: auto !important;
+    padding: 16px 14px !important;
+  }
+  .body-cothe-history-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px 14px;
+  }
+  .body-cothe-history-stats .body-btn {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-top: 4px;
+  }
+  .body-cothe-history-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .body-metrics-10-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .body-metric-item-card {
+    padding: 12px 10px !important;
+  }
+  .body-metric-val-num {
+    font-size: 19px !important;
+  }
+  .body-metric-delta-row {
+    font-size: 10.5px !important;
+  }
+}
+
 
 /* Custom Sleek Scrollbar */
 .body-content::-webkit-scrollbar {
@@ -1407,32 +1577,126 @@
   max-height: 90vh;
 }
 
-/* Responsive */
+/* ── LỘ TRÌNH & TIẾN BỘ RESPONSIVE DESIGN (PROTOTYPE MATCH) ─────── */
+.body-routine-desktop-view {
+  display: block;
+}
+
+.body-routine-mobile-view {
+  display: none;
+}
+
+.body-history-desktop-table {
+  display: block;
+}
+
+.body-history-mobile-list {
+  display: none;
+}
+
 @media (max-width: 840px) {
-  .body-routine-container {
-    grid-template-columns: 1fr;
+  .body-routine-desktop-view {
+    display: none !important;
+  }
+  .body-routine-mobile-view {
+    display: flex !important;
+    flex-direction: column;
     gap: 12px;
+    width: 100%;
   }
-  .body-routine-days-strip {
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    padding: 0 12px 12px;
+
+  .body-history-desktop-table {
+    display: none !important;
   }
-  .body-routine-day-card {
-    height: 64px;
-    padding: 6px 4px;
+  .body-history-mobile-list {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Routine Mobile Cards & Rows */
+  .body-routine-mobile-ex-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 58px;
+    padding: 10px 0;
+    border-top: 1px solid var(--body-card-border);
+  }
+
+  .body-routine-mobile-counter {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    border: 1px solid var(--body-accent-border, #D5CCF7);
+    background: var(--body-accent-tint, #FAF8FF);
+    border-radius: 9px;
+    overflow: hidden;
+  }
+
+  .body-routine-mobile-counter-btn {
+    width: 32px;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    color: var(--body-accent, #5238C9);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .body-routine-mobile-counter-val {
+    min-width: 68px;
+    text-align: center;
+    font-family: var(--body-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--body-text-main);
+    padding: 0 4px;
+    white-space: nowrap;
+  }
+
+  .body-routine-mobile-days-strip {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 5px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .body-routine-mobile-day-btn {
+    height: 62px;
+    box-sizing: border-box;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 5px;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    background: var(--body-card-bg);
+    transition: all 0.15s ease;
   }
-  .body-routine-table-wrap {
-    padding: 0 12px;
+
+  .body-routine-mobile-day-btn.active {
+    border-color: var(--body-accent);
+    background: var(--body-accent-soft);
   }
-  .body-routine-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    padding: 10px 0;
+
+  .body-routine-mobile-tpls-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    margin: 0 -16px;
+    padding: 0 16px 4px;
+    -webkit-overflow-scrolling: touch;
   }
-  .body-routine-header-row {
+  .body-routine-mobile-tpls-scroll::-webkit-scrollbar {
     display: none;
   }
 }

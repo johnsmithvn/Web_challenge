@@ -471,34 +471,23 @@ export default function BiometricsScreen() {
     <div className="body-container-constrained" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* ── HEADER WITH SUBTABS & SYNC STATUS ───────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0, letterSpacing: '-0.01em', color: 'var(--body-text-main)' }}>
+      <div className="body-cothe-header">
+        <div className="body-cothe-header-left">
+          <h2 className="body-cothe-title" style={{ fontSize: '22px', fontWeight: 700, margin: 0, letterSpacing: '-0.01em', color: 'var(--body-text-main)' }}>
             Cơ thể
           </h2>
 
-          <div style={{ display: 'flex', background: 'var(--body-shell-bg)', borderRadius: '10px', padding: '3px', border: '1px solid var(--body-card-border)' }}>
+          <div className="body-cothe-tabs">
             {[
               { key: 'analysis', label: 'Phân tích' },
-              { key: 'history', label: `Lịch sử cân đo (${measurements.length})` },
+              { key: 'history', label: 'Lịch sử' },
               { key: 'profile', label: 'Hồ sơ' }
             ].map(t => (
               <button
                 key={t.key}
                 type="button"
                 onClick={() => setActiveTab(t.key)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '7px',
-                  border: 'none',
-                  background: activeTab === t.key ? 'var(--body-card-bg)' : 'transparent',
-                  color: activeTab === t.key ? 'var(--body-text-main)' : 'var(--body-text-sub)',
-                  fontWeight: activeTab === t.key ? 600 : 500,
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  boxShadow: activeTab === t.key ? '0 1px 3px rgba(16,17,20,0.08)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
+                className={`body-cothe-tab-btn ${activeTab === t.key ? 'active' : ''}`}
               >
                 {t.label}
               </button>
@@ -506,7 +495,7 @@ export default function BiometricsScreen() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="body-cothe-header-right">
           {latest && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12.5px', color: 'var(--body-text-muted)' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2F8A57' }} />
@@ -517,7 +506,7 @@ export default function BiometricsScreen() {
             type="button"
             className="body-btn body-btn-accent"
             onClick={() => setShowAddModal(true)}
-            style={{ height: '36px', padding: '0 14px', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--body-text-main)', color: '#fff' }}
+            style={{ height: '34px', padding: '0 13px', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--body-text-main)', color: '#fff' }}
           >
             <AppIcon name="plus" size={14} />
             <span>Thêm cân đo</span>
@@ -533,13 +522,12 @@ export default function BiometricsScreen() {
           <div className="body-cothe-top-grid">
 
             {/* GAUGE CARD CÂN NẶNG & BMI (360px) */}
-            <div className="body-card" style={{
+            <div className="body-card body-cothe-gauge-card" style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: '8px',
               padding: '22px',
-              minHeight: '380px',
               boxSizing: 'border-box'
             }}>
               <span style={{ fontSize: '13px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>
@@ -547,8 +535,8 @@ export default function BiometricsScreen() {
               </span>
 
               {/* Vòng cung Gauge SVG */}
-              <div style={{ position: 'relative', width: '260px', height: '210px', margin: '4px 0' }}>
-                <svg width="260" height="210" viewBox="0 0 240 203" style={{ display: 'block' }}>
+              <div style={{ position: 'relative', width: '240px', maxWidth: '100%', height: '190px', margin: '4px 0' }}>
+                <svg width="240" height="190" viewBox="0 0 240 203" style={{ display: 'block', width: '100%', height: '100%' }}>
                   {gaugeData.segs.map((seg, idx) => (
                     <path
                       key={idx}
@@ -576,10 +564,10 @@ export default function BiometricsScreen() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  paddingTop: '20px'
+                  paddingTop: '16px'
                 }}>
                   <div style={{
-                    fontSize: '50px',
+                    fontSize: '46px',
                     fontWeight: 700,
                     fontFamily: 'var(--body-font)',
                     color: 'var(--body-text-main)',
@@ -588,17 +576,17 @@ export default function BiometricsScreen() {
                   }}>
                     {gaugeData.weightStr}
                   </div>
-                  <div style={{ fontSize: '14px', color: 'var(--body-text-muted)', marginTop: '4px' }}>
+                  <div style={{ fontSize: '13.5px', color: 'var(--body-text-muted)', marginTop: '4px' }}>
                     kg
                   </div>
-                  <div style={{ marginTop: '8px', fontSize: '15px', fontWeight: 600, color: gaugeData.statusColor }}>
+                  <div style={{ marginTop: '6px', fontSize: '14.5px', fontWeight: 600, color: gaugeData.statusColor }}>
                     {gaugeData.status}
                   </div>
                 </div>
               </div>
 
-              {/* Legend 4 mốc màu (luôn nằm trên 1 hàng gọn gàng) */}
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', width: '100%', flexWrap: 'nowrap' }}>
+              {/* Legend 4 mốc màu (wrap trên mobile an toàn tuyệt đối) */}
+              <div style={{ display: 'flex', gap: '8px 12px', justifyContent: 'center', alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
                 {gaugeData.legend.map(l => (
                   <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--body-text-sub)', whiteSpace: 'nowrap' }}>
                     <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: l.color, flex: 'none' }} />
@@ -618,9 +606,9 @@ export default function BiometricsScreen() {
                 borderTop: '1px solid var(--body-card-border)'
               }}>
                 <span style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '21px',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '20px',
                   background: 'var(--body-green-soft)',
                   display: 'grid',
                   placeItems: 'center',
@@ -635,7 +623,7 @@ export default function BiometricsScreen() {
                   <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
                     Điểm cơ thể {bodyScore || 84}/100 · Cân đối
                   </span>
-                  <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
+                  <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     Từ BMI, tỷ lệ mỡ, cơ xương, mỡ nội tạng
                   </span>
                 </div>
@@ -643,21 +631,20 @@ export default function BiometricsScreen() {
             </div>
 
             {/* TREND CARD (XU HƯỚNG CÓ BIỂU ĐỒ & 3 METRIC TABS) */}
-            <div className="body-card" style={{
+            <div className="body-card body-cothe-trend-card" style={{
               display: 'flex',
               flexDirection: 'column',
               gap: '16px',
               padding: '22px',
-              minHeight: '380px',
               boxSizing: 'border-box'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                   <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--body-text-main)' }}>
                     Xu hướng
                   </span>
                   <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)' }}>
-                    {rangeTab === '7d' ? '7 ngày' : rangeTab === '30d' ? '30 ngày' : '3 tháng'} · trung bình ngày
+                    {rangeTab === '7d' ? '7 ngày' : rangeTab === '30d' ? '30 ngày' : rangeTab === '90d' ? '3 tháng' : 'Năm'} · trung bình ngày
                   </span>
                 </div>
 
@@ -673,12 +660,12 @@ export default function BiometricsScreen() {
                       type="button"
                       onClick={() => setRangeTab(tab.key)}
                       style={{
-                        padding: '4px 11px',
+                        padding: '4px 10px',
                         borderRadius: '6px',
                         border: 'none',
                         background: rangeTab === tab.key ? 'var(--body-card-bg)' : 'transparent',
                         color: rangeTab === tab.key ? 'var(--body-text-main)' : 'var(--body-text-sub)',
-                        fontSize: '12px',
+                        fontSize: '11.5px',
                         fontWeight: rangeTab === tab.key ? 600 : 500,
                         cursor: 'pointer',
                         boxShadow: rangeTab === tab.key ? '0 1px 2px rgba(16,17,20,0.08)' : 'none'
@@ -691,7 +678,7 @@ export default function BiometricsScreen() {
               </div>
 
               {/* 3 Metric Cards clickable */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
                 {trendData.cards.map(c => {
                   const isPicked = selectedMetric === c.key;
                   return (
@@ -699,24 +686,25 @@ export default function BiometricsScreen() {
                       key={c.key}
                       onClick={() => setSelectedMetric(c.key)}
                       style={{
-                        padding: '11px 13px',
-                        borderRadius: '12px',
+                        padding: '9px 10px',
+                        borderRadius: '11px',
                         border: `1.5px solid ${isPicked ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
                         background: isPicked ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '8px',
+                        gap: '5px',
                         cursor: 'pointer',
-                        transition: 'all 0.15s ease'
+                        transition: 'all 0.15s ease',
+                        minWidth: 0
                       }}
                     >
-                      <span style={{ fontSize: '12px', color: 'var(--body-text-sub)' }}>{c.name}</span>
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px' }}>
-                        <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--body-text-main)', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--body-text-sub)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '4px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--body-text-main)', whiteSpace: 'nowrap' }}>
                           {c.cur}
-                          <span style={{ fontSize: '11.5px', fontWeight: 400, color: 'var(--body-text-muted)' }}> {c.unit}</span>
+                          <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--body-text-muted)' }}> {c.unit}</span>
                         </span>
-                        <span style={{ fontSize: '12.5px', fontWeight: 600, color: c.deltaColor, whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '11.5px', fontWeight: 600, color: c.deltaColor, whiteSpace: 'nowrap' }}>
                           {c.delta}
                         </span>
                       </div>
@@ -726,7 +714,7 @@ export default function BiometricsScreen() {
               </div>
 
               {/* Biểu đồ SVG Xu hướng (Sắc nét, có Goal Line) */}
-              <div style={{ flex: 1, minHeight: '160px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 46px', gridTemplateRows: 'minmax(0, 1fr) 20px', columnGap: '10px' }}>
+              <div style={{ flex: 1, minHeight: '140px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 46px', gridTemplateRows: 'minmax(0, 1fr) 20px', columnGap: '10px' }}>
                 <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                   {/* 3 đường kẻ ngang guide lines */}
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', pointerEvents: 'none' }}>
@@ -783,7 +771,7 @@ export default function BiometricsScreen() {
                 </div>
 
                 {/* Trục X */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '11px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)', marginTop: '4px' }}>
+                <div style={{ gridColumn: '1 / 2', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '11px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)', marginTop: '4px' }}>
                   <span>Đầu kỳ</span>
                   <span>Giữa kỳ</span>
                   <span>Hôm nay</span>
@@ -801,6 +789,7 @@ export default function BiometricsScreen() {
               {metricsGrid.map(m => (
                 <div
                   key={m.name}
+                  className="body-metric-item-card"
                   style={{
                     background: 'var(--body-card-bg)',
                     border: '1px solid var(--body-card-border)',
@@ -816,12 +805,12 @@ export default function BiometricsScreen() {
                   <span style={{ fontSize: '12px', color: 'var(--body-text-sub)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {m.name}
                   </span>
-                  <span style={{ fontSize: '23px', fontWeight: 600, color: 'var(--body-text-main)', whiteSpace: 'nowrap' }}>
+                  <span className="body-metric-val-num" style={{ fontSize: '22px', fontWeight: 600, color: 'var(--body-text-main)', whiteSpace: 'nowrap' }}>
                     {m.valueDisplay}
                     <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> {m.unit}</span>
                   </span>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px' }}>
+                  <div className="body-metric-delta-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px' }}>
                     <span style={{ fontSize: '12px', fontWeight: 600, color: m.statusColor }}>
                       {m.statusText}
                     </span>
@@ -935,17 +924,11 @@ export default function BiometricsScreen() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
           {/* 3-COLUMN SUMMARY BAR */}
-          <div className="body-card" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr)) auto',
-            alignItems: 'center',
-            gap: '20px',
-            padding: '18px 24px'
-          }}>
+          <div className="body-card body-cothe-history-stats">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Trung bình 7 ngày</span>
+              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Cân nặng hiện tại</span>
               <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                {historyData.avg7Str}<span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> kg</span>
+                {historyData.latestWeightStr}<span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> kg</span>
               </span>
             </div>
 
@@ -959,7 +942,7 @@ export default function BiometricsScreen() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Số lần đo</span>
               <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                {historyData.totalCount}<span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> lần ghi nhận</span>
+                {historyData.totalCount}<span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> lần</span>
               </span>
             </div>
 
@@ -969,17 +952,12 @@ export default function BiometricsScreen() {
               onClick={() => setShowAddModal(true)}
               style={{ height: '34px', fontSize: '12.5px', padding: '0 14px' }}
             >
-              + Thêm cân đo mới
+              + Thêm cân đo
             </button>
           </div>
 
           {/* 2-COLUMN LAYOUT: GROUPED BY DATE (LEFT) + INSPECTOR (RIGHT 380px) */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) 380px',
-            gap: '16px',
-            alignItems: 'start'
-          }}>
+          <div className="body-cothe-history-grid">
 
             {/* DANH SÁCH LẦN ĐO GOM THEO NGÀY */}
             <div className="body-card" style={{ padding: '0', overflow: 'hidden' }}>
@@ -1202,12 +1180,7 @@ export default function BiometricsScreen() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
           {/* TOP CARDS: AVATAR + GOALS */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: '16px',
-            alignItems: 'stretch'
-          }}>
+          <div className="body-cothe-profile-grid">
 
             {/* AVATAR & THÔNG TIN CƠ BẢN */}
             <div className="body-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '22px' }}>
@@ -1268,12 +1241,7 @@ export default function BiometricsScreen() {
           </div>
 
           {/* BOTTOM ROW: SỐ ĐO VÒNG + SỨC KHỎE + FORM CHỈNH SỬA */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: '16px',
-            alignItems: 'start'
-          }}>
+          <div className="body-cothe-profile-bottom-grid">
 
             {/* SỐ ĐO CÁC VÒNG (GIRTHS) */}
             <div className="body-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '22px' }}>
