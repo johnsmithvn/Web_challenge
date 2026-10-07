@@ -112,8 +112,56 @@ export default function WorkoutHistoryScreen({ sessions = [], recentSets = [] })
   const numGroups = Math.max(1, historyList.length + 1);
   const groupWidth = 100 / numGroups;
 
+  // State chọn ngày trên Lịch tháng (Mobile tương tác)
+  const today = new Date();
+  const [selectedDayNum, setSelectedDayNum] = useState(() => today.getDate());
+
+  const selectedDateStr = useMemo(() => {
+    return `${currentYear}-${String(selectedMonth).padStart(2, '0')}-${String(selectedDayNum).padStart(2, '0')}`;
+  }, [currentYear, selectedMonth, selectedDayNum]);
+
+  const selectedSession = useMemo(() => {
+    return completedSessions.find(s => s.local_date === selectedDateStr);
+  }, [completedSessions, selectedDateStr]);
+
+  const selectedDayInfo = useMemo(() => {
+    const d = new Date(currentYear, selectedMonth - 1, selectedDayNum);
+    const dayOfWeek = d.getDay();
+    const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    return {
+      weekdayName: dayNames[dayOfWeek],
+      formattedDate: `${selectedDayNum}/${selectedMonth}`
+    };
+  }, [currentYear, selectedMonth, selectedDayNum]);
+
+  const selectedDaySets = useMemo(() => {
+    if (!selectedSession) return [];
+    const sets = (recentSets || []).filter(s => s.session_id === selectedSession.id);
+    const grouped = new Map();
+    sets.forEach(s => {
+      const key = s.exercise_key || s.exercise_name;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          key,
+          name: s.exercise_name || key,
+          sets: [],
+          target_val: s.target_val,
+          target_sets: s.target_sets,
+          unit: s.unit || 'rep',
+          hasPr: false
+        });
+      }
+      const item = grouped.get(key);
+      if (s.actual_val != null) item.sets.push(s.actual_val);
+      if (s.is_pr) item.hasPr = true;
+    });
+    return Array.from(grouped.values());
+  }, [selectedSession, recentSets]);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <>
+      {/* ── GIAO DIỆN DESKTOP (BỐ CỤC CHUẨN DESKTOP) ──────────────── */}
+      <div className="body-history-desktop-view">
       {/* ── HEADER SUMMARY STATS ─────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
@@ -455,5 +503,348 @@ export default function WorkoutHistoryScreen({ sessions = [], recentSets = [] })
         })()}
       </div>
     </div>
+
+      {/* ── GIAO DIỆN MOBILE CHUYÊN BIỆT (CHUẨN PROTOTYPE LỊCH SỬ TẬP MOBILE 390PX) ── */}
+      <div className="body-history-mobile-view">
+        {/* 1. HEADER MOBILE: LỊCH SỬ TẬP + CHỌN THÁNG */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '0 2px'
+        }}>
+          <span style={{ fontSize: '19px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+            Lịch sử tập
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              type="button"
+              onClick={() => setSelectedMonth(prev => Math.max(1, prev - 1))}
+              style={{
+                width: '32px',
+                height: '32px',
+                border: 'none',
+                background: 'transparent',
+                display: 'grid',
+                placeItems: 'center',
+                color: 'var(--body-text-main)',
+                cursor: 'pointer'
+              }}
+            >
+              <AppIcon name="caretLeft" size={14} />
+            </button>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)', minWidth: '48px', textAlign: 'center' }}>
+              Th{selectedMonth}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedMonth(prev => Math.min(12, prev + 1))}
+              style={{
+                width: '32px',
+                height: '32px',
+                border: 'none',
+                background: 'transparent',
+                display: 'grid',
+                placeItems: 'center',
+                color: 'var(--body-text-main)',
+                cursor: 'pointer'
+              }}
+            >
+              <AppIcon name="caretRight" size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* 2. KHỐI LỊCH THÁNG (MONTH CALENDAR CHO MOBILE) */}
+        <div className="body-history-mobile-cal-card">
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+            fontFamily: 'var(--body-mono)',
+            fontSize: '10.5px',
+            color: 'var(--body-text-muted)',
+            textAlign: 'center',
+            paddingBottom: '4px'
+          }}>
+            <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
+          </div>
+
+          {(() => {
+            const daysInMonth = new Date(currentYear, selectedMonth, 0).getDate();
+            const firstDayWeekday = new Date(currentYear, selectedMonth - 1, 1).getDay();
+            const startOffset = firstDayWeekday === 0 ? 6 : firstDayWeekday - 1;
+
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '2px' }}>
+                {Array.from({ length: startOffset }, (_, idx) => (
+                  <div key={`empty-mob-${idx}`} style={{ height: '46px' }} />
+                ))}
+
+                {Array.from({ length: daysInMonth }, (_, i) => {
+                  const dayNum = i + 1;
+                  const dateStr = `${currentYear}-${String(selectedMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                  const session = completedSessions.find(s => s.local_date === dateStr);
+                  const isSelected = selectedDayNum === dayNum;
+                  const isToday = today.getFullYear() === currentYear && (today.getMonth() + 1) === selectedMonth && today.getDate() === dayNum;
+
+                  const dotColor = session
+                    ? (DAY_TYPE_COLORS[session.day_type] || '#6949E8')
+                    : 'transparent';
+
+                  return (
+                    <div
+                      key={`mob-day-${dayNum}`}
+                      onClick={() => setSelectedDayNum(dayNum)}
+                      className={`body-history-mobile-cell ${isSelected ? 'selected' : ''}`}
+                    >
+                      <span style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '12px',
+                        background: isSelected ? 'var(--body-accent)' : isToday ? 'var(--body-shell-bg)' : 'transparent',
+                        display: 'grid',
+                        placeItems: 'center',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: isSelected ? '#FFFFFF' : 'var(--body-text-main)'
+                      }}>
+                        {dayNum}
+                      </span>
+                      <span style={{
+                        width: '14px',
+                        height: '5px',
+                        borderRadius: '3px',
+                        background: dotColor,
+                        boxSizing: 'border-box'
+                      }} />
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* 3. THẺ CHI TIẾT BUỔI TẬP THEO NGÀY ĐANG CHỌN */}
+        <div style={{
+          background: 'var(--body-card-bg)',
+          border: '1px solid var(--body-card-border)',
+          borderRadius: '18px',
+          padding: '14px 14px 8px',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '10px',
+            paddingBottom: '8px'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                {selectedDayInfo.weekdayName} — {selectedSession ? (selectedSession.name || `Buổi ${selectedSession.day_type || 'Tập'}`) : 'Ngày nghỉ'}
+              </span>
+              <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
+                {selectedDayInfo.formattedDate} · {selectedSession ? `${Math.round((selectedSession.duration_seconds || 2400) / 60)} phút · Lộ trình` : 'Phục hồi thể lực'}
+              </span>
+            </div>
+
+            <span style={{
+              height: '24px',
+              padding: '0 9px',
+              borderRadius: '7px',
+              background: selectedSession ? 'var(--body-green-soft)' : 'var(--body-shell-bg)',
+              color: selectedSession ? 'var(--body-green-text)' : 'var(--body-text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '11px',
+              fontWeight: 600,
+              flex: 'none'
+            }}>
+              {selectedSession ? 'ĐÃ HOÀN THÀNH' : 'NGHỈ'}
+            </span>
+          </div>
+
+          {selectedSession ? (
+            <div>
+              {selectedDaySets.length > 0 ? (
+                selectedDaySets.map(item => (
+                  <div
+                    key={item.key}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr) auto',
+                      gap: '4px 10px',
+                      alignItems: 'baseline',
+                      padding: '10px 0',
+                      borderTop: '1px solid var(--body-card-border)'
+                    }}
+                  >
+                    <span style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      color: 'var(--body-text-main)'
+                    }}>
+                      {item.name}
+                      {item.hasPr && (
+                        <span style={{ color: 'var(--body-amber-text)', display: 'inline-flex' }}>
+                          <AppIcon name="trophy" size={12} weight="fill" />
+                        </span>
+                      )}
+                    </span>
+                    <span style={{
+                      fontFamily: 'var(--body-mono)',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: 'var(--body-text-main)'
+                    }}>
+                      {item.sets.join(' · ')} {item.unit}
+                    </span>
+                    <span style={{
+                      fontSize: '10.5px',
+                      color: 'var(--body-text-muted)',
+                      gridColumn: '1 / -1'
+                    }}>
+                      Mục tiêu: {item.target_sets || 3} × {item.target_val || 10}{item.unit}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: '8px 0', fontSize: '12px', color: 'var(--body-text-muted)' }}>
+                  Buổi tập đã hoàn thành nhưng không có dữ liệu hiệp chi tiết.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ padding: '4px 0 10px', fontSize: '12.5px', color: 'var(--body-text-sub)', lineHeight: 1.55 }}>
+              Ngày nghỉ phục hồi thể lực theo lộ trình. Cho phép cơ bắp tái tạo glycogen và thư giãn.
+            </div>
+          )}
+        </div>
+
+        {/* 4. KHỐI TIẾN BỘ TỪNG BÀI TẬP */}
+        <div style={{
+          background: 'var(--body-card-bg)',
+          border: '1px solid var(--body-card-border)',
+          borderRadius: '18px',
+          padding: '14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+            Tiến bộ từng bài
+          </span>
+
+          {/* Exercise Tabs cuộn ngang */}
+          <div className="body-history-mobile-tab-scroll">
+            {availableExercises.map(ex => {
+              const isSelected = ex.key === selectedExKey;
+              return (
+                <button
+                  key={ex.key}
+                  type="button"
+                  onClick={() => setSelectedExKey(ex.key)}
+                  style={{
+                    height: '34px',
+                    flex: 'none',
+                    padding: '0 12px',
+                    borderRadius: '9px',
+                    border: isSelected ? '1px solid var(--body-accent)' : '1px solid var(--body-border-subtle)',
+                    background: isSelected ? 'var(--body-accent)' : 'var(--body-card-bg)',
+                    color: isSelected ? '#FFFFFF' : 'var(--body-text-main)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {ex.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 2 KPIs Tóm tắt */}
+          <div style={{ display: 'flex', gap: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>Cao nhất đạt được</span>
+              <span style={{ fontSize: '17px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                {highestVal} {exUnit}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>Mục tiêu buổi tới</span>
+              <span style={{ fontSize: '17px', fontWeight: 600, color: 'var(--body-accent)' }}>
+                {nextTarget} {exUnit}
+              </span>
+            </div>
+          </div>
+
+          {/* Danh sách thẻ lịch sử các lần tập bài này trên mobile */}
+          <div className="body-history-mobile-list" style={{ marginTop: '4px' }}>
+            {[...historyList].reverse().map((row, idx) => (
+              <div
+                key={idx}
+                style={{
+                  background: 'var(--body-shell-bg)',
+                  borderRadius: '12px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                    {row.date} · {row.type}
+                  </span>
+                  {row.pr && (
+                    <span className="body-badge body-badge-amber" style={{ gap: '4px', fontSize: '10.5px', padding: '2px 6px' }}>
+                      <AppIcon name="trophy" size={11} /> PR
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                  {row.sets.map((v, sIdx) => (
+                    <span
+                      key={sIdx}
+                      style={{
+                        padding: '3px 7px',
+                        borderRadius: '6px',
+                        background: v >= row.target ? 'var(--body-green-soft)' : 'var(--body-card-bg)',
+                        color: v >= row.target ? 'var(--body-green-text)' : 'var(--body-text-main)',
+                        fontFamily: 'var(--body-mono)',
+                        fontSize: '11.5px',
+                        fontWeight: 600
+                      }}
+                    >
+                      {v}{exUnit}
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--body-text-muted)' }}>
+                  <span>Mục tiêu: {row.target}{exUnit}</span>
+                  <span style={{
+                    color: row.delta.startsWith('+') ? 'var(--body-green)' : 'var(--body-text-muted)',
+                    fontWeight: 600
+                  }}>
+                    {row.delta}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

@@ -180,15 +180,20 @@ export default function RoutineScreen({
         });
 
         let dotColor = '#6949E8';
-        if (dayName.includes('Chân')) dotColor = '#2F8A57';
-        else if (dayName.includes('Đẩy')) dotColor = '#E0822C';
-        else if (dayName.includes('Kéo')) dotColor = '#3A82F6';
-        else if (dayName.includes('Toàn thân')) dotColor = '#9A6514';
+        let shortName = 'Tập';
+        if (dayName.includes('Chân')) { dotColor = '#2F8A57'; shortName = 'Chân'; }
+        else if (dayName.includes('Đẩy')) { dotColor = '#E0822C'; shortName = 'Đẩy'; }
+        else if (dayName.includes('Kéo')) { dotColor = '#3A82F6'; shortName = 'Kéo'; }
+        else if (dayName.includes('Toàn thân')) { dotColor = '#9A6514'; shortName = 'Toàn thân'; }
+        else if (dayName.includes('Thân trên')) { dotColor = '#6949E8'; shortName = 'Thân trên'; }
+        else if (dayName.includes('Thân dưới')) { dotColor = '#2F8A57'; shortName = 'Thân dưới'; }
+        else { shortName = dayName.slice(0, 8); }
 
         return {
           day: def.day,
           label: def.label,
           short: def.short,
+          shortName,
           name: dayName,
           meta: `${items.length} bài · ${totalSets} set`,
           est: `~${estMinutes} phút`,
@@ -201,6 +206,7 @@ export default function RoutineScreen({
         day: def.day,
         label: def.label,
         short: def.short,
+        shortName: def.day === 7 ? 'Check-in' : 'Nghỉ',
         name: def.day === 7 ? 'Check-in' : 'Nghỉ',
         meta: def.day === 7 ? 'Cân sáng, eo' : 'Phục hồi',
         est: '',
@@ -655,8 +661,9 @@ export default function RoutineScreen({
         </div>
       )}
 
-      {/* ── BỐ CỤC 2 CỘT CHÍNH (DESKTOP) / CUỘN DỌC (MOBILE) ────────── */}
-      <div className="body-routine-container">
+      {/* ── GIAO DIỆN DESKTOP (BỐ CỤC 2 CỘT 296px & MAIN TABLE) ──────── */}
+      <div className="body-routine-desktop-view">
+        <div className="body-routine-container">
 
         {/* ── CỘT TRÁI: THÔNG TIN LỘ TRÌNH & CÁC MẪU (296px) ───────── */}
         <div className="body-routine-sidebar">
@@ -1491,6 +1498,475 @@ export default function RoutineScreen({
             </div>
 
           </div>
+        </div>
+      </div>
+    </div>
+
+      {/* ── GIAO DIỆN MOBILE CHUYÊN BIỆT (CHUẨN PROTOTYPE BODY - LỘ TRÌNH 390PX) ── */}
+      <div className="body-routine-mobile-view">
+        {/* 1. THẺ ĐEN LỘ TRÌNH HIỆN TẠI */}
+        <div className="body-routine-card-dark">
+          <div className="body-routine-dark-header">
+            <span className="body-routine-dark-badge">ĐANG THEO</span>
+            <span className="body-routine-dark-week">
+              Tuần {currentWeekNumber} / {routineWeeksTotal}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 className="body-routine-dark-title" style={{ fontSize: '18px' }}>
+                {routine?.name || 'Chưa chọn lộ trình'}
+              </h3>
+              {routine?.id && (
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(true)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#9C9AA8',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'grid',
+                    placeItems: 'center'
+                  }}
+                  title="Chỉnh sửa thông tin lộ trình"
+                >
+                  <AppIcon name="pencil" size={14} />
+                </button>
+              )}
+            </div>
+            <div className="body-routine-dark-sub">
+              {routineWeeksTotal} tuần · {routine?.goal || 'Duy trì cơ bắp & tăng sức bền'}
+            </div>
+          </div>
+
+          {/* Dải vạch tuần */}
+          <div className="body-routine-week-bars" style={{ gap: '3px' }}>
+            {Array.from({ length: routineWeeksTotal }).map((_, idx) => (
+              <span
+                key={idx}
+                className={`body-routine-week-bar ${idx < currentWeekNumber ? 'active' : ''}`}
+                style={{ height: '5px', borderRadius: '3px' }}
+              />
+            ))}
+          </div>
+
+          {/* Dòng tóm tắt chuẩn mobile */}
+          <div style={{ fontSize: '12px', color: '#A9A7B4', lineHeight: 1.4 }}>
+            {weekdaysData.filter(w => w.isTrain).length} buổi/tuần · {completedSessionsCount} buổi đã tập · đúng lịch 100%
+          </div>
+        </div>
+
+        {/* 2. DẢI 7 NGÀY DẠNG NÚT MOBILE */}
+        <div className="body-routine-mobile-days-strip">
+          {weekdaysData.map(wd => {
+            const isSelected = selectedDay === wd.day;
+            return (
+              <div
+                key={wd.day}
+                onClick={() => setSelectedDay(wd.day)}
+                className={`body-routine-mobile-day-btn ${isSelected ? 'active' : ''}`}
+              >
+                <span style={{ fontSize: '11.5px', fontWeight: 600, color: isSelected ? 'var(--body-accent)' : 'var(--body-text-sub)' }}>
+                  {wd.label}
+                </span>
+                <span style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: wd.dotColor,
+                  flex: 'none'
+                }} />
+                <span style={{
+                  fontSize: '9.5px',
+                  fontWeight: 500,
+                  color: isSelected ? 'var(--body-accent)' : 'var(--body-text-muted)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '44px',
+                  textAlign: 'center'
+                }}>
+                  {wd.shortName || wd.name}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 3. THẺ CHI TIẾT NGÀY TẬP */}
+        <div style={{
+          background: 'var(--body-card-bg)',
+          border: '1px solid var(--body-card-border)',
+          borderRadius: '18px',
+          padding: '14px 16px 6px',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingBottom: '10px' }}>
+            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+              {activeDay.short} — Buổi {activeDay.name}
+            </span>
+            <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
+              {activeDay.isTrain ? `${dayItems.length} bài tập · ${activeDay.est}` : 'Ngày nghỉ phục hồi'}
+            </span>
+          </div>
+
+          {activeDay.isTrain ? (
+            <>
+              {dayItems.map(item => {
+                const exDef = BASE_EXERCISES.find(e => e.key === item.exercise_key);
+                const muscleVn = MUSCLE_MAP[exDef?.primary]?.name || exDef?.primary || '';
+
+                return (
+                  <div key={item.id} className="body-routine-mobile-ex-row">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+                      <span style={{
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        color: 'var(--body-text-main)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {exDef?.name || item.exercise_key}
+                      </span>
+                      <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
+                        {muscleVn ? `${muscleVn} · ` : ''}{item.unit === 's' ? 'Set × Giây' : 'Set × Rep'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div className="body-routine-mobile-counter">
+                        <button
+                          type="button"
+                          className="body-routine-mobile-counter-btn"
+                          onClick={() => handleStepChange(item, -1)}
+                          title="Giảm mục tiêu"
+                        >
+                          <AppIcon name="minus" size={11} />
+                        </button>
+                        <span
+                          className="body-routine-mobile-counter-val"
+                          onClick={() => handleSetChange(item, 1)}
+                          title="Nhấn để tăng số hiệp"
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {item.target_sets} × {item.target_val}{item.unit === 's' ? 's' : ''}
+                        </span>
+                        <button
+                          type="button"
+                          className="body-routine-mobile-counter-btn"
+                          onClick={() => handleStepChange(item, 1)}
+                          title="Tăng mục tiêu"
+                        >
+                          <AppIcon name="plus" size={11} />
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteItem(item.id)}
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: 'transparent',
+                          color: '#B5B4AE',
+                          display: 'grid',
+                          placeItems: 'center',
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                        title="Xoá bài tập"
+                      >
+                        <AppIcon name="trash" size={13} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Nút Thêm bài tập dạng inline text tím */}
+              {!showPicker && (
+                <button
+                  type="button"
+                  onClick={() => setShowPicker(true)}
+                  style={{
+                    minHeight: '46px',
+                    borderTop: '1px solid var(--body-card-border)',
+                    borderBottom: 'none',
+                    borderLeft: 'none',
+                    borderRight: 'none',
+                    background: 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--body-accent)',
+                    cursor: 'pointer',
+                    padding: '8px 0',
+                    width: '100%'
+                  }}
+                >
+                  <AppIcon name="plusCircle" size={16} />
+                  <span>Thêm bài tập</span>
+                </button>
+              )}
+
+              {/* Nút to tím Bắt đầu buổi tập này */}
+              {!isPreviewing && dayItems.length > 0 && (
+                <div style={{ padding: '12px 0 8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => onStartSession?.({
+                      weekday: selectedDay,
+                      day: selectedDay,
+                      name: activeDay.name,
+                      focus: activeDay.focus
+                    })}
+                    style={{
+                      width: '100%',
+                      height: '42px',
+                      borderRadius: '11px',
+                      background: 'var(--body-accent)',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      fontSize: '13.5px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
+                    }}
+                  >
+                    <AppIcon name="play" size={14} weight="fill" />
+                    <span>Bắt đầu buổi tập này</span>
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ padding: '4px 0 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <span style={{ fontSize: '13px', lineHeight: 1.55, color: 'var(--body-text-sub)' }}>
+                {activeDay.note}
+              </span>
+              {!showPicker && (
+                <button
+                  type="button"
+                  onClick={() => setShowPicker(true)}
+                  style={{
+                    alignSelf: 'flex-start',
+                    height: '32px',
+                    padding: '0 12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--body-border-subtle)',
+                    background: 'var(--body-shell-bg)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: 'var(--body-text-main)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <AppIcon name="plus" size={12} />
+                  <span>Thêm bài tập tập bù</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Inline Exercise Picker cho Mobile */}
+          {showPicker && (
+            <div style={{
+              margin: '8px 0 12px',
+              padding: '12px',
+              borderRadius: '12px',
+              background: 'var(--body-accent-tint)',
+              border: '1px solid var(--body-accent-border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input
+                  type="text"
+                  placeholder="Tìm bài tập..."
+                  value={pickerSearch}
+                  onChange={e => setPickerSearch(e.target.value)}
+                  style={{
+                    flex: 1,
+                    height: '32px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--body-border-subtle)',
+                    padding: '0 10px',
+                    fontSize: '12px',
+                    outline: 'none',
+                    background: 'var(--body-card-bg)',
+                    color: 'var(--body-text-main)'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPicker(false)}
+                  style={{
+                    height: '32px',
+                    padding: '0 10px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--body-shell-bg)',
+                    color: 'var(--body-text-sub)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Đóng
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', maxHeight: '160px', overflowY: 'auto' }}>
+                {filteredPicker.map(ex => (
+                  <button
+                    key={ex.key}
+                    type="button"
+                    onClick={() => handleAddExercise(ex)}
+                    style={{
+                      height: '30px',
+                      padding: '0 9px',
+                      borderRadius: '7px',
+                      background: 'var(--body-card-bg)',
+                      border: '1px solid var(--body-border-subtle)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: '11.5px',
+                      color: 'var(--body-text-main)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <AppIcon name="plus" size={11} style={{ color: 'var(--body-accent)' }} />
+                    <span>{ex.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 4. CARD TĂNG TIẾN TỰ ĐỘNG */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '12px 14px',
+          background: 'var(--body-card-bg)',
+          border: '1px solid var(--body-card-border)',
+          borderRadius: '16px'
+        }}>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoProgressState}
+            onClick={toggleAutoProgress}
+            disabled={isPreviewing}
+            style={{
+              width: '40px',
+              height: '24px',
+              borderRadius: '12px',
+              background: autoProgressState ? 'var(--body-accent)' : '#C9C7C0',
+              position: 'relative',
+              flex: 'none',
+              cursor: isPreviewing ? 'not-allowed' : 'pointer',
+              border: 'none',
+              padding: 0,
+              transition: 'background 0.2s ease'
+            }}
+          >
+            <span style={{
+              position: 'absolute',
+              top: '3px',
+              left: autoProgressState ? '19px' : '3px',
+              width: '18px',
+              height: '18px',
+              borderRadius: '9px',
+              background: '#FFFFFF',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+              transition: 'left 0.2s ease'
+            }} />
+          </button>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+              Tăng tiến tự động
+            </span>
+            <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
+              Đạt đủ mỗi set thì buổi sau +1 rep
+            </span>
+          </div>
+        </div>
+
+        {/* 5. DẢI MẪU CÓ SẴN (CUỘN NGANG) */}
+        <div style={{
+          fontFamily: 'var(--body-mono)',
+          fontSize: '10.5px',
+          letterSpacing: '0.09em',
+          color: 'var(--body-text-muted)',
+          fontWeight: 600,
+          padding: '4px 2px 0'
+        }}>
+          MẪU CÓ SẴN
+        </div>
+
+        <div className="body-routine-mobile-tpls-scroll">
+          {(routineTemplates || []).map(t => {
+            const isSelectedTpl = previewTemplate?.key === t.key;
+            return (
+              <div
+                key={t.key}
+                onClick={() => handleStartPreview(t)}
+                style={{
+                  width: '200px',
+                  flex: 'none',
+                  background: 'var(--body-card-bg)',
+                  border: isSelectedTpl ? '1.5px solid var(--body-accent)' : '1px solid var(--body-card-border)',
+                  borderRadius: '14px',
+                  padding: '13px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                  boxSizing: 'border-box',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                    {t.name}
+                  </span>
+                  <span style={{
+                    fontSize: '10px',
+                    padding: '2px 5px',
+                    borderRadius: '5px',
+                    background: 'var(--body-accent-soft)',
+                    color: 'var(--body-accent)',
+                    fontWeight: 600
+                  }}>
+                    {t.weeks} tuần
+                  </span>
+                </div>
+                <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)', lineHeight: 1.35 }}>
+                  {t.days?.length || 3} buổi/tuần · {t.goal}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
 

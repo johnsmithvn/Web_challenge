@@ -1594,11 +1594,31 @@
   display: none;
 }
 
+.body-history-desktop-view {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.body-history-mobile-view {
+  display: none;
+}
+
 @media (max-width: 840px) {
   .body-routine-desktop-view {
     display: none !important;
   }
   .body-routine-mobile-view {
+    display: flex !important;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .body-history-desktop-view {
+    display: none !important;
+  }
+  .body-history-mobile-view {
     display: flex !important;
     flex-direction: column;
     gap: 12px;
@@ -1697,6 +1717,47 @@
     -webkit-overflow-scrolling: touch;
   }
   .body-routine-mobile-tpls-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .body-history-mobile-cal-card {
+    background: var(--body-card-bg);
+    border: 1px solid var(--body-card-border);
+    border-radius: 18px;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .body-history-mobile-cell {
+    height: 46px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.15s ease;
+  }
+
+  .body-history-mobile-cell.selected {
+    background: var(--body-accent-soft);
+  }
+
+  .body-history-mobile-tab-scroll {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    margin: 0 -14px;
+    padding: 0 14px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .body-history-mobile-tab-scroll::-webkit-scrollbar {
     display: none;
   }
 }
