@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v6.22.0 — 2026-10-08
+
+### Added
+- **Ra mắt phân hệ Body — Thể Hình & Sức Khỏe (`/body`, 3 migration Supabase, 3 hooks, 8 màn hình, Three.js 3D Canvas, 21 bài tập, 14 nhóm cơ; `supabase/migrations/20261008000000_body_workout_v6_22_0.sql`, `supabase/migrations/20261008000001_body_biometrics_v6_22_0.sql`, `supabase/migrations/20261008000002_body_nutrition_checkin_v6_22_0.sql`, kèm 3 bản sao `data/migration_v6.22.0_body_*.sql`, `useWorkouts.js`, `useBiometrics.js`, `useNutrition.js`, `workoutLogic.js`, `bodyMetrics.js`, `BodyPage.jsx`, `MuscleBodyCanvas.jsx`, `MuscleMapScreen.jsx`, `LiveSessionScreen.jsx`, `RoutineScreen.jsx`, `WorkoutHistoryScreen.jsx`, `BiometricsScreen.jsx`, `NutritionScreen.jsx`, `OverviewScreen.jsx`, `ExerciseLibraryScreen.jsx`):**
+  - **Lộ trình theo thứ trong tuần (D1):** Khung kế hoạch gán bài theo T2..CN. Bỏ buổi không dời lệch tuần; hỗ trợ tập bù buổi đã bỏ bất kỳ lúc nào.
+  - **Auto-progression (D2):** Sau buổi tập hoàn thành $\ge$ mục tiêu, hệ thống gợi ý tăng $+1\text{ rep}$ ($+5\text{s}$), người dùng duyệt để cập nhật thẳng vào lộ trình gốc.
+  - **Phòng tập trực tiếp (Live Session):** Straight sets, Circuit (20s/90s), Superset (15s/75s). Khóa đổi chế độ khi buổi tập đã bắt đầu; đồng hồ delta timestamp chống lệch giờ khi khóa màn hình; chuông beep Web Audio API OscillatorNode báo hết giờ nghỉ độc lập mạng; ghi log từng set và phát hiện PR tự động (1RM Epley). Tự động dọn dẹp các phiên dở dang (`abandoned`) trước khi mở phiên mới, tuân thủ ràng buộc unique index PostgreSQL.
+  - **Bản đồ cơ 3D (D5):** Đóng gói thư viện `three` từ npm, render 14 nhóm cơ giải phẫu từ khối cầu toán học; xoay 360°, cuộn zoom, tooltip tiếng Việt; 3 chế độ tô màu: Nhóm cơ, Tải 7 ngày (heat map tính từ set thật), Phục hồi 3 trạng thái tính động; giải phóng triệt để WebGL context & bộ nhớ khi unmount; fallback 2D mượt mà.
+  - **Sinh trắc học & Năng lượng (M2):** Tính toán BMI WHO châu Á kèm kim đồng hồ gauge động, BMR Mifflin-St Jeor, TDEE và Body Score (0–100) trên dữ liệu thực tế. Đánh dấu lần cân lệch giờ (outlier), bộ lọc sparkline 7d/30d/90d.
+  - **Dinh dưỡng tối giản & Check-in tuần (M3, D6):** Ghi nhận 4 bữa ăn kèm macro calo/đạm/carb/béo tự cân đối theo TDEE, lưu món mẫu chọn nhanh 1 chạm, theo dõi 8 ly nước (2.000ml) theo múi giờ địa phương GMT+7 (`toDateStr`). Check-in tuần đánh giá thể trạng 4 tiêu chí 1–5 sao tính số tuần theo ISO-8601.
+  - Bộ test thuần `workoutLogic.test.js`, `bodyMetrics.test.js`, `bodyContract.test.js` đạt 100% độ bao phủ hợp đồng.
+
+### Fixed
+- **PostgreSQL 15+ Composite Foreign Key:** Sửa lỗi cú pháp `ON DELETE SET NULL (routine_id)` và `ON DELETE SET NULL (routine_item_id)` trên các khóa ngoại composite có `user_id NOT NULL`.
+- **An toàn phiên tập & Unique Constraint:** Xử lý `idx_body_sessions_one_in_progress` ngăn ngừa crash khi có buổi tập dở dang từ trước; đổi `logSet` sang `upsert` trên composite key `(id, user_id)` tránh duplicate key vi phạm.
+- **Loại bỏ dữ liệu giả:** Toàn bộ thành tích bài tập, lịch sử tập, tải cơ và trạng thái phục hồi được tính toán động từ `recentSets` và `body_routine_items` thực tế của người dùng, không còn số liệu ngụy tạo.
+
 ## v6.21.0 — 2026-10-06
 
 ### Changed

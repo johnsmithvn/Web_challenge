@@ -19,6 +19,7 @@ const PRIMARY_NAV = [
   { to: '/tasks',     icon: 'pushPin', label: 'Nhiệm Vụ' },
   { to: '/collect',   icon: 'brain', label: 'Knowledge' },
   { to: '/finance',   icon: 'wallet', label: 'Finance' },
+  { to: '/body',      icon: 'barbell', label: 'Body' },
   { to: '/accounts',  icon: 'lock', label: 'Tài Khoản' },
 ];
 

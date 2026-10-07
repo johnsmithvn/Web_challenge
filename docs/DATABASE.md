@@ -1,33 +1,44 @@
 # DATABASE.md — Life Hub
 
-**Target:** Supabase PostgreSQL · **Version:** v6.16.0 · **Updated:** 2026-09-02
+**Target:** Supabase PostgreSQL · **Version:** v6.22.0 · **Updated:** 2026-10-08
 
 Runbook cài đặt duy nhất nằm trong [`README.md`](../README.md). File này mô tả trạng thái schema cuối,
 không thay thế SQL thật.
 
 ## Trạng thái schema cuối
 
-Sau khi chạy đủ baseline và các migration domain, database có **25 bảng public đang hoạt động**:
+Sau khi chạy đủ baseline và các migration domain, database có **36 bảng public đang hoạt động**:
 
 - 11 bảng core
 - 12 bảng Finance (11 bảng chính + junction tag)
 - 2 bảng Vault
+- 11 bảng Body (Thể hình & Sức khỏe)
 
 `data/schema_v4.24.0.sql` tự nó chỉ là baseline đã hợp nhất tới v5.0. Nó không phải snapshot độc lập
 của toàn bộ v6.2.
 
 ```text
 auth.users
-└─ profiles
-   ├─ user_tasks ── task_collections ── collections
-   │      │                              ├─ collection_notes
-   │      └─ activity_logs               └─ collection_tags ── tags
-   │      └─ task_tags ────────────────────────────────┘
-   ├─ focus_sessions
-   ├─ xp_logs
-   ├─ finance_* ── finance_transaction_tags ── tags
-   ├─ accounts
-   └─ vault_config
+├─ profiles
+│  ├─ user_tasks ── task_collections ── collections
+│  │      │                              ├─ collection_notes
+│  │      └─ activity_logs               └─ collection_tags ── tags
+│  │      └─ task_tags ────────────────────────────────┘
+│  ├─ focus_sessions
+│  └─ xp_logs
+├─ finance_* ── finance_transaction_tags ── tags
+├─ accounts
+├─ vault_config
+└─ body_*
+   ├─ body_custom_exercises
+   ├─ body_routines ── body_routine_items
+   ├─ body_workout_sessions ── body_workout_sets
+   ├─ body_measurements
+   ├─ body_profiles
+   ├─ body_meal_logs
+   ├─ body_saved_meals
+   ├─ body_water_logs
+   └─ body_weekly_checkins
 ```
 
 ## Inventory
@@ -107,6 +118,22 @@ Migration v6.2 fail-closed nếu `accounts` có row. Nếu config mất nhưng c
 thay vì tạo DEK mới. Update/delete item dùng `updated_at` như optimistic revision.
 
 Chi tiết: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md).
+
+### Body (Thể Hình & Sức Khỏe) — 11 bảng
+
+| Table | Vai trò | Ràng buộc đáng chú ý |
+|---|---|---|
+| `body_custom_exercises` | Thư viện bài tập tự tạo cá nhân | `user_id` sở hữu, `name` không rỗng, mở rộng ngoài 21 bài mặc định |
+| `body_routines` | Lộ trình tập luyện cá nhân | Tối đa 1 routine kích hoạt (`is_active = true`) trên mỗi user |
+| `body_routine_items` | Khung bài tập theo thứ trong tuần (T2..CN) | Composite FK `(routine_id, user_id)` bảo vệ RLS kép; `weekday BETWEEN 1 AND 7`; `ON DELETE CASCADE` |
+| `body_workout_sessions` | Buổi tập thực tế theo ngày | Tối đa 1 phiên đang tập dở (`status = 'in_progress'`) trên mỗi user qua partial unique index `idx_body_sessions_one_in_progress`; `planned_weekday BETWEEN 1 AND 7`; FK `ON DELETE SET NULL (routine_id)` |
+| `body_workout_sets` | Chi tiết từng set tập và PR | `set_no` reset theo từng bài; `sequence_order` giữ thứ tự circuit/superset; FK `ON DELETE SET NULL (routine_item_id)` |
+| `body_measurements` | Dữ liệu cân đo sinh trắc học | `UNIQUE (user_id, source, external_id)` chống trùng lặp dữ liệu import |
+| `body_profiles` | Hồ sơ thể trạng, chiều cao, mục tiêu calo | 1:1 với `auth.users`, dùng tính toán BMI, BMR, TDEE |
+| `body_meal_logs` | Nhật ký ăn uống theo 4 bữa | `meal_type IN ('breakfast', 'lunch', 'dinner', 'snack')` |
+| `body_saved_meals` | Danh sách món ăn mẫu đã lưu | Pick nhanh vào nhật ký trong 1 chạm |
+| `body_water_logs` | Theo dõi lượng nước uống trong ngày | `PRIMARY KEY (user_id, local_date)`, mục tiêu 8 ly (2.000ml) |
+| `body_weekly_checkins` | Đánh giá thể trạng và vòng eo theo tuần | `UNIQUE (user_id, week_number, year)` |
 
 ## View
 
@@ -205,6 +232,9 @@ Snapshot đã tồn tại là bất biến. Schema change mới phải dùng mig
 16. `data/migration_v6.13.0_finance_transaction_description.sql`
 17. `data/migration_v6.14.0_vault_change_passphrase.sql`
 18. `data/migration_v6.15.0_vault_recovery_key.sql`
+19. `supabase/migrations/20261008000000_body_workout_v6_22_0.sql`
+20. `supabase/migrations/20261008000001_body_biometrics_v6_22_0.sql`
+21. `supabase/migrations/20261008000002_body_nutrition_checkin_v6_22_0.sql`
 
 Dọn dẹp bảng cũ (tùy chọn):
 - `data/drop_incubator_tables.sql` (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).

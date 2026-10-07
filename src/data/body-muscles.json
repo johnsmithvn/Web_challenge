@@ -1,0 +1,16 @@
+{
+  "chest": { "name": "Ngực", "latin": "Pectoralis major · minor", "side": "front" },
+  "shoulders": { "name": "Vai", "latin": "Deltoids", "side": "front" },
+  "biceps": { "name": "Tay trước", "latin": "Biceps brachii", "side": "front" },
+  "forearms": { "name": "Cẳng tay", "latin": "Forearm flexors · extensors", "side": "front" },
+  "abs": { "name": "Bụng", "latin": "Rectus abdominis", "side": "front" },
+  "obliques": { "name": "Liên sườn", "latin": "Obliques", "side": "front" },
+  "quads": { "name": "Đùi trước", "latin": "Quadriceps", "side": "front" },
+  "traps": { "name": "Cầu vai", "latin": "Trapezius", "side": "back" },
+  "lats": { "name": "Xô", "latin": "Latissimus dorsi", "side": "back" },
+  "triceps": { "name": "Tay sau", "latin": "Triceps brachii", "side": "back" },
+  "lowerback": { "name": "Lưng dưới", "latin": "Erector spinae", "side": "back" },
+  "glutes": { "name": "Mông", "latin": "Gluteus maximus · medius", "side": "back" },
+  "hamstrings": { "name": "Đùi sau", "latin": "Hamstrings", "side": "back" },
+  "calves": { "name": "Bắp chân", "latin": "Gastrocnemius · soleus", "side": "back" }
+}

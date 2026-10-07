@@ -1,0 +1,157 @@
+[
+  {
+    "key": "fat-loss-muscle-preservation",
+    "name": "Giảm mỡ giữ cơ",
+    "goal": "Giảm mỡ, duy trì khối lượng cơ bắp với tạ đơn và bodyweight",
+    "weeks": 8,
+    "description": "Lịch 4 buổi/tuần tập trung luân phiên Chân, Đẩy, Kéo và Toàn thân để tối ưu tiêu hao calo và bảo toàn cơ.",
+    "days": [
+      {
+        "weekday": 1,
+        "day_name": "Chân",
+        "focus": "Đùi trước, Mông, Đùi sau, Bắp chân",
+        "items": [
+          { "exercise_key": "goblet-squat", "target_sets": 4, "target_val": 15, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "bulgarian-split-squat", "target_sets": 3, "target_val": 10, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "dumbbell-hip-thrust", "target_sets": 4, "target_val": 15, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "romanian-deadlift", "target_sets": 3, "target_val": 12, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "calf-raise", "target_sets": 3, "target_val": 20, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "bird-dog", "target_sets": 3, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 60 }
+        ]
+      },
+      {
+        "weekday": 2,
+        "day_name": "Đẩy",
+        "focus": "Ngực, Vai, Tay sau, Bụng",
+        "items": [
+          { "exercise_key": "push-up", "target_sets": 3, "target_val": 20, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "dumbbell-floor-press", "target_sets": 3, "target_val": 15, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "pike-push-up", "target_sets": 2, "target_val": 8, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "lateral-raise", "target_sets": 2, "target_val": 15, "unit": "rep", "kg": 5, "rest_seconds": 60 },
+          { "exercise_key": "diamond-push-up", "target_sets": 3, "target_val": 8, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "plank", "target_sets": 3, "target_val": 45, "unit": "s", "kg": 0, "rest_seconds": 45 }
+        ]
+      },
+      {
+        "weekday": 3,
+        "day_name": "Kéo",
+        "focus": "Lưng xô, Tay trước, Cầu vai",
+        "items": [
+          { "exercise_key": "inverted-row", "target_sets": 3, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "one-arm-dumbbell-row", "target_sets": 3, "target_val": 12, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "chin-up", "target_sets": 3, "target_val": 6, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "dumbbell-curl", "target_sets": 3, "target_val": 12, "unit": "rep", "kg": 5, "rest_seconds": 60 },
+          { "exercise_key": "dumbbell-shrug", "target_sets": 2, "target_val": 15, "unit": "rep", "kg": 5, "rest_seconds": 60 },
+          { "exercise_key": "dead-hang", "target_sets": 2, "target_val": 40, "unit": "s", "kg": 0, "rest_seconds": 45 }
+        ]
+      },
+      {
+        "weekday": 5,
+        "day_name": "Toàn thân",
+        "focus": "Kích hoạt toàn diện nhóm cơ lớn",
+        "items": [
+          { "exercise_key": "goblet-squat", "target_sets": 3, "target_val": 15, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "push-up", "target_sets": 3, "target_val": 18, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "one-arm-dumbbell-row", "target_sets": 3, "target_val": 12, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "glute-bridge", "target_sets": 3, "target_val": 15, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "side-plank", "target_sets": 3, "target_val": 30, "unit": "s", "kg": 0, "rest_seconds": 45 }
+        ]
+      }
+    ]
+  },
+  {
+    "key": "home-bodyweight-starter",
+    "name": "Nhập môn Calisthenics",
+    "goal": "Xây dựng nền tảng sức mạnh không cần tạ",
+    "weeks": 6,
+    "description": "Lịch 3 buổi/tuần hoàn toàn dùng trọng lượng cơ thể, phù hợp bắt đầu rèn luyện.",
+    "days": [
+      {
+        "weekday": 1,
+        "day_name": "Thân trên",
+        "focus": "Ngực, Tay sau, Lưng",
+        "items": [
+          { "exercise_key": "push-up", "target_sets": 3, "target_val": 12, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "inverted-row", "target_sets": 3, "target_val": 8, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "pike-push-up", "target_sets": 2, "target_val": 6, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "plank", "target_sets": 3, "target_val": 30, "unit": "s", "kg": 0, "rest_seconds": 45 }
+        ]
+      },
+      {
+        "weekday": 3,
+        "day_name": "Thân dưới & Bụng",
+        "focus": "Đùi, Mông, Cơ trọng tâm",
+        "items": [
+          { "exercise_key": "bulgarian-split-squat", "target_sets": 3, "target_val": 8, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "glute-bridge", "target_sets": 3, "target_val": 15, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "calf-raise", "target_sets": 3, "target_val": 20, "unit": "rep", "kg": 0, "rest_seconds": 45 },
+          { "exercise_key": "side-plank", "target_sets": 3, "target_val": 25, "unit": "s", "kg": 0, "rest_seconds": 45 }
+        ]
+      },
+      {
+        "weekday": 5,
+        "day_name": "Toàn thân",
+        "focus": "Sức bền cơ bắp và tim mạch",
+        "items": [
+          { "exercise_key": "push-up", "target_sets": 3, "target_val": 15, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "dead-hang", "target_sets": 2, "target_val": 30, "unit": "s", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "bird-dog", "target_sets": 3, "target_val": 12, "unit": "rep", "kg": 0, "rest_seconds": 45 },
+          { "exercise_key": "plank", "target_sets": 3, "target_val": 40, "unit": "s", "kg": 0, "rest_seconds": 45 }
+        ]
+      }
+    ]
+  },
+  {
+    "key": "dumbbell-hypertrophy-home",
+    "name": "Tăng cơ tạ đơn tại nhà",
+    "goal": "Kích thích phì đại cơ bắp (Hypertrophy) với tạ đơn",
+    "weeks": 8,
+    "description": "Lịch 4 buổi/tuần phân chia Thân trên / Thân dưới giúp tối đa hóa khối lượng tạ và kích thích cơ bắp phát triển.",
+    "days": [
+      {
+        "weekday": 1,
+        "day_name": "Thân trên (Đẩy & Kéo)",
+        "focus": "Ngực, Lưng xô, Vai",
+        "items": [
+          { "exercise_key": "dumbbell-floor-press", "target_sets": 4, "target_val": 12, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "one-arm-dumbbell-row", "target_sets": 4, "target_val": 12, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "lateral-raise", "target_sets": 3, "target_val": 15, "unit": "rep", "kg": 5, "rest_seconds": 60 },
+          { "exercise_key": "push-up", "target_sets": 3, "target_val": 15, "unit": "rep", "kg": 0, "rest_seconds": 60 }
+        ]
+      },
+      {
+        "weekday": 2,
+        "day_name": "Thân dưới & Mông",
+        "focus": "Đùi trước, Đùi sau, Mông",
+        "items": [
+          { "exercise_key": "goblet-squat", "target_sets": 4, "target_val": 12, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "romanian-deadlift", "target_sets": 4, "target_val": 12, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "bulgarian-split-squat", "target_sets": 3, "target_val": 10, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "calf-raise", "target_sets": 4, "target_val": 20, "unit": "rep", "kg": 0, "rest_seconds": 60 }
+        ]
+      },
+      {
+        "weekday": 4,
+        "day_name": "Tay & Cầu vai",
+        "focus": "Tay trước, Tay sau, Cầu vai",
+        "items": [
+          { "exercise_key": "dumbbell-curl", "target_sets": 4, "target_val": 12, "unit": "rep", "kg": 5, "rest_seconds": 60 },
+          { "exercise_key": "diamond-push-up", "target_sets": 4, "target_val": 10, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "dumbbell-shrug", "target_sets": 3, "target_val": 15, "unit": "rep", "kg": 5, "rest_seconds": 60 },
+          { "exercise_key": "dead-hang", "target_sets": 3, "target_val": 35, "unit": "s", "kg": 0, "rest_seconds": 45 }
+        ]
+      },
+      {
+        "weekday": 6,
+        "day_name": "Toàn thân & Bụng",
+        "focus": "Tập trung áp lực tải và cơ trọng tâm",
+        "items": [
+          { "exercise_key": "dumbbell-hip-thrust", "target_sets": 4, "target_val": 15, "unit": "rep", "kg": 5, "rest_seconds": 75 },
+          { "exercise_key": "pike-push-up", "target_sets": 3, "target_val": 8, "unit": "rep", "kg": 0, "rest_seconds": 60 },
+          { "exercise_key": "plank", "target_sets": 3, "target_val": 60, "unit": "s", "kg": 0, "rest_seconds": 45 },
+          { "exercise_key": "side-plank", "target_sets": 3, "target_val": 35, "unit": "s", "kg": 0, "rest_seconds": 45 }
+        ]
+      }
+    ]
+  }
+]

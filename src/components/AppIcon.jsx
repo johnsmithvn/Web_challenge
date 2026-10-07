@@ -1,6 +1,6 @@
 import {
   Archive, ArrowClockwise, ArrowDown, ArrowLeft, ArrowRight, ArrowSquareOut,
-  ArrowUp, Bank, Bell, BookOpen, BowlFood, Brain, Briefcase, Buildings, CalendarBlank,
+  ArrowUp, Bank, Barbell, Bell, BookOpen, BowlFood, Brain, Briefcase, Buildings, CalendarBlank,
   Calculator, Camera, CaretDown, CaretLeft, CaretRight, CaretUp, ChartDonut, ChartLineUp, ChatTeardropText, Check,
   CheckCircle, CheckSquare, Clock, Cloud, Coffee, Copy, CreditCard, Crown, CurrencyCircleDollar,
   DeviceMobile, DotsThree, Drop, Television, DotsSixVertical, DownloadSimple, Egg, Envelope, Eye, EyeSlash, FileText,
@@ -11,13 +11,17 @@ import {
   Paragraph, Pause, PencilSimple, PiggyBank, Plant, Play, Plus, PlusCircle, PushPin, Question, Quotes, Receipt, Rocket,
   Scissors, ShoppingBag, SignOut, SkipForward, Sparkle, Square, SquaresFour, Star, Sun, Sword, Table, Tag, TextHOne, TextHThree, TextHTwo, Timer, Trash,
   Robot, Tray, TrayArrowDown, TreeStructure, TrendUp, Trophy, UploadSimple, User, Users, VideoCamera,
-  Wallet, Warning, WifiHigh, X, Database, Certificate,
+  Wallet, Warning, WifiHigh, X, Database, Certificate, Scales, PersonSimple, ShieldCheck,
 } from '@phosphor-icons/react';
 
 const ICONS = {
+  scales: Scales,
+  personSimple: PersonSimple,
+  shieldCheck: ShieldCheck,
   archive: Archive,
   back: ArrowLeft,
   bank: Bank,
+  barbell: Barbell,
   bell: Bell,
   book: BookOpen,
   bowlFood: BowlFood,

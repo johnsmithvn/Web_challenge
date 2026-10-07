@@ -23,6 +23,7 @@ const FinancePage       = lazy(() => import('./pages/FinancePage'));
 
 const AccountsPage      = lazy(() => import('./pages/AccountsPage'));
 const SettingsPage      = lazy(() => import('./pages/SettingsPage'));
+const BodyPage          = lazy(() => import('./pages/BodyPage'));
 
 // ── SEO meta per route ─────────────────────────────────────────────
 const ROUTE_META = {
@@ -33,11 +34,16 @@ const ROUTE_META = {
   '/focus':      { title: 'Focus Timer — Life Hub',                                           desc: 'Pomodoro tập trung, lịch sử session và XP.' },
   '/accounts':   { title: 'Vault — Life Hub',                                                  desc: 'Account Vault mã hóa toàn bộ nội dung bằng AES-GCM phía client.' },
   '/settings':   { title: 'Cài Đặt — Life Hub',                                                  desc: 'Quản lý tags, quotes và hồ sơ cá nhân.' },
+  '/body':       { title: 'Body · Thể Hình & Sức Khỏe — Life Hub',                            desc: 'Lộ trình tập luyện, theo dõi cơ thể và tiến bộ từng buổi tập.' },
 };
 
 function PageMeta() {
   const { pathname } = useLocation();
-  const meta = pathname.startsWith('/finance/') ? ROUTE_META['/finance'] : ROUTE_META[pathname] || ROUTE_META['/'];
+  const meta = pathname.startsWith('/finance/')
+    ? ROUTE_META['/finance']
+    : pathname.startsWith('/body')
+    ? ROUTE_META['/body']
+    : ROUTE_META[pathname] || ROUTE_META['/'];
   document.title = meta.title;
   const descEl = document.querySelector('meta[name="description"]');
   if (descEl) descEl.setAttribute('content', meta.desc);
@@ -70,6 +76,8 @@ function AppShell() {
                 <Route path="/collect"      element={<CollectPage />} />
                 <Route path="/finance"          element={<FinancePage />} />
                 <Route path="/finance/:screen"  element={<FinancePage />} />
+                <Route path="/body"             element={<BodyPage />} />
+                <Route path="/body/:screen"     element={<BodyPage />} />
                 <Route path="/incubator"    element={<Navigate to="/tasks" replace />} />
                 <Route path="/accounts"     element={<AccountsPage key={user?.id || 'guest'} />} />
                 <Route path="/settings"     element={<SettingsPage />} />

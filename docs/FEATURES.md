@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub
 
-**Version:** v6.16.0 · **Updated:** 2026-09-02
+**Version:** v6.22.0 · **Updated:** 2026-10-08
 
 Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và chi tiết release nằm trong
 [`CHANGELOG.md`](../CHANGELOG.md).
@@ -15,6 +15,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 | Inbox | `/inbox` | — | ✅ |
 | Knowledge (PKM) | `/collect` | — | ✅ |
 | Finance | `/finance/:screen?` | — | ✅ |
+| Body | `/body` | — | ✅ |
 | Vault | `/accounts` | — | Login + Vault unlock |
 | Cài đặt | `/settings` | — | ✅ |
 
@@ -238,7 +239,36 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 
 **Data:** `accounts` ciphertext + `vault_config`. Không có guest mode.
 
-## 9. Media, widget và PWA
+## 9. Body — Thể Hình & Sức Khỏe (`/body`)
+
+**Files:** `src/pages/BodyPage.jsx`, `src/components/body/*`, `src/hooks/useWorkouts.js`, `src/hooks/useBiometrics.js`, `src/hooks/useNutrition.js`, `src/utils/workoutLogic.js`, `src/utils/bodyMetrics.js`
+
+Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuân thủ nguyên tắc tối giản và không ngụy tạo số liệu:
+
+### Lộ trình & Tập luyện (Core Workout)
+- **Lộ trình theo thứ trong tuần (D1):** Gán bài tập cố định theo thứ trong tuần (T2..CN). Nếu bỏ buổi không tự dời ngày làm lệch tuần; cho phép tập bù buổi đã bỏ bất kỳ lúc nào.
+- **Tăng tiến tự động (Auto-progression - D2):** Khi hoàn thành tất cả các set $\ge$ mục tiêu, hệ thống tự động gợi ý tăng $+1\text{ rep}$ (hoặc $+5\text{s}$) và hiển thị checkbox cho người dùng duyệt áp dụng vào lộ trình gốc.
+- **Phòng tập trực tiếp (Live Session):**
+  - Chế độ tập Straight Sets, Circuit (20s/90s rest), Superset (15s/75s rest).
+  - Khóa chọn chế độ khi buổi tập đã bắt đầu nhằm bảo toàn hàng đợi và tính toàn vẹn dữ liệu.
+  - Đồng hồ đếm giờ delta timestamp chống lệch giờ khi khóa màn hình điện thoại hoặc chuyển tab.
+  - Chuông beep dùng Web Audio API tổng hợp âm tần OscillatorNode báo hiệu khi kết thúc thời gian nghỉ mà không phụ thuộc tài nguyên mạng.
+  - Cho phép bỏ qua set (`null`) không tính vào tăng tiến; upsert an toàn chống xung đột id.
+  - Tự động hủy (`abandoned`) các phiên tập dở dang trước khi tạo phiên mới, tuân thủ ràng buộc unique index PostgreSQL.
+- **Kỷ lục cá nhân (PR Detection):** Tự động phát hiện PR theo công thức 1RM Epley hoặc rep tối đa, hiển thị huy hiệu vinh danh. So sánh tiến độ loại trừ các set của chính buổi hiện tại.
+
+### Bản đồ cơ 3D (Three.js Canvas - D5)
+- Đóng gói Three.js từ npm package, render mô hình khối cầu giải phẫu 14 nhóm cơ xoay 360°, cuộn zoom, tooltip tên tiếng Việt.
+- Cơ chế giải phóng tài nguyên triệt để khi unmount (dispose geometries, materials, textures, force context loss) chống memory leak trên mobile và WebGL crash.
+- 3 chế độ tô màu: **Nhóm cơ** (chọn & phụ trợ), **Tải 7 ngày** (thang màu nhiệt tính từ khối lượng tập thật trong 7 ngày gần nhất), **Phục hồi** (3 trạng thái: Sẵn sàng, Đang hồi, Cần nghỉ suy từ thời gian nghỉ sau buổi tập gần nhất).
+- Fallback 2D canvas mượt mà khi thiết bị không hỗ trợ WebGL.
+
+### Sinh trắc học & Dinh dưỡng (Biometrics & Nutrition)
+- **Sinh trắc học:** Tính toán BMI chuẩn WHO châu Á kèm kim đồng hồ gauge chỉ thị vị trí thực, BMR (Mifflin-St Jeor), TDEE và Body Score (0-100) trên dữ liệu thực tế; 6 thẻ chỉ số đánh giá động (`fatEval`, `muscleEval`, `visceralEval`, `waterEval`); biểu đồ sparkline hỗ trợ lọc theo 7d/30d/90d; đánh dấu các lần cân đo lệch giờ (outlier).
+- **Dinh dưỡng tối giản:** Ghi nhận 4 bữa ăn với calo & macro (đạm, carb, béo) tự động cân đối theo TDEE, chọn nhanh từ danh sách món mẫu đã lưu, theo dõi mục tiêu 8 ly nước (2.000ml) theo múi giờ địa phương GMT+7 (`toDateStr`).
+- **Check-in tuần:** Đánh giá thể trạng 4 tiêu chí (1-5 sao, khởi tạo 0 để tránh gửi điểm giả), cân nặng trung bình tuần và số đo vòng eo; tính số tuần theo chuẩn ISO-8601.
+
+## 10. Media, widget và PWA
 
 - `api/upload.js`: authenticated multipart upload vào Google Drive folder đã cấu hình.
 - `api/stream.js`: folder-scoped readonly proxy, hỗ trợ HTTP Range/seek cho media.

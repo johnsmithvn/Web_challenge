@@ -1,8 +1,8 @@
-# Life Hub — Personal Life OS v6.16.0
+# Life Hub — Personal Life OS v6.22.0
 
 > **Kỷ Luật = Hệ Thống, Không Phải Ý Chí**
 
-Life Hub là ứng dụng web cá nhân tích hợp: Inbox, Nhiệm Vụ (kèm Không gian Lịch 5 chế độ), Sổ Tay Tri Thức (Knowledge Base PKM / Athenaeum), Tài Chính,
+Life Hub là ứng dụng web cá nhân tích hợp: Inbox, Nhiệm Vụ (kèm Không gian Lịch 5 chế độ), Sổ Tay Tri Thức (Knowledge Base PKM / Athenaeum), Tài Chính, Thể Hình & Sức Khỏe (Body),
 Account Vault và Focus. Frontend React/Vite, dữ liệu chính trên Supabase với RLS.
 
 - **Frontend:** React 19, Vite, React Router v7, vanilla CSS
@@ -10,7 +10,7 @@ Account Vault và Focus. Frontend React/Vite, dữ liệu chính trên Supabase 
 - **Lưu trữ tệp:** Google Drive API (qua serverless proxy, hỗ trợ Range/seek cho media)
 - **Kiểm thử:** Node.js test runner thuần (`node:assert/strict`), không phụ thuộc Jest/Vitest
 
-> **Lưu ý xác thực:** Landing Page, Nhiệm Vụ (ở chế độ khách) và Focus có thể dùng thử không cần tài khoản.
+> **Lưu ý xác thực:** Landing Page, Nhiệm Vụ (ở chế độ khách), Focus và Body (in-memory) có thể dùng thử không cần tài khoản.
 > Inbox, Knowledge, Finance, Settings và Account Vault yêu cầu đăng nhập.
 
 ---
@@ -33,11 +33,11 @@ cp .env.local.example .env.local
 npm run dev
 # → http://localhost:5173
 
-# (tuỳ chọn) Self-check nhanh — node:assert (24 test suites), không cần cài gì thêm
+# (tuỳ chọn) Self-check nhanh — node:assert (29 test suites), không cần cài gì thêm
 npm test
 ```
 
-> **Không có Supabase?** Task list và Focus vẫn chạy guest bằng state in-memory và mất khi reload.
+> **Không có Supabase?** Task list, Focus và Body vẫn chạy guest bằng state in-memory và mất khi reload.
 > Inbox, Knowledge, Finance, Settings và Account Vault yêu cầu đăng nhập.
 
 ---
@@ -113,7 +113,7 @@ npm run db:local:stop
 > `db:local:reset` xóa toàn bộ dữ liệu database local trước khi replay migration. Đây là lệnh user
 > chủ động chạy cho môi trường test trắng; agent không tự chạy và không được dùng với hosted project.
 
-26 migration local được chạy tự động theo timestamp:
+29 migration local được chạy tự động theo timestamp:
 
 1. [`20260802000000_base_v5_0_0.sql`](./supabase/migrations/20260802000000_base_v5_0_0.sql)
 2. [`20260805000000_vault_v5_2_0.sql`](./supabase/migrations/20260805000000_vault_v5_2_0.sql)
@@ -141,6 +141,9 @@ npm run db:local:stop
 24. [`20261006000000_task_parent_v6_19_0.sql`](./supabase/migrations/20261006000000_task_parent_v6_19_0.sql)
 25. [`20261006010000_subtask_order_v6_20_0.sql`](./supabase/migrations/20261006010000_subtask_order_v6_20_0.sql)
 26. [`20261006020000_task_start_deadline_v6_21_0.sql`](./supabase/migrations/20261006020000_task_start_deadline_v6_21_0.sql)
+27. [`20261008000000_body_workout_v6_22_0.sql`](./supabase/migrations/20261008000000_body_workout_v6_22_0.sql)
+28. [`20261008000001_body_biometrics_v6_22_0.sql`](./supabase/migrations/20261008000001_body_biometrics_v6_22_0.sql)
+29. [`20261008000002_body_nutrition_checkin_v6_22_0.sql`](./supabase/migrations/20261008000002_body_nutrition_checkin_v6_22_0.sql)
 
 Sau `npm run db:local:start`, tạo file `.env.development.local` (Git bỏ qua) bằng Project URL và
 Publishable key hiện trong kết quả:
@@ -187,6 +190,9 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 | 21 | [`data/migration_v6.19.0_task_parent.sql`](./data/migration_v6.19.0_task_parent.sql) | Cột `user_tasks.parent_task_id` (task con liên kết) + FK composite `(parent_task_id, user_id)` ép cùng chủ, `ON DELETE SET NULL (parent_task_id)`. **Cần Postgres 15+** (tự từ chối nếu thấp hơn). Additive, idempotent. |
 | 22 | [`data/migration_v6.20.0_subtask_order.sql`](./data/migration_v6.20.0_subtask_order.sql) | Cột `user_tasks.sort_order` (thứ tự kéo thả subtask) + đổi FK task cha sang `ON DELETE CASCADE` (xoá task cha → xoá subtask). Cần chạy v6.19.0 trước (tự từ chối nếu thiếu). Idempotent. |
 | 23 | [`data/migration_v6.21.0_task_start_deadline.sql`](./data/migration_v6.21.0_task_start_deadline.sql) | Thời gian task = Bắt đầu (`start_date` + `start_time`) + Hạn; `started_at` (giờ bắt đầu làm thật); `due_date` bỏ NOT NULL (task không ngày); 3 CHECK. **Sửa dữ liệu:** giờ hạn 23:59/00:00 → NULL, khung giờ cũ → Bắt đầu/Hạn, **xoá cột `end_time`**. Cần v6.17.0 trước. Idempotent. |
+| 24 | [`data/migration_v6.22.0_body_workout.sql`](./data/migration_v6.22.0_body_workout.sql) | Module Thể hình & Luyện tập: 5 bảng (`body_custom_exercises`, `body_routines`, `body_routine_items`, `body_workout_sessions`, `body_workout_sets`), RLS kép, composite FK, chỉ cho phép 1 buổi tập dở dang. Idempotent. |
+| 25 | [`data/migration_v6.22.0_body_biometrics.sql`](./data/migration_v6.22.0_body_biometrics.sql) | Module Sinh trắc học & Hồ sơ: 2 bảng (`body_measurements`, `body_profiles`), đo lường cân nặng, mỡ, cơ, nước, mỡ nội tạng, hồ sơ cá nhân. Idempotent. |
+| 26 | [`data/migration_v6.22.0_body_nutrition_checkin.sql`](./data/migration_v6.22.0_body_nutrition_checkin.sql) | Module Dinh dưỡng & Check-in: 4 bảng (`body_meal_logs`, `body_saved_meals`, `body_water_logs`, `body_weekly_checkins`), theo dõi 4 bữa, macro, uống nước, check-in tuần ISO. Idempotent. |
 
 Dọn dẹp bảng cũ (tùy chọn):
 - [`data/drop_incubator_tables.sql`](./data/drop_incubator_tables.sql) (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).
