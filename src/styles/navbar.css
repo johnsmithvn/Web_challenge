@@ -560,12 +560,15 @@
     padding-bottom: var(--bottom-tabs-height);
   }
 
-  body.in-body-workspace {
+  body.in-body-workspace,
+  body.in-finance-workspace {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
   body.in-body-workspace .topbar,
-  body.in-body-workspace .bottom-tabs {
+  body.in-body-workspace .bottom-tabs,
+  body.in-finance-workspace .topbar,
+  body.in-finance-workspace .bottom-tabs {
     display: none !important;
   }
 }

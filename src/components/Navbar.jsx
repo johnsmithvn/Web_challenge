@@ -171,6 +171,8 @@ export default function Navbar() {
 
   const isLanding = location.pathname === '/';
   const isBody = location.pathname.startsWith('/body');
+  const isFinance = location.pathname.startsWith('/finance');
+  const hideGlobalMobileNav = isBody || isFinance;
   if (isLanding && !user) return showAuth ? <AuthModal onClose={() => setShowAuth(false)} /> : null;
 
   return (
@@ -266,7 +268,7 @@ export default function Navbar() {
       </aside>
 
       {/* ── MOBILE TOP BAR (<769px) ──────────────────────────── */}
-      {!isBody && (
+      {!hideGlobalMobileNav && (
         <header className="topbar">
           <Link to="/" className="topbar__logo">
             <AppIcon name="sparkle" size={18} weight="fill" /> Life Hub
@@ -297,7 +299,7 @@ export default function Navbar() {
       )}
 
       {/* ── MOBILE BOTTOM TABS (<769px) ──────────────────────── */}
-      {!isBody && (
+      {!hideGlobalMobileNav && (
         <nav className="bottom-tabs">
           {MOBILE_PRIMARY_NAV.map(link => (
             <Link
