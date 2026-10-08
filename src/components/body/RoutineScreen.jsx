@@ -924,48 +924,24 @@ export default function RoutineScreen({
               </div>
             </div>
 
-            {/* Trạng thái & Nút hành động */}
+            {/* Trạng thái Lộ trình */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
-                fontSize: '12.5px',
+                padding: '4px 10px',
+                borderRadius: '8px',
+                fontSize: '12px',
                 fontWeight: 600,
-                color: isPreviewing ? 'var(--body-accent)' : 'var(--body-green)'
+                background: isPreviewing ? 'var(--body-accent-soft)' : 'var(--body-green-soft, rgba(16, 185, 129, 0.12))',
+                color: isPreviewing ? 'var(--body-accent)' : 'var(--body-green, #10B981)',
+                border: `1px solid ${isPreviewing ? 'var(--body-accent-border)' : 'var(--body-green-border, rgba(16, 185, 129, 0.25))'}`,
+                userSelect: 'none'
               }}>
-                <AppIcon name="checkCircle" size={15} />
-                <span>{isPreviewing ? 'Đang xem trước' : 'Đã lưu'}</span>
+                <AppIcon name="checkCircle" size={14} />
+                <span>{isPreviewing ? 'Đang xem trước' : 'Đã lưu vào hồ sơ'}</span>
               </span>
-
-              {activeDay.isTrain && !isPreviewing && (
-                <button
-                  type="button"
-                  onClick={() => onStartSession?.({
-                    weekday: selectedDay,
-                    day: selectedDay,
-                    name: activeDay.name,
-                    focus: activeDay.focus
-                  })}
-                  style={{
-                    height: '34px',
-                    padding: '0 14px',
-                    borderRadius: '9px',
-                    background: 'var(--body-accent)',
-                    color: '#fff',
-                    border: 'none',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <AppIcon name="play" size={13} />
-                  <span>Bắt đầu buổi tập này</span>
-                </button>
-              )}
             </div>
           </div>
 

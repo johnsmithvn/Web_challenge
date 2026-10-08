@@ -40,6 +40,7 @@ export default function BodyPage() {
     recentSets,
     exerciseMap,
     routineTemplates,
+    hasLoaded,
     createRoutineFromTemplate,
     createCustomRoutine,
     switchRoutine,
@@ -74,12 +75,21 @@ export default function BodyPage() {
   // Check for existing in-progress session in database
   const inProgressSession = sessions.find(s => s.status === 'in_progress');
 
-  // Tự động chuyển về Lộ trình nếu người dùng truy cập /body/session mà không có phiên tập nào đang diễn ra
+  // Effective session & dayInfo (tự động fallback về inProgressSession nếu có)
+  const effectiveSession = currentSessionObj || inProgressSession;
+  const effectiveDayInfo = activeSessionDay || (inProgressSession ? {
+    day: inProgressSession.planned_weekday || 1,
+    weekday: inProgressSession.planned_weekday || 1,
+    name: inProgressSession.day_type || inProgressSession.title?.replace('Buổi ', '') || 'Tập luyện',
+    isResume: true
+  } : null);
+
+  // Tự động chuyển về Lộ trình nếu người dùng truy cập /body/session mà không có phiên tập nào đang diễn ra (chỉ sau khi dữ liệu đã tải)
   useEffect(() => {
-    if (routeScreen === 'session' && !currentSessionObj && !inProgressSession) {
+    if (hasLoaded && routeScreen === 'session' && !effectiveSession) {
       navigate('/body/routine', { replace: true });
     }
-  }, [routeScreen, currentSessionObj, inProgressSession, navigate]);
+  }, [hasLoaded, routeScreen, effectiveSession, navigate]);
 
   // Lock document body scroll on desktop (Workspace Pattern)
   useEffect(() => {
@@ -118,9 +128,10 @@ export default function BodyPage() {
 
   const handleFinishSession = useCallback(async (results) => {
     try {
-      if (currentSessionObj?.id) {
+      const sId = currentSessionObj?.id || inProgressSession?.id;
+      if (sId) {
         await finishSession({
-          sessionId: currentSessionObj.id,
+          sessionId: sId,
           durationSeconds: results.elapsed,
           notes: ''
         });
@@ -136,24 +147,27 @@ export default function BodyPage() {
         showToast?.('Đã lưu vào bộ nhớ tạm (Đăng nhập để đồng bộ đám mây)', 'info');
       }
       setCurrentSessionObj(null);
+      setActiveSessionDay(null);
       setScreen('history');
     } catch (err) {
       showToast?.('Lỗi khi lưu buổi tập: ' + (err.message || 'Thử lại sau'), 'error');
     }
-  }, [currentSessionObj, finishSession, applyProgression, user, showToast, setScreen]);
+  }, [currentSessionObj, inProgressSession, finishSession, applyProgression, user, showToast, setScreen]);
 
   const handleCancelSession = useCallback(async () => {
-    if (currentSessionObj?.id) {
+    const sId = currentSessionObj?.id || inProgressSession?.id;
+    if (sId) {
       try {
-        await abandonSession(currentSessionObj.id);
+        await abandonSession(sId);
         showToast?.('Đã hủy buổi tập.', 'info');
       } catch (err) {
         showToast?.('Lỗi khi hủy buổi tập: ' + (err.message || 'Thử lại sau'), 'error');
       }
     }
     setCurrentSessionObj(null);
+    setActiveSessionDay(null);
     setScreen('routine');
-  }, [currentSessionObj, abandonSession, showToast, setScreen]);
+  }, [currentSessionObj, inProgressSession, abandonSession, showToast, setScreen]);
 
   const [now] = useState(() => Date.now());
   const today = useMemo(() => new Date(now), [now]);
@@ -451,50 +465,37 @@ export default function BodyPage() {
         )}
 
         {currentScreen === 'session' && (
-          currentSessionObj ? (
+          effectiveSession ? (
             <LiveSessionScreen
-              dayInfo={activeSessionDay}
+              dayInfo={effectiveDayInfo}
               routineItems={routineItems}
               recentSets={recentSets}
               exerciseMap={exerciseMap}
-              sessionId={currentSessionObj.id}
-              isResume={Boolean(currentSessionObj?.isResume || activeSessionDay?.isResume)}
+              sessionId={effectiveSession.id}
+              isResume={Boolean(effectiveSession.isResume || effectiveDayInfo?.isResume)}
               onLogSet={logSet}
               onFinishSession={handleFinishSession}
               onCancel={handleCancelSession}
             />
-          ) : inProgressSession ? (
-            <div className="body-card" style={{ maxWidth: '500px', margin: '40px auto', padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'var(--body-accent-soft)', color: 'var(--body-accent)', display: 'grid', placeItems: 'center' }}>
+          ) : (
+            <div className="body-card" style={{ maxWidth: '480px', margin: '40px auto', padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'var(--body-shell-bg)', color: 'var(--body-text-muted)', display: 'grid', placeItems: 'center' }}>
                 <AppIcon name="barbell" size={28} />
               </div>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>Buổi tập chưa hoàn tất</h2>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>Chưa có buổi tập nào</h2>
               <p style={{ fontSize: '13.5px', color: 'var(--body-text-muted)', lineHeight: 1.5, margin: 0 }}>
-                Bạn có một buổi <strong>{inProgressSession.title || inProgressSession.day_type || 'Tập luyện'}</strong> ({inProgressSession.local_date}) đang diễn ra dở dang.
+                Hãy chọn một ngày trong Lộ trình để bắt đầu hoặc mở Tổng quan để xem buổi tập hôm nay.
               </p>
               <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                <button
-                  className="body-btn body-btn-danger"
-                  onClick={async () => {
-                    try {
-                      await abandonSession(inProgressSession.id);
-                      showToast?.('Đã hủy buổi tập cũ.', 'info');
-                    } catch (err) {
-                      showToast?.('Lỗi: ' + (err.message || 'Thử lại sau'), 'error');
-                    }
-                  }}
-                >
-                  Hủy buổi cũ
+                <button className="body-btn" onClick={() => setScreen('overview')}>
+                  Về Tổng quan
                 </button>
-                <button
-                  className="body-btn body-btn-primary"
-                  onClick={() => handleResumeSession(inProgressSession)}
-                >
-                  Tiếp tục tập
+                <button className="body-btn body-btn-primary" onClick={() => setScreen('routine')}>
+                  Mở Lộ trình
                 </button>
               </div>
             </div>
-          ) : null
+          )
         )}
 
         {currentScreen === 'history' && (

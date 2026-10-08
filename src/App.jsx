@@ -55,7 +55,11 @@ function AppShell() {
   const { shouldShow } = useOnboarding();
   const { user } = useAuth();
   const [onboarded, setOnboarded] = useState(!shouldShow);
-  const location = useLocation();
+  const domainTransitionKey = location.pathname.startsWith('/body')
+    ? '/body'
+    : location.pathname.startsWith('/finance')
+    ? '/finance'
+    : location.pathname;
 
   return (
     <>
@@ -68,7 +72,7 @@ function AppShell() {
       <div className="app-content">
         <ErrorBoundary>
           <Suspense fallback={<PageSkeleton />}>
-            <div className="page-transition" key={location.pathname}>
+            <div className="page-transition" key={domainTransitionKey}>
               <Routes>
                 <Route path="/"             element={<LandingPage />} />
                 <Route path="/inbox"        element={<Navigate to="/tasks" replace />} />
