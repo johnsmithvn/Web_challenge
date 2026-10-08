@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { useFinance } from '../../hooks/useFinance';
 import { useWorkouts } from '../../hooks/useWorkouts';
@@ -17,6 +18,7 @@ const VN_WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Th�
 
 export default function HomeDashboard() {
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -197,6 +199,16 @@ export default function HomeDashboard() {
               </span>
             </div>
           )}
+
+          <button
+            type="button"
+            className="dash-theme-btn"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+            aria-label="Đổi giao diện sáng/tối"
+          >
+            <AppIcon name={theme === 'dark' ? 'sun' : 'moon'} size={18} weight="fill" />
+          </button>
         </div>
       </header>
 

@@ -2,6 +2,7 @@
    DESIGN TOKENS — DARK (default)
    ============================ */
 :root {
+  color-scheme: dark;
   /* Backgrounds */
   --bg-primary:    #08080f;
   --bg-secondary:  #0d0d1a;
@@ -79,6 +80,7 @@
    DESIGN TOKENS — LIGHT
    ============================ */
 [data-theme="light"] {
+  color-scheme: light;
   --bg-primary:      #f4f6fb;
   --bg-secondary:    #ffffff;
   --bg-tertiary:     #eef1f8;

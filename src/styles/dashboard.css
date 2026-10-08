@@ -102,6 +102,38 @@
   flex-shrink: 0;
 }
 
+.dash-theme-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--item-bg);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.dash-theme-btn:hover {
+  background: var(--item-hover-bg);
+  border-color: rgba(139, 92, 246, 0.4);
+  transform: scale(1.05);
+}
+
+[data-theme="light"] .dash-theme-btn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+[data-theme="light"] .dash-theme-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
 /* ── STATUS BADGE (Huy hiệu an tâm / Báo động) ────────────────────────── */
 .dash-status {
   display: inline-flex;
