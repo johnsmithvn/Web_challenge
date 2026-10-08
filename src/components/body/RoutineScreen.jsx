@@ -22,6 +22,8 @@ export default function RoutineScreen({
   routineTemplates = ROUTINE_TEMPLATES,
   sessions = [],
   recentSets = [],
+  activeSession,
+  onResumeSession,
   onCreateRoutineFromTemplate,
   onCreateCustomRoutine,
   onSwitchRoutine,
@@ -34,8 +36,11 @@ export default function RoutineScreen({
   onDeleteExercise,
   onToggleAutoProgress
 }) {
-  // Thứ trong tuần đang xem (1: T2 -> 7: CN, mặc định Thứ Ba hoặc Thứ Hai)
-  const [selectedDay, setSelectedDay] = useState(2);
+  // Thứ trong tuần đang xem (1: T2 -> 7: CN, tự động chọn theo thứ của ngày hôm nay)
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const jsDay = new Date().getDay();
+    return jsDay === 0 ? 7 : jsDay;
+  });
   const [showPicker, setShowPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
   const [localItems, setLocalItems] = useState(routineItems);
@@ -221,6 +226,15 @@ export default function RoutineScreen({
 
   const activeDay = weekdaysData.find(w => w.day === selectedDay) || weekdaysData[0];
   const dayItems = currentDisplayItems.filter(item => item.weekday === selectedDay);
+
+  // Nhận diện buổi tập đang dở dang
+  const currentActiveSession = activeSession || sessions.find(s => s.status === 'in_progress');
+  const isThisDayActive = Boolean(
+    currentActiveSession && (
+      Number(currentActiveSession.planned_weekday) === Number(selectedDay) ||
+      currentActiveSession.day_type === activeDay.name
+    )
+  );
 
   // Thống kê thẻ ĐANG THEO
   const routineWeeksTotal = routine?.weeks || 8;
@@ -1273,36 +1287,113 @@ export default function RoutineScreen({
                   </div>
                 )}
 
-                {/* Nút Bắt đầu buổi tập thuận tiện ở cuối bảng bài */}
+                {/* Nút Bắt đầu hoặc Tiếp tục buổi tập thuận tiện ở cuối bảng bài */}
                 {!isPreviewing && dayItems.length > 0 && (
-                  <div style={{ marginTop: '16px', marginBottom: '10px', display: 'flex', justifyContent: 'flex-start' }}>
-                    <button
-                      type="button"
-                      onClick={() => onStartSession?.({
-                        weekday: selectedDay,
-                        day: selectedDay,
-                        name: activeDay.name,
-                        focus: activeDay.focus
-                      })}
-                      style={{
-                        height: '42px',
-                        padding: '0 20px',
-                        borderRadius: '10px',
-                        background: 'var(--body-accent)',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        fontSize: '13.5px',
-                        fontWeight: 600,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
-                      }}
-                    >
-                      <AppIcon name="play" size={15} weight="fill" />
-                      <span>Bắt đầu buổi tập {activeDay.name} ngay ({dayItems.length} bài)</span>
-                    </button>
+                  <div style={{ marginTop: '16px', marginBottom: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {isThisDayActive ? (
+                      <button
+                        type="button"
+                        onClick={() => onResumeSession ? onResumeSession(currentActiveSession) : onStartSession?.({ weekday: selectedDay, day: selectedDay, name: activeDay.name, focus: activeDay.focus })}
+                        title={`Tiếp tục ${activeDay.name}`}
+                        style={{
+                          height: '42px',
+                          padding: '0 20px',
+                          borderRadius: '10px',
+                          background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          fontSize: '13.5px',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 10px rgba(239, 68, 68, 0.35)'
+                        }}
+                      >
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FFFFFF', display: 'inline-block' }} />
+                        <AppIcon name="barbell" size={16} weight="fill" />
+                        <span>Tiếp tục</span>
+                      </button>
+                    ) : currentActiveSession ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onResumeSession?.(currentActiveSession)}
+                          title={`Tiếp tục: ${currentActiveSession.title || currentActiveSession.day_type || 'Đang tập'}`}
+                          style={{
+                            height: '42px',
+                            padding: '0 16px',
+                            borderRadius: '10px',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1.5px solid rgba(239, 68, 68, 0.4)',
+                            color: '#DC2626',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '7px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#DC2626' }} />
+                          <AppIcon name="barbell" size={15} />
+                          <span>Tiếp tục</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onStartSession?.({ weekday: selectedDay, day: selectedDay, name: activeDay.name, focus: activeDay.focus })}
+                          title={`Bắt đầu buổi ${activeDay.name}`}
+                          style={{
+                            height: '42px',
+                            padding: '0 18px',
+                            borderRadius: '10px',
+                            background: 'var(--body-accent)',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
+                          }}
+                        >
+                          <AppIcon name="play" size={14} weight="fill" />
+                          <span>Bắt đầu mới</span>
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onStartSession?.({
+                          weekday: selectedDay,
+                          day: selectedDay,
+                          name: activeDay.name,
+                          focus: activeDay.focus
+                        })}
+                        title={`Bắt đầu ${activeDay.name} (${dayItems.length} bài)`}
+                        style={{
+                          height: '42px',
+                          padding: '0 20px',
+                          borderRadius: '10px',
+                          background: 'var(--body-accent)',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          fontSize: '13.5px',
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
+                        }}
+                      >
+                        <AppIcon name="play" size={15} weight="fill" />
+                        <span>Bắt đầu</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1694,37 +1785,117 @@ export default function RoutineScreen({
                 </button>
               )}
 
-              {/* Nút to tím Bắt đầu buổi tập này */}
+              {/* Nút to Bắt đầu hoặc Tiếp tục buổi tập này */}
               {!isPreviewing && dayItems.length > 0 && (
-                <div style={{ padding: '12px 0 8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => onStartSession?.({
-                      weekday: selectedDay,
-                      day: selectedDay,
-                      name: activeDay.name,
-                      focus: activeDay.focus
-                    })}
-                    style={{
-                      width: '100%',
-                      height: '42px',
-                      borderRadius: '11px',
-                      background: 'var(--body-accent)',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      fontSize: '13.5px',
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      cursor: 'pointer',
-                      boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
-                    }}
-                  >
-                    <AppIcon name="play" size={14} weight="fill" />
-                    <span>Bắt đầu buổi tập này</span>
-                  </button>
+                <div style={{ padding: '12px 0 8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {isThisDayActive ? (
+                    <button
+                      type="button"
+                      onClick={() => onResumeSession ? onResumeSession(currentActiveSession) : onStartSession?.({ weekday: selectedDay, day: selectedDay, name: activeDay.name, focus: activeDay.focus })}
+                      title={`Tiếp tục ${activeDay.name}`}
+                      style={{
+                        width: '100%',
+                        height: '42px',
+                        borderRadius: '11px',
+                        background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: '13.5px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 10px rgba(239, 68, 68, 0.35)'
+                      }}
+                    >
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FFFFFF' }} />
+                      <AppIcon name="barbell" size={15} weight="fill" />
+                      <span>Tiếp tục</span>
+                    </button>
+                  ) : currentActiveSession ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onResumeSession?.(currentActiveSession)}
+                        title={`Tiếp tục: ${currentActiveSession.title || currentActiveSession.day_type || 'Đang tập'}`}
+                        style={{
+                          width: '100%',
+                          height: '40px',
+                          borderRadius: '11px',
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          border: '1.5px solid rgba(239, 68, 68, 0.4)',
+                          color: '#DC2626',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#DC2626' }} />
+                        <AppIcon name="barbell" size={14} />
+                        <span>Tiếp tục</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onStartSession?.({ weekday: selectedDay, day: selectedDay, name: activeDay.name, focus: activeDay.focus })}
+                        title={`Bắt đầu buổi ${activeDay.name}`}
+                        style={{
+                          width: '100%',
+                          height: '40px',
+                          borderRadius: '11px',
+                          background: 'var(--body-accent)',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
+                        }}
+                      >
+                        <AppIcon name="play" size={14} weight="fill" />
+                        <span>Bắt đầu mới</span>
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onStartSession?.({
+                        weekday: selectedDay,
+                        day: selectedDay,
+                        name: activeDay.name,
+                        focus: activeDay.focus
+                      })}
+                      title={`Bắt đầu ${activeDay.name} (${dayItems.length} bài)`}
+                      style={{
+                        width: '100%',
+                        height: '42px',
+                        borderRadius: '11px',
+                        background: 'var(--body-accent)',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
+                      }}
+                    >
+                      <AppIcon name="play" size={14} weight="fill" />
+                      <span>Bắt đầu</span>
+                    </button>
+                  )}
                 </div>
               )}
             </>

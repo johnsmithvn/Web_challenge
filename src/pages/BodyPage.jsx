@@ -283,7 +283,7 @@ export default function BodyPage() {
                 display: 'inline-block'
               }} />
               <AppIcon name="barbell" size={14} />
-              <span>{currentSessionObj ? 'Đang tập dở' : 'Tiếp tục buổi cũ'}</span>
+              <span>Tiếp tục</span>
             </button>
           )}
 
@@ -449,6 +449,8 @@ export default function BodyPage() {
             routines={routines}
             routineTemplates={routineTemplates}
             sessions={sessions}
+            activeSession={effectiveSession}
+            onResumeSession={handleResumeSession}
             recentSets={recentSets}
             onCreateRoutineFromTemplate={createRoutineFromTemplate}
             onCreateCustomRoutine={createCustomRoutine}
