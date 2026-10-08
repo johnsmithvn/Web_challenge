@@ -32,7 +32,6 @@ export default function HomeDashboard() {
   // State xem chi tiết nhiệm vụ và thu gọn task quá hạn
   const [selectedTask, setSelectedTask] = useState(null);
   const [expandedOverdueTasks, setExpandedOverdueTasks] = useState(false);
-  const [expandedTodayTasks, setExpandedTodayTasks] = useState(false);
 
   // Lời chào theo buổi
   const greeting = useMemo(() => {
@@ -70,12 +69,15 @@ export default function HomeDashboard() {
     });
   }, [tasks, bills, cards, loans, lendings, deposits, budgets, transactions, today]);
 
-  // Phân loại cảnh báo để tránh task quá hạn đè mất nghĩa vụ tài chính trên mobile
+  // Phân loại cảnh báo khẩn cấp: Nghĩa vụ tài chính & Nhiệm vụ quá hạn
+  // Task đến hạn hôm nay (todayTasks) tập trung hiển thị tại Tầng 2 (Checklist Hôm nay), tránh trùng lặp
   const criticalFinance = useMemo(() => alerts.critical.filter(a => a.domain !== 'task'), [alerts.critical]);
   const criticalTasks = useMemo(() => alerts.critical.filter(a => a.domain === 'task'), [alerts.critical]);
-
   const dueTodayFinance = useMemo(() => alerts.dueToday.filter(a => a.domain !== 'task'), [alerts.dueToday]);
-  const dueTodayTasks = useMemo(() => alerts.dueToday.filter(a => a.domain === 'task'), [alerts.dueToday]);
+
+  const urgentCount = criticalFinance.length + dueTodayFinance.length + criticalTasks.length;
+  const overdueCount = criticalFinance.length + criticalTasks.length;
+  const dueFinanceCount = dueTodayFinance.length;
 
   // Ngân sách tháng hiện tại
   const monthBudget = useMemo(() => {
@@ -159,7 +161,6 @@ export default function HomeDashboard() {
 
   // Danh sách task quá hạn hiển thị (rút gọn Top 3 hoặc mở rộng)
   const visibleOverdueTasks = expandedOverdueTasks ? criticalTasks : criticalTasks.slice(0, 3);
-  const visibleTodayTasks = expandedTodayTasks ? dueTodayTasks : dueTodayTasks.slice(0, 3);
 
   return (
     <div className="dash-workspace">
@@ -181,7 +182,7 @@ export default function HomeDashboard() {
         </div>
 
         <div className="dash-header__right">
-          {alerts.stats.allClear ? (
+          {urgentCount === 0 ? (
             <div className="dash-status dash-status--ok">
               <AppIcon name="shieldCheck" size={16} weight="fill" />
               <span>Mọi nghĩa vụ & công việc đều đúng hạn</span>
@@ -190,9 +191,9 @@ export default function HomeDashboard() {
             <div className="dash-status dash-status--urgent">
               <AppIcon name="warning" size={16} weight="fill" />
               <span>
-                {alerts.stats.criticalCount > 0 ? `${alerts.stats.criticalCount} mục quá hạn` : ''}
-                {alerts.stats.criticalCount > 0 && alerts.stats.dueTodayCount > 0 ? ' · ' : ''}
-                {alerts.stats.dueTodayCount > 0 ? `${alerts.stats.dueTodayCount} việc đến hạn hôm nay` : ''}
+                {overdueCount > 0 ? `${overdueCount} mục quá hạn` : ''}
+                {overdueCount > 0 && dueFinanceCount > 0 ? ' · ' : ''}
+                {dueFinanceCount > 0 ? `${dueFinanceCount} tài chính đến hạn hôm nay` : ''}
               </span>
             </div>
           )}
@@ -202,17 +203,17 @@ export default function HomeDashboard() {
       {/* ── VÙNG CUỘN NỘI BỘ (Workspace Scroll Container) ─────────────── */}
       <div className="dash-scroll">
         {/* ═════════════════════════════════════════════════════════════════════════
-            TẦNG 1: 🚨 CẦN XỬ LÝ NGAY (Action Required / Overdue & Due Today)
+            TẦNG 1: 🚨 CẦN XỬ LÝ NGAY (Action Required / Overdue & Financial Due Today)
             ═════════════════════════════════════════════════════════════════════════ */}
-        {alerts.stats.totalUrgent > 0 ? (
+        {urgentCount > 0 ? (
           <section className="dash-critical-box" aria-label="Nghĩa vụ và công việc cần xử lý ngay">
             <div className="dash-critical-box__head">
               <div className="dash-critical-box__title">
                 <AppIcon name="warning" size={18} weight="fill" />
-                <span>Cần xử lý ngay ({alerts.stats.totalUrgent})</span>
+                <span>Cần xử lý ngay ({urgentCount})</span>
               </div>
               <span className="dash-critical-box__count">
-                {alerts.stats.criticalCount > 0 ? `${alerts.stats.criticalCount} quá hạn` : 'Đến hạn'}
+                {overdueCount > 0 ? `${overdueCount} quá hạn` : `${dueFinanceCount} đến hạn`}
               </span>
             </div>
 
@@ -408,62 +409,6 @@ export default function HomeDashboard() {
                   )}
                 </>
               )}
-
-              {/* ── 4. Nhiệm vụ đến hạn hôm nay (Rút gọn nếu nhiều) ── */}
-              {dueTodayTasks.length > 0 && (
-                <>
-                  <div className="dash-alert-subhead">
-                    <span>Nhiệm vụ đến hạn hôm nay ({dueTodayTasks.length})</span>
-                  </div>
-
-                  {visibleTodayTasks.map(item => (
-                    <div
-                      key={item.id}
-                      className="dash-alert-row dash-alert-row--today dash-alert-row--clickable"
-                      onClick={() => setSelectedTask(item.raw)}
-                      title="Bấm để mở xem chi tiết nhiệm vụ"
-                    >
-                      <div className="dash-alert-row__icon-wrap">
-                        <AppIcon name={item.icon} size={18} weight="fill" />
-                      </div>
-                      <div className="dash-alert-row__main">
-                        <span className="dash-alert-row__title">{item.title}</span>
-                        <span className="dash-alert-row__subtitle">{item.subtitle}</span>
-                      </div>
-                      <div className="dash-alert-row__badge-box">
-                        <span className="dash-alert-row__badge">{item.badge}</span>
-                      </div>
-                      <div className="dash-alert-row__actions">
-                        <button
-                          type="button"
-                          className="dash-btn dash-btn--success"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAlertAction(item, 'complete');
-                          }}
-                        >
-                          <AppIcon name="check" size={14} /> Xong
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {dueTodayTasks.length > 3 && (
-                    <button
-                      type="button"
-                      className="dash-expand-btn"
-                      onClick={() => setExpandedTodayTasks(!expandedTodayTasks)}
-                    >
-                      <AppIcon name={expandedTodayTasks ? 'caretUp' : 'caretDown'} size={14} />
-                      <span>
-                        {expandedTodayTasks
-                          ? 'Thu gọn danh sách hôm nay'
-                          : `Xem thêm ${dueTodayTasks.length - 3} việc hôm nay khác`}
-                      </span>
-                    </button>
-                  )}
-                </>
-              )}
             </div>
           </section>
         ) : (
@@ -501,7 +446,6 @@ export default function HomeDashboard() {
                   <div
                     key={t.id}
                     className="dash-task-item"
-                    style={{ cursor: 'pointer' }}
                     onClick={() => setSelectedTask(t)}
                     title="Bấm để mở xem chi tiết"
                   >
@@ -517,6 +461,11 @@ export default function HomeDashboard() {
                       <AppIcon name="check" size={12} weight="bold" />
                     </button>
                     <span className="dash-task-item__title">{t.title}</span>
+                    {t.priority && (
+                      <span className={`dash-task-priority dash-task-priority--p${t.priority}`}>
+                        P{t.priority}
+                      </span>
+                    )}
                     {t.due_time && <span className="dash-task-item__time">{t.due_time}</span>}
                   </div>
                 ))
@@ -527,22 +476,13 @@ export default function HomeDashboard() {
                 </div>
               )}
 
-              <form onSubmit={handleQuickAdd} style={{ marginTop: 'auto', paddingTop: '8px' }}>
+              <form onSubmit={handleQuickAdd} className="dash-quick-form">
                 <input
                   type="text"
                   placeholder="+ Thêm nhanh việc hôm nay..."
                   value={quickTitle}
                   onChange={e => setQuickTitle(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    color: 'var(--text)',
-                    fontSize: '12.5px',
-                    boxSizing: 'border-box',
-                  }}
+                  className="dash-quick-input"
                 />
               </form>
             </div>
