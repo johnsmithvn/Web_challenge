@@ -1,0 +1,726 @@
+/* ==========================================================================
+   LIFE HUB DASHBOARD — COMMAND CENTER
+   Workspace Pattern (100dvh, Header Ghim Tĩnh, Cuộn Nội Bộ, Safe Grid)
+   ========================================================================== */
+
+.dash-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+/* ── HEADER BĂNG DÍNH (Pinned Header) ─────────────────────────────────── */
+.dash-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  z-index: 10;
+}
+
+.dash-header__left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dash-header__greeting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-header__date-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.dash-header__lunar-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.dash-header__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* ── STATUS BADGE (Huy hiệu an tâm / Báo động) ────────────────────────── */
+.dash-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.dash-status--ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.dash-status--urgent {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  animation: dashPulse 2s infinite ease-in-out;
+}
+
+@keyframes dashPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
+}
+
+/* ── VÙNG CUỘN NỘI BỘ (Workspace Scroll Container) ───────────────────── */
+.dash-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding: 20px 24px 60px; /* đệm né nút FAB và thoải mái chân trang */
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+/* ── TẦNG 1: KHỐI CẢNH BÁO KHẨN CẤP (Critical Action Section) ────────── */
+.dash-critical-box {
+  background: var(--card-bg);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.08);
+}
+
+.dash-critical-box__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: rgba(239, 68, 68, 0.08);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.18);
+  gap: 12px;
+}
+
+.dash-critical-box__title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.dash-critical-box__count {
+  padding: 3px 9px;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dash-critical-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-alert-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s ease;
+}
+
+.dash-alert-row:last-child {
+  border-bottom: none;
+}
+
+.dash-alert-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.dash-alert-row__icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dash-alert-row--critical .dash-alert-row__icon-wrap {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+}
+
+.dash-alert-row--today .dash-alert-row__icon-wrap {
+  background: rgba(245, 158, 11, 0.14);
+  color: #f59e0b;
+}
+
+.dash-alert-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dash-alert-row__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-alert-row__subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-alert-row__badge-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.dash-alert-row__badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.dash-alert-row--critical .dash-alert-row__badge {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+}
+
+.dash-alert-row--today .dash-alert-row__badge {
+  background: rgba(245, 158, 11, 0.18);
+  color: #f59e0b;
+}
+
+.dash-alert-row__amount {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-alert-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Nút hành động nhanh */
+.dash-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.dash-btn--primary {
+  background: #6366f1;
+  color: #fff;
+}
+.dash-btn--primary:hover {
+  background: #4f46e5;
+}
+
+.dash-btn--danger {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.dash-btn--danger:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+.dash-btn--secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  border-color: var(--border);
+}
+.dash-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dash-btn--success {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.dash-btn--success:hover {
+  background: #10b981;
+  color: #fff;
+}
+
+/* Khung All-clear (Mọi thứ đều ổn) */
+.dash-all-clear {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  border-radius: 14px;
+}
+
+.dash-all-clear__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.16);
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dash-all-clear__title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #10b981;
+  margin-bottom: 2px;
+}
+
+.dash-all-clear__sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* ── TẦNG 2: TIÊU ĐIỂM HÔM NAY (Today Pulse Safe 3-Col Grid) ─────────── */
+.dash-today-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.dash-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.dash-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+
+.dash-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.dash-card__link {
+  font-size: 12px;
+  color: #8b5cf6;
+  text-decoration: none;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.dash-card__link:hover {
+  text-decoration: underline;
+}
+
+.dash-card__body {
+  padding: 14px 18px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Checklist task hôm nay */
+.dash-task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  transition: all 0.15s ease;
+}
+
+.dash-task-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dash-task-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: transparent;
+  color: transparent;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.dash-task-check:hover {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.dash-task-item__title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-task-item__time {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* Card Body / Workout */
+.dash-workout-banner {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dash-workout-banner__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dash-workout-banner__badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: rgba(59, 130, 246, 0.18);
+  color: #3b82f6;
+}
+
+.dash-workout-exercises {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+/* Card Heads-Up */
+.dash-headsup-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.dash-headsup-item__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dash-headsup-item__title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-headsup-item__badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  padding: 2px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Empty state thẻ */
+.dash-card-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  gap: 6px;
+}
+
+/* ── TẦNG 3: BỨC TRANH TOÀN CẢNH (Life Metrics & Jump Hub) ───────────── */
+.dash-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 20px;
+}
+
+/* Widget Ngân sách tháng */
+.dash-budget-widget {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dash-budget-widget__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dash-budget-widget__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-budget-widget__figures {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.dash-budget-widget__spent {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-budget-widget__limit {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.dash-budget-bar {
+  height: 9px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+.dash-budget-bar__fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #10b981, #6366f1);
+  transition: width 0.4s ease;
+}
+
+.dash-budget-bar__fill--warn {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
+
+.dash-budget-widget__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Lối tắt 5 Module chính */
+.dash-modules-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dash-module-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--text);
+  transition: all 0.15s ease;
+}
+
+.dash-module-btn:hover {
+  transform: translateY(-2px);
+  border-color: #8b5cf6;
+  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.12);
+}
+
+.dash-module-btn__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dash-module-btn__name {
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ── RESPONSIVE ADAPTATIONS ─────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .dash-today-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dash-bottom-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dash-modules-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .dash-workspace {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+  .dash-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+  .dash-header__right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .dash-scroll {
+    overflow-y: visible;
+    padding: 16px 16px 80px;
+  }
+  .dash-today-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dash-modules-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dash-alert-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+  }
+  .dash-alert-row__badge-box {
+    grid-column: 2;
+    align-items: flex-start;
+    flex-direction: row;
+    gap: 8px;
+  }
+  .dash-alert-row__actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

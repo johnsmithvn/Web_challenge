@@ -6,7 +6,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { ShortcutsModal } from './TiptapEditor';
 import AuthModal from './AuthModal';
 import XpBar from './XpBar';
-import SubAlert from './SubAlert';
 import AppIcon from './AppIcon';
 
 import '../styles/navbar.css';
@@ -234,8 +233,6 @@ export default function Navbar() {
         </nav>
 
         <div className="sidebar__bottom">
-
-          <SubAlert />
           <div className="sidebar__xp">
             <XpBar compact />
           </div>

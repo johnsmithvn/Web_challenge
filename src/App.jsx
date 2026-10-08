@@ -1,11 +1,10 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Navbar from './components/Navbar';
 import QuickCapture from './components/QuickCapture';
-import OnboardingModal, { useOnboarding } from './components/OnboardingModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import PageSkeleton  from './components/PageSkeleton';
 import GlobalAudioPlayer from './components/GlobalAudioPlayer';
@@ -52,9 +51,7 @@ function PageMeta() {
 
 // ── App Shell ──────────────────────────────────────────────────────
 function AppShell() {
-  const { shouldShow } = useOnboarding();
   const { user } = useAuth();
-  const [onboarded, setOnboarded] = useState(!shouldShow);
   const domainTransitionKey = location.pathname.startsWith('/body')
     ? '/body'
     : location.pathname.startsWith('/finance')
@@ -64,7 +61,6 @@ function AppShell() {
   return (
     <>
       <PageMeta />
-      {!onboarded && <OnboardingModal onDone={() => setOnboarded(true)} />}
       <Navbar />
       <QuickCapture />
       <GlobalAudioPlayer />

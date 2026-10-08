@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import AuthModal from '../components/AuthModal';
 import AppIcon from '../components/AppIcon';
+import HomeDashboard from '../components/dashboard/HomeDashboard';
 import '../styles/landing.css';
 
 const FLOW = [
@@ -85,6 +86,10 @@ export default function LandingPage() {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [showAuth, setShowAuth] = useState(false);
+
+  if (user) {
+    return <HomeDashboard />;
+  }
 
   return (
     <main className="lp">
