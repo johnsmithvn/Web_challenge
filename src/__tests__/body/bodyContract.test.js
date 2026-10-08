@@ -76,6 +76,7 @@ const requiredFiles = [
   'src/components/body/MuscleMapScreen.jsx',
   'src/components/body/MuscleBodyCanvas.jsx',
   'src/components/body/ExerciseLibraryScreen.jsx',
+  'src/components/body/ExerciseVideoPlayer.jsx',
   'src/pages/BodyPage.jsx'
 ];
 
@@ -84,5 +85,5 @@ requiredFiles.forEach(file => {
   assert.ok(fs.existsSync(filePath), `Required Body file must exist: ${file}`);
 });
 
-console.log('  ✓ All 13 Body component & hook files present OK');
+console.log(`  ✓ All ${requiredFiles.length} Body component & hook files present OK`);
 console.log('ALL BODY CONTRACT TESTS PASSED!\n');

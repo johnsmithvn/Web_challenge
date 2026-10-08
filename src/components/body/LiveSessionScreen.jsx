@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import AppIcon from '../AppIcon';
 import BASE_EXERCISES from '../../data/body-exercises.json';
+import ExerciseVideoPlayer from './ExerciseVideoPlayer';
 import {
   generateWorkoutQueue,
   formatValWithUnit,
@@ -666,6 +667,16 @@ export default function LiveSessionScreen({
                 )}
               </div>
             )}
+
+            {/* Video thị phạm (YouTube / Google Drive) */}
+            <div style={{ marginTop: '12px' }}>
+              <ExerciseVideoPlayer
+                exerciseKey={currentItem?.exerciseKey}
+                exerciseName={currentItem?.name}
+                defaultUrl={exDef?.video_url}
+                compact={true}
+              />
+            </div>
           </div>
 
           <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>

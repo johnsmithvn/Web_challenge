@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import AppIcon from '../AppIcon';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import MUSCLE_MAP from '../../data/body-muscles.json';
+import ExerciseVideoPlayer from './ExerciseVideoPlayer';
 
 const REGIONS = [
   { key: 'all', label: 'Tất cả' },
@@ -256,6 +257,13 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                 </div>
               </div>
             </div>
+
+            {/* Video thị phạm (YouTube / Google Drive) */}
+            <ExerciseVideoPlayer
+              exerciseKey={selectedEx.key}
+              exerciseName={selectedEx.name}
+              defaultUrl={selectedEx.video_url}
+            />
 
             {/* Các bước kỹ thuật */}
             <div>
