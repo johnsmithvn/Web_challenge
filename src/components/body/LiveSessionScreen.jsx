@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import AppIcon from '../AppIcon';
+import GenericModal from '../GenericModal';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import ExerciseVideoPlayer from './ExerciseVideoPlayer';
 import ExerciseDetailModal from './ExerciseDetailModal';
@@ -20,12 +21,14 @@ export default function LiveSessionScreen({
   isResume = false,
   onLogSet,
   onFinishSession,
-  onCancel
+  onCancel,
+  onPause
 }) {
   const [mode, setMode] = useState('straight');
   const [screenState, setScreenState] = useState('guide'); // 'guide' | 'set' | 'rest' | 'done'
   const [curQueueIdx, setCurQueueIdx] = useState(0);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
   const [logs, setLogs] = useState({}); // { [exKey]: [val1, val2...] }
   const [loggedSets, setLoggedSets] = useState([]); // array of set records
   const [elapsed, setElapsed] = useState(0);
@@ -511,7 +514,7 @@ export default function LiveSessionScreen({
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             className="body-btn body-btn-secondary"
-            onClick={onCancel}
+            onClick={() => setShowExitModal(true)}
           >
             Thoát
           </button>
@@ -1198,6 +1201,98 @@ export default function LiveSessionScreen({
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
       />
+
+      {/* Modal xác nhận thoát: Tạm dừng vs Hủy buổi tập */}
+      {showExitModal && (
+        <GenericModal
+          title="Rời buổi tập"
+          maxWidth={420}
+          onClose={() => setShowExitModal(false)}
+        >
+          <GenericModal.Body>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--body-text-muted)', lineHeight: 1.5 }}>
+                Bạn đang trong buổi tập. Hãy chọn cách bạn muốn rời khỏi màn hình này:
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button
+                  type="button"
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    background: 'var(--body-card-bg)',
+                    border: '1.5px solid var(--body-accent)',
+                    color: 'var(--body-text-main)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    textAlign: 'left',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => {
+                    setShowExitModal(false);
+                    if (onPause) onPause();
+                    else onCancel();
+                  }}
+                >
+                  <div style={{ color: 'var(--body-accent)', display: 'grid', placeItems: 'center' }}>
+                    <AppIcon name="clock" size={22} weight="fill" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--body-accent)' }}>
+                      Tạm dừng (Lưu dở để tiếp tục sau)
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
+                      Giữ nguyên tiến độ bài tập. Bạn có thể bấm "Tiếp tục buổi tập" từ Dashboard hoặc Lộ trình bất cứ lúc nào.
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    background: 'rgba(239, 68, 68, 0.06)',
+                    border: '1.5px solid rgba(239, 68, 68, 0.3)',
+                    color: 'var(--body-text-main)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    textAlign: 'left',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => {
+                    setShowExitModal(false);
+                    onCancel();
+                  }}
+                >
+                  <div style={{ color: 'var(--body-red, #EF4444)', display: 'grid', placeItems: 'center' }}>
+                    <AppIcon name="trash" size={22} weight="fill" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--body-red, #EF4444)' }}>
+                      Hủy bỏ buổi tập
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
+                      Hủy và không lưu kết quả buổi tập hôm nay.
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </GenericModal.Body>
+          <GenericModal.Footer>
+            <button
+              type="button"
+              className="body-btn body-btn-secondary"
+              onClick={() => setShowExitModal(false)}
+            >
+              Tiếp tục tập
+            </button>
+          </GenericModal.Footer>
+        </GenericModal>
+      )}
     </div>
   );
 }

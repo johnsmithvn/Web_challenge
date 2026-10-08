@@ -169,6 +169,13 @@ export default function BodyPage() {
     setScreen('routine');
   }, [currentSessionObj, inProgressSession, abandonSession, showToast, setScreen]);
 
+  const handlePauseSession = useCallback(() => {
+    setCurrentSessionObj(null);
+    setActiveSessionDay(null);
+    showToast?.('Đã tạm dừng buổi tập. Bạn có thể tiếp tục bất cứ lúc nào!', 'info');
+    setScreen('routine');
+  }, [setScreen, showToast]);
+
   const [now] = useState(() => Date.now());
   const today = useMemo(() => new Date(now), [now]);
   const todayStr = useMemo(() => {
@@ -182,26 +189,7 @@ export default function BodyPage() {
     return 'Tối nay';
   }, [today]);
 
-  const jsDay = today.getDay();
-  const todayWeekday = jsDay === 0 ? 7 : jsDay;
-  const todayRoutineItems = useMemo(() => {
-    return (routineItems || []).filter(item => item.weekday === todayWeekday);
-  }, [routineItems, todayWeekday]);
 
-  const availableRoutineDays = useMemo(() => {
-    const daysMap = new Map();
-    (routineItems || []).forEach(it => {
-      if (!daysMap.has(it.weekday)) {
-        daysMap.set(it.weekday, {
-          weekday: it.weekday,
-          dayName: it.day_name || `Thứ ${it.weekday === 7 ? 'CN' : it.weekday + 1}`,
-          items: []
-        });
-      }
-      daysMap.get(it.weekday).items.push(it);
-    });
-    return Array.from(daysMap.values()).sort((a, b) => a.weekday - b.weekday);
-  }, [routineItems]);
 
   const isoWeek = useMemo(() => {
     const d = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
@@ -478,6 +466,7 @@ export default function BodyPage() {
               onLogSet={logSet}
               onFinishSession={handleFinishSession}
               onCancel={handleCancelSession}
+              onPause={handlePauseSession}
             />
           ) : (
             <div className="body-card" style={{ maxWidth: '480px', margin: '40px auto', padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>

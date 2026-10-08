@@ -6,7 +6,7 @@ import { useBiometrics } from '../../hooks/useBiometrics';
 import { useNutrition } from '../../hooks/useNutrition';
 import { useWorkouts } from '../../hooks/useWorkouts';
 import MuscleBodyCanvas from './MuscleBodyCanvas';
-import { estimateRecoveryState, calculateRecoveryMetrics } from '../../utils/workoutLogic';
+import { calculateRecoveryMetrics } from '../../utils/workoutLogic';
 import { getWeekDates, toDateStr } from '../../utils/dateUtils';
 
 const VN_MUSCLES = {
@@ -78,6 +78,11 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     return (sessions || []).find(s => s.status === 'completed' && s.local_date === todayDateStr);
   }, [sessions, todayDateStr]);
 
+  // Buổi tập đang diễn ra
+  const inProgressSession = useMemo(() => {
+    return (sessions || []).find(s => s.status === 'in_progress');
+  }, [sessions]);
+
   // Các bài tập theo lịch hôm nay
   const todayRoutineItems = useMemo(() => {
     return (routineItems || []).filter(item => item.weekday === todayWeekday);
@@ -99,7 +104,27 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
   // ── THẺ 1: BUỔI TẬP HÔM NAY ──────────────────────────────────
   const sessionStats = useMemo(() => {
     const isDone = Boolean(todayCompletedSession);
+    const isInProgress = Boolean(inProgressSession);
     const hasPlan = todayRoutineItems.length > 0;
+
+    if (isInProgress) {
+      const title = inProgressSession.day_type || inProgressSession.title || 'Buổi tập đang diễn ra';
+      const weekText = activeRoutine
+        ? `Tuần ${activeRoutine.current_week || 1} / ${activeRoutine.target_weeks || 8} · Đang thực hiện`
+        : 'Buổi tập dở dang';
+      return {
+        isDone: false,
+        isInProgress: true,
+        hasPlan: true,
+        durationMin: 0,
+        exercisesCount: todayRoutineItems.length || 1,
+        setsCount: todaySetsCount || 1,
+        volumeKg: 0,
+        title,
+        weekText,
+        finishTime: null
+      };
+    }
 
     if (isDone) {
       const durationMin = Math.max(1, Math.round((todayCompletedSession.duration_seconds || 0) / 60));
@@ -149,7 +174,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       weekText: activeRoutine ? `Lộ trình: ${activeRoutine.name} · Nghỉ ngơi phục hồi` : 'Chưa chọn lộ trình nào',
       finishTime: null
     };
-  }, [todayCompletedSession, todayRoutineItems, todaySetsCount, activeRoutine]);
+  }, [todayCompletedSession, inProgressSession, todayRoutineItems, todaySetsCount, activeRoutine]);
 
   // ── THẺ 2: CÂN NẶNG & SPARKLINE THẬT ─────────────────────────
   const weightData = useMemo(() => {
@@ -562,7 +587,12 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             <span style={{ font: "500 10.5px/1 var(--body-mono)", letterSpacing: "0.09em", color: "#9C9AA8" }}>
               BUỔI TẬP HÔM NAY
             </span>
-            {sessionStats.isDone ? (
+            {sessionStats.isInProgress ? (
+              <span style={{ padding: "5px 9px", borderRadius: "20px", background: "rgba(245, 158, 11, 0.2)", font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#F59E0B", display: "flex", alignItems: "center", gap: "5px" }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B' }} />
+                Đang tập dở
+              </span>
+            ) : sessionStats.isDone ? (
               <span style={{ padding: "5px 9px", borderRadius: "20px", background: "rgba(62,158,104,0.22)", font: "600 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#7FD3A2", display: "flex", alignItems: "center", gap: "5px" }}>
                 <AppIcon name="checkCircle" size={13} weight="fill" />
                 Xong {sessionStats.finishTime}
@@ -617,7 +647,34 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
           </div>
 
           <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '12px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            {sessionStats.isDone ? (
+            {sessionStats.isInProgress ? (
+              <>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B' }} />
+                <span style={{ flex: 1, font: "400 12.5px/1.3 'Be Vietnam Pro',sans-serif", color: "#F59E0B" }}>
+                  Buổi tập đang tạm dừng. Tiếp tục ngay!
+                </span>
+                <button
+                  onClick={() => onNavigateTab?.('session')}
+                  style={{
+                    height: '34px',
+                    padding: '0 16px',
+                    borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                    color: '#FFF',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <AppIcon name="play" size={14} weight="fill" />
+                  Tiếp tục buổi tập
+                </button>
+              </>
+            ) : sessionStats.isDone ? (
               <>
                 <AppIcon name="trophy" size={17} weight="fill" style={{ color: "#E0A23C" }} />
                 <span style={{ flex: 1, font: "400 12.5px/1.3 'Be Vietnam Pro',sans-serif", color: "#D8D6E0" }}>

@@ -9,6 +9,7 @@ import { collectSystemAlerts } from '../../utils/dashboardAlerts';
 import { solarToLunar } from '../../utils/lunarUtils';
 import { currentMonthPeriod, periodTotals } from '../../utils/financeLogic';
 import { money } from '../finance/parts';
+import TaskDetailModal from '../TaskDetailModal';
 import AppIcon from '../AppIcon';
 import '../../styles/dashboard.css';
 
@@ -28,7 +29,12 @@ export default function HomeDashboard() {
   const workoutModel = useWorkouts();
   const { activeRoutine, routineItems, sessions } = workoutModel;
 
-  // Lấy lời chào theo buổi
+  // State xem chi tiết nhiệm vụ và thu gọn task quá hạn
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [expandedOverdueTasks, setExpandedOverdueTasks] = useState(false);
+  const [expandedTodayTasks, setExpandedTodayTasks] = useState(false);
+
+  // Lời chào theo buổi
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Chào buổi sáng';
@@ -64,6 +70,13 @@ export default function HomeDashboard() {
     });
   }, [tasks, bills, cards, loans, lendings, deposits, budgets, transactions, today]);
 
+  // Phân loại cảnh báo để tránh task quá hạn đè mất nghĩa vụ tài chính trên mobile
+  const criticalFinance = useMemo(() => alerts.critical.filter(a => a.domain !== 'task'), [alerts.critical]);
+  const criticalTasks = useMemo(() => alerts.critical.filter(a => a.domain === 'task'), [alerts.critical]);
+
+  const dueTodayFinance = useMemo(() => alerts.dueToday.filter(a => a.domain !== 'task'), [alerts.dueToday]);
+  const dueTodayTasks = useMemo(() => alerts.dueToday.filter(a => a.domain === 'task'), [alerts.dueToday]);
+
   // Ngân sách tháng hiện tại
   const monthBudget = useMemo(() => {
     const curMonth = currentMonthPeriod(today);
@@ -78,10 +91,23 @@ export default function HomeDashboard() {
     };
   }, [transactions, budgets, today]);
 
-  // Buổi tập Body hôm nay
-  const hasWorkoutToday = useMemo(() => {
-    return (sessions || []).some(s => s.local_date === today);
+  // Buổi tập Body hôm nay (Chuẩn hóa 4 trạng thái rõ ràng)
+  const todayCompletedSession = useMemo(() => {
+    return (sessions || []).find(s => s.status === 'completed' && s.local_date === today);
   }, [sessions, today]);
+
+  const inProgressSession = useMemo(() => {
+    return (sessions || []).find(s => s.status === 'in_progress');
+  }, [sessions]);
+
+  const todayWeekday = useMemo(() => {
+    const jsDay = now.getDay();
+    return jsDay === 0 ? 7 : jsDay;
+  }, [now]);
+
+  const todayRoutineItems = useMemo(() => {
+    return (routineItems || []).filter(item => item.weekday === todayWeekday);
+  }, [routineItems, todayWeekday]);
 
   // Quick Task Input
   const [quickTitle, setQuickTitle] = useState('');
@@ -94,6 +120,13 @@ export default function HomeDashboard() {
       setQuickTitle('');
       showToast(`Đã thêm việc hôm nay: ${clean}`, { icon: 'plus' });
     }
+  };
+
+  // Dời toàn bộ task quá hạn sang hôm nay (Bulk Rollover)
+  const handleRolloverAll = async () => {
+    if (criticalTasks.length === 0) return;
+    await Promise.all(criticalTasks.map(item => rolloverTask(item.raw.id)));
+    showToast(`Đã dời ${criticalTasks.length} nhiệm vụ quá hạn sang hôm nay`, { icon: 'calendar' });
   };
 
   // Hành động xử lý cảnh báo
@@ -123,6 +156,10 @@ export default function HomeDashboard() {
   };
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || '';
+
+  // Danh sách task quá hạn hiển thị (rút gọn Top 3 hoặc mở rộng)
+  const visibleOverdueTasks = expandedOverdueTasks ? criticalTasks : criticalTasks.slice(0, 3);
+  const visibleTodayTasks = expandedTodayTasks ? dueTodayTasks : dueTodayTasks.slice(0, 3);
 
   return (
     <div className="dash-workspace">
@@ -180,29 +217,162 @@ export default function HomeDashboard() {
             </div>
 
             <div className="dash-critical-list">
-              {/* 1. Các mục quá hạn (Critical) */}
-              {alerts.critical.map(item => (
-                <div key={item.id} className="dash-alert-row dash-alert-row--critical">
-                  <div className="dash-alert-row__icon-wrap">
-                    <AppIcon name={item.icon} size={18} weight="fill" />
+              {/* ── 1. Nghĩa vụ Tài chính khẩn cấp (Hóa đơn, thẻ, nợ vay quá hạn) ── */}
+              {criticalFinance.length > 0 && (
+                <>
+                  <div className="dash-alert-subhead">
+                    <span>Nghĩa vụ tài chính quá hạn ({criticalFinance.length})</span>
                   </div>
-                  <div className="dash-alert-row__main">
-                    <span className="dash-alert-row__title">{item.title}</span>
-                    <span className="dash-alert-row__subtitle">{item.subtitle}</span>
+                  {criticalFinance.map(item => (
+                    <div
+                      key={item.id}
+                      className="dash-alert-row dash-alert-row--critical dash-alert-row--clickable"
+                      onClick={() => handleAlertAction(item, item.actionType === 'bill_pay' ? 'pay' : 'action')}
+                      title="Bấm để xử lý"
+                    >
+                      <div className="dash-alert-row__icon-wrap">
+                        <AppIcon name={item.icon} size={18} weight="fill" />
+                      </div>
+                      <div className="dash-alert-row__main">
+                        <span className="dash-alert-row__title">{item.title}</span>
+                        <span className="dash-alert-row__subtitle">{item.subtitle}</span>
+                      </div>
+                      <div className="dash-alert-row__badge-box">
+                        <span className="dash-alert-row__badge">{item.badge}</span>
+                        {item.amount != null && (
+                          <span className="dash-alert-row__amount">{money(item.amount)}</span>
+                        )}
+                      </div>
+                      <div className="dash-alert-row__actions">
+                        {item.actionType === 'bill_pay' ? (
+                          <>
+                            <button
+                              type="button"
+                              className="dash-btn dash-btn--danger"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAlertAction(item, 'pay');
+                              }}
+                            >
+                              {item.actionLabel}
+                            </button>
+                            <button
+                              type="button"
+                              className="dash-btn dash-btn--secondary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAlertAction(item, 'skip');
+                              }}
+                            >
+                              Bỏ kỳ
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="dash-btn dash-btn--danger"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAlertAction(item, 'action');
+                            }}
+                          >
+                            {item.actionLabel}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* ── 2. Nghĩa vụ Tài chính đến hạn hôm nay ── */}
+              {dueTodayFinance.length > 0 && (
+                <>
+                  <div className="dash-alert-subhead">
+                    <span>Tài chính đến hạn hôm nay ({dueTodayFinance.length})</span>
                   </div>
-                  <div className="dash-alert-row__badge-box">
-                    <span className="dash-alert-row__badge">{item.badge}</span>
-                    {item.amount != null && (
-                      <span className="dash-alert-row__amount">{money(item.amount)}</span>
-                    )}
+                  {dueTodayFinance.map(item => (
+                    <div
+                      key={item.id}
+                      className="dash-alert-row dash-alert-row--today dash-alert-row--clickable"
+                      onClick={() => handleAlertAction(item, 'action')}
+                      title="Bấm để xử lý"
+                    >
+                      <div className="dash-alert-row__icon-wrap">
+                        <AppIcon name={item.icon} size={18} weight="fill" />
+                      </div>
+                      <div className="dash-alert-row__main">
+                        <span className="dash-alert-row__title">{item.title}</span>
+                        <span className="dash-alert-row__subtitle">{item.subtitle}</span>
+                      </div>
+                      <div className="dash-alert-row__badge-box">
+                        <span className="dash-alert-row__badge">{item.badge}</span>
+                        {item.amount != null && (
+                          <span className="dash-alert-row__amount">{money(item.amount)}</span>
+                        )}
+                      </div>
+                      <div className="dash-alert-row__actions">
+                        <button
+                          type="button"
+                          className="dash-btn dash-btn--primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAlertAction(item, 'action');
+                          }}
+                        >
+                          {item.actionLabel}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* ── 3. Nhiệm vụ quá hạn (Tự động thu gọn nếu > 3 việc) ── */}
+              {criticalTasks.length > 0 && (
+                <>
+                  <div className="dash-alert-subhead">
+                    <span>Nhiệm vụ quá hạn ({criticalTasks.length})</span>
+                    <div className="dash-alert-subhead__actions">
+                      {criticalTasks.length > 1 && (
+                        <button
+                          type="button"
+                          className="dash-btn dash-btn--secondary"
+                          onClick={handleRolloverAll}
+                          style={{ height: '24px', fontSize: '11px', padding: '0 8px' }}
+                          title="Chuyển toàn bộ task quá hạn sang hôm nay"
+                        >
+                          <AppIcon name="calendar" size={12} /> Dời tất cả sang hôm nay
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="dash-alert-row__actions">
-                    {item.domain === 'task' ? (
-                      <>
+
+                  {visibleOverdueTasks.map(item => (
+                    <div
+                      key={item.id}
+                      className="dash-alert-row dash-alert-row--critical dash-alert-row--clickable"
+                      onClick={() => setSelectedTask(item.raw)}
+                      title="Bấm để mở xem chi tiết nhiệm vụ"
+                    >
+                      <div className="dash-alert-row__icon-wrap">
+                        <AppIcon name={item.icon} size={18} weight="fill" />
+                      </div>
+                      <div className="dash-alert-row__main">
+                        <span className="dash-alert-row__title">{item.title}</span>
+                        <span className="dash-alert-row__subtitle">{item.subtitle}</span>
+                      </div>
+                      <div className="dash-alert-row__badge-box">
+                        <span className="dash-alert-row__badge">{item.badge}</span>
+                      </div>
+                      <div className="dash-alert-row__actions">
                         <button
                           type="button"
                           className="dash-btn dash-btn--success"
-                          onClick={() => handleAlertAction(item, 'complete')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAlertAction(item, 'complete');
+                          }}
                           title="Hoàn thành task này"
                         >
                           <AppIcon name="check" size={14} /> Xong
@@ -210,79 +380,90 @@ export default function HomeDashboard() {
                         <button
                           type="button"
                           className="dash-btn dash-btn--secondary"
-                          onClick={() => handleAlertAction(item, 'rollover')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAlertAction(item, 'rollover');
+                          }}
                           title="Dời task sang hôm nay"
                         >
                           Dời hôm nay
                         </button>
-                      </>
-                    ) : item.actionType === 'bill_pay' ? (
-                      <>
-                        <button
-                          type="button"
-                          className="dash-btn dash-btn--danger"
-                          onClick={() => handleAlertAction(item, 'pay')}
-                        >
-                          {item.actionLabel}
-                        </button>
-                        <button
-                          type="button"
-                          className="dash-btn dash-btn--secondary"
-                          onClick={() => handleAlertAction(item, 'skip')}
-                        >
-                          Bỏ kỳ
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        className="dash-btn dash-btn--danger"
-                        onClick={() => handleAlertAction(item, 'action')}
-                      >
-                        {item.actionLabel}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                      </div>
+                    </div>
+                  ))}
 
-              {/* 2. Các mục đến hạn hôm nay (Due Today) */}
-              {alerts.dueToday.map(item => (
-                <div key={item.id} className="dash-alert-row dash-alert-row--today">
-                  <div className="dash-alert-row__icon-wrap">
-                    <AppIcon name={item.icon} size={18} weight="fill" />
+                  {criticalTasks.length > 3 && (
+                    <button
+                      type="button"
+                      className="dash-expand-btn"
+                      onClick={() => setExpandedOverdueTasks(!expandedOverdueTasks)}
+                    >
+                      <AppIcon name={expandedOverdueTasks ? 'caretUp' : 'caretDown'} size={14} />
+                      <span>
+                        {expandedOverdueTasks
+                          ? 'Thu gọn về Top 3 việc gấp'
+                          : `Xem thêm ${criticalTasks.length - 3} nhiệm vụ quá hạn khác`}
+                      </span>
+                    </button>
+                  )}
+                </>
+              )}
+
+              {/* ── 4. Nhiệm vụ đến hạn hôm nay (Rút gọn nếu nhiều) ── */}
+              {dueTodayTasks.length > 0 && (
+                <>
+                  <div className="dash-alert-subhead">
+                    <span>Nhiệm vụ đến hạn hôm nay ({dueTodayTasks.length})</span>
                   </div>
-                  <div className="dash-alert-row__main">
-                    <span className="dash-alert-row__title">{item.title}</span>
-                    <span className="dash-alert-row__subtitle">{item.subtitle}</span>
-                  </div>
-                  <div className="dash-alert-row__badge-box">
-                    <span className="dash-alert-row__badge">{item.badge}</span>
-                    {item.amount != null && (
-                      <span className="dash-alert-row__amount">{money(item.amount)}</span>
-                    )}
-                  </div>
-                  <div className="dash-alert-row__actions">
-                    {item.domain === 'task' ? (
-                      <button
-                        type="button"
-                        className="dash-btn dash-btn--success"
-                        onClick={() => handleAlertAction(item, 'complete')}
-                      >
-                        <AppIcon name="check" size={14} /> Xong
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="dash-btn dash-btn--primary"
-                        onClick={() => handleAlertAction(item, 'action')}
-                      >
-                        {item.actionLabel}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+
+                  {visibleTodayTasks.map(item => (
+                    <div
+                      key={item.id}
+                      className="dash-alert-row dash-alert-row--today dash-alert-row--clickable"
+                      onClick={() => setSelectedTask(item.raw)}
+                      title="Bấm để mở xem chi tiết nhiệm vụ"
+                    >
+                      <div className="dash-alert-row__icon-wrap">
+                        <AppIcon name={item.icon} size={18} weight="fill" />
+                      </div>
+                      <div className="dash-alert-row__main">
+                        <span className="dash-alert-row__title">{item.title}</span>
+                        <span className="dash-alert-row__subtitle">{item.subtitle}</span>
+                      </div>
+                      <div className="dash-alert-row__badge-box">
+                        <span className="dash-alert-row__badge">{item.badge}</span>
+                      </div>
+                      <div className="dash-alert-row__actions">
+                        <button
+                          type="button"
+                          className="dash-btn dash-btn--success"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAlertAction(item, 'complete');
+                          }}
+                        >
+                          <AppIcon name="check" size={14} /> Xong
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {dueTodayTasks.length > 3 && (
+                    <button
+                      type="button"
+                      className="dash-expand-btn"
+                      onClick={() => setExpandedTodayTasks(!expandedTodayTasks)}
+                    >
+                      <AppIcon name={expandedTodayTasks ? 'caretUp' : 'caretDown'} size={14} />
+                      <span>
+                        {expandedTodayTasks
+                          ? 'Thu gọn danh sách hôm nay'
+                          : `Xem thêm ${dueTodayTasks.length - 3} việc hôm nay khác`}
+                      </span>
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </section>
         ) : (
@@ -317,11 +498,20 @@ export default function HomeDashboard() {
             <div className="dash-card__body">
               {todayTasks.length > 0 ? (
                 todayTasks.map(t => (
-                  <div key={t.id} className="dash-task-item">
+                  <div
+                    key={t.id}
+                    className="dash-task-item"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setSelectedTask(t)}
+                    title="Bấm để mở xem chi tiết"
+                  >
                     <button
                       type="button"
                       className="dash-task-check"
-                      onClick={() => handleAlertAction({ domain: 'task', raw: t, title: t.title }, 'complete')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAlertAction({ domain: 'task', raw: t, title: t.title }, 'complete');
+                      }}
                       aria-label={`Hoàn thành ${t.title}`}
                     >
                       <AppIcon name="check" size={12} weight="bold" />
@@ -370,33 +560,92 @@ export default function HomeDashboard() {
               </Link>
             </div>
             <div className="dash-card__body">
-              {hasWorkoutToday ? (
+              {inProgressSession ? (
+                /* ── 1. ĐANG TẬP DỞ (In Progress) ── */
+                <div
+                  className="dash-workout-banner"
+                  style={{
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    borderColor: 'rgba(245, 158, 11, 0.3)'
+                  }}
+                >
+                  <div className="dash-workout-banner__name" style={{ color: '#f59e0b' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                      <span
+                        style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: '#f59e0b',
+                          display: 'inline-block'
+                        }}
+                      />
+                      {inProgressSession.day_type || inProgressSession.title || 'Buổi tập đang diễn ra'}
+                    </span>
+                    <span
+                      className="dash-workout-banner__badge"
+                      style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b' }}
+                    >
+                      Đang tập dở
+                    </span>
+                  </div>
+                  <span className="dash-workout-exercises">
+                    Bạn có một buổi tập chưa hoàn thành. Bấm tiếp tục để không bỏ dở tiến độ hôm nay!
+                  </span>
+                  <button
+                    type="button"
+                    className="dash-btn"
+                    style={{
+                      marginTop: '4px',
+                      width: '100%',
+                      background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                      color: '#ffffff',
+                      fontWeight: 700
+                    }}
+                    onClick={() => navigate('/body/session')}
+                  >
+                    <AppIcon name="play" size={14} weight="fill" /> Tiếp tục buổi tập
+                  </button>
+                </div>
+              ) : todayCompletedSession ? (
+                /* ── 2. ĐÃ HOÀN THÀNH (Completed) ── */
                 <div className="dash-workout-banner" style={{ background: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.25)' }}>
                   <div className="dash-workout-banner__name" style={{ color: '#10b981' }}>
-                    <span>Đã hoàn thành buổi tập hôm nay!</span>
+                    <span>{todayCompletedSession.day_type || todayCompletedSession.title || 'Đã hoàn thành buổi tập!'}</span>
                     <span className="dash-workout-banner__badge" style={{ background: 'rgba(16, 185, 129, 0.18)', color: '#10b981' }}>
                       Xong
                     </span>
                   </div>
                   <span className="dash-workout-exercises">
-                    Tuyệt vời! Bạn đã hoàn thành buổi tập và duy trì phong độ đều đặn.
+                    {todayCompletedSession.duration_seconds
+                      ? `Thời gian tập: ~${Math.max(1, Math.round(todayCompletedSession.duration_seconds / 60))} phút · Tuyệt vời, bạn đã duy trì phong độ đều đặn!`
+                      : 'Tuyệt vời! Bạn đã hoàn thành buổi tập hôm nay.'}
                   </span>
+                  <button
+                    type="button"
+                    className="dash-btn dash-btn--secondary"
+                    style={{ marginTop: '4px', width: '100%' }}
+                    onClick={() => navigate('/body/history')}
+                  >
+                    <AppIcon name="trophy" size={14} /> Xem lại tiến bộ
+                  </button>
                 </div>
-              ) : activeRoutine ? (
+              ) : todayRoutineItems.length > 0 ? (
+                /* ── 3. CHƯA TẬP, CÓ LỊCH HÔM NAY ── */
                 <div className="dash-workout-banner">
                   <div className="dash-workout-banner__name">
-                    <span>{activeRoutine.name}</span>
+                    <span>{todayRoutineItems[0]?.day_name || activeRoutine?.name || 'Lịch tập hôm nay'}</span>
                     <span className="dash-workout-banner__badge">
-                      {routineItems.length} bài tập
+                      {todayRoutineItems.length} bài tập
                     </span>
                   </div>
                   <div className="dash-workout-exercises">
-                    {routineItems.slice(0, 4).map((item, idx) => (
+                    {todayRoutineItems.slice(0, 4).map((item, idx) => (
                       <span key={item.id || idx}>
-                        {idx + 1}. {item.exercise_name || item.name || 'Bài tập'}{idx < Math.min(3, routineItems.length - 1) ? ' · ' : ''}
+                        {idx + 1}. {item.exercise_name || item.name || 'Bài tập'}{idx < Math.min(3, todayRoutineItems.length - 1) ? ' · ' : ''}
                       </span>
                     ))}
-                    {routineItems.length > 4 && <span> +{routineItems.length - 4} bài khác</span>}
+                    {todayRoutineItems.length > 4 && <span> +{todayRoutineItems.length - 4} bài khác</span>}
                   </div>
                   <button
                     type="button"
@@ -407,15 +656,33 @@ export default function HomeDashboard() {
                     <AppIcon name="play" size={14} weight="fill" /> Bắt đầu buổi tập
                   </button>
                 </div>
-              ) : (
+              ) : activeRoutine ? (
+                /* ── 4. NGÀY NGHỈ PHỤC HỒI (Rest Day) ── */
                 <div className="dash-card-empty">
-                  <AppIcon name="barbell" size={24} weight="duotone" />
-                  <span>Hôm nay là Ngày nghỉ ngơi (Rest day).</span>
+                  <AppIcon name="sparkle" size={24} weight="duotone" />
+                  <span>Hôm nay là Ngày nghỉ ngơi phục hồi (Rest day).</span>
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                    Lộ trình: {activeRoutine.name}
+                  </span>
                   <button
                     type="button"
                     className="dash-btn dash-btn--secondary"
                     style={{ marginTop: '4px' }}
-                    onClick={() => navigate('/body')}
+                    onClick={() => navigate('/body/routine')}
+                  >
+                    Xem Lộ trình tập
+                  </button>
+                </div>
+              ) : (
+                /* ── 5. CHƯA CÓ LỘ TRÌNH ── */
+                <div className="dash-card-empty">
+                  <AppIcon name="barbell" size={24} weight="duotone" />
+                  <span>Chưa có lộ trình tập luyện nào.</span>
+                  <button
+                    type="button"
+                    className="dash-btn dash-btn--secondary"
+                    style={{ marginTop: '4px' }}
+                    onClick={() => navigate('/body/routine')}
                   >
                     Tạo lộ trình tập
                   </button>
@@ -529,6 +796,38 @@ export default function HomeDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── POPUP CHI TIẾT NHIỆM VỤ (TaskDetailModal) ───────────────────── */}
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onEdit={() => {
+            setSelectedTask(null);
+            navigate('/tasks');
+          }}
+          onComplete={async (task) => {
+            const tId = typeof task === 'object' && task?.id ? task.id : task;
+            await completeTask(tId);
+            showToast('Đã hoàn thành nhiệm vụ', { icon: 'checkCircle' });
+            setSelectedTask(null);
+          }}
+          onDelete={async (task) => {
+            const tId = typeof task === 'object' && task?.id ? task.id : task;
+            await taskModel.deleteTask(tId);
+            showToast('Đã xóa nhiệm vụ', { icon: 'trash' });
+            setSelectedTask(null);
+          }}
+          onUpdatePriority={async (newPri) => {
+            if (selectedTask?.id) {
+              await taskModel.updateTask(selectedTask.id, { priority: newPri });
+              setSelectedTask((prev) => (prev ? { ...prev, priority: newPri } : prev));
+            }
+          }}
+          taskModel={taskModel}
+          onOpenTask={(taskToOpen) => setSelectedTask(taskToOpen)}
+        />
+      )}
     </div>
   );
 }
