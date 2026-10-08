@@ -602,6 +602,34 @@ export default function LiveSessionScreen({
               ))}
             </ol>
 
+            {(exDef?.breathing || exDef?.tempo) && (
+              <div style={{
+                marginTop: '10px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: 'var(--body-card-bg)',
+                border: '1px solid var(--body-card-border)',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '12px',
+                fontSize: '12px',
+                lineHeight: 1.45
+              }}>
+                {exDef?.breathing && (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
+                    <span>🌬️</span>
+                    <span><strong>Thở:</strong> {exDef.breathing}</span>
+                  </div>
+                )}
+                {exDef?.tempo && (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
+                    <span>⏱️</span>
+                    <span><strong>Tempo:</strong> {exDef.tempo}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {exDef?.tip && (
               <div style={{ marginTop: '12px', fontSize: '12.5px', color: 'var(--body-red)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <AppIcon name="warning" size={14} />

@@ -31,7 +31,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "knee-push-up",
-    "variation_note": "Kê tay cao lên bậc/ghế giúp đổi góc thân người, giảm tải trọng nâng xuống chỉ còn ~45-50% trọng lượng cơ thể, cực kỳ thích hợp cho người mới bắt đầu."
+    "variation_note": "Kê tay cao lên bậc/ghế giúp đổi góc thân người, giảm tải trọng nâng xuống chỉ còn ~45-50% trọng lượng cơ thể, cực kỳ thích hợp cho người mới bắt đầu.",
+    "breathing": "Hạ ngực xuống hít sâu bằng mũi (2s) · Đẩy người lên thở mạnh bằng miệng (1s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s - Giữ 1s sát mép ghế - Đẩy dứt khoát 1s).",
+    "form_cues": [
+      "Góc ghế/bục: Kê cao 40–60cm so với sàn, càng cao bài tập càng nhẹ.",
+      "Độ rộng tay: Rộng hơn vai 1 gang tay, cổ tay ngay dưới vai khi chống.",
+      "Góc khuỷu tay: Mở 45°–60° so với thân (hình mũi tên), tuyệt đối không banh ngang 90°.",
+      "Biên độ: Hạ ngực chạm nhẹ mép bục, thân người giữ một đường thẳng tắp từ đầu tới gót."
+    ]
   },
   {
     "key": "knee-push-up",
@@ -67,7 +75,15 @@
     "progression_level": 2,
     "easier_variation": "incline-push-up",
     "harder_variation": "push-up",
-    "variation_note": "Điểm tì chuyển từ mũi chân lên đầu gối làm ngắn đòn bẩy cơ thể, giảm ~35% trọng lượng phải nâng, giúp tập chuẩn góc khuỷu 45° trước khi lên chống đẩy mũi chân."
+    "variation_note": "Điểm tì chuyển từ mũi chân lên đầu gối làm ngắn đòn bẩy cơ thể, giảm ~35% trọng lượng phải nâng, giúp tập chuẩn góc khuỷu 45° trước khi lên chống đẩy mũi chân.",
+    "breathing": "Hạ ngực xuống hít sâu nén cơ lõi (2s) · Đẩy lên thở mạnh dứt khoát (1s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s kiểm soát - Giữ 1s - Đẩy nhanh 1s, không khóa cứng khớp cùi chỏ).",
+    "form_cues": [
+      "Vị trí gối: Quỳ trên thảm êm, lùi gối ra sau sao cho đùi tạo góc ~120° với cẳng chân (thân thẳng).",
+      "Độ rộng tay: Bàn tay đặt rộng hơn vai một chút, xoay mũi tay chếch ngoài 10°–15°.",
+      "Góc khuỷu tay: Khép góc 45° so với mạn sườn, siết chặt cơ bụng tránh võng thắt lưng.",
+      "Biên độ: Hạ ngực cách sàn 3cm, đầu và cổ giữ thẳng trục (mắt nhìn trước mũi bàn tay 20cm)."
+    ]
   },
   {
     "key": "push-up",
@@ -105,7 +121,15 @@
     "progression_level": 3,
     "easier_variation": "knee-push-up",
     "harder_variation": "decline-push-up",
-    "variation_note": "Biến thể tiêu chuẩn: bạn phải nâng xấp xỉ 65% trọng lượng cơ thể với đòn bẩy toàn thân từ gót chân đến vai."
+    "variation_note": "Biến thể tiêu chuẩn: bạn phải nâng xấp xỉ 65% trọng lượng cơ thể với đòn bẩy toàn thân từ gót chân đến vai.",
+    "breathing": "Hạ người hít sâu bằng mũi nén cơ hoành (2s) · Đẩy lên thở mạnh qua miệng ở 1/3 chặng cuối (1s).",
+    "tempo": "2-1-1-0 (Hạ 2s - Dừng 1s cảm nhận căng ngực - Đẩy bùng nổ 1s).",
+    "form_cues": [
+      "Vị trí tay: Rộng hơn vai 1 bàn tay, các ngón tay xòe bám sàn, xoay nhẹ ra ngoài 15°.",
+      "Góc khuỷu tay: Luôn giữ 45°–60° tạo hình mũi tên, cấm mở ngang 90° (chữ T) gây kẹp gân vai.",
+      "Chân & Cột sống: Hai chân khép hoặc rộng bằng hông, siết chặt mông và cơ bụng rút rốn.",
+      "Biên độ & Đầu: Hạ ngực cách mặt đất 2–3cm, cằm giữ trung tính không gục xuống đất."
+    ]
   },
   {
     "key": "decline-push-up",
@@ -143,7 +167,15 @@
     "progression_level": 4,
     "easier_variation": "push-up",
     "harder_variation": "dips-chest",
-    "variation_note": "Kê chân cao lên ghế dồn trọng tâm về phía trước, tăng tải trọng nâng lên ~75% trọng lượng cơ thể và tập trung ăn rất sâu vào cơ ngực trên."
+    "variation_note": "Kê chân cao lên ghế dồn trọng tâm về phía trước, tăng tải trọng nâng lên ~75% trọng lượng cơ thể và tập trung ăn rất sâu vào cơ ngực trên.",
+    "breathing": "Hạ người xuống hít sâu nén hơi lồng ngực (2s) · Đẩy lên thở mạnh dứt khoát (1s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s chống dồn máu lên đầu - Dừng 1s - Đẩy 1s).",
+    "form_cues": [
+      "Kê chân: Kê mũi chân lên ghế/bục cao 25–40cm (tập trung tối đa vào thớ cơ ngực trên).",
+      "Vị trí tay: Chống tay thẳng dưới vai hoặc hơi chếch lên trên một chút, rộng hơn vai 1 gang tay.",
+      "Góc khuỷu tay: Khép góc 45°–50° so với thân, tránh rung lắc cổ tay.",
+      "Biên độ: Hạ ngực gần chạm sàn, gồng cơ bụng thật chặt tránh võng võng thắt lưng xuống dưới."
+    ]
   },
   {
     "key": "dumbbell-floor-press",
@@ -178,7 +210,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "flat-dumbbell-bench-press",
-    "variation_note": "Mặt sàn đóng vai trò điểm dừng tự nhiên bảo vệ vai khỏi bị kéo căng quá mức, đồng thời cổ tay giữ tạ thẳng trục trung tính không bị gập đau như hít đất."
+    "variation_note": "Mặt sàn đóng vai trò điểm dừng tự nhiên bảo vệ vai khỏi bị kéo căng quá mức, đồng thời cổ tay giữ tạ thẳng trục trung tính không bị gập đau như hít đất.",
+    "breathing": "Hạ tạ xuống hít sâu mở ngực (2s) · Đẩy tạ lên thở mạnh dứt khoát bằng miệng (1s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s đến khi bắp tay chạm sàn - Dừng sàn 1s giải tỏa khớp - Đẩy 1s).",
+    "form_cues": [
+      "Tư thế nằm: Nằm ngửa co gối 90°, bàn chân đạp chắc trên sàn, thắt lưng áp sát thảm.",
+      "Góc bắp tay: Cùi chỏ tạo góc 60° so với thân người, không banh ngang 90°.",
+      "Điểm chạm sàn: Cùi chỏ chạm nhẹ xuống sàn rồi dừng 1s trước khi đẩy (sàn nhà chặn tự nhiên bảo vệ vai).",
+      "Đỉnh động tác: Đẩy tạ thẳng lên trên ngực, không đập mạnh hai quả tạ vào nhau."
+    ]
   },
   {
     "key": "flat-dumbbell-bench-press",
@@ -215,7 +255,15 @@
     "progression_level": 2,
     "easier_variation": "dumbbell-floor-press",
     "harder_variation": "incline-dumbbell-press",
-    "variation_note": "Tập trên ghế cho phép biên độ sâu đầy đủ (Full ROM) kích thích phì đại cơ ngực toàn diện hơn nằm sàn."
+    "variation_note": "Tập trên ghế cho phép biên độ sâu đầy đủ (Full ROM) kích thích phì đại cơ ngực toàn diện hơn nằm sàn.",
+    "breathing": "Hạ tạ hít sâu nén đầy khoang ngực (2s) · Đẩy tạ lên thở mạnh ở nửa hành trình trên (1s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s - Giữ căng ngực 1s ở đáy - Đẩy dứt khoát 1s).",
+    "form_cues": [
+      "Điểm tựa: Ghế phẳng 0°, 3 điểm tiếp xúc: đầu, lưng trên áp ghế, bàn chân đạp phẳng sàn.",
+      "Khóa bả vai: Kéo hai bả vai khép lại và ghì xuống (Retract & Depress scapula) tạo độ cong nhẹ sinh lý ở thắt lưng.",
+      "Góc khuỷu tay: Mở 60°–75° so với thân, tạ hạ ngang mép dưới cơ ngực.",
+      "Đỉnh đẩy: Đẩy theo đường vòng cung nhẹ vào giữa nhưng không khóa cứng cùi chỏ."
+    ]
   },
   {
     "key": "incline-dumbbell-press",
@@ -252,7 +300,15 @@
     "progression_level": 3,
     "easier_variation": "flat-dumbbell-bench-press",
     "harder_variation": null,
-    "variation_note": "Góc dốc 30-45 độ kích hoạt tối đa bó cơ ngực trên (Clavicular head of Pectoralis Major)."
+    "variation_note": "Góc dốc 30-45 độ kích hoạt tối đa bó cơ ngực trên (Clavicular head of Pectoralis Major).",
+    "breathing": "Hạ tạ xuống hít sâu làm căng cơ ngực trên (2s) · Đẩy lên thở dốc mạnh bằng miệng (1s).",
+    "tempo": "2-1-1-0 (Hạ 2s có kiểm soát - Dừng căng 1s - Đẩy bùng nổ 1s).",
+    "form_cues": [
+      "Góc ghế: Chỉnh tựa lưng ghế dốc 30°–45° (góc quá dốc >60° sẽ ăn vào vai trước thay vì ngực trên).",
+      "Độ rộng & Đường tạ: Cẳng tay vuông góc với sàn suốt hành trình nâng hạ.",
+      "Góc khuỷu tay: Mở 45°–60° so với mạn sườn, hạ tạ ngang xương đòn (ngực trên).",
+      "Cảm nhận: Tưởng tượng ép hai bắp tay vào nhau ở điểm cao nhất để kích hoạt thớ ngực trên."
+    ]
   },
   {
     "key": "dumbbell-chest-fly",
@@ -289,7 +345,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": null,
-    "variation_note": "Bài cô lập chuyển động khép ngang cánh tay (Horizontal adduction) giúp kéo căng sợi cơ ngực tối đa."
+    "variation_note": "Bài cô lập chuyển động khép ngang cánh tay (Horizontal adduction) giúp kéo căng sợi cơ ngực tối đa.",
+    "breathing": "Banh tay mở rộng ngực hít sâu (3s) · Ép tạ vào thở ra từ từ siết ép khe ngực (1s).",
+    "tempo": "3-1-1-0 (Banh tạ xuống thật chậm 3s - Dừng căng ngực 1s - Ép vào 1s).",
+    "form_cues": [
+      "Khớp cùi chỏ: Cố định độ cong cùi chỏ nhẹ 15°–20° trong suốt bài tập (như đang ôm một thùng phi lớn).",
+      "Biên độ an toàn: Chỉ hạ tạ đến khi bắp tay ngang bằng mặt phẳng ghế/ngực, tuyệt đối không hạ sâu vượt quá lưng.",
+      "Ý niệm: Dùng cơ ngực ép hai bắp tay trong về sát nhau, không dùng cẳng tay giật tạ.",
+      "Mức tạ: Luôn chọn tạ nhẹ (30–40% tạ đẩy) để bảo toàn bao khớp vai trước."
+    ]
   },
   {
     "key": "dips-chest",
@@ -327,7 +391,15 @@
     "progression_level": 5,
     "easier_variation": "decline-push-up",
     "harder_variation": null,
-    "variation_note": "Đỉnh cao sức mạnh thể trọng cho cơ ngực dưới: nâng 100% trọng lượng cơ thể với thân người nghiêng về trước."
+    "variation_note": "Đỉnh cao sức mạnh thể trọng cho cơ ngực dưới: nâng 100% trọng lượng cơ thể với thân người nghiêng về trước.",
+    "breathing": "Hạ người xuống hít sâu mở lồng ngực (2s) · Đẩy người lên thở mạnh dứt khoát (1s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s kiểm soát - Dừng 1s - Đẩy 1s khóa ngực).",
+    "form_cues": [
+      "Góc thân người: Chúi thân về phía trước 30° và co gối để dồn toàn bộ trọng tâm vào cơ ngực.",
+      "Góc khuỷu tay: Cùi chỏ hơi mở chếch ra ngoài, cẳng tay giữ gần như vuông góc sàn.",
+      "Độ sâu an toàn: Chỉ hạ cho tới khi bắp tay song song với sàn (góc 90°), không hạ sâu hơn gây rách sụn viền vai.",
+      "Mắt & Cổ: Mắt nhìn chếch xuống dưới sàn 1 mét, vai luôn ghì cách xa tai."
+    ]
   },
   {
     "key": "lateral-raise",
@@ -362,7 +434,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "dumbbell-overhead-press",
-    "variation_note": "Bài cô lập vai giữa đơn giản, dùng tạ nhẹ (2-5kg) kiểm soát chuyển động không tải nặng lên cột sống."
+    "variation_note": "Bài cô lập vai giữa đơn giản, dùng tạ nhẹ (2-5kg) kiểm soát chuyển động không tải nặng lên cột sống.",
+    "breathing": "Nâng tạ sang hai bên thở ra dứt khoát (1s) · Hạ tạ xuống hít vào chậm rãi (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s - Không đung đưa ở đáy - Nâng 1s - Siết giữ đỉnh 1s).",
+    "form_cues": [
+      "Mặt phẳng cử động: Nâng tạ chếch về phía trước 15°–20° (Scapular Plane), không dang thẳng tắp 180° sang ngang.",
+      "Cùi chỏ & Bàn tay: Cùi chỏ hơi cong nhẹ 10°, nâng cùi chỏ ngang tầm vai (ngón út hơi cao hơn ngón cái nhẹ như rót nước).",
+      "Độ cao: Chỉ nâng tạ ngang tầm vai (song song sàn), không nâng vọt quá vai gây chèn ép mỏm cùng vai.",
+      "Thân người: Người hơi cúi nhẹ 5°, đứng vững, không nhún gối hất tạ bằng đà."
+    ]
   },
   {
     "key": "dumbbell-front-raise",
@@ -397,7 +477,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "dumbbell-overhead-press",
-    "variation_note": "Cô lập bó cơ vai trước (Anterior deltoid) với chuyển động nâng thẳng tay có kiểm soát."
+    "variation_note": "Cô lập bó cơ vai trước (Anterior deltoid) với chuyển động nâng thẳng tay có kiểm soát.",
+    "breathing": "Nâng tạ lên trước mặt thở ra (1s) · Hạ tạ về trước đùi hít sâu chậm rãi (2s).",
+    "tempo": "2-0-1-0 (Hạ chậm 2s - Nâng 1s có kiểm soát, không dựa quán tính).",
+    "form_cues": [
+      "Vị trí tay: Cầm tạ úp mu bàn tay lên trên hoặc lòng bàn tay hướng vào nhau (Neutral grip).",
+      "Độ cao: Nâng tạ lên đến ngang tầm mắt/ngang vai rồi dừng lại, không nâng quá cao.",
+      "Thân trên: Khóa chặt cơ bụng và lưng thẳng, tuyệt đối không ngửa người ra sau để giật tạ.",
+      "Cùi chỏ: Giữ cùi chỏ khóa hơi cong nhẹ, cử động thuần túy diễn ra tại khớp vai."
+    ]
   },
   {
     "key": "dumbbell-overhead-press",
@@ -433,7 +521,15 @@
     "progression_level": 2,
     "easier_variation": "lateral-raise",
     "harder_variation": "pike-push-up",
-    "variation_note": "Bài đẩy compound đa khớp nâng tiến độ từ dang tạ đơn lên đẩy tạ qua đầu, phát triển sức mạnh tổng thể khớp vai và tay sau."
+    "variation_note": "Bài đẩy compound đa khớp nâng tiến độ từ dang tạ đơn lên đẩy tạ qua đầu, phát triển sức mạnh tổng thể khớp vai và tay sau.",
+    "breathing": "Hạ tạ xuống ngang tai hít sâu nén cơ hoành (2s) · Đẩy tạ qua đầu thở mạnh dứt khoát (1s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s - Dừng ngang cằm/tai 1s - Đẩy bùng nổ 1s).",
+    "form_cues": [
+      "Góc khuỷu tay: Chếch cùi chỏ về trước 30° (Scapular plane), không banh thẳng cùi chỏ sang hai bên mạn sườn.",
+      "Cột sống: Gồng cứng bụng và siết mông để giữ thắt lưng thẳng, không ưỡn cong người ra sau mượn lực.",
+      "Đường đẩy tạ: Đẩy tạ theo đường thẳng hướng nhẹ vào giữa đỉnh đầu, không khóa khớp gắt cùi chỏ.",
+      "Biên độ: Hạ tạ xuống đến khi tạ ngang mức tai/cằm rồi phát lực đẩy lên."
+    ]
   },
   {
     "key": "arnold-press",
@@ -469,7 +565,15 @@
     "progression_level": 2,
     "easier_variation": "dumbbell-overhead-press",
     "harder_variation": "pike-push-up",
-    "variation_note": "Chuyển động xoay bao quát kích hoạt liên tục cả bó vai trước, vai giữa và vai sau trong cùng 1 rep."
+    "variation_note": "Chuyển động xoay bao quát kích hoạt liên tục cả bó vai trước, vai giữa và vai sau trong cùng 1 rep.",
+    "breathing": "Hạ tạ và xoay vào hít sâu (2s) · Vừa đẩy lên vừa xoay ra ngoài thở dứt khoát (1s).",
+    "tempo": "2-0-1-1 (Hạ và xoay chậm 2s - Đẩy và xoay mượt mà 1s - Giữ đỉnh 1s).",
+    "form_cues": [
+      "Vị trí bắt đầu: Hai quả tạ trước ngực, lòng bàn tay hướng về phía mặt, cùi chỏ khép sát người.",
+      "Động tác xoay: Vừa đẩy tạ lên cao vừa xoay cẳng tay ra ngoài nhịp nhàng, lên đỉnh lòng bàn tay hướng về phía trước.",
+      "Cột sống & Ngồi: Ngồi thẳng lưng tựa ghế dốc 80°–90°, giữ cổ thẳng trung tính.",
+      "Ý niệm: Động tác xoay diễn ra liên tục, kích hoạt đồng bộ cả 3 đầu cơ vai."
+    ]
   },
   {
     "key": "dumbbell-rear-delt-fly",
@@ -504,7 +608,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "face-pull",
-    "variation_note": "Bài cô lập bó cơ vai sau (Posterior deltoid) cực kỳ quan trọng để kéo vai về sau, chống gù lưng vẹo cổ do ngồi máy tính nhiều."
+    "variation_note": "Bài cô lập bó cơ vai sau (Posterior deltoid) cực kỳ quan trọng để kéo vai về sau, chống gù lưng vẹo cổ do ngồi máy tính nhiều.",
+    "breathing": "Banh tạ sang hai bên thở ra siết vai sau (1s) · Hạ tạ về hít sâu chậm rãi (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s - Banh lên 1s dứt khoát - Giữ siết vai sau 1s ở đỉnh).",
+    "form_cues": [
+      "Tư thế thân: Gập hông cúi người góc 45°–60°, lưng giữ thẳng tắp không gù, gối chùng nhẹ.",
+      "Góc tay: Cùi chỏ hơi cong, nâng tạ sang ngang sao cho cùi chỏ kéo lên ngang tầm lưng.",
+      "Ý niệm kích hoạt: Nghĩ về việc dùng cơ vai sau kéo cùi chỏ ra xa, hạn chế khép chặt bả vai vào nhau để tránh ăn vào cầu vai.",
+      "Mức tạ: Chọn tạ rất nhẹ (2–5kg), tập trung tuyệt đối vào cảm nhận cơ."
+    ]
   },
   {
     "key": "face-pull",
@@ -537,7 +649,15 @@
     "progression_level": 2,
     "easier_variation": "dumbbell-rear-delt-fly",
     "harder_variation": null,
-    "variation_note": "Bài tập vàng phục hồi và gia cố nhóm cơ chóp xoay (Infraspinatus, Teres minor) và vai sau, bảo vệ toàn diện khớp vai."
+    "variation_note": "Bài tập vàng phục hồi và gia cố nhóm cơ chóp xoay (Infraspinatus, Teres minor) và vai sau, bảo vệ toàn diện khớp vai.",
+    "breathing": "Kéo dây về mặt thở ra và xoay khớp vai (1s) · Nhả tay ra trước hít vào chậm (2s).",
+    "tempo": "2-0-1-2 (Nhả chậm 2s - Kéo dứt khoát 1s - Siết giữ mở vai ngoài 2s).",
+    "form_cues": [
+      "Điểm neo dây: Neo dây cáp/dây kháng lực cao ngang tầm mắt hoặc trán.",
+      "Đường kéo: Kéo hai đầu dây về phía hai bên thái dương, cùi chỏ kéo cao và lùi ra sau.",
+      "Xoay ngoài vai (External rotation): Ở cuối động tác, mu bàn tay hướng ra sau, cùi chỏ thấp hơn cổ tay một chút.",
+      "Tác dụng: Bài tập vàng kích hoạt cơ xoay ngoài vai và cơ lưng trên, triệt tiêu gù lưng."
+    ]
   },
   {
     "key": "pike-push-up",
@@ -574,7 +694,15 @@
     "progression_level": 3,
     "easier_variation": "dumbbell-overhead-press",
     "harder_variation": null,
-    "variation_note": "Biến thể nâng cao thể trọng cơ thể: nâng góc hông để dồn trọng lượng vào cơ vai, là bước đệm tiến lên chống đẩy trồng cây chuối (Handstand push-up)."
+    "variation_note": "Biến thể nâng cao thể trọng cơ thể: nâng góc hông để dồn trọng lượng vào cơ vai, là bước đệm tiến lên chống đẩy trồng cây chuối (Handstand push-up).",
+    "breathing": "Hạ đầu xuống chếch trước hít sâu (2s) · Đẩy người lên về vị trí chữ V thở mạnh (1s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s - Dừng kiểm soát 1s - Đẩy mạnh 1s).",
+    "form_cues": [
+      "Hình dáng cơ thể: Chống tay chân tạo thành hình chữ V ngược (Pike), đẩy hông lên thật cao.",
+      "Độ rộng tay: Rộng hơn vai 1 gang tay, xoay nhẹ bàn tay ra ngoài 15°.",
+      "Đường hạ đầu: Hạ đỉnh đầu về phía trước hai bàn tay tạo thành tam giác đều (Tripod), không hạ cắm đầu ngay giữa 2 tay.",
+      "Góc khuỷu tay: Khép góc 45° so với thân, không xòe ngang sang hai bên."
+    ]
   },
   {
     "key": "inverted-row",
@@ -610,7 +738,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "assisted-pull-up",
-    "variation_note": "Chân chạm đất làm điểm tựa an toàn cho vai, chuyển động kéo ngang bảo vệ khớp vai và là nền tảng số 1 trước khi tập xà treo."
+    "variation_note": "Chân chạm đất làm điểm tựa an toàn cho vai, chuyển động kéo ngang bảo vệ khớp vai và là nền tảng số 1 trước khi tập xà treo.",
+    "breathing": "Kéo ngực chạm thanh xà thở mạnh dứt khoát (1s) · Hạ người duỗi tay hít sâu (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s - Kéo nhanh 1s - Siết ép hai bả vai 1s ở đỉnh).",
+    "form_cues": [
+      "Thiết lập xà: Đặt thanh xà ngang hông hoặc ngang ngực (xà càng cao góc người càng đứng thì bài càng nhẹ).",
+      "Vị trí nắm: Nắm rộng hơn vai 1 gang tay, gót chân đạp sàn, siết bụng mông tạo thân thẳng tắp.",
+      "Cùi chỏ: Kéo cùi chỏ ra sau mạn sườn, hướng ngực chạm vào thanh xà.",
+      "Ý niệm: Tưởng tượng dùng cùi chỏ kéo sàn nhà về phía mình, ép hai xương bả vai chạm nhau."
+    ]
   },
   {
     "key": "assisted-pull-up",
@@ -646,7 +782,15 @@
     "progression_level": 2,
     "easier_variation": "inverted-row",
     "harder_variation": "chin-up",
-    "variation_note": "Tập đúng tư thế kéo thẳng đứng của hít xà nhưng có mũi chân trợ lực bù đắp 20-30% sức nặng cơ thể, rèn luyện đường đi của bả vai."
+    "variation_note": "Tập đúng tư thế kéo thẳng đứng của hít xà nhưng có mũi chân trợ lực bù đắp 20-30% sức nặng cơ thể, rèn luyện đường đi của bả vai.",
+    "breathing": "Kéo người lên thở mạnh dứt khoát (1s) · Hạ người xuống hít sâu giãn cơ xô (2-3s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s - Kéo 1s - Giữ cằm vượt xà 1s).",
+    "form_cues": [
+      "Điểm trợ lực: Đặt một chân lên ghế/bục hoặc luồn dây kháng lực dưới gối để giảm bớt tải trọng.",
+      "Vị trí tay: Cầm xà sấp tay (mu bàn tay hướng về mình), rộng hơn vai 1.5 lần.",
+      "Kéo bả vai trước: Hạ và ghì vai xuống trước khi gập tay (kéo từ cơ lưng xô, không giật cẳng tay).",
+      "Đỉnh động tác: Kéo ngực hướng về thanh xà cho đến khi cằm vượt qua xà."
+    ]
   },
   {
     "key": "chin-up",
@@ -683,7 +827,15 @@
     "progression_level": 3,
     "easier_variation": "assisted-pull-up",
     "harder_variation": "pull-up",
-    "variation_note": "Tay ngửa tận dụng thêm sức mạnh rất lớn từ cơ tay trước (Biceps), giúp việc kéo toàn bộ trọng lượng cơ thể dễ hơn so với hít xà sấp tay."
+    "variation_note": "Tay ngửa tận dụng thêm sức mạnh rất lớn từ cơ tay trước (Biceps), giúp việc kéo toàn bộ trọng lượng cơ thể dễ hơn so với hít xà sấp tay.",
+    "breathing": "Kéo người lên thở mạnh dứt khoát (1s) · Hạ người xuống hít sâu kiểm soát (2-3s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s - Dừng giãn ở đáy 1s - Kéo bùng nổ 1s).",
+    "form_cues": [
+      "Cách cầm xà: Cầm ngửa lòng bàn tay hướng về mặt (Supinated grip), độ rộng đúng bằng vai.",
+      "Ưu thế cơ: Ăn mạnh vào cơ xô dưới và toàn bộ cơ tay trước (Biceps).",
+      "Cùi chỏ: Kéo cùi chỏ thẳng xuống dưới và khép sát mạn sườn khi nâng người lên.",
+      "Biên độ: Hạ hết biên độ duỗi thẳng tay (Dead hang kiểm soát) rồi kéo cằm vượt xà."
+    ]
   },
   {
     "key": "pull-up",
@@ -721,7 +873,15 @@
     "progression_level": 4,
     "easier_variation": "chin-up",
     "harder_variation": null,
-    "variation_note": "Đỉnh cao của chuyển động kéo thân trên: cô lập tối đa cơ xô (Lats) tạo lưng V-taper, không có trợ lực từ bắp tay trước như khi ngửa tay."
+    "variation_note": "Đỉnh cao của chuyển động kéo thân trên: cô lập tối đa cơ xô (Lats) tạo lưng V-taper, không có trợ lực từ bắp tay trước như khi ngửa tay.",
+    "breathing": "Kéo người lên thở dốc mạnh qua miệng (1s) · Hạ người xuống hít sâu mở rộng lưng xô (2-3s).",
+    "tempo": "2-0-1-1 (Hạ kiểm soát 2-3s - Kéo dứt khoát 1s - Siết cơ xô ở đỉnh 1s).",
+    "form_cues": [
+      "Cách cầm xà: Cầm sấp mu bàn tay hướng về mặt (Pronated grip), rộng hơn vai 1.5 lần.",
+      "Khởi động bả vai: Ghì bả vai xuống (Scapular depression) trước khi gập cùi chỏ kéo người.",
+      "Ý niệm kéo: Tưởng tượng bạn đang bẻ cong thanh xà và kéo cùi chỏ xuống hông, không đu đưa chân lấy đà.",
+      "Biên độ chuẩn: Bắt đầu từ tay thẳng hoàn toàn và kéo ngực lên sát thanh xà."
+    ]
   },
   {
     "key": "one-arm-dumbbell-row",
@@ -757,7 +917,15 @@
     "progression_level": 1,
     "easier_variation": "inverted-row",
     "harder_variation": "bent-over-dumbbell-row",
-    "variation_note": "Tập từng bên (unilateral) có ghế hỗ trợ giúp giảm 60% tải trọng nén lên đĩa đệm thắt lưng so với đứng cúi người."
+    "variation_note": "Tập từng bên (unilateral) có ghế hỗ trợ giúp giảm 60% tải trọng nén lên đĩa đệm thắt lưng so với đứng cúi người.",
+    "breathing": "Kéo tạ lên thở mạnh siết chặt cơ xô (1s) · Hạ tạ xuống hít sâu giãn cơ lưng (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s - Kéo dứt khoát 1s - Giữ ép cơ xô 1s ở đỉnh).",
+    "form_cues": [
+      "Thế đứng: Một tay và một gối tựa vững trên ghế phẳng, tay còn lại cầm tạ, lưng song song sàn.",
+      "Đường kéo tạ: Kéo tạ theo quỹ đạo vòng cung nhẹ về phía túi quần sau (kéo cùi chỏ về hông), không kéo thẳng lên ngực.",
+      "Cổ & Cột sống: Cột sống thẳng tắp, mắt nhìn xuống ghế, không vặn vẹo xoay vai khi kéo nặng.",
+      "Cẳng tay: Cẳng tay buông thấu tự nhiên như sợi dây móc nối, lực kéo hoàn toàn do cơ xô phát ra."
+    ]
   },
   {
     "key": "bent-over-dumbbell-row",
@@ -795,7 +963,15 @@
     "progression_level": 2,
     "easier_variation": "one-arm-dumbbell-row",
     "harder_variation": "pull-up",
-    "variation_note": "Đứng cúi người tự do đòi hỏi cơ lưng dưới và đùi sau phải gồng giữ tư thế đẳng trường (isometric) suốt cả hiệp tập."
+    "variation_note": "Đứng cúi người tự do đòi hỏi cơ lưng dưới và đùi sau phải gồng giữ tư thế đẳng trường (isometric) suốt cả hiệp tập.",
+    "breathing": "Kéo tạ lên thở mạnh siết hai bả vai (1s) · Hạ tạ xuống hít sâu giãn lưng (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s - Kéo dứt khoát 1s - Ép chặt bả vai 1s).",
+    "form_cues": [
+      "Tư thế bản lề hông: Gập hông đẩy mông ra sau góc 45°–60°, gối chùng nhẹ, thắt lưng tuyệt đối giữ thẳng.",
+      "Vị trí tạ: Cầm tạ để lòng bàn tay hướng vào nhau hoặc hướng ra sau.",
+      "Đường kéo: Kéo cùi chỏ ra sau mạn sườn, đưa tạ về sát phần bụng dưới rốn.",
+      "Cấm sai lầm: Không giật người đứng thẳng dậy theo quán tính của tạ."
+    ]
   },
   {
     "key": "lat-pulldown",
@@ -832,7 +1008,15 @@
     "progression_level": 2,
     "easier_variation": "inverted-row",
     "harder_variation": "pull-up",
-    "variation_note": "Cho phép tùy chỉnh trọng lượng tạ chính xác từ nhẹ đến nặng để xây dựng sức mạnh cơ xô trước khi chuyển sang hít xà thể trọng."
+    "variation_note": "Cho phép tùy chỉnh trọng lượng tạ chính xác từ nhẹ đến nặng để xây dựng sức mạnh cơ xô trước khi chuyển sang hít xà thể trọng.",
+    "breathing": "Kéo thanh xuống thở mạnh ưỡn nhẹ ngực (1s) · Nhả thanh lên hít sâu giãn hết cơ xô (2s).",
+    "tempo": "2-1-1-1 (Nhả chậm 2s - Dừng giãn đỉnh 1s - Kéo 1s - Siết cơ xô ở ngực 1s).",
+    "form_cues": [
+      "Tư thế ngồi: Khóa đùi chặt dưới đệm giữ, ngả người ra sau nhẹ 10°–15°.",
+      "Độ rộng tay: Cầm thanh kéo rộng hơn vai 1.5 lần ở khúc cong của thanh.",
+      "Điểm chạm: Kéo thanh về chạm nhẹ xương ức/ngực trên, cùi chỏ kéo cắm xuống sàn.",
+      "Cấm kỵ: Tuyệt đối không kéo thanh ra sau gáy (Behind the neck) gây nguy cơ rách bao khớp vai."
+    ]
   },
   {
     "key": "dumbbell-pullover",
@@ -869,7 +1053,15 @@
     "progression_level": 2,
     "easier_variation": "lat-pulldown",
     "harder_variation": "pull-up",
-    "variation_note": "Kéo giãn cơ xô ở biên độ dài nhất (long muscle length), kích thích phì đại cơ xô theo cơ chế stretch-mediated hypertrophy."
+    "variation_note": "Kéo giãn cơ xô ở biên độ dài nhất (long muscle length), kích thích phì đại cơ xô theo cơ chế stretch-mediated hypertrophy.",
+    "breathing": "Hạ tạ ra sau đầu hít sâu căng tràn lồng ngực (3s) · Kéo tạ về lại thở ra từ từ (1s).",
+    "tempo": "3-1-1-0 (Hạ tạ chậm 3s mở rộng ngực - Dừng căng 1s - Kéo về 1s).",
+    "form_cues": [
+      "Tư thế tựa: Tựa lưng trên ngang qua ghế phẳng (hoặc nằm dọc ghế), đầu kê sát mép ghế.",
+      "Cách cầm tạ: Dùng cả hai lòng bàn tay ôm dưới mặt bánh tạ đơn hình kim cương.",
+      "Cùi chỏ: Khóa cùi chỏ hơi cong góc ~20° trong suốt bài tập, chuyển động chỉ diễn ra ở khớp vai.",
+      "Biên độ an toàn: Chỉ hạ tạ xuống đến khi bắp tay thẳng hàng với thân người, không hạ quá sâu kéo giãn khớp vai quá mức."
+    ]
   },
   {
     "key": "hammer-curl",
@@ -904,7 +1096,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "dumbbell-curl",
-    "variation_note": "Cầm dọc neutral grip giữ cổ tay ở vị trí tự nhiên nhất của khớp, giảm áp lực lên gân cổ tay và khuỷu tay hơn cuốn tạ ngửa."
+    "variation_note": "Cầm dọc neutral grip giữ cổ tay ở vị trí tự nhiên nhất của khớp, giảm áp lực lên gân cổ tay và khuỷu tay hơn cuốn tạ ngửa.",
+    "breathing": "Cuộn tạ lên thở ra dứt khoát (1s) · Hạ tạ xuống hít vào chậm rãi (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s duỗi kiểm soát - Cuộn 1s - Siết cơ cánh tay 1s ở đỉnh).",
+    "form_cues": [
+      "Kiểu cầm tạ: Hai lòng bàn tay đối diện nhau (Neutral grip) như cầm cán búa.",
+      "Cố định cùi chỏ: Khóa chặt hai cùi chỏ tì sát mạn sườn, không vung vẩy cùi chỏ ra trước hay sau.",
+      "Cổ tay: Giữ cổ tay thẳng đơ, không gập quặp cổ tay.",
+      "Kích hoạt: Tác động mạnh vào cơ cánh tay (Brachialis) giúp làm dày bề ngang bắp tay."
+    ]
   },
   {
     "key": "dumbbell-curl",
@@ -941,7 +1141,15 @@
     "progression_level": 2,
     "easier_variation": "hammer-curl",
     "harder_variation": "incline-dumbbell-curl",
-    "variation_note": "Xoay ngửa cẳng tay (supination) tối đa kích hoạt hai đầu cơ nhị đầu cánh tay (Biceps brachii)."
+    "variation_note": "Xoay ngửa cẳng tay (supination) tối đa kích hoạt hai đầu cơ nhị đầu cánh tay (Biceps brachii).",
+    "breathing": "Cuộn tạ lên vừa xoay ngửa bàn tay vừa thở ra (1s) · Hạ tạ xuống hít vào từ từ (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s - Cuộn nhanh 1s - Siết ép đỉnh bắp tay 1s).",
+    "form_cues": [
+      "Xoay cẳng tay (Supination): Bắt đầu ở tư thế lòng bàn tay hướng vào đùi, khi cuộn lên xoay ngửa mu bàn tay xuống dưới.",
+      "Biên độ: Duỗi thẳng tay hoàn toàn ở đáy trước khi bắt đầu rep tiếp theo.",
+      "Cùi chỏ: Giữ cùi chỏ cố định một chỗ, không nâng cùi chỏ lên cao để ăn gian cơ vai.",
+      "Thân người: Đứng thẳng, khóa cơ bụng, không đung đưa lưng mượn đà."
+    ]
   },
   {
     "key": "concentration-curl",
@@ -974,7 +1182,15 @@
     "progression_level": 2,
     "easier_variation": "hammer-curl",
     "harder_variation": "incline-dumbbell-curl",
-    "variation_note": "Điểm tựa vào đùi khóa chặt khớp cánh tay, loại bỏ 100% quán tính đung đưa của thân người, cô lập cơ tay trước thuần túy."
+    "variation_note": "Điểm tựa vào đùi khóa chặt khớp cánh tay, loại bỏ 100% quán tính đung đưa của thân người, cô lập cơ tay trước thuần túy.",
+    "breathing": "Cuộn tạ lên thở mạnh siết con chuột (1s) · Hạ tạ xuống hít sâu từ từ (2-3s).",
+    "tempo": "3-0-1-1 (Hạ rất chậm 3s - Cuộn 1s - Siết chặt đỉnh bắp tay 1s).",
+    "form_cues": [
+      "Điểm tì tay: Ngồi trên ghế, tì bắp tay sau (ngay trên cùi chỏ) vào mặt trong đùi cùng bên.",
+      "Khóa góc: Thân người nghiêng cố định, cùi chỏ khóa cứng không di chuyển.",
+      "Cô lập tuyệt đối: Chỉ có cẳng tay cử động, loại bỏ 100% quán tính thân người.",
+      "Ý niệm: Cuộn tạ về phía tai cùng bên, siết căng đỉnh con chuột bắp tay."
+    ]
   },
   {
     "key": "incline-dumbbell-curl",
@@ -1009,7 +1225,15 @@
     "progression_level": 3,
     "easier_variation": "dumbbell-curl",
     "harder_variation": "chin-up",
-    "variation_note": "Cánh tay nằm ra phía sau thân người kéo giãn tối đa đầu dài cơ nhị đầu, kích thích tăng cơ mạnh mẽ theo cơ chế phì đại kéo căng."
+    "variation_note": "Cánh tay nằm ra phía sau thân người kéo giãn tối đa đầu dài cơ nhị đầu, kích thích tăng cơ mạnh mẽ theo cơ chế phì đại kéo căng.",
+    "breathing": "Cuộn tạ lên thở ra (1s) · Hạ tạ xuống hít sâu kéo giãn đầu dài bắp tay (2-3s).",
+    "tempo": "3-0-1-1 (Hạ chậm 3s giãn cơ tối đa - Cuộn lên 1s - Siết đỉnh 1s).",
+    "form_cues": [
+      "Góc ghế: Chỉnh tựa lưng nghiêng 45°–60°, tựa toàn bộ lưng và đầu lên đệm.",
+      "Cánh tay: Thả lỏng cánh tay vuông góc tự nhiên xuống sàn, cùi chỏ lùi ra sau thân người.",
+      "Kéo giãn tối đa: Cho phép cơ bắp tay ở trạng thái kéo căng cực đại ở đáy.",
+      "Không nâng cùi chỏ: Giữ cùi chỏ hướng thẳng xuống sàn suốt quá trình cuộn."
+    ]
   },
   {
     "key": "bench-dips",
@@ -1046,7 +1270,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "dumbbell-skull-crusher",
-    "variation_note": "Tựa mép ghế cho phép co gối giảm tải trọng, giúp người mới tập trung cảm nhận duỗi cơ tam đầu cánh tay (Triceps)."
+    "variation_note": "Tựa mép ghế cho phép co gối giảm tải trọng, giúp người mới tập trung cảm nhận duỗi cơ tam đầu cánh tay (Triceps).",
+    "breathing": "Hạ hông xuống hít sâu (2s) · Đẩy người lên thở mạnh dứt khoát (1s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s - Giữ 1s - Đẩy bùng nổ 1s bằng tay sau).",
+    "form_cues": [
+      "Vị trí tay: Chống mép ghế, hai bàn tay đặt sát hai bên hông (rộng bằng vai).",
+      "Đường hạ hông: Hạ hông lướt sát mép ghế, không đẩy hông ra xa ghế gây vặn khớp vai.",
+      "Độ sâu an toàn: Chỉ hạ đến khi bắp tay song song sàn (90°), không hạ sâu hơn.",
+      "Cùi chỏ: Luôn khép cùi chỏ hướng thẳng ra sau, không để bè sang hai bên."
+    ]
   },
   {
     "key": "dumbbell-skull-crusher",
@@ -1080,7 +1312,15 @@
     "progression_level": 2,
     "easier_variation": "bench-dips",
     "harder_variation": "diamond-push-up",
-    "variation_note": "Cô lập hoàn hảo cơ tam đầu cánh tay mà không có trợ lực từ cơ ngực hay cơ vai."
+    "variation_note": "Cô lập hoàn hảo cơ tam đầu cánh tay mà không có trợ lực từ cơ ngực hay cơ vai.",
+    "breathing": "Hạ tạ về sau đầu hít sâu (2s) · Duỗi thẳng tay thở mạnh dứt khoát (1s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s - Dừng căng cơ tay sau 1s - Duỗi 1s).",
+    "form_cues": [
+      "Góc cánh tay: Hơi ngả cánh tay ra sau đầu góc 75°–80° so với sàn (không dựng thẳng đứng 90° để duy trì lực căng liên tục).",
+      "Điểm hạ tạ: Hạ tạ về phía đỉnh đầu hoặc hơi sau đầu, KHÔNG hạ thẳng vào trán.",
+      "Cùi chỏ: Giữ cố định cùi chỏ khép chặt, không mở bè sang hai bên.",
+      "Khóa khớp: Duỗi thẳng tay siết cơ tay sau ở đỉnh nhưng không giật khóa gắt khớp khuỷu."
+    ]
   },
   {
     "key": "triceps-overhead-extension",
@@ -1116,7 +1356,15 @@
     "progression_level": 2,
     "easier_variation": "bench-dips",
     "harder_variation": "diamond-push-up",
-    "variation_note": "Tư thế giơ tay qua đầu kéo căng tối đa đầu dài cơ tam đầu (Long head of triceps)."
+    "variation_note": "Tư thế giơ tay qua đầu kéo căng tối đa đầu dài cơ tam đầu (Long head of triceps).",
+    "breathing": "Hạ tạ sau gáy hít sâu kéo căng đầu dài tay sau (2s) · Đẩy thẳng tạ lên thở ra (1s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s - Dừng căng 1s - Đẩy lên 1s).",
+    "form_cues": [
+      "Cách cầm: Dùng 2 tay đỡ dưới lòng quả tạ đơn hoặc cầm mỗi tay 1 tạ hướng thẳng qua đầu.",
+      "Cùi chỏ: Khép cùi chỏ hướng về phía trước càng nhiều càng tốt, tránh xòe sang hai bên.",
+      "Cột sống: Siết chặt cơ bụng và ngồi thẳng lưng, tránh võng thắt lưng khi nâng tạ qua đầu.",
+      "Biên độ: Hạ tạ xuống sâu sau gáy để kéo giãn hết cỡ đầu dài cơ tam đầu."
+    ]
   },
   {
     "key": "dumbbell-triceps-kickback",
@@ -1147,7 +1395,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "dumbbell-skull-crusher",
-    "variation_note": "Đạt độ co ngắn cực đại (peak contraction) của cơ tam đầu ở điểm khóa thẳng tay ra phía sau."
+    "variation_note": "Đạt độ co ngắn cực đại (peak contraction) của cơ tam đầu ở điểm khóa thẳng tay ra phía sau.",
+    "breathing": "Đá tạ ra sau thở mạnh dứt khoát (1s) · Co tay về hít sâu từ từ (2s).",
+    "tempo": "2-0-1-1 (Co về chậm 2s - Đá thẳng tay 1s - Siết giữ đỉnh 1s).",
+    "form_cues": [
+      "Tư thế thân: Gập hông lưng song song sàn, khóa cánh tay trên song song với thân mình.",
+      "Cố định cùi chỏ: Cùi chỏ dán chặt mạn sườn, chỉ có khớp cẳng tay duỗi ra sau.",
+      "Đỉnh động tác: Duỗi thẳng tay hoàn toàn, siết chặt tay sau và giữ 1 giây.",
+      "Mức tạ: Chọn tạ nhẹ (2–4kg) để không bị đung đưa người lấy đà."
+    ]
   },
   {
     "key": "diamond-push-up",
@@ -1184,7 +1440,15 @@
     "progression_level": 3,
     "easier_variation": "dumbbell-skull-crusher",
     "harder_variation": null,
-    "variation_note": "Biến thể nâng cao: thu hẹp tay ép khuỷu gập sâu dưới toàn bộ trọng lượng cơ thể, kích hoạt điện cơ (EMG) tay sau đạt đỉnh cao nhất trong các bài hít đất."
+    "variation_note": "Biến thể nâng cao: thu hẹp tay ép khuỷu gập sâu dưới toàn bộ trọng lượng cơ thể, kích hoạt điện cơ (EMG) tay sau đạt đỉnh cao nhất trong các bài hít đất.",
+    "breathing": "Hạ ngực chạm tay hít sâu (2s) · Đẩy người lên thở mạnh bằng miệng (1s).",
+    "tempo": "2-1-1-0 (Hạ kiểm soát 2s - Dừng 1s - Đẩy bùng nổ 1s).",
+    "form_cues": [
+      "Hình tay: Đặt hai bàn tay sát nhau dưới ngực, ngón cái và ngón trỏ chạm nhau tạo thành hình viên kim cương.",
+      "Cùi chỏ: Khép cùi chỏ ôm sát thân người góc 30°–45° khi hạ xuống.",
+      "Biên độ: Hạ ngực chạm nhẹ vào mu bàn tay rồi đẩy mạnh lên.",
+      "Giảm tải nếu đau: Nếu cổ tay bị cấn, có thể tách nhẹ hai bàn tay cách nhau 5–10cm."
+    ]
   },
   {
     "key": "dead-hang",
@@ -1221,7 +1485,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "wrist-curl",
-    "variation_note": "Rèn luyện sức mạnh bám nắm của cẳng tay (Grip strength) và giải nén đốt sống lưng trước khi chuyển sang các bài kéo xà động lực học."
+    "variation_note": "Rèn luyện sức mạnh bám nắm của cẳng tay (Grip strength) và giải nén đốt sống lưng trước khi chuyển sang các bài kéo xà động lực học.",
+    "breathing": "Thở đều đặn, sâu và chậm bằng mũi; không nín thở khi cơ thể căng cứng.",
+    "tempo": "Tĩnh (Giữ liên tục 30–60s hết khả năng).",
+    "form_cues": [
+      "Cách cầm xà: Nắm xà sấp tay, khóa ngón cái quanh thanh xà (Closed grip) để lực bám mạnh nhất.",
+      "Khớp vai chủ động: Hơi ghì nhẹ vai xuống một chút (Active hang), tránh để toàn bộ trọng lượng giật kéo giãn bao khớp thụ động.",
+      "Thân người: Thả lỏng chân thẳng hoặc co nhẹ gối, cơ thể treo tĩnh không đung đưa.",
+      "Lợi ích: Tăng sức mạnh nắm tay (Grip strength) và giải nén các đốt sống lưng."
+    ]
   },
   {
     "key": "wrist-curl",
@@ -1255,7 +1527,15 @@
     "progression_level": 2,
     "easier_variation": "dead-hang",
     "harder_variation": "reverse-wrist-curl",
-    "variation_note": "Cô lập nhóm cơ gấp cổ tay và ngón tay (Flexor carpi radialis & ulnaris) rèn cẳng tay dày khỏe."
+    "variation_note": "Cô lập nhóm cơ gấp cổ tay và ngón tay (Flexor carpi radialis & ulnaris) rèn cẳng tay dày khỏe.",
+    "breathing": "Cuộn cổ tay lên thở ra (1s) · Nhả cổ tay xuống hít vào chậm (2s).",
+    "tempo": "2-0-1-1 (Nhả chậm 2s - Cuộn 1s - Siết cẳng tay 1s).",
+    "form_cues": [
+      "Điểm tì tay: Tì toàn bộ cẳng tay lên đùi hoặc ghế phẳng, cổ tay thò ra ngoài mép 5cm.",
+      "Tư thế tay: Lòng bàn tay ngửa lên trên, các ngón tay nắm chắc thanh tạ đơn.",
+      "Biên độ: Cho phép tạ lăn nhẹ xuống các đầu ngón tay rồi cuộn ngược cổ tay lên hết cỡ.",
+      "Cố định: Chỉ có cổ tay chuyển động, cẳng tay dán chặt vào mặt đệm."
+    ]
   },
   {
     "key": "reverse-wrist-curl",
@@ -1288,7 +1568,15 @@
     "progression_level": 2,
     "easier_variation": "wrist-curl",
     "harder_variation": null,
-    "variation_note": "Rèn luyện nhóm cơ duỗi cổ tay (Extensors), tạo sự cân bằng lực kéo cho khớp cổ tay, phòng tránh chấn thương Tennis elbow."
+    "variation_note": "Rèn luyện nhóm cơ duỗi cổ tay (Extensors), tạo sự cân bằng lực kéo cho khớp cổ tay, phòng tránh chấn thương Tennis elbow.",
+    "breathing": "Gập ngược cổ tay lên thở ra (1s) · Hạ tạ xuống hít vào (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s - Nâng cổ tay 1s - Siết giữ đỉnh 1s).",
+    "form_cues": [
+      "Tư thế tay: Lòng bàn tay úp xuống dưới, cẳng tay tì vững chắc trên đùi.",
+      "Mức tạ: Sử dụng tạ rất nhẹ (1–3kg) vì nhóm cơ duỗi cổ tay nhỏ và dễ tổn thương.",
+      "Biên độ: Nâng cổ tay lên cao nhất có thể có kiểm soát, không giật cục.",
+      "Tác dụng: Cân bằng lực kéo giữa hai mặt cẳng tay, phòng ngừa hội chứng Tennis Elbow."
+    ]
   },
   {
     "key": "dumbbell-shrug",
@@ -1324,7 +1612,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": null,
-    "variation_note": "Bài cô lập cơ thang trên (Upper trapezius) đơn giản và hiệu quả nhất."
+    "variation_note": "Bài cô lập cơ thang trên (Upper trapezius) đơn giản và hiệu quả nhất.",
+    "breathing": "Nhún vai lên thở dốc mạnh (1s) · Hạ vai xuống hít sâu kéo giãn cơ (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s - Nhún cao 1s - Giữ siết đỉnh 1s).",
+    "form_cues": [
+      "Đường cử động: Nhún hai vai thẳng đứng lên sát tai (Vertical elevation), tuyệt đối KHÔNG xoay tròn khớp vai.",
+      "Cánh tay: Thả lỏng cánh tay thẳng tắp, không gập cùi chỏ để kéo tạ.",
+      "Cổ: Giữ đầu và cổ thẳng, mắt nhìn thẳng, không rướn cổ về phía trước khi nhún.",
+      "Đỉnh động tác: Dừng 1 giây ở đỉnh để ép căng cơ cầu vai trên."
+    ]
   },
   {
     "key": "box-squat",
@@ -1359,7 +1655,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "slow-squat",
-    "variation_note": "Có ghế làm cữ chặn giới hạn độ sâu, giúp người mới hoặc người đau khớp gối tập đúng chuyển động đẩy hông ra sau (hip-dominant) mà không bị gập nhọn khớp gối."
+    "variation_note": "Có ghế làm cữ chặn giới hạn độ sâu, giúp người mới hoặc người đau khớp gối tập đúng chuyển động đẩy hông ra sau (hip-dominant) mà không bị gập nhọn khớp gối.",
+    "breathing": "Hạ mông xuống hít sâu nén bụng (Valsalva) (2-3s) · Đạp gót đứng lên thở mạnh qua điểm nghẽn (1s).",
+    "tempo": "3-1-1-0 (Hạ chậm 3s - Chạm ghế dừng 1s không thả lỏng - Đạp bùng nổ 1s).",
+    "form_cues": [
+      "Khoảng cách chân: Rộng bằng vai, mũi chân mở 15°–30°, đầu gối mở theo hướng mũi chân.",
+      "Độ cao hộp/ghế: Cao ngang đầu gối (đùi song song sàn khi ngồi).",
+      "Chuyển động: Đẩy hông lùi sau trước khi gập gối, mông chạm nhẹ ghế thì dừng (không đổ người thả lỏng lên ghế).",
+      "Đứng lên: Đạp mạnh gót chân và siết cơ đùi trước đẩy người đứng thẳng dậy."
+    ]
   },
   {
     "key": "slow-squat",
@@ -1396,7 +1700,15 @@
     "progression_level": 2,
     "easier_variation": "box-squat",
     "harder_variation": "goblet-squat",
-    "variation_note": "Hạ chậm 3 giây tăng thời gian chịu áp lực (Time Under Tension) giúp rèn vững gân khớp và cơ mông đùi mà không cần dùng tạ nặng."
+    "variation_note": "Hạ chậm 3 giây tăng thời gian chịu áp lực (Time Under Tension) giúp rèn vững gân khớp và cơ mông đùi mà không cần dùng tạ nặng.",
+    "breathing": "Hạ người xuống từ từ hít sâu đầy khoang bụng (3-4s) · Đạp đứng lên thở dứt khoát (1s).",
+    "tempo": "4-1-1-0 (Hạ cực chậm 4s - Giữ căng ở đáy 1s - Đứng lên 1s).",
+    "form_cues": [
+      "Kiểm soát thần kinh - cơ: Đếm nhịp chậm rãi trong đầu khi hạ mông, loại bỏ hoàn toàn quán tính.",
+      "Thắt lưng: Giữ lưng thẳng tự nhiên, ưỡn ngực, mắt nhìn thẳng phía trước.",
+      "Độ sâu: Hạ đến khi đùi song song sàn hoặc sâu hơn một chút nếu khớp háng cho phép.",
+      "Đầu gối: Luôn bẻ khớp gối ra ngoài theo hướng mũi chân, tránh sụp gối vào trong (Knee valgus)."
+    ]
   },
   {
     "key": "goblet-squat",
@@ -1433,7 +1745,15 @@
     "progression_level": 3,
     "easier_variation": "slow-squat",
     "harder_variation": "dumbbell-lunge",
-    "variation_note": "Tạ ôm phía trước ngực đóng vai trò đối trọng (counter-balance), tự động ép cột sống giữ thẳng và hạ sâu hơn mà không bị gù lưng."
+    "variation_note": "Tạ ôm phía trước ngực đóng vai trò đối trọng (counter-balance), tự động ép cột sống giữ thẳng và hạ sâu hơn mà không bị gù lưng.",
+    "breathing": "Hạ người xuống hít sâu nén cơ hoành (2-3s) · Đạp đứng lên thở mạnh ở 1/3 chặng cuối (1s).",
+    "tempo": "3-1-1-0 (Hạ chậm 3s - Giữ đáy 1s - Đạp đứng lên 1s).",
+    "form_cues": [
+      "Cách ôm tạ: Dùng hai tay ôm chặt quả tạ đơn trước ngực sát xương ức (như ôm chiếc cúp).",
+      "Thân người: Trọng lượng tạ phía trước giúp giữ thân trên thẳng đứng tự nhiên, bảo vệ cột sống tối đa.",
+      "Cùi chỏ: Cùi chỏ khép hướng xuống sàn, khi xuống đáy cùi chỏ lướt sát bên trong hai đầu gối.",
+      "Gót chân: Toàn bộ bàn chân bám chặt sàn, trọng tâm đặt ở giữa bàn chân và gót chân."
+    ]
   },
   {
     "key": "step-up",
@@ -1468,7 +1788,15 @@
     "progression_level": 1,
     "easier_variation": "box-squat",
     "harder_variation": "dumbbell-lunge",
-    "variation_note": "Tập từng chân một cách an toàn và tự nhiên, bắt chước chuyển động leo cầu thang hàng ngày."
+    "variation_note": "Tập từng chân một cách an toàn và tự nhiên, bắt chước chuyển động leo cầu thang hàng ngày.",
+    "breathing": "Bước lên thở mạnh dứt khoát (1s) · Bước lùi xuống hít vào chậm rãi (2s).",
+    "tempo": "2-0-1-0 (Hạ chậm 2s - Đạp chân trước bước lên 1s dứt khoát).",
+    "form_cues": [
+      "Độ cao bục: Chọn bục cao ngang cẳng chân hoặc đầu gối (góc gối chân trước ~90°).",
+      "Chân phát lực: Toàn bộ lực đẩy dồn vào gót chân trước đặt trên bục, KHÔNG nhún mũi chân sau để hất người lên.",
+      "Khớp gối: Đầu gối chân trước đi thẳng theo hướng mũi chân, không lắc lư.",
+      "Thân người: Hơi nghiêng nhẹ thân trên về trước để dồn trọng tâm vào đùi trước và mông."
+    ]
   },
   {
     "key": "dumbbell-lunge",
@@ -1506,7 +1834,15 @@
     "progression_level": 4,
     "easier_variation": "goblet-squat",
     "harder_variation": "bulgarian-split-squat",
-    "variation_note": "Chuyển sang chuyển động chân đơn (Unilateral) đòi hỏi khả năng giữ thăng bằng của khớp hông và cơ đùi trước cao hơn nhiều."
+    "variation_note": "Chuyển sang chuyển động chân đơn (Unilateral) đòi hỏi khả năng giữ thăng bằng của khớp hông và cơ đùi trước cao hơn nhiều.",
+    "breathing": "Hạ hông xuống hít sâu (2s) · Đạp gót đứng lên thở mạnh dứt khoát (1s).",
+    "tempo": "2-1-1-0 (Hạ kiểm soát 2s - Dừng 1s ở đáy - Đạp đứng dậy 1s).",
+    "form_cues": [
+      "Độ sải chân: Bước sải đủ dài để khi hạ xuống, cả hai đầu gối đều tạo góc vuông 90°.",
+      "Gối chân trước: Đầu gối thẳng hàng với cổ chân, không trượt vượt quá xa mũi chân làm nhấc gót.",
+      "Gối chân sau: Hạ thẳng đứng xuống gần chạm sàn (cách sàn 2–3cm).",
+      "Thân mình: Lưng giữ thẳng đứng, hai tay cầm tạ xuôi tự nhiên bên hông."
+    ]
   },
   {
     "key": "walking-lunge",
@@ -1544,7 +1880,15 @@
     "progression_level": 2,
     "easier_variation": "dumbbell-lunge",
     "harder_variation": "bulgarian-split-squat",
-    "variation_note": "Rèn luyện khả năng giảm tốc và phối hợp cơ bắp năng động giữa hai chân khi di chuyển."
+    "variation_note": "Rèn luyện khả năng giảm tốc và phối hợp cơ bắp năng động giữa hai chân khi di chuyển.",
+    "breathing": "Bước và hạ hông hít sâu (2s) · Đạp đứng lên bước chân tiếp theo thở mạnh (1s).",
+    "tempo": "2-0-1-0 (Hạ nhịp nhàng 2s - Bước tiến bùng nổ 1s).",
+    "form_cues": [
+      "Nhịp chuyển động: Bước tiến liên tục mượt mà, gót chân trước tiếp đất trước rồi hạ hông.",
+      "Thăng bằng: Hai chân bước rộng bằng khoảng cách hai bên hông (như đi trên 2 đường ray tàu hỏa), tránh bước chéo chân trên 1 đường thẳng.",
+      "Góc gối: Kiểm soát gối trước không sụp vào trong khi chuyển giao trọng lượng.",
+      "Tư thế: Ngực mở, vai kéo ra sau, cơ bụng gồng chắc để giữ thăng bằng."
+    ]
   },
   {
     "key": "bulgarian-split-squat",
@@ -1582,7 +1926,15 @@
     "progression_level": 5,
     "easier_variation": "dumbbell-lunge",
     "harder_variation": null,
-    "variation_note": "Đỉnh cao của tập đùi trước và mông đơn chân: 85% tải trọng dồn lên một bên đùi, cô lập triệt để mà không tạo áp lực nén lên cột sống."
+    "variation_note": "Đỉnh cao của tập đùi trước và mông đơn chân: 85% tải trọng dồn lên một bên đùi, cô lập triệt để mà không tạo áp lực nén lên cột sống.",
+    "breathing": "Hạ hông xuống hít sâu nén chặt cơ lõi (2-3s) · Đạp gót chân trước đứng lên thở dốc mạnh (1s).",
+    "tempo": "3-1-1-0 (Hạ chậm 3s kiểm soát đùi - Dừng 1s ở đáy - Đạp mạnh 1s).",
+    "form_cues": [
+      "Kê chân sau: Đặt mu bàn chân sau lên ghế cao 35–45cm, chân sau chỉ đóng vai trò giữ thăng bằng (15% lực).",
+      "Khoảng cách chân: Đứng cách ghế khoảng 2–3 bàn chân sao cho cẳng chân trước gần như vuông góc sàn khi hạ xuống.",
+      "Độ sâu: Hạ mông xuống sâu cho tới khi đùi chân trước song song với mặt sàn.",
+      "Cảm nhận cơ: Hơi đổ người về phía trước 15° để ăn sâu vào cơ mông, hoặc giữ thẳng người để ăn nhiều vào đùi trước."
+    ]
   },
   {
     "key": "leg-extension",
@@ -1617,7 +1969,15 @@
     "progression_level": 2,
     "easier_variation": "slow-squat",
     "harder_variation": "goblet-squat",
-    "variation_note": "Bài cô lập hoàn toàn 4 đầu cơ đùi trước (Quadriceps) mà không có sự tham gia của cơ mông hay lưng."
+    "variation_note": "Bài cô lập hoàn toàn 4 đầu cơ đùi trước (Quadriceps) mà không có sự tham gia của cơ mông hay lưng.",
+    "breathing": "Đá tạ duỗi chân thở mạnh ra (1s) · Hạ chân về hít vào thật chậm (2-3s).",
+    "tempo": "3-0-1-1 (Hạ chậm 3s - Đá lên 1s - Siết đùi trước 1s ở đỉnh).",
+    "form_cues": [
+      "Vị trí khớp xoay: Chỉnh ghế sao cho khớp gối thẳng hàng hoàn toàn với trục quay của máy.",
+      "Đệm kê chân: Đệm tròn tì vào phần dưới cẳng chân ngay trên mắt cá chân.",
+      "Lưng ghế: Tựa lưng sát đệm sau, hai tay nắm chặt thanh cầm hai bên để cố định hông.",
+      "Đỉnh động tác: Duỗi thẳng chân siết cơ đùi trước nhưng không giật mạnh làm va đập khớp gối."
+    ]
   },
   {
     "key": "glute-bridge",
@@ -1652,7 +2012,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "single-leg-glute-bridge",
-    "variation_note": "Nằm phẳng trên sàn giúp cố định hoàn toàn cột sống, an toàn 100% cho thắt lưng trong khi kích hoạt tối đa cơ mông lớn."
+    "variation_note": "Nằm phẳng trên sàn giúp cố định hoàn toàn cột sống, an toàn 100% cho thắt lưng trong khi kích hoạt tối đa cơ mông lớn.",
+    "breathing": "Đẩy hông lên cao thở mạnh siết chặt hai má mông (1s) · Hạ hông xuống hít sâu (2s).",
+    "tempo": "2-0-1-2 (Hạ chậm 2s - Đẩy dứt khoát 1s - Siết ép mông 2s ở đỉnh).",
+    "form_cues": [
+      "Vị trí bàn chân: Nằm ngửa, co gối, bàn chân đạp phẳng sàn cách mông khoảng 1 bàn chân (cẳng chân vuông góc sàn ở đỉnh).",
+      "Độ rộng chân: Rộng bằng hông hoặc vai, mũi chân hơi xoay nhẹ ra ngoài 10°.",
+      "Khóa xương chậu: Cuộn xương chậu ra sau (Posterior pelvic tilt) dán thắt lưng xuống sàn trước khi đẩy.",
+      "Đỉnh động tác: Nâng hông thành đường thẳng từ gối tới vai, dùng cơ mông phát lực, KHÔNG ưỡn cong thắt lưng."
+    ]
   },
   {
     "key": "single-leg-glute-bridge",
@@ -1688,7 +2056,15 @@
     "progression_level": 2,
     "easier_variation": "glute-bridge",
     "harder_variation": "dumbbell-hip-thrust",
-    "variation_note": "Nhân đôi tải trọng lên một bên mông mà không cần dùng tạ, rèn luyện sự ổn định của khung chậu."
+    "variation_note": "Nhân đôi tải trọng lên một bên mông mà không cần dùng tạ, rèn luyện sự ổn định của khung chậu.",
+    "breathing": "Đẩy hông bằng 1 chân thở mạnh (1s) · Hạ hông chạm sàn hít sâu (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s - Đẩy mạnh 1s - Giữ siết 1s).",
+    "form_cues": [
+      "Chân không chạm đất: Co gối 90° ôm nhẹ trước ngực hoặc duỗi thẳng chân lên trời.",
+      "Cân bằng hông: Giữ hai bên xương chậu thăng bằng ngang nhau, không để bên hông lơ lửng bị xệ xuống.",
+      "Lực đẩy: Đạp mạnh gót chân trụ xuống sàn để kích hoạt tối đa cơ mông lớn.",
+      "Kiểm soát: Chuyển động chậm rãi, thắt lưng không bị ưỡn quá mức."
+    ]
   },
   {
     "key": "clamshell",
@@ -1719,7 +2095,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "dumbbell-hip-thrust",
-    "variation_note": "Bài tập vật lý trị liệu kích hoạt cơ mông nhỡ (Gluteus medius) số 1 để cố định xương đùi, chống sụp gối khi chạy và squat."
+    "variation_note": "Bài tập vật lý trị liệu kích hoạt cơ mông nhỡ (Gluteus medius) số 1 để cố định xương đùi, chống sụp gối khi chạy và squat.",
+    "breathing": "Mở đầu gối lên thở ra siết mông nhỡ (1s) · Khép gối về hít vào chậm (2s).",
+    "tempo": "2-0-1-1 (Khép chậm 2s - Mở gối 1s - Siết cơ mông nhỡ 1s).",
+    "form_cues": [
+      "Tư thế nằm: Nằm nghiêng một bên, co gối 90°, hai gót chân dán chặt vào nhau.",
+      "Cố định khung chậu: Giữ xương chậu vuông góc với sàn, KHÔNG lật ngửa hông ra sau khi mở gối.",
+      "Biên độ: Mở gối trên lên cao hết cỡ trong khi hai gót chân vẫn dính sát nhau.",
+      "Cảm nhận: Bạn sẽ cảm nhận mỏi bỏng rát ở vùng mông trên/mông nhỡ (Gluteus medius)."
+    ]
   },
   {
     "key": "dumbbell-hip-thrust",
@@ -1754,7 +2138,15 @@
     "progression_level": 3,
     "easier_variation": "single-leg-glute-bridge",
     "harder_variation": "romanian-deadlift",
-    "variation_note": "Tựa mép ghế tăng gấp đôi biên độ chuyển động (ROM) so với nằm sàn, thêm tạ đơn tạo kháng lực lớn kích thích cơ mông phát triển."
+    "variation_note": "Tựa mép ghế tăng gấp đôi biên độ chuyển động (ROM) so với nằm sàn, thêm tạ đơn tạo kháng lực lớn kích thích cơ mông phát triển.",
+    "breathing": "Đẩy hông lên đỉnh thở dốc mạnh (1s) · Hạ hông xuống hít sâu (2s).",
+    "tempo": "2-0-1-2 (Hạ kiểm soát 2s - Đẩy bùng nổ 1s - Khóa siết mông cứng ngắc 2s ở đỉnh).",
+    "form_cues": [
+      "Điểm tựa lưng: Mép dưới xương bả vai tựa vững vào mép ghế phẳng (ghế cao ~35–40cm).",
+      "Vị trí tạ: Đặt tạ đơn lên nếp gấp hông (có đệm mút lót êm ái), dùng hai tay giữ tạ chắc chắn.",
+      "Cằm & Mắt: Thu cằm về ức, mắt luôn nhìn thẳng về phía đầu gối trong suốt bài tập (giúp cột sống giữ trung tính).",
+      "Đỉnh chuyển động: Cẳng chân vuông góc sàn 90°, thân người song song mặt đất, siết mông tối đa."
+    ]
   },
   {
     "key": "cable-glute-kickback",
@@ -1789,7 +2181,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "dumbbell-hip-thrust",
-    "variation_note": "Cô lập chuyển động duỗi hông thuần túy của cơ mông lớn mà không cần tạ nặng."
+    "variation_note": "Cô lập chuyển động duỗi hông thuần túy của cơ mông lớn mà không cần tạ nặng.",
+    "breathing": "Đá chân ra sau thở mạnh siết cơ mông (1s) · Thu chân về hít sâu chậm rãi (2s).",
+    "tempo": "2-0-1-1 (Thu về chậm 2s - Đá dứt khoát 1s - Siết giữ đỉnh 1s).",
+    "form_cues": [
+      "Tư thế quỳ/đứng: Quỳ 4 điểm trên thảm (hoặc đứng bám tay vào điểm tựa), lưng giữ thẳng tắp.",
+      "Đường đá: Dùng gót chân đạp thẳng ra sau và hơi chếch lên trên nhẹ.",
+      "Khóa thắt lưng: Cột sống thắt lưng giữ cố định tuyệt đối, không võng lưng để hất chân lên cao.",
+      "Cảm nhận: Toàn bộ lực co bóp đến từ khối cơ mông, không dùng đà vung vẩy khớp gối."
+    ]
   },
   {
     "key": "romanian-deadlift",
@@ -1828,7 +2228,15 @@
     "progression_level": 4,
     "easier_variation": "dumbbell-hip-thrust",
     "harder_variation": "single-leg-rdl",
-    "variation_note": "Chuyển động bản lề hông đứng (Hip Hinge) nâng cao: kéo căng tối đa cơ đùi sau (Hamstrings) và rèn chuỗi cơ chuỗi sau."
+    "variation_note": "Chuyển động bản lề hông đứng (Hip Hinge) nâng cao: kéo căng tối đa cơ đùi sau (Hamstrings) và rèn chuỗi cơ chuỗi sau.",
+    "breathing": "Đẩy hông ra sau cúi người hít sâu nén bụng (2-3s) · Đẩy hông về trước đứng thẳng thở mạnh (1s).",
+    "tempo": "3-1-1-0 (Hạ chậm 3s cảm nhận căng đùi sau - Dừng 1s - Đẩy đứng dậy 1s).",
+    "form_cues": [
+      "Bản lề hông (Hip Hinge): Cố định độ chùng gối nhẹ 15°–20°, đẩy toàn bộ mông ra sau như muốn chạm vào tường.",
+      "Đường tạ: Giữ tạ đơn lướt sát mặt trước đùi và cẳng chân suốt hành trình, không đưa tạ ra xa người.",
+      "Cột sống: Giữ lưng thẳng tắp từ đầu tới xương cụt, mở ngực, khóa chặt cơ xô.",
+      "Biên độ dừng: Dừng lại khi tạ xuống ngang ống đồng (hoặc khi hông không thể lùi thêm nữa), không cố cúi gù lưng."
+    ]
   },
   {
     "key": "single-leg-rdl",
@@ -1865,7 +2273,15 @@
     "progression_level": 5,
     "easier_variation": "romanian-deadlift",
     "harder_variation": null,
-    "variation_note": "Rèn luyện khả năng thăng bằng cơ thần kinh cực đại và kích hoạt sâu toàn bộ chuỗi cơ đùi sau và mông đơn chân."
+    "variation_note": "Rèn luyện khả năng thăng bằng cơ thần kinh cực đại và kích hoạt sâu toàn bộ chuỗi cơ đùi sau và mông đơn chân.",
+    "breathing": "Cúi người lùi chân hít sâu giữ thăng bằng (2-3s) · Kéo người đứng lên thở ra dứt khoát (1s).",
+    "tempo": "3-0-1-0 (Hạ chậm 3s kiểm soát thăng bằng - Đứng lên 1s).",
+    "form_cues": [
+      "Trục cơ thể: Chân sau duỗi thẳng và nâng lên cùng lúc thân trên cúi xuống (như một chiếc bập bênh thẳng tắp).",
+      "Khung chậu: Khóa hai bên hông song song với mặt sàn, không để hông chân sau bị lật ngửa sang bên.",
+      "Chân trụ: Gối chân trụ hơi chùng nhẹ, đạp vững 3 điểm bàn chân (gót, ngón cái, ngón út).",
+      "Cầm tạ: Cầm tạ ở tay đối diện với chân trụ hoặc cầm hai tay tạ nhẹ."
+    ]
   },
   {
     "key": "lying-leg-curl",
@@ -1900,7 +2316,15 @@
     "progression_level": 2,
     "easier_variation": "glute-bridge",
     "harder_variation": "romanian-deadlift",
-    "variation_note": "Cô lập chuyển động gập khớp gối (Knee flexion) của nhóm cơ đùi sau (Biceps femoris, Semitendinosus)."
+    "variation_note": "Cô lập chuyển động gập khớp gối (Knee flexion) của nhóm cơ đùi sau (Biceps femoris, Semitendinosus).",
+    "breathing": "Gập gối móc tạ về mông thở mạnh ra (1s) · Duỗi chân hạ tạ hít vào từ từ (2-3s).",
+    "tempo": "3-0-1-1 (Nhả chậm 3s - Móc nhanh 1s - Siết ép đùi sau 1s ở đỉnh).",
+    "form_cues": [
+      "Vị trí đệm: Đệm tròn tì vào phía sau gân gót chân (ngay dưới bắp chuối).",
+      "Cố định hông: Ấn chặt xương chậu xuống mặt đệm, không nhấc mông lên khi móc tạ nặng.",
+      "Bàn chân: Bẻ cổ chân vuông góc (Dorsiflexion) để tăng lực tuyển mộ cơ đùi sau.",
+      "Biên độ: Gập gót sát mông nhất có thể rồi nhả tạ về có kiểm soát, không thả rơi tự do."
+    ]
   },
   {
     "key": "good-morning-db",
@@ -1937,7 +2361,15 @@
     "progression_level": 3,
     "easier_variation": "dumbbell-hip-thrust",
     "harder_variation": "romanian-deadlift",
-    "variation_note": "Bài tập rèn luyện chuyển động bản lề hông (Hip Hinge) hoàn hảo, củng cố sức mạnh chuỗi cơ phía sau cơ thể."
+    "variation_note": "Bài tập rèn luyện chuyển động bản lề hông (Hip Hinge) hoàn hảo, củng cố sức mạnh chuỗi cơ phía sau cơ thể.",
+    "breathing": "Cúi gập hông hít sâu giữ thẳng lưng (2-3s) · Đẩy hông đứng lên thở mạnh (1s).",
+    "tempo": "3-1-1-0 (Hạ chậm 3s - Dừng căng 1s - Đứng thẳng dậy 1s).",
+    "form_cues": [
+      "Vị trí tạ: Ôm tạ đơn chắc chắn trước ngực (hoặc kê nhẹ sau gáy).",
+      "Chuyển động: Bản lề hông thuần túy, đẩy mông ra sau tối đa trong khi gối chỉ hơi chùng nhẹ.",
+      "Cột sống: Giữ lưng thẳng như tấm ván, mắt nhìn chếch xuống sàn theo góc thân người.",
+      "Kích hoạt: Cảm nhận sức căng rõ rệt ở bắp đùi sau và cơ mông trước khi đứng thẳng lên."
+    ]
   },
   {
     "key": "calf-raise",
@@ -1971,7 +2403,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "single-leg-calf-raise",
-    "variation_note": "Tập trung kéo giãn toàn bộ biên độ cổ chân để rèn luyện gân gót Achilles và cơ sinh đôi cẳng chân."
+    "variation_note": "Tập trung kéo giãn toàn bộ biên độ cổ chân để rèn luyện gân gót Achilles và cơ sinh đôi cẳng chân.",
+    "breathing": "Nhón gót chân lên thở mạnh (1s) · Hạ gót chân xuống hít sâu từ từ (2s).",
+    "tempo": "2-1-1-2 (Hạ chậm 2s kéo giãn gót - Dừng đáy 1s - Nhón cao 1s - Siết đỉnh 2s).",
+    "form_cues": [
+      "Đứng trên bậc: Đứng nửa trước bàn chân trên mép bậc thang/bục để gót chân có khoảng hạ xuống sâu.",
+      "Biên độ tối đa: Hạ gót xuống thấp hơn mặt bục để kéo giãn gân gót hết cỡ, sau đó nhón cao hết biên độ lên ức ngón chân cái.",
+      "Khớp gối: Khóa chân thẳng (chỉ hơi chùng 5°) để nhắm vào cơ bắp chân ngoài (Gastrocnemius).",
+      "Đỉnh động tác: Dừng 2 giây ở vị trí nhón cao nhất để triệt tiêu năng lượng đàn hồi của gân gót."
+    ]
   },
   {
     "key": "seated-calf-raise",
@@ -2003,7 +2443,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "single-leg-calf-raise",
-    "variation_note": "Khi gập gối 90 độ, cơ bắp chân ngoài (Gastrocnemius) bị chùng lại, chuyển 80% tải trọng cô lập vào cơ dép sâu (Soleus)."
+    "variation_note": "Khi gập gối 90 độ, cơ bắp chân ngoài (Gastrocnemius) bị chùng lại, chuyển 80% tải trọng cô lập vào cơ dép sâu (Soleus).",
+    "breathing": "Nhón mũi chân lên thở ra (1s) · Hạ gót chân xuống sâu hít vào (2s).",
+    "tempo": "2-1-1-2 (Hạ chậm 2s - Dừng giãn 1s - Nhón 1s - Giữ đỉnh 2s).",
+    "form_cues": [
+      "Tư thế ngồi: Ngồi trên ghế, gối gập 90°, đặt tạ đơn lên đầu gối (hoặc đệm máy).",
+      "Nhóm cơ mục tiêu: Gập gối 90° sẽ vô hiệu hóa cơ bắp ngoài và kích hoạt 100% cơ dép bên trong (Soleus).",
+      "Vị trí chân: Đặt nửa bàn chân trước trên bục kê cao 5–10cm.",
+      "Kiểm soát: Chuyển động chậm rãi, dừng ép ở đỉnh cao nhất."
+    ]
   },
   {
     "key": "single-leg-calf-raise",
@@ -2036,7 +2484,15 @@
     "progression_level": 2,
     "easier_variation": "calf-raise",
     "harder_variation": null,
-    "variation_note": "Tải toàn bộ 100% trọng lượng cơ thể lên một bên cổ chân, nhân đôi áp lực so với nhón hai chân."
+    "variation_note": "Tải toàn bộ 100% trọng lượng cơ thể lên một bên cổ chân, nhân đôi áp lực so với nhón hai chân.",
+    "breathing": "Nhón 1 chân lên thở mạnh (1s) · Hạ gót xuống hít sâu từ từ (2s).",
+    "tempo": "2-1-1-2 (Hạ chậm 2s - Dừng đáy 1s - Nhón cao 1s - Siết đỉnh 2s).",
+    "form_cues": [
+      "Thăng bằng: Dùng 1 tay vịn nhẹ vào tường/lan can để giữ thăng bằng, không dùng tay kéo người lên.",
+      "Chân co: Chân còn lại co gối gác nhẹ phía sau cẳng chân trụ.",
+      "Dồn lực: Dồn toàn bộ trọng lượng cơ thể vào ức ngón chân cái của chân trụ.",
+      "Tác dụng: Khắc phục triệt để tình trạng lệch kích thước và sức mạnh giữa 2 bắp chuối."
+    ]
   },
   {
     "key": "dead-bug",
@@ -2071,7 +2527,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "crunch",
-    "variation_note": "Bài tập cơ bụng chống ưỡn lưng (anti-extension) an toàn số 1 thế giới: thắt lưng luôn ép chặt xuống sàn, cô lập cơ bụng sâu mà không hề nén đĩa đệm."
+    "variation_note": "Bài tập cơ bụng chống ưỡn lưng (anti-extension) an toàn số 1 thế giới: thắt lưng luôn ép chặt xuống sàn, cô lập cơ bụng sâu mà không hề nén đĩa đệm.",
+    "breathing": "Duỗi tay chân thở hết khí ra ngoài ép dẹt rốn xuống sàn (2s) · Thu tay chân về hít sâu (1-2s).",
+    "tempo": "2-1-1-0 (Duỗi chậm 2s - Giữ căng 1s - Thu về 1s nhịp nhàng).",
+    "form_cues": [
+      "Dán thắt lưng: Toàn bộ thắt lưng dán chặt vào sàn như bị đóng đinh, KHÔNG để hở một kẽ hở nào dưới lưng.",
+      "Chuyển động chéo cánh: Duỗi đồng thời tay trái và chân phải ra xa, trong khi tay phải và chân trái giữ nguyên góc 90°.",
+      "Biên độ an toàn: Hạ tay chân cách sàn 10–15cm, nếu thấy thắt lưng bị nhấc lên thì lập tức giảm biên độ lại.",
+      "Cổ & Vai: Đầu tựa thoải mái trên sàn, cổ thả lỏng hoàn toàn."
+    ]
   },
   {
     "key": "crunch",
@@ -2107,7 +2571,15 @@
     "progression_level": 2,
     "easier_variation": "dead-bug",
     "harder_variation": "plank",
-    "variation_note": "Tập gập bụng đúng cách (chỉ cuộn bả vai 30 độ, giữ lưng dưới ép chặt sàn) tập trung lực vào cơ thẳng bụng (6 múi) mà không giật cột sống."
+    "variation_note": "Tập gập bụng đúng cách (chỉ cuộn bả vai 30 độ, giữ lưng dưới ép chặt sàn) tập trung lực vào cơ thẳng bụng (6 múi) mà không giật cột sống.",
+    "breathing": "Cuộn người lên thở mạnh hết không khí ra ngoài miệng (1s) · Hạ người xuống hít sâu (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s không chạm hẳn vai - Cuộn 1s - Siết cứng bụng 1s ở đỉnh).",
+    "form_cues": [
+      "Điểm tựa tay: Đặt hờ hai tay sau tai hoặc khoanh trước ngực, tuyệt đối KHÔNG đan tay sau gáy để kéo gập cổ.",
+      "Chuyển động cuộn: Tưởng tượng cuộn xương sườn lại gần xương chậu, chỉ nhấc xương bả vai lên khỏi sàn (khoảng 30°).",
+      "Thắt lưng: Thắt lưng dưới luôn dán cố định trên sàn (khác hoàn toàn với Sit-up ngồi dậy cả người).",
+      "Cằm: Giữ một khoảng cách bằng quả cam giữa cằm và xương ức, mắt nhìn chếch lên trần nhà."
+    ]
   },
   {
     "key": "reverse-crunch",
@@ -2140,7 +2612,15 @@
     "progression_level": 2,
     "easier_variation": "dead-bug",
     "harder_variation": "hanging-leg-raise",
-    "variation_note": "Tập trung kích hoạt vùng cơ bụng dưới thông qua chuyển động xoay ngược xương chậu về sau (Posterior pelvic tilt)."
+    "variation_note": "Tập trung kích hoạt vùng cơ bụng dưới thông qua chuyển động xoay ngược xương chậu về sau (Posterior pelvic tilt).",
+    "breathing": "Cuộn hông lên thở mạnh siết chặt bụng dưới (1s) · Hạ hông xuống hít sâu chậm rãi (2s).",
+    "tempo": "2-0-1-1 (Hạ chậm 2s kiểm soát - Cuộn hông 1s - Giữ đỉnh 1s).",
+    "form_cues": [
+      "Vị trí tay: Đặt hai tay xuôi theo thân người, úp lòng bàn tay xuống sàn để giữ thăng bằng.",
+      "Chuyển động: Dùng cơ bụng dưới cuộn xương chậu nhấc mông lên khỏi sàn 5–10cm, hướng đầu gối về phía ngực.",
+      "Cấm quán tính: KHÔNG quăng vung chân lấy đà; động tác phải diễn ra hoàn toàn do cơ bụng co rút.",
+      "Hạ xuống: Khi hạ xuống, dừng lại ngay trước khi thắt lưng bị võng lên khỏi sàn."
+    ]
   },
   {
     "key": "plank",
@@ -2177,7 +2657,15 @@
     "progression_level": 3,
     "easier_variation": "crunch",
     "harder_variation": "ab-wheel-rollout",
-    "variation_note": "Tập co cơ đẳng trường (isometric) toàn bộ cơ bụng trước, cơ liên sườn và cơ bụng ngang (Transverse abdominis)."
+    "variation_note": "Tập co cơ đẳng trường (isometric) toàn bộ cơ bụng trước, cơ liên sườn và cơ bụng ngang (Transverse abdominis).",
+    "breathing": "Hít thở đều đặn, nhịp nhàng bằng mũi; thở nông giữ khoang bụng luôn trong trạng thái nén gồng cứng (Bracing).",
+    "tempo": "Tĩnh (Giữ vững form chuẩn 30–60s).",
+    "form_cues": [
+      "Cùi chỏ: Chống cùi chỏ vuông góc 90° ngay dưới khớp vai, cẳng tay song song hoặc đan tay.",
+      "Trục cơ thể: Tạo một đường thẳng tắp từ gáy, lưng trên, mông đến gót chân (không võng lưng, không chổng mông).",
+      "Kỹ thuật Hardstyle: Siết chặt cơ mông, rút rốn vào cột sống, bẻ cùi chỏ như muốn kéo về phía mũi chân.",
+      "Cổ: Mắt nhìn thẳng xuống sàn giữa hai bàn tay, giữ cổ thẳng tự nhiên."
+    ]
   },
   {
     "key": "mountain-climber",
@@ -2214,7 +2702,15 @@
     "progression_level": 3,
     "easier_variation": "plank",
     "harder_variation": "hanging-leg-raise",
-    "variation_note": "Kết hợp rèn luyện sức bền tim mạch (cardio) và co cơ bụng năng động trong tư thế chống đẩy."
+    "variation_note": "Kết hợp rèn luyện sức bền tim mạch (cardio) và co cơ bụng năng động trong tư thế chống đẩy.",
+    "breathing": "Hít thở nhịp nhàng theo nhịp chân (co 2 nhịp hít, co 2 nhịp thở dứt khoát).",
+    "tempo": "Nhịp nhàng liên tục (1 nhịp/giây, không lắc hông).",
+    "form_cues": [
+      "Tư thế gốc: Giữ tư thế hít đất thẳng tay, vai nằm ngay trên cổ tay.",
+      "Kéo gối: Kéo từng đầu gối thẳng về phía ngực có kiểm soát, cơ bụng luôn siết chặt.",
+      "Độ cao hông: Giữ hông thấp ngang bằng vai, không nhấp nhô mông lên xuống khi đổi chân.",
+      "Mũi chân: Chân co không chạm đất, chân sau đạp mũi chân vững chắc."
+    ]
   },
   {
     "key": "hanging-leg-raise",
@@ -2253,7 +2749,15 @@
     "progression_level": 4,
     "easier_variation": "reverse-crunch",
     "harder_variation": "ab-wheel-rollout",
-    "variation_note": "Đỉnh cao của bài tập bụng dưới và cơ core treo xà: đòi hỏi cả sức mạnh bám nắm cẳng tay và khả năng cuộn cơ bụng dưới cực khỏe."
+    "variation_note": "Đỉnh cao của bài tập bụng dưới và cơ core treo xà: đòi hỏi cả sức mạnh bám nắm cẳng tay và khả năng cuộn cơ bụng dưới cực khỏe.",
+    "breathing": "Nâng chân lên thở mạnh hết khí ra ngoài (1s) · Hạ chân xuống hít sâu chậm rãi (2-3s).",
+    "tempo": "2-1-1-0 (Hạ chậm 2s chống đung đưa - Dừng 1s ở đáy - Nâng 1s dứt khoát).",
+    "form_cues": [
+      "Treo người: Nắm xà sấp tay, ghì nhẹ bả vai xuống để khóa khớp vai vững chắc.",
+      "Cuộn khung chậu: Trọng tâm là cuộn xương chậu hướng lên ngực, không đơn thuần là nhấc đùi bằng cơ gập hông.",
+      "Biến thể dễ: Bắt đầu bằng co gập gối (Knee raise) trước khi nâng thẳng chân (Leg raise).",
+      "Triệt tiêu đà: Dừng hẳn 1 giây ở đáy trước khi nâng lần tiếp theo, tuyệt đối không đung đưa thân người."
+    ]
   },
   {
     "key": "ab-wheel-rollout",
@@ -2292,7 +2796,15 @@
     "progression_level": 5,
     "easier_variation": "plank",
     "harder_variation": null,
-    "variation_note": "Thử thách chống ưỡn lưng (Anti-extension) nặng nề nhất: đòn bẩy cơ thể kéo dài tối đa, đòi hỏi cơ bụng phải gồng lực cực lớn để bảo vệ cột sống."
+    "variation_note": "Thử thách chống ưỡn lưng (Anti-extension) nặng nề nhất: đòn bẩy cơ thể kéo dài tối đa, đòi hỏi cơ bụng phải gồng lực cực lớn để bảo vệ cột sống.",
+    "breathing": "Lăn con lăn ra xa hít sâu nén cơ hoành (2-3s) · Dùng cơ bụng cuộn người kéo về thở mạnh (1-2s).",
+    "tempo": "3-1-1-0 (Lăn ra chậm 3s - Dừng giữ căng 1s - Kéo về 1s).",
+    "form_cues": [
+      "Tư thế chuẩn bị: Quỳ gối trên thảm, hai tay nắm chặt bánh xe, hơi gù nhẹ lưng trên (Hollow body).",
+      "Bắt đầu lăn: Đẩy hông và con lăn cùng di chuyển về phía trước cùng lúc, không để hông tụt lại phía sau.",
+      "Khóa cột sống: Giữ cơ bụng gồng như khúc gỗ, tuyệt đối KHÔNG để thắt lưng bị võng xuống sàn.",
+      "Biên độ an toàn: Chỉ lăn xa tới mức cơ bụng còn kiểm soát được và có thể kéo ngược lại bằng cơ bụng."
+    ]
   },
   {
     "key": "side-plank",
@@ -2328,7 +2840,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "russian-twist",
-    "variation_note": "Tập trung vào cơ liên sườn và cơ vuông thắt lưng (Quadratus lumborum), chống lại lực bẻ cong bên thân người."
+    "variation_note": "Tập trung vào cơ liên sườn và cơ vuông thắt lưng (Quadratus lumborum), chống lại lực bẻ cong bên thân người.",
+    "breathing": "Duy trì hít thở đều đặn và sâu; giữ cơ liên sườn phía dưới siết cứng liên tục.",
+    "tempo": "Tĩnh (Giữ vững 30–45s mỗi bên).",
+    "form_cues": [
+      "Cùi chỏ trụ: Đặt cùi chỏ vuông góc 90° ngay dưới vai, cẳng tay hướng vuông góc với thân.",
+      "Đường thẳng thân: Nâng hông lên tạo thành một đường thẳng tắp từ đầu, hông đến mắt cá chân.",
+      "Chân: Hai chân xếp chồng lên nhau (hoặc chân trên đặt trước chân dưới để tăng thăng bằng).",
+      "Đẩy hông cao: Không để hông phía dưới bị xệ xuống sát sàn."
+    ]
   },
   {
     "key": "russian-twist",
@@ -2364,7 +2884,15 @@
     "progression_level": 2,
     "easier_variation": "side-plank",
     "harder_variation": "bicycle-crunch",
-    "variation_note": "Tập luyện chuyển động xoay thân có kiểm soát cho cơ chéo bụng trong và ngoài (Internal & External Obliques)."
+    "variation_note": "Tập luyện chuyển động xoay thân có kiểm soát cho cơ chéo bụng trong và ngoài (Internal & External Obliques).",
+    "breathing": "Xoay sang bên thở dứt khoát (1s) · Xoay về giữa đổi bên hít vào nhịp nhàng (1s).",
+    "tempo": "1-0-1-0 (Xoay có kiểm soát, dừng siết mỗi bên 1 nhịp).",
+    "form_cues": [
+      "Góc thân người: Ngồi trên thảm, co gối, ngả thân trên ra sau góc ~45°, giữ lưng thẳng mở ngực.",
+      "Xoay từ lồng ngực: Xoay toàn bộ lồng ngực và hai vai từ bên này sang bên kia, KHÔNG chỉ vung vẩy hai cánh tay.",
+      "Chân: Giữ gót chân chạm nhẹ sàn (cho người mới) hoặc nhấc chân lơ lửng (nâng cao).",
+      "Cố định hông: Giữ khớp gối và hông ổn định, hạn chế lắc lư đùi sang hai bên."
+    ]
   },
   {
     "key": "bicycle-crunch",
@@ -2400,7 +2928,15 @@
     "progression_level": 3,
     "easier_variation": "russian-twist",
     "harder_variation": null,
-    "variation_note": "Nghiên cứu ACE xác nhận bài này có kích hoạt điện cơ liên sườn và cơ thẳng bụng cao nhất trong tất cả các bài tập bụng nằm sàn."
+    "variation_note": "Nghiên cứu ACE xác nhận bài này có kích hoạt điện cơ liên sườn và cơ thẳng bụng cao nhất trong tất cả các bài tập bụng nằm sàn.",
+    "breathing": "Xoay chạm cùi chỏ thở mạnh (1s) · Đổi bên chuyển tiếp hít vào nhịp nhàng (1s).",
+    "tempo": "2-0-1-1 (Xoay chậm 2 nhịp - Dừng ép cơ liên sườn 1s mỗi bên).",
+    "form_cues": [
+      "Đặt tay: Hai tay đặt nhẹ sau đầu giữ cổ thoải mái, không dùng sức kéo đầu gập về trước.",
+      "Chân đạp xe: Một chân co gối 90°, chân kia duỗi thẳng ra xa cách sàn 20–30cm.",
+      "Xoay bả vai: Nâng vai và xoay lồng ngực đưa nách (không chỉ cùi chỏ) hướng về phía đầu gối đối diện.",
+      "Tốc độ: Thực hiện chậm rãi có kiểm soát, xoay càng chậm cơ liên sườn càng kích hoạt tối đa."
+    ]
   },
   {
     "key": "bird-dog",
@@ -2436,7 +2972,15 @@
     "progression_level": 1,
     "easier_variation": null,
     "harder_variation": "superman",
-    "variation_note": "Một trong bộ 3 bài tập McGill Big 3: củng cố cơ dựng sống lưng dưới và cơ chéo bụng chống xoay mà áp lực nén lên cột sống gần như bằng 0."
+    "variation_note": "Một trong bộ 3 bài tập McGill Big 3: củng cố cơ dựng sống lưng dưới và cơ chéo bụng chống xoay mà áp lực nén lên cột sống gần như bằng 0.",
+    "breathing": "Duỗi tay chân thở ra từ từ nén cơ lõi (2s) · Thu về vị trí quỳ hít sâu (1-2s).",
+    "tempo": "2-1-1-0 (Duỗi chậm 2s - Giữ thăng bằng 1s ở đỉnh - Thu về 1s).",
+    "form_cues": [
+      "Tư thế 4 điểm: Chống hai tay dưới vai, hai đầu gối dưới hông, cột sống ở vị trí trung tính phẳng.",
+      "Duỗi thẳng: Đồng thời nâng tay phải về trước và đạp chân trái ra sau thành một đường thẳng song song sàn.",
+      "Khóa xương chậu: Giữ hai bên hông thăng bằng tuyệt đối, không lật hông hoặc võng thắt lưng.",
+      "Ý niệm: Tưởng tượng vươn dài các đầu ngón tay và gót chân ra xa nhất có thể."
+    ]
   },
   {
     "key": "superman",
@@ -2472,7 +3016,15 @@
     "progression_level": 2,
     "easier_variation": "bird-dog",
     "harder_variation": "hyperextension-db",
-    "variation_note": "Rèn luyện sức bền đẳng trường của toàn bộ chuỗi cơ dựng sống (Erector spinae) dọc cột sống lưng."
+    "variation_note": "Rèn luyện sức bền đẳng trường của toàn bộ chuỗi cơ dựng sống (Erector spinae) dọc cột sống lưng.",
+    "breathing": "Nâng tay chân lên thở ra siết lưng dưới và mông (1s) · Hạ xuống sàn hít sâu (2s).",
+    "tempo": "2-0-1-2 (Hạ chậm 2s - Nâng dứt khoát 1s - Giữ siết 2s ở đỉnh).",
+    "form_cues": [
+      "Tư thế nằm: Nằm sấp trên thảm, hai tay duỗi thẳng qua đầu, hai chân duỗi thẳng phía sau.",
+      "Nâng có kiểm soát: Nâng đồng thời ngực, cánh tay và đùi lên khỏi sàn khoảng 10–15cm.",
+      "Cơ phát lực: Siết chặt cơ mông và cơ dựng sống lưng dưới để nâng, không giật mạnh cổ.",
+      "Cột sống cổ: Mắt nhìn xuống thảm, giữ cổ thẳng hàng với lưng, không ngửa đầu ra sau."
+    ]
   },
   {
     "key": "hyperextension-db",
@@ -2509,6 +3061,14 @@
     "progression_level": 3,
     "easier_variation": "superman",
     "harder_variation": null,
-    "variation_note": "Bài tập tiêu chuẩn củng cố độ bền bỉ cơ dựng sống, rèn luyện chuyển động gập duỗi hông an toàn tuyệt đối khi không ưỡn quá trục."
+    "variation_note": "Bài tập tiêu chuẩn củng cố độ bền bỉ cơ dựng sống, rèn luyện chuyển động gập duỗi hông an toàn tuyệt đối khi không ưỡn quá trục.",
+    "breathing": "Gập người xuống hít sâu (2-3s) · Nâng người lên thẳng trục thở mạnh siết mông (1s).",
+    "tempo": "3-0-1-1 (Hạ chậm 3s - Nâng dứt khoát 1s - Siết mông và lưng dưới 1s).",
+    "form_cues": [
+      "Chỉnh đệm ghế: Đệm tựa đùi trước nằm ngay dưới nếp gấp hông để hông gập mở tự do, cổ chân khóa chắc dưới đệm giữ.",
+      "Gập tại hông: Gập người tại khớp háng hạ thân trên xuống, lưng giữ thẳng phẳng tự nhiên.",
+      "Đỉnh động tác: Dùng cơ mông và lưng nâng thân người lên thành một ĐƯỜNG THẲNG TẮP với chân.",
+      "Cấm kỵ: Tuyệt đối KHÔNG ưỡn ngửa người ra sau quá trục thẳng (Hyperextend) làm kẹp các gai đốt sống."
+    ]
   }
 ]

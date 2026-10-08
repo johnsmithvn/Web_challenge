@@ -286,6 +286,88 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
               </div>
             </div>
 
+            {/* ── KỸ THUẬT THỞ, TEMPO & ĐIỂM NEO FORM ── */}
+            {(selectedEx.breathing || selectedEx.tempo || (selectedEx.form_cues && selectedEx.form_cues.length > 0)) && (
+              <div style={{
+                padding: '16px',
+                borderRadius: '14px',
+                background: 'var(--body-shell-bg)',
+                border: '1px solid var(--body-card-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontWeight: 700, fontSize: '13.5px', color: 'var(--body-accent)' }}>
+                  <AppIcon name="sparkles" size={16} />
+                  <span>Kỹ thuật nhịp thở, thời gian & điểm neo form chuẩn:</span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: selectedEx.breathing && selectedEx.tempo ? '1fr 1fr' : '1fr', gap: '10px' }}>
+                  {selectedEx.breathing && (
+                    <div style={{
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      background: 'var(--body-card-bg)',
+                      border: '1px solid var(--body-card-border)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}>
+                      <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--body-text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span>🌬️</span>
+                        <span>NHỊP THỞ CHUẨN</span>
+                      </div>
+                      <div style={{ fontSize: '12.5px', lineHeight: 1.5, color: 'var(--body-text-main)' }}>
+                        {selectedEx.breathing}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedEx.tempo && (
+                    <div style={{
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      background: 'var(--body-card-bg)',
+                      border: '1px solid var(--body-card-border)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}>
+                      <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--body-text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span>⏱️</span>
+                        <span>NHỊP ĐỘ (TEMPO)</span>
+                      </div>
+                      <div style={{ fontSize: '12.5px', lineHeight: 1.5, color: 'var(--body-text-main)' }}>
+                        {selectedEx.tempo}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {selectedEx.form_cues && selectedEx.form_cues.length > 0 && (
+                  <div style={{
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    background: 'var(--body-card-bg)',
+                    border: '1px solid var(--body-card-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}>
+                    <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--body-text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span>📐</span>
+                      <span>ĐIỂM NEO VỊ TRÍ, GÓC ĐỘ & BIÊN ĐỘ</span>
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12.5px', lineHeight: 1.6, color: 'var(--body-text-main)' }}>
+                      {selectedEx.form_cues.map((cue, cIdx) => (
+                        <li key={cIdx} style={{ marginBottom: '2px' }}>{cue}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Lỗi hay gặp */}
             {selectedEx.tip && (
               <div style={{ padding: '14px', borderRadius: '12px', background: 'var(--body-shell-bg)' }}>
