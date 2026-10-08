@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import AppIcon from '../AppIcon';
 import BASE_EXERCISES from '../../data/body-exercises.json';
+import MUSCLE_MAP from '../../data/body-muscles.json';
 
 const REGIONS = [
   { key: 'all', label: 'Tất cả' },
@@ -45,6 +46,37 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
   const selectedEx = useMemo(() => {
     return BASE_EXERCISES.find(e => e.key === selectedKey) || filteredList[0] || BASE_EXERCISES[0];
   }, [selectedKey, filteredList]);
+
+  // Danh sách các bài tập thay thế an toàn
+  const altExercises = useMemo(() => {
+    if (!selectedEx?.alternatives || selectedEx.alternatives.length === 0) return [];
+    return selectedEx.alternatives
+      .map(altKey => BASE_EXERCISES.find(e => e.key === altKey))
+      .filter(Boolean);
+  }, [selectedEx]);
+
+  // Chuỗi bậc thang tăng tiến biến thể (Progression Chain)
+  const progressionChain = useMemo(() => {
+    if (!selectedEx?.progression_chain) return null;
+    const chainItems = BASE_EXERCISES
+      .filter(e => e.progression_chain === selectedEx.progression_chain)
+      .sort((a, b) => (a.progression_level || 0) - (b.progression_level || 0));
+
+    const easierEx = selectedEx.easier_variation
+      ? BASE_EXERCISES.find(e => e.key === selectedEx.easier_variation)
+      : null;
+    const harderEx = selectedEx.harder_variation
+      ? BASE_EXERCISES.find(e => e.key === selectedEx.harder_variation)
+      : null;
+
+    return {
+      chainName: selectedEx.progression_chain,
+      chainItems,
+      easierEx,
+      harderEx,
+      note: selectedEx.variation_note
+    };
+  }, [selectedEx]);
 
   const handleOpenAddModal = () => {
     if (selectedEx) {
@@ -174,16 +206,20 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                     {ex.name}
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
-                    Cơ chính: {ex.primary} · {ex.equipment === 'bw' ? 'Bodyweight' : ex.equipment === 'db' ? 'Tạ đơn' : 'Xà'}
+                    Cơ chính: {MUSCLE_MAP[ex.primary]?.name || ex.primary} · {ex.equipment === 'bw' ? 'Bodyweight' : ex.equipment === 'db' ? 'Tạ đơn' : 'Xà'}
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {ex.warn && (
-                    <span className="body-badge body-badge-amber" style={{ fontSize: '11px', padding: '2px 6px' }}>
+                  {(ex.contraindications || []).length > 0 ? (
+                    <span className="body-badge body-badge-amber" style={{ fontSize: '10.5px', padding: '2px 6px' }} title={`Không nên tập nếu: ${ex.contraindications.join(', ')}`}>
+                      Lưu ý: {ex.contraindications[0].replace('Đau ', '')}
+                    </span>
+                  ) : ex.warn ? (
+                    <span className="body-badge body-badge-amber" style={{ fontSize: '10.5px', padding: '2px 6px' }}>
                       Lưu ý lưng
                     </span>
-                  )}
+                  ) : null}
                   <span className="body-badge body-badge-neutral" style={{ fontSize: '11px' }}>
                     {ex.level}
                   </span>
@@ -206,9 +242,9 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                 </div>
                 <h2 style={{ fontSize: '24px', fontWeight: 700, margin: '0 0 4px 0' }}>{selectedEx.name}</h2>
                 <div style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                  Nhóm cơ chính: <strong style={{ color: 'var(--body-text-main)' }}>{selectedEx.primary}</strong>
+                  Nhóm cơ chính: <strong style={{ color: 'var(--body-text-main)' }}>{MUSCLE_MAP[selectedEx.primary]?.name || selectedEx.primary}</strong>
                   {(selectedEx.secondary || []).length > 0 && (
-                    <span> · Phụ: {selectedEx.secondary.join(', ')}</span>
+                    <span> · Phụ: {selectedEx.secondary.map(m => MUSCLE_MAP[m]?.name || m).join(', ')}</span>
                   )}
                 </div>
               </div>
@@ -220,25 +256,6 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                 </div>
               </div>
             </div>
-
-            {/* Cảnh báo sức khỏe nếu có */}
-            {selectedEx.warn && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '12px 16px',
-                borderRadius: '12px',
-                background: 'var(--body-amber-soft)',
-                border: '1px solid #F4DDBE',
-                color: 'var(--body-amber)'
-              }}>
-                <AppIcon name="warning" size={20} style={{ flex: 'none' }} />
-                <div style={{ fontSize: '13px', lineHeight: 1.5 }}>
-                  {selectedEx.warn}
-                </div>
-              </div>
-            )}
 
             {/* Các bước kỹ thuật */}
             <div>
@@ -279,6 +296,325 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                 <div style={{ fontSize: '13px', color: 'var(--body-text-sub)', lineHeight: 1.5 }}>
                   {selectedEx.tip}
                 </div>
+              </div>
+            )}
+
+            {/* ── CẢNH BÁO CHẤN THƯƠNG & BÀI THAY THẾ AN TOÀN ── */}
+            {selectedEx.injury_risk && (
+              <div style={{
+                padding: '16px',
+                borderRadius: '14px',
+                background: 'rgba(239, 68, 68, 0.04)',
+                border: '1.5px solid rgba(239, 68, 68, 0.22)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', color: '#DC2626', fontWeight: 700, fontSize: '13.5px' }}>
+                    <AppIcon name="warning" size={16} />
+                    <span>Cảnh báo cơ sinh học & Phòng tránh chấn thương</span>
+                  </div>
+                  {selectedEx.medical_source && (
+                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)', fontFamily: 'var(--body-mono)' }}>
+                      Nguồn: {selectedEx.medical_source}
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ fontSize: '13px', lineHeight: 1.55, color: 'var(--body-text-main)' }}>
+                    <strong style={{ color: '#DC2626' }}>Tập sai sẽ bị gì: </strong>
+                    {selectedEx.injury_risk}
+                  </div>
+                  {selectedEx.cause && (
+                    <div style={{ fontSize: '12.5px', lineHeight: 1.5, color: 'var(--body-text-sub)' }}>
+                      <strong>Nguyên nhân cơ học: </strong>
+                      {selectedEx.cause}
+                    </div>
+                  )}
+                </div>
+
+                {/* Chống chỉ định */}
+                {(selectedEx.contraindications || []).length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', paddingTop: '4px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                      Không nên tập nếu đang bị:
+                    </span>
+                    {selectedEx.contraindications.map((c, cIdx) => (
+                      <span key={cIdx} style={{
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        color: '#DC2626',
+                        fontSize: '11.5px',
+                        fontWeight: 600
+                      }}>
+                        ⚠️ {c}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Gợi ý bài thay thế an toàn */}
+                {altExercises.length > 0 && (
+                  <div style={{
+                    marginTop: '4px',
+                    padding: '12px',
+                    borderRadius: '10px',
+                    background: 'var(--body-card-bg)',
+                    border: '1px solid var(--body-card-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px'
+                  }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--body-accent)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <AppIcon name="shieldCheck" size={14} />
+                      <span>Bài tập thay thế an toàn hơn (bảo vệ khớp & cơ):</span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {altExercises.map(altEx => (
+                        <button
+                          key={altEx.key}
+                          type="button"
+                          onClick={() => setSelectedKey(altEx.key)}
+                          title="Bấm để xem hướng dẫn bài tập thay thế này"
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            background: 'var(--body-shell-bg)',
+                            border: '1px solid var(--body-card-border)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: 'var(--body-text-main)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <AppIcon name="arrowRight" size={12} style={{ color: 'var(--body-accent)' }} />
+                          <span>{altEx.name}</span>
+                          <span style={{ fontSize: '10.5px', color: 'var(--body-text-muted)' }}>
+                            ({altEx.equipment === 'bw' ? 'Bodyweight' : altEx.equipment === 'db' ? 'Tạ đơn' : 'Xà'})
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── BẬC THANG BIẾN THỂ BÀI TẬP (PROGRESSION CHAIN) ── */}
+            {progressionChain && (
+              <div style={{
+                padding: '16px',
+                borderRadius: '14px',
+                background: 'var(--body-shell-bg)',
+                border: '1px solid var(--body-card-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontWeight: 700, fontSize: '13.5px', color: 'var(--body-text-main)' }}>
+                    <AppIcon name="treeStructure" size={16} style={{ color: 'var(--body-accent)' }} />
+                    <span>Bậc thang biến thể: {progressionChain.chainName}</span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>
+                    {progressionChain.chainItems.length} cấp độ
+                  </span>
+                </div>
+
+                {/* Thanh chuỗi tiến trình trực quan */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  overflowX: 'auto',
+                  padding: '4px 0'
+                }}>
+                  {progressionChain.chainItems.map((item, idx) => {
+                    const isCur = item.key === selectedEx.key;
+                    return (
+                      <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 'none' }}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedKey(item.key)}
+                          title={`Bấm để xem bài: ${item.name}`}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '9px',
+                            border: isCur ? '1.5px solid var(--body-accent)' : '1px solid var(--body-card-border)',
+                            background: isCur ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
+                            color: isCur ? 'var(--body-accent)' : 'var(--body-text-main)',
+                            fontSize: '12px',
+                            fontWeight: isCur ? 700 : 500,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <span style={{
+                            width: '18px',
+                            height: '18px',
+                            borderRadius: '50%',
+                            background: isCur ? 'var(--body-accent)' : 'var(--body-shell-bg)',
+                            color: isCur ? '#FFF' : 'var(--body-text-muted)',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            display: 'grid',
+                            placeItems: 'center'
+                          }}>
+                            {idx + 1}
+                          </span>
+                          <span>{item.name}</span>
+                          {isCur && <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--body-accent)' }}>(Hiện tại)</span>}
+                        </button>
+                        {idx < progressionChain.chainItems.length - 1 && (
+                          <span style={{ color: 'var(--body-text-muted)', fontSize: '12px' }}>➔</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 2 nút chọn biến thể: Dễ hơn vs Khó hơn */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                  {progressionChain.easierEx ? (
+                    <div style={{
+                      padding: '12px',
+                      borderRadius: '10px',
+                      background: 'var(--body-card-bg)',
+                      border: '1px solid #CFE8D8',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px'
+                    }}>
+                      <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--body-green-text)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <AppIcon name="arrowDown" size={13} />
+                        <span>Dễ hơn cho người mới (Regression):</span>
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                        {progressionChain.easierEx.name}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedKey(progressionChain.easierEx.key)}
+                        style={{
+                          marginTop: '4px',
+                          padding: '6px 10px',
+                          borderRadius: '7px',
+                          border: 'none',
+                          background: 'var(--body-green-soft)',
+                          color: 'var(--body-green-text)',
+                          fontSize: '11.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          alignSelf: 'flex-start'
+                        }}
+                      >
+                        <span>Đổi sang bài dễ hơn này</span>
+                        <AppIcon name="arrowRight" size={11} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{
+                      padding: '12px',
+                      borderRadius: '10px',
+                      background: 'var(--body-card-bg)',
+                      border: '1px dashed var(--body-card-border)',
+                      fontSize: '12px',
+                      color: 'var(--body-text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <AppIcon name="checkCircle" size={14} style={{ color: 'var(--body-green)' }} />
+                      <span>Đây đã là biến thể dễ nhất cho người mới bắt đầu</span>
+                    </div>
+                  )}
+
+                  {progressionChain.harderEx ? (
+                    <div style={{
+                      padding: '12px',
+                      borderRadius: '10px',
+                      background: 'var(--body-card-bg)',
+                      border: '1px solid rgba(105, 73, 232, 0.25)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px'
+                    }}>
+                      <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--body-accent)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <AppIcon name="arrowUp" size={13} />
+                        <span>Khó hơn khi đã quen (Progression):</span>
+                      </div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                        {progressionChain.harderEx.name}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedKey(progressionChain.harderEx.key)}
+                        style={{
+                          marginTop: '4px',
+                          padding: '6px 10px',
+                          borderRadius: '7px',
+                          border: 'none',
+                          background: 'var(--body-accent-soft)',
+                          color: 'var(--body-accent)',
+                          fontSize: '11.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          alignSelf: 'flex-start'
+                        }}
+                      >
+                        <span>Thử thách bài khó hơn này</span>
+                        <AppIcon name="arrowRight" size={11} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{
+                      padding: '12px',
+                      borderRadius: '10px',
+                      background: 'var(--body-card-bg)',
+                      border: '1px dashed var(--body-card-border)',
+                      fontSize: '12px',
+                      color: 'var(--body-text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <AppIcon name="crown" size={14} style={{ color: '#E0A23C' }} />
+                      <span>Đây là cấp độ thử thách cao nhất trong chuỗi</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Ghi chú cơ sinh học vì sao dễ/khó hơn */}
+                {progressionChain.note && (
+                  <div style={{
+                    fontSize: '12px',
+                    lineHeight: 1.55,
+                    color: 'var(--body-text-sub)',
+                    background: 'var(--body-card-bg)',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--body-card-border)'
+                  }}>
+                    💡 <strong>Cơ sinh học:</strong> {progressionChain.note}
+                  </div>
+                )}
               </div>
             )}
 

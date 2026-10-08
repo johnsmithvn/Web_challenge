@@ -1,7 +1,77 @@
 [
   {
+    "key": "incline-push-up",
+    "name": "Chống đẩy kê cao tay (Incline Push-up)",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 0,
+    "steps": [
+      "Chống hai tay lên ghế hoặc bậc cao chắc chắn, rộng hơn vai, thân thẳng từ đầu đến gót.",
+      "Hạ ngực chạm nhẹ mép ghế, giữ khuỷu tay mở 45° so với thân người.",
+      "Đẩy mạnh người lên vị trí ban đầu, siết chặt cơ ngực và bụng."
+    ],
+    "tip": "Võng lưng hoặc chùng hông khi đẩy.",
+    "injury_risk": "Ghế hoặc điểm kê không vững gây trượt ngã. Đây là biến thể giảm 40-50% tải trọng cơ thể, bảo vệ cổ tay và vai tối đa cho người mới.",
+    "cause": "Chọn điểm kê trơn trượt không cố định.",
+    "contraindications": [],
+    "alternatives": [
+      "dumbbell-floor-press",
+      "push-up"
+    ],
+    "medical_source": "ACSM Push-up Regressions & Joint Preservation",
+    "progression_chain": "Chuỗi Chống đẩy (Push-up)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "knee-push-up",
+    "variation_note": "Kê tay cao lên bậc/ghế giúp đổi góc thân người, giảm tải trọng nâng xuống chỉ còn ~45-50% trọng lượng cơ thể, cực kỳ thích hợp cho người mới bắt đầu."
+  },
+  {
+    "key": "knee-push-up",
+    "name": "Chống đẩy quỳ gối (Knee Push-up)",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 0,
+    "steps": [
+      "Quỳ trên thảm, hai tay chống rộng hơn vai, thân tạo thành đường thẳng từ đầu tới đầu gối.",
+      "Hạ ngực xuống sát sàn, giữ khuỷu tay mở góc 45° so với thân người.",
+      "Dùng lực cơ ngực và tay sau đẩy thẳng người lên, giữ chắc cơ bụng."
+    ],
+    "tip": "Chổng mông hoặc võng lưng; quỳ trực tiếp lên sàn cứng không có thảm.",
+    "injury_risk": "Đặt đầu gối tì trực tiếp lên sàn cứng gây cộm và đau xương bánh chè.",
+    "cause": "Thiếu thảm lót êm dưới khớp gối.",
+    "contraindications": [
+      "Đau khớp gối khi quỳ"
+    ],
+    "alternatives": [
+      "incline-push-up",
+      "dumbbell-floor-press"
+    ],
+    "medical_source": "ACSM Push-up Regressions",
+    "progression_chain": "Chuỗi Chống đẩy (Push-up)",
+    "progression_level": 2,
+    "easier_variation": "incline-push-up",
+    "harder_variation": "push-up",
+    "variation_note": "Điểm tì chuyển từ mũi chân lên đầu gối làm ngắn đòn bẩy cơ thể, giảm ~35% trọng lượng phải nâng, giúp tập chuẩn góc khuỷu 45° trước khi lên chống đẩy mũi chân."
+  },
+  {
     "key": "push-up",
-    "name": "Push-up",
+    "name": "Push-up (Chống đẩy tiêu chuẩn)",
     "primary": "chest",
     "secondary": [
       "shoulders",
@@ -14,15 +84,70 @@
     "defaultTarget": 20,
     "defaultKg": 0,
     "steps": [
-      "Chống tay rộng hơn vai một chút, thân thẳng từ đầu tới gót.",
-      "Hạ ngực xuống gần sàn, khuỷu tay mở khoảng 45° so với thân.",
+      "Chống tay rộng hơn vai một chút, thân thẳng từ đầu tới gót mũi chân.",
+      "Hạ ngực xuống gần sàn, khuỷu tay mở khoảng 45° so với thân người.",
       "Đẩy mạnh lên, siết bụng và mông suốt động tác."
     ],
-    "tip": "Võng hông hoặc chổng mông; khuỷu tay bung ngang vai."
+    "tip": "Võng hông hoặc chổng mông; khuỷu tay bung ngang 90° so với thân.",
+    "injury_risk": "Bung khuỷu tay ngang 90° gây chèn ép gân cơ trên gai (Impingement) khớp vai; gập cổ tay thụ động trên sàn cứng dễ gây viêm đau khớp cổ tay.",
+    "cause": "Cánh tay mở quá rộng tạo góc kẹt mỏm cùng vai và gập cổ tay 90° chịu tải trọng cơ thể.",
+    "contraindications": [
+      "Đau cổ tay",
+      "Đau chóp xoay vai",
+      "Viêm gân cổ tay"
+    ],
+    "alternatives": [
+      "dumbbell-floor-press",
+      "incline-push-up"
+    ],
+    "medical_source": "ACSM & Eric Cressey (Shoulder Impingement Prevention)",
+    "progression_chain": "Chuỗi Chống đẩy (Push-up)",
+    "progression_level": 3,
+    "easier_variation": "knee-push-up",
+    "harder_variation": "decline-push-up",
+    "variation_note": "Biến thể tiêu chuẩn: bạn phải nâng xấp xỉ 65% trọng lượng cơ thể với đòn bẩy toàn thân từ gót chân đến vai."
+  },
+  {
+    "key": "decline-push-up",
+    "name": "Chống đẩy kê cao chân (Decline Push-up)",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "bw",
+    "level": "Nâng cao",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 0,
+    "steps": [
+      "Đặt hai mũi chân lên ghế hoặc bục cao 20-35 cm, hai tay chống trên sàn rộng hơn vai.",
+      "Thân thẳng tắp từ gót tới đầu, siết chặt bụng và mông.",
+      "Hạ ngực chạm nhẹ sát sàn có kiểm soát, đẩy dứt khoát lên vị trí ban đầu."
+    ],
+    "tip": "Võng thắt lưng khi đẩy; kê chân quá cao (> 45 cm) làm mất trọng tâm ngực dồn sang vai.",
+    "injury_risk": "Kê chân quá cao làm dốc ngược dồn áp lực máu lên đầu và kẹt khớp vai; võng thắt lưng dưới tải trọng nặng.",
+    "cause": "Chọn bục quá cao và buông lỏng cơ bụng.",
+    "contraindications": [
+      "Đau cổ tay",
+      "Đau vai",
+      "Huyết áp cao"
+    ],
+    "alternatives": [
+      "push-up",
+      "dumbbell-floor-press"
+    ],
+    "medical_source": "NSCA Journal of Strength and Conditioning (Decline Push-up Biomechanics)",
+    "progression_chain": "Chuỗi Chống đẩy (Push-up)",
+    "progression_level": 4,
+    "easier_variation": "push-up",
+    "harder_variation": "dips-chest",
+    "variation_note": "Kê chân cao lên ghế dồn trọng tâm về phía trước, tăng tải trọng nâng lên ~75% trọng lượng cơ thể và tập trung ăn rất sâu vào cơ ngực trên."
   },
   {
     "key": "dumbbell-floor-press",
-    "name": "Dumbbell Floor Press",
+    "name": "Dumbbell Floor Press (Đẩy tạ đơn sàn)",
     "primary": "chest",
     "secondary": [
       "triceps"
@@ -35,14 +160,388 @@
     "defaultKg": 5,
     "steps": [
       "Nằm ngửa trên thảm, gối co, mỗi tay một tạ đơn.",
-      "Hạ tạ tới khi bắp tay chạm sàn, dừng một nhịp.",
-      "Đẩy thẳng lên trên ngực, không khóa khuỷu."
+      "Hạ tạ tới khi bắp tay chạm sàn nhẹ nhàng, dừng 1 nhịp.",
+      "Đẩy thẳng lên trên ngực, không khóa cứng khớp khuỷu."
     ],
-    "tip": "Thả rơi khuỷu xuống sàn thay vì hạ có kiểm soát."
+    "tip": "Thả rơi khuỷu đập xuống sàn thay vì hạ có kiểm soát.",
+    "injury_risk": "Thả rơi khuỷu tay đập mạnh xuống sàn gây chấn thương khớp khuỷu; khóa khớp gắt khi đẩy lên.",
+    "cause": "Thiếu kiểm soát pha hạ (eccentric) khi tạ nặng.",
+    "contraindications": [
+      "Đau khớp khuỷu"
+    ],
+    "alternatives": [
+      "incline-push-up",
+      "push-up"
+    ],
+    "medical_source": "NSCA Essentials of Strength Training",
+    "progression_chain": "Chuỗi Đẩy ngực với tạ",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "flat-dumbbell-bench-press",
+    "variation_note": "Mặt sàn đóng vai trò điểm dừng tự nhiên bảo vệ vai khỏi bị kéo căng quá mức, đồng thời cổ tay giữ tạ thẳng trục trung tính không bị gập đau như hít đất."
+  },
+  {
+    "key": "flat-dumbbell-bench-press",
+    "name": "Đẩy tạ đơn ghế phẳng (Dumbbell Bench Press)",
+    "primary": "chest",
+    "secondary": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 4,
+    "defaultTarget": 10,
+    "defaultKg": 8,
+    "steps": [
+      "Nằm trên ghế phẳng, hai bàn chân đạp vững trên sàn, ưỡn ngực ép hai bả vai vào ghế.",
+      "Hai tay cầm tạ trên ngực, hạ tạ có kiểm soát theo đường cong nhẹ tới ngang ngực.",
+      "Đẩy tạ lên theo hình chữ A không để hai tạ va đập vào nhau."
+    ],
+    "tip": "Hạ tạ quá sâu kéo rách bao khớp vai; thả lỏng bả vai khi đẩy.",
+    "injury_risk": "Hạ tạ quá sâu dưới mặt ghế khi bả vai không được ép chặt làm kéo giãn bao khớp vai trước (anterior capsule), gây viêm chóp xoay.",
+    "cause": "Không ép chặt hai bả vai (retraction) vào ghế và dùng tạ quá nặng.",
+    "contraindications": [
+      "Viêm chóp xoay vai",
+      "Trật khớp vai tái hồi"
+    ],
+    "alternatives": [
+      "dumbbell-floor-press",
+      "push-up"
+    ],
+    "medical_source": "Dr. Brad Schoenfeld - Bench Press Biomechanics",
+    "progression_chain": "Chuỗi Đẩy ngực với tạ",
+    "progression_level": 2,
+    "easier_variation": "dumbbell-floor-press",
+    "harder_variation": "incline-dumbbell-press",
+    "variation_note": "Tập trên ghế cho phép biên độ sâu đầy đủ (Full ROM) kích thích phì đại cơ ngực toàn diện hơn nằm sàn."
+  },
+  {
+    "key": "incline-dumbbell-press",
+    "name": "Đẩy ngực trên tạ đơn (Incline Dumbbell Press)",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 10,
+    "defaultKg": 8,
+    "steps": [
+      "Chỉnh ghế dốc góc 30-45 độ, ngồi tựa lưng chắc chắn, hai chân bám sàn.",
+      "Cầm tạ ngang mép ngực trên, đẩy thẳng tạ lên theo đường vòng cung nhẹ.",
+      "Hạ chậm trong 2-3 giây có kiểm soát tới ngang xương đòn."
+    ],
+    "tip": "Chỉnh ghế dốc quá cao (> 60 độ) làm bài tập biến thành đẩy vai.",
+    "injury_risk": "Ghế dốc quá đứng dồn toàn bộ áp lực vào vai trước thay vì ngực trên; mở khuỷu vuông góc 90 độ gây kẹt khớp vai.",
+    "cause": "Góc ghế quá dốc và không khép khuỷu 45 độ theo mặt phẳng bả vai.",
+    "contraindications": [
+      "Đau khớp vai trước",
+      "Viêm gân cơ nhị đầu"
+    ],
+    "alternatives": [
+      "flat-dumbbell-bench-press",
+      "incline-push-up"
+    ],
+    "medical_source": "ACE EMG Study of Chest Exercises (Incline Angle Evaluation)",
+    "progression_chain": "Chuỗi Đẩy ngực với tạ",
+    "progression_level": 3,
+    "easier_variation": "flat-dumbbell-bench-press",
+    "harder_variation": null,
+    "variation_note": "Góc dốc 30-45 độ kích hoạt tối đa bó cơ ngực trên (Clavicular head of Pectoralis Major)."
+  },
+  {
+    "key": "dumbbell-chest-fly",
+    "name": "Banh ngực tạ đơn (Dumbbell Chest Fly)",
+    "primary": "chest",
+    "secondary": [
+      "shoulders"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 5,
+    "steps": [
+      "Nằm trên ghế phẳng, hai tay cầm tạ giơ thẳng trên ngực, khuỷu tay hơi chùng nhẹ cố định.",
+      "Mở rộng hai tay sang hai bên như động tác ôm cây lớn, dừng khi tạ ngang tầm ngực.",
+      "Dùng cơ ngực ép hai tay trở lại vị trí ban đầu, siết cơ ngực ở đỉnh."
+    ],
+    "tip": "Duỗi thẳng đuột cánh tay hoặc hạ tạ quá sâu dưới mặt ghế.",
+    "injury_risk": "Duỗi thẳng khuỷu tay hoặc hạ tạ quá sâu tạo đòn bẩy lực cực lớn kéo xé rách gân cơ ngực lớn (Pectoralis major tear) và bao khớp vai.",
+    "cause": "Khóa thẳng khớp khuỷu và dùng tạ quá nặng trong chuyển động cô lập mở rộng.",
+    "contraindications": [
+      "Tổn thương cơ ngực",
+      "Đau khớp vai",
+      "Khớp lỏng lẻo"
+    ],
+    "alternatives": [
+      "dumbbell-floor-press",
+      "push-up"
+    ],
+    "medical_source": "NSCA Exercise Technique Manual (Pectoral Tear Prevention)",
+    "progression_chain": "Chuỗi Banh ngực (Fly)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": null,
+    "variation_note": "Bài cô lập chuyển động khép ngang cánh tay (Horizontal adduction) giúp kéo căng sợi cơ ngực tối đa."
+  },
+  {
+    "key": "dips-chest",
+    "name": "Xà kép chúi ngực (Chest Dips)",
+    "primary": "chest",
+    "secondary": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": "bar",
+    "level": "Nâng cao",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 8,
+    "defaultKg": 0,
+    "steps": [
+      "Nắm hai thanh xà kép, nhảy lên khóa tay, hơi ngả thân người về phía trước khoảng 20-30 độ.",
+      "Gập khuỷu tay hạ người xuống tới khi bắp tay song song với sàn (góc khuỷu khoảng 90 độ).",
+      "Đẩy mạnh dứt khoát bằng cơ ngực dưới và tay sau đưa thân người lên vị trí ban đầu."
+    ],
+    "tip": "Hạ quá sâu dưới 90 độ; giữ người thẳng đứng (dồn lực vào tay sau).",
+    "injury_risk": "Hạ người quá sâu đẩy đầu xương cánh tay trượt mạnh ra trước (Anterior humeral glide), gây căng rách bao khớp vai và chèn ép gân chóp xoay vai.",
+    "cause": "Không kiểm soát độ sâu khi hạ người trên thanh xà kép.",
+    "contraindications": [
+      "Đau khớp vai",
+      "Viêm chóp xoay vai",
+      "Đau xương ức"
+    ],
+    "alternatives": [
+      "decline-push-up",
+      "dumbbell-floor-press"
+    ],
+    "medical_source": "Kelly Starrett & Eric Cressey (Shoulder Mechanics in Chest Dips)",
+    "progression_chain": "Chuỗi Chống đẩy (Push-up)",
+    "progression_level": 5,
+    "easier_variation": "decline-push-up",
+    "harder_variation": null,
+    "variation_note": "Đỉnh cao sức mạnh thể trọng cho cơ ngực dưới: nâng 100% trọng lượng cơ thể với thân người nghiêng về trước."
+  },
+  {
+    "key": "lateral-raise",
+    "name": "Lateral Raise (Dang vai tạ đơn)",
+    "primary": "shoulders",
+    "secondary": [
+      "traps"
+    ],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 2,
+    "defaultTarget": 15,
+    "defaultKg": 5,
+    "steps": [
+      "Đứng thẳng, tạ hai bên hông, khuỷu hơi cong nhẹ cố định.",
+      "Nâng tay sang ngang tới ngang tầm vai, ngón út hơi cao hơn ngón cái.",
+      "Hạ chậm trong khoảng 2 giây, không để tạ chạm người."
+    ],
+    "tip": "Nhún vai rụt cổ hoặc lắc người lấy đà.",
+    "injury_risk": "Nâng tạ cao quá vai (> 90°) hoặc xoay chúc ngón cái xuống đất làm chỏm xương cánh tay cọ xát gân cơ trên gai gây viêm chóp xoay vai.",
+    "cause": "Dùng tạ quá nặng, xoay trong cánh tay quá đà hoặc vung tạ lấy đà.",
+    "contraindications": [
+      "Hội chứng chèn ép vai (Impingement)"
+    ],
+    "alternatives": [
+      "pike-push-up",
+      "dumbbell-overhead-press"
+    ],
+    "medical_source": "Dr. Brad Schoenfeld (Lateral Raise EMG Mechanics)",
+    "progression_chain": "Chuỗi Cơ vai (Shoulders)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "dumbbell-overhead-press",
+    "variation_note": "Bài cô lập vai giữa đơn giản, dùng tạ nhẹ (2-5kg) kiểm soát chuyển động không tải nặng lên cột sống."
+  },
+  {
+    "key": "dumbbell-front-raise",
+    "name": "Nâng tạ đơn phía trước (Front Raise)",
+    "primary": "shoulders",
+    "secondary": [
+      "chest"
+    ],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 5,
+    "steps": [
+      "Đứng thẳng, hai tay cầm tạ đặt trước đùi, lòng bàn tay úp vào người.",
+      "Nâng tạ thẳng ra phía trước có kiểm soát đến ngang tầm mắt/vai.",
+      "Hạ chậm trong 2 giây về vị trí ban đầu, không lắc người."
+    ],
+    "tip": "Vung vẩy tạ lấy đà; ngửa người ra sau khi nâng tạ.",
+    "injury_risk": "Ngửa lưng lấy đà gây nén đốt sống thắt lưng; nâng tạ vượt quá tầm mắt làm kẹt khoang dưới mỏm cùng vai.",
+    "cause": "Dùng tạ quá nặng và vung quán tính.",
+    "contraindications": [
+      "Đau gân chóp xoay vai trước"
+    ],
+    "alternatives": [
+      "dumbbell-overhead-press",
+      "incline-push-up"
+    ],
+    "medical_source": "ExRx Kinesiology - Anterior Deltoid Biomechanics",
+    "progression_chain": "Chuỗi Cơ vai (Shoulders)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "dumbbell-overhead-press",
+    "variation_note": "Cô lập bó cơ vai trước (Anterior deltoid) với chuyển động nâng thẳng tay có kiểm soát."
+  },
+  {
+    "key": "dumbbell-overhead-press",
+    "name": "Đẩy vai tạ đơn (Dumbbell Overhead Press)",
+    "primary": "shoulders",
+    "secondary": [
+      "triceps"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 10,
+    "defaultKg": 5,
+    "steps": [
+      "Ngồi thẳng lưng (hoặc đứng thẳng siết mông bụng), hai tay cầm tạ ngang tai, khuỷu tay hơi đưa ra trước 30°.",
+      "Đẩy tạ thẳng lên trên đầu có kiểm soát, không để hai tạ va vào nhau.",
+      "Hạ tạ chậm rãi trong 2 giây về ngang tầm tai."
+    ],
+    "tip": "Ưỡn cong thắt lưng ra sau để lấy đà đẩy tạ; mở khuỷu bung ngang 180° gây kẹt khớp vai.",
+    "injury_risk": "Ưỡn quá mức cột sống thắt lưng (Lumbar hyperextension) gây chèn ép đốt sống L4-L5; mở khuỷu bung ngang gây cọ xát gân chóp xoay vai.",
+    "cause": "Tạ quá nặng và không đẩy theo mặt phẳng bả vai (Scapular plane góc 30°).",
+    "contraindications": [
+      "Đau thắt lưng dưới",
+      "Hội chứng chèn ép vai"
+    ],
+    "alternatives": [
+      "lateral-raise",
+      "dumbbell-floor-press"
+    ],
+    "medical_source": "NSCA Overhead Pressing Biomechanics & Scapular Plane",
+    "progression_chain": "Chuỗi Cơ vai (Shoulders)",
+    "progression_level": 2,
+    "easier_variation": "lateral-raise",
+    "harder_variation": "pike-push-up",
+    "variation_note": "Bài đẩy compound đa khớp nâng tiến độ từ dang tạ đơn lên đẩy tạ qua đầu, phát triển sức mạnh tổng thể khớp vai và tay sau."
+  },
+  {
+    "key": "arnold-press",
+    "name": "Đẩy vai Arnold (Arnold Press)",
+    "primary": "shoulders",
+    "secondary": [
+      "triceps"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 10,
+    "defaultKg": 6,
+    "steps": [
+      "Ngồi thẳng lưng, hai tay cầm tạ trước ngực, lòng bàn tay hướng vào trong người.",
+      "Khi đẩy tạ lên, vừa đẩy vừa xoay cổ tay 180 độ ra ngoài sao cho khi tạ lên đỉnh, lòng bàn tay hướng về trước.",
+      "Hạ tạ và xoay ngược lại về vị trí ban đầu có kiểm soát."
+    ],
+    "tip": "Xoay cổ tay giật cục; ưỡn lưng cong khi đẩy.",
+    "injury_risk": "Xoay vặn khớp vai thiếu kiểm soát khi tạ nặng làm trật nhẹ trục khớp ổ chảo; ưỡn thắt lưng.",
+    "cause": "Thiếu sự đồng bộ nhịp nhàng giữa đẩy và xoay cẳng tay.",
+    "contraindications": [
+      "Viêm bao hoạt dịch vai",
+      "Lỏng khớp vai"
+    ],
+    "alternatives": [
+      "dumbbell-overhead-press",
+      "lateral-raise"
+    ],
+    "medical_source": "Arnold Schwarzenegger Encyclopedia & Biomechanical Validation",
+    "progression_chain": "Chuỗi Cơ vai (Shoulders)",
+    "progression_level": 2,
+    "easier_variation": "dumbbell-overhead-press",
+    "harder_variation": "pike-push-up",
+    "variation_note": "Chuyển động xoay bao quát kích hoạt liên tục cả bó vai trước, vai giữa và vai sau trong cùng 1 rep."
+  },
+  {
+    "key": "dumbbell-rear-delt-fly",
+    "name": "Banh tạ vai sau gập người (Rear Delt Fly)",
+    "primary": "shoulders",
+    "secondary": [
+      "traps"
+    ],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 4,
+    "steps": [
+      "Gập người tại hông (hip-hinge), lưng giữ phẳng gần song song sàn, hai tay cầm tạ rủ xuống.",
+      "Banh rộng hai tay sang hai bên bằng lực cơ vai sau, khuỷu tay hơi cong nhẹ cố định.",
+      "Siết cơ vai sau 1 nhịp ở đỉnh rồi hạ chậm có kiểm soát."
+    ],
+    "tip": "Gù lưng dưới; giật lưng trên nhấc thân người lên để vung tạ.",
+    "injury_risk": "Gù lưng dưới khi cúi người gây đau thắt lưng; dùng cơ cầu vai trên giật tạ thay vì cô lập vai sau.",
+    "cause": "Không khóa chặt cột sống thắt lưng ở tư thế bản lề hông.",
+    "contraindications": [
+      "Đau thắt lưng dưới cấp tính"
+    ],
+    "alternatives": [
+      "face-pull",
+      "inverted-row"
+    ],
+    "medical_source": "Brad Schoenfeld (Posterior Deltoid Activation Studies)",
+    "progression_chain": "Chuỗi Vai sau & Lưng trên",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "face-pull",
+    "variation_note": "Bài cô lập bó cơ vai sau (Posterior deltoid) cực kỳ quan trọng để kéo vai về sau, chống gù lưng vẹo cổ do ngồi máy tính nhiều."
+  },
+  {
+    "key": "face-pull",
+    "name": "Kéo dây ngang mặt (Face Pull)",
+    "primary": "shoulders",
+    "secondary": [
+      "traps"
+    ],
+    "equipment": "bar",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 15,
+    "defaultKg": 0,
+    "steps": [
+      "Gắn dây kháng lực hoặc dây cáp cao ngang tầm mắt, hai tay nắm đầu dây ngón cái hướng về mình.",
+      "Kéo dây về phía trán/mũi, đồng thời mở rộng hai cùi chỏ sang hai bên và xoay cẳng tay dựng lên.",
+      "Siết chặt cơ vai sau và cơ xoay ngoài vai trong 1 giây rồi nhả chậm."
+    ],
+    "tip": "Kéo cùi chỏ chúc xuống dưới sườn; ưỡn bụng giật người ra sau.",
+    "injury_risk": "Cùi chỏ hạ thấp biến bài tập thành bài kéo xô; vung người mất trục cân bằng.",
+    "cause": "Không duy trì cùi chỏ ngang hoặc cao hơn vai khi kéo.",
+    "contraindications": [],
+    "alternatives": [
+      "dumbbell-rear-delt-fly",
+      "inverted-row"
+    ],
+    "medical_source": "Eric Cressey & Kelly Starrett (Rotator Cuff & Postural Health)",
+    "progression_chain": "Chuỗi Vai sau & Lưng trên",
+    "progression_level": 2,
+    "easier_variation": "dumbbell-rear-delt-fly",
+    "harder_variation": null,
+    "variation_note": "Bài tập vàng phục hồi và gia cố nhóm cơ chóp xoay (Infraspinatus, Teres minor) và vai sau, bảo vệ toàn diện khớp vai."
   },
   {
     "key": "pike-push-up",
-    "name": "Pike Push-up",
+    "name": "Pike Push-up (Chống đẩy chữ V)",
     "primary": "shoulders",
     "secondary": [
       "triceps"
@@ -55,96 +554,31 @@
     "defaultKg": 0,
     "steps": [
       "Từ tư thế chống đẩy, đẩy hông lên cao thành hình chữ V ngược.",
-      "Gập khuỷu, hạ đỉnh đầu xuống phía trước hai bàn tay.",
-      "Đẩy lên theo đường thẳng, giữ hông cao."
+      "Gập khuỷu, hạ đỉnh đầu về phía trước hai bàn tay tạo hình tam giác.",
+      "Đẩy lên theo đường chéo ngược lại, giữ hông cao."
     ],
-    "tip": "Hạ hông xuống giữa chừng làm bài thành chống đẩy thường."
-  },
-  {
-    "key": "lateral-raise",
-    "name": "Lateral Raise",
-    "primary": "shoulders",
-    "secondary": [
-      "traps"
+    "tip": "Hạ hông xuống giữa chừng làm bài thành chống đẩy thường; hạ cắm thẳng đầu xuống giữa 2 tay.",
+    "injury_risk": "Hạ đầu cắm thẳng xuống giữa 2 tay làm kẹt khoang dưới mỏm cùng vai; võng thắt lưng khi đẩy gây tải trọng cắt cột sống.",
+    "cause": "Không tạo góc tam giác chuyển động về phía trước và cơ bụng yếu làm võng lưng.",
+    "contraindications": [
+      "Đau vai chóp xoay",
+      "Đau lưng dưới",
+      "Huyết áp cao"
     ],
-    "equipment": "db",
-    "level": "Cơ bản",
-    "metric": "rep",
-    "defaultSets": 2,
-    "defaultTarget": 15,
-    "defaultKg": 5,
-    "steps": [
-      "Đứng thẳng, tạ hai bên hông, khuỷu hơi cong.",
-      "Nâng tay sang ngang tới ngang vai, ngón út hơi cao hơn ngón cái.",
-      "Hạ chậm trong khoảng 2 giây."
+    "alternatives": [
+      "lateral-raise",
+      "dumbbell-overhead-press"
     ],
-    "tip": "Nhún vai hoặc lắc người lấy đà."
-  },
-  {
-    "key": "diamond-push-up",
-    "name": "Diamond Push-up",
-    "primary": "triceps",
-    "secondary": [
-      "chest"
-    ],
-    "equipment": "bw",
-    "level": "Trung bình",
-    "metric": "rep",
-    "defaultSets": 3,
-    "defaultTarget": 8,
-    "defaultKg": 0,
-    "steps": [
-      "Đặt hai bàn tay sát nhau dưới ngực, ngón cái và trỏ tạo hình thoi.",
-      "Hạ người, giữ khuỷu áp sát thân.",
-      "Đẩy lên, duỗi hết tay sau."
-    ],
-    "tip": "Khuỷu bung ra ngoài, dồn lực vào vai."
-  },
-  {
-    "key": "pull-up",
-    "name": "Pull-up",
-    "primary": "lats",
-    "secondary": [
-      "biceps",
-      "forearms"
-    ],
-    "equipment": "bar",
-    "level": "Nâng cao",
-    "metric": "rep",
-    "defaultSets": 3,
-    "defaultTarget": 5,
-    "defaultKg": 0,
-    "steps": [
-      "Nắm xà sấp tay, rộng hơn vai.",
-      "Kéo bả vai xuống trước, rồi kéo ngực lên gần xà.",
-      "Hạ chậm tới khi tay duỗi hết."
-    ],
-    "tip": "Đung đưa người, kéo nửa biên độ."
-  },
-  {
-    "key": "chin-up",
-    "name": "Chin-up",
-    "primary": "lats",
-    "secondary": [
-      "biceps",
-      "forearms"
-    ],
-    "equipment": "bar",
-    "level": "Trung bình",
-    "metric": "rep",
-    "defaultSets": 3,
-    "defaultTarget": 6,
-    "defaultKg": 0,
-    "steps": [
-      "Nắm xà ngửa tay, rộng bằng vai.",
-      "Kéo bả vai xuống, kéo cằm lên qua xà.",
-      "Hạ chậm tới khi tay duỗi hết."
-    ],
-    "tip": "Đung đưa người, kéo nửa biên độ."
+    "medical_source": "ExRx Kinesiology - Overhead Movement",
+    "progression_chain": "Chuỗi Cơ vai (Shoulders)",
+    "progression_level": 3,
+    "easier_variation": "dumbbell-overhead-press",
+    "harder_variation": null,
+    "variation_note": "Biến thể nâng cao thể trọng cơ thể: nâng góc hông để dồn trọng lượng vào cơ vai, là bước đệm tiến lên chống đẩy trồng cây chuối (Handstand push-up)."
   },
   {
     "key": "inverted-row",
-    "name": "Inverted Row",
+    "name": "Inverted Row (Kéo xà thấp ngang)",
     "primary": "lats",
     "secondary": [
       "biceps",
@@ -157,275 +591,26 @@
     "defaultTarget": 10,
     "defaultKg": 0,
     "steps": [
-      "Treo người dưới xà thấp hoặc mép bàn chắc, thân thẳng.",
-      "Kéo ngực lên chạm xà, ép hai bả vai.",
-      "Hạ có kiểm soát."
+      "Treo người dưới xà thấp hoặc mép bàn chắc chắn, thân thẳng từ đầu tới gót.",
+      "Kéo ngực lên chạm xà, ép hai bả vai vào nhau ở đỉnh.",
+      "Hạ có kiểm soát trong 2 giây."
     ],
-    "tip": "Võng hông, chỉ kéo bằng tay."
-  },
-  {
-    "key": "one-arm-dumbbell-row",
-    "name": "One-arm Dumbbell Row",
-    "primary": "lats",
-    "secondary": [
-      "biceps"
+    "tip": "Võng hông hoặc chùng người, chỉ kéo bằng cơ tay.",
+    "injury_risk": "Võng hông làm mất trục thân thẳng khiến cột sống chịu lực cắt; rướn cổ giật cằm gây căng cơ gáy.",
+    "cause": "Không siết bụng mông suốt chuyển động kéo.",
+    "contraindications": [
+      "Căng cơ cổ gáy"
     ],
-    "equipment": "db",
-    "level": "Cơ bản",
-    "metric": "rep",
-    "defaultSets": 3,
-    "defaultTarget": 12,
-    "defaultKg": 5,
-    "steps": [
-      "Một tay và một gối tì lên ghế, lưng phẳng.",
-      "Kéo tạ về phía hông, khuỷu sát thân.",
-      "Hạ duỗi hết tay, cảm nhận cơ xô giãn."
+    "alternatives": [
+      "one-arm-dumbbell-row",
+      "dead-hang"
     ],
-    "tip": "Xoay thân để kéo tạ lên."
-  },
-  {
-    "key": "dumbbell-curl",
-    "name": "Dumbbell Curl",
-    "primary": "biceps",
-    "secondary": [
-      "forearms"
-    ],
-    "equipment": "db",
-    "level": "Cơ bản",
-    "metric": "rep",
-    "defaultSets": 3,
-    "defaultTarget": 12,
-    "defaultKg": 5,
-    "steps": [
-      "Đứng thẳng, lòng bàn tay hướng ra trước.",
-      "Gập khuỷu đưa tạ lên vai, khuỷu cố định cạnh thân.",
-      "Hạ chậm, duỗi gần hết tay."
-    ],
-    "tip": "Đưa khuỷu ra trước hoặc ngả lưng lấy đà."
-  },
-  {
-    "key": "dumbbell-shrug",
-    "name": "Dumbbell Shrug",
-    "primary": "traps",
-    "secondary": [
-      "forearms"
-    ],
-    "equipment": "db",
-    "level": "Cơ bản",
-    "metric": "rep",
-    "defaultSets": 2,
-    "defaultTarget": 15,
-    "defaultKg": 5,
-    "steps": [
-      "Đứng thẳng, tạ hai bên, tay duỗi.",
-      "Nhún vai thẳng lên phía tai, giữ một nhịp.",
-      "Hạ chậm, không xoay vai."
-    ],
-    "tip": "Xoay vai tròn hoặc gập khuỷu."
-  },
-  {
-    "key": "dead-hang",
-    "name": "Dead Hang",
-    "primary": "forearms",
-    "secondary": [
-      "lats",
-      "shoulders"
-    ],
-    "equipment": "bar",
-    "level": "Cơ bản",
-    "metric": "s",
-    "defaultSets": 2,
-    "defaultTarget": 40,
-    "defaultKg": 0,
-    "steps": [
-      "Nắm xà sấp tay, rộng bằng vai.",
-      "Thả người treo, chân khỏi sàn.",
-      "Giữ vai hơi kéo xuống, thở đều."
-    ],
-    "tip": "Nhún vai sát tai, buông lỏng hoàn toàn khớp vai."
-  },
-  {
-    "key": "goblet-squat",
-    "name": "Goblet Squat",
-    "primary": "quads",
-    "secondary": [
-      "glutes"
-    ],
-    "equipment": "db",
-    "level": "Cơ bản",
-    "metric": "rep",
-    "defaultSets": 4,
-    "defaultTarget": 15,
-    "defaultKg": 5,
-    "steps": [
-      "Ôm tạ trước ngực, chân rộng bằng vai, mũi chân hơi mở.",
-      "Ngồi xuống giữa hai chân, ngực mở, gối theo hướng mũi chân.",
-      "Đẩy gót đứng lên."
-    ],
-    "tip": "Gối khép vào trong, gót nhấc khỏi sàn."
-  },
-  {
-    "key": "bulgarian-split-squat",
-    "name": "Bulgarian Split Squat",
-    "primary": "quads",
-    "secondary": [
-      "glutes",
-      "hamstrings"
-    ],
-    "equipment": "db",
-    "level": "Trung bình",
-    "metric": "rep",
-    "defaultSets": 3,
-    "defaultTarget": 10,
-    "defaultKg": 5,
-    "steps": [
-      "Đặt mu bàn chân sau lên ghế, chân trước bước xa.",
-      "Hạ thẳng người xuống tới khi đùi trước song song sàn.",
-      "Đẩy bằng gót chân trước."
-    ],
-    "tip": "Bước chân trước quá gần, gối vượt mũi chân nhiều."
-  },
-  {
-    "key": "dumbbell-hip-thrust",
-    "name": "Dumbbell Hip Thrust",
-    "primary": "glutes",
-    "secondary": [
-      "hamstrings"
-    ],
-    "equipment": "db",
-    "level": "Cơ bản",
-    "metric": "rep",
-    "defaultSets": 4,
-    "defaultTarget": 15,
-    "defaultKg": 5,
-    "steps": [
-      "Tựa lưng trên mép ghế, tạ đặt ngang hông.",
-      "Đẩy gót nâng hông tới khi thân thẳng từ vai tới gối.",
-      "Siết mông một nhịp ở trên rồi hạ chậm."
-    ],
-    "tip": "Ưỡn lưng dưới thay vì siết mông."
-  },
-  {
-    "key": "romanian-deadlift",
-    "name": "Romanian Deadlift",
-    "primary": "hamstrings",
-    "secondary": [
-      "glutes",
-      "lowerback"
-    ],
-    "equipment": "db",
-    "level": "Trung bình",
-    "metric": "rep",
-    "defaultSets": 3,
-    "defaultTarget": 12,
-    "defaultKg": 5,
-    "steps": [
-      "Đứng thẳng, tạ trước đùi, gối hơi chùng.",
-      "Đẩy hông ra sau, trượt tạ dọc chân tới giữa ống quyển.",
-      "Siết mông kéo hông về trước để đứng lên."
-    ],
-    "tip": "Cong lưng dưới khi hạ tạ. Giữ tạ nhẹ, dừng khi thấy căng ở lưng.",
-    "warn": "Hồ sơ ghi đau lưng dưới khi gập người tải nặng."
-  },
-  {
-    "key": "glute-bridge",
-    "name": "Glute Bridge",
-    "primary": "glutes",
-    "secondary": [
-      "hamstrings"
-    ],
-    "equipment": "bw",
-    "level": "Cơ bản",
-    "metric": "rep",
-    "defaultSets": 3,
-    "defaultTarget": 15,
-    "defaultKg": 0,
-    "steps": [
-      "Nằm ngửa, gối co, bàn chân rộng bằng hông.",
-      "Đẩy gót nâng hông lên tới khi thân thẳng từ vai tới gối.",
-      "Giữ một nhịp, hạ chậm."
-    ],
-    "tip": "Ưỡn lưng dưới thay vì siết mông."
-  },
-  {
-    "key": "calf-raise",
-    "name": "Calf Raise",
-    "primary": "calves",
-    "secondary": [],
-    "equipment": "bw",
-    "level": "Cơ bản",
-    "metric": "rep",
-    "defaultSets": 3,
-    "defaultTarget": 20,
-    "defaultKg": 0,
-    "steps": [
-      "Đứng trên mép bậc, gót thả ra ngoài.",
-      "Kiễng lên cao nhất có thể.",
-      "Hạ gót xuống thấp hơn bậc, giãn bắp chân."
-    ],
-    "tip": "Nảy nhanh, không dùng hết biên độ."
-  },
-  {
-    "key": "bird-dog",
-    "name": "Bird Dog",
-    "primary": "lowerback",
-    "secondary": [
-      "abs",
-      "glutes"
-    ],
-    "equipment": "bw",
-    "level": "Cơ bản",
-    "metric": "rep",
-    "defaultSets": 3,
-    "defaultTarget": 10,
-    "defaultKg": 0,
-    "steps": [
-      "Quỳ bốn điểm, tay dưới vai, gối dưới hông.",
-      "Duỗi tay phải và chân trái thành một đường thẳng.",
-      "Giữ 2 giây, thu về, đổi bên."
-    ],
-    "tip": "Xoay hông hoặc võng lưng khi duỗi chân."
-  },
-  {
-    "key": "plank",
-    "name": "Plank",
-    "primary": "abs",
-    "secondary": [
-      "obliques",
-      "shoulders"
-    ],
-    "equipment": "bw",
-    "level": "Cơ bản",
-    "metric": "s",
-    "defaultSets": 3,
-    "defaultTarget": 45,
-    "defaultKg": 0,
-    "steps": [
-      "Chống cẳng tay, khuỷu dưới vai.",
-      "Thân thẳng, siết bụng và mông.",
-      "Thở đều, giữ đủ thời gian."
-    ],
-    "tip": "Võng hông hoặc đẩy mông quá cao."
-  },
-  {
-    "key": "side-plank",
-    "name": "Side Plank",
-    "primary": "obliques",
-    "secondary": [
-      "abs"
-    ],
-    "equipment": "bw",
-    "level": "Cơ bản",
-    "metric": "s",
-    "defaultSets": 3,
-    "defaultTarget": 30,
-    "defaultKg": 0,
-    "steps": [
-      "Nằm nghiêng, chống một cẳng tay, chân chồng lên nhau.",
-      "Nâng hông thành một đường thẳng.",
-      "Giữ, rồi đổi bên."
-    ],
-    "tip": "Hông chùng xuống, người ngả về trước."
+    "medical_source": "Dr. Stuart McGill (Safe Horizontal Pulling)",
+    "progression_chain": "Chuỗi Hít xà (Pull-up)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "assisted-pull-up",
+    "variation_note": "Chân chạm đất làm điểm tựa an toàn cho vai, chuyển động kéo ngang bảo vệ khớp vai và là nền tảng số 1 trước khi tập xà treo."
   },
   {
     "key": "assisted-pull-up",
@@ -446,11 +631,739 @@
       "Gồng cơ lưng xô kéo người lên, chân chỉ hỗ trợ vừa đủ bù lực thiếu.",
       "Hạ người xuống chậm trong 3–4 giây để tối ưu kích thích cơ."
     ],
-    "tip": "Đạp chân quá mạnh thay vì dùng cơ xô kéo người."
+    "tip": "Đạp chân quá mạnh làm mất tác dụng kéo của lưng xô.",
+    "injury_risk": "Đạp chân quá mạnh biến bài tập thành squat trên cao; buông thõng vai ở đáy.",
+    "cause": "Dùng chân trợ lực quá đà thay vì dùng cơ xô.",
+    "contraindications": [
+      "Viêm gân chóp xoay vai"
+    ],
+    "alternatives": [
+      "inverted-row",
+      "dead-hang"
+    ],
+    "medical_source": "NSCA Overhead Pull Regressions",
+    "progression_chain": "Chuỗi Hít xà (Pull-up)",
+    "progression_level": 2,
+    "easier_variation": "inverted-row",
+    "harder_variation": "chin-up",
+    "variation_note": "Tập đúng tư thế kéo thẳng đứng của hít xà nhưng có mũi chân trợ lực bù đắp 20-30% sức nặng cơ thể, rèn luyện đường đi của bả vai."
+  },
+  {
+    "key": "chin-up",
+    "name": "Chin-up (Hít xà ngửa tay)",
+    "primary": "lats",
+    "secondary": [
+      "biceps",
+      "forearms"
+    ],
+    "equipment": "bar",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 6,
+    "defaultKg": 0,
+    "steps": [
+      "Nắm xà ngửa lòng bàn tay về phía mặt, rộng bằng vai.",
+      "Kéo bả vai xuống, dùng cơ xô và tay trước kéo cằm vượt qua xà.",
+      "Hạ chậm trong 3 giây tới khi tay duỗi hết."
+    ],
+    "tip": "Đung đưa người lấy đà; rụt cổ gồng vai quá mức.",
+    "injury_risk": "Ngửa tay hoàn toàn khi khớp cổ tay hoặc khuỷu thiếu độ xoay ngửa (supination) có thể gây căng tức lồi cầu trong xương cánh tay (Golfer's elbow).",
+    "cause": "Độ linh hoạt cẳng tay kém và rơi tự do ở đáy động tác.",
+    "contraindications": [
+      "Đau lồi cầu trong (Golfer's elbow)",
+      "Đau cổ tay"
+    ],
+    "alternatives": [
+      "inverted-row",
+      "dumbbell-curl"
+    ],
+    "medical_source": "ExRx Kinesiology - Supinated Grip Pull",
+    "progression_chain": "Chuỗi Hít xà (Pull-up)",
+    "progression_level": 3,
+    "easier_variation": "assisted-pull-up",
+    "harder_variation": "pull-up",
+    "variation_note": "Tay ngửa tận dụng thêm sức mạnh rất lớn từ cơ tay trước (Biceps), giúp việc kéo toàn bộ trọng lượng cơ thể dễ hơn so với hít xà sấp tay."
+  },
+  {
+    "key": "pull-up",
+    "name": "Pull-up (Hít xà sấp tay chuẩn)",
+    "primary": "lats",
+    "secondary": [
+      "biceps",
+      "forearms"
+    ],
+    "equipment": "bar",
+    "level": "Nâng cao",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 5,
+    "defaultKg": 0,
+    "steps": [
+      "Nắm xà sấp tay, rộng hơn vai một chút.",
+      "Kéo ghì bả vai xuống trước (scapular depression), rồi kéo ngực lên gần xà.",
+      "Hạ chậm có kiểm soát tới khi tay duỗi thẳng."
+    ],
+    "tip": "Đung đưa giật người (kipping), kéo nửa biên độ, buông thõng vai ở đáy.",
+    "injury_risk": "Đung đưa giật người khi cơ vai chưa khóa vững dễ gây rách sụn viền (SLAP tear); buông thõng vai rơi tự do làm căng giãn bao khớp quá mức.",
+    "cause": "Dùng quán tính giật người và không ghì bả vai trước khi kéo.",
+    "contraindications": [
+      "Viêm gân chóp xoay",
+      "Rách sụn viền vai",
+      "Đau khớp khuỷu"
+    ],
+    "alternatives": [
+      "inverted-row",
+      "assisted-pull-up"
+    ],
+    "medical_source": "NSCA Journal of Strength and Conditioning",
+    "progression_chain": "Chuỗi Hít xà (Pull-up)",
+    "progression_level": 4,
+    "easier_variation": "chin-up",
+    "harder_variation": null,
+    "variation_note": "Đỉnh cao của chuyển động kéo thân trên: cô lập tối đa cơ xô (Lats) tạo lưng V-taper, không có trợ lực từ bắp tay trước như khi ngửa tay."
+  },
+  {
+    "key": "one-arm-dumbbell-row",
+    "name": "One-arm Dumbbell Row (Chèo tạ đơn 1 tay)",
+    "primary": "lats",
+    "secondary": [
+      "biceps"
+    ],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 5,
+    "steps": [
+      "Một tay và một gối tì lên ghế, giữ lưng phẳng song song mặt sàn.",
+      "Kéo tạ về phía hông, giữ khuỷu tay áp sát mạn sườn.",
+      "Hạ tạ duỗi hết tay có kiểm soát, cảm nhận cơ xô giãn."
+    ],
+    "tip": "Xoay vặn thân người hoặc giật lưng để kéo tạ lên.",
+    "injury_risk": "Xoay vặn thân người giật tạ lên làm xoắn cột sống thắt lưng dưới tải trọng; gù lưng khi với tạ ở đáy.",
+    "cause": "Chọn tạ quá nặng khiến lưng phải xoay theo để trợ lực.",
+    "contraindications": [
+      "Đau thoát vị đĩa đệm lưng",
+      "Lệch vẹo cột sống"
+    ],
+    "alternatives": [
+      "inverted-row",
+      "lat-pulldown"
+    ],
+    "medical_source": "Dr. Stuart McGill - Low Back Disorders",
+    "progression_chain": "Chuỗi Kèo tạ (Rowing)",
+    "progression_level": 1,
+    "easier_variation": "inverted-row",
+    "harder_variation": "bent-over-dumbbell-row",
+    "variation_note": "Tập từng bên (unilateral) có ghế hỗ trợ giúp giảm 60% tải trọng nén lên đĩa đệm thắt lưng so với đứng cúi người."
+  },
+  {
+    "key": "bent-over-dumbbell-row",
+    "name": "Chèo tạ đơn 2 tay gập người (Bent-over DB Row)",
+    "primary": "lats",
+    "secondary": [
+      "biceps",
+      "traps",
+      "lowerback"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 10,
+    "defaultKg": 8,
+    "steps": [
+      "Đứng chân rộng bằng vai, gập hông 45 độ, giữ lưng phẳng thẳng tắp, gối hơi chùng.",
+      "Hai tay cầm tạ kéo hướng về phía hông, siết chặt hai bả vai vào nhau ở đỉnh.",
+      "Hạ chậm trong 2 giây, không buông thõng gù lưng."
+    ],
+    "tip": "Gù cong thắt lưng; nhấp nhô thân người lấy đà.",
+    "injury_risk": "Gù thắt lưng khi đang mang tạ tạo mô-men uốn nén đĩa đệm L5-S1 rất nguy hiểm.",
+    "cause": "Cơ lưng dưới và đùi sau kém linh hoạt khiến lưng bị cong.",
+    "contraindications": [
+      "Đau thắt lưng dưới cấp",
+      "Thoát vị đĩa đệm"
+    ],
+    "alternatives": [
+      "one-arm-dumbbell-row",
+      "inverted-row"
+    ],
+    "medical_source": "Stuart McGill & NSCA Rowing Biomechanics",
+    "progression_chain": "Chuỗi Kèo tạ (Rowing)",
+    "progression_level": 2,
+    "easier_variation": "one-arm-dumbbell-row",
+    "harder_variation": "pull-up",
+    "variation_note": "Đứng cúi người tự do đòi hỏi cơ lưng dưới và đùi sau phải gồng giữ tư thế đẳng trường (isometric) suốt cả hiệp tập."
+  },
+  {
+    "key": "lat-pulldown",
+    "name": "Kéo xô máy / dây kháng lực (Lat Pulldown)",
+    "primary": "lats",
+    "secondary": [
+      "biceps",
+      "forearms"
+    ],
+    "equipment": "gym",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 15,
+    "steps": [
+      "Ngồi vào máy hoặc quỳ trước dây kháng lực trên cao, nắm thanh kéo rộng hơn vai.",
+      "Ưỡn nhẹ ngực, kéo thanh kéo xuống chạm nhẹ phần ngực trên, ép chặt bả vai.",
+      "Nhả chậm có kiểm soát đưa thanh kéo trở lại đỉnh."
+    ],
+    "tip": "Kéo thanh ra sau gáy; ngửa người ra sau quá nhiều (> 45 độ).",
+    "injury_risk": "Kéo sau gáy (Behind the neck pulldown) ép khớp vai xoay ngoài cực hạn và đè ép đốt sống cổ C6-C7.",
+    "cause": "Tập theo thói quen cũ nguy hiểm thay vì kéo trước ngực.",
+    "contraindications": [
+      "Hội chứng chèn ép vai",
+      "Thoái hóa đốt sống cổ"
+    ],
+    "alternatives": [
+      "inverted-row",
+      "assisted-pull-up"
+    ],
+    "medical_source": "ACE & ACSM (Front vs Behind the Neck Lat Pulldown Safety)",
+    "progression_chain": "Chuỗi Hít xà (Pull-up)",
+    "progression_level": 2,
+    "easier_variation": "inverted-row",
+    "harder_variation": "pull-up",
+    "variation_note": "Cho phép tùy chỉnh trọng lượng tạ chính xác từ nhẹ đến nặng để xây dựng sức mạnh cơ xô trước khi chuyển sang hít xà thể trọng."
+  },
+  {
+    "key": "dumbbell-pullover",
+    "name": "Vớt tạ đơn qua đầu (Dumbbell Pullover)",
+    "primary": "lats",
+    "secondary": [
+      "chest",
+      "triceps"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 6,
+    "steps": [
+      "Nằm ngang ghế hoặc nằm thẳng trên ghế, hai tay đan đỡ 1 đầu tạ đơn giơ thẳng trên ngực.",
+      "Từ từ hạ tạ qua đỉnh đầu theo hình vòng cung, giữ khuỷu tay hơi cong nhẹ, hít sâu cảm nhận lồng ngực và cơ xô giãn.",
+      "Dùng cơ xô kéo tạ trở lại vị trí ban đầu trên ngực."
+    ],
+    "tip": "Hạ tạ quá sâu vượt tầm linh hoạt khớp vai; gập khuỷu tay như bài tay sau.",
+    "injury_risk": "Hạ tạ quá sâu giật cơ vai làm trật nhẹ khớp hoặc căng rách gân cơ ngực và xô.",
+    "cause": "Tạ quá nặng và hạ tạ vượt quá biên độ mở của khớp vai.",
+    "contraindications": [
+      "Viêm gân chóp xoay vai",
+      "Mất vững khớp vai"
+    ],
+    "alternatives": [
+      "lat-pulldown",
+      "one-arm-dumbbell-row"
+    ],
+    "medical_source": "ExRx Kinesiology - Latissimus Dorsi Pullover Mechanics",
+    "progression_chain": "Chuỗi Kèo tạ (Rowing)",
+    "progression_level": 2,
+    "easier_variation": "lat-pulldown",
+    "harder_variation": "pull-up",
+    "variation_note": "Kéo giãn cơ xô ở biên độ dài nhất (long muscle length), kích thích phì đại cơ xô theo cơ chế stretch-mediated hypertrophy."
+  },
+  {
+    "key": "hammer-curl",
+    "name": "Cuốn tạ búa (Hammer Curl)",
+    "primary": "biceps",
+    "secondary": [
+      "forearms"
+    ],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 5,
+    "steps": [
+      "Đứng thẳng, hai tay cầm tạ dọc theo thân, lòng bàn tay hướng vào nhau (neutral grip).",
+      "Giữ cố định bắp tay sát sườn, gập khuỷu tay đưa tạ lên phía trước ngực.",
+      "Siết chặt cơ tay trước và cơ cánh tay quay (Brachioradialis), hạ chậm trong 2 giây."
+    ],
+    "tip": "Vung vẩy cùi chỏ ra trước hoặc lắc người lấy đà.",
+    "injury_risk": "Lắc hông giật lưng khi tạ nặng. Tư thế cầm dọc (neutral grip) này là giải pháp an toàn tuyệt đối cho người bị đau cổ tay khi cuốn tạ truyền thống.",
+    "cause": "Dùng tạ quá nặng làm mất form.",
+    "contraindications": [
+      "Viêm lồi cầu ngoài khuỷu tay"
+    ],
+    "alternatives": [
+      "dumbbell-curl",
+      "chin-up"
+    ],
+    "medical_source": "Brad Schoenfeld & ExRx Neutral Grip Mechanics",
+    "progression_chain": "Chuỗi Tay trước (Biceps)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "dumbbell-curl",
+    "variation_note": "Cầm dọc neutral grip giữ cổ tay ở vị trí tự nhiên nhất của khớp, giảm áp lực lên gân cổ tay và khuỷu tay hơn cuốn tạ ngửa."
+  },
+  {
+    "key": "dumbbell-curl",
+    "name": "Dumbbell Curl (Cuốn tạ ngửa tay)",
+    "primary": "biceps",
+    "secondary": [
+      "forearms"
+    ],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 5,
+    "steps": [
+      "Đứng thẳng, lòng bàn tay hướng ra trước, cùi chỏ cố định sát thân.",
+      "Gập khuỷu đưa tạ lên ngang ngực, siết chặt cơ tay trước.",
+      "Hạ chậm trong 2-3 giây, duỗi gần hết tay."
+    ],
+    "tip": "Đưa cùi chỏ ra trước hoặc ngửa lưng đung đưa lấy đà.",
+    "injury_risk": "Ngả người ra sau đung đưa tạ làm dồn lực nén vào các đốt sống thắt lưng L4-L5; đau cổ tay do xoay ngửa tạ quá đà.",
+    "cause": "Ham dùng tạ nặng vượt sức cơ tay trước, phải dùng lưng trợ lực.",
+    "contraindications": [
+      "Đau lưng dưới",
+      "Viêm gân cơ nhị đầu",
+      "Đau cổ tay"
+    ],
+    "alternatives": [
+      "hammer-curl",
+      "concentration-curl"
+    ],
+    "medical_source": "Brad Schoenfeld - Science and Development of Muscle Hypertrophy",
+    "progression_chain": "Chuỗi Tay trước (Biceps)",
+    "progression_level": 2,
+    "easier_variation": "hammer-curl",
+    "harder_variation": "incline-dumbbell-curl",
+    "variation_note": "Xoay ngửa cẳng tay (supination) tối đa kích hoạt hai đầu cơ nhị đầu cánh tay (Biceps brachii)."
+  },
+  {
+    "key": "concentration-curl",
+    "name": "Cuốn tạ tập trung tì đùi (Concentration Curl)",
+    "primary": "biceps",
+    "secondary": [
+      "forearms"
+    ],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 5,
+    "steps": [
+      "Ngồi trên ghế, hai chân mở rộng, một tay cầm tạ tì bắp tay vào mặt trong đùi cùng bên.",
+      "Cuốn tạ lên hướng về mặt, giữ bắp tay cố định hoàn toàn không đung đưa.",
+      "Hạ chậm có kiểm soát xuống điểm duỗi tay."
+    ],
+    "tip": "Dùng đùi hất tạ lên; giật vai hỗ trợ.",
+    "injury_risk": "Gù gập cổ lưng khi cúi; bài này theo nghiên cứu ACE có mức kích hoạt điện cơ (EMG) cao nhất và an toàn nhất cho lưng.",
+    "cause": "Ngồi sai tư thế không tựa vững đùi.",
+    "contraindications": [],
+    "alternatives": [
+      "hammer-curl",
+      "dumbbell-curl"
+    ],
+    "medical_source": "ACE Bicep Study (Highest EMG Activation among 8 Exercises)",
+    "progression_chain": "Chuỗi Tay trước (Biceps)",
+    "progression_level": 2,
+    "easier_variation": "hammer-curl",
+    "harder_variation": "incline-dumbbell-curl",
+    "variation_note": "Điểm tựa vào đùi khóa chặt khớp cánh tay, loại bỏ 100% quán tính đung đưa của thân người, cô lập cơ tay trước thuần túy."
+  },
+  {
+    "key": "incline-dumbbell-curl",
+    "name": "Cuốn tạ ghế dốc sau (Incline DB Curl)",
+    "primary": "biceps",
+    "secondary": [
+      "forearms"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 10,
+    "defaultKg": 5,
+    "steps": [
+      "Ngồi tựa lưng trên ghế dốc 45-60 độ, hai tay cầm tạ buông thõng ra phía sau thân người.",
+      "Giữ bắp tay vuông góc sàn, cuốn tạ lên bằng cơ tay trước, ngửa cổ tay ở đỉnh.",
+      "Hạ chậm trong 3 giây cảm nhận cơ tay trước bị kéo căng cực đại ở đáy."
+    ],
+    "tip": "Đưa bắp tay ra phía trước khi cuốn; nhấc lưng khỏi ghế.",
+    "injury_risk": "Hạ tạ giật mạnh ở đáy kéo căng quá tải gân cơ nhị đầu dài (Long head tendon).",
+    "cause": "Tạ quá nặng trong tư thế kéo giãn biên độ cực đại.",
+    "contraindications": [
+      "Viêm gân cơ nhị đầu trước vai"
+    ],
+    "alternatives": [
+      "concentration-curl",
+      "hammer-curl"
+    ],
+    "medical_source": "Dr. Brad Schoenfeld (Stretch-mediated Hypertrophy in Biceps)",
+    "progression_chain": "Chuỗi Tay trước (Biceps)",
+    "progression_level": 3,
+    "easier_variation": "dumbbell-curl",
+    "harder_variation": "chin-up",
+    "variation_note": "Cánh tay nằm ra phía sau thân người kéo giãn tối đa đầu dài cơ nhị đầu, kích thích tăng cơ mạnh mẽ theo cơ chế phì đại kéo căng."
+  },
+  {
+    "key": "bench-dips",
+    "name": "Nhún tay sau tựa ghế (Bench Dips)",
+    "primary": "triceps",
+    "secondary": [
+      "chest",
+      "shoulders"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 0,
+    "steps": [
+      "Ngồi trên mép ghế, đặt hai bàn tay cạnh hông, ngón tay hướng ra trước, duỗi chân về phía trước.",
+      "Trượt mông ra khỏi mép ghế, gập khuỷu tay hạ người xuống tới khi bắp tay song song sàn (không sâu quá 90°).",
+      "Dùng lực cơ tay sau đẩy thẳng tay đưa thân người trở lại vị trí ban đầu."
+    ],
+    "tip": "Hạ người quá sâu làm căng gắt khớp vai; đưa mông ra quá xa ghế.",
+    "injury_risk": "Hạ người quá sâu vượt quá 90° khiến đầu xương cánh tay bị đẩy trượt mạnh ra trước (Anterior humeral glide), gây căng rách bao khớp vai trước.",
+    "cause": "Đưa mông cách quá xa mép ghế và hạ người quá sâu.",
+    "contraindications": [
+      "Đau chóp xoay vai",
+      "Viêm bao hoạt dịch vai trước"
+    ],
+    "alternatives": [
+      "diamond-push-up",
+      "dumbbell-floor-press"
+    ],
+    "medical_source": "Eric Cressey & Kelly Starrett (Shoulder Mechanics in Dips)",
+    "progression_chain": "Chuỗi Tay sau (Triceps)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "dumbbell-skull-crusher",
+    "variation_note": "Tựa mép ghế cho phép co gối giảm tải trọng, giúp người mới tập trung cảm nhận duỗi cơ tam đầu cánh tay (Triceps)."
+  },
+  {
+    "key": "dumbbell-skull-crusher",
+    "name": "Skull Crusher nằm ngửa (DB Skull Crusher)",
+    "primary": "triceps",
+    "secondary": [],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 5,
+    "steps": [
+      "Nằm ngửa trên ghế phẳng hoặc sàn, hai tay cầm tạ giơ thẳng đứng trên ngực, bắp tay cố định.",
+      "Chỉ gập khớp khuỷu hạ tạ từ từ xuống ngang hai bên tai/trán.",
+      "Dùng cơ tay sau duỗi thẳng cẳng tay trở lại vị trí ban đầu."
+    ],
+    "tip": "Vung vẩy bắp tay ra trước sau; bung hai khuỷu tay rộng sang hai bên.",
+    "injury_risk": "Bung khuỷu tay sang hai bên gây đau lồi cầu ngoài và căng gân duỗi khuỷu tay; thả tạ rơi trúng mặt.",
+    "cause": "Tạ quá nặng và không khóa cố định bắp tay.",
+    "contraindications": [
+      "Viêm gân cơ tam đầu",
+      "Đau khớp khuỷu"
+    ],
+    "alternatives": [
+      "bench-dips",
+      "diamond-push-up"
+    ],
+    "medical_source": "NSCA Triceps Extension Safety Protocols",
+    "progression_chain": "Chuỗi Tay sau (Triceps)",
+    "progression_level": 2,
+    "easier_variation": "bench-dips",
+    "harder_variation": "diamond-push-up",
+    "variation_note": "Cô lập hoàn hảo cơ tam đầu cánh tay mà không có trợ lực từ cơ ngực hay cơ vai."
+  },
+  {
+    "key": "triceps-overhead-extension",
+    "name": "Đưa tạ sau đầu duỗi tay sau (Overhead Triceps)",
+    "primary": "triceps",
+    "secondary": [
+      "shoulders"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 6,
+    "steps": [
+      "Ngồi thẳng lưng, hai tay ôm một quả tạ đơn đưa thẳng lên trên đỉnh đầu.",
+      "Giữ bắp tay cố định sát mang tai, gập khuỷu tay hạ tạ xuống phía sau gáy.",
+      "Dùng cơ tay sau đẩy duỗi thẳng tạ lên cao."
+    ],
+    "tip": "Ưỡn thắt lưng lấy đà; mở bành hai khuỷu tay sang ngang.",
+    "injury_risk": "Ưỡn cột sống thắt lưng khi đẩy tạ sau đầu; kẹt gân cơ chóp xoay nếu khớp vai thiếu độ linh hoạt mở rộng.",
+    "cause": "Độ linh hoạt khớp vai kém và dùng tạ quá nặng.",
+    "contraindications": [
+      "Đau khớp vai",
+      "Đau thắt lưng dưới"
+    ],
+    "alternatives": [
+      "dumbbell-skull-crusher",
+      "bench-dips"
+    ],
+    "medical_source": "Dr. Brad Schoenfeld (Long Head Triceps Overhead Studies)",
+    "progression_chain": "Chuỗi Tay sau (Triceps)",
+    "progression_level": 2,
+    "easier_variation": "bench-dips",
+    "harder_variation": "diamond-push-up",
+    "variation_note": "Tư thế giơ tay qua đầu kéo căng tối đa đầu dài cơ tam đầu (Long head of triceps)."
+  },
+  {
+    "key": "dumbbell-triceps-kickback",
+    "name": "Đá tạ sau gập người (Triceps Kickback)",
+    "primary": "triceps",
+    "secondary": [],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 15,
+    "defaultKg": 4,
+    "steps": [
+      "Gập người tựa 1 tay lên ghế hoặc đùi, bắp tay cầm tạ kẹp sát song song với sườn.",
+      "Giữ nguyên bắp tay, chỉ duỗi cẳng tay thẳng ra phía sau tới khi khóa thẳng tay.",
+      "Siết cơ tay sau 1 giây ở đỉnh rồi gập về 90 độ."
+    ],
+    "tip": "Lắc bắp tay đung đưa tạ như quả lắc đồng hồ.",
+    "injury_risk": "Vung tạ quán tính làm mất độ co cơ và giật khớp khuỷu.",
+    "cause": "Dùng tạ quá nặng và vung cùi chỏ.",
+    "contraindications": [],
+    "alternatives": [
+      "bench-dips",
+      "dumbbell-skull-crusher"
+    ],
+    "medical_source": "ACE Triceps Activation EMG Study",
+    "progression_chain": "Chuỗi Tay sau (Triceps)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "dumbbell-skull-crusher",
+    "variation_note": "Đạt độ co ngắn cực đại (peak contraction) của cơ tam đầu ở điểm khóa thẳng tay ra phía sau."
+  },
+  {
+    "key": "diamond-push-up",
+    "name": "Diamond Push-up (Hít đất kim cương)",
+    "primary": "triceps",
+    "secondary": [
+      "chest"
+    ],
+    "equipment": "bw",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 8,
+    "defaultKg": 0,
+    "steps": [
+      "Đặt hai bàn tay sát nhau dưới ngực, ngón cái và trỏ tạo hình thoi.",
+      "Hạ người có kiểm soát, giữ khuỷu tay áp sát thân người.",
+      "Đẩy lên dứt khoát, duỗi cơ tay sau."
+    ],
+    "tip": "Khuỷu bung rộng ra ngoài, dồn áp lực xoắn vào khớp khuỷu và cổ tay.",
+    "injury_risk": "Bung khuỷu tay ra ngoài ép khớp khuỷu chịu lực vặn xoắn lớn; bẻ góc cổ tay hẹp gây đau gân duỗi cổ tay.",
+    "cause": "Hai tay đặt quá gần nhưng không khép bắp tay sát sườn.",
+    "contraindications": [
+      "Đau khớp khuỷu",
+      "Đau cổ tay",
+      "Viêm lồi cầu ngoài"
+    ],
+    "alternatives": [
+      "dumbbell-floor-press",
+      "bench-dips"
+    ],
+    "medical_source": "ACE Biomechanics & EMG Triceps Study",
+    "progression_chain": "Chuỗi Tay sau (Triceps)",
+    "progression_level": 3,
+    "easier_variation": "dumbbell-skull-crusher",
+    "harder_variation": null,
+    "variation_note": "Biến thể nâng cao: thu hẹp tay ép khuỷu gập sâu dưới toàn bộ trọng lượng cơ thể, kích hoạt điện cơ (EMG) tay sau đạt đỉnh cao nhất trong các bài hít đất."
+  },
+  {
+    "key": "dead-hang",
+    "name": "Dead Hang (Treo xà tĩnh)",
+    "primary": "forearms",
+    "secondary": [
+      "lats",
+      "shoulders"
+    ],
+    "equipment": "bar",
+    "level": "Cơ bản",
+    "metric": "s",
+    "defaultSets": 2,
+    "defaultTarget": 40,
+    "defaultKg": 0,
+    "steps": [
+      "Nắm xà sấp tay, rộng bằng vai.",
+      "Thả người treo thẳng, chân rời khỏi sàn.",
+      "Giữ vai hơi kéo nhẹ (active hang) để bảo vệ khớp, thở đều đặn."
+    ],
+    "tip": "Thả lỏng hoàn toàn buông thõng khớp vai; nhún vai sát rạt tai.",
+    "injury_risk": "Thả lỏng hoàn toàn vai (passive hang) khi cơ bao khớp yếu khiến chỏm xương cánh tay bị kéo giãn khỏi ổ chảo gây đau nhức.",
+    "cause": "Không kích hoạt nhẹ cơ bả vai và cơ xô để giữ vững khớp.",
+    "contraindications": [
+      "Trật khớp vai tái hồi",
+      "Viêm bao hoạt dịch vai"
+    ],
+    "alternatives": [
+      "dumbbell-shrug",
+      "wrist-curl"
+    ],
+    "medical_source": "Dr. John Kirsch - Shoulder Pain and The Solution (Hang Protocol)",
+    "progression_chain": "Chuỗi Cẳng tay & Lực nắm",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "wrist-curl",
+    "variation_note": "Rèn luyện sức mạnh bám nắm của cẳng tay (Grip strength) và giải nén đốt sống lưng trước khi chuyển sang các bài kéo xà động lực học."
+  },
+  {
+    "key": "wrist-curl",
+    "name": "Cuốn cổ tay tạ đơn (Wrist Curl)",
+    "primary": "forearms",
+    "secondary": [],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 15,
+    "defaultKg": 4,
+    "steps": [
+      "Ngồi trên ghế, tì cẳng tay lên đùi hoặc mép ghế, cổ tay thò ra ngoài mép, lòng bàn tay ngửa.",
+      "Hạ tạ xuống các đầu ngón tay mở nhẹ, sau đó cuộn cổ tay lên cao nhất có thể.",
+      "Siết cơ cẳng tay trong 1 giây rồi hạ chậm."
+    ],
+    "tip": "Dùng tạ quá nặng làm trẹo khớp cổ tay; nhấc cả cẳng tay khỏi đùi.",
+    "injury_risk": "Dùng tạ quá nặng làm căng rách gân gấp cổ tay và chèn ép dây thần kinh giữa (ống cổ tay).",
+    "cause": "Không cố định cẳng tay và chọn mức tạ quá sức.",
+    "contraindications": [
+      "Hội chứng ống cổ tay",
+      "Bong gân cổ tay"
+    ],
+    "alternatives": [
+      "dead-hang",
+      "reverse-wrist-curl"
+    ],
+    "medical_source": "ExRx Kinesiology - Forearm Flexors Biomechanics",
+    "progression_chain": "Chuỗi Cẳng tay & Lực nắm",
+    "progression_level": 2,
+    "easier_variation": "dead-hang",
+    "harder_variation": "reverse-wrist-curl",
+    "variation_note": "Cô lập nhóm cơ gấp cổ tay và ngón tay (Flexor carpi radialis & ulnaris) rèn cẳng tay dày khỏe."
+  },
+  {
+    "key": "reverse-wrist-curl",
+    "name": "Cuộn ngược cổ tay (Reverse Wrist Curl)",
+    "primary": "forearms",
+    "secondary": [],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 15,
+    "defaultKg": 3,
+    "steps": [
+      "Ngồi tì cẳng tay lên đùi, cổ tay thò ra ngoài mép, lòng bàn tay úp xuống.",
+      "Nâng cổ tay gập lên trên cao nhất có thể.",
+      "Hạ chậm có kiểm soát về điểm xuất phát."
+    ],
+    "tip": "Giật cổ tay nảy tạ; dùng tạ nặng.",
+    "injury_risk": "Gân duỗi cổ tay mỏng hơn gân gấp rất nhiều, dùng tạ nặng dễ gây viêm lồi cầu ngoài (Tennis elbow).",
+    "cause": "Tạ quá nặng và giật cổ tay.",
+    "contraindications": [
+      "Viêm lồi cầu ngoài (Tennis elbow)"
+    ],
+    "alternatives": [
+      "dead-hang",
+      "hammer-curl"
+    ],
+    "medical_source": "ExRx Kinesiology - Forearm Extensors Safety",
+    "progression_chain": "Chuỗi Cẳng tay & Lực nắm",
+    "progression_level": 2,
+    "easier_variation": "wrist-curl",
+    "harder_variation": null,
+    "variation_note": "Rèn luyện nhóm cơ duỗi cổ tay (Extensors), tạo sự cân bằng lực kéo cho khớp cổ tay, phòng tránh chấn thương Tennis elbow."
+  },
+  {
+    "key": "dumbbell-shrug",
+    "name": "Dumbbell Shrug (Nhún cầu vai)",
+    "primary": "traps",
+    "secondary": [
+      "forearms"
+    ],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 2,
+    "defaultTarget": 15,
+    "defaultKg": 5,
+    "steps": [
+      "Đứng thẳng, hai tay cầm tạ buông xuôi bên sườn, tay duỗi thẳng.",
+      "Nhún vai thẳng lên phía tai, giữ đỉnh trong 1 nhịp.",
+      "Hạ chậm có kiểm soát, không xoay tròn khớp vai."
+    ],
+    "tip": "Xoay vai tròn hoặc gập khuỷu tay kéo tạ.",
+    "injury_risk": "Xoay tròn khớp vai khi mang tạ nặng làm mài mòn bao khớp và gân cơ chóp xoay; gập khuỷu tay gây căng gân tay trước.",
+    "cause": "Thói quen sai lầm xoay vai tròn thay vì nhún thẳng đứng lên xuống.",
+    "contraindications": [
+      "Đau khớp vai",
+      "Thoái hóa đốt sống cổ"
+    ],
+    "alternatives": [
+      "inverted-row",
+      "dead-hang"
+    ],
+    "medical_source": "ExRx Kinesiology - Scapular Elevation",
+    "progression_chain": "Chuỗi Cầu vai (Traps)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": null,
+    "variation_note": "Bài cô lập cơ thang trên (Upper trapezius) đơn giản và hiệu quả nhất."
+  },
+  {
+    "key": "box-squat",
+    "name": "Box Squat (Squat chạm ghế/hộp)",
+    "primary": "quads",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 2,
+    "defaultTarget": 10,
+    "defaultKg": 0,
+    "steps": [
+      "Đặt ghế hoặc hộp phía sau, đứng mở chân bằng vai.",
+      "Đẩy hông ra sau ngồi nhẹ xuống mép ghế có kiểm soát, không thả phịch người.",
+      "Dừng 1 giây rồi dồn lực vào gót chân và cơ mông đẩy thẳng người lên."
+    ],
+    "tip": "Ngồi ngửa ra sau hoặc thả lỏng hoàn toàn cơ khi chạm ghế.",
+    "injury_risk": "Thả rơi người 'phịch' xuống ghế dồn lực chấn động thẳng vào cột sống; ngửa người ra sau khi chạm ghế làm mất độ căng cơ.",
+    "cause": "Không gồng cơ hông và đùi để hạ có kiểm soát.",
+    "contraindications": [
+      "Chấn thương xương cụt"
+    ],
+    "alternatives": [
+      "glute-bridge",
+      "slow-squat"
+    ],
+    "medical_source": "Louie Simmons (Westside Barbell Box Squat Methodology)",
+    "progression_chain": "Chuỗi Ngồi xổm (Squat)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "slow-squat",
+    "variation_note": "Có ghế làm cữ chặn giới hạn độ sâu, giúp người mới hoặc người đau khớp gối tập đúng chuyển động đẩy hông ra sau (hip-dominant) mà không bị gập nhọn khớp gối."
   },
   {
     "key": "slow-squat",
-    "name": "Squat chậm (Tempo 3s)",
+    "name": "Squat chậm (Tempo 3s không tạ)",
     "primary": "quads",
     "secondary": [
       "glutes",
@@ -467,11 +1380,667 @@
       "Hạ người xuống chậm rãi đếm thầm 3 giây, giữ đầu gối mở theo hướng mũi chân.",
       "Dừng 1 nhịp ở đáy và đẩy gót đứng dứt khoát lên trong 1 giây."
     ],
-    "tip": "Tránh sụp gối vào trong; không thả rơi người tự do xuống đáy."
+    "tip": "Tránh sụp gối vào trong; không thả rơi người tự do xuống đáy.",
+    "injury_risk": "Sụp đầu gối vào trong ở pha đẩy lên và thả rơi tự do ở pha hạ làm mất kiểm soát lực nén lên sụn chêm đầu gối.",
+    "cause": "Không chủ động ghì cơ mông mở gối theo hướng ngón chân thứ hai.",
+    "contraindications": [
+      "Rách sụn chêm",
+      "Viêm gân bánh chè"
+    ],
+    "alternatives": [
+      "box-squat",
+      "glute-bridge"
+    ],
+    "medical_source": "American College of Sports Medicine (ACSM)",
+    "progression_chain": "Chuỗi Ngồi xổm (Squat)",
+    "progression_level": 2,
+    "easier_variation": "box-squat",
+    "harder_variation": "goblet-squat",
+    "variation_note": "Hạ chậm 3 giây tăng thời gian chịu áp lực (Time Under Tension) giúp rèn vững gân khớp và cơ mông đùi mà không cần dùng tạ nặng."
+  },
+  {
+    "key": "goblet-squat",
+    "name": "Goblet Squat (Squat ôm tạ trước)",
+    "primary": "quads",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 4,
+    "defaultTarget": 15,
+    "defaultKg": 5,
+    "steps": [
+      "Ôm tạ trước ngực, chân rộng bằng vai, mũi chân mở nhẹ 15-30°.",
+      "Ngồi xổm xuống giữa hai chân, mở ngực, gối mở theo hướng mũi chân.",
+      "Đẩy bằng gót chân đứng thẳng lên, siết mông ở đỉnh."
+    ],
+    "tip": "Đầu gối đổ vào trong; gót chân nhấc khỏi sàn; gù lưng trên.",
+    "injury_risk": "Đầu gối đổ vào trong (Knee valgus) hoặc gót chân nhấc khỏi sàn làm tăng áp lực cắt lên khớp bánh chè - xương đùi gây đau nhức mặt trước khớp gối.",
+    "cause": "Cơ mông nhỡ yếu không giữ được gối mở và gập cổ chân kém linh hoạt.",
+    "contraindications": [
+      "Đau khớp gối",
+      "Viêm gân bánh chè"
+    ],
+    "alternatives": [
+      "box-squat",
+      "glute-bridge",
+      "dumbbell-hip-thrust"
+    ],
+    "medical_source": "NSCA Biomechanics of Squatting (Knee Joint Preservation)",
+    "progression_chain": "Chuỗi Ngồi xổm (Squat)",
+    "progression_level": 3,
+    "easier_variation": "slow-squat",
+    "harder_variation": "dumbbell-lunge",
+    "variation_note": "Tạ ôm phía trước ngực đóng vai trò đối trọng (counter-balance), tự động ép cột sống giữ thẳng và hạ sâu hơn mà không bị gù lưng."
+  },
+  {
+    "key": "step-up",
+    "name": "Bước lên bục / ghế (Step-up)",
+    "primary": "quads",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 0,
+    "steps": [
+      "Đứng trước ghế hoặc bục cao ngang tầm đầu gối, đặt toàn bộ bàn chân phải lên bục.",
+      "Dồn lực vào gót chân phải đạp mạnh nâng toàn bộ thân người đứng thẳng lên bục.",
+      "Hạ chân trái chạm đất chậm rãi có kiểm soát rồi lặp lại."
+    ],
+    "tip": "Nhún chân dưới đẩy người lên thay vì dùng chân trên; gối trước sụp trong.",
+    "injury_risk": "Bục quá cao (> đùi vuông góc) gây áp lực lớn lên khớp gối khi đạp lên; chân dưới nhún nhảy làm mất kích hoạt cơ đùi trước.",
+    "cause": "Chọn chiều cao bục quá sức và gian lận lực từ chân dưới.",
+    "contraindications": [
+      "Đau khớp gối cấp tính"
+    ],
+    "alternatives": [
+      "box-squat",
+      "glute-bridge"
+    ],
+    "medical_source": "NSCA Functional Movement (Step-up Joint Stress Analysis)",
+    "progression_chain": "Chuỗi Chân đơn (Unilateral)",
+    "progression_level": 1,
+    "easier_variation": "box-squat",
+    "harder_variation": "dumbbell-lunge",
+    "variation_note": "Tập từng chân một cách an toàn và tự nhiên, bắt chước chuyển động leo cầu thang hàng ngày."
+  },
+  {
+    "key": "dumbbell-lunge",
+    "name": "Chùng chân tạ đơn (Dumbbell Lunge)",
+    "primary": "quads",
+    "secondary": [
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 10,
+    "defaultKg": 5,
+    "steps": [
+      "Đứng thẳng, hai tay cầm tạ đơn hai bên sườn, bước một chân rộng về phía trước.",
+      "Hạ thẳng trọng tâm người xuống đến khi cả hai đầu gối tạo góc khoảng 90°, gối sau gần chạm sàn.",
+      "Đạp mạnh bằng gót chân trước để đẩy người đứng thẳng về vị trí ban đầu."
+    ],
+    "tip": "Đầu gối trước đổ nghiêng vào trong hoặc vượt quá xa mũi chân; thân người ngả gập về trước.",
+    "injury_risk": "Đầu gối trước bị lệch trục đổ vào trong (Knee valgus) gây xoắn vặn dây chằng chéo trước (ACL) và sụn chêm; gối sau đập mạnh xuống sàn gây dập xương bánh chè.",
+    "cause": "Bước chân quá ngắn hoặc hông không đủ thăng bằng.",
+    "contraindications": [
+      "Đau khớp gối",
+      "Tổn thương sụn chêm"
+    ],
+    "alternatives": [
+      "box-squat",
+      "glute-bridge",
+      "step-up"
+    ],
+    "medical_source": "NSCA Lunge Kinematics & Patellofemoral Stress Studies",
+    "progression_chain": "Chuỗi Ngồi xổm (Squat)",
+    "progression_level": 4,
+    "easier_variation": "goblet-squat",
+    "harder_variation": "bulgarian-split-squat",
+    "variation_note": "Chuyển sang chuyển động chân đơn (Unilateral) đòi hỏi khả năng giữ thăng bằng của khớp hông và cơ đùi trước cao hơn nhiều."
+  },
+  {
+    "key": "walking-lunge",
+    "name": "Bước chùng chân tiến (Walking Lunge)",
+    "primary": "quads",
+    "secondary": [
+      "glutes",
+      "hamstrings",
+      "calves"
+    ],
+    "equipment": "bw",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 0,
+    "steps": [
+      "Bước chân phải lên trước, hạ gối vuông góc 90 độ.",
+      "Đạp gót chân phải tiến thẳng lên, bước tiếp chân trái lên trước liên tục như đi bộ.",
+      "Giữ lưng thẳng, thân người không lắc lư sang hai bên."
+    ],
+    "tip": "Lao người về phía trước mất đà; gối chạm mạnh đất.",
+    "injury_risk": "Mất thăng bằng ngã đổ người; bước hẹp khiến đầu gối chịu áp lực trượt lớn.",
+    "cause": "Chuyển động tiến liên tục đòi hỏi kiểm soát giảm tốc (deceleration).",
+    "contraindications": [
+      "Đau khớp gối",
+      "Tiền đình / Mất thăng bằng"
+    ],
+    "alternatives": [
+      "dumbbell-lunge",
+      "box-squat"
+    ],
+    "medical_source": "NSCA Dynamic Lunge Biomechanics",
+    "progression_chain": "Chuỗi Chân đơn (Unilateral)",
+    "progression_level": 2,
+    "easier_variation": "dumbbell-lunge",
+    "harder_variation": "bulgarian-split-squat",
+    "variation_note": "Rèn luyện khả năng giảm tốc và phối hợp cơ bắp năng động giữa hai chân khi di chuyển."
+  },
+  {
+    "key": "bulgarian-split-squat",
+    "name": "Bulgarian Split Squat (Squat chân sau kê ghế)",
+    "primary": "quads",
+    "secondary": [
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 10,
+    "defaultKg": 5,
+    "steps": [
+      "Đặt mu bàn chân sau lên ghế, chân trước bước xa về phía trước.",
+      "Hạ thẳng người xuống tới khi đùi trước song song sàn, gối sau gần chạm đất.",
+      "Đẩy mạnh bằng gót chân trước để đứng lên."
+    ],
+    "tip": "Bước chân trước quá gần làm gối vượt mũi chân quá nhọn; thân đổ nghiêng.",
+    "injury_risk": "Chân trước đặt quá gần khiến góc gập gối quá nhọn chịu toàn bộ trọng lượng, gây quá tải khớp gối; mất thăng bằng làm vặn xoắn dây chằng đầu gối.",
+    "cause": "Khoảng cách bước chân chưa chuẩn và cơ hông yếu làm rung lắc thân người.",
+    "contraindications": [
+      "Đau khớp gối",
+      "Tổn thương dây chằng chéo trước/sau"
+    ],
+    "alternatives": [
+      "box-squat",
+      "dumbbell-hip-thrust",
+      "glute-bridge"
+    ],
+    "medical_source": "Mike Boyle - Functional Training for Sports",
+    "progression_chain": "Chuỗi Ngồi xổm (Squat)",
+    "progression_level": 5,
+    "easier_variation": "dumbbell-lunge",
+    "harder_variation": null,
+    "variation_note": "Đỉnh cao của tập đùi trước và mông đơn chân: 85% tải trọng dồn lên một bên đùi, cô lập triệt để mà không tạo áp lực nén lên cột sống."
+  },
+  {
+    "key": "leg-extension",
+    "name": "Đá đùi trước máy (Leg Extension)",
+    "primary": "quads",
+    "secondary": [],
+    "equipment": "gym",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 15,
+    "defaultKg": 15,
+    "steps": [
+      "Ngồi tựa lưng vào ghế máy, móc mu bàn chân dưới đệm mút, đầu gối thẳng trục quay của máy.",
+      "Đá chân duỗi thẳng về phía trước, siết chặt cơ đùi trước trong 1 giây ở đỉnh.",
+      "Hạ chân chậm rãi trong 2-3 giây có kiểm soát."
+    ],
+    "tip": "Đá giật tạ dùng quán tính; khóa cứng khớp gối gắt ở đỉnh.",
+    "injury_risk": "Đá giật mạnh tạo lực cắt (Shear force) rất lớn lên dây chằng chéo trước (ACL) và sụn bánh chè; không nên tập tạ quá nặng nếu đã có tiền sử đau khớp gối.",
+    "cause": "Chuyển động chuỗi động học mở (Open kinetic chain) tạo lực cắt khớp gối cao hơn squat.",
+    "contraindications": [
+      "Viêm gân bánh chè",
+      "Tổn thương dây chằng chéo trước (ACL)"
+    ],
+    "alternatives": [
+      "box-squat",
+      "slow-squat",
+      "goblet-squat"
+    ],
+    "medical_source": "Escamilla et al. - Biomechanics of Knee Extension vs Squatting",
+    "progression_chain": "Chuỗi Ngồi xổm (Squat)",
+    "progression_level": 2,
+    "easier_variation": "slow-squat",
+    "harder_variation": "goblet-squat",
+    "variation_note": "Bài cô lập hoàn toàn 4 đầu cơ đùi trước (Quadriceps) mà không có sự tham gia của cơ mông hay lưng."
+  },
+  {
+    "key": "glute-bridge",
+    "name": "Glute Bridge (Cầu mông nằm sàn)",
+    "primary": "glutes",
+    "secondary": [
+      "hamstrings"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 15,
+    "defaultKg": 0,
+    "steps": [
+      "Nằm ngửa, gối co, bàn chân rộng bằng hông cách mông một khoảng vừa phải.",
+      "Đẩy gót nâng hông lên tới khi thân thẳng từ vai tới gối.",
+      "Giữ 1 giây siết chặt cơ mông, hạ chậm."
+    ],
+    "tip": "Ưỡn cong lưng dưới thay vì siết mông; đặt bàn chân quá xa mông.",
+    "injury_risk": "Đẩy hông bằng lưng dưới thay vì dùng lực gót chân và cơ mông; co gân khoeo quá mức gây chuột rút đùi sau.",
+    "cause": "Đặt bàn chân quá xa mông hoặc ưỡn cong bụng khi lên đỉnh.",
+    "contraindications": [
+      "Chuột rút đùi sau cấp tính"
+    ],
+    "alternatives": [
+      "bird-dog",
+      "box-squat"
+    ],
+    "medical_source": "Bret Contreras & Stuart McGill",
+    "progression_chain": "Chuỗi Mông & Đùi sau",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "single-leg-glute-bridge",
+    "variation_note": "Nằm phẳng trên sàn giúp cố định hoàn toàn cột sống, an toàn 100% cho thắt lưng trong khi kích hoạt tối đa cơ mông lớn."
+  },
+  {
+    "key": "single-leg-glute-bridge",
+    "name": "Cầu mông 1 chân (Single-leg Bridge)",
+    "primary": "glutes",
+    "secondary": [
+      "hamstrings",
+      "lowerback"
+    ],
+    "equipment": "bw",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 10,
+    "defaultKg": 0,
+    "steps": [
+      "Nằm ngửa, một chân co đạp sàn, chân kia giơ thẳng lên trời.",
+      "Đẩy bằng gót chân trụ nâng hông lên cao, giữ khung chậu cân bằng không bị nghiêng lệch.",
+      "Siết cơ mông 1 giây ở đỉnh rồi hạ chậm."
+    ],
+    "tip": "Nghiêng lệch hông sang bên chân giơ; võng lưng dưới.",
+    "injury_risk": "Khung chậu bị xoay lệch làm vặn khớp cùng chậu (SI joint).",
+    "cause": "Cơ mông nhỡ yếu không giữ được cân bằng khung chậu.",
+    "contraindications": [
+      "Đau khớp cùng chậu (SI joint dysfunction)"
+    ],
+    "alternatives": [
+      "glute-bridge",
+      "dumbbell-hip-thrust"
+    ],
+    "medical_source": "Bret Contreras - Single Leg Glute Activation",
+    "progression_chain": "Chuỗi Mông & Đùi sau",
+    "progression_level": 2,
+    "easier_variation": "glute-bridge",
+    "harder_variation": "dumbbell-hip-thrust",
+    "variation_note": "Nhân đôi tải trọng lên một bên mông mà không cần dùng tạ, rèn luyện sự ổn định của khung chậu."
+  },
+  {
+    "key": "clamshell",
+    "name": "Vỏ sò nằm nghiêng (Clamshell)",
+    "primary": "glutes",
+    "secondary": [],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 15,
+    "defaultKg": 0,
+    "steps": [
+      "Nằm nghiêng, hai đầu gối co góc 90 độ xếp chồng lên nhau, hai gót chân dính sát vào nhau.",
+      "Giữ hai gót chân chạm nhau, mở đầu gối trên lên cao như mở vỏ sò, thân người cố định không lật ngửa ra sau.",
+      "Siết cơ mông nhỡ ở đỉnh trong 1 giây rồi khép gối lại."
+    ],
+    "tip": "Lật ngửa xương chậu ra sau khi mở gối.",
+    "injury_risk": "Xoay lật khung chậu làm mất tác dụng cô lập cơ mông nhỡ.",
+    "cause": "Khung chậu không giữ vuông góc mặt sàn.",
+    "contraindications": [],
+    "alternatives": [
+      "glute-bridge",
+      "bird-dog"
+    ],
+    "medical_source": "Distefano et al. - Gluteus Medius Activation in Clamshell Studies",
+    "progression_chain": "Chuỗi Cơ mông nhỡ (Glute Med)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "dumbbell-hip-thrust",
+    "variation_note": "Bài tập vật lý trị liệu kích hoạt cơ mông nhỡ (Gluteus medius) số 1 để cố định xương đùi, chống sụp gối khi chạy và squat."
+  },
+  {
+    "key": "dumbbell-hip-thrust",
+    "name": "Dumbbell Hip Thrust (Đẩy hông tựa ghế)",
+    "primary": "glutes",
+    "secondary": [
+      "hamstrings"
+    ],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 4,
+    "defaultTarget": 15,
+    "defaultKg": 5,
+    "steps": [
+      "Tựa lưng trên mép ghế, tạ đặt ngang hông, gối co 90° khi nâng lên.",
+      "Đẩy gót nâng hông tới khi thân thẳng từ vai tới gối.",
+      "Siết mông 1 nhịp ở đỉnh rồi hạ chậm có kiểm soát."
+    ],
+    "tip": "Ưỡn lưng dưới thay vì siết mông; ngửa cổ nhìn lên trần nhà.",
+    "injury_risk": "Ưỡn cong thắt lưng ở đỉnh động tác thay vì khóa hông bằng cơ mông, làm dồn toàn bộ áp lực nén vào các đốt sống thắt lưng.",
+    "cause": "Ngửa cổ nhìn lên trần nhà và đẩy hông vượt quá điểm trung tính của cột sống.",
+    "contraindications": [
+      "Đau thắt lưng dưới cấp tính"
+    ],
+    "alternatives": [
+      "glute-bridge",
+      "romanian-deadlift"
+    ],
+    "medical_source": "Dr. Bret Contreras - The Glute Lab Biomechanics",
+    "progression_chain": "Chuỗi Mông & Đùi sau",
+    "progression_level": 3,
+    "easier_variation": "single-leg-glute-bridge",
+    "harder_variation": "romanian-deadlift",
+    "variation_note": "Tựa mép ghế tăng gấp đôi biên độ chuyển động (ROM) so với nằm sàn, thêm tạ đơn tạo kháng lực lớn kích thích cơ mông phát triển."
+  },
+  {
+    "key": "cable-glute-kickback",
+    "name": "Đá mông sau (Donkey Kick / Kickback)",
+    "primary": "glutes",
+    "secondary": [
+      "hamstrings"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 15,
+    "defaultKg": 0,
+    "steps": [
+      "Quỳ bốn điểm trên thảm, tay dưới vai, gối dưới hông.",
+      "Giữ gối co 90 độ, đạp gót chân hướng thẳng lên trần nhà bằng lực cơ mông.",
+      "Siết chặt mông ở đỉnh trong 1 giây, hạ chậm không chạm sàn."
+    ],
+    "tip": "Võng lưng dưới khi đá chân; đá chân quá cao.",
+    "injury_risk": "Võng lưng dưới quá mức làm dồn lực vào khớp thắt lưng thay vì cơ mông.",
+    "cause": "Dùng thắt lưng uốn cong để đá chân lên cao.",
+    "contraindications": [
+      "Đau thắt lưng dưới"
+    ],
+    "alternatives": [
+      "glute-bridge",
+      "bird-dog"
+    ],
+    "medical_source": "Bret Contreras Glute Activation Studies",
+    "progression_chain": "Chuỗi Mông & Đùi sau",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "dumbbell-hip-thrust",
+    "variation_note": "Cô lập chuyển động duỗi hông thuần túy của cơ mông lớn mà không cần tạ nặng."
+  },
+  {
+    "key": "romanian-deadlift",
+    "name": "Romanian Deadlift (RDL bản lề hông)",
+    "primary": "hamstrings",
+    "secondary": [
+      "glutes",
+      "lowerback"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 5,
+    "steps": [
+      "Đứng thẳng, tạ trước đùi, gối hơi chùng nhẹ và khóa cố định góc gối.",
+      "Đẩy hông ra sau (hip-hinge), trượt tạ sát chân tới giữa cẳng chân.",
+      "Siết mông kéo hông về trước để đứng thẳng lên."
+    ],
+    "tip": "Cong gù lưng dưới khi hạ tạ; để tạ trôi xa chân.",
+    "injury_risk": "Cong lưng dưới (Lumbar flexion under load) khi hạ tạ làm tăng đột biến nguy cơ trượt đĩa đệm và rách dây chằng lưng; tạ trôi ra xa chân làm đòn bẩy lực đè nặng cột sống.",
+    "cause": "Cố hạ tạ chạm đất thay vì dừng lại ở biên độ hông cho phép; tạ không trượt sát chân.",
+    "contraindications": [
+      "Thoát vị đĩa đệm",
+      "Đau lưng dưới mãn tính",
+      "Đau dây thần kinh tọa"
+    ],
+    "alternatives": [
+      "glute-bridge",
+      "dumbbell-hip-thrust",
+      "bird-dog"
+    ],
+    "medical_source": "GS. Stuart McGill - Back Mechanic & Spine Biomechanics",
+    "progression_chain": "Chuỗi Mông & Đùi sau",
+    "progression_level": 4,
+    "easier_variation": "dumbbell-hip-thrust",
+    "harder_variation": "single-leg-rdl",
+    "variation_note": "Chuyển động bản lề hông đứng (Hip Hinge) nâng cao: kéo căng tối đa cơ đùi sau (Hamstrings) và rèn chuỗi cơ chuỗi sau."
+  },
+  {
+    "key": "single-leg-rdl",
+    "name": "RDL 1 chân rèn thăng bằng (Single-leg RDL)",
+    "primary": "hamstrings",
+    "secondary": [
+      "glutes",
+      "lowerback"
+    ],
+    "equipment": "db",
+    "level": "Nâng cao",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 8,
+    "defaultKg": 4,
+    "steps": [
+      "Đứng trên chân phải, gối hơi chùng, tay trái cầm tạ đơn.",
+      "Đẩy hông ra sau đồng thời duỗi thẳng chân trái ra sau song song với sàn.",
+      "Hạ tạ có kiểm soát tới cẳng chân, dùng đùi sau và mông chân trụ kéo người đứng thẳng lên."
+    ],
+    "tip": "Lật xoay khung chậu sang bên; gù lưng.",
+    "injury_risk": "Xoay lật khung chậu làm mất thăng bằng và xoắn khớp gối chân trụ; cong lưng.",
+    "cause": "Khung chậu không giữ song song với sàn nhà.",
+    "contraindications": [
+      "Mất thăng bằng",
+      "Đau thắt lưng"
+    ],
+    "alternatives": [
+      "romanian-deadlift",
+      "glute-bridge"
+    ],
+    "medical_source": "NSCA Single-Leg Hamstring Conditioning",
+    "progression_chain": "Chuỗi Mông & Đùi sau",
+    "progression_level": 5,
+    "easier_variation": "romanian-deadlift",
+    "harder_variation": null,
+    "variation_note": "Rèn luyện khả năng thăng bằng cơ thần kinh cực đại và kích hoạt sâu toàn bộ chuỗi cơ đùi sau và mông đơn chân."
+  },
+  {
+    "key": "lying-leg-curl",
+    "name": "Móc đùi sau nằm ngửa/sấp (Leg Curl)",
+    "primary": "hamstrings",
+    "secondary": [
+      "calves"
+    ],
+    "equipment": "gym",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 10,
+    "steps": [
+      "Nằm sấp trên máy móc đùi sau (hoặc kẹp tạ đơn giữa 2 bàn chân), đệm mút tì sau gót chân.",
+      "Gập đầu gối kéo gót chân về phía mông bằng lực cơ đùi sau.",
+      "Giữ 1 giây ở đỉnh rồi hạ chậm có kiểm soát duỗi gần hết chân."
+    ],
+    "tip": "Nhấc hông khỏi đệm khi cuộn chân; giật tạ quán tính.",
+    "injury_risk": "Nhấc hông ưỡn thắt lưng làm dồn áp lực vào cột sống; hạ tạ rơi tự do kéo giật gân khoeo.",
+    "cause": "Tạ quá nặng khiến cơ mông và lưng phải nhấc hông trợ lực.",
+    "contraindications": [
+      "Viêm gân khoeo chân"
+    ],
+    "alternatives": [
+      "romanian-deadlift",
+      "glute-bridge"
+    ],
+    "medical_source": "ExRx Kinesiology - Hamstring Flexion Mechanics",
+    "progression_chain": "Chuỗi Mông & Đùi sau",
+    "progression_level": 2,
+    "easier_variation": "glute-bridge",
+    "harder_variation": "romanian-deadlift",
+    "variation_note": "Cô lập chuyển động gập khớp gối (Knee flexion) của nhóm cơ đùi sau (Biceps femoris, Semitendinosus)."
+  },
+  {
+    "key": "good-morning-db",
+    "name": "Cúi chào tạ ôm ngực (Good Morning DB)",
+    "primary": "hamstrings",
+    "secondary": [
+      "lowerback",
+      "glutes"
+    ],
+    "equipment": "db",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 10,
+    "defaultKg": 5,
+    "steps": [
+      "Đứng thẳng, ôm 1 quả tạ đơn trước ngực, chân rộng bằng vai, gối hơi chùng nhẹ.",
+      "Đẩy hông ra sau cúi gập thân người về trước tới khi thân song song mặt sàn, giữ lưng phẳng thẳng.",
+      "Dùng lực cơ đùi sau và cơ mông kéo thân người đứng thẳng trở lại."
+    ],
+    "tip": "Cong gù cột sống; gập sâu đầu gối như squat.",
+    "injury_risk": "Cong gù lưng dưới khi cúi người tạo lực bẻ uốn cột sống nguy hiểm.",
+    "cause": "Không khóa cứng góc đầu gối khiến chuyển động bị lẫn lộn giữa squat và hinge.",
+    "contraindications": [
+      "Thoát vị đĩa đệm",
+      "Đau lưng dưới cấp"
+    ],
+    "alternatives": [
+      "glute-bridge",
+      "dumbbell-hip-thrust"
+    ],
+    "medical_source": "NSCA Good Morning Safety Protocols",
+    "progression_chain": "Chuỗi Mông & Đùi sau",
+    "progression_level": 3,
+    "easier_variation": "dumbbell-hip-thrust",
+    "harder_variation": "romanian-deadlift",
+    "variation_note": "Bài tập rèn luyện chuyển động bản lề hông (Hip Hinge) hoàn hảo, củng cố sức mạnh chuỗi cơ phía sau cơ thể."
+  },
+  {
+    "key": "calf-raise",
+    "name": "Calf Raise (Nhón bắp chân đứng)",
+    "primary": "calves",
+    "secondary": [],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 20,
+    "defaultKg": 0,
+    "steps": [
+      "Đứng trên mép bậc, gót thả tự do ra ngoài mép.",
+      "Kiễng mũi chân lên cao nhất có thể, siết bắp chân 1 nhịp.",
+      "Hạ gót xuống thấp hơn mép bậc để kéo căng cơ bắp chân."
+    ],
+    "tip": "Nảy nhanh theo quán tính, không dùng hết biên độ chuyển động.",
+    "injury_risk": "Nhún nảy nhanh dùng độ đàn hồi của gân gót (Achilles tendon) thay vì lực co cơ bắp chân, dễ gây viêm gân gót chân (Achilles tendonitis); lật cổ chân ra ngoài.",
+    "cause": "Thiếu kiểm soát ở pha hạ và không giữ cổ chân thẳng trục.",
+    "contraindications": [
+      "Viêm gân gót chân (Achilles)",
+      "Gai gót chân"
+    ],
+    "alternatives": [
+      "slow-squat",
+      "goblet-squat"
+    ],
+    "medical_source": "ExRx Kinesiology - Gastrocnemius Biomechanics",
+    "progression_chain": "Chuỗi Bắp chân (Calves)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "single-leg-calf-raise",
+    "variation_note": "Tập trung kéo giãn toàn bộ biên độ cổ chân để rèn luyện gân gót Achilles và cơ sinh đôi cẳng chân."
+  },
+  {
+    "key": "seated-calf-raise",
+    "name": "Nhón bắp chân ngồi (Seated Calf Raise)",
+    "primary": "calves",
+    "secondary": [],
+    "equipment": "db",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 15,
+    "defaultKg": 6,
+    "steps": [
+      "Ngồi trên ghế, đặt tạ đơn lên đầu gối, mũi chân kê lên một bục nhỏ cao 5-8 cm.",
+      "Hạ gót chân sâu xuống sàn để kéo căng cơ bắp chân.",
+      "Kiễng mũi chân đẩy đầu gối lên cao nhất, siết bắp chân 1 giây ở đỉnh."
+    ],
+    "tip": "Tạ trượt khỏi gối; giật gót chân nảy nhanh.",
+    "injury_risk": "Thả rơi gót chân đột ngột khi mang tải trọng tạ làm căng gân gót.",
+    "cause": "Không kiểm soát pha hạ.",
+    "contraindications": [
+      "Viêm gân Achilles"
+    ],
+    "alternatives": [
+      "calf-raise"
+    ],
+    "medical_source": "ExRx Kinesiology - Soleus Muscle Biomechanics",
+    "progression_chain": "Chuỗi Bắp chân (Calves)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "single-leg-calf-raise",
+    "variation_note": "Khi gập gối 90 độ, cơ bắp chân ngoài (Gastrocnemius) bị chùng lại, chuyển 80% tải trọng cô lập vào cơ dép sâu (Soleus)."
+  },
+  {
+    "key": "single-leg-calf-raise",
+    "name": "Nhón bắp chân 1 chân (Single-leg Calf Raise)",
+    "primary": "calves",
+    "secondary": [],
+    "equipment": "bw",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 0,
+    "steps": [
+      "Đứng 1 chân trên mép bậc, tay vịn tường giữ thăng bằng nhẹ.",
+      "Hạ gót chân sâu xuống dưới mép bậc kéo căng tối đa.",
+      "Kiễng lên đỉnh cao nhất bằng mũi chân của một bên chân, giữ 1 nhịp rồi hạ chậm."
+    ],
+    "tip": "Vặn xoắn cổ chân ra ngoài; nhún nhảy.",
+    "injury_risk": "Mất thăng bằng lật cổ chân sang bên (Lật sơ mi cổ chân).",
+    "cause": "Cổ chân yếu không giữ được trục thẳng đứng.",
+    "contraindications": [
+      "Bong gân cổ chân đang hồi phục"
+    ],
+    "alternatives": [
+      "calf-raise",
+      "seated-calf-raise"
+    ],
+    "medical_source": "NSCA Single-leg Calf Strength & Ankle Stability",
+    "progression_chain": "Chuỗi Bắp chân (Calves)",
+    "progression_level": 2,
+    "easier_variation": "calf-raise",
+    "harder_variation": null,
+    "variation_note": "Tải toàn bộ 100% trọng lượng cơ thể lên một bên cổ chân, nhân đôi áp lực so với nhón hai chân."
   },
   {
     "key": "dead-bug",
-    "name": "Dead Bug (Bọ chết)",
+    "name": "Dead Bug (Bọ chết ép lưng sàn)",
     "primary": "abs",
     "secondary": [
       "lowerback"
@@ -485,28 +2054,461 @@
     "steps": [
       "Nằm ngửa trên thảm, co chân 90 độ, hai tay giơ thẳng lên trần nhà.",
       "Ép chặt thắt lưng xuống sàn, hạ tay phải và duỗi chân trái từ từ xuống sát sàn.",
-      "Giữ lưng không bị võng, thu về và đổi bên đối diện."
+      "Giữ thắt lưng luôn ép phẳng không bị võng, thu về và đổi bên đối diện."
     ],
-    "tip": "Lưng dưới bị nhấc hổng khỏi sàn làm áp lực dồn vào cột sống."
+    "tip": "Lưng dưới bị nhấc hổng khỏi sàn làm áp lực dồn vào cột sống.",
+    "injury_risk": "Lưng dưới bị nhấc hổng khỏi sàn khi hạ chân/tay làm mất áp lực ép bụng, biến bài tập thành bài ưỡn lưng gây đau thắt lưng.",
+    "cause": "Hạ chân quá sâu vượt quá khả năng giữ phẳng lưng dưới của cơ bụng.",
+    "contraindications": [
+      "Thoát vị đĩa đệm giai đoạn đau cấp"
+    ],
+    "alternatives": [
+      "bird-dog",
+      "plank"
+    ],
+    "medical_source": "Stuart McGill & Gray Cook (Functional Movement Screen - FMS)",
+    "progression_chain": "Chuỗi Cơ bụng (Core)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "crunch",
+    "variation_note": "Bài tập cơ bụng chống ưỡn lưng (anti-extension) an toàn số 1 thế giới: thắt lưng luôn ép chặt xuống sàn, cô lập cơ bụng sâu mà không hề nén đĩa đệm."
   },
   {
-    "key": "box-squat",
-    "name": "Box Squat chậm & nhẹ",
-    "primary": "quads",
+    "key": "crunch",
+    "name": "Gập bụng (Crunch)",
+    "primary": "abs",
+    "secondary": [],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 15,
+    "defaultKg": 0,
+    "steps": [
+      "Nằm ngửa trên thảm, co gối 90°, bàn chân đặt trên sàn, tay đặt nhẹ sau tai (không đan tay kéo cổ).",
+      "Ép chặt thắt lưng xuống sàn, cuộn cơ bụng nâng bả vai lên cách sàn khoảng 7-10 cm.",
+      "Thở mạnh ra ở đỉnh, siết chặt bụng trong 1 giây rồi hạ chậm có kiểm soát."
+    ],
+    "tip": "Dùng hai tay ghì kéo cổ về trước; dùng quán tính giật người cả lưng lên khỏi sàn.",
+    "injury_risk": "Dùng tay kéo giật đốt sống cổ gây đau mỏi cổ; dùng quán tính và cơ thắt lưng chậu (Iliopsoas) kéo cả thân lên (Sit-up) tạo áp lực nén cắt lớn lên đĩa đệm L4-L5 gây đau thắt lưng mà cơ bụng lại không ăn sâu.",
+    "cause": "Cố ngồi bật dậy thay vì chỉ cuộn cong bả vai ép cơ bụng; tay gập ghì đầu làm căng rách cơ cổ.",
+    "contraindications": [
+      "Đau thắt lưng dưới",
+      "Thoát vị đĩa đệm cột sống",
+      "Đau đốt sống cổ"
+    ],
+    "alternatives": [
+      "dead-bug",
+      "plank",
+      "reverse-crunch"
+    ],
+    "medical_source": "GS. Stuart McGill - Sit-up vs Curl-up Spinal Compressive Load Studies",
+    "progression_chain": "Chuỗi Cơ bụng (Core)",
+    "progression_level": 2,
+    "easier_variation": "dead-bug",
+    "harder_variation": "plank",
+    "variation_note": "Tập gập bụng đúng cách (chỉ cuộn bả vai 30 độ, giữ lưng dưới ép chặt sàn) tập trung lực vào cơ thẳng bụng (6 múi) mà không giật cột sống."
+  },
+  {
+    "key": "reverse-crunch",
+    "name": "Gập bụng ngược cuộn hông (Reverse Crunch)",
+    "primary": "abs",
+    "secondary": [],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 0,
+    "steps": [
+      "Nằm ngửa trên thảm, hai tay đặt xuôi theo thân, co gối 90 độ nâng chân khỏi sàn.",
+      "Dùng cơ bụng dưới cuộn xương chậu nâng hông rời khỏi sàn khoảng 5-10 cm về phía ngực.",
+      "Hạ chậm có kiểm soát về vị trí xuất phát, không để chân rơi tự do."
+    ],
+    "tip": "Vung chân lấy đà; dùng tay ấn sàn để đẩy hông lên.",
+    "injury_risk": "Vung chân theo quán tính giật cột sống thắt lưng; nhấc đầu gây căng cơ cổ.",
+    "cause": "Dùng lực quán tính của chân thay vì lực cuộn cơ bụng dưới.",
+    "contraindications": [
+      "Đau thắt lưng dưới cấp"
+    ],
+    "alternatives": [
+      "dead-bug",
+      "plank"
+    ],
+    "medical_source": "ExRx Kinesiology - Posterior Pelvic Tilt Mechanics",
+    "progression_chain": "Chuỗi Cơ bụng (Core)",
+    "progression_level": 2,
+    "easier_variation": "dead-bug",
+    "harder_variation": "hanging-leg-raise",
+    "variation_note": "Tập trung kích hoạt vùng cơ bụng dưới thông qua chuyển động xoay ngược xương chậu về sau (Posterior pelvic tilt)."
+  },
+  {
+    "key": "plank",
+    "name": "Plank (Tấm ván tĩnh)",
+    "primary": "abs",
     "secondary": [
+      "obliques",
+      "shoulders"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "s",
+    "defaultSets": 3,
+    "defaultTarget": 45,
+    "defaultKg": 0,
+    "steps": [
+      "Chống cẳng tay, khuỷu tay vuông góc ngay dưới vai.",
+      "Thân thẳng từ đầu đến gót, siết chặt cơ bụng và cơ mông.",
+      "Thở đều đặn, giữ vững tư thế đủ thời gian mục tiêu."
+    ],
+    "tip": "Võng thắt lưng hoặc chổng mông quá cao.",
+    "injury_risk": "Võng hông (chùng lưng dưới) khiến cột sống thắt lưng chịu toàn bộ trọng lượng cơ thể bị uốn cong quá mức, gây đau thắt lưng dữ dội; chổng mông quá cao làm mất kích hoạt cơ bụng.",
+    "cause": "Cơ bụng mỏi buông lỏng nhưng vẫn cố ráng giữ thời gian lâu.",
+    "contraindications": [
+      "Đau thắt lưng dưới khi võng lưng",
+      "Đau khớp vai"
+    ],
+    "alternatives": [
+      "dead-bug",
+      "bird-dog"
+    ],
+    "medical_source": "GS. Stuart McGill - Core Training: Evidence Translating to Practice",
+    "progression_chain": "Chuỗi Cơ bụng (Core)",
+    "progression_level": 3,
+    "easier_variation": "crunch",
+    "harder_variation": "ab-wheel-rollout",
+    "variation_note": "Tập co cơ đẳng trường (isometric) toàn bộ cơ bụng trước, cơ liên sườn và cơ bụng ngang (Transverse abdominis)."
+  },
+  {
+    "key": "mountain-climber",
+    "name": "Leo núi tại chỗ (Mountain Climber)",
+    "primary": "abs",
+    "secondary": [
+      "shoulders",
+      "quads"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 20,
+    "defaultKg": 0,
+    "steps": [
+      "Bắt đầu ở tư thế chống đẩy cao tay, hai tay ngay dưới vai, thân thẳng.",
+      "Kéo một đầu gối về phía trước ngực nhanh chóng mà không nhấc hông lên cao.",
+      "Đổi chân liên tục với nhịp độ dứt khoát, giữ chắc phần thân trên."
+    ],
+    "tip": "Chổng mông quá cao; nhún nhảy lắc lư thân người sang hai bên.",
+    "injury_risk": "Nhún nhảy mất kiểm soát làm trẹo cổ chân hoặc đau cổ tay do chịu lực rung giật liên tục.",
+    "cause": "Đẩy tốc độ quá nhanh khi cơ core chưa đủ ổn định.",
+    "contraindications": [
+      "Đau khớp cổ tay",
+      "Đau khớp ngón chân"
+    ],
+    "alternatives": [
+      "plank",
+      "dead-bug"
+    ],
+    "medical_source": "ACSM Dynamic Core Conditioning",
+    "progression_chain": "Chuỗi Cơ bụng (Core)",
+    "progression_level": 3,
+    "easier_variation": "plank",
+    "harder_variation": "hanging-leg-raise",
+    "variation_note": "Kết hợp rèn luyện sức bền tim mạch (cardio) và co cơ bụng năng động trong tư thế chống đẩy."
+  },
+  {
+    "key": "hanging-leg-raise",
+    "name": "Treo xà nâng chân / gối (Hanging Leg Raise)",
+    "primary": "abs",
+    "secondary": [
+      "forearms",
+      "lats"
+    ],
+    "equipment": "bar",
+    "level": "Nâng cao",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 10,
+    "defaultKg": 0,
+    "steps": [
+      "Treo người trên xà đơn, hai tay nắm rộng bằng vai, cơ thể thẳng.",
+      "Dùng cơ bụng cuộn xương chậu nâng chân (hoặc co đầu gối) lên tới khi đùi song song hoặc cao hơn hông.",
+      "Hạ chậm trong 2-3 giây có kiểm soát, không để người đung đưa theo quán tính."
+    ],
+    "tip": "Đung đưa giật người lấy đà; chỉ nâng chân bằng cơ gấp hông mà không cuộn xương chậu.",
+    "injury_risk": "Đung đưa lấy đà giật mạnh làm căng rách cơ thắt lưng và dây chằng vai; dùng cơ gấp hông kéo cột sống.",
+    "cause": "Không khóa bả vai và vung chân quán tính.",
+    "contraindications": [
+      "Đau vai",
+      "Đau thắt lưng dưới",
+      "Thoát vị đĩa đệm"
+    ],
+    "alternatives": [
+      "reverse-crunch",
+      "dead-bug",
+      "plank"
+    ],
+    "medical_source": "NSCA Advanced Core Progression & Pelvic Tilt Evaluation",
+    "progression_chain": "Chuỗi Cơ bụng (Core)",
+    "progression_level": 4,
+    "easier_variation": "reverse-crunch",
+    "harder_variation": "ab-wheel-rollout",
+    "variation_note": "Đỉnh cao của bài tập bụng dưới và cơ core treo xà: đòi hỏi cả sức mạnh bám nắm cẳng tay và khả năng cuộn cơ bụng dưới cực khỏe."
+  },
+  {
+    "key": "ab-wheel-rollout",
+    "name": "Lăn con lăn tập bụng (Ab Wheel Rollout)",
+    "primary": "abs",
+    "secondary": [
+      "lats",
+      "shoulders",
+      "lowerback"
+    ],
+    "equipment": "bw",
+    "level": "Nâng cao",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 8,
+    "defaultKg": 0,
+    "steps": [
+      "Quỳ trên thảm, hai tay nắm chặt hai bên con lăn đặt ngay dưới vai.",
+      "Từ từ lăn con lăn về phía trước, giữ lưng hơi cong nhẹ (hollow body), duỗi dài thân người ra xa.",
+      "Khi thân người gần sát sàn, dùng cơ bụng và cơ xô kéo con lăn thu về vị trí ban đầu."
+    ],
+    "tip": "Võng thắt lưng khi lăn ra xa; thả rơi người sập bụng xuống sàn.",
+    "injury_risk": "Võng sập thắt lưng ở điểm xa nhất tạo lực bẻ cong uốn gắt cực kỳ nguy hiểm lên cột sống thắt lưng L4-L5.",
+    "cause": "Cơ bụng không đủ lực chống ưỡn (anti-extension) khiến cột sống bị kéo sập.",
+    "contraindications": [
+      "Đau thắt lưng dưới",
+      "Thoát vị đĩa đệm",
+      "Đau khớp vai"
+    ],
+    "alternatives": [
+      "plank",
+      "dead-bug"
+    ],
+    "medical_source": "Dr. Stuart McGill - Ab Wheel Biomechanics & Spinal Extension Risks",
+    "progression_chain": "Chuỗi Cơ bụng (Core)",
+    "progression_level": 5,
+    "easier_variation": "plank",
+    "harder_variation": null,
+    "variation_note": "Thử thách chống ưỡn lưng (Anti-extension) nặng nề nhất: đòn bẩy cơ thể kéo dài tối đa, đòi hỏi cơ bụng phải gồng lực cực lớn để bảo vệ cột sống."
+  },
+  {
+    "key": "side-plank",
+    "name": "Side Plank (Plank nghiêng)",
+    "primary": "obliques",
+    "secondary": [
+      "abs"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "s",
+    "defaultSets": 3,
+    "defaultTarget": 30,
+    "defaultKg": 0,
+    "steps": [
+      "Nằm nghiêng, chống một cẳng tay ngay dưới vai, hai chân chồng lên nhau.",
+      "Nâng hông lên tạo thành một đường thẳng tắp từ đầu tới chân.",
+      "Giữ thẳng trục, siết chặt cơ liên sườn rồi đổi bên."
+    ],
+    "tip": "Hông chùng xuống sàn; người ngả xoay về trước.",
+    "injury_risk": "Hông chùng xuống sàn hoặc vặn xoay thân trước làm tăng áp lực vặn xoắn cột sống; khuỷu tay đặt lệch ra ngoài vai gây đau khớp vai.",
+    "cause": "Cơ liên sườn và cơ vuông thắt lưng (QL) chưa đủ khỏe để giữ trục thẳng.",
+    "contraindications": [
+      "Đau khớp vai bên chống",
+      "Đau gai khớp hông"
+    ],
+    "alternatives": [
+      "bird-dog",
+      "dead-bug"
+    ],
+    "medical_source": "GS. Stuart McGill - McGill Big 3 Core Stability",
+    "progression_chain": "Chuỗi Cơ liên sườn (Obliques)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "russian-twist",
+    "variation_note": "Tập trung vào cơ liên sườn và cơ vuông thắt lưng (Quadratus lumborum), chống lại lực bẻ cong bên thân người."
+  },
+  {
+    "key": "russian-twist",
+    "name": "Xoay người kiểu Nga (Russian Twist)",
+    "primary": "obliques",
+    "secondary": [
+      "abs"
+    ],
+    "equipment": "bw",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 20,
+    "defaultKg": 0,
+    "steps": [
+      "Ngồi trên thảm, co gối, hơi ngả lưng ra sau khoảng 45 độ, hai chân nhấc nhẹ khỏi sàn.",
+      "Gồng cứng cơ bụng, xoay thân trên từ từ sang phải rồi sang trái có kiểm soát.",
+      "Mắt nhìn theo tay, tập trung lực vào cơ chéo bụng xoay lồng ngực."
+    ],
+    "tip": "Vặn xoắn cột sống thắt lưng quá nhanh giật cục; gù cong lưng.",
+    "injury_risk": "Vặn xoắn nhanh dưới tải trọng gập lưng (Flexion + Rotation) là chuyển động dễ gây rách vòng sợi đĩa đệm nhất theo nghiên cứu cột sống.",
+    "cause": "Xoay giật quán tính thay vì xoay chậm có kiểm soát bằng lồng ngực.",
+    "contraindications": [
+      "Thoát vị đĩa đệm",
+      "Đau thắt lưng dưới"
+    ],
+    "alternatives": [
+      "side-plank",
+      "dead-bug"
+    ],
+    "medical_source": "GS. Stuart McGill - Spinal Torsion Biomechanics",
+    "progression_chain": "Chuỗi Cơ liên sườn (Obliques)",
+    "progression_level": 2,
+    "easier_variation": "side-plank",
+    "harder_variation": "bicycle-crunch",
+    "variation_note": "Tập luyện chuyển động xoay thân có kiểm soát cho cơ chéo bụng trong và ngoài (Internal & External Obliques)."
+  },
+  {
+    "key": "bicycle-crunch",
+    "name": "Gập bụng đạp xe (Bicycle Crunch)",
+    "primary": "obliques",
+    "secondary": [
+      "abs"
+    ],
+    "equipment": "bw",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 20,
+    "defaultKg": 0,
+    "steps": [
+      "Nằm ngửa, hai tay chạm nhẹ sau tai, nhấc hai chân và bả vai khỏi sàn.",
+      "Co gối phải về phía ngực đồng thời xoay khuỷu tay trái chạm gối phải.",
+      "Đổi bên nhịp nhàng liên tục như động tác đạp xe, giữ lưng dưới áp sát sàn."
+    ],
+    "tip": "Kéo giật cổ; xoay khuỷu tay mà không xoay lồng ngực.",
+    "injury_risk": "Dùng tay kéo gập cổ gây chấn thương đốt sống cổ; nhấc lưng dưới khỏi sàn gây đau thắt lưng.",
+    "cause": "Dùng tay kéo đầu thay vì dùng cơ bụng nâng bả vai xoay lồng ngực.",
+    "contraindications": [
+      "Đau đốt sống cổ",
+      "Đau thắt lưng dưới"
+    ],
+    "alternatives": [
+      "dead-bug",
+      "side-plank"
+    ],
+    "medical_source": "ACE Core Study (Top EMG Activation for Obliques)",
+    "progression_chain": "Chuỗi Cơ liên sườn (Obliques)",
+    "progression_level": 3,
+    "easier_variation": "russian-twist",
+    "harder_variation": null,
+    "variation_note": "Nghiên cứu ACE xác nhận bài này có kích hoạt điện cơ liên sườn và cơ thẳng bụng cao nhất trong tất cả các bài tập bụng nằm sàn."
+  },
+  {
+    "key": "bird-dog",
+    "name": "Bird Dog (Chim chó quỳ 4 điểm)",
+    "primary": "lowerback",
+    "secondary": [
+      "abs",
       "glutes"
     ],
     "equipment": "bw",
     "level": "Cơ bản",
     "metric": "rep",
-    "defaultSets": 2,
+    "defaultSets": 3,
     "defaultTarget": 10,
     "defaultKg": 0,
     "steps": [
-      "Đặt ghế hoặc hộp phía sau, đứng mở chân bằng vai.",
-      "Đẩy hông ra sau ngồi nhẹ xuống mép ghế, không thả phịch người.",
-      "Dừng 1 giây rồi dồn lực vào gót chân và cơ mông đẩy thẳng người lên."
+      "Quỳ bốn điểm, bàn tay ngay dưới vai, đầu gối ngay dưới hông.",
+      "Duỗi tay phải ra trước và chân trái ra sau thành một đường thẳng song song sàn.",
+      "Giữ 2 giây siết cơ lưng và mông, thu về có kiểm soát rồi đổi bên."
     ],
-    "tip": "Ngồi ngửa ra sau hoặc thả lỏng hoàn toàn cơ khi chạm ghế."
+    "tip": "Xoay hông hoặc võng lưng khi duỗi chân; ngửa cổ nhìn lên.",
+    "injury_risk": "Xoay lắc khung chậu hoặc võng thắt lưng khi nhấc chân làm mất trục bảo vệ cột sống; ngửa cổ nhìn lên gây căng cơ gáy.",
+    "cause": "Cố đá chân quá cao thay vì duỗi dài chân ra sau thành đường thẳng.",
+    "contraindications": [
+      "Đau khớp cổ tay (nên chống nắm đấm nếu đau)"
+    ],
+    "alternatives": [
+      "dead-bug",
+      "plank"
+    ],
+    "medical_source": "GS. Stuart McGill - McGill Big 3 Core Stability",
+    "progression_chain": "Chuỗi Lưng dưới (Lower Back)",
+    "progression_level": 1,
+    "easier_variation": null,
+    "harder_variation": "superman",
+    "variation_note": "Một trong bộ 3 bài tập McGill Big 3: củng cố cơ dựng sống lưng dưới và cơ chéo bụng chống xoay mà áp lực nén lên cột sống gần như bằng 0."
+  },
+  {
+    "key": "superman",
+    "name": "Siêu nhân nằm sấp (Superman Hold)",
+    "primary": "lowerback",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "bw",
+    "level": "Cơ bản",
+    "metric": "s",
+    "defaultSets": 3,
+    "defaultTarget": 30,
+    "defaultKg": 0,
+    "steps": [
+      "Nằm sấp trên thảm, hai tay duỗi thẳng qua đầu, hai chân duỗi thẳng phía sau.",
+      "Dùng cơ lưng dưới và cơ mông nâng đồng thời ngực, cánh tay và hai chân lên khỏi sàn khoảng 10-15 cm.",
+      "Giữ tư thế thở đều trong thời gian quy định rồi hạ chậm."
+    ],
+    "tip": "Ưỡn ngửa cổ nhìn lên trần nhà; nảy giật người lên quá cao.",
+    "injury_risk": "Ưỡn ngực và chân quá cao (> 20 cm) tạo lực nén uốn quá lớn lên các đốt sống thắt lưng; căng cơ cổ gáy.",
+    "cause": "Cố ưỡn quá mức thay vì chỉ nhấc nhẹ thân người kéo dài trục cơ thể.",
+    "contraindications": [
+      "Thoái hóa đốt sống thắt lưng",
+      "Gai cột sống"
+    ],
+    "alternatives": [
+      "bird-dog",
+      "glute-bridge"
+    ],
+    "medical_source": "ExRx Kinesiology - Erector Spinae Hyperextension Safety",
+    "progression_chain": "Chuỗi Lưng dưới (Lower Back)",
+    "progression_level": 2,
+    "easier_variation": "bird-dog",
+    "harder_variation": "hyperextension-db",
+    "variation_note": "Rèn luyện sức bền đẳng trường của toàn bộ chuỗi cơ dựng sống (Erector spinae) dọc cột sống lưng."
+  },
+  {
+    "key": "hyperextension-db",
+    "name": "Gập duỗi lưng ghế dốc (Back Extension)",
+    "primary": "lowerback",
+    "secondary": [
+      "glutes",
+      "hamstrings"
+    ],
+    "equipment": "gym",
+    "level": "Trung bình",
+    "metric": "rep",
+    "defaultSets": 3,
+    "defaultTarget": 12,
+    "defaultKg": 0,
+    "steps": [
+      "Tựa đùi trước vào đệm ghế dốc 45 độ, cổ chân khóa chắc dưới đệm giữ, hai tay khoanh trước ngực.",
+      "Gập người tại hông hạ thân trên xuống có kiểm soát, giữ lưng phẳng trung tính.",
+      "Dùng cơ mông và lưng dưới nâng thân người lên thành đường thẳng tắp (không ưỡn cong quá trục thẳng)."
+    ],
+    "tip": "Ưỡn ngửa người ra sau quá trục thẳng (Hyperextend); gù cong lưng khi cúi.",
+    "injury_risk": "Ưỡn vượt quá đường thẳng tự nhiên làm kẹp các gai đốt sống thắt lưng vào nhau gây đau nhức.",
+    "cause": "Hiểu sai tên bài tập và cố ưỡn ngửa cong người ra sau ở đỉnh.",
+    "contraindications": [
+      "Thoát vị đĩa đệm thắt lưng cấp"
+    ],
+    "alternatives": [
+      "bird-dog",
+      "superman",
+      "glute-bridge"
+    ],
+    "medical_source": "Stuart McGill & NSCA Back Extension Biomechanics",
+    "progression_chain": "Chuỗi Lưng dưới (Lower Back)",
+    "progression_level": 3,
+    "easier_variation": "superman",
+    "harder_variation": null,
+    "variation_note": "Bài tập tiêu chuẩn củng cố độ bền bỉ cơ dựng sống, rèn luyện chuyển động gập duỗi hông an toàn tuyệt đối khi không ưỡn quá trục."
   }
 ]

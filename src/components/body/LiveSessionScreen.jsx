@@ -608,6 +608,36 @@ export default function LiveSessionScreen({
                 <span>Lỗi hay gặp: {exDef.tip}</span>
               </div>
             )}
+
+            {exDef?.injury_risk && (
+              <div style={{
+                marginTop: '10px',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                background: 'rgba(239, 68, 68, 0.05)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                fontSize: '12px',
+                lineHeight: 1.5,
+                color: 'var(--body-text-main)'
+              }}>
+                <div style={{ fontWeight: 700, color: '#DC2626', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <AppIcon name="warning" size={13} />
+                  <span>Cảnh báo chấn thương & Phòng tránh đau:</span>
+                </div>
+                <div>{exDef.injury_risk}</div>
+                {(exDef.contraindications || []).length > 0 && (
+                  <div style={{ marginTop: '4px', fontSize: '11.5px', color: '#DC2626', fontWeight: 600 }}>
+                    ⚠️ Không nên tập nếu: {exDef.contraindications.join(', ')}
+                  </div>
+                )}
+                {exDef.easier_variation && (
+                  <div style={{ marginTop: '6px', fontSize: '11.5px', color: 'var(--body-green-text)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <AppIcon name="arrowDown" size={12} />
+                    <span>Bài quá khó? Gợi ý biến thể dễ hơn: <strong>{BASE_EXERCISES.find(e => e.key === exDef.easier_variation)?.name}</strong></span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
