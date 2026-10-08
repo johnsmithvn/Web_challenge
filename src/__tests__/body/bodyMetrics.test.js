@@ -6,6 +6,8 @@ import {
   calculateBodyScore,
   isMeasurementOutlier,
   calculateBodyComposition,
+  calculateNavyBodyFat,
+  estimateVisceralFatFromWaist,
   BMI_CATEGORIES
 } from '../../utils/bodyMetrics.js';
 
@@ -78,7 +80,33 @@ console.log('Testing bodyMetrics pure functions...');
   assert.equal(comp.boneKg, 2.8);
   assert.ok(comp.proteinKg > 0);
   assert.equal(Number((comp.fatKg + comp.waterKg + comp.boneKg + comp.proteinKg).toFixed(1)), 65.0);
+  assert.equal(comp.isEstimated, false);
   console.log('  ✓ calculateBodyComposition OK');
+}
+
+// 7. US Navy Body Fat calculation
+{
+  // Male: 175cm, waist 80cm, neck 38cm
+  const fatMale = calculateNavyBodyFat('male', 175, 80, 38);
+  assert.equal(fatMale, 19.3, `US Navy male body fat should be 19.3%, got ${fatMale}`);
+
+  // Female: 165cm, waist 70cm, neck 32cm, hip 95cm
+  const fatFemale = calculateNavyBodyFat('female', 165, 70, 32, 95);
+  assert.ok(fatFemale >= 20 && fatFemale <= 28, `US Navy female body fat should be ~22-26%, got ${fatFemale}`);
+  console.log('  ✓ calculateNavyBodyFat OK');
+}
+
+// 8. Visceral fat estimation from Waist-to-Height Ratio
+{
+  // 175cm, waist 76cm -> WHtR = 76/175 = 0.43 -> level 3 (Tiêu chuẩn)
+  const viscHealthy = estimateVisceralFatFromWaist(76, 175);
+  assert.ok(viscHealthy.level <= 5);
+  assert.equal(viscHealthy.status, 'Tiêu chuẩn (Lành mạnh)');
+
+  // 175cm, waist 105cm -> WHtR = 105/175 = 0.60 -> level 11 (Nguy cơ cao)
+  const viscHigh = estimateVisceralFatFromWaist(105, 175);
+  assert.ok(viscHigh.level >= 9);
+  console.log('  ✓ estimateVisceralFatFromWaist OK');
 }
 
 console.log('ALL BODY METRICS TESTS PASSED!');

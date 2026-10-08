@@ -77,6 +77,8 @@ const requiredFiles = [
   'src/components/body/MuscleBodyCanvas.jsx',
   'src/components/body/ExerciseLibraryScreen.jsx',
   'src/components/body/ExerciseVideoPlayer.jsx',
+  'src/components/body/MuscleAnatomy2D.jsx',
+  'src/components/body/ExerciseDetailModal.jsx',
   'src/pages/BodyPage.jsx'
 ];
 

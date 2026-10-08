@@ -114,6 +114,76 @@ export function calculateBodyComposition(weightKg, bodyFatPct, waterPct, boneMas
     proteinKg: protein,
     fatKg: fat,
     boneKg: bone,
-    totalKg: w
+    totalKg: w,
+    isEstimated: !bodyFatPct
+  };
+}
+
+/**
+ * Calculate Body Fat % using US Navy Circumference Method
+ * @param {string} gender 'male' | 'female'
+ * @param {number} heightCm Height in cm
+ * @param {number} waistCm Waist circumference in cm (at navel for men, narrowest for women)
+ * @param {number} neckCm Neck circumference in cm
+ * @param {number} [hipCm=0] Hip circumference in cm (required for women)
+ * @returns {number|null} Estimated body fat percentage rounded to 1 decimal place
+ */
+export function calculateNavyBodyFat(gender, heightCm, waistCm, neckCm, hipCm = 0) {
+  if (!gender || !heightCm || !waistCm || !neckCm) return null;
+  const h = Number(heightCm);
+  const w = Number(waistCm);
+  const n = Number(neckCm);
+  if (h <= 0 || w <= 0 || n <= 0) return null;
+
+  if (gender === 'male') {
+    if (w <= n) return null;
+    // Canonical Hodgdon & Beckett equation for Men:
+    const bd = 1.0324 - 0.19077 * Math.log10(w - n) + 0.15456 * Math.log10(h);
+    const fat = (495 / bd) - 450;
+    return Number(Math.max(3, Math.min(50, fat)).toFixed(1));
+  } else {
+    const hip = Number(hipCm);
+    if (hip <= 0 || (w + hip) <= n) return null;
+    // Canonical Hodgdon & Beckett equation for Women:
+    const bd = 1.29579 - 0.35004 * Math.log10(w + hip - n) + 0.22100 * Math.log10(h);
+    const fat = (495 / bd) - 450;
+    return Number(Math.max(8, Math.min(60, fat)).toFixed(1));
+  }
+}
+
+/**
+ * Estimate Visceral Fat level (1-20 scale) from Waist-to-Height Ratio (WHtR)
+ * @param {number} waistCm Waist in cm
+ * @param {number} heightCm Height in cm
+ * @returns {{ level: number, status: string, isEstimated: boolean, whtr: number }|null}
+ */
+export function estimateVisceralFatFromWaist(waistCm, heightCm) {
+  if (!waistCm || !heightCm || heightCm <= 0) return null;
+  const whtr = Number(waistCm) / Number(heightCm);
+  let level = 5;
+  let status = 'Tiêu chuẩn';
+
+  if (whtr < 0.43) {
+    level = 2;
+    status = 'Thấp';
+  } else if (whtr < 0.50) {
+    level = Math.round(3 + ((whtr - 0.43) / 0.07) * 2);
+    status = 'Tiêu chuẩn (Lành mạnh)';
+  } else if (whtr < 0.56) {
+    level = Math.round(6 + ((whtr - 0.50) / 0.06) * 2);
+    status = 'Cận nguy cơ';
+  } else if (whtr < 0.62) {
+    level = Math.round(9 + ((whtr - 0.56) / 0.06) * 3);
+    status = 'Nguy cơ cao';
+  } else {
+    level = Math.min(20, Math.round(13 + (whtr - 0.62) * 20));
+    status = 'Rất cao (Nguy hiểm)';
+  }
+
+  return {
+    level,
+    status,
+    isEstimated: true,
+    whtr: Number(whtr.toFixed(2))
   };
 }

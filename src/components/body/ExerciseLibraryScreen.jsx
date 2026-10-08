@@ -3,6 +3,8 @@ import AppIcon from '../AppIcon';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import MUSCLE_MAP from '../../data/body-muscles.json';
 import ExerciseVideoPlayer from './ExerciseVideoPlayer';
+import MuscleAnatomy2D from './MuscleAnatomy2D';
+import ExerciseDetailModal from './ExerciseDetailModal';
 
 const REGIONS = [
   { key: 'all', label: 'Tất cả' },
@@ -27,6 +29,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
   const [eqFilter, setEqFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedKey, setSelectedKey] = useState('push-up');
+  const [modalExercise, setModalExercise] = useState(null);
 
   // Modal thêm vào kế hoạch
   const [showAddModal, setShowAddModal] = useState(false);
@@ -224,6 +227,26 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                   <span className="body-badge body-badge-neutral" style={{ fontSize: '11px' }}>
                     {ex.level}
                   </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setModalExercise(ex);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '2px 4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '14px',
+                      opacity: 0.8
+                    }}
+                    title="Mở Modal xem Video & Giải phẫu cơ bắp"
+                  >
+                    📹
+                  </button>
                 </div>
               </div>
             );
@@ -255,6 +278,16 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                 <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--body-accent)' }}>
                   {selectedEx.defaultSets} × {selectedEx.defaultTarget} {selectedEx.metric === 's' ? 'giây' : 'rep'}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setModalExercise(selectedEx)}
+                  className="body-btn body-btn-ghost"
+                  style={{ marginTop: '6px', fontSize: '11.5px', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  title="Mở Modal chi tiết (Video, Cơ bắp, Hướng dẫn)"
+                >
+                  <span>📹</span>
+                  <span>Mở Modal Pro</span>
+                </button>
               </div>
             </div>
 
@@ -264,6 +297,48 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
               exerciseName={selectedEx.name}
               defaultUrl={selectedEx.video_url}
             />
+
+            {/* Bản đồ giải phẫu cơ bắp 2D (Front & Back) */}
+            <div style={{
+              padding: '14px 16px',
+              borderRadius: '14px',
+              background: 'var(--body-shell-bg)',
+              border: '1px solid var(--body-card-border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#2563EB' }}>
+                  <span>💪</span>
+                  <span>Vùng cơ bắp tác động (Bản đồ giải phẫu 2D):</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalExercise(selectedEx)}
+                  className="body-btn body-btn-ghost"
+                  style={{ fontSize: '11px', padding: '2px 8px' }}
+                >
+                  Mở Modal ↗
+                </button>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                background: 'var(--body-card-bg)',
+                borderRadius: '12px',
+                padding: '12px 6px',
+                border: '1px solid var(--body-card-border)'
+              }}>
+                <MuscleAnatomy2D
+                  primary={selectedEx.primary}
+                  secondary={selectedEx.secondary || []}
+                  height={220}
+                  interactive={true}
+                />
+              </div>
+            </div>
 
             {/* Các bước kỹ thuật */}
             <div>
@@ -821,6 +896,13 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
           </div>
         </div>
       )}
+
+      {/* Modal Chi tiết bài tập Fitness Pro (Video, Bản đồ cơ bắp 2D, Hướng dẫn) */}
+      <ExerciseDetailModal
+        exercise={modalExercise}
+        isOpen={!!modalExercise}
+        onClose={() => setModalExercise(null)}
+      />
     </div>
   );
 }

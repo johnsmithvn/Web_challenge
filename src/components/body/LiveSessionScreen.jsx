@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import AppIcon from '../AppIcon';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import ExerciseVideoPlayer from './ExerciseVideoPlayer';
+import ExerciseDetailModal from './ExerciseDetailModal';
 import {
   generateWorkoutQueue,
   formatValWithUnit,
@@ -24,6 +25,7 @@ export default function LiveSessionScreen({
   const [mode, setMode] = useState('straight');
   const [screenState, setScreenState] = useState('guide'); // 'guide' | 'set' | 'rest' | 'done'
   const [curQueueIdx, setCurQueueIdx] = useState(0);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [logs, setLogs] = useState({}); // { [exKey]: [val1, val2...] }
   const [loggedSets, setLoggedSets] = useState([]); // array of set records
   const [elapsed, setElapsed] = useState(0);
@@ -560,6 +562,28 @@ export default function LiveSessionScreen({
               <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--body-accent)' }}>
                 {currentItem?.total_sets} × {formatValWithUnit(currentItem?.target_val, currentItem?.unit)}
               </div>
+              <button
+                type="button"
+                onClick={() => setShowDetailModal(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '4px 10px',
+                  borderRadius: '9999px',
+                  border: '1px solid var(--body-accent)',
+                  background: 'var(--body-accent-soft)',
+                  color: 'var(--body-accent)',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  marginTop: '6px'
+                }}
+                title="Mở Modal chi tiết xem Video thị phạm & Bản đồ cơ bắp 2D"
+              >
+                <span>📹</span>
+                <span>Video & Cơ bắp</span>
+              </button>
             </div>
           </div>
 
@@ -1167,6 +1191,13 @@ export default function LiveSessionScreen({
           </div>
         </div>
       )}
+
+      {/* Modal Chi tiết bài tập Fitness Pro (Video, Bản đồ cơ bắp 2D, Hướng dẫn) */}
+      <ExerciseDetailModal
+        exercise={exDef}
+        isOpen={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+      />
     </div>
   );
 }
