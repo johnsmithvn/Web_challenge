@@ -1,7 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import AppIcon from '../AppIcon';
 import { useBiometrics } from '../../hooks/useBiometrics';
-import { BMI_CATEGORIES, calculateBodyComposition } from '../../utils/bodyMetrics';
+import {
+  BMI_CATEGORIES,
+  calculateBodyComposition,
+  calculateNavyBodyFat,
+  estimateVisceralFatFromWaist
+} from '../../utils/bodyMetrics';
 
 // Helper formatting functions (Vietnamese decimal comma style)
 const f = (v, d = 1) => {
@@ -49,9 +54,17 @@ export default function BiometricsScreen() {
   const [newWeight, setNewWeight] = useState('');
   const [newFat, setNewFat] = useState('');
   const [newMuscle, setNewMuscle] = useState('');
+  const [newVisceral, setNewVisceral] = useState('');
   const [newWater, setNewWater] = useState('');
   const [newBone, setNewBone] = useState('');
   const [newTimeSlot, setNewTimeSlot] = useState('morning');
+
+  // Tape calculator states (US Navy & WHtR)
+  const [showTapeCalc, setShowTapeCalc] = useState(false);
+  const [tapeWaist, setTapeWaist] = useState('');
+  const [tapeNeck, setTapeNeck] = useState('');
+  const [tapeHip, setTapeHip] = useState('');
+  const [tapeCalculated, setTapeCalculated] = useState(null);
 
   // Profile edit states
   const [editHeight, setEditHeight] = useState(profile?.height_cm || '');
@@ -79,6 +92,28 @@ export default function BiometricsScreen() {
     }
   }, [selectedHistoryId, latest]);
 
+  const handleRunTapeCalc = () => {
+    const gender = editGender || profile?.gender || 'male';
+    const height = editHeight ? Number(editHeight) : (profile?.height_cm || 170);
+    const waist = Number(tapeWaist);
+    const neck = Number(tapeNeck);
+    const hip = Number(tapeHip);
+    if (!waist || !neck) return;
+    const navyFat = calculateNavyBodyFat(gender, height, waist, neck, hip);
+    const visc = estimateVisceralFatFromWaist(waist, height);
+    if (navyFat != null) {
+      setTapeCalculated({
+        fatPct: navyFat,
+        visceralFat: visc?.visceralFat || 5,
+        risk: visc?.risk || 'Bình thường'
+      });
+      setNewFat(String(navyFat));
+      if (visc?.visceralFat != null) {
+        setNewVisceral(String(visc.visceralFat));
+      }
+    }
+  };
+
   const handleSaveMeasurement = async (e) => {
     e.preventDefault();
     if (!newWeight) return;
@@ -87,17 +122,21 @@ export default function BiometricsScreen() {
         weight: newWeight,
         body_fat_pct: newFat || null,
         skeletal_muscle_kg: newMuscle || null,
+        visceral_fat: newVisceral || null,
         water_pct: newWater || null,
         bone_mass_kg: newBone || null,
         time_slot: newTimeSlot,
-        source: 'manual',
+        source: showTapeCalc && tapeCalculated ? 'navy_tape' : 'manual',
         is_outlier: newTimeSlot === 'evening'
       });
       setNewWeight('');
       setNewFat('');
       setNewMuscle('');
+      setNewVisceral('');
       setNewWater('');
       setNewBone('');
+      setShowTapeCalc(false);
+      setTapeCalculated(null);
       setShowAddModal(false);
     } catch (err) {
       console.error('Error adding measurement:', err);
@@ -185,7 +224,8 @@ export default function BiometricsScreen() {
   const compositionData = useMemo(() => {
     if (!latest?.weight) return null;
     const w = Number(latest.weight);
-    const fatPct = latest.body_fat_pct ? Number(latest.body_fat_pct) : 15.0;
+    const hasFat = latest.body_fat_pct != null;
+    const fatPct = hasFat ? Number(latest.body_fat_pct) : 15.0;
     const waterPct = latest.water_pct ? Number(latest.water_pct) : 58.9;
     const boneKg = latest.bone_mass_kg ? Number(latest.bone_mass_kg) : 2.82;
 
@@ -194,7 +234,8 @@ export default function BiometricsScreen() {
       proteinKg: Number((w * 0.218).toFixed(2)),
       fatKg: Number((w * (fatPct / 100)).toFixed(2)),
       boneKg: 2.82,
-      totalKg: w
+      totalKg: w,
+      isEstimated: !hasFat
     };
 
     const parts = [
@@ -224,7 +265,8 @@ export default function BiometricsScreen() {
     return {
       donutSegments,
       totalWeightStr: f(w, 2),
-      parts: donutSegments
+      parts: donutSegments,
+      isEstimated: !hasFat
     };
   }, [latest]);
 
@@ -233,12 +275,17 @@ export default function BiometricsScreen() {
     if (!latest) return [];
     const w = Number(latest.weight) || 64.95;
     const bmiVal = bmiInfo?.bmi ? Number(bmiInfo.bmi) : Number((w / (1.7 * 1.7)).toFixed(1));
-    const fatVal = latest.body_fat_pct ? Number(latest.body_fat_pct) : 15.0;
-    const musVal = latest.skeletal_muscle_kg ? Number(latest.skeletal_muscle_kg) : 29.4;
-    const viscVal = latest.visceral_fat ? Number(latest.visceral_fat) : 5.0;
+    const hasFat = latest.body_fat_pct != null;
+    const fatVal = hasFat ? Number(latest.body_fat_pct) : 15.0;
+    const hasMus = latest.skeletal_muscle_kg != null;
+    const musVal = hasMus ? Number(latest.skeletal_muscle_kg) : 29.4;
+    const hasVisc = latest.visceral_fat != null;
+    const viscVal = hasVisc ? Number(latest.visceral_fat) : 5.0;
     const bmrVal = bmr || 1542;
-    const waterVal = latest.water_pct ? Number(latest.water_pct) : 58.9;
-    const boneVal = latest.bone_mass_kg ? Number(latest.bone_mass_kg) : 2.82;
+    const hasWater = latest.water_pct != null;
+    const waterVal = hasWater ? Number(latest.water_pct) : 58.9;
+    const hasBone = latest.bone_mass_kg != null;
+    const boneVal = hasBone ? Number(latest.bone_mass_kg) : 2.82;
     const proteinVal = 21.8;
     const ffmVal = Number((w * (1 - fatVal / 100)).toFixed(1));
 
@@ -252,22 +299,22 @@ export default function BiometricsScreen() {
     const deltaFat = Number((fatVal - prevFat).toFixed(1));
     const deltaMus = Number((musVal - prevMus).toFixed(1));
 
-    // Def: [name, val, displayVal, unit, status, statusCol, lo, hi, min, max, delta, goodDir, dec, cols]
+    // Def: [name, val, displayVal, unit, status, statusCol, lo, hi, min, max, delta, goodDir, dec, cols, isEstimated, isFormula]
     const raw = [
-      ['Cân nặng', w, f(w, 2), 'kg', 'Khỏe mạnh', GOOD, 53.5, 72.2, 45, 90, deltaW, -1, 2],
-      ['BMI', bmiVal, f(bmiVal, 1), '', bmiInfo?.category?.label?.split(' ')[0] || 'Khỏe mạnh', GOOD, 18.5, 23.0, 15, 32, -0.1, -1, 1],
-      ['Tỷ lệ mỡ', fatVal, f(fatVal, 1), '%', fatVal <= 20 ? 'Khỏe mạnh' : 'Hơi cao', fatVal <= 20 ? GOOD : HI, 11, 20, 5, 30, deltaFat, -1, 1],
-      ['Cơ xương', musVal, f(musVal, 1), 'kg', musVal >= 28 ? 'Tiêu chuẩn' : 'Cần tăng', musVal >= 28 ? GOOD : HI, 28, 33, 22, 38, deltaMus, 1, 1],
-      ['Mỡ nội tạng', viscVal, f(viscVal, 1), 'mức', viscVal <= 9 ? 'Tiêu chuẩn' : 'Cảnh báo', viscVal <= 9 ? GOOD : HI, 1, 9, 1, 20, 0, -1, 1],
-      ['Trao đổi chất', bmrVal, f(bmrVal, 0), 'kcal', 'Đạt chuẩn', GOOD, 1480, 1800, 1200, 1900, -4, 1, 0],
-      ['Tỷ lệ nước', waterVal, f(waterVal, 1), '%', 'Tiêu chuẩn', GOOD, 55, 65, 45, 75, 0.2, 1, 1],
-      ['Khoáng xương', boneVal, f(boneVal, 2), 'kg', 'Tiêu chuẩn', GOOD, 2.5, 3.2, 2.0, 3.6, 0, 0, 2],
-      ['Chất đạm', proteinVal, f(proteinVal, 1), '%', 'Tốt', GOOD, 16, 20, 12, 24, 0.1, 1, 1, [HI, OK, '#2F7A50']],
-      ['Khối không mỡ', ffmVal, f(ffmVal, 1), 'kg', 'Tốt', GOOD, 50, 62, 44, 66, -0.1, 1, 1, ['#E6E0D8', OK, '#2F7A50']]
+      ['Cân nặng', w, f(w, 2), 'kg', 'Khỏe mạnh', GOOD, 53.5, 72.2, 45, 90, deltaW, -1, 2, null, false, false],
+      ['BMI', bmiVal, f(bmiVal, 1), '', bmiInfo?.category?.label?.split(' ')[0] || 'Khỏe mạnh', GOOD, 18.5, 23.0, 15, 32, -0.1, -1, 1, null, false, true],
+      ['Tỷ lệ mỡ', fatVal, f(fatVal, 1), '%', !hasFat ? 'Tham chiếu' : (fatVal <= 20 ? 'Khỏe mạnh' : 'Hơi cao'), !hasFat ? '#D97706' : (fatVal <= 20 ? GOOD : HI), 11, 20, 5, 30, deltaFat, -1, 1, null, !hasFat, false],
+      ['Cơ xương', musVal, f(musVal, 1), 'kg', !hasMus ? 'Tham chiếu' : (musVal >= 28 ? 'Tiêu chuẩn' : 'Cần tăng'), !hasMus ? '#D97706' : (musVal >= 28 ? GOOD : HI), 28, 33, 22, 38, deltaMus, 1, 1, null, !hasMus, false],
+      ['Mỡ nội tạng', viscVal, f(viscVal, 1), 'mức', !hasVisc ? 'Tham chiếu' : (viscVal <= 9 ? 'Tiêu chuẩn' : 'Cảnh báo'), !hasVisc ? '#D97706' : (viscVal <= 9 ? GOOD : HI), 1, 9, 1, 20, 0, -1, 1, null, !hasVisc, false],
+      ['Trao đổi chất', bmrVal, f(bmrVal, 0), 'kcal', 'Chuẩn Mifflin', GOOD, 1480, 1800, 1200, 1900, -4, 1, 0, null, false, true],
+      ['Tỷ lệ nước', waterVal, f(waterVal, 1), '%', !hasWater ? 'Tham chiếu' : 'Tiêu chuẩn', !hasWater ? '#D97706' : GOOD, 55, 65, 45, 75, 0.2, 1, 1, null, !hasWater, false],
+      ['Khoáng xương', boneVal, f(boneVal, 2), 'kg', !hasBone ? 'Tham chiếu' : 'Tiêu chuẩn', !hasBone ? '#D97706' : GOOD, 2.5, 3.2, 2.0, 3.6, 0, 0, 2, null, !hasBone, false],
+      ['Chất đạm', proteinVal, f(proteinVal, 1), '%', 'Tham chiếu', '#D97706', 16, 20, 12, 24, 0.1, 1, 1, [HI, OK, '#2F7A50'], true, false],
+      ['Khối không mỡ', ffmVal, f(ffmVal, 1), 'kg', !hasFat ? 'Tham chiếu' : 'Tốt', !hasFat ? '#D97706' : GOOD, 50, 62, 44, 66, -0.1, 1, 1, ['#E6E0D8', OK, '#2F7A50'], !hasFat, true]
     ];
 
     return raw.map(item => {
-      const [n, val, vd, u, s, sc, lo, hi, mn, mx, d, dir, dec, cols] = item;
+      const [n, val, vd, u, s, sc, lo, hi, mn, mx, d, dir, dec, cols, isEst, isForm] = item;
       const pct = (x) => Math.max(0, Math.min(100, ((x - mn) / (mx - mn)) * 100));
       const c = cols || [LOW, OK, HI];
       const isGood = d === 0 || dir === 0 ? null : (d * dir > 0);
@@ -286,7 +333,9 @@ export default function BiometricsScreen() {
         c1: c[1],
         c2: c[2],
         markerPos: `${pct(val).toFixed(1)}%`,
-        rangeText: `chuẩn ${f(lo, dec === 0 ? 0 : dec)}–${f(hi, dec === 0 ? 0 : dec)}`
+        rangeText: `chuẩn ${f(lo, dec === 0 ? 0 : dec)}–${f(hi, dec === 0 ? 0 : dec)}`,
+        isEstimated: isEst,
+        isFormula: isForm
       };
     });
   }, [latest, bmiInfo, bmr, measurements]);
@@ -781,6 +830,52 @@ export default function BiometricsScreen() {
 
           </div>
 
+          {/* BANNER MINH BẠCH NGUỒN GỐC CHỈ SỐ */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: 'rgba(105, 73, 232, 0.05)',
+            border: '1px solid rgba(105, 73, 232, 0.15)',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '18px' }}>🔬</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                  Cơ sở khoa học & Nguồn dữ liệu chỉ số
+                </span>
+                <span style={{ fontSize: '12px', color: 'var(--body-text-sub)', lineHeight: 1.4 }}>
+                  <strong>BMI & BMR:</strong> Tính từ Chiều cao/Cân nặng/Tuổi (chuẩn WHO & Mifflin-St Jeor).
+                  Chỉ số dán nhãn <span style={{ color: '#D97706', fontWeight: 600 }}>Tham chiếu</span> là ước tính lý thuyết khi chưa đo InBody/BIA.
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowTapeCalc(true);
+                setShowAddModal(true);
+              }}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--body-accent)',
+                background: 'transparent',
+                color: 'var(--body-accent)',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              📐 Không có cân? Đo bằng thước dây (US Navy)
+            </button>
+          </div>
+
           {/* ── BOTTOM ROW: 10 METRICS (5x2) + BODY COMPOSITION DONUT (360px) ── */}
           <div className="body-cothe-bottom-grid">
 
@@ -802,9 +897,36 @@ export default function BiometricsScreen() {
                     boxSizing: 'border-box'
                   }}
                 >
-                  <span style={{ fontSize: '12px', color: 'var(--body-text-sub)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {m.name}
-                  </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--body-text-sub)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {m.name}
+                    </span>
+                    {m.isEstimated ? (
+                      <span style={{
+                        fontSize: '9.5px',
+                        padding: '1.5px 5.5px',
+                        borderRadius: '4px',
+                        background: 'rgba(217, 119, 6, 0.12)',
+                        color: '#D97706',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Tham chiếu
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: '9.5px',
+                        padding: '1.5px 5.5px',
+                        borderRadius: '4px',
+                        background: 'rgba(47, 138, 87, 0.12)',
+                        color: '#2F8A57',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {m.isFormula ? 'Công thức' : 'Đã đo'}
+                      </span>
+                    )}
+                  </div>
                   <span className="body-metric-val-num" style={{ fontSize: '22px', fontWeight: 600, color: 'var(--body-text-main)', whiteSpace: 'nowrap' }}>
                     {m.valueDisplay}
                     <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> {m.unit}</span>
@@ -853,9 +975,34 @@ export default function BiometricsScreen() {
               padding: '22px',
               boxSizing: 'border-box'
             }}>
-              <span style={{ fontSize: '14.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                Thành phần cơ thể
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '14.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>
+                  Thành phần cơ thể
+                </span>
+                {compositionData?.isEstimated ? (
+                  <span style={{
+                    fontSize: '10.5px',
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    background: 'rgba(217, 119, 6, 0.12)',
+                    color: '#D97706',
+                    fontWeight: 600
+                  }}>
+                    Tham chiếu
+                  </span>
+                ) : (
+                  <span style={{
+                    fontSize: '10.5px',
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    background: 'rgba(47, 138, 87, 0.12)',
+                    color: '#2F8A57',
+                    fontWeight: 600
+                  }}>
+                    Đo BIA / InBody
+                  </span>
+                )}
+              </div>
 
               {compositionData && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -1413,33 +1560,21 @@ export default function BiometricsScreen() {
 
       {/* ── MODAL: THÊM CÂN ĐO THỦ CÔNG ─────────────────────────── */}
       {showAddModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(16, 17, 20, 0.45)',
-          backdropFilter: 'blur(4px)',
-          display: 'grid',
-          placeItems: 'center',
-          zIndex: 9999,
-          padding: '16px'
-        }}>
-          <div className="body-card" style={{
-            maxWidth: '460px',
-            width: '100%',
-            padding: '24px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '18px',
-            boxShadow: '0 20px 40px rgba(16,17,20,0.18)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--body-text-main)' }}>
-                Thêm chỉ số cân đo
-              </h3>
+        <div className="body-modal-backdrop" onClick={() => setShowAddModal(false)}>
+          <div className="body-modal-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--body-text-main)' }}>
+                  Thêm chỉ số cân đo
+                </h3>
+                <span style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '3px', display: 'block' }}>
+                  Chỉ cần nhập Cân nặng. Các chỉ số InBody khác là tùy chọn (nếu có máy đo).
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--body-text-muted)' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--body-text-muted)', padding: '4px', display: 'grid', placeItems: 'center' }}
               >
                 <AppIcon name="x" size={18} />
               </button>
@@ -1447,27 +1582,22 @@ export default function BiometricsScreen() {
 
             <form onSubmit={handleSaveMeasurement} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                  Cân nặng (kg) *
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                    Cân nặng (kg) *
+                  </label>
+                  <span style={{ fontSize: '11px', color: 'var(--body-accent)', fontWeight: 600 }}>Bắt buộc</span>
+                </div>
                 <input
                   type="number"
                   step="0.05"
                   required
-                  placeholder="65.05"
+                  autoFocus
+                  placeholder="Ví dụ: 65.05"
                   value={newWeight}
                   onChange={e => setNewWeight(e.target.value)}
-                  style={{
-                    height: '42px',
-                    borderRadius: '8px',
-                    border: '1.5px solid #D5D4CE',
-                    background: '#FFFFFF',
-                    padding: '0 12px',
-                    fontSize: '15px',
-                    fontFamily: 'var(--body-mono)',
-                    color: 'var(--body-text-main)',
-                    outline: 'none'
-                  }}
+                  className="body-input"
+                  style={{ fontFamily: 'var(--body-mono)', fontSize: '15px' }}
                 />
               </div>
 
@@ -1479,20 +1609,11 @@ export default function BiometricsScreen() {
                   <input
                     type="number"
                     step="0.1"
-                    placeholder="15.2"
+                    placeholder="Ví dụ: 15.2"
                     value={newFat}
                     onChange={e => setNewFat(e.target.value)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: '1.5px solid #D5D4CE',
-                      background: '#FFFFFF',
-                      padding: '0 10px',
-                      fontSize: '14px',
-                      fontFamily: 'var(--body-mono)',
-                      color: 'var(--body-text-main)',
-                      outline: 'none'
-                    }}
+                    className="body-input"
+                    style={{ fontFamily: 'var(--body-mono)' }}
                   />
                 </div>
 
@@ -1503,23 +1624,143 @@ export default function BiometricsScreen() {
                   <input
                     type="number"
                     step="0.1"
-                    placeholder="29.6"
+                    placeholder="Ví dụ: 29.6"
                     value={newMuscle}
                     onChange={e => setNewMuscle(e.target.value)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: '1.5px solid #D5D4CE',
-                      background: '#FFFFFF',
-                      padding: '0 10px',
-                      fontSize: '14px',
-                      fontFamily: 'var(--body-mono)',
-                      color: 'var(--body-text-main)',
-                      outline: 'none'
-                    }}
+                    className="body-input"
+                    style={{ fontFamily: 'var(--body-mono)' }}
                   />
                 </div>
               </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                    Mỡ nội tạng (mức 1–20)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    placeholder="Ví dụ: 5.0"
+                    value={newVisceral}
+                    onChange={e => setNewVisceral(e.target.value)}
+                    className="body-input"
+                    style={{ fontFamily: 'var(--body-mono)' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowTapeCalc(!showTapeCalc)}
+                    style={{
+                      height: '42px',
+                      borderRadius: '8px',
+                      border: '1px dashed var(--body-accent)',
+                      background: showTapeCalc ? 'var(--body-accent-soft)' : 'transparent',
+                      color: 'var(--body-accent)',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <span>📐</span>
+                    <span>{showTapeCalc ? 'Đóng tính thước dây' : 'Tính mỡ qua thước dây'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Collapsible US Navy & WHtR Tape Calculator */}
+              {showTapeCalc && (
+                <div style={{
+                  background: 'var(--body-shell-bg)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  border: '1px solid var(--body-card-border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>
+                      📐 Công thức Hải quân Mỹ (US Navy & WHtR)
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>
+                      Không cần cân InBody
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: (editGender || profile?.gender) === 'female' ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--body-text-sub)' }}>Vòng eo (ngang rốn, cm) *</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        placeholder="78"
+                        value={tapeWaist}
+                        onChange={e => setTapeWaist(e.target.value)}
+                        className="body-input"
+                        style={{ height: '36px' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--body-text-sub)' }}>Vòng cổ (dưới yết hầu, cm) *</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        placeholder="37"
+                        value={tapeNeck}
+                        onChange={e => setTapeNeck(e.target.value)}
+                        className="body-input"
+                        style={{ height: '36px' }}
+                      />
+                    </div>
+                    {(editGender || profile?.gender) === 'female' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '11px', color: 'var(--body-text-sub)' }}>Vòng hông (cm) *</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          placeholder="93"
+                          value={tapeHip}
+                          onChange={e => setTapeHip(e.target.value)}
+                          className="body-input"
+                          style={{ height: '36px' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={handleRunTapeCalc}
+                      style={{
+                        padding: '7px 15px',
+                        borderRadius: '6px',
+                        background: 'var(--body-accent)',
+                        color: '#fff',
+                        border: 'none',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Tính & Điền vào form
+                    </button>
+
+                    {tapeCalculated && (
+                      <span style={{ fontSize: '11.5px', color: '#2F8A57', fontWeight: 600 }}>
+                        ✓ Mỡ {tapeCalculated.fatPct}% · Mỡ nội tạng mức {tapeCalculated.visceralFat} ({tapeCalculated.risk})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1529,20 +1770,11 @@ export default function BiometricsScreen() {
                   <input
                     type="number"
                     step="0.1"
-                    placeholder="58.9"
+                    placeholder="Ví dụ: 58.9"
                     value={newWater}
                     onChange={e => setNewWater(e.target.value)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: '1.5px solid #D5D4CE',
-                      background: '#FFFFFF',
-                      padding: '0 10px',
-                      fontSize: '14px',
-                      fontFamily: 'var(--body-mono)',
-                      color: 'var(--body-text-main)',
-                      outline: 'none'
-                    }}
+                    className="body-input"
+                    style={{ fontFamily: 'var(--body-mono)' }}
                   />
                 </div>
 
@@ -1553,20 +1785,11 @@ export default function BiometricsScreen() {
                   <input
                     type="number"
                     step="0.05"
-                    placeholder="2.82"
+                    placeholder="Ví dụ: 2.82"
                     value={newBone}
                     onChange={e => setNewBone(e.target.value)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: '1.5px solid #D5D4CE',
-                      background: '#FFFFFF',
-                      padding: '0 10px',
-                      fontSize: '14px',
-                      fontFamily: 'var(--body-mono)',
-                      color: 'var(--body-text-main)',
-                      outline: 'none'
-                    }}
+                    className="body-input"
+                    style={{ fontFamily: 'var(--body-mono)' }}
                   />
                 </div>
               </div>

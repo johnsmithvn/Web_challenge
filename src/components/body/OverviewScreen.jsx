@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import AppIcon from '../AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { useBiometrics } from '../../hooks/useBiometrics';
 import { useNutrition } from '../../hooks/useNutrition';
 import { useWorkouts } from '../../hooks/useWorkouts';
@@ -27,21 +28,31 @@ const VN_MUSCLES = {
 
 export default function OverviewScreen({ onNavigateTab, onStartSession }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const { latest: latestWeight, addMeasurement, measurements, profile, tdee } = useBiometrics();
-  const { mealLogs, addMealLog } = useNutrition();
+  const { mealLogs, addMealLog, updateWater, waterCups } = useNutrition();
   const { activeRoutine, routineItems, sessions, recentSets, exerciseMap } = useWorkouts();
 
   const [quickModal, setQuickModal] = useState(false);
+  const [quickTab, setQuickTab] = useState('weight'); // 'weight' | 'meal' | 'water'
   const [weightInput, setWeightInput] = useState(latestWeight?.weight ? String(latestWeight.weight) : '');
+  const [weightTimeSlot, setWeightTimeSlot] = useState('morning');
+  const [mealNameInput, setMealNameInput] = useState('');
+  const [mealTypeInput, setMealTypeInput] = useState('breakfast');
   const [kcalInput, setKcalInput] = useState('');
-  const [mealNameInput, setMealNameInput] = useState('Bữa ăn');
+  const [quickLoading, setQuickLoading] = useState(false);
 
   // Lắng nghe sự kiện "Ghi nhanh" từ Header chung
   useEffect(() => {
-    const handleOpenQuick = () => setQuickModal(true);
+    const handleOpenQuick = () => {
+      setQuickModal(true);
+      if (latestWeight?.weight && !weightInput) {
+        setWeightInput(String(latestWeight.weight));
+      }
+    };
     window.addEventListener('body:open-quick-capture', handleOpenQuick);
     return () => window.removeEventListener('body:open-quick-capture', handleOpenQuick);
-  }, []);
+  }, [latestWeight?.weight, weightInput]);
 
   const [now] = useState(() => Date.now());
   const today = useMemo(() => new Date(now), [now]);
@@ -457,20 +468,60 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     };
   }, [today, todayWeekday, routineItems, exerciseMap]);
 
-  // Xử lý lưu Modal Ghi nhanh
-  const handleSaveQuick = async () => {
-    if (weightInput && Number(weightInput) > 0) {
-      await addMeasurement?.({ weight: Number(weightInput) });
+  // Xử lý lưu Modal Ghi nhanh (Cân nặng / Bữa ăn)
+  const handleSaveQuick = async (e) => {
+    e?.preventDefault?.();
+    setQuickLoading(true);
+    try {
+      if (quickTab === 'weight') {
+        if (!weightInput || Number(weightInput) <= 0) {
+          showToast?.('Vui lòng nhập số cân nặng hợp lệ (kg)', 'warning');
+          return;
+        }
+        await addMeasurement?.({
+          weight: Number(weightInput),
+          time_slot: weightTimeSlot,
+          source: 'manual',
+          is_outlier: weightTimeSlot === 'evening'
+        });
+        showToast?.(`Đã lưu cân nặng ${weightInput} kg!`, 'success');
+        setQuickModal(false);
+      } else if (quickTab === 'meal') {
+        if (!mealNameInput.trim()) {
+          showToast?.('Vui lòng nhập tên món hoặc bữa ăn', 'warning');
+          return;
+        }
+        await addMealLog?.({
+          meal_type: mealTypeInput,
+          name: mealNameInput.trim(),
+          calories: Number(kcalInput) || 0
+        });
+        showToast?.(`Đã thêm bữa ăn "${mealNameInput.trim()}" (${kcalInput || 0} kcal)!`, 'success');
+        setMealNameInput('');
+        setKcalInput('');
+        setQuickModal(false);
+      }
+    } catch (err) {
+      console.error('Error saving quick capture:', err);
+      showToast?.('Lỗi khi lưu: ' + (err.message || 'Thử lại'), 'error');
+    } finally {
+      setQuickLoading(false);
     }
-    if (kcalInput && Number(kcalInput) > 0) {
-      await addMealLog?.({
-        meal_type: 'snack',
-        name: mealNameInput.trim() || 'Bữa ăn nhanh',
-        calories: Number(kcalInput)
-      });
+  };
+
+  const handleQuickWaterAdd = async (cupsToAdd) => {
+    try {
+      const nextCups = Math.max(0, (waterCups || 0) + cupsToAdd);
+      await updateWater?.(nextCups);
+      if (cupsToAdd > 0) {
+        showToast?.(`Đã thêm ${cupsToAdd * 250}ml nước (Tổng hôm nay: ${(nextCups * 0.25).toFixed(1)}L)`, 'success');
+      } else {
+        showToast?.(`Đã trừ 250ml nước (Tổng hôm nay: ${(nextCups * 0.25).toFixed(1)}L)`, 'info');
+      }
+    } catch (err) {
+      console.error('Error updating water:', err);
+      showToast?.('Lỗi cập nhật nước', 'error');
     }
-    setQuickModal(false);
-    setKcalInput('');
   };
 
   return (
@@ -1028,83 +1079,342 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
 
       </div>
 
-      {/* ── MODAL GHI NHANH (CÂN NẶNG & CALO) ───────────────────────── */}
+      {/* ── MODAL GHI NHANH HOẠT ĐỘNG (CÂN NẶNG / BỮA ĂN / NƯỚC UỐNG) ── */}
       {quickModal && (
         <div className="body-modal-backdrop" onClick={() => setQuickModal(false)}>
-          <div className="body-modal-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px' }}>
+          <div className="body-modal-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px', width: '100%' }}>
+            
+            {/* Header Modal */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                Ghi nhanh chỉ số
-              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '18px' }}>⚡</span>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--body-text-main)' }}>
+                  Ghi nhanh hoạt động
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setQuickModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--body-text-muted)' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--body-text-muted)', display: 'grid', placeItems: 'center', padding: '4px' }}
               >
                 <AppIcon name="x" size={18} />
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)', display: 'block', marginBottom: '6px' }}>
-                  Cân nặng (kg)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  className="body-input"
-                  placeholder="Ví dụ: 64.9"
-                  value={weightInput}
-                  onChange={e => setWeightInput(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)', display: 'block', marginBottom: '6px' }}>
-                  Calo bữa ăn (kcal)
-                </label>
-                <input
-                  type="number"
-                  className="body-input"
-                  placeholder="Ví dụ: 550"
-                  value={kcalInput}
-                  onChange={e => setKcalInput(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)', display: 'block', marginBottom: '6px' }}>
-                  Tên món / Bữa
-                </label>
-                <input
-                  type="text"
-                  className="body-input"
-                  placeholder="Bánh mì trứng, sữa..."
-                  value={mealNameInput}
-                  onChange={e => setMealNameInput(e.target.value)}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+            {/* 3 Tab chuyển đổi mục đích rõ ràng */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '6px',
+              padding: '4px',
+              borderRadius: '10px',
+              background: 'var(--body-shell-bg)',
+              marginBottom: '18px'
+            }}>
+              {[
+                { key: 'weight', label: 'Cân nặng', icon: '⚖️' },
+                { key: 'meal', label: 'Bữa ăn', icon: '🥗' },
+                { key: 'water', label: 'Nước uống', icon: '💧' }
+              ].map(t => (
                 <button
+                  key={t.key}
                   type="button"
-                  className="body-btn"
-                  onClick={() => setQuickModal(false)}
-                  style={{ flex: 1 }}
+                  onClick={() => setQuickTab(t.key)}
+                  style={{
+                    height: '34px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: quickTab === t.key ? 'var(--body-card-bg)' : 'transparent',
+                    color: quickTab === t.key ? 'var(--body-text-main)' : 'var(--body-text-muted)',
+                    fontWeight: quickTab === t.key ? 700 : 500,
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                    boxShadow: quickTab === t.key ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                    transition: 'all 0.15s ease'
+                  }}
                 >
-                  Đóng
+                  <span>{t.icon}</span>
+                  <span>{t.label}</span>
                 </button>
-                <button
-                  type="button"
-                  className="body-btn body-btn-primary"
-                  onClick={handleSaveQuick}
-                  style={{ flex: 1 }}
-                >
-                  Lưu dữ liệu
-                </button>
-              </div>
+              ))}
             </div>
+
+            {/* FORM 1: CÂN NẶNG */}
+            {quickTab === 'weight' && (
+              <form onSubmit={handleSaveQuick} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                    Cân nặng hôm nay (kg) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    required
+                    autoFocus
+                    className="body-input"
+                    placeholder="Ví dụ: 65.05"
+                    value={weightInput}
+                    onChange={e => setWeightInput(e.target.value)}
+                  />
+                  {latestWeight?.weight && (
+                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>
+                      Số đo gần nhất: {latestWeight.weight} kg ({latestWeight.local_date})
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                    Thời điểm đo
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setWeightTimeSlot('morning')}
+                      style={{
+                        height: '38px',
+                        borderRadius: '8px',
+                        border: `1.5px solid ${weightTimeSlot === 'morning' ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
+                        background: weightTimeSlot === 'morning' ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
+                        fontSize: '12.5px',
+                        fontWeight: 600,
+                        color: 'var(--body-text-main)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🌅 Sáng sớm (đói)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWeightTimeSlot('evening')}
+                      style={{
+                        height: '38px',
+                        borderRadius: '8px',
+                        border: `1.5px solid ${weightTimeSlot === 'evening' ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
+                        background: weightTimeSlot === 'evening' ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
+                        fontSize: '12.5px',
+                        fontWeight: 600,
+                        color: 'var(--body-text-main)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🌙 Buổi tối (sau ăn)
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                  <button
+                    type="button"
+                    className="body-btn body-btn-secondary"
+                    onClick={() => setQuickModal(false)}
+                    style={{ flex: 1, height: '42px' }}
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={quickLoading}
+                    className="body-btn body-btn-primary"
+                    style={{ flex: 1, height: '42px' }}
+                  >
+                    {quickLoading ? 'Đang lưu...' : 'Lưu cân nặng'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* FORM 2: BỮA ĂN */}
+            {quickTab === 'meal' && (
+              <form onSubmit={handleSaveQuick} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                    Tên món / Bữa ăn *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    className="body-input"
+                    placeholder="Ví dụ: Phở bò tái, Cơm tấm, Salad gà..."
+                    value={mealNameInput}
+                    onChange={e => setMealNameInput(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                    Bữa ăn
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                    {[
+                      { key: 'breakfast', label: 'Sáng' },
+                      { key: 'lunch', label: 'Trưa' },
+                      { key: 'dinner', label: 'Tối' },
+                      { key: 'snack', label: 'Phụ' }
+                    ].map(m => (
+                      <button
+                        key={m.key}
+                        type="button"
+                        onClick={() => setMealTypeInput(m.key)}
+                        style={{
+                          height: '34px',
+                          borderRadius: '8px',
+                          border: `1.5px solid ${mealTypeInput === m.key ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
+                          background: mealTypeInput === m.key ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: 'var(--body-text-main)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
+                    Calo ước tính (kcal)
+                  </label>
+                  <input
+                    type="number"
+                    step="10"
+                    className="body-input"
+                    placeholder="Ví dụ: 450"
+                    value={kcalInput}
+                    onChange={e => setKcalInput(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                  <button
+                    type="button"
+                    className="body-btn body-btn-secondary"
+                    onClick={() => setQuickModal(false)}
+                    style={{ flex: 1, height: '42px' }}
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={quickLoading}
+                    className="body-btn body-btn-primary"
+                    style={{ flex: 1, height: '42px' }}
+                  >
+                    {quickLoading ? 'Đang lưu...' : 'Lưu bữa ăn'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* FORM 3: NƯỚC UỐNG */}
+            {quickTab === 'water' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', textAlign: 'center' }}>
+                <div style={{
+                  padding: '16px',
+                  borderRadius: '12px',
+                  background: 'rgba(76, 141, 224, 0.08)',
+                  border: '1px solid rgba(76, 141, 224, 0.2)',
+                  width: '100%',
+                  boxSizing: 'border-box'
+                }}>
+                  <div style={{ fontSize: '28px', marginBottom: '4px' }}>💧</div>
+                  <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--body-text-main)' }}>
+                    {((waterCups || 0) * 0.25).toFixed(2)} L
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
+                    Đã uống {waterCups || 0} cốc · Mục tiêu khuyến nghị 2.0 L
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '100%' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickWaterAdd(1)}
+                    style={{
+                      height: '42px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--body-card-border)',
+                      background: 'var(--body-card-bg)',
+                      fontWeight: 600,
+                      fontSize: '12.5px',
+                      color: 'var(--body-text-main)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    +250 ml (1 cốc)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickWaterAdd(2)}
+                    style={{
+                      height: '42px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--body-card-border)',
+                      background: 'var(--body-card-bg)',
+                      fontWeight: 600,
+                      fontSize: '12.5px',
+                      color: 'var(--body-text-main)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    +500 ml (2 cốc)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickWaterAdd(3)}
+                    style={{
+                      height: '42px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--body-card-border)',
+                      background: 'var(--body-card-bg)',
+                      fontWeight: 600,
+                      fontSize: '12.5px',
+                      color: 'var(--body-text-main)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    +750 ml (1 bình)
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '4px' }}>
+                  <button
+                    type="button"
+                    disabled={!waterCups || waterCups <= 0}
+                    onClick={() => handleQuickWaterAdd(-1)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--body-card-border)',
+                      background: 'transparent',
+                      color: 'var(--body-text-muted)',
+                      fontSize: '11.5px',
+                      cursor: waterCups > 0 ? 'pointer' : 'not-allowed',
+                      opacity: waterCups > 0 ? 1 : 0.5
+                    }}
+                  >
+                    −250 ml (Trừ bớt)
+                  </button>
+
+                  <button
+                    type="button"
+                    className="body-btn body-btn-secondary"
+                    onClick={() => setQuickModal(false)}
+                    style={{ height: '36px', padding: '0 16px' }}
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}

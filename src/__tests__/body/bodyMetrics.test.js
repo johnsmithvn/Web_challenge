@@ -88,7 +88,7 @@ console.log('Testing bodyMetrics pure functions...');
 {
   // Male: 175cm, waist 80cm, neck 38cm
   const fatMale = calculateNavyBodyFat('male', 175, 80, 38);
-  assert.equal(fatMale, 19.3, `US Navy male body fat should be 19.3%, got ${fatMale}`);
+  assert.equal(fatMale, 12.9, `US Navy male body fat should be 12.9%, got ${fatMale}`);
 
   // Female: 165cm, waist 70cm, neck 32cm, hip 95cm
   const fatFemale = calculateNavyBodyFat('female', 165, 70, 32, 95);

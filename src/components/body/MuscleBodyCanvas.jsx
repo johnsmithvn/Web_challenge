@@ -55,6 +55,23 @@ const NAMES = {
   calves: 'Bắp chân'
 };
 
+const MUSCLE_SIDES = {
+  chest: 'front',
+  abs: 'front',
+  obliques: 'front',
+  biceps: 'front',
+  quads: 'front',
+  forearms: 'front',
+  shoulders: 'both',
+  traps: 'back',
+  lats: 'back',
+  triceps: 'back',
+  lowerback: 'back',
+  glutes: 'back',
+  hamstrings: 'back',
+  calves: 'back'
+};
+
 const HEAT_PALETTE = [[0, '#E6E0D8'], [0.35, '#F1C29C'], [0.7, '#E8804F'], [1, '#C8361F']];
 const REC_PALETTE = { ready: '#3E9E68', mid: '#E0A23C', low: '#D2462B' };
 const COLOR_ACCENT = '#6949E8';
@@ -124,6 +141,27 @@ export default function MuscleBodyCanvas({
   useEffect(() => {
     onSelectMuscleRef.current = onSelectMuscle;
   }, [onSelectMuscle]);
+
+  // Keep latest props accessible inside stable canvas event listeners
+  const propsRef = useRef({
+    selectedId,
+    mode,
+    secondaryList,
+    heatMap,
+    recoveryMap,
+    viewSide
+  });
+
+  useEffect(() => {
+    propsRef.current = {
+      selectedId,
+      mode,
+      secondaryList,
+      heatMap,
+      recoveryMap,
+      viewSide
+    };
+  }, [selectedId, mode, secondaryList, heatMap, recoveryMap, viewSide]);
 
   const sceneRefs = useRef({
     renderer: null,
@@ -287,9 +325,74 @@ export default function MuscleBodyCanvas({
         const b = container.getBoundingClientRect();
         ptr.set(((e.clientX - b.left) / b.width) * 2 - 1, -((e.clientY - b.top) / b.height) * 2 + 1);
         ray.setFromCamera(ptr, camera);
-        const hit = ray.intersectObjects(group.children, false)[0];
+        const hits = ray.intersectObjects(group.children, false);
+        if (!hits || hits.length === 0) {
+          return { id: null, x: e.clientX - b.left, y: e.clientY - b.top };
+        }
+
+        // Góc nhìn hiện tại của mô hình dựa theo góc xoay trục Y:
+        // Khi s.rotY = 0 (hoặc k * 2PI), mặt trước hướng về camera (+Z).
+        // cos(s.rotY) > 0.25 -> nhìn MẶT TRƯỚC
+        // cos(s.rotY) < -0.25 -> nhìn MẶT SAU
+        // còn lại -> nhìn CẠNH BÊN (Profile)
+        const cosY = Math.cos(s.rotY);
+        const currentView = cosY > 0.25 ? 'front' : cosY < -0.25 ? 'back' : 'side';
+
+        const normalMatrix = new THREE.Matrix3();
+        const validHits = [];
+
+        for (let i = 0; i < hits.length; i++) {
+          const hit = hits[i];
+          if (!hit.face) continue;
+          normalMatrix.getNormalMatrix(hit.object.matrixWorld);
+          const worldNormal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+          const viewDir = camera.position.clone().sub(hit.point).normalize();
+
+          // Chỉ nhận các mặt tam giác đang hướng về phía camera (loại bỏ mặt sau / xuyên thấu)
+          if (worldNormal.dot(viewDir) > 0.05) {
+            validHits.push(hit);
+          }
+        }
+
+        if (validHits.length === 0) {
+          return { id: null, x: e.clientX - b.left, y: e.clientY - b.top };
+        }
+
+        // Khoảng cách tiếp xúc bề mặt ngoài cùng (da hoặc cơ)
+        const d0 = validHits[0].distance;
+
+        // Lọc các cơ nằm sát bề mặt nhìn thấy (trong phạm vi 0.12 units so với tiếp xúc đầu tiên)
+        const candidateMuscles = [];
+
+        for (let i = 0; i < validHits.length; i++) {
+          const hit = validHits[i];
+          const mId = hit.object.userData.id;
+          if (!mId) continue;
+
+          // Nếu cơ này nằm sâu hơn bề mặt nhìn thấy > 0.12 đơn vị thì coi là bị khuất bên trong thân
+          if (hit.distance - d0 > 0.12) continue;
+
+          const mSide = MUSCLE_SIDES[mId] || 'both';
+
+          // Khi nhìn mặt trước, không bắt nhầm các cơ ở mặt sau bị lọt góc / thò ra sau
+          // Khi nhìn mặt sau, không bắt nhầm các cơ mặt trước
+          if (currentView === 'front' && mSide === 'back') continue;
+          if (currentView === 'back' && mSide === 'front') continue;
+
+          candidateMuscles.push({
+            id: mId,
+            distance: hit.distance
+          });
+        }
+
+        let pickedId = null;
+        if (candidateMuscles.length > 0) {
+          candidateMuscles.sort((a, b) => a.distance - b.distance);
+          pickedId = candidateMuscles[0].id;
+        }
+
         return {
-          id: (hit && hit.object.userData.id) || null,
+          id: pickedId,
           x: e.clientX - b.left,
           y: e.clientY - b.top
         };
@@ -326,7 +429,8 @@ export default function MuscleBodyCanvas({
         const picked = pickObject(e);
         if (picked.id !== s.hovered) {
           s.hovered = picked.id;
-          applyMaterialColors(s, selectedId, mode, secondaryList, heatMap, recoveryMap);
+          const { selectedId: curSel, mode: curMode, secondaryList: curSec, heatMap: curHeat, recoveryMap: curRec } = propsRef.current;
+          applyMaterialColors(s, curSel, curMode, curSec, curHeat, curRec);
         }
         container.style.cursor = picked.id ? 'pointer' : 'grab';
         if (picked.id) {
@@ -342,8 +446,13 @@ export default function MuscleBodyCanvas({
         container.style.cursor = 'grab';
         if (!hasMoved) {
           const picked = pickObject(e);
-          if (picked.id && onSelectMuscleRef.current) {
-            onSelectMuscleRef.current(picked.id);
+          if (picked.id) {
+            propsRef.current.selectedId = picked.id;
+            const { mode: curMode, secondaryList: curSec, heatMap: curHeat, recoveryMap: curRec } = propsRef.current;
+            applyMaterialColors(s, picked.id, curMode, curSec, curHeat, curRec);
+            if (onSelectMuscleRef.current) {
+              onSelectMuscleRef.current(picked.id);
+            }
           }
         }
       };
@@ -356,7 +465,8 @@ export default function MuscleBodyCanvas({
       const onPointerLeave = () => {
         if (!isDown && s.hovered) {
           s.hovered = null;
-          applyMaterialColors(s, selectedId, mode, secondaryList, heatMap, recoveryMap);
+          const { selectedId: curSel, mode: curMode, secondaryList: curSec, heatMap: curHeat, recoveryMap: curRec } = propsRef.current;
+          applyMaterialColors(s, curSel, curMode, curSec, curHeat, curRec);
         }
         setTooltip((prev) => ({ ...prev, visible: false }));
       };

@@ -416,7 +416,7 @@ export default function MuscleMapScreen({ onSelectExercise }) {
         }>
           <MuscleBodyCanvas
             selectedId={selectedMuscleId}
-            onSelectMuscle={(id) => handlePickMuscle(id, false)}
+            onSelectMuscle={(id) => handlePickMuscle(id, true)}
             viewSide={sideView}
             mode={viewMode}
             secondaryList={selectedMuscle.sec || []}
