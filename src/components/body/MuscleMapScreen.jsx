@@ -2,7 +2,7 @@ import { useState, useMemo, lazy, Suspense } from 'react';
 import AppIcon from '../AppIcon';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import { useWorkouts } from '../../hooks/useWorkouts';
-import { estimateRecoveryState, RECOVERY_STATUS } from '../../utils/workoutLogic';
+import { estimateRecoveryState, calculateRecoveryMetrics, RECOVERY_STATUS } from '../../utils/workoutLogic';
 
 const MuscleBodyCanvas = lazy(() => import('./MuscleBodyCanvas'));
 
@@ -187,10 +187,11 @@ export default function MuscleMapScreen({ onSelectExercise }) {
   const [now] = useState(() => Date.now());
 
   // 1. Phân tích dữ liệu thực tế từ recentSets trong 7 ngày
-  const { muscleStats, heatMap, recoveryMap } = useMemo(() => {
+  const { muscleStats, heatMap, recoveryMap, recoveryDetails } = useMemo(() => {
     const stats = {};
     const heat = {};
     const rec = {};
+    const recDet = {};
 
     const sevenDaysAgo = now - 7 * 24 * 3600 * 1000;
 
@@ -198,7 +199,10 @@ export default function MuscleMapScreen({ onSelectExercise }) {
       stats[m.id] = {
         days: [0, 0, 0, 0, 0, 0, 0],
         totalSets: 0,
+        primarySets: 0,
+        secondarySets: 0,
         lastCompletedTime: null,
+        lastPrimaryTime: null,
         bestPR: null
       };
     });
@@ -214,16 +218,26 @@ export default function MuscleMapScreen({ onSelectExercise }) {
       targetMuscles.forEach(mId => {
         if (!stats[mId]) return;
 
+        const isPri = ex.primary === mId;
+
         if (setTime && setTime >= sevenDaysAgo) {
           const jsDay = new Date(setTime).getDay();
           const dayIdx = jsDay === 0 ? 6 : jsDay - 1;
           stats[mId].days[dayIdx] += 1;
           stats[mId].totalSets += 1;
+          if (isPri) {
+            stats[mId].primarySets += 1;
+          } else {
+            stats[mId].secondarySets += 1;
+          }
         }
 
         if (setTime) {
           if (!stats[mId].lastCompletedTime || setTime > stats[mId].lastCompletedTime) {
             stats[mId].lastCompletedTime = setTime;
+          }
+          if (isPri && (!stats[mId].lastPrimaryTime || setTime > stats[mId].lastPrimaryTime)) {
+            stats[mId].lastPrimaryTime = setTime;
           }
         }
 
@@ -244,56 +258,46 @@ export default function MuscleMapScreen({ onSelectExercise }) {
     MUSCLE_ANATOMY.forEach(m => {
       const st = stats[m.id];
       const hoursSince = st.lastCompletedTime ? Math.max(0, Math.round((now - st.lastCompletedTime) / (3600 * 1000))) : null;
-      const recState = estimateRecoveryState(st.totalSets, hoursSince);
+      const hoursSincePrimary = st.lastPrimaryTime ? Math.max(0, Math.round((now - st.lastPrimaryTime) / (3600 * 1000))) : null;
+
+      const metrics = calculateRecoveryMetrics({
+        totalSets: st.totalSets,
+        primarySets: st.primarySets,
+        hoursSince,
+        hoursSincePrimary
+      });
 
       const ratio = Math.min(1, st.totalSets / (m.baseTargetSets || 12));
       heat[m.id] = ratio;
-      rec[m.id] = recState;
+      rec[m.id] = metrics.state;
+      recDet[m.id] = metrics;
     });
 
-    return { muscleStats: stats, heatMap: heat, recoveryMap: rec };
+    return { muscleStats: stats, heatMap: heat, recoveryMap: rec, recoveryDetails: recDet };
   }, [recentSets, exerciseMap, now]);
 
   // Thông tin nhóm cơ đang chọn
   const selectedMuscle = useMemo(() => {
     const anatomical = MUSCLE_ANATOMY.find(m => m.id === selectedMuscleId) || MUSCLE_ANATOMY[0];
-    const st = muscleStats[anatomical.id] || { days: [0, 0, 0, 0, 0, 0, 0], totalSets: 0, bestPR: null };
-    const recState = recoveryMap[anatomical.id] || RECOVERY_STATUS.READY;
-
-    let recPct = 100;
-    let recLabel = 'Sẵn sàng';
-    let recBg = '#E6F2EA';
-    let recFg = '#2F7A50';
-    let recText = 'Nhóm cơ đã hồi phục hoàn toàn. Sẵn sàng cho buổi tập tiếp theo.';
-
-    if (recState === RECOVERY_STATUS.MID) {
-      recPct = 55;
-      recLabel = 'Đang hồi';
-      recBg = '#FBF0DC';
-      recFg = '#9A6514';
-      recText = 'Đang trong quá trình tái tạo sợi cơ. Có thể tập nhẹ hoặc đổi nhóm cơ khác.';
-    } else if (recState === RECOVERY_STATUS.LOW) {
-      recPct = 25;
-      recLabel = 'Cần nghỉ';
-      recBg = '#FBE5E0';
-      recFg = '#B23A22';
-      recText = 'Cơ bắp vừa chịu tải nặng hôm nay. Khuyến nghị nghỉ tối thiểu 24-48 giờ.';
-    }
+    const st = muscleStats[anatomical.id] || { days: [0, 0, 0, 0, 0, 0, 0], totalSets: 0, primarySets: 0, secondarySets: 0, bestPR: null };
+    const recMetrics = recoveryDetails[anatomical.id] || calculateRecoveryMetrics();
 
     return {
       ...anatomical,
       currentSets: st.totalSets,
+      primarySets: st.primarySets,
+      secondarySets: st.secondarySets,
       targetSets: anatomical.baseTargetSets,
       days: st.days,
       pr: st.bestPR,
-      recovery: recState,
-      recPct,
-      recLabel,
-      recBg,
-      recFg,
-      recText
+      recovery: recMetrics.state,
+      recPct: recMetrics.pct,
+      recLabel: recMetrics.label,
+      recBg: recMetrics.bg,
+      recFg: recMetrics.fg,
+      recText: recMetrics.text
     };
-  }, [selectedMuscleId, muscleStats, recoveryMap]);
+  }, [selectedMuscleId, muscleStats, recoveryDetails]);
 
   // Danh sách bài tập phù hợp
   const exercises = useMemo(() => {

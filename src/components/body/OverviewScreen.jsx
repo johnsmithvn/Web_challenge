@@ -6,7 +6,7 @@ import { useBiometrics } from '../../hooks/useBiometrics';
 import { useNutrition } from '../../hooks/useNutrition';
 import { useWorkouts } from '../../hooks/useWorkouts';
 import MuscleBodyCanvas from './MuscleBodyCanvas';
-import { estimateRecoveryState } from '../../utils/workoutLogic';
+import { estimateRecoveryState, calculateRecoveryMetrics } from '../../utils/workoutLogic';
 import { getWeekDates, toDateStr } from '../../utils/dateUtils';
 
 const VN_MUSCLES = {
@@ -301,7 +301,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     } else {
       const stats = {};
       muscleKeys.forEach(k => {
-        stats[k] = { totalSets: 0, lastTime: null };
+        stats[k] = { totalSets: 0, primarySets: 0, lastTime: null, lastPrimaryTime: null };
       });
       const sevenDaysAgo = now - 7 * 24 * 3600 * 1000;
 
@@ -314,11 +314,18 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
 
         targetMuscles.forEach(mId => {
           if (!stats[mId]) return;
+          const isPri = ex.primary === mId;
           if (setTime && setTime >= sevenDaysAgo) {
             stats[mId].totalSets += 1;
+            if (isPri) stats[mId].primarySets += 1;
           }
-          if (setTime && (!stats[mId].lastTime || setTime > stats[mId].lastTime)) {
-            stats[mId].lastTime = setTime;
+          if (setTime) {
+            if (!stats[mId].lastTime || setTime > stats[mId].lastTime) {
+              stats[mId].lastTime = setTime;
+            }
+            if (isPri && (!stats[mId].lastPrimaryTime || setTime > stats[mId].lastPrimaryTime)) {
+              stats[mId].lastPrimaryTime = setTime;
+            }
           }
         });
       });
@@ -326,7 +333,14 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       muscleKeys.forEach(k => {
         const st = stats[k];
         const hoursSince = st.lastTime ? Math.max(0, Math.round((now - st.lastTime) / (3600 * 1000))) : null;
-        map[k] = estimateRecoveryState(st.totalSets, hoursSince);
+        const hoursSincePrimary = st.lastPrimaryTime ? Math.max(0, Math.round((now - st.lastPrimaryTime) / (3600 * 1000))) : null;
+        const metrics = calculateRecoveryMetrics({
+          totalSets: st.totalSets,
+          primarySets: st.primarySets,
+          hoursSince,
+          hoursSincePrimary
+        });
+        map[k] = metrics.state;
       });
     }
 

@@ -324,3 +324,99 @@ export function estimateRecoveryState(sevenDaySets = 0, hoursSinceLastTrained = 
   }
   return RECOVERY_STATUS.READY;
 }
+
+/**
+ * Tính toán chỉ số phục hồi cơ bắp theo đường cong sinh học liên tục
+ * Thay vì nhảy cóc 3 mức cứng (25% - 55% - 100%), % phục hồi phản ánh
+ * chính xác số giờ đã trôi qua kể từ buổi tập trước (Thứ 3 -> Thứ 5 sẽ đạt ~85-94%).
+ * Đồng thời phân biệt rõ bài tập chính (Primary) và bài tập phụ (Secondary).
+ *
+ * @param {Object} [params]
+ * @param {number} [params.totalSets=0] - Tổng số set trong 7 ngày
+ * @param {number} [params.primarySets=0] - Số set tập với vai trò cơ chính
+ * @param {number|null} [params.hoursSince=null] - Số giờ kể từ lần vận động gần nhất
+ * @param {number|null} [params.hoursSincePrimary=null] - Số giờ kể từ buổi tập chính gần nhất
+ * @returns {{ pct: number, state: 'ready'|'mid'|'low', label: string, bg: string, fg: string, text: string, hoursSince: number|null }}
+ */
+export function calculateRecoveryMetrics({
+  totalSets = 0,
+  primarySets = 0,
+  hoursSince = null,
+  hoursSincePrimary = null
+} = {}) {
+  // Nếu chưa từng tập nhóm cơ này
+  if (hoursSince == null && hoursSincePrimary == null) {
+    return {
+      pct: 100,
+      state: RECOVERY_STATUS.READY,
+      label: 'Sẵn sàng',
+      bg: '#E6F2EA',
+      fg: '#2F7A50',
+      text: 'Nhóm cơ chưa chịu tải gần đây. Đã hồi phục 100%, sẵn sàng tập luyện.',
+      hoursSince: null
+    };
+  }
+
+  // Ưu tiên mốc thời gian của buổi tập chính (nếu có)
+  const hPrimary = hoursSincePrimary ?? hoursSince ?? 72;
+  const pSets = primarySets || totalSets || 8;
+
+  // Thời gian cần để hồi phục hoàn toàn (T_target tính bằng giờ)
+  // Nhẹ (1-5 set): 36h; Vừa (6-14 set): 48h; Nặng (>=15 set): 60h
+  let targetHours = 48;
+  if (pSets <= 5) {
+    targetHours = 36;
+  } else if (pSets >= 15) {
+    targetHours = 60;
+  }
+
+  // Tính % hồi phục liên tục (bắt đầu từ 20% ngay sau tập, tăng dần mượt mà theo hàm sinh học)
+  let pct = 100;
+  if (hPrimary < targetHours) {
+    const ratio = Math.max(0, Math.min(1, hPrimary / targetHours));
+    pct = Math.round(20 + 80 * Math.pow(ratio, 0.82));
+  } else {
+    pct = 100;
+  }
+
+  pct = Math.max(20, Math.min(100, pct));
+
+  // Phân loại trạng thái nhãn và màu sắc
+  let state = RECOVERY_STATUS.READY;
+  let label = 'Sẵn sàng';
+  let bg = '#E6F2EA';
+  let fg = '#2F7A50';
+  let text = '';
+
+  if (pct < 50) {
+    state = RECOVERY_STATUS.LOW;
+    label = 'Cần nghỉ';
+    bg = '#FBE5E0';
+    fg = '#B23A22';
+    if (hPrimary < 12) {
+      text = `Vừa chịu tải nặng ${hPrimary} giờ trước. Khuyến nghị nghỉ ngơi và nạp đủ dinh dưỡng.`;
+    } else {
+      text = `Đang trong giai đoạn đau nhức cơ (DOMS) sau ${hPrimary} giờ. Cần thêm thời gian nghỉ ngơi.`;
+    }
+  } else if (pct < 85) {
+    state = RECOVERY_STATUS.MID;
+    label = 'Đang hồi';
+    bg = '#FBF0DC';
+    fg = '#9A6514';
+    text = `Đã qua ${hPrimary} giờ kể từ buổi tập. Sợi cơ đang hoàn tất tái tạo, có thể tập nhẹ hoặc đổi nhóm cơ khác.`;
+  } else if (pct < 98) {
+    state = RECOVERY_STATUS.READY;
+    label = 'Gần như sẵn sàng';
+    bg = '#E6F2EA';
+    fg = '#2F7A50';
+    text = `Đã qua ${hPrimary} giờ kể từ buổi tập. Cơ bắp đã hồi phục ${pct}%, sẵn sàng cho buổi tập tiếp theo.`;
+  } else {
+    state = RECOVERY_STATUS.READY;
+    label = 'Sẵn sàng';
+    bg = '#E6F2EA';
+    fg = '#2F7A50';
+    text = `Nhóm cơ đã hồi phục hoàn toàn (${hPrimary} giờ trước). Sẵn sàng bứt phá PR mới.`;
+  }
+
+  return { pct, state, label, bg, fg, text, hoursSince: hPrimary };
+}

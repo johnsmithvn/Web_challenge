@@ -7,6 +7,7 @@ import {
   calculateEstimated1RM,
   compareSessionWithPrevious,
   estimateRecoveryState,
+  calculateRecoveryMetrics,
   RECOVERY_STATUS,
   REST_PRESETS,
   formatValWithUnit
@@ -131,6 +132,35 @@ console.log('Testing workoutLogic pure functions...');
   assert.equal(estimateRecoveryState(12, 36), RECOVERY_STATUS.MID);
   assert.equal(estimateRecoveryState(12, 72), RECOVERY_STATUS.READY);
   console.log('  ✓ estimateRecoveryState OK');
+}
+
+// 6.1. calculateRecoveryMetrics (continuous biological curve)
+{
+  // Chưa tập bao giờ -> 100% Sẵn sàng
+  const fresh = calculateRecoveryMetrics({ hoursSince: null });
+  assert.equal(fresh.pct, 100);
+  assert.equal(fresh.state, RECOVERY_STATUS.READY);
+
+  // Vừa tập 12h trước -> Low (dưới 50%)
+  const recent = calculateRecoveryMetrics({ totalSets: 10, hoursSince: 12 });
+  assert(recent.pct < 50);
+  assert.equal(recent.state, RECOVERY_STATUS.LOW);
+
+  // Sau 36h -> Mid (đang hồi)
+  const recovering = calculateRecoveryMetrics({ totalSets: 10, hoursSince: 36 });
+  assert(recovering.pct >= 70 && recovering.pct < 85);
+  assert.equal(recovering.state, RECOVERY_STATUS.MID);
+
+  // Sau 44h (Thứ 3 -> Thứ 5) -> Phục hồi cao (~85-94%)
+  const almostReady = calculateRecoveryMetrics({ totalSets: 10, hoursSince: 44 });
+  assert(almostReady.pct >= 85);
+  assert.equal(almostReady.state, RECOVERY_STATUS.READY);
+
+  // Sau 72h -> 100% Sẵn sàng
+  const fullyReady = calculateRecoveryMetrics({ totalSets: 10, hoursSince: 72 });
+  assert.equal(fullyReady.pct, 100);
+  assert.equal(fullyReady.state, RECOVERY_STATUS.READY);
+  console.log('  ✓ calculateRecoveryMetrics continuous curve OK');
 }
 
 // 7. exercise dataset schema check
