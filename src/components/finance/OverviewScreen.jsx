@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import {
-  periodTotals, comparePeriods, cardStatementSummary, fundBalance,
+  periodTotals, comparePeriods, cardStatementSummary, cardCarryOver, fundBalance,
   parseYmd, monthStart, monthEnd, daysInclusive,
 } from '../../utils/financeLogic';
 import {
@@ -105,9 +105,18 @@ function OverviewDashboard({ fin, nav, period, slots }) {
 
   // Cảnh báo thẻ tới hạn (≤5 ngày hoặc quá hạn).
   const cardAlerts = useMemo(() => cards
+    .filter(c => !c.closed_at)
     .map(c => ({ card: c, cyc: cardStatementSummary(c, transactions, today) }))
     .filter(x => x.cyc.outstanding > 0
       && (x.cyc.overdue || (x.cyc.daysUntilDue >= 0 && x.cyc.daysUntilDue <= 5))),
+  [cards, transactions, today]);
+
+  // Nợ sao kê kỳ trước còn treo sau khi kỳ mới đã chốt (cardCarryOver) — không có dòng này
+  // thì sao kê quá hạn biến mất khỏi Tổng quan đúng lúc thẻ chốt kỳ kế tiếp.
+  const carryAlerts = useMemo(() => cards
+    .filter(c => !c.closed_at)
+    .map(c => ({ card: c, carry: cardCarryOver(c, transactions, today) }))
+    .filter(x => x.carry),
   [cards, transactions, today]);
 
   // Cho vay tới hẹn (≤5 ngày hoặc quá hẹn) — chưa thu đủ mới nhắc.
@@ -135,6 +144,17 @@ function OverviewDashboard({ fin, nav, period, slots }) {
           <span><strong>Sao kê {card.name} {cyc.overdue ? `quá hạn ${Math.abs(cyc.daysUntilDue)} ngày` : `tới hạn trong ${cyc.daysUntilDue} ngày`}</strong>
             <small>Phải trả trước {cyc.due} · trả đủ để không phát sinh lãi trên toàn bộ sao kê.</small></span>
           <b>{money(balance)}</b>
+          <AppIcon name="caretRight" size={14} />
+        </button>
+      ))}
+
+      {carryAlerts.map(({ card, carry }) => (
+        <button key={`carry-${card.id}`} className="fin-alert fin-alert--warn fin-alert--detail"
+          onClick={() => nav.go('recurring', { recurringSeg: 'card' })}>
+          <AppIcon name="creditCard" size={17} weight="fill" />
+          <span><strong>Nợ sao kê cũ {card.name} quá hạn {Math.abs(carry.days)} ngày</strong>
+            <small>Sao kê kỳ {carry.period} hạn {carry.due} chưa trả đủ · khoản trả nào cũng trừ vào nợ cũ trước.</small></span>
+          <b>{money(carry.amount)}</b>
           <AppIcon name="caretRight" size={14} />
         </button>
       ))}

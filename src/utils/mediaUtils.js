@@ -159,6 +159,24 @@ export function isDriveUrl(url) {
 }
 
 /**
+ * Chuẩn hoá link người dùng dán: thêm `https://` nếu thiếu scheme, chỉ nhận http(s)
+ * (chặn `javascript:`/`data:` lọt vào href).
+ * @param {string} raw
+ * @returns {string} URL đã chuẩn hoá, hoặc '' nếu không hợp lệ
+ */
+export function normalizeHttpUrl(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return '';
+  const withScheme = /^[a-z][a-z\d+.-]*:/i.test(s) ? s : `https://${s}`;
+  try {
+    const u = new URL(withScheme);
+    return (u.protocol === 'http:' || u.protocol === 'https:') && u.hostname ? u.href : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Get media type from URL.
  * @param {string} url
  * @returns {string} 'youtube' | 'drive' | 'audio' | 'video' | 'link'

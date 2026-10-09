@@ -34,24 +34,35 @@ exercises.forEach(ex => {
 
 console.log('  ✓ Static JSON data integrity OK');
 
-// 2. Verify all 3 Body Migrations exist and satisfy security policies
+// 2. Verify all 4 Body Migrations exist and satisfy security policies
 const m1Path = path.join(rootDir, 'supabase/migrations/20261008000000_body_workout_v6_22_0.sql');
 const m2Path = path.join(rootDir, 'supabase/migrations/20261008000001_body_biometrics_v6_22_0.sql');
 const m3Path = path.join(rootDir, 'supabase/migrations/20261008000002_body_nutrition_checkin_v6_22_0.sql');
+const m4Path = path.join(rootDir, 'supabase/migrations/20261009000000_body_exercise_videos_v6_22_0.sql');
 
 assert.ok(fs.existsSync(m1Path), 'Workout migration must exist');
 assert.ok(fs.existsSync(m2Path), 'Biometrics migration must exist');
 assert.ok(fs.existsSync(m3Path), 'Nutrition migration must exist');
+assert.ok(fs.existsSync(m4Path), 'Exercise videos migration must exist');
 
 const m1Content = fs.readFileSync(m1Path, 'utf8');
 const m2Content = fs.readFileSync(m2Path, 'utf8');
 const m3Content = fs.readFileSync(m3Path, 'utf8');
+const m4Content = fs.readFileSync(m4Path, 'utf8');
+
+// Bản sao trong data/ phải giống hệt bản trong supabase/migrations (runbook hosted dùng data/)
+assert.equal(
+  fs.readFileSync(path.join(rootDir, 'data/migration_v6.22.0_body_exercise_videos.sql'), 'utf8'),
+  m4Content,
+  'data/ copy of exercise videos migration must match'
+);
 
 // Check security invariants: RLS, REVOKE anon, GRANT authenticated
 [
   { name: 'Workout Migration', content: m1Content, tables: ['body_routines', 'body_routine_items', 'body_workout_sessions', 'body_workout_sets'] },
   { name: 'Biometrics Migration', content: m2Content, tables: ['body_measurements', 'body_profiles'] },
-  { name: 'Nutrition Migration', content: m3Content, tables: ['body_meal_logs', 'body_saved_meals', 'body_water_logs', 'body_weekly_checkins'] }
+  { name: 'Nutrition Migration', content: m3Content, tables: ['body_meal_logs', 'body_saved_meals', 'body_water_logs', 'body_weekly_checkins'] },
+  { name: 'Exercise Videos Migration', content: m4Content, tables: ['body_exercise_videos'] }
 ].forEach(suite => {
   suite.tables.forEach(table => {
     assert.ok(suite.content.includes(`ENABLE ROW LEVEL SECURITY`), `${suite.name} must enable RLS`);

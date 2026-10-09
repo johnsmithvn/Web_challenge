@@ -144,6 +144,7 @@ npm run db:local:stop
 27. [`20261008000000_body_workout_v6_22_0.sql`](./supabase/migrations/20261008000000_body_workout_v6_22_0.sql)
 28. [`20261008000001_body_biometrics_v6_22_0.sql`](./supabase/migrations/20261008000001_body_biometrics_v6_22_0.sql)
 29. [`20261008000002_body_nutrition_checkin_v6_22_0.sql`](./supabase/migrations/20261008000002_body_nutrition_checkin_v6_22_0.sql)
+30. [`20261009000000_body_exercise_videos_v6_22_0.sql`](./supabase/migrations/20261009000000_body_exercise_videos_v6_22_0.sql)
 
 Sau `npm run db:local:start`, tạo file `.env.development.local` (Git bỏ qua) bằng Project URL và
 Publishable key hiện trong kết quả:
@@ -193,6 +194,7 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 | 24 | [`data/migration_v6.22.0_body_workout.sql`](./data/migration_v6.22.0_body_workout.sql) | Module Thể hình & Luyện tập: 5 bảng (`body_custom_exercises`, `body_routines`, `body_routine_items`, `body_workout_sessions`, `body_workout_sets`), RLS kép, composite FK, chỉ cho phép 1 buổi tập dở dang. Idempotent. |
 | 25 | [`data/migration_v6.22.0_body_biometrics.sql`](./data/migration_v6.22.0_body_biometrics.sql) | Module Sinh trắc học & Hồ sơ: 2 bảng (`body_measurements`, `body_profiles`), đo lường cân nặng, mỡ, cơ, nước, mỡ nội tạng, hồ sơ cá nhân. Idempotent. |
 | 26 | [`data/migration_v6.22.0_body_nutrition_checkin.sql`](./data/migration_v6.22.0_body_nutrition_checkin.sql) | Module Dinh dưỡng & Check-in: 4 bảng (`body_meal_logs`, `body_saved_meals`, `body_water_logs`, `body_weekly_checkins`), theo dõi 4 bữa, macro, uống nước, check-in tuần ISO. Idempotent. |
+| 27 | [`data/migration_v6.22.0_body_exercise_videos.sql`](./data/migration_v6.22.0_body_exercise_videos.sql) | Bảng `body_exercise_videos` (link video thị phạm user tự gắn, 1 link/bài) thay cho localStorage; frontend tự chuyển link cũ lên rồi xoá key cũ. Additive, idempotent — chạy trước khi deploy frontend, nếu không gắn link sẽ báo lỗi. |
 
 Dọn dẹp bảng cũ (tùy chọn):
 - [`data/drop_incubator_tables.sql`](./data/drop_incubator_tables.sql) (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).

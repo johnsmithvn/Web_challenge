@@ -1,51 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import AppIcon from '../AppIcon';
 import { ConfirmModal } from '../ConfirmModal';
+import { useExerciseVideo } from '../../hooks/useExerciseVideo';
 import {
   getYoutubeEmbedUrl,
   isYoutubeUrl,
   isDriveUrl,
-  extractDriveFileId
+  extractDriveFileId,
+  normalizeHttpUrl
 } from '../../utils/mediaUtils';
 
-const STORAGE_KEY = 'body_custom_exercise_videos';
-
 /**
- * Lấy video URL cho bài tập (ưu tiên link người dùng gắn thủ công, fallback về link mặc định)
- */
-export function getCustomVideoUrl(exerciseKey, defaultUrl = '') {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const map = JSON.parse(raw);
-      if (map[exerciseKey]) return map[exerciseKey];
-    }
-  } catch {
-    // ignore
-  }
-  return defaultUrl || '';
-}
-
-/**
- * Lưu link video tùy chỉnh vào localStorage
- */
-export function saveCustomVideoUrl(exerciseKey, url) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const map = raw ? JSON.parse(raw) : {};
-    if (url && url.trim()) {
-      map[exerciseKey] = url.trim();
-    } else {
-      delete map[exerciseKey];
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
-  } catch {
-    // ignore
-  }
-}
-
-/**
- * Component hiển thị và nhúng video YouTube / Google Drive cho bài tập
+ * Component hiển thị và nhúng video YouTube / Google Drive cho bài tập.
+ * Link tự gắn lưu ở bảng body_exercise_videos (useExerciseVideo); không có thì dùng link mặc định.
  */
 export default function ExerciseVideoPlayer({
   exerciseKey,
@@ -53,23 +20,23 @@ export default function ExerciseVideoPlayer({
   defaultUrl = '',
   compact = false
 }) {
-  const [videoUrl, setVideoUrl] = useState(() => getCustomVideoUrl(exerciseKey, defaultUrl));
+  const { customUrl, saveUrl, removeUrl } = useExerciseVideo(exerciseKey);
+  const videoUrl = customUrl || defaultUrl || '';
   const [isEditing, setIsEditing] = useState(false);
   const [inputUrl, setInputUrl] = useState('');
   const [isOpen, setIsOpen] = useState(!compact); // Mở mặc định ở trang thư viện, thu gọn ở màn hình tập
   const [errorMsg, setErrorMsg] = useState('');
+  const [saving, setSaving] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
-  // Đồng bộ khi chuyển đổi bài tập
-  useEffect(() => {
-    const current = getCustomVideoUrl(exerciseKey, defaultUrl);
-    setVideoUrl(current);
+  // Đổi bài tập → đóng form sửa, mở lại video ở trang thư viện
+  const [prevKey, setPrevKey] = useState(exerciseKey);
+  if (prevKey !== exerciseKey) {
+    setPrevKey(exerciseKey);
     setIsEditing(false);
     setErrorMsg('');
-    if (!compact && current) {
-      setIsOpen(true);
-    }
-  }, [exerciseKey, defaultUrl, compact]);
+    if (!compact) setIsOpen(true);
+  }
 
   const handleStartEdit = () => {
     setInputUrl(videoUrl || '');
@@ -77,39 +44,50 @@ export default function ExerciseVideoPlayer({
     setIsEditing(true);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e?.preventDefault();
-    const clean = inputUrl.trim();
-    if (!clean) {
-      saveCustomVideoUrl(exerciseKey, '');
-      setVideoUrl('');
-      setIsEditing(false);
+    if (!inputUrl.trim()) {
+      if (customUrl) setConfirmRemoveOpen(true);
+      else setIsEditing(false);
       return;
     }
 
+    const clean = normalizeHttpUrl(inputUrl);
     const isYt = isYoutubeUrl(clean);
     const isGdrive = isDriveUrl(clean);
     const isDirect = /\.(mp4|webm|mov)(\?|$)/i.test(clean);
 
-    if (!isYt && !isGdrive && !isDirect) {
+    if (!clean || (!isYt && !isGdrive && !isDirect)) {
       setErrorMsg('Vui lòng nhập link YouTube hợp lệ (watch, youtu.be, shorts), Google Drive hoặc file video direct (.mp4)!');
       return;
     }
 
-    saveCustomVideoUrl(exerciseKey, clean);
-    setVideoUrl(clean);
-    setIsEditing(false);
-    setIsOpen(true);
-    setErrorMsg('');
+    setSaving(true);
+    try {
+      await saveUrl(clean);
+      setIsEditing(false);
+      setIsOpen(true);
+      setErrorMsg('');
+    } catch (err) {
+      console.error('Save exercise video failed:', err);
+      setErrorMsg('Không lưu được link, vui lòng thử lại.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleRemove = () => setConfirmRemoveOpen(true);
 
-  const handleConfirmRemove = () => {
-    saveCustomVideoUrl(exerciseKey, '');
-    setVideoUrl('');
-    setIsEditing(false);
+  const handleConfirmRemove = async () => {
     setConfirmRemoveOpen(false);
+    try {
+      await removeUrl();
+      setIsEditing(false);
+      setErrorMsg('');
+    } catch (err) {
+      console.error('Remove exercise video failed:', err);
+      setErrorMsg('Không gỡ được link, vui lòng thử lại.');
+    }
   };
 
   // Xác định định dạng embed
@@ -228,9 +206,10 @@ export default function ExerciseVideoPlayer({
             <button
               type="submit"
               className="body-btn body-btn-primary"
+              disabled={saving}
               style={{ height: '34px', padding: '0 12px', fontSize: '12px' }}
             >
-              Lưu
+              {saving ? 'Đang lưu…' : 'Lưu'}
             </button>
             <button
               type="button"
@@ -252,7 +231,7 @@ export default function ExerciseVideoPlayer({
             💡 Hỗ trợ: YouTube video, YouTube Shorts, Google Drive (quyền Ai có link đều xem được), hoặc direct link MP4.
           </div>
 
-          {videoUrl && (
+          {customUrl && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
               <button
                 type="button"
@@ -266,7 +245,7 @@ export default function ExerciseVideoPlayer({
                   padding: '2px 4px'
                 }}
               >
-                Gỡ video khỏi bài tập này
+                {defaultUrl ? 'Gỡ link đã gắn (về video mặc định)' : 'Gỡ video khỏi bài tập này'}
               </button>
             </div>
           )}
@@ -363,8 +342,10 @@ export default function ExerciseVideoPlayer({
 
       <ConfirmModal
         open={confirmRemoveOpen}
-        title="Gỡ video?"
-        message={`Gỡ video khỏi bài tập "${exerciseName}"?`}
+        title="Gỡ link video?"
+        message={defaultUrl
+          ? `Gỡ link bạn đã gắn cho "${exerciseName}" và quay về video mặc định?`
+          : `Gỡ video khỏi bài tập "${exerciseName}"?`}
         confirmLabel="Gỡ"
         danger
         onConfirm={handleConfirmRemove}

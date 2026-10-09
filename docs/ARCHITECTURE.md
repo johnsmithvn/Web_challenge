@@ -123,6 +123,10 @@ useCollections / useCollectionNotes / useTags
 - Trang chủ (`HomeDashboard`) mở thẳng tab con của màn Định kỳ bằng navigation state
   `navigate('/finance/recurring', { state: { recurringSeg } })`; `FinancePage` chỉ nhận segment nằm trong
   `RECURRING_SEGS`, lạ thì về `out`.
+- Trang chủ chỉ đọc qua data owner sẵn có: `useUserTasks` (`getCompletedTasksRange` 14 ngày), `useFinance`,
+  `useWorkouts`, `useBiometrics`, `useCollections().fetchStats` (đếm + `created_at`, không kéo nội dung/tag).
+  Không gọi `useAccounts`: Vault chưa mở khóa thì không có số liệu để hiện. Mọi phép tính nằm ở
+  `utils/dashboardMetrics.js` (thuần, có test).
 
 ### Finance
 
@@ -173,6 +177,7 @@ instance; đây không phải quota phân tán toàn hệ thống.
 | `lh_fin_hidden_seed_shortcuts` | shortcut mẫu đã ẩn ở màn Nhập nhanh |
 | `lh_custom_anniversaries` | danh sách ngày kỷ niệm cá nhân người dùng tự thêm (Lịch / Tasks) |
 | `lh_cal_filters` | trạng thái bật/tắt các danh mục ngày lễ trên Lịch |
+| `body_custom_exercise_videos` | link video bài tập Body legacy — chỉ đọc để chuyển lên bảng `body_exercise_videos` rồi xóa (`useExerciseVideo`), không ghi mới |
 
 ### `sessionStorage`
 

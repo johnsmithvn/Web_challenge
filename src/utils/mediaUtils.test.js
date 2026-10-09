@@ -7,7 +7,7 @@
  * '.webm' tính cho cả hai, và URL không parse được thì chỉ dựa vào đuôi file.
  */
 import assert from 'node:assert/strict';
-import { isAudioUrl, isVideoUrl, getMediaType, isYoutubeUrl, isDriveUrl } from './mediaUtils.js';
+import { isAudioUrl, isVideoUrl, getMediaType, isYoutubeUrl, isDriveUrl, normalizeHttpUrl } from './mediaUtils.js';
 
 const AUDIO = [
   'https://cdn.example.com/track.mp3',
@@ -66,5 +66,14 @@ assert.equal(getMediaType(''), 'link');
 assert.equal(isYoutubeUrl('https://youtu.be/dQw4w9WgXcQ'), true);
 assert.equal(isDriveUrl('https://youtu.be/dQw4w9WgXcQ'), false);
 assert.equal(isDriveUrl('https://drive.google.com/uc?id=xyz'), true);
+
+// normalizeHttpUrl: link video tự gắn (Body) — thiếu scheme thì thêm https, chỉ nhận http(s)
+assert.equal(normalizeHttpUrl('  https://www.youtube.com/watch?v=dQw4w9WgXcQ '), 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+assert.equal(normalizeHttpUrl('youtu.be/dQw4w9WgXcQ'), 'https://youtu.be/dQw4w9WgXcQ');
+assert.equal(normalizeHttpUrl('http://cdn.example.com/a.mp4'), 'http://cdn.example.com/a.mp4');
+assert.equal(normalizeHttpUrl('javascript:alert(1)//youtu.be/dQw4w9WgXcQ'), '');
+assert.equal(normalizeHttpUrl('data:text/html,hi'), '');
+assert.equal(normalizeHttpUrl(''), '');
+assert.equal(normalizeHttpUrl(null), '');
 
 console.log('mediaUtils check: OK');

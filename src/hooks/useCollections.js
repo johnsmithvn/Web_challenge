@@ -198,10 +198,32 @@ export function useCollections() {
     }
   }, [enabled, user, fetchItems]);
 
+  // ── Stats nhẹ cho ô Knowledge ở Trang chủ ─────────────────────
+  // Đếm mục chưa lưu trữ + ngày tạo các mục từ `sinceDate` — chỉ 1 cột, không kéo nội
+  // dung/tag như fetchItems (Trang chủ không cần cả bài viết chỉ để vẽ vài cột).
+  const fetchStats = useCallback(async (sinceDate) => {
+    if (!enabled) return null;
+    try {
+      const [all, recent] = await Promise.all([
+        supabase.from('collections').select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id).neq('status', 'archived'),
+        supabase.from('collections').select('created_at')
+          .eq('user_id', user.id).neq('status', 'archived')
+          .gte('created_at', `${sinceDate}T00:00:00`).limit(1000),
+      ]);
+      if (all.error || recent.error) throw all.error || recent.error;
+      return { total: all.count || 0, createdAt: (recent.data || []).map(row => row.created_at) };
+    } catch (err) {
+      logger.warn('[useCollections] stats error:', err.message);
+      return null;
+    }
+  }, [enabled, user]);
+
   return {
     items,         // current fetched items
     isLoading,
     fetchItems,    // (filters?) => Promise<void>
+    fetchStats,    // (sinceDate) => Promise<{ total, createdAt[] } | null>
     addItem,       // (item) => Promise<row|null>
     updateItem,    // (id, updates) => Promise<boolean>
     deleteItem,    // (id) => Promise<boolean>

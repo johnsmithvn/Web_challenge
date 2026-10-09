@@ -429,7 +429,18 @@ export default function TaskDetailModal({ task, onClose, onEdit, editContent, on
         </GenericModal.Body>
 
         {!editContent && <GenericModal.Footer>
-          <button className="btn btn-ghost td-btn td-btn--danger" onClick={() => { onClose(); onDelete(task); }}>
+          <button className="btn btn-ghost td-btn td-btn--danger" onClick={async () => {
+            // Xoá là vĩnh viễn (kèm việc con theo FK CASCADE) — hỏi trước, áp cho mọi màn mở popup này.
+            const ok = await confirm({
+              title: `Xoá nhiệm vụ “${task.title}”?`,
+              message: 'Nhiệm vụ và các việc con của nó sẽ bị xoá vĩnh viễn. Không thể hoàn tác.',
+              confirmLabel: 'Xoá',
+              danger: true,
+            });
+            if (!ok) return;
+            onClose();
+            onDelete(task);
+          }}>
             <AppIcon name="trash" size={15} /> Xoá nhiệm vụ
           </button>
           <button className="btn btn-ghost td-btn" onClick={() => onEdit(task)}>

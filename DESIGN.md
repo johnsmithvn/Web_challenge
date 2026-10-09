@@ -1228,11 +1228,13 @@ bar · two-pane body (item list · detail), breakpoint 900px.
 
 - **Do** use `src/styles/global.css` as the default source for colour, radius,
   spacing and shadow tokens. The only domain-scoped token systems are Vault
-  Keyplate in `accounts.css` and Finance Nocturne (`--n-*`) in `finance.css`.
-- **Do** keep module-local aliases thin when a page needs semantic names: `dashboard.css` declares
-  `--dash-*` on `.dash-workspace`, each pointing at a global token (tints via `color-mix()` on that
-  token) so both themes follow automatically. Its only literal is `--dash-on-solid: #ffffff`, the same
-  role as `on-gradient`. This is not a third token system.
+  Keyplate in `accounts.css`, Finance Nocturne (`--n-*`) in `finance.css` and the home dashboard
+  palette (`--dash-*`) in `dashboard.css`.
+- **Home dashboard palette (`dashboard.css`):** the redesigned home page follows its own design file,
+  so `.dash-workspace` declares a scoped `--dash-*` palette (paper light by default, override under
+  `[data-theme="dark"] .dash-workspace`) — the third scoped system next to Vault Keyplate and Finance
+  Nocturne. State colours (calendar cells, priority pills, body/recovery states, chart strokes) are
+  classes over that palette; JSX keeps only geometry (`width`, `height`, `top/left`) inline.
 - **Don't** hard-code a hex or rgba for something a token already covers.
   Existing exceptions (`#c4b5fd`, `#fca5a5`, `#f87171`, `#a78bfa` written
   literally in `datepicker.css`) are debt, not precedent.

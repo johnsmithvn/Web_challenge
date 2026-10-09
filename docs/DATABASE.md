@@ -1,6 +1,6 @@
 # DATABASE.md — Life Hub
 
-**Target:** Supabase PostgreSQL · **Version:** v6.22.0 · **Updated:** 2026-10-08
+**Target:** Supabase PostgreSQL · **Version:** v6.22.0 · **Updated:** 2026-10-09
 
 Runbook cài đặt duy nhất nằm trong [`README.md`](../README.md). File này mô tả trạng thái schema cuối,
 không thay thế SQL thật.
@@ -38,7 +38,8 @@ auth.users
    ├─ body_meal_logs
    ├─ body_saved_meals
    ├─ body_water_logs
-   └─ body_weekly_checkins
+   ├─ body_weekly_checkins
+   └─ body_exercise_videos
 ```
 
 ## Inventory
@@ -119,7 +120,7 @@ thay vì tạo DEK mới. Update/delete item dùng `updated_at` như optimistic 
 
 Chi tiết: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md).
 
-### Body (Thể Hình & Sức Khỏe) — 11 bảng
+### Body (Thể Hình & Sức Khỏe) — 12 bảng
 
 | Table | Vai trò | Ràng buộc đáng chú ý |
 |---|---|---|
@@ -134,6 +135,7 @@ Chi tiết: [`DESIGN_ACCOUNT_VAULT.md`](DESIGN_ACCOUNT_VAULT.md).
 | `body_saved_meals` | Danh sách món ăn mẫu đã lưu | Pick nhanh vào nhật ký trong 1 chạm |
 | `body_water_logs` | Theo dõi lượng nước uống trong ngày | `PRIMARY KEY (user_id, local_date)`, mục tiêu 8 ly (2.000ml) |
 | `body_weekly_checkins` | Đánh giá thể trạng và vòng eo theo tuần | `UNIQUE (user_id, week_number, year)` |
+| `body_exercise_videos` | Link video thị phạm user tự gắn cho từng bài | `PRIMARY KEY (user_id, exercise_key)` — 1 link/bài; `video_url` chỉ `http(s)://`, ≤ 2048 ký tự; `exercise_key` là key JSON hoặc id bài tự tạo (không FK) |
 
 ## View
 
@@ -235,6 +237,7 @@ Snapshot đã tồn tại là bất biến. Schema change mới phải dùng mig
 19. `supabase/migrations/20261008000000_body_workout_v6_22_0.sql`
 20. `supabase/migrations/20261008000001_body_biometrics_v6_22_0.sql`
 21. `supabase/migrations/20261008000002_body_nutrition_checkin_v6_22_0.sql`
+22. `supabase/migrations/20261009000000_body_exercise_videos_v6_22_0.sql`
 
 Dọn dẹp bảng cũ (tùy chọn):
 - `data/drop_incubator_tables.sql` (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).

@@ -47,6 +47,16 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   sách (tên danh mục thật), % đã dùng hiện số thật kể cả khi >100%.
 - Lời chào, ngày (kèm âm lịch và năm can chi) và lịch tập tự sang ngày mới khi tab mở qua đêm. Buổi tập dở
   chỉ tính trong ngày.
+- Khoản có số tiền biết trước (hóa đơn cố định, sao kê thẻ, kỳ vay) có nút **"Đã trả"** ngay trong khối gấp:
+  hỏi xác nhận rồi ghi hôm nay, không gắn thẻ nguồn; muốn đổi ngày/số tiền/thẻ thì mở màn Định kỳ.
+- **Nhiệm vụ hôm nay:** việc đã xong trong ngày vẫn hiện (gạch ngang, `x/y xong`) và bỏ tick được.
+- **Bức tranh nhịp sống** (`dashboardMetrics.js`, chỉ dữ liệu thật — thiếu thì hiện "—"/trạng thái trống):
+  biểu đồ chi cộng dồn tháng + nhịp đều theo hạn mức + dự kiến cuối tháng, 4 danh mục gần/vượt hạn mức;
+  lịch thanh toán tháng (hóa đơn tới kỳ, sao kê thẻ, kỳ vay, phí thường niên — đã trả/quá hạn/hôm nay/sắp tới
+  đọc từ giao dịch); 5 ô module: việc xong 14 ngày + % đúng hạn, chi TB/ngày so tháng trước, cân nặng tới mục
+  tiêu, số ghi chú + mới tuần này. Vault mã hóa nên chỉ hiện trạng thái, không đọc số mục khi chưa mở khóa.
+- Card Body: trạng thái buổi tập (đang dở có tiến độ set thật / xong / có lịch / nghỉ kèm buổi tới / chưa có
+  lộ trình), nhóm cơ Cần nghỉ/Đang hồi/Sẵn sàng theo set đã tập, thanh tuần T2→CN (đã tập/bỏ lỡ/sắp tới).
 
 ## 2. Nhiệm vụ (`/tasks`)
 
@@ -259,7 +269,7 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 
 ## 9. Body — Thể Hình & Sức Khỏe (`/body`)
 
-**Files:** `src/pages/BodyPage.jsx`, `src/components/body/*`, `src/hooks/useWorkouts.js`, `src/hooks/useBiometrics.js`, `src/hooks/useNutrition.js`, `src/utils/workoutLogic.js`, `src/utils/bodyMetrics.js`
+**Files:** `src/pages/BodyPage.jsx`, `src/components/body/*`, `src/hooks/useWorkouts.js`, `src/hooks/useBiometrics.js`, `src/hooks/useNutrition.js`, `src/hooks/useExerciseVideo.js`, `src/utils/workoutLogic.js`, `src/utils/bodyMetrics.js`
 
 Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuân thủ nguyên tắc tối giản và không ngụy tạo số liệu:
 
@@ -267,22 +277,26 @@ Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuâ
 - **Lộ trình theo thứ trong tuần (D1):** Gán bài tập cố định theo thứ trong tuần (T2..CN). Nếu bỏ buổi không tự dời ngày làm lệch tuần; cho phép tập bù buổi đã bỏ bất kỳ lúc nào.
 - **Tăng tiến tự động (Auto-progression - D2):** Khi hoàn thành tất cả các set $\ge$ mục tiêu, hệ thống tự động gợi ý tăng $+1\text{ rep}$ (hoặc $+5\text{s}$) và hiển thị checkbox cho người dùng duyệt áp dụng vào lộ trình gốc.
 - **Phòng tập trực tiếp (Live Session):**
-  - Chế độ tập Straight Sets, Circuit (20s/90s rest), Superset (15s/75s rest).
+  - Chế độ tập Straight Sets, Circuit (chuyển bài 20s, hết vòng 90s), Superset (2 bài trong cặp liên tục 0s, nghỉ 75s sau mỗi cặp); chọn trước khi bắt đầu, kèm thời lượng ước tính và thứ tự A1 → B1…
   - Khóa chọn chế độ khi buổi tập đã bắt đầu nhằm bảo toàn hàng đợi và tính toàn vẹn dữ liệu.
+  - Tải lại trang / mở lại buổi dở: tiếp tục đúng set còn trống, giữ chế độ và thời gian đã tập (lưu khi tạm dừng).
+  - Mỗi bài mới có màn hướng dẫn và "Lần trước" (buổi gần nhất của bài đó); chip trạng thái từng set; nút "Bỏ bài"; bài tính giây có vòng đếm và gợi ý tư thế.
+  - Video thị phạm: link tự gắn lưu trên Supabase (`body_exercise_videos`), đồng bộ giữa các máy; gỡ link tự gắn thì quay về video mặc định.
   - Đồng hồ đếm giờ delta timestamp chống lệch giờ khi khóa màn hình điện thoại hoặc chuyển tab.
   - Chuông beep dùng Web Audio API tổng hợp âm tần OscillatorNode báo hiệu khi kết thúc thời gian nghỉ mà không phụ thuộc tài nguyên mạng.
   - Cho phép bỏ qua set (`null`) không tính vào tăng tiến; upsert an toàn chống xung đột id.
-  - Tự động hủy (`abandoned`) các phiên tập dở dang trước khi tạo phiên mới, tuân thủ ràng buộc unique index PostgreSQL.
-- **Kỷ lục cá nhân (PR Detection):** Tự động phát hiện PR theo công thức 1RM Epley hoặc rep tối đa, hiển thị huy hiệu vinh danh. So sánh tiến độ loại trừ các set của chính buổi hiện tại.
+  - Bắt đầu buổi mới khi còn phiên dở → hỏi xác nhận rồi mới hủy (`abandoned`) phiên cũ, tuân thủ unique index PostgreSQL. Buổi tự do / tập lẻ không gắn vào lộ trình.
+- **Kỷ lục cá nhân (PR Detection):** Mốc riêng cho bodyweight (rep/giây tối đa) và có tạ (1RM Epley); lần đầu tập một bài chỉ là mốc, không tính PR; tối đa 1 PR mỗi bài mỗi buổi.
+- **Tỷ lệ bám lịch:** số buổi đã hoàn thành / số buổi theo lịch từ ngày bắt đầu lộ trình (tập bù vẫn tính; hôm nay chưa tập không bị trừ).
 
 ### Bản đồ cơ 3D (Three.js Canvas - D5)
 - Đóng gói Three.js từ npm package, render mô hình khối cầu giải phẫu 14 nhóm cơ xoay 360°, cuộn zoom, tooltip tên tiếng Việt.
 - Cơ chế giải phóng tài nguyên triệt để khi unmount (dispose geometries, materials, textures, force context loss) chống memory leak trên mobile và WebGL crash.
-- 3 chế độ tô màu: **Nhóm cơ** (chọn & phụ trợ), **Tải 7 ngày** (thang màu nhiệt tính từ khối lượng tập thật trong 7 ngày gần nhất), **Phục hồi** (3 trạng thái: Sẵn sàng, Đang hồi, Cần nghỉ suy từ thời gian nghỉ sau buổi tập gần nhất).
+- 3 chế độ tô màu: **Nhóm cơ** (chọn & phụ trợ), **Tải 7 ngày** (thang màu nhiệt tính từ khối lượng tập thật trong 7 ngày gần nhất), **Phục hồi** (3 trạng thái: Sẵn sàng, Đang hồi, Cần nghỉ suy từ thời gian nghỉ sau buổi tập gần nhất; chỉ hiện trạng thái + số giờ, không hiện % — D4).
 - Fallback 2D canvas mượt mà khi thiết bị không hỗ trợ WebGL.
 
 ### Sinh trắc học & Dinh dưỡng (Biometrics & Nutrition)
-- **Sinh trắc học:** Tính toán BMI chuẩn WHO châu Á kèm kim đồng hồ gauge chỉ thị vị trí thực, BMR (Mifflin-St Jeor), TDEE và Body Score (0-100) trên dữ liệu thực tế; 6 thẻ chỉ số đánh giá động (`fatEval`, `muscleEval`, `visceralEval`, `waterEval`); biểu đồ sparkline hỗ trợ lọc theo 7d/30d/90d; đánh dấu các lần cân đo lệch giờ (outlier).
+- **Sinh trắc học:** Tính toán BMI chuẩn WHO châu Á kèm kim đồng hồ gauge (dải cân theo chiều cao thật; chưa có chiều cao thì không có kim), BMR (Mifflin-St Jeor, cần chiều cao + giới tính + năm sinh trong Hồ sơ), TDEE và Body Score (0-100) trên dữ liệu thực tế; lưới 9 chỉ số ghi rõ Đã đo / Công thức / Chưa đo (không tự điền giá trị đoán); xu hướng lọc 7 ngày / 30 ngày / 3 tháng / năm, cần ≥ 2 lần đo; mục tiêu chỉ có cân nặng (`goal_weight_kg`); đo thước dây US Navy ra % mỡ và tỉ lệ eo/cao; đánh dấu các lần cân đo lệch giờ (outlier).
 - **Dinh dưỡng tối giản:** Ghi nhận 4 bữa ăn với calo & macro (đạm, carb, béo) tự động cân đối theo TDEE, chọn nhanh từ danh sách món mẫu đã lưu, theo dõi mục tiêu 8 ly nước (2.000ml) theo múi giờ địa phương GMT+7 (`toDateStr`).
 - **Check-in tuần:** Đánh giá thể trạng 4 tiêu chí (1-5 sao, khởi tạo 0 để tránh gửi điểm giả), cân nặng trung bình tuần và số đo vòng eo; tính số tuần theo chuẩn ISO-8601.
 
