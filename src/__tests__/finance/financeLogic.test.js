@@ -42,6 +42,8 @@ import {
   nextAnnualFee,
   cardBalance,
   cardStatementSummary,
+  cardCarryOver,
+  loanCycle,
   floatInterest,
   loanSchedule,
   lendingInterest,
@@ -1125,6 +1127,62 @@ assert.equal(canDepositTopUp({ name: 'MoMo · Túi Thần Tài', term: null }), 
 assert.equal(canDepositTopUp({ name: 'Finhay Tích lũy', term: 0 }), true);
 assert.equal(canDepositTopUp({ name: 'Tiết kiệm không kỳ hạn', term: '' }), true);
 console.log('guessDepositType and canDepositTopUp check: OK');
+
+/* ── Kỳ cũ chưa trả không được biến mất khi sang tháng/kỳ mới ─────────── */
+// billCycle hằng tháng: kỳ tháng trước chưa trả vẫn là kỳ đang tính (quá hạn)
+const carryBill = { id: 'bm', due_day: 28, created_at: '2026-08-01T03:00:00Z' };
+const missedCarryBill = billCycle(carryBill, '2026-10-02', billSettled(carryBill, []));
+assert.equal(missedCarryBill.period, '2026-09', 'kỳ 9 chưa trả phải được giữ lại sang tháng 10');
+assert.equal(missedCarryBill.days, -4, 'và báo quá hạn 4 ngày');
+const paidCarryBill = billSettled(carryBill, [{ bill_id: 'bm', bill_period: '2026-09' }]);
+assert.equal(billCycle(carryBill, '2026-10-02', paidCarryBill).period, '2026-10', 'trả kỳ 9 rồi thì sang kỳ 10');
+const skippedCarryBill = { ...carryBill, skipped_periods: ['2026-09'] };
+assert.equal(billCycle(skippedCarryBill, '2026-10-02', billSettled(skippedCarryBill, [])).period, '2026-10',
+  'bỏ kỳ 9 thì cũng sang kỳ 10');
+assert.equal(billCycle({ ...carryBill, created_at: '2026-09-29T03:00:00Z' }, '2026-10-02', () => false).period, '2026-10',
+  'hóa đơn tạo sau hạn 28/9 không có kỳ 9 để nợ');
+assert.equal(billCycle({ id: 'x', due_day: 28 }, '2026-10-02', () => false).period, '2026-10',
+  'không biết ngày bắt đầu thì không lùi kỳ');
+console.log('billCycle monthly carry-over check: OK');
+
+// loanCycle: kỳ vay
+const loanBase = { id: 'ln', kind: 'amort', principal: 12000000, rate: 0, term: 12, done: 3, pay_day: 28, opened_at: '2026-06-01' };
+const loanTx = (period) => ({ loan_id: 'ln', loan_period: period, loan_part: 'principal' });
+const missedLoan = loanCycle(loanBase, '2026-10-02', []);
+assert.deepEqual([missedLoan.period, missedLoan.days, missedLoan.done], ['2026-09', -4, false],
+  'kỳ 9 chưa ghi vẫn quá hạn khi đã sang tháng 10');
+const lateLabelled = loanCycle(loanBase, '2026-10-02', [loanTx('2026-10')]);
+assert.deepEqual([lateLabelled.period, lateLabelled.done], ['2026-10', true],
+  'kỳ 9 trả muộn mang nhãn 10 (dữ liệu cũ) không bị báo oan');
+const bothDue = loanCycle({ ...loanBase, pay_day: 5 }, '2026-10-10', []);
+assert.deepEqual([bothDue.period, bothDue.days], ['2026-09', -35], 'nợ hai kỳ thì báo kỳ cũ nhất trước');
+const afterOld = loanCycle({ ...loanBase, pay_day: 5 }, '2026-10-10', [loanTx('2026-09')]);
+assert.deepEqual([afterOld.period, afterOld.days, afterOld.done], ['2026-10', -5, false], 'trả kỳ 9 xong thì tới kỳ 10');
+const freshLoan = loanCycle({ ...loanBase, pay_day: 5, done: 0, opened_at: '2026-10-20' }, '2026-10-20', []);
+assert.deepEqual([freshLoan.period, freshLoan.days, freshLoan.done], ['2026-11', 16, false],
+  'vay mở 20/10, trả ngày 5 → kỳ đầu là 5/11, không quá hạn');
+assert.equal(loanCycle({ ...loanBase, done: 12 }, '2026-10-02', []), null, 'đủ 12/12 kỳ thì không còn kỳ nào');
+const noOpen = loanCycle({ ...loanBase, opened_at: undefined }, '2026-10-02', []);
+assert.equal(noOpen.period, '2026-10', 'không có ngày mở thì không lùi về tháng trước');
+const interestLoan = { ...loanBase, kind: 'interest' };
+assert.equal(loanCycle(interestLoan, '2026-10-02', [{ loan_id: 'ln', loan_period: '2026-09', loan_part: 'interest' }]).period,
+  '2026-10', 'vay trả lãi đếm theo phần lãi');
+console.log('loanCycle check: OK');
+
+// cardCarryOver: nợ sao kê kỳ trước còn treo sau khi kỳ mới chốt
+const carryCard = { id: 'cc', statement_day: 20, due_day: 5 };
+const swipe = { source_card_id: 'cc', type: 'expense', amount: 4000000, occurred_at: '2026-09-15' };
+const carry = cardCarryOver(carryCard, [swipe], '2026-10-22');
+assert.deepEqual(carry, { amount: 4000000, period: '2026-09', due: '2026-10-05', days: -17 },
+  'sao kê 20/9 hạn 5/10 chưa trả vẫn còn sau khi kỳ 20/10 chốt');
+const payLatestLabel = { card_id: 'cc', type: 'expense', excluded: true, amount: 4000000, occurred_at: '2026-10-21', card_period: '2026-10' };
+assert.equal(cardCarryOver(carryCard, [swipe, payLatestLabel], '2026-10-22'), null,
+  'khoản trả mang nhãn kỳ mới vẫn trừ vào nợ cũ trước (không báo oan)');
+const partialPay = { ...payLatestLabel, amount: 1500000 };
+assert.equal(cardCarryOver(carryCard, [swipe, partialPay], '2026-10-22').amount, 2500000, 'trả một phần thì còn phần thiếu');
+assert.equal(cardCarryOver(carryCard, [{ ...swipe, occurred_at: '2026-10-01' }], '2026-10-22'), null,
+  'khoản quẹt thuộc kỳ vừa chốt không phải nợ cũ');
+console.log('cardCarryOver check: OK');
 
 console.log('\n✅ financeLogic — tất cả self-check PASS (100% functions & rules covered)');
 

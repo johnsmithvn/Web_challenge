@@ -4,12 +4,27 @@
    ========================================================================== */
 
 .dash-workspace {
+  /* Màu ngữ nghĩa của trang chủ — đều suy từ token global.css, nên dark/light tự đổi
+     theo `[data-theme]`. Tint dùng color-mix trên token thay vì rgba trắng viết cứng
+     (rgba trắng biến mất trên nền sáng). */
+  --dash-line: var(--bg-glass-border);
+  --dash-surface: var(--bg-card);
+  --dash-soft: color-mix(in srgb, var(--text-primary) 3%, transparent);
+  --dash-soft-hover: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  --dash-track: color-mix(in srgb, var(--text-primary) 9%, transparent);
+  --dash-danger: var(--red);
+  --dash-warn: var(--gold-dim);
+  --dash-ok: var(--green-dim);
+  --dash-accent: var(--purple);
+  --dash-accent-fg: var(--text-accent);
+  --dash-on-solid: #ffffff; /* chữ trên nền màu đặc — giống `on-gradient` trong DESIGN.md */
+
   display: flex;
   flex-direction: column;
   height: 100dvh;
   overflow: hidden;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   box-sizing: border-box;
 }
 
@@ -20,8 +35,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
+  background: var(--dash-surface);
+  border-bottom: 1px solid var(--dash-line);
   gap: 16px;
   z-index: 10;
 }
@@ -39,7 +54,7 @@
   gap: 8px;
   font-size: 20px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
@@ -49,6 +64,7 @@
 .dash-header__date-meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   font-size: 13px;
   color: var(--text-muted);
@@ -58,9 +74,9 @@
   display: inline-flex;
   align-items: center;
   padding: 2px 7px;
-  border-radius: 9999px;
-  background: rgba(139, 92, 246, 0.12);
-  color: #8b5cf6;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--dash-accent) 12%, transparent);
+  color: var(--dash-accent-fg);
   font-size: 11.5px;
   font-weight: 600;
 }
@@ -78,29 +94,60 @@
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
-  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .dash-status--ok {
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: color-mix(in srgb, var(--dash-ok) 12%, transparent);
+  color: var(--dash-ok);
+  border-color: color-mix(in srgb, var(--dash-ok) 25%, transparent);
 }
 
 .dash-status--urgent {
-  background: rgba(239, 68, 68, 0.14);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  animation: dashPulse 2s infinite ease-in-out;
+  background: color-mix(in srgb, var(--dash-danger) 14%, transparent);
+  color: var(--dash-danger);
+  border-color: color-mix(in srgb, var(--dash-danger) 30%, transparent);
+}
+
+.dash-status--warn {
+  background: color-mix(in srgb, var(--dash-warn) 14%, transparent);
+  color: var(--dash-warn);
+  border-color: color-mix(in srgb, var(--dash-warn) 30%, transparent);
+}
+
+.dash-status--muted {
+  background: var(--dash-soft);
+  color: var(--text-secondary);
+  border-color: var(--dash-line);
+}
+
+/* Chấm đỏ có vòng lan — chỉ để thu hút mắt, tắt hẳn khi người dùng giảm chuyển động. */
+.dash-status__pulse {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--dash-danger);
+}
+
+.dash-status__pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--dash-danger);
+  animation: dashPulse 1.6s ease-out infinite;
 }
 
 @keyframes dashPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.82; }
+  0% { transform: scale(1); opacity: 0.65; }
+  100% { transform: scale(2.8); opacity: 0; }
 }
 
 /* ── VÙNG CUỘN NỘI BỘ (Workspace Scroll Container) ───────────────────── */
@@ -116,13 +163,52 @@
   box-sizing: border-box;
 }
 
+/* ── THÔNG BÁO TẢI / LỖI DỮ LIỆU ─────────────────────────────────────── */
+.dash-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--dash-line);
+  background: var(--dash-soft);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.dash-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--dash-warn) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dash-warn) 32%, transparent);
+  color: var(--dash-warn);
+}
+
+.dash-notice__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.dash-notice__text strong {
+  font-size: 13.5px;
+  color: var(--text-primary);
+}
+
 /* ── TẦNG 1: KHỐI CẢNH BÁO KHẨN CẤP (Critical Action Section) ────────── */
 .dash-critical-box {
-  background: var(--card-bg);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  border-radius: 16px;
+  background: var(--dash-surface);
+  border: 1px solid color-mix(in srgb, var(--dash-danger) 35%, transparent);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.08);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--dash-danger) 8%, transparent);
 }
 
 .dash-critical-box__head {
@@ -130,8 +216,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  background: rgba(239, 68, 68, 0.08);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.18);
+  background: color-mix(in srgb, var(--dash-danger) 8%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--dash-danger) 18%, transparent);
   gap: 12px;
 }
 
@@ -141,14 +227,14 @@
   gap: 9px;
   font-size: 15px;
   font-weight: 700;
-  color: #ef4444;
+  color: var(--dash-danger);
 }
 
 .dash-critical-box__count {
   padding: 3px 9px;
-  border-radius: 9999px;
-  background: #ef4444;
-  color: #fff;
+  border-radius: var(--radius-full);
+  background: var(--dash-danger);
+  color: var(--dash-on-solid);
   font-size: 12px;
   font-weight: 700;
 }
@@ -164,16 +250,12 @@
   align-items: center;
   gap: 14px;
   padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.15s ease;
+  border-bottom: 1px solid var(--dash-line);
+  transition: background var(--transition-fast);
 }
 
 .dash-alert-row:last-child {
   border-bottom: none;
-}
-
-.dash-alert-row:hover {
-  background: rgba(255, 255, 255, 0.02);
 }
 
 .dash-alert-row--clickable {
@@ -181,11 +263,18 @@
 }
 
 .dash-alert-row--clickable:hover {
-  background: rgba(139, 92, 246, 0.06);
+  background: color-mix(in srgb, var(--dash-accent) 6%, transparent);
 }
 
 .dash-alert-row--clickable:hover .dash-alert-row__title {
-  color: #8b5cf6;
+  color: var(--dash-accent-fg);
+}
+
+.dash-alert-row:focus-visible,
+.dash-task-item:focus-visible,
+.dash-headsup-item:focus-visible {
+  outline: 2px solid var(--dash-accent);
+  outline-offset: -2px;
 }
 
 /* Header phân nhóm trong Tier 1 */
@@ -193,20 +282,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid var(--border);
+  background: var(--dash-soft);
+  border-bottom: 1px solid var(--dash-line);
   font-size: 11.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
-}
-
-.dash-alert-subhead__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 /* Nút Thu gọn / Mở rộng */
@@ -216,19 +300,25 @@
   justify-content: center;
   gap: 7px;
   padding: 11px 20px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--dash-soft);
   border: none;
-  border-bottom: 1px solid var(--border);
-  color: #8b5cf6;
+  border-bottom: 1px solid var(--dash-line);
+  color: var(--dash-accent-fg);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   width: 100%;
-  transition: all 0.15s ease;
+  transition: background var(--transition-fast);
 }
 
 .dash-expand-btn:hover {
-  background: rgba(139, 92, 246, 0.08);
+  background: color-mix(in srgb, var(--dash-accent) 8%, transparent);
+}
+
+.dash-expand-btn--inline {
+  padding: 8px 10px;
+  border: 1px solid var(--dash-line);
+  border-radius: var(--radius-sm);
 }
 
 .dash-alert-row__icon-wrap {
@@ -242,13 +332,13 @@
 }
 
 .dash-alert-row--critical .dash-alert-row__icon-wrap {
-  background: rgba(239, 68, 68, 0.14);
-  color: #ef4444;
+  background: color-mix(in srgb, var(--dash-danger) 14%, transparent);
+  color: var(--dash-danger);
 }
 
 .dash-alert-row--today .dash-alert-row__icon-wrap {
-  background: rgba(245, 158, 11, 0.14);
-  color: #f59e0b;
+  background: color-mix(in srgb, var(--dash-warn) 14%, transparent);
+  color: var(--dash-warn);
 }
 
 .dash-alert-row__main {
@@ -261,7 +351,7 @@
 .dash-alert-row__title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -287,24 +377,24 @@
   font-size: 11px;
   font-weight: 700;
   padding: 2px 7px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   white-space: nowrap;
 }
 
 .dash-alert-row--critical .dash-alert-row__badge {
-  background: rgba(239, 68, 68, 0.18);
-  color: #ef4444;
+  background: color-mix(in srgb, var(--dash-danger) 18%, transparent);
+  color: var(--dash-danger);
 }
 
 .dash-alert-row--today .dash-alert-row__badge {
-  background: rgba(245, 158, 11, 0.18);
-  color: #f59e0b;
+  background: color-mix(in srgb, var(--dash-warn) 18%, transparent);
+  color: var(--dash-warn);
 }
 
 .dash-alert-row__amount {
   font-size: 13.5px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -324,50 +414,77 @@
   gap: 6px;
   height: 32px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: all 0.15s ease;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
   white-space: nowrap;
 }
 
+.dash-btn:focus-visible {
+  outline: 2px solid var(--dash-accent);
+  outline-offset: 2px;
+}
+
+.dash-btn--sm {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.dash-btn--block {
+  width: 100%;
+  margin-top: 4px;
+}
+
 .dash-btn--primary {
-  background: #6366f1;
-  color: #fff;
+  background: var(--dash-accent);
+  color: var(--dash-on-solid);
 }
 .dash-btn--primary:hover {
-  background: #4f46e5;
+  background: var(--purple-dark);
 }
 
 .dash-btn--danger {
-  background: rgba(239, 68, 68, 0.14);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
+  background: color-mix(in srgb, var(--dash-danger) 14%, transparent);
+  color: var(--dash-danger);
+  border-color: color-mix(in srgb, var(--dash-danger) 30%, transparent);
 }
 .dash-btn--danger:hover {
-  background: #ef4444;
-  color: #fff;
+  background: var(--dash-danger);
+  color: var(--dash-on-solid);
+}
+
+.dash-btn--warn {
+  background: var(--dash-warn);
+  color: var(--dash-on-solid);
+  font-weight: 700;
+}
+.dash-btn--warn:hover {
+  background: color-mix(in srgb, var(--dash-warn) 85%, var(--text-primary));
 }
 
 .dash-btn--secondary {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text);
-  border-color: var(--border);
+  background: var(--dash-soft);
+  color: var(--text-primary);
+  border-color: var(--dash-line);
 }
 .dash-btn--secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--dash-soft-hover);
 }
 
 .dash-btn--success {
-  background: rgba(16, 185, 129, 0.14);
-  color: #10b981;
-  border-color: rgba(16, 185, 129, 0.3);
+  background: color-mix(in srgb, var(--dash-ok) 14%, transparent);
+  color: var(--dash-ok);
+  border-color: color-mix(in srgb, var(--dash-ok) 30%, transparent);
 }
 .dash-btn--success:hover {
-  background: #10b981;
-  color: #fff;
+  background: var(--dash-ok);
+  color: var(--dash-on-solid);
 }
 
 /* Khung All-clear (Mọi thứ đều ổn) */
@@ -376,17 +493,17 @@
   align-items: center;
   gap: 16px;
   padding: 16px 20px;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.22);
+  background: color-mix(in srgb, var(--dash-ok) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dash-ok) 22%, transparent);
   border-radius: 14px;
 }
 
 .dash-all-clear__icon {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
-  background: rgba(16, 185, 129, 0.16);
-  color: #10b981;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--dash-ok) 16%, transparent);
+  color: var(--dash-ok);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -396,7 +513,7 @@
 .dash-all-clear__title {
   font-size: 14.5px;
   font-weight: 700;
-  color: #10b981;
+  color: var(--dash-ok);
   margin-bottom: 2px;
 }
 
@@ -413,13 +530,13 @@
 }
 
 .dash-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-line);
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-sm);
 }
 
 .dash-card__head {
@@ -427,7 +544,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--dash-line);
   gap: 10px;
 }
 
@@ -437,12 +554,12 @@
   gap: 8px;
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .dash-card__link {
   font-size: 12px;
-  color: #8b5cf6;
+  color: var(--dash-accent-fg);
   text-decoration: none;
   font-weight: 600;
   display: inline-flex;
@@ -467,41 +584,43 @@
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border);
-  transition: all 0.15s ease;
+  border-radius: var(--radius-sm);
+  background: var(--dash-soft);
+  border: 1px solid var(--dash-line);
+  cursor: pointer;
+  transition: background var(--transition-fast);
 }
 
 .dash-task-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--dash-soft-hover);
 }
 
 .dash-task-check {
   width: 18px;
   height: 18px;
   border-radius: 6px;
-  border: 1.5px solid var(--border-hover);
+  border: 1.5px solid var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   background: transparent;
   color: transparent;
-  transition: all 0.15s ease;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
   flex-shrink: 0;
   padding: 0;
 }
 
-.dash-task-check:hover {
-  border-color: #10b981;
-  color: #10b981;
+.dash-task-check:hover,
+.dash-task-check:focus-visible {
+  border-color: var(--dash-ok);
+  color: var(--dash-ok);
 }
 
 .dash-task-item__title {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text);
+  color: var(--text-primary);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -515,33 +634,85 @@
   flex-shrink: 0;
 }
 
-/* Card Body / Workout */
+.dash-quick-add {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.dash-quick-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--dash-line);
+  background: var(--dash-soft);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  box-sizing: border-box;
+}
+
+.dash-quick-input::placeholder {
+  color: var(--text-muted);
+}
+
+.dash-quick-input:focus {
+  outline: none;
+  border-color: var(--dash-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dash-accent) 15%, transparent);
+}
+
+/* Card Body / Workout — mặc định "có lịch" (accent), --live đang tập dở, --done đã xong */
 .dash-workout-banner {
+  --banner-tone: var(--dash-accent);
   padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--banner-tone) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--banner-tone) 25%, transparent);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
+.dash-workout-banner--live {
+  --banner-tone: var(--dash-warn);
+}
+
+.dash-workout-banner--done {
+  --banner-tone: var(--dash-ok);
+}
+
 .dash-workout-banner__name {
   font-size: 14px;
   font-weight: 700;
-  color: #3b82f6;
+  color: var(--banner-tone);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+}
+
+.dash-workout-banner__live-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.dash-workout-banner__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--banner-tone);
+  flex: none;
 }
 
 .dash-workout-banner__badge {
   font-size: 11px;
   font-weight: 600;
   padding: 2px 7px;
-  border-radius: 9999px;
-  background: rgba(59, 130, 246, 0.18);
-  color: #3b82f6;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--banner-tone) 18%, transparent);
+  color: var(--banner-tone);
+  white-space: nowrap;
 }
 
 .dash-workout-exercises {
@@ -557,9 +728,15 @@
   justify-content: space-between;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--dash-line);
+  background: var(--dash-soft);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.dash-headsup-item:hover {
+  background: var(--dash-soft-hover);
 }
 
 .dash-headsup-item__left {
@@ -567,26 +744,57 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+  color: var(--text-secondary);
+}
+
+.dash-headsup-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .dash-headsup-item__title {
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.dash-headsup-item__sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-headsup-item__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
 .dash-headsup-item__badge {
   font-size: 11px;
   font-weight: 700;
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.12);
+  color: var(--dash-warn);
+  background: color-mix(in srgb, var(--dash-warn) 12%, transparent);
   padding: 2px 6px;
   border-radius: 6px;
   white-space: nowrap;
-  flex-shrink: 0;
+}
+
+.dash-headsup-item__amount {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* Empty state thẻ */
@@ -602,6 +810,10 @@
   gap: 6px;
 }
 
+.dash-card-empty__hint {
+  font-size: 11.5px;
+}
+
 /* ── TẦNG 3: BỨC TRANH TOÀN CẢNH (Life Metrics & Jump Hub) ───────────── */
 .dash-bottom-grid {
   display: grid;
@@ -611,9 +823,9 @@
 
 /* Widget Ngân sách tháng */
 .dash-budget-widget {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-line);
+  border-radius: var(--radius-lg);
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
@@ -624,12 +836,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .dash-budget-widget__title {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -644,7 +858,7 @@
 .dash-budget-widget__spent {
   font-size: 18px;
   font-weight: 800;
-  color: var(--text);
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -655,21 +869,60 @@
 
 .dash-budget-bar {
   height: 9px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  background: var(--dash-track);
   overflow: hidden;
   position: relative;
 }
 
 .dash-budget-bar__fill {
   height: 100%;
-  border-radius: 9999px;
-  background: linear-gradient(90deg, #10b981, #6366f1);
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--dash-ok), var(--dash-accent));
   transition: width 0.4s ease;
 }
 
 .dash-budget-bar__fill--warn {
-  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  background: linear-gradient(90deg, var(--dash-warn), var(--dash-danger));
+}
+
+.dash-overbudget {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dash-overbudget li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.dash-overbudget li > :first-child {
+  color: var(--dash-danger);
+  flex: none;
+}
+
+.dash-overbudget li span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-overbudget li strong {
+  color: var(--dash-danger);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-text-danger {
+  color: var(--dash-danger);
 }
 
 .dash-budget-widget__foot {
@@ -688,8 +941,9 @@
 }
 
 .dash-module-btn {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
+  --module-tone: var(--text-secondary);
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-line);
   border-radius: 14px;
   padding: 14px 10px;
   display: flex;
@@ -698,14 +952,22 @@
   justify-content: center;
   gap: 8px;
   text-decoration: none;
-  color: var(--text);
-  transition: all 0.15s ease;
+  color: var(--text-primary);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.dash-module-btn:hover {
+.dash-module-btn--tasks { --module-tone: var(--cyan); }
+.dash-module-btn--finance { --module-tone: var(--dash-ok); }
+.dash-module-btn--body { --module-tone: var(--dash-warn); }
+.dash-module-btn--knowledge { --module-tone: var(--purple-light); }
+.dash-module-btn--vault { --module-tone: var(--text-secondary); }
+
+.dash-module-btn:hover,
+.dash-module-btn:focus-visible {
   transform: translateY(-2px);
-  border-color: #8b5cf6;
-  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.12);
+  border-color: var(--dash-accent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--dash-accent) 12%, transparent);
+  outline: none;
 }
 
 .dash-module-btn__icon {
@@ -715,7 +977,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--module-tone);
+  background: color-mix(in srgb, var(--module-tone) 12%, transparent);
 }
 
 .dash-module-btn__name {
@@ -777,5 +1040,23 @@
     grid-column: 1 / -1;
     width: 100%;
     justify-content: flex-end;
+  }
+  .dash-notice {
+    flex-wrap: wrap;
+  }
+}
+
+/* Giảm chuyển động: tắt vòng lan của chấm báo động và hiệu ứng nhấc thẻ (RULES §5). */
+@media (prefers-reduced-motion: reduce) {
+  .dash-status__pulse::after {
+    animation: none;
+    opacity: 0;
+  }
+  .dash-module-btn:hover,
+  .dash-module-btn:focus-visible {
+    transform: none;
+  }
+  .dash-budget-bar__fill {
+    transition: none;
   }
 }

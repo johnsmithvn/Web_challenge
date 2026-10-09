@@ -3,7 +3,8 @@ import AppIcon from '../AppIcon';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import ROUTINE_TEMPLATES from '../../data/body-routine-templates.json';
 import MUSCLE_MAP from '../../data/body-muscles.json';
-import { DAY_TYPE_COLORS, stepOfUnit } from '../../utils/workoutLogic';
+import { DAY_TYPE_COLORS, stepOfUnit, getRoutineWeek, calculateAdherence } from '../../utils/workoutLogic';
+import { ConfirmModal } from '../ConfirmModal';
 
 const BASE_WEEKDAY_DEFS = [
   { day: 1, label: 'T2', short: 'Thứ Hai', defaultName: 'Thân trên', defaultType: 'Đẩy' },
@@ -238,22 +239,31 @@ export default function RoutineScreen({
 
   // Thống kê thẻ ĐANG THEO
   const routineWeeksTotal = routine?.weeks || 8;
-  const currentWeekNumber = useMemo(() => {
-    if (!routine?.start_date) return 3;
-    const start = new Date(routine.start_date);
-    const now = new Date();
-    const diffDays = Math.max(0, Math.floor((now - start) / (1000 * 60 * 60 * 24)));
-    const week = Math.floor(diffDays / 7) + 1;
-    return Math.min(routineWeeksTotal, Math.max(1, week));
-  }, [routine, routineWeeksTotal]);
+  const currentWeekNumber = useMemo(
+    () => getRoutineWeek(routine?.start_date, routineWeeksTotal)?.current ?? 1,
+    [routine, routineWeeksTotal]
+  );
 
   const completedSessionsCount = useMemo(() => {
     return sessions.filter(s => s.status === 'completed' && (!routine?.id || s.routine_id === routine.id)).length;
   }, [sessions, routine]);
 
+  // Số lần đạt kỷ lục mới (đếm theo buổi + bài, không đếm từng set)
   const prTotalCount = useMemo(() => {
-    return recentSets.filter(s => s.is_pr).length || 3;
+    return new Set(recentSets.filter(s => s.is_pr).map(s => `${s.session_id}:${s.exercise_key}`)).size;
   }, [recentSets]);
+
+  // Tỷ lệ hoàn thành lịch của lộ trình đang theo (buổi tập bù vẫn được tính)
+  const adherence = useMemo(() => {
+    if (!routine?.id) return { pct: null };
+    return calculateAdherence({
+      startDate: routine.start_date,
+      plannedWeekdays: [...new Set(localItems.map(it => it.weekday))],
+      completedDates: sessions.filter(s => s.status === 'completed' && s.routine_id === routine.id).map(s => s.local_date)
+    });
+  }, [routine, localItems, sessions]);
+  const adherenceText = adherence.pct == null ? '—' : `${adherence.pct}%`;
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // Hành động với bài tập (Hỗ trợ cả chế độ xem trước và chế độ đang theo)
   const handleStepChange = (item, delta) => {
@@ -738,7 +748,7 @@ export default function RoutineScreen({
               </div>
               <div className="body-routine-stat-item">
                 <span className="body-routine-stat-label">Đúng lịch</span>
-                <span className="body-routine-stat-val">100%</span>
+                <span className="body-routine-stat-val">{adherenceText}</span>
               </div>
               <div className="body-routine-stat-item">
                 <span className="body-routine-stat-label">Kỷ lục</span>
@@ -1220,7 +1230,7 @@ export default function RoutineScreen({
                         padding: '0 11px',
                         color: 'var(--body-text-muted)'
                       }}>
-                        <AppIcon name="magnifyingGlass" size={14} />
+                        <AppIcon name="search" size={14} />
                         <input
                           type="text"
                           placeholder="Tìm trong thư viện bài tập..."
@@ -1622,7 +1632,7 @@ export default function RoutineScreen({
 
           {/* Dòng tóm tắt chuẩn mobile */}
           <div style={{ fontSize: '12px', color: '#A9A7B4', lineHeight: 1.4 }}>
-            {weekdaysData.filter(w => w.isTrain).length} buổi/tuần · {completedSessionsCount} buổi đã tập · đúng lịch 100%
+            {weekdaysData.filter(w => w.isTrain).length} buổi/tuần · {completedSessionsCount} buổi đã tập · đúng lịch {adherenceText}
           </div>
         </div>
 
@@ -2595,6 +2605,20 @@ export default function RoutineScreen({
         </div>
       )}
 
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title="Xóa lộ trình?"
+        message={`Lộ trình "${routine?.name || ''}" và các bài trong lịch sẽ bị xóa. Lịch sử buổi tập vẫn được giữ.`}
+        confirmLabel="Xóa lộ trình"
+        danger
+        onConfirm={() => {
+          setConfirmDeleteOpen(false);
+          setShowEditModal(false);
+          onDeleteRoutine?.(routine.id);
+        }}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
       {/* ── MODAL CHỈNH SỬA LỘ TRÌNH HIỆN TẠI ─────────────────────── */}
       {showEditModal && (
         <div className="body-modal-backdrop" onClick={() => setShowEditModal(false)}>
@@ -2701,12 +2725,7 @@ export default function RoutineScreen({
                 {routines.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => {
-                      if (window.confirm(`Bạn có chắc muốn xoá lộ trình "${routine.name}"?`)) {
-                        onDeleteRoutine?.(routine.id);
-                        setShowEditModal(false);
-                      }
-                    }}
+                    onClick={() => setConfirmDeleteOpen(true)}
                     style={{
                       height: '40px',
                       padding: '0 14px',

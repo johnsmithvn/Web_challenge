@@ -120,6 +120,9 @@ useCollections / useCollectionNotes / useTags
 - Wiki-links cú pháp `[[Tên trang]]` được phân tích tự động bằng `parseWikiLinks` và `slugifyVi` để dựng mạng lưới liên kết 2 chiều và Backlinks client-side mà không cần cột dữ liệu phụ trợ trên server.
 - Inbox có hai handoff sang Finance qua `sessionStorage`: giao dịch (`kind=tx`) và hóa đơn/quy tắc
 (`kind=out`). Handoff chỉ là dữ liệu tạm của thao tác điều hướng, không phải nguồn dữ liệu bền.
+- Trang chủ (`HomeDashboard`) mở thẳng tab con của màn Định kỳ bằng navigation state
+  `navigate('/finance/recurring', { state: { recurringSeg } })`; `FinancePage` chỉ nhận segment nằm trong
+  `RECURRING_SEGS`, lạ thì về `out`.
 
 ### Finance
 

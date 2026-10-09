@@ -59,7 +59,10 @@ export default function FinancePage() {
     ? 'overview'
     : SCREENS.some(s => s.key === routeScreen) ? routeScreen : 'overview';
   const setScreen = useCallback((target) => navigate(`/finance/${target}`), [navigate]);
-  const [recurringSeg, setRecurringSeg] = useState('out');
+  // Trang chủ mở thẳng tab con qua navigation state (cảnh báo thẻ → tab Thẻ...).
+  // Kiểm như handoff: segment lạ làm RecurringScreen crash trắng màn.
+  const [recurringSeg, setRecurringSeg] = useState(() =>
+    (RECURRING_SEGS.includes(location.state?.recurringSeg) ? location.state.recurringSeg : 'out'));
   const [analyzeParams, setAnalyzeParams] = useState({ group: null });
   const [catsTab, setCatsTab] = useState('cats');
   const [handoff, setHandoff] = useState(null);   // prefill từ Inbox

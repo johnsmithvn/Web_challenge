@@ -2,7 +2,7 @@ import { useState, useMemo, lazy, Suspense } from 'react';
 import AppIcon from '../AppIcon';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import { useWorkouts } from '../../hooks/useWorkouts';
-import { estimateRecoveryState, calculateRecoveryMetrics, RECOVERY_STATUS } from '../../utils/workoutLogic';
+import { calculateRecoveryMetrics, RECOVERY_STATUS } from '../../utils/workoutLogic';
 
 const MuscleBodyCanvas = lazy(() => import('./MuscleBodyCanvas'));
 
@@ -291,7 +291,8 @@ export default function MuscleMapScreen({ onSelectExercise }) {
       days: st.days,
       pr: st.bestPR,
       recovery: recMetrics.state,
-      recPct: recMetrics.pct,
+      recStep: { [RECOVERY_STATUS.LOW]: 1, [RECOVERY_STATUS.MID]: 2, [RECOVERY_STATUS.READY]: 3 }[recMetrics.state] || 3,
+      recHours: recMetrics.hoursSince,
       recLabel: recMetrics.label,
       recBg: recMetrics.bg,
       recFg: recMetrics.fg,
@@ -459,22 +460,24 @@ export default function MuscleMapScreen({ onSelectExercise }) {
             {/* Vòng tròn phục hồi SVG */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px', background: 'var(--body-shell-bg)', borderRadius: '12px', marginTop: '4px' }}>
               <div style={{ position: 'relative', width: '64px', height: '64px', flexShrink: 0 }}>
+                {/* D4: 3 nấc trạng thái rời rạc (Cần nghỉ / Đang hồi / Sẵn sàng), không hiển thị % */}
                 <svg width="64" height="64" viewBox="0 0 76 76" style={{ display: 'block' }}>
-                  <circle cx="38" cy="38" r="31" fill="none" stroke="var(--body-card-border)" strokeWidth="7" />
-                  <circle
-                    cx="38"
-                    cy="38"
-                    r="31"
-                    fill="none"
-                    stroke={selectedMuscle.recFg}
-                    strokeWidth="7"
-                    strokeLinecap="round"
-                    strokeDasharray={`${(selectedMuscle.recPct / 100) * 194.7} 194.7`}
-                    transform="rotate(-90 38 38)"
-                  />
+                  {[0, 1, 2].map(i => (
+                    <circle
+                      key={i}
+                      cx="38"
+                      cy="38"
+                      r="31"
+                      fill="none"
+                      stroke={i < selectedMuscle.recStep ? selectedMuscle.recFg : 'var(--body-card-border)'}
+                      strokeWidth="7"
+                      strokeDasharray="56.9 194.7"
+                      transform={`rotate(${-90 + i * 120 + 6} 38 38)`}
+                    />
+                  ))}
                 </svg>
-                <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: '14px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-text-main)' }}>
-                  {selectedMuscle.recPct}%
+                <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-text-main)' }}>
+                  {selectedMuscle.recHours != null ? `${selectedMuscle.recHours}h` : '—'}
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
@@ -717,7 +720,7 @@ export default function MuscleMapScreen({ onSelectExercise }) {
                 color: selectedMuscle.recFg,
                 whiteSpace: 'nowrap'
               }}>
-                {selectedMuscle.recLabel} · {selectedMuscle.recPct}%
+                {selectedMuscle.recLabel}{selectedMuscle.recHours != null ? ` · ${selectedMuscle.recHours}h` : ''}
               </span>
             </div>
 
@@ -754,7 +757,7 @@ export default function MuscleMapScreen({ onSelectExercise }) {
                   fontWeight: 700,
                   color: selectedMuscle.recFg
                 }}>
-                  {selectedMuscle.recLabel} · {selectedMuscle.recPct}%
+                  {selectedMuscle.recLabel}{selectedMuscle.recHours != null ? ` · ${selectedMuscle.recHours}h` : ''}
                 </span>
 
                 {/* NÚT ĐÓNG / THU GỌN SHEET ĐỂ BẤM CHÂN */}

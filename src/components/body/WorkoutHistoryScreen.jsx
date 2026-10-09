@@ -646,7 +646,9 @@ export default function WorkoutHistoryScreen({ sessions = [], recentSets = [] })
                 {selectedDayInfo.weekdayName} — {selectedSession ? (selectedSession.name || `Buổi ${selectedSession.day_type || 'Tập'}`) : 'Ngày nghỉ'}
               </span>
               <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
-                {selectedDayInfo.formattedDate} · {selectedSession ? `${Math.round((selectedSession.duration_seconds || 2400) / 60)} phút · Lộ trình` : 'Phục hồi thể lực'}
+                {selectedDayInfo.formattedDate} · {selectedSession
+                  ? `${selectedSession.duration_seconds ? `${Math.round(selectedSession.duration_seconds / 60)} phút · ` : ''}${selectedSession.routine_id ? 'Lộ trình' : 'Buổi tự do'}`
+                  : 'Phục hồi thể lực'}
               </span>
             </div>
 

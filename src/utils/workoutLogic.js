@@ -56,14 +56,118 @@ export function stepOfUnit(unit) {
  * Standard rest durations:
  * - Straight sets: exercise rest_seconds (default 60s)
  * - Circuit: 20s transition between exercises, 90s between rounds
- * - Superset: 15s transition between paired exercises, 75s between superset rounds
+ * - Superset: 0s between the paired exercises (liên hoàn), 75s after each pair round
  */
 export const REST_PRESETS = {
   CIRCUIT_TRANSITION: 20,
   CIRCUIT_ROUND: 90,
-  SUPERSET_TRANSITION: 15,
+  SUPERSET_TRANSITION: 0,
   SUPERSET_ROUND: 75
 };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isUuid(value) {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
+
+/**
+ * Khóa định danh 1 ô set trong buổi: routine item (nếu là UUID thật) hoặc exercise_key, kèm số set.
+ * Dùng chung cho hàng đợi và các set đã ghi để biết ô nào còn trống.
+ */
+export function getSlotKey(routineItemId, exerciseKey, setNo) {
+  return `${isUuid(routineItemId) ? routineItemId : exerciseKey}:${setNo}`;
+}
+
+/**
+ * Tìm ô set kế tiếp còn trống sau vị trí fromIdx (quay vòng về đầu hàng đợi). -1 nếu đã ghi hết.
+ */
+export function findNextOpenIndex(queue, doneKeys, fromIdx = -1) {
+  if (!Array.isArray(queue) || queue.length === 0) return -1;
+  const done = doneKeys instanceof Set ? doneKeys : new Set(doneKeys || []);
+  const isOpen = i => !done.has(getSlotKey(queue[i].routine_item_id, queue[i].exercise_key, queue[i].set_no));
+  for (let i = fromIdx + 1; i < queue.length; i++) if (isOpen(i)) return i;
+  for (let i = 0; i <= Math.min(fromIdx, queue.length - 1); i++) if (isOpen(i)) return i;
+  return -1;
+}
+
+export const REST_KIND_LABELS = {
+  set: 'Nghỉ giữa set',
+  round: 'Nghỉ giữa vòng',
+  switch: 'Chuyển bài',
+  exercise: 'Nghỉ trước bài mới'
+};
+
+/**
+ * Loại nghỉ giữa 2 ô set liên tiếp, theo chế độ tập.
+ */
+export function getRestKind(mode, current, next) {
+  if (!current || !next) return 'set';
+  if (mode === 'circuit') return next.set_no !== current.set_no ? 'round' : 'switch';
+  if (mode === 'superset') {
+    const samePair = Math.floor(current.exerciseIndex / 2) === Math.floor(next.exerciseIndex / 2);
+    if (samePair && current.exerciseIndex !== next.exerciseIndex && current.set_no === next.set_no) return 'switch';
+    return samePair ? 'set' : 'exercise';
+  }
+  return current.exerciseIndex === next.exerciseIndex ? 'set' : 'exercise';
+}
+
+/**
+ * Ước tính thời lượng (phút) của hàng đợi: ~3 giây/rep, bài giây tính đúng số giây, cộng thời gian nghỉ giữa các ô.
+ */
+export function estimateQueueMinutes(queue) {
+  if (!Array.isArray(queue) || queue.length === 0) return 0;
+  const totalSec = queue.reduce((acc, item, i) => {
+    const work = item.unit === 's' ? Number(item.target_val) || 0 : (Number(item.target_val) || 0) * 3;
+    const rest = i < queue.length - 1 ? Number(item.rest_seconds) || 0 : 0;
+    return acc + work + rest;
+  }, 0);
+  return Math.round(totalSec / 60);
+}
+
+/**
+ * Tuần hiện tại của lộ trình tính từ ngày bắt đầu ('YYYY-MM-DD'), kẹp trong 1..totalWeeks.
+ */
+export function getRoutineWeek(startDate, totalWeeks, today = new Date()) {
+  if (!startDate) return null;
+  const [y, m, d] = String(startDate).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const start = new Date(y, m - 1, d);
+  const now = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const diffDays = Math.max(0, Math.round((now - start) / 86400000));
+  const total = Math.max(1, Number(totalWeeks) || 1);
+  return { current: Math.min(total, Math.floor(diffDays / 7) + 1), total };
+}
+
+/**
+ * Tỷ lệ hoàn thành lịch: số buổi đã hoàn thành / số buổi đã lên lịch tính từ ngày bắt đầu.
+ * Hôm nay chỉ được tính vào mẫu số khi đã có buổi hoàn thành (chưa tập hôm nay không bị trừ điểm).
+ * Buổi tập bù (khác ngày lịch) vẫn được tính là hoàn thành.
+ */
+export function calculateAdherence({ startDate, plannedWeekdays = [], completedDates = [], today = new Date() }) {
+  const planned = new Set(plannedWeekdays.map(Number));
+  if (!startDate || planned.size === 0) return { planned: 0, done: 0, pct: null };
+  const [y, m, d] = String(startDate).split('-').map(Number);
+  const cursor = new Date(y, m - 1, d);
+  const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const pad = n => String(n).padStart(2, '0');
+  const toKey = dt => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+  const todayKey = toKey(todayDate);
+  const startKey = toKey(cursor);
+  const doneDates = completedDates.filter(ds => ds >= startKey && ds <= todayKey);
+
+  let plannedCount = 0;
+  while (cursor <= todayDate) {
+    const iso = cursor.getDay() === 0 ? 7 : cursor.getDay();
+    if (planned.has(iso)) {
+      const key = toKey(cursor);
+      if (key < todayKey || doneDates.includes(key)) plannedCount++;
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  const done = Math.min(doneDates.length, plannedCount);
+  return { planned: plannedCount, done, pct: plannedCount > 0 ? Math.round((done / plannedCount) * 100) : null };
+}
 
 /**
  * Generate sequential workout queue according to mode:
@@ -238,6 +342,65 @@ export function detectPR(actualVal, historyMaxVal, kg = 0, historyKg = 0) {
 }
 
 /**
+ * Mốc kỷ lục theo từng bài, tách riêng set có tạ (so 1RM ước tính) và set không tạ (so số rep/giây)
+ * để không so lẫn kg với rep. Bỏ qua set bị bỏ (actual_val null/0).
+ */
+export function buildPrBaselines(sets = []) {
+  const map = new Map();
+  (sets || []).forEach(s => {
+    const key = s.exercise_key || s.exerciseKey;
+    const val = Number(s.actual_val ?? s.actualVal ?? 0);
+    if (!key || !(val > 0)) return;
+    const kg = Number(s.kg || 0);
+    const base = map.get(key) || { bodyweight: null, weighted: null };
+    if (kg > 0) {
+      const e1rm = calculateEstimated1RM(val, kg);
+      if (!base.weighted || e1rm > base.weighted.e1rm) base.weighted = { val, kg, e1rm };
+    } else if (base.bodyweight == null || val > base.bodyweight) {
+      base.bodyweight = val;
+    }
+    map.set(key, base);
+  });
+  return map;
+}
+
+/**
+ * Set có vượt mốc kỷ lục không. Không có mốc cùng loại (lần đầu) thì không tính là PR.
+ */
+export function isNewPR({ actualVal, kg = 0 }, baseline) {
+  if (!baseline || actualVal == null) return false;
+  if (Number(kg) > 0) {
+    return baseline.weighted ? detectPR(actualVal, baseline.weighted.val, kg, baseline.weighted.kg) : false;
+  }
+  return baseline.bodyweight != null ? detectPR(actualVal, baseline.bodyweight) : false;
+}
+
+/**
+ * Kết quả "lần trước" của từng bài: các set của buổi gần nhất (khác buổi hiện tại) có tập bài đó,
+ * xếp theo số set. Trả về Map exercise_key → { sessionId, sets: [{ set_no, actual_val, unit, kg }] }.
+ */
+export function buildPreviousSetsByExercise(sets = [], excludeSessionId = null) {
+  const latestByEx = new Map();
+  (sets || []).forEach(s => {
+    const sid = s.session_id;
+    const key = s.exercise_key;
+    if (!sid || !key || sid === excludeSessionId) return;
+    const t = new Date(s.completed_at || 0).getTime();
+    const cur = latestByEx.get(key);
+    if (!cur || t > cur.time) latestByEx.set(key, { time: t, sessionId: sid });
+  });
+  const result = new Map();
+  latestByEx.forEach(({ sessionId }, key) => {
+    const rows = sets
+      .filter(s => s.session_id === sessionId && s.exercise_key === key)
+      .sort((a, b) => (a.set_no || 0) - (b.set_no || 0))
+      .map(s => ({ set_no: s.set_no, actual_val: s.actual_val, unit: s.unit, kg: Number(s.kg || 0) }));
+    result.set(key, { sessionId, sets: rows });
+  });
+  return result;
+}
+
+/**
  * Compare session totals by exercise with previous session
  * Group sets by exercise_key to prevent adding reps and seconds together.
  */
@@ -326,17 +489,11 @@ export function estimateRecoveryState(sevenDaySets = 0, hoursSinceLastTrained = 
 }
 
 /**
- * Tính toán chỉ số phục hồi cơ bắp theo đường cong sinh học liên tục
- * Thay vì nhảy cóc 3 mức cứng (25% - 55% - 100%), % phục hồi phản ánh
- * chính xác số giờ đã trôi qua kể từ buổi tập trước (Thứ 3 -> Thứ 5 sẽ đạt ~85-94%).
- * Đồng thời phân biệt rõ bài tập chính (Primary) và bài tập phụ (Secondary).
+ * Trạng thái phục hồi của 1 nhóm cơ (3 mức rời rạc, không hiển thị % — theo quyết định D4).
+ * Thời gian cần để hồi phục tùy khối lượng 7 ngày: nhẹ (≤5 set) 36h, vừa 48h, nặng (≥15 set) 60h.
+ * Ưu tiên mốc lần tập với vai trò cơ chính.
  *
- * @param {Object} [params]
- * @param {number} [params.totalSets=0] - Tổng số set trong 7 ngày
- * @param {number} [params.primarySets=0] - Số set tập với vai trò cơ chính
- * @param {number|null} [params.hoursSince=null] - Số giờ kể từ lần vận động gần nhất
- * @param {number|null} [params.hoursSincePrimary=null] - Số giờ kể từ buổi tập chính gần nhất
- * @returns {{ pct: number, state: 'ready'|'mid'|'low', label: string, bg: string, fg: string, text: string, hoursSince: number|null }}
+ * @returns {{ state: 'ready'|'mid'|'low', label: string, bg: string, fg: string, text: string, hoursSince: number|null }}
  */
 export function calculateRecoveryMetrics({
   totalSets = 0,
@@ -344,79 +501,48 @@ export function calculateRecoveryMetrics({
   hoursSince = null,
   hoursSincePrimary = null
 } = {}) {
-  // Nếu chưa từng tập nhóm cơ này
   if (hoursSince == null && hoursSincePrimary == null) {
     return {
-      pct: 100,
       state: RECOVERY_STATUS.READY,
       label: 'Sẵn sàng',
       bg: '#E6F2EA',
       fg: '#2F7A50',
-      text: 'Nhóm cơ chưa chịu tải gần đây. Đã hồi phục 100%, sẵn sàng tập luyện.',
+      text: 'Chưa có buổi tập nào tác động nhóm cơ này trong dữ liệu gần đây.',
       hoursSince: null
     };
   }
 
-  // Ưu tiên mốc thời gian của buổi tập chính (nếu có)
-  const hPrimary = hoursSincePrimary ?? hoursSince ?? 72;
-  const pSets = primarySets || totalSets || 8;
+  const hours = hoursSincePrimary ?? hoursSince;
+  const sets = primarySets || totalSets || 0;
+  const targetHours = sets >= 15 ? 60 : sets <= 5 ? 36 : 48;
+  const ratio = hours / targetHours;
 
-  // Thời gian cần để hồi phục hoàn toàn (T_target tính bằng giờ)
-  // Nhẹ (1-5 set): 36h; Vừa (6-14 set): 48h; Nặng (>=15 set): 60h
-  let targetHours = 48;
-  if (pSets <= 5) {
-    targetHours = 36;
-  } else if (pSets >= 15) {
-    targetHours = 60;
+  if (ratio < 0.3) {
+    return {
+      state: RECOVERY_STATUS.LOW,
+      label: 'Cần nghỉ',
+      bg: '#FBE5E0',
+      fg: '#B23A22',
+      text: `Vừa tập ${hours} giờ trước (${sets} set trong 7 ngày). Nên nghỉ nhóm cơ này.`,
+      hoursSince: hours
+    };
   }
-
-  // Tính % hồi phục liên tục (bắt đầu từ 20% ngay sau tập, tăng dần mượt mà theo hàm sinh học)
-  let pct = 100;
-  if (hPrimary < targetHours) {
-    const ratio = Math.max(0, Math.min(1, hPrimary / targetHours));
-    pct = Math.round(20 + 80 * Math.pow(ratio, 0.82));
-  } else {
-    pct = 100;
+  if (ratio < 0.78) {
+    return {
+      state: RECOVERY_STATUS.MID,
+      label: 'Đang hồi',
+      bg: '#FBF0DC',
+      fg: '#9A6514',
+      text: `Đã qua ${hours} giờ kể từ buổi tập. Có thể tập nhẹ hoặc đổi nhóm cơ khác.`,
+      hoursSince: hours
+    };
   }
-
-  pct = Math.max(20, Math.min(100, pct));
-
-  // Phân loại trạng thái nhãn và màu sắc
-  let state = RECOVERY_STATUS.READY;
-  let label = 'Sẵn sàng';
-  let bg = '#E6F2EA';
-  let fg = '#2F7A50';
-  let text = '';
-
-  if (pct < 50) {
-    state = RECOVERY_STATUS.LOW;
-    label = 'Cần nghỉ';
-    bg = '#FBE5E0';
-    fg = '#B23A22';
-    if (hPrimary < 12) {
-      text = `Vừa chịu tải nặng ${hPrimary} giờ trước. Khuyến nghị nghỉ ngơi và nạp đủ dinh dưỡng.`;
-    } else {
-      text = `Đang trong giai đoạn đau nhức cơ (DOMS) sau ${hPrimary} giờ. Cần thêm thời gian nghỉ ngơi.`;
-    }
-  } else if (pct < 85) {
-    state = RECOVERY_STATUS.MID;
-    label = 'Đang hồi';
-    bg = '#FBF0DC';
-    fg = '#9A6514';
-    text = `Đã qua ${hPrimary} giờ kể từ buổi tập. Sợi cơ đang hoàn tất tái tạo, có thể tập nhẹ hoặc đổi nhóm cơ khác.`;
-  } else if (pct < 98) {
-    state = RECOVERY_STATUS.READY;
-    label = 'Gần như sẵn sàng';
-    bg = '#E6F2EA';
-    fg = '#2F7A50';
-    text = `Đã qua ${hPrimary} giờ kể từ buổi tập. Cơ bắp đã hồi phục ${pct}%, sẵn sàng cho buổi tập tiếp theo.`;
-  } else {
-    state = RECOVERY_STATUS.READY;
-    label = 'Sẵn sàng';
-    bg = '#E6F2EA';
-    fg = '#2F7A50';
-    text = `Nhóm cơ đã hồi phục hoàn toàn (${hPrimary} giờ trước). Sẵn sàng bứt phá PR mới.`;
-  }
-
-  return { pct, state, label, bg, fg, text, hoursSince: hPrimary };
+  return {
+    state: RECOVERY_STATUS.READY,
+    label: 'Sẵn sàng',
+    bg: '#E6F2EA',
+    fg: '#2F7A50',
+    text: `Đã qua ${hours} giờ kể từ buổi tập. Sẵn sàng cho buổi tiếp theo.`,
+    hoursSince: hours
+  };
 }

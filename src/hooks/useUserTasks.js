@@ -51,6 +51,10 @@ export function useUserTasks() {
 
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  // `isLoading` false ở frame đầu (fetch chạy trong effect) nên không phân biệt được
+  // "chưa tải" với "không có việc nào". Cờ này chỉ bật khi lượt fetch đầu kết thúc —
+  // trang chủ dựa vào nó để không báo "không có việc quá hạn" trước khi biết thật.
+  const [hasLoaded, setHasLoaded] = useState(false);
   const fetchEpochRef = useRef(0);
   const sessionKey = isAuth ? userId : 'guest';
   const sessionKeyRef = useRef(sessionKey);
@@ -159,7 +163,10 @@ export function useUserTasks() {
         }
       } catch { /* ignore fallback error */ }
     } finally {
-      if (epoch === fetchEpochRef.current) setIsLoading(false);
+      if (epoch === fetchEpochRef.current) {
+        setIsLoading(false);
+        setHasLoaded(true);
+      }
     }
   }, [isAuth, userId]);
 
@@ -167,6 +174,8 @@ export function useUserTasks() {
     const epoch = ++fetchEpochRef.current;
     setTasks([]);
     setIsLoading(false);
+    // Guest không có gì để tải: danh sách in-memory rỗng chính là dữ liệu thật.
+    setHasLoaded(!(isAuth && userId));
     if (isAuth && userId) fetchTasks(epoch);
     return () => {
       if (fetchEpochRef.current === epoch) fetchEpochRef.current += 1;
@@ -934,6 +943,7 @@ export function useUserTasks() {
     futureTasks,
     noDateTasks,
     isLoading,
+    hasLoaded,
     addTask,
     completeTask,
     uncompleteTask,

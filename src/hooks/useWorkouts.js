@@ -109,7 +109,7 @@ export function useWorkouts() {
         .eq('user_id', userId)
         .order('local_date', { ascending: false })
         .order('started_at', { ascending: false })
-        .limit(30);
+        .limit(120);
 
       if (!sessErr && sessData) {
         setSessions(sessData);
@@ -615,16 +615,16 @@ export function useWorkouts() {
 
   // ── BUỔI TẬP (SESSIONS & SETS) ACTIONS ────────────────────────────────────
 
-  // Bắt đầu buổi tập mới
-  const startSession = useCallback(async ({ plannedWeekday, dayName, routineId, mode = 'straight' }) => {
+  // Bắt đầu buổi tập mới. Buổi tự do (tập lẻ 1 bài) truyền routineId = null, plannedWeekday = null.
+  const startSession = useCallback(async ({ plannedWeekday = null, dayName, routineId, mode = 'straight' }) => {
     const newSessionId = crypto.randomUUID();
     const todayStr = toDateStr(new Date());
 
     const newSession = {
       id: newSessionId,
       user_id: userId,
-      routine_id: routineId || activeRoutine?.id || null,
-      planned_weekday: plannedWeekday || 1,
+      routine_id: routineId === undefined ? (activeRoutine?.id || null) : routineId,
+      planned_weekday: plannedWeekday || null,
       local_date: todayStr,
       title: `Buổi ${dayName || 'Tập luyện'}`,
       day_type: dayName || 'Tập luyện',
@@ -731,6 +731,32 @@ export function useWorkouts() {
     }
   }, [enabled, userId, sessions]);
 
+  // Cập nhật phiên đang tập: chế độ tập (chốt khi bắt đầu set đầu) và thời lượng đã tập (khi tạm dừng)
+  const updateSession = useCallback(async (sessionId, patch) => {
+    const allowed = {};
+    if (patch.mode !== undefined) allowed.mode = patch.mode;
+    if (patch.duration_seconds !== undefined) allowed.duration_seconds = Math.max(0, Math.round(patch.duration_seconds));
+    if (!sessionId || Object.keys(allowed).length === 0) return;
+
+    const prevSessions = sessions;
+    setSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, ...allowed } : s)));
+
+    if (enabled) {
+      try {
+        const { error } = await supabase
+          .from('body_workout_sessions')
+          .update(allowed)
+          .eq('id', sessionId)
+          .eq('user_id', userId);
+        if (error) throw error;
+      } catch (err) {
+        logger.error('Failed to update workout session, rolling back:', err);
+        setSessions(prevSessions);
+        throw err;
+      }
+    }
+  }, [enabled, userId, sessions]);
+
   // Hủy buổi tập (abandon)
   const abandonSession = useCallback(async (sessionId) => {
     const endedAt = new Date().toISOString();
@@ -780,6 +806,7 @@ export function useWorkouts() {
     startSession,
     logSet,
     finishSession,
+    updateSession,
     abandonSession
   };
 }

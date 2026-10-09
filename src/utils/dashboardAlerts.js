@@ -4,25 +4,36 @@
  *
  * Tiêu chí: ZERO BLINDSPOTS (Không bỏ sót bất kỳ nghĩa vụ hay hạn chót nào).
  * Phân cấp 3 tầng nghiêm ngặt:
- *   1. Critical (Báo động đỏ): ĐÃ QUÁ HẠN (Task, Hóa đơn, Sao kê thẻ, Nợ vay, Cho mượn).
- *   2. Due Today: ĐẾN HẠN HÔM NAY (Cần xử lý trước 23:59 đêm nay).
- *   3. Heads Up: SẮP TỚI HẠN (Còn 1–3 ngày, phí thường niên ≤5 ngày, sổ đáo hạn ≤14 ngày, vỡ ngân sách).
+ *   1. Critical (Báo động đỏ): ĐÃ QUÁ HẠN (Task, Hóa đơn, Sao kê thẻ kể cả nợ kỳ cũ, Nợ vay, Cho mượn).
+ *   2. Due Today: ĐẾN HẠN HÔM NAY hoặc cần xử lý ngay (sổ tiết kiệm đã đáo hạn mà chưa tất toán).
+ *   3. Heads Up: SẮP TỚI HẠN (task/hóa đơn/vay/cho vay còn 1–3 ngày, sao kê và phí thường niên
+ *      ≤5 ngày, sổ đáo hạn ≤14 ngày).
+ * Vượt ngân sách không phải hạn chót nên nằm riêng ở `overBudget`.
+ *
+ * Mỗi cảnh báo tài chính mang `targetSeg` — tab con của màn Định kỳ cần mở để xử lý nó.
  */
 
 import {
   daysInclusive,
-  daysUntilDue,
   billCycle,
   billSettled,
   cardStatementSummary,
+  cardCarryOver,
   nextAnnualFee,
   loanSchedule,
+  loanCycle,
   maturityWarn,
   periodTotals,
   currentMonthPeriod,
 } from './financeLogic.js';
 
 import { isSubtask } from './subtaskUtils.js';
+import { PRIORITY_OPTIONS } from './taskFields.js';
+
+/** Nhãn ưu tiên giống hệt màn Nhiệm vụ (thang 0–5, 5 = Urgent) — không tự chế "P5". */
+function priorityLabel(priority) {
+  return PRIORITY_OPTIONS.find(p => p.value === Number(priority) && p.value > 0)?.label || null;
+}
 
 export function collectSystemAlerts({
   tasks = [],
@@ -33,6 +44,7 @@ export function collectSystemAlerts({
   deposits = [],
   budgets = [],
   transactions = [],
+  cats = null,
   today,
 } = {}) {
   if (!today) {
@@ -44,6 +56,7 @@ export function collectSystemAlerts({
   const critical = [];
   const dueToday = [];
   const headsUp = [];
+  const overBudget = [];
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 1. NHIỆM VỤ (TASKS)
@@ -52,7 +65,9 @@ export function collectSystemAlerts({
     // Bỏ qua: đã xong, bỏ qua (skip), subtask (đã nằm trong task cha), không có ngày hạn
     if (t.completed || t.status === 'skip' || isSubtask(t) || !t.due_date) continue;
 
-    const diffDays = daysInclusive(t.due_date, today) - 1; // âm nếu dueDate < today
+    const diffDays = daysInclusive(t.due_date, today) - 1; // số ngày đã trễ (dương khi dueDate < today)
+    const daysLeft = -diffDays;                             // số ngày còn lại (dương khi dueDate > today)
+    const priority = priorityLabel(t.priority);
 
     if (t.due_date < today) {
       const overdueDays = Math.max(1, Math.abs(diffDays));
@@ -63,14 +78,13 @@ export function collectSystemAlerts({
         severity: 'critical',
         raw: t,
         title: t.title,
-        subtitle: `Hạn chót: ${t.due_date}${t.priority ? ` · Ưu tiên P${t.priority}` : ''}`,
+        subtitle: `Hạn chót: ${t.due_date}${priority ? ` · Ưu tiên ${priority}` : ''}`,
         amount: null,
         days: -overdueDays,
         badge: `Trễ ${overdueDays} ngày`,
         icon: 'pushPin',
         actionType: 'task',
         actionLabel: 'Xong',
-        actionSecondaryLabel: 'Dời hôm nay',
         targetUrl: '/tasks',
       });
     } else if (t.due_date === today) {
@@ -88,6 +102,23 @@ export function collectSystemAlerts({
         icon: 'checkCircle',
         actionType: 'task',
         actionLabel: 'Xong',
+        targetUrl: '/tasks',
+      });
+    } else if (daysLeft <= 3) {
+      headsUp.push({
+        id: `task-${t.id}`,
+        domain: 'task',
+        type: 'task_soon',
+        severity: 'heads_up',
+        raw: t,
+        title: t.title,
+        subtitle: `Nhiệm vụ${priority ? ` · ${priority}` : ''}${t.due_time ? ` · ${String(t.due_time).slice(0, 5)}` : ''}`,
+        amount: null,
+        days: daysLeft,
+        badge: `Còn ${daysLeft} ngày`,
+        icon: 'pushPin',
+        actionType: 'task',
+        actionLabel: 'Xem',
         targetUrl: '/tasks',
       });
     }
@@ -121,8 +152,8 @@ export function collectSystemAlerts({
         icon: 'receipt',
         actionType: 'bill_pay',
         actionLabel: 'Trả ngay',
-        actionSecondaryLabel: 'Bỏ kỳ',
         targetUrl: '/finance/recurring',
+        targetSeg: 'out',
       });
     } else if (cyc.days === 0) {
       dueToday.push({
@@ -141,6 +172,7 @@ export function collectSystemAlerts({
         actionType: 'bill_pay',
         actionLabel: 'Trả ngay',
         targetUrl: '/finance/recurring',
+        targetSeg: 'out',
       });
     } else if (cyc.days <= 3) {
       headsUp.push({
@@ -159,6 +191,7 @@ export function collectSystemAlerts({
         actionType: 'bill_pay',
         actionLabel: 'Trả trước',
         targetUrl: '/finance/recurring',
+        targetSeg: 'out',
       });
     }
   }
@@ -189,6 +222,7 @@ export function collectSystemAlerts({
           actionType: 'card_pay',
           actionLabel: 'Trả sao kê',
           targetUrl: '/finance/recurring',
+          targetSeg: 'card',
         });
       } else if (cyc.daysUntilDue === 0) {
         dueToday.push({
@@ -207,6 +241,7 @@ export function collectSystemAlerts({
           actionType: 'card_pay',
           actionLabel: 'Trả sao kê',
           targetUrl: '/finance/recurring',
+          targetSeg: 'card',
         });
       } else if (cyc.daysUntilDue <= 5) {
         headsUp.push({
@@ -225,8 +260,32 @@ export function collectSystemAlerts({
           actionType: 'card_pay',
           actionLabel: 'Trả sao kê',
           targetUrl: '/finance/recurring',
+          targetSeg: 'card',
         });
       }
+    }
+
+    // Nợ sao kê kỳ cũ — kỳ mới chốt rồi mà khoản cũ chưa trả thì không được biến mất.
+    const carry = cardCarryOver(c, transactions, today);
+    if (carry) {
+      (carry.days < 0 ? critical : dueToday).push({
+        id: `card-carry-${c.id}`,
+        domain: 'finance',
+        type: 'card_carry_overdue',
+        severity: carry.days < 0 ? 'critical' : 'today',
+        raw: c,
+        title: `Nợ sao kê cũ ${c.name}`,
+        subtitle: `Kỳ ${carry.period} · hạn ${carry.due} · chưa ghi trả`,
+        amount: carry.amount,
+        period: carry.period,
+        days: carry.days,
+        badge: carry.days < 0 ? `Quá hạn ${Math.abs(carry.days)} ngày` : 'Đến hạn hôm nay',
+        icon: 'creditCard',
+        actionType: 'card_pay',
+        actionLabel: 'Trả sao kê',
+        targetUrl: '/finance/recurring',
+        targetSeg: 'card',
+      });
     }
 
     // Phí thường niên
@@ -249,6 +308,7 @@ export function collectSystemAlerts({
             actionType: 'nav',
             actionLabel: 'Xem thẻ',
             targetUrl: '/finance/recurring',
+            targetSeg: 'card',
           });
         } else if (fee.days <= 5) {
           headsUp.push({
@@ -266,6 +326,7 @@ export function collectSystemAlerts({
             actionType: 'nav',
             actionLabel: 'Xem thẻ',
             targetUrl: '/finance/recurring',
+            targetSeg: 'card',
           });
         }
       }
@@ -275,76 +336,38 @@ export function collectSystemAlerts({
   // ═══════════════════════════════════════════════════════════════════════════
   // 4. KHOẢN NỢ VAY CỦA MÌNH (FINANCE LOANS)
   // ═══════════════════════════════════════════════════════════════════════════
-  const currentMonthKey = today.slice(0, 7);
   for (const l of loans) {
     if (l.closed_at) continue;
 
     const sch = loanSchedule(l);
-    const d = daysUntilDue(l.pay_day, today);
-
-    const paidInterest = transactions.some(
-      t => t.loan_id === l.id && t.loan_period === currentMonthKey && t.loan_part === 'interest'
-    );
-    const paidPrincipal = transactions.some(
-      t => t.loan_id === l.id && t.loan_period === currentMonthKey && t.loan_part === 'principal'
-    );
-    const donePeriod = sch.kind === 'interest' ? paidInterest : paidPrincipal;
-
+    // loanCycle bám kỳ tháng trước còn nợ, bỏ kỳ trước ngày mở, trả null khi đã đủ số kỳ.
+    const cyc = loanCycle(l, today, transactions);
     const dueAmount = sch.kind === 'interest' ? sch.monthlyInterest : sch.monthlyPayment;
 
-    // Trả định kỳ tháng này
-    if (!donePeriod && d != null) {
-      if (d < 0) {
-        critical.push({
-          id: `loan-${l.id}`,
-          domain: 'finance',
-          type: 'loan_overdue',
-          severity: 'critical',
-          raw: l,
-          title: `Khoản vay ${l.name}`,
-          subtitle: `Trả định kỳ ngày ${l.pay_day} hàng tháng`,
-          amount: dueAmount,
-          days: d,
-          badge: `Quá hạn ${Math.abs(d)} ngày`,
-          icon: 'bank',
-          actionType: 'loan_pay',
-          actionLabel: 'Ghi trả nợ',
-          targetUrl: '/finance/recurring',
-        });
-      } else if (d === 0) {
-        dueToday.push({
-          id: `loan-${l.id}`,
-          domain: 'finance',
-          type: 'loan_today',
-          severity: 'today',
-          raw: l,
-          title: `Khoản vay ${l.name}`,
-          subtitle: `Đến ngày trả định kỳ hôm nay`,
-          amount: dueAmount,
-          days: 0,
-          badge: 'Đến hạn hôm nay',
-          icon: 'bank',
-          actionType: 'loan_pay',
-          actionLabel: 'Ghi trả nợ',
-          targetUrl: '/finance/recurring',
-        });
-      } else if (d <= 3) {
-        headsUp.push({
-          id: `loan-${l.id}`,
-          domain: 'finance',
-          type: 'loan_soon',
-          severity: 'heads_up',
-          raw: l,
-          title: `Khoản vay ${l.name}`,
-          subtitle: `Hạn trả ngày ${l.pay_day}/${today.slice(5, 7)}`,
-          amount: dueAmount,
-          days: d,
-          badge: `Còn ${d} ngày`,
-          icon: 'bank',
-          actionType: 'loan_pay',
-          actionLabel: 'Ghi trả nợ',
-          targetUrl: '/finance/recurring',
-        });
+    if (cyc && !cyc.done) {
+      const base = {
+        id: `loan-${l.id}`,
+        domain: 'finance',
+        raw: l,
+        title: `Khoản vay ${l.name}`,
+        amount: dueAmount,
+        period: cyc.period,
+        days: cyc.days,
+        icon: 'bank',
+        actionType: 'loan_pay',
+        actionLabel: 'Ghi trả nợ',
+        targetUrl: '/finance/recurring',
+        targetSeg: 'loan',
+      };
+      if (cyc.days < 0) {
+        critical.push({ ...base, type: 'loan_overdue', severity: 'critical',
+          subtitle: `Kỳ ${cyc.period} · hạn ${cyc.due}`, badge: `Quá hạn ${Math.abs(cyc.days)} ngày` });
+      } else if (cyc.days === 0) {
+        dueToday.push({ ...base, type: 'loan_today', severity: 'today',
+          subtitle: `Kỳ ${cyc.period} · đến ngày trả hôm nay`, badge: 'Đến hạn hôm nay' });
+      } else if (cyc.days <= 3) {
+        headsUp.push({ ...base, type: 'loan_soon', severity: 'heads_up',
+          subtitle: `Kỳ ${cyc.period} · hạn ${cyc.due}`, badge: `Còn ${cyc.days} ngày` });
       }
     }
 
@@ -369,6 +392,7 @@ export function collectSystemAlerts({
           actionType: 'loan_settle',
           actionLabel: 'Tất toán gốc',
           targetUrl: '/finance/recurring',
+          targetSeg: 'loan',
         });
       }
     }
@@ -404,6 +428,7 @@ export function collectSystemAlerts({
           actionType: 'lend_collect',
           actionLabel: 'Thu nợ',
           targetUrl: '/finance/recurring',
+          targetSeg: 'lend',
         });
       } else if (days === 0) {
         dueToday.push({
@@ -421,6 +446,7 @@ export function collectSystemAlerts({
           actionType: 'lend_collect',
           actionLabel: 'Thu nợ',
           targetUrl: '/finance/recurring',
+          targetSeg: 'lend',
         });
       } else if (days <= 3) {
         headsUp.push({
@@ -438,6 +464,7 @@ export function collectSystemAlerts({
           actionType: 'lend_collect',
           actionLabel: 'Xem chi tiết',
           targetUrl: '/finance/recurring',
+          targetSeg: 'lend',
         });
       }
     }
@@ -450,24 +477,27 @@ export function collectSystemAlerts({
     if (d.closed_on || !d.matures_at) continue;
 
     const warn = maturityWarn(d.matures_at, today);
-    if (warn && warn.warn && warn.days <= 14) {
-      headsUp.push({
-        id: `deposit-${d.id}`,
-        domain: 'finance',
-        type: 'deposit_maturing',
-        severity: 'heads_up',
-        raw: d,
-        title: `Sổ tiết kiệm: ${d.name || d.bank || 'Tiền gửi'}`,
-        subtitle: `Đáo hạn ngày ${d.matures_at} · Lãi suất ${d.rate}%`,
-        amount: d.amount,
-        days: warn.days,
-        badge: warn.days === 0 ? 'Đáo hạn hôm nay' : `Đáo hạn sau ${warn.days} ngày`,
-        icon: 'piggyBank',
-        actionType: 'nav',
-        actionLabel: 'Xem sổ',
-        targetUrl: '/finance/recurring',
-      });
-    }
+    if (!warn || warn.days > 14) continue;
+    // Đã đáo hạn mà chưa tất toán/tái tục = việc cần làm ngay, không phải "sắp tới".
+    const matured = warn.days <= 0;
+    (matured ? dueToday : headsUp).push({
+      id: `deposit-${d.id}`,
+      domain: 'finance',
+      type: matured ? 'deposit_matured' : 'deposit_maturing',
+      severity: matured ? 'today' : 'heads_up',
+      raw: d,
+      title: `Sổ tiết kiệm: ${d.name || d.bank || 'Tiền gửi'}`,
+      subtitle: `Đáo hạn ngày ${d.matures_at} · Lãi suất ${d.rate}%`,
+      amount: d.amount,
+      days: warn.days,
+      badge: warn.days === 0 ? 'Đáo hạn hôm nay'
+        : matured ? `Đã đáo hạn ${Math.abs(warn.days)} ngày` : `Đáo hạn sau ${warn.days} ngày`,
+      icon: 'piggyBank',
+      actionType: 'nav',
+      actionLabel: 'Xem sổ',
+      targetUrl: '/finance/recurring',
+      targetSeg: 'saving',
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -481,13 +511,14 @@ export function collectSystemAlerts({
       const spent = totals.byCategory[b.category_id] || 0;
       if (b.limit_amount > 0 && spent > b.limit_amount) {
         const excess = spent - b.limit_amount;
-        headsUp.push({
+        const label = cats?.expenseGroups?.find(g => g.key === b.category_id)?.label || b.category_id;
+        overBudget.push({
           id: `budget-${b.id || b.category_id}`,
           domain: 'finance',
           type: 'budget_exceeded',
           severity: 'heads_up',
           raw: b,
-          title: `Vượt ngân sách: ${b.category_id}`,
+          title: `Vượt ngân sách: ${label}`,
           subtitle: `Đã chi ${spent.toLocaleString('vi-VN')}₫ / Hạn mức ${b.limit_amount.toLocaleString('vi-VN')}₫`,
           amount: excess,
           days: null,
@@ -515,6 +546,7 @@ export function collectSystemAlerts({
     critical,
     dueToday,
     headsUp,
+    overBudget,
     stats: {
       criticalCount,
       dueTodayCount,

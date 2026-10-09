@@ -100,23 +100,47 @@ export function isMeasurementOutlier(newWeight, recentWeights = [], maxDelta = 1
 
 /**
  * Calculate 4-part body composition (Water, Protein, Fat, Bone mineral)
- * Sum of parts equals total weight
+ * Sum of parts equals total weight. Chỉ tính khi đã đo đủ mỡ, nước và khoáng xương —
+ * thiếu số đo thì trả null, không tự điền tỷ lệ mặc định.
  */
 export function calculateBodyComposition(weightKg, bodyFatPct, waterPct, boneMassKg) {
-  if (!weightKg || weightKg <= 0) return null;
+  if (!weightKg || weightKg <= 0 || !bodyFatPct || !waterPct || !boneMassKg) return null;
   const w = Number(weightKg);
-  const fat = bodyFatPct ? Number((w * (bodyFatPct / 100)).toFixed(2)) : Number((w * 0.15).toFixed(2));
-  const water = waterPct ? Number((w * (waterPct / 100)).toFixed(2)) : Number((w * 0.589).toFixed(2));
-  const bone = boneMassKg ? Number(Number(boneMassKg).toFixed(2)) : Number((w * 0.0434).toFixed(2));
-  const protein = Math.max(1, Number((w - fat - water - bone).toFixed(2)));
+  const fat = Number((w * (bodyFatPct / 100)).toFixed(2));
+  const water = Number((w * (waterPct / 100)).toFixed(2));
+  const bone = Number(Number(boneMassKg).toFixed(2));
+  const protein = Number((w - fat - water - bone).toFixed(2));
+  if (protein <= 0) return null;
   return {
     waterKg: water,
     proteinKg: protein,
     fatKg: fat,
     boneKg: bone,
     totalKg: w,
-    isEstimated: !bodyFatPct
+    isEstimated: false
   };
+}
+
+/**
+ * Cân nặng tương ứng với 1 mức BMI theo chiều cao (dùng vẽ dải cân nặng theo thang BMI châu Á).
+ */
+export function weightForBmi(bmi, heightCm) {
+  if (!bmi || !heightCm || heightCm <= 0) return null;
+  const h = heightCm / 100;
+  return Number((bmi * h * h).toFixed(1));
+}
+
+/**
+ * Mục tiêu dinh dưỡng ngày từ TDEE: đạm 2 g/kg (không có cân nặng thì 30% năng lượng),
+ * chất béo 25% năng lượng, tinh bột là phần còn lại. Chưa có TDEE → null (không bịa mục tiêu).
+ */
+export function calculateMacroTargets(tdee, weightKg = null) {
+  if (!tdee || tdee <= 0) return null;
+  const kcal = Math.round(tdee);
+  const protein = weightKg ? Math.round(Number(weightKg) * 2) : Math.round((kcal * 0.3) / 4);
+  const fat = Math.round((kcal * 0.25) / 9);
+  const carbs = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));
+  return { kcal, protein, fat, carbs };
 }
 
 /**

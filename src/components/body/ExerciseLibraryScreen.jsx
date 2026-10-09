@@ -381,7 +381,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                 gap: '12px'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontWeight: 700, fontSize: '13.5px', color: 'var(--body-accent)' }}>
-                  <AppIcon name="sparkles" size={16} />
+                  <AppIcon name="sparkle" size={16} />
                   <span>Kỹ thuật nhịp thở, thời gian & điểm neo form chuẩn:</span>
                 </div>
 
@@ -480,11 +480,6 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                     <AppIcon name="warning" size={16} />
                     <span>Cảnh báo cơ sinh học & Phòng tránh chấn thương</span>
                   </div>
-                  {selectedEx.medical_source && (
-                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)', fontFamily: 'var(--body-mono)' }}>
-                      Nguồn: {selectedEx.medical_source}
-                    </span>
-                  )}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -570,6 +565,12 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                     </div>
                   </div>
                 )}
+
+                {/* Nội dung tự soạn, chưa được chuyên gia kiểm duyệt — không gắn nhãn "nguồn" y khoa */}
+                <div style={{ fontSize: '11px', lineHeight: 1.45, color: 'var(--body-text-muted)' }}>
+                  Thông tin mang tính tham khảo chung, không thay thế tư vấn của bác sĩ / chuyên gia vật lý trị liệu.
+                  Dừng tập nếu thấy đau bất thường.
+                </div>
               </div>
             )}
 
@@ -586,7 +587,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontWeight: 700, fontSize: '13.5px', color: 'var(--body-text-main)' }}>
-                    <AppIcon name="treeStructure" size={16} style={{ color: 'var(--body-accent)' }} />
+                    <AppIcon name="tree" size={16} style={{ color: 'var(--body-accent)' }} />
                     <span>Bậc thang biến thể: {progressionChain.chainName}</span>
                   </div>
                   <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>

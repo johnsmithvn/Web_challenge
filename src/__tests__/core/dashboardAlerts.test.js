@@ -93,7 +93,67 @@ assert.equal(res5.dueToday.some(a => a.id === 'lend-lend2'), true);
 assert.equal(res5.headsUp.some(a => a.id === 'lend-lend3'), true);
 assert.equal(res5.critical.some(a => a.id === 'lend-lend4'), false, 'Đã thu đủ không báo');
 
-// ── 6. All clear check ──
+// ── 6. Cảnh báo từng bị sót / báo sai ──
+// Nhãn ưu tiên theo thang của app (5 = Urgent), không phải "P5"
+const resPri = collectSystemAlerts({ today, tasks: [{ id: 'p', title: 'Gấp', due_date: '2026-10-01', priority: 5 }] });
+assert.match(resPri.critical[0].subtitle, /Ưu tiên Urgent/);
+assert.doesNotMatch(resPri.critical[0].subtitle, /P5/);
+
+// Task còn 1–3 ngày vào "Sắp tới hạn"
+const resSoon = collectSystemAlerts({ today, tasks: [{ id: 's', title: 'Báo cáo quý', due_date: '2026-10-10' }] });
+assert.equal(resSoon.headsUp.find(a => a.id === 'task-s')?.badge, 'Còn 2 ngày');
+
+// Khoản vay đã trả đủ kỳ nhưng chưa closed_at → không báo quá hạn
+const resLoanDone = collectSystemAlerts({ today, loans: [
+  { id: 'ld', name: 'Góp điện thoại', principal: 12000000, rate: 0, term: 12, done: 12, pay_day: 5, kind: 'amort', opened_at: '2025-10-01' },
+] });
+assert.equal(resLoanDone.critical.length + resLoanDone.dueToday.length, 0, 'vay đã đủ 12/12 kỳ không được báo quá hạn');
+
+// Khoản vay mở sau ngày trả trong tháng → kỳ đầu là tháng sau
+const resLoanNew = collectSystemAlerts({ today: '2026-10-20', loans: [
+  { id: 'ln', name: 'Vay mới', principal: 12000000, rate: 0, term: 12, done: 0, pay_day: 5, kind: 'amort', opened_at: '2026-10-20' },
+] });
+assert.equal(resLoanNew.critical.length, 0, 'vay vừa mở không thể quá hạn');
+
+// Kỳ vay tháng trước chưa ghi → vẫn quá hạn sau khi sang tháng, mở đúng tab Khoản vay
+const resLoanPrev = collectSystemAlerts({ today: '2026-10-02', loans: [
+  { id: 'lp', name: 'Góp xe', principal: 12000000, rate: 0, term: 12, done: 3, pay_day: 28, kind: 'amort', opened_at: '2026-06-01' },
+] });
+assert.equal(resLoanPrev.critical[0]?.period, '2026-09');
+assert.equal(resLoanPrev.critical[0]?.targetSeg, 'loan');
+
+// Hóa đơn hằng tháng chưa trả kỳ trước → không biến mất khi sang tháng
+const resBillPrev = collectSystemAlerts({ today: '2026-10-02', bills: [
+  { id: 'bp', name: 'Điện', due_day: 28, enabled: true, amount_mode: 'fixed', amount: 500000, created_at: '2026-08-01T03:00:00Z' },
+] });
+assert.equal(resBillPrev.critical.find(a => a.id === 'bill-bp')?.badge, 'Quá hạn 4 ngày');
+
+// Sao kê cũ quá hạn sau khi kỳ mới chốt → vẫn báo, mở tab Thẻ
+const resCarry = collectSystemAlerts({ today: '2026-10-22',
+  cards: [{ id: 'vib', name: 'VIB', statement_day: 20, due_day: 5 }],
+  transactions: [{ source_card_id: 'vib', type: 'expense', amount: 4000000, occurred_at: '2026-09-15' }] });
+const carryAlert = resCarry.critical.find(a => a.id === 'card-carry-vib');
+assert.equal(carryAlert?.amount, 4000000);
+assert.equal(carryAlert?.targetSeg, 'card');
+
+// Sổ tiết kiệm đã đáo hạn mà chưa tất toán → cần xử lý, không im lặng
+const resDep = collectSystemAlerts({ today, deposits: [
+  { id: 'd1', name: 'Sổ VCB', amount: 100000000, rate: 5, matures_at: '2026-10-07' },
+  { id: 'd2', name: 'Sổ ACB', amount: 50000000, rate: 5, matures_at: '2026-10-15' },
+] });
+assert.equal(resDep.dueToday.find(a => a.id === 'deposit-d1')?.badge, 'Đã đáo hạn 1 ngày');
+assert.equal(resDep.headsUp.some(a => a.id === 'deposit-d2'), true);
+
+// Vượt ngân sách: tên danh mục thật, nằm riêng ở overBudget (không lẫn vào "Sắp tới hạn")
+const resBudget = collectSystemAlerts({ today,
+  budgets: [{ id: 'bg', category_id: 'food', limit_amount: 100 }],
+  transactions: [{ type: 'expense', amount: 500, occurred_at: '2026-10-03', category_id: 'food' }],
+  cats: { expenseGroups: [{ key: 'food', label: 'Ăn uống' }] } });
+assert.equal(resBudget.overBudget[0]?.title, 'Vượt ngân sách: Ăn uống');
+assert.equal(resBudget.overBudget[0]?.amount, 400);
+assert.equal(resBudget.headsUp.length, 0);
+
+// ── 7. All clear check ──
 const resEmpty = collectSystemAlerts({ today });
 assert.equal(resEmpty.stats.allClear, true);
 assert.equal(resEmpty.stats.totalUrgent, 0);

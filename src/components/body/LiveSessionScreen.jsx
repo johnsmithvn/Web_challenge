@@ -4,13 +4,34 @@ import GenericModal from '../GenericModal';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import ExerciseVideoPlayer from './ExerciseVideoPlayer';
 import ExerciseDetailModal from './ExerciseDetailModal';
+import MUSCLE_MAP from '../../data/body-muscles.json';
 import {
   generateWorkoutQueue,
   formatValWithUnit,
   checkAutoProgression,
-  detectPR,
-  compareSessionWithPrevious
+  compareSessionWithPrevious,
+  isUuid,
+  getSlotKey,
+  findNextOpenIndex,
+  getRestKind,
+  REST_KIND_LABELS,
+  estimateQueueMinutes,
+  buildPrBaselines,
+  isNewPR,
+  buildPreviousSetsByExercise
 } from '../../utils/workoutLogic';
+
+const MODES = [
+  { key: 'straight', label: 'Từng bài', desc: 'Làm hết các set của một bài rồi sang bài kế.' },
+  { key: 'circuit', label: 'Vòng liên hoàn', desc: 'Mỗi bài 1 set, chuyển bài 20 giây, hết vòng nghỉ 90 giây.' },
+  { key: 'superset', label: 'Siêu set', desc: 'Ghép cặp 2 bài liên tục không nghỉ, nghỉ 75 giây sau mỗi cặp.' }
+];
+
+const LETTERS = 'ABCDEFGHIJKLMNOP';
+
+const slotOfRecord = (r) => getSlotKey(r.routineItemId, r.exerciseKey, r.setNo);
+const slotOfItem = (q) => getSlotKey(q.routine_item_id, q.exercise_key, q.set_no);
+const fmtVals = (vals, unit) => vals.map(v => (v == null ? 'bỏ' : unit === 's' ? `${v}s` : String(v))).join(' · ');
 
 export default function LiveSessionScreen({
   dayInfo,
@@ -19,30 +40,68 @@ export default function LiveSessionScreen({
   exerciseMap = new Map(),
   sessionId,
   isResume = false,
+  initialMode = 'straight',
+  initialElapsed = 0,
+  startedAt = null,
   onLogSet,
+  onModeLocked,
   onFinishSession,
   onCancel,
   onPause
 }) {
-  const [mode, setMode] = useState('straight');
+  // Các set đã ghi của chính buổi này (có khi tiếp tục buổi tạm dừng / sau khi tải lại trang)
+  // Chỉ lấy lúc mở màn (BodyPage chỉ mount khi dữ liệu đã tải xong); sau đó loggedSets là nguồn sự thật
+  const [existingSets] = useState(
+    () => (isResume && sessionId ? recentSets.filter(s => s.session_id === sessionId) : [])
+  );
+
+  const [mode, setMode] = useState(initialMode || 'straight');
+  const [modeLocked, setModeLocked] = useState(existingSets.length > 0);
   const [screenState, setScreenState] = useState('guide'); // 'guide' | 'set' | 'rest' | 'done'
   const [curQueueIdx, setCurQueueIdx] = useState(0);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
-  const [logs, setLogs] = useState({}); // { [exKey]: [val1, val2...] }
-  const [loggedSets, setLoggedSets] = useState([]); // array of set records
-  const [elapsed, setElapsed] = useState(0);
+  const [loggedSets, setLoggedSets] = useState(() => existingSets
+    .slice()
+    .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
+    .map(s => ({
+      sessionId,
+      routineItemId: s.routine_item_id || null,
+      exerciseKey: s.exercise_key,
+      exerciseName: s.exercise_name || s.exercise_key,
+      setNo: s.set_no,
+      sequenceOrder: s.sequence_order,
+      targetVal: s.target_val,
+      unit: s.unit || 'rep',
+      actualVal: s.actual_val,
+      kg: Number(s.kg || 0),
+      isPR: Boolean(s.is_pr)
+    })));
   const [approvedProgressions, setApprovedProgressions] = useState({});
   const [saveError, setSaveError] = useState(null);
   const hasRestoredRef = useRef(false);
 
+  // Thời lượng đã tập trước khi mở màn: thời lượng lưu lúc tạm dừng, hoặc tới set cuối đã ghi (khi tải lại trang)
+  const [baseElapsed] = useState(() => {
+    let lastSetSec = 0;
+    if (startedAt && existingSets.length > 0) {
+      const start = new Date(startedAt).getTime();
+      const last = Math.max(...existingSets.map(s => new Date(s.completed_at || 0).getTime()));
+      lastSetSec = Math.max(0, Math.round((last - start) / 1000));
+    }
+    return Math.max(Number(initialElapsed) || 0, lastSetSec);
+  });
+  const [elapsed, setElapsed] = useState(baseElapsed);
+
   // Wall-clock timers for drift resistance (background tabs / mobile lock)
-  const sessionStartTimeRef = useRef(Date.now());
+  const sessionStartTimeRef = useRef(null);
   const restEndRef = useRef(null);
   const plankStartTimeRef = useRef(null);
 
   const [restRemaining, setRestRemaining] = useState(0);
   const [restTotal, setRestTotal] = useState(60);
+  const [restKind, setRestKind] = useState('set');
+  const [restNextIdx, setRestNextIdx] = useState(null);
 
   const [tSec, setTSec] = useState(0);
   const [tRunning, setTRunning] = useState(false);
@@ -50,7 +109,7 @@ export default function LiveSessionScreen({
   // Input rep value
   const [currentVal, setCurrentVal] = useState(15);
 
-  // 1. Freeze / snapshot the day items once when session starts
+  // 1. Bài tập của buổi: bài lẻ (buổi tự do) hoặc các bài theo thứ trong lộ trình
   const dayItems = useMemo(() => {
     if (dayInfo?.singleExercise) {
       const ex = dayInfo.singleExercise;
@@ -65,16 +124,32 @@ export default function LiveSessionScreen({
         rest_seconds: 60
       }];
     }
-    const weekday = dayInfo?.weekday || dayInfo?.day || 2;
-    return routineItems.filter(item => item.weekday === weekday);
+    const weekday = dayInfo?.weekday || dayInfo?.day;
+    return weekday ? routineItems.filter(item => item.weekday === weekday) : [];
   }, [dayInfo, routineItems]);
 
   // 2. Build the exercise queue based on mode
-  const queue = useMemo(() => {
-    return generateWorkoutQueue(dayItems, mode);
-  }, [dayItems, mode]);
+  const queue = useMemo(() => generateWorkoutQueue(dayItems, mode), [dayItems, mode]);
+
+  const nameOf = useCallback(
+    (key) => exerciseMap.get(key)?.name || BASE_EXERCISES.find(e => e.key === key)?.name || key,
+    [exerciseMap]
+  );
+
+  const doneKeys = useMemo(() => new Set(loggedSets.map(slotOfRecord)), [loggedSets]);
+
+  // Giá trị đã ghi theo bài: { [exercise_key]: [set1, set2, ...] }
+  const logs = useMemo(() => {
+    const out = {};
+    loggedSets.forEach(s => {
+      if (!out[s.exerciseKey]) out[s.exerciseKey] = [];
+      out[s.exerciseKey][s.setNo - 1] = s.actualVal;
+    });
+    return out;
+  }, [loggedSets]);
 
   const currentItem = queue[curQueueIdx] || queue[0];
+  const currentSlotKey = currentItem ? `${slotOfItem(currentItem)}@${curQueueIdx}` : '';
 
   // Resolve exercise definition from map or fallback
   const exDef = useMemo(() => {
@@ -90,27 +165,34 @@ export default function LiveSessionScreen({
     };
   }, [currentItem, exerciseMap]);
 
-  // Map of historical max per exercise for accurate PR detection
-  const historyMaxMap = useMemo(() => {
-    const map = new Map();
-    (recentSets || []).forEach(s => {
-      const key = s.exercise_key;
-      const prev = map.get(key) || { maxVal: 0, kg: 0 };
-      if (Number(s.actual_val || 0) > prev.maxVal) {
-        map.set(key, { maxVal: Number(s.actual_val), kg: Number(s.kg || 0) });
-      }
-    });
-    return map;
-  }, [recentSets]);
+  // Mốc PR từ lịch sử (không tính buổi này) + kết quả "lần trước" của từng bài
+  const historyBaselines = useMemo(
+    () => buildPrBaselines(recentSets.filter(s => s.session_id !== sessionId)),
+    [recentSets, sessionId]
+  );
+  const prevByExercise = useMemo(
+    () => buildPreviousSetsByExercise(recentSets, sessionId),
+    [recentSets, sessionId]
+  );
+  const prevLine = (key) => {
+    const prev = prevByExercise.get(key);
+    if (!prev || prev.sets.length === 0) return null;
+    const unit = prev.sets[0].unit;
+    const kg = prev.sets.find(s => s.kg > 0)?.kg;
+    return `${fmtVals(prev.sets.map(s => s.actual_val), unit)}${kg ? ` · ${kg} kg` : ''}`;
+  };
 
-  // Overall workout elapsed timer (wall-clock based)
+  // Overall workout elapsed timer (wall-clock based, cộng dồn phần đã tập trước khi tạm dừng)
   useEffect(() => {
+    if (sessionStartTimeRef.current == null) {
+      sessionStartTimeRef.current = Date.now() - baseElapsed * 1000;
+    }
     if (screenState === 'done') return;
     const interval = setInterval(() => {
       setElapsed(Math.floor((Date.now() - sessionStartTimeRef.current) / 1000));
     }, 500);
     return () => clearInterval(interval);
-  }, [screenState]);
+  }, [screenState, baseElapsed]);
 
   // Persistent Web Audio context with user gesture unlock (iOS Safari compatibility)
   const audioCtxRef = useRef(null);
@@ -160,15 +242,20 @@ export default function LiveSessionScreen({
     };
   }, []);
 
+  // Chuyển sang ô set idx: set đầu tiên của 1 bài thì mở hướng dẫn (theo thiết kế), còn lại vào thẳng màn ghi set
+  const goToSlot = useCallback((idx) => {
+    if (idx < 0 || idx >= queue.length) {
+      setScreenState('done');
+      return;
+    }
+    setCurQueueIdx(idx);
+    setScreenState(queue[idx].set_no === 1 ? 'guide' : 'set');
+  }, [queue]);
+
   // End rest handler defined BEFORE rest timer effect to avoid TDZ initialization error
   const handleEndRest = useCallback(() => {
-    if (curQueueIdx + 1 >= queue.length) {
-      setScreenState('done');
-    } else {
-      setCurQueueIdx(prev => prev + 1);
-      setScreenState('set');
-    }
-  }, [curQueueIdx, queue.length]);
+    goToSlot(restNextIdx == null ? -1 : restNextIdx);
+  }, [goToSlot, restNextIdx]);
 
   // Rest countdown timer (timestamp delta)
   useEffect(() => {
@@ -197,55 +284,26 @@ export default function LiveSessionScreen({
     return () => clearInterval(interval);
   }, [tRunning]);
 
-  // Reset input values when current item changes
+  // Reset input values khi sang ô set khác (so theo khóa ổn định, không theo object để tránh reset giữa chừng)
   useEffect(() => {
-    if (currentItem) {
-      setCurrentVal(Number(currentItem.target_val || 10));
-      setTSec(0);
-      setTRunning(false);
-      plankStartTimeRef.current = null;
-    }
-  }, [curQueueIdx, currentItem]);
+    if (!currentSlotKey) return;
+    const item = queue[curQueueIdx];
+    setCurrentVal(Number(item?.target_val || 10));
+    setTSec(0);
+    setTRunning(false);
+    plankStartTimeRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSlotKey]);
 
-  // Restore previously logged sets ONLY on mount when explicitly continuing an in-progress session
+  // Tiếp tục buổi dở: nhảy tới ô set còn trống đầu tiên theo đúng chế độ đã chốt
   useEffect(() => {
     if (hasRestoredRef.current) return;
     hasRestoredRef.current = true;
-    if (!isResume || !sessionId || !recentSets || recentSets.length === 0) return;
-
-    const existing = recentSets.filter(s => (s.session_id || s.sessionId) === sessionId);
-    if (existing.length === 0) return;
-
-    existing.sort((a, b) => (a.sequence_order || a.set_no || 0) - (b.sequence_order || b.set_no || 0));
-
-    const restoredLoggedSets = existing.map(s => ({
-      sessionId,
-      routineItemId: s.routine_item_id || s.routineItemId || null,
-      exerciseKey: s.exercise_key || s.exerciseKey,
-      exerciseName: s.exercise_name || s.exerciseName || s.exercise_key,
-      setNo: s.set_no || s.setNo,
-      sequenceOrder: s.sequence_order || s.sequenceOrder,
-      targetVal: s.target_val || s.targetVal,
-      unit: s.unit || 'rep',
-      actualVal: s.actual_val != null ? s.actual_val : s.actualVal,
-      kg: Number(s.kg || 0),
-      isPR: Boolean(s.is_pr || s.isPR)
-    }));
-
-    const restoredLogs = {};
-    restoredLoggedSets.forEach(s => {
-      if (!restoredLogs[s.exerciseKey]) restoredLogs[s.exerciseKey] = [];
-      restoredLogs[s.exerciseKey][s.setNo - 1] = s.actualVal;
-    });
-
-    setLoggedSets(restoredLoggedSets);
-    setLogs(restoredLogs);
-
-    if (queue.length > 0) {
-      const nextIdx = Math.min(existing.length, queue.length - 1);
-      setCurQueueIdx(nextIdx);
-    }
-  }, [isResume, sessionId, recentSets, queue.length]);
+    if (existingSets.length === 0 || queue.length === 0) return;
+    const next = findNextOpenIndex(queue, doneKeys, -1);
+    if (next < 0) setScreenState('done');
+    else goToSlot(next);
+  }, [existingSets, queue, doneKeys, goToSlot]);
 
   const formatClock = (seconds) => {
     const m = Math.floor(seconds / 60);
@@ -253,11 +311,23 @@ export default function LiveSessionScreen({
     return `${m}:${String(s).padStart(2, '0')}`;
   };
 
-  const startRestTimer = (seconds) => {
-    const s = Math.max(10, seconds || 60);
-    setRestTotal(s);
-    setRestRemaining(s);
-    restEndRef.current = Date.now() + s * 1000;
+  // Sau khi ghi (hoặc bỏ) các ô: nghỉ theo loại rồi tới ô trống kế tiếp
+  const advanceAfter = (fromIdx, nextDoneKeys) => {
+    const next = findNextOpenIndex(queue, nextDoneKeys, fromIdx);
+    if (next < 0) {
+      setScreenState('done');
+      return;
+    }
+    const restSec = Number(queue[fromIdx]?.rest_seconds) || 0;
+    if (restSec <= 0) {
+      goToSlot(next);
+      return;
+    }
+    setRestKind(getRestKind(mode, queue[fromIdx], queue[next]));
+    setRestNextIdx(next);
+    setRestTotal(restSec);
+    setRestRemaining(restSec);
+    restEndRef.current = Date.now() + restSec * 1000;
     setScreenState('rest');
   };
 
@@ -271,59 +341,67 @@ export default function LiveSessionScreen({
     setRestTotal(prev => Math.max(prev, nextRemaining));
   };
 
+  const persistRecord = (record) => {
+    if (!onLogSet) return;
+    onLogSet(record).catch(err => {
+      console.error('Failed to save set to DB:', err);
+      setSaveError('Không thể lưu set vào máy chủ. Dữ liệu vẫn được giữ tạm trên màn hình.');
+    });
+  };
+
+  const lockModeIfNeeded = () => {
+    if (modeLocked) return;
+    setModeLocked(true);
+    onModeLocked?.(mode);
+  };
+
+  const buildRecord = (item, actualVal, isPR = false) => ({
+    sessionId,
+    routineItemId: isUuid(item.routine_item_id) ? item.routine_item_id : null,
+    exerciseKey: item.exercise_key,
+    exerciseName: nameOf(item.exercise_key),
+    setNo: item.set_no,
+    sequenceOrder: item.sequence_order,
+    targetVal: item.target_val,
+    unit: item.unit,
+    actualVal,
+    kg: item.kg || 0,
+    isPR
+  });
+
   const handleLogSet = (valToLog) => {
     ensureAudioUnlocked();
     if (!currentItem) return;
+    lockModeIfNeeded();
 
     // valToLog === null means set was explicitly skipped
-    const isSkipped = valToLog === null;
-    const actualVal = isSkipped ? null : Number(valToLog !== undefined ? valToLog : currentVal);
-    const exKey = currentItem.exercise_key;
+    const actualVal = valToLog === null ? null : Number(valToLog);
 
-    // Detect PR against history
-    const hist = historyMaxMap.get(exKey);
-    const isPR = !isSkipped && hist != null && detectPR(actualVal, hist.maxVal, currentItem.kg, hist.kg);
+    // PR: vượt mốc lịch sử VÀ vượt các set trước của chính buổi này (mỗi bài tối đa 1 lần lên kỷ lục mới)
+    let isPR = false;
+    if (actualVal != null) {
+      const sessionBase = buildPrBaselines(loggedSets).get(currentItem.exercise_key);
+      const candidate = { actualVal, kg: currentItem.kg || 0 };
+      isPR = isNewPR(candidate, historyBaselines.get(currentItem.exercise_key))
+        && (!sessionBase || isNewPR(candidate, sessionBase));
+    }
 
-    // Update local logs
-    const prevArr = logs[exKey] || [];
-    const nextArr = [...prevArr];
-    nextArr[currentItem.set_no - 1] = actualVal;
-    setLogs(prev => ({ ...prev, [exKey]: nextArr }));
-
-    const rawItemId = currentItem.routine_item_id || currentItem.id;
-    const isValidUUID = typeof rawItemId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(rawItemId);
-    const resolvedRoutineItemId = isValidUUID ? rawItemId : null;
-
-    const record = {
-      sessionId,
-      routineItemId: resolvedRoutineItemId,
-      exerciseKey: exKey,
-      exerciseName: exDef?.name || currentItem.name || exKey,
-      setNo: currentItem.set_no,
-      sequenceOrder: currentItem.sequence_order,
-      targetVal: currentItem.target_val,
-      unit: currentItem.unit,
-      actualVal,
-      kg: currentItem.kg || 0,
-      isPR
-    };
-
+    const record = buildRecord(currentItem, actualVal, isPR);
     setLoggedSets(prev => [...prev, record]);
+    persistRecord(record);
+    advanceAfter(curQueueIdx, new Set([...doneKeys, slotOfRecord(record)]));
+  };
 
-    // Persist set to Supabase immediately if callback provided
-    if (onLogSet) {
-      onLogSet(record).catch(err => {
-        console.error('Failed to save set to DB:', err);
-        setSaveError('Không thể lưu set vào máy chủ. Dữ liệu vẫn được giữ tạm trên màn hình.');
-      });
-    }
-
-    // Move to next step
-    if (curQueueIdx + 1 < queue.length) {
-      startRestTimer(currentItem.rest_seconds || 60);
-    } else {
-      setScreenState('done');
-    }
+  // Bỏ cả bài: các set còn trống của bài hiện tại được ghi là "bỏ"
+  const handleSkipExercise = () => {
+    if (!currentItem) return;
+    lockModeIfNeeded();
+    const sameItem = q => q.exercise_key === currentItem.exercise_key && q.exerciseIndex === currentItem.exerciseIndex;
+    const records = queue.filter(q => sameItem(q) && !doneKeys.has(slotOfItem(q))).map(q => buildRecord(q, null));
+    if (records.length === 0) return;
+    setLoggedSets(prev => [...prev, ...records]);
+    records.forEach(persistRecord);
+    advanceAfter(curQueueIdx, new Set([...doneKeys, ...records.map(slotOfRecord)]));
   };
 
   // Rest SVG circular progress
@@ -340,17 +418,32 @@ export default function LiveSessionScreen({
     ? uniqueExerciseKeys.indexOf(currentItem.exercise_key) + 1
     : 1;
 
+  const totalRounds = useMemo(() => Math.max(0, ...dayItems.map(it => Number(it.target_sets) || 1)), [dayItems]);
+  const positionLabel = !currentItem ? '' : mode === 'circuit'
+    ? `Vòng ${currentItem.set_no} / ${totalRounds} · Bài ${currentExerciseIdx} / ${uniqueExerciseKeys.length}`
+    : mode === 'superset'
+      ? `Cặp ${Math.floor(currentItem.exerciseIndex / 2) + 1} · ${LETTERS[currentItem.exerciseIndex] || ''}${currentItem.set_no} · Set ${currentItem.set_no}/${currentItem.total_sets}`
+      : `Bài ${currentExerciseIdx} / ${uniqueExerciseKeys.length} · Set ${currentItem.set_no}/${currentItem.total_sets}`;
+
+  // Ước tính thời lượng & thứ tự set của từng chế độ (chọn trước khi bắt đầu)
+  const modeOptions = useMemo(() => MODES.map(m => {
+    const q = generateWorkoutQueue(dayItems, m.key);
+    const seq = q.slice(0, 12).map(x => `${LETTERS[x.exerciseIndex] || '?'}${x.set_no}`).join(' → ')
+      + (q.length > 12 ? ` → … (${q.length} set)` : '');
+    return { ...m, minutes: estimateQueueMinutes(q), seq };
+  }), [dayItems]);
+
   // ── STATS CALCULATION FOR DONE SCREEN ─────────────────────────────────────
   const doneStats = useMemo(() => {
     const completedCount = loggedSets.filter(s => s.actualVal != null).length;
     const totalVolumeKg = loggedSets.reduce((acc, s) => {
-      return acc + (s.actualVal != null ? s.actualVal * (s.kg || 0) : 0);
+      return acc + (s.actualVal != null && s.unit !== 's' ? s.actualVal * (s.kg || 0) : 0);
     }, 0);
-    const prCount = loggedSets.filter(s => s.isPR).length;
+    const prExercises = new Set(loggedSets.filter(s => s.isPR).map(s => s.exerciseKey));
 
     // Auto-progression evaluation for each day item
     const progressionCandidates = dayItems.map(item => {
-      const itemSets = loggedSets.filter(s => s.exerciseKey === item.exercise_key);
+      const itemSets = loggedSets.filter(s => s.exerciseKey === item.exercise_key).map(s => s.actualVal);
       const evalRes = checkAutoProgression(
         itemSets,
         item.target_val,
@@ -360,61 +453,33 @@ export default function LiveSessionScreen({
       return {
         routineItemId: item.id,
         exercise_key: item.exercise_key,
-        name: exerciseMap?.get(item.exercise_key)?.name || BASE_EXERCISES.find(e => e.key === item.exercise_key)?.name || item.name || item.exercise_key,
+        name: nameOf(item.exercise_key),
         currentVal: item.target_val,
         nextVal: evalRes.nextTarget,
         unit: item.unit,
         shouldProgress: evalRes.shouldProgress,
         step: evalRes.step,
-        completedSets: itemSets.filter(s => s.actualVal != null).length,
+        completedSets: itemSets.filter(v => v != null).length,
         totalTargetSets: item.target_sets
       };
     });
 
-    // Comparison with recent historical sets (excluding current session sets)
-    // Only compare against the most recent session that contained each exercise,
-    // avoiding summing up all historical sets across time.
-    const historicalSets = (recentSets || []).filter(s => {
-      const sId = s.session_id || s.sessionId;
-      return sId && sId !== sessionId;
+    // So với buổi gần nhất có tập từng bài (không cộng dồn toàn bộ lịch sử)
+    const previousSets = [];
+    prevByExercise.forEach((prev, key) => {
+      prev.sets.forEach(s => previousSets.push({ ...s, exercise_key: key }));
     });
-
-    const histSetsByEx = new Map();
-    historicalSets.forEach(s => {
-      const key = s.exercise_key || s.exerciseKey;
-      if (!key) return;
-      if (!histSetsByEx.has(key)) histSetsByEx.set(key, []);
-      histSetsByEx.get(key).push(s);
-    });
-
-    const previousSetsOfLastWorkout = [];
-    histSetsByEx.forEach((sets) => {
-      let latestSessionId = null;
-      let latestTime = 0;
-      sets.forEach(s => {
-        const time = new Date(s.completed_at || s.created_at || 0).getTime();
-        if (time >= latestTime) {
-          latestTime = time;
-          latestSessionId = s.session_id || s.sessionId;
-        }
-      });
-      if (latestSessionId) {
-        sets.filter(s => (s.session_id || s.sessionId) === latestSessionId)
-            .forEach(s => previousSetsOfLastWorkout.push(s));
-      }
-    });
-
-    const prevComparison = compareSessionWithPrevious(loggedSets, previousSetsOfLastWorkout);
+    const prevComparison = compareSessionWithPrevious(loggedSets, previousSets);
 
     return {
       completedCount,
       totalSets: queue.length,
-      totalVolumeKg,
-      prCount,
+      totalVolumeKg: Math.round(totalVolumeKg),
+      prCount: prExercises.size,
       progressionCandidates,
       prevComparison
     };
-  }, [loggedSets, queue.length, dayItems, recentSets, sessionId, exerciseMap]);
+  }, [loggedSets, queue.length, dayItems, prevByExercise, nameOf]);
 
   // Set initial approved progressions when entering done state
   useEffect(() => {
@@ -428,6 +493,17 @@ export default function LiveSessionScreen({
       setApprovedProgressions(initialApproved);
     }
   }, [screenState, doneStats.progressionCandidates]);
+
+  // Màn nghỉ: thông tin set kế tiếp
+  const nextItem = restNextIdx != null ? queue[restNextIdx] : null;
+  const nextPrevInSession = nextItem && nextItem.set_no > 1 ? (logs[nextItem.exercise_key] || [])[nextItem.set_no - 2] : undefined;
+
+  // Bài tính giây: gợi ý tư thế đổi mỗi 6 giây khi đang giữ
+  const formCues = exDef?.form_cues || [];
+  const activeCueIdx = tRunning && formCues.length ? Math.floor(tSec / 6) % formCues.length : -1;
+  const C104 = 2 * Math.PI * 104;
+  const timedTarget = Number(currentItem?.target_val) || 0;
+  const timedProgress = timedTarget ? Math.min(1, tSec / timedTarget) : 0;
 
   // If queue is empty (e.g. rest day selected)
   if (queue.length === 0) {
@@ -464,7 +540,7 @@ export default function LiveSessionScreen({
           gap: '8px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AppIcon name="alert-circle" size={16} />
+            <AppIcon name="warning" size={16} />
             <span>{saveError}</span>
           </div>
           <button
@@ -507,7 +583,7 @@ export default function LiveSessionScreen({
             {formatClock(elapsed)}
           </span>
           <span style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-            Bài {currentExerciseIdx} / {uniqueExerciseKeys.length} · Set {currentItem?.set_no || 1}/{currentItem?.total_sets || 3}
+            {positionLabel}
           </span>
         </div>
 
@@ -530,8 +606,8 @@ export default function LiveSessionScreen({
       {/* ── PROGRESS SEGMENTS ───────────────────────────────────── */}
       <div style={{ display: 'flex', gap: '4px' }}>
         {queue.map((item, i) => {
-          const isDone = i < curQueueIdx;
-          const isCur = i === curQueueIdx;
+          const isDone = doneKeys.has(slotOfItem(item));
+          const isCur = i === curQueueIdx && screenState !== 'done';
           return (
             <div
               key={i}
@@ -557,13 +633,17 @@ export default function LiveSessionScreen({
               </span>
               <h2 style={{ fontSize: '24px', fontWeight: 700, margin: '4px 0' }}>{exDef?.name}</h2>
               <div style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                Cơ chính: {exDef?.primary} · Phụ: {(exDef?.secondary || []).join(', ') || 'Không'}
+                Cơ chính: {MUSCLE_MAP[exDef?.primary]?.name || exDef?.primary} · Phụ: {(exDef?.secondary || []).map(m => MUSCLE_MAP[m]?.name || m).join(', ') || 'Không'}
+              </div>
+              <div style={{ fontSize: '12.5px', color: 'var(--body-text-sub)', marginTop: '4px', fontFamily: 'var(--body-mono)' }}>
+                Lần trước: {prevLine(currentItem?.exercise_key) || 'chưa có'}
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '11px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>MỤC TIÊU</div>
               <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--body-accent)' }}>
                 {currentItem?.total_sets} × {formatValWithUnit(currentItem?.target_val, currentItem?.unit)}
+                {currentItem?.kg ? ` · ${currentItem.kg} kg` : ''}
               </div>
               <button
                 type="button"
@@ -590,37 +670,51 @@ export default function LiveSessionScreen({
             </div>
           </div>
 
-          {/* Mode Switcher */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '10px', background: 'var(--body-shell-bg)', fontSize: '13px' }}>
-            <span style={{ color: 'var(--body-text-muted)', fontWeight: 500 }}>Chế độ:</span>
-            {curQueueIdx === 0 ? (
-              [
-                { key: 'straight', label: 'Từng bài (Straight)' },
-                { key: 'circuit', label: 'Vòng tròn (Circuit)' },
-                { key: 'superset', label: 'Superset' }
-              ].map(m => (
-                <button
-                  key={m.key}
-                  className="body-btn"
-                  style={{
-                    height: '28px',
-                    padding: '0 10px',
-                    fontSize: '12px',
-                    background: mode === m.key ? 'var(--body-text-main)' : 'transparent',
-                    color: mode === m.key ? 'var(--body-bg)' : 'var(--body-text-main)',
-                    border: mode === m.key ? 'none' : '1px solid var(--body-card-border)'
-                  }}
-                  onClick={() => setMode(m.key)}
-                >
-                  {m.label}
-                </button>
-              ))
-            ) : (
-              <span style={{ fontWeight: 600, color: 'var(--body-accent)', fontSize: '12.5px' }}>
-                {mode === 'straight' ? 'Từng bài (Straight)' : mode === 'circuit' ? 'Vòng tròn (Circuit)' : 'Superset'} (Cố định suốt buổi)
+          {/* Chọn chế độ tập trước set đầu tiên (kèm thời lượng ước tính & thứ tự set), sau đó cố định suốt buổi */}
+          {!modeLocked && dayItems.length > 1 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 14px', borderRadius: '10px', background: 'var(--body-shell-bg)' }}>
+              <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)', fontWeight: 600 }}>Chọn chế độ tập</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px' }}>
+                {modeOptions.map(m => {
+                  const on = mode === m.key;
+                  return (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => setMode(m.key)}
+                      style={{
+                        textAlign: 'left',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: `1.5px solid ${on ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
+                        background: on ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
+                        color: 'var(--body-text-main)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '3px'
+                      }}
+                    >
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: on ? 'var(--body-accent)' : 'var(--body-text-main)' }}>
+                        {m.label} · ~{m.minutes} phút
+                      </span>
+                      <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)', lineHeight: 1.4 }}>{m.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <span style={{ fontSize: '11.5px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-sub)', overflowWrap: 'anywhere' }}>
+                Thứ tự: {modeOptions.find(m => m.key === mode)?.seq}
               </span>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '10px', background: 'var(--body-shell-bg)', fontSize: '13px' }}>
+              <span style={{ color: 'var(--body-text-muted)', fontWeight: 500 }}>Chế độ:</span>
+              <span style={{ fontWeight: 600, color: 'var(--body-accent)', fontSize: '12.5px' }}>
+                {MODES.find(m => m.key === mode)?.label}{modeLocked ? ' (cố định suốt buổi)' : ''}
+              </span>
+            </div>
+          )}
 
           <div style={{ padding: '16px', borderRadius: '12px', background: 'var(--body-shell-bg)' }}>
             <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Cách thực hiện chuẩn:</div>
@@ -698,8 +792,8 @@ export default function LiveSessionScreen({
             {/* Video thị phạm (YouTube / Google Drive) */}
             <div style={{ marginTop: '12px' }}>
               <ExerciseVideoPlayer
-                exerciseKey={currentItem?.exerciseKey}
-                exerciseName={currentItem?.name}
+                exerciseKey={currentItem?.exercise_key}
+                exerciseName={exDef?.name}
                 defaultUrl={exDef?.video_url}
                 compact={true}
               />
@@ -729,6 +823,9 @@ export default function LiveSessionScreen({
                 Set {currentItem?.set_no} / {currentItem?.total_sets} · Mục tiêu {formatValWithUnit(currentItem?.target_val, currentItem?.unit)}
                 {currentItem?.kg ? ` · ${currentItem.kg} kg` : ''}
               </div>
+              <div style={{ fontSize: '12px', color: 'var(--body-text-sub)', marginTop: '2px', fontFamily: 'var(--body-mono)' }}>
+                Lần trước: {prevLine(currentItem?.exercise_key) || 'chưa có'}
+              </div>
             </div>
             <button
               className="body-btn body-btn-secondary"
@@ -737,6 +834,33 @@ export default function LiveSessionScreen({
             >
               Xem hướng dẫn
             </button>
+          </div>
+
+          {/* Trạng thái từng set của bài đang tập */}
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {Array.from({ length: currentItem?.total_sets || 0 }, (_, j) => {
+              const val = (logs[currentItem.exercise_key] || [])[j];
+              const has = val !== undefined;
+              const isNow = j + 1 === currentItem.set_no;
+              const ok = has && val != null && val >= currentItem.target_val;
+              return (
+                <span
+                  key={j}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontFamily: 'var(--body-mono)',
+                    fontWeight: 600,
+                    border: `1px solid ${isNow ? 'var(--body-accent)' : ok ? 'var(--body-green)' : has ? 'var(--body-amber)' : 'var(--body-card-border)'}`,
+                    background: isNow ? 'var(--body-accent-soft)' : ok ? 'var(--body-green-soft)' : has ? 'var(--body-amber-soft)' : 'var(--body-card-bg)',
+                    color: isNow ? 'var(--body-accent)' : 'var(--body-text-main)'
+                  }}
+                >
+                  S{j + 1} · {isNow ? '…' : !has ? formatValWithUnit(currentItem.target_val, currentItem.unit) : val == null ? 'bỏ' : formatValWithUnit(val, currentItem.unit)}
+                </span>
+              );
+            })}
           </div>
 
           {/* Bài đếm rep */}
@@ -802,12 +926,41 @@ export default function LiveSessionScreen({
           ) : (
             /* Bài đếm giây (Plank / Dead Hang) */
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', margin: 'auto 0' }}>
-              <div style={{ fontSize: '64px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: tSec >= currentItem.target_val ? 'var(--body-green)' : 'var(--body-accent)' }}>
-                {tSec}s
+              <div style={{ position: 'relative', width: '230px', height: '230px' }}>
+                <svg width="230" height="230" viewBox="0 0 230 230">
+                  <circle cx="115" cy="115" r="104" fill="none" stroke="var(--body-border-subtle)" strokeWidth="10" />
+                  <circle
+                    cx="115"
+                    cy="115"
+                    r="104"
+                    fill="none"
+                    stroke={tSec >= timedTarget ? 'var(--body-green)' : 'var(--body-accent)'}
+                    strokeWidth="10"
+                    strokeDasharray={`${(C104 * timedProgress).toFixed(1)} ${C104.toFixed(1)}`}
+                    strokeLinecap="round"
+                    transform="rotate(-90 115 115)"
+                  />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '52px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: tSec >= timedTarget ? 'var(--body-green)' : 'var(--body-text-main)' }}>
+                    {formatClock(tSec)}
+                  </span>
+                  <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)' }}>
+                    {tSec >= timedTarget ? `Đạt mục tiêu · +${tSec - timedTarget} giây` : `mục tiêu ${formatClock(timedTarget)} · còn ${timedTarget - tSec} giây`}
+                  </span>
+                </div>
               </div>
-              <div style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                Mục tiêu: {currentItem.target_val}s {tSec >= currentItem.target_val ? '· Đã đạt ✓' : `· Còn ${Math.max(0, currentItem.target_val - tSec)}s`}
-              </div>
+
+              {formCues.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', maxWidth: '420px' }}>
+                  {formCues.map((cue, i) => (
+                    <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '12.5px', lineHeight: 1.45, color: i === activeCueIdx ? 'var(--body-text-main)' : 'var(--body-text-muted)', fontWeight: i === activeCueIdx ? 600 : 400 }}>
+                      <AppIcon name={i === activeCueIdx ? 'checkCircle' : 'check'} size={14} style={{ color: i === activeCueIdx ? 'var(--body-accent)' : 'var(--body-border-subtle)', flex: 'none', marginTop: '2px' }} />
+                      <span>{cue}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
@@ -835,17 +988,28 @@ export default function LiveSessionScreen({
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--body-card-border)' }}>
-            <button
-              className="body-btn body-btn-secondary"
-              onClick={() => handleLogSet(null)}
-            >
-              Bỏ set này
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--body-card-border)' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                className="body-btn body-btn-secondary"
+                onClick={() => handleLogSet(null)}
+              >
+                Bỏ set này
+              </button>
+              <button
+                className="body-btn body-btn-secondary"
+                onClick={handleSkipExercise}
+                title="Bỏ các set còn lại của bài này"
+              >
+                Bỏ bài
+              </button>
+            </div>
 
             <button
               className="body-btn body-btn-accent"
               style={{ padding: '0 24px', height: '42px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              disabled={currentItem.unit === 's' && tSec === 0}
+              title={currentItem.unit === 's' && tSec === 0 ? 'Bấm "Bắt đầu đếm giờ" trước khi hoàn thành' : undefined}
               onClick={() => handleLogSet(currentItem.unit === 's' ? tSec : currentVal)}
             >
               <AppIcon name="checkCircle" size={18} />
@@ -859,8 +1023,8 @@ export default function LiveSessionScreen({
       {screenState === 'rest' && (
         <div className="body-rest-overlay">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '15px', fontWeight: 600, color: '#C4B6F4' }}>
-              NGHỈ GIỮA SET
+            <span style={{ fontSize: '15px', fontWeight: 600, color: '#C4B6F4', textTransform: 'uppercase' }}>
+              {REST_KIND_LABELS[restKind] || 'Nghỉ giữa set'}
             </span>
             <button
               className="body-btn body-btn-secondary"
@@ -922,11 +1086,17 @@ export default function LiveSessionScreen({
           <div style={{ textAlign: 'center', marginTop: 'auto', padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}>
             <div style={{ fontSize: '11px', fontFamily: 'var(--body-mono)', color: '#9C9AA8' }}>TIẾP THEO</div>
             <div style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginTop: '2px' }}>
-              Set {queue[curQueueIdx + 1]?.set_no || 1} · {queue[curQueueIdx + 1]?.name}
+              {nextItem ? `Set ${nextItem.set_no} / ${nextItem.total_sets} · ${nameOf(nextItem.exercise_key)}` : 'Hoàn thành buổi'}
             </div>
-            <div style={{ fontSize: '12.5px', color: '#B0B3BE' }}>
-              Mục tiêu {formatValWithUnit(queue[curQueueIdx + 1]?.target_val, queue[curQueueIdx + 1]?.unit)}
-            </div>
+            {nextItem && (
+              <div style={{ fontSize: '12.5px', color: '#B0B3BE' }}>
+                Mục tiêu {formatValWithUnit(nextItem.target_val, nextItem.unit)}
+                {nextItem.kg ? ` · ${nextItem.kg} kg` : ''}
+                {nextPrevInSession !== undefined
+                  ? ` · set trước ${nextPrevInSession == null ? 'bỏ' : formatValWithUnit(nextPrevInSession, nextItem.unit)}`
+                  : prevLine(nextItem.exercise_key) ? ` · lần trước ${prevLine(nextItem.exercise_key)}` : ''}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -969,9 +1139,8 @@ export default function LiveSessionScreen({
             <button
               className="body-btn body-btn-accent"
               onClick={() => {
-                const isValidUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
                 const progressionsToApply = doneStats.progressionCandidates
-                  .filter(c => c.shouldProgress && isValidUUID(c.routineItemId) && approvedProgressions[c.routineItemId || c.exercise_key])
+                  .filter(c => c.shouldProgress && isUuid(c.routineItemId) && approvedProgressions[c.routineItemId || c.exercise_key])
                   .map(c => ({
                     routineItemId: c.routineItemId,
                     nextTargetVal: c.nextVal
@@ -1036,7 +1205,7 @@ export default function LiveSessionScreen({
                   const loggedVals = logs[item.exercise_key] || [];
                   const compEx = doneStats.prevComparison.byExercise.find(e => e.exercise_key === item.exercise_key);
                   const isItemPR = loggedSets.some(s => s.exerciseKey === item.exercise_key && s.isPR);
-                  const displayName = exerciseMap?.get(item.exercise_key)?.name || BASE_EXERCISES.find(e => e.key === item.exercise_key)?.name || item.name || item.exercise_key;
+                  const displayName = nameOf(item.exercise_key);
 
                   return (
                     <div key={idx} style={{ paddingBottom: '12px', borderBottom: '1px solid var(--body-card-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1090,7 +1259,7 @@ export default function LiveSessionScreen({
                                 gap: '6px'
                               }}
                             >
-                              <span>{isSkipped ? 'Bỏ' : `${val} ${item.unit}`}</span>
+                              <span>{isSkipped ? 'Bỏ' : formatValWithUnit(val, item.unit)}</span>
                               {isMet && <AppIcon name="check" size={12} />}
                             </div>
                           );
@@ -1231,7 +1400,7 @@ export default function LiveSessionScreen({
                   }}
                   onClick={() => {
                     setShowExitModal(false);
-                    if (onPause) onPause();
+                    if (onPause) onPause(elapsed);
                     else onCancel();
                   }}
                 >

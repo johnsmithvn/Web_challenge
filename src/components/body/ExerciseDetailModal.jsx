@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import AppIcon from '../AppIcon';
 import MuscleAnatomy2D from './MuscleAnatomy2D';
-import ExerciseVideoPlayer, { getCustomVideoUrl } from './ExerciseVideoPlayer';
+import ExerciseVideoPlayer from './ExerciseVideoPlayer';
 import MUSCLE_MAP from '../../data/body-muscles.json';
 
 /**

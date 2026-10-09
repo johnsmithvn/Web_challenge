@@ -1,13 +1,16 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import AppIcon from '../AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useBiometrics } from '../../hooks/useBiometrics';
 import { useNutrition } from '../../hooks/useNutrition';
 import { useWorkouts } from '../../hooks/useWorkouts';
-import MuscleBodyCanvas from './MuscleBodyCanvas';
-import { calculateRecoveryMetrics } from '../../utils/workoutLogic';
+import { calculateRecoveryMetrics, getRoutineWeek, estimateQueueMinutes, generateWorkoutQueue } from '../../utils/workoutLogic';
+import { calculateMacroTargets } from '../../utils/bodyMetrics';
 import { getWeekDates, toDateStr } from '../../utils/dateUtils';
+
+// Three.js chỉ tải khi canvas thật sự hiển thị (D5)
+const MuscleBodyCanvas = lazy(() => import('./MuscleBodyCanvas'));
 
 const VN_MUSCLES = {
   chest: 'Ngực',
@@ -55,6 +58,16 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
   }, [latestWeight?.weight, weightInput]);
 
   const [now] = useState(() => Date.now());
+
+  // Chỉ mount 1 canvas WebGL cho bố cục đang hiển thị (desktop/mobile cùng breakpoint 840px với body.css)
+  const [isMobileLayout, setIsMobileLayout] = useState(() => window.matchMedia?.('(max-width: 840px)').matches ?? false);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(max-width: 840px)');
+    if (!mq) return undefined;
+    const onChange = e => setIsMobileLayout(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
   const today = useMemo(() => new Date(now), [now]);
   const jsDay = today.getDay();
   const todayWeekday = jsDay === 0 ? 7 : jsDay; // 1 = T2 ... 7 = CN
@@ -88,77 +101,72 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     return (routineItems || []).filter(item => item.weekday === todayWeekday);
   }, [routineItems, todayWeekday]);
 
-  // Số set đã tập hôm nay
-  const todaySetsCount = useMemo(() => {
-    const startOfDay = new Date(now);
-    startOfDay.setHours(0, 0, 0, 0);
-    const startOfDayMs = startOfDay.getTime();
-
-    return (recentSets || []).filter(s => {
-      if (s.actual_val == null && s.weight == null && s.reps == null) return false;
-      const ts = s.completed_at ? new Date(s.completed_at).getTime() : null;
-      return ts && ts >= startOfDayMs;
-    }).length;
-  }, [recentSets, now]);
+  // Thống kê thật của 1 buổi từ các set đã ghi (bảng sessions không lưu sẵn số set / khối lượng)
+  const statsOfSession = useCallback((sessionId) => {
+    const sets = (recentSets || []).filter(s => s.session_id === sessionId && s.actual_val != null);
+    return {
+      setsCount: sets.length,
+      exercisesCount: new Set(sets.map(s => s.exercise_key)).size,
+      volumeKg: Math.round(sets.reduce((acc, s) => acc + (s.unit !== 's' ? Number(s.actual_val) * Number(s.kg || 0) : 0), 0))
+    };
+  }, [recentSets]);
 
   // ── THẺ 1: BUỔI TẬP HÔM NAY ──────────────────────────────────
   const sessionStats = useMemo(() => {
     const isDone = Boolean(todayCompletedSession);
     const isInProgress = Boolean(inProgressSession);
     const hasPlan = todayRoutineItems.length > 0;
+    const week = activeRoutine ? getRoutineWeek(activeRoutine.start_date, activeRoutine.weeks, today) : null;
+    const weekPrefix = week ? `Tuần ${week.current} / ${week.total}` : '';
+    const estMinutes = hasPlan ? estimateQueueMinutes(generateWorkoutQueue(todayRoutineItems, 'straight')) : 0;
 
     if (isInProgress) {
       const title = inProgressSession.day_type || inProgressSession.title || 'Buổi tập đang diễn ra';
-      const weekText = activeRoutine
-        ? `Tuần ${activeRoutine.current_week || 1} / ${activeRoutine.target_weeks || 8} · Đang thực hiện`
-        : 'Buổi tập dở dang';
+      const done = statsOfSession(inProgressSession.id);
       return {
         isDone: false,
         isInProgress: true,
         hasPlan: true,
-        durationMin: 0,
-        exercisesCount: todayRoutineItems.length || 1,
-        setsCount: todaySetsCount || 1,
-        volumeKg: 0,
+        durationMin: Math.round((inProgressSession.duration_seconds || 0) / 60),
+        estMinutes,
+        exercisesCount: done.exercisesCount,
+        setsCount: done.setsCount,
+        volumeKg: done.volumeKg,
         title,
-        weekText,
+        weekText: weekPrefix ? `${weekPrefix} · Đang thực hiện` : 'Buổi tập dở dang',
         finishTime: null
       };
     }
 
     if (isDone) {
-      const durationMin = Math.max(1, Math.round((todayCompletedSession.duration_seconds || 0) / 60));
-      const exercisesCount = todayCompletedSession.exercises_count || 1;
-      const setsCount = todayCompletedSession.sets_count || todaySetsCount || 1;
-      const volumeKg = todayCompletedSession.total_volume || 0;
+      const done = statsOfSession(todayCompletedSession.id);
+      const durationMin = Math.round((todayCompletedSession.duration_seconds || 0) / 60);
       const title = todayCompletedSession.title || 'Buổi tập hôm nay';
-      const weekText = activeRoutine
-        ? `Tuần ${activeRoutine.current_week || 1} / ${activeRoutine.target_weeks || 8} · ${activeRoutine.name}`
+      const weekText = todayCompletedSession.routine_id && activeRoutine && weekPrefix
+        ? `${weekPrefix} · ${activeRoutine.name}`
         : 'Buổi tập tự do';
-      const finishTime = todayCompletedSession.completed_at || todayCompletedSession.ended_at
-        ? new Date(todayCompletedSession.completed_at || todayCompletedSession.ended_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+      const finishTime = todayCompletedSession.ended_at
+        ? new Date(todayCompletedSession.ended_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
         : 'Hoàn thành';
 
-      return { isDone: true, hasPlan: true, durationMin, exercisesCount, setsCount, volumeKg, title, weekText, finishTime };
+      return { isDone: true, hasPlan: true, durationMin, estMinutes, ...done, title, weekText, finishTime };
     }
 
     if (hasPlan) {
       const exercisesCount = todayRoutineItems.length;
-      const setsCount = todayRoutineItems.reduce((acc, it) => acc + (it.target_sets || 3), 0);
+      const setsCount = todayRoutineItems.reduce((acc, it) => acc + (Number(it.target_sets) || 0), 0);
       const title = todayRoutineItems[0]?.day_name || 'Buổi tập hôm nay';
-      const weekText = activeRoutine
-        ? `Tuần ${activeRoutine.current_week || 1} / ${activeRoutine.target_weeks || 8} · ${activeRoutine.name}`
-        : 'Kế hoạch tập luyện';
 
       return {
         isDone: false,
         hasPlan: true,
         durationMin: 0,
+        estMinutes,
         exercisesCount,
         setsCount,
         volumeKg: 0,
         title,
-        weekText,
+        weekText: weekPrefix ? `${weekPrefix} · ${activeRoutine.name}` : 'Kế hoạch tập luyện',
         finishTime: null
       };
     }
@@ -167,6 +175,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       isDone: false,
       hasPlan: false,
       durationMin: 0,
+      estMinutes: 0,
       exercisesCount: 0,
       setsCount: 0,
       volumeKg: 0,
@@ -174,7 +183,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       weekText: activeRoutine ? `Lộ trình: ${activeRoutine.name} · Nghỉ ngơi phục hồi` : 'Chưa chọn lộ trình nào',
       finishTime: null
     };
-  }, [todayCompletedSession, inProgressSession, todayRoutineItems, todaySetsCount, activeRoutine]);
+  }, [todayCompletedSession, inProgressSession, todayRoutineItems, statsOfSession, activeRoutine, today]);
 
   // ── THẺ 2: CÂN NẶNG & SPARKLINE THẬT ─────────────────────────
   const weightData = useMemo(() => {
@@ -192,10 +201,12 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     }
 
     const currentWeight = Number(latestWeight.weight);
-    const targetWeight = profile?.target_weight ? Number(profile.target_weight) : null;
-    const startWeight = profile?.start_weight
-      ? Number(profile.start_weight)
-      : (measurements && measurements.length > 0 ? Number(measurements[measurements.length - 1].weight) : currentWeight);
+    const targetWeight = profile?.goal_weight_kg ? Number(profile.goal_weight_kg) : null;
+    // Mốc bắt đầu = lần cân hợp lệ cũ nhất (bảng hồ sơ không lưu cân nặng ban đầu)
+    const validMeasurements = (measurements || []).filter(m => !m.is_outlier);
+    const startWeight = validMeasurements.length > 0
+      ? Number(validMeasurements[validMeasurements.length - 1].weight)
+      : currentWeight;
 
     let diffText = 'Lần đo đầu tiên';
     if (measurements && measurements.length >= 2) {
@@ -263,44 +274,34 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
   // ── THẺ 3: DINH DƯỠNG & MACROS THẬT ──────────────────────────
   const nutritionData = useMemo(() => {
     const totalKcal = (mealLogs || []).reduce((sum, m) => sum + (m.calories || 0), 0);
-    const goalKcal = tdee ? Math.round(tdee) : (profile?.target_calories ? Number(profile.target_calories) : 2050);
+    // Cùng công thức với màn Dinh dưỡng; chưa có TDEE (thiếu hồ sơ) thì không bịa mục tiêu
+    const targets = calculateMacroTargets(tdee, latestWeight?.weight);
+    const goalKcal = targets?.kcal ?? null;
     const C44 = 2 * Math.PI * 44;
-    const ratio = goalKcal > 0 ? Math.min(1, totalKcal / goalKcal) : 0;
+    const ratio = goalKcal ? Math.min(1, totalKcal / goalKcal) : 0;
     const kcalDash = `${(C44 * ratio).toFixed(1)} ${C44.toFixed(1)}`;
 
-    const totalProt = (mealLogs || []).reduce((sum, m) => sum + (Number(m.protein) || 0), 0);
-    const goalProt = Math.round((goalKcal * 0.3) / 4);
-    const totalCarb = (mealLogs || []).reduce((sum, m) => sum + (Number(m.carbs) || 0), 0);
-    const goalCarb = Math.round((goalKcal * 0.45) / 4);
-    const totalFatVal = (mealLogs || []).reduce((sum, m) => sum + (Number(m.fat) || 0), 0);
-    const goalFatVal = Math.round((goalKcal * 0.25) / 9);
-
+    const sumOf = key => (mealLogs || []).reduce((sum, m) => sum + (Number(m[key]) || 0), 0);
+    const macroRow = (n, total, goal, c) => ({
+      n,
+      v: goal ? `${Math.round(total)}/${goal} g` : `${Math.round(total)} g`,
+      p: `${goal ? Math.min(100, Math.round((total / goal) * 100)) : 0}%`,
+      c
+    });
+    const totalProt = sumOf('protein');
     const macros = [
-      {
-        n: 'Đạm',
-        v: `${Math.round(totalProt)}/${goalProt} g`,
-        p: `${goalProt > 0 ? Math.min(100, Math.round(totalProt / goalProt * 100)) : 0}%`,
-        c: '#6949E8'
-      },
-      {
-        n: 'Tinh bột',
-        v: `${Math.round(totalCarb)}/${goalCarb} g`,
-        p: `${goalCarb > 0 ? Math.min(100, Math.round(totalCarb / goalCarb * 100)) : 0}%`,
-        c: '#E0A23C'
-      },
-      {
-        n: 'Chất béo',
-        v: `${Math.round(totalFatVal)}/${goalFatVal} g`,
-        p: `${goalFatVal > 0 ? Math.min(100, Math.round(totalFatVal / goalFatVal * 100)) : 0}%`,
-        c: '#E26A5A'
-      }
+      macroRow('Đạm', totalProt, targets?.protein, '#6949E8'),
+      macroRow('Tinh bột', sumOf('carbs'), targets?.carbs, '#E0A23C'),
+      macroRow('Chất béo', sumOf('fat'), targets?.fat, '#E26A5A')
     ];
 
     const mealsCount = (mealLogs || []).length;
-    let note = 'Chưa ghi bữa ăn nào hôm nay.';
-    if (mealsCount > 0) {
+    let note = mealsCount > 0 ? '' : 'Chưa ghi bữa ăn nào hôm nay.';
+    if (!goalKcal) {
+      note = `${note} Nhập chiều cao, giới tính, năm sinh ở tab Cơ thể để có mục tiêu calo.`.trim();
+    } else if (mealsCount > 0) {
       const remainKcal = goalKcal - totalKcal;
-      const remainProt = Math.max(0, goalProt - Math.round(totalProt));
+      const remainProt = Math.max(0, targets.protein - Math.round(totalProt));
       note = remainKcal >= 0
         ? `Còn ${remainKcal} kcal và ${remainProt} g đạm cho hôm nay.`
         : `Vượt mục tiêu ${Math.abs(remainKcal)} kcal hôm nay.`;
@@ -314,7 +315,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       mealsCount,
       note
     };
-  }, [mealLogs, tdee, profile]);
+  }, [mealLogs, tdee, latestWeight]);
 
   // ── THẺ 4: PHỤC HỒI CƠ (BẢN ĐỒ CƠ THẬT) ─────────────────────
   const recoveryData = useMemo(() => {
@@ -401,7 +402,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       s => s.status === 'completed' && weekDates.includes(s.local_date)
     );
 
-    const weekSets = weekCompletedSessions.reduce((acc, s) => acc + (s.sets_count || 0), 0);
+    const weekSets = weekCompletedSessions.reduce((acc, s) => acc + statsOfSession(s.id).setsCount, 0);
     const weekDurationSec = weekCompletedSessions.reduce((acc, s) => acc + (s.duration_seconds || 0), 0);
     const weekDurationMin = Math.round(weekDurationSec / 60);
 
@@ -411,14 +412,14 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     const timeUnit = weekDurationMin >= 60 ? 'p' : ' phút';
 
     const plannedWeekdays = new Set((routineItems || []).map(it => it.weekday));
-    const targetSessions = activeRoutine?.target_days_per_week || plannedWeekdays.size || 4;
+    const targetSessions = plannedWeekdays.size;
 
     const dayStats = weekDates.map((dateStr, idx) => {
       const weekdayNum = idx + 1;
       const daySessions = (sessions || []).filter(
         s => s.status === 'completed' && s.local_date === dateStr
       );
-      const setsOnDay = daySessions.reduce((acc, s) => acc + (s.sets_count || 0), 0);
+      const setsOnDay = daySessions.reduce((acc, s) => acc + statsOfSession(s.id).setsCount, 0);
       const isDone = daySessions.length > 0;
       const isPlanned = plannedWeekdays.has(weekdayNum);
 
@@ -457,13 +458,13 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     return {
       dateRange,
       stats: [
-        { n: 'Buổi', v: `${weekCompletedSessions.length}`, u: ` / ${targetSessions}` },
+        { n: 'Buổi', v: `${weekCompletedSessions.length}`, u: targetSessions ? ` / ${targetSessions}` : '' },
         { n: 'Set', v: `${weekSets}`, u: '' },
         { n: 'Thời gian', v: timeText, u: timeUnit }
       ],
       columns
     };
-  }, [today, todayDateStr, sessions, routineItems, activeRoutine]);
+  }, [today, todayDateStr, sessions, routineItems, statsOfSession]);
 
   // ── THẺ 6: CHECK-IN TUẦN & NGÀY MAI THẬT ────────────────────
   const checkinTomorrowData = useMemo(() => {
@@ -488,9 +489,9 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     if (hasTomorrowPlan) {
       tomorrowTitle = tomorrowItems[0]?.day_name || 'Buổi tập theo lịch';
       tomorrowExercises = tomorrowItems.slice(0, 4).map(it => {
-        const ex = exerciseMap?.get(it.exercise_id);
-        const name = it.exercise_name || ex?.name || it.exercise_id;
-        const target = it.target_sets ? `${it.target_sets} × ${it.target_reps || 10}` : '3 × 10';
+        const name = exerciseMap?.get(it.exercise_key)?.name || it.exercise_key;
+        const unitLabel = it.unit === 's' ? 's' : '';
+        const target = `${it.target_sets} × ${it.target_val}${unitLabel}${Number(it.kg) > 0 ? ` · ${it.kg} kg` : ''}`;
         return { n: name, rx: target };
       });
       recoveryNote = 'Sẵn sàng cho buổi tập ngày mai!';
@@ -623,7 +624,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Thời gian</span>
               <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone ? `${sessionStats.durationMin} phút` : (sessionStats.hasPlan ? '~45p' : '0p')}
+                {sessionStats.isDone || sessionStats.isInProgress ? `${sessionStats.durationMin} phút` : (sessionStats.hasPlan ? `~${sessionStats.estMinutes}p` : '—')}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -808,7 +809,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
                   {nutritionData.totalKcal.toLocaleString('vi-VN')}
                 </span>
                 <span style={{ font: "400 10.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
-                  / {nutritionData.goalKcal.toLocaleString('vi-VN')} kcal
+                  {nutritionData.goalKcal ? `/ ${nutritionData.goalKcal.toLocaleString('vi-VN')} kcal` : 'kcal · chưa có mục tiêu'}
                 </span>
               </div>
             </div>
@@ -844,7 +845,11 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
         {/* ── CARD 4: PHỤC HỒI CƠ (CANVAS 3D + DANH SÁCH) ── */}
         <div className="body-card" style={{ padding: 0, display: 'grid', gridTemplateColumns: '200px minmax(0,1fr)', overflow: 'hidden', minHeight: 0 }}>
           <div className="body-2a-muscle-canvas-box">
-            <MuscleBodyCanvas recovery={recoveryData.map} view="front" mode="rec" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+            {!isMobileLayout && (
+              <Suspense fallback={null}>
+                <MuscleBodyCanvas selectedId={null} mode="rec" viewSide="front" recoveryMap={recoveryData.map} />
+              </Suspense>
+            )}
           </div>
 
           <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
@@ -1002,7 +1007,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <span style={{ font: "400 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Thời gian</span>
               <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone ? `${sessionStats.durationMin}p` : (sessionStats.hasPlan ? '~45p' : '0p')}
+                {sessionStats.isDone || sessionStats.isInProgress ? `${sessionStats.durationMin}p` : (sessionStats.hasPlan ? `~${sessionStats.estMinutes}p` : '—')}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -1086,9 +1091,11 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               ))}
             </div>
             <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
-              {nutritionData.goalKcal > nutritionData.totalKcal
-                ? `còn ${nutritionData.goalKcal - nutritionData.totalKcal} kcal`
-                : `vượt ${nutritionData.totalKcal - nutritionData.goalKcal} kcal`}
+              {!nutritionData.goalKcal
+                ? 'chưa có mục tiêu calo'
+                : nutritionData.goalKcal > nutritionData.totalKcal
+                  ? `còn ${nutritionData.goalKcal - nutritionData.totalKcal} kcal`
+                  : `vượt ${nutritionData.totalKcal - nutritionData.goalKcal} kcal`}
             </span>
           </div>
         </div>
@@ -1096,7 +1103,11 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
         {/* 3. Phục hồi cơ */}
         <div className="body-card" style={{ padding: 0, display: 'grid', gridTemplateColumns: '132px minmax(0, 1fr)', overflow: 'hidden', height: '220px' }}>
           <div className="body-2a-muscle-canvas-box">
-            <MuscleBodyCanvas recovery={recoveryData.map} view="front" mode="rec" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+            {isMobileLayout && (
+              <Suspense fallback={null}>
+                <MuscleBodyCanvas selectedId={null} mode="rec" viewSide="front" recoveryMap={recoveryData.map} />
+              </Suspense>
+            )}
           </div>
           <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
             <span style={{ font: "600 13.5px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Phục hồi cơ</span>

@@ -1229,6 +1229,10 @@ bar · two-pane body (item list · detail), breakpoint 900px.
 - **Do** use `src/styles/global.css` as the default source for colour, radius,
   spacing and shadow tokens. The only domain-scoped token systems are Vault
   Keyplate in `accounts.css` and Finance Nocturne (`--n-*`) in `finance.css`.
+- **Do** keep module-local aliases thin when a page needs semantic names: `dashboard.css` declares
+  `--dash-*` on `.dash-workspace`, each pointing at a global token (tints via `color-mix()` on that
+  token) so both themes follow automatically. Its only literal is `--dash-on-solid: #ffffff`, the same
+  role as `on-gradient`. This is not a third token system.
 - **Don't** hard-code a hex or rgba for something a token already covers.
   Existing exceptions (`#c4b5fd`, `#fca5a5`, `#f87171`, `#a78bfa` written
   literally in `datepicker.css`) are debt, not precedent.

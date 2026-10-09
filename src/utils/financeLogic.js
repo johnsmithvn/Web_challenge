@@ -101,6 +101,11 @@ export function shiftMonth(refStr, months) {
  * kế. Không có bước bám này thì một kỳ quý bị lỡ sẽ biến mất khỏi màn hình vào
  * đúng tháng sau đó — app im lặng quên một khoản nợ thật.
  *
+ * Hóa đơn hằng tháng cũng bám như vậy: kỳ tháng trước chưa trả/chưa bỏ thì vẫn là
+ * kỳ đang tính (quá hạn) cho tới khi xong, chỉ khi kỳ đó có hạn từ ngày bắt đầu
+ * (`anchor_date`, thiếu thì ngày tạo) trở đi — khai hóa đơn hôm nay không được
+ * đẻ ra một kỳ tháng trước "chưa trả".
+ *
  * @param isSettled — (period) => đã trả hoặc đã bỏ kỳ. Dựng bằng `billSettled()`.
  *   Bỏ trống thì luôn nhảy tới kỳ kế (dùng cho chỗ chỉ cần biết lịch, không cần trạng thái).
  */
@@ -111,7 +116,14 @@ export function billCycle(bill, refStr, isSettled) {
     thisMonth: d.slice(0, 7) === refStr.slice(0, 7) });
 
   const every = Math.max(1, Number(bill.rrule?.every) || 1);
-  if (every === 1 || !bill.anchor_date) return at(due);
+  if (every === 1 || !bill.anchor_date) {
+    if (isSettled) {
+      const start = bill.anchor_date || (bill.created_at ? ymd(new Date(bill.created_at)) : null);
+      const previous = at(dueDateInMonth(bill.due_day, shiftMonth(refStr, -1)));
+      if (start && previous.due >= start && !isSettled(previous.period)) return previous;
+    }
+    return at(due);
+  }
 
   const anchor = parseYmd(bill.anchor_date), ref = parseYmd(refStr);
   const diff = (ref.getFullYear() - anchor.getFullYear()) * 12 + (ref.getMonth() - anchor.getMonth());
@@ -486,6 +498,31 @@ export function cardStatementSummary(card, txs, refStr) {
   };
 }
 
+/**
+ * Nợ sao kê CŨ còn treo = mọi khoản quẹt tới ngày chốt kỳ TRƯỚC trừ mọi lần trả thẻ
+ * đã ghi (tiền trả trừ vào khoản cũ nhất trước, như ngân hàng làm).
+ *
+ * `cardStatementSummary` chỉ nhìn kỳ vừa chốt, nên một sao kê quá hạn chưa trả sẽ biến
+ * mất đúng lúc kỳ mới chốt. Hàm này giữ nó lại. Không tra nhãn `card_period`: khoản trả
+ * muộn trước giờ luôn mang nhãn kỳ mới nhất, tra nhãn sẽ báo động oan.
+ * Trả null khi không còn nợ cũ; `days` âm = đã quá hạn của kỳ trước.
+ */
+export function cardCarryOver(card, txs, refStr) {
+  const latest = cardCycle(card, refStr);
+  const previous = cardCycle(card, addDaysStr(latest.statement, -1));
+  const billed = txs
+    .filter(t => t.source_card_id === card.id && t.type === 'expense' && !t.excluded
+      && t.occurred_at <= previous.statement)
+    .reduce((sum, t) => sum + t.amount, 0);
+  const paid = txs
+    .filter(t => t.card_id === card.id && t.type === 'expense' && t.excluded && t.occurred_at <= refStr)
+    .reduce((sum, t) => sum + t.amount, 0);
+  const amount = Math.max(0, billed - paid);
+  if (!amount) return null;
+  return { amount, period: previous.statement.slice(0, 7), due: previous.due,
+    days: daysInclusive(refStr, previous.due) - 1 };
+}
+
 /** Lãi ước kiếm được từ float: giữ `balance` thêm `days` ngày ở lãi suất `blendedRate`%/năm. */
 export function floatInterest(balance, days, blendedRate) {
   if (!balance || !days || !blendedRate || balance <= 0 || days <= 0 || blendedRate <= 0) return 0;
@@ -514,6 +551,42 @@ export function loanSchedule(loan) {
   return { kind: 'amort', monthlyPayment: Math.round(pay),
     interestPart, principalPart: Math.max(0, Math.round(pay) - interestPart),
     principalRemaining: Math.max(0, Math.round(bal)), progress: { done, total: n } };
+}
+
+/**
+ * Kỳ trả đang tính của một khoản vay — cùng tinh thần `billCycle`: kỳ tháng trước chưa
+ * ghi thì vẫn là kỳ đang tính (quá hạn), không biến mất khi sang tháng.
+ *
+ * Xét hai kỳ gần nhất (tháng trước + tháng này), bỏ kỳ có hạn không sau `opened_at`
+ * (vay mở sau ngày trả trong tháng thì kỳ đầu là tháng sau). Số kỳ CÒN NỢ = số kỳ đã
+ * tới hạn − số kỳ đã ghi, đếm theo SỐ LƯỢNG chứ không theo đích danh nhãn: trước giờ
+ * màn Khoản vay luôn ghi nhãn tháng đang chạy, nên kỳ 9 trả muộn vào 2/10 mang nhãn 10 —
+ * tra nhãn sẽ báo kỳ 9 "chưa trả" oan. Hạn lấy theo kỳ cũ nhất còn nợ, nhãn để ghi lấy
+ * theo kỳ chưa có giao dịch (DB chặn ghi trùng nhãn).
+ *
+ * Trả { period, due, days, done }, hoặc null khi không có ngày trả / đã đủ số kỳ.
+ */
+export function loanCycle(loan, refStr, txs = []) {
+  const sch = loanSchedule(loan);
+  if (!loan.pay_day || sch.progress.done >= sch.progress.total) return null;
+  const part = sch.kind === 'interest' ? 'interest' : 'principal';
+  const paid = (period) => txs.some(t => t.loan_id === loan.id && t.loan_period === period && t.loan_part === part);
+  const at = (due) => ({ period: due.slice(0, 7), due, days: daysInclusive(refStr, due) - 1 });
+
+  // Không biết ngày mở thì không biết kỳ tháng trước có tồn tại không → chỉ xét tháng này.
+  const opened = loan.opened_at;
+  const slots = (opened ? [-1, 0] : [0])
+    .map(k => at(dueDateInMonth(loan.pay_day, shiftMonth(refStr, k))))
+    .filter(s => !opened || s.due > opened);
+  const owed = slots.filter(s => s.days <= 0);
+  const paidCount = slots.filter(s => paid(s.period)).length;
+  if (paidCount < owed.length) {
+    const unpaid = slots.find(s => !paid(s.period));
+    return { ...owed[paidCount], period: unpaid.period, done: false };
+  }
+  const current = slots.find(s => s.period === refStr.slice(0, 7));
+  if (current) return { ...current, done: paid(current.period) };
+  return { ...at(dueDateInMonth(loan.pay_day, shiftMonth(refStr, 1))), done: false };
 }
 
 // ── Cho vay: lãi theo ngày trên dư nợ còn lại ───────────────────────────────

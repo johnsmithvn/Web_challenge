@@ -34,6 +34,20 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 - Thiếu Supabase env sẽ tắt Auth thật. Task list và Focus vẫn dùng được in-memory; các module auth-only
   hiện cổng đăng nhập thay vì giả lập dữ liệu.
 
+### Trang chủ khi đã đăng nhập (`HomeDashboard`, `dashboardAlerts.js`)
+
+- **Cần xử lý ngay:** khoản tài chính quá hạn/đến hạn hôm nay (hóa đơn, sao kê thẻ kể cả nợ kỳ cũ, kỳ vay,
+  tất toán gốc, cho vay quá hẹn, sổ tiết kiệm đã đáo hạn) + nhiệm vụ quá hạn. Task đến hạn hôm nay chỉ nằm
+  ở card "Nhiệm vụ hôm nay", không lặp lại. Bấm cảnh báo tài chính mở đúng tab con của màn Định kỳ; "Bỏ kỳ"
+  hỏi xác nhận trước.
+- Chưa tải xong hoặc Finance lỗi thì **không** báo "mọi thứ đúng hạn": hiện trạng thái đang tải, hoặc banner
+  lỗi kèm nút Tải lại.
+- **Sắp tới hạn:** task/hóa đơn/vay/cho vay còn 1–3 ngày, sao kê và phí thường niên ≤5 ngày, sổ đáo hạn
+  ≤14 ngày; bấm được, có số tiền, quá 5 mục thì "Xem thêm". Vượt ngân sách theo danh mục hiện ở widget ngân
+  sách (tên danh mục thật), % đã dùng hiện số thật kể cả khi >100%.
+- Lời chào, ngày (kèm âm lịch và năm can chi) và lịch tập tự sang ngày mới khi tab mở qua đêm. Buổi tập dở
+  chỉ tính trong ngày.
+
 ## 2. Nhiệm vụ (`/tasks`)
 
 **Files:** `src/pages/TasksPage.jsx`, `src/components/TaskListSection.jsx`,
@@ -211,6 +225,10 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 - **Ghi chú nhiều dòng (`description`):** Cột `description TEXT` cho phép ghi chú tự do nhiều dòng, tách rời tiêu đề ngắn `note`.
 - **Drawer Sửa giao dịch 560px:** Mở rộng mượt mà khi chỉnh sửa giao dịch, hỗ trợ nhập *Nơi / người nhận* (`merchant`) và bảng *Chi tiết từng món* (`items`: tên món, số lượng, đơn giá, tự động tính tổng). Phím tắt `Ctrl + Enter` lưu nhanh, `Escape` đóng.
 - Hóa đơn fixed/ask, skip period, kỳ trả; thu định kỳ; khoản vay và thẻ tín dụng.
+- **Kỳ cũ chưa trả không biến mất khi sang kỳ mới:** hóa đơn hằng tháng bám kỳ tháng trước (chỉ khi kỳ đó
+  từ ngày bắt đầu/ngày tạo trở đi); khoản vay bám kỳ tháng trước theo số kỳ đã ghi (không báo oan dữ liệu
+  cũ trả muộn mang nhãn tháng mới, bỏ kỳ trước `opened_at`); thẻ hiện nợ sao kê kỳ trước còn treo — tiền trả
+  trừ vào nợ cũ nhất trước.
 - Cho vay hiện lãi đơn theo ngày trên gốc còn lại, hỗ trợ tính lãi mất do rút tiết kiệm sớm (`forfeited_interest`).
 - Quỹ tiết kiệm: Quản lý nhiều nơi gửi/sổ ngân hàng, lãi suất bình quân, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ.
 

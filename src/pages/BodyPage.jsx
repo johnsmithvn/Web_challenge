@@ -5,6 +5,7 @@ import { useWorkouts } from '../hooks/useWorkouts';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { ConfirmModal } from '../components/ConfirmModal';
 import OverviewScreen from '../components/body/OverviewScreen';
 import RoutineScreen from '../components/body/RoutineScreen';
 import LiveSessionScreen from '../components/body/LiveSessionScreen';
@@ -55,6 +56,7 @@ export default function BodyPage() {
     startSession,
     logSet,
     finishSession,
+    updateSession,
     abandonSession
   } = useWorkouts();
 
@@ -71,18 +73,43 @@ export default function BodyPage() {
   // Selected session to run
   const [activeSessionDay, setActiveSessionDay] = useState(null);
   const [currentSessionObj, setCurrentSessionObj] = useState(null);
+  // Buổi mới đang chờ xác nhận vì còn 1 buổi tạm dừng (bắt đầu buổi mới sẽ hủy buổi đó)
+  const [pendingStart, setPendingStart] = useState(null);
 
   // Check for existing in-progress session in database
   const inProgressSession = sessions.find(s => s.status === 'in_progress');
 
+  // Dựng lại dayInfo cho buổi đang dở: buổi theo lịch dùng planned_weekday,
+  // buổi tự do (tập lẻ 1 bài) lấy bài từ set đã ghi hoặc từ tên buổi.
+  const buildResumeDayInfo = useCallback((session) => {
+    const name = session.day_type || session.title?.replace('Buổi ', '') || 'Tập luyện';
+    if (session.planned_weekday) {
+      return { day: session.planned_weekday, weekday: session.planned_weekday, name, isResume: true };
+    }
+    const firstSet = recentSets.find(s => s.session_id === session.id);
+    const ex = (firstSet && exerciseMap.get(firstSet.exercise_key))
+      || Array.from(exerciseMap.values()).find(e => e.name === name);
+    return ex ? { name: ex.name, singleExercise: ex, focus: ex.primary, isResume: true } : { name, isResume: true };
+  }, [recentSets, exerciseMap]);
+
   // Effective session & dayInfo (tự động fallback về inProgressSession nếu có)
   const effectiveSession = currentSessionObj || inProgressSession;
-  const effectiveDayInfo = activeSessionDay || (inProgressSession ? {
-    day: inProgressSession.planned_weekday || 1,
-    weekday: inProgressSession.planned_weekday || 1,
-    name: inProgressSession.day_type || inProgressSession.title?.replace('Buổi ', '') || 'Tập luyện',
-    isResume: true
-  } : null);
+  const effectiveDayInfo = useMemo(
+    () => activeSessionDay || (inProgressSession ? buildResumeDayInfo(inProgressSession) : null),
+    [activeSessionDay, inProgressSession, buildResumeDayInfo]
+  );
+
+  // Bọc các thao tác ghi dữ liệu để lỗi luôn hiện toast (hook đã tự rollback state)
+  const withToast = useCallback((fn, successMsg) => async (...args) => {
+    try {
+      const res = await fn(...args);
+      if (successMsg) showToast?.(successMsg, 'success');
+      return res;
+    } catch (err) {
+      showToast?.('Lỗi: ' + (err?.message || 'Không lưu được, thử lại sau'), 'error');
+      return undefined;
+    }
+  }, [showToast]);
 
   // Tự động chuyển về Lộ trình nếu người dùng truy cập /body/session mà không có phiên tập nào đang diễn ra (chỉ sau khi dữ liệu đã tải)
   useEffect(() => {
@@ -99,13 +126,14 @@ export default function BodyPage() {
     };
   }, []);
 
-  const handleStartSession = useCallback(async (dayInfo) => {
+  const doStartSession = useCallback(async (dayInfo) => {
+    const isFree = Boolean(dayInfo?.singleExercise);
     setActiveSessionDay(dayInfo);
     try {
       const sess = await startSession({
-        plannedWeekday: dayInfo?.weekday || dayInfo?.day || 1,
+        plannedWeekday: isFree ? null : (dayInfo?.weekday || dayInfo?.day || null),
         dayName: dayInfo?.name || 'Tập luyện',
-        routineId: activeRoutine?.id,
+        routineId: isFree ? null : (activeRoutine?.id || null),
         mode: 'straight'
       });
       setCurrentSessionObj({ ...sess, isResume: false });
@@ -115,16 +143,20 @@ export default function BodyPage() {
     }
   }, [startSession, activeRoutine, showToast, setScreen]);
 
+  // Bắt đầu buổi mới khi còn buổi đang tạm dừng sẽ hủy buổi đó → hỏi trước
+  const handleStartSession = useCallback((dayInfo) => {
+    if (inProgressSession && inProgressSession.id !== currentSessionObj?.id) {
+      setPendingStart(dayInfo);
+      return;
+    }
+    doStartSession(dayInfo);
+  }, [inProgressSession, currentSessionObj, doStartSession]);
+
   const handleResumeSession = useCallback((session) => {
     setCurrentSessionObj({ ...session, isResume: true });
-    setActiveSessionDay({
-      day: session.planned_weekday || 1,
-      weekday: session.planned_weekday || 1,
-      name: session.day_type || session.title?.replace('Buổi ', '') || 'Tập luyện',
-      isResume: true
-    });
+    setActiveSessionDay(buildResumeDayInfo(session));
     setScreen('session');
-  }, [setScreen]);
+  }, [setScreen, buildResumeDayInfo]);
 
   const handleFinishSession = useCallback(async (results) => {
     try {
@@ -169,12 +201,25 @@ export default function BodyPage() {
     setScreen('routine');
   }, [currentSessionObj, inProgressSession, abandonSession, showToast, setScreen]);
 
-  const handlePauseSession = useCallback(() => {
+  const handlePauseSession = useCallback(async (elapsedSeconds) => {
+    const sId = currentSessionObj?.id || inProgressSession?.id;
+    if (sId && elapsedSeconds != null) {
+      try {
+        await updateSession(sId, { duration_seconds: elapsedSeconds });
+      } catch {
+        // Không lưu được thời lượng thì vẫn cho tạm dừng; set đã ghi vẫn còn
+      }
+    }
     setCurrentSessionObj(null);
     setActiveSessionDay(null);
     showToast?.('Đã tạm dừng buổi tập. Bạn có thể tiếp tục bất cứ lúc nào!', 'info');
     setScreen('routine');
-  }, [setScreen, showToast]);
+  }, [currentSessionObj, inProgressSession, updateSession, setScreen, showToast]);
+
+  const handleModeLocked = useCallback((mode) => {
+    const sId = currentSessionObj?.id || inProgressSession?.id;
+    if (sId) updateSession(sId, { mode }).catch(() => {});
+  }, [currentSessionObj, inProgressSession, updateSession]);
 
   const [now] = useState(() => Date.now());
   const today = useMemo(() => new Date(now), [now]);
@@ -440,30 +485,41 @@ export default function BodyPage() {
             activeSession={effectiveSession}
             onResumeSession={handleResumeSession}
             recentSets={recentSets}
-            onCreateRoutineFromTemplate={createRoutineFromTemplate}
-            onCreateCustomRoutine={createCustomRoutine}
-            onSwitchRoutine={switchRoutine}
-            onUpdateRoutineDetails={updateRoutineDetails}
-            onDeleteRoutine={deleteRoutine}
+            onCreateRoutineFromTemplate={withToast(createRoutineFromTemplate, 'Đã tạo lộ trình mới.')}
+            onCreateCustomRoutine={withToast(createCustomRoutine, 'Đã tạo lộ trình mới.')}
+            onSwitchRoutine={withToast(switchRoutine)}
+            onUpdateRoutineDetails={withToast(updateRoutineDetails, 'Đã lưu lộ trình.')}
+            onDeleteRoutine={withToast(deleteRoutine, 'Đã xóa lộ trình.')}
             onStartSession={handleStartSession}
-            onUpdateTarget={updateRoutineTarget}
-            onUpdateSets={updateRoutineSets}
-            onAddExercise={addRoutineItem}
-            onDeleteExercise={deleteRoutineItem}
-            onToggleAutoProgress={toggleAutoProgress}
+            onUpdateTarget={withToast(updateRoutineTarget)}
+            onUpdateSets={withToast(updateRoutineSets)}
+            onAddExercise={withToast(addRoutineItem)}
+            onDeleteExercise={withToast(deleteRoutineItem)}
+            onToggleAutoProgress={withToast(toggleAutoProgress)}
           />
         )}
 
-        {currentScreen === 'session' && (
+        {currentScreen === 'session' && effectiveSession && !hasLoaded && (
+          <div className="body-card" style={{ maxWidth: '480px', margin: '40px auto', padding: '32px', textAlign: 'center', color: 'var(--body-text-muted)' }}>
+            Đang tải buổi tập…
+          </div>
+        )}
+
+        {currentScreen === 'session' && (!effectiveSession || hasLoaded) && (
           effectiveSession ? (
             <LiveSessionScreen
+              key={effectiveSession.id}
               dayInfo={effectiveDayInfo}
               routineItems={routineItems}
               recentSets={recentSets}
               exerciseMap={exerciseMap}
               sessionId={effectiveSession.id}
               isResume={Boolean(effectiveSession.isResume || effectiveDayInfo?.isResume)}
+              initialMode={effectiveSession.mode}
+              initialElapsed={effectiveSession.duration_seconds || 0}
+              startedAt={effectiveSession.started_at}
               onLogSet={logSet}
+              onModeLocked={handleModeLocked}
               onFinishSession={handleFinishSession}
               onCancel={handleCancelSession}
               onPause={handlePauseSession}
@@ -529,6 +585,21 @@ export default function BodyPage() {
           />
         )}
       </main>
+
+      <ConfirmModal
+        open={Boolean(pendingStart)}
+        title="Bắt đầu buổi tập mới?"
+        message={`Bạn đang có buổi "${inProgressSession?.title || inProgressSession?.day_type || 'tập'}" tạm dừng. Bắt đầu buổi mới sẽ hủy buổi đó (các set đã ghi vẫn được giữ trong lịch sử).`}
+        confirmLabel="Hủy buổi cũ & bắt đầu"
+        cancelLabel="Giữ buổi cũ"
+        danger
+        onConfirm={() => {
+          const next = pendingStart;
+          setPendingStart(null);
+          doStartSession(next);
+        }}
+        onCancel={() => setPendingStart(null)}
+      />
 
       {/* ── MOBILE BOTTOM NAVIGATION (64px — 5 TABS CHUẨN DESIGN) ──── */}
       <nav className="body-mobile-bottom-nav">

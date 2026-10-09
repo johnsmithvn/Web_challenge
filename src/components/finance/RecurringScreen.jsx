@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils/currencyUtils';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import {
-  billAmountEstimate, cardBalance, cardStatementSummary, floatInterest, loanSchedule,
-  lendingInterest, forfeitedInterest,
+  billAmountEstimate, cardBalance, cardStatementSummary, cardCarryOver, floatInterest, loanSchedule,
+  loanCycle, lendingInterest, forfeitedInterest,
   currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
   billCycle, billSettled, billPeriods, billPeriodForDate,
 } from '../../utils/financeLogic';
@@ -1356,7 +1356,6 @@ function IncomeList({ fin, nav, tasks }) {
 
 // ── loan: Khoản vay ───────────────────────────────────────────────────────────
 function LoansList({ fin, nav, tasks }) {
-  const period = fin.today.slice(0, 7);
   const [editId, setEditId] = useState(null);
   const [payId, setPayId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -1369,10 +1368,14 @@ function LoansList({ fin, nav, tasks }) {
 
   const loanRows = fin.loans.map(l => {
     const sch = loanSchedule(l);
-    const d = daysUntilDue(l.pay_day, fin.today);
+    // Kỳ đang tính: kỳ tháng trước còn nợ thì bám nó (Dashboard đọc cùng hàm), ghi trả
+    // cũng mang đúng nhãn kỳ đó. null = đã đủ số kỳ → rơi về tháng đang chạy.
+    const cycle = loanCycle(l, fin.today, fin.transactions);
+    const period = cycle?.period || fin.today.slice(0, 7);
+    const d = cycle ? cycle.days : daysUntilDue(l.pay_day, fin.today);
     const paidInterest = fin.transactions.some(t => t.loan_id === l.id && t.loan_period === period && t.loan_part === 'interest');
     const paidPrincipal = fin.transactions.some(t => t.loan_id === l.id && t.loan_period === period && t.loan_part === 'principal');
-    const donePeriod = sch.kind === 'interest' ? paidInterest : paidPrincipal;
+    const donePeriod = cycle ? cycle.done : (sch.kind === 'interest' ? paidInterest : paidPrincipal);
     const principalDue = l.due_at && l.due_at <= fin.today;
     const isCompleted = !!l.closed_at || (sch.progress.total > 0 && sch.progress.done >= sch.progress.total && (sch.kind === 'amort' || paidPrincipal));
     const state = isCompleted ? { tone: 'paid', text: 'đã tất toán' } : dueState({ days: d, done: donePeriod, doneText: 'đã ghi kỳ này' });
@@ -1384,13 +1387,13 @@ function LoansList({ fin, nav, tasks }) {
     const totalInterest = sch.kind === 'interest'
       ? sch.monthlyInterest * sch.progress.total
       : Math.max(0, sch.monthlyPayment * sch.progress.total - l.principal);
-    return { l, sch, d, paidInterest, paidPrincipal, donePeriod, principalDue, isCompleted, state, dueAmount, paidInterestTotal, totalInterest };
+    return { l, sch, d, period, paidInterest, paidPrincipal, donePeriod, principalDue, isCompleted, state, dueAmount, paidInterestTotal, totalInterest };
   });
 
   const activeLoans = loanRows.filter(r => !r.isCompleted);
   const completedLoans = loanRows.filter(r => r.isCompleted);
 
-  const renderLoanCard = ({ l, sch, d, paidInterest, paidPrincipal, donePeriod, principalDue, isCompleted, state, dueAmount, paidInterestTotal, totalInterest }) => (
+  const renderLoanCard = ({ l, sch, period, paidPrincipal, donePeriod, principalDue, isCompleted, state, dueAmount, paidInterestTotal, totalInterest }) => (
     <RuleCard key={l.id} tone={state.tone} icon="bank" iconColor={isCompleted ? '#7fc060' : '#9184d9'} title={l.name}
       badge={`${sch.progress.done}/${sch.progress.total} kỳ`}
       meta={[l.lender, `gốc ${money(l.principal)}`, `${l.rate}%/năm`,
@@ -1734,7 +1737,9 @@ function CardsList({ fin, nav, tasks }) {
   const [editId, setEditId] = useState(null);
   const [payId, setPayId] = useState(null);
 
-  const dueTotal = fin.cards.reduce((sum, c) => sum + cardStatementSummary(c, fin.transactions, fin.today).outstanding, 0);
+  // Sao kê cần trả = kỳ vừa chốt + nợ kỳ cũ còn treo (cardCarryOver), không chỉ kỳ mới nhất.
+  const dueTotal = fin.cards.reduce((sum, c) => sum + cardStatementSummary(c, fin.transactions, fin.today).outstanding
+    + (cardCarryOver(c, fin.transactions, fin.today)?.amount || 0), 0);
   const usedTotal = fin.cards.reduce((sum, c) => sum + cardBalance(c.id, fin.transactions), 0);
   const limitTotal = fin.cards.reduce((sum, c) => sum + (c.credit_limit || 0), 0);
 
@@ -1753,6 +1758,7 @@ function CardsList({ fin, nav, tasks }) {
         description="Thêm thẻ để theo dõi hạn mức, sao kê và ngày đến hạn." />}
       {fin.cards.map(c => {
         const cyc = cardStatementSummary(c, fin.transactions, fin.today);
+        const carry = cardCarryOver(c, fin.transactions, fin.today);
         const balance = cardBalance(c.id, fin.transactions);
         const est = floatInterest(cyc.outstanding, cyc.floatDaysTotal, fin.blendedRate);
         const usedPct = c.credit_limit ? Math.round((balance / c.credit_limit) * 100) : 0;
@@ -1760,7 +1766,9 @@ function CardsList({ fin, nav, tasks }) {
         const feeSoon = fee && fee.days <= 30;
 
         const hasBilledDebt = cyc.outstanding > 0;
-        const state = hasBilledDebt
+        const state = carry
+          ? dueState({ days: carry.days })
+          : hasBilledDebt
           ? dueState({
               days: daysUntilDue(c.due_day, fin.today),
               done: false,
@@ -1810,6 +1818,11 @@ function CardsList({ fin, nav, tasks }) {
               </>)}
             </div>
 
+            {carry && <div className="fin-inline-message fin-inline-message--warn">
+              <AppIcon name="warning" size={15} weight="fill" />
+              <span>Sao kê kỳ {carry.period.slice(5)}/{carry.period.slice(2, 4)} còn nợ {money(carry.amount)} — hạn {dmy(carry.due)} đã qua.
+                Khoản trả nào cũng trừ vào nợ cũ trước.</span>
+            </div>}
             {est > 0 && <div className="fin-inline-message">
               <AppIcon name="sparkle" size={15} weight="fill" />
               <span>Float đang kiếm ~{money(est)} lãi (lãi gửi bình quân {fin.blendedRate}%/năm).</span>
@@ -1832,7 +1845,7 @@ function CardsList({ fin, nav, tasks }) {
                 </button>
               </div>
             )}
-            {payId === c.id && <PayBlock fin={fin} tasks={tasks} dueDay={c.due_day} defaultAmount={hasBilledDebt ? cyc.outstanding : balance}
+            {payId === c.id && <PayBlock fin={fin} tasks={tasks} dueDay={c.due_day} defaultAmount={hasBilledDebt ? cyc.outstanding + (carry?.amount || 0) : balance}
               confirmLabel={hasBilledDebt ? 'Xác nhận trả sao kê' : 'Xác nhận trả sớm'} onCancel={() => setPayId(null)} onPay={async (payload) => {
                 const tx = await fin.payCardStatement(c, { ...payload, period: cyc.period });
                 nav.showToast(tx ? 'Đã ghi trả sao kê — không phải chi mới, chỉ để lịch sử' : 'Không thể ghi trả sao kê. Kiểm tra dữ liệu Finance rồi thử lại.', { icon: tx ? 'creditCard' : 'warning' });

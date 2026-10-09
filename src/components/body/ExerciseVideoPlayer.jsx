@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AppIcon from '../AppIcon';
+import { ConfirmModal } from '../ConfirmModal';
 import {
-  extractYoutubeId,
   getYoutubeEmbedUrl,
   isYoutubeUrl,
   isDriveUrl,
@@ -58,6 +58,7 @@ export default function ExerciseVideoPlayer({
   const [inputUrl, setInputUrl] = useState('');
   const [isOpen, setIsOpen] = useState(!compact); // Mở mặc định ở trang thư viện, thu gọn ở màn hình tập
   const [errorMsg, setErrorMsg] = useState('');
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
   // Đồng bộ khi chuyển đổi bài tập
   useEffect(() => {
@@ -102,12 +103,13 @@ export default function ExerciseVideoPlayer({
     setErrorMsg('');
   };
 
-  const handleRemove = () => {
-    if (window.confirm(`Gỡ video khỏi bài tập "${exerciseName}"?`)) {
-      saveCustomVideoUrl(exerciseKey, '');
-      setVideoUrl('');
-      setIsEditing(false);
-    }
+  const handleRemove = () => setConfirmRemoveOpen(true);
+
+  const handleConfirmRemove = () => {
+    saveCustomVideoUrl(exerciseKey, '');
+    setVideoUrl('');
+    setIsEditing(false);
+    setConfirmRemoveOpen(false);
   };
 
   // Xác định định dạng embed
@@ -172,7 +174,7 @@ export default function ExerciseVideoPlayer({
                 style={{ padding: '4px 8px', fontSize: '12px', height: '28px', textDecoration: 'none' }}
                 title="Mở tab mới trên YouTube hoặc Google Drive"
               >
-                <AppIcon name="externalLink" size={13} />
+                <AppIcon name="external" size={13} />
               </a>
             </>
           )}
@@ -358,6 +360,16 @@ export default function ExerciseVideoPlayer({
           </button>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmRemoveOpen}
+        title="Gỡ video?"
+        message={`Gỡ video khỏi bài tập "${exerciseName}"?`}
+        confirmLabel="Gỡ"
+        danger
+        onConfirm={handleConfirmRemove}
+        onCancel={() => setConfirmRemoveOpen(false)}
+      />
     </div>
   );
 }

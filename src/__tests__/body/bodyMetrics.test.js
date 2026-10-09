@@ -8,6 +8,8 @@ import {
   calculateBodyComposition,
   calculateNavyBodyFat,
   estimateVisceralFatFromWaist,
+  weightForBmi,
+  calculateMacroTargets,
   BMI_CATEGORIES
 } from '../../utils/bodyMetrics.js';
 
@@ -81,6 +83,9 @@ console.log('Testing bodyMetrics pure functions...');
   assert.ok(comp.proteinKg > 0);
   assert.equal(Number((comp.fatKg + comp.waterKg + comp.boneKg + comp.proteinKg).toFixed(1)), 65.0);
   assert.equal(comp.isEstimated, false);
+  // Thiếu số đo nước/khoáng xương -> không tự điền tỷ lệ mặc định
+  assert.equal(calculateBodyComposition(65.0, 15.0, null, null), null);
+  assert.equal(calculateBodyComposition(65.0, null, 58.0, 2.8), null);
   console.log('  ✓ calculateBodyComposition OK');
 }
 
@@ -107,6 +112,22 @@ console.log('Testing bodyMetrics pure functions...');
   const viscHigh = estimateVisceralFatFromWaist(105, 175);
   assert.ok(viscHigh.level >= 9);
   console.log('  ✓ estimateVisceralFatFromWaist OK');
+}
+
+// 9. weightForBmi & calculateMacroTargets
+{
+  assert.equal(weightForBmi(22.9, 170), 66.2);
+  assert.equal(weightForBmi(18.5, null), null);
+
+  assert.equal(calculateMacroTargets(null, 70), null);
+  const m = calculateMacroTargets(2500, 70);
+  assert.equal(m.kcal, 2500);
+  assert.equal(m.protein, 140); // 2 g/kg
+  assert.equal(m.fat, 69); // 25% kcal / 9
+  assert.equal(m.carbs, Math.round((2500 - 140 * 4 - 69 * 9) / 4));
+  // Không có cân nặng -> đạm 30% năng lượng
+  assert.equal(calculateMacroTargets(2000).protein, 150);
+  console.log('  ✓ weightForBmi / calculateMacroTargets OK');
 }
 
 console.log('ALL BODY METRICS TESTS PASSED!');

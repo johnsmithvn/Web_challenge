@@ -12,10 +12,13 @@ import {
   Scissors, ShoppingBag, SignOut, SkipForward, Sparkle, Square, SquaresFour, Star, Sun, Sword, Table, Tag, TextHOne, TextHThree, TextHTwo, Timer, Trash,
   Robot, Tray, TrayArrowDown, TreeStructure, TrendUp, Trophy, UploadSimple, User, Users, VideoCamera,
   Wallet, Warning, WifiHigh, X, Database, Certificate, Scales, PersonSimple, ShieldCheck,
+  Ruler, ClipboardText,
 } from '@phosphor-icons/react';
 
 const ICONS = {
   scales: Scales,
+  ruler: Ruler,
+  clipboard: ClipboardText,
   personSimple: PersonSimple,
   shieldCheck: ShieldCheck,
   archive: Archive,

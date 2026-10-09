@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import AppIcon from '../AppIcon';
 import { useNutrition } from '../../hooks/useNutrition';
 import { useBiometrics } from '../../hooks/useBiometrics';
+import { calculateMacroTargets } from '../../utils/bodyMetrics';
 
 function getISOWeekNumber(date = new Date()) {
   const target = new Date(date.valueOf());
@@ -59,12 +60,12 @@ export default function NutritionScreen() {
   const totalCarbs = mealLogs.reduce((sum, m) => sum + (Number(m.carbs) || 0), 0);
   const totalFat = mealLogs.reduce((sum, m) => sum + (Number(m.fat) || 0), 0);
 
-  // Realistic macronutrient goals derived from TDEE and weight (null if profile not set)
-  const goalKcal = tdee ? Math.round(tdee) : null;
-  const currentWeight = latestBiometrics?.weight ? Number(latestBiometrics.weight) : null;
-  const goalProtein = currentWeight ? Math.round(Math.max(100, Math.min(220, currentWeight * 2))) : null;
-  const goalFat = goalKcal ? Math.round((goalKcal * 0.25) / 9) : null;
-  const goalCarbs = (goalKcal && goalProtein && goalFat) ? Math.max(50, Math.round((goalKcal - (goalProtein * 4 + goalFat * 9)) / 4)) : null;
+  // Mục tiêu macro dùng chung công thức với Tổng quan (null nếu chưa đủ hồ sơ để tính TDEE)
+  const targets = calculateMacroTargets(tdee, latestBiometrics?.weight);
+  const goalKcal = targets?.kcal ?? null;
+  const goalProtein = targets?.protein ?? null;
+  const goalFat = targets?.fat ?? null;
+  const goalCarbs = targets?.carbs ?? null;
 
   const handleAddMeal = async (e) => {
     e.preventDefault();
@@ -547,7 +548,8 @@ export default function NutritionScreen() {
             {savedMeals && savedMeals.length > 0 && (
               <div>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-muted)', marginBottom: '8px' }}>
-                  MÓN ĐÃ LƯU (BẤM ĐỂ CHỌN NHANH)
+                  {/* Món gợi ý mặc định không có id (chưa phải món bạn lưu) */}
+                  {savedMeals.some(m => m.id) ? 'MÓN ĐÃ LƯU (BẤM ĐỂ CHỌN NHANH)' : 'GỢI Ý MÓN PHỔ BIẾN (BẤM ĐỂ CHỌN NHANH)'}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                   {savedMeals.map(t => (

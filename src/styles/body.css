@@ -545,6 +545,16 @@
   background: rgba(194, 59, 34, 0.22);
 }
 
+.body-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--body-accent);
+}
+
+.body-btn-ghost:hover {
+  background: var(--body-shell-bg);
+}
+
 .body-btn-icon {
   width: 36px;
   height: 36px;
