@@ -1915,6 +1915,139 @@
   color: var(--dash-text-muted);
 }
 
+/* Khối "Cần xử lý ngay": cột hết mục thì ẩn, cột còn lại giãn hết chiều ngang;
+   trạng thái cột bị ẩn thành nhãn nhỏ ở góc phải tiêu đề. */
+.dash-critical-box__top {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.dash-critical-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dash-critical-box__clear-tag {
+  margin-left: auto;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--dash-fin-light);
+  color: var(--dash-fin-green);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dash-critical-box__clear-tag--warn {
+  background: var(--dash-warn-yellow-light);
+  color: var(--dash-warn-yellow-dark);
+}
+
+/* Nhiệm vụ hôm nay trống: gợi ý việc có hạn trong tuần tới */
+.dash-today-suggest {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-today-suggest__hint {
+  font-size: 12px;
+  color: var(--dash-text-muted);
+  padding: 2px 0 4px;
+}
+
+.dash-suggest-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--dash-border-subtle);
+}
+
+.dash-suggest-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.dash-suggest-row__name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--dash-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-suggest-row__sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--dash-text-muted);
+}
+
+.dash-suggest-add-btn {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--dash-border-strong);
+  background: var(--dash-card-bg);
+  color: var(--dash-brand);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.dash-suggest-add-btn:hover:not(:disabled) {
+  background: var(--dash-brand-light);
+  border-color: var(--dash-brand);
+}
+
+.dash-suggest-all-btn {
+  margin-top: 10px;
+  height: 32px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--dash-brand-light);
+  color: var(--dash-brand);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dash-suggest-all-btn:hover:not(:disabled) {
+  background: var(--dash-brand);
+  color: #FFFFFF;
+}
+
+.dash-suggest-add-btn:disabled,
+.dash-suggest-all-btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.dash-suggest-add-btn:focus-visible,
+.dash-suggest-all-btn:focus-visible {
+  outline: 2px solid var(--dash-brand);
+  outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .dash-suggest-add-btn,
+  .dash-suggest-all-btn {
+    height: 36px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dash-pulse-dot__ring {
     animation: none;

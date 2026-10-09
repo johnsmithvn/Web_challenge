@@ -49,7 +49,13 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   chỉ tính trong ngày.
 - Khoản có số tiền biết trước (hóa đơn cố định, sao kê thẻ, kỳ vay) có nút **"Đã trả"** ngay trong khối gấp:
   hỏi xác nhận rồi ghi hôm nay, không gắn thẻ nguồn; muốn đổi ngày/số tiền/thẻ thì mở màn Định kỳ.
-- **Nhiệm vụ hôm nay:** việc đã xong trong ngày vẫn hiện (gạch ngang, `x/y xong`) và bỏ tick được.
+- **Nhiệm vụ hôm nay:** việc đã xong trong ngày vẫn hiện (gạch ngang, `x/y xong`) và bỏ tick được. Trống thì
+  gợi ý tối đa 3 việc có hạn trong 7 ngày tới (hạn gần trước, cùng hạn ưu tiên cao trước) với nút "+ Hôm nay"
+  và "Thêm cả N"; thanh tiến độ ẩn khi trống.
+- Khối "Cần xử lý ngay" chỉ hiện cột còn mục; cột đã hết thành nhãn xanh ở góc tiêu đề.
+- **Dự kiến cuối tháng** = chi cố định đã trả + chi cố định còn đến hạn trong tháng + chi biến đổi ÷ số ngày đã
+  qua × số ngày của tháng. Chi cố định = giao dịch `is_fixed` (hóa đơn, lãi vay ghi qua Định kỳ tự đánh dấu);
+  khoản cố định nhập tay không đánh dấu vẫn bị coi là biến đổi.
 - **Bức tranh nhịp sống** (`dashboardMetrics.js`, chỉ dữ liệu thật — thiếu thì hiện "—"/trạng thái trống):
   biểu đồ chi cộng dồn tháng + nhịp đều theo hạn mức + dự kiến cuối tháng, 4 danh mục gần/vượt hạn mức;
   lịch thanh toán tháng (hóa đơn tới kỳ, sao kê thẻ, kỳ vay, phí thường niên — đã trả/quá hạn/hôm nay/sắp tới

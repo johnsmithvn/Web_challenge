@@ -13,6 +13,9 @@ import {
   taskCompletionStats,
   dailySpendStats,
   knowledgeActivity,
+  upcomingTaskSuggestions,
+  shortDueLabel,
+  pullToTodayChanges,
 } from '../../utils/dashboardMetrics.js';
 import { periodTotals, currentMonthPeriod } from '../../utils/financeLogic.js';
 
@@ -35,7 +38,7 @@ console.log('compactMoney / priorityTag check: OK');
 // ── Ngân sách: chi cộng dồn thật + dự kiến ──
 const txs = [
   { type: 'expense', amount: 400000, occurred_at: '2026-10-01', category_id: 'food' },
-  { type: 'expense', amount: 1000000, occurred_at: '2026-10-03', category_id: 'housing' },
+  { type: 'expense', amount: 1000000, occurred_at: '2026-10-03', category_id: 'housing', is_fixed: true },
   { type: 'expense', amount: 600000, occurred_at: '2026-10-08', category_id: 'food' },
   { type: 'expense', amount: 9000000, occurred_at: '2026-10-05', excluded: true, card_period: '2026-09' },
   { type: 'income', amount: 20000000, occurred_at: '2026-10-05' },
@@ -47,11 +50,19 @@ assert.deepEqual(spend.cumulative, [400000, 400000, 1400000, 1400000, 1400000, 1
 assert.equal(spend.curDay, 8);
 assert.equal(spend.daysInMonth, 31);
 assert.equal(spend.spent, periodTotals(txs, { from: '2026-10-01', to: today }).total, 'khớp nơi tính tổng duy nhất');
+assert.equal(spend.fixedSpent, 1000000, 'phần cố định = giao dịch is_fixed');
 
 const forecast = budgetForecast({ spent: 2000000, limit: 6200000, curDay: 8, daysInMonth: 31 });
-assert.deepEqual(forecast, { projected: 7750000, paceToToday: 1600000, overBy: 1550000 });
+assert.deepEqual(forecast, { projected: 7750000, fixed: 0, paceToToday: 1600000, overBy: 1550000 });
 assert.deepEqual(budgetForecast({ spent: 2000000, limit: 0, curDay: 8, daysInMonth: 31 }),
-  { projected: 7750000, paceToToday: null, overBy: null }, 'chưa đặt hạn mức thì không có nhịp/vượt');
+  { projected: 7750000, fixed: 0, paceToToday: null, overBy: null }, 'chưa đặt hạn mức thì không có nhịp/vượt');
+// 9 ngày đầu chi 9,9tr, trong đó 5,4tr là lãi vay/hóa đơn đã trả; còn 1tr hóa đơn tới hạn cuối tháng.
+// Ngoại suy cả 9,9tr ra 34,1tr; tách ra thì: 5,4 + 1 + 4,5/9×31 = 21,9tr.
+const split = budgetForecast({ spent: 9900000, fixedSpent: 5400000, upcomingFixed: 1000000, limit: 0, curDay: 9, daysInMonth: 31 });
+assert.equal(split.projected, 21900000, 'khoản cố định không bị nhân theo số ngày');
+assert.equal(split.fixed, 6400000);
+assert.equal(budgetForecast({ spent: 3000000, fixedSpent: 3000000, limit: 0, curDay: 1, daysInMonth: 31 }).projected, 3000000,
+  'mùng 1 trả tiền nhà thì dự kiến không thành 93tr');
 
 const cats = { expenseGroups: [
   { key: 'food', label: 'Ăn uống' }, { key: 'housing', label: 'Nhà & hóa đơn' }, { key: 'transport', label: 'Di chuyển' },
@@ -106,6 +117,13 @@ assert.equal(byName['Phí thường niên VIB'].status, 'up');
 assert.equal(cal.totalCount, 7);
 assert.equal(cal.paidCount, 1);
 assert.equal(cal.leftAmount, 612000 + 265000 + 140000 + 1000000 + 4280000 + 590000);
+assert.equal(byName['Sao kê VIB'].expense, 0, 'sao kê không phải chi mới — khoản quẹt đã tính hôm quẹt');
+assert.equal(byName['Trả góp FPT'].expense, 0, 'kỳ vay chỉ tính phần lãi (lãi suất 0 → 0)');
+assert.equal(cal.upcomingFixedSpend, 612000 + 265000 + 140000 + 590000, 'hóa đơn + phí chưa trả trong tháng');
+const interestLoan = paymentCalendar({ today, loans: [
+  { id: 'vay', name: 'Vay', kind: 'amort', principal: 12000000, rate: 12, term: 12, done: 0, pay_day: 20, opened_at: '2026-06-01' },
+] });
+assert.equal(interestLoan.entries[0].expense, 120000, 'kỳ vay đầu: lãi = 12tr × 1%/tháng');
 assert.equal(cal.cells.length, 35, 'tháng 10/2026 bắt đầu thứ Năm → 5 tuần');
 assert.equal(cal.cells[2], null, 'thứ Tư trước ngày 1 là ô trống');
 assert.equal(cal.cells[3].day, 1, 'ô thứ 4 (thứ Năm) là ngày 1');
@@ -210,5 +228,31 @@ assert.equal(kn.thisWeek, 2, 'tuần này tính từ thứ Hai 5/10');
 assert.equal(kn.bars.length, 8);
 assert.deepEqual(kn.bars.slice(-2), [1, 2]);
 console.log('knowledgeActivity check: OK');
+
+// ── Nhiệm vụ hôm nay trống: gợi ý việc có hạn trong tuần ──
+const suggestions = upcomingTaskSuggestions([
+  { id: 'far', due_date: '2026-10-20', priority: 5 },
+  { id: 'sun', due_date: '2026-10-11', priority: 1 },
+  { id: 'fri-low', due_date: '2026-10-09', priority: 2 },
+  { id: 'fri-high', due_date: '2026-10-09', priority: 5 },
+  { id: 'done', due_date: '2026-10-10', completed: true },
+  { id: 'skip', due_date: '2026-10-10', status: 'skip' },
+  { id: 'sub', due_date: '2026-10-10', parent_task_id: 'p' },
+  { id: 'today', due_date: today },
+  { id: 'wed', due_date: '2026-10-14' },
+], today);
+assert.deepEqual(suggestions.map(t => t.id), ['fri-high', 'fri-low', 'sun'],
+  'hạn gần trước, cùng hạn ưu tiên cao trước, tối đa 3, chỉ trong 7 ngày tới');
+assert.deepEqual(upcomingTaskSuggestions([{ id: 'wed', due_date: '2026-10-14' }], today).map(t => t.id), ['wed'], '+6 ngày vẫn tính');
+assert.equal(shortDueLabel('2026-10-09', today), 'Mai');
+assert.equal(shortDueLabel('2026-10-11', today), 'CN 11/10');
+assert.deepEqual(pullToTodayChanges({ due_date: '2026-10-10' }, today), { due_date: today });
+assert.deepEqual(pullToTodayChanges({ due_date: '2026-10-10', start_date: '2026-10-01' }, today), { due_date: today },
+  'bắt đầu đã qua thì giữ nguyên');
+assert.deepEqual(pullToTodayChanges({ due_date: '2026-10-10', start_date: '2026-10-09', start_time: '09:00' }, today),
+  { due_date: today, start_date: today }, 'bắt đầu sau hôm nay → về hôm nay, không vi phạm CHECK bắt đầu < hạn');
+assert.deepEqual(pullToTodayChanges({ due_date: '2026-10-10', due_time: '08:00', start_date: '2026-10-09', start_time: '09:00' }, today),
+  { due_date: today, start_date: today, start_time: null }, 'cùng ngày mà giờ bắt đầu ≥ giờ hạn thì bỏ giờ bắt đầu');
+console.log('upcomingTaskSuggestions / pullToTodayChanges check: OK');
 
 console.log('✅ dashboardMetrics pure tests passed!');

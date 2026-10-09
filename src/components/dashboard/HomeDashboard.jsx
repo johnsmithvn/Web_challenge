@@ -13,7 +13,7 @@ import { collectSystemAlerts } from '../../utils/dashboardAlerts';
 import {
   compactMoney, priorityTag, monthSpend, budgetForecast, topBudgetCategories, paymentCalendar,
   groupByDueDate, weekTraining, muscleRecoveryGroups, weightTrend, taskCompletionStats,
-  dailySpendStats, knowledgeActivity,
+  dailySpendStats, knowledgeActivity, upcomingTaskSuggestions, shortDueLabel, pullToTodayChanges,
 } from '../../utils/dashboardMetrics';
 import { solarToLunar, getCanChiYear } from '../../utils/lunarUtils';
 import { addDaysStr, currentMonthPeriod, periodTotals, shiftMonth } from '../../utils/financeLogic';
@@ -83,7 +83,10 @@ export default function HomeDashboard() {
   const { confirm, ConfirmModal } = useConfirm();
 
   const taskModel = useUserTasks();
-  const { tasks, todayTasks, completedToday, completeTask, uncompleteTask, rolloverTask, addTask, getCompletedTasksRange } = taskModel;
+  const {
+    tasks, todayTasks, futureTasks, completedToday, completeTask, uncompleteTask, rolloverTask, updateTask, addTask,
+    getCompletedTasksRange,
+  } = taskModel;
 
   const fin = useFinance();
   const { bills, cards, loans, lendings, deposits, budgets, transactions, cats, today } = fin;
@@ -96,6 +99,7 @@ export default function HomeDashboard() {
   const [expandedOverdueTasks, setExpandedOverdueTasks] = useState(false);
   const quickInputRef = useRef(null);
   const [quickTitle, setQuickTitle] = useState('');
+  const [pullingToToday, setPullingToToday] = useState(false);
 
   // Đồng hồ trang chủ: tab để mở qua đêm thì lời chào, ngày và lịch tập phải tự sang ngày mới
   // (`today` của các hook cũng tính lại ở mỗi lần render này).
@@ -155,6 +159,8 @@ export default function HomeDashboard() {
   ], [alerts.critical, alerts.dueToday]);
 
   const urgentCount = urgentFinanceList.length + criticalTasks.length;
+  const showFinCol = urgentFinanceList.length > 0;
+  const showTaskCol = criticalTasks.length > 0;
   const hasUrgent = urgentCount > 0;
   const allClear = isReady && !finError && !hasUrgent;
   const visibleOverdueTasks = expandedOverdueTasks ? criticalTasks : criticalTasks.slice(0, OVERDUE_PREVIEW);
@@ -165,6 +171,8 @@ export default function HomeDashboard() {
     ...(completedToday || []).filter(t => t.due_date === today).map(task => ({ task, done: true })),
   ], [todayTasks, completedToday, today]);
   const todayDoneCount = todayChecklist.filter(i => i.done).length;
+  // Danh sách trống → gợi ý kéo việc có hạn trong tuần tới về hôm nay
+  const todaySuggestions = useMemo(() => upcomingTaskSuggestions(futureTasks, today), [futureTasks, today]);
   const todayProgressPct = todayChecklist.length ? `${Math.round((todayDoneCount / todayChecklist.length) * 100)}%` : '0%';
 
   // ── Tầng 2: Body ──
@@ -259,10 +267,24 @@ export default function HomeDashboard() {
   // ── Tầng 2: sắp tới hạn, nhóm theo ngày đến hạn thật ──
   const radarGroups = useMemo(() => groupByDueDate(alerts.headsUp, today), [alerts.headsUp, today]);
 
+  // ── Tầng 3: lịch thanh toán (cũng là nguồn "chi cố định còn đến hạn" cho dự kiến) ──
+  const calendar = useMemo(
+    () => paymentCalendar({ bills, cards, loans, transactions, today }),
+    [bills, cards, loans, transactions, today],
+  );
+
   // ── Tầng 3: ngân sách ──
   const spend = useMemo(() => monthSpend(transactions, today), [transactions, today]);
   const budgetLimit = useMemo(() => (budgets || []).reduce((sum, b) => sum + (b.limit_amount || 0), 0), [budgets]);
-  const forecast = budgetForecast({ spent: spend.spent, limit: budgetLimit, curDay: spend.curDay, daysInMonth: spend.daysInMonth });
+  // Dự kiến = cố định đã trả + cố định còn đến hạn trong tháng + biến đổi theo nhịp hiện tại.
+  const forecast = budgetForecast({
+    spent: spend.spent,
+    fixedSpent: spend.fixedSpent,
+    upcomingFixed: calendar.upcomingFixedSpend,
+    limit: budgetLimit,
+    curDay: spend.curDay,
+    daysInMonth: spend.daysInMonth,
+  });
   const budgetCats = useMemo(
     () => topBudgetCategories(periodTotals(transactions, currentMonthPeriod(today)), budgets, cats),
     [transactions, budgets, cats, today],
@@ -299,11 +321,7 @@ export default function HomeDashboard() {
     };
   }, [spend, forecast.projected, budgetLimit, month]);
 
-  // ── Tầng 3: lịch thanh toán & 5 ô module ──
-  const calendar = useMemo(
-    () => paymentCalendar({ bills, cards, loans, transactions, today }),
-    [bills, cards, loans, transactions, today],
-  );
+  // ── Tầng 3: 5 ô module ──
   const taskStats = useMemo(
     () => (completedRange ? taskCompletionStats([...completedRange, ...(completedToday || [])], today) : null),
     [completedRange, completedToday, today],
@@ -409,6 +427,19 @@ export default function HomeDashboard() {
     }
     const ok = await uncompleteTask(task.id);
     if (!ok) showToast(`Không thể bỏ hoàn thành “${task.title}”. Thử lại sau.`, { icon: 'warning' });
+  };
+
+  const handlePullToToday = async (list) => {
+    if (pullingToToday || list.length === 0) return;
+    setPullingToToday(true);
+    const results = await Promise.all(list.map(t => updateTask(t.id, pullToTodayChanges(t, today))));
+    setPullingToToday(false);
+    const moved = results.filter(Boolean).length;
+    const failed = results.length - moved;
+    showToast(failed === 0
+      ? (list.length === 1 ? `Đã chuyển sang hôm nay: ${list[0].title}` : `Đã chuyển ${moved} việc sang hôm nay`)
+      : `Đã chuyển ${moved}/${results.length} việc — ${failed} việc chưa chuyển được, thử lại sau.`,
+    { icon: failed ? 'warning' : 'calendar' });
   };
 
   const handleQuickAdd = async (e) => {
@@ -518,16 +549,34 @@ export default function HomeDashboard() {
               </span>
               <span className="dash-critical-box__top-title">Cần xử lý ngay</span>
               <span className="dash-critical-box__top-sub">quá hạn hoặc đến hạn trong hôm nay</span>
+              {/* Cột không còn mục nào thì ẩn; trạng thái của nó gói thành nhãn nhỏ ở góc phải */}
+              {!showFinCol && (finError ? (
+                <span className="dash-critical-box__clear-tag dash-critical-box__clear-tag--warn">
+                  <AppIcon name="warning" size={13} weight="fill" />
+                  Tài chính: chưa kiểm tra được
+                </span>
+              ) : (
+                <span className="dash-critical-box__clear-tag">
+                  <AppIcon name="checkCircle" size={13} weight="fill" />
+                  Tài chính: đã xử lý hết
+                </span>
+              ))}
+              {!showTaskCol && (
+                <span className="dash-critical-box__clear-tag">
+                  <AppIcon name="checkCircle" size={13} weight="fill" />
+                  Nhiệm vụ: không còn quá hạn
+                </span>
+              )}
             </div>
 
-            <div className="dash-critical-grid">
-              {/* CỘT TRÁI: TÀI CHÍNH */}
-              <div className="dash-critical-col">
-                <div className="dash-critical-col__head">
-                  <span>TÀI CHÍNH</span>
-                </div>
-                {urgentFinanceList.length > 0 ? (
-                  urgentFinanceList.map((f) => {
+            <div className={`dash-critical-grid${showFinCol && showTaskCol ? '' : ' dash-critical-grid--single'}`}>
+              {/* CỘT TÀI CHÍNH */}
+              {showFinCol && (
+                <div className="dash-critical-col">
+                  <div className="dash-critical-col__head">
+                    <span>TÀI CHÍNH</span>
+                  </div>
+                  {urgentFinanceList.map((f) => {
                     const payable = Boolean(inlinePayment(f));
                     return (
                       <div key={f.id} className="dash-crit-fin-row">
@@ -568,80 +617,68 @@ export default function HomeDashboard() {
                         </div>
                       </div>
                     );
-                  })
-                ) : (
-                  <div className="dash-crit-empty-row">
-                    <AppIcon name="checkCircle" size={15} weight="fill" />
-                    <span>Đã xử lý hết khoản gấp</span>
-                  </div>
-                )}
-              </div>
-
-              {/* CỘT PHẢI: NHIỆM VỤ QUÁ HẠN */}
-              <div className="dash-critical-col">
-                <div className="dash-critical-col__head">
-                  <span>NHIỆM VỤ QUÁ HẠN · {criticalTasks.length}</span>
-                  {criticalTasks.length > 1 && (
-                    <button type="button" className="dash-critical-rollover-btn" onClick={handleRolloverAll}>
-                      <AppIcon name="calendar" size={14} />
-                      <span>Dời tất cả sang hôm nay</span>
-                    </button>
-                  )}
+                  })}
                 </div>
+              )}
 
-                {criticalTasks.length > 0 ? (
-                  <>
-                    {visibleOverdueTasks.map((t) => {
-                      const pill = priorityTag(t.raw?.priority);
-                      return (
-                        <div key={t.id} className="dash-crit-task-row">
-                          {pill ? (
-                            <span className={`dash-priority-pill dash-priority-pill--p${pill.rank}`} title={`Ưu tiên ${pill.label}`}>
-                              {pill.text}
-                            </span>
-                          ) : <span aria-hidden="true" />}
-                          <div className="dash-crit-task-row__main">
-                            <button
-                              type="button"
-                              className="dash-crit-task-row__name dash-link-btn"
-                              onClick={() => setSelectedTask(t.raw)}
-                              title="Bấm để xem chi tiết"
-                            >
-                              {t.title}
-                            </button>
-                            <span className="dash-crit-task-row__sub">{t.badge} · hạn {t.raw?.due_date}</span>
-                          </div>
-                          <button type="button" className="dash-crit-action-btn" onClick={() => handleRolloverTask(t.raw)}>
-                            Dời hôm nay
+              {/* CỘT NHIỆM VỤ QUÁ HẠN */}
+              {showTaskCol && (
+                <div className="dash-critical-col">
+                  <div className="dash-critical-col__head">
+                    <span>NHIỆM VỤ QUÁ HẠN · {criticalTasks.length}</span>
+                    {criticalTasks.length > 1 && (
+                      <button type="button" className="dash-critical-rollover-btn" onClick={handleRolloverAll}>
+                        <AppIcon name="calendar" size={14} />
+                        <span>Dời tất cả sang hôm nay</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {visibleOverdueTasks.map((t) => {
+                    const pill = priorityTag(t.raw?.priority);
+                    return (
+                      <div key={t.id} className="dash-crit-task-row">
+                        {pill ? (
+                          <span className={`dash-priority-pill dash-priority-pill--p${pill.rank}`} title={`Ưu tiên ${pill.label}`}>
+                            {pill.text}
+                          </span>
+                        ) : <span aria-hidden="true" />}
+                        <div className="dash-crit-task-row__main">
+                          <button
+                            type="button"
+                            className="dash-crit-task-row__name dash-link-btn"
+                            onClick={() => setSelectedTask(t.raw)}
+                            title="Bấm để xem chi tiết"
+                          >
+                            {t.title}
                           </button>
-                          <button type="button" className="dash-crit-btn-done" onClick={() => handleCompleteTask(t.raw)}>
-                            <AppIcon name="check" size={13} weight="bold" />
-                            <span>Xong</span>
-                          </button>
+                          <span className="dash-crit-task-row__sub">{t.badge} · hạn {t.raw?.due_date}</span>
                         </div>
-                      );
-                    })}
-
-                    {criticalTasks.length > OVERDUE_PREVIEW && (
-                      <div className="dash-crit-more-bar">
-                        {expandedOverdueTasks ? 'Đang hiện tất cả' : `và ${criticalTasks.length - OVERDUE_PREVIEW} việc quá hạn khác`} ·{' '}
-                        <button
-                          type="button"
-                          className="dash-crit-more-link dash-link-btn"
-                          onClick={() => setExpandedOverdueTasks(!expandedOverdueTasks)}
-                        >
-                          {expandedOverdueTasks ? 'Thu gọn' : 'Xem tất cả'}
+                        <button type="button" className="dash-crit-action-btn" onClick={() => handleRolloverTask(t.raw)}>
+                          Dời hôm nay
+                        </button>
+                        <button type="button" className="dash-crit-btn-done" onClick={() => handleCompleteTask(t.raw)}>
+                          <AppIcon name="check" size={13} weight="bold" />
+                          <span>Xong</span>
                         </button>
                       </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="dash-crit-empty-row">
-                    <AppIcon name="checkCircle" size={15} weight="fill" />
-                    <span>Không còn việc quá hạn</span>
-                  </div>
-                )}
-              </div>
+                    );
+                  })}
+
+                  {criticalTasks.length > OVERDUE_PREVIEW && (
+                    <div className="dash-crit-more-bar">
+                      {expandedOverdueTasks ? 'Đang hiện tất cả' : `và ${criticalTasks.length - OVERDUE_PREVIEW} việc quá hạn khác`} ·{' '}
+                      <button
+                        type="button"
+                        className="dash-crit-more-link dash-link-btn"
+                        onClick={() => setExpandedOverdueTasks(!expandedOverdueTasks)}
+                      >
+                        {expandedOverdueTasks ? 'Thu gọn' : 'Xem tất cả'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </section>
         ) : allClear ? (
@@ -671,9 +708,11 @@ export default function HomeDashboard() {
                 <span className="dash-card__title">Nhiệm vụ hôm nay</span>
                 <span className="dash-card__meta">{todayDoneCount}/{todayChecklist.length} xong</span>
               </div>
-              <span className="dash-progress-track">
-                <span className="dash-progress-bar dash-progress-bar--blue" style={{ width: todayProgressPct }} />
-              </span>
+              {todayChecklist.length > 0 && (
+                <span className="dash-progress-track">
+                  <span className="dash-progress-bar dash-progress-bar--blue" style={{ width: todayProgressPct }} />
+                </span>
+              )}
 
               <div className="dash-checklist">
                 {!taskModel.hasLoaded ? (
@@ -705,8 +744,53 @@ export default function HomeDashboard() {
                       </div>
                     );
                   })
+                ) : todaySuggestions.length > 0 ? (
+                  <div className="dash-today-suggest">
+                    <span className="dash-today-suggest__hint">Chưa có việc cho hôm nay. Có hạn trong tuần:</span>
+                    {todaySuggestions.map((t) => {
+                      const pill = priorityTag(t.priority);
+                      return (
+                        <div key={t.id} className="dash-suggest-row">
+                          <div className="dash-suggest-row__main">
+                            <button
+                              type="button"
+                              className="dash-suggest-row__name dash-link-btn"
+                              onClick={() => setSelectedTask(t)}
+                              title="Bấm để xem chi tiết"
+                            >
+                              {t.title}
+                            </button>
+                            <span className="dash-suggest-row__sub">
+                              Hạn {shortDueLabel(t.due_date, today)}
+                              {t.due_time ? ` · ${String(t.due_time).slice(0, 5)}` : ''}
+                              {pill ? ` · ${pill.text}` : ''}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className="dash-suggest-add-btn"
+                            onClick={() => handlePullToToday([t])}
+                            disabled={pullingToToday}
+                          >
+                            <AppIcon name="plus" size={12} weight="bold" />
+                            <span>Hôm nay</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {todaySuggestions.length > 1 && (
+                      <button
+                        type="button"
+                        className="dash-suggest-all-btn"
+                        onClick={() => handlePullToToday(todaySuggestions)}
+                        disabled={pullingToToday}
+                      >
+                        Thêm cả {todaySuggestions.length}
+                      </button>
+                    )}
+                  </div>
                 ) : (
-                  <div className="dash-card-empty">Chưa có việc nào hẹn cho hôm nay.</div>
+                  <div className="dash-card-empty">Chưa có việc nào cho hôm nay hay có hạn trong tuần.</div>
                 )}
               </div>
 
@@ -858,7 +942,10 @@ export default function HomeDashboard() {
                       {forecast.paceToToday != null ? forecast.paceToToday.toLocaleString('vi-VN') : '—'}
                     </span>
                   </div>
-                  <div className="dash-budget-stat-item">
+                  <div
+                    className="dash-budget-stat-item"
+                    title={`Cố định ${money(forecast.fixed)} (đã trả + còn đến hạn trong tháng) + chi biến đổi theo nhịp hiện tại`}
+                  >
                     <span className="dash-budget-stat-item__label">Dự kiến cuối tháng</span>
                     <span className={`dash-budget-stat-item__val ${forecast.overBy > 0 ? 'dash-budget-stat-item__val--warn' : ''}`}>
                       {compactMoney(forecast.projected)}

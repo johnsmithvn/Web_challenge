@@ -58,7 +58,10 @@ export function priorityTag(priority) {
 
 // ── Ngân sách tháng ───────────────────────────────────────────────────────────
 
-/** Chi cộng dồn từng ngày từ mùng 1 tới hôm nay (cùng quy tắc với periodTotals). */
+/**
+ * Chi cộng dồn từng ngày từ mùng 1 tới hôm nay (cùng quy tắc với periodTotals), kèm phần
+ * chi CỐ ĐỊNH (`is_fixed`: hóa đơn, lãi vay ghi qua màn Định kỳ tự đánh dấu) trong số đó.
+ */
 export function monthSpend(txs, today) {
   const month = currentMonthPeriod(today);
   const { rows } = spendingRhythm(txs, { from: month.from, to: today, unit: 'day' });
@@ -66,6 +69,7 @@ export function monthSpend(txs, today) {
   const cumulative = rows.map(row => (running += row.amount));
   return {
     spent: running,
+    fixedSpent: periodTotals(txs, { from: month.from, to: today }).fixed,
     cumulative,
     curDay: rows.length,
     daysInMonth: daysInclusive(month.from, month.to),
@@ -73,13 +77,22 @@ export function monthSpend(txs, today) {
 }
 
 /**
- * Nhịp chi so với hạn mức. Không có hạn mức (limit 0) thì không có "nhịp đều" hay "vượt"
- * — chỉ còn dự kiến cuối tháng theo tốc độ hiện tại.
+ * Dự kiến chi cả tháng = phần CỐ ĐỊNH (đã trả + còn đến hạn trong tháng) + phần BIẾN ĐỔI
+ * ngoại suy theo nhịp hiện tại.
+ *
+ * Không tách thì khoản cố định trả đầu tháng bị nhân lên như thể ngày nào cũng trả: 9 ngày
+ * đầu trả 5tr lãi vay, tháng 31 ngày → dự kiến cộng thêm ~12tr không bao giờ xảy ra.
+ * Khoản cố định nhập tay mà không đánh dấu `is_fixed` vẫn bị coi là biến đổi.
+ *
+ * Không có hạn mức (limit 0) thì không có "nhịp đều" hay "vượt".
  */
-export function budgetForecast({ spent, limit, curDay, daysInMonth }) {
-  const projected = curDay > 0 ? Math.round((spent / curDay) * daysInMonth) : spent;
+export function budgetForecast({ spent, fixedSpent = 0, upcomingFixed = 0, limit, curDay, daysInMonth }) {
+  const variable = Math.max(0, spent - fixedSpent);
+  const variableProjected = curDay > 0 ? Math.round((variable / curDay) * daysInMonth) : variable;
+  const projected = fixedSpent + upcomingFixed + variableProjected;
   return {
     projected,
+    fixed: fixedSpent + upcomingFixed,
     paceToToday: limit > 0 ? Math.round((limit / daysInMonth) * curDay) : null,
     overBy: limit > 0 ? projected - limit : null,
   };
@@ -109,6 +122,10 @@ const STATUS_RANK = { paid: 0, up: 1, today: 2, over: 3 };
  * thường niên (chỉ từ hôm nay trở đi — đã qua thì ngân hàng tự trừ, app không biết).
  * Trạng thái đọc từ giao dịch đã ghi: paid | over | today | up.
  *
+ * Mỗi khoản còn có `expense` = phần sẽ thành CHI TIÊU khi trả (cho dự kiến cuối tháng):
+ * hóa đơn = cả số tiền; phí thường niên = cả phí; kỳ vay = chỉ phần lãi (gốc đứng ngoài
+ * tổng chi); sao kê thẻ = 0 vì khoản quẹt đã tính vào chi ngay hôm quẹt.
+ *
  * Trả `cells` đủ số tuần (35 hoặc 42 ô, tuần bắt đầu thứ Hai; null = ô trống) để tháng
  * bắt đầu cuối tuần không bị mất ngày 30–31.
  */
@@ -116,9 +133,12 @@ export function paymentCalendar({ bills = [], cards = [], loans = [], transactio
   const month = today.slice(0, 7);
   const entries = [];
   const statusOf = (due, done) => (done ? 'paid' : due < today ? 'over' : due === today ? 'today' : 'up');
-  const push = (due, name, amount, done) => {
+  const push = (due, name, amount, done, expense = amount) => {
     if (!due || due.slice(0, 7) !== month) return;
-    entries.push({ date: due, day: Number(due.slice(8, 10)), name, amount: Math.max(0, Math.round(amount || 0)), status: statusOf(due, done) });
+    entries.push({
+      date: due, day: Number(due.slice(8, 10)), name, status: statusOf(due, done),
+      amount: Math.max(0, Math.round(amount || 0)), expense: Math.max(0, Math.round(expense || 0)),
+    });
   };
 
   for (const b of bills) {
@@ -135,12 +155,12 @@ export function paymentCalendar({ bills = [], cards = [], loans = [], transactio
   for (const c of cards) {
     if (c.closed_at) continue;
     const latest = cardStatementSummary(c, transactions, today);
-    if (latest.statementTotal > 0) push(latest.due, `Sao kê ${c.name}`, latest.statementTotal, latest.outstanding === 0);
+    if (latest.statementTotal > 0) push(latest.due, `Sao kê ${c.name}`, latest.statementTotal, latest.outstanding === 0, 0);
     // Sao kê kỳ trước (hạn có thể còn nằm trong tháng này): đã trả hay chưa xét theo FIFO
     // như cardCarryOver, để khoản trả muộn mang nhãn kỳ mới không bị coi là chưa trả.
     const prevRef = addDaysStr(cardCycle(c, today).statement, -1);
     const previous = cardStatementSummary(c, transactions, prevRef);
-    if (previous.statementTotal > 0) push(previous.due, `Sao kê ${c.name}`, previous.statementTotal, !cardCarryOver(c, transactions, today));
+    if (previous.statementTotal > 0) push(previous.due, `Sao kê ${c.name}`, previous.statementTotal, !cardCarryOver(c, transactions, today), 0);
     if (c.annual_fee > 0 && c.annual_fee_on) {
       const fee = nextAnnualFee(c.annual_fee_on, today);
       if (fee) push(fee.date, `Phí thường niên ${c.name}`, c.annual_fee, false);
@@ -156,7 +176,8 @@ export function paymentCalendar({ bills = [], cards = [], loans = [], transactio
     const sch = loanSchedule(l);
     // Kỳ đang tính đã sang tháng sau = kỳ tháng này xong; còn kẹt ở tháng trước = tháng này chưa trả.
     const done = cycle.period === month ? cycle.done : cycle.period > month;
-    push(due, l.name, sch.kind === 'interest' ? sch.monthlyInterest : sch.monthlyPayment, done);
+    push(due, l.name, sch.kind === 'interest' ? sch.monthlyInterest : sch.monthlyPayment, done,
+      sch.kind === 'interest' ? sch.monthlyInterest : sch.interestPart);
   }
 
   const byDay = new Map();
@@ -184,6 +205,8 @@ export function paymentCalendar({ bills = [], cards = [], loans = [], transactio
     totalCount: entries.length,
     paidCount: entries.filter(e => e.status === 'paid').length,
     leftAmount: entries.filter(e => e.status !== 'paid').reduce((sum, e) => sum + e.amount, 0),
+    // Chi cố định còn phải trả trong tháng (kể cả khoản quá hạn của tháng này) — cho dự kiến.
+    upcomingFixedSpend: entries.filter(e => e.status !== 'paid').reduce((sum, e) => sum + e.expense, 0),
   };
 }
 
@@ -207,6 +230,44 @@ export function groupByDueDate(items, today) {
   return [...groups.values()]
     .sort((a, b) => a.date.localeCompare(b.date))
     .map(g => ({ ...g, label: dueDateLabel(g.date, g.days) }));
+}
+
+// ── Nhiệm vụ hôm nay trống: gợi ý kéo việc sắp đến hạn về ────────────────────
+
+/**
+ * Tối đa `count` việc chưa xong có hạn trong tuần tới (mai → +6 ngày): hạn gần trước,
+ * cùng hạn thì ưu tiên cao trước. Đầu vào là `futureTasks` của useUserTasks (đã bỏ
+ * subtask và việc bỏ qua) — lọc lại cho chắc.
+ */
+export function upcomingTaskSuggestions(tasks = [], today, count = 3) {
+  const until = addDaysStr(today, 6);
+  return tasks
+    .filter(t => !t.completed && t.status !== 'skip' && !t.parent_task_id
+      && t.due_date && t.due_date > today && t.due_date <= until)
+    .sort((a, b) => a.due_date.localeCompare(b.due_date) || (Number(b.priority) || 0) - (Number(a.priority) || 0))
+    .slice(0, count);
+}
+
+/**
+ * Thay đổi để kéo một việc sắp tới hạn về làm hôm nay. Chỉ đổi `due_date` là chưa đủ: DB có
+ * CHECK `user_tasks_start_before_due` (bắt đầu phải trước hạn), nên việc "bắt đầu T5, hạn T6"
+ * kéo về hôm nay (T4) thì ngày bắt đầu cũng phải về hôm nay; giờ bắt đầu không còn trước
+ * giờ hạn thì bỏ giờ bắt đầu.
+ */
+export function pullToTodayChanges(task, today) {
+  const changes = { due_date: today };
+  if (task.start_date && task.start_date >= today) {
+    changes.start_date = today;
+    if (task.start_time && task.due_time && String(task.start_time) >= String(task.due_time)) changes.start_time = null;
+  }
+  return changes;
+}
+
+/** "Mai", "T6 10/10", "CN 12/10" — nhãn hạn ngắn cho dòng gợi ý. */
+export function shortDueLabel(date, today) {
+  if (date === addDaysStr(today, 1)) return 'Mai';
+  const d = parseYmd(date);
+  return `${['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
 }
 
 // ── Body ──────────────────────────────────────────────────────────────────────
