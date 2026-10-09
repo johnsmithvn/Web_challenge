@@ -1,5 +1,5 @@
 /**
- * dashboardMetrics — số liệu THẬT cho các ô của Trang chủ: biểu đồ ngân sách, lịch thanh
+ * dashboardMetrics — số liệu THẬT cho các ô của Trang chủ: biểu đồ chi tiêu, lịch thanh
  * toán, tuần tập, phục hồi cơ và 5 ô module. Thuần: không React, không Supabase, không
  * import JSON → chạy bằng node:assert (src/__tests__/core/dashboardMetrics.test.js).
  *
@@ -16,7 +16,6 @@ import {
   currentMonthPeriod,
   periodTotals,
   spendingRhythm,
-  budgetBreakdown,
   dueDateInMonth,
   billCycle,
   billSettled,
@@ -56,23 +55,34 @@ export function priorityTag(priority) {
   return { rank, text: `P${rank}`, label: option.label };
 }
 
-// ── Ngân sách tháng ───────────────────────────────────────────────────────────
+// ── Chi tiêu tháng (không có hạn mức — module Ngân sách đã gỡ từ 01/09/2026) ──────
+
+const cumulate = (rows) => {
+  let running = 0;
+  return rows.map(row => (running += row.amount));
+};
 
 /**
- * Chi cộng dồn từng ngày từ mùng 1 tới hôm nay (cùng quy tắc với periodTotals), kèm phần
- * chi CỐ ĐỊNH (`is_fixed`: hóa đơn, lãi vay ghi qua màn Định kỳ tự đánh dấu) trong số đó.
+ * Chi cộng dồn từng ngày của tháng này (tới hôm nay) và của TOÀN tháng trước — cùng
+ * `spendingRhythm` với biểu đồ "Nhịp chi trong kỳ" bên Finance, nên hai nơi không thể lệch.
+ * Kèm phần chi CỐ ĐỊNH (`is_fixed`: hóa đơn, lãi vay ghi qua Định kỳ tự đánh dấu) và số
+ * tháng trước CÙNG KỲ (cùng số ngày; tháng trước ngắn hơn thì lấy hết tháng).
  */
 export function monthSpend(txs, today) {
   const month = currentMonthPeriod(today);
-  const { rows } = spendingRhythm(txs, { from: month.from, to: today, unit: 'day' });
-  let running = 0;
-  const cumulative = rows.map(row => (running += row.amount));
+  const prev = currentMonthPeriod(shiftMonth(today, -1));
+  const cumulative = cumulate(spendingRhythm(txs, { from: month.from, to: today, unit: 'day' }).rows);
+  const prevCumulative = cumulate(spendingRhythm(txs, { from: prev.from, to: prev.to, unit: 'day' }).rows);
+  const curDay = cumulative.length;
   return {
-    spent: running,
+    spent: cumulative[curDay - 1] || 0,
     fixedSpent: periodTotals(txs, { from: month.from, to: today }).fixed,
     cumulative,
-    curDay: rows.length,
+    curDay,
     daysInMonth: daysInclusive(month.from, month.to),
+    prevMonth: prev.month0 + 1,
+    prevCumulative,
+    prevToDate: prevCumulative[Math.min(curDay, prevCumulative.length) - 1] || 0,
   };
 }
 
@@ -83,34 +93,45 @@ export function monthSpend(txs, today) {
  * Không tách thì khoản cố định trả đầu tháng bị nhân lên như thể ngày nào cũng trả: 9 ngày
  * đầu trả 5tr lãi vay, tháng 31 ngày → dự kiến cộng thêm ~12tr không bao giờ xảy ra.
  * Khoản cố định nhập tay mà không đánh dấu `is_fixed` vẫn bị coi là biến đổi.
- *
- * Không có hạn mức (limit 0) thì không có "nhịp đều" hay "vượt".
  */
-export function budgetForecast({ spent, fixedSpent = 0, upcomingFixed = 0, limit, curDay, daysInMonth }) {
+export function spendForecast({ spent, fixedSpent = 0, upcomingFixed = 0, curDay, daysInMonth }) {
   const variable = Math.max(0, spent - fixedSpent);
   const variableProjected = curDay > 0 ? Math.round((variable / curDay) * daysInMonth) : variable;
-  const projected = fixedSpent + upcomingFixed + variableProjected;
   return {
-    projected,
+    projected: fixedSpent + upcomingFixed + variableProjected,
     fixed: fixedSpent + upcomingFixed,
-    paceToToday: limit > 0 ? Math.round((limit / daysInMonth) * curDay) : null,
-    overBy: limit > 0 ? projected - limit : null,
   };
 }
 
 /**
- * 4 danh mục cho dưới biểu đồ: có hạn mức thì lấy các mục gần/vượt hạn mức nhất; chưa
- * đặt hạn mức nào thì lấy các mục chi nhiều nhất (pct = null).
+ * Các nhóm chi nhiều nhất tháng này (tới hôm nay), kèm số tháng trước CÙNG KỲ để so —
+ * so 9 ngày đầu tháng này với cả tháng trước là so sai.
+ * `share` = % trong tổng chi tháng này; `deltaPct` = null khi cùng kỳ tháng trước chưa chi.
  */
-export function topBudgetCategories(totals, budgets, cats, count = 4) {
+export function topCategories(txs, today, cats, count = 4) {
   if (!cats?.expenseGroups) return [];
-  const { categories } = budgetBreakdown(totals, budgets || [], cats);
-  const tone = (pct) => (pct == null ? 'none' : pct > 100 ? 'over' : pct >= 80 ? 'warn' : 'ok');
-  const withLimit = categories.filter(c => c.limit > 0).sort((a, b) => b.pct - a.pct);
-  const picked = withLimit.length
-    ? withLimit
-    : categories.filter(c => c.spent > 0).sort((a, b) => b.spent - a.spent);
-  return picked.slice(0, count).map(c => ({ ...c, tone: tone(c.pct) }));
+  const month = currentMonthPeriod(today);
+  const prev = currentMonthPeriod(shiftMonth(today, -1));
+  const curDay = daysInclusive(month.from, today);
+  const prevTo = addDaysStr(prev.from, Math.min(curDay, daysInclusive(prev.from, prev.to)) - 1);
+  const current = periodTotals(txs, { from: month.from, to: today });
+  const before = periodTotals(txs, { from: prev.from, to: prevTo });
+  const labelOf = (key) => cats.expenseGroups.find(g => g.key === key)?.label || key;
+  return Object.entries(current.byCategory)
+    .filter(([, spent]) => spent > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, count)
+    .map(([key, spent]) => {
+      const prevSpent = before.byCategory[key] || 0;
+      return {
+        key,
+        label: labelOf(key),
+        spent,
+        prevSpent,
+        share: current.total ? Math.round((spent / current.total) * 100) : 0,
+        deltaPct: prevSpent ? Math.round(((spent - prevSpent) / prevSpent) * 100) : null,
+      };
+    });
 }
 
 // ── Lịch thanh toán tháng ─────────────────────────────────────────────────────

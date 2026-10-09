@@ -62,7 +62,7 @@ trước khi user xác nhận.
 Thứ tự phụ thuộc:
 
 1. Kiểm đủ bảy RPC bằng user đã auth: happy path, trùng kỳ, khác owner và rollback.
-2. Smoke liên kết Task, Inbox conversion, tag, category override, budget và CSV.
+2. Smoke liên kết Task, Inbox conversion, tag, category override và CSV.
 3. QA dữ liệu dày trên desktop/mobile, keyboard, focus, overflow và console.
 4. Production smoke sau khi user triển khai schema/code.
 

@@ -1002,7 +1002,7 @@
   gap: 14px;
 }
 
-/* Card Ngân sách tháng */
+/* Card Chi tiêu tháng (class giữ tên budget theo bản design) */
 .dash-budget-card {
   background: var(--dash-card-bg);
   border: 1px solid var(--dash-border);
@@ -1091,7 +1091,7 @@
   overflow: visible;
 }
 
-.dash-chart-limit-tag {
+.dash-chart-prev-tag {
   position: absolute;
   right: 0;
   transform: translateY(-130%);
@@ -1538,7 +1538,7 @@
   }
 }
 
-/* ── TIỆN ÍCH BỔ SUNG CHO TRANG CHỦ (Notice, Loading, Buttons, Overbudget) ── */
+/* ── TIỆN ÍCH BỔ SUNG CHO TRANG CHỦ (Notice, Loading, Buttons) ── */
 .dash-status--muted {
   background: var(--dash-border-subtle);
   color: var(--dash-text-muted);
@@ -1644,48 +1644,6 @@
 
 .dash-btn--block {
   width: 100%;
-}
-
-.dash-overbudget {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 10px 12px;
-  background: var(--dash-warn-red-bg);
-  border: 1px solid var(--dash-warn-red-border);
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.dash-overbudget li {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  color: var(--dash-text-desc);
-}
-
-.dash-overbudget li > :first-child {
-  color: var(--dash-warn-red);
-  flex: none;
-}
-
-.dash-overbudget li span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dash-overbudget li strong {
-  color: var(--dash-warn-red);
-  font-variant-numeric: tabular-nums;
-}
-
-.dash-text-danger {
-  color: var(--dash-warn-red);
 }
 
 /* ── TRẠNG THÁI THEO DỮ LIỆU THẬT (thay cho màu viết inline trong JSX) ───────
@@ -1828,13 +1786,12 @@
 /* Biểu đồ ngân sách */
 .dash-chart-path { fill: none; }
 .dash-chart-path--grid { stroke: var(--dash-border-subtle); stroke-width: 1; }
-.dash-chart-path--limit { stroke: var(--dash-warn-red); stroke-width: 1.25; stroke-dasharray: 2 4; }
-.dash-chart-path--pace { stroke: var(--dash-text-muted); stroke-width: 1.25; stroke-dasharray: 5 5; }
+.dash-chart-path--prev { stroke: var(--dash-text-muted); stroke-width: 1.5; stroke-dasharray: 4 4; stroke-linejoin: round; }
 .dash-chart-path--area { fill: color-mix(in srgb, var(--dash-warn-yellow) 14%, transparent); stroke: none; }
 .dash-chart-path--proj { stroke: var(--dash-warn-yellow); stroke-width: 1.75; stroke-dasharray: 1 5; stroke-linecap: round; }
 .dash-chart-path--line { stroke: var(--dash-warn-yellow); stroke-width: 2.5; stroke-linejoin: round; }
 
-.dash-chart-limit-tag { color: var(--dash-warn-red); }
+.dash-chart-prev-tag { color: var(--dash-text-muted); }
 .dash-chart-proj-tag { color: var(--dash-warn-yellow-dark); }
 .dash-chart-dot { background: var(--dash-card-bg); border-color: var(--dash-warn-yellow); }
 
@@ -1846,15 +1803,13 @@
 
 .dash-legend-swatch { width: 14px; display: inline-block; }
 .dash-legend-swatch--line { height: 2.5px; border-radius: 2px; background: var(--dash-warn-yellow); }
-.dash-legend-swatch--pace { border-top: 1.5px dashed var(--dash-text-muted); }
+.dash-legend-swatch--prev { border-top: 1.5px dashed var(--dash-text-muted); }
 .dash-legend-swatch--proj { border-top: 1.5px dotted var(--dash-warn-yellow); }
 
 .dash-budget-stat-item__val--warn { color: var(--dash-warn-yellow-dark); }
 
 .dash-budget-cat-bar { background: var(--dash-fin-green); }
 .dash-budget-cat--warn .dash-budget-cat-bar { background: var(--dash-warn-yellow); }
-.dash-budget-cat--over .dash-budget-cat-bar { background: var(--dash-warn-red); }
-.dash-budget-cat--over .dash-budget-cat-pct { color: var(--dash-warn-red); font-weight: 600; }
 .dash-budget-cat--none .dash-budget-cat-bar { background: var(--dash-text-muted); }
 
 .dash-budget-cats-empty {

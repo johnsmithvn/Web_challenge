@@ -57,7 +57,8 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   qua × số ngày của tháng. Chi cố định = giao dịch `is_fixed` (hóa đơn, lãi vay ghi qua Định kỳ tự đánh dấu);
   khoản cố định nhập tay không đánh dấu vẫn bị coi là biến đổi.
 - **Bức tranh nhịp sống** (`dashboardMetrics.js`, chỉ dữ liệu thật — thiếu thì hiện "—"/trạng thái trống):
-  biểu đồ chi cộng dồn tháng + nhịp đều theo hạn mức + dự kiến cuối tháng, 4 danh mục gần/vượt hạn mức;
+  biểu đồ chi cộng dồn tháng (bậc thang) so với đường cộng dồn tháng trước + dự kiến cuối tháng, 4 nhóm chi
+  nhiều nhất kèm % trong tổng và so cùng kỳ tháng trước (không có hạn mức — module Ngân sách đã gỡ 01/09/2026);
   lịch thanh toán tháng (hóa đơn tới kỳ, sao kê thẻ, kỳ vay, phí thường niên — đã trả/quá hạn/hôm nay/sắp tới
   đọc từ giao dịch); 5 ô module: việc xong 14 ngày + % đúng hạn, chi TB/ngày so tháng trước, cân nặng tới mục
   tiêu, số ghi chú + mới tuần này. Vault mã hóa nên chỉ hiện trạng thái, không đọc số mục khi chưa mở khóa.
@@ -215,8 +216,8 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 
 - Hai tab: **Chung** (tiền tệ + tag) và **Hồ sơ**.
 - Cấu hình tiền tệ: tỷ giá USD và Auto-K.
-- Auto-K chỉ áp cho ô **nhập mới**. Form **sửa** (Sửa giao dịch, sửa hóa đơn/thu định kỳ/vay/thẻ/cho
-  vay, hạn mức đã đặt) hiển thị số ĐÃ LƯU nên không áp Auto-K: số trong ô là số sẽ lưu. Chữ chỉ độ lớn (`50k`, `2 triệu`, `10$`) vẫn hiểu ở những ô nhận chữ.
+- Auto-K chỉ áp cho ô **nhập mới**. Form **sửa** (Sửa giao dịch, sửa hóa đơn/vay/thẻ/cho
+  vay) hiển thị số ĐÃ LƯU nên không áp Auto-K: số trong ô là số sẽ lưu. Chữ chỉ độ lớn (`50k`, `2 triệu`, `10$`) vẫn hiểu ở những ô nhận chữ.
 - Tag manager: tạo, đổi tên/màu, xem usage breakdown và xóa link có xác nhận.
 - Tag plaintext dùng cho Knowledge, Task và Finance transaction qua ba junction riêng để giữ FK.
 - Vault tag là ngoại lệ: nằm trong ciphertext và chỉ có sau unlock.
@@ -231,16 +232,20 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 
 ### Điều hướng & Bố cục
 - `overview`: Tổng quan + Báo cáo gộp một trang, dùng chung bộ chọn kỳ Tháng/Quý/Năm (cảnh báo, chỉ số, nhịp chi, khoản lớn nhất, quỹ tiết kiệm, rồi các thẻ Báo cáo). `/finance/report` và `?view=stats` chuyển về đây.
-- `add`: Nhập nhanh **khoản chi** bằng form, câu tự nhiên hoặc shortcut (thu và gửi/rút quỹ nằm ở `recurring`).
+- `add`: Nhập nhanh **khoản chi** bằng form, câu tự nhiên hoặc shortcut (gửi/rút quỹ nằm ở `recurring`). Finance chỉ
+  theo dõi chi: không có chỗ ghi thu nhập tay; khoản thu chỉ còn lãi cho vay và giao dịch thu cũ.
 - `list`: Danh sách giao dịch với thanh Toolbar hợp nhất (`.fin-list__toolbar`), ô tìm kiếm ghim trên Header, bộ lọc đa cấp `FilterPop` (nhóm cha, danh mục con, khoảng ngày), xuất CSV.
-- `recurring`: **Định kỳ & Quỹ** (hóa đơn, thu định kỳ, khoản vay, thẻ tín dụng, cho vay và Quỹ tiết kiệm).
+- `recurring`: **Định kỳ & Quỹ** (hóa đơn, khoản vay, thẻ tín dụng, cho vay và Quỹ tiết kiệm). Tab "Sẽ nhận"
+  (thu định kỳ) đã gỡ 10/2026.
 - `cats`: Taxonomy chi (10 nhóm chuẩn) / thu và override label/màu/icon/subcategory.
 
 ### Hành vi chính
 - **Mức độ thiết yếu 2 cấp (2-tier necessity):** Phân loại chi tiêu thành **Thiết yếu** (`need`) và **Linh hoạt / Mong muốn** (`want`).
 - **Ghi chú nhiều dòng (`description`):** Cột `description TEXT` cho phép ghi chú tự do nhiều dòng, tách rời tiêu đề ngắn `note`.
 - **Drawer Sửa giao dịch 560px:** Mở rộng mượt mà khi chỉnh sửa giao dịch, hỗ trợ nhập *Nơi / người nhận* (`merchant`) và bảng *Chi tiết từng món* (`items`: tên món, số lượng, đơn giá, tự động tính tổng). Phím tắt `Ctrl + Enter` lưu nhanh, `Escape` đóng.
-- Hóa đơn fixed/ask, skip period, kỳ trả; thu định kỳ; khoản vay và thẻ tín dụng.
+- Hóa đơn fixed/ask, skip period, kỳ trả; khoản vay và thẻ tín dụng.
+- **Nhịp chi trong kỳ** (Tổng quan) dùng chung `spendingRhythm` với mọi tổng chi khác; màu theo token
+  Nocturne nên đọc được cả sáng lẫn tối.
 - **Kỳ cũ chưa trả không biến mất khi sang kỳ mới:** hóa đơn hằng tháng bám kỳ tháng trước (chỉ khi kỳ đó
   từ ngày bắt đầu/ngày tạo trở đi); khoản vay bám kỳ tháng trước theo số kỳ đã ghi (không báo oan dữ liệu
   cũ trả muộn mang nhãn tháng mới, bỏ kỳ trước `opened_at`); thẻ hiện nợ sao kê kỳ trước còn treo — tiền trả

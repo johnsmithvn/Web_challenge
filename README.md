@@ -113,7 +113,7 @@ npm run db:local:stop
 > `db:local:reset` xóa toàn bộ dữ liệu database local trước khi replay migration. Đây là lệnh user
 > chủ động chạy cho môi trường test trắng; agent không tự chạy và không được dùng với hosted project.
 
-29 migration local được chạy tự động theo timestamp:
+31 migration local được chạy tự động theo timestamp:
 
 1. [`20260802000000_base_v5_0_0.sql`](./supabase/migrations/20260802000000_base_v5_0_0.sql)
 2. [`20260805000000_vault_v5_2_0.sql`](./supabase/migrations/20260805000000_vault_v5_2_0.sql)
@@ -145,6 +145,7 @@ npm run db:local:stop
 28. [`20261008000001_body_biometrics_v6_22_0.sql`](./supabase/migrations/20261008000001_body_biometrics_v6_22_0.sql)
 29. [`20261008000002_body_nutrition_checkin_v6_22_0.sql`](./supabase/migrations/20261008000002_body_nutrition_checkin_v6_22_0.sql)
 30. [`20261009000000_body_exercise_videos_v6_22_0.sql`](./supabase/migrations/20261009000000_body_exercise_videos_v6_22_0.sql)
+31. [`20261009100000_finance_drop_income_budgets_v6_22_0.sql`](./supabase/migrations/20261009100000_finance_drop_income_budgets_v6_22_0.sql)
 
 Sau `npm run db:local:start`, tạo file `.env.development.local` (Git bỏ qua) bằng Project URL và
 Publishable key hiện trong kết quả:
@@ -195,6 +196,7 @@ Mở **Supabase → SQL Editor** và chạy đúng thứ tự:
 | 25 | [`data/migration_v6.22.0_body_biometrics.sql`](./data/migration_v6.22.0_body_biometrics.sql) | Module Sinh trắc học & Hồ sơ: 2 bảng (`body_measurements`, `body_profiles`), đo lường cân nặng, mỡ, cơ, nước, mỡ nội tạng, hồ sơ cá nhân. Idempotent. |
 | 26 | [`data/migration_v6.22.0_body_nutrition_checkin.sql`](./data/migration_v6.22.0_body_nutrition_checkin.sql) | Module Dinh dưỡng & Check-in: 4 bảng (`body_meal_logs`, `body_saved_meals`, `body_water_logs`, `body_weekly_checkins`), theo dõi 4 bữa, macro, uống nước, check-in tuần ISO. Idempotent. |
 | 27 | [`data/migration_v6.22.0_body_exercise_videos.sql`](./data/migration_v6.22.0_body_exercise_videos.sql) | Bảng `body_exercise_videos` (link video thị phạm user tự gắn, 1 link/bài) thay cho localStorage; frontend tự chuyển link cũ lên rồi xoá key cũ. Additive, idempotent — chạy trước khi deploy frontend, nếu không gắn link sẽ báo lỗi. |
+| 28 | [`data/migration_v6.22.0_finance_drop_income_budgets.sql`](./data/migration_v6.22.0_finance_drop_income_budgets.sql) | **Xóa dữ liệu:** drop `finance_income_rules` (Thu định kỳ), `finance_budgets` (Hạn mức) và RPC `finance_receive_income` — app đã ngừng dùng. Giao dịch thu cũ giữ nguyên, chỉ gỡ liên kết quy tắc. **Deploy frontend mới TRƯỚC rồi mới chạy** (frontend cũ vẫn tải hai bảng). Export CSV hai bảng nếu muốn giữ. Một transaction, tự verify, idempotent. |
 
 Dọn dẹp bảng cũ (tùy chọn):
 - [`data/drop_incubator_tables.sql`](./data/drop_incubator_tables.sql) (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).

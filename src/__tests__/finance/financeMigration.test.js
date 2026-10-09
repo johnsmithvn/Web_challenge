@@ -38,10 +38,16 @@ for (const table of TABLES) {
   assert.match(sql, new RegExp(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY;`), `thiếu RLS ${table}`);
 }
 
+// Thu định kỳ đã gỡ khỏi app (10/2026): RPC vẫn còn trong schema gốc nhưng app không được gọi nữa.
+const RETIRED_RPCS = new Set(['finance_receive_income']);
 for (const rpc of RPCS) {
   assert.match(sql, new RegExp(`CREATE FUNCTION ${rpc}\\(`), `thiếu RPC ${rpc}`);
   assert.match(sql, new RegExp(`GRANT EXECUTE ON FUNCTION ${rpc}\\(`), `thiếu quyền authenticated cho ${rpc}`);
-  assert.match(hook, new RegExp(`callFinanceRpc\\('${rpc}'`), `useFinance chưa gọi ${rpc}`);
+  if (RETIRED_RPCS.has(rpc)) {
+    assert.doesNotMatch(hook, new RegExp(`callFinanceRpc\\('${rpc}'`), `${rpc} đã gỡ khỏi app, useFinance không được gọi`);
+  } else {
+    assert.match(hook, new RegExp(`callFinanceRpc\\('${rpc}'`), `useFinance chưa gọi ${rpc}`);
+  }
 }
 
 for (const column of [
@@ -95,9 +101,10 @@ assert.match(sql, /THEN skipped_periods[\s\S]{0,40}ELSE skipped_periods \|\| JSO
   'RPC bỏ kỳ chỉ thêm, không tự gỡ — việc gỡ do UI làm qua UPDATE own-row');
 assert.match(page, /const confirmDelete = useCallback\(/,
   'Finance phải có một luồng xác nhận xóa dùng chung');
-// 9 luồng xóa: giao dịch · hóa đơn · khoản thu · vay · thẻ · CHO VAY · quỹ · nơi gửi · shortcut.
-// Con số này chỉ được tăng khi thêm một loại dữ liệu mới có nút xóa, không bao giờ giảm.
-assert.equal((destructiveScreens.match(/nav\.confirmDelete\(/g) || []).length, 9,
+// 8 luồng xóa: giao dịch · hóa đơn · vay · thẻ · CHO VAY · quỹ · nơi gửi · shortcut.
+// Con số này chỉ được tăng khi thêm một loại dữ liệu mới có nút xóa; chỉ giảm khi gỡ HẲN một
+// loại dữ liệu khỏi app (10/2026: gỡ Thu định kỳ cùng nút xóa khoản thu), không bao giờ vì bỏ xác nhận.
+assert.equal((destructiveScreens.match(/nav\.confirmDelete\(/g) || []).length, 8,
   'mọi nút xóa dữ liệu Finance phải đi qua xác nhận dùng chung');
 assert.doesNotMatch(destructiveScreens, /onClick=\{\(\) => fin\.delete/,
   'không được xóa dữ liệu Finance trực tiếp từ nút bấm');
@@ -105,8 +112,9 @@ assert.match(list, /if \(await fin\.deleteTransaction\(tx\.id\)\) onClose\(\)/,
   'chi tiết giao dịch chỉ được đóng khi xóa thành công');
 assert.match(sql, /p_income_period TEXT DEFAULT NULL/, 'kỳ thu định kỳ phải tách khỏi ngày nhận thật');
 assert.match(sql, /p_loan_period TEXT DEFAULT NULL/, 'kỳ trả vay phải tách khỏi ngày trả thật');
-assert.match(hook, /p_income_period: period \|\| today\.slice\(0, 7\)/,
-  'useFinance phải truyền kỳ thu đang chạy');
+assert.doesNotMatch(hook, /p_income_period/, 'Thu định kỳ đã gỡ — useFinance không còn ghi kỳ thu');
+assert.doesNotMatch(hook, /q\('finance_income_rules'\)|q\('finance_budgets'\)/,
+  'Thu định kỳ và Hạn mức đã gỡ — useFinance không tải hai bảng này nữa');
 assert.match(hook, /p_loan_period: period \|\| today\.slice\(0, 7\)/,
   'useFinance phải truyền kỳ vay đang chạy');
 assert.match(recurring, /t\.loan_period === period && t\.loan_part === 'principal'/,
@@ -250,3 +258,41 @@ assert.ok(movedPick.some(s => s.key === movedSubKey), 'phải giữ lại sub đ
 
 console.log('finance taxonomy and parts contract: OK');
 
+
+// ── v6.22.0: gỡ Thu định kỳ & Hạn mức khỏi database ────────────────────────────
+const dropSql = readFileSync(new URL('../../../data/migration_v6.22.0_finance_drop_income_budgets.sql', import.meta.url), 'utf8');
+const dropLocal = readFileSync(new URL('../../../supabase/migrations/20261009100000_finance_drop_income_budgets_v6_22_0.sql', import.meta.url), 'utf8');
+const resetSql = readFileSync(new URL('../../../data/reset_user_data.sql', import.meta.url), 'utf8');
+const sqlBody = (src) => src.split('\n').filter(line => !line.trim().startsWith('--')).join('\n');
+const dropCode = sqlBody(dropSql);
+
+assert.equal(dropLocal, dropSql, 'bản supabase/migrations phải giống hệt bản data/');
+assert.match(dropCode, /^BEGIN;[\s\S]*COMMIT;\s*$/m, 'gỡ bảng phải nằm trọn trong một transaction');
+assert.match(dropCode, /DROP TABLE IF EXISTS public\.finance_income_rules;/);
+assert.match(dropCode, /DROP TABLE IF EXISTS public\.finance_budgets;/);
+assert.doesNotMatch(dropCode, /CASCADE/, 'không CASCADE — phụ thuộc chưa biết thì phải lỗi, không kéo object khác xuống');
+assert.doesNotMatch(dropCode, /DROP COLUMN/,
+  'không drop income_rule_id/income_period — Postgres sẽ âm thầm xóa CHECK nhiều cột của bill/loan/card/saving');
+assert.doesNotMatch(dropCode, /DROP FUNCTION[^;]*finance_valid_income_category/,
+  'giao dịch thu và override danh mục thu vẫn cần finance_valid_income_category');
+assert.match(dropCode, /ADD CONSTRAINT finance_tx_income_rule_retired CHECK \(income_rule_id IS NULL\)/,
+  'phải chặn ghi lại income_rule_id sau khi bảng đích biến mất');
+assert.match(dropCode, /DROP FUNCTION IF EXISTS finance_receive_income\(UUID, BIGINT, DATE, UUID, TEXT\);/);
+assert.match(dropCode, /DROP FUNCTION IF EXISTS finance_refresh_income_progress\(UUID\);/);
+
+// Thứ tự: viết lại trigger → gỡ liên kết → drop bảng. Đảo lại thì trigger đọc bảng đã mất.
+const posOf = (re) => dropCode.search(re);
+const posReplace = posOf(/CREATE OR REPLACE FUNCTION finance_sync_transaction_rule_progress\(\)/);
+const posUnlink = posOf(/UPDATE finance_transactions SET income_rule_id = NULL/);
+const posDrop = posOf(/DROP TABLE IF EXISTS public\.finance_income_rules;/);
+assert.ok(posReplace > 0 && posReplace < posUnlink && posUnlink < posDrop,
+  'phải viết lại hàm trigger trước, gỡ liên kết sau, drop bảng cuối');
+for (const fn of ['finance_validate_transaction_references', 'finance_sync_transaction_rule_progress']) {
+  const start = dropCode.indexOf(`CREATE OR REPLACE FUNCTION ${fn}()`);
+  const body = dropCode.slice(start, dropCode.indexOf('$$;', start));
+  assert.ok(start > 0, `thiếu bản viết lại của ${fn}`);
+  assert.doesNotMatch(body, /income/i, `${fn} không được còn nhánh thu định kỳ`);
+}
+assert.doesNotMatch(resetSql, /DELETE FROM finance_(?:income_rules|budgets);/,
+  'reset_user_data.sql không được xóa bảng đã drop — lỗi là cả transaction reset bị hủy');
+console.log('finance drop income/budgets migration contract: OK');

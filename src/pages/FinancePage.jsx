@@ -17,7 +17,8 @@ import RecurringScreen from '../components/finance/RecurringScreen';
 import '../styles/finance.css';
 import '../styles/skeleton.css';
 
-const RECURRING_SEGS = ['out', 'in', 'loan', 'card', 'lend', 'saving'];
+// 'in' (Thu định kỳ) đã gỡ — handoff cũ mang kind 'in' rơi vào nhánh bỏ qua, không mở tab chết.
+const RECURRING_SEGS = ['out', 'loan', 'card', 'lend', 'saving'];
 
 const SCREENS = [
   { key: 'overview',  icon: 'chartDonut', label: 'Tổng quan', title: 'Hôm nay tiêu gì?' },
@@ -124,7 +125,7 @@ export default function FinancePage() {
     if (!raw) return;
     sessionStorage.removeItem('lh_inbox_to_finance');
     try {
-      const data = JSON.parse(raw);   // { kind:'tx'|'out'|'in'|'loan'|'card', title, inboxId, amount? }
+      const data = JSON.parse(raw);   // { kind:'tx'|'out'|'loan'|'card', title, inboxId, amount? }
       setHandoff(data);
       if (data.kind === 'tx') navigate('/finance/add');
       // Payload đến từ sessionStorage nên phải kiểm: segment lạ làm RecurringScreen

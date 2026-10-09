@@ -144,14 +144,12 @@ const resDep = collectSystemAlerts({ today, deposits: [
 assert.equal(resDep.dueToday.find(a => a.id === 'deposit-d1')?.badge, 'Đã đáo hạn 1 ngày');
 assert.equal(resDep.headsUp.some(a => a.id === 'deposit-d2'), true);
 
-// Vượt ngân sách: tên danh mục thật, nằm riêng ở overBudget (không lẫn vào "Sắp tới hạn")
+// Module Ngân sách (hạn mức) đã gỡ: còn sót dòng hạn mức cũ thì cũng không sinh cảnh báo nào
 const resBudget = collectSystemAlerts({ today,
   budgets: [{ id: 'bg', category_id: 'food', limit_amount: 100 }],
-  transactions: [{ type: 'expense', amount: 500, occurred_at: '2026-10-03', category_id: 'food' }],
-  cats: { expenseGroups: [{ key: 'food', label: 'Ăn uống' }] } });
-assert.equal(resBudget.overBudget[0]?.title, 'Vượt ngân sách: Ăn uống');
-assert.equal(resBudget.overBudget[0]?.amount, 400);
-assert.equal(resBudget.headsUp.length, 0);
+  transactions: [{ type: 'expense', amount: 500, occurred_at: '2026-10-03', category_id: 'food' }] });
+assert.equal(resBudget.overBudget, undefined);
+assert.equal(resBudget.critical.length + resBudget.dueToday.length + resBudget.headsUp.length, 0);
 
 // ── 7. All clear check ──
 const resEmpty = collectSystemAlerts({ today });

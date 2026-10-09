@@ -30,15 +30,14 @@ DELETE FROM user_tasks;
 DELETE FROM collections;
 
 -- 4. Finance: transactions trước các row được tham chiếu
+-- (finance_income_rules / finance_budgets đã drop ở v6.22.0 — không còn bảng để xóa)
 DELETE FROM finance_transactions;
 DELETE FROM finance_deposits;
 DELETE FROM finance_shortcuts;
 DELETE FROM finance_bills;
-DELETE FROM finance_income_rules;
 DELETE FROM finance_loans;
 DELETE FROM finance_cards;
 DELETE FROM finance_saving_goals;
-DELETE FROM finance_budgets;
 DELETE FROM finance_category_overrides;
 
 -- 5. Sessions và nội dung độc lập

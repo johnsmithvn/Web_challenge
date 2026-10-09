@@ -11,12 +11,12 @@ import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../ConfirmModal';
 import { collectSystemAlerts } from '../../utils/dashboardAlerts';
 import {
-  compactMoney, priorityTag, monthSpend, budgetForecast, topBudgetCategories, paymentCalendar,
+  compactMoney, priorityTag, monthSpend, spendForecast, topCategories, paymentCalendar,
   groupByDueDate, weekTraining, muscleRecoveryGroups, weightTrend, taskCompletionStats,
   dailySpendStats, knowledgeActivity, upcomingTaskSuggestions, shortDueLabel, pullToTodayChanges,
 } from '../../utils/dashboardMetrics';
 import { solarToLunar, getCanChiYear } from '../../utils/lunarUtils';
-import { addDaysStr, currentMonthPeriod, periodTotals, shiftMonth } from '../../utils/financeLogic';
+import { addDaysStr, shiftMonth } from '../../utils/financeLogic';
 import { money } from '../finance/parts';
 import MUSCLES from '../../data/body-muscles.json';
 import TaskDetailModal from '../TaskDetailModal';
@@ -89,7 +89,7 @@ export default function HomeDashboard() {
   } = taskModel;
 
   const fin = useFinance();
-  const { bills, cards, loans, lendings, deposits, budgets, transactions, cats, today } = fin;
+  const { bills, cards, loans, lendings, deposits, transactions, cats, today } = fin;
 
   const { activeRoutine, routineItems, sessions, recentSets, exerciseMap, hasLoaded: workoutsLoaded } = useWorkouts();
   const { measurements, profile: bodyProfile } = useBiometrics();
@@ -148,8 +148,8 @@ export default function HomeDashboard() {
 
   // ── Tầng 1: cảnh báo ──
   const alerts = useMemo(() => collectSystemAlerts({
-    tasks, bills, cards, loans, lendings, deposits, budgets, transactions, cats, today,
-  }), [tasks, bills, cards, loans, lendings, deposits, budgets, transactions, cats, today]);
+    tasks, bills, cards, loans, lendings, deposits, transactions, today,
+  }), [tasks, bills, cards, loans, lendings, deposits, transactions, today]);
 
   const criticalTasks = useMemo(() => alerts.critical.filter(a => a.domain === 'task'), [alerts.critical]);
   // Task đến hạn hôm nay đã có ở card "Nhiệm vụ hôm nay" — không lặp lại trong khối gấp.
@@ -273,34 +273,38 @@ export default function HomeDashboard() {
     [bills, cards, loans, transactions, today],
   );
 
-  // ── Tầng 3: ngân sách ──
+  // ── Tầng 3: chi tiêu tháng — so với tháng trước, không có hạn mức (module Ngân sách đã gỡ) ──
   const spend = useMemo(() => monthSpend(transactions, today), [transactions, today]);
-  const budgetLimit = useMemo(() => (budgets || []).reduce((sum, b) => sum + (b.limit_amount || 0), 0), [budgets]);
   // Dự kiến = cố định đã trả + cố định còn đến hạn trong tháng + biến đổi theo nhịp hiện tại.
-  const forecast = budgetForecast({
+  const forecast = spendForecast({
     spent: spend.spent,
     fixedSpent: spend.fixedSpent,
     upcomingFixed: calendar.upcomingFixedSpend,
-    limit: budgetLimit,
     curDay: spend.curDay,
     daysInMonth: spend.daysInMonth,
   });
-  const budgetCats = useMemo(
-    () => topBudgetCategories(periodTotals(transactions, currentMonthPeriod(today)), budgets, cats),
-    [transactions, budgets, cats, today],
-  );
-  const maxCatSpent = Math.max(1, ...budgetCats.map(c => c.spent));
+  const prevMonthTotal = spend.prevCumulative[spend.prevCumulative.length - 1] || 0;
+  const vsPrevPct = spend.prevToDate > 0 ? Math.round(((spend.spent - spend.prevToDate) / spend.prevToDate) * 100) : null;
+  const spendCats = useMemo(() => topCategories(transactions, today, cats), [transactions, today, cats]);
+  const maxCatShare = Math.max(1, ...spendCats.map(c => c.share));
 
   const chart = useMemo(() => {
-    const { cumulative, curDay, daysInMonth, spent } = spend;
+    const { cumulative, prevCumulative, curDay, daysInMonth, spent } = spend;
     const projected = forecast.projected;
-    const maxY = Math.max(budgetLimit * 1.15, projected * 1.1, spent * 1.1, 1);
-    const X = (d) => ((d - 1) / Math.max(1, daysInMonth - 1)) * CHART_W;
+    const prevEnd = prevCumulative[prevCumulative.length - 1] || 0;
+    // Trục ngày dài bằng tháng dài hơn trong hai tháng — giống "Nhịp chi trong kỳ" bên Finance.
+    const totalDays = Math.max(daysInMonth, prevCumulative.length);
+    const maxY = Math.max(projected * 1.1, prevEnd * 1.1, spent * 1.1, 1);
+    const X = (d) => ((d - 1) / Math.max(1, totalDays - 1)) * CHART_W;
     const Y = (v) => CHART_H - (v / maxY) * CHART_H;
     const f = (n) => n.toFixed(1);
     const pct = (v, total) => `${((v / total) * 100).toFixed(2)}%`;
-    const line = cumulative.map((v, i) => `${i ? 'L' : 'M'}${f(X(i + 1))} ${f(Y(v))}`).join(' ');
-    const align = (d) => (d === 1 ? 'start' : d === daysInMonth ? 'end' : 'mid');
+    // Bậc thang: phẳng giữa hai ngày, nhảy lên đúng ngày có chi (tiền không chi rải đều).
+    const step = (values) => values
+      .map((v, i) => (i === 0 ? `M${f(X(1))} ${f(Y(v))}` : `L${f(X(i + 1))} ${f(Y(values[i - 1]))} L${f(X(i + 1))} ${f(Y(v))}`))
+      .join(' ');
+    const line = step(cumulative);
+    const align = (d) => (d === 1 ? 'start' : d === totalDays ? 'end' : 'mid');
     const ticks = [1, 15, 22, daysInMonth]
       .filter(d => Math.abs(d - curDay) > 2)
       .map(d => ({ d, label: `${d}/${month}`, left: pct(X(d), CHART_W), align: align(d) }))
@@ -308,18 +312,17 @@ export default function HomeDashboard() {
     return {
       line,
       area: cumulative.length ? `${line} L${f(X(curDay))} ${CHART_H} L${f(X(1))} ${CHART_H} Z` : '',
-      pace: budgetLimit > 0 ? `M${f(X(1))} ${f(Y(budgetLimit / daysInMonth))} L${f(X(daysInMonth))} ${f(Y(budgetLimit))}` : '',
+      prev: prevEnd > 0 ? step(prevCumulative) : '',
       proj: `M${f(X(curDay))} ${f(Y(spent))} L${f(X(daysInMonth))} ${f(Y(projected))}`,
-      limit: budgetLimit > 0 ? `M0 ${f(Y(budgetLimit))} L${CHART_W} ${f(Y(budgetLimit))}` : '',
       grid: [0.25, 0.5, 0.75].map(r => `M0 ${f(CHART_H * r)} L${CHART_W} ${f(CHART_H * r)}`).join(' ')
         + ` M${f(X(curDay))} 0 L${f(X(curDay))} ${CHART_H}`,
-      limitTop: pct(Y(budgetLimit), CHART_H),
+      prevTop: pct(Y(prevEnd), CHART_H),
       projTop: pct(Y(projected), CHART_H),
       dotLeft: pct(X(curDay), CHART_W),
       dotTop: pct(Y(spent), CHART_H),
       ticks,
     };
-  }, [spend, forecast.projected, budgetLimit, month]);
+  }, [spend, forecast.projected, month]);
 
   // ── Tầng 3: 5 ô module ──
   const taskStats = useMemo(
@@ -922,34 +925,33 @@ export default function HomeDashboard() {
           </div>
 
           <div className="dash-bottom-grid">
-            {/* KHỐI TRÁI: NGÂN SÁCH THÁNG */}
+            {/* KHỐI TRÁI: CHI TIÊU THÁNG (so với tháng trước) */}
             <div className="dash-budget-card">
               <div className="dash-budget-card__head">
                 <div className="dash-budget-card__title-box">
-                  <span className="dash-budget-card__title">Ngân sách tháng {month}</span>
+                  <span className="dash-budget-card__title">Chi tiêu tháng {month}</span>
                   <span className="dash-budget-card__main-num">
                     {spend.spent.toLocaleString('vi-VN')}
                     <span className="dash-budget-card__main-limit">
-                      {budgetLimit > 0 ? ` / ${budgetLimit.toLocaleString('vi-VN')} ₫` : ' ₫ · chưa đặt hạn mức'}
+                      {' ₫'}
+                      {vsPrevPct != null && ` · ${vsPrevPct > 0 ? '+' : ''}${vsPrevPct}% so cùng kỳ T${spend.prevMonth}`}
                     </span>
                   </span>
                 </div>
 
                 <div className="dash-budget-card__stats-box">
                   <div className="dash-budget-stat-item">
-                    <span className="dash-budget-stat-item__label">Theo nhịp đến {day}/{month}</span>
-                    <span className="dash-budget-stat-item__val">
-                      {forecast.paceToToday != null ? forecast.paceToToday.toLocaleString('vi-VN') : '—'}
-                    </span>
+                    <span className="dash-budget-stat-item__label">Cùng kỳ tháng {spend.prevMonth}</span>
+                    <span className="dash-budget-stat-item__val">{spend.prevToDate.toLocaleString('vi-VN')}</span>
                   </div>
                   <div
                     className="dash-budget-stat-item"
                     title={`Cố định ${money(forecast.fixed)} (đã trả + còn đến hạn trong tháng) + chi biến đổi theo nhịp hiện tại`}
                   >
                     <span className="dash-budget-stat-item__label">Dự kiến cuối tháng</span>
-                    <span className={`dash-budget-stat-item__val ${forecast.overBy > 0 ? 'dash-budget-stat-item__val--warn' : ''}`}>
+                    <span className={`dash-budget-stat-item__val ${prevMonthTotal > 0 && forecast.projected > prevMonthTotal ? 'dash-budget-stat-item__val--warn' : ''}`}>
                       {compactMoney(forecast.projected)}
-                      {forecast.overBy > 0 ? ` · vượt ${compactMoney(forecast.overBy)}` : ''}
+                      {prevMonthTotal > 0 && ` · T${spend.prevMonth} ${compactMoney(prevMonthTotal)}`}
                     </span>
                   </div>
                 </div>
@@ -958,16 +960,15 @@ export default function HomeDashboard() {
               <div className="dash-budget-chart-box">
                 <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} preserveAspectRatio="none" className="dash-budget-svg" aria-hidden="true">
                   <path d={chart.grid} className="dash-chart-path dash-chart-path--grid" vectorEffect="non-scaling-stroke" />
-                  {chart.limit && <path d={chart.limit} className="dash-chart-path dash-chart-path--limit" vectorEffect="non-scaling-stroke" />}
-                  {chart.pace && <path d={chart.pace} className="dash-chart-path dash-chart-path--pace" vectorEffect="non-scaling-stroke" />}
+                  {chart.prev && <path d={chart.prev} className="dash-chart-path dash-chart-path--prev" vectorEffect="non-scaling-stroke" />}
                   {chart.area && <path d={chart.area} className="dash-chart-path--area" />}
                   <path d={chart.proj} className="dash-chart-path dash-chart-path--proj" vectorEffect="non-scaling-stroke" />
                   {chart.line && <path d={chart.line} className="dash-chart-path dash-chart-path--line" vectorEffect="non-scaling-stroke" />}
                 </svg>
 
-                {budgetLimit > 0 && (
-                  <span className="dash-chart-limit-tag" style={{ top: chart.limitTop }}>
-                    hạn mức {compactMoney(budgetLimit)}
+                {chart.prev && (
+                  <span className="dash-chart-prev-tag" style={{ top: chart.prevTop }}>
+                    T{spend.prevMonth} {compactMoney(prevMonthTotal)}
                   </span>
                 )}
                 <span className="dash-chart-proj-tag" style={{ top: chart.projTop }}>{compactMoney(forecast.projected)}</span>
@@ -992,12 +993,12 @@ export default function HomeDashboard() {
               <div className="dash-chart-legend">
                 <span className="dash-chart-legend__item">
                   <span className="dash-legend-swatch dash-legend-swatch--line" />
-                  <span>Đã chi cộng dồn</span>
+                  <span>Tháng {month} cộng dồn</span>
                 </span>
-                {budgetLimit > 0 && (
+                {chart.prev && (
                   <span className="dash-chart-legend__item">
-                    <span className="dash-legend-swatch dash-legend-swatch--pace" />
-                    <span>Nhịp đều theo ngày</span>
+                    <span className="dash-legend-swatch dash-legend-swatch--prev" />
+                    <span>Tháng {spend.prevMonth}</span>
                   </span>
                 )}
                 <span className="dash-chart-legend__item">
@@ -1007,20 +1008,22 @@ export default function HomeDashboard() {
               </div>
 
               <div className="dash-budget-cats-grid">
-                {budgetCats.length > 0 ? budgetCats.map((c) => (
-                  <div key={c.categoryId} className={`dash-budget-cat-item dash-budget-cat--${c.tone}`}>
+                {spendCats.length > 0 ? spendCats.map((c) => (
+                  <div
+                    key={c.key}
+                    className={`dash-budget-cat-item dash-budget-cat--${c.deltaPct == null ? 'none' : c.deltaPct > 0 ? 'warn' : 'ok'}`}
+                    title={`Cùng kỳ tháng ${spend.prevMonth}: ${money(c.prevSpent)}`}
+                  >
                     <div className="dash-budget-cat-head">
                       <span className="dash-budget-cat-name">{c.label}</span>
-                      <span className="dash-budget-cat-pct">{c.pct != null ? `${c.pct}%` : ''}</span>
+                      <span className="dash-budget-cat-pct">{c.share}%</span>
                     </div>
                     <span className="dash-progress-track">
-                      <span
-                        className="dash-progress-bar dash-budget-cat-bar"
-                        style={{ width: `${Math.min(100, c.pct != null ? c.pct : (c.spent / maxCatSpent) * 100)}%` }}
-                      />
+                      <span className="dash-progress-bar dash-budget-cat-bar" style={{ width: `${(c.share / maxCatShare) * 100}%` }} />
                     </span>
                     <span className="dash-budget-cat-val">
-                      {c.limit ? `${compactMoney(c.spent)} / ${compactMoney(c.limit)}` : `${compactMoney(c.spent)} · chưa đặt hạn mức`}
+                      {compactMoney(c.spent)}
+                      {c.deltaPct == null ? ' · mới' : ` · ${c.deltaPct > 0 ? '▲' : c.deltaPct < 0 ? '▼' : '='} ${Math.abs(c.deltaPct)}%`}
                     </span>
                   </div>
                 )) : (
@@ -1029,18 +1032,6 @@ export default function HomeDashboard() {
                   </div>
                 )}
               </div>
-
-              {alerts.overBudget.length > 0 && (
-                <ul className="dash-overbudget">
-                  {alerts.overBudget.map(item => (
-                    <li key={item.id}>
-                      <AppIcon name="warning" size={13} weight="fill" />
-                      <span>{item.title}</span>
-                      <strong>+{money(item.amount)}</strong>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
 
             {/* KHỐI PHẢI: LỊCH THANH TOÁN */}

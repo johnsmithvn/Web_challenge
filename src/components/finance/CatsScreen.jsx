@@ -78,7 +78,7 @@ function CategoryPanel({ fin, editor, onEdit, onClose }) {
       <p>Gửi tiết kiệm không phải chi vì tiền vẫn của bạn, và cũng không phải thu. Nếu nhét nó vào một danh mục chi thì tháng để dành nhiều sẽ trông như tháng tiêu hoang. Vì vậy Để dành là một giá trị của trường loại, ngang hàng với Chi và Thu, rồi trỏ tới một quỹ thay vì danh mục.</p>
       <div className="fin-rule-chips">
         <Rule icon="chartDonut">Không vào donut chi tiêu</Rule>
-        <Rule icon="trend">Không trừ vào hạn mức tháng</Rule>
+        <Rule icon="trend">Không làm tăng chi tiêu tháng</Rule>
         <Rule icon="wallet">Ghi vào tiến độ quỹ, không vào tổng chi</Rule>
         <Rule icon="arrowsClockwise">Gửi được theo định kỳ</Rule>
         <Rule icon="trend">Lãi tiết kiệm ghi là Thu</Rule>
@@ -124,7 +124,7 @@ function CategoryCard({ group, necessityKey, editing = false, onEdit, children }
   </article>;
 }
 
-// Màn Danh mục chỉ sửa nhóm CHI; nguồn thu giữ bộ mặc định (chỉ "Sẽ nhận" dùng tới).
+// Màn Danh mục chỉ sửa nhóm CHI; nguồn thu giữ bộ mặc định (chỉ còn giao dịch thu cũ và lãi cho vay dùng tới).
 function CategoryEditor({ group, fin, onClose }) {
   const [label, setLabel] = useState(group.label || '');
   const [color, setColor] = useState(group.color || '#9184d9');
@@ -215,7 +215,6 @@ const transactionFields = [
   ['3', 'Ảnh hóa đơn', 'attachments', 'JSONB[]', 'Đối soát, bảo hành và hoàn tiền.'],
   ['3', 'Tag', 'finance_transaction_tags', 'Bảng nối', 'Cắt ngang danh mục mà không nhét mảng id vào giao dịch.'],
   ['auto', 'Hóa đơn', 'bill_id + bill_period', 'UUID + YYYY-MM', 'Kỳ tách khỏi ngày trả, suy từ mốc kỳ gần ngày trả nhất; sửa được ở form sửa giao dịch. Chặn trả trùng kỳ.'],
-  ['auto', 'Thu định kỳ', 'income_rule_id + income_period', 'UUID + YYYY-MM', 'Bấm Đã nhận sinh đúng một giao dịch thu mỗi kỳ.'],
   ['auto', 'Khoản vay', 'loan_id + loan_period + loan_part', 'UUID + kỳ + interest/principal', 'Tách lãi được tính chi khỏi gốc bị excluded.'],
   ['auto', 'Sao kê thẻ', 'card_id + card_period', 'UUID + YYYY-MM', 'Trả sao kê bị excluded vì khoản quẹt đã tính lúc phát sinh.'],
   ['quỹ', 'Quỹ / chiều tiền', 'saving_goal_id + saving_dir', 'UUID + in/out', 'Cập nhật nơi gửi và tiến độ quỹ; rút không phải thu.'],
@@ -224,11 +223,10 @@ const transactionFields = [
 ];
 
 const schemaSections = [
-  ['Danh mục và hạn mức', 'finance_category_overrides + finance_budgets', [
+  ['Danh mục', 'finance_category_overrides', [
     ['Khóa nhóm', 'category_id + kind', 'TEXT', 'Chỉ nhận đúng 11 nhóm chi hoặc 7 nguồn thu; user không tạo parent mới.'],
     ['Tùy biến', 'label, color, icon, hidden', 'TEXT / BOOLEAN', 'Đổi cách hiển thị mà không làm vỡ giao dịch cũ.'],
     ['Quy tắc mặc định', 'necessity, nature, subs', 'ENUM + JSONB[]', 'Mục con có khóa, nhãn và mức cần thiết riêng.'],
-    ['Hạn mức nhóm', 'limit_amount', 'BIGINT >= 0', 'Một dòng mỗi user + nhóm chi; tổng hạn mức là tổng 11 dòng.'],
   ]],
   ['Hóa đơn và nghĩa vụ', 'finance_bills', [
     ['Nhận diện', 'name, provider, customer_code', 'TEXT', 'Tên user đọc; provider và mã khách hàng để phân biệt.'],
@@ -267,12 +265,6 @@ const schemaSections = [
     ['Tiền và lãi', 'amount, rate', 'BIGINT + NUMERIC', 'Tổng đang gửi, lãi năm và lãi suất gia quyền.'],
     ['Kỳ hạn', 'term, opened_at, matures_at', 'INT + DATE + GENERATED DATE', 'Ngày đáo hạn tự tính, còn 45 ngày thì cảnh báo.'],
     ['Tất toán', 'closed_on', 'DATE', 'Ẩn khỏi số dư hiện tại nhưng giữ lịch sử.'],
-  ]],
-  ['Thu định kỳ', 'finance_income_rules', [
-    ['Nguồn thu', 'category_id', '7 khóa nguồn thu', 'Không dùng chung danh mục chi.'],
-    ['Lịch nhận', 'rrule, due_day', 'JSONB + INT', 'Tới ngày hiện nút Đã nhận, không tự ghi.'],
-    ['Số tham chiếu', 'amount', 'BIGINT > 0', 'Chỉ điền sẵn, không làm mẫu số của ngân sách.'],
-    ['Đã nhận', 'received_periods', 'JSONB[]', 'Chặn ghi trùng một kỳ.'],
   ]],
   ['Nhập nhanh', 'finance_shortcuts', [
     ['Đích', 'category_id, subcategory_id', 'TEXT', 'Bỏ qua bước chọn nhóm.'],

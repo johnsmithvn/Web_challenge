@@ -3,8 +3,8 @@ import {
   compactMoney,
   priorityTag,
   monthSpend,
-  budgetForecast,
-  topBudgetCategories,
+  spendForecast,
+  topCategories,
   paymentCalendar,
   groupByDueDate,
   weekTraining,
@@ -17,7 +17,7 @@ import {
   shortDueLabel,
   pullToTodayChanges,
 } from '../../utils/dashboardMetrics.js';
-import { periodTotals, currentMonthPeriod } from '../../utils/financeLogic.js';
+import { periodTotals } from '../../utils/financeLogic.js';
 
 console.log('Testing dashboardMetrics pure functions...');
 
@@ -35,7 +35,7 @@ assert.equal(priorityTag(0), null, 'không ưu tiên thì không hiện pill, kh
 assert.equal(priorityTag(undefined), null);
 console.log('compactMoney / priorityTag check: OK');
 
-// ── Ngân sách: chi cộng dồn thật + dự kiến ──
+// ── Chi tiêu tháng: cộng dồn thật + dự kiến ──
 const txs = [
   { type: 'expense', amount: 400000, occurred_at: '2026-10-01', category_id: 'food' },
   { type: 'expense', amount: 1000000, occurred_at: '2026-10-03', category_id: 'housing', is_fixed: true },
@@ -52,31 +52,38 @@ assert.equal(spend.daysInMonth, 31);
 assert.equal(spend.spent, periodTotals(txs, { from: '2026-10-01', to: today }).total, 'khớp nơi tính tổng duy nhất');
 assert.equal(spend.fixedSpent, 1000000, 'phần cố định = giao dịch is_fixed');
 
-const forecast = budgetForecast({ spent: 2000000, limit: 6200000, curDay: 8, daysInMonth: 31 });
-assert.deepEqual(forecast, { projected: 7750000, fixed: 0, paceToToday: 1600000, overBy: 1550000 });
-assert.deepEqual(budgetForecast({ spent: 2000000, limit: 0, curDay: 8, daysInMonth: 31 }),
-  { projected: 7750000, fixed: 0, paceToToday: null, overBy: null }, 'chưa đặt hạn mức thì không có nhịp/vượt');
+// Tháng trước: so CÙNG KỲ (1→8/9) chứ không so cả tháng
+const txsPrev = [...txs,
+  { type: 'expense', amount: 500000, occurred_at: '2026-09-04', category_id: 'food' },
+  { type: 'expense', amount: 200000, occurred_at: '2026-09-06', category_id: 'transport' },
+];
+const withPrev = monthSpend(txsPrev, today);
+assert.equal(withPrev.prevMonth, 9);
+assert.equal(withPrev.prevCumulative.length, 30, 'tháng 9 có 30 ngày');
+assert.equal(withPrev.prevToDate, 700000, 'cùng kỳ = cộng dồn tới ngày 8/9');
+assert.equal(withPrev.prevCumulative[29], 3800000, 'cả tháng 9');
+assert.equal(monthSpend(txsPrev, '2026-10-31').prevToDate, 3800000, 'ngày 31 mà tháng trước chỉ 30 ngày → lấy hết tháng');
+
+assert.deepEqual(spendForecast({ spent: 2000000, curDay: 8, daysInMonth: 31 }), { projected: 7750000, fixed: 0 });
 // 9 ngày đầu chi 9,9tr, trong đó 5,4tr là lãi vay/hóa đơn đã trả; còn 1tr hóa đơn tới hạn cuối tháng.
 // Ngoại suy cả 9,9tr ra 34,1tr; tách ra thì: 5,4 + 1 + 4,5/9×31 = 21,9tr.
-const split = budgetForecast({ spent: 9900000, fixedSpent: 5400000, upcomingFixed: 1000000, limit: 0, curDay: 9, daysInMonth: 31 });
+const split = spendForecast({ spent: 9900000, fixedSpent: 5400000, upcomingFixed: 1000000, curDay: 9, daysInMonth: 31 });
 assert.equal(split.projected, 21900000, 'khoản cố định không bị nhân theo số ngày');
 assert.equal(split.fixed, 6400000);
-assert.equal(budgetForecast({ spent: 3000000, fixedSpent: 3000000, limit: 0, curDay: 1, daysInMonth: 31 }).projected, 3000000,
+assert.equal(spendForecast({ spent: 3000000, fixedSpent: 3000000, curDay: 1, daysInMonth: 31 }).projected, 3000000,
   'mùng 1 trả tiền nhà thì dự kiến không thành 93tr');
 
 const cats = { expenseGroups: [
   { key: 'food', label: 'Ăn uống' }, { key: 'housing', label: 'Nhà & hóa đơn' }, { key: 'transport', label: 'Di chuyển' },
 ] };
-const totals = periodTotals(txs, currentMonthPeriod(today));
-const withBudget = topBudgetCategories(totals, [
-  { category_id: 'food', limit_amount: 800000 }, { category_id: 'housing', limit_amount: 4000000 },
-], cats);
-assert.deepEqual(withBudget.map(c => [c.label, c.pct, c.tone]), [['Ăn uống', 125, 'over'], ['Nhà & hóa đơn', 25, 'ok']]);
-const noBudget = topBudgetCategories(totals, [], cats);
-assert.deepEqual(noBudget.map(c => [c.label, c.pct, c.tone]), [['Ăn uống', null, 'none'], ['Nhà & hóa đơn', null, 'none']],
-  'chưa đặt hạn mức thì xếp theo số chi (bằng nhau giữ thứ tự danh mục), không bịa %');
-assert.deepEqual(topBudgetCategories(totals, [], null), [], 'chưa có danh mục thì trống');
-console.log('monthSpend / budgetForecast / topBudgetCategories check: OK');
+const top = topCategories(txsPrev, today, cats);
+assert.deepEqual(top.map(c => [c.label, c.spent, c.share, c.prevSpent, c.deltaPct]), [
+  ['Ăn uống', 1000000, 50, 500000, 100],
+  ['Nhà & hóa đơn', 1000000, 50, 0, null],
+], 'xếp theo số chi; so cùng kỳ tháng trước; tháng trước chưa chi thì không có %');
+assert.ok(!top.some(c => c.key === 'transport'), 'nhóm chỉ chi ở tháng trước không lọt vào danh sách tháng này');
+assert.deepEqual(topCategories(txsPrev, today, null), [], 'chưa có danh mục thì trống');
+console.log('monthSpend / spendForecast / topCategories check: OK');
 
 // ── Lịch thanh toán ──
 const cal = paymentCalendar({

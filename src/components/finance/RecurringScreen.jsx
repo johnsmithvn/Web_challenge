@@ -4,7 +4,7 @@ import { useUserTasks } from '../../hooks/useUserTasks';
 import {
   billAmountEstimate, cardBalance, cardStatementSummary, cardCarryOver, floatInterest, loanSchedule,
   loanCycle, lendingInterest, forfeitedInterest,
-  currentMonthPeriod, dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
+  dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
   billCycle, billSettled, billPeriods, billPeriodForDate,
 } from '../../utils/financeLogic';
 import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField, pickableSubs, BankSelect } from './parts';
@@ -15,7 +15,6 @@ import { SavingsWorkspace } from './AnalyzeScreen';
 
 const SEGMENTS = [
   { value: 'out',    label: 'Phải trả',      addLabel: 'Thêm hóa đơn', editLabel: 'Sửa hóa đơn', createLabel: 'Tạo hóa đơn' },
-  { value: 'in',     label: 'Sẽ nhận',       addLabel: 'Thêm khoản thu', editLabel: 'Sửa khoản thu', createLabel: 'Tạo khoản thu' },
   { value: 'loan',   label: 'Khoản vay',     addLabel: 'Thêm khoản vay', editLabel: 'Sửa khoản vay', createLabel: 'Tạo khoản vay' },
   { value: 'card',   label: 'Thẻ tín dụng',  addLabel: 'Thêm thẻ', editLabel: 'Sửa thẻ', createLabel: 'Tạo thẻ' },
   { value: 'lend',   label: 'Cho vay',       addLabel: 'Thêm khoản cho vay', editLabel: 'Sửa khoản cho vay', createLabel: 'Ghi khoản cho vay' },
@@ -61,16 +60,14 @@ const BILL_ICONS = [
 /**
  * Sáu trạng thái của một dòng nghĩa vụ. Chỉ màu vạch trái và dòng chữ đổi —
  * cấu trúc dòng giữ nguyên để mắt không phải học lại bố cục mỗi lần.
- * `neverLate`: khoản thu chưa nhận thì chỉ là chưa tới, không tô đỏ.
  */
-function dueState({ days, enabled = true, done = false, doneText, skipped = false, neverLate = false }) {
+function dueState({ days, enabled = true, done = false, doneText, skipped = false }) {
   if (!enabled) return { tone: 'off', text: 'đang tắt' };
   if (done) return { tone: 'paid', text: doneText || 'đã trả kỳ này' };
   if (skipped) return { tone: 'off', text: 'đã bỏ kỳ này' };
   if (days == null) return { tone: 'wait', text: '' };
   if (days > 0) return { tone: 'wait', text: `còn ${days} ngày` };
   if (days === 0) return { tone: 'due', text: 'tới hạn hôm nay' };
-  if (neverLate) return { tone: 'wait', text: 'chưa nhận' };
   // Trễ 1–3 ngày là vàng, từ 4 ngày mới đỏ: đỏ mà dùng cho cả trễ một ngày thì
   // nhìn mãi thành quen, tới lúc trễ thật không còn tác dụng cảnh báo.
   return { tone: days <= -4 ? 'over' : 'late', text: `quá hạn ${Math.abs(days)} ngày` };
@@ -263,7 +260,6 @@ export default function RecurringScreen({ fin, nav }) {
   const [year, month] = period.split('-');
   const counts = {
     out: fin.bills.filter(bill => !bill.finished_at).length,
-    in: fin.incomeRules.length,
     loan: fin.loans.filter(loan => !loan.closed_at).length,
     card: fin.cards.filter(card => !card.closed_at).length,
     lend: fin.lendings.filter(l => !l.closed_at).length,
@@ -327,7 +323,6 @@ export default function RecurringScreen({ fin, nav }) {
       {!fin.hasLoaded ? <SkeletonList rows={5} label="Đang tải nghĩa vụ" /> : <>
         {seg === 'out'  && <BillsList fin={fin} nav={nav} tasks={pendingTasks}
           onDuplicate={(bill) => { setDraft(billDraft(bill)); setAdding(true); }} />}
-        {seg === 'in'   && <IncomeList fin={fin} nav={nav} tasks={pendingTasks} />}
         {seg === 'loan' && <LoansList fin={fin} nav={nav} tasks={pendingTasks} />}
         {seg === 'card' && <CardsList fin={fin} nav={nav} tasks={pendingTasks} />}
         {seg === 'lend' && <LendsList fin={fin} nav={nav} tasks={pendingTasks} />}
@@ -468,16 +463,6 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
           : 0,
         note: f.note?.trim() || null,
       };
-    } else if (seg === 'in') {
-      const incomeAmount = parseCurrencyInput(f.amount, amountOpts);
-      if (!positiveDay || !incomeAmount) {
-        nav.showToast('Khoản thu cần ngày nhận hợp lệ và số tiền dương');
-        return;
-      }
-      payload = {
-        name: f.name.trim(), source: f.source || null, category_id: f.category_id || 'luong',
-        amount: incomeAmount, rrule: { type: 'monthly', day: dueDay }, due_day: dueDay,
-      };
     } else if (seg === 'loan') {
       const principal = parseCurrencyInput(f.principal, amountOpts);
       const term = Number(f.term);
@@ -529,7 +514,6 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
     }
     const save = {
       out: editing ? (p) => fin.updateBill(initial.id, p) : fin.addBill,
-      in: editing ? (p) => fin.updateIncomeRule(initial.id, p) : fin.addIncomeRule,
       loan: editing ? (p) => fin.updateLoan(initial.id, p) : fin.addLoan,
       card: editing ? (p) => fin.updateCard(initial.id, p) : fin.addCard,
       lend: editing ? (p) => fin.updateLending(initial.id, p) : fin.addLending,
@@ -544,7 +528,6 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
       : seg === 'loan' ? 'Đã tạo khoản vay — mỗi tháng app nhắc trả lãi, tách gốc riêng khỏi chi tiêu'
       : seg === 'card' ? 'Đã thêm thẻ — app theo dõi ngày chốt, đến hạn và số ngày float'
       : seg === 'lend' ? 'Đã ghi khoản cho vay — tiền rời ví nhưng không tính là chi tiêu'
-      : seg === 'in' ? 'Đã thêm khoản thu — app chỉ nhắc, không tô đỏ khi chưa nhận'
       : 'Đã thêm hóa đơn — tới ngày app hiện nút để bạn ghi', { icon: 'checkCircle' });
     onDone(true);   // đã lưu → đóng thẳng, không hỏi "bỏ nội dung?"
   };
@@ -700,28 +683,6 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
         </div>
       </>)}
 
-      {seg === 'in' && (<>
-        <div className="fin-ruleform__grid">
-          <label className="fin-field"><span>Tên khoản thu</span>
-            <input className="fin-input" placeholder="Lương tháng" value={f.name || ''} onChange={set('name')} autoFocus /></label>
-          <label className="fin-field"><span>Nguồn thu</span>
-            <select className="fin-input" value={f.category_id || 'luong'} onChange={set('category_id')}>
-              {fin.cats.incomeGroups.filter(g => !g.hidden).map(g => <option key={g.key} value={g.key}>{g.label}</option>)}
-            </select></label>
-          <label className="fin-field"><span>Nơi trả · tùy chọn</span>
-            <input className="fin-input" placeholder="Công ty ABC" value={f.source || ''} onChange={set('source')} /></label>
-          <label className="fin-field"><span>Lặp lại</span>
-            <select className="fin-input" value="monthly" onChange={() => {}}>
-              <option value="monthly">Mỗi tháng</option>
-            </select></label>
-          <label className="fin-field"><span>Vào ngày</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9]*" placeholder="3" value={f.due_day || ''} onChange={setDigits('due_day', 2)} /></label>
-          <label className="fin-field"><span>Số tiền</span>
-            <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="20.000.000" value={groupDigits(f.amount || '')} onChange={setDigits('amount')} /></label>
-        </div>
-        <small className="fin-field__hint">Tới ngày, khoản này hiện nút <strong>Đã nhận</strong> ở danh sách dưới. Bấm mới sinh giao dịch — app không tự ghi thay bạn.</small>
-      </>)}
-
       {seg === 'loan' && (<>
         <div className="fin-ruleform__grid">
           <label className="fin-field"><span>Tên khoản vay</span>
@@ -840,7 +801,7 @@ function RuleForm({ seg, fin, nav, initial, focusNote = false, onDirty, onDone }
         <small className="fin-field__hint">Khoản này <strong>không sinh giao dịch chi</strong> — cho mượn chỉ đổi tiền trong ví thành khoản phải thu, donut và hạn mức nhóm không đổi. Lãi tính <strong>theo ngày</strong> (lãi đơn, năm 365 ngày) trên gốc còn lại, nên đổi ngày hẹn là số lãi đổi theo.</small>
       </>)}
 
-      {editing && (seg === 'out' || seg === 'in') && (
+      {editing && seg === 'out' && (
         <p className="fin-warn fin-form__warn"><AppIcon name="warning" size={14} weight="fill" /> Số mới áp dụng từ kỳ sau — các kỳ đã ghi giữ nguyên số cũ.</p>
       )}
 
@@ -1251,109 +1212,6 @@ function BillHistory({ bill, transactions }) {
   );
 }
 
-// ── in: Sẽ nhận (không quá hạn) ──────────────────────────────────────────────
-function IncomeList({ fin, nav, tasks }) {
-  const period = currentMonthPeriod(fin.today).key.slice(0, 7);
-  const [editId, setEditId] = useState(null);
-  const [payId, setPayId] = useState(null);
-  const [showDisabled, setShowDisabled] = useState(false);
-
-  const active = fin.incomeRules.filter(r => r.enabled);
-  const disabled = fin.incomeRules.filter(r => !r.enabled);
-
-  const receive = async (rule, payload) => {
-    const tx = await fin.receiveIncome(rule, { ...payload, period });
-    nav.showToast(tx ? `Đã nhận ${rule.name} — ghi vào khoản thu` : `Không thể ghi ${rule.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: tx ? 'money' : 'warning' });
-    return !!tx;
-  };
-  const toggle = async (rule, enabled) => {
-    const updated = await fin.updateIncomeRule(rule.id, { enabled });
-    nav.showToast(updated
-      ? enabled ? `Đã bật lại ${rule.name}` : `Đã tắt ${rule.name} — dữ liệu cũ vẫn được giữ nguyên`
-      : `Không thể cập nhật ${rule.name}. Kiểm tra dữ liệu Finance rồi thử lại.`,
-    { icon: updated ? 'money' : 'warning' });
-  };
-
-  const renderIncomeCard = (r) => {
-    const received = (r.received_periods || []).includes(period);
-    const state = dueState({
-      days: daysUntilDue(r.due_day, fin.today), enabled: r.enabled,
-      done: received, doneText: 'đã nhận kỳ này', neverLate: true,
-    });
-    return (
-      <RuleCard key={r.id} tone={state.tone} off={!r.enabled} icon="money" iconColor="#7fc060" title={r.name}
-        meta={[r.source, r.due_day ? `mỗi tháng ngày ${r.due_day}` : null].filter(Boolean).join(' · ')}
-        amount={money(r.amount)} state={state} openTitle="Sửa khoản thu"
-        onOpen={() => setEditId(editId === r.id ? null : r.id)}
-        onEdit={() => { setEditId(editId === r.id ? null : r.id); setPayId(null); }}
-        enabled={r.enabled} onToggle={(enabled) => toggle(r, enabled)}
-        onDelete={async () => { if (await nav.confirmDelete(`khoản thu “${r.name}”`)) await fin.deleteIncomeRule(r.id); }}>
-        {r.enabled && !received && payId !== r.id && (
-          <div className="fin-rule__foot">
-            <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm" onClick={() => { setPayId(r.id); setEditId(null); }}>
-              <AppIcon name="checkCircle" size={15} /> Đã nhận
-            </button>
-          </div>
-        )}
-        {payId === r.id && <PayBlock fin={fin} tasks={tasks} dueDay={r.due_day} defaultAmount={r.amount}
-          confirmLabel="Xác nhận đã nhận" onCancel={() => setPayId(null)} onPay={(payload) => receive(r, payload)} />}
-        {editId === r.id && <RuleForm seg="in" fin={fin} nav={nav} initial={r} onDone={() => setEditId(null)} />}
-      </RuleCard>
-    );
-  };
-
-  return (
-    <div className="fin-rules">
-      <SummaryStrip
-        items={[
-          { label: 'Sẽ nhận tháng này', value: money(active.filter(r => !(r.received_periods || []).includes(period)).reduce((sum, r) => sum + r.amount, 0)) },
-          { label: 'Đã nhận', value: money(active.filter(r => (r.received_periods || []).includes(period)).reduce((sum, r) => sum + r.amount, 0)), tone: 'good' },
-        ]}
-        note="Tiền vào — không phải hóa đơn, nên không có gì để trả và không bao giờ tô đỏ. Bấm Đã nhận sinh một giao dịch loại Thu mang đúng nguồn thu, ngày là ngày bạn chọn."
-      />
-      {fin.incomeRules.length === 0 && <RulesEmpty icon="money" title="Chưa có khoản thu định kỳ"
-        description="Khai khoản thu để app nhắc xác nhận theo từng kỳ." />}
-
-      {active.map(renderIncomeCard)}
-
-      {active.length === 0 && disabled.length > 0 && (
-        <div className="fin-inline-message" style={{ margin: '8px 0 14px' }}>
-          <AppIcon name="info" size={16} />
-          <span>Tất cả khoản thu hiện tại đang được tắt. Bạn có thể bật lại ở danh sách bên dưới.</span>
-        </div>
-      )}
-
-      {disabled.length > 0 && (
-        <div className="fin-history-section">
-          <button
-            type="button"
-            className="fin-history-section__toggle"
-            onClick={() => setShowDisabled(v => !v)}
-          >
-            <div className="fin-history-section__left">
-              <AppIcon name={showDisabled ? 'caretDown' : 'caretRight'} size={14} />
-              <span className="fin-history-section__title">Khoản thu đang tắt</span>
-              <span className="fin-history-section__badge" style={{ background: 'rgba(145, 132, 217, 0.15)', color: 'var(--n-txt2)' }}>
-                {disabled.length}
-              </span>
-            </div>
-            <div className="fin-history-section__right">
-              <span>{disabled.length} nguồn thu tạm ngưng</span>
-              <small>{showDisabled ? 'Thu gọn' : 'Xem chi tiết'}</small>
-            </div>
-          </button>
-
-          {showDisabled && (
-            <div className="fin-history-section__content">
-              {disabled.map(renderIncomeCard)}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── loan: Khoản vay ───────────────────────────────────────────────────────────
 function LoansList({ fin, nav, tasks }) {
   const [editId, setEditId] = useState(null);
@@ -1487,7 +1345,7 @@ function LoansList({ fin, nav, tasks }) {
           { label: 'Lãi phải trả tháng này', value: money(monthlyInterest) },
           { label: 'Hạn tất toán gần nhất', value: nextSettle ? dmy(nextSettle.due_at) : '—' },
         ]}
-        note="Khoản vay không phải hóa đơn: mỗi kỳ tách thành hai phần khác nhau. Lãi là chi phí thật — ghi vào Tài chính & Nợ › Lãi & phí ngân hàng, lên báo cáo. Trả gốc không phải chi tiêu — nó chỉ chuyển tiền từ ví sang giảm dư nợ, nên không tính vào hạn mức tháng."
+        note="Khoản vay không phải hóa đơn: mỗi kỳ tách thành hai phần khác nhau. Lãi là chi phí thật — ghi vào Tài chính & Nợ › Lãi & phí ngân hàng, lên báo cáo. Trả gốc không phải chi tiêu — nó chỉ chuyển tiền từ ví sang giảm dư nợ, nên không tính vào chi tiêu tháng."
       />
       {fin.loans.length === 0 && <RulesEmpty icon="bank" title="Chưa có khoản vay"
         description="Thêm khoản vay để tách phần gốc và lãi trong mỗi lần trả." />}
@@ -1688,7 +1546,7 @@ function LendsList({ fin, nav, tasks }) {
           { label: 'Lãi sẽ nhận', value: money(open.reduce((s, r) => s + r.math.expected + r.math.forfeited, 0)) },
           { label: 'Hẹn gần nhất', value: nextDue ? dmy(nextDue.l.due_on) : '—' },
         ]}
-        note="Cho mượn không phải chi tiêu — tiền rời ví nhưng đổi thành khoản phải thu, nên donut, hạn mức nhóm và mức 50/30/20 không đổi. Khi họ trả, tiền về ví và số này giảm đúng bằng đó — không tính là thu nhập, nếu tính thì tháng đó thu nhập vọt lên ảo và tỉ lệ tiết kiệm sai. Chỉ phần lãi, nếu có, mới là thu nhập thật. Lãi tính theo NGÀY trên gốc còn lại, nên đổi ngày hẹn hoặc ghi một lần họ trả gốc là số lãi tính lại ngay. Ô “Lãi sẽ nhận” gồm cả khoản bù lãi mất do rút tiết kiệm trước hạn — phần đó là một cục, không chạy theo ngày."
+        note="Cho mượn không phải chi tiêu — tiền rời ví nhưng đổi thành khoản phải thu, nên donut và tổng chi tháng không đổi. Khi họ trả, tiền về ví và số này giảm đúng bằng đó — không tính là thu nhập, nếu tính thì tháng đó thu nhập vọt lên ảo và tỉ lệ tiết kiệm sai. Chỉ phần lãi, nếu có, mới là thu nhập thật. Lãi tính theo NGÀY trên gốc còn lại, nên đổi ngày hẹn hoặc ghi một lần họ trả gốc là số lãi tính lại ngay. Ô “Lãi sẽ nhận” gồm cả khoản bù lãi mất do rút tiết kiệm trước hạn — phần đó là một cục, không chạy theo ngày."
       />
 
       {rows.length === 0 && <RulesEmpty icon="handCoins" title="Chưa cho ai mượn tiền"

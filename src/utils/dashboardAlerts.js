@@ -8,7 +8,6 @@
  *   2. Due Today: ĐẾN HẠN HÔM NAY hoặc cần xử lý ngay (sổ tiết kiệm đã đáo hạn mà chưa tất toán).
  *   3. Heads Up: SẮP TỚI HẠN (task/hóa đơn/vay/cho vay còn 1–3 ngày, sao kê và phí thường niên
  *      ≤5 ngày, sổ đáo hạn ≤14 ngày).
- * Vượt ngân sách không phải hạn chót nên nằm riêng ở `overBudget`.
  *
  * Mỗi cảnh báo tài chính mang `targetSeg` — tab con của màn Định kỳ cần mở để xử lý nó.
  */
@@ -23,8 +22,6 @@ import {
   loanSchedule,
   loanCycle,
   maturityWarn,
-  periodTotals,
-  currentMonthPeriod,
 } from './financeLogic.js';
 
 import { isSubtask } from './subtaskUtils.js';
@@ -42,9 +39,7 @@ export function collectSystemAlerts({
   loans = [],
   lendings = [],
   deposits = [],
-  budgets = [],
   transactions = [],
-  cats = null,
   today,
 } = {}) {
   if (!today) {
@@ -56,7 +51,6 @@ export function collectSystemAlerts({
   const critical = [];
   const dueToday = [];
   const headsUp = [];
-  const overBudget = [];
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 1. NHIỆM VỤ (TASKS)
@@ -500,38 +494,6 @@ export function collectSystemAlerts({
     });
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 7. VƯỢT HẠN MỨC NGÂN SÁCH (FINANCE BUDGETS)
-  // ═══════════════════════════════════════════════════════════════════════════
-  if (budgets.length > 0) {
-    const curMonth = currentMonthPeriod(today);
-    const totals = periodTotals(transactions, curMonth);
-
-    for (const b of budgets) {
-      const spent = totals.byCategory[b.category_id] || 0;
-      if (b.limit_amount > 0 && spent > b.limit_amount) {
-        const excess = spent - b.limit_amount;
-        const label = cats?.expenseGroups?.find(g => g.key === b.category_id)?.label || b.category_id;
-        overBudget.push({
-          id: `budget-${b.id || b.category_id}`,
-          domain: 'finance',
-          type: 'budget_exceeded',
-          severity: 'heads_up',
-          raw: b,
-          title: `Vượt ngân sách: ${label}`,
-          subtitle: `Đã chi ${spent.toLocaleString('vi-VN')}₫ / Hạn mức ${b.limit_amount.toLocaleString('vi-VN')}₫`,
-          amount: excess,
-          days: null,
-          badge: 'Vượt hạn mức',
-          icon: 'warning',
-          actionType: 'nav',
-          actionLabel: 'Xem ngân sách',
-          targetUrl: '/finance/overview',
-        });
-      }
-    }
-  }
-
   // Sắp xếp: việc nào gấp/quá hạn lâu hơn lên trước
   critical.sort((a, b) => (a.days ?? 0) - (b.days ?? 0));
   dueToday.sort((a, b) => a.title.localeCompare(b.title));
@@ -546,7 +508,6 @@ export function collectSystemAlerts({
     critical,
     dueToday,
     headsUp,
-    overBudget,
     stats: {
       criticalCount,
       dueTodayCount,

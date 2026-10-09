@@ -230,7 +230,8 @@ console.log('multi-criteria list filtering (including source) and shownTotal: OK
 assert.match(pageSrc, /const confirmDelete = useCallback\(/,
   'FinancePage phải có modal xác nhận xóa dùng chung');
 
-// Kiểm tra 9 luồng xóa trong RecurringScreen, ListScreen, AddScreen, AnalyzeScreen
+// Kiểm tra 8 luồng xóa trong RecurringScreen, ListScreen, AddScreen, AnalyzeScreen
+// (10/2026 gỡ hẳn Thu định kỳ nên mất nút xóa khoản thu — không phải bỏ bước xác nhận).
 const allScreensCode = [
   recurringSrc,
   listSrc,
@@ -238,8 +239,8 @@ const allScreensCode = [
   readFileSync(new URL('../../components/finance/AnalyzeScreen.jsx', import.meta.url), 'utf8'),
 ].join('\n');
 
-assert.equal((allScreensCode.match(/nav\.confirmDelete\(/g) || []).length, 9,
-  'phải có đủ 9 luồng xóa đi qua confirmDelete');
+assert.equal((allScreensCode.match(/nav\.confirmDelete\(/g) || []).length, 8,
+  'phải có đủ 8 luồng xóa đi qua confirmDelete');
 assert.doesNotMatch(allScreensCode, /onClick=\{\(\) => fin\.delete/,
   'tuyệt đối không được xóa dữ liệu trực tiếp khi click nút mà bỏ qua modal xác nhận');
 console.log('destructive action confirmation guards: OK');

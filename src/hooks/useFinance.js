@@ -9,8 +9,8 @@ import BASE_CATS from '../data/finance-categories.json';
 /**
  * useFinance — hook DUY NHẤT sở hữu toàn bộ dữ liệu + action của module chi tiêu.
  *
- * Vì sao 1 hook cho 10 bảng thay vì 10 hook: gần như mọi màn cần nhiều bảng cùng
- * lúc (Tổng quan đọc transactions + cards + savings + budgets), và các hàm "thanh
+ * Vì sao 1 hook cho nhiều bảng thay vì mỗi bảng 1 hook: gần như mọi màn cần nhiều bảng cùng
+ * lúc (Tổng quan đọc transactions + cards + savings), và các hàm "thanh
  * toán" ghi chéo 2 bảng (tạo transaction + cập nhật quy tắc). Gom vào một nơi rẻ
  * hơn 9 file CRUD gần trùng + 1 context để share chúng.
  *
@@ -18,7 +18,7 @@ import BASE_CATS from '../data/finance-categories.json';
  * lọc theo kỳ client-side bằng financeLogic — đổi kỳ không refetch.
  *
  * Auth-gated như module cũ: chưa đăng nhập → enabled=false, action no-op, page hiện
- * cổng đăng nhập. (Không guest in-memory — 10 bảng có FK chéo, guest phức tạp vô ích.)
+ * cổng đăng nhập. (Không guest in-memory — các bảng có FK chéo, guest phức tạp vô ích.)
  */
 export function useFinance({ autoFetch = true } = {}) {
   const { user, isAuthenticated } = useAuth();
@@ -44,9 +44,7 @@ export function useFinance({ autoFetch = true } = {}) {
   const [cards, setCards] = useState([]);
   const [goals, setGoals] = useState([]);
   const [deposits, setDeposits] = useState([]);
-  const [incomeRules, setIncomeRules] = useState([]);
   const [shortcuts, setShortcuts] = useState([]);
-  const [budgets, setBudgets] = useState([]);
   const [categoryOverrides, setCategoryOverrides] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   /**
@@ -69,26 +67,27 @@ export function useFinance({ autoFetch = true } = {}) {
     try {
       const q = (table, order = 'created_at') =>
         supabase.from(table).select('*').eq('user_id', userId).order(order, { ascending: false });
-      const [tx, bl, ln, cd, gl, dp, ir, sc, bg, co, le] = await Promise.all([
+      // Thu định kỳ (`finance_income_rules`) và hạn mức (`finance_budgets`) đã gỡ khỏi app —
+      // bảng còn trong DB nhưng không còn màn nào đọc/ghi nên không tải nữa.
+      const [tx, bl, ln, cd, gl, dp, sc, co, le] = await Promise.all([
         // Cửa sổ dữ liệu thay cho "kéo cả sổ giao dịch về": xem DATA_FROM ở trên.
         // Điều kiện OR giữ lại TOÀN BỘ giao dịch gắn quy tắc bất kể cũ tới đâu —
         // dư nợ thẻ, số đã thu của khoản cho vay, lãi đã trả đều là tổng cộng dồn
         // all-time; cắt bớt là báo sai số, mà kiểu sai tệ nhất là báo động giả
         // ("khoản cho vay đã tất toán từ 2024" bỗng hiện quá hẹn).
         supabase.from('finance_transactions').select('*').eq('user_id', userId)
-          .or([`occurred_at.gte.${dataFrom}`, 'bill_id.not.is.null', 'income_rule_id.not.is.null',
+          .or([`occurred_at.gte.${dataFrom}`, 'bill_id.not.is.null',
             'loan_id.not.is.null', 'card_id.not.is.null', 'source_card_id.not.is.null',
             'lending_id.not.is.null'].join(','))
           .order('occurred_at', { ascending: false }).order('created_at', { ascending: false }),
         q('finance_bills'), q('finance_loans'), q('finance_cards'),
         q('finance_saving_goals'), q('finance_deposits'),
-        q('finance_income_rules'), supabase.from('finance_shortcuts').select('*')
+        supabase.from('finance_shortcuts').select('*')
           .eq('user_id', userId).order('sort_order', { ascending: true }),
-        q('finance_budgets'),
         q('finance_category_overrides'),
         q('finance_lendings'),
       ]);
-      const failed = [tx, bl, ln, cd, gl, dp, ir, sc, bg, co, le].find(result => result.error);
+      const failed = [tx, bl, ln, cd, gl, dp, sc, co, le].find(result => result.error);
       if (failed) throw failed.error;
       setTransactions(tx.data || []);
       setBills(bl.data || []);
@@ -96,9 +95,7 @@ export function useFinance({ autoFetch = true } = {}) {
       setCards(cd.data || []);
       setGoals(gl.data || []);
       setDeposits(dp.data || []);
-      setIncomeRules(ir.data || []);
       setShortcuts(sc.data || []);
-      setBudgets(bg.data || []);
       setCategoryOverrides(co.data || []);
       setLendings(le.data || []);
     } catch (err) {
@@ -131,7 +128,7 @@ export function useFinance({ autoFetch = true } = {}) {
     if (!enabled) { fetchedRef.current = false; setHasLoaded(false); }
   }, [enabled, autoFetch, fetchAll]);
 
-  // ── Helper CRUD chung cho 8 bảng phụ (giảm lặp) ───────────────────────────
+  // ── Helper CRUD chung cho các bảng phụ (giảm lặp) ───────────────────────────
   // setList = setter React của bảng; on lỗi refetch cả module (đơn giản, an toàn).
   const insertRow = useCallback(async (table, setList, row) => {
     if (!enabled) return null;
@@ -208,8 +205,6 @@ export function useFinance({ autoFetch = true } = {}) {
       shortcut_id: tx.shortcut_id || null,
       bill_id: tx.bill_id || null,
       bill_period: tx.bill_period || null,
-      income_rule_id: tx.income_rule_id || null,
-      income_period: tx.income_period || null,
       loan_id: tx.loan_id || null,
       loan_period: tx.loan_period || null,
       loan_part: tx.loan_part || null,
@@ -226,7 +221,7 @@ export function useFinance({ autoFetch = true } = {}) {
       if (error) throw error;
       setTransactions(prev => [data, ...prev]);
       // Giao dịch gắn rule thì tiến độ rule vừa bị trigger tính lại — kéo về cho khớp.
-      if (data.bill_id || data.loan_id || data.income_rule_id) await fetchAll();
+      if (data.bill_id || data.loan_id) await fetchAll();
       return data;
     } catch (err) {
       logger.warn('[useFinance] addTransaction:', err.message);
@@ -236,15 +231,14 @@ export function useFinance({ autoFetch = true } = {}) {
   }, [enabled, userId, today, cats, fetchAll]);
 
   /**
-   * Tiến độ của hóa đơn / khoản vay / thu định kỳ (`term_done`, `finished_at`,
-   * `received_periods`, `done`) KHÔNG do client tính — trigger `finance_transaction_
+   * Tiến độ của hóa đơn / khoản vay (`term_done`, `finished_at`, `done`) KHÔNG do client tính — trigger `finance_transaction_
    * progress_sync` đếm lại từ giao dịch sau mỗi insert/update/delete. Nên sửa hay xóa
    * một giao dịch xong là phải kéo rule về, không thì dòng hóa đơn vẫn hiện "kỳ 4/6 ·
    * còn 5.028.000đ" trong khi lịch sử đã trống — số cũ đứng đó tới lúc F5.
    *
    * RPC thanh toán không cần đoạn này: `callFinanceRpc` đã `fetchAll()` sẵn.
    */
-  const ruleLinked = (tx) => Boolean(tx && (tx.bill_id || tx.loan_id || tx.income_rule_id));
+  const ruleLinked = (tx) => Boolean(tx && (tx.bill_id || tx.loan_id));
 
   const updateTransaction = useCallback(async (id, updates) => {
     const before = transactions.find(t => t.id === id);
@@ -272,7 +266,7 @@ export function useFinance({ autoFetch = true } = {}) {
     return ok;
   }, [deleteRow, fetchAll]);
 
-  // ── CRUD 8 bảng phụ (thin wrappers) ───────────────────────────────────────
+  // ── CRUD các bảng phụ (thin wrappers) ───────────────────────────────────────
   const addBill    = useCallback((r) => insertRow('finance_bills', setBills, r), [insertRow]);
   const updateBill = useCallback((id, u) => updateRow('finance_bills', setBills, id, u), [updateRow]);
   const deleteBill = useCallback((id) => deleteRule('finance_bills', setBills, id), [deleteRule]);
@@ -297,30 +291,9 @@ export function useFinance({ autoFetch = true } = {}) {
   const updateDeposit = useCallback((id, u) => updateRow('finance_deposits', setDeposits, id, u), [updateRow]);
   const deleteDeposit = useCallback((id) => deleteRow('finance_deposits', setDeposits, id), [deleteRow]);
 
-  const addIncomeRule    = useCallback((r) => insertRow('finance_income_rules', setIncomeRules, r), [insertRow]);
-  const updateIncomeRule = useCallback((id, u) => updateRow('finance_income_rules', setIncomeRules, id, u), [updateRow]);
-  const deleteIncomeRule = useCallback((id) => deleteRow('finance_income_rules', setIncomeRules, id), [deleteRow]);
-
   const addShortcut    = useCallback((r) => insertRow('finance_shortcuts', setShortcuts, r), [insertRow]);
   const updateShortcut = useCallback((id, u) => updateRow('finance_shortcuts', setShortcuts, id, u), [updateRow]);
   const deleteShortcut = useCallback((id) => deleteRow('finance_shortcuts', setShortcuts, id), [deleteRow]);
-
-  // Budget: upsert theo (user, category) — hạn mức đứng.
-  const upsertBudget = useCallback(async (categoryId, limitAmount) => {
-    if (!enabled) return false;
-    try {
-      const { data, error } = await supabase.from('finance_budgets')
-        .upsert({ user_id: userId, category_id: categoryId, limit_amount: limitAmount },
-          { onConflict: 'user_id,category_id' }).select().single();
-      if (error) throw error;
-      setBudgets(prev => {
-        const i = prev.findIndex(b => b.category_id === categoryId);
-        if (i === -1) return [data, ...prev];
-        const next = [...prev]; next[i] = data; return next;
-      });
-      return true;
-    } catch (err) { logger.warn('[useFinance] upsertBudget:', err.message); return false; }
-  }, [enabled, userId]);
 
   const upsertCategoryOverride = useCallback(async (categoryId, kind, patch) => {
     if (!enabled) return null;
@@ -376,18 +349,6 @@ export function useFinance({ autoFetch = true } = {}) {
       p_bill_id: billId,
       p_period: period,
     }), [today, callFinanceRpc]);
-
-  const receiveIncome = useCallback(async (rule, { amount, occurredAt, taskId, period } = {}) => {
-    if (!enabled) return null;
-    const occ = occurredAt || today;
-    return callFinanceRpc('finance_receive_income', {
-      p_rule_id: rule.id,
-      p_amount: amount ?? rule.amount ?? null,
-      p_occurred_at: occ,
-      p_task_id: taskId || null,
-      p_income_period: period || today.slice(0, 7),
-    });
-  }, [enabled, today, callFinanceRpc]);
 
   // Lãi là chi tiêu; gốc được ghi excluded. DB chặn ghi trùng từng phần trong kỳ.
   const payLoanInterest = useCallback(async (loan, { amount, occurredAt, taskId, period } = {}) => {
@@ -477,7 +438,7 @@ export function useFinance({ autoFetch = true } = {}) {
 
   return {
     enabled, isLoading, hasLoaded, error, today, dataFrom, cats, categoryOverrides,
-    transactions, bills, loans, lendings, cards, goals, deposits, incomeRules, shortcuts, budgets,
+    transactions, bills, loans, lendings, cards, goals, deposits, shortcuts,
     blendedRate: blendedRate(deposits),
     fetchAll,
     addTransaction, updateTransaction, deleteTransaction,
@@ -487,11 +448,9 @@ export function useFinance({ autoFetch = true } = {}) {
     addCard, updateCard, deleteCard,
     addGoal, updateGoal, deleteGoal,
     addDeposit, updateDeposit, deleteDeposit,
-    addIncomeRule, updateIncomeRule, deleteIncomeRule,
     addShortcut, updateShortcut, deleteShortcut,
-    upsertBudget,
     upsertCategoryOverride,
-    payBill, skipBillPeriod, receiveIncome, payLoanInterest, payLoanPrincipal, payLoanInstallment,
+    payBill, skipBillPeriod, payLoanInterest, payLoanPrincipal, payLoanInstallment,
     payCardStatement, recordLendingRepayment, requestSavingWithdrawal, moveSaving,
   };
 }

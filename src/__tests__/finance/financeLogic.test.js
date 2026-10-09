@@ -6,7 +6,6 @@
  *   - comparePeriods: 3 nhánh (tháng đang chạy = cùng cửa sổ ngày; 2 tháng trọn =
  *     tổng; còn lại = mức/ngày). Nhầm nhánh là con số sai giữa màn hình.
  *   - loanSchedule: annuity đúng công thức; lãi-only tách gốc.
- *   - budgetBreakdown: 50/30/20 trên hạn mức, không trên thu nhập.
  *   - billCycle / billPeriods / billPeriodForDate: chu kỳ đa tháng và ngày trả chuẩn xác.
  *   - NL_DICT / matchCategory: đoán đúng 100% taxonomy quy tắc.
  *   - floatInterest / blendedRate / fundBalance: tính lãi float và quỹ tiết kiệm.
@@ -36,8 +35,6 @@ import {
   comparePeriods,
   NL_DICT,
   matchCategory,
-  budgetBreakdown,
-  suggestedDailySpend,
   cardCycle,
   nextAnnualFee,
   cardBalance,
@@ -343,53 +340,6 @@ assert.deepEqual(matchCategory('sale lazada'), { categoryId: 'personal', subId: 
 
 assert.equal(NL_DICT.length, 17, 'đủ 17 rules phân loại tự nhiên');
 console.log('matchCategory check: OK');
-
-/* ── 6. budgetBreakdown & suggestedDailySpend ──────────────── */
-const bt = periodTotals([
-  { occurred_at: '2026-08-05', type: 'expense', amount: 300000, category_id: 'food', necessity: 'want' },
-  { occurred_at: '2026-08-06', type: 'expense', amount: 500000, category_id: 'housing', necessity: 'must' },
-  { occurred_at: '2026-08-07', type: 'expense', amount: 200000, category_id: 'entertainment', necessity: 'want' },
-], { from: '2026-08-01', to: '2026-08-31' });
-
-const bb = budgetBreakdown(bt, [
-  { category_id: 'food', limit_amount: 1000000 },
-  { category_id: 'housing', limit_amount: 2000000 },
-  { category_id: 'entertainment', limit_amount: 500000 },
-], CATS);
-assert.equal(bb.totalLimit, 3500000);
-assert.equal(bb.totalSpent, 1000000);
-assert.equal(bb.remaining, 2500000);
-assert.equal(bb.pct, 29); // 1000000 / 3500000 ~ 28.57 -> 29
-assert.equal(bb.cutable, 500000, 'cắt được = nhóm tùy chọn (food 300k + entertainment 200k)');
-
-const foodRow = bb.categories.find(c => c.categoryId === 'food');
-assert.equal(foodRow.pct, 30);
-assert.equal(foodRow.limit, 1000000);
-assert.equal(foodRow.spent, 300000);
-
-const transRow = bb.categories.find(c => c.categoryId === 'transport');
-assert.equal(transRow.limit, 0);
-assert.equal(transRow.spent, 0);
-assert.equal(transRow.pct, null, 'limit = 0 thì pct = null');
-
-// Vượt ngân sách
-const overTotals = { total: 4000000, byCategory: {}, byNecessity: { want: 1000000 } };
-const bbOver = budgetBreakdown(overTotals, [{ category_id: 'food', limit_amount: 2000000 }], CATS);
-assert.equal(bbOver.remaining, -2000000, 'âm khi vượt ngân sách');
-assert.equal(bbOver.pct, 200);
-
-// Không có hạn mức nào
-const bbNoBudget = budgetBreakdown(bt, [], CATS);
-assert.equal(bbNoBudget.totalLimit, 0);
-assert.equal(bbNoBudget.pct, null);
-
-// suggestedDailySpend
-assert.equal(suggestedDailySpend(3000000, 1000000, '2026-08-13', '2026-08-31').daysLeft, 19);
-assert.equal(suggestedDailySpend(3000000, 1000000, '2026-08-13', '2026-08-31').perDay, Math.round(2000000 / 19));
-assert.equal(suggestedDailySpend(1000000, 2000000, '2026-08-13', '2026-08-31').perDay, 0, 'chi quá hạn mức thì khuyên tiêu 0đ/ngày');
-assert.equal(suggestedDailySpend(1000000, 500000, '2026-08-31', '2026-08-31').daysLeft, 1);
-assert.equal(suggestedDailySpend(1000000, 500000, '2026-08-31', '2026-08-31').perDay, 500000);
-console.log('budgetBreakdown check: OK');
 
 /* ── 7. Thẻ tín dụng & Float ───────────────────────────────── */
 const cc = cardCycle({ statement_day: 5, due_day: 25 }, '2026-08-13');
@@ -819,11 +769,6 @@ const day12 = rhythmAug.rows.find(r => r.key === '2026-08-12');
 assert.equal(day12.amount, 12_000_000, 'ngày 12 có khoản chi máy tính 12tr');
 assert.ok(day12.amount > rhythmAug.avg, 'ngày 12 vượt trung bình ngày');
 
-// 6. Gợi ý chi tiêu mỗi ngày (suggestedDailySpend):
-// Hạn mức tháng là 30tr, đã chi 27.2tr vào ngày 28/08 -> còn 2.8tr cho 4 ngày (28, 29, 30, 31)
-const dailySugg = suggestedDailySpend(30_000_000, 27_200_000, '2026-08-28', '2026-08-31');
-assert.equal(dailySugg.daysLeft, 4);
-assert.equal(dailySugg.perDay, Math.round(2_800_000 / 4)); // 700.000đ/ngày
 console.log('comprehensive real-world scenario check: OK');
 
 /* ── 22. Thẻ tín dụng chu kỳ cuối tháng & năm nhuận phức tạp ── */

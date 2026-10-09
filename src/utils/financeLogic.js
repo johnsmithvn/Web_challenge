@@ -5,7 +5,7 @@
  * taskFields / recurrenceUtils.
  *
  * Dữ liệu danh mục (finance-categories.json) được TIÊM vào các hàm cần nó
- * (`deriveNecessity`, `budgetBreakdown`) qua tham số `cats` — không import trực
+ * (`deriveNecessity`) qua tham số `cats` — không import trực
  * tiếp, để file vẫn chạy bằng node và test khỏi cần JSON.
  *
  * Ba nguyên lý (docs/DESIGN_FINANCE.md §0) mà file này ép:
@@ -357,38 +357,6 @@ export function matchCategory(text) {
     if (rule.re.test(text)) return { categoryId: rule.cat, subId: rule.sub };
   }
   return null;
-}
-
-// ── Ngân sách — tính trên HẠN MỨC, không trên thu nhập ───────────────────────
-/**
- * @param totals — kết quả periodTotals của tháng đang chạy.
- * @param budgets — [{category_id, limit_amount}] hạn mức từng nhóm.
- * @param cats — finance-categories.json (tiêm vào).
- */
-export function budgetBreakdown(totals, budgets, cats) {
-  const byCat = {};
-  for (const b of budgets) byCat[b.category_id] = b.limit_amount;
-  const totalLimit = budgets.reduce((s, b) => s + b.limit_amount, 0);
-
-  const categories = cats.expenseGroups.map(g => {
-    const limit = byCat[g.key] || 0;
-    const spent = totals.byCategory[g.key] || 0;
-    return { categoryId: g.key, label: g.label, color: g.color, icon: g.icon,
-      limit, spent, pct: limit ? Math.round((spent / limit) * 100) : null };
-  });
-
-  return {
-    totalLimit, totalSpent: totals.total, remaining: totalLimit - totals.total,
-    pct: totalLimit ? Math.round((totals.total / totalLimit) * 100) : null,
-    categories, cutable: totals.byNecessity.want,
-  };
-}
-
-/** "Nên tiêu mỗi ngày" cho số ngày còn lại của tháng đang chạy. */
-export function suggestedDailySpend(totalLimit, spent, refStr, monthEndStr) {
-  const daysLeft = daysInclusive(refStr, monthEndStr);
-  const left = Math.max(0, totalLimit - spent);
-  return { daysLeft, perDay: daysLeft > 0 ? Math.round(left / daysLeft) : 0 };
 }
 
 // ── Thẻ tín dụng: float & stoozing ──────────────────────────────────────────

@@ -71,11 +71,11 @@ auth.users
 | `finance_cards` | Chu kỳ sao kê và thanh toán thẻ. `annual_fee_on` là DATE (không phải ngày-trong-tháng như `statement_day`/`due_day`) vì phí thường niên lặp mỗi năm; NULL = không nhắc |
 | `finance_saving_goals` | Quỹ tiết kiệm và chính sách khóa |
 | `finance_deposits` | Nơi gửi thuộc quỹ; đáo hạn suy ra từ kỳ hạn |
-| `finance_income_rules` | Thu định kỳ |
 | `finance_shortcuts` | Mẫu nhập nhanh, không giữ số tiền cố định. `recent_amounts` (tối đa 3) là các mức đã dùng, hiện thành nút bấm-là-ghi khi mở shortcut. Đã cân nhắc thêm cột `default_amount` để bấm một cái ghi luôn và **bỏ** — xem mục "Đã thử rồi bỏ" trong CHANGELOG |
-| `finance_budgets` | Hạn mức theo category |
 | `finance_category_overrides` | Nhãn/màu/icon/subcategory tùy biến theo user (10 nhóm chi chính) |
 | `finance_transaction_tags` | Giao dịch ↔ Tag |
+
+Đã drop ở v6.22.0 (`migration_v6.22.0_finance_drop_income_budgets.sql`): `finance_income_rules` (Thu định kỳ), `finance_budgets` (Hạn mức) và RPC `finance_receive_income`. Cột `finance_transactions.income_rule_id` vẫn còn nhưng bị CHECK `finance_tx_income_rule_retired` ép NULL; `income_period` giữ làm dấu vết cho giao dịch thu cũ. Không drop hai cột vì Postgres sẽ xóa theo các CHECK nhiều cột dùng chung với hóa đơn/vay/thẻ/quỹ.
 
 Nguyên lý Finance:
 
@@ -165,7 +165,6 @@ own-row và không public-select.
 
 - `finance_pay_bill`
 - `finance_skip_bill_period`
-- `finance_receive_income`
 - `finance_record_loan_payment`
 - `finance_pay_card_statement`
 - `finance_request_saving_withdrawal`

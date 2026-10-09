@@ -11,10 +11,11 @@ README. · **Updated:** 2026-08-30
    không là mẫu số mặc định của tỷ lệ nào.
 2. **Một sổ giao dịch, lọc theo kỳ.** Mọi số trên UI tính lại từ `finance_transactions.occurred_at`.
    Không lưu aggregate cần đồng bộ ngược.
-3. **App ghi nhận, không trả hộ.** Hóa đơn/vay/thu định kỳ chỉ là nghĩa vụ. User xác nhận thì RPC tạo
+3. **App ghi nhận, không trả hộ.** Hóa đơn/vay chỉ là nghĩa vụ. User xác nhận thì RPC tạo
    transaction thật và cập nhật progress nguyên khối.
 
-50/30/20 dùng tổng hạn mức trong `finance_budgets`, không dùng income.
+Không còn hạn mức (module Ngân sách gỡ 01/09/2026) và không còn thu định kỳ (gỡ 10/2026): Finance
+theo dõi chi tiêu; so sánh là so với kỳ trước, không so với hạn mức.
 
 ## 2. Phạm vi thời gian
 
@@ -39,14 +40,12 @@ Migration: `data/migration_v6.0.0_finance.sql` → ... → `..._v6.11.0_finance_
 |---|---|
 | `finance_transactions` | Sổ duy nhất; expense/income/saving; Task/Inbox/rule references |
 | `finance_bills` | Khoản phải trả fixed/ask + recurrence/skip + `note` của quy tắc |
-| `finance_income_rules` | Thu định kỳ |
 | `finance_loans` | Vay interest/amort và progress |
 | `finance_lendings` | Cho vay — khoản phải thu, thu về nhiều lần |
 | `finance_cards` | Ngày chốt/đến hạn/sao kê |
 | `finance_saving_goals` | Quỹ + lock policy/withdrawal request |
 | `finance_deposits` | Nơi gửi thuộc quỹ + rate/term/maturity |
 | `finance_shortcuts` | Mẫu nhập nhanh, không giữ amount cố định |
-| `finance_budgets` | Hạn mức category dạng standing; UI áp cho tháng đang chạy |
 | `finance_category_overrides` | Custom label/color/icon/subcategory |
 | `finance_transaction_tags` | Transaction ↔ central tags |
 
@@ -106,25 +105,24 @@ nhau.
 
 | Route screen | Nội dung |
 |---|---|
-| `overview` | Tổng quan; query `view=budget|stats` mở hai sub-view |
+| `overview` | Tổng quan + Báo cáo; `?view=stats` cũ chuyển về đây |
 | `add` | Nhập nhanh, shortcut, form transaction |
 | `list` | Search/filter/group/edit/delete/export CSV |
 | `cats` | Category editor và schema reference |
-| `recurring` | Phải trả, Sẽ nhận, Khoản vay, Thẻ, Cho vay |
+| `recurring` | Phải trả, Khoản vay, Thẻ, Cho vay, Quỹ tiết kiệm |
 
 ### Tổng quan
 
 - Tổng chi, so kỳ trước, trung bình ngày, tỷ lệ fixed.
 - Donut category và necessity must/want.
 - Spending rhythm theo ngày hoặc tháng, khoản lớn nhất, saving summary.
-- Budget luôn tháng hiện tại; ngưỡng 50/30/20 trên tổng limit.
 - Stats đọc 3/6/12 tháng theo category/comparison/bill/card.
 
 ### Nhập nhanh và giao dịch
 
 - Keyboard `N`, natural language, shortcut và full form.
 - Form Nhập nhanh chỉ ghi **khoản chi** (nguồn, necessity, Task link, Inbox provenance khi conversion).
-  Thu đi qua Định kỳ → Sẽ nhận; gửi/rút quỹ đi qua Định kỳ & Quỹ → Quỹ tiết kiệm.
+  Không có chỗ ghi thu nhập tay; gửi/rút quỹ đi qua Định kỳ & Quỹ → Quỹ tiết kiệm.
 - List group theo ngày, có filter/search, edit detail, tag, CSV.
 - Lọc hai tầng: chip loại luôn hiện, còn nhóm · danh mục con · khoảng ngày nằm trong popover nút
   **Lọc**. Điều kiện cộng dồn (AND); danh mục con phải có nhóm cha; khoảng ngày thu hẹp trong kỳ chứ
@@ -188,8 +186,8 @@ sửa/công tắc/xóa, phần mở thêm (khối ghi kỳ, form sửa, lịch s
 |---|---|
 | Date/period | `ymd`, `parseYmd`, `addDaysStr`, `daysInclusive`, `dueDateInMonth`, `daysUntilDue`, `listPeriodOptions`, `periodFromKey`, `currentMonthPeriod` |
 | Totals/comparison | `periodTotals`, `comparePeriods`, `spendingRhythm`, `groupByDate` |
-| Category/budget | `deriveNecessity`, `matchCategory`, `budgetBreakdown`, `suggestedDailySpend` |
-| Card/loan/bill | `cardCycle`, `cardBalance`, `cardStatementSummary`, `floatInterest`, `loanSchedule`, `billAmountEstimate` |
+| Category | `deriveNecessity`, `matchCategory` |
+| Card/loan/bill | `cardCycle`, `cardBalance`, `cardStatementSummary`, `cardCarryOver`, `floatInterest`, `loanSchedule`, `loanCycle`, `billCycle`, `billAmountEstimate` |
 | Saving | `fundBalance`, `blendedRate`, `maturityWarn` |
 
 `periodTotals` là nơi tính tổng duy nhất. Function cần taxonomy nhận `cats` qua tham số để pure test
@@ -200,16 +198,17 @@ không phụ thuộc JSON loader.
 `useFinance` sở hữu state/action của toàn module thay vì mười hook CRUD gần giống nhau. Lý do: các màn
 đọc nhiều bảng cùng lúc và RPC ghi chéo transaction/rule.
 
-Tám RPC user-facing:
+Bảy RPC user-facing app đang gọi:
 
 - `finance_pay_bill`
 - `finance_skip_bill_period`
-- `finance_receive_income`
 - `finance_record_loan_payment`
 - `finance_pay_card_statement`
 - `finance_record_lending_repayment`
 - `finance_request_saving_withdrawal`
 - `finance_move_saving`
+
+`finance_receive_income`, `finance_income_rules` và `finance_budgets` đã drop ở v6.22.0 (`migration_v6.22.0_finance_drop_income_budgets.sql`).
 
 RPC/trigger phải tự validate owner, reference, amount/period và rollback nguyên transaction khi lỗi.
 

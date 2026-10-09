@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import {
-  periodTotals, comparePeriods, cardStatementSummary, cardCarryOver, fundBalance,
+  periodTotals, comparePeriods, spendingRhythm, cardStatementSummary, cardCarryOver, fundBalance,
   parseYmd, monthStart, monthEnd, daysInclusive,
 } from '../../utils/financeLogic';
 import {
@@ -223,54 +223,23 @@ function compactVND(val) {
 }
 
 function computeCumulativeRhythm(transactions, period, prevPeriod, today) {
-  const fromDate = parseYmd(period.from);
   const totalDays = daysInclusive(period.from, period.to);
-
-  const curTxs = transactions.filter(t => t.type === 'expense' && !t.excluded
-    && t.occurred_at >= period.from && t.occurred_at <= period.to);
-  const prevTxs = prevPeriod ? transactions.filter(t => t.type === 'expense' && !t.excluded
-    && t.occurred_at >= prevPeriod.from && t.occurred_at <= prevPeriod.to) : [];
-
-  const curDaySums = {};
-  for (const t of curTxs) {
-    curDaySums[t.occurred_at] = (curDaySums[t.occurred_at] || 0) + t.amount;
-  }
-
-  const prevDays = prevPeriod ? daysInclusive(prevPeriod.from, prevPeriod.to) : totalDays;
-  const prevFromDate = prevPeriod ? parseYmd(prevPeriod.from) : null;
-  const prevDaySums = {};
-  if (prevPeriod) {
-    for (const t of prevTxs) {
-      prevDaySums[t.occurred_at] = (prevDaySums[t.occurred_at] || 0) + t.amount;
-    }
-  }
-
-  const curPoints = [];
-  let curAcc = 0;
+  // Cùng nguồn với mọi tổng chi khác (`spendingRhythm`: expense, không excluded) — tự lọc lại
+  // ở đây thì sửa quy tắc tính chi một chỗ là biểu đồ lệch với tổng chi.
+  const toPoints = (rows) => {
+    let acc = 0;
+    return rows.map((row, i) => ({ day: i + 1, val: (acc += row.amount), iso: row.key }));
+  };
+  // Kỳ đang chạy chỉ vẽ tới hôm nay; kỳ chưa bắt đầu thì không có điểm nào.
+  const curTo = period.to <= today ? period.to : today;
+  const curPoints = curTo >= period.from
+    ? toPoints(spendingRhythm(transactions, { from: period.from, to: curTo, unit: 'day' }).rows)
+    : [];
+  const prevPoints = prevPeriod
+    ? toPoints(spendingRhythm(transactions, { from: prevPeriod.from, to: prevPeriod.to, unit: 'day' }).rows)
+    : [];
+  const prevDays = prevPeriod ? prevPoints.length : totalDays;
   let crossDay = null;
-
-  // Giới hạn ngày hiển thị tới ngày hiện tại nếu đang trong kỳ đó
-  const maxDayIdx = period.to <= today ? totalDays : Math.min(totalDays, daysInclusive(period.from, today));
-
-  for (let i = 0; i < totalDays; i++) {
-    const d = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate() + i);
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    if (i < maxDayIdx) {
-      curAcc += (curDaySums[iso] || 0);
-      curPoints.push({ day: i + 1, val: curAcc, iso });
-    }
-  }
-
-  const prevPoints = [];
-  let prevAcc = 0;
-  if (prevPeriod && prevFromDate) {
-    for (let i = 0; i < prevDays; i++) {
-      const d = new Date(prevFromDate.getFullYear(), prevFromDate.getMonth(), prevFromDate.getDate() + i);
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      prevAcc += (prevDaySums[iso] || 0);
-      prevPoints.push({ day: i + 1, val: prevAcc, iso });
-    }
-  }
 
   for (let i = 0; i < Math.min(curPoints.length, prevPoints.length); i++) {
     if (curPoints[i].val > prevPoints[i].val && crossDay === null) {
@@ -366,42 +335,40 @@ function CumulativeRhythmChart({ transactions, period, prevPeriod, today }) {
 
   return (
     <section className="fin-card fin-overview-panel">
-      <div className="fin-card__head" style={{ marginBottom: '8px' }}>
+      <div className="fin-card__head fin-rhythm__head">
         <div>
           <div className="fin-card__title">Nhịp chi trong kỳ</div>
-          <small style={{ color: '#8A8A84', fontSize: '12px' }}>
-            Lũy kế theo ngày · {data.subNote}
-          </small>
+          <small className="fin-rhythm__sub">Lũy kế theo ngày · {data.subNote}</small>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '11.5px', color: '#6A6A64' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ display: 'inline-block', width: '16px', height: '3px', background: '#6949E8', borderRadius: '2px' }} />
-            <strong style={{ color: '#15161A' }}>{data.curLabel}</strong>
+        <div className="fin-rhythm__legend">
+          <span className="fin-rhythm__legend-item">
+            <span className="fin-rhythm__swatch fin-rhythm__swatch--cur" />
+            <strong>{data.curLabel}</strong>
           </span>
           {data.prevLabel && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ display: 'inline-block', width: '16px', height: '0px', borderTop: '2px dashed #A8A8A2' }} />
+            <span className="fin-rhythm__legend-item">
+              <span className="fin-rhythm__swatch fin-rhythm__swatch--prev" />
               <span>{data.prevLabel}</span>
             </span>
           )}
         </div>
       </div>
 
-      <div style={{ width: '100%', overflowX: 'auto' }}>
-        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block', minWidth: '480px' }} aria-label="Biểu đồ lũy kế nhịp chi">
+      <div className="fin-rhythm__scroll">
+        <svg viewBox={`0 0 ${W} ${H}`} className="fin-rhythm__svg" aria-label="Biểu đồ lũy kế nhịp chi">
           <defs>
             <linearGradient id="gRhythmArea" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6949E8" stopOpacity="0.18" />
-              <stop offset="100%" stopColor="#6949E8" stopOpacity="0.01" />
+              <stop offset="0%" className="fin-rhythm__area-stop" stopOpacity="0.18" />
+              <stop offset="100%" className="fin-rhythm__area-stop" stopOpacity="0.01" />
             </linearGradient>
           </defs>
 
           {/* Đường lưới ngang */}
-          <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke="#EDECE7" strokeWidth="1" />
+          <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} className="fin-rhythm__axis" />
           {yTicks.map((t, idx) => (
             <g key={idx}>
-              <line x1={padL} y1={t.y} x2={W - padR} y2={t.y} stroke="#EDECE7" strokeWidth="1" strokeDasharray="3 3" />
-              <text x={padL - 8} y={t.y + 3.5} textAnchor="end" fill="#A8A8A2" fontSize="10" fontFamily="'JetBrains Mono', monospace">
+              <line x1={padL} y1={t.y} x2={W - padR} y2={t.y} className="fin-rhythm__grid" />
+              <text x={padL - 8} y={t.y + 3.5} textAnchor="end" className="fin-rhythm__tick">
                 {compactVND(t.v)}
               </text>
             </g>
@@ -412,24 +379,22 @@ function CumulativeRhythmChart({ transactions, period, prevPeriod, today }) {
 
           {/* Đường bậc thang kỳ trước */}
           {prevLine && (
-            <path d={prevLine} fill="none" stroke="#A8A8A2" strokeWidth="1.8" strokeDasharray="4 4" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={prevLine} className="fin-rhythm__prev" />
           )}
 
           {/* Đường bậc thang kỳ này */}
           {curLine && (
-            <path d={curLine} fill="none" stroke="#6949E8" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={curLine} className="fin-rhythm__cur" />
           )}
 
           {/* Dot & Nhãn cuối đường kỳ trước */}
           {lastPrev && (
             <g>
-              <circle cx={lastPrev.x} cy={lastPrev.y} r="3" fill="#A8A8A2" />
+              <circle cx={lastPrev.x} cy={lastPrev.y} r="3" className="fin-rhythm__dot--prev" />
               <text
                 x={lastPrev.x + 6}
                 y={lastCur && Math.abs(lastCur.y - lastPrev.y) < 14 && lastCur.y <= lastPrev.y ? lastPrev.y + 11 : lastPrev.y + 4}
-                fill="#8A8A84"
-                fontSize="10.5"
-                fontFamily="'JetBrains Mono', monospace"
+                className="fin-rhythm__label--prev"
               >
                 {compactVND(lastPrev.val)}
               </text>
@@ -439,14 +404,11 @@ function CumulativeRhythmChart({ transactions, period, prevPeriod, today }) {
           {/* Dot & Nhãn cuối đường kỳ này */}
           {lastCur && (
             <g>
-              <circle cx={lastCur.x} cy={lastCur.y} r="4.5" fill="#6949E8" stroke="#fff" strokeWidth="2" />
+              <circle cx={lastCur.x} cy={lastCur.y} r="4.5" className="fin-rhythm__dot--cur" />
               <text
                 x={lastCur.x + 6}
                 y={lastPrev && Math.abs(lastCur.y - lastPrev.y) < 14 && lastCur.y > lastPrev.y ? lastCur.y + 11 : lastCur.y - 3}
-                fill="#6949E8"
-                fontWeight="600"
-                fontSize="11"
-                fontFamily="'JetBrains Mono', monospace"
+                className="fin-rhythm__label--cur"
               >
                 {compactVND(lastCur.val)}
               </text>
@@ -455,7 +417,7 @@ function CumulativeRhythmChart({ transactions, period, prevPeriod, today }) {
 
           {/* Nhãn trục X */}
           {xTicks.map(t => (
-            <text key={t.d} x={t.x} y={H - 6} textAnchor="middle" fill="#A8A8A2" fontSize="9.5" fontFamily="'JetBrains Mono', monospace">
+            <text key={t.d} x={t.x} y={H - 6} textAnchor="middle" className="fin-rhythm__tick fin-rhythm__tick--x">
               {t.d}
             </text>
           ))}

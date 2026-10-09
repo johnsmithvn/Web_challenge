@@ -8,8 +8,8 @@ import {
 } from './parts';
 import AppIcon from '../AppIcon';
 
-// Form này chỉ ghi khoản CHI. Thu định kỳ đi qua Định kỳ → Sẽ nhận; gửi/rút quỹ qua
-// Định kỳ & Quỹ → Quỹ tiết kiệm (SavingMoveForm) — không lặp lại ở đây.
+// Form này chỉ ghi khoản CHI — Finance chỉ theo dõi chi (Thu định kỳ đã gỡ 10/2026). Gửi/rút
+// quỹ qua Định kỳ & Quỹ → Quỹ tiết kiệm (SavingMoveForm) — không lặp lại ở đây.
 
 const HIDDEN_SEEDS_KEY = 'lh_fin_hidden_seed_shortcuts';
 const seedPath = (shortcut) => `${shortcut.category_id}:${shortcut.subcategory_id || ''}`;
