@@ -524,7 +524,7 @@ export default function LiveSessionScreen({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '16px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', gap: '16px' }}>
       {/* ── SAVE ERROR ALERT ────────────────────────────────────────── */}
       {saveError && (
         <div style={{
@@ -800,7 +800,7 @@ export default function LiveSessionScreen({
             </div>
           </div>
 
-          <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <div className="body-live-actions" style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button
               className="body-btn body-btn-primary"
               style={{ padding: '0 24px', height: '42px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -988,7 +988,7 @@ export default function LiveSessionScreen({
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--body-card-border)' }}>
+          <div className="body-live-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--body-card-border)' }}>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 className="body-btn body-btn-secondary"

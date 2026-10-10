@@ -838,6 +838,14 @@
     font-weight: 700;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
+  /* Live session: nút hành động (Bắt đầu / Hoàn thành set) luôn nổi ngay trên bottom nav 64px */
+  .body-live-actions {
+    position: sticky;
+    bottom: 64px;
+    z-index: 5;
+    background: var(--body-card-bg);
+    padding-block: 12px;
+  }
   .body-days-strip {
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 4px;

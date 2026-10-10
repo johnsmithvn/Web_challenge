@@ -18,6 +18,7 @@
   - Bộ test thuần `workoutLogic.test.js`, `bodyMetrics.test.js`, `bodyContract.test.js` đạt 100% độ bao phủ hợp đồng.
 
 ### Fixed
+- **Body Live Session — mất nút trên mobile (`LiveSessionScreen.jsx`, `body.css`):** nút "Bắt đầu Set" / "Hoàn thành Set" bị bottom nav 64px che, không cuộn tới được (root `height:100%` làm nội dung tràn nên `padding-bottom` của vùng cuộn mất tác dụng). Đổi sang `min-height`; trên mobile thanh hành động dính ngay trên bottom nav.
 - **Trang chủ — cảnh báo bị sót/báo sai, bug hiển thị và theme (`dashboardAlerts.js`, `financeLogic.js`, `HomeDashboard.jsx`, `dashboard.css`, `RecurringScreen.jsx`, `FinancePage.jsx`, `useUserTasks.js`, `dashboardAlerts.test.js`, `financeLogic.test.js`):**
   - **Không còn "biến mất" khi sang kỳ:** `billCycle` bám kỳ tháng trước chưa trả cho cả hóa đơn hằng tháng; `loanCycle` mới cho khoản vay (đếm số kỳ, bỏ kỳ trước `opened_at`, null khi đủ số kỳ) — dùng chung cho Trang chủ và màn Khoản vay; `cardCarryOver` mới giữ nợ sao kê kỳ trước (FIFO, không tra nhãn kỳ) và hiện ở màn Thẻ. Sổ tiết kiệm đã đáo hạn chưa tất toán vào nhóm cần xử lý.
   - **Không còn báo sai:** khoản vay đã đủ kỳ / mới mở không báo quá hạn; vượt ngân sách dùng tên danh mục và tách khỏi "Sắp tới hạn"; nhãn ưu tiên theo thang của app (Urgent…) thay cho "P5".
