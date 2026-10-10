@@ -586,7 +586,9 @@ content column, swapping to a mobile top-bar + bottom-tabs pattern at 768px:
 - **Mobile (`max-width: 768px`)** — `.sidebar` is force-hidden; a `52px`
   `.topbar` (`--topbar-height`) is fixed to the top and a `60px` `.bottom-tabs`
   bar (`--bottom-tabs-height`, plus `env(safe-area-inset-bottom)`) to the
-  bottom. `body` gets matching `padding-top` / `padding-bottom`.
+  bottom. `body` gets matching `padding-top` / `padding-bottom`. The topbar
+  owns app-wide controls (theme toggle, avatar); page headers below it must
+  not repeat them on mobile (e.g. `.dash-theme-btn` is hidden ≤768px).
 - **Compact (`max-width: 520px`)** — task row actions collapse from inline
   buttons into an overflow menu (`.task-actions--mobile`), and
   `.dp-popover` becomes a full-width bottom sheet.

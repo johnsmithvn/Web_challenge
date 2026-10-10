@@ -1515,6 +1515,11 @@
     justify-content: space-between;
   }
 
+  /* Mobile: topbar toàn cục đã có nút đổi theme */
+  .dash-theme-btn {
+    display: none;
+  }
+
   .dash-scroll {
     overflow-y: visible;
     padding: 16px 16px 84px;

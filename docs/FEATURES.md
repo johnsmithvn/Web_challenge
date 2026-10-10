@@ -22,7 +22,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 ## 1. App shell, Auth và Onboarding
 
 **Files:** `src/App.jsx`, `src/contexts/AuthContext.jsx`, `src/components/AuthModal.jsx`,
-`src/components/Navbar.jsx`, `src/components/OnboardingModal.jsx`
+`src/components/Navbar.jsx`
 
 - Email/password và Google OAuth qua Supabase Auth.
 - **Quên mật khẩu & Khôi phục tài khoản:** Hỗ trợ luồng gửi email khôi phục mật khẩu (OTP / reset password link) trực tiếp từ modal đăng nhập.
@@ -323,8 +323,6 @@ Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuâ
 - `api/upload.js`: authenticated multipart upload vào Google Drive folder đã cấu hình.
 - `api/stream.js`: folder-scoped readonly proxy, hỗ trợ HTTP Range/seek cho media.
 - `GlobalAudioPlayer`: tiếp tục phát khi đổi page; `CustomAudioPlayer` dùng cho audio inline.
-- `SubAlert`: sidebar cảnh báo hóa đơn/thẻ tới hạn; tự ẩn khi không có data hoặc chưa login.
-- `QuoteWidget`: quote theo ngày + shuffle + audio khi có URL.
 - Manifest + service worker cung cấp install metadata/cache cơ bản và Task notification best-effort.
 
 ## Routes cũ

@@ -9,30 +9,11 @@ export const RECOVERY_STATUS = {
   LOW: 'low'
 };
 
-export const RECOVERY_LABELS = {
-  ready: 'Sẵn sàng',
-  mid: 'Đang hồi phục',
-  low: 'Cần nghỉ'
-};
-
-export const RECOVERY_COLORS = {
-  ready: '#2F8A57',
-  mid: '#B57A12',
-  low: '#C23B22'
-};
-
 export const DAY_TYPE_COLORS = {
   'Chân': '#2E9D8F',
   'Đẩy': '#6949E8',
   'Kéo': '#E0822C',
   'Toàn thân': '#4C8DE0'
-};
-
-export const DAY_TYPE_SOFTS = {
-  'Chân': '#DDF1EE',
-  'Đẩy': '#ECE7FD',
-  'Kéo': '#FCEBDD',
-  'Toàn thân': '#E1ECFA'
 };
 
 /**

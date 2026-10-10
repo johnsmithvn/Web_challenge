@@ -15,8 +15,6 @@ export { formatVND, BankSelect, BANKS };
 export const money = (n) => formatVND(Math.round(n || 0));
 
 // ── Tra danh mục ────────────────────────────────────────────────────────────
-export const EXPENSE_BY_KEY = Object.fromEntries(CATS.expenseGroups.map(g => [g.key, g]));
-export const INCOME_BY_KEY = Object.fromEntries(CATS.incomeGroups.map(g => [g.key, g]));
 export const SUB_BY_KEY = {};
 for (const g of CATS.expenseGroups) for (const s of g.subs || []) SUB_BY_KEY[s.key] = { ...s, group: g };
 
@@ -102,30 +100,6 @@ export function Donut({ data, total, onSlice, size = 168 }) {
           style={{ cursor: onSlice ? 'pointer' : 'default' }} onClick={() => onSlice?.(a.key)} />
       ))}
     </svg>
-  );
-}
-
-// ── Biểu đồ nhịp chi: cột + đường trung bình ────────────────────────────────
-export function RhythmBars({ rows, avg, unit }) {
-  const max = Math.max(1, ...rows.map(r => r.amount));
-  return (
-    <div className="fin-rhythm">
-      <div className="fin-rhythm__bars">
-        {rows.map((r, i) => {
-          const h = Math.round((r.amount / max) * 100);
-          const strong = r.amount > avg;
-          const label = unit === 'month' ? r.key.slice(5) : r.key.slice(8);
-          return (
-            <div key={r.key} className="fin-rhythm__col" title={`${label}: ${money(r.amount)}`}>
-              <div className={`fin-rhythm__bar${strong ? ' fin-rhythm__bar--strong' : ''}`} style={{ height: `${h}%` }} />
-              {(unit === 'month' || i % 5 === 0) && <span className="fin-rhythm__lbl">{label}</span>}
-            </div>
-          );
-        })}
-        {avg > 0 && <div className="fin-rhythm__avg" style={{ bottom: `${Math.round((avg / max) * 100)}%` }} />}
-      </div>
-      <div className="fin-rhythm__cap">Đường đứt = trung bình {money(avg)}/{unit === 'month' ? 'tháng' : 'ngày'}</div>
-    </div>
   );
 }
 

@@ -14,7 +14,7 @@ ThemeProvider
    └─ AuthProvider
       └─ BrowserRouter
          └─ AppShell
-            ├─ PageMeta + OnboardingModal
+            ├─ PageMeta
             ├─ Navbar + QuickCapture + GlobalAudioPlayer
             └─ ErrorBoundary → Suspense → Routes
 ```

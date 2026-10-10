@@ -298,9 +298,3 @@ export function tiptapToPlainText(body) {
     return walk(json).trim();
   } catch { return ''; }
 }
-
-/* ── Audio URL detection ───────────────────────────────────── */
-export function detectAudioUrl(body = '') {
-  const match = body.match(/https?:\/\/[^\s)"]+\.(mp3|m4a|ogg|wav|aac|flac)(\?[^\s)"]*)?/i);
-  return match ? match[0] : null;
-}
