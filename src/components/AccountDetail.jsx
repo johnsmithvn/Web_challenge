@@ -23,8 +23,8 @@ import AccountAvatar from './AccountAvatar';
  *    không viền theo pattern Proton Pass; đó là lý do chế độ sửa trông như text
  *    trần. Đừng "dọn" viền đi lần nữa.
  *
- * ⚠️ CỐ Ý lệch RULES §4 (CustomSelect / GenericModal): vault có bộ token riêng,
- *    hai component đó kéo style Life Hub vào và phá fidelity.
+ * ⚠️ CỐ Ý lệch RULES §4 (GenericModal): vault có bộ token riêng,
+ *    component đó kéo style Life Hub vào và phá fidelity.
  *
  * Password generation is enabled because the complete item now reaches Supabase
  * only as an authenticated encrypted payload.

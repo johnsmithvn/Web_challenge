@@ -74,7 +74,7 @@ Guest data dùng React memory và được phép mất khi reload; không lén �
 
 - Đọc `DESIGN.md` trước khi đổi layout/CSS/component/UX.
 - Vanilla CSS; token chung nằm ở `src/styles/global.css`; hỗ trợ dark và light.
-- Reuse `ConfirmModal`, `GenericModal`, `CustomSelect`, `DatePickerPopover`, `TagPicker` khi phù hợp.
+- Reuse `ConfirmModal`, `GenericModal`, `DatePickerPopover`, `TagPicker` khi phù hợp.
 - Không dùng `window.alert`, `window.confirm`, `window.prompt`.
 - Giữ focus indicator, label truy cập được, touch target hợp lý và `prefers-reduced-motion`.
 - Vault Keyplate và Finance Nocturne có scoped design contract riêng. Native select/dialog trong Vault

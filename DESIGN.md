@@ -213,7 +213,7 @@ spacing:
 # ─────────────────────────────────────────────────────────────────
 # COMPONENTS
 # Sources: global.css (.btn/.card/.progress-bar-*/.section-label), generic-modal.css,
-#   confirm-modal.css, datepicker.css, collect.css (CustomSelect),
+#   confirm-modal.css, datepicker.css,
 #   navbar.css (shell)
 # ─────────────────────────────────────────────────────────────────
 components:
@@ -330,34 +330,6 @@ components:
   overflow-menu-item-danger-hover:
     backgroundColor: "rgba(239, 68, 68, 0.1)"
     textColor: "{colors.overflow-danger-text}"
-
-  # ── CustomSelect — collect.css (.kb-sort-*) ──
-  select-trigger:
-    backgroundColor: "rgba(255, 255, 255, 0.04)"
-    borderColor: "rgba(255, 255, 255, 0.1)"
-    textColor: "{colors.text-secondary}"
-    typography: "{typography.body-sm}"
-    rounded: "{rounded.lg}"
-    padding: 0.6rem 0.9rem
-  select-trigger-hover:
-    backgroundColor: "rgba(255, 255, 255, 0.08)"
-    borderColor: "rgba(255, 255, 255, 0.2)"
-  select-dropdown:
-    backgroundColor: "{colors.bg-secondary}"
-    borderColor: "{colors.bg-glass-border}"
-    rounded: "{rounded.md}"
-    padding: 0.25rem
-    width: 140px # min-width
-  select-option:
-    textColor: "{colors.text-secondary}"
-    typography: "{typography.label-md}"
-    rounded: "{rounded.sm}"
-    padding: 0.5rem 0.75rem
-  select-option-hover:
-    backgroundColor: "{colors.bg-tertiary}"
-    textColor: "{colors.text-primary}"
-  select-option-active:
-    textColor: "{colors.purple-light}"
 
   # ── DatePickerPopover — datepicker.css ──
   datepicker-popover:
@@ -741,22 +713,6 @@ Its label (`.generic-modal__label`) is `0.82rem/600` in `--text-secondary`.
 `.dp-time__input` follows the same fill/border recipe at `--radius-sm` and
 `0.3rem 0.5rem`, with a focus border of `rgba(139,92,246,0.4)` and no ring.
 There is no global `input` element style — page modules define their own.
-
-### CustomSelect — `.kb-custom-select` (`collect.css` + `CustomSelect.jsx`)
-
-Trigger `.kb-sort-trigger`: `0.6rem 0.9rem`, `rgba(255,255,255,0.04)` fill,
-`1px rgba(255,255,255,0.1)`, `--radius-lg`, `--text-secondary`, `0.85rem`,
-`font-family: inherit`; hover raises fill to `0.08` and border to `0.2`.
-A `▼` caret in `--text-muted` at `0.7rem` sits at the right, inline-styled in
-the component.
-
-Dropdown `.kb-sort-dropdown`: absolute under the trigger (`margin-top:
-0.4rem`), `--bg-secondary` + `blur(16px)`, `1px --bg-glass-border`,
-`--radius-md`, `--shadow-lg`, `min-width: 140px`, `0.25rem` padding,
-`z-index: 9999`, `gap: 1px`. Options: `0.5rem 0.75rem`, `--radius-sm`,
-`0.82rem`, `--text-secondary`; hover → `--bg-tertiary` + `--text-primary`;
-`--active` → `--purple-light` at weight 600 with a `--purple` `✓`.
-Closes on outside `mousedown`.
 
 ### SkeletonList — `.sk-*` (`skeleton.css`)
 
@@ -1177,7 +1133,7 @@ bar · two-pane body (item list · detail), breakpoint 900px.
 - **`.acc-hist`** — a left rail (`border-left` divider) with 8px round accent dots
   carrying a 3px `--color-bg` halo; timestamps 11px `.08em` uppercase tabular,
   detail lines switch to monospace when they contain masked bullets.
-- **Native `<select>` (`.acc-select`) and a hand-built dialog, not `CustomSelect`
+- **Native `<select>` (`.acc-select`) and a hand-built dialog, not a shared dropdown
   / `GenericModal`.** RULES §5 recommends the shared controls, but the vault
   overrides both **on purpose** — those components are
   styled to Life Hub tokens and would break the scoped Keyplate look. Native
@@ -1351,23 +1307,18 @@ silently resolved; pick a direction before touching the files involved.
    rem values (`0.6rem 0.85rem`, `0.55rem 0.75rem`, `1rem 1.25rem`,
    `0.4rem 0.65rem`, …) rather than `--space-*`. TODO: decide whether to add
    sub-`0.5rem` spacing tokens or accept raw values in components.
-7. **CustomSelect lives in a page stylesheet.** The shared `CustomSelect`
-   component depends on `.kb-sort-*` classes defined in
-   `src/styles/collect.css`, and hard-codes layout in inline `style` props.
-   TODO: decide whether to extract a `select.css` the way `generic-modal.css`
-   was extracted.
-8. **Eight blur radii.** `4/6/8/10/12/16/20/24px` are all in use with no
+7. **Eight blur radii.** `4/6/8/10/12/16/20/24px` are all in use with no
    `--blur-*` token. TODO: decide whether to tokenise.
-9. **Light theme coverage is partial.** `[data-theme="light"]` overrides
+8. **Light theme coverage is partial.** `[data-theme="light"]` overrides
     `--bg-*`, `--text-*`, `--shadow-*` and six brand colours, but not
     `--blue`, `--purple-dark`, `--cyan-light`, `--green-dim` (only
     partially), or any `--grad-*`. TODO: decision needed on completing it.
-10. **No global form-control baseline.** There is no `input`/`textarea`/
+9. **No global form-control baseline.** There is no `input`/`textarea`/
     `select` element rule; each module restyles fields, and the "shared"
     reference is `.generic-modal__input`. TODO: decide whether to promote it.
-11. **`.dp-grid__cell--other` uses raw white-alpha foregrounds** that need a
+10. **`.dp-grid__cell--other` uses raw white-alpha foregrounds** that need a
     dedicated light-mode check rather than relying on dark-theme material.
-12. **Unused global utilities remain in CSS.** `.btn-neon`, `.btn-gold`,
+11. **Unused global utilities remain in CSS.** `.btn-neon`, `.btn-gold`,
     `.card-glow-*`, `.badge`, `.glass-panel`, `.divider` and `.fade-up` have no
     JSX consumer. The same applies to `--grad-card`, `.gradient-text-green` and
     `.gradient-text-gold`. They are excluded from the active catalog above;

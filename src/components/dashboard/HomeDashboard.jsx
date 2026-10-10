@@ -21,7 +21,6 @@ import { money } from '../finance/parts';
 import MUSCLES from '../../data/body-muscles.json';
 import TaskDetailModal from '../TaskDetailModal';
 import AppIcon from '../AppIcon';
-import CustomSelect from '../CustomSelect'; // DEMO tạm — xem CustomSelect rồi quyết xoá hay giữ
 import '../../styles/dashboard.css';
 
 const VN_WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -99,7 +98,6 @@ export default function HomeDashboard() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [expandedOverdueTasks, setExpandedOverdueTasks] = useState(false);
   const quickInputRef = useRef(null);
-  const [demoSelect, setDemoSelect] = useState('today'); // DEMO CustomSelect
   const [quickTitle, setQuickTitle] = useState('');
   const [pullingToToday, setPullingToToday] = useState(false);
 
@@ -477,16 +475,6 @@ export default function HomeDashboard() {
         </div>
 
         <div className="dash-header__right">
-          {/* DEMO tạm CustomSelect — xoá sau khi quyết */}
-          <CustomSelect
-            value={demoSelect}
-            onChange={setDemoSelect}
-            options={[
-              { value: 'today', label: 'Hôm nay', icon: 'calendar' },
-              { value: 'week', label: 'Tuần này', icon: 'chartDonut' },
-              { value: 'month', label: 'Tháng này', icon: 'wallet' },
-            ]}
-          />
           {!isReady ? (
             <div className="dash-status dash-status--muted" role="status">
               <AppIcon name="arrowsClockwise" size={15} />
