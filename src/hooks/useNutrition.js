@@ -17,7 +17,6 @@ export function useNutrition() {
 
   const [mealLogs, setMealLogs] = useState([]);
   const [savedMeals, setSavedMeals] = useState([]);
-  const [waterCups, setWaterCups] = useState(0);
   const [weeklyCheckins, setWeeklyCheckins] = useState([]);
   const [loading, setLoading] = useState(false);
   // Lần tải đầu đã xong chưa — `loading` còn false ở frame đầu nên không phân biệt được "đang tải" với "không có gì".
@@ -28,7 +27,6 @@ export function useNutrition() {
     if (!user) {
       setMealLogs([]);
       setSavedMeals([]);
-      setWaterCups(0);
       setWeeklyCheckins([]);
       setHasLoaded(true);
       return;
@@ -38,7 +36,7 @@ export function useNutrition() {
     async function fetchNutritionData() {
       try {
         setLoading(true);
-        const [mealsRes, savedRes, waterRes, checkinsRes] = await Promise.all([
+        const [mealsRes, savedRes, checkinsRes] = await Promise.all([
           supabase
             .from('body_meal_logs')
             .select('*')
@@ -51,12 +49,6 @@ export function useNutrition() {
             .eq('user_id', user.id)
             .order('name', { ascending: true }),
           supabase
-            .from('body_water_logs')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('local_date', selectedDate)
-            .maybeSingle(),
-          supabase
             .from('body_weekly_checkins')
             .select('*')
             .eq('user_id', user.id)
@@ -68,9 +60,6 @@ export function useNutrition() {
           if (!mealsRes.error) setMealLogs(mealsRes.data || []);
           if (!savedRes.error) {
             setSavedMeals(savedRes.data && savedRes.data.length > 0 ? savedRes.data : DEFAULT_SAVED_TEMPLATES);
-          }
-          if (!waterRes.error) {
-            setWaterCups(waterRes.data ? waterRes.data.cups_count : 0);
           }
           if (!checkinsRes.error) setWeeklyCheckins(checkinsRes.data || []);
         }
@@ -157,30 +146,6 @@ export function useNutrition() {
     }
   }, [user]);
 
-  // Update water cups (Optimistic with rollback)
-  const updateWater = useCallback(async (newCups) => {
-    const val = Math.max(0, Math.round(Number(newCups)));
-    const prevVal = waterCups;
-    setWaterCups(val);
-
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('body_water_logs')
-        .upsert({
-          user_id: user.id,
-          local_date: selectedDate,
-          cups_count: val
-        }, { onConflict: 'user_id,local_date' });
-
-      if (error) throw error;
-    } catch (err) {
-      console.error('Failed to update water log, rolling back:', err);
-      setWaterCups(prevVal);
-      throw err;
-    }
-  }, [user, selectedDate, waterCups]);
 
   // Save weekly check-in (Upsert)
   const saveWeeklyCheckin = useCallback(async (checkinData) => {
@@ -273,13 +238,11 @@ export function useNutrition() {
     setSelectedDate,
     mealLogs,
     savedMeals,
-    waterCups,
     weeklyCheckins,
     loading,
     hasLoaded,
     addMealLog,
     deleteMealLog,
-    updateWater,
     saveWeeklyCheckin,
     saveMealTemplate
   };

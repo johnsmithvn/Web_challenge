@@ -34,11 +34,11 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { latest: latestWeight, addMeasurement, measurements, profile, tdee, hasLoaded: bioLoaded } = useBiometrics();
-  const { mealLogs, addMealLog, updateWater, waterCups, hasLoaded: nutLoaded } = useNutrition();
+  const { mealLogs, addMealLog, hasLoaded: nutLoaded } = useNutrition();
   const { activeRoutine, routineItems, sessions, recentSets, exerciseMap, hasLoaded: workoutsLoaded } = useWorkouts();
 
   const [quickModal, setQuickModal] = useState(false);
-  const [quickTab, setQuickTab] = useState('weight'); // 'weight' | 'meal' | 'water'
+  const [quickTab, setQuickTab] = useState('weight'); // 'weight' | 'meal'
   const [weightInput, setWeightInput] = useState(latestWeight?.weight ? String(latestWeight.weight) : '');
   const [weightTimeSlot, setWeightTimeSlot] = useState('morning');
   const [mealNameInput, setMealNameInput] = useState('');
@@ -550,20 +550,6 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     }
   };
 
-  const handleQuickWaterAdd = async (cupsToAdd) => {
-    try {
-      const nextCups = Math.max(0, (waterCups || 0) + cupsToAdd);
-      await updateWater?.(nextCups);
-      if (cupsToAdd > 0) {
-        showToast?.(`Đã thêm ${cupsToAdd * 250}ml nước (Tổng hôm nay: ${(nextCups * 0.25).toFixed(1)}L)`, 'success');
-      } else {
-        showToast?.(`Đã trừ 250ml nước (Tổng hôm nay: ${(nextCups * 0.25).toFixed(1)}L)`, 'info');
-      }
-    } catch (err) {
-      console.error('Error updating water:', err);
-      showToast?.('Lỗi cập nhật nước', 'error');
-    }
-  };
 
   if (!bioLoaded || !nutLoaded || !workoutsLoaded) {
     return <SkeletonList heading rows={4} gap="10px" label="Đang tải tổng quan" />;
@@ -1166,7 +1152,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
 
       </div>
 
-      {/* ── MODAL GHI NHANH HOẠT ĐỘNG (CÂN NẶNG / BỮA ĂN / NƯỚC UỐNG) ── */}
+      {/* ── MODAL GHI NHANH HOẠT ĐỘNG (CÂN NẶNG / BỮA ĂN) ── */}
       {quickModal && (
         <div className="body-modal-backdrop" onClick={() => setQuickModal(false)}>
           <div className="body-modal-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '440px', width: '100%' }}>
@@ -1188,10 +1174,10 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               </button>
             </div>
 
-            {/* 3 Tab chuyển đổi mục đích rõ ràng */}
+            {/* 2 Tab chuyển đổi mục đích: Cân nặng & Bữa ăn */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(2, 1fr)',
               gap: '6px',
               padding: '4px',
               borderRadius: '10px',
@@ -1200,8 +1186,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             }}>
               {[
                 { key: 'weight', label: 'Cân nặng', icon: '⚖️' },
-                { key: 'meal', label: 'Bữa ăn', icon: '🥗' },
-                { key: 'water', label: 'Nước uống', icon: '💧' }
+                { key: 'meal', label: 'Bữa ăn', icon: '🥗' }
               ].map(t => (
                 <button
                   key={t.key}
@@ -1400,107 +1385,6 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               </form>
             )}
 
-            {/* FORM 3: NƯỚC UỐNG */}
-            {quickTab === 'water' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', textAlign: 'center' }}>
-                <div style={{
-                  padding: '16px',
-                  borderRadius: '12px',
-                  background: 'rgba(76, 141, 224, 0.08)',
-                  border: '1px solid rgba(76, 141, 224, 0.2)',
-                  width: '100%',
-                  boxSizing: 'border-box'
-                }}>
-                  <div style={{ fontSize: '28px', marginBottom: '4px' }}>💧</div>
-                  <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                    {((waterCups || 0) * 0.25).toFixed(2)} L
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
-                    Đã uống {waterCups || 0} cốc · Mục tiêu khuyến nghị 2.0 L
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', width: '100%' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickWaterAdd(1)}
-                    style={{
-                      height: '42px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-card-bg)',
-                      fontWeight: 600,
-                      fontSize: '12.5px',
-                      color: 'var(--body-text-main)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    +250 ml (1 cốc)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickWaterAdd(2)}
-                    style={{
-                      height: '42px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-card-bg)',
-                      fontWeight: 600,
-                      fontSize: '12.5px',
-                      color: 'var(--body-text-main)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    +500 ml (2 cốc)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickWaterAdd(3)}
-                    style={{
-                      height: '42px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-card-bg)',
-                      fontWeight: 600,
-                      fontSize: '12.5px',
-                      color: 'var(--body-text-main)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    +750 ml (1 bình)
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '4px' }}>
-                  <button
-                    type="button"
-                    disabled={!waterCups || waterCups <= 0}
-                    onClick={() => handleQuickWaterAdd(-1)}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'transparent',
-                      color: 'var(--body-text-muted)',
-                      fontSize: '11.5px',
-                      cursor: waterCups > 0 ? 'pointer' : 'not-allowed',
-                      opacity: waterCups > 0 ? 1 : 0.5
-                    }}
-                  >
-                    −250 ml (Trừ bớt)
-                  </button>
-
-                  <button
-                    type="button"
-                    className="body-btn body-btn-secondary"
-                    onClick={() => setQuickModal(false)}
-                    style={{ height: '36px', padding: '0 16px' }}
-                  >
-                    Đóng
-                  </button>
-                </div>
-              </div>
-            )}
 
           </div>
         </div>
