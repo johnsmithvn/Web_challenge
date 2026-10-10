@@ -18,6 +18,8 @@ import {
   taskDayMark,
   bucketTasksByDay,
   isStartAfterDue,
+  slotTimeFromOffset,
+  rescheduleTaskPatch,
 } from '../../utils/calendarTimeUtils.js';
 
 // v6.21.0: khối thời gian = Bắt đầu → Hạn CÙNG ngày (không còn end_time).
@@ -258,5 +260,48 @@ const tripleRes = computeDayLayout(tripleOverlap, D, 45, 60);
 assert.equal(tripleRes.timedTasks.length, 3);
 assert.ok(tripleRes.timedTasks[0]._layout.width.includes('33.333333333333336%') || tripleRes.timedTasks[0]._layout.width.includes('33.33%'));
 console.log('3-column overlapping split: OK');
+
+// ── Kéo thả đổi ngày/giờ ──────────────────────────────────────────────────
+assert.equal(slotTimeFromOffset(0, 54), '00:00');
+assert.equal(slotTimeFromOffset(54 * 9 + 40, 54), '09:30', 'làm tròn xuống 30 phút');
+assert.equal(slotTimeFromOffset(99999, 54), '23:30', 'kẹp cuối ngày');
+assert.equal(slotTimeFromOffset(56 * 2, 56, 6), '08:00', 'lưới bắt đầu 6h');
+
+// Thả vào ô Tháng: giữ giờ, chỉ đổi ngày
+assert.deepEqual(
+  rescheduleTaskPatch({ due_date: '2026-10-10', due_time: '09:00:00' }, '2026-10-12'),
+  { due_date: '2026-10-12' }
+);
+// Việc nhiều ngày: Bắt đầu dời cùng số ngày
+assert.deepEqual(
+  rescheduleTaskPatch({ start_date: '2026-10-08', due_date: '2026-10-10' }, '2026-10-13'),
+  { due_date: '2026-10-13', start_date: '2026-10-11' }
+);
+// Thả vào hàng Cả ngày: bỏ giờ
+assert.deepEqual(
+  rescheduleTaskPatch({ due_date: '2026-10-10', due_time: '09:00:00' }, '2026-10-10', null),
+  { due_date: '2026-10-10', due_time: null }
+);
+// Khối Bắt đầu→Hạn cùng ngày: dời cả khối, giữ thời lượng 90 phút
+assert.deepEqual(
+  rescheduleTaskPatch(
+    { start_date: '2026-10-10', start_time: '09:00:00', due_date: '2026-10-10', due_time: '10:30:00' },
+    '2026-10-11',
+    '14:00'
+  ),
+  { due_date: '2026-10-11', start_date: '2026-10-11', start_time: '14:00', due_time: '15:30' }
+);
+// Không đổi gì → null
+assert.equal(rescheduleTaskPatch({ due_date: '2026-10-10', due_time: '09:00:00' }, '2026-10-10', '09:00'), null);
+// Bắt đầu cùng ngày nhưng muộn hơn giờ Hạn mới → bỏ giờ Bắt đầu
+assert.deepEqual(
+  rescheduleTaskPatch(
+    { start_date: '2026-10-09', start_time: '20:00:00', due_date: '2026-10-10', due_time: '21:00:00' },
+    '2026-10-11',
+    '08:00'
+  ),
+  { due_date: '2026-10-11', start_date: '2026-10-10', due_time: '08:00' }
+);
+console.log('drag-drop reschedule: OK');
 
 console.log('\n✅ weekCalendarLogic — tất cả kiểm thử logic Lịch Tuần PASS (100% covered)');

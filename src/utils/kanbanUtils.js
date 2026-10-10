@@ -135,6 +135,7 @@ export function calculateKanbanCounts({
   pendingTasks = [],
   skippedTasks = [],
   completedToday = [],
+  completedRecent = null,
   today,
   searchQuery = '',
   subtasksByParent = new Map(),
@@ -152,6 +153,8 @@ export function calculateKanbanCounts({
   const allPending = pendingTasks.filter(filterFn);
   const allSkipped = skippedTasks.filter(filterFn);
   const allCompletedToday = completedToday.filter(filterFn);
+  // 'Tất cả' đếm đúng tập việc xong mà cột Hoàn thành đang hiện (vd 30 ngày gần nhất)
+  const allCompleted = completedRecent ? completedRecent.filter(filterFn) : allCompletedToday;
 
   let todayCount = allCompletedToday.length;
   let next7dCount = allCompletedToday.length;
@@ -170,7 +173,7 @@ export function calculateKanbanCounts({
   }
 
   return {
-    all: allPending.length + allSkipped.length + allCompletedToday.length,
+    all: allPending.length + allSkipped.length + allCompleted.length,
     today: todayCount,
     '7d': next7dCount,
     late: lateCount,

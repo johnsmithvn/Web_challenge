@@ -4,64 +4,38 @@ import { useConfirm } from './ConfirmModal';
 import { toDateStr, formatDate } from '../utils/dateUtils';
 import { getKanbanRange, groupKanbanColumns, matchTaskSearch, calculateKanbanCounts } from '../utils/kanbanUtils';
 import { subtaskProgressByParent } from '../utils/subtaskUtils';
-import { parseTaskQuickText, PRIORITY_LABELS } from '../utils/taskNlpParser';
+import { parseTaskQuickText, PRIORITY_LABELS, shiftDateDays } from '../utils/taskNlpParser';
 import { describeRecurrence } from '../utils/taskFields';
 import { useTags } from '../hooks/useTags';
-import { StatusPopover, PriorityPopover, TaskDatePickerPopover } from './TaskFloatingPopovers';
+import { StatusPopover, PriorityPopover, TaskDatePickerPopover, DateRangePopover } from './TaskFloatingPopovers';
 import '../styles/kanban.css';
 import '../styles/tasks-aurora.css';
 
+// Màu theo tình trạng thời gian lấy từ token CSS (--tk-ks-*) để bản tối/sáng tự đổi.
+const ksVars = (k) => ({
+  glow: `var(--tk-ks-${k}-glow)`,
+  tint: `var(--tk-ks-${k}-tint)`,
+  badgeFg: `var(--tk-ks-${k}-fg)`,
+  badgeBg: `var(--tk-ks-${k}-bg)`,
+  badgeBd: `var(--tk-ks-${k}-bd)`,
+});
 const CARD_STATUS_STYLES = {
-  late: {
-    glow: '#FF8A98',
-    tint: 'rgba(255, 92, 112, 0.07)',
-    badgeFg: '#FF8A98',
-    badgeBg: 'rgba(255, 92, 112, 0.12)',
-    badgeBd: 'rgba(255, 92, 112, 0.3)',
-    badgeIcon: 'warning',
-  },
-  today: {
-    glow: '#FCD34D',
-    tint: 'rgba(251, 191, 36, 0.05)',
-    badgeFg: '#FCD34D',
-    badgeBg: 'rgba(251, 191, 36, 0.12)',
-    badgeBd: 'rgba(251, 191, 36, 0.3)',
-    badgeIcon: 'clock',
-  },
-  soon: {
-    glow: '#93C5FD',
-    tint: 'transparent',
-    badgeFg: '#93C5FD',
-    badgeBg: 'rgba(96, 165, 250, 0.10)',
-    badgeBd: 'rgba(96, 165, 250, 0.25)',
-    badgeIcon: 'calendar',
-  },
-  none: {
-    glow: 'rgba(255, 255, 255, 0.12)',
-    tint: 'transparent',
-    badgeFg: 'var(--tk-text-mute, #8A93AD)',
-    badgeBg: 'transparent',
-    badgeBd: 'var(--tk-border, rgba(255, 255, 255, 0.16))',
-    borderDashed: true,
-    badgeIcon: 'calendar',
-  },
-  done: {
-    glow: '#34D399',
-    tint: 'rgba(52, 211, 153, 0.05)',
-    badgeFg: '#6EE7B7',
-    badgeBg: 'rgba(52, 211, 153, 0.12)',
-    badgeBd: 'rgba(52, 211, 153, 0.3)',
-    badgeIcon: 'check',
-  },
-  skip: {
-    glow: '#94A3B8',
-    tint: 'transparent',
-    badgeFg: '#A9B4C6',
-    badgeBg: 'rgba(148, 163, 184, 0.08)',
-    badgeBd: 'rgba(148, 163, 184, 0.2)',
-    badgeIcon: 'minus',
-  },
+  late: { ...ksVars('late'), badgeIcon: 'warning' },
+  today: { ...ksVars('today'), badgeIcon: 'clock' },
+  soon: { ...ksVars('soon'), badgeIcon: 'calendar' },
+  none: { ...ksVars('none'), badgeIcon: 'calendar', borderDashed: true },
+  done: { ...ksVars('done'), badgeIcon: 'check' },
+  skip: { ...ksVars('skip'), badgeIcon: 'minus' },
 };
+
+const FILTERS = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'today', label: 'Hôm nay' },
+  { id: '7d', label: '7 ngày tới' },
+  { id: 'late', label: 'Quá hạn' },
+];
+const shortDM = (v) => `${Number(v.slice(8, 10))}/${Number(v.slice(5, 7))}`;
+const MOBILE_MQ = '(max-width: 640px)';
 
 /**
  * TaskKanbanView — Bảng Kanban 4 cột chuẩn thiết kế Vũ trụ Aurora & Clean Pastel.
@@ -87,8 +61,22 @@ export default function TaskKanbanView({
   const { ConfirmModal } = useConfirm();
   const today = useMemo(() => toDateStr(), []);
 
-  // State bộ lọc thời gian: 'all' | 'today' | '7d' | 'late'
+  // State bộ lọc thời gian: 'all' | 'today' | '7d' | 'late' | 'custom' (Chọn ngày)
   const [timeFilter, setTimeFilter] = useState('all');
+  const [customRange, setCustomRange] = useState(null); // { customFrom, customTo }
+  const [rangePop, setRangePop] = useState(null); // { x, y }
+
+  // Mobile: hiện từng cột, chuyển bằng tab trạng thái hoặc vuốt ngang
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia?.(MOBILE_MQ).matches ?? false);
+  const [mobileCol, setMobileCol] = useState('todo');
+  const [touchX, setTouchX] = useState(null);
+  useEffect(() => {
+    const mq = window.matchMedia?.(MOBILE_MQ);
+    if (!mq) return;
+    const onChange = (e) => setIsMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   // Quản lý cột thu gọn (Mặc định thu gọn cột Bỏ qua)
   const [collapsedCols, setCollapsedCols] = useState(() => {
@@ -151,12 +139,24 @@ export default function TaskKanbanView({
 
   // Tải danh sách task đã hoàn thành theo khoảng thời gian (khi lọc 'late' thì không cần fetch)
   const range = useMemo(
-    () => getKanbanRange(timeFilter, today, null),
-    [timeFilter, today]
+    () => getKanbanRange(timeFilter, today, customRange),
+    [timeFilter, today, customRange]
   );
 
+  // Việc xong 30 ngày gần nhất: nguồn của cột Hoàn thành khi xem 'Tất cả' và của số đếm.
+  // ponytail: 30 ngày, xem cũ hơn bằng 'Chọn ngày'
+  const [recentDone, setRecentDone] = useState([]);
   useEffect(() => {
-    if (!getCompletedTasksRange || timeFilter === 'late') return;
+    if (!getCompletedTasksRange) return;
+    let stale = false;
+    getCompletedTasksRange(shiftDateDays(-30, today), today).then((rows) => {
+      if (!stale) setRecentDone(rows || []);
+    });
+    return () => { stale = true; };
+  }, [getCompletedTasksRange, refreshKey, today]);
+
+  useEffect(() => {
+    if (!getCompletedTasksRange || timeFilter === 'late' || timeFilter === 'all') return;
     let stale = false;
     getCompletedTasksRange(range?.from ?? '2020-01-01', range?.to ?? '2099-12-31').then((rows) => {
       if (stale) return;
@@ -175,11 +175,23 @@ export default function TaskKanbanView({
     return baseList.filter((t) => matchTaskSearch(t, searchQuery, subtasksByParent.get(t.id) || []));
   }, [pendingTasks, skippedTasks, timeFilter, searchQuery, subtasksByParent]);
 
+  // Việc xong = bản fetch + việc vừa xong trong state (để thẻ vừa kéo sang Hoàn thành không biến mất),
+  // trừ việc đã mở lại (nằm trong pending/skipped).
+  const doneSource = useMemo(() => {
+    const openIds = new Set([...pendingTasks, ...skippedTasks].map((t) => t.id));
+    const map = new Map();
+    for (const t of timeFilter === 'all' ? recentDone : completedRangeTasks) {
+      if (!openIds.has(t.id)) map.set(t.id, t);
+    }
+    for (const t of taskModel.completedToday || []) map.set(t.id, t);
+    return [...map.values()];
+  }, [timeFilter, recentDone, completedRangeTasks, pendingTasks, skippedTasks, taskModel.completedToday]);
+
   const completedList = useMemo(() => {
     if (timeFilter === 'late') return [];
-    if (!searchQuery.trim()) return completedRangeTasks;
-    return completedRangeTasks.filter((t) => matchTaskSearch(t, searchQuery, subtasksByParent.get(t.id) || []));
-  }, [completedRangeTasks, timeFilter, searchQuery, subtasksByParent]);
+    if (!searchQuery.trim()) return doneSource;
+    return doneSource.filter((t) => matchTaskSearch(t, searchQuery, subtasksByParent.get(t.id) || []));
+  }, [doneSource, timeFilter, searchQuery, subtasksByParent]);
 
   // Danh sách toàn bộ task trong tầm hiển thị của Kanban (hỗ trợ HTML5 drag-and-drop an toàn)
   const allTasks = useMemo(() => [...openTasks, ...completedList], [openTasks, completedList]);
@@ -190,11 +202,17 @@ export default function TaskKanbanView({
       pendingTasks,
       skippedTasks,
       completedToday: taskModel.completedToday || [],
+      completedRecent: (() => {
+        const map = new Map(recentDone.map((t) => [t.id, t]));
+        for (const t of taskModel.completedToday || []) map.set(t.id, t);
+        const openIds = new Set([...pendingTasks, ...skippedTasks].map((t) => t.id));
+        return [...map.values()].filter((t) => !openIds.has(t.id));
+      })(),
       today,
       searchQuery,
       subtasksByParent,
     });
-  }, [pendingTasks, skippedTasks, taskModel.completedToday, today, searchQuery, subtasksByParent]);
+  }, [pendingTasks, skippedTasks, taskModel.completedToday, recentDone, today, searchQuery, subtasksByParent]);
 
   // Chia cột theo hàm chuẩn kanbanUtils
   const groupedCols = useMemo(() => {
@@ -296,14 +314,14 @@ export default function TaskKanbanView({
 
   // Màu sắc cho 4 cột
   const colColors = {
-    todo: { dot: '#60A5FA', tint: 'rgba(96,165,250,.05)', title: 'Cần làm' },
-    doing: { dot: '#FBBF24', tint: 'rgba(251,191,36,.04)', title: 'Đang làm' },
-    done: { dot: '#34D399', tint: 'rgba(52,211,153,.04)', title: 'Hoàn thành' },
-    skip: { dot: '#94A3B8', tint: 'rgba(148,163,184,.03)', title: 'Bỏ qua' },
+    todo: { dot: 'var(--tk-st-todo)', title: 'Cần làm' },
+    doing: { dot: 'var(--tk-st-doing)', title: 'Đang làm' },
+    done: { dot: 'var(--tk-st-done)', title: 'Hoàn thành' },
+    skip: { dot: 'var(--tk-st-skip)', title: 'Bỏ qua' },
   };
 
   return (
-    <div className="tasks-workspace">
+    <div className="tk-kanban-wrap">
       {ConfirmModal}
 
       {/* Popovers nổi tại chỗ */}
@@ -333,141 +351,122 @@ export default function TaskKanbanView({
         />
       )}
 
-      {/* Thanh Filter & Search Bar chuẩn mockup */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px',
-          marginBottom: '14px',
-          padding: '0 2px',
-        }}
-      >
-        {/* Bộ lọc thời gian chuẩn 4 pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {[
-            { id: 'all', label: 'Tất cả' },
-            { id: 'today', label: 'Hôm nay' },
-            { id: '7d', label: '7 ngày tới' },
-            { id: 'late', label: 'Quá hạn' },
-          ].map((f) => {
-            const isActive = timeFilter === f.id;
-            const cnt = filterCounts[f.id] ?? 0;
-            return (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setTimeFilter(f.id)}
-                style={{
-                  height: '30px',
-                  padding: '0 12px',
-                  borderRadius: '999px',
-                  fontSize: '12.5px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  border: isActive ? '1px solid var(--tk-accent, #5EF2C2)' : '1px solid var(--tk-border, rgba(255,255,255,0.08))',
-                  background: isActive ? 'rgba(94, 242, 194, 0.12)' : 'var(--tk-card-bg, rgba(14,19,36,0.6))',
-                  color: isActive ? 'var(--tk-accent, #5EF2C2)' : 'var(--tk-text-sub, #8A93AD)',
-                  transition: 'all 0.15s ease',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                <span>{f.label}</span>
-                <span
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '11px',
-                    opacity: 0.75,
-                  }}
-                >
-                  {cnt}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Ô tìm kiếm từ khóa real-time + hiển thị số kết quả */}
-        <div
-          style={{
-            marginLeft: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
+      {rangePop && (
+        <DateRangePopover
+          initialFrom={customRange?.customFrom}
+          initialTo={customRange?.customTo}
+          onApply={(from, to) => {
+            setCustomRange({ customFrom: from, customTo: to });
+            setTimeFilter('custom');
           }}
+          onClose={() => setRangePop(null)}
+          style={{ position: 'fixed', top: `${rangePop.y}px`, left: `${rangePop.x}px` }}
+        />
+      )}
+
+      {/* Thanh lọc & tìm kiếm */}
+      <div className="tk-filter-bar">
+        {FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setTimeFilter(f.id)}
+            className={`tk-filter-pill${timeFilter === f.id ? ' tk-filter-pill--active' : ''}`}
+          >
+            <span>{f.label}</span>
+            <span className="tk-filter-pill__count">{filterCounts[f.id] ?? 0}</span>
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setRangePop({ x: r.left, y: r.bottom + 6 });
+          }}
+          className={`tk-filter-pill${timeFilter === 'custom' ? ' tk-filter-pill--active' : ''}`}
         >
-          {searchQuery && (
+          <AppIcon name="calendar" size={13} />
+          <span>
+            {timeFilter === 'custom' && customRange
+              ? customRange.customFrom === customRange.customTo
+                ? shortDM(customRange.customFrom)
+                : `${shortDM(customRange.customFrom)} – ${shortDM(customRange.customTo)}`
+              : 'Chọn ngày'}
+          </span>
+          {timeFilter === 'custom' && (
             <span
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontWeight: 500,
-                fontSize: '11.5px',
-                color: 'var(--tk-text-sub, #8A93AD)',
-                whiteSpace: 'nowrap',
+              role="button"
+              aria-label="Bỏ lọc ngày"
+              onClick={(e) => {
+                e.stopPropagation();
+                setTimeFilter('all');
+                setCustomRange(null);
               }}
+              style={{ display: 'inline-grid', placeItems: 'center' }}
             >
-              {totalFiltered} kết quả
+              <AppIcon name="x" size={12} />
             </span>
           )}
-          <div
-            style={{
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              width: '260px',
-            }}
-          >
-            <span style={{ position: 'absolute', left: '10px', color: 'var(--tk-text-mute, #5B6480)', display: 'grid', placeItems: 'center' }}>
-              <AppIcon name="search" size={13} />
-            </span>
-            <input
-              type="text"
-              placeholder="Tìm việc, #nhãn, mô tả..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                height: '32px',
-                padding: '0 28px 0 30px',
-                borderRadius: '999px',
-                border: '1px solid var(--tk-border, rgba(255,255,255,0.08))',
-                background: 'var(--tk-card-bg, rgba(14,19,36,0.6))',
-                color: 'var(--tk-text-main, #E8ECF7)',
-                fontSize: '12.5px',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                style={{
-                  position: 'absolute',
-                  right: '8px',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--tk-text-mute, #5B6480)',
-                  cursor: 'pointer',
-                  padding: '2px',
-                  fontSize: '12px',
-                }}
-              >
-                ✕
+        </button>
+
+        <div className="tk-search-box">
+          <AppIcon name="search" size={13} style={{ color: 'var(--tk-text-mute)' }} />
+          <input
+            type="text"
+            placeholder="Tìm việc, #nhãn, mô tả..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setSearchQuery(''); }}
+          />
+          {searchQuery && (
+            <>
+              <span className="tk-filter-pill__count" style={{ color: 'var(--tk-text-sub)', whiteSpace: 'nowrap' }}>
+                {totalFiltered} kết quả
+              </span>
+              <button type="button" className="tk-icon-btn" onClick={() => setSearchQuery('')} aria-label="Xóa tìm kiếm">
+                <AppIcon name="x" size={12} />
               </button>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
 
+      {/* Mobile: tab trạng thái thay cho 4 cột (ẩn trên desktop bằng CSS) */}
+      <div className="tk-kanban-tabs" role="tablist">
+        {columns.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            role="tab"
+            aria-selected={mobileCol === c.key}
+            onClick={() => setMobileCol(c.key)}
+            className={`tk-kanban-tab${mobileCol === c.key ? ' tk-kanban-tab--active' : ''}`}
+            style={{ '--tab-c': colColors[c.key].dot }}
+          >
+            <span className="tk-col-header__dot" style={{ background: colColors[c.key].dot }} />
+            {colColors[c.key].title}
+            <span className="tk-filter-pill__count">{c.tasks.length}</span>
+          </button>
+        ))}
+      </div>
+
       {/* Bảng Kanban 4 cột */}
-      <div className="tk-kanban-board">
+      <div
+        className="tk-kanban-board"
+        onTouchStart={(e) => setTouchX(e.touches[0].clientX)}
+        onTouchEnd={(e) => {
+          if (touchX === null) return;
+          const dx = e.changedTouches[0].clientX - touchX;
+          setTouchX(null);
+          if (Math.abs(dx) < 60) return;
+          const keys = columns.map((c) => c.key);
+          const i = Math.max(0, Math.min(keys.length - 1, keys.indexOf(mobileCol) + (dx < 0 ? 1 : -1)));
+          setMobileCol(keys[i]);
+        }}
+      >
         {columns.map((col) => {
-          const isCollapsed = collapsedCols.has(col.key);
+          const isCollapsed = !isMobile && collapsedCols.has(col.key);
+          if (isMobile && col.key !== mobileCol) return null;
           const colInfo = colColors[col.key] || colColors.todo;
           const isOver = dragOverCol === col.key;
           const isAdding = activeAddingCol === col.key;
@@ -553,7 +552,7 @@ export default function TaskKanbanView({
                             height: '20px',
                             padding: '0 6px',
                             borderRadius: '4px',
-                            background: 'rgba(94, 242, 194, 0.1)',
+                            background: 'var(--tk-accent-soft)',
                             color: 'var(--tk-accent)',
                             fontSize: '11px',
                             display: 'inline-flex',
@@ -678,8 +677,8 @@ export default function TaskKanbanView({
                               });
                             }}
                             style={{
-                              background: 'rgba(255, 255, 255, 0.04)',
-                              border: '1px solid rgba(255, 255, 255, 0.09)',
+                              background: 'var(--tk-border-soft)',
+                              border: '1px solid var(--tk-border)',
                               color: PRIORITY_LABELS[task.priority]?.color || 'var(--tk-text-sub)',
                             }}
                           >
@@ -709,7 +708,7 @@ export default function TaskKanbanView({
                               borderRadius: '6px',
                               display: 'grid',
                               placeItems: 'center',
-                              border: '1px dashed rgba(255, 255, 255, 0.18)',
+                              border: '1px dashed var(--tk-border-strong)',
                               color: 'var(--tk-text-mute, #5B6480)',
                               background: 'transparent',
                               cursor: 'pointer',
@@ -727,8 +726,8 @@ export default function TaskKanbanView({
                             className="tk-badge-pill"
                             title={`Lặp lại: ${describeRecurrence(task.recurrence_rule)}`}
                             style={{
-                              background: 'rgba(94, 242, 194, 0.08)',
-                              border: '1px solid rgba(94, 242, 194, 0.25)',
+                              background: 'var(--tk-accent-soft)',
+                              border: '1px solid var(--tk-accent-border)',
                               color: 'var(--tk-accent, #5EF2C2)',
                             }}
                           >
@@ -745,7 +744,7 @@ export default function TaskKanbanView({
                               fontFamily: "'JetBrains Mono', monospace",
                               fontWeight: 500,
                               fontSize: '11px',
-                              color: '#FF8A98',
+                              color: 'var(--tk-ks-late-fg)',
                             }}
                           >
                             trễ {daysLate} ngày
@@ -785,7 +784,7 @@ export default function TaskKanbanView({
                             fontSize: '13.5px',
                             fontWeight: 600,
                             lineHeight: 1.4,
-                            color: isDone ? '#6EE7B7' : 'var(--tk-text-main, #E8ECF7)',
+                            color: isDone ? 'var(--tk-text-done)' : 'var(--tk-text-main)',
                             textDecoration: isDone ? 'line-through' : 'none',
                           }}
                         >
@@ -849,7 +848,7 @@ export default function TaskKanbanView({
                                 width: '22px',
                                 height: '3px',
                                 borderRadius: '2px',
-                                background: 'rgba(255, 255, 255, 0.1)',
+                                background: 'var(--tk-border)',
                                 overflow: 'hidden',
                                 display: 'inline-block',
                               }}
@@ -859,7 +858,7 @@ export default function TaskKanbanView({
                                   display: 'block',
                                   height: '100%',
                                   width: `${progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%`,
-                                  background: '#34D399',
+                                  background: 'var(--tk-st-done)',
                                   transition: 'width 0.2s ease',
                                 }}
                               />
@@ -883,7 +882,7 @@ export default function TaskKanbanView({
                             marginLeft: '24px',
                             padding: '6px 8px',
                             borderRadius: '8px',
-                            background: 'rgba(0,0,0,0.2)',
+                            background: 'var(--tk-border-soft)',
                             border: '1px solid var(--tk-border-soft)',
                             display: 'flex',
                             flexDirection: 'column',

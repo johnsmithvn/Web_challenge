@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import AppIcon from './AppIcon';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 import { toDateStr } from '../utils/dateUtils';
+import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
 
 /**
  * TaskFloatingPopovers — Tập hợp các floating popovers xuất hiện tại chỗ khi click thẻ:
@@ -14,21 +15,13 @@ import { toDateStr } from '../utils/dateUtils';
 export function StatusPopover({ currentStatus, onSelect, onClose, style }) {
   const ref = useRef(null);
 
-  useEffect(() => {
-    const handleDown = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        onClose();
-      }
-    };
-    window.addEventListener('pointerdown', handleDown);
-    return () => window.removeEventListener('pointerdown', handleDown);
-  }, [onClose]);
+  usePopoverShell(ref, onClose);
 
   const items = [
-    { key: 'todo', label: 'Cần làm', color: '#60A5FA', icon: 'circle' },
-    { key: 'doing', label: 'Đang làm', color: '#FBBF24', icon: 'hourglass' },
-    { key: 'done', label: 'Hoàn thành', color: '#34D399', icon: 'check-circle' },
-    { key: 'skip', label: 'Bỏ qua', color: '#94A3B8', icon: 'prohibit' },
+    { key: 'todo', label: 'Cần làm', color: 'var(--tk-st-todo)', icon: 'circle' },
+    { key: 'doing', label: 'Đang làm', color: 'var(--tk-st-doing)', icon: 'hourglass' },
+    { key: 'done', label: 'Hoàn thành', color: 'var(--tk-st-done)', icon: 'check-circle' },
+    { key: 'skip', label: 'Bỏ qua', color: 'var(--tk-st-skip)', icon: 'prohibit' },
   ];
 
   return (
@@ -86,15 +79,7 @@ export function StatusPopover({ currentStatus, onSelect, onClose, style }) {
 export function PriorityPopover({ currentPriority = 0, onSelect, onClose, style }) {
   const ref = useRef(null);
 
-  useEffect(() => {
-    const handleDown = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        onClose();
-      }
-    };
-    window.addEventListener('pointerdown', handleDown);
-    return () => window.removeEventListener('pointerdown', handleDown);
-  }, [onClose]);
+  usePopoverShell(ref, onClose);
 
   const levels = [5, 4, 3, 2, 1, 0];
   const colors = {
@@ -102,8 +87,8 @@ export function PriorityPopover({ currentPriority = 0, onSelect, onClose, style 
     4: '#F97316',
     3: '#EAB308',
     2: '#3B82F6',
-    1: '#94A3B8',
-    0: '#5B6480',
+    1: 'var(--tk-st-skip)',
+    0: 'var(--tk-text-mute)',
   };
 
   return (
@@ -158,201 +143,260 @@ export function PriorityPopover({ currentPriority = 0, onSelect, onClose, style 
   );
 }
 
-export function TaskDatePickerPopover({
-  initialDate,
-  initialTime,
-  onSave,
-  onClose,
-  style,
-}) {
-  const ref = useRef(null);
+const DOW_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const shiftStr = (base, n) => {
+  const [y, m, d] = base.split('-').map(Number);
+  return toDateStr(new Date(y, m - 1, d + n));
+};
+const shortDM = (v) => `${Number(v.slice(8, 10))}/${Number(v.slice(5, 7))}`;
+const monthOf = (v) => new Date(Number(v.slice(0, 4)), Number(v.slice(5, 7)) - 1, 1);
 
+// Đóng khi bấm ra ngoài / Esc, và đẩy popover (position: fixed) vào trong khung nhìn — lật lên khi sát đáy.
+function usePopoverShell(ref, onClose) {
   useEffect(() => {
-    const handleDown = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        onClose();
-      }
+    const down = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    const key = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('pointerdown', down);
+    window.addEventListener('keydown', key);
+    return () => {
+      window.removeEventListener('pointerdown', down);
+      window.removeEventListener('keydown', key);
     };
-    window.addEventListener('pointerdown', handleDown);
-    return () => window.removeEventListener('pointerdown', handleDown);
-  }, [onClose]);
+  }, [ref, onClose]);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || getComputedStyle(el).position !== 'fixed') return;
+    const r = el.getBoundingClientRect();
+    if (r.bottom > window.innerHeight - 8) el.style.top = `${Math.max(8, window.innerHeight - r.height - 8)}px`;
+    if (r.right > window.innerWidth - 8) el.style.left = `${Math.max(8, window.innerWidth - r.width - 8)}px`;
+  }, [ref]);
+}
+
+/** Lưới tháng (CN đầu tuần) có ngày âm dưới mỗi ô. `cellState(v)` → { sel, inRange }. */
+function MonthGrid({ month, setMonth, cellState, onPick }) {
+  const todayStr = toDateStr();
+  const Y = month.getFullYear();
+  const M = month.getMonth();
+  const first = new Date(Y, M, 1).getDay();
+  const nd = new Date(Y, M + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < first; i++) cells.push(null);
+  for (let d = 1; d <= nd; d++) cells.push(d);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button type="button" className="tk-icon-btn" onClick={() => setMonth(new Date(Y, M - 1, 1))} aria-label="Tháng trước">
+          <AppIcon name="caretLeft" size={13} />
+        </button>
+        <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--tk-text-main)' }}>Tháng {M + 1}, {Y}</span>
+        <button type="button" className="tk-icon-btn" onClick={() => setMonth(new Date(Y, M + 1, 1))} aria-label="Tháng sau">
+          <AppIcon name="caretRight" size={13} />
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+        {DOW_SHORT.map((d, i) => (
+          <span key={d} style={{ textAlign: 'center', fontSize: '10.5px', fontWeight: 600, color: i === 0 ? 'var(--tk-sun)' : 'var(--tk-text-mute)' }}>{d}</span>
+        ))}
+        {cells.map((d, i) => {
+          if (!d) return <span key={`e${i}`} />;
+          const v = toDateStr(new Date(Y, M, d));
+          const { sel, inRange } = cellState(v);
+          const sun = (first + d - 1) % 7 === 0;
+          return (
+            <button
+              key={v}
+              type="button"
+              onClick={() => onPick(v)}
+              className="tk-cal-cell"
+              style={{
+                background: sel ? 'var(--tk-sel-bg)' : inRange ? 'var(--tk-accent-soft)' : 'transparent',
+                color: sel ? 'var(--tk-sel-fg)' : sun ? 'var(--tk-sun)' : 'var(--tk-text-main)',
+                boxShadow: v === todayStr && !sel ? 'inset 0 0 0 1px var(--tk-accent)' : 'none',
+              }}
+            >
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1 }}>{d}</span>
+              <span style={{ fontSize: '8.5px', lineHeight: 1, color: sel ? 'inherit' : 'var(--tk-text-mute)' }}>
+                {lunarLabel(solarToLunar(d, M + 1, Y))}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const chipStyle = (on) => ({
+  height: '28px',
+  borderRadius: '7px',
+  border: '1px solid var(--tk-border)',
+  background: on ? 'var(--tk-sel-bg)' : 'var(--tk-border-soft)',
+  color: on ? 'var(--tk-sel-fg)' : 'var(--tk-text-main)',
+  fontSize: '11.5px',
+  fontWeight: 500,
+  cursor: 'pointer',
+});
+
+/** Chọn hạn: lối tắt, lịch có ngày âm, giờ (hoặc Cả ngày). Chỉ lưu khi bấm Lưu. */
+export function TaskDatePickerPopover({ initialDate, initialTime, onSave, onClose, style }) {
+  const ref = useRef(null);
+  usePopoverShell(ref, onClose);
 
   const todayStr = toDateStr();
+  const init = { due: initialDate || null, tm: initialTime ? initialTime.slice(0, 5) : null };
+  const [draft, setDraft] = useState(init);
+  const [month, setMonth] = useState(() => monthOf(initialDate || todayStr));
+  const dirty = draft.due !== init.due || draft.tm !== init.tm;
 
-  const handleShortcut = (daysToAdd, timeStr = null) => {
-    const [y, m, d] = todayStr.split('-').map(Number);
-    const dt = new Date(y, m - 1, d);
-    dt.setDate(dt.getDate() + daysToAdd);
-    const yy = dt.getFullYear();
-    const mm = String(dt.getMonth() + 1).padStart(2, '0');
-    const dd = String(dt.getDate()).padStart(2, '0');
-    onSave(`${yy}-${mm}-${dd}`, timeStr !== null ? timeStr : initialTime);
-    onClose();
-  };
+  const dow = new Date().getDay();
+  const quick = [
+    ['Hôm nay', 0],
+    ['Ngày mai', 1],
+    ['Thứ Hai', ((1 - dow + 7) % 7) || 7],
+    ['Tuần sau', 7],
+  ].map(([label, n]) => ({ label, v: shiftStr(todayStr, n) }));
+
+  const label = draft.due
+    ? `${DOW_SHORT[new Date(`${draft.due}T00:00:00`).getDay()]} ${shortDM(draft.due)} · ${draft.tm || 'cả ngày'}`
+    : 'Không hạn';
 
   return (
     <div
       ref={ref}
       className="tk-popover"
-      style={{
-        width: '260px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-        ...style,
-      }}
+      style={{ width: '264px', display: 'flex', flexDirection: 'column', gap: '8px', ...style }}
       onClick={(e) => e.stopPropagation()}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--tk-text-mute)' }}>
-          Chọn ngày & giờ
-        </span>
+        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--tk-text-main)' }}>{label}</span>
         <button
           type="button"
-          onClick={() => {
-            onSave(null, null);
-            onClose();
-          }}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--tk-text-mute)',
-            fontSize: '11.5px',
-            cursor: 'pointer',
-          }}
+          onClick={() => setDraft({ due: null, tm: null })}
+          style={{ background: 'none', border: 'none', color: 'var(--tk-text-mute)', fontSize: '11.5px', cursor: 'pointer' }}
         >
           Xóa hạn
         </button>
       </div>
 
-      {/* Phím tắt nhanh */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
-        <button
-          type="button"
-          onClick={() => handleShortcut(0)}
-          style={{
-            height: '30px',
-            borderRadius: '6px',
-            border: '1px solid var(--tk-border)',
-            background: 'var(--tk-border-soft)',
-            color: 'var(--tk-text-main)',
-            fontSize: '12px',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          Hôm nay
-        </button>
-        <button
-          type="button"
-          onClick={() => handleShortcut(1)}
-          style={{
-            height: '30px',
-            borderRadius: '6px',
-            border: '1px solid var(--tk-border)',
-            background: 'var(--tk-border-soft)',
-            color: 'var(--tk-text-main)',
-            fontSize: '12px',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          Ngày mai
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const dow = new Date().getDay();
-            const daysUntilMonday = ((1 - dow + 7) % 7) || 7;
-            handleShortcut(daysUntilMonday);
-          }}
-          style={{
-            height: '30px',
-            borderRadius: '6px',
-            border: '1px solid var(--tk-border)',
-            background: 'var(--tk-border-soft)',
-            color: 'var(--tk-text-main)',
-            fontSize: '12px',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          Thứ Hai
-        </button>
-        <button
-          type="button"
-          onClick={() => handleShortcut(7)}
-          style={{
-            height: '30px',
-            borderRadius: '6px',
-            border: '1px solid var(--tk-border)',
-            background: 'var(--tk-border-soft)',
-            color: 'var(--tk-text-main)',
-            fontSize: '12px',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
-        >
-          Tuần sau
-        </button>
+        {quick.map((q) => (
+          <button
+            key={q.label}
+            type="button"
+            onClick={() => {
+              setDraft((d) => ({ ...d, due: q.v }));
+              setMonth(monthOf(q.v));
+            }}
+            style={chipStyle(draft.due === q.v)}
+          >
+            {q.label} <span style={{ opacity: 0.6 }}>{shortDM(q.v)}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Input ngày & giờ trực tiếp */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-        <input
-          type="date"
-          defaultValue={initialDate || todayStr}
-          id="tk-pop-date-input"
-          style={{
-            height: '32px',
-            borderRadius: '6px',
-            border: '1px solid var(--tk-border)',
-            background: 'var(--tk-card-bg)',
-            color: 'var(--tk-text-main)',
-            padding: '0 8px',
-            fontSize: '12.5px',
-          }}
-        />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
-          {['09:00', '12:00', '18:00', '21:00'].map((tm) => (
-            <button
-              key={tm}
-              type="button"
-              onClick={() => {
-                const dateVal = document.getElementById('tk-pop-date-input')?.value || todayStr;
-                onSave(dateVal, tm);
-                onClose();
-              }}
-              style={{
-                height: '26px',
-                borderRadius: '4px',
-                border: '1px solid var(--tk-border)',
-                background: initialTime === tm ? 'var(--tk-accent-soft)' : 'transparent',
-                color: initialTime === tm ? 'var(--tk-accent)' : 'var(--tk-text-sub)',
-                fontSize: '11px',
-                cursor: 'pointer',
-              }}
-            >
-              {tm}
-            </button>
-          ))}
-        </div>
+      <MonthGrid
+        month={month}
+        setMonth={setMonth}
+        cellState={(v) => ({ sel: draft.due === v, inRange: false })}
+        onPick={(v) => setDraft((d) => ({ ...d, due: v }))}
+      />
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px' }}>
+        {[null, '09:00', '12:00', '18:00', '21:00'].map((tm) => (
+          <button
+            key={tm || 'all'}
+            type="button"
+            onClick={() => setDraft((d) => ({ due: d.due || todayStr, tm }))}
+            style={{ ...chipStyle(!!draft.due && draft.tm === tm), height: '26px', fontSize: '11px' }}
+          >
+            {tm ? tm.replace(/^0/, '') : 'Cả ngày'}
+          </button>
+        ))}
       </div>
 
-      <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-        <button
-          type="button"
-          onClick={() => {
-            const dateVal = document.getElementById('tk-pop-date-input')?.value;
-            onSave(dateVal, initialTime);
-            onClose();
-          }}
-          className="tk-btn-primary"
-          style={{ flex: 1, height: '32px', fontSize: '12px', justifyContent: 'center' }}
-        >
-          Áp dụng
-        </button>
+      <button
+        type="button"
+        disabled={!dirty}
+        onClick={() => {
+          onSave(draft.due, draft.due ? draft.tm : null);
+          onClose();
+        }}
+        className="tk-btn-primary"
+        style={{ height: '32px', fontSize: '12px', justifyContent: 'center', opacity: dirty ? 1 : 0.45 }}
+      >
+        Lưu
+      </button>
+    </div>
+  );
+}
+
+/** Lọc theo khoảng ngày: bấm ngày đầu rồi ngày cuối (lịch có ngày âm). */
+export function DateRangePopover({ initialFrom, initialTo, onApply, onClose, style }) {
+  const ref = useRef(null);
+  usePopoverShell(ref, onClose);
+
+  const todayStr = toDateStr();
+  const [rg, setRg] = useState({ a: initialFrom || null, b: initialTo || null });
+  const [month, setMonth] = useState(() => monthOf(initialFrom || todayStr));
+
+  const now = new Date();
+  const dow = now.getDay();
+  const dom = now.getDate();
+  const lastDom = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const quick = [
+    ['Hôm nay', 0, 0],
+    ['Tuần này', -dow, 6 - dow],
+    ['Tuần sau', 7 - dow, 13 - dow],
+    ['Tháng này', 1 - dom, lastDom - dom],
+  ].map(([label, x, y]) => ({ label, a: shiftStr(todayStr, x), b: shiftStr(todayStr, y) }));
+
+  const pick = (v) => {
+    if (!rg.a || rg.b) setRg({ a: v, b: null });
+    else setRg(v < rg.a ? { a: v, b: rg.a } : { a: rg.a, b: v });
+  };
+  const label = !rg.a
+    ? 'Chọn khoảng ngày'
+    : !rg.b
+    ? `${shortDM(rg.a)} → chọn ngày cuối`
+    : rg.a === rg.b
+    ? shortDM(rg.a)
+    : `${shortDM(rg.a)} → ${shortDM(rg.b)}`;
+
+  return (
+    <div
+      ref={ref}
+      className="tk-popover"
+      style={{ width: '264px', display: 'flex', flexDirection: 'column', gap: '8px', ...style }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--tk-text-main)' }}>{label}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+        {quick.map((q) => (
+          <button key={q.label} type="button" onClick={() => setRg({ a: q.a, b: q.b })} style={chipStyle(rg.a === q.a && rg.b === q.b)}>
+            {q.label}
+          </button>
+        ))}
       </div>
+      <MonthGrid
+        month={month}
+        setMonth={setMonth}
+        cellState={(v) => ({ sel: v === rg.a || v === rg.b, inRange: !!(rg.a && rg.b && v > rg.a && v < rg.b) })}
+        onPick={pick}
+      />
+      <button
+        type="button"
+        disabled={!rg.a}
+        onClick={() => {
+          onApply(rg.a, rg.b || rg.a);
+          onClose();
+        }}
+        className="tk-btn-primary"
+        style={{ height: '32px', fontSize: '12px', justifyContent: 'center', opacity: rg.a ? 1 : 0.45 }}
+      >
+        Áp dụng
+      </button>
     </div>
   );
 }
@@ -360,15 +404,7 @@ export function TaskDatePickerPopover({
 export function RecurrencePopover({ currentRule, onSelect, onClose, style }) {
   const ref = useRef(null);
 
-  useEffect(() => {
-    const handleDown = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        onClose();
-      }
-    };
-    window.addEventListener('pointerdown', handleDown);
-    return () => window.removeEventListener('pointerdown', handleDown);
-  }, [onClose]);
+  usePopoverShell(ref, onClose);
 
   const options = [
     { label: 'Không lặp', rule: null, icon: 'minus' },
@@ -408,7 +444,7 @@ export function RecurrencePopover({ currentRule, onSelect, onClose, style }) {
               height: '32px',
               borderRadius: '8px',
               border: 'none',
-              background: isSelected ? 'rgba(94, 242, 194, 0.12)' : 'transparent',
+              background: isSelected ? 'var(--tk-accent-soft)' : 'transparent',
               color: isSelected ? 'var(--tk-accent, #5EF2C2)' : 'var(--tk-text-main)',
               fontSize: '12.5px',
               fontWeight: isSelected ? 600 : 400,

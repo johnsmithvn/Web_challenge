@@ -8,6 +8,9 @@ import {
   computeDayLayout,
   getTaskVisualStatus,
   taskDayMark,
+  slotTimeFromOffset,
+  taskDragStart,
+  dropZoneProps,
 } from '../utils/calendarTimeUtils';
 import AppIcon from './AppIcon';
 import '../styles/week-calendar.css';
@@ -35,6 +38,7 @@ export default function WeekCalendar({
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   customAnniversaries = [],
   refreshKey = 0,
+  onRescheduleTask,
 }) {
   const today = new Date();
   const [internalBaseDate, setBaseDate] = useState(today);
@@ -265,13 +269,7 @@ export default function WeekCalendar({
     if (e.target.closest('.week-cal__event')) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
-    const offsetY = e.clientY - rect.top;
-    const clickedMinutes = Math.floor((offsetY / PX_PER_HOUR) * 60);
-
-    const roundedMins = Math.floor(clickedMinutes / 30) * 30;
-    const h = String(Math.floor(roundedMins / 60)).padStart(2, '0');
-    const m = String(roundedMins % 60).padStart(2, '0');
-    const timeStr = `${h}:${m}`;
+    const timeStr = slotTimeFromOffset(e.clientY - rect.top, PX_PER_HOUR);
 
     // Ô giờ → Bắt đầu tại ô, Hạn +1 giờ (kiểu Google Calendar); thiếu prop thì về tạo thường.
     if (onSlotCreate) onSlotCreate(dateStr, timeStr);
@@ -402,7 +400,11 @@ export default function WeekCalendar({
               const holidayInfo = holidaysMap[day.dateStr];
 
               return (
-                <div key={`allday-${day.dateStr}`} className="week-cal__allday-cell">
+                <div
+                  key={`allday-${day.dateStr}`}
+                  className="week-cal__allday-cell"
+                  {...(onRescheduleTask ? dropZoneProps((id) => onRescheduleTask(id, day.dateStr, null)) : {})}
+                >
                   {/* Highlight Ngày lễ chính thức HOẶC Ngày kỷ niệm vui / Dev */}
                   {Array.isArray(holidayInfo) && holidayInfo.map((h, hIdx) => (
                     <div
@@ -430,6 +432,8 @@ export default function WeekCalendar({
                       <div
                         key={t.id}
                         className={`week-cal__chip-allday ${statusClass}`}
+                        draggable={status !== 'done' && !!onRescheduleTask}
+                        onDragStart={(e) => taskDragStart(e, t)}
                         onClick={(e) => {
                           e.stopPropagation();
                           onSelectTask?.(t);
@@ -473,6 +477,12 @@ export default function WeekCalendar({
                     key={`col-${day.dateStr}`}
                     className={`week-cal__day-col${day.isToday ? ' week-cal__day-col--today' : ''}`}
                     onClick={(e) => handleGridClick(e, day.dateStr)}
+                    {...(onRescheduleTask
+                      ? dropZoneProps((id, e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          onRescheduleTask(id, day.dateStr, slotTimeFromOffset(e.clientY - rect.top, PX_PER_HOUR));
+                        })
+                      : {})}
                   >
                     {/* Đường kẻ ngang phân giờ sắc nét */}
                     <div className="week-cal__grid-lines">
@@ -505,6 +515,8 @@ export default function WeekCalendar({
                         <div
                           key={t.id}
                           className={`week-cal__event ${statusClass}${t._layout.kind !== 'block' ? ' week-cal__event--marker' : ''}`}
+                          draggable={status !== 'done' && !!onRescheduleTask}
+                          onDragStart={(e) => taskDragStart(e, t)}
                           style={{
                             top: `${t._layout.top}px`,
                             height: `${t._layout.height}px`,

@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, useCallback } from 'react';
+import { useState, lazy, Suspense, useCallback, useEffect } from 'react';
 import TaskListSection from '../components/TaskListSection';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,7 +6,10 @@ import TaskDetailDrawer from '../components/TaskDetailDrawer';
 import TaskCreateModal from '../components/TaskCreateModal';
 import TaskForm from '../components/TaskForm';
 import CalendarToolbar from '../components/CalendarToolbar';
+import AppIcon from '../components/AppIcon';
 import { toDateStr } from '../utils/dateUtils';
+import { rescheduleTaskPatch } from '../utils/calendarTimeUtils';
+import { solarToLunar, getCanChiYear, getCanChiDay, getNextGoodHour } from '../utils/lunarUtils';
 import '../styles/tasks.css';
 import '../styles/calendar-widget.css';
 import '../styles/week-calendar.css';
@@ -49,7 +52,11 @@ export default function TasksPage() {
 
   // Chế độ xem: 'kanban' | 'list' | 'agenda' | 'day' | 'week' | 'month'
   const [activeView, setActiveView] = useState(() => {
-    return localStorage.getItem('lh_tasks_active_view') || 'kanban';
+    // Mobile: mặc định Danh sách, không có view Tuần (quá chật) → chuyển sang Ngày
+    const isMobile = window.matchMedia?.('(max-width: 640px)').matches;
+    const saved = localStorage.getItem('lh_tasks_active_view');
+    if (isMobile && saved === 'week') return 'day';
+    return saved || (isMobile ? 'list' : 'kanban');
   });
 
   const handleSetActiveView = useCallback((v) => {
@@ -142,6 +149,16 @@ export default function TasksPage() {
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const refreshCalendars = useCallback(() => setCalendarRefreshKey((k) => k + 1), []);
 
+  // Kéo thả trên Lịch: timeStr undefined = giữ giờ, null = cả ngày, "HH:MM" = đặt giờ
+  const handleRescheduleTask = useCallback(async (taskId, dateStr, timeStr) => {
+    const task = taskModel.tasks.find((t) => String(t.id) === String(taskId));
+    if (!task || task.completed) return;
+    const patch = rescheduleTaskPatch(task, dateStr, timeStr);
+    if (!patch) return;
+    await updateTask(task.id, patch);
+    refreshCalendars();
+  }, [taskModel.tasks, updateTask, refreshCalendars]);
+
   // Đóng Drawer luôn làm mới Lịch: trong drawer có thể đã tick/thêm task con.
   const handleCloseSelectedModal = useCallback(() => {
     setSelectedTask(null);
@@ -181,8 +198,43 @@ export default function TasksPage() {
     }
   }, [activeView, currentDate]);
 
+  // Header theo mockup: "Chiều thứ Bảy, 10/10" + âm lịch + giờ tốt kế tiếp; cập nhật mỗi phút.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+  const hourNow = now.getHours();
+  const dayPart = hourNow < 11 ? 'Sáng' : hourNow < 13 ? 'Trưa' : hourNow < 18 ? 'Chiều' : 'Tối';
+  const weekday = ['Chủ nhật', 'thứ Hai', 'thứ Ba', 'thứ Tư', 'thứ Năm', 'thứ Sáu', 'thứ Bảy'][now.getDay()];
+  const lunarNow = solarToLunar(now.getDate(), now.getMonth() + 1, now.getFullYear());
+  const moon = lunarNow.day === 1 ? 'Trăng non' : lunarNow.day === 15 ? 'Trăng rằm' : null;
+  const goodHour = getNextGoodHour(now);
+  const goodHourLabel = !goodHour
+    ? null
+    : goodHour.isNow
+    ? `Đang giờ tốt: ${goodHour.name} ${goodHour.range}`
+    : `Giờ tốt kế tiếp: ${goodHour.name} ${goodHour.range}, còn ${Math.floor(goodHour.minutesUntil / 60) ? `${Math.floor(goodHour.minutesUntil / 60)} giờ ` : ''}${goodHour.minutesUntil % 60} phút`;
+
+  const viewDate = currentDate || now;
+  const viewLunar = solarToLunar(viewDate.getDate(), viewDate.getMonth() + 1, viewDate.getFullYear());
+  const viewIsToday = toDateStr(viewDate) === toDateStr(now);
+  const shiftViewDay = (n) => setCurrentDate((d) => {
+    const next = new Date(d || new Date());
+    next.setDate(next.getDate() + n);
+    return next;
+  });
+
+  // Sự kiện → việc: bỏ emoji đầu tên; đã có việc cùng tên + cùng ngày thì coi như đã thêm.
+  const eventTaskTitle = (ev) => (ev.title || '').replace(/^[^a-zA-Z0-9À-ỹ]+/u, '').trim() || ev.title;
+  const isEventTaskAdded = (ev) => {
+    const title = eventTaskTitle(ev);
+    const due = toDateStr(ev.targetDate || new Date());
+    return taskModel.tasks.some((t) => t.title === title && t.due_date === due);
+  };
+
   return (
-    <div className="tasks-page tasks-page--workspace tasks-workspace">
+    <div className={`tasks-page tasks-page--workspace tasks-workspace${activeView === 'day' ? ' tasks-workspace--day' : ''}`}>
       {/* Hiệu ứng nền Vũ trụ Aurora & Chân trời hành tinh chuẩn mockup */}
       <div className="task-cosmos-bg">
         <div className="task-aurora-glow" />
@@ -199,6 +251,64 @@ export default function TasksPage() {
         </div>
         <div className="task-planet-horizon" />
       </div>
+      <header className="tk-header">
+        <div className="tk-header__info">
+          <div className="tk-header__title-row">
+            <h1 className="tk-header__title">
+              {dayPart} {weekday}, {now.getDate()}/{now.getMonth() + 1}
+            </h1>
+            {user && (
+              <span className="tk-header__stats">
+                {pendingTasks.length} ĐANG MỞ · {overdueTasks.length} TRỄ
+              </span>
+            )}
+          </div>
+          <div className="tk-header__lunar">
+            <span className="tk-chip">
+              <AppIcon name="moon" size={13} style={{ color: 'var(--tk-st-doing)' }} />
+              Âm {lunarNow.day}/{lunarNow.month} {getCanChiYear(lunarNow.year)}, ngày {getCanChiDay(now.getDate(), now.getMonth() + 1, now.getFullYear()).full}
+              {moon && <span style={{ opacity: 0.5 }}>·</span>}
+              {moon}
+            </span>
+            {goodHourLabel && (
+              <span className="tk-chip">
+                <AppIcon name="sun" size={13} style={{ color: 'var(--tk-st-doing)' }} />
+                {goodHourLabel}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Chỉ hiện trên mobile ở view Ngày (CSS): thay cho cụm điều hướng của toolbar */}
+        {activeView === 'day' && (
+          <div className="tk-header__day">
+            <div className="tk-header__day-info">
+              <span className="tk-header__day-title">
+                {['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'][viewDate.getDay()]} {viewDate.getDate()}/{viewDate.getMonth() + 1}/{viewDate.getFullYear()}
+              </span>
+              <span className="tk-header__day-lunar">
+                <AppIcon name="moon" size={13} style={{ color: 'var(--tk-accent)', flex: 'none' }} />
+                <span>
+                  Âm {viewLunar.day}/{viewLunar.month} {getCanChiYear(viewLunar.year)}, ngày {getCanChiDay(viewDate.getDate(), viewDate.getMonth() + 1, viewDate.getFullYear()).full}
+                  {viewLunar.day === 1 ? ' · Trăng non' : viewLunar.day === 15 ? ' · Trăng rằm' : ''}
+                </span>
+              </span>
+            </div>
+            {!viewIsToday && (
+              <button type="button" className="tk-header__day-today" onClick={() => setCurrentDate(new Date())}>
+                Hôm nay
+              </button>
+            )}
+            <button type="button" className="tk-header__day-arrow" onClick={() => shiftViewDay(-1)} aria-label="Ngày trước">
+              <AppIcon name="caretLeft" size={17} />
+            </button>
+            <button type="button" className="tk-header__day-arrow" onClick={() => shiftViewDay(1)} aria-label="Ngày sau">
+              <AppIcon name="caretRight" size={17} />
+            </button>
+          </div>
+        )}
+      </header>
+
       {/* Thanh All-in-one Header Toolbar — Cố định 100% trên đỉnh, không bao giờ bị nhảy */}
       <CalendarToolbar
         currentDate={currentDate}
@@ -261,6 +371,7 @@ export default function TasksPage() {
 
               {activeView === 'agenda' && (
                 <CalendarAgendaView
+                  onRescheduleTask={handleRescheduleTask}
                   pendingTasks={pendingTasks}
                   overdueTasks={overdueTasks}
                   onMoveAllLateToToday={async () => {
@@ -280,6 +391,7 @@ export default function TasksPage() {
 
               {activeView === 'day' && (
                 <CalendarDayView
+                  onRescheduleTask={handleRescheduleTask}
                   pendingTasks={pendingTasks}
                   getCompletedTasksRange={getCompletedTasksRange}
                   onSelectTask={handleSelectTaskFromCalendar}
@@ -294,6 +406,7 @@ export default function TasksPage() {
 
               {activeView === 'week' && (
                 <WeekCalendar
+                  onRescheduleTask={handleRescheduleTask}
                   pendingTasks={pendingTasks}
                   getCompletedTasksRange={getCompletedTasksRange}
                   onSelectTask={handleSelectTaskFromCalendar}
@@ -310,6 +423,7 @@ export default function TasksPage() {
 
               {activeView === 'month' && (
                 <MonthCalendar
+                  onRescheduleTask={handleRescheduleTask}
                   getCompletedTasksRange={getCompletedTasksRange}
                   onDeleteTask={deleteTask}
                   pendingTasks={pendingTasks}
@@ -339,10 +453,11 @@ export default function TasksPage() {
             customAnniversaries={customAnniversaries}
             onAddCustomAnniversary={handleAddCustomAnniversary}
             onDeleteCustomAnniversary={handleDeleteCustomAnniversary}
+            isEventTaskAdded={isEventTaskAdded}
             onCreateTaskFromEvent={async (ev) => {
-              const cleanTitle = (ev.title || '').replace(/^[^a-zA-Z0-9À-ỹ]+/u, '').trim() || ev.title;
+              if (isEventTaskAdded(ev)) return;
               await taskModel.addTask({
-                title: cleanTitle,
+                title: eventTaskTitle(ev),
                 dueDate: toDateStr(ev.targetDate || new Date()),
                 priority: 0,
                 status: 'todo',

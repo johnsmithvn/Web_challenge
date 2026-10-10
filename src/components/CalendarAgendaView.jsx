@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { toDateStr } from '../utils/dateUtils';
+import { toDateStr, formatDate } from '../utils/dateUtils';
 import { solarToLunar } from '../utils/lunarUtils';
-import { bucketTasksByDay, hasExplicitTime, taskDayRole } from '../utils/calendarTimeUtils';
+import { bucketTasksByDay, hasExplicitTime, taskDayRole, taskDragStart, dropZoneProps } from '../utils/calendarTimeUtils';
 import { PRIORITY_OPTIONS } from '../utils/taskFields';
 import HOLIDAYS from '../data/holidays.json';
 import AppIcon from './AppIcon';
@@ -29,6 +29,7 @@ export default function CalendarAgendaView({
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   customAnniversaries = [],
   refreshKey = 0,
+  onRescheduleTask,
 }) {
   const [completedByDay, setCompletedByDay] = useState({});
   const [daysCount, setDaysCount] = useState(45);
@@ -161,7 +162,7 @@ export default function CalendarAgendaView({
             style={{
               margin: '0 0 16px 0',
               borderRadius: '14px',
-              background: 'rgba(255, 92, 112, 0.08)',
+              background: 'var(--tk-ks-late-bg)',
               border: '1px solid rgba(255, 92, 112, 0.25)',
               overflow: 'hidden',
             }}
@@ -177,11 +178,14 @@ export default function CalendarAgendaView({
               }}
             >
               <AppIcon name="warning" size={16} />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#FF8A98' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--tk-ks-late-fg)' }}>
                 {overdueTasks.length} việc quá hạn
               </span>
               <span style={{ fontSize: '12px', color: 'var(--tk-text-mute)' }}>
-                cần xử lý
+                {(() => {
+                  const oldest = overdueTasks.reduce((m, t) => (t.due_date && (!m || t.due_date < m) ? t.due_date : m), null);
+                  return oldest ? `cũ nhất từ ${Number(oldest.slice(8, 10))}/${Number(oldest.slice(5, 7))}` : '';
+                })()}
               </span>
               <button
                 type="button"
@@ -195,8 +199,8 @@ export default function CalendarAgendaView({
                   padding: '0 12px',
                   borderRadius: '6px',
                   border: '1px solid rgba(255, 92, 112, 0.4)',
-                  background: 'rgba(255, 92, 112, 0.15)',
-                  color: '#FF8A98',
+                  background: 'var(--tk-ks-late-bg)',
+                  color: 'var(--tk-ks-late-fg)',
                   fontSize: '11.5px',
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -211,6 +215,8 @@ export default function CalendarAgendaView({
                 {overdueTasks.map((t) => (
                   <div
                     key={t.id}
+                    draggable={!!onRescheduleTask}
+                    onDragStart={(e) => taskDragStart(e, t)}
                     onClick={() => onSelectTask?.(t)}
                     style={{
                       display: 'flex',
@@ -218,13 +224,13 @@ export default function CalendarAgendaView({
                       gap: '8px',
                       padding: '6px 10px',
                       borderRadius: '8px',
-                      background: 'rgba(0,0,0,0.2)',
+                      background: 'var(--tk-border-soft)',
                       cursor: 'pointer',
                     }}
                   >
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#FF8A98' }} />
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--tk-ks-late-fg)' }} />
                     <span style={{ fontSize: '12.5px', color: 'var(--tk-text-main)', flex: 1 }}>{t.title}</span>
-                    <span style={{ fontSize: '11px', color: '#FF8A98' }}>{t.due_date}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--tk-ks-late-fg)' }}>{formatDate(t.due_date)}</span>
                   </div>
                 ))}
               </div>
@@ -242,6 +248,7 @@ export default function CalendarAgendaView({
               key={day.dateStr}
               className={`cal-agenda-row${day.isToday ? ' cal-agenda-row--today' : ''}`}
               id={`agenda-${day.dateStr}`}
+              {...(onRescheduleTask ? dropZoneProps((id) => onRescheduleTask(id, day.dateStr)) : {})}
             >
               {/* Cột Ngày bên trái */}
               <div className="cal-agenda-day-col">
@@ -284,6 +291,8 @@ export default function CalendarAgendaView({
                       <div
                         key={t.id}
                         className="cal-agenda-item cal-agenda-item--task"
+                        draggable={!!onRescheduleTask}
+                        onDragStart={(e) => taskDragStart(e, t)}
                         onClick={() => onSelectTask && onSelectTask(t)}
                         role="button"
                         tabIndex={0}

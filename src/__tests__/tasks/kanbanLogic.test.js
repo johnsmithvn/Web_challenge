@@ -164,6 +164,17 @@ const countsSearch = calculateKanbanCounts({
 assert.equal(countsSearch.all, 2, '1 task pending quá hạn + 1 task skip quá hạn');
 assert.equal(countsSearch.late, 1, '1 task quá hạn pending');
 assert.equal(countsSearch.today, 0, 'không có task hôm nay khớp từ khóa');
+
+// 'Tất cả' đếm theo tập việc xong mà cột Hoàn thành đang hiện (30 ngày), còn 'Hôm nay' vẫn chỉ xong hôm nay
+const countsRecent = calculateKanbanCounts({
+  pendingTasks: pTasks,
+  skippedTasks: sTasks,
+  completedToday: cToday,
+  completedRecent: [...cToday, { id: 'c2', title: 'Xong tuần trước', completed: true, completed_at: '2026-09-06T10:00:00Z' }],
+  today: '2026-09-13',
+});
+assert.equal(countsRecent.all, 8, '5 pending + 1 skip + 2 xong trong 30 ngày');
+assert.equal(countsRecent.today, 2, 'việc xong tuần trước không tính vào Hôm nay');
 console.log('calculateKanbanCounts 4 pills realtime count: OK');
 
 console.log('\n✅ kanbanLogic — logic thật của Kanban PASS');

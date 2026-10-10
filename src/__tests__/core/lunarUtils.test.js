@@ -60,6 +60,7 @@ import {
   getCanChiDay,
   getZodiacHours,
   getUpcomingEvents,
+  getNextGoodHour,
 } from '../../utils/lunarUtils.js';
 
 // Ngày 01/09/2026: 20/07 Âm lịch
@@ -209,6 +210,25 @@ import {
   // Bất biến sắp xếp: diffDays phải tăng dần
   for (let i = 1; i < events.length; i++) {
     assert.ok(events[i].diffDays >= events[i - 1].diffDays, 'Events phải được sort theo diffDays');
+  }
+}
+
+// getNextGoodHour: đang trong giờ tốt → isNow; không thì khung kế tiếp (bắt đầu giờ lẻ, có thể sang hôm sau)
+for (let h = 0; h < 24; h++) {
+  const now = new Date(2026, 9, 10, h, 20);
+  const g = getNextGoodHour(now);
+  assert.ok(g, `phải luôn tìm được giờ tốt trong 24h (lúc ${h}h)`);
+  const curr = getZodiacHours(10, 10, 2026, h).find((p) => p.isNow);
+  if (curr.isHoangDao) {
+    assert.equal(g.isNow, true);
+    assert.equal(g.minutesUntil, 0);
+  } else {
+    assert.equal(g.isNow, false);
+    assert.ok(g.minutesUntil > 0 && g.minutesUntil <= 24 * 60, `khoảng chờ hợp lệ lúc ${h}h`);
+    assert.equal(g.startHour % 2, 1, 'khung giờ bắt đầu ở giờ lẻ');
+    const start = new Date(now.getTime() + g.minutesUntil * 6e4);
+    assert.equal(start.getMinutes(), 0);
+    assert.equal(start.getHours(), g.startHour);
   }
 }
 

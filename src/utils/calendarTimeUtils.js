@@ -379,3 +379,104 @@ export function computeDayLayout(tasks = [], dateStr, markerMinutes = 30, pxPerH
 
   return { allDayTasks, timedTasks };
 }
+
+// ── Kéo thả để đổi ngày/giờ trên các view Lịch ─────────────────────────────
+
+/** Kiểu dữ liệu riêng cho dataTransfer — để ô lịch chỉ nhận thẻ task (không nhận file/text). */
+export const TASK_DND_TYPE = 'application/x-lifehub-task';
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const minToHHMM = (m) => `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+const dayDiff = (a, b) => Math.round((new Date(`${b}T00:00:00`) - new Date(`${a}T00:00:00`)) / 86400000);
+const addDays = (dateStr, n) => {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  return toDateStr(d);
+};
+
+/**
+ * Vị trí thả trên lưới giờ → "HH:MM", làm tròn xuống 30 phút, kẹp trong [startHour:00, 23:30].
+ * @param {number} offsetY - px tính từ đỉnh lưới
+ * @param {number} pxPerHour
+ * @param {number} [startHour=0] - giờ ở đỉnh lưới
+ */
+export function slotTimeFromOffset(offsetY, pxPerHour, startHour = 0) {
+  const raw = startHour * 60 + Math.floor(((offsetY / pxPerHour) * 60) / 30) * 30;
+  return minToHHMM(Math.max(startHour * 60, Math.min(23 * 60 + 30, raw)));
+}
+
+/**
+ * Patch updateTask khi thả task sang ngày/giờ khác.
+ *   - timeStr === undefined: giữ giờ (thả vào ô Tháng / Lịch biểu).
+ *   - timeStr === null: thành việc cả ngày (thả vào hàng Cả ngày / Chưa xếp giờ).
+ *   - timeStr "HH:MM": khối Bắt đầu→Hạn cùng ngày thì dời cả khối, giữ thời lượng;
+ *     còn lại đặt giờ Hạn.
+ * Ngày Bắt đầu (nếu có) dời cùng số ngày với Hạn để không bị Bắt đầu sau Hạn.
+ * @returns {Object|null} null khi không có gì thay đổi
+ */
+export function rescheduleTaskPatch(task, dateStr, timeStr) {
+  const patch = { due_date: dateStr };
+  const isBlock = !!task.start_date && task.start_date === task.due_date
+    && hasExplicitTime(task.start_time) && hasExplicitTime(task.due_time);
+
+  if (task.start_date) {
+    if (task.due_date) patch.start_date = addDays(task.start_date, dayDiff(task.due_date, dateStr));
+    else if (task.start_date > dateStr) patch.start_date = dateStr;
+  }
+
+  if (timeStr === null) {
+    patch.due_time = null;
+    if (task.start_time && patch.start_date === dateStr) patch.start_time = null;
+  } else if (typeof timeStr === 'string') {
+    const t = timeToMinutes(timeStr);
+    if (isBlock) {
+      const dur = timeToMinutes(task.due_time) - timeToMinutes(task.start_time);
+      patch.start_date = dateStr;
+      patch.start_time = minToHHMM(t);
+      patch.due_time = minToHHMM(Math.min(23 * 60 + 59, t + dur));
+    } else {
+      patch.due_time = minToHHMM(t);
+      const st = timeToMinutes(task.start_time);
+      if (patch.start_date === dateStr && st !== null && st > t) patch.start_time = null;
+    }
+  }
+
+  const same = Object.keys(patch).every((k) => {
+    const a = patch[k];
+    const b = task[k] ?? null;
+    return k.endsWith('_time') ? (a ? a.slice(0, 5) : null) === (b ? b.slice(0, 5) : null) : a === b;
+  });
+  return same ? null : patch;
+}
+
+/** onDragStart cho thẻ task trên các view Lịch. */
+export function taskDragStart(e, task) {
+  e.stopPropagation();
+  e.dataTransfer.setData(TASK_DND_TYPE, String(task.id));
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+/**
+ * Props cho vùng thả (ô ngày, cột giờ…): chỉ nhận thẻ task, tô viền khi kéo qua.
+ * @param {(taskId: string, e: DragEvent) => void} onDropTask
+ */
+export function dropZoneProps(onDropTask) {
+  return {
+    onDragOver: (e) => {
+      if (!e.dataTransfer.types.includes(TASK_DND_TYPE)) return;
+      e.preventDefault();
+      e.currentTarget.classList.add('is-drop-over');
+    },
+    onDragLeave: (e) => {
+      if (!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('is-drop-over');
+    },
+    onDrop: (e) => {
+      e.currentTarget.classList.remove('is-drop-over');
+      const id = e.dataTransfer.getData(TASK_DND_TYPE);
+      if (!id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onDropTask(id, e);
+    },
+  };
+}

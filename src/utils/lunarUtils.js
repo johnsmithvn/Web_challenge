@@ -255,6 +255,25 @@ export function getZodiacHours(dd, mm, yy, currentHour = null) {
 }
 
 /**
+ * Khung giờ hoàng đạo hiện tại (nếu đang ở trong) hoặc kế tiếp, xét cả sang ngày hôm sau.
+ * Khung giờ bắt đầu ở giờ lẻ (23, 1, 3, …, 21) nên chỉ cần dò các mốc giờ lẻ trong 24h tới.
+ * @param {Date} [now]
+ * @returns {{ name: string, range: string, startHour: number, isNow: boolean, minutesUntil: number } | null}
+ */
+export function getNextGoodHour(now = new Date()) {
+  const h = now.getHours();
+  const cur = getZodiacHours(now.getDate(), now.getMonth() + 1, now.getFullYear(), h).find((p) => p.isNow);
+  if (cur?.isHoangDao) return { ...cur, isNow: true, minutesUntil: 0 };
+  for (let k = 1; k <= 24; k++) {
+    const t = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h + k);
+    if (t.getHours() % 2 === 0) continue;
+    const p = getZodiacHours(t.getDate(), t.getMonth() + 1, t.getFullYear(), t.getHours()).find((x) => x.isNow);
+    if (p?.isHoangDao) return { ...p, isNow: false, minutesUntil: Math.round((t - now) / 6e4) };
+  }
+  return null;
+}
+
+/**
  * Lấy danh sách các sự kiện / ngày lễ sắp tới (dương lịch & âm lịch) kèm số ngày đếm ngược
  * @param {Date} [baseDate]
  * @param {Object} [holidays] - { solar: Record<string, string>, lunar: Record<string, string> }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import AppIcon from './AppIcon';
 import { StatusPopover, PriorityPopover, TaskDatePickerPopover, RecurrencePopover } from './TaskFloatingPopovers';
 import { useActivityLog } from '../hooks/useActivityLog';
@@ -7,7 +7,32 @@ import { formatDate, formatDateTime } from '../utils/dateUtils';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 import { describeRecurrence, describeActivity } from '../utils/taskFields';
 import { useConfirm } from './ConfirmModal';
+import { useTags } from '../hooks/useTags';
+import { toDateStr } from '../utils/dateUtils';
 import UI_STRINGS from '../data/ui-strings.json';
+
+const MD_WRAP = { b: ['**', '**'], i: ['_', '_'], code: ['`', '`'], link: ['[', '](https://)'] };
+const MD_LINE = { ul: '- ', todo: '- [ ] ' };
+const MD_TOOLS = [
+  ['b', 'B', 'Đậm'],
+  ['i', 'I', 'Nghiêng'],
+  ['ul', '•', 'Danh sách'],
+  ['todo', '☐', 'Việc cần làm'],
+  ['link', '🔗', 'Liên kết'],
+  ['code', '</>', 'Code'],
+];
+
+// Nhãn ngày cho nhóm log: Hôm nay / Hôm qua / dd/mm/yyyy
+const dayLabel = (iso) => {
+  const d = toDateStr(new Date(iso));
+  const today = toDateStr();
+  const y = new Date();
+  y.setDate(y.getDate() - 1);
+  if (d === today) return 'Hôm nay';
+  if (d === toDateStr(y)) return 'Hôm qua';
+  return formatDate(d);
+};
+const hhmm = (iso) => new Date(iso).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
 export default function TaskDetailDrawer({
   task,
@@ -18,7 +43,10 @@ export default function TaskDetailDrawer({
   const { user } = useAuth();
   const { confirm, ConfirmModal } = useConfirm();
   const { getTaskLogs, addNote, deleteLog } = useActivityLog();
-  const { updateTask, completeTask, uncompleteTask, deleteTask } = taskModel || {};
+  const { updateTask, completeTask, uncompleteTask, deleteTask, linkTaskTag, unlinkTaskTag } = taskModel || {};
+  const { addTag } = useTags();
+  const [tagInput, setTagInput] = useState('');
+  const descRef = useRef(null);
 
   const [titleDraft, setTitleDraft] = useState(task?.title || '');
   const [descDraft, setDescDraft] = useState(task?.description || '');
@@ -128,6 +156,50 @@ export default function TaskDetailDrawer({
     loadLogs();
   };
 
+  const handleAddTag = async () => {
+    const name = tagInput.replace(/^#/, '').trim();
+    if (!name || !addTag || !linkTaskTag) return;
+    const tag = await addTag(name);
+    if (tag && !(task._tags || []).some((t) => t.id === tag.id)) await linkTaskTag(task.id, tag);
+    setTagInput('');
+  };
+
+  const applyMd = (kind) => {
+    const el = descRef.current;
+    if (!el) return;
+    const v = descDraft;
+    const a = el.selectionStart;
+    const b = el.selectionEnd;
+    let next;
+    let ca;
+    let cb;
+    if (MD_WRAP[kind]) {
+      const [pre, post] = MD_WRAP[kind];
+      next = v.slice(0, a) + pre + v.slice(a, b) + post + v.slice(b);
+      ca = a + pre.length;
+      cb = b + pre.length;
+    } else {
+      const ls = v.lastIndexOf('\n', a - 1) + 1;
+      next = v.slice(0, ls) + MD_LINE[kind] + v.slice(ls);
+      ca = a + MD_LINE[kind].length;
+      cb = b + MD_LINE[kind].length;
+    }
+    setDescDraft(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(ca, cb);
+    });
+  };
+
+  const activityLogs = logs.filter((l) => l.action !== 'note');
+  const activityGroups = [];
+  for (const lg of activityLogs) {
+    const day = lg.created_at ? dayLabel(lg.created_at) : '';
+    const last = activityGroups[activityGroups.length - 1];
+    if (last && last.day === day) last.items.push(lg);
+    else activityGroups.push({ day, items: [lg] });
+  }
+
   const isDone = task.completed || task.status === 'completed' || task.status === 'done';
   const doneSubtasks = subtasks.filter((s) => s.completed || s.status === 'completed' || s.status === 'done').length;
   const subtaskPct = subtasks.length > 0 ? Math.round((doneSubtasks / subtasks.length) * 100) : 0;
@@ -136,16 +208,7 @@ export default function TaskDetailDrawer({
     <>
       {ConfirmModal}
       {/* Backdrop mờ nhẹ */}
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0, 0, 0, 0.4)',
-          zIndex: 90,
-          backdropFilter: 'blur(2px)',
-        }}
-        onClick={onClose}
-      />
+      <div className="tk-drawer-backdrop" onClick={onClose} />
 
       <aside className="tk-drawer" style={{ transform: 'translateX(0)' }}>
         {/* Header Drawer */}
@@ -156,7 +219,7 @@ export default function TaskDetailDrawer({
                 type="button"
                 onClick={() => onOpenSubtaskDetail?.(parentTask)}
                 style={{
-                  background: 'rgba(94, 242, 194, 0.1)',
+                  background: 'var(--tk-accent-soft)',
                   border: '1px solid rgba(94, 242, 194, 0.25)',
                   borderRadius: '6px',
                   color: 'var(--tk-accent, #5EF2C2)',
@@ -284,7 +347,7 @@ export default function TaskDetailDrawer({
                 color: 'var(--tk-text-main)',
               }}
             >
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isDone ? '#34D399' : task.status === 'skip' ? '#94A3B8' : task.status === 'doing' ? '#FBBF24' : '#60A5FA' }} />
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isDone ? 'var(--tk-st-done)' : task.status === 'skip' ? 'var(--tk-st-skip)' : task.status === 'doing' ? 'var(--tk-st-doing)' : 'var(--tk-st-todo)' }} />
               <span>{isDone ? 'Hoàn thành' : task.status === 'doing' ? 'Đang làm' : task.status === 'skip' ? 'Bỏ qua' : 'Cần làm'}</span>
             </button>
             {activePopover === 'status' && (
@@ -383,9 +446,9 @@ export default function TaskDetailDrawer({
                 onClick={() => updateTask?.(task.id, { status: 'doing' })}
                 className="tk-badge-pill"
                 style={{
-                  background: 'rgba(251, 191, 36, 0.12)',
-                  border: '1px solid rgba(251, 191, 36, 0.3)',
-                  color: '#FBBF24',
+                  background: 'var(--tk-ks-today-bg)',
+                  border: '1px solid var(--tk-ks-today-bd)',
+                  color: 'var(--tk-st-doing)',
                 }}
               >
                 <AppIcon name="play" size={12} />
@@ -395,8 +458,8 @@ export default function TaskDetailDrawer({
           </div>
 
           {/* Nhãn và liên kết kiến thức */}
-          {((task._tags && task._tags.length > 0) || (task._collections && task._collections.length > 0)) && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+          {(
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
               {task._tags?.map((t) => (
                 <span
                   key={t.id}
@@ -407,15 +470,48 @@ export default function TaskDetailDrawer({
                     padding: '2px 8px',
                     borderRadius: '999px',
                     fontSize: '11.5px',
-                    background: `${t.color || '#5EF2C2'}18`,
+                    background: `${t.color || 'var(--tk-accent)'}18`,
                     color: t.color || 'var(--tk-accent)',
-                    border: `1px solid ${t.color || '#5EF2C2'}33`,
+                    border: `1px solid ${t.color || 'var(--tk-accent)'}33`,
                   }}
                 >
                   <AppIcon name="tag" size={11} />
                   <span>#{t.name}</span>
+                  {unlinkTaskTag && (
+                    <button
+                      type="button"
+                      onClick={() => unlinkTaskTag(task.id, t.id)}
+                      title="Bỏ nhãn"
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', display: 'inline-grid' }}
+                    >
+                      <AppIcon name="x" size={10} />
+                    </button>
+                  )}
                 </span>
               ))}
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddTag();
+                  }
+                }}
+                placeholder="+ nhãn"
+                style={{
+                  width: '84px',
+                  height: '22px',
+                  borderRadius: '999px',
+                  border: '1px dashed var(--tk-border-strong)',
+                  background: 'transparent',
+                  padding: '0 8px',
+                  fontSize: '11.5px',
+                  color: 'var(--tk-text-main)',
+                  outline: 'none',
+                }}
+              />
               {task._collections?.map((c) => (
                 <span
                   key={c.id}
@@ -426,9 +522,9 @@ export default function TaskDetailDrawer({
                     padding: '2px 8px',
                     borderRadius: '6px',
                     fontSize: '11.5px',
-                    background: 'rgba(96, 165, 250, 0.1)',
-                    color: '#60A5FA',
-                    border: '1px solid rgba(96, 165, 250, 0.25)',
+                    background: 'var(--tk-ks-soon-bg)',
+                    color: 'var(--tk-st-todo)',
+                    border: '1px solid var(--tk-ks-soon-bd)',
                   }}
                   title="Bài viết liên kết"
                 >
@@ -546,10 +642,26 @@ export default function TaskDetailDrawer({
 
           {/* Mô tả (Description) Markdown */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--tk-text-main)' }}>
-              Mô tả chi tiết
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--tk-text-main)', marginRight: 'auto' }}>
+                Mô tả chi tiết
+              </span>
+              {MD_TOOLS.map(([k, label, title]) => (
+                <button
+                  key={k}
+                  type="button"
+                  title={title}
+                  className="tk-icon-btn"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => applyMd(k)}
+                  style={{ width: 'auto', minWidth: '24px', padding: '0 4px', fontSize: '11.5px', fontWeight: k === 'b' ? 700 : 500, fontStyle: k === 'i' ? 'italic' : 'normal' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <textarea
+              ref={descRef}
               value={descDraft}
               onChange={(e) => setDescDraft(e.target.value)}
               onFocus={() => setIsEditingDesc(true)}
@@ -590,7 +702,7 @@ export default function TaskDetailDrawer({
                   paddingBottom: '4px',
                 }}
               >
-                Hoạt động ({logs.filter((l) => l.action !== 'note').length})
+                Hoạt động ({activityLogs.length})
               </button>
               <button
                 type="button"
@@ -614,23 +726,28 @@ export default function TaskDetailDrawer({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
                 {loadingLogs ? (
                   <span style={{ fontSize: '12px', color: 'var(--tk-text-mute)' }}>Đang tải nhật ký...</span>
-                ) : logs.filter((l) => l.action !== 'note').length === 0 ? (
+                ) : activityLogs.length === 0 ? (
                   <span style={{ fontSize: '12px', color: 'var(--tk-text-mute)' }}>Chưa có hoạt động nào được ghi lại.</span>
                 ) : (
-                  logs
-                    .filter((l) => l.action !== 'note')
-                    .map((lg) => {
-                      const desc = describeActivity(lg);
-                      return (
-                        <div key={lg.id} style={{ fontSize: '12px', color: 'var(--tk-text-sub)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <AppIcon name={desc.icon} size={12} color="var(--tk-accent)" />
-                          <span style={{ flex: 1 }}>{desc.text}{desc.newText ? `: ${desc.newText}` : ''}</span>
-                          <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'var(--tk-text-mute)' }}>
-                            {lg.created_at ? formatDate(lg.created_at) : ''}
-                          </span>
-                        </div>
-                      );
-                    })
+                  activityGroups.map((g) => (
+                    <div key={g.day} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <span style={{ fontSize: '10.5px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--tk-text-mute)' }}>
+                        {g.day}
+                      </span>
+                      {g.items.map((lg) => {
+                        const desc = describeActivity(lg);
+                        return (
+                          <div key={lg.id} style={{ fontSize: '12px', color: 'var(--tk-text-sub)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <AppIcon name={desc.icon} size={12} color="var(--tk-accent)" />
+                            <span style={{ flex: 1 }}>{desc.text}{desc.newText ? `: ${desc.newText}` : ''}</span>
+                            <span style={{ fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--tk-text-mute)' }}>
+                              {lg.created_at ? hhmm(lg.created_at) : ''}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))
                 )}
               </div>
             ) : (
@@ -684,8 +801,8 @@ export default function TaskDetailDrawer({
                         <span>{nt.details}</span>
                         <button
                           type="button"
-                          onClick={() => {
-                            deleteLog?.(nt.id);
+                          onClick={async () => {
+                            await deleteLog?.(nt.id);
                             loadLogs();
                           }}
                           style={{ background: 'none', border: 'none', color: 'var(--tk-text-mute)', cursor: 'pointer' }}

@@ -8,7 +8,8 @@ import { subtaskProgressByParent } from '../utils/subtaskUtils';
 import { useConfirm } from './ConfirmModal';
 import { toDateStr, formatDate } from '../utils/dateUtils';
 import { PRIORITY_OPTIONS, WEEKDAYS, describeRecurrence } from '../utils/taskFields';
-import { PRIORITY_LABELS } from '../utils/taskNlpParser';
+import { PRIORITY_LABELS, shiftDateDays } from '../utils/taskNlpParser';
+import { matchTaskSearch } from '../utils/kanbanUtils';
 import UI_STRINGS from '../data/ui-strings.json';
 import AppIcon from './AppIcon';
 import SkeletonList from './SkeletonList';
@@ -54,6 +55,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
     late: true,
     today: true,
     soon: true,
+    none: true,
     done: false,
     skip: false,
   });
@@ -67,7 +69,8 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
   useEffect(() => {
     if (!getCompletedTasksRange) return;
     let stale = false;
-    getCompletedTasksRange('2020-01-01', '2099-12-31').then((rows) => {
+    // ponytail: chỉ 30 ngày gần nhất — xem lịch sử cũ hơn ở view Lịch/Tháng
+    getCompletedTasksRange(shiftDateDays(-30, today), today).then((rows) => {
       if (stale) return;
       const filtered = (rows || []).filter((r) => {
         if (!r.completed_at) return false;
@@ -77,7 +80,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
       setCompletedList(filtered);
     });
     return () => { stale = true; };
-  }, [getCompletedTasksRange]);
+  }, [getCompletedTasksRange, today]);
 
   const handleComplete = useCallback(async (task) => {
     const completedAt = new Date().toISOString();
@@ -110,15 +113,18 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
     return toDateStr(d);
   }, [today]);
 
+  const subTitlesByParent = useMemo(() => {
+    const map = new Map();
+    for (const t of tasks) {
+      if (!t.parent_task_id) continue;
+      map.set(t.parent_task_id, [...(map.get(t.parent_task_id) || []), t.title || '']);
+    }
+    return map;
+  }, [tasks]);
+
   const matchesSearch = useCallback(
-    (t) => {
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.trim().toLowerCase();
-      const tagNames = (t._tags || []).map((tg) => tg.name).join(' ');
-      const text = `${t.title || ''} ${t.description || ''} ${tagNames}`.toLowerCase();
-      return text.includes(q);
-    },
-    [searchQuery]
+    (t) => matchTaskSearch(t, searchQuery, subTitlesByParent.get(t.id) || []),
+    [searchQuery, subTitlesByParent]
   );
 
   // Đếm số lượng real-time cho 4 pills
@@ -194,7 +200,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
     {
       key: 'late',
       name: 'Quá hạn',
-      color: '#FF8A98',
+      color: 'var(--tk-ks-late-fg)',
       icon: 'warning',
       tasks: filteredOverdue,
       isOpen: groupOpen.late,
@@ -203,7 +209,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
     {
       key: 'today',
       name: 'Hôm nay',
-      color: '#FCD34D',
+      color: 'var(--tk-ks-today-fg)',
       icon: 'clock',
       tasks: filteredToday,
       isOpen: groupOpen.today,
@@ -211,17 +217,26 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
     },
     {
       key: 'soon',
-      name: timeFilter === '7d' ? '7 ngày tới' : 'Sắp tới & Không hạn',
-      color: '#93C5FD',
+      name: timeFilter === '7d' ? '7 ngày tới' : 'Sắp tới',
+      color: 'var(--tk-ks-soon-fg)',
       icon: 'calendar',
-      tasks: [...filteredFuture, ...filteredNoDate],
+      tasks: filteredFuture,
       isOpen: groupOpen.soon,
       visible: timeFilter === 'all' || timeFilter === '7d',
     },
     {
+      key: 'none',
+      name: 'Không hạn',
+      color: 'var(--tk-ks-none-fg)',
+      icon: 'tray',
+      tasks: filteredNoDate,
+      isOpen: groupOpen.none,
+      visible: timeFilter === 'all',
+    },
+    {
       key: 'done',
       name: 'Đã hoàn thành',
-      color: '#6EE7B7',
+      color: 'var(--tk-ks-done-fg)',
       icon: 'check-circle',
       tasks: filteredCompleted,
       isOpen: groupOpen.done,
@@ -230,7 +245,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
     {
       key: 'skip',
       name: 'Bỏ qua',
-      color: '#A9B4C6',
+      color: 'var(--tk-ks-skip-fg)',
       icon: 'prohibit',
       tasks: filteredSkipped,
       isOpen: groupOpen.skip,
@@ -259,13 +274,10 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
                 (t) => t.id === activePopover.taskId
               ) || { id: activePopover.taskId };
             if (st === 'done') handleComplete(task);
-            else if (st === 'skip') updateTask(activePopover.taskId, { status: 'skip' });
-            else {
-              if (activePopover.currentStatus === 'completed' || activePopover.currentStatus === 'done') {
-                uncompleteTask(activePopover.taskId);
-              }
-              updateTask(activePopover.taskId, { status: st });
-            }
+            else if (task.completed || activePopover.currentStatus === 'completed' || activePopover.currentStatus === 'done') {
+              setCompletedList((prev) => prev.filter((t) => t.id !== task.id));
+              uncompleteTask(task.id, st);
+            } else updateTask(task.id, { status: st });
           }}
           onClose={() => setActivePopover(null)}
           style={{ position: 'fixed', top: `${activePopover.y}px`, left: `${activePopover.x}px` }}
@@ -332,7 +344,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
                   fontWeight: 500,
                   cursor: 'pointer',
                   border: isActive ? '1px solid var(--tk-accent, #5EF2C2)' : '1px solid var(--tk-border, rgba(255,255,255,0.08))',
-                  background: isActive ? 'rgba(94, 242, 194, 0.12)' : 'var(--tk-card-bg, rgba(14,19,36,0.6))',
+                  background: isActive ? 'var(--tk-accent-soft)' : 'var(--tk-card-bg, rgba(14,19,36,0.6))',
                   color: isActive ? 'var(--tk-accent, #5EF2C2)' : 'var(--tk-text-sub, #8A93AD)',
                   transition: 'all 0.15s ease',
                   display: 'inline-flex',
@@ -517,16 +529,28 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
                   const isFuture = !isDone && !isSkip && task.due_date && task.due_date > today;
 
                   const glowColor = isOverdue
-                    ? '#FF8A98'
+                    ? 'var(--tk-ks-late-fg)'
                     : isToday
-                    ? '#FCD34D'
+                    ? 'var(--tk-ks-today-fg)'
                     : isFuture
-                    ? '#93C5FD'
+                    ? 'var(--tk-ks-soon-fg)'
                     : isDone
-                    ? '#34D399'
+                    ? 'var(--tk-st-done)'
                     : isSkip
-                    ? '#94A3B8'
-                    : '#5B6480';
+                    ? 'var(--tk-st-skip)'
+                    : 'var(--tk-text-mute)';
+
+                  const tm = task.due_time ? ` · ${task.due_time.slice(0, 5)}` : '';
+                  const daysLate = isOverdue
+                    ? Math.round((new Date(`${today}T00:00:00`) - new Date(`${task.due_date}T00:00:00`)) / 864e5)
+                    : 0;
+                  const dueText = isOverdue
+                    ? `Quá hạn · ${formatDate(task.due_date)}${tm}`
+                    : isToday
+                    ? `Hôm nay${tm}`
+                    : task.due_date
+                    ? `${formatDate(task.due_date)}${tm}`
+                    : 'Đặt hạn';
 
                   const subs = tasks.filter((t) => t.parent_task_id === task.id);
                   const isExpandedSubs = expandedSubtaskIds.has(task.id);
@@ -649,7 +673,33 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
                             </span>
                           ))}
 
-                          {/* Priority badge */}
+                          {/* Priority badge — chỉ hiện khi có ưu tiên; chưa có thì nút cờ nét đứt */}
+                          {!task.priority && !isDone && !isSkip && (
+                            <button
+                              type="button"
+                              title="Đặt ưu tiên"
+                              onClick={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setActivePopover({ type: 'priority', taskId: task.id, currentPriority: 0, x: rect.left, y: rect.bottom + 4 });
+                              }}
+                              style={{
+                                width: '22px',
+                                height: '22px',
+                                boxSizing: 'border-box',
+                                borderRadius: '6px',
+                                display: 'grid',
+                                placeItems: 'center',
+                                border: '1px dashed var(--tk-border-strong)',
+                                color: 'var(--tk-text-mute)',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                padding: 0,
+                              }}
+                            >
+                              <AppIcon name="flag" size={12} />
+                            </button>
+                          )}
+                          {task.priority > 0 && !isDone && (
                           <span
                             className="tk-badge-pill"
                             onClick={(e) => {
@@ -671,6 +721,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
                             <AppIcon name="flag" size={11} />
                             {PRIORITY_LABELS[task.priority]?.label || 'Ưu tiên'}
                           </span>
+                          )}
 
                           {/* Due Date badge */}
                           <span
@@ -687,14 +738,19 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
                               });
                             }}
                             style={{
-                              background: isOverdue ? 'rgba(255, 92, 112, 0.12)' : isToday ? 'rgba(251, 191, 36, 0.12)' : 'var(--tk-border-soft)',
-                              border: `1px solid ${isOverdue ? 'rgba(255, 92, 112, 0.3)' : isToday ? 'rgba(251, 191, 36, 0.3)' : 'var(--tk-border)'}`,
-                              color: isOverdue ? '#FF8A98' : isToday ? '#FCD34D' : 'var(--tk-text-sub)',
+                              background: isOverdue ? 'var(--tk-ks-late-bg)' : isToday ? 'var(--tk-ks-today-bg)' : 'var(--tk-border-soft)',
+                              border: `1px solid ${isOverdue ? 'var(--tk-ks-late-bd)' : isToday ? 'var(--tk-ks-today-bd)' : 'var(--tk-border)'}`,
+                              color: isOverdue ? 'var(--tk-ks-late-fg)' : isToday ? 'var(--tk-ks-today-fg)' : 'var(--tk-text-sub)',
                             }}
                           >
                             <AppIcon name={isOverdue ? 'warning' : 'calendar'} size={11} />
-                            {isOverdue ? 'Quá hạn' : isToday ? 'Hôm nay' : task.due_date ? formatDate(task.due_date) : 'Đặt hạn'}
+                            {dueText}
                           </span>
+                          {daysLate > 0 && (
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: 'var(--tk-ks-late-fg)' }}>
+                              trễ {daysLate} ngày
+                            </span>
+                          )}
 
                           {/* Recurrence badge */}
                           {task.recurrence_rule && (
@@ -712,7 +768,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
                               }}
                               title={`Lặp lại: ${describeRecurrence(task.recurrence_rule)}`}
                               style={{
-                                background: 'rgba(94, 242, 194, 0.08)',
+                                background: 'var(--tk-accent-soft)',
                                 border: '1px solid rgba(94, 242, 194, 0.25)',
                                 color: 'var(--tk-accent, #5EF2C2)',
                               }}
@@ -742,7 +798,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm, onSe
                             marginLeft: '26px',
                             padding: '6px 8px',
                             borderRadius: '8px',
-                            background: 'rgba(0,0,0,0.2)',
+                            background: 'var(--tk-border-soft)',
                             border: '1px solid var(--tk-border-soft)',
                             display: 'flex',
                             flexDirection: 'column',

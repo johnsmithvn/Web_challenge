@@ -29,6 +29,7 @@ export default function CalendarWidgetPanel({
   onAddCustomAnniversary,
   onDeleteCustomAnniversary,
   onCreateTaskFromEvent,
+  isEventTaskAdded,
 }) {
   const [filterType, setFilterType] = useState('all'); // 'all' | 'solar' | 'lunar' | 'international' | 'custom' | 'japan' | 'fun'
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'events'
@@ -553,14 +554,17 @@ export default function CalendarWidgetPanel({
                         <strong>{ev.title}</strong>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        {onCreateTaskFromEvent && (
+                        {onCreateTaskFromEvent && (() => {
+                          const added = isEventTaskAdded?.(ev);
+                          return (
                           <button
                             type="button"
+                            disabled={added}
                             onClick={(e) => {
                               e.stopPropagation();
                               onCreateTaskFromEvent(ev);
                             }}
-                            title="Tạo nhiệm vụ từ sự kiện này"
+                            title={added ? 'Đã có việc cho sự kiện này' : 'Tạo nhiệm vụ từ sự kiện này'}
                             style={{
                               height: '24px',
                               padding: '0 8px',
@@ -570,15 +574,17 @@ export default function CalendarWidgetPanel({
                               color: 'var(--tk-accent, #5EF2C2)',
                               fontSize: '11px',
                               fontWeight: 600,
-                              cursor: 'pointer',
+                              cursor: added ? 'default' : 'pointer',
+                              opacity: added ? 0.7 : 1,
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
                             }}
                           >
-                            <AppIcon name="plus" size={11} /> Việc
+                            <AppIcon name={added ? 'check' : 'plus'} size={11} /> {added ? 'Đã thêm' : 'Việc'}
                           </button>
-                        )}
+                          );
+                        })()}
                         <div className={`cal-event-countdown${ev.diffDays <= 3 ? ' cal-event-countdown--soon' : ''}`}>
                           {ev.countdownLabel}
                         </div>

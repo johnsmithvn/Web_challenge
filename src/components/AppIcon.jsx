@@ -175,7 +175,12 @@ const ALIASES = {
   'caret-down': 'caretDown', 'caret-up': 'caretUp', 'caret-left': 'caretLeft', 'caret-right': 'caretRight',
 };
 
-export default function AppIcon({ name, size = 18, weight = 'regular', ...props }) {
+export default function AppIcon({ name, size = 18, weight = 'regular', color, style, ...props }) {
   const Icon = ICONS[ALIASES[name] || name] || Package;
-  return <Icon size={size} weight={weight} aria-hidden="true" {...props} />;
+  // Phosphor đặt color vào thuộc tính SVG `fill`, nơi var(--x) không chắc được hiểu →
+  // biến CSS đi qua style.color + currentColor.
+  if (typeof color === 'string' && color.startsWith('var(')) {
+    return <Icon size={size} weight={weight} aria-hidden="true" color="currentColor" style={{ ...style, color }} {...props} />;
+  }
+  return <Icon size={size} weight={weight} aria-hidden="true" color={color} style={style} {...props} />;
 }

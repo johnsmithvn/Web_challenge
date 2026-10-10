@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
-import { bucketTasksByDay, taskDayMark } from '../utils/calendarTimeUtils';
+import { bucketTasksByDay, taskDayMark, taskDragStart, dropZoneProps } from '../utils/calendarTimeUtils';
 import { useConfirm } from './ConfirmModal';
 import UI_STRINGS from '../data/ui-strings.json';
 import HOLIDAYS from '../data/holidays.json';
@@ -45,6 +45,7 @@ export default function MonthCalendar({
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   customAnniversaries = [],
   refreshKey = 0,
+  onRescheduleTask,
 }) {
   const today = useMemo(() => new Date(), []);
   const [viewYear, setViewYear] = useState(() => (currentDate ? currentDate.getFullYear() : today.getFullYear()));
@@ -422,6 +423,7 @@ export default function MonthCalendar({
               ].join(' ')}
               onClick={() => setSelectedDayModal(info.dateStr)}
               onDoubleClick={() => onQuickCreate?.(info.dateStr, '09:00')}
+              {...(onRescheduleTask ? dropZoneProps((id) => onRescheduleTask(id, info.dateStr)) : {})}
               id={`cal-day-${info.dateStr}`}
               role="button"
               title={[
@@ -472,6 +474,8 @@ export default function MonthCalendar({
                       key={t.id}
                       className={`cal-chip ${chipClass}`}
                       title={t.title}
+                      draggable={!t._done && !!onRescheduleTask}
+                      onDragStart={(e) => taskDragStart(e, t)}
                       onClick={(e) => {
                         e.stopPropagation();
                         onSelectTask?.(t);

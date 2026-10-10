@@ -7,6 +7,9 @@ import {
   computeDayLayout,
   getTaskVisualStatus,
   taskDayMark,
+  slotTimeFromOffset,
+  taskDragStart,
+  dropZoneProps,
 } from '../utils/calendarTimeUtils';
 import '../styles/week-calendar.css';
 
@@ -28,6 +31,7 @@ export default function CalendarDayView({
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   customAnniversaries = [],
   refreshKey = 0,
+  onRescheduleTask,
 }) {
   const [completedTasks, setCompletedTasks] = useState([]);
   const [nowMinutes, setNowMinutes] = useState(() => {
@@ -262,9 +266,9 @@ export default function CalendarDayView({
                 borderRadius: '6px',
                 fontSize: '11px',
                 flexShrink: 0,
-                background: zh.isHoangDao ? 'rgba(251, 191, 36, 0.12)' : 'var(--tk-border-soft, rgba(255, 255, 255, 0.04))',
-                border: `1px solid ${zh.isHoangDao ? 'rgba(251, 191, 36, 0.3)' : 'var(--tk-border, rgba(255, 255, 255, 0.06))'}`,
-                color: zh.isHoangDao ? '#FCD34D' : 'var(--tk-text-mute)',
+                background: zh.isHoangDao ? 'var(--tk-ks-today-bg)' : 'var(--tk-border-soft, rgba(255, 255, 255, 0.04))',
+                border: `1px solid ${zh.isHoangDao ? 'var(--tk-ks-today-bd)' : 'var(--tk-border, rgba(255, 255, 255, 0.06))'}`,
+                color: zh.isHoangDao ? 'var(--tk-ks-today-fg)' : 'var(--tk-text-mute)',
                 fontWeight: zh.isHoangDao ? 600 : 400,
               }}
               title={`${zh.name} (${zh.range}): ${zh.isHoangDao ? 'Hoàng đạo' : 'Hắc đạo'}`}
@@ -291,7 +295,15 @@ export default function CalendarDayView({
             </div>
 
             {/* Canvas chính chứa slot giờ, dải hoàng đạo và các task */}
-            <div className="cal-day-view__canvas">
+            <div
+              className="cal-day-view__canvas"
+              {...(onRescheduleTask
+                ? dropZoneProps((id, e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    onRescheduleTask(id, dateStr, slotTimeFromOffset(e.clientY - rect.top, PX_PER_HOUR));
+                  })
+                : {})}
+            >
               {/* Dải bóng giờ hoàng đạo (Bands) */}
               {isToday &&
                 hoangDaoBands.map((bd, i) => (
@@ -303,7 +315,7 @@ export default function CalendarDayView({
                       right: 0,
                       top: `${bd.start * PX_PER_HOUR}px`,
                       height: `${(bd.end - bd.start) * PX_PER_HOUR}px`,
-                      background: 'rgba(251, 191, 36, 0.035)',
+                      background: 'var(--tk-ks-today-tint)',
                       borderLeft: '2px solid rgba(251, 191, 36, 0.3)',
                       pointerEvents: 'none',
                       zIndex: 1,
@@ -316,7 +328,7 @@ export default function CalendarDayView({
                         right: '12px',
                         fontSize: '11px',
                         fontWeight: 500,
-                        color: '#FCD34D',
+                        color: 'var(--tk-ks-today-fg)',
                         opacity: 0.85,
                       }}
                     >
@@ -368,6 +380,8 @@ export default function CalendarDayView({
                   <div
                     key={t.id}
                     className={`week-cal__event ${statusClass}${t._layout.kind !== 'block' ? ' week-cal__event--marker' : ''}`}
+                    draggable={visualStatus !== 'done' && !!onRescheduleTask}
+                    onDragStart={(e) => taskDragStart(e, t)}
                     style={{
                       top: `${t._layout.top}px`,
                       height: `${Math.max(26, t._layout.height)}px`,
@@ -395,9 +409,10 @@ export default function CalendarDayView({
         </div>
 
         {/* Panel Việc Chưa Xếp Giờ bên phải */}
-        {unscheduledTasks.length > 0 && (
+        {(
           <div
             className="cal-day-view__unscheduled-panel"
+            {...(onRescheduleTask ? dropZoneProps((id) => onRescheduleTask(id, dateStr, null)) : {})}
             style={{
               width: '260px',
               borderLeft: '1px solid var(--tk-border-soft, rgba(255,255,255,0.08))',
@@ -441,13 +456,15 @@ export default function CalendarDayView({
                 return (
                   <div
                     key={t.id}
+                    draggable={!!onRescheduleTask}
+                    onDragStart={(e) => taskDragStart(e, t)}
                     onClick={() => onSelectTask?.(t)}
                     style={{
                       position: 'relative',
                       padding: '8px 10px 8px 12px',
                       borderRadius: '10px',
-                      background: isLate ? 'rgba(255, 92, 112, 0.05)' : 'var(--tk-card-bg, rgba(255,255,255,0.03))',
-                      border: `1px solid ${isLate ? 'rgba(255, 92, 112, 0.25)' : 'var(--tk-border, rgba(255,255,255,0.07))'}`,
+                      background: isLate ? 'var(--tk-ks-late-tint)' : 'var(--tk-card-bg, rgba(255,255,255,0.03))',
+                      border: `1px solid ${isLate ? 'var(--tk-ks-late-bd)' : 'var(--tk-border, rgba(255,255,255,0.07))'}`,
                       cursor: 'pointer',
                       overflow: 'hidden',
                       display: 'flex',
@@ -463,7 +480,7 @@ export default function CalendarDayView({
                         top: 0,
                         bottom: 0,
                         width: '2.5px',
-                        background: isLate ? '#FF8A98' : (t.priority >= 3 ? '#FF6B8B' : '#60A5FA'),
+                        background: isLate ? 'var(--tk-ks-late-fg)' : (t.priority >= 3 ? 'var(--tk-ks-late-fg)' : 'var(--tk-st-todo)'),
                       }}
                     />
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
@@ -471,7 +488,7 @@ export default function CalendarDayView({
                         style={{
                           fontSize: '12.5px',
                           fontWeight: 600,
-                          color: isLate ? '#FF8A98' : 'var(--tk-text-main, #E8ECF7)',
+                          color: isLate ? 'var(--tk-ks-late-fg)' : 'var(--tk-text-main, #E8ECF7)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -487,8 +504,8 @@ export default function CalendarDayView({
                             fontWeight: 600,
                             padding: '1px 5px',
                             borderRadius: '4px',
-                            background: 'rgba(255, 92, 112, 0.15)',
-                            color: '#FF8A98',
+                            background: 'var(--tk-ks-late-bg)',
+                            color: 'var(--tk-ks-late-fg)',
                             flexShrink: 0,
                           }}
                         >

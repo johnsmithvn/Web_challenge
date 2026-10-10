@@ -230,7 +230,7 @@ export default function CalendarToolbar({
           type="button"
           role="tab"
           aria-selected={activeView === 'week'}
-          className={`cal-segmented-btn${activeView === 'week' ? ' cal-segmented-btn--active' : ''}`}
+          className={`cal-segmented-btn cal-segmented-btn--week${activeView === 'week' ? ' cal-segmented-btn--active' : ''}`}
           onClick={() => setActiveView('week')}
           title="Lịch Tuần 7 ngày (Phím tắt: W)"
         >

@@ -1182,6 +1182,21 @@ bar · two-pane body (item list · detail), breakpoint 900px.
 - **Scrollbar** — `6px` wide, `--bg-secondary` track,
   `rgba(139,92,246,0.4)` thumb at `3px` radius, `--purple` on hover.
 
+### Tasks workspace (Aurora) — `src/styles/tasks-aurora.css`
+
+Trang Nhiệm vụ dùng bộ token riêng `--tk-*`, khai báo trên `.tasks-workspace`
+theo `[data-theme]`: tối = mockup 2a (mint `#5EF2C2`, nền `#060914`, sao/sao chổi),
+sáng = mockup 2b (violet `#7C3AED`, nền `#F4F2FF`, aurora pastel, ẩn sao).
+
+- Màu tình trạng thời gian của thẻ: `--tk-ks-{late|today|soon|none|done|skip}-{glow|tint|fg|bg|bd}`
+  (viền trái · nền ánh · nhãn ngày). Màu cột: `--tk-st-{todo|doing|done|skip}`.
+  Ô được chọn: `--tk-sel-bg` / `--tk-sel-fg`; Chủ nhật: `--tk-sun`.
+- Không viết cứng màu tối/sáng trong JSX của Tasks — luôn dùng token để hai theme tự đổi.
+  `AppIcon color="var(--x)"` được chuyển sang `style.color` (thuộc tính SVG `fill` không nhận biến CSS).
+- Mobile (`≤640px`): Kanban hiện từng cột qua `.tk-kanban-tabs` (vuốt ngang để đổi),
+  ngăn chi tiết thành bottom sheet, thanh lọc cuộn ngang.
+- Kéo thả trên Lịch: vùng thả có class `.is-drop-over` (viền nét đứt `--tk-accent`).
+
 ## Do's and Don'ts
 
 **Tokens**
