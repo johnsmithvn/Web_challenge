@@ -216,4 +216,44 @@ const expectedDueSum = items
   .reduce((s, i) => s + i.ev.amount, 0);
 assert.equal(totals.all.value, expectedDueSum, 'hubTotals.all.value phải bằng tổng amount các item due');
 
+// ── 4. Hồi quy sau review ──────────────────────────────────────────────────────
+const regFin = {
+  today: '2026-10-10',
+  bills: [],
+  cards: [
+    // Chốt 08/10 → hạn 05/11: còn nợ nhưng hạn nằm tháng sau → không phải "CUỐI THÁNG"
+    { id: 'c_next', name: 'VIB', statement_day: 8, due_day: 5, credit_limit: 10000000 },
+  ],
+  loans: [
+    // Chỉ trả lãi, đã đủ 12 kỳ lãi nhưng gốc chưa tất toán → vẫn phải còn trong hub
+    { id: 'l_wait', name: 'Thấu chi', kind: 'interest', principal: 400000000, rate: 4.8, term: 12, done: 12, pay_day: 2 },
+    // Trả đều đã đủ kỳ → hết nghĩa vụ
+    { id: 'l_done', name: 'Vay xe', kind: 'amort', principal: 10000000, rate: 6, term: 12, done: 12, pay_day: 2 },
+  ],
+  goals: [
+    { id: 'g_auto', name: 'Quỹ An Gia', goal: 30000000, auto_deposit: { amount: 2000000, day: 31 } },
+  ],
+  lendings: [],
+  transactions: [
+    { id: 'tx_vib', source_card_id: 'c_next', type: 'expense', amount: 500000, occurred_at: '2026-10-01' },
+  ],
+  deposits: [
+    // Nơi gửi gắn quỹ bằng fund_id (cột thật trong finance_deposits)
+    { id: 'd1', fund_id: 'g_auto', amount: 3000000 },
+  ],
+};
+const regItems = buildHubItems(regFin);
+const vib = regItems.find(i => i.id === 'c_next');
+assert.equal(vib.ev.due, '2026-11-05');
+const regGroups = groupHubItems(regItems, regFin.today);
+assert.ok(regGroups.find(g => g.key === 'none').items.some(i => i.id === 'c_next'), 'hạn tháng sau rơi vào nhóm không có kỳ');
+assert.ok(!regGroups.some(g => g.key === 'later' && g.items.some(i => i.id === 'c_next')));
+assert.ok(regItems.some(i => i.id === 'l_wait'), 'vay chỉ trả lãi chờ tất toán gốc không được biến mất');
+assert.ok(!regItems.some(i => i.id === 'l_done'), 'vay trả đều đủ kỳ là xong');
+const gAuto = regItems.find(i => i.id === 'g_auto');
+assert.equal(gAuto.progress.pct, 10, 'tiến độ quỹ đọc nơi gửi theo fund_id');
+assert.equal(gAuto.ev.day, 31, 'tháng 10 có ngày 31');
+assert.equal(buildHubItems({ ...regFin, today: '2026-11-10' }).find(i => i.id === 'g_auto').ev.day, 30,
+  'ngày gửi 31 rơi về 30 ở tháng 30 ngày để chip lịch không mất');
+
 console.log('recurringHub check: OK');

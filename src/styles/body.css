@@ -637,6 +637,19 @@
   color: var(--body-text-muted);
 }
 
+/* ── LIVE SESSION: CHI TIẾT KỸ THUẬT THU GỌN ──────────────────────── */
+.body-live-details {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--body-shell-bg);
+}
+.body-live-details > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--body-text-sub);
+}
+
 /* ── REST TIMER CIRCULAR OVERLAY ────────────────────────────────── */
 .body-rest-overlay {
   background: #15161A;
@@ -838,13 +851,22 @@
     font-weight: 700;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
-  /* Live session: nút hành động (Bắt đầu / Hoàn thành set) luôn nổi ngay trên bottom nav 64px */
+  /* Live session: thanh hành động bám đáy card (tràn tới mép card, padding .body-card = 20px),
+     dính ngay trên bottom nav 64px khi nội dung dài */
   .body-live-actions {
     position: sticky;
     bottom: 64px;
     z-index: 5;
+    margin: 0 -20px -20px;
+    padding: 12px 20px;
     background: var(--body-card-bg);
-    padding-block: 12px;
+    border-top: 1px solid var(--body-card-border);
+    border-radius: 0 0 16px 16px;
+  }
+  .body-live-actions > .body-btn-primary,
+  .body-live-actions > .body-btn-accent {
+    flex: 1;
+    justify-content: center;
   }
   .body-days-strip {
     grid-template-columns: repeat(7, minmax(0, 1fr));

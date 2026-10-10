@@ -251,7 +251,8 @@ export default function FinancePage() {
       </div>
 
       <section className="fin-content">
-        {screen !== 'list' && screen !== 'overview' && (
+        {/* Định kỳ & Quỹ tự có header (tiêu đề · tháng · Thêm nguồn chi) theo bản chốt. */}
+        {screen !== 'list' && screen !== 'overview' && screen !== 'recurring' && (
           <header className="fin-header">
             <div className="fin-header__brand">
               <div className="fin-header__copy">

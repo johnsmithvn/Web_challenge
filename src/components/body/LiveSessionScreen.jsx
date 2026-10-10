@@ -425,13 +425,10 @@ export default function LiveSessionScreen({
       ? `Cặp ${Math.floor(currentItem.exerciseIndex / 2) + 1} · ${LETTERS[currentItem.exerciseIndex] || ''}${currentItem.set_no} · Set ${currentItem.set_no}/${currentItem.total_sets}`
       : `Bài ${currentExerciseIdx} / ${uniqueExerciseKeys.length} · Set ${currentItem.set_no}/${currentItem.total_sets}`;
 
-  // Ước tính thời lượng & thứ tự set của từng chế độ (chọn trước khi bắt đầu)
-  const modeOptions = useMemo(() => MODES.map(m => {
-    const q = generateWorkoutQueue(dayItems, m.key);
-    const seq = q.slice(0, 12).map(x => `${LETTERS[x.exerciseIndex] || '?'}${x.set_no}`).join(' → ')
-      + (q.length > 12 ? ` → … (${q.length} set)` : '');
-    return { ...m, minutes: estimateQueueMinutes(q), seq };
-  }), [dayItems]);
+  // Ước tính thời lượng của từng chế độ (chọn trước khi bắt đầu)
+  const modeOptions = useMemo(() => MODES.map(m => (
+    { ...m, minutes: estimateQueueMinutes(generateWorkoutQueue(dayItems, m.key)) }
+  )), [dayItems]);
 
   // ── STATS CALCULATION FOR DONE SCREEN ─────────────────────────────────────
   const doneStats = useMemo(() => {
@@ -564,12 +561,13 @@ export default function LiveSessionScreen({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '12px 18px',
+        gap: '8px',
+        padding: '8px 10px 8px 16px',
         borderRadius: '14px',
         background: 'var(--body-card-bg)',
         border: '1px solid var(--body-card-border)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
           <span style={{
             fontSize: '18px',
             fontWeight: 700,
@@ -582,25 +580,20 @@ export default function LiveSessionScreen({
             <AppIcon name="timer" size={18} />
             {formatClock(elapsed)}
           </span>
-          <span style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-            {positionLabel}
+          <span style={{ fontSize: '13px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {screenState !== 'done' && positionLabel}
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            className="body-btn body-btn-secondary"
-            onClick={() => setShowExitModal(true)}
-          >
-            Thoát
-          </button>
-          <button
-            className="body-btn body-btn-primary"
-            onClick={() => setScreenState('done')}
-          >
-            Kết thúc buổi
-          </button>
-        </div>
+        <button
+          type="button"
+          className="body-btn-icon"
+          style={{ width: '36px', height: '36px', flex: 'none' }}
+          onClick={() => setShowExitModal(true)}
+          aria-label="Kết thúc / tạm dừng buổi tập"
+        >
+          <AppIcon name="dots" size={20} weight="bold" />
+        </button>
       </div>
 
       {/* ── PROGRESS SEGMENTS ───────────────────────────────────── */}
@@ -626,55 +619,25 @@ export default function LiveSessionScreen({
       {/* ── BƯỚC 1: XEM HƯỚNG DẪN KỸ THUẬT (GUIDE) ──────────────── */}
       {screenState === 'guide' && (
         <div className="body-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div>
-              <span className="body-badge body-badge-accent" style={{ marginBottom: '6px' }}>
-                BÀI {currentExerciseIdx} / {uniqueExerciseKeys.length}
-              </span>
-              <h2 style={{ fontSize: '24px', fontWeight: 700, margin: '4px 0' }}>{exDef?.name}</h2>
-              <div style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                Cơ chính: {MUSCLE_MAP[exDef?.primary]?.name || exDef?.primary} · Phụ: {(exDef?.secondary || []).map(m => MUSCLE_MAP[m]?.name || m).join(', ') || 'Không'}
-              </div>
-              <div style={{ fontSize: '12.5px', color: 'var(--body-text-sub)', marginTop: '4px', fontFamily: 'var(--body-mono)' }}>
-                Lần trước: {prevLine(currentItem?.exercise_key) || 'chưa có'}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '11px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>MỤC TIÊU</div>
-              <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--body-accent)' }}>
+          <div>
+            <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0, lineHeight: 1.25 }}>{exDef?.name}</h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '4px 12px', marginTop: '6px' }}>
+              <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-accent)' }}>
                 {currentItem?.total_sets} × {formatValWithUnit(currentItem?.target_val, currentItem?.unit)}
                 {currentItem?.kg ? ` · ${currentItem.kg} kg` : ''}
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowDetailModal(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  padding: '4px 10px',
-                  borderRadius: '9999px',
-                  border: '1px solid var(--body-accent)',
-                  background: 'var(--body-accent-soft)',
-                  color: 'var(--body-accent)',
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  marginTop: '6px'
-                }}
-                title="Mở Modal chi tiết xem Video thị phạm & Bản đồ cơ bắp 2D"
-              >
-                <span>📹</span>
-                <span>Video & Cơ bắp</span>
-              </button>
+              </span>
+              {prevLine(currentItem?.exercise_key) && (
+                <span style={{ fontSize: '12.5px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-sub)' }}>
+                  lần trước {prevLine(currentItem?.exercise_key)}
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Chọn chế độ tập trước set đầu tiên (kèm thời lượng ước tính & thứ tự set), sau đó cố định suốt buổi */}
-          {!modeLocked && dayItems.length > 1 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 14px', borderRadius: '10px', background: 'var(--body-shell-bg)' }}>
-              <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)', fontWeight: 600 }}>Chọn chế độ tập</span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px' }}>
+          {/* Chọn chế độ trước set đầu tiên, sau đó cố định suốt buổi */}
+          {!modeLocked && dayItems.length > 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '6px' }}>
                 {modeOptions.map(m => {
                   const on = mode === m.key;
                   return (
@@ -683,114 +646,74 @@ export default function LiveSessionScreen({
                       type="button"
                       onClick={() => setMode(m.key)}
                       style={{
-                        textAlign: 'left',
-                        padding: '10px 12px',
+                        padding: '8px 6px',
                         borderRadius: '10px',
                         border: `1.5px solid ${on ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
-                        background: on ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
-                        color: 'var(--body-text-main)',
+                        background: on ? 'var(--body-accent-soft)' : 'transparent',
+                        color: on ? 'var(--body-accent)' : 'var(--body-text-main)',
                         cursor: 'pointer',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '3px'
+                        alignItems: 'center',
+                        gap: '2px',
+                        textAlign: 'center'
                       }}
                     >
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: on ? 'var(--body-accent)' : 'var(--body-text-main)' }}>
-                        {m.label} · ~{m.minutes} phút
-                      </span>
-                      <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)', lineHeight: 1.4 }}>{m.desc}</span>
+                      <span style={{ fontSize: '13px', fontWeight: 700 }}>{m.label}</span>
+                      <span style={{ fontSize: '11.5px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>~{m.minutes} phút</span>
                     </button>
                   );
                 })}
               </div>
-              <span style={{ fontSize: '11.5px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-sub)', overflowWrap: 'anywhere' }}>
-                Thứ tự: {modeOptions.find(m => m.key === mode)?.seq}
-              </span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '10px', background: 'var(--body-shell-bg)', fontSize: '13px' }}>
-              <span style={{ color: 'var(--body-text-muted)', fontWeight: 500 }}>Chế độ:</span>
-              <span style={{ fontWeight: 600, color: 'var(--body-accent)', fontSize: '12.5px' }}>
-                {MODES.find(m => m.key === mode)?.label}{modeLocked ? ' (cố định suốt buổi)' : ''}
+              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
+                {MODES.find(m => m.key === mode)?.desc}
               </span>
             </div>
           )}
 
-          <div style={{ padding: '16px', borderRadius: '12px', background: 'var(--body-shell-bg)' }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>Cách thực hiện chuẩn:</div>
-            <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '13.5px', lineHeight: 1.6, color: 'var(--body-text-main)' }}>
-              {(exDef?.steps || []).map((step, sIdx) => (
-                <li key={sIdx} style={{ marginBottom: '4px' }}>{step}</li>
-              ))}
-            </ol>
+          <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', lineHeight: 1.6, color: 'var(--body-text-main)' }}>
+            {(exDef?.steps || []).map((step, sIdx) => (
+              <li key={sIdx} style={{ marginBottom: '4px' }}>{step}</li>
+            ))}
+          </ol>
 
-            {(exDef?.breathing || exDef?.tempo) && (
-              <div style={{
-                marginTop: '10px',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                background: 'var(--body-card-bg)',
-                border: '1px solid var(--body-card-border)',
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '12px',
-                fontSize: '12px',
-                lineHeight: 1.45
-              }}>
-                {exDef?.breathing && (
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
-                    <span>🌬️</span>
-                    <span><strong>Thở:</strong> {exDef.breathing}</span>
-                  </div>
-                )}
-                {exDef?.tempo && (
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '5px' }}>
-                    <span>⏱️</span>
-                    <span><strong>Tempo:</strong> {exDef.tempo}</span>
-                  </div>
-                )}
-              </div>
-            )}
+          <details className="body-live-details">
+            <summary>Chi tiết kỹ thuật & video</summary>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px', fontSize: '12.5px', lineHeight: 1.5 }}>
+              {exDef?.breathing && <div><strong>Thở:</strong> {exDef.breathing}</div>}
+              {exDef?.tempo && <div><strong>Tempo:</strong> {exDef.tempo}</div>}
+              {exDef?.tip && <div style={{ color: 'var(--body-red)' }}><strong>Lỗi hay gặp:</strong> {exDef.tip}</div>}
 
-            {exDef?.tip && (
-              <div style={{ marginTop: '12px', fontSize: '12.5px', color: 'var(--body-red)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <AppIcon name="warning" size={14} />
-                <span>Lỗi hay gặp: {exDef.tip}</span>
-              </div>
-            )}
-
-            {exDef?.injury_risk && (
-              <div style={{
-                marginTop: '10px',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                background: 'rgba(239, 68, 68, 0.05)',
-                border: '1px solid rgba(239, 68, 68, 0.2)',
-                fontSize: '12px',
-                lineHeight: 1.5,
-                color: 'var(--body-text-main)'
-              }}>
-                <div style={{ fontWeight: 700, color: '#DC2626', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <AppIcon name="warning" size={13} />
-                  <span>Cảnh báo chấn thương & Phòng tránh đau:</span>
+              {exDef?.injury_risk && (
+                <div style={{
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  background: 'var(--body-red-soft)',
+                  color: 'var(--body-text-main)'
+                }}>
+                  <div>{exDef.injury_risk}</div>
+                  {(exDef.contraindications || []).length > 0 && (
+                    <div style={{ marginTop: '4px', color: 'var(--body-red)', fontWeight: 600 }}>
+                      Không nên tập nếu: {exDef.contraindications.join(', ')}
+                    </div>
+                  )}
+                  {exDef.easier_variation && (
+                    <div style={{ marginTop: '4px', color: 'var(--body-green-text)' }}>
+                      Quá khó? Thử <strong>{BASE_EXERCISES.find(e => e.key === exDef.easier_variation)?.name}</strong>
+                    </div>
+                  )}
                 </div>
-                <div>{exDef.injury_risk}</div>
-                {(exDef.contraindications || []).length > 0 && (
-                  <div style={{ marginTop: '4px', fontSize: '11.5px', color: '#DC2626', fontWeight: 600 }}>
-                    ⚠️ Không nên tập nếu: {exDef.contraindications.join(', ')}
-                  </div>
-                )}
-                {exDef.easier_variation && (
-                  <div style={{ marginTop: '6px', fontSize: '11.5px', color: 'var(--body-green-text)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <AppIcon name="arrowDown" size={12} />
-                    <span>Bài quá khó? Gợi ý biến thể dễ hơn: <strong>{BASE_EXERCISES.find(e => e.key === exDef.easier_variation)?.name}</strong></span>
-                  </div>
-                )}
-              </div>
-            )}
+              )}
 
-            {/* Video thị phạm (YouTube / Google Drive) */}
-            <div style={{ marginTop: '12px' }}>
+              <button
+                type="button"
+                className="body-btn body-btn-secondary"
+                style={{ alignSelf: 'flex-start' }}
+                onClick={() => setShowDetailModal(true)}
+              >
+                Bản đồ cơ & video
+              </button>
+
               <ExerciseVideoPlayer
                 exerciseKey={currentItem?.exercise_key}
                 exerciseName={exDef?.name}
@@ -798,15 +721,15 @@ export default function LiveSessionScreen({
                 compact={true}
               />
             </div>
-          </div>
+          </details>
 
           <div className="body-live-actions" style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button
               className="body-btn body-btn-primary"
-              style={{ padding: '0 24px', height: '42px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ padding: '0 24px', height: '44px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
               onClick={() => setScreenState('set')}
             >
-              <span>Bắt đầu Set {currentItem?.set_no || 1}</span>
+              <span>Bắt đầu set {currentItem?.set_no || 1}</span>
               <AppIcon name="arrowRight" size={16} />
             </button>
           </div>
@@ -816,23 +739,21 @@ export default function LiveSessionScreen({
       {/* ── BƯỚC 2: GHI SET (REP HOẶC BẤM GIỜ) ──────────────────── */}
       {screenState === 'set' && (
         <div className="body-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div>
-              <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>{exDef?.name}</h2>
-              <div style={{ fontSize: '13px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
-                Set {currentItem?.set_no} / {currentItem?.total_sets} · Mục tiêu {formatValWithUnit(currentItem?.target_val, currentItem?.unit)}
-                {currentItem?.kg ? ` · ${currentItem.kg} kg` : ''}
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--body-text-sub)', marginTop: '2px', fontFamily: 'var(--body-mono)' }}>
-                Lần trước: {prevLine(currentItem?.exercise_key) || 'chưa có'}
-              </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, lineHeight: 1.25 }}>{exDef?.name}</h2>
+              {prevLine(currentItem?.exercise_key) && (
+                <div style={{ fontSize: '12px', color: 'var(--body-text-sub)', marginTop: '4px', fontFamily: 'var(--body-mono)' }}>
+                  lần trước {prevLine(currentItem?.exercise_key)}
+                </div>
+              )}
             </div>
             <button
               className="body-btn body-btn-secondary"
-              style={{ fontSize: '12px', height: '30px' }}
+              style={{ fontSize: '12px', height: '30px', flex: 'none' }}
               onClick={() => setScreenState('guide')}
             >
-              Xem hướng dẫn
+              Hướng dẫn
             </button>
           </div>
 
@@ -866,10 +787,6 @@ export default function LiveSessionScreen({
           {/* Bài đếm rep */}
           {currentItem?.unit !== 's' ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', margin: 'auto 0' }}>
-              <div style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                Nhập số rep thực tế hoàn thành:
-              </div>
-
               <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                 <button
                   className="body-btn-icon"
@@ -884,7 +801,7 @@ export default function LiveSessionScreen({
                     {currentVal}
                   </div>
                   <div style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                    {currentVal >= currentItem.target_val ? 'Đạt mục tiêu ✓' : `Thiếu ${currentItem.target_val - currentVal} rep`}
+                    {currentVal >= currentItem.target_val ? '✓ ' : ''}mục tiêu {currentItem.target_val} rep{currentItem.kg ? ` · ${currentItem.kg} kg` : ''}
                   </div>
                 </div>
 
@@ -918,7 +835,7 @@ export default function LiveSessionScreen({
                     }}
                     onClick={() => setCurrentVal(v)}
                   >
-                    {v} rep
+                    {v}
                   </button>
                 ))}
               </div>
@@ -994,7 +911,7 @@ export default function LiveSessionScreen({
                 className="body-btn body-btn-secondary"
                 onClick={() => handleLogSet(null)}
               >
-                Bỏ set này
+                Bỏ set
               </button>
               <button
                 className="body-btn body-btn-secondary"
@@ -1013,7 +930,7 @@ export default function LiveSessionScreen({
               onClick={() => handleLogSet(currentItem.unit === 's' ? tSec : currentVal)}
             >
               <AppIcon name="checkCircle" size={18} />
-              <span>Hoàn thành Set {currentItem.set_no}</span>
+              <span>Xong set {currentItem.set_no}</span>
             </button>
           </div>
         </div>
@@ -1062,7 +979,6 @@ export default function LiveSessionScreen({
 
             <div className="body-timer-ring-text">
               <span className="body-timer-clock">{restRemaining}s</span>
-              <span className="body-timer-label">Hít thở đều</span>
             </div>
           </div>
 
@@ -1374,23 +1290,34 @@ export default function LiveSessionScreen({
       {/* Modal xác nhận thoát: Tạm dừng vs Hủy buổi tập */}
       {showExitModal && (
         <GenericModal
-          title="Rời buổi tập"
+          title="Buổi tập"
           maxWidth={420}
           onClose={() => setShowExitModal(false)}
         >
           <GenericModal.Body>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <p style={{ margin: 0, fontSize: '13.5px', color: 'var(--body-text-muted)', lineHeight: 1.5 }}>
-                Bạn đang trong buổi tập. Hãy chọn cách bạn muốn rời khỏi màn hình này:
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                screenState !== 'done' && {
+                  icon: 'checkCircle', color: 'var(--body-green)', label: 'Kết thúc buổi', sub: 'Xem kết quả & lưu',
+                  run: () => setScreenState('done')
+                },
+                {
+                  icon: 'clock', color: 'var(--body-accent)', label: 'Tạm dừng', sub: 'Lưu dở, tiếp tục sau',
+                  run: () => (onPause ? onPause(elapsed) : onCancel())
+                },
+                {
+                  icon: 'trash', color: 'var(--body-red, #EF4444)', label: 'Hủy buổi tập', sub: 'Không lưu kết quả',
+                  run: onCancel
+                }
+              ].filter(Boolean).map(opt => (
                 <button
+                  key={opt.label}
                   type="button"
                   style={{
                     padding: '12px 14px',
                     borderRadius: '10px',
                     background: 'var(--body-card-bg)',
-                    border: '1.5px solid var(--body-accent)',
+                    border: '1px solid var(--body-card-border)',
                     color: 'var(--body-text-main)',
                     display: 'flex',
                     alignItems: 'center',
@@ -1400,55 +1327,18 @@ export default function LiveSessionScreen({
                   }}
                   onClick={() => {
                     setShowExitModal(false);
-                    if (onPause) onPause(elapsed);
-                    else onCancel();
+                    opt.run();
                   }}
                 >
-                  <div style={{ color: 'var(--body-accent)', display: 'grid', placeItems: 'center' }}>
-                    <AppIcon name="clock" size={22} weight="fill" />
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--body-accent)' }}>
-                      Tạm dừng (Lưu dở để tiếp tục sau)
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
-                      Giữ nguyên tiến độ bài tập. Bạn có thể bấm "Tiếp tục buổi tập" từ Dashboard hoặc Lộ trình bất cứ lúc nào.
-                    </div>
-                  </div>
+                  <span style={{ color: opt.color, display: 'grid', placeItems: 'center' }}>
+                    <AppIcon name={opt.icon} size={22} weight="fill" />
+                  </span>
+                  <span>
+                    <span style={{ display: 'block', fontWeight: 700, fontSize: '14px', color: opt.color }}>{opt.label}</span>
+                    <span style={{ display: 'block', fontSize: '12px', color: 'var(--body-text-muted)' }}>{opt.sub}</span>
+                  </span>
                 </button>
-
-                <button
-                  type="button"
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: '10px',
-                    background: 'rgba(239, 68, 68, 0.06)',
-                    border: '1.5px solid rgba(239, 68, 68, 0.3)',
-                    color: 'var(--body-text-main)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    textAlign: 'left',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => {
-                    setShowExitModal(false);
-                    onCancel();
-                  }}
-                >
-                  <div style={{ color: 'var(--body-red, #EF4444)', display: 'grid', placeItems: 'center' }}>
-                    <AppIcon name="trash" size={22} weight="fill" />
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--body-red, #EF4444)' }}>
-                      Hủy bỏ buổi tập
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
-                      Hủy và không lưu kết quả buổi tập hôm nay.
-                    </div>
-                  </div>
-                </button>
-              </div>
+              ))}
             </div>
           </GenericModal.Body>
           <GenericModal.Footer>

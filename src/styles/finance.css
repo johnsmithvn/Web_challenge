@@ -12,6 +12,13 @@
   --n-warn: #e2a94e; --n-danger: #e07f93; --n-good: #48b3a2;
   /* Phân loại Phải trả / Tùy chọn (tag Shortcut + nút Phân loại) */
   --n-must: #8fc1e8; --n-must-soft: rgba(44,110,158,0.24); --n-want: #e899ab; --n-want-soft: rgba(180,72,95,0.24);
+  /* Token cho màn Hub Định kỳ & Quỹ */
+  --n-kind-all: #a78bfa; --n-kind-all-soft: rgba(167,139,250,0.14);
+  --n-kind-bill: #818cf8; --n-kind-bill-soft: rgba(129,140,248,0.14);
+  --n-kind-card: #60a5fa; --n-kind-card-soft: rgba(96,165,250,0.14);
+  --n-kind-loan: #fbbf24; --n-kind-loan-soft: rgba(251,191,36,0.14);
+  --n-kind-save: #34d399; --n-kind-save-soft: rgba(52,211,153,0.14);
+  --n-kind-lend: #2dd4bf; --n-kind-lend-soft: rgba(45,212,191,0.14);
   --n-r-chip: 8px; --n-r: 10px; --n-r-lg: 16px;
   --font-mono: 'JetBrains Mono', monospace; /* số tiền; trước đây chưa định nghĩa nên rơi về Consolas */
 
@@ -70,6 +77,13 @@
   --n-must-soft: #E7F1FA;
   --n-want: #B4485F;
   --n-want-soft: #FBEDF0;
+  /* Token cho màn Hub Định kỳ & Quỹ (Light Mode) */
+  --n-kind-all: #6366f1; --n-kind-all-soft: rgba(99,102,241,0.12);
+  --n-kind-bill: #6366f1; --n-kind-bill-soft: rgba(99,102,241,0.12);
+  --n-kind-card: #3b6fd8; --n-kind-card-soft: rgba(59,111,216,0.12);
+  --n-kind-loan: #d9822b; --n-kind-loan-soft: rgba(217,130,43,0.12);
+  --n-kind-save: #2f8a57; --n-kind-save-soft: rgba(47,138,87,0.12);
+  --n-kind-lend: #0e9384; --n-kind-lend-soft: rgba(14,147,132,0.12);
 }
 
 [data-theme="light"] .fin-header {
@@ -2402,3 +2416,722 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-rhythm__dot--cur { fill: var(--n-accent); stroke: var(--n-card); stroke-width: 2; }
 .fin-rhythm__label--prev { fill: var(--n-txt2); font-family: 'JetBrains Mono', monospace; font-size: 10.5px; }
 .fin-rhythm__label--cur { fill: var(--n-accent); font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HUB ĐỊNH KỲ & QUỸ (.fin-hub) — Redesign v6.16 (Bản chốt)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.fin-hub {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+/* ── 1. Header ── */
+.fin-hub__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--n-card);
+  border: 1px solid var(--n-border);
+  border-radius: var(--n-r-lg);
+}
+.fin-hub__head-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.fin-hub__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--n-txt);
+  line-height: 1;
+}
+.fin-hub__month-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--n-sink);
+  border: 1px solid var(--n-border);
+  border-radius: var(--n-r);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--n-txt);
+}
+.fin-hub__head-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fin-hub__add-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  background: var(--n-card);
+  border: 1px solid var(--n-border);
+  border-radius: var(--n-r);
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+  padding: 6px;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fin-hub__add-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--n-r-chip);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--n-txt);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+.fin-hub__add-item:hover {
+  background: var(--n-sink);
+}
+
+/* ── 2. KPI Filter Tiles (6 ô) ── */
+.fin-hub__tiles {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+.fin-hub__tile {
+  background: var(--n-card);
+  border: 1.5px solid var(--n-border);
+  border-radius: var(--n-r-lg);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  color: inherit;
+  font-family: inherit;
+  outline: none;
+}
+.fin-hub__tile:hover {
+  border-color: var(--tile-color, var(--n-accent));
+}
+.fin-hub__tile.is-active {
+  border-color: var(--tile-color, var(--n-accent));
+  background: var(--tile-soft, var(--n-accent-soft));
+  box-shadow: 0 0 0 1px var(--tile-color, var(--n-accent));
+}
+.fin-hub__tile-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fin-hub__tile-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--tile-soft, var(--n-sink));
+  color: var(--tile-color, var(--n-accent));
+  flex: none;
+}
+.fin-hub__tile-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--n-txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fin-hub__tile-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--n-txt3);
+}
+.fin-hub__tile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fin-hub__tile-value {
+  font-size: 16.5px;
+  font-weight: 700;
+  color: var(--n-txt);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fin-hub__tile-sub {
+  font-size: 11px;
+  color: var(--n-txt2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fin-hub__tile-progress {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--n-sink);
+  overflow: hidden;
+  margin-top: 2px;
+}
+.fin-hub__tile-progress-bar {
+  display: block;
+  height: 100%;
+  background: var(--tile-color, var(--n-accent));
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ── 3. Dải lịch chi tháng (Expense Calendar Strip) ── */
+.fin-hub__cal {
+  flex: none;
+  background: var(--n-card);
+  border: 1px solid var(--n-border);
+  border-radius: var(--n-r-lg);
+  padding: 12px 18px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fin-hub__cal-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.fin-hub__cal-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--n-txt);
+}
+.fin-hub__cal-sub {
+  font-size: 12px;
+  color: var(--n-txt2);
+}
+.fin-hub__cal-legend {
+  margin-left: auto;
+  display: flex;
+  gap: 14px;
+  font-size: 11.5px;
+  color: var(--n-txt3);
+}
+.fin-hub__cal-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fin-hub__cal-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.fin-hub__cal-swatch--due {
+  background: var(--n-accent);
+}
+.fin-hub__cal-swatch--paid {
+  background: var(--n-sink-2);
+}
+.fin-hub__cal-swatch--skip {
+  background: transparent;
+  border: 1.5px dashed var(--n-txt3);
+  box-sizing: border-box;
+}
+.fin-hub__cal-grid {
+  display: grid;
+  grid-template-columns: repeat(31, minmax(0, 1fr));
+  gap: 2px;
+}
+.fin-hub__cal-day {
+  display: grid;
+  grid-template-rows: 62px 26px;
+  border-radius: 6px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+.fin-hub__cal-day.is-today {
+  background: var(--n-accent-soft);
+}
+.fin-hub__cal-chips {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 3px;
+  padding-bottom: 4px;
+}
+.fin-hub__cal-chip {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  color: #fff;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.15s ease;
+}
+.fin-hub__cal-chip:hover {
+  transform: scale(1.15);
+}
+.fin-hub__cal-chip.is-selected {
+  box-shadow: 0 0 0 2px var(--n-card), 0 0 0 4px var(--tile-color, var(--n-accent));
+}
+.fin-hub__cal-chip--due {
+  background: var(--chip-color, var(--n-accent));
+}
+.fin-hub__cal-chip--paid {
+  background: var(--n-sink-2);
+  color: var(--n-txt3);
+}
+.fin-hub__cal-chip--skip {
+  background: transparent;
+  border: 1.5px dashed var(--n-txt3);
+  color: var(--n-txt3);
+}
+.fin-hub__cal-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid var(--n-border);
+  font-size: 11px;
+  color: var(--n-txt);
+  gap: 1px;
+}
+.fin-hub__cal-day.is-past .fin-hub__cal-date {
+  color: var(--n-txt3);
+}
+.fin-hub__cal-day.is-today .fin-hub__cal-date {
+  color: var(--n-accent);
+  font-weight: 700;
+}
+.fin-hub__cal-weekday {
+  font-size: 8.5px;
+  font-family: var(--font-mono);
+  color: var(--n-txt3);
+}
+
+/* ── 4. Body 2 cột: Master List & Detail Panel ── */
+.fin-hub__body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+  gap: 12px;
+}
+
+/* Cột trái (Master List) */
+.fin-hub__list {
+  background: var(--n-card);
+  border: 1px solid var(--n-border);
+  border-radius: var(--n-r-lg);
+  overflow-y: auto;
+  min-height: 0;
+  padding: 6px 0 40px; /* né FAB */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fin-hub__group {
+  display: flex;
+  flex-direction: column;
+}
+.fin-hub__group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 4px;
+}
+.fin-hub__group-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--n-txt3);
+  letter-spacing: 0.08em;
+}
+.fin-hub__group-sum {
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  color: var(--n-txt3);
+}
+.fin-hub__group-items {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Row trong Master List */
+.fin-hub__row {
+  display: grid;
+  grid-template-columns: 36px 36px minmax(0, 1fr) 130px 130px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 16px;
+  background: transparent;
+  border: 0;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  transition: background 0.15s ease;
+  box-sizing: border-box;
+}
+.fin-hub__row:hover {
+  background: var(--n-sink);
+}
+.fin-hub__row.is-selected {
+  background: var(--n-accent-soft);
+  box-shadow: inset 3px 0 0 var(--n-accent);
+}
+.fin-hub__row-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.fin-hub__row-day {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--n-txt);
+  line-height: 1;
+}
+.fin-hub__row-wd {
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  color: var(--n-txt3);
+  line-height: 1;
+}
+.fin-hub__row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--tile-soft, var(--n-sink));
+  color: var(--tile-color, var(--n-accent));
+  flex: none;
+}
+.fin-hub__row-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.fin-hub__row-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--n-txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fin-hub__row-sub {
+  font-size: 11.5px;
+  color: var(--n-txt3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fin-hub__row-prog {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fin-hub__row-prog-track {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--n-sink);
+  overflow: hidden;
+}
+.fin-hub__row-prog-fill {
+  display: block;
+  height: 100%;
+  background: var(--tile-color, var(--n-accent));
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.fin-hub__row-prog-text {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  color: var(--n-txt3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fin-hub__row-amt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+.fin-hub__row-val {
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--n-txt);
+  line-height: 1;
+}
+.fin-hub__row-state {
+  font-size: 11px;
+  color: var(--n-txt3);
+  line-height: 1;
+}
+.fin-hub__row-state--due { color: var(--n-warn); }
+.fin-hub__row-state--paid { color: var(--n-good); }
+.fin-hub__row-state--over { color: var(--n-danger); }
+.fin-hub__row-state--late { color: var(--n-warn); }
+
+.fin-hub__toggle-done {
+  margin: 10px 16px 0;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px dashed var(--n-border);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--n-txt2);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.fin-hub__toggle-done:hover {
+  background: var(--n-sink);
+}
+
+/* Cột phải (Detail Panel) */
+.fin-hub__detail {
+  background: var(--n-card);
+  border: 1px solid var(--n-border);
+  border-radius: var(--n-r-lg);
+  overflow-y: auto;
+  min-height: 0;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.fin-hub__detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.fin-hub__detail-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--tile-soft, var(--n-sink));
+  color: var(--tile-color, var(--n-accent));
+  flex: none;
+}
+.fin-hub__detail-titlebox {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fin-hub__detail-cat {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--tile-color, var(--n-accent));
+}
+.fin-hub__detail-name {
+  font-size: 16.5px;
+  font-weight: 700;
+  color: var(--n-txt);
+  line-height: 1.25;
+}
+.fin-hub__detail-sub {
+  font-size: 12px;
+  color: var(--n-txt3);
+  line-height: 1.35;
+}
+
+.fin-hub__detail-amtbox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 4px;
+}
+.fin-hub__detail-amt-cap {
+  font-size: 11.5px;
+  color: var(--n-txt3);
+}
+.fin-hub__detail-amt-val {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--n-txt);
+  font-family: var(--font-mono);
+  letter-spacing: -0.015em;
+  line-height: 1;
+}
+.fin-hub__detail-amt-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--n-txt2);
+}
+
+.fin-hub__detail-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.fin-hub__kv-table {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--n-border);
+}
+.fin-hub__kv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--n-line);
+  font-size: 12.5px;
+}
+.fin-hub__kv-key {
+  color: var(--n-txt3);
+}
+.fin-hub__kv-val {
+  color: var(--n-txt);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ── 5. Responsive Mobile (<= 768px) ── */
+@media (max-width: 768px) {
+  .fin-hub__head {
+    padding: 8px 12px;
+  }
+  .fin-hub__title {
+    font-size: 16px;
+  }
+  .fin-hub__month-badge {
+    padding: 4px 8px;
+    font-size: 11.5px;
+  }
+  .fin-hub__tiles {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .fin-hub__tile {
+    flex: none;
+    width: 145px;
+    scroll-snap-align: start;
+  }
+  .fin-hub__cal-grid {
+    gap: 1px;
+  }
+  .fin-hub__cal-day {
+    grid-template-rows: 30px 16px;
+  }
+  .fin-hub__cal-chip {
+    width: 8px;
+    height: 8px;
+    font-size: 0;
+  }
+  .fin-hub__body {
+    grid-template-columns: 1fr;
+  }
+  .fin-hub__row {
+    grid-template-columns: 32px 32px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 8px 12px;
+  }
+  .fin-hub__row-prog {
+    display: none; /* ẩn cột tiến độ dạng dài trên mobile, hiển thị gọn */
+  }
+
+  /* Detail Panel dạng Bottom Sheet trên Mobile */
+  .fin-hub__detail-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .fin-hub__detail-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .fin-hub__detail {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 100;
+    max-height: 85dvh;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.4);
+    transform: translateY(105%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .fin-hub__detail.is-open {
+    transform: translateY(0);
+  }
+  .fin-hub__detail-handle {
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--n-border);
+    margin: -8px auto 8px;
+    flex: none;
+  }
+}
+
+/* Hub — phần bổ sung sau review: nút đóng/backdrop chỉ có nghĩa khi panel là sheet (mobile) */
+.fin-hub__detail-handle,
+.fin-hub__detail-close,
+.fin-hub__detail-backdrop { display: none; }
+.fin-hub__detail-tools { display: flex; align-items: center; gap: 8px; padding-top: 4px; }
+.fin-hub__danger { margin-left: auto; color: var(--n-danger); }
+.fin-hub__archive { margin: 4px 16px 0; }
+.fin-hub__row.is-done .fin-hub__row-name,
+.fin-hub__row.is-done .fin-hub__row-val { color: var(--n-txt3); }
+.fin-hub__row.is-done .fin-hub__row-icon { filter: grayscale(1); opacity: .6; }
+.fin-hub__detail-amt-cap { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 768px) {
+  .fin-hub__detail-handle { display: block; }
+  .fin-hub__detail-close { display: inline-flex; align-self: flex-end; }
+  .fin-hub__detail-backdrop { display: block; }
+  /* Sheet là lớp phủ: phải nằm trên tab dưới (z 100) và FAB QuickCapture (z 150/160),
+     không thì đáy sheet — nơi có nút Xóa, Xác nhận — bị che. */
+  .fin-hub__detail-backdrop { z-index: 170; }
+  .fin-hub__detail { z-index: 171; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fin-hub__detail, .fin-hub__detail-backdrop { transition: none; }
+}

@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v6.23.0 — 2026-10-10
+
+### Added
+- **Hub Định kỳ & Quỹ hợp nhất (Unified Recurring & Funds Hub) (`RecurringScreen.jsx`, `recurringHub.js`, `recurringHub.test.js`, `finance.css`):**
+  - **Hợp nhất 5 nguồn dữ liệu nghĩa vụ tài chính:** Gom toàn bộ Hóa đơn định kỳ (`bills`), Thẻ tín dụng (`cards`), Khoản vay (`loans`), Quỹ tiết kiệm (`goals`), và Cho vay (`lendings`) vào 1 màn hình quản lý tập trung duy nhất, thay thế hoàn toàn tab phân mảnh cũ.
+  - **Bố cục Hub 2 cột thích ứng (Desktop & Mobile):**
+    - Desktop: Cột trái danh sách theo dòng thời gian (Timeline) cuộn độc lập; Cột phải panel chi tiết sticky (`top: 16px`) hiển thị chi tiết nghiệp vụ, breakdown số kỳ, lãi suất float, inline thanh toán.
+    - Mobile: Layout 1 cột với Bottom Sheet modal trượt từ dưới lên kèm backdrop và nút đóng khi chọn một nghĩa vụ.
+  - **6 thẻ KPI tổng quan (Filter Strips):** Cho phép lọc và thống kê số lượng + tổng tiền theo: Tất cả (`all`), Hóa đơn (`bill`), Thẻ TD (`card`), Khoản vay (`loan`), Tiết kiệm (`save`), Cho vay (`lend`).
+  - **Dải lịch mini trực quan 28–31 ngày:** Hiển thị trực quan phân bổ nghĩa vụ theo các ngày trong tháng, đánh dấu ngày hôm nay (`.is-today`), dot/chip nghĩa vụ tới hạn, hỗ trợ click nhảy nhanh tới nghĩa vụ trong ngày.
+  - **Phân nhóm Timeline tự động 5 giai đoạn:** Quá hạn (`overdue`), Tuần này (`thisWeek`), Tuần tới (`nextWeek`), Sau đó (`later`), Mục tiêu quỹ / Không hạn (`none`), và nhóm Đã hoàn tất (`done`) dạng collapsible toggle.
+  - **Pure utility & test suite riêng (`recurringHub.js`, `recurringHub.test.js`):** Xây dựng các hàm thuần túy `buildHubItems`, `weekBounds`, `groupHubItems`, `hubTotals`, `calendarDays` với 12 test assertions tự động trong `npm test` đạt 100% test pass.
+  - **Sửa sau review (giữ nguyên hành vi cũ):** `RuleForm`, `PayBlock`, `ForfeitCalc`, `TermProgress`, `RuleProgress`, `dmy` trả về bản gốc — bản viết lại làm mất field (icon, ghi chú, kiểu số tiền, ngày bắt đầu kỳ, kiểu vay, phí thẻ, lãi cho vay…) và gửi `NULL` vào cột `NOT NULL` (`term_offset`, `rate`, `credit_limit`, `annual_fee`, `cash_advance_fee`, `min_pct`) nên không thêm được hóa đơn/thẻ/khoản không lãi. Panel chi tiết port lại đủ cảnh báo thẻ, tách gốc/lãi vay, lãi cho vay, lịch sử lần trả, giải thích kỳ. `recurringHub`: tiến độ quỹ đọc `fund_id` (trước luôn 0%), vay chỉ-trả-lãi chờ tất toán gốc không còn biến mất, hạn tháng sau không rơi vào "Cuối tháng", ngày 31 về ngày cuối tháng. Sheet mobile có nút đóng/backdrop/Escape và nằm trên tab dưới + FAB. Bỏ header trùng của FinancePage ở màn này.
+  - **Hệ thống Design tokens `--n-kind-*`:** Chuẩn hóa bảng màu 5 loại nghĩa vụ tương thích hoàn hảo cả Dark mode và Light mode của Nocturne Design System.
+
 ## v6.22.0 — 2026-10-08
 
 ### Added
@@ -18,7 +33,8 @@
   - Bộ test thuần `workoutLogic.test.js`, `bodyMetrics.test.js`, `bodyContract.test.js` đạt 100% độ bao phủ hợp đồng.
 
 ### Fixed
-- **Body Live Session — mất nút trên mobile (`LiveSessionScreen.jsx`, `body.css`):** nút "Bắt đầu Set" / "Hoàn thành Set" bị bottom nav 64px che, không cuộn tới được (root `height:100%` làm nội dung tràn nên `padding-bottom` của vùng cuộn mất tác dụng). Đổi sang `min-height`; trên mobile thanh hành động dính ngay trên bottom nav.
+- **Body Live Session — mất nút trên mobile (`LiveSessionScreen.jsx`, `body.css`):** nút "Bắt đầu Set" / "Hoàn thành Set" bị bottom nav 64px che, không cuộn tới được (root `height:100%` làm nội dung tràn nên `padding-bottom` của vùng cuộn mất tác dụng). Đổi sang `min-height`; trên mobile thanh hành động thành action bar full-width bám đáy card, dính ngay trên bottom nav.
+- **Body Live Session — gọn giao diện:** thanh trên chỉ còn đồng hồ + vị trí + nút `⋯` (Kết thúc / Tạm dừng / Hủy); chọn chế độ thành 3 nút gọn kèm số phút, bỏ dòng "Thứ tự"; thở/tempo/lỗi hay gặp/cảnh báo chấn thương/video gộp vào mục "Chi tiết kỹ thuật & video" thu gọn; bỏ các nhãn thừa ("BÀI x/y", "MỤC TIÊU", "Cách thực hiện chuẩn", "Chế độ: … cố định", "Nhập số rep…", "Hít thở đều").
 - **Trang chủ — cảnh báo bị sót/báo sai, bug hiển thị và theme (`dashboardAlerts.js`, `financeLogic.js`, `HomeDashboard.jsx`, `dashboard.css`, `RecurringScreen.jsx`, `FinancePage.jsx`, `useUserTasks.js`, `dashboardAlerts.test.js`, `financeLogic.test.js`):**
   - **Không còn "biến mất" khi sang kỳ:** `billCycle` bám kỳ tháng trước chưa trả cho cả hóa đơn hằng tháng; `loanCycle` mới cho khoản vay (đếm số kỳ, bỏ kỳ trước `opened_at`, null khi đủ số kỳ) — dùng chung cho Trang chủ và màn Khoản vay; `cardCarryOver` mới giữ nợ sao kê kỳ trước (FIFO, không tra nhãn kỳ) và hiện ở màn Thẻ. Sổ tiết kiệm đã đáo hạn chưa tất toán vào nhóm cần xử lý.
   - **Không còn báo sai:** khoản vay đã đủ kỳ / mới mở không báo quá hạn; vượt ngân sách dùng tên danh mục và tách khỏi "Sắp tới hạn"; nhãn ưu tiên theo thang của app (Urgent…) thay cho "P5".

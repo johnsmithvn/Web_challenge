@@ -1,11 +1,12 @@
 import {
-  parseYmd, ymd, addDaysStr, daysInclusive, monthEnd, dueDateInMonth,
+  parseYmd, ymd, addDaysStr, monthEnd, dueDateInMonth,
   billCycle, billSettled, billAmountEstimate,
   cardStatementSummary, cardCarryOver, cardBalance,
   loanSchedule, loanCycle,
 } from './financeLogic.js';
 
 const WD_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const dmyFull = (iso) => iso.split('-').reverse().join('/');
 
 /**
  * 1. Gom 5 nguồn thành item phẳng (bảng §2 trong RECURRING_HUB_PLAN.md).
@@ -58,6 +59,8 @@ export function buildHubItems(fin = {}) {
       sub: [b.provider, b.customer_code].filter(Boolean).join(' · ') || '',
       icon: b.icon || 'receipt',
       categoryId: b.category_id || 'housing',
+      main: b.amount_mode === 'ask' ? billAmountEstimate(b, transactions) : (b.amount || 0),
+      note: !ev && cyc ? `kỳ sau ${cyc.period.slice(5)}/${cyc.period.slice(0, 4)}` : '',
       source: b,
       ev,
       progress,
@@ -75,9 +78,10 @@ export function buildHubItems(fin = {}) {
 
     let ev = null;
     if (dueTotal > 0) {
+      const due = carry ? carry.due : cyc.due;
       ev = {
-        day: c.due_day,
-        due: carry ? carry.due : cyc.due,
+        day: Number(due.slice(8)),
+        due,
         amount: dueTotal,
         approx: false,
         state: 'due',
@@ -85,7 +89,7 @@ export function buildHubItems(fin = {}) {
       };
     } else if (cyc.statementTotal > 0 && cyc.paid > 0 && cyc.outstanding === 0) {
       ev = {
-        day: c.due_day,
+        day: Number(cyc.due.slice(8)),
         due: cyc.due,
         amount: cyc.statementTotal,
         approx: false,
@@ -105,6 +109,8 @@ export function buildHubItems(fin = {}) {
       sub: [c.bank, `chốt ngày ${c.statement_day}`].filter(Boolean).join(' · '),
       icon: 'creditCard',
       categoryId: 'finance',
+      main: balance,
+      note: balance > 0 ? `chốt ngày ${c.statement_day}` : 'không có dư nợ',
       source: c,
       ev,
       progress,
@@ -116,7 +122,9 @@ export function buildHubItems(fin = {}) {
   for (const l of loans) {
     if (l.closed_at) continue;
     const sch = loanSchedule(l);
-    if (sch.progress.done >= sch.progress.total) continue;
+    const principalPaid = transactions.some(t => t.loan_id === l.id && t.loan_part === 'principal');
+    // Đủ kỳ là xong với vay trả đều; vay chỉ-trả-lãi còn nợ gốc tới khi tất toán.
+    if (sch.progress.done >= sch.progress.total && (sch.kind === 'amort' || principalPaid)) continue;
     const cyc = loanCycle(l, today, transactions);
     let ev = null;
 
@@ -137,9 +145,11 @@ export function buildHubItems(fin = {}) {
       id: l.id,
       kind: 'loan',
       name: l.name,
-      sub: [l.lender, sch.kind === 'interest' ? 'chỉ trả lãi' : 'trả đều gốc + lãi'].filter(Boolean).join(' · '),
+      sub: [l.lender, sch.kind === 'interest' ? (cyc ? 'chỉ trả lãi' : 'chờ tất toán gốc') : 'trả đều gốc + lãi'].filter(Boolean).join(' · '),
       icon: 'bank',
       categoryId: 'finance',
+      main: sch.kind === 'interest' ? sch.principalDue : sch.principalRemaining,
+      note: cyc ? '' : (l.due_at ? `tất toán ${dmyFull(l.due_at)}` : 'chờ tất toán gốc'),
       source: l,
       ev,
       progress,
@@ -152,8 +162,8 @@ export function buildHubItems(fin = {}) {
     if (g.closed_at) continue;
     let ev = null;
     if (g.auto_deposit && Number(g.auto_deposit.amount) > 0) {
-      const day = Number(g.auto_deposit.day) || 1;
-      const due = dueDateInMonth(day, today);
+      const due = dueDateInMonth(Number(g.auto_deposit.day) || 1, today);
+      const day = Number(due.slice(8));
       const amount = Number(g.auto_deposit.amount);
       const tx = transactions.find(t =>
         t.saving_goal_id === g.id &&
@@ -168,7 +178,7 @@ export function buildHubItems(fin = {}) {
     }
 
     const overdue = Boolean(ev && ev.state === 'due' && ev.due < today);
-    const deps = deposits.filter(d => d.goal_id === g.id && !d.closed_on);
+    const deps = deposits.filter(d => d.fund_id === g.id && !d.closed_on);
     const bal = deps.reduce((s, d) => s + (d.amount || 0), 0);
     const pct = g.goal ? Math.min(100, Math.round((bal / g.goal) * 100)) : 0;
     const progress = { pct, label: `${pct}% mục tiêu` };
@@ -177,9 +187,11 @@ export function buildHubItems(fin = {}) {
       id: g.id,
       kind: 'save',
       name: g.name,
-      sub: g.target_date ? `đến hạn ${g.target_date}` : 'Quỹ tiết kiệm',
+      sub: g.auto_deposit?.amount ? `gửi ngày ${g.auto_deposit.day} hằng tháng` : 'gửi tay',
       icon: 'piggyBank',
       categoryId: 'saving',
+      main: bal,
+      note: 'gửi tay',
       source: g,
       ev,
       progress,
@@ -218,6 +230,8 @@ export function buildHubItems(fin = {}) {
       sub: l.due_on ? `hẹn ${l.due_on}` : (l.note || 'Cho vay'),
       icon: 'handCoins',
       categoryId: 'lend',
+      main: left,
+      note: l.due_on ? `hẹn ${dmyFull(l.due_on)}` : 'không hẹn ngày',
       source: l,
       ev,
       progress,
@@ -301,8 +315,10 @@ export function groupHubItems(items = [], todayStr, kindFilter = 'all') {
       thisWeek.push(item);
     } else if (bounds.nextWeekStart && due >= bounds.nextWeekStart && due <= bounds.nextWeekEnd) {
       nextWeek.push(item);
-    } else {
+    } else if (due <= bounds.monthEnd) {
       later.push(item);
+    } else {
+      none.push(item);
     }
   }
 
@@ -362,9 +378,6 @@ export function groupHubItems(items = [], todayStr, kindFilter = 'all') {
  * all, bill, card, loan, save, lend
  */
 export function hubTotals(items = []) {
-  const sumDue = (list) =>
-    list.filter(i => i.ev && i.ev.state === 'due').reduce((s, i) => s + (i.ev?.amount || 0), 0);
-
   const calcKind = (kind) => {
     const kindItems = items.filter(i => i.kind === kind);
     const evItems = kindItems.filter(i => i.ev !== null);

@@ -235,8 +235,13 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 - `add`: Nhập nhanh **khoản chi** bằng form, câu tự nhiên hoặc shortcut (gửi/rút quỹ nằm ở `recurring`). Finance chỉ
   theo dõi chi: không có chỗ ghi thu nhập tay; khoản thu chỉ còn lãi cho vay và giao dịch thu cũ.
 - `list`: Danh sách giao dịch với thanh Toolbar hợp nhất (`.fin-list__toolbar`), ô tìm kiếm ghim trên Header, bộ lọc đa cấp `FilterPop` (nhóm cha, danh mục con, khoảng ngày), xuất CSV.
-- `recurring`: **Định kỳ & Quỹ** (hóa đơn, khoản vay, thẻ tín dụng, cho vay và Quỹ tiết kiệm). Tab "Sẽ nhận"
-  (thu định kỳ) đã gỡ 10/2026.
+- `recurring`: **Định kỳ & Quỹ** (hóa đơn, khoản vay, thẻ tín dụng, cho vay và Quỹ tiết kiệm). Giao diện Hub hợp nhất (v6.23) với:
+  - Bố cục 2 cột trên Desktop (Timeline danh sách + Panel chi tiết) và Bottom Sheet trượt trên Mobile.
+  - 6 thẻ KPI tổng quan (`Tất cả`, `Hóa đơn`, `Thẻ tín dụng`, `Khoản vay`, `Tiết kiệm`, `Cho vay`) thống kê số lượng và tổng tiền.
+  - Dải lịch mini trực quan 28–31 ngày hiển thị phân bổ hạn trả trong tháng và ngày hôm nay.
+  - Nhóm theo timeline (`Quá hạn` — gồm kỳ lỡ từ tháng trước, `Tuần này`, `Tuần sau`, `Cuối tháng`, `Không có kỳ trong tháng` — gồm hạn rơi sang tháng sau) và nhóm `Đã xong` dạng thu gọn.
+  - Mục lưu trữ thu gọn: hóa đơn đang tắt / đã kết thúc, khoản vay đã tất toán, cho vay đã thu xong — vẫn mở được để sửa, bật lại, xem lịch sử, xóa.
+  - Tích hợp inline action thanh toán hóa đơn, sao kê thẻ, kỳ vay, ghi nhận tiền cho vay trả về và liên kết mở không gian Quỹ tiết kiệm.
 - `cats`: Taxonomy chi (10 nhóm chuẩn) / thu và override label/màu/icon/subcategory.
 
 ### Hành vi chính

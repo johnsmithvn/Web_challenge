@@ -247,6 +247,14 @@ kind `finance`. Vault tag không liên quan vì được mã hóa.
 - Dark Nocturne là bản thiết kế của module, nhưng mọi text/control vẫn phải đọc được trong shell app.
 - Phosphor icon qua `AppIcon`; emoji không dùng làm icon điều khiển.
 - Desktop có child navigation trong sidebar; mobile giữ vùng chạm và sheet/detail phù hợp.
+- Hub Định kỳ & Quỹ (v6.23):
+  - Desktop: Layout 2 cột — Cột trái danh sách timeline, cột phải panel chi tiết; cả hai cuộn nội bộ (Workspace pattern), không cuộn trang. Header riêng của hub thay cho `fin-header` của FinancePage.
+  - Mobile (≤768px): 1 cột; panel chi tiết thành bottom sheet (cùng component với desktop) có backdrop, nút đóng, Escape; z-index trên tab dưới và FAB QuickCapture. Không thêm FAB riêng.
+  - 6 thẻ KPI tổng quan (`all`, `bill`, `card`, `loan`, `save`, `lend`) hiển thị số lượng và tổng tiền thực tế.
+  - Dải lịch tháng mini 28–31 ngày hiển thị phân bổ hạn trả trong tháng, highlight ngày hiện tại (`is-today`) và chips sự kiện.
+  - Phân nhóm timeline tự động: Quá hạn (`overdue`), Tuần này (`thisWeek`), Tuần tới (`nextWeek`), Sau đó (`later`), Mục tiêu quỹ (`none`), và nhóm đã hoàn tất (`done`) dạng collapsible toggle.
+  - Token màu nghiệp vụ `--n-kind-*` (+ `-soft`): `bill` chàm, `card` xanh dương, `loan` cam, `save` xanh lá, `lend` xanh ngọc. Khai báo ở `.finance-module` (dark) và `[data-theme="light"] .finance-module`.
+  - Chip lịch: cần trả = nền màu loại nhạt; đã xong = xám; bỏ kỳ = viền đứt. Hàng có hạn ngoài tháng hiện `T<tháng>` thay cho thứ.
 - Money dùng tabular figures; trạng thái không truyền bằng màu một mình.
 - Keyboard/focus/reduced-motion là yêu cầu, không phải polish tùy chọn.
 
