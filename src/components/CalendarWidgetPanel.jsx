@@ -28,6 +28,7 @@ export default function CalendarWidgetPanel({
   customAnniversaries = [],
   onAddCustomAnniversary,
   onDeleteCustomAnniversary,
+  onCreateTaskFromEvent,
 }) {
   const [filterType, setFilterType] = useState('all'); // 'all' | 'solar' | 'lunar' | 'international' | 'custom' | 'japan' | 'fun'
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'events'
@@ -552,6 +553,32 @@ export default function CalendarWidgetPanel({
                         <strong>{ev.title}</strong>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        {onCreateTaskFromEvent && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCreateTaskFromEvent(ev);
+                            }}
+                            title="Tạo nhiệm vụ từ sự kiện này"
+                            style={{
+                              height: '24px',
+                              padding: '0 8px',
+                              borderRadius: '6px',
+                              border: '1px solid var(--tk-accent-border, rgba(94,242,194,0.3))',
+                              background: 'var(--tk-accent-soft, rgba(94,242,194,0.1))',
+                              color: 'var(--tk-accent, #5EF2C2)',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            <AppIcon name="plus" size={11} /> Việc
+                          </button>
+                        )}
                         <div className={`cal-event-countdown${ev.diffDays <= 3 ? ' cal-event-countdown--soon' : ''}`}>
                           {ev.countdownLabel}
                         </div>

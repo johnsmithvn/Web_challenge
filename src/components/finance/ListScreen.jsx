@@ -5,6 +5,7 @@ import { formatDate, toDateStr } from '../../utils/dateUtils';
 import { periodTotals, groupByDate, billPeriods } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, pickableSubs, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon, DateField,
+  ItemQtyStepper,
 } from './parts';
 import SkeletonList from '../SkeletonList';
 import AppIcon from '../AppIcon';
@@ -1028,7 +1029,11 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, o
                 {draftItems.map((item, index) => (
                   <div className="fin-item-row" key={index}>
                     <input className="fin-input" aria-label={`Tên món thứ ${index + 1}`} value={item.name} onChange={event => updateDraftItem(index, 'name', event.target.value)} placeholder="Tên món (bảo dưỡng, dầu nhớt...)" />
-                    <input className="fin-input fin-item-qty" inputMode="numeric" pattern="[0-9]*" value={item.qty} onChange={event => updateDraftItem(index, 'qty', event.target.value)} aria-label="Số lượng" placeholder="1" />
+                    <ItemQtyStepper
+                      value={item.qty}
+                      onChange={val => updateDraftItem(index, 'qty', val)}
+                      ariaLabel={`Số lượng món thứ ${index + 1}`}
+                    />
                     <div className="fin-item-price-wrap">
                       <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" aria-label="Đơn giá" value={groupDigits(item.price)} onChange={event => updateDraftItem(index, 'price', event.target.value)} placeholder="0" />
                       <span>₫</span>

@@ -5,6 +5,7 @@ import { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDigits, stripAmo
 import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, pickableSubs, NECESSITY_META, TaskPicker, FinanceIcon, DateField,
+  ItemQtyStepper,
 } from './parts';
 import AppIcon from '../AppIcon';
 
@@ -43,6 +44,7 @@ export default function AddScreen({ fin, nav }) {
   const [description, setDescription] = useState('');
   const [draftItems, setDraftItems] = useState([]);
   const [showMore, setShowMore] = useState(false);
+  const [showExtra, setShowExtra] = useState(false);
   const [pendingBillId, setPendingBillId] = useState(null);
   const [pendingBillPeriod, setPendingBillPeriod] = useState(null);
 
@@ -205,6 +207,7 @@ export default function AddScreen({ fin, nav }) {
     setDescription('');
     setDraftItems([]);
     setShowMore(false);
+    setShowExtra(false);
     setPendingBillId(null);
     setPendingBillPeriod(null);
   };
@@ -362,6 +365,7 @@ export default function AddScreen({ fin, nav }) {
 
   const categoryOptions = cats.expenseGroups.filter(group => !group.hidden);
   const yesterday = shiftDate(fin.today, -1);
+  const hasExtraData = Boolean((merchant && merchant.trim()) || (description && description.trim()) || taskId);
   // Có gì đang gõ dở thì rời màn phải hỏi trước, không mất trắng.
   const isDirty = Boolean(amount || note.trim() || merchant || description || draftItems.length || taskId);
 
@@ -677,35 +681,7 @@ export default function AddScreen({ fin, nav }) {
 
             {showMore && (
               <div className="fin-details-box">
-                <div className="fin-details-grid">
-                  <div className="fin-details-field">
-                    <label htmlFor="fin-merchant">Nơi / người nhận</label>
-                    <input
-                      id="fin-merchant"
-                      value={merchant}
-                      autoComplete="off"
-                      onChange={event => setMerchant(event.target.value)}
-                      placeholder="Quán nước Bà Ba, Shopee, cửa hàng…"
-                    />
-                  </div>
-
-                  <div className="fin-details-field">
-                    <span>Nhiệm vụ liên quan</span>
-                    <TaskPicker tasks={pendingTasks} value={taskId} onPick={setTaskId} />
-                  </div>
-                </div>
-
-                <div className="fin-details-field">
-                  <label htmlFor="fin-desc">Ghi chú</label>
-                  <textarea
-                    id="fin-desc"
-                    value={description}
-                    onChange={event => setDescription(event.target.value)}
-                    placeholder="Ghi chú tự do (nhiều dòng, diễn giải chi tiết)…"
-                    rows={2}
-                  />
-                </div>
-
+                {/* Hàng chi tiết món đưa lên trên */}
                 <div className="fin-items-editor">
                   <div className="fin-items-editor__head">
                     <strong>
@@ -726,13 +702,10 @@ export default function AddScreen({ fin, nav }) {
                         onChange={event => updateDraftItem(index, 'name', event.target.value)}
                         placeholder="Tên món"
                       />
-                      <input
-                        inputMode="numeric"
-                        pattern="[0-9]*"
+                      <ItemQtyStepper
                         value={item.qty}
-                        onChange={event => updateDraftItem(index, 'qty', event.target.value)}
-                        aria-label="Số lượng"
-                        placeholder="1"
+                        onChange={val => updateDraftItem(index, 'qty', val)}
+                        ariaLabel={`Số lượng món thứ ${index + 1}`}
                       />
                       <input
                         inputMode="numeric"
@@ -760,16 +733,65 @@ export default function AddScreen({ fin, nav }) {
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  className="fin-recurring-btn"
-                  onClick={async () => {
-                    if (!isDirty || await nav.confirmDiscard()) nav.go('recurring');
-                  }}
-                >
-                  <AppIcon name="arrowsClockwise" size={14} />
-                  Biến thành khoản định kỳ
-                </button>
+                {/* Các thông tin phụ (nơi nhận, ghi chú, định kỳ) đẩy xuống dưới và collapse */}
+                <div className="fin-details-extra-wrap">
+                  <button
+                    type="button"
+                    className="fin-details-subtoggle"
+                    onClick={() => setShowExtra(c => !c)}
+                    aria-expanded={showExtra}
+                  >
+                    <AppIcon name={showExtra ? 'caretDown' : 'plus'} size={13} />
+                    <span>{showExtra ? 'Thu gọn nơi nhận & ghi chú' : 'Thêm nơi nhận, ghi chú & liên kết…'}</span>
+                    {hasExtraData && !showExtra && (
+                      <span className="fin-details-subtoggle__dot" title="Có dữ liệu" />
+                    )}
+                  </button>
+
+                  {showExtra && (
+                    <div className="fin-details-extra-content">
+                      <div className="fin-details-grid">
+                        <div className="fin-details-field">
+                          <label htmlFor="fin-merchant">Nơi / người nhận</label>
+                          <input
+                            id="fin-merchant"
+                            value={merchant}
+                            autoComplete="off"
+                            onChange={event => setMerchant(event.target.value)}
+                            placeholder="Quán nước Bà Ba, Shopee, cửa hàng…"
+                          />
+                        </div>
+
+                        <div className="fin-details-field">
+                          <span>Nhiệm vụ liên quan</span>
+                          <TaskPicker tasks={pendingTasks} value={taskId} onPick={setTaskId} />
+                        </div>
+                      </div>
+
+                      <div className="fin-details-field">
+                        <label htmlFor="fin-desc">Ghi chú</label>
+                        <textarea
+                          id="fin-desc"
+                          value={description}
+                          onChange={event => setDescription(event.target.value)}
+                          placeholder="Ghi chú tự do (nhiều dòng, diễn giải chi tiết)…"
+                          rows={2}
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        className="fin-recurring-btn"
+                        onClick={async () => {
+                          if (!isDirty || await nav.confirmDiscard()) nav.go('recurring');
+                        }}
+                      >
+                        <AppIcon name="arrowsClockwise" size={14} />
+                        Biến thành khoản định kỳ
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

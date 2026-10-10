@@ -5,16 +5,24 @@
  * Chạy: `node src/__tests__/tasks/kanbanLogic.test.js`
  */
 import assert from 'node:assert/strict';
-import { getKanbanRange, groupKanbanColumns } from '../../utils/kanbanUtils.js';
+import {
+  getKanbanRange,
+  groupKanbanColumns,
+  normVi,
+  matchTaskSearch,
+  calculateKanbanCounts,
+} from '../../utils/kanbanUtils.js';
 
 const ids = (list) => list.map((t) => t.id);
 const today = '2026-09-13';
 
 /* ── 1. Khoảng ngày của bộ lọc thời gian ─────────────────────────── */
 assert.equal(getKanbanRange('all', today), null);
+assert.equal(getKanbanRange('all', today, null), null, 'không ném TypeError khi truyền null');
 assert.deepEqual(getKanbanRange('today', today), { from: today, to: today });
 assert.deepEqual(getKanbanRange('7d', today), { from: '2026-09-13', to: '2026-09-20' });
 assert.deepEqual(getKanbanRange('7d', '2026-09-28'), { from: '2026-09-28', to: '2026-10-05' }, 'qua tháng');
+assert.deepEqual(getKanbanRange('late', today), { from: '1970-01-01', to: '2026-09-12' }, 'quá hạn trước hôm nay');
 assert.deepEqual(
   getKanbanRange('custom', today, { customFrom: '2026-09-10', customTo: '2026-09-12' }),
   { from: '2026-09-10', to: '2026-09-12' }
@@ -41,6 +49,8 @@ console.log('groupKanbanColumns status columns: OK');
 const todayCols = groupKanbanColumns(open, [], getKanbanRange('today', today));
 assert.deepEqual(ids(todayCols.doing), ['2']);
 assert.deepEqual(ids(todayCols.todo), []);
+const lateCols = groupKanbanColumns(open, [], getKanbanRange('late', today));
+assert.deepEqual(ids(lateCols.todo), ['6', '1'], 'các task quá hạn trước hôm nay');
 const customCols = groupKanbanColumns(open, [], getKanbanRange('custom', today, { customFrom: '2026-09-10', customTo: '2026-09-12' }));
 assert.deepEqual(ids(customCols.todo), ['6', '1']);
 // Task không hạn (v6.21.0): xếp cuối cột khi xem Tất cả; lọc theo ngày thì không hiện.
@@ -70,5 +80,90 @@ assert.deepEqual(ids(groupKanbanColumns([], completed, getKanbanRange('today', t
   'chỉ task xong HÔM NAY, mới nhất lên trước');
 assert.equal(groupKanbanColumns([], completed, null).done.length, 4, 'Tất cả = không lọc');
 console.log('groupKanbanColumns done column by local completion day: OK');
+
+/* ── 5. Chuẩn hóa tiếng Việt normVi ───────────────────────────────── */
+assert.equal(normVi('Họp Dự Án 2026'), 'hop du an 2026');
+assert.equal(normVi('Đi Chợ Đầm Sen'), 'di cho dam sen');
+assert.equal(normVi('  ĐẶC BIỆT  '), '  dac biet  ');
+assert.equal(normVi(''), '');
+console.log('normVi Vietnamese normalization: OK');
+
+/* ── 6. Tìm kiếm thông minh matchTaskSearch ───────────────────────── */
+const sampleTask = {
+  id: 't1',
+  title: 'Họp bàn thiết kế UI',
+  description: 'Trao đổi về popup thời gian và bảng Kanban',
+  _tags: [{ id: 'tg1', name: 'UI' }, { id: 'tg2', name: 'Life Hub' }],
+};
+const subtaskTitles = ['Thu gọn độ ưu tiên', 'Làm lại popup thời gian'];
+
+// Tìm theo tiêu đề không dấu
+assert.equal(matchTaskSearch(sampleTask, 'hop ban', subtaskTitles), true);
+assert.equal(matchTaskSearch(sampleTask, 'THIET KE', subtaskTitles), true);
+
+// Tìm theo mô tả
+assert.equal(matchTaskSearch(sampleTask, 'trao doi', subtaskTitles), true);
+assert.equal(matchTaskSearch(sampleTask, 'kanban', subtaskTitles), true);
+
+// Tìm theo tag (cả có và không có ký tự #)
+assert.equal(matchTaskSearch(sampleTask, '#UI', subtaskTitles), true);
+assert.equal(matchTaskSearch(sampleTask, '#ui', subtaskTitles), true);
+assert.equal(matchTaskSearch(sampleTask, '#Life Hub', subtaskTitles), true);
+assert.equal(matchTaskSearch(sampleTask, 'life hub', subtaskTitles), true);
+
+// Tìm theo việc con (subtasks)
+assert.equal(matchTaskSearch(sampleTask, 'popup thoi gian', subtaskTitles), true);
+assert.equal(matchTaskSearch(sampleTask, 'uu tien', subtaskTitles), true);
+
+// Nhiều từ khóa tách biệt (tất cả các từ phải khớp)
+assert.equal(matchTaskSearch(sampleTask, 'hop kanban', subtaskTitles), true);
+assert.equal(matchTaskSearch(sampleTask, 'hop popup', subtaskTitles), true);
+assert.equal(matchTaskSearch(sampleTask, 'hop backend', subtaskTitles), false, 'thiếu từ backend');
+
+// Tìm rỗng / khoảng trắng -> luôn khớp
+assert.equal(matchTaskSearch(sampleTask, '', subtaskTitles), true);
+assert.equal(matchTaskSearch(sampleTask, '   ', subtaskTitles), true);
+console.log('matchTaskSearch multi-criteria keyword matching: OK');
+
+/* ── 7. Bộ đếm real-time calculateKanbanCounts ─────────────────────── */
+const pTasks = [
+  { id: '1', title: 'Task quá hạn', due_date: '2026-09-10' }, // late (hôm nay là 2026-09-13)
+  { id: '2', title: 'Task hôm nay', due_date: '2026-09-13' }, // today + 7d
+  { id: '3', title: 'Task trong tuần', due_date: '2026-09-18' }, // 7d
+  { id: '4', title: 'Task tuần sau', due_date: '2026-09-25' }, // chỉ all
+  { id: '5', title: 'Task không hạn', due_date: null }, // chỉ all
+];
+const sTasks = [
+  { id: 's1', title: 'Task bỏ qua quá hạn', status: 'skip', due_date: '2026-09-08' },
+];
+const cToday = [
+  { id: 'c1', title: 'Task xong hôm nay', completed: true, completed_at: '2026-09-13T10:00:00Z' },
+];
+
+const countsAll = calculateKanbanCounts({
+  pendingTasks: pTasks,
+  skippedTasks: sTasks,
+  completedToday: cToday,
+  today: '2026-09-13',
+  searchQuery: '',
+});
+
+assert.equal(countsAll.all, 7, 'tổng 5 pending + 1 skip + 1 xong hôm nay = 7');
+assert.equal(countsAll.late, 1, 'chỉ tính 1 task quá hạn chưa xong (task skip không tính)');
+assert.equal(countsAll.today, 2, '1 task có hạn hôm nay + 1 task xong hôm nay = 2');
+assert.equal(countsAll['7d'], 3, '1 task hôm nay + 1 task trong 7 ngày tới + 1 task xong hôm nay = 3');
+
+// Bộ đếm khi có lọc từ khóa tìm kiếm
+const countsSearch = calculateKanbanCounts({
+  pendingTasks: pTasks,
+  skippedTasks: sTasks,
+  completedToday: cToday,
+  today: '2026-09-13',
+  searchQuery: 'qua han',
+});
+assert.equal(countsSearch.all, 2, '1 task pending quá hạn + 1 task skip quá hạn');
+assert.equal(countsSearch.late, 1, '1 task quá hạn pending');
+assert.equal(countsSearch.today, 0, 'không có task hôm nay khớp từ khóa');
+console.log('calculateKanbanCounts 4 pills realtime count: OK');
 
 console.log('\n✅ kanbanLogic — logic thật của Kanban PASS');

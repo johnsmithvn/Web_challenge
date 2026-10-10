@@ -12,10 +12,11 @@ import {
   Scissors, ShoppingBag, SignOut, SkipForward, Sparkle, Square, SquaresFour, Star, Sun, Sword, Table, Tag, TextHOne, TextHThree, TextHTwo, Timer, Trash,
   Robot, Tray, TrayArrowDown, TreeStructure, TrendUp, Trophy, UploadSimple, User, Users, VideoCamera,
   Wallet, Warning, WifiHigh, X, Database, Certificate, Scales, PersonSimple, ShieldCheck,
-  Ruler, ClipboardText,
+  Ruler, ClipboardText, Flag, Repeat, Circle, Hourglass, Prohibit,
 } from '@phosphor-icons/react';
 
 const ICONS = {
+  flag: Flag,
   scales: Scales,
   ruler: Ruler,
   clipboard: ClipboardText,
@@ -44,6 +45,9 @@ const ICONS = {
   check: Check,
   checkCircle: CheckCircle,
   checkSquare: CheckSquare,
+  circle: Circle,
+  hourglass: Hourglass,
+  prohibit: Prohibit,
   clock: Clock,
   cloud: Cloud,
   coffee: Coffee,
@@ -118,6 +122,7 @@ const ICONS = {
   receipt: Receipt,
   refresh: ArrowClockwise,
   arrowsClockwise: ArrowClockwise,
+  repeat: Repeat,
   rocket: Rocket,
   robot: Robot,
   save: FloppyDisk,
@@ -166,6 +171,8 @@ const ALIASES = {
   '🏦': 'bank', '💳': 'creditCard', '📥': 'inbox', '📤': 'paperPlane', '🗑️': 'trash',
   '🔒': 'lock', '🔔': 'bell', '🎯': 'trend', '✨': 'sparkle', '📅': 'calendar',
   '🔍': 'search', '⚙️': 'gear', '📁': 'folder', '📄': 'file', '🏠': 'house',
+  'check-circle': 'checkCircle', 'check-square': 'checkSquare',
+  'caret-down': 'caretDown', 'caret-up': 'caretUp', 'caret-left': 'caretLeft', 'caret-right': 'caretRight',
 };
 
 export default function AppIcon({ name, size = 18, weight = 'regular', ...props }) {

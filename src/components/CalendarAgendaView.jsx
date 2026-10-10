@@ -20,6 +20,8 @@ const AGENDA_DAY_LABEL = { single: 'Trong ngày', start: '▶ Bắt đầu', mid
  */
 export default function CalendarAgendaView({
   pendingTasks = [],
+  overdueTasks = [],
+  onMoveAllLateToToday,
   getCompletedTasksRange,
   onSelectTask,
   onQuickCreate,
@@ -30,6 +32,7 @@ export default function CalendarAgendaView({
 }) {
   const [completedByDay, setCompletedByDay] = useState({});
   const [daysCount, setDaysCount] = useState(45);
+  const [isLateBannerOpen, setIsLateBannerOpen] = useState(false);
   const isLoadingMore = useRef(false);
 
   // Reset daysCount về 45 khi currentDate thay đổi
@@ -152,6 +155,83 @@ export default function CalendarAgendaView({
       onScroll={handleScroll}
     >
       <div className="cal-agenda-list">
+        {/* Banner gom việc quá hạn chuẩn mockup */}
+        {overdueTasks.length > 0 && (
+          <div
+            style={{
+              margin: '0 0 16px 0',
+              borderRadius: '14px',
+              background: 'rgba(255, 92, 112, 0.08)',
+              border: '1px solid rgba(255, 92, 112, 0.25)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              onClick={() => setIsLateBannerOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 14px',
+                cursor: 'pointer',
+              }}
+            >
+              <AppIcon name="warning" size={16} />
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#FF8A98' }}>
+                {overdueTasks.length} việc quá hạn
+              </span>
+              <span style={{ fontSize: '12px', color: 'var(--tk-text-mute)' }}>
+                cần xử lý
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveAllLateToToday?.();
+                }}
+                style={{
+                  marginLeft: 'auto',
+                  height: '28px',
+                  padding: '0 12px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255, 92, 112, 0.4)',
+                  background: 'rgba(255, 92, 112, 0.15)',
+                  color: '#FF8A98',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Chuyển hết về hôm nay
+              </button>
+            </div>
+
+            {isLateBannerOpen && (
+              <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {overdueTasks.map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => onSelectTask?.(t)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '6px 10px',
+                      borderRadius: '8px',
+                      background: 'rgba(0,0,0,0.2)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#FF8A98' }} />
+                    <span style={{ fontSize: '12.5px', color: 'var(--tk-text-main)', flex: 1 }}>{t.title}</span>
+                    <span style={{ fontSize: '11px', color: '#FF8A98' }}>{t.due_date}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {days.map((day) => {
           const dayTasks = pendingByDay[day.dateStr] || [];
           const dayCompleted = completedByDay[day.dateStr] || [];

@@ -354,4 +354,61 @@ export function PeriodPicker({ options, period, value, onChange, dataFrom, compa
   );
 }
 
+/**
+ * ItemQtyStepper — Bộ chọn số lượng nhanh cho món hàng (Shopee/GrabFood style)
+ * Mặc định là 1. Bấm + / - để tăng giảm nhanh không cần chạm bàn phím.
+ * Ô ở giữa vẫn hỗ trợ click nhập số lớn khi cần.
+ */
+export function ItemQtyStepper({ value, onChange, ariaLabel = 'Số lượng' }) {
+  const numericQty = Math.max(1, parseInt(value, 10) || 1);
+
+  const handleDec = (e) => {
+    e.preventDefault();
+    if (numericQty > 1) {
+      onChange(String(numericQty - 1));
+    }
+  };
+
+  const handleInc = (e) => {
+    e.preventDefault();
+    onChange(String(numericQty + 1));
+  };
+
+  return (
+    <div className="fin-item-stepper">
+      <button
+        type="button"
+        tabIndex={-1}
+        className="fin-item-stepper__btn"
+        onClick={handleDec}
+        disabled={numericQty <= 1}
+        title="Giảm số lượng"
+        aria-label="Giảm số lượng"
+      >
+        <AppIcon name="minus" size={10} />
+      </button>
+      <input
+        className="fin-item-stepper__input"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={(e) => e.target.select()}
+        aria-label={ariaLabel}
+        placeholder="1"
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        className="fin-item-stepper__btn"
+        onClick={handleInc}
+        title="Tăng số lượng"
+        aria-label="Tăng số lượng"
+      >
+        <AppIcon name="plus" size={10} />
+      </button>
+    </div>
+  );
+}
+
 export { CATS };

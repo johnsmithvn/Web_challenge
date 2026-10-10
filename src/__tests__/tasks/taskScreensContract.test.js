@@ -28,6 +28,10 @@ const detailSrc = readFileSync(new URL('../../components/TaskDetailModal.jsx', i
 const calendarSrc = readFileSync(new URL('../../components/MonthCalendar.jsx', import.meta.url), 'utf8');
 const calendarCss = readFileSync(new URL('../../styles/calendar.css', import.meta.url), 'utf8');
 const tasksHookSrc = readFileSync(new URL('../../hooks/useUserTasks.js', import.meta.url), 'utf8');
+const pageSrc = readFileSync(new URL('../../pages/TasksPage.jsx', import.meta.url), 'utf8');
+const drawerSrc = readFileSync(new URL('../../components/TaskDetailDrawer.jsx', import.meta.url), 'utf8');
+const kanbanSrc = readFileSync(new URL('../../components/TaskKanbanView.jsx', import.meta.url), 'utf8');
+const dayViewSrc = readFileSync(new URL('../../components/CalendarDayView.jsx', import.meta.url), 'utf8');
 
 /* ── 1. Màn Danh sách: Định dạng ngày & Timezone an toàn ────── */
 // fmtDMY trong TaskListSection: ghép T00:00:00 để không lệch múi giờ ở GMT+7
@@ -70,21 +74,23 @@ assert.match(listSrc, /const d = toDateStr\(new Date\(r\.completed_at\)\);/,
   'Completed section phải lọc lại bằng toDateStr theo ngày địa phương');
 console.log('completed tasks range filtering: OK');
 
-/* ── 3. Hợp đồng UI giữa List và Detail Popup ──────────────── */
-// Popup chi tiết phải dùng lại form edit của list
-assert.match(listSrc, /editContent=\{editId === task\.id \? renderTask\(task, \{ insideDetail: true \}\) : null\}/,
-  'popup chi tiết phải dùng lại đúng form edit đang render ở list');
+/* ── 3. Hợp đồng UI giữa List, Kanban và Right Detail Drawer ───── */
+// TasksPage phải tích hợp TaskDetailDrawer trượt từ bên phải
+assert.match(pageSrc, /<TaskDetailDrawer/,
+  'TasksPage phải tích hợp TaskDetailDrawer trượt từ bên phải theo mockup');
+assert.match(pageSrc, /onSelectTask=\{handleSelectTaskFromCalendar\}/,
+  'TasksPage phải truyền callback onSelectTask cho cả Kanban và List');
 
-// Form edit không được render 2 lần cùng lúc
-assert.match(listSrc, /insideDetail \|\| detailTaskId !== task\.id/,
-  'form edit không được xuất hiện đồng thời ở popup và hàng task phía sau');
+// TaskListSection phải kích hoạt onSelectTask khi bấm vào dòng task
+assert.match(listSrc, /onSelectTask\?\.(\(task\)|\(t\))/,
+  'TaskListSection phải gọi onSelectTask khi chọn nhiệm vụ');
 
-// Bấm Sửa trong popup phải chuyển form tại chỗ, không đóng popup
-assert.doesNotMatch(detailSrc, /onClose\(\);\s*onEdit\(task\)/,
-  'bấm Sửa trong popup không được đóng popup rồi quay về list');
-assert.match(detailSrc, /editContent \? editContent :/,
-  'popup phải chuyển nội dung sang form edit tại chỗ');
-console.log('task list and detail modal integration contract: OK');
+// TaskDetailDrawer phải hỗ trợ onClose và cập nhật nhiệm vụ
+assert.match(drawerSrc, /onClose/,
+  'TaskDetailDrawer phải có prop onClose để đóng drawer');
+assert.match(drawerSrc, /updateTask/,
+  'TaskDetailDrawer phải hỗ trợ updateTask để cập nhật thông tin nhiệm vụ');
+console.log('task list, kanban and detail drawer integration contract: OK');
 
 /* ── 4. Màn Lịch tháng (MonthCalendar Contract) ─────────────── */
 // Holiday label không được che ngày âm lịch
@@ -111,5 +117,31 @@ assert.match(tasksHookSrc, /completeTask = useCallback\(async \(taskId, complete
 assert.match(tasksHookSrc, /removeXp\('task_done', \{ taskId \}\)/,
   'uncompleteTask phải gọi removeXp với đúng taskId để xóa event dedup');
 console.log('optimistic updates and XP deduction contract: OK');
+
+/* ── 6. Hợp đồng Bảng Kanban (TaskKanbanView Contract) ───────── */
+// Kanban tích hợp tìm kiếm thông minh và bộ đếm 4 pills
+assert.match(kanbanSrc, /matchTaskSearch/,
+  'TaskKanbanView phải dùng matchTaskSearch để tìm kiếm theo tiêu đề, nhãn, việc con');
+assert.match(kanbanSrc, /calculateKanbanCounts/,
+  'TaskKanbanView phải tính số đếm 4 pills thời gian độc lập qua calculateKanbanCounts');
+assert.match(kanbanSrc, /timeFilter === 'late'\) return \[\]/,
+  'Khi lọc Quá hạn, cột Hoàn thành không được chứa task hoàn thành cũ');
+console.log('kanban search, realtime filter counts and late filter contract: OK');
+
+/* ── 7. Hợp đồng Lịch Ngày & Ngăn chi tiết (DayView & Drawer) ── */
+// CalendarDayView: hàng cả ngày chỉ hiện việc đã xong, panel Chưa xếp giờ gộp việc quá hạn
+assert.match(dayViewSrc, /allDayDoneTasks = useMemo/,
+  'CalendarDayView chỉ hiện việc cả ngày đã hoàn thành trên header để tránh trùng lặp');
+assert.match(dayViewSrc, /isToday[\s\S]*?overdueList/,
+  'CalendarDayView phải gộp việc quá hạn vào panel Chưa xếp giờ khi xem ngày hôm nay');
+assert.match(dayViewSrc, /getZodiacHours/,
+  'CalendarDayView phải dùng getZodiacHours từ lunarUtils để hiển thị 12 giờ hoàng đạo');
+
+// TaskDetailDrawer hỗ trợ popover lặp lại và log tiếng Việt
+assert.match(drawerSrc, /RecurrencePopover/,
+  'TaskDetailDrawer phải hỗ trợ RecurrencePopover để chọn chu kỳ lặp lại');
+assert.match(drawerSrc, /describeActivity/,
+  'TaskDetailDrawer phải dùng describeActivity để hiển thị nhật ký hoạt động bằng tiếng Việt');
+console.log('day view unscheduled/overdue and detail drawer feature contract: OK');
 
 console.log('\n✅ taskScreensContract — tất cả hợp đồng màn hình Task PASS (100% covered)');

@@ -7,14 +7,19 @@ const calendar = readFileSync(new URL('../../components/MonthCalendar.jsx', impo
 const calendarCss = readFileSync(new URL('../../styles/calendar.css', import.meta.url), 'utf8');
 const tasksHook = readFileSync(new URL('../../hooks/useUserTasks.js', import.meta.url), 'utf8');
 
-assert.match(list, /editContent=\{editId === task\.id \? renderTask\(task, \{ insideDetail: true \}\) : null\}/,
-  'popup chi tiết phải dùng lại đúng form edit đang render ở list');
-assert.match(list, /insideDetail \|\| detailTaskId !== task\.id/,
-  'form edit không được xuất hiện đồng thời ở popup và hàng task phía sau');
-assert.doesNotMatch(detail, /onClose\(\);\s*onEdit\(task\)/,
-  'bấm Sửa trong popup không được đóng popup rồi quay về list');
-assert.match(detail, /editContent \? editContent :/,
-  'popup phải chuyển nội dung sang form edit tại chỗ');
+const page = readFileSync(new URL('../../pages/TasksPage.jsx', import.meta.url), 'utf8');
+const drawer = readFileSync(new URL('../../components/TaskDetailDrawer.jsx', import.meta.url), 'utf8');
+
+assert.match(page, /<TaskDetailDrawer/,
+  'TasksPage phải tích hợp TaskDetailDrawer trượt từ bên phải theo mockup');
+assert.match(page, /onSelectTask=\{handleSelectTaskFromCalendar\}/,
+  'TasksPage phải truyền callback onSelectTask cho cả Kanban và List');
+assert.match(list, /onSelectTask\?\.(\(task\)|\(t\))/,
+  'TaskListSection phải gọi onSelectTask khi chọn nhiệm vụ');
+assert.match(drawer, /onClose/,
+  'TaskDetailDrawer phải có prop onClose để đóng drawer');
+assert.match(drawer, /updateTask/,
+  'TaskDetailDrawer phải hỗ trợ updateTask để cập nhật thông tin nhiệm vụ');
 
 assert.match(calendar, /cal-cell__holiday-name[^>]*>\{h\.name/,
   'ô lịch phải hiện tên ngày lễ, không chỉ hiện icon');

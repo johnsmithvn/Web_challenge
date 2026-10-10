@@ -1,9 +1,8 @@
 import { useState, lazy, Suspense, useCallback } from 'react';
 import TaskListSection from '../components/TaskListSection';
 import { useUserTasks } from '../hooks/useUserTasks';
-import { useTags } from '../hooks/useTags';
 import { useAuth } from '../contexts/AuthContext';
-import TaskDetailModal from '../components/TaskDetailModal';
+import TaskDetailDrawer from '../components/TaskDetailDrawer';
 import TaskCreateModal from '../components/TaskCreateModal';
 import TaskForm from '../components/TaskForm';
 import CalendarToolbar from '../components/CalendarToolbar';
@@ -11,6 +10,7 @@ import { toDateStr } from '../utils/dateUtils';
 import '../styles/tasks.css';
 import '../styles/calendar-widget.css';
 import '../styles/week-calendar.css';
+import '../styles/tasks-aurora.css';
 
 const MonthCalendar = lazy(() => import('../components/MonthCalendar'));
 const WeekCalendar = lazy(() => import('../components/WeekCalendar'));
@@ -37,7 +37,6 @@ const TaskKanbanView = lazy(() => import('../components/TaskKanbanView'));
 export default function TasksPage() {
   const { user } = useAuth();
   const taskModel = useUserTasks();
-  const { tags: allTags, addTag } = useTags();
   const {
     todayTasks,
     overdueTasks,
@@ -45,10 +44,7 @@ export default function TasksPage() {
     pendingTasks,
     getCompletedTasksRange,
     deleteTask,
-    completeTask,
     updateTask,
-    linkTaskTag,
-    unlinkTaskTag,
   } = taskModel;
 
   // Chế độ xem: 'kanban' | 'list' | 'agenda' | 'day' | 'week' | 'month'
@@ -138,49 +134,19 @@ export default function TasksPage() {
     });
   }, []);
 
-  // State xem chi tiết task từ lịch & sửa task từ modal chi tiết
+  // State xem chi tiết task (hiển thị qua TaskDetailDrawer)
   const [selectedTask, setSelectedTask] = useState(null);
-  const [isEditingSelected, setIsEditingSelected] = useState(false);
 
   // Các view Lịch tự tải task đã xong 1 lần theo khoảng ngày → tăng key sau mỗi
-  // thao tác ở modal để chúng tải lại (không thì task vừa hoàn thành biến mất khỏi lịch).
+  // thao tác để chúng tải lại (không thì task vừa hoàn thành biến mất khỏi lịch).
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const refreshCalendars = useCallback(() => setCalendarRefreshKey((k) => k + 1), []);
 
-  // Đóng popup luôn làm mới Lịch: trong popup có thể đã tick/thêm task con.
+  // Đóng Drawer luôn làm mới Lịch: trong drawer có thể đã tick/thêm task con.
   const handleCloseSelectedModal = useCallback(() => {
     setSelectedTask(null);
-    setIsEditingSelected(false);
     refreshCalendars();
   }, [refreshCalendars]);
-
-  // Mở popup của task khác (task con ↔ task cha) ngay trong popup đang mở.
-  const handleOpenTaskInModal = useCallback((task) => {
-    setSelectedTask(task);
-    setIsEditingSelected(false);
-  }, []);
-
-  const handleSaveSelectedTaskEdit = useCallback(
-    async (changes, newTagIds) => {
-      if (!selectedTask) return;
-      const taskId = selectedTask.id;
-      const saved = await updateTask(taskId, changes);
-      if (saved) {
-        const currentTagIds = (selectedTask._tags || []).map((t) => t.id);
-        const toAdd = newTagIds.filter((id) => !currentTagIds.includes(id));
-        const toRemove = currentTagIds.filter((id) => !newTagIds.includes(id));
-        const tagsToAdd = (allTags || []).filter((t) => toAdd.includes(t.id));
-        await Promise.all([
-          ...tagsToAdd.map((tag) => linkTaskTag(taskId, tag)),
-          ...toRemove.map((tagId) => unlinkTaskTag(taskId, tagId)),
-        ]);
-      }
-      setIsEditingSelected(false);
-      setSelectedTask(null);
-      refreshCalendars();
-    },
-    [selectedTask, updateTask, allTags, linkTaskTag, unlinkTaskTag, refreshCalendars]
-  );
 
   // State mở Modal tạo Task
   const [createModalState, setCreateModalState] = useState(null); // { date: string, time: string }
@@ -189,7 +155,6 @@ export default function TasksPage() {
 
   const handleSelectTaskFromCalendar = useCallback((task) => {
     setSelectedTask(task);
-    setIsEditingSelected(false);
   }, []);
 
   const handleOpenCreateModal = useCallback((dateStr, timeStr, initialStatus = 'todo') => {
@@ -217,7 +182,23 @@ export default function TasksPage() {
   }, [activeView, currentDate]);
 
   return (
-    <div className="tasks-page tasks-page--workspace">
+    <div className="tasks-page tasks-page--workspace tasks-workspace">
+      {/* Hiệu ứng nền Vũ trụ Aurora & Chân trời hành tinh chuẩn mockup */}
+      <div className="task-cosmos-bg">
+        <div className="task-aurora-glow" />
+        <div className="task-stars-layer-1" />
+        <div className="task-stars-layer-2" />
+        <div className="task-shooting-star task-shooting-star--1" />
+        <div className="task-shooting-star task-shooting-star--2" />
+        <div className="task-shooting-star task-shooting-star--3" />
+        <div className="task-shooting-star task-shooting-star--4" />
+        <div className="task-comet-wrapper">
+          <span className="task-comet-tail-1" />
+          <span className="task-comet-tail-2" />
+          <span className="task-comet-head" />
+        </div>
+        <div className="task-planet-horizon" />
+      </div>
       {/* Thanh All-in-one Header Toolbar — Cố định 100% trên đỉnh, không bao giờ bị nhảy */}
       <CalendarToolbar
         currentDate={currentDate}
@@ -257,7 +238,12 @@ export default function TasksPage() {
                 </div>
               </div>
 
-              <TaskListSection taskModel={taskModel} showForm={showForm} setShowForm={setShowForm} />
+              <TaskListSection
+                taskModel={taskModel}
+                showForm={showForm}
+                setShowForm={setShowForm}
+                onSelectTask={handleSelectTaskFromCalendar}
+              />
             </div>
           ) : !user ? (
             <div className="task-empty">
@@ -269,11 +255,6 @@ export default function TasksPage() {
                 <TaskKanbanView
                   taskModel={taskModel}
                   onSelectTask={handleSelectTaskFromCalendar}
-                  onEditTask={(task) => {
-                    setSelectedTask(task);
-                    setIsEditingSelected(true);
-                  }}
-                  onQuickCreate={handleOpenCreateModal}
                   refreshKey={calendarRefreshKey}
                 />
               )}
@@ -281,6 +262,12 @@ export default function TasksPage() {
               {activeView === 'agenda' && (
                 <CalendarAgendaView
                   pendingTasks={pendingTasks}
+                  overdueTasks={overdueTasks}
+                  onMoveAllLateToToday={async () => {
+                    const todayStr = toDateStr();
+                    await Promise.all(overdueTasks.map((t) => updateTask(t.id, { due_date: todayStr })));
+                    refreshCalendars();
+                  }}
                   getCompletedTasksRange={getCompletedTasksRange}
                   onSelectTask={handleSelectTaskFromCalendar}
                   onQuickCreate={handleOpenCreateModal}
@@ -352,6 +339,16 @@ export default function TasksPage() {
             customAnniversaries={customAnniversaries}
             onAddCustomAnniversary={handleAddCustomAnniversary}
             onDeleteCustomAnniversary={handleDeleteCustomAnniversary}
+            onCreateTaskFromEvent={async (ev) => {
+              const cleanTitle = (ev.title || '').replace(/^[^a-zA-Z0-9À-ỹ]+/u, '').trim() || ev.title;
+              await taskModel.addTask({
+                title: cleanTitle,
+                dueDate: toDateStr(ev.targetDate || new Date()),
+                priority: 0,
+                status: 'todo',
+              });
+              refreshCalendars();
+            }}
             onSelectEventDate={(targetDate) => {
               setCurrentDate(targetDate);
               // Tự chuyển sang view Ngày hoặc Tuần để xem chi tiết
@@ -363,43 +360,14 @@ export default function TasksPage() {
         </Suspense>
       </div>
 
-      {/* Modal chi tiết Task khi click vào sự kiện trên Lịch */}
+      {/* Right Drawer trượt xem và sửa chi tiết Task chuẩn mockup mới */}
       {selectedTask && (
-        <TaskDetailModal
+        <TaskDetailDrawer
           key={selectedTask.id}
-          task={selectedTask}
+          task={taskModel.tasks.find((t) => t.id === selectedTask.id) || selectedTask}
           taskModel={taskModel}
-          onOpenTask={handleOpenTaskInModal}
           onClose={handleCloseSelectedModal}
-          onEdit={() => setIsEditingSelected(true)}
-          editContent={
-            isEditingSelected ? (
-              <TaskForm
-                task={selectedTask}
-                onSubmit={handleSaveSelectedTaskEdit}
-                onCancel={() => setIsEditingSelected(false)}
-                taskModel={taskModel}
-                onOpenTask={handleOpenTaskInModal}
-                allTags={allTags}
-                addTag={addTag}
-              />
-            ) : null
-          }
-          onComplete={async (task) => {
-            await completeTask(task.id);
-            handleCloseSelectedModal();
-            refreshCalendars();
-          }}
-          onDelete={async (task) => {
-            await deleteTask(task.id);
-            handleCloseSelectedModal();
-            refreshCalendars();
-          }}
-          onUpdatePriority={async (newPri) => {
-            await updateTask(selectedTask.id, { priority: newPri });
-            setSelectedTask((prev) => (prev ? { ...prev, priority: newPri } : prev));
-            refreshCalendars();
-          }}
+          onOpenSubtaskDetail={(st) => setSelectedTask(st)}
         />
       )}
 
