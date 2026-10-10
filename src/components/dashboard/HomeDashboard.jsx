@@ -547,29 +547,31 @@ export default function HomeDashboard() {
         ) : hasUrgent ? (
           <section className="dash-critical-box" aria-label="Cần xử lý ngay">
             <div className="dash-critical-box__top">
-              <span className="dash-critical-box__top-icon">
-                <AppIcon name="warning" size={19} weight="fill" />
-              </span>
-              <span className="dash-critical-box__top-title">Cần xử lý ngay</span>
-              <span className="dash-critical-box__top-sub">quá hạn hoặc đến hạn trong hôm nay</span>
-              {/* Cột không còn mục nào thì ẩn; trạng thái của nó gói thành nhãn nhỏ ở góc phải */}
-              {!showFinCol && (finError ? (
-                <span className="dash-critical-box__clear-tag dash-critical-box__clear-tag--warn">
-                  <AppIcon name="warning" size={13} weight="fill" />
-                  Tài chính: chưa kiểm tra được
+              <div className="dash-critical-box__top-left">
+                <span className="dash-critical-box__top-icon">
+                  <AppIcon name="warning" size={18} weight="fill" />
                 </span>
-              ) : (
-                <span className="dash-critical-box__clear-tag">
-                  <AppIcon name="checkCircle" size={13} weight="fill" />
-                  Tài chính: đã xử lý hết
-                </span>
-              ))}
-              {!showTaskCol && (
-                <span className="dash-critical-box__clear-tag">
-                  <AppIcon name="checkCircle" size={13} weight="fill" />
-                  Nhiệm vụ: không còn quá hạn
-                </span>
-              )}
+                <span className="dash-critical-box__top-title">Cần xử lý ngay</span>
+              </div>
+              <div className="dash-critical-box__top-right">
+                {!showFinCol && (finError ? (
+                  <span className="dash-critical-box__clear-tag dash-critical-box__clear-tag--warn">
+                    <AppIcon name="warning" size={13} weight="fill" />
+                    Tài chính: lỗi kết nối
+                  </span>
+                ) : (
+                  <span className="dash-critical-box__clear-tag">
+                    <AppIcon name="checkCircle" size={13} weight="fill" />
+                    Tài chính: đã xử lý
+                  </span>
+                ))}
+                {!showTaskCol && (
+                  <span className="dash-critical-box__clear-tag">
+                    <AppIcon name="checkCircle" size={13} weight="fill" />
+                    Nhiệm vụ: đã xử lý
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className={`dash-critical-grid${showFinCol && showTaskCol ? '' : ' dash-critical-grid--single'}`}>
@@ -597,7 +599,7 @@ export default function HomeDashboard() {
                               {f.title}
                             </button>
                           </div>
-                          <span className="dash-crit-fin-row__sub">{f.subtitle} · {f.badge}</span>
+                          <span className="dash-crit-fin-row__sub">{f.badge || f.subtitle}</span>
                         </div>
                         <span className="dash-crit-fin-row__amt">
                           {f.amount != null ? money(f.amount) : ''}
@@ -631,8 +633,8 @@ export default function HomeDashboard() {
                     <span>NHIỆM VỤ QUÁ HẠN · {criticalTasks.length}</span>
                     {criticalTasks.length > 1 && (
                       <button type="button" className="dash-critical-rollover-btn" onClick={handleRolloverAll}>
-                        <AppIcon name="calendar" size={14} />
-                        <span>Dời tất cả sang hôm nay</span>
+                        <AppIcon name="calendar" size={13} />
+                        <span>Dời tất cả</span>
                       </button>
                     )}
                   </div>
@@ -655,22 +657,34 @@ export default function HomeDashboard() {
                           >
                             {t.title}
                           </button>
-                          <span className="dash-crit-task-row__sub">{t.badge} · hạn {t.raw?.due_date}</span>
+                          <span className="dash-crit-task-row__sub">{t.badge}</span>
                         </div>
-                        <button type="button" className="dash-crit-action-btn" onClick={() => handleRolloverTask(t.raw)}>
-                          Dời hôm nay
-                        </button>
-                        <button type="button" className="dash-crit-btn-done" onClick={() => handleCompleteTask(t.raw)}>
-                          <AppIcon name="check" size={13} weight="bold" />
-                          <span>Xong</span>
-                        </button>
+                        <div className="dash-crit-task-row__actions">
+                          <button
+                            type="button"
+                            className="dash-crit-action-btn"
+                            onClick={() => handleRolloverTask(t.raw)}
+                            title="Dời sang hôm nay"
+                          >
+                            <span>Dời</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="dash-crit-btn-done"
+                            onClick={() => handleCompleteTask(t.raw)}
+                            title="Đánh dấu hoàn thành"
+                          >
+                            <AppIcon name="check" size={13} weight="bold" />
+                            <span>Xong</span>
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
 
                   {criticalTasks.length > OVERDUE_PREVIEW && (
                     <div className="dash-crit-more-bar">
-                      {expandedOverdueTasks ? 'Đang hiện tất cả' : `và ${criticalTasks.length - OVERDUE_PREVIEW} việc quá hạn khác`} ·{' '}
+                      <span>{expandedOverdueTasks ? 'Đang hiện tất cả' : `Còn ${criticalTasks.length - OVERDUE_PREVIEW} việc khác`}</span>
                       <button
                         type="button"
                         className="dash-crit-more-link dash-link-btn"
