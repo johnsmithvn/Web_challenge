@@ -851,12 +851,9 @@
     font-weight: 700;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
-  /* Live session: thanh hành động bám đáy card (tràn tới mép card, padding .body-card = 20px),
-     dính ngay trên bottom nav 64px khi nội dung dài */
+  /* Live session: thanh hành động ở đáy card (tràn tới mép card, padding .body-card = 20px).
+     Không sticky — sticky đè lên chữ khi cuộn */
   .body-live-actions {
-    position: sticky;
-    bottom: 64px;
-    z-index: 5;
     margin: 0 -20px -20px;
     padding: 12px 20px;
     background: var(--body-card-bg);

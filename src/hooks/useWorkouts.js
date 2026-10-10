@@ -663,7 +663,7 @@ export function useWorkouts() {
 
   // Ghi nhận một set tập (actualVal = null nếu bỏ set)
   const logSet = useCallback(async (setData) => {
-    const newSetId = crypto.randomUUID();
+    const newSetId = setData.id || crypto.randomUUID();
     const newSet = {
       id: newSetId,
       session_id: setData.sessionId,
@@ -698,6 +698,21 @@ export function useWorkouts() {
     }
 
     return newSet;
+  }, [enabled, userId]);
+
+  // Sửa giá trị thực tế của một set đã ghi (null = bỏ set) — dùng ở màn kết quả cuối buổi
+  const updateSetValue = useCallback(async (setId, actualVal) => {
+    setRecentSets(prev => prev.map(s => (s.id === setId ? { ...s, actual_val: actualVal } : s)));
+    if (!enabled) return;
+    const { error } = await supabase
+      .from('body_workout_sets')
+      .update({ actual_val: actualVal })
+      .eq('id', setId)
+      .eq('user_id', userId);
+    if (error) {
+      logger.error('Failed to update workout set:', error);
+      throw error;
+    }
   }, [enabled, userId]);
 
   // Hoàn tất buổi tập
@@ -805,6 +820,7 @@ export function useWorkouts() {
     applyProgression,
     startSession,
     logSet,
+    updateSetValue,
     finishSession,
     updateSession,
     abandonSession

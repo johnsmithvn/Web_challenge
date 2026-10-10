@@ -55,6 +55,7 @@ export default function BodyPage() {
     applyProgression,
     startSession,
     logSet,
+    updateSetValue,
     finishSession,
     updateSession,
     abandonSession
@@ -519,6 +520,7 @@ export default function BodyPage() {
               initialElapsed={effectiveSession.duration_seconds || 0}
               startedAt={effectiveSession.started_at}
               onLogSet={logSet}
+              onUpdateSet={updateSetValue}
               onModeLocked={handleModeLocked}
               onFinishSession={handleFinishSession}
               onCancel={handleCancelSession}

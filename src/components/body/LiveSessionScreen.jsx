@@ -28,6 +28,7 @@ const MODES = [
 ];
 
 const LETTERS = 'ABCDEFGHIJKLMNOP';
+const PREP_OPTIONS = [0, 5, 10, 15];
 
 const slotOfRecord = (r) => getSlotKey(r.routineItemId, r.exerciseKey, r.setNo);
 const slotOfItem = (q) => getSlotKey(q.routine_item_id, q.exercise_key, q.set_no);
@@ -44,6 +45,7 @@ export default function LiveSessionScreen({
   initialElapsed = 0,
   startedAt = null,
   onLogSet,
+  onUpdateSet,
   onModeLocked,
   onFinishSession,
   onCancel,
@@ -65,6 +67,7 @@ export default function LiveSessionScreen({
     .slice()
     .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
     .map(s => ({
+      id: s.id,
       sessionId,
       routineItemId: s.routine_item_id || null,
       exerciseKey: s.exercise_key,
@@ -103,8 +106,23 @@ export default function LiveSessionScreen({
   const [restKind, setRestKind] = useState('set');
   const [restNextIdx, setRestNextIdx] = useState(null);
 
+  // Bài tính giây: tSec = số giây đã giữ (hiển thị đếm ngược), prepLeft > 0 = đang đếm ngược chuẩn bị
   const [tSec, setTSec] = useState(0);
   const [tRunning, setTRunning] = useState(false);
+  const [prepLeft, setPrepLeft] = useState(0);
+  const prepEndRef = useRef(null);
+  const [prepSec, setPrepSec] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem('body.prepSec'));
+      return PREP_OPTIONS.includes(v) ? v : 5;
+    } catch {
+      return 5;
+    }
+  });
+  const choosePrepSec = (v) => {
+    setPrepSec(v);
+    try { localStorage.setItem('body.prepSec', String(v)); } catch { /* storage bị chặn */ }
+  };
 
   // Input rep value
   const [currentVal, setCurrentVal] = useState(15);
@@ -242,19 +260,39 @@ export default function LiveSessionScreen({
     };
   }, []);
 
-  // Chuyển sang ô set idx: set đầu tiên của 1 bài thì mở hướng dẫn (theo thiết kế), còn lại vào thẳng màn ghi set
-  const goToSlot = useCallback((idx) => {
+  // Bật đồng hồ bài tính giây: lần đầu của set thì đếm ngược chuẩn bị trước (nếu có), còn lại chạy tiếp từ số giây đã giữ
+  const startTimer = (held) => {
+    ensureAudioUnlocked();
+    if (held === 0 && prepSec > 0) {
+      prepEndRef.current = Date.now() + prepSec * 1000;
+      setPrepLeft(prepSec);
+    } else {
+      plankStartTimeRef.current = Date.now() - held * 1000;
+      setTRunning(true);
+    }
+  };
+  const pauseTimer = () => {
+    setTRunning(false);
+    setPrepLeft(0);
+  };
+
+  // Chuyển sang ô set idx: set đầu tiên của 1 bài thì mở hướng dẫn (theo thiết kế), còn lại vào thẳng màn ghi set.
+  // auto = tự chuyển sau khi nghỉ: bài tính giây vào thẳng màn set và tự bật đồng hồ (người tập không phải bấm)
+  const autoStartRef = useRef(false);
+  const goToSlot = useCallback((idx, auto = false) => {
     if (idx < 0 || idx >= queue.length) {
       setScreenState('done');
       return;
     }
+    const autoTimed = auto && queue[idx].unit === 's';
+    autoStartRef.current = autoTimed;
     setCurQueueIdx(idx);
-    setScreenState(queue[idx].set_no === 1 ? 'guide' : 'set');
+    setScreenState(queue[idx].set_no === 1 && !autoTimed ? 'guide' : 'set');
   }, [queue]);
 
   // End rest handler defined BEFORE rest timer effect to avoid TDZ initialization error
   const handleEndRest = useCallback(() => {
-    goToSlot(restNextIdx == null ? -1 : restNextIdx);
+    goToSlot(restNextIdx == null ? -1 : restNextIdx, true);
   }, [goToSlot, restNextIdx]);
 
   // Rest countdown timer (timestamp delta)
@@ -284,6 +322,25 @@ export default function LiveSessionScreen({
     return () => clearInterval(interval);
   }, [tRunning]);
 
+  // Đếm ngược chuẩn bị → hết thì bíp và bắt đầu giữ (mốc bắt đầu = đúng lúc hết chuẩn bị)
+  const preparing = prepLeft > 0;
+  useEffect(() => {
+    if (!preparing) return;
+    const interval = setInterval(() => {
+      const left = Math.ceil((prepEndRef.current - Date.now()) / 1000);
+      if (left > 0) {
+        setPrepLeft(left);
+        return;
+      }
+      clearInterval(interval);
+      playTimerBeep();
+      plankStartTimeRef.current = prepEndRef.current;
+      setPrepLeft(0);
+      setTRunning(true);
+    }, 200);
+    return () => clearInterval(interval);
+  }, [preparing, playTimerBeep]);
+
   // Reset input values khi sang ô set khác (so theo khóa ổn định, không theo object để tránh reset giữa chừng)
   useEffect(() => {
     if (!currentSlotKey) return;
@@ -291,7 +348,12 @@ export default function LiveSessionScreen({
     setCurrentVal(Number(item?.target_val || 10));
     setTSec(0);
     setTRunning(false);
+    setPrepLeft(0);
     plankStartTimeRef.current = null;
+    if (autoStartRef.current) {
+      autoStartRef.current = false;
+      startTimer(0);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSlotKey]);
 
@@ -320,7 +382,7 @@ export default function LiveSessionScreen({
     }
     const restSec = Number(queue[fromIdx]?.rest_seconds) || 0;
     if (restSec <= 0) {
-      goToSlot(next);
+      goToSlot(next, true);
       return;
     }
     setRestKind(getRestKind(mode, queue[fromIdx], queue[next]));
@@ -356,6 +418,7 @@ export default function LiveSessionScreen({
   };
 
   const buildRecord = (item, actualVal, isPR = false) => ({
+    id: crypto.randomUUID(), // id do client tạo để sửa lại được ở màn kết quả
     sessionId,
     routineItemId: isUuid(item.routine_item_id) ? item.routine_item_id : null,
     exerciseKey: item.exercise_key,
@@ -372,6 +435,7 @@ export default function LiveSessionScreen({
   const handleLogSet = (valToLog) => {
     ensureAudioUnlocked();
     if (!currentItem) return;
+    pauseTimer();
     lockModeIfNeeded();
 
     // valToLog === null means set was explicitly skipped
@@ -395,6 +459,7 @@ export default function LiveSessionScreen({
   // Bỏ cả bài: các set còn trống của bài hiện tại được ghi là "bỏ"
   const handleSkipExercise = () => {
     if (!currentItem) return;
+    pauseTimer();
     lockModeIfNeeded();
     const sameItem = q => q.exercise_key === currentItem.exercise_key && q.exerciseIndex === currentItem.exerciseIndex;
     const records = queue.filter(q => sameItem(q) && !doneKeys.has(slotOfItem(q))).map(q => buildRecord(q, null));
@@ -402,6 +467,19 @@ export default function LiveSessionScreen({
     setLoggedSets(prev => [...prev, ...records]);
     records.forEach(persistRecord);
     advanceAfter(curQueueIdx, new Set([...doneKeys, ...records.map(slotOfRecord)]));
+  };
+
+  // Sửa giá trị 1 set ở màn kết quả (ô trống = bỏ set).
+  // ponytail: không tính lại cờ PR sau khi sửa — cần thì tính lại bằng buildPrBaselines như handleLogSet
+  const handleEditSet = (record, raw) => {
+    const actualVal = raw.trim() === '' ? null : Math.max(0, Math.round(Number(raw)));
+    if (Number.isNaN(actualVal) || actualVal === record.actualVal) return;
+    setLoggedSets(prev => prev.map(s => (s === record ? { ...s, actualVal } : s)));
+    if (!record.id || !onUpdateSet) return;
+    onUpdateSet(record.id, actualVal).catch(err => {
+      console.error('Failed to update set:', err);
+      setSaveError('Không lưu được giá trị vừa sửa. Thử sửa lại.');
+    });
   };
 
   // Rest SVG circular progress
@@ -501,6 +579,14 @@ export default function LiveSessionScreen({
   const C104 = 2 * Math.PI * 104;
   const timedTarget = Number(currentItem?.target_val) || 0;
   const timedProgress = timedTarget ? Math.min(1, tSec / timedTarget) : 0;
+
+  // Đếm ngược về 0 → bíp, tự ghi set đủ mục tiêu và sang bước kế (sai số sửa được ở màn kết quả)
+  useEffect(() => {
+    if (screenState !== 'set' || !tRunning || timedTarget <= 0 || tSec < timedTarget) return;
+    playTimerBeep();
+    handleLogSet(timedTarget);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screenState, tRunning, tSec, timedTarget]);
 
   // If queue is empty (e.g. rest day selected)
   if (queue.length === 0) {
@@ -671,6 +757,30 @@ export default function LiveSessionScreen({
             </div>
           )}
 
+          {/* Đếm ngược chuẩn bị trước mỗi set tính giây — chọn trước khi bắt đầu buổi */}
+          {!modeLocked && dayItems.some(it => it.unit === 's') && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)' }}>Chuẩn bị trước set giây</span>
+              {PREP_OPTIONS.map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  className="body-btn body-btn-secondary"
+                  style={{
+                    height: '30px',
+                    padding: '0 10px',
+                    fontSize: '12.5px',
+                    borderColor: prepSec === v ? 'var(--body-accent)' : undefined,
+                    color: prepSec === v ? 'var(--body-accent)' : undefined
+                  }}
+                  onClick={() => choosePrepSec(v)}
+                >
+                  {v === 0 ? 'Tắt' : `${v}s`}
+                </button>
+              ))}
+            </div>
+          )}
+
           <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', lineHeight: 1.6, color: 'var(--body-text-main)' }}>
             {(exDef?.steps || []).map((step, sIdx) => (
               <li key={sIdx} style={{ marginBottom: '4px' }}>{step}</li>
@@ -727,7 +837,10 @@ export default function LiveSessionScreen({
             <button
               className="body-btn body-btn-primary"
               style={{ padding: '0 24px', height: '44px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
-              onClick={() => setScreenState('set')}
+              onClick={() => {
+                setScreenState('set');
+                if (currentItem?.unit === 's' && !tRunning && !preparing) startTimer(tSec);
+              }}
             >
               <span>Bắt đầu set {currentItem?.set_no || 1}</span>
               <AppIcon name="arrowRight" size={16} />
@@ -751,7 +864,7 @@ export default function LiveSessionScreen({
             <button
               className="body-btn body-btn-secondary"
               style={{ fontSize: '12px', height: '30px', flex: 'none' }}
-              onClick={() => setScreenState('guide')}
+              onClick={() => { pauseTimer(); setScreenState('guide'); }}
             >
               Hướng dẫn
             </button>
@@ -851,19 +964,19 @@ export default function LiveSessionScreen({
                     cy="115"
                     r="104"
                     fill="none"
-                    stroke={tSec >= timedTarget ? 'var(--body-green)' : 'var(--body-accent)'}
+                    stroke={preparing ? 'var(--body-amber)' : 'var(--body-accent)'}
                     strokeWidth="10"
-                    strokeDasharray={`${(C104 * timedProgress).toFixed(1)} ${C104.toFixed(1)}`}
+                    strokeDasharray={`${(C104 * (preparing ? prepLeft / (prepSec || 1) : 1 - timedProgress)).toFixed(1)} ${C104.toFixed(1)}`}
                     strokeLinecap="round"
                     transform="rotate(-90 115 115)"
                   />
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '52px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: tSec >= timedTarget ? 'var(--body-green)' : 'var(--body-text-main)' }}>
-                    {formatClock(tSec)}
+                  <span style={{ fontSize: '52px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: preparing ? 'var(--body-amber)' : 'var(--body-text-main)' }}>
+                    {preparing ? prepLeft : formatClock(Math.max(0, timedTarget - tSec))}
                   </span>
                   <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)' }}>
-                    {tSec >= timedTarget ? `Đạt mục tiêu · +${tSec - timedTarget} giây` : `mục tiêu ${formatClock(timedTarget)} · còn ${timedTarget - tSec} giây`}
+                    {preparing ? 'chuẩn bị' : `/ ${formatClock(timedTarget)}`}
                   </span>
                 </div>
               </div>
@@ -881,22 +994,17 @@ export default function LiveSessionScreen({
 
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
-                  className="body-btn body-btn-primary"
-                  onClick={() => {
-                    if (!tRunning) {
-                      plankStartTimeRef.current = Date.now() - tSec * 1000;
-                    }
-                    setTRunning(!tRunning);
-                  }}
+                  className="body-btn body-btn-secondary"
+                  onClick={() => (tRunning || preparing ? pauseTimer() : startTimer(tSec))}
                   style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <AppIcon name={tRunning ? 'pause' : 'play'} size={16} />
-                  <span>{tRunning ? 'Tạm dừng' : tSec > 0 ? 'Tiếp tục' : 'Bắt đầu đếm giờ'}</span>
+                  <AppIcon name={tRunning || preparing ? 'pause' : 'play'} size={16} />
+                  <span>{tRunning || preparing ? 'Tạm dừng' : tSec > 0 ? 'Tiếp tục' : 'Bắt đầu'}</span>
                 </button>
-                {tSec > 0 && (
+                {tSec > 0 && !tRunning && (
                   <button
                     className="body-btn body-btn-secondary"
-                    onClick={() => { setTSec(0); setTRunning(false); plankStartTimeRef.current = null; }}
+                    onClick={() => { setTSec(0); plankStartTimeRef.current = null; }}
                   >
                     Đặt lại
                   </button>
@@ -1158,9 +1266,10 @@ export default function LiveSessionScreen({
                         {loggedVals.map((val, sIdx) => {
                           const isSkipped = val == null;
                           const isMet = !isSkipped && val >= item.target_val;
+                          const record = loggedSets.find(s => s.exerciseKey === item.exercise_key && s.setNo === sIdx + 1);
                           return (
-                            <div
-                              key={sIdx}
+                            <label
+                              key={`${sIdx}-${val}`}
                               style={{
                                 padding: '6px 12px',
                                 borderRadius: '8px',
@@ -1175,9 +1284,22 @@ export default function LiveSessionScreen({
                                 gap: '6px'
                               }}
                             >
-                              <span>{isSkipped ? 'Bỏ' : formatValWithUnit(val, item.unit)}</span>
+                              {/* Sửa trực tiếp; để trống = bỏ set */}
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                min="0"
+                                defaultValue={isSkipped ? '' : val}
+                                placeholder="bỏ"
+                                disabled={!record}
+                                aria-label={`Set ${sIdx + 1} ${displayName}`}
+                                onBlur={e => record && handleEditSet(record, e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                                style={{ width: '3.2em', border: 'none', background: 'transparent', color: 'inherit', font: 'inherit', textAlign: 'right', padding: 0 }}
+                              />
+                              {item.unit === 's' && <span>s</span>}
                               {isMet && <AppIcon name="check" size={12} />}
-                            </div>
+                            </label>
                           );
                         })}
                       </div>
