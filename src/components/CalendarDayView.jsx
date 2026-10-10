@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import AppIcon from './AppIcon';
+import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, getCanChiDay, getZodiacHours } from '../utils/lunarUtils';
 import HOLIDAYS from '../data/holidays.json';
@@ -16,6 +18,181 @@ import '../styles/week-calendar.css';
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const PX_PER_HOUR = 60; // 60px cho 1 giờ ở view ngày rộng rãi
 const MARKER_ICON = { deadline: '⏰ ', start: '▶ ' }; // mốc ngắn (computeDayLayout `kind`)
+
+const MOBILE_MQ = '(max-width: 640px)';
+const LONG_PRESS_MS = 320;
+
+/**
+ * Giữ-rồi-kéo bằng cảm ứng (mobile không có HTML5 drag): giữ 320ms để nhấc thẻ, kéo vào
+ * lưới giờ (bắt 30 phút, tự cuộn khi sát mép) hoặc thả vào "Chưa xếp giờ" để bỏ giờ.
+ * Di chuyển >6px trước khi nhấc = đang cuộn → huỷ.
+ * @returns {{ drag: {id, slot}|null, pressProps: (task) => object }}
+ */
+function useTouchTaskDrag({ enabled, scrollRef, canvasRef, unsRef, onDrop }) {
+  const dragRef = useRef(null);
+  const lastEndRef = useRef(0);
+  const onDropRef = useRef(onDrop);
+  const startRef = useRef(null);
+  const [drag, setDrag] = useState(null);
+
+  useEffect(() => {
+    onDropRef.current = onDrop;
+  }, [onDrop]);
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    const hit = () => {
+      const d = dragRef.current;
+      if (!d?.on) return;
+      const inside = (el) => {
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return d.x >= r.left && d.x <= r.right && d.y >= r.top && d.y <= r.bottom;
+      };
+      let slot = null;
+      if (inside(unsRef.current)) slot = d.hasTime ? 'uns' : null;
+      else if (inside(scrollRef.current) && canvasRef.current) {
+        const top = canvasRef.current.getBoundingClientRect().top;
+        // mép trên thẻ ma (ngón tay ở giữa thẻ cao 50px), làm tròn về mốc 30 phút gần nhất
+        slot = slotTimeFromOffset(d.y - 25 - top + PX_PER_HOUR / 4, PX_PER_HOUR);
+      }
+      d.label.textContent = slot === 'uns' ? 'Bỏ giờ' : slot || d.tm || 'Kéo vào giờ';
+      if (d.slot !== slot) {
+        d.slot = slot;
+        setDrag({ id: d.id, slot });
+      }
+    };
+
+    const clear = () => {
+      const d = dragRef.current;
+      if (!d) return;
+      dragRef.current = null;
+      clearTimeout(d.timer);
+      clearInterval(d.scroller);
+      if (d.ghost) d.ghost.remove();
+      if (d.on) setDrag(null);
+    };
+
+    const start = () => {
+      const d = dragRef.current;
+      if (!d || d.on) return;
+      d.on = true;
+      const ghost = document.createElement('div');
+      ghost.className = 'tk-touch-ghost';
+      ghost.style.width = `${d.w}px`;
+      const label = document.createElement('span');
+      label.className = 'tk-touch-ghost__time';
+      label.textContent = d.tm || 'Kéo vào giờ';
+      const title = document.createElement('span');
+      title.className = 'tk-touch-ghost__title';
+      title.textContent = d.title;
+      ghost.append(label, title);
+      (scrollRef.current?.closest('.tasks-workspace') || document.body).appendChild(ghost);
+      d.ghost = ghost;
+      d.label = label;
+      try { navigator.vibrate?.(12); } catch { /* không hỗ trợ rung */ }
+      setDrag({ id: d.id, slot: null });
+      // Tự cuộn lưới giờ khi ngón tay sát mép trên/dưới
+      d.scroller = setInterval(() => {
+        const el = scrollRef.current;
+        if (!el || !dragRef.current?.on) return;
+        const r = el.getBoundingClientRect();
+        let dy = 0;
+        if (d.y >= r.top && d.y < r.top + 56) dy = -Math.ceil((r.top + 56 - d.y) / 4);
+        else if (d.y > r.bottom - 120 && d.y <= r.bottom + 40) dy = Math.ceil((d.y - r.bottom + 120) / 10);
+        if (dy) {
+          el.scrollTop += Math.max(-14, Math.min(14, dy));
+          hit();
+        }
+      }, 30);
+      move(d.x, d.y);
+    };
+
+    const move = (x, y) => {
+      const d = dragRef.current;
+      if (!d) return;
+      d.x = x;
+      d.y = y;
+      if (!d.on) {
+        if (Math.hypot(x - d.x0, y - d.y0) > 6) clear();
+        return;
+      }
+      d.ghost.style.transform = `translate(${x - 24}px, ${y - 25}px) rotate(-1.5deg) scale(1.03)`;
+      hit();
+    };
+
+    const end = () => {
+      const d = dragRef.current;
+      if (!d) return;
+      const { on, slot, id } = d;
+      clear();
+      if (!on) return;
+      lastEndRef.current = Date.now();
+      if (slot) onDropRef.current(id, slot === 'uns' ? null : slot);
+    };
+
+    const L = {
+      touchmove: (e) => {
+        const d = dragRef.current;
+        if (!d) return;
+        if (d.on && e.cancelable) e.preventDefault();
+        move(e.touches[0].clientX, e.touches[0].clientY);
+      },
+      touchend: end,
+      touchcancel: clear,
+      // Nhả tay sau khi kéo không được tính là bấm mở thẻ
+      click: (e) => {
+        if (Date.now() - lastEndRef.current < 400) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+      },
+      contextmenu: (e) => {
+        if (dragRef.current) e.preventDefault();
+      },
+    };
+    const opts = {
+      touchmove: { passive: false },
+      touchend: { passive: true },
+      touchcancel: { passive: true },
+      click: { capture: true },
+      contextmenu: { capture: true },
+    };
+    Object.keys(L).forEach((k) => window.addEventListener(k, L[k], opts[k]));
+    dragRef.current = null;
+    startRef.current = start;
+    return () => {
+      Object.keys(L).forEach((k) => window.removeEventListener(k, L[k], opts[k]));
+      clear();
+    };
+  }, [enabled, scrollRef, canvasRef, unsRef]);
+
+  const pressProps = (task) => (!enabled ? {} : {
+    onPointerDown: (e) => {
+      if (e.pointerType === 'mouse') return;
+      const prev = dragRef.current;
+      if (prev) clearTimeout(prev.timer);
+      const r = e.currentTarget.getBoundingClientRect();
+      dragRef.current = {
+        id: task.id,
+        title: task.title,
+        tm: task.due_time ? task.due_time.slice(0, 5) : '',
+        hasTime: !!task.due_time || !!task.start_time,
+        x0: e.clientX,
+        y0: e.clientY,
+        x: e.clientX,
+        y: e.clientY,
+        w: Math.max(170, Math.min(260, r.width)),
+        on: false,
+        slot: null,
+        timer: setTimeout(() => startRef.current?.(), LONG_PRESS_MS),
+      };
+    },
+  });
+
+  return { drag, pressProps };
+}
 
 /**
  * CalendarDayView — Chế độ xem Lịch Ngày 1 cột với timeline 24h chi tiết chuẩn mockup Aurora.
@@ -40,7 +217,21 @@ export default function CalendarDayView({
   });
 
   const scrollRef = useRef(null);
+  const canvasRef = useRef(null);
+  const unsRef = useRef(null);
   const hasAutoScrolled = useRef(false);
+
+  // Mobile: panel Chưa xếp giờ nằm trên lưới, gọn 2 việc; kéo bằng giữ-rồi-kéo thay cho HTML5 drag
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia?.(MOBILE_MQ).matches ?? false);
+  const [unsOpen, setUnsOpen] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia?.(MOBILE_MQ);
+    if (!mq) return undefined;
+    const onChange = (e) => setIsMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const htmlDrag = !!onRescheduleTask && !isMobile;
 
   const targetDate = useMemo(() => {
     const d = new Date(currentDate || new Date());
@@ -189,6 +380,15 @@ export default function CalendarDayView({
     });
   }, [allDayTasks, pendingTasks, isToday, todayStr]);
 
+  const { drag: touchDrag, pressProps } = useTouchTaskDrag({
+    enabled: !!onRescheduleTask && isMobile,
+    scrollRef,
+    canvasRef,
+    unsRef,
+    onDrop: (id, timeStr) => onRescheduleTask(id, dateStr, timeStr),
+  });
+  const shownUnscheduled = isMobile && !unsOpen ? unscheduledTasks.slice(0, 2) : unscheduledTasks;
+
   const canChiDay = useMemo(() => {
     return getCanChiDay(targetDate.getDate(), targetDate.getMonth() + 1, targetDate.getFullYear());
   }, [targetDate]);
@@ -198,7 +398,7 @@ export default function CalendarDayView({
       {/* Header ngày */}
       <div className="cal-day-view__header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-          <div className="cal-day-view__date-badge">
+          <div className="cal-day-view__date-badge cal-day-view__desktop-only">
             <span className="cal-day-view__weekday">
               {targetDate.toLocaleDateString('vi-VN', { weekday: 'long' })}
             </span>
@@ -244,6 +444,7 @@ export default function CalendarDayView({
 
         {/* Dải 12 giờ hoàng đạo (Zodiac badges) chuẩn mockup */}
         <div
+          className="cal-day-view__desktop-only"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -281,7 +482,7 @@ export default function CalendarDayView({
       </div>
 
       {/* Khung nội dung 2 cột: Timeline 24h bên trái + Panel Việc chưa xếp giờ bên phải */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+      <div className="cal-day-view__body">
         {/* Khung timeline cuộn 24 giờ */}
         <div className="cal-day-view__scroll-body" ref={scrollRef} style={{ flex: 1 }}>
           <div className="cal-day-view__grid" style={{ height: `${24 * PX_PER_HOUR}px` }}>
@@ -296,8 +497,9 @@ export default function CalendarDayView({
 
             {/* Canvas chính chứa slot giờ, dải hoàng đạo và các task */}
             <div
+              ref={canvasRef}
               className="cal-day-view__canvas"
-              {...(onRescheduleTask
+              {...(htmlDrag
                 ? dropZoneProps((id, e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     onRescheduleTask(id, dateStr, slotTimeFromOffset(e.clientY - rect.top, PX_PER_HOUR));
@@ -316,7 +518,7 @@ export default function CalendarDayView({
                       top: `${bd.start * PX_PER_HOUR}px`,
                       height: `${(bd.end - bd.start) * PX_PER_HOUR}px`,
                       background: 'var(--tk-ks-today-tint)',
-                      borderLeft: '2px solid rgba(251, 191, 36, 0.3)',
+                      borderLeft: '2px solid var(--tk-ks-today-bd)',
                       pointerEvents: 'none',
                       zIndex: 1,
                     }}
@@ -366,6 +568,15 @@ export default function CalendarDayView({
                 </div>
               )}
 
+              {touchDrag?.slot && touchDrag.slot !== 'uns' && (
+                <div
+                  className="tk-touch-slot"
+                  style={{ top: `${(Number(touchDrag.slot.slice(0, 2)) * 60 + Number(touchDrag.slot.slice(3))) / 60 * PX_PER_HOUR}px` }}
+                >
+                  {touchDrag.slot}
+                </div>
+              )}
+
               {/* Các task có giờ */}
               {timedTasks.map((t) => {
                 const visualStatus = getTaskVisualStatus(t, todayStr, nowMinutes);
@@ -380,9 +591,11 @@ export default function CalendarDayView({
                   <div
                     key={t.id}
                     className={`week-cal__event ${statusClass}${t._layout.kind !== 'block' ? ' week-cal__event--marker' : ''}`}
-                    draggable={visualStatus !== 'done' && !!onRescheduleTask}
+                    draggable={visualStatus !== 'done' && htmlDrag}
                     onDragStart={(e) => taskDragStart(e, t)}
+                    {...(visualStatus !== 'done' ? pressProps(t) : {})}
                     style={{
+                      opacity: touchDrag?.id === t.id ? 0.35 : 1,
                       top: `${t._layout.top}px`,
                       height: `${Math.max(26, t._layout.height)}px`,
                       left: t._layout.left,
@@ -411,18 +624,9 @@ export default function CalendarDayView({
         {/* Panel Việc Chưa Xếp Giờ bên phải */}
         {(
           <div
-            className="cal-day-view__unscheduled-panel"
-            {...(onRescheduleTask ? dropZoneProps((id) => onRescheduleTask(id, dateStr, null)) : {})}
-            style={{
-              width: '260px',
-              borderLeft: '1px solid var(--tk-border-soft, rgba(255,255,255,0.08))',
-              background: 'var(--tk-card-bg, rgba(14,19,36,0.5))',
-              display: 'flex',
-              flexDirection: 'column',
-              padding: '12px',
-              gap: '10px',
-              overflowY: 'auto',
-            }}
+            ref={unsRef}
+            className={`cal-day-view__unscheduled-panel${touchDrag?.slot === 'uns' ? ' is-drop-over' : ''}`}
+            {...(htmlDrag ? dropZoneProps((id) => onRescheduleTask(id, dateStr, null)) : {})}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span
@@ -448,18 +652,27 @@ export default function CalendarDayView({
               >
                 {unscheduledTasks.length}
               </span>
+              {onRescheduleTask && (
+                <span className="cal-day-view__uns-hint">
+                  <AppIcon name="dotsSix" size={13} />
+                  {isMobile ? 'Giữ rồi kéo vào giờ' : 'Kéo vào lưới giờ'}
+                </span>
+              )}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {unscheduledTasks.map((t) => {
+              {shownUnscheduled.map((t) => {
                 const isLate = t.due_date && t.due_date < todayStr && !t.completed && t.status !== 'skip';
                 return (
                   <div
                     key={t.id}
-                    draggable={!!onRescheduleTask}
+                    draggable={htmlDrag}
                     onDragStart={(e) => taskDragStart(e, t)}
+                    {...pressProps(t)}
                     onClick={() => onSelectTask?.(t)}
+                    className="cal-day-view__uns-item"
                     style={{
+                      opacity: touchDrag?.id === t.id ? 0.35 : 1,
                       position: 'relative',
                       padding: '8px 10px 8px 12px',
                       borderRadius: '10px',
@@ -480,7 +693,7 @@ export default function CalendarDayView({
                         top: 0,
                         bottom: 0,
                         width: '2.5px',
-                        background: isLate ? 'var(--tk-ks-late-fg)' : (t.priority >= 3 ? 'var(--tk-ks-late-fg)' : 'var(--tk-st-todo)'),
+                        background: isLate ? 'var(--tk-ks-late-fg)' : (PRIORITY_LABELS[t.priority]?.color && t.priority > 0 ? PRIORITY_LABELS[t.priority].color : 'var(--tk-st-todo)'),
                       }}
                     />
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
@@ -509,11 +722,14 @@ export default function CalendarDayView({
                             flexShrink: 0,
                           }}
                         >
-                          Quá hạn
+                          {isMobile ? `${Number(t.due_date.slice(8, 10))}/${Number(t.due_date.slice(5, 7))}` : 'Quá hạn'}
                         </span>
                       )}
+                      {isMobile && onRescheduleTask && (
+                        <AppIcon name="dotsSix" size={16} style={{ color: 'var(--tk-text-mute)', flex: 'none' }} />
+                      )}
                     </div>
-                    {t.description && (
+                    {t.description && !isMobile && (
                       <div
                         style={{
                           fontSize: '11px',
@@ -530,6 +746,13 @@ export default function CalendarDayView({
                 );
               })}
             </div>
+
+            {isMobile && unscheduledTasks.length > 2 && (
+              <button type="button" className="cal-day-view__uns-more" onClick={() => setUnsOpen((o) => !o)}>
+                <AppIcon name={unsOpen ? 'caretUp' : 'caretDown'} size={12} />
+                {unsOpen ? 'Thu gọn' : `Xem thêm ${unscheduledTasks.length - 2} việc`}
+              </button>
+            )}
           </div>
         )}
       </div>

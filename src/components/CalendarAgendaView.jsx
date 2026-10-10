@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { toDateStr, formatDate } from '../utils/dateUtils';
 import { solarToLunar } from '../utils/lunarUtils';
-import { bucketTasksByDay, hasExplicitTime, taskDayRole, taskDragStart, dropZoneProps } from '../utils/calendarTimeUtils';
+import { bucketTasksByDay, hasExplicitTime, taskDayRole, taskDragStart, dropZoneProps, buildAgendaRows } from '../utils/calendarTimeUtils';
 import { PRIORITY_OPTIONS } from '../utils/taskFields';
 import HOLIDAYS from '../data/holidays.json';
 import AppIcon from './AppIcon';
@@ -148,6 +148,12 @@ export default function CalendarAgendaView({
     [pendingTasks, days]
   );
 
+  // Gom theo tuần, gộp các ngày trống liền nhau thành 1 hàng (mockup Lịch biểu)
+  const rows = useMemo(() => {
+    const countOf = (day) => (pendingByDay[day.dateStr] || []).length + (completedByDay[day.dateStr] || []).length;
+    return buildAgendaRows(days, countOf, (day) => day.holidays.length > 0 || countOf(day) > 0, toDateStr(new Date()));
+  }, [days, pendingByDay, completedByDay]);
+
   return (
     <div
       className="cal-agenda-view"
@@ -238,7 +244,35 @@ export default function CalendarAgendaView({
           </div>
         )}
 
-        {days.map((day) => {
+        {rows.map((row) => {
+          if (row.kind === 'week') {
+            return (
+              <div key={`w-${row.key}`} className="cal-agenda-week">
+                <span>{row.label}</span>
+                <span className="cal-agenda-week__count">{row.count} việc</span>
+              </div>
+            );
+          }
+          if (row.kind === 'gap') {
+            return (
+              <div
+                key={`g-${row.from}`}
+                className="cal-agenda-gap"
+                {...(onRescheduleTask ? dropZoneProps((id) => onRescheduleTask(id, row.from)) : {})}
+              >
+                <span>{row.label}</span>
+                <button
+                  type="button"
+                  className="cal-agenda-add-quick"
+                  onClick={() => onQuickCreate && onQuickCreate(row.from, '09:00')}
+                  title="Thêm công việc"
+                >
+                  <AppIcon name="plus" size={13} />
+                </button>
+              </div>
+            );
+          }
+          const { day } = row;
           const dayTasks = pendingByDay[day.dateStr] || [];
           const dayCompleted = completedByDay[day.dateStr] || [];
           const hasEvents = day.holidays.length > 0 || dayTasks.length > 0 || dayCompleted.length > 0;

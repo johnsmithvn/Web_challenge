@@ -480,3 +480,63 @@ export function dropZoneProps(onDropTask) {
     },
   };
 }
+
+// ── Lịch biểu: gom theo tuần, gộp chuỗi ngày trống ─────────────────────────
+
+const DOW_VI = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const dm = (dateStr) => `${Number(dateStr.slice(8, 10))}/${Number(dateStr.slice(5, 7))}`;
+const mondayOf = (dateStr) => {
+  const d = new Date(`${dateStr}T00:00:00`);
+  return addDays(dateStr, -mondayIndex(d));
+};
+
+/** Nhãn tuần so với tuần hiện tại: Tuần này / Tuần sau / Tuần trước / Tuần d/m – d/m. */
+export function agendaWeekLabel(mondayStr, todayStr) {
+  const diff = Math.round(dayDiff(mondayOf(todayStr), mondayStr) / 7);
+  if (diff === 0) return 'Tuần này';
+  if (diff === 1) return 'Tuần sau';
+  if (diff === -1) return 'Tuần trước';
+  return `Tuần ${dm(mondayStr)} – ${dm(addDays(mondayStr, 6))}`;
+}
+
+/** "T2 12/10 → T4 14/10 · trống" (hoặc 1 ngày: "T2 12/10 · trống"). */
+export function agendaGapLabel(from, to) {
+  const lbl = (v) => `${DOW_VI[new Date(`${v}T00:00:00`).getDay()]} ${dm(v)}`;
+  return `${lbl(from)}${from === to ? '' : ` → ${lbl(to)}`} · trống`;
+}
+
+/**
+ * Dãy hàng của Lịch biểu: tiêu đề tuần (kèm số việc) → ngày có nội dung; các ngày trống liền nhau
+ * (trừ hôm nay) gộp thành 1 hàng "trống".
+ * @param {Array<{dateStr: string, isToday: boolean}>} days
+ * @param {(day) => number} countOf - số việc của ngày
+ * @param {(day) => boolean} hasContent - ngày có việc / sự kiện
+ * @param {string} todayStr
+ * @returns {Array<{kind:'week', key, label, count} | {kind:'day', day} | {kind:'gap', from, to, label}>}
+ */
+export function buildAgendaRows(days, countOf, hasContent, todayStr) {
+  const rows = [];
+  let week = null;
+  let gap = null;
+  for (const day of days) {
+    const wk = mondayOf(day.dateStr);
+    if (!week || week.key !== wk) {
+      week = { kind: 'week', key: wk, label: agendaWeekLabel(wk, todayStr), count: 0 };
+      rows.push(week);
+      gap = null;
+    }
+    week.count += countOf(day);
+    if (!hasContent(day) && !day.isToday) {
+      if (gap) gap.to = day.dateStr;
+      else {
+        gap = { kind: 'gap', from: day.dateStr, to: day.dateStr };
+        rows.push(gap);
+      }
+      continue;
+    }
+    gap = null;
+    rows.push({ kind: 'day', day });
+  }
+  for (const r of rows) if (r.kind === 'gap') r.label = agendaGapLabel(r.from, r.to);
+  return rows;
+}

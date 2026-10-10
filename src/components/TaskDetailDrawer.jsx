@@ -312,8 +312,14 @@ export default function TaskDetailDrawer({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  handleSaveTitle();
                   e.target.blur();
+                } else if (e.key === 'Escape') {
+                  // Esc: bỏ sửa, trả tên cũ (blur sau khi state cập nhật nên không lưu)
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setTitleDraft(task.title || '');
+                  const el = e.target;
+                  setTimeout(() => el.blur(), 0);
                 }
               }}
               rows={2}
@@ -666,6 +672,18 @@ export default function TaskDetailDrawer({
               onChange={(e) => setDescDraft(e.target.value)}
               onFocus={() => setIsEditingDesc(true)}
               onBlur={handleSaveDesc}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  e.target.blur();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDescDraft(task.description || '');
+                  const el = e.target;
+                  setTimeout(() => el.blur(), 0);
+                }
+              }}
               rows={4}
               placeholder="Thêm mô tả (hỗ trợ định dạng Markdown, danh sách việc - [ ])..."
               style={{

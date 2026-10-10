@@ -957,3 +957,328 @@
 .tasks-workspace [draggable='true'] {
   cursor: grab;
 }
+
+/* ── VIEW NGÀY: panel Chưa xếp giờ & giữ-rồi-kéo (mockup bản 3) ── */
+.cal-day-view__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cal-day-view__unscheduled-panel {
+  width: 260px;
+  flex: none;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  overflow-y: auto;
+  border-left: 1px solid var(--tk-border-soft);
+  background: var(--tk-card-bg);
+}
+
+.cal-day-view__uns-hint {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--tk-text-mute);
+  white-space: nowrap;
+}
+
+.cal-day-view__uns-more {
+  align-self: center;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--tk-text-sub);
+  cursor: pointer;
+}
+
+/* Khung xem trước mốc giờ khi đang kéo */
+.tk-touch-slot {
+  position: absolute;
+  left: 4px;
+  right: 0;
+  height: 50px;
+  z-index: 4;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1.5px dashed var(--tk-accent);
+  background: var(--tk-accent-soft);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font: 600 12px/1 'JetBrains Mono', monospace;
+  color: var(--tk-accent);
+  pointer-events: none;
+}
+
+/* Thẻ "ma" bám theo ngón tay */
+.tk-touch-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  box-sizing: border-box;
+  height: 50px;
+  padding: 0 12px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  background: var(--tk-popover-bg);
+  border: 1.5px solid var(--tk-accent);
+  box-shadow: 0 14px 34px var(--tk-shadow);
+}
+
+.tk-touch-ghost__time {
+  font: 600 11px/1 'JetBrains Mono', monospace;
+  color: var(--tk-accent);
+}
+
+.tk-touch-ghost__title {
+  font: 600 13px/1.2 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Header ngày đang xem — chỉ mobile ở view Ngày */
+.tk-header__day {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .tasks-workspace--day .tk-header__info {
+    display: none;
+  }
+
+  .tasks-workspace--day .tk-header {
+    padding-top: 10px;
+  }
+
+  .tk-header__day {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+  }
+
+  .tk-header__day-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .tk-header__day-title {
+    font: 600 13.5px/1.2 'Be Vietnam Pro', sans-serif;
+    color: var(--tk-text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tk-header__day-lunar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--tk-text-sub);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .tk-header__day-lunar > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tk-header__day-today {
+    flex: none;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--tk-border-strong);
+    background: transparent;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--tk-text-main);
+    cursor: pointer;
+  }
+
+  .tk-header__day-arrow {
+    flex: none;
+    width: 40px;
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    display: grid;
+    place-items: center;
+    color: var(--tk-text-sub);
+    cursor: pointer;
+  }
+
+  /* Điều hướng ngày đã lên header → bỏ cụm Hôm nay / ‹ › / tiêu đề của toolbar */
+  .tasks-workspace--day .cal-header-bar__left {
+    display: none;
+  }
+
+  /* Mobile chỉ 5 chế độ xem: bỏ Tuần vì quá chật */
+  .cal-segmented-btn--week {
+    display: none;
+  }
+
+  /* View Ngày: panel Chưa xếp giờ nằm trên lưới, thẻ gọn một dòng */
+  .cal-day-view__desktop-only {
+    display: none !important;
+  }
+
+  .cal-day-view__body {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .cal-day-view__unscheduled-panel {
+    order: -1;
+    width: auto;
+    margin: 0 8px 10px;
+    padding: 6px;
+    gap: 6px;
+    border-left: none;
+    border-radius: 14px;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .cal-day-view__uns-item {
+    flex-direction: row !important;
+    align-items: center;
+    height: 46px;
+    box-sizing: border-box;
+    padding: 0 4px 0 14px !important;
+    border-radius: 12px !important;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    cursor: grab;
+  }
+
+  .cal-day-view__uns-item > div {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cal-day-view .week-cal__event {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Sự kiện cả ngày: một dòng, cắt chữ */
+  .cal-day-view__allday-chips {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .cal-day-view__allday-chips > * {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Nút chèn nhanh cú pháp ở ô thêm việc — chỉ mobile (không có bàn phím để gõ ! và #) */
+.tk-quick-tokens {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .tk-quick-tokens {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tk-quick-tokens button {
+    flex: none;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--tk-border);
+    background: var(--tk-border-soft);
+    color: var(--tk-text-main);
+    font-size: 12px;
+    cursor: pointer;
+  }
+}
+
+/* ── LỊCH BIỂU: tiêu đề tuần & hàng ngày trống gộp ── */
+.cal-agenda-week {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 14px 4px 6px;
+  font: 600 12px/1 'JetBrains Mono', monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tk-text-sub);
+}
+
+.cal-agenda-week__count {
+  font-weight: 500;
+  color: var(--tk-text-mute);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.cal-agenda-gap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 10px;
+  margin: 2px 0;
+  border-radius: 10px;
+  border: 1px dashed var(--tk-border);
+  font-size: 12px;
+  color: var(--tk-text-mute);
+}
+
+.cal-agenda-gap .cal-agenda-add-quick {
+  margin-left: auto;
+}
+
+/* Chip thời gian làm thực tế trên thẻ Kanban */
+.tk-run-chip {
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 500 11px/1 'JetBrains Mono', monospace;
+  color: var(--tk-st-doing);
+  background: var(--tk-ks-today-bg);
+  border: 1px solid var(--tk-ks-today-bd);
+  white-space: nowrap;
+}

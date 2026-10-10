@@ -1196,6 +1196,10 @@ sáng = mockup 2b (violet `#7C3AED`, nền `#F4F2FF`, aurora pastel, ẩn sao).
 - Mobile (`≤640px`): Kanban hiện từng cột qua `.tk-kanban-tabs` (vuốt ngang để đổi),
   ngăn chi tiết thành bottom sheet, thanh lọc cuộn ngang.
 - Kéo thả trên Lịch: vùng thả có class `.is-drop-over` (viền nét đứt `--tk-accent`).
+- View Ngày trên mobile (mockup bản 3): header trang đổi thành ngày đang xem + ‹ ›, "Chưa xếp giờ"
+  nằm trên lưới (2 việc + "Xem thêm"), kéo bằng giữ 320ms (`.tk-touch-ghost` bám ngón tay,
+  `.tk-touch-slot` xem trước mốc 30 phút). Desktop vẫn dùng HTML5 drag.
+- Lịch biểu: tiêu đề tuần `.cal-agenda-week` ("Tuần này · N việc"), ngày trống liền nhau gộp `.cal-agenda-gap`.
 
 ## Do's and Don'ts
 

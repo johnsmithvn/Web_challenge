@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import AppIcon from './AppIcon';
 import { useConfirm } from './ConfirmModal';
-import { toDateStr, formatDate } from '../utils/dateUtils';
+import { toDateStr, formatDate, formatDateTime } from '../utils/dateUtils';
 import { getKanbanRange, groupKanbanColumns, matchTaskSearch, calculateKanbanCounts } from '../utils/kanbanUtils';
+import { formatSpent } from '../utils/calendarTimeUtils';
 import { subtaskProgressByParent } from '../utils/subtaskUtils';
 import { parseTaskQuickText, PRIORITY_LABELS, shiftDateDays } from '../utils/taskNlpParser';
 import { describeRecurrence } from '../utils/taskFields';
@@ -543,6 +544,22 @@ export default function TaskKanbanView({
                       }}
                       placeholder="Tên việc… thử “mai 9h !cao #UI”"
                     />
+                    {/* Mobile: bấm nhanh để chèn cú pháp (ẩn trên desktop bằng CSS) */}
+                    <div className="tk-quick-tokens">
+                      {[['Hôm nay', 'nay'], ['Ngày mai', 'mai'], ['9:00', '9h'], ['Cao', '!cao'], ['#nhãn', '#']].map(([label, tok]) => (
+                        <button
+                          key={tok}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => setQuickAddTexts((prev) => ({
+                            ...prev,
+                            [col.key]: `${(prev[col.key] || '').trim()} ${tok}`.trim() + (tok === '#' ? '' : ' '),
+                          }))}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                     {/* Live chips preview */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', minHeight: '20px' }}>
                       {parsedQuick?.chips.map((chip, idx) => (
@@ -812,6 +829,18 @@ export default function TaskKanbanView({
 
                       {/* Subtasks expand & tags */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginLeft: '24px' }}>
+                        {/* Thời gian làm thực tế: đang làm "từ d/m HH:MM", xong thì thời lượng */}
+                        {task.started_at && (task.status === 'doing' || isDone) && (
+                          <span
+                            className="tk-run-chip"
+                            title={`Bắt đầu ${formatDateTime(task.started_at)}${isDone && task.completed_at ? ` · Hoàn thành ${formatDateTime(task.completed_at)}` : ''}`}
+                          >
+                            <AppIcon name={isDone ? 'timer' : 'play'} size={11} />
+                            {isDone && task.completed_at
+                              ? formatSpent(task.started_at, task.completed_at)
+                              : `từ ${new Date(task.started_at).getDate()}/${new Date(task.started_at).getMonth() + 1} ${new Date(task.started_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`}
+                          </span>
+                        )}
                         {progress && (
                           <button
                             type="button"

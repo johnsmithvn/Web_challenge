@@ -20,6 +20,9 @@ import {
   isStartAfterDue,
   slotTimeFromOffset,
   rescheduleTaskPatch,
+  agendaWeekLabel,
+  agendaGapLabel,
+  buildAgendaRows,
 } from '../../utils/calendarTimeUtils.js';
 
 // v6.21.0: khối thời gian = Bắt đầu → Hạn CÙNG ngày (không còn end_time).
@@ -303,5 +306,28 @@ assert.deepEqual(
   { due_date: '2026-10-11', start_date: '2026-10-10', due_time: '08:00' }
 );
 console.log('drag-drop reschedule: OK');
+
+// ── Lịch biểu: gom tuần + gộp ngày trống ──────────────────────────────────
+// 2026-10-10 là Thứ Bảy; tuần T2 5/10 – CN 11/10
+assert.equal(agendaWeekLabel('2026-10-05', '2026-10-10'), 'Tuần này');
+assert.equal(agendaWeekLabel('2026-10-12', '2026-10-10'), 'Tuần sau');
+assert.equal(agendaWeekLabel('2026-09-28', '2026-10-10'), 'Tuần trước');
+assert.equal(agendaWeekLabel('2026-10-19', '2026-10-10'), 'Tuần 19/10 – 25/10');
+assert.equal(agendaGapLabel('2026-10-12', '2026-10-14'), 'T2 12/10 → T4 14/10 · trống');
+assert.equal(agendaGapLabel('2026-10-12', '2026-10-12'), 'T2 12/10 · trống');
+
+{
+  const mk = (dateStr, n = 0) => ({ dateStr, isToday: dateStr === '2026-10-10', n });
+  const days = [
+    mk('2026-10-09'), mk('2026-10-10'), mk('2026-10-11', 2), // tuần này: 9 trống, 10 hôm nay (trống vẫn hiện), 11 có 2 việc
+    mk('2026-10-12'), mk('2026-10-13'), mk('2026-10-14'), mk('2026-10-15', 1), // tuần sau: 12–14 gộp, 15 có việc
+  ];
+  const rows = buildAgendaRows(days, (d) => d.n, (d) => d.n > 0, '2026-10-10');
+  assert.deepEqual(
+    rows.map((r) => (r.kind === 'week' ? `W:${r.label}:${r.count}` : r.kind === 'gap' ? `G:${r.from}..${r.to}` : `D:${r.day.dateStr}`)),
+    ['W:Tuần này:2', 'G:2026-10-09..2026-10-09', 'D:2026-10-10', 'D:2026-10-11', 'W:Tuần sau:1', 'G:2026-10-12..2026-10-14', 'D:2026-10-15']
+  );
+}
+console.log('agenda rows (week/gap): OK');
 
 console.log('\n✅ weekCalendarLogic — tất cả kiểm thử logic Lịch Tuần PASS (100% covered)');
