@@ -8,6 +8,17 @@ import {
 const WD_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 const dmyFull = (iso) => iso.split('-').reverse().join('/');
 
+/** Số gọn cho nhãn hẹp (thanh tiến độ, ô KPI): 35 tr · 1,25 tỷ · 450k. */
+export function shortMoney(n) {
+  const v = Math.round(n || 0);
+  const trim = (x) => String(Math.round(x * 100) / 100).replace('.', ',');
+  if (Math.abs(v) >= 1e9) return `${trim(v / 1e9)} tỷ`;
+  if (Math.abs(v) >= 1e6) return `${trim(v / 1e6)} tr`;
+  if (Math.abs(v) >= 1e3) return `${Math.round(v / 1e3)}k`;
+  return String(v);
+}
+const pctOf = (a, b) => (b ? Math.min(100, Math.max(0, Math.round((a / b) * 100))) : 0);
+
 /**
  * 1. Gom 5 nguồn thành item phẳng (bảng §2 trong RECURRING_HUB_PLAN.md).
  * Không format tiền ở đây — UI lo việc hiển thị.
@@ -45,12 +56,18 @@ export function buildHubItems(fin = {}) {
     }
 
     const overdue = Boolean(ev && ev.state === 'due' && ev.due < today);
-    const progress = b.term_total > 0
-      ? {
-        pct: Math.min(100, Math.round(((b.term_done || 0) / b.term_total) * 100)),
-        label: `${b.term_done || 0}/${b.term_total} kỳ`,
-      }
-      : null;
+    let progress = null;
+    if (b.term_total > 0) {
+      progress = { pct: pctOf(b.term_done || 0, b.term_total), label: `kỳ ${b.term_done || 0}/${b.term_total}` };
+    } else if (ev?.state === 'paid') {
+      progress = { pct: 100, label: 'đã trả kỳ này', tone: 'good' };
+    } else if (ev?.state === 'skip') {
+      progress = { pct: 0, label: 'bỏ kỳ này' };
+    } else if (ev) {
+      const left = cyc.days;
+      const elapsed = Math.max(0, Math.min(30, 30 - left));
+      progress = { pct: pctOf(elapsed, 30), label: left < 0 ? `trễ ${-left} ngày` : `${elapsed}/30 ngày chu kỳ`, tone: left <= 6 ? 'warn' : null };
+    }
 
     items.push({
       id: b.id,
@@ -99,8 +116,7 @@ export function buildHubItems(fin = {}) {
     }
 
     const overdue = Boolean(ev && ev.state === 'due' && ev.due < today);
-    const pct = c.credit_limit ? Math.min(100, Math.round((balance / c.credit_limit) * 100)) : 0;
-    const progress = { pct, label: `${pct}% hạn mức` };
+    const progress = { pct: pctOf(balance, c.credit_limit), label: `${shortMoney(balance)} / ${shortMoney(c.credit_limit)}` };
 
     items.push({
       id: c.id,
@@ -136,10 +152,7 @@ export function buildHubItems(fin = {}) {
     }
 
     const overdue = Boolean(ev && ev.state === 'due' && ev.due < today);
-    const pct = sch.progress.total
-      ? Math.min(100, Math.round((sch.progress.done / sch.progress.total) * 100))
-      : 0;
-    const progress = { pct, label: `kỳ ${sch.progress.done}/${sch.progress.total}` };
+    const progress = { pct: pctOf(sch.progress.done, sch.progress.total), label: `kỳ ${sch.progress.done}/${sch.progress.total}` };
 
     items.push({
       id: l.id,
@@ -180,8 +193,7 @@ export function buildHubItems(fin = {}) {
     const overdue = Boolean(ev && ev.state === 'due' && ev.due < today);
     const deps = deposits.filter(d => d.fund_id === g.id && !d.closed_on);
     const bal = deps.reduce((s, d) => s + (d.amount || 0), 0);
-    const pct = g.goal ? Math.min(100, Math.round((bal / g.goal) * 100)) : 0;
-    const progress = { pct, label: `${pct}% mục tiêu` };
+    const progress = { pct: pctOf(bal, g.goal), label: g.goal ? `${shortMoney(bal)} / ${shortMoney(g.goal)}` : shortMoney(bal) };
 
     items.push({
       id: g.id,
@@ -220,8 +232,7 @@ export function buildHubItems(fin = {}) {
       };
     }
 
-    const pct = l.principal ? Math.min(100, Math.round((got / l.principal) * 100)) : 0;
-    const progress = { pct, label: `thu ${pct}%` };
+    const progress = { pct: pctOf(got, l.principal), label: `thu ${shortMoney(got)} / ${shortMoney(l.principal)}` };
 
     items.push({
       id: l.id,
@@ -374,58 +385,79 @@ export function groupHubItems(items = [], todayStr, kindFilter = 'all') {
 }
 
 /**
- * 4. Số liệu 6 ô KPI:
- * all, bill, card, loan, save, lend
+ * 4. Số liệu 6 ô KPI. Mỗi ô: { value, sub, cap, pct (0..1), count, dueCount, doneCount }.
+ * Tất cả / Hóa đơn đếm KỲ trong tháng; bốn ô còn lại là số dư của chính loại đó
+ * (dư nợ gốc, đang gửi, còn phải thu) — "còn phải trả tháng này" của khoản vay đã
+ * trả kỳ là 0đ, đọc như không có khoản vay nào.
  */
-export function hubTotals(items = []) {
-  const calcKind = (kind) => {
-    const kindItems = items.filter(i => i.kind === kind);
-    const evItems = kindItems.filter(i => i.ev !== null);
-    const dueItems = evItems.filter(i => i.ev.state === 'due');
-    const doneItems = evItems.filter(i => i.ev.state === 'paid' || i.ev.state === 'skip');
+export function hubTotals(items = [], monthStr = '') {
+  const of = (kind) => items.filter(i => kind === 'all' || i.kind === kind);
+  const kpi = (list) => {
+    const ev = list.filter(i => i.ev);
+    const due = ev.filter(i => i.ev.state === 'due');
     return {
-      value: dueItems.reduce((s, i) => s + (i.ev?.amount || 0), 0),
-      count: kindItems.length,
-      pct: evItems.length ? doneItems.length / evItems.length : 0,
-      dueCount: dueItems.length,
-      doneCount: doneItems.length,
+      count: list.length, dueCount: due.length, doneCount: ev.length - due.length,
+      dueSum: due.reduce((s, i) => s + (i.ev.amount || 0), 0), evCount: ev.length,
     };
   };
+  const sum = (list, f) => list.reduce((s, i) => s + (f(i) || 0), 0);
+  const month = monthStr ? `tháng ${Number(monthStr.slice(5, 7))}` : 'tháng này';
 
-  const evAll = items.filter(i => i.ev !== null);
-  const dueAll = evAll.filter(i => i.ev.state === 'due');
-  const doneAll = evAll.filter(i => i.ev.state === 'paid' || i.ev.state === 'skip');
+  const all = kpi(of('all'));
+  const bill = kpi(of('bill'));
+  const cards = of('card');
+  const used = sum(cards, i => i.main);
+  const limit = sum(cards, i => i.source.credit_limit);
+  const loans = of('loan');
+  const loanDone = sum(loans, i => loanSchedule(i.source).progress.done);
+  const loanTotal = sum(loans, i => loanSchedule(i.source).progress.total);
+  const loanMonthly = sum(loans, i => {
+    const sch = loanSchedule(i.source);
+    return sch.kind === 'interest' ? sch.monthlyInterest : sch.monthlyPayment;
+  });
+  const saves = of('save');
+  const saved = sum(saves, i => i.main);
+  const goal = sum(saves, i => i.source.goal);
+  const lends = of('lend');
+  const lendLeft = sum(lends, i => i.main);
+  const lendTotal = sum(lends, i => i.source.principal);
 
   return {
-    all: {
-      value: dueAll.reduce((s, i) => s + (i.ev?.amount || 0), 0),
-      sub: 'còn phải chi tháng này',
-      pct: evAll.length ? doneAll.length / evAll.length : 0,
-      count: items.length,
-      dueCount: dueAll.length,
-      doneCount: doneAll.length,
-    },
-    bill: {
-      ...calcKind('bill'),
-      sub: 'hóa đơn còn phải trả',
-    },
-    card: {
-      ...calcKind('card'),
-      sub: 'sao kê cần trả',
-    },
-    loan: {
-      ...calcKind('loan'),
-      sub: 'gốc & lãi phải trả',
-    },
-    save: {
-      ...calcKind('save'),
-      sub: 'quỹ tiết kiệm',
-    },
-    lend: {
-      ...calcKind('lend'),
-      sub: 'khoản cho vay',
-    },
+    all: { ...all, value: all.dueSum, sub: `còn phải chi ${month}`, pct: all.evCount ? all.doneCount / all.evCount : 0,
+      cap: `${all.doneCount}/${all.evCount} kỳ đã xong` },
+    bill: { ...bill, value: bill.dueSum, sub: `còn ${bill.dueCount}/${bill.evCount} kỳ`, pct: bill.evCount ? bill.doneCount / bill.evCount : 0,
+      cap: `${bill.doneCount} đã trả hoặc bỏ kỳ` },
+    card: { ...kpi(cards), value: sum(cards, i => (i.ev?.state === 'due' ? i.ev.amount : 0)), sub: `sao kê cần trả · ${cards.length} thẻ`,
+      pct: limit ? used / limit : 0, cap: `dùng ${pctOf(used, limit)}% hạn mức ${shortMoney(limit)}` },
+    loan: { ...kpi(loans), value: sum(loans, i => i.main), sub: `trả ${shortMoney(loanMonthly)}/tháng`,
+      pct: loanTotal ? loanDone / loanTotal : 0, cap: `kỳ ${loanDone}/${loanTotal}` },
+    save: { ...kpi(saves), value: saved, sub: `đang gửi · ${saves.length} quỹ`,
+      pct: goal ? Math.min(1, saved / goal) : 0, cap: goal ? `${pctOf(saved, goal)}% mục tiêu ${shortMoney(goal)}` : 'chưa đặt mục tiêu' },
+    lend: { ...kpi(lends), value: lendLeft, sub: `đang cho vay · ${lends.length} người`,
+      pct: lendTotal ? (lendTotal - lendLeft) / lendTotal : 0, cap: `đã thu ${shortMoney(lendTotal - lendLeft)} / ${shortMoney(lendTotal)}` },
   };
+}
+
+/**
+ * 6 kỳ gần nhất cho biểu đồ panel chi tiết. Hóa đơn/vay gom theo kỳ nghĩa vụ
+ * (`bill_period`/`loan_period`), quỹ gom theo tháng gửi. Thẻ và cho vay không có kỳ cố định.
+ */
+export function periodHistory(item, transactions = [], count = 6) {
+  const key = {
+    bill: (t) => t.bill_id === item.id && t.bill_period,
+    loan: (t) => t.loan_id === item.id && t.loan_period,
+    save: (t) => t.saving_goal_id === item.id && t.saving_dir === 'in' && t.occurred_at?.slice(0, 7),
+  }[item.kind];
+  if (!key) return null;
+  const byPeriod = new Map();
+  for (const t of transactions) {
+    const k = key(t);
+    if (k) byPeriod.set(k, (byPeriod.get(k) || 0) + t.amount);
+  }
+  const bars = [...byPeriod.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-count)
+    .map(([period, amount]) => ({ period, label: period.slice(5), amount }));
+  if (!bars.length) return null;
+  return { bars, avg: Math.round(bars.reduce((s, b) => s + b.amount, 0) / bars.length) };
 }
 
 /**

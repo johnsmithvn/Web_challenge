@@ -5,6 +5,8 @@ import {
   groupHubItems,
   hubTotals,
   calendarDays,
+  shortMoney,
+  periodHistory,
 } from '../../utils/recurringHub.js';
 
 // ── 1. Test weekBounds ────────────────────────────────────────────────────────
@@ -255,5 +257,41 @@ assert.equal(gAuto.progress.pct, 10, 'tiến độ quỹ đọc nơi gửi theo 
 assert.equal(gAuto.ev.day, 31, 'tháng 10 có ngày 31');
 assert.equal(buildHubItems({ ...regFin, today: '2026-11-10' }).find(i => i.id === 'g_auto').ev.day, 30,
   'ngày gửi 31 rơi về 30 ở tháng 30 ngày để chip lịch không mất');
+
+// ── 5. Ô KPI theo từng loại, tiến độ dòng, lịch sử 6 kỳ (bản chốt) ────────────
+assert.equal(shortMoney(35000000), '35 tr');
+assert.equal(shortMoney(128920000), '128,92 tr');
+assert.equal(shortMoney(1250000000), '1,25 tỷ');
+assert.equal(shortMoney(450000), '450k');
+
+const regTotals = hubTotals(regItems, '2026-10');
+// Vay: ô hiện dư nợ gốc (l_wait còn 400tr), không phải "còn phải trả tháng này" = 0đ
+assert.equal(regTotals.loan.value, 400000000);
+assert.equal(regTotals.save.value, 3000000, 'quỹ: đang gửi');
+assert.equal(regTotals.save.cap, '10% mục tiêu 30 tr');
+assert.equal(regTotals.all.sub, 'còn phải chi tháng 10');
+
+const lendFin = { ...regFin, cards: [], loans: [], goals: [],
+  lendings: [{ id: 'm', name: 'Chị Mai', principal: 10000000, lent_on: '2026-08-01' }],
+  transactions: [{ id: 'r1', lending_id: 'm', type: 'income', excluded: true, amount: 4000000, occurred_at: '2026-09-01' }] };
+const lendTotals = hubTotals(buildHubItems(lendFin), '2026-10');
+assert.equal(lendTotals.lend.value, 6000000, 'cho vay: còn phải thu');
+assert.equal(lendTotals.lend.cap, 'đã thu 4 tr / 10 tr');
+
+// Hóa đơn thường: thanh tiến độ = ngày đã trôi trong chu kỳ, vàng khi còn ≤ 6 ngày
+const near = items.find(i => i.id === 'b_this_week');   // hạn 11/10, hôm nay 10/10
+assert.equal(near.progress.label, '29/30 ngày chu kỳ');
+assert.equal(near.progress.tone, 'warn');
+assert.equal(items.find(i => i.id === 'b_skipped').progress.label, 'bỏ kỳ này');
+
+const hist = periodHistory({ id: 'b9', kind: 'bill' }, [
+  ...['2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09']
+    .map((p, i) => ({ id: p, bill_id: 'b9', bill_period: p, amount: (i + 1) * 100000 })),
+  { id: 'x', bill_id: 'other', bill_period: '2026-09', amount: 999 },
+]);
+assert.equal(hist.bars.length, 6, 'chỉ 6 kỳ gần nhất');
+assert.equal(hist.bars[0].period, '2026-04');
+assert.equal(hist.avg, 450000);
+assert.equal(periodHistory({ id: 'c', kind: 'card' }, []), null, 'thẻ không có biểu đồ kỳ');
 
 console.log('recurringHub check: OK');

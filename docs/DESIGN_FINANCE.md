@@ -248,13 +248,15 @@ kind `finance`. Vault tag không liên quan vì được mã hóa.
 - Phosphor icon qua `AppIcon`; emoji không dùng làm icon điều khiển.
 - Desktop có child navigation trong sidebar; mobile giữ vùng chạm và sheet/detail phù hợp.
 - Hub Định kỳ & Quỹ (v6.23):
-  - Desktop: Layout 2 cột — Cột trái danh sách timeline, cột phải panel chi tiết; cả hai cuộn nội bộ (Workspace pattern), không cuộn trang. Header riêng của hub thay cho `fin-header` của FinancePage.
+  - Desktop: Layout 2 cột — Cột trái danh sách timeline, cột phải panel chi tiết; cả hai cuộn nội bộ (Workspace pattern), không cuộn trang. Không có thanh tiêu đề trang (ẩn `fin-header` của FinancePage): tháng và nút "Thêm nguồn chi" nằm trên thẻ Lịch chi.
   - Mobile (≤768px): 1 cột; panel chi tiết thành bottom sheet (cùng component với desktop) có backdrop, nút đóng, Escape; z-index trên tab dưới và FAB QuickCapture. Không thêm FAB riêng.
-  - 6 thẻ KPI tổng quan (`all`, `bill`, `card`, `loan`, `save`, `lend`) hiển thị số lượng và tổng tiền thực tế.
+  - 6 ô KPI kiêm bộ lọc, 3 tầng: tên + số đếm · số chính + dòng phụ · thanh tiến độ + chú thích mono. Mobile: cuộn ngang 150px, ẩn số đếm và chú thích.
+  - Panel chi tiết: đầu (icon 42px, nhãn loại mono, tên, nút Sửa) · số tiền 32px + trạng thái · nút chính/phụ · khối tiến độ (nền `--n-sink`) · biểu đồ 6 kỳ kèm trung bình · bảng khóa-giá trị.
+  - Thêm và Sửa dùng chung một hộp thoại 680px (`GenericModal` + `.fin-sm*`): ô chọn 5 loại (chỉ khi thêm), mẫu điền sẵn, tên + icon, lưới 2 cột trường theo loại, chân hộp xem trước dòng sẽ hiện + nhóm sẽ rơi vào. Mobile là sheet 94dvh, loại thành chip cuộn ngang. Ctrl+Enter lưu, Escape đóng (hỏi trước nếu đang gõ dở).
   - Dải lịch tháng mini 28–31 ngày hiển thị phân bổ hạn trả trong tháng, highlight ngày hiện tại (`is-today`) và chips sự kiện.
   - Phân nhóm timeline tự động: Quá hạn (`overdue`), Tuần này (`thisWeek`), Tuần tới (`nextWeek`), Sau đó (`later`), Mục tiêu quỹ (`none`), và nhóm đã hoàn tất (`done`) dạng collapsible toggle.
   - Token màu nghiệp vụ `--n-kind-*` (+ `-soft`): `bill` chàm, `card` xanh dương, `loan` cam, `save` xanh lá, `lend` xanh ngọc. Khai báo ở `.finance-module` (dark) và `[data-theme="light"] .finance-module`.
-  - Chip lịch: cần trả = nền màu loại nhạt; đã xong = xám; bỏ kỳ = viền đứt. Hàng có hạn ngoài tháng hiện `T<tháng>` thay cho thứ.
+  - Chip lịch: cần trả = nền màu loại nhạt + icon màu loại; đã xong = xám; bỏ kỳ = viền đứt. Mobile thu thành chấm 7px, chỉ ghi số các ngày mốc. Hàng có hạn ngoài tháng hiện `T<tháng>` thay cho thứ.
 - Money dùng tabular figures; trạng thái không truyền bằng màu một mình.
 - Keyboard/focus/reduced-motion là yêu cầu, không phải polish tùy chọn.
 
