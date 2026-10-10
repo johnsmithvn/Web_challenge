@@ -6,6 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { ConfirmModal } from '../components/ConfirmModal';
+import SkeletonList from '../components/SkeletonList';
 import OverviewScreen from '../components/body/OverviewScreen';
 import RoutineScreen from '../components/body/RoutineScreen';
 import LiveSessionScreen from '../components/body/LiveSessionScreen';
@@ -476,7 +477,12 @@ export default function BodyPage() {
           />
         )}
 
-        {currentScreen === 'routine' && (
+        {/* Lộ trình & Tiến bộ đọc thẳng dữ liệu của useWorkouts — chưa tải xong thì chưa biết có gì. */}
+        {['routine', 'history'].includes(currentScreen) && !hasLoaded && (
+          <SkeletonList heading rows={4} gap="10px" label="Đang tải buổi tập" />
+        )}
+
+        {currentScreen === 'routine' && hasLoaded && (
           <RoutineScreen
             routine={activeRoutine}
             routineItems={routineItems}
@@ -547,7 +553,7 @@ export default function BodyPage() {
           )
         )}
 
-        {currentScreen === 'history' && (
+        {currentScreen === 'history' && hasLoaded && (
           <WorkoutHistoryScreen
             sessions={sessions}
             recentSets={recentSets}

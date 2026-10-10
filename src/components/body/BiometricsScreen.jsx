@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import AppIcon from '../AppIcon';
+import SkeletonList from '../SkeletonList';
 import { useBiometrics } from '../../hooks/useBiometrics';
 import {
   BMI_CATEGORIES,
@@ -32,6 +33,7 @@ const OBESE = '#D2462B';
 
 export default function BiometricsScreen() {
   const {
+    hasLoaded,
     measurements,
     latest,
     profile,
@@ -509,6 +511,8 @@ export default function BiometricsScreen() {
     const pct = start !== goal ? Math.max(0, Math.min(100, Math.round(((start - cur) / (start - goal)) * 100))) : 100;
     return { goal, cur, start, pct, remain: Math.abs(cur - goal) };
   }, [profile, validMeasurements]);
+
+  if (!hasLoaded) return <SkeletonList heading rows={4} gap="10px" label="Đang tải số đo" />;
 
   return (
     <div className="body-container-constrained" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

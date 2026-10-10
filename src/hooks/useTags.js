@@ -24,7 +24,8 @@ export function useTags() {
   const userId = user?.id;
 
   const [tags, setTags] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // Có user thì chắc chắn sẽ fetch — bắt đầu ở true để frame đầu không hiện "Chưa có tag nào".
+  const [isLoading, setIsLoading] = useState(isAuth);
   const fetchedRef = useRef(false);
 
   // ── Fetch all tags ────────────────────────────────────────

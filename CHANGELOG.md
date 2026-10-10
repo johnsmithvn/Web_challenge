@@ -16,6 +16,9 @@
   - **Theo bản chốt mới (bỏ thanh tiêu đề, hộp thoại chung):** tháng + nút Thêm chuyển lên thẻ Lịch chi; 6 ô KPI đọc đúng số của từng loại (vay = dư nợ gốc, quỹ = đang gửi, cho vay = còn phải thu — trước hiện 0đ); panel chi tiết có khối tiến độ, biểu đồ 6 kỳ + trung bình (`periodHistory`), bỏ dải "Float đang kiếm" (ước lượng đó chuyển vào ô giải thích cạnh số sao kê). `RuleForm` thành `SourceModal` 680px dùng chung Thêm/Sửa, giữ nguyên validation/payload, thêm tạo/sửa quỹ. Mobile: dòng danh sách bỏ cột ngày, lịch thành chấm, panel và hộp thoại là sheet; không thêm FAB riêng (đè FAB QuickCapture).
   - **Hệ thống Design tokens `--n-kind-*`:** Chuẩn hóa bảng màu 5 loại nghĩa vụ tương thích hoàn hảo cả Dark mode và Light mode của Nocturne Design System.
 
+### Fixed
+- **Hết chớp màn rỗng khi mở trang (`App.jsx`, `useBiometrics.js`, `useNutrition.js`, `useTags.js`, `useCollections.js`, `BodyPage.jsx`, body `OverviewScreen`/`BiometricsScreen`/`NutritionScreen`, `TaskListSection.jsx`, `CollectPage.jsx`):** App chờ khôi phục session xong mới vẽ page (trước đó user = null nên mọi hook tưởng là guest và vẽ màn rỗng). Body thêm `hasLoaded` cho số đo/dinh dưỡng, các màn hiện `SkeletonList` tới khi dữ liệu về. Tasks, tag ở Settings và Knowledge không còn hiện "chưa có gì" ở frame đầu; Knowledge đổi dòng chữ chờ sang skeleton.
+
 ## v6.22.0 — 2026-10-08
 
 ### Added

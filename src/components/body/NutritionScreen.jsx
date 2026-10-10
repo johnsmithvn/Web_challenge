@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import AppIcon from '../AppIcon';
+import SkeletonList from '../SkeletonList';
 import { useNutrition } from '../../hooks/useNutrition';
 import { useBiometrics } from '../../hooks/useBiometrics';
 import { calculateMacroTargets } from '../../utils/bodyMetrics';
@@ -18,6 +19,7 @@ function getISOWeekNumber(date = new Date()) {
 
 export default function NutritionScreen() {
   const {
+    hasLoaded,
     selectedDate,
     setSelectedDate,
     mealLogs,
@@ -29,7 +31,7 @@ export default function NutritionScreen() {
     saveMealTemplate
   } = useNutrition();
 
-  const { tdee, latest: latestBiometrics } = useBiometrics();
+  const { tdee, latest: latestBiometrics, hasLoaded: bioLoaded } = useBiometrics();
 
   const [activeTab, setActiveTab] = useState('daily'); // 'daily' | 'checkin'
   const [showAddModal, setShowAddModal] = useState(false);
@@ -135,6 +137,8 @@ export default function NutritionScreen() {
       console.error('Error saving checkin:', err);
     }
   };
+
+  if (!hasLoaded || !bioLoaded) return <SkeletonList heading rows={4} gap="10px" label="Đang tải dinh dưỡng" />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import AppIcon from '../AppIcon';
+import SkeletonList from '../SkeletonList';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useBiometrics } from '../../hooks/useBiometrics';
@@ -32,9 +33,9 @@ const VN_MUSCLES = {
 export default function OverviewScreen({ onNavigateTab, onStartSession }) {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { latest: latestWeight, addMeasurement, measurements, profile, tdee } = useBiometrics();
-  const { mealLogs, addMealLog, updateWater, waterCups } = useNutrition();
-  const { activeRoutine, routineItems, sessions, recentSets, exerciseMap } = useWorkouts();
+  const { latest: latestWeight, addMeasurement, measurements, profile, tdee, hasLoaded: bioLoaded } = useBiometrics();
+  const { mealLogs, addMealLog, updateWater, waterCups, hasLoaded: nutLoaded } = useNutrition();
+  const { activeRoutine, routineItems, sessions, recentSets, exerciseMap, hasLoaded: workoutsLoaded } = useWorkouts();
 
   const [quickModal, setQuickModal] = useState(false);
   const [quickTab, setQuickTab] = useState('weight'); // 'weight' | 'meal' | 'water'
@@ -563,6 +564,10 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
       showToast?.('Lỗi cập nhật nước', 'error');
     }
   };
+
+  if (!bioLoaded || !nutLoaded || !workoutsLoaded) {
+    return <SkeletonList heading rows={4} gap="10px" label="Đang tải tổng quan" />;
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

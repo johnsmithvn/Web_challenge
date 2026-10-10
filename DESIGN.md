@@ -777,6 +777,8 @@ Luật: **đang tải thì không được hiện empty state**. Báo "chưa có
 sau bung ra 20 dòng là kiểu nói dối gây mất niềm tin, và layout nhảy đúng lúc mắt
 vừa dừng lại đọc.
 
+Cờ đúng là `hasLoaded` (hoặc `isLoading` khởi tạo `true` khi chắc chắn sẽ fetch), không phải `isLoading` khởi tạo `false`: fetch chạy trong effect nên frame đầu `isLoading` còn `false` và empty state lọt ra một nhịp. Màn dashboard/nhiều card (Body) dùng `SkeletonList heading` chung thay vì vẽ khung riêng từng màn.
+
 ### DatePickerPopover — `.dp-*` (`datepicker.css`)
 
 Absolute popover, `380px` wide, `--bg-primary` fill, `1px

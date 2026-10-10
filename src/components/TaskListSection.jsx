@@ -33,6 +33,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
     linkTaskTag, unlinkTaskTag,
     getCompletedTasksRange,
     isLoading,
+    hasLoaded,
   } = taskModel;
   const { items: allCollections, fetchItems: fetchCollections } = useCollections();
   const { tags: allTags, addTag } = useTags();
@@ -548,7 +549,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
       )}
 
       {/* ── Empty state ── */}
-      {totalPending === 0 && !isLoading && (
+      {totalPending === 0 && hasLoaded && !isLoading && (
         <div className="task-empty">
           {user ? (
             <>
@@ -562,7 +563,7 @@ export default function TaskListSection({ taskModel, showForm, setShowForm }) {
         </div>
       )}
 
-      {isLoading && <SkeletonList rows={4} gap="6px" label="Đang tải nhiệm vụ" />}
+      {(isLoading || !hasLoaded) && <SkeletonList rows={4} gap="6px" label="Đang tải nhiệm vụ" />}
     </div>
 
       {/* ── Đã hoàn thành — KHUNG RIÊNG, nằm ngoài card danh sách ──

@@ -16,7 +16,8 @@ export function useCollections() {
   const enabled = isSupabaseEnabled && isAuthenticated && !!user;
 
   const [items, setItems]       = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // Bắt đầu ở true khi có user: CollectPage gọi fetchItems trong effect, frame đầu không được hiện kho rỗng.
+  const [isLoading, setIsLoading] = useState(enabled);
 
   // ── Fetch all items (recent 500) — joins collection_tags + task_collections ──
   const fetchItems = useCallback(async (filters = {}) => {

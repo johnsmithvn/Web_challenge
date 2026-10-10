@@ -20,6 +20,8 @@ export function useNutrition() {
   const [waterCups, setWaterCups] = useState(0);
   const [weeklyCheckins, setWeeklyCheckins] = useState([]);
   const [loading, setLoading] = useState(false);
+  // Lần tải đầu đã xong chưa — `loading` còn false ở frame đầu nên không phân biệt được "đang tải" với "không có gì".
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Load data for user and selected date
   useEffect(() => {
@@ -28,6 +30,7 @@ export function useNutrition() {
       setSavedMeals([]);
       setWaterCups(0);
       setWeeklyCheckins([]);
+      setHasLoaded(true);
       return;
     }
 
@@ -74,7 +77,7 @@ export function useNutrition() {
       } catch (err) {
         console.warn('Failed to load nutrition data:', err);
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) { setLoading(false); setHasLoaded(true); }
       }
     }
 
@@ -273,6 +276,7 @@ export function useNutrition() {
     waterCups,
     weeklyCheckins,
     loading,
+    hasLoaded,
     addMealLog,
     deleteMealLog,
     updateWater,

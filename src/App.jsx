@@ -51,7 +51,7 @@ function PageMeta() {
 
 // ── App Shell ──────────────────────────────────────────────────────
 function AppShell() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const domainTransitionKey = location.pathname.startsWith('/body')
     ? '/body'
     : location.pathname.startsWith('/finance')
@@ -68,6 +68,9 @@ function AppShell() {
       <div className="app-content">
         <ErrorBoundary>
           <Suspense fallback={<PageSkeleton />}>
+            {/* Chờ khôi phục session xong mới vẽ page: trước đó user = null nên mọi hook
+                tưởng là guest, vẽ màn rỗng rồi mới đổi sang dữ liệu thật. */}
+            {authLoading ? <PageSkeleton /> : (
             <div className="page-transition" key={domainTransitionKey}>
               <Routes>
                 <Route path="/"             element={<LandingPage />} />
@@ -91,6 +94,7 @@ function AppShell() {
                 <Route path="*"             element={<LandingPage />} />
               </Routes>
             </div>
+            )}
           </Suspense>
         </ErrorBoundary>
       </div>

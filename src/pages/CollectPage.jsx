@@ -5,6 +5,7 @@ import { useTags } from '../hooks/useTags';
 import { useCollectionNotes } from '../hooks/useCollectionNotes';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
+import SkeletonList from '../components/SkeletonList';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/collect.css';
 
@@ -424,7 +425,7 @@ export default function CollectPage() {
       {/* Content views */}
       <div className="kb-content">
         {isLoading ? (
-          <div className="kb-loading">Đang tải kho kiến thức...</div>
+          <SkeletonList rows={6} gap="6px" label="Đang tải kho kiến thức" />
         ) : view === 'list' ? (
           <KBListView
             articles={filteredArticles}

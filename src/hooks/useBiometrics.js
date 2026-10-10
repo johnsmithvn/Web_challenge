@@ -9,12 +9,15 @@ export function useBiometrics() {
   const [measurements, setMeasurements] = useState([]);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
+  // Lần tải đầu đã xong chưa — `loading` còn false ở frame đầu nên không phân biệt được "đang tải" với "không có gì".
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Fetch measurements & profile from Supabase
   useEffect(() => {
     if (!user) {
       setMeasurements([]);
       setProfile(null);
+      setHasLoaded(true);
       return;
     }
 
@@ -46,7 +49,7 @@ export function useBiometrics() {
       } catch (err) {
         console.warn('Biometrics fetch error:', err);
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) { setLoading(false); setHasLoaded(true); }
       }
     }
 
@@ -226,6 +229,7 @@ export function useBiometrics() {
     tdee,
     bodyScore,
     loading,
+    hasLoaded,
     addMeasurement,
     toggleOutlier,
     deleteMeasurement,
