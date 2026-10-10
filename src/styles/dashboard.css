@@ -577,6 +577,10 @@
 [data-theme="dark"] .dash-crit-more-bar {
   color: #A3857E;
 }
+
+.dash-crit-more-link {
+  color: var(--dash-brand);
+  cursor: pointer;
   font-weight: 600;
 }
 
