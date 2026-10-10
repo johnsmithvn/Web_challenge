@@ -1418,21 +1418,6 @@ function BillDetail({ fin, tasks, act, bill: b, payId, setPayId, onEdit, onClose
           <AppIcon name="trash" size={14} /> Xóa
         </button>
       </div>
-
-      <details className="fin-explain">
-        <summary><AppIcon name="question" size={14} /> “Kỳ” được tính thế nào</summary>
-        <ul>
-          <li><strong>Kỳ là khoảng nghĩa vụ, không phải ngày bạn trả.</strong> Hóa đơn hằng tháng thì mỗi
-            tháng một kỳ. Hóa đơn 2/3/6/12 tháng thì <em>Ngày bắt đầu trả</em> quyết định tháng nào tới
-            lượt, còn <em>Vào ngày</em> quyết định ngày trong tháng đó.</li>
-          <li><strong>Ghi tiền: kỳ tự chạy theo ngày trả</strong> — app chọn mốc kỳ gần ngày đó nhất. Bấm
-            một kỳ trong hàng <em>Ghi vào kỳ</em> nếu muốn tự quyết.</li>
-          <li><strong>Trả xong một kỳ thì im tới kỳ kế</strong>. Nhưng kỳ bị <em>lỡ</em> thì vẫn nằm ở nhóm
-            Quá hạn cho tới khi trả hoặc bấm “Bỏ kỳ này”.</li>
-          <li><strong>Lỡ ghi nhầm kỳ?</strong> Vào Giao dịch, mở khoản đó, bấm Sửa rồi đổi ô
-            <em>Thuộc kỳ</em> — không cần xóa đi ghi lại.</li>
-        </ul>
-      </details>
     </>
   );
 }
