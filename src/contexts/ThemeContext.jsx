@@ -9,7 +9,6 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    document.documentElement.style.colorScheme = theme;
     localStorage.setItem('vl_theme', theme);
 
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');

@@ -80,7 +80,8 @@
    DESIGN TOKENS — LIGHT
    ============================ */
 [data-theme="light"] {
-  color-scheme: light;
+  /* "only" chặn Auto Dark Mode của trình duyệt (Chrome/Samsung) tự đảo màu theme sáng */
+  color-scheme: only light;
   --bg-primary:      #f4f6fb;
   --bg-secondary:    #ffffff;
   --bg-tertiary:     #eef1f8;

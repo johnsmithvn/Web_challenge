@@ -18,6 +18,7 @@
 
 ### Fixed
 - **Hết chớp màn rỗng khi mở trang (`App.jsx`, `useBiometrics.js`, `useNutrition.js`, `useTags.js`, `useCollections.js`, `BodyPage.jsx`, body `OverviewScreen`/`BiometricsScreen`/`NutritionScreen`, `TaskListSection.jsx`, `CollectPage.jsx`):** App chờ khôi phục session xong mới vẽ page (trước đó user = null nên mọi hook tưởng là guest và vẽ màn rỗng). Body thêm `hasLoaded` cho số đo/dinh dưỡng, các màn hiện `SkeletonList` tới khi dữ liệu về. Tasks, tag ở Settings và Knowledge không còn hiện "chưa có gì" ở frame đầu; Knowledge đổi dòng chữ chờ sang skeleton.
+- **Knowledge (`CollectPage.jsx`):** bỏ prop chết `onOpenPalette={() => setPaletteOpen(true)}` — `setPaletteOpen` chưa từng tồn tại và `KBSubHeader` không nhận prop này (ESLint `no-undef`).
 
 ## v6.22.0 — 2026-10-08
 

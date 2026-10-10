@@ -418,7 +418,6 @@ export default function CollectPage() {
           onSearchChange={q => { setSearch(q); setCursor(0); }}
           articleCount={filteredArticles.length}
           onNewArticle={() => openEditor(null)}
-          onOpenPalette={() => setPaletteOpen(true)}
         />
       )}
 
