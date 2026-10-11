@@ -17,6 +17,8 @@ export default function QuickCapture() {
   const { pathname } = useLocation();
   if (pathname.startsWith('/finance')) return null;
   if (pathname.startsWith('/body')) return null;
+  // Trang Nhiệm vụ có nút + và sheet "Việc mới" riêng (gõ nhanh mai 9h !cao #UI) → ẩn nút chung để không trùng.
+  if (pathname.startsWith('/tasks')) return null;
   return <QuickCaptureCore />;
 }
 

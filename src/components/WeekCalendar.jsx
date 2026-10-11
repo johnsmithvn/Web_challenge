@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
 import HOLIDAYS from '../data/holidays.json';
@@ -6,71 +6,47 @@ import {
   getWeekDays,
   bucketTasksByDay,
   computeDayLayout,
-  getTaskVisualStatus,
-  taskDayMark,
   slotTimeFromOffset,
   taskDragStart,
   dropZoneProps,
 } from '../utils/calendarTimeUtils';
+import { ksStyle, taskCardModel } from '../utils/kanbanUtils';
 import AppIcon from './AppIcon';
-import '../styles/week-calendar.css';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const PX_PER_HOUR = 54; // Chiều cao 1 giờ chuẩn Google Calendar
-const MARKER_ICON = { deadline: '⏰ ', start: '▶ ' }; // mốc ngắn (computeDayLayout `kind`)
+const PX_PER_HOUR = 48; // lưới 48px/giờ như mockup (đường kẻ giờ vẽ bằng CSS cùng bước, xem .tk-wk-col)
+const MARKER_MIN = 57; // mốc giờ hạn/bắt đầu cao ~44px như khối trong mockup
+const HOLIDAY_ICON = { fun: 'lightning', custom: 'heart' }; // còn lại: ngôi sao
+const hm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const pad = (n) => String(n).padStart(2, '0');
 
 /**
- * WeekCalendar — Lịch Tuần Time-Grid chuẩn phong cách Google Calendar.
- * Tích hợp hiển thị ngày lễ (Quốc khánh), hỗ trợ bắt đầu từ Chủ Nhật hoặc Thứ 2,
- * vạch đỏ thời gian thực, thẻ màu sắc phẳng đậm đà chữ trắng tương phản cao.
+ * WeekCalendar — view Tuần theo mockup "Kanban tối & sáng" (chỉ desktop):
+ * đầu cột (thứ · số · âm lịch) → hàng Cả ngày (1 sự kiện + việc không giờ) → lưới giờ 48px.
+ * Bấm ô giờ / "+N nữa" mở popover Ngày (onOpenDay); kéo việc vào ô giờ / hàng Cả ngày để dời.
  */
 export default function WeekCalendar({
   pendingTasks = [],
   getCompletedTasksRange,
   onSelectTask,
-  onQuickCreate,
-  onSlotCreate,
-  calendarView = 'week',
-  onSwitchView,
+  onOpenDay,
   currentDate,
-  startOnSunday: propStartOnSunday,
-  hideToolbar = false,
+  startOnSunday = true,
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   customAnniversaries = [],
   refreshKey = 0,
   onRescheduleTask,
 }) {
-  const today = new Date();
-  const [internalBaseDate, setBaseDate] = useState(today);
-  const baseDate = currentDate || internalBaseDate;
-
+  const todayStr = toDateStr();
   const [completedByDay, setCompletedByDay] = useState({});
   const [nowMinutes, setNowMinutes] = useState(() => {
     const d = new Date();
     return d.getHours() * 60 + d.getMinutes();
   });
-
-  // Mặc định tuần bắt đầu từ Chủ Nhật (Sunday) giống Google Calendar trong ảnh của user
-  const [internalStartOnSunday, setInternalStartOnSunday] = useState(() => {
-    const saved = localStorage.getItem('lh_cal_start_sun');
-    return saved !== null ? saved === 'true' : true;
-  });
-
-  const startOnSunday = propStartOnSunday !== undefined ? propStartOnSunday : internalStartOnSunday;
-
   const scrollRef = useRef(null);
   const hasAutoScrolled = useRef(false);
-  const todayStr = useMemo(() => toDateStr(new Date()), []);
 
-  const toggleStartDay = () => {
-    setInternalStartOnSunday((prev) => {
-      const next = !prev;
-      localStorage.setItem('lh_cal_start_sun', String(next));
-      return next;
-    });
-  };
-
-  // Cập nhật vạch thời gian thực tế mỗi 60 giây
+  // Vạch giờ hiện tại cập nhật mỗi phút
   useEffect(() => {
     const timer = setInterval(() => {
       const d = new Date();
@@ -79,472 +55,194 @@ export default function WeekCalendar({
     return () => clearInterval(timer);
   }, []);
 
-  // Tự động cuộn mượt đến khung giờ hiện tại khi mở Lịch Tuần
+  // Mở lần đầu: cuộn tới 1 giờ trước hiện tại (trong khoảng 7h–20h)
   useEffect(() => {
-    if (scrollRef.current && !hasAutoScrolled.current) {
-      hasAutoScrolled.current = true;
-      // Cuộn đến trước giờ hiện tại 2 tiếng (hoặc tối thiểu mốc 7h sáng nếu dậy sớm)
-      const targetMinutes = Math.max(0, nowMinutes - 120);
-      const targetScrollTop = (targetMinutes / 60) * 54;
-      scrollRef.current.scrollTop = targetScrollTop;
-    }
+    if (hasAutoScrolled.current || !scrollRef.current) return;
+    scrollRef.current.scrollTop = Math.max(7, Math.min(20, Math.floor(nowMinutes / 60) - 1)) * PX_PER_HOUR;
+    hasAutoScrolled.current = true;
   }, [nowMinutes]);
 
-  // Mảng 7 ngày của tuần đang chọn kèm tính toán Âm lịch
-  const weekDays = useMemo(() => {
-    const rawDays = getWeekDays(baseDate, startOnSunday);
-    return rawDays.map((day) => {
-      const d = day.date;
-      try {
-        const lunar = solarToLunar(d.getDate(), d.getMonth() + 1, d.getFullYear());
-        const lunarText = lunar ? lunarLabel(lunar) : '';
-        const isFirstLunarDay = lunar?.day === 1;
-        return { ...day, lunar, lunarText, isFirstLunarDay };
-      } catch {
-        return { ...day, lunar: null, lunarText: '', isFirstLunarDay: false };
-      }
-    });
-  }, [baseDate, startOnSunday]);
+  const weekDays = useMemo(
+    () => getWeekDays(currentDate || new Date(), startOnSunday).map((day) => ({
+      ...day,
+      lunar: solarToLunar(day.date.getDate(), day.date.getMonth() + 1, day.date.getFullYear()),
+    })),
+    [currentDate, startOnSunday]
+  );
+  const startWeekStr = weekDays[0].dateStr;
+  const endWeekStr = weekDays[6].dateStr;
 
-  const startWeekStr = weekDays[0]?.dateStr;
-  const endWeekStr = weekDays[6]?.dateStr;
-
-  // Tính ngày lễ cho từng ngày trong tuần (phân loại official & fun/dev)
+  // Ngày lễ / kỷ niệm của từng ngày trong tuần
   const holidaysMap = useMemo(() => {
     const map = {};
-    const pad = (n) => String(n).padStart(2, '0');
-
     for (const day of weekDays) {
-      const d = day.date;
-      const m = d.getMonth() + 1;
-      const dt = d.getDate();
-      const y = d.getFullYear();
-      const solarKey = `${pad(m)}-${pad(dt)}`;
-
+      const d = day.date.getDate();
+      const m = day.date.getMonth() + 1;
+      const y = day.date.getFullYear();
+      const { lunar } = day;
+      const solarKey = `${pad(m)}-${pad(d)}`;
       const holidays = [];
-
-      // 0. Kiểm tra ngày kỷ niệm cá nhân (ưu tiên cao nhất)
       if (holidayToggles?.custom !== false && Array.isArray(customAnniversaries)) {
-        let lunar = null;
         for (const anniv of customAnniversaries) {
           if (!anniv || !anniv.title) continue;
-          let isMatch = false;
-          if (anniv.calType === 'solar' && Number(anniv.day) === dt && Number(anniv.month) === m) {
-            isMatch = true;
-          } else if (anniv.calType === 'lunar') {
-            if (!lunar) {
-              try { lunar = solarToLunar(dt, m, y); } catch { /* Safe */ }
-            }
-            if (lunar && Number(anniv.day) === lunar.day && Number(anniv.month) === lunar.month) {
-              isMatch = true;
-            }
-          }
-          if (isMatch) {
-            let extraNote = '';
-            if (anniv.year && Number(anniv.year) > 0) {
-              const passedYears = y - Number(anniv.year);
-              if (passedYears > 0) extraNote = ` (${passedYears} năm)`;
-            }
-            holidays.push({ name: `${anniv.icon || '💖'} ${anniv.title}${extraNote}`, type: 'custom' });
-          }
+          const isMatch = anniv.calType === 'solar'
+            ? Number(anniv.day) === d && Number(anniv.month) === m
+            : anniv.calType === 'lunar' && Number(anniv.day) === lunar.day && Number(anniv.month) === lunar.month;
+          if (!isMatch) continue;
+          const years = anniv.year && Number(anniv.year) > 0 ? y - Number(anniv.year) : 0;
+          holidays.push({ name: `${anniv.icon || '💖'} ${anniv.title}${years > 0 ? ` (${years} năm)` : ''}`, type: 'custom' });
         }
       }
-
-      // 1. Kiểm tra ngày lễ chính thống dương lịch
-      if (holidayToggles?.solar !== false && HOLIDAYS.solar[solarKey]) {
-        holidays.push({ name: HOLIDAYS.solar[solarKey], type: 'official' });
-      }
-
-      // 2. Kiểm tra ngày lễ âm lịch
-      if (holidayToggles?.lunar !== false) {
-        try {
-          const lunar = solarToLunar(dt, m, y);
-          if (lunar && !lunar.leap) {
-            const lunarKey = `${pad(lunar.month)}-${pad(lunar.day)}`;
-            if (HOLIDAYS.lunar[lunarKey]) {
-              holidays.push({ name: HOLIDAYS.lunar[lunarKey], type: 'official' });
-            }
-          }
-        } catch {
-          // Safe catch
-        }
-      }
-
-      // 3. Kiểm tra ngày lễ quốc tế (LHQ & Thế giới)
-      if (holidayToggles?.international !== false && HOLIDAYS.international?.[solarKey]) {
-        holidays.push({ name: HOLIDAYS.international[solarKey], type: 'international' });
-      }
-
-      // 4. Kiểm tra ngày lễ Nhật Bản
-      if (holidayToggles?.japan && HOLIDAYS.japan?.[solarKey]) {
-        holidays.push({ name: HOLIDAYS.japan[solarKey], type: 'japan' });
-      }
-
-      // 5. Kiểm tra ngày lễ kỷ niệm vui / Dev / Coder
-      if (holidayToggles?.fun && HOLIDAYS.fun && HOLIDAYS.fun[solarKey]) {
-        holidays.push({ name: HOLIDAYS.fun[solarKey], type: 'fun' });
-      }
-
-      if (holidays.length > 0) {
-        map[day.dateStr] = holidays;
-      }
+      if (holidayToggles?.solar !== false && HOLIDAYS.solar[solarKey]) holidays.push({ name: HOLIDAYS.solar[solarKey], type: 'solar' });
+      const lunarKey = lunar.leap ? null : `${pad(lunar.month)}-${pad(lunar.day)}`;
+      if (holidayToggles?.lunar !== false && lunarKey && HOLIDAYS.lunar[lunarKey]) holidays.push({ name: HOLIDAYS.lunar[lunarKey], type: 'lunar' });
+      if (holidayToggles?.international !== false && HOLIDAYS.international?.[solarKey]) holidays.push({ name: HOLIDAYS.international[solarKey], type: 'international' });
+      if (holidayToggles?.japan && HOLIDAYS.japan?.[solarKey]) holidays.push({ name: HOLIDAYS.japan[solarKey], type: 'japan' });
+      if (holidayToggles?.fun && HOLIDAYS.fun?.[solarKey]) holidays.push({ name: HOLIDAYS.fun[solarKey], type: 'fun' });
+      map[day.dateStr] = holidays;
     }
     return map;
   }, [weekDays, holidayToggles, customAnniversaries]);
 
-  // Tự động tải task hoàn thành trong dải 7 ngày của tuần
+  // Việc đã xong gom theo ngày KẾ HOẠCH (Bắt đầu→Hạn): nằm đúng ô đã lên lịch
   useEffect(() => {
-    if (!getCompletedTasksRange || !startWeekStr || !endWeekStr) return;
+    if (!getCompletedTasksRange) return undefined;
     let stale = false;
-    // Gom theo ngày KẾ HOẠCH (Bắt đầu→Hạn): task đã xong nằm đúng ô đã lên lịch,
-    // không nhảy sang ngày bấm hoàn thành.
     getCompletedTasksRange(startWeekStr, endWeekStr, { byPlan: true }).then((rows) => {
-      if (stale) return;
-      setCompletedByDay(bucketTasksByDay(rows || [], startWeekStr, endWeekStr));
+      if (!stale) setCompletedByDay(bucketTasksByDay(rows || [], startWeekStr, endWeekStr));
     });
     return () => { stale = true; };
   }, [startWeekStr, endWeekStr, getCompletedTasksRange, refreshKey]);
 
-  // Gom pending tasks vào mọi ngày trong tuần mà khoảng Bắt đầu→Hạn đi qua
   const pendingByDay = useMemo(
-    () => (startWeekStr && endWeekStr ? bucketTasksByDay(pendingTasks, startWeekStr, endWeekStr) : {}),
+    () => bucketTasksByDay(pendingTasks, startWeekStr, endWeekStr),
     [pendingTasks, startWeekStr, endWeekStr]
   );
 
-  // Tự động cuộn đến 7:00 AM (hoặc giờ hiện tại nếu trong khoảng 7h-21h) lúc mở lần đầu
-  useEffect(() => {
-    if (!hasAutoScrolled.current && scrollRef.current) {
-      const targetHour = Math.max(7, Math.min(20, Math.floor(nowMinutes / 60) - 1));
-      scrollRef.current.scrollTop = targetHour * PX_PER_HOUR;
-      hasAutoScrolled.current = true;
-    }
-  }, [nowMinutes]);
-
-  // Điều hướng tuần
-  const goToday = () => setBaseDate(new Date());
-  const prevWeek = () => {
-    setBaseDate((prev) => {
-      const d = new Date(prev);
-      d.setDate(d.getDate() - 7);
-      return d;
-    });
-  };
-  const nextWeek = () => {
-    setBaseDate((prev) => {
-      const d = new Date(prev);
-      d.setDate(d.getDate() + 7);
-      return d;
-    });
-  };
-
-  // Tiêu đề dải tuần phong cách Google (VD: "Thg 8 – Thg 9, 2026" hoặc "24 – 30 tháng 8, 2026")
-  const weekLabel = useMemo(() => {
-    if (!weekDays.length) return '';
-    const d1 = weekDays[0].date;
-    const d2 = weekDays[6].date;
-    const m1 = d1.toLocaleDateString('vi-VN', { month: 'short' });
-    const m2 = d2.toLocaleDateString('vi-VN', { month: 'short', year: 'numeric' });
-    if (d1.getMonth() === d2.getMonth()) {
-      return `${d1.getDate()} – ${d2.getDate()} ${m2}`;
-    }
-    return `${m1} – ${m2}`;
-  }, [weekDays]);
-
-  // Tính layout (tọa độ + chia cột trùng giờ) cho từng ngày
+  // Bố cục từng ngày: việc có giờ thành khối, còn lại lên hàng Cả ngày
   const dayLayouts = useMemo(() => {
+    const openIds = new Set(pendingTasks.map((t) => t.id));
     const result = {};
     for (const day of weekDays) {
-      const dStr = day.dateStr;
       const combined = [
-        ...(pendingByDay[dStr] || []),
-        ...(completedByDay[dStr] || []),
+        ...(pendingByDay[day.dateStr] || []),
+        ...(completedByDay[day.dateStr] || []).filter((t) => !openIds.has(t.id)),
       ];
-      result[dStr] = computeDayLayout(combined, dStr, 30, PX_PER_HOUR);
+      result[day.dateStr] = computeDayLayout(combined, day.dateStr, MARKER_MIN, PX_PER_HOUR);
     }
     return result;
-  }, [weekDays, pendingByDay, completedByDay]);
+  }, [weekDays, pendingByDay, completedByDay, pendingTasks]);
 
-  // Xử lý khi click vào ô trống trong lưới giờ
-  const handleGridClick = useCallback((e, dateStr) => {
-    if (e.target.closest('.week-cal__event')) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const timeStr = slotTimeFromOffset(e.clientY - rect.top, PX_PER_HOUR);
-
-    // Ô giờ → Bắt đầu tại ô, Hạn +1 giờ (kiểu Google Calendar); thiếu prop thì về tạo thường.
-    if (onSlotCreate) onSlotCreate(dateStr, timeStr);
-    else onQuickCreate?.(dateStr, timeStr);
-  }, [onQuickCreate, onSlotCreate]);
+  const dayClass = (day) => (day.isToday ? ' is-today' : day.date.getDay() === 0 ? ' is-sun' : '');
+  const holidayNames = (day) => holidaysMap[day.dateStr].map((h) => h.name);
 
   return (
-    <div className="week-cal">
-      {/* ── Toolbar điều hướng trên cùng (ẩn khi dùng CalendarToolbar chung) ── */}
-      {!hideToolbar && (
-        <div className="week-cal__toolbar">
-          <div className="week-cal__nav-group">
-            <button
-              type="button"
-              className="week-cal__btn-today"
-              onClick={goToday}
-            >
-              Hôm nay
-            </button>
-            <div className="week-cal__nav-arrows">
-              <button
-                type="button"
-                className="week-cal__btn-nav"
-                onClick={prevWeek}
-                aria-label="Tuần trước"
-              >
-                <AppIcon name="caretLeft" size={16} />
-              </button>
-              <button
-                type="button"
-                className="week-cal__btn-nav"
-                onClick={nextWeek}
-                aria-label="Tuần sau"
-              >
-                <AppIcon name="caretRight" size={16} />
-              </button>
-            </div>
-            <span className="week-cal__title">{weekLabel}</span>
+    <div className="tk-wk">
+      <div className="tk-wk-row tk-wk-head">
+        <span />
+        {weekDays.map((day) => (
+          <div key={day.dateStr} className={`tk-wk-dayhead${day.isToday ? ' is-today' : ''}`}>
+            <span className={`tk-wk-dn${dayClass(day)}`}>{day.weekdayName}</span>
+            <span className={`tk-wk-num${dayClass(day)}`}>{day.dayNum}</span>
+            <span className="tk-wk-lun">{lunarLabel(day.lunar)}</span>
           </div>
+        ))}
+      </div>
 
-          {/* Tùy chọn đầu tuần & Legend màu sắc */}
-          <div className="week-cal__toolbar-right">
-            <button
-              type="button"
-              className="week-cal__btn-startday"
-              onClick={toggleStartDay}
-              title="Đổi ngày bắt đầu tuần"
+      <div className="tk-wk-row">
+        <span className="tk-wk-allday__label">Cả ngày</span>
+        {weekDays.map((day) => {
+          const hol = holidaysMap[day.dateStr];
+          const all = dayLayouts[day.dateStr].allDayTasks;
+          const evs = hol.slice(0, 1);
+          const pills = all.slice(0, hol.length ? 1 : 2);
+          const more = hol.length - evs.length + all.length - pills.length;
+          return (
+            <div
+              key={day.dateStr}
+              className={`tk-wk-allcell${day.isToday ? ' is-today' : ''}`}
+              {...(onRescheduleTask ? dropZoneProps((id) => onRescheduleTask(id, day.dateStr, null)) : {})}
             >
-              Bắt đầu: <strong>{startOnSunday ? 'Chủ Nhật' : 'Thứ 2'}</strong>
-            </button>
-
-            <div className="week-cal__color-legend">
-              <span className="week-cal__legend-item week-cal__legend-item--holiday">
-                <span className="week-cal__legend-dot" /> Ngày lễ
-              </span>
-              <span className="week-cal__legend-item week-cal__legend-item--fun">
-                <span className="week-cal__legend-dot" /> Dịp đặc biệt / Dev
-              </span>
-              <span className="week-cal__legend-item week-cal__legend-item--overdue">
-                <span className="week-cal__legend-dot" /> Quá hạn
-              </span>
-              <span className="week-cal__legend-item week-cal__legend-item--done">
-                <span className="week-cal__legend-dot" /> Đã xong
-              </span>
+              {evs.map((h) => (
+                <span key={h.name} className="tk-wk-ev" title={h.name}>
+                  <AppIcon name={HOLIDAY_ICON[h.type] || 'star'} size={9} weight="fill" />
+                  <span className="tk-wk-ev__t">{h.name}</span>
+                </span>
+              ))}
+              {pills.map((t) => {
+                const m = taskCardModel(t, todayStr);
+                return (
+                  <span
+                    key={t.id}
+                    className="tk-mo-pill"
+                    style={ksStyle(m.k)}
+                    title={t.title}
+                    draggable={!m.done && !!onRescheduleTask}
+                    onDragStart={(e) => taskDragStart(e, t)}
+                    onClick={() => onSelectTask?.(t)}
+                  >
+                    <span className={`tk-mo-pill__t${m.done ? ' is-done' : ''}`}>{t.title}</span>
+                  </span>
+                );
+              })}
+              {more > 0 && (
+                <button type="button" className="tk-mo-more" onClick={(e) => onOpenDay?.(day.dateStr, e, holidayNames(day))}>
+                  +{more} nữa
+                </button>
+              )}
             </div>
+          );
+        })}
+      </div>
 
-            {/* Bộ chuyển đổi Tuần / Tháng */}
-            <div className="week-cal__view-switch" role="tablist" aria-label="Chế độ lịch">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={calendarView === 'week'}
-                className={`week-cal__view-btn${calendarView === 'week' ? ' week-cal__view-btn--active' : ''}`}
-                onClick={() => onSwitchView?.('week')}
-              >
-                Tuần
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={calendarView === 'month'}
-                className={`week-cal__view-btn${calendarView === 'month' ? ' week-cal__view-btn--active' : ''}`}
-                onClick={() => onSwitchView?.('month')}
-              >
-                Tháng
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Scrollable Horizontal Wrapper ───────────────────────────────── */}
-      <div className="week-cal__horizontal-scroll">
-        <div className="week-cal__inner-container">
-          {/* ── Header 7 ngày ─────────────────────────────────────────────── */}
-          <div className="week-cal__days-header">
-            <div className="week-cal__timezone-slot" />
-            {weekDays.map((day) => (
-              <div
-                key={day.dateStr}
-                className={`week-cal__day-head${day.isToday ? ' week-cal__day-head--today' : ''}`}
-                onClick={() => onQuickCreate?.(day.dateStr, '09:00')}
-                title={`Dương lịch: ${day.dateStr} — Âm lịch: ${day.lunar ? `${day.lunar.day}/${day.lunar.month}${day.lunar.leap ? ' (nhuận)' : ''}` : 'N/A'}`}
-              >
-                <span className="week-cal__day-name">{day.weekdayName}</span>
-                <div className="week-cal__day-num-container">
-                  <span className="week-cal__day-num">{day.dayNum}</span>
-                  {day.lunarText && (
-                    <span
-                      className={`week-cal__day-lunar${day.isFirstLunarDay ? ' week-cal__day-lunar--first' : ''}`}
-                      title={`Âm lịch: ${day.lunarText}`}
-                    >
-                      {day.isFirstLunarDay ? day.lunarText : day.lunar?.day}
-                    </span>
-                  )}
-                </div>
-              </div>
+      <div className="tk-wk-scroll" ref={scrollRef}>
+        <div className="tk-wk-grid" style={{ height: `${24 * PX_PER_HOUR}px` }}>
+          <div className="tk-wk-hours">
+            {HOURS.slice(1).map((h) => (
+              <span key={h} style={{ top: `${h * PX_PER_HOUR}px` }}>{hm(h * 60)}</span>
             ))}
           </div>
 
-          {/* ── All-day Row (Ngày lễ Quốc Khánh + Công việc cả ngày) ────────── */}
-          <div className="week-cal__allday-row">
-            <div className="week-cal__allday-label">
-              <span className="week-cal__gmt-text">GMT+07</span>
-            </div>
-            {weekDays.map((day) => {
-              const layout = dayLayouts[day.dateStr] || { allDayTasks: [] };
-              const holidayInfo = holidaysMap[day.dateStr];
-
-              return (
-                <div
-                  key={`allday-${day.dateStr}`}
-                  className="week-cal__allday-cell"
-                  {...(onRescheduleTask ? dropZoneProps((id) => onRescheduleTask(id, day.dateStr, null)) : {})}
-                >
-                  {/* Highlight Ngày lễ chính thức HOẶC Ngày kỷ niệm vui / Dev */}
-                  {Array.isArray(holidayInfo) && holidayInfo.map((h, hIdx) => (
-                    <div
-                      key={hIdx}
-                      className={`week-cal__holiday-chip week-cal__holiday-chip--${h.type}`}
-                      title={`${h.type === 'fun' ? 'Dịp đặc biệt / Dev: ' : h.type === 'custom' ? 'Kỷ niệm: ' : 'Ngày lễ: '}${h.name}`}
-                    >
-                      <span className="week-cal__holiday-title">
-                        {h.type === 'fun' ? '⚡ ' : h.type === 'custom' ? '💖 ' : ''}{h.name}
-                      </span>
-                    </div>
-                  ))}
-
-                  {/* Tasks cả ngày */}
-                  {layout.allDayTasks.map((t) => {
-                    const status = getTaskVisualStatus(t, todayStr, nowMinutes);
-                    const p = Math.max(0, Math.min(5, Number(t.priority) || 0));
-                    const statusClass = status === 'done'
-                      ? 'week-cal__chip-allday--done'
-                      : status === 'overdue'
-                      ? 'week-cal__chip-allday--overdue'
-                      : `week-cal__chip-allday--p${p}`;
-
-                    return (
-                      <div
-                        key={t.id}
-                        className={`week-cal__chip-allday ${statusClass}`}
-                        draggable={status !== 'done' && !!onRescheduleTask}
-                        onDragStart={(e) => taskDragStart(e, t)}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectTask?.(t);
-                        }}
-                        title={t.title}
-                      >
-                        {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : taskDayMark(t, day.dateStr)}{t.title}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* ── Lưới thời gian cuộn được (Time Grid 24h) ───────────────────── */}
-          <div className="week-cal__grid-scroll" ref={scrollRef}>
-            <div className="week-cal__grid-body">
-              {/* Cột mốc giờ bên trái */}
-              <div className="week-cal__time-col">
-                {HOURS.map((h) => (
-                  <div
-                    key={`hour-${h}`}
-                    className="week-cal__hour-row"
-                    style={{ position: 'relative' }}
-                  >
-                    {h > 0 && (
-                      <span className="week-cal__hour-label">
-                        {h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* 7 cột ngày */}
-              {weekDays.map((day) => {
-                const layout = dayLayouts[day.dateStr] || { timedTasks: [] };
+          {weekDays.map((day) => (
+            <div
+              key={day.dateStr}
+              className={`tk-wk-col${day.isToday ? ' is-today' : ''}`}
+              title="Bấm để thêm việc vào giờ này"
+              onClick={(e) => {
+                if (e.target !== e.currentTarget) return;
+                const time = slotTimeFromOffset(e.clientY - e.currentTarget.getBoundingClientRect().top, PX_PER_HOUR);
+                onOpenDay?.(day.dateStr, e, holidayNames(day), time);
+              }}
+              {...(onRescheduleTask
+                ? dropZoneProps((id, e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    onRescheduleTask(id, day.dateStr, slotTimeFromOffset(e.clientY - rect.top, PX_PER_HOUR));
+                  })
+                : {})}
+            >
+              {dayLayouts[day.dateStr].timedTasks.map((t) => {
+                const m = taskCardModel(t, todayStr);
+                const L = t._layout;
                 return (
                   <div
-                    key={`col-${day.dateStr}`}
-                    className={`week-cal__day-col${day.isToday ? ' week-cal__day-col--today' : ''}`}
-                    onClick={(e) => handleGridClick(e, day.dateStr)}
-                    {...(onRescheduleTask
-                      ? dropZoneProps((id, e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          onRescheduleTask(id, day.dateStr, slotTimeFromOffset(e.clientY - rect.top, PX_PER_HOUR));
-                        })
-                      : {})}
+                    key={t.id}
+                    className={`tk-wk-block${L.height >= 40 ? '' : ' is-short'}`}
+                    style={{ ...ksStyle(m.k), top: `${L.top}px`, height: `${L.height}px`, left: L.left, width: `calc(${L.width} - 2px)` }}
+                    draggable={!m.done && !!onRescheduleTask}
+                    onDragStart={(e) => taskDragStart(e, t)}
+                    onClick={() => onSelectTask?.(t)}
+                    title={`${t.title} (${L.timeRangeLabel})`}
                   >
-                    {/* Đường kẻ ngang phân giờ sắc nét */}
-                    <div className="week-cal__grid-lines">
-                      {HOURS.map((h) => (
-                        <div key={`line-${h}`} className="week-cal__hour-row" />
-                      ))}
-                    </div>
-
-                    {/* Vạch đỏ chỉ thời gian thực tế nếu là ngày hôm nay */}
-                    {day.isToday && (
-                      <div
-                        className="week-cal__now-line"
-                        style={{ top: `${(nowMinutes / 60) * PX_PER_HOUR}px` }}
-                      >
-                        <div className="week-cal__now-dot" />
-                      </div>
-                    )}
-
-                    {/* Các khối task theo giờ (Flat Google Calendar design) */}
-                    {layout.timedTasks.map((t) => {
-                      const status = getTaskVisualStatus(t, todayStr, nowMinutes);
-                      const p = Math.max(0, Math.min(5, Number(t.priority) || 0));
-                      const statusClass = status === 'done'
-                        ? 'week-cal__event--done'
-                        : status === 'overdue'
-                        ? 'week-cal__event--overdue'
-                        : `week-cal__event--p${p}`;
-
-                      return (
-                        <div
-                          key={t.id}
-                          className={`week-cal__event ${statusClass}${t._layout.kind !== 'block' ? ' week-cal__event--marker' : ''}`}
-                          draggable={status !== 'done' && !!onRescheduleTask}
-                          onDragStart={(e) => taskDragStart(e, t)}
-                          style={{
-                            top: `${t._layout.top}px`,
-                            height: `${t._layout.height}px`,
-                            left: t._layout.left,
-                            width: t._layout.width,
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectTask?.(t);
-                          }}
-                          title={`${t.title} (${t._layout.timeRangeLabel})`}
-                        >
-                          <div className="week-cal__event-title">
-                            {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : MARKER_ICON[t._layout.kind] || ''}{t.title}
-                          </div>
-                          {t._layout.height >= 34 && (
-                            <div className="week-cal__event-time">
-                              {t._layout.timeRangeLabel}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    <span className="tk-wk-block__tm">
+                      {L.kind === 'block' ? `${hm(L.startMinutes)}–${hm(L.endMinutes)}` : `${L.kind === 'start' ? '▶ ' : ''}${hm(L.startMinutes)}`}
+                    </span>
+                    <span className={`tk-wk-block__t${m.done ? ' is-done' : ''}`}>{t.title}</span>
                   </div>
                 );
               })}
+              {day.isToday && <span className="tk-dv-now" style={{ top: `${(nowMinutes / 60) * PX_PER_HOUR}px` }} />}
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>

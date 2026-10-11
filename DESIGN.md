@@ -204,6 +204,7 @@ spacing:
   section-block: 6rem # .section padding — var(--space-4xl)
   section-block-mobile: 4rem # ≤768px — var(--space-3xl)
   sidebar-width: 232px
+  sidebar-width-collapsed: 64px # :root.sidebar-collapsed
   topbar-height: 52px
   bottom-tabs-height: 60px
   breakpoint-desktop: 769px
@@ -836,6 +837,11 @@ active. The "More" dropdown opens upward (`bottom: calc(100% + 8px)`),
 `rgba(15,15,30,0.97)` + `blur(20px)`, `--radius-lg`, shadow
 `0 -8px 32px rgba(0,0,0,0.5)`.
 
+Thu gọn sidebar (desktop): nút tròn `.sidebar__collapse-btn` ở mép phải (hiện khi hover)
+bật `.sidebar--collapsed` + `:root.sidebar-collapsed` → `--sidebar-width: 64px`, lưu
+`localStorage lh_sidebar_collapsed`. Rail 64px: logo gradient 36px, link vuông `40×40`
+chỉ còn icon (tên hiện qua `title`), ẩn nhãn nhóm, link con và thanh XP.
+
 Avatar `.nav-avatar`: `34px` circle, `linear-gradient(135deg, var(--purple),
 var(--cyan))`, white `0.75rem/700` initials, `1px rgba(255,255,255,0.12)`;
 hover → `--cyan-light` border, `scale(1.05)`. Theme toggles are `34px`
@@ -976,6 +982,9 @@ form. Built **on `GenericModal`**, not a fourth modal system.
   that already invert.
 
 ### Calendar task mode — `.cal-cell--tasks` / `.cal-chip` (`calendar.css`)
+
+> Cũ: `MonthCalendar` nay dùng `.tk-mo-*` (xem "Tasks workspace (Aurora)"); trong `calendar.css` chỉ còn
+> `.cal-cell__holiday` được dùng (giữ theo contract test). Phần dưới chỉ để tham khảo.
 
 `MonthCalendar` renders completed and pending tasks together.
 
@@ -1193,13 +1202,24 @@ sáng = mockup 2b (violet `#7C3AED`, nền `#F4F2FF`, aurora pastel, ẩn sao).
   Ô được chọn: `--tk-sel-bg` / `--tk-sel-fg`; Chủ nhật: `--tk-sun`.
 - Không viết cứng màu tối/sáng trong JSX của Tasks — luôn dùng token để hai theme tự đổi.
   `AppIcon color="var(--x)"` được chuyển sang `style.color` (thuộc tính SVG `fill` không nhận biến CSS).
-- Mobile (`≤640px`): Kanban hiện từng cột qua `.tk-kanban-tabs` (vuốt ngang để đổi),
-  ngăn chi tiết thành bottom sheet, thanh lọc cuộn ngang.
+- Breakpoint mobile = `≤768px` (cùng khung app: topbar 52 + tab đáy 60). Mobile chỉ có dải aurora
+  (ẩn sao, sao băng, đường chân trời hành tinh) như mockup.
+- Thành phần dùng chung: `TaskCard` (`variant` card/row/mobile), `TaskFilterBar`, `TaskTodayStrip`,
+  `TaskQuickAdd` (sheet "Việc mới"), `TaskDetailDrawer`, `TaskSubtaskModal` (‹ › giữa các việc con),
+  `CalendarNavHead` (hàng điều hướng khung lịch), `TaskDayPopover` (popover "Ngày": việc trong ngày +
+  gõ nhanh; mở từ nút + ở Tháng, "Thêm việc" ở Lịch biểu, bấm ô giờ ở Ngày/Tuần).
+- Biến `--k-*` của thẻ/khối lấy qua `ksStyle(k)` (`kanbanUtils`); chấm sự kiện qua
+  `holidayDot(type)` → `--tk-ev-{vn|lunar|intl|jp|anni|geek}`.
+- Lịch biểu `.tk-ag-*`: banner quá hạn (mở ra để xem / "Dời hết sang hôm nay"), nhóm tuần, ngày trống
+  gộp hàng nét đứt, ngày = cột 132px | danh sách (mobile: khối dọc), vạch "bây giờ"; 3 tuần + "Xem thêm 2 tuần".
+- Ngày `.tk-dv-*`: lưới 56px/giờ (CSS kẻ cùng bước với `PX_PER_HOUR`), khối 50px viền trái 3px,
+  dải giờ hoàng đạo `--tk-band`; desktop có cột phải 320px (Chưa xếp giờ + bảng 12 giờ hoàng đạo).
+  Mobile: "Chưa xếp giờ" trên lưới (2 việc + Xem thêm), giữ 320ms để kéo (`.tk-touch-ghost`, `.tk-touch-slot`).
+- Tuần `.tk-wk-*` (chỉ desktop): lưới 48px/giờ, khối 44px; hàng đầu dùng `scrollbar-gutter: stable`
+  để thẳng cột với lưới cuộn.
+- Tháng `.tk-mo-*`: desktop lưới kín khung (ngày tháng trước/sau mờ), 1 sự kiện + tối đa 3 pill/ô
+  (có sự kiện còn 2), "+N nữa"; mobile lưới gọn 50px (số · âm lịch · chấm) + danh sách ngày đang chọn.
 - Kéo thả trên Lịch: vùng thả có class `.is-drop-over` (viền nét đứt `--tk-accent`).
-- View Ngày trên mobile (mockup bản 3): header trang đổi thành ngày đang xem + ‹ ›, "Chưa xếp giờ"
-  nằm trên lưới (2 việc + "Xem thêm"), kéo bằng giữ 320ms (`.tk-touch-ghost` bám ngón tay,
-  `.tk-touch-slot` xem trước mốc 30 phút). Desktop vẫn dùng HTML5 drag.
-- Lịch biểu: tiêu đề tuần `.cal-agenda-week` ("Tuần này · N việc"), ngày trống liền nhau gộp `.cal-agenda-gap`.
 
 ## Do's and Don'ts
 

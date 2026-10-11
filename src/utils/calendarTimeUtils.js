@@ -380,6 +380,10 @@ export function computeDayLayout(tasks = [], dateStr, markerMinutes = 30, pxPerH
   return { allDayTasks, timedTasks };
 }
 
+/** Màu chấm sự kiện theo loại ngày lễ (token --tk-ev-* trong tasks-aurora.css). */
+const HOLIDAY_TONE = { custom: 'anni', solar: 'vn', lunar: 'lunar', international: 'intl', japan: 'jp', fun: 'geek' };
+export const holidayDot = (type) => `var(--tk-ev-${HOLIDAY_TONE[type] || 'intl'})`;
+
 // ── Kéo thả để đổi ngày/giờ trên các view Lịch ─────────────────────────────
 
 /** Kiểu dữ liệu riêng cho dataTransfer — để ô lịch chỉ nhận thẻ task (không nhận file/text). */

@@ -1,287 +1,191 @@
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getWeekDays } from '../utils/calendarTimeUtils';
-import { solarToLunar, getCanChiYear, getCanChiDay } from '../utils/lunarUtils';
+import { solarToLunar, getCanChiYear, getCanChiMonth, getCanChiDay } from '../utils/lunarUtils';
+import { toDateStr } from '../utils/dateUtils';
 import AppIcon from './AppIcon';
-import '../styles/week-calendar.css';
 
-/**
- * CalendarToolbar — Thanh điều hướng lịch All-in-one chuẩn Google Calendar & Notion Calendar.
- * Tích hợp:
- * 1. Điều hướng thời gian (Hôm nay, < >, Tiêu đề tháng/năm kèm Can Chi bản địa hóa)
- * 2. Segmented View Switcher: Danh sách | Lịch biểu (Agenda) | Ngày | Tuần | Tháng
- * 3. Nút Thêm công việc nhanh & Toggle Widget Panel bên phải
+/*
+ * CalendarToolbar — điều hướng của trang Nhiệm vụ theo mockup "Kanban tối & sáng":
+ *   TaskViewSwitcher : segmented 6 chế độ xem nằm trong header (desktop) + phím tắt L/K/A/D/W/M/T
+ *   MobileViewMenu   : nút "<icon> Tên view ▾" mở menu 5 chế độ (mobile bỏ Tuần vì chật)
+ *   CalendarNavHead  : hàng đầu khung lịch — nhãn kỳ, phụ đề âm lịch, Hôm nay, ‹ ›
  */
-export default function CalendarToolbar({
-  currentDate = new Date(),
-  setCurrentDate,
-  activeView = 'week',
-  setActiveView,
-  startOnSunday = true,
-  setStartOnSunday,
-  isWidgetOpen = false,
-  onToggleWidget,
-  onAddNewTask,
-  taskCount = 0,
-}) {
-  // Phím tắt bàn phím thông minh: D (Ngày), W (Tuần), M (Tháng), A (Lịch biểu), L (Danh sách), T (Hôm nay)
+
+const TASK_VIEWS = [
+  { id: 'list', label: 'Danh sách', icon: 'listBullets', key: 'l' },
+  { id: 'kanban', label: 'Kanban', icon: 'kanban', key: 'k' },
+  { id: 'agenda', label: 'Lịch biểu', icon: 'rows', key: 'a' },
+  { id: 'day', label: 'Ngày', icon: 'sun', key: 'd' },
+  { id: 'week', label: 'Tuần', icon: 'columns', key: 'w' },
+  { id: 'month', label: 'Tháng', icon: 'calendar', key: 'm' },
+];
+
+const DFULL = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
+export function TaskViewSwitcher({ activeView, setActiveView, setCurrentDate }) {
+  // Phím tắt: L/K/A/D/W/M chọn view, T về hôm nay (bỏ qua khi đang gõ chữ)
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const onKey = (e) => {
       const tag = e.target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-
       const key = e.key.toLowerCase();
-      if (key === 'w') {
+      const v = TASK_VIEWS.find((x) => x.key === key);
+      if (v) {
         e.preventDefault();
-        setActiveView('week');
-      } else if (key === 'm') {
-        e.preventDefault();
-        setActiveView('month');
-      } else if (key === 'd') {
-        e.preventDefault();
-        setActiveView('day');
-      } else if (key === 'a') {
-        e.preventDefault();
-        setActiveView('agenda');
-      } else if (key === 'l') {
-        e.preventDefault();
-        setActiveView('list');
-      } else if (key === 'k') {
-        e.preventDefault();
-        setActiveView('kanban');
+        setActiveView(v.id);
       } else if (key === 't') {
         e.preventDefault();
         setCurrentDate(new Date());
       }
     };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [setActiveView, setCurrentDate]);
 
-  // Tính toán nhãn tiêu đề ngày tháng kèm Can Chi
-  const titleLabel = useMemo(() => {
-    const d = currentDate instanceof Date && !isNaN(currentDate) ? currentDate : new Date();
-    const dd = d.getDate();
-    const mm = d.getMonth() + 1;
-    const yy = d.getFullYear();
+  return (
+    <div className="tk-views-switcher" role="tablist" aria-label="Chế độ xem">
+      {TASK_VIEWS.map((v) => (
+        <button
+          key={v.id}
+          type="button"
+          role="tab"
+          aria-selected={activeView === v.id}
+          className={`tk-view-btn${activeView === v.id ? ' tk-view-btn--active' : ''}`}
+          onClick={() => setActiveView(v.id)}
+          title={`${v.label} (phím ${v.key.toUpperCase()})`}
+        >
+          <AppIcon name={v.icon} size={14} />
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
-    const lunar = solarToLunar(dd, mm, yy);
-    const canChiYear = getCanChiYear(lunar.year);
+export function MobileViewMenu({ activeView, setActiveView }) {
+  const [open, setOpen] = useState(false);
+  const views = TASK_VIEWS.filter((v) => v.id !== 'week');
+  const cur = views.find((v) => v.id === activeView) || views[0];
+  return (
+    <div className="tk-vmenu">
+      <button type="button" className="tk-vmenu__btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <AppIcon name={cur.icon} size={19} style={{ color: 'var(--tk-accent)' }} />
+        <span>{cur.label}</span>
+        <AppIcon name="caretDown" size={13} style={{ color: 'var(--tk-text-sub)' }} />
+      </button>
+      {open && (
+        <>
+          <div className="tk-vmenu__scrim" onClick={() => setOpen(false)} />
+          <div className="tk-vmenu__list" role="menu">
+            {views.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                role="menuitem"
+                className={`tk-vmenu__item${v.id === cur.id ? ' is-on' : ''}`}
+                onClick={() => {
+                  setActiveView(v.id);
+                  setOpen(false);
+                }}
+              >
+                <AppIcon name={v.icon} size={18} />
+                <span>{v.label}</span>
+                <AppIcon name="check" size={15} style={{ opacity: v.id === cur.id ? 1 : 0 }} />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
-    if (activeView === 'day') {
-      const dayName = d.toLocaleDateString('vi-VN', { weekday: 'short' });
-      const canChiDay = getCanChiDay(dd, mm, yy);
-      return `${dayName}, ${dd} thg ${mm}, ${yy} · ${canChiDay.full}`;
-    }
+/** Nhãn + phụ đề của hàng điều hướng khung lịch theo từng view. */
+function navLabels(view, date, startOnSunday) {
+  const dd = date.getDate();
+  const mm = date.getMonth() + 1;
+  const yy = date.getFullYear();
+  const lunar = solarToLunar(dd, mm, yy);
+  const year = getCanChiYear(lunar.year);
+  const isToday = toDateStr(date) === toDateStr();
 
-    if (activeView === 'week') {
-      const days = getWeekDays(d, startOnSunday);
-      const d1 = days[0]?.date || d;
-      const d2 = days[6]?.date || d;
-      const m1 = d1.getMonth() + 1;
-      const y1 = d1.getFullYear();
-      const m2 = d2.getMonth() + 1;
-      const y2 = d2.getFullYear();
+  if (view === 'day') {
+    return {
+      label: `${isToday ? 'Hôm nay · ' : ''}${DFULL[date.getDay()]}, ${dd} tháng ${mm}`,
+      sub: `Âm lịch ${lunar.day}/${lunar.month} · ngày ${getCanChiDay(dd, mm, yy).full}, tháng ${getCanChiMonth(lunar.year, lunar.month)}`,
+      today: 'Hôm nay',
+    };
+  }
+  if (view === 'week') {
+    const days = getWeekDays(date, startOnSunday);
+    const a = days[0].date;
+    const b = days[6].date;
+    return {
+      label: `Tuần ${a.getDate()}/${a.getMonth() + 1} – ${b.getDate()}/${b.getMonth() + 1}, ${b.getFullYear()}`,
+      sub: year,
+      today: 'Tuần này',
+    };
+  }
+  if (view === 'month') return { label: `Tháng ${mm}, ${yy}`, sub: year, today: 'Hôm nay' };
+  return { label: '', sub: '', today: 'Hôm nay' }; // Lịch biểu tự truyền label/sub (cần số việc & khoảng ngày)
+}
 
-      if (y1 === y2) {
-        if (m1 === m2) {
-          return `Tháng ${m1}, ${y1} · ${canChiYear}`;
-        }
-        return `Thg ${m1} – Thg ${m2}, ${y1} · ${canChiYear}`;
-      }
-      return `Thg ${m1}, ${y1} – Thg ${m2}, ${y2} · ${canChiYear}`;
-    }
-
-    // Month / Agenda / List view
-    const mLabel = d.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
-    const formatted = mLabel.charAt(0).toUpperCase() + mLabel.slice(1);
-    return `${formatted} · ${canChiYear}`;
+export default function CalendarNavHead({ activeView, currentDate, setCurrentDate, startOnSunday, setStartOnSunday, label: labelProp, sub: subProp }) {
+  const auto = useMemo(() => {
+    const date = currentDate instanceof Date && !Number.isNaN(currentDate.getTime()) ? currentDate : new Date();
+    return navLabels(activeView, date, startOnSunday);
   }, [activeView, currentDate, startOnSunday]);
+  const label = labelProp ?? auto.label;
+  const sub = subProp ?? auto.sub;
+  const { today } = auto;
 
-  const goToday = useCallback(() => {
-    setCurrentDate(new Date());
-  }, [setCurrentDate]);
-
-  const goPrev = useCallback(() => {
+  const shift = (dir) => {
     setCurrentDate((prev) => {
-      const d = new Date(prev);
-      if (activeView === 'day') {
-        d.setDate(d.getDate() - 1);
-      } else if (activeView === 'week') {
-        d.setDate(d.getDate() - 7);
-      } else if (activeView === 'month') {
-        d.setMonth(d.getMonth() - 1);
-      } else {
-        d.setDate(d.getDate() - 14);
-      }
+      const d = new Date(prev || new Date());
+      if (activeView === 'day') d.setDate(d.getDate() + dir);
+      else if (activeView === 'month') d.setMonth(d.getMonth() + dir, 1);
+      else d.setDate(d.getDate() + 7 * dir);
       return d;
     });
-  }, [activeView, setCurrentDate]);
-
-  const goNext = useCallback(() => {
-    setCurrentDate((prev) => {
-      const d = new Date(prev);
-      if (activeView === 'day') {
-        d.setDate(d.getDate() + 1);
-      } else if (activeView === 'week') {
-        d.setDate(d.getDate() + 7);
-      } else if (activeView === 'month') {
-        d.setMonth(d.getMonth() + 1);
-      } else {
-        d.setDate(d.getDate() + 14);
-      }
-      return d;
-    });
-  }, [activeView, setCurrentDate]);
-
-  const toggleStartDay = useCallback(() => {
-    if (!setStartOnSunday) return;
-    setStartOnSunday((prev) => {
-      const next = !prev;
-      localStorage.setItem('lh_cal_start_sun', String(next));
-      return next;
-    });
-  }, [setStartOnSunday]);
+  };
 
   return (
-    <div className="cal-header-bar">
-      {/* Cụm điều hướng bên trái: Hôm nay, < >, Tiêu đề Can Chi */}
-      <div className="cal-header-bar__left">
-        <button
-          type="button"
-          className="cal-header-bar__btn-today"
-          onClick={goToday}
-          title="Về hôm nay (Phím tắt: T)"
-        >
-          Hôm nay
-        </button>
-
-        <div className="cal-header-bar__nav-arrows">
-          <button
-            type="button"
-            className="cal-header-bar__arrow-btn"
-            onClick={goPrev}
-            aria-label="Lùi thời gian"
-            title="Trước đó"
-          >
-            <AppIcon name="caretLeft" size={16} />
-          </button>
-          <button
-            type="button"
-            className="cal-header-bar__arrow-btn"
-            onClick={goNext}
-            aria-label="Tiến thời gian"
-            title="Kế tiếp"
-          >
-            <AppIcon name="caretRight" size={16} />
-          </button>
-        </div>
-
-        <h2 className="cal-header-bar__title">
-          {titleLabel}
-        </h2>
+    <div className={`tk-cal-head tk-cal-head--${activeView}`}>
+      <button type="button" className="tk-cal-head__arrow tk-cal-head__arrow--m" onClick={() => shift(-1)} aria-label="Trước">
+        <AppIcon name="caretLeft" size={16} />
+      </button>
+      <div className="tk-cal-head__text">
+        <span className="tk-cal-head__label">{label}</span>
+        <span className="tk-cal-head__sub">{sub}</span>
       </div>
+      <button type="button" className="tk-cal-head__arrow tk-cal-head__arrow--m" onClick={() => shift(1)} aria-label="Sau">
+        <AppIcon name="caretRight" size={16} />
+      </button>
 
-      {/* Cụm giữa: Segmented View Switcher (5 chế độ xem) */}
-      <div className="cal-segmented-control" role="tablist" aria-label="Chế độ xem lịch">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === 'list'}
-          className={`cal-segmented-btn${activeView === 'list' ? ' cal-segmented-btn--active' : ''}`}
-          onClick={() => setActiveView('list')}
-          title="Danh sách việc cần làm (Phím tắt: L)"
-        >
-          <AppIcon name="list" size={14} /> Danh sách
-          {taskCount > 0 && <span className="cal-segmented-badge">{taskCount}</span>}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === 'kanban'}
-          className={`cal-segmented-btn${activeView === 'kanban' ? ' cal-segmented-btn--active' : ''}`}
-          onClick={() => setActiveView('kanban')}
-          title="Bảng Kanban 3 cột (Phím tắt: K)"
-        >
-          📋 Kanban
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === 'agenda'}
-          className={`cal-segmented-btn${activeView === 'agenda' ? ' cal-segmented-btn--active' : ''}`}
-          onClick={() => setActiveView('agenda')}
-          title="Lịch biểu theo ngày cuốn chiếu (Phím tắt: A)"
-        >
-          <AppIcon name="calendar" size={14} /> Lịch biểu
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === 'day'}
-          className={`cal-segmented-btn${activeView === 'day' ? ' cal-segmented-btn--active' : ''}`}
-          onClick={() => setActiveView('day')}
-          title="Lịch Ngày 24h (Phím tắt: D)"
-        >
-          ☀️ Ngày
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === 'week'}
-          className={`cal-segmented-btn cal-segmented-btn--week${activeView === 'week' ? ' cal-segmented-btn--active' : ''}`}
-          onClick={() => setActiveView('week')}
-          title="Lịch Tuần 7 ngày (Phím tắt: W)"
-        >
-          🗓️ Tuần
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeView === 'month'}
-          className={`cal-segmented-btn${activeView === 'month' ? ' cal-segmented-btn--active' : ''}`}
-          onClick={() => setActiveView('month')}
-          title="Lịch Tháng 100vh (Phím tắt: M)"
-        >
-          📅 Tháng
-        </button>
-      </div>
-
-      {/* Cụm phải: Bắt đầu tuần, Thêm task, Toggle Widget */}
-      <div className="cal-header-bar__right">
+      <div className="tk-cal-head__actions">
         {(activeView === 'week' || activeView === 'month') && setStartOnSunday && (
           <button
             type="button"
-            className="cal-header-bar__btn-startday"
-            onClick={toggleStartDay}
+            className="tk-cal-head__btn tk-cal-head__btn--soft"
             title="Đổi ngày bắt đầu tuần"
+            onClick={() => setStartOnSunday((prev) => {
+              const next = !prev;
+              try { localStorage.setItem('lh_cal_start_sun', String(next)); } catch { /* bỏ qua */ }
+              return next;
+            })}
           >
-            Bắt đầu: <strong>{startOnSunday ? 'Chủ Nhật' : 'Thứ 2'}</strong>
+            Tuần từ {startOnSunday ? 'CN' : 'T2'}
           </button>
         )}
-
-        {/* Nút Thêm công việc */}
-        {onAddNewTask && (
-          <button
-            type="button"
-            className="tasks-viewbar__add"
-            onClick={onAddNewTask}
-            id="task-add-btn"
-            style={{ margin: 0 }}
-          >
-            <AppIcon name="plus" size={14} /> Thêm việc
-          </button>
-        )}
-
-        {/* Nút bật/tắt Widget Panel bên phải */}
-        <button
-          type="button"
-          className={`cal-header-bar__btn-widget${isWidgetOpen ? ' cal-header-bar__btn-widget--active' : ''}`}
-          onClick={onToggleWidget}
-          title={isWidgetOpen ? 'Đóng bảng tiện ích Lịch Việt' : 'Mở bảng tiện ích Lịch Việt (Lịch vạn niên, Giờ Hoàng Đạo, Đếm ngược)'}
-        >
-          <span>🐯</span> Tiện ích
+        <button type="button" className="tk-cal-head__btn" onClick={() => setCurrentDate(new Date())}>
+          {today}
+        </button>
+        <button type="button" className="tk-cal-head__arrow" onClick={() => shift(-1)} aria-label="Trước">
+          <AppIcon name="caretLeft" size={13} />
+        </button>
+        <button type="button" className="tk-cal-head__arrow" onClick={() => shift(1)} aria-label="Sau">
+          <AppIcon name="caretRight" size={13} />
         </button>
       </div>
     </div>

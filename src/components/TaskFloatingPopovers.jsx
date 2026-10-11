@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import AppIcon from './AppIcon';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
+import { STATUS_META, ksStyle, taskCardModel } from '../utils/kanbanUtils';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
 
@@ -12,138 +13,67 @@ import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
  * 4. Date Range Picker
  */
 
-export function StatusPopover({ currentStatus, onSelect, onClose, style }) {
+/** Menu chọn 1 mục (Chuyển sang / Ưu tiên) — khung 220px như mockup. */
+function PickList({ head, items, current, onSelect, onClose, style }) {
   const ref = useRef(null);
-
   usePopoverShell(ref, onClose);
-
-  const items = [
-    { key: 'todo', label: 'Cần làm', color: 'var(--tk-st-todo)', icon: 'circle' },
-    { key: 'doing', label: 'Đang làm', color: 'var(--tk-st-doing)', icon: 'hourglass' },
-    { key: 'done', label: 'Hoàn thành', color: 'var(--tk-st-done)', icon: 'check-circle' },
-    { key: 'skip', label: 'Bỏ qua', color: 'var(--tk-st-skip)', icon: 'prohibit' },
-  ];
-
   return (
-    <div
-      ref={ref}
-      className="tk-popover"
-      style={{
-        minWidth: '160px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
-        ...style,
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--tk-text-mute)', padding: '4px 8px' }}>
-        Chuyển trạng thái
-      </div>
+    <div ref={ref} className="tk-popover tk-picklist" style={style} onClick={(e) => e.stopPropagation()}>
+      <span className="tk-picklist__head">{head}</span>
       {items.map((it) => (
         <button
           key={it.key}
           type="button"
+          className={`tk-picklist__item${current === it.key ? ' is-on' : ''}`}
           onClick={() => {
             onSelect(it.key);
             onClose();
           }}
-          style={{
-            height: '32px',
-            borderRadius: '8px',
-            border: 'none',
-            background: currentStatus === it.key ? 'var(--tk-border)' : 'transparent',
-            color: 'var(--tk-text-main)',
-            fontSize: '12.5px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '0 8px',
-            cursor: 'pointer',
-            textAlign: 'left',
-          }}
         >
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: it.color }} />
-          <span>{it.label}</span>
-          {currentStatus === it.key && (
-            <span style={{ marginLeft: 'auto', color: 'var(--tk-accent)' }}>
-              <AppIcon name="check" size={14} />
-            </span>
-          )}
+          <AppIcon name={it.icon} size={16} weight={it.weight || 'regular'} style={{ color: it.color, flex: 'none' }} />
+          {it.label}
+          {current === it.key && <AppIcon name="check" size={14} style={{ marginLeft: 'auto', color: 'var(--tk-accent)' }} />}
         </button>
       ))}
     </div>
+  );
+}
+
+export function StatusPopover({ currentStatus, onSelect, onClose, style }) {
+  const current = currentStatus === 'completed' ? 'done' : currentStatus || 'todo';
+  return (
+    <PickList
+      head="Chuyển sang"
+      items={Object.entries(STATUS_META).map(([key, m]) => ({ key, ...m }))}
+      current={current}
+      onSelect={onSelect}
+      onClose={onClose}
+      style={style}
+    />
   );
 }
 
 export function PriorityPopover({ currentPriority = 0, onSelect, onClose, style }) {
-  const ref = useRef(null);
-
-  usePopoverShell(ref, onClose);
-
-  const levels = [5, 4, 3, 2, 1, 0];
-  const colors = {
-    5: '#EF4444',
-    4: '#F97316',
-    3: '#EAB308',
-    2: '#3B82F6',
-    1: 'var(--tk-st-skip)',
-    0: 'var(--tk-text-mute)',
-  };
-
   return (
-    <div
-      ref={ref}
-      className="tk-popover"
-      style={{
-        minWidth: '170px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
-        ...style,
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--tk-text-mute)', padding: '4px 8px' }}>
-        Mức độ ưu tiên
-      </div>
-      {levels.map((lvl) => (
-        <button
-          key={lvl}
-          type="button"
-          onClick={() => {
-            onSelect(lvl);
-            onClose();
-          }}
-          style={{
-            height: '32px',
-            borderRadius: '8px',
-            border: 'none',
-            background: Number(currentPriority) === lvl ? 'var(--tk-border)' : 'transparent',
-            color: colors[lvl],
-            fontSize: '12.5px',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '0 8px',
-            cursor: 'pointer',
-          }}
-        >
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: colors[lvl] }} />
-          <span>{PRIORITY_LABELS[lvl]?.label || 'Không ưu tiên'}</span>
-          {Number(currentPriority) === lvl && (
-            <span style={{ marginLeft: 'auto', color: 'var(--tk-accent)' }}>
-              <AppIcon name="check" size={14} />
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
+    <PickList
+      head="Ưu tiên"
+      items={[5, 4, 3, 2, 1, 0].map((lvl) => ({
+        key: lvl,
+        label: PRIORITY_LABELS[lvl].label,
+        icon: PRIORITY_LABELS[lvl].icon,
+        weight: lvl === 5 ? 'fill' : 'regular',
+        color: PRIORITY_LABELS[lvl].color,
+      }))}
+      current={Number(currentPriority) || 0}
+      onSelect={onSelect}
+      onClose={onClose}
+      style={style}
+    />
   );
 }
 
 const DOW_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const DOW_FULL = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 const shiftStr = (base, n) => {
   const [y, m, d] = base.split('-').map(Number);
   return toDateStr(new Date(y, m - 1, d + n));
@@ -465,3 +395,63 @@ export function RecurrencePopover({ currentRule, onSelect, onClose, style }) {
   );
 }
 
+/**
+ * Popover "Ngày" (mockup): sự kiện + việc của ngày, bấm việc để mở chi tiết,
+ * ô gõ nhanh "Thêm việc cho ngày này, Enter" (mặc định hạn = ngày đó, giờ = ô vừa bấm).
+ */
+export function TaskDayPopover({ dateStr, time, holidays = [], tasks = [], onOpenTask, onCreate, onClose, style }) {
+  const ref = useRef(null);
+  usePopoverShell(ref, onClose);
+  const [val, setVal] = useState('');
+  const today = toDateStr();
+  const d = new Date(`${dateStr}T00:00:00`);
+  const lunar = solarToLunar(d.getDate(), d.getMonth() + 1, d.getFullYear());
+  return (
+    <div ref={ref} className="tk-popover tk-daypop" style={style} onClick={(e) => e.stopPropagation()}>
+      <div className="tk-daypop__head">
+        <span className="tk-daypop__title">
+          {DOW_FULL[d.getDay()]}, {d.getDate()}/{d.getMonth() + 1}{time ? ` · ${time}` : ''}
+        </span>
+        <span className="tk-daypop__lunar">Âm {lunar.day}/{lunar.month}</span>
+        <button type="button" className="tk-icon-btn" onClick={onClose} aria-label="Đóng">
+          <AppIcon name="x" size={13} />
+        </button>
+      </div>
+      {holidays.map((h) => (
+        <span key={h} className="tk-daypop__ev">
+          <AppIcon name="star" size={11} weight="fill" />
+          {h}
+        </span>
+      ))}
+      <div className="tk-daypop__list">
+        {tasks.map((t) => {
+          const m = taskCardModel(t, today);
+          const st = STATUS_META[m.st];
+          return (
+            <button key={t.id} type="button" className="tk-daypop__item" style={ksStyle(m.k)} onClick={() => onOpenTask(t)}>
+              <AppIcon name={st.icon} size={14} weight={st.weight} style={{ color: st.color, flex: 'none' }} />
+              <span className={`tk-daypop__t${m.done ? ' is-done' : ''}`}>{t.title}</span>
+              {t.due_date === dateStr && t.due_time && <span className="tk-daypop__tm">{t.due_time.slice(0, 5)}</span>}
+            </button>
+          );
+        })}
+        {tasks.length === 0 && <span className="tk-daypop__empty">Chưa có việc nào trong ngày.</span>}
+      </div>
+      <label className="tk-daypop__add">
+        <AppIcon name="plus" size={13} />
+        <input
+          autoFocus
+          value={val}
+          placeholder="Thêm việc cho ngày này, Enter"
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && val.trim()) {
+              onCreate(val.trim());
+              setVal('');
+            }
+          }}
+        />
+      </label>
+    </div>
+  );
+}

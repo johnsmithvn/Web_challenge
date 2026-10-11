@@ -180,3 +180,116 @@ export function calculateKanbanCounts({
   };
 }
 
+/** Biến CSS --k-* của tình trạng thời gian k (late/today/soon/none/done/skip) — xem token --tk-ks-*. */
+export const ksStyle = (k) => ({
+  '--k-glow': `var(--tk-ks-${k}-glow)`,
+  '--k-tint': `var(--tk-ks-${k}-tint)`,
+  '--k-fg': `var(--tk-ks-${k}-fg)`,
+  '--k-bg': `var(--tk-ks-${k}-bg)`,
+  '--k-bd': `var(--tk-ks-${k}-bd)`,
+});
+
+/** Trạng thái việc theo mockup: icon + màu dùng chung cho thẻ, popover, ngăn chi tiết. */
+export const STATUS_META = {
+  todo: { label: 'Cần làm', icon: 'circle', weight: 'regular', color: 'var(--tk-st-todo)' },
+  doing: { label: 'Đang làm', icon: 'circleHalf', weight: 'regular', color: 'var(--tk-st-doing)' },
+  done: { label: 'Xong', icon: 'checkCircle', weight: 'fill', color: 'var(--tk-st-done)' },
+  skip: { label: 'Bỏ qua', icon: 'minusCircle', weight: 'regular', color: 'var(--tk-st-skip)' },
+};
+
+/** Khoá trạng thái thống nhất (DB có thể lưu 'completed' hoặc completed=true). */
+export const statusKeyOf = (task) =>
+  task?.completed || task?.status === 'done' || task?.status === 'completed'
+    ? 'done'
+    : task?.status === 'doing' || task?.status === 'skip'
+    ? task.status
+    : 'todo';
+
+// ── Mô hình thẻ việc (đúng logic card() của mockup) ───────────────────────
+
+const VI_DOW = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const dayDiffStr = (a, b) => Math.round((new Date(`${b}T00:00:00`) - new Date(`${a}T00:00:00`)) / 86400000);
+
+/**
+ * Nhãn ngày thân thiện: Hôm nay / Ngày mai / Hôm qua / "T2 12/10" (trong 6 ngày tới) / "12 thg 10".
+ * @param {string} dateStr YYYY-MM-DD
+ * @param {string} today YYYY-MM-DD
+ */
+export function dueDayLabel(dateStr, today) {
+  const n = dayDiffStr(today, dateStr);
+  if (n === 0) return 'Hôm nay';
+  if (n === 1) return 'Ngày mai';
+  if (n === -1) return 'Hôm qua';
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (n > 1 && n < 7) return `${VI_DOW[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
+  return `${d.getDate()} thg ${d.getMonth() + 1}`;
+}
+
+/**
+ * Dữ liệu hiển thị của 1 thẻ việc — dùng chung cho Kanban, Danh sách, Lịch biểu, mobile.
+ *   k: tình trạng thời gian 'late' | 'today' | 'soon' | 'none' | 'done' | 'skip' (màu --tk-ks-*)
+ *   badge: nhãn ngày { text, short, icon, dashed }
+ *   late: "trễ N ngày" | ''
+ *   run: thời gian làm thực tế { icon, text } | null (đang làm: "từ d/m HH:MM", xong: thời lượng)
+ * @param {Object} task
+ * @param {string} today YYYY-MM-DD
+ */
+export function taskCardModel(task, today) {
+  const st = statusKeyOf(task);
+  const done = st === 'done';
+  const skip = st === 'skip';
+  let k = 'none';
+  let late = '';
+  if (done) k = 'done';
+  else if (skip) k = 'skip';
+  else if (task.due_date) {
+    const n = dayDiffStr(today, task.due_date);
+    if (n < 0) {
+      k = 'late';
+      late = `trễ ${-n} ngày`;
+    } else k = n === 0 ? 'today' : 'soon';
+  }
+  const tm = task.due_time ? task.due_time.slice(0, 5) : '';
+  const dT = task.due_date ? dueDayLabel(task.due_date, today) + (tm ? `, ${tm}` : '') : '';
+  const doneAt = task.completed_at ? new Date(task.completed_at) : null;
+  const text = {
+    late: `Quá hạn · ${dT}`,
+    today: `Hôm nay${tm ? ` · ${tm}` : ''}`,
+    soon: dT,
+    none: 'Đặt hạn',
+    done: `Hoàn thành${doneAt ? ` · ${doneAt.getDate()}/${doneAt.getMonth() + 1}` : ''}`,
+    skip: `Bỏ qua${task.due_date ? ` · ${dT}` : ''}`,
+  }[k];
+  const icon = { late: 'warning', today: 'clock', soon: 'calendar', none: 'calendar', done: 'check', skip: 'minusCircle' }[k];
+
+  let run = null;
+  if (task.started_at && (st === 'doing' || done)) {
+    const s = new Date(task.started_at);
+    const hm = `${String(s.getHours()).padStart(2, '0')}:${String(s.getMinutes()).padStart(2, '0')}`;
+    if (done && task.completed_at) {
+      const mins = Math.max(0, Math.round((new Date(task.completed_at) - s) / 60000));
+      const d = Math.floor(mins / 1440);
+      const h = Math.floor((mins % 1440) / 60);
+      const m = mins % 60;
+      run = { icon: 'timer', text: d ? `${d} ngày${h ? ` ${h}g` : ''}` : h ? `${h}g${m ? ` ${m}p` : ''}` : `${m} phút` };
+    } else if (!done) {
+      run = { icon: 'play', text: `từ ${s.getDate()}/${s.getMonth() + 1} ${hm}` };
+    }
+  }
+
+  const pr = Number(task.priority) || 0;
+  return {
+    st,
+    done,
+    skip,
+    k,
+    late,
+    badge: { text, short: text.replace(/^Quá hạn · /, ''), icon, dashed: k === 'none' },
+    hasPriority: pr > 0 && !done,
+    canSetPriority: pr === 0 && !done && !skip,
+    priority: pr,
+    run,
+    tags: (task._tags || []).map((t) => t.name).filter(Boolean),
+    repeat: !!task.recurrence_rule,
+  };
+}

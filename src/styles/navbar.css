@@ -638,3 +638,174 @@
 
 
 
+
+/* ── SIDEBAR THU GỌN: rail icon 64px (mockup Nhiệm vụ · Kanban tối & sáng) ── */
+:root.sidebar-collapsed {
+  --sidebar-width: 64px;
+}
+
+.sidebar {
+  transition: width 0.2s ease, padding 0.2s ease;
+}
+
+.app-content {
+  transition: margin-left 0.2s ease;
+}
+
+/* Nút thu gọn / mở rộng: tay nắm tròn nằm trên mép phải sidebar */
+.sidebar__collapse-btn {
+  position: absolute;
+  top: 26px;
+  right: -11px;
+  z-index: 11;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #0D1222;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.sidebar:hover .sidebar__collapse-btn,
+.sidebar__collapse-btn:focus-visible {
+  opacity: 1;
+}
+
+.sidebar__collapse-btn:hover {
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .sidebar__collapse-btn {
+  background: #FFFFFF;
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.sidebar--collapsed {
+  align-items: center;
+  padding: 20px 0;
+  background: rgba(6, 9, 20, 0.85);
+}
+
+[data-theme="light"] .sidebar--collapsed {
+  background: rgba(255, 255, 255, 0.55);
+  border-right-color: rgba(255, 255, 255, 0.85);
+}
+
+.sidebar--collapsed .sidebar__logo {
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+.sidebar--collapsed .sidebar__logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 0;
+  animation: none;
+  background: linear-gradient(140deg, #5EF2C2, #7C8CFF);
+  color: #04121B;
+}
+
+[data-theme="light"] .sidebar--collapsed .sidebar__logo-icon {
+  background: linear-gradient(140deg, #A78BFA, #F472B6);
+  color: #FFFFFF;
+  box-shadow: 0 6px 16px -6px rgba(167, 139, 250, 0.8);
+}
+
+.sidebar--collapsed .sidebar__logo-text,
+.sidebar--collapsed .sidebar__section-label,
+.sidebar--collapsed .sidebar__link-label,
+.sidebar--collapsed .sidebar__link-caret,
+.sidebar--collapsed .sidebar__children,
+.sidebar--collapsed .sidebar__xp,
+.sidebar--collapsed .sidebar__login-label {
+  display: none;
+}
+
+.sidebar--collapsed .sidebar__nav {
+  align-items: center;
+  gap: 6px;
+  overflow-x: visible;
+}
+
+.sidebar--collapsed .sidebar__divider {
+  width: 28px;
+  margin: 6px auto;
+}
+
+.sidebar--collapsed .sidebar__link {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 12px;
+  color: #5B6480;
+}
+
+.sidebar--collapsed .sidebar__link-icon {
+  width: auto;
+}
+
+.sidebar--collapsed .sidebar__link:hover {
+  color: #E8ECF7;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar--collapsed .sidebar__link--active,
+.sidebar--collapsed .sidebar__link--active:hover {
+  color: #5EF2C2;
+  background: rgba(94, 242, 194, 0.10);
+  box-shadow: inset 0 0 0 1px rgba(94, 242, 194, 0.25);
+}
+
+[data-theme="light"] .sidebar--collapsed .sidebar__link {
+  border-radius: 13px;
+  color: #8B8FAE;
+}
+
+[data-theme="light"] .sidebar--collapsed .sidebar__link:hover {
+  color: #1E1B3A;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .sidebar--collapsed .sidebar__link--active,
+[data-theme="light"] .sidebar--collapsed .sidebar__link--active:hover {
+  color: #6D28D9;
+  background: #FFFFFF;
+  box-shadow: 0 4px 12px -4px rgba(109, 40, 217, 0.3);
+}
+
+.sidebar--collapsed .sidebar__bottom {
+  width: 100%;
+  align-items: center;
+  border-top: none;
+}
+
+.sidebar--collapsed .sidebar__actions {
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  justify-content: center;
+}
+
+.sidebar--collapsed .sidebar__login {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .app-content {
+    transition: none;
+  }
+}

@@ -2,25 +2,23 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import AppIcon from './AppIcon';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 import { toDateStr } from '../utils/dateUtils';
-import { solarToLunar, getCanChiDay, getZodiacHours } from '../utils/lunarUtils';
+import { solarToLunar, getZodiacHours } from '../utils/lunarUtils';
+import { STATUS_META, ksStyle, taskCardModel } from '../utils/kanbanUtils';
 import HOLIDAYS from '../data/holidays.json';
 import {
   bucketTasksByDay,
   computeDayLayout,
-  getTaskVisualStatus,
-  taskDayMark,
+  holidayDot,
   slotTimeFromOffset,
   taskDragStart,
   dropZoneProps,
 } from '../utils/calendarTimeUtils';
-import '../styles/week-calendar.css';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const PX_PER_HOUR = 60; // 60px cho 1 giờ ở view ngày rộng rãi
-const MARKER_ICON = { deadline: '⏰ ', start: '▶ ' }; // mốc ngắn (computeDayLayout `kind`)
-
-const MOBILE_MQ = '(max-width: 640px)';
+const PX_PER_HOUR = 56; // lưới 56px/giờ như mockup (đường kẻ giờ vẽ bằng CSS cùng bước, xem .tk-dv-canvas)
+const MARKER_MIN = 56; // mốc giờ hạn/bắt đầu cao ~50px như khối trong mockup
 const LONG_PRESS_MS = 320;
+const hm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 /**
  * Giữ-rồi-kéo bằng cảm ứng (mobile không có HTML5 drag): giữ 320ms để nhấc thẻ, kéo vào
@@ -195,20 +193,22 @@ function useTouchTaskDrag({ enabled, scrollRef, canvasRef, unsRef, onDrop }) {
 }
 
 /**
- * CalendarDayView — Chế độ xem Lịch Ngày 1 cột với timeline 24h chi tiết chuẩn mockup Aurora.
- * Tích hợp dải 12 giờ hoàng đạo, dải giờ hoàng đạo trên timeline và cột Việc chưa xếp giờ.
+ * CalendarDayView — view Ngày theo mockup "Kanban tối & sáng".
+ *   Desktop: hàng Cả ngày + lưới giờ 56px (dải giờ hoàng đạo, khối việc, vạch hiện tại)
+ *            | cột phải 320px: Chưa xếp giờ (kéo vào lưới) + bảng 12 giờ hoàng đạo.
+ *   Mobile : dòng sự kiện → Chưa xếp giờ (2 việc, giữ-rồi-kéo) → lưới giờ toàn chiều rộng.
  */
 export default function CalendarDayView({
   pendingTasks = [],
   getCompletedTasksRange,
   onSelectTask,
-  onQuickCreate,
-  onSlotCreate,
+  onOpenDay,
   currentDate = new Date(),
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   customAnniversaries = [],
   refreshKey = 0,
   onRescheduleTask,
+  isMobile = false,
 }) {
   const [completedTasks, setCompletedTasks] = useState([]);
   const [nowMinutes, setNowMinutes] = useState(() => {
@@ -221,16 +221,8 @@ export default function CalendarDayView({
   const unsRef = useRef(null);
   const hasAutoScrolled = useRef(false);
 
-  // Mobile: panel Chưa xếp giờ nằm trên lưới, gọn 2 việc; kéo bằng giữ-rồi-kéo thay cho HTML5 drag
-  const [isMobile, setIsMobile] = useState(() => window.matchMedia?.(MOBILE_MQ).matches ?? false);
+  // Mobile: Chưa xếp giờ gọn 2 việc; kéo bằng giữ-rồi-kéo thay cho HTML5 drag
   const [unsOpen, setUnsOpen] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia?.(MOBILE_MQ);
-    if (!mq) return undefined;
-    const onChange = (e) => setIsMobile(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
   const htmlDrag = !!onRescheduleTask && !isMobile;
 
   const targetDate = useMemo(() => {
@@ -255,8 +247,7 @@ export default function CalendarDayView({
   // Tự động cuộn đến khung giờ hiện tại khi mở view
   useEffect(() => {
     if (!scrollRef.current || hasAutoScrolled.current) return;
-    const targetScroll = isToday ? Math.max(0, (nowMinutes / 60) * PX_PER_HOUR - 180) : 8 * PX_PER_HOUR;
-    scrollRef.current.scrollTop = targetScroll;
+    scrollRef.current.scrollTop = isToday ? Math.max(0, (nowMinutes / 60) * PX_PER_HOUR - 180) : 7 * PX_PER_HOUR;
     hasAutoScrolled.current = true;
   }, [isToday, nowMinutes]);
 
@@ -276,18 +267,23 @@ export default function CalendarDayView({
   }, [pendingTasks, dateStr]);
 
   const [yy, mm, dd] = dateStr.split('-').map(Number);
-  const zodiacHours = useMemo(() => getZodiacHours(dd, mm, yy), [dd, mm, yy]);
+  const hourNow = isToday ? Math.floor(nowMinutes / 60) : null;
+  const zodiacHours = useMemo(() => getZodiacHours(dd, mm, yy, hourNow), [dd, mm, yy, hourNow]);
+  // Dải giờ hoàng đạo trên lưới: gộp các khung liền nhau ("Ngọ, Mùi"), Tý 23–1 tách 2 đầu ngày
   const hoangDaoBands = useMemo(() => {
+    const good = zodiacHours
+      .filter((zh) => zh.isHoangDao)
+      .flatMap((zh) => (zh.startHour === 23
+        ? [{ start: 0, end: 1, name: zh.name }, { start: 23, end: 24, name: zh.name }]
+        : [{ start: zh.startHour, end: zh.endHour, name: zh.name }]))
+      .sort((a, b) => a.start - b.start);
     const bands = [];
-    for (const zh of zodiacHours) {
-      if (zh.isHoangDao) {
-        if (zh.startHour === 23) {
-          bands.push({ start: 23, end: 24, name: zh.name });
-          bands.push({ start: 0, end: 1, name: zh.name });
-        } else {
-          bands.push({ start: zh.startHour, end: zh.endHour, name: zh.name });
-        }
-      }
+    for (const g of good) {
+      const last = bands[bands.length - 1];
+      if (last && last.end === g.start) {
+        last.end = g.end;
+        last.names.push(g.name);
+      } else bands.push({ start: g.start, end: g.end, names: [g.name] });
     }
     return bands;
   }, [zodiacHours]);
@@ -344,7 +340,7 @@ export default function CalendarDayView({
   }, [dayPending, completedTasks]);
 
   const { allDayTasks, timedTasks } = useMemo(() => {
-    return computeDayLayout(combinedTasks, dateStr, 30, PX_PER_HOUR);
+    return computeDayLayout(combinedTasks, dateStr, MARKER_MIN, PX_PER_HOUR);
   }, [combinedTasks, dateStr]);
 
   // Các task cả ngày đã hoàn thành (chỉ các task đã xong mới hiện chip ở hàng Cả ngày trên header)
@@ -388,372 +384,248 @@ export default function CalendarDayView({
     onDrop: (id, timeStr) => onRescheduleTask(id, dateStr, timeStr),
   });
   const shownUnscheduled = isMobile && !unsOpen ? unscheduledTasks.slice(0, 2) : unscheduledTasks;
+  const ghostOpacity = (t) => (touchDrag?.id === t.id ? 0.35 : 1);
 
-  const canChiDay = useMemo(() => {
-    return getCanChiDay(targetDate.getDate(), targetDate.getMonth() + 1, targetDate.getFullYear());
-  }, [targetDate]);
+  const unscheduledPanel = (
+    <div
+      ref={unsRef}
+      className={`tk-dv-uns${touchDrag?.slot === 'uns' ? ' is-drop-over' : ''}`}
+      {...(htmlDrag ? dropZoneProps((id) => onRescheduleTask(id, dateStr, null)) : {})}
+    >
+      <div className="tk-dv-uns__head">
+        <span className="tk-dv-cap">CHƯA XẾP GIỜ</span>
+        <span className="tk-dv-uns__count">{unscheduledTasks.length}</span>
+        {isMobile && onRescheduleTask && (
+          <span className="tk-dv-uns__hint">
+            <AppIcon name="handGrabbing" size={13} />
+            Giữ rồi kéo vào giờ
+          </span>
+        )}
+      </div>
+      {!isMobile && onRescheduleTask && (
+        <span className="tk-dv-uns__help">Kéo việc sang lịch bên trái để xếp giờ. Kéo ngược về đây để bỏ giờ.</span>
+      )}
+      {shownUnscheduled.map((t) => {
+        const m = taskCardModel(t, todayStr);
+        const pr = PRIORITY_LABELS[m.priority] || PRIORITY_LABELS[0];
+        const badge = (
+          <span className={`tk-due-badge${m.badge.dashed ? ' is-dashed' : ''}`}>
+            {!isMobile && <AppIcon name={m.badge.icon} size={11.5} />}
+            {isMobile ? m.badge.short : m.badge.text}
+          </span>
+        );
+        return (
+          <div
+            key={t.id}
+            className="tk-dv-ucard"
+            style={{ ...ksStyle(m.k), opacity: ghostOpacity(t) }}
+            draggable={htmlDrag}
+            onDragStart={(e) => taskDragStart(e, t)}
+            {...pressProps(t)}
+            onClick={() => onSelectTask?.(t)}
+          >
+            {isMobile ? (
+              <>
+                <span className="tk-dv-ucard__title">{t.title}</span>
+                {badge}
+                {onRescheduleTask && <AppIcon name="dotsSix" size={16} className="tk-dv-ucard__grip" />}
+              </>
+            ) : (
+              <>
+                <div className="tk-dv-ucard__top">
+                  <AppIcon name="dotsSix" size={14} className="tk-dv-ucard__grip" />
+                  <span className="tk-dv-ucard__title">{t.title}</span>
+                </div>
+                <div className="tk-dv-ucard__chips">
+                  {badge}
+                  {m.hasPriority && (
+                    <span className="tk-pr-chip" style={{ color: pr.color }}>
+                      <AppIcon name={pr.icon} size={12} weight={m.priority === 5 ? 'fill' : 'regular'} />
+                      {pr.label}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+      {!isMobile && unscheduledTasks.length === 0 && <span className="tk-dv-uns__empty">Mọi việc trong ngày đã có giờ.</span>}
+      {isMobile && unscheduledTasks.length > 2 && (
+        <button type="button" className="tk-dv-uns__more" onClick={() => setUnsOpen((o) => !o)}>
+          <AppIcon name={unsOpen ? 'caretUp' : 'caretDown'} size={12} />
+          {unsOpen ? 'Thu gọn' : `Xem thêm ${unscheduledTasks.length - 2} việc`}
+        </button>
+      )}
+    </div>
+  );
 
   return (
-    <div className="cal-day-view" role="region" aria-label="Lịch ngày 24 giờ">
-      {/* Header ngày */}
-      <div className="cal-day-view__header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-          <div className="cal-day-view__date-badge cal-day-view__desktop-only">
-            <span className="cal-day-view__weekday">
-              {targetDate.toLocaleDateString('vi-VN', { weekday: 'long' })}
-            </span>
-            <span className={`cal-day-view__num${isToday ? ' cal-day-view__num--today' : ''}`}>
-              {targetDate.getDate()}
-            </span>
-            <span className="cal-day-view__canchi">Ngày {canChiDay.full}</span>
-          </div>
-
-          {/* Khu vực sự kiện cả ngày: ngày lễ & các việc cả ngày đã làm xong */}
-          {(allDayHolidays.length > 0 || allDayDoneTasks.length > 0) && (
-            <div className="cal-day-view__allday-row">
-              <span className="cal-day-view__allday-label">Cả ngày</span>
-              <div className="cal-day-view__allday-chips">
-                {allDayHolidays.map((h, i) => (
-                  <div key={i} className={`week-cal__holiday-chip week-cal__holiday-chip--${h.type}`}>
-                    {h.title}
-                  </div>
-                ))}
-                {allDayDoneTasks.map((t) => {
-                  const status = getTaskVisualStatus(t, todayStr, nowMinutes);
-                  const p = Math.max(0, Math.min(5, Number(t.priority) || 0));
-                  const statusClass = status === 'done'
-                    ? 'week-cal__chip-allday--done'
-                    : status === 'overdue'
-                    ? 'week-cal__chip-allday--overdue'
-                    : `week-cal__chip-allday--p${p}`;
-                  return (
-                    <div
-                      key={t.id}
-                      className={`week-cal__chip-allday ${statusClass}`}
-                      onClick={() => onSelectTask && onSelectTask(t)}
-                      title={t.title}
-                    >
-                      {status === 'done' ? '✓ ' : status === 'overdue' ? '⚠️ ' : taskDayMark(t, dateStr)}{t.title}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Dải 12 giờ hoàng đạo (Zodiac badges) chuẩn mockup */}
-        <div
-          className="cal-day-view__desktop-only"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            overflowX: 'auto',
-            paddingBottom: '2px',
-          }}
-        >
-          <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--tk-text-mute)', flexShrink: 0 }}>
-            Giờ hoàng đạo:
-          </span>
-          {zodiacHours.map((zh) => (
-            <span
-              key={zh.name}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px',
-                padding: '2px 7px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                flexShrink: 0,
-                background: zh.isHoangDao ? 'var(--tk-ks-today-bg)' : 'var(--tk-border-soft, rgba(255, 255, 255, 0.04))',
-                border: `1px solid ${zh.isHoangDao ? 'var(--tk-ks-today-bd)' : 'var(--tk-border, rgba(255, 255, 255, 0.06))'}`,
-                color: zh.isHoangDao ? 'var(--tk-ks-today-fg)' : 'var(--tk-text-mute)',
-                fontWeight: zh.isHoangDao ? 600 : 400,
-              }}
-              title={`${zh.name} (${zh.range}): ${zh.isHoangDao ? 'Hoàng đạo' : 'Hắc đạo'}`}
-            >
-              <span>{zh.name}</span>
-              <span style={{ fontSize: '9.5px', opacity: 0.75 }}>{zh.range}</span>
+    <div className="tk-dv" role="region" aria-label="Lịch ngày 24 giờ">
+      {isMobile && allDayHolidays.length > 0 && (
+        <div className="tk-dv-mevs">
+          {allDayHolidays.map((h, i) => (
+            <span key={i} className="tk-dv-mev" title={h.title}>
+              <span className="tk-dv-ev__dot" style={{ background: holidayDot(h.type) }} />
+              <span className="tk-dv-mev__t">{h.title}</span>
             </span>
           ))}
         </div>
-      </div>
+      )}
+      {isMobile && unscheduledTasks.length > 0 && unscheduledPanel}
 
-      {/* Khung nội dung 2 cột: Timeline 24h bên trái + Panel Việc chưa xếp giờ bên phải */}
-      <div className="cal-day-view__body">
-        {/* Khung timeline cuộn 24 giờ */}
-        <div className="cal-day-view__scroll-body" ref={scrollRef} style={{ flex: 1 }}>
-          <div className="cal-day-view__grid" style={{ height: `${24 * PX_PER_HOUR}px` }}>
-            {/* Cột nhãn giờ bên trái */}
-            <div className="cal-day-view__time-col">
-              {HOURS.map((h) => (
-                <div key={h} className="cal-day-view__time-label" style={{ top: `${h * PX_PER_HOUR}px` }}>
-                  {h === 0 ? '' : `${String(h).padStart(2, '0')}:00`}
-                </div>
-              ))}
-            </div>
-
-            {/* Canvas chính chứa slot giờ, dải hoàng đạo và các task */}
+      <div className="tk-dv-body">
+        <div className="tk-dv-main">
+          {/* Hàng Cả ngày: ngày lễ + việc cả ngày đã xong; thả việc vào đây để bỏ giờ */}
+          {!isMobile && (
             <div
-              ref={canvasRef}
-              className="cal-day-view__canvas"
-              {...(htmlDrag
-                ? dropZoneProps((id, e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    onRescheduleTask(id, dateStr, slotTimeFromOffset(e.clientY - rect.top, PX_PER_HOUR));
-                  })
-                : {})}
+              className="tk-dv-allday"
+              {...(htmlDrag ? dropZoneProps((id) => onRescheduleTask(id, dateStr, null)) : {})}
             >
-              {/* Dải bóng giờ hoàng đạo (Bands) */}
-              {isToday &&
-                hoangDaoBands.map((bd, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      position: 'absolute',
-                      left: 0,
-                      right: 0,
-                      top: `${bd.start * PX_PER_HOUR}px`,
-                      height: `${(bd.end - bd.start) * PX_PER_HOUR}px`,
-                      background: 'var(--tk-ks-today-tint)',
-                      borderLeft: '2px solid var(--tk-ks-today-bd)',
-                      pointerEvents: 'none',
-                      zIndex: 1,
-                    }}
-                  >
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: '6px',
-                        right: '12px',
-                        fontSize: '11px',
-                        fontWeight: 500,
-                        color: 'var(--tk-ks-today-fg)',
-                        opacity: 0.85,
-                      }}
-                    >
-                      Hoàng đạo · {bd.name}
+              <span className="tk-dv-allday__label">Cả ngày</span>
+              <div className="tk-dv-allday__items">
+                {allDayHolidays.map((h, i) => (
+                  <span key={i} className="tk-dv-ev">
+                    <span className="tk-dv-ev__dot" style={{ background: holidayDot(h.type) }} />
+                    {h.title}
+                  </span>
+                ))}
+                {allDayDoneTasks.map((t) => {
+                  const m = taskCardModel(t, todayStr);
+                  const st = STATUS_META[m.st];
+                  return (
+                    <span key={t.id} className="tk-dv-done" style={ksStyle(m.k)} onClick={() => onSelectTask?.(t)} title={t.title}>
+                      <AppIcon name={st.icon} size={12} weight={st.weight} />
+                      <span className="tk-dv-done__t">{t.title}</span>
                     </span>
-                  </div>
+                  );
+                })}
+                {allDayHolidays.length === 0 && allDayDoneTasks.length === 0 && (
+                  <span className="tk-dv-allday__none">Không có sự kiện cả ngày</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="tk-dv-scroll" ref={scrollRef}>
+            <div className="tk-dv-grid" style={{ height: `${24 * PX_PER_HOUR}px` }}>
+              <div className="tk-dv-hours">
+                {HOURS.slice(1).map((h) => (
+                  <span key={h} style={{ top: `${h * PX_PER_HOUR}px` }}>{hm(h * 60)}</span>
+                ))}
+              </div>
+
+              <div
+                ref={canvasRef}
+                className="tk-dv-canvas"
+                title={isMobile ? undefined : 'Bấm để thêm việc vào giờ này, kéo việc vào để xếp giờ'}
+                onClick={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  const time = slotTimeFromOffset(e.clientY - e.currentTarget.getBoundingClientRect().top, PX_PER_HOUR);
+                  onOpenDay?.(dateStr, e, allDayHolidays.map((h) => h.title), time);
+                }}
+                {...(htmlDrag
+                  ? dropZoneProps((id, e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      onRescheduleTask(id, dateStr, slotTimeFromOffset(e.clientY - rect.top, PX_PER_HOUR));
+                    })
+                  : {})}
+              >
+                {hoangDaoBands.map((b) => (
+                  <span
+                    key={b.start}
+                    className="tk-dv-band"
+                    style={{ top: `${b.start * PX_PER_HOUR}px`, height: `${(b.end - b.start) * PX_PER_HOUR}px` }}
+                  >
+                    {!isMobile && <span className="tk-dv-band__label">Hoàng đạo · {b.names.join(', ')}</span>}
+                  </span>
                 ))}
 
-              {HOURS.map((h) => (
-                <div
-                  key={h}
-                  className="cal-day-view__hour-line"
-                  style={{ top: `${h * PX_PER_HOUR}px`, height: `${PX_PER_HOUR}px` }}
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const clickY = e.clientY - rect.top;
-                    const isBottomHalf = clickY > PX_PER_HOUR / 2;
-                    const timeStr = `${String(h).padStart(2, '0')}:${isBottomHalf ? '30' : '00'}`;
-                    if (onSlotCreate) onSlotCreate(dateStr, timeStr);
-                    else if (onQuickCreate) onQuickCreate(dateStr, timeStr);
-                  }}
-                  title={`Nhấn để tạo công việc lúc ${String(h).padStart(2, '0')}:00`}
-                >
-                  <div className="cal-day-view__half-hour-line" />
-                </div>
-              ))}
-
-              {/* Vạch đỏ thời gian thực */}
-              {isToday && (
-                <div
-                  className="cal-day-view__now-line"
-                  style={{ top: `${(nowMinutes / 60) * PX_PER_HOUR}px` }}
-                >
-                  <div className="cal-day-view__now-dot" />
-                </div>
-              )}
-
-              {touchDrag?.slot && touchDrag.slot !== 'uns' && (
-                <div
-                  className="tk-touch-slot"
-                  style={{ top: `${(Number(touchDrag.slot.slice(0, 2)) * 60 + Number(touchDrag.slot.slice(3))) / 60 * PX_PER_HOUR}px` }}
-                >
-                  {touchDrag.slot}
-                </div>
-              )}
-
-              {/* Các task có giờ */}
-              {timedTasks.map((t) => {
-                const visualStatus = getTaskVisualStatus(t, todayStr, nowMinutes);
-                const p = Math.max(0, Math.min(5, Number(t.priority) || 0));
-                const statusClass = visualStatus === 'done'
-                  ? 'week-cal__event--done'
-                  : visualStatus === 'overdue'
-                  ? 'week-cal__event--overdue'
-                  : `week-cal__event--p${p}`;
-
-                return (
-                  <div
-                    key={t.id}
-                    className={`week-cal__event ${statusClass}${t._layout.kind !== 'block' ? ' week-cal__event--marker' : ''}`}
-                    draggable={visualStatus !== 'done' && htmlDrag}
-                    onDragStart={(e) => taskDragStart(e, t)}
-                    {...(visualStatus !== 'done' ? pressProps(t) : {})}
-                    style={{
-                      opacity: touchDrag?.id === t.id ? 0.35 : 1,
-                      top: `${t._layout.top}px`,
-                      height: `${Math.max(26, t._layout.height)}px`,
-                      left: t._layout.left,
-                      width: t._layout.width,
-                      zIndex: 3,
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onSelectTask) onSelectTask(t);
-                    }}
-                    title={`${t.title} (${t._layout.timeRangeLabel})`}
-                  >
-                    <div className="week-cal__event-title">
-                      {visualStatus === 'done' ? '✓ ' : visualStatus === 'overdue' ? '⚠️ ' : MARKER_ICON[t._layout.kind] || ''}{t.title}
+                {timedTasks.map((t) => {
+                  const m = taskCardModel(t, todayStr);
+                  const st = STATUS_META[m.st];
+                  const pr = PRIORITY_LABELS[m.priority] || PRIORITY_LABELS[0];
+                  const L = t._layout;
+                  const tall = L.height >= 44;
+                  const time = L.kind === 'block' ? `${hm(L.startMinutes)}–${hm(L.endMinutes)}` : `${L.kind === 'start' ? '▶ ' : ''}${hm(L.startMinutes)}`;
+                  return (
+                    <div
+                      key={t.id}
+                      className={`tk-dv-block${tall ? '' : ' is-short'}`}
+                      draggable={!m.done && htmlDrag}
+                      onDragStart={(e) => taskDragStart(e, t)}
+                      {...(!m.done ? pressProps(t) : {})}
+                      style={{
+                        ...ksStyle(m.k),
+                        top: `${L.top}px`,
+                        height: `${L.height}px`,
+                        left: L.left,
+                        width: `calc(${L.width} - 4px)`,
+                        opacity: ghostOpacity(t),
+                      }}
+                      onClick={() => onSelectTask?.(t)}
+                      title={`${t.title} (${L.timeRangeLabel})`}
+                    >
+                      <div className="tk-dv-block__row">
+                        <span className="tk-dv-block__time">{time}</span>
+                        <span className={`tk-dv-block__title${m.done ? ' is-done' : ''}`}>{t.title}</span>
+                      </div>
+                      {tall && !isMobile && (
+                        <div className="tk-dv-block__meta">
+                          <span style={{ color: st.color }}>
+                            <AppIcon name={st.icon} size={12} weight={st.weight} />
+                            {st.label}
+                          </span>
+                          {m.hasPriority && (
+                            <span style={{ color: pr.color }}>
+                              <AppIcon name={pr.icon} size={12} weight={m.priority === 5 ? 'fill' : 'regular'} />
+                              {pr.label}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {t._layout.height >= 34 && (
-                      <div className="week-cal__event-time">{t._layout.timeRangeLabel}</div>
-                    )}
+                  );
+                })}
+
+                {touchDrag?.slot && touchDrag.slot !== 'uns' && (
+                  <div
+                    className="tk-touch-slot"
+                    style={{ top: `${(Number(touchDrag.slot.slice(0, 2)) * 60 + Number(touchDrag.slot.slice(3))) / 60 * PX_PER_HOUR}px` }}
+                  >
+                    {touchDrag.slot}
                   </div>
-                );
-              })}
+                )}
+
+                {isToday && <span className="tk-dv-now" style={{ top: `${(nowMinutes / 60) * PX_PER_HOUR}px` }} />}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Panel Việc Chưa Xếp Giờ bên phải */}
-        {(
-          <div
-            ref={unsRef}
-            className={`cal-day-view__unscheduled-panel${touchDrag?.slot === 'uns' ? ' is-drop-over' : ''}`}
-            {...(htmlDrag ? dropZoneProps((id) => onRescheduleTask(id, dateStr, null)) : {})}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span
-                style={{
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  letterSpacing: '0.08em',
-                  color: 'var(--tk-text-mute, #8A93AD)',
-                }}
-              >
-                CHƯA XẾP GIỜ
-              </span>
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  background: 'var(--tk-border-soft, rgba(255,255,255,0.08))',
-                  padding: '1px 7px',
-                  borderRadius: '10px',
-                  color: 'var(--tk-text-sub, #AEB6CC)',
-                }}
-              >
-                {unscheduledTasks.length}
-              </span>
-              {onRescheduleTask && (
-                <span className="cal-day-view__uns-hint">
-                  <AppIcon name="dotsSix" size={13} />
-                  {isMobile ? 'Giữ rồi kéo vào giờ' : 'Kéo vào lưới giờ'}
-                </span>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {shownUnscheduled.map((t) => {
-                const isLate = t.due_date && t.due_date < todayStr && !t.completed && t.status !== 'skip';
-                return (
-                  <div
-                    key={t.id}
-                    draggable={htmlDrag}
-                    onDragStart={(e) => taskDragStart(e, t)}
-                    {...pressProps(t)}
-                    onClick={() => onSelectTask?.(t)}
-                    className="cal-day-view__uns-item"
-                    style={{
-                      opacity: touchDrag?.id === t.id ? 0.35 : 1,
-                      position: 'relative',
-                      padding: '8px 10px 8px 12px',
-                      borderRadius: '10px',
-                      background: isLate ? 'var(--tk-ks-late-tint)' : 'var(--tk-card-bg, rgba(255,255,255,0.03))',
-                      border: `1px solid ${isLate ? 'var(--tk-ks-late-bd)' : 'var(--tk-border, rgba(255,255,255,0.07))'}`,
-                      cursor: 'pointer',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                      transition: 'all 0.15s ease',
-                    }}
+        {!isMobile && (
+          <aside className="tk-dv-side">
+            {unscheduledPanel}
+            <div className="tk-dv-hd">
+              <div className="tk-dv-hd__head">
+                <span className="tk-dv-cap">GIỜ HOÀNG ĐẠO</span>
+                <span className="tk-dv-hd__n">{zodiacHours.filter((zh) => zh.isHoangDao).length} giờ tốt</span>
+              </div>
+              <div className="tk-dv-hd__grid">
+                {zodiacHours.map((zh) => (
+                  <span
+                    key={zh.name}
+                    className={`tk-dv-hd__cell${zh.isHoangDao ? ' is-good' : ''}${zh.isNow ? ' is-now' : ''}`}
+                    title={`Giờ ${zh.name} ${zh.range} · ${zh.isHoangDao ? 'hoàng đạo' : 'hắc đạo'}`}
                   >
-                    <span
-                      style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: '2.5px',
-                        background: isLate ? 'var(--tk-ks-late-fg)' : (PRIORITY_LABELS[t.priority]?.color && t.priority > 0 ? PRIORITY_LABELS[t.priority].color : 'var(--tk-st-todo)'),
-                      }}
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                      <div
-                        style={{
-                          fontSize: '12.5px',
-                          fontWeight: 600,
-                          color: isLate ? 'var(--tk-ks-late-fg)' : 'var(--tk-text-main, #E8ECF7)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          flex: 1,
-                        }}
-                      >
-                        {t.title}
-                      </div>
-                      {isLate && (
-                        <span
-                          style={{
-                            fontSize: '10px',
-                            fontWeight: 600,
-                            padding: '1px 5px',
-                            borderRadius: '4px',
-                            background: 'var(--tk-ks-late-bg)',
-                            color: 'var(--tk-ks-late-fg)',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {isMobile ? `${Number(t.due_date.slice(8, 10))}/${Number(t.due_date.slice(5, 7))}` : 'Quá hạn'}
-                        </span>
-                      )}
-                      {isMobile && onRescheduleTask && (
-                        <AppIcon name="dotsSix" size={16} style={{ color: 'var(--tk-text-mute)', flex: 'none' }} />
-                      )}
-                    </div>
-                    {t.description && !isMobile && (
-                      <div
-                        style={{
-                          fontSize: '11px',
-                          color: 'var(--tk-text-sub, #8A93AD)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {t.description}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                    <span className="tk-dv-hd__name">{zh.name}</span>
+                    <span className="tk-dv-hd__range">{zh.range}</span>
+                  </span>
+                ))}
+              </div>
+              <span className="tk-dv-hd__note">Giờ tốt cũng được tô nhạt trên lịch bên trái.</span>
             </div>
-
-            {isMobile && unscheduledTasks.length > 2 && (
-              <button type="button" className="cal-day-view__uns-more" onClick={() => setUnsOpen((o) => !o)}>
-                <AppIcon name={unsOpen ? 'caretUp' : 'caretDown'} size={12} />
-                {unsOpen ? 'Thu gọn' : `Xem thêm ${unscheduledTasks.length - 2} việc`}
-              </button>
-            )}
-          </div>
+          </aside>
         )}
       </div>
     </div>

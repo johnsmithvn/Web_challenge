@@ -122,8 +122,8 @@ console.log('optimistic updates and XP deduction contract: OK');
 // Kanban tích hợp tìm kiếm thông minh và bộ đếm 4 pills
 assert.match(kanbanSrc, /matchTaskSearch/,
   'TaskKanbanView phải dùng matchTaskSearch để tìm kiếm theo tiêu đề, nhãn, việc con');
-assert.match(kanbanSrc, /calculateKanbanCounts/,
-  'TaskKanbanView phải tính số đếm 4 pills thời gian độc lập qua calculateKanbanCounts');
+assert.match(pageSrc, /calculateKanbanCounts/,
+  'TasksPage phải tính số đếm 4 bộ lọc thời gian (dùng chung Danh sách & Kanban) qua calculateKanbanCounts');
 assert.match(kanbanSrc, /timeFilter === 'late'\) return \[\]/,
   'Khi lọc Quá hạn, cột Hoàn thành không được chứa task hoàn thành cũ');
 console.log('kanban search, realtime filter counts and late filter contract: OK');

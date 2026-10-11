@@ -150,6 +150,15 @@ export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const moreRef = useRef(null);
 
+  // Thu gọn sidebar thành rail icon 64px (mockup Nhiệm vụ); nhớ lựa chọn giữa các lần mở.
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('lh_sidebar_collapsed') === 'true'; } catch { return false; }
+  });
+  useEffect(() => {
+    document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+    try { localStorage.setItem('lh_sidebar_collapsed', String(collapsed)); } catch { /* bỏ qua */ }
+  }, [collapsed]);
+
   // Auto-open AuthModal in password recovery mode when redirected from recovery email
   useEffect(() => {
     if (isRecoveringPassword) {
@@ -178,17 +187,29 @@ export default function Navbar() {
   return (
     <>
       {/* ── DESKTOP SIDEBAR (≥769px) ─────────────────────────── */}
-      <aside className="sidebar">
-        <Link to="/" className="sidebar__logo">
-          <span className="sidebar__logo-icon"><AppIcon name="sparkle" size={21} weight="fill" /></span>
+      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
+        <Link to="/" className="sidebar__logo" title="Life Hub">
+          <span className="sidebar__logo-icon"><AppIcon name="sparkle" size={collapsed ? 18 : 21} weight="fill" /></span>
           <span className="sidebar__logo-text">Life Hub</span>
         </Link>
+
+        <button
+          type="button"
+          className="sidebar__collapse-btn"
+          onClick={() => setCollapsed((c) => !c)}
+          title={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
+          aria-label={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
+          aria-expanded={!collapsed}
+        >
+          <AppIcon name={collapsed ? 'caretRight' : 'caretLeft'} size={12} weight="bold" />
+        </button>
 
         <nav className="sidebar__nav">
           <div className="sidebar__section-label">Chính</div>
           {PRIMARY_NAV.map(link => link.to === '/finance' ? (
             <div className={`sidebar__nav-group${financeOpen ? ' sidebar__nav-group--open' : ''}`} key={link.to}>
               <button type="button" className={`sidebar__link${isActive('/finance') ? ' sidebar__link--active' : ''}`}
+                title={collapsed ? link.label : undefined}
                 aria-expanded={financeOpen} aria-controls="finance-sidebar-children"
                 onClick={() => {
                   if (!isActive('/finance')) navigate('/finance/overview');
@@ -213,7 +234,7 @@ export default function Navbar() {
               </div>
             </div>
           ) : (
-            <Link key={link.to} to={link.to}
+            <Link key={link.to} to={link.to} title={collapsed ? link.label : undefined}
               className={`sidebar__link${isActive(link.to) ? ' sidebar__link--active' : ''}`}>
               <span className="sidebar__link-icon"><AppIcon name={link.icon} size={19} weight={isActive(link.to) ? 'fill' : 'regular'} /></span>
               <span className="sidebar__link-label">{link.label}</span>
@@ -226,6 +247,7 @@ export default function Navbar() {
             <Link
               key={link.to}
               to={link.to}
+              title={collapsed ? link.label : undefined}
               className={`sidebar__link sidebar__link--secondary${isActive(link.to) ? ' sidebar__link--active' : ''}`}
             >
               <span className="sidebar__link-icon"><AppIcon name={link.icon} size={18} weight={isActive(link.to) ? 'fill' : 'regular'} /></span>
@@ -246,7 +268,7 @@ export default function Navbar() {
               onClick={() => setShowAuth(true)}
               id="navbar-login"
             >
-              <AppIcon name="key" size={16} /> Đăng Nhập
+              <AppIcon name="key" size={16} /> <span className="sidebar__login-label">Đăng Nhập</span>
             </button>
           )}
 

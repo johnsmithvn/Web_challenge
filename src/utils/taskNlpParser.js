@@ -31,13 +31,14 @@ export const PRIORITY_MAP = {
   '5': 1,
 };
 
+// Nhãn/icon theo mockup (Thấp · Vừa · Cao · Khẩn, icon cột sóng); màu là token --tk-pr-* để tự đổi theo theme.
 export const PRIORITY_LABELS = {
-  5: { label: 'Khẩn cấp', icon: 'fire', color: '#EF4444' },
-  4: { label: 'Ưu tiên cao', icon: 'arrowUp', color: '#F97316' },
-  3: { label: 'Ưu tiên vừa', icon: 'arrowRight', color: '#EAB308' },
-  2: { label: 'Ưu tiên thấp', icon: 'arrowDown', color: '#3B82F6' },
-  1: { label: 'Rất thấp', icon: 'arrowDown', color: '#94A3B8' },
-  0: { label: 'Không ưu tiên', icon: 'minus', color: 'var(--tk-text-mute, #8A93AD)' },
+  5: { label: 'Khẩn', icon: 'fire', color: 'var(--tk-pr-5)' },
+  4: { label: 'Cao', icon: 'signalHigh', color: 'var(--tk-pr-4)' },
+  3: { label: 'Vừa', icon: 'signalMedium', color: 'var(--tk-pr-3)' },
+  2: { label: 'Thấp', icon: 'signalLow', color: 'var(--tk-pr-2)' },
+  1: { label: 'Rất thấp', icon: 'signalLow', color: 'var(--tk-pr-1)' },
+  0: { label: 'Không', icon: 'dots', color: 'var(--tk-pr-0)' },
 };
 
 /**
@@ -154,7 +155,7 @@ export function parseTaskQuickText(raw, baseDateStr = toDateStr()) {
   const chips = [];
   if (due) {
     chips.push({
-      ic: 'ph ph-calendar-blank',
+      ic: 'calendar',
       n: formatFriendlyDate(due, baseDateStr) + (tm ? ' · ' + tm : ''),
     });
   }
@@ -166,7 +167,7 @@ export function parseTaskQuickText(raw, baseDateStr = toDateStr()) {
   }
   tags.forEach((tag) => {
     chips.push({
-      ic: 'ph ph-hash',
+      ic: 'hash',
       n: tag,
     });
   });

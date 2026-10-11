@@ -177,4 +177,50 @@ assert.equal(countsRecent.all, 8, '5 pending + 1 skip + 2 xong trong 30 ngày');
 assert.equal(countsRecent.today, 2, 'việc xong tuần trước không tính vào Hôm nay');
 console.log('calculateKanbanCounts 4 pills realtime count: OK');
 
+/* ── 8. Mô hình thẻ việc (taskCardModel) ─────────────────────────────── */
+{
+  const { dueDayLabel, taskCardModel, statusKeyOf } = await import('../../utils/kanbanUtils.js');
+  const T = '2026-10-10'; // Thứ Bảy
+  assert.equal(dueDayLabel('2026-10-10', T), 'Hôm nay');
+  assert.equal(dueDayLabel('2026-10-11', T), 'Ngày mai');
+  assert.equal(dueDayLabel('2026-10-09', T), 'Hôm qua');
+  assert.equal(dueDayLabel('2026-10-12', T), 'T2 12/10');
+  assert.equal(dueDayLabel('2026-10-17', T), '17 thg 10', '7 ngày trở lên → dạng "d thg m"');
+  assert.equal(dueDayLabel('2026-09-13', T), '13 thg 9');
+
+  const late = taskCardModel({ id: 1, status: 'todo', due_date: '2026-09-15', due_time: '09:00:00', priority: 4 }, T);
+  assert.equal(late.k, 'late');
+  assert.equal(late.late, 'trễ 25 ngày');
+  assert.equal(late.badge.text, 'Quá hạn · 15 thg 9, 09:00');
+  assert.equal(late.badge.short, '15 thg 9, 09:00');
+  assert.equal(late.hasPriority, true);
+
+  const today = taskCardModel({ id: 2, status: 'doing', due_date: T, due_time: '21:00', started_at: '2026-10-09T12:05:00' }, T);
+  assert.equal(today.k, 'today');
+  assert.equal(today.badge.text, 'Hôm nay · 21:00');
+  assert.equal(today.run.icon, 'play');
+  assert.match(today.run.text, /^từ 9\/10 \d\d:05$/);
+  assert.equal(today.canSetPriority, true);
+
+  const none = taskCardModel({ id: 3, status: 'todo' }, T);
+  assert.equal(none.k, 'none');
+  assert.equal(none.badge.text, 'Đặt hạn');
+  assert.equal(none.badge.dashed, true);
+
+  const done = taskCardModel({ id: 4, completed: true, status: 'done', priority: 5, completed_at: '2026-10-08T10:00:00', started_at: '2026-10-08T08:30:00' }, T);
+  assert.equal(done.k, 'done');
+  assert.equal(done.hasPriority, false, 'việc xong không hiện ưu tiên');
+  assert.equal(done.run.text, '1g 30p');
+
+  const skip = taskCardModel({ id: 5, status: 'skip', due_date: '2026-09-20' }, T);
+  assert.equal(skip.k, 'skip');
+  assert.equal(skip.badge.text, 'Bỏ qua · 20 thg 9');
+  assert.equal(skip.canSetPriority, false);
+
+  assert.equal(statusKeyOf({ status: 'completed' }), 'done');
+  assert.equal(statusKeyOf({ status: 'doing' }), 'doing');
+  assert.equal(statusKeyOf({}), 'todo');
+  console.log('taskCardModel badge/late/run/priority: OK');
+}
+
 console.log('\n✅ kanbanLogic — logic thật của Kanban PASS');
