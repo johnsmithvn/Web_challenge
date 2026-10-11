@@ -9,6 +9,7 @@ import TaskCreateModal from '../components/TaskCreateModal';
 import TaskFilterBar from '../components/TaskFilterBar';
 import TaskTodayStrip from '../components/TaskTodayStrip';
 import TaskQuickAdd from '../components/TaskQuickAdd';
+import TaskSkyBackground from '../components/TaskSkyBackground';
 import { TaskDayPopover } from '../components/TaskFloatingPopovers';
 import CalendarNavHead, { TaskViewSwitcher, MobileViewMenu } from '../components/CalendarToolbar';
 import AppIcon from '../components/AppIcon';
@@ -407,22 +408,7 @@ export default function TasksPage() {
         selectedTask ? 'has-peek' : '',
       ].filter(Boolean).join(' ')}
     >
-      {/* Nền vũ trụ aurora (tối) / aurora pastel (sáng) */}
-      <div className="task-cosmos-bg" aria-hidden="true">
-        <div className="task-aurora-glow" />
-        <div className="task-stars-layer-1" />
-        <div className="task-stars-layer-2" />
-        <div className="task-shooting-star task-shooting-star--1" />
-        <div className="task-shooting-star task-shooting-star--2" />
-        <div className="task-shooting-star task-shooting-star--3" />
-        <div className="task-shooting-star task-shooting-star--4" />
-        <div className="task-comet-wrapper">
-          <span className="task-comet-tail-1" />
-          <span className="task-comet-tail-2" />
-          <span className="task-comet-head" />
-        </div>
-        <div className="task-planet-horizon" />
-      </div>
+      <TaskSkyBackground isMobile={isMobile} />
 
       {/* ── Header desktop ── */}
       <header className="tk-header tk-desktop-only">

@@ -12,8 +12,9 @@
 }
 
 @keyframes taskAuroraC {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  100% { transform: translate3d(-6%, 4%, 0) scale(1.08); }
+  0% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+  50% { transform: translate3d(-5%, 4%, 0) scale(1.1) rotate(2deg); }
+  100% { transform: translate3d(4%, -3%, 0) scale(1.05) rotate(-2deg); }
 }
 
 @keyframes taskTwinkle {
@@ -34,6 +35,67 @@
   38% { opacity: 1; }
   44% { transform: translate3d(-1750px, 310px, 0); opacity: 0; }
   100% { transform: translate3d(-1750px, 310px, 0); opacity: 0; }
+}
+
+@keyframes taskCometM {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  3% { opacity: 1; }
+  20% { opacity: 1; }
+  24% { transform: translate3d(-720px, 180px, 0); opacity: 0; }
+  100% { transform: translate3d(-720px, 180px, 0); opacity: 0; }
+}
+
+@keyframes taskTwinkleB {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@keyframes taskStarPulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.8) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.1) rotate(10deg); }
+}
+
+@keyframes taskConsShow {
+  0% { opacity: 0; }
+  3% { opacity: 1; }
+  11% { opacity: 1; }
+  14% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@keyframes taskConsLine {
+  0% { stroke-dashoffset: 1; }
+  2% { stroke-dashoffset: 1; }
+  6% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes taskRibbon {
+  0% { transform: translate3d(-4%, 0, 0) scaleY(1); }
+  50% { transform: translate3d(2%, -4%, 0) scaleY(1.12); }
+  100% { transform: translate3d(5%, 2%, 0) scaleY(0.94); }
+}
+
+@keyframes taskSunBreath {
+  0% { transform: scale(1); opacity: 0.85; }
+  100% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes taskSunRise {
+  0% { transform: translate3d(0, 36px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes taskDrift {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(var(--dx), 0, 0); }
+}
+
+@keyframes taskFloatUp {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  15% { opacity: 0.85; }
+  80% { opacity: 0.85; }
+  100% { transform: translate3d(var(--dx), var(--dy), 0); opacity: 0; }
 }
 
 @keyframes tkSheetUp {
@@ -265,7 +327,7 @@
 
   background: radial-gradient(45% 40% at 0% 100%, rgba(139, 92, 246, 0.18), transparent 70%),
               radial-gradient(40% 35% at 100% 85%, rgba(34, 211, 238, 0.10), transparent 70%),
-              #060914;
+              linear-gradient(180deg, #0C1634 0%, #080E24 38%, #060914 100%);
 }
 
 /* ── TOKEN BẢN SÁNG (2b) ── */
@@ -461,7 +523,7 @@
   background: #F4F2FF;
 }
 
-/* ── NỀN VŨ TRỤ (tối) / AURORA PASTEL (sáng) ── */
+/* ── NỀN TRỜI (TaskSkyBackground.jsx) — tối: vũ trụ aurora · sáng: bình minh / hoàng hôn ── */
 .task-cosmos-bg {
   position: absolute;
   inset: 0;
@@ -470,8 +532,12 @@
   z-index: 0;
 }
 
-.task-aurora-glow {
+.task-cosmos-bg > * {
   position: absolute;
+  pointer-events: none;
+}
+
+.task-aurora-glow {
   left: -12%;
   right: -12%;
   top: -32%;
@@ -484,73 +550,112 @@
   will-change: transform;
 }
 
+/* Sáng: trời bình minh (mặc định) / hoàng hôn (.is-dusk, từ 12h) */
 [data-theme="light"] .task-aurora-glow {
-  left: -15%;
-  right: -15%;
-  top: -15%;
-  height: 130%;
-  background: radial-gradient(40% 45% at 12% 8%, rgba(167, 243, 208, 0.85), transparent 70%),
-              radial-gradient(38% 45% at 50% 0%, rgba(196, 181, 253, 0.75), transparent 70%),
-              radial-gradient(40% 50% at 92% 12%, rgba(251, 207, 232, 0.9), transparent 70%),
-              radial-gradient(45% 50% at 75% 95%, rgba(186, 230, 253, 0.75), transparent 70%),
-              radial-gradient(40% 45% at 10% 90%, rgba(254, 215, 170, 0.55), transparent 70%);
+  inset: -15%;
+  height: auto;
+  background: radial-gradient(45% 40% at 12% 0%, rgba(199, 210, 254, 0.6), transparent 70%),
+              radial-gradient(40% 40% at 62% 4%, rgba(221, 214, 254, 0.55), transparent 70%),
+              radial-gradient(45% 45% at 92% 30%, rgba(251, 207, 232, 0.45), transparent 70%),
+              radial-gradient(60% 42% at 30% 100%, rgba(254, 205, 170, 0.6), transparent 70%),
+              radial-gradient(42% 38% at 88% 92%, rgba(251, 207, 232, 0.5), transparent 70%);
   filter: blur(10px);
-  animation: taskAuroraC 26s ease-in-out infinite alternate;
+  animation: taskAuroraC 20s ease-in-out infinite alternate;
 }
 
-/* Đường chân trời hành tinh: cách đáy 165px như khung 900px của mockup */
-.task-planet-horizon {
-  position: absolute;
-  left: -12%;
-  right: -12%;
-  top: calc(100% - 165px);
-  height: 900px;
-  border-radius: 50%;
-  pointer-events: none;
-  background: radial-gradient(55% 30% at 50% 0%, rgba(94, 242, 194, 0.12), transparent 70%),
-              linear-gradient(180deg, rgba(12, 22, 40, 0.9), #060914 40%);
-  box-shadow: 0 -1px 0 rgba(140, 255, 225, 0.35),
-              0 -24px 90px -10px rgba(94, 242, 194, 0.25),
-              0 -60px 160px -40px rgba(139, 92, 246, 0.3);
+[data-theme="light"] .is-dusk .task-aurora-glow {
+  background: radial-gradient(45% 40% at 15% 0%, rgba(216, 180, 254, 0.55), transparent 70%),
+              radial-gradient(40% 40% at 65% 4%, rgba(196, 181, 253, 0.5), transparent 70%),
+              radial-gradient(45% 45% at 92% 35%, rgba(251, 164, 175, 0.45), transparent 70%),
+              radial-gradient(60% 42% at 70% 100%, rgba(253, 186, 116, 0.55), transparent 70%),
+              radial-gradient(42% 38% at 12% 92%, rgba(244, 114, 182, 0.4), transparent 70%);
 }
 
-.task-stars-layer-1,
-.task-stars-layer-2 {
-  position: absolute;
+/* Dải Ngân Hà chéo + bụi sao trong dải */
+.task-milkyway {
+  left: -240px;
+  top: -70px;
+  width: 1960px;
+  height: 300px;
+  transform: rotate(-12deg);
+  background: radial-gradient(50% 50% at 50% 50%, rgba(190, 205, 255, 0.17), rgba(170, 190, 240, 0.06) 50%, transparent 75%),
+              radial-gradient(30% 40% at 34% 55%, rgba(200, 180, 255, 0.13), transparent 70%),
+              radial-gradient(25% 35% at 70% 45%, rgba(140, 240, 215, 0.1), transparent 70%);
+  filter: blur(14px);
+}
+
+.task-milkyway--dust {
+  background: none;
+  filter: none;
+  background-image: radial-gradient(1px 1px at 8px 10px, #fff, transparent),
+                    radial-gradient(1px 1px at 30px 34px, rgba(220, 230, 255, 0.9), transparent),
+                    radial-gradient(1px 1px at 52px 18px, #fff, transparent),
+                    radial-gradient(1px 1px at 20px 44px, rgba(255, 240, 220, 0.9), transparent),
+                    radial-gradient(1px 1px at 62px 40px, #fff, transparent);
+  background-size: 70px 50px;
+  -webkit-mask-image: radial-gradient(50% 42% at 50% 50%, #000, transparent);
+  mask-image: radial-gradient(50% 42% at 50% 50%, #000, transparent);
+  animation: taskTwinkleB 9s ease-in-out infinite;
+}
+
+/* 4 lớp sao, mờ dần về phía dưới */
+.task-stars {
   inset: 0;
-  opacity: 0.5;
-  -webkit-mask-image: linear-gradient(to bottom, #000, transparent 82%);
-  mask-image: linear-gradient(to bottom, #000, transparent 82%);
-  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent var(--fade));
+  mask-image: linear-gradient(to bottom, #000, transparent var(--fade));
+  animation: taskTwinkleB 7s ease-in-out infinite;
 }
 
-.task-stars-layer-1 {
-  background-image: radial-gradient(1px 1px at 12px 18px, #fff, transparent),
-                    radial-gradient(1px 1px at 86px 64px, rgba(255, 255, 255, 0.8), transparent),
-                    radial-gradient(1.5px 1.5px at 150px 30px, rgba(190, 255, 240, 0.95), transparent),
+.task-stars--0 {
+  --fade: 72%;
+  background-image: radial-gradient(1px 1px at 10px 14px, #fff, transparent),
+                    radial-gradient(1px 1px at 46px 60px, rgba(220, 230, 255, 0.9), transparent),
+                    radial-gradient(1px 1px at 88px 22px, #fff, transparent),
+                    radial-gradient(1px 1px at 112px 78px, rgba(255, 245, 220, 0.9), transparent),
+                    radial-gradient(1px 1px at 70px 90px, #fff, transparent),
+                    radial-gradient(1px 1px at 28px 44px, rgba(200, 255, 235, 0.8), transparent);
+  background-size: 130px 96px;
+}
+
+.task-stars--1 {
+  --fade: 80%;
+  background-image: radial-gradient(1.5px 1.5px at 12px 18px, #fff, transparent),
+                    radial-gradient(1px 1px at 86px 64px, #fff, transparent),
+                    radial-gradient(1.5px 1.5px at 150px 30px, rgba(190, 255, 240, 1), transparent),
                     radial-gradient(1px 1px at 210px 122px, #fff, transparent),
-                    radial-gradient(1px 1px at 40px 150px, rgba(255, 255, 255, 0.6), transparent);
+                    radial-gradient(1.5px 1.5px at 40px 150px, rgba(255, 240, 210, 0.95), transparent);
   background-size: 240px 180px;
-  animation: taskTwinkle 4.5s ease-in-out infinite;
+  animation-duration: 4.5s;
+  animation-delay: -1s;
 }
 
-.task-stars-layer-2 {
-  background-image: radial-gradient(1.5px 1.5px at 60px 40px, rgba(200, 190, 255, 0.95), transparent),
-                    radial-gradient(1px 1px at 170px 110px, #fff, transparent),
-                    radial-gradient(1px 1px at 280px 20px, rgba(255, 255, 255, 0.8), transparent),
-                    radial-gradient(2px 2px at 330px 150px, rgba(167, 255, 235, 0.9), transparent);
+.task-stars--2 {
+  --fade: 85%;
+  background-image: radial-gradient(2px 2px at 60px 40px, rgba(210, 200, 255, 1), transparent),
+                    radial-gradient(1.5px 1.5px at 170px 110px, #fff, transparent),
+                    radial-gradient(1.5px 1.5px at 280px 20px, #fff, transparent),
+                    radial-gradient(2px 2px at 330px 150px, rgba(167, 255, 235, 1), transparent);
   background-size: 360px 220px;
-  animation: taskTwinkle 6.5s ease-in-out 2s infinite;
+  animation-duration: 6.5s;
+  animation-delay: -3s;
+}
+
+.task-stars--3 {
+  --fade: 70%;
+  background-image: radial-gradient(2.5px 2.5px at 90px 60px, #fff, transparent),
+                    radial-gradient(2px 2px at 400px 200px, rgba(255, 236, 200, 1), transparent),
+                    radial-gradient(2.5px 2.5px at 260px 120px, rgba(200, 215, 255, 1), transparent);
+  background-size: 520px 300px;
+  animation-duration: 5.5s;
+  animation-delay: -2s;
 }
 
 .task-shooting-star {
-  position: absolute;
   height: 1.5px;
   border-radius: 1px;
   opacity: 0;
   transform-origin: 0 50%;
   background: linear-gradient(90deg, #fff, rgba(167, 255, 235, 0.65) 22%, rgba(167, 139, 250, 0.25) 60%, transparent);
-  pointer-events: none;
 }
 
 .task-shooting-star::after {
@@ -565,20 +670,13 @@
   box-shadow: 0 0 10px 3px rgba(190, 255, 240, 0.9);
 }
 
-.task-shooting-star--1 { top: 70px; left: 75%; width: 170px; animation: taskShoot 9s linear 1s infinite; }
-.task-shooting-star--2 { top: 24px; left: 55%; width: 130px; animation: taskShoot 13s linear 5.5s infinite; }
-.task-shooting-star--3 { top: 150px; left: 85%; width: 210px; animation: taskShoot 17s linear 9s infinite; }
-.task-shooting-star--4 { top: 10px; left: 35%; width: 150px; animation: taskShoot 23s linear 14s infinite; }
-
 .task-comet-wrapper {
-  position: absolute;
   top: 22px;
-  left: 95%;
+  left: 104%;
   width: 0;
   height: 0;
   opacity: 0;
   animation: taskComet 32s linear 3s infinite;
-  pointer-events: none;
 }
 
 .task-comet-tail-1 {
@@ -618,12 +716,189 @@
   box-shadow: 0 0 14px 5px rgba(190, 255, 240, 0.85), 0 0 46px 14px rgba(94, 242, 194, 0.35);
 }
 
-[data-theme="light"] .task-stars-layer-1,
-[data-theme="light"] .task-stars-layer-2,
-[data-theme="light"] .task-shooting-star,
-[data-theme="light"] .task-comet-wrapper,
-[data-theme="light"] .task-planet-horizon {
-  display: none;
+/* Trăng theo âm lịch hôm nay (pha cắt bằng clip-path trong JSX) */
+.task-moon-halo {
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  filter: blur(10px);
+  animation: taskAuroraC 18s ease-in-out infinite alternate;
+}
+
+.task-moon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(170, 190, 230, 0.08), rgba(170, 190, 230, 0.03) 70%, transparent 72%);
+  box-shadow: inset 0 0 0 1px rgba(200, 215, 245, 0.12);
+}
+
+.task-moon__disc {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 62%, rgba(150, 160, 180, 0.32) 0, rgba(150, 160, 180, 0.32) 7%, transparent 12%),
+              radial-gradient(circle at 62% 30%, rgba(150, 160, 180, 0.26) 0, rgba(150, 160, 180, 0.26) 9%, transparent 14%),
+              radial-gradient(circle at 56% 70%, rgba(150, 160, 180, 0.22) 0, rgba(150, 160, 180, 0.22) 6%, transparent 10%),
+              radial-gradient(circle at 40% 38%, #FDFCF5, #E9EAF0 62%, #CDD2E0);
+}
+
+.task-moon-label {
+  white-space: nowrap;
+  font: 500 12px/1.2 'Space Grotesk', sans-serif;
+  letter-spacing: 0.02em;
+  color: rgba(214, 222, 240, 0.72);
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Sao sáng 4 cánh */
+.task-bright-star {
+  background: radial-gradient(circle, #fff 0, #fff 1.2px, rgba(210, 225, 255, 0.6) 2.5px, transparent 5px),
+              linear-gradient(90deg, transparent, rgba(215, 228, 255, 0.85), transparent) 50% 50% / 100% 1px no-repeat,
+              linear-gradient(0deg, transparent, rgba(215, 228, 255, 0.85), transparent) 50% 50% / 1px 100% no-repeat;
+  filter: drop-shadow(0 0 4px rgba(200, 220, 255, 0.9));
+  animation: taskStarPulse 5s ease-in-out infinite;
+}
+
+/* Chòm sao: mỗi chòm hiện ~15s trong chu kỳ 150s, lệch nhau 25s; nét nối vẽ dần */
+.task-cons {
+  left: 800px;
+  top: 6px;
+  transform-origin: 0 0;
+  opacity: 0;
+  animation: taskConsShow 150s ease-in-out infinite;
+}
+
+.task-cons svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+
+.task-cons path {
+  fill: none;
+  stroke: rgba(190, 210, 255, 0.45);
+  stroke-width: 1;
+  stroke-dasharray: 1;
+  animation: taskConsLine 150s linear infinite;
+}
+
+.task-cons circle {
+  fill: #fff;
+  filter: drop-shadow(0 0 3px rgba(200, 220, 255, 0.95));
+}
+
+.task-cons__name {
+  position: absolute;
+  font: 500 11px/1 'Space Grotesk', sans-serif;
+  letter-spacing: 0.06em;
+  color: rgba(200, 212, 245, 0.78);
+  white-space: nowrap;
+}
+
+/* Đường chân trời hành tinh: cách đáy 165px như khung 900px của mockup */
+.task-planet-horizon {
+  left: -12%;
+  right: -12%;
+  top: calc(100% - 165px);
+  height: 900px;
+  border-radius: 50%;
+  background: radial-gradient(55% 30% at 50% 0%, rgba(94, 242, 194, 0.12), transparent 70%),
+              linear-gradient(180deg, rgba(12, 22, 40, 0.9), #060914 40%);
+  box-shadow: 0 -1px 0 rgba(140, 255, 225, 0.35),
+              0 -24px 90px -10px rgba(94, 242, 194, 0.25),
+              0 -60px 160px -40px rgba(139, 92, 246, 0.3);
+}
+
+/* ── Sáng: dải nắng đáy, dải lụa màu, mây mờ, mặt trời, mây màu nước, hạt sáng, sao nhỏ ── */
+.task-light-band {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 50%;
+  background: linear-gradient(to top, rgba(253, 214, 150, 0.28), rgba(251, 207, 232, 0.16) 45%, transparent);
+}
+
+.is-dusk .task-light-band {
+  background: linear-gradient(to top, rgba(251, 146, 60, 0.26), rgba(244, 114, 182, 0.16) 40%, rgba(192, 132, 252, 0.08) 70%, transparent);
+}
+
+.task-light-ribbon {
+  left: -12%;
+  right: -12%;
+  top: 52%;
+  height: 70%;
+  background: radial-gradient(34% 55% at 20% 50%, rgba(253, 230, 138, 0.45), transparent 70%),
+              radial-gradient(30% 50% at 52% 55%, rgba(251, 207, 232, 0.5), transparent 70%),
+              radial-gradient(34% 55% at 82% 50%, rgba(196, 181, 253, 0.42), transparent 70%);
+  filter: blur(40px);
+  animation: taskRibbon 22s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.is-dusk .task-light-ribbon {
+  background: radial-gradient(34% 55% at 18% 50%, rgba(244, 114, 182, 0.42), transparent 70%),
+              radial-gradient(30% 50% at 50% 55%, rgba(251, 146, 60, 0.4), transparent 70%),
+              radial-gradient(34% 55% at 82% 45%, rgba(253, 186, 116, 0.5), transparent 70%);
+}
+
+.task-blur-cloud {
+  border-radius: 50%;
+  filter: blur(18px);
+  opacity: 0.6;
+  animation: taskDrift 40s ease-in-out infinite alternate;
+}
+
+.task-sun {
+  width: 0;
+  height: 0;
+  animation: taskSunRise 26s ease-in-out infinite alternate;
+}
+
+.is-dusk .task-sun {
+  animation-direction: alternate-reverse;
+}
+
+.task-sun__halo,
+.task-sun__core {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.task-sun__halo {
+  background: radial-gradient(circle, rgba(254, 240, 200, 0.6), rgba(251, 207, 232, 0.22) 45%, transparent 70%);
+  filter: blur(24px);
+  animation: taskSunBreath 9s ease-in-out infinite alternate;
+}
+
+.task-sun__core {
+  background: radial-gradient(circle, rgba(255, 244, 214, 0.95) 0, rgba(253, 214, 150, 0.6) 30%, rgba(251, 207, 232, 0.2) 60%, transparent 72%);
+  filter: blur(6px);
+}
+
+.is-dusk .task-sun__halo {
+  background: radial-gradient(circle, rgba(253, 186, 116, 0.55), rgba(244, 114, 182, 0.22) 45%, transparent 70%);
+}
+
+.is-dusk .task-sun__core {
+  background: radial-gradient(circle, rgba(255, 200, 140, 0.95) 0, rgba(251, 146, 60, 0.6) 30%, rgba(244, 114, 182, 0.2) 60%, transparent 72%);
+}
+
+.task-wc-cloud {
+  overflow: visible;
+  animation: taskDrift 60s ease-in-out infinite alternate;
+}
+
+.task-orb {
+  border-radius: 50%;
+  opacity: 0;
+  animation: taskFloatUp 18s ease-in-out infinite;
+}
+
+.task-light-star {
+  border-radius: 50%;
+  opacity: 0.5;
+  animation: taskTwinkle 7s ease-in-out infinite;
 }
 
 /* ── TIỆN ÍCH CHUNG ── */
@@ -4822,13 +5097,37 @@
     height: calc(100dvh - var(--topbar-height, 52px) - var(--bottom-tabs-height, 60px));
   }
 
-  /* Mockup mobile tối chỉ có dải aurora — không sao, sao băng, đường chân trời hành tinh */
-  .task-stars-layer-1,
-  .task-stars-layer-2,
-  .task-shooting-star,
-  .task-comet-wrapper,
-  .task-planet-horizon {
+  [data-theme="dark"] .tasks-workspace {
+    background-color: #060914;
+    background-image: radial-gradient(45% 40% at 0% 100%, rgba(139, 92, 246, 0.18), transparent 70%),
+                      radial-gradient(40% 35% at 100% 85%, rgba(34, 211, 238, 0.10), transparent 70%);
+  }
+
+  /* Sao chổi nhỏ của khung mobile (cometM) */
+  .task-comet-wrapper {
+    top: 26px;
+    left: 110%;
+    animation: taskCometM 28s linear 4s infinite;
+  }
+
+  .task-comet-tail-1 {
+    top: -1px;
+    width: 170px;
+    height: 2px;
+    transform: rotate(-14deg);
+    filter: blur(0.6px);
+  }
+
+  .task-comet-tail-2 {
     display: none;
+  }
+
+  .task-comet-head {
+    left: -3px;
+    top: -3px;
+    width: 6px;
+    height: 6px;
+    box-shadow: 0 0 10px 4px rgba(190, 255, 240, 0.85), 0 0 30px 10px rgba(94, 242, 194, 0.3);
   }
 
   .tk-desktop-only {
@@ -6009,15 +6308,13 @@
 
 /* ── GIẢM CHUYỂN ĐỘNG ── */
 @media (prefers-reduced-motion: reduce) {
-  .task-aurora-glow,
-  .task-stars-layer-1,
-  .task-stars-layer-2 {
+  .task-cosmos-bg *,
+  .task-cosmos-bg *::after {
     animation: none !important;
   }
 
-  .task-shooting-star,
-  .task-comet-wrapper {
-    display: none;
+  .task-orb {
+    opacity: 0.7;
   }
 
   .tk-card,

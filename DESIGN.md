@@ -1194,16 +1194,20 @@ bar · two-pane body (item list · detail), breakpoint 900px.
 ### Tasks workspace (Aurora) — `src/styles/tasks-aurora.css`
 
 Trang Nhiệm vụ dùng bộ token riêng `--tk-*`, khai báo trên `.tasks-workspace`
-theo `[data-theme]`: tối = mockup 2a (mint `#5EF2C2`, nền `#060914`, sao/sao chổi),
-sáng = mockup 2b (violet `#7C3AED`, nền `#F4F2FF`, aurora pastel, ẩn sao).
+theo `[data-theme]`: tối = mockup 2a (mint `#5EF2C2`, nền trời `#0C1634→#060914`), sáng = mockup 2b
+(violet `#7C3AED`, nền `#F4F2FF`). Nền trời do `TaskSkyBackground.jsx` vẽ:
+tối = aurora, Ngân Hà, 4 lớp sao, sao băng, sao chổi; desktop thêm trăng đúng pha âm lịch hôm nay,
+sao sáng 4 cánh, 6 chòm sao lần lượt hiện (chu kỳ 150s) và chân trời hành tinh.
+Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt trời mọc, mây màu nước SVG, hạt sáng bay.
+`prefers-reduced-motion` tắt mọi chuyển động nền.
 
 - Màu tình trạng thời gian của thẻ: `--tk-ks-{late|today|soon|none|done|skip}-{glow|tint|fg|bg|bd}`
   (viền trái · nền ánh · nhãn ngày). Màu cột: `--tk-st-{todo|doing|done|skip}`.
   Ô được chọn: `--tk-sel-bg` / `--tk-sel-fg`; Chủ nhật: `--tk-sun`.
 - Không viết cứng màu tối/sáng trong JSX của Tasks — luôn dùng token để hai theme tự đổi.
   `AppIcon color="var(--x)"` được chuyển sang `style.color` (thuộc tính SVG `fill` không nhận biến CSS).
-- Breakpoint mobile = `≤768px` (cùng khung app: topbar 52 + tab đáy 60). Mobile chỉ có dải aurora
-  (ẩn sao, sao băng, đường chân trời hành tinh) như mockup.
+- Breakpoint mobile = `≤768px` (cùng khung app: topbar 52 + tab đáy 60). Nền mobile tối: aurora, Ngân Hà,
+  sao, 3 sao băng, sao chổi nhỏ (không trăng / chòm sao / chân trời) như mockup.
 - Thành phần dùng chung: `TaskCard` (`variant` card/row/mobile), `TaskFilterBar`, `TaskTodayStrip`,
   `TaskQuickAdd` (sheet "Việc mới"), `TaskDetailDrawer`, `TaskSubtaskModal` (‹ › giữa các việc con),
   `CalendarNavHead` (hàng điều hướng khung lịch), `TaskDayPopover` (popover "Ngày": việc trong ngày +
