@@ -275,9 +275,8 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
       )}
       {popover?.type === 'date' && (
         <TaskDatePickerPopover
-          initialDate={task.due_date}
-          initialTime={task.due_time}
-          onSave={(d, t) => updateTask?.(task.id, { due_date: d, due_time: t })}
+          task={task}
+          onSave={(patch) => updateTask?.(task.id, patch)}
           onClose={() => setPopover(null)}
           style={popStyle}
         />

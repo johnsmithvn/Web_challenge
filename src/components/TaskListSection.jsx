@@ -178,9 +178,8 @@ export default function TaskListSection({
       )}
       {popover?.type === 'date' && (
         <TaskDatePickerPopover
-          initialDate={popover.task.due_date}
-          initialTime={popover.task.due_time}
-          onSave={(d, t) => updateTask(popover.task.id, { due_date: d, due_time: t })}
+          task={popover.task}
+          onSave={(patch) => updateTask(popover.task.id, patch)}
           onClose={() => setPopover(null)}
           style={popStyle}
         />

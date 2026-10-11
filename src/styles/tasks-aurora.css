@@ -3047,21 +3047,228 @@
   background: var(--tk-opt-on);
 }
 
-.tk-cal-cell {
-  height: 32px;
+/* ── Chọn ngày (mockup): ô Bắt đầu / Kết thúc → lịch có ngày âm → Thêm giờ · Huỷ · Lưu ── */
+.tk-datepick {
+  width: 284px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tk-dp-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.tk-dp-field {
+  position: relative;
+  min-width: 0;
+  padding: 7px 26px 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--tk-input-bd);
+  background: var(--tk-input-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.tk-dp-field.is-on {
+  border-color: var(--tk-accent);
+  background: var(--tk-accent-soft);
+}
+
+.tk-dp-field__lbl {
+  font: 500 10.5px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-mute);
+}
+
+.tk-dp-field__val {
+  font: 600 13px/1.2 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tk-dp-field__val.is-empty {
+  font-weight: 500;
+  color: var(--tk-text-mute);
+}
+
+.tk-dp-field__x {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
   border: none;
-  border-radius: 7px;
+  border-radius: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--tk-text-sub);
+  cursor: pointer;
+}
+
+.tk-dp-field__x:hover {
+  background: var(--tk-hover);
+  color: var(--tk-text-main);
+}
+
+.tk-dp-month {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tk-dp-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tk-dp-title {
+  font: 700 14px/1 var(--tk-font-display);
+  color: var(--tk-text-main);
+}
+
+.tk-dp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.tk-dp-dow {
+  text-align: center;
+  font: 500 11px/22px 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-mute);
+}
+
+.tk-dp-dow.is-sun,
+.tk-cal-cell.is-sun {
+  color: var(--tk-sun);
+}
+
+.tk-cal-cell {
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 9px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
+  background: transparent;
+  color: var(--tk-text-main);
   cursor: pointer;
-  padding: 0;
 }
 
 .tk-cal-cell:hover {
-  outline: 1px solid var(--tk-accent-border);
+  background: var(--tk-hover);
+}
+
+.tk-cal-cell__n {
+  font: 600 14px/1 'Be Vietnam Pro', sans-serif;
+}
+
+.tk-cal-cell__l {
+  font: 400 8.5px/1 'JetBrains Mono', monospace;
+  color: var(--tk-text-mute);
+}
+
+.tk-cal-cell.is-today {
+  box-shadow: inset 0 0 0 1px var(--tk-accent-border);
+}
+
+.tk-cal-cell.is-range {
+  background: var(--tk-accent-soft);
+}
+
+.tk-cal-cell.is-sel {
+  background: var(--tk-sel-bg);
+  color: var(--tk-sel-fg);
+}
+
+.tk-cal-cell.is-sel .tk-cal-cell__l {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.tk-dp-times {
+  display: flex;
+  gap: 6px;
+}
+
+.tk-dp-time {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font: 500 10.5px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-mute);
+}
+
+.tk-dp-time input {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--tk-input-bd);
+  background: var(--tk-input-bg);
+  font: 500 13px/1 'JetBrains Mono', monospace;
+  color: var(--tk-text-main);
+}
+
+[data-theme="dark"] .tk-dp-time input {
+  color-scheme: dark;
+}
+
+.tk-dp-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tk-dp-addtime,
+.tk-dp-cancel {
+  height: 32px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  font: 500 13px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-sub);
+  cursor: pointer;
+}
+
+.tk-dp-addtime {
+  margin-right: auto;
+  padding-left: 4px;
+}
+
+.tk-dp-addtime:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tk-dp-addtime:not(:disabled):hover,
+.tk-dp-cancel:hover {
+  background: var(--tk-hover);
+  color: var(--tk-text-main);
+}
+
+.tk-dp-save {
+  padding: 0 14px;
+  gap: 6px;
 }
 
 .tk-btn-primary {
