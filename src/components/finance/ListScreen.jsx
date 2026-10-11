@@ -474,7 +474,7 @@ export default function ListScreen({ fin, nav }) {
                                   {item.qty > 1 ? `${item.qty} × ` : ''}{item.price ? money(item.price) : ''}
                                 </span>
                                 <span className="fin-nhipchi__cluster-kid-val">
-                                  {money((Math.max(1, Number(item.qty) || 1)) * (parseCurrencyInput(item.price, { autoK: false }) || 0))}
+                                  {money((Math.max(1, Number(item.qty) || 1)) * (parseCurrencyInput(item.price) || 0))}
                                 </span>
                               </div>
                             ))}
@@ -794,7 +794,7 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, o
     const next = draftItems.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: normalized } : item);
     setDraftItems(next);
     const total = next.reduce((sum, item) => sum
-      + (Math.max(1, Number(item.qty) || 1) * (parseCurrencyInput(item.price, { autoK: false }) || 0)), 0);
+      + (Math.max(1, Number(item.qty) || 1) * (parseCurrencyInput(item.price) || 0)), 0);
     if (total > 0) setAmount(String(total));
   };
 
@@ -814,13 +814,13 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, o
   };
 
   const save = async () => {
-    const parsed = parseCurrencyInput(amount, { autoK: false });
+    const parsed = parseCurrencyInput(amount);
     const cleanItems = draftItems
-      .filter(item => item.name?.trim() || parseCurrencyInput(item.price, { autoK: false }))
+      .filter(item => item.name?.trim() || parseCurrencyInput(item.price))
       .map(item => ({
         name: item.name?.trim() || 'Mục chưa đặt tên',
         qty: Math.max(1, Number(item.qty) || 1),
-        price: parseCurrencyInput(item.price, { autoK: false }) || 0,
+        price: parseCurrencyInput(item.price) || 0,
       }));
 
     await fin.updateTransaction(tx.id, {

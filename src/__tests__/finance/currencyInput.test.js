@@ -1,20 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-// `parseCurrencyInput` đọc localStorage (auto-k, tỷ giá USD) mà node không có →
-// stub tối thiểu, `getItem` trả null nghĩa là dùng mặc định (auto-k BẬT).
-// `autoK` để test được cả trạng thái TẮT — đó mới là chỗ bug thật nằm.
-let autoK = null;
-const memoryStore = {};
-globalThis.localStorage = {
-  getItem: (key) => (key in memoryStore ? memoryStore[key] : (key === 'lh_auto_k' ? autoK : null)),
-  setItem: (key, val) => { memoryStore[key] = String(val); },
-  removeItem: (key) => { delete memoryStore[key]; },
-};
-
+// Auto-K và tỷ giá USD đã bỏ (2026-10-11): ô tiền gõ số nào lưu số đó, chỉ nhân khi
+// có chữ chỉ độ lớn (k, nghìn, triệu, tr, củ…). Parser không còn đọc localStorage.
 const {
-  autoKPreview, groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits, stripAmountWords,
-  formatVND, getUsdRate, setUsdRate, getAutoK, setAutoK,
+  groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits, stripAmountWords, formatVND,
 } = await import('../../utils/currencyUtils.js');
 
 assert.equal(sanitizeDigits('12abc.345 ₫'), '12345');
@@ -53,8 +43,7 @@ assert.equal(stripAmountWords('1 trứng'), 'trứng');
 assert.equal(stripAmountWords('cà phê'), 'cà phê');        // không có số thì giữ nguyên
 assert.equal(stripAmountWords(''), '');
 
-/* parseCurrencyInput — chữ chỉ độ lớn tiếng Việt phải TƯỜNG MINH, không dựa
-   vào heuristic auto-k (tắt auto-k là "50 nghìn" thành 50 đồng) */
+/* parseCurrencyInput — chỉ nhân khi có chữ chỉ độ lớn TƯỜNG MINH */
 assert.equal(parseCurrencyInput('50k'), 50000);
 assert.equal(parseCurrencyInput('50 nghìn'), 50000);
 assert.equal(parseCurrencyInput('50 ngàn'), 50000);
@@ -65,84 +54,28 @@ assert.equal(parseCurrencyInput('1.5m'), 1500000);
 assert.equal(parseCurrencyInput('120.000'), 120000);
 assert.equal(parseCurrencyInput(''), 0);
 
-// ⚠️ Đây là bug thật đã sửa: TẮT auto-k thì "50 nghìn" vẫn phải là 50.000. Trước
-//    đây parser chỉ hiểu k/m nên "nghìn" ra đúng CHỈ nhờ heuristic auto-k.
-autoK = 'false';
-assert.equal(parseCurrencyInput('50 nghìn'), 50000);
-assert.equal(parseCurrencyInput('2 triệu'), 2000000);
-assert.equal(parseCurrencyInput('50'), 50);      // không có chữ nào → đúng là 50 đồng
-autoK = null;
-assert.equal(parseCurrencyInput('50'), 50000);   // auto-k bật lại → 50 nghĩa là 50k
+// Gõ số trần thì lưu đúng số đó — không còn tự ×1.000 cho số dưới 10.000
+assert.equal(parseCurrencyInput('50'), 50);
+assert.equal(parseCurrencyInput('5000'), 5000);
+assert.equal(parseCurrencyInput('250000'), 250000);
+// Ký hiệu $ / usd không còn đổi theo tỷ giá: chỉ đọc phần số
+assert.equal(parseCurrencyInput('10$'), 10);
+assert.equal(parseCurrencyInput('2 usd'), 2);
 
-/* ── autoKPreview: ô tiền phải nói ra khi auto-k vừa nhân thêm 1.000 ──
-   Ô hiện "5.000 ₫" mà lưu 5.000.000₫ là sai im lặng gấp 1000 lần. Preview chỉ
-   được hiện ĐÚNG lúc số lưu khác số đang nhìn thấy, không phải lúc nào cũng hiện
-   (hiện thừa thì user học cách phớt lờ, rồi bỏ qua luôn lúc nó quan trọng). */
-assert.equal(autoKPreview('5000'), '5.000.000', 'số dưới 10.000 bị nhân → phải cảnh báo');
-assert.equal(autoKPreview('50'), '50.000');
-assert.equal(autoKPreview('10000'), '', 'từ 10.000 trở lên auto-k không đụng → im lặng');
-assert.equal(autoKPreview('250000'), '');
-assert.equal(autoKPreview(''), '');
-assert.equal(autoKPreview('0'), '');
-assert.equal(autoKPreview('12.345'), '', 'chuỗi đã format vẫn đọc ra 12345, không cảnh báo nhầm');
-autoK = 'false';
-assert.equal(autoKPreview('5000'), '', 'tắt auto-k thì không còn gì để cảnh báo');
-autoK = null;
-
-/* ── option `autoK: false`: đường Inbox → Giao dịch ──
-   Ghi chú Inbox là câu user đã viết ra, không phải ô nhập nhanh: "đổ xăng 5000"
-   phải ra 5.000đ. Nhưng chữ chỉ độ lớn thì VẪN phải hiểu — tắt auto-K không có
-   nghĩa là làm parser ngu đi. */
-assert.equal(parseCurrencyInput('5000', { autoK: false }), 5000);
-assert.equal(parseCurrencyInput('50', { autoK: false }), 50);
-assert.equal(parseCurrencyInput('50k', { autoK: false }), 50000, 'chữ k vẫn nhân');
-assert.equal(parseCurrencyInput('2 triệu', { autoK: false }), 2000000);
-assert.equal(parseCurrencyInput('250000', { autoK: false }), 250000);
-// Truyền `true` = ép bật dù preference đang tắt; bỏ trống = theo preference.
-autoK = 'false';
-assert.equal(parseCurrencyInput('50'), 50, 'bỏ trống thì theo preference (đang tắt)');
-assert.equal(parseCurrencyInput('50', { autoK: true }), 50000, 'ép bật thắng preference');
-autoK = null;
-assert.equal(parseCurrencyInput('50', { autoK: false }), 50, 'ép tắt thắng preference');
-// Dòng cảnh báo phải im khi luồng đó vốn không áp auto-K — cảnh báo sai còn tệ hơn.
-assert.equal(autoKPreview('5000', { autoK: false }), '');
-assert.equal(autoKPreview('5000'), '5.000.000');
-
-/* ── Form SỬA không được parse LẠI số ĐÃ LƯU ──
-   Luật này đã sửa một lần ở v6.10.0 cho luồng Inbox nhưng bỏ sót bốn form sửa: ô tiền
-   điền sẵn bằng số đã lưu, mở ra bấm Lưu (kể cả chỉ sửa tiêu đề) là 5.000đ thành
-   5.000.000đ. Logic nằm trong component nên không import ra test trực tiếp được — soi
-   source, và soi theo hướng "không còn chỗ nào parse trần" để đổi tên/refactor không vỡ. */
+/* ── Không còn chỗ nào dùng Auto-K / tỷ giá ──
+   Soi source để một lần refactor sau không lén đưa tham số/cảnh báo Auto-K quay lại. */
 const src = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
+for (const file of ['ListScreen', 'RecurringScreen', 'AddScreen', 'AnalyzeScreen']) {
+  const code = src(`../../components/finance/${file}.jsx`);
+  assert.equal(/autoK|Auto-K/.test(code), false, `${file} không còn dính Auto-K`);
+}
+assert.equal(/getUsdRate|getAutoK|lh_auto_k|lh_usd_rate/.test(src('../../utils/currencyUtils.js')), false,
+  'currencyUtils không còn tỷ giá / Auto-K');
 
-const listScreen = src('../../components/finance/ListScreen.jsx');
-assert.match(listScreen, /autoK: false/, 'panel Sửa giao dịch phải tắt auto-K');
-assert.equal(/parseCurrencyInput\(amount\)/.test(listScreen), false,
-  'ô Số tiền của panel Sửa giao dịch mang số đã lưu, không được parse trần');
-
-const recurring = src('../../components/finance/RecurringScreen.jsx');
-assert.match(recurring, /autoK: false/, 'form định kỳ phải tắt auto-K khi đang SỬA');
-assert.equal(/parseCurrencyInput\(f\.\w+\)/.test(recurring), false,
-  'mọi ô tiền của form định kỳ phải truyền option parse, kể cả các dòng xem trước');
-
-const analyze = src('../../components/finance/AnalyzeScreen.jsx');
-assert.equal(/parseCurrencyInput\(v\)/.test(analyze), false,
-  'hạn mức đã đặt không được parse trần: onBlur là lưu, rời ô là ×1.000');
-
-/* ── formatVND, USD rate & AutoK storage ── */
+/* ── formatVND ── */
 assert.ok(formatVND(50000).endsWith('₫'));
 assert.ok(formatVND(50000).replace(/\s/g, '').includes('50.000'));
 assert.ok(formatVND(0).endsWith('₫'));
-
-assert.equal(getUsdRate(), 25400, 'tỷ giá USD mặc định 25.400');
-setUsdRate(26000);
-assert.equal(getUsdRate(), 26000);
-assert.equal(parseCurrencyInput('10$'), 260000, 'nhận diện ký hiệu $ và nhân tỷ giá');
-assert.equal(parseCurrencyInput('$10'), 260000, 'ký hiệu $ đứng trước số');
-assert.equal(parseCurrencyInput('$ 2.5'), 65000, 'ký hiệu $ có khoảng trắng và số lẻ');
-assert.equal(parseCurrencyInput('2.5 usd'), 65000, 'nhận diện chữ usd');
-assert.equal(parseCurrencyInput('100 USD'), 2600000, 'USD chữ hoa');
-setUsdRate(25400);
 
 /* Các biến thể không dấu tiếng Việt của độ lớn */
 assert.equal(parseCurrencyInput('50 nghin'), 50000);
@@ -162,13 +95,6 @@ assert.equal(stripAmountWords('mua cafe 25 ngàn'), 'mua cafe');
 assert.equal(stripAmountWords('tiền trọ 3.5 triệu'), 'tiền trọ');
 assert.equal(stripAmountWords('tiền thưởng 10tr'), 'tiền thưởng');
 assert.equal(stripAmountWords('mượn 2 củ'), 'mượn');
-
-setAutoK(false);
-assert.equal(getAutoK(), false);
-setAutoK(true);
-assert.equal(getAutoK(), true);
-
-console.log('edit-form auto-K contract: OK');
 
 console.log('currency input tests passed');
 

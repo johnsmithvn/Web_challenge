@@ -22,7 +22,6 @@ PLAN chỉ giữ thứ tự roadmap hiện tại. Checklist có thể chạy n�
 **Làm trước** (nhỏ, độc lập, không chờ ai):
 
 1. **Đối chiếu 4 màn Finance với handoff** — Bắt đầu từ Tổng quan.
-2. Áp cảnh báo Auto-K cho các ô tiền còn lại; cân nhắc mặc định TẮT Auto-K.
 
 **Làm sau** (mỗi mục một sprint riêng, không trộn):
 

@@ -157,8 +157,7 @@ assert.match(forfeited, /BEGIN;[\s\S]*COMMIT;/, 'migration phải chạy trong m
 assert.match(forfeited, /ADD COLUMN IF NOT EXISTS forfeited_interest BIGINT NOT NULL DEFAULT 0/,
   'phải additive và idempotent: khoản cho vay cũ mang 0 và hành xử y như trước');
 assert.match(forfeited, /CHECK \(forfeited_interest >= 0\)/, 'không cho số âm');
-// `[^)]*` để chỗ ô tiền truyền thêm option parse (vd `amountOpts` tắt auto-K khi đang SỬA)
-// mà không vỡ test: điều cần chặn là form KHÔNG gửi cột này, không phải chữ ký của call.
+// `[^)]*` để chữ ký của call có đổi cũng không vỡ test: điều cần chặn là form KHÔNG gửi cột này.
 assert.match(recurring, /forfeited_interest: parseCurrencyInput\(f\.forfeited_interest[^)]*\) \|\| 0/,
   'form cho vay phải gửi cột mới, không thì ô nhập là trang trí');
 

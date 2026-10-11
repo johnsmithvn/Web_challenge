@@ -6,11 +6,9 @@ import { useTheme } from '../contexts/ThemeContext';
 import {
   GearSix as Settings, Tag, Plus, PencilSimple as Pencil, Trash as Trash2, Check, X,
   Palette, User, FloppyDisk as Save, Envelope as Mail, At as AtSign,
-  ToggleLeft, ToggleRight, Coins,
 } from '@phosphor-icons/react';
 import AppIcon from '../components/AppIcon';
 import SkeletonList from '../components/SkeletonList';
-import { getUsdRate, getAutoK, setUsdRate, setAutoK } from '../utils/currencyUtils';
 import '../styles/settings.css';
 import { logger } from '../utils/logger';
 
@@ -77,87 +75,6 @@ function TaskStyleSection() {
       </div>
       <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
         Mỗi kiểu đều có bản sáng và tối — đổi bằng nút sáng/tối như bình thường. Lựa chọn lưu trên máy này.
-      </div>
-    </section>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════════
-   FINANCE SETTINGS SECTION
-   ══════════════════════════════════════════════════════════════ */
-function FinanceSettingsSection() {
-  const [usdRate, setUsdRateState] = useState(() => getUsdRate());
-  const [autoK, setAutoKState] = useState(() => getAutoK());
-  const [saveMsg, setSaveMsg] = useState('');
-
-  const handleSaveRate = (e) => {
-    if (e) e.preventDefault();
-    const rate = parseFloat(usdRate);
-    if (isNaN(rate) || rate <= 0) return;
-    setUsdRate(rate);
-    setSaveMsg('Đã lưu tỷ giá');
-    setTimeout(() => setSaveMsg(''), 2000);
-  };
-
-  const handleToggleAutoK = () => {
-    const next = !autoK;
-    setAutoK(next);
-    setAutoKState(next);
-    setSaveMsg('Đã cập nhật Auto-K');
-    setTimeout(() => setSaveMsg(''), 2000);
-  };
-
-  return (
-    <section className="settings-section" style={{ marginBottom: '1.5rem' }}>
-      <div className="settings-section__header">
-        <Coins size={20} />
-        <h2>Cấu Hình Tiền Tệ & Chi Tiêu</h2>
-        {saveMsg && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#22c55e', fontWeight: 600 }}>{saveMsg}</span>}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.25rem' }}>
-        {/* USD Rate Input */}
-        <form onSubmit={handleSaveRate} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Tỷ giá quy đổi USD ➔ VND</div>
-            {/* Ô tiền của Chi tiêu chạy `sanitizeDigits` (chỉ giữ chữ số) trước khi parse
-                nên ký tự `$` không bao giờ sống tới `parseCurrencyInput`. Nơi duy nhất
-                gõ được "10$" là ô chi phí dự kiến ở Ươm mầm — nói đúng chỗ đó. */}
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Dùng cho ô <strong>chi phí dự kiến ở Ươm mầm</strong>, nơi gõ được “10$”. Ô tiền trong Chi tiêu chỉ nhận chữ số.</div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <input
-              type="number"
-              className="settings-tag-form__input"
-              aria-label="Tỷ giá USD sang VND"
-              style={{ width: '100px', textAlign: 'right', height: '36px', padding: '0 0.75rem' }}
-              value={usdRate}
-              onChange={e => setUsdRateState(e.target.value)}
-              onBlur={handleSaveRate}
-              min="1"
-            />
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>đ</span>
-          </div>
-        </form>
-
-        {/* Divider */}
-        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }} />
-
-        {/* Auto-K Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-          <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Tự động thêm 3 số 0 (Auto-K)</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mặc định nhân 1.000 cho số ngắn dưới 10.000 (Ví dụ: 50 ➔ 50.000đ)</div>
-          </div>
-          <button
-            type="button"
-            onClick={handleToggleAutoK}
-            title={autoK ? 'Đang bật' : 'Đang tắt'}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-          >
-            {autoK ? <ToggleRight size={28} color="#22c55e" /> : <ToggleLeft size={28} color="var(--text-muted)" />}
-          </button>
-        </div>
       </div>
     </section>
   );
@@ -616,7 +533,6 @@ export default function SettingsPage() {
           {activeTab === 'general' && (
             <>
               <TaskStyleSection />
-              <FinanceSettingsSection />
               <TagManagerSection user={user} />
             </>
           )}

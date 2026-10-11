@@ -74,8 +74,10 @@ function UserAvatar({ profile, user, onSignOut, onOpenShortcuts, direction = 'do
           top: 'auto',
         });
       } else {
+        // Avatar ở góc phải thanh trên → canh mép phải menu theo avatar để không tràn khỏi màn hình
         setMenuPos({
-          left: rect.left,
+          right: Math.max(8, window.innerWidth - rect.right),
+          left: 'auto',
           top: rect.bottom + 8,
           bottom: 'auto',
         });
@@ -90,6 +92,7 @@ function UserAvatar({ profile, user, onSignOut, onOpenShortcuts, direction = 'do
   const dropdownStyle = menuPos ? {
     position: 'fixed',
     left: menuPos.left,
+    right: menuPos.right,
     top: menuPos.top,
     bottom: menuPos.bottom,
     width: 196,

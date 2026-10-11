@@ -1161,7 +1161,7 @@ export default function BiometricsScreen() {
                           </span>
 
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
-                            <span style={{ fontSize: '15px', fontWeight: 700, color: item.is_outlier ? '#9A5A10' : 'var(--body-text-main)' }}>
+                            <span style={{ fontSize: '15px', fontWeight: 700, color: item.is_outlier ? 'var(--body-amber-text)' : 'var(--body-text-main)' }}>
                               {item.weightStr}
                               <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> kg</span>
                             </span>
@@ -1174,10 +1174,10 @@ export default function BiometricsScreen() {
                             <span style={{
                               padding: '4px 8px',
                               borderRadius: '6px',
-                              background: '#FDF0E1',
+                              background: 'var(--body-amber-soft)',
                               fontSize: '11px',
                               fontWeight: 600,
-                              color: '#9A5A10',
+                              color: 'var(--body-amber-text)',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '4px'
@@ -1229,13 +1229,13 @@ export default function BiometricsScreen() {
                   <div style={{
                     padding: '12px',
                     borderRadius: '10px',
-                    background: '#FDF5EA',
-                    border: '1px solid #F4DDBE',
+                    background: 'var(--body-amber-soft)',
+                    border: '1px solid var(--body-amber-soft)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '10px'
                   }}>
-                    <span style={{ fontSize: '12.5px', color: '#6E4510', lineHeight: 1.45 }}>
+                    <span style={{ fontSize: '12.5px', color: 'var(--body-amber-text)', lineHeight: 1.45 }}>
                       Lần đo này được đánh dấu lệch giờ (ví dụ đo vào buổi tối sau khi ăn no), đang được tách khỏi đường xu hướng chính.
                     </span>
                     <button
@@ -1244,11 +1244,11 @@ export default function BiometricsScreen() {
                       style={{
                         height: '32px',
                         borderRadius: '8px',
-                        border: '1px solid #E4D3BB',
-                        background: '#fff',
+                        border: '1px solid var(--body-border-subtle)',
+                        background: 'var(--body-card-bg)',
                         fontSize: '12px',
                         fontWeight: 600,
-                        color: '#6E4510',
+                        color: 'var(--body-amber-text)',
                         cursor: 'pointer'
                       }}
                     >
@@ -1302,8 +1302,8 @@ export default function BiometricsScreen() {
                       flex: 1,
                       height: '36px',
                       borderRadius: '8px',
-                      border: '1px solid #F1D3CC',
-                      background: '#FFF5F4',
+                      border: '1px solid var(--body-red-soft)',
+                      background: 'var(--body-red-soft)',
                       fontSize: '12.5px',
                       fontWeight: 600,
                       color: 'var(--body-red)',

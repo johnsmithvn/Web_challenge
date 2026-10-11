@@ -1,21 +1,3 @@
-export function getUsdRate() {
-  const saved = localStorage.getItem('lh_usd_rate');
-  return saved ? parseFloat(saved) : 25400;
-}
-
-export function getAutoK() {
-  const saved = localStorage.getItem('lh_auto_k');
-  return saved === null ? true : saved === 'true';
-}
-
-export function setUsdRate(rate) {
-  localStorage.setItem('lh_usd_rate', String(rate));
-}
-
-export function setAutoK(enabled) {
-  localStorage.setItem('lh_auto_k', String(enabled));
-}
-
 export function sanitizeDigits(value, maxLength = 18) {
   return String(value ?? '').replace(/\D/g, '').slice(0, maxLength);
 }
@@ -33,24 +15,6 @@ export function sanitizeDigits(value, maxLength = 18) {
  */
 export function groupDigits(value) {
   return String(value ?? '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-}
-
-/**
- * Số THẬT SỰ SẼ ĐƯỢC LƯU khi ô tiền đang hiện `raw` — chỉ trả về khi nó KHÁC con
- * số người dùng đang nhìn thấy, tức là lúc auto-K vừa lặng lẽ nhân thêm 1.000.
- *
- * Ô tiền hiện "5.000 ₫" nhưng lưu 5.000.000₫ là kiểu sai tệ nhất: im lặng, gấp
- * 1000 lần, và chỉ lộ ra khi xem lại báo cáo cuối tháng. Auto-K vẫn giữ nguyên
- * (nó là thứ làm việc nhập nhanh) — chỉ bắt nó hiện mặt ra trước khi bấm Lưu.
- *
- * @param {string} raw chuỗi digit thuần đang nằm trong state của ô nhập
- * @returns {string} số đã chèn dấu nghìn, hoặc '' khi không có gì để cảnh báo
- */
-export function autoKPreview(raw, opts) {
-  const digits = String(raw ?? '').replace(/\D/g, '');
-  if (!digits) return '';
-  const parsed = parseCurrencyInput(digits, opts);
-  return parsed && parsed !== Number(digits) ? groupDigits(String(parsed)) : '';
 }
 
 export function sanitizeDecimal(value, maxIntegerDigits = 6, maxFractionDigits = 4) {
@@ -73,9 +37,6 @@ export function formatVND(amount) {
  * Chữ chỉ độ lớn mà người Việt gõ sau số tiền. NGUỒN DUY NHẤT — cả
  * `parseCurrencyInput` (để nhân) và `stripAmountWords` (để bóc khỏi tiêu đề) đều
  * đọc từ đây, nên không có đường lệch nhau.
- *
- * Trước đây chỉ hiểu `k`/`m`, còn "50 nghìn" ra đúng 50.000 CHỈ NHỜ heuristic
- * auto-k (`val < 10000` → ×1000). Tắt auto-k trong Cài đặt là nó lưu 50 đồng.
  */
 const MAGNITUDE = {
   k: 1e3, nghìn: 1e3, nghin: 1e3, ngàn: 1e3, ngan: 1e3,
@@ -100,45 +61,26 @@ export function stripAmountWords(text) {
 }
 
 /**
- * Chuyển chuỗi nhập liệu của người dùng thành số nguyên VND.
- * Ví dụ:
- * - "50" -> 50000 (tự động nhân 1000 đối với số ngắn < 10000 khi getAutoK() bật)
+ * Chuyển chuỗi nhập liệu của người dùng thành số nguyên VND — gõ số nào lưu số đó,
+ * chỉ nhân khi có chữ chỉ độ lớn. Ví dụ:
+ * - "50" -> 50
  * - "50k" / "50 nghìn" -> 50000
  * - "1.5m" / "1.5 triệu" / "1.5tr" -> 1500000
- * - "89$" hoặc "89 usd" -> 2260600 (sử dụng tỷ giá cấu hình)
  * - "120.000" -> 120000
  */
-export function parseCurrencyInput(value, { autoK } = {}) {
-  // `autoK` bỏ trống = theo preference của user. Truyền `false` cho những đường mà
-  // con số ĐÃ LÀ số cuối cùng (Inbox → Giao dịch): ở đó nhân thêm 1.000 là sửa số
-  // người dùng đã viết ra, không phải giúp họ gõ nhanh.
-  const useAutoK = autoK === undefined ? getAutoK() : autoK;
+export function parseCurrencyInput(value) {
   if (!value) return 0;
 
   const str = String(value).trim().replace(/\s+/g, '');
-  const isUsd = /[$]|usd/i.test(str);
 
   // Tách phần số (hỗ trợ cả chấm/phẩy thập phân) và chữ chỉ độ lớn nếu có
   const m = str.match(new RegExp(`(\\d[\\d.,]*)\\s*(${MAGNITUDE_ALT})?`, 'i'));
   if (!m) return 0;
 
-  const { num: val, hasDecimal } = parseNumericPart(m[1]);
+  const val = parseNumericPart(m[1]);
   if (isNaN(val)) return 0;
 
-  let result = val;
-  const multiplier = MAGNITUDE[(m[2] || '').toLowerCase()];
-
-  if (isUsd) {
-    result = val * getUsdRate();
-  } else if (multiplier) {
-    result *= multiplier;
-  } else if (!hasDecimal && useAutoK && val < 10000) {
-    // Auto-K: số nguyên ngắn như "50" nghĩa là 50.000.
-    // Bỏ qua khi người dùng nhập số thập phân rõ ràng (vd "12.50") để tránh nhân nhầm 1000.
-    result *= 1000;
-  }
-
-  return Math.round(result);
+  return Math.round(val * (MAGNITUDE[(m[2] || '').toLowerCase()] || 1));
 }
 
 /**
@@ -146,16 +88,16 @@ export function parseCurrencyInput(value, { autoK } = {}) {
  * Quy ước: nhóm 1-2 chữ số sau dấu cuối cùng = thập phân; nhóm 3 chữ số = ngăn cách nghìn.
  * Ví dụ: "120.000" -> 120000 (nghìn); "12.50" -> 12.5 (thập phân); "1.234.567" -> 1234567.
  * @param {string} token
- * @returns {{ num: number, hasDecimal: boolean }}
+ * @returns {number}
  */
 function parseNumericPart(token) {
   const lastSep = Math.max(token.lastIndexOf('.'), token.lastIndexOf(','));
-  if (lastSep === -1) return { num: parseFloat(token), hasDecimal: false };
+  if (lastSep === -1) return parseFloat(token);
 
   const after = token.slice(lastSep + 1);
   if (/^\d{1,2}$/.test(after)) {
     const intPart = token.slice(0, lastSep).replace(/[.,]/g, '');
-    return { num: parseFloat(`${intPart}.${after}`), hasDecimal: true };
+    return parseFloat(`${intPart}.${after}`);
   }
-  return { num: parseFloat(token.replace(/[.,]/g, '')), hasDecimal: false };
+  return parseFloat(token.replace(/[.,]/g, ''));
 }

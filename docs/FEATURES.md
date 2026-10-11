@@ -177,9 +177,8 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 - Quick capture toàn app và form nhập nhanh trong Inbox.
 - Search, chọn nhiều, snooze, archive/delete và mở detail để sửa nội dung.
 - Phân loại item sang bảy loại Knowledge hiện hành.
-- Số tiền dò từ ghi chú Inbox **không áp Auto-K**: "đổ xăng 5000" ra 5.000đ, không phải 5 triệu.
-  Chữ chỉ độ lớn vẫn hiểu (`50k`, `2 triệu`). Form Nhập nhanh mở từ Inbox tắt Auto-K cho cả form
-  và nói rõ điều đó dưới ô tiền.
+- Số tiền dò từ ghi chú Inbox lấy đúng số đã viết: "đổ xăng 5000" ra 5.000đ. Chữ chỉ độ lớn vẫn
+  hiểu (`50k`, `2 triệu`).
 - Chuyển thành Task pending hoặc completed; chuyển sang Finance transaction/hóa đơn bằng handoff một
   lần trong `sessionStorage`.
 - Khi Finance ghi thành công, item Inbox nguồn được xóa. `inbox_item_id` vì vậy là provenance tạm;
@@ -214,10 +213,9 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 
 **Files:** `src/pages/SettingsPage.jsx`, `src/hooks/useTags.js`
 
-- Hai tab: **Chung** (tiền tệ + tag) và **Hồ sơ**.
-- Cấu hình tiền tệ: tỷ giá USD và Auto-K.
-- Auto-K chỉ áp cho ô **nhập mới**. Form **sửa** (Sửa giao dịch, sửa hóa đơn/vay/thẻ/cho
-  vay) hiển thị số ĐÃ LƯU nên không áp Auto-K: số trong ô là số sẽ lưu. Chữ chỉ độ lớn (`50k`, `2 triệu`, `10$`) vẫn hiểu ở những ô nhận chữ.
+- Hai tab: **Chung** (giao diện trang Nhiệm vụ + tag) và **Hồ sơ**.
+- Ô tiền lưu đúng số gõ; chỉ nhân khi có chữ chỉ độ lớn (`50k`, `2 triệu`, `3tr`, `1 củ`).
+  Auto-K và tỷ giá USD đã bỏ 2026-10-11 (key localStorage cũ `lh_auto_k`, `lh_usd_rate` không còn đọc).
 - Tag manager: tạo, đổi tên/màu, xem usage breakdown và xóa link có xác nhận.
 - Tag plaintext dùng cho Knowledge, Task và Finance transaction qua ba junction riêng để giữ FK.
 - Vault tag là ngoại lệ: nằm trong ciphertext và chỉ có sau unlock.

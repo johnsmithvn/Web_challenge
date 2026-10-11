@@ -20,6 +20,7 @@
   --body-green: #2F8A57;
   --body-green-soft: #E6F2EA;
   --body-green-text: #2F7A50;
+  --body-green-border: #CFE8D8;
   --body-amber: #B57A12;
   --body-amber-soft: #FBF0DC;
   --body-amber-text: #9A6514;
@@ -50,13 +51,17 @@
   --body-accent-hover: #6949E8;
   --body-accent-soft: rgba(124, 92, 252, 0.16);
   --body-accent-border: rgba(124, 92, 252, 0.35);
+  --body-accent-tint: rgba(124, 92, 252, 0.08);
   --body-green: #3E9E68;
   --body-green-soft: rgba(62, 158, 104, 0.16);
   --body-green-text: #7FD3A2;
+  --body-green-border: rgba(62, 158, 104, 0.35);
   --body-amber: #E0A23C;
   --body-amber-soft: rgba(224, 162, 60, 0.16);
+  --body-amber-text: #F0B95A;
   --body-red: #E26A5A;
   --body-red-soft: rgba(226, 106, 90, 0.16);
+  --body-red-text: #F08A7A;
   --body-blue: #60A5FA;
   --body-blue-soft: rgba(96, 165, 250, 0.16);
   --body-blue-text: #93C5FD;
@@ -533,6 +538,10 @@
 .body-btn-secondary:hover {
   background: var(--body-shell-bg);
   border-color: #D6D4CE;
+}
+
+[data-theme="dark"] .body-btn-secondary:hover {
+  border-color: #3A3D47;
 }
 
 .body-btn-danger {

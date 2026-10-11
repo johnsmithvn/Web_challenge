@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils/currencyUtils';
+import { groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils/currencyUtils';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import {
   billAmountEstimate, cardBalance, cardStatementSummary, cardCarryOver, floatInterest, loanSchedule,
@@ -146,8 +146,7 @@ function ForfeitCalc({ withdrawOn, today, defaultAmount, onUse }) {
       <div className="fin-ruleform__grid">
         <label className="fin-field"><span>Số tiền đã gửi</span>
           <input className="fin-input" inputMode="numeric" pattern="[0-9.]*" placeholder="100.000.000" autoFocus
-            value={groupDigits(amount)} onChange={e => setAmount(sanitizeDigits(e.target.value))} />
-          {autoKPreview(amount) && <small className="fin-amount-auto">Tính trên <strong>{autoKPreview(amount)} ₫</strong> · Auto-K</small>}</label>
+            value={groupDigits(amount)} onChange={e => setAmount(sanitizeDigits(e.target.value))} /></label>
         <label className="fin-field"><span>Lãi của sổ · %/năm</span>
           <input className="fin-input" inputMode="decimal" placeholder="9"
             value={rate} onChange={e => setRate(sanitizeDecimal(e.target.value, 3, 4))} /></label>
@@ -220,12 +219,10 @@ function SmInput({ suffix, label, ...props }) {
   );
 }
 
-function SmMoney({ value, onChange, label, opts, placeholder = '0', ...props }) {
+function SmMoney({ value, onChange, label, placeholder = '0', ...props }) {
   return (<>
     <SmInput label={label} inputMode="numeric" pattern="[0-9.]*" placeholder={placeholder} suffix="₫"
       value={groupDigits(value || '')} onChange={e => onChange(sanitizeDigits(e.target.value))} {...props} />
-    {/* Auto-K nhân 1.000 cho số dưới 10.000 — ô hiện "5.000" mà lưu 5.000.000₫. */}
-    {autoKPreview(value, opts) && <small className="fin-amount-auto">Sẽ lưu <strong>{autoKPreview(value, opts)} ₫</strong> · Auto-K</small>}
   </>);
 }
 
@@ -257,9 +254,6 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
   const editing = Boolean(initial?.id);
   const [kind, setKind] = useState(startKind);
   const seg = KIND_TO_SEG[kind];
-  // Form SỬA được điền sẵn bằng số ĐÃ LƯU, nên auto-K parse lại là nhân thêm 1.000 lần nữa
-  // (8.000đ → 8.000.000đ) chỉ vì mở form ra bấm Lưu. Lúc THÊM MỚI vẫn để auto-K theo preference.
-  const amountOpts = editing ? { autoK: false } : undefined;
   const noteRef = useRef(null);
   const formRef = useRef(null);
   const [hasTerm, setHasTerm] = useState(() => Boolean(initial?.term_total));
@@ -298,7 +292,7 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
     let payload;
     if (seg === 'out') {
       const amountMode = f.amount_mode || 'fixed';
-      const billAmount = parseCurrencyInput(f.amount, amountOpts);
+      const billAmount = parseCurrencyInput(f.amount);
       const every = Math.max(1, Number(f.every) || 1);
       const anchor = f.anchor_date || null;
       // Ngày cố định thắng ngày bắt đầu; bỏ trống ô ngày thì lấy ngày của mốc bắt đầu.
@@ -328,7 +322,7 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
         note: f.note?.trim() || null,
       };
     } else if (seg === 'loan') {
-      const principal = parseCurrencyInput(f.principal, amountOpts);
+      const principal = parseCurrencyInput(f.principal);
       const term = Number(f.term);
       const payDay = Number(f.pay_day);
       if (!principal || !Number.isInteger(term) || term <= 0
@@ -343,7 +337,7 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
         pay_day: payDay, opened_at: f.opened_at || fin.today, due_at: f.due_at || null,
       };
     } else if (seg === 'lend') {
-      const principal = parseCurrencyInput(f.principal, amountOpts);
+      const principal = parseCurrencyInput(f.principal);
       const lentOn = f.lent_on || fin.today;
       if (!principal || Number(f.rate || 0) < 0) {
         nav.showToast('Khoản cho vay cần số tiền dương và lãi suất không âm');
@@ -356,7 +350,7 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
       payload = {
         name: f.name.trim(), note: f.note?.trim() || null, principal,
         rate: Number(f.rate) || 0, lent_on: lentOn, due_on: f.due_on || null,
-        forfeited_interest: parseCurrencyInput(f.forfeited_interest, amountOpts) || 0,
+        forfeited_interest: parseCurrencyInput(f.forfeited_interest) || 0,
       };
     } else if (seg === 'card') {
       const statementDay = Number(f.statement_day);
@@ -369,23 +363,23 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
       }
       payload = {
         name: f.name.trim(), bank: f.bank || null, last4: f.last4 || null,
-        credit_limit: parseCurrencyInput(f.credit_limit, amountOpts) || 0,
+        credit_limit: parseCurrencyInput(f.credit_limit) || 0,
         statement_day: statementDay, due_day: cardDueDay,
-        grace: Number(f.grace) || null, annual_fee: parseCurrencyInput(f.annual_fee, amountOpts) || 0,
+        grace: Number(f.grace) || null, annual_fee: parseCurrencyInput(f.annual_fee) || 0,
         annual_fee_on: f.annual_fee_on || null,
-        cash_advance_fee: parseCurrencyInput(f.cash_advance_fee, amountOpts) || 0, min_pct: Number(f.min_pct) || 0,
+        cash_advance_fee: parseCurrencyInput(f.cash_advance_fee) || 0, min_pct: Number(f.min_pct) || 0,
       };
     }
     if (seg === 'saving') {
       const monthly = f.plan === 'monthly';
-      const autoAmount = parseCurrencyInput(f.auto_amount, amountOpts);
+      const autoAmount = parseCurrencyInput(f.auto_amount);
       const autoDay = Number(f.auto_day);
       if (monthly && (!autoAmount || !Number.isInteger(autoDay) || autoDay < 1 || autoDay > 31)) {
         nav.showToast('Góp hằng tháng cần số tiền và ngày góp hợp lệ');
         return;
       }
       // Khóa, ví hay ngoài ví giữ mặc định của DB — chỉnh ở Quản lý quỹ.
-      payload = { name: f.name.trim(), goal: parseCurrencyInput(f.goal, amountOpts) || 0,
+      payload = { name: f.name.trim(), goal: parseCurrencyInput(f.goal) || 0,
         auto_deposit: monthly ? { amount: autoAmount, day: autoDay } : null };
     }
     const save = {
@@ -420,9 +414,9 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
   if (!catOptions.some(g => g.key === catId)) catOptions.push(catInfo(catId, fin.cats));
   // Xem trước lãi khoản cho vay: chạy lại mỗi lần gõ số tiền, đổi ngày đưa hay ngày hẹn.
   const lendMath = seg === 'lend' ? lendingInterest({
-    principal: parseCurrencyInput(f.principal, amountOpts) || 0, rate: Number(f.rate) || 0,
+    principal: parseCurrencyInput(f.principal) || 0, rate: Number(f.rate) || 0,
     lent_on: f.lent_on || fin.today, due_on: f.due_on || null,
-    forfeited_interest: parseCurrencyInput(f.forfeited_interest, amountOpts) || 0,
+    forfeited_interest: parseCurrencyInput(f.forfeited_interest) || 0,
   }, [], fin.today) : null;
   // Sổ tiết kiệm đang mở, có ngày gửi và có lãi → đập cái nào cũng mất một cục lãi.
   // Bấm để điền sẵn số đó; giấy rút của ngân hàng mới là số cuối nên ô vẫn sửa được.
@@ -435,7 +429,7 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
 
   const meta = KIND_META[kind];
   const catColor = catInfo(catId, fin.cats).color;
-  const parse = (v) => parseCurrencyInput(v, amountOpts) || 0;
+  const parse = (v) => parseCurrencyInput(v) || 0;
   const pvAmount = kind === 'bill' ? (f.amount_mode === 'ask' ? 'hỏi mỗi kỳ' : parse(f.amount) ? money(parse(f.amount)) : '—')
     : kind === 'card' ? (parse(f.credit_limit) ? money(parse(f.credit_limit)) : '—')
     : kind === 'save' ? (f.plan === 'monthly' && parse(f.auto_amount) ? money(parse(f.auto_amount)) : parse(f.goal) ? money(parse(f.goal)) : '—')
@@ -530,7 +524,7 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
               <SmField label="Số tiền mỗi kỳ">
                 {f.amount_mode === 'ask'
                   ? <SmInput label="Số tiền mỗi kỳ" disabled placeholder="hỏi mỗi kỳ" suffix="₫" value="" />
-                  : <SmMoney label="Số tiền mỗi kỳ" value={f.amount} onChange={setVal('amount')} opts={amountOpts} />}
+                  : <SmMoney label="Số tiền mỗi kỳ" value={f.amount} onChange={setVal('amount')} />}
               </SmField>
               <SmField label="Ngày trả hằng tháng">
                 <SmInput label="Ngày trả hằng tháng" inputMode="numeric" pattern="[0-9]*" placeholder="15" value={f.due_day || ''} onChange={setDigits('due_day', 2)} />
@@ -614,7 +608,7 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
                 <SmInput label="4 số cuối" inputMode="numeric" pattern="[0-9]*" placeholder="8544" value={f.last4 || ''} onChange={setDigits('last4', 4)} />
               </SmField>
               <SmField label="Hạn mức" wide>
-                <SmMoney label="Hạn mức" value={f.credit_limit} onChange={setVal('credit_limit')} opts={amountOpts} />
+                <SmMoney label="Hạn mức" value={f.credit_limit} onChange={setVal('credit_limit')} />
               </SmField>
               <SmField label="Ngày chốt sao kê">
                 <SmInput label="Ngày chốt sao kê" inputMode="numeric" pattern="[0-9]*" placeholder="4" value={f.statement_day || ''} onChange={setDigits('statement_day', 2)} />
@@ -632,13 +626,13 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
                 <SmInput label="Trả tối thiểu" inputMode="decimal" placeholder="5" suffix="%" value={f.min_pct || ''} onChange={setDecimal('min_pct')} />
               </SmField>
               <SmField label="Phí thường niên · tùy chọn">
-                <SmMoney label="Phí thường niên" value={f.annual_fee} onChange={setVal('annual_fee')} opts={amountOpts} />
+                <SmMoney label="Phí thường niên" value={f.annual_fee} onChange={setVal('annual_fee')} />
               </SmField>
               <SmField label="Ngày thu phí">
                 <DateField value={f.annual_fee_on} onChange={setVal('annual_fee_on')} ariaLabel="Ngày thu phí thường niên" />
               </SmField>
               <SmField label="Phí rút tiền mặt · tùy chọn" wide>
-                <SmMoney label="Phí rút tiền mặt" value={f.cash_advance_fee} onChange={setVal('cash_advance_fee')} opts={amountOpts} />
+                <SmMoney label="Phí rút tiền mặt" value={f.cash_advance_fee} onChange={setVal('cash_advance_fee')} />
               </SmField>
             </>)}
 
@@ -647,7 +641,7 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
                 <BankSelect value={f.lender || ''} onChange={setVal('lender')} placeholder="Chọn ngân hàng hoặc nhập tên" />
               </SmField>
               <SmField label="Dư nợ gốc">
-                <SmMoney label="Dư nợ gốc" value={f.principal} onChange={setVal('principal')} opts={amountOpts} />
+                <SmMoney label="Dư nợ gốc" value={f.principal} onChange={setVal('principal')} />
               </SmField>
               <SmField label="Lãi suất">
                 <SmInput label="Lãi suất" inputMode="decimal" placeholder="4,8" suffix="%/năm" value={f.rate || ''} onChange={setDecimal('rate')} />
@@ -680,14 +674,14 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
               </SmField>
               {f.plan === 'monthly' && (<>
                 <SmField label="Góp mỗi kỳ">
-                  <SmMoney label="Góp mỗi kỳ" value={f.auto_amount} onChange={setVal('auto_amount')} opts={amountOpts} />
+                  <SmMoney label="Góp mỗi kỳ" value={f.auto_amount} onChange={setVal('auto_amount')} />
                 </SmField>
                 <SmField label="Ngày góp hằng tháng">
                   <SmInput label="Ngày góp hằng tháng" inputMode="numeric" pattern="[0-9]*" placeholder="5" value={f.auto_day || ''} onChange={setDigits('auto_day', 2)} />
                 </SmField>
               </>)}
               <SmField label="Mục tiêu · tùy chọn" wide>
-                <SmMoney label="Mục tiêu" value={f.goal} onChange={setVal('goal')} opts={amountOpts} />
+                <SmMoney label="Mục tiêu" value={f.goal} onChange={setVal('goal')} />
               </SmField>
               <SmField wide>
                 <SmNote>App chỉ nhắc ngày góp, không tự chuyển tiền. Nơi gửi (sổ tiết kiệm, ví) và khóa quỹ khai trong <strong>Quản lý quỹ</strong> — phải có ít nhất một nơi gửi mới ghi được tiền góp.</SmNote>
@@ -696,7 +690,7 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
 
             {kind === 'lend' && (<>
               <SmField label="Số tiền cho mượn">
-                <SmMoney label="Số tiền cho mượn" value={f.principal} onChange={setVal('principal')} opts={amountOpts} />
+                <SmMoney label="Số tiền cho mượn" value={f.principal} onChange={setVal('principal')} />
               </SmField>
               <SmField label="Lãi suất · để trống nếu không tính">
                 <SmInput label="Lãi suất" inputMode="decimal" placeholder="0" suffix="%/năm" value={f.rate || ''} onChange={setDecimal('rate')} />
@@ -715,19 +709,19 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
               </SmField>
               <SmField label="Lãi mất do rút tiết kiệm sớm · tùy chọn" wide
                 hint="Đập sổ trước hạn để có tiền cho vay thì mất toàn bộ lãi đã tích — tổn thất đó không nằm trong lãi %/năm, khai riêng ở đây. Nó cộng thẳng vào tổng phải thu.">
-                <SmMoney label="Lãi mất do rút sớm" value={f.forfeited_interest} onChange={setVal('forfeited_interest')} opts={amountOpts} />
+                <SmMoney label="Lãi mất do rút sớm" value={f.forfeited_interest} onChange={setVal('forfeited_interest')} />
                 {brokenDeposits.length > 0 && (
                   <div className="fin-source-picker">
                     {brokenDeposits.map(({ d, lost }) => (
                       <button type="button" key={d.id}
-                        className={(parseCurrencyInput(f.forfeited_interest, amountOpts) || 0) === lost ? 'is-active' : ''}
+                        className={(parseCurrencyInput(f.forfeited_interest) || 0) === lost ? 'is-active' : ''}
                         onClick={() => setF(p => ({ ...p, forfeited_interest: String(lost) }))}>
                         <AppIcon name="piggyBank" size={14} /> Rút {d.name} · mất {money(lost)}
                       </button>
                     ))}
                   </div>
                 )}
-                <ForfeitCalc withdrawOn={f.lent_on || fin.today} today={fin.today} defaultAmount={parseCurrencyInput(f.principal, amountOpts) || 0}
+                <ForfeitCalc withdrawOn={f.lent_on || fin.today} today={fin.today} defaultAmount={parseCurrencyInput(f.principal) || 0}
                   onUse={(lost) => setF(p => ({ ...p, forfeited_interest: String(lost) }))} />
               </SmField>
               {lendMath && lendMath.total > 0 && (
@@ -824,8 +818,6 @@ function PayBlock({ fin, tasks = [], defaultAmount, dueDay, allowSource = false,
         <label className="fin-field"><span>{amountLabel}</span>
           <input ref={amountRef} className="fin-input" inputMode="numeric" pattern="[0-9.]*" autoFocus
             placeholder="chưa có kỳ nào để gợi ý" value={groupDigits(amount)} onChange={e => setAmount(sanitizeDigits(e.target.value))} />
-          {/* Auto-K nhân 1.000 cho số dưới 10.000 — ô hiện "5.000" mà ghi 5.000.000₫. */}
-          {autoKPreview(amount) && <small className="fin-amount-auto">Sẽ ghi <strong>{autoKPreview(amount)} ₫</strong> · Auto-K</small>}
           {quickAmount > 0 && <button type="button" className="fin-inline-command" onClick={() => {
             setAmount(String(quickAmount));
             if (interestQuick != null) setInterest(String(interestQuick));   // trả hết = gốc còn lại + lãi

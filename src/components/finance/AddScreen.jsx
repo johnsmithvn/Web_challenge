@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useUserTasks } from '../../hooks/useUserTasks';
-import { autoKPreview, groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
+import { groupDigits, parseCurrencyInput, sanitizeDigits, stripAmountWords } from '../../utils/currencyUtils';
 import { matchCategory, deriveNecessity, cardBalance, billAmountEstimate, billCycle, billSettled } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, pickableSubs, NECESSITY_META, TaskPicker, FinanceIcon, DateField,
@@ -108,15 +108,13 @@ export default function AddScreen({ fin, nav }) {
       setCategoryId(guess ? guess.categoryId : 'other');
       setSubId(guess ? guess.subId : 'other.unclassified');
     }
-    const amountFromText = parseCurrencyInput(text, { autoK: false });
+    const amountFromText = parseCurrencyInput(text);
     if (nav.handoff.amount) setAmount(String(nav.handoff.amount));
     else if (amountFromText) setAmount(String(amountFromText));
   }, [nav.handoff]);
 
   const expenseGroup = cats.expenseGroups.find(group => group.key === categoryId);
-  const fromInbox = nav.handoff?.kind === 'tx';
-  const parseOpts = fromInbox ? { autoK: false } : undefined;
-  const parsedAmount = parseCurrencyInput(amount, parseOpts);
+  const parsedAmount = parseCurrencyInput(amount);
   const autoNecessity = deriveNecessity(categoryId, subId, cats);
   const appliedNecessity = necessity || autoNecessity;
 
@@ -180,8 +178,8 @@ export default function AddScreen({ fin, nav }) {
     ? fin.bills.find(bill => bill.enabled && bill.subcategory_id === subId)
     : null;
 
-  const addAmount = (setter, raw, step, opts) => {
-    const next = (parseCurrencyInput(raw, opts) || 0) + step;
+  const addAmount = (setter, raw, step) => {
+    const next = (parseCurrencyInput(raw) || 0) + step;
     setter(String(next));
   };
 
@@ -480,7 +478,7 @@ export default function AddScreen({ fin, nav }) {
                         key={step}
                         type="button"
                         className="fin-amount-field__quick-btn"
-                        onClick={() => addAmount(setAmount, amount, step, parseOpts)}
+                        onClick={() => addAmount(setAmount, amount, step)}
                       >
                         +{step / 1000}k
                       </button>
@@ -500,12 +498,6 @@ export default function AddScreen({ fin, nav }) {
                   />
                   <span>₫</span>
                 </div>
-                {autoKPreview(amount, parseOpts) && (
-                  <small className="fin-amount-auto" aria-live="polite">
-                    Sẽ lưu <strong>{autoKPreview(amount, parseOpts)} ₫</strong> · Auto-K tự thêm 3 số 0
-                  </small>
-                )}
-                {fromInbox && <small className="fin-entry-hint">Số lấy nguyên từ Inbox — không áp Auto-K</small>}
               </div>
             </div>
 

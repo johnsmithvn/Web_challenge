@@ -87,11 +87,8 @@ v6.9.0; dưới đây là phần còn mở, xếp theo mức đáng làm.
   (user duyệt). Fail-closed: từ chối chạy nếu bảng còn dù một dòng. **User còn phải chạy trên hosted.**
 - [x] **Trường `bio` write-only** — bỏ khỏi form Hồ sơ 2026-08-16. Cột `profiles.bio` giữ nguyên
   trong database; xóa cột cần migration riêng, chỉ làm khi chắc không dùng lại.
-- [ ] **Auto-K đã mất phần lớn lý do tồn tại.** Bảng `MAGNITUDE` (`nghìn/triệu/tr/củ`) làm
-  "50 nghìn" ra đúng mà không cần auto-K; auto-K giờ chỉ còn phục vụ trường hợp gõ số trần "50" —
-  đúng cái ca gây hiểu nhầm. Cân nhắc mặc định TẮT cho user mới (không đụng ai đang bật).
-- [ ] **Áp dòng cảnh báo auto-K cho 11 ô tiền còn lại** (form hóa đơn/vay/thẻ/quỹ). Đã làm 3 ô ghi
-  tiền thật; phần còn lại là form cấu hình, cùng một rủi ro nhưng ít gặp hơn.
+- [x] **Bỏ Auto-K và tỷ giá USD** (2026-10-11) — ô tiền lưu đúng số gõ, chỉ nhân khi có chữ chỉ độ
+  lớn; xoá luôn mục "Cấu hình tiền tệ & chi tiêu" trong Cài đặt.
 - [ ] **Đóng vòng dữ liệu ngoài cửa sổ fetch.** Cửa sổ mới bắt đầu 01/01 năm ngoái và giữ mọi giao
   dịch gắn quy tắc, nên không có tính toán nào sai. Nhưng khoản chi lẻ cũ hơn thì không ai xem lại
   được nữa. Khi cần: thêm fetch theo yêu cầu lúc user chọn kỳ ngoài cửa sổ, hoặc một nút "tải thêm".

@@ -449,7 +449,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
         h: item.st === 'rest' ? '4px' : `${Math.max(8, Math.round(item.s / maxSets * 100))}%`,
         bg: item.st === 'done'
           ? (isTodayCol ? '#6949E8' : '#C4B6F4')
-          : item.st === 'plan' ? 'transparent' : '#F0EEE9',
+          : item.st === 'plan' ? 'transparent' : 'var(--body-shell-bg)',
         bd: item.st === 'plan' ? '1.5px dashed #C9C6BE' : '0',
         fg: isTodayCol ? '#15161A' : '#8A8A84',
         font: `${isTodayCol ? 600 : 500} 11px/1 'Be Vietnam Pro', sans-serif`
@@ -754,7 +754,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                <span style={{ height: '6px', borderRadius: '3px', background: '#F0EEE9', overflow: 'hidden' }}>
+                <span style={{ height: '6px', borderRadius: '3px', background: 'var(--body-shell-bg)', overflow: 'hidden' }}>
                   <span style={{ display: 'block', height: '100%', width: `${weightData.progressPercent}%`, background: '#6949E8', borderRadius: '3px' }} />
                 </span>
                 <div style={{ display: 'flex', justifyContent: 'space-between', font: "400 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-muted)" }}>
@@ -792,7 +792,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
             <div style={{ position: 'relative', width: '104px', height: '104px', flex: 'none' }}>
               <svg width="104" height="104" viewBox="0 0 104 104" style={{ display: 'block', transform: 'rotate(-90deg)' }}>
-                <circle cx="52" cy="52" r="44" fill="none" stroke="#F0EEE9" strokeWidth="10" />
+                <circle cx="52" cy="52" r="44" fill="none" stroke="var(--body-shell-bg)" strokeWidth="10" />
                 <circle cx="52" cy="52" r="44" fill="none" stroke="#6949E8" strokeWidth="10" strokeLinecap="round" strokeDasharray={nutritionData.kcalDash} />
               </svg>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
@@ -812,7 +812,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
                     <span>{m.n}</span>
                     <span style={{ font: "500 11.5px/1 var(--body-mono)", color: "var(--body-text-main)" }}>{m.v}</span>
                   </div>
-                  <span style={{ height: '5px', borderRadius: '3px', background: '#F0EEE9', overflow: 'hidden' }}>
+                  <span style={{ height: '5px', borderRadius: '3px', background: 'var(--body-shell-bg)', overflow: 'hidden' }}>
                     <span style={{ display: 'block', height: '100%', width: m.p, background: m.c, borderRadius: '3px' }} />
                   </span>
                 </div>
@@ -914,7 +914,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
           {/* 6a: Check-in tuần */}
           <div className="body-2a-checkin-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ font: "600 14px/1 'Be Vietnam Pro',sans-serif", color: "#2D2270" }}>Check-in tuần</span>
+              <span style={{ font: "600 14px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>Check-in tuần</span>
               <span style={{ font: "500 11.5px/1 var(--body-mono)", color: "#5238C9" }}>{checkinTomorrowData.checkinDate}</span>
             </div>
             <span style={{ font: "400 13px/1.5 'Be Vietnam Pro',sans-serif", color: "#4A3AA8" }}>
@@ -923,10 +923,10 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
                 : `Còn ${checkinTomorrowData.daysLeft} ngày. Cần 2 thứ: cân buổi sáng Chủ nhật và số đo vòng eo.`}
             </span>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ height: '28px', padding: '0 10px', borderRadius: '8px', background: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px', font: "500 12px/1 'Be Vietnam Pro',sans-serif", color: "#2D2270" }}>
+              <span style={{ height: '28px', padding: '0 10px', borderRadius: '8px', background: 'var(--body-card-bg)', display: 'flex', alignItems: 'center', gap: '6px', font: "500 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
                 <AppIcon name="scales" size={13} /> Cân sáng CN
               </span>
-              <span style={{ height: '28px', padding: '0 10px', borderRadius: '8px', background: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px', font: "500 12px/1 'Be Vietnam Pro',sans-serif", color: "#2D2270" }}>
+              <span style={{ height: '28px', padding: '0 10px', borderRadius: '8px', background: 'var(--body-card-bg)', display: 'flex', alignItems: 'center', gap: '6px', font: "500 12px/1 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
                 <AppIcon name="ruler" size={13} /> Vòng eo
               </span>
               <span style={{ height: '28px', padding: '0 10px', borderRadius: '8px', background: 'transparent', display: 'flex', alignItems: 'center', gap: '6px', font: "500 12px/1 'Be Vietnam Pro',sans-serif", color: "#5238C9" }}>
@@ -1076,7 +1076,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
               {nutritionData.macros.map(m => (
-                <span key={m.n} style={{ height: '5px', borderRadius: '3px', background: '#F0EEE9', overflow: 'hidden' }}>
+                <span key={m.n} style={{ height: '5px', borderRadius: '3px', background: 'var(--body-shell-bg)', overflow: 'hidden' }}>
                   <span style={{ display: 'block', height: '100%', width: m.p, background: m.c, borderRadius: '3px' }} />
                 </span>
               ))}
@@ -1138,7 +1138,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
         <div className="body-2a-checkin-card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <AppIcon name="clipboard" size={22} style={{ color: "#5238C9", flexShrink: 0 }} />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span style={{ font: "600 13px/1.2 'Be Vietnam Pro',sans-serif", color: "#2D2270" }}>
+            <span style={{ font: "600 13px/1.2 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>
               Check-in tuần · {checkinTomorrowData.checkinDate}
             </span>
             <span style={{ font: "400 12px/1.3 'Be Vietnam Pro',sans-serif", color: "#4A3AA8" }}>

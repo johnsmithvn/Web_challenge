@@ -432,6 +432,15 @@ export default function LiveSessionScreen({
     isPR
   });
 
+  // PR: vượt mốc lịch sử VÀ vượt các set trước của chính buổi này (mỗi bài tối đa 1 lần lên kỷ lục mới)
+  const isPRFor = (item, actualVal) => {
+    if (actualVal == null) return false;
+    const sessionBase = buildPrBaselines(loggedSets).get(item.exercise_key);
+    const candidate = { actualVal, kg: item.kg || 0 };
+    return isNewPR(candidate, historyBaselines.get(item.exercise_key))
+      && (!sessionBase || isNewPR(candidate, sessionBase));
+  };
+
   const handleLogSet = (valToLog) => {
     ensureAudioUnlocked();
     if (!currentItem) return;
@@ -440,34 +449,39 @@ export default function LiveSessionScreen({
 
     // valToLog === null means set was explicitly skipped
     const actualVal = valToLog === null ? null : Number(valToLog);
-
-    // PR: vượt mốc lịch sử VÀ vượt các set trước của chính buổi này (mỗi bài tối đa 1 lần lên kỷ lục mới)
-    let isPR = false;
-    if (actualVal != null) {
-      const sessionBase = buildPrBaselines(loggedSets).get(currentItem.exercise_key);
-      const candidate = { actualVal, kg: currentItem.kg || 0 };
-      isPR = isNewPR(candidate, historyBaselines.get(currentItem.exercise_key))
-        && (!sessionBase || isNewPR(candidate, sessionBase));
-    }
-
-    const record = buildRecord(currentItem, actualVal, isPR);
+    const record = buildRecord(currentItem, actualVal, isPRFor(currentItem, actualVal));
     setLoggedSets(prev => [...prev, record]);
     persistRecord(record);
     advanceAfter(curQueueIdx, new Set([...doneKeys, slotOfRecord(record)]));
   };
 
-  // Bỏ cả bài: các set còn trống của bài hiện tại được ghi là "bỏ"
-  const handleSkipExercise = () => {
-    if (!currentItem) return;
+  // Các set còn trống của bài đang tập (gồm cả set hiện tại)
+  const openSetsOfCurrent = currentItem
+    ? queue.filter(q => q.exercise_key === currentItem.exercise_key
+      && q.exerciseIndex === currentItem.exerciseIndex
+      && !doneKeys.has(slotOfItem(q)))
+    : [];
+
+  // Đóng mọi set còn trống của bài hiện tại một lần; valOf(q) = giá trị ghi cho set đó (null = bỏ)
+  const closeExercise = (valOf) => {
+    if (openSetsOfCurrent.length === 0) return;
     pauseTimer();
     lockModeIfNeeded();
-    const sameItem = q => q.exercise_key === currentItem.exercise_key && q.exerciseIndex === currentItem.exerciseIndex;
-    const records = queue.filter(q => sameItem(q) && !doneKeys.has(slotOfItem(q))).map(q => buildRecord(q, null));
-    if (records.length === 0) return;
+    const vals = openSetsOfCurrent.map(valOf);
+    const best = vals.indexOf(Math.max(...vals.map(v => v ?? -1))); // chỉ set cao nhất được xét PR
+    const records = openSetsOfCurrent.map((q, i) => buildRecord(q, vals[i], i === best && isPRFor(q, vals[i])));
     setLoggedSets(prev => [...prev, ...records]);
     records.forEach(persistRecord);
     advanceAfter(curQueueIdx, new Set([...doneKeys, ...records.map(slotOfRecord)]));
   };
+
+  // Bỏ cả bài: các set còn trống ghi là "bỏ"
+  const handleSkipExercise = () => closeExercise(() => null);
+
+  // Xong cả bài: set đang tập lấy số rep đang chọn, các set còn lại điền đủ mục tiêu
+  const handleFinishExercise = () => closeExercise(q => (
+    q.set_no === currentItem.set_no ? Number(currentVal) : Number(q.target_val)
+  ));
 
   // Sửa giá trị 1 set ở màn kết quả (ô trống = bỏ set).
   // ponytail: không tính lại cờ PR sau khi sửa — cần thì tính lại bằng buildPrBaselines như handleLogSet
@@ -871,7 +885,7 @@ export default function LiveSessionScreen({
           </div>
 
           {/* Trạng thái từng set của bài đang tập */}
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
             {Array.from({ length: currentItem?.total_sets || 0 }, (_, j) => {
               const val = (logs[currentItem.exercise_key] || [])[j];
               const has = val !== undefined;
@@ -895,6 +909,18 @@ export default function LiveSessionScreen({
                 </span>
               );
             })}
+            {currentItem?.unit !== 's' && openSetsOfCurrent.length > 1 && (
+              <button
+                type="button"
+                className="body-btn"
+                style={{ marginLeft: 'auto', height: '30px', fontSize: '12px', background: 'var(--body-green-soft)', color: 'var(--body-green-text)', border: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
+                onClick={handleFinishExercise}
+                title="Ghi set này theo số đang chọn, các set còn lại đủ mục tiêu"
+              >
+                <AppIcon name="check" size={14} />
+                <span>Xong cả bài</span>
+              </button>
+            )}
           </div>
 
           {/* Bài đếm rep */}
@@ -903,8 +929,9 @@ export default function LiveSessionScreen({
               <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                 <button
                   className="body-btn-icon"
-                  style={{ width: '48px', height: '48px', fontSize: '20px' }}
+                  style={{ width: '64px', height: '64px', borderRadius: '50%', fontSize: '26px' }}
                   onClick={() => setCurrentVal(prev => Math.max(0, prev - 1))}
+                  aria-label="Giảm 1 rep"
                 >
                   −
                 </button>
@@ -920,28 +947,25 @@ export default function LiveSessionScreen({
 
                 <button
                   className="body-btn-icon"
-                  style={{ width: '48px', height: '48px', fontSize: '20px' }}
+                  style={{ width: '64px', height: '64px', borderRadius: '50%', fontSize: '26px' }}
                   onClick={() => setCurrentVal(prev => prev + 1)}
+                  aria-label="Tăng 1 rep"
                 >
                   +
                 </button>
               </div>
 
-              {/* Quick Select Chips */}
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                {[
-                  currentItem.target_val - 4,
-                  currentItem.target_val - 2,
-                  currentItem.target_val,
-                  currentItem.target_val + 2,
-                  currentItem.target_val + 4
-                ].filter(v => v >= 0).map((v) => (
+              {/* Chọn nhanh 7 số liên tiếp quanh mục tiêu (−4 … +2) */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                {Array.from({ length: 7 }, (_, i) => Math.max(0, Number(currentItem.target_val) - 4) + i).map((v) => (
                   <button
                     key={v}
                     className="body-btn body-btn-secondary"
                     style={{
-                      height: '32px',
-                      padding: '0 12px',
+                      height: '40px',
+                      minWidth: '40px',
+                      padding: '0 8px',
+                      justifyContent: 'center',
                       fontWeight: v === currentVal ? 700 : 500,
                       background: v === currentVal ? 'var(--body-text-main)' : undefined,
                       color: v === currentVal ? 'var(--body-bg)' : undefined
@@ -1047,18 +1071,9 @@ export default function LiveSessionScreen({
       {/* ── BƯỚC 3: REST TIMER OVERLAY ──────────────────────────── */}
       {screenState === 'rest' && (
         <div className="body-rest-overlay">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '15px', fontWeight: 600, color: '#C4B6F4', textTransform: 'uppercase' }}>
-              {REST_KIND_LABELS[restKind] || 'Nghỉ giữa set'}
-            </span>
-            <button
-              className="body-btn body-btn-secondary"
-              style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none' }}
-              onClick={handleEndRest}
-            >
-              Bỏ qua nghỉ
-            </button>
-          </div>
+          <span style={{ fontSize: '15px', fontWeight: 600, color: '#C4B6F4', textTransform: 'uppercase' }}>
+            {REST_KIND_LABELS[restKind] || 'Nghỉ giữa set'}
+          </span>
 
           <div className="body-timer-ring-container">
             <svg width="250" height="250" viewBox="0 0 250 250">
@@ -1086,7 +1101,7 @@ export default function LiveSessionScreen({
             </svg>
 
             <div className="body-timer-ring-text">
-              <span className="body-timer-clock">{restRemaining}s</span>
+              <span className="body-timer-clock">{formatClock(restRemaining)}</span>
             </div>
           </div>
 
@@ -1122,6 +1137,15 @@ export default function LiveSessionScreen({
               </div>
             )}
           </div>
+
+          <button
+            className="body-btn"
+            style={{ width: '100%', height: '52px', marginTop: '16px', justifyContent: 'center', gap: '8px', fontSize: '15px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none' }}
+            onClick={handleEndRest}
+          >
+            <span>Bỏ qua nghỉ</span>
+            <AppIcon name="arrowRight" size={16} />
+          </button>
         </div>
       )}
 
@@ -1131,7 +1155,6 @@ export default function LiveSessionScreen({
           {/* Header chúc mừng */}
           <div style={{
             display: 'flex',
-            justifyContent: 'space-between',
             alignItems: 'center',
             padding: '16px 20px',
             background: 'var(--body-card-bg)',
@@ -1159,29 +1182,6 @@ export default function LiveSessionScreen({
                 </div>
               </div>
             </div>
-
-            <button
-              className="body-btn body-btn-accent"
-              onClick={() => {
-                const progressionsToApply = doneStats.progressionCandidates
-                  .filter(c => c.shouldProgress && isUuid(c.routineItemId) && approvedProgressions[c.routineItemId || c.exercise_key])
-                  .map(c => ({
-                    routineItemId: c.routineItemId,
-                    nextTargetVal: c.nextVal
-                  }));
-
-                onFinishSession?.({
-                  elapsed,
-                  logs,
-                  loggedSets,
-                  hasSaveError: Boolean(saveError),
-                  approvedProgressions: progressionsToApply
-                });
-              }}
-              style={{ height: '38px', padding: '0 20px' }}
-            >
-              Hoàn tất & Lưu
-            </button>
           </div>
 
           {/* 4 Stat KPI Cards - 100% Số Liệu Thật */}
@@ -1274,7 +1274,7 @@ export default function LiveSessionScreen({
                                 padding: '6px 12px',
                                 borderRadius: '8px',
                                 background: isSkipped ? 'var(--body-red-soft)' : isMet ? 'var(--body-green-soft)' : 'var(--body-shell-bg)',
-                                border: `1px solid ${isSkipped ? 'var(--body-red-text)' : isMet ? '#CFE8D8' : 'var(--body-card-border)'}`,
+                                border: `1px solid ${isSkipped ? 'var(--body-red-text)' : isMet ? 'var(--body-green-border)' : 'var(--body-card-border)'}`,
                                 fontSize: '13px',
                                 fontFamily: 'var(--body-mono)',
                                 fontWeight: 600,
@@ -1399,6 +1399,31 @@ export default function LiveSessionScreen({
             </div>
 
           </div>
+
+          {/* Thanh lưu ở cuối màn kết quả (không sticky) */}
+          <button
+            className="body-btn body-btn-accent"
+            onClick={() => {
+              const progressionsToApply = doneStats.progressionCandidates
+                .filter(c => c.shouldProgress && isUuid(c.routineItemId) && approvedProgressions[c.routineItemId || c.exercise_key])
+                .map(c => ({
+                  routineItemId: c.routineItemId,
+                  nextTargetVal: c.nextVal
+                }));
+
+              onFinishSession?.({
+                elapsed,
+                logs,
+                loggedSets,
+                hasSaveError: Boolean(saveError),
+                approvedProgressions: progressionsToApply
+              });
+            }}
+            style={{ width: '100%', height: '52px', fontSize: '15px' }}
+          >
+            <AppIcon name="checkCircle" size={18} />
+            <span>Hoàn tất & Lưu</span>
+          </button>
         </div>
       )}
 

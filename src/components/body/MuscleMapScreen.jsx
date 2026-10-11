@@ -534,7 +534,7 @@ export default function MuscleMapScreen({ onSelectExercise }) {
             <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>Kỷ lục cá nhân (PR)</span>
             {selectedMuscle.pr ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#FDF3E3', color: '#B57A12', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--body-amber-soft)', color: 'var(--body-amber)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                   <AppIcon name="trophy" size={17} weight="fill" />
                 </div>
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1px' }}>
@@ -946,7 +946,7 @@ export default function MuscleMapScreen({ onSelectExercise }) {
                     borderRadius: '12px',
                     border: '1px solid var(--body-card-border)'
                   }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#FDF3E3', color: '#B57A12', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--body-amber-soft)', color: 'var(--body-amber)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
                       <AppIcon name="trophy" size={20} weight="fill" />
                     </div>
                     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
