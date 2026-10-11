@@ -1,6 +1,8 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import AppIcon from './AppIcon';
 import TaskCard from './TaskCard';
+import { ElfColumnDecor, ElfDivider } from './TaskElfDecor';
+import { useTheme } from '../contexts/ThemeContext';
 import { toDateStr } from '../utils/dateUtils';
 import {
   getKanbanRange,
@@ -37,6 +39,7 @@ export default function TaskKanbanView({
   customRange = null,
   searchQuery = '',
 }) {
+  const elf = useTheme().taskStyle === 'elf';
   const {
     pendingTasks = [],
     skippedTasks = [],
@@ -307,6 +310,7 @@ export default function TaskKanbanView({
             style={{ '--col-c': c.color, '--col-tint': `var(--tk-col-tint-${c.key})` }}
             {...dz}
           >
+            {elf && <ElfColumnDecor />}
             <div className="tk-col__head">
               <span className="tk-col__dot" style={{ background: c.color, boxShadow: `0 0 12px ${c.color}` }} />
               <span className="tk-col__title">{c.label}</span>
@@ -327,6 +331,7 @@ export default function TaskKanbanView({
                 <AppIcon name="arrowLineLeft" size={14} />
               </button>
             </div>
+            {elf && <ElfDivider />}
             <div className="tk-col__body">
               {adding && (
                 <div className="tk-inline-add">

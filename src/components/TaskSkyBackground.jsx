@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { solarToLunar } from '../utils/lunarUtils';
+import { ForestDay, ForestNight } from './TaskForestBackground';
 
 /**
  * Nền trang Nhiệm vụ theo mockup "Kanban tối & sáng" (fxA / fxAm / fxC / fxCm).
@@ -16,6 +17,8 @@ const rnd = (i) => { const x = Math.sin(i * 41.37 + 1.9) * 43758.5453; return x 
 
 // [top, left, width, thời lượng, trễ]
 const SHOOTS = [['70px', '81%', 170, 9, 1], ['24px', '59%', 130, 13, 5.5], ['150px', '97%', 210, 17, 9], ['10px', '39%', 150, 23, 14]];
+// Rừng tiên đêm: 3 sao băng khác chỗ, không sao chổi
+const SHOOTS_ELF = [['60px', '74%', 160, 10, 2], ['28px', '51%', 120, 14, 7], ['130px', '96%', 190, 18, 11]];
 const SHOOTS_M = [['64px', '87%', 110, 9, 1.5], ['18px', '59%', 90, 14, 6], ['140px', '103%', 130, 19, 10.5]];
 // Sao sáng 4 cánh: [x, y, cỡ, thời lượng]
 const BRIGHT = [[366, 12, 22, 5], [696, 10, 18, 6.5], [816, 66, 16, 4.8], [976, 22, 24, 7], [236, 10, 14, 5.6], [1146, 98, 16, 6], [636, 104, 14, 5.2], [1326, 34, 20, 7.4], [66, 112, 14, 6.2], [1066, 8, 13, 4.4], [296, 92, 12, 5.8]];
@@ -40,13 +43,20 @@ function placeConstellation(el) {
 }
 const placeOnce = (el) => { if (el && !el.dataset.placed) { el.dataset.placed = '1'; placeConstellation(el); } };
 
-function Moon() {
+// Bảng màu trăng: Aurora (xanh lạnh) / Rừng tiên (ngà ánh lục)
+const MOON_PAL = {
+  aurora: { halo: '210,222,250', glow1: '240,244,255', glow2: '200,215,250' },
+  elf: { halo: '210,236,222', glow1: '240,248,230', glow2: '200,235,215' },
+};
+
+function Moon({ elf }) {
   const t = new Date();
   const lday = solarToLunar(t.getDate(), t.getMonth() + 1, t.getFullYear()).day;
   const ph = ((lday - 0.5) / 29.530589) * 2 * Math.PI;
   const lit = (1 - Math.cos(ph)) / 2;
   const wax = ph < Math.PI;
   const D = 64, R = D / 2, MX = 436, MY = -1;
+  const c = MOON_PAL[elf ? 'elf' : 'aurora'];
   const tw = Math.abs(Math.cos(ph)) * D;
   const ts = wax ? (lit < 0.5 ? 0 : 1) : (lit < 0.5 ? 1 : 0);
   // Phần sáng = nửa đĩa + elip terminator → cắt bằng clip-path
@@ -56,9 +66,9 @@ function Moon() {
       : lday <= 23 ? 'Hạ huyền' : lday <= 29 ? 'Lưỡi liềm cuối tháng' : 'Trăng tàn';
   return (
     <>
-      <span className="task-moon-halo" style={{ left: px(MX + R - 260), top: px(MY + R - 260), background: `radial-gradient(closest-side,rgba(210,222,250,${(0.05 + 0.22 * lit).toFixed(3)}),rgba(210,222,250,0))` }} />
+      <span className="task-moon-halo" style={{ left: px(MX + R - 260 + (elf ? (wax ? 1 : -1) * (1 - lit) * D * 0.3 : 0)), top: px(MY + R - 260), background: `radial-gradient(closest-side,rgba(${c.halo},${(0.05 + 0.22 * lit).toFixed(3)}),rgba(${c.halo},0))` }} />
       <span className="task-moon" style={{ left: px(MX), top: px(MY) }}>
-        <span style={{ position: 'absolute', inset: 0, filter: `drop-shadow(0 0 ${(4 + 14 * lit).toFixed(0)}px rgba(240,244,255,${(0.35 + 0.45 * lit).toFixed(2)})) drop-shadow(0 0 ${(10 + 30 * lit).toFixed(0)}px rgba(200,215,250,${(0.15 + 0.3 * lit).toFixed(2)}))` }}>
+        <span style={{ position: 'absolute', inset: 0, filter: `drop-shadow(0 0 ${(4 + 14 * lit).toFixed(0)}px rgba(${c.glow1},${(0.35 + 0.45 * lit).toFixed(2)})) drop-shadow(0 0 ${(10 + 30 * lit).toFixed(0)}px rgba(${c.glow2},${(0.15 + 0.3 * lit).toFixed(2)}))` }}>
           <span className="task-moon__disc" style={{ clipPath: clip, WebkitClipPath: clip }} />
         </span>
       </span>
@@ -69,24 +79,26 @@ function Moon() {
   );
 }
 
-function DarkSky({ isMobile }) {
+function DarkSky({ isMobile, elf }) {
   return (
     <>
       <div className="task-aurora-glow" />
       <div className="task-milkyway" />
       <div className="task-milkyway task-milkyway--dust" />
       {[0, 1, 2, 3].map((i) => <div key={i} className={`task-stars task-stars--${i}`} />)}
-      {(isMobile ? SHOOTS_M : SHOOTS).map(([top, left, w, dur, delay]) => (
+      {(isMobile ? SHOOTS_M : elf ? SHOOTS_ELF : SHOOTS).map(([top, left, w, dur, delay]) => (
         <div key={left} className="task-shooting-star" style={{ top, left, width: px(w), animation: `taskShoot ${dur}s linear ${delay}s infinite` }} />
       ))}
-      <div className="task-comet-wrapper">
-        <span className="task-comet-tail-1" />
-        <span className="task-comet-tail-2" />
-        <span className="task-comet-head" />
-      </div>
+      {!elf && (
+        <div className="task-comet-wrapper">
+          <span className="task-comet-tail-1" />
+          <span className="task-comet-tail-2" />
+          <span className="task-comet-head" />
+        </div>
+      )}
       {!isMobile && (
         <>
-          <Moon />
+          <Moon elf={elf} />
           {BRIGHT.map(([x, y, s, d], i) => (
             <span key={i} className="task-bright-star" style={{ left: px(x - s / 2), top: px(y - s / 2), width: px(s), height: px(s), animationDuration: `${d}s`, animationDelay: `${(-i * 1.3).toFixed(1)}s` }} />
           ))}
@@ -114,9 +126,10 @@ function DarkSky({ isMobile }) {
               </span>
             );
           })}
-          <div className="task-planet-horizon" />
+          {!elf && <div className="task-planet-horizon" />}
         </>
       )}
+      {elf && <ForestNight />}
     </>
   );
 }
@@ -212,11 +225,16 @@ function LightSky({ isMobile, dusk }) {
 }
 
 function TaskSkyBackground({ isMobile }) {
-  const { theme } = useTheme();
+  const { theme, taskStyle } = useTheme();
+  const elf = taskStyle === 'elf';
   const dusk = new Date().getHours() >= 12;
+  let sky;
+  if (theme !== 'light') sky = <DarkSky isMobile={isMobile} elf={elf} />;
+  else if (elf) sky = <><div className="task-aurora-glow" /><ForestDay /></>;
+  else sky = <LightSky isMobile={isMobile} dusk={dusk} />;
   return (
     <div className={`task-cosmos-bg${dusk ? ' is-dusk' : ''}`} aria-hidden="true">
-      {theme === 'light' ? <LightSky isMobile={isMobile} dusk={dusk} /> : <DarkSky isMobile={isMobile} />}
+      {sky}
     </div>
   );
 }

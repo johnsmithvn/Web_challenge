@@ -959,8 +959,8 @@
 
 .tk-header__title {
   margin: 0;
-  font: var(--tk-title-weight) 30px/1.05 var(--tk-font-display);
-  letter-spacing: -0.02em;
+  font: var(--tk-title-weight) calc(30px * var(--tk-ds, 1))/1.05 var(--tk-font-display);
+  letter-spacing: var(--tk-title-ls, -0.02em);
   color: var(--tk-title-color);
   white-space: nowrap;
 }
@@ -1135,7 +1135,7 @@
 }
 
 .tk-today-strip__title {
-  font: var(--tk-display-weight) 13.5px/1 var(--tk-font-display);
+  font: var(--tk-display-weight) calc(13.5px * var(--tk-ds, 1))/1 var(--tk-font-display);
   color: var(--tk-text-main);
 }
 
@@ -1424,7 +1424,7 @@
 }
 
 .tk-col__title {
-  font: var(--tk-display-weight) 14.5px/1 var(--tk-font-display);
+  font: var(--tk-display-weight) calc(14.5px * var(--tk-ds, 1))/1 var(--tk-font-display);
   color: var(--tk-text-main);
 }
 
@@ -1564,7 +1564,7 @@
 
 .tk-col__vtitle {
   writing-mode: vertical-rl;
-  font: var(--tk-display-weight) 14px/1 var(--tk-font-display);
+  font: var(--tk-display-weight) calc(14px * var(--tk-ds, 1))/1 var(--tk-font-display);
   color: var(--tk-chip-fg);
 }
 
@@ -2117,7 +2117,7 @@
 }
 
 .tk-group__name {
-  font: var(--tk-display-weight) 14px/1 var(--tk-font-display);
+  font: var(--tk-display-weight) calc(14px * var(--tk-ds, 1))/1 var(--tk-font-display);
 }
 
 .tk-group__count {
@@ -2263,7 +2263,7 @@
 }
 
 .tk-cal-head__label {
-  font: var(--tk-display-weight) 16px/1 var(--tk-font-display);
+  font: var(--tk-display-weight) calc(16px * var(--tk-ds, 1))/1 var(--tk-font-display);
   color: var(--tk-text-main);
   white-space: nowrap;
 }
@@ -3045,7 +3045,7 @@
   place-items: center;
   background: var(--tk-avatar-bg);
   color: var(--tk-avatar-fg);
-  font: 600 11.5px/1 var(--tk-font-display);
+  font: var(--tk-elf-w, 600) calc(11.5px * var(--tk-ds, 1))/1 var(--tk-font-display);
 }
 
 .tk-note__body {
@@ -3408,7 +3408,7 @@
 }
 
 .tk-dp-title {
-  font: 700 14px/1 var(--tk-font-display);
+  font: 700 calc(14px * var(--tk-ds, 1))/1 var(--tk-font-display);
   color: var(--tk-text-main);
 }
 
@@ -3635,7 +3635,7 @@
 }
 
 .tk-qa__title {
-  font: var(--tk-display-weight) 17px/1 var(--tk-font-display);
+  font: var(--tk-display-weight) calc(17px * var(--tk-ds, 1))/1 var(--tk-font-display);
 }
 
 .tk-qa__sub {
@@ -4317,7 +4317,7 @@
 }
 
 .tk-ag-sec__label {
-  font: 600 14px/1 var(--tk-font-display);
+  font: var(--tk-elf-w, 600) calc(14px * var(--tk-ds, 1))/1 var(--tk-font-display);
   color: var(--tk-text-main);
 }
 
@@ -4396,7 +4396,7 @@
   border-radius: 19px;
   display: grid;
   place-items: center;
-  font: 600 19px/1 var(--tk-font-display);
+  font: var(--tk-elf-w, 600) calc(19px * var(--tk-ds, 1))/1 var(--tk-font-display);
   color: var(--tk-cal-fg);
 }
 
@@ -4854,7 +4854,7 @@
   border-radius: 15px;
   display: grid;
   place-items: center;
-  font: 600 16px/1 var(--tk-font-display);
+  font: var(--tk-elf-w, 600) calc(16px * var(--tk-ds, 1))/1 var(--tk-font-display);
   color: var(--tk-cal-fg);
 }
 
@@ -4994,7 +4994,7 @@
 }
 
 .tk-daypop__title {
-  font: 600 14px/1.2 var(--tk-font-display);
+  font: var(--tk-elf-w, 600) calc(14px * var(--tk-ds, 1))/1.2 var(--tk-font-display);
   color: var(--tk-text-main);
 }
 
@@ -5274,7 +5274,7 @@
   }
 
   .tk-vmenu__btn > span {
-    font: 700 19px/1 var(--tk-font-display);
+    font: 700 calc(19px * var(--tk-ds, 1))/1 var(--tk-font-display);
     letter-spacing: -0.01em;
   }
 
@@ -5670,7 +5670,7 @@
   }
 
   .tk-mkanban__count {
-    font: 700 17px/1 var(--tk-font-display);
+    font: 700 calc(17px * var(--tk-ds, 1))/1 var(--tk-font-display);
   }
 
   .tk-mkanban__name {
@@ -6069,7 +6069,7 @@
   }
 
   .tk-mo-selhead__label {
-    font: 600 14.5px/1.2 var(--tk-font-display);
+    font: var(--tk-elf-w, 600) calc(14.5px * var(--tk-ds, 1))/1.2 var(--tk-font-display);
     color: var(--tk-text-main);
   }
 

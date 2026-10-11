@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import AppIcon from './AppIcon';
+import { ElfBloom } from './TaskElfDecor';
+import { useTheme } from '../contexts/ThemeContext';
 import { STATUS_META, ksStyle, statusKeyOf, taskCardModel } from '../utils/kanbanUtils';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 
@@ -79,6 +81,7 @@ export default function TaskCard({
   onAddSub,
   dragProps,
 }) {
+  const { taskStyle } = useTheme();
   const m = taskCardModel(task, today);
   const st = STATUS_META[m.st];
   const pr = PRIORITY_LABELS[m.priority] || PRIORITY_LABELS[0];
@@ -194,6 +197,7 @@ export default function TaskCard({
   return (
     <div className={`tk-card${selected ? ' is-selected' : ''}`} style={style} onClick={() => onOpen?.(task)} {...dragProps}>
       <span className="tk-k-bar" />
+      {taskStyle === 'elf' && m.done && <ElfBloom />}
       <div className="tk-card__top">
         {badge()}
         {prChip}

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTags } from '../hooks/useTags';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   GearSix as Settings, Tag, Plus, PencilSimple as Pencil, Trash as Trash2, Check, X,
   Palette, User, FloppyDisk as Save, Envelope as Mail, At as AtSign,
@@ -26,9 +27,60 @@ const TAG_COLORS = [
 // Knowledge), nên quote thêm ở đây không hiện ra ở đâu cả. Nơi thêm quote giờ là
 // Knowledge — đã user-facing, đã hiện thật. Bảng vẫn còn trong database.
 const MENU_ITEMS = [
-  { key: 'general', label: 'Chung',   icon: Settings,   desc: 'Tags & hệ thống' },
+  { key: 'general', label: 'Chung',   icon: Settings,   desc: 'Giao diện, tags & hệ thống' },
   { key: 'profile', label: 'Hồ sơ',  icon: User,       desc: 'Thông tin cá nhân' },
 ];
+
+/* ══════════════════════════════════════════════════════════════
+   TASK STYLE SECTION — kiểu giao diện trang Nhiệm vụ (sáng/tối vẫn theo nút đổi theme)
+   ══════════════════════════════════════════════════════════════ */
+const TASK_STYLES = [
+  { key: 'default', label: 'Mặc định', desc: 'Cực quang: trời sao, trăng, sao băng', swatch: ['linear-gradient(160deg,#0C1634,#060914 60%,#5EF2C2)', 'linear-gradient(160deg,#F4F2FF,#DDD6FE 60%,#7C3AED)'] },
+  { key: 'elf', label: 'Rừng tiên', desc: 'Rừng nắng / rừng đêm, tiên bay, đom đóm', swatch: ['linear-gradient(160deg,#08212B,#04100B 60%,#E3C27A)', 'linear-gradient(160deg,#EAF4E6,#A9D8B8 60%,#2F7D5B)'] },
+];
+
+function TaskStyleSection() {
+  const { taskStyle, setTaskStyle } = useTheme();
+  return (
+    <section className="settings-section" style={{ marginBottom: '1.5rem' }}>
+      <div className="settings-section__header">
+        <Palette size={20} />
+        <h2>Giao diện trang Nhiệm vụ</h2>
+      </div>
+      <div role="radiogroup" aria-label="Kiểu giao diện trang Nhiệm vụ" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginTop: '1.25rem' }}>
+        {TASK_STYLES.map((o) => {
+          const on = (taskStyle || 'default') === o.key;
+          return (
+            <button
+              key={o.key}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => setTaskStyle(o.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', textAlign: 'left', cursor: 'pointer',
+                borderRadius: '12px', background: 'transparent', color: 'inherit', font: 'inherit',
+                border: `1.5px solid ${on ? 'var(--text-accent)' : 'var(--bg-glass-border)'}`,
+              }}
+            >
+              <span style={{ flex: 'none', display: 'flex', borderRadius: '8px', overflow: 'hidden', width: '56px', height: '40px' }}>
+                {o.swatch.map((bg) => <span key={bg} style={{ flex: 1, background: bg }} />)}
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{o.label}</span>
+                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{o.desc}</span>
+              </span>
+              {on && <Check size={18} color="var(--text-accent)" />}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+        Mỗi kiểu đều có bản sáng và tối — đổi bằng nút sáng/tối như bình thường. Lựa chọn lưu trên máy này.
+      </div>
+    </section>
+  );
+}
 
 /* ══════════════════════════════════════════════════════════════
    FINANCE SETTINGS SECTION
@@ -563,6 +615,7 @@ export default function SettingsPage() {
         <main className="settings-content">
           {activeTab === 'general' && (
             <>
+              <TaskStyleSection />
               <FinanceSettingsSection />
               <TagManagerSection user={user} />
             </>

@@ -2,6 +2,7 @@ import { useState, lazy, Suspense, useCallback, useEffect, useMemo } from 'react
 import TaskListSection from '../components/TaskListSection';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useTags } from '../hooks/useTags';
 import TaskDetailDrawer from '../components/TaskDetailDrawer';
 import TaskSubtaskModal from '../components/TaskSubtaskModal';
@@ -22,6 +23,7 @@ import { solarToLunar, getCanChiYear, getCanChiDay, getNextGoodHour } from '../u
 import '../styles/tasks.css';
 import '../styles/calendar-widget.css';
 import '../styles/tasks-aurora.css';
+import '../styles/tasks-elf.css';
 
 const MonthCalendar = lazy(() => import('../components/MonthCalendar'));
 const WeekCalendar = lazy(() => import('../components/WeekCalendar'));
@@ -43,6 +45,7 @@ const DLOW = ['Chủ nhật', 'thứ Hai', 'thứ Ba', 'thứ Tư', 'thứ Năm'
  */
 export default function TasksPage() {
   const { user } = useAuth();
+  const { taskStyle } = useTheme();
   const taskModel = useUserTasks();
   const { tags: allTags, addTag } = useTags();
   const {
@@ -404,6 +407,7 @@ export default function TasksPage() {
       className={[
         'tasks-workspace',
         `tasks-workspace--${activeView}`,
+        taskStyle === 'elf' ? 'tk-elf' : '',
         isWidgetOpen ? 'has-util' : '',
         selectedTask ? 'has-peek' : '',
       ].filter(Boolean).join(' ')}

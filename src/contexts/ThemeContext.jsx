@@ -17,10 +17,17 @@ export function ThemeProvider({ children }) {
     }
   }, [theme]);
 
+  // Kiểu giao diện trang Nhiệm vụ: 'default' (Aurora) | 'elf' (Rừng tiên) — độc lập với sáng/tối
+  const [taskStyle, setTaskStyle] = useState(() => localStorage.getItem('vl_task_style') || 'default');
+
+  useEffect(() => {
+    localStorage.setItem('vl_task_style', taskStyle);
+  }, [taskStyle]);
+
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, taskStyle, setTaskStyle }}>
       {children}
     </ThemeContext.Provider>
   );
