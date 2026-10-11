@@ -1201,6 +1201,14 @@ sao sáng 4 cánh, 6 chòm sao lần lượt hiện (chu kỳ 150s) và chân tr
 Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt trời mọc, mây màu nước SVG, hạt sáng bay.
 `prefers-reduced-motion` tắt mọi chuyển động nền.
 
+- **Kiểu "Rừng tiên"** (`src/styles/tasks-elf.css`, mockup "Nhiệm vụ - Rừng tiên (Elf)"): chọn ở Cài đặt → Chung →
+  "Giao diện trang Nhiệm vụ" (`taskStyle` trong `ThemeContext`, localStorage `vl_task_style`, mặc định `default`).
+  Workspace có class `.tk-elf` → ghi đè token `--tk-*` (xanh lá/vàng đồng sáng, mint/vàng đêm), font tiêu đề
+  Cormorant SC (cỡ ×`--tk-ds`, đậm `--tk-elf-w`), thẻ bo `5px 18px` + kính mờ. Trang trí ở `TaskElfDecor.jsx`
+  (dây leo + hoa góc cột, vòm nhọn viền vàng bản tối, hoa văn dưới tên cột, hoa nở trên thẻ xong — bản sáng).
+  Nền ở `TaskForestBackground.jsx` (rừng ngày: cây, suối, nắng xuyên, lá rơi, bướm; rừng đêm: tán cây, đom đóm,
+  bào tử, lá phát sáng) + trăng/sao/chòm sao dùng chung với Aurora. Cả hai bản dùng "tiên phát sáng" của bản đêm.
+  Cỡ chữ display trong tasks-aurora.css viết `calc(Npx * var(--tk-ds, 1))` để kiểu khác phóng to được.
 - Màu tình trạng thời gian của thẻ: `--tk-ks-{late|today|soon|none|done|skip}-{glow|tint|fg|bg|bd}`
   (viền trái · nền ánh · nhãn ngày). Màu cột: `--tk-st-{todo|doing|done|skip}`.
   Ô được chọn: `--tk-sel-bg` / `--tk-sel-fg`; Chủ nhật: `--tk-sun`.

@@ -1,0 +1,806 @@
+/* ==========================================================================
+   tasks-elf.css — Kiểu "Rừng tiên" cho trang Nhiệm vụ (mockup "Nhiệm vụ - Rừng tiên (Elf)")
+   Bật khi .tasks-workspace có class .tk-elf (Cài đặt → Giao diện trang Nhiệm vụ).
+   Sáng = 3a (rừng nắng, xanh lá + vàng đồng) · Tối = 3b (rừng đêm, mint + vàng).
+   Chỉ ghi đè token --tk-* và thêm trang trí; bố cục dùng chung tasks-aurora.css.
+   ========================================================================== */
+
+/* ── KEYFRAMES ── */
+@keyframes tkElfBloom {
+  0% { transform: scale(0) rotate(-90deg); opacity: 0; }
+  70% { transform: scale(1.18) rotate(8deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes tkElfCanopy {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  100% { transform: translate3d(14px, 8px, 0) rotate(2deg) scale(1.04); }
+}
+
+@keyframes tkElfShaft {
+  0% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+@keyframes tkElfDapple {
+  0% { opacity: 0.2; transform: scale(0.9); }
+  100% { opacity: 0.85; transform: scale(1.12); }
+}
+
+@keyframes tkElfLeafFall {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  6% { opacity: 0.95; }
+  50% { transform: translate3d(var(--sw), calc(var(--fall, 110vh) * 0.5), 0) rotate(180deg); }
+  94% { opacity: 0.95; }
+  100% { transform: translate3d(calc(var(--sw) * -0.5), var(--fall, 110vh), 0) rotate(360deg); opacity: 0; }
+}
+
+@keyframes tkElfFlutter {
+  0% { transform: rotateX(0deg) rotateZ(0deg); }
+  100% { transform: rotateX(65deg) rotateZ(25deg); }
+}
+
+@keyframes tkElfWander {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  33% { transform: translate3d(var(--x1), var(--y1), 0); }
+  66% { transform: translate3d(var(--x2), var(--y2), 0); }
+}
+
+@keyframes tkElfGlowBlink {
+  0% { opacity: 0.15; }
+  100% { opacity: 1; }
+}
+
+@keyframes tkElfDust {
+  0%, 100% { transform: scale(0.2) rotate(0deg); opacity: 0; }
+  50% { transform: scale(1) rotate(90deg); opacity: 1; }
+}
+
+@keyframes tkElfFlyPath {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-8deg); }
+  25% { transform: translate3d(var(--x1), var(--y1), 0) rotate(10deg); }
+  50% { transform: translate3d(var(--x2), var(--y2), 0) rotate(-6deg); }
+  75% { transform: translate3d(var(--x3), var(--y3), 0) rotate(8deg); }
+}
+
+@keyframes tkElfFlap {
+  0% { transform: scaleX(1); }
+  100% { transform: scaleX(0.3); }
+}
+
+@keyframes tkElfFlow {
+  to { stroke-dashoffset: -80; }
+}
+
+/* ── TOKEN RỪNG TIÊN SÁNG (3a) — suy từ bảng đổi màu 2b → 3a của mockup ── */
+[data-theme="light"] .tasks-workspace.tk-elf {
+  --tk-font-display: 'Cormorant SC', 'Be Vietnam Pro', serif;
+  --tk-title-weight: 700;
+  --tk-title-color: #1C3324;
+  --tk-text-main: #1C3324;
+  --tk-text-sub: #56705F;
+  --tk-text-mute: #6F8778;
+  --tk-text-faint: #AABEB0;
+  --tk-accent: #2F7D5B;
+  --tk-accent-soft: #E2F3E6;
+  --tk-accent-border: #A9D8B8;
+  --tk-border: rgba(70, 130, 92, 0.16);
+  --tk-border-soft: rgba(70, 130, 92, 0.08);
+  --tk-border-strong: rgba(70, 130, 92, 0.28);
+  --tk-divider: rgba(70, 130, 92, 0.12);
+  --tk-hover: rgba(47, 125, 91, 0.07);
+  --tk-sel-bg: #2F7D5B;
+  --tk-cal-fg: #1C3324;
+  --tk-ag-today-bg: rgba(226, 243, 230, 0.7);
+  --tk-ag-today-bd: #A9D8B8;
+  --tk-ag-dash: rgba(70, 130, 92, 0.25);
+  --tk-ev-geek: #2F7D5B;
+  --tk-hd-off: #F2FAF1;
+  --tk-ring: #6FBF8E;
+  --tk-wk-today: rgba(226, 243, 230, 0.45);
+  --tk-shadow: rgba(28, 51, 36, 0.18);
+  --tk-chip-fg: #3D5546;
+  --tk-chip-moon: #2F7D5B;
+  --tk-view-on-bg: #1C3324;
+  --tk-view-off: #56705F;
+  --tk-fon-bg: #1C3324;
+  --tk-foff-fg: #3D5546;
+  --tk-input-bd: rgba(70, 130, 92, 0.14);
+  --tk-input-focus: #A9D8B8;
+  --tk-strip-shadow: 0 12px 30px -20px rgba(40, 96, 64, 0.4);
+  --tk-grid-line: rgba(70, 130, 92, 0.14);
+  --tk-hour-label: #94A99B;
+  --tk-pill-shadow: 0 6px 16px -8px rgba(40, 96, 64, 0.45);
+  --tk-col-bg: rgba(232, 248, 236, 0.4);
+  --tk-col-border: rgba(196, 164, 92, 0.42);
+  --tk-col-shadow: none;
+  --tk-col-over-bg: rgba(226, 243, 230, 0.8);
+  --tk-col-over-border: #A9D8B8;
+  --tk-card-bg: rgba(238, 252, 243, 0.6);
+  --tk-card-border: rgba(255, 255, 255, 0.75);
+  --tk-card-bd-hover: rgba(246, 255, 249, 0.92);
+  --tk-card-shadow: 0 8px 24px -16px rgba(36, 84, 56, 0.45);
+  --tk-card-shadow-hover: 0 16px 34px -16px rgba(47, 125, 91, 0.5);
+  --tk-card-r: 5px 18px;
+  --tk-title-skip: #94A99B;
+  --tk-desc: #4F6A59;
+  --tk-pr-chip-bg: #F2FAF1;
+  --tk-pr-chip-bd: #DCEEE0;
+  --tk-pr-set-bd: #CFE2D3;
+  --tk-pr-set-fg: #AABEB0;
+  --tk-subs-bd: rgba(70, 130, 92, 0.18);
+  --tk-subs-fg: #3D5546;
+  --tk-bar-bg: #E2F3E6;
+  --tk-bar-fill: #4FA374;
+  --tk-tag: #8A6416;
+  --tk-subpanel-bg: rgba(242, 250, 241, 0.85);
+  --tk-subpanel-bd: rgba(70, 130, 92, 0.12);
+  --tk-pr-0: #94A99B;
+  --tk-st-todo: #2B8A9E;
+  --tk-st-doing: #C99A2E;
+  --tk-st-done: #3F9A63;
+  --tk-ks-none-fg: #6F8778;
+  --tk-ks-none-bd: #CFE2D3;
+  --tk-drawer-shadow: 0 40px 90px -30px rgba(36, 84, 56, 0.5);
+  --tk-label: #6F8778;
+  --tk-editor-bg: rgba(242, 250, 241, 0.65);
+  --tk-editor-text: #263F30;
+  --tk-solid-bg: #2F7D5B;
+  --tk-tagchip-bg: #FAF3DF;
+  --tk-tagchip-fg: #8A6416;
+  --tk-soft-chip: #EDF8EF;
+  --tk-progress-bg: #E2F3E6;
+  --tk-progress-fill: linear-gradient(90deg, #4FA374, #D9A93F);
+  --tk-seg-bg: rgba(242, 250, 241, 0.65);
+  --tk-seg-bd: rgba(70, 130, 92, 0.14);
+  --tk-seg-on-fg: #256B4C;
+  --tk-seg-off: #56705F;
+  --tk-avatar-bg: linear-gradient(140deg, #6FBF8E, #D9A93F);
+  --tk-act-st: #2F7D5B;
+  --tk-popover-border: rgba(70, 130, 92, 0.15);
+  --tk-popover-shadow: 0 20px 50px -16px rgba(28, 51, 36, 0.3);
+  --tk-opt-on: #E2F3E6;
+  --tk-scrim: rgba(28, 51, 36, 0.3);
+  --tk-mseg-on-fg: #1C3324;
+  --tk-mseg-shadow: 0 1px 3px rgba(28, 51, 36, 0.14);
+  --tk-fab-bg: linear-gradient(135deg, #2F7D5B, #4FA374 60%, #D9A93F);
+  --tk-fab-shadow: 0 12px 28px -10px rgba(47, 125, 91, 0.7);
+  --tk-ds: 1.2;
+  --tk-title-ls: 0.01em;
+  --tk-card-blur: 10px;
+
+  background: #EAF4E6;
+}
+
+/* ── TOKEN RỪNG TIÊN ĐÊM (3b) ── */
+[data-theme="dark"] .tasks-workspace.tk-elf {
+  --tk-font-display: 'Cormorant SC', 'Be Vietnam Pro', serif;
+  --tk-title-weight: 700;
+  --tk-display-weight: 700;
+  --tk-title-color: #F0F8F1;
+  --tk-text-main: #E6F2E9;
+  --tk-text-sub: #8BA597;
+  --tk-text-mute: #5F7C6C;
+  --tk-text-faint: #4A6656;
+  --tk-sel-fg: #04140D;
+  --tk-cal-fg: #BFD3C6;
+  --tk-blk: #0A1C14;
+  --tk-chip-fg: #AAC2B4;
+  --tk-view-off: #8BA597;
+  --tk-fon-fg: #04140D;
+  --tk-foff-fg: #AAC2B4;
+  --tk-hour-label: #5F7C6C;
+  --tk-pill-bg: rgba(10, 26, 19, 0.94);
+  --tk-col-bg: rgba(120, 210, 165, 0.035);
+  --tk-col-border: rgba(212, 176, 98, 0.22);
+  --tk-card-bg: rgba(10, 32, 23, 0.6);
+  --tk-card-border: rgba(160, 230, 195, 0.10);
+  --tk-card-r: 5px 16px;
+  --tk-title-skip: #5F7C6C;
+  --tk-desc: #8BA597;
+  --tk-pr-set-fg: #5F7C6C;
+  --tk-subs-fg: #BFD3C6;
+  --tk-pr-0: #5F7C6C;
+  --tk-pr-1: #8BA597;
+  --tk-pr-2: #8BA597;
+  --tk-ks-none-fg: #8BA597;
+  --tk-drawer-bg: rgba(7, 20, 14, 0.95);
+  --tk-label: #5F7C6C;
+  --tk-editor-text: #BFD3C6;
+  --tk-solid-fg: #04140D;
+  --tk-seg-off: #8BA597;
+  --tk-avatar-bg: linear-gradient(140deg, #2A4236, #12241B);
+  --tk-avatar-fg: #BFD3C6;
+  --tk-popover-bg: rgba(8, 22, 16, 0.97);
+  --tk-util-bg: rgba(7, 20, 14, 0.94);
+  --tk-sheet-bg: rgba(8, 20, 15, 0.98);
+  --tk-scrim: rgba(2, 8, 5, 0.62);
+  --tk-fab-fg: #04140D;
+  --tk-ds: 1.18;
+  --tk-title-ls: -0.02em;
+  --tk-card-blur: 8px;
+
+  background: radial-gradient(50% 45% at 82% 0%, rgba(200, 230, 215, 0.10), transparent 70%),
+              radial-gradient(45% 40% at 0% 100%, rgba(94, 242, 194, 0.10), transparent 70%),
+              radial-gradient(40% 35% at 100% 85%, rgba(201, 184, 245, 0.08), transparent 70%),
+              linear-gradient(180deg, #08212B 0%, #061914 40%, #04100B 100%);
+}
+
+/* ── CHỮ: Cormorant SC cho tiêu đề / tên cột / số lớn (cỡ ×--tk-ds như mockup) ── */
+.tk-elf {
+  --font-display: 'Cormorant SC', 'Be Vietnam Pro', serif;
+  --tk-elf-w: 700;
+}
+
+.tk-elf .tk-drawer__title {
+  font: 700 calc(19px * var(--tk-ds))/1.35 var(--tk-font-display);
+  letter-spacing: 0;
+}
+
+.tk-elf .tk-submodal__title {
+  font: 700 calc(19px * var(--tk-ds))/1.4 var(--tk-font-display);
+}
+
+/* ── THẺ: kính mờ, bo lệch 2 góc (5px / 18px) ── */
+.tk-elf .tk-card,
+.tk-elf .tk-mcard {
+  backdrop-filter: blur(var(--tk-card-blur));
+}
+
+.tk-elf .tk-mcard {
+  border-radius: var(--tk-card-r);
+}
+
+/* Hoa nở ở góc thẻ đã xong — chỉ bản sáng */
+.tk-elf-bloom {
+  position: absolute;
+  top: 9px;
+  right: 11px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  animation: tkElfBloom 0.9s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+
+.tk-elf-bloom svg {
+  position: relative;
+}
+
+.tk-elf-bloom__glow {
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 214, 230, 0.95), rgba(255, 214, 230, 0));
+}
+
+.tk-elf-bloom__leaf {
+  position: absolute;
+}
+
+.tk-elf-bloom__leaf.is-left {
+  left: -6px;
+  top: 12px;
+  color: #5FA872;
+  transform: rotate(-150deg);
+}
+
+.tk-elf-bloom__leaf.is-right {
+  right: -6px;
+  top: 13px;
+  color: #6FAE84;
+  transform: rotate(60deg);
+}
+
+.tk-elf-pollen {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: #F7D66E;
+}
+
+.tk-elf-pollen.is-lg {
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+}
+
+[data-theme="dark"] .tk-elf-bloom {
+  display: none;
+}
+
+/* ── CỘT KANBAN ── */
+/* Chừa chỗ cho hoa/lá nhô lên trên đỉnh cột (bảng cuộn ngang nên cắt phần tràn) */
+.tk-elf .tk-board {
+  padding-top: 12px;
+  margin-top: -12px;
+}
+
+.tk-elf .tk-col {
+  position: relative;
+}
+
+.tk-elf .tk-col__head,
+.tk-elf .tk-col__body {
+  position: relative;
+}
+
+[data-theme="light"] .tk-elf .tk-col__head {
+  padding: 16px 12px 8px 18px;
+}
+
+/* Hoa văn dưới tên cột */
+.tk-elf-divider {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 18px 10px;
+  color: #6FAE84;
+}
+
+.tk-elf-divider__line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(176, 137, 52, 0.5));
+}
+
+.tk-elf-divider__line.is-end {
+  background: linear-gradient(90deg, rgba(176, 137, 52, 0.5), transparent);
+}
+
+.tk-elf-divider__gem {
+  width: 5px;
+  height: 5px;
+  transform: rotate(45deg);
+  background: #C29A3E;
+}
+
+[data-theme="dark"] .tk-elf-divider {
+  color: #5EF2C2;
+}
+
+[data-theme="dark"] .tk-elf-divider svg {
+  filter: drop-shadow(0 0 4px rgba(94, 242, 194, 0.7));
+}
+
+[data-theme="dark"] .tk-elf-divider__line {
+  background: linear-gradient(90deg, transparent, rgba(212, 176, 98, 0.55));
+}
+
+[data-theme="dark"] .tk-elf-divider__line.is-end {
+  background: linear-gradient(90deg, rgba(212, 176, 98, 0.55), transparent);
+}
+
+[data-theme="dark"] .tk-elf-divider__gem {
+  background: #E3C27A;
+  box-shadow: 0 0 6px rgba(227, 194, 122, 0.8);
+}
+
+/* Dây leo 2 bên đỉnh cột */
+.tk-elf-vine {
+  position: absolute;
+  top: 6px;
+  width: 30px;
+  height: 60px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tk-elf-vine.is-left {
+  left: -10px;
+}
+
+.tk-elf-vine.is-right {
+  right: -10px;
+  transform: scaleX(-1);
+}
+
+.tk-elf-vine__stem,
+.tk-elf-vine__curl {
+  fill: none;
+  stroke: rgba(150, 118, 46, 0.65);
+  stroke-width: 1.2;
+}
+
+.tk-elf-vine__curl {
+  stroke: rgba(150, 118, 46, 0.55);
+  stroke-width: 1;
+}
+
+.tk-elf-vine__leaf1 { fill: rgba(74, 150, 98, 0.75); }
+.tk-elf-vine__leaf2 { fill: rgba(110, 180, 128, 0.75); }
+.tk-elf-vine__leaf3 { fill: rgba(74, 150, 98, 0.7); }
+
+[data-theme="dark"] .tk-elf-vine {
+  top: 72px;
+  filter: drop-shadow(0 0 3px rgba(94, 242, 194, 0.45));
+}
+
+[data-theme="dark"] .tk-elf-vine__stem { stroke: rgba(212, 176, 98, 0.7); }
+[data-theme="dark"] .tk-elf-vine__curl { stroke: rgba(212, 176, 98, 0.55); }
+[data-theme="dark"] .tk-elf-vine__leaf1 { fill: rgba(94, 242, 194, 0.6); }
+[data-theme="dark"] .tk-elf-vine__leaf2 { fill: rgba(140, 230, 180, 0.55); }
+[data-theme="dark"] .tk-elf-vine__leaf3 { fill: rgba(94, 242, 194, 0.5); }
+
+/* Hoa nở ở 2 góc đỉnh cột — bản sáng */
+.tk-elf-corner {
+  position: absolute;
+  top: -3px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  animation: tkElfBloom 1s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+
+.tk-elf-corner.is-left { left: -9px; }
+.tk-elf-corner.is-right { right: -9px; }
+
+[data-theme="dark"] .tk-elf-corner,
+[data-theme="light"] .tk-elf-arch {
+  display: none;
+}
+
+/* Bản tối: đỉnh cột là vòm nhọn — nền cột chuyển sang lớp vòm, viền vàng + viền mint bên trong */
+[data-theme="dark"] .tk-elf .tk-col:not(.tk-col--shut) {
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+[data-theme="dark"] .tk-elf .tk-col__head {
+  padding: 58px 12px 8px 18px;
+  margin-bottom: 0;
+  background: none;
+}
+
+.tk-elf-arch {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tk-elf-arch__bg {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 100%, 0px 80px, 0.4px 74.3px, 1.5px 68.6px, 3.3px 63.2px, 5.9px 58px, 9.1px 53.2px, 12.9px 48.9px, 17.2px 45.1px, 22px 41.9px, 27.2px 39.3px, 32.6px 37.5px, 50% 0px, calc(100% - 32.6px) 37.5px, calc(100% - 27.2px) 39.3px, calc(100% - 22px) 41.9px, calc(100% - 17.2px) 45.1px, calc(100% - 12.9px) 48.9px, calc(100% - 9.1px) 53.2px, calc(100% - 5.9px) 58px, calc(100% - 3.3px) 63.2px, calc(100% - 1.5px) 68.6px, calc(100% - 0.4px) 74.3px, calc(100% - 0px) 80px, 100% 100%);
+  border-radius: 0 0 20px 20px;
+  background: linear-gradient(180deg, var(--col-tint, transparent), transparent 200px), var(--tk-col-bg);
+  border: 1px solid var(--tk-col-border);
+  backdrop-filter: blur(10px);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.tk-col.is-over .tk-elf-arch__bg {
+  background: var(--tk-col-over-bg);
+  border-color: var(--tk-col-over-border);
+}
+
+.tk-elf-arch__gold,
+.tk-elf-arch__mint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 90px;
+}
+
+.tk-elf-arch__gold {
+  clip-path: polygon(0px 80px, 0.4px 74.3px, 1.5px 68.6px, 3.3px 63.2px, 5.9px 58px, 9.1px 53.2px, 12.9px 48.9px, 17.2px 45.1px, 22px 41.9px, 27.2px 39.3px, 32.6px 37.5px, 50% 0px, calc(100% - 32.6px) 37.5px, calc(100% - 27.2px) 39.3px, calc(100% - 22px) 41.9px, calc(100% - 17.2px) 45.1px, calc(100% - 12.9px) 48.9px, calc(100% - 9.1px) 53.2px, calc(100% - 5.9px) 58px, calc(100% - 3.3px) 63.2px, calc(100% - 1.5px) 68.6px, calc(100% - 0.4px) 74.3px, calc(100% - 0px) 80px, calc(100% - 0px) 81.4px, calc(100% - 0.4px) 75.7px, calc(100% - 1.5px) 70px, calc(100% - 3.3px) 64.6px, calc(100% - 5.9px) 59.4px, calc(100% - 9.1px) 54.6px, calc(100% - 12.9px) 50.3px, calc(100% - 17.2px) 46.5px, calc(100% - 22px) 43.3px, calc(100% - 27.2px) 40.7px, calc(100% - 32.6px) 38.9px, 50% 1.4px, 32.6px 38.9px, 27.2px 40.7px, 22px 43.3px, 17.2px 46.5px, 12.9px 50.3px, 9.1px 54.6px, 5.9px 59.4px, 3.3px 64.6px, 1.5px 70px, 0.4px 75.7px, 0px 81.4px);
+  background: rgba(212, 176, 98, 0.75);
+  filter: drop-shadow(0 0 4px rgba(212, 176, 98, 0.6));
+}
+
+.tk-elf-arch__mint {
+  clip-path: polygon(0px 86px, 0.4px 80.3px, 1.5px 74.6px, 3.3px 69.2px, 5.9px 64px, 9.1px 59.2px, 12.9px 54.9px, 17.2px 51.1px, 22px 47.9px, 27.2px 45.3px, 32.6px 43.5px, 50% 6px, calc(100% - 32.6px) 43.5px, calc(100% - 27.2px) 45.3px, calc(100% - 22px) 47.9px, calc(100% - 17.2px) 51.1px, calc(100% - 12.9px) 54.9px, calc(100% - 9.1px) 59.2px, calc(100% - 5.9px) 64px, calc(100% - 3.3px) 69.2px, calc(100% - 1.5px) 74.6px, calc(100% - 0.4px) 80.3px, calc(100% - 0px) 86px, calc(100% - 0px) 87px, calc(100% - 0.4px) 81.3px, calc(100% - 1.5px) 75.6px, calc(100% - 3.3px) 70.2px, calc(100% - 5.9px) 65px, calc(100% - 9.1px) 60.2px, calc(100% - 12.9px) 55.9px, calc(100% - 17.2px) 52.1px, calc(100% - 22px) 48.9px, calc(100% - 27.2px) 46.3px, calc(100% - 32.6px) 44.5px, 50% 7px, 32.6px 44.5px, 27.2px 46.3px, 22px 48.9px, 17.2px 52.1px, 12.9px 55.9px, 9.1px 60.2px, 5.9px 65px, 3.3px 70.2px, 1.5px 75.6px, 0.4px 81.3px, 0px 87px);
+  background: rgba(94, 242, 194, 0.35);
+}
+
+.tk-elf-arch__leaf {
+  position: absolute;
+  left: 50%;
+  top: -11px;
+  margin-left: -8px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  color: #E3C27A;
+  filter: drop-shadow(0 0 6px rgba(227, 194, 122, 0.8));
+}
+
+.tk-elf-arch__leaf svg {
+  transform: rotate(-45deg);
+}
+
+/* ── NỀN: bầu trời đêm của rừng (ghi đè lớp Aurora) ── */
+[data-theme="dark"] .tk-elf .task-aurora-glow {
+  left: -12%;
+  right: -12%;
+  top: -30%;
+  height: 80%;
+  background: radial-gradient(34% 55% at 24% 45%, rgba(94, 242, 194, 0.2), transparent 70%),
+              radial-gradient(28% 48% at 56% 30%, rgba(201, 184, 245, 0.2), transparent 70%),
+              radial-gradient(32% 55% at 86% 42%, rgba(125, 211, 252, 0.14), transparent 70%);
+  filter: blur(40px);
+  animation: taskAuroraA 24s ease-in-out infinite alternate;
+}
+
+[data-theme="dark"] .tk-elf .task-milkyway:not(.task-milkyway--dust) {
+  background: radial-gradient(50% 50% at 50% 50%, rgba(190, 225, 255, 0.17), rgba(170, 210, 240, 0.06) 50%, transparent 75%),
+              radial-gradient(30% 40% at 34% 55%, rgba(220, 200, 255, 0.12), transparent 70%),
+              radial-gradient(25% 35% at 70% 45%, rgba(160, 240, 220, 0.1), transparent 70%);
+}
+
+.tk-elf .task-moon-halo {
+  animation: taskSunBreath 10s ease-in-out infinite alternate;
+}
+
+.tk-elf .task-moon {
+  background: radial-gradient(circle, rgba(170, 215, 200, 0.08), rgba(170, 215, 200, 0.03) 70%, transparent 72%);
+  box-shadow: inset 0 0 0 1px rgba(200, 235, 220, 0.12);
+}
+
+.tk-elf .task-moon__disc {
+  background: radial-gradient(circle at 30% 62%, rgba(160, 165, 135, 0.32) 0, rgba(160, 165, 135, 0.32) 7%, transparent 12%),
+              radial-gradient(circle at 62% 30%, rgba(160, 165, 135, 0.26) 0, rgba(160, 165, 135, 0.26) 9%, transparent 14%),
+              radial-gradient(circle at 56% 70%, rgba(160, 165, 135, 0.22) 0, rgba(160, 165, 135, 0.22) 6%, transparent 10%),
+              radial-gradient(circle at 40% 38%, #FDFBF0, #ECEAD4 62%, #D4D8C0);
+}
+
+.tk-elf .task-moon-label {
+  font: 600 13px/1.2 'Cormorant SC', serif;
+  letter-spacing: 0.04em;
+  color: rgba(214, 236, 224, 0.72);
+}
+
+.tk-elf .task-cons path {
+  stroke: rgba(190, 225, 255, 0.45);
+}
+
+.tk-elf .task-cons circle {
+  filter: drop-shadow(0 0 3px rgba(200, 230, 255, 0.95));
+}
+
+.tk-elf .task-cons__name {
+  font-family: 'Cormorant SC', serif;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(200, 228, 245, 0.75);
+}
+
+/* Sáng: trời rừng (nắng vàng góc phải, lá xanh) thay cho bình minh/hoàng hôn */
+[data-theme="light"] .tk-elf .task-aurora-glow,
+[data-theme="light"] .tk-elf .is-dusk .task-aurora-glow {
+  background: radial-gradient(50% 45% at 80% 0%, rgba(254, 243, 199, 0.9), transparent 70%),
+              radial-gradient(45% 40% at 8% 4%, rgba(167, 220, 180, 0.7), transparent 70%),
+              radial-gradient(40% 40% at 45% 28%, rgba(220, 245, 225, 0.6), transparent 70%),
+              radial-gradient(55% 45% at 18% 100%, rgba(134, 200, 160, 0.5), transparent 70%),
+              radial-gradient(50% 40% at 86% 96%, rgba(190, 230, 200, 0.6), transparent 70%);
+}
+
+/* ── NỀN RỪNG (TaskForestBackground.jsx) ── */
+.tk-fx-dot {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.tk-forest-vignette {
+  inset: 0;
+  background: radial-gradient(75% 75% at 44% 40%, transparent 42%, rgba(36, 86, 58, 0.32));
+}
+
+.tk-forest-far {
+  top: -20px;
+  bottom: -20px;
+  border-radius: 40%;
+  background: linear-gradient(180deg, rgba(140, 190, 160, 0), rgba(132, 184, 154, 0.5) 22%, rgba(122, 176, 146, 0.55) 80%, rgba(122, 176, 146, 0.2));
+  filter: blur(5px);
+}
+
+.tk-forest-glow {
+  left: 8.333%;
+  top: -6.667%;
+  width: 69.444%;
+  height: 93.333%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 253, 226, 0.97), rgba(240, 250, 186, 0.62) 38%, rgba(206, 238, 166, 0.22) 70%, rgba(206, 238, 166, 0));
+  filter: blur(18px);
+  animation: taskSunBreath 11s ease-in-out infinite alternate;
+}
+
+.tk-forest-root {
+  position: absolute;
+  bottom: -24px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(44, 94, 66, 0.5), rgba(44, 94, 66, 0));
+  filter: blur(4px);
+}
+
+.tk-forest-mid {
+  position: absolute;
+  top: -30px;
+  bottom: -10px;
+  border-radius: 45% 45% 18% 18% / 3% 3% 4% 4%;
+  filter: blur(2px);
+}
+
+.tk-forest-near {
+  top: -30px;
+  bottom: -30px;
+  border-radius: 45%;
+  filter: blur(3px);
+}
+
+.tk-forest-branch {
+  height: 7px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(52, 100, 72, 0.55), rgba(80, 130, 92, 0.3));
+  filter: blur(1.5px);
+}
+
+.tk-forest-foliage {
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(64, 134, 86, 0.5), rgba(90, 160, 100, 0.25) 60%, rgba(90, 160, 100, 0));
+  filter: blur(16px);
+  animation: tkElfCanopy 14s ease-in-out infinite alternate;
+}
+
+.tk-forest-leaf {
+  border-radius: 60% 40% 55% 45% / 50% 60% 40% 50%;
+  filter: blur(0.4px);
+}
+
+.tk-forest-stream {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.tk-forest-ripple {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.88);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 14 26;
+  animation: tkElfFlow 2.2s linear infinite;
+}
+
+.tk-forest-glint {
+  fill: #fff;
+  filter: drop-shadow(0 0 3px #fff);
+  animation: taskTwinkle 2s ease-in-out infinite;
+}
+
+.tk-forest-bokeh {
+  border-radius: 50%;
+  box-shadow: 0 0 6px 2px rgba(250, 245, 170, 0.7);
+  animation: taskTwinkle 3s ease-in-out infinite;
+}
+
+.tk-forest-sun {
+  left: 62.5%;
+  top: -280px;
+  width: 580px;
+  height: 540px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 236, 170, 0.8), rgba(255, 236, 170, 0));
+  filter: blur(30px);
+  animation: taskSunBreath 9s ease-in-out infinite alternate;
+}
+
+.tk-forest-shaft {
+  top: -200px;
+  height: 1400px;
+  transform-origin: 50% 0;
+  filter: blur(38px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 25%, transparent 80%);
+  mask-image: linear-gradient(to bottom, #000 25%, transparent 80%);
+  animation: tkElfShaft 11s ease-in-out infinite alternate;
+}
+
+.tk-forest-dapple {
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 240, 180, 0.6), rgba(255, 240, 180, 0));
+  filter: blur(8px);
+  animation: tkElfDapple 6s ease-in-out infinite alternate;
+}
+
+.tk-forest-mist {
+  border-radius: 50%;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(255, 255, 255, 0.8), transparent 70%);
+  filter: blur(20px);
+  opacity: 0.8;
+  animation: taskDrift 50s ease-in-out infinite alternate;
+}
+
+.tk-forest-mist.is-night {
+  background: radial-gradient(50% 50% at 50% 50%, rgba(170, 230, 200, 0.16), transparent 70%);
+  opacity: 1;
+}
+
+.tk-forest-canopy {
+  border-radius: 50%;
+  filter: blur(16px);
+  animation: tkElfCanopy 16s ease-in-out infinite alternate;
+}
+
+.tk-forest-spore {
+  border-radius: 50%;
+  opacity: 0;
+  animation: taskFloatUp 14s ease-in-out infinite;
+}
+
+.tk-forest-floorglow {
+  left: -10%;
+  right: -10%;
+  bottom: -140px;
+  height: 380px;
+  background: radial-gradient(50% 55% at 50% 100%, rgba(94, 242, 194, 0.13), transparent 70%),
+              radial-gradient(28% 45% at 18% 100%, rgba(201, 184, 245, 0.1), transparent 70%),
+              radial-gradient(28% 45% at 84% 100%, rgba(227, 194, 122, 0.08), transparent 70%);
+}
+
+/* Tiên phát sáng: quầng sáng + 2 cánh mờ vỗ nhanh + lõi sáng */
+.tk-fairy__halo {
+  position: absolute;
+  left: -20px;
+  top: -20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 236, 170, 0.6), rgba(255, 236, 170, 0));
+}
+
+.tk-fairy__wings {
+  position: absolute;
+  left: -9px;
+  top: -8px;
+  width: 18px;
+  height: 10px;
+  animation: tkElfFlap 0.18s ease-in-out infinite alternate;
+}
+
+.tk-fairy__wings > span {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(220, 245, 255, 0.6);
+}
+
+.tk-fairy__wings > span:first-child {
+  left: 0;
+  transform: rotate(-30deg);
+}
+
+.tk-fairy__wings > span:last-child {
+  right: 0;
+  transform: rotate(30deg);
+}
+
+.tk-fairy__core {
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #FFFBEA;
+  box-shadow: 0 0 8px 3px rgba(255, 236, 170, 0.95), 0 0 20px 6px rgba(255, 226, 150, 0.5);
+}
