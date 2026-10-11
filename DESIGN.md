@@ -1206,8 +1206,11 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   Workspace có class `.tk-elf` → ghi đè token `--tk-*` (xanh lá/vàng đồng sáng, mint/vàng đêm), font tiêu đề
   Cormorant SC (cỡ ×`--tk-ds`, đậm `--tk-elf-w`), thẻ bo `5px 18px` + kính mờ. Trang trí ở `TaskElfDecor.jsx`
   (dây leo + hoa góc cột, vòm nhọn viền vàng bản tối, hoa văn dưới tên cột, hoa nở trên thẻ xong — bản sáng).
-  Nền ở `TaskForestBackground.jsx` (rừng ngày: cây, suối, nắng xuyên, lá rơi, bướm; rừng đêm: tán cây, đom đóm,
-  bào tử, lá phát sáng) + trăng/sao/chòm sao dùng chung với Aurora. Cả hai bản dùng "tiên phát sáng" của bản đêm.
+  Nền ở `TaskForestBackground.jsx`: rừng ngày = 3 lớp cây SVG sinh thủ tục (thân/cành cong, tán lá méo bằng
+  feTurbulence; tính 1 lần/cỡ, giãn theo trang) + rêu rủ đung đưa + nấm phát sáng + suối, nắng xuyên, lá rơi, bướm;
+  desktop sáng có tiên đốm sáng bay TRÊN nội dung (`.task-fx-top`, z-index 20, không nhận chuột).
+  Rừng đêm desktop dùng chung trăng/sao/chòm sao với Aurora + tán tối, đom đóm, bào tử, lá phát sáng;
+  rừng đêm mobile là cảnh riêng (3 lớp sao, trăng nhỏ, 2 sao băng). Mobile có bản cảnh riêng 390×844 như mockup.
   Cỡ chữ display trong tasks-aurora.css viết `calc(Npx * var(--tk-ds, 1))` để kiểu khác phóng to được.
 - Màu tình trạng thời gian của thẻ: `--tk-ks-{late|today|soon|none|done|skip}-{glow|tint|fg|bg|bd}`
   (viền trái · nền ánh · nhãn ngày). Màu cột: `--tk-st-{todo|doing|done|skip}`.

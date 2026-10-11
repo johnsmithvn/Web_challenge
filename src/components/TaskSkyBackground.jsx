@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { solarToLunar } from '../utils/lunarUtils';
-import { ForestDay, ForestNight } from './TaskForestBackground';
+import { ForestDay, ForestNight, ForestNightMobile, DayFairiesTop } from './TaskForestBackground';
 
 /**
  * Nền trang Nhiệm vụ theo mockup "Kanban tối & sáng" (fxA / fxAm / fxC / fxCm).
@@ -229,13 +229,19 @@ function TaskSkyBackground({ isMobile }) {
   const elf = taskStyle === 'elf';
   const dusk = new Date().getHours() >= 12;
   let sky;
-  if (theme !== 'light') sky = <DarkSky isMobile={isMobile} elf={elf} />;
-  else if (elf) sky = <><div className="task-aurora-glow" /><ForestDay /></>;
+  if (theme !== 'light') sky = elf && isMobile ? <><div className="task-aurora-glow" /><ForestNightMobile /></> : <DarkSky isMobile={isMobile} elf={elf} />;
+  else if (elf) sky = <><div className="task-aurora-glow" /><ForestDay isMobile={isMobile} /></>;
   else sky = <LightSky isMobile={isMobile} dusk={dusk} />;
   return (
-    <div className={`task-cosmos-bg${dusk ? ' is-dusk' : ''}`} aria-hidden="true">
-      {sky}
-    </div>
+    <>
+      <div className={`task-cosmos-bg${dusk ? ' is-dusk' : ''}`} aria-hidden="true">
+        {sky}
+      </div>
+      {/* Rừng tiên sáng desktop: tiên đốm sáng bay phía trên nội dung (mockup fxCtop) */}
+      {elf && theme === 'light' && !isMobile && (
+        <div className="task-cosmos-bg task-fx-top" aria-hidden="true"><DayFairiesTop /></div>
+      )}
+    </>
   );
 }
 
