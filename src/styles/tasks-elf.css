@@ -874,8 +874,18 @@
 
 /* Lớp tiên bay phía trên nội dung (desktop sáng) */
 .task-fx-top {
-  z-index: 20;
+  z-index: 40;
 }
+
+/* Keyframe vật bay riêng của Rừng tiên (utils/taskFlyersElf.js) */
+@keyframes tkf-flap { 0% { transform: scaleX(1); } 100% { transform: scaleX(0.3); } }
+@keyframes tkf-eRibbon { 0% { transform: skewY(-5deg) scaleY(0.92); } 100% { transform: skewY(5deg) scaleY(1.12); } }
+@keyframes tkf-eFlapY { 0% { transform: scaleY(1); } 100% { transform: scaleY(-0.4); } }
+@keyframes tkf-eTail { 0% { transform: rotate(-12deg); } 100% { transform: rotate(12deg); } }
+@keyframes tkf-eBlink { 0%, 90%, 100% { transform: scaleY(1); } 94% { transform: scaleY(0.1); } }
+@keyframes tkf-eSway { 0% { transform: rotate(-14deg); } 100% { transform: rotate(14deg); } }
+@keyframes tkf-eBob { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(0, var(--by), 0); } }
+@keyframes tkf-eWob { 0% { transform: rotate(-6deg); } 100% { transform: rotate(6deg); } }
 
 /* Tiên đốm sáng (bản sáng + đêm mobile): 2 cánh vỗ nhanh + lõi sáng; màu cánh/quầng đặt trong JSX */
 .tk-sprite__wings {
@@ -943,6 +953,16 @@
   background-size: 360px 220px;
   animation-duration: 6.5s;
   animation-delay: -3s;
+}
+
+.tk-mstars--3 {
+  --fade: 40%;
+  background-image: radial-gradient(2.5px 2.5px at 90px 60px, #fff, transparent),
+                    radial-gradient(2px 2px at 300px 200px, rgba(255, 236, 200, 1), transparent),
+                    radial-gradient(2.5px 2.5px at 200px 120px, rgba(200, 230, 255, 1), transparent);
+  background-size: 390px 300px;
+  animation-duration: 5.5s;
+  animation-delay: -2s;
 }
 
 .tk-mmoon-halo {
@@ -1025,4 +1045,142 @@
   border-radius: 50%;
   background: #FFFBEA;
   box-shadow: 0 0 8px 3px rgba(255, 236, 170, 0.95), 0 0 20px 6px rgba(255, 226, 150, 0.5);
+}
+
+/* ── Nút ngắm rừng theo màu Rừng tiên ── */
+[data-theme="light"] .tk-elf .tk-scene-btn {
+  border-color: rgba(70, 130, 92, 0.28);
+  background: rgba(255, 255, 255, 0.78);
+  color: #2F5E44;
+  box-shadow: 0 8px 20px -10px rgba(20, 50, 35, 0.5);
+}
+
+[data-theme="dark"] .tk-elf .tk-scene-btn {
+  border-color: rgba(94, 242, 194, 0.32);
+  background: rgba(8, 21, 15, 0.72);
+  color: #CFEFDF;
+}
+
+/* ── Cây chuỗi ngày (góc trái dưới desktop) ── */
+.tk-elf-streak {
+  position: absolute;
+  z-index: 60;
+  left: 12px;
+  bottom: 5px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.tk-elf-streak svg {
+  flex: none;
+  overflow: visible;
+  filter: drop-shadow(0 2px 3px rgba(40, 70, 50, 0.25));
+}
+
+.tk-elf-streak__stem {
+  fill: none;
+  stroke: #4E8B5F;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+.tk-elf-streak__leaf {
+  fill: #6FA86A;
+  transition: opacity 0.4s ease;
+}
+
+.tk-elf-streak__lbl {
+  margin-bottom: 4px;
+  height: 21px;
+  padding: 0 9px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(70, 130, 92, 0.28);
+  background: rgba(255, 255, 255, 0.78);
+  color: #2F5E44;
+  backdrop-filter: blur(8px);
+  font: 600 11px/1 'Be Vietnam Pro', sans-serif;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .tk-elf-streak svg {
+  filter: drop-shadow(0 0 4px rgba(94, 242, 194, 0.6));
+}
+
+[data-theme="dark"] .tk-elf-streak__stem {
+  stroke: #2E9E74;
+}
+
+[data-theme="dark"] .tk-elf-streak__leaf {
+  fill: #3FBF8F;
+}
+
+[data-theme="dark"] .tk-elf-streak__lbl {
+  border-color: rgba(94, 242, 194, 0.32);
+  background: rgba(8, 21, 15, 0.72);
+  color: #CFEFDF;
+}
+
+/* ── Thẻ: dây leo (trễ / xong nở hoa) & đom đóm (đang làm) ── */
+@keyframes tkElfFfHover {
+  0% { transform: translate(0, 0); opacity: 0.35; }
+  50% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)); opacity: 0.5; }
+}
+
+.tk-elf-cardvine {
+  position: absolute;
+  right: 4px;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tk-elf-cardvine__stem {
+  fill: none;
+  stroke: #5B8C5A;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+}
+
+.tk-elf-cardvine__leaf {
+  fill: #6FA86A;
+}
+
+[data-theme="dark"] .tk-elf-cardvine {
+  filter: drop-shadow(0 0 3px rgba(94, 242, 194, 0.7));
+}
+
+[data-theme="dark"] .tk-elf-cardvine__stem {
+  stroke: #3FBF8F;
+}
+
+[data-theme="dark"] .tk-elf-cardvine__leaf {
+  fill: #2E9E74;
+}
+
+.tk-elf-cardff {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tk-elf-cardff > span {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #FACC15;
+  box-shadow: 0 0 6px 2px rgba(250, 204, 21, 0.65);
+  animation: tkElfFfHover 2.6s ease-in-out infinite alternate;
+}
+
+[data-theme="dark"] .tk-elf-cardff > span {
+  background: #F2FFB8;
+  box-shadow: 0 0 6px 2px rgba(210, 255, 120, 0.8);
 }

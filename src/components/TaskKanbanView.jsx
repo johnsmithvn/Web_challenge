@@ -304,12 +304,12 @@ export default function TaskKanbanView({
 
         const adding = addingCol === c.key;
         const chips = adding ? parseTaskQuickText(addText, today).chips : [];
+        // Khung đủ cao nhận thả thẻ; hộp cột bên trong co theo số thẻ (lộ nền phía dưới)
         return (
+          <div key={c.key} className="tk-col-slot" {...dz}>
           <div
-            key={c.key}
             className={`tk-col${over ? ' is-over' : ''}`}
             style={{ '--col-c': c.color, '--col-tint': `var(--tk-col-tint-${c.key})` }}
-            {...dz}
           >
             {elf && <ElfColumnDecor />}
             <div className="tk-col__head">
@@ -399,6 +399,7 @@ export default function TaskKanbanView({
               ))}
               {c.tasks.length === 0 && !adding && <div className="tk-col__empty">{emptyLabel}</div>}
             </div>
+          </div>
           </div>
         );
       })}

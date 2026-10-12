@@ -228,7 +228,7 @@ export function dueDayLabel(dateStr, today) {
 /**
  * Dữ liệu hiển thị của 1 thẻ việc — dùng chung cho Kanban, Danh sách, Lịch biểu, mobile.
  *   k: tình trạng thời gian 'late' | 'today' | 'soon' | 'none' | 'done' | 'skip' (màu --tk-ks-*)
- *   badge: nhãn ngày { text, short, icon, dashed }
+ *   badge: nhãn ngày { text (đủ, làm tooltip), short, card (gọn trên thẻ), icon, dashed }
  *   late: "trễ N ngày" | ''
  *   run: thời gian làm thực tế { icon, text } | null (đang làm: "từ d/m HH:MM", xong: thời lượng)
  * @param {Object} task
@@ -261,6 +261,9 @@ export function taskCardModel(task, today) {
     skip: `Bỏ qua${task.due_date ? ` · ${dT}` : ''}`,
   }[k];
   const icon = { late: 'warning', today: 'clock', soon: 'calendar', none: 'calendar', done: 'check', skip: 'minusCircle' }[k];
+  // Nhãn gọn trên thẻ (mockup mới): trễ → chỉ "15/9", sắp tới → "11/10 09:00"; câu đủ nằm ở tooltip
+  const dm = task.due_date ? `${Number(task.due_date.slice(8, 10))}/${Number(task.due_date.slice(5, 7))}` : '';
+  const card = k === 'late' ? dm : k === 'soon' ? `${dm}${tm ? ` ${tm}` : ''}` : text;
 
   let run = null;
   if (task.started_at && (st === 'doing' || done)) {
@@ -284,7 +287,7 @@ export function taskCardModel(task, today) {
     skip,
     k,
     late,
-    badge: { text, short: text.replace(/^Quá hạn · /, ''), icon, dashed: k === 'none' },
+    badge: { text, short: text.replace(/^Quá hạn · /, ''), card, icon, dashed: k === 'none' },
     hasPriority: pr > 0 && !done,
     canSetPriority: pr === 0 && !done && !skip,
     priority: pr,
@@ -292,4 +295,37 @@ export function taskCardModel(task, today) {
     tags: (task._tags || []).map((t) => t.name).filter(Boolean),
     repeat: !!task.recurrence_rule,
   };
+}
+
+/**
+ * Chuỗi ngày làm xong hết việc (cây chuỗi ngày của kiểu Rừng tiên).
+ * Một ngày được tính khi có ≥1 việc tới hạn ngày đó và tất cả đã xong; ngày không có việc thì bỏ qua
+ * (không cộng, không đứt). Hôm nay còn việc dở thì chưa tính nhưng không làm đứt chuỗi.
+ * Đếm lùi từ hôm nay, dừng ở ngày đầu tiên còn việc chưa xong; nhìn tối đa `maxDays` ngày.
+ * @param {{ due_date?: string, done: boolean }[]} items việc cấp cao, đã bỏ việc "Bỏ qua"
+ * @param {string} today YYYY-MM-DD
+ * @param {number} [maxDays=60]
+ * @returns {number}
+ */
+export function computeDoneStreak(items, today, maxDays = 60) {
+  const byDay = new Map();
+  for (const t of items) {
+    if (!t.due_date || t.due_date > today) continue;
+    const d = byDay.get(t.due_date) || { total: 0, done: 0 };
+    d.total += 1;
+    if (t.done) d.done += 1;
+    byDay.set(t.due_date, d);
+  }
+  let streak = 0;
+  const cur = new Date(`${today}T00:00:00`);
+  for (let i = 0; i < maxDays; i++) {
+    const key = toDateStr(cur);
+    const d = byDay.get(key);
+    if (d) {
+      if (d.done === d.total) streak += 1;
+      else if (i > 0) break; // hôm nay còn dở: chưa tính, đi tiếp về hôm qua
+    }
+    cur.setDate(cur.getDate() - 1);
+  }
+  return streak;
 }

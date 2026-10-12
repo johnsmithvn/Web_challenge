@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, useCallback, useEffect, useMemo } from 'react';
+import { useState, lazy, Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
 import TaskListSection from '../components/TaskListSection';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,12 +10,14 @@ import TaskFilterBar from '../components/TaskFilterBar';
 import TaskTodayStrip from '../components/TaskTodayStrip';
 import TaskQuickAdd from '../components/TaskQuickAdd';
 import TaskSkyBackground from '../components/TaskSkyBackground';
+import { ElfStreakTree } from '../components/TaskElfDecor';
+import { frameKey, celebrate } from '../utils/taskFlyersElf';
 import { TaskDayPopover } from '../components/TaskFloatingPopovers';
 import CalendarNavHead, { TaskViewSwitcher, MobileViewMenu } from '../components/CalendarToolbar';
 import AppIcon from '../components/AppIcon';
 import { toDateStr } from '../utils/dateUtils';
 import { rescheduleTaskPatch } from '../utils/calendarTimeUtils';
-import { calculateKanbanCounts, getKanbanRange, matchTaskSearch } from '../utils/kanbanUtils';
+import { calculateKanbanCounts, computeDoneStreak, getKanbanRange, matchTaskSearch } from '../utils/kanbanUtils';
 import { parseTaskQuickText, shiftDateDays } from '../utils/taskNlpParser';
 import { sortSubtasks } from '../utils/subtaskUtils';
 import { solarToLunar, getCanChiYear, getCanChiDay, getNextGoodHour } from '../utils/lunarUtils';
@@ -44,7 +46,8 @@ const DLOW = ['Chủ nhật', 'thứ Hai', 'thứ Ba', 'thứ Tư', 'thứ Năm'
  */
 export default function TasksPage() {
   const { user } = useAuth();
-  const { taskStyle } = useTheme();
+  const { taskStyle, theme } = useTheme();
+  const elf = taskStyle === 'elf';
   const taskModel = useUserTasks();
   const { tags: allTags, addTag } = useTags();
   const {
@@ -243,6 +246,47 @@ export default function TasksPage() {
     return () => { stale = true; };
   }, [getCompletedTasksRange, user, today, calendarRefreshKey]);
 
+  // Rừng tiên — chuỗi ngày làm xong hết việc (cây góc trái dưới): việc có hạn 60 ngày qua theo ngày kế hoạch
+  const [planDone, setPlanDone] = useState([]);
+  useEffect(() => {
+    if (!elf || !getCompletedTasksRange || !user) return undefined;
+    let stale = false;
+    getCompletedTasksRange(shiftDateDays(-60, today), today, { byPlan: true }).then((rows) => {
+      if (!stale) setPlanDone(rows || []);
+    });
+    return () => { stale = true; };
+  }, [elf, getCompletedTasksRange, user, today, calendarRefreshKey]);
+  const streak = useMemo(() => {
+    const all = new Map();
+    for (const t of [...planDone, ...tasks]) {
+      if (t.parent_task_id || t.status === 'skip') continue;
+      all.set(t.id, { due_date: t.due_date, done: !!t.completed });
+    }
+    return computeDoneStreak([...all.values()], today);
+  }, [planDone, tasks, today]);
+
+  // Rừng tiên — vừa đánh dấu xong 1 việc thì đom đóm bay lên; xong hết việc hôm nay thì ăn mừng lớn
+  const openIdsRef = useRef(null);
+  useEffect(() => {
+    const top = tasks.filter((t) => !t.parent_task_id);
+    const prevOpen = openIdsRef.current;
+    openIdsRef.current = new Set(top.filter((t) => !t.completed).map((t) => t.id));
+    if (!elf || !prevOpen) return;
+    const justDone = top.some((t) => t.completed && prevOpen.has(t.id));
+    if (!justDone) return;
+    const dueToday = top.filter((t) => t.due_date === today && t.status !== 'skip');
+    celebrate(frameKey(theme, isMobile), dueToday.length > 0 && dueToday.every((t) => t.completed));
+  }, [tasks, elf, theme, isMobile, today]);
+
+  // Ngắm cảnh: ẩn toàn bộ giao diện để xem nền; thoát ra thì hiện lại dần
+  const [scene, setScene] = useState('off'); // 'off' | 'on' | 'back'
+  useEffect(() => {
+    if (scene !== 'back') return undefined;
+    const t = setTimeout(() => setScene('off'), 500);
+    return () => clearTimeout(t);
+  }, [scene]);
+  const toggleScene = () => setScene((v) => (v === 'on' ? 'back' : 'on'));
+
   const subtasksByParent = useMemo(() => {
     const map = new Map();
     for (const t of tasks) {
@@ -292,7 +336,6 @@ export default function TasksPage() {
   const hourNow = now.getHours();
   const dayPart = hourNow < 11 ? 'Sáng' : hourNow < 13 ? 'Trưa' : hourNow < 18 ? 'Chiều' : 'Tối';
   const lunarNow = solarToLunar(now.getDate(), now.getMonth() + 1, now.getFullYear());
-  const moonOf = (l) => (l.day === 1 ? 'Trăng non' : l.day === 15 ? 'Trăng rằm' : null);
   const lunarText = (d, l) => `Âm ${l.day}/${l.month} ${getCanChiYear(l.year)}, ngày ${getCanChiDay(d.getDate(), d.getMonth() + 1, d.getFullYear()).full}`;
   const goodHour = getNextGoodHour(now);
   const goodHourLabel = !goodHour
@@ -419,12 +462,24 @@ export default function TasksPage() {
       className={[
         'tasks-workspace',
         `tasks-workspace--${activeView}`,
-        taskStyle === 'elf' ? 'tk-elf' : '',
+        elf ? 'tk-elf' : '',
+        scene === 'on' ? 'is-scene' : scene === 'back' ? 'is-scene-back' : '',
         isWidgetOpen ? 'has-util' : '',
         selectedTask || draft ? 'has-peek' : '',
       ].filter(Boolean).join(' ')}
+      data-frame={elf ? frameKey(theme, isMobile) : undefined}
     >
       <TaskSkyBackground isMobile={isMobile} />
+      <button
+        type="button"
+        className={`tk-scene-btn${isMobile ? ' is-m' : ''}`}
+        title={scene === 'on' ? 'Hiện giao diện' : isMobile ? (elf ? 'Ngắm rừng' : 'Ngắm cảnh') : 'Ẩn/hiện giao diện'}
+        onClick={toggleScene}
+      >
+        <AppIcon name={scene === 'on' ? 'eyeOff' : 'eye'} size={isMobile ? 19 : 12} />
+        {!isMobile && (scene === 'on' ? 'Hiện giao diện' : elf ? 'Ngắm rừng' : 'Ngắm cảnh')}
+      </button>
+      {elf && !isMobile && <ElfStreakTree streak={streak} />}
 
       {/* ── Header desktop ── */}
       <header className="tk-header tk-desktop-only">
@@ -436,8 +491,6 @@ export default function TasksPage() {
             <span className="tk-chip">
               <AppIcon name="moon" size={13} style={{ color: 'var(--tk-chip-moon)' }} />
               {lunarText(now, lunarNow)}
-              {moonOf(lunarNow) && <span className="tk-chip__dot">·</span>}
-              {moonOf(lunarNow)}
             </span>
             {goodHourLabel && (
               <span className="tk-chip">
@@ -478,7 +531,6 @@ export default function TasksPage() {
                 <AppIcon name="moon" size={13} style={{ color: 'var(--tk-accent)', flex: 'none' }} />
                 <span>
                   {lunarText(viewDate, viewLunar)}
-                  {moonOf(viewLunar) ? ` · ${moonOf(viewLunar)}` : ''}
                 </span>
               </span>
             </button>
@@ -503,7 +555,6 @@ export default function TasksPage() {
               <AppIcon name="moon" size={13} style={{ color: 'var(--tk-accent)', flex: 'none' }} />
               <span>
                 {lunarText(now, lunarNow)}
-                {moonOf(lunarNow) ? ` · ${moonOf(lunarNow)}` : ''}
               </span>
             </span>
           </button>

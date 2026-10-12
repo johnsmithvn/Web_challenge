@@ -1210,13 +1210,21 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   feTurbulence; tính 1 lần/cỡ, giãn theo trang) + rêu rủ đung đưa + nấm phát sáng + suối, nắng xuyên, lá rơi, bướm;
   sương mù ngẫu nhiên (`FogBank`: lớp sau giữa cây tầng giữa/gần, lớp trước mỏng phủ cây gần; mỗi lớp kéo đến rồi tan
   theo chu kỳ riêng 38–64s, tan hết thì xếp mảng sương lại chỗ ngẫu nhiên; mobile ít mảng, không blur);
-  desktop sáng có tiên đốm sáng bay TRÊN nội dung (`.task-fx-top`, z-index 20, không nhận chuột).
+  desktop sáng có tiên đốm sáng bay TRÊN nội dung (`.task-fx-top`, z-index 40, không nhận chuột).
+  Tương tác (`utils/taskFlyersElf.js`, gắn ở `TaskSkyBackground` khi kiểu Elf): workspace mang `data-frame` = c/a/cm/am;
+  nấm + đom đóm bấm được, bấm nền rung lá, sương (`[data-fog]`) tan quanh con trỏ, xong việc → `celebrate`.
+  Thẻ: dây leo (trễ), dây leo nở hoa (xong), đom đóm (đang làm); cây chuỗi ngày `ElfStreakTree` góc trái dưới desktop.
   Sidebar toàn app dùng skin kính lá của mockup này (`.sidebar--elf`, luôn gắn trong Navbar, CSS ở `navbar.css`):
   sáng trắng-lục, tối rêu thẫm; logo xanh lá→vàng đồng / mint; mục đang mở ô trắng nổi (sáng) hoặc viền mint (tối);
   áp cả thu gọn lẫn mở rộng, mọi trang, không phụ thuộc kiểu giao diện trang Nhiệm vụ.
   Rừng đêm desktop dùng chung trăng/sao/chòm sao với Aurora + tán tối, đom đóm, bào tử, lá phát sáng;
   rừng đêm mobile là cảnh riêng (3 lớp sao, trăng nhỏ, 2 sao băng). Mobile có bản cảnh riêng 390×844 như mockup.
   Cỡ chữ display trong tasks-aurora.css viết `calc(Npx * var(--tk-ds, 1))` để kiểu khác phóng to được.
+- **Vật bay ngẫu nhiên** (cả 2 kiểu): DOM do `utils/taskFlyersAurora.js` / `taskFlyersElf.js` dựng vào `.task-fly-host`
+  (cuối `.task-cosmos-bg`), bay bằng Web Animations rồi tự xoá. Keyframe CSS của chúng mang tiền tố `tkf-`
+  (chung ở tasks-aurora.css, riêng Elf ở tasks-elf.css). Code là port mockup — khi mockup đổi, chép lại hàm `flySpawn`.
+- **Ngắm cảnh**: `.tasks-workspace.is-scene` ẩn mọi con trừ `.task-cosmos-bg`, `.tk-scene-btn`, `.tk-elf-streak`.
+- **Cột Kanban** co theo nội dung: `.tk-col-slot` (vùng thả, cao hết) chứa `.tk-col` (`max-height: 100%`).
 - Màu tình trạng thời gian của thẻ: `--tk-ks-{late|today|soon|none|done|skip}-{glow|tint|fg|bg|bd}`
   (viền trái · nền ánh · nhãn ngày). Màu cột: `--tk-st-{todo|doing|done|skip}`.
   Ô được chọn: `--tk-sel-bg` / `--tk-sel-fg`; Chủ nhật: `--tk-sun`.

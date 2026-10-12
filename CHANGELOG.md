@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v6.24.0 — 2026-10-12
+
+### Added
+- **Nhiệm vụ — vật bay ngẫu nhiên qua trời (`utils/taskFlyersAurora.js`, `utils/taskFlyersElf.js`, `TaskSkyBackground.jsx`, `tasks-aurora.css`, `tasks-elf.css`):** port gần nguyên văn `flySpawn` của 2 mockup. Cứ 2,5–7,5s (mobile 4–10s) thả 1 cảnh, tối đa 5 (mobile 3) cùng lúc; tắt khi tab ẩn hoặc máy bật giảm chuyển động. Mặc định ngày: phản lực, biểu diễn, trực thăng, tên lửa, đàn chim, đại bàng, khinh khí cầu, máy bay giấy, băng rôn, UFO; đêm: cú, dơi, máy bay đêm, ISS, phi hành gia, mưa sao băng, đèn trời, cá voi, Hằng Nga, UFO. Rừng tiên có bộ riêng (rồng, ếch, chú lùn, sóc, nai, cá koi, linh hồn rừng…). Keyframe mang tiền tố `tkf-`.
+- **Nhiệm vụ — nút "Ngắm cảnh" / "Ngắm rừng" (`TasksPage.jsx`, `tasks-aurora.css`):** ẩn toàn bộ giao diện để xem nền, bấm lại hiện dần. Desktop: viên nhỏ giữa đáy; mobile: nút tròn góc trái dưới.
+- **Mặc định — trời đêm (`TaskSkyBackground.jsx`):** bóng chú Cuội ngồi gốc cây đa trên mặt trăng; mobile tối có trăng, sao sáng, chòm sao (không tên); đom đóm lơ lửng nửa dưới trang; mây màu nước bản sáng nhấp nhô.
+- **Rừng tiên — tương tác & trang trí (`taskFlyersElf.js`, `TaskSkyBackground.jsx`, `TaskElfDecor.jsx`, `TaskCard.jsx`, `TasksPage.jsx`):** bấm nấm sát đáy → nấm nảy "boing!"; bấm đom đóm → nó bay theo con trỏ 6s; bấm nền → lá rơi + chim/bướm đêm bay ra; sương tan quanh con trỏ. Đánh dấu xong 1 việc → đom đóm bay lên từ chỗ vừa bấm; xong hết việc hôm nay → trái tim đom đóm + "Xong hết việc hôm nay!". Thẻ trễ có dây leo, thẻ xong dây leo nở hoa, thẻ đang làm có đom đóm lượn. Cây chuỗi ngày góc trái dưới (desktop): lớn thêm mỗi ngày làm xong hết việc, đủ 7 ngày nở hoa (`computeDoneStreak` — ngày không có việc bỏ qua, hôm nay còn dở chưa tính).
+- **Rừng tiên — rừng đêm mobile:** trăng to hơn, thêm Ngân Hà, lớp sao thứ 4, 6 sao sáng và chòm sao.
+
+### Changed
+- **Nhãn hạn trên thẻ gọn hơn (`kanbanUtils.js` `badge.card`, `TaskCard.jsx`, Lịch biểu, Ngày):** thẻ trễ chỉ hiện "15/9", thẻ sắp tới "11/10 09:00"; câu đầy đủ ("Quá hạn · 15 thg 9, 09:00") chuyển vào tooltip. "trễ N ngày" trên thẻ bản tối dùng Be Vietnam Pro như bản sáng.
+- **Cột Kanban co theo số thẻ (`TaskKanbanView.jsx`, `tasks-aurora.css`):** hộp cột không còn kéo cao hết trang (lộ nền phía dưới); khung `.tk-col-slot` vẫn cao hết để thả thẻ vào vùng trống.
+- **Chip âm lịch bỏ "· Trăng non / Trăng rằm"** (đã có trăng + nhãn pha trên nền).
+
 ## v6.23.1 — 2026-10-12
 
 ### Added

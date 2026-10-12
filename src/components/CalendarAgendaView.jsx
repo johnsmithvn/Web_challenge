@@ -309,7 +309,7 @@ export default function CalendarAgendaView({
                       <span className="tk-ag-late__title">{t.title}</span>
                       <span className="tk-due-badge">
                         <AppIcon name={m.badge.icon} size={11.5} />
-                        {m.badge.text}
+                        {m.badge.card}
                       </span>
                       <span className="tk-ag-late__days">{m.late}</span>
                     </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AppIcon from './AppIcon';
-import { ElfBloom } from './TaskElfDecor';
+import { ElfBloom, ElfCardVine, ElfCardFireflies } from './TaskElfDecor';
 import { useTheme } from '../contexts/ThemeContext';
 import { STATUS_META, ksStyle, statusKeyOf, taskCardModel } from '../utils/kanbanUtils';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
@@ -93,6 +93,13 @@ export default function TaskCard({
   };
 
   const style = ksStyle(m.k);
+  // Rừng tiên: thẻ trễ có dây leo, thẻ xong dây leo nở hoa, thẻ đang làm có đom đóm lượn
+  const elfDeco = taskStyle === 'elf' && (
+    <>
+      {(m.k === 'late' || m.done) && <ElfCardVine bloom={m.done} />}
+      {m.st === 'doing' && <ElfCardFireflies />}
+    </>
+  );
 
   const statusBtn = (
     <button type="button" className="tk-st-btn" title="Đổi trạng thái" onClick={stop(onStatus)} style={{ color: st.color }}>
@@ -100,15 +107,15 @@ export default function TaskCard({
     </button>
   );
 
-  const badge = (short = false) => (
+  const badge = () => (
     <button
       type="button"
       className={`tk-due-badge${m.badge.dashed ? ' is-dashed' : ''}`}
       onClick={m.done ? (e) => e.stopPropagation() : stop(onDate)}
-      title={m.done ? undefined : 'Đổi hạn'}
+      title={m.badge.card !== m.badge.text ? m.badge.text : m.done ? undefined : 'Đổi hạn'}
     >
       <AppIcon name={m.badge.icon} size={12} />
-      {short ? m.badge.short : m.badge.text}
+      {m.badge.card}
     </button>
   );
 
@@ -176,6 +183,7 @@ export default function TaskCard({
     return (
       <div className={`tk-mcard${selected ? ' is-selected' : ''}`} style={style} onClick={() => onOpen?.(task)} {...dragProps}>
         <span className="tk-k-bar tk-k-bar--3" />
+        {elfDeco}
         {statusBtn}
         <div className="tk-mcard__body">
           <span className={`tk-mcard__title${m.done ? ' is-done' : m.skip ? ' is-skip' : ''}`}>{task.title}</span>
@@ -197,6 +205,7 @@ export default function TaskCard({
   return (
     <div className={`tk-card${selected ? ' is-selected' : ''}`} style={style} onClick={() => onOpen?.(task)} {...dragProps}>
       <span className="tk-k-bar" />
+      {elfDeco}
       {taskStyle === 'elf' && m.done && <ElfBloom />}
       <div className="tk-card__top">
         {badge()}

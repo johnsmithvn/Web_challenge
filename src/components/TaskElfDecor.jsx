@@ -79,3 +79,61 @@ export function ElfBloom() {
     </span>
   );
 }
+
+// Hoa 5 cánh tròn nhỏ (cụm hoa trên dây leo thẻ xong): toạ độ tâm + màu cánh
+const BLOSSOMS = [[80, 1, '#F9A8D4'], [52, 4, '#FFFFFF'], [36, 1.6, '#C4B5FD']];
+const petals = (cx, cy) => [[0, -2], [1.9, -0.6], [1.2, 1.6], [-1.2, 1.6], [-1.9, -0.6]].map(([dx, dy]) => [cx + dx, cy + 2 + dy]);
+
+/** Dây leo vắt ngang mép trên thẻ: thẻ trễ hạn (bloom=false) / thẻ xong nở hoa (bloom=true). */
+export function ElfCardVine({ bloom = false }) {
+  return (
+    <svg className="tk-elf-cardvine" width="96" height="14" viewBox="0 0 96 14" aria-hidden="true">
+      <path className="tk-elf-cardvine__stem" d="M96 2 C86 5 82 1 74 3 C66 5 62 8 54 6 C46 4 42 2 34 4 C28 5 24 3 20 4 C16 5 15 8 17 9 C19 10 20 8 19 7" />
+      <g className="tk-elf-cardvine__leaf">
+        <path d="M86 4 C84 .5 88 -.5 89 2.6 Z" />
+        <path d="M70 4 C68 7.6 71.6 9 72.6 5.6 Z" />
+        <path d="M58 7 C56 10.6 59.6 12 60.6 8.6 Z" />
+        <path d="M46 4.4 C44 .8 47.6 -.2 48.6 3 Z" />
+        <path d="M30 4.6 C28 8.2 31.6 9.6 32.6 6.2 Z" />
+      </g>
+      {bloom && BLOSSOMS.map(([cx, cy, c]) => (
+        <g key={cx}>
+          {petals(cx, cy).map(([x, y], i) => <circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r="1.6" fill={c} />)}
+          <circle cx={cx} cy={cy + 2} r="1" fill="#FDE047" />
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+/** 3 đom đóm lượn quanh thẻ đang làm. */
+export function ElfCardFireflies() {
+  return (
+    <span className="tk-elf-cardff" aria-hidden="true">
+      <span style={{ right: 26, top: 3, width: 5, height: 5, '--dx': '-10px', '--dy': '4px', animationDuration: '2.6s' }} />
+      <span style={{ left: '42%', bottom: 3, '--dx': '8px', '--dy': '-3px', animationDuration: '3.1s', animationDelay: '-1.2s' }} />
+      <span style={{ right: 6, top: '46%', '--dx': '-3px', '--dy': '-8px', animationDuration: '2.2s', animationDelay: '-.6s' }} />
+    </span>
+  );
+}
+
+/** Cây chuỗi ngày (góc trái dưới, desktop): mỗi ngày làm xong hết việc thì cây lớn thêm, đủ 7 ngày nở hoa. */
+export function ElfStreakTree({ streak }) {
+  const f = Math.min(streak, 7) / 7;
+  const leaves = ['M17 36 C12 35 9 31 10 29 C13 29 16 32 17 36 Z', 'M17 31 C22 30 25 26 24 24 C21 24 18 27 17 31 Z', 'M17 26 C12 25 9 21 10 19 C13 19 16 22 17 26 Z', 'M17 21 C22 20 25 16 24 14 C21 14 18 17 17 21 Z', 'M17 16 C12 15 9 11 10 9 C13 9 16 12 17 16 Z', 'M17 11 C22 10 25 6 24 4 C21 4 18 7 17 11 Z'];
+  return (
+    <span className="tk-elf-streak" title="Mỗi ngày làm xong hết việc, cây lớn thêm" data-scene-keep="">
+      <svg width="34" height="46" viewBox="0 0 34 46" aria-hidden="true">
+        <path className="tk-elf-streak__stem" d="M17 41 C16 34 18 28 17 22 C16 16 18 11 17 6" pathLength="1" strokeDasharray="1" strokeDashoffset={(1 - f).toFixed(3)} />
+        {leaves.map((d, i) => <path key={i} className="tk-elf-streak__leaf" d={d} opacity={streak >= i + 1 ? 1 : 0} />)}
+        <g opacity={streak >= 7 ? 1 : 0}>
+          {[[17, 2.4], [19.5, 4.2], [18.5, 7.1], [15.5, 7.1], [14.5, 4.2]].map(([x, y]) => <circle key={x + y} cx={x} cy={y} r="2" fill="#F9A8D4" />)}
+          <circle cx="17" cy="5" r="1.3" fill="#FDE047" />
+        </g>
+        <path d="M9 39 H25 V41.4 H9 Z" fill="#C98B5A" />
+        <path d="M10 41.4 H24 L22.4 46 H11.6 Z" fill="#B7794A" />
+      </svg>
+      <span className="tk-elf-streak__lbl">Chuỗi {streak} ngày</span>
+    </span>
+  );
+}

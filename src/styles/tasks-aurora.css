@@ -98,6 +98,44 @@
   100% { transform: translate3d(var(--dx), var(--dy), 0); opacity: 0; }
 }
 
+/* ── Keyframe của vật bay (utils/taskFlyersAurora.js + taskFlyersElf.js) — tiền tố tkf- tránh trùng tên ── */
+@keyframes tkf-twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.85; } }
+@keyframes tkf-twinkleB { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+@keyframes tkf-bob { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(0, var(--by), 0); } }
+@keyframes tkf-rotor { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.12); } }
+@keyframes tkf-prop { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.15); } }
+@keyframes tkf-spin { to { transform: rotate(360deg); } }
+@keyframes tkf-flame { 0% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(0.6); opacity: 0.75; } }
+@keyframes tkf-flapY { 0% { transform: scaleY(1); } 100% { transform: scaleY(-0.45); } }
+@keyframes tkf-wingFlap { 0% { transform: scaleY(1); } 100% { transform: scaleY(-0.3); } }
+@keyframes tkf-sway { 0% { transform: rotate(-4deg); } 100% { transform: rotate(4deg); } }
+@keyframes tkf-cfA { 0% { transform: translate(0, 0) rotate(0deg); } 100% { transform: translate(3px, -2px) rotate(7deg); } }
+@keyframes tkf-cfPaw { 0% { transform: rotate(-35deg); } 100% { transform: rotate(30deg); } }
+@keyframes tkf-cfPop { 0% { opacity: 0; transform: scale(0.3); } 35% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: translateY(-4px) scale(1.4); } }
+@keyframes tkf-cfFur { 0% { opacity: 0; transform: translate(0, 0) rotate(0deg); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--fx), -9px) rotate(120deg); } }
+@keyframes tkf-flagWave { 0% { transform: skewY(-2deg); } 100% { transform: skewY(2deg); } }
+@keyframes tkf-blink { 0%, 90%, 100% { transform: scaleY(1); } 94% { transform: scaleY(0.1); } }
+@keyframes tkf-strobe { 0%, 86%, 100% { opacity: 0; } 89%, 93% { opacity: 1; } }
+@keyframes tkf-beacon { 0%, 55%, 100% { opacity: 0.15; } 65%, 80% { opacity: 1; } }
+@keyframes tkf-wave { 0% { transform: rotate(-25deg); } 100% { transform: rotate(20deg); } }
+@keyframes tkf-tailSwish { 0% { transform: rotate(-9deg); } 100% { transform: rotate(9deg); } }
+@keyframes tkf-flick { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } 70% { opacity: 0.7; } }
+@keyframes tkf-ribbonWave { 0% { transform: skewY(-5deg) scaleY(0.92); } 100% { transform: skewY(5deg) scaleY(1.12); } }
+
+/* Đom đóm lơ lửng nửa dưới trang (bản tối) */
+@keyframes taskFfWander {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  25% { transform: translate3d(var(--x1), var(--y1), 0); }
+  50% { transform: translate3d(var(--x2), var(--y2), 0); }
+  75% { transform: translate3d(var(--x3), var(--y3), 0); }
+}
+
+@keyframes taskFfBlink {
+  0%, 100% { opacity: 0.15; }
+  40% { opacity: 1; }
+  60% { opacity: 0.9; }
+}
+
 @keyframes tkSheetUp {
   from { transform: translateY(24px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
@@ -884,9 +922,37 @@
   background: radial-gradient(circle, rgba(255, 200, 140, 0.95) 0, rgba(251, 146, 60, 0.6) 30%, rgba(244, 114, 182, 0.2) 60%, transparent 72%);
 }
 
+/* Mây màu nước: span ngoài nhấp nhô (bob), svg trong trôi ngang (drift) */
+.task-wc-bob {
+  animation: tkf-bob 8s ease-in-out infinite alternate;
+}
+
 .task-wc-cloud {
+  display: block;
   overflow: visible;
   animation: taskDrift 60s ease-in-out infinite alternate;
+}
+
+/* Lớp chứa vật bay (DOM do utils/taskFlyers* dựng), phủ kín trang */
+.task-fly-host {
+  inset: 0;
+}
+
+/* Bóng chú Cuội & cây đa trên mặt trăng (kiểu Mặc định) */
+.task-moon__cuoi {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: rgba(110, 120, 152, 0.45);
+}
+
+.task-ground-ff {
+  border-radius: 50%;
+  background: radial-gradient(circle, #F7FFD6 0, #D9F99D 35%, rgba(190, 242, 100, 0) 72%);
+  animation-name: taskFfWander, taskFfBlink;
+  animation-timing-function: ease-in-out, ease-in-out;
+  animation-iteration-count: infinite, infinite;
 }
 
 .task-orb {
@@ -899,6 +965,67 @@
   border-radius: 50%;
   opacity: 0.5;
   animation: taskTwinkle 7s ease-in-out infinite;
+}
+
+/* ── NGẮM CẢNH: ẩn toàn bộ giao diện, chỉ chừa nền + nút + cây chuỗi ngày ── */
+.tk-scene-btn {
+  position: absolute;
+  z-index: 60;
+  left: 50%;
+  bottom: 3px;
+  transform: translateX(-50%);
+  height: 21px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(200, 215, 255, 0.28);
+  background: rgba(10, 15, 30, 0.72);
+  color: #E6EEFF;
+  backdrop-filter: blur(8px);
+  font: 600 11px/1 'Be Vietnam Pro', sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tk-scene-btn:hover {
+  filter: brightness(1.08);
+}
+
+[data-theme="light"] .tk-scene-btn {
+  border-color: rgba(124, 58, 237, 0.22);
+  background: rgba(255, 255, 255, 0.8);
+  color: #4C1D95;
+}
+
+/* Mobile: nút tròn góc trái dưới */
+.tk-scene-btn.is-m {
+  left: 18px;
+  bottom: 22px;
+  transform: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  justify-content: center;
+  box-shadow: 0 8px 20px -10px rgba(30, 27, 58, 0.5);
+}
+
+.tasks-workspace.is-scene > :not(.task-cosmos-bg):not(.tk-scene-btn):not(.tk-elf-streak) {
+  opacity: 0;
+  pointer-events: none;
+  animation: tkSceneHide 0.45s ease;
+}
+
+.tasks-workspace.is-scene-back > :not(.task-cosmos-bg):not(.tk-scene-btn):not(.tk-elf-streak) {
+  animation: tkFadeIn 0.45s ease;
+}
+
+@keyframes tkSceneHide {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 /* ── TIỆN ÍCH CHUNG ── */
@@ -984,10 +1111,6 @@
   border: 1px solid var(--tk-chip-bd);
   font: 500 12px/1 'Be Vietnam Pro', sans-serif;
   color: var(--tk-chip-fg);
-}
-
-.tk-chip__dot {
-  opacity: 0.45;
 }
 
 .tk-views-switcher {
@@ -1382,6 +1505,26 @@
   backdrop-filter: blur(18px);
 }
 
+/* Cột mở: khung .tk-col-slot giữ chiều cao (vùng thả thẻ), hộp .tk-col co theo nội dung */
+.tk-col-slot {
+  flex: 1 1 0;
+  min-width: 240px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tk-col-slot > .tk-col {
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.tk-col-slot .tk-col__body {
+  flex: 0 1 auto;
+}
+
 .tk-col.is-over {
   background: var(--tk-col-over-bg);
   border-color: var(--tk-col-over-border);
@@ -1750,7 +1893,7 @@
   white-space: nowrap;
 }
 
-[data-theme="light"] .tk-card .tk-late {
+.tk-card .tk-late {
   font: 600 11px/1 'Be Vietnam Pro', sans-serif;
 }
 

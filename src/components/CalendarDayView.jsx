@@ -411,7 +411,7 @@ export default function CalendarDayView({
         const badge = (
           <span className={`tk-due-badge${m.badge.dashed ? ' is-dashed' : ''}`}>
             {!isMobile && <AppIcon name={m.badge.icon} size={11.5} />}
-            {isMobile ? m.badge.short : m.badge.text}
+            {m.badge.card}
           </span>
         );
         return (

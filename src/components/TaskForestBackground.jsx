@@ -358,7 +358,7 @@ function FogBank({ m, n, y0, y1, aMax, sc }) {
     for (const c of e.currentTarget.children) Object.assign(c.style, place(+c.dataset.w, +c.dataset.h));
   };
   return (
-    <div className="tk-forest-fog" onAnimationIteration={reshuffle} style={{ animationDuration: `${fog.d}s`, animationDelay: `${fog.dl}s` }}>
+    <div className="tk-forest-fog" data-fog="" onAnimationIteration={reshuffle} style={{ animationDuration: `${fog.d}s`, animationDelay: `${fog.dl}s` }}>
       {fog.patches.map((p, i) => (
         <span
           key={i}
@@ -513,6 +513,59 @@ export function ForestNight() {
   );
 }
 
+/* ══ CHÒM SAO (dùng chung Mặc định / Rừng tiên) ══ */
+// Chòm sao: [tên, điểm, nối]
+const CONS = [
+  ['Bắc Đẩu', [[0, 30], [40, 26], [72, 34], [100, 46], [110, 80], [150, 84], [160, 52]], [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 3]]],
+  ['Thiên Hậu', [[0, 10], [30, 40], [60, 18], [92, 44], [120, 8]], [[0, 1], [1, 2], [2, 3], [3, 4]]],
+  ['Lạp Hộ', [[14, 20], [76, 26], [34, 70], [46, 66], [58, 62], [24, 118], [84, 112], [46, 0]], [[0, 2], [1, 4], [2, 3], [3, 4], [2, 5], [4, 6], [0, 7], [1, 7]]],
+  ['Thiên Yết', [[10, 10], [22, 20], [34, 34], [42, 54], [46, 74], [56, 92], [74, 102], [96, 100], [106, 86], [100, 74], [0, 0], [24, 0]], [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [0, 10], [0, 11]]],
+  ['Sư Tử', [[14, 30], [30, 10], [54, 8], [64, 30], [52, 56], [120, 48], [150, 66], [112, 78]], [[0, 1], [1, 2], [2, 3], [3, 4], [4, 7], [7, 6], [6, 5], [5, 3]]],
+  ['Thiên Nga', [[60, 0], [60, 46], [60, 96], [60, 136], [8, 30], [112, 64]], [[0, 1], [1, 2], [2, 3], [4, 1], [1, 5]]],
+];
+
+// Mỗi lượt hiện, chòm sao nhảy tới chỗ ngẫu nhiên: desktop dải trời phải (~0.4), mobile góc trái dưới trăng
+// (~0.32, không tên; data-r = bề rộng dải ngẫu nhiên: Mặc định 190, Rừng tiên 130)
+function placeConstellation(el) {
+  const m = el.dataset.m === '1';
+  const svg = el.firstChild;
+  const sc = Math.min((m ? 0.32 : 0.4) + Math.random() * 0.06, (m ? 44 : 54) / ((svg && +svg.getAttribute('height')) || 120));
+  el.style.left = px((m ? 16 + Math.random() * (+el.dataset.r || 190) : 676 + Math.random() * 440).toFixed(0));
+  el.style.top = px((m ? 56 + Math.random() * 24 : 4 + Math.random() * 6).toFixed(0));
+  el.style.transform = `scale(${sc.toFixed(2)}) rotate(${((Math.random() - 0.5) * 20).toFixed(0)}deg)`;
+  if (!m) el.lastChild.style.fontSize = px((11 / sc).toFixed(1)); // giữ chữ tên ~11px sau khi thu nhỏ
+}
+const placeOnce = (el) => { if (el && !el.dataset.placed) { el.dataset.placed = '1'; placeConstellation(el); } };
+
+export function Constellations({ m, range = 190 }) {
+  return CONS.map(([name, P, lines], i) => {
+    const w = Math.max(...P.map((p) => p[0])) + 10;
+    const h = Math.max(...P.map((p) => p[1])) + 10;
+    const delay = `${-150 + i * 25 + 6}s`;
+    return (
+      <span
+        key={name}
+        ref={placeOnce}
+        data-m={m ? '1' : '0'}
+        data-r={range}
+        className="task-cons"
+        style={{ width: px(w), height: px(h + 20), animationDelay: delay }}
+        onAnimationIteration={(e) => { if (e.target === e.currentTarget) placeConstellation(e.currentTarget); }}
+      >
+        <svg width={w} height={h} viewBox={`-5 -5 ${w} ${h}`}>
+          <path
+            d={lines.map(([a, b]) => `M${P[a][0]} ${P[a][1]}L${P[b][0]} ${P[b][1]}`).join('')}
+            pathLength={1}
+            style={{ animationDelay: delay }}
+          />
+          {P.map(([x, y], k) => <circle key={k} cx={x} cy={y} r={k % 3 === 0 ? 2.2 : 1.6} />)}
+        </svg>
+        {!m && <span className="task-cons__name" style={{ left: px(w + 8), top: px(Math.round(h * 0.3)) }}>{name}</span>}
+      </span>
+    );
+  });
+}
+
 /* ══ RỪNG ĐÊM MOBILE (fxNm): sao 3 lớp, trăng nhỏ, 2 sao băng, tán tối, đom đóm, tiên ══ */
 const rM = seeded(33.71, 1.9);
 const NM = (() => {
@@ -536,17 +589,20 @@ const NM = (() => {
   };
 })();
 
+// Sao sáng của rừng đêm mobile: [x khung desktop, y, cỡ, thời lượng] — x co ×0.27 về khung 390
+const NM_BRIGHT = [[430, 12, 22, 5], [880, 66, 16, 4.8], [300, 10, 14, 5.6], [700, 104, 14, 5.2], [130, 112, 14, 6.2], [360, 92, 12, 5.8]];
+
 function MobileMoon() {
   const t = new Date();
   const lday = solarToLunar(t.getDate(), t.getMonth() + 1, t.getFullYear()).day;
   const ph = ((lday - 0.5) / 29.530589) * 2 * Math.PI, lit = (1 - Math.cos(ph)) / 2, wax = ph < Math.PI;
-  const D = 36, R = D / 2, MX = 232, MY = 58, tw = Math.abs(Math.cos(ph)) * D;
+  const D = 44, R = D / 2, MX = 302, MY = 56, tw = Math.abs(Math.cos(ph)) * D;
   const ts = wax ? (lit < 0.5 ? 0 : 1) : (lit < 0.5 ? 1 : 0);
   const clip = `path('M${R} 0 A${R} ${R} 0 0 ${wax ? 1 : 0} ${R} ${D} A${(tw / 2).toFixed(2)} ${R} 0 0 ${ts} ${R} 0 Z')`;
   return (
     <>
       <span className="tk-mmoon-halo" style={{ left: pct(MX + R - 150, MOB.W), top: px(MY + R - 150), background: `radial-gradient(closest-side,rgba(210,236,222,${(0.05 + 0.2 * lit).toFixed(3)}),rgba(210,236,222,0))` }} />
-      <span className="tk-mmoon" style={{ left: pct(MX, MOB.W), top: px(MY) }}>
+      <span className="tk-mmoon" style={{ left: pct(MX, MOB.W), top: px(MY), width: px(D), height: px(D) }}>
         <span style={{ position: 'absolute', inset: 0, filter: `drop-shadow(0 0 ${(3 + 10 * lit).toFixed(0)}px rgba(240,248,230,${(0.35 + 0.45 * lit).toFixed(2)}))` }}>
           <span className="tk-mmoon__disc" style={{ clipPath: clip, WebkitClipPath: clip }} />
         </span>
@@ -561,6 +617,13 @@ export function ForestNightMobile() {
     <>
       {[0, 1, 2].map((i) => <div key={i} className={`tk-mstars tk-mstars--${i}`} />)}
       <MobileMoon />
+      <div className="task-milkyway" style={{ top: '-90px' }} />
+      <div className="task-milkyway task-milkyway--dust" style={{ top: '-90px', opacity: 0.8 }} />
+      <div className="tk-mstars tk-mstars--3" />
+      {NM_BRIGHT.map(([x, y, s, d], i) => (
+        <span key={`bs${i}`} className="task-bright-star" style={{ left: pct(x * 0.27 - s / 2, MOB.W), top: px(y - s / 2), width: px(s), height: px(s), animationDuration: `${d}s`, animationDelay: `${(-i * 1.3).toFixed(1)}s` }} />
+      ))}
+      <Constellations m range={130} />
       <div className="task-shooting-star" style={{ top: '70px', left: '84.6%', width: '110px', animation: 'taskShoot 11s linear 2s infinite' }} />
       <div className="task-shooting-star" style={{ top: '26px', left: '56.4%', width: '90px', animation: 'taskShoot 15s linear 7s infinite' }} />
       {NM.canopy.map(([x, y, w, h, a], i) => (

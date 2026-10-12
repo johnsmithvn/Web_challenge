@@ -11,6 +11,7 @@ import {
   normVi,
   matchTaskSearch,
   calculateKanbanCounts,
+  computeDoneStreak,
 } from '../../utils/kanbanUtils.js';
 
 const ids = (list) => list.map((t) => t.id);
@@ -193,11 +194,15 @@ console.log('calculateKanbanCounts 4 pills realtime count: OK');
   assert.equal(late.late, 'trễ 25 ngày');
   assert.equal(late.badge.text, 'Quá hạn · 15 thg 9, 09:00');
   assert.equal(late.badge.short, '15 thg 9, 09:00');
+  assert.equal(late.badge.card, '15/9', 'thẻ trễ chỉ hiện ngày gọn, câu đủ ở tooltip');
   assert.equal(late.hasPriority, true);
 
   const today = taskCardModel({ id: 2, status: 'doing', due_date: T, due_time: '21:00', started_at: '2026-10-09T12:05:00' }, T);
   assert.equal(today.k, 'today');
   assert.equal(today.badge.text, 'Hôm nay · 21:00');
+  assert.equal(today.badge.card, 'Hôm nay · 21:00', 'hôm nay giữ nguyên câu');
+  const soon = taskCardModel({ id: 5, status: 'todo', due_date: '2026-10-11', due_time: '09:00:00' }, T);
+  assert.equal(soon.badge.card, '11/10 09:00', 'sắp tới: ngày gọn + giờ');
   assert.equal(today.run.icon, 'play');
   assert.match(today.run.text, /^từ 9\/10 \d\d:05$/);
   assert.equal(today.canSetPriority, true);
@@ -221,6 +226,20 @@ console.log('calculateKanbanCounts 4 pills realtime count: OK');
   assert.equal(statusKeyOf({ status: 'doing' }), 'doing');
   assert.equal(statusKeyOf({}), 'todo');
   console.log('taskCardModel badge/late/run/priority: OK');
+}
+
+{
+  // Chuỗi ngày làm xong hết việc (cây chuỗi ngày Rừng tiên)
+  const T = '2026-10-12';
+  const it = (due_date, done) => ({ due_date, done });
+  assert.equal(computeDoneStreak([], T), 0, 'chưa có việc → 0');
+  assert.equal(computeDoneStreak([it('2026-10-11', true), it('2026-10-10', true)], T), 2, '2 ngày liền xong hết');
+  assert.equal(computeDoneStreak([it(T, true), it('2026-10-11', true)], T), 2, 'hôm nay xong hết cũng được tính');
+  assert.equal(computeDoneStreak([it(T, false), it('2026-10-11', true)], T), 1, 'hôm nay còn dở: chưa tính, không đứt');
+  assert.equal(computeDoneStreak([it('2026-10-11', true), it('2026-10-11', false), it('2026-10-10', true)], T), 0, 'hôm qua còn dở → đứt ngay');
+  assert.equal(computeDoneStreak([it('2026-10-11', true), it('2026-10-08', true), it('2026-10-07', false)], T), 2, 'ngày không có việc bỏ qua, gặp ngày dở thì dừng');
+  assert.equal(computeDoneStreak([it('2026-10-20', false), it('2026-10-11', true)], T), 1, 'việc tương lai không ảnh hưởng');
+  console.log('computeDoneStreak: OK');
 }
 
 console.log('\n✅ kanbanLogic — logic thật của Kanban PASS');
