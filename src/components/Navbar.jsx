@@ -150,7 +150,7 @@ export default function Navbar() {
   const [showAuth, setShowAuth] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const { user, profile, signOut, loading, isRecoveringPassword } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, taskStyle } = useTheme();
   const moreRef = useRef(null);
 
   // Thu gọn sidebar thành rail icon 64px (mockup Nhiệm vụ); nhớ lựa chọn giữa các lần mở.
@@ -185,12 +185,14 @@ export default function Navbar() {
   const isBody = location.pathname.startsWith('/body');
   const isFinance = location.pathname.startsWith('/finance');
   const hideGlobalMobileNav = isBody || isFinance;
+  // Trang Nhiệm vụ kiểu Rừng tiên: sidebar khoác skin kính lá như mockup Elf
+  const elfSkin = taskStyle === 'elf' && location.pathname.startsWith('/tasks');
   if (isLanding && !user) return showAuth ? <AuthModal onClose={() => setShowAuth(false)} /> : null;
 
   return (
     <>
       {/* ── DESKTOP SIDEBAR (≥769px) ─────────────────────────── */}
-      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
+      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}${elfSkin ? ' sidebar--elf' : ''}`}>
         <Link to="/" className="sidebar__logo" title="Life Hub">
           <span className="sidebar__logo-icon"><AppIcon name="sparkle" size={collapsed ? 18 : 21} weight="fill" /></span>
           <span className="sidebar__logo-text">Life Hub</span>

@@ -4,6 +4,7 @@
 
 ### Added
 - **Nhiệm vụ — tạo việc bằng ngăn chi tiết (`TaskDetailDrawer.jsx`, `TasksPage.jsx`, `TaskKanbanView.jsx`, `TaskQuickAdd.jsx`, `AppIcon.jsx`, `tasks-aurora.css`):** theo mockup Rừng tiên. Nút "+ Việc mới" trên header desktop, nút "Chi tiết" ở ô thêm nhanh đầu cột Kanban và cạnh "Thêm việc" trong sheet mobile mở ngăn chi tiết ở chế độ tạo mới: đầu ngăn "VIỆC MỚI · <cột>", chữ đã gõ điền sẵn tên/hạn/giờ/ưu tiên/nhãn, ẩn Thực tế + tab Hoạt động/Ghi chú, chân "Bản nháp" + Huỷ / Tạo việc (⌘↵, mờ khi chưa có tên). Sửa trên bản nháp cục bộ, chỉ ghi DB khi bấm Tạo việc (việc → nhãn → việc con); X/Huỷ/Esc bỏ nháp. Thay `TaskCreateModal` ở trang Nhiệm vụ (file còn lại nhưng không ai import). Dưới 1600px "Việc mới" và "Lịch & sự kiện" chỉ còn icon để header 1440 không cao lên.
+- **Rừng tiên — sidebar theo mockup (`Navbar.jsx`, `tasks-elf.css`):** ở trang Nhiệm vụ kiểu Elf, sidebar thêm `.sidebar--elf`: nền kính lá (sáng trắng-lục / tối rêu thẫm), logo gradient xanh lá→vàng đồng (tối: mint), mục đang mở là ô trắng nổi (tối: nền + viền mint), chữ/vạch chia/mục con Finance/nút thu gọn theo màu rừng. Rail thu gọn 64px khớp mockup; bản mở rộng dùng cùng bảng màu. Trang khác giữ sidebar cũ.
 - **Rừng tiên — sương mù ngẫu nhiên (`TaskForestBackground.jsx`, `tasks-elf.css`):** 2 lớp sương trên nền rừng sáng (desktop + mobile), lúc dày lúc mỏng lúc quang theo chu kỳ riêng 38–64s; tan hết thì mảng sương đổi chỗ ngẫu nhiên. Mobile ít mảng hơn, không blur.
 
 ### Fixed
