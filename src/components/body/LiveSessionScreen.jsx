@@ -23,12 +23,26 @@ import {
 
 const MODES = [
   { key: 'straight', label: 'Từng bài', desc: 'Làm hết các set của một bài rồi sang bài kế.' },
-  { key: 'circuit', label: 'Vòng liên hoàn', desc: 'Mỗi bài 1 set, chuyển bài 20 giây, hết vòng nghỉ 90 giây.' },
+  { key: 'circuit', label: 'Liên hoàn', desc: 'Mỗi bài 1 set, chuyển bài 20 giây, hết vòng nghỉ 90 giây.' },
   { key: 'superset', label: 'Siêu set', desc: 'Ghép cặp 2 bài liên tục không nghỉ, nghỉ 75 giây sau mỗi cặp.' }
 ];
 
 const LETTERS = 'ABCDEFGHIJKLMNOP';
 const PREP_OPTIONS = [0, 5, 10, 15];
+
+// Trạng thái màn tập giữ qua lần rời màn (đổi tab Body, sang module khác, tải lại trang): mốc giờ bắt đầu
+// và lượt nghỉ đang chạy. Chỉ là UI state theo tab (sessionStorage), set đã ghi vẫn nằm trên Supabase.
+const liveKey = (id) => `vl_body_live_${id}`;
+const readLive = (id) => {
+  try { return JSON.parse(sessionStorage.getItem(liveKey(id))) || {}; } catch { return {}; }
+};
+const writeLive = (id, patch) => {
+  if (!id) return;
+  try { sessionStorage.setItem(liveKey(id), JSON.stringify({ ...readLive(id), ...patch })); } catch { /* storage bị chặn */ }
+};
+const clearLive = (id) => {
+  try { sessionStorage.removeItem(liveKey(id)); } catch { /* storage bị chặn */ }
+};
 
 const slotOfRecord = (r) => getSlotKey(r.routineItemId, r.exerciseKey, r.setNo);
 const slotOfItem = (q) => getSlotKey(q.routine_item_id, q.exercise_key, q.set_no);
@@ -40,7 +54,6 @@ export default function LiveSessionScreen({
   recentSets = [],
   exerciseMap = new Map(),
   sessionId,
-  isResume = false,
   initialMode = 'straight',
   initialElapsed = 0,
   startedAt = null,
@@ -51,10 +64,11 @@ export default function LiveSessionScreen({
   onCancel,
   onPause
 }) {
-  // Các set đã ghi của chính buổi này (có khi tiếp tục buổi tạm dừng / sau khi tải lại trang)
-  // Chỉ lấy lúc mở màn (BodyPage chỉ mount khi dữ liệu đã tải xong); sau đó loggedSets là nguồn sự thật
+  // Các set đã ghi của chính buổi này — luôn đọc lại mỗi lần mở màn (quay lại từ tab khác, tiếp tục buổi tạm dừng,
+  // tải lại trang) để không tập lại từ set 1 và ghi trùng. Chỉ lấy lúc mở màn (BodyPage chỉ mount khi dữ liệu
+  // đã tải xong); sau đó loggedSets là nguồn sự thật.
   const [existingSets] = useState(
-    () => (isResume && sessionId ? recentSets.filter(s => s.session_id === sessionId) : [])
+    () => (sessionId ? recentSets.filter(s => s.session_id === sessionId) : [])
   );
 
   const [mode, setMode] = useState(initialMode || 'straight');
@@ -84,8 +98,13 @@ export default function LiveSessionScreen({
   const [saveError, setSaveError] = useState(null);
   const hasRestoredRef = useRef(false);
 
-  // Thời lượng đã tập trước khi mở màn: thời lượng lưu lúc tạm dừng, hoặc tới set cuối đã ghi (khi tải lại trang)
+  // Thời lượng đã tập trước khi mở màn: còn mốc giờ của tab này thì tính tiếp theo đồng hồ thật (rời màn vẫn tính giờ);
+  // không thì lấy thời lượng lưu lúc tạm dừng, hoặc tới set cuối đã ghi (mở ở tab mới)
   const [baseElapsed] = useState(() => {
+    const saved = readLive(sessionId);
+    if (saved.ended && saved.endedElapsed != null) return saved.endedElapsed; // đã sang màn kết quả: đồng hồ đứng yên
+    const startAt = Number(saved.startAt);
+    if (startAt > 0) return Math.max(0, Math.floor((Date.now() - startAt) / 1000));
     let lastSetSec = 0;
     if (startedAt && existingSets.length > 0) {
       const start = new Date(startedAt).getTime();
@@ -127,8 +146,9 @@ export default function LiveSessionScreen({
   // Input rep value
   const [currentVal, setCurrentVal] = useState(15);
 
-  // 1. Bài tập của buổi: bài lẻ (buổi tự do) hoặc các bài theo thứ trong lộ trình
-  const dayItems = useMemo(() => {
+  // 1. Bài tập của buổi: bài lẻ (buổi tự do) hoặc các bài theo thứ trong lộ trình.
+  // Chốt 1 lần lúc mở màn: lộ trình bị khóa trong lúc tập, hàng đợi không được đổi giữa chừng.
+  const [dayItems] = useState(() => {
     if (dayInfo?.singleExercise) {
       const ex = dayInfo.singleExercise;
       return [{
@@ -144,7 +164,7 @@ export default function LiveSessionScreen({
     }
     const weekday = dayInfo?.weekday || dayInfo?.day;
     return weekday ? routineItems.filter(item => item.weekday === weekday) : [];
-  }, [dayInfo, routineItems]);
+  });
 
   // 2. Build the exercise queue based on mode
   const queue = useMemo(() => generateWorkoutQueue(dayItems, mode), [dayItems, mode]);
@@ -204,13 +224,14 @@ export default function LiveSessionScreen({
   useEffect(() => {
     if (sessionStartTimeRef.current == null) {
       sessionStartTimeRef.current = Date.now() - baseElapsed * 1000;
+      writeLive(sessionId, { startAt: sessionStartTimeRef.current });
     }
     if (screenState === 'done') return;
     const interval = setInterval(() => {
       setElapsed(Math.floor((Date.now() - sessionStartTimeRef.current) / 1000));
     }, 500);
     return () => clearInterval(interval);
-  }, [screenState, baseElapsed]);
+  }, [screenState, baseElapsed, sessionId]);
 
   // Persistent Web Audio context with user gesture unlock (iOS Safari compatibility)
   const audioCtxRef = useRef(null);
@@ -277,14 +298,16 @@ export default function LiveSessionScreen({
   };
 
   // Chuyển sang ô set idx: set đầu tiên của 1 bài thì mở hướng dẫn (theo thiết kế), còn lại vào thẳng màn ghi set.
-  // auto = tự chuyển sau khi nghỉ: bài tính giây vào thẳng màn set và tự bật đồng hồ (người tập không phải bấm)
+  // auto = tự chuyển sau khi nghỉ: bài tính giây vào thẳng màn set và tự bật đồng hồ (người tập không phải bấm).
+  // Tab đang ẩn (khóa máy, sang app khác) thì không tự bật: nghỉ hết → set giây tự chạy → tự ghi đủ mục tiêu
+  // sẽ "hoàn thành" cả chuỗi set khi người tập không có mặt.
   const autoStartRef = useRef(false);
   const goToSlot = useCallback((idx, auto = false) => {
     if (idx < 0 || idx >= queue.length) {
       setScreenState('done');
       return;
     }
-    const autoTimed = auto && queue[idx].unit === 's';
+    const autoTimed = auto && queue[idx].unit === 's' && document.visibilityState !== 'hidden';
     autoStartRef.current = autoTimed;
     setCurQueueIdx(idx);
     setScreenState(queue[idx].set_no === 1 && !autoTimed ? 'guide' : 'set');
@@ -292,8 +315,9 @@ export default function LiveSessionScreen({
 
   // End rest handler defined BEFORE rest timer effect to avoid TDZ initialization error
   const handleEndRest = useCallback(() => {
+    writeLive(sessionId, { rest: null });
     goToSlot(restNextIdx == null ? -1 : restNextIdx, true);
-  }, [goToSlot, restNextIdx]);
+  }, [goToSlot, restNextIdx, sessionId]);
 
   // Rest countdown timer (timestamp delta)
   useEffect(() => {
@@ -357,15 +381,34 @@ export default function LiveSessionScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSlotKey]);
 
-  // Tiếp tục buổi dở: nhảy tới ô set còn trống đầu tiên theo đúng chế độ đã chốt
+  // Mở lại buổi dở: lượt nghỉ còn chạy thì vào lại màn nghỉ, không thì tới ô set còn trống đầu tiên theo chế độ đã chốt.
+  // Không tự bật đồng hồ set giây — người tập phải bấm Bắt đầu.
   useEffect(() => {
     if (hasRestoredRef.current) return;
     hasRestoredRef.current = true;
-    if (existingSets.length === 0 || queue.length === 0) return;
+    if (queue.length === 0) return;
+    const saved = readLive(sessionId);
+    if (saved.ended) {
+      setScreenState('done'); // đã bấm Kết thúc buổi nhưng chưa lưu → quay lại đúng màn kết quả
+      return;
+    }
+    if (existingSets.length === 0) return;
+    const rest = saved.rest;
+    const restSlot = rest && queue[rest.nextIdx];
+    if (rest && rest.endAt > Date.now() + 1000 && restSlot && !doneKeys.has(slotOfItem(restSlot))) {
+      restEndRef.current = rest.endAt;
+      setCurQueueIdx(Math.min(Math.max(0, rest.fromIdx ?? 0), queue.length - 1));
+      setRestKind(rest.kind || 'set');
+      setRestNextIdx(rest.nextIdx);
+      setRestTotal(rest.total || 60);
+      setRestRemaining(Math.round((rest.endAt - Date.now()) / 1000));
+      setScreenState('rest');
+      return;
+    }
     const next = findNextOpenIndex(queue, doneKeys, -1);
     if (next < 0) setScreenState('done');
     else goToSlot(next);
-  }, [existingSets, queue, doneKeys, goToSlot]);
+  }, [existingSets, queue, doneKeys, goToSlot, sessionId]);
 
   const formatClock = (seconds) => {
     const m = Math.floor(seconds / 60);
@@ -385,11 +428,13 @@ export default function LiveSessionScreen({
       goToSlot(next, true);
       return;
     }
-    setRestKind(getRestKind(mode, queue[fromIdx], queue[next]));
+    const kind = getRestKind(mode, queue[fromIdx], queue[next]);
+    setRestKind(kind);
     setRestNextIdx(next);
     setRestTotal(restSec);
     setRestRemaining(restSec);
     restEndRef.current = Date.now() + restSec * 1000;
+    writeLive(sessionId, { rest: { endAt: restEndRef.current, fromIdx, nextIdx: next, kind, total: restSec } });
     setScreenState('rest');
   };
 
@@ -401,6 +446,8 @@ export default function LiveSessionScreen({
     const nextRemaining = Math.round((nextEnd - Date.now()) / 1000);
     setRestRemaining(nextRemaining);
     setRestTotal(prev => Math.max(prev, nextRemaining));
+    const saved = readLive(sessionId).rest;
+    if (saved) writeLive(sessionId, { rest: { ...saved, endAt: nextEnd, total: Math.max(saved.total || 0, nextRemaining) } });
   };
 
   const persistRecord = (record) => {
@@ -570,6 +617,11 @@ export default function LiveSessionScreen({
     };
   }, [loggedSets, queue.length, dayItems, prevByExercise, nameOf]);
 
+  // Sang màn kết quả (hết set hoặc bấm Kết thúc buổi): ghi nhớ để rời màn rồi quay lại vẫn ở màn kết quả
+  useEffect(() => {
+    if (screenState === 'done') writeLive(sessionId, { rest: null, ended: true, endedElapsed: elapsed });
+  }, [screenState, elapsed, sessionId]);
+
   // Set initial approved progressions when entering done state
   useEffect(() => {
     if (screenState === 'done') {
@@ -613,7 +665,7 @@ export default function LiveSessionScreen({
         <p style={{ fontSize: '13.5px', color: 'var(--body-text-muted)', margin: '0 0 20px 0', maxWidth: '360px', marginLeft: 'auto', marginRight: 'auto' }}>
           Hôm nay là ngày nghỉ hoặc chưa có bài tập nào được gán cho thứ này. Bạn có thể chọn ngày khác hoặc quay lại Lộ trình.
         </p>
-        <button className="body-btn body-btn-primary" onClick={onCancel} style={{ padding: '0 20px', height: '38px' }}>
+        <button className="body-btn body-btn-primary" onClick={() => { clearLive(sessionId); onCancel?.(); }} style={{ padding: '0 20px', height: '38px' }}>
           Quay lại Lộ trình
         </button>
       </div>
@@ -720,7 +772,7 @@ export default function LiveSessionScreen({
       {screenState === 'guide' && (
         <div className="body-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0, lineHeight: 1.25 }}>{exDef?.name}</h2>
+            <h2 className="body-live-ex-title" style={{ fontSize: '22px', fontWeight: 700, margin: 0, lineHeight: 1.25 }}>{exDef?.name}</h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '4px 12px', marginTop: '6px' }}>
               <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-accent)' }}>
                 {currentItem?.total_sets} × {formatValWithUnit(currentItem?.target_val, currentItem?.unit)}
@@ -868,7 +920,7 @@ export default function LiveSessionScreen({
         <div className="body-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
             <div style={{ minWidth: 0 }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, lineHeight: 1.25 }}>{exDef?.name}</h2>
+              <h2 className="body-live-ex-title" style={{ fontSize: '20px', fontWeight: 700, margin: 0, lineHeight: 1.25 }}>{exDef?.name}</h2>
               {prevLine(currentItem?.exercise_key) && (
                 <div style={{ fontSize: '12px', color: 'var(--body-text-sub)', marginTop: '4px', fontFamily: 'var(--body-mono)' }}>
                   lần trước {prevLine(currentItem?.exercise_key)}
@@ -926,10 +978,10 @@ export default function LiveSessionScreen({
           {/* Bài đếm rep */}
           {currentItem?.unit !== 's' ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', margin: 'auto 0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <button
                   className="body-btn-icon"
-                  style={{ width: '64px', height: '64px', borderRadius: '50%', fontSize: '26px' }}
+                  style={{ width: '64px', height: '64px', borderRadius: '50%', fontSize: '26px', flex: 'none' }}
                   onClick={() => setCurrentVal(prev => Math.max(0, prev - 1))}
                   aria-label="Giảm 1 rep"
                 >
@@ -940,14 +992,17 @@ export default function LiveSessionScreen({
                   <div style={{ fontSize: '56px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: currentVal >= currentItem.target_val ? 'var(--body-green)' : 'var(--body-amber)' }}>
                     {currentVal}
                   </div>
-                  <div style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                    {currentVal >= currentItem.target_val ? '✓ ' : ''}mục tiêu {currentItem.target_val} rep{currentItem.kg ? ` · ${currentItem.kg} kg` : ''}
+                  <div style={{ fontSize: '13px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap' }}>
+                    {currentVal >= currentItem.target_val ? '✓ ' : ''}mục tiêu {currentItem.target_val} rep
                   </div>
+                  {currentItem.kg ? (
+                    <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap' }}>{currentItem.kg} kg</div>
+                  ) : null}
                 </div>
 
                 <button
                   className="body-btn-icon"
-                  style={{ width: '64px', height: '64px', borderRadius: '50%', fontSize: '26px' }}
+                  style={{ width: '64px', height: '64px', borderRadius: '50%', fontSize: '26px', flex: 'none' }}
                   onClick={() => setCurrentVal(prev => prev + 1)}
                   aria-label="Tăng 1 rep"
                 >
@@ -1185,7 +1240,7 @@ export default function LiveSessionScreen({
           </div>
 
           {/* 4 Stat KPI Cards - 100% Số Liệu Thật */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div className="body-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Thời gian thực</span>
               <span style={{ fontSize: '24px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-text-main)' }}>
@@ -1216,7 +1271,7 @@ export default function LiveSessionScreen({
           </div>
 
           {/* Hai cột: So sánh từng bài & Duyệt tăng tiến */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '16px' }}>
 
             {/* Cột trái: So sánh chi tiết từng bài */}
             <div className="body-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -1233,8 +1288,8 @@ export default function LiveSessionScreen({
 
                   return (
                     <div key={idx} style={{ paddingBottom: '12px', borderBottom: '1px solid var(--body-card-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                           <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--body-text-main)' }}>
                             {displayName}
                           </span>
@@ -1255,8 +1310,8 @@ export default function LiveSessionScreen({
                           )}
                         </div>
                         {compEx && (
-                          <span style={{ fontSize: '13px', fontWeight: 600, color: compEx.diff > 0 ? 'var(--body-green)' : 'var(--body-text-muted)' }}>
-                            {compEx.label} {compEx.unit}
+                          <span style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', color: compEx.diff > 0 ? 'var(--body-green)' : 'var(--body-text-muted)' }}>
+                            {compEx.diff == null ? compEx.label : `${compEx.label} ${compEx.unit}`}
                           </span>
                         )}
                       </div>
@@ -1321,10 +1376,10 @@ export default function LiveSessionScreen({
             }}>
               <div>
                 <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--body-accent)' }}>
-                  Đề xuất tăng tiến buổi tới (+1 rep / +5s)
+                  Tăng tiến buổi tới
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--body-text-sub)', marginTop: '2px' }}>
-                  Chỉ đề xuất khi hoàn thành đủ 100% số set đạt chỉ tiêu. Đánh dấu để áp dụng vào Lộ trình.
+                  Mọi set đạt mục tiêu mới được đề xuất (+1 rep / +5s). Tích bài muốn áp dụng vào lộ trình.
                 </div>
               </div>
 
@@ -1344,17 +1399,18 @@ export default function LiveSessionScreen({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
+                        gap: '10px',
                         opacity: cand.shouldProgress ? 1 : 0.65
                       }}
                     >
-                      <div>
+                      <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
                           {cand.name}
                         </div>
                         <div style={{ fontSize: '11.5px', color: cand.shouldProgress ? 'var(--body-green)' : 'var(--body-text-muted)', fontWeight: 500 }}>
                           {cand.shouldProgress
                             ? `Đạt đủ ${cand.totalTargetSets} set ✓`
-                            : `Đạt ${cand.completedSets}/${cand.totalTargetSets} set (chưa đạt yêu cầu tăng)`}
+                            : `Đạt ${cand.completedSets}/${cand.totalTargetSets} set · chưa tăng`}
                         </div>
                       </div>
 
@@ -1363,6 +1419,7 @@ export default function LiveSessionScreen({
                           fontFamily: 'var(--body-mono)',
                           fontSize: '13px',
                           fontWeight: 700,
+                          whiteSpace: 'nowrap',
                           color: cand.shouldProgress ? 'var(--body-accent)' : 'var(--body-text-muted)'
                         }}>
                           {cand.shouldProgress ? `${cand.nextVal} ${cand.unit}` : `${cand.currentVal} ${cand.unit}`}
@@ -1392,10 +1449,6 @@ export default function LiveSessionScreen({
                   );
                 })}
               </div>
-
-              <div style={{ fontSize: '11.5px', color: 'var(--body-text-sub)', lineHeight: 1.5, marginTop: 'auto' }}>
-                💡 Khi bấm "Hoàn tất & Lưu", chỉ các bài được tích chọn ở trên mới được cập nhật vào mục tiêu Lộ trình.
-              </div>
             </div>
 
           </div>
@@ -1411,6 +1464,7 @@ export default function LiveSessionScreen({
                   nextTargetVal: c.nextVal
                 }));
 
+              clearLive(sessionId);
               onFinishSession?.({
                 elapsed,
                 logs,
@@ -1450,11 +1504,11 @@ export default function LiveSessionScreen({
                 },
                 {
                   icon: 'clock', color: 'var(--body-accent)', label: 'Tạm dừng', sub: 'Lưu dở, tiếp tục sau',
-                  run: () => (onPause ? onPause(elapsed) : onCancel())
+                  run: () => { clearLive(sessionId); return onPause ? onPause(elapsed) : onCancel(); }
                 },
                 {
                   icon: 'trash', color: 'var(--body-red, #EF4444)', label: 'Hủy buổi tập', sub: 'Không lưu kết quả',
-                  run: onCancel
+                  run: () => { clearLive(sessionId); onCancel(); }
                 }
               ].filter(Boolean).map(opt => (
                 <button

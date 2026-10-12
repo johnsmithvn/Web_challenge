@@ -577,9 +577,12 @@ export default function BiometricsScreen() {
               padding: '22px',
               boxSizing: 'border-box'
             }}>
-              <span style={{ fontSize: '13px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>
-                {latest ? `${latest.local_date} · ${latest.time_slot === 'morning' ? 'Sáng sớm' : 'Buổi tối'}` : 'Chưa có số đo'}
-              </span>
+              {/* Chưa có số đo thì trong vòng gauge đã ghi rõ — không lặp lại dòng này */}
+              {latest && (
+                <span style={{ fontSize: '13px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>
+                  {latest.local_date} · {latest.time_slot === 'morning' ? 'Sáng sớm' : 'Buổi tối'}
+                </span>
+              )}
 
               {/* Vòng cung Gauge SVG */}
               <div style={{ position: 'relative', width: '240px', maxWidth: '100%', height: '190px', margin: '4px 0' }}>
@@ -1072,34 +1075,26 @@ export default function BiometricsScreen() {
           {/* 3-COLUMN SUMMARY BAR */}
           <div className="body-card body-cothe-history-stats">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Cân nặng hiện tại</span>
+              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap' }}>Hiện tại</span>
               <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--body-text-main)' }}>
                 {historyData.latestWeightStr}<span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> kg</span>
               </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>So với 7 ngày trước</span>
+              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap' }}>So 7 ngày trước</span>
               <span style={{ fontSize: '20px', fontWeight: 700, color: historyData.delta7Color }}>
                 {historyData.delta7Str}<span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> kg</span>
               </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Số lần đo</span>
+              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap' }}>Số lần đo</span>
               <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--body-text-main)' }}>
                 {historyData.totalCount}<span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> lần</span>
               </span>
             </div>
-
-            <button
-              type="button"
-              className="body-btn body-btn-secondary"
-              onClick={() => setShowAddModal(true)}
-              style={{ height: '34px', fontSize: '12.5px', padding: '0 14px' }}
-            >
-              + Thêm cân đo
-            </button>
+            {/* Nút "Thêm cân đo" đã có ở thanh trên mọi tab — không lặp ở đây */}
           </div>
 
           {/* 2-COLUMN LAYOUT: GROUPED BY DATE (LEFT) + INSPECTOR (RIGHT 380px) */}
@@ -1109,7 +1104,7 @@ export default function BiometricsScreen() {
             <div className="body-card" style={{ padding: '0', overflow: 'hidden' }}>
               {historyData.groups.length === 0 ? (
                 <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--body-text-muted)', fontSize: '13.5px' }}>
-                  Chưa có lần đo nào được ghi nhận. Bấm "+ Thêm cân đo" để bắt đầu!
+                  Chưa có lần đo nào.
                 </div>
               ) : (
                 historyData.groups.map(group => (

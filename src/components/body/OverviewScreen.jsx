@@ -5,7 +5,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useBiometrics } from '../../hooks/useBiometrics';
 import { useNutrition } from '../../hooks/useNutrition';
-import { useWorkouts } from '../../hooks/useWorkouts';
 import { calculateRecoveryMetrics, getRoutineWeek, estimateQueueMinutes, generateWorkoutQueue } from '../../utils/workoutLogic';
 import { calculateMacroTargets } from '../../utils/bodyMetrics';
 import { getWeekDates, toDateStr } from '../../utils/dateUtils';
@@ -30,12 +29,21 @@ const VN_MUSCLES = {
   lats: 'Xô'
 };
 
-export default function OverviewScreen({ onNavigateTab, onStartSession }) {
+// Dữ liệu tập lấy từ BodyPage (cùng 1 instance useWorkouts) để thẻ "Buổi tập hôm nay" khớp với màn tập đang chạy
+export default function OverviewScreen({
+  activeRoutine,
+  routineItems = [],
+  sessions = [],
+  recentSets = [],
+  exerciseMap,
+  workoutsLoaded,
+  onNavigateTab,
+  onStartSession
+}) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { latest: latestWeight, addMeasurement, measurements, profile, tdee, hasLoaded: bioLoaded } = useBiometrics();
   const { mealLogs, addMealLog, hasLoaded: nutLoaded } = useNutrition();
-  const { activeRoutine, routineItems, sessions, recentSets, exerciseMap, hasLoaded: workoutsLoaded } = useWorkouts();
 
   const [quickModal, setQuickModal] = useState(false);
   const [quickTab, setQuickTab] = useState('weight'); // 'weight' | 'meal'
@@ -101,6 +109,13 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
   const todayRoutineItems = useMemo(() => {
     return (routineItems || []).filter(item => item.weekday === todayWeekday);
   }, [routineItems, todayWeekday]);
+
+  // Bắt đầu buổi theo lịch hôm nay — cùng dạng dayInfo với nút Bắt đầu ở Lộ trình
+  const startTodaySession = () => onStartSession?.({
+    day: todayWeekday,
+    weekday: todayWeekday,
+    name: todayRoutineItems[0]?.day_name || 'Buổi tập hôm nay'
+  });
 
   // Thống kê thật của 1 buổi từ các set đã ghi (bảng sessions không lưu sẵn số set / khối lượng)
   const statsOfSession = useCallback((sessionId) => {
@@ -451,7 +466,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
           ? (isTodayCol ? '#6949E8' : '#C4B6F4')
           : item.st === 'plan' ? 'transparent' : 'var(--body-shell-bg)',
         bd: item.st === 'plan' ? '1.5px dashed #C9C6BE' : '0',
-        fg: isTodayCol ? '#15161A' : '#8A8A84',
+        fg: isTodayCol ? 'var(--body-text-main)' : 'var(--body-text-muted)',
         font: `${isTodayCol ? 600 : 500} 11px/1 'Be Vietnam Pro', sans-serif`
       };
     });
@@ -615,7 +630,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <span style={{ font: "400 11.5px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Thời gian</span>
               <span style={{ font: "600 19px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone || sessionStats.isInProgress ? `${sessionStats.durationMin} phút` : (sessionStats.hasPlan ? `~${sessionStats.estMinutes}p` : '—')}
+                {sessionStats.isInProgress && !sessionStats.durationMin ? '—' : sessionStats.isDone || sessionStats.isInProgress ? `${sessionStats.durationMin} phút` : (sessionStats.hasPlan ? `~${sessionStats.estMinutes}p` : '—')}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -643,7 +658,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               <>
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B' }} />
                 <span style={{ flex: 1, font: "400 12.5px/1.3 'Be Vietnam Pro',sans-serif", color: "#F59E0B" }}>
-                  Buổi tập đang tạm dừng. Tiếp tục ngay!
+                  Buổi tập chưa xong.
                 </span>
                 <button
                   onClick={() => onNavigateTab?.('session')}
@@ -663,7 +678,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
                   }}
                 >
                   <AppIcon name="play" size={14} weight="fill" />
-                  Tiếp tục buổi tập
+                  Tập tiếp
                 </button>
               </>
             ) : sessionStats.isDone ? (
@@ -681,7 +696,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               </>
             ) : sessionStats.hasPlan ? (
               <button
-                onClick={() => onStartSession ? onStartSession(todayRoutineItems) : onNavigateTab?.('routine')}
+                onClick={startTodaySession}
                 style={{
                   height: '34px',
                   padding: '0 16px',
@@ -977,7 +992,11 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             <span style={{ font: "500 10px/1 var(--body-mono)", letterSpacing: "0.09em", color: "#9C9AA8" }}>
               BUỔI TẬP HÔM NAY
             </span>
-            {sessionStats.isDone ? (
+            {sessionStats.isInProgress ? (
+              <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(245, 158, 11, 0.2)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#F59E0B" }}>
+                Đang tập dở
+              </span>
+            ) : sessionStats.isDone ? (
               <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(62,158,104,0.22)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#7FD3A2" }}>
                 Xong {sessionStats.finishTime}
               </span>
@@ -998,7 +1017,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <span style={{ font: "400 11px/1 'Be Vietnam Pro',sans-serif", color: "#9C9AA8" }}>Thời gian</span>
               <span style={{ font: "600 15px/1 'Be Vietnam Pro',sans-serif" }}>
-                {sessionStats.isDone || sessionStats.isInProgress ? `${sessionStats.durationMin}p` : (sessionStats.hasPlan ? `~${sessionStats.estMinutes}p` : '—')}
+                {sessionStats.isInProgress && !sessionStats.durationMin ? '—' : sessionStats.isDone || sessionStats.isInProgress ? `${sessionStats.durationMin}p` : (sessionStats.hasPlan ? `~${sessionStats.estMinutes}p` : '—')}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -1020,15 +1039,16 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               </span>
             </div>
           </div>
-          {!sessionStats.isDone && sessionStats.hasPlan && (
+          {/* Đang có buổi dở thì chỉ cho tập tiếp — nút Bắt đầu ở đây từng hủy ngầm buổi đang tập */}
+          {(sessionStats.isInProgress || (!sessionStats.isDone && sessionStats.hasPlan)) && (
             <button
-              onClick={() => onStartSession ? onStartSession(todayRoutineItems) : onNavigateTab?.('routine')}
+              onClick={sessionStats.isInProgress ? () => onNavigateTab?.('session') : startTodaySession}
               style={{
                 marginTop: '10px',
                 height: '36px',
                 width: '100%',
                 borderRadius: '8px',
-                background: '#6949E8',
+                background: sessionStats.isInProgress ? 'linear-gradient(135deg, #F59E0B, #D97706)' : '#6949E8',
                 color: '#FFF',
                 fontWeight: 600,
                 fontSize: '13px',
@@ -1041,7 +1061,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               }}
             >
               <AppIcon name="play" size={14} weight="fill" />
-              Bắt đầu tập hôm nay
+              {sessionStats.isInProgress ? 'Tập tiếp' : 'Bắt đầu tập'}
             </button>
           )}
         </div>
@@ -1135,7 +1155,14 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
         </div>
 
         {/* 5. Check-in tuần */}
-        <div className="body-2a-checkin-card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div
+          className="body-2a-checkin-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onNavigateTab?.('nutrition')}
+          onKeyDown={e => { if (e.key === 'Enter') onNavigateTab?.('nutrition'); }}
+          style={{ padding: '14px 16px', flexDirection: 'row', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+        >
           <AppIcon name="clipboard" size={22} style={{ color: "#5238C9", flexShrink: 0 }} />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ font: "600 13px/1.2 'Be Vietnam Pro',sans-serif", color: "var(--body-text-main)" }}>

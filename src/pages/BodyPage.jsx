@@ -72,34 +72,31 @@ export default function BodyPage() {
     navigate(`/body/${target}`);
   }, [navigate]);
 
-  // Selected session to run
-  const [activeSessionDay, setActiveSessionDay] = useState(null);
-  const [currentSessionObj, setCurrentSessionObj] = useState(null);
-  // Buổi mới đang chờ xác nhận vì còn 1 buổi tạm dừng (bắt đầu buổi mới sẽ hủy buổi đó)
+  // Buổi đang dở (đang tập hoặc tạm dừng) — nguồn sự thật duy nhất là danh sách sessions của useWorkouts
+  // (startSession/finish/abandon cập nhật optimistic nên đổi màn không phải chờ mạng)
+  const liveSession = sessions.find(s => s.status === 'in_progress');
+  // Thông tin ngày của buổi vừa bấm bắt đầu (có bài lẻ của buổi tự do), gắn với id buổi để không dùng nhầm cho buổi khác
+  const [startedDay, setStartedDay] = useState(null);
+  // Buổi mới đang chờ xác nhận vì còn 1 buổi dở (bắt đầu buổi mới sẽ hủy buổi đó)
   const [pendingStart, setPendingStart] = useState(null);
-
-  // Check for existing in-progress session in database
-  const inProgressSession = sessions.find(s => s.status === 'in_progress');
 
   // Dựng lại dayInfo cho buổi đang dở: buổi theo lịch dùng planned_weekday,
   // buổi tự do (tập lẻ 1 bài) lấy bài từ set đã ghi hoặc từ tên buổi.
   const buildResumeDayInfo = useCallback((session) => {
     const name = session.day_type || session.title?.replace('Buổi ', '') || 'Tập luyện';
     if (session.planned_weekday) {
-      return { day: session.planned_weekday, weekday: session.planned_weekday, name, isResume: true };
+      return { day: session.planned_weekday, weekday: session.planned_weekday, name };
     }
     const firstSet = recentSets.find(s => s.session_id === session.id);
     const ex = (firstSet && exerciseMap.get(firstSet.exercise_key))
       || Array.from(exerciseMap.values()).find(e => e.name === name);
-    return ex ? { name: ex.name, singleExercise: ex, focus: ex.primary, isResume: true } : { name, isResume: true };
+    return ex ? { name: ex.name, singleExercise: ex, focus: ex.primary } : { name };
   }, [recentSets, exerciseMap]);
 
-  // Effective session & dayInfo (tự động fallback về inProgressSession nếu có)
-  const effectiveSession = currentSessionObj || inProgressSession;
-  const effectiveDayInfo = useMemo(
-    () => activeSessionDay || (inProgressSession ? buildResumeDayInfo(inProgressSession) : null),
-    [activeSessionDay, inProgressSession, buildResumeDayInfo]
-  );
+  const liveDayInfo = useMemo(() => {
+    if (!liveSession) return null;
+    return startedDay?.sessionId === liveSession.id ? startedDay.dayInfo : buildResumeDayInfo(liveSession);
+  }, [liveSession, startedDay, buildResumeDayInfo]);
 
   // Bọc các thao tác ghi dữ liệu để lỗi luôn hiện toast (hook đã tự rollback state)
   const withToast = useCallback((fn, successMsg) => async (...args) => {
@@ -113,12 +110,13 @@ export default function BodyPage() {
     }
   }, [showToast]);
 
-  // Tự động chuyển về Lộ trình nếu người dùng truy cập /body/session mà không có phiên tập nào đang diễn ra (chỉ sau khi dữ liệu đã tải)
+  // /body/session mà không còn buổi dở → về Lộ trình. Ngược lại, đang có buổi dở thì tab Lộ trình bị khóa và
+  // chuyển hẳn sang màn tập: sửa/đổi lộ trình giữa buổi làm hàng đợi set lệch với các set đã ghi.
   useEffect(() => {
-    if (hasLoaded && routeScreen === 'session' && !effectiveSession) {
-      navigate('/body/routine', { replace: true });
-    }
-  }, [hasLoaded, routeScreen, effectiveSession, navigate]);
+    if (!hasLoaded) return;
+    if (routeScreen === 'session' && !liveSession) navigate('/body/routine', { replace: true });
+    else if (routeScreen === 'routine' && liveSession) navigate('/body/session', { replace: true });
+  }, [hasLoaded, routeScreen, liveSession, navigate]);
 
   // Lock document body scroll on desktop (Workspace Pattern)
   useEffect(() => {
@@ -130,7 +128,6 @@ export default function BodyPage() {
 
   const doStartSession = useCallback(async (dayInfo) => {
     const isFree = Boolean(dayInfo?.singleExercise);
-    setActiveSessionDay(dayInfo);
     try {
       const sess = await startSession({
         plannedWeekday: isFree ? null : (dayInfo?.weekday || dayInfo?.day || null),
@@ -138,31 +135,27 @@ export default function BodyPage() {
         routineId: isFree ? null : (activeRoutine?.id || null),
         mode: 'straight'
       });
-      setCurrentSessionObj({ ...sess, isResume: false });
+      setStartedDay({ sessionId: sess.id, dayInfo });
       setScreen('session');
     } catch (err) {
       showToast?.('Không thể tạo buổi tập: ' + (err.message || 'Thử lại sau'), 'error');
     }
   }, [startSession, activeRoutine, showToast, setScreen]);
 
-  // Bắt đầu buổi mới khi còn buổi đang tạm dừng sẽ hủy buổi đó → hỏi trước
+  // Còn buổi dở (kể cả buổi đang tập ở tab khác) thì bắt đầu buổi mới sẽ hủy buổi đó → luôn hỏi trước
   const handleStartSession = useCallback((dayInfo) => {
-    if (inProgressSession && inProgressSession.id !== currentSessionObj?.id) {
+    if (liveSession) {
       setPendingStart(dayInfo);
       return;
     }
     doStartSession(dayInfo);
-  }, [inProgressSession, currentSessionObj, doStartSession]);
+  }, [liveSession, doStartSession]);
 
-  const handleResumeSession = useCallback((session) => {
-    setCurrentSessionObj({ ...session, isResume: true });
-    setActiveSessionDay(buildResumeDayInfo(session));
-    setScreen('session');
-  }, [setScreen, buildResumeDayInfo]);
+  const goToLive = useCallback(() => setScreen('session'), [setScreen]);
 
   const handleFinishSession = useCallback(async (results) => {
     try {
-      const sId = currentSessionObj?.id || inProgressSession?.id;
+      const sId = liveSession?.id;
       if (sId) {
         await finishSession({
           sessionId: sId,
@@ -180,16 +173,15 @@ export default function BodyPage() {
       } else {
         showToast?.('Đã lưu vào bộ nhớ tạm (Đăng nhập để đồng bộ đám mây)', 'info');
       }
-      setCurrentSessionObj(null);
-      setActiveSessionDay(null);
+      setStartedDay(null);
       setScreen('history');
     } catch (err) {
       showToast?.('Lỗi khi lưu buổi tập: ' + (err.message || 'Thử lại sau'), 'error');
     }
-  }, [currentSessionObj, inProgressSession, finishSession, applyProgression, user, showToast, setScreen]);
+  }, [liveSession, finishSession, applyProgression, user, showToast, setScreen]);
 
   const handleCancelSession = useCallback(async () => {
-    const sId = currentSessionObj?.id || inProgressSession?.id;
+    const sId = liveSession?.id;
     if (sId) {
       try {
         await abandonSession(sId);
@@ -198,13 +190,13 @@ export default function BodyPage() {
         showToast?.('Lỗi khi hủy buổi tập: ' + (err.message || 'Thử lại sau'), 'error');
       }
     }
-    setCurrentSessionObj(null);
-    setActiveSessionDay(null);
+    setStartedDay(null);
     setScreen('routine');
-  }, [currentSessionObj, inProgressSession, abandonSession, showToast, setScreen]);
+  }, [liveSession, abandonSession, showToast, setScreen]);
 
+  // Tạm dừng = rời màn tập và chốt thời lượng; buổi vẫn dở nên tab Tập vẫn mở lại đúng buổi này
   const handlePauseSession = useCallback(async (elapsedSeconds) => {
-    const sId = currentSessionObj?.id || inProgressSession?.id;
+    const sId = liveSession?.id;
     if (sId && elapsedSeconds != null) {
       try {
         await updateSession(sId, { duration_seconds: elapsedSeconds });
@@ -212,16 +204,14 @@ export default function BodyPage() {
         // Không lưu được thời lượng thì vẫn cho tạm dừng; set đã ghi vẫn còn
       }
     }
-    setCurrentSessionObj(null);
-    setActiveSessionDay(null);
-    showToast?.('Đã tạm dừng buổi tập. Bạn có thể tiếp tục bất cứ lúc nào!', 'info');
-    setScreen('routine');
-  }, [currentSessionObj, inProgressSession, updateSession, setScreen, showToast]);
+    showToast?.('Đã tạm dừng. Mở tab Tập để tập tiếp.', 'info');
+    setScreen('overview');
+  }, [liveSession, updateSession, setScreen, showToast]);
 
   const handleModeLocked = useCallback((mode) => {
-    const sId = currentSessionObj?.id || inProgressSession?.id;
+    const sId = liveSession?.id;
     if (sId) updateSession(sId, { mode }).catch(() => {});
-  }, [currentSessionObj, inProgressSession, updateSession]);
+  }, [liveSession, updateSession]);
 
   const [now] = useState(() => Date.now());
   const today = useMemo(() => new Date(now), [now]);
@@ -253,86 +243,43 @@ export default function BodyPage() {
       {/* ── HEADER GHIM TĨNH (CHỈ 1 HEADER DUY NHẤT CHUẨN PROTOTYPE 2A) ── */}
       <header className="body-header">
         <div className="body-header-left">
+          {/* Tiêu đề 1 dòng, cắt "…" khi hẹp — trước đây chữ dài xuống 3–4 dòng tràn khỏi header 68px */}
           {currentScreen === 'overview' ? (
-            <div>
+            <div style={{ minWidth: 0 }}>
               <h1 className="body-header-title">{timeGreeting}, {displayName}</h1>
               <div className="body-header-sub">
                 {todayStr} · tuần {isoWeek}
               </div>
             </div>
           ) : currentScreen === 'session' ? (
-            <div>
-              <h1 className="body-header-title">
-                {currentSessionObj?.title || activeSessionDay?.name || 'Phòng tập'} · Chế độ tập
-              </h1>
-              <div className="body-header-sub">
-                Ghi chép hiệp tập theo thời gian thực
-              </div>
+            <div style={{ minWidth: 0 }}>
+              <h1 className="body-header-title">{liveSession?.title || 'Buổi tập'}</h1>
+              <div className="body-header-sub">Đang tập</div>
             </div>
           ) : (
-            <div>
-              <h1 className="body-header-title">
-                {SCREENS.find(s => s.key === currentScreen)?.label || 'Body'} · Sức Khỏe & Thể Hình
-              </h1>
-              <div className="body-header-sub">
-                Kế hoạch · Tập luyện · Nhật ký · So sánh tiến bộ
-              </div>
+            <div style={{ minWidth: 0 }}>
+              <h1 className="body-header-title">{SCREENS.find(s => s.key === currentScreen)?.label || 'Body'}</h1>
+              <div className="body-header-sub">Sức khỏe & thể hình</div>
             </div>
           )}
         </div>
 
-        {/* Sub-nav Tab Strip + Nút Tiếp tục tập + Nút Ghi nhanh */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {(currentSessionObj || inProgressSession) && (
-            <button
-              type="button"
-              className="body-header-live-btn"
-              onClick={() => {
-                if (currentSessionObj) {
-                  setScreen('session');
-                } else if (inProgressSession) {
-                  handleResumeSession(inProgressSession);
-                }
-              }}
-              title="Quay lại buổi tập đang diễn ra"
-              style={{
-                height: '32px',
-                padding: '0 12px',
-                borderRadius: '8px',
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1.5px solid rgba(239, 68, 68, 0.4)',
-                color: '#DC2626',
-                fontSize: '12px',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              <span style={{
-                width: '7px',
-                height: '7px',
-                borderRadius: '50%',
-                background: '#DC2626',
-                display: 'inline-block'
-              }} />
-              <AppIcon name="barbell" size={14} />
-              <span>Tiếp tục</span>
-            </button>
-          )}
-
+        {/* Sub-nav Tab Strip (tab Lộ trình thành "Đang tập" khi có buổi dở) + Nút Ghi nhanh */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
           <div className="body-subnav">
             {SCREENS.map(s => {
-              const isActive = currentScreen === s.key;
+              // Đang có buổi dở: tab Lộ trình khóa lại, thay bằng lối vào màn tập
+              const isLiveTab = s.key === 'routine' && liveSession;
+              const isActive = currentScreen === s.key || (isLiveTab && currentScreen === 'session');
               return (
                 <button
                   key={s.key}
-                  className={`body-subnav-btn ${isActive ? 'active' : ''}`}
-                  onClick={() => setScreen(s.key)}
+                  className={`body-subnav-btn ${isActive ? 'active' : ''} ${isLiveTab ? 'is-live' : ''}`}
+                  onClick={() => setScreen(isLiveTab ? 'session' : s.key)}
+                  title={isLiveTab ? 'Quay lại buổi tập đang dở' : undefined}
                 >
-                  <AppIcon name={s.icon} size={15} />
-                  <span>{s.label}</span>
+                  <AppIcon name={isLiveTab ? 'barbell' : s.icon} size={15} />
+                  <span>{isLiveTab ? 'Đang tập' : s.label}</span>
                 </button>
               );
             })}
@@ -356,7 +303,7 @@ export default function BodyPage() {
 
       {/* ── MOBILE TOPBAR (52px CHUẨN PROTOTYPE) ────────────────────── */}
       <div className="body-mobile-topbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
           <button
             type="button"
             className="body-mobile-back-hub"
@@ -379,22 +326,16 @@ export default function BodyPage() {
           <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--body-text-main)', letterSpacing: '-0.02em' }}>
             Body
           </span>
-          <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
             · {currentScreen === 'session' ? 'Chế độ tập' : (SCREENS.find(s => s.key === currentScreen)?.label || 'Tổng quan')}
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {(currentSessionObj || inProgressSession) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 'none' }}>
+          {liveSession && currentScreen !== 'session' && (
             <button
               type="button"
-              onClick={() => {
-                if (currentSessionObj) {
-                  setScreen('session');
-                } else if (inProgressSession) {
-                  handleResumeSession(inProgressSession);
-                }
-              }}
+              onClick={goToLive}
               style={{
                 background: 'rgba(239, 68, 68, 0.1)',
                 border: '1px solid rgba(239, 68, 68, 0.4)',
@@ -407,6 +348,7 @@ export default function BodyPage() {
                 color: '#DC2626',
                 fontSize: '11px',
                 fontWeight: 700,
+                whiteSpace: 'nowrap',
                 cursor: 'pointer'
               }}
             >
@@ -456,9 +398,9 @@ export default function BodyPage() {
         {['routine', 'history', 'library'].includes(currentScreen) && (
           <div className="body-subnav-mobile-pills">
             {[
-              { key: 'routine', label: 'Lộ trình' },
+              liveSession ? { key: 'session', label: 'Đang tập' } : { key: 'routine', label: 'Lộ trình' },
               { key: 'history', label: 'Tiến bộ' },
-              { key: 'library', label: 'Thư viện bài' }
+              { key: 'library', label: 'Thư viện' }
             ].map(p => (
               <button
                 key={p.key}
@@ -472,25 +414,31 @@ export default function BodyPage() {
         )}
         {currentScreen === 'overview' && (
           <OverviewScreen
+            activeRoutine={activeRoutine}
+            routineItems={routineItems}
+            sessions={sessions}
+            recentSets={recentSets}
+            exerciseMap={exerciseMap}
+            workoutsLoaded={hasLoaded}
             onNavigateTab={setScreen}
             onStartSession={handleStartSession}
           />
         )}
 
         {/* Lộ trình & Tiến bộ đọc thẳng dữ liệu của useWorkouts — chưa tải xong thì chưa biết có gì. */}
-        {['routine', 'history'].includes(currentScreen) && !hasLoaded && (
+        {['routine', 'history', 'session'].includes(currentScreen) && !hasLoaded && (
           <SkeletonList heading rows={4} gap="10px" label="Đang tải buổi tập" />
         )}
 
-        {currentScreen === 'routine' && hasLoaded && (
+        {/* Có buổi dở thì không vẽ Lộ trình (effect phía trên chuyển sang màn tập) */}
+        {currentScreen === 'routine' && hasLoaded && !liveSession && (
           <RoutineScreen
             routine={activeRoutine}
             routineItems={routineItems}
             routines={routines}
             routineTemplates={routineTemplates}
             sessions={sessions}
-            activeSession={effectiveSession}
-            onResumeSession={handleResumeSession}
+            onResumeSession={goToLive}
             recentSets={recentSets}
             onCreateRoutineFromTemplate={withToast(createRoutineFromTemplate, 'Đã tạo lộ trình mới.')}
             onCreateCustomRoutine={withToast(createCustomRoutine, 'Đã tạo lộ trình mới.')}
@@ -506,51 +454,25 @@ export default function BodyPage() {
           />
         )}
 
-        {currentScreen === 'session' && effectiveSession && !hasLoaded && (
-          <div className="body-card" style={{ maxWidth: '480px', margin: '40px auto', padding: '32px', textAlign: 'center', color: 'var(--body-text-muted)' }}>
-            Đang tải buổi tập…
-          </div>
-        )}
-
-        {currentScreen === 'session' && (!effectiveSession || hasLoaded) && (
-          effectiveSession ? (
-            <LiveSessionScreen
-              key={effectiveSession.id}
-              dayInfo={effectiveDayInfo}
-              routineItems={routineItems}
-              recentSets={recentSets}
-              exerciseMap={exerciseMap}
-              sessionId={effectiveSession.id}
-              isResume={Boolean(effectiveSession.isResume || effectiveDayInfo?.isResume)}
-              initialMode={effectiveSession.mode}
-              initialElapsed={effectiveSession.duration_seconds || 0}
-              startedAt={effectiveSession.started_at}
-              onLogSet={logSet}
-              onUpdateSet={updateSetValue}
-              onModeLocked={handleModeLocked}
-              onFinishSession={handleFinishSession}
-              onCancel={handleCancelSession}
-              onPause={handlePauseSession}
-            />
-          ) : (
-            <div className="body-card" style={{ maxWidth: '480px', margin: '40px auto', padding: '32px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'var(--body-shell-bg)', color: 'var(--body-text-muted)', display: 'grid', placeItems: 'center' }}>
-                <AppIcon name="barbell" size={28} />
-              </div>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>Chưa có buổi tập nào</h2>
-              <p style={{ fontSize: '13.5px', color: 'var(--body-text-muted)', lineHeight: 1.5, margin: 0 }}>
-                Hãy chọn một ngày trong Lộ trình để bắt đầu hoặc mở Tổng quan để xem buổi tập hôm nay.
-              </p>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                <button className="body-btn" onClick={() => setScreen('overview')}>
-                  Về Tổng quan
-                </button>
-                <button className="body-btn body-btn-primary" onClick={() => setScreen('routine')}>
-                  Mở Lộ trình
-                </button>
-              </div>
-            </div>
-          )
+        {/* Màn tập luôn mount lại từ dữ liệu (set đã ghi, mốc giờ) nên rời đi rồi quay lại vẫn đúng chỗ đang tập */}
+        {currentScreen === 'session' && hasLoaded && liveSession && (
+          <LiveSessionScreen
+            key={liveSession.id}
+            dayInfo={liveDayInfo}
+            routineItems={routineItems}
+            recentSets={recentSets}
+            exerciseMap={exerciseMap}
+            sessionId={liveSession.id}
+            initialMode={liveSession.mode}
+            initialElapsed={liveSession.duration_seconds || 0}
+            startedAt={liveSession.started_at}
+            onLogSet={logSet}
+            onUpdateSet={updateSetValue}
+            onModeLocked={handleModeLocked}
+            onFinishSession={handleFinishSession}
+            onCancel={handleCancelSession}
+            onPause={handlePauseSession}
+          />
         )}
 
         {currentScreen === 'history' && hasLoaded && (
@@ -579,10 +501,15 @@ export default function BodyPage() {
         {currentScreen === 'library' && (
           <ExerciseLibraryScreen
             activeRoutine={activeRoutine}
+            routineLocked={Boolean(liveSession)}
             onStartExercise={(ex) => {
               handleStartSession({ name: ex.name, singleExercise: ex, focus: ex.primary });
             }}
             onAddToRoutine={async (payload) => {
+              if (liveSession) {
+                showToast?.('Đang có buổi tập dở — kết thúc buổi rồi hãy sửa lộ trình.', 'warning');
+                return;
+              }
               try {
                 await addRoutineItem(payload);
                 showToast?.('Đã thêm bài tập vào lộ trình thành công!', 'success');
@@ -597,7 +524,7 @@ export default function BodyPage() {
       <ConfirmModal
         open={Boolean(pendingStart)}
         title="Bắt đầu buổi tập mới?"
-        message={`Bạn đang có buổi "${inProgressSession?.title || inProgressSession?.day_type || 'tập'}" tạm dừng. Bắt đầu buổi mới sẽ hủy buổi đó (các set đã ghi vẫn được giữ trong lịch sử).`}
+        message={`Bạn đang có buổi "${liveSession?.title || liveSession?.day_type || 'tập'}" chưa xong. Bắt đầu buổi mới sẽ hủy buổi đó (các set đã ghi vẫn được giữ trong lịch sử).`}
         confirmLabel="Hủy buổi cũ & bắt đầu"
         cancelLabel="Giữ buổi cũ"
         danger
@@ -615,14 +542,17 @@ export default function BodyPage() {
           { key: 'overview', label: 'Tổng quan', icon: 'chartDonut', match: ['overview'] },
           { key: 'biometrics', label: 'Cơ thể', icon: 'user', match: ['biometrics'] },
           { key: 'muscles', label: 'Bản đồ cơ', icon: 'trophy', match: ['muscles'] },
-          { key: 'routine', label: 'Tập', icon: 'barbell', match: ['routine', 'session', 'history', 'library'] },
+          // Có buổi dở: tab Tập mở thẳng màn tập (lộ trình bị khóa tới khi xong/hủy buổi)
+          liveSession
+            ? { key: 'session', label: 'Đang tập', icon: 'barbell', match: ['routine', 'session', 'history', 'library'], live: true }
+            : { key: 'routine', label: 'Tập', icon: 'barbell', match: ['routine', 'session', 'history', 'library'] },
           { key: 'nutrition', label: 'Ăn', icon: 'bowlFood', match: ['nutrition'] }
         ].map(tab => {
           const isActive = tab.match.includes(currentScreen);
           return (
             <button
               key={tab.key}
-              className={`body-mobile-nav-item ${isActive ? 'active' : ''}`}
+              className={`body-mobile-nav-item ${isActive ? 'active' : ''} ${tab.live ? 'is-live' : ''}`}
               onClick={() => setScreen(tab.key)}
             >
               <AppIcon name={tab.icon} size={20} weight={isActive ? 'fill' : 'regular'} />

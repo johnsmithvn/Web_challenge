@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import AppIcon from '../AppIcon';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import MUSCLE_MAP from '../../data/body-muscles.json';
@@ -24,12 +24,31 @@ const EQUIPMENTS = [
   { key: 'bar', label: 'Xà & dây' }
 ];
 
-export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine, activeRoutine }) {
+// routineLocked: đang có buổi tập dở → không cho sửa lộ trình (hàng đợi của buổi phải giữ nguyên)
+export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine, activeRoutine, routineLocked = false }) {
   const [regionFilter, setRegionFilter] = useState('all');
   const [eqFilter, setEqFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedKey, setSelectedKey] = useState('push-up');
   const [modalExercise, setModalExercise] = useState(null);
+  // Mobile chỉ đủ chỗ cho 1 cột: danh sách → bấm bài thì mở trang chi tiết (có nút quay lại)
+  const [mobileDetail, setMobileDetail] = useState(false);
+  const listScrollRef = useRef(0);
+  const isMobileLayout = () => window.matchMedia?.('(max-width: 840px)').matches;
+  // Đổi trang danh sách ↔ chi tiết trên mobile: chi tiết mở từ đầu, quay lại thì về đúng chỗ đang xem trong danh sách
+  const openDetail = (key, e) => {
+    setSelectedKey(key);
+    if (!isMobileLayout()) return;
+    const scroller = e.currentTarget.closest('.body-content');
+    listScrollRef.current = scroller?.scrollTop || 0;
+    setMobileDetail(true);
+    requestAnimationFrame(() => scroller?.scrollTo(0, 0));
+  };
+  const closeDetail = (e) => {
+    const scroller = e.currentTarget.closest('.body-content');
+    setMobileDetail(false);
+    requestAnimationFrame(() => scroller?.scrollTo(0, listScrollRef.current));
+  };
 
   // Modal thêm vào kế hoạch
   const [showAddModal, setShowAddModal] = useState(false);
@@ -110,7 +129,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
       {/* ── TOP FILTERS ─────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
         {/* Search */}
-        <div style={{ position: 'relative', width: '280px' }}>
+        <div className="body-lib-search" style={{ position: 'relative', width: '280px' }}>
           <span style={{ position: 'absolute', left: '12px', top: '9px', color: 'var(--body-text-muted)' }}>
             <AppIcon name="search" size={16} />
           </span>
@@ -135,7 +154,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
         </div>
 
         {/* Equipment filter */}
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div className="body-lib-chips" style={{ display: 'flex', gap: '6px' }}>
           {EQUIPMENTS.map(eq => (
             <button
               key={eq.key}
@@ -143,6 +162,8 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
               style={{
                 height: '32px',
                 padding: '0 12px',
+                flex: 'none',
+                whiteSpace: 'nowrap',
                 fontSize: '12.5px',
                 background: eqFilter === eq.key ? 'var(--body-text-main)' : 'var(--body-card-bg)',
                 color: eqFilter === eq.key ? 'var(--body-bg)' : 'var(--body-text-sub)',
@@ -158,7 +179,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
       </div>
 
       {/* Region Tabs */}
-      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+      <div className="body-lib-chips" style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
         {REGIONS.map(r => (
           <button
             key={r.key}
@@ -166,6 +187,8 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
             style={{
               height: '30px',
               padding: '0 12px',
+              flex: 'none',
+              whiteSpace: 'nowrap',
               fontSize: '12px',
               background: regionFilter === r.key ? 'var(--body-accent)' : 'var(--body-shell-bg)',
               color: regionFilter === r.key ? '#fff' : 'var(--body-text-sub)',
@@ -180,9 +203,9 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
       </div>
 
       {/* ── 2-COLUMN MASTER/DETAIL LAYOUT ────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.2fr) minmax(360px, 1.8fr)', gap: '20px', flex: 1, minHeight: 0 }}>
+      <div className={`body-lib-grid ${mobileDetail ? 'is-detail' : ''}`}>
         {/* Left Column: List */}
-        <div className="body-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', padding: '12px' }}>
+        <div className="body-card body-lib-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', padding: '12px' }}>
           <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', padding: '4px 8px', fontWeight: 600 }}>
             {filteredList.length} BÀI TẬP PHÙ HỢP
           </div>
@@ -196,6 +219,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  gap: '8px',
                   padding: '12px 14px',
                   borderRadius: '12px',
                   border: isSelected ? '1.5px solid var(--body-accent)' : '1px solid var(--body-card-border)',
@@ -203,30 +227,29 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
-                onClick={() => setSelectedKey(ex.key)}
+                onClick={e => openDetail(ex.key, e)}
               >
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '14px', color: isSelected ? 'var(--body-accent)' : 'var(--body-text-main)' }}>
+                {/* Cấp độ & lưu ý nằm trong dòng phụ — badge chữ dài cạnh tên làm vỡ hàng trên mobile */}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: '14px', lineHeight: 1.35, color: isSelected ? 'var(--body-accent)' : 'var(--body-text-main)' }}>
                     {ex.name}
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
-                    Cơ chính: {MUSCLE_MAP[ex.primary]?.name || ex.primary} · {ex.equipment === 'bw' ? 'Bodyweight' : ex.equipment === 'db' ? 'Tạ đơn' : 'Xà'}
+                    {MUSCLE_MAP[ex.primary]?.name || ex.primary} · {ex.equipment === 'bw' ? 'Bodyweight' : ex.equipment === 'db' ? 'Tạ đơn' : 'Xà'} · {ex.level}
                   </div>
+                  {(ex.contraindications || []).length > 0 ? (
+                    <div
+                      style={{ fontSize: '11.5px', color: 'var(--body-amber-text)', marginTop: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                      title={`Không nên tập nếu: ${ex.contraindications.join(', ')}`}
+                    >
+                      ⚠ {ex.contraindications[0].replace('Đau ', '')}
+                    </div>
+                  ) : ex.warn ? (
+                    <div style={{ fontSize: '11.5px', color: 'var(--body-amber-text)', marginTop: '3px' }}>⚠ lưng</div>
+                  ) : null}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {(ex.contraindications || []).length > 0 ? (
-                    <span className="body-badge body-badge-amber" style={{ fontSize: '10.5px', padding: '2px 6px' }} title={`Không nên tập nếu: ${ex.contraindications.join(', ')}`}>
-                      Lưu ý: {ex.contraindications[0].replace('Đau ', '')}
-                    </span>
-                  ) : ex.warn ? (
-                    <span className="body-badge body-badge-amber" style={{ fontSize: '10.5px', padding: '2px 6px' }}>
-                      Lưu ý lưng
-                    </span>
-                  ) : null}
-                  <span className="body-badge body-badge-neutral" style={{ fontSize: '11px' }}>
-                    {ex.level}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 'none' }}>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -243,7 +266,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                       fontSize: '14px',
                       opacity: 0.8
                     }}
-                    title="Mở Modal xem Video & Giải phẫu cơ bắp"
+                    title="Xem video & giải phẫu cơ"
                   >
                     📹
                   </button>
@@ -255,9 +278,17 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
 
         {/* Right Column: Details */}
         {selectedEx ? (
-          <div className="body-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
+          <div className="body-card body-lib-detail" style={{ display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' }}>
+            <button
+              type="button"
+              className="body-btn body-btn-secondary body-lib-back"
+              onClick={closeDetail}
+            >
+              <AppIcon name="back" size={14} />
+              <span>Danh sách bài</span>
+            </button>
+            <div className="body-lib-detail-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                   <span className="body-badge body-badge-accent">{selectedEx.level}</span>
                   <span className="body-badge body-badge-neutral">
@@ -273,9 +304,9 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                 </div>
               </div>
 
-              <div style={{ textAlign: 'right' }}>
+              <div className="body-lib-detail-suggest" style={{ textAlign: 'right', flex: 'none' }}>
                 <div style={{ fontSize: '11px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>GỢI Ý</div>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--body-accent)' }}>
+                <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--body-accent)', whiteSpace: 'nowrap' }}>
                   {selectedEx.defaultSets} × {selectedEx.defaultTarget} {selectedEx.metric === 's' ? 'giây' : 'rep'}
                 </div>
                 <button
@@ -283,10 +314,10 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                   onClick={() => setModalExercise(selectedEx)}
                   className="body-btn body-btn-ghost"
                   style={{ marginTop: '6px', fontSize: '11.5px', padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                  title="Mở Modal chi tiết (Video, Cơ bắp, Hướng dẫn)"
+                  title="Video, cơ tác động & hướng dẫn"
                 >
                   <span>📹</span>
-                  <span>Mở Modal Pro</span>
+                  <span>Xem video</span>
                 </button>
               </div>
             </div>
@@ -311,7 +342,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#2563EB' }}>
                   <span>💪</span>
-                  <span>Vùng cơ bắp tác động (Bản đồ giải phẫu 2D):</span>
+                  <span>Vùng cơ tác động</span>
                 </div>
                 <button
                   type="button"
@@ -319,7 +350,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                   className="body-btn body-btn-ghost"
                   style={{ fontSize: '11px', padding: '2px 8px' }}
                 >
-                  Mở Modal ↗
+                  Phóng to ↗
                 </button>
               </div>
 
@@ -382,10 +413,10 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontWeight: 700, fontSize: '13.5px', color: 'var(--body-accent)' }}>
                   <AppIcon name="sparkle" size={16} />
-                  <span>Kỹ thuật nhịp thở, thời gian & điểm neo form chuẩn:</span>
+                  <span>Nhịp thở, tempo & điểm neo form</span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: selectedEx.breathing && selectedEx.tempo ? '1fr 1fr' : '1fr', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
                   {selectedEx.breathing && (
                     <div style={{
                       padding: '10px 12px',
@@ -478,7 +509,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', color: '#DC2626', fontWeight: 700, fontSize: '13.5px' }}>
                     <AppIcon name="warning" size={16} />
-                    <span>Cảnh báo cơ sinh học & Phòng tránh chấn thương</span>
+                    <span>Phòng tránh chấn thương</span>
                   </div>
                 </div>
 
@@ -530,7 +561,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                   }}>
                     <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--body-accent)', display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <AppIcon name="shieldCheck" size={14} />
-                      <span>Bài tập thay thế an toàn hơn (bảo vệ khớp & cơ):</span>
+                      <span>Bài thay thế an toàn hơn</span>
                     </div>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -557,7 +588,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                         >
                           <AppIcon name="arrowRight" size={12} style={{ color: 'var(--body-accent)' }} />
                           <span>{altEx.name}</span>
-                          <span style={{ fontSize: '10.5px', color: 'var(--body-text-muted)' }}>
+                          <span style={{ fontSize: '10.5px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap' }}>
                             ({altEx.equipment === 'bw' ? 'Bodyweight' : altEx.equipment === 'db' ? 'Tạ đơn' : 'Xà'})
                           </span>
                         </button>
@@ -664,7 +695,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                     }}>
                       <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--body-green-text)', display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <AppIcon name="arrowDown" size={13} />
-                        <span>Dễ hơn cho người mới (Regression):</span>
+                        <span>Dễ hơn</span>
                       </div>
                       <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
                         {progressionChain.easierEx.name}
@@ -688,7 +719,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                           alignSelf: 'flex-start'
                         }}
                       >
-                        <span>Đổi sang bài dễ hơn này</span>
+                        <span>Xem bài này</span>
                         <AppIcon name="arrowRight" size={11} />
                       </button>
                     </div>
@@ -705,7 +736,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                       gap: '6px'
                     }}>
                       <AppIcon name="checkCircle" size={14} style={{ color: 'var(--body-green)' }} />
-                      <span>Đây đã là biến thể dễ nhất cho người mới bắt đầu</span>
+                      <span>Đã là biến thể dễ nhất</span>
                     </div>
                   )}
 
@@ -721,7 +752,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                     }}>
                       <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--body-accent)', display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <AppIcon name="arrowUp" size={13} />
-                        <span>Khó hơn khi đã quen (Progression):</span>
+                        <span>Khó hơn</span>
                       </div>
                       <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
                         {progressionChain.harderEx.name}
@@ -745,7 +776,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                           alignSelf: 'flex-start'
                         }}
                       >
-                        <span>Thử thách bài khó hơn này</span>
+                        <span>Xem bài này</span>
                         <AppIcon name="arrowRight" size={11} />
                       </button>
                     </div>
@@ -762,7 +793,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                       gap: '6px'
                     }}>
                       <AppIcon name="crown" size={14} style={{ color: '#E0A23C' }} />
-                      <span>Đây là cấp độ thử thách cao nhất trong chuỗi</span>
+                      <span>Đã là cấp khó nhất</span>
                     </div>
                   )}
                 </div>
@@ -785,14 +816,16 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
             )}
 
             {/* Action Buttons */}
-            <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '16px', borderTop: '1px solid var(--body-card-border)' }}>
+            <div className="body-lib-actions" style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '16px', borderTop: '1px solid var(--body-card-border)' }}>
               <button
                 className="body-btn"
                 onClick={handleOpenAddModal}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--body-shell-bg)' }}
+                disabled={routineLocked}
+                title={routineLocked ? 'Đang có buổi tập dở — kết thúc buổi rồi hãy sửa lộ trình' : undefined}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--body-shell-bg)', opacity: routineLocked ? 0.5 : 1, cursor: routineLocked ? 'not-allowed' : undefined }}
               >
                 <AppIcon name="plus" size={14} />
-                <span>Thêm vào kế hoạch</span>
+                <span>Thêm vào lộ trình</span>
               </button>
               <button
                 className="body-btn body-btn-primary"
@@ -800,7 +833,7 @@ export default function ExerciseLibraryScreen({ onStartExercise, onAddToRoutine,
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <AppIcon name="play" size={14} />
-                <span>Tập bài này ngay</span>
+                <span>Tập ngay</span>
               </button>
             </div>
           </div>

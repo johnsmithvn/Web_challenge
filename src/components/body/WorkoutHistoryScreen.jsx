@@ -107,7 +107,9 @@ export default function WorkoutHistoryScreen({ sessions = [], recentSets = [] })
     : (exUnit === 's' ? 45 : 15);
 
   const allVals = historyList.flatMap(h => h.sets);
-  const highestVal = allVals.length > 0 ? Math.max(...allVals, nextTarget) : nextTarget;
+  const highestVal = allVals.length > 0 ? Math.max(...allVals, nextTarget) : nextTarget; // trần trục biểu đồ
+  // "Cao nhất đạt được" chỉ tính set đã tập thật — chưa tập bài nào thì hiện "—", không lấy mục tiêu mặc định
+  const bestVal = allVals.length > 0 ? Math.max(...allVals) : null;
   const yMax = Math.max(highestVal * 1.25, exUnit === 's' ? 60 : 20);
   const numGroups = Math.max(1, historyList.length + 1);
   const groupWidth = 100 / numGroups;
@@ -778,13 +780,13 @@ export default function WorkoutHistoryScreen({ sessions = [], recentSets = [] })
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>Cao nhất đạt được</span>
               <span style={{ fontSize: '17px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                {highestVal} {exUnit}
+                {bestVal != null ? `${bestVal} ${exUnit}` : '—'}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>Mục tiêu buổi tới</span>
               <span style={{ fontSize: '17px', fontWeight: 600, color: 'var(--body-accent)' }}>
-                {nextTarget} {exUnit}
+                {historyList.length > 0 ? `${nextTarget} ${exUnit}` : '—'}
               </span>
             </div>
           </div>

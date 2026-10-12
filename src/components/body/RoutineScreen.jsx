@@ -579,7 +579,7 @@ export default function RoutineScreen({
 
       {/* ── BANNER KHI ĐANG XEM TRƯỚC (PREVIEW MODE) ──────────────── */}
       {isPreviewing && (
-        <div style={{
+        <div className="body-routine-preview-banner" style={{
           background: 'var(--body-accent-soft)',
           border: '1.5px solid var(--body-accent-border)',
           borderRadius: '14px',
@@ -590,10 +590,11 @@ export default function RoutineScreen({
           flexWrap: 'wrap',
           gap: '12px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
             <span style={{
               width: '28px',
               height: '28px',
+              flex: 'none',
               borderRadius: '8px',
               background: 'var(--body-accent)',
               color: '#fff',
@@ -604,18 +605,15 @@ export default function RoutineScreen({
             </span>
             <div>
               <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                Đang xem trước mẫu: <span style={{ color: 'var(--body-accent)' }}>{previewTemplate.name}</span>
-                <span style={{ marginLeft: '8px', fontSize: '12px', fontWeight: 400, color: 'var(--body-text-sub)' }}>
-                  (Bạn có thể chỉnh sửa số hiệp, số rep trực tiếp ở bảng bên dưới)
-                </span>
+                Xem trước: <span style={{ color: 'var(--body-accent)' }}>{previewTemplate.name}</span>
               </div>
               <div style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
-                {previewTemplate.weeks} tuần · {previewTemplate.days?.length || 4} buổi/tuần · {previewTemplate.goal}
+                {previewTemplate.weeks} tuần · {previewTemplate.days?.length || 4} buổi/tuần · sửa set/rep ngay bên dưới
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="body-routine-preview-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               type="button"
               onClick={handleStopPreview}
@@ -635,7 +633,7 @@ export default function RoutineScreen({
               }}
             >
               <AppIcon name="back" size={13} />
-              <span>Quay lại lộ trình của tôi</span>
+              <span>Quay lại</span>
             </button>
 
             <button
@@ -657,7 +655,7 @@ export default function RoutineScreen({
               }}
             >
               <AppIcon name="pencil" size={13} />
-              <span>Tùy chỉnh số hiệp & rep</span>
+              <span>Tùy chỉnh</span>
             </button>
 
             <button
@@ -1700,18 +1698,16 @@ export default function RoutineScreen({
                 return (
                   <div key={item.id} className="body-routine-mobile-ex-row">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-                      <span style={{
+                      <span className="body-clamp-2" style={{
                         fontSize: '13.5px',
                         fontWeight: 600,
-                        color: 'var(--body-text-main)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
+                        lineHeight: 1.3,
+                        color: 'var(--body-text-main)'
                       }}>
                         {exDef?.name || item.exercise_key}
                       </span>
-                      <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
-                        {muscleVn ? `${muscleVn} · ` : ''}{item.unit === 's' ? 'Set × Giây' : 'Set × Rep'}
+                      <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {muscleVn ? `${muscleVn} · ` : ''}{item.unit === 's' ? 'set × giây' : 'set × rep'}
                       </span>
                     </div>
 
@@ -2103,8 +2099,8 @@ export default function RoutineScreen({
                   cursor: 'pointer'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+                  <span className="body-clamp-2" style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--body-text-main)', minWidth: 0 }}>
                     {t.name}
                   </span>
                   <span style={{
@@ -2113,12 +2109,14 @@ export default function RoutineScreen({
                     borderRadius: '5px',
                     background: 'var(--body-accent-soft)',
                     color: 'var(--body-accent)',
-                    fontWeight: 600
+                    fontWeight: 600,
+                    flex: 'none',
+                    whiteSpace: 'nowrap'
                   }}>
                     {t.weeks} tuần
                   </span>
                 </div>
-                <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)', lineHeight: 1.35 }}>
+                <span className="body-clamp-2" style={{ fontSize: '11.5px', color: 'var(--body-text-muted)', lineHeight: 1.35 }}>
                   {t.days?.length || 3} buổi/tuần · {t.goal}
                 </span>
               </div>
@@ -2144,10 +2142,10 @@ export default function RoutineScreen({
             }}>
               <div>
                 <span style={{ fontSize: '17px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                  Tùy chỉnh số hiệp & rep khi áp dụng
+                  Tùy chỉnh set & rep
                 </span>
                 <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '2px' }}>
-                  {customizingTpl?.name} · Tự do tăng giảm theo thể trạng của bạn
+                  {customizingTpl?.name}
                 </div>
               </div>
               <button
@@ -2284,6 +2282,7 @@ export default function RoutineScreen({
                             return (
                               <div
                                 key={it.exercise_key + itIdx}
+                                className="body-tpl-custom-row"
                                 style={{
                                   background: 'var(--body-card-bg)',
                                   borderRadius: '8px',
@@ -2294,14 +2293,14 @@ export default function RoutineScreen({
                                   gap: '8px'
                                 }}
                               >
-                                <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
+                                <span style={{ flex: 1, minWidth: 0, fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
                                   {ex?.name || it.exercise_key}
                                 </span>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div className="body-tpl-custom-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   {/* Sửa Hiệp */}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>Hiệp:</span>
+                                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap' }}>Hiệp</span>
                                     <div className="body-routine-counter" style={{ height: '28px' }}>
                                       <button
                                         type="button"
@@ -2327,7 +2326,7 @@ export default function RoutineScreen({
 
                                   {/* Sửa Rep/s */}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>Mục tiêu:</span>
+                                    <span className="body-hide-mobile" style={{ fontSize: '11px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap' }}>Mục tiêu</span>
                                     <div className="body-routine-counter-target" style={{ height: '28px' }}>
                                       <button
                                         type="button"
@@ -2337,7 +2336,7 @@ export default function RoutineScreen({
                                       >
                                         −
                                       </button>
-                                      <span style={{ minWidth: '40px', textAlign: 'center', fontSize: '12px', fontWeight: 600, fontFamily: 'var(--body-mono)', color: 'var(--body-accent)' }}>
+                                      <span style={{ minWidth: '48px', textAlign: 'center', fontSize: '12px', fontWeight: 600, fontFamily: 'var(--body-mono)', color: 'var(--body-accent)', whiteSpace: 'nowrap' }}>
                                         {it.target_val} {it.unit}
                                       </span>
                                       <button
@@ -2415,7 +2414,7 @@ export default function RoutineScreen({
                     cursor: 'pointer'
                   }}
                 >
-                  Lưu & Bắt đầu lộ trình này
+                  Dùng lộ trình này
                 </button>
               </div>
             </form>

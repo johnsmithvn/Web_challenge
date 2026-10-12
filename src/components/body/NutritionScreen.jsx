@@ -143,13 +143,13 @@ export default function NutritionScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* ── HEADER NAVIGATION & DATE STRIP ─────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0, letterSpacing: '-0.01em', color: 'var(--body-text-main)' }}>
+      <div className="body-nut-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+        <div className="body-nut-head-left" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <h2 className="body-nut-title" style={{ fontSize: '22px', fontWeight: 700, margin: 0, letterSpacing: '-0.01em', color: 'var(--body-text-main)' }}>
             Dinh dưỡng & Check-in
           </h2>
 
-          <div style={{ display: 'flex', background: 'var(--body-shell-bg)', borderRadius: '10px', padding: '3px', border: '1px solid var(--body-card-border)' }}>
+          <div className="body-nut-tabs" style={{ display: 'flex', background: 'var(--body-shell-bg)', borderRadius: '10px', padding: '3px', border: '1px solid var(--body-card-border)' }}>
             <button
               onClick={() => setActiveTab('daily')}
               style={{
@@ -165,7 +165,7 @@ export default function NutritionScreen() {
                 transition: 'all 0.15s ease'
               }}
             >
-              Nhật ký hôm nay
+              Nhật ký ăn
             </button>
             <button
               onClick={() => setActiveTab('checkin')}
@@ -188,7 +188,7 @@ export default function NutritionScreen() {
         </div>
 
         {activeTab === 'daily' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="body-nut-head-right" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <input
               type="date"
               value={selectedDate}
@@ -252,7 +252,7 @@ export default function NutritionScreen() {
               ) : null}
               <div style={{ fontSize: '12px', color: 'var(--body-text-sub)' }}>
                 {goalKcal
-                  ? (goalKcal - totalKcal >= 0 ? `Còn lại ${goalKcal - totalKcal} kcal thâm hụt` : `Vượt mục tiêu ${totalKcal - goalKcal} kcal`)
+                  ? (goalKcal - totalKcal >= 0 ? `Còn ${goalKcal - totalKcal} kcal` : `Vượt mục tiêu ${totalKcal - goalKcal} kcal`)
                   : 'Cập nhật hồ sơ ở tab Cơ thể để tính mức TDEE'}
               </div>
             </div>
@@ -295,18 +295,10 @@ export default function NutritionScreen() {
 
           {/* DANH SÁCH BỮA ĂN THEO LOẠI */}
           <div className="body-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--body-text-main)' }}>
-                Các bữa ăn trong ngày ({selectedDate})
-              </h3>
-              <button
-                className="body-btn body-btn-secondary"
-                onClick={() => setShowAddModal(true)}
-                style={{ height: '32px', padding: '0 12px', fontSize: '12px' }}
-              >
-                + Ghi thêm bữa
-              </button>
-            </div>
+            {/* Nút thêm món đã có ở thanh trên — không lặp nút thứ hai ở đây */}
+            <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: 'var(--body-text-main)' }}>
+              Bữa ăn · {selectedDate.split('-').reverse().slice(0, 2).join('/')}
+            </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {['breakfast', 'lunch', 'dinner', 'snack'].map(type => {
@@ -376,11 +368,8 @@ export default function NutritionScreen() {
                 TUẦN {currentWeekNumber} · NĂM {new Date().getFullYear()}
               </span>
               <h3 style={{ fontSize: '20px', fontWeight: 700, margin: '4px 0 0 0', color: 'var(--body-text-main)' }}>
-                Đánh giá tuần & Cân đo định kỳ
+                Đánh giá tuần
               </h3>
-              <div style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                Ghi nhận cảm nhận thể trạng và chỉ số vòng eo để theo dõi tái cấu trúc cơ thể
-              </div>
             </div>
           </div>
 
@@ -433,7 +422,7 @@ export default function NutritionScreen() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                Cảm nhận thể trạng trong tuần (1–5 sao):
+                Cảm nhận trong tuần (1–5 sao)
               </span>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
                 {[

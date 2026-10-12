@@ -103,6 +103,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   padding: 0 32px;
   border-bottom: 1px solid var(--body-card-border);
   background: var(--body-card-bg);
@@ -113,6 +114,8 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  flex: 1;
+  min-width: 0;
 }
 
 .body-header-title {
@@ -121,12 +124,18 @@
   color: var(--body-text-main);
   letter-spacing: -0.01em;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .body-header-sub {
   font-size: 13px;
   color: var(--body-text-muted);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .body-header-right {
@@ -174,6 +183,33 @@
   color: var(--body-text-main);
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(16, 17, 20, 0.08);
+}
+
+/* Tab "Đang tập" (thay tab Lộ trình khi có buổi dở): chấm đỏ báo buổi chưa xong */
+.body-subnav-btn.is-live {
+  color: var(--body-red);
+  font-weight: 600;
+}
+.body-subnav-btn.is-live::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--body-red);
+  flex: none;
+}
+
+/* Desktop hẹp (có sidebar app): bỏ icon tab để tiêu đề header còn chỗ, không bị ép còn "Thư …" */
+@media (max-width: 1400px) {
+  .body-header-left {
+    min-width: 140px;
+  }
+  .body-subnav-btn {
+    padding: 6px 11px;
+  }
+  .body-subnav-btn svg {
+    display: none;
+  }
 }
 
 /* Body Content Area */
@@ -369,11 +405,6 @@
     gap: 8px;
     padding: 12px 14px;
   }
-  .body-cothe-history-stats .body-btn {
-    grid-column: 1 / -1;
-    width: 100%;
-    margin-top: 4px;
-  }
   .body-cothe-history-grid {
     grid-template-columns: 1fr;
     gap: 14px;
@@ -405,6 +436,17 @@
 }
 .body-content::-webkit-scrollbar-thumb:hover {
   background: rgba(140, 140, 145, 0.45);
+}
+
+/* Tên dài (bài tập "Goblet Squat (Squat ôm tạ trước)", tên mẫu lộ trình) xuống tối đa 2 dòng rồi "…",
+   thay vì cắt còn 1 dòng mất nghĩa hoặc đẩy vỡ hàng */
+.body-clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 /* ── CARDS & PANELS ────────────────────────────────────────────── */
@@ -826,6 +868,20 @@
   .body-mobile-nav-item.active .body-mobile-nav-label {
     font-weight: 700;
   }
+  /* Tab Tập khi đang có buổi dở: chấm đỏ báo buổi chưa xong */
+  .body-mobile-nav-item.is-live {
+    position: relative;
+  }
+  .body-mobile-nav-item.is-live::after {
+    content: '';
+    position: absolute;
+    top: 9px;
+    left: calc(50% + 8px);
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--body-red);
+  }
   .body-subnav-mobile-pills {
     display: flex;
     gap: 4px;
@@ -873,6 +929,21 @@
   .body-live-actions > .body-btn-accent {
     flex: 1;
     justify-content: center;
+    padding: 0 14px !important;
+  }
+  .body-live-actions .body-btn {
+    white-space: nowrap;
+  }
+  /* Tên bài dạng "Goblet Squat (Squat ôm tạ trước)" — chữ nhỏ lại để không chiếm 3 dòng cạnh nút Hướng dẫn */
+  .body-live-ex-title {
+    font-size: 18px !important;
+  }
+  .body-live-actions .body-btn-secondary {
+    padding: 0 12px;
+  }
+  .body-lib-actions .body-btn {
+    white-space: nowrap;
+    padding: 0 12px;
   }
   .body-days-strip {
     grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -1291,6 +1362,57 @@
   }
 }
 
+/* ── THƯ VIỆN BÀI: danh sách | chi tiết (mobile: 1 cột, đổi qua lại bằng nút quay lại) ── */
+.body-lib-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.2fr) minmax(360px, 1.8fr);
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+}
+.body-lib-back {
+  display: none !important;
+}
+
+@media (max-width: 840px) {
+  .body-lib-search {
+    width: 100% !important;
+  }
+  .body-lib-chips {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .body-lib-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .body-lib-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .body-lib-grid.is-detail .body-lib-list,
+  .body-lib-grid:not(.is-detail) .body-lib-detail {
+    display: none !important;
+  }
+  .body-lib-back {
+    display: inline-flex !important;
+    align-self: flex-start;
+    gap: 6px;
+  }
+  .body-lib-detail {
+    padding: 16px !important;
+  }
+  .body-lib-detail-head {
+    flex-direction: column;
+  }
+  .body-lib-detail-suggest {
+    text-align: left !important;
+  }
+  .body-lib-actions > .body-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════════════════
    LỘ TRÌNH (ROUTINE SCREEN) — DESIGN SYSTEM MATCHING
    ══════════════════════════════════════════════════════════════════════════════ */
@@ -1706,6 +1828,60 @@
     display: flex !important;
     flex-direction: column;
     gap: 8px;
+  }
+
+  /* Dinh dưỡng: tiêu đề đã có trên topbar; 2 tab chia đôi hàng, ngày + nút thêm món chiếm hàng dưới */
+  .body-nut-title {
+    display: none;
+  }
+  .body-nut-head,
+  .body-nut-head-left,
+  .body-nut-head-right {
+    width: 100%;
+  }
+  .body-nut-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .body-nut-tabs > button {
+    white-space: nowrap;
+  }
+  .body-nut-head-right > input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Modal tùy chỉnh mẫu: tên bài 1 hàng riêng, bộ đếm hiệp/mục tiêu xuống hàng dưới (trước bị ép tên còn 1 chữ/dòng) */
+  .body-tpl-custom-row {
+    flex-wrap: wrap;
+  }
+  .body-tpl-custom-row > span {
+    flex-basis: 100% !important;
+  }
+  .body-tpl-custom-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+  /* Nhãn thừa trên mobile (ô đếm đã có đơn vị "15 rep") */
+  .body-hide-mobile {
+    display: none !important;
+  }
+
+  /* Banner xem trước mẫu: 3 nút chia đều 1 hàng, chữ không xuống dòng */
+  .body-routine-preview-banner {
+    padding: 12px 14px !important;
+  }
+  .body-routine-preview-actions {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+  .body-routine-preview-actions > button {
+    justify-content: center;
+    padding: 0 8px !important;
+    white-space: nowrap;
   }
 
   /* Routine Mobile Cards & Rows */

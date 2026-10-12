@@ -112,7 +112,7 @@ export default function ExerciseVideoPlayer({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '16px' }}>🎥</span>
           <span style={{ fontWeight: 700, fontSize: '13.5px', color: 'var(--body-text-main)' }}>
-            Video thị phạm (YouTube / Google Drive)
+            Video thị phạm
           </span>
           {videoUrl && (
             <span className="body-badge body-badge-accent" style={{ fontSize: '11px', padding: '1px 6px' }}>

@@ -99,4 +99,27 @@ requiredFiles.forEach(file => {
 });
 
 console.log(`  ✓ All ${requiredFiles.length} Body component & hook files present OK`);
+
+// 4. Hợp đồng luồng buổi tập (chặn tái phát các lỗi đã sửa)
+const read = file => fs.readFileSync(path.join(rootDir, file), 'utf8');
+const overviewSrc = read('src/components/body/OverviewScreen.jsx');
+const liveSrc = read('src/components/body/LiveSessionScreen.jsx');
+const bodyPageSrc = read('src/pages/BodyPage.jsx');
+
+// Tổng quan → Bắt đầu phải truyền dayInfo { weekday, name }, không phải mảng bài (từng ra màn "không có bài")
+assert.ok(!/onStartSession\??\.?\(todayRoutineItems\)/.test(overviewSrc), 'Overview must not pass the routine item array as dayInfo');
+assert.ok(/weekday: todayWeekday/.test(overviewSrc), 'Overview start must pass today weekday');
+// Tổng quan dùng chung dữ liệu tập của BodyPage, không mở instance useWorkouts thứ hai
+assert.ok(!/import \{ useWorkouts \}/.test(overviewSrc), 'Overview must read workout data from BodyPage props');
+
+// Mở lại màn tập luôn khôi phục set đã ghi của buổi (không phụ thuộc cờ isResume)
+assert.ok(!/isResume/.test(liveSrc) && !/isResume/.test(bodyPageSrc), 'Live screen must always restore logged sets');
+// Set tính giây không tự chạy khi tab đang ẩn
+assert.ok(/visibilityState !== 'hidden'/.test(liveSrc), 'Timed set must not auto-start while the page is hidden');
+
+// Có buổi dở: tab Lộ trình chuyển sang màn tập, và bắt đầu buổi mới luôn hỏi xác nhận
+assert.ok(/routeScreen === 'routine' && liveSession/.test(bodyPageSrc), 'Routine tab must redirect to live session while a session is in progress');
+assert.ok(/if \(liveSession\) \{\s*setPendingStart/.test(bodyPageSrc), 'Starting a new session while one is in progress must ask first');
+
+console.log('  ✓ Live session flow contracts OK');
 console.log('ALL BODY CONTRACT TESTS PASSED!\n');

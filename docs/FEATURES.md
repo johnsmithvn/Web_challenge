@@ -299,7 +299,10 @@ Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuâ
 - **Phòng tập trực tiếp (Live Session):**
   - Chế độ tập Straight Sets, Circuit (chuyển bài 20s, hết vòng 90s), Superset (2 bài trong cặp liên tục 0s, nghỉ 75s sau mỗi cặp); chọn trước khi bắt đầu, kèm thời lượng ước tính và thứ tự A1 → B1…
   - Khóa chọn chế độ khi buổi tập đã bắt đầu nhằm bảo toàn hàng đợi và tính toàn vẹn dữ liệu.
-  - Tải lại trang / mở lại buổi dở: tiếp tục đúng set còn trống, giữ chế độ và thời gian đã tập (lưu khi tạm dừng).
+  - Có buổi dở (đang tập hoặc tạm dừng) thì lộ trình bị khóa: tab Lộ trình / "Tập" mở thẳng màn tập (nhãn "Đang tập", chấm đỏ), Thư viện không cho "Thêm vào lộ trình"; danh sách bài của buổi chốt lúc mở màn tập. Muốn sửa lộ trình thì lưu hoặc hủy buổi.
+  - Rời màn tập (sang tab Body khác, module khác) rồi quay lại, tải lại trang hoặc mở lại buổi dở: tiếp tục đúng set còn trống, lượt nghỉ còn chạy thì vào lại màn nghỉ, đã bấm "Kết thúc buổi" thì về màn kết quả; giữ chế độ. Đồng hồ buổi tính theo giờ thật kể cả lúc rời màn (cùng tab); "Tạm dừng" chốt thời lượng, thời gian tạm dừng không tính.
+  - Không tự chạy set tính giây khi tab đang ẩn (khóa máy / sang app khác) — tránh chuỗi nghỉ → set giây tự chạy → tự ghi set lúc người tập vắng mặt.
+  - Bắt đầu buổi mới (từ Tổng quan, Bản đồ cơ, Thư viện) khi còn buổi dở luôn hỏi xác nhận trước khi hủy buổi cũ.
   - Mỗi bài mới có màn hướng dẫn và "Lần trước" (buổi gần nhất của bài đó); chip trạng thái từng set; nút "Bỏ bài"; bài tính giây có vòng đếm và gợi ý tư thế.
   - Video thị phạm: link tự gắn lưu trên Supabase (`body_exercise_videos`), đồng bộ giữa các máy; gỡ link tự gắn thì quay về video mặc định.
   - Đồng hồ đếm giờ delta timestamp chống lệch giờ khi khóa màn hình điện thoại hoặc chuyển tab.

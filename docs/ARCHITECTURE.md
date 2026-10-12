@@ -178,6 +178,7 @@ instance; đây không phải quota phân tán toàn hệ thống.
 | `lh_custom_anniversaries` | danh sách ngày kỷ niệm cá nhân người dùng tự thêm (Lịch / Tasks) |
 | `lh_cal_filters` | trạng thái bật/tắt các danh mục ngày lễ trên Lịch |
 | `body_custom_exercise_videos` | link video bài tập Body legacy — chỉ đọc để chuyển lên bảng `body_exercise_videos` rồi xóa (`useExerciseVideo`), không ghi mới |
+| `body.prepSec` | số giây đếm ngược chuẩn bị trước set tính giây (Body live) |
 
 ### `sessionStorage`
 
@@ -186,6 +187,7 @@ instance; đây không phải quota phân tán toàn hệ thống.
 | `lh_finance_period` | kỳ Finance đang xem |
 | `lh_inbox_to_finance` | payload handoff một lần từ Inbox |
 | `lh_chunk_reload` | mốc lần tự tải lại gần nhất khi chunk cũ chết sau deploy (chống loop) |
+| `vl_body_live_<sessionId>` | UI state màn tập Body đang dở: mốc giờ bắt đầu, lượt nghỉ đang chạy, đã sang màn kết quả. Xóa khi tạm dừng/hủy/lưu buổi; set đã ghi vẫn chỉ nằm trên Supabase |
 
 Các prefix cũ được giữ để không làm mất preference. Key mới nên dùng `vl_`, nhưng không rename key
 đang tồn tại chỉ để đẹp convention. Không key nào được chứa Vault passphrase, KEK, DEK hoặc decrypted

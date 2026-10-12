@@ -134,7 +134,8 @@ export default function ExerciseDetailModal({ exercise, isOpen, onClose }) {
               onClick={() => setActiveTab('video')}
               style={{
                 flex: 1,
-                padding: '8px 12px',
+                padding: '8px 6px',
+                whiteSpace: 'nowrap',
                 borderRadius: '9999px',
                 border: 'none',
                 fontSize: '13px',
@@ -152,7 +153,8 @@ export default function ExerciseDetailModal({ exercise, isOpen, onClose }) {
               onClick={() => setActiveTab('muscles')}
               style={{
                 flex: 1,
-                padding: '8px 12px',
+                padding: '8px 6px',
+                whiteSpace: 'nowrap',
                 borderRadius: '9999px',
                 border: 'none',
                 fontSize: '13px',
@@ -170,7 +172,8 @@ export default function ExerciseDetailModal({ exercise, isOpen, onClose }) {
               onClick={() => setActiveTab('guide')}
               style={{
                 flex: 1,
-                padding: '8px 12px',
+                padding: '8px 6px',
+                whiteSpace: 'nowrap',
                 borderRadius: '9999px',
                 border: 'none',
                 fontSize: '13px',
