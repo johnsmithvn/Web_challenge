@@ -1211,8 +1211,9 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   sương mù ngẫu nhiên (`FogBank`: lớp sau giữa cây tầng giữa/gần, lớp trước mỏng phủ cây gần; mỗi lớp kéo đến rồi tan
   theo chu kỳ riêng 38–64s, tan hết thì xếp mảng sương lại chỗ ngẫu nhiên; mobile ít mảng, không blur);
   desktop sáng có tiên đốm sáng bay TRÊN nội dung (`.task-fx-top`, z-index 20, không nhận chuột).
-  Sidebar ở `/tasks` + kiểu Elf có class `.sidebar--elf` (Navbar): kính lá xanh (sáng trắng-lục, tối rêu thẫm),
-  logo xanh lá→vàng đồng / mint, mục đang mở ô trắng nổi (sáng) hoặc viền mint (tối); áp cả thu gọn lẫn mở rộng.
+  Sidebar toàn app dùng skin kính lá của mockup này (`.sidebar--elf`, luôn gắn trong Navbar, CSS ở `navbar.css`):
+  sáng trắng-lục, tối rêu thẫm; logo xanh lá→vàng đồng / mint; mục đang mở ô trắng nổi (sáng) hoặc viền mint (tối);
+  áp cả thu gọn lẫn mở rộng, mọi trang, không phụ thuộc kiểu giao diện trang Nhiệm vụ.
   Rừng đêm desktop dùng chung trăng/sao/chòm sao với Aurora + tán tối, đom đóm, bào tử, lá phát sáng;
   rừng đêm mobile là cảnh riêng (3 lớp sao, trăng nhỏ, 2 sao băng). Mobile có bản cảnh riêng 390×844 như mockup.
   Cỡ chữ display trong tasks-aurora.css viết `calc(Npx * var(--tk-ds, 1))` để kiểu khác phóng to được.
