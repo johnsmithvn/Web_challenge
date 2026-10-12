@@ -3099,13 +3099,96 @@
   color: var(--tk-label);
 }
 
+/* Bản nháp: Huỷ · Tạo việc (mờ khi chưa có tên) */
+.tk-drawer__create {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tk-drawer__create .tk-btn-ghost,
+.tk-btn-solid--create {
+  height: 36px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.tk-drawer__create .tk-btn-ghost {
+  padding: 0 14px;
+}
+
+.tk-btn-solid--create {
+  padding: 0 16px 0 13px;
+  gap: 7px;
+}
+
+.tk-btn-solid--create:disabled {
+  opacity: 0.45;
+  cursor: default;
+  filter: none;
+}
+
+/* Header desktop: nút "+ Việc mới" mở ngăn tạo việc đầy đủ */
+.tk-new-btn {
+  flex: none;
+  height: 40px;
+  padding: 0 16px 0 13px;
+  border: none;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--tk-solid-bg);
+  color: var(--tk-solid-fg);
+  font: 600 13px/1 'Be Vietnam Pro', sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tk-new-btn:hover {
+  filter: brightness(1.08);
+}
+
+/* Header chật (≤1599px, sidebar thật rộng 232px): "Việc mới" và "Lịch & sự kiện" chỉ còn icon
+   để chip âm lịch không bị đẩy xuống dòng làm header cao, chui dưới panel tiện ích (top 92px) */
+@media (max-width: 1599px) {
+  .tk-new-btn,
+  .tk-util-btn {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .tk-new-btn__label {
+    display: none;
+  }
+}
+
+/* Ô thêm nhanh đầu cột: nút "Chi tiết" mở form đầy đủ với chữ đã gõ */
+.tk-inline-add__full {
+  height: 22px;
+  padding: 0 8px 0 6px;
+  border: none;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--tk-accent-soft);
+  color: var(--tk-accent);
+  font: 600 11px/1 'Be Vietnam Pro', sans-serif;
+  cursor: pointer;
+}
+
 /* ── HỘP VIỆC CON ── */
 .tk-modal-scrim {
   position: fixed;
   inset: 0;
   z-index: 160;
-  display: grid;
-  place-items: center;
+  /* flex chứ không grid: track grid `auto` giãn theo 520px của hộp nên max-width:100% vô tác dụng → tràn ngang trên mobile */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 16px;
   background: var(--tk-scrim);
   backdrop-filter: blur(3px);
@@ -3115,6 +3198,7 @@
 .tk-submodal {
   width: 520px;
   max-width: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   border-radius: 20px;
@@ -3170,6 +3254,9 @@
 }
 
 .tk-submodal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 20px 22px 18px;
   display: flex;
   flex-direction: column;
@@ -3723,15 +3810,29 @@
   cursor: default;
 }
 
+/* Hàng nút: [Chi tiết] [Thêm việc ———] */
+.tk-qa__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tk-qa__actions .tk-qa__submit {
+  flex: 1;
+}
+
 .tk-qa__more {
-  align-self: center;
+  flex: none;
+  height: 50px;
+  padding: 0 16px;
   border: none;
-  background: transparent;
-  font: 500 12.5px/1 'Be Vietnam Pro', sans-serif;
-  color: var(--tk-text-sub);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--tk-accent-soft);
+  color: var(--tk-accent);
+  font: 600 14px/1 'Be Vietnam Pro', sans-serif;
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 /* ── VIEW NGÀY (mockup: Cả ngày + lưới 56px/giờ | cột phải 320px: Chưa xếp giờ + Giờ hoàng đạo) ── */
@@ -5095,6 +5196,26 @@
 @media (max-width: 768px) {
   .tasks-workspace {
     height: calc(100dvh - var(--topbar-height, 52px) - var(--bottom-tabs-height, 60px));
+  }
+
+  /* Hộp việc con mobile (mockup): rộng = màn − 24px, bo 28px */
+  .tk-modal-scrim {
+    padding: 12px;
+  }
+
+  .tk-submodal {
+    border-radius: 28px;
+  }
+
+  .tk-submodal__parent span {
+    max-width: 100%;
+  }
+
+  /* Chân bản nháp trên sheet: nút cao 44px cho dễ chạm */
+  .tk-drawer__create .tk-btn-ghost,
+  .tk-btn-solid--create {
+    height: 44px;
+    border-radius: 12px;
   }
 
   [data-theme="dark"] .tasks-workspace {

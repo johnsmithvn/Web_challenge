@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import AppIcon from './AppIcon';
 import { solarToLunar } from '../utils/lunarUtils';
 
@@ -332,6 +332,46 @@ function ForestLive({ F }) {
   );
 }
 
+/* ══ SƯƠNG MÙ NGẪU NHIÊN (fogBank của mockup) ══
+   Một lớp gồm vài mảng sương trôi ngang; cả lớp kéo đến rồi tan theo chu kỳ 38–64s (mỗi lớp nhịp riêng).
+   Tan hết (hết 1 vòng) thì xếp lại các mảng ở chỗ ngẫu nhiên → lần sau hiện chỗ khác.
+   y0/y1: dải dọc (tỉ lệ khung) · aMax: độ đặc tối đa · sc: hệ số cỡ mảng. */
+function FogBank({ m, n, y0, y1, aMax, sc }) {
+  const { W, H } = m ? MOB : DESK;
+  const place = (w, h) => ({
+    left: pct(-w * 0.25 + Math.random() * (W - w * 0.5), W),
+    top: pct(y0 * H + Math.random() * (y1 - y0) * H - h / 2, H),
+  });
+  // Random 1 lần khi mount (không đổi theo mỗi lần render)
+  const [fog] = useState(() => {
+    const R = Math.random, pw = m ? 300 : 680;
+    const patches = Array.from({ length: n }, () => {
+      const w = Math.round(pw * sc * (0.7 + R() * 0.7)), h = Math.round(w * (0.24 + R() * 0.12)), a = aMax * (0.65 + R() * 0.35), d = 18 + R() * 16;
+      const bg = Array.from({ length: 4 }, (_, j) => `radial-gradient(${Math.round(26 + R() * 16)}% ${Math.round(40 + R() * 18)}% at ${Math.round(16 + j * 22 + R() * 8)}% ${Math.round(42 + R() * 20)}%,rgba(248,253,244,${a.toFixed(2)}),rgba(248,253,244,${(a * 0.4).toFixed(2)}) 38%,rgba(248,253,244,0) 72%)`).join(',');
+      return { w, h, bg, pos: place(w, h), dx: (R() > 0.5 ? 1 : -1) * (m ? 50 : 140) * (0.6 + R() * 0.8), d: d.toFixed(1), dl: (-R() * d).toFixed(1) };
+    });
+    const d = 38 + R() * 26;
+    return { patches, d: d.toFixed(1), dl: (-R() * d).toFixed(1) };
+  });
+  const reshuffle = (e) => {
+    if (e.target !== e.currentTarget) return; // bỏ qua vòng drift của từng mảng
+    for (const c of e.currentTarget.children) Object.assign(c.style, place(+c.dataset.w, +c.dataset.h));
+  };
+  return (
+    <div className="tk-forest-fog" onAnimationIteration={reshuffle} style={{ animationDuration: `${fog.d}s`, animationDelay: `${fog.dl}s` }}>
+      {fog.patches.map((p, i) => (
+        <span
+          key={i}
+          className={`tk-forest-fog__patch${m ? ' is-m' : ''}`}
+          data-w={p.w}
+          data-h={p.h}
+          style={{ ...p.pos, width: px(p.w), height: px(p.h), background: p.bg, '--dx': px(p.dx), animationDuration: `${p.d}s`, animationDelay: `${p.dl}s` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 /* ══ RỪNG NGÀY (fxElf) ══ */
 const rD = seeded(12.9898, 7.233);
 const STREAM = 'M 596 470 C 588 520, 548 560, 520 610 C 480 680, 420 730, 330 790 C 260 836, 170 870, 80 900 L 760 900 C 700 860, 650 820, 640 770 C 628 700, 640 640, 630 580 C 624 540, 616 500, 612 470 Z';
@@ -403,8 +443,11 @@ export function ForestDay({ isMobile }) {
           {GLINTS.map(([x, y], i) => <circle key={i} className="tk-forest-glint" cx={x} cy={y} r="1.8" style={{ animationDuration: `${(1.6 + rD(i + 790)).toFixed(1)}s`, animationDelay: `${(-rD(i + 795) * 2).toFixed(1)}s` }} />)}
         </svg>
       )}
+      {/* Sương sau: giữa hàng cây tầng giữa và cây gần · sương trước: mỏng hơn, phủ trước cây gần */}
+      <FogBank m={m} n={m ? 3 : 4} y0={0.32} y1={0.82} aMax={0.6} sc={1} />
       <div className="tk-forest-layer" style={{ backgroundImage: F.front }} />
       <ForestLive F={F} />
+      <FogBank m={m} n={m ? 2 : 3} y0={0.55} y1={0.96} aMax={0.38} sc={1.2} />
       {s.bokeh.map((b, i) => <span key={`bk${i}`} className="tk-forest-bokeh" style={{ left: P(b.x), top: Q(b.y), width: px(b.sz), height: px(b.sz), animationDuration: `${b.d}s`, animationDelay: `${b.dl}s` }} />)}
       <span className={`tk-forest-sun${still}`} style={{ left: P(s.sun[0]), top: px(s.sun[1]), width: px(s.sun[2]), height: px(s.sun[3]) }} />
       {s.shafts.map(([x, w, r, a, d, dl], i) => (

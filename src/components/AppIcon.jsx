@@ -17,7 +17,7 @@ import {
   TextB, TextItalic, TextStrikethrough, CheckSquareOffset, LinkSimple, Code, MarkdownLogo,
   ClockCounterClockwise, CloudCheck, ArrowBendLeftUp, MoonStars, SunHorizon, Kanban, Rows, Columns,
   SidebarSimple, Paperclip, Hash, HouseSimple, Heartbeat, ArrowBendDownRight, CaretDoubleDown, HandGrabbing,
-  Butterfly, Leaf,
+  Butterfly, Leaf, ArrowsOutSimple,
 } from '@phosphor-icons/react';
 
 const ICONS = {
@@ -31,6 +31,7 @@ const ICONS = {
   arrowLineRight: ArrowLineRight,
   butterfly: Butterfly,
   leaf: Leaf,
+  arrowsOutSimple: ArrowsOutSimple,
   textBold: TextB,
   textItalic: TextItalic,
   textStrike: TextStrikethrough,

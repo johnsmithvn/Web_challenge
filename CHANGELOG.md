@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v6.23.1 — 2026-10-12
+
+### Added
+- **Nhiệm vụ — tạo việc bằng ngăn chi tiết (`TaskDetailDrawer.jsx`, `TasksPage.jsx`, `TaskKanbanView.jsx`, `TaskQuickAdd.jsx`, `AppIcon.jsx`, `tasks-aurora.css`):** theo mockup Rừng tiên. Nút "+ Việc mới" trên header desktop, nút "Chi tiết" ở ô thêm nhanh đầu cột Kanban và cạnh "Thêm việc" trong sheet mobile mở ngăn chi tiết ở chế độ tạo mới: đầu ngăn "VIỆC MỚI · <cột>", chữ đã gõ điền sẵn tên/hạn/giờ/ưu tiên/nhãn, ẩn Thực tế + tab Hoạt động/Ghi chú, chân "Bản nháp" + Huỷ / Tạo việc (⌘↵, mờ khi chưa có tên). Sửa trên bản nháp cục bộ, chỉ ghi DB khi bấm Tạo việc (việc → nhãn → việc con); X/Huỷ/Esc bỏ nháp. Thay `TaskCreateModal` ở trang Nhiệm vụ (file còn lại nhưng không ai import). Dưới 1600px "Việc mới" và "Lịch & sự kiện" chỉ còn icon để header 1440 không cao lên.
+- **Rừng tiên — sương mù ngẫu nhiên (`TaskForestBackground.jsx`, `tasks-elf.css`):** 2 lớp sương trên nền rừng sáng (desktop + mobile), lúc dày lúc mỏng lúc quang theo chu kỳ riêng 38–64s; tan hết thì mảng sương đổi chỗ ngẫu nhiên. Mobile ít mảng hơn, không blur.
+
+### Fixed
+- **Mobile — cuộn xuống đáy bị đẩy lên một khoảng trắng (`navbar.css`):** `#root` `min-height: 100vh` cộng padding topbar 52px + tab dưới 60px ở `body` làm trang dư 112px. Trên mobile `#root` trừ chiều cao 2 thanh (trừ Body/Finance vốn ẩn 2 thanh).
+- **Hộp chi tiết việc con tràn màn hình trên mobile (`tasks-aurora.css`):** lớp phủ dùng grid `place-items: center` nên track `auto` giãn theo 520px của hộp, `max-width: 100%` vô tác dụng. Đổi sang flex; mobile rộng = màn − 24px, bo 28px; hộp cao quá màn thì phần thân cuộn trong.
+
 ## v6.23.0 — 2026-10-10
 
 ### Added

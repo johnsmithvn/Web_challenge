@@ -77,6 +77,15 @@
   to { stroke-dashoffset: -80; }
 }
 
+/* Sương kéo đến → giữ → tan → trời quang một lúc */
+@keyframes tkElfFogWave {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  40% { opacity: 1; }
+  60% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
 /* ── TOKEN RỪNG TIÊN SÁNG (3a) — suy từ bảng đổi màu 2b → 3a của mockup ── */
 [data-theme="light"] .tasks-workspace.tk-elf {
   --tk-font-display: 'Cormorant SC', 'Be Vietnam Pro', serif;
@@ -813,6 +822,27 @@
   filter: blur(20px);
   opacity: 0.8;
   animation: taskDrift 50s ease-in-out infinite alternate;
+}
+
+/* Sương ngẫu nhiên (FogBank): lớp lúc có lúc không; tắt chuyển động thì đứng yên ở 0.45 */
+.tk-forest-fog {
+  inset: 0;
+  opacity: 0.45;
+  animation: tkElfFogWave 50s ease-in-out infinite;
+  will-change: opacity;
+}
+
+.tk-forest-fog__patch {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(14px);
+  animation: taskDrift 25s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* Mobile: không làm nhoè sương cho đỡ lag */
+.tk-forest-fog__patch.is-m {
+  filter: none;
 }
 
 .tk-forest-mist.is-night {

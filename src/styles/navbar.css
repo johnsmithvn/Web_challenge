@@ -560,6 +560,12 @@
     padding-bottom: var(--bottom-tabs-height);
   }
 
+  /* #root có min-height 100vh (index.css) + padding 2 thanh ở body → trang dư 112px,
+     cuộn xuống đáy bị đẩy lên một khoảng trắng. Trừ chiều cao 2 thanh ra. */
+  body:not(.in-body-workspace):not(.in-finance-workspace) #root {
+    min-height: calc(100dvh - var(--topbar-height) - var(--bottom-tabs-height));
+  }
+
   body.in-body-workspace,
   body.in-finance-workspace {
     padding-top: 0 !important;

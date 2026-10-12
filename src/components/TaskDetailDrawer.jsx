@@ -18,6 +18,9 @@ import UI_STRINGS from '../data/ui-strings.json';
  * TaskDetailDrawer — ngăn chi tiết bên phải theo mockup "Nhiệm vụ · Kanban tối & sáng":
  * tên sửa tại chỗ, lưới thuộc tính (Trạng thái · Hạn · Ưu tiên · Lặp lại · Thực tế · Nhãn),
  * mô tả Markdown có Lưu/Huỷ, việc con, tab Hoạt động / Ghi chú, chân có meta + Xoá.
+ * Chế độ tạo mới (prop `draft`, mockup Rừng tiên): cùng ngăn này nhưng sửa trên bản nháp cục bộ,
+ * đầu ghi "VIỆC MỚI · <cột>", ẩn Thực tế + tab Hoạt động/Ghi chú, chân là Huỷ / Tạo việc (⌘↵).
+ * Chỉ ghi DB khi bấm Tạo việc; X / Huỷ / Esc bỏ bản nháp.
  */
 
 // Markdown: bọc vùng chọn hoặc chèn đầu dòng (như md() của mockup)
@@ -95,13 +98,34 @@ const actColor = (row) => {
   return 'var(--tk-text-sub)';
 };
 
-export default function TaskDetailDrawer({ task, onClose, taskModel }) {
+// draft = { status, title, due_date, due_time, priority, tags } (kết quả parseTaskQuickText) → bản nháp
+const newDraftTask = (draft) => ({
+  id: 'draft',
+  title: draft.title || '',
+  description: '',
+  status: draft.status || 'todo',
+  due_date: draft.due_date || null,
+  due_time: draft.due_time || null,
+  start_date: null,
+  start_time: null,
+  priority: draft.priority || 0,
+  recurrence_rule: null,
+  _tags: (draft.tags || []).map((name) => ({ id: name, name })),
+});
+
+export default function TaskDetailDrawer({ task: savedTask, draft, onClose, taskModel }) {
   const { user } = useAuth();
   const { confirm, ConfirmModal } = useConfirm();
   const { getTaskLogs, addNote, deleteLog } = useActivityLog();
   const { updateTask, completeTask, uncompleteTask, deleteTask, linkTaskTag, unlinkTaskTag } = taskModel || {};
-  const { addTag } = useTags();
+  const { tags: allTags, addTag } = useTags();
   const today = toDateStr();
+
+  const isDraft = !!draft;
+  const [draftTask, setDraftTask] = useState(() => (draft ? newDraftTask(draft) : null));
+  const [draftSubs, setDraftSubs] = useState([]); // tên việc con của bản nháp
+  const [creating, setCreating] = useState(false);
+  const task = isDraft ? draftTask : savedTask;
 
   const [titleDraft, setTitleDraft] = useState(task?.title || '');
   const [titleEditing, setTitleEditing] = useState(false);
@@ -118,9 +142,11 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
   const [fetchedSubs, setFetchedSubs] = useState([]);
   const descRef = useRef(null);
   const noteRef = useRef(null);
+  const createRef = useRef(null);
 
   // Bản nháp khởi tạo từ task lúc mở (TasksPage gắn key = task.id nên đổi việc là mount lại).
-  const taskId = task?.id;
+  // Việc chưa tạo không có log / việc con trên DB.
+  const taskId = isDraft ? null : task?.id;
   const savedDesc = task?.description || '';
   const allTasks = taskModel?.tasks;
   const [logsVersion, setLogsVersion] = useState(0);
@@ -145,14 +171,16 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
   }, [taskId, taskModel]);
 
   // Việc con: bản fetch (gồm cả việc xong cũ) + state (cập nhật tức thì)
-  const subtasks = useMemo(() => {
+  const savedSubs = useMemo(() => {
     if (!taskId) return [];
     const map = new Map(fetchedSubs.map((s) => [s.id, s]));
     for (const s of allTasks || []) if (s.parent_task_id === taskId) map.set(s.id, s);
     return sortSubtasks([...map.values()]);
   }, [fetchedSubs, allTasks, taskId]);
+  const subtasks = isDraft ? draftSubs.map((title, i) => ({ id: `draft-${i}`, title, status: 'todo' })) : savedSubs;
 
-  const descDirty = descDraft !== savedDesc;
+  // Bản nháp: mô tả đi cùng nút Tạo việc, không có trạng thái "Chưa lưu"
+  const descDirty = !isDraft && descDraft !== savedDesc;
 
   const saveDesc = useCallback(() => {
     if (descDirty) updateTask?.(taskId, { description: descDraft });
@@ -166,15 +194,20 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
     onClose();
   }, [descDirty, descDraft, taskId, updateTask, onClose]);
 
-  // Esc đóng ngăn (khi không có popover / hộp việc con đang mở)
+  // Esc đóng ngăn (khi không có popover / hộp việc con đang mở); bản nháp: ⌘/Ctrl+↵ tạo việc
   useEffect(() => {
     const onKey = (e) => {
+      if (isDraft && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        createRef.current?.();
+        return;
+      }
       if (e.key !== 'Escape' || subIndex !== null || document.querySelector('.tk-popover')) return;
       handleClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [handleClose, subIndex]);
+  }, [handleClose, subIndex, isDraft]);
 
   if (!task) return null;
 
@@ -208,15 +241,20 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
   };
   const popStyle = popover ? { position: 'fixed', top: `${popover.y}px`, left: `${popover.x}px` } : null;
 
+  // Bản nháp sửa cục bộ; việc đã có thì ghi DB ngay
+  const patchTask = (patch) => (isDraft ? setDraftTask((prev) => ({ ...prev, ...patch })) : updateTask?.(task.id, patch));
+
   const changeStatus = (next) => {
-    if (next === 'done') completeTask?.(task.id);
+    if (isDraft) patchTask({ status: next });
+    else if (next === 'done') completeTask?.(task.id);
     else if (isDone) uncompleteTask?.(task.id, next);
     else updateTask?.(task.id, { status: next });
   };
 
   const commitTitle = () => {
     const v = titleDraft.replace(/\n/g, ' ').trim();
-    if (v && v !== task.title) updateTask?.(task.id, { title: v });
+    if (isDraft) setTitleDraft(v);
+    else if (v && v !== task.title) updateTask?.(task.id, { title: v });
     else setTitleDraft(task.title || '');
     setTitleEditing(false);
   };
@@ -235,19 +273,65 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
   const handleAddTag = async () => {
     const name = (tagInput || '').replace(/^#/, '').trim();
     setTagInput(null);
+    if (isDraft) {
+      if (name && !task._tags.some((t) => t.name.toLowerCase() === name.toLowerCase())) patchTask({ _tags: [...task._tags, { id: name, name }] });
+      return;
+    }
     if (!name || !addTag || !linkTaskTag) return;
     const tag = await addTag(name);
     if (tag && !(task._tags || []).some((t) => t.id === tag.id)) await linkTaskTag(task.id, tag);
   };
 
+  const removeTag = (tagId) => (isDraft ? patchTask({ _tags: task._tags.filter((t) => t.id !== tagId) }) : unlinkTaskTag?.(task.id, tagId));
+
   const handleAddSubtask = async () => {
     const v = subtaskInput.trim();
     if (!v || !taskModel?.addTask) return;
     setSubtaskInput('');
+    if (isDraft) {
+      setDraftSubs((prev) => [...prev, v]);
+      return;
+    }
     await taskModel.addTask({ title: v, dueDate: task.due_date, parentTaskId: task.id });
     const rows = await taskModel.getSubtasks?.(task.id);
     if (rows) setFetchedSubs(rows);
   };
+
+  // Tạo việc từ bản nháp (như TaskCreateModal cũ): việc → nhãn → việc con, xong thì đóng ngăn
+  const handleCreate = async () => {
+    const title = titleDraft.replace(/\n/g, ' ').trim();
+    if (!isDraft || !title || creating || !taskModel?.addTask) return;
+    setCreating(true);
+    try {
+      const done = task.status === 'done';
+      const created = await taskModel.addTask({
+        title,
+        description: descDraft,
+        dueDate: task.due_date,
+        dueTime: task.due_time,
+        startDate: task.start_date,
+        startTime: task.start_time,
+        priority: task.priority,
+        recurrenceRule: task.recurrence_rule,
+        status: task.status,
+        completed: done,
+        completedAt: done ? new Date().toISOString() : null,
+      });
+      if (!created?.id) return;
+      if (linkTaskTag && addTag) {
+        for (const { name } of task._tags) {
+          const tag = (allTags || []).find((t) => t.name.toLowerCase() === name.toLowerCase()) || (await addTag(name));
+          if (tag?.id) await linkTaskTag(created.id, tag);
+        }
+      }
+      if (draftSubs.length) await taskModel.addSubtasks?.(created, draftSubs);
+      onClose();
+    } finally {
+      setCreating(false);
+    }
+  };
+  createRef.current = handleCreate;
+  const canCreate = !!titleDraft.trim() && !creating;
 
   const handleAddNote = async () => {
     const v = noteDraft.trim();
@@ -276,7 +360,7 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
       {popover?.type === 'date' && (
         <TaskDatePickerPopover
           task={task}
-          onSave={(patch) => updateTask?.(task.id, patch)}
+          onSave={patchTask}
           onClose={() => setPopover(null)}
           style={popStyle}
         />
@@ -284,7 +368,7 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
       {popover?.type === 'priority' && (
         <PriorityPopover
           currentPriority={task.priority}
-          onSelect={(p) => updateTask?.(task.id, { priority: p })}
+          onSelect={(p) => patchTask({ priority: p })}
           onClose={() => setPopover(null)}
           style={popStyle}
         />
@@ -292,16 +376,18 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
       {popover?.type === 'recurrence' && (
         <RecurrencePopover
           currentRule={task.recurrence_rule}
-          onSelect={(rule) => updateTask?.(task.id, { recurrence_rule: rule })}
+          onSelect={(rule) => patchTask({ recurrence_rule: rule })}
           onClose={() => setPopover(null)}
           style={popStyle}
         />
       )}
 
-      <aside className="tk-drawer" aria-label="Chi tiết việc">
+      <aside className="tk-drawer" aria-label={isDraft ? 'Tạo việc mới' : 'Chi tiết việc'}>
         <div className="tk-drawer__head">
-          <span className="tk-drawer__code">LH-{String(task.id).slice(-4).toUpperCase()}</span>
-          <button type="button" className="tk-drawer__icon-btn" onClick={handleClose} title="Đóng (Esc)" aria-label="Đóng">
+          <span className="tk-drawer__code">
+            {isDraft ? `VIỆC MỚI · ${st.label.toUpperCase()}` : `LH-${String(task.id).slice(-4).toUpperCase()}`}
+          </span>
+          <button type="button" className="tk-drawer__icon-btn" onClick={handleClose} title={isDraft ? 'Bỏ bản nháp (Esc)' : 'Đóng (Esc)'} aria-label="Đóng">
             <AppIcon name="x" size={16} />
           </button>
         </div>
@@ -314,6 +400,7 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
               value={titleDraft}
               rows={2}
               placeholder="Tên việc…"
+              autoFocus={isDraft && !draft.title}
               onFocus={() => setTitleEditing(true)}
               onChange={(e) => setTitleDraft(e.target.value.replace(/\n/g, ' '))}
               onBlur={commitTitle}
@@ -365,8 +452,8 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
               {describeRecurrence(task.recurrence_rule)}
             </button>
 
-            <span className="tk-props__label">Thực tế</span>
-            <span
+            {!isDraft && <span className="tk-props__label">Thực tế</span>}
+            {!isDraft && <span
               className="tk-props__actual"
               title={task.started_at ? `Bắt đầu ${dmHm(task.started_at)}${task.completed_at ? ` · Hoàn thành ${dmHm(task.completed_at)}` : ''}` : undefined}
             >
@@ -396,15 +483,15 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
                   )}
                 </>
               )}
-            </span>
+            </span>}
 
             <span className="tk-props__label">Nhãn</span>
             <div className="tk-props__tags">
               {(task._tags || []).map((t) => (
                 <span key={t.id} className="tk-tag">
                   #{t.name}
-                  {unlinkTaskTag && (
-                    <button type="button" title="Bỏ nhãn" onClick={() => unlinkTaskTag(task.id, t.id)}>
+                  {(isDraft || unlinkTaskTag) && (
+                    <button type="button" title="Bỏ nhãn" onClick={() => removeTag(t.id)}>
                       <AppIcon name="x" size={10} />
                     </button>
                   )}
@@ -475,7 +562,7 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
                   }
                 }}
               />
-              {descEditing && (
+              {descEditing && !isDraft && (
                 <div className="tk-editor__foot">
                   <span className="tk-editor__hint">⌘↵ lưu · Esc huỷ</span>
                   <button
@@ -522,6 +609,7 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
                     type="button"
                     className="tk-sub-row__check"
                     title={sDone ? 'Bỏ đánh dấu xong' : 'Đánh dấu xong'}
+                    disabled={isDraft}
                     onClick={() => (sDone ? uncompleteTask?.(s.id) : completeTask?.(s.id))}
                   >
                     <AppIcon
@@ -531,7 +619,7 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
                       style={{ color: sDone ? 'var(--tk-st-done)' : 'var(--tk-text-mute)' }}
                     />
                   </button>
-                  <button type="button" className={`tk-sub-row__title${sDone ? ' is-done' : ''}`} onClick={() => setSubIndex(i)}>
+                  <button type="button" className={`tk-sub-row__title${sDone ? ' is-done' : ''}`} onClick={() => { if (!isDraft) setSubIndex(i); }}>
                     {s.title}
                   </button>
                 </div>
@@ -548,8 +636,8 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
             </label>
           </section>
 
-          {/* Hoạt động / Ghi chú */}
-          <section className="tk-drawer__section">
+          {/* Hoạt động / Ghi chú (việc chưa tạo thì chưa có) */}
+          {!isDraft && <section className="tk-drawer__section">
             <div className="tk-seg">
               <button type="button" className={`tk-seg__btn${footerTab === 'activity' ? ' is-on' : ''}`} onClick={() => setFooterTab('activity')}>
                 <AppIcon name="history" size={14} />
@@ -667,15 +755,31 @@ export default function TaskDetailDrawer({ task, onClose, taskModel }) {
                 ))}
               </div>
             )}
-          </section>
+          </section>}
         </div>
 
         <div className="tk-drawer__foot">
-          <span className="tk-drawer__meta">{meta}</span>
-          <button type="button" className="tk-btn-ghost tk-btn-ghost--icon" onClick={handleDelete}>
-            <AppIcon name="trash" size={15} />
-            Xoá
-          </button>
+          <span className="tk-drawer__meta">{isDraft ? 'Bản nháp' : meta}</span>
+          {isDraft ? (
+            <span className="tk-drawer__create">
+              <button type="button" className="tk-btn-ghost" onClick={handleClose}>Huỷ</button>
+              <button
+                type="button"
+                className="tk-btn-solid tk-btn-solid--create"
+                disabled={!canCreate}
+                title="Tạo việc (⌘↵)"
+                onClick={handleCreate}
+              >
+                <AppIcon name="plus" size={13} weight="bold" />
+                Tạo việc
+              </button>
+            </span>
+          ) : (
+            <button type="button" className="tk-btn-ghost tk-btn-ghost--icon" onClick={handleDelete}>
+              <AppIcon name="trash" size={15} />
+              Xoá
+            </button>
+          )}
         </div>
       </aside>
 

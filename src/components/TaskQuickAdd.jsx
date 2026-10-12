@@ -96,14 +96,18 @@ export default function TaskQuickAdd({ open, status = 'todo', today, onClose, on
             </button>
           ))}
         </div>
-        <button type="button" className="tk-qa__submit" disabled={!parsed.title || saving} onClick={submit}>
-          Thêm việc
-        </button>
-        {onOpenFullForm && (
-          <button type="button" className="tk-qa__more" onClick={() => onOpenFullForm(parsed, status)}>
-            Thêm mô tả, việc con, lặp lại… (form đầy đủ)
+        <div className="tk-qa__actions">
+          {/* Mở ngăn chi tiết ở chế độ tạo mới, chữ đã gõ điền sẵn */}
+          {onOpenFullForm && (
+            <button type="button" className="tk-qa__more" title="Mở form đầy đủ" onClick={() => onOpenFullForm(parsed, status)}>
+              <AppIcon name="arrowsOutSimple" size={16} />
+              Chi tiết
+            </button>
+          )}
+          <button type="button" className="tk-qa__submit" disabled={!parsed.title || saving} onClick={submit}>
+            Thêm việc
           </button>
-        )}
+        </div>
       </div>
     </>
   );
