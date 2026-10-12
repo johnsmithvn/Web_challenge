@@ -190,7 +190,8 @@ export default function Navbar() {
   return (
     <>
       {/* ── DESKTOP SIDEBAR (≥769px) ─────────────────────────── */}
-      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
+      {/* .sidebar--elf: skin kính lá theo mockup Rừng tiên, dùng chung mọi trang (navbar.css) */}
+      <aside className={`sidebar sidebar--elf${collapsed ? ' sidebar--collapsed' : ''}`}>
         <Link to="/" className="sidebar__logo" title="Life Hub">
           <span className="sidebar__logo-icon"><AppIcon name="sparkle" size={collapsed ? 18 : 21} weight="fill" /></span>
           <span className="sidebar__logo-text">Life Hub</span>

@@ -31,6 +31,7 @@ export default function TaskKanbanView({
   onOpenSubtask,
   onQuickText,
   onQuickAdd,
+  onOpenFullForm,
   refreshKey = 0,
   recentDone = [],
   selectedId,
@@ -356,7 +357,24 @@ export default function TaskKanbanView({
                         {ch.n}
                       </span>
                     )) : <span className="tk-inline-add__hint">mai · t2 · 9h · !cao · #nhãn</span>}
-                    <span className="tk-inline-add__keys">↵ thêm · esc</span>
+                    <span className="tk-inline-add__keys">↵ · esc</span>
+                    {onOpenFullForm && (
+                      <button
+                        type="button"
+                        className="tk-inline-add__full"
+                        title="Mở form đầy đủ"
+                        onMouseDown={(e) => {
+                          e.preventDefault(); // giữ ô gõ không blur trước khi mở
+                          const raw = addText;
+                          setAddingCol(null);
+                          setAddText('');
+                          onOpenFullForm(c.key, parseTaskQuickText(raw, today));
+                        }}
+                      >
+                        <AppIcon name="arrowsOutSimple" size={12} />
+                        Chi tiết
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

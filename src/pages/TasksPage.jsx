@@ -6,7 +6,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useTags } from '../hooks/useTags';
 import TaskDetailDrawer from '../components/TaskDetailDrawer';
 import TaskSubtaskModal from '../components/TaskSubtaskModal';
-import TaskCreateModal from '../components/TaskCreateModal';
 import TaskFilterBar from '../components/TaskFilterBar';
 import TaskTodayStrip from '../components/TaskTodayStrip';
 import TaskQuickAdd from '../components/TaskQuickAdd';
@@ -170,13 +169,26 @@ export default function TasksPage() {
     refreshCalendars();
   }, [refreshCalendars]);
 
+  // Tạo việc: sheet "Việc mới" (gõ nhanh) → "Chi tiết" mở ngăn chi tiết ở chế độ tạo mới (bản nháp)
+  const [draft, setDraft] = useState(null); // { key, status, title, due_date, due_time, priority, tags }
+  const [quickAdd, setQuickAdd] = useState(null); // { status }
+
+  // Mở 1 việc thì bỏ bản nháp đang soạn (như mockup)
   const handleSelectTaskFromCalendar = useCallback((task) => {
+    setDraft(null);
     setSelectedTask(task);
   }, []);
 
-  // Tạo việc: sheet "Việc mới" (gõ nhanh) → "form đầy đủ" mở modal chi tiết
-  const [createModalState, setCreateModalState] = useState(null);
-  const [quickAdd, setQuickAdd] = useState(null); // { status }
+  // parsed = kết quả parseTaskQuickText của chữ đã gõ (điền sẵn tên, hạn, giờ, ưu tiên, nhãn)
+  const openDraft = useCallback((status = 'todo', parsed = null) => {
+    setQuickAdd(null);
+    setSelectedTask(null);
+    setDraft({ key: Date.now(), status, ...(parsed || {}) });
+  }, []);
+  const closeDraft = useCallback(() => {
+    setDraft(null);
+    refreshCalendars();
+  }, [refreshCalendars]);
 
   // Popover "Ngày" (nút + / "+N nữa" ở Tháng, Thêm việc ở Lịch biểu, bấm lưới giờ ở Ngày/Tuần)
   const [dayPop, setDayPop] = useState(null); // { dateStr, time, holidays, x, y }
@@ -409,7 +421,7 @@ export default function TasksPage() {
         `tasks-workspace--${activeView}`,
         taskStyle === 'elf' ? 'tk-elf' : '',
         isWidgetOpen ? 'has-util' : '',
-        selectedTask ? 'has-peek' : '',
+        selectedTask || draft ? 'has-peek' : '',
       ].filter(Boolean).join(' ')}
     >
       <TaskSkyBackground isMobile={isMobile} />
@@ -436,14 +448,21 @@ export default function TasksPage() {
           </div>
         </div>
         <TaskViewSwitcher activeView={activeView} setActiveView={handleSetActiveView} setCurrentDate={setCurrentDate} />
+        {user && (
+          <button type="button" className="tk-new-btn" onClick={() => openDraft('todo')} title="Tạo việc mới với đầy đủ chi tiết" aria-label="Việc mới">
+            <AppIcon name="plus" size={14} weight="bold" />
+            <span className="tk-new-btn__label">Việc mới</span>
+          </button>
+        )}
         <button
           type="button"
           className={`tk-util-btn${isWidgetOpen ? ' is-on' : ''}`}
           onClick={handleToggleWidget}
           title="Lịch vạn niên và sự kiện"
+          aria-label="Lịch và sự kiện"
         >
           <AppIcon name="moonStars" size={16} />
-          Lịch &amp; sự kiện
+          <span className="tk-new-btn__label">Lịch &amp; sự kiện</span>
         </button>
       </header>
 
@@ -560,6 +579,7 @@ export default function TasksPage() {
                 onOpenSubtask={handleOpenSubtask}
                 onQuickText={createFromQuickText}
                 onQuickAdd={(status) => setQuickAdd({ status })}
+                onOpenFullForm={openDraft}
                 refreshKey={calendarRefreshKey}
                 recentDone={recentDone}
                 selectedId={selectedId}
@@ -622,8 +642,10 @@ export default function TasksPage() {
       </Suspense>
       {isWidgetOpen && <div className="tk-util-scrim tk-mobile-only" onClick={handleToggleWidget} />}
 
-      {/* Ngăn chi tiết (nổi bên phải desktop / sheet mobile) */}
-      {selectedTask && (
+      {/* Ngăn chi tiết (nổi bên phải desktop / sheet mobile); bản nháp = cùng ngăn ở chế độ tạo mới */}
+      {draft ? (
+        <TaskDetailDrawer key={`draft-${draft.key}`} draft={draft} taskModel={taskModel} onClose={closeDraft} />
+      ) : selectedTask && (
         <TaskDetailDrawer
           key={selectedTask.id}
           task={tasks.find((t) => t.id === selectedTask.id) || selectedTask}
@@ -641,7 +663,7 @@ export default function TasksPage() {
           onClose={() => setSubView(null)}
           onOpenParent={() => {
             setSubView(null);
-            setSelectedTask(subParent);
+            handleSelectTaskFromCalendar(subParent);
           }}
           taskModel={taskModel}
         />
@@ -658,7 +680,7 @@ export default function TasksPage() {
             .sort((a, b) => (a.due_time || '99').localeCompare(b.due_time || '99'))}
           onOpenTask={(t) => {
             setDayPop(null);
-            setSelectedTask(t);
+            handleSelectTaskFromCalendar(t);
           }}
           onCreate={(raw) => createFromQuickText(raw, 'todo', { date: dayPop.dateStr, time: dayPop.time })}
           onClose={() => setDayPop(null)}
@@ -667,7 +689,7 @@ export default function TasksPage() {
       )}
 
       {/* Nút + và sheet "Việc mới" */}
-      {user && !selectedTask && !quickAdd && (
+      {user && !selectedTask && !draft && !quickAdd && (
         <button type="button" className="tk-fab" onClick={() => setQuickAdd({ status: 'todo' })} aria-label="Thêm việc mới">
           <AppIcon name="plus" size={24} />
         </button>
@@ -678,23 +700,7 @@ export default function TasksPage() {
         today={today}
         onClose={() => setQuickAdd(null)}
         onCreate={createFromQuickText}
-        onOpenFullForm={(parsed, status) => {
-          setQuickAdd(null);
-          setCreateModalState({ date: parsed.due_date || undefined, time: parsed.due_time || undefined, status });
-        }}
-      />
-
-      {/* Form tạo việc đầy đủ (ô giờ trên lịch, "form đầy đủ" từ sheet) */}
-      <TaskCreateModal
-        isOpen={!!createModalState}
-        initialDate={createModalState?.date}
-        initialTime={createModalState?.time}
-        initialStatus={createModalState?.status || 'todo'}
-        onClose={() => {
-          setCreateModalState(null);
-          refreshCalendars();
-        }}
-        taskModel={taskModel}
+        onOpenFullForm={(parsed, status) => openDraft(status, parsed)}
       />
     </div>
   );

@@ -68,7 +68,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 ## 2. Nhiệm vụ (`/tasks`)
 
 **Files:** `src/pages/TasksPage.jsx`, `src/components/TaskListSection.jsx`,
-`src/components/TaskDetailModal.jsx`, `src/components/TaskCreateModal.jsx`,
+`src/components/TaskDetailModal.jsx`, `src/components/TaskDetailDrawer.jsx`,
 `src/components/CalendarToolbar.jsx`, `src/components/CalendarWidgetPanel.jsx`,
 `src/components/CalendarAgendaView.jsx`, `src/components/CalendarDayView.jsx`,
 `src/components/WeekCalendar.jsx`, `src/components/MonthCalendar.jsx`,
@@ -135,7 +135,11 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   hàng "Cả ngày". Chip Cả ngày / Lịch Tháng của task nhiều ngày có `▶` (ngày đầu), `↔` (ngày giữa), `⏰` (ngày Hạn);
   Lịch biểu hiện `▶ 09:00`, `⏰ 17:00` hoặc "↔ Nhiều ngày".
 - **Header cố định (Workspace pattern):** `CalendarToolbar` cố định ở đỉnh trang (100dvh workspace, cuộn nội bộ), không bị giật/nhảy layout khi chuyển giữa danh sách và các chế độ lịch.
-- **Modal tạo nhanh Task (`TaskCreateModal`):** Tự động kích hoạt khi click vào ô trống trong các chế độ lịch, tự động điền sẵn ngày và khung giờ click (Smart Context Prefill), phím tắt `Ctrl + Enter` lưu nhanh và `Escape` đóng.
+- **Tạo việc đầy đủ = ngăn chi tiết ở chế độ tạo mới (`TaskDetailDrawer` prop `draft`):** mở từ nút "+ Việc mới"
+  trên header desktop, nút "Chi tiết" ở ô thêm nhanh đầu cột Kanban và ở sheet "Việc mới". Chữ đã gõ ("mai 9h !cao
+  #UI") điền sẵn tên/hạn/giờ/ưu tiên/nhãn, cột đang thêm thành trạng thái. Đầu ngăn "VIỆC MỚI · <cột>", ẩn Thực tế và
+  tab Hoạt động/Ghi chú; sửa trên bản nháp cục bộ, chỉ ghi DB khi bấm "Tạo việc" (`Ctrl/⌘ + Enter`; mờ khi chưa có
+  tên). X / Huỷ / `Escape` bỏ bản nháp. Tên trống thì ô tên tự focus.
 
 ### Cột tiện ích Lịch Việt & Sự kiện (`CalendarWidgetPanel`)
 - **Lịch vạn niên & Can Chi:** Tra cứu ngày Dương lịch, Âm lịch, Can Chi Năm/Tháng/Ngày.
