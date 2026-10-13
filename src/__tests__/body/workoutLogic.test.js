@@ -21,7 +21,17 @@ import {
   isNewPR,
   buildPreviousSetsByExercise,
   getRoutineWeek,
-  calculateAdherence
+  calculateAdherence,
+  getWeekDays,
+  mapWeekSessions,
+  splitExerciseName,
+  splitDayName,
+  splitTempo,
+  pickSessionPR,
+  buildExerciseHistory,
+  summarizeTrainedExercises,
+  niceAxis,
+  nextTargetFor
 } from '../../utils/workoutLogic.js';
 
 console.log('Testing workoutLogic pure functions...');
@@ -289,6 +299,88 @@ console.log('Testing workoutLogic pure functions...');
   assert.equal(formatValWithUnit(12, 'rep'), '12 rep');
   assert.equal(formatValWithUnit(60, 's'), '60s');
   console.log('  ✓ calculateEstimated1RM & formatValWithUnit OK');
+}
+
+// 9. getWeekDays & mapWeekSessions (lịch tuần Lộ trình)
+{
+  const tue = new Date(2026, 9, 13); // Thứ Ba 13/10/2026
+  const wk = getWeekDays(0, tue);
+  assert.equal(wk.length, 7);
+  assert.deepEqual([wk[0].date, wk[6].date], ['2026-10-12', '2026-10-18']);
+  assert.equal(getWeekDays(0, new Date(2026, 9, 18))[0].date, '2026-10-12', 'CN thuộc tuần bắt đầu T2 trước đó');
+  assert.deepEqual([getWeekDays(-1, tue)[0].date, getWeekDays(1, tue)[6].date], ['2026-10-05', '2026-10-25']);
+  assert.equal(getWeekDays(1, new Date(2026, 11, 30))[0].date, '2027-01-04', 'qua năm mới');
+
+  const sessions = [
+    { id: 'make-up', status: 'completed', planned_weekday: 1, local_date: '2026-10-13', routine_id: 'r1' },
+    { id: 'old-mon', status: 'completed', planned_weekday: 1, local_date: '2026-10-12', routine_id: 'r1' },
+    { id: 'wip', status: 'in_progress', planned_weekday: 2, local_date: '2026-10-13', routine_id: 'r1' },
+    { id: 'free', status: 'completed', planned_weekday: null, local_date: '2026-10-14', routine_id: null },
+    { id: 'other-routine', status: 'completed', planned_weekday: 3, local_date: '2026-10-14', routine_id: 'r2' },
+    { id: 'last-week', status: 'completed', planned_weekday: 4, local_date: '2026-10-08', routine_id: 'r1' }
+  ];
+  const map = mapWeekSessions(sessions, wk, 'r1');
+  assert.equal(map[1].id, 'make-up', 'tập bù hôm khác vẫn gắn đúng thứ, buổi mới nhất thắng');
+  assert.deepEqual(Object.keys(map), ['1'], 'bỏ buổi dở, buổi tự do, lộ trình khác, tuần khác');
+  assert.equal(mapWeekSessions(sessions, getWeekDays(-1, tue), 'r1')[4].id, 'last-week');
+  console.log('  ✓ getWeekDays & mapWeekSessions OK');
+}
+
+// 10. Tách tên bài / tên buổi / tempo để hiển thị
+{
+  assert.deepEqual(splitExerciseName('Chống đẩy kê cao tay (Incline Push-up)'), { vn: 'Chống đẩy kê cao tay', en: 'Incline Push-up' });
+  assert.deepEqual(splitExerciseName('Đu xà trợ lực chân'), { vn: 'Đu xà trợ lực chân', en: '' });
+  assert.deepEqual(splitDayName('Ngày B - Lưng Xô & Chân'), { tag: 'Ngày B', letter: 'B', title: 'Lưng Xô & Chân' });
+  assert.equal(splitDayName('Toàn thân A').tag, '', 'không có "Ngày X -" thì không gắn nhãn');
+  assert.deepEqual(splitTempo('2-0-1-1 (Hạ chậm 2s - Kéo 1s).'), { code: '2-0-1-1', text: 'Hạ chậm 2s - Kéo 1s' });
+  assert.deepEqual(splitTempo('Chậm, có kiểm soát'), { code: '', text: 'Chậm, có kiểm soát' });
+  console.log('  ✓ splitExerciseName / splitDayName / splitTempo OK');
+}
+
+// 11. pickSessionPR — tính lại PR sau khi sửa số đã ghi
+{
+  const base = buildPrBaselines([{ exercise_key: 'push', actual_val: 10, kg: 0 }]).get('push');
+  const recs = [{ id: 'a', actualVal: 11, kg: 0 }, { id: 'b', actualVal: 12, kg: 0 }, { id: 'c', actualVal: 9, kg: 0 }];
+  assert.equal(pickSessionPR(recs, base), 'b', 'chỉ set cao nhất vượt mốc được PR');
+  assert.equal(pickSessionPR([{ id: 'a', actualVal: 10, kg: 0 }, { id: 'b', actualVal: null }], base), null, 'bằng mốc hoặc bỏ set thì không PR');
+  assert.equal(pickSessionPR(recs, undefined), null, 'lần đầu tập (không có mốc) không PR');
+  const wBase = buildPrBaselines([{ exercise_key: 'row', actual_val: 10, kg: 10 }]).get('row');
+  assert.equal(pickSessionPR([{ id: 'x', actualVal: 8, kg: 10 }, { id: 'y', actualVal: 12, kg: 10 }], wBase), 'y', 'có tạ so 1RM ước tính (8 rep thấp hơn mốc 10 rep)');
+  console.log('  ✓ pickSessionPR OK');
+}
+
+// 12. Tiến bộ: lịch sử từng bài, danh sách bài đã tập, trục biểu đồ, mục tiêu buổi tới
+{
+  const sessions = [
+    { id: 's1', status: 'completed', local_date: '2026-10-07' },
+    { id: 's2', status: 'completed', local_date: '2026-10-12' },
+    { id: 's3', status: 'abandoned', local_date: '2026-10-13' }
+  ];
+  const sets = [
+    { session_id: 's2', exercise_key: 'push', set_no: 2, actual_val: 12, target_val: 12, unit: 'rep', is_pr: true },
+    { session_id: 's2', exercise_key: 'push', set_no: 1, actual_val: 13, target_val: 12, unit: 'rep' },
+    { session_id: 's1', exercise_key: 'push', set_no: 1, actual_val: 10, target_val: 12, unit: 'rep' },
+    { session_id: 's1', exercise_key: 'push', set_no: 2, actual_val: null, target_val: 12, unit: 'rep' },
+    { session_id: 's3', exercise_key: 'push', set_no: 1, actual_val: 20, target_val: 12, unit: 'rep' },
+    { session_id: 's2', exercise_key: 'plank', set_no: 1, actual_val: 40, target_val: 40, unit: 's' }
+  ];
+  const h = buildExerciseHistory(sets, sessions, 'push');
+  assert.deepEqual(h.map(x => x.date), ['2026-10-07', '2026-10-12'], 'chỉ buổi hoàn thành, cũ → mới');
+  assert.deepEqual(h[1].vals, [13, 12], 'xếp theo số set');
+  assert.deepEqual([h[0].best, h[0].met, h[1].met, h[1].pr], [10, false, true, true]);
+  assert.deepEqual(h[0].vals, [10, null], 'set bỏ giữ chỗ null');
+
+  const list = summarizeTrainedExercises(sets, sessions);
+  assert.deepEqual(list.map(x => [x.key, x.best, x.sessions]), [['plank', 40, 1], ['push', 13, 2]], 'bỏ buổi hủy; cùng ngày thì theo tên');
+
+  assert.deepEqual(niceAxis(48), { step: 20, max: 60 });
+  assert.deepEqual(niceAxis(14.6), { step: 5, max: 15 });
+  assert.equal(niceAxis(0).max >= 1, true, 'không chia 0');
+
+  assert.deepEqual(nextTargetFor(h, null), { sets: 2, val: 13, fromRoutine: false }, 'đủ mục tiêu → +1 rep');
+  assert.deepEqual(nextTargetFor(h, { target_sets: 3, target_val: 14 }), { sets: 3, val: 14, fromRoutine: true });
+  assert.equal(nextTargetFor([], null), null);
+  console.log('  ✓ buildExerciseHistory / summarizeTrainedExercises / niceAxis / nextTargetFor OK');
 }
 
 console.log('ALL WORKOUT LOGIC TESTS PASSED!');

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import AppIcon from '../AppIcon';
-import GenericModal from '../GenericModal';
+import { ConfirmModal } from '../ConfirmModal';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import ExerciseVideoPlayer from './ExerciseVideoPlayer';
 import ExerciseDetailModal from './ExerciseDetailModal';
@@ -18,7 +18,12 @@ import {
   estimateQueueMinutes,
   buildPrBaselines,
   isNewPR,
-  buildPreviousSetsByExercise
+  buildPreviousSetsByExercise,
+  pickSessionPR,
+  splitExerciseName,
+  splitDayName,
+  splitTempo,
+  DAY_TAG_COLORS
 } from '../../utils/workoutLogic';
 
 const MODES = [
@@ -29,10 +34,13 @@ const MODES = [
 
 const LETTERS = 'ABCDEFGHIJKLMNOP';
 const PREP_OPTIONS = [0, 5, 10, 15];
+const RING_REST = 2 * Math.PI * 116;
+const RING_TIMED = 2 * Math.PI * 104;
 
 const slotOfRecord = (r) => getSlotKey(r.routineItemId, r.exerciseKey, r.setNo);
 const slotOfItem = (q) => getSlotKey(q.routine_item_id, q.exercise_key, q.set_no);
 const fmtVals = (vals, unit) => vals.map(v => (v == null ? 'bỏ' : unit === 's' ? `${v}s` : String(v))).join(' · ');
+const fmtVal = (v, unit) => (unit === 's' ? `${v}s` : String(v));
 
 export default function LiveSessionScreen({
   dayInfo,
@@ -57,12 +65,22 @@ export default function LiveSessionScreen({
     () => (isResume && sessionId ? recentSets.filter(s => s.session_id === sessionId) : [])
   );
 
+  const [today] = useState(() => new Date());
   const [mode, setMode] = useState(initialMode || 'straight');
   const [modeLocked, setModeLocked] = useState(existingSets.length > 0);
   const [screenState, setScreenState] = useState('guide'); // 'guide' | 'set' | 'rest' | 'done'
   const [curQueueIdx, setCurQueueIdx] = useState(0);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showExitModal, setShowExitModal] = useState(false);
+  const [detailEx, setDetailEx] = useState(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [editEx, setEditEx] = useState(null); // index bài đang mở ngăn sửa số ở màn kết quả
+
+  useEffect(() => {
+    if (editEx == null) return undefined;
+    const onKey = ev => { if (ev.key === 'Escape') setEditEx(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [editEx]);
+  const [paused, setPaused] = useState(false);
   const [loggedSets, setLoggedSets] = useState(() => existingSets
     .slice()
     .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0))
@@ -98,7 +116,9 @@ export default function LiveSessionScreen({
 
   // Wall-clock timers for drift resistance (background tabs / mobile lock)
   const sessionStartTimeRef = useRef(null);
+  const frozenAtRef = useRef(null);
   const restEndRef = useRef(null);
+  const restLeftOnPauseRef = useRef(null);
   const plankStartTimeRef = useRef(null);
 
   const [restRemaining, setRestRemaining] = useState(0);
@@ -149,12 +169,23 @@ export default function LiveSessionScreen({
   // 2. Build the exercise queue based on mode
   const queue = useMemo(() => generateWorkoutQueue(dayItems, mode), [dayItems, mode]);
 
+  // Các ô set của từng bài (theo thứ tự bài) — dùng cho thanh tiến độ và danh sách bài
+  const groups = useMemo(
+    () => dayItems.map((_, e) => queue.filter(q => q.exerciseIndex === e).sort((a, b) => a.set_no - b.set_no)),
+    [dayItems, queue]
+  );
+
   const nameOf = useCallback(
     (key) => exerciseMap.get(key)?.name || BASE_EXERCISES.find(e => e.key === key)?.name || key,
     [exerciseMap]
   );
+  const exerciseOf = useCallback(
+    (key) => exerciseMap.get(key) || BASE_EXERCISES.find(e => e.key === key) || null,
+    [exerciseMap]
+  );
 
   const doneKeys = useMemo(() => new Set(loggedSets.map(slotOfRecord)), [loggedSets]);
+  const recordBySlot = useMemo(() => new Map(loggedSets.map(r => [slotOfRecord(r), r])), [loggedSets]);
 
   // Giá trị đã ghi theo bài: { [exercise_key]: [set1, set2, ...] }
   const logs = useMemo(() => {
@@ -168,20 +199,21 @@ export default function LiveSessionScreen({
 
   const currentItem = queue[curQueueIdx] || queue[0];
   const currentSlotKey = currentItem ? `${slotOfItem(currentItem)}@${curQueueIdx}` : '';
+  // Ô đang mở đã có bản ghi = đang quay lại sửa set (ghi lại sẽ cập nhật, không tạo bản ghi mới)
+  const currentRecord = currentItem ? recordBySlot.get(slotOfItem(currentItem)) : undefined;
+  const isEditing = Boolean(currentRecord);
 
   // Resolve exercise definition from map or fallback
   const exDef = useMemo(() => {
     if (!currentItem) return null;
-    const found = exerciseMap.get(currentItem.exercise_key)
-      || BASE_EXERCISES.find(e => e.key === currentItem.exercise_key);
-    return found || {
+    return exerciseOf(currentItem.exercise_key) || {
       name: currentItem.name || currentItem.exercise_key,
       primary: 'Toàn thân',
       secondary: [],
       steps: ['Thực hiện động tác đúng tư thế và kiểm soát chuyển động.'],
       tip: ''
     };
-  }, [currentItem, exerciseMap]);
+  }, [currentItem, exerciseOf]);
 
   // Mốc PR từ lịch sử (không tính buổi này) + kết quả "lần trước" của từng bài
   const historyBaselines = useMemo(
@@ -200,17 +232,26 @@ export default function LiveSessionScreen({
     return `${fmtVals(prev.sets.map(s => s.actual_val), unit)}${kg ? ` · ${kg} kg` : ''}`;
   };
 
-  // Overall workout elapsed timer (wall-clock based, cộng dồn phần đã tập trước khi tạm dừng)
+  // Đồng hồ buổi (wall-clock). Đứng yên khi tạm dừng hoặc ở màn kết quả; chạy lại thì dời mốc bắt đầu
+  // đúng bằng khoảng đã đứng yên để không tính thời gian dừng vào buổi.
+  const frozen = paused || screenState === 'done';
   useEffect(() => {
     if (sessionStartTimeRef.current == null) {
       sessionStartTimeRef.current = Date.now() - baseElapsed * 1000;
     }
-    if (screenState === 'done') return;
+    if (frozen) {
+      frozenAtRef.current = Date.now();
+      return undefined;
+    }
+    if (frozenAtRef.current != null) {
+      sessionStartTimeRef.current += Date.now() - frozenAtRef.current;
+      frozenAtRef.current = null;
+    }
     const interval = setInterval(() => {
       setElapsed(Math.floor((Date.now() - sessionStartTimeRef.current) / 1000));
     }, 500);
     return () => clearInterval(interval);
-  }, [screenState, baseElapsed]);
+  }, [frozen, baseElapsed]);
 
   // Persistent Web Audio context with user gesture unlock (iOS Safari compatibility)
   const audioCtxRef = useRef(null);
@@ -278,8 +319,9 @@ export default function LiveSessionScreen({
 
   // Chuyển sang ô set idx: set đầu tiên của 1 bài thì mở hướng dẫn (theo thiết kế), còn lại vào thẳng màn ghi set.
   // auto = tự chuyển sau khi nghỉ: bài tính giây vào thẳng màn set và tự bật đồng hồ (người tập không phải bấm)
+  // direct = vào thẳng màn ghi set (quay lại sửa set đã ghi)
   const autoStartRef = useRef(false);
-  const goToSlot = useCallback((idx, auto = false) => {
+  const goToSlot = useCallback((idx, auto = false, direct = false) => {
     if (idx < 0 || idx >= queue.length) {
       setScreenState('done');
       return;
@@ -287,7 +329,7 @@ export default function LiveSessionScreen({
     const autoTimed = auto && queue[idx].unit === 's';
     autoStartRef.current = autoTimed;
     setCurQueueIdx(idx);
-    setScreenState(queue[idx].set_no === 1 && !autoTimed ? 'guide' : 'set');
+    setScreenState(queue[idx].set_no === 1 && !autoTimed && !direct ? 'guide' : 'set');
   }, [queue]);
 
   // End rest handler defined BEFORE rest timer effect to avoid TDZ initialization error
@@ -295,9 +337,9 @@ export default function LiveSessionScreen({
     goToSlot(restNextIdx == null ? -1 : restNextIdx, true);
   }, [goToSlot, restNextIdx]);
 
-  // Rest countdown timer (timestamp delta)
+  // Rest countdown timer (timestamp delta) — đứng yên khi tạm dừng
   useEffect(() => {
-    if (screenState !== 'rest' || !restEndRef.current) return;
+    if (screenState !== 'rest' || !restEndRef.current || paused) return;
     const interval = setInterval(() => {
       const now = Date.now();
       const diff = Math.max(0, Math.round((restEndRef.current - now) / 1000));
@@ -309,7 +351,7 @@ export default function LiveSessionScreen({
       }
     }, 250);
     return () => clearInterval(interval);
-  }, [screenState, handleEndRest, playTimerBeep]);
+  }, [screenState, handleEndRest, playTimerBeep, paused]);
 
   // Timed exercise timer (Plank, Dead Hang) using timestamp delta
   useEffect(() => {
@@ -341,12 +383,15 @@ export default function LiveSessionScreen({
     return () => clearInterval(interval);
   }, [preparing, playTimerBeep]);
 
-  // Reset input values khi sang ô set khác (so theo khóa ổn định, không theo object để tránh reset giữa chừng)
+  // Reset input values khi sang ô set khác (so theo khóa ổn định, không theo object để tránh reset giữa chừng).
+  // Ô đã ghi (quay lại sửa) điền sẵn số đã ghi.
   useEffect(() => {
     if (!currentSlotKey) return;
     const item = queue[curQueueIdx];
-    setCurrentVal(Number(item?.target_val || 10));
-    setTSec(0);
+    const rec = recordBySlot.get(slotOfItem(item));
+    const recVal = rec?.actualVal != null ? Number(rec.actualVal) : null;
+    setCurrentVal(recVal ?? Number(item?.target_val || 10));
+    setTSec(item?.unit === 's' && recVal != null ? recVal : 0);
     setTRunning(false);
     setPrepLeft(0);
     plankStartTimeRef.current = null;
@@ -390,6 +435,7 @@ export default function LiveSessionScreen({
     setRestTotal(restSec);
     setRestRemaining(restSec);
     restEndRef.current = Date.now() + restSec * 1000;
+    if (paused) restLeftOnPauseRef.current = restSec * 1000;
     setScreenState('rest');
   };
 
@@ -402,6 +448,33 @@ export default function LiveSessionScreen({
     setRestRemaining(nextRemaining);
     setRestTotal(prev => Math.max(prev, nextRemaining));
   };
+
+  // Tạm dừng tại chỗ: đứng đồng hồ buổi, đồng hồ nghỉ và đồng hồ bài giây. Tiếp tục thì nghỉ chạy tiếp phần còn lại.
+  const togglePause = () => {
+    if (paused) {
+      if (restLeftOnPauseRef.current != null) {
+        restEndRef.current = Date.now() + restLeftOnPauseRef.current;
+        restLeftOnPauseRef.current = null;
+      }
+      setPaused(false);
+      return;
+    }
+    if (screenState === 'rest' && restEndRef.current) {
+      restLeftOnPauseRef.current = Math.max(0, restEndRef.current - Date.now());
+    }
+    pauseTimer();
+    setPaused(true);
+  };
+
+  const handleEnd = () => {
+    pauseTimer();
+    restLeftOnPauseRef.current = null;
+    setPaused(false);
+    setScreenState('done');
+  };
+
+  // Về Lộ trình: lưu thời lượng, buổi vẫn ở trạng thái dở để tiếp tục sau
+  const handleBack = () => (onPause ? onPause(elapsed) : onCancel?.());
 
   const persistRecord = (record) => {
     if (!onLogSet) return;
@@ -441,14 +514,61 @@ export default function LiveSessionScreen({
       && (!sessionBase || isNewPR(candidate, sessionBase));
   };
 
+  // Áp danh sách set mới của 1 bài (đã sửa / thêm), tính lại cờ PR của bài (tối đa 1 set) rồi lưu:
+  // set mới → onLogSet, set đã có mà đổi số hoặc đổi cờ PR → onUpdateSet.
+  const commitExercise = (exerciseKey, nextLogged, { insertedIds = [], editedIds = [] } = {}) => {
+    const prId = pickSessionPR(nextLogged.filter(s => s.exerciseKey === exerciseKey), historyBaselines.get(exerciseKey));
+    const toInsert = [];
+    const toUpdate = [];
+    const final = nextLogged.map(s => {
+      if (s.exerciseKey !== exerciseKey) return s;
+      const isPR = s.id === prId;
+      const out = isPR === s.isPR ? s : { ...s, isPR };
+      if (insertedIds.includes(s.id)) toInsert.push(out);
+      else if (editedIds.includes(s.id) || out !== s) toUpdate.push(out);
+      return out;
+    });
+    setLoggedSets(final);
+    toInsert.forEach(persistRecord);
+    if (!onUpdateSet) return;
+    toUpdate.forEach(s => {
+      if (!s.id) return;
+      onUpdateSet(s.id, s.actualVal, { isPR: s.isPR }).catch(err => {
+        console.error('Failed to update set:', err);
+        setSaveError('Không lưu được giá trị vừa sửa. Thử sửa lại.');
+      });
+    });
+  };
+
+  // Sửa giá trị 1 set đã ghi (null = bỏ set)
+  const updateRecordValue = (record, actualVal) => {
+    if (actualVal === record.actualVal) return;
+    commitExercise(record.exerciseKey, loggedSets.map(s => (s === record ? { ...s, actualVal } : s)), { editedIds: [record.id] });
+  };
+
+  // Ghi thêm 1 set ở màn kết quả (set còn trống hoặc set vượt kế hoạch)
+  const insertRecord = (slot, actualVal) => {
+    const nextSeq = Math.max(0, ...loggedSets.map(s => Number(s.sequenceOrder) || 0)) + 1;
+    const record = buildRecord({ ...slot, sequence_order: slot.sequence_order ?? nextSeq }, actualVal, false);
+    commitExercise(record.exerciseKey, [...loggedSets, record], { insertedIds: [record.id] });
+  };
+
   const handleLogSet = (valToLog) => {
     ensureAudioUnlocked();
     if (!currentItem) return;
     pauseTimer();
-    lockModeIfNeeded();
 
     // valToLog === null means set was explicitly skipped
     const actualVal = valToLog === null ? null : Number(valToLog);
+
+    // Quay lại sửa set đã ghi: cập nhật bản ghi cũ rồi tới ô còn trống kế tiếp (không nghỉ)
+    if (currentRecord) {
+      updateRecordValue(currentRecord, actualVal);
+      goToSlot(findNextOpenIndex(queue, doneKeys, curQueueIdx));
+      return;
+    }
+
+    lockModeIfNeeded();
     const record = buildRecord(currentItem, actualVal, isPRFor(currentItem, actualVal));
     setLoggedSets(prev => [...prev, record]);
     persistRecord(record);
@@ -483,23 +603,23 @@ export default function LiveSessionScreen({
     q.set_no === currentItem.set_no ? Number(currentVal) : Number(q.target_val)
   ));
 
-  // Sửa giá trị 1 set ở màn kết quả (ô trống = bỏ set).
-  // ponytail: không tính lại cờ PR sau khi sửa — cần thì tính lại bằng buildPrBaselines như handleLogSet
-  const handleEditSet = (record, raw) => {
-    const actualVal = raw.trim() === '' ? null : Math.max(0, Math.round(Number(raw)));
-    if (Number.isNaN(actualVal) || actualVal === record.actualVal) return;
-    setLoggedSets(prev => prev.map(s => (s === record ? { ...s, actualVal } : s)));
-    if (!record.id || !onUpdateSet) return;
-    onUpdateSet(record.id, actualVal).catch(err => {
-      console.error('Failed to update set:', err);
-      setSaveError('Không lưu được giá trị vừa sửa. Thử sửa lại.');
-    });
-  };
 
-  // Rest SVG circular progress
-  const C110 = 2 * Math.PI * 110;
-  const restProgress = restTotal ? (restRemaining / restTotal) : 0;
-  const restDashOffset = C110 * (1 - restProgress);
+  // Quay lại: set trước trong hàng đợi, set vừa ghi (từ màn nghỉ), hoặc bấm thẳng vào 1 ô set
+  const goPrevSlot = () => {
+    pauseTimer();
+    goToSlot(curQueueIdx - 1, false, true);
+  };
+  const editJustLogged = () => goToSlot(curQueueIdx, false, true);
+  const jumpToSlot = (q) => {
+    pauseTimer();
+    goToSlot(queue.indexOf(q), false, recordBySlot.has(slotOfItem(q)));
+  };
+  const nextOpenIdx = findNextOpenIndex(queue, doneKeys, -1);
+
+  const startSetFromGuide = () => {
+    setScreenState('set');
+    if (currentItem?.unit === 's' && !tRunning && !preparing) startTimer(tSec);
+  };
 
   // Unique exercises count and current exercise index for header label
   const uniqueExerciseKeys = useMemo(() => {
@@ -511,7 +631,7 @@ export default function LiveSessionScreen({
     : 1;
 
   const totalRounds = useMemo(() => Math.max(0, ...dayItems.map(it => Number(it.target_sets) || 1)), [dayItems]);
-  const positionLabel = !currentItem ? '' : mode === 'circuit'
+  const positionLabel = screenState === 'done' ? 'Hoàn thành' : !currentItem ? '' : mode === 'circuit'
     ? `Vòng ${currentItem.set_no} / ${totalRounds} · Bài ${currentExerciseIdx} / ${uniqueExerciseKeys.length}`
     : mode === 'superset'
       ? `Cặp ${Math.floor(currentItem.exerciseIndex / 2) + 1} · ${LETTERS[currentItem.exerciseIndex] || ''}${currentItem.set_no} · Set ${currentItem.set_no}/${currentItem.total_sets}`
@@ -525,10 +645,7 @@ export default function LiveSessionScreen({
   // ── STATS CALCULATION FOR DONE SCREEN ─────────────────────────────────────
   const doneStats = useMemo(() => {
     const completedCount = loggedSets.filter(s => s.actualVal != null).length;
-    const totalVolumeKg = loggedSets.reduce((acc, s) => {
-      return acc + (s.actualVal != null && s.unit !== 's' ? s.actualVal * (s.kg || 0) : 0);
-    }, 0);
-    const prExercises = new Set(loggedSets.filter(s => s.isPR).map(s => s.exerciseKey));
+    const totalReps = loggedSets.reduce((acc, s) => acc + (s.actualVal != null && s.unit !== 's' ? Number(s.actualVal) : 0), 0);
 
     // Auto-progression evaluation for each day item
     const progressionCandidates = dayItems.map(item => {
@@ -542,14 +659,10 @@ export default function LiveSessionScreen({
       return {
         routineItemId: item.id,
         exercise_key: item.exercise_key,
-        name: nameOf(item.exercise_key),
         currentVal: item.target_val,
         nextVal: evalRes.nextTarget,
         unit: item.unit,
-        shouldProgress: evalRes.shouldProgress,
-        step: evalRes.step,
-        completedSets: itemSets.filter(v => v != null).length,
-        totalTargetSets: item.target_sets
+        shouldProgress: evalRes.shouldProgress
       };
     });
 
@@ -563,12 +676,11 @@ export default function LiveSessionScreen({
     return {
       completedCount,
       totalSets: queue.length,
-      totalVolumeKg: Math.round(totalVolumeKg),
-      prCount: prExercises.size,
+      totalReps,
       progressionCandidates,
       prevComparison
     };
-  }, [loggedSets, queue.length, dayItems, prevByExercise, nameOf]);
+  }, [loggedSets, queue.length, dayItems, prevByExercise]);
 
   // Set initial approved progressions when entering done state
   useEffect(() => {
@@ -590,7 +702,6 @@ export default function LiveSessionScreen({
   // Bài tính giây: gợi ý tư thế đổi mỗi 6 giây khi đang giữ
   const formCues = exDef?.form_cues || [];
   const activeCueIdx = tRunning && formCues.length ? Math.floor(tSec / 6) % formCues.length : -1;
-  const C104 = 2 * Math.PI * 104;
   const timedTarget = Number(currentItem?.target_val) || 0;
   const timedProgress = timedTarget ? Math.min(1, tSec / timedTarget) : 0;
 
@@ -605,12 +716,12 @@ export default function LiveSessionScreen({
   // If queue is empty (e.g. rest day selected)
   if (queue.length === 0) {
     return (
-      <div className="body-card" style={{ padding: '32px', textAlign: 'center', margin: 'auto 0' }}>
-        <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'var(--body-shell-bg)', display: 'grid', placeItems: 'center', margin: '0 auto 16px auto', color: 'var(--body-text-muted)' }}>
+      <div className="body-card body-ls-empty">
+        <div className="body-ls-empty-ic">
           <AppIcon name="calendar" size={24} />
         </div>
-        <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 8px 0' }}>Không có bài tập theo lịch hôm nay</h3>
-        <p style={{ fontSize: '13.5px', color: 'var(--body-text-muted)', margin: '0 0 20px 0', maxWidth: '360px', marginLeft: 'auto', marginRight: 'auto' }}>
+        <h3>Không có bài tập theo lịch hôm nay</h3>
+        <p>
           Hôm nay là ngày nghỉ hoặc chưa có bài tập nào được gán cho thứ này. Bạn có thể chọn ngày khác hoặc quay lại Lộ trình.
         </p>
         <button className="body-btn body-btn-primary" onClick={onCancel} style={{ padding: '0 20px', height: '38px' }}>
@@ -620,789 +731,547 @@ export default function LiveSessionScreen({
     );
   }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', gap: '16px' }}>
-      {/* ── SAVE ERROR ALERT ────────────────────────────────────────── */}
-      {saveError && (
-        <div style={{
-          padding: '10px 14px',
-          borderRadius: '10px',
-          background: 'rgba(239, 68, 68, 0.12)',
-          border: '1px solid rgba(239, 68, 68, 0.3)',
-          color: 'var(--body-red, #EF4444)',
-          fontSize: '13px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '8px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AppIcon name="warning" size={16} />
-            <span>{saveError}</span>
-          </div>
-          <button
-            onClick={() => setSaveError(null)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--body-red, #EF4444)',
-              cursor: 'pointer',
-              padding: '2px 6px',
-              fontSize: '12px'
-            }}
-          >
-            Đóng
+  // ── Dữ liệu hiển thị ─────────────────────────────────────────
+  const day = splitDayName(dayInfo?.singleExercise ? '' : dayInfo?.name || '');
+  const sessionTitle = dayInfo?.singleExercise
+    ? splitExerciseName(dayInfo.name || '').vn
+    : day.title || 'Buổi tập';
+  const sessionEyebrow = [
+    day.tag || (dayInfo?.singleExercise ? 'Tập lẻ' : ''),
+    `${today.toLocaleDateString('vi-VN', { weekday: 'long' })} ${today.getDate()}/${today.getMonth() + 1}`
+  ].filter(Boolean).join(' · ').toUpperCase();
+  const eyebrowColor = DAY_TAG_COLORS[day.letter] || 'var(--body-accent)';
+
+  const exName = splitExerciseName(exDef?.name || '');
+  const tempo = splitTempo(exDef?.tempo || '');
+  const easierEx = exDef?.easier_variation ? exerciseOf(exDef.easier_variation) : null;
+  const contra = (exDef?.contraindications || []).join(', ');
+  const isTimed = currentItem.unit === 's';
+  const met = currentVal >= currentItem.target_val;
+  const canFinishAll = !isTimed && !isEditing && openSetsOfCurrent.length > 1;
+  const curPrev = prevLine(currentItem.exercise_key);
+  const restProgress = restTotal ? restRemaining / restTotal : 0;
+
+  // Trạng thái 1 ô set: đang mở / chưa ghi / bỏ / đạt / chưa đạt mục tiêu
+  const slotState = (q) => {
+    if ((screenState === 'guide' || screenState === 'set') && q === currentItem) return 'cur';
+    const r = recordBySlot.get(slotOfItem(q));
+    if (!r) return 'todo';
+    if (r.actualVal == null) return 'skip';
+    return r.actualVal >= q.target_val ? 'ok' : 'low';
+  };
+  const slotLabel = (q) => {
+    const r = recordBySlot.get(slotOfItem(q));
+    if (slotState(q) === 'cur' && !r) return '…';
+    if (!r) return '—';
+    return r.actualVal == null ? 'bỏ' : fmtVal(r.actualVal, q.unit);
+  };
+
+  // ── Sửa số ở màn kết quả ─────────────────────────────────────
+  // Các set của 1 bài: ô theo kế hoạch (có thể chưa ghi) + set ghi thêm ngoài kế hoạch
+  const setRowsOf = (e) => {
+    const item = dayItems[e];
+    if (!item) return [];
+    const slots = (groups[e] || []).map(q => ({ key: `s${q.set_no}`, setNo: q.set_no, slot: q, record: recordBySlot.get(slotOfItem(q)) || null }));
+    const inSlots = new Set(slots.map(r => r.record?.id).filter(Boolean));
+    const extras = loggedSets
+      .filter(r => r.exerciseKey === item.exercise_key && !inSlots.has(r.id) && r.setNo > (Number(item.target_sets) || 0))
+      .sort((a, b) => a.setNo - b.setNo)
+      .map(r => ({ key: r.id, setNo: r.setNo, slot: null, record: r, extra: true }));
+    return [...slots, ...extras];
+  };
+  const rowState = (row, item) => {
+    if (!row.record) return 'todo';
+    if (row.record.actualVal == null) return 'skip';
+    return row.record.actualVal >= Number(item.target_val) ? 'ok' : 'low';
+  };
+  const commitTyped = (record, raw) => {
+    if (String(raw).trim() === '') return;
+    const val = Math.max(0, Math.round(Number(raw)));
+    if (!Number.isNaN(val)) updateRecordValue(record, val);
+  };
+  // Thêm 1 set ngoài kế hoạch (tập dư); giá trị mặc định = mục tiêu, sửa tiếp bằng −/+
+  const addExtraSet = (e) => {
+    const item = dayItems[e];
+    const rows = setRowsOf(e);
+    const setNo = Math.max(Number(item.target_sets) || 0, ...rows.map(r => r.setNo)) + 1;
+    const sequenceOrder = Math.max(0, ...loggedSets.map(s => Number(s.sequenceOrder) || 0)) + 1;
+    insertRecord({
+      routine_item_id: item.id,
+      exercise_key: item.exercise_key,
+      set_no: setNo,
+      sequence_order: sequenceOrder,
+      target_val: item.target_val,
+      unit: item.unit || 'rep',
+      kg: item.kg || 0
+    }, Number(item.target_val) || 0);
+  };
+
+  const segments = (
+    <div className="body-ls-segs" aria-hidden="true">
+      {groups.map((g, e) => (
+        <span key={e} style={{ flex: g.length }}>
+          {g.map(q => <i key={q.set_no} className={`is-${slotState(q)}`} />)}
+        </span>
+      ))}
+    </div>
+  );
+
+  const backButton = curQueueIdx > 0 && (
+    <button type="button" className="body-ls-btn is-back" onClick={goPrevSlot} title="Quay lại set trước" aria-label="Quay lại set trước">
+      <AppIcon name="caretLeft" size={15} /><span className="body-ls-d-text">Set trước</span>
+    </button>
+  );
+
+  const prepPicker = !modeLocked && dayItems.some(it => it.unit === 's') && (
+    <div className="body-ls-prep">
+      <span>Chuẩn bị trước set giây</span>
+      <div className="body-ls-seg">
+        {PREP_OPTIONS.map(v => (
+          <button key={v} type="button" className={prepSec === v ? 'is-on' : ''} onClick={() => choosePrepSec(v)} aria-pressed={prepSec === v}>
+            {v === 0 ? 'Tắt' : `${v}s`}
           </button>
-        </div>
-      )}
-
-      {/* ── TOP LIVE BAR ────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '8px',
-        padding: '8px 10px 8px 16px',
-        borderRadius: '14px',
-        background: 'var(--body-card-bg)',
-        border: '1px solid var(--body-card-border)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-          <span style={{
-            fontSize: '18px',
-            fontWeight: 700,
-            fontFamily: 'var(--body-mono)',
-            color: 'var(--body-accent)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <AppIcon name="timer" size={18} />
-            {formatClock(elapsed)}
-          </span>
-          <span style={{ fontSize: '13px', color: 'var(--body-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {screenState !== 'done' && positionLabel}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          className="body-btn-icon"
-          style={{ width: '36px', height: '36px', flex: 'none' }}
-          onClick={() => setShowExitModal(true)}
-          aria-label="Kết thúc / tạm dừng buổi tập"
-        >
-          <AppIcon name="dots" size={20} weight="bold" />
-        </button>
+        ))}
       </div>
+    </div>
+  );
 
-      {/* ── PROGRESS SEGMENTS ───────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '4px' }}>
-        {queue.map((item, i) => {
-          const isDone = doneKeys.has(slotOfItem(item));
-          const isCur = i === curQueueIdx && screenState !== 'done';
-          return (
-            <div
-              key={i}
-              style={{
-                flex: 1,
-                height: '4px',
-                borderRadius: '2px',
-                background: isDone ? 'var(--body-green)' : isCur ? 'var(--body-accent)' : 'var(--body-border-subtle)',
-                transition: 'all 0.2s ease'
-              }}
-            />
-          );
-        })}
-      </div>
-
-      {/* ── BƯỚC 1: XEM HƯỚNG DẪN KỸ THUẬT (GUIDE) ──────────────── */}
-      {screenState === 'guide' && (
-        <div className="body-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div>
-            <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0, lineHeight: 1.25 }}>{exDef?.name}</h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '4px 12px', marginTop: '6px' }}>
-              <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-accent)' }}>
-                {currentItem?.total_sets} × {formatValWithUnit(currentItem?.target_val, currentItem?.unit)}
-                {currentItem?.kg ? ` · ${currentItem.kg} kg` : ''}
+  // ── HƯỚNG DẪN: cách làm bên trái, video + nhóm cơ bên phải ───────────
+  const guideView = (
+    <>
+      <div className="body-ls-scroll">
+        <div className="body-ls-guide">
+          <div className="body-ls-g-main">
+            <div className="body-ls-g-head">
+              <span className="body-ls-eyebrow is-accent">
+                BÀI {currentExerciseIdx} / {uniqueExerciseKeys.length}{currentItem.set_no > 1 ? ` · SET ${currentItem.set_no}` : ''}
               </span>
-              {prevLine(currentItem?.exercise_key) && (
-                <span style={{ fontSize: '12.5px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-sub)' }}>
-                  lần trước {prevLine(currentItem?.exercise_key)}
+              <h2 className="body-ls-g-title">{exName.vn}</h2>
+              {exName.en && <span className="body-ls-g-en">{exName.en}</span>}
+              <div className="body-ls-g-chips">
+                <span className="body-ls-chip is-target">
+                  {currentItem.total_sets} × {formatValWithUnit(currentItem.target_val, currentItem.unit)}
                 </span>
-              )}
+                <span className="body-ls-chip">{currentItem.kg ? `${currentItem.kg} kg` : 'BW'} · nghỉ {currentItem.rest_seconds}s</span>
+                {curPrev && (
+                  <span className="body-ls-chip">
+                    <AppIcon name="history" size={14} /><span className="body-ls-d-text">Lần trước</span> <b>{curPrev}</b>
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Chọn chế độ trước set đầu tiên, sau đó cố định suốt buổi */}
-          {!modeLocked && dayItems.length > 1 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '6px' }}>
-                {modeOptions.map(m => {
-                  const on = mode === m.key;
-                  return (
+            {/* Mobile: chọn cách tập ngay trong hướng dẫn (desktop nằm ở cột trái) */}
+            {!modeLocked && dayItems.length > 1 && (
+              <div className="body-ls-mmodes">
+                <span className="body-ls-mmodes-label">Cách tập buổi này</span>
+                <div className="body-ls-mmodes-grid">
+                  {modeOptions.map(m => (
                     <button
                       key={m.key}
                       type="button"
+                      className={mode === m.key ? 'is-on' : ''}
                       onClick={() => setMode(m.key)}
-                      style={{
-                        padding: '8px 6px',
-                        borderRadius: '10px',
-                        border: `1.5px solid ${on ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
-                        background: on ? 'var(--body-accent-soft)' : 'transparent',
-                        color: on ? 'var(--body-accent)' : 'var(--body-text-main)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '2px',
-                        textAlign: 'center'
-                      }}
+                      aria-pressed={mode === m.key}
                     >
-                      <span style={{ fontSize: '13px', fontWeight: 700 }}>{m.label}</span>
-                      <span style={{ fontSize: '11.5px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>~{m.minutes} phút</span>
+                      <b>{m.label}</b>
+                      <small>~{m.minutes} phút</small>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
+                <span className="body-ls-mmodes-desc">{MODES.find(m => m.key === mode)?.desc}</span>
               </div>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
-                {MODES.find(m => m.key === mode)?.desc}
-              </span>
-            </div>
-          )}
+            )}
+            {prepPicker && <div className="body-ls-m-prep">{prepPicker}</div>}
 
-          {/* Đếm ngược chuẩn bị trước mỗi set tính giây — chọn trước khi bắt đầu buổi */}
-          {!modeLocked && dayItems.some(it => it.unit === 's') && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)' }}>Chuẩn bị trước set giây</span>
-              {PREP_OPTIONS.map(v => (
-                <button
-                  key={v}
-                  type="button"
-                  className="body-btn body-btn-secondary"
-                  style={{
-                    height: '30px',
-                    padding: '0 10px',
-                    fontSize: '12.5px',
-                    borderColor: prepSec === v ? 'var(--body-accent)' : undefined,
-                    color: prepSec === v ? 'var(--body-accent)' : undefined
-                  }}
-                  onClick={() => choosePrepSec(v)}
-                >
-                  {v === 0 ? 'Tắt' : `${v}s`}
-                </button>
+            <div className="body-ls-g-steps">
+              <span className="body-ls-label">CÁCH LÀM</span>
+              {(exDef?.steps || []).map((step, i) => (
+                <div key={i} className="body-ls-step">
+                  <span>{i + 1}</span>
+                  <p>{step}</p>
+                </div>
               ))}
             </div>
-          )}
 
-          <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', lineHeight: 1.6, color: 'var(--body-text-main)' }}>
-            {(exDef?.steps || []).map((step, sIdx) => (
-              <li key={sIdx} style={{ marginBottom: '4px' }}>{step}</li>
-            ))}
-          </ol>
+            {(exDef?.breathing || exDef?.tempo) && (
+              <div className="body-ls-g-cards">
+                {exDef?.breathing && (
+                  <div>
+                    <span className="body-ls-label">NHỊP THỞ</span>
+                    <p>{exDef.breathing}</p>
+                  </div>
+                )}
+                {exDef?.tempo && (
+                  <div>
+                    <span className="body-ls-label">TEMPO</span>
+                    {tempo.code && <b>{tempo.code}</b>}
+                    <p>{tempo.text}</p>
+                  </div>
+                )}
+              </div>
+            )}
 
-          <details className="body-live-details">
-            <summary>Chi tiết kỹ thuật & video</summary>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px', fontSize: '12.5px', lineHeight: 1.5 }}>
-              {exDef?.breathing && <div><strong>Thở:</strong> {exDef.breathing}</div>}
-              {exDef?.tempo && <div><strong>Tempo:</strong> {exDef.tempo}</div>}
-              {exDef?.tip && <div style={{ color: 'var(--body-red)' }}><strong>Lỗi hay gặp:</strong> {exDef.tip}</div>}
-
-              {exDef?.injury_risk && (
-                <div style={{
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  background: 'var(--body-red-soft)',
-                  color: 'var(--body-text-main)'
-                }}>
-                  <div>{exDef.injury_risk}</div>
-                  {(exDef.contraindications || []).length > 0 && (
-                    <div style={{ marginTop: '4px', color: 'var(--body-red)', fontWeight: 600 }}>
-                      Không nên tập nếu: {exDef.contraindications.join(', ')}
-                    </div>
-                  )}
-                  {exDef.easier_variation && (
-                    <div style={{ marginTop: '4px', color: 'var(--body-green-text)' }}>
-                      Quá khó? Thử <strong>{BASE_EXERCISES.find(e => e.key === exDef.easier_variation)?.name}</strong>
-                    </div>
-                  )}
+            {(exDef?.tip || contra) && (
+              <div className="body-ls-tip">
+                <AppIcon name="warning" size={18} weight="fill" />
+                <div>
+                  <b>Lỗi hay gặp</b>
+                  {exDef?.tip && <p>{exDef.tip}</p>}
+                  {contra && <strong>Không nên tập nếu: {contra}</strong>}
                 </div>
-              )}
+              </div>
+            )}
 
-              <button
-                type="button"
-                className="body-btn body-btn-secondary"
-                style={{ alignSelf: 'flex-start' }}
-                onClick={() => setShowDetailModal(true)}
-              >
-                Bản đồ cơ & video
-              </button>
-
-              <ExerciseVideoPlayer
-                exerciseKey={currentItem?.exercise_key}
-                exerciseName={exDef?.name}
-                defaultUrl={exDef?.video_url}
-                compact={true}
-              />
-            </div>
-          </details>
-
-          <div className="body-live-actions" style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-            <button
-              className="body-btn body-btn-primary"
-              style={{ padding: '0 24px', height: '44px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
-              onClick={() => {
-                setScreenState('set');
-                if (currentItem?.unit === 's' && !tRunning && !preparing) startTimer(tSec);
-              }}
-            >
-              <span>Bắt đầu set {currentItem?.set_no || 1}</span>
-              <AppIcon name="arrowRight" size={16} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── BƯỚC 2: GHI SET (REP HOẶC BẤM GIỜ) ──────────────────── */}
-      {screenState === 'set' && (
-        <div className="body-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-            <div style={{ minWidth: 0 }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, lineHeight: 1.25 }}>{exDef?.name}</h2>
-              {prevLine(currentItem?.exercise_key) && (
-                <div style={{ fontSize: '12px', color: 'var(--body-text-sub)', marginTop: '4px', fontFamily: 'var(--body-mono)' }}>
-                  lần trước {prevLine(currentItem?.exercise_key)}
-                </div>
-              )}
-            </div>
-            <button
-              className="body-btn body-btn-secondary"
-              style={{ fontSize: '12px', height: '30px', flex: 'none' }}
-              onClick={() => { pauseTimer(); setScreenState('guide'); }}
-            >
-              Hướng dẫn
-            </button>
-          </div>
-
-          {/* Trạng thái từng set của bài đang tập */}
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {Array.from({ length: currentItem?.total_sets || 0 }, (_, j) => {
-              const val = (logs[currentItem.exercise_key] || [])[j];
-              const has = val !== undefined;
-              const isNow = j + 1 === currentItem.set_no;
-              const ok = has && val != null && val >= currentItem.target_val;
-              return (
-                <span
-                  key={j}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    fontFamily: 'var(--body-mono)',
-                    fontWeight: 600,
-                    border: `1px solid ${isNow ? 'var(--body-accent)' : ok ? 'var(--body-green)' : has ? 'var(--body-amber)' : 'var(--body-card-border)'}`,
-                    background: isNow ? 'var(--body-accent-soft)' : ok ? 'var(--body-green-soft)' : has ? 'var(--body-amber-soft)' : 'var(--body-card-bg)',
-                    color: isNow ? 'var(--body-accent)' : 'var(--body-text-main)'
-                  }}
-                >
-                  S{j + 1} · {isNow ? '…' : !has ? formatValWithUnit(currentItem.target_val, currentItem.unit) : val == null ? 'bỏ' : formatValWithUnit(val, currentItem.unit)}
-                </span>
-              );
-            })}
-            {currentItem?.unit !== 's' && openSetsOfCurrent.length > 1 && (
-              <button
-                type="button"
-                className="body-btn"
-                style={{ marginLeft: 'auto', height: '30px', fontSize: '12px', background: 'var(--body-green-soft)', color: 'var(--body-green-text)', border: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
-                onClick={handleFinishExercise}
-                title="Ghi set này theo số đang chọn, các set còn lại đủ mục tiêu"
-              >
-                <AppIcon name="check" size={14} />
-                <span>Xong cả bài</span>
+            {easierEx && (
+              <button type="button" className="body-ls-easier" onClick={() => setDetailEx(easierEx)}>
+                <span>Quá khó? Đổi sang <b>{splitExerciseName(easierEx.name).vn}</b></span>
+                <AppIcon name="repeat" size={15} />
               </button>
             )}
           </div>
 
-          {/* Bài đếm rep */}
-          {currentItem?.unit !== 's' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', margin: 'auto 0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div className="body-ls-g-aside">
+            <ExerciseVideoPlayer
+              exerciseKey={currentItem.exercise_key}
+              exerciseName={exDef?.name}
+              defaultUrl={exDef?.video_url}
+            />
+            <div className="body-ls-muscles">
+              <span className="body-ls-label">NHÓM CƠ</span>
+              <div className="body-ls-mgrid">
+                <span>Chính</span>
+                <span><i className="is-prim">{MUSCLE_MAP[exDef?.primary]?.name || exDef?.primary}</i></span>
+                {(exDef?.secondary || []).length > 0 && (
+                  <>
+                    <span>Phụ</span>
+                    <span>{exDef.secondary.map(m => <i key={m}>{MUSCLE_MAP[m]?.name || m}</i>)}</span>
+                  </>
+                )}
+              </div>
+              <button type="button" className="body-ls-link" onClick={() => setDetailEx(exDef)}>
+                Mở bản đồ cơ<AppIcon name="arrowRight" size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="body-ls-foot">
+        <div className="body-ls-foot-group">
+          {backButton}
+          <button type="button" className="body-ls-btn" onClick={handleSkipExercise}>
+            <AppIcon name="skip" size={14} />Bỏ bài<span className="body-ls-d-text"> này</span>
+          </button>
+        </div>
+        <button type="button" className="body-ls-btn is-primary" onClick={startSetFromGuide}>
+          Bắt đầu set {currentItem.set_no}<AppIcon name="arrowRight" size={16} />
+        </button>
+      </div>
+    </>
+  );
+
+  // ── GHI SET (đếm rep hoặc bấm giờ) ─────────────────────────────────
+  const setView = (
+    <>
+      <div className="body-ls-scroll is-set">
+        <div className="body-ls-set-head">
+          <div>
+            <span className="body-ls-eyebrow is-accent">
+              SET {currentItem.set_no} / {currentItem.total_sets}{isEditing ? ' · ĐANG SỬA' : ''}
+            </span>
+            <h2 className="body-ls-set-title">{exName.vn}</h2>
+            {curPrev && <span className="body-ls-mono-sub">lần trước {curPrev}</span>}
+          </div>
+          <button
+            type="button"
+            className="body-ls-btn is-guide"
+            onClick={() => { pauseTimer(); setScreenState('guide'); }}
+            aria-label="Xem hướng dẫn"
+          >
+            <AppIcon name="book" size={15} /><span className="body-ls-d-text">Xem hướng dẫn</span>
+          </button>
+        </div>
+
+        <div className="body-ls-set-center">
+          <div className="body-ls-set-chips">
+            {(groups[currentItem.exerciseIndex] || []).map(q => {
+              const st = slotState(q);
+              const r = recordBySlot.get(slotOfItem(q));
+              return (
                 <button
-                  className="body-btn-icon"
-                  style={{ width: '64px', height: '64px', borderRadius: '50%', fontSize: '26px' }}
-                  onClick={() => setCurrentVal(prev => Math.max(0, prev - 1))}
-                  aria-label="Giảm 1 rep"
+                  key={q.set_no}
+                  type="button"
+                  className={`body-ls-schip is-${st}`}
+                  onClick={() => jumpToSlot(q)}
+                  disabled={st === 'cur'}
+                  title={r ? `Sửa set ${q.set_no}` : `Sang set ${q.set_no}`}
                 >
-                  −
+                  S{q.set_no} · {st === 'cur' ? '…' : r ? slotLabel(q) : fmtVal(q.target_val, q.unit)}
                 </button>
+              );
+            })}
+          </div>
 
-                <div style={{ textAlign: 'center', minWidth: '90px' }}>
-                  <div style={{ fontSize: '56px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: currentVal >= currentItem.target_val ? 'var(--body-green)' : 'var(--body-amber)' }}>
-                    {currentVal}
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                    {currentVal >= currentItem.target_val ? '✓ ' : ''}mục tiêu {currentItem.target_val} rep{currentItem.kg ? ` · ${currentItem.kg} kg` : ''}
-                  </div>
+          {!isTimed ? (
+            <>
+              <div className="body-ls-counter">
+                <button type="button" className="body-ls-round" onClick={() => setCurrentVal(prev => Math.max(0, prev - 1))} aria-label="Giảm 1 rep">
+                  <AppIcon name="minus" size={26} />
+                </button>
+                <div className="body-ls-counter-val">
+                  <b className={met ? 'is-met' : ''}>{currentVal}</b>
+                  <span className={met ? 'is-met' : ''}>
+                    <AppIcon name={met ? 'checkCircle' : 'flag'} size={15} weight={met ? 'fill' : 'regular'} />
+                    {met ? 'đạt' : ''} mục tiêu {currentItem.target_val} rep{currentItem.kg ? ` · ${currentItem.kg} kg` : ''}
+                  </span>
                 </div>
-
-                <button
-                  className="body-btn-icon"
-                  style={{ width: '64px', height: '64px', borderRadius: '50%', fontSize: '26px' }}
-                  onClick={() => setCurrentVal(prev => prev + 1)}
-                  aria-label="Tăng 1 rep"
-                >
-                  +
+                <button type="button" className="body-ls-round" onClick={() => setCurrentVal(prev => prev + 1)} aria-label="Tăng 1 rep">
+                  <AppIcon name="plus" size={26} />
                 </button>
               </div>
 
               {/* Chọn nhanh 7 số liên tiếp quanh mục tiêu (−4 … +2) */}
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                {Array.from({ length: 7 }, (_, i) => Math.max(0, Number(currentItem.target_val) - 4) + i).map((v) => (
-                  <button
-                    key={v}
-                    className="body-btn body-btn-secondary"
-                    style={{
-                      height: '40px',
-                      minWidth: '40px',
-                      padding: '0 8px',
-                      justifyContent: 'center',
-                      fontWeight: v === currentVal ? 700 : 500,
-                      background: v === currentVal ? 'var(--body-text-main)' : undefined,
-                      color: v === currentVal ? 'var(--body-bg)' : undefined
-                    }}
-                    onClick={() => setCurrentVal(v)}
-                  >
+              <div className="body-ls-quick">
+                {Array.from({ length: 7 }, (_, i) => Math.max(0, Number(currentItem.target_val) - 4) + i).map(v => (
+                  <button key={v} type="button" className={v === currentVal ? 'is-on' : ''} onClick={() => setCurrentVal(v)}>
                     {v}
                   </button>
                 ))}
               </div>
-            </div>
+            </>
           ) : (
             /* Bài đếm giây (Plank / Dead Hang) */
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', margin: 'auto 0' }}>
-              <div style={{ position: 'relative', width: '230px', height: '230px' }}>
-                <svg width="230" height="230" viewBox="0 0 230 230">
-                  <circle cx="115" cy="115" r="104" fill="none" stroke="var(--body-border-subtle)" strokeWidth="10" />
+            <div className="body-ls-timed">
+              <div className={`body-ls-ring is-timed${preparing ? ' is-prep' : ''}`}>
+                <svg viewBox="0 0 230 230">
+                  <circle cx="115" cy="115" r="104" className="body-ls-ring-track" />
                   <circle
                     cx="115"
                     cy="115"
                     r="104"
-                    fill="none"
-                    stroke={preparing ? 'var(--body-amber)' : 'var(--body-accent)'}
-                    strokeWidth="10"
-                    strokeDasharray={`${(C104 * (preparing ? prepLeft / (prepSec || 1) : 1 - timedProgress)).toFixed(1)} ${C104.toFixed(1)}`}
-                    strokeLinecap="round"
-                    transform="rotate(-90 115 115)"
+                    className="body-ls-ring-bar"
+                    strokeDasharray={`${(RING_TIMED * (preparing ? prepLeft / (prepSec || 1) : 1 - timedProgress)).toFixed(1)} ${RING_TIMED.toFixed(1)}`}
                   />
                 </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '52px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: preparing ? 'var(--body-amber)' : 'var(--body-text-main)' }}>
-                    {preparing ? prepLeft : formatClock(Math.max(0, timedTarget - tSec))}
-                  </span>
-                  <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)' }}>
-                    {preparing ? 'chuẩn bị' : `/ ${formatClock(timedTarget)}`}
-                  </span>
+                <div>
+                  <b>{preparing ? prepLeft : formatClock(Math.max(0, timedTarget - tSec))}</b>
+                  <span>{preparing ? 'chuẩn bị' : `/ ${formatClock(timedTarget)}`}</span>
                 </div>
               </div>
 
+              <div className="body-ls-timed-actions">
+                <button type="button" className="body-ls-btn" onClick={() => (tRunning || preparing ? pauseTimer() : startTimer(tSec))}>
+                  <AppIcon name={tRunning || preparing ? 'pause' : 'play'} size={16} />
+                  {tRunning || preparing ? 'Tạm dừng' : tSec > 0 ? 'Tiếp tục' : 'Bắt đầu'}
+                </button>
+                {tSec > 0 && !tRunning && (
+                  <button type="button" className="body-ls-btn" onClick={() => { setTSec(0); plankStartTimeRef.current = null; }}>
+                    Đặt lại
+                  </button>
+                )}
+              </div>
+
               {formCues.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', maxWidth: '420px' }}>
+                <div className="body-ls-cues">
                   {formCues.map((cue, i) => (
-                    <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '12.5px', lineHeight: 1.45, color: i === activeCueIdx ? 'var(--body-text-main)' : 'var(--body-text-muted)', fontWeight: i === activeCueIdx ? 600 : 400 }}>
-                      <AppIcon name={i === activeCueIdx ? 'checkCircle' : 'check'} size={14} style={{ color: i === activeCueIdx ? 'var(--body-accent)' : 'var(--body-border-subtle)', flex: 'none', marginTop: '2px' }} />
+                    <div key={i} className={i === activeCueIdx ? 'is-on' : ''}>
+                      <AppIcon name={i === activeCueIdx ? 'checkCircle' : 'check'} size={14} />
                       <span>{cue}</span>
                     </div>
                   ))}
                 </div>
               )}
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  className="body-btn body-btn-secondary"
-                  onClick={() => (tRunning || preparing ? pauseTimer() : startTimer(tSec))}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <AppIcon name={tRunning || preparing ? 'pause' : 'play'} size={16} />
-                  <span>{tRunning || preparing ? 'Tạm dừng' : tSec > 0 ? 'Tiếp tục' : 'Bắt đầu'}</span>
-                </button>
-                {tSec > 0 && !tRunning && (
-                  <button
-                    className="body-btn body-btn-secondary"
-                    onClick={() => { setTSec(0); plankStartTimeRef.current = null; }}
-                  >
-                    Đặt lại
-                  </button>
-                )}
-              </div>
             </div>
           )}
 
-          <div className="body-live-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--body-card-border)' }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                className="body-btn body-btn-secondary"
-                onClick={() => handleLogSet(null)}
-              >
-                Bỏ set
-              </button>
-              <button
-                className="body-btn body-btn-secondary"
-                onClick={handleSkipExercise}
-                title="Bỏ các set còn lại của bài này"
-              >
-                Bỏ bài
-              </button>
-            </div>
-
-            <button
-              className="body-btn body-btn-accent"
-              style={{ padding: '0 24px', height: '42px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
-              disabled={currentItem.unit === 's' && tSec === 0}
-              title={currentItem.unit === 's' && tSec === 0 ? 'Bấm "Bắt đầu đếm giờ" trước khi hoàn thành' : undefined}
-              onClick={() => handleLogSet(currentItem.unit === 's' ? tSec : currentVal)}
-            >
-              <AppIcon name="checkCircle" size={18} />
-              <span>Xong set {currentItem.set_no}</span>
+          {canFinishAll && (
+            <button type="button" className="body-ls-finish-all" onClick={handleFinishExercise}>
+              <AppIcon name="check" size={14} />Xong cả bài (các set sau đủ mục tiêu)
             </button>
-          </div>
+          )}
         </div>
-      )}
-
-      {/* ── BƯỚC 3: REST TIMER OVERLAY ──────────────────────────── */}
-      {screenState === 'rest' && (
-        <div className="body-rest-overlay">
-          <span style={{ fontSize: '15px', fontWeight: 600, color: '#C4B6F4', textTransform: 'uppercase' }}>
-            {REST_KIND_LABELS[restKind] || 'Nghỉ giữa set'}
-          </span>
-
-          <div className="body-timer-ring-container">
-            <svg width="250" height="250" viewBox="0 0 250 250">
-              <circle
-                cx="125"
-                cy="125"
-                r="110"
-                fill="none"
-                stroke="rgba(255,255,255,0.08)"
-                strokeWidth="10"
-              />
-              <circle
-                cx="125"
-                cy="125"
-                r="110"
-                fill="none"
-                stroke={restRemaining <= 10 ? '#7FD3A2' : '#7C5CFC'}
-                strokeWidth="10"
-                strokeDasharray={C110}
-                strokeDashoffset={restDashOffset}
-                strokeLinecap="round"
-                transform="rotate(-90 125 125)"
-                style={{ transition: 'stroke-dashoffset 0.3s ease' }}
-              />
-            </svg>
-
-            <div className="body-timer-ring-text">
-              <span className="body-timer-clock">{formatClock(restRemaining)}</span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', margin: '16px 0' }}>
-            <button
-              className="body-btn body-btn-secondary"
-              style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none' }}
-              onClick={() => handleAdjustRest(-15)}
-            >
-              −15 giây
-            </button>
-            <button
-              className="body-btn body-btn-secondary"
-              style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none' }}
-              onClick={() => handleAdjustRest(15)}
-            >
-              +15 giây
-            </button>
-          </div>
-
-          <div style={{ textAlign: 'center', marginTop: 'auto', padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}>
-            <div style={{ fontSize: '11px', fontFamily: 'var(--body-mono)', color: '#9C9AA8' }}>TIẾP THEO</div>
-            <div style={{ fontSize: '16px', fontWeight: 600, color: '#fff', marginTop: '2px' }}>
-              {nextItem ? `Set ${nextItem.set_no} / ${nextItem.total_sets} · ${nameOf(nextItem.exercise_key)}` : 'Hoàn thành buổi'}
-            </div>
-            {nextItem && (
-              <div style={{ fontSize: '12.5px', color: '#B0B3BE' }}>
-                Mục tiêu {formatValWithUnit(nextItem.target_val, nextItem.unit)}
-                {nextItem.kg ? ` · ${nextItem.kg} kg` : ''}
-                {nextPrevInSession !== undefined
-                  ? ` · set trước ${nextPrevInSession == null ? 'bỏ' : formatValWithUnit(nextPrevInSession, nextItem.unit)}`
-                  : prevLine(nextItem.exercise_key) ? ` · lần trước ${prevLine(nextItem.exercise_key)}` : ''}
-              </div>
-            )}
-          </div>
-
-          <button
-            className="body-btn"
-            style={{ width: '100%', height: '52px', marginTop: '16px', justifyContent: 'center', gap: '8px', fontSize: '15px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none' }}
-            onClick={handleEndRest}
-          >
-            <span>Bỏ qua nghỉ</span>
-            <AppIcon name="arrowRight" size={16} />
+      </div>
+      <div className="body-ls-foot">
+        <div className="body-ls-foot-group">
+          {backButton}
+          <button type="button" className="body-ls-btn" onClick={() => handleLogSet(null)}>Bỏ set</button>
+          <button type="button" className="body-ls-btn body-ls-d-only" onClick={handleSkipExercise} title="Bỏ các set còn lại của bài này">
+            Bỏ bài
           </button>
         </div>
-      )}
-
-      {/* ── BƯỚC 4: KẾT QUẢ BUỔI TẬP VỚI SỐ LIỆU THẬT & DUYỆT TĂNG TIẾN ── */}
-      {screenState === 'done' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Header chúc mừng */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '16px 20px',
-            background: 'var(--body-card-bg)',
-            border: '1px solid var(--body-card-border)',
-            borderRadius: '16px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '12px',
-                background: 'var(--body-green-soft)',
-                display: 'grid',
-                placeItems: 'center',
-                color: 'var(--body-green)'
-              }}>
-                <AppIcon name="checkCircle" size={24} />
-              </div>
-              <div>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 2px 0', color: 'var(--body-text-main)' }}>
-                  Hoàn thành buổi {dayInfo?.name || 'Tập luyện'}
-                </h2>
-                <div style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                  Thời gian: {formatClock(elapsed)} · Hoàn thành {doneStats.completedCount}/{doneStats.totalSets} set
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 4 Stat KPI Cards - 100% Số Liệu Thật */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-            <div className="body-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Thời gian thực</span>
-              <span style={{ fontSize: '24px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-text-main)' }}>
-                {Math.max(1, Math.round(elapsed / 60))} <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--body-text-muted)' }}>phút</span>
-              </span>
-            </div>
-
-            <div className="body-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Khối lượng tạ</span>
-              <span style={{ fontSize: '24px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: 'var(--body-text-main)' }}>
-                {doneStats.totalVolumeKg} <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--body-text-muted)' }}>kg</span>
-              </span>
-            </div>
-
-            <div className="body-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Set hoàn thành</span>
-              <span style={{ fontSize: '24px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: doneStats.completedCount === doneStats.totalSets ? 'var(--body-green)' : 'var(--body-text-main)' }}>
-                {doneStats.completedCount} / {doneStats.totalSets} <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--body-text-muted)' }}>set</span>
-              </span>
-            </div>
-
-            <div className="body-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Kỷ lục mới (PR)</span>
-              <span style={{ fontSize: '24px', fontWeight: 700, fontFamily: 'var(--body-mono)', color: doneStats.prCount > 0 ? '#E0A23C' : 'var(--body-text-muted)' }}>
-                {doneStats.prCount} <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--body-text-muted)' }}>kỷ lục</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Hai cột: So sánh từng bài & Duyệt tăng tiến */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
-
-            {/* Cột trái: So sánh chi tiết từng bài */}
-            <div className="body-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                Chi tiết từng bài tập
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {dayItems.map((item, idx) => {
-                  const loggedVals = logs[item.exercise_key] || [];
-                  const compEx = doneStats.prevComparison.byExercise.find(e => e.exercise_key === item.exercise_key);
-                  const isItemPR = loggedSets.some(s => s.exerciseKey === item.exercise_key && s.isPR);
-                  const displayName = nameOf(item.exercise_key);
-
-                  return (
-                    <div key={idx} style={{ paddingBottom: '12px', borderBottom: '1px solid var(--body-card-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                            {displayName}
-                          </span>
-                          {isItemPR && (
-                            <span style={{
-                              padding: '2px 7px',
-                              borderRadius: '6px',
-                              background: 'var(--body-amber-soft)',
-                              color: 'var(--body-amber-text)',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}>
-                              <AppIcon name="trophy" size={12} /> PR
-                            </span>
-                          )}
-                        </div>
-                        {compEx && (
-                          <span style={{ fontSize: '13px', fontWeight: 600, color: compEx.diff > 0 ? 'var(--body-green)' : 'var(--body-text-muted)' }}>
-                            {compEx.label} {compEx.unit}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Set values pills */}
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {loggedVals.map((val, sIdx) => {
-                          const isSkipped = val == null;
-                          const isMet = !isSkipped && val >= item.target_val;
-                          const record = loggedSets.find(s => s.exerciseKey === item.exercise_key && s.setNo === sIdx + 1);
-                          return (
-                            <label
-                              key={`${sIdx}-${val}`}
-                              style={{
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                background: isSkipped ? 'var(--body-red-soft)' : isMet ? 'var(--body-green-soft)' : 'var(--body-shell-bg)',
-                                border: `1px solid ${isSkipped ? 'var(--body-red-text)' : isMet ? 'var(--body-green-border)' : 'var(--body-card-border)'}`,
-                                fontSize: '13px',
-                                fontFamily: 'var(--body-mono)',
-                                fontWeight: 600,
-                                color: isSkipped ? 'var(--body-red-text)' : isMet ? 'var(--body-green-text)' : 'var(--body-text-main)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                              }}
-                            >
-                              {/* Sửa trực tiếp; để trống = bỏ set */}
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                min="0"
-                                defaultValue={isSkipped ? '' : val}
-                                placeholder="bỏ"
-                                disabled={!record}
-                                aria-label={`Set ${sIdx + 1} ${displayName}`}
-                                onBlur={e => record && handleEditSet(record, e.target.value)}
-                                onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                                style={{ width: '3.2em', border: 'none', background: 'transparent', color: 'inherit', font: 'inherit', textAlign: 'right', padding: 0 }}
-                              />
-                              {item.unit === 's' && <span>s</span>}
-                              {isMet && <AppIcon name="check" size={12} />}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Cột phải: Duyệt mục tiêu tăng tiến buổi tới (Có Checkbox do User kiểm soát) */}
-            <div style={{
-              background: 'var(--body-accent-soft)',
-              border: '1.5px solid var(--body-accent-border)',
-              borderRadius: '16px',
-              padding: '20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '14px'
-            }}>
-              <div>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--body-accent)' }}>
-                  Đề xuất tăng tiến buổi tới (+1 rep / +5s)
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--body-text-sub)', marginTop: '2px' }}>
-                  Chỉ đề xuất khi hoàn thành đủ 100% số set đạt chỉ tiêu. Đánh dấu để áp dụng vào Lộ trình.
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {doneStats.progressionCandidates.map((cand, idx) => {
-                  const itemKey = cand.routineItemId || cand.exercise_key;
-                  const isChecked = !!approvedProgressions[itemKey];
-
-                  return (
-                    <div
-                      key={idx}
-                      style={{
-                        padding: '10px 14px',
-                        borderRadius: '10px',
-                        background: 'var(--body-card-bg)',
-                        border: '1px solid var(--body-card-border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        opacity: cand.shouldProgress ? 1 : 0.65
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                          {cand.name}
-                        </div>
-                        <div style={{ fontSize: '11.5px', color: cand.shouldProgress ? 'var(--body-green)' : 'var(--body-text-muted)', fontWeight: 500 }}>
-                          {cand.shouldProgress
-                            ? `Đạt đủ ${cand.totalTargetSets} set ✓`
-                            : `Đạt ${cand.completedSets}/${cand.totalTargetSets} set (chưa đạt yêu cầu tăng)`}
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{
-                          fontFamily: 'var(--body-mono)',
-                          fontSize: '13px',
-                          fontWeight: 700,
-                          color: cand.shouldProgress ? 'var(--body-accent)' : 'var(--body-text-muted)'
-                        }}>
-                          {cand.shouldProgress ? `${cand.nextVal} ${cand.unit}` : `${cand.currentVal} ${cand.unit}`}
-                        </span>
-
-                        {cand.shouldProgress && (
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              setApprovedProgressions(prev => ({
-                                ...prev,
-                                [itemKey]: checked
-                              }));
-                            }}
-                            style={{
-                              width: '18px',
-                              height: '18px',
-                              accentColor: 'var(--body-accent)',
-                              cursor: 'pointer'
-                            }}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div style={{ fontSize: '11.5px', color: 'var(--body-text-sub)', lineHeight: 1.5, marginTop: 'auto' }}>
-                💡 Khi bấm "Hoàn tất & Lưu", chỉ các bài được tích chọn ở trên mới được cập nhật vào mục tiêu Lộ trình.
-              </div>
-            </div>
-
-          </div>
-
-          {/* Thanh lưu ở cuối màn kết quả (không sticky) */}
+        <div className="body-ls-foot-group is-grow">
+          {canFinishAll && (
+            <button
+              type="button"
+              className="body-ls-btn is-green body-ls-d-only"
+              onClick={handleFinishExercise}
+              title="Set này theo số đang chọn, các set còn lại đủ mục tiêu"
+            >
+              <AppIcon name="check" size={16} />Xong cả bài
+            </button>
+          )}
           <button
-            className="body-btn body-btn-accent"
+            type="button"
+            className="body-ls-btn is-primary"
+            disabled={isTimed && tSec === 0}
+            title={isTimed && tSec === 0 ? 'Bấm "Bắt đầu" đếm giờ trước khi hoàn thành' : undefined}
+            onClick={() => handleLogSet(isTimed ? tSec : currentVal)}
+          >
+            <AppIcon name="checkCircle" size={18} weight="fill" />
+            {isEditing ? `Lưu set ${currentItem.set_no}` : `Xong set ${currentItem.set_no}`}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
+  // ── NGHỈ ─────────────────────────────────────────────────────────────
+  const restView = (
+    <>
+      <div className="body-ls-scroll is-rest-view">
+        <span className="body-ls-rest-kind">{REST_KIND_LABELS[restKind] || 'Nghỉ giữa set'}</span>
+        <div className={`body-ls-ring is-rest${restRemaining <= 10 ? ' is-ending' : ''}`}>
+          <svg viewBox="0 0 260 260">
+            <circle cx="130" cy="130" r="116" className="body-ls-ring-track" />
+            <circle
+              cx="130"
+              cy="130"
+              r="116"
+              className="body-ls-ring-bar"
+              strokeDasharray={`${(RING_REST * restProgress).toFixed(1)} ${RING_REST.toFixed(1)}`}
+            />
+          </svg>
+          <div>
+            <b>{formatClock(restRemaining)}</b>
+            <span>/ {formatClock(restTotal)}</span>
+          </div>
+        </div>
+        <div className="body-ls-rest-actions">
+          <button type="button" className="body-ls-btn is-glass" onClick={() => handleAdjustRest(-15)} disabled={paused}>−15s</button>
+          <button type="button" className="body-ls-btn is-glass" onClick={() => handleAdjustRest(15)} disabled={paused}>+15s</button>
+          <button type="button" className="body-ls-btn is-primary is-sm body-ls-d-only" onClick={handleEndRest}>
+            Bỏ qua nghỉ<AppIcon name="arrowRight" size={14} />
+          </button>
+        </div>
+        <div className="body-ls-next">
+          <span>TIẾP THEO</span>
+          <b>{nextItem ? `Set ${nextItem.set_no} / ${nextItem.total_sets} · ${splitExerciseName(nameOf(nextItem.exercise_key)).vn}` : 'Hoàn thành buổi'}</b>
+          {nextItem && (
+            <small>
+              Mục tiêu {formatValWithUnit(nextItem.target_val, nextItem.unit)}
+              {nextItem.kg ? ` · ${nextItem.kg} kg` : ''}
+              {nextPrevInSession !== undefined
+                ? ` · set trước ${nextPrevInSession == null ? 'bỏ' : formatValWithUnit(nextPrevInSession, nextItem.unit)}`
+                : prevLine(nextItem.exercise_key) ? ` · lần trước ${prevLine(nextItem.exercise_key)}` : ''}
+            </small>
+          )}
+        </div>
+        <button type="button" className="body-ls-undo" onClick={editJustLogged}>
+          <AppIcon name="back" size={14} />Sửa set vừa ghi
+        </button>
+      </div>
+      <div className="body-ls-foot is-rest">
+        <button type="button" className="body-ls-btn is-primary is-block" onClick={handleEndRest}>
+          Bỏ qua nghỉ<AppIcon name="arrowRight" size={16} />
+        </button>
+      </div>
+    </>
+  );
+
+  // ── KẾT QUẢ: số đã ghi (sửa được) · lần trước · duyệt mục tiêu buổi sau ──
+  const doneView = (
+    <>
+      <div className="body-ls-scroll">
+        <div className="body-ls-done">
+          <div className="body-ls-done-head">
+            <span><AppIcon name="checkCircle" size={28} weight="fill" /></span>
+            <div>
+              <h2>Xong buổi {day.tag || sessionTitle}</h2>
+              <p>Kiểm tra số đã ghi và duyệt mục tiêu cho buổi sau</p>
+            </div>
+          </div>
+
+          <div className="body-ls-stats">
+            <div><span>Thời gian</span><b>{formatClock(elapsed)}</b></div>
+            <div><span>Set hoàn thành</span><b>{doneStats.completedCount}/{doneStats.totalSets}</b></div>
+            <div><span>Tổng rep</span><b>{doneStats.totalReps}</b></div>
+          </div>
+
+          <div className="body-ls-table">
+            <div className="body-ls-trow is-head">
+              <span>BÀI TẬP</span><span>HÔM NAY</span><span>LẦN TRƯỚC</span><span>BUỔI SAU</span>
+            </div>
+            {dayItems.map((item, e) => {
+              const cand = doneStats.progressionCandidates[e];
+              const comp = doneStats.prevComparison.byExercise.find(x => x.exercise_key === item.exercise_key);
+              const isPR = loggedSets.some(s => s.exerciseKey === item.exercise_key && s.isPR);
+              const displayName = splitExerciseName(nameOf(item.exercise_key)).vn;
+              const itemKey = cand.routineItemId || cand.exercise_key;
+              const prev = prevLine(item.exercise_key);
+              return (
+                <div key={e} className="body-ls-trow">
+                  <span className="body-ls-t-name">
+                    {displayName}
+                    {isPR && <span className="body-ls-pr"><AppIcon name="trophy" size={11} />PR</span>}
+                  </span>
+                  <span className="body-ls-t-today">
+                    {/* Bấm vào dãy số hoặc "Sửa" để mở ngăn sửa từng set (lỡ bấm nhầm khi tập) */}
+                    <button
+                      type="button"
+                      className="body-ls-t-vals"
+                      onClick={() => setEditEx(e)}
+                      aria-label={`Sửa số đã ghi của ${displayName}`}
+                    >
+                      {setRowsOf(e).map(row => {
+                        const st = rowState(row, item);
+                        return (
+                          <i key={row.key} className={`is-${st}`}>
+                            {st === 'todo' ? '–' : st === 'skip' ? 'bỏ' : fmtVal(row.record.actualVal, item.unit)}
+                          </i>
+                        );
+                      })}
+                      <em><AppIcon name="pencil" size={12} />Sửa</em>
+                    </button>
+                    {comp && <b className={`body-ls-delta${comp.diff > 0 ? ' is-up' : comp.diff < 0 ? ' is-down' : ''}`}>{comp.label}</b>}
+                  </span>
+                  <span className="body-ls-t-prev">
+                    <span className="body-ls-m-text">trước </span>{prev || '—'}
+                  </span>
+                  {cand.shouldProgress ? (
+                    <label className="body-ls-t-sug">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(approvedProgressions[itemKey])}
+                        onChange={ev => {
+                          const checked = ev.target.checked;
+                          setApprovedProgressions(prevApproved => ({ ...prevApproved, [itemKey]: checked }));
+                        }}
+                      />
+                      <span>
+                        <span className="body-ls-m-text">Buổi sau: </span>
+                        {item.target_sets} × {formatValWithUnit(cand.nextVal, cand.unit)}
+                      </span>
+                    </label>
+                  ) : (
+                    <span className="body-ls-t-keep">Giữ {item.target_sets} × {formatValWithUnit(item.target_val, item.unit)}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <div className="body-ls-foot">
+        <button type="button" className="body-ls-text-btn is-danger" onClick={() => setConfirmCancel(true)}>
+          Hủy buổi
+        </button>
+        <div className="body-ls-foot-group is-grow">
+          {nextOpenIdx >= 0 && (
+            <button type="button" className="body-ls-btn" onClick={() => goToSlot(nextOpenIdx)}>Tập tiếp</button>
+          )}
+          <button
+            type="button"
+            className="body-ls-btn is-dark is-save"
             onClick={() => {
               const progressionsToApply = doneStats.progressionCandidates
                 .filter(c => c.shouldProgress && isUuid(c.routineItemId) && approvedProgressions[c.routineItemId || c.exercise_key])
@@ -1419,86 +1288,280 @@ export default function LiveSessionScreen({
                 approvedProgressions: progressionsToApply
               });
             }}
-            style={{ width: '100%', height: '52px', fontSize: '15px' }}
           >
-            <AppIcon name="checkCircle" size={18} />
-            <span>Hoàn tất & Lưu</span>
+            Lưu buổi tập
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div className={`body-ls${screenState === 'rest' ? ' is-rest' : ''}${paused ? ' is-paused' : ''}`}>
+      {/* ── HEADER DESKTOP ─────────────────────────────────────────── */}
+      <header className="body-ls-head">
+        <div className="body-ls-head-left">
+          <button type="button" className="body-ls-icon-btn" onClick={handleBack} title="Về Lộ trình — buổi vẫn được giữ" aria-label="Về Lộ trình, buổi vẫn được giữ">
+            <AppIcon name="caretLeft" size={16} />
+          </button>
+          <div className="body-ls-head-title">
+            <span className="body-ls-eyebrow" style={{ color: eyebrowColor }}>{sessionEyebrow}</span>
+            <span className="body-ls-title">{sessionTitle}</span>
+          </div>
+        </div>
+        <div className="body-ls-head-center">
+          <span className="body-ls-pos">{positionLabel}</span>
+          {segments}
+        </div>
+        <div className="body-ls-head-right">
+          {paused && <span className="body-ls-paused-badge">Đã tạm dừng</span>}
+          <span className="body-ls-clock"><AppIcon name="timer" size={19} /><b>{formatClock(elapsed)}</b></span>
+          {screenState !== 'done' && (
+            <>
+              <button type="button" className={`body-ls-btn${paused ? ' is-dark' : ''}`} onClick={togglePause}>
+                <AppIcon name={paused ? 'play' : 'pause'} size={14} weight={paused ? 'fill' : 'regular'} />
+                {paused ? 'Tiếp tục' : 'Tạm dừng'}
+              </button>
+              <button type="button" className="body-ls-btn is-danger" onClick={handleEnd}>Kết thúc</button>
+            </>
+          )}
+        </div>
+      </header>
+
+      {/* ── HEADER MOBILE ──────────────────────────────────────────── */}
+      <header className="body-ls-mhead">
+        <div className="body-ls-mhead-row">
+          <button type="button" className="body-ls-icon-btn is-ghost" onClick={handleBack} aria-label="Về Lộ trình, buổi vẫn được giữ">
+            <AppIcon name="caretDown" size={20} />
+          </button>
+          <div className="body-ls-mhead-title">
+            <span className="body-ls-title">{sessionTitle}</span>
+            <span className="body-ls-mhead-sub">
+              <b>{formatClock(elapsed)}</b>·<span>{positionLabel}</span>
+            </span>
+          </div>
+          {screenState !== 'done' ? (
+            <button
+              type="button"
+              className={`body-ls-icon-btn${paused ? ' is-dark' : ''}`}
+              onClick={togglePause}
+              aria-label={paused ? 'Tiếp tục buổi tập' : 'Tạm dừng buổi tập'}
+            >
+              <AppIcon name={paused ? 'play' : 'pause'} size={17} weight={paused ? 'fill' : 'regular'} />
+            </button>
+          ) : <span />}
+        </div>
+        {segments}
+      </header>
+      {paused && (
+        <div className="body-ls-pausebar">
+          <span><b>Đã tạm dừng</b><small>Số set đã ghi vẫn được giữ</small></span>
+          <button type="button" className="body-ls-text-btn is-danger" onClick={handleEnd}>Kết thúc</button>
+          <button type="button" className="body-ls-btn is-dark" onClick={togglePause}>
+            <AppIcon name="play" size={11} weight="fill" />Tiếp tục
           </button>
         </div>
       )}
 
-      {/* Modal Chi tiết bài tập Fitness Pro (Video, Bản đồ cơ bắp 2D, Hướng dẫn) */}
+      {saveError && (
+        <div className="body-ls-alert" role="alert">
+          <AppIcon name="warning" size={16} />
+          <span>{saveError}</span>
+          <button type="button" onClick={() => setSaveError(null)}>Đóng</button>
+        </div>
+      )}
+
+      <div className="body-ls-body">
+        {/* ── CỘT TRÁI (desktop): cách tập + thứ tự bài ─────────────── */}
+        <aside className="body-ls-side">
+          {(dayItems.length > 1 || prepPicker) && (
+            <div className="body-ls-side-sec">
+              {dayItems.length > 1 && (
+                <>
+                  <span className="body-ls-label">CÁCH TẬP BUỔI NÀY</span>
+                  {modeLocked ? (
+                    <div className="body-ls-locked">
+                      <AppIcon name="lock" size={15} />
+                      <span>
+                        <b>{MODES.find(m => m.key === mode)?.label}</b>
+                        <small>Đã chốt khi ghi set đầu</small>
+                      </span>
+                    </div>
+                  ) : modeOptions.map(m => {
+                    const on = mode === m.key;
+                    return (
+                      <button
+                        key={m.key}
+                        type="button"
+                        className={`body-ls-mode${on ? ' is-on' : ''}`}
+                        onClick={() => setMode(m.key)}
+                        aria-pressed={on}
+                      >
+                        <AppIcon name={on ? 'checkCircle' : 'circle'} size={18} weight={on ? 'fill' : 'regular'} />
+                        <span>
+                          <b>{m.label}</b>
+                          <small>{m.desc}</small>
+                        </span>
+                        <em>~{m.minutes}′</em>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+              {prepPicker}
+            </div>
+          )}
+
+          <div className="body-ls-side-sec">
+            <span className="body-ls-label">THỨ TỰ BÀI</span>
+            {groups.map((g, e) => {
+              const item = dayItems[e];
+              const fin = g.every(q => recordBySlot.has(slotOfItem(q)));
+              const cur = screenState !== 'done' && currentItem.exerciseIndex === e;
+              return (
+                <div key={e} className={`body-ls-qcard${cur ? ' is-cur' : ''}`}>
+                  <div className="body-ls-qcard-head">
+                    <span className={`body-ls-qno${fin ? ' is-fin' : cur ? ' is-cur' : ''}`}>
+                      {fin ? <AppIcon name="check" size={12} /> : e + 1}
+                    </span>
+                    <span className="body-ls-qtext">
+                      <b className={fin && !cur ? 'is-fin' : ''}>{splitExerciseName(nameOf(item.exercise_key)).vn}</b>
+                      <small>
+                        {item.target_sets} × {formatValWithUnit(item.target_val, item.unit)}{item.kg ? ` · ${item.kg} kg` : ''}
+                      </small>
+                    </span>
+                  </div>
+                  <div className="body-ls-qchips">
+                    {g.map(q => {
+                      const st = slotState(q);
+                      return (
+                        <button
+                          key={q.set_no}
+                          type="button"
+                          className={`body-ls-qchip is-${st}`}
+                          onClick={() => jumpToSlot(q)}
+                          disabled={st === 'cur'}
+                          title={recordBySlot.has(slotOfItem(q)) ? `Sửa set ${q.set_no}` : `Sang set ${q.set_no}`}
+                        >
+                          {slotLabel(q)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+
+        <main className="body-ls-main">
+          {screenState === 'guide' && guideView}
+          {screenState === 'set' && setView}
+          {screenState === 'rest' && restView}
+          {screenState === 'done' && doneView}
+        </main>
+      </div>
+
+      {/* ── NGĂN SỬA SỐ ĐÃ GHI (màn kết quả): −/+, gõ số, bỏ / khôi phục, ghi set còn thiếu, thêm set ── */}
+      {editEx != null && dayItems[editEx] && (() => {
+        const item = dayItems[editEx];
+        const step = item.unit === 's' ? 5 : 1;
+        const unitText = item.unit === 's' ? 'giây' : item.unit || 'rep';
+        return (
+          <>
+            <div className="body-ls-sheet-backdrop" onClick={() => setEditEx(null)} />
+            <div className="body-ls-sheet" role="dialog" aria-label="Sửa số đã ghi">
+              <span className="body-ls-sheet-grip" />
+              <div className="body-ls-sheet-head">
+                <div>
+                  <span className="body-ls-eyebrow is-accent">SỬA SỐ ĐÃ GHI</span>
+                  <b>{splitExerciseName(nameOf(item.exercise_key)).vn}</b>
+                  <small>Mục tiêu {item.target_sets} × {formatValWithUnit(item.target_val, item.unit)}</small>
+                </div>
+                <button type="button" className="body-ls-icon-btn" onClick={() => setEditEx(null)} aria-label="Đóng">
+                  <AppIcon name="x" size={15} />
+                </button>
+              </div>
+              <div className="body-ls-sheet-list">
+                {setRowsOf(editEx).map(row => {
+                  const r = row.record;
+                  const v = r?.actualVal;
+                  const st = rowState(row, item);
+                  return (
+                    <div key={row.key} className={`body-ls-erow is-${st}`}>
+                      <span className="body-ls-erow-no">
+                        Set {row.setNo}
+                        {row.extra && <small>thêm</small>}
+                      </span>
+                      {r && v != null ? (
+                        <div className="body-ls-estep">
+                          <button type="button" onClick={() => updateRecordValue(r, Math.max(0, v - step))} aria-label={`Giảm set ${row.setNo}`}>
+                            <AppIcon name="minus" size={14} />
+                          </button>
+                          <label>
+                            <input
+                              key={`${r.id}-${v}`}
+                              type="number"
+                              inputMode="numeric"
+                              min="0"
+                              defaultValue={v}
+                              aria-label={`Số ${unitText} set ${row.setNo}`}
+                              onBlur={ev => commitTyped(r, ev.target.value)}
+                              onKeyDown={ev => { if (ev.key === 'Enter') ev.currentTarget.blur(); }}
+                            />
+                            <small>{unitText}</small>
+                          </label>
+                          <button type="button" onClick={() => updateRecordValue(r, v + step)} aria-label={`Tăng set ${row.setNo}`}>
+                            <AppIcon name="plus" size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="body-ls-erow-empty">{r ? 'Đã bỏ set' : 'Chưa ghi'}</span>
+                      )}
+                      {r && v != null && (
+                        <button type="button" className="body-ls-text-btn is-danger" onClick={() => updateRecordValue(r, null)}>Bỏ set</button>
+                      )}
+                      {r && v == null && (
+                        <button type="button" className="body-ls-btn is-soft" onClick={() => updateRecordValue(r, Number(item.target_val) || 0)}>Khôi phục</button>
+                      )}
+                      {!r && row.slot && (
+                        <button type="button" className="body-ls-btn is-soft" onClick={() => insertRecord(row.slot, Number(item.target_val) || 0)}>Ghi set</button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="body-ls-sheet-foot">
+                <button type="button" className="body-ls-btn" onClick={() => addExtraSet(editEx)}>
+                  <AppIcon name="plus" size={14} />Thêm set
+                </button>
+                <button type="button" className="body-ls-btn is-dark" onClick={() => setEditEx(null)}>Xong</button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* Modal chi tiết bài (video, bản đồ cơ) — bài đang tập hoặc bài dễ hơn */}
       <ExerciseDetailModal
-        exercise={exDef}
-        isOpen={showDetailModal}
-        onClose={() => setShowDetailModal(false)}
+        exercise={detailEx}
+        isOpen={Boolean(detailEx)}
+        onClose={() => setDetailEx(null)}
       />
 
-      {/* Modal xác nhận thoát: Tạm dừng vs Hủy buổi tập */}
-      {showExitModal && (
-        <GenericModal
-          title="Buổi tập"
-          maxWidth={420}
-          onClose={() => setShowExitModal(false)}
-        >
-          <GenericModal.Body>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[
-                screenState !== 'done' && {
-                  icon: 'checkCircle', color: 'var(--body-green)', label: 'Kết thúc buổi', sub: 'Xem kết quả & lưu',
-                  run: () => setScreenState('done')
-                },
-                {
-                  icon: 'clock', color: 'var(--body-accent)', label: 'Tạm dừng', sub: 'Lưu dở, tiếp tục sau',
-                  run: () => (onPause ? onPause(elapsed) : onCancel())
-                },
-                {
-                  icon: 'trash', color: 'var(--body-red, #EF4444)', label: 'Hủy buổi tập', sub: 'Không lưu kết quả',
-                  run: onCancel
-                }
-              ].filter(Boolean).map(opt => (
-                <button
-                  key={opt.label}
-                  type="button"
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: '10px',
-                    background: 'var(--body-card-bg)',
-                    border: '1px solid var(--body-card-border)',
-                    color: 'var(--body-text-main)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    textAlign: 'left',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => {
-                    setShowExitModal(false);
-                    opt.run();
-                  }}
-                >
-                  <span style={{ color: opt.color, display: 'grid', placeItems: 'center' }}>
-                    <AppIcon name={opt.icon} size={22} weight="fill" />
-                  </span>
-                  <span>
-                    <span style={{ display: 'block', fontWeight: 700, fontSize: '14px', color: opt.color }}>{opt.label}</span>
-                    <span style={{ display: 'block', fontSize: '12px', color: 'var(--body-text-muted)' }}>{opt.sub}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </GenericModal.Body>
-          <GenericModal.Footer>
-            <button
-              type="button"
-              className="body-btn body-btn-secondary"
-              onClick={() => setShowExitModal(false)}
-            >
-              Tiếp tục tập
-            </button>
-          </GenericModal.Footer>
-        </GenericModal>
-      )}
+      <ConfirmModal
+        open={confirmCancel}
+        title="Hủy buổi tập?"
+        message="Buổi này sẽ không được tính là hoàn thành. Các set đã ghi vẫn được giữ trong lịch sử."
+        confirmLabel="Hủy buổi"
+        cancelLabel="Quay lại"
+        danger
+        onConfirm={() => {
+          setConfirmCancel(false);
+          onCancel?.();
+        }}
+        onCancel={() => setConfirmCancel(false)}
+      />
     </div>
   );
 }

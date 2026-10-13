@@ -151,93 +151,6 @@ export function useWorkouts() {
 
   // ── LỘ TRÌNH (ROUTINES) ACTIONS ──────────────────────────────────────────
 
-  // Tạo lộ trình mới từ template JSON
-  const createRoutineFromTemplate = useCallback(async (templateKey) => {
-    const tmpl = ROUTINE_TEMPLATES.find(t => t.key === templateKey);
-    if (!tmpl) throw new Error(`Template not found: ${templateKey}`);
-
-    const newRoutineId = crypto.randomUUID();
-    const todayStr = toDateStr(new Date());
-
-    const newRoutine = {
-      id: newRoutineId,
-      user_id: userId,
-      name: tmpl.name,
-      goal: tmpl.goal,
-      weeks: tmpl.weeks || 8,
-      start_date: todayStr,
-      auto_progress: true,
-      is_active: true,
-      created_at: new Date().toISOString()
-    };
-
-    // Chuẩn bị các items
-    const items = [];
-    let pos = 1;
-    (tmpl.days || []).forEach(day => {
-      (day.items || []).forEach(it => {
-        items.push({
-          id: crypto.randomUUID(),
-          routine_id: newRoutineId,
-          user_id: userId,
-          weekday: day.weekday,
-          day_name: day.day_name,
-          position: pos++,
-          exercise_key: it.exercise_key,
-          target_sets: it.target_sets || 3,
-          target_val: it.target_val || 10,
-          unit: it.unit || 'rep',
-          kg: it.kg || 0,
-          rest_seconds: it.rest_seconds || 60,
-          created_at: new Date().toISOString()
-        });
-      });
-    });
-
-    // Optimistic update
-    const prevRoutines = routines;
-    const prevActive = activeRoutine;
-    const prevItems = routineItems;
-
-    setRoutines(prev => [newRoutine, ...prev.map(r => ({ ...r, is_active: false }))]);
-    setActiveRoutine(newRoutine);
-    setRoutineItems(items);
-
-    if (enabled) {
-      try {
-        // Đặt các routine cũ về inactive
-        await supabase
-          .from('body_routines')
-          .update({ is_active: false })
-          .eq('user_id', userId);
-
-        // Insert routine mới
-        const { error: rErr } = await supabase
-          .from('body_routines')
-          .insert(newRoutine);
-
-        if (rErr) throw rErr;
-
-        // Insert các items
-        if (items.length > 0) {
-          const { error: itemErr } = await supabase
-            .from('body_routine_items')
-            .insert(items);
-
-          if (itemErr) throw itemErr;
-        }
-      } catch (err) {
-        logger.error('Failed to create routine from template, rolling back:', err);
-        setRoutines(prevRoutines);
-        setActiveRoutine(prevActive);
-        setRoutineItems(prevItems);
-        throw err;
-      }
-    }
-
-    return newRoutine;
-  }, [enabled, userId, routines, activeRoutine, routineItems]);
-
   // Tạo lộ trình tùy chỉnh mới (tự đặt tên, số tuần, chia lịch theo ngày)
   const createCustomRoutine = useCallback(async ({ name, goal, weeks = 8, days = [] }) => {
     const newRoutineId = crypto.randomUUID();
@@ -501,6 +414,56 @@ export function useWorkouts() {
     }
   }, [enabled, userId, routineItems]);
 
+  // Đổi kiểu mục tiêu rep ↔ giây kèm giá trị mới (optimistic with rollback)
+  const updateRoutineUnit = useCallback(async (itemId, unit, targetVal) => {
+    const patch = { unit, target_val: Number(targetVal) };
+    const prevItems = routineItems;
+    setRoutineItems(prev => prev.map(item => item.id === itemId ? { ...item, ...patch } : item));
+
+    if (enabled) {
+      try {
+        const { error } = await supabase
+          .from('body_routine_items')
+          .update(patch)
+          .eq('id', itemId)
+          .eq('user_id', userId);
+
+        if (error) throw error;
+      } catch (err) {
+        logger.error('Failed to update routine item unit, rolling back:', err);
+        setRoutineItems(prevItems);
+        throw err;
+      }
+    }
+  }, [enabled, userId, routineItems]);
+
+  // Đổi thứ tự bài trong 1 ngày: orderedIds là toàn bộ id của ngày theo thứ tự mới.
+  // Mảng được sắp lại theo (weekday, position) để mọi màn lọc theo thứ đều thấy đúng thứ tự.
+  const reorderRoutineItems = useCallback(async (orderedIds) => {
+    const posOf = new Map(orderedIds.map((id, i) => [id, i]));
+    const prevItems = routineItems;
+    setRoutineItems(prev => prev
+      .map(item => posOf.has(item.id) ? { ...item, position: posOf.get(item.id) } : item)
+      .sort((a, b) => a.weekday - b.weekday || (a.position ?? 0) - (b.position ?? 0)));
+
+    if (enabled) {
+      try {
+        for (const [id, position] of posOf) {
+          const { error } = await supabase
+            .from('body_routine_items')
+            .update({ position })
+            .eq('id', id)
+            .eq('user_id', userId);
+          if (error) throw error;
+        }
+      } catch (err) {
+        logger.error('Failed to reorder routine items, rolling back:', err);
+        setRoutineItems(prevItems);
+        throw err;
+      }
+    }
+  }, [enabled, userId, routineItems]);
+
   // Thêm 1 bài tập vào lộ trình (optimistic with rollback)
   const addRoutineItem = useCallback(async ({ weekday, dayName, exerciseKey, sets = 3, targetVal = 10, unit = 'rep', kg = 0, restSeconds = 60 }) => {
     if (!activeRoutine?.id) throw new Error('Chưa có lộ trình đang kích hoạt');
@@ -701,12 +664,14 @@ export function useWorkouts() {
   }, [enabled, userId]);
 
   // Sửa giá trị thực tế của một set đã ghi (null = bỏ set) — dùng ở màn kết quả cuối buổi
-  const updateSetValue = useCallback(async (setId, actualVal) => {
-    setRecentSets(prev => prev.map(s => (s.id === setId ? { ...s, actual_val: actualVal } : s)));
+  // Sửa số đã ghi của 1 set; isPR (tùy chọn) cập nhật lại cờ kỷ lục khi số đổi làm đổi PR
+  const updateSetValue = useCallback(async (setId, actualVal, { isPR } = {}) => {
+    const patch = { actual_val: actualVal, ...(isPR === undefined ? {} : { is_pr: Boolean(isPR) }) };
+    setRecentSets(prev => prev.map(s => (s.id === setId ? { ...s, ...patch } : s)));
     if (!enabled) return;
     const { error } = await supabase
       .from('body_workout_sets')
-      .update({ actual_val: actualVal })
+      .update(patch)
       .eq('id', setId)
       .eq('user_id', userId);
     if (error) {
@@ -807,13 +772,14 @@ export function useWorkouts() {
     isLoading,
     hasLoaded,
     fetchData,
-    createRoutineFromTemplate,
     createCustomRoutine,
     switchRoutine,
     updateRoutineDetails,
     deleteRoutine,
     updateRoutineTarget,
     updateRoutineSets,
+    updateRoutineUnit,
+    reorderRoutineItems,
     addRoutineItem,
     deleteRoutineItem,
     toggleAutoProgress,

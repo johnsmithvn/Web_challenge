@@ -1,5 +1,37 @@
 # CHANGELOG
 
+## v6.26.0 — 2026-10-14
+
+### Changed
+- **Body — header & điều hướng (`BodyPage.jsx`, `AppIcon.jsx`, `body.css`):** desktop: tiêu đề + dải tab 7 màn + viên "Buổi dở" (tên buổi · số set đã xong · Tiếp tục); ≤1360px ẩn dòng phụ và đuôi " · Sức Khỏe & Thể Hình", ≤1180px tab chỉ còn icon (tab đang mở giữ chữ). Mobile: header mới (về Life Hub, tiêu đề + dòng phụ, nút + theo màn, đổi theme) + dải chip 7 màn cuộn ngang, tự cuộn tới chip đang mở. **Bỏ bottom nav và hàng 3 viên cũ**; CTA Lộ trình ghim sát đáy. Đang tập thì ẩn sidebar Life Hub.
+- **Body — Tiến bộ v2 (`WorkoutHistoryScreen.jsx`, viết lại):** theo mockup "Tiến bộ v2". Danh sách bài đã tập + biểu đồ cột mỗi set qua các buổi (gradient, đường mục tiêu, cột mờ "Buổi tới", huy hiệu PR, trục chia đẹp), KPI cao nhất / buổi tới / số buổi / so với buổi đầu, bảng từng buổi. Lịch tháng: vạch màu theo loại buổi (nhiều buổi một ngày → nhiều vạch), ngày có lịch sắp tới viền tròn, chú thích. Thẻ ngày: buổi đã tập kèm số từng set / Dự kiến / Bỏ lỡ (nút mở Lộ trình) / Nghỉ. Mobile: lịch → thẻ ngày → thẻ tiến bộ.
+- **Body — Cơ thể v2 (`BiometricsScreen.jsx`, viết lại):** theo mockup "Cơ thể v2". 3 tab Phân tích / Lịch sử / Hồ sơ. Phân tích: gauge BMI nửa vòng (kim theo BMI, chip phân loại, điểm cơ thể), xu hướng đường cong mượt có đường mục tiêu (tuần / tháng / 3 tháng / năm, trung bình theo ngày), 9 thẻ chỉ số có thanh dải chuẩn, donut thành phần cơ thể, thẻ nguồn khoa học (mở thước dây). Lịch sử: thống kê, nhóm theo ngày, ô chi tiết (mobile: bottom sheet), xóa có xác nhận. Hồ sơ: BMR/TDEE, tiến độ mục tiêu cân, form. Thêm cân đo: chỉ bắt buộc cân nặng, chọn buổi sáng/tối, Ctrl+Enter.
+- **Body — Thư viện bài v2 (`ExerciseLibraryScreen.jsx`, viết lại):** theo mockup "Thư viện bài v2". Lọc dụng cụ (thêm Máy tập) + vùng cơ, tìm không dấu; mức độ dạng cột, chip cảnh báo. Chi tiết 4 tab: Tổng quan (video, mức tác động từng nhóm cơ, nhịp thở, tempo), Kỹ thuật, An toàn (rủi ro, chống chỉ định, bài thay thế, lưu ý), Biến thể (bậc thang dọc, dễ hơn / khó hơn). Thêm vào kế hoạch: chọn thứ (hiện số bài đã có / nghỉ), stepper hiệp + mục tiêu. Mobile: chi tiết toàn màn + thanh nút đáy.
+
+### Added
+- **Buổi tập — sửa số khi kết thúc (`LiveSessionScreen.jsx`):** bấm hàng "Hôm nay"/"Sửa" của một bài mở sheet: − / + hoặc gõ số rep/giây từng set, ghi lại set đã bỏ, bỏ set, thêm set ngoài mục tiêu. Tổng rep, gợi ý buổi sau và PR tính lại ngay.
+- **`useWorkouts.updateSetValue(setId, val, { isPR })`:** cập nhật luôn `is_pr` khi sửa set, để PR không kẹt ở set cũ.
+- **`workoutLogic.js`:** `pickSessionPR`, `buildExerciseHistory`, `summarizeTrainedExercises`, `niceAxis`, `nextTargetFor`; **`bodyMetrics.js`:** `dailyAverageSeries`, `trendDomain`, `bmiGaugeAngle`, `smoothPath`; **`hooks/useElementWidth.js`** (đo bề rộng cho biểu đồ SVG). Có test.
+
+### Fixed
+- **Lưu buổi tập xong bị đẩy về Lộ trình thay vì Tiến bộ (`BodyPage.jsx`):** điều hướng của React Router 7 chạy như transition nên effect "không còn buổi → về Lộ trình" chạy trước. Thêm cờ `leavingSessionRef` khi lưu / hủy / tạm rời buổi.
+- **Ô thêm bài của Lộ trình thiếu bài tự tạo (`RoutineScreen.jsx`):** dùng `exerciseMap` (gồm bài tự tạo) thay vì chỉ bộ bài gốc. Id xem trước dùng `crypto.randomUUID()` thay `Math.random`.
+- **Mobile Lộ trình:** header thẻ tràn viền, CTA ghim đáy có chừa safe-area; thời lượng "Đã tập" làm tròn tối thiểu 1 phút như ở Tiến bộ.
+
+### Removed
+- `useWorkouts.createRoutineFromTemplate` (không còn ai gọi); tiêu đề "Cơ thể" lặp trong màn Cơ thể; 82 rule CSS không còn class nào dùng trong `body.css`.
+
+## v6.25.0 — 2026-10-13
+
+### Changed
+- **Body — Lộ trình v2 (`RoutineScreen.jsx`, `body.css`):** theo mockup "Lộ trình v2". Tên lộ trình là nút đổi lộ trình (popover desktop / bottom sheet mobile: lộ trình của tôi · mẫu có sẵn → xem trước · tạo mới), thay dropdown và cột mẫu bên trái. Thanh trên gom tiến độ tuần + Đã tập / Đúng lịch / Kỷ lục, nút sửa + menu ⋯. Lịch tuần thành danh sách dọc có ngày tháng, chuyển tuần ‹ ›; ngày đã tập ✓ (theo `planned_weekday`, tập bù vẫn gắn đúng thứ), buổi đang dở hiện ngay trên ngày đó kèm số set đã xong. Chi tiết ngày: Bắt đầu / Tiếp tục / Tập buổi này hôm nay / Đã tập → Xem kết quả; ngày check-in có nút Ghi cân đo (sang Cơ thể). Thêm bài mở ngăn phải (mobile: bottom sheet) có tìm không dấu, lọc nhóm cơ + dụng cụ, thêm nhiều bài liền. Mobile: header thẻ + dải 7 ngày, bài thu gọn bấm mở để sửa, thanh hành động ghim ngay trên bottom nav.
+- **Body — Buổi tập v2 (`LiveSessionScreen.jsx`, `BodyPage.jsx`, `body.css`):** theo mockup "Buổi tập v2". Màn tập tách khỏi điều hướng Body (ẩn header/tab, topbar, bottom nav), header riêng: ‹ về Lộ trình (buổi vẫn giữ), thanh tiến độ gom theo bài, Tạm dừng/Tiếp tục tại chỗ (dừng cả đồng hồ buổi và đồng hồ nghỉ), Kết thúc. Desktop: cột trái chọn cách tập (tự chốt khi ghi set đầu) + thứ tự bài với từng ô set; hướng dẫn 2 cột (cách làm · nhịp thở/tempo · lỗi hay gặp | video + nhóm cơ); màn nghỉ nền tối; kết quả dạng bảng Hôm nay / Lần trước / Buổi sau (vẫn sửa được số từng set). "Quá khó? Đổi sang X" mở hướng dẫn bài X. Màn kết quả: Tập tiếp (về set còn trống) + Hủy buổi (có xác nhận) thay cho "Tập lại từ đầu". Mobile: toàn màn hình, nội dung cuộn riêng, thanh nút đáy nằm ngoài vùng cuộn.
+
+### Added
+- **Lộ trình — kéo ⋮⋮ đổi thứ tự bài, bấm rep/giây đổi kiểu mục tiêu (`useWorkouts.js` `reorderRoutineItems`, `updateRoutineUnit`):** ghi cột `position` / `unit` + `target_val` có sẵn, optimistic + rollback; mảng bài sắp lại theo `(weekday, position)` để màn tập và Tổng quan thấy đúng thứ tự.
+- **Buổi tập — quay lại sửa set:** màn nghỉ có "Sửa set vừa ghi"; hướng dẫn/ghi set có "‹ Set trước"; bấm ô set (cột trái desktop, dải S1/S2… ở màn ghi set) để nhảy tới set đó. Ghi lại set đã có thì cập nhật bản ghi cũ (`onUpdateSet`), không tạo bản ghi trùng, rồi sang set còn trống kế tiếp.
+- **`workoutLogic.js`:** `getWeekDays`, `mapWeekSessions`, `splitExerciseName`, `splitDayName`, `splitTempo`, `DAY_TAG_COLORS` + test.
+
 ## v6.24.0 — 2026-10-12
 
 ### Added

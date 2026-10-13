@@ -1,35 +1,225 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import AppIcon from '../AppIcon';
 import SkeletonList from '../SkeletonList';
+import { ConfirmModal } from '../ConfirmModal';
 import { useBiometrics } from '../../hooks/useBiometrics';
+import { useElementWidth } from '../../hooks/useElementWidth';
 import {
-  BMI_CATEGORIES,
   calculateBodyComposition,
   calculateNavyBodyFat,
   estimateVisceralFatFromWaist,
-  weightForBmi
+  weightForBmi,
+  dailyAverageSeries,
+  trendDomain,
+  bmiGaugeAngle,
+  smoothPath
 } from '../../utils/bodyMetrics';
 
-// Helper formatting functions (Vietnamese decimal comma style)
+// Số kiểu Việt (dấu phẩy thập phân)
 const f = (v, d = 1) => {
   if (v == null || Number.isNaN(Number(v))) return '—';
   return Number(v).toFixed(d).replace('.', ',');
 };
-
 const fs = (v, d = 1) => {
   if (v == null || Number.isNaN(Number(v))) return '—';
   const num = Number(v);
   if (Math.abs(num) < 0.001) return '±0';
   return (num > 0 ? '+' : '−') + f(Math.abs(num), d);
 };
+const ddmm = str => {
+  const [, m, d] = String(str).split('-');
+  return `${Number(d)}/${Number(m)}`;
+};
 
-const GOOD = '#2F8A57';
-const BAD = '#C23B22';
-const MUTED = '#8A8A84';
-const LOW = '#4C8DE0';
-const OK = '#3E9E68';
-const HI = '#E0822C';
-const OBESE = '#D2462B';
+const GAUGE_LO = 15;
+const GAUGE_HI = 32;
+const GAUGE_SEGS = [[15, 18.5, '#4A8FE7'], [18.5, 23, '#2F9E5B'], [23, 25, '#E8973A'], [25, 32, '#D9503F']];
+const BMI_SHORT = { underweight: 'Thiếu cân', normal: 'Bình thường', overweight: 'Thừa cân', obese: 'Béo phì' };
+const BMI_COLOR = { underweight: '#4A8FE7', normal: '#2F9E5B', overweight: '#E8973A', obese: '#D9503F' };
+const BMI_LEGEND = [
+  ['underweight', 'Thiếu cân', '<18,5'],
+  ['normal', 'Bình thường', '18,5–22,9'],
+  ['overweight', 'Thừa cân', '23–24,9'],
+  ['obese', 'Béo phì', '≥25']
+];
+const RANGES = [
+  { k: '7d', l: 'Tuần', s: '7 ngày', days: 7 },
+  { k: '30d', l: 'Tháng', s: '30 ngày', days: 30 },
+  { k: '90d', l: '3 tháng', s: '90 ngày', days: 90 },
+  { k: '365d', l: 'Năm', s: '12 tháng', days: 365 }
+];
+const TREND_METRICS = [
+  { key: 'weight', field: 'weight', name: 'Cân nặng', unit: 'kg', dec: 2, color: '#6949E8', minSpan: 0.6 },
+  { key: 'fat', field: 'body_fat_pct', name: 'Tỷ lệ mỡ', unit: '%', dec: 1, color: '#E07B39', minSpan: 0.4, goodDir: -1 },
+  { key: 'muscle', field: 'skeletal_muscle_kg', name: 'Cơ xương', unit: 'kg', dec: 1, color: '#2F8A57', minSpan: 0.4, goodDir: 1 }
+];
+const SOURCE_NAME = { manual: 'Nhập tay', huawei_scale: 'Cân Huawei', csv_import: 'Nhập file' };
+const ACTIVITY_OPTIONS = [
+  ['sedentary', 'Ít vận động (ngồi văn phòng)'],
+  ['light', 'Nhẹ (tập 1–3 buổi/tuần)'],
+  ['moderate', 'Vừa (tập 3–5 buổi/tuần)'],
+  ['active', 'Nặng (tập 6–7 buổi/tuần)'],
+  ['very_active', 'Rất nặng (lao động nặng / VĐV)']
+];
+
+const toneOf = (delta, goodDir) => {
+  if (delta == null || Math.abs(delta) < 0.001 || !goodDir) return 'muted';
+  return delta * goodDir > 0 ? 'good' : 'bad';
+};
+const slotLabelOf = m => {
+  if (m?.time_slot === 'morning') return 'Buổi sáng';
+  if (m?.time_slot === 'evening') return 'Buổi tối';
+  const h = new Date(m?.measured_at).getHours();
+  return h < 11 ? 'Buổi sáng' : h < 14 ? 'Buổi trưa' : h < 18 ? 'Buổi chiều' : 'Buổi tối';
+};
+const timeOf = m => new Date(m.measured_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+/** Đồng hồ BMI nửa vòng: thang 15–32, kim đặt theo BMI; số cân nằm dưới vòng cung (không đè lên). */
+function BmiGauge({ bmi, color, weightText, small }) {
+  const cx = 150;
+  const cy = 158;
+  const R = 124;
+  const r1 = v => Math.round(v * 10) / 10;
+  const pt = (a, r = R) => [r1(cx + r * Math.cos(a)), r1(cy - r * Math.sin(a))];
+  const arc = (a1, a2) => {
+    const p1 = pt(a1);
+    const p2 = pt(a2);
+    return `M${p1[0]} ${p1[1]}A${R} ${R} 0 0 1 ${p2[0]} ${p2[1]}`;
+  };
+  const gap = 0.012;
+  const marker = bmi != null ? pt(bmiGaugeAngle(bmi, GAUGE_LO, GAUGE_HI)) : null;
+  const ticks = [[18.5, '18,5'], [23, '23'], [25, '25']].map(([v, t]) => {
+    const p = pt(bmiGaugeAngle(v, GAUGE_LO, GAUGE_HI), R + 22);
+    return { x: p[0], y: p[1], t };
+  });
+
+  return (
+    <div className={`body-bm-gauge${small ? ' is-small' : ''}`}>
+      <svg viewBox="0 0 300 176" aria-hidden="true">
+        <path d={arc(Math.PI, 0)} className="bm-gauge-track" />
+        {bmi != null
+          ? GAUGE_SEGS.map(([a, b, c], i) => (
+            <path
+              key={c}
+              d={arc(bmiGaugeAngle(a) - (i ? gap : 0), bmiGaugeAngle(b) + (i < 3 ? gap : 0))}
+              stroke={c}
+              className="bm-gauge-seg"
+            />
+          ))
+          : <path d={arc(Math.PI, 0)} className="bm-gauge-seg is-empty" />}
+        {marker && <circle cx={marker[0]} cy={marker[1]} r="11" stroke={color} className="bm-gauge-marker" />}
+        {bmi != null && ticks.map(t => (
+          <text key={t.t} x={t.x} y={t.y + 3.5} textAnchor="middle" className="bm-gauge-tick">{t.t}</text>
+        ))}
+        {bmi != null && (
+          <>
+            <text x={cx - R} y={cy + 19} textAnchor="middle" className="bm-gauge-tick">15</text>
+            <text x={cx + R} y={cy + 19} textAnchor="middle" className="bm-gauge-tick">32</text>
+          </>
+        )}
+      </svg>
+      <div className="body-bm-gauge-center">
+        <b>{weightText}<small>kg</small></b>
+        <span>Cân nặng</span>
+      </div>
+    </div>
+  );
+}
+
+/** Biểu đồ xu hướng: đường cong mượt, vùng tô mờ, trục tự co theo dữ liệu, nhãn giá trị lần cuối. */
+function TrendChart({ points, color, unit, dec, minSpan, mobile }) {
+  const [ref, W] = useElementWidth();
+  const H = mobile ? 170 : 214;
+  const gradId = `bmFill${mobile ? 'M' : 'D'}`;
+
+  const chart = useMemo(() => {
+    if (W < 120 || points.length < 2) return null;
+    const padL = 4;
+    const padR = mobile ? 34 : 44;
+    const padT = mobile ? 34 : 40;
+    const padB = 24;
+    const pw = W - padL - padR;
+    const ph = H - padT - padB;
+    const base = padT + ph;
+    const vals = points.map(p => p.val);
+    const { lo, hi } = trendDomain(vals, minSpan);
+    const x = i => padL + (i / (points.length - 1)) * pw;
+    const y = v => padT + (1 - (v - lo) / (hi - lo)) * ph;
+    const P = vals.map((v, i) => [x(i), y(v)]);
+    const line = smoothPath(P);
+    const last = P[P.length - 1];
+    const area = `${line}L${last[0]} ${base}L${P[0][0]} ${base}Z`;
+    const lastY = last[1];
+    const grid = [0, 1, 2, 3].map(k => {
+      const v = lo + (hi - lo) * (k / 3);
+      const yy = y(v);
+      return { y: yy, label: Math.abs(yy - (lastY - 24)) > 16 ? f(v, 1) : null };
+    });
+    const minGap = mobile ? 56 : 72;
+    const n = points.length - 1;
+    const keep = [0];
+    for (let i = 1; i < n; i++) {
+      if (x(i) - x(keep[keep.length - 1]) >= minGap && x(n) - x(i) >= minGap) keep.push(i);
+    }
+    keep.push(n);
+    return { padL, pw, base, line, area, grid, last, keep, P, x };
+  }, [W, H, mobile, points, minSpan]);
+
+  return (
+    <div ref={ref} className={`body-bm-trend-chart${mobile ? ' is-mobile' : ''}`} style={{ height: H }}>
+      {points.length < 2 ? (
+        <div className="body-bm-trend-empty">
+          <AppIcon name="chartLine" size={20} />
+          <span>Cần ít nhất 2 ngày có số đo trong khoảng này để vẽ xu hướng.</span>
+        </div>
+      ) : chart && (
+        <>
+          <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Biểu đồ xu hướng">
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor={color} stopOpacity="0.2" />
+                <stop offset="1" stopColor={color} stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            {chart.grid.map((g, k) => (
+              <g key={k}>
+                <line x1={chart.padL} x2={chart.padL + chart.pw} y1={g.y} y2={g.y} className="bm-grid" />
+                {g.label && <text x={W - (mobile ? 30 : 38)} y={g.y + 3.5} className="bm-tick">{g.label}</text>}
+              </g>
+            ))}
+            <path d={chart.area} fill={`url(#${gradId})`} />
+            <path d={chart.line} fill="none" stroke={color} strokeWidth={mobile ? 2.2 : 2.5} strokeLinecap="round" strokeLinejoin="round" />
+            <line x1={chart.last[0]} x2={chart.last[0]} y1={chart.last[1]} y2={chart.base} stroke={color} strokeDasharray="2 3" opacity="0.5" />
+            {chart.P.map((p, i) => (
+              <circle
+                key={i}
+                cx={p[0]}
+                cy={p[1]}
+                r={i === chart.P.length - 1 ? (mobile ? 4.5 : 5.5) : (mobile ? 2.6 : 3.2)}
+                className="bm-point"
+                stroke={color}
+              />
+            ))}
+            {chart.keep.map((i, k) => (
+              <text
+                key={i}
+                x={chart.x(i)}
+                y={chart.base + 16}
+                textAnchor={k === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'}
+                className="bm-tick"
+              >
+                {ddmm(points[i].date)}
+              </text>
+            ))}
+          </svg>
+          <span className="body-bm-trend-last" style={{ left: chart.last[0], top: chart.last[1] }}>
+            {f(points[points.length - 1].val, dec)} {unit}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function BiometricsScreen() {
   const {
@@ -39,6 +229,7 @@ export default function BiometricsScreen() {
     profile,
     bmiInfo,
     bmr,
+    tdee,
     bodyScore,
     addMeasurement,
     toggleOutlier,
@@ -47,13 +238,16 @@ export default function BiometricsScreen() {
   } = useBiometrics();
 
   const [activeTab, setActiveTab] = useState('analysis'); // 'analysis' | 'history' | 'profile'
-  const [rangeTab, setRangeTab] = useState('30d'); // '7d' | '30d' | '90d' | '365d'
+  const [rangeTab, setRangeTab] = useState('30d');
   const [now] = useState(() => Date.now());
-  const [selectedMetric, setSelectedMetric] = useState('weight'); // 'weight' | 'fat' | 'muscle'
+  const [selectedMetric, setSelectedMetric] = useState('weight');
   const [selectedHistoryId, setSelectedHistoryId] = useState(null);
+  const [inspectorOpen, setInspectorOpen] = useState(false); // mobile: ngăn chi tiết lần đo
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
-  // Form states for adding new measurement
+  // Form thêm cân đo
   const [newWeight, setNewWeight] = useState('');
   const [newFat, setNewFat] = useState('');
   const [newMuscle, setNewMuscle] = useState('');
@@ -62,23 +256,26 @@ export default function BiometricsScreen() {
   const [newBone, setNewBone] = useState('');
   const [newTimeSlot, setNewTimeSlot] = useState('morning');
 
-  // Tape calculator states (US Navy & WHtR)
+  // Thước dây (US Navy & WHtR)
   const [showTapeCalc, setShowTapeCalc] = useState(false);
   const [tapeWaist, setTapeWaist] = useState('');
   const [tapeNeck, setTapeNeck] = useState('');
   const [tapeHip, setTapeHip] = useState('');
   const [tapeCalculated, setTapeCalculated] = useState(null);
 
-  // Profile edit states
+  // Hồ sơ
   const [editHeight, setEditHeight] = useState(profile?.height_cm || '');
   const [editGoalWeight, setEditGoalWeight] = useState(profile?.goal_weight_kg || '');
   const [editActivity, setEditActivity] = useState(profile?.activity_level || 'moderate');
   const [editGender, setEditGender] = useState(profile?.gender || 'male');
   const [editBirthYear, setEditBirthYear] = useState(profile?.birth_year || '');
   const [profileSaved, setProfileSaved] = useState(false);
+  const savedTimerRef = useRef(null);
 
-  // Sync profile when loaded from database
-  useEffect(() => {
+  // Hồ sơ tải xong / đổi → đổ vào form (điều chỉnh state ngay khi render, không qua effect)
+  const [syncedProfile, setSyncedProfile] = useState(profile);
+  if (profile !== syncedProfile) {
+    setSyncedProfile(profile);
     if (profile) {
       if (profile.height_cm != null) setEditHeight(profile.height_cm);
       if (profile.goal_weight_kg != null) setEditGoalWeight(profile.goal_weight_kg);
@@ -86,25 +283,46 @@ export default function BiometricsScreen() {
       if (profile.gender) setEditGender(profile.gender);
       if (profile.birth_year != null) setEditBirthYear(profile.birth_year);
     }
-  }, [profile]);
+  }
 
-  // Default selected history item to latest
+  // Chưa chọn lần đo nào thì xem lần mới nhất
+  const activeHistoryId = selectedHistoryId ?? latest?.id ?? null;
+
+  useEffect(() => () => clearTimeout(savedTimerRef.current), []);
+
+  // Header mobile của BodyPage bấm "+" → mở form thêm cân đo
   useEffect(() => {
-    if (!selectedHistoryId && latest?.id) {
-      setSelectedHistoryId(latest.id);
-    }
-  }, [selectedHistoryId, latest]);
+    const open = () => setShowAddModal(true);
+    window.addEventListener('body:add-measurement', open);
+    return () => window.removeEventListener('body:add-measurement', open);
+  }, []);
+
+  // Escape đóng modal / ngăn chi tiết
+  useEffect(() => {
+    if (!showAddModal && !inspectorOpen) return undefined;
+    const onKey = e => {
+      if (e.key !== 'Escape') return;
+      setShowAddModal(false);
+      setInspectorOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showAddModal, inspectorOpen]);
 
   const heightCm = profile?.height_cm ? Number(profile.height_cm) : null;
   const isFemale = profile?.gender === 'female';
+  const validMeasurements = useMemo(() => measurements.filter(m => !m.is_outlier), [measurements]);
 
-  // Thước dây US Navy: chỉ tính khi có chiều cao thật; WHtR chỉ để tham khảo, không tự điền "mỡ nội tạng"
+  const openAddModal = (withTape = false) => {
+    setSaveError('');
+    setShowTapeCalc(withTape);
+    setShowAddModal(true);
+  };
+
+  // Thước dây US Navy: chỉ tính khi có chiều cao thật; WHtR chỉ để tham khảo
   const handleRunTapeCalc = () => {
     const gender = editGender || profile?.gender || 'male';
     const height = editHeight ? Number(editHeight) : heightCm;
-    const waist = Number(tapeWaist);
-    const neck = Number(tapeNeck);
-    const hip = Number(tapeHip);
     if (!height) {
       setTapeCalculated({ error: 'Cần nhập chiều cao ở tab Hồ sơ trước khi tính.' });
       return;
@@ -113,9 +331,12 @@ export default function BiometricsScreen() {
       setTapeCalculated({ error: 'Công thức Navy chỉ có cho Nam / Nữ — chọn giới tính ở tab Hồ sơ.' });
       return;
     }
-    if (!waist || !neck) return;
-    const navyFat = calculateNavyBodyFat(gender, height, waist, neck, hip);
-    const whtr = estimateVisceralFatFromWaist(waist, height);
+    if (!Number(tapeWaist) || !Number(tapeNeck)) {
+      setTapeCalculated({ error: 'Nhập vòng eo và vòng cổ.' });
+      return;
+    }
+    const navyFat = calculateNavyBodyFat(gender, height, Number(tapeWaist), Number(tapeNeck), Number(tapeHip));
+    const whtr = estimateVisceralFatFromWaist(Number(tapeWaist), height);
     if (navyFat == null) {
       setTapeCalculated({ error: 'Số đo chưa hợp lệ (vòng eo phải lớn hơn vòng cổ).' });
       return;
@@ -127,6 +348,7 @@ export default function BiometricsScreen() {
   const handleSaveMeasurement = async (e) => {
     e.preventDefault();
     if (!newWeight) return;
+    setSaveError('');
     try {
       await addMeasurement({
         weight: newWeight,
@@ -151,6 +373,7 @@ export default function BiometricsScreen() {
       setShowAddModal(false);
     } catch (err) {
       console.error('Error adding measurement:', err);
+      setSaveError('Không lưu được số đo. Kiểm tra kết nối rồi thử lại.');
     }
   };
 
@@ -165,129 +388,72 @@ export default function BiometricsScreen() {
         birth_year: editBirthYear ? Number(editBirthYear) : null
       });
       setProfileSaved(true);
-      setTimeout(() => setProfileSaved(false), 2500);
+      clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setProfileSaved(false), 2500);
     } catch (err) {
       console.error('Error saving profile:', err);
     }
   };
 
-  // Lần đo hợp lệ (bỏ lần đo lệch giờ), mới nhất trước
-  const validMeasurements = useMemo(() => measurements.filter(m => !m.is_outlier), [measurements]);
-
-  // ── ARC GAUGE: dải cân nặng theo chiều cao (ngưỡng BMI châu Á 18,5 / 23 / 25) ──
-  const gaugeData = useMemo(() => {
-    const curWeight = latest?.weight ? Number(latest.weight) : null;
-    const A0 = 135;
-    const SPAN = 270;
-    const arcPath = (cx, cy, r, a0, a1) => {
-      const rad = a => (a * Math.PI) / 180;
-      const x0 = cx + r * Math.cos(rad(a0));
-      const y0 = cy + r * Math.sin(rad(a0));
-      const x1 = cx + r * Math.cos(rad(a1));
-      const y1 = cy + r * Math.sin(rad(a1));
-      const largeArc = a1 - a0 > 180 ? 1 : 0;
-      return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
-    };
-    const legend = [
-      { label: 'Thiếu cân', color: LOW },
-      { label: 'Bình thường', color: OK },
-      { label: 'Thừa cân', color: HI },
-      { label: 'Béo phì', color: OBESE }
-    ];
-
-    // Chưa có chiều cao → không phân loại được, vẽ cung trung tính và không đặt kim
-    if (!heightCm) {
-      return {
-        segs: [{ d: arcPath(120, 112, 92, A0, A0 + SPAN), c: 'var(--body-border-subtle)' }],
-        mx: null,
-        my: null,
-        weightStr: curWeight ? f(curWeight, 2) : '—',
-        status: curWeight ? 'Nhập chiều cao để phân loại' : 'Chưa có số đo',
-        statusColor: MUTED,
-        legend
-      };
+  const submitOnCtrlEnter = e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      e.currentTarget.requestSubmit();
     }
+  };
 
-    const S0 = weightForBmi(15, heightCm);
-    const S1 = weightForBmi(32, heightCm);
-    const w185 = weightForBmi(BMI_CATEGORIES.NORMAL.min, heightCm);
-    const w23 = weightForBmi(BMI_CATEGORIES.OVERWEIGHT.min, heightCm);
-    const w25 = weightForBmi(BMI_CATEGORIES.OBESE.min, heightCm);
-    const ang = (v) => A0 + ((Math.max(S0, Math.min(S1, v)) - S0) / (S1 - S0)) * SPAN;
-    const bounds = [[S0, w185, LOW], [w185, w23, OK], [w23, w25, HI], [w25, S1, OBESE]];
-    const segs = bounds.map(([a, b, c], i) => ({
-      d: arcPath(120, 112, 92, ang(a) + (i ? 3 : 0), ang(b) - (i < 3 ? 3 : 0)),
-      c
-    }));
-
-    let mx = null;
-    let my = null;
-    if (curWeight) {
-      const ma = (ang(curWeight) * Math.PI) / 180;
-      mx = (120 + 92 * Math.cos(ma)).toFixed(1);
-      my = (112 + 92 * Math.sin(ma)).toFixed(1);
-    }
-    const cat = bmiInfo?.category;
-    const catColor = cat?.key === 'underweight' ? LOW : cat?.key === 'normal' ? OK : cat?.key === 'overweight' ? HI : OBESE;
-
-    return {
-      segs,
-      mx,
-      my,
-      weightStr: curWeight ? f(curWeight, 2) : '—',
-      status: cat ? `${cat.label} · BMI ${f(bmiInfo.bmi, 1)}` : 'Chưa có số đo',
-      statusColor: cat ? catColor : MUTED,
-      legend
-    };
-  }, [latest, heightCm, bmiInfo]);
-
+  // ── LẦN ĐO GẦN NHẤT + BMI ────────────────────────────────────
+  const bmiKey = bmiInfo?.category?.key || null;
+  const bmiColor = BMI_COLOR[bmiKey] || 'var(--body-text-muted)';
   const bodyScoreLabel = bodyScore == null ? null
     : bodyScore >= 80 ? 'Rất tốt' : bodyScore >= 65 ? 'Cân đối' : bodyScore >= 50 ? 'Trung bình' : 'Cần cải thiện';
+  const latestStatus = latest
+    ? `${SOURCE_NAME[latest.source] || 'Nhập tay'} · ${new Date(latest.measured_at).toLocaleDateString('vi-VN')} ${timeOf(latest)}`
+    : 'Chưa có số đo';
 
   // ── THÀNH PHẦN CƠ THỂ: chỉ khi đã đo mỡ (4 phần khi có thêm nước + khoáng xương) ──
-  const compositionData = useMemo(() => {
+  const composition = useMemo(() => {
     if (!latest?.weight || latest.body_fat_pct == null) return null;
     const w = Number(latest.weight);
-    const full = calculateBodyComposition(w, Number(latest.body_fat_pct), latest.water_pct != null ? Number(latest.water_pct) : null, latest.bone_mass_kg != null ? Number(latest.bone_mass_kg) : null);
-    const fatKg = Number((w * Number(latest.body_fat_pct) / 100).toFixed(2));
+    const full = calculateBodyComposition(
+      w,
+      Number(latest.body_fat_pct),
+      latest.water_pct != null ? Number(latest.water_pct) : null,
+      latest.bone_mass_kg != null ? Number(latest.bone_mass_kg) : null
+    );
+    const fatKg = Number(((w * Number(latest.body_fat_pct)) / 100).toFixed(2));
     const parts = full
       ? [
-          { name: 'Hàm lượng nước', val: full.waterKg, color: '#4C8DE0' },
-          { name: 'Chất đạm & khác', val: full.proteinKg, color: '#E0A23C' },
-          { name: 'Mỡ', val: full.fatKg, color: '#E26A5A' },
-          { name: 'Khoáng xương', val: full.boneKg, color: '#8CCFC0' }
+          { name: 'Hàm lượng nước', short: 'Nước', val: full.waterKg, color: '#4A8FE7' },
+          { name: 'Chất đạm & khác', short: 'Đạm & khác', val: full.proteinKg, color: '#E8A33D' },
+          { name: 'Mỡ', short: 'Mỡ', val: full.fatKg, color: '#D9503F' },
+          { name: 'Khoáng xương', short: 'Khoáng xương', val: full.boneKg, color: '#5CC8A8' }
         ]
       : [
-          { name: 'Mỡ', val: fatKg, color: '#E26A5A' },
-          { name: 'Khối không mỡ', val: Number((w - fatKg).toFixed(2)), color: '#4C8DE0' }
+          { name: 'Mỡ', short: 'Mỡ', val: fatKg, color: '#D9503F' },
+          { name: 'Khối không mỡ', short: 'Không mỡ', val: Number((w - fatKg).toFixed(2)), color: '#4A8FE7' }
         ];
-
     const tot = parts.reduce((acc, p) => acc + p.val, 0) || w;
-    const C = 2 * Math.PI * 52;
-    let accum = 0;
-    const donutSegments = parts.map(p => {
-      const segLen = (p.val / tot) * C;
-      const da = `${Math.max(0, segLen - 2).toFixed(2)} ${C.toFixed(2)}`;
-      const off = (-accum).toFixed(2);
-      accum += segLen;
-      return { ...p, da, off, formattedVal: f(p.val, 2) };
-    });
-
+    const C = 2 * Math.PI * 74;
+    let acc = 0;
     return {
-      donutSegments,
-      totalWeightStr: f(w, 2),
-      parts: donutSegments,
-      isFull: Boolean(full)
+      total: f(w, 2),
+      isFull: Boolean(full),
+      parts: parts.map(p => {
+        const len = (p.val / tot) * C;
+        const seg = { ...p, kg: f(p.val, 2), pct: f((p.val / tot) * 100, 1), da: `${Math.max(0, len - 3).toFixed(1)} ${C.toFixed(1)}`, off: (-acc).toFixed(1) };
+        acc += len;
+        return seg;
+      })
     };
   }, [latest]);
 
-  // ── 10 CHỈ SỐ: chỉ hiện số đã đo/công thức từ dữ liệu thật; thiếu thì "Chưa đo" ──
-  const metricsGrid = useMemo(() => {
+  // ── 9 CHỈ SỐ: chỉ hiện số đã đo / tính từ dữ liệu thật; thiếu thì "Chưa đo" ──
+  const metrics = useMemo(() => {
     if (!latest) return [];
     const w = Number(latest.weight);
     const num = v => (v == null ? null : Number(v));
-    // Lần đo hợp lệ trước đó có giá trị cho trường này (để tính chênh lệch thật)
-    const previousValueOf = (field) => {
+    const previousValueOf = field => {
       const prev = validMeasurements.find(m => m.id !== latest.id && m[field] != null);
       return prev ? Number(prev[field]) : null;
     };
@@ -300,37 +466,45 @@ export default function BiometricsScreen() {
     const prevFfm = prevFat != null && prevW != null ? Number((prevW * (1 - prevFat / 100)).toFixed(1)) : null;
     const healthyW = heightCm ? [weightForBmi(18.5, heightCm), weightForBmi(22.9, heightCm)] : null;
     const prevBmi = heightCm && prevW ? Number((prevW / ((heightCm / 100) ** 2)).toFixed(1)) : null;
+    const bmiLabel = bmiKey ? BMI_SHORT[bmiKey] : null;
 
-    // [tên, giá trị, đơn vị, số lẻ, nguồn ('measured'|'formula'|null), khoảng chuẩn [lo,hi] | null, giá trị trước, hướng tốt, nhãn trạng thái]
+    // [tên, giá trị, đơn vị, số lẻ, nguồn, khoảng chuẩn, giá trị trước, hướng tốt, nhãn trạng thái, nhãn ngắn]
     const rows = [
-      ['Cân nặng', w, 'kg', 2, 'measured', healthyW, prevW, 0, bmiInfo?.category?.label || null],
-      ['BMI', bmiInfo?.bmi ?? null, '', 1, bmiInfo ? 'formula' : null, [18.5, 22.9], prevBmi, 0, bmiInfo?.category?.label || null],
-      ['Tỷ lệ mỡ', fat, '%', 1, fat != null ? 'measured' : null, fatRange, prevFat, -1, null],
-      ['Cơ xương', num(latest.skeletal_muscle_kg), 'kg', 1, latest.skeletal_muscle_kg != null ? 'measured' : null, null, previousValueOf('skeletal_muscle_kg'), 1, null],
-      ['Mỡ nội tạng', num(latest.visceral_fat), 'mức', 0, latest.visceral_fat != null ? 'measured' : null, [1, 9], previousValueOf('visceral_fat'), -1, null],
-      ['Trao đổi chất', bmr, 'kcal', 0, bmr ? 'formula' : null, null, null, 0, bmr ? 'Mifflin-St Jeor' : null],
-      ['Tỷ lệ nước', num(latest.water_pct), '%', 1, latest.water_pct != null ? 'measured' : null, waterRange, previousValueOf('water_pct'), 1, null],
-      ['Khoáng xương', num(latest.bone_mass_kg), 'kg', 2, latest.bone_mass_kg != null ? 'measured' : null, null, previousValueOf('bone_mass_kg'), 0, null],
-      ['Khối không mỡ', ffm, 'kg', 1, ffm != null ? 'formula' : null, null, prevFfm, 1, null]
+      ['Cân nặng', w, 'kg', 2, 'measured', healthyW, prevW, 0, bmiLabel, bmiLabel],
+      ['BMI', bmiInfo?.bmi ?? null, '', 1, bmiInfo ? 'formula' : null, [18.5, 22.9], prevBmi, 0, bmiLabel ? `${bmiLabel} (Á Đông)` : null, bmiLabel],
+      ['Tỷ lệ mỡ', fat, '%', 1, fat != null ? 'measured' : null, fatRange, prevFat, -1, null, null],
+      ['Cơ xương', num(latest.skeletal_muscle_kg), 'kg', 1, latest.skeletal_muscle_kg != null ? 'measured' : null, null, previousValueOf('skeletal_muscle_kg'), 1, null, null],
+      ['Mỡ nội tạng', num(latest.visceral_fat), 'mức', 0, latest.visceral_fat != null ? 'measured' : null, [1, 9], previousValueOf('visceral_fat'), -1, null, null],
+      ['Trao đổi chất (BMR)', bmr, 'kcal', 0, bmr ? 'formula' : null, null, null, 0, bmr ? 'Mifflin-St Jeor' : null, bmr ? 'Mifflin-St Jeor' : null],
+      ['Tỷ lệ nước', num(latest.water_pct), '%', 1, latest.water_pct != null ? 'measured' : null, waterRange, previousValueOf('water_pct'), 1, null, null],
+      ['Khoáng xương', num(latest.bone_mass_kg), 'kg', 2, latest.bone_mass_kg != null ? 'measured' : null, null, previousValueOf('bone_mass_kg'), 0, null, null],
+      ['Khối không mỡ', ffm, 'kg', 1, ffm != null ? 'formula' : null, null, prevFfm, 1, null, null]
     ];
 
-    return rows.map(([name, val, unit, dec, source, range, prev, goodDir, label]) => {
+    return rows.map(([name, val, unit, dec, source, range, prev, goodDir, label, labelShort]) => {
       const has = val != null && !Number.isNaN(val);
       const inRange = has && range ? val >= range[0] && val <= range[1] : null;
       const delta = has && prev != null ? Number((val - prev).toFixed(dec)) : null;
-      const deltaColor = delta == null || delta === 0 || goodDir === 0 ? MUTED : delta * goodDir > 0 ? GOOD : BAD;
-      let statusText = 'Chưa đo';
-      let statusColor = MUTED;
+      let status = 'Chưa đo';
+      let statusShort = 'Chưa đo';
+      let statusTone = 'muted';
       if (has) {
         if (label) {
-          statusText = label;
-          statusColor = inRange === false ? HI : inRange ? GOOD : 'var(--body-text-sub)';
+          status = label;
+          statusShort = labelShort || label;
+          statusTone = inRange === false ? 'warn' : inRange ? 'good' : 'neutral';
         } else if (range) {
-          statusText = inRange ? 'Trong khoảng chuẩn' : val < range[0] ? 'Thấp hơn chuẩn' : 'Cao hơn chuẩn';
-          statusColor = inRange ? GOOD : HI;
+          status = inRange ? 'Trong khoảng chuẩn' : val < range[0] ? 'Thấp hơn chuẩn' : 'Cao hơn chuẩn';
+          statusShort = inRange ? 'Trong chuẩn' : val < range[0] ? 'Thấp' : 'Cao';
+          statusTone = inRange ? 'good' : 'warn';
+        } else if (delta != null && delta !== 0 && goodDir) {
+          status = delta * goodDir > 0 ? 'Tốt hơn lần trước' : 'Kém hơn lần trước';
+          statusShort = delta > 0 ? 'Tăng' : 'Giảm';
+          statusTone = delta * goodDir > 0 ? 'good' : 'warn';
         } else {
-          statusText = source === 'formula' ? 'Tính từ số đo' : 'Đã đo';
-          statusColor = 'var(--body-text-sub)';
+          status = source === 'formula' ? 'Tính từ số đo' : 'Đã đo';
+          statusShort = status;
+          statusTone = 'neutral';
         }
       }
       // Thanh khoảng chuẩn: dải hiển thị rộng hơn khoảng chuẩn 40% mỗi bên
@@ -339,124 +513,85 @@ export default function BiometricsScreen() {
         const span = range[1] - range[0];
         const mn = range[0] - span * 0.4;
         const mx = range[1] + span * 0.4;
-        const pct = x => Math.max(0, Math.min(100, ((x - mn) / (mx - mn)) * 100));
         bar = {
-          w0: `${pct(range[0]).toFixed(1)}%`,
-          w1: `${(pct(range[1]) - pct(range[0])).toFixed(1)}%`,
-          markerPos: `${pct(val).toFixed(1)}%`,
-          rangeText: `chuẩn ${f(range[0], dec === 0 ? 0 : 1)}–${f(range[1], dec === 0 ? 0 : 1)}`
+          f1: (range[0] - mn) / (mx - mn),
+          f2: span / (mx - mn),
+          f3: (mx - range[1]) / (mx - mn),
+          pos: `${Math.max(0, Math.min(100, ((val - mn) / (mx - mn)) * 100)).toFixed(1)}%`
         };
       }
       return {
         name,
-        valueDisplay: has ? f(val, dec) : '—',
+        value: has ? f(val, dec) : '—',
         unit: has ? unit : '',
-        statusText,
-        statusColor,
-        deltaText: delta == null ? '' : fs(delta, dec),
-        deltaColor,
         source: has ? source : null,
+        delta: delta == null ? '' : fs(delta, dec),
+        deltaTone: toneOf(delta, goodDir),
+        status,
+        statusShort,
+        statusTone,
+        rangeText: range ? `chuẩn ${f(range[0], dec === 0 ? 0 : 1)}–${f(range[1], dec === 0 ? 0 : 1)}` : unit === 'kcal' ? 'kcal/ngày' : unit,
         bar
       };
     });
-  }, [latest, bmiInfo, bmr, validMeasurements, heightCm, isFemale]);
+  }, [latest, bmiInfo, bmiKey, bmr, validMeasurements, heightCm, isFemale]);
 
-  // ── XU HƯỚNG: chỉ vẽ từ các lần đo thật trong khoảng đã chọn ──
-  const trendData = useMemo(() => {
-    const days = { '7d': 7, '30d': 30, '90d': 90, '365d': 365 }[rangeTab] || 30;
-    const cutoff = now - days * 86400000;
-    const fieldOf = { weight: 'weight', fat: 'body_fat_pct', muscle: 'skeletal_muscle_kg' };
-    const meta = {
-      weight: { name: 'Cân nặng', unit: 'kg', dec: 2, goodDir: profile?.goal_weight_kg && latest?.weight ? (Number(profile.goal_weight_kg) < Number(latest.weight) ? -1 : 1) : 0, goal: profile?.goal_weight_kg ? Number(profile.goal_weight_kg) : null },
-      fat: { name: 'Tỷ lệ mỡ', unit: '%', dec: 1, goodDir: -1, goal: null },
-      muscle: { name: 'Cơ xương', unit: 'kg', dec: 1, goodDir: 1, goal: null }
-    };
-    const pointsOf = (key) => validMeasurements
-      .filter(m => m[fieldOf[key]] != null && new Date(m.measured_at || m.local_date).getTime() >= cutoff)
-      .slice()
-      .reverse()
-      .map(m => ({ date: m.local_date, val: Number(m[fieldOf[key]]) }));
-
-    const cards = Object.keys(meta).map(key => {
-      const pts = pointsOf(key);
+  // ── XU HƯỚNG ─────────────────────────────────────────────────
+  const range = RANGES.find(r => r.k === rangeTab) || RANGES[1];
+  const goalW = profile?.goal_weight_kg ? Number(profile.goal_weight_kg) : null;
+  const trend = useMemo(() => {
+    const cutoff = now - range.days * 86400000;
+    const weightDir = goalW != null && latest?.weight ? (goalW < Number(latest.weight) ? -1 : 1) : 0;
+    const series = TREND_METRICS.map(tm => {
+      const pts = dailyAverageSeries(validMeasurements, tm.field, cutoff);
       const cur = pts.length ? pts[pts.length - 1].val : null;
       const delta = pts.length >= 2 ? pts[pts.length - 1].val - pts[0].val : null;
-      const dir = meta[key].goodDir;
-      return {
-        key,
-        name: meta[key].name,
-        cur: cur != null ? f(cur, meta[key].dec) : '—',
-        unit: meta[key].unit,
-        delta: delta == null ? '' : `${fs(delta, meta[key].dec)} ${meta[key].unit}`,
-        deltaColor: delta == null || Math.abs(delta) < 0.001 || dir === 0 ? MUTED : delta * dir > 0 ? GOOD : BAD
-      };
+      const goodDir = tm.key === 'weight' ? weightDir : tm.goodDir;
+      return { ...tm, pts, cur, delta, tone: toneOf(delta, goodDir) };
     });
-
-    const curTm = meta[selectedMetric] || meta.weight;
-    const pts = pointsOf(selectedMetric);
-    if (pts.length < 2) {
-      return { cards, curTm, hasTrend: false };
+    const sel = series.find(s => s.key === selectedMetric) || series[0];
+    let goal = null;
+    if (sel.key === 'weight' && goalW != null && sel.cur != null) {
+      const remain = goalW - sel.cur;
+      const d = sel.delta;
+      const towardGoal = d == null || Math.abs(d) < 0.005 ? null : (remain > 0 ? d > 0 : d < 0);
+      goal = {
+        target: f(goalW, 1),
+        remain: Math.abs(remain) < 0.05 ? 'đã đạt' : `${remain > 0 ? '+' : '−'}${f(Math.abs(remain), 2)} kg`,
+        reached: Math.abs(remain) < 0.05,
+        text: d == null || Math.abs(d) < 0.005
+          ? 'Kỳ này cân nặng không đổi.'
+          : `Kỳ này ${d < 0 ? 'giảm' : 'tăng'} ${f(Math.abs(d), 2)} kg, ${towardGoal ? 'đúng' : 'ngược'} hướng mục tiêu.`
+      };
     }
+    return { series, sel, goal };
+  }, [validMeasurements, now, range, selectedMetric, goalW, latest]);
 
-    const vals = pts.map(p => p.val);
-    let lo = Math.min(...vals, curTm.goal ?? Infinity);
-    let hi = Math.max(...vals, curTm.goal ?? -Infinity);
-    const pad = (hi - lo) * 0.15 || 0.8;
-    lo -= pad;
-    hi += pad;
-    const X = i => (i / (pts.length - 1)) * 600;
-    const Y = v => (1 - (v - lo) / (hi - lo)) * 200;
-    const pathPoints = vals.map((v, i) => `${i ? 'L' : 'M'} ${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(' ');
-
-    return {
-      cards,
-      curTm,
-      hasTrend: true,
-      pathPoints,
-      area: `${pathPoints} L 600 200 L 0 200 Z`,
-      goalY: curTm.goal != null ? Y(curTm.goal).toFixed(1) : null,
-      goalLabel: curTm.goal != null ? `Mục tiêu ${f(curTm.goal)} ${curTm.unit}` : '',
-      lastY: Y(vals[vals.length - 1]).toFixed(1),
-      yMax: f(hi, 1),
-      yMid: f((hi + lo) / 2, 1),
-      yMin: f(lo, 1),
-      firstDate: pts[0].date,
-      midDate: pts[Math.floor(pts.length / 2)].date,
-      lastDate: pts[pts.length - 1].date
-    };
-  }, [validMeasurements, latest, selectedMetric, profile, rangeTab, now]);
-
-  // ── LỊCH SỬ GOM THEO NGÀY & THẺ CHI TIẾT LẦN ĐO ──
-  const historyData = useMemo(() => {
+  // ── LỊCH SỬ GOM THEO NGÀY ────────────────────────────────────
+  const history = useMemo(() => {
     const groupsMap = new Map();
     measurements.forEach(m => {
       if (!groupsMap.has(m.local_date)) groupsMap.set(m.local_date, []);
       groupsMap.get(m.local_date).push(m);
     });
-
     const groups = Array.from(groupsMap.entries()).map(([dateStr, items]) => {
-      const validItems = items.filter(i => !i.is_outlier);
-      const avgWeight = validItems.length
-        ? validItems.reduce((acc, curr) => acc + Number(curr.weight), 0) / validItems.length
-        : Number(items[0].weight);
+      const valid = items.filter(i => !i.is_outlier);
+      const avg = (valid.length ? valid : items).reduce((acc, cur) => acc + Number(cur.weight), 0) / (valid.length || items.length);
+      const d = new Date(`${dateStr}T00:00:00`);
       return {
         dateStr,
-        avgLabel: `Trung bình ${f(avgWeight, 2)} kg`,
+        label: `${d.toLocaleDateString('vi-VN', { weekday: 'long' })}, ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`,
+        avg: f(avg, 2),
         items: items.map(item => {
           const parts = [];
           if (item.body_fat_pct != null) parts.push(`${f(item.body_fat_pct)}% mỡ`);
           if (item.skeletal_muscle_kg != null) parts.push(`${f(item.skeletal_muscle_kg)} kg cơ`);
-          return {
-            ...item,
-            weightStr: f(item.weight, 2),
-            timeStr: new Date(item.measured_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-            subInfo: parts.length ? parts.join(' · ') : 'Chỉ cân nặng'
-          };
+          return { ...item, weightStr: f(item.weight, 2), timeStr: timeOf(item), sub: parts.length ? parts.join(' · ') : 'Chỉ cân nặng' };
         })
       };
     });
 
-    const activeItem = measurements.find(m => m.id === selectedHistoryId) || measurements[0] || null;
+    const activeItem = measurements.find(m => m.id === activeHistoryId) || measurements[0] || null;
     let inspector = null;
     if (activeItem) {
       const w = Number(activeItem.weight);
@@ -465,16 +600,17 @@ export default function BiometricsScreen() {
       const bmiVal = heightCm ? w / ((heightCm / 100) ** 2) : null;
       inspector = {
         item: activeItem,
-        when: `${activeItem.local_date} ${new Date(activeItem.measured_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`,
-        sourceName: activeItem.source === 'huawei_scale' ? 'Cân Huawei' : activeItem.source === 'csv_import' ? 'Nhập file' : 'Nhập tay',
-        weightStr: f(w, 2),
-        isOutlier: activeItem.is_outlier,
+        when: `${new Date(activeItem.measured_at).toLocaleDateString('vi-VN')} · ${timeOf(activeItem)} · ${slotLabelOf(activeItem)}`,
+        source: SOURCE_NAME[activeItem.source] || 'Nhập tay',
+        weight: f(w, 2),
         rows: [
-          { name: 'BMI', val: bmiVal != null ? f(bmiVal, 1) : '—', unit: bmiVal != null ? '' : '(cần chiều cao)' },
-          { name: 'Tỷ lệ mỡ', val: fat != null ? f(fat, 1) : '—', unit: '%' },
-          { name: 'Cơ xương', val: mus != null ? f(mus, 1) : '—', unit: 'kg' },
-          { name: 'Khối mỡ', val: fat != null ? f(w * fat / 100, 2) : '—', unit: 'kg' },
-          { name: 'Khối không mỡ', val: fat != null ? f(w * (1 - fat / 100), 2) : '—', unit: 'kg' }
+          { name: 'BMI', val: bmiVal != null ? f(bmiVal, 1) : '—', unit: bmiVal != null ? '' : 'cần chiều cao' },
+          { name: 'Tỷ lệ mỡ', val: f(fat, 1), unit: fat != null ? '%' : '' },
+          { name: 'Cơ xương', val: f(mus, 1), unit: mus != null ? 'kg' : '' },
+          { name: 'Khối mỡ', val: fat != null ? f((w * fat) / 100, 2) : '—', unit: fat != null ? 'kg' : '' },
+          { name: 'Khối không mỡ', val: fat != null ? f(w * (1 - fat / 100), 2) : '—', unit: fat != null ? 'kg' : '' },
+          { name: 'Mỡ nội tạng', val: f(activeItem.visceral_fat, 0), unit: activeItem.visceral_fat != null ? 'mức' : '' },
+          { name: 'Tỷ lệ nước', val: f(activeItem.water_pct, 1), unit: activeItem.water_pct != null ? '%' : '' }
         ]
       };
     }
@@ -487,1365 +623,588 @@ export default function BiometricsScreen() {
       const ref = validMeasurements.find(m => t0 - new Date(m.measured_at).getTime() >= 7 * 86400000);
       if (ref) delta7 = Number(latestValid.weight) - Number(ref.weight);
     }
-    const goalW = profile?.goal_weight_kg ? Number(profile.goal_weight_kg) : null;
     const towardGoal = delta7 != null && goalW != null && latestValid
       ? (Number(latestValid.weight) > goalW ? delta7 < 0 : delta7 > 0)
       : null;
-
     return {
       groups,
       inspector,
-      totalCount: measurements.length,
-      latestWeightStr: latestValid ? f(latestValid.weight, 2) : '—',
-      delta7Str: delta7 == null ? '—' : fs(delta7, 2),
-      delta7Color: towardGoal == null ? 'var(--body-text-main)' : towardGoal ? GOOD : BAD
+      total: measurements.length,
+      latestWeight: latestValid ? f(latestValid.weight, 2) : '—',
+      delta7: delta7 == null ? '—' : fs(delta7, 2),
+      delta7Tone: towardGoal == null ? 'neutral' : towardGoal ? 'good' : 'bad'
     };
-  }, [measurements, validMeasurements, selectedHistoryId, profile, heightCm]);
+  }, [measurements, validMeasurements, activeHistoryId, goalW, heightCm]);
 
-  // ── MỤC TIÊU CÂN NẶNG (hồ sơ chỉ lưu cân nặng mục tiêu) ──
+  // ── MỤC TIÊU CÂN NẶNG ────────────────────────────────────────
   const weightGoal = useMemo(() => {
-    const goal = profile?.goal_weight_kg ? Number(profile.goal_weight_kg) : null;
     const cur = validMeasurements[0] ? Number(validMeasurements[0].weight) : null;
     const start = validMeasurements.length ? Number(validMeasurements[validMeasurements.length - 1].weight) : null;
-    if (goal == null || cur == null) return { goal, cur, pct: null };
-    const pct = start !== goal ? Math.max(0, Math.min(100, Math.round(((start - cur) / (start - goal)) * 100))) : 100;
-    return { goal, cur, start, pct, remain: Math.abs(cur - goal) };
-  }, [profile, validMeasurements]);
+    if (goalW == null || cur == null) return { goal: goalW, cur, pct: null };
+    const pct = start !== goalW ? Math.max(0, Math.min(100, Math.round(((start - cur) / (start - goalW)) * 100))) : 100;
+    return { goal: goalW, cur, start, pct, remain: Math.abs(cur - goalW) };
+  }, [goalW, validMeasurements]);
 
   if (!hasLoaded) return <SkeletonList heading rows={4} gap="10px" label="Đang tải số đo" />;
 
+  const age = profile?.birth_year ? new Date().getFullYear() - profile.birth_year : null;
+  const tabs = [['analysis', 'Phân tích'], ['history', 'Lịch sử'], ['profile', 'Hồ sơ']];
+  const scoreC = 2 * Math.PI * 19;
+
+  // ── KHỐI GIAO DIỆN ───────────────────────────────────────────
+  const gaugeCard = (
+    <section className="body-bm-card body-bm-gauge-card">
+      <div className="body-bm-card-head">
+        <b>Lần đo gần nhất</b>
+        {latest && <small>{ddmm(latest.local_date)} · {slotLabelOf(latest)}</small>}
+      </div>
+      {latest ? (
+        <>
+          <BmiGauge bmi={bmiInfo?.bmi ?? null} color={bmiColor} weightText={f(latest.weight, 2)} />
+          <div className="body-bm-bmi-chips">
+            {bmiInfo ? (
+              <>
+                <span className={`body-bm-bmi-chip is-${bmiKey}`}>
+                  <b>BMI {f(bmiInfo.bmi, 1)}</b><i />{BMI_SHORT[bmiKey]}
+                </span>
+                <span className="body-bm-chip">Chuẩn Á Đông</span>
+              </>
+            ) : (
+              <button type="button" className="body-bm-chip is-action" onClick={() => setActiveTab('profile')}>
+                <AppIcon name="ruler" size={13} />Nhập chiều cao để tính BMI
+              </button>
+            )}
+          </div>
+          {bmiInfo && (
+            <div className="body-bm-legend">
+              {BMI_LEGEND.map(([k, label, rangeText]) => (
+                <span key={k} className={k === bmiKey ? 'is-on' : ''}>
+                  <b><i style={{ background: BMI_COLOR[k] }} />{label}</b>
+                  <small>{rangeText}</small>
+                </span>
+              ))}
+            </div>
+          )}
+          {bodyScore != null && (
+            <div className="body-bm-score">
+              <span className="body-bm-score-ring">
+                <svg viewBox="0 0 46 46" aria-hidden="true">
+                  <circle cx="23" cy="23" r="19" className="bm-score-track" />
+                  <circle cx="23" cy="23" r="19" className="bm-score-bar" strokeDasharray={`${((bodyScore / 100) * scoreC).toFixed(1)} ${scoreC.toFixed(1)}`} />
+                </svg>
+                <b>{bodyScore}</b>
+              </span>
+              <span className="body-bm-score-text">
+                <b>Điểm cơ thể {bodyScore}/100 · {bodyScoreLabel}</b>
+                <small>Ước tính từ BMI và các chỉ số đã đo</small>
+              </span>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="body-bm-empty">
+          <span><AppIcon name="scales" size={24} /></span>
+          <b>Chưa có lần đo nào</b>
+          <p>Thêm số cân đầu tiên để xem BMI, xu hướng và các chỉ số cơ thể.</p>
+          <button type="button" className="body-bm-btn is-dark" onClick={() => openAddModal()}>
+            <AppIcon name="plus" size={14} />Thêm cân đo
+          </button>
+        </div>
+      )}
+    </section>
+  );
+
+  const rangeSeg = (
+    <div className="body-bm-seg is-small" role="group" aria-label="Khoảng thời gian">
+      {RANGES.map(r => (
+        <button key={r.k} type="button" className={rangeTab === r.k ? 'is-on' : ''} onClick={() => setRangeTab(r.k)} aria-pressed={rangeTab === r.k}>
+          {r.l}
+        </button>
+      ))}
+    </div>
+  );
+
+  const trendTiles = (
+    <div className="body-bm-tiles">
+      {trend.series.map(t => (
+        <button
+          key={t.key}
+          type="button"
+          className={`body-bm-tile${t.key === trend.sel.key ? ' is-on' : ''}`}
+          style={t.key === trend.sel.key ? { borderColor: t.color } : undefined}
+          onClick={() => setSelectedMetric(t.key)}
+          aria-pressed={t.key === trend.sel.key}
+        >
+          <span className="body-bm-tile-name"><i style={{ background: t.color }} />{t.name}</span>
+          <span className="body-bm-tile-row">
+            <b>{t.cur != null ? f(t.cur, t.dec) : '—'}<small>{t.cur != null ? t.unit : ''}</small></b>
+            <em className={`is-${t.tone}`}>{t.delta != null ? fs(t.delta, t.dec) : ''}</em>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+
+  const goalLine = trend.goal && (
+    <div className="body-bm-goal">
+      <AppIcon name="flagPennant" size={15} />
+      <span>
+        {trend.goal.reached
+          ? <>Đã đạt mục tiêu <b>{trend.goal.target} kg</b>. {trend.goal.text}</>
+          : <>Mục tiêu <b>{trend.goal.target} kg</b> · còn <b className="is-good">{trend.goal.remain}</b> nữa. {trend.goal.text}</>}
+      </span>
+    </div>
+  );
+
+  const scienceCard = (
+    <section className="body-bm-science">
+      <span className="body-bm-science-ic"><AppIcon name="flask" size={17} /></span>
+      <span className="body-bm-science-text">
+        <b>Cơ sở khoa học &amp; Nguồn dữ liệu chỉ số</b>
+        <small>
+          <strong>BMI &amp; BMR:</strong> Tính từ chiều cao, cân nặng, tuổi (thang BMI châu Á &amp; Mifflin-St Jeor).
+          Chỉ số chưa đo sẽ hiện "Chưa đo" — app không tự điền giá trị ước đoán.
+        </small>
+      </span>
+      <button type="button" className="body-bm-science-btn" onClick={() => openAddModal(true)}>
+        <AppIcon name="ruler" size={14} />Không có cân? Đo bằng thước dây (US Navy)
+      </button>
+    </section>
+  );
+
+  const metricCards = (
+    <div className="body-bm-metrics">
+      {metrics.map(m => (
+        <div key={m.name} className="body-bm-metric">
+          <div className="body-bm-metric-head">
+            <span>{m.name}</span>
+            {m.source && <em className={`is-${m.source}`}>{m.source === 'formula' ? 'Công thức' : 'Đã đo'}</em>}
+            {m.source && <i className={`body-bm-metric-dot is-${m.source}`} />}
+          </div>
+          <div className="body-bm-metric-val">
+            <b>{m.value}<small>{m.unit}</small></b>
+            {m.delta && <em className={`is-${m.deltaTone}`}>{m.delta}</em>}
+          </div>
+          <div className={`body-bm-bar${m.bar ? '' : ' is-hidden'}`} aria-hidden="true">
+            {m.bar && (
+              <>
+                <span style={{ flex: m.bar.f1 }} />
+                <span style={{ flex: m.bar.f2 }} />
+                <span style={{ flex: m.bar.f3 }} />
+                <i style={{ left: m.bar.pos }} />
+              </>
+            )}
+          </div>
+          <div className="body-bm-metric-foot">
+            <span className={`is-${m.statusTone}`}>
+              <span className="body-bm-d-text">{m.status}</span>
+              <span className="body-bm-m-text">{m.statusShort}</span>
+            </span>
+            <small>{m.rangeText}</small>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const compositionCard = (
+    <section className="body-bm-card body-bm-comp">
+      <div className="body-bm-card-head">
+        <b>Thành phần cơ thể</b>
+        {composition && <em className="body-bm-badge is-measured">Đã đo</em>}
+      </div>
+      {composition ? (
+        <div className="body-bm-comp-body">
+          <div className="body-bm-donut">
+            <svg viewBox="0 0 180 180" aria-hidden="true">
+              {composition.parts.map(p => (
+                <circle key={p.name} cx="90" cy="90" r="74" stroke={p.color} strokeDasharray={p.da} strokeDashoffset={p.off} className="bm-donut-seg" />
+              ))}
+            </svg>
+            <span><b>{composition.total}</b><small>kg tổng</small></span>
+          </div>
+          <div className="body-bm-comp-list">
+            {composition.parts.map(p => (
+              <div key={p.name}>
+                <span><i style={{ background: p.color }} /><span className="body-bm-d-text">{p.name}</span><span className="body-bm-m-text">{p.short}</span></span>
+                <b>{p.kg} kg</b>
+                <small>{p.pct}%</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="body-bm-comp-empty">
+          <AppIcon name="chartDonut" size={20} />
+          <span>Cần đo tỷ lệ mỡ (cân InBody hoặc thước dây) để tính thành phần cơ thể.</span>
+        </div>
+      )}
+      {composition && (
+        <small className="body-bm-footnote">
+          {composition.isFull
+            ? 'Thành phần (kg) = nước + mỡ + khoáng xương + phần còn lại (đạm & khác).'
+            : 'Đo thêm tỷ lệ nước và khoáng xương để tách đủ 4 phần.'}
+        </small>
+      )}
+    </section>
+  );
+
+  const inspector = history.inspector && (
+    <aside className={`body-bm-card body-bm-insp${inspectorOpen ? ' is-open' : ''}`} aria-label="Chi tiết lần đo">
+      <span className="body-bm-sheet-grip" />
+      <div className="body-bm-insp-head">
+        <small>{history.inspector.when}</small>
+        <em className="body-bm-chip">{history.inspector.source}</em>
+        <button type="button" className="body-bm-icon-btn body-bm-m-only" onClick={() => setInspectorOpen(false)} aria-label="Đóng">
+          <AppIcon name="x" size={15} />
+        </button>
+      </div>
+      <b className="body-bm-insp-weight">{history.inspector.weight}<small>kg</small></b>
+      {history.inspector.item.is_outlier && (
+        <div className="body-bm-outlier">
+          <AppIcon name="warning" size={16} weight="fill" />
+          <span>Lần đo này được đánh dấu lệch giờ (ví dụ đo buổi tối sau khi ăn no) nên tách khỏi đường xu hướng chính.</span>
+        </div>
+      )}
+      <div className="body-bm-insp-rows">
+        {history.inspector.rows.map(r => (
+          <div key={r.name}>
+            <span>{r.name}</span>
+            <b>{r.val}<small>{r.unit}</small></b>
+          </div>
+        ))}
+      </div>
+      <div className="body-bm-insp-actions">
+        <button type="button" className="body-bm-btn" onClick={() => toggleOutlier(history.inspector.item.id)}>
+          <AppIcon name={history.inspector.item.is_outlier ? 'checkCircle' : 'warning'} size={14} />
+          {history.inspector.item.is_outlier ? 'Đánh dấu bình thường' : 'Đánh dấu lệch giờ'}
+        </button>
+        <button type="button" className="body-bm-btn is-danger" onClick={() => setConfirmDeleteId(history.inspector.item.id)}>
+          <AppIcon name="trash" size={14} />Xóa
+        </button>
+      </div>
+    </aside>
+  );
+
   return (
-    <div className="body-container-constrained" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-      {/* ── HEADER WITH SUBTABS & SYNC STATUS ───────────────────── */}
-      <div className="body-cothe-header">
-        <div className="body-cothe-header-left">
-          <h2 className="body-cothe-title" style={{ fontSize: '22px', fontWeight: 700, margin: 0, letterSpacing: '-0.01em', color: 'var(--body-text-main)' }}>
-            Cơ thể
-          </h2>
-
-          <div className="body-cothe-tabs">
-            {[
-              { key: 'analysis', label: 'Phân tích' },
-              { key: 'history', label: 'Lịch sử' },
-              { key: 'profile', label: 'Hồ sơ' }
-            ].map(t => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setActiveTab(t.key)}
-                className={`body-cothe-tab-btn ${activeTab === t.key ? 'active' : ''}`}
-              >
-                {t.label}
+    <div className="body-bm">
+      {/* ── THANH TRÊN: tab + trạng thái lần đo + thêm cân đo ── */}
+      <div className="body-bm-top">
+        <div className="body-bm-top-left">
+          <div className="body-bm-seg" role="tablist" aria-label="Màn Cơ thể">
+            {tabs.map(([k, l]) => (
+              <button key={k} type="button" role="tab" aria-selected={activeTab === k} className={activeTab === k ? 'is-on' : ''} onClick={() => setActiveTab(k)}>
+                {l}
               </button>
             ))}
           </div>
         </div>
-
-        <div className="body-cothe-header-right">
-          {latest && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12.5px', color: 'var(--body-text-muted)' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2F8A57' }} />
-              {latest.source === 'huawei_scale' ? 'Cân Huawei' : latest.source === 'csv_import' ? 'Nhập file' : 'Nhập tay'} · {latest.local_date}
-            </span>
-          )}
-          <button
-            type="button"
-            className="body-btn body-btn-primary"
-            onClick={() => setShowAddModal(true)}
-            style={{ height: '34px', padding: '0 13px', display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <AppIcon name="plus" size={14} />
-            <span>Thêm cân đo</span>
+        <div className="body-bm-top-right">
+          <span className="body-bm-status"><i className={latest ? 'is-on' : ''} />{latestStatus}</span>
+          <button type="button" className="body-bm-btn is-dark" onClick={() => openAddModal()}>
+            <AppIcon name="plus" size={14} />Thêm cân đo
           </button>
         </div>
       </div>
 
-      {/* ── TAB 1: PHÂN TÍCH CHỈ SỐ CƠ THỂ (ANALYSIS) ────────────── */}
+      {/* ── PHÂN TÍCH ─────────────────────────────────────────────── */}
       {activeTab === 'analysis' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-          {/* ── TOP ROW: GAUGE CARD (360px) + TREND CHART (FLEX: 1) ── */}
-          <div className="body-cothe-top-grid">
-
-            {/* GAUGE CARD CÂN NẶNG & BMI (360px) */}
-            <div className="body-card body-cothe-gauge-card" style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '22px',
-              boxSizing: 'border-box'
-            }}>
-              <span style={{ fontSize: '13px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>
-                {latest ? `${latest.local_date} · ${latest.time_slot === 'morning' ? 'Sáng sớm' : 'Buổi tối'}` : 'Chưa có số đo'}
-              </span>
-
-              {/* Vòng cung Gauge SVG */}
-              <div style={{ position: 'relative', width: '240px', maxWidth: '100%', height: '190px', margin: '4px 0' }}>
-                <svg width="240" height="190" viewBox="0 0 240 203" style={{ display: 'block', width: '100%', height: '100%' }}>
-                  {gaugeData.segs.map((seg, idx) => (
-                    <path
-                      key={idx}
-                      d={seg.d}
-                      fill="none"
-                      stroke={seg.c}
-                      strokeWidth="12"
-                      strokeLinecap="round"
-                    />
-                  ))}
-                  {gaugeData.mx != null && (
-                    <circle
-                      cx={gaugeData.mx}
-                      cy={gaugeData.my}
-                      r="9"
-                      fill="#FFFFFF"
-                      stroke="#15161A"
-                      strokeWidth="3.5"
-                    />
-                  )}
-                </svg>
-
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingTop: '16px'
-                }}>
-                  <div style={{
-                    fontSize: '46px',
-                    fontWeight: 700,
-                    fontFamily: 'var(--body-font)',
-                    color: 'var(--body-text-main)',
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1
-                  }}>
-                    {gaugeData.weightStr}
-                  </div>
-                  <div style={{ fontSize: '13.5px', color: 'var(--body-text-muted)', marginTop: '4px' }}>
-                    kg
-                  </div>
-                  <div style={{ marginTop: '6px', fontSize: '14.5px', fontWeight: 600, color: gaugeData.statusColor }}>
-                    {gaugeData.status}
-                  </div>
-                </div>
-              </div>
-
-              {/* Legend 4 mốc màu (wrap trên mobile an toàn tuyệt đối) */}
-              <div style={{ display: 'flex', gap: '8px 12px', justifyContent: 'center', alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
-                {gaugeData.legend.map(l => (
-                  <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--body-text-sub)', whiteSpace: 'nowrap' }}>
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: l.color, flex: 'none' }} />
-                    {l.label}
-                  </span>
-                ))}
-              </div>
-
-              {/* Box Điểm số cơ thể */}
-              <div style={{
-                marginTop: 'auto',
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                paddingTop: '14px',
-                borderTop: '1px solid var(--body-card-border)'
-              }}>
-                <span style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '20px',
-                  background: bodyScore != null && bmiInfo ? 'var(--body-green-soft)' : 'var(--body-shell-bg)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  fontWeight: 700,
-                  fontSize: '15px',
-                  color: bodyScore != null && bmiInfo ? 'var(--body-green)' : 'var(--body-text-muted)',
-                  flex: 'none'
-                }}>
-                  {bodyScore != null && bmiInfo ? bodyScore : '—'}
+        <div className="body-bm-analysis">
+          <div className="body-bm-row1">
+            {gaugeCard}
+            <section className="body-bm-card body-bm-trend">
+              <div className="body-bm-trend-head">
+                <span className="body-bm-trend-title">
+                  <b>Xu hướng</b>
+                  <small>{range.s} · trung bình ngày</small>
                 </span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                    {bodyScore != null && bmiInfo ? `Điểm cơ thể ${bodyScore}/100 · ${bodyScoreLabel}` : 'Chưa đủ dữ liệu để chấm điểm'}
-                  </span>
-                  <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {bodyScore != null && bmiInfo ? 'Ước tính từ BMI và các chỉ số đã đo' : 'Cần cân nặng và chiều cao'}
-                  </span>
+                {rangeSeg}
+              </div>
+              {trendTiles}
+              <TrendChart points={trend.sel.pts} color={trend.sel.color} unit={trend.sel.unit} dec={trend.sel.dec} minSpan={trend.sel.minSpan} />
+              <TrendChart points={trend.sel.pts} color={trend.sel.color} unit={trend.sel.unit} dec={trend.sel.dec} minSpan={trend.sel.minSpan} mobile />
+              {goalLine}
+            </section>
+          </div>
+
+          <div className="body-bm-d-only">{scienceCard}</div>
+
+          {latest && (
+            <div className="body-bm-row3">
+              <div>
+                {metricCards}
+                <div className="body-bm-src-legend">
+                  <span><i className="is-measured" />Đã đo</span>
+                  <span><i className="is-formula" />Công thức</span>
                 </div>
               </div>
+              {compositionCard}
             </div>
+          )}
 
-            {/* TREND CARD (XU HƯỚNG CÓ BIỂU ĐỒ & 3 METRIC TABS) */}
-            <div className="body-card body-cothe-trend-card" style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              padding: '22px',
-              boxSizing: 'border-box'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                  <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                    Xu hướng
-                  </span>
-                  <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)' }}>
-                    {rangeTab === '7d' ? '7 ngày' : rangeTab === '30d' ? '30 ngày' : rangeTab === '90d' ? '3 tháng' : 'Năm'} · trung bình ngày
-                  </span>
+          <div className="body-bm-m-only">{scienceCard}</div>
+        </div>
+      )}
+
+      {/* ── LỊCH SỬ ──────────────────────────────────────────────── */}
+      {activeTab === 'history' && (
+        <div className="body-bm-history">
+          <div className="body-bm-hstats">
+            <div><span>Cân nặng</span><b>{history.latestWeight}<small>kg</small></b></div>
+            <div><span>7 ngày qua</span><b className={`is-${history.delta7Tone}`}>{history.delta7}<small>{history.delta7 === '—' ? '' : 'kg'}</small></b></div>
+            <div><span>Số lần đo</span><b>{history.total}<small>lần</small></b></div>
+          </div>
+
+          <div className="body-bm-hgrid">
+            <section className="body-bm-card body-bm-hlist">
+              {history.groups.length === 0 ? (
+                <div className="body-bm-empty">
+                  <span><AppIcon name="scales" size={24} /></span>
+                  <b>Chưa có lần đo nào</b>
+                  <p>Bấm "Thêm cân đo" để ghi lần đầu.</p>
                 </div>
-
-                <div style={{ display: 'flex', background: 'var(--body-shell-bg)', borderRadius: '9px', padding: '3px', border: '1px solid var(--body-card-border)' }}>
-                  {[
-                    { key: '7d', label: 'Tuần' },
-                    { key: '30d', label: 'Tháng' },
-                    { key: '90d', label: '3 tháng' },
-                    { key: '365d', label: 'Năm' }
-                  ].map(tab => (
+              ) : history.groups.map(group => (
+                <div key={group.dateStr} className="body-bm-hgroup">
+                  <div className="body-bm-hgroup-head">
+                    <b>{group.label}</b>
+                    <small>TB {group.avg} kg</small>
+                  </div>
+                  {group.items.map(item => (
                     <button
-                      key={tab.key}
+                      key={item.id}
                       type="button"
-                      onClick={() => setRangeTab(tab.key)}
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        background: rangeTab === tab.key ? 'var(--body-card-bg)' : 'transparent',
-                        color: rangeTab === tab.key ? 'var(--body-text-main)' : 'var(--body-text-sub)',
-                        fontSize: '11.5px',
-                        fontWeight: rangeTab === tab.key ? 600 : 500,
-                        cursor: 'pointer',
-                        boxShadow: rangeTab === tab.key ? '0 1px 2px rgba(16,17,20,0.08)' : 'none'
+                      className={`body-bm-hitem${activeHistoryId === item.id ? ' is-on' : ''}`}
+                      onClick={() => {
+                        setSelectedHistoryId(item.id);
+                        setInspectorOpen(true);
                       }}
                     >
-                      {tab.label}
+                      <span className="body-bm-hitem-ic"><AppIcon name={item.source === 'manual' ? 'pencil' : 'scales'} size={16} /></span>
+                      <span className="body-bm-hitem-main">
+                        <b className={item.is_outlier ? 'is-outlier' : ''}>{item.weightStr}<small>kg</small></b>
+                        <small>{item.sub}</small>
+                      </span>
+                      {item.is_outlier && <em className="body-bm-chip is-warn">Lệch giờ</em>}
+                      <span className="body-bm-hitem-time">{item.timeStr}</span>
+                      <AppIcon name="caretRight" size={13} className="body-bm-muted" />
                     </button>
                   ))}
-                </div>
-              </div>
-
-              {/* 3 Metric Cards clickable */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px' }}>
-                {trendData.cards.map(c => {
-                  const isPicked = selectedMetric === c.key;
-                  return (
-                    <div
-                      key={c.key}
-                      onClick={() => setSelectedMetric(c.key)}
-                      style={{
-                        padding: '9px 10px',
-                        borderRadius: '11px',
-                        border: `1.5px solid ${isPicked ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
-                        background: isPicked ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '5px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                        minWidth: 0
-                      }}
-                    >
-                      <span style={{ fontSize: '11px', color: 'var(--body-text-sub)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</span>
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '4px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--body-text-main)', whiteSpace: 'nowrap' }}>
-                          {c.cur}
-                          <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--body-text-muted)' }}> {c.unit}</span>
-                        </span>
-                        <span style={{ fontSize: '11.5px', fontWeight: 600, color: c.deltaColor, whiteSpace: 'nowrap' }}>
-                          {c.delta}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Biểu đồ SVG Xu hướng (chỉ vẽ khi có ≥ 2 lần đo thật trong khoảng đã chọn) */}
-              {!trendData.hasTrend ? (
-                <div style={{ flex: 1, minHeight: '140px', display: 'grid', placeItems: 'center', textAlign: 'center', fontSize: '12.5px', color: 'var(--body-text-muted)', padding: '0 12px' }}>
-                  Cần ít nhất 2 lần đo {trendData.curTm.name.toLowerCase()} trong khoảng thời gian này để vẽ xu hướng.
-                </div>
-              ) : (
-              <div style={{ flex: 1, minHeight: '140px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 46px', gridTemplateRows: 'minmax(0, 1fr) 20px', columnGap: '10px' }}>
-                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                  {/* 3 đường kẻ ngang guide lines */}
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', pointerEvents: 'none' }}>
-                    <span style={{ height: '1px', background: 'var(--body-card-border)' }} />
-                    <span style={{ height: '1px', background: 'var(--body-card-border)' }} />
-                    <span style={{ height: '1px', background: 'var(--body-card-border)' }} />
-                  </div>
-
-                  <svg viewBox="0 0 600 200" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'hidden' }}>
-                    <path d={trendData.area} fill="rgba(105, 73, 232, 0.08)" />
-                    {trendData.goalY != null && (
-                      <path
-                        d={`M 0 ${trendData.goalY} L 600 ${trendData.goalY}`}
-                        fill="none"
-                        stroke="#2F8A57"
-                        strokeWidth="1.5"
-                        strokeDasharray="5 5"
-                      />
-                    )}
-                    <path
-                      d={trendData.pathPoints}
-                      fill="none"
-                      stroke="#6949E8"
-                      strokeWidth="2.5"
-                      strokeLinejoin="round"
-                    />
-                    {/* Nhãn Mục tiêu nằm an toàn bên trong SVG, không bị tràn ra ngoài */}
-                    {trendData.goalY != null && (
-                      <text
-                        x="590"
-                        y={Math.max(16, Math.min(185, Number(trendData.goalY) - 6))}
-                        textAnchor="end"
-                        fill="#2F8A57"
-                        fontSize="12"
-                        fontWeight="600"
-                        fontFamily="var(--body-font)"
-                      >
-                        {trendData.goalLabel}
-                      </text>
-                    )}
-                    {/* Điểm dot tại giá trị cuối cùng bên trong SVG */}
-                    <circle
-                      cx="598"
-                      cy={trendData.lastY}
-                      r="5"
-                      fill="#FFFFFF"
-                      stroke="#6949E8"
-                      strokeWidth="3"
-                    />
-                  </svg>
-                </div>
-
-                {/* Trục Y */}
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)', textAlign: 'right' }}>
-                  <span style={{ transform: 'translateY(-50%)' }}>{trendData.yMax}</span>
-                  <span>{trendData.yMid}</span>
-                  <span style={{ transform: 'translateY(50%)' }}>{trendData.yMin}</span>
-                </div>
-
-                {/* Trục X */}
-                <div style={{ gridColumn: '1 / 2', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '11px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)', marginTop: '4px' }}>
-                  <span>{trendData.firstDate}</span>
-                  <span>{trendData.midDate}</span>
-                  <span>{trendData.lastDate}</span>
-                </div>
-              </div>
-              )}
-            </div>
-
-          </div>
-
-          {/* BANNER MINH BẠCH NGUỒN GỐC CHỈ SỐ */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-            padding: '12px 16px',
-            borderRadius: '12px',
-            background: 'rgba(105, 73, 232, 0.05)',
-            border: '1px solid rgba(105, 73, 232, 0.15)',
-            flexWrap: 'wrap'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '18px' }}>🔬</span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                  Cơ sở khoa học & Nguồn dữ liệu chỉ số
-                </span>
-                <span style={{ fontSize: '12px', color: 'var(--body-text-sub)', lineHeight: 1.4 }}>
-                  <strong>BMI & BMR:</strong> Tính từ chiều cao, cân nặng, tuổi (thang BMI châu Á & Mifflin-St Jeor).
-                  Chỉ số chưa đo sẽ hiện "Chưa đo" — app không tự điền giá trị ước đoán.
-                </span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setShowTapeCalc(true);
-                setShowAddModal(true);
-              }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '8px',
-                border: '1px solid var(--body-accent)',
-                background: 'transparent',
-                color: 'var(--body-accent)',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              📐 Không có cân? Đo bằng thước dây (US Navy)
-            </button>
-          </div>
-
-          {/* ── BOTTOM ROW: 10 METRICS (5x2) + BODY COMPOSITION DONUT (360px) ── */}
-          <div className="body-cothe-bottom-grid">
-
-            {/* 10 THẺ CHỈ SỐ CƠ THỂ CHI TIẾT (GRID 5x2) */}
-            <div className="body-metrics-10-grid">
-              {metricsGrid.map(m => (
-                <div
-                  key={m.name}
-                  className="body-metric-item-card"
-                  style={{
-                    background: 'var(--body-card-bg)',
-                    border: '1px solid var(--body-card-border)',
-                    borderRadius: '14px',
-                    padding: '14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    minWidth: 0,
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--body-text-sub)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {m.name}
-                    </span>
-                    {m.source && (
-                      <span style={{
-                        fontSize: '9.5px',
-                        padding: '1.5px 5.5px',
-                        borderRadius: '4px',
-                        background: 'rgba(47, 138, 87, 0.12)',
-                        color: '#2F8A57',
-                        fontWeight: 600,
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {m.source === 'formula' ? 'Công thức' : 'Đã đo'}
-                      </span>
-                    )}
-                  </div>
-                  <span className="body-metric-val-num" style={{ fontSize: '22px', fontWeight: 600, color: 'var(--body-text-main)', whiteSpace: 'nowrap' }}>
-                    {m.valueDisplay}
-                    <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> {m.unit}</span>
-                  </span>
-
-                  <div className="body-metric-delta-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '6px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: m.statusColor }}>
-                      {m.statusText}
-                    </span>
-                    <span style={{ fontSize: '11px', fontWeight: 500, fontFamily: 'var(--body-mono)', color: m.deltaColor }}>
-                      {m.deltaText}
-                    </span>
-                  </div>
-
-                  {/* Thanh khoảng chuẩn có kim chỉ (chỉ khi chỉ số có khoảng chuẩn rõ ràng) */}
-                  {m.bar && (
-                    <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      <div style={{ position: 'relative', height: '5px', display: 'flex', gap: '2px' }}>
-                        <span style={{ width: m.bar.w0, borderRadius: '3px', background: LOW }} />
-                        <span style={{ width: m.bar.w1, borderRadius: '3px', background: OK }} />
-                        <span style={{ flex: 1, borderRadius: '3px', background: HI }} />
-                        <span style={{
-                          position: 'absolute',
-                          left: m.bar.markerPos,
-                          top: '-4px',
-                          width: '3px',
-                          height: '13px',
-                          marginLeft: '-1.5px',
-                          borderRadius: '2px',
-                          background: 'var(--body-text-main)',
-                          boxShadow: '0 0 0 2px var(--body-card-bg)'
-                        }} />
-                      </div>
-                      <span style={{ fontSize: '10.5px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)', whiteSpace: 'nowrap' }}>
-                        {m.bar.rangeText}
-                      </span>
-                    </div>
-                  )}
                 </div>
               ))}
-            </div>
-
-            {/* THÀNH PHẦN CƠ THỂ (BODY COMPOSITION DONUT) */}
-            <div className="body-card" style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              padding: '22px',
-              boxSizing: 'border-box'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '14.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                  Thành phần cơ thể
-                </span>
-                {compositionData && (
-                  <span style={{
-                    fontSize: '10.5px',
-                    padding: '2px 7px',
-                    borderRadius: '4px',
-                    background: 'rgba(47, 138, 87, 0.12)',
-                    color: '#2F8A57',
-                    fontWeight: 600
-                  }}>
-                    Đã đo
-                  </span>
-                )}
-              </div>
-
-              {!compositionData && (
-                <div style={{ fontSize: '12.5px', color: 'var(--body-text-muted)', lineHeight: 1.5 }}>
-                  Cần số đo tỷ lệ mỡ (cân BIA/InBody hoặc thước dây) để xem thành phần cơ thể.
-                </div>
-              )}
-
-              {compositionData && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                  {/* Donut SVG 128px */}
-                  <div style={{ position: 'relative', width: '128px', height: '128px', flex: 'none' }}>
-                    <svg width="128" height="128" viewBox="0 0 128 128" style={{ display: 'block', transform: 'rotate(-90deg)' }}>
-                      {compositionData.donutSegments.map((c, i) => (
-                        <circle
-                          key={i}
-                          cx="64"
-                          cy="64"
-                          r="52"
-                          fill="none"
-                          stroke={c.color}
-                          strokeWidth="16"
-                          strokeDasharray={c.da}
-                          strokeDashoffset={c.off}
-                        />
-                      ))}
-                    </svg>
-                    <div style={{
-                      position: 'absolute',
-                      inset: 0,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '2px'
-                    }}>
-                      <span style={{ fontSize: '17px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                        {compositionData.totalWeightStr}
-                      </span>
-                      <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>
-                        kg
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 4 dòng danh sách chi tiết */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '11px', minWidth: 0 }}>
-                    {compositionData.parts.map(p => (
-                      <div key={p.name} style={{ display: 'grid', gridTemplateColumns: '8px minmax(0, 1fr) auto', alignItems: 'baseline', gap: '8px' }}>
-                        <span style={{ width: '8px', height: '8px', borderRadius: '4px', background: p.color }} />
-                        <span style={{ fontSize: '12.5px', color: 'var(--body-text-sub)' }}>{p.name}</span>
-                        <span style={{ fontSize: '12.5px', fontWeight: 600, fontFamily: 'var(--body-mono)', color: 'var(--body-text-main)' }}>
-                          {p.formattedVal} kg
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {compositionData && (
-                <span style={{ marginTop: 'auto', fontSize: '11.5px', color: 'var(--body-text-muted)', lineHeight: 1.5 }}>
-                  {compositionData.isFull
-                    ? 'Thành phần (kg) = nước + mỡ + khoáng xương + phần còn lại (đạm & khác)'
-                    : 'Đo thêm tỷ lệ nước và khoáng xương để tách chi tiết khối không mỡ.'}
-                </span>
-              )}
-            </div>
-
+            </section>
+            {inspector}
           </div>
-
+          {inspectorOpen && <div className="body-bm-sheet-backdrop body-bm-m-only" onClick={() => setInspectorOpen(false)} />}
         </div>
       )}
 
-      {/* ── TAB 2: LỊCH SỬ CÂN ĐO (HISTORY) ──────────────────────── */}
-      {activeTab === 'history' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-          {/* 3-COLUMN SUMMARY BAR */}
-          <div className="body-card body-cothe-history-stats">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Cân nặng hiện tại</span>
-              <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                {historyData.latestWeightStr}<span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> kg</span>
+      {/* ── HỒ SƠ ────────────────────────────────────────────────── */}
+      {activeTab === 'profile' && (
+        <div className="body-bm-profile">
+          <div className="body-bm-pgrid">
+            <section className="body-bm-card body-bm-avatar">
+              <span className="body-bm-avatar-ic">{profile?.gender === 'female' ? 'N' : 'M'}</span>
+              <span>
+                <b>{profile?.gender === 'female' ? 'Hồ sơ Nữ' : profile?.gender === 'other' ? 'Hồ sơ' : 'Hồ sơ Nam'}</b>
+                <small>{age ? `${age} tuổi` : 'Chưa nhập năm sinh'} · {heightCm ? `${f(heightCm)} cm` : 'Chưa nhập chiều cao'}</small>
+                {(bmr || tdee) && (
+                  <small className="body-bm-energy">
+                    {bmr ? `BMR ${Math.round(bmr)} kcal` : ''}{bmr && tdee ? ' · ' : ''}{tdee ? `TDEE ${Math.round(tdee)} kcal/ngày` : ''}
+                  </small>
+                )}
               </span>
-            </div>
+            </section>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>So với 7 ngày trước</span>
-              <span style={{ fontSize: '20px', fontWeight: 700, color: historyData.delta7Color }}>
-                {historyData.delta7Str}<span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> kg</span>
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>Số lần đo</span>
-              <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                {historyData.totalCount}<span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> lần</span>
-              </span>
-            </div>
-
-            <button
-              type="button"
-              className="body-btn body-btn-secondary"
-              onClick={() => setShowAddModal(true)}
-              style={{ height: '34px', fontSize: '12.5px', padding: '0 14px' }}
-            >
-              + Thêm cân đo
-            </button>
+            <section className="body-bm-card body-bm-goalcard">
+              <div className="body-bm-card-head">
+                <b>Mục tiêu cân nặng</b>
+                {weightGoal.pct != null && <small>{weightGoal.remain > 0.05 ? `Còn ${f(weightGoal.remain)} kg` : 'Đã đạt mục tiêu'}</small>}
+              </div>
+              {weightGoal.pct != null ? (
+                <>
+                  <div className="body-bm-goal-nums">
+                    <b>{f(weightGoal.cur)} kg</b>
+                    <AppIcon name="arrowRight" size={14} />
+                    <b className="is-accent">{f(weightGoal.goal)} kg</b>
+                  </div>
+                  <div className="body-bm-progress"><span style={{ width: `${weightGoal.pct}%` }} /></div>
+                  <small className="body-bm-muted-text">Bắt đầu {f(weightGoal.start)} kg · tiến độ {weightGoal.pct}%</small>
+                </>
+              ) : (
+                <p className="body-bm-muted-text">
+                  {weightGoal.goal == null ? 'Chưa đặt cân nặng mục tiêu — nhập ở form bên dưới.' : 'Chưa có lần cân nào để tính tiến độ.'}
+                </p>
+              )}
+            </section>
           </div>
 
-          {/* 2-COLUMN LAYOUT: GROUPED BY DATE (LEFT) + INSPECTOR (RIGHT 380px) */}
-          <div className="body-cothe-history-grid">
-
-            {/* DANH SÁCH LẦN ĐO GOM THEO NGÀY */}
-            <div className="body-card" style={{ padding: '0', overflow: 'hidden' }}>
-              {historyData.groups.length === 0 ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--body-text-muted)', fontSize: '13.5px' }}>
-                  Chưa có lần đo nào được ghi nhận. Bấm "+ Thêm cân đo" để bắt đầu!
-                </div>
-              ) : (
-                historyData.groups.map(group => (
-                  <div key={group.dateStr} style={{ borderBottom: '1px solid var(--body-card-border)' }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'baseline',
-                      padding: '14px 20px 8px',
-                      background: 'var(--body-shell-bg)'
-                    }}>
-                      <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                        {group.dateStr}
-                      </span>
-                      <span style={{ fontSize: '12px', color: 'var(--body-text-sub)' }}>
-                        {group.avgLabel}
-                      </span>
-                    </div>
-
-                    {group.items.map(item => {
-                      const isSelected = selectedHistoryId === item.id;
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={() => setSelectedHistoryId(item.id)}
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '36px minmax(0, 1fr) auto auto 14px',
-                            alignItems: 'center',
-                            gap: '14px',
-                            padding: '12px 20px',
-                            background: isSelected ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
-                            borderLeft: `3px solid ${isSelected ? 'var(--body-accent)' : 'transparent'}`,
-                            cursor: 'pointer',
-                            borderTop: '1px solid var(--body-card-border)',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          <span style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '10px',
-                            background: 'var(--body-shell-bg)',
-                            display: 'grid',
-                            placeItems: 'center',
-                            color: 'var(--body-text-sub)'
-                          }}>
-                            <AppIcon name={item.source === 'manual' ? 'pencil' : 'scales'} size={17} />
-                          </span>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
-                            <span style={{ fontSize: '15px', fontWeight: 700, color: item.is_outlier ? 'var(--body-amber-text)' : 'var(--body-text-main)' }}>
-                              {item.weightStr}
-                              <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--body-text-muted)' }}> kg</span>
-                            </span>
-                            <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
-                              {item.subInfo}
-                            </span>
-                          </div>
-
-                          {item.is_outlier && (
-                            <span style={{
-                              padding: '4px 8px',
-                              borderRadius: '6px',
-                              background: 'var(--body-amber-soft)',
-                              fontSize: '11px',
-                              fontWeight: 600,
-                              color: 'var(--body-amber-text)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}>
-                              ⚠️ Đo lệch giờ
-                            </span>
-                          )}
-
-                          <span style={{ fontSize: '12.5px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-sub)' }}>
-                            {item.timeStr}
-                          </span>
-
-                          <AppIcon name="caretRight" size={13} style={{ color: 'var(--body-text-muted)' }} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))
-              )}
+          <section className="body-bm-card body-bm-form-card">
+            <div className="body-bm-card-head is-col">
+              <b>Thông số hồ sơ</b>
+              <small>Cần chiều cao, giới tính và năm sinh để tính BMI, BMR/TDEE và mục tiêu dinh dưỡng.</small>
             </div>
-
-            {/* INSPECTOR: THẺ CHI TIẾT LẦN ĐO ĐANG CHỌN (380px) */}
-            {historyData.inspector ? (
-              <div className="body-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '22px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13px', fontFamily: 'var(--body-mono)', color: 'var(--body-text-muted)' }}>
-                    {historyData.inspector.when}
-                  </span>
-                  <span style={{
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    background: 'var(--body-shell-bg)',
-                    fontSize: '11.5px',
-                    fontWeight: 500,
-                    color: 'var(--body-text-sub)'
-                  }}>
-                    {historyData.inspector.sourceName}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                  <span style={{ fontSize: '44px', fontWeight: 700, color: 'var(--body-text-main)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                    {historyData.inspector.weightStr}
-                  </span>
-                  <span style={{ fontSize: '15px', color: 'var(--body-text-muted)' }}>kg</span>
-                </div>
-
-                {historyData.inspector.isOutlier && (
-                  <div style={{
-                    padding: '12px',
-                    borderRadius: '10px',
-                    background: 'var(--body-amber-soft)',
-                    border: '1px solid var(--body-amber-soft)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                  }}>
-                    <span style={{ fontSize: '12.5px', color: 'var(--body-amber-text)', lineHeight: 1.45 }}>
-                      Lần đo này được đánh dấu lệch giờ (ví dụ đo vào buổi tối sau khi ăn no), đang được tách khỏi đường xu hướng chính.
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => toggleOutlier(historyData.inspector.item.id)}
-                      style={{
-                        height: '32px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--body-border-subtle)',
-                        background: 'var(--body-card-bg)',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: 'var(--body-amber-text)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Bỏ đánh dấu lệch
-                    </button>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {historyData.inspector.rows.map(r => (
-                    <div
-                      key={r.name}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'baseline',
-                        padding: '10px 0',
-                        borderTop: '1px solid var(--body-card-border)'
-                      }}
-                    >
-                      <span style={{ fontSize: '13px', color: 'var(--body-text-sub)' }}>{r.name}</span>
-                      <span style={{ fontSize: '14px', fontWeight: 600, fontFamily: 'var(--body-mono)', color: 'var(--body-text-main)' }}>
-                        {r.val} <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--body-text-muted)' }}>{r.unit}</span>
-                      </span>
-                    </div>
+            <form className="body-bm-form" onSubmit={handleSaveProfile} onKeyDown={submitOnCtrlEnter}>
+              <label className="body-bm-field">
+                <span>Giới tính</span>
+                <div className="body-bm-seg is-field" role="group" aria-label="Giới tính">
+                  {[['male', 'Nam'], ['female', 'Nữ'], ['other', 'Khác']].map(([k, l]) => (
+                    <button key={k} type="button" className={editGender === k ? 'is-on' : ''} onClick={() => setEditGender(k)} aria-pressed={editGender === k}>{l}</button>
                   ))}
                 </div>
-
-                <div style={{ display: 'flex', gap: '8px', marginTop: 'auto', paddingTop: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => toggleOutlier(historyData.inspector.item.id)}
-                    style={{
-                      flex: 1,
-                      height: '36px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-card-bg)',
-                      fontSize: '12.5px',
-                      fontWeight: 600,
-                      color: 'var(--body-text-main)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {historyData.inspector.isOutlier ? 'Bình thường' : 'Đánh dấu lệch'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteMeasurement(historyData.inspector.item.id)}
-                    style={{
-                      flex: 1,
-                      height: '36px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--body-red-soft)',
-                      background: 'var(--body-red-soft)',
-                      fontSize: '12.5px',
-                      fontWeight: 600,
-                      color: 'var(--body-red)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Xóa lần đo
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-          </div>
-
-        </div>
-      )}
-
-      {/* ── TAB 3: HỒ SƠ THỂ TRẠNG (PROFILE) ──────────────────────── */}
-      {activeTab === 'profile' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-          {/* TOP CARDS: AVATAR + GOALS */}
-          <div className="body-cothe-profile-grid">
-
-            {/* AVATAR & THÔNG TIN CƠ BẢN */}
-            <div className="body-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '22px' }}>
-              <span style={{
-                width: '54px',
-                height: '54px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #6366F1, #22D3EE)',
-                display: 'grid',
-                placeItems: 'center',
-                fontWeight: 700,
-                fontSize: '22px',
-                color: '#fff',
-                flex: 'none'
-              }}>
-                {(profile?.gender === 'female' ? 'N' : 'M')}
-              </span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '17px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                  {profile?.gender === 'female' ? 'Hồ sơ Nữ' : 'Hồ sơ Nam'}
-                </span>
-                <span style={{ fontSize: '13px', color: 'var(--body-text-muted)' }}>
-                  {profile?.birth_year ? `${new Date().getFullYear() - profile.birth_year} tuổi` : 'Chưa nhập năm sinh'} · {heightCm ? `${f(heightCm)} cm` : 'Chưa nhập chiều cao'}
-                </span>
-              </div>
-            </div>
-
-            {/* MỤC TIÊU CÂN NẶNG — chỉ có goal_weight_kg trong DB, không bịa thêm mục tiêu mỡ/cơ */}
-            <div className="body-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '22px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span style={{ fontSize: '14.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                  Mục tiêu thể trạng
-                </span>
-                {weightGoal.pct != null && (
-                  <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
-                    {weightGoal.remain > 0 ? `Còn ${f(weightGoal.remain)} kg` : 'Đã đạt mục tiêu'}
-                  </span>
-                )}
-              </div>
-
-              {weightGoal.pct != null ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <span style={{ fontSize: '12.5px', color: 'var(--body-text-sub)' }}>Cân nặng</span>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                      {f(weightGoal.cur)} kg <span style={{ fontSize: '11.5px', fontWeight: 400, color: 'var(--body-text-muted)' }}>→ {f(weightGoal.goal)} kg</span>
-                    </span>
-                  </div>
-                  <div style={{ height: '6px', borderRadius: '3px', background: 'var(--body-shell-bg)', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${weightGoal.pct}%`, background: 'var(--body-accent)', borderRadius: '3px' }} />
-                  </div>
-                  <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
-                    Bắt đầu {f(weightGoal.start)} kg · tiến độ {weightGoal.pct}%
-                  </span>
-                </div>
-              ) : (
-                <span style={{ fontSize: '13px', color: 'var(--body-text-muted)', lineHeight: 1.5 }}>
-                  {weightGoal.goal == null
-                    ? 'Chưa đặt cân nặng mục tiêu — nhập ở form bên dưới.'
-                    : 'Chưa có lần cân nào để tính tiến độ.'}
-                </span>
-              )}
-            </div>
-
-          </div>
-
-          {/* BOTTOM ROW: FORM CHỈNH SỬA */}
-          <div className="body-cothe-profile-bottom-grid">
-
-            {/* FORM CHỈNH SỬA THÔNG SỐ THỂ CHẤT */}
-            <div className="body-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '22px', gridColumn: '1 / -1' }}>
-              <span style={{ fontSize: '14.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                Chỉnh sửa thông số hồ sơ
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '-10px' }}>
-                Cần chiều cao, giới tính và năm sinh để tính BMR/TDEE và mục tiêu dinh dưỡng.
-              </span>
-
-              <form onSubmit={handleSaveProfile} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', alignItems: 'end' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Giới tính
-                  </label>
-                  <select
-                    value={editGender}
-                    onChange={e => setEditGender(e.target.value)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-shell-bg)',
-                      padding: '0 12px',
-                      fontSize: '13px',
-                      color: 'var(--body-text-main)',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="male">Nam</option>
-                    <option value="female">Nữ</option>
-                    <option value="other">Khác</option>
-                  </select>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Năm sinh
-                  </label>
-                  <input
-                    type="number"
-                    min="1900"
-                    max={new Date().getFullYear()}
-                    placeholder="Ví dụ: 1995"
-                    value={editBirthYear}
-                    onChange={e => setEditBirthYear(e.target.value)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-shell-bg)',
-                      padding: '0 12px',
-                      fontSize: '13.5px',
-                      color: 'var(--body-text-main)',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Chiều cao (cm)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    required
-                    placeholder="Ví dụ: 170"
-                    value={editHeight}
-                    onChange={e => setEditHeight(e.target.value)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-shell-bg)',
-                      padding: '0 12px',
-                      fontSize: '13.5px',
-                      color: 'var(--body-text-main)',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Cân nặng mục tiêu (kg)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    placeholder="Ví dụ: 63.0"
-                    value={editGoalWeight}
-                    onChange={e => setEditGoalWeight(e.target.value)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-shell-bg)',
-                      padding: '0 12px',
-                      fontSize: '13.5px',
-                      color: 'var(--body-text-main)',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Mức vận động hàng ngày
-                  </label>
-                  <select
-                    value={editActivity}
-                    onChange={e => setEditActivity(e.target.value)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--body-card-border)',
-                      background: 'var(--body-shell-bg)',
-                      padding: '0 12px',
-                      fontSize: '13px',
-                      color: 'var(--body-text-main)',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="sedentary">Ít vận động (Ngồi văn phòng)</option>
-                    <option value="light">Nhẹ (Tập 1–3 buổi/tuần)</option>
-                    <option value="moderate">Vừa (Tập 3–5 buổi/tuần)</option>
-                    <option value="active">Nặng (Tập 6–7 buổi/tuần)</option>
-                    <option value="very_active">Rất nặng (Lao động nặng / VĐV)</option>
-                  </select>
-                </div>
-
-                <button
-                  type="submit"
-                  className="body-btn body-btn-primary"
-                  style={{ height: '38px' }}
-                >
-                  {profileSaved ? '✓ Đã lưu thành công' : 'Lưu thông tin hồ sơ'}
-                </button>
-              </form>
-            </div>
-
-          </div>
-
-        </div>
-      )}
-
-      {/* ── MODAL: THÊM CÂN ĐO THỦ CÔNG ─────────────────────────── */}
-      {showAddModal && (
-        <div className="body-modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div className="body-modal-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-              <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--body-text-main)' }}>
-                  Thêm chỉ số cân đo
-                </h3>
-                <span style={{ fontSize: '12px', color: 'var(--body-text-muted)', marginTop: '3px', display: 'block' }}>
-                  Chỉ cần nhập Cân nặng. Các chỉ số InBody khác là tùy chọn (nếu có máy đo).
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--body-text-muted)', padding: '4px', display: 'grid', placeItems: 'center' }}
-              >
-                <AppIcon name="x" size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveMeasurement} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Cân nặng (kg) *
-                  </label>
-                  <span style={{ fontSize: '11px', color: 'var(--body-accent)', fontWeight: 600 }}>Bắt buộc</span>
-                </div>
-                <input
-                  type="number"
-                  step="0.05"
-                  required
-                  autoFocus
-                  placeholder="Ví dụ: 65.05"
-                  value={newWeight}
-                  onChange={e => setNewWeight(e.target.value)}
-                  className="body-input"
-                  style={{ fontFamily: 'var(--body-mono)', fontSize: '15px' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Tỷ lệ mỡ (%)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    placeholder="Ví dụ: 15.2"
-                    value={newFat}
-                    onChange={e => setNewFat(e.target.value)}
-                    className="body-input"
-                    style={{ fontFamily: 'var(--body-mono)' }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Cơ xương (kg)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    placeholder="Ví dụ: 29.6"
-                    value={newMuscle}
-                    onChange={e => setNewMuscle(e.target.value)}
-                    className="body-input"
-                    style={{ fontFamily: 'var(--body-mono)' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Mỡ nội tạng (mức 1–20)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    placeholder="Ví dụ: 5.0"
-                    value={newVisceral}
-                    onChange={e => setNewVisceral(e.target.value)}
-                    className="body-input"
-                    style={{ fontFamily: 'var(--body-mono)' }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowTapeCalc(!showTapeCalc)}
-                    style={{
-                      height: '42px',
-                      borderRadius: '8px',
-                      border: '1px dashed var(--body-accent)',
-                      background: showTapeCalc ? 'var(--body-accent-soft)' : 'transparent',
-                      color: 'var(--body-accent)',
-                      fontSize: '11.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    <span>📐</span>
-                    <span>{showTapeCalc ? 'Đóng tính thước dây' : 'Tính mỡ qua thước dây'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Collapsible US Navy & WHtR Tape Calculator */}
-              {showTapeCalc && (
-                <div style={{
-                  background: 'var(--body-shell-bg)',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  border: '1px solid var(--body-card-border)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--body-text-main)' }}>
-                      📐 Công thức Hải quân Mỹ (US Navy & WHtR)
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>
-                      Không cần cân InBody
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: (editGender || profile?.gender) === 'female' ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '11px', color: 'var(--body-text-sub)' }}>Vòng eo (ngang rốn, cm) *</label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        placeholder="78"
-                        value={tapeWaist}
-                        onChange={e => setTapeWaist(e.target.value)}
-                        className="body-input"
-                        style={{ height: '36px' }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ fontSize: '11px', color: 'var(--body-text-sub)' }}>Vòng cổ (dưới yết hầu, cm) *</label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        placeholder="37"
-                        value={tapeNeck}
-                        onChange={e => setTapeNeck(e.target.value)}
-                        className="body-input"
-                        style={{ height: '36px' }}
-                      />
-                    </div>
-                    {(editGender || profile?.gender) === 'female' && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '11px', color: 'var(--body-text-sub)' }}>Vòng hông (cm) *</label>
-                        <input
-                          type="number"
-                          step="0.5"
-                          placeholder="93"
-                          value={tapeHip}
-                          onChange={e => setTapeHip(e.target.value)}
-                          className="body-input"
-                          style={{ height: '36px' }}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={handleRunTapeCalc}
-                      style={{
-                        padding: '7px 15px',
-                        borderRadius: '6px',
-                        background: 'var(--body-accent)',
-                        color: '#fff',
-                        border: 'none',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Tính & Điền vào form
-                    </button>
-
-                    {tapeCalculated?.error && (
-                      <span style={{ fontSize: '11.5px', color: BAD, fontWeight: 600 }}>
-                        {tapeCalculated.error}
-                      </span>
-                    )}
-                    {tapeCalculated?.fatPct != null && (
-                      <span style={{ fontSize: '11.5px', color: GOOD, fontWeight: 600 }}>
-                        ✓ Mỡ ước tính {f(tapeCalculated.fatPct)}%
-                        {tapeCalculated.whtr != null && ` · Eo/Cao ${tapeCalculated.whtr.toFixed(2)} (${tapeCalculated.whtrStatus})`}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Tỷ lệ nước (%)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    placeholder="Ví dụ: 58.9"
-                    value={newWater}
-                    onChange={e => setNewWater(e.target.value)}
-                    className="body-input"
-                    style={{ fontFamily: 'var(--body-mono)' }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                    Khoáng xương (kg)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.05"
-                    placeholder="Ví dụ: 2.82"
-                    value={newBone}
-                    onChange={e => setNewBone(e.target.value)}
-                    className="body-input"
-                    style={{ fontFamily: 'var(--body-mono)' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-sub)' }}>
-                  Thời điểm cân đo
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setNewTimeSlot('morning')}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: `1.5px solid ${newTimeSlot === 'morning' ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
-                      background: newTimeSlot === 'morning' ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
-                      fontSize: '12.5px',
-                      fontWeight: 600,
-                      color: 'var(--body-text-main)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    🌅 Sáng sớm (đói bụng)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewTimeSlot('evening')}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: `1.5px solid ${newTimeSlot === 'evening' ? 'var(--body-accent)' : 'var(--body-card-border)'}`,
-                      background: newTimeSlot === 'evening' ? 'var(--body-accent-soft)' : 'var(--body-card-bg)',
-                      fontSize: '12.5px',
-                      fontWeight: 600,
-                      color: 'var(--body-text-main)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    🌙 Buổi tối (sau ăn)
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                <button
-                  type="button"
-                  className="body-btn body-btn-secondary"
-                  onClick={() => setShowAddModal(false)}
-                  style={{ flex: 1, height: '42px' }}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="body-btn body-btn-primary"
-                  style={{ flex: 1, height: '42px' }}
-                >
-                  Lưu số đo
+              </label>
+              <label className="body-bm-field">
+                <span>Năm sinh</span>
+                <input className="body-bm-input" type="number" inputMode="numeric" min="1920" max={new Date().getFullYear()} placeholder="Ví dụ: 1995" value={editBirthYear} onChange={e => setEditBirthYear(e.target.value)} />
+              </label>
+              <label className="body-bm-field">
+                <span>Chiều cao (cm)</span>
+                <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" required placeholder="Ví dụ: 170" value={editHeight} onChange={e => setEditHeight(e.target.value)} />
+              </label>
+              <label className="body-bm-field">
+                <span>Cân nặng mục tiêu (kg)</span>
+                <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" placeholder="Ví dụ: 63" value={editGoalWeight} onChange={e => setEditGoalWeight(e.target.value)} />
+              </label>
+              <label className="body-bm-field is-wide">
+                <span>Mức vận động hằng ngày</span>
+                <select className="body-bm-input" value={editActivity} onChange={e => setEditActivity(e.target.value)}>
+                  {ACTIVITY_OPTIONS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                </select>
+              </label>
+              <div className="body-bm-form-actions">
+                <button type="submit" className="body-bm-btn is-dark">
+                  <AppIcon name={profileSaved ? 'checkCircle' : 'save'} size={14} />
+                  {profileSaved ? 'Đã lưu hồ sơ' : 'Lưu hồ sơ'}
                 </button>
               </div>
             </form>
-          </div>
+          </section>
         </div>
       )}
 
+      {/* ── THÊM CÂN ĐO: modal (desktop) / bottom sheet (mobile) ───── */}
+      {showAddModal && (
+        <>
+          <div className="body-bm-modal-backdrop" onClick={() => setShowAddModal(false)} />
+          <div className="body-bm-modal" role="dialog" aria-modal="true" aria-label="Thêm chỉ số cân đo">
+            <span className="body-bm-sheet-grip" />
+            <div className="body-bm-modal-head">
+              <span>
+                <b>Thêm chỉ số cân đo</b>
+                <small>Chỉ cần cân nặng. Các chỉ số khác nhập nếu có cân InBody.</small>
+              </span>
+              <button type="button" className="body-bm-icon-btn" onClick={() => setShowAddModal(false)} aria-label="Đóng">
+                <AppIcon name="x" size={16} />
+              </button>
+            </div>
+            <form className="body-bm-modal-form" onSubmit={handleSaveMeasurement} onKeyDown={submitOnCtrlEnter}>
+              <div className="body-bm-modal-body">
+                <label className="body-bm-field">
+                  <span>Cân nặng (kg) <em>Bắt buộc</em></span>
+                  <input className="body-bm-input is-big" type="number" inputMode="decimal" step="0.05" required autoFocus placeholder="Ví dụ: 65,05" value={newWeight} onChange={e => setNewWeight(e.target.value)} />
+                </label>
+
+                <div className="body-bm-seg is-field" role="group" aria-label="Thời điểm cân">
+                  <button type="button" className={newTimeSlot === 'morning' ? 'is-on' : ''} onClick={() => setNewTimeSlot('morning')} aria-pressed={newTimeSlot === 'morning'}>
+                    <AppIcon name="sunHorizon" size={14} />Sáng sớm (đói bụng)
+                  </button>
+                  <button type="button" className={newTimeSlot === 'evening' ? 'is-on' : ''} onClick={() => setNewTimeSlot('evening')} aria-pressed={newTimeSlot === 'evening'}>
+                    <AppIcon name="moon" size={14} />Buổi tối (sau ăn)
+                  </button>
+                </div>
+                {newTimeSlot === 'evening' && (
+                  <small className="body-bm-hint">Lần cân buổi tối được đánh dấu lệch giờ, không đưa vào đường xu hướng.</small>
+                )}
+
+                <div className="body-bm-fields2">
+                  <label className="body-bm-field">
+                    <span>Tỷ lệ mỡ (%)</span>
+                    <input className="body-bm-input" type="number" inputMode="decimal" step="0.1" placeholder="15,2" value={newFat} onChange={e => setNewFat(e.target.value)} />
+                  </label>
+                  <label className="body-bm-field">
+                    <span>Cơ xương (kg)</span>
+                    <input className="body-bm-input" type="number" inputMode="decimal" step="0.1" placeholder="29,6" value={newMuscle} onChange={e => setNewMuscle(e.target.value)} />
+                  </label>
+                  <label className="body-bm-field">
+                    <span>Mỡ nội tạng (mức 1–20)</span>
+                    <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" placeholder="5" value={newVisceral} onChange={e => setNewVisceral(e.target.value)} />
+                  </label>
+                  <label className="body-bm-field">
+                    <span>Tỷ lệ nước (%)</span>
+                    <input className="body-bm-input" type="number" inputMode="decimal" step="0.1" placeholder="58,9" value={newWater} onChange={e => setNewWater(e.target.value)} />
+                  </label>
+                  <label className="body-bm-field">
+                    <span>Khoáng xương (kg)</span>
+                    <input className="body-bm-input" type="number" inputMode="decimal" step="0.05" placeholder="2,82" value={newBone} onChange={e => setNewBone(e.target.value)} />
+                  </label>
+                </div>
+
+                <div className={`body-bm-tape${showTapeCalc ? ' is-open' : ''}`}>
+                  <button type="button" className="body-bm-tape-toggle" onClick={() => setShowTapeCalc(v => !v)} aria-expanded={showTapeCalc}>
+                    <AppIcon name="ruler" size={15} />
+                    <span>
+                      <b>Tính mỡ bằng thước dây</b>
+                      <small>Công thức Hải quân Mỹ (US Navy) · không cần cân InBody</small>
+                    </span>
+                    <AppIcon name={showTapeCalc ? 'caretUp' : 'caretDown'} size={14} />
+                  </button>
+                  {showTapeCalc && (
+                    <div className="body-bm-tape-body">
+                      <div className={`body-bm-fields2${(editGender || profile?.gender) === 'female' ? ' is-3' : ''}`}>
+                        <label className="body-bm-field">
+                          <span>Vòng eo (ngang rốn, cm)</span>
+                          <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" placeholder="78" value={tapeWaist} onChange={e => setTapeWaist(e.target.value)} />
+                        </label>
+                        <label className="body-bm-field">
+                          <span>Vòng cổ (dưới yết hầu, cm)</span>
+                          <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" placeholder="37" value={tapeNeck} onChange={e => setTapeNeck(e.target.value)} />
+                        </label>
+                        {(editGender || profile?.gender) === 'female' && (
+                          <label className="body-bm-field">
+                            <span>Vòng hông (cm)</span>
+                            <input className="body-bm-input" type="number" inputMode="decimal" step="0.5" placeholder="93" value={tapeHip} onChange={e => setTapeHip(e.target.value)} />
+                          </label>
+                        )}
+                      </div>
+                      <div className="body-bm-tape-actions">
+                        <button type="button" className="body-bm-btn is-accent" onClick={handleRunTapeCalc}>Tính &amp; điền vào form</button>
+                        {tapeCalculated?.error && <span className="is-bad">{tapeCalculated.error}</span>}
+                        {tapeCalculated?.fatPct != null && (
+                          <span className="is-good">
+                            Mỡ ước tính {f(tapeCalculated.fatPct)}%
+                            {tapeCalculated.whtr != null && ` · Eo/Cao ${f(tapeCalculated.whtr, 2)} (${tapeCalculated.whtrStatus})`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {saveError && <div className="body-bm-error" role="alert">{saveError}</div>}
+              </div>
+              <div className="body-bm-modal-foot">
+                <button type="button" className="body-bm-btn" onClick={() => setShowAddModal(false)}>Hủy</button>
+                <button type="submit" className="body-bm-btn is-dark" disabled={!newWeight}>Lưu số đo</button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
+
+      <ConfirmModal
+        open={Boolean(confirmDeleteId)}
+        title="Xóa lần đo?"
+        message="Lần đo này sẽ bị xóa khỏi lịch sử và đường xu hướng. Không thể hoàn tác."
+        confirmLabel="Xóa lần đo"
+        cancelLabel="Giữ lại"
+        danger
+        onConfirm={() => {
+          const id = confirmDeleteId;
+          setConfirmDeleteId(null);
+          setInspectorOpen(false);
+          if (selectedHistoryId === id) setSelectedHistoryId(null);
+          deleteMeasurement(id);
+        }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

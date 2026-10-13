@@ -3,6 +3,8 @@
  * Independent of React and Supabase. Tested via src/__tests__/body/workoutLogic.test.js
  */
 
+import { toDateStr } from './dateUtils.js';
+
 export const RECOVERY_STATUS = {
   READY: 'ready',
   MID: 'mid',
@@ -15,6 +17,33 @@ export const DAY_TYPE_COLORS = {
   'Kéo': '#E0822C',
   'Toàn thân': '#4C8DE0'
 };
+
+// Màu nhãn "Ngày A/B" của lộ trình A/B
+export const DAY_TAG_COLORS = { A: 'var(--body-accent)', B: '#2E9D8F' };
+
+/**
+ * "Chống đẩy (Push-up)" → { vn: 'Chống đẩy', en: 'Push-up' }
+ */
+export function splitExerciseName(name = '') {
+  const m = String(name).match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  return m ? { vn: m[1], en: m[2] } : { vn: String(name), en: '' };
+}
+
+/**
+ * "Ngày A - Ngực, Vai" → { tag: 'Ngày A', letter: 'A', title: 'Ngực, Vai' }; tên khác giữ nguyên làm title.
+ */
+export function splitDayName(name = '') {
+  const m = String(name).match(/^Ngày\s+([A-Z])\s*[-–:]\s*(.+)$/);
+  return m ? { tag: `Ngày ${m[1]}`, letter: m[1], title: m[2] } : { tag: '', letter: '', title: String(name) };
+}
+
+/**
+ * "2-0-1-1 (Hạ chậm 2s - Kéo 1s)." → { code: '2-0-1-1', text: 'Hạ chậm 2s - Kéo 1s' }
+ */
+export function splitTempo(tempo = '') {
+  const m = String(tempo).match(/^([\d-]+)\s*\((.*)\)\.?\s*$/);
+  return m ? { code: m[1], text: m[2] } : { code: '', text: String(tempo) };
+}
 
 /**
  * Format value with unit string
@@ -118,6 +147,126 @@ export function getRoutineWeek(startDate, totalWeeks, today = new Date()) {
   const diffDays = Math.max(0, Math.round((now - start) / 86400000));
   const total = Math.max(1, Number(totalWeeks) || 1);
   return { current: Math.min(total, Math.floor(diffDays / 7) + 1), total };
+}
+
+/**
+ * 7 ngày (T2..CN) của tuần lệch `offset` tuần so với tuần chứa `today`.
+ */
+export function getWeekDays(offset = 0, today = new Date()) {
+  const iso = today.getDay() || 7;
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - iso + 1 + offset * 7 + i);
+    return { weekday: i + 1, date: toDateStr(d), day: d.getDate(), month: d.getMonth() + 1 };
+  });
+}
+
+/**
+ * Buổi đã hoàn thành của từng thứ trong tuần: khớp planned_weekday và local_date nằm trong tuần
+ * (tập bù ngày khác vẫn đánh dấu đúng thứ của buổi). Buổi tự do không gắn vào thứ nào.
+ * `sessions` sắp mới → cũ nên buổi mới nhất thắng.
+ */
+export function mapWeekSessions(sessions = [], weekDays = [], routineId = null) {
+  const from = weekDays[0]?.date;
+  const to = weekDays[weekDays.length - 1]?.date;
+  const out = {};
+  sessions.forEach(s => {
+    const wd = Number(s.planned_weekday);
+    if (!wd || s.status !== 'completed' || !s.local_date || s.local_date < from || s.local_date > to) return;
+    if (routineId && s.routine_id !== routineId) return;
+    if (!out[wd]) out[wd] = s;
+  });
+  return out;
+}
+
+/**
+ * Lịch sử 1 bài qua các buổi ĐÃ HOÀN THÀNH: mỗi buổi 1 dòng, giá trị từng set theo số set (null = bỏ),
+ * set tốt nhất, đạt mục tiêu ở mọi set hay không, có PR không. Sắp cũ → mới.
+ */
+export function buildExerciseHistory(sets = [], sessions = [], exerciseKey) {
+  const done = new Map((sessions || []).filter(s => s.status === 'completed').map(s => [s.id, s]));
+  const groups = new Map();
+  (sets || []).forEach(s => {
+    if (s.exercise_key !== exerciseKey) return;
+    const sess = done.get(s.session_id);
+    if (!sess) return;
+    const g = groups.get(s.session_id) || {
+      sessionId: s.session_id,
+      date: sess.local_date,
+      target: Number(s.target_val) || 0,
+      unit: s.unit || 'rep',
+      kg: Number(s.kg || 0),
+      pr: false,
+      raw: []
+    };
+    g.raw.push({ setNo: Number(s.set_no) || 0, val: s.actual_val == null ? null : Number(s.actual_val) });
+    if (s.is_pr) g.pr = true;
+    groups.set(s.session_id, g);
+  });
+  return Array.from(groups.values())
+    .map(({ raw, ...g }) => {
+      const vals = raw.sort((a, b) => a.setNo - b.setNo).map(x => x.val);
+      const logged = vals.filter(v => v != null);
+      return {
+        ...g,
+        vals,
+        best: logged.length ? Math.max(...logged) : null,
+        met: logged.length > 0 && vals.every(v => v != null && v >= g.target)
+      };
+    })
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+}
+
+/**
+ * Các bài đã tập trong các buổi hoàn thành: { key, name, unit, best, sessions, lastDate }, bài tập gần nhất trước.
+ */
+export function summarizeTrainedExercises(sets = [], sessions = []) {
+  const done = new Map((sessions || []).filter(s => s.status === 'completed').map(s => [s.id, s]));
+  const map = new Map();
+  (sets || []).forEach(s => {
+    const sess = done.get(s.session_id);
+    if (!sess || !s.exercise_key) return;
+    const e = map.get(s.exercise_key) || {
+      key: s.exercise_key,
+      name: s.exercise_name || s.exercise_key,
+      unit: s.unit || 'rep',
+      best: null,
+      sessionIds: new Set(),
+      lastDate: ''
+    };
+    if (s.actual_val != null) e.best = Math.max(e.best ?? -Infinity, Number(s.actual_val));
+    e.sessionIds.add(s.session_id);
+    if (String(sess.local_date) > e.lastDate) e.lastDate = String(sess.local_date);
+    map.set(s.exercise_key, e);
+  });
+  return Array.from(map.values())
+    .map(({ sessionIds, ...e }) => ({ ...e, sessions: sessionIds.size }))
+    .sort((a, b) => b.lastDate.localeCompare(a.lastDate) || a.name.localeCompare(b.name));
+}
+
+/**
+ * Trục Y "đẹp" cho biểu đồ cột: bước 1/2/5 × 10^n, đỉnh trục ≥ maxVal và chia đều ~ticks khoảng.
+ */
+export function niceAxis(maxVal, ticks = 4) {
+  const top = Math.max(Number(maxVal) || 0, 1);
+  const raw = top / ticks;
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / p;
+  const step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
+  return { step, max: step * Math.ceil(top / step) };
+}
+
+/**
+ * Mục tiêu buổi tới của 1 bài: bài có trong lộ trình thì theo lộ trình (đã gồm tăng tiến đã duyệt);
+ * không có thì suy từ buổi gần nhất (đủ mục tiêu mọi set → +1 rep / +5s).
+ */
+export function nextTargetFor(history = [], routineItem = null) {
+  if (routineItem) {
+    return { sets: Number(routineItem.target_sets) || 3, val: Number(routineItem.target_val) || 0, fromRoutine: true };
+  }
+  const last = history[history.length - 1];
+  if (!last) return null;
+  const step = last.unit === 's' ? 5 : 1;
+  return { sets: last.vals.length || 3, val: last.met ? last.target + step : last.target, fromRoutine: false };
 }
 
 /**
@@ -354,6 +503,26 @@ export function isNewPR({ actualVal, kg = 0 }, baseline) {
     return baseline.weighted ? detectPR(actualVal, baseline.weighted.val, kg, baseline.weighted.kg) : false;
   }
   return baseline.bodyweight != null ? detectPR(actualVal, baseline.bodyweight) : false;
+}
+
+/**
+ * Set mang cờ PR của 1 bài trong buổi (tối đa 1): set tốt nhất (1RM ước tính khi có tạ, số rep/giây
+ * khi không tạ) vượt mốc lịch sử. Trả về id của set đó hoặc null. Dùng để tính lại PR sau khi sửa số.
+ */
+export function pickSessionPR(records = [], baseline = null) {
+  let bestId = null;
+  let bestScore = -Infinity;
+  (records || []).forEach(r => {
+    const val = r.actualVal ?? r.actual_val;
+    const kg = Number(r.kg || 0);
+    if (val == null || !isNewPR({ actualVal: val, kg }, baseline)) return;
+    const score = calculateEstimated1RM(val, kg);
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = r.id;
+    }
+  });
+  return bestId;
 }
 
 /**

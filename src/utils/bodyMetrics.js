@@ -211,3 +211,62 @@ export function estimateVisceralFatFromWaist(waistCm, heightCm) {
     whtr: Number(whtr.toFixed(2))
   };
 }
+
+/**
+ * Chuỗi xu hướng 1 chỉ số: trung bình theo ngày (local_date) của các lần đo có giá trị,
+ * chỉ lấy từ mốc cutoffMs (ms) trở đi, sắp cũ → mới. Lần đo lệch giờ do caller lọc trước.
+ */
+export function dailyAverageSeries(measurements = [], field, cutoffMs = 0) {
+  const byDate = new Map();
+  (measurements || []).forEach(m => {
+    const v = m?.[field];
+    if (v == null || Number.isNaN(Number(v)) || !m.local_date) return;
+    const t = new Date(m.measured_at || `${m.local_date}T12:00:00`).getTime();
+    if (cutoffMs && t < cutoffMs) return;
+    const g = byDate.get(m.local_date) || { sum: 0, n: 0 };
+    g.sum += Number(v);
+    g.n += 1;
+    byDate.set(m.local_date, g);
+  });
+  return Array.from(byDate.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, g]) => ({ date, val: Math.round((g.sum / g.n) * 100) / 100 }));
+}
+
+/**
+ * Khoảng trục Y tự co theo dữ liệu: biên độ tối thiểu minSpan để đường không phẳng/giật,
+ * chừa 35% dưới và 25% trên.
+ */
+export function trendDomain(vals = [], minSpan = 0.5) {
+  if (!vals.length) return { lo: 0, hi: 1 };
+  const mn = Math.min(...vals);
+  const mx = Math.max(...vals);
+  const span = Math.max(mx - mn, minSpan);
+  return { lo: mn - span * 0.35, hi: mx + span * 0.25 };
+}
+
+/**
+ * Góc (radian) trên đồng hồ BMI nửa vòng: lo ở bên trái (π), hi ở bên phải (0), kẹp trong khoảng.
+ */
+export function bmiGaugeAngle(bmi, lo = 15, hi = 32) {
+  const v = Math.min(hi, Math.max(lo, Number(bmi) || lo));
+  return Math.PI - ((v - lo) / (hi - lo)) * Math.PI;
+}
+
+/**
+ * Đường cong mượt qua các điểm [[x, y], …] (Catmull-Rom → Bezier bậc 3) cho biểu đồ xu hướng.
+ */
+export function smoothPath(points = []) {
+  if (!points.length) return '';
+  const r = v => Math.round(v * 10) / 10;
+  let d = `M${r(points[0][0])} ${r(points[0][1])}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] || points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] || p2;
+    d += `C${r(p1[0] + (p2[0] - p0[0]) / 6)} ${r(p1[1] + (p2[1] - p0[1]) / 6)} `
+      + `${r(p2[0] - (p3[0] - p1[0]) / 6)} ${r(p2[1] - (p3[1] - p1[1]) / 6)} ${r(p2[0])} ${r(p2[1])}`;
+  }
+  return d;
+}

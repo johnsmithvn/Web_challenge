@@ -18,9 +18,31 @@ import {
   ClockCounterClockwise, CloudCheck, ArrowBendLeftUp, MoonStars, SunHorizon, Kanban, Rows, Columns,
   SidebarSimple, Paperclip, Hash, HouseSimple, Heartbeat, ArrowBendDownRight, CaretDoubleDown, HandGrabbing,
   Butterfly, Leaf, ArrowsOutSimple,
+  Gauge, ChartBar, Books, Flask, FlagPennant, Wind, Crosshair, XCircle, Stairs, FirstAidKit, Info,
+  Path, Shuffle, LockSimple, Metronome, ArrowsLeftRight, Checks, Target, SlidersHorizontal,
 } from '@phosphor-icons/react';
 
 const ICONS = {
+  // Body v2 (mockup Lộ trình / Buổi tập / Tiến bộ / Cơ thể / Thư viện)
+  gauge: Gauge,
+  chartBar: ChartBar,
+  books: Books,
+  flask: Flask,
+  flagPennant: FlagPennant,
+  wind: Wind,
+  crosshair: Crosshair,
+  xCircle: XCircle,
+  stairs: Stairs,
+  firstAidKit: FirstAidKit,
+  info: Info,
+  path: Path,
+  shuffle: Shuffle,
+  lockSimple: LockSimple,
+  metronome: Metronome,
+  arrowsLeftRight: ArrowsLeftRight,
+  checks: Checks,
+  target: Target,
+  sliders: SlidersHorizontal,
   // Tasks Aurora (mockup Kanban tối & sáng)
   circleHalf: CircleHalf,
   minusCircle: MinusCircle,
