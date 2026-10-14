@@ -51,6 +51,8 @@ import {
   maturityWarn,
   guessDepositType,
   canDepositTopUp,
+  maturityInterest,
+  settleMaturity,
   spendingRhythm,
   groupByDate,
 } from '../../utils/financeLogic.js';
@@ -1128,6 +1130,33 @@ assert.equal(cardCarryOver(carryCard, [swipe, partialPay], '2026-10-22').amount,
 assert.equal(cardCarryOver(carryCard, [{ ...swipe, occurred_at: '2026-10-01' }], '2026-10-22'), null,
   'khoản quẹt thuộc kỳ vừa chốt không phải nợ cũ');
 console.log('cardCarryOver check: OK');
+
+/* ── Đáo hạn: lãi trọn kỳ + tất toán / gửi lại ───────────────── */
+const cd2 = { id: 'd1', fund_id: 'g1', name: 'ABBank · CD 2T', bank: 'ABBank', account_no: null,
+  amount: 100000000, rate: 7.2, term: 2, opened_at: '2026-08-11', matures_at: '2026-10-11' };
+assert.equal(maturityInterest(cd2), 1200000, '100tr × 7,2% × 2/12');
+assert.equal(maturityInterest({ amount: 10000000, rate: 5, term: null }), 500000, 'không kỳ hạn = 1 năm');
+
+const out = settleMaturity(cd2, { mode: 'withdraw', interest: 1200000 });
+assert.equal(out.closedOn, '2026-10-11', 'mặc định đóng sổ đúng ngày đáo hạn');
+assert.equal(out.next, null, 'rút về thì không mở sổ mới');
+assert.deepEqual(
+  [out.income.type, out.income.amount, out.income.category_id, out.income.subcategory_id, out.income.occurred_at],
+  ['income', 1200000, 'dautu', 'dautu.interest', '2026-10-11']);
+
+const renew = settleMaturity(cd2, { mode: 'renew', interest: 1200000, on: '2026-10-14', rate: '6.8' });
+assert.equal(renew.next.amount, 100000000, 'gửi lại chỉ gốc');
+assert.equal(renew.next.opened_at, '2026-10-14', 'sổ mới mở từ ngày xử lý');
+assert.equal(renew.next.rate, 6.8, 'lãi suất kỳ mới');
+assert.equal(renew.next.closed_on, null);
+assert.equal('id' in renew.next || 'matures_at' in renew.next, false, 'không mang id / cột generated sang sổ mới');
+assert.equal(renew.income.amount, 1200000, 'gửi lại vẫn ghi lãi đã nhận');
+
+const roll = settleMaturity(cd2, { mode: 'renew_interest', interest: '1200000' });
+assert.equal(roll.next.amount, 101200000, 'gửi lại gốc + lãi');
+assert.equal(roll.next.rate, 7.2, 'không nhập lãi suất mới thì giữ cũ');
+assert.equal(settleMaturity(cd2, { mode: 'withdraw', interest: 0 }).income, null, 'lãi 0 → không ghi giao dịch');
+console.log('maturityInterest / settleMaturity check: OK');
 
 console.log('\n✅ financeLogic — tất cả self-check PASS (100% functions & rules covered)');
 

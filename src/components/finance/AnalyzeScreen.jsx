@@ -5,7 +5,7 @@ import { formatDate } from '../../utils/dateUtils';
 import {
   periodTotals, currentMonthPeriod,
   monthStart, monthEnd, parseYmd, fundBalance, maturityWarn,
-  guessDepositType, canDepositTopUp,
+  guessDepositType, canDepositTopUp, maturityInterest, settleMaturity,
 } from '../../utils/financeLogic';
 import { money, catInfo, Segmented, TaskPicker, FinanceIcon, DateField, BankSelect } from './parts';
 import AppIcon from '../AppIcon';
@@ -42,13 +42,11 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
   };
   const activeGoals = useMemo(() => fin.goals.filter(goal => !goal.closed_at), [fin.goals]);
   const activeDeposits = useMemo(() => fin.deposits.filter(deposit => !deposit.closed_on), [fin.deposits]);
-  const totalMaturityInterest = activeDeposits.reduce((sum, deposit) => {
-    const termMonths = deposit.term ? Number(deposit.term) : null;
-    const interest = termMonths
-      ? Math.round(deposit.amount * (deposit.rate || 0) / 100 * (termMonths / 12))
-      : Math.round(deposit.amount * (deposit.rate || 0) / 100);
-    return sum + interest;
-  }, 0);
+  const closedDeposits = useMemo(
+    () => fin.deposits.filter(deposit => deposit.closed_on).sort((a, b) => b.closed_on.localeCompare(a.closed_on)),
+    [fin.deposits],
+  );
+  const totalMaturityInterest = activeDeposits.reduce((sum, deposit) => sum + maturityInterest(deposit), 0);
   const banks = new Set(activeDeposits.map(deposit => deposit.bank).filter(Boolean)).size;
 
   const cur = useMemo(() => currentMonthPeriod(fin.today), [fin.today]);
@@ -81,6 +79,7 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
 
       {(panel?.kind === 'goal' || addingGoal) && <GoalForm fin={fin} nav={nav} goal={panel?.goal} onDone={close} />}
       {panel?.kind === 'deposit' && <DepositForm fin={fin} nav={nav} goal={panel.goal} deposit={panel.deposit} activeGoals={activeGoals} onDone={close} />}
+      {panel?.kind === 'mature' && <MaturityForm key={panel.deposit.id} fin={fin} nav={nav} deposit={panel.deposit} onDone={close} />}
 
       {/* KHỐI 1: DANH SÁCH NƠI GỬI TIỀN & SỔ TIẾT KIỆM */}
       <div className="fin-deposit-ledger">
@@ -127,9 +126,7 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
                 const goal = activeGoals.find(item => item.id === deposit.fund_id) || fin.goals.find(item => item.id === deposit.fund_id);
                 const warning = maturityWarn(deposit.matures_at, fin.today);
                 const termMonths = deposit.term ? Number(deposit.term) : null;
-                const termInterest = termMonths
-                  ? Math.round(deposit.amount * (deposit.rate || 0) / 100 * (termMonths / 12))
-                  : Math.round(deposit.amount * (deposit.rate || 0) / 100);
+                const termInterest = maturityInterest(deposit);
                 const yearly = Math.round(deposit.amount * (deposit.rate || 0) / 100);
                 const openDeposit = () => setPanel({ kind: 'deposit', goal, deposit });
                 const depType = guessDepositType(deposit);
@@ -165,9 +162,22 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
                       {deposit.matures_at ? (
                         <div>
                           <span>{formatDate(deposit.matures_at)}</span>
-                          <div style={{ marginTop: '2px' }}>
+                          <div style={{ marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             {warning?.days <= 0 ? (
-                              <span className="fin-due-badge fin-due-badge--urgent">Đáo hạn hôm nay</span>
+                              <>
+                                <span className="fin-due-badge fin-due-badge--urgent">
+                                  {warning.days === 0 ? 'Đáo hạn hôm nay' : `Đã đáo hạn ${-warning.days} ngày`}
+                                </span>
+                                {/* Đáo hạn rồi thì phải có đường đi tiếp: rút về hoặc gửi lại, không để sổ treo mãi. */}
+                                <button
+                                  type="button"
+                                  className="fin-btn fin-btn--primary fin-btn--sm"
+                                  onClick={event => { event.stopPropagation(); setPanel({ kind: 'mature', deposit }); }}
+                                  onKeyDown={event => event.stopPropagation()}
+                                >
+                                  Xử lý
+                                </button>
+                              </>
                             ) : warning?.days <= 7 ? (
                               <span className="fin-due-badge fin-due-badge--soon">Còn {warning.days} ngày</span>
                             ) : warning?.days <= 45 ? (
@@ -205,6 +215,30 @@ export function SavingsWorkspace({ fin, nav, addingGoal, onDoneGoal }) {
             </tbody>
           </table>
         </div>
+        {closedDeposits.length > 0 && (
+          <details className="fin-explain">
+            <summary><AppIcon name="clock" size={14} /> Lịch sử sổ đã tất toán · {closedDeposits.length}</summary>
+            {closedDeposits.map(deposit => (
+              <div key={deposit.id} className="fin-archived__row">
+                <span>
+                  <strong>{deposit.name}</strong>
+                  <small> · {money(deposit.amount)} · {deposit.opened_at ? formatDate(deposit.opened_at) : '—'} → {formatDate(deposit.closed_on)}</small>
+                </span>
+                <button
+                  type="button"
+                  className="fin-btn fin-btn--secondary fin-btn--sm"
+                  onClick={async () => {
+                    if (await fin.updateDeposit(deposit.id, { closed_on: null })) {
+                      nav.showToast(`Đã mở lại “${deposit.name}”. Sổ gửi lại / giao dịch lãi (nếu có) vẫn còn, xóa tay nếu không cần.`, { icon: 'bank' });
+                    }
+                  }}
+                >
+                  Mở lại
+                </button>
+              </div>
+            ))}
+          </details>
+        )}
         <small>Lãi nhận về ghi là Thu › Đầu tư › Lãi tiết kiệm; tiền gốc quay lại không phải thu nhập.</small>
       </div>
 
@@ -648,6 +682,124 @@ function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone }) {
             <AppIcon name="trash" size={14} /> Xóa
           </button>
         )}
+      </div>
+    </form>
+  );
+}
+
+const SETTLE_MODES = [
+  { id: 'withdraw', label: 'Rút về', icon: 'arrowUp', hint: 'Đóng sổ · gốc + lãi về tài khoản thường' },
+  { id: 'renew', label: 'Gửi lại · chỉ gốc', icon: 'arrowsClockwise', hint: 'Rút lãi, gốc gửi tiếp kỳ mới' },
+  { id: 'renew_interest', label: 'Gửi lại · gốc + lãi', icon: 'arrowsClockwise', hint: 'Lãi nhập gốc, gửi tiếp kỳ mới' },
+];
+
+function MaturityForm({ fin, nav, deposit, onDone }) {
+  const [mode, setMode] = useState('withdraw');
+  const [interest, setInterest] = useState(() => String(maturityInterest(deposit)));
+  const [on, setOn] = useState(deposit.matures_at);
+  const [rate, setRate] = useState(deposit.rate ? String(deposit.rate) : '');
+  const [isSaving, setIsSaving] = useState(false);
+  const plan = settleMaturity(deposit, { mode, interest: parseCurrencyInput(interest), on, rate });
+
+  const save = async (e) => {
+    e.preventDefault();
+    if (isSaving || !on) return;
+    setIsSaving(true);
+    // ponytail: 3 lệnh ghi rời, không atomic; gộp thành RPC nếu hay gặp lỗi giữa chừng.
+    let ok = await fin.updateDeposit(deposit.id, { closed_on: plan.closedOn });
+    const next = ok && plan.next ? await fin.addDeposit(plan.next) : null;
+    if (ok && plan.next && !next) {
+      // Mở sổ mới hỏng → mở lại sổ cũ, không để tiền biến khỏi quỹ.
+      await fin.updateDeposit(deposit.id, { closed_on: null });
+      ok = false;
+    }
+    if (!ok) {
+      setIsSaving(false);
+      nav.showToast('Không xử lý được sổ đáo hạn. Thử lại.', { icon: 'warning' });
+      return;
+    }
+    const tx = plan.income ? await fin.addTransaction(plan.income) : null;
+    setIsSaving(false);
+    const undo = async () => {
+      if (tx) await fin.deleteTransaction(tx.id);
+      if (next) await fin.deleteDeposit(next.id);
+      await fin.updateDeposit(deposit.id, { closed_on: null });
+      nav.showToast(`Đã hoàn tác · “${deposit.name}” trở lại như cũ`, { icon: 'bank' });
+    };
+    nav.showToast(
+      plan.income && !tx ? 'Đã đóng sổ nhưng chưa ghi được giao dịch lãi.'
+        : mode === 'withdraw' ? `Đã tất toán “${deposit.name}”` : `Đã gửi lại “${deposit.name}” kỳ mới`,
+      { icon: plan.income && !tx ? 'warning' : 'bank', actionLabel: 'Hoàn tác', onAction: undo },
+    );
+    onDone();
+  };
+
+  return (
+    <form className="fin-editor" onSubmit={save}>
+      <div className="fin-editor__title">
+        <strong>Xử lý đáo hạn · {deposit.name}</strong>
+        <button type="button" className="fin-icon-btn" aria-label="Đóng form xử lý đáo hạn" onClick={onDone}>
+          <AppIcon name="x" size={14} />
+        </button>
+      </div>
+
+      <div className="fin-type-picker" style={{ marginBottom: '10px' }}>
+        {SETTLE_MODES.map(m => (
+          <button key={m.id} type="button" aria-pressed={mode === m.id}
+            className={`fin-type-picker__btn ${mode === m.id ? 'is-active' : ''}`} onClick={() => setMode(m.id)}>
+            <div className="fin-type-picker__head"><AppIcon name={m.icon} size={15} /><span>{m.label}</span></div>
+            <span className="fin-type-picker__hint">{m.hint}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="fin-form__row">
+        <label className="fin-label" style={{ flex: 1 }}>
+          Lãi thực nhận (VNĐ)
+          <input
+            className="fin-input"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={interest ? groupDigits(interest) : ''}
+            onChange={e => setInterest(sanitizeDigits(e.target.value))}
+            placeholder="0"
+            autoFocus
+          />
+          <small style={{ color: 'var(--n-txt3)', fontSize: '11px' }}>Điền sẵn theo lãi suất · sửa theo số ngân hàng trả thật. Ghi thành Thu › Lãi tiết kiệm.</small>
+        </label>
+        <label className="fin-label" style={{ flex: 1 }}>
+          {mode === 'withdraw' ? 'Ngày rút' : 'Ngày gửi lại'}
+          <DateField value={on} onChange={setOn} />
+        </label>
+      </div>
+
+      {plan.next && (
+        <div className="fin-form__row">
+          <label className="fin-label" style={{ flex: 1 }}>
+            Lãi suất kỳ mới · %/năm
+            <input className="fin-input" inputMode="decimal" value={rate}
+              onChange={e => setRate(sanitizeDecimal(e.target.value, 3, 4))} placeholder={String(deposit.rate || 0)} />
+          </label>
+          <label className="fin-label" style={{ flex: 1 }}>
+            Sổ mới
+            <span className="fin-input fin-input--readonly">
+              {money(plan.next.amount)} · {plan.next.term} tháng · đáo hạn {formatDate(projectedMaturity(plan.next.opened_at, Number(plan.next.term)))}
+            </span>
+          </label>
+        </div>
+      )}
+
+      <small style={{ color: 'var(--n-txt3)', display: 'block', margin: '4px 0 8px' }}>
+        {plan.next
+          ? 'Sổ cũ chuyển vào Lịch sử sổ đã tất toán; kỳ mới là một dòng sổ riêng.'
+          : `Nhận về ${money((deposit.amount || 0) + (plan.income?.amount || 0))} · sổ chuyển vào Lịch sử sổ đã tất toán.`}
+      </small>
+
+      <div className="fin-editor__actions">
+        <button className="fin-btn fin-btn--primary fin-btn--sm" disabled={isSaving || !on}>
+          <AppIcon name="checkCircle" size={14} /> {isSaving ? 'Đang lưu...' : 'Xác nhận'}
+        </button>
+        <button type="button" className="fin-btn fin-btn--secondary fin-btn--sm" onClick={onDone}>Hủy</button>
       </div>
     </form>
   );

@@ -280,6 +280,7 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   trừ vào nợ cũ nhất trước.
 - Cho vay hiện lãi đơn theo ngày trên gốc còn lại, hỗ trợ tính lãi mất do rút tiết kiệm sớm (`forfeited_interest`).
 - Quỹ tiết kiệm: Quản lý nhiều nơi gửi/sổ ngân hàng, lãi suất bình quân, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ.
+- Sổ đã đáo hạn: nút Xử lý → rút về hoặc gửi lại (chỉ gốc / gốc + lãi). Sổ cũ đóng và vào "Lịch sử sổ đã tất toán" (mở lại được), gửi lại là một dòng sổ mới, lãi thực nhận ghi thành Thu › Lãi tiết kiệm; toast có Hoàn tác.
 
 **Data:** 10 bảng `finance_*` chính + `finance_transaction_tags`. Schema chi tiết ở
 [`DATABASE.md`](DATABASE.md), hợp đồng sản phẩm ở [`DESIGN_FINANCE.md`](DESIGN_FINANCE.md).

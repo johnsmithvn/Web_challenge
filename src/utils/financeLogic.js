@@ -646,6 +646,35 @@ export function maturityWarn(matures_at, refStr) {
   return { days, warn: days >= 0 && days <= 45 };
 }
 
+/** Lãi trọn kỳ của một sổ: gốc × lãi suất × kỳ hạn/12; không kỳ hạn thì tính 1 năm. */
+export function maturityInterest(deposit) {
+  const months = Number(deposit?.term) || 12;
+  return Math.round((deposit?.amount || 0) * ((Number(deposit?.rate) || 0) / 100) * (months / 12));
+}
+
+/**
+ * Xử lý sổ đã đáo hạn. Sổ cũ LUÔN được đóng (closed_on) để giữ nguyên lịch sử kỳ vừa
+ * xong; gửi lại = mở một dòng sổ MỚI từ ngày xử lý, không sửa đè sổ cũ.
+ * mode: 'withdraw' rút về · 'renew' gửi lại chỉ gốc · 'renew_interest' gửi lại gốc + lãi.
+ * Lãi thực nhận là thu nhập thật nên ghi giao dịch Thu › Đầu tư › Lãi tiết kiệm (bỏ qua nếu 0).
+ */
+export function settleMaturity(deposit, { mode, interest, on, rate } = {}) {
+  const date = on || deposit.matures_at;
+  const earned = Math.max(0, Math.round(Number(interest) || 0));
+  const next = mode === 'withdraw' ? null : {
+    fund_id: deposit.fund_id, name: deposit.name, bank: deposit.bank || null,
+    account_no: deposit.account_no || null, term: deposit.term,
+    rate: rate == null || rate === '' ? deposit.rate : Number(rate) || 0,
+    amount: (deposit.amount || 0) + (mode === 'renew_interest' ? earned : 0),
+    opened_at: date, closed_on: null,
+  };
+  const income = earned ? {
+    type: 'income', amount: earned, occurred_at: date,
+    category_id: 'dautu', subcategory_id: 'dautu.interest', note: `Lãi ${deposit.name}`,
+  } : null;
+  return { closedOn: date, next, income };
+}
+
 /** Phân loại nơi gửi: 'cd' (Chứng chỉ tiền gửi), 'term' (Sổ tiết kiệm có kỳ hạn), 'flex' (Tích lũy linh hoạt không kỳ hạn) */
 export function guessDepositType(deposit) {
   if (!deposit) return 'cd';

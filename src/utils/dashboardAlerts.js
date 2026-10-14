@@ -488,7 +488,7 @@ export function collectSystemAlerts({
         : matured ? `Đã đáo hạn ${Math.abs(warn.days)} ngày` : `Đáo hạn sau ${warn.days} ngày`,
       icon: 'piggyBank',
       actionType: 'nav',
-      actionLabel: 'Xem sổ',
+      actionLabel: matured ? 'Xử lý' : 'Xem sổ',
       targetUrl: '/finance/recurring',
       targetSeg: 'saving',
     });
