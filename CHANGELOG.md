@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v6.27.1 — 2026-10-14
+
+### Fixed
+- **Popover "Đổi ngày giờ" làm rơi giờ Hạn (`calendarTimeUtils.js` `datePickDraft`, `TaskFloatingPopovers.jsx`):** việc có Bắt đầu = Hạn cùng ngày mà chỉ có 1 giờ thì giờ đó thành giờ chính (trước: chỉ có giờ Hạn → dòng giờ ẩn, Lưu xoá mất giờ). Lưu chỉ sáng khi đã chỉnh so với lúc mở (trước so với task gốc nên việc chỉ có Bắt đầu / cùng ngày 1 giờ sáng Lưu sẵn và bị đổi khi bấm). Khoảng nhiều ngày chỉ có giờ kết thúc giờ hiện dòng giờ.
+- **Body — tải lại trang giữa buổi rồi Lưu / Hủy bị đẩy về Lộ trình (`BodyPage.jsx`):** ghim buổi đang tập trước khi ghi, để màn tập không bị gỡ lúc status đổi (optimistic) mà mạng chưa xong. Lưu lỗi thì vẫn ở màn kết quả để thử lại, không mất các mục tăng tiến đã duyệt.
+- **Body — "Bắt đầu tập hôm nay" ở Tổng quan mở màn tập trống "Không có bài tập theo lịch hôm nay" (`OverviewScreen.jsx`):** nút truyền mảng bài thay vì dayInfo `{ weekday, day, name }` như Lộ trình → buổi tạo ra không có thứ, tên "Tập luyện", màn tập lọc ra 0 bài.
+- **Body — thẻ "Buổi tập hôm nay" mobile khi có buổi dở (`OverviewScreen.jsx`):** nhãn "Đang tập dở" + nút "Tiếp tục buổi tập" như desktop (trước vẫn là "Bắt đầu tập hôm nay", bấm thì đòi hủy buổi đang dở).
+- **`useWorkouts` rollback buổi tập:** `abandonSession` lỗi thì trả buổi về trạng thái cũ (trước UI vẫn coi là đã hủy); `updateSession` lỗi chỉ trả lại đúng trường vừa sửa thay vì ghi đè cả mảng `sessions` bằng snapshot cũ.
+
 ## v6.27.0 — 2026-10-14
 
 ### Added

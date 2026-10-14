@@ -102,6 +102,13 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
     return (routineItems || []).filter(item => item.weekday === todayWeekday);
   }, [routineItems, todayWeekday]);
 
+  // Cùng dạng dayInfo với nút "Bắt đầu buổi" của Lộ trình — màn tập lọc bài theo weekday, không nhận mảng bài
+  const todayStartPayload = {
+    weekday: todayWeekday,
+    day: todayWeekday,
+    name: todayRoutineItems[0]?.day_name || 'Buổi tập hôm nay'
+  };
+
   // Thống kê thật của 1 buổi từ các set đã ghi (bảng sessions không lưu sẵn số set / khối lượng)
   const statsOfSession = useCallback((sessionId) => {
     const sets = (recentSets || []).filter(s => s.session_id === sessionId && s.actual_val != null);
@@ -681,7 +688,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               </>
             ) : sessionStats.hasPlan ? (
               <button
-                onClick={() => onStartSession ? onStartSession(todayRoutineItems) : onNavigateTab?.('routine')}
+                onClick={() => onStartSession ? onStartSession(todayStartPayload) : onNavigateTab?.('routine')}
                 style={{
                   height: '34px',
                   padding: '0 16px',
@@ -977,7 +984,11 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
             <span style={{ font: "500 10px/1 var(--body-mono)", letterSpacing: "0.09em", color: "#9C9AA8" }}>
               BUỔI TẬP HÔM NAY
             </span>
-            {sessionStats.isDone ? (
+            {sessionStats.isInProgress ? (
+              <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(245,158,11,0.2)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#F59E0B" }}>
+                Đang tập dở
+              </span>
+            ) : sessionStats.isDone ? (
               <span style={{ padding: "4px 8px", borderRadius: "20px", background: "rgba(62,158,104,0.22)", font: "600 11px/1 'Be Vietnam Pro',sans-serif", color: "#7FD3A2" }}>
                 Xong {sessionStats.finishTime}
               </span>
@@ -1020,15 +1031,18 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               </span>
             </div>
           </div>
+          {/* Có buổi dở thì chỉ cho tập tiếp như desktop — "Bắt đầu" ở đây sẽ đòi hủy buổi đang dở */}
           {!sessionStats.isDone && sessionStats.hasPlan && (
             <button
-              onClick={() => onStartSession ? onStartSession(todayRoutineItems) : onNavigateTab?.('routine')}
+              onClick={sessionStats.isInProgress
+                ? () => onNavigateTab?.('session')
+                : () => onStartSession ? onStartSession(todayStartPayload) : onNavigateTab?.('routine')}
               style={{
                 marginTop: '10px',
                 height: '36px',
                 width: '100%',
                 borderRadius: '8px',
-                background: '#6949E8',
+                background: sessionStats.isInProgress ? 'linear-gradient(135deg, #F59E0B, #D97706)' : '#6949E8',
                 color: '#FFF',
                 fontWeight: 600,
                 fontSize: '13px',
@@ -1041,7 +1055,7 @@ export default function OverviewScreen({ onNavigateTab, onStartSession }) {
               }}
             >
               <AppIcon name="play" size={14} weight="fill" />
-              Bắt đầu tập hôm nay
+              {sessionStats.isInProgress ? 'Tiếp tục buổi tập' : 'Bắt đầu tập hôm nay'}
             </button>
           )}
         </div>

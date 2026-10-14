@@ -171,7 +171,17 @@ export default function BodyPage() {
     setScreen('session');
   }, [setScreen, buildResumeDayInfo]);
 
+  // Tải lại trang giữa buổi thì chưa có currentSessionObj (màn tập lấy inProgressSession). Lưu / hủy đổi status
+  // optimistic → inProgressSession biến mất giữa lúc chờ mạng → màn tập bị gỡ và effect đẩy về Lộ trình.
+  // Ghim buổi + dayInfo lại trước khi ghi để màn tập (kể cả danh sách bài ở màn kết quả) giữ nguyên tới khi chủ động rời.
+  const pinSession = useCallback(() => {
+    if (currentSessionObj || !inProgressSession) return;
+    setCurrentSessionObj({ ...inProgressSession, isResume: true });
+    setActiveSessionDay(effectiveDayInfo);
+  }, [currentSessionObj, inProgressSession, effectiveDayInfo]);
+
   const handleFinishSession = useCallback(async (results) => {
+    pinSession();
     try {
       const sId = currentSessionObj?.id || inProgressSession?.id;
       if (sId) {
@@ -198,9 +208,10 @@ export default function BodyPage() {
     } catch (err) {
       showToast?.('Lỗi khi lưu buổi tập: ' + (err.message || 'Thử lại sau'), 'error');
     }
-  }, [currentSessionObj, inProgressSession, finishSession, applyProgression, user, showToast, setScreen]);
+  }, [pinSession, currentSessionObj, inProgressSession, finishSession, applyProgression, user, showToast, setScreen]);
 
   const handleCancelSession = useCallback(async () => {
+    pinSession();
     const sId = currentSessionObj?.id || inProgressSession?.id;
     if (sId) {
       try {
@@ -214,7 +225,7 @@ export default function BodyPage() {
     setCurrentSessionObj(null);
     setActiveSessionDay(null);
     setScreen('routine');
-  }, [currentSessionObj, inProgressSession, abandonSession, showToast, setScreen]);
+  }, [pinSession, currentSessionObj, inProgressSession, abandonSession, showToast, setScreen]);
 
   const handlePauseSession = useCallback(async (elapsedSeconds) => {
     const sId = currentSessionObj?.id || inProgressSession?.id;

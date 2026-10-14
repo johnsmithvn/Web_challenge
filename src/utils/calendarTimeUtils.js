@@ -455,13 +455,14 @@ export function rescheduleTaskPatch(task, dateStr, timeStr) {
 
 /**
  * Popover đổi ngày giờ (mockup): nháp { a, b, ta, tb } — a = ngày Bắt đầu/Hạn, b = ngày Kết thúc (tuỳ chọn),
- * ta/tb = giờ bắt đầu → giờ kết thúc. Task có Bắt đầu + Hạn khác ngày → a/b; cùng ngày → khối giờ (ta → tb).
+ * ta/tb = giờ bắt đầu → giờ kết thúc. Task có Bắt đầu + Hạn khác ngày → a/b; cùng ngày → khối giờ (ta → tb),
+ * cùng ngày mà chỉ có 1 giờ thì giờ đó là ta (không thì Lưu làm rơi giờ Hạn).
  */
 export function datePickDraft(task) {
   const hm = (t) => (t ? t.slice(0, 5) : null);
   if (task?.start_date && task?.due_date) {
     return task.start_date === task.due_date
-      ? { a: task.due_date, b: null, ta: hm(task.start_time), tb: hm(task.due_time) }
+      ? { a: task.due_date, b: null, ta: hm(task.start_time) || hm(task.due_time), tb: task.start_time ? hm(task.due_time) : null }
       : { a: task.start_date, b: task.due_date, ta: hm(task.start_time), tb: hm(task.due_time) };
   }
   return { a: task?.due_date || task?.start_date || null, b: null, ta: hm(task?.due_date ? task.due_time : task?.start_time), tb: null };

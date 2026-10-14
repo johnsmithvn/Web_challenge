@@ -718,7 +718,10 @@ export function useWorkouts() {
     if (patch.duration_seconds !== undefined) allowed.duration_seconds = Math.max(0, Math.round(patch.duration_seconds));
     if (!sessionId || Object.keys(allowed).length === 0) return;
 
-    const prevSessions = sessions;
+    // Rollback chỉ trả lại đúng các trường vừa sửa — không ghi đè snapshot cũ lên buổi vừa kết thúc/bắt đầu trong lúc chờ
+    const prevRow = sessions.find(s => s.id === sessionId);
+    const prevFields = {};
+    Object.keys(allowed).forEach(k => { prevFields[k] = prevRow?.[k]; });
     setSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, ...allowed } : s)));
 
     if (enabled) {
@@ -731,7 +734,7 @@ export function useWorkouts() {
         if (error) throw error;
       } catch (err) {
         logger.error('Failed to update workout session, rolling back:', err);
-        setSessions(prevSessions);
+        setSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, ...prevFields } : s)));
         throw err;
       }
     }
@@ -740,6 +743,7 @@ export function useWorkouts() {
   // Hủy buổi tập (abandon)
   const abandonSession = useCallback(async (sessionId) => {
     const endedAt = new Date().toISOString();
+    const prevRow = sessions.find(s => s.id === sessionId);
     setSessions(prev => prev.map(s =>
       s.id === sessionId ? { ...s, status: 'abandoned', ended_at: endedAt } : s
     ));
@@ -753,11 +757,16 @@ export function useWorkouts() {
           .eq('user_id', userId);
         if (error) throw error;
       } catch (err) {
-        logger.error('Failed to abandon workout session:', err);
+        logger.error('Failed to abandon workout session, rolling back:', err);
+        if (prevRow) {
+          setSessions(prev => prev.map(s => (
+            s.id === sessionId ? { ...s, status: prevRow.status, ended_at: prevRow.ended_at ?? null } : s
+          )));
+        }
         throw err;
       }
     }
-  }, [enabled, userId]);
+  }, [enabled, userId, sessions]);
 
   return {
     routines,

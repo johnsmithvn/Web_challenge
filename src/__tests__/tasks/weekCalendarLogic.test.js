@@ -357,6 +357,12 @@ console.log('agenda rows (week/gap): OK');
   // Vòng tròn: task → nháp → patch giữ nguyên
   const blk = { start_date: '2026-10-12', start_time: '09:00', due_date: '2026-10-12', due_time: '10:30' };
   assert.deepEqual(datePickPatch(datePickDraft(blk)), blk);
+  // Cùng ngày nhưng chỉ có 1 giờ → giờ đó là ta, lưu lại không rơi giờ
+  const dueOnly = { start_date: '2026-10-12', start_time: null, due_date: '2026-10-12', due_time: '17:00:00' };
+  assert.deepEqual(datePickDraft(dueOnly), { a: '2026-10-12', b: null, ta: '17:00', tb: null });
+  assert.deepEqual(datePickPatch(datePickDraft(dueOnly)), { ...NONE, due_date: '2026-10-12', due_time: '17:00' }, 'giữ giờ Hạn');
+  const startOnly = { start_date: '2026-10-12', start_time: '09:00:00', due_date: '2026-10-12', due_time: null };
+  assert.deepEqual(datePickDraft(startOnly), { a: '2026-10-12', b: null, ta: '09:00', tb: null });
 }
 console.log('date picker draft/patch: OK');
 

@@ -162,7 +162,6 @@ function MonthGrid({ month, setMonth, cellState, onPick, nav = 'center', joined 
   );
 }
 
-const hhmm = (t) => (t ? t.slice(0, 5) : null);
 const dayLabel = (v) => {
   const d = new Date(`${v}T00:00:00`);
   return `${DOW_SHORT[d.getDay()]}, ${d.getDate()} thg ${d.getMonth() + 1}`;
@@ -180,7 +179,7 @@ export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
 
   const [dr, setDr] = useState(() => datePickDraft(task));
   const [field, setField] = useState('a');
-  const [timeOn, setTimeOn] = useState(() => !!dr.ta);
+  const [timeOn, setTimeOn] = useState(() => !!(dr.ta || dr.tb));
   const [month, setMonth] = useState(() => monthOf(dr.a || toDateStr()));
   const B = dr.a && dr.b && dr.b > dr.a ? dr.b : null;
 
@@ -209,8 +208,10 @@ export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
   };
 
   const patch = datePickPatch({ ...dr, b: B });
-  const cur = { start_date: task.start_date || null, start_time: hhmm(task.start_time), due_date: task.due_date || null, due_time: hhmm(task.due_time) };
-  const dirty = Object.keys(patch).some((k) => (patch[k] || null) !== (cur[k] || null));
+  // So với nháp lúc mở (đã quy về dạng popover lưu), không so với task gốc: task dạng popover không biểu diễn
+  // được (vd chỉ có Bắt đầu) sẽ không tự sáng Lưu và không bị đổi khi người dùng chưa chỉnh gì.
+  const [base] = useState(() => datePickPatch(datePickDraft(task)));
+  const dirty = Object.keys(patch).some((k) => patch[k] !== base[k]);
   const save = () => {
     if (dirty) onSave(patch);
     onClose();
