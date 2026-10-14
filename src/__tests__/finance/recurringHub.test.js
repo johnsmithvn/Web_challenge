@@ -278,6 +278,28 @@ const lendTotals = hubTotals(buildHubItems(lendFin), '2026-10');
 assert.equal(lendTotals.lend.value, 6000000, 'cho vay: còn phải thu');
 assert.equal(lendTotals.lend.cap, 'đã thu 4 tr / 10 tr');
 
+// Cho vay: mốc là ngày HẸN THU, không phải ngày đã đưa (trước: đưa 06/10 → "Đã xong tháng này").
+const lendDueFin = { ...regFin, today: '2026-10-14', bills: [], cards: [], loans: [], goals: [], transactions: [],
+  lendings: [
+    { id: 'mai10', name: 'Chị Mai', principal: 10000000, lent_on: '2026-10-06', due_on: '2026-10-23' },
+    { id: 'next', name: 'Hẹn tháng sau', principal: 2000000, lent_on: '2026-10-01', due_on: '2026-11-05' },
+    { id: 'late', name: 'Quá hẹn', principal: 3000000, lent_on: '2026-08-01', due_on: '2026-09-30' },
+  ] };
+const lendDueItems = buildHubItems(lendDueFin);
+const mai10 = lendDueItems.find(i => i.id === 'mai10');
+assert.deepEqual([mai10.ev.state, mai10.ev.due, mai10.ev.amount], ['due', '2026-10-23', 10000000], 'hẹn trong tháng → còn phải thu');
+assert.equal(mai10.sub, 'cho mượn 06/10/2026');
+assert.equal(lendDueItems.find(i => i.id === 'next').ev, null, 'hẹn tháng sau → không có kỳ trong tháng');
+assert.equal(lendDueItems.find(i => i.id === 'late').overdue, true, 'hẹn đã qua mà chưa thu đủ → quá hạn');
+const lendDueGroups = groupHubItems(lendDueItems, '2026-10-14');
+assert.equal(lendDueGroups.some(g => g.key === 'done'), false, 'khoản chưa thu đồng nào không được nằm ở "Đã xong"');
+assert.equal(lendDueGroups.find(g => g.key === 'nextWeek').items[0].id, 'mai10');
+assert.equal(lendDueGroups.find(g => g.key === 'nextWeek').total, 0, 'danh sách chung: tiền sắp thu không cộng vào tiền phải chi');
+assert.equal(groupHubItems(lendDueItems, '2026-10-14', 'lend').find(g => g.key === 'nextWeek').total, 10000000, 'tab Cho vay: tổng là tiền phải thu');
+const lendDueTotals = hubTotals(lendDueItems, '2026-10');
+assert.deepEqual([lendDueTotals.all.value, lendDueTotals.all.dueCount, lendDueTotals.all.count], [0, 0, 3],
+  '"còn phải chi" không tính hẹn thu, số dòng vẫn đủ');
+
 // Hóa đơn thường: thanh tiến độ = ngày đã trôi trong chu kỳ, vàng khi còn ≤ 6 ngày
 const near = items.find(i => i.id === 'b_this_week');   // hạn 11/10, hôm nay 10/10
 assert.equal(near.progress.label, '29/30 ngày chu kỳ');

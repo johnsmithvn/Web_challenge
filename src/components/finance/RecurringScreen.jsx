@@ -966,7 +966,7 @@ function HubRow({ item, today, selected, onPick, rowRef }) {
   const { ev } = item;
   const st = ev?.state;
   const done = st === 'paid' || st === 'skip' || !ev && !item.main;
-  const verb = item.kind === 'lend' ? 'Đã đưa' : item.kind === 'save' ? 'Đã góp' : 'Đã trả';
+  const verb = item.kind === 'save' ? 'Đã góp' : 'Đã trả';
   const due = st === 'due' ? dueState({ days: daysTo(today, ev.due) }) : null;
   const stText = !ev ? item.note
     : st === 'paid' ? (ev.paidOn ? `${verb} ${ev.paidOn}` : verb)
@@ -1248,7 +1248,7 @@ export default function RecurringScreen({ fin, nav }) {
               <div className="fin-hub__cal-chips">
                 {dy.chips.map(chip => {
                   const chipMeta = KIND_META[chip.kind];
-                  const stLabel = chip.state === 'paid' ? 'đã xong' : chip.state === 'skip' ? 'bỏ kỳ' : 'cần trả';
+                  const stLabel = chip.state === 'paid' ? 'đã xong' : chip.state === 'skip' ? 'bỏ kỳ' : chip.kind === 'lend' ? 'hẹn thu' : 'cần trả';
                   return (
                     <button type="button" key={chip.id}
                       className={`fin-hub__cal-chip fin-hub__cal-chip--${chip.state}${selected?.id === chip.id ? ' is-selected' : ''}`}

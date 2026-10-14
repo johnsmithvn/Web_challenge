@@ -219,18 +219,17 @@ export function buildHubItems(fin = {}) {
     const left = Math.max(0, (l.principal || 0) - got);
     if (left <= 0) continue;
 
-    let ev = null;
-    if (l.lent_on && l.lent_on.slice(0, 7) === monthStr) {
-      const day = Number(l.lent_on.slice(8));
-      ev = {
-        day,
-        due: l.lent_on,
-        amount: l.principal || 0,
-        approx: false,
-        state: 'paid', // tiền đã ra khỏi ví trong tháng này
-        paidOn: `${l.lent_on.slice(8)}/${l.lent_on.slice(5, 7)}`,
-      };
-    }
+    // Mốc của khoản cho vay là ngày HẸN THU (việc còn phải làm), không phải ngày đã đưa:
+    // trước đây mốc "Đã đưa" cùng tháng xếp khoản chưa thu đồng nào vào "Đã xong tháng này".
+    // Hẹn tháng sau → không có kỳ trong tháng; hẹn đã qua mà chưa thu đủ → quá hạn.
+    const ev = l.due_on && l.due_on.slice(0, 7) <= monthStr ? {
+      day: Number(l.due_on.slice(8)),
+      due: l.due_on,
+      amount: left,
+      approx: false,
+      state: 'due',
+      paidOn: null,
+    } : null;
 
     const progress = { pct: pctOf(got, l.principal), label: `thu ${shortMoney(got)} / ${shortMoney(l.principal)}` };
 
@@ -238,7 +237,7 @@ export function buildHubItems(fin = {}) {
       id: l.id,
       kind: 'lend',
       name: l.name,
-      sub: l.due_on ? `hẹn ${l.due_on}` : (l.note || 'Cho vay'),
+      sub: [l.note, l.lent_on && `cho mượn ${dmyFull(l.lent_on)}`].filter(Boolean).join(' · ') || 'Cho vay',
       icon: 'handCoins',
       categoryId: 'lend',
       main: left,
@@ -246,7 +245,7 @@ export function buildHubItems(fin = {}) {
       source: l,
       ev,
       progress,
-      overdue: false,
+      overdue: Boolean(ev && ev.due < today),
     });
   }
 
@@ -345,7 +344,9 @@ export function groupHubItems(items = [], todayStr, kindFilter = 'all') {
   done.sort(sortByDueDesc);
   none.sort(sortByName);
 
-  const sum = (list) => list.reduce((s, i) => s + (i.ev?.amount || 0), 0);
+  // Danh sách chung: tiền cho vay là tiền SẮP THU VỀ, không cộng chung với tiền phải chi.
+  const counted = (i) => kindFilter === 'lend' || i.kind !== 'lend';
+  const sum = (list) => list.reduce((s, i) => s + (counted(i) ? i.ev?.amount || 0 : 0), 0);
 
   const groups = [];
 
@@ -403,7 +404,8 @@ export function hubTotals(items = [], monthStr = '') {
   const sum = (list, f) => list.reduce((s, i) => s + (f(i) || 0), 0);
   const month = monthStr ? `tháng ${Number(monthStr.slice(5, 7))}` : 'tháng này';
 
-  const all = kpi(of('all'));
+  // "Còn phải chi" / "kỳ cần trả" không tính hẹn thu của cho vay; số dòng vẫn đếm đủ.
+  const all = { ...kpi(items.filter(i => i.kind !== 'lend')), count: items.length };
   const bill = kpi(of('bill'));
   const cards = of('card');
   const used = sum(cards, i => i.main);
