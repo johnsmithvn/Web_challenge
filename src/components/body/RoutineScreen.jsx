@@ -1,9 +1,20 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import AppIcon from '../AppIcon';
 import BASE_EXERCISES from '../../data/body-exercises.json';
 import ROUTINE_TEMPLATES from '../../data/body-routine-templates.json';
 import MUSCLE_MAP from '../../data/body-muscles.json';
-import { DAY_TYPE_COLORS, stepOfUnit, getRoutineWeek, calculateAdherence } from '../../utils/workoutLogic';
+import {
+  stepOfUnit,
+  getRoutineWeek,
+  calculateAdherence,
+  estimateQueueMinutes,
+  getWeekDays,
+  mapWeekSessions,
+  splitExerciseName,
+  splitDayName,
+  DAY_TAG_COLORS
+} from '../../utils/workoutLogic';
+import { normVi } from '../../utils/kanbanUtils';
 import { ConfirmModal } from '../ConfirmModal';
 
 const BASE_WEEKDAY_DEFS = [
@@ -16,8 +27,27 @@ const BASE_WEEKDAY_DEFS = [
   { day: 7, label: 'CN', short: 'Chủ Nhật', defaultName: 'Check-in', defaultType: null }
 ];
 
+// Bảng Thêm bài: gom theo cơ chính
+const PICK_GROUP_OF = {
+  chest: 'Ngực', shoulders: 'Vai', biceps: 'Tay', triceps: 'Tay', forearms: 'Tay',
+  lats: 'Lưng', traps: 'Lưng', lowerback: 'Lưng', quads: 'Chân', hamstrings: 'Chân', calves: 'Chân',
+  glutes: 'Mông', abs: 'Bụng', obliques: 'Bụng'
+};
+const PICK_GROUPS = ['Ngực', 'Vai', 'Tay', 'Lưng', 'Chân', 'Mông', 'Bụng'];
+const PICK_EQS = [['all', 'Tất cả'], ['bw', 'Tay không'], ['db', 'Tạ đơn'], ['bar', 'Xà']];
+const EQ_LABEL = { bw: 'Không dụng cụ', db: 'Tạ đơn', bar: 'Xà', gym: 'Máy tập' };
+
+const baseExOf = key => BASE_EXERCISES.find(e => e.key === key);
+const muscleOf = ex => MUSCLE_MAP[ex?.primary]?.name || ex?.primary || '';
+const unitLabel = unit => (unit === 's' ? 'giây' : unit || 'rep');
+const ddmm = dateStr => { const [, m, d] = dateStr.split('-'); return `${Number(d)}/${Number(m)}`; };
+const mmss = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+const minutesOf = items => estimateQueueMinutes(items.flatMap(it => Array.from({ length: Number(it.target_sets) || 0 }, () => it)));
+const levelOf = t => t.level || (t.key.includes('calisthenics') ? 'Trung cấp' : 'Cơ bản');
+
 export default function RoutineScreen({
   routine,
+  exerciseMap,
   routineItems = [],
   routines = [],
   routineTemplates = ROUTINE_TEMPLATES,
@@ -25,7 +55,6 @@ export default function RoutineScreen({
   recentSets = [],
   activeSession,
   onResumeSession,
-  onCreateRoutineFromTemplate,
   onCreateCustomRoutine,
   onSwitchRoutine,
   onUpdateRoutineDetails,
@@ -33,24 +62,40 @@ export default function RoutineScreen({
   onStartSession,
   onUpdateTarget,
   onUpdateSets,
+  onUpdateUnit,
+  onReorderItems,
+  onNavigate,
   onAddExercise,
   onDeleteExercise,
   onToggleAutoProgress
 }) {
   // Thứ trong tuần đang xem (1: T2 -> 7: CN, tự động chọn theo thứ của ngày hôm nay)
-  const [selectedDay, setSelectedDay] = useState(() => {
-    const jsDay = new Date().getDay();
-    return jsDay === 0 ? 7 : jsDay;
-  });
+  // Bài có sẵn + bài tự tạo (exerciseMap của useWorkouts); thiếu map thì dùng thư viện gốc
+  const allExercises = useMemo(
+    () => (exerciseMap?.size ? Array.from(exerciseMap.values()) : BASE_EXERCISES),
+    [exerciseMap]
+  );
+  const exOf = useCallback(key => exerciseMap?.get(key) || baseExOf(key), [exerciseMap]);
+
+  const [today] = useState(() => new Date());
+  const todayWeekday = today.getDay() || 7;
+  const [selectedDay, setSelectedDay] = useState(todayWeekday);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [showSwitcher, setShowSwitcher] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
+  const [pickerGroup, setPickerGroup] = useState('all');
+  const [pickerEq, setPickerEq] = useState('all');
+  const [openItemId, setOpenItemId] = useState(null);
+  const [dragId, setDragId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
   const [localItems, setLocalItems] = useState(routineItems);
   const [autoProgressState, setAutoProgressState] = useState(routine?.auto_progress ?? true);
 
   // Chế độ xem trước template (Preview mode)
   const [previewTemplate, setPreviewTemplate] = useState(null);
   const [previewDays, setPreviewDays] = useState([]);
-  const [expandedTplKey, setExpandedTplKey] = useState(null);
 
   // Modal tạo lộ trình tự do & sửa lộ trình hiện tại
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -89,6 +134,19 @@ export default function RoutineScreen({
     }
   }, [routine]);
 
+  // Escape đóng popover / menu / bảng thêm bài
+  useEffect(() => {
+    if (!showSwitcher && !showMenu && !showPicker) return undefined;
+    const onKey = e => {
+      if (e.key !== 'Escape') return;
+      setShowSwitcher(false);
+      setShowMenu(false);
+      setShowPicker(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showSwitcher, showMenu, showPicker]);
+
   // Khởi tạo previewDays khi chọn template để preview
   const handleStartPreview = (tmpl) => {
     setPreviewTemplate(tmpl);
@@ -97,7 +155,7 @@ export default function RoutineScreen({
       day_name: d.day_name,
       focus: d.focus,
       items: (d.items || []).map(it => ({
-        id: `prev-${d.weekday}-${it.exercise_key}-${Math.random().toString(36).substr(2, 5)}`,
+        id: `prev-${crypto.randomUUID()}`,
         exercise_key: it.exercise_key,
         target_sets: it.target_sets || 3,
         target_val: it.target_val || 10,
@@ -170,72 +228,44 @@ export default function RoutineScreen({
     return localItems;
   }, [isPreviewing, previewDays, localItems]);
 
-  // Dữ liệu 7 ngày trong tuần
+  // Dữ liệu 7 ngày trong tuần. Tên dạng "Ngày A - Ngực, Vai" tách thành nhãn "Ngày A" + tên buổi.
   const weekdaysData = useMemo(() => {
     return BASE_WEEKDAY_DEFS.map(def => {
       const items = currentDisplayItems.filter(item => item.weekday === def.day);
-      if (items.length > 0) {
-        const totalSets = items.reduce((sum, it) => sum + (Number(it.target_sets) || 0), 0);
-        const estMinutes = Math.round(totalSets * 1.8);
-        const dayName = items[0].day_name || def.defaultName;
-        const muscles = [];
-        items.forEach(it => {
-          const ex = BASE_EXERCISES.find(e => e.key === it.exercise_key);
-          const m = MUSCLE_MAP[ex?.primary]?.name || ex?.primary;
-          if (m && !muscles.includes(m)) muscles.push(m);
-        });
-
-        let dotColor = '#6949E8';
-        let shortName = 'Tập';
-        if (dayName.includes('Chân')) { dotColor = '#2F8A57'; shortName = 'Chân'; }
-        else if (dayName.includes('Đẩy')) { dotColor = '#E0822C'; shortName = 'Đẩy'; }
-        else if (dayName.includes('Kéo')) { dotColor = '#3A82F6'; shortName = 'Kéo'; }
-        else if (dayName.includes('Toàn thân')) { dotColor = '#9A6514'; shortName = 'Toàn thân'; }
-        else if (dayName.includes('Thân trên')) { dotColor = '#6949E8'; shortName = 'Thân trên'; }
-        else if (dayName.includes('Thân dưới')) { dotColor = '#2F8A57'; shortName = 'Thân dưới'; }
-        else { shortName = dayName.slice(0, 8); }
-
+      if (items.length === 0) {
+        const isCheck = def.day === 7;
         return {
-          day: def.day,
-          label: def.label,
-          short: def.short,
-          shortName,
-          name: dayName,
-          meta: `${items.length} bài · ${totalSets} set`,
-          est: `~${estMinutes} phút`,
-          dotColor,
-          isTrain: true,
-          focus: muscles.join(', ') || 'Cơ bắp toàn diện'
+          ...def,
+          items,
+          isTrain: false,
+          isCheck,
+          name: isCheck ? 'Check-in' : 'Nghỉ',
+          title: isCheck ? 'Check-in tuần' : 'Nghỉ',
+          meta: isCheck ? 'Cân sáng, đo vòng eo' : 'Phục hồi'
         };
       }
+      const name = items[0].day_name || def.defaultName;
+      const { tag, letter, title } = splitDayName(name);
+      const muscles = [...new Set(items.map(it => muscleOf(exOf(it.exercise_key))).filter(Boolean))];
       return {
-        day: def.day,
-        label: def.label,
-        short: def.short,
-        shortName: def.day === 7 ? 'Check-in' : 'Nghỉ',
-        name: def.day === 7 ? 'Check-in' : 'Nghỉ',
-        meta: def.day === 7 ? 'Cân sáng, eo' : 'Phục hồi',
-        est: '',
-        dotColor: '#C9C7C0',
-        isTrain: false,
-        note: def.day === 7
-          ? 'Đo vòng eo, cân nặng vào buổi sáng sau khi ngủ dậy để theo dõi tiến độ tuần.'
-          : 'Nghỉ ngơi, đi bộ nhẹ hoặc giãn cơ 15 phút. Cho phép sợi cơ tổng hợp lại glycogen.'
+        ...def,
+        items,
+        isTrain: true,
+        name,
+        tag,
+        tagColor: DAY_TAG_COLORS[letter] || 'var(--body-accent)',
+        title,
+        totalSets: items.reduce((sum, it) => sum + (Number(it.target_sets) || 0), 0),
+        est: minutesOf(items),
+        muscles,
+        focus: muscles.join(', ') || 'Cơ bắp toàn diện'
       };
     });
-  }, [currentDisplayItems]);
+  }, [currentDisplayItems, exOf]);
 
   const activeDay = weekdaysData.find(w => w.day === selectedDay) || weekdaysData[0];
-  const dayItems = currentDisplayItems.filter(item => item.weekday === selectedDay);
-
-  // Nhận diện buổi tập đang dở dang
+  const dayItems = activeDay.items;
   const currentActiveSession = activeSession || sessions.find(s => s.status === 'in_progress');
-  const isThisDayActive = Boolean(
-    currentActiveSession && (
-      Number(currentActiveSession.planned_weekday) === Number(selectedDay) ||
-      currentActiveSession.day_type === activeDay.name
-    )
-  );
 
   // Thống kê thẻ ĐANG THEO
   const routineWeeksTotal = routine?.weeks || 8;
@@ -265,16 +295,127 @@ export default function RoutineScreen({
   const adherenceText = adherence.pct == null ? '—' : `${adherence.pct}%`;
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
+  // ── Lịch tuần: ngày tháng, buổi đã tập, buổi đang dở ─────────────
+  const weekDays = useMemo(() => getWeekDays(weekOffset, today), [weekOffset, today]);
+  const isCurrentWeek = weekOffset === 0;
+  const doneByWeekday = useMemo(
+    () => (isPreviewing ? {} : mapWeekSessions(sessions, weekDays, routine?.id)),
+    [isPreviewing, sessions, weekDays, routine]
+  );
+  const thisWeekDone = useMemo(
+    () => Object.keys(mapWeekSessions(sessions, getWeekDays(0, today), routine?.id)).length,
+    [sessions, today, routine]
+  );
+  const ongoingWeekday = !isPreviewing && isCurrentWeek ? Number(currentActiveSession?.planned_weekday) || null : null;
+  const ongoingSets = useMemo(
+    () => (currentActiveSession ? recentSets.filter(s => s.session_id === currentActiveSession.id) : []),
+    [currentActiveSession, recentSets]
+  );
+  const doneSetsOf = item => Math.min(
+    Number(item.target_sets) || 0,
+    ongoingSets.filter(s => (s.routine_item_id ? s.routine_item_id === item.id : s.exercise_key === item.exercise_key)).length
+  );
+
+  const dayStatus = wd => {
+    if (wd.isTrain && wd.day === ongoingWeekday) return 'ong';
+    if (doneByWeekday[wd.day]) return 'done';
+    if (!wd.isTrain) return wd.isCheck ? 'check' : 'rest';
+    return isCurrentWeek && wd.day === todayWeekday ? 'today' : null;
+  };
+
+  // ── Ngày đang chọn ────────────────────────────────────────────
+  const showProg = selectedDay === ongoingWeekday;
+  const isSelectedToday = isCurrentWeek && selectedDay === todayWeekday;
+  const selectedDate = weekDays[selectedDay - 1];
+  const doneSession = doneByWeekday[selectedDay];
+  const dayTotalSets = activeDay.totalSets || 0;
+  const dayDoneSets = showProg ? dayItems.reduce((sum, it) => sum + doneSetsOf(it), 0) : 0;
+  const currentItemId = showProg ? dayItems.find(it => doneSetsOf(it) < (Number(it.target_sets) || 0))?.id : null;
+  const ongoingPct = dayTotalSets ? Math.round((dayDoneSets / dayTotalSets) * 100) : 0;
+  const ongoingTime = currentActiveSession?.duration_seconds ? ` · ${mmss(currentActiveSession.duration_seconds)}` : '';
+  const doneText = doneSession
+    ? [ddmm(doneSession.local_date), doneSession.duration_seconds ? `${Math.max(1, Math.round(doneSession.duration_seconds / 60))} phút` : null].filter(Boolean).join(' · ')
+    : '';
+  const cta = isPreviewing || dayItems.length === 0 ? null
+    : showProg ? 'cont'
+      : doneSession ? 'done'
+        : isSelectedToday ? 'start' : 'other';
+  const startPayload = { weekday: selectedDay, day: selectedDay, name: activeDay.name, focus: activeDay.focus };
+  const dayEyebrow = [
+    activeDay.tag?.toUpperCase(),
+    `${activeDay.short.toUpperCase()} ${ddmm(selectedDate.date)}`,
+    isSelectedToday ? 'HÔM NAY' : null
+  ].filter(Boolean).join(' · ');
+  const dayMeta = activeDay.isTrain
+    ? `${dayItems.length} bài · ${dayTotalSets} set · ~${activeDay.est} phút`
+    : activeDay.meta;
+  const dayRows = dayItems.map((item, idx) => {
+    const ex = exOf(item.exercise_key);
+    const dn = showProg ? doneSetsOf(item) : 0;
+    return {
+      item,
+      idx,
+      ...splitExerciseName(ex?.name || item.exercise_key),
+      muscle: muscleOf(ex),
+      dn,
+      isCur: item.id === currentItemId,
+      full: showProg && dn >= (Number(item.target_sets) || 0)
+    };
+  });
+
+  // ── Thanh lộ trình ─────────────────────────────────────────────
+  const trainDayCount = weekdaysData.filter(w => w.isTrain).length;
+  const rests = [...new Set(currentDisplayItems.map(it => Number(it.rest_seconds) || 0))];
+  const equipText = [...new Set(currentDisplayItems.map(it => exOf(it.exercise_key)?.equipment).filter(Boolean))]
+    .map(k => EQ_LABEL[k]).join(' & ');
+  const barChips = [
+    trainDayCount ? `${trainDayCount} buổi/tuần` : null,
+    rests.length === 1 && rests[0] ? `Nghỉ ${rests[0]}s giữa hiệp` : null,
+    equipText || null
+  ].filter(Boolean);
+  const weekFill = trainDayCount ? Math.min(1, thisWeekDone / trainDayCount) : 0;
+  const showStats = Boolean(routine?.id) && !isPreviewing;
+  const canEdit = showStats;
+  const routineName = activeRoutineData?.name || 'Chọn một lộ trình';
+  const weekRange = weekDays[0].month === weekDays[6].month
+    ? `${weekDays[0].day} – ${weekDays[6].day}/${weekDays[6].month}`
+    : `${weekDays[0].day}/${weekDays[0].month} – ${weekDays[6].day}/${weekDays[6].month}`;
+  const weekTitle = { 0: 'Lịch tuần này', '-1': 'Tuần trước', 1: 'Tuần sau' }[weekOffset] || 'Lịch tuần';
+
+  // ── Bảng thêm bài ─────────────────────────────────────────────
+  const pickQuery = normVi(pickerSearch.trim());
+  const pickBase = allExercises.filter(ex =>
+    (pickerEq === 'all' || ex.equipment === pickerEq)
+    && (!pickQuery || normVi(ex.name).includes(pickQuery) || normVi(muscleOf(ex)).includes(pickQuery)));
+  const pickCountOf = g => (g === 'all' ? pickBase.length : pickBase.filter(ex => PICK_GROUP_OF[ex.primary] === g).length);
+  const pickSections = PICK_GROUPS
+    .filter(g => pickerGroup === 'all' || g === pickerGroup)
+    .map(g => ({ g, items: pickBase.filter(ex => PICK_GROUP_OF[ex.primary] === g) }))
+    .filter(sec => sec.items.length > 0);
+  const dayKeys = new Set(dayItems.map(it => it.exercise_key));
+
+  const selectDay = day => {
+    setSelectedDay(day);
+    setOpenItemId(null);
+  };
+
+  const openPicker = () => {
+    setPickerSearch('');
+    setShowPicker(true);
+  };
+
+  const patchPreviewItem = (id, patch) => setPreviewDays(prev => prev.map(d => ({
+    ...d,
+    items: (d.items || []).map(it => (it.id === id ? { ...it, ...patch } : it))
+  })));
+
   // Hành động với bài tập (Hỗ trợ cả chế độ xem trước và chế độ đang theo)
   const handleStepChange = (item, delta) => {
     const step = stepOfUnit(item.unit);
     const nextVal = Math.max(step, Number(item.target_val) + delta * step);
 
     if (isPreviewing) {
-      setPreviewDays(prev => prev.map(d => ({
-        ...d,
-        items: (d.items || []).map(it => it.id === item.id ? { ...it, target_val: nextVal } : it)
-      })));
+      patchPreviewItem(item.id, { target_val: nextVal });
     } else {
       setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, target_val: nextVal } : it));
       onUpdateTarget?.(item.id, nextVal);
@@ -285,13 +426,37 @@ export default function RoutineScreen({
     const nextSets = Math.max(1, Number(item.target_sets) + delta);
 
     if (isPreviewing) {
-      setPreviewDays(prev => prev.map(d => ({
-        ...d,
-        items: (d.items || []).map(it => it.id === item.id ? { ...it, target_sets: nextSets } : it)
-      })));
+      patchPreviewItem(item.id, { target_sets: nextSets });
     } else {
       setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, target_sets: nextSets } : it));
       onUpdateSets?.(item.id, nextSets);
+    }
+  };
+
+  // Đổi kiểu mục tiêu rep ↔ giây, đặt lại giá trị mặc định của kiểu mới
+  const handleUnitToggle = (item) => {
+    const unit = item.unit === 's' ? 'rep' : 's';
+    const targetVal = unit === 's' ? 30 : 10;
+    if (isPreviewing) patchPreviewItem(item.id, { unit, target_val: targetVal });
+    else onUpdateUnit?.(item.id, unit, targetVal);
+  };
+
+  // Thả bài đang kéo vào vị trí của bài targetId (cùng ngày)
+  const handleDrop = (targetId) => {
+    const ids = dayItems.map(it => it.id);
+    const from = ids.indexOf(dragId);
+    const to = ids.indexOf(targetId);
+    setDragId(null);
+    setDragOverId(null);
+    if (from < 0 || to < 0 || from === to) return;
+    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    if (isPreviewing) {
+      setPreviewDays(prev => prev.map(d => (d.weekday !== selectedDay ? d : {
+        ...d,
+        items: ids.map(id => d.items.find(it => it.id === id))
+      })));
+    } else {
+      onReorderItems?.(ids);
     }
   };
 
@@ -310,7 +475,7 @@ export default function RoutineScreen({
   const handleAddExercise = (exercise) => {
     if (isPreviewing) {
       const newItem = {
-        id: `prev-${selectedDay}-${exercise.key}-${Math.random().toString(36).substr(2, 5)}`,
+        id: `prev-${crypto.randomUUID()}`,
         exercise_key: exercise.key,
         target_sets: exercise.defaultSets || 3,
         target_val: exercise.defaultTarget || 10,
@@ -323,15 +488,14 @@ export default function RoutineScreen({
         if (foundDay) {
           return prev.map(d => d.weekday === selectedDay ? { ...d, items: [...d.items, newItem] } : d);
         }
-        return [...prev, { weekday: selectedDay, day_name: activeDay.name, items: [newItem] }];
+        return [...prev, { weekday: selectedDay, day_name: activeDay.isTrain ? activeDay.name : 'Tập bù', items: [newItem] }];
       });
-      setShowPicker(false);
       return;
     }
 
     onAddExercise?.({
       weekday: selectedDay,
-      dayName: activeDay.name,
+      dayName: activeDay.isTrain ? activeDay.name : 'Tập bù',
       exerciseKey: exercise.key,
       name: exercise.name,
       sets: exercise.defaultSets || 3,
@@ -340,7 +504,6 @@ export default function RoutineScreen({
       kg: exercise.defaultKg != null ? exercise.defaultKg : (exercise.equipment === 'db' ? 5 : 0),
       restSeconds: 60
     });
-    setShowPicker(false);
   };
 
   const toggleAutoProgress = () => {
@@ -494,89 +657,243 @@ export default function RoutineScreen({
     setShowEditModal(false);
   };
 
-  const filteredPicker = BASE_EXERCISES.filter(e =>
-    !pickerSearch
-    || e.name.toLowerCase().includes(pickerSearch.toLowerCase())
-    || (e.primary && e.primary.toLowerCase().includes(pickerSearch.toLowerCase()))
+  const nameText = <span className="body-rt-name-text">{routineName}</span>;
+
+  // Đổi lộ trình: popover trên desktop, bottom sheet trên mobile — cùng nội dung, CSS đổi vị trí
+  const switcherPanel = showSwitcher && (
+    <>
+      <div className="body-rt-backdrop is-sheet" onClick={() => setShowSwitcher(false)} />
+      <div className="body-rt-pop" role="dialog" aria-label="Đổi lộ trình">
+        <span className="body-rt-sheet-grip" />
+        <div className="body-rt-sheet-head">
+          <span>Đổi lộ trình</span>
+          <button type="button" className="body-rt-icon-btn is-round" onClick={() => setShowSwitcher(false)} aria-label="Đóng">
+            <AppIcon name="x" size={15} />
+          </button>
+        </div>
+        {routines.length > 0 && (
+          <>
+            <span className="body-rt-pop-label">LỘ TRÌNH CỦA TÔI</span>
+            {routines.map(r => {
+              const on = r.id === routine?.id;
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  className={`body-rt-pop-item${on && !isPreviewing ? ' is-on' : ''}`}
+                  onClick={() => {
+                    setShowSwitcher(false);
+                    handleStopPreview();
+                    if (!on) onSwitchRoutine?.(r.id);
+                  }}
+                >
+                  <AppIcon
+                    name={on ? 'checkCircle' : 'circle'}
+                    size={18}
+                    weight={on ? 'fill' : 'regular'}
+                    className={on ? 'body-rt-ic-accent' : 'body-rt-ic-faint'}
+                  />
+                  <span className="body-rt-pop-text">
+                    <span className="body-rt-pop-name">{r.name}</span>
+                    <span className="body-rt-pop-meta">
+                      {r.weeks || 8} tuần{on ? ` · đang ở tuần ${currentWeekNumber}/${routineWeeksTotal}` : ''}
+                    </span>
+                  </span>
+                  {on && <span className="body-rt-tag is-dark">Đang theo</span>}
+                </button>
+              );
+            })}
+            <div className="body-rt-pop-sep" />
+          </>
+        )}
+        <span className="body-rt-pop-label">MẪU CÓ SẴN</span>
+        {(routineTemplates || []).map(t => (
+          <button
+            key={t.key}
+            type="button"
+            className={`body-rt-pop-item${previewTemplate?.key === t.key ? ' is-on' : ''}`}
+            onClick={() => {
+              setShowSwitcher(false);
+              handleStartPreview(t);
+            }}
+          >
+            <AppIcon name="file" size={18} className="body-rt-ic-muted" />
+            <span className="body-rt-pop-text">
+              <span className="body-rt-pop-name">{t.name}</span>
+              <span className="body-rt-pop-meta">{t.weeks} tuần · {t.days?.length || 0} buổi/tuần · {t.goal}</span>
+            </span>
+            <span className={`body-rt-tag ${levelOf(t) === 'Trung cấp' ? 'is-amber' : 'is-green'}`}>{levelOf(t)}</span>
+          </button>
+        ))}
+        <div className="body-rt-pop-sep" />
+        <button
+          type="button"
+          className="body-rt-pop-item is-create"
+          onClick={() => {
+            setShowSwitcher(false);
+            setShowCreateModal(true);
+          }}
+        >
+          <span className="body-rt-plus"><AppIcon name="plus" size={13} /></span>
+          <span className="body-rt-pop-text">
+            <span className="body-rt-pop-name">Tạo lộ trình mới</span>
+            <span className="body-rt-pop-meta">Tự chọn bài, hoặc bắt đầu từ lịch trống</span>
+          </span>
+        </button>
+      </div>
+    </>
+  );
+
+  const menuButton = (
+    <button
+      type="button"
+      className="body-rt-icon-btn"
+      onClick={() => setShowMenu(v => !v)}
+      aria-haspopup="menu"
+      aria-expanded={showMenu}
+      aria-label="Tùy chọn lộ trình"
+      title="Thêm"
+    >
+      <AppIcon name="dots" size={18} />
+    </button>
+  );
+
+  const menuPanel = showMenu && (
+    <>
+      <div className="body-rt-backdrop" onClick={() => setShowMenu(false)} />
+      <div className="body-rt-menu" role="menu">
+        {canEdit && (
+          <button
+            type="button"
+            role="menuitem"
+            className="body-rt-menu-item"
+            onClick={() => {
+              setShowMenu(false);
+              setShowEditModal(true);
+            }}
+          >
+            <AppIcon name="pencil" size={15} />Sửa lộ trình
+          </button>
+        )}
+        <button
+          type="button"
+          role="menuitem"
+          className="body-rt-menu-item"
+          onClick={() => {
+            setShowMenu(false);
+            setShowCreateModal(true);
+          }}
+        >
+          <AppIcon name="plus" size={15} />Tạo lộ trình mới
+        </button>
+      </div>
+    </>
+  );
+
+  const autoSwitch = (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={autoProgressState}
+      aria-label="Tăng tiến tự động"
+      className="body-rt-switch"
+      onClick={toggleAutoProgress}
+      disabled={isPreviewing}
+    />
+  );
+
+  const statusIcon = st => {
+    if (st === 'done') return <AppIcon name="checkCircle" size={19} weight="fill" className="body-rt-ic-done" />;
+    if (st === 'ong') return <span className="body-rt-badge is-ong"><i />Đang dở</span>;
+    if (st === 'today') return <span className="body-rt-badge is-today">Hôm nay</span>;
+    if (st === 'rest') return <AppIcon name="moon" size={16} className="body-rt-ic-faint" />;
+    if (st === 'check') return <AppIcon name="scales" size={16} className="body-rt-ic-faint" />;
+    return null;
+  };
+
+  const setsStepper = (item, lg) => (
+    <div className={`body-rt-stepper${lg ? ' is-lg' : ''}`}>
+      <button
+        type="button"
+        className="body-rt-step"
+        onClick={() => handleSetChange(item, -1)}
+        disabled={Number(item.target_sets) <= 1}
+        aria-label="Giảm 1 hiệp"
+      >
+        <AppIcon name="minus" size={lg ? 14 : 12} />
+      </button>
+      <span className="body-rt-val">{item.target_sets}</span>
+      <button type="button" className="body-rt-step" onClick={() => handleSetChange(item, 1)} aria-label="Tăng 1 hiệp">
+        <AppIcon name="plus" size={lg ? 14 : 12} />
+      </button>
+    </div>
+  );
+
+  // Desktop: chữ rep/giây bấm được để đổi kiểu; mobile đổi bằng nút "Tính theo ..." riêng
+  const targetStepper = (item, lg) => (
+    <div className={`body-rt-stepper${lg ? ' is-lg' : ''}`}>
+      <button
+        type="button"
+        className="body-rt-step"
+        onClick={() => handleStepChange(item, -1)}
+        disabled={Number(item.target_val) <= stepOfUnit(item.unit)}
+        aria-label="Giảm mục tiêu"
+      >
+        <AppIcon name="minus" size={lg ? 14 : 12} />
+      </button>
+      <span className="body-rt-val">
+        {item.target_val}
+        {lg ? (
+          <small>{unitLabel(item.unit)}</small>
+        ) : (
+          <button type="button" className="body-rt-unit" onClick={() => handleUnitToggle(item)} title="Bấm để đổi rep / giây">
+            {unitLabel(item.unit)}
+          </button>
+        )}
+      </span>
+      <button type="button" className="body-rt-step" onClick={() => handleStepChange(item, 1)} aria-label="Tăng mục tiêu">
+        <AppIcon name="plus" size={lg ? 14 : 12} />
+      </button>
+    </div>
+  );
+
+  const progDots = (item, dn) => (
+    <span className="body-rt-dots">
+      <span>
+        {Array.from({ length: Number(item.target_sets) || 0 }, (_, j) => <i key={j} className={j < dn ? 'on' : ''} />)}
+      </span>
+      <b className={dn ? 'on' : ''}>{dn}/{item.target_sets}</b>
+    </span>
+  );
+
+  const emptyState = (
+    <div className="body-rt-empty">
+      <span className={`body-rt-empty-ic${activeDay.isCheck ? ' is-green' : ''}`}>
+        <AppIcon name={activeDay.isCheck ? 'scales' : 'moon'} size={24} />
+      </span>
+      <span className="body-rt-empty-title">{activeDay.isCheck ? 'Check-in tuần' : 'Không có bài theo lịch'}</span>
+      <span className="body-rt-empty-text">
+        {activeDay.isCheck
+          ? 'Cân buổi sáng trước khi ăn và đo vòng eo. Số liệu dùng để so sánh tiến bộ theo tuần.'
+          : 'Nghỉ ngơi, đi bộ nhẹ hoặc giãn cơ. Thêm bài nếu muốn tập bù buổi đã lỡ.'}
+      </span>
+      {activeDay.isCheck ? (
+        <>
+          <button type="button" className="body-rt-btn-dark" onClick={() => onNavigate?.('biometrics')}>
+            <AppIcon name="plus" size={14} />Ghi cân đo
+          </button>
+          <button type="button" className="body-rt-link" onClick={openPicker}>Thêm bài tập</button>
+        </>
+      ) : (
+        <button type="button" className="body-rt-btn-outline" onClick={openPicker}>
+          <AppIcon name="plus" size={14} />Thêm bài tập bù
+        </button>
+      )}
+    </div>
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-      {/* ── HEADER THANH CÔNG CỤ LỘ TRÌNH ──────────────────────── */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 4px',
-        flexWrap: 'wrap',
-        gap: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h2 style={{
-            fontSize: '20px',
-            fontWeight: 700,
-            margin: 0,
-            color: 'var(--body-text-main)',
-            fontFamily: 'var(--body-font)'
-          }}>
-            Lộ trình
-          </h2>
-
-          {routines.length > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)' }}>Lộ trình:</span>
-              <select
-                value={routine?.id || ''}
-                onChange={e => onSwitchRoutine?.(e.target.value)}
-                style={{
-                  height: '32px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--body-border-subtle)',
-                  background: 'var(--body-card-bg)',
-                  color: 'var(--body-text-main)',
-                  padding: '0 10px',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  outline: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                {routines.map(r => (
-                  <option key={r.id} value={r.id}>
-                    {r.name} {r.is_active ? '(Đang theo)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            style={{
-              height: '36px',
-              padding: '0 15px',
-              borderRadius: '10px',
-              background: '#15161A',
-              color: '#FFFFFF',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '7px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
-            }}
-          >
-            <AppIcon name="plus" size={14} />
-            <span>Tạo lộ trình</span>
-          </button>
-        </div>
-      </div>
-
+    <div className="body-routine-screen">
       {/* ── BANNER KHI ĐANG XEM TRƯỚC (PREVIEW MODE) ──────────────── */}
       {isPreviewing && (
         <div style={{
@@ -685,1447 +1002,538 @@ export default function RoutineScreen({
         </div>
       )}
 
-      {/* ── GIAO DIỆN DESKTOP (BỐ CỤC 2 CỘT 296px & MAIN TABLE) ──────── */}
-      <div className="body-routine-desktop-view">
-        <div className="body-routine-container">
+      {/* ── DESKTOP: thanh lộ trình + lịch tuần dọc + chi tiết ngày ─────────── */}
+      <div className="body-routine-desktop-view body-rt-desktop">
+        <section className="body-rt-card body-rt-bar">
+          <div className="body-rt-bar-main">
+            <span className="body-rt-eyebrow">
+              {isPreviewing ? 'ĐANG XEM TRƯỚC' : routine ? 'ĐANG THEO' : 'CHƯA CÓ LỘ TRÌNH'}
+              {showStats && (
+                <>
+                  <span className="body-rt-eyebrow-dot" />
+                  <span className="body-rt-saved"><AppIcon name="checkCircle" size={13} />Đã lưu vào hồ sơ</span>
+                </>
+              )}
+            </span>
+            <div className="body-rt-switch-wrap">
+              <button
+                type="button"
+                className={`body-rt-name${showSwitcher ? ' is-open' : ''}`}
+                aria-haspopup="dialog"
+                aria-expanded={showSwitcher}
+                onClick={() => setShowSwitcher(v => !v)}
+                title="Đổi lộ trình"
+              >
+                {nameText}
+                <span className="body-rt-caret"><AppIcon name="caretDown" size={14} /></span>
+              </button>
+              {switcherPanel}
+            </div>
+            <div className="body-rt-chips">
+              {barChips.map(c => <span key={c} className="body-rt-chip">{c}</span>)}
+              {activeRoutineData?.goal && <span className="body-rt-goal">{activeRoutineData.goal}</span>}
+            </div>
+          </div>
 
-        {/* ── CỘT TRÁI: THÔNG TIN LỘ TRÌNH & CÁC MẪU (296px) ───────── */}
-        <div className="body-routine-sidebar">
+          {showStats && (
+            <>
+              <div className="body-rt-bar-sec">
+                <span className="body-rt-label">TIẾN ĐỘ</span>
+                <span className="body-rt-big">Tuần {currentWeekNumber}<small>/ {routineWeeksTotal}</small></span>
+                <div className="body-rt-weeks">
+                  {Array.from({ length: routineWeeksTotal }, (_, i) => {
+                    const isCur = i === currentWeekNumber - 1;
+                    return (
+                      <span
+                        key={i}
+                        className={i < currentWeekNumber - 1 ? 'is-done' : isCur ? 'is-cur' : ''}
+                        style={isCur ? { '--fill': `${Math.round(weekFill * 100)}%` } : undefined}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="body-rt-bar-sec body-rt-stats">
+                <div>
+                  <span className="body-rt-label">ĐÃ TẬP</span>
+                  <span className="body-rt-big">{completedSessionsCount}<small>buổi</small></span>
+                </div>
+                <div>
+                  <span className="body-rt-label">ĐÚNG LỊCH</span>
+                  <span className="body-rt-big">
+                    {adherenceText}
+                    {adherence.planned ? <small>{adherence.done}/{adherence.planned}</small> : null}
+                  </span>
+                </div>
+                <div>
+                  <span className="body-rt-label">KỶ LỤC</span>
+                  <span className="body-rt-big">{prTotalCount}<small>PR</small></span>
+                </div>
+              </div>
+            </>
+          )}
 
-          {/* Card ĐANG THEO (Dark) */}
-          <div className="body-routine-card-dark">
-            <div className="body-routine-dark-header">
-              <span className="body-routine-dark-badge">ĐANG THEO</span>
-              <span className="body-routine-dark-week">
-                Tuần {currentWeekNumber} / {routineWeeksTotal}
+          <div className="body-rt-bar-actions">
+            {canEdit && (
+              <button
+                type="button"
+                className="body-rt-icon-btn"
+                onClick={() => setShowEditModal(true)}
+                title="Sửa lộ trình"
+                aria-label="Sửa lộ trình"
+              >
+                <AppIcon name="pencil" size={16} />
+              </button>
+            )}
+            <div className="body-rt-menu-wrap">{menuButton}{menuPanel}</div>
+          </div>
+        </section>
+
+        <div className="body-rt-grid">
+          <div className="body-rt-left">
+            <div className="body-rt-card body-rt-week">
+              <div className="body-rt-week-head">
+                <span className="body-rt-week-title">{weekTitle}<small>{weekRange}</small></span>
+                <span className="body-rt-week-nav">
+                  <button type="button" className="body-rt-icon-btn is-sm" onClick={() => setWeekOffset(w => w - 1)} aria-label="Tuần trước">
+                    <AppIcon name="caretLeft" size={13} />
+                  </button>
+                  <button type="button" className="body-rt-icon-btn is-sm" onClick={() => setWeekOffset(w => w + 1)} aria-label="Tuần sau">
+                    <AppIcon name="caretRight" size={13} />
+                  </button>
+                </span>
+              </div>
+              <div className="body-rt-days">
+                {weekdaysData.map((wd, i) => (
+                  <button
+                    key={wd.day}
+                    type="button"
+                    className={`body-rt-day${selectedDay === wd.day ? ' is-selected' : ''}${wd.isTrain ? '' : ' is-rest'}${isCurrentWeek && wd.day === todayWeekday ? ' is-today' : ''}`}
+                    onClick={() => selectDay(wd.day)}
+                    aria-pressed={selectedDay === wd.day}
+                  >
+                    <span className="body-rt-day-label"><b>{wd.label}</b><small>{ddmm(weekDays[i].date)}</small></span>
+                    <span className="body-rt-day-info">
+                      <span className="body-rt-day-title">{wd.title}</span>
+                      <span className="body-rt-day-meta">
+                        {wd.isTrain ? (
+                          <>
+                            {wd.tag && <><b style={{ color: wd.tagColor }}>{wd.tag}</b> · </>}
+                            {wd.items.length} bài · ~{wd.est} phút
+                          </>
+                        ) : wd.meta}
+                      </span>
+                    </span>
+                    <span className="body-rt-day-status">{statusIcon(dayStatus(wd))}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="body-rt-card body-rt-auto">
+              {autoSwitch}
+              <span className="body-rt-auto-text">
+                <b>Tăng tiến tự động</b>
+                <span>Đủ mục tiêu ở mọi set thì buổi sau đề xuất +1 rep, bài tính giây +5s. Bạn duyệt trước khi áp dụng.</span>
               </span>
             </div>
+          </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h3 className="body-routine-dark-title">
-                  {routine?.name || 'Chưa chọn lộ trình'}
-                </h3>
-                {routine?.id && (
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(true)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#9C9AA8',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'grid',
-                      placeItems: 'center'
-                    }}
-                    title="Chỉnh sửa thông tin lộ trình"
-                  >
-                    <AppIcon name="pencil" size={14} />
+          <div className="body-rt-card body-rt-detail">
+            <div className="body-rt-detail-head">
+              <div className="body-rt-detail-info">
+                <span className="body-rt-eyebrow" style={activeDay.isTrain ? { color: activeDay.tagColor } : undefined}>{dayEyebrow}</span>
+                <h2 className="body-rt-detail-title">{activeDay.title}</h2>
+                <div className="body-rt-detail-meta">
+                  <span>{dayMeta}</span>
+                  {activeDay.muscles?.map(m => <span key={m} className="body-rt-mchip">{m}</span>)}
+                </div>
+              </div>
+
+              {cta === 'cont' && (
+                <div className="body-rt-ongoing">
+                  <div className="body-rt-ongoing-head">
+                    <span><i />Buổi đang dở</span>
+                    <span className="body-rt-mono">{dayDoneSets}/{dayTotalSets} set{ongoingTime}</span>
+                  </div>
+                  <div className="body-rt-prog"><span style={{ width: `${ongoingPct}%` }} /></div>
+                  <button type="button" className="body-rt-btn-dark" onClick={() => onResumeSession?.(currentActiveSession)}>
+                    <AppIcon name="play" size={12} weight="fill" />Tiếp tục buổi
                   </button>
-                )}
-              </div>
-              <div className="body-routine-dark-sub">
-                {routineWeeksTotal} tuần · {weekdaysData.filter(w => w.isTrain).length} buổi/tuần · {routine?.goal || 'Duy trì cơ bắp & tăng sức bền'}
-              </div>
+                </div>
+              )}
+              {cta === 'start' && (
+                <div className="body-rt-cta-col">
+                  <button type="button" className="body-rt-btn-dark is-lg" onClick={() => onStartSession?.(startPayload)}>
+                    Bắt đầu buổi<AppIcon name="arrowRight" size={15} />
+                  </button>
+                  <span className="body-rt-hint">Chọn cách tập ở bước sau</span>
+                </div>
+              )}
+              {cta === 'other' && (
+                <button type="button" className="body-rt-btn-outline" onClick={() => onStartSession?.(startPayload)}>
+                  <AppIcon name="play" size={13} />Tập buổi này hôm nay
+                </button>
+              )}
+              {cta === 'done' && (
+                <div className="body-rt-cta-col">
+                  <span className="body-rt-done-pill"><AppIcon name="checkCircle" size={14} weight="fill" />Đã tập · {doneText}</span>
+                  <button type="button" className="body-rt-link" onClick={() => onNavigate?.('history')}>
+                    Xem kết quả buổi<AppIcon name="arrowRight" size={13} />
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Dải 8 vạch tuần */}
-            <div className="body-routine-week-bars">
-              {Array.from({ length: routineWeeksTotal }).map((_, idx) => (
-                <span
-                  key={idx}
-                  className={`body-routine-week-bar ${idx < currentWeekNumber ? 'active' : ''}`}
-                />
-              ))}
-            </div>
-
-            {/* 3 chỉ số tóm tắt */}
-            <div className="body-routine-dark-stats">
-              <div className="body-routine-stat-item">
-                <span className="body-routine-stat-label">Đã tập</span>
-                <span className="body-routine-stat-val">{completedSessionsCount} buổi</span>
-              </div>
-              <div className="body-routine-stat-item">
-                <span className="body-routine-stat-label">Đúng lịch</span>
-                <span className="body-routine-stat-val">{adherenceText}</span>
-              </div>
-              <div className="body-routine-stat-item">
-                <span className="body-routine-stat-label">Kỷ lục</span>
-                <span className="body-routine-stat-val">{prTotalCount} PR</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Tiêu đề MẪU CÓ SẴN */}
-          <div style={{
-            fontFamily: 'var(--body-mono)',
-            fontSize: '10.5px',
-            letterSpacing: '0.09em',
-            color: 'var(--body-text-muted)',
-            fontWeight: 600,
-            padding: '4px 2px 0'
-          }}>
-            MẪU CÓ SẴN
-          </div>
-
-          {/* Danh sách Templates */}
-          {(routineTemplates || []).map((t) => {
-            const isSelectedTpl = previewTemplate?.key === t.key;
-            const isExpanded = expandedTplKey === t.key || isSelectedTpl;
-            const levelLabel = t.level || (t.key.includes('calisthenics') ? 'Trung cấp' : 'Cơ bản');
-            const levelBg = levelLabel === 'Trung cấp' ? 'var(--body-amber-soft)' : 'var(--body-green-soft)';
-            const levelColor = levelLabel === 'Trung cấp' ? 'var(--body-amber-text)' : 'var(--body-green-text)';
-
-            return (
-              <div
-                key={t.key}
-                className={`body-routine-tpl-card ${isSelectedTpl ? 'active' : ''}`}
-                onClick={() => setExpandedTplKey(isExpanded ? null : t.key)}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                    {t.name}
-                  </span>
-                  <span style={{
-                    padding: '3px 7px',
-                    borderRadius: '6px',
-                    background: levelBg,
-                    color: levelColor,
-                    fontSize: '10.5px',
-                    fontWeight: 600,
-                    flex: 'none'
-                  }}>
-                    {levelLabel}
-                  </span>
+            {activeDay.isTrain ? (
+              <div className="body-rt-table">
+                <div className="body-rt-row is-head">
+                  <span /><span>BÀI TẬP</span><span>HIỆP</span><span>MỤC TIÊU</span><span>TẠ</span><span>NGHỈ</span><span />
                 </div>
-
-                <div style={{ fontSize: '12px', color: 'var(--body-text-muted)', lineHeight: 1.4 }}>
-                  {t.weeks} tuần · {t.days?.length || 3} buổi/tuần · {t.goal}
-                </div>
-
-                {/* Tags loại bài */}
-                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                  <span style={{
-                    height: '22px',
-                    padding: '0 7px',
-                    borderRadius: '6px',
-                    background: 'var(--body-shell-bg)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    color: 'var(--body-text-sub)'
-                  }}>
-                    {t.key.includes('calisthenics') ? 'Bodyweight' : (t.key.includes('30min') ? 'Nghỉ 90s' : 'Kháng lực')}
-                  </span>
-                  <span style={{
-                    height: '22px',
-                    padding: '0 7px',
-                    borderRadius: '6px',
-                    background: 'var(--body-shell-bg)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    color: 'var(--body-text-sub)'
-                  }}>
-                    {t.days?.length || 3} buổi / tuần
-                  </span>
-                </div>
-
-                {/* Nút Xem trước, Tùy chỉnh và Dùng mẫu */}
-                {isExpanded && (
+                {dayRows.map(({ item, idx, vn, en, muscle, dn, isCur }) => (
                   <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '6px' }}
-                    onClick={e => e.stopPropagation()}
+                    key={item.id}
+                    className={`body-rt-row${isCur ? ' is-current' : ''}${dragId === item.id ? ' is-dragging' : ''}${dragOverId === item.id && dragId && dragId !== item.id ? ' is-over' : ''}`}
+                    draggable
+                    onDragStart={e => {
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', item.id);
+                      setDragId(item.id);
+                    }}
+                    onDragOver={e => {
+                      e.preventDefault();
+                      if (dragOverId !== item.id) setDragOverId(item.id);
+                    }}
+                    onDrop={e => {
+                      e.preventDefault();
+                      handleDrop(item.id);
+                    }}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setDragOverId(null);
+                    }}
                   >
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleStartPreview(t)}
-                        style={{
-                          flex: 1,
-                          height: '32px',
-                          borderRadius: '8px',
-                          border: '1px solid var(--body-border-subtle)',
-                          background: 'var(--body-card-bg)',
-                          color: 'var(--body-text-main)',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Xem trước
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenCustomizeTemplate(t)}
-                        style={{
-                          flex: 1.2,
-                          height: '32px',
-                          borderRadius: '8px',
-                          border: '1px solid var(--body-accent)',
-                          background: 'var(--body-accent-tint)',
-                          color: 'var(--body-accent)',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Sửa rep & hiệp
-                      </button>
+                    <span className="body-rt-row-no" title="Kéo để đổi thứ tự">
+                      <AppIcon name="dotsSix" size={14} />
+                      <span>{String(idx + 1).padStart(2, '0')}</span>
+                    </span>
+                    <div className="body-rt-row-name">
+                      <span className="body-rt-row-title">
+                        {vn}
+                        {isCur && <span className="body-rt-badge-sm">Đang tập</span>}
+                      </span>
+                      <span className="body-rt-row-sub">
+                        {[en, muscle].filter(Boolean).join(' · ')}
+                        {showProg && progDots(item, dn)}
+                      </span>
                     </div>
-
+                    {setsStepper(item)}
+                    {targetStepper(item)}
+                    <span className={`body-rt-kg${item.kg ? '' : ' is-bw'}`}>{item.kg ? `${item.kg} kg` : 'BW'}</span>
+                    <span className="body-rt-rest">{item.rest_seconds ?? 90}s</span>
                     <button
                       type="button"
-                      onClick={() => {
-                        onCreateRoutineFromTemplate?.(t.key);
-                        handleStopPreview();
-                      }}
-                      style={{
-                        width: '100%',
-                        height: '32px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: 'var(--body-accent)',
-                        color: '#FFFFFF',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
+                      className="body-rt-del"
+                      onClick={() => handleDeleteItem(item.id)}
+                      title="Xóa bài"
+                      aria-label={`Xóa ${vn}`}
                     >
-                      Dùng mẫu này ngay
+                      <AppIcon name="trash" size={14} />
                     </button>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ── CỘT PHẢI: CHI TIẾT LỘ TRÌNH & KẾ HOẠCH THEO THỨ ─────── */}
-        <div className="body-routine-main">
-
-          {/* Top Bar của Routine */}
-          <div className="body-routine-main-top">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '22px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                  {activeRoutineData?.name || 'Chưa chọn lộ trình'}
-                </span>
-                {!isPreviewing && (
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(true)}
-                    style={{
-                      border: 'none',
-                      background: 'transparent',
-                      color: 'var(--body-text-muted)',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'grid',
-                      placeItems: 'center'
-                    }}
-                    title="Chỉnh sửa lộ trình"
-                  >
-                    <AppIcon name="pencil" size={15} />
+                ))}
+                <div className="body-rt-table-foot">
+                  <button type="button" className="body-rt-btn-soft" onClick={openPicker}>
+                    <AppIcon name="plus" size={14} />Thêm bài tập
                   </button>
-                )}
+                  <span className="body-rt-hint">
+                    Bấm chữ <em>rep</em> / <em>giây</em> để đổi kiểu mục tiêu · kéo ⋮⋮ để đổi thứ tự
+                  </span>
+                </div>
               </div>
+            ) : emptyState}
+          </div>
+        </div>
+      </div>
 
-              {/* Tags thông tin tóm tắt */}
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <span className="body-routine-pill">
-                  {activeRoutineData?.weeks || 4} tuần · {weekdaysData.filter(w => w.isTrain).length} buổi/tuần
-                </span>
-                <span className="body-routine-pill">
-                  Mục tiêu: {activeRoutineData?.goal || 'Rèn luyện sức khỏe'}
-                </span>
-                <span className="body-routine-pill">
-                  Nghỉ 90s giữa hiệp · Bodyweight & Tạ đơn
-                </span>
-              </div>
-            </div>
-
-            {/* Trạng thái Lộ trình */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '4px 10px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: 600,
-                background: isPreviewing ? 'var(--body-accent-soft)' : 'var(--body-green-soft, rgba(16, 185, 129, 0.12))',
-                color: isPreviewing ? 'var(--body-accent)' : 'var(--body-green, #10B981)',
-                border: `1px solid ${isPreviewing ? 'var(--body-accent-border)' : 'var(--body-green-border, rgba(16, 185, 129, 0.25))'}`,
-                userSelect: 'none'
-              }}>
-                <AppIcon name="checkCircle" size={14} />
-                <span>{isPreviewing ? 'Đang xem trước' : 'Đã lưu vào hồ sơ'}</span>
+      {/* ── MOBILE ───────────────────────────────────────────────────────────── */}
+      <div className={`body-routine-mobile-view${cta ? ' has-cta' : ''}`}>
+        <section className="body-rt-card body-rt-m-head">
+          <div className="body-rt-m-top">
+            <button
+              type="button"
+              className="body-rt-m-name"
+              aria-haspopup="dialog"
+              aria-expanded={showSwitcher}
+              onClick={() => setShowSwitcher(true)}
+            >
+              <span className="body-rt-eyebrow">
+                {isPreviewing ? 'ĐANG XEM TRƯỚC' : routine ? `ĐANG THEO · TUẦN ${currentWeekNumber}/${routineWeeksTotal}` : 'CHƯA CÓ LỘ TRÌNH'}
               </span>
-            </div>
+              <span className="body-rt-m-title">
+                {nameText}
+                <span className="body-rt-caret is-sm"><AppIcon name="caretDown" size={13} /></span>
+              </span>
+            </button>
+            <div className="body-rt-menu-wrap">{menuButton}{menuPanel}</div>
           </div>
 
-          {/* Dải 7 ngày trong tuần */}
-          <div className="body-routine-days-strip">
-            {weekdaysData.map((wd) => {
-              const isSelected = selectedDay === wd.day;
+          {showStats && (
+            <div className="body-rt-m-stats">
+              <div><span className="body-rt-big">{completedSessionsCount}<small>buổi</small></span><span>Đã tập</span></div>
+              <div><span className="body-rt-big">{adherenceText}</span><span>Đúng lịch</span></div>
+              <div><span className="body-rt-big">{prTotalCount}<small>PR</small></span><span>Kỷ lục</span></div>
+            </div>
+          )}
+
+          <div className="body-rt-m-week">
+            {weekdaysData.map((wd, i) => {
+              const st = dayStatus(wd);
+              const dot = st === 'done' || st === 'ong' || st === 'today' ? ` is-${st}` : wd.isTrain ? ' is-train' : '';
               return (
-                <div
+                <button
                   key={wd.day}
-                  onClick={() => setSelectedDay(wd.day)}
-                  className={`body-routine-day-card ${isSelected ? 'active' : ''}`}
+                  type="button"
+                  className={`${selectedDay === wd.day ? 'is-selected' : ''}${isCurrentWeek && wd.day === todayWeekday ? ' is-today' : ''}${wd.isTrain ? '' : ' is-rest'}`}
+                  onClick={() => selectDay(wd.day)}
+                  aria-pressed={selectedDay === wd.day}
+                  aria-label={`${wd.short} ${ddmm(weekDays[i].date)}`}
                 >
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--body-text-muted)' }}>
-                    {wd.label}
-                  </span>
-                  <span style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '13.5px',
-                    fontWeight: 600,
-                    color: 'var(--body-text-main)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    <span style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: wd.dotColor,
-                      flex: 'none'
-                    }} />
-                    {wd.name}
-                  </span>
-                  <span style={{
-                    marginTop: 'auto',
-                    fontSize: '11px',
-                    color: 'var(--body-text-muted)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}>
-                    {wd.meta}
-                  </span>
-                  {wd.est && (
-                    <span style={{
-                      fontFamily: 'var(--body-mono)',
-                      fontSize: '11px',
-                      color: 'var(--body-text-muted)'
-                    }}>
-                      {wd.est}
+                  <span className="body-rt-m-wd">{wd.label}</span>
+                  <span className="body-rt-m-n">{weekDays[i].day}</span>
+                  <i className={`body-rt-m-dot${dot}`} />
+                </button>
+              );
+            })}
+          </div>
+          {switcherPanel}
+        </section>
+
+        <div className="body-rt-m-dayhead">
+          <span className="body-rt-eyebrow" style={activeDay.isTrain ? { color: activeDay.tagColor } : undefined}>{dayEyebrow}</span>
+          <span className="body-rt-m-daytitle">{activeDay.title}</span>
+          <span className="body-rt-m-daymeta">{dayMeta}</span>
+        </div>
+
+        {activeDay.isTrain ? (
+          <>
+            {dayRows.map(({ item, idx, vn, muscle, dn, isCur, full }) => {
+              const open = openItemId === item.id;
+              return (
+                <div key={item.id} className={`body-rt-m-ex${isCur ? ' is-current' : ''}`}>
+                  <button
+                    type="button"
+                    className="body-rt-m-ex-head"
+                    onClick={() => setOpenItemId(open ? null : item.id)}
+                    aria-expanded={open}
+                  >
+                    <span className={`body-rt-m-no${full ? ' is-full' : isCur ? ' is-current' : ''}`}>{idx + 1}</span>
+                    <span className="body-rt-m-ex-info">
+                      <span className="body-rt-m-ex-name">{vn}</span>
+                      <span className="body-rt-m-ex-sub">
+                        <b>{item.target_sets} × {item.target_val} {unitLabel(item.unit)}</b>
+                        <i>·</i>{item.kg ? `${item.kg} kg` : 'BW'}
+                        {muscle && <><i>·</i>{muscle}</>}
+                      </span>
                     </span>
+                    {showProg
+                      ? progDots(item, dn)
+                      : <AppIcon name={open ? 'caretUp' : 'caretDown'} size={15} className="body-rt-ic-muted" />}
+                  </button>
+                  {open && (
+                    <div className="body-rt-m-ex-edit">
+                      <div className="body-rt-m-fields">
+                        <div><span>Hiệp</span>{setsStepper(item, true)}</div>
+                        <div><span>Mục tiêu mỗi hiệp</span>{targetStepper(item, true)}</div>
+                      </div>
+                      <div className="body-rt-m-ex-actions">
+                        <button type="button" className="body-rt-text-btn" onClick={() => handleUnitToggle(item)}>
+                          <AppIcon name="repeat" size={13} />Tính theo {item.unit === 's' ? 'rep' : 'giây'}
+                        </button>
+                        <button
+                          type="button"
+                          className="body-rt-text-btn is-danger"
+                          onClick={() => {
+                            setOpenItemId(null);
+                            handleDeleteItem(item.id);
+                          }}
+                        >
+                          <AppIcon name="trash" size={13} />Xóa bài
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               );
             })}
-          </div>
 
-          {/* Chi tiết theo ngày */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--body-card-border)' }}>
-            <div style={{
-              padding: '16px 24px 10px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline'
-            }}>
-              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                {activeDay.short} — Buổi {activeDay.name}
-              </span>
-              <span style={{ fontSize: '12.5px', color: 'var(--body-text-muted)' }}>
-                {activeDay.isTrain ? `${dayItems.length} bài tập · ${activeDay.est}` : 'Ngày nghỉ phục hồi'}
-              </span>
-            </div>
+            <button type="button" className="body-rt-m-add" onClick={openPicker}>
+              <AppIcon name="plus" size={14} />Thêm bài tập
+            </button>
 
-            {/* Nếu là ngày tập */}
-            {activeDay.isTrain ? (
-              <div className="body-routine-table-wrap">
-                <div className="body-routine-row body-routine-header-row">
-                  <span></span>
-                  <span>BÀI TẬP</span>
-                  <span>KIỂU MỤC TIÊU</span>
-                  <span style={{ textAlign: 'center' }}>HIỆP (SET)</span>
-                  <span style={{ textAlign: 'center' }}>MỤC TIÊU (REP/S)</span>
-                  <span>TẠ</span>
-                  <span>NGHỈ</span>
-                  <span></span>
-                </div>
-
-                {/* Hàng bài tập (Cho phép bấm -/+ sửa cả khi xem trước và khi đang theo) */}
-                {dayItems.map((item) => {
-                  const exDef = BASE_EXERCISES.find(e => e.key === item.exercise_key);
-                  const muscleVn = MUSCLE_MAP[exDef?.primary]?.name || exDef?.primary || '';
-
-                  return (
-                    <div key={item.id} className="body-routine-row">
-                      <span style={{ color: '#C9C7C0', display: 'grid', placeItems: 'center', cursor: 'grab' }}>
-                        <AppIcon name="dotsSix" size={16} />
-                      </span>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
-                        <span style={{
-                          fontSize: '13.5px',
-                          fontWeight: 600,
-                          color: 'var(--body-text-main)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}>
-                          {exDef?.name || item.exercise_key}
-                        </span>
-                        <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
-                          {muscleVn}
-                        </span>
+            {/* Thanh hành động ghim sát đáy (mobile-view chừa đệm dưới để không che chữ) */}
+            {cta && (
+              <div className="body-rt-card body-rt-m-cta">
+                {cta === 'cont' && (
+                  <div className="body-rt-m-cta-row">
+                    <div className="body-rt-m-cta-info">
+                      <div className="body-rt-ongoing-head">
+                        <span><i />Buổi đang dở</span>
+                        <span className="body-rt-mono">{dayDoneSets}/{dayTotalSets} set</span>
                       </div>
-
-                      <span style={{
-                        justifySelf: 'start',
-                        height: '26px',
-                        padding: '0 8px',
-                        borderRadius: '6px',
-                        background: 'var(--body-accent-soft)',
-                        color: 'var(--body-accent)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        fontSize: '11.5px',
-                        fontWeight: 600
-                      }}>
-                        {item.unit === 's' ? 'Set × Giây' : 'Set × Rep'}
-                      </span>
-
-                      {/* Bộ đếm SET */}
-                      <div className="body-routine-counter">
-                        <button
-                          type="button"
-                          className="body-routine-counter-btn"
-                          onClick={() => handleSetChange(item, -1)}
-                          title="Giảm 1 hiệp"
-                        >
-                          <AppIcon name="minus" size={11} />
-                        </button>
-                        <span style={{
-                          flex: 1,
-                          textAlign: 'center',
-                          fontFamily: 'var(--body-mono)',
-                          fontSize: '13.5px',
-                          fontWeight: 600
-                        }}>
-                          {item.target_sets}
-                        </span>
-                        <button
-                          type="button"
-                          className="body-routine-counter-btn"
-                          onClick={() => handleSetChange(item, 1)}
-                          title="Tăng 1 hiệp"
-                        >
-                          <AppIcon name="plus" size={11} />
-                        </button>
-                      </div>
-
-                      {/* Bộ đếm Mục tiêu (REP/GIÂY) */}
-                      <div className="body-routine-counter-target">
-                        <button
-                          type="button"
-                          className="body-routine-counter-btn"
-                          onClick={() => handleStepChange(item, -1)}
-                          title="Giảm mục tiêu"
-                        >
-                          <AppIcon name="minus" size={11} />
-                        </button>
-                        <span style={{
-                          flex: 1,
-                          textAlign: 'center',
-                          fontFamily: 'var(--body-mono)',
-                          fontSize: '13.5px',
-                          fontWeight: 600,
-                          color: 'var(--body-accent)'
-                        }}>
-                          {item.target_val}
-                          <span style={{ fontSize: '10.5px', fontWeight: 400, color: 'var(--body-text-muted)', marginLeft: '3px' }}>
-                            {item.unit}
-                          </span>
-                        </span>
-                        <button
-                          type="button"
-                          className="body-routine-counter-btn"
-                          onClick={() => handleStepChange(item, 1)}
-                          title="Tăng mục tiêu"
-                        >
-                          <AppIcon name="plus" size={11} />
-                        </button>
-                      </div>
-
-                      {/* Tạ */}
-                      <span style={{ fontFamily: 'var(--body-mono)', fontSize: '12.5px', color: 'var(--body-text-sub)' }}>
-                        {item.kg ? `${item.kg} kg` : 'BW'}
-                      </span>
-
-                      {/* Nghỉ */}
-                      <span style={{ fontFamily: 'var(--body-mono)', fontSize: '12px', color: 'var(--body-text-muted)' }}>
-                        {item.rest_seconds || 90}s
-                      </span>
-
-                      {/* Xóa */}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteItem(item.id)}
-                        style={{
-                          width: '30px',
-                          height: '30px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          background: 'transparent',
-                          color: '#B5B4AE',
-                          display: 'grid',
-                          placeItems: 'center',
-                          cursor: 'pointer'
-                        }}
-                        title="Xoá bài tập"
-                      >
-                        <AppIcon name="trash" size={14} />
-                      </button>
+                      <div className="body-rt-prog is-thin"><span style={{ width: `${ongoingPct}%` }} /></div>
                     </div>
-                  );
-                })}
-
-                {/* Nút dashed thêm bài */}
-                {!showPicker && (
-                  <button
-                    type="button"
-                    className="body-routine-dashed-btn"
-                    onClick={() => setShowPicker(true)}
-                  >
-                    <AppIcon name="plus" size={14} />
-                    <span>Thêm bài tập vào {activeDay.short}</span>
-                  </button>
-                )}
-
-                {/* Inline Exercise Picker */}
-                {showPicker && (
-                  <div style={{
-                    margin: '12px 0 16px',
-                    padding: '14px',
-                    borderRadius: '12px',
-                    background: 'var(--body-accent-tint)',
-                    border: '1px solid var(--body-accent-border)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{
-                        flex: 1,
-                        height: '34px',
-                        borderRadius: '9px',
-                        background: 'var(--body-card-bg)',
-                        border: '1px solid var(--body-border-subtle)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '0 11px',
-                        color: 'var(--body-text-muted)'
-                      }}>
-                        <AppIcon name="search" size={14} />
-                        <input
-                          type="text"
-                          placeholder="Tìm trong thư viện bài tập..."
-                          value={pickerSearch}
-                          onChange={e => setPickerSearch(e.target.value)}
-                          style={{
-                            border: 'none',
-                            background: 'transparent',
-                            outline: 'none',
-                            width: '100%',
-                            fontSize: '12.5px',
-                            color: 'var(--body-text-main)'
-                          }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowPicker(false)}
-                        style={{
-                          height: '34px',
-                          padding: '0 12px',
-                          borderRadius: '9px',
-                          border: 'none',
-                          background: 'var(--body-shell-bg)',
-                          fontSize: '12.5px',
-                          fontWeight: 600,
-                          color: 'var(--body-text-sub)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Đóng
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
-                      {filteredPicker.map(ex => (
-                        <button
-                          key={ex.key}
-                          type="button"
-                          onClick={() => handleAddExercise(ex)}
-                          style={{
-                            height: '32px',
-                            padding: '0 11px',
-                            borderRadius: '8px',
-                            background: 'var(--body-card-bg)',
-                            border: '1px solid var(--body-border-subtle)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '7px',
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            color: 'var(--body-text-main)',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <AppIcon name="plus" size={12} style={{ color: 'var(--body-accent)' }} />
-                          <span>{ex.name}</span>
-                          <span style={{ fontSize: '11px', color: 'var(--body-text-muted)' }}>
-                            ({MUSCLE_MAP[ex.primary]?.name || ex.primary})
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+                    <button type="button" className="body-rt-btn-dark is-xl" onClick={() => onResumeSession?.(currentActiveSession)}>
+                      <AppIcon name="play" size={12} weight="fill" />Tiếp tục
+                    </button>
                   </div>
                 )}
-
-                {/* Nút Bắt đầu hoặc Tiếp tục buổi tập thuận tiện ở cuối bảng bài */}
-                {!isPreviewing && dayItems.length > 0 && (
-                  <div style={{ marginTop: '16px', marginBottom: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {isThisDayActive ? (
-                      <button
-                        type="button"
-                        onClick={() => onResumeSession ? onResumeSession(currentActiveSession) : onStartSession?.({ weekday: selectedDay, day: selectedDay, name: activeDay.name, focus: activeDay.focus })}
-                        title={`Tiếp tục ${activeDay.name}`}
-                        style={{
-                          height: '42px',
-                          padding: '0 20px',
-                          borderRadius: '10px',
-                          background: 'linear-gradient(135deg, #EF4444, #DC2626)',
-                          color: '#FFFFFF',
-                          border: 'none',
-                          fontSize: '13.5px',
-                          fontWeight: 700,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          cursor: 'pointer',
-                          boxShadow: '0 2px 10px rgba(239, 68, 68, 0.35)'
-                        }}
-                      >
-                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FFFFFF', display: 'inline-block' }} />
-                        <AppIcon name="barbell" size={16} weight="fill" />
-                        <span>Tiếp tục</span>
-                      </button>
-                    ) : currentActiveSession ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => onResumeSession?.(currentActiveSession)}
-                          title={`Tiếp tục: ${currentActiveSession.title || currentActiveSession.day_type || 'Đang tập'}`}
-                          style={{
-                            height: '42px',
-                            padding: '0 16px',
-                            borderRadius: '10px',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '1.5px solid rgba(239, 68, 68, 0.4)',
-                            color: '#DC2626',
-                            fontSize: '13px',
-                            fontWeight: 700,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '7px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#DC2626' }} />
-                          <AppIcon name="barbell" size={15} />
-                          <span>Tiếp tục</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onStartSession?.({ weekday: selectedDay, day: selectedDay, name: activeDay.name, focus: activeDay.focus })}
-                          title={`Bắt đầu buổi ${activeDay.name}`}
-                          style={{
-                            height: '42px',
-                            padding: '0 18px',
-                            borderRadius: '10px',
-                            background: 'var(--body-accent)',
-                            color: '#FFFFFF',
-                            border: 'none',
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            cursor: 'pointer',
-                            boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
-                          }}
-                        >
-                          <AppIcon name="play" size={14} weight="fill" />
-                          <span>Bắt đầu mới</span>
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => onStartSession?.({
-                          weekday: selectedDay,
-                          day: selectedDay,
-                          name: activeDay.name,
-                          focus: activeDay.focus
-                        })}
-                        title={`Bắt đầu ${activeDay.name} (${dayItems.length} bài)`}
-                        style={{
-                          height: '42px',
-                          padding: '0 20px',
-                          borderRadius: '10px',
-                          background: 'var(--body-accent)',
-                          color: '#FFFFFF',
-                          border: 'none',
-                          fontSize: '13.5px',
-                          fontWeight: 600,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          cursor: 'pointer',
-                          boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
-                        }}
-                      >
-                        <AppIcon name="play" size={15} weight="fill" />
-                        <span>Bắt đầu</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* Nếu là ngày nghỉ */
-              <div style={{ flex: 1, padding: '12px 24px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <p style={{
-                  maxWidth: '560px',
-                  fontSize: '13.5px',
-                  lineHeight: 1.6,
-                  color: 'var(--body-text-sub)',
-                  margin: 0
-                }}>
-                  {activeDay.note}
-                </p>
-
-                {!showPicker && (
-                  <button
-                    type="button"
-                    onClick={() => setShowPicker(true)}
-                    style={{
-                      alignSelf: 'flex-start',
-                      height: '36px',
-                      padding: '0 14px',
-                      borderRadius: '9px',
-                      border: '1px solid var(--body-border-subtle)',
-                      background: 'var(--body-card-bg)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '7px',
-                      fontSize: '12.5px',
-                      fontWeight: 600,
-                      color: 'var(--body-text-main)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <AppIcon name="plus" size={13} />
-                    <span>Thêm bài tập nếu muốn tập bù</span>
+                {cta === 'start' && (
+                  <button type="button" className="body-rt-btn-dark is-xl is-block" onClick={() => onStartSession?.(startPayload)}>
+                    Bắt đầu buổi<span className="body-rt-mono is-dim">~{activeDay.est} phút</span><AppIcon name="arrowRight" size={15} />
                   </button>
                 )}
-
-                {showPicker && (
-                  <div style={{
-                    maxWidth: '560px',
-                    padding: '14px',
-                    borderRadius: '12px',
-                    background: 'var(--body-accent-tint)',
-                    border: '1px solid var(--body-accent-border)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input
-                        type="text"
-                        placeholder="Tìm bài tập tập bù..."
-                        value={pickerSearch}
-                        onChange={e => setPickerSearch(e.target.value)}
-                        style={{
-                          flex: 1,
-                          height: '34px',
-                          borderRadius: '8px',
-                          border: '1px solid var(--body-border-subtle)',
-                          padding: '0 10px',
-                          fontSize: '12.5px',
-                          outline: 'none',
-                          background: 'var(--body-card-bg)',
-                          color: 'var(--body-text-main)'
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPicker(false)}
-                        style={{
-                          height: '34px',
-                          padding: '0 12px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          background: 'var(--body-shell-bg)',
-                          color: 'var(--body-text-sub)',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Đóng
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
-                      {filteredPicker.map(ex => (
-                        <button
-                          key={ex.key}
-                          type="button"
-                          onClick={() => handleAddExercise(ex)}
-                          style={{
-                            height: '30px',
-                            padding: '0 10px',
-                            borderRadius: '7px',
-                            background: 'var(--body-card-bg)',
-                            border: '1px solid var(--body-border-subtle)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            fontSize: '12px',
-                            color: 'var(--body-text-main)',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <AppIcon name="plus" size={11} style={{ color: 'var(--body-accent)' }} />
-                          <span>{ex.name}</span>
-                        </button>
-                      ))}
-                    </div>
+                {cta === 'other' && (
+                  <button type="button" className="body-rt-btn-outline is-xl is-block" onClick={() => onStartSession?.(startPayload)}>
+                    <AppIcon name="play" size={13} />Tập buổi này hôm nay
+                  </button>
+                )}
+                {cta === 'done' && (
+                  <div className="body-rt-m-cta-row">
+                    <span className="body-rt-done-text"><AppIcon name="checkCircle" size={17} weight="fill" />Đã tập · {doneText}</span>
+                    <button type="button" className="body-rt-link" onClick={() => onNavigate?.('history')}>
+                      Kết quả<AppIcon name="arrowRight" size={13} />
+                    </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Dưới cùng: Toggle Tăng tiến tự động */}
-            <div style={{
-              margin: '0 24px 20px',
-              padding: '14px 16px',
-              borderRadius: '12px',
-              background: 'var(--body-shell-bg)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '14px'
-            }}>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={autoProgressState}
-                onClick={toggleAutoProgress}
-                disabled={isPreviewing}
-                style={{
-                  width: '40px',
-                  height: '24px',
-                  borderRadius: '12px',
-                  background: autoProgressState ? 'var(--body-accent)' : '#C9C7C0',
-                  position: 'relative',
-                  flex: 'none',
-                  cursor: isPreviewing ? 'not-allowed' : 'pointer',
-                  border: 'none',
-                  padding: 0,
-                  transition: 'background 0.2s ease'
-                }}
-              >
-                <span style={{
-                  position: 'absolute',
-                  top: '3px',
-                  left: autoProgressState ? '19px' : '3px',
-                  width: '18px',
-                  height: '18px',
-                  borderRadius: '9px',
-                  background: '#FFFFFF',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-                  transition: 'left 0.2s ease'
-                }} />
-              </button>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                  Tăng tiến tự động (Progressive Overload)
-                </span>
-                <span style={{ fontSize: '12px', color: 'var(--body-text-sub)' }}>
-                  Đạt đủ mọi set trong buổi tập thì buổi sau tự động +1 rep (-5s cho bài tính giây).
-                </span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-    </div>
-
-      {/* ── GIAO DIỆN MOBILE CHUYÊN BIỆT (CHUẨN PROTOTYPE BODY - LỘ TRÌNH 390PX) ── */}
-      <div className="body-routine-mobile-view">
-        {/* 1. THẺ ĐEN LỘ TRÌNH HIỆN TẠI */}
-        <div className="body-routine-card-dark">
-          <div className="body-routine-dark-header">
-            <span className="body-routine-dark-badge">ĐANG THEO</span>
-            <span className="body-routine-dark-week">
-              Tuần {currentWeekNumber} / {routineWeeksTotal}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 className="body-routine-dark-title" style={{ fontSize: '18px' }}>
-                {routine?.name || 'Chưa chọn lộ trình'}
-              </h3>
-              {routine?.id && (
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(true)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#9C9AA8',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    display: 'grid',
-                    placeItems: 'center'
-                  }}
-                  title="Chỉnh sửa thông tin lộ trình"
-                >
-                  <AppIcon name="pencil" size={14} />
-                </button>
-              )}
-            </div>
-            <div className="body-routine-dark-sub">
-              {routineWeeksTotal} tuần · {routine?.goal || 'Duy trì cơ bắp & tăng sức bền'}
-            </div>
-          </div>
-
-          {/* Dải vạch tuần */}
-          <div className="body-routine-week-bars" style={{ gap: '3px' }}>
-            {Array.from({ length: routineWeeksTotal }).map((_, idx) => (
-              <span
-                key={idx}
-                className={`body-routine-week-bar ${idx < currentWeekNumber ? 'active' : ''}`}
-                style={{ height: '5px', borderRadius: '3px' }}
-              />
-            ))}
-          </div>
-
-          {/* Dòng tóm tắt chuẩn mobile */}
-          <div style={{ fontSize: '12px', color: '#A9A7B4', lineHeight: 1.4 }}>
-            {weekdaysData.filter(w => w.isTrain).length} buổi/tuần · {completedSessionsCount} buổi đã tập · đúng lịch {adherenceText}
-          </div>
-        </div>
-
-        {/* 2. DẢI 7 NGÀY DẠNG NÚT MOBILE */}
-        <div className="body-routine-mobile-days-strip">
-          {weekdaysData.map(wd => {
-            const isSelected = selectedDay === wd.day;
-            return (
-              <div
-                key={wd.day}
-                onClick={() => setSelectedDay(wd.day)}
-                className={`body-routine-mobile-day-btn ${isSelected ? 'active' : ''}`}
-              >
-                <span style={{ fontSize: '11.5px', fontWeight: 600, color: isSelected ? 'var(--body-accent)' : 'var(--body-text-sub)' }}>
-                  {wd.label}
-                </span>
-                <span style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: wd.dotColor,
-                  flex: 'none'
-                }} />
-                <span style={{
-                  fontSize: '9.5px',
-                  fontWeight: 500,
-                  color: isSelected ? 'var(--body-accent)' : 'var(--body-text-muted)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  maxWidth: '44px',
-                  textAlign: 'center'
-                }}>
-                  {wd.shortName || wd.name}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* 3. THẺ CHI TIẾT NGÀY TẬP */}
-        <div style={{
-          background: 'var(--body-card-bg)',
-          border: '1px solid var(--body-card-border)',
-          borderRadius: '18px',
-          padding: '14px 16px 6px',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', paddingBottom: '10px' }}>
-            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-              {activeDay.short} — Buổi {activeDay.name}
-            </span>
-            <span style={{ fontSize: '12px', color: 'var(--body-text-muted)' }}>
-              {activeDay.isTrain ? `${dayItems.length} bài tập · ${activeDay.est}` : 'Ngày nghỉ phục hồi'}
-            </span>
-          </div>
-
-          {activeDay.isTrain ? (
-            <>
-              {dayItems.map(item => {
-                const exDef = BASE_EXERCISES.find(e => e.key === item.exercise_key);
-                const muscleVn = MUSCLE_MAP[exDef?.primary]?.name || exDef?.primary || '';
-
-                return (
-                  <div key={item.id} className="body-routine-mobile-ex-row">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-                      <span style={{
-                        fontSize: '13.5px',
-                        fontWeight: 600,
-                        color: 'var(--body-text-main)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {exDef?.name || item.exercise_key}
-                      </span>
-                      <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
-                        {muscleVn ? `${muscleVn} · ` : ''}{item.unit === 's' ? 'Set × Giây' : 'Set × Rep'}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div className="body-routine-mobile-counter">
-                        <button
-                          type="button"
-                          className="body-routine-mobile-counter-btn"
-                          onClick={() => handleStepChange(item, -1)}
-                          title="Giảm mục tiêu"
-                        >
-                          <AppIcon name="minus" size={11} />
-                        </button>
-                        <span
-                          className="body-routine-mobile-counter-val"
-                          onClick={() => handleSetChange(item, 1)}
-                          title="Nhấn để tăng số hiệp"
-                          style={{ cursor: 'pointer' }}
-                        >
-                          {item.target_sets} × {item.target_val}{item.unit === 's' ? 's' : ''}
-                        </span>
-                        <button
-                          type="button"
-                          className="body-routine-mobile-counter-btn"
-                          onClick={() => handleStepChange(item, 1)}
-                          title="Tăng mục tiêu"
-                        >
-                          <AppIcon name="plus" size={11} />
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteItem(item.id)}
-                        style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          background: 'transparent',
-                          color: '#B5B4AE',
-                          display: 'grid',
-                          placeItems: 'center',
-                          cursor: 'pointer',
-                          padding: 0
-                        }}
-                        title="Xoá bài tập"
-                      >
-                        <AppIcon name="trash" size={13} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Nút Thêm bài tập dạng inline text tím */}
-              {!showPicker && (
-                <button
-                  type="button"
-                  onClick={() => setShowPicker(true)}
-                  style={{
-                    minHeight: '46px',
-                    borderTop: '1px solid var(--body-card-border)',
-                    borderBottom: 'none',
-                    borderLeft: 'none',
-                    borderRight: 'none',
-                    background: 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: 'var(--body-accent)',
-                    cursor: 'pointer',
-                    padding: '8px 0',
-                    width: '100%'
-                  }}
-                >
-                  <AppIcon name="plusCircle" size={16} />
-                  <span>Thêm bài tập</span>
-                </button>
-              )}
-
-              {/* Nút to Bắt đầu hoặc Tiếp tục buổi tập này */}
-              {!isPreviewing && dayItems.length > 0 && (
-                <div style={{ padding: '12px 0 8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {isThisDayActive ? (
-                    <button
-                      type="button"
-                      onClick={() => onResumeSession ? onResumeSession(currentActiveSession) : onStartSession?.({ weekday: selectedDay, day: selectedDay, name: activeDay.name, focus: activeDay.focus })}
-                      title={`Tiếp tục ${activeDay.name}`}
-                      style={{
-                        width: '100%',
-                        height: '42px',
-                        borderRadius: '11px',
-                        background: 'linear-gradient(135deg, #EF4444, #DC2626)',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        fontSize: '13.5px',
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 10px rgba(239, 68, 68, 0.35)'
-                      }}
-                    >
-                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FFFFFF' }} />
-                      <AppIcon name="barbell" size={15} weight="fill" />
-                      <span>Tiếp tục</span>
-                    </button>
-                  ) : currentActiveSession ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => onResumeSession?.(currentActiveSession)}
-                        title={`Tiếp tục: ${currentActiveSession.title || currentActiveSession.day_type || 'Đang tập'}`}
-                        style={{
-                          width: '100%',
-                          height: '40px',
-                          borderRadius: '11px',
-                          background: 'rgba(239, 68, 68, 0.1)',
-                          border: '1.5px solid rgba(239, 68, 68, 0.4)',
-                          color: '#DC2626',
-                          fontSize: '12.5px',
-                          fontWeight: 700,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#DC2626' }} />
-                        <AppIcon name="barbell" size={14} />
-                        <span>Tiếp tục</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onStartSession?.({ weekday: selectedDay, day: selectedDay, name: activeDay.name, focus: activeDay.focus })}
-                        title={`Bắt đầu buổi ${activeDay.name}`}
-                        style={{
-                          width: '100%',
-                          height: '40px',
-                          borderRadius: '11px',
-                          background: 'var(--body-accent)',
-                          color: '#FFFFFF',
-                          border: 'none',
-                          fontSize: '12.5px',
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          cursor: 'pointer',
-                          boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
-                        }}
-                      >
-                        <AppIcon name="play" size={14} weight="fill" />
-                        <span>Bắt đầu mới</span>
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => onStartSession?.({
-                        weekday: selectedDay,
-                        day: selectedDay,
-                        name: activeDay.name,
-                        focus: activeDay.focus
-                      })}
-                      title={`Bắt đầu ${activeDay.name} (${dayItems.length} bài)`}
-                      style={{
-                        width: '100%',
-                        height: '42px',
-                        borderRadius: '11px',
-                        background: 'var(--body-accent)',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        fontSize: '13.5px',
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(105, 73, 232, 0.25)'
-                      }}
-                    >
-                      <AppIcon name="play" size={14} weight="fill" />
-                      <span>Bắt đầu</span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{ padding: '4px 0 12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <span style={{ fontSize: '13px', lineHeight: 1.55, color: 'var(--body-text-sub)' }}>
-                {activeDay.note}
+            <div className="body-rt-card body-rt-auto is-row">
+              <span className="body-rt-auto-text">
+                <b>Tăng tiến tự động</b>
+                <span>Đủ mục tiêu → đề xuất +1 rep / +5s</span>
               </span>
-              {!showPicker && (
-                <button
-                  type="button"
-                  onClick={() => setShowPicker(true)}
-                  style={{
-                    alignSelf: 'flex-start',
-                    height: '32px',
-                    padding: '0 12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--body-border-subtle)',
-                    background: 'var(--body-shell-bg)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: 'var(--body-text-main)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <AppIcon name="plus" size={12} />
-                  <span>Thêm bài tập tập bù</span>
-                </button>
-              )}
+              {autoSwitch}
             </div>
-          )}
+          </>
+        ) : emptyState}
+      </div>
 
-          {/* Inline Exercise Picker cho Mobile */}
-          {showPicker && (
-            <div style={{
-              margin: '8px 0 12px',
-              padding: '12px',
-              borderRadius: '12px',
-              background: 'var(--body-accent-tint)',
-              border: '1px solid var(--body-accent-border)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      {/* ── THÊM BÀI: ngăn phải (desktop) / bottom sheet (mobile) ──────────── */}
+      {showPicker && (
+        <>
+          <div className="body-rt-drawer-backdrop" onClick={() => setShowPicker(false)} />
+          <aside className="body-rt-drawer" role="dialog" aria-label="Thêm bài tập">
+            <div className="body-rt-drawer-head">
+              <span className="body-rt-sheet-grip" />
+              <div className="body-rt-drawer-title-row">
+                <span className="body-rt-drawer-titles">
+                  <span className="body-rt-eyebrow is-accent">
+                    THÊM VÀO {activeDay.short.toUpperCase()}{activeDay.tag ? ` · ${activeDay.tag.toUpperCase()}` : ''}
+                  </span>
+                  <span className="body-rt-drawer-title">Thêm bài tập</span>
+                </span>
+                <button type="button" className="body-rt-icon-btn" onClick={() => setShowPicker(false)} aria-label="Đóng">
+                  <AppIcon name="x" size={15} />
+                </button>
+              </div>
+              <div className="body-rt-search">
+                <AppIcon name="search" size={16} />
                 <input
                   type="text"
-                  placeholder="Tìm bài tập..."
                   value={pickerSearch}
                   onChange={e => setPickerSearch(e.target.value)}
-                  style={{
-                    flex: 1,
-                    height: '32px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--body-border-subtle)',
-                    padding: '0 10px',
-                    fontSize: '12px',
-                    outline: 'none',
-                    background: 'var(--body-card-bg)',
-                    color: 'var(--body-text-main)'
-                  }}
+                  placeholder="Tìm theo tên tiếng Việt hoặc tiếng Anh"
+                  aria-label="Tìm bài tập"
+                  autoFocus={window.matchMedia?.('(min-width: 841px)').matches}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPicker(false)}
-                  style={{
-                    height: '32px',
-                    padding: '0 10px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: 'var(--body-shell-bg)',
-                    color: 'var(--body-text-sub)',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Đóng
-                </button>
+                {pickerSearch && (
+                  <button type="button" className="body-rt-search-clear" onClick={() => setPickerSearch('')} aria-label="Xóa tìm kiếm">
+                    <AppIcon name="x" size={11} />
+                  </button>
+                )}
               </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', maxHeight: '160px', overflowY: 'auto' }}>
-                {filteredPicker.map(ex => (
+              <div className="body-rt-groups">
+                {['all', ...PICK_GROUPS].map(g => {
+                  const count = pickCountOf(g);
+                  return (
+                    <button
+                      key={g}
+                      type="button"
+                      className={`body-rt-gchip${pickerGroup === g ? ' is-on' : ''}${count ? '' : ' is-empty'}`}
+                      onClick={() => setPickerGroup(g)}
+                      aria-pressed={pickerGroup === g}
+                    >
+                      {g === 'all' ? 'Tất cả' : g}<small>{count}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="body-rt-seg" role="group" aria-label="Dụng cụ">
+                {PICK_EQS.map(([k, label]) => (
                   <button
-                    key={ex.key}
+                    key={k}
                     type="button"
-                    onClick={() => handleAddExercise(ex)}
-                    style={{
-                      height: '30px',
-                      padding: '0 9px',
-                      borderRadius: '7px',
-                      background: 'var(--body-card-bg)',
-                      border: '1px solid var(--body-border-subtle)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      fontSize: '11.5px',
-                      color: 'var(--body-text-main)',
-                      cursor: 'pointer'
-                    }}
+                    className={pickerEq === k ? 'is-on' : ''}
+                    onClick={() => setPickerEq(k)}
+                    aria-pressed={pickerEq === k}
                   >
-                    <AppIcon name="plus" size={11} style={{ color: 'var(--body-accent)' }} />
-                    <span>{ex.name}</span>
+                    {label}
                   </button>
                 ))}
               </div>
             </div>
-          )}
-        </div>
 
-        {/* 4. CARD TĂNG TIẾN TỰ ĐỘNG */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          padding: '12px 14px',
-          background: 'var(--body-card-bg)',
-          border: '1px solid var(--body-card-border)',
-          borderRadius: '16px'
-        }}>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={autoProgressState}
-            onClick={toggleAutoProgress}
-            disabled={isPreviewing}
-            style={{
-              width: '40px',
-              height: '24px',
-              borderRadius: '12px',
-              background: autoProgressState ? 'var(--body-accent)' : '#C9C7C0',
-              position: 'relative',
-              flex: 'none',
-              cursor: isPreviewing ? 'not-allowed' : 'pointer',
-              border: 'none',
-              padding: 0,
-              transition: 'background 0.2s ease'
-            }}
-          >
-            <span style={{
-              position: 'absolute',
-              top: '3px',
-              left: autoProgressState ? '19px' : '3px',
-              width: '18px',
-              height: '18px',
-              borderRadius: '9px',
-              background: '#FFFFFF',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-              transition: 'left 0.2s ease'
-            }} />
-          </button>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-              Tăng tiến tự động
-            </span>
-            <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)' }}>
-              Đạt đủ mỗi set thì buổi sau +1 rep
-            </span>
-          </div>
-        </div>
-
-        {/* 5. DẢI MẪU CÓ SẴN (CUỘN NGANG) */}
-        <div style={{
-          fontFamily: 'var(--body-mono)',
-          fontSize: '10.5px',
-          letterSpacing: '0.09em',
-          color: 'var(--body-text-muted)',
-          fontWeight: 600,
-          padding: '4px 2px 0'
-        }}>
-          MẪU CÓ SẴN
-        </div>
-
-        <div className="body-routine-mobile-tpls-scroll">
-          {(routineTemplates || []).map(t => {
-            const isSelectedTpl = previewTemplate?.key === t.key;
-            return (
-              <div
-                key={t.key}
-                onClick={() => handleStartPreview(t)}
-                style={{
-                  width: '200px',
-                  flex: 'none',
-                  background: 'var(--body-card-bg)',
-                  border: isSelectedTpl ? '1.5px solid var(--body-accent)' : '1px solid var(--body-card-border)',
-                  borderRadius: '14px',
-                  padding: '13px 14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  boxSizing: 'border-box',
-                  cursor: 'pointer'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--body-text-main)' }}>
-                    {t.name}
-                  </span>
-                  <span style={{
-                    fontSize: '10px',
-                    padding: '2px 5px',
-                    borderRadius: '5px',
-                    background: 'var(--body-accent-soft)',
-                    color: 'var(--body-accent)',
-                    fontWeight: 600
-                  }}>
-                    {t.weeks} tuần
-                  </span>
+            <div className="body-rt-drawer-list">
+              {pickSections.map(sec => (
+                <div key={sec.g}>
+                  <span className="body-rt-sec">{sec.g.toUpperCase()} · {sec.items.length}</span>
+                  {sec.items.map(ex => {
+                    const { vn, en } = splitExerciseName(ex.name);
+                    const has = dayKeys.has(ex.key);
+                    const def = `${ex.defaultSets || 3} × ${ex.defaultTarget || 10}${ex.metric === 's' ? 's' : ''}${ex.defaultKg ? ` · ${ex.defaultKg}kg` : ''}`;
+                    return (
+                      <div key={ex.key} className="body-rt-lib">
+                        <span className="body-rt-lib-info">
+                          <span className="body-rt-lib-name">{vn}</span>
+                          <span className="body-rt-lib-sub">
+                            <span className="body-rt-m-only">{def} · </span>
+                            {[en, muscleOf(ex)].filter(Boolean).join(' · ')}
+                          </span>
+                        </span>
+                        <span className="body-rt-lib-def"><b>{def}</b><small>{EQ_LABEL[ex.equipment]}</small></span>
+                        {has ? (
+                          <span className="body-rt-add is-has"><AppIcon name="check" size={12} /><span>Đã có</span></span>
+                        ) : (
+                          <button type="button" className="body-rt-add" onClick={() => handleAddExercise(ex)} aria-label={`Thêm ${vn}`}>
+                            <AppIcon name="plus" size={12} /><span>Thêm</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <span style={{ fontSize: '11.5px', color: 'var(--body-text-muted)', lineHeight: 1.35 }}>
-                  {t.days?.length || 3} buổi/tuần · {t.goal}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+              ))}
+              {pickSections.length === 0 && (
+                <div className="body-rt-lib-empty">
+                  <AppIcon name="search" size={22} />
+                  <b>Không có bài phù hợp</b>
+                  <span>Thử bỏ bớt bộ lọc hoặc tìm bằng tên tiếng Anh.</span>
+                </div>
+              )}
+            </div>
+
+            <div className="body-rt-drawer-foot">
+              <span className="body-rt-drawer-sum">
+                <b>{activeDay.short}{activeDay.isTrain ? ` · ${activeDay.title}` : ''}</b>
+                <small>{dayItems.length} bài · {dayTotalSets} set · ~{activeDay.est || 0} phút</small>
+              </span>
+              <button type="button" className="body-rt-btn-dark is-xl" onClick={() => setShowPicker(false)}>Xong</button>
+            </div>
+          </aside>
+        </>
+      )}
 
       {/* ── MODAL TÙY CHỈNH HIỆP & REP CỦA TEMPLATE TRƯỚC KHI ÁP DỤNG ─ */}
       {showCustomizeModal && (
@@ -2252,7 +1660,7 @@ export default function RoutineScreen({
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {day.items.map((it, itIdx) => {
-                            const ex = BASE_EXERCISES.find(e => e.key === it.exercise_key);
+                            const ex = exOf(it.exercise_key);
 
                             const updateItem = (newSets, newTarget) => {
                               setCustomizedDays(prev => prev.map((d, di) => {

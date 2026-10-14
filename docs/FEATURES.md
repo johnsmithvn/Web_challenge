@@ -312,13 +312,20 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 
 Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuân thủ nguyên tắc tối giản và không ngụy tạo số liệu:
 
+- **Điều hướng:** desktop có dải tab 7 màn trên header + viên "Buổi dở" (tên buổi, số set đã xong, Tiếp tục). Mobile (≤840px): header gồm nút về Life Hub, tiêu đề, nút + theo màn (Cơ thể: thêm cân đo; Tổng quan: ghi nhanh), đổi theme và dải chip 7 màn cuộn ngang — không có bottom nav. Khi đang tập, sidebar Life Hub ẩn để màn tập chiếm trọn chiều ngang.
+
 ### Lộ trình & Tập luyện (Core Workout)
 - **Lộ trình theo thứ trong tuần (D1):** Gán bài tập cố định theo thứ trong tuần (T2..CN). Nếu bỏ buổi không tự dời ngày làm lệch tuần; cho phép tập bù buổi đã bỏ bất kỳ lúc nào.
+  - Bấm tên lộ trình để đổi lộ trình / xem trước mẫu / tạo mới. Lịch tuần dọc có ngày tháng, chuyển tuần trước/sau; ngày đã tập đánh dấu theo thứ của buổi (tập bù vẫn gắn đúng thứ), buổi đang dở hiện trên ngày đó kèm số set đã xong.
+  - Thêm bài: tìm không dấu (tên Việt/Anh), lọc nhóm cơ và dụng cụ. Kéo ⋮⋮ đổi thứ tự bài trong ngày; bấm "rep/giây" đổi kiểu mục tiêu (đặt lại 10 rep / 30s).
 - **Tăng tiến tự động (Auto-progression - D2):** Khi hoàn thành tất cả các set $\ge$ mục tiêu, hệ thống tự động gợi ý tăng $+1\text{ rep}$ (hoặc $+5\text{s}$) và hiển thị checkbox cho người dùng duyệt áp dụng vào lộ trình gốc.
 - **Phòng tập trực tiếp (Live Session):**
   - Chế độ tập Straight Sets, Circuit (chuyển bài 20s, hết vòng 90s), Superset (2 bài trong cặp liên tục 0s, nghỉ 75s sau mỗi cặp); chọn trước khi bắt đầu, kèm thời lượng ước tính và thứ tự A1 → B1…
   - Khóa chọn chế độ khi buổi tập đã bắt đầu nhằm bảo toàn hàng đợi và tính toàn vẹn dữ liệu.
-  - Tải lại trang / mở lại buổi dở: tiếp tục đúng set còn trống, giữ chế độ và thời gian đã tập (lưu khi tạm dừng).
+  - Tải lại trang / mở lại buổi dở: tiếp tục đúng set còn trống, giữ chế độ và thời gian đã tập (lưu khi về Lộ trình).
+  - Màn tập tách khỏi điều hướng Body: ‹ về Lộ trình giữ buổi dở; Tạm dừng tại chỗ dừng cả đồng hồ buổi lẫn đồng hồ nghỉ; Kết thúc sang màn kết quả (Tập tiếp / Hủy buổi có xác nhận / Lưu).
+  - Quay lại sửa set: "Sửa set vừa ghi" ở màn nghỉ, "‹ Set trước", hoặc bấm ô set bất kỳ. Ghi lại set đã có cập nhật bản ghi cũ, không tạo bản ghi trùng; số từng set vẫn sửa được ở màn kết quả.
+  - Màn kết quả: bấm hàng "Hôm nay" (hoặc "Sửa") của từng bài mở sheet sửa số đã ghi — đổi rep/giây từng set bằng − / + hoặc gõ số, ghi lại set đã bỏ, bỏ set, thêm set ngoài mục tiêu. Tổng rep, gợi ý buổi sau và kỷ lục (PR) tính lại theo số mới.
   - Mỗi bài mới có màn hướng dẫn và "Lần trước" (buổi gần nhất của bài đó); chip trạng thái từng set; nút "Bỏ bài"; bài tính giây có vòng đếm và gợi ý tư thế.
   - Video thị phạm: link tự gắn lưu trên Supabase (`body_exercise_videos`), đồng bộ giữa các máy; gỡ link tự gắn thì quay về video mặc định.
   - Đồng hồ đếm giờ delta timestamp chống lệch giờ khi khóa màn hình điện thoại hoặc chuyển tab.
@@ -326,7 +333,12 @@ Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuâ
   - Cho phép bỏ qua set (`null`) không tính vào tăng tiến; upsert an toàn chống xung đột id.
   - Bắt đầu buổi mới khi còn phiên dở → hỏi xác nhận rồi mới hủy (`abandoned`) phiên cũ, tuân thủ unique index PostgreSQL. Buổi tự do / tập lẻ không gắn vào lộ trình.
 - **Kỷ lục cá nhân (PR Detection):** Mốc riêng cho bodyweight (rep/giây tối đa) và có tạ (1RM Epley); lần đầu tập một bài chỉ là mốc, không tính PR; tối đa 1 PR mỗi bài mỗi buổi.
+- **Tiến bộ:** lịch tháng (vạch màu theo loại buổi, nhiều buổi một ngày thì nhiều vạch; ngày có lịch sắp tới viền tròn) + thẻ ngày (buổi đã tập với số từng set, hoặc Dự kiến / Bỏ lỡ kèm nút mở Lộ trình). Tiến bộ từng bài: biểu đồ cột mỗi set qua các buổi, đường mục tiêu, cột mờ "Buổi tới" (lấy từ Lộ trình ở thứ gần nhất có bài đó, không có thì +1 rep / +5s nếu buổi trước đạt), cao nhất / số buổi / so với buổi đầu. Chỉ tính buổi đã hoàn thành.
 - **Tỷ lệ bám lịch:** số buổi đã hoàn thành / số buổi theo lịch từ ngày bắt đầu lộ trình (tập bù vẫn tính; hôm nay chưa tập không bị trừ).
+
+### Thư viện bài
+- Lọc theo dụng cụ (Tay không / Tạ đơn / Xà / Máy) và vùng cơ, tìm không dấu tên Việt/Anh. Bài tự tạo cũng hiện trong thư viện và ô thêm bài của Lộ trình.
+- Chi tiết 4 tab: Tổng quan (video, mức tác động từng nhóm cơ, nhịp thở, tempo), Kỹ thuật, An toàn (rủi ro, không nên tập khi, bài thay thế), Biến thể (bậc thang dễ → khó, bài đang xem được đánh dấu). "Thêm vào kế hoạch" chọn thứ trong tuần (hiện số bài đã có / ngày nghỉ), số hiệp và mục tiêu; "Tập bài này ngay" mở buổi tập lẻ. Mobile: chi tiết mở toàn màn với thanh nút đáy.
 
 ### Bản đồ cơ 3D (Three.js Canvas - D5)
 - Đóng gói Three.js từ npm package, render mô hình khối cầu giải phẫu 14 nhóm cơ xoay 360°, cuộn zoom, tooltip tên tiếng Việt.
@@ -335,7 +347,7 @@ Module quản lý toàn diện thể trạng và rèn luyện thể chất, tuâ
 - Fallback 2D canvas mượt mà khi thiết bị không hỗ trợ WebGL.
 
 ### Sinh trắc học & Dinh dưỡng (Biometrics & Nutrition)
-- **Sinh trắc học:** Tính toán BMI chuẩn WHO châu Á kèm kim đồng hồ gauge (dải cân theo chiều cao thật; chưa có chiều cao thì không có kim), BMR (Mifflin-St Jeor, cần chiều cao + giới tính + năm sinh trong Hồ sơ), TDEE và Body Score (0-100) trên dữ liệu thực tế; lưới 9 chỉ số ghi rõ Đã đo / Công thức / Chưa đo (không tự điền giá trị đoán); xu hướng lọc 7 ngày / 30 ngày / 3 tháng / năm, cần ≥ 2 lần đo; mục tiêu chỉ có cân nặng (`goal_weight_kg`); đo thước dây US Navy ra % mỡ và tỉ lệ eo/cao; đánh dấu các lần cân đo lệch giờ (outlier).
+- **Sinh trắc học:** Tính toán BMI chuẩn WHO châu Á kèm kim đồng hồ gauge (dải cân theo chiều cao thật; chưa có chiều cao thì không có kim), BMR (Mifflin-St Jeor, cần chiều cao + giới tính + năm sinh trong Hồ sơ), TDEE và Body Score (0-100) trên dữ liệu thực tế; lưới 9 chỉ số ghi rõ Đã đo / Công thức / Chưa đo (không tự điền giá trị đoán); xu hướng lọc 7 ngày / 30 ngày / 3 tháng / năm, cần ≥ 2 lần đo; mục tiêu chỉ có cân nặng (`goal_weight_kg`); đo thước dây US Navy ra % mỡ và tỉ lệ eo/cao; đánh dấu các lần cân đo lệch giờ (outlier). Màn chia 3 tab: Phân tích (gauge BMI, xu hướng, 9 chỉ số, thành phần cơ thể), Lịch sử (nhóm theo ngày, bấm một lần đo để xem chi tiết / đánh dấu lệch giờ / xóa — mobile là bottom sheet), Hồ sơ (BMR/TDEE, tiến độ mục tiêu cân, form hồ sơ). Thêm cân đo: chỉ bắt buộc cân nặng, Ctrl+Enter để lưu, mobile là bottom sheet.
 - **Dinh dưỡng tối giản:** Ghi nhận 4 bữa ăn với calo & macro (đạm, carb, béo) tự động cân đối theo TDEE, chọn nhanh từ danh sách món mẫu đã lưu, theo dõi mục tiêu 8 ly nước (2.000ml) theo múi giờ địa phương GMT+7 (`toDateStr`).
 - **Check-in tuần:** Đánh giá thể trạng 4 tiêu chí (1-5 sao, khởi tạo 0 để tránh gửi điểm giả), cân nặng trung bình tuần và số đo vòng eo; tính số tuần theo chuẩn ISO-8601.
 

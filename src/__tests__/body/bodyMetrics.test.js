@@ -10,7 +10,11 @@ import {
   estimateVisceralFatFromWaist,
   weightForBmi,
   calculateMacroTargets,
-  BMI_CATEGORIES
+  BMI_CATEGORIES,
+  dailyAverageSeries,
+  trendDomain,
+  bmiGaugeAngle,
+  smoothPath
 } from '../../utils/bodyMetrics.js';
 
 console.log('Testing bodyMetrics pure functions...');
@@ -128,6 +132,32 @@ console.log('Testing bodyMetrics pure functions...');
   // Không có cân nặng -> đạm 30% năng lượng
   assert.equal(calculateMacroTargets(2000).protein, 150);
   console.log('  ✓ weightForBmi / calculateMacroTargets OK');
+}
+
+// Xu hướng & đồng hồ BMI (màn Cơ thể v2)
+{
+  const ms = [
+    { local_date: '2026-10-11', measured_at: '2026-10-11T07:00:00', weight: 64.6 },
+    { local_date: '2026-10-11', measured_at: '2026-10-11T21:00:00', weight: 64.8 },
+    { local_date: '2026-10-08', measured_at: '2026-10-08T07:00:00', weight: 64.9, body_fat_pct: null },
+    { local_date: '2026-09-01', measured_at: '2026-09-01T07:00:00', weight: 66 }
+  ];
+  const cutoff = new Date('2026-10-01T00:00:00').getTime();
+  assert.deepEqual(dailyAverageSeries(ms, 'weight', cutoff), [{ date: '2026-10-08', val: 64.9 }, { date: '2026-10-11', val: 64.7 }], 'trung bình theo ngày, bỏ ngoài khoảng');
+  assert.deepEqual(dailyAverageSeries(ms, 'body_fat_pct'), [], 'không có giá trị thì rỗng');
+
+  const dom = trendDomain([64.65, 64.9], 0.6);
+  assert.ok(dom.lo < 64.65 && dom.hi > 64.9, 'chừa lề hai đầu');
+  assert.ok(Math.abs((dom.hi - dom.lo) - (0.25 + 0.6 * 0.6)) < 1e-9, 'dữ liệu gần phẳng: lề tính theo biên độ tối thiểu 0,6');
+
+  assert.equal(bmiGaugeAngle(15), Math.PI);
+  assert.equal(bmiGaugeAngle(32), 0);
+  assert.equal(bmiGaugeAngle(50), 0, 'kẹp ở cực phải');
+  assert.ok(Math.abs(bmiGaugeAngle(23.5) - Math.PI / 2) < 1e-9, 'giữa thang ở đỉnh vòng');
+
+  assert.equal(smoothPath([[0, 10]]), 'M0 10');
+  assert.ok(smoothPath([[0, 10], [50, 0], [100, 10]]).startsWith('M0 10C'), 'đường cong bezier');
+  console.log('  ✓ dailyAverageSeries / trendDomain / bmiGaugeAngle / smoothPath OK');
 }
 
 console.log('ALL BODY METRICS TESTS PASSED!');
