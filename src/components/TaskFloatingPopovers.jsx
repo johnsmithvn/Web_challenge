@@ -4,6 +4,7 @@ import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 import { STATUS_META, ksStyle, taskCardModel } from '../utils/kanbanUtils';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
+import { datePickDraft, datePickPatch } from '../utils/calendarTimeUtils';
 
 /**
  * TaskFloatingPopovers — Tập hợp các floating popovers xuất hiện tại chỗ khi click thẻ:
@@ -103,8 +104,12 @@ function usePopoverShell(ref, onClose) {
   }, [ref]);
 }
 
-/** Lưới tháng (CN đầu tuần) có ngày âm dưới mỗi ô. `cellState(v)` → { sel, inRange }. */
-function MonthGrid({ month, setMonth, cellState, onPick }) {
+/**
+ * Lưới tháng (CN đầu tuần) có ngày âm dưới mỗi ô. `cellState(v)` → { sel, inRange, edge: 'a'|'b' }.
+ * nav 'center' = ‹ Tháng › (popover đổi hạn) · 'left' = Tháng ‹ › (popover lọc khoảng ngày) như mockup.
+ * joined: ô trong khoảng nối liền (bo 2 đầu khoảng) — popover đổi hạn.
+ */
+function MonthGrid({ month, setMonth, cellState, onPick, nav = 'center', joined = false }) {
   const todayStr = toDateStr();
   const Y = month.getFullYear();
   const M = month.getMonth();
@@ -113,30 +118,36 @@ function MonthGrid({ month, setMonth, cellState, onPick }) {
   const cells = [];
   for (let i = 0; i < first; i++) cells.push(null);
   for (let d = 1; d <= nd; d++) cells.push(d);
+  const prev = (
+    <button type="button" className="tk-dp-navbtn" onClick={() => setMonth(new Date(Y, M - 1, 1))} aria-label="Tháng trước">
+      <AppIcon name="caretLeft" size={12} />
+    </button>
+  );
+  const next = (
+    <button type="button" className="tk-dp-navbtn" onClick={() => setMonth(new Date(Y, M + 1, 1))} aria-label="Tháng sau">
+      <AppIcon name="caretRight" size={12} />
+    </button>
+  );
+  const title = <span className="tk-dp-title">Tháng {M + 1}, {Y}</span>;
 
   return (
-    <div className="tk-dp-month">
-      <div className="tk-dp-nav">
-        <button type="button" className="tk-icon-btn" onClick={() => setMonth(new Date(Y, M - 1, 1))} aria-label="Tháng trước">
-          <AppIcon name="caretLeft" size={13} />
-        </button>
-        <span className="tk-dp-title">Tháng {M + 1}, {Y}</span>
-        <button type="button" className="tk-icon-btn" onClick={() => setMonth(new Date(Y, M + 1, 1))} aria-label="Tháng sau">
-          <AppIcon name="caretRight" size={13} />
-        </button>
+    <>
+      <div className={`tk-dp-nav is-${nav}`}>
+        {nav === 'center' ? <>{prev}{title}{next}</> : <>{title}{prev}{next}</>}
       </div>
-      <div className="tk-dp-grid">
+      <div className={`tk-dp-grid${joined ? ' is-joined' : ''}`}>
         {DOW_SHORT.map((d, i) => (
           <span key={d} className={`tk-dp-dow${i === 0 ? ' is-sun' : ''}`}>{d}</span>
         ))}
         {cells.map((d, i) => {
           if (!d) return <span key={`e${i}`} />;
           const v = toDateStr(new Date(Y, M, d));
-          const { sel, inRange } = cellState(v);
+          const { sel, inRange, edge } = cellState(v);
           const cls = [
             'tk-cal-cell',
             sel ? 'is-sel' : inRange ? 'is-range' : '',
-            v === todayStr ? 'is-today' : '',
+            joined && edge ? `is-edge-${edge}` : '',
+            v === todayStr && !sel ? 'is-today' : '',
             (first + d - 1) % 7 === 0 ? 'is-sun' : '',
           ].filter(Boolean).join(' ');
           return (
@@ -147,7 +158,7 @@ function MonthGrid({ month, setMonth, cellState, onPick }) {
           );
         })}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -158,79 +169,77 @@ const dayLabel = (v) => {
 };
 
 /**
- * Chọn ngày cho việc (mockup): ô Bắt đầu + Kết thúc (tuỳ chọn), lịch có ngày âm, "Thêm giờ".
- * Một ngày → Hạn (due_date/due_time); có Kết thúc → Bắt đầu = start_*, Kết thúc = due_*.
- * Chỉ lưu khi bấm Lưu; onSave nhận patch { start_date, start_time, due_date, due_time }.
+ * Đổi ngày giờ của việc (mockup): ô Bắt đầu + Kết thúc (tuỳ chọn), lịch có ngày âm, dòng giờ bắt đầu → kết thúc.
+ * Ô đang chọn quyết định ngày bấm: Bắt đầu đặt ngày chính (giữ Kết thúc nếu vẫn sau); Kết thúc đặt ngày cuối
+ * (bấm trước Bắt đầu thì thành Bắt đầu mới). ✕ "Bỏ hạn" xoá hết, ✕ "Bỏ ngày kết thúc" chỉ bỏ ngày cuối.
+ * Chỉ lưu khi bấm Lưu (mờ khi chưa đổi); onSave nhận patch { start_date, start_time, due_date, due_time }.
  */
 export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
   const ref = useRef(null);
   usePopoverShell(ref, onClose);
 
-  const ranged = !!task.start_date && !!task.due_date;
-  const [dr, setDr] = useState(() => (ranged
-    ? { a: task.start_date, ta: hhmm(task.start_time), b: task.due_date, tb: hhmm(task.due_time) }
-    : {
-        a: task.due_date || task.start_date || null,
-        ta: hhmm(task.due_date ? task.due_time : task.start_time),
-        b: null,
-        tb: null,
-      }));
+  const [dr, setDr] = useState(() => datePickDraft(task));
   const [field, setField] = useState('a');
-  const [showTime, setShowTime] = useState(() => !!(dr.ta || dr.tb));
+  const [timeOn, setTimeOn] = useState(() => !!dr.ta);
   const [month, setMonth] = useState(() => monthOf(dr.a || toDateStr()));
+  const B = dr.a && dr.b && dr.b > dr.a ? dr.b : null;
 
-  // Chọn Bắt đầu xong tự chuyển sang Kết thúc; chọn Kết thúc trước Bắt đầu thì đổi chỗ
   const pick = (v) => {
-    if (field === 'a' || !dr.a) {
-      setDr((d) => ({ ...d, a: v, ...(d.b && d.b < v ? { b: null, tb: null } : {}) }));
-      setField('b');
-    } else if (v < dr.a) {
-      setDr((d) => ({ ...d, a: v, b: d.a }));
-    } else {
-      setDr((d) => ({ ...d, b: v }));
-    }
+    if (field === 'b' && dr.a) setDr((d) => (v < d.a ? { ...d, a: v } : { ...d, b: v === d.a ? null : v }));
+    else setDr((d) => ({ ...d, a: v, b: d.b && d.b > v ? d.b : null }));
   };
-
-  const clear = (k) => {
-    if (k === 'a') setDr((d) => ({ a: d.b, ta: d.tb, b: null, tb: null }));
-    else setDr((d) => ({ ...d, b: null, tb: null }));
+  const clearA = (e) => {
+    e.stopPropagation();
+    setDr({ a: null, b: null, ta: null, tb: null });
+    setTimeOn(false);
     setField('a');
   };
+  const clearB = (e) => {
+    e.stopPropagation();
+    setDr((d) => ({ ...d, b: null }));
+    setField('a');
+  };
+  const addTime = () => {
+    setTimeOn(true);
+    setDr((d) => ({ ...d, a: d.a || toDateStr(), ta: d.ta || '09:00' }));
+  };
+  const noTime = () => {
+    setTimeOn(false);
+    setDr((d) => ({ ...d, ta: null, tb: null }));
+  };
 
+  const patch = datePickPatch({ ...dr, b: B });
+  const cur = { start_date: task.start_date || null, start_time: hhmm(task.start_time), due_date: task.due_date || null, due_time: hhmm(task.due_time) };
+  const dirty = Object.keys(patch).some((k) => (patch[k] || null) !== (cur[k] || null));
   const save = () => {
-    const ta = (showTime && dr.ta) || null;
-    const tb = (showTime && dr.tb) || null;
-    if (!dr.a) onSave({ start_date: null, start_time: null, due_date: null, due_time: null });
-    else if (dr.b) onSave({ start_date: dr.a, start_time: ta, due_date: dr.b, due_time: tb });
-    else onSave({ start_date: null, start_time: null, due_date: dr.a, due_time: ta });
+    if (dirty) onSave(patch);
     onClose();
   };
+
+  const fields = [
+    { k: 'a', label: 'Bắt đầu', val: dr.a, empty: 'Không hạn', clear: clearA, clearTip: 'Bỏ hạn' },
+    { k: 'b', label: 'Kết thúc', val: B, empty: 'Tuỳ chọn', clear: clearB, clearTip: 'Bỏ ngày kết thúc' },
+  ];
 
   return (
     <div ref={ref} className="tk-popover tk-datepick" style={style} onClick={(e) => e.stopPropagation()}>
       <div className="tk-dp-fields">
-        {[['a', 'Bắt đầu', 'Chưa đặt'], ['b', 'Kết thúc', 'Tuỳ chọn']].map(([k, label, empty]) => (
+        {fields.map((f) => (
           <div
-            key={k}
+            key={f.k}
             role="button"
             tabIndex={0}
-            className={`tk-dp-field${field === k ? ' is-on' : ''}`}
-            onClick={() => setField(k)}
-            onKeyDown={(e) => e.key === 'Enter' && setField(k)}
+            className={`tk-dp-field${field === f.k ? ' is-on' : ''}`}
+            onClick={() => setField(f.k)}
+            onKeyDown={(e) => e.key === 'Enter' && setField(f.k)}
           >
-            <span className="tk-dp-field__lbl">{label}</span>
-            <span className={`tk-dp-field__val${dr[k] ? '' : ' is-empty'}`}>{dr[k] ? dayLabel(dr[k]) : empty}</span>
-            {dr[k] && (
-              <button
-                type="button"
-                className="tk-dp-field__x"
-                aria-label={`Xoá ${label.toLowerCase()}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  clear(k);
-                }}
-              >
-                <AppIcon name="x" size={12} />
+            <span className="tk-dp-field__text">
+              <span className="tk-dp-field__lbl">{f.label}</span>
+              <span className={`tk-dp-field__val${f.val ? '' : ' is-empty'}`}>{f.val ? dayLabel(f.val) : f.empty}</span>
+            </span>
+            {f.val && (
+              <button type="button" className="tk-dp-x" title={f.clearTip} aria-label={f.clearTip} onClick={f.clear}>
+                <AppIcon name="x" size={11} />
               </button>
             )}
           </div>
@@ -240,33 +249,37 @@ export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
       <MonthGrid
         month={month}
         setMonth={setMonth}
-        cellState={(v) => ({ sel: v === dr.a || v === dr.b, inRange: !!(dr.a && dr.b && v > dr.a && v < dr.b) })}
+        joined
+        cellState={(v) => ({
+          sel: v === dr.a || v === B,
+          inRange: !!(B && v > dr.a && v < B),
+          edge: B && v === dr.a ? 'a' : B && v === B ? 'b' : null,
+        })}
         onPick={pick}
       />
 
-      {showTime && dr.a && (
-        <div className="tk-dp-times">
-          <label className="tk-dp-time">
-            <span>{dr.b ? 'Giờ bắt đầu' : 'Giờ'}</span>
-            <input type="time" value={dr.ta || ''} onChange={(e) => setDr((d) => ({ ...d, ta: e.target.value || null }))} />
-          </label>
-          {dr.b && (
-            <label className="tk-dp-time">
-              <span>Giờ kết thúc</span>
-              <input type="time" value={dr.tb || ''} onChange={(e) => setDr((d) => ({ ...d, tb: e.target.value || null }))} />
-            </label>
-          )}
+      {timeOn && (
+        <div className="tk-dp-timerow">
+          <AppIcon name="clock" size={13} className="tk-dp-timerow__ic" />
+          <input type="time" aria-label="Giờ bắt đầu" value={dr.ta || ''} onChange={(e) => setDr((d) => ({ ...d, a: d.a || toDateStr(), ta: e.target.value || null }))} />
+          <AppIcon name="arrowRight" size={11} className="tk-dp-timerow__arrow" />
+          <input type="time" aria-label="Giờ kết thúc" value={dr.tb || ''} onChange={(e) => setDr((d) => ({ ...d, tb: e.target.value || null }))} />
+          <button type="button" className="tk-dp-x" title="Bỏ giờ" aria-label="Bỏ giờ" onClick={noTime}>
+            <AppIcon name="x" size={11} />
+          </button>
         </div>
       )}
 
       <div className="tk-dp-foot">
-        <button type="button" className="tk-dp-addtime" disabled={!dr.a} onClick={() => setShowTime((s) => !s)}>
-          <AppIcon name="clock" size={15} />
-          {showTime ? 'Bỏ giờ' : 'Thêm giờ'}
-        </button>
-        <button type="button" className="tk-dp-cancel" onClick={onClose}>Huỷ</button>
-        <button type="button" className="tk-btn-primary tk-dp-save" onClick={save}>
-          <AppIcon name="check" size={14} />
+        {!timeOn && (
+          <button type="button" className="tk-dp-btn" onClick={addTime}>
+            <AppIcon name="clock" size={13} />
+            Thêm giờ
+          </button>
+        )}
+        <button type="button" className="tk-dp-btn tk-dp-cancel" onClick={onClose}>Huỷ</button>
+        <button type="button" className={`tk-dp-save${dirty ? '' : ' is-idle'}`} onClick={save}>
+          <AppIcon name="check" size={12} />
           Lưu
         </button>
       </div>
@@ -274,18 +287,7 @@ export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
   );
 }
 
-const chipStyle = (on) => ({
-  height: '28px',
-  borderRadius: '7px',
-  border: '1px solid var(--tk-border)',
-  background: on ? 'var(--tk-sel-bg)' : 'var(--tk-border-soft)',
-  color: on ? 'var(--tk-sel-fg)' : 'var(--tk-text-main)',
-  fontSize: '11.5px',
-  fontWeight: 500,
-  cursor: 'pointer',
-});
-
-/** Lọc theo khoảng ngày: bấm ngày đầu rồi ngày cuối (lịch có ngày âm). */
+/** Lọc theo khoảng ngày (mockup): nhãn khoảng · 4 khoảng nhanh · lịch có ngày âm · "Bấm ngày đầu, rồi ngày cuối". */
 export function DateRangePopover({ initialFrom, initialTo, onApply, onClose, style }) {
   const ref = useRef(null);
   usePopoverShell(ref, onClose);
@@ -316,18 +318,27 @@ export function DateRangePopover({ initialFrom, initialTo, onApply, onClose, sty
     : rg.a === rg.b
     ? shortDM(rg.a)
     : `${shortDM(rg.a)} → ${shortDM(rg.b)}`;
+  const apply = () => {
+    if (!rg.a) return;
+    onApply(rg.a, rg.b || rg.a);
+    onClose();
+  };
 
   return (
-    <div
-      ref={ref}
-      className="tk-popover"
-      style={{ width: '264px', display: 'flex', flexDirection: 'column', gap: '8px', ...style }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--tk-text-main)' }}>{label}</span>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+    <div ref={ref} className="tk-popover tk-datepick" style={style} onClick={(e) => e.stopPropagation()}>
+      <div className="tk-rp-head">
+        <AppIcon name="calendar" size={13} className="tk-rp-head__ic" />
+        <span className="tk-rp-head__lbl">{label}</span>
+      </div>
+      <div className="tk-rp-quick">
         {quick.map((q) => (
-          <button key={q.label} type="button" onClick={() => setRg({ a: q.a, b: q.b })} style={chipStyle(rg.a === q.a && rg.b === q.b)}>
+          <button
+            key={q.label}
+            type="button"
+            title={`${shortDM(q.a)} – ${shortDM(q.b)}`}
+            className={`tk-rp-chip${rg.a === q.a && rg.b === q.b ? ' is-on' : ''}`}
+            onClick={() => setRg({ a: q.a, b: q.b })}
+          >
             {q.label}
           </button>
         ))}
@@ -335,21 +346,18 @@ export function DateRangePopover({ initialFrom, initialTo, onApply, onClose, sty
       <MonthGrid
         month={month}
         setMonth={setMonth}
+        nav="left"
         cellState={(v) => ({ sel: v === rg.a || v === rg.b, inRange: !!(rg.a && rg.b && v > rg.a && v < rg.b) })}
         onPick={pick}
       />
-      <button
-        type="button"
-        disabled={!rg.a}
-        onClick={() => {
-          onApply(rg.a, rg.b || rg.a);
-          onClose();
-        }}
-        className="tk-btn-primary"
-        style={{ height: '32px', fontSize: '12px', justifyContent: 'center', opacity: rg.a ? 1 : 0.45 }}
-      >
-        Áp dụng
-      </button>
+      <div className="tk-dp-foot">
+        <span className="tk-rp-hint">Bấm ngày đầu, rồi ngày cuối</span>
+        <button type="button" className="tk-dp-btn" onClick={onClose}>Huỷ</button>
+        <button type="button" className={`tk-dp-save${rg.a ? '' : ' is-idle'}`} onClick={apply}>
+          <AppIcon name="check" size={12} />
+          Áp dụng
+        </button>
+      </div>
     </div>
   );
 }

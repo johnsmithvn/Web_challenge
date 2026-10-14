@@ -131,13 +131,14 @@ function navLabels(view, date, startOnSunday) {
   return { label: '', sub: '', today: 'Hôm nay' }; // Lịch biểu tự truyền label/sub (cần số việc & khoảng ngày)
 }
 
-export default function CalendarNavHead({ activeView, currentDate, setCurrentDate, startOnSunday, setStartOnSunday, label: labelProp, sub: subProp }) {
+// extra: số liệu view tự báo lên (mockup: Tuần "N việc có giờ, M cả ngày", Tháng "N việc có hạn") — nối sau năm can chi
+export default function CalendarNavHead({ activeView, currentDate, setCurrentDate, startOnSunday, setStartOnSunday, label: labelProp, sub: subProp, extra }) {
   const auto = useMemo(() => {
     const date = currentDate instanceof Date && !Number.isNaN(currentDate.getTime()) ? currentDate : new Date();
     return navLabels(activeView, date, startOnSunday);
   }, [activeView, currentDate, startOnSunday]);
   const label = labelProp ?? auto.label;
-  const sub = subProp ?? auto.sub;
+  const sub = subProp ?? (extra ? `${auto.sub} · ${extra}` : auto.sub);
   const { today } = auto;
 
   const shift = (dir) => {

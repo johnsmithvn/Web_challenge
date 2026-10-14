@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v6.25.0 — 2026-10-13
+
+### Added
+- **Nhiệm vụ — hiệu ứng thiên nhiên ban đêm (`utils/taskNatureFx.js`, port `nature-fx.js` của mockup):** trộn vào lượt hình bay đêm của cả Mặc định lẫn Rừng tiên: cực quang, sao ước nguyện (bấm trúng → nổ sáng + thẻ điều ước), chòm Thợ Săn, cầu vồng trăng, dải Ngân Hà, hồ phát sáng, sương rơi, lá bạc, bồ công anh phát sáng, rêu phát sáng; 1/40 lượt đêm là nguyệt thực (trăng máu). Keyframe `tkf-nfx*` trong `tasks-aurora.css`.
+- **Rừng tiên — 12 cảnh đêm mới (`taskFlyersElf.js`):** hồ ly lửa ma trơi, kỳ lân, đốm ma trơi, phù thuỷ bay ngang trăng, mèo đen, tiên ngủ, người cây, hồ ly cướp đèn lồng, ma trơi + cú + cá voi, cá voi húc rơi chổi phù thuỷ, mèo vồ hụt ma trơi; cú bị cháy lông thì ~10s sau kỳ lân tới chữa lành. Xong hết việc hôm nay ban đêm thêm cực quang rực.
+
+### Changed
+- **Hình bay bám mốc thật trên trang:** Hằng Nga, cú, nguyệt thực, phù thuỷ xuất phát / bay ngang đúng chỗ vẽ trăng; UFO đáp đúng mép chân trời hành tinh ở mọi chiều cao màn hình (trước dùng toạ độ khung mockup 1440×900 nên lệch 64px / lệch khi trang thấp hơn 900px). Mobile: con vật đi dưới đất (ếch, chú lùn, ong, hồ ly…) tính cách đáy trang thay cho toạ độ tuyệt đối của khung 844px.
+- **Rừng tiên — nấm + đom đóm bấm được bám theo %:** trước chốt px lúc mở trang nên lơ lửng / lệch vùng bấm / lượn ra ngoài khi trang đổi cao (thanh địa chỉ mobile ẩn hiện, đổi cỡ cửa sổ). Lượt hình bay đầu tiên của Rừng tiên chờ 1,5–3,5s như mockup.
+- **Bảng "Lịch & sự kiện" làm lại theo mockup (`CalendarWidgetPanel.jsx`, `tasks-aurora.css`, `tasks-elf.css`):** tab Lịch vạn niên (dương | âm hôm nay + can chi + tiết khí, "Hôm nay có" + "N việc đến hạn hôm nay →", 12 ô giờ hoàng đạo + giờ tốt kế tiếp, lịch tháng nhỏ có ngày âm và chấm, bật/tắt "Lịch hiển thị trên bảng") và tab "Sự kiện · N" (lọc theo lịch, nhóm Hôm nay / 7 ngày tới / Sau đó, Tạo việc). Giữ form thêm/xoá ngày kỷ niệm riêng. Màu qua token `--tk-ut-*` (đủ sáng/tối/Rừng tiên). Bỏ `calendar-widget.css` (1.092 dòng, chỉ bảng cũ dùng).
+- **Popover đổi ngày giờ / lọc khoảng ngày theo mockup (`TaskFloatingPopovers.jsx`, `calendarTimeUtils.js` `datePickDraft`/`datePickPatch`):** khung 256px, ô lịch 29px nối liền khoảng ngày; ô đang chọn nhận lần bấm (bỏ tự nhảy sang Kết thúc); ✕ "Bỏ hạn" xoá hết, ✕ "Bỏ ngày kết thúc"; dòng giờ bắt đầu → kết thúc (1 ngày có 2 giờ = khối giờ cùng ngày; giờ kết thúc không sau giờ bắt đầu thì bỏ); Lưu mờ khi chưa đổi. Lọc khoảng ngày: nhãn khoảng, 4 khoảng nhanh 1 hàng, "Bấm ngày đầu, rồi ngày cuối" + Huỷ / Áp dụng.
+- **Lịch biểu:** bấm giờ của việc chưa xong → popover "Đổi ngày giờ" (trước chỉ mở ngăn chi tiết).
+- **Phụ đề hàng điều hướng Tuần / Tháng:** thêm số liệu như mockup — "Bính Ngọ · N việc có giờ, M cả ngày" / "Bính Ngọ · N việc có hạn".
+- Chữ theo mockup: gợi ý ô thêm nhanh Kanban "↵ thêm · esc"; lịch tháng mobile "Không có việc nào trong ngày.".
+- `lunarUtils`: thêm `getSolarTerm` (24 tiết khí, cùng công thức kinh độ Mặt Trời) và `moonPhaseName` (dùng chung với trăng trên nền).
+
 ## v6.24.0 — 2026-10-12
 
 ### Added

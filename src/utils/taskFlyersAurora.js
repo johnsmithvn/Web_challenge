@@ -3,19 +3,26 @@
  * Port gần nguyên văn `flySpawn` của mockup "Nhiệm vụ - Kanban tối và sáng": mỗi lần gọi dựng 1 nhóm
  * vật bay (HTML/SVG) vào `host`, cho bay theo đường cong bằng Web Animations rồi tự xoá khi xong.
  * Ngày: phản lực, biểu diễn, trực thăng, tên lửa, đàn chim, đại bàng, khinh khí cầu, máy bay giấy,
- * băng rôn, UFO. Đêm: cú, dơi, máy bay đêm, ISS, phi hành gia, mưa sao băng, đèn trời, cá voi, Hằng Nga, UFO.
+ * băng rôn, UFO. Đêm: cú, dơi, máy bay đêm, ISS, phi hành gia, mưa sao băng, đèn trời, cá voi, Hằng Nga, UFO
+ * + hiệu ứng thiên nhiên dùng chung (taskNatureFx: cực quang, sao ước nguyện, nguyệt thực…).
  * Kích thước khung = kích thước thật của host; keyframe CSS mang tiền tố `tkf-` (tasks-aurora.css).
  * File là code mockup chuyển sang — giữ nguyên cấu trúc cho dễ đối chiếu khi mockup đổi.
  */
+import { NATURE_POOL, NATURE_TYPES, runNature, skyMoon, horizonY } from './taskNatureFx';
+
 let flyerSeq = 0;
 
 export function spawnAuroraFlyer(host, m, night) {
   const W = host.clientWidth || (m ? 390 : 1440), H = host.clientHeight || (m ? 844 : 900), k = m ? .72 : 1, R = Math.random, rr = (a, b) => a + R() * (b - a), sp = m ? .55 : 1;
-  const pool = (night ? [['owl', 2], ['bats', 2], ['nplane', 2], ['iss', 2], ['astro', 1.5], ['meteors', 2], ['lanterns', 2], ['whale', 1.2], ['hangnga', 1.5], ['abduct', 2.2], ['dome', 2.2]] : [['jet', 3], ['show', 2], ['heli', 2], ['rocket', 2], ['birds', 3], ['eagle', 2.5], ['balloon', 1.5], ['paper', 2], ['banner', 1.5], ['abduct', 2.2]]).filter(t => t[0] !== host.dataset.last);
+  const pool = (night ? [['owl', 2], ['bats', 2], ['nplane', 2], ['iss', 2], ['astro', 1.5], ['meteors', 2], ['lanterns', 2], ['whale', 1.2], ['hangnga', 1.5], ['abduct', 2.2], ['dome', 2.2], ...NATURE_POOL] : [['jet', 3], ['show', 2], ['heli', 2], ['rocket', 2], ['birds', 3], ['eagle', 2.5], ['balloon', 1.5], ['paper', 2], ['banner', 1.5], ['abduct', 2.2]]).filter(t => t[0] !== host.dataset.last);
   let pick = R() * pool.reduce((a, t) => a + t[1], 0), type = pool[0][0];
   for (const [n, w] of pool) { if ((pick -= w) <= 0) { type = n; break; } }
   if (m && type === 'dome') type = 'abduct';
+  if (night && R() < 1 / 40) type = 'eclipse';
   host.dataset.last = type;
+  // Trăng / chân trời theo chỗ vẽ thật trên trang (mockup dùng toạ độ khung 1440 có thanh bên)
+  const MOON = skyMoon(W, m, false), gY = x => horizonY(x, W, H);
+  if (type === 'eclipse' || NATURE_TYPES.includes(type)) { runNature(type, host, m, { moon: MOON, font: "'Space Grotesk',sans-serif", gx: m ? [.06, .94] : [.3, .7], gyAt: m ? (() => H - 16) : (x => gY(x) - 4) }); return; }
   const dir = R() < .5 ? 1 : -1, flip = dir < 0, P = (x, y, t) => [dir > 0 ? x : W - x, y, t], X0 = -170 * k, X1 = W + 170 * k, kk = .5523;
   const ln = (a, b, t0, t1, n = 3) => ({ p: [a, [a[0] + (b[0] - a[0]) / 3, a[1] + (b[1] - a[1]) / 3], [a[0] + (b[0] - a[0]) * 2 / 3, a[1] + (b[1] - a[1]) * 2 / 3], b], t: [t0, t1], n });
   const cr = (Q, n = 8) => Q.slice(0, -1).map((a, i) => { const b = Q[i + 1], pa = Q[i - 1] || a, pb = Q[i + 2] || b; return { p: [a, [a[0] + (b[0] - pa[0]) / 6, a[1] + (b[1] - pa[1]) / 6], [b[0] - (pb[0] - a[0]) / 6, b[1] - (pb[1] - a[1]) / 6], b], t: [a[2], b[2]], n }; });
@@ -44,7 +51,7 @@ export function spawnAuroraFlyer(host, m, night) {
   const beamS = [['[data-k="beam"]', [{ opacity: 0, offset: 0 }, { opacity: 0, offset: .48 }, { opacity: .9, offset: .52 }, { opacity: .9, offset: .7 }, { opacity: 0, offset: .74 }, { opacity: 0, offset: 1 }]]];
   const cflip = 'display:inline-block;' + (flip ? 'transform:scaleX(-1);' : '');
   if (type === 'hangnga') {
-    const MD = m ? 46 : 64, mcx = (m ? 300 : 500) + MD / 2, mcy = (m ? 50 : -1) + MD / 2, d = mcx < W / 2 ? 1 : -1, y1 = mcy + H * .17, D = rr(22, 27) * (m ? .8 : 1), kh = m ? .78 : 1;
+    const mcx = MOON[0], mcy = MOON[1], d = mcx < W / 2 ? 1 : -1, y1 = mcy + H * .17, D = rr(22, 27) * (m ? .8 : 1), kh = m ? .78 : 1;
     const say = ['Ngủ sớm nha~', 'Làm xong task chưa?', 'Chúc ngủ ngon~', 'Trăng đẹp hông?', 'Mai làm tiếp nha~'][Math.floor(R() * 5)];
     const burst = (dl) => { const e = document.createElement('div'); e.style.cssText = 'position:absolute;left:' + (mcx - 50) + 'px;top:' + (mcy - 50) + 'px;width:100px;height:100px;border-radius:50%;pointer-events:none;background:radial-gradient(closest-side,rgba(255,247,214,.85),rgba(253,230,138,.3) 50%,rgba(253,230,138,0))'; host.appendChild(e); e.animate([{ opacity: 0, transform: 'scale(.4)' }, { opacity: 1, transform: 'scale(' + kh + ')', offset: .3 }, { opacity: 0, transform: 'scale(' + 1.4 * kh + ')' }], { duration: 1400, delay: dl, fill: 'both' }).onfinish = () => e.remove(); };
     burst(0); burst(D * 1000 * .9);
@@ -64,7 +71,7 @@ export function spawnAuroraFlyer(host, m, night) {
     return;
   }
   if (type === 'abduct' || type === 'dome') {
-    const gY = x => { const dx = (x - W / 2) / (W * .62); return 1185 - 450 * Math.sqrt(Math.max(0, 1 - dx * dx)); }, onG = !m && night;
+    const onG = !m && night;
     const fx1 = (html, x, y, fr, d) => { const e = document.createElement('div'); e.style.cssText = 'position:absolute;left:' + x.toFixed(1) + 'px;top:' + y.toFixed(1) + 'px;width:0;height:0;pointer-events:none'; e.innerHTML = html; host.appendChild(e); e.animate(fr, { duration: d * 1000, fill: 'both' }).onfinish = () => e.remove(); };
     const at = (segs, t) => { const s = segs.find(z => t <= z.t[1]) || segs[segs.length - 1], u = Math.max(0, Math.min(1, (t - s.t[0]) / (s.t[1] - s.t[0]))), v = 1 - u, [a, b, c, d] = s.p; return [v * v * v * a[0] + 3 * v * v * u * b[0] + 3 * v * u * u * c[0] + u * u * u * d[0], v * v * v * a[1] + 3 * v * v * u * b[1] + 3 * v * u * u * c[1] + u * u * u * d[1]]; };
     const alien = '<circle cx="24" cy="7.6" r="3.2" fill="#86EFAC"/><circle cx="22.9" cy="7.2" r=".75" fill="#111"/><circle cx="25.1" cy="7.2" r=".75" fill="#111"/>';
@@ -162,7 +169,7 @@ export function spawnAuroraFlyer(host, m, night) {
     return;
   }
   if (night) {
-    const MC = m ? [323, 73] : [532, 31];
+    const MC = MOON;
     if (type === 'owl') {
       const sx = dir > 0 ? X0 : X1, ex = dir > 0 ? X1 : X0, ox = MC[0], oy = MC[1] + 6;
       fly('<div data-k="hoot" style="position:absolute;left:34px;top:-22px;padding:4px 8px;border-radius:9px 9px 9px 2px;background:rgba(24,28,58,.9);border:1px solid rgba(200,215,255,.3);white-space:nowrap;opacity:0"><span style="' + cflip + 'font:600 10px/1 \'Be Vietnam Pro\',sans-serif;color:#E6EEFF">hú… hú…</span></div><svg width="56" height="36" viewBox="0 0 56 36" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 4px rgba(170,190,255,.35))"><g style="transform-origin:30px 17px;animation:tkf-wingFlap .9s ease-in-out -.2s infinite alternate"><path d="M26 17 C30 7 40 2 52 2 C46 8 42 12 36 19 Z" fill="#20254A" stroke="rgba(190,205,255,.35)" stroke-width=".7"/></g><path d="M14 20 L3 17 L5 24 L14 25 Z" fill="#20254A"/><ellipse cx="25" cy="22" rx="13" ry="8.5" fill="#2A2F58" stroke="rgba(190,205,255,.4)" stroke-width=".7"/><path d="M30.5 9.5 L29.5 3 L34 7.5 Z M41.5 9.5 L42.5 3 L38 7.5 Z" fill="#2E3462"/><circle cx="36" cy="15" r="8" fill="#2E3462" stroke="rgba(190,205,255,.45)" stroke-width=".7"/><ellipse cx="36" cy="15.6" rx="6.2" ry="5.2" fill="#3B4278"/><g style="transform-origin:36px 15px;animation:tkf-blink 3.2s infinite"><circle cx="33.4" cy="15" r="2.5" fill="#FDE68A"/><circle cx="38.6" cy="15" r="2.5" fill="#FDE68A"/><circle cx="33.6" cy="15.2" r="1.1" fill="#111"/><circle cx="38.8" cy="15.2" r="1.1" fill="#111"/></g><path d="M35.4 17.6 L36 19.8 L36.6 17.6 Z" fill="#F5B83D"/><g style="transform-origin:26px 19px;animation:tkf-wingFlap .9s ease-in-out infinite alternate"><path d="M24 19 C20 9 12 4 2 3 C6 9 10 15 18 23 Z" fill="#363C6E" stroke="rgba(190,205,255,.4)" stroke-width=".7"/></g></svg>', 56, 36, cr([[sx, H * rr(.15, .3), 0], [(sx + ox) / 2, m ? H * .2 : 96, .28], [ox, oy, .5], [(ox + ex) / 2, H * rr(.12, .25), .72], [ex, H * rr(.05, .2), 1]], 10), rr(14, 18) * sp, { tk: .35, sync: [['[data-k="hoot"]', [{ opacity: 0, offset: 0 }, { opacity: 0, offset: .42 }, { opacity: 1, offset: .46 }, { opacity: 1, offset: .6 }, { opacity: 0, offset: .64 }, { opacity: 0, offset: 1 }]]] });

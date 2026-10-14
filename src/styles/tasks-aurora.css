@@ -121,6 +121,10 @@
 @keyframes tkf-tailSwish { 0% { transform: rotate(-9deg); } 100% { transform: rotate(9deg); } }
 @keyframes tkf-flick { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } 70% { opacity: 0.7; } }
 @keyframes tkf-ribbonWave { 0% { transform: skewY(-5deg) scaleY(0.92); } 100% { transform: skewY(5deg) scaleY(1.12); } }
+/* Hiệu ứng thiên nhiên dùng chung (utils/taskNatureFx.js) */
+@keyframes tkf-nfxSpin { to { transform: rotate(360deg); } }
+@keyframes tkf-nfxTw { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes tkf-nfxWave { 0% { transform: translateX(-2%) skewY(-2deg) scaleY(0.94); } 100% { transform: translateX(2%) skewY(2deg) scaleY(1.08); } }
 
 /* Đom đóm lơ lửng nửa dưới trang (bản tối) */
 @keyframes taskFfWander {
@@ -350,6 +354,21 @@
   --tk-opt-on: rgba(94, 242, 194, 0.10);
   --tk-util-bg: rgba(9, 13, 27, 0.94);
   --tk-util-bd: rgba(255, 255, 255, 0.09);
+  --tk-ut-tabs-bg: rgba(255, 255, 255, 0.03);
+  --tk-pp-soft: rgba(255, 255, 255, 0.04);
+  --tk-ut-tabs-bd: rgba(255, 255, 255, 0.08);
+  --tk-ut-hover: rgba(255, 255, 255, 0.05);
+  --tk-ut-hero-bg: linear-gradient(155deg, rgba(94, 242, 194, 0.10), rgba(139, 92, 246, 0.12) 60%, rgba(34, 211, 238, 0.06));
+  --tk-ut-hero-bd: rgba(94, 242, 194, 0.18);
+  --tk-ut-lunar: #C4B5FD;
+  --tk-ut-sun: #FF8BA0;
+  --tk-ut-chip-bg: rgba(255, 255, 255, 0.05);
+  --tk-ut-chip-bd: rgba(255, 255, 255, 0.09);
+  --tk-ut-row-bg: rgba(255, 255, 255, 0.025);
+  --tk-ut-seg-on: rgba(251, 191, 36, 0.55);
+  --tk-ut-seg-off: rgba(255, 255, 255, 0.07);
+  --tk-ut-mute: #4A5270;
+  --tk-ut-sw-off: rgba(255, 255, 255, 0.14);
   --tk-sheet-bg: rgba(10, 14, 28, 0.98);
   --tk-scrim: rgba(3, 5, 12, 0.62);
 
@@ -545,6 +564,21 @@
   --tk-opt-on: #EDE9FE;
   --tk-util-bg: rgba(255, 255, 255, 0.88);
   --tk-util-bd: #FFFFFF;
+  --tk-ut-tabs-bg: #F6F4FF;
+  --tk-pp-soft: #F6F4FF;
+  --tk-ut-tabs-bd: #EAE6FB;
+  --tk-ut-hover: #F6F4FF;
+  --tk-ut-hero-bg: linear-gradient(155deg, #FFF1F5, #F3F0FF 60%, #ECFEFF);
+  --tk-ut-hero-bd: #FBE2EA;
+  --tk-ut-lunar: #EA580C;
+  --tk-ut-sun: #E11D48;
+  --tk-ut-chip-bg: rgba(255, 255, 255, 0.8);
+  --tk-ut-chip-bd: #EAE6FB;
+  --tk-ut-row-bg: rgba(255, 255, 255, 0.6);
+  --tk-ut-seg-on: #FCD34D;
+  --tk-ut-seg-off: #EDE9FE;
+  --tk-ut-mute: #A3A7C0;
+  --tk-ut-sw-off: #E2E8F0;
   --tk-sheet-bg: rgba(255, 255, 255, 0.98);
   --tk-scrim: rgba(30, 27, 58, 0.3);
 
@@ -2484,6 +2518,725 @@
   border: 1px solid var(--tk-util-bd);
   backdrop-filter: blur(24px);
   box-shadow: 0 30px 80px -30px var(--tk-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: tkUtIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="light"] .tasks-workspace .cal-widget-panel {
+  border-radius: 24px;
+}
+
+@keyframes tkUtIn {
+  from { transform: translateX(16px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Nội dung panel theo mockup: tab Lịch vạn niên / Sự kiện (CalendarWidgetPanel.jsx) */
+.tk-ut__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 10px 12px;
+  border-bottom: 1px solid var(--tk-divider);
+}
+
+.tk-ut-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--tk-ut-tabs-bg);
+  border: 1px solid var(--tk-ut-tabs-bd);
+}
+
+.tk-ut-tab {
+  height: 28px;
+  padding: 0 11px;
+  border: none;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--tk-text-sub);
+  font: 600 12.5px/1 'Be Vietnam Pro', sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tk-ut-tab.is-on {
+  background: var(--tk-seg-on-bg);
+  color: var(--tk-seg-on-fg);
+}
+
+.tk-ut__close {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--tk-text-sub);
+  cursor: pointer;
+}
+
+.tk-ut__close:hover,
+.tk-ut-nav:hover,
+.tk-ut-cal__cell:hover,
+.tk-ut-cal-row:hover,
+.tk-ut-row.is-link:hover,
+.tk-ut-ev__add:not(:disabled):hover,
+.tk-ut-ev__del:hover {
+  background: var(--tk-ut-hover);
+}
+
+.tk-ut__close:hover {
+  color: var(--tk-text-main);
+}
+
+.tk-ut__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.tk-ut__body.is-events {
+  padding: 0 14px 16px;
+  gap: 14px;
+}
+
+.tk-ut__events {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tk-ut-label {
+  font: 500 10.5px/1 'JetBrains Mono', monospace;
+  letter-spacing: 0.1em;
+  color: var(--tk-label);
+}
+
+.tk-ut-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Thẻ dương | âm lịch */
+.tk-ut-hero {
+  flex: none;
+  border-radius: 16px;
+  padding: 16px 14px 14px;
+  background: var(--tk-ut-hero-bg);
+  border: 1px solid var(--tk-ut-hero-bd);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tk-ut-hero__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.tk-ut-hero__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.tk-ut-hero__num {
+  font: 700 calc(52px * var(--tk-ds, 1))/1 var(--tk-font-display);
+  letter-spacing: -0.03em;
+  color: var(--tk-text-main);
+}
+
+.tk-ut-hero__num.is-lunar {
+  color: var(--tk-ut-lunar);
+}
+
+.tk-ut-hero__dow,
+.tk-ut-hero__mon {
+  font: 600 13px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+}
+
+.tk-ut-hero__dow {
+  color: var(--tk-ut-sun);
+}
+
+.tk-ut-hero__sub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: 400 11.5px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-sub);
+}
+
+.tk-ut-hero__sep {
+  align-self: stretch;
+  background: var(--tk-divider);
+}
+
+.tk-ut-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+}
+
+.tk-ut-chip {
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--tk-ut-chip-bg);
+  border: 1px solid var(--tk-ut-chip-bd);
+  font: 500 11.5px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+}
+
+.tk-ut-sec {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tk-ut-sec.is-hd {
+  gap: 9px;
+}
+
+.tk-ut-sec.is-cals {
+  gap: 4px;
+}
+
+.tk-ut-sec.is-cals > .tk-ut-label {
+  margin-bottom: 4px;
+}
+
+.tk-ut-sec__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tk-ut-sec.is-hd .tk-ut-sec__head {
+  gap: 8px;
+}
+
+.tk-ut-sec__aside {
+  margin-left: auto;
+  font: 400 11px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-label);
+}
+
+/* Hôm nay có: sự kiện + lối tắt việc đến hạn */
+.tk-ut-row {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--tk-ut-row-bg);
+}
+
+.tk-ut-row__text {
+  min-width: 0;
+  font: 500 13px/1.3 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+}
+
+.tk-ut-row.is-link {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: 500 13px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-accent);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tk-ut-row__end {
+  margin-left: auto;
+}
+
+/* 12 giờ: thanh vàng = hoàng đạo, viền = giờ hiện tại */
+.tk-ut-hd {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.tk-ut-hd__seg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.tk-ut-hd__bar {
+  width: 100%;
+  height: 24px;
+  border-radius: 5px;
+  background: var(--tk-ut-seg-off);
+}
+
+.tk-ut-hd__seg.is-good .tk-ut-hd__bar {
+  background: var(--tk-ut-seg-on);
+}
+
+.tk-ut-hd__seg.is-now .tk-ut-hd__bar {
+  box-shadow: inset 0 0 0 1.5px var(--tk-text-main);
+}
+
+.tk-ut-hd__name {
+  font: 500 9.5px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-ut-mute);
+}
+
+.tk-ut-hd__seg.is-good .tk-ut-hd__name {
+  color: var(--tk-hd-fg);
+}
+
+.tk-ut-hd__seg.is-now .tk-ut-hd__name {
+  font-weight: 700;
+  color: var(--tk-text-main);
+}
+
+.tk-ut-now {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: var(--tk-ut-row-bg);
+}
+
+.tk-ut-now__main {
+  font: 500 12.5px/1.35 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+}
+
+.tk-ut-now__sub {
+  font: 400 12px/1.35 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-sub);
+}
+
+/* Lịch tháng nhỏ (tuần bắt đầu Chủ nhật) */
+.tk-ut-nav {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--tk-text-sub);
+  cursor: pointer;
+}
+
+.tk-ut-label + .tk-ut-nav {
+  margin-left: auto;
+}
+
+.tk-ut-cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.tk-ut-cal__dow {
+  text-align: center;
+  font: 500 10px/18px 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-label);
+}
+
+.tk-ut-cal__dow.is-sun {
+  color: var(--tk-ut-sun);
+}
+
+.tk-ut-cal__cell {
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: transparent;
+  color: var(--tk-cal-fg);
+  cursor: pointer;
+}
+
+.tk-ut-cal__cell.is-sun {
+  color: var(--tk-sun);
+}
+
+.tk-ut-cal__cell.is-out {
+  color: var(--tk-ut-mute);
+}
+
+.tk-ut-cal__cell.is-today {
+  background: var(--tk-opt-on);
+  box-shadow: inset 0 0 0 1.5px var(--tk-ring);
+}
+
+.tk-ut-cal__n {
+  font: 600 12px/1 'Be Vietnam Pro', sans-serif;
+}
+
+.tk-ut-cal__lun {
+  font: 400 8.5px/1 'JetBrains Mono', monospace;
+  color: var(--tk-ut-mute);
+}
+
+.tk-ut-cal__dots {
+  height: 4px;
+  display: flex;
+  gap: 2px;
+}
+
+.tk-ut-cal__dots > span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+
+.tk-ut-hint {
+  font: 400 11.5px/1.4 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-label);
+}
+
+/* Lịch hiển thị trên bảng: chấm màu · tên · số ngày · công tắc */
+.tk-ut-cal-row {
+  height: 36px;
+  padding: 0 6px;
+  margin: 0 -6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.tk-ut-cal-row:focus-visible,
+.tk-ut-ev:focus-visible {
+  outline: 2px solid var(--tk-accent);
+  outline-offset: -2px;
+}
+
+.tk-ut-cal-row__name {
+  flex: 1;
+  font: 500 13px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+}
+
+.tk-ut-cal-row__cnt {
+  font: 400 11px/1 'JetBrains Mono', monospace;
+  color: var(--tk-label);
+}
+
+.tk-ut-cal-row__add {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--tk-ut-chip-bd);
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--tk-text-sub);
+  cursor: pointer;
+}
+
+.tk-ut-switch {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--tk-ut-sw-off);
+  transition: background 0.15s;
+}
+
+.tk-ut-switch > span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s;
+}
+
+.tk-ut-switch.is-on > span {
+  transform: translateX(14px);
+}
+
+/* Form thêm ngày kỷ niệm riêng (giữ tính năng cũ, không có trong mockup) */
+.tk-ut-anniv {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--tk-ut-row-bg);
+  border: 1px solid var(--tk-divider);
+}
+
+.tk-ut-anniv__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.tk-ut-anniv .tk-ut-tab {
+  height: 24px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+.tk-ut-anniv__input,
+.tk-ut-anniv__select {
+  height: 30px;
+  min-width: 0;
+  padding: 0 9px;
+  border-radius: 8px;
+  border: 1px solid var(--tk-input-bd);
+  background: var(--tk-input-bg);
+  color: var(--tk-text-main);
+  font: 500 12.5px/1 'Be Vietnam Pro', sans-serif;
+  outline: none;
+}
+
+.tk-ut-anniv__input:focus,
+.tk-ut-anniv__select:focus {
+  border-color: var(--tk-input-focus);
+}
+
+.tk-ut-anniv__year {
+  width: 120px;
+}
+
+.tk-ut-anniv__icons {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+}
+
+.tk-ut-anniv__icon {
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.tk-ut-anniv__icon.is-on {
+  border-color: var(--tk-accent-border);
+  background: var(--tk-accent-soft);
+}
+
+.tk-ut-anniv__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.tk-ut-anniv__btn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--tk-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tk-text-sub);
+  font: 600 12.5px/1 'Be Vietnam Pro', sans-serif;
+  cursor: pointer;
+}
+
+.tk-ut-anniv__btn.is-primary {
+  border-color: var(--tk-solid-bg);
+  background: var(--tk-solid-bg);
+  color: var(--tk-solid-fg);
+}
+
+.tk-ut-anniv__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Tab Sự kiện */
+.tk-ut-fils {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 12px 14px 10px;
+}
+
+.tk-ut-fil {
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--tk-card-border);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--tk-cal-fg);
+  font: 500 12px/1 'Be Vietnam Pro', sans-serif;
+  cursor: pointer;
+}
+
+.tk-ut-fil.is-on {
+  border-color: var(--tk-fon-bg);
+  background: var(--tk-fon-bg);
+  color: var(--tk-fon-fg);
+}
+
+.tk-ut-fil__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.tk-ut-fil__cnt {
+  font: 500 10.5px/1 'JetBrains Mono', monospace;
+  opacity: 0.65;
+}
+
+.tk-ut-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tk-ut-group__name {
+  padding: 4px 2px 2px;
+}
+
+.tk-ut-ev {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  border-radius: 12px;
+  background: var(--tk-ut-row-bg);
+  border: 1px solid var(--tk-divider);
+  cursor: pointer;
+}
+
+.tk-ut-ev__dot {
+  margin-top: 5px;
+}
+
+.tk-ut-ev__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tk-ut-ev__name {
+  font: 600 13px/1.35 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+  text-wrap: pretty;
+}
+
+.tk-ut-ev__date {
+  font: 400 11px/1 'JetBrains Mono', monospace;
+  color: var(--tk-label);
+}
+
+.tk-ut-ev__side {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.tk-ut-cd {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--tk-cal-fg);
+  font: 600 11px/1 'Be Vietnam Pro', sans-serif;
+  white-space: nowrap;
+}
+
+.tk-ut-cd.is-hot {
+  border-color: var(--tk-ks-late-bd);
+  background: var(--tk-ks-late-bg);
+  color: var(--tk-ks-late-fg);
+}
+
+.tk-ut-ev__acts {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tk-ut-ev__add,
+.tk-ut-ev__del {
+  height: 22px;
+  padding: 0 7px;
+  border: none;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  color: var(--tk-seg-on-fg);
+  font: 500 11px/1 'Be Vietnam Pro', sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tk-ut-ev__add.is-added {
+  color: var(--tk-st-done);
+  cursor: default;
+}
+
+.tk-ut-ev__del {
+  padding: 0 5px;
+  color: var(--tk-text-sub);
+}
+
+.tk-ut-empty {
+  padding: 30px 0;
+  text-align: center;
+  font: 400 12.5px/1.5 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-label);
 }
 
 .tk-util-scrim {
@@ -3552,46 +4305,52 @@
   background: var(--tk-opt-on);
 }
 
-/* ── Chọn ngày (mockup): ô Bắt đầu / Kết thúc → lịch có ngày âm → Thêm giờ · Huỷ · Lưu ── */
+/* ── Đổi ngày giờ / lọc khoảng ngày (mockup): rộng 256, ô 38px, lịch 29px có ngày âm, chân có vạch chia ── */
 .tk-datepick {
-  width: 284px;
+  width: 256px;
   padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .tk-dp-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px;
 }
 
 .tk-dp-field {
-  position: relative;
   min-width: 0;
-  padding: 7px 26px 7px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--tk-input-bd);
-  background: var(--tk-input-bg);
+  height: 38px;
+  padding: 0 4px 0 9px;
+  border-radius: 9px;
+  background: var(--tk-pp-soft);
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  align-items: center;
+  gap: 4px;
   cursor: pointer;
 }
 
 .tk-dp-field.is-on {
-  border-color: var(--tk-accent);
-  background: var(--tk-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--tk-ring);
+}
+
+.tk-dp-field__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .tk-dp-field__lbl {
-  font: 500 10.5px/1 'Be Vietnam Pro', sans-serif;
-  color: var(--tk-text-mute);
+  font: 500 9.5px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-sub);
 }
 
 .tk-dp-field__val {
-  font: 600 13px/1.2 'Be Vietnam Pro', sans-serif;
+  font: 600 12px/1 'Be Vietnam Pro', sans-serif;
   color: var(--tk-text-main);
   white-space: nowrap;
   overflow: hidden;
@@ -3599,20 +4358,17 @@
 }
 
 .tk-dp-field__val.is-empty {
-  font-weight: 500;
   color: var(--tk-text-mute);
 }
 
-.tk-dp-field__x {
-  position: absolute;
-  top: 50%;
-  right: 4px;
+/* Nút ✕ nhỏ: Bỏ hạn / Bỏ ngày kết thúc / Bỏ giờ */
+.tk-dp-x {
+  flex: none;
   width: 20px;
   height: 20px;
   padding: 0;
   border: none;
-  border-radius: 6px;
-  transform: translateY(-50%);
+  border-radius: 5px;
   display: grid;
   place-items: center;
   background: transparent;
@@ -3620,38 +4376,73 @@
   cursor: pointer;
 }
 
-.tk-dp-field__x:hover {
-  background: var(--tk-hover);
-  color: var(--tk-text-main);
-}
-
-.tk-dp-month {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.tk-dp-x:hover {
+  background: var(--tk-late-row-hover);
+  color: var(--tk-sun);
 }
 
 .tk-dp-nav {
   display: flex;
   align-items: center;
+}
+
+.tk-dp-nav.is-center {
   justify-content: space-between;
 }
 
+.tk-dp-nav.is-left {
+  gap: 2px;
+}
+
+.tk-dp-nav.is-left .tk-dp-title {
+  flex: 1;
+  padding-left: 4px;
+}
+
+.tk-dp-navbtn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--tk-text-sub);
+  cursor: pointer;
+}
+
+.tk-dp-nav.is-left .tk-dp-navbtn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.tk-dp-navbtn:hover {
+  background: var(--tk-hover);
+  color: var(--tk-text-main);
+}
+
 .tk-dp-title {
-  font: 700 calc(14px * var(--tk-ds, 1))/1 var(--tk-font-display);
+  font: 600 calc(12.5px * var(--tk-ds, 1))/1 var(--tk-font-display);
   color: var(--tk-text-main);
 }
 
 .tk-dp-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 2px;
+  gap: 1px;
+}
+
+/* Popover đổi hạn: khoảng ngày nối liền thành 1 dải */
+.tk-dp-grid.is-joined {
+  gap: 1px 0;
 }
 
 .tk-dp-dow {
   text-align: center;
-  font: 500 11px/22px 'Be Vietnam Pro', sans-serif;
-  color: var(--tk-text-mute);
+  font: 500 10px/16px 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-label);
 }
 
 .tk-dp-dow.is-sun,
@@ -3660,39 +4451,52 @@
 }
 
 .tk-cal-cell {
-  height: 36px;
+  height: 29px;
   padding: 0;
   border: none;
-  border-radius: 9px;
+  border-radius: 7px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 1px;
   background: transparent;
-  color: var(--tk-text-main);
+  color: var(--tk-cal-fg);
   cursor: pointer;
 }
 
 .tk-cal-cell:hover {
-  background: var(--tk-hover);
+  outline: 1px solid var(--tk-border-strong);
 }
 
 .tk-cal-cell__n {
-  font: 600 14px/1 'Be Vietnam Pro', sans-serif;
+  font: 500 12px/1 'Be Vietnam Pro', sans-serif;
 }
 
 .tk-cal-cell__l {
-  font: 400 8.5px/1 'JetBrains Mono', monospace;
-  color: var(--tk-text-mute);
+  font: 400 8px/1 'JetBrains Mono', monospace;
+  color: var(--tk-ut-mute);
 }
 
 .tk-cal-cell.is-today {
-  box-shadow: inset 0 0 0 1px var(--tk-accent-border);
+  box-shadow: inset 0 0 0 1px var(--tk-ring);
 }
 
 .tk-cal-cell.is-range {
-  background: var(--tk-accent-soft);
+  background: var(--tk-opt-on);
+  color: var(--tk-seg-on-fg);
+}
+
+.tk-dp-grid.is-joined .tk-cal-cell.is-range {
+  border-radius: 0;
+}
+
+.tk-cal-cell.is-edge-a {
+  border-radius: 7px 0 0 7px;
+}
+
+.tk-cal-cell.is-edge-b {
+  border-radius: 0 7px 7px 0;
 }
 
 .tk-cal-cell.is-sel {
@@ -3702,78 +4506,168 @@
 
 .tk-cal-cell.is-sel .tk-cal-cell__l {
   color: inherit;
-  opacity: 0.75;
 }
 
-.tk-dp-times {
+/* Dòng giờ: đồng hồ · giờ bắt đầu → giờ kết thúc · ✕ */
+.tk-dp-timerow {
+  height: 34px;
+  padding: 0 4px 0 9px;
+  border-radius: 9px;
+  background: var(--tk-pp-soft);
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
 }
 
-.tk-dp-time {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font: 500 10.5px/1 'Be Vietnam Pro', sans-serif;
+.tk-dp-timerow__ic {
+  flex: none;
+  color: var(--tk-accent);
+}
+
+.tk-dp-timerow__arrow {
+  flex: none;
   color: var(--tk-text-mute);
 }
 
-.tk-dp-time input {
-  height: 32px;
-  padding: 0 8px;
-  border-radius: 8px;
-  border: 1px solid var(--tk-input-bd);
-  background: var(--tk-input-bg);
-  font: 500 13px/1 'JetBrains Mono', monospace;
+.tk-dp-timerow input {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
   color: var(--tk-text-main);
+  font: 500 12.5px/1 'JetBrains Mono', monospace;
+  color-scheme: light;
+  outline: none;
+  cursor: pointer;
 }
 
-[data-theme="dark"] .tk-dp-time input {
+[data-theme="dark"] .tk-dp-timerow input {
   color-scheme: dark;
+}
+
+.tk-dp-timerow input:hover,
+.tk-dp-timerow input:focus-visible {
+  background: var(--tk-hover);
 }
 
 .tk-dp-foot {
   display: flex;
   align-items: center;
   gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--tk-divider);
 }
 
-.tk-dp-addtime,
-.tk-dp-cancel {
-  height: 32px;
+.tk-dp-btn {
+  height: 26px;
   padding: 0 8px;
   border: none;
-  border-radius: 8px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: transparent;
-  font: 500 13px/1 'Be Vietnam Pro', sans-serif;
+  font: 500 12px/1 'Be Vietnam Pro', sans-serif;
   color: var(--tk-text-sub);
   cursor: pointer;
 }
 
-.tk-dp-addtime {
-  margin-right: auto;
-  padding-left: 4px;
-}
-
-.tk-dp-addtime:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.tk-dp-addtime:not(:disabled):hover,
-.tk-dp-cancel:hover {
+.tk-dp-btn:hover {
   background: var(--tk-hover);
   color: var(--tk-text-main);
 }
 
+.tk-dp-cancel {
+  margin-left: auto;
+  padding: 0 9px;
+}
+
 .tk-dp-save {
-  padding: 0 14px;
-  gap: 6px;
+  height: 26px;
+  padding: 0 11px;
+  border: none;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--tk-solid-bg);
+  color: var(--tk-solid-fg);
+  font: 600 12px/1 'Be Vietnam Pro', sans-serif;
+  cursor: pointer;
+}
+
+.tk-dp-save:hover {
+  filter: brightness(1.08);
+}
+
+.tk-dp-save.is-idle {
+  opacity: 0.45;
+}
+
+/* Lọc khoảng ngày: nhãn khoảng + 4 khoảng nhanh + gợi ý ở chân */
+.tk-rp-head {
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 8px;
+  background: var(--tk-pp-soft);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tk-rp-head__ic {
+  flex: none;
+  color: var(--tk-accent);
+}
+
+.tk-rp-head__lbl {
+  flex: 1;
+  min-width: 0;
+  font: 500 12px/1 'JetBrains Mono', monospace;
+  color: var(--tk-text-main);
+  white-space: nowrap;
+}
+
+.tk-rp-quick {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.tk-rp-chip {
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: var(--tk-pp-soft);
+  color: var(--tk-text-main);
+  font: 500 11.5px/1 'Be Vietnam Pro', sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tk-rp-chip:hover {
+  outline: 1px solid var(--tk-border-strong);
+}
+
+.tk-rp-chip.is-on {
+  background: var(--tk-sel-bg);
+  color: var(--tk-sel-fg);
+}
+
+.tk-rp-hint {
+  margin-right: auto;
+  font: 400 11px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-label);
+}
+
+.tk-rp-hint + .tk-dp-btn {
+  padding: 0 9px;
 }
 
 .tk-btn-primary {
@@ -4799,6 +5693,19 @@
 
 .tk-ag-task__time.is-allday {
   color: var(--tk-text-mute);
+}
+
+/* Bấm giờ để đổi ngày giờ (mockup: "Đổi ngày giờ") */
+.tk-ag-task__time.is-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tk-ag-task__time.is-btn:hover {
+  color: var(--tk-accent);
 }
 
 .tk-ag-task__st {

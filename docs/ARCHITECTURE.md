@@ -30,7 +30,7 @@ src/
 ├─ contexts/           Auth, Theme, Toast
 ├─ utils/              logic thuần: kbDeriveUtils, calendarTimeUtils, lunarUtils, financeLogic, vaultCrypto
 ├─ data/               JSON tĩnh: taxonomy, template, holiday, quote, UI copy
-├─ styles/             CSS theo domain (kb-tokens, calendar-widget, week-calendar...); global.css giữ token chung
+├─ styles/             CSS theo domain (kb-tokens, tasks-aurora, tasks-elf...); global.css giữ token chung
 ├─ extensions/         Tiptap MediaNode
 ├─ lib/supabase.js     Supabase singleton + graceful disabled mode
 └─ __tests__/          self-check node:assert phân theo 4 domain: tasks/, vault/, finance/, core/
@@ -86,7 +86,7 @@ mọi thao tác: Finance RPC, Vault CAS và các flow nhiều bảng tuân theo 
 TasksPage (CalendarToolbar)
   ├─ List View (TaskListSection)
   ├─ Agenda / Day / Week / Month Calendar
-  └─ CalendarWidgetPanel (Lịch vạn niên, Can Chi, Giờ Hoàng đạo, Ngày lễ, Kỷ niệm)
+  └─ CalendarWidgetPanel (Lịch vạn niên + tiết khí, giờ hoàng đạo, lịch tháng nhỏ, bật/tắt lịch, sự kiện & kỷ niệm)
         ↓
 useUserTasks
   ├─ user_tasks

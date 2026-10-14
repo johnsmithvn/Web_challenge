@@ -142,6 +142,35 @@ export function lunarLabel(lunar) {
   return lunar.day === 1 ? `${lunar.day}/${lunar.month}` : String(lunar.day);
 }
 
+// 24 tiết khí, mỗi tiết 15° kinh độ Mặt Trời, bắt đầu từ Xuân phân (0°)
+// Viết hoa từng chữ như mockup ("Tiết Hàn Lộ")
+const SOLAR_TERMS = ['Xuân Phân', 'Thanh Minh', 'Cốc Vũ', 'Lập Hạ', 'Tiểu Mãn', 'Mang Chủng', 'Hạ Chí', 'Tiểu Thử',
+  'Đại Thử', 'Lập Thu', 'Xử Thử', 'Bạch Lộ', 'Thu Phân', 'Hàn Lộ', 'Sương Giáng', 'Lập Đông', 'Tiểu Tuyết', 'Đại Tuyết',
+  'Đông Chí', 'Tiểu Hàn', 'Đại Hàn', 'Lập Xuân', 'Vũ Thủy', 'Kinh Trập'];
+
+/**
+ * Tiết khí của 1 ngày dương (VD "Hàn lộ"). Ngày Mặt Trời bước sang tiết mới tính là tiết mới
+ * → lấy kinh độ lúc hết ngày (0h hôm sau, giờ Việt Nam). Cùng công thức kinh độ với getSunLongitude.
+ */
+export function getSolarTerm(dd, mm, yy, timeZone = TIMEZONE) {
+  const T = (jdFromDate(dd, mm, yy) + 1 - 2451545.5 - timeZone / 24) / 36525;
+  const T2 = T * T;
+  const M = 357.52910 + 35999.05030 * T - 0.0001559 * T2 - 0.00000048 * T * T2;
+  const L0 = 280.46645 + 36000.76983 * T + 0.0003032 * T2;
+  const DL = (1.914600 - 0.004817 * T - 0.000014 * T2) * Math.sin((PI / 180) * M)
+    + (0.019993 - 0.000101 * T) * Math.sin((PI / 180) * 2 * M) + 0.000290 * Math.sin((PI / 180) * 3 * M);
+  const deg = (((L0 + DL) % 360) + 360) % 360;
+  return SOLAR_TERMS[Math.floor(deg / 15)];
+}
+
+/** Tên pha trăng theo ngày âm (1–30). */
+export function moonPhaseName(lunarDay) {
+  const d = lunarDay;
+  return d <= 1 ? 'Trăng non' : d <= 6 ? 'Lưỡi liềm đầu tháng' : d <= 8 ? 'Thượng huyền'
+    : d <= 13 ? 'Trăng khuyết đầu tháng' : d <= 16 ? 'Trăng rằm' : d <= 21 ? 'Trăng khuyết cuối tháng'
+      : d <= 23 ? 'Hạ huyền' : d <= 29 ? 'Lưỡi liềm cuối tháng' : 'Trăng tàn';
+}
+
 export { jdFromDate };
 
 export const CAN = ['Giáp', 'Ất', 'Bính', 'Đinh', 'Mậu', 'Kỷ', 'Canh', 'Tân', 'Nhâm', 'Quý'];

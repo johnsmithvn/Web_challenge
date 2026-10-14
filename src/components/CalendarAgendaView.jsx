@@ -8,6 +8,7 @@ import HOLIDAYS from '../data/holidays.json';
 import AppIcon from './AppIcon';
 import TaskCard from './TaskCard';
 import CalendarNavHead from './CalendarToolbar';
+import { TaskDatePickerPopover } from './TaskFloatingPopovers';
 
 const SPAN = 21; // 3 tuần; "Xem thêm 2 tuần" cộng 14
 const DFULL = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -42,9 +43,12 @@ export default function CalendarAgendaView({
   customAnniversaries = [],
   refreshKey = 0,
   onRescheduleTask,
+  updateTask,
   isMobile = false,
 }) {
   const today = toDateStr();
+  // Popover đổi ngày giờ khi bấm giờ của 1 việc (mockup: "Đổi ngày giờ")
+  const [datePop, setDatePop] = useState(null);
   const [completedByDay, setCompletedByDay] = useState({});
   const [lateOpen, setLateOpen] = useState(false);
   // "Xem thêm" cộng dồn cho tới khi đổi ngày bắt đầu (‹ › / Hôm nay tạo Date mới) → về 3 tuần
@@ -186,7 +190,22 @@ export default function CalendarAgendaView({
     const subs = subsOf.get(t.id);
     return (
       <div key={`t-${t.id}`} className="tk-ag-task" role="button" tabIndex={0} onClick={open(t)} onKeyDown={onKeyOpen(t)} {...dragOf(t)}>
-        <span className={`tk-ag-task__time${tm ? '' : ' is-allday'}`}>{tm || ROLE_LABEL[taskDayRole(t, dateStr)]}</span>
+        {updateTask && !m.done ? (
+          <button
+            type="button"
+            className={`tk-ag-task__time is-btn${tm ? '' : ' is-allday'}`}
+            title="Đổi ngày giờ"
+            onClick={(e) => {
+              e.stopPropagation();
+              const r = e.currentTarget.getBoundingClientRect();
+              setDatePop({ task: t, x: r.left, y: r.bottom + 6 });
+            }}
+          >
+            {tm || ROLE_LABEL[taskDayRole(t, dateStr)]}
+          </button>
+        ) : (
+          <span className={`tk-ag-task__time${tm ? '' : ' is-allday'}`}>{tm || ROLE_LABEL[taskDayRole(t, dateStr)]}</span>
+        )}
         <span className="tk-ag-task__st" style={{ color: st.color }}>
           <AppIcon name={st.icon} size={isMobile ? 18 : 16} weight={st.weight} />
         </span>
@@ -255,6 +274,14 @@ export default function CalendarAgendaView({
   return (
     <>
       <CalendarNavHead activeView="agenda" currentDate={currentDate} setCurrentDate={setCurrentDate} label={head.label} sub={head.sub} />
+      {datePop && (
+        <TaskDatePickerPopover
+          task={datePop.task}
+          onSave={(patch) => updateTask(datePop.task.id, patch)}
+          onClose={() => setDatePop(null)}
+          style={{ position: 'fixed', top: `${datePop.y}px`, left: `${datePop.x}px` }}
+        />
+      )}
       <div className="tk-ag" role="region" aria-label="Lịch biểu">
         {late.length > 0 && (
           <div className="tk-ag-late">

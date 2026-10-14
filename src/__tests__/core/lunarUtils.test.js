@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { solarToLunar, lunarLabel } from '../../utils/lunarUtils.js';
+import { solarToLunar, lunarLabel, getSolarTerm, moonPhaseName } from '../../utils/lunarUtils.js';
 
 // ── Mốc đối chiếu (tra được ở mọi lịch vạn niên) ──────────────────────────
 // Ví dụ chuẩn trên trang thuật toán gốc: 1/1/2000 = 25/11 âm năm Kỷ Mão 1999.
@@ -230,6 +230,22 @@ for (let h = 0; h < 24; h++) {
     assert.equal(start.getMinutes(), 0);
     assert.equal(start.getHours(), g.startHour);
   }
+}
+
+// ── Tiết khí (mốc tra lịch vạn niên 2026; tránh ngày giáp ranh chuyển tiết) ──
+{
+  assert.equal(getSolarTerm(10, 10, 2026), 'Hàn Lộ', 'Hàn lộ 8/10 → 22/10');
+  assert.equal(getSolarTerm(1, 10, 2026), 'Thu Phân', 'Thu phân 23/9 → 7/10');
+  assert.equal(getSolarTerm(30, 6, 2026), 'Hạ Chí', 'Hạ chí 21/6 → 6/7');
+  assert.equal(getSolarTerm(10, 2, 2026), 'Lập Xuân', 'Lập xuân 4/2 → 18/2');
+  assert.equal(getSolarTerm(25, 12, 2026), 'Đông Chí', 'Đông chí 22/12 → 4/1');
+  assert.equal(getSolarTerm(15, 1, 2027), 'Tiểu Hàn', 'Tiểu hàn 5/1 → 19/1');
+  // Ranh giới: Thu phân 2026 rơi vào 23/9 (giờ VN) → 22/9 vẫn Bạch lộ, 23/9 đã Thu phân
+  assert.equal(getSolarTerm(22, 9, 2026), 'Bạch Lộ');
+  assert.equal(getSolarTerm(23, 9, 2026), 'Thu Phân');
+  assert.equal(moonPhaseName(1), 'Trăng non');
+  assert.equal(moonPhaseName(15), 'Trăng rằm');
+  assert.equal(moonPhaseName(30), 'Trăng tàn');
 }
 
 console.log('lunarUtils check: OK');

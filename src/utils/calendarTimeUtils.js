@@ -453,6 +453,31 @@ export function rescheduleTaskPatch(task, dateStr, timeStr) {
   return same ? null : patch;
 }
 
+/**
+ * Popover đổi ngày giờ (mockup): nháp { a, b, ta, tb } — a = ngày Bắt đầu/Hạn, b = ngày Kết thúc (tuỳ chọn),
+ * ta/tb = giờ bắt đầu → giờ kết thúc. Task có Bắt đầu + Hạn khác ngày → a/b; cùng ngày → khối giờ (ta → tb).
+ */
+export function datePickDraft(task) {
+  const hm = (t) => (t ? t.slice(0, 5) : null);
+  if (task?.start_date && task?.due_date) {
+    return task.start_date === task.due_date
+      ? { a: task.due_date, b: null, ta: hm(task.start_time), tb: hm(task.due_time) }
+      : { a: task.start_date, b: task.due_date, ta: hm(task.start_time), tb: hm(task.due_time) };
+  }
+  return { a: task?.due_date || task?.start_date || null, b: null, ta: hm(task?.due_date ? task.due_time : task?.start_time), tb: null };
+}
+
+/**
+ * Nháp → patch DB { start_date, start_time, due_date, due_time }. Không ngày → bỏ hết; có b sau a → Bắt đầu a, Hạn b;
+ * 1 ngày có cả giờ bắt đầu lẫn kết thúc (kết thúc sau bắt đầu) → khối giờ cùng ngày; còn lại → Hạn a (+ giờ ta).
+ */
+export function datePickPatch({ a, b, ta, tb }) {
+  if (!a) return { start_date: null, start_time: null, due_date: null, due_time: null };
+  if (b && b > a) return { start_date: a, start_time: ta || null, due_date: b, due_time: tb || null };
+  if (ta && tb && tb > ta) return { start_date: a, start_time: ta, due_date: a, due_time: tb };
+  return { start_date: null, start_time: null, due_date: a, due_time: ta || null };
+}
+
 /** onDragStart cho thẻ task trên các view Lịch. */
 export function taskDragStart(e, task) {
   e.stopPropagation();

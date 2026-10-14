@@ -35,6 +35,7 @@ export default function MonthCalendar({
   refreshKey = 0,
   onRescheduleTask,
   isMobile = false,
+  onStats,
 }) {
   const todayStr = toDateStr();
   const view = currentDate || new Date();
@@ -66,6 +67,15 @@ export default function MonthCalendar({
     });
     return () => { stale = true; };
   }, [gridFrom, gridTo, getCompletedTasksRange, refreshKey]);
+
+  // Phụ đề hàng điều hướng (mockup): "N việc có hạn" trong tháng đang xem (chờ làm + đã xong)
+  useEffect(() => {
+    if (!onStats) return;
+    const ids = new Set();
+    for (const t of pendingTasks || []) if (t.due_date?.startsWith(ym)) ids.add(t.id);
+    for (const list of Object.values(doneByDay)) for (const t of list) if (t.due_date?.startsWith(ym)) ids.add(t.id);
+    onStats({ view: 'month', text: `${ids.size} việc có hạn` });
+  }, [pendingTasks, doneByDay, ym, onStats]);
 
   const pendingByDay = useMemo(
     () => bucketTasksByDay(pendingTasks || [], gridFrom, gridTo),
@@ -189,7 +199,7 @@ export default function MonthCalendar({
             <TaskCard key={t.id} variant="mobile" task={t} today={todayStr} onOpen={open(t)} onStatus={open(t)} onDate={open(t)} onPriority={open(t)} />
           ))}
           {selInfo.tasks.length === 0 && selInfo.holidays.length === 0 && (
-            <span className="tk-mo-empty">Chưa có việc nào trong ngày.</span>
+            <span className="tk-mo-empty">Không có việc nào trong ngày.</span>
           )}
         </div>
       </div>

@@ -357,7 +357,7 @@ export default function TaskKanbanView({
                         {ch.n}
                       </span>
                     )) : <span className="tk-inline-add__hint">mai · t2 · 9h · !cao · #nhãn</span>}
-                    <span className="tk-inline-add__keys">↵ · esc</span>
+                    <span className="tk-inline-add__keys">↵ thêm · esc</span>
                     {onOpenFullForm && (
                       <button
                         type="button"

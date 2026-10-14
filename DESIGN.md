@@ -1223,6 +1223,10 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
 - **Vật bay ngẫu nhiên** (cả 2 kiểu): DOM do `utils/taskFlyersAurora.js` / `taskFlyersElf.js` dựng vào `.task-fly-host`
   (cuối `.task-cosmos-bg`), bay bằng Web Animations rồi tự xoá. Keyframe CSS của chúng mang tiền tố `tkf-`
   (chung ở tasks-aurora.css, riêng Elf ở tasks-elf.css). Code là port mockup — khi mockup đổi, chép lại hàm `flySpawn`.
+  Ban đêm cả 2 kiểu trộn thêm `utils/taskNatureFx.js` (port `nature-fx.js`): cực quang, sao ước nguyện bấm được,
+  Thợ Săn, cầu vồng trăng, Ngân Hà, hồ, sương, lá bạc, bồ công anh, rêu + nguyệt thực (1/40 lượt). Hình bám trăng / chân
+  trời lấy mốc thật qua `skyMoon` / `horizonY` (khớp `Moon`, `MobileMoon`, `.task-planet-horizon`); mặt đất mobile tính
+  cách đáy trang (mockup 742/758 → `H - 16`) để không lọt khỏi màn hình thấp.
 - **Ngắm cảnh**: `.tasks-workspace.is-scene` ẩn mọi con trừ `.task-cosmos-bg`, `.tk-scene-btn`, `.tk-elf-streak`.
 - **Cột Kanban** co theo nội dung: `.tk-col-slot` (vùng thả, cao hết) chứa `.tk-col` (`max-height: 100%`).
 - Màu tình trạng thời gian của thẻ: `--tk-ks-{late|today|soon|none|done|skip}-{glow|tint|fg|bg|bd}`
@@ -1248,6 +1252,13 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
 - Tháng `.tk-mo-*`: desktop lưới kín khung (ngày tháng trước/sau mờ), 1 sự kiện + tối đa 3 pill/ô
   (có sự kiện còn 2), "+N nữa"; mobile lưới gọn 50px (số · âm lịch · chấm) + danh sách ngày đang chọn.
 - Kéo thả trên Lịch: vùng thả có class `.is-drop-over` (viền nét đứt `--tk-accent`).
+- Bảng "Lịch & sự kiện" (`CalendarWidgetPanel`, class `.tk-ut-*`): khung 360px nổi phải (mobile sheet), tab
+  Lịch vạn niên / Sự kiện; token riêng `--tk-ut-{tabs-bg|tabs-bd|hover|hero-bg|hero-bd|lunar|sun|chip-bg|chip-bd|
+  row-bg|seg-on|seg-off|mute|sw-off}` khai báo ở 4 khối (tối, sáng, Rừng tiên sáng/tối); số dương/âm lớn dùng
+  `--tk-font-display` × `--tk-ds`.
+- Popover đổi ngày giờ / lọc khoảng ngày (`.tk-datepick`, `.tk-dp-*`, `.tk-rp-*`): rộng 256px, ô 38px (Bắt đầu /
+  Kết thúc), lịch 29px có ngày âm (`MonthGrid` nav `center` = ‹ Tháng ›, `left` = Tháng ‹ ›; `joined` nối liền khoảng),
+  chân có vạch chia; nền ô mềm `--tk-pp-soft`.
 
 ## Do's and Don'ts
 

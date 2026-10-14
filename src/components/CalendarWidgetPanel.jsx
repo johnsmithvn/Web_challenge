@@ -1,27 +1,88 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   solarToLunar,
+  lunarLabel,
   getCanChiYear,
   getCanChiMonth,
   getCanChiDay,
   getZodiacHours,
+  getNextGoodHour,
   getUpcomingEvents,
+  getSolarTerm,
+  moonPhaseName,
 } from '../utils/lunarUtils';
+import { holidayDot } from '../utils/calendarTimeUtils';
+import { toDateStr } from '../utils/dateUtils';
 import HOLIDAYS from '../data/holidays.json';
 import AppIcon from './AppIcon';
-import '../styles/calendar-widget.css';
 
 /**
- * CalendarWidgetPanel — Cột tiện ích bên phải đậm chất bản địa hóa Việt Nam.
- * Cung cấp:
- * 1. Thẻ Lịch vạn niên (Dương - Âm - Can Chi Năm/Tháng/Ngày)
- * 2. Giờ Hoàng Đạo (12 con giáp, highlight giờ tốt, định vị giờ hiện tại)
- * 3. Đếm ngược sự kiện & ngày lễ (Âm & Dương lịch)
+ * Bảng "Lịch & sự kiện" của trang Nhiệm vụ — theo mockup "Nhiệm vụ - Kanban tối và sáng" / "Rừng tiên".
+ * Tab Lịch vạn niên: dương/âm hôm nay + can chi + tiết khí, sự kiện hôm nay, giờ hoàng đạo, lịch tháng nhỏ
+ * (bấm ngày → chế độ xem Ngày), bật/tắt các lịch hiển thị trên bảng (+ thêm ngày kỷ niệm riêng).
+ * Tab Sự kiện: lọc theo lịch, nhóm Hôm nay / 7 ngày tới / Sau đó, tạo việc từ sự kiện.
+ * Màu lấy token --tk-* (tasks-aurora.css / tasks-elf.css) nên tự đổi theo sáng/tối và kiểu Rừng tiên.
  */
+const DSHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const DFULL = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+// [khoá bật/tắt hiện có, tên trong mockup]
+const CALS = [['solar', 'Ngày lễ Việt Nam'], ['lunar', 'Ngày lễ Âm lịch'], ['international', 'Ngày lễ Quốc tế'], ['japan', 'Ngày lễ Nhật Bản'], ['custom', 'Kỷ niệm'], ['fun', 'Geek']];
+const UPCOMING_DAYS = 90;
+const p2 = (n) => String(n).padStart(2, '0');
+const rangeLbl = (r) => r.replace('-', '–');
+const ANNIV_ICONS = ['💖', '🎂', '💍', '🕊️', '⭐', '🎉'];
+
+// Cùng quy ước mặc định với getUpcomingEvents: Nhật Bản / Geek phải bật rõ ràng, còn lại mặc định bật
+const isOn = (toggles, k) => (k === 'japan' || k === 'fun' ? !!toggles?.[k] : toggles?.[k] !== false);
+
+function AnnivForm({ onSave, onCancel }) {
+  const [title, setTitle] = useState('');
+  const [calType, setCalType] = useState('solar');
+  const [day, setDay] = useState(1);
+  const [month, setMonth] = useState(1);
+  const [year, setYear] = useState('');
+  const [icon, setIcon] = useState(ANNIV_ICONS[0]);
+  const save = (e) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    onSave({ id: `anniv-${Date.now()}`, title: title.trim(), calType, day: Number(day), month: Number(month), year: year ? Number(year) : null, icon });
+  };
+  return (
+    <form className="tk-ut-anniv" onSubmit={save}>
+      <input className="tk-ut-anniv__input" placeholder="Tên kỷ niệm (vd: Ngày cưới, Ngày giỗ…)" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus required />
+      <div className="tk-ut-anniv__row">
+        <div className="tk-ut-tabs">
+          {[['solar', 'Dương lịch'], ['lunar', 'Âm lịch']].map(([k, n]) => (
+            <button key={k} type="button" className={`tk-ut-tab${calType === k ? ' is-on' : ''}`} onClick={() => setCalType(k)}>{n}</button>
+          ))}
+        </div>
+        <select className="tk-ut-anniv__select" value={day} onChange={(e) => setDay(e.target.value)} aria-label="Ngày">
+          {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>Ngày {i + 1}</option>)}
+        </select>
+        <select className="tk-ut-anniv__select" value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Tháng">
+          {Array.from({ length: 12 }, (_, i) => <option key={i} value={i + 1}>Tháng {i + 1}</option>)}
+        </select>
+      </div>
+      <div className="tk-ut-anniv__row">
+        <div className="tk-ut-anniv__icons">
+          {ANNIV_ICONS.map((ic) => (
+            <button key={ic} type="button" className={`tk-ut-anniv__icon${icon === ic ? ' is-on' : ''}`} onClick={() => setIcon(ic)} aria-label={`Biểu tượng ${ic}`}>{ic}</button>
+          ))}
+        </div>
+        <input className="tk-ut-anniv__input tk-ut-anniv__year" type="number" min="1900" max="2100" placeholder="Năm (tuỳ chọn)" value={year} onChange={(e) => setYear(e.target.value)} />
+      </div>
+      <div className="tk-ut-anniv__actions">
+        <button type="button" className="tk-ut-anniv__btn" onClick={onCancel}>Huỷ</button>
+        <button type="submit" className="tk-ut-anniv__btn is-primary" disabled={!title.trim()}>Lưu kỷ niệm</button>
+      </div>
+    </form>
+  );
+}
+
 export default function CalendarWidgetPanel({
-  currentDate = new Date(),
-  onClose,
   isOpen = true,
+  onClose,
+  tasks = [],
   onSelectEventDate,
   holidayToggles = { solar: true, lunar: true, international: true, japan: false, fun: true, custom: true },
   onToggleHolidayType,
@@ -31,591 +92,255 @@ export default function CalendarWidgetPanel({
   onCreateTaskFromEvent,
   isEventTaskAdded,
 }) {
-  const [filterType, setFilterType] = useState('all'); // 'all' | 'solar' | 'lunar' | 'international' | 'custom' | 'japan' | 'fun'
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'events'
+  const [tab, setTab] = useState('today'); // 'today' | 'events'
+  const [fil, setFil] = useState('all');
+  const [showAnniv, setShowAnniv] = useState(false);
+  // Giờ hiện tại cập nhật mỗi phút (giờ hoàng đạo, "còn N phút")
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const t = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(t);
+  }, [isOpen]);
+  const today = toDateStr(now);
+  const [mon, setMon] = useState(() => ({ y: now.getFullYear(), m: now.getMonth() }));
 
-  // State bộ tạo ngày kỷ niệm cá nhân
-  const [showCreateAnniv, setShowCreateAnniv] = useState(false);
-  const [annivTitle, setAnnivTitle] = useState('');
-  const [annivCalType, setAnnivCalType] = useState('solar');
-  const [annivDay, setAnnivDay] = useState(1);
-  const [annivMonth, setAnnivMonth] = useState(1);
-  const [annivYear, setAnnivYear] = useState('');
-  const [annivIcon, setAnnivIcon] = useState('💖');
-
-  const handleSaveAnniv = (e) => {
-    e.preventDefault();
-    if (!annivTitle.trim()) return;
-    if (onAddCustomAnniversary) {
-      onAddCustomAnniversary({
-        id: `anniv-${Date.now()}`,
-        title: annivTitle.trim(),
-        calType: annivCalType,
-        day: Number(annivDay),
-        month: Number(annivMonth),
-        year: annivYear ? Number(annivYear) : null,
-        icon: annivIcon || '💖',
-      });
-    }
-    setAnnivTitle('');
-    setAnnivYear('');
-    setShowCreateAnniv(false);
-  };
-
-  // Tính toán thông tin lịch cho ngày đang chọn
-  const dateInfo = useMemo(() => {
-    const d = currentDate instanceof Date && !isNaN(currentDate) ? currentDate : new Date();
-    const dd = d.getDate();
-    const mm = d.getMonth() + 1;
-    const yy = d.getFullYear();
-
-    const lunar = solarToLunar(dd, mm, yy);
-    const canChiYear = getCanChiYear(lunar.year);
-    const canChiMonth = getCanChiMonth(lunar.year, lunar.month);
-    const canChiDay = getCanChiDay(dd, mm, yy);
-
-    const now = new Date();
-    const currentHour = d.toDateString() === now.toDateString() ? now.getHours() : null;
-    const zodiacHours = getZodiacHours(dd, mm, yy, currentHour);
-
-    const dayName = d.toLocaleDateString('vi-VN', { weekday: 'long' });
-
+  const info = useMemo(() => {
+    const d = now.getDate(), m = now.getMonth() + 1, y = now.getFullYear();
+    const lunar = solarToLunar(d, m, y);
     return {
-      solarDay: dd,
-      solarMonth: mm,
-      solarYear: yy,
-      dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-      lunarDay: lunar.day,
-      lunarMonth: lunar.month,
-      lunarYear: lunar.year,
-      isLeap: lunar.leap,
-      canChiYear,
-      canChiMonth,
-      canChiDay: canChiDay.full,
-      zodiacHours,
+      d, m, y, lunar, dow: now.getDay(),
+      chips: [`Năm ${getCanChiYear(lunar.year)}`, `Tháng ${getCanChiMonth(lunar.year, lunar.month)}`, `Ngày ${getCanChiDay(d, m, y).full}`, `Tiết ${getSolarTerm(d, m, y)}`],
     };
-  }, [currentDate]);
+  }, [now]);
 
-  // Danh sách sự kiện đếm ngược sắp tới (tôn trọng các toggle bật/tắt lễ và kỷ niệm cá nhân)
-  const upcomingEvents = useMemo(() => {
-    const events = getUpcomingEvents(new Date(), HOLIDAYS, 90, holidayToggles, customAnniversaries);
-    if (filterType === 'solar') return events.filter((e) => e.type === 'solar');
-    if (filterType === 'lunar') return events.filter((e) => e.type === 'lunar');
-    if (filterType === 'international') return events.filter((e) => e.type === 'international');
-    if (filterType === 'custom') return events.filter((e) => e.type === 'custom');
-    if (filterType === 'japan') return events.filter((e) => e.type === 'japan');
-    if (filterType === 'fun') return events.filter((e) => e.type === 'fun');
-    return events;
-  }, [filterType, holidayToggles, customAnniversaries]);
+  const hours = useMemo(() => getZodiacHours(info.d, info.m, info.y, now.getHours()), [info, now]);
+  const cur = hours.find((h) => h.isNow);
+  const next = cur && !cur.isHoangDao ? getNextGoodHour(now) : null;
+  const nextLbl = !cur || cur.isHoangDao ? 'Đang trong giờ tốt' : next
+    ? `Giờ tốt kế tiếp: ${next.name} ${rangeLbl(next.range)}h, còn ${Math.floor(next.minutesUntil / 60) ? `${Math.floor(next.minutesUntil / 60)} giờ ` : ''}${next.minutesUntil % 60} phút`
+    : '';
+
+  // Sự kiện sắp tới (tôn trọng bật/tắt) — dùng cho tab Sự kiện + "Hôm nay có"
+  const upcoming = useMemo(
+    () => getUpcomingEvents(new Date(`${today}T00:00:00`), HOLIDAYS, UPCOMING_DAYS, holidayToggles, customAnniversaries),
+    [today, holidayToggles, customAnniversaries]
+  );
+  const todayEvents = upcoming.filter((e) => e.dateStr === today);
+  const dueToday = tasks.filter((t) => !t.completed && t.due_date === today).length;
+
+  // Lịch tháng nhỏ: tuần bắt đầu Chủ nhật như mockup; chấm = tối đa 2 sự kiện + 1 chấm việc đến hạn
+  const month = useMemo(() => {
+    const first = new Date(mon.y, mon.m, 1);
+    const days = new Date(mon.y, mon.m + 1, 0).getDate();
+    const total = Math.ceil((first.getDay() + days) / 7) * 7;
+    const start = new Date(mon.y, mon.m, 1 - first.getDay());
+    const evBy = {};
+    for (const e of getUpcomingEvents(start, HOLIDAYS, total - 1, holidayToggles, customAnniversaries)) (evBy[e.dateStr] = evBy[e.dateStr] || []).push(e);
+    const dueBy = {};
+    for (const t of tasks) if (!t.completed && t.due_date) dueBy[t.due_date] = (dueBy[t.due_date] || 0) + 1;
+    return Array.from({ length: total }, (_, i) => {
+      const dt = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      const v = toDateStr(dt), evs = evBy[v] || [], nT = dueBy[v] || 0;
+      return {
+        v, dt, n: dt.getDate(), inM: dt.getMonth() === mon.m, isT: v === today, sun: dt.getDay() === 0,
+        lun: lunarLabel(solarToLunar(dt.getDate(), dt.getMonth() + 1, dt.getFullYear())),
+        dots: [...evs.slice(0, 2).map((e) => holidayDot(e.type)), ...(nT ? ['var(--tk-seg-on-fg)'] : [])],
+        tip: [...evs.map((e) => e.title), nT ? `${nT} việc` : ''].filter(Boolean).join(' · '),
+      };
+    });
+  }, [mon, today, tasks, holidayToggles, customAnniversaries]);
+
+  const counts = useMemo(() => Object.fromEntries(CALS.map(([k]) => [k, k === 'custom' ? customAnniversaries.length : Object.keys(HOLIDAYS[k] || {}).length])), [customAnniversaries]);
+
+  const shown = upcoming.filter((e) => fil === 'all' || e.type === fil);
+  const groups = [['Hôm nay', (e) => e.diffDays === 0], ['7 ngày tới', (e) => e.diffDays > 0 && e.diffDays <= 7], ['Sau đó', (e) => e.diffDays > 7]]
+    .map(([n, f]) => ({ n, items: shown.filter(f) }))
+    .filter((g) => g.items.length);
 
   if (!isOpen) return null;
 
   return (
-    <aside className="cal-widget-panel" aria-label="Tiện ích Lịch Việt">
-      {/* Header của Widget Panel */}
-      <div className="cal-widget-panel__header">
-        <div className="cal-widget-panel__tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'overview'}
-            className={`cal-widget-tab${activeTab === 'overview' ? ' cal-widget-tab--active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            <AppIcon name="calendar" size={14} /> Lịch vạn niên
+    <aside className="cal-widget-panel tk-ut" aria-label="Lịch vạn niên và sự kiện">
+      <div className="tk-ut__head">
+        <div className="tk-ut-tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={tab === 'today'} className={`tk-ut-tab${tab === 'today' ? ' is-on' : ''}`} onClick={() => setTab('today')}>
+            <AppIcon name="moonStars" size={14} />Lịch vạn niên
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'events'}
-            className={`cal-widget-tab${activeTab === 'events' ? ' cal-widget-tab--active' : ''}`}
-            onClick={() => setActiveTab('events')}
-          >
-            <AppIcon name="bell" size={14} /> Sự kiện ({upcomingEvents.length})
+          <button type="button" role="tab" aria-selected={tab === 'events'} className={`tk-ut-tab${tab === 'events' ? ' is-on' : ''}`} onClick={() => setTab('events')}>
+            <AppIcon name="bellSimple" size={14} />Sự kiện · {upcoming.length}
           </button>
         </div>
-
-        <button
-          type="button"
-          className="cal-widget-panel__close"
-          onClick={onClose}
-          title="Đóng tiện ích (giải phóng không gian)"
-          aria-label="Đóng bảng tiện ích"
-        >
-          <AppIcon name="x" size={16} />
+        <button type="button" className="tk-ut__close" onClick={onClose} title="Đóng" aria-label="Đóng">
+          <AppIcon name="x" size={15} />
         </button>
       </div>
 
-      <div className="cal-widget-panel__body">
-        {activeTab === 'overview' ? (
-          <>
-            {/* Card 1: Thẻ Ngày Hôm Nay / Ngày đang chọn */}
-            <div className="cal-widget-card cal-almanac-card">
-              <div className="cal-almanac-card__header">
-                <span className="cal-almanac-card__month-year">
-                  Tháng {dateInfo.solarMonth} năm {dateInfo.solarYear}
-                </span>
+      {tab === 'today' ? (
+        <div className="tk-ut__body">
+          {/* Dương lịch | Âm lịch + can chi, tiết khí */}
+          <div className="tk-ut-hero">
+            <div className="tk-ut-hero__grid">
+              <div className="tk-ut-hero__col">
+                <span className="tk-ut-label">DƯƠNG LỊCH</span>
+                <span className="tk-ut-hero__num">{info.d}</span>
+                <span className="tk-ut-hero__dow">{DFULL[info.dow]}</span>
+                <span className="tk-ut-hero__sub">Tháng {info.m}, {info.y}</span>
               </div>
-
-              <div className="cal-almanac-card__main">
-                <div className="cal-almanac-card__solar">
-                  <div className="cal-almanac-card__solar-num">{dateInfo.solarDay}</div>
-                  <div className="cal-almanac-card__dayname">{dateInfo.dayName}</div>
-                </div>
-
-                <div className="cal-almanac-card__lunar">
-                  <div className="cal-almanac-card__lunar-num">{dateInfo.lunarDay}</div>
-                  <div className="cal-almanac-card__lunar-label">
-                    Âm lịch tháng {dateInfo.lunarMonth} {dateInfo.isLeap ? '(Nhuận)' : ''}
-                  </div>
-                </div>
-              </div>
-
-              <div className="cal-almanac-card__canchi-list">
-                <div className="cal-almanac-canchi-item">
-                  <span className="cal-almanac-canchi-icon">🌾</span>
-                  <span className="cal-almanac-canchi-label">Năm:</span>
-                  <strong className="cal-almanac-canchi-val">{dateInfo.canChiYear}</strong>
-                </div>
-                <div className="cal-almanac-canchi-item">
-                  <span className="cal-almanac-canchi-icon">🌙</span>
-                  <span className="cal-almanac-canchi-label">Tháng:</span>
-                  <strong className="cal-almanac-canchi-val">{dateInfo.canChiMonth}</strong>
-                </div>
-                <div className="cal-almanac-canchi-item">
-                  <span className="cal-almanac-canchi-icon">☀️</span>
-                  <span className="cal-almanac-canchi-label">Ngày:</span>
-                  <strong className="cal-almanac-canchi-val">{dateInfo.canChiDay}</strong>
-                </div>
+              <span className="tk-ut-hero__sep" />
+              <div className="tk-ut-hero__col">
+                <span className="tk-ut-label">ÂM LỊCH</span>
+                <span className="tk-ut-hero__num is-lunar">{info.lunar.day}</span>
+                <span className="tk-ut-hero__mon">Tháng {info.lunar.month}{info.lunar.leap ? ' nhuận' : ''}</span>
+                <span className="tk-ut-hero__sub"><AppIcon name="moon" size={12} />{moonPhaseName(info.lunar.day)}</span>
               </div>
             </div>
-
-            {/* Card 2: Giờ Hoàng Đạo */}
-            <div className="cal-widget-card cal-zodiac-card">
-              <div className="cal-zodiac-card__header">
-                <h4 className="cal-zodiac-card__title">
-                  <span>🐯</span> Giờ Hoàng Đạo
-                </h4>
-                <span className="cal-zodiac-card__badge">6 giờ cát tinh</span>
-              </div>
-
-              <div className="cal-zodiac-grid">
-                {dateInfo.zodiacHours.map((zh) => (
-                  <div
-                    key={zh.name}
-                    className={`cal-zodiac-slot${zh.isHoangDao ? ' cal-zodiac-slot--hoangdao' : ' cal-zodiac-slot--hacdao'}${zh.isNow ? ' cal-zodiac-slot--now' : ''}`}
-                    title={`${zh.name} (${zh.range}h) — ${zh.isHoangDao ? 'Giờ Hoàng Đạo' : 'Giờ Hắc Đạo'}${zh.isNow ? ' [Hiện tại]' : ''}`}
-                  >
-                    <span className="cal-zodiac-slot__icon">{zh.icon}</span>
-                    <span className="cal-zodiac-slot__name">{zh.name}</span>
-                    <span className="cal-zodiac-slot__range">{zh.range}</span>
-                    {zh.isNow && <span className="cal-zodiac-slot__now-dot" />}
-                  </div>
-                ))}
-              </div>
-
-              <div className="cal-zodiac-legend">
-                <span className="cal-zodiac-legend__item">
-                  <span className="cal-zodiac-dot cal-zodiac-dot--hoangdao" /> Hoàng đạo (Tốt)
-                </span>
-                <span className="cal-zodiac-legend__item">
-                  <span className="cal-zodiac-dot cal-zodiac-dot--hacdao" /> Hắc đạo
-                </span>
-              </div>
-            </div>
-
-            {/* Card 3: Lịch Sự Kiện & Toggles Bật/Tắt Lễ */}
-            <div className="cal-widget-card cal-toggles-card">
-              <div className="cal-toggles-card__header">
-                <h4 className="cal-toggles-card__title">
-                  <span>✨</span> LỊCH SỰ KIỆN
-                </h4>
-              </div>
-              <div className="cal-toggles-list">
-                <div
-                  className="cal-toggle-item"
-                  onClick={() => onToggleHolidayType && onToggleHolidayType('solar')}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className="cal-toggle-item__info">
-                    <span className="cal-toggle-dot cal-toggle-dot--green" />
-                    <span className="cal-toggle-item__label">Ngày lễ Việt Nam</span>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={holidayToggles.solar}
-                    className={`cal-switch-btn cal-switch-btn--green${holidayToggles.solar ? ' cal-switch-btn--on' : ''}`}
-                    tabIndex={-1}
-                  >
-                    <span className="cal-switch-thumb" />
-                  </button>
-                </div>
-
-                <div
-                  className="cal-toggle-item"
-                  onClick={() => onToggleHolidayType && onToggleHolidayType('lunar')}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className="cal-toggle-item__info">
-                    <span className="cal-toggle-dot cal-toggle-dot--yellow" />
-                    <span className="cal-toggle-item__label">Ngày lễ Âm lịch</span>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={holidayToggles.lunar}
-                    className={`cal-switch-btn cal-switch-btn--yellow${holidayToggles.lunar ? ' cal-switch-btn--on' : ''}`}
-                    tabIndex={-1}
-                  >
-                    <span className="cal-switch-thumb" />
-                  </button>
-                </div>
-
-                <div
-                  className="cal-toggle-item"
-                  onClick={() => onToggleHolidayType && onToggleHolidayType('international')}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className="cal-toggle-item__info">
-                    <span className="cal-toggle-dot cal-toggle-dot--blue" />
-                    <span className="cal-toggle-item__label">Ngày lễ Quốc tế (LHQ)</span>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={holidayToggles.international}
-                    className={`cal-switch-btn cal-switch-btn--blue${holidayToggles.international ? ' cal-switch-btn--on' : ''}`}
-                    tabIndex={-1}
-                  >
-                    <span className="cal-switch-thumb" />
-                  </button>
-                </div>
-
-                <div
-                  className="cal-toggle-item"
-                  onClick={() => onToggleHolidayType && onToggleHolidayType('japan')}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className="cal-toggle-item__info">
-                    <span className="cal-toggle-dot cal-toggle-dot--red" />
-                    <span className="cal-toggle-item__label">Ngày lễ Nhật Bản</span>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={holidayToggles.japan}
-                    className={`cal-switch-btn cal-switch-btn--red${holidayToggles.japan ? ' cal-switch-btn--on' : ''}`}
-                    tabIndex={-1}
-                  >
-                    <span className="cal-switch-thumb" />
-                  </button>
-                </div>
-
-                <div
-                  className="cal-toggle-item"
-                  onClick={() => onToggleHolidayType && onToggleHolidayType('fun')}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className="cal-toggle-item__info">
-                    <span className="cal-toggle-dot cal-toggle-dot--purple" />
-                    <span className="cal-toggle-item__label">Lễ hội Coder & Dân Geek 👾</span>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={holidayToggles.fun}
-                    className={`cal-switch-btn cal-switch-btn--purple${holidayToggles.fun ? ' cal-switch-btn--on' : ''}`}
-                    tabIndex={-1}
-                  >
-                    <span className="cal-switch-thumb" />
-                  </button>
-                </div>
-
-                {/* 5. Ngày kỷ niệm cá nhân */}
-                <div
-                  className="cal-toggle-item"
-                  onClick={() => onToggleHolidayType && onToggleHolidayType('custom')}
-                  role="button"
-                  tabIndex={0}
-                  style={{ marginTop: '0.15rem' }}
-                >
-                  <div className="cal-toggle-item__info">
-                    <span className="cal-toggle-dot cal-toggle-dot--pink" />
-                    <span className="cal-toggle-item__label">
-                      Kỷ niệm của tôi ({customAnniversaries.length})
-                    </span>
-                    <button
-                      type="button"
-                      className="cal-toggle-add-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowCreateAnniv((prev) => !prev);
-                      }}
-                      title="Thêm ngày kỷ niệm, ngày hẹn hò, sinh nhật hoặc ngày giỗ"
-                    >
-                      {showCreateAnniv ? '✕' : '+ Thêm'}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={holidayToggles.custom !== false}
-                    className={`cal-switch-btn cal-switch-btn--pink${holidayToggles.custom !== false ? ' cal-switch-btn--on' : ''}`}
-                    tabIndex={-1}
-                  >
-                    <span className="cal-switch-thumb" />
-                  </button>
-                </div>
-
-                {/* Form inline tạo kỷ niệm cá nhân gọn gàng */}
-                {showCreateAnniv && (
-                  <form className="cal-anniv-creator" onSubmit={handleSaveAnniv}>
-                    <input
-                      type="text"
-                      className="cal-anniv-input"
-                      placeholder="Tên kỷ niệm (vd: Kỷ niệm ngày cưới, Ngày giỗ...)"
-                      value={annivTitle}
-                      onChange={(e) => setAnnivTitle(e.target.value)}
-                      autoFocus
-                      required
-                    />
-
-                    <div className="cal-anniv-row">
-                      <div className="cal-anniv-cal-switch">
-                        <button
-                          type="button"
-                          className={`cal-anniv-cal-btn${annivCalType === 'solar' ? ' cal-anniv-cal-btn--active' : ''}`}
-                          onClick={() => setAnnivCalType('solar')}
-                        >
-                          ☀️ Dương
-                        </button>
-                        <button
-                          type="button"
-                          className={`cal-anniv-cal-btn${annivCalType === 'lunar' ? ' cal-anniv-cal-btn--active' : ''}`}
-                          onClick={() => setAnnivCalType('lunar')}
-                        >
-                          🌙 Âm lịch
-                        </button>
-                      </div>
-
-                      <select
-                        className="cal-anniv-select"
-                        value={annivDay}
-                        onChange={(e) => setAnnivDay(Number(e.target.value))}
-                      >
-                        {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                          <option key={d} value={d}>Ngày {d}</option>
-                        ))}
-                      </select>
-
-                      <select
-                        className="cal-anniv-select"
-                        value={annivMonth}
-                        onChange={(e) => setAnnivMonth(Number(e.target.value))}
-                      >
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                          <option key={m} value={m}>Tháng {m}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="cal-anniv-row" style={{ justifyContent: 'space-between' }}>
-                      <div className="cal-anniv-icons">
-                        {['💖', '🎂', '💍', '🕊️', '⭐', '🎉'].map((ic) => (
-                          <button
-                            key={ic}
-                            type="button"
-                            className={`cal-anniv-icon-btn${annivIcon === ic ? ' cal-anniv-icon-btn--selected' : ''}`}
-                            onClick={() => setAnnivIcon(ic)}
-                          >
-                            {ic}
-                          </button>
-                        ))}
-                      </div>
-
-                      <input
-                        type="number"
-                        className="cal-anniv-input"
-                        style={{ width: '80px' }}
-                        placeholder="Năm (tùy chọn)"
-                        value={annivYear}
-                        onChange={(e) => setAnnivYear(e.target.value)}
-                        min="1900"
-                        max="2100"
-                      />
-                    </div>
-
-                    <div className="cal-anniv-actions">
-                      <button
-                        type="button"
-                        className="cal-anniv-btn cal-anniv-btn--cancel"
-                        onClick={() => setShowCreateAnniv(false)}
-                      >
-                        Hủy
-                      </button>
-                      <button
-                        type="submit"
-                        className="cal-anniv-btn cal-anniv-btn--save"
-                        disabled={!annivTitle.trim()}
-                      >
-                        Lưu kỷ niệm
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          /* Card 3: Sự kiện & Đếm ngược */
-          <div className="cal-widget-card cal-events-card">
-            <div className="cal-events-card__header">
-              <div className="cal-events-filters">
-                <button
-                  type="button"
-                  className={`cal-event-filter-btn${filterType === 'all' ? ' cal-event-filter-btn--active' : ''}`}
-                  onClick={() => setFilterType('all')}
-                >
-                  Tất cả
-                </button>
-                <button
-                  type="button"
-                  className={`cal-event-filter-btn${filterType === 'solar' ? ' cal-event-filter-btn--active' : ''}`}
-                  onClick={() => setFilterType('solar')}
-                >
-                  Dương lịch
-                </button>
-                <button
-                  type="button"
-                  className={`cal-event-filter-btn${filterType === 'lunar' ? ' cal-event-filter-btn--active' : ''}`}
-                  onClick={() => setFilterType('lunar')}
-                >
-                  Âm lịch
-                </button>
-                {holidayToggles?.custom && customAnniversaries.length > 0 && (
-                  <button
-                    type="button"
-                    className={`cal-event-filter-btn${filterType === 'custom' ? ' cal-event-filter-btn--active' : ''}`}
-                    onClick={() => setFilterType('custom')}
-                  >
-                    💖 Kỷ niệm
-                  </button>
-                )}
-                {holidayToggles?.international && (
-                  <button
-                    type="button"
-                    className={`cal-event-filter-btn${filterType === 'international' ? ' cal-event-filter-btn--active' : ''}`}
-                    onClick={() => setFilterType('international')}
-                  >
-                    Quốc tế
-                  </button>
-                )}
-                {holidayToggles?.japan && (
-                  <button
-                    type="button"
-                    className={`cal-event-filter-btn${filterType === 'japan' ? ' cal-event-filter-btn--active' : ''}`}
-                    onClick={() => setFilterType('japan')}
-                  >
-                    Nhật Bản
-                  </button>
-                )}
-                {holidayToggles?.fun && (
-                  <button
-                    type="button"
-                    className={`cal-event-filter-btn${filterType === 'fun' ? ' cal-event-filter-btn--active' : ''}`}
-                    onClick={() => setFilterType('fun')}
-                  >
-                    Geek
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="cal-events-list">
-              {upcomingEvents.length === 0 ? (
-                <div className="cal-events-empty">Không có sự kiện sắp tới.</div>
-              ) : (
-                upcomingEvents.map((ev, idx) => (
-                  <div
-                    key={`${ev.dateStr}-${idx}`}
-                    className="cal-event-row"
-                    onClick={() => onSelectEventDate && onSelectEventDate(ev.targetDate)}
-                    title="Nhấn để xem trên lịch"
-                  >
-                    <div className="cal-event-row__top">
-                      <div className="cal-event-row__title">
-                        <span className={`cal-event-dot cal-event-dot--${ev.type}`} />
-                        <strong>{ev.title}</strong>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        {onCreateTaskFromEvent && (() => {
-                          const added = isEventTaskAdded?.(ev);
-                          return (
-                          <button
-                            type="button"
-                            disabled={added}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onCreateTaskFromEvent(ev);
-                            }}
-                            title={added ? 'Đã có việc cho sự kiện này' : 'Tạo nhiệm vụ từ sự kiện này'}
-                            style={{
-                              height: '24px',
-                              padding: '0 8px',
-                              borderRadius: '6px',
-                              border: '1px solid var(--tk-accent-border, rgba(94,242,194,0.3))',
-                              background: 'var(--tk-accent-soft, rgba(94,242,194,0.1))',
-                              color: 'var(--tk-accent, #5EF2C2)',
-                              fontSize: '11px',
-                              fontWeight: 600,
-                              cursor: added ? 'default' : 'pointer',
-                              opacity: added ? 0.7 : 1,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                            }}
-                          >
-                            <AppIcon name={added ? 'check' : 'plus'} size={11} /> {added ? 'Đã thêm' : 'Việc'}
-                          </button>
-                          );
-                        })()}
-                        <div className={`cal-event-countdown${ev.diffDays <= 3 ? ' cal-event-countdown--soon' : ''}`}>
-                          {ev.countdownLabel}
-                        </div>
-                        {ev.isCustom && onDeleteCustomAnniversary && (
-                          <button
-                            type="button"
-                            className="cal-anniv-del-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDeleteCustomAnniversary(ev.id);
-                            }}
-                            title="Xóa ngày kỷ niệm này"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="cal-event-row__sub">
-                      <span>{ev.dayOfWeek}, {ev.solarText}</span>
-                      <span className="cal-event-sep">•</span>
-                      <span>{ev.lunarText}</span>
-                    </div>
-                  </div>
-                ))
-              )}
+            <div className="tk-ut-hero__chips">
+              {info.chips.map((c) => <span key={c} className="tk-ut-chip">{c}</span>)}
             </div>
           </div>
-        )}
-      </div>
+
+          <div className="tk-ut-sec">
+            <span className="tk-ut-label">HÔM NAY CÓ</span>
+            {todayEvents.map((e, i) => (
+              <div key={`${e.type}-${i}`} className="tk-ut-row">
+                <span className="tk-ut-dot" style={{ background: holidayDot(e.type) }} />
+                <span className="tk-ut-row__text">{e.title}</span>
+              </div>
+            ))}
+            <button type="button" className="tk-ut-row is-link" onClick={() => onSelectEventDate?.(new Date(`${today}T00:00:00`))}>
+              <AppIcon name="checkSquare" size={15} />
+              {dueToday} việc đến hạn hôm nay
+              <AppIcon name="arrowRight" size={13} className="tk-ut-row__end" />
+            </button>
+          </div>
+
+          <div className="tk-ut-sec is-hd">
+            <div className="tk-ut-sec__head">
+              <span className="tk-ut-label">GIỜ HOÀNG ĐẠO</span>
+              <span className="tk-ut-sec__aside">6 giờ tốt / ngày</span>
+            </div>
+            <div className="tk-ut-hd">
+              {hours.map((h) => (
+                <div key={h.name} className={`tk-ut-hd__seg${h.isHoangDao ? ' is-good' : ''}${h.isNow ? ' is-now' : ''}`} title={`Giờ ${h.name} ${rangeLbl(h.range)} · ${h.isHoangDao ? 'hoàng đạo' : 'hắc đạo'}`}>
+                  <span className="tk-ut-hd__bar" />
+                  <span className="tk-ut-hd__name">{h.name}</span>
+                </div>
+              ))}
+            </div>
+            {cur && (
+              <div className="tk-ut-now">
+                <span className="tk-ut-now__main">Bây giờ: giờ {cur.name} ({rangeLbl(cur.range)}h) · {cur.isHoangDao ? 'hoàng đạo' : 'hắc đạo'}</span>
+                <span className="tk-ut-now__sub">{nextLbl}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="tk-ut-sec">
+            <div className="tk-ut-sec__head">
+              <span className="tk-ut-label">THÁNG {mon.m + 1}, {mon.y}</span>
+              <button type="button" className="tk-ut-nav" onClick={() => setMon((x) => ({ y: x.m ? x.y : x.y - 1, m: x.m ? x.m - 1 : 11 }))} aria-label="Tháng trước">
+                <AppIcon name="caretLeft" size={12} />
+              </button>
+              <button type="button" className="tk-ut-nav" onClick={() => setMon((x) => ({ y: x.m === 11 ? x.y + 1 : x.y, m: x.m === 11 ? 0 : x.m + 1 }))} aria-label="Tháng sau">
+                <AppIcon name="caretRight" size={12} />
+              </button>
+            </div>
+            <div className="tk-ut-cal">
+              {DSHORT.map((n, i) => <span key={n} className={`tk-ut-cal__dow${i === 0 ? ' is-sun' : ''}`}>{n}</span>)}
+              {month.map((c) => (
+                <button
+                  key={c.v}
+                  type="button"
+                  className={`tk-ut-cal__cell${c.isT ? ' is-today' : ''}${!c.inM ? ' is-out' : c.sun ? ' is-sun' : ''}`}
+                  title={c.tip || undefined}
+                  onClick={() => onSelectEventDate?.(c.dt)}
+                >
+                  <span className="tk-ut-cal__n">{c.n}</span>
+                  <span className="tk-ut-cal__lun">{c.lun}</span>
+                  <span className="tk-ut-cal__dots">{c.dots.map((bg, j) => <span key={j} style={{ background: bg }} />)}</span>
+                </button>
+              ))}
+            </div>
+            <span className="tk-ut-hint">Bấm một ngày để mở chế độ xem Ngày.</span>
+          </div>
+
+          <div className="tk-ut-sec is-cals">
+            <span className="tk-ut-label">LỊCH HIỂN THỊ TRÊN BẢNG</span>
+            {CALS.map(([k, n]) => {
+              const on = isOn(holidayToggles, k);
+              return (
+                <div key={k} className="tk-ut-cal-row" role="switch" aria-checked={on} tabIndex={0} onClick={() => onToggleHolidayType?.(k)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleHolidayType?.(k); } }}>
+                  <span className="tk-ut-dot" style={{ background: holidayDot(k) }} />
+                  <span className="tk-ut-cal-row__name">{n}</span>
+                  {/* Thêm ngày kỷ niệm riêng (không có trong mockup — giữ tính năng cũ) */}
+                  {k === 'custom' && onAddCustomAnniversary && (
+                    <button type="button" className="tk-ut-cal-row__add" title="Thêm ngày kỷ niệm, sinh nhật, ngày giỗ…" onClick={(e) => { e.stopPropagation(); setShowAnniv((v) => !v); }}>
+                      <AppIcon name={showAnniv ? 'x' : 'plus'} size={12} />
+                    </button>
+                  )}
+                  <span className="tk-ut-cal-row__cnt">{counts[k]}</span>
+                  <span className={`tk-ut-switch${on ? ' is-on' : ''}`} style={on ? { background: holidayDot(k) } : undefined}><span /></span>
+                </div>
+              );
+            })}
+            {showAnniv && (
+              <AnnivForm
+                onSave={(item) => { onAddCustomAnniversary?.(item); setShowAnniv(false); }}
+                onCancel={() => setShowAnniv(false)}
+              />
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="tk-ut__events">
+          <div className="tk-ut-fils">
+            {[['all', 'Tất cả'], ...CALS.map(([k, n]) => [k, n.replace('Ngày lễ ', '')])].map(([k, n]) => (
+              <button key={k} type="button" className={`tk-ut-fil${fil === k ? ' is-on' : ''}`} onClick={() => setFil(k)}>
+                <span className="tk-ut-fil__dot" style={{ background: k === 'all' ? 'var(--tk-ut-mute)' : holidayDot(k) }} />
+                {n}
+                <span className="tk-ut-fil__cnt">{k === 'all' ? upcoming.length : upcoming.filter((e) => e.type === k).length}</span>
+              </button>
+            ))}
+          </div>
+          <div className="tk-ut__body is-events">
+            {groups.map((g) => (
+              <div key={g.n} className="tk-ut-group">
+                <span className="tk-ut-label tk-ut-group__name">{g.n}</span>
+                {g.items.map((ev, i) => {
+                  const dt = ev.targetDate, l = solarToLunar(dt.getDate(), dt.getMonth() + 1, dt.getFullYear());
+                  const added = !!isEventTaskAdded?.(ev);
+                  return (
+                    <div key={`${ev.dateStr}-${ev.type}-${i}`} className="tk-ut-ev" onClick={() => onSelectEventDate?.(dt)} title="Xem trên lịch">
+                      <span className="tk-ut-dot tk-ut-ev__dot" style={{ background: holidayDot(ev.type) }} />
+                      <div className="tk-ut-ev__text">
+                        <span className="tk-ut-ev__name">{ev.title}</span>
+                        <span className="tk-ut-ev__date">{DSHORT[dt.getDay()]}, {p2(dt.getDate())}/{p2(dt.getMonth() + 1)}/{dt.getFullYear()} · {l.day}/{l.month} ÂL</span>
+                      </div>
+                      <div className="tk-ut-ev__side">
+                        <span className={`tk-ut-cd${ev.diffDays <= 3 ? ' is-hot' : ''}`}>{ev.diffDays === 0 ? 'Hôm nay' : `Còn ${ev.diffDays} ngày`}</span>
+                        <div className="tk-ut-ev__acts">
+                          {onCreateTaskFromEvent && (
+                            <button type="button" className={`tk-ut-ev__add${added ? ' is-added' : ''}`} title="Tạo việc vào ngày này" disabled={added} onClick={(e) => { e.stopPropagation(); onCreateTaskFromEvent(ev); }}>
+                              <AppIcon name={added ? 'check' : 'plus'} size={11} />{added ? 'Đã thêm' : 'Tạo việc'}
+                            </button>
+                          )}
+                          {ev.isCustom && onDeleteCustomAnniversary && (
+                            <button type="button" className="tk-ut-ev__del" title="Xoá ngày kỷ niệm này" aria-label="Xoá ngày kỷ niệm này" onClick={(e) => { e.stopPropagation(); onDeleteCustomAnniversary(ev.id); }}>
+                              <AppIcon name="trash" size={11} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            {!groups.length && <span className="tk-ut-empty">Không có sự kiện sắp tới trong nhóm này.</span>}
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

@@ -292,7 +292,7 @@ src/
     SettingsPage.jsx        ← /settings — Tags + Profile
   components/               ← UI dùng lại; finance/ (Finance), kb/ (Knowledge PKM)
     CalendarToolbar.jsx     ← Toolbar ghim đỉnh đa chế độ Lịch
-    CalendarWidgetPanel.jsx ← Lịch vạn niên, Can Chi, Giờ Hoàng đạo, Ngày lễ & Kỷ niệm
+    CalendarWidgetPanel.jsx ← Bảng Lịch & sự kiện: lịch vạn niên, tiết khí, giờ hoàng đạo, ngày lễ & kỷ niệm
     WeekCalendar.jsx        ← Lịch Tuần 7 cột thông minh
     MonthCalendar.jsx       ← Lịch Tháng kết hợp Dương & Âm lịch
     TaskCreateModal.jsx     ← Modal tạo nhanh Task có smart prefill
@@ -304,7 +304,7 @@ src/
     useCollections.js       ← Inbox & Knowledge Base
   contexts/                 ← Auth, Theme, Toast
   data/                     ← JSON tĩnh: UI strings, holidays, taxonomy, templates
-  styles/                   ← CSS per domain (global.css = tokens, kb-tokens.css, calendar-widget.css...)
+  styles/                   ← CSS per domain (global.css = tokens, kb-tokens.css, tasks-aurora.css...)
   __tests__/                ← Self-check 24 bài test phân theo 4 domain (tasks/, vault/, finance/, core/)
   utils/                    ← Pure logic: kbDeriveUtils, calendarTimeUtils, lunarUtils, financeLogic, vaultCrypto
   lib/supabase.js           ← Singleton Supabase client

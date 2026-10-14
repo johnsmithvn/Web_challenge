@@ -23,6 +23,8 @@ import {
   agendaWeekLabel,
   agendaGapLabel,
   buildAgendaRows,
+  datePickDraft,
+  datePickPatch,
 } from '../../utils/calendarTimeUtils.js';
 
 // v6.21.0: khối thời gian = Bắt đầu → Hạn CÙNG ngày (không còn end_time).
@@ -329,5 +331,33 @@ assert.equal(agendaGapLabel('2026-10-12', '2026-10-12'), 'T2 12/10 · trống');
   );
 }
 console.log('agenda rows (week/gap): OK');
+
+// ── Popover đổi ngày giờ: task ↔ nháp ──
+{
+  // Task 1 ngày có giờ → a + ta
+  assert.deepEqual(datePickDraft({ due_date: '2026-10-12', due_time: '09:00:00' }), { a: '2026-10-12', b: null, ta: '09:00', tb: null });
+  // Khoảng nhiều ngày → a/b + giờ hai đầu
+  assert.deepEqual(datePickDraft({ start_date: '2026-10-12', start_time: '08:00', due_date: '2026-10-14', due_time: '17:00' }), { a: '2026-10-12', b: '2026-10-14', ta: '08:00', tb: '17:00' });
+  // Khối giờ cùng ngày → 1 ngày, ta → tb
+  assert.deepEqual(datePickDraft({ start_date: '2026-10-12', start_time: '09:00', due_date: '2026-10-12', due_time: '10:30' }), { a: '2026-10-12', b: null, ta: '09:00', tb: '10:30' });
+  // Chỉ có Bắt đầu → coi như ngày a
+  assert.deepEqual(datePickDraft({ start_date: '2026-10-12', start_time: '07:00' }), { a: '2026-10-12', b: null, ta: '07:00', tb: null });
+  assert.deepEqual(datePickDraft({}), { a: null, b: null, ta: null, tb: null });
+
+  const NONE = { start_date: null, start_time: null, due_date: null, due_time: null };
+  assert.deepEqual(datePickPatch({ a: null, b: '2026-10-14', ta: '09:00', tb: null }), NONE, 'Bỏ hạn → xoá hết');
+  assert.deepEqual(datePickPatch({ a: '2026-10-12', b: null, ta: null, tb: null }), { ...NONE, due_date: '2026-10-12' });
+  assert.deepEqual(datePickPatch({ a: '2026-10-12', b: null, ta: '09:00', tb: null }), { ...NONE, due_date: '2026-10-12', due_time: '09:00' });
+  assert.deepEqual(datePickPatch({ a: '2026-10-12', b: '2026-10-14', ta: '08:00', tb: null }), { start_date: '2026-10-12', start_time: '08:00', due_date: '2026-10-14', due_time: null });
+  assert.deepEqual(datePickPatch({ a: '2026-10-12', b: null, ta: '09:00', tb: '10:30' }), { start_date: '2026-10-12', start_time: '09:00', due_date: '2026-10-12', due_time: '10:30' }, 'khối giờ cùng ngày');
+  // Giờ kết thúc không sau giờ bắt đầu → bỏ giờ kết thúc (tránh Bắt đầu sau Hạn — DB CHECK)
+  assert.deepEqual(datePickPatch({ a: '2026-10-12', b: null, ta: '10:00', tb: '09:00' }), { ...NONE, due_date: '2026-10-12', due_time: '10:00' });
+  // b không sau a (dữ liệu nháp lỗi) → coi như 1 ngày
+  assert.deepEqual(datePickPatch({ a: '2026-10-12', b: '2026-10-12', ta: null, tb: null }), { ...NONE, due_date: '2026-10-12' });
+  // Vòng tròn: task → nháp → patch giữ nguyên
+  const blk = { start_date: '2026-10-12', start_time: '09:00', due_date: '2026-10-12', due_time: '10:30' };
+  assert.deepEqual(datePickPatch(datePickDraft(blk)), blk);
+}
+console.log('date picker draft/patch: OK');
 
 console.log('\n✅ weekCalendarLogic — tất cả kiểm thử logic Lịch Tuần PASS (100% covered)');

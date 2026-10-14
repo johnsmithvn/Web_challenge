@@ -22,7 +22,6 @@ import { parseTaskQuickText, shiftDateDays } from '../utils/taskNlpParser';
 import { sortSubtasks } from '../utils/subtaskUtils';
 import { solarToLunar, getCanChiYear, getCanChiDay, getNextGoodHour } from '../utils/lunarUtils';
 import '../styles/tasks.css';
-import '../styles/calendar-widget.css';
 import '../styles/tasks-aurora.css';
 import '../styles/tasks-elf.css';
 
@@ -156,6 +155,8 @@ export default function TasksPage() {
 
   // Các view Lịch tự tải task đã xong theo khoảng ngày → tăng key sau mỗi thao tác để tải lại
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
+  // Số liệu Tuần/Tháng báo lên cho phụ đề hàng điều hướng: { view, text }
+  const [calStats, setCalStats] = useState(null);
   const refreshCalendars = useCallback(() => setCalendarRefreshKey((k) => k + 1), []);
 
   const handleRescheduleTask = useCallback(async (taskId, dateStr, timeStr) => {
@@ -393,6 +394,7 @@ export default function TasksPage() {
       {activeView === 'agenda' && (
         <CalendarAgendaView
           onRescheduleTask={handleRescheduleTask}
+          updateTask={async (id, patch) => { await updateTask(id, patch); refreshCalendars(); }}
           pendingTasks={calendarPending}
           allTasks={tasks}
           onMoveAllLateToToday={async (late) => {
@@ -436,6 +438,7 @@ export default function TasksPage() {
           holidayToggles={holidayToggles}
           customAnniversaries={customAnniversaries}
           refreshKey={calendarRefreshKey}
+          onStats={setCalStats}
         />
       )}
       {activeView === 'month' && (
@@ -452,6 +455,7 @@ export default function TasksPage() {
           holidayToggles={holidayToggles}
           customAnniversaries={customAnniversaries}
           refreshKey={calendarRefreshKey}
+          onStats={setCalStats}
         />
       )}
     </Suspense>
@@ -652,6 +656,7 @@ export default function TasksPage() {
                   setCurrentDate={setCurrentDate}
                   startOnSunday={startOnSunday}
                   setStartOnSunday={setStartOnSunday}
+                  extra={calStats?.view === activeView ? calStats.text : ''}
                 />
               )}
               <div className="tk-cal-panel__body">{calendarView}</div>
@@ -666,7 +671,7 @@ export default function TasksPage() {
       <Suspense fallback={null}>
         <CalendarWidgetPanel
           isOpen={isWidgetOpen}
-          currentDate={currentDate}
+          tasks={pendingTasks}
           onClose={handleToggleWidget}
           holidayToggles={holidayToggles}
           onToggleHolidayType={handleToggleHolidayType}

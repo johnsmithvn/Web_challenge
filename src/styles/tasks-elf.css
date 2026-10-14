@@ -175,6 +175,14 @@
   --tk-popover-shadow: 0 20px 50px -16px rgba(28, 51, 36, 0.3);
   --tk-opt-on: #E2F3E6;
   --tk-scrim: rgba(28, 51, 36, 0.3);
+  --tk-ut-tabs-bg: #F2FAF1;
+  --tk-pp-soft: #F2FAF1;
+  --tk-ut-tabs-bd: #DCEEE0;
+  --tk-ut-hover: #F2FAF1;
+  --tk-ut-hero-bg: linear-gradient(155deg, #FFF1F5, #EDF8EF 60%, #ECFEFF);
+  --tk-ut-chip-bd: #DCEEE0;
+  --tk-ut-seg-off: #E2F3E6;
+  --tk-ut-mute: #94A99B;
   --tk-mseg-on-fg: #1C3324;
   --tk-mseg-shadow: 0 1px 3px rgba(28, 51, 36, 0.14);
   --tk-fab-bg: linear-gradient(135deg, #2F7D5B, #4FA374 60%, #D9A93F);
@@ -227,6 +235,7 @@
   --tk-avatar-fg: #BFD3C6;
   --tk-popover-bg: rgba(8, 22, 16, 0.97);
   --tk-util-bg: rgba(7, 20, 14, 0.94);
+  --tk-ut-mute: #4A6656;
   --tk-sheet-bg: rgba(8, 20, 15, 0.98);
   --tk-scrim: rgba(2, 8, 5, 0.62);
   --tk-fab-fg: #04140D;

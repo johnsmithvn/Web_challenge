@@ -141,17 +141,36 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   tab Hoạt động/Ghi chú; sửa trên bản nháp cục bộ, chỉ ghi DB khi bấm "Tạo việc" (`Ctrl/⌘ + Enter`; mờ khi chưa có
   tên). X / Huỷ / `Escape` bỏ bản nháp. Tên trống thì ô tên tự focus.
 
-### Cột tiện ích Lịch Việt & Sự kiện (`CalendarWidgetPanel`)
-- **Lịch vạn niên & Can Chi:** Tra cứu ngày Dương lịch, Âm lịch, Can Chi Năm/Tháng/Ngày.
-- **Giờ Hoàng Đạo:** 12 khung giờ hoàng đạo theo Chi của ngày, tự động highlight giờ tốt và định vị giờ hiện tại.
-- **Đếm ngược sự kiện & Bật/Tắt danh mục:**
-  - 🟢 Ngày lễ Việt Nam (`solar`).
-  - 🟡 Ngày lễ Âm lịch (`lunar`).
-  - 🌐 Ngày lễ Quốc tế LHQ & Thế giới (`international`) với hơn 55 ngày lễ chính thức.
-  - 🔴 Ngày lễ Nhật Bản (`japan`).
-  - 🟣 Lễ hội Coder & Dân Geek 👾 (`fun`).
-  - 💖 Kỷ niệm của tôi (`custom`): Cho phép người dùng tự thêm ngày kỷ niệm (ngày cưới, hẹn hò, sinh nhật, ngày giỗ...) hỗ trợ cả Dương lịch và Âm lịch, tự động tính số năm đã trôi qua, lưu trữ an toàn trong `localStorage ('lh_custom_anniversaries')`.
-- Các toggle bật/tắt lễ phản hồi tức thì và đồng bộ sang toàn bộ 5 chế độ xem lịch.
+- **Đổi ngày giờ** (nhãn hạn trên thẻ, ngăn chi tiết, bấm giờ của việc ở Lịch biểu): ô Bắt đầu + Kết thúc (tuỳ
+  chọn), lịch có ngày âm; ô đang chọn nhận lần bấm (không tự nhảy ô); ✕ "Bỏ hạn" xoá hết, ✕ "Bỏ ngày kết thúc" chỉ
+  bỏ ngày cuối; "Thêm giờ" mở dòng giờ bắt đầu → kết thúc (1 ngày có cả 2 giờ = khối giờ cùng ngày). Lưu mờ khi
+  chưa đổi. Lọc khoảng ngày: 4 khoảng nhanh + "Bấm ngày đầu, rồi ngày cuối".
+- Phụ đề hàng điều hướng: Tuần "Bính Ngọ · N việc có giờ, M cả ngày", Tháng "Bính Ngọ · N việc có hạn".
+
+### Bảng Lịch & sự kiện (`CalendarWidgetPanel`)
+Desktop nổi bên phải, mobile là sheet; mở bằng nút "Lịch & sự kiện" / bấm ngày ở đầu trang mobile.
+- **Tab Lịch vạn niên:** Dương lịch | Âm lịch hôm nay (số lớn, thứ, tháng, pha trăng) + chip Năm/Tháng/Ngày can chi
+  và **tiết khí** (`getSolarTerm`); "Hôm nay có" (sự kiện hôm nay) + lối tắt "N việc đến hạn hôm nay →" (mở xem Ngày);
+  **giờ hoàng đạo** 12 ô (vàng = giờ tốt, viền = giờ hiện tại) + "Bây giờ: giờ …" / "Giờ tốt kế tiếp: …, còn …";
+  **lịch tháng nhỏ** (ngày âm, chấm sự kiện + chấm việc đến hạn; bấm ngày → xem Ngày); **Lịch hiển thị trên bảng**:
+  bật/tắt Ngày lễ Việt Nam (`solar`), Âm lịch (`lunar`), Quốc tế (`international`), Nhật Bản (`japan`), Kỷ niệm
+  (`custom`), Geek (`fun`) — đồng bộ sang mọi chế độ xem lịch (`lh_cal_holiday_toggles`).
+- **Ngày kỷ niệm riêng:** nút + ở dòng Kỷ niệm mở form (tên, Dương/Âm lịch, ngày, tháng, năm tuỳ chọn, biểu tượng);
+  tự tính số năm; lưu `localStorage` `lh_custom_anniversaries`; xoá ở tab Sự kiện.
+- **Tab Sự kiện · N:** lọc theo lịch (có số đếm), nhóm Hôm nay / 7 ngày tới / Sau đó (90 ngày tới), mỗi sự kiện có
+  ngày dương + âm, đếm ngược (≤ 3 ngày tô đỏ), nút "Tạo việc" / "Đã thêm".
+
+### Nền trang & hiệu ứng (kiểu Mặc định / Rừng tiên)
+- Nền theo giờ và theme: Mặc định = trời đêm (aurora, Ngân Hà, trăng đúng pha âm lịch có chú Cuội, chòm sao, đom
+  đóm) / bình minh–hoàng hôn; Rừng tiên = rừng ngày (cây, suối, nắng, sương mù) / rừng đêm. Tắt hết khi máy bật giảm
+  chuyển động.
+- Hình bay ngẫu nhiên qua trời (máy bay, UFO, Hằng Nga… / hươu, rồng, hồ ly, phù thuỷ…) + ban đêm có hiệu ứng thiên
+  nhiên chung: cực quang, sao ước nguyện (bấm trúng → thẻ điều ước), Thợ Săn, cầu vồng trăng, Ngân Hà, hồ, sương, lá
+  bạc, bồ công anh, rêu; thỉnh thoảng nguyệt thực.
+- Nút "Ngắm cảnh" / "Ngắm rừng": ẩn giao diện để xem nền.
+- Rừng tiên: bấm nấm → "boing!", bấm đom đóm → bay theo chuột, bấm nền → rung cây; sương tan quanh con trỏ; thẻ trễ
+  có dây leo, xong có hoa, đang làm có đom đóm; xong việc → tiên bay lên, xong hết việc hôm nay → trái tim đom đóm
+  (đêm thêm cực quang); cây chuỗi ngày góc trái dưới (desktop).
 
 ### Detail, lịch sử và XP
 - Detail modal cho xem/sửa Task, activity field-diff và note cá nhân. Khu Hoạt động & Ghi chú **thu gọn mặc

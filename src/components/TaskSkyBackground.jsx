@@ -1,7 +1,8 @@
 import { memo, useEffect, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { solarToLunar } from '../utils/lunarUtils';
+import { solarToLunar, moonPhaseName } from '../utils/lunarUtils';
 import { spawnAuroraFlyer } from '../utils/taskFlyersAurora';
+import { natureClick } from '../utils/taskNatureFx';
 import { hosts as elfHosts, frameKey, spawnElfFlyer, initClk, bgClick, setLastPointer } from '../utils/taskFlyersElf';
 import { ForestDay, ForestNight, ForestNightMobile, DayFairiesTop, Constellations } from './TaskForestBackground';
 
@@ -10,7 +11,8 @@ import { ForestDay, ForestNight, ForestNightMobile, DayFairiesTop, Constellation
  * Tối: aurora + Ngân Hà + sao + sao băng + sao chổi + trăng âm lịch (có chú Cuội) + sao sáng + chòm sao
  * + đom đóm sát đáy; desktop thêm nhãn trăng và đường chân trời hành tinh.
  * Sáng: trời bình minh (trước 12h) / hoàng hôn (từ 12h) + mặt trời mọc, mây màu nước nhấp nhô, hạt sáng bay.
- * Cả hai kiểu (Aurora / Rừng tiên) có vật bay ngẫu nhiên qua trời (utils/taskFlyers*).
+ * Cả hai kiểu (Aurora / Rừng tiên) có vật bay ngẫu nhiên qua trời (utils/taskFlyers*); đêm thêm hiệu ứng
+ * thiên nhiên dùng chung (utils/taskNatureFx: cực quang, sao ước nguyện bấm được, nguyệt thực…).
  * Toạ độ x desktop của mockup tính cả thanh bên 64px của khung → ở đây đã trừ 64.
  */
 const px = (v) => `${v}px`;
@@ -47,9 +49,7 @@ function Moon({ elf, m }) {
   const ts = wax ? (lit < 0.5 ? 0 : 1) : (lit < 0.5 ? 1 : 0);
   // Phần sáng = nửa đĩa + elip terminator → cắt bằng clip-path
   const clip = `path('M${R} 0 A${R} ${R} 0 0 ${wax ? 1 : 0} ${R} ${D} A${(tw / 2).toFixed(2)} ${R} 0 0 ${ts} ${R} 0 Z')`;
-  const name = lday <= 1 ? 'Trăng non' : lday <= 6 ? 'Lưỡi liềm đầu tháng' : lday <= 8 ? 'Thượng huyền'
-    : lday <= 13 ? 'Trăng khuyết đầu tháng' : lday <= 16 ? 'Trăng rằm' : lday <= 21 ? 'Trăng khuyết cuối tháng'
-      : lday <= 23 ? 'Hạ huyền' : lday <= 29 ? 'Lưỡi liềm cuối tháng' : 'Trăng tàn';
+  const name = moonPhaseName(lday);
   return (
     <>
       <span className="task-moon-halo" style={{ left: left(MX + R - HS / 2 + (elf ? (wax ? 1 : -1) * (1 - lit) * D * 0.3 : 0)), top: px(MY + R - HS / 2), width: px(HS), height: px(HS), background: `radial-gradient(closest-side,rgba(${c.halo},${(0.05 + 0.22 * lit).toFixed(3)}),rgba(${c.halo},0))` }} />
@@ -250,9 +250,16 @@ function useFlyers(hostRef, { elf, night, m }) {
       }
       timer = setTimeout(tick, (elf ? (m ? 4500 : 3000) : (m ? 4000 : 2500)) + Math.random() * (m ? 6000 : 5000));
     };
-    timer = setTimeout(tick, 1200 + Math.random() * 1500);
+    timer = setTimeout(tick, elf ? 1500 + Math.random() * 2000 : 1200 + Math.random() * 1500);
+    // Sao ước nguyện (taskNatureFx) bấm được: trúng thì chặn click để không mở nhầm thứ phía dưới.
+    // Đăng ký trước bgClick của Rừng tiên (hook gọi trước) nên chặn luôn cả rung cây.
+    const onClick = (e) => {
+      if (natureClick(e)) { e.stopImmediatePropagation(); e.preventDefault(); }
+    };
+    window.addEventListener('click', onClick, true);
     return () => {
       clearTimeout(timer);
+      window.removeEventListener('click', onClick, true);
       host.replaceChildren();
     };
   }, [hostRef, elf, night, m]);

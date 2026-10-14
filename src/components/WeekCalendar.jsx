@@ -36,6 +36,7 @@ export default function WeekCalendar({
   customAnniversaries = [],
   refreshKey = 0,
   onRescheduleTask,
+  onStats,
 }) {
   const todayStr = toDateStr();
   const [completedByDay, setCompletedByDay] = useState({});
@@ -132,6 +133,18 @@ export default function WeekCalendar({
     }
     return result;
   }, [weekDays, pendingByDay, completedByDay, pendingTasks]);
+
+  // Phụ đề hàng điều hướng (mockup): "N việc có giờ, M cả ngày" trong tuần đang xem
+  useEffect(() => {
+    if (!onStats) return;
+    let timed = 0;
+    let allDay = 0;
+    for (const day of weekDays) {
+      timed += dayLayouts[day.dateStr].timedTasks.length;
+      allDay += dayLayouts[day.dateStr].allDayTasks.length;
+    }
+    onStats({ view: 'week', text: `${timed} việc có giờ, ${allDay} cả ngày` });
+  }, [weekDays, dayLayouts, onStats]);
 
   const dayClass = (day) => (day.isToday ? ' is-today' : day.date.getDay() === 0 ? ' is-sun' : '');
   const holidayNames = (day) => holidaysMap[day.dateStr].map((h) => h.name);
