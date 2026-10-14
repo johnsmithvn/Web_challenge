@@ -2,7 +2,7 @@ import AppIcon from './AppIcon';
 
 /**
  * Trang trí kiểu "Rừng tiên" (mockup "Nhiệm vụ - Rừng tiên (Elf)") — chỉ render khi taskStyle = 'elf'.
- * Sáng: dây leo + hoa ở 2 góc cột, việc xong nở hoa. Tối: đỉnh cột là vòm nhọn viền vàng + lá ở đỉnh.
+ * Sáng: dây leo + hoa ở 2 góc cột, việc xong nở hoa. Tối: dây leo (cùng khung cột với bản sáng).
  * Phần nào thuộc theme nào do CSS (tasks-elf.css) bật/tắt.
  */
 const PETAL = 'M10 10 C 6.2 7.4, 6 2.6, 8.5 1.3 L 10 2.8 L 11.5 1.3 C 14 2.6, 13.8 7.4, 10 10 Z';
@@ -34,12 +34,6 @@ function Vine({ className }) {
 export function ElfColumnDecor() {
   return (
     <>
-      <span className="tk-elf-arch" aria-hidden="true">
-        <span className="tk-elf-arch__bg" />
-        <span className="tk-elf-arch__gold" />
-        <span className="tk-elf-arch__mint" />
-        <span className="tk-elf-arch__leaf"><AppIcon name="leaf" size={14} weight="fill" /></span>
-      </span>
       <Vine className="is-left" />
       <Vine className="is-right" />
       <span className="tk-elf-corner is-left" aria-hidden="true">

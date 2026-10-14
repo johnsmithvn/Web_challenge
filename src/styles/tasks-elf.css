@@ -441,8 +441,11 @@
   position: relative;
 }
 
-[data-theme="light"] .tk-elf .tk-col__head {
+/* Sáng và tối chung một khung cột (bản tối từng có vòm nhọn: đầu cột cao thêm 58px, chiếm chỗ của thẻ) */
+.tasks-workspace.tk-elf .tk-col__head {
   padding: 16px 12px 8px 18px;
+  margin-bottom: 0;
+  background: none;
 }
 
 /* Hoa văn dưới tên cột */
@@ -555,83 +558,8 @@
 .tk-elf-corner.is-left { left: -9px; }
 .tk-elf-corner.is-right { right: -9px; }
 
-[data-theme="dark"] .tk-elf-corner,
-[data-theme="light"] .tk-elf-arch {
+[data-theme="dark"] .tk-elf-corner {
   display: none;
-}
-
-/* Bản tối: đỉnh cột là vòm nhọn — nền cột chuyển sang lớp vòm, viền vàng + viền mint bên trong */
-[data-theme="dark"] .tk-elf .tk-col:not(.tk-col--shut) {
-  background: none;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
-[data-theme="dark"] .tk-elf .tk-col__head {
-  padding: 58px 12px 8px 18px;
-  margin-bottom: 0;
-  background: none;
-}
-
-.tk-elf-arch {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.tk-elf-arch__bg {
-  position: absolute;
-  inset: 0;
-  clip-path: polygon(0 100%, 0px 80px, 0.4px 74.3px, 1.5px 68.6px, 3.3px 63.2px, 5.9px 58px, 9.1px 53.2px, 12.9px 48.9px, 17.2px 45.1px, 22px 41.9px, 27.2px 39.3px, 32.6px 37.5px, 50% 0px, calc(100% - 32.6px) 37.5px, calc(100% - 27.2px) 39.3px, calc(100% - 22px) 41.9px, calc(100% - 17.2px) 45.1px, calc(100% - 12.9px) 48.9px, calc(100% - 9.1px) 53.2px, calc(100% - 5.9px) 58px, calc(100% - 3.3px) 63.2px, calc(100% - 1.5px) 68.6px, calc(100% - 0.4px) 74.3px, calc(100% - 0px) 80px, 100% 100%);
-  border-radius: 0 0 20px 20px;
-  background: linear-gradient(180deg, var(--col-tint, transparent), transparent 200px), var(--tk-col-bg);
-  border: 1px solid var(--tk-col-border);
-  backdrop-filter: blur(10px);
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.tk-col.is-over .tk-elf-arch__bg {
-  background: var(--tk-col-over-bg);
-  border-color: var(--tk-col-over-border);
-}
-
-.tk-elf-arch__gold,
-.tk-elf-arch__mint {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 90px;
-}
-
-.tk-elf-arch__gold {
-  clip-path: polygon(0px 80px, 0.4px 74.3px, 1.5px 68.6px, 3.3px 63.2px, 5.9px 58px, 9.1px 53.2px, 12.9px 48.9px, 17.2px 45.1px, 22px 41.9px, 27.2px 39.3px, 32.6px 37.5px, 50% 0px, calc(100% - 32.6px) 37.5px, calc(100% - 27.2px) 39.3px, calc(100% - 22px) 41.9px, calc(100% - 17.2px) 45.1px, calc(100% - 12.9px) 48.9px, calc(100% - 9.1px) 53.2px, calc(100% - 5.9px) 58px, calc(100% - 3.3px) 63.2px, calc(100% - 1.5px) 68.6px, calc(100% - 0.4px) 74.3px, calc(100% - 0px) 80px, calc(100% - 0px) 81.4px, calc(100% - 0.4px) 75.7px, calc(100% - 1.5px) 70px, calc(100% - 3.3px) 64.6px, calc(100% - 5.9px) 59.4px, calc(100% - 9.1px) 54.6px, calc(100% - 12.9px) 50.3px, calc(100% - 17.2px) 46.5px, calc(100% - 22px) 43.3px, calc(100% - 27.2px) 40.7px, calc(100% - 32.6px) 38.9px, 50% 1.4px, 32.6px 38.9px, 27.2px 40.7px, 22px 43.3px, 17.2px 46.5px, 12.9px 50.3px, 9.1px 54.6px, 5.9px 59.4px, 3.3px 64.6px, 1.5px 70px, 0.4px 75.7px, 0px 81.4px);
-  background: rgba(212, 176, 98, 0.75);
-  filter: drop-shadow(0 0 4px rgba(212, 176, 98, 0.6));
-}
-
-.tk-elf-arch__mint {
-  clip-path: polygon(0px 86px, 0.4px 80.3px, 1.5px 74.6px, 3.3px 69.2px, 5.9px 64px, 9.1px 59.2px, 12.9px 54.9px, 17.2px 51.1px, 22px 47.9px, 27.2px 45.3px, 32.6px 43.5px, 50% 6px, calc(100% - 32.6px) 43.5px, calc(100% - 27.2px) 45.3px, calc(100% - 22px) 47.9px, calc(100% - 17.2px) 51.1px, calc(100% - 12.9px) 54.9px, calc(100% - 9.1px) 59.2px, calc(100% - 5.9px) 64px, calc(100% - 3.3px) 69.2px, calc(100% - 1.5px) 74.6px, calc(100% - 0.4px) 80.3px, calc(100% - 0px) 86px, calc(100% - 0px) 87px, calc(100% - 0.4px) 81.3px, calc(100% - 1.5px) 75.6px, calc(100% - 3.3px) 70.2px, calc(100% - 5.9px) 65px, calc(100% - 9.1px) 60.2px, calc(100% - 12.9px) 55.9px, calc(100% - 17.2px) 52.1px, calc(100% - 22px) 48.9px, calc(100% - 27.2px) 46.3px, calc(100% - 32.6px) 44.5px, 50% 7px, 32.6px 44.5px, 27.2px 46.3px, 22px 48.9px, 17.2px 52.1px, 12.9px 55.9px, 9.1px 60.2px, 5.9px 65px, 3.3px 70.2px, 1.5px 75.6px, 0.4px 81.3px, 0px 87px);
-  background: rgba(94, 242, 194, 0.35);
-}
-
-.tk-elf-arch__leaf {
-  position: absolute;
-  left: 50%;
-  top: -11px;
-  margin-left: -8px;
-  width: 16px;
-  height: 16px;
-  display: grid;
-  place-items: center;
-  color: #E3C27A;
-  filter: drop-shadow(0 0 6px rgba(227, 194, 122, 0.8));
-}
-
-.tk-elf-arch__leaf svg {
-  transform: rotate(-45deg);
 }
 
 /* ── NỀN: bầu trời đêm của rừng (ghi đè lớp Aurora) ── */

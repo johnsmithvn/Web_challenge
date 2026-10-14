@@ -7,6 +7,8 @@
 - **Body — tải lại trang giữa buổi rồi Lưu / Hủy bị đẩy về Lộ trình (`BodyPage.jsx`):** ghim buổi đang tập trước khi ghi, để màn tập không bị gỡ lúc status đổi (optimistic) mà mạng chưa xong. Lưu lỗi thì vẫn ở màn kết quả để thử lại, không mất các mục tăng tiến đã duyệt.
 - **Body — "Bắt đầu tập hôm nay" ở Tổng quan mở màn tập trống "Không có bài tập theo lịch hôm nay" (`OverviewScreen.jsx`):** nút truyền mảng bài thay vì dayInfo `{ weekday, day, name }` như Lộ trình → buổi tạo ra không có thứ, tên "Tập luyện", màn tập lọc ra 0 bài.
 - **Body — thẻ "Buổi tập hôm nay" mobile khi có buổi dở (`OverviewScreen.jsx`):** nhãn "Đang tập dở" + nút "Tiếp tục buổi tập" như desktop (trước vẫn là "Bắt đầu tập hôm nay", bấm thì đòi hủy buổi đang dở).
+- **Desktop màn thấp — Kanban / list Định kỳ bị phần đầu trang chiếm gần hết (`tasks-aurora.css`, `finance.css`):** khi cao ≤760px header, dải "Hôm nay", thanh lọc (Tasks) và 6 ô + "Lịch chi tháng" (Finance) co lại; ≤560px ẩn dải "Hôm nay" và lưới ngày của lịch chi. Ở 1226×~450 (Remote Desktop 250%) vùng thẻ Kanban ~120px → ~250px, list Định kỳ ~55px → ~250px (ước tính từ CSS).
+- **Rừng tiên tối — bỏ vòm nhọn đầu cột Kanban (`TaskElfDecor.jsx`, `tasks-elf.css`):** đầu cột cao thêm 58px chỉ để vẽ vòm, chiếm chỗ thẻ nhất là màn thấp. Cột tối giờ cùng khung với bản sáng (nền kính, viền vàng nhạt từ token, đầu cột `16px 12px 8px 18px`), giữ dây leo + hoa văn dưới tên cột.
 - **`useWorkouts` rollback buổi tập:** `abandonSession` lỗi thì trả buổi về trạng thái cũ (trước UI vẫn coi là đã hủy); `updateSession` lỗi chỉ trả lại đúng trường vừa sửa thay vì ghi đè cả mảng `sessions` bằng snapshot cũ.
 
 ## v6.27.0 — 2026-10-14

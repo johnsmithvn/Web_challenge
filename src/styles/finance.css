@@ -2828,6 +2828,31 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-sm__foot { padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px)); }
   .fin-sm__cancel { display: none; }
 }
+/* ── Desktop màn thấp: 6 ô + lịch chi co lại để danh sách còn chỗ (vd 1226×~450 qua Remote Desktop
+   250%: trước danh sách chỉ còn ~50px). Lịch dùng chấm nhỏ như bản mobile. ── */
+@media (min-width: 769px) and (max-height: 760px) {
+  .fin-hub { gap: 10px; }
+  .fin-hub__tile { padding: 10px 12px; gap: 8px; }
+  .fin-hub__tile-foot { display: none; }
+  .fin-hub__cal { padding: 10px 18px; gap: 8px; }
+  .fin-hub__cal-day { grid-template-rows: 30px 20px; }
+  .fin-hub__cal-chips { gap: 2px; padding-bottom: 3px; }
+  .fin-hub__cal-chip { width: 9px; height: 9px; }
+  .fin-hub__cal-chip--due { background: var(--chip-color); }
+  .fin-hub__cal-chip--skip { border-width: 1px; }
+  .fin-hub__cal-chip > svg, .fin-hub__cal-weekday { display: none; }
+  .fin-hub__cal-date { font-size: 11px; }
+}
+/* Thấp hẳn: bỏ lưới ngày (giữ dòng tháng · số kỳ cần trả · Thêm), ô chỉ còn nhãn + số tiền */
+@media (min-width: 769px) and (max-height: 560px) {
+  .fin-hub__tile { padding: 8px 10px; gap: 5px; }
+  .fin-hub__tile-icon { width: 20px; height: 20px; border-radius: 6px; }
+  .fin-hub__tile-sub { display: none; }
+  .fin-hub__tile-value { font-size: 14px; }
+  .fin-hub__cal { padding: 8px 18px; }
+  .fin-hub__cal-grid, .fin-hub__cal-legend, .fin-hub__cal-divider { display: none; }
+  .fin-hub__add { margin-left: auto; }
+}
 @media (prefers-reduced-motion: reduce) {
   .fin-hub__detail, .fin-hub__detail-backdrop, .fin-hub__tile, .fin-sm__toggle > i > b { transition: none; }
 }

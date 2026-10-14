@@ -1205,7 +1205,8 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   "Giao diện trang Nhiệm vụ" (`taskStyle` trong `ThemeContext`, localStorage `vl_task_style`, mặc định `default`).
   Workspace có class `.tk-elf` → ghi đè token `--tk-*` (xanh lá/vàng đồng sáng, mint/vàng đêm), font tiêu đề
   Cormorant SC (cỡ ×`--tk-ds`, đậm `--tk-elf-w`), thẻ bo `5px 18px` + kính mờ. Trang trí ở `TaskElfDecor.jsx`
-  (dây leo + hoa góc cột, vòm nhọn viền vàng bản tối, hoa văn dưới tên cột, hoa nở trên thẻ xong — bản sáng).
+  (dây leo cột — hoa góc chỉ bản sáng, hoa văn dưới tên cột, hoa nở trên thẻ xong — bản sáng). Khung cột sáng
+  và tối giống nhau (đầu cột `16px 12px 8px 18px`); không dùng vòm nhọn cho cột vì ăn chỗ của thẻ.
   Nền ở `TaskForestBackground.jsx`: rừng ngày = 3 lớp cây SVG sinh thủ tục (thân/cành cong, tán lá méo bằng
   feTurbulence; tính 1 lần/cỡ, giãn theo trang) + rêu rủ đung đưa + nấm phát sáng + suối, nắng xuyên, lá rơi, bướm;
   sương mù ngẫu nhiên (`FogBank`: lớp sau giữa cây tầng giữa/gần, lớp trước mỏng phủ cây gần; mỗi lớp kéo đến rồi tan
@@ -1317,6 +1318,11 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
 - **Do** keep navigation toolbars and filter bars sticky/static (`flex-shrink: 0;`)
   above internal scrolling containers (`.app-workspace-scroll`) to prevent layout jumps
   and scroll-traps.
+- **Do** compact that fixed chrome on short desktop viewports so the scroll area keeps
+  room: `@media (min-width: 769px) and (max-height: 760px)` tightens padding/type, and
+  `(max-height: 560px)` hides purely decorative strips. Applied in Tasks (`tasks-aurora.css`:
+  header, dải Hôm nay → ẩn ở tầng 2) and Finance Định kỳ & Quỹ (`finance.css` `.fin-hub`: ô KPI
+  bỏ thanh tiến độ, lịch chi dạng chấm → ẩn lưới ngày ở tầng 2).
 - **Do** declare CSS Grid columns with `repeat(N, minmax(0, 1fr))` instead of raw `1fr`,
   preventing cells from ballooning when wide text or multi-column overlapping chips
   are rendered.

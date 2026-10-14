@@ -7477,6 +7477,70 @@
   }
 }
 
+/* ── DESKTOP MÀN THẤP: header / dải Hôm nay / thanh lọc co lại để Kanban, danh sách còn chỗ ──
+   (vd 1226×~450 qua Remote Desktop 250%: trước chỉ còn ~120px cho thẻ). Mobile không đổi. */
+@media (min-width: 769px) and (max-height: 760px) {
+  .tk-header {
+    padding-top: 14px;
+  }
+
+  .tk-header__info {
+    gap: 6px;
+  }
+
+  .tk-header__title {
+    font-size: calc(24px * var(--tk-ds, 1));
+  }
+
+  .tk-header .tk-chip {
+    height: 22px;
+  }
+
+  .tk-today-strip {
+    margin-top: 10px;
+    height: 52px;
+  }
+
+  .tk-today-strip__hour span {
+    top: 6px;
+  }
+
+  .tk-today-strip__now {
+    top: 4px;
+    bottom: 4px;
+  }
+
+  .tk-today-strip__item {
+    top: 21px;
+    height: 24px;
+  }
+
+  .tk-filter-bar {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .tk-board {
+    padding-bottom: 16px;
+  }
+}
+
+/* Thấp hẳn: bỏ dải Hôm nay (việc trong ngày vẫn xem ở Ngày / Lịch biểu), như bản mobile */
+@media (min-width: 769px) and (max-height: 560px) {
+  .tk-header {
+    padding-top: 10px;
+  }
+
+  .tk-today-strip {
+    display: none;
+  }
+
+  .tk-filter-bar {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
+
 /* ── GIẢM CHUYỂN ĐỘNG ── */
 @media (prefers-reduced-motion: reduce) {
   .task-cosmos-bg *,
