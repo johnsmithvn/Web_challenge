@@ -258,6 +258,7 @@ kind `finance`. Vault tag không liên quan vì được mã hóa.
   - Token màu nghiệp vụ `--n-kind-*` (+ `-soft`): `bill` chàm, `card` xanh dương, `loan` cam, `save` xanh lá, `lend` xanh ngọc. Khai báo ở `.finance-module` (dark) và `[data-theme="light"] .finance-module`.
   - Chip lịch: cần trả = nền màu loại nhạt + icon màu loại; đã xong = xám; bỏ kỳ = viền đứt. Mobile thu thành chấm 7px, chỉ ghi số các ngày mốc. Hàng có hạn ngoài tháng hiện `T<tháng>` thay cho thứ.
   - Quỹ gom vào hub, không có màn riêng: dòng quỹ có caret, bấm để xổ sổ con (`.fin-hub__row.is-child`, thụt 34px + vạch dẫn 1px). Cột ngày của sổ là ngày đáo hạn. Form góp/rút (`SavingMoveForm`) và xử lý đáo hạn (`MaturityForm`) mở ngay trong panel như khối trả; thêm/sửa sổ là `DepositForm` trong `GenericModal` 680px (`.fin-dep-modal`, mobile thành sheet). Lọc Quỹ có dải tổng `.fin-hub__sumstrip` (4 số + dòng phân bổ, nền `--n-sink`).
+- Ô ngày (`DateField`): gõ dd/mm/yyyy hoặc mở lịch `DatePopover` dùng chung với Task (256px, ngày âm, bấm là chọn). Lịch `position: fixed`, portal vào `.finance-module` — không render trong khung cuộn (hộp thoại, sheet mobile có transform sẽ cắt mép). Màu qua `.fin-datepop` map `--tk-*` → `--n-*`.
 - Money dùng tabular figures; trạng thái không truyền bằng màu một mình.
 - Keyboard/focus/reduced-motion là yêu cầu, không phải polish tùy chọn.
 

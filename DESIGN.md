@@ -1259,7 +1259,8 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   `--tk-font-display` × `--tk-ds`.
 - Popover đổi ngày giờ / lọc khoảng ngày (`.tk-datepick`, `.tk-dp-*`, `.tk-rp-*`): rộng 256px, ô 38px (Bắt đầu /
   Kết thúc), lịch 29px có ngày âm (`MonthGrid` nav `center` = ‹ Tháng ›, `left` = Tháng ‹ ›; `joined` nối liền khoảng),
-  chân có vạch chia; nền ô mềm `--tk-pp-soft`.
+  chân có vạch chia; nền ô mềm `--tk-pp-soft`. Khung `.tk-popover` + lịch tháng nằm ở `date-popover.css` (dùng chung):
+  `DatePopover` (chọn một ngày, bấm là chọn) là lịch của ô ngày Finance — Finance map `--tk-*` sang `--n-*` ở `.fin-datepop`.
 
 ## Do's and Don'ts
 

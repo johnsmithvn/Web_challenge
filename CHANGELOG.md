@@ -4,6 +4,7 @@
 
 ### Changed
 - **Định kỳ & Quỹ — gom màn Quỹ tiết kiệm vào hub (`RecurringScreen.jsx`, `recurringHub.js` `depositItem`/`savingsSummary`, `AnalyzeScreen.jsx`):** bỏ màn "Tiền gửi & Quỹ mục tiêu" (`SavingsWorkspace`, `GoalForm`). Bấm dòng quỹ để xổ các sổ con; panel quỹ có Góp tiền / Rút ra (dùng lại `SavingMoveForm`, khóa kỳ hạn vẫn chờ 48 giờ), Thêm sổ, Xóa quỹ (báo trước nếu còn giao dịch góp/rút), lãi khi đáo hạn, lãi bình quân, sổ gần đáo hạn, phân bổ. Panel sổ có Xử lý đáo hạn (`MaturityForm`), Sửa/Xóa sổ (`DepositForm` trong hộp thoại), Mở lại sổ đã tất toán (mục lưu trữ "Sổ đã tất toán"). Lọc Quỹ hiện dải tổng mọi sổ. Hộp thoại Thêm/Sửa quỹ thêm khóa khi rút + ngày mở khóa + "tiền còn ở tài khoản thường". Cảnh báo sổ đáo hạn ở trang chủ chọn sẵn sổ đáo hạn sớm nhất. Gỡ ~80 rule CSS chết của màn cũ.
+- **Finance — ô ngày dùng lịch gọn của Task (`parts.jsx` `DateField`, `TaskFloatingPopovers.jsx` `DatePopover`, `date-popover.css`):** thay lịch 380px có cột phím tắt bằng lịch 256px như popover "Đổi ngày giờ" của Task (ngày âm, bấm ngày là chọn, chân Bỏ ngày / Huỷ / Hôm nay; ngày sau `max` mờ và khóa). Lịch nổi (`fixed`) portal vào `.finance-module` nên không còn bị hộp thoại Thêm/Sửa cắt mép và đẻ thanh cuộn ngang; dưới hết chỗ thì lật lên, tràn mép thì tự đẩy vào. CSS khung + lịch tháng tách từ `tasks-aurora.css` ra `date-popover.css` dùng chung (Task không đổi); Finance map token `--tk-*` sang Nocturne ở `.fin-datepop`.
 
 ## v6.27.1 — 2026-10-14
 

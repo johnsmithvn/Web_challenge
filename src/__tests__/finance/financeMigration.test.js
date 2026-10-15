@@ -226,6 +226,10 @@ for (const key of ['shopping.clothes', 'entertainment.game', 'entertainment.part
 /* ── parts.jsx contract: pickableSubs, NECESSITY_META ────────────── */
 const partsSrc = readFileSync(new URL('../../components/finance/parts.jsx', import.meta.url), 'utf8');
 
+// Ô ngày dùng lịch chung với Task, portal ra ngoài khung cuộn (trước bị hộp thoại cắt mép).
+assert.match(partsSrc, /<DatePopover\b/, 'DateField phải dùng DatePopover chung với Task');
+assert.match(partsSrc, /createPortal\(/, 'lịch của DateField phải portal ra ngoài khung cuộn');
+
 // NECESSITY_META: chỉ còn 2 bậc must và want, không còn bậc need
 assert.match(partsSrc, /export const NECESSITY_META = \{[\s\S]*?must:[\s\S]*?want:[\s\S]*?\};/);
 assert.doesNotMatch(partsSrc, /need:\s*\{/, 'bậc need đã bị bỏ ở v6.12, không được xuất hiện trong NECESSITY_META');

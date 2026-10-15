@@ -5,6 +5,7 @@ import { STATUS_META, ksStyle, taskCardModel } from '../utils/kanbanUtils';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
 import { datePickDraft, datePickPatch } from '../utils/calendarTimeUtils';
+import '../styles/date-popover.css';
 
 /**
  * TaskFloatingPopovers — Tập hợp các floating popovers xuất hiện tại chỗ khi click thẻ:
@@ -105,7 +106,8 @@ function usePopoverShell(ref, onClose) {
 }
 
 /**
- * Lưới tháng (CN đầu tuần) có ngày âm dưới mỗi ô. `cellState(v)` → { sel, inRange, edge: 'a'|'b' }.
+ * Lưới tháng (CN đầu tuần) có ngày âm dưới mỗi ô. `cellState(v)` → { sel, inRange, edge: 'a'|'b', off }
+ * (off = ngày không chọn được, vd sau mốc `max`).
  * nav 'center' = ‹ Tháng › (popover đổi hạn) · 'left' = Tháng ‹ › (popover lọc khoảng ngày) như mockup.
  * joined: ô trong khoảng nối liền (bo 2 đầu khoảng) — popover đổi hạn.
  */
@@ -142,7 +144,7 @@ function MonthGrid({ month, setMonth, cellState, onPick, nav = 'center', joined 
         {cells.map((d, i) => {
           if (!d) return <span key={`e${i}`} />;
           const v = toDateStr(new Date(Y, M, d));
-          const { sel, inRange, edge } = cellState(v);
+          const { sel, inRange, edge, off } = cellState(v);
           const cls = [
             'tk-cal-cell',
             sel ? 'is-sel' : inRange ? 'is-range' : '',
@@ -151,7 +153,7 @@ function MonthGrid({ month, setMonth, cellState, onPick, nav = 'center', joined 
             (first + d - 1) % 7 === 0 ? 'is-sun' : '',
           ].filter(Boolean).join(' ');
           return (
-            <button key={v} type="button" onClick={() => onPick(v)} className={cls}>
+            <button key={v} type="button" onClick={() => onPick(v)} className={cls} disabled={off}>
               <span className="tk-cal-cell__n">{d}</span>
               <span className="tk-cal-cell__l">{lunarLabel(solarToLunar(d, M + 1, Y))}</span>
             </button>
@@ -166,6 +168,57 @@ const dayLabel = (v) => {
   const d = new Date(`${v}T00:00:00`);
   return `${DOW_SHORT[d.getDay()]}, ${d.getDate()} thg ${d.getMonth() + 1}`;
 };
+
+/**
+ * Chọn MỘT ngày (ô ngày của Finance): cùng khung 256px + lịch âm với popover đổi hạn, bấm ngày là
+ * chọn luôn — không cần Lưu. `max` khóa các ngày sau mốc. Escape chỉ đóng lịch, không lọt ra hộp
+ * thoại bọc ngoài (form Thêm/Sửa bắt Escape để đóng chính nó). Thường được portal ra ngoài khung
+ * cuộn → chặn mousedown để popover bọc ngoài (bộ lọc, InfoTip…) không tưởng là bấm ra ngoài.
+ */
+export function DatePopover({ value, max, onPick, onClose, style, className = '' }) {
+  const ref = useRef(null);
+  usePopoverShell(ref, onClose);
+  const todayStr = toDateStr();
+  const [month, setMonth] = useState(() => monthOf(value || todayStr));
+  const pick = (v) => {
+    onPick(v);
+    onClose();
+  };
+
+  return (
+    <div
+      ref={ref}
+      className={`tk-popover tk-datepick ${className}`}
+      style={style}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape') return;
+        e.stopPropagation();
+        onClose();
+      }}
+    >
+      <MonthGrid
+        month={month}
+        setMonth={setMonth}
+        cellState={(v) => ({ sel: v === value, off: Boolean(max && v > max) })}
+        onPick={pick}
+      />
+      <div className="tk-dp-foot">
+        {value && (
+          <button type="button" className="tk-dp-btn" onClick={() => pick('')}>
+            <AppIcon name="x" size={12} />
+            Bỏ ngày
+          </button>
+        )}
+        <button type="button" className="tk-dp-btn tk-dp-cancel" onClick={onClose}>Huỷ</button>
+        <button type="button" className="tk-dp-save" disabled={Boolean(max && todayStr > max)} onClick={() => pick(todayStr)}>
+          Hôm nay
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Đổi ngày giờ của việc (mockup): ô Bắt đầu + Kết thúc (tuỳ chọn), lịch có ngày âm, dòng giờ bắt đầu → kết thúc.

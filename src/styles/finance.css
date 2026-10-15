@@ -321,7 +321,7 @@
 .fin-input::placeholder { color: var(--n-txt3); }
 .fin-input--sm { padding: 6px 8px; font-size: 12.5px; width: auto; }
 select.fin-input { color-scheme: dark; cursor: pointer; }
-/* Ô ngày: gõ thẳng dd/mm/yyyy, nút lịch bên phải mở popover (lật lên khi dưới hết chỗ). */
+/* Ô ngày: gõ thẳng dd/mm/yyyy, nút lịch bên phải mở lịch nổi dùng chung với Task (DatePopover). */
 .fin-datefield { position: relative; display: block; }
 /* Ô ngày phải CAO ĐÚNG BẰNG ô chữ bên cạnh. Trước đây nó dùng nguyên padding dọc 9px
    của .fin-input, cộng thêm nút lịch (icon 15px + padding 4px = 23px) nên cao 41–43px
@@ -334,6 +334,20 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-datefield__text::placeholder { color: var(--n-txt3); }
 .fin-datefield__pick { display: flex; align-items: center; background: none; border: none; padding: 4px; border-radius: 6px; color: var(--n-txt3); cursor: pointer; line-height: 0; }
 .fin-datefield__pick:hover { color: var(--n-txt); background: rgba(233,233,237,0.08); }
+/* Lịch chọn ngày dùng chung với Task (DatePopover + date-popover.css): map token --tk-* sang Nocturne.
+   Popover portal vào .finance-module (position: fixed) nên không bị khung cuộn của hộp thoại cắt. */
+.fin-datepop {
+  z-index: 1100;
+  --tk-popover-bg: var(--n-card); --tk-popover-border: var(--n-border); --tk-popover-shadow: 0 24px 60px -16px rgba(4,5,12,.6);
+  --tk-text-main: var(--n-txt); --tk-text-sub: var(--n-txt2); --tk-text-mute: var(--n-txt3); --tk-label: var(--n-txt3);
+  --tk-cal-fg: var(--n-txt); --tk-ut-mute: var(--n-txt3); --tk-sun: var(--n-danger);
+  --tk-hover: var(--n-sink); --tk-pp-soft: var(--n-sink); --tk-late-row-hover: var(--n-sink);
+  --tk-divider: var(--n-line); --tk-border-strong: var(--n-border); --tk-ring: var(--n-accent);
+  --tk-sel-bg: var(--n-accent); --tk-sel-fg: #fff; --tk-solid-bg: var(--n-accent); --tk-solid-fg: #fff;
+  --tk-opt-on: var(--n-accent-soft); --tk-seg-on-fg: var(--n-on-accent); --tk-accent: var(--n-accent);
+  --tk-font-display: var(--font-body), system-ui, sans-serif;
+}
+.fin-datepop .tk-dp-save:disabled { opacity: .45; cursor: default; }
 .fin-label { display: block; color: var(--n-txt2); font-size: 12px; margin: 10px 0 4px; }
 .fin-form { display: flex; flex-direction: column; }
 .fin-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

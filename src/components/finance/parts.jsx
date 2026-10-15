@@ -4,11 +4,12 @@
  * necessity, picker gắn Task.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { formatVND } from '../../utils/currencyUtils';
 import { formatDate, parseDmy } from '../../utils/dateUtils';
 import CATS from '../../data/finance-categories.json';
 import AppIcon from '../AppIcon';
-import DatePickerPopover from '../DatePickerPopover';
+import { DatePopover } from '../TaskFloatingPopovers';
 import BankSelect, { BANKS } from '../BankSelect';
 
 export { formatVND, BankSelect, BANKS };
@@ -123,17 +124,20 @@ export function Toggle({ on, onChange, label, ariaLabel }) {
  *
  * `<input type="date">` hiển thị theo NGÔN NGỮ TRÌNH DUYỆT (máy để tiếng Anh ra
  * mm/dd/yyyy) và không có cách nào ép định dạng bằng HTML/CSS/JS, nên phải bỏ hẳn
- * control gốc. Bên trong vẫn là `DatePickerPopover` có sẵn của app (RULES.md §5),
- * chỉ bọc thêm nút hiển thị để mỗi call site vẫn gọn một dòng.
+ * control gốc. Lịch là `DatePopover` dùng chung với Task (256px, có ngày âm, bấm là chọn),
+ * chỉ bọc thêm ô gõ để mỗi call site vẫn gọn một dòng.
+ *
+ * Lịch nổi (`position: fixed`) và portal vào `.finance-module`: nằm trong khung cuộn của hộp
+ * thoại / sheet mobile (có transform) thì popover thường bị cắt mép và đẻ thanh cuộn ngang.
+ * Portal vào gốc module chứ không phải body để vẫn có token màu Nocturne.
  *
  * `max` thay cho attribute `max` của native input: chặn chọn ngày tương lai.
  */
-const POPOVER_HEIGHT = 430;   // chiều cao thực tế của .dp-popover, dùng để chọn hướng mở
+const POPOVER_HEIGHT = 300;   // chiều cao xấp xỉ của DatePopover, dùng để chọn hướng mở
 
 export function DateField({ value, onChange, max, placeholder = 'dd/mm/yyyy', className = 'fin-input',
   ariaLabel = 'Ngày, dạng ngày/tháng/năm' }) {
-  const [open, setOpen] = useState(false);
-  const [dropUp, setDropUp] = useState(false);
+  const [pos, setPos] = useState(null);   // toạ độ lịch đang mở; null = đóng
   const [text, setText] = useState(() => (value ? formatDate(value) : ''));
   const boxRef = useRef(null);
   // Ngày đổi từ bên ngoài (nút Hôm nay/Hôm qua, chọn trong lịch) thì ô chữ theo kịp.
@@ -156,11 +160,12 @@ export function DateField({ value, onChange, max, placeholder = 'dd/mm/yyyy', cl
   const blur = () => { if (!commit(text)) setText(value ? formatDate(value) : ''); };
 
   const toggle = () => {
-    // Mở xuống dưới mà không đủ chỗ thì lật lên trên: trước đây popover tràn khỏi màn
-    // hình và nút Lưu nằm ngoài vùng cuộn được, coi như không bấm được.
-    const box = boxRef.current?.getBoundingClientRect();
-    if (box) setDropUp(window.innerHeight - box.bottom < POPOVER_HEIGHT && box.top > POPOVER_HEIGHT);
-    setOpen(o => !o);
+    if (pos) { setPos(null); return; }
+    // Dưới không đủ chỗ thì lật lên trên; tràn mép phải/dưới thì DatePopover tự đẩy vào trong.
+    const box = boxRef.current.getBoundingClientRect();
+    const up = window.innerHeight - box.bottom < POPOVER_HEIGHT && box.top > POPOVER_HEIGHT;
+    setPos({ top: up ? box.top - POPOVER_HEIGHT - 4 : box.bottom + 4, left: box.left,
+      host: boxRef.current.closest('.finance-module') || document.body });
   };
 
   return (
@@ -168,13 +173,14 @@ export function DateField({ value, onChange, max, placeholder = 'dd/mm/yyyy', cl
       <span className={`${className} fin-datefield__box`}>
         <input className="fin-datefield__text" value={text} onChange={type} onBlur={blur}
           inputMode="numeric" placeholder={placeholder} aria-label={ariaLabel} />
-        <button type="button" className="fin-datefield__pick" onClick={toggle}
-          aria-label="Mở lịch" title="Mở lịch"><AppIcon name="calendar" size={15} /></button>
+        {/* Chặn pointerdown: không thì "bấm ra ngoài" của lịch đóng nó rồi click lại mở ngay. */}
+        <button type="button" className="fin-datefield__pick" onClick={toggle} onPointerDown={e => e.stopPropagation()}
+          aria-label={pos ? 'Đóng lịch' : 'Mở lịch'} aria-expanded={Boolean(pos)} title="Mở lịch"><AppIcon name="calendar" size={15} /></button>
       </span>
-      {open && (
-        <DatePickerPopover value={value || ''} hideTime max={max}
-          onChange={onChange} onClose={() => setOpen(false)}
-          style={dropUp ? { bottom: '100%', left: 0, marginBottom: '4px' } : { top: '100%', left: 0, marginTop: '4px' }} />
+      {pos && createPortal(
+        <DatePopover value={value || ''} max={max} onPick={onChange} onClose={() => setPos(null)}
+          className="fin-datepop" style={{ position: 'fixed', top: pos.top, left: pos.left }} />,
+        pos.host,
       )}
     </span>
   );

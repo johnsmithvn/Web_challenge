@@ -182,6 +182,13 @@
   outline: 1px solid var(--tk-border-strong);
 }
 
+/* Ngày ngoài giới hạn (vd sau `max`): mờ, không bấm được */
+.tk-cal-cell:disabled {
+  opacity: 0.3;
+  outline: none;
+  cursor: default;
+}
+
 .tk-cal-cell__n {
   font: 500 12px/1 'Be Vietnam Pro', sans-serif;
 }
