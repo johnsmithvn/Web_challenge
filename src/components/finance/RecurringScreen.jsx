@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { groupDigits, parseCurrencyInput, sanitizeDecimal, sanitizeDigits } from '../../utils/currencyUtils';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import {
@@ -1029,7 +1030,10 @@ export default function RecurringScreen({ fin, nav }) {
   // Form đang gõ dở: đóng nó phải hỏi trước, bấm nhầm một cái là mất sạch.
   const [dirty, setDirty] = useState(false);
   const [payId, setPayId] = useState(null);   // mỗi lúc chỉ một khối trả
-  const [openSavings, setOpenSavings] = useState(false);
+  // Cảnh báo sổ đáo hạn ở trang chủ là nơi DUY NHẤT gửi recurringSeg 'saving' qua navigation
+  // state → mở thẳng bảng nơi gửi (có nút Xử lý), không bắt bấm thêm Quỹ → Mở quản lý quỹ.
+  const location = useLocation();
+  const [openSavings, setOpenSavings] = useState(() => location.state?.recurringSeg === 'saving');
   const rowRefs = useRef(new Map());
 
   const items = buildHubItems(fin);
@@ -1760,6 +1764,7 @@ function LendDetail({ fin, tasks, act, lending: l, payId, setPayId, onEdit, onCl
 // Nạp/rút/nơi gửi sống ở SavingsWorkspace; hub cho thấy và mở nó.
 function SaveDetail({ fin, goal: g, onEdit, onClose, onOpenSavings }) {
   const deps = fin.deposits.filter(d => d.fund_id === g.id && !d.closed_on);
+  const matured = deps.filter(d => d.matures_at && d.matures_at <= fin.today);
   const bal = deps.reduce((s, d) => s + (d.amount || 0), 0);
   const plan = g.auto_deposit?.amount ? g.auto_deposit : null;
   const month = fin.today.slice(0, 7);
@@ -1780,9 +1785,14 @@ function SaveDetail({ fin, goal: g, onEdit, onClose, onOpenSavings }) {
         value={money(plan ? plan.amount : bal)} state={state} />
       <div className="fin-hub__detail-actions">
         <button type="button" className="fin-btn fin-btn--primary fin-hub__primary" onClick={onOpenSavings}>
-          <AppIcon name="piggyBank" size={16} /> {plan && !depositTx ? 'Góp tiền · mở quản lý quỹ' : 'Mở quản lý quỹ'}
+          <AppIcon name="piggyBank" size={16} /> {matured.length ? 'Xử lý sổ đáo hạn · mở quản lý quỹ'
+            : plan && !depositTx ? 'Góp tiền · mở quản lý quỹ' : 'Mở quản lý quỹ'}
         </button>
       </div>
+      {matured.length > 0 && <div className="fin-inline-message fin-inline-message--warn">
+        <AppIcon name="warning" size={15} weight="fill" />
+        <span>{matured.map(d => d.name).join(', ')} đã đáo hạn — mở quản lý quỹ, bấm <strong>Xử lý</strong> ở dòng sổ để rút về hoặc gửi lại.</span>
+      </div>}
       {!deps.length && plan && <div className="fin-inline-message fin-inline-message--warn">
         <AppIcon name="warning" size={15} weight="fill" />
         <span>Chưa khai nơi gửi nào — phải có ít nhất một nơi gửi thì mới ghi được tiền góp vào quỹ.</span>
