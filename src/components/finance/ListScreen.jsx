@@ -904,7 +904,7 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, o
               <div className="fin-edit-field">
                 <label className="fin-label">Số tiền</label>
                 <div className="fin-input-money">
-                  <input className="fin-input" aria-label="Số tiền" inputMode="numeric" pattern="[0-9]*" value={groupDigits(amount)} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
+                  <input className="fin-input" aria-label="Số tiền" inputMode="numeric" pattern="[0-9.]*" value={groupDigits(amount)} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
                   <span>₫</span>
                 </div>
               </div>

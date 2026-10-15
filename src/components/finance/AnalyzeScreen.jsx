@@ -759,7 +759,7 @@ function MaturityForm({ fin, nav, deposit, onDone }) {
           <input
             className="fin-input"
             inputMode="numeric"
-            pattern="[0-9]*"
+            pattern="[0-9.]*"
             value={interest ? groupDigits(interest) : ''}
             onChange={e => setInterest(sanitizeDigits(e.target.value))}
             placeholder="0"
@@ -930,7 +930,7 @@ function SavingMoveForm({ fin, goal, dir, onDone, onOpenNewDeposit }) {
           <input
             className="fin-input"
             inputMode="numeric"
-            pattern="[0-9]*"
+            pattern="[0-9.]*"
             value={amount ? groupDigits(amount) : ''}
             onChange={e => setAmount(sanitizeDigits(e.target.value))}
             aria-label="Số tiền"
