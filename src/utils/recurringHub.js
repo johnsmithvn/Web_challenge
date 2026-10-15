@@ -3,6 +3,7 @@ import {
   billCycle, billSettled, billAmountEstimate,
   cardStatementSummary, cardCarryOver, cardBalance,
   loanSchedule, loanCycle,
+  daysInclusive, fundBalance, maturityInterest, maturityWarn, guessDepositType,
 } from './financeLogic.js';
 
 const WD_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -191,20 +192,28 @@ export function buildHubItems(fin = {}) {
     }
 
     const overdue = Boolean(ev && ev.state === 'due' && ev.due < today);
-    const deps = deposits.filter(d => d.fund_id === g.id && !d.closed_on);
+    // Sổ đang mở của quỹ — danh sách xổ ra dưới dòng quỹ. Sổ có hạn lên trước, linh hoạt cuối.
+    const deps = deposits.filter(d => d.fund_id === g.id && !d.closed_on)
+      .sort((a, b) => (a.matures_at || '9999').localeCompare(b.matures_at || '9999'));
     const bal = deps.reduce((s, d) => s + (d.amount || 0), 0);
     const progress = { pct: pctOf(bal, g.goal), label: g.goal ? `${shortMoney(bal)} / ${shortMoney(g.goal)}` : shortMoney(bal) };
+    const matured = deps.filter(d => d.matures_at && d.matures_at <= today).length;
+    const banks = new Set(deps.map(d => d.bank).filter(Boolean)).size;
 
     items.push({
       id: g.id,
       kind: 'save',
       name: g.name,
-      sub: g.auto_deposit?.amount ? `gửi ngày ${g.auto_deposit.day} hằng tháng` : 'gửi tay',
+      sub: g.auto_deposit?.amount
+        ? `Góp ${shortMoney(g.auto_deposit.amount)} · ngày ${g.auto_deposit.day} hằng tháng`
+        : deps.length ? `${deps.length} sổ · ${banks} ngân hàng · gửi tay` : 'chưa có sổ · gửi tay',
       icon: 'piggyBank',
       categoryId: 'saving',
       main: bal,
-      note: 'gửi tay',
+      note: matured ? `${matured} sổ đã đáo hạn` : 'gửi tay',
+      tone: matured ? 'due' : null,
       source: g,
+      deposits: deps,
       ev,
       progress,
       overdue,
@@ -250,6 +259,61 @@ export function buildHubItems(fin = {}) {
   }
 
   return items;
+}
+
+const DEPOSIT_ICON = { cd: 'certificate', term: 'bank', flex: 'deviceMobile' };
+
+/**
+ * Một sổ (finance_deposits) dưới dạng dòng hub: dòng con của quỹ, hoặc dòng lưu trữ khi
+ * đã tất toán. `kind` vẫn là 'save' để bộ lọc Quỹ gom đúng; `deposit` phân biệt với dòng quỹ.
+ * Cột ngày là ngày đáo hạn (`nd`), sổ linh hoạt không có ngày.
+ */
+export function depositItem(d, fund, today) {
+  const type = guessDepositType(d);
+  const closed = Boolean(d.closed_on);
+  const days = !closed && d.matures_at ? maturityWarn(d.matures_at, today).days : null;
+  const note = closed ? `tất toán ${dmyFull(d.closed_on)}`
+    : days == null ? 'linh hoạt'
+    : days < 0 ? `đã đáo hạn ${-days} ngày`
+    : days === 0 ? 'đáo hạn hôm nay' : `còn ${days} ngày`;
+  // Thanh tiến độ = phần kỳ hạn đã trôi qua; sổ linh hoạt chỉ có nhãn lãi suất.
+  const span = d.opened_at && d.matures_at ? daysInclusive(d.opened_at, d.matures_at) - 1 : 0;
+  const gone = span ? daysInclusive(d.opened_at, today < d.matures_at ? today : d.matures_at) - 1 : 0;
+  return {
+    id: d.id,
+    kind: 'save',
+    deposit: true,
+    name: d.name,
+    sub: [d.bank, d.account_no].filter(Boolean).join(' · ') || 'Chưa ghi ngân hàng',
+    icon: DEPOSIT_ICON[type],
+    main: d.amount || 0,
+    note,
+    tone: closed ? 'paid' : days != null && days <= 0 ? 'due' : null,
+    done: closed,
+    nd: d.matures_at ? [Number(d.matures_at.slice(8)), `T${Number(d.matures_at.slice(5, 7))}`] : null,
+    progress: { pct: closed ? 100 : pctOf(gone, span), label: `${d.rate || 0}%/năm · ${d.term ? `${d.term} tháng` : 'linh hoạt'}` },
+    source: d,
+    fund,
+    ev: null,
+  };
+}
+
+/**
+ * Số tổng của một nhóm sổ đang mở (một quỹ, hoặc tất cả): đang gửi, lãi bình quân, lãi
+ * khi đến hạn, phân bổ theo ngân hàng (lớn trước) và sổ đáo hạn gần nhất.
+ */
+export function savingsSummary(deposits = []) {
+  const open = deposits.filter(d => !d.closed_on);
+  const { total, weightedRate } = fundBalance(open);
+  const byBank = new Map();
+  for (const d of open) byBank.set(d.bank || 'Chưa ghi', (byBank.get(d.bank || 'Chưa ghi') || 0) + (d.amount || 0));
+  const next = open.filter(d => d.matures_at).sort((a, b) => a.matures_at.localeCompare(b.matures_at))[0] || null;
+  return {
+    total, weightedRate, count: open.length,
+    interest: open.reduce((s, d) => s + maturityInterest(d), 0),
+    banks: [...byBank].map(([bank, amount]) => ({ bank, amount })).sort((a, b) => b.amount - a.amount),
+    next,
+  };
 }
 
 /**

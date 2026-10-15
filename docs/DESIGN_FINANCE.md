@@ -122,7 +122,7 @@ nhau.
 
 - Keyboard `N`, natural language, shortcut và full form.
 - Form Nhập nhanh chỉ ghi **khoản chi** (nguồn, necessity, Task link, Inbox provenance khi conversion).
-  Không có chỗ ghi thu nhập tay; gửi/rút quỹ đi qua Định kỳ & Quỹ → Quỹ tiết kiệm.
+  Không có chỗ ghi thu nhập tay; gửi/rút quỹ đi qua panel quỹ ở Định kỳ & Quỹ.
 - List group theo ngày, có filter/search, edit detail, tag, CSV.
 - Lọc hai tầng: chip loại luôn hiện, còn nhóm · danh mục con · khoảng ngày nằm trong popover nút
   **Lọc**. Điều kiện cộng dồn (AND); danh mục con phải có nhóm cha; khoảng ngày thu hẹp trong kỳ chứ
@@ -257,6 +257,7 @@ kind `finance`. Vault tag không liên quan vì được mã hóa.
   - Phân nhóm timeline tự động: Quá hạn (`overdue`), Tuần này (`thisWeek`), Tuần tới (`nextWeek`), Sau đó (`later`), Mục tiêu quỹ (`none`), và nhóm đã hoàn tất (`done`) dạng collapsible toggle.
   - Token màu nghiệp vụ `--n-kind-*` (+ `-soft`): `bill` chàm, `card` xanh dương, `loan` cam, `save` xanh lá, `lend` xanh ngọc. Khai báo ở `.finance-module` (dark) và `[data-theme="light"] .finance-module`.
   - Chip lịch: cần trả = nền màu loại nhạt + icon màu loại; đã xong = xám; bỏ kỳ = viền đứt. Mobile thu thành chấm 7px, chỉ ghi số các ngày mốc. Hàng có hạn ngoài tháng hiện `T<tháng>` thay cho thứ.
+  - Quỹ gom vào hub, không có màn riêng: dòng quỹ có caret, bấm để xổ sổ con (`.fin-hub__row.is-child`, thụt 34px + vạch dẫn 1px). Cột ngày của sổ là ngày đáo hạn. Form góp/rút (`SavingMoveForm`) và xử lý đáo hạn (`MaturityForm`) mở ngay trong panel như khối trả; thêm/sửa sổ là `DepositForm` trong `GenericModal` 680px (`.fin-dep-modal`, mobile thành sheet). Lọc Quỹ có dải tổng `.fin-hub__sumstrip` (4 số + dòng phân bổ, nền `--n-sink`).
 - Money dùng tabular figures; trạng thái không truyền bằng màu một mình.
 - Keyboard/focus/reduced-motion là yêu cầu, không phải polish tùy chọn.
 

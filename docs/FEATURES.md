@@ -261,9 +261,10 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   - 6 ô KPI kiêm bộ lọc: Tất cả / Hóa đơn = còn phải chi tháng này + số kỳ đã xong; Thẻ = sao kê cần trả + % hạn mức đã dùng; Khoản vay = dư nợ gốc + tiến độ kỳ; Quỹ = đang gửi + % mục tiêu; Cho vay = còn phải thu + đã thu.
   - Dải lịch mini trực quan 28–31 ngày hiển thị phân bổ hạn trả trong tháng và ngày hôm nay.
   - Nhóm theo timeline (`Quá hạn` — gồm kỳ lỡ từ tháng trước, `Tuần này`, `Tuần sau`, `Cuối tháng`, `Không có kỳ trong tháng` — gồm hạn rơi sang tháng sau) và nhóm `Đã xong` dạng thu gọn.
-  - Mục lưu trữ thu gọn: hóa đơn đang tắt / đã kết thúc, khoản vay đã tất toán, cho vay đã thu xong — vẫn mở được để sửa, bật lại, xem lịch sử, xóa.
-  - Panel chi tiết: thanh toán / bỏ kỳ / bỏ đánh dấu (chỉ cho kỳ đã bỏ — hủy một lần trả làm ở màn Giao dịch), khối tiến độ, biểu đồ 6 kỳ gần nhất (hóa đơn, khoản vay, quỹ) kèm trung bình, mở Quản lý quỹ.
-  - Thêm / Sửa nguồn chi trong một hộp thoại chung; quỹ tiết kiệm tạo/sửa được ngay tại đây (tên, mục tiêu, góp hằng tháng hoặc gửi tay) — nơi gửi và khóa quỹ vẫn ở Quản lý quỹ.
+  - Mục lưu trữ thu gọn: hóa đơn đang tắt / đã kết thúc, khoản vay đã tất toán, cho vay đã thu xong, sổ đã tất toán — vẫn mở được để sửa, bật lại / mở lại, xem lịch sử, xóa.
+  - Panel chi tiết: thanh toán / bỏ kỳ / bỏ đánh dấu (chỉ cho kỳ đã bỏ — hủy một lần trả làm ở màn Giao dịch), khối tiến độ, biểu đồ 6 kỳ gần nhất (hóa đơn, khoản vay, quỹ) kèm trung bình.
+  - Quỹ không còn màn riêng: bấm dòng quỹ để xổ các sổ con (ngày đáo hạn, lãi suất, phần kỳ hạn đã trôi). Panel quỹ: Góp tiền / Rút ra (khóa kỳ hạn → yêu cầu chờ 48 giờ), Thêm sổ, Xóa quỹ, lãi khi đáo hạn, lãi bình quân, sổ gần đáo hạn, phân bổ ngân hàng. Panel sổ: Xử lý đáo hạn, Sửa / Xóa sổ (hộp thoại), Mở lại sổ đã tất toán. Lọc Quỹ hiện dải tổng mọi sổ (đang gửi, lãi khi đến hạn, lãi bình quân, để dành tháng này, phân bổ). Cảnh báo sổ đáo hạn ở trang chủ chọn sẵn sổ đó.
+  - Thêm / Sửa nguồn chi trong một hộp thoại chung; quỹ tiết kiệm tạo/sửa tại đây gồm cả khóa khi rút (mềm / kỳ hạn + ngày mở / ngoài app) và "tiền còn ở tài khoản thường".
   - Chưa có đổi tháng: mọi kỳ tính theo hôm nay.
 - `cats`: Taxonomy chi (10 nhóm chuẩn) / thu và override label/màu/icon/subcategory.
 

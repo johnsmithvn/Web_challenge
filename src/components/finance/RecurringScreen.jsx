@@ -6,15 +6,19 @@ import {
   billAmountEstimate, cardBalance, cardStatementSummary, cardCarryOver, floatInterest, loanSchedule,
   loanCycle, lendingInterest, forfeitedInterest,
   dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
-  billCycle, billSettled, billPeriods, billPeriodForDate,
+  billCycle, billSettled, billPeriods, billPeriodForDate, periodTotals, currentMonthPeriod,
+  guessDepositType, maturityInterest,
 } from '../../utils/financeLogic';
-import { buildHubItems, groupHubItems, hubTotals, calendarDays, weekBounds, shortMoney, periodHistory } from '../../utils/recurringHub';
+import {
+  buildHubItems, groupHubItems, hubTotals, calendarDays, weekBounds, shortMoney, periodHistory,
+  depositItem, savingsSummary,
+} from '../../utils/recurringHub';
 import { money, Segmented, FinanceIcon, TaskPicker, Toggle, catInfo, DateField, pickableSubs, BankSelect } from './parts';
 import AppIcon from '../AppIcon';
 import GenericModal from '../GenericModal';
 import InfoTip from '../InfoTip';
 import SkeletonList from '../SkeletonList';
-import { SavingsWorkspace } from './AnalyzeScreen';
+import { DepositForm, MaturityForm, SavingMoveForm } from './AnalyzeScreen';
 
 // Segment cũ vẫn là hợp đồng deep link (Tổng quan, Dashboard, Inbox handoff) → loại trong hub.
 const SEGMENTS = [
@@ -187,7 +191,7 @@ const REPEAT_OPTIONS = [
 function formFrom(kind, initial, nav) {
   if (!initial) {
     const name = nav.handoff?.kind === KIND_TO_SEG[kind] ? nav.handoff.title || '' : '';
-    return kind === 'save' ? { name, plan: 'monthly', auto_day: '5' } : { name, every: 1 };
+    return kind === 'save' ? { name, plan: 'monthly', auto_day: '5', lock_mode: 'soft', in_wallet: true } : { name, every: 1 };
   }
   const flat = Object.fromEntries(Object.entries(initial).map(([k, v]) => [k, v == null ? '' : v]));
   // `every` (số tháng một kỳ) sống trong rrule dưới DB, kéo lên thành field phẳng cho form.
@@ -379,9 +383,15 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
         nav.showToast('Góp hằng tháng cần số tiền và ngày góp hợp lệ');
         return;
       }
-      // Khóa, ví hay ngoài ví giữ mặc định của DB — chỉnh ở Quản lý quỹ.
+      const lockMode = f.lock_mode || 'soft';
+      // DB CHECK: khóa kỳ hạn bắt buộc có ngày mở khóa.
+      if (lockMode === 'term' && !f.lock_until) {
+        nav.showToast('Khóa có kỳ hạn cần ngày mở khóa');
+        return;
+      }
       payload = { name: f.name.trim(), goal: parseCurrencyInput(f.goal) || 0,
-        auto_deposit: monthly ? { amount: autoAmount, day: autoDay } : null };
+        auto_deposit: monthly ? { amount: autoAmount, day: autoDay } : null,
+        lock_mode: lockMode, lock_until: lockMode === 'term' ? f.lock_until : null, in_wallet: f.in_wallet !== false };
     }
     const save = {
       out: editing ? (p) => fin.updateBill(initial.id, p) : fin.addBill,
@@ -397,7 +407,7 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
     }
     nav.showToast(
       editing ? (seg === 'out' ? 'Số mới áp dụng từ kỳ sau — các kỳ đã ghi giữ nguyên' : 'Đã lưu thay đổi')
-      : seg === 'saving' ? 'Đã tạo quỹ — khai nơi gửi trong Quản lý quỹ để bắt đầu góp'
+      : seg === 'saving' ? 'Đã tạo quỹ — bấm Thêm sổ ở cột chi tiết của quỹ để bắt đầu góp'
       : seg === 'loan' ? 'Đã tạo khoản vay — mỗi tháng app nhắc trả lãi, tách gốc riêng khỏi chi tiêu'
       : seg === 'card' ? 'Đã thêm thẻ — app theo dõi ngày chốt, đến hạn và số ngày float'
       : seg === 'lend' ? 'Đã ghi khoản cho vay — tiền rời ví nhưng không tính là chi tiêu'
@@ -684,8 +694,21 @@ function SourceModal({ kind: startKind, fin, nav, initial, focusNote = false, on
               <SmField label="Mục tiêu · tùy chọn" wide>
                 <SmMoney label="Mục tiêu" value={f.goal} onChange={setVal('goal')} />
               </SmField>
+              <SmField label="Khi rút tiền" wide>
+                <SmSeg label="Khi rút tiền" value={f.lock_mode || 'soft'} onChange={setVal('lock_mode')}
+                  options={[{ value: 'soft', label: 'Rút một chạm' }, { value: 'term', label: 'Có kỳ hạn · chờ 48 giờ' }, { value: 'external', label: 'Ngoài app' }]} />
+              </SmField>
+              {f.lock_mode === 'term' && (
+                <SmField label="Ngày mở khóa" wide hint="Trước ngày này, rút tiền phải gửi yêu cầu và chờ 48 giờ. Tới ngày thì rút như bình thường.">
+                  <DateField value={f.lock_until} onChange={setVal('lock_until')} ariaLabel="Ngày mở khóa" />
+                </SmField>
+              )}
               <SmField wide>
-                <SmNote>App chỉ nhắc ngày góp, không tự chuyển tiền. Nơi gửi (sổ tiết kiệm, ví) và khóa quỹ khai trong <strong>Quản lý quỹ</strong> — phải có ít nhất một nơi gửi mới ghi được tiền góp.</SmNote>
+                <SmToggle on={f.in_wallet !== false} onChange={setVal('in_wallet')} label="Tiền còn ở tài khoản thường"
+                  hint="Phần đã để dành nhưng chưa chuyển vào sổ có kỳ hạn." />
+              </SmField>
+              <SmField wide>
+                <SmNote>App chỉ nhắc ngày góp, không tự chuyển tiền. Tạo xong, bấm <strong>Thêm sổ</strong> ở cột chi tiết của quỹ để khai nơi gửi — phải có ít nhất một sổ mới ghi được tiền góp.</SmNote>
               </SmField>
             </>)}
 
@@ -958,39 +981,47 @@ function archivedSections(fin) {
       .map(l => row('loan', l, l.name, 'đã tất toán')) },
     { key: 'lendDone', label: 'Cho vay đã thu xong', items: fin.lendings.filter(l => lendLeft(l) <= 0)
       .map(l => row('lend', l, l.name, 'đã thu đủ gốc')) },
+    { key: 'depClosed', label: 'Sổ đã tất toán', items: fin.deposits.filter(d => d.closed_on)
+      .sort((a, b) => b.closed_on.localeCompare(a.closed_on))
+      .map(d => depositItem(d, fin.goals.find(g => g.id === d.fund_id), fin.today)) },
   ].filter(s => s.items.length);
 }
 
-/** Một dòng danh sách: ngày · icon · tên + tiến độ · số tiền + trạng thái. */
-function HubRow({ item, today, selected, onPick, rowRef }) {
+/**
+ * Một dòng danh sách: ngày · icon · tên + tiến độ · số tiền + trạng thái.
+ * Dòng quỹ có sổ thì xổ ra/thu lại (`expanded`); sổ là dòng con (`child`) thụt vào.
+ */
+function HubRow({ item, today, selected, onPick, rowRef, child = false, expanded }) {
   const meta = KIND_META[item.kind];
   const { ev } = item;
   const st = ev?.state;
-  const done = st === 'paid' || st === 'skip' || !ev && !item.main;
+  const done = item.done || st === 'paid' || st === 'skip' || !ev && !item.main;
   const verb = item.kind === 'save' ? 'Đã góp' : 'Đã trả';
   const due = st === 'due' ? dueState({ days: daysTo(today, ev.due) }) : null;
   const stText = !ev ? item.note
     : st === 'paid' ? (ev.paidOn ? `${verb} ${ev.paidOn}` : verb)
     : st === 'skip' ? 'Bỏ kỳ này' : due.text;
-  const tone = st === 'paid' ? 'paid' : due?.tone || 'wait';
+  const tone = st === 'paid' ? 'paid' : due?.tone || (!ev && item.tone) || 'wait';
   // Hạn ngoài tháng đang xem (sao kê chốt cuối tháng, kỳ lỡ từ tháng trước) thì dòng
   // dưới ghi THÁNG thay cho thứ — "5 · T4" đọc như mùng 5 tháng này.
   const sameMonth = ev && ev.due.slice(0, 7) === today.slice(0, 7);
   return (
     <button type="button" ref={rowRef} onClick={onPick}
-      className={`fin-hub__row${selected ? ' is-selected' : ''}${done ? ' is-done' : ''}`}
+      className={`fin-hub__row${selected ? ' is-selected' : ''}${done ? ' is-done' : ''}${child ? ' is-child' : ''}`}
       style={{ '--tile-color': meta.color, '--tile-soft': meta.soft }}
-      aria-current={selected ? 'true' : undefined}>
+      aria-current={selected ? 'true' : undefined} aria-expanded={expanded}>
       <div className="fin-hub__row-date">
-        <span className="fin-hub__row-day">{ev ? ev.day : '—'}</span>
-        <span className="fin-hub__row-wd">{!ev ? '' : sameMonth
+        <span className="fin-hub__row-day">{ev ? ev.day : item.nd?.[0] || '—'}</span>
+        <span className="fin-hub__row-wd">{!ev ? item.nd?.[1] || '' : sameMonth
           ? WEEKDAYS[new Date(`${ev.due}T00:00:00`).getDay()] : `T${Number(ev.due.slice(5, 7))}`}</span>
       </div>
       <span className="fin-hub__row-icon">
-        <AppIcon name={item.kind === 'bill' ? item.source.icon || meta.icon : meta.icon} size={16} />
+        <AppIcon name={item.kind === 'bill' ? item.source.icon || meta.icon : item.icon || meta.icon} size={16} />
       </span>
       <div className="fin-hub__row-meta">
-        <span className="fin-hub__row-name">{item.name}</span>
+        <span className="fin-hub__row-name">
+          {expanded != null && <AppIcon name={expanded ? 'caretDown' : 'caretRight'} size={11} className="fin-hub__row-caret" />}
+          {item.name}</span>
         <span className="fin-hub__row-sub">{item.sub}</span>
       </div>
       <div className="fin-hub__row-prog">
@@ -1021,19 +1052,28 @@ export default function RecurringScreen({ fin, nav }) {
     setPrevSeg(nav.recurringSeg);
     if (SEG_TO_KIND[nav.recurringSeg]) setFilter(SEG_TO_KIND[nav.recurringSeg]);
   }
+  // Cảnh báo sổ đáo hạn ở trang chủ là nơi DUY NHẤT gửi recurringSeg 'saving' qua navigation
+  // state → chọn sẵn sổ đáo hạn sớm nhất (panel có nút Xử lý) và xổ quỹ của nó ra.
+  const location = useLocation();
   const [selectedId, setSelectedId] = useState(null);
+  const [openFunds, setOpenFunds] = useState(() => new Set());
+  // Dữ liệu có thể chưa tải lúc mở màn → chờ tải xong mới chọn, một lần.
+  const [deepLink, setDeepLink] = useState(() => location.state?.recurringSeg === 'saving');
+  if (deepLink && fin.hasLoaded) {
+    setDeepLink(false);
+    const d = fin.deposits.filter(x => !x.closed_on && x.matures_at).sort((a, b) => a.matures_at.localeCompare(b.matures_at))[0];
+    if (d) { setSelectedId(d.id); setOpenFunds(new Set([d.fund_id])); }
+  }
   const [showDone, setShowDone] = useState(false);
   const [openArchive, setOpenArchive] = useState(null);
   // Hộp thoại Thêm/Sửa: { kind, initial, focusNote }. Nhân bản = Thêm với `initial` là bản
   // nháp chỉ chép QUY TẮC (billDraft), chưa ghi gì xuống DB.
   const [modal, setModal] = useState(null);
+  // Hộp thoại sổ: { goal, deposit } — deposit null là thêm sổ mới cho quỹ `goal`.
+  const [depModal, setDepModal] = useState(null);
   // Form đang gõ dở: đóng nó phải hỏi trước, bấm nhầm một cái là mất sạch.
   const [dirty, setDirty] = useState(false);
   const [payId, setPayId] = useState(null);   // mỗi lúc chỉ một khối trả
-  // Cảnh báo sổ đáo hạn ở trang chủ là nơi DUY NHẤT gửi recurringSeg 'saving' qua navigation
-  // state → mở thẳng bảng nơi gửi (có nút Xử lý), không bắt bấm thêm Quỹ → Mở quản lý quỹ.
-  const location = useLocation();
-  const [openSavings, setOpenSavings] = useState(() => location.state?.recurringSeg === 'saving');
   const rowRefs = useRef(new Map());
 
   const items = buildHubItems(fin);
@@ -1043,9 +1083,13 @@ export default function RecurringScreen({ fin, nav }) {
   const archive = archivedSections(fin).map(s => ({
     ...s, items: filter === 'all' ? s.items : s.items.filter(i => i.kind === filter),
   })).filter(s => s.items.length);
+  // Sổ đang mở là dòng con của quỹ: tính sẵn để chọn được cả khi quỹ đang thu lại.
+  const childrenOf = (it) => (it.deposits || []).map(d => depositItem(d, it.source, fin.today));
+  const deposits = items.flatMap(childrenOf);
   const visible = groups.filter(g => g.key !== 'done' || showDone).flatMap(g => g.items);
-  const selected = [...items, ...archive.flatMap(s => s.items)].find(i => i.id === selectedId) || visible[0] || null;
-  const sheetOpen = Boolean(selectedId);
+  const selected = [...items, ...deposits, ...archive.flatMap(s => s.items)].find(i => i.id === selectedId) || visible[0] || null;
+  // Dòng đang chọn vừa bị xóa (sổ xóa trong hộp thoại) thì selected rơi về dòng đầu — sheet mobile không mở theo.
+  const sheetOpen = Boolean(selectedId) && selected?.id === selectedId;
 
   const openModal = (next) => { setDirty(false); setModal(next); };
   const closeModal = async () => {
@@ -1053,6 +1097,17 @@ export default function RecurringScreen({ fin, nav }) {
     setModal(null); setDirty(false);
   };
   const pick = (id) => { setSelectedId(id); setPayId(null); };
+  // Bấm dòng quỹ: chọn và xổ sổ ra; bấm lại đúng dòng đang chọn thì thu vào.
+  const pickRow = (it) => {
+    if (it.deposits?.length) {
+      setOpenFunds(prev => {
+        const next = new Set(prev);
+        if (next.has(it.id) && selected?.id === it.id) next.delete(it.id); else next.add(it.id);
+        return next;
+      });
+    }
+    pick(it.id);
+  };
   const closeSheet = () => { setSelectedId(null); setPayId(null); };
 
   // Sheet mobile: Escape đóng như mọi lớp phủ khác. Desktop thì panel là cột cố định,
@@ -1173,22 +1228,28 @@ export default function RecurringScreen({ fin, nav }) {
         : `Đã ghi ${money(amount)} thu về từ ${l.name} — không tính là thu nhập`, { icon: 'handCoins' });
       return true;
     },
+    // Sổ đi theo quỹ (CASCADE), còn giao dịch góp/rút giữ RESTRICT — quỹ đã có lần
+    // góp/rút thì database từ chối; nói trước thay vì hứa suông.
+    removeGoal: async (g) => {
+      const deps = fin.deposits.filter(d => d.fund_id === g.id).length;
+      const kept = fin.transactions.filter(t => t.saving_goal_id === g.id).length;
+      if (!await nav.confirmDelete(`quỹ “${g.name}”`,
+        kept > 0 ? `${kept} giao dịch góp/rút đang gắn với quỹ này. Phải xóa chúng ở màn Giao dịch trước, không thì database từ chối lệnh xóa.`
+          : deps > 0 ? `${deps} sổ của quỹ sẽ bị xóa theo.` : 'Quỹ chưa có sổ nào.')) return;
+      if (!await fin.deleteGoal(g.id)) {
+        nav.showToast(`Không thể xóa ${g.name}. Kiểm tra dữ liệu Finance rồi thử lại.`, { icon: 'warning' });
+      } else setSelectedId(null);
+    },
+    reopenDeposit: async (d) => {
+      if (await fin.updateDeposit(d.id, { closed_on: null })) {
+        nav.showToast(`Đã mở lại “${d.name}”. Sổ gửi lại / giao dịch lãi (nếu có) vẫn còn, xóa tay nếu không cần.`, { icon: 'bank' });
+      }
+    },
   };
 
 
   // Tải xong mới biết có bao nhiêu dòng; dùng `hasLoaded` chứ không phải `isLoading`.
   if (!fin.hasLoaded) return <SkeletonList rows={5} label="Đang tải nghĩa vụ" />;
-
-  if (openSavings) {
-    return (
-      <div className="fin-hub fin-hub--savings">
-        <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm fin-hub__back" onClick={() => setOpenSavings(false)}>
-          <AppIcon name="caretLeft" size={14} /> Định kỳ & Quỹ
-        </button>
-        <SavingsWorkspace fin={fin} nav={nav} />
-      </div>
-    );
-  }
 
   const [yStr, mStr] = fin.today.split('-');
   const pickFilter = (k) => {
@@ -1199,6 +1260,22 @@ export default function RecurringScreen({ fin, nav }) {
   const doneCount = groups.find(g => g.key === 'done')?.items.length || 0;
   const detailProps = { fin, nav, tasks: pendingTasks, act, payId, setPayId, onClose: closeSheet,
     onEdit: (focusNote = false) => { setPayId(null); openModal({ kind: selected.kind, initial: selected.source, focusNote }); } };
+  const openDeposit = (goal, deposit = null) => { setPayId(null); setDepModal({ goal, deposit }); };
+  // Lọc Quỹ = chỗ của bảng tổng tiền gửi cũ: tổng, lãi khi đến hạn, lãi bình quân, phân bổ.
+  const saveSum = filter === 'save' ? savingsSummary(fin.deposits) : null;
+  const savedThisMonth = saveSum ? periodTotals(fin.transactions, currentMonthPeriod(fin.today)).savingIn : 0;
+  const renderRow = (it) => (
+    <HubRow key={it.id} item={it} today={fin.today} selected={selected?.id === it.id}
+      expanded={it.deposits?.length ? openFunds.has(it.id) : undefined}
+      rowRef={el => rowRefs.current.set(it.id, el)} onPick={() => pickRow(it)} />
+  );
+  const renderWithChildren = (it) => [
+    renderRow(it),
+    ...(openFunds.has(it.id) ? childrenOf(it).map(c => (
+      <HubRow key={c.id} item={c} today={fin.today} selected={selected?.id === c.id} child
+        rowRef={el => rowRefs.current.set(c.id, el)} onPick={() => pick(c.id)} />
+    )) : []),
+  ];
 
   return (
     <div className="fin-hub">
@@ -1282,6 +1359,15 @@ export default function RecurringScreen({ fin, nav }) {
             <RulesEmpty icon="calendar" title="Chưa có nguồn chi nào"
               description="Thêm hóa đơn, thẻ, khoản vay, cho vay hoặc quỹ để theo dõi ngày đến hạn trong tháng." />
           )}
+          {saveSum && saveSum.count > 0 && (
+            <div className="fin-hub__sumstrip">
+              <span><small>Tổng đang gửi</small><b>{money(saveSum.total)}</b></span>
+              <span><small>Lãi khi đến hạn</small><b className="is-good">+{money(saveSum.interest)}</b></span>
+              <span><small>Lãi bình quân</small><b>{saveSum.weightedRate}%/năm</b></span>
+              <span><small>Để dành tháng này</small><b>{money(savedThisMonth)}</b></span>
+              <p>{saveSum.banks.map(b => `${b.bank} ${shortMoney(b.amount)}`).join(' · ')}</p>
+            </div>
+          )}
           {groups.filter(g => g.key !== 'done' || showDone).map(g => (
             <div key={g.key} className="fin-hub__group">
               <div className="fin-hub__group-head">
@@ -1289,10 +1375,7 @@ export default function RecurringScreen({ fin, nav }) {
                 {g.total > 0 && <span className="fin-hub__group-sum">{money(g.total)}</span>}
               </div>
               <div className="fin-hub__group-items">
-                {g.items.map(it => (
-                  <HubRow key={it.id} item={it} today={fin.today} selected={selected?.id === it.id}
-                    rowRef={el => rowRefs.current.set(it.id, el)} onPick={() => pick(it.id)} />
-                ))}
+                {g.items.flatMap(renderWithChildren)}
               </div>
             </div>
           ))}
@@ -1333,8 +1416,11 @@ export default function RecurringScreen({ fin, nav }) {
             {selected.kind === 'card' && <CardDetail key={selected.id} card={selected.source} {...detailProps} />}
             {selected.kind === 'loan' && <LoanDetail key={selected.id} loan={selected.source} {...detailProps} />}
             {selected.kind === 'lend' && <LendDetail key={selected.id} lending={selected.source} {...detailProps} />}
-            {selected.kind === 'save' && <SaveDetail key={selected.id} goal={selected.source} {...detailProps}
-              onOpenSavings={() => setOpenSavings(true)} />}
+            {selected.kind === 'save' && !selected.deposit && <SaveDetail key={selected.id} goal={selected.source} {...detailProps}
+              onAddDeposit={() => openDeposit(selected.source)}
+              onPickDeposit={(id) => { setOpenFunds(prev => new Set(prev).add(selected.id)); pick(id); }} />}
+            {selected.deposit && <DepositDetail key={selected.id} item={selected} {...detailProps}
+              onEdit={() => openDeposit(selected.fund, selected.source)} onPickFund={() => pick(selected.fund?.id)} />}
           </>)}
         </div>
       </div>
@@ -1343,12 +1429,19 @@ export default function RecurringScreen({ fin, nav }) {
       {modal && <SourceModal key={`${modal.kind}:${modal.initial?.id || 'new'}`} kind={modal.kind} initial={modal.initial}
         focusNote={modal.focusNote} fin={fin} nav={nav} onDirty={setDirty} onClose={closeModal}
         onSaved={() => { setModal(null); setDirty(false); }} />}
+      {/* Form sổ dùng lại nguyên DepositForm (thêm/sửa/xóa, tự đặt tên, ngày đáo hạn). */}
+      {depModal && (
+        <GenericModal onClose={() => setDepModal(null)} maxWidth={680} className="fin-dep-modal">
+          <DepositForm fin={fin} nav={nav} goal={depModal.goal} deposit={depModal.deposit}
+            activeGoals={fin.goals.filter(g => !g.closed_at)} onDone={() => setDepModal(null)} />
+        </GenericModal>
+      )}
     </div>
   );
 }
 
 // ── Khung chi tiết dùng chung ────────────────────────────────────────────────
-function DetailHead({ kind, icon, title, sub, hasNote, onEdit, onClose }) {
+function DetailHead({ kind, cat, icon, title, sub, hasNote, onEdit, onClose }) {
   const meta = KIND_META[kind];
   return (
     <div className="fin-hub__detail-head">
@@ -1356,7 +1449,7 @@ function DetailHead({ kind, icon, title, sub, hasNote, onEdit, onClose }) {
         <AppIcon name={icon || meta.icon} size={21} />
       </span>
       <div className="fin-hub__detail-titlebox">
-        <span className="fin-hub__detail-cat" style={{ color: meta.color }}>{meta.cat}</span>
+        <span className="fin-hub__detail-cat" style={{ color: meta.color }}>{cat || meta.cat}</span>
         <span className="fin-hub__detail-name">{title}
           {/* aria-label trên AppIcon là vô hiệu (AppIcon tự aria-hidden) — chữ phải ở node thật. */}
           {hasNote && <><AppIcon name="note" size={13} className="fin-rule__notedot" /><span className="sr-only">Có ghi chú</span></>}</span>
@@ -1761,11 +1854,12 @@ function LendDetail({ fin, tasks, act, lending: l, payId, setPayId, onEdit, onCl
 }
 
 // ── Quỹ tiết kiệm ────────────────────────────────────────────────────────────
-// Nạp/rút/nơi gửi sống ở SavingsWorkspace; hub cho thấy và mở nó.
-function SaveDetail({ fin, goal: g, onEdit, onClose, onOpenSavings }) {
+// Góp/rút ngay trong panel (SavingMoveForm); sổ là dòng con xổ dưới quỹ, thêm/sửa qua DepositForm.
+function SaveDetail({ fin, act, goal: g, payId, setPayId, onEdit, onClose, onAddDeposit, onPickDeposit }) {
   const deps = fin.deposits.filter(d => d.fund_id === g.id && !d.closed_on);
   const matured = deps.filter(d => d.matures_at && d.matures_at <= fin.today);
-  const bal = deps.reduce((s, d) => s + (d.amount || 0), 0);
+  const sum = savingsSummary(deps);
+  const bal = sum.total;
   const plan = g.auto_deposit?.amount ? g.auto_deposit : null;
   const month = fin.today.slice(0, 7);
   const depositTx = fin.transactions.find(t => t.saving_goal_id === g.id && t.saving_dir === 'in' && t.occurred_at?.slice(0, 7) === month);
@@ -1775,35 +1869,115 @@ function SaveDetail({ fin, goal: g, onEdit, onClose, onOpenSavings }) {
   // "Dự kiến đủ" = số tháng còn thiếu chia cho mức góp mỗi tháng.
   const monthsLeft = plan && g.goal > bal ? Math.ceil((g.goal - bal) / plan.amount) : null;
   const doneAt = monthsLeft != null ? new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + monthsLeft, 1) : null;
+  // Khóa kỳ hạn tới ngày mở thì xử lý như khóa mềm (cùng luật với RPC rút quỹ).
+  const lock = g.lock_mode === 'term' && g.lock_until && g.lock_until <= fin.today ? 'soft' : g.lock_mode;
+  const request = g.withdrawal_request;
+  const moving = payId === `${g.id}:in` ? 'in' : payId === `${g.id}:out` ? 'out' : null;
 
   return (
     <>
       <DetailHead kind="save" title={g.name}
-        sub={plan ? `Góp ${shortMoney(plan.amount)} · ngày ${plan.day} hằng tháng` : `${deps.length} nơi gửi · gửi tay`}
+        sub={plan ? `Góp ${shortMoney(plan.amount)} · ngày ${plan.day} hằng tháng` : `${deps.length} sổ · gửi tay`}
         onEdit={onEdit} onClose={onClose} />
       <AmountBox caption={plan ? `Góp kỳ ${month.slice(5)}/${month.slice(0, 4)}` : 'Đang gửi'}
         value={money(plan ? plan.amount : bal)} state={state} />
-      <div className="fin-hub__detail-actions">
-        <button type="button" className="fin-btn fin-btn--primary fin-hub__primary" onClick={onOpenSavings}>
-          <AppIcon name="piggyBank" size={16} /> {matured.length ? 'Xử lý sổ đáo hạn · mở quản lý quỹ'
-            : plan && !depositTx ? 'Góp tiền · mở quản lý quỹ' : 'Mở quản lý quỹ'}
-        </button>
-      </div>
+      {!moving && (
+        <div className="fin-hub__detail-actions">
+          {deps.length ? (
+            <button type="button" className="fin-btn fin-btn--primary fin-hub__primary" onClick={() => setPayId(`${g.id}:in`)}>
+              <AppIcon name="arrowDown" size={16} /> Góp tiền
+            </button>
+          ) : (
+            <button type="button" className="fin-btn fin-btn--primary fin-hub__primary" onClick={onAddDeposit}>
+              <AppIcon name="plus" size={16} /> Thêm sổ để bắt đầu góp
+            </button>
+          )}
+          <button type="button" className="fin-btn fin-btn--ghost fin-hub__secondary" disabled={!bal} onClick={() => setPayId(`${g.id}:out`)}>
+            {lock === 'term' ? 'Rút · chờ 48 giờ' : 'Rút ra'}
+          </button>
+        </div>
+      )}
+      {moving && <SavingMoveForm key={moving} fin={fin} goal={g} dir={moving} onDone={() => setPayId(null)}
+        onOpenNewDeposit={() => { setPayId(null); onAddDeposit(); }} />}
+      {request && <div className="fin-inline-message">
+        <AppIcon name="clock" size={15} />
+        <span>Yêu cầu rút {money(request.amount)} sẵn sàng lúc {new Date(request.available_at).toLocaleString('vi-VN')} — tới giờ bấm Rút ra để xác nhận.</span>
+      </div>}
       {matured.length > 0 && <div className="fin-inline-message fin-inline-message--warn">
         <AppIcon name="warning" size={15} weight="fill" />
-        <span>{matured.map(d => d.name).join(', ')} đã đáo hạn — mở quản lý quỹ, bấm <strong>Xử lý</strong> ở dòng sổ để rút về hoặc gửi lại.</span>
-      </div>}
-      {!deps.length && plan && <div className="fin-inline-message fin-inline-message--warn">
-        <AppIcon name="warning" size={15} weight="fill" />
-        <span>Chưa khai nơi gửi nào — phải có ít nhất một nơi gửi thì mới ghi được tiền góp vào quỹ.</span>
+        <span>Đã đáo hạn: {matured.map((d, i) => (
+          <span key={d.id}>{i > 0 && ', '}<button type="button" className="fin-inline-command" onClick={() => onPickDeposit(d.id)}>{d.name}</button></span>
+        ))} — bấm vào sổ để rút về hoặc gửi lại.</span>
       </div>}
       {g.goal > 0 && <ProgressBox label="Mục tiêu" pct={bal / g.goal * 100} left={`Đang gửi ${money(bal)}`} right={`Mục tiêu ${money(g.goal)}`} />}
       <HistoryChart history={periodHistory({ id: g.id, kind: 'save' }, fin.transactions)} />
       <KV rows={[
         ['Góp mỗi kỳ', plan ? money(plan.amount) : 'Gửi tay'],
         doneAt && ['Dự kiến đủ', `Tháng ${doneAt.getMonth() + 1}/${doneAt.getFullYear()}`],
-        ['Nơi gửi', deps.length ? deps.map(d => `${d.name} ${shortMoney(d.amount)}`).join(' · ') : 'Chưa gắn sổ nào'],
-        ['Khóa', g.lock_mode === 'term' ? `Khóa tới ${dmy(g.lock_until)}` : g.lock_mode === 'external' ? 'Tiền nằm ngoài ví' : 'Khóa mềm · rút một chạm'],
+        ['Nơi gửi', deps.length ? `${deps.length} sổ · ${new Set(deps.map(d => d.bank).filter(Boolean)).size} ngân hàng` : 'Chưa gắn sổ nào'],
+        sum.interest > 0 && ['Lãi khi đáo hạn', `+${money(sum.interest)}`],
+        sum.weightedRate > 0 && ['Lãi bình quân', `${sum.weightedRate}%/năm`],
+        sum.next && ['Sổ gần đáo hạn', `${sum.next.name} · ${dmy(sum.next.matures_at)}`],
+        sum.banks.length > 0 && ['Phân bổ', sum.banks.map(b => `${b.bank} ${shortMoney(b.amount)}`).join(' · ')],
+        ['Khóa', lock === 'term' ? `Có kỳ hạn · mở ${dmy(g.lock_until)}` : lock === 'external' ? 'Ngoài app · rút sớm mất lãi' : 'Khóa mềm · rút một chạm'],
+        g.break_count > 0 && ['Rút giữa chừng', `${g.break_count} lần`],
+      ]} />
+      <div className="fin-hub__detail-tools">
+        <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm" onClick={onAddDeposit}>
+          <AppIcon name="plus" size={14} /> Thêm sổ
+        </button>
+        <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm fin-hub__danger" onClick={() => act.removeGoal(g)}>
+          <AppIcon name="trash" size={14} /> Xóa quỹ
+        </button>
+      </div>
+    </>
+  );
+}
+
+// ── Sổ / nơi gửi (dòng con của quỹ) ─────────────────────────────────────────
+const DEPOSIT_CAT = { cd: 'CHỨNG CHỈ TIỀN GỬI', term: 'SỔ TIẾT KIỆM', flex: 'TÍCH LŨY LINH HOẠT' };
+
+function DepositDetail({ fin, nav, act, item, payId, setPayId, onEdit, onClose, onPickFund }) {
+  const d = item.source;
+  const closed = Boolean(d.closed_on);
+  const days = !closed && d.matures_at ? daysTo(fin.today, d.matures_at) : null;
+  const state = closed ? { tone: 'paid', text: `Đã tất toán ${dmy(d.closed_on)}` }
+    : days == null ? { tone: 'wait', text: 'Linh hoạt · rút bất cứ lúc nào' }
+    : days < 0 ? { tone: 'due', text: `Đã đáo hạn ${-days} ngày` }
+    : days === 0 ? { tone: 'due', text: 'Đáo hạn hôm nay' }
+    : { tone: 'wait', text: `Đáo hạn ${dmy(d.matures_at)} · còn ${days} ngày` };
+  const settling = payId === `${d.id}:mature`;
+
+  return (
+    <>
+      <DetailHead kind="save" cat={DEPOSIT_CAT[guessDepositType(d)]} icon={item.icon} title={d.name}
+        sub={[d.bank, d.account_no, item.fund?.name].filter(Boolean).join(' · ')} onEdit={onEdit} onClose={onClose} />
+      <AmountBox caption={closed ? 'Đã gửi' : 'Đang gửi'} value={money(d.amount)} state={state} />
+      {!closed && days != null && days <= 0 && !settling && (
+        <div className="fin-hub__detail-actions">
+          <button type="button" className="fin-btn fin-btn--primary fin-hub__primary" onClick={() => setPayId(`${d.id}:mature`)}>
+            <AppIcon name="checkCircle" size={16} /> Xử lý đáo hạn
+          </button>
+        </div>
+      )}
+      {settling && <MaturityForm key={d.id} fin={fin} nav={nav} deposit={d} onDone={() => setPayId(null)} />}
+      {closed && (
+        <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm fin-hub__undo" onClick={() => act.reopenDeposit(d)}>
+          <AppIcon name="refresh" size={13} /> Mở lại sổ
+        </button>
+      )}
+      {!closed && d.matures_at && d.opened_at && (
+        <ProgressBox label={`Kỳ hạn ${d.term} tháng`} pct={item.progress.pct}
+          left={`Gửi ${dmy(d.opened_at)}`} right={`Đáo hạn ${dmy(d.matures_at)}`} />
+      )}
+      <KV rows={[
+        ['Thuộc quỹ', item.fund
+          ? <button type="button" className="fin-inline-command" onClick={onPickFund}>{item.fund.name}</button> : '—'],
+        ['Lãi suất', `${d.rate || 0}%/năm`],
+        ['Kỳ hạn', d.term ? `${d.term} tháng` : 'Không kỳ hạn'],
+        [d.term ? 'Lãi khi đáo hạn' : 'Lãi ước tính 1 năm', `+${money(maturityInterest(d))}`],
+        d.opened_at && ['Ngày gửi', dmy(d.opened_at)],
+        d.account_no && ['Số tài khoản', d.account_no],
       ]} />
     </>
   );

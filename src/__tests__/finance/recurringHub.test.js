@@ -7,6 +7,8 @@ import {
   calendarDays,
   shortMoney,
   periodHistory,
+  depositItem,
+  savingsSummary,
 } from '../../utils/recurringHub.js';
 
 // ── 1. Test weekBounds ────────────────────────────────────────────────────────
@@ -315,5 +317,33 @@ assert.equal(hist.bars.length, 6, 'chỉ 6 kỳ gần nhất');
 assert.equal(hist.bars[0].period, '2026-04');
 assert.equal(hist.avg, 450000);
 assert.equal(periodHistory({ id: 'c', kind: 'card' }, []), null, 'thẻ không có biểu đồ kỳ');
+
+// ── 6. Quỹ xổ ra thành sổ con (thay màn Quỹ tiết kiệm riêng) ──────────────────
+const dA = { id: 'dA', fund_id: 'g_tl', name: 'CCTG ABBank', bank: 'ABBank', amount: 100000000, rate: 6, term: 1, opened_at: '2026-09-08', matures_at: '2026-10-08' };
+const dB = { id: 'dB', fund_id: 'g_tl', name: 'Sổ ABBank 6T', bank: 'ABBank', amount: 150000000, rate: 5, term: 6, opened_at: '2026-07-10', matures_at: '2027-01-10' };
+const dC = { id: 'dC', fund_id: 'g_tl', name: 'ZaloPay', bank: 'ZaloPay', amount: 61000000, rate: 4, term: null, matures_at: null };
+const dX = { id: 'dX', fund_id: 'g_tl', name: 'Sổ cũ', bank: 'ABBank', amount: 5000000, rate: 5, term: 1, opened_at: '2026-08-01', matures_at: '2026-09-01', closed_on: '2026-09-01' };
+const tl = buildHubItems({ today: '2026-10-10', goals: [{ id: 'g_tl', name: 'Tích lũy', goal: 1000000000 }],
+  deposits: [dC, dB, dX, dA] }).find(i => i.id === 'g_tl');
+assert.deepEqual(tl.deposits.map(d => d.id), ['dA', 'dB', 'dC'], 'sổ đang mở, đáo hạn sớm trước, linh hoạt cuối, bỏ sổ đã tất toán');
+assert.equal(tl.sub, '3 sổ · 2 ngân hàng · gửi tay');
+assert.deepEqual([tl.note, tl.tone], ['1 sổ đã đáo hạn', 'due'], 'quỹ có sổ đáo hạn thì dòng quỹ báo');
+
+const iA = depositItem(dA, tl.source, '2026-10-10');
+assert.deepEqual([iA.kind, iA.deposit, iA.note, iA.tone, iA.nd, iA.progress.pct], ['save', true, 'đã đáo hạn 2 ngày', 'due', [8, 'T10'], 100]);
+const iB = depositItem(dB, tl.source, '2026-10-10');
+assert.deepEqual([iB.note, iB.tone, iB.progress.pct, iB.progress.label], ['còn 92 ngày', null, 50, '5%/năm · 6 tháng'],
+  'thanh tiến độ = phần kỳ hạn đã trôi');
+const iC = depositItem(dC, tl.source, '2026-10-10');
+assert.deepEqual([iC.note, iC.nd, iC.icon, iC.progress.label], ['linh hoạt', null, 'deviceMobile', '4%/năm · linh hoạt']);
+const iX = depositItem(dX, tl.source, '2026-10-10');
+assert.deepEqual([iX.done, iX.tone, iX.note], [true, 'paid', 'tất toán 01/09/2026'], 'sổ đã tất toán là dòng lưu trữ');
+
+const sum = savingsSummary([dA, dB, dC, dX]);
+assert.deepEqual([sum.total, sum.count, sum.weightedRate], [311000000, 3, 5.13], 'không tính sổ đã tất toán');
+assert.equal(sum.interest, 500000 + 3750000 + 2440000, 'lãi khi đến hạn: sổ linh hoạt tính 1 năm');
+assert.deepEqual(sum.banks, [{ bank: 'ABBank', amount: 250000000 }, { bank: 'ZaloPay', amount: 61000000 }], 'phân bổ lớn trước');
+assert.equal(sum.next.id, 'dA', 'sổ đáo hạn gần nhất');
+assert.deepEqual(savingsSummary([]), { total: 0, weightedRate: 0, count: 0, interest: 0, banks: [], next: null });
 
 console.log('recurringHub check: OK');

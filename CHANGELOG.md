@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v6.28.0 — 2026-10-15
+
+### Changed
+- **Định kỳ & Quỹ — gom màn Quỹ tiết kiệm vào hub (`RecurringScreen.jsx`, `recurringHub.js` `depositItem`/`savingsSummary`, `AnalyzeScreen.jsx`):** bỏ màn "Tiền gửi & Quỹ mục tiêu" (`SavingsWorkspace`, `GoalForm`). Bấm dòng quỹ để xổ các sổ con; panel quỹ có Góp tiền / Rút ra (dùng lại `SavingMoveForm`, khóa kỳ hạn vẫn chờ 48 giờ), Thêm sổ, Xóa quỹ (báo trước nếu còn giao dịch góp/rút), lãi khi đáo hạn, lãi bình quân, sổ gần đáo hạn, phân bổ. Panel sổ có Xử lý đáo hạn (`MaturityForm`), Sửa/Xóa sổ (`DepositForm` trong hộp thoại), Mở lại sổ đã tất toán (mục lưu trữ "Sổ đã tất toán"). Lọc Quỹ hiện dải tổng mọi sổ. Hộp thoại Thêm/Sửa quỹ thêm khóa khi rút + ngày mở khóa + "tiền còn ở tài khoản thường". Cảnh báo sổ đáo hạn ở trang chủ chọn sẵn sổ đáo hạn sớm nhất. Gỡ ~80 rule CSS chết của màn cũ.
+
 ## v6.27.1 — 2026-10-14
 
 ### Fixed

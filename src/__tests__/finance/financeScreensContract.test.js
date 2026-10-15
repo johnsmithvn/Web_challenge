@@ -251,6 +251,11 @@ const overviewSrc = readFileSync(new URL('../../components/finance/OverviewScree
 
 // 1. RecurringScreen phải có segment 'saving' (Quỹ tiết kiệm)
 assert.match(recurringSrc, /value:\s*'saving'/, 'RecurringScreen phải có segment saving');
+// Quỹ gom vào hub (10/2026): góp/rút, đáo hạn, thêm/sửa sổ mở ngay trong hub, không còn màn riêng.
+assert.doesNotMatch(recurringSrc, /SavingsWorkspace/, 'không còn màn Quỹ tiết kiệm riêng');
+for (const form of ['SavingMoveForm', 'MaturityForm', 'DepositForm']) {
+  assert.match(recurringSrc, new RegExp(`<${form}\\b`), `hub phải dùng lại ${form}`);
+}
 
 // 2. OverviewScreen tuyệt đối không còn tab 'budget'
 assert.doesNotMatch(overviewSrc, /value:\s*'budget'/, 'OverviewScreen không còn tab budget');
