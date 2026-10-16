@@ -4028,7 +4028,7 @@
 
 .body-rt-row {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 112px 140px 60px 52px 28px;
+  grid-template-columns: 40px minmax(0, 1fr) 112px 140px 60px 104px 28px;
   gap: 12px;
   align-items: center;
   padding: 12px 4px;
@@ -4187,11 +4187,6 @@
 }
 
 .body-rt-kg.is-bw { color: var(--body-text-muted); }
-
-.body-rt-rest {
-  font: 500 12px/1 var(--body-mono);
-  color: var(--body-text-sub);
-}
 
 .body-rt-del {
   width: 28px;

@@ -52,6 +52,7 @@ export default function BodyPage() {
     deleteRoutine,
     updateRoutineTarget,
     updateRoutineSets,
+    updateRoutineRest,
     updateRoutineUnit,
     reorderRoutineItems,
     addRoutineItem,
@@ -489,6 +490,7 @@ export default function BodyPage() {
             onStartSession={handleStartSession}
             onUpdateTarget={withToast(updateRoutineTarget)}
             onUpdateSets={withToast(updateRoutineSets)}
+            onUpdateRest={withToast(updateRoutineRest)}
             onUpdateUnit={withToast(updateRoutineUnit)}
             onReorderItems={withToast(reorderRoutineItems)}
             onNavigate={setScreen}

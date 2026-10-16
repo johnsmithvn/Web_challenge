@@ -62,6 +62,7 @@ export default function RoutineScreen({
   onStartSession,
   onUpdateTarget,
   onUpdateSets,
+  onUpdateRest,
   onUpdateUnit,
   onReorderItems,
   onNavigate,
@@ -430,6 +431,18 @@ export default function RoutineScreen({
     } else {
       setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, target_sets: nextSets } : it));
       onUpdateSets?.(item.id, nextSets);
+    }
+  };
+
+  // Nghỉ giữa hiệp: bước 15s, 0s = sang set kế ngay (màn tập bỏ qua đếm nghỉ)
+  const handleRestChange = (item, delta) => {
+    const nextRest = Math.min(300, Math.max(0, (Number(item.rest_seconds ?? 90) || 0) + delta * 15));
+
+    if (isPreviewing) {
+      patchPreviewItem(item.id, { rest_seconds: nextRest });
+    } else {
+      setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, rest_seconds: nextRest } : it));
+      onUpdateRest?.(item.id, nextRest);
     }
   };
 
@@ -824,6 +837,30 @@ export default function RoutineScreen({
       </button>
       <span className="body-rt-val">{item.target_sets}</span>
       <button type="button" className="body-rt-step" onClick={() => handleSetChange(item, 1)} aria-label="Tăng 1 hiệp">
+        <AppIcon name="plus" size={lg ? 14 : 12} />
+      </button>
+    </div>
+  );
+
+  const restStepper = (item, lg) => (
+    <div className={`body-rt-stepper${lg ? ' is-lg' : ''}`}>
+      <button
+        type="button"
+        className="body-rt-step"
+        onClick={() => handleRestChange(item, -1)}
+        disabled={Number(item.rest_seconds ?? 90) <= 0}
+        aria-label="Giảm 15 giây nghỉ"
+      >
+        <AppIcon name="minus" size={lg ? 14 : 12} />
+      </button>
+      <span className="body-rt-val">{item.rest_seconds ?? 90}{lg ? <small>giây</small> : 's'}</span>
+      <button
+        type="button"
+        className="body-rt-step"
+        onClick={() => handleRestChange(item, 1)}
+        disabled={Number(item.rest_seconds ?? 90) >= 300}
+        aria-label="Tăng 15 giây nghỉ"
+      >
         <AppIcon name="plus" size={lg ? 14 : 12} />
       </button>
     </div>
@@ -1230,7 +1267,7 @@ export default function RoutineScreen({
                     {setsStepper(item)}
                     {targetStepper(item)}
                     <span className={`body-rt-kg${item.kg ? '' : ' is-bw'}`}>{item.kg ? `${item.kg} kg` : 'BW'}</span>
-                    <span className="body-rt-rest">{item.rest_seconds ?? 90}s</span>
+                    {restStepper(item)}
                     <button
                       type="button"
                       className="body-rt-del"
@@ -1345,6 +1382,7 @@ export default function RoutineScreen({
                       <div className="body-rt-m-fields">
                         <div><span>Hiệp</span>{setsStepper(item, true)}</div>
                         <div><span>Mục tiêu mỗi hiệp</span>{targetStepper(item, true)}</div>
+                        <div><span>Nghỉ giữa hiệp</span>{restStepper(item, true)}</div>
                       </div>
                       <div className="body-rt-m-ex-actions">
                         <button type="button" className="body-rt-text-btn" onClick={() => handleUnitToggle(item)}>

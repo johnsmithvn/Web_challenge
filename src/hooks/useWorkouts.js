@@ -414,6 +414,30 @@ export function useWorkouts() {
     }
   }, [enabled, userId, routineItems]);
 
+  // Cập nhật thời gian nghỉ giữa hiệp của 1 routine item (optimistic with rollback)
+  const updateRoutineRest = useCallback(async (itemId, newRest) => {
+    const prevItems = routineItems;
+    setRoutineItems(prev => prev.map(item =>
+      item.id === itemId ? { ...item, rest_seconds: Number(newRest) } : item
+    ));
+
+    if (enabled) {
+      try {
+        const { error } = await supabase
+          .from('body_routine_items')
+          .update({ rest_seconds: Number(newRest) })
+          .eq('id', itemId)
+          .eq('user_id', userId);
+
+        if (error) throw error;
+      } catch (err) {
+        logger.error('Failed to update routine item rest, rolling back:', err);
+        setRoutineItems(prevItems);
+        throw err;
+      }
+    }
+  }, [enabled, userId, routineItems]);
+
   // Đổi kiểu mục tiêu rep ↔ giây kèm giá trị mới (optimistic with rollback)
   const updateRoutineUnit = useCallback(async (itemId, unit, targetVal) => {
     const patch = { unit, target_val: Number(targetVal) };
@@ -787,6 +811,7 @@ export function useWorkouts() {
     deleteRoutine,
     updateRoutineTarget,
     updateRoutineSets,
+    updateRoutineRest,
     updateRoutineUnit,
     reorderRoutineItems,
     addRoutineItem,
