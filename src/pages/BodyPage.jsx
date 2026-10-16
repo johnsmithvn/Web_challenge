@@ -515,6 +515,7 @@ export default function BodyPage() {
               sessionId={effectiveSession.id}
               isResume={Boolean(effectiveSession.isResume || effectiveDayInfo?.isResume)}
               initialMode={effectiveSession.mode}
+              autoProgress={activeRoutine?.auto_progress ?? true}
               initialElapsed={effectiveSession.duration_seconds || 0}
               startedAt={effectiveSession.started_at}
               onLogSet={logSet}

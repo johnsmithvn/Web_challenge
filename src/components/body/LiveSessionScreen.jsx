@@ -50,6 +50,7 @@ export default function LiveSessionScreen({
   sessionId,
   isResume = false,
   initialMode = 'straight',
+  autoProgress = true,
   initialElapsed = 0,
   startedAt = null,
   onLogSet,
@@ -647,7 +648,7 @@ export default function LiveSessionScreen({
     const completedCount = loggedSets.filter(s => s.actualVal != null).length;
     const totalReps = loggedSets.reduce((acc, s) => acc + (s.actualVal != null && s.unit !== 's' ? Number(s.actualVal) : 0), 0);
 
-    // Auto-progression evaluation for each day item
+    // Auto-progression evaluation for each day item (tắt "Tăng tiến tự động" → không đề xuất bài nào)
     const progressionCandidates = dayItems.map(item => {
       const itemSets = loggedSets.filter(s => s.exerciseKey === item.exercise_key).map(s => s.actualVal);
       const evalRes = checkAutoProgression(
@@ -662,7 +663,7 @@ export default function LiveSessionScreen({
         currentVal: item.target_val,
         nextVal: evalRes.nextTarget,
         unit: item.unit,
-        shouldProgress: evalRes.shouldProgress
+        shouldProgress: autoProgress && evalRes.shouldProgress
       };
     });
 
@@ -680,7 +681,7 @@ export default function LiveSessionScreen({
       progressionCandidates,
       prevComparison
     };
-  }, [loggedSets, queue.length, dayItems, prevByExercise]);
+  }, [loggedSets, queue.length, dayItems, prevByExercise, autoProgress]);
 
   // Set initial approved progressions when entering done state
   useEffect(() => {
