@@ -22,6 +22,9 @@ import {
   buildPreviousSetsByExercise,
   getRoutineWeek,
   calculateAdherence,
+  getCycleRange,
+  deloadTarget,
+  buildCycleSummary,
   getWeekDays,
   mapWeekSessions,
   splitExerciseName,
@@ -278,6 +281,53 @@ console.log('Testing workoutLogic pure functions...');
   assert.equal(a3.done, 0);
   assert.equal(calculateAdherence({ startDate: '2026-10-05', plannedWeekdays: [], completedDates: [], today }).pct, null);
   console.log('  ✓ getRoutineWeek / calculateAdherence OK');
+}
+
+// 6.7. Chu kỳ lộ trình: khoảng ngày, deload, tổng kết
+{
+  assert.deepEqual(getCycleRange('2026-09-07', 4), { from: '2026-09-07', to: '2026-10-04' }, '4 tuần = 28 ngày');
+  assert.deepEqual(getCycleRange('2026-12-28', 1), { from: '2026-12-28', to: '2027-01-03' }, 'qua năm mới');
+  assert.equal(getCycleRange(null, 4), null);
+
+  assert.equal(deloadTarget(10, 'rep'), 8);
+  assert.equal(deloadTarget(12, 'rep'), 10, '9.6 làm tròn 10');
+  assert.equal(deloadTarget(1, 'rep'), 1, 'tối thiểu 1 rep');
+  assert.equal(deloadTarget(40, 's'), 30, '32s làm tròn bội 5');
+  assert.equal(deloadTarget(5, 's'), 5, 'tối thiểu 5s');
+
+  const items = [
+    { exercise_key: 'push', unit: 'rep', target_sets: 3, target_val: 12 },
+    { exercise_key: 'push', unit: 'rep', target_sets: 3, target_val: 14 },
+    { exercise_key: 'plank', unit: 's', target_sets: 3, target_val: 45 },
+    { exercise_key: 'squat', unit: 'rep', target_sets: 3, target_val: 10 }
+  ];
+  const sessions = [
+    { id: 's2', status: 'completed', local_date: '2026-09-20' },
+    { id: 's1', status: 'completed', local_date: '2026-09-08' },
+    { id: 'gone', status: 'abandoned', local_date: '2026-09-09' }
+  ];
+  const sets = [
+    { session_id: 's1', exercise_key: 'push', unit: 'rep', target_val: 8, actual_val: 8 },
+    { session_id: 's1', exercise_key: 'push', unit: 'rep', target_val: 8, actual_val: 9 },
+    { session_id: 's2', exercise_key: 'push', unit: 'rep', target_val: 11, actual_val: 13, is_pr: true },
+    { session_id: 's2', exercise_key: 'push', unit: 'rep', target_val: 11, actual_val: null },
+    { session_id: 's1', exercise_key: 'plank', unit: 'rep', target_val: 10, actual_val: 10 },
+    { session_id: 's2', exercise_key: 'plank', unit: 's', target_val: 30, actual_val: 35, is_pr: true },
+    { session_id: 'gone', exercise_key: 'push', unit: 'rep', target_val: 5, actual_val: 99, is_pr: true }
+  ];
+  const sum = buildCycleSummary(items, sessions, sets);
+  assert.equal(sum.sessions, 2, 'chỉ đếm buổi hoàn thành');
+  assert.equal(sum.prs, 2, 'PR đếm theo buổi + bài, bỏ buổi hủy');
+  const push = sum.exercises.find(e => e.key === 'push');
+  assert.deepEqual(
+    [push.startSets, push.startVal, push.nowSets, push.nowVal, push.best],
+    [2, 8, 3, 14, 13],
+    'bài ở nhiều ngày lấy mục tiêu cao nhất; mục tiêu đầu lấy buổi sớm nhất'
+  );
+  const plank = sum.exercises.find(e => e.key === 'plank');
+  assert.deepEqual([plank.startVal, plank.best], [30, 35], 'bỏ set khác đơn vị (đổi rep → giây giữa chu kỳ)');
+  assert.equal(sum.exercises.find(e => e.key === 'squat').startVal, null, 'bài chưa tập trong chu kỳ');
+  console.log('  ✓ getCycleRange / deloadTarget / buildCycleSummary OK');
 }
 
 // 7. exercise dataset schema check

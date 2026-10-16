@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AppIcon from '../components/AppIcon';
 import { useWorkouts } from '../hooks/useWorkouts';
-import { splitDayName } from '../utils/workoutLogic';
+import { splitDayName, deloadTarget } from '../utils/workoutLogic';
+import { toDateStr } from '../utils/dateUtils';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -59,6 +60,7 @@ export default function BodyPage() {
     deleteRoutineItem,
     toggleAutoProgress,
     applyProgression,
+    loadSessionSets,
     startSession,
     logSet,
     updateSetValue,
@@ -117,6 +119,18 @@ export default function BodyPage() {
       return undefined;
     }
   }, [showToast]);
+
+  // Bắt đầu chu kỳ mới cho lộ trình đang theo (hết N tuần); deload thì hạ mục tiêu mọi bài ~20% trước
+  const handleRestartCycle = useCallback(async ({ deload = false } = {}) => {
+    if (!activeRoutine?.id) return;
+    if (deload) {
+      await applyProgression(routineItems.map(it => ({
+        routineItemId: it.id,
+        nextTargetVal: deloadTarget(it.target_val, it.unit)
+      })));
+    }
+    await updateRoutineDetails(activeRoutine.id, { start_date: toDateStr(new Date()) });
+  }, [activeRoutine, routineItems, applyProgression, updateRoutineDetails]);
 
   // Tự động chuyển về Lộ trình nếu người dùng truy cập /body/session mà không có phiên tập nào đang diễn ra (chỉ sau khi dữ liệu đã tải).
   // Khi chủ động rời màn tập (lưu / hủy / tạm dừng) thì bỏ qua: React Router 7 chạy điều hướng như transition,
@@ -497,6 +511,8 @@ export default function BodyPage() {
             onAddExercise={withToast(addRoutineItem)}
             onDeleteExercise={withToast(deleteRoutineItem)}
             onToggleAutoProgress={withToast(toggleAutoProgress)}
+            onLoadCycleSets={withToast(loadSessionSets)}
+            onRestartCycle={withToast(handleRestartCycle, 'Đã bắt đầu chu kỳ mới.')}
           />
         )}
 

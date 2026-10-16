@@ -300,6 +300,69 @@ export function calculateAdherence({ startDate, plannedWeekdays = [], completedD
 }
 
 /**
+ * Khoảng ngày của chu kỳ hiện tại: từ ngày bắt đầu tới hết tuần thứ `weeks` ('YYYY-MM-DD').
+ * Hôm nay > `to` nghĩa là đã hết chu kỳ.
+ */
+export function getCycleRange(startDate, weeks) {
+  if (!startDate) return null;
+  const [y, m, d] = String(startDate).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const total = Math.max(1, Number(weeks) || 1);
+  return { from: toDateStr(new Date(y, m - 1, d)), to: toDateStr(new Date(y, m - 1, d + total * 7 - 1)) };
+}
+
+/**
+ * Mục tiêu sau deload: giảm ~20%, làm tròn theo bước tăng tiến (1 rep / 5s), tối thiểu 1 bước.
+ */
+export function deloadTarget(val, unit) {
+  const step = stepOfUnit(unit);
+  return Math.max(step, Math.round(((Number(val) || 0) * 0.8) / step) * step);
+}
+
+/**
+ * Tổng kết 1 chu kỳ từ các buổi trong chu kỳ và set của chúng: mỗi bài (gộp theo exercise_key, lấy mục tiêu
+ * cao nhất nếu bài có ở nhiều ngày) gồm mục tiêu buổi đầu chu kỳ → hiện tại và set tốt nhất; kèm số buổi và số PR.
+ */
+export function buildCycleSummary(items = [], sessions = [], sets = []) {
+  const done = new Map((sessions || []).filter(s => s.status === 'completed').map(s => [s.id, s]));
+  const own = (sets || []).filter(s => done.has(s.session_id));
+  const orderOf = s => `${done.get(s.session_id).local_date || ''} ${s.completed_at || ''}`;
+
+  const byKey = new Map();
+  (items || []).forEach(it => {
+    const cur = byKey.get(it.exercise_key);
+    if (cur && Number(it.target_val) <= cur.nowVal) return;
+    byKey.set(it.exercise_key, {
+      key: it.exercise_key,
+      unit: it.unit || 'rep',
+      nowSets: Number(it.target_sets) || 0,
+      nowVal: Number(it.target_val) || 0
+    });
+  });
+
+  const exercises = Array.from(byKey.values()).map(e => {
+    const rows = own
+      .filter(s => s.exercise_key === e.key && (s.unit || 'rep') === e.unit)
+      .sort((a, b) => orderOf(a).localeCompare(orderOf(b)));
+    if (!rows.length) return { ...e, startSets: null, startVal: null, best: null };
+    const firstId = rows[0].session_id;
+    const vals = rows.filter(s => s.actual_val != null).map(s => Number(s.actual_val));
+    return {
+      ...e,
+      startSets: rows.filter(s => s.session_id === firstId).length,
+      startVal: Number(rows[0].target_val) || 0,
+      best: vals.length ? Math.max(...vals) : null
+    };
+  });
+
+  return {
+    sessions: done.size,
+    prs: new Set(own.filter(s => s.is_pr).map(s => `${s.session_id}:${s.exercise_key}`)).size,
+    exercises
+  };
+}
+
+/**
  * Generate sequential workout queue according to mode:
  * - 'straight': All sets of exercise 1 -> All sets of exercise 2...
  * - 'circuit': 1 set of each exercise (20s rest) -> round ends (90s rest) -> round 2...

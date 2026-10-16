@@ -277,8 +277,8 @@ export function useWorkouts() {
     }
   }, [enabled, userId, routines, activeRoutine, routineItems]);
 
-  // Cập nhật thông tin lộ trình (tên, mục tiêu, số tuần)
-  const updateRoutineDetails = useCallback(async (routineId, { name, goal, weeks }) => {
+  // Cập nhật thông tin lộ trình (tên, mục tiêu, số tuần, ngày bắt đầu chu kỳ)
+  const updateRoutineDetails = useCallback(async (routineId, { name, goal, weeks, start_date }) => {
     const prevRoutines = routines;
     const prevActive = activeRoutine;
 
@@ -286,6 +286,7 @@ export function useWorkouts() {
     if (name !== undefined) updates.name = name.trim();
     if (goal !== undefined) updates.goal = goal.trim();
     if (weeks !== undefined) updates.weeks = Number(weeks);
+    if (start_date !== undefined) updates.start_date = start_date;
     updates.updated_at = new Date().toISOString();
 
     setRoutines(prev => prev.map(r => r.id === routineId ? { ...r, ...updates } : r));
@@ -602,6 +603,19 @@ export function useWorkouts() {
 
   // ── BUỔI TẬP (SESSIONS & SETS) ACTIONS ────────────────────────────────────
 
+  // Set của các buổi cho trước (tổng kết chu kỳ) — recentSets chỉ giữ 200 set gần nhất nên phải tải riêng
+  const loadSessionSets = useCallback(async (sessionIds = []) => {
+    if (!enabled || sessionIds.length === 0) return recentSets.filter(s => sessionIds.includes(s.session_id));
+    // ponytail: PostgREST cắt ở max_rows (mặc định 1000 dòng); chu kỳ dài tập dày hơn thế thì phân trang
+    const { data, error } = await supabase
+      .from('body_workout_sets')
+      .select('session_id, exercise_key, unit, target_val, actual_val, is_pr, completed_at')
+      .eq('user_id', userId)
+      .in('session_id', sessionIds);
+    if (error) throw error;
+    return data || [];
+  }, [enabled, userId, recentSets]);
+
   // Bắt đầu buổi tập mới. Buổi tự do (tập lẻ 1 bài) truyền routineId = null, plannedWeekday = null.
   const startSession = useCallback(async ({ plannedWeekday = null, dayName, routineId, mode = 'straight' }) => {
     const newSessionId = crypto.randomUUID();
@@ -818,6 +832,7 @@ export function useWorkouts() {
     deleteRoutineItem,
     toggleAutoProgress,
     applyProgression,
+    loadSessionSets,
     startSession,
     logSet,
     updateSetValue,

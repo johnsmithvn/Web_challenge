@@ -7,6 +7,9 @@ import {
   stepOfUnit,
   getRoutineWeek,
   calculateAdherence,
+  getCycleRange,
+  buildCycleSummary,
+  formatValWithUnit,
   estimateQueueMinutes,
   getWeekDays,
   mapWeekSessions,
@@ -15,6 +18,7 @@ import {
   DAY_TAG_COLORS
 } from '../../utils/workoutLogic';
 import { normVi } from '../../utils/kanbanUtils';
+import { toDateStr } from '../../utils/dateUtils';
 import { ConfirmModal } from '../ConfirmModal';
 
 const BASE_WEEKDAY_DEFS = [
@@ -68,7 +72,9 @@ export default function RoutineScreen({
   onNavigate,
   onAddExercise,
   onDeleteExercise,
-  onToggleAutoProgress
+  onToggleAutoProgress,
+  onLoadCycleSets,
+  onRestartCycle
 }) {
   // Thứ trong tuần đang xem (1: T2 -> 7: CN, tự động chọn theo thứ của ngày hôm nay)
   // Bài có sẵn + bài tự tạo (exerciseMap của useWorkouts); thiếu map thì dùng thư viện gốc
@@ -294,6 +300,43 @@ export default function RoutineScreen({
     });
   }, [routine, localItems, sessions]);
   const adherenceText = adherence.pct == null ? '—' : `${adherence.pct}%`;
+
+  // ── Hết chu kỳ N tuần: tổng kết + lặp lại / tập nhẹ / đổi lộ trình ─────────────
+  const cycle = useMemo(() => getCycleRange(routine?.start_date, routineWeeksTotal), [routine, routineWeeksTotal]);
+  const cycleOver = Boolean(cycle) && !isPreviewing && toDateStr(today) > cycle.to;
+  const [cycleOpen, setCycleOpen] = useState(false);
+  const [cycleSets, setCycleSets] = useState(null);
+  const [cycleBusy, setCycleBusy] = useState(false);
+  const cycleSessions = useMemo(() => (cycle ? sessions.filter(s => s.routine_id === routine?.id
+    && s.local_date >= cycle.from && s.local_date <= cycle.to) : []), [cycle, sessions, routine]);
+  const cycleSummary = useMemo(
+    () => (cycleSets ? buildCycleSummary(localItems, cycleSessions, cycleSets) : null),
+    [cycleSets, localItems, cycleSessions]
+  );
+  const cycleAdherence = useMemo(() => {
+    if (!cycle) return { pct: null };
+    const [y, m, d] = cycle.to.split('-').map(Number);
+    return calculateAdherence({
+      startDate: cycle.from,
+      plannedWeekdays: [...new Set(localItems.map(it => it.weekday))],
+      completedDates: cycleSessions.filter(s => s.status === 'completed').map(s => s.local_date),
+      today: new Date(y, m - 1, d + 1) // ngày sau chu kỳ: ngày cuối chưa tập vẫn bị tính
+    });
+  }, [cycle, localItems, cycleSessions]);
+
+  const openCycleSummary = async () => {
+    setCycleOpen(true);
+    setCycleSets(null);
+    const rows = await onLoadCycleSets?.(cycleSessions.map(s => s.id));
+    setCycleSets(rows || []);
+  };
+
+  const restartCycle = async deload => {
+    setCycleBusy(true);
+    await onRestartCycle?.({ deload });
+    setCycleBusy(false);
+    setCycleOpen(false);
+  };
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // ── Lịch tuần: ngày tháng, buổi đã tập, buổi đang dở ─────────────
@@ -803,6 +846,19 @@ export default function RoutineScreen({
     </>
   );
 
+  const cycleCard = cycleOver && (
+    <div className="body-rt-card body-rt-cycle">
+      <AppIcon name="flag" size={20} className="body-rt-ic-accent" />
+      <span className="body-rt-auto-text">
+        <b>Đã xong chu kỳ {routineWeeksTotal} tuần</b>
+        <span>Xem kết quả, rồi chọn lặp lại, tập nhẹ hoặc đổi lộ trình. Vẫn tập tiếp được như cũ.</span>
+      </span>
+      <button type="button" className="body-rt-btn-dark" onClick={openCycleSummary}>Xem tổng kết</button>
+    </div>
+  );
+
+  const cycleVal = (sets, val, unit) => `${sets}×${val}${unit === 's' ? 's' : ''}`;
+
   const autoSwitch = (
     <button
       type="button"
@@ -1076,7 +1132,9 @@ export default function RoutineScreen({
             <>
               <div className="body-rt-bar-sec">
                 <span className="body-rt-label">TIẾN ĐỘ</span>
-                <span className="body-rt-big">Tuần {currentWeekNumber}<small>/ {routineWeeksTotal}</small></span>
+                <span className="body-rt-big">
+                  {cycleOver ? 'Hết chu kỳ' : <>Tuần {currentWeekNumber}<small>/ {routineWeeksTotal}</small></>}
+                </span>
                 <div className="body-rt-weeks">
                   {Array.from({ length: routineWeeksTotal }, (_, i) => {
                     const isCur = i === currentWeekNumber - 1;
@@ -1125,6 +1183,8 @@ export default function RoutineScreen({
             <div className="body-rt-menu-wrap">{menuButton}{menuPanel}</div>
           </div>
         </section>
+
+        {cycleCard}
 
         <div className="body-rt-grid">
           <div className="body-rt-left">
@@ -1305,7 +1365,9 @@ export default function RoutineScreen({
               onClick={() => setShowSwitcher(true)}
             >
               <span className="body-rt-eyebrow">
-                {isPreviewing ? 'ĐANG XEM TRƯỚC' : routine ? `ĐANG THEO · TUẦN ${currentWeekNumber}/${routineWeeksTotal}` : 'CHƯA CÓ LỘ TRÌNH'}
+                {isPreviewing ? 'ĐANG XEM TRƯỚC' : routine
+                  ? `ĐANG THEO · ${cycleOver ? 'HẾT CHU KỲ' : `TUẦN ${currentWeekNumber}/${routineWeeksTotal}`}`
+                  : 'CHƯA CÓ LỘ TRÌNH'}
               </span>
               <span className="body-rt-m-title">
                 {nameText}
@@ -1345,6 +1407,8 @@ export default function RoutineScreen({
           </div>
           {switcherPanel}
         </section>
+
+        {cycleCard}
 
         <div className="body-rt-m-dayhead">
           <span className="body-rt-eyebrow" style={activeDay.isTrain ? { color: activeDay.tagColor } : undefined}>{dayEyebrow}</span>
@@ -2047,6 +2111,92 @@ export default function RoutineScreen({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {cycleOpen && cycle && (
+        <div className="body-modal-backdrop" onClick={() => !cycleBusy && setCycleOpen(false)}>
+          <div className="body-modal-box body-rt-cyc" role="dialog" aria-label="Tổng kết chu kỳ" onClick={e => e.stopPropagation()}>
+            <div className="body-rt-cyc-head">
+              <span className="body-rt-cyc-titles">
+                <span className="body-rt-eyebrow">{ddmm(cycle.from)} – {ddmm(cycle.to)} · {routineWeeksTotal} TUẦN</span>
+                <span className="body-rt-cyc-title">Tổng kết chu kỳ</span>
+              </span>
+              <button
+                type="button"
+                className="body-rt-icon-btn is-round"
+                onClick={() => setCycleOpen(false)}
+                disabled={cycleBusy}
+                aria-label="Đóng"
+              >
+                <AppIcon name="x" size={15} />
+              </button>
+            </div>
+
+            <div className="body-rt-cyc-body">
+              {!cycleSummary ? (
+                <p className="body-rt-cyc-empty">Đang tải kết quả…</p>
+              ) : (
+                <>
+                  <div className="body-rt-cyc-stats">
+                    <div><span className="body-rt-big">{cycleSummary.sessions}<small>buổi</small></span><span>Đã tập</span></div>
+                    <div>
+                      <span className="body-rt-big">{cycleAdherence.pct == null ? '—' : `${cycleAdherence.pct}%`}</span>
+                      <span>Đúng lịch</span>
+                    </div>
+                    <div><span className="body-rt-big">{cycleSummary.prs}<small>PR</small></span><span>Kỷ lục</span></div>
+                  </div>
+                  <div className="body-rt-cyc-list">
+                    <span className="body-rt-label">MỤC TIÊU ĐẦU CHU KỲ → BÂY GIỜ</span>
+                    {cycleSummary.exercises.map(e => (
+                      <div key={e.key} className="body-rt-cyc-row">
+                        <span className="body-rt-cyc-name">{splitExerciseName(exOf(e.key)?.name || e.key).vn}</span>
+                        <span className={`body-rt-mono${e.startVal != null && e.nowVal > e.startVal ? ' is-up' : ''}`}>
+                          {e.startVal != null && `${cycleVal(e.startSets, e.startVal, e.unit)} → `}
+                          {cycleVal(e.nowSets, e.nowVal, e.unit)}
+                        </span>
+                        <span className="body-rt-cyc-best">
+                          {e.best == null ? 'chưa tập' : `tốt nhất ${formatValWithUnit(e.best, e.unit)}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="body-rt-cyc-actions">
+              <button type="button" className="body-rt-cyc-opt" onClick={() => restartCycle(false)} disabled={cycleBusy}>
+                <AppIcon name="repeat" size={18} />
+                <span className="body-rt-auto-text">
+                  <b>Lặp lại chu kỳ</b>
+                  <span>Giữ mục tiêu hiện tại, quay về tuần 1/{routineWeeksTotal}.</span>
+                </span>
+              </button>
+              <button type="button" className="body-rt-cyc-opt" onClick={() => restartCycle(true)} disabled={cycleBusy}>
+                <AppIcon name="leaf" size={18} />
+                <span className="body-rt-auto-text">
+                  <b>Tập nhẹ rồi lặp lại</b>
+                  <span>Giảm ~20% mục tiêu mọi bài (giữ nguyên kg), tăng tiến tự động sẽ kéo lên lại.</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="body-rt-cyc-opt"
+                onClick={() => {
+                  setCycleOpen(false);
+                  setShowSwitcher(true);
+                }}
+                disabled={cycleBusy}
+              >
+                <AppIcon name="listChecks" size={18} />
+                <span className="body-rt-auto-text">
+                  <b>Chọn lộ trình mới</b>
+                  <span>Mở danh sách lộ trình của bạn và mẫu có sẵn.</span>
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       )}
