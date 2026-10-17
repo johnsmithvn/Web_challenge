@@ -834,7 +834,7 @@ function treeShake(s, top, x, y) {
 // allDone: mọi việc tới hạn hôm nay đã xong → bắn thêm cảnh ăn mừng lớn (React tính, truyền vào)
 function celebrate(s, allDone) {
   const host = hosts && hosts[s + '_t']; if (!host || !host.isConnected || !(motionOK())) return;
-  const m = s.length > 1, night = s[0] === 'a', { W, H, k, rr, cr, at, fly, fx1, dot } = flyKit(host, m);
+  const m = s.length > 1, night = s[0] === 'a', { W, H, k, R, rr, cr, at, fly, fx1, dot } = flyKit(host, m);
   let x = W * .6, y = H * .5; const fr = host.closest('[data-frame]'), lp = lastPointer;
   if (fr && lp && Date.now() - lp.t < 2500) { const r = fr.getBoundingClientRect(); if (r.width) { x = (lp.x - r.left) * W / r.width; y = (lp.y - r.top) * H / r.height; } }
   const G = night ? ['#C8FFEA', '94,242,194'] : ['#FFF3B0', '253,224,71'], sx = x < W / 2 ? 1 : -1, D = 3.4;
