@@ -111,7 +111,6 @@ export function ElfCardFireflies() {
   );
 }
 
-/** Cây chuỗi ngày (góc trái dưới, desktop): mỗi ngày làm xong hết việc thì cây lớn thêm, đủ 7 ngày nở hoa. */
 /**
  * Thẻ trễ hạn >= 3 ngày: rùa con & sợi tơ nhện rủ xuống thì thầm động viên
  * Mockup & Spec: "Chậm mà chắc nha, làm thôi!" / "Cố lên bạn ơi..."
