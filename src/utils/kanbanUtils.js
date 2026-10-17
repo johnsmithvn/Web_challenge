@@ -240,12 +240,14 @@ export function taskCardModel(task, today) {
   const skip = st === 'skip';
   let k = 'none';
   let late = '';
+  let lateDays = 0;
   if (done) k = 'done';
   else if (skip) k = 'skip';
   else if (task.due_date) {
     const n = dayDiffStr(today, task.due_date);
     if (n < 0) {
       k = 'late';
+      lateDays = -n;
       late = `trễ ${-n} ngày`;
     } else k = n === 0 ? 'today' : 'soon';
   }
@@ -287,6 +289,7 @@ export function taskCardModel(task, today) {
     skip,
     k,
     late,
+    lateDays,
     badge: { text, short: text.replace(/^Quá hạn · /, ''), card, icon, dashed: k === 'none' },
     hasPriority: pr > 0 && !done,
     canSetPriority: pr === 0 && !done && !skip,

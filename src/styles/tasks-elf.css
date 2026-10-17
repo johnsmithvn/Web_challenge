@@ -1121,3 +1121,106 @@
   background: #F2FFB8;
   box-shadow: 0 0 6px 2px rgba(210, 255, 120, 0.8);
 }
+
+/* ── Thẻ trễ hạn >= 3 ngày: rùa con và tơ nhện (late_nest) ── */
+.tk-elf-late-nest {
+  position: absolute;
+  top: -10px;
+  right: 28px;
+  display: flex;
+  align-items: flex-start;
+  pointer-events: auto;
+  z-index: 5;
+  cursor: pointer;
+}
+
+.tk-elf-late-nest__spider {
+  color: #64748B;
+  animation: tkElfSpiderSway 3s ease-in-out infinite alternate;
+  transform-origin: top center;
+}
+
+[data-theme="dark"] .tk-elf-late-nest__spider {
+  color: #94A3B8;
+  filter: drop-shadow(0 0 2px rgba(148, 163, 184, 0.5));
+}
+
+@keyframes tkElfSpiderSway {
+  0% { transform: rotate(-8deg); }
+  100% { transform: rotate(8deg); }
+}
+
+.tk-elf-turtle {
+  position: relative;
+  margin-top: 10px;
+  margin-left: -5px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tk-elf-turtle svg {
+  animation: tkElfTurtleCrawl 3.6s ease-in-out infinite alternate;
+}
+
+@keyframes tkElfTurtleCrawl {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(3px); }
+}
+
+.tk-elf-turtle__whisper {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: -24px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #F8FAFC;
+  font: 500 10.5px/1.2 'Be Vietnam Pro', sans-serif;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 10;
+}
+
+.tk-elf-late-nest:hover .tk-elf-turtle__whisper {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Cây chuỗi ngày: nấm phát sáng 14 ngày, cú ngủ 30 ngày (streak_tree) ── */
+.tk-elf-streak__mushrooms {
+  filter: drop-shadow(0 0 3px rgba(192, 132, 252, 0.7));
+}
+
+[data-theme="dark"] .tk-elf-streak__mushrooms {
+  filter: drop-shadow(0 0 4px rgba(45, 212, 191, 0.9));
+}
+
+@keyframes tkElfOwlBlink {
+  0%, 90%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+.tk-elf-owl-eye {
+  transform-origin: 25.5px 12px;
+  animation: tkElfOwlBlink 5s ease-in-out infinite;
+}
+
+/* ── Tương tác rê chuột qua góc cột Kanban (vineHover) ── */
+.tk-k-col:hover .tk-elf-vine {
+  animation: tkElfVineSway 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes tkElfVineSway {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(2.5deg) scale(1.02); }
+  100% { transform: rotate(-2deg) scale(1.01); }
+}
+
+.tk-k-col:hover .tk-elf-corner {
+  transform: scale(1.14);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}

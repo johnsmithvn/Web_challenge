@@ -30,6 +30,11 @@ const EA = {
   BIRD: '<svg width="22" height="16" viewBox="0 0 22 16" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 1px 1.5px rgba(60,40,20,.3))"><path d="M3 9 L-2 7 L-1 11 Z" fill="#92400E"/><ellipse cx="10" cy="9.5" rx="7" ry="4.6" fill="#B45309"/><ellipse cx="11" cy="11" rx="4.6" ry="2.6" fill="#FDE68A"/><circle cx="16.6" cy="6.6" r="3.4" fill="#B45309"/><path d="M19.6 6 L22.4 6.8 L19.6 7.8 Z" fill="#F59E0B"/><circle cx="17.6" cy="6" r=".7" fill="#111"/><g style="transform-origin:10px 8px;animation:tkf-eFlapY .12s ease-in-out infinite alternate"><path d="M6 8 C8 1 13 0 15 3 C12 5 10 7 10 9 Z" fill="#92400E"/></g></svg>',
   MOTH: '<svg width="22" height="16" viewBox="0 0 22 16" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 5px rgba(94,242,194,.9))"><g style="transform-origin:11px 8px;animation:tkf-flap .1s ease-in-out infinite alternate"><path d="M11 8 C7 0 0 1 1 7 C2 10 7 10 11 8 Z M11 8 C15 0 22 1 21 7 C20 10 15 10 11 8 Z" fill="rgba(167,255,228,.6)" stroke="#C8FFEA" stroke-width=".6"/><path d="M11 8.5 C8 13 4 14 4.5 11 Z M11 8.5 C14 13 18 14 17.5 11 Z" fill="rgba(167,255,228,.45)"/></g><path d="M11 5 V12" stroke="#E8FFF4" stroke-width="1.4" stroke-linecap="round"/></svg>',
   MUSH: n => '<svg width="100%" height="100%" viewBox="0 0 20 22" style="position:absolute;inset:0;overflow:visible;filter:' + (n ? 'drop-shadow(0 0 6px rgba(94,242,194,.85))' : 'drop-shadow(0 0 4px rgba(253,224,71,.6))') + '"><path d="M8 11 C8 16 7 19 6 22 H14 C13 19 12 16 12 11 Z" fill="#FFF7E6"/><path d="M1 11 C1 5 5 1 10 1 C15 1 19 5 19 11 C15 12.4 5 12.4 1 11 Z" fill="' + (n ? '#2BB58A' : '#F59E0B') + '"/><circle cx="6" cy="6.4" r="1.4" fill="' + (n ? '#C8FFEA' : '#FFF7E6') + '"/><circle cx="11.6" cy="4" r="1.1" fill="' + (n ? '#C8FFEA' : '#FFF7E6') + '"/><circle cx="14.6" cy="8" r="1.3" fill="' + (n ? '#C8FFEA' : '#FFF7E6') + '"/></svg>',
+  PIGEON: '<svg width="36" height="28" viewBox="0 0 36 28" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 1px 2px rgba(60,60,80,.25))"><ellipse cx="16" cy="16" rx="10" ry="7" fill="#F1F5F9" stroke="#CBD5E1" stroke-width=".6"/><circle cx="25" cy="11" r="5" fill="#F8FAFC"/><path d="M28.5 10.5 L34 11.5 L28.5 13 Z" fill="#F59E0B"/><circle cx="26" cy="10" r=".9" fill="#1E293B"/><ellipse cx="15" cy="18" rx="7" ry="4" fill="#E2E8F0"/><g style="transform-origin:14px 13px;animation:tkf-eFlapY .16s ease-in-out infinite alternate"><path d="M14 13 C12 4 4 1 0 4 C4 9 7 13 14 14 Z" fill="#E2E8F0" stroke="#CBD5E1" stroke-width=".6"/></g><g data-k="letter" style="transform-origin:30px 14px"><rect x="28" y="13" width="9" height="7" rx="1" fill="#FFF" stroke="#E2E8F0" stroke-width=".6"/><path d="M28 13 L32.5 17 L37 13" stroke="#CBD5E1" stroke-width=".6" fill="none"/><path d="M31.5 15.5 C31.5 14.8 32.2 14.2 32.5 14.6 C32.8 14.2 33.5 14.8 33.5 15.5 C33.5 16.2 32.5 16.8 32.5 16.8 C32.5 16.8 31.5 16.2 31.5 15.5 Z" fill="#F43F5E"/></g></svg>',
+  LETTER: '<div style="position:absolute;left:-14px;top:-10px;width:28px;height:20px;border-radius:2px;background:#FFFDF7;box-shadow:0 2px 8px rgba(0,0,0,.15);border:1px solid #FBCFE8;display:flex;align-items:center;justify-content:center"><svg width="12" height="10" viewBox="0 0 12 10"><path d="M6 9 C6 9 1 5.5 1 2.8 C1 1.2 2.2 0 3.7 0 C4.7 0 5.5 .6 6 1.4 C6.5 .6 7.3 0 8.3 0 C9.8 0 11 1.2 11 2.8 C11 5.5 6 9 6 9 Z" fill="#F43F5E"/></svg></div>',
+  HAMMER: '<svg width="20" height="20" viewBox="0 0 20 20" style="position:absolute;inset:0;overflow:visible"><rect x="8" y="1" width="10" height="6" rx="1" fill="#71717A" stroke="#3F3F46" stroke-width=".7"/><rect x="6" y="2" width="2" height="4" fill="#A1A1AA"/><rect x="18" y="2" width="2" height="4" fill="#A1A1AA"/><rect x="2" y="3" width="14" height="2.4" rx="1" transform="rotate(45 9 4)" fill="#A16207"/></svg>',
+  UFO_TINY: '<svg width="48" height="24" viewBox="0 0 48 24" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 8px rgba(94,242,194,.8))"><path d="M16 10 Q16 2 24 2 Q32 2 32 10 Z" fill="rgba(167,255,228,.5)" stroke="#5EF2C2" stroke-width=".8"/><ellipse cx="24" cy="12" rx="22" ry="6" fill="#132E24" stroke="#5EF2C2" stroke-width="1.2"/><ellipse cx="24" cy="11" rx="15" ry="3" fill="#2E6B56"/><circle cx="9" cy="13" r="1.5" fill="#FDE68A"/><circle cx="16" cy="15" r="1.5" fill="#A7FFE4"/><circle cx="24" cy="16" r="1.5" fill="#FDE68A"/><circle cx="32" cy="15" r="1.5" fill="#A7FFE4"/><circle cx="39" cy="13" r="1.5" fill="#FDE68A"/></svg>',
+  BUNNY: '<svg width="32" height="36" viewBox="0 0 32 36" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 6px rgba(255,255,255,.9))"><path d="M9 16 C6 8 6 0 9 0 C12 0 13 8 11 16 Z M23 16 C26 8 26 0 23 0 C20 0 19 8 21 16 Z" fill="#FFF"/><path d="M9.5 13 C8 7 8 2 9.5 2 C11 2 11.5 7 10.5 13 Z M22.5 13 C24 7 24 2 22.5 2 C21 2 20.5 7 21.5 13 Z" fill="#FBCFE8"/><ellipse cx="16" cy="22" rx="10" ry="9" fill="#FFF"/><ellipse cx="16" cy="24" rx="1.6" ry="1.1" fill="#F472B6"/><circle cx="12" cy="20" r="1.4" fill="#1E293B"/><circle cx="20" cy="20" r="1.4" fill="#1E293B"/><circle cx="12.5" cy="19.5" r=".4" fill="#FFF"/><circle cx="20.5" cy="19.5" r=".4" fill="#FFF"/><ellipse cx="9" cy="23" rx="2" ry="1.1" fill="#FDA4AF" opacity=".7"/><ellipse cx="23" cy="23" rx="2" ry="1.1" fill="#FDA4AF" opacity=".7"/><path d="M14 26 Q16 27.5 18 26" stroke="#1E293B" stroke-width=".8" fill="none" stroke-linecap="round"/></svg>',
   CW: [[[.05,.32],[.2,.16],[.42,.1],[.66,.12],[.86,.24],[1,.4],[.84,.5],[.6,.56],[.34,.54],[.15,.46],[.05,.32]], [[.05,.32],[-.12,.18],[-.12,.46],[.05,.32]], [[.5,.55],[.42,.68]]],
   CD: [[[.12,.42],[.22,.32],[.6,.32],[.7,.36],[.62,.5],[.2,.52],[.12,.42]], [[.6,.32],[.72,.12],[.84,.1],[.86,.18],[.74,.22]], [[.72,.12],[.66,-.04]], [[.78,.11],[.86,-.06]], [[.24,.52],[.22,.8]], [[.58,.5],[.6,.8]]]
 };
@@ -47,7 +52,9 @@ const EN = {
   ENT: '<svg width="160" height="140" viewBox="-30 0 160 140" style="position:absolute;inset:0;overflow:visible;-webkit-mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(transparent,#000 22%,#000 78%,transparent)"><path d="M22 140 C24 100 20 60 26 0 L74 0 C80 60 76 100 78 140 Z" fill="#10231B" stroke="rgba(94,242,194,.2)" stroke-width="1"/><path d="M34 6 C32 40 36 64 33 120 M66 10 C68 50 64 80 67 126 M50 92 C48 108 52 122 50 138 M44 14 C46 24 42 30 44 38" stroke="#08130F" stroke-width="2" fill="none" stroke-linecap="round"/><g data-k="armL" style="transform-origin:26px 44px"><path d="M26 44 C14 38 4 28 -8 24 M8 32 C4 24 0 20 -4 13" stroke="#10231B" stroke-width="5" fill="none" stroke-linecap="round"/></g><g data-k="armR" style="transform-origin:74px 44px"><path d="M74 44 C86 38 96 28 108 24 M92 32 C96 24 100 20 104 13" stroke="#10231B" stroke-width="5" fill="none" stroke-linecap="round"/></g><path d="M29 45 Q37 40 46 45 M54 45 Q63 40 71 45" stroke="#08130F" stroke-width="3.2" fill="none" stroke-linecap="round"/><g data-k="eyes" style="transform-origin:50px 52px;filter:drop-shadow(0 0 5px rgba(253,230,138,.95))"><ellipse cx="38" cy="52" rx="5" ry="4" fill="#FDE68A"/><ellipse cx="62" cy="52" rx="5" ry="4" fill="#FDE68A"/><circle cx="38.6" cy="52.4" r="1.7" fill="#3A2A10"/><circle cx="61.4" cy="52.4" r="1.7" fill="#3A2A10"/></g><path d="M42 64 Q50 62 58 64" stroke="#08130F" stroke-width="2" fill="none"/><g data-k="mouth" style="transform-origin:50px 74px"><ellipse cx="50" cy="74" rx="8" ry="7" fill="#040A08" stroke="rgba(94,242,194,.35)" stroke-width="1"/></g></svg>',
   OWL: '<svg width="30" height="34" viewBox="0 0 30 34" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 5px rgba(94,242,194,.35))"><g data-k="wings" style="opacity:0"><g style="transform-origin:15px 18px;animation:tkf-eFlapY .22s ease-in-out infinite alternate"><path d="M7 18 C-4 10 -9 15 -11 21 C-3 19 2 21 7 23 Z M23 18 C34 10 39 15 41 21 C33 19 28 21 23 23 Z" fill="#3B4A44" stroke="rgba(167,255,228,.35)" stroke-width=".6"/></g></g><path d="M6 27 C4 18 6 12 15 11 C24 12 26 18 24 27 C22 32 8 32 6 27 Z" fill="#3B4A44" stroke="rgba(167,255,228,.3)" stroke-width=".6"/><path d="M10 25 C10 19 12 17 15 17 C18 17 20 19 20 25 Z" fill="#56685F"/><path d="M5 10 C4 4 9 1 15 1 C21 1 26 4 25 10 C24 15 6 15 5 10 Z" fill="#46574F" stroke="rgba(167,255,228,.3)" stroke-width=".6"/><path d="M6 3.5 L5 -1 L9.5 2 Z M24 3.5 L25 -1 L20.5 2 Z" fill="#46574F"/><circle cx="10.5" cy="8" r="3.4" fill="#0E1A16"/><circle cx="19.5" cy="8" r="3.4" fill="#0E1A16"/><g style="transform-origin:15px 8px;animation:tkf-eBlink 3.4s infinite"><circle cx="10.5" cy="8" r="2.4" fill="#5EF2C2"/><circle cx="19.5" cy="8" r="2.4" fill="#5EF2C2"/><circle cx="10.8" cy="8.1" r="1" fill="#04140D"/><circle cx="19.8" cy="8.1" r="1" fill="#04140D"/></g><path d="M14 10.6 L15 13 L16 10.6 Z" fill="#E3C27A"/><path d="M11 30 L10 33 M19 30 L20 33" stroke="#E3C27A" stroke-width="1.3" stroke-linecap="round"/><g data-k="soot" style="opacity:0"><ellipse cx="11" cy="20" rx="4" ry="3" fill="#151A18"/><ellipse cx="20" cy="24" rx="3.5" ry="2.6" fill="#151A18"/><ellipse cx="16" cy="3" rx="4" ry="2" fill="#151A18"/><path d="M13 -2 C12 -6 15 -8 14 -12 M18 -1 C19 -5 16 -7 18 -11" stroke="rgba(160,170,165,.6)" stroke-width="1" fill="none" stroke-linecap="round"/></g></svg>',
   WHALE: '<svg width="220" height="90" viewBox="0 0 220 90" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 14px rgba(94,242,194,.45))"><g style="transform-origin:24px 50px;animation:tkf-eTail 2.6s ease-in-out infinite alternate"><path d="M26 50 C16 44 8 38 -8 28 C-2 38 0 45 3 50 C0 55 -2 62 -8 72 C8 62 16 56 26 50 Z" fill="rgba(36,74,92,.6)" stroke="rgba(167,255,228,.65)" stroke-width="1"/></g><path d="M20 50 C30 26 80 14 130 18 C170 21 200 34 214 47 C218 51 216 57 210 60 C190 70 150 78 110 76 C70 74 34 68 20 50 Z" fill="rgba(36,74,92,.62)" stroke="rgba(167,255,228,.7)" stroke-width="1.2"/><path d="M96 70 C130 72 172 66 204 56 M100 64 C134 66 170 60 198 51" stroke="rgba(167,255,228,.35)" stroke-width="1" fill="none"/><g style="transform-origin:134px 62px;animation:tkf-eTail 3.2s ease-in-out -.8s infinite alternate"><path d="M134 62 C132 76 124 86 110 90 C116 80 120 70 122 62 Z" fill="rgba(36,74,92,.7)" stroke="rgba(167,255,228,.55)" stroke-width="1"/></g><circle cx="192" cy="44" r="2.6" fill="#A7FFE4"/></svg>',
-  LEAF: '<svg width="14" height="10" viewBox="0 0 14 10" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 4px rgba(226,240,236,.85))"><path d="M1 5 C4 0 10 0 13 5 C10 10 4 10 1 5 Z" fill="rgba(226,236,233,.85)" stroke="#fff" stroke-width=".5"/><path d="M1 5 H12" stroke="rgba(150,175,170,.8)" stroke-width=".5"/></svg>'
+  LEAF: '<svg width="14" height="10" viewBox="0 0 14 10" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 4px rgba(226,240,236,.85))"><path d="M1 5 C4 0 10 0 13 5 C10 10 4 10 1 5 Z" fill="rgba(226,236,233,.85)" stroke="#fff" stroke-width=".5"/><path d="M1 5 H12" stroke="rgba(150,175,170,.8)" stroke-width=".5"/></svg>',
+  POTION: '<svg width="18" height="24" viewBox="0 0 18 24" style="position:absolute;left:-9px;top:-12px;overflow:visible;filter:drop-shadow(0 0 8px rgba(192,132,252,.9))"><path d="M7 2 H11 V5 H7 Z" fill="#854D0E"/><rect x="6" y="5" width="6" height="3" rx=".5" fill="#E2E8F0" opacity=".8"/><path d="M6 7 C2 10 1 14 1 18 C1 21 4 23 9 23 C14 23 17 21 17 18 C17 14 16 10 12 7 Z" fill="rgba(192,132,252,.45)" stroke="#C084FC" stroke-width="1"/><ellipse cx="9" cy="18" rx="6" ry="3.5" fill="#A855F7"/><circle cx="7" cy="16" r="1.2" fill="#F3E8FF"/><circle cx="11" cy="14" r=".8" fill="#F3E8FF"/></svg>',
+  LOTUS: '<svg width="60" height="50" viewBox="0 0 60 50" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 12px rgba(94,242,194,.95))"><path d="M6 42 C16 46 44 46 54 42 C46 48 14 48 6 42 Z" fill="#103B2C"/><ellipse cx="30" cy="42" rx="28" ry="6" fill="#134E39" stroke="#5EF2C2" stroke-width=".8"/><g data-k="petals" style="transform-origin:30px 40px"><path d="M30 40 C14 36 6 22 14 14 C22 22 26 34 30 40 Z" fill="rgba(167,255,228,.7)" stroke="#A7FFE4" stroke-width=".7"/><path d="M30 40 C46 36 54 22 46 14 C38 22 34 34 30 40 Z" fill="rgba(167,255,228,.7)" stroke="#A7FFE4" stroke-width=".7"/><path d="M30 40 C20 34 16 16 24 8 C30 16 30 30 30 40 Z" fill="rgba(200,255,236,.85)" stroke="#C8FFEA" stroke-width=".7"/><path d="M30 40 C40 34 44 16 36 8 C30 16 30 30 30 40 Z" fill="rgba(200,255,236,.85)" stroke="#C8FFEA" stroke-width=".7"/><path d="M30 40 C26 30 26 12 30 4 C34 12 34 30 30 40 Z" fill="#FFF7ED" stroke="#FDE68A" stroke-width=".8"/></g><circle cx="30" cy="22" r="3.5" fill="#FDE68A" style="filter:drop-shadow(0 0 6px #FDE68A)"/></svg>'
 };
 
 function flyKit(host, m) {
@@ -88,12 +95,13 @@ function flyKit(host, m) {
 
 function flySpawn(host, m, night) {
   const { W, H, k, R, rr, ln, cr, at, fly, fx1, walk, dot } = flyKit(host, m);
-  const pool = (night ? [['lanterns', 2.5], ['owl', 2], ['koi', 2], ['veins', 2], ['ring', 1.5], ['starfall', 2], ['spirit', 1], ['bloom', 2], ['whale', 1.6], ['koistar', 1.6], ['owlmiss', 1.6], ['spiritbow', 1.2], ['dragon', 2], ['leafrider', 2], ['constel', 1.6], ['whaleeat', 1.4], ['owlsinge', 1.4], ...NATURE_POOL, ['kitsune', 1.8], ['unicorn', 1.5], ['wisp', 1.6], ['witch', 1.6], ['blackcat', 1.6], ['fairynap', 1.5], ['ent', 1.4], ['foxlant', 1.5], ['wispowl', 1.4], ['witchwhale', 1.3], ['heal', .9], ['catwisp', 1.4]] : [['deer', 2], ['butterflies', 2.5], ['bluebird', 2.5], ['mushroom', 2], ['dandelion', 2.5], ['squirrel', 2], ['sunray', 1.5], ['squirrelchase', 1.8], ['frog', 2], ['rainbow', 1.2], ['gnome', 2], ['bee', 2], ['deernut', 1.6]]).filter(t => t[0] !== host.dataset.last);
+  const pool = (night ? [['lanterns', 2.5], ['owl', 2], ['koi', 2], ['veins', 2], ['ring', 1.5], ['starfall', 2], ['spirit', 1], ['bloom', 2.2], ['whale', 1.6], ['koistar', 1.6], ['owlmiss', 1.6], ['spiritbow', 1.2], ['dragon', 2], ['leafrider', 2], ['constel', 1.6], ['whaleeat', 1.4], ['owlsinge', 1.4], ...NATURE_POOL, ['kitsune', 1.8], ['unicorn', 1.5], ['wisp', 1.6], ['witch', 1.6], ['blackcat', 1.6], ['fairynap', 1.5], ['ent', 1.4], ['foxlant', 1.5], ['wispowl', 1.4], ['witchwhale', 1.3], ['heal', .9], ['catwisp', 1.4], ['witchpotion', 1.8], ['catgiant', 1.5], ['abduct_gnome', 1.8]] : [['deer', 2], ['butterflies', 2.5], ['bluebird', 2.5], ['mushroom', 2], ['dandelion', 2.5], ['squirrel', 2], ['sunray', 1.5], ['squirrelchase', 1.8], ['frog', 2], ['rainbow', 1.2], ['gnome', 2], ['bee', 2], ['deernut', 1.6], ['carrier_pigeon', 2.2], ['rainbow_slide', 1.8]]).filter(t => t[0] !== host.dataset.last);
   let pick = R() * pool.reduce((a, t) => a + t[1], 0), type = pool[0][0];
   for (const [n, w] of pool) { if ((pick -= w) <= 0) { type = n; break; } }
   host.dataset.last = type;
   if (night && host._next && Date.now() > host._next.at) { type = host._next.t; host._next = null; }
   if (type === 'owlsinge') host._next = { t: 'heal', at: Date.now() + 10000 };
+  if (type === 'witchpotion') host._next = { t: 'catgiant', at: Date.now() + 6000 };
   if (night && R() < 1 / 40) type = 'eclipse';
   if (type === 'eclipse' || NATURE_TYPES.includes(type)) { const sk = Object.keys(hosts).find(z => hosts[z] === host); return runNature(type, host, m, { moon: skyMoon(W, m, true), top: sk && hosts[sk + '_t'] }); }
   const sp = m ? .55 : 1, dir = R() < .5 ? 1 : -1, flip = dir < 0, P = (x, y, t) => [dir > 0 ? x : W - x, y, t], X0 = -170 * k, X1 = W + 170 * k, hold = (p, t0, t1) => ln(p, p, t0, t1, 2);
@@ -222,6 +230,219 @@ function flySpawn(host, m, night) {
     fly(EN.CAT, 34, 34, [hold([cx, cy], 0, .38), hold([cx, cy], .38, .46), ...cr([[cx, cy, .46], [(cx + wx) / 2, cy - 64 * k, .5], [wx, cy, .54]], 6), hold([wx, cy], .54, 1)], D, { flip: dir < 0, k: kz, opf: t => Math.min(1, t / .05, (1 - t) / .08), scf: t => t > .4 && t < .46 ? .86 : 1 });
     fly(EN.WISP, 20, 26, [...cr([[wx, wy, 0], [wx + 6 * k, wy - 8 * k, .15], [wx - 5 * k, wy + 4 * k, .3], [wx + 3 * k, wy - 6 * k, .44], [wx, wy, .5]], 6), ln([wx, wy], up, .5, .53, 3), hold(up, .53, .72), ...cr([[up[0], up[1], .72], [up[0] + dir * 90 * k, up[1] - 80 * k, .86], [up[0] + dir * 200 * k, -60, 1]], 6)], D, { k: k * 1.15, opf: t => Math.min(1, t / .05, (1 - t) / .05) });
     bub('Hụt!', wx, cy - 30 * kz, .55, .68, D); bub('Hí hí~', up[0], up[1] - 26 * k, .58, .72, D);
+    return D;
+  }
+  if (type === 'bloom') {
+    const D = 9, bx = W * rr(.25, .75), by = GY - 14 * k;
+    fx1(EN.LOTUS, bx - 30 * k, by - 36 * k, [
+      { transform: 'scale(0.3) translateY(24px)', opacity: 0 },
+      { transform: 'scale(0.85) translateY(6px)', opacity: 0.75, offset: 0.16 },
+      { transform: 'scale(1.08) translateY(0)', opacity: 1, offset: 0.38 },
+      { transform: 'scale(1) translateY(0)', opacity: 1, offset: 0.8 },
+      { transform: 'scale(0.88) translateY(12px)', opacity: 0 }
+    ], D);
+    for (let i = 0; i < (m ? 9 : 16); i++) {
+      const dx = rr(-38, 38) * k, dy = -rr(60, 160) * k;
+      fx1(dot(rr(2.4, 4.2), '#C8FFEA', '94,242,194'), bx + rr(-16, 16) * k, by - 20 * k, [
+        { transform: 'translate(0,0) scale(0)', opacity: 0, offset: 0 },
+        { transform: 'translate(0,0) scale(1)', opacity: 1, offset: 0.25 },
+        { transform: 'translate(' + (dx * .5).toFixed(1) + 'px,' + (dy * .5).toFixed(1) + 'px) scale(1.2)', opacity: .9, offset: 0.6 },
+        { transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) scale(0)', opacity: 0, offset: 1 }
+      ], D * rr(0.7, 0.95), 0.25 * D + R() * 0.4);
+    }
+    bub('Hoa sen ngọc nở rộ ✨', bx, by - 46 * k, 0.35, 0.65, D);
+    return D;
+  }
+  if (type === 'witchpotion') {
+    const [mx, my] = skyMoon(W, m, true), D = rr(8, 9.5) * (m ? .75 : 1), kz = k * 1.3;
+    const A = [SA, my + rr(60, 100) * k, 0], B = [SB, my + rr(40, 90) * k, 1], dropT = 0.42;
+    const segs = cr([A, [(A[0] + mx) / 2, (A[1] + my) / 2 + 10 * k, .25], [mx, my + 4 * k, dropT], [(B[0] + mx) / 2, (B[1] + my) / 2 - 8 * k, .75], B], 10);
+    fly(EN.WITCH, 56, 34, segs, D, { flip, k: kz, tk: .35 });
+    const [dx, dy] = at(segs, dropT), gyP = GY - 8 * k, impactX = dx + dir * 30 * k;
+    fx1(EN.POTION, dx, dy, [
+      { transform: 'translate(0,0) rotate(0deg) scale(1)', opacity: 0, offset: 0 },
+      { transform: 'translate(0,0) rotate(0deg) scale(1)', opacity: 1, offset: dropT },
+      { transform: 'translate(' + (dir * 30 * k).toFixed(1) + 'px,' + (gyP - dy).toFixed(1) + 'px) rotate(540deg) scale(1)', opacity: 1, offset: 0.72 },
+      { transform: 'translate(' + (dir * 30 * k).toFixed(1) + 'px,' + (gyP - dy).toFixed(1) + 'px) rotate(540deg) scale(0)', opacity: 0, offset: 0.74 },
+      { transform: 'translate(' + (dir * 30 * k).toFixed(1) + 'px,' + (gyP - dy).toFixed(1) + 'px) scale(0)', opacity: 0, offset: 1 }
+    ], D);
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2, r = rr(20, 50) * k;
+      fx1(dot(rr(2.5, 4), '#E879F9', '216,112,240'), impactX, gyP, [
+        { transform: 'translate(0,0)', opacity: 0, offset: 0 },
+        { transform: 'translate(0,0)', opacity: 0, offset: 0.72 },
+        { transform: 'translate(0,0)', opacity: 1, offset: 0.73 },
+        { transform: 'translate(' + (Math.cos(a) * r).toFixed(1) + 'px,' + (Math.sin(a) * r * 0.6 - 15 * k).toFixed(1) + 'px)', opacity: 0, offset: 0.95 },
+        { transform: 'translate(0,0)', opacity: 0, offset: 1 }
+      ], D);
+    }
+    bub('Ối! Rơi mất độc dược rồi!', mx, my + 44 * k, 0.44, 0.65, D);
+    bub('Choang! ✨', impactX, gyP - 24 * k, 0.72, 0.86, D);
+    return D;
+  }
+  if (type === 'catgiant') {
+    const D = 11, kz = k * 1.3, cx = W * rr(.35, .65), cy = GY - 17 * kz;
+    fly(EN.CAT, 34, 34, [hold([cx, cy], 0, 1)], D, {
+      flip: dir < 0,
+      k: kz,
+      opf: t => Math.min(1, t / 0.05, (1 - t) / 0.05),
+      scf: t => {
+        if (t < 0.25) return 1;
+        if (t < 0.35) return 1 + (t - 0.25) * 18;
+        if (t < 0.60) return 2.8;
+        if (t < 0.70) return 2.8 - (t - 0.60) * 18;
+        return 1;
+      }
+    });
+    fx1('<div style="position:absolute;left:-60px;top:-60px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(216,112,240,.45),rgba(94,242,194,.3) 50%,transparent 70%)"></div>', cx, cy, [
+      { opacity: 0, transform: 'scale(0.5)', offset: 0 },
+      { opacity: 0, transform: 'scale(0.5)', offset: 0.26 },
+      { opacity: 1, transform: 'scale(2.2)', offset: 0.35 },
+      { opacity: 1, transform: 'scale(2.3)', offset: 0.58 },
+      { opacity: 0, transform: 'scale(0.8)', offset: 0.68 },
+      { opacity: 0, offset: 1 }
+    ], D);
+    bub('Liếm liếm...', cx, cy - 28 * kz, 0.12, 0.24, D);
+    bub('NGOAOOO!! 🦁', cx, cy - 80 * kz, 0.35, 0.56, D);
+    sneeze(cx + (dir > 0 ? 1 : -1) * 20 * kz, cy - 30 * kz, dir > 0 ? 1 : -1, kz * 1.6, 0.60 * D);
+    bub('Hắt xì! ...Meo?', cx, cy - 28 * kz, 0.72, 0.9, D);
+    return D;
+  }
+  if (type === 'abduct_gnome') {
+    const D = 14, gx = W * rr(.35, .65), gyG = (m ? H - 14 : H - 6) - 15 * k, uy = H * rr(.18, .28);
+    const bh = Math.round((gyG - uy) / k + 20), liftY = uy + 38 * k;
+    const UFO = '<div data-k="beam" style="position:absolute;left:9px;top:16px;width:30px;height:' + bh + 'px;opacity:0;clip-path:polygon(32% 0,68% 0,100% 100%,0 100%);background:linear-gradient(rgba(94,242,194,.75),rgba(94,242,194,0))"></div>' + EA.UFO_TINY;
+    const ufoPath = cr([P(X0, uy - 40, 0), P(gx, uy, .24), P(gx + 2, uy + 4, .4), P(gx - 2, uy - 4, .6), P(gx, uy, .72), P(X1 + 60, -120, 1)], 8);
+    fly(UFO, 48, 24, ufoPath, D, {
+      tk: 0,
+      sync: [
+        ['[data-k="beam"]', [{ opacity: 0, offset: 0 }, { opacity: 0, offset: 0.28 }, { opacity: 0.85, offset: 0.32 }, { opacity: 0.85, offset: 0.64 }, { opacity: 0, offset: 0.68 }, { opacity: 0, offset: 1 }]],
+        ['svg', [
+          { transform: 'translate(0,0) rotate(0deg)', offset: 0 },
+          { transform: 'translate(0,0) rotate(0deg)', offset: 0.44 },
+          { transform: 'translate(-3px, -2px) rotate(-6deg)', offset: 0.48 },
+          { transform: 'translate(4px, 3px) rotate(8deg)', offset: 0.52 },
+          { transform: 'translate(-4px, 2px) rotate(-8deg)', offset: 0.58 },
+          { transform: 'translate(3px, -3px) rotate(6deg)', offset: 0.64 },
+          { transform: 'translate(0,0) rotate(0deg)', offset: 0.7 },
+          { transform: 'translate(0,0) rotate(0deg)', offset: 1 }
+        ]]
+      ]
+    });
+    const GN = EA.GNOME + '<div data-k="hmr" style="position:absolute;left:22px;top:4px;opacity:0;transform-origin:2px 16px">' + EA.HAMMER + '</div>';
+    fly(GN, 34, 30, [
+      hold([gx, gyG], 0, 0.32),
+      ln([gx, gyG], [gx, liftY], 0.32, 0.46, 6),
+      hold([gx, liftY], 0.46, 0.66),
+      ln([gx, liftY], [gx, gyG], 0.66, 0.78, 6),
+      hold([gx, gyG], 0.78, 1)
+    ], D, {
+      k: k * 1.2,
+      sync: [
+        ['[data-k="hmr"]', [
+          { opacity: 0, transform: 'rotate(0deg)', offset: 0 },
+          { opacity: 0, transform: 'rotate(0deg)', offset: 0.46 },
+          { opacity: 1, transform: 'rotate(-45deg)', offset: 0.48 },
+          { opacity: 1, transform: 'rotate(30deg)', offset: 0.51 },
+          { opacity: 1, transform: 'rotate(-40deg)', offset: 0.55 },
+          { opacity: 1, transform: 'rotate(35deg)', offset: 0.59 },
+          { opacity: 1, transform: 'rotate(0deg)', offset: 0.66 },
+          { opacity: 0, transform: 'rotate(0deg)', offset: 0.68 },
+          { opacity: 0, offset: 1 }
+        ]]
+      ]
+    });
+    bub('Ủa gì vậy?!', gx, gyG - 30 * k, 0.34, 0.44, D);
+    bub('Cốp! Cốp! 🔨', gx, liftY - 26 * k, 0.50, 0.64, D);
+    bub('Xoẹt! Xoẹt! ⚡', gx + 30 * k, uy - 18 * k, 0.54, 0.68, D);
+    bub('Chừa thói bắt cóc nhé!', gx, gyG - 30 * k, 0.80, 0.95, D);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2, r = rr(15, 35) * k;
+      fx1(dot(rr(2, 3.5), '#FDE047', '253,224,71'), gx, liftY - 8 * k, [
+        { transform: 'translate(0,0)', opacity: 0, offset: 0 },
+        { transform: 'translate(0,0)', opacity: 0, offset: 0.50 },
+        { transform: 'translate(0,0)', opacity: 1, offset: 0.52 },
+        { transform: 'translate(' + (Math.cos(a) * r).toFixed(1) + 'px,' + (Math.sin(a) * r).toFixed(1) + 'px)', opacity: 0, offset: 0.64 },
+        { transform: 'translate(0,0)', opacity: 0, offset: 1 }
+      ], D);
+    }
+    return D;
+  }
+  if (type === 'carrier_pigeon') {
+    const y = H * rr(.12, .32), D = rr(13, 17) * sp, dropT = 0.44;
+    const segs = cr([P(X0, y, 0), P(W * .3, y + rr(-20, 30), .3), P(W * .55, y + rr(-10, 20), dropT), P(X1, y + rr(-30, 20), 1)], 8);
+    fly(EA.PIGEON, 36, 28, segs, D, {
+      flip,
+      tk: .25,
+      k: k * 1.15,
+      sync: [
+        ['[data-k="letter"]', [
+          { opacity: 1, offset: 0 },
+          { opacity: 1, offset: dropT - 0.01 },
+          { opacity: 0, offset: dropT + 0.01 },
+          { opacity: 0, offset: 1 }
+        ]]
+      ]
+    });
+    const [lx, ly] = at(segs, dropT), gyL = GY - 10 * k;
+    const hr = new Date().getHours();
+    const isMorning = hr >= 5 && hr <= 9;
+    const isLateNight = hr >= 23 || hr < 4;
+    const quotes = isMorning
+      ? ['Chào buổi sáng! Ngày mới đầy năng lượng nhé ☀️', 'Cà phê sáng rồi tập trung nào ☕', 'Hôm nay sẽ hoàn thành thật nhiều việc! ✨']
+      : isLateNight
+      ? ['Nghỉ ngơi sớm thôi bạn ơi~ 🌙', 'Đừng thức khuya quá nhé!', 'Ngủ ngon nhé chiến binh! ✨']
+      : ['Bạn đang làm rất tốt ✨', 'Uống miếng nước đi bạn ơi ☕', 'Tập trung nào chiến binh! 💪', 'Hôm nay là một ngày tuyệt vời 🌸'];
+    const quote = quotes[Math.floor(R() * quotes.length)];
+    const swaySegs = cr([
+      [lx, ly, dropT],
+      [lx - 20 * k, (ly + gyL) * 0.35, dropT + 0.12],
+      [lx + 24 * k, (ly + gyL) * 0.65, dropT + 0.24],
+      [lx - 12 * k, (ly + gyL) * 0.85, dropT + 0.34],
+      [lx, gyL, dropT + 0.42],
+      [lx, gyL, 1]
+    ], 6);
+    fly(EA.LETTER, 28, 20, swaySegs, D, {
+      tk: 0,
+      k: k * 1.1,
+      inner: 'animation:tkf-eBob 1.2s ease-in-out infinite alternate',
+      opf: t => t < dropT ? 0 : Math.min(1, (1 - t) / 0.06)
+    });
+    bub(`💌 "${quote}"`, lx, gyL - 32 * k, dropT + 0.44, 0.96, D);
+    return D;
+  }
+  if (type === 'rainbow_slide') {
+    const D = 14, rw = m ? 320 : 760, rh = rw / 2, cx = W * rr(.35, .65), top = H * rr(.1, .22);
+    fx1('<div style="position:absolute;left:' + (-rw / 2) + 'px;top:0;width:' + rw + 'px;height:' + rh + 'px;background:radial-gradient(circle ' + rh + 'px at 50% 100%,transparent 72%,rgba(239,68,68,.42) 75%,rgba(249,115,22,.42) 79%,rgba(250,204,21,.42) 83%,rgba(34,197,94,.38) 87%,rgba(59,130,246,.36) 91%,rgba(139,92,246,.34) 95%,transparent 98%);-webkit-mask-image:linear-gradient(to top,transparent,#000 40%);mask-image:linear-gradient(to top,transparent,#000 40%)"></div>', cx, top, [{ opacity: 0 }, { opacity: 0, offset: .2 }, { opacity: 1, offset: .35 }, { opacity: 1, offset: .85 }, { opacity: 0 }], D);
+    const SQ = '<svg width="34" height="26" viewBox="0 0 34 26" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 1px 2px rgba(60,40,20,.35))"><path d="M13 20 C2 23 -2 12 2 6 C5 1 12 2 12 8 C12 12 8 12 8 15 C9 18 12 18 14 18 Z" fill="#C2783F"/><ellipse cx="19" cy="17" rx="8" ry="6" fill="#B86B34"/><ellipse cx="20.5" cy="19" rx="5" ry="3.4" fill="#F1D3AE"/><path d="M15 22 L13 25 M22 22 L24 25" stroke="#9A5527" stroke-width="1.6" stroke-linecap="round"/><circle cx="26" cy="11" r="4.6" fill="#B86B34"/><circle cx="27.6" cy="10.4" r=".9" fill="#1A1A1A"/></svg>';
+    const startX = cx - rw * 0.35, endX = cx + rw * 0.35;
+    const arcY = t => top + rh - Math.sin(t * Math.PI) * rh * 0.85;
+    const slideSegs = cr([
+      [startX, top + rh, 0],
+      [startX, top + rh, 0.35],
+      [cx - rw * 0.18, arcY(0.3), 0.45],
+      [cx, arcY(0.5), 0.55],
+      [cx + rw * 0.18, arcY(0.7), 0.65],
+      [endX, top + rh - 10, 0.75],
+      [endX + 80 * k, top + rh - 5, 0.88],
+      [endX + 80 * k, top + rh - 5, 1]
+    ], 8);
+    fly(SQ, 34, 26, slideSegs, D, {
+      k: k * 1.15,
+      tk: 0.6,
+      opf: t => t < 0.32 ? 0 : Math.min(1, (1 - t) / 0.08)
+    });
+    bub('Vui quá đi~ 🌈✨', cx + rw * 0.08, arcY(0.6) - 28 * k, 0.52, 0.74, D);
+    for (let t = 0.38; t < 0.76; t += 0.04) {
+      const [px, py] = at(slideSegs, t);
+      fx1(dot(rr(2, 4), '#FDE047', '253,224,71'), px, py + 8 * k, [
+        { transform: 'translate(0,0) scale(0)', opacity: 0, offset: 0 },
+        { transform: 'translate(0,0) scale(0)', opacity: 0, offset: t },
+        { transform: 'translate(0,0) scale(1)', opacity: 1, offset: t + 0.01 },
+        { transform: 'translate(' + rr(-10, 10) + 'px,' + rr(-10, 10) + 'px) scale(0)', opacity: 0, offset: Math.min(1, t + 0.12) },
+        { transform: 'translate(0,0)', opacity: 0, offset: 1 }
+      ], D);
+    }
     return D;
   }
   if (type === 'frog') {
@@ -512,7 +733,64 @@ function bgClick(e) {
   (host._clk || []).forEach(c => { if (c.kind === 'mush') { c.x = c.fx * host.clientWidth; c.y = host.clientHeight - 10 * k; } let cx = c.x, cy = c.y; if (c.kind === 'ff') { const b = c.el.getBoundingClientRect(); cx = (b.left - r.left) * sc; cy = (b.top - r.top) * sc; } const d = Math.hypot(cx - x, cy - y); if (d < bd) { bd = d; best = c; } });
   if (best && best.kind === 'mush') return mushPop(s, best);
   if (best && best.kind === 'ff') return ffFollow(s, fr, host, top, best);
+  if (y > host.clientHeight * 0.72) return waterSplash(top, x, y, k);
   treeShake(s, top, x, y);
+}
+
+function waterSplash(top, x, y, k = 1) {
+  const { fx1, dot } = flyKit(top, false);
+  const D = 1.4;
+  fx1('<span style="position:absolute;left:-24px;top:-8px;width:48px;height:16px;box-sizing:border-box;border-radius:50%;border:1.5px solid rgba(167,255,228,.85);box-shadow:0 0 10px rgba(94,242,194,.7)"></span>', x, y, [
+    { transform: 'scale(0.2)', opacity: 0 },
+    { transform: 'scale(0.8)', opacity: 1, offset: 0.2 },
+    { transform: 'scale(1.8)', opacity: 0, offset: 1 }
+  ], D);
+  for (let i = 0; i < 7; i++) {
+    const a = -Math.PI * (0.2 + (i / 7) * 0.6);
+    const r = 24 * k;
+    fx1(dot(2.4, '#C8FFEA', '94,242,194'), x, y, [
+      { transform: 'translate(0,0) scale(1)', opacity: 1 },
+      { transform: 'translate(' + (Math.cos(a) * r).toFixed(1) + 'px,' + (Math.sin(a) * r - 12).toFixed(1) + 'px) scale(0)', opacity: 0 }
+    ], 0.7);
+  }
+  const KOI_MINI = '<svg width="34" height="18" viewBox="0 0 34 18" style="position:absolute;left:-17px;top:-9px;overflow:visible;filter:drop-shadow(0 0 6px rgba(94,242,194,.8))"><path d="M2 9 C8 3 24 2 32 9 C24 16 8 15 2 9 Z" fill="#FB923C"/><path d="M12 4 Q16 2 20 5 Z M10 13 Q14 16 18 13 Z" fill="#FDBA74"/><circle cx="28" cy="8" r="1" fill="#1E293B"/></svg>';
+  fx1(KOI_MINI, x, y, [
+    { transform: 'translate(0, 4px) rotate(-35deg) scale(0.6)', opacity: 0 },
+    { transform: 'translate(0, -28px) rotate(0deg) scale(1)', opacity: 1, offset: 0.45 },
+    { transform: 'translate(0, 8px) rotate(35deg) scale(0.8)', opacity: 0, offset: 0.95 },
+    { transform: 'translate(0, 8px) scale(0)', opacity: 0, offset: 1 }
+  ], 0.9);
+  fx1('<div style="position:absolute;left:14px;top:-36px;padding:2px 7px;border-radius:8px;background:rgba(8,21,15,.92);border:1px solid rgba(94,242,194,.4);color:#5EF2C2;font:700 10px/1 \'Be Vietnam Pro\',sans-serif;white-space:nowrap">Tõm! 🐟</div>', x, y, [
+    { opacity: 0, transform: 'translateY(4px)' },
+    { opacity: 1, transform: 'translateY(0)', offset: 0.2 },
+    { opacity: 1, transform: 'translateY(0)', offset: 0.7 },
+    { opacity: 0, transform: 'translateY(-6px)' }
+  ], 1.1);
+}
+
+function handleMoonClick(moonEl) {
+  if (!moonEl || moonEl._bunnyActive) return;
+  moonEl._bunnyActive = true;
+  const bunny = document.createElement('div');
+  bunny.style.cssText = 'position:absolute;right:-10px;top:-18px;width:32px;height:36px;pointer-events:none;z-index:20;transform-origin:50% 100%';
+  const messages = [
+    'Chào bạn! Chúc bạn buổi tối tốt lành 🐰✨',
+    'Còn thức chăm chỉ thế! Nghỉ sớm nha 🌙',
+    'Cố lên nha, bạn đang làm rất tốt! 🌟',
+    'Thỏ ngọc chúc bạn ngủ ngon~ 🥕'
+  ];
+  const msg = messages[Math.floor(Math.random() * messages.length)];
+  bunny.innerHTML = EA.BUNNY + '<div style="position:absolute;left:34px;top:-10px;padding:4px 9px;border-radius:10px 10px 10px 2px;background:rgba(24,28,58,.94);border:1px solid rgba(249,168,212,.45);color:#FFF1F7;font:700 11px/1.2 \'Be Vietnam Pro\',sans-serif;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.3)">' + msg + '</div>';
+  moonEl.appendChild(bunny);
+  bunny.animate([
+    { transform: 'translateY(24px) scale(0.4)', opacity: 0 },
+    { transform: 'translateY(0) scale(1)', opacity: 1, offset: 0.15 },
+    { transform: 'translateY(0) scale(1)', opacity: 1, offset: 0.82 },
+    { transform: 'translateY(24px) scale(0.4)', opacity: 0, offset: 1 }
+  ], { duration: 4000, easing: 'cubic-bezier(.25,.8,.25,1)', fill: 'both' }).onfinish = () => {
+    bunny.remove();
+    moonEl._bunnyActive = false;
+  };
 }
 
 function mushPop(s, c) {
@@ -563,6 +841,12 @@ function celebrate(s, allDone) {
   const segs = cr([[x, y, 0], [x + 26 * k, y - 34 * k, .14], [x, y - 70 * k, .28], [x - 30 * k, y - 40 * k, .42], [x, y - 22 * k, .52], [x + sx * 60 * k, y - 110 * k, .72], [x + sx * 180 * k, y - 240 * k, .88], [x + sx * 300 * k, -80, 1]], 8);
   fly('<div style="position:absolute;left:-14px;top:-14px;width:52px;height:52px;border-radius:50%;background:radial-gradient(closest-side,rgba(' + G[1] + ',.55),rgba(' + G[1] + ',0))"></div><svg width="24" height="24" viewBox="0 0 24 24" style="position:absolute;inset:0;overflow:visible"><g style="transform-origin:12px 12px;animation:tkf-flap .12s ease-in-out infinite alternate"><path d="M12 12 C6 2 0 4 2 10 C3 13 8 13 12 12 Z M12 12 C18 2 24 4 22 10 C21 13 16 13 12 12 Z" fill="rgba(255,255,255,.6)" stroke="rgba(255,255,255,.95)" stroke-width=".5"/></g><circle cx="12" cy="13" r="4.6" fill="#FFFBEB" style="filter:drop-shadow(0 0 6px rgba(' + G[1] + ',1))"/></svg>', 24, 24, segs, D, { k: k * 1.2, opf: t => Math.min(1, t / .04, (1 - t) / .08) });
   for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; fx1(dot(rr(2.5, 4), G[0], G[1]), x, y, [{ transform: 'translate(0,0)', opacity: 1 }, { transform: 'translate(' + (Math.cos(a) * 44 * k).toFixed(1) + 'px,' + (Math.sin(a) * 44 * k).toFixed(1) + 'px)', opacity: 0 }], .9); }
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + (R() - 0.5) * 0.4, bDist = rr(60, 110) * k, bDur = rr(1.6, 2.4);
+    const bHue = night ? ['#A7F3D0', '#FDE047', '#C4B5FD', '#F9A8D4'][i] : ['#86EFAC', '#FDE047', '#FDA4AF', '#93C5FD'][i];
+    const bSvg = '<svg width="14" height="14" viewBox="0 0 14 14" style="overflow:visible;' + (night ? 'filter:drop-shadow(0 0 4px ' + bHue + ')' : '') + '"><g style="transform-origin:7px 7px;animation:tkf-flap .15s ease-in-out infinite alternate"><path d="M7 7 C3 1 0 3 2 8 C3 10 6 9 7 7 Z M7 7 C11 1 14 3 12 8 C11 10 8 9 7 7 Z" fill="' + bHue + '" opacity="0.88"/></g><ellipse cx="7" cy="7.5" rx="0.8" ry="2.2" fill="#334155"/></svg>';
+    fx1(bSvg, x, y, [{ transform: 'translate(0,0) scale(0.6)', opacity: 1 }, { transform: 'translate(' + (Math.cos(a) * bDist * 0.5).toFixed(1) + 'px,' + (Math.sin(a) * bDist * 0.5 - 20 * k).toFixed(1) + 'px) scale(1)', opacity: 0.95, offset: 0.4 }, { transform: 'translate(' + (Math.cos(a) * bDist).toFixed(1) + 'px,' + (Math.sin(a) * bDist - 60 * k).toFixed(1) + 'px) scale(0.9)', opacity: 0, offset: 1 }], bDur, R() * 0.15);
+  }
   for (let t = .05; t < .9; t += .045) { const [px, py] = at(segs, t), t2 = Math.min(1, t + .35); fx1(dot(rr(2, 3.6), G[0], G[1]), px, py, [{ transform: 'translate(0,0)', opacity: 0, offset: 0 }, { transform: 'translate(0,0)', opacity: 0, offset: t * .99 }, { transform: 'translate(0,0)', opacity: 1, offset: t }, { transform: 'translate(' + rr(-14, 14).toFixed(1) + 'px,' + (rr(30, 70) * k).toFixed(1) + 'px)', opacity: 0, offset: t2 }, ...(t2 < 1 ? [{ transform: 'translate(0,0)', opacity: 0, offset: 1 }] : [])], D + 1); }
   if (allDone) setTimeout(() => bigCelebrate(s), 900);
 }
@@ -579,4 +863,4 @@ function bigCelebrate(s) {
   fx1('<div style="position:absolute;left:-220px;top:0;width:440px;text-align:center;font:700 ' + (m ? 22 : 34) + 'px/1.1 \'Cormorant SC\',serif;letter-spacing:.04em;color:' + (night ? '#E8FFF4' : '#1C3324') + ';text-shadow:0 0 18px ' + (night ? 'rgba(94,242,194,.85)' : 'rgba(255,240,190,.95)') + '">Xong hết việc hôm nay!</div>', cx, cy + 20 * S, [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 0, transform: 'translateY(10px)', offset: .38 }, { opacity: 1, transform: 'translateY(0)', offset: .5 }, { opacity: 1, transform: 'translateY(0)', offset: .82 }, { opacity: 0, transform: 'translateY(-6px)' }], D);
 }
 
-export { flySpawn as spawnElfFlyer, initClk, addFF, isUI, bgClick, celebrate, bigCelebrate };
+export { flySpawn as spawnElfFlyer, initClk, addFF, isUI, bgClick, celebrate, bigCelebrate, handleMoonClick, waterSplash };

@@ -3,7 +3,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { solarToLunar, moonPhaseName } from '../utils/lunarUtils';
 import { spawnAuroraFlyer } from '../utils/taskFlyersAurora';
 import { natureClick } from '../utils/taskNatureFx';
-import { hosts as elfHosts, frameKey, spawnElfFlyer, initClk, bgClick, setLastPointer } from '../utils/taskFlyersElf';
+import { hosts as elfHosts, frameKey, spawnElfFlyer, initClk, bgClick, setLastPointer, handleMoonClick } from '../utils/taskFlyersElf';
 import { ForestDay, ForestNight, ForestNightMobile, DayFairiesTop, Constellations } from './TaskForestBackground';
 
 /**
@@ -53,7 +53,15 @@ function Moon({ elf, m }) {
   return (
     <>
       <span className="task-moon-halo" style={{ left: left(MX + R - HS / 2 + (elf ? (wax ? 1 : -1) * (1 - lit) * D * 0.3 : 0)), top: px(MY + R - HS / 2), width: px(HS), height: px(HS), background: `radial-gradient(closest-side,rgba(${c.halo},${(0.05 + 0.22 * lit).toFixed(3)}),rgba(${c.halo},0))` }} />
-      <span className="task-moon" style={{ left: left(MX), top: px(MY), width: px(D), height: px(D) }}>
+      <span
+        className="task-moon"
+        style={{ left: left(MX), top: px(MY), width: px(D), height: px(D), cursor: 'pointer', pointerEvents: 'auto' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleMoonClick(e.currentTarget);
+        }}
+        title="Bấm vào mặt trăng để chào Thỏ ngọc 🐰"
+      >
         <span style={{ position: 'absolute', inset: 0, filter: `drop-shadow(0 0 ${(4 + 14 * lit).toFixed(0)}px rgba(${c.glow1},${(0.35 + 0.45 * lit).toFixed(2)})) drop-shadow(0 0 ${(10 + 30 * lit).toFixed(0)}px rgba(${c.glow2},${(0.15 + 0.3 * lit).toFixed(2)}))` }}>
           <span className="task-moon__disc" style={{ clipPath: clip, WebkitClipPath: clip }}>
             {/* Bóng chú Cuội ngồi gốc cây đa (chỉ kiểu Mặc định) */}
@@ -320,6 +328,27 @@ function useElfInteractions(backRef, topRef, { elf, fk }) {
   }, [backRef, topRef, elf, fk]);
 }
 
+function useStardustTrail(active) {
+  useEffect(() => {
+    if (!active || reducedMotion()) return undefined;
+    let lastTime = 0;
+    const onMove = (e) => {
+      const now = performance.now();
+      if (now - lastTime < 45) return;
+      lastTime = now;
+      const dot = document.createElement('span');
+      dot.style.cssText = `position:fixed;left:${e.clientX - 2}px;top:${e.clientY - 2}px;width:4px;height:4px;border-radius:50%;background:#FDE047;box-shadow:0 0 6px 1px rgba(253,224,71,.85);pointer-events:none;z-index:9999;will-change:transform,opacity`;
+      document.body.appendChild(dot);
+      dot.animate([
+        { transform: 'scale(1) translate(0,0)', opacity: 0.9 },
+        { transform: `scale(0.2) translate(${(Math.random() * 12 - 6).toFixed(1)}px, ${(Math.random() * 16 + 6).toFixed(1)}px)`, opacity: 0 }
+      ], { duration: 750, easing: 'ease-out' }).onfinish = () => dot.remove();
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  }, [active]);
+}
+
 function TaskSkyBackground({ isMobile }) {
   const { theme, taskStyle } = useTheme();
   const elf = taskStyle === 'elf';
@@ -330,6 +359,7 @@ function TaskSkyBackground({ isMobile }) {
   const topRef = useRef(null);
   useFlyers(flyRef, { elf, night, m: isMobile });
   useElfInteractions(flyRef, topRef, { elf, fk });
+  useStardustTrail(night);
 
   let sky;
   if (night) sky = elf && isMobile ? <><div className="task-aurora-glow" /><ForestNightMobile /></> : <DarkSky isMobile={isMobile} elf={elf} />;

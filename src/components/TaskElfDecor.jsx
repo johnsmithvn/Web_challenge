@@ -112,6 +112,35 @@ export function ElfCardFireflies() {
 }
 
 /** Cây chuỗi ngày (góc trái dưới, desktop): mỗi ngày làm xong hết việc thì cây lớn thêm, đủ 7 ngày nở hoa. */
+/**
+ * Thẻ trễ hạn >= 3 ngày: rùa con & sợi tơ nhện rủ xuống thì thầm động viên
+ * Mockup & Spec: "Chậm mà chắc nha, làm thôi!" / "Cố lên bạn ơi..."
+ */
+export function ElfLateNest({ days = 3 }) {
+  return (
+    <div className="tk-elf-late-nest" title={`Trễ ${days} ngày - Chậm mà chắc nha, làm thôi!`} aria-hidden="true">
+      <svg className="tk-elf-late-nest__spider" viewBox="0 0 20 28" width="16" height="22">
+        <line x1="10" y1="0" x2="10" y2="16" stroke="currentColor" strokeWidth="0.8" strokeDasharray="1.5 1.5" opacity="0.6" />
+        <circle cx="10" cy="18" r="2.2" fill="currentColor" opacity="0.75" />
+        <path d="M8 18 L5 16 M12 18 L15 16 M8 19 L5 21 M12 19 L15 21" stroke="currentColor" strokeWidth="0.6" opacity="0.6" />
+      </svg>
+      <div className="tk-elf-turtle">
+        <svg viewBox="0 0 24 16" width="18" height="12">
+          <ellipse cx="11" cy="9" rx="7.5" ry="5.5" fill="#4D7C0F" />
+          <path d="M6 9 Q11 5 16 9 Q11 12 6 9 Z" fill="#65A30D" opacity="0.7" />
+          <circle cx="19.5" cy="9" r="2.5" fill="#84CC16" />
+          <circle cx="20.5" cy="8.2" r="0.6" fill="#1E293B" />
+          <ellipse cx="5" cy="13.5" rx="1.8" ry="1.2" fill="#65A30D" />
+          <ellipse cx="14" cy="13.5" rx="1.8" ry="1.2" fill="#65A30D" />
+          <ellipse cx="3.5" cy="9" rx="1.5" ry="1" fill="#65A30D" />
+        </svg>
+        <span className="tk-elf-turtle__whisper">Chậm mà chắc nha, làm thôi!</span>
+      </div>
+    </div>
+  );
+}
+
+/** Cây chuỗi ngày (góc trái dưới, desktop): mỗi ngày làm xong hết việc thì cây lớn thêm, đủ 7 ngày nở hoa; 14 ngày có nấm phát sáng; 30 ngày có cú nhỏ ngủ canh chừng. */
 export function ElfStreakTree({ streak }) {
   const f = Math.min(streak, 7) / 7;
   const leaves = ['M17 36 C12 35 9 31 10 29 C13 29 16 32 17 36 Z', 'M17 31 C22 30 25 26 24 24 C21 24 18 27 17 31 Z', 'M17 26 C12 25 9 21 10 19 C13 19 16 22 17 26 Z', 'M17 21 C22 20 25 16 24 14 C21 14 18 17 17 21 Z', 'M17 16 C12 15 9 11 10 9 C13 9 16 12 17 16 Z', 'M17 11 C22 10 25 6 24 4 C21 4 18 7 17 11 Z'];
@@ -123,6 +152,25 @@ export function ElfStreakTree({ streak }) {
         <g opacity={streak >= 7 ? 1 : 0}>
           {[[17, 2.4], [19.5, 4.2], [18.5, 7.1], [15.5, 7.1], [14.5, 4.2]].map(([x, y]) => <circle key={x + y} cx={x} cy={y} r="2" fill="#F9A8D4" />)}
           <circle cx="17" cy="5" r="1.3" fill="#FDE047" />
+        </g>
+        {/* Chuỗi 14 ngày: Nấm phát sáng quanh gốc */}
+        <g opacity={streak >= 14 ? 1 : 0} className="tk-elf-streak__mushrooms">
+          <path d="M6 41 C6 37 7 36 7 34" stroke="#CBD5E1" strokeWidth="1" fill="none" />
+          <path d="M4 35 C4 31 10 31 10 35 Z" fill="#C084FC" />
+          <circle cx="7" cy="33.5" r="0.6" fill="#FFFFFF" />
+          <path d="M28 41 C28 38 27 37 27 35" stroke="#CBD5E1" strokeWidth="0.9" fill="none" />
+          <path d="M24.5 36 C24.5 32.5 29.5 32.5 29.5 36 Z" fill="#2DD4BF" />
+          <circle cx="27" cy="34.5" r="0.5" fill="#FFFFFF" />
+        </g>
+        {/* Chuỗi 30 ngày: Cú nhỏ đậu ngủ gật trên cành cây, thỉnh thoảng mở mắt */}
+        <g opacity={streak >= 30 ? 1 : 0} className="tk-elf-streak__owl">
+          <path d="M17 18 Q23 18 28 16" stroke="#4E8B5F" strokeWidth="1.4" fill="none" />
+          <ellipse cx="25" cy="13" rx="3.2" ry="4" fill="#78350F" />
+          <ellipse cx="25" cy="14" rx="2" ry="2.6" fill="#FEF3C7" />
+          <path className="tk-elf-owl-eye" d="M23.5 12 Q24.5 13 25.5 12 M25.5 12 Q26.5 13 27.5 12" stroke="#1E293B" strokeWidth="0.6" fill="none" />
+          <polygon points="25.5,13 26,14.2 25,14.2" fill="#F59E0B" />
+          <polygon points="22.5,10 23.5,8 24.5,10" fill="#78350F" />
+          <polygon points="25.5,10 26.5,8 27.5,10" fill="#78350F" />
         </g>
         <path d="M9 39 H25 V41.4 H9 Z" fill="#C98B5A" />
         <path d="M10 41.4 H24 L22.4 46 H11.6 Z" fill="#B7794A" />

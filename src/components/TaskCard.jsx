@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AppIcon from './AppIcon';
-import { ElfBloom, ElfCardVine, ElfCardFireflies } from './TaskElfDecor';
+import { ElfBloom, ElfCardVine, ElfCardFireflies, ElfLateNest } from './TaskElfDecor';
 import { useTheme } from '../contexts/ThemeContext';
 import { STATUS_META, ksStyle, statusKeyOf, taskCardModel } from '../utils/kanbanUtils';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
@@ -98,6 +98,7 @@ export default function TaskCard({
     <>
       {(m.k === 'late' || m.done) && <ElfCardVine bloom={m.done} />}
       {m.st === 'doing' && <ElfCardFireflies />}
+      {m.k === 'late' && m.lateDays >= 3 && <ElfLateNest days={m.lateDays} />}
     </>
   );
 
