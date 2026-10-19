@@ -1377,15 +1377,15 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                               <td style={{ textAlign: 'right' }}>
                                 {r.isNew ? (
                                   <span className="fin-diff-badge fin-diff-badge--new">
-                                    +{compactVND(r.curAmt)} · mới
+                                    +{compactVND(r.curAmt)}<span className="fin-diff-badge__pct">mới</span>
                                   </span>
                                 ) : r.delta > 0 ? (
                                   <span className="fin-diff-badge fin-diff-badge--up">
-                                    +{compactVND(r.delta)} · +{r.pct}%
+                                    +{compactVND(r.delta)}<span className="fin-diff-badge__pct">+{r.pct}%</span>
                                   </span>
                                 ) : r.delta < 0 ? (
                                   <span className="fin-diff-badge fin-diff-badge--down">
-                                    -{compactVND(Math.abs(r.delta))} · {r.pct}%
+                                    -{compactVND(Math.abs(r.delta))}<span className="fin-diff-badge__pct">{r.pct}%</span>
                                   </span>
                                 ) : (
                                   <span className="fin-diff-badge fin-diff-badge--same">0%</span>
