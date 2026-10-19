@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v6.28.1 — 2026-10-19
+
+### Fixed
+- **Finance Tổng quan mobile — cả trang cuộn ngang, 3 biểu đồ tràn khung (`finance-report.css`, `ReportScreen.jsx`, `OverviewScreen.jsx`, `finance.css`):** hàng "Kỳ này với kỳ trước" + "Khoản lớn bất thường" dùng `1fr` (= `minmax(auto, 1fr)`) nên bảng kéo cột rộng theo min-content (~550px ở màn 360px) → đổi `minmax(0, 1fr)`. Bảng trên ≤768px vừa khung: tên nhóm xuống dòng, thanh mini nằm dưới tên, badge chênh lệch tách 2 dòng số tiền / % (desktop vẫn "+2tr · +61%"). "Nhịp chi trong kỳ" bỏ `min-width: 480px` + cuộn ngang trong thẻ: khung hẹp hơn 720px vẽ SVG đúng pixel (`useElementWidth`), nhãn ngày giãn theo bề rộng (≥24px) nên kỳ Năm cũng không chồng chữ. Cụm nút Tháng/Quý/Năm · Thẻ hiển thị · Xuất CSV được xuống dòng thay vì đẩy trang rộng ra.
+
 ## v6.28.0 — 2026-10-15
 
 ### Changed

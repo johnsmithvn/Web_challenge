@@ -1882,6 +1882,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-overview-panel .fin-donut-row { align-items: flex-start; flex-direction: column; }
   .fin-overview-panel .fin-legend { width: 100%; }
   .fin-overview-panel .fin-need__rows { grid-template-columns: 1fr; }
+  .fin-rhythm__head { flex-wrap: wrap; }
   .fin-overview-tabs { justify-self: stretch; }
   .fin-overview-tabs .fin-seg { display: flex; width: 100%; }
   .fin-overview-tabs .fin-seg__btn { flex: 1; min-width: 0; padding-inline: 8px; }
@@ -2415,7 +2416,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 .fin-rhythm__swatch--cur { height: 3px; border-radius: 2px; background: var(--n-accent); }
 .fin-rhythm__swatch--prev { height: 0; border-top: 2px dashed var(--n-txt3); }
 .fin-rhythm__scroll { width: 100%; overflow-x: auto; }
-.fin-rhythm__svg { width: 100%; height: auto; display: block; min-width: 480px; }
+.fin-rhythm__svg { width: 100%; height: auto; display: block; }
 .fin-rhythm__area-stop { stop-color: var(--n-accent); }
 .fin-rhythm__axis { stroke: var(--n-line); stroke-width: 1; }
 .fin-rhythm__grid { stroke: var(--n-line); stroke-width: 1; stroke-dasharray: 3 3; }
