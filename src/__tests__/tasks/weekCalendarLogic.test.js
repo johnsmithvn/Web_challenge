@@ -352,6 +352,8 @@ console.log('agenda rows (week/gap): OK');
   assert.deepEqual(datePickPatch({ a: '2026-10-12', b: null, ta: '09:00', tb: '10:30' }), { start_date: '2026-10-12', start_time: '09:00', due_date: '2026-10-12', due_time: '10:30' }, 'khối giờ cùng ngày');
   // Giờ kết thúc không sau giờ bắt đầu → bỏ giờ kết thúc (tránh Bắt đầu sau Hạn — DB CHECK)
   assert.deepEqual(datePickPatch({ a: '2026-10-12', b: null, ta: '10:00', tb: '09:00' }), { ...NONE, due_date: '2026-10-12', due_time: '10:00' });
+  // v6.30.0: chỉ nhập giờ kết thúc (xoá giờ bắt đầu) → giờ đó là giờ Hạn, không rơi mất
+  assert.deepEqual(datePickPatch({ a: '2026-10-12', b: null, ta: null, tb: '17:00' }), { ...NONE, due_date: '2026-10-12', due_time: '17:00' });
   // b không sau a (dữ liệu nháp lỗi) → coi như 1 ngày
   assert.deepEqual(datePickPatch({ a: '2026-10-12', b: '2026-10-12', ta: null, tb: null }), { ...NONE, due_date: '2026-10-12' });
   // Vòng tròn: task → nháp → patch giữ nguyên

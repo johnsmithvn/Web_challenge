@@ -1256,7 +1256,10 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
 - Hàng việc con (`.tk-subs__row` trên thẻ, `.tk-sub-row` trong ngăn chi tiết): tay nắm `.tk-sub-grip` (span
   `role="button"`, `touch-action: none`) + nút ưu tiên `.tk-sub-pr` (`.is-unset` mờ, chỉ hiện khi hover; `hover: none`
   luôn hiện mờ). Kéo thả qua `useSubtaskReorder` (Pointer Events): hàng `data-drag="self"` nhấc theo con trỏ,
-  `before|after` = vạch thả `--tk-accent`.
+  `before|after` = vạch thả `--tk-accent`. Nút ▶/⏸ `.tk-sub-focus` (`.is-on`), hàng `.is-doing` (nền + vạch trái
+  `--tk-st-doing`), chip hạn `.tk-sub-due--{late|soon|today|upcoming}` dùng token `--tk-ks-*`; dòng `.tk-focus-line`
+  trên mặt thẻ. Mobile (≤768px): hàng việc con là lưới cột cố định, chip hạn nằm dưới tên; thẻ ẩn nút ưu tiên chưa
+  đặt, ngăn chi tiết chỉ hiện icon (`.tk-sub-btn__label` ẩn).
 - Khối giờ tab Ngày `.tk-dv-block.is-long` (≥96px): nội dung dồn lên đầu, nền `--k-bg` nhạt dần + viền `--k-bd`;
   việc con `.tk-dv-sub` hàng 24px (mobile 30px) — đổi cỡ thì sửa cùng `BLOCK_HEAD`/`SUB_ROW` trong `CalendarDayView`.
 - Thành phần dùng chung: `TaskCard` (`variant` card/row/mobile), `TaskFilterBar`, `TaskTodayStrip`,

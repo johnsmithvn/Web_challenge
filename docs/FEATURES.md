@@ -80,10 +80,16 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   task của Finance/Knowledge. Thay checklist JSONB `subtasks` của v6.18.0 (cột cũ không còn dùng).
 - **Mặt trước** (thẻ Kanban, hàng Danh sách): badge `☑ 2/4`; mở ra tick trực tiếp, bấm tên → popup Chi tiết
   của subtask.
-- **Thứ tự (v6.29.0):** ưu tiên cao trước (Khẩn → Không), cùng mức thì theo kéo thả — áp mọi nơi hiện subtask
+- **Đang làm (v6.30.0):** nút ▶ trên hàng việc con (thẻ Kanban/Danh sách, ngăn chi tiết) chuyển việc đó sang
+  "Đang làm" (không cần đặt giờ; ⏸ = dừng, về Chưa làm). Mỗi task cha chỉ 1 việc con đang làm; task cha còn "Cần làm"
+  thì tự sang "Đang làm". Hàng đang làm nổi màu vàng + lên đầu; mặt thẻ (kể cả khi thu gọn) có dòng "● Đang làm: …".
+- **Nhắc hạn (v6.30.0):** việc con có giờ hạn hoặc hạn khác task cha hiện chip giờ: quá hạn / trễ giờ đỏ, còn ≤ 60
+  phút vàng đậm "còn 25p" (icon nhấp nháy), hôm nay vàng, sắp tới xanh. Việc con cùng hạn task cha, không giờ → không chip.
+- **Thứ tự (v6.29.0, v6.30.0):** việc con đang làm lên đầu, **đã xong / bỏ qua tự xuống cuối**; trong mỗi nhóm ưu
+  tiên cao trước (Khẩn → Không), cùng mức thì theo kéo thả — áp mọi nơi hiện subtask
   (thẻ Kanban/Danh sách, ngăn chi tiết, popup Chi tiết, hộp việc con ‹ ›, khối giờ tab Ngày). **Kéo thả** bằng tay
   nắm `⠿` trên thẻ Kanban/Danh sách và ngăn chi tiết (chuột + cảm ứng; bàn phím Alt + ↑/↓) chỉ đổi chỗ trong cùng
-  mức ưu tiên: kéo vượt nhóm thì dừng ở đầu/cuối nhóm, vạch thả hiện đúng chỗ sẽ rơi. Muốn đổi nhóm → đổi ưu tiên
+  nhóm trạng thái + mức ưu tiên: kéo vượt nhóm thì dừng ở đầu/cuối nhóm, vạch thả hiện đúng chỗ sẽ rơi. Muốn đổi nhóm → đổi ưu tiên
   bằng **nút ưu tiên trên từng hàng** (icon màu; chưa đặt thì icon mờ hiện khi rê chuột, cảm ứng luôn hiện mờ).
 - **Popup Chi tiết** task cha và form **sửa**: khu Subtask — tick, bấm tên để mở, **kéo thả sắp xếp** (bàn phím:
   Alt + ↑/↓ trên tay nắm), xoá (có xác nhận), Enter ở ô cuối để thêm (hạn = hạn task cha). Mọi thao tác lưu ngay.
@@ -132,7 +138,8 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   - `agenda` (Lịch biểu): Dải ngày 45 ngày quanh ngày chọn, hiển thị cả ngày lễ và task theo timeline dọc.
   - `day` (Lịch Ngày): Lưới 24 giờ với trục thời gian thực (vạch đỏ), gom task cả ngày (All-day) và task có giờ.
     Khối dài (≥ ~1g45) dồn nội dung lên đầu và hiện **việc con** (tick được, bấm tên mở hộp việc con) vừa đủ chiều
-    cao khối, thiếu chỗ thì "+N việc con"; dòng trạng thái có tiến độ `☑ 2/4`.
+    cao khối, thiếu chỗ thì "+N việc con"; dòng trạng thái có tiến độ `☑ 2/4`. Khung "Chưa xếp giờ" (xem hôm nay)
+    tách nhóm **Quá hạn** riêng — việc hạn từ hôm trước (kể cả có giờ, ghi "Hôm qua, 15:00"); kéo vào lưới = dời sang hôm nay.
   - `week` (Lịch Tuần): 7 cột ngày tương thích cả Chủ Nhật hoặc Thứ Hai khởi đầu, bố trí overlapping task thông minh.
   - `month` (Lịch Tháng): Hiển thị Task pending + completed, song song Dương lịch & Âm lịch Việt Nam, giới hạn chip thông minh và popup chi tiết ngày.
 - **Task đã xong trên Lịch** nằm ở ngày kế hoạch (Bắt đầu→Hạn), gạch/đánh dấu ✓ — không nhảy sang ngày bấm

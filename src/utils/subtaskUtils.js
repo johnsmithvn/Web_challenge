@@ -13,20 +13,48 @@ export const isSubtask = (t) => Boolean(t?.parent_task_id);
 const priorityOf = (t) => Number(t?.priority) || 0;
 const byPriorityDesc = (a, b) => priorityOf(b) - priorityOf(a);
 
+/** Đã xong hoặc bỏ qua (cùng luật statusKeyOf của kanbanUtils). */
+const isClosed = (t) => Boolean(t?.completed) || t?.status === 'done' || t?.status === 'completed' || t?.status === 'skip';
+
+/** Nhóm hiển thị (v6.30.0): 0 = đang làm (lên đầu) · 1 = chưa làm · 2 = xong / bỏ qua (xuống cuối). */
+export function subtaskGroup(t) {
+  if (isClosed(t)) return 2;
+  return t?.status === 'doing' ? 0 : 1;
+}
+const byGroupThenPriority = (a, b) => subtaskGroup(a) - subtaskGroup(b) || byPriorityDesc(a, b);
+
+// Thứ tự tự xếp (không xét trạng thái): ưu tiên → kéo thả → lúc tạo
+const byManualOrder = (a, b) => {
+  const pd = byPriorityDesc(a, b);
+  if (pd) return pd;
+  const ao = a.sort_order ?? Infinity;
+  const bo = b.sort_order ?? Infinity;
+  if (ao !== bo) return ao - bo;
+  return (a.created_at || '').localeCompare(b.created_at || '');
+};
+
 /**
- * Thứ tự hiển thị trong task cha: ưu tiên cao trước (Khẩn → Không); cùng mức thì
- * `sort_order` (kéo thả) tăng dần; NULL (chưa từng kéo thả, hoặc mới thêm) xếp sau,
- * theo thứ tự tạo.
+ * Thứ tự hiển thị trong task cha: việc con đang làm lên đầu, xong / bỏ qua xuống cuối;
+ * trong mỗi nhóm: ưu tiên cao trước (Khẩn → Không), cùng mức thì `sort_order` (kéo thả)
+ * tăng dần; NULL (chưa từng kéo thả, hoặc mới thêm) xếp sau, theo thứ tự tạo.
  */
 export function sortSubtasks(list = []) {
-  return [...list].sort((a, b) => {
-    const pd = byPriorityDesc(a, b);
-    if (pd) return pd;
-    const ao = a.sort_order ?? Infinity;
-    const bo = b.sort_order ?? Infinity;
-    if (ao !== bo) return ao - bo;
-    return (a.created_at || '').localeCompare(b.created_at || '');
-  });
+  return [...list].sort((a, b) => subtaskGroup(a) - subtaskGroup(b) || byManualOrder(a, b));
+}
+
+/**
+ * Bấm "Đang làm" trên 1 việc con → danh sách { id, status } cần ghi. Mỗi task cha chỉ 1 việc
+ * con đang làm: việc khác đang làm về `todo`. Bấm lại việc đang làm = về `todo`. Việc đã xong /
+ * bỏ qua không đổi (bỏ đánh dấu xong trước). `siblings` = việc con cùng task cha (có thể thiếu
+ * `target` nếu nó không nằm trong state).
+ */
+export function subtaskFocusChanges(siblings = [], target) {
+  if (!target || isClosed(target)) return [];
+  if (target.status === 'doing') return [{ id: target.id, status: 'todo' }];
+  return [
+    ...siblings.filter((s) => s.id !== target.id && s.status === 'doing' && !isClosed(s)).map((s) => ({ id: s.id, status: 'todo' })),
+    { id: target.id, status: 'doing' },
+  ];
 }
 
 /**
@@ -67,12 +95,12 @@ export function moveItem(list, from, to) {
 }
 
 /**
- * Kéo thả trên danh sách đã xếp theo ưu tiên: đưa `from` sang `to` rồi xếp lại (ổn định)
- * theo ưu tiên → việc con chỉ đổi chỗ trong nhóm cùng mức; kéo quá ranh giới nhóm thì
- * dừng ở đầu/cuối nhóm của nó. Đổi nhóm = đổi ưu tiên (nút ưu tiên trên hàng).
+ * Kéo thả trên danh sách đã xếp (sortSubtasks): đưa `from` sang `to` rồi xếp lại (ổn định)
+ * theo nhóm trạng thái + ưu tiên → việc con chỉ đổi chỗ trong nhóm cùng trạng thái & mức ưu
+ * tiên; kéo quá ranh giới thì dừng ở đầu/cuối nhóm. Đổi nhóm = đổi ưu tiên / trạng thái.
  */
 export function reorderByDrag(list, from, to) {
-  return moveItem(list, from, to).sort(byPriorityDesc);
+  return moveItem(list, from, to).sort(byGroupThenPriority);
 }
 
 /**
@@ -89,6 +117,36 @@ export function reorderChanges(ordered = []) {
     .map((t, i) => ({ id: t.id, sort_order: i, prev: t.sort_order ?? null }))
     .filter((c) => c.prev !== c.sort_order)
     .map(({ id, sort_order }) => ({ id, sort_order }));
+}
+
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const dmShort = (v) => `${Number(v.slice(8, 10))}/${Number(v.slice(5, 7))}`;
+export const SUBTASK_SOON_MIN = 60; // còn ≤ 60 phút tới giờ hạn → nhắc mạnh
+
+/**
+ * Chip nhắc hạn của 1 việc con (v6.30.0). Chỉ hiện khi việc con có đặt giờ hạn hoặc hạn khác hạn
+ * task cha (việc con mặc định lấy hạn task cha — hiện hết thì rối). Xong / bỏ qua → không hiện.
+ * tone: 'late' (quá hạn / trễ giờ) · 'soon' (còn ≤ 60 phút) · 'today' · 'upcoming'.
+ * Trả null nếu không cần chip. `now` truyền vào để test được.
+ */
+export function subtaskDueInfo(sub, parentDue = null, now = new Date()) {
+  if (!sub?.due_date || isClosed(sub)) return null;
+  const time = sub.due_time ? sub.due_time.slice(0, 5) : '';
+  if (!time && sub.due_date === parentDue) return null;
+  const today = ymd(now);
+  const n = daysBetween(today, sub.due_date);
+  const at = `${dmShort(sub.due_date)}${time ? ` ${time}` : ''}`;
+  if (n < 0) return { tone: 'late', label: at, title: `Quá hạn ${-n} ngày · ${at}` };
+  if (n === 0) {
+    if (!time) return { tone: 'today', label: 'Hôm nay', title: 'Hạn hôm nay' };
+    const [h, m] = time.split(':').map(Number);
+    const left = h * 60 + m - (now.getHours() * 60 + now.getMinutes());
+    if (left < 0) return { tone: 'late', label: time, title: `Trễ giờ · hạn ${time} hôm nay` };
+    if (left <= SUBTASK_SOON_MIN) return { tone: 'soon', label: `còn ${left}p`, title: `Hạn ${time} hôm nay · còn ${left} phút` };
+    return { tone: 'today', label: time, title: `Hạn ${time} hôm nay` };
+  }
+  if (n === 1) return { tone: 'upcoming', label: `Mai${time ? ` ${time}` : ''}`, title: `Hạn ngày mai${time ? ` ${time}` : ''}` };
+  return { tone: 'upcoming', label: at, title: `Hạn ${at}` };
 }
 
 /** Số ngày từ a đến b (YYYY-MM-DD), theo lịch địa phương. */
@@ -111,7 +169,8 @@ export function shiftDate(dateStr, days) {
  * mỗi kỳ cha lại đẻ thêm 1 chuỗi lặp con). Thiếu `user_id` — hook tự thêm.
  */
 export function subtaskCopiesForNextOccurrence(children = [], newParentId, shiftDays = 0) {
-  return sortSubtasks(children).map((c) => ({
+  // Theo thứ tự tự xếp, không theo trạng thái kỳ cũ (bản copy đều chưa làm)
+  return [...children].sort(byManualOrder).map((c) => ({
     title: c.title,
     description: c.description ?? null,
     due_date: shiftDate(c.due_date, shiftDays),

@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
 import AppIcon from './AppIcon';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, getZodiacHours } from '../utils/lunarUtils';
 import { STATUS_META, ksStyle, statusKeyOf, taskCardModel } from '../utils/kanbanUtils';
-import { sortSubtasks } from '../utils/subtaskUtils';
+import { sortSubtasks, subtaskDueInfo } from '../utils/subtaskUtils';
 import HOLIDAYS from '../data/holidays.json';
 import {
   bucketTasksByDay,
@@ -387,14 +387,19 @@ export default function CalendarDayView({
       });
     }
 
-    const combined = [...overdueList, ...dayUnscheduled];
-    return combined.sort((a, b) => {
+    const byDueThenPriority = (a, b) => {
       const ad = a.due_date || '9999-99-99';
       const bd = b.due_date || '9999-99-99';
       if (ad !== bd) return ad.localeCompare(bd);
       return (b.priority || 0) - (a.priority || 0);
-    });
+    };
+    // Việc của ngày chưa có giờ trước, rồi nhóm "Quá hạn" riêng (hạn từ hôm trước — có giờ vẫn ở đây vì
+    // giờ đó thuộc ngày cũ; kéo vào lưới = dời sang hôm nay). Trước đây trộn chung dưới "Chưa xếp giờ".
+    return [...dayUnscheduled.sort(byDueThenPriority), ...overdueList.sort(byDueThenPriority)];
   }, [allDayTasks, pendingTasks, isToday, todayStr]);
+  const isOverdue = (t) => !!t.due_date && t.due_date < todayStr;
+  const overdueCount = unscheduledTasks.filter(isOverdue).length;
+  const dayUnscheduledCount = unscheduledTasks.length - overdueCount;
 
   const { drag: touchDrag, pressProps } = useTouchTaskDrag({
     enabled: !!onRescheduleTask && isMobile,
@@ -414,7 +419,7 @@ export default function CalendarDayView({
     >
       <div className="tk-dv-uns__head">
         <span className="tk-dv-cap">CHƯA XẾP GIỜ</span>
-        <span className="tk-dv-uns__count">{unscheduledTasks.length}</span>
+        <span className="tk-dv-uns__count">{dayUnscheduledCount}</span>
         {isMobile && onRescheduleTask && (
           <span className="tk-dv-uns__hint">
             <AppIcon name="handGrabbing" size={13} />
@@ -425,18 +430,27 @@ export default function CalendarDayView({
       {!isMobile && onRescheduleTask && (
         <span className="tk-dv-uns__help">Kéo việc sang lịch bên trái để xếp giờ. Kéo ngược về đây để bỏ giờ.</span>
       )}
-      {shownUnscheduled.map((t) => {
+      {shownUnscheduled.map((t, i) => {
         const m = taskCardModel(t, todayStr);
         const pr = PRIORITY_LABELS[m.priority] || PRIORITY_LABELS[0];
+        // Quá hạn: hiện đủ ngày + giờ cũ ("Hôm qua, 15:00") để thấy rõ giờ đó thuộc ngày khác
         const badge = (
-          <span className={`tk-due-badge${m.badge.dashed ? ' is-dashed' : ''}`}>
+          <span className={`tk-due-badge${m.badge.dashed ? ' is-dashed' : ''}`} title={m.badge.text}>
             {!isMobile && <AppIcon name={m.badge.icon} size={11.5} />}
-            {m.badge.card}
+            {m.k === 'late' ? m.badge.short : m.badge.card}
           </span>
         );
+        const firstOverdue = isOverdue(t) && (i === 0 || !isOverdue(shownUnscheduled[i - 1]));
         return (
+          <Fragment key={t.id}>
+          {firstOverdue && (
+            <div className="tk-dv-uns__sub">
+              <span className="tk-dv-cap">QUÁ HẠN</span>
+              <span className="tk-dv-uns__count is-late">{overdueCount}</span>
+              {onRescheduleTask && <span className="tk-dv-uns__subhint">kéo vào lịch để dời sang hôm nay</span>}
+            </div>
+          )}
           <div
-            key={t.id}
             className="tk-dv-ucard"
             style={{ ...ksStyle(m.k), opacity: ghostOpacity(t) }}
             draggable={htmlDrag}
@@ -468,6 +482,7 @@ export default function CalendarDayView({
               </>
             )}
           </div>
+          </Fragment>
         );
       })}
       {!isMobile && unscheduledTasks.length === 0 && <span className="tk-dv-uns__empty">Mọi việc trong ngày đã có giờ.</span>}
@@ -621,10 +636,12 @@ export default function CalendarDayView({
                       {fit > 0 && subs.length > 0 && (
                         <div className="tk-dv-subs">
                           {shownSubs.map((s) => {
-                            const sDone = statusKeyOf(s) === 'done';
+                            const sKey = statusKeyOf(s);
+                            const sDone = sKey === 'done';
                             const sp = PRIORITY_LABELS[Number(s.priority) || 0];
+                            const due = subtaskDueInfo(s, t.due_date);
                             return (
-                              <div key={s.id} className="tk-dv-sub">
+                              <div key={s.id} className={`tk-dv-sub${sKey === 'doing' ? ' is-doing' : ''}`}>
                                 <button
                                   type="button"
                                   className="tk-dv-sub__check"
@@ -654,6 +671,7 @@ export default function CalendarDayView({
                                 >
                                   {s.title}
                                 </button>
+                                {due && <span className={`tk-sub-due tk-sub-due--${due.tone}`} title={due.title}>{due.label}</span>}
                                 {Number(s.priority) > 0 && sp && (
                                   <span className="tk-dv-sub__pr" style={{ color: sp.color }} title={`Ưu tiên: ${sp.label}`}>
                                     <AppIcon name={sp.icon} size={12} weight={Number(s.priority) === 5 ? 'fill' : 'regular'} />

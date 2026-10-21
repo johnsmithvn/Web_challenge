@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v6.30.0 — 2026-10-21
+
+### Added
+- **Việc con "Đang làm" (`TaskCard.jsx` `SubtaskFocusBtn`, `TaskDetailDrawer.jsx`, `useUserTasks.js` `focusSubtask`, `subtaskUtils.js` `subtaskFocusChanges`):** nút ▶ trên hàng việc con chuyển sang Đang làm (⏸ = dừng), không cần đặt giờ. Mỗi task cha 1 việc con đang làm; task cha còn Cần làm thì tự sang Đang làm. Hàng đang làm nổi màu + lên đầu; mặt thẻ Kanban/Danh sách/mobile có dòng "● Đang làm: <tên>" khi thu gọn (bấm mở việc con). Tab Ngày tô hàng đang làm.
+- **Chip nhắc hạn việc con (`subtaskDueInfo`, `SubtaskDueChip`):** chỉ khi có giờ hạn hoặc hạn khác task cha — quá hạn/trễ giờ đỏ, còn ≤ 60 phút "còn 25p" vàng đậm (icon nhấp nháy, tắt khi giảm chuyển động), hôm nay vàng, sắp tới xanh. Thẻ, ngăn chi tiết, tab Ngày.
+
+### Changed
+- **Thứ tự việc con:** đang làm lên đầu, xong / bỏ qua tự xuống cuối; trong nhóm vẫn ưu tiên → kéo thả. Kéo thả kẹp trong nhóm trạng thái + ưu tiên. Bản copy cho kỳ lặp sau giữ thứ tự tự xếp (không theo trạng thái kỳ cũ). Test `mergeSubtasks` đổi kỳ vọng theo luật mới (việc xong xuống cuối).
+- **Tab Ngày — khung "Chưa xếp giờ" tách nhóm "Quá hạn" (`CalendarDayView.jsx`):** việc hạn từ hôm trước (kể cả có giờ) trước đây trộn chung nên trông như "đặt giờ mà bị xếp vào Chưa xếp giờ"; giờ ở nhóm riêng, nhãn đủ ngày giờ cũ ("Hôm qua, 15:00"), số đếm Chưa xếp giờ không tính việc quá hạn.
+- **Mobile — hàng việc con:** lưới cột cố định, chip hạn nằm dưới tên (không ép tên còn 1 cột chữ); thẻ ẩn nút ưu tiên chưa đặt (đặt trong ngăn chi tiết), ngăn chi tiết chỉ hiện icon.
+
+### Fixed
+- **Popover "Đổi ngày giờ" làm mất giờ (`datePickPatch`):** xoá giờ bắt đầu, chỉ nhập giờ kết thúc → Lưu ra việc không giờ (rơi vào "Chưa xếp giờ"). Giờ kết thúc được giữ làm giờ Hạn.
+- **Gõ nhanh "3h chiều" ra 03:00 (`taskNlpParser.js`):** hiểu buổi sau giờ — chiều/tối +12h, đêm (6–11h) +12h, trưa (<6h) +12h, sáng giữ; chữ buổi không còn dính vào tên việc.
+
 ## v6.29.1 — 2026-10-21
 
 ### Fixed

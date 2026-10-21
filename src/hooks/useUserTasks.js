@@ -6,7 +6,7 @@ import { logger } from '../utils/logger';
 import { toDateStr } from '../utils/dateUtils';
 import { computeNextDueDate, resolveDeletionIds } from '../utils/recurrenceUtils';
 import { buildTodayReminders } from '../utils/calendarTimeUtils';
-import { daysBetween, isSubtask, reorderChanges, shiftDate, subtaskCopiesForNextOccurrence } from '../utils/subtaskUtils';
+import { daysBetween, isSubtask, reorderChanges, shiftDate, subtaskCopiesForNextOccurrence, subtaskFocusChanges } from '../utils/subtaskUtils';
 import { useActivityLog } from './useActivityLog';
 import { useXpStore, XP_REWARDS } from './useXpStore';
 import { diffTaskFields, ACTIONS } from '../utils/taskFields';
@@ -693,6 +693,21 @@ export function useUserTasks() {
     return true;
   }, [isAuth, userId]);
 
+  // "Đang làm" 1 việc con (v6.30.0): mỗi task cha chỉ 1 việc con doing (subtaskFocusChanges), bấm
+  // lại = về todo. Đi qua updateTask nên có log + started_at. Bắt đầu việc con khi task cha còn
+  // "Cần làm" → task cha sang "Đang làm" để bảng Kanban khớp. Trả danh sách đã đổi (caller vá bản fetch).
+  const focusSubtask = useCallback(async (sub) => {
+    const siblings = tasks.filter(t => t.parent_task_id === sub.parent_task_id);
+    const changes = subtaskFocusChanges(siblings, sub);
+    for (const c of changes) await updateTask(c.id, { status: c.status });
+    const parent = tasks.find(t => t.id === sub.parent_task_id);
+    const starting = changes.some(c => c.id === sub.id && c.status === 'doing');
+    if (starting && parent && !parent.completed && (parent.status || 'todo') === 'todo') {
+      await updateTask(parent.id, { status: 'doing' });
+    }
+    return changes;
+  }, [tasks, updateTask]);
+
   // Subtask của 1 task cha, đủ cả subtask không nằm trong state (task cha đã xong
   // ngày cũ, mở từ Lịch). Guest/lỗi → [] (popup gộp thêm từ state, xem mergeSubtasks).
   const getSubtasks = useCallback(async (parentId) => {
@@ -951,6 +966,7 @@ export function useUserTasks() {
     deleteTask,
     addSubtasks,
     reorderSubtasks,
+    focusSubtask,
     getSubtasks,
     rolloverTask,
     getCompletedTasksRange,

@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {
   isSubtask, sortSubtasks, mergeSubtasks, subtaskProgressByParent, moveItem,
   reorderChanges, reorderByDrag, dropIndexAt, daysBetween, shiftDate, subtaskCopiesForNextOccurrence,
+  subtaskGroup, subtaskFocusChanges, subtaskDueInfo,
 } from '../../utils/subtaskUtils.js';
 
 const ids = (list) => list.map((t) => t.id);
@@ -36,6 +37,20 @@ assert.deepEqual(ids(sortSubtasks(unordered)), ['s0', 's1', 'n1', 'n2'],
   assert.deepEqual(ids(sortSubtasks(mixed)), ['urgent5', 'low0', 'low1', 'none0', 'nullPri'],
     'Khẩn trước; priority chuỗi/NULL vẫn so như số');
 }
+{
+  // v6.30.0: đang làm lên đầu, xong / bỏ qua xuống cuối; trong nhóm vẫn ưu tiên → kéo thả.
+  const list = [
+    { id: 'done-urgent', priority: 5, sort_order: 0, completed: true, status: 'done' },
+    { id: 'todo-b', sort_order: 2 },
+    { id: 'skip', sort_order: 1, status: 'skip' },
+    { id: 'doing', sort_order: 4, status: 'doing' },
+    { id: 'todo-a', sort_order: 1, status: 'todo' },
+    { id: 'todo-high', priority: 4, sort_order: 9 },
+  ];
+  assert.deepEqual(ids(sortSubtasks(list)), ['doing', 'todo-high', 'todo-a', 'todo-b', 'done-urgent', 'skip'],
+    'việc xong dù Khẩn vẫn xuống cuối; việc đang làm lên đầu');
+  assert.deepEqual(list.map(subtaskGroup), [2, 1, 2, 0, 1, 1]);
+}
 console.log('isSubtask & sortSubtasks: OK');
 
 /* ── 2. Gộp DB + state cho popup task cha ───────────────────────── */
@@ -52,8 +67,9 @@ console.log('isSubtask & sortSubtasks: OK');
     { id: 'other', parent_task_id: 'x', completed: false },
   ];
   const merged = mergeSubtasks(P, fetched, state);
-  assert.deepEqual(ids(merged), ['k1', 'old', 'new']);
-  assert.equal(merged[0].completed, true, 'bản trong state thắng');
+  // v6.30.0: việc con đã xong xuống cuối (trước: k1, old, new theo sort_order)
+  assert.deepEqual(ids(merged), ['new', 'k1', 'old']);
+  assert.equal(merged[1].completed, true, 'bản trong state thắng');
 }
 console.log('mergeSubtasks: OK');
 
@@ -112,7 +128,51 @@ console.log('subtaskProgressByParent: OK');
   assert.equal(dropIndexAt([10, 30, 50], 2, 0), 0, 'kéo hàng cuối lên đầu');
   assert.equal(dropIndexAt([10, 30, Infinity], 0, 99), 1, 'hàng ẩn (Infinity) không tính');
 }
+{
+  // Kéo việc đã xong lên đầu → dừng ở đầu nhóm "xong", không chen vào việc chưa làm.
+  const list = sortSubtasks([
+    { id: 'T1', sort_order: 0 }, { id: 'T2', sort_order: 1 },
+    { id: 'D1', sort_order: 2, completed: true }, { id: 'D2', sort_order: 3, completed: true },
+  ]);
+  assert.deepEqual(ids(reorderByDrag(list, 3, 0)), ['T1', 'T2', 'D2', 'D1']);
+}
 console.log('moveItem & reorderChanges & reorderByDrag & dropIndexAt: OK');
+
+/* ── 4b. "Đang làm": mỗi task cha 1 việc con ─────────────────────── */
+{
+  const subs = [
+    { id: 'a', status: 'doing' },
+    { id: 'b', status: 'todo' },
+    { id: 'c', status: 'done', completed: true },
+    { id: 'd', status: 'doing', completed: true }, // dữ liệu lệch: đã xong thì không đụng
+  ];
+  assert.deepEqual(subtaskFocusChanges(subs, subs[1]), [{ id: 'a', status: 'todo' }, { id: 'b', status: 'doing' }],
+    'bắt đầu việc khác → việc đang làm cũ về todo');
+  assert.deepEqual(subtaskFocusChanges(subs, subs[0]), [{ id: 'a', status: 'todo' }], 'bấm lại = dừng');
+  assert.deepEqual(subtaskFocusChanges(subs, subs[2]), [], 'việc đã xong không bắt đầu được');
+  assert.deepEqual(subtaskFocusChanges([], { id: 'x', status: 'todo' }), [{ id: 'x', status: 'doing' }],
+    'việc con không nằm trong state vẫn đổi được');
+  assert.deepEqual(subtaskFocusChanges(subs, null), []);
+}
+console.log('subtaskFocusChanges: OK');
+
+/* ── 4c. Chip nhắc hạn việc con ──────────────────────────────────── */
+{
+  const now = new Date(2026, 9, 21, 13, 40); // 21/10/2026 13:40 giờ máy
+  const tone = (sub, parentDue = '2026-10-21') => subtaskDueInfo(sub, parentDue, now)?.tone ?? null;
+  assert.equal(tone({ due_date: '2026-10-21' }), null, 'cùng hạn task cha, không giờ → không chip (đỡ rối)');
+  assert.equal(tone({ due_date: '2026-10-21', due_time: '15:30:00' }), 'today');
+  assert.equal(tone({ due_date: '2026-10-21', due_time: '14:30' }), 'soon', 'còn 50 phút');
+  assert.equal(subtaskDueInfo({ due_date: '2026-10-21', due_time: '14:30' }, null, now).label, 'còn 50p');
+  assert.equal(tone({ due_date: '2026-10-21', due_time: '13:00' }), 'late', 'trễ giờ trong ngày');
+  assert.equal(tone({ due_date: '2026-10-19' }), 'late', 'quá hạn ngày (khác hạn task cha)');
+  assert.equal(tone({ due_date: '2026-10-22', due_time: '09:00' }), 'upcoming');
+  assert.equal(subtaskDueInfo({ due_date: '2026-10-22', due_time: '09:00' }, null, now).label, 'Mai 09:00');
+  assert.equal(subtaskDueInfo({ due_date: '2026-11-02' }, null, now).label, '2/11');
+  assert.equal(tone({ due_date: '2026-10-21', due_time: '14:30', completed: true }), null, 'đã xong → không nhắc');
+  assert.equal(tone({ due_date: null, due_time: '09:00' }), null, 'không ngày → không chip');
+}
+console.log('subtaskDueInfo: OK');
 
 /* ── 5. Task cha lặp: kỳ sau mang theo subtask, chưa xong, hạn dời theo ── */
 assert.equal(daysBetween('2026-10-05', '2026-10-12'), 7);

@@ -476,7 +476,8 @@ export function datePickPatch({ a, b, ta, tb }) {
   if (!a) return { start_date: null, start_time: null, due_date: null, due_time: null };
   if (b && b > a) return { start_date: a, start_time: ta || null, due_date: b, due_time: tb || null };
   if (ta && tb && tb > ta) return { start_date: a, start_time: ta, due_date: a, due_time: tb };
-  return { start_date: null, start_time: null, due_date: a, due_time: ta || null };
+  // 1 ngày chỉ có 1 giờ → giờ Hạn. Xoá giờ bắt đầu, chỉ nhập giờ kết thúc → vẫn giữ (trước bị rơi mất giờ)
+  return { start_date: null, start_time: null, due_date: a, due_time: ta || tb || null };
 }
 
 /** onDragStart cho thẻ task trên các view Lịch. */

@@ -47,6 +47,7 @@ export default function TaskListSection({
     updateTask,
     addTask,
     reorderSubtasks,
+    focusSubtask,
     getCompletedTasksRange,
     isLoading,
     hasLoaded,
@@ -159,6 +160,7 @@ export default function TaskListSection({
     onAddSub: (title) => addTask?.({ title, dueDate: task.due_date, parentTaskId: task.id }),
     onReorderSub: reorderSubtasks,
     onPrioritySub: (s, e) => openPop('priority', s)(e),
+    onFocusSub: focusSubtask,
   });
 
   return (

@@ -4,6 +4,7 @@ import { ElfBloom, ElfCardVine, ElfCardFireflies, ElfLateNest } from './TaskElfD
 import { useTheme } from '../contexts/ThemeContext';
 import useSubtaskReorder from '../hooks/useSubtaskReorder';
 import { STATUS_META, ksStyle, statusKeyOf, taskCardModel } from '../utils/kanbanUtils';
+import { subtaskDueInfo } from '../utils/subtaskUtils';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 
 /*
@@ -33,8 +34,43 @@ export function SubtaskPriorityBtn({ sub, withLabel = false, onClick }) {
       onClick={onClick}
     >
       <AppIcon name={lvl ? pr.icon : 'signalMedium'} size={13} weight={lvl === 5 ? 'fill' : 'regular'} />
-      {withLabel && lvl > 0 && pr.label}
+      {withLabel && lvl > 0 && <span className="tk-sub-btn__label">{pr.label}</span>}
     </button>
+  );
+}
+
+/**
+ * Nút "Đang làm" của 1 việc con (v6.30.0): ▶ bắt đầu / ⏸ dừng (về Chưa làm). Việc đang làm luôn hiện
+ * (ngăn chi tiết kèm chữ), việc khác chỉ hiện khi rê chuột (cảm ứng luôn hiện mờ). Xong / bỏ qua → ẩn.
+ */
+export function SubtaskFocusBtn({ sub, withLabel = false, onClick }) {
+  const key = statusKeyOf(sub);
+  if (key === 'done' || key === 'skip') return null;
+  const on = key === 'doing';
+  return (
+    <button
+      type="button"
+      className={`tk-sub-focus${on ? ' is-on' : ''}`}
+      title={on ? 'Đang làm · bấm để dừng' : 'Bắt đầu làm việc này'}
+      aria-label={`${on ? 'Dừng' : 'Bắt đầu làm'}: ${sub.title}`}
+      aria-pressed={on}
+      onClick={onClick}
+    >
+      <AppIcon name={on ? 'pause' : 'play'} size={12} weight="fill" />
+      {withLabel && on && <span className="tk-sub-btn__label">Đang làm</span>}
+    </button>
+  );
+}
+
+/** Chip nhắc hạn việc con (subtaskDueInfo): chỉ khi có giờ / hạn khác task cha; màu theo độ gấp. */
+export function SubtaskDueChip({ sub, parentDue }) {
+  const due = subtaskDueInfo(sub, parentDue);
+  if (!due) return null;
+  return (
+    <span className={`tk-sub-due tk-sub-due--${due.tone}`} title={due.title}>
+      <AppIcon name={due.tone === 'late' || due.tone === 'soon' ? 'warning' : 'clock'} size={11} />
+      {due.label}
+    </span>
   );
 }
 
@@ -57,16 +93,17 @@ export function SubtaskGrip({ title, size = 14, ...props }) {
   );
 }
 
-function SubtaskPanel({ variant, subtasks, onToggleSub, onOpenSub, onAddSub, onOpenMore, onReorderSub, onPrioritySub }) {
+function SubtaskPanel({ variant, subtasks, parentDue, onToggleSub, onOpenSub, onAddSub, onOpenMore, onReorderSub, onPrioritySub, onFocusSub }) {
   const [val, setVal] = useState('');
   const shown = subtasks.slice(0, SUB_LIMIT);
   const { rowProps, handleProps } = useSubtaskReorder(subtasks, (next) => onReorderSub?.(next));
   return (
     <div className={`tk-subs tk-subs--${variant}`} onClick={(e) => e.stopPropagation()}>
       {shown.map((s, i) => {
-        const done = statusKeyOf(s) === 'done';
+        const key = statusKeyOf(s);
+        const done = key === 'done';
         return (
-          <div key={s.id} className="tk-subs__row" {...(onReorderSub ? rowProps(i) : {})}>
+          <div key={s.id} className={`tk-subs__row${key === 'doing' ? ' is-doing' : ''}`} {...(onReorderSub ? rowProps(i) : {})}>
             {onReorderSub && <SubtaskGrip title={s.title} size={variant === 'mobile' ? 16 : 13} {...handleProps(i)} />}
             <button type="button" className="tk-subs__check" title={done ? 'Bỏ đánh dấu xong' : 'Đánh dấu xong'} onClick={() => onToggleSub?.(s)}>
               <AppIcon
@@ -79,7 +116,9 @@ function SubtaskPanel({ variant, subtasks, onToggleSub, onOpenSub, onAddSub, onO
             <button type="button" className={`tk-subs__title${done ? ' is-done' : ''}`} title="Mở việc con" onClick={() => onOpenSub?.(s)}>
               {s.title}
             </button>
+            <SubtaskDueChip sub={s} parentDue={parentDue} />
             {onPrioritySub && <SubtaskPriorityBtn sub={s} onClick={(e) => onPrioritySub(s, e)} />}
+            {onFocusSub && <SubtaskFocusBtn sub={s} onClick={() => onFocusSub(s)} />}
           </div>
         );
       })}
@@ -126,6 +165,7 @@ export default function TaskCard({
   onAddSub,
   onReorderSub,
   onPrioritySub,
+  onFocusSub,
   dragProps,
 }) {
   const { taskStyle } = useTheme();
@@ -192,10 +232,22 @@ export default function TaskCard({
 
   const tags = m.tags.map((t) => <span key={t} className="tk-tag-text">#{t}</span>);
 
+  // Việc con đang làm: 1 dòng trên mặt thẻ khi danh sách đang thu gọn (mở ra thì hàng đó tự nổi bật)
+  const doingSub = !expanded && !m.done && subtasks.find((s) => statusKeyOf(s) === 'doing');
+  const focusLine = doingSub && (
+    <button type="button" className="tk-focus-line" title="Việc con đang làm · bấm để mở" onClick={stop(() => onOpenSub?.(doingSub))}>
+      <span className="tk-focus-line__dot" aria-hidden="true" />
+      <span className="tk-focus-line__label">Đang làm</span>
+      <span className="tk-focus-line__title">{doingSub.title}</span>
+    </button>
+  );
+
   const subsPanel = expanded && (
     <SubtaskPanel
       variant={variant}
       subtasks={subtasks}
+      parentDue={task.due_date}
+      onFocusSub={onFocusSub}
       onToggleSub={onToggleSub}
       onOpenSub={onOpenSub}
       onAddSub={onAddSub}
@@ -213,6 +265,7 @@ export default function TaskCard({
           {statusBtn}
           <div className="tk-row__text">
             <span className={`tk-row__title${m.done ? ' is-done' : m.skip ? ' is-skip' : ''}`}>{task.title}</span>
+            {focusLine}
             {showDesc && task.description && <span className="tk-row__desc">{task.description}</span>}
           </div>
           <div className="tk-row__aside">
@@ -237,6 +290,7 @@ export default function TaskCard({
         {statusBtn}
         <div className="tk-mcard__body">
           <span className={`tk-mcard__title${m.done ? ' is-done' : m.skip ? ' is-skip' : ''}`}>{task.title}</span>
+          {focusLine}
           <div className="tk-mcard__chips">
             {badge()}
             {prChip}
@@ -271,6 +325,7 @@ export default function TaskCard({
         {statusBtn}
         <span className={`tk-card__title${m.done ? ' is-done' : m.skip ? ' is-skip' : ''}`}>{task.title}</span>
       </div>
+      {focusLine}
       {showDesc && task.description && <div className="tk-card__desc">{task.description}</div>}
       {hasMeta && (
         <div className="tk-card__meta">

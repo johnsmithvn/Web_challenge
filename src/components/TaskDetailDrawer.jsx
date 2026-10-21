@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import AppIcon from './AppIcon';
 import { StatusPopover, PriorityPopover, TaskDatePickerPopover, RecurrencePopover } from './TaskFloatingPopovers';
 import TaskSubtaskModal from './TaskSubtaskModal';
-import { SubtaskGrip, SubtaskPriorityBtn } from './TaskCard';
+import { SubtaskGrip, SubtaskPriorityBtn, SubtaskFocusBtn, SubtaskDueChip } from './TaskCard';
 import useSubtaskReorder from '../hooks/useSubtaskReorder';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
@@ -630,9 +630,10 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
               <span className="tk-progress"><span style={{ width: `${subPct}%` }} /></span>
             </div>
             {subtasks.map((s, i) => {
-              const sDone = statusKeyOf(s) === 'done';
+              const sKey = statusKeyOf(s);
+              const sDone = sKey === 'done';
               return (
-                <div key={s.id} className="tk-sub-row" {...subRowProps(i)}>
+                <div key={s.id} className={`tk-sub-row${sKey === 'doing' ? ' is-doing' : ''}`} {...subRowProps(i)}>
                   <SubtaskGrip title={s.title} {...subHandleProps(i)} />
                   <button
                     type="button"
@@ -651,6 +652,7 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
                   <button type="button" className={`tk-sub-row__title${sDone ? ' is-done' : ''}`} onClick={() => { if (!isDraft) setSubIndex(i); }}>
                     {s.title}
                   </button>
+                  {!isDraft && <SubtaskDueChip sub={s} parentDue={task.due_date} />}
                   {!isDraft && (
                     <SubtaskPriorityBtn
                       sub={s}
@@ -658,6 +660,16 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
                       onClick={(e) => {
                         const r = e.currentTarget.getBoundingClientRect();
                         setPopover({ type: 'subPriority', sub: s, x: r.left, y: r.bottom + 6 });
+                      }}
+                    />
+                  )}
+                  {!isDraft && taskModel?.focusSubtask && (
+                    <SubtaskFocusBtn
+                      sub={s}
+                      withLabel
+                      onClick={async () => {
+                        const changes = await taskModel.focusSubtask(s);
+                        patchFetchedSubs(new Map(changes.map((c) => [c.id, { status: c.status }])));
                       }}
                     />
                   )}

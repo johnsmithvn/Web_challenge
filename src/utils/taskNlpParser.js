@@ -113,10 +113,13 @@ export function parseTaskQuickText(raw, baseDateStr = toDateStr()) {
     return ' ';
   });
 
-  // 3. Tách giờ (9h, 14h30, 09:00, 18:30)
-  s = s.replace(/\s(\d{1,2})(?:h|:)(\d{2})?(?=\s)/gi, (m, h, mm) => {
-    const hh = Number(h);
+  // 3. Tách giờ (9h, 14h30, 09:00, 18:30) + buổi (3h chiều → 15:00, 8h tối → 20:00, 11h đêm → 23:00,
+  //    1h trưa → 13:00; "sáng" giữ nguyên). Trước đây bỏ qua buổi: "3h chiều" ra 03:00, chữ "chiều" dính vào tên.
+  s = s.replace(/\s(\d{1,2})(?:h|:)(\d{2})?(?:\s+(sáng|trưa|chiều|tối|đêm))?(?=\s)/giu, (m, h, mm, part) => {
+    let hh = Number(h);
     if (hh >= 0 && hh < 24) {
+      const p = (part || '').toLowerCase();
+      if (hh < 12 && (p === 'chiều' || p === 'tối' || (p === 'trưa' && hh < 6) || (p === 'đêm' && hh >= 6))) hh += 12;
       tm = String(hh).padStart(2, '0') + ':' + (mm || '00');
       return ' ';
     }
