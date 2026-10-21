@@ -140,6 +140,8 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
     Khối dài (≥ ~1g45) dồn nội dung lên đầu và hiện **việc con** (tick được, bấm tên mở hộp việc con) vừa đủ chiều
     cao khối, thiếu chỗ thì "+N việc con"; dòng trạng thái có tiến độ `☑ 2/4`. Khung "Chưa xếp giờ" (xem hôm nay)
     tách nhóm **Quá hạn** riêng — việc hạn từ hôm trước (kể cả có giờ, ghi "Hôm qua, 15:00"); kéo vào lưới = dời sang hôm nay.
+    Thả việc có giờ vào "Cả ngày" / "Chưa xếp giờ" = bỏ giờ, có toast **Hoàn tác**; thả lại đúng chỗ cũ thì không đổi gì.
+    Mọi giờ hợp lệ (kể cả 00:00, 23:59) là giờ thật; chỉ giờ trống mới là "không giờ".
   - `week` (Lịch Tuần): 7 cột ngày tương thích cả Chủ Nhật hoặc Thứ Hai khởi đầu, bố trí overlapping task thông minh.
   - `month` (Lịch Tháng): Hiển thị Task pending + completed, song song Dương lịch & Âm lịch Việt Nam, giới hạn chip thông minh và popup chi tiết ngày.
 - **Task đã xong trên Lịch** nằm ở ngày kế hoạch (Bắt đầu→Hạn), gạch/đánh dấu ✓ — không nhảy sang ngày bấm

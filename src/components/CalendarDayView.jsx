@@ -401,12 +401,18 @@ export default function CalendarDayView({
   const overdueCount = unscheduledTasks.filter(isOverdue).length;
   const dayUnscheduledCount = unscheduledTasks.length - overdueCount;
 
+  // Thả vào "Chưa xếp giờ" một việc ĐANG nằm ở đó (kéo lỡ tay rồi thả lại) → bỏ qua. Trước đây việc
+  // quá hạn bị dời sang hôm nay + mất giờ dù không kéo đi đâu.
+  const unscheduledIds = new Set(unscheduledTasks.map((t) => String(t.id)));
+  const dropUnscheduled = (id) => {
+    if (!unscheduledIds.has(String(id))) onRescheduleTask(id, dateStr, null);
+  };
   const { drag: touchDrag, pressProps } = useTouchTaskDrag({
     enabled: !!onRescheduleTask && isMobile,
     scrollRef,
     canvasRef,
     unsRef,
-    onDrop: (id, timeStr) => onRescheduleTask(id, dateStr, timeStr),
+    onDrop: (id, timeStr) => (timeStr === null ? dropUnscheduled(id) : onRescheduleTask(id, dateStr, timeStr)),
   });
   const shownUnscheduled = isMobile && !unsOpen ? unscheduledTasks.slice(0, 2) : unscheduledTasks;
   const ghostOpacity = (t) => (touchDrag?.id === t.id ? 0.35 : 1);
@@ -415,7 +421,7 @@ export default function CalendarDayView({
     <div
       ref={unsRef}
       className={`tk-dv-uns${touchDrag?.slot === 'uns' ? ' is-drop-over' : ''}`}
-      {...(htmlDrag ? dropZoneProps((id) => onRescheduleTask(id, dateStr, null)) : {})}
+      {...(htmlDrag ? dropZoneProps(dropUnscheduled) : {})}
     >
       <div className="tk-dv-uns__head">
         <span className="tk-dv-cap">CHƯA XẾP GIỜ</span>
