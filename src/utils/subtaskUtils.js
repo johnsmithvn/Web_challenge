@@ -10,12 +10,18 @@
 /** Subtask = task có task cha. */
 export const isSubtask = (t) => Boolean(t?.parent_task_id);
 
+const priorityOf = (t) => Number(t?.priority) || 0;
+const byPriorityDesc = (a, b) => priorityOf(b) - priorityOf(a);
+
 /**
- * Thứ tự hiển thị trong task cha: `sort_order` (kéo thả) tăng dần; NULL (chưa từng
- * kéo thả, hoặc mới thêm) xếp sau, theo thứ tự tạo.
+ * Thứ tự hiển thị trong task cha: ưu tiên cao trước (Khẩn → Không); cùng mức thì
+ * `sort_order` (kéo thả) tăng dần; NULL (chưa từng kéo thả, hoặc mới thêm) xếp sau,
+ * theo thứ tự tạo.
  */
 export function sortSubtasks(list = []) {
   return [...list].sort((a, b) => {
+    const pd = byPriorityDesc(a, b);
+    if (pd) return pd;
     const ao = a.sort_order ?? Infinity;
     const bo = b.sort_order ?? Infinity;
     if (ao !== bo) return ao - bo;
@@ -58,6 +64,23 @@ export function moveItem(list, from, to) {
   const [item] = arr.splice(from, 1);
   arr.splice(to, 0, item);
   return arr;
+}
+
+/**
+ * Kéo thả trên danh sách đã xếp theo ưu tiên: đưa `from` sang `to` rồi xếp lại (ổn định)
+ * theo ưu tiên → việc con chỉ đổi chỗ trong nhóm cùng mức; kéo quá ranh giới nhóm thì
+ * dừng ở đầu/cuối nhóm của nó. Đổi nhóm = đổi ưu tiên (nút ưu tiên trên hàng).
+ */
+export function reorderByDrag(list, from, to) {
+  return moveItem(list, from, to).sort(byPriorityDesc);
+}
+
+/**
+ * Index thả khi kéo bằng con trỏ: số hàng KHÁC hàng đang kéo có tâm nằm trên `y`.
+ * `mids` = tâm dọc từng hàng (Infinity = hàng không hiển thị) → dùng thẳng cho moveItem.
+ */
+export function dropIndexAt(mids, from, y) {
+  return mids.filter((m, i) => i !== from && m < y).length;
 }
 
 /** Đánh số lại theo thứ tự mới; chỉ trả subtask có sort_order thật sự đổi (đỡ ghi DB thừa). */

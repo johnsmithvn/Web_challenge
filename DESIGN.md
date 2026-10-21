@@ -1237,6 +1237,14 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   `AppIcon color="var(--x)"` được chuyển sang `style.color` (thuộc tính SVG `fill` không nhận biến CSS).
 - Breakpoint mobile = `≤768px` (cùng khung app: topbar 52 + tab đáy 60). Nền mobile tối: aurora, Ngân Hà,
   sao, 3 sao băng, sao chổi nhỏ (không trăng / chòm sao / chân trời) như mockup.
+- Ngăn chi tiết `.tk-drawer` (448px, nổi phải): ở Kanban nổi **đè** lên bảng; Danh sách/Lịch ≥1280px vẫn chừa
+  `padding-right: 476px` cho `.tk-main`. Mobile = sheet dưới + `.tk-drawer-backdrop`.
+- Hàng việc con (`.tk-subs__row` trên thẻ, `.tk-sub-row` trong ngăn chi tiết): tay nắm `.tk-sub-grip` (span
+  `role="button"`, `touch-action: none`) + nút ưu tiên `.tk-sub-pr` (`.is-unset` mờ, chỉ hiện khi hover; `hover: none`
+  luôn hiện mờ). Kéo thả qua `useSubtaskReorder` (Pointer Events): hàng `data-drag="self"` nhấc theo con trỏ,
+  `before|after` = vạch thả `--tk-accent`.
+- Khối giờ tab Ngày `.tk-dv-block.is-long` (≥96px): nội dung dồn lên đầu, nền `--k-bg` nhạt dần + viền `--k-bd`;
+  việc con `.tk-dv-sub` hàng 24px (mobile 30px) — đổi cỡ thì sửa cùng `BLOCK_HEAD`/`SUB_ROW` trong `CalendarDayView`.
 - Thành phần dùng chung: `TaskCard` (`variant` card/row/mobile), `TaskFilterBar`, `TaskTodayStrip`,
   `TaskQuickAdd` (sheet "Việc mới"), `TaskDetailDrawer`, `TaskSubtaskModal` (‹ › giữa các việc con),
   `CalendarNavHead` (hàng điều hướng khung lịch), `TaskDayPopover` (popover "Ngày": việc trong ngày +

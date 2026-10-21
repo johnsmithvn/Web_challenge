@@ -2,6 +2,7 @@ import { useState } from 'react';
 import AppIcon from './AppIcon';
 import { ElfBloom, ElfCardVine, ElfCardFireflies, ElfLateNest } from './TaskElfDecor';
 import { useTheme } from '../contexts/ThemeContext';
+import useSubtaskReorder from '../hooks/useSubtaskReorder';
 import { STATUS_META, ksStyle, statusKeyOf, taskCardModel } from '../utils/kanbanUtils';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 
@@ -15,15 +16,58 @@ import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 
 const SUB_LIMIT = 10;
 
-function SubtaskPanel({ variant, subtasks, onToggleSub, onOpenSub, onAddSub, onOpenMore }) {
+/**
+ * Nút ưu tiên của 1 việc con (thẻ + ngăn chi tiết): có mức → icon màu (ngăn chi tiết kèm nhãn),
+ * chưa có → icon mờ, chỉ hiện khi rê chuột (thiết bị cảm ứng luôn hiện mờ). Bấm mở PriorityPopover.
+ */
+export function SubtaskPriorityBtn({ sub, withLabel = false, onClick }) {
+  const lvl = Number(sub.priority) || 0;
+  const pr = PRIORITY_LABELS[lvl] || PRIORITY_LABELS[0];
+  return (
+    <button
+      type="button"
+      className={`tk-sub-pr${lvl ? '' : ' is-unset'}`}
+      style={lvl ? { color: pr.color } : undefined}
+      title={lvl ? `Ưu tiên: ${pr.label} · bấm để đổi` : 'Đặt ưu tiên'}
+      aria-label={`${lvl ? `Ưu tiên ${pr.label}` : 'Đặt ưu tiên'}: ${sub.title}`}
+      onClick={onClick}
+    >
+      <AppIcon name={lvl ? pr.icon : 'signalMedium'} size={13} weight={lvl === 5 ? 'fill' : 'regular'} />
+      {withLabel && lvl > 0 && pr.label}
+    </button>
+  );
+}
+
+/**
+ * Tay nắm kéo thả việc con (props từ useSubtaskReorder.handleProps). Là span thay vì <button>:
+ * Firefox không cho <button> làm nguồn kéo HTML5 → không chặn được việc kéo cả thẻ Kanban.
+ */
+export function SubtaskGrip({ title, size = 14, ...props }) {
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      className="tk-sub-grip"
+      aria-label={`Kéo để sắp xếp: ${title} (Alt + mũi tên lên/xuống)`}
+      title="Kéo để sắp xếp"
+      {...props}
+    >
+      <AppIcon name="dotsSix" size={size} />
+    </span>
+  );
+}
+
+function SubtaskPanel({ variant, subtasks, onToggleSub, onOpenSub, onAddSub, onOpenMore, onReorderSub, onPrioritySub }) {
   const [val, setVal] = useState('');
   const shown = subtasks.slice(0, SUB_LIMIT);
+  const { rowProps, handleProps } = useSubtaskReorder(subtasks, (next) => onReorderSub?.(next));
   return (
     <div className={`tk-subs tk-subs--${variant}`} onClick={(e) => e.stopPropagation()}>
-      {shown.map((s) => {
+      {shown.map((s, i) => {
         const done = statusKeyOf(s) === 'done';
         return (
-          <div key={s.id} className="tk-subs__row">
+          <div key={s.id} className="tk-subs__row" {...(onReorderSub ? rowProps(i) : {})}>
+            {onReorderSub && <SubtaskGrip title={s.title} size={variant === 'mobile' ? 16 : 13} {...handleProps(i)} />}
             <button type="button" className="tk-subs__check" title={done ? 'Bỏ đánh dấu xong' : 'Đánh dấu xong'} onClick={() => onToggleSub?.(s)}>
               <AppIcon
                 name={done ? 'checkSquare' : 'square'}
@@ -35,6 +79,7 @@ function SubtaskPanel({ variant, subtasks, onToggleSub, onOpenSub, onAddSub, onO
             <button type="button" className={`tk-subs__title${done ? ' is-done' : ''}`} title="Mở việc con" onClick={() => onOpenSub?.(s)}>
               {s.title}
             </button>
+            {onPrioritySub && <SubtaskPriorityBtn sub={s} onClick={(e) => onPrioritySub(s, e)} />}
           </div>
         );
       })}
@@ -79,6 +124,8 @@ export default function TaskCard({
   onToggleSub,
   onOpenSub,
   onAddSub,
+  onReorderSub,
+  onPrioritySub,
   dragProps,
 }) {
   const { taskStyle } = useTheme();
@@ -152,6 +199,8 @@ export default function TaskCard({
       onToggleSub={onToggleSub}
       onOpenSub={onOpenSub}
       onAddSub={onAddSub}
+      onReorderSub={onReorderSub}
+      onPrioritySub={onPrioritySub}
       onOpenMore={stop(onOpen)}
     />
   );

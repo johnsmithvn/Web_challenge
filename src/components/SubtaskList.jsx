@@ -4,7 +4,7 @@ import { useConfirm } from './ConfirmModal';
 import { toDateStr } from '../utils/dateUtils';
 import { hasExplicitTime } from '../utils/calendarTimeUtils';
 import { PRIORITY_OPTIONS } from '../utils/taskFields';
-import { sortSubtasks, mergeSubtasks, moveItem } from '../utils/subtaskUtils';
+import { sortSubtasks, mergeSubtasks, reorderByDrag } from '../utils/subtaskUtils';
 import UI_STRINGS from '../data/ui-strings.json';
 import '../styles/tasks.css';
 
@@ -97,7 +97,7 @@ export default function SubtaskList({ parent, taskModel, onOpenTask, mode = 'edi
 
   const move = async (from, to) => {
     if (to < 0 || to >= items.length) return;
-    await reorderSubtasks(moveItem(items, from, to));
+    await reorderSubtasks(reorderByDrag(items, from, to));
     load();
   };
 

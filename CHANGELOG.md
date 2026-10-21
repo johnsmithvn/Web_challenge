@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v6.29.0 — 2026-10-21
+
+### Added
+- **Việc con — kéo thả + ưu tiên ngay trên hàng (`TaskCard.jsx`, `TaskDetailDrawer.jsx`, `hooks/useSubtaskReorder.js`, `subtaskUtils.js` `reorderByDrag`/`dropIndexAt`):** tay nắm `⠿` trên thẻ Kanban/Danh sách và trong ngăn chi tiết, kéo bằng Pointer Events nên chạy cả chuột lẫn cảm ứng mobile (HTML5 drag cũ không chạy trên điện thoại); bàn phím Alt + ↑/↓. Nút ưu tiên trên từng hàng mở `PriorityPopover`. Tay nắm là nguồn kéo HTML5 bị huỷ ngay nên không kéo nhầm cả thẻ sang cột khác; chạm tay nắm không kích hoạt vuốt đổi cột Kanban mobile.
+- **Tab Ngày — khối giờ dài hiện việc con (`CalendarDayView.jsx`):** khối ≥96px dồn nội dung lên đầu (trước treo tên giữa khối trống), nền nhạt dần + viền mảnh; hiện việc con tick được / bấm tên mở hộp việc con, vừa đủ chiều cao khối, thiếu chỗ thì "+N việc con"; dòng trạng thái thêm tiến độ `☑ 2/4` (mobile cũng hiện ở khối dài).
+
+### Changed
+- **Thứ tự việc con theo ưu tiên (`sortSubtasks`):** Khẩn → Không, cùng mức mới xét thứ tự kéo thả. Kéo thả chỉ đổi chỗ trong cùng mức (kéo vượt nhóm thì dừng ở đầu/cuối nhóm, vạch thả hiện đúng chỗ rơi); `SubtaskList` (popup Chi tiết ở trang chủ) cũng theo luật này.
+- **Kanban — ngăn chi tiết nổi đè lên bảng (`tasks-aurora.css`):** ≥1280px không còn chừa `padding-right: 476px` làm 4 cột co lại khi bấm thẻ; Danh sách / Lịch giữ nguyên. Mobile vẫn là sheet dưới có phủ mờ.
+
 ## v6.28.1 — 2026-10-19
 
 ### Fixed

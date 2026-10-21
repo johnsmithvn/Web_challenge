@@ -3,7 +3,8 @@ import AppIcon from './AppIcon';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, getZodiacHours } from '../utils/lunarUtils';
-import { STATUS_META, ksStyle, taskCardModel } from '../utils/kanbanUtils';
+import { STATUS_META, ksStyle, statusKeyOf, taskCardModel } from '../utils/kanbanUtils';
+import { sortSubtasks } from '../utils/subtaskUtils';
 import HOLIDAYS from '../data/holidays.json';
 import {
   bucketTasksByDay,
@@ -18,6 +19,11 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const PX_PER_HOUR = 56; // lưới 56px/giờ như mockup (đường kẻ giờ vẽ bằng CSS cùng bước, xem .tk-dv-canvas)
 const MARKER_MIN = 56; // mốc giờ hạn/bắt đầu cao ~50px như khối trong mockup
 const LONG_PRESS_MS = 320;
+// Khối dài (≥ LONG_MIN): nội dung dồn lên đầu, chỗ còn lại xếp việc con — đầu khối (giờ · tên ·
+// trạng thái) cao ~BLOCK_HEAD, mỗi hàng việc con SUB_ROW (mobile cao hơn cho ngón tay).
+const LONG_MIN = 96;
+const BLOCK_HEAD = { desktop: 66, mobile: 82 };
+const SUB_ROW = { desktop: 24, mobile: 30 };
 const hm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 /**
@@ -197,9 +203,13 @@ function useTouchTaskDrag({ enabled, scrollRef, canvasRef, unsRef, onDrop }) {
  *   Desktop: hàng Cả ngày + lưới giờ 56px (dải giờ hoàng đạo, khối việc, vạch hiện tại)
  *            | cột phải 320px: Chưa xếp giờ (kéo vào lưới) + bảng 12 giờ hoàng đạo.
  *   Mobile : dòng sự kiện → Chưa xếp giờ (2 việc, giữ-rồi-kéo) → lưới giờ toàn chiều rộng.
+ *   Khối dài hiện việc con (tick được, bấm tên mở hộp việc con; không vừa thì "+N việc con").
  */
 export default function CalendarDayView({
   pendingTasks = [],
+  allTasks = [],
+  onToggleSubtask,
+  onOpenSubtask,
   getCompletedTasksRange,
   onSelectTask,
   onOpenDay,
@@ -333,6 +343,16 @@ export default function CalendarDayView({
     if (holidayToggles?.fun && HOLIDAYS.fun?.[solarKey]) list.push({ title: HOLIDAYS.fun[solarKey], type: 'fun' });
     return list;
   }, [targetDate, holidayToggles, customAnniversaries]);
+
+  // Việc con theo task cha (cùng thứ tự với Kanban: ưu tiên → kéo thả)
+  const subsByParent = useMemo(() => {
+    const map = new Map();
+    for (const t of allTasks) {
+      if (t.parent_task_id) map.set(t.parent_task_id, [...(map.get(t.parent_task_id) || []), t]);
+    }
+    for (const [k, list] of map) map.set(k, sortSubtasks(list));
+    return map;
+  }, [allTasks]);
 
   // Phân bổ layout các task có giờ
   const combinedTasks = useMemo(() => {
@@ -548,10 +568,18 @@ export default function CalendarDayView({
                   const L = t._layout;
                   const tall = L.height >= 44;
                   const time = L.kind === 'block' ? `${hm(L.startMinutes)}–${hm(L.endMinutes)}` : `${L.kind === 'start' ? '▶ ' : ''}${hm(L.startMinutes)}`;
+                  const subs = subsByParent.get(t.id) || [];
+                  const subDone = subs.filter((s) => statusKeyOf(s) === 'done').length;
+                  const size = isMobile ? 'mobile' : 'desktop';
+                  const long = L.height >= LONG_MIN;
+                  // Số hàng việc con vừa khối; thiếu chỗ thì hàng cuối là "+N việc con"
+                  const fit = long ? Math.floor((L.height - BLOCK_HEAD[size]) / SUB_ROW[size]) : 0;
+                  const shownSubs = subs.length > fit ? subs.slice(0, Math.max(0, fit - 1)) : subs;
+                  const moreSubs = subs.length - shownSubs.length;
                   return (
                     <div
                       key={t.id}
-                      className={`tk-dv-block${tall ? '' : ' is-short'}`}
+                      className={`tk-dv-block${tall ? '' : ' is-short'}${long ? ' is-long' : ''}`}
                       draggable={!m.done && htmlDrag}
                       onDragStart={(e) => taskDragStart(e, t)}
                       {...(!m.done ? pressProps(t) : {})}
@@ -570,7 +598,7 @@ export default function CalendarDayView({
                         <span className="tk-dv-block__time">{time}</span>
                         <span className={`tk-dv-block__title${m.done ? ' is-done' : ''}`}>{t.title}</span>
                       </div>
-                      {tall && !isMobile && (
+                      {tall && (!isMobile || long) && (
                         <div className="tk-dv-block__meta">
                           <span style={{ color: st.color }}>
                             <AppIcon name={st.icon} size={12} weight={st.weight} />
@@ -580,6 +608,64 @@ export default function CalendarDayView({
                             <span style={{ color: pr.color }}>
                               <AppIcon name={pr.icon} size={12} weight={m.priority === 5 ? 'fill' : 'regular'} />
                               {pr.label}
+                            </span>
+                          )}
+                          {subs.length > 0 && (
+                            <span className={`tk-dv-block__prog${subDone === subs.length ? ' is-done' : ''}`} title="Việc con đã xong">
+                              <AppIcon name="listChecks" size={12} />
+                              {subDone}/{subs.length}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {fit > 0 && subs.length > 0 && (
+                        <div className="tk-dv-subs">
+                          {shownSubs.map((s) => {
+                            const sDone = statusKeyOf(s) === 'done';
+                            const sp = PRIORITY_LABELS[Number(s.priority) || 0];
+                            return (
+                              <div key={s.id} className="tk-dv-sub">
+                                <button
+                                  type="button"
+                                  className="tk-dv-sub__check"
+                                  title={sDone ? 'Bỏ đánh dấu xong' : 'Đánh dấu xong'}
+                                  disabled={!onToggleSubtask}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleSubtask?.(s);
+                                  }}
+                                >
+                                  <AppIcon
+                                    name={sDone ? 'checkSquare' : 'square'}
+                                    size={isMobile ? 17 : 15}
+                                    weight={sDone ? 'fill' : 'regular'}
+                                    style={{ color: sDone ? 'var(--tk-st-done)' : 'var(--tk-text-mute)' }}
+                                  />
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`tk-dv-sub__title${sDone ? ' is-done' : ''}`}
+                                  title="Mở việc con"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onOpenSubtask) onOpenSubtask(t, s);
+                                    else onSelectTask?.(t);
+                                  }}
+                                >
+                                  {s.title}
+                                </button>
+                                {Number(s.priority) > 0 && sp && (
+                                  <span className="tk-dv-sub__pr" style={{ color: sp.color }} title={`Ưu tiên: ${sp.label}`}>
+                                    <AppIcon name={sp.icon} size={12} weight={Number(s.priority) === 5 ? 'fill' : 'regular'} />
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {moreSubs > 0 && (
+                            <span className="tk-dv-sub__more">
+                              <AppIcon name="dots" size={12} />
+                              {shownSubs.length ? `+${moreSubs} việc con` : `${moreSubs} việc con`}
                             </span>
                           )}
                         </div>

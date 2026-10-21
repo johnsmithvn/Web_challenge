@@ -417,6 +417,9 @@ export default function TasksPage() {
           onRescheduleTask={handleRescheduleTask}
           isMobile={isMobile}
           pendingTasks={calendarPending}
+          allTasks={tasks}
+          onToggleSubtask={(s) => (s.completed ? taskModel.uncompleteTask(s.id) : taskModel.completeTask(s.id))}
+          onOpenSubtask={handleOpenSubtask}
           getCompletedTasksRange={getCompletedTasksRange}
           onSelectTask={handleSelectTaskFromCalendar}
           onOpenDay={openDayPop}

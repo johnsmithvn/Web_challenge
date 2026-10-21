@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import {
   isSubtask, sortSubtasks, mergeSubtasks, subtaskProgressByParent, moveItem,
-  reorderChanges, daysBetween, shiftDate, subtaskCopiesForNextOccurrence,
+  reorderChanges, reorderByDrag, dropIndexAt, daysBetween, shiftDate, subtaskCopiesForNextOccurrence,
 } from '../../utils/subtaskUtils.js';
 
 const ids = (list) => list.map((t) => t.id);
@@ -24,6 +24,18 @@ const unordered = [
 ];
 assert.deepEqual(ids(sortSubtasks(unordered)), ['s0', 's1', 'n1', 'n2'],
   'đã kéo thả (sort_order) trước, chưa có thứ tự thì xếp sau theo lúc tạo');
+{
+  // v6.29.0: ưu tiên cao lên đầu; cùng mức mới xét thứ tự kéo thả.
+  const mixed = [
+    { id: 'none0', sort_order: 0 },
+    { id: 'low1', priority: 2, sort_order: 1 },
+    { id: 'urgent5', priority: 5, sort_order: 5 },
+    { id: 'low0', priority: '2', sort_order: 0 },
+    { id: 'nullPri', priority: null, sort_order: null, created_at: '2026-10-06T01:00:00Z' },
+  ];
+  assert.deepEqual(ids(sortSubtasks(mixed)), ['urgent5', 'low0', 'low1', 'none0', 'nullPri'],
+    'Khẩn trước; priority chuỗi/NULL vẫn so như số');
+}
 console.log('isSubtask & sortSubtasks: OK');
 
 /* ── 2. Gộp DB + state cho popup task cha ───────────────────────── */
@@ -74,7 +86,33 @@ console.log('subtaskProgressByParent: OK');
     'subtask chưa có thứ tự (NULL) được đánh số khi kéo thả lần đầu'
   );
 }
-console.log('moveItem & reorderChanges: OK');
+{
+  // Danh sách đã xếp theo ưu tiên: [H1 H2 | M1 | L1 L2]
+  const list = sortSubtasks([
+    { id: 'H1', priority: 4, sort_order: 0 }, { id: 'H2', priority: 4, sort_order: 1 },
+    { id: 'M1', priority: 3, sort_order: 2 },
+    { id: 'L1', priority: 1, sort_order: 3 }, { id: 'L2', priority: 1, sort_order: 4 },
+  ]);
+  assert.deepEqual(ids(reorderByDrag(list, 1, 0)), ['H2', 'H1', 'M1', 'L1', 'L2'], 'đổi chỗ trong cùng nhóm');
+  assert.deepEqual(ids(reorderByDrag(list, 4, 0)), ['H1', 'H2', 'M1', 'L2', 'L1'],
+    'kéo việc thấp lên đầu → dừng ở đầu nhóm của nó, không vượt việc ưu tiên cao');
+  assert.deepEqual(ids(reorderByDrag(list, 0, 4)), ['H2', 'H1', 'M1', 'L1', 'L2'],
+    'kéo việc cao xuống cuối → dừng ở cuối nhóm của nó');
+  assert.deepEqual(ids(reorderByDrag(list, 2, 0)), ids(list), 'nhóm 1 việc → không đổi');
+  const dropped = reorderByDrag(list, 4, 3);
+  assert.deepEqual(ids(sortSubtasks(dropped.map((t, i) => ({ ...t, sort_order: i })))), ids(dropped),
+    'sort_order đánh lại theo index → sortSubtasks giữ đúng thứ tự vừa thả');
+  assert.deepEqual(ids(list), ['H1', 'H2', 'M1', 'L1', 'L2'], 'không sửa mảng gốc');
+}
+{
+  // Tâm dọc 3 hàng: 10 · 30 · 50; kéo hàng 0
+  assert.equal(dropIndexAt([10, 30, 50], 0, 5), 0, 'trên cùng');
+  assert.equal(dropIndexAt([10, 30, 50], 0, 35), 1, 'qua tâm hàng 1 → vị trí 1');
+  assert.equal(dropIndexAt([10, 30, 50], 0, 99), 2, 'dưới cùng');
+  assert.equal(dropIndexAt([10, 30, 50], 2, 0), 0, 'kéo hàng cuối lên đầu');
+  assert.equal(dropIndexAt([10, 30, Infinity], 0, 99), 1, 'hàng ẩn (Infinity) không tính');
+}
+console.log('moveItem & reorderChanges & reorderByDrag & dropIndexAt: OK');
 
 /* ── 5. Task cha lặp: kỳ sau mang theo subtask, chưa xong, hạn dời theo ── */
 assert.equal(daysBetween('2026-10-05', '2026-10-12'), 7);
