@@ -6,6 +6,7 @@
 - **Giờ 00:00 / 23:59 bị coi là "không giờ" (`calendarTimeUtils.js` `hasExplicitTime`):** quy ước cũ (dữ liệu đã được migration v6.21.0 đổi về NULL) làm việc đặt "0h", hoặc khối giờ kết thúc 23:59 (kéo thả / form chặn ở 23:59), rơi vào "Chưa xếp giờ", không được nhắc giờ, không tính quá hạn trong ngày. Giờ mọi giờ hợp lệ đều là giờ thật; chỉ NULL là không giờ. 4 assertion cũ trong `weekCalendarLogic.test.js` khẳng định quy ước cũ được đổi theo luật mới (đã được user đồng ý).
 - **Kéo thả làm mất giờ không có đường lui (`TasksPage.jsx` `handleRescheduleTask`):** thả việc có giờ vào "Cả ngày" / "Chưa xếp giờ" (Ngày, Tuần) giờ hiện toast "Đã bỏ giờ …" + **Hoàn tác** (trả đúng ngày giờ cũ).
 - **Tab Ngày — kéo một thẻ trong "Chưa xếp giờ" rồi thả lại chỗ cũ (`CalendarDayView.jsx`):** việc quá hạn bị dời sang hôm nay và mất giờ dù không kéo đi đâu → giờ bỏ qua (cả chuột lẫn giữ-kéo mobile).
+- **Kéo khối giờ lên hơi quá tay là thả trúng hàng "Cả ngày" (bỏ giờ) (`tasks-aurora.css`):** hàng này nằm sát mép trên lưới giờ. Khi kéo qua, hàng "Cả ngày" (Ngày + Tuần) hiện rõ "Thả vào đây = bỏ giờ". Nhật ký một việc mất giờ lúc 11:02 (xoá cả giờ bắt đầu lẫn giờ hạn, ngày giữ nguyên) khớp đúng thao tác này; Kanban không có đường nào ghi giờ.
 
 ## v6.30.0 — 2026-10-21
 

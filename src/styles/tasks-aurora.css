@@ -5387,6 +5387,29 @@
   cursor: grab;
 }
 
+/* Kéo qua hàng "Cả ngày" (Ngày / Tuần): nói rõ thả vào là bỏ giờ — hàng này nằm sát mép trên lưới giờ,
+   kéo khối lên hơi quá tay là trúng (thả xong vẫn có toast Hoàn tác) */
+.tk-dv-allday.is-drop-over,
+.tk-wk-allcell.is-drop-over {
+  position: relative;
+}
+
+.tk-dv-allday.is-drop-over::after,
+.tk-wk-allcell.is-drop-over::after {
+  content: 'Thả vào đây = bỏ giờ';
+  position: absolute;
+  inset: 2px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: var(--tk-drawer-bg);
+  color: var(--tk-ks-today-fg);
+  font: 600 12px/1.2 'Be Vietnam Pro', sans-serif;
+  text-align: center;
+  pointer-events: none;
+}
+
 /* ── LỊCH BIỂU (mockup: banner quá hạn → tuần → cột ngày 132px | danh sách) ── */
 .tk-ag {
   flex: 1;
