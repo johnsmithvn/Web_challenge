@@ -12,7 +12,7 @@ import { ForestDay, ForestNight, ForestNightMobile, DayFairiesTop, Constellation
  * + đom đóm sát đáy; desktop thêm nhãn trăng và đường chân trời hành tinh.
  * Sáng: trời bình minh (trước 12h) / hoàng hôn (từ 12h) + mặt trời mọc, mây màu nước nhấp nhô, hạt sáng bay.
  * Cả hai kiểu (Aurora / Rừng tiên) có vật bay ngẫu nhiên qua trời (utils/taskFlyers*); đêm thêm hiệu ứng
- * thiên nhiên dùng chung (utils/taskNatureFx: cực quang, sao ước nguyện bấm được, nguyệt thực…).
+ * thiên nhiên dùng chung (utils/taskNatureFx: sao ước nguyện bấm được, nguyệt thực…).
  * Toạ độ x desktop của mockup tính cả thanh bên 64px của khung → ở đây đã trừ 64.
  */
 const px = (v) => `${v}px`;

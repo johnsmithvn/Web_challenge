@@ -853,7 +853,6 @@ function celebrate(s, allDone) {
 }
 
 function bigCelebrate(s) {
-  if (s[0] === 'a' && hosts[s] && motionOK()) runNature('aurora', hosts[s], s.length > 1, { boost: true, D: 11 });
   const host = hosts && hosts[s + '_t']; if (!host || !host.isConnected) return;
   const m = s.length > 1, night = s[0] === 'a', { W, H, k, rr, fx1 } = flyKit(host, m), D = 7, cx = W / 2, S = m ? 6.5 : 10, cy = H * .38, n = m ? 36 : 54;
   fx1('<div style="position:absolute;left:0;top:0;width:' + W + 'px;height:' + H + 'px;background:radial-gradient(60% 55% at 50% 45%,' + (night ? 'rgba(94,242,194,.28)' : 'rgba(255,246,214,.6)') + ',rgba(255,246,214,0) 75%)"></div>', 0, 0, [{ opacity: 0 }, { opacity: 1, offset: .15 }, { opacity: 1, offset: .7 }, { opacity: 0 }], D);

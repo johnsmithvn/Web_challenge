@@ -1235,7 +1235,7 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
 - **Vật bay ngẫu nhiên** (cả 2 kiểu): DOM do `utils/taskFlyersAurora.js` / `taskFlyersElf.js` dựng vào `.task-fly-host`
   (cuối `.task-cosmos-bg`), bay bằng Web Animations rồi tự xoá. Keyframe CSS của chúng mang tiền tố `tkf-`
   (chung ở tasks-aurora.css, riêng Elf ở tasks-elf.css). Code là port mockup — khi mockup đổi, chép lại hàm `flySpawn`.
-  Ban đêm cả 2 kiểu trộn thêm `utils/taskNatureFx.js` (port `nature-fx.js`): cực quang, sao ước nguyện bấm được,
+  Ban đêm cả 2 kiểu trộn thêm `utils/taskNatureFx.js` (port `nature-fx.js`): sao ước nguyện bấm được,
   Thợ Săn, cầu vồng trăng, Ngân Hà, hồ, sương, lá bạc, bồ công anh, rêu + nguyệt thực (1/40 lượt). Hình bám trăng / chân
   trời lấy mốc thật qua `skyMoon` / `horizonY` (khớp `Moon`, `MobileMoon`, `.task-planet-horizon`); mặt đất mobile tính
   cách đáy trang (mockup 742/758 → `H - 16`) để không lọt khỏi màn hình thấp.

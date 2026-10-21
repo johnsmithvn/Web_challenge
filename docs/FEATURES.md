@@ -182,12 +182,12 @@ Desktop nổi bên phải, mobile là sheet; mở bằng nút "Lịch & sự ki�
   đóm) / bình minh–hoàng hôn; Rừng tiên = rừng ngày (cây, suối, nắng, sương mù) / rừng đêm. Tắt hết khi máy bật giảm
   chuyển động.
 - Hình bay ngẫu nhiên qua trời (máy bay, UFO, Hằng Nga… / hươu, rồng, hồ ly, phù thuỷ…) + ban đêm có hiệu ứng thiên
-  nhiên chung: cực quang, sao ước nguyện (bấm trúng → thẻ điều ước), Thợ Săn, cầu vồng trăng, Ngân Hà, hồ, sương, lá
+  nhiên chung: sao ước nguyện (bấm trúng → thẻ điều ước), Thợ Săn, cầu vồng trăng, Ngân Hà, hồ, sương, lá
   bạc, bồ công anh, rêu; thỉnh thoảng nguyệt thực.
 - Nút "Ngắm cảnh" / "Ngắm rừng": ẩn giao diện để xem nền.
 - Rừng tiên: bấm nấm → "boing!", bấm đom đóm → bay theo chuột, bấm nền → rung cây; sương tan quanh con trỏ; thẻ trễ
-  có dây leo, xong có hoa, đang làm có đom đóm; xong việc → tiên bay lên, xong hết việc hôm nay → trái tim đom đóm
-  (đêm thêm cực quang); cây chuỗi ngày góc trái dưới (desktop).
+  có dây leo, xong có hoa, đang làm có đom đóm; xong việc → tiên bay lên, xong hết việc hôm nay → trái tim đom đóm;
+  cây chuỗi ngày góc trái dưới (desktop).
 
 ### Detail, lịch sử và XP
 - Detail modal cho xem/sửa Task, activity field-diff và note cá nhân. Khu Hoạt động & Ghi chú **thu gọn mặc

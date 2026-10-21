@@ -126,7 +126,6 @@
 /* Hiệu ứng thiên nhiên dùng chung (utils/taskNatureFx.js) */
 @keyframes tkf-nfxSpin { to { transform: rotate(360deg); } }
 @keyframes tkf-nfxTw { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
-@keyframes tkf-nfxWave { 0% { transform: translateX(-2%) skewY(-2deg) scaleY(0.94); } 100% { transform: translateX(2%) skewY(2deg) scaleY(1.08); } }
 
 /* Đom đóm lơ lửng nửa dưới trang (bản tối) */
 @keyframes taskFfWander {

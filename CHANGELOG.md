@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v6.30.2 — 2026-10-21
+
+### Removed
+- **Cực quang ngẫu nhiên ban đêm (`taskNatureFx.js` `FX.aurora`, `taskFlyersElf.js` `bigCelebrate`, keyframe `tkf-nfxWave`):** dải màu lớn hiện lên – uốn lượn – tắt (nhìn như nhấp nháy), kể cả bản "rực" khi xong hết việc ban đêm. Bỏ theo phản hồi user (xấu); đồng thời bớt 1 hiệu ứng nặng (SVG rộng cả màn hình blur 32px, animate trên luồng chính). Ánh nền tĩnh `.task-aurora-glow` giữ nguyên.
+
 ## v6.30.1 — 2026-10-21
 
 ### Fixed

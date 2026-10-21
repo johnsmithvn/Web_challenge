@@ -4,7 +4,7 @@
  * vật bay (HTML/SVG) vào `host`, cho bay theo đường cong bằng Web Animations rồi tự xoá khi xong.
  * Ngày: phản lực, biểu diễn, trực thăng, tên lửa, đàn chim, đại bàng, khinh khí cầu, máy bay giấy,
  * băng rôn, UFO. Đêm: cú, dơi, máy bay đêm, ISS, phi hành gia, mưa sao băng, đèn trời, cá voi, Hằng Nga, UFO
- * + hiệu ứng thiên nhiên dùng chung (taskNatureFx: cực quang, sao ước nguyện, nguyệt thực…).
+ * + hiệu ứng thiên nhiên dùng chung (taskNatureFx: sao ước nguyện, nguyệt thực…).
  * Kích thước khung = kích thước thật của host; keyframe CSS mang tiền tố `tkf-` (tasks-aurora.css).
  * File là code mockup chuyển sang — giữ nguyên cấu trúc cho dễ đối chiếu khi mockup đổi.
  */
