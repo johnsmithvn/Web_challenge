@@ -1772,7 +1772,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 
 /* Slide-over Drawer for Editing Transactions â€” positioned below sticky header */
 .fin-drawer-overlay { position: fixed; top: 64px; right: 0; bottom: 0; left: 0; z-index: 99; display: flex; justify-content: flex-end; }
-.fin-drawer-backdrop { position: absolute; inset: 0; background: rgba(8, 9, 20, 0.6); backdrop-filter: blur(3px); animation: fin-fade 0.2s ease-out; }
+.fin-drawer-backdrop { position: absolute; inset: 0; background: rgba(8, 9, 20, 0.6); animation: fin-fade 0.2s ease-out; }
 .fin-slide-drawer { position: relative; z-index: 100; display: flex; flex-direction: column; width: min(820px, 50vw); height: 100%; background: var(--n-card); border-left: 1px solid var(--n-border); box-shadow: -16px 0 48px rgba(0, 0, 0, 0.55); animation: fin-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes fin-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .fin-slide-drawer__head { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--n-border); background: var(--n-card); flex-shrink: 0; }

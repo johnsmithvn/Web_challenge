@@ -331,21 +331,29 @@ function useElfInteractions(backRef, topRef, { elf, fk }) {
 function useStardustTrail(active) {
   useEffect(() => {
     if (!active || reducedMotion()) return undefined;
+    // Hạt bụi nằm trong 1 lớp phủ cô lập (contain: strict): thêm/xoá hạt không bắt cả trang tính lại layout
+    const layer = document.createElement('div');
+    layer.setAttribute('aria-hidden', 'true');
+    layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;contain:strict';
+    document.body.appendChild(layer);
     let lastTime = 0;
     const onMove = (e) => {
       const now = performance.now();
       if (now - lastTime < 45) return;
       lastTime = now;
       const dot = document.createElement('span');
-      dot.style.cssText = `position:fixed;left:${e.clientX - 2}px;top:${e.clientY - 2}px;width:4px;height:4px;border-radius:50%;background:#FDE047;box-shadow:0 0 6px 1px rgba(253,224,71,.85);pointer-events:none;z-index:9999;will-change:transform,opacity`;
-      document.body.appendChild(dot);
+      dot.style.cssText = `position:absolute;left:${e.clientX - 2}px;top:${e.clientY - 2}px;width:4px;height:4px;border-radius:50%;background:#FDE047;box-shadow:0 0 6px 1px rgba(253,224,71,.85)`;
+      layer.appendChild(dot);
       dot.animate([
         { transform: 'scale(1) translate(0,0)', opacity: 0.9 },
         { transform: `scale(0.2) translate(${(Math.random() * 12 - 6).toFixed(1)}px, ${(Math.random() * 16 + 6).toFixed(1)}px)`, opacity: 0 }
       ], { duration: 750, easing: 'ease-out' }).onfinish = () => dot.remove();
     };
     window.addEventListener('pointermove', onMove, { passive: true });
-    return () => window.removeEventListener('pointermove', onMove);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      layer.remove();
+    };
   }, [active]);
 }
 

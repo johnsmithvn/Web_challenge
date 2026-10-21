@@ -703,10 +703,11 @@ function addFF(s, host) {
   const m = s.length > 1, night = s[0] === 'a', { rr } = flyKit(host, m), c = night ? ['#F2FFB8', '210,255,120'] : ['#FFF3B0', '250,204,21'], e = document.createElement('div');
   e.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;pointer-events:none';
   e.innerHTML = '<span style="position:absolute;left:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:radial-gradient(closest-side,rgba(' + c[1] + ',.5),rgba(' + c[1] + ',0))"></span><span style="position:absolute;left:-2.5px;top:-2.5px;width:5px;height:5px;border-radius:50%;background:' + c[0] + ';box-shadow:0 0 6px 2px rgba(' + c[1] + ',.9)"></span>';
-  // Lượn theo % của lớp nền (không chốt px) → vẫn trong vùng đúng khi trang đổi cỡ (thanh địa chỉ mobile, xoay máy)
+  // Lượn theo % của lớp nền (cqw/cqh — host là container, không chốt px) → vẫn trong vùng đúng khi trang đổi cỡ
+  // (thanh địa chỉ mobile, xoay máy). Dùng transform thay left/top: chạy trên GPU, không tính lại layout mỗi khung.
   const pts = Array.from({ length: 6 }, () => [rr(.08, .92) * 100, rr(.22, .82) * 100]);
   host.appendChild(e);
-  e._an = e.animate(pts.map(p => ({ left: p[0].toFixed(2) + '%', top: p[1].toFixed(2) + '%', easing: 'ease-in-out' })), { duration: rr(26, 38) * 1000, iterations: Infinity, direction: 'alternate' });
+  e._an = e.animate(pts.map(p => ({ transform: 'translate(' + p[0].toFixed(2) + 'cqw,' + p[1].toFixed(2) + 'cqh)', easing: 'ease-in-out' })), { duration: rr(26, 38) * 1000, iterations: Infinity, direction: 'alternate' });
   e.firstChild.animate([{ opacity: .35 }, { opacity: 1 }], { duration: rr(1200, 2000), iterations: Infinity, direction: 'alternate' });
   (host._clk = host._clk || []).push({ kind: 'ff', el: e });
 }
@@ -834,7 +835,7 @@ function treeShake(s, top, x, y) {
 // allDone: mọi việc tới hạn hôm nay đã xong → bắn thêm cảnh ăn mừng lớn (React tính, truyền vào)
 function celebrate(s, allDone) {
   const host = hosts && hosts[s + '_t']; if (!host || !host.isConnected || !(motionOK())) return;
-  const m = s.length > 1, night = s[0] === 'a', { W, H, k, rr, cr, at, fly, fx1, dot } = flyKit(host, m);
+  const m = s.length > 1, night = s[0] === 'a', { W, H, k, R, rr, cr, at, fly, fx1, dot } = flyKit(host, m);
   let x = W * .6, y = H * .5; const fr = host.closest('[data-frame]'), lp = lastPointer;
   if (fr && lp && Date.now() - lp.t < 2500) { const r = fr.getBoundingClientRect(); if (r.width) { x = (lp.x - r.left) * W / r.width; y = (lp.y - r.top) * H / r.height; } }
   const G = night ? ['#C8FFEA', '94,242,194'] : ['#FFF3B0', '253,224,71'], sx = x < W / 2 ? 1 : -1, D = 3.4;

@@ -5,10 +5,12 @@
    ========================================================================== */
 
 /* ── KEYFRAMES ── */
+/* Hiệu năng: lớp nền chỉ animate transform/opacity (chạy trên GPU). Không blur/filter lên dải màu
+   chuyển — gradient vốn đã mềm; filter động trên lớp to cỡ màn hình = lọc lại ~1 triệu px mỗi khung. */
 @keyframes taskAuroraA {
-  0% { transform: translate3d(-4%, 0, 0) scaleY(1); filter: blur(34px) hue-rotate(0deg); }
+  0% { transform: translate3d(-4%, 0, 0) scaleY(1); }
   50% { transform: translate3d(2%, 3%, 0) scaleY(1.15); }
-  100% { transform: translate3d(5%, -2%, 0) scaleY(0.94); filter: blur(34px) hue-rotate(28deg); }
+  100% { transform: translate3d(5%, -2%, 0) scaleY(0.94); }
 }
 
 @keyframes taskAuroraC {
@@ -531,7 +533,7 @@
   --tk-ks-skip-glow: #CBD5E1;  --tk-ks-skip-tint: transparent;
   --tk-ks-skip-fg: #475569;  --tk-ks-skip-bg: #F1F5F9;  --tk-ks-skip-bd: #E2E8F0;
 
-  --tk-drawer-bg: rgba(255, 255, 255, 0.93);
+  --tk-drawer-bg: rgba(255, 255, 255, 0.97);
   --tk-drawer-border: #FFFFFF;
   --tk-drawer-shadow: 0 40px 90px -30px rgba(76, 55, 170, 0.5);
   --tk-label: #8B8FAE;
@@ -562,7 +564,7 @@
   --tk-popover-border: rgba(124, 108, 220, 0.15);
   --tk-popover-shadow: 0 20px 50px -16px rgba(30, 27, 58, 0.3);
   --tk-opt-on: #EDE9FE;
-  --tk-util-bg: rgba(255, 255, 255, 0.88);
+  --tk-util-bg: rgba(255, 255, 255, 0.96);
   --tk-util-bd: #FFFFFF;
   --tk-ut-tabs-bg: #F6F4FF;
   --tk-pp-soft: #F6F4FF;
@@ -602,6 +604,8 @@
   pointer-events: none;
   overflow: hidden;
   z-index: 0;
+  /* Cô lập layout/paint: vật bay (đom đóm Rừng tiên đổi left/top mỗi khung) không bắt cả trang tính lại */
+  contain: strict;
 }
 
 .task-cosmos-bg > * {
@@ -617,7 +621,6 @@
   background: radial-gradient(36% 58% at 20% 42%, rgba(52, 245, 197, 0.34), transparent 70%),
               radial-gradient(28% 50% at 50% 30%, rgba(34, 211, 238, 0.22), transparent 70%),
               radial-gradient(36% 60% at 84% 36%, rgba(139, 92, 246, 0.38), transparent 70%);
-  filter: blur(34px);
   animation: taskAuroraA 22s ease-in-out infinite alternate;
   will-change: transform;
 }
@@ -631,7 +634,6 @@
               radial-gradient(45% 45% at 92% 30%, rgba(251, 207, 232, 0.45), transparent 70%),
               radial-gradient(60% 42% at 30% 100%, rgba(254, 205, 170, 0.6), transparent 70%),
               radial-gradient(42% 38% at 88% 92%, rgba(251, 207, 232, 0.5), transparent 70%);
-  filter: blur(10px);
   animation: taskAuroraC 20s ease-in-out infinite alternate;
 }
 
@@ -653,7 +655,6 @@
   background: radial-gradient(50% 50% at 50% 50%, rgba(190, 205, 255, 0.17), rgba(170, 190, 240, 0.06) 50%, transparent 75%),
               radial-gradient(30% 40% at 34% 55%, rgba(200, 180, 255, 0.13), transparent 70%),
               radial-gradient(25% 35% at 70% 45%, rgba(140, 240, 215, 0.1), transparent 70%);
-  filter: blur(14px);
 }
 
 .task-milkyway--dust {
@@ -793,7 +794,6 @@
   width: 520px;
   height: 520px;
   border-radius: 50%;
-  filter: blur(10px);
   animation: taskAuroraC 18s ease-in-out infinite alternate;
 }
 
@@ -903,7 +903,6 @@
   background: radial-gradient(34% 55% at 20% 50%, rgba(253, 230, 138, 0.45), transparent 70%),
               radial-gradient(30% 50% at 52% 55%, rgba(251, 207, 232, 0.5), transparent 70%),
               radial-gradient(34% 55% at 82% 50%, rgba(196, 181, 253, 0.42), transparent 70%);
-  filter: blur(40px);
   animation: taskRibbon 22s ease-in-out infinite alternate;
   will-change: transform;
 }
@@ -916,7 +915,6 @@
 
 .task-blur-cloud {
   border-radius: 50%;
-  filter: blur(18px);
   opacity: 0.6;
   animation: taskDrift 40s ease-in-out infinite alternate;
 }
@@ -939,13 +937,11 @@
 
 .task-sun__halo {
   background: radial-gradient(circle, rgba(254, 240, 200, 0.6), rgba(251, 207, 232, 0.22) 45%, transparent 70%);
-  filter: blur(24px);
   animation: taskSunBreath 9s ease-in-out infinite alternate;
 }
 
 .task-sun__core {
   background: radial-gradient(circle, rgba(255, 244, 214, 0.95) 0, rgba(253, 214, 150, 0.6) 30%, rgba(251, 207, 232, 0.2) 60%, transparent 72%);
-  filter: blur(6px);
 }
 
 .is-dusk .task-sun__halo {
@@ -967,9 +963,11 @@
   animation: taskDrift 60s ease-in-out infinite alternate;
 }
 
-/* Lớp chứa vật bay (DOM do utils/taskFlyers* dựng), phủ kín trang */
+/* Lớp chứa vật bay (DOM do utils/taskFlyers* dựng), phủ kín trang. Là container (cqw/cqh) để đom đóm
+   Rừng tiên lượn theo % khung bằng transform (addFF trong taskFlyersElf.js). */
 .task-fly-host {
   inset: 0;
+  container-type: size;
 }
 
 /* Bóng chú Cuội & cây đa trên mặt trăng (kiểu Mặc định) */
@@ -2612,7 +2610,6 @@
   border-radius: 20px;
   background: var(--tk-util-bg);
   border: 1px solid var(--tk-util-bd);
-  backdrop-filter: blur(24px);
   box-shadow: 0 30px 80px -30px var(--tk-shadow);
   display: flex;
   flex-direction: column;
@@ -3361,7 +3358,6 @@
   border-radius: 22px;
   background: var(--tk-drawer-bg);
   border: 1px solid var(--tk-drawer-border);
-  backdrop-filter: blur(24px);
   box-shadow: var(--tk-drawer-shadow);
   overflow: hidden;
   animation: tkFadeIn 0.15s ease;
@@ -4183,7 +4179,6 @@
   justify-content: center;
   padding: 16px;
   background: var(--tk-scrim);
-  backdrop-filter: blur(3px);
   animation: tkFadeIn 0.15s ease;
 }
 

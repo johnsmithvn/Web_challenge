@@ -613,10 +613,21 @@ The coloured glows are **spread-only** (`0 0 Npx`) — they signal state
 2. a 1px hairline border (`--bg-glass-border` or `rgba(255,255,255,0.06–0.1)`),
 3. `backdrop-filter: blur()` with the `-webkit-` prefix alongside.
 
-Observed blur radii, by active shared role: `4px` modal backdrops
-(`.generic-modal-backdrop`, `.cm-overlay`) · `12px` `.card`, audio player ·
-`16px` `.kb-sort-dropdown` · `20px` `.topbar`, nav menus · `24px` `.sidebar`,
-`.bottom-tabs`. Scoped domains keep their own values; Vault scrim uses `6px`.
+Observed blur radii, by active shared role: `12px` `.card` · `16px`
+`.kb-sort-dropdown` · `20px` `.topbar` · `24px` `.sidebar`, `.bottom-tabs`.
+
+**Performance rules (v6.29.1)** — `backdrop-filter` is re-computed every frame
+whenever anything behind it moves (the Tasks sky is always moving), so:
+
+- **Popups, drawers, sheets, dropdown menus and modal scrims use a solid fill,
+  no `backdrop-filter`** (fill alpha ≥ 0.94; scrims only darken). Glass stays on
+  persistent chrome (sidebar, topbar, bottom tabs, panels/columns).
+- Don't nest glass: a blurred element inside a blurred parent only blurs the
+  parent's fill (the parent is the backdrop root) — pure GPU cost.
+- Animated background layers animate only `transform` / `opacity`; never put
+  `filter: blur()` on a gradient layer (gradients are already soft) and never
+  animate `filter`. Layout properties (`left/top/width`) are not animated —
+  use `transform` (container units `cqw/cqh` when the path is in % of the frame).
 
 **Layer order** — page (`--bg-primary`) → glass card (white-alpha + blur) →
 solid panel (`--bg-secondary`, modals/dropdowns) → coloured glow on state.
@@ -1237,6 +1248,9 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   `AppIcon color="var(--x)"` được chuyển sang `style.color` (thuộc tính SVG `fill` không nhận biến CSS).
 - Breakpoint mobile = `≤768px` (cùng khung app: topbar 52 + tab đáy 60). Nền mobile tối: aurora, Ngân Hà,
   sao, 3 sao băng, sao chổi nhỏ (không trăng / chòm sao / chân trời) như mockup.
+- Nền động (`TaskSkyBackground` / `TaskForestBackground`): `.task-cosmos-bg` có `contain: strict`; lớp vật bay
+  `.task-fly-host` là size container (`cqw/cqh`). Không blur lớp gradient, chỉ animate transform/opacity
+  (xem Performance rules ở Elevation & Depth). Thẻ Kanban Rừng tiên không kính mờ (cột đã kính mờ); thẻ mobile giữ.
 - Ngăn chi tiết `.tk-drawer` (448px, nổi phải): ở Kanban nổi **đè** lên bảng; Danh sách/Lịch ≥1280px vẫn chừa
   `padding-right: 476px` cho `.tk-main`. Mobile = sheet dưới + `.tk-drawer-backdrop`.
 - Hàng việc con (`.tk-subs__row` trên thẻ, `.tk-sub-row` trong ngăn chi tiết): tay nắm `.tk-sub-grip` (span

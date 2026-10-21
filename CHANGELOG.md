@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## v6.29.1 — 2026-10-21
+
+### Fixed
+- **Rừng tiên — hiệu ứng ăn mừng khi xong việc bị văng giữa chừng (`taskFlyersElf.js` `celebrate`):** dùng `R` mà không lấy từ `flyKit` → `ReferenceError: R is not defined` ngay sau đốm sáng đầu: không ra bướm, vệt sáng, và màn "Xong hết việc hôm nay!" (`bigCelebrate`) không bao giờ chạy. Đã kiểm trên trình duyệt: code cũ văng lỗi, code mới dựng đủ hiệu ứng.
+- **Trình phát podcast nổi (`useRandomPodcast.js`):** không cấu hình Supabase thì văng `Cannot read properties of null (reading 'from')` ở mọi trang; chỉ lấy `id, title, url` thay vì kéo cả `body` (nội dung dài) của mọi podcast mỗi lần mở app.
+- **Không thấy nút thu gọn sidebar trên desktop (`navbar.css`):** nút `opacity: 0`, chỉ hiện khi rê chuột vào sidebar (máy không có hover thì không bao giờ hiện) → luôn hiện mờ 0.6, rê chuột vào thì rõ.
+
+### Changed — hiệu năng render
+- **Nền trang Nhiệm vụ (`tasks-aurora.css`, `tasks-elf.css`, `TaskForestBackground.jsx`):** bỏ `filter: blur()` trên các lớp dải màu chuyển cỡ lớn (cực quang, Ngân Hà, quầng trăng/mặt trời, mây, tia nắng, sương, tán lá — gradient vốn đã mềm, ảnh trước/sau gần như trùng), bỏ animation `filter: hue-rotate` của cực quang (lọc lại ~1 triệu px mỗi khung). `.task-cosmos-bg` thêm `contain: strict`; đom đóm Rừng tiên lượn bằng `transform` + `cqw/cqh` thay `left/top` (hết tính layout cả trang mỗi khung). Vệt bụi sao theo chuột nằm trong một lớp phủ cô lập thay vì gắn thẳng vào `body`.
+- **Popup không kính mờ:** ngăn chi tiết, popover, bảng Lịch & sự kiện, sheet/hộp việc con, Quick Capture, ConfirmModal, GenericModal, modal đăng nhập, menu người dùng, dropdown tab dưới, trình phát podcast, scrim Vault/Body/Finance/KB/Tiptap → nền đặc, bỏ `backdrop-filter`. Bản sáng tăng độ đục ngăn chi tiết 0.93→0.97, bảng tiện ích 0.88→0.96; trình phát podcast tối dùng `--bg-secondary` (trước 4% đục, phải nhờ blur mới đọc được).
+- **Thẻ Kanban Rừng tiên desktop bỏ kính mờ riêng:** nằm trong cột đã kính mờ nên blur thẻ chỉ làm nhoè nền cột; thẻ mobile giữ.
+- Đo bằng Chromium headless (không GPU, 1440×900, 6s): Mặc định tối 8,6 → 16,2 FPS · sáng 6,8 → 14,8 · Rừng tiên tối 7,0 → 14,1 · sáng 6,1 → 11,2; mobile 390×844 ~40 → ~60 FPS. Số tuyệt đối trên máy thật có GPU sẽ khác (chưa đo trên máy thật).
+
 ## v6.29.0 — 2026-10-21
 
 ### Added

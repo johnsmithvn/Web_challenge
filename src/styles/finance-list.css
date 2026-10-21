@@ -1173,7 +1173,6 @@
     display: flex !important;
     flex-direction: column;
     justify-content: flex-end;
-    backdrop-filter: blur(2px);
   }
 }
 
@@ -1247,7 +1246,6 @@
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(3px);
   animation: finFadeIn 0.2s ease-out;
 }
 

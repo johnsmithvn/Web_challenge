@@ -409,8 +409,6 @@
   right: -0.5rem;
   min-width: 160px;
   background: rgba(15, 15, 30, 0.97);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-lg);
   padding: 0.35rem;
@@ -486,8 +484,6 @@
 
 .nav-user-menu {
   background: rgba(15, 15, 30, 0.97);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-lg);
   padding: 0.5rem;
@@ -674,7 +670,9 @@
   background: #0D1222;
   color: var(--text-secondary);
   cursor: pointer;
-  opacity: 0;
+  /* Luôn hiện (mờ) để thấy được — trước đây opacity 0, chỉ hiện khi rê chuột vào sidebar nên khó tìm,
+     máy không có hover (laptop cảm ứng) thì không bao giờ thấy */
+  opacity: 0.6;
   transition: opacity 0.15s ease, color 0.15s ease;
 }
 

@@ -362,7 +362,7 @@ function FogBank({ m, n, y0, y1, aMax, sc }) {
       {fog.patches.map((p, i) => (
         <span
           key={i}
-          className={`tk-forest-fog__patch${m ? ' is-m' : ''}`}
+          className="tk-forest-fog__patch"
           data-w={p.w}
           data-h={p.h}
           style={{ ...p.pos, width: px(p.w), height: px(p.h), background: p.bg, '--dx': px(p.dx), animationDuration: `${p.d}s`, animationDelay: `${p.dl}s` }}
@@ -451,7 +451,7 @@ export function ForestDay({ isMobile }) {
       {s.bokeh.map((b, i) => <span key={`bk${i}`} className="tk-forest-bokeh" style={{ left: P(b.x), top: Q(b.y), width: px(b.sz), height: px(b.sz), animationDuration: `${b.d}s`, animationDelay: `${b.dl}s` }} />)}
       <span className={`tk-forest-sun${still}`} style={{ left: P(s.sun[0]), top: px(s.sun[1]), width: px(s.sun[2]), height: px(s.sun[3]) }} />
       {s.shafts.map(([x, w, r, a, d, dl], i) => (
-        <span key={`sh${i}`} className={`tk-forest-shaft${still}`} style={{ left: P(x), width: px(w), height: px(m ? 1100 : 1400), transform: `rotate(${r}deg)`, filter: `blur(${m ? 22 : 38}px)`, background: `linear-gradient(90deg,transparent,rgba(255,241,196,${a}),transparent)`, animationDuration: `${d}s`, animationDelay: `${-dl}s` }} />
+        <span key={`sh${i}`} className={`tk-forest-shaft${still}`} style={{ left: P(x), width: px(w), height: px(m ? 1100 : 1400), transform: `rotate(${r}deg)`, background: `linear-gradient(90deg,transparent,rgba(255,241,196,${a}),transparent)`, animationDuration: `${d}s`, animationDelay: `${-dl}s` }} />
       ))}
       {s.dapples.map((p, i) => <span key={`dp${i}`} className={`tk-forest-dapple${still}`} style={{ left: P(p.x), top: Q(p.y), width: px(p.sz), height: px(p.sz * 0.7), animationDuration: `${p.d}s`, animationDelay: `${p.dl}s` }} />)}
       {s.mist.map(([x, y, w, h, dx, d], i) => <span key={`ms${i}`} className={`tk-forest-mist${still}`} style={{ left: P(x), top: Q(y), width: P(w), height: px(h), '--dx': px(dx), animationDuration: `${d}s` }} />)}
@@ -627,9 +627,9 @@ export function ForestNightMobile() {
       <div className="task-shooting-star" style={{ top: '70px', left: '84.6%', width: '110px', animation: 'taskShoot 11s linear 2s infinite' }} />
       <div className="task-shooting-star" style={{ top: '26px', left: '56.4%', width: '90px', animation: 'taskShoot 15s linear 7s infinite' }} />
       {NM.canopy.map(([x, y, w, h, a], i) => (
-        <span key={`cn${i}`} className="tk-forest-canopy is-still" style={{ left: P(x), top: Q(y), width: px(w), height: px(h), filter: 'blur(14px)', background: `radial-gradient(closest-side,rgba(1,8,5,${a}),rgba(1,8,5,0))` }} />
+        <span key={`cn${i}`} className="tk-forest-canopy is-still" style={{ left: P(x), top: Q(y), width: px(w), height: px(h), background: `radial-gradient(closest-side,rgba(1,8,5,${a}),rgba(1,8,5,0))` }} />
       ))}
-      {NM.mist.map(([x, y, w, h], i) => <span key={`ms${i}`} className="tk-forest-mist is-night is-still" style={{ left: P(x), top: Q(y), width: px(w), height: px(h), filter: 'blur(18px)' }} />)}
+      {NM.mist.map(([x, y, w, h], i) => <span key={`ms${i}`} className="tk-forest-mist is-night is-still" style={{ left: P(x), top: Q(y), width: px(w), height: px(h) }} />)}
       {NM.spores.map((s, i) => (
         <span key={`sp${i}`} className="tk-forest-spore" style={{ left: P(s.x), top: Q(s.y), width: px(s.sz), height: px(s.sz), background: `rgba(${s.c},1)`, boxShadow: `0 0 8px 2px rgba(${s.c},.7)`, '--dx': px(s.dx), '--dy': px(s.dy), animationDuration: `${s.d}s`, animationDelay: `${s.delay}s` }} />
       ))}
