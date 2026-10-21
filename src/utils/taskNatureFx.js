@@ -1,6 +1,6 @@
 /**
  * Hiệu ứng thiên nhiên dùng chung cho nền trang Nhiệm vụ (cả Mặc định lẫn Rừng tiên) — port nature-fx.js của mockup:
- * sao ước nguyện (bấm được → thẻ điều ước), chòm Thợ Săn, cầu vồng trăng, Ngân Hà, hồ phát sáng,
+ * sao ước nguyện (bấm được → thẻ điều ước), chòm Thợ Săn, cầu vồng trăng (+ cầu vồng ban ngày), Ngân Hà, hồ phát sáng,
  * sương rơi, lá bạc, bồ công anh phát sáng, rêu phát sáng + nguyệt thực (1/40 lượt đêm). Chỉ dùng ban đêm.
  * Khung = cỡ thật của host; keyframe CSS mang tiền tố `tkf-` (tasks-aurora.css).
  * File là code mockup chuyển sang — giữ nguyên cấu trúc cho dễ đối chiếu khi mockup đổi.
@@ -89,13 +89,46 @@ FX.orion = K => {
   K.lbl('Chòm sao Thợ Săn', cx + wk / 2, cy + 80 * s + 26 * k, .1, .8, D);
   return D;
 };
+/**
+ * Cầu vồng LỚN vắt ngang trời (v6.30.3, dùng chung: cầu vồng ban ngày + cầu vồng trăng ban đêm + sóc trượt
+ * Rừng tiên). Tâm cung nằm thấp nên cung phủ gần hết bề ngang, 2 chân mờ dần xuống đất; dải chính (tím trong →
+ * đỏ ngoài) + cầu vồng phụ mờ màu đảo + nền sáng nhẹ trong lòng cung. Chỉ gradient, không blur (nhẹ GPU).
+ * night = cầu vồng trăng (nhạt, ngả trắng). Trả html + góc trái trên (x, y) + tâm (cx, cy) + bán kính r.
+ */
+export function bigRainbowArc(W, H, m, night = false) {
+  const r = m ? W * 0.8 : Math.max(560, W * 0.55);
+  // Đỉnh cung chính ~40px dưới mép trên (desktop) → lộ ở vùng tiêu đề, không nấp hết sau bảng nội dung
+  const cx = W / 2, cy = m ? H * 0.5 : 40 + r * 0.954, R2 = r * 1.2;
+  const at = (v) => ((v * r) / R2 * 100).toFixed(2) + '%';
+  const a = night ? 0.32 : 0.5;
+  const C = night
+    ? ['226,214,255', '205,232,255', '222,255,232', '255,244,210', '255,226,214', '255,214,224']
+    : ['139,92,246', '59,130,246', '34,197,94', '250,204,21', '249,115,22', '239,68,68'];
+  let stops = 'transparent ' + at(0.45) + ',rgba(255,255,255,' + (night ? 0.05 : 0.12) + ') ' + at(0.78);
+  C.forEach((c, i) => { stops += ',rgba(' + c + ',' + a + ') ' + at(0.814 + i * 0.028); });
+  stops += ',transparent ' + at(0.99) + ',transparent ' + at(1.08);
+  [...C].reverse().forEach((c, i) => { stops += ',rgba(' + c + ',' + (a * 0.38).toFixed(2) + ') ' + at(1.09 + i * 0.016); });
+  stops += ',transparent ' + at(1.19);
+  const mk = 'linear-gradient(to top,transparent,#000 38%)';
+  const html = '<div style="position:absolute;left:0;top:0;width:' + f(2 * R2) + 'px;height:' + f(R2) + 'px;background:radial-gradient(circle ' + f(R2) + 'px at 50% 100%,' + stops + ');-webkit-mask-image:' + mk + ';mask-image:' + mk + '"></div>';
+  return { html, x: cx - R2, y: cy - R2, cx, cy, r };
+}
+// Mưa lất phất trước khi cầu vồng hiện
+const rainThen = (K, color) => {
+  const { W, H, m, fx1 } = K;
+  for (let i = 0; i < (m ? 30 : 70); i++) fx1('<span style="position:absolute;left:0;top:0;width:1.2px;height:' + rr(10, 18).toFixed(0) + 'px;transform:rotate(8deg);background:linear-gradient(rgba(' + color + ',0),rgba(' + color + ',.7))"></span>', rr(0, W + 60), -20, [{ transform: 'translate(0,0)', opacity: 0 }, { transform: 'translate(-8px,' + f(H * .3) + 'px)', opacity: 1, offset: .25 }, { transform: 'translate(-26px,' + (H + 40) + 'px)', opacity: .6 }], rr(.8, 1.2), R() * 4.4);
+};
+const bowIn = [{ opacity: 0 }, { opacity: 0, offset: .28 }, { opacity: 1, offset: .42 }, { opacity: 1, offset: .82 }, { opacity: 0 }];
 FX.moonbow = K => {
-  const { W, H, m, fx1 } = K, D = 15, rw = m ? 330 : 820, rh = rw / 2, cx = W * rr(.32, .68), top = H * rr(.12, .2), n = m ? 30 : 70;
-  for (let i = 0; i < n; i++) fx1('<span style="position:absolute;left:0;top:0;width:1px;height:' + rr(10, 18).toFixed(0) + 'px;transform:rotate(8deg);background:linear-gradient(rgba(200,225,245,0),rgba(200,225,245,.6))"></span>', rr(0, W + 60), -20, [{ transform: 'translate(0,0)', opacity: 0 }, { transform: 'translate(-8px,' + f(H * .3) + 'px)', opacity: 1, offset: .25 }, { transform: 'translate(-26px,' + (H + 40) + 'px)', opacity: .6 }], rr(.8, 1.2), R() * 4.4);
-  const bands = 'transparent 71%,rgba(255,200,200,.2) 74.5%,rgba(255,236,200,.22) 78.5%,rgba(226,255,226,.2) 82.5%,rgba(205,232,255,.22) 86.5%,rgba(226,210,255,.2) 90.5%,transparent 94%';
-  const mk = '-webkit-mask-image:linear-gradient(to top,transparent,#000 42%);mask-image:linear-gradient(to top,transparent,#000 42%)';
-  fx1('<div style="position:absolute;left:' + (-rw / 2) + 'px;top:0;width:' + rw + 'px;height:' + rh + 'px;' + mk + '"><div style="position:absolute;inset:0;background:radial-gradient(circle ' + rh + 'px at 50% 100%,transparent 70%,rgba(240,248,255,.22) 82%,transparent 95%);filter:blur(8px)"></div><div style="position:absolute;inset:0;background:radial-gradient(circle ' + rh + 'px at 50% 100%,' + bands + ')"></div></div>', cx, top, [{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1, offset: .44 }, { opacity: 1, offset: .82 }, { opacity: 0 }], D);
-  K.lbl('Cầu vồng trăng', cx, top + rh * .04, .46, .8, D);
+  const D = 15, bow = bigRainbowArc(K.W, K.H, K.m, true);
+  rainThen(K, '200,225,245');
+  K.fx1(bow.html, bow.x, bow.y, bowIn, D);
+  return D;
+};
+FX.rainbow = K => {
+  const D = 16, bow = bigRainbowArc(K.W, K.H, K.m, false);
+  rainThen(K, '140,180,220');
+  K.fx1(bow.html, bow.x, bow.y, bowIn, D);
   return D;
 };
 FX.milky = K => {
@@ -171,7 +204,7 @@ FX.moss = K => {
   }
   return D;
 };
-export const NATURE_TYPES = ['wish', 'orion', 'moonbow', 'milky', 'lake', 'dew', 'silverleaf', 'glowdand', 'moss'];
+export const NATURE_TYPES = ['wish', 'orion', 'moonbow', 'rainbow', 'milky', 'lake', 'dew', 'silverleaf', 'glowdand', 'moss'];
 export const NATURE_POOL = [['wish', 1.8], ['orion', 1.4], ['moonbow', 1.2], ['milky', 1.3], ['lake', 1.6], ['dew', 1.6], ['silverleaf', 1.6], ['glowdand', 1.6], ['moss', 1.5]];
 
 /**

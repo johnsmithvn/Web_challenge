@@ -8,7 +8,7 @@
  * Kích thước khung = kích thước thật của host; keyframe CSS mang tiền tố `tkf-` (tasks-elf.css).
  * File là code mockup chuyển sang — giữ nguyên cấu trúc cho dễ đối chiếu khi mockup đổi.
  */
-import { NATURE_POOL, NATURE_TYPES, natureClick, runNature, skyMoon } from './taskNatureFx';
+import { NATURE_POOL, NATURE_TYPES, natureClick, runNature, skyMoon, bigRainbowArc } from './taskNatureFx';
 
 export const hosts = {};
 // Khoá khung như mockup: c/a = sáng/tối desktop, cm/am = mobile (đặt vào data-frame của trang)
@@ -412,27 +412,24 @@ function flySpawn(host, m, night) {
     return D;
   }
   if (type === 'rainbow_slide') {
-    const D = 14, rw = m ? 320 : 760, rh = rw / 2, cx = W * rr(.35, .65), top = H * rr(.1, .22);
-    fx1('<div style="position:absolute;left:' + (-rw / 2) + 'px;top:0;width:' + rw + 'px;height:' + rh + 'px;background:radial-gradient(circle ' + rh + 'px at 50% 100%,transparent 72%,rgba(239,68,68,.42) 75%,rgba(249,115,22,.42) 79%,rgba(250,204,21,.42) 83%,rgba(34,197,94,.38) 87%,rgba(59,130,246,.36) 91%,rgba(139,92,246,.34) 95%,transparent 98%);-webkit-mask-image:linear-gradient(to top,transparent,#000 40%);mask-image:linear-gradient(to top,transparent,#000 40%)"></div>', cx, top, [{ opacity: 0 }, { opacity: 0, offset: .2 }, { opacity: 1, offset: .35 }, { opacity: 1, offset: .85 }, { opacity: 0 }], D);
+    // Sóc trượt dọc cầu vồng lớn (bigRainbowArc dùng chung): chờ ở chân trái, trượt qua đỉnh xuống chân phải
+    const D = 14, bow = bigRainbowArc(W, H, m, false), rm = bow.r * 0.89, th0 = Math.PI - 0.3, th1 = 0.3;
+    const on = th => [bow.cx + rm * Math.cos(th), bow.cy - rm * Math.sin(th)];
+    fx1(bow.html, bow.x, bow.y, [{ opacity: 0 }, { opacity: 1, offset: .12 }, { opacity: 1, offset: .85 }, { opacity: 0 }], D);
     const SQ = '<svg width="34" height="26" viewBox="0 0 34 26" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 1px 2px rgba(60,40,20,.35))"><path d="M13 20 C2 23 -2 12 2 6 C5 1 12 2 12 8 C12 12 8 12 8 15 C9 18 12 18 14 18 Z" fill="#C2783F"/><ellipse cx="19" cy="17" rx="8" ry="6" fill="#B86B34"/><ellipse cx="20.5" cy="19" rx="5" ry="3.4" fill="#F1D3AE"/><path d="M15 22 L13 25 M22 22 L24 25" stroke="#9A5527" stroke-width="1.6" stroke-linecap="round"/><circle cx="26" cy="11" r="4.6" fill="#B86B34"/><circle cx="27.6" cy="10.4" r=".9" fill="#1A1A1A"/></svg>';
-    const startX = cx - rw * 0.35, endX = cx + rw * 0.35;
-    const arcY = t => top + rh - Math.sin(t * Math.PI) * rh * 0.85;
+    const [ex, ey] = on(th1);
     const slideSegs = cr([
-      [startX, top + rh, 0],
-      [startX, top + rh, 0.35],
-      [cx - rw * 0.18, arcY(0.3), 0.45],
-      [cx, arcY(0.5), 0.55],
-      [cx + rw * 0.18, arcY(0.7), 0.65],
-      [endX, top + rh - 10, 0.75],
-      [endX + 80 * k, top + rh - 5, 0.88],
-      [endX + 80 * k, top + rh - 5, 1]
+      [...on(th0), 0],
+      [...on(th0), 0.35],
+      ...[1, 2, 3, 4, 5, 6].map(i => [...on(th0 + (th1 - th0) * i / 6), 0.35 + i / 6 * 0.4]),
+      [ex + 80 * k, ey + 5, 0.88],
+      [ex + 80 * k, ey + 5, 1]
     ], 8);
     fly(SQ, 34, 26, slideSegs, D, {
       k: k * 1.15,
       tk: 0.6,
       opf: t => t < 0.32 ? 0 : Math.min(1, (1 - t) / 0.08)
     });
-    bub('Vui quá đi~ 🌈✨', cx + rw * 0.08, arcY(0.6) - 28 * k, 0.52, 0.74, D);
     for (let t = 0.38; t < 0.76; t += 0.04) {
       const [px, py] = at(slideSegs, t);
       fx1(dot(rr(2, 4), '#FDE047', '253,224,71'), px, py + 8 * k, [
@@ -456,12 +453,6 @@ function flySpawn(host, m, night) {
     fly(EA.DFLY, 26, 14, [...cr([[tx + sg * 260 * k, ty - 100 * k, 0], [tx + sg * 60 * k, ty - 40 * k, .18], [hv[0], hv[1], .26], [hv[0] + 3 * k, hv[1] - 2 * k, .34], [hv[0] - 2 * k, hv[1] + 2 * k, .42], [hv[0], hv[1], .5], [tx - sg * 20 * k, ty - 80 * k, .54], [tx - sg * 220 * k, -60, .75]], 6), ln([tx - sg * 220 * k, -60], [tx - sg * 220 * k, -60], .75, 1, 1)], D, { flip: sg > 0, tk: .2, opf: t => t > .75 ? 0 : 1 });
     bub('Lêu lêu~', tx - sg * 20 * k, ty - 90 * k, .54, .66, D);
     bub('Ặc… lá!', fx, fy - 26 * kf, .6, .82, D);
-    return D;
-  }
-  if (type === 'rainbow') {
-    const D = 14, rw = m ? 320 : 760, rh = rw / 2, cx = W * rr(.3, .7), top = H * rr(.1, .22), n = m ? 34 : 80;
-    for (let i = 0; i < n; i++) fx1('<span style="position:absolute;left:0;top:0;width:1.2px;height:' + rr(10, 18).toFixed(0) + 'px;transform:rotate(8deg);background:linear-gradient(rgba(150,190,225,0),rgba(140,180,220,.85))"></span>', rr(0, W + 60), -20, [{ transform: 'translate(0,0)', opacity: 0 }, { transform: 'translate(-8px,' + (H * .3).toFixed(0) + 'px)', opacity: 1, offset: .25 }, { transform: 'translate(-26px,' + (H + 40) + 'px)', opacity: .7 }], rr(.8, 1.2), R() * 4.2);
-    fx1('<div style="position:absolute;left:' + (-rw / 2) + 'px;top:0;width:' + rw + 'px;height:' + rh + 'px;background:radial-gradient(circle ' + rh + 'px at 50% 100%,transparent 72%,rgba(239,68,68,.42) 75%,rgba(249,115,22,.42) 79%,rgba(250,204,21,.42) 83%,rgba(34,197,94,.38) 87%,rgba(59,130,246,.36) 91%,rgba(139,92,246,.34) 95%,transparent 98%);-webkit-mask-image:linear-gradient(to top,transparent,#000 40%);mask-image:linear-gradient(to top,transparent,#000 40%)"></div>', cx, top, [{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1, offset: .42 }, { opacity: 1, offset: .82 }, { opacity: 0 }], D);
     return D;
   }
   if (type === 'gnome') {

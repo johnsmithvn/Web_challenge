@@ -14,7 +14,7 @@ let flyerSeq = 0;
 
 export function spawnAuroraFlyer(host, m, night) {
   const W = host.clientWidth || (m ? 390 : 1440), H = host.clientHeight || (m ? 844 : 900), k = m ? .72 : 1, R = Math.random, rr = (a, b) => a + R() * (b - a), sp = m ? .55 : 1;
-  const pool = (night ? [['owl', 2], ['bats', 2], ['nplane', 2], ['iss', 2], ['astro', 1.5], ['meteors', 2], ['lanterns', 2], ['whale', 1.2], ['hangnga', 1.5], ['abduct', 2.2], ['dome', 2.2], ...NATURE_POOL] : [['jet', 3], ['show', 2], ['heli', 2], ['rocket', 2], ['birds', 3], ['eagle', 2.5], ['balloon', 1.5], ['paper', 2], ['banner', 1.5], ['abduct', 2.2]]).filter(t => t[0] !== host.dataset.last);
+  const pool = (night ? [['owl', 2], ['bats', 2], ['nplane', 2], ['iss', 2], ['astro', 1.5], ['meteors', 2], ['lanterns', 2], ['whale', 1.2], ['hangnga', 1.5], ['abduct', 2.2], ['dome', 2.2], ...NATURE_POOL] : [['jet', 3], ['show', 2], ['heli', 2], ['rocket', 2], ['birds', 3], ['eagle', 2.5], ['balloon', 1.5], ['paper', 2], ['banner', 1.5], ['abduct', 2.2], ['rainbow', 1.5]]).filter(t => t[0] !== host.dataset.last);
   let pick = R() * pool.reduce((a, t) => a + t[1], 0), type = pool[0][0];
   for (const [n, w] of pool) { if ((pick -= w) <= 0) { type = n; break; } }
   if (m && type === 'dome') type = 'abduct';

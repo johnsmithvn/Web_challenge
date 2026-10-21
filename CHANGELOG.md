@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v6.30.3 — 2026-10-21
+
+### Changed
+- **Cầu vồng lớn vắt ngang trời (`taskNatureFx.js` `bigRainbowArc`, `FX.rainbow`, `FX.moonbow`; `taskFlyersElf.js` `rainbow_slide`):** thay 3 cầu vồng nhỏ (760–820px, nhạt) bằng 1 cung dùng chung: phủ gần hết bề ngang, đỉnh lộ ở vùng tiêu đề, 2 chân mờ dần xuống đất, dải 6 màu + cầu vồng phụ mờ màu đảo + lòng cung sáng nhẹ; chỉ gradient, không blur. Ban đêm là cầu vồng trăng (nhạt, ngả trắng); sóc Rừng tiên trượt dọc cung lớn. Kiểu Mặc định ban ngày thêm cầu vồng sau mưa (trước chỉ Rừng tiên có).
+
+### Removed
+- Chữ chú thích của cầu vồng: "Cầu vồng trăng" và bong bóng "Vui quá đi~ 🌈✨" của sóc.
+
 ## v6.30.2 — 2026-10-21
 
 ### Removed
