@@ -30,6 +30,7 @@ const LABELS = {
   deernut: 'Hươu + hạt dẻ', carrier_pigeon: 'Bồ câu đưa thư', rainbow_slide: 'Sóc trượt cầu vồng',
   koi: 'Cá koi bay', veins: 'Gân sáng mọc từ đất', ring: 'Vòng tiên', starfall: 'Sao rơi', spirit: 'Linh hồn rừng',
   bloom: 'Hoa sen ngọc nở', koistar: 'Koi đớp sao', owlmiss: 'Cú vồ hụt', spiritbow: 'Linh hồn + cầu vồng', dragon: 'Rồng',
+  dragon_v2: 'Rồng xanh phương Đông (vẽ bằng code)', dragon_v2_eu: 'Rồng châu Âu (vẽ bằng code)', catfight: '2 mèo đánh nhau',
   leafrider: 'Tiên cưỡi lá', constel: 'Chòm sao hiện hình', whaleeat: 'Cá voi nuốt đom đóm',
   owlsinge: 'Cú cháy lông → kỳ lân chữa lành', kitsune: 'Hồ ly', unicorn: 'Kỳ lân uống suối', wisp: 'Ma trơi dụ đường',
   witch: 'Phù thuỷ cưỡi chổi', blackcat: 'Mèo đen', fairynap: 'Tiên ngủ gật', ent: 'Người cây ngáp', foxlant: 'Cáo giật đèn',

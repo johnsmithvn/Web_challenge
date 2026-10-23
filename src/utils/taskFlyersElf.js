@@ -10,6 +10,7 @@
  */
 import { NATURE_POOL, NATURE_TYPES, natureClick, runNature, skyMoon, bigRainbowArc } from './taskNatureFx';
 import { koiSvg } from './koiArt';
+import { DRAGON_EAST, DRAGON_WEST } from './dragonArt';
 
 export const hosts = {};
 // Khoá khung như mockup: c/a = sáng/tối desktop, cm/am = mobile (đặt vào data-frame của trang)
@@ -94,9 +95,30 @@ function flyKit(host, m) {
   return { W, H, k, R, rr, ln, cr, at, fly, fx1, walk, dot };
 }
 
+// Vẽ con vật thủ tục (utils/dragonArt.js) vào box: SVG đổi path mỗi khung bằng rAF, tự dừng khi box bị gỡ khỏi trang.
+// id gradient gắn hậu tố riêng để 2 con cùng lúc không giẫm defs của nhau.
+let liveSeq = 0;
+function liveArt(box, C, css) {
+  if (!box) return;
+  const id = ++liveSeq, NS = 'http://www.w3.org/2000/svg', own = (v) => v.replace(/url\(#(\w+)\)/, 'url(#$1-' + id + ')');
+  box.innerHTML = '<svg viewBox="0 0 ' + C.w + ' ' + C.h + '" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;' + css + '"><defs>' + C.defs.replace(/id="(\w+)"/g, 'id="$1-' + id + '"') + '</defs><g></g></svg>';
+  const g = box.querySelector('g'), els = [], t0 = performance.now() - Math.random() * C.period * 1000;
+  const step = (now) => {
+    if (!box.isConnected) return;
+    C.frame((now - t0) / 1000).forEach((s, i) => {
+      let p = els[i];
+      if (!p) { p = document.createElementNS(NS, 'path'); p.setAttribute('stroke-linecap', 'round'); p.setAttribute('stroke-linejoin', 'round'); g.appendChild(p); els.push(p); }
+      p.setAttribute('d', s.d); p.setAttribute('fill', own(s.fill)); p.setAttribute('opacity', s.op ?? 1);
+      if (s.stroke) { p.setAttribute('stroke', s.stroke); p.setAttribute('stroke-width', s.sw ?? 1); }
+    });
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 // Bể kịch bản [tên, trọng số]. Trọng số 0 = bản nháp: chỉ chạy được ở trang /fx-lab, app không tự bốc.
 export const ELF_POOL = {
-  night: [['lanterns', 2.5], ['owl', 2], ['koi', 2], ['veins', 2], ['ring', 1.5], ['starfall', 2], ['spirit', 1], ['bloom', 2.2], ['whale', 1.6], ['koistar', 1.6], ['owlmiss', 1.6], ['spiritbow', 1.2], ['dragon', 2], ['leafrider', 2], ['constel', 1.6], ['whaleeat', 1.4], ['owlsinge', 1.4], ...NATURE_POOL, ['kitsune', 1.8], ['unicorn', 1.5], ['wisp', 1.6], ['witch', 1.6], ['blackcat', 1.6], ['fairynap', 1.5], ['ent', 1.4], ['foxlant', 1.5], ['wispowl', 1.4], ['witchwhale', 1.3], ['heal', .9], ['catwisp', 1.4], ['witchpotion', 1.8], ['catgiant', 1.5], ['abduct_gnome', 1.8]],
+  night: [['lanterns', 2.5], ['owl', 2], ['koi', 2], ['veins', 2], ['ring', 1.5], ['starfall', 2], ['spirit', 1], ['bloom', 2.2], ['whale', 1.6], ['koistar', 1.6], ['owlmiss', 1.6], ['spiritbow', 1.2], ['dragon', 2], ['dragon_v2', 0], ['dragon_v2_eu', 0], ['catfight', 0], ['leafrider', 2], ['constel', 1.6], ['whaleeat', 1.4], ['owlsinge', 1.4], ...NATURE_POOL, ['kitsune', 1.8], ['unicorn', 1.5], ['wisp', 1.6], ['witch', 1.6], ['blackcat', 1.6], ['fairynap', 1.5], ['ent', 1.4], ['foxlant', 1.5], ['wispowl', 1.4], ['witchwhale', 1.3], ['heal', .9], ['catwisp', 1.4], ['witchpotion', 1.8], ['catgiant', 1.5], ['abduct_gnome', 1.8]],
   day: [['deer', 2], ['butterflies', 2.5], ['bluebird', 2.5], ['mushroom', 2], ['dandelion', 2.5], ['squirrel', 2], ['sunray', 1.5], ['squirrelchase', 1.8], ['frog', 2], ['rainbow', 1.2], ['gnome', 2], ['bee', 2], ['deernut', 1.6], ['carrier_pigeon', 2.2], ['rainbow_slide', 1.8]],
 };
 
@@ -125,6 +147,53 @@ function flySpawn(host, m, night, force) {
   const tr = (art, x, y, t, t2, dx, dy, D) => fx1(art, x, y, [{ transform: 'translate(0,0)', opacity: 0, offset: 0 }, { transform: 'translate(0,0)', opacity: 0, offset: t }, { transform: 'translate(0,0)', opacity: 1, offset: Math.min(t2, t + .006) }, { transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)', opacity: 0, offset: t2 }, ...(t2 < 1 ? [{ transform: 'translate(0,0)', opacity: 0, offset: 1 }] : [])], D);
   const puff = (x, y, t, D) => { for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; tr('<span style="position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:rgba(186,230,253,.6);filter:blur(1.5px)"></span>', x, y, t, Math.min(1, t + .08), Math.cos(a) * 22 * k, Math.sin(a) * 18 * k - 10 * k, D); } };
   const FLM = '<span style="position:absolute;left:-5px;top:-10px;width:10px;height:14px;border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 50% 70%,#F0F9FF,#7DD3FC 45%,rgba(125,211,252,0) 75%)"></span>';
+  if (type === 'dragon_v2' || type === 'dragon_v2_eu') {
+    // Nháp thay cảnh 'dragon': rồng vẽ bằng code (utils/dragonArt.js) lượn ngang trời, giữa đường hắt xì tia sáng
+    const C = type === 'dragon_v2' ? DRAGON_EAST : DRAGON_WEST, bw = type === 'dragon_v2' ? 240 : 180, bh = bw * C.h / C.w;
+    const y = H * rr(.16, .36), D = rr(15, 19) * sp, kd = k * (m ? .75 : 1);
+    const segs = cr(Array.from({ length: 7 }, (_, j) => P(X0 + (X1 - X0) * j / 6, y + Math.sin(j * 1.7) * 26 * k, j / 6)), 8), ts = rr(.4, .6), [nx, ny] = at(segs, ts);
+    const glow = C === DRAGON_EAST ? 'rgba(94,242,194,.45)' : 'rgba(251,146,60,.45)';
+    fly('<div data-live style="position:absolute;inset:0"></div>', bw, bh, segs, D, { flip, tk: .25, k: kd, on: (el) => liveArt(el.querySelector('[data-live]'), C, 'filter:drop-shadow(0 0 6px ' + glow + ')') });
+    sneeze(nx + dir * C.head[0] * bw * kd, ny + C.head[1] * bh * kd, dir, kd, ts * D);
+    return D;
+  }
+  if (type === 'catfight') {
+    // Nháp: 2 mèo đen (hình EN.CAT) khè nhau → nhảy vồ → cuộn bụi bốp bốp → văng ra, sao choáng quay trên đầu
+    const D = 9, kz = k * 1.5, cx = W * rr(.32, .68), cy = GY - 17 * kz, gap = 84 * k, tL = .22, tC = .3, tO = .62, tB = .7, C = [cx, cy - 4 * k];
+    // Nhún co giãn từ gốc chân + nghiêng về phía đối thủ; ẩn trong đám bụi
+    const sq = [['scale(1,1) skewX(0deg)', 0, 0], ['scale(1,1) skewX(0deg)', .04, 1],
+      ['scale(1.06,1.12) skewX(-9deg)', .07, 1], ['scale(1,1) skewX(-2deg)', .1, 1], ['scale(1.08,1.14) skewX(-10deg)', .13, 1], ['scale(1,1) skewX(-2deg)', .16, 1], ['scale(1.06,1.12) skewX(-9deg)', .19, 1],
+      ['scale(1.18,.78) skewX(-12deg)', tL, 1], ['scale(.86,1.22) skewX(-18deg)', .26, 1], ['scale(1,1) skewX(0deg)', tC, 1], ['scale(1,1) skewX(0deg)', tC + .01, 0],
+      ['scale(1,1) skewX(0deg)', tO, 0], ['scale(.9,1.12) skewX(0deg)', tO + .01, 1], ['scale(1.22,.78) skewX(0deg)', tB, 1], ['scale(.96,1.05) skewX(0deg)', tB + .03, 1],
+      ['scale(1,1) skewX(7deg)', .8, 1], ['scale(1,1) skewX(-7deg)', .85, 1], ['scale(1,1) skewX(5deg)', .9, 1], ['scale(1,1) skewX(0deg)', .94, 1], ['scale(1,1) skewX(0deg)', 1, 0]]
+      .map(([transform, offset, opacity]) => ({ transform, offset, opacity }));
+    const spin = [{ transform: 'rotate(0deg)', offset: 0 }, { transform: 'rotate(0deg)', offset: tO }, { transform: 'rotate(-360deg)', offset: tB }, { transform: 'rotate(-360deg)', offset: 1 }];
+    const STAR = (s) => '<svg width="' + s + '" height="' + s + '" viewBox="-8 -8 16 16" style="position:absolute;left:' + (-s / 2) + 'px;top:' + (-s / 2) + 'px;overflow:visible;filter:drop-shadow(0 0 4px #FDE68A)"><path d="M0 -7 L2 -2 L7 -1.6 L3 1.6 L4.3 6.8 L0 4 L-4.3 6.8 L-3 1.6 L-7 -1.6 L-2 -2 Z" fill="#FDE68A"/></svg>';
+    [-1, 1].forEach((side) => {
+      const p0 = [cx + side * gap, cy], mid = [cx + side * 6 * k, C[1]], land = [cx + side * (gap + 36 * k), cy];
+      const segs = [hold(p0, 0, tL), ...cr([[p0[0], p0[1], tL], [(p0[0] + mid[0]) / 2, cy - 50 * k, (tL + tC) / 2], [mid[0], mid[1], tC]], 6), hold(mid, tC, tO), ...cr([[mid[0], mid[1], tO], [(mid[0] + land[0]) / 2, cy - 80 * k, (tO + tB) / 2], [land[0], land[1], tB]], 6), hold(land, tB, 1)];
+      fly('<div data-k="sq" style="position:absolute;inset:0;transform-origin:50% 100%"><div data-k="spin" style="position:absolute;inset:0;transform-origin:50% 60%">' + EN.CAT + '</div></div>', 34, 34, segs, D, { flip: side > 0, k: kz, sync: [['[data-k="sq"]', sq], ['[data-k="spin"]', spin]] });
+      bub(side < 0 ? 'Khè!' : 'Grừ…!', p0[0], cy - 40 * kz, side < 0 ? .06 : .11, side < 0 ? .15 : .2, D);
+      const ring = '<div style="position:absolute;left:0;top:0;animation:tkf-spin 1s linear infinite">' + [0, 1, 2].map((i) => '<div style="position:absolute;left:' + (Math.cos(i * 2.09) * 12 * k).toFixed(1) + 'px;top:' + (Math.sin(i * 2.09) * 12 * k).toFixed(1) + 'px">' + STAR(9) + '</div>').join('') + '</div>';
+      fx1(ring, land[0], cy - 36 * kz, [{ opacity: 0, offset: 0 }, { opacity: 0, offset: tB + .02 }, { opacity: 1, offset: tB + .05 }, { opacity: 1, offset: .9 }, { opacity: 0, offset: .95 }, { opacity: 0, offset: 1 }], D);
+    });
+    // Đám bụi rung lắc + móng / sao thò ra
+    for (let i = 0; i < 9; i++) {
+      const a = i * Math.PI * 2 / 9, r = rr(20, 28) * k, R0 = rr(16, 22) * k, x = C[0] + Math.cos(a) * r * 1.3, y = C[1] - 14 * k + Math.sin(a) * r * .7;
+      const fr = [{ transform: 'scale(0)', opacity: 0, offset: 0 }, { transform: 'scale(0)', opacity: 0, offset: tC - .01 }, { transform: 'scale(1)', opacity: 1, offset: tC + .02 }];
+      for (let s = tC + .05; s < tO - .03; s += .035) fr.push({ transform: 'translate(' + (rr(-6, 6) * k).toFixed(1) + 'px,' + (rr(-5, 5) * k).toFixed(1) + 'px) scale(' + rr(.88, 1.12).toFixed(2) + ')', opacity: 1, offset: +s.toFixed(3) });
+      fr.push({ transform: 'scale(1.3)', opacity: 0, offset: tO + .04 }, { transform: 'scale(1.3)', opacity: 0, offset: 1 });
+      fx1('<div style="position:absolute;left:' + (-R0).toFixed(1) + 'px;top:' + (-R0).toFixed(1) + 'px;width:' + (2 * R0).toFixed(1) + 'px;height:' + (2 * R0).toFixed(1) + 'px;border-radius:50%;background:radial-gradient(circle at 38% 35%,#F4F7F6,#AFC0BA 72%);box-shadow:0 0 10px rgba(94,242,194,.35)"></div>', x, y, fr, D);
+    }
+    const PAW = '<svg width="16" height="12" viewBox="0 0 16 12" style="position:absolute;left:-8px;top:-6px;overflow:visible;filter:drop-shadow(0 0 3px rgba(167,255,228,.6))"><ellipse cx="7" cy="6" rx="7" ry="4.5" fill="#050B09"/><path d="M13 3 L16 2 M13.5 6 L16.5 6 M13 9 L16 10" stroke="#F8FAFC" stroke-width=".9" stroke-linecap="round"/></svg>';
+    for (let i = 0; i < 8; i++) {
+      const a = rr(0, Math.PI * 2), t = tC + .03 + i * (tO - tC - .06) / 8, x = C[0] + Math.cos(a) * 46 * k, y = C[1] - 14 * k + Math.sin(a) * 28 * k;
+      fx1('<div style="position:absolute;left:0;top:0;transform:rotate(' + (a * 180 / Math.PI).toFixed(0) + 'deg)">' + (i % 3 === 2 ? STAR(16) : PAW) + '</div>', x, y, [{ opacity: 0, transform: 'scale(.3)', offset: 0 }, { opacity: 0, transform: 'scale(.3)', offset: t }, { opacity: 1, transform: 'scale(1.1)', offset: t + .012 }, { opacity: 0, transform: 'scale(.8)', offset: Math.min(.99, t + .04) }, { opacity: 0, transform: 'scale(.8)', offset: 1 }], D);
+    }
+    bub('Bốp! Bốp!', C[0], C[1] - 62 * k, .38, .5, D);
+    bub('Choáng quá…', cx, cy - 58 * kz, .78, .92, D);
+    return D;
+  }
   if (type === 'kitsune') {
     const kz = k * 1.25, y = GY - 18 * kz, D = rr(7, 8.5) * (m ? .8 : 1);
     const segs = cr(Array.from({ length: 9 }, (_, j) => [SA + (SB - SA) * j / 8, y - (j % 2 ? 12 : 0) * kz, j / 8]), 8);
