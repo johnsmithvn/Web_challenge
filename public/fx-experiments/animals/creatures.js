@@ -2,7 +2,7 @@
  * Con vật vẽ bằng code (thí nghiệm "So sánh con vật" — /fx-lab → Thí nghiệm).
  * Mỗi con = hàm thuần frame(t, o) → danh sách hình [{ d, fill, fb, op, stroke, sw }] theo thứ tự dưới → trên.
  * Chuyển động từ bộ xương: cánh khớp vai–cổ tay chiếu 3/4 (đại bàng); 2 rồng đã chuyển vào app (src/utils/dragonArt.js),
- * chân 2 khớp giải ngược IK theo quỹ đạo bàn chân (hồ ly, kỳ lân, mèo), đuôi / bờm / râu là dây trễ pha.
+ * mèo xù lông vồ nhau; đuôi là dây trễ pha. Hồ ly 9 đuôi đã vào app (creatureArt.js), kỳ lân vẽ lại bị loại.
  * Không DOM → node render thử được. Đầu con vật hướng +x.
  */
 const TAU = Math.PI * 2;
@@ -53,22 +53,6 @@ function rope(root, n, seg, ang) {
   const pts = [root];
   for (let i = 1; i <= n; i++) pts.push(pol(pts[i - 1], ang(i / n, i), seg));
   return pts;
-}
-
-// IK 2 đốt: trả [khớp giữa, điểm cuối]; bend = +1/-1 chọn phía gập
-function ik2(a, b, l1, l2, bend) {
-  const dx = b[0] - a[0], dy = b[1] - a[1], d = clamp(Math.hypot(dx, dy), Math.abs(l1 - l2) + 0.01, l1 + l2 - 0.01), ang = Math.atan2(dy, dx);
-  const off = Math.acos(clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1));
-  const k = pol(a, ang + bend * off, l1);
-  return [k, pol(a, ang, d)];
-}
-
-// Quỹ đạo bàn chân: chạm đất lùi về sau (stance), rồi nhấc lên đưa tới (swing)
-function footPath(p, root, ground, stride, lift, stance, reach = 0) {
-  const q = ((p % 1) + 1) % 1;
-  if (q < stance) return [root[0] + reach + stride / 2 - stride * (q / stance), ground];
-  const s = (q - stance) / (1 - stance);
-  return [root[0] + reach - stride / 2 + stride * ease(s), ground - lift * Math.sin(Math.PI * s)];
 }
 
 // Ống nối nhiều điểm (chân), bề ngang theo từng đoạn
@@ -135,136 +119,6 @@ const EAGLE = {
   },
 };
 
-/* ═══════════════ HỒ LY 9 ĐUÔI (cáo trắng ánh băng; phi nước đại, chân IK; 9 đuôi linh khí) ═══════════════ */
-const FOX = {
-  w: 260, h: 160, period: 0.56,
-  defs: '<linearGradient id="fxFur" x1="0" y1="55" x2="0" y2="112" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".6" stop-color="#EEF6FF"/><stop offset="1" stop-color="#C9D9EA"/></linearGradient>'
-    + '<linearGradient id="fxTail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7DD3FC" stop-opacity=".35"/><stop offset=".45" stop-color="#BAE6FD" stop-opacity=".72"/><stop offset="1" stop-color="#F5FAFF" stop-opacity=".95"/></linearGradient>',
-  frame(t) {
-    const ph = (t / this.period) % 1, G = 146, out = [];
-    const bob = -4 * Math.sin(TAU * ph + 0.6), flex = Math.cos(TAU * ph);
-    const Sh = [166 + 4 * flex, 100 + bob], Hp = [114 - 4 * flex, 103 + bob - 2 * flex];
-    const mid = [(Sh[0] + Hp[0]) / 2, (Sh[1] + Hp[1]) / 2 - 2 * flex];
-    // Chân: [gốc, pha, trước?, xa?]
-    const legs = [[Sh, 0.0, true, true], [Hp, 0.5, false, true], [Sh, 0.12, true, false], [Hp, 0.62, false, false]];
-    const drawLeg = ([root0, p0, front, far]) => {
-      const root = add(root0, front ? [2, 6] : [0, 4]);
-      const ft = footPath(ph + p0, root, G, front ? 44 : 42, front ? 16 : 12, 0.38, front ? 10 : -6);
-      const fur = far ? '#C9D9EA' : 'url(#fxFur)', low = far ? '#B7C8DC' : '#DCE8F5';
-      if (front) {
-        const [k, f] = ik2(root, add(ft, [0, -5]), 17, 15, 1);
-        out.push(S(limb([root, k], [6.5, 4.2]), fur, 1, { fb: '#EEF6FF', stroke: '#94A3B8', sw: 0.4 }));
-        out.push(S(limb([k, f, ft], [3.6, 2.8, 2.6]), low, 1, { stroke: '#94A3B8', sw: 0.4 }));
-      } else {
-        const ankle = add(ft, [-7, -9]);
-        const [k, a] = ik2(root, ankle, 19, 16, -1);
-        out.push(S(limb([root, k], [11.5, 5.6]), fur, 1, { fb: '#EEF6FF', stroke: '#94A3B8', sw: 0.4 }));
-        out.push(S(limb([k, a], [5.2, 3.4]), low, 1, { stroke: '#94A3B8', sw: 0.4 }));
-        out.push(S(limb([a, ft], [3.2, 2.6]), low, 1, { stroke: '#94A3B8', sw: 0.4 }));
-      }
-      out.push(S(ellipse(add(ft, [2, -1.5]), 3.8, 2.3), far ? '#A9BBD1' : '#C9D9EA'));
-    };
-    drawLeg(legs[0]); drawLeg(legs[1]);
-    // 9 đuôi xoè như lửa băng: lượn trễ pha, chóp toả sáng
-    const tb = add(Hp, [-13, -8]);
-    for (let k = 0; k < 9; k++) {
-      const base = Math.PI - 1.08 + k * 0.165;
-      const pts = rope(tb, 12, 5.5 + (k % 3) * 0.35, (s, i) => base - 0.2 * s + (0.16 + 0.32 * s) * Math.sin(TAU * ph * 0.5 - i * 0.5 + k * 0.75));
-      out.push(S(tube(pts, (s) => 1.6 + 5.6 * Math.pow(Math.sin(Math.PI * Math.min(1, s * 1.08)), 0.7)), 'url(#fxTail)', k % 2 ? 0.85 : 1, { fb: '#DCEFFD', stroke: '#BAE6FD', sw: 0.5 }));
-      out.push(S(ellipse(pts[12], 3, 2, Math.atan2(pts[12][1] - pts[11][1], pts[12][0] - pts[11][0])), '#7DD3FC', 0.6));
-    }
-    // Thân
-    out.push(S(smooth([add(Sh, [13, -15]), add(Sh, [0, -16]), add(mid, [0, -13]), add(Hp, [2, -15]), add(Hp, [-14, -7]), add(Hp, [-12, 9]), add(Hp, [5, 14]), add(mid, [0, 12]), add(Sh, [3, 17]), add(Sh, [17, 8])]), 'url(#fxFur)', 1, { fb: '#EEF6FF', stroke: '#94A3B8', sw: 0.6 }));
-    out.push(K(smooth([add(Hp, [-4, -10]), add(mid, [0, -9]), add(Sh, [-6, -10])], false), '#BAE6FD', 1.2, 0.7));
-    // Cổ + đầu (lắc ngược nhịp thân)
-    const hb = 2.5 * Math.sin(TAU * ph + 2.4), hd0 = add(Sh, [30, -22 + hb]), ha = -0.08 + 0.06 * Math.sin(TAU * ph + 2.4), Lc = (p) => add(hd0, rot([p[0] * 1.3, p[1] * 1.3], ha));
-    out.push(S(tube([add(Sh, [6, -6]), add(Sh, [18, -14 + hb / 2]), Lc([-6, 2])], (s) => lerp(11, 8, s)), 'url(#fxFur)', 1, { fb: '#EEF6FF' }));
-    out.push(S(poly([[-4, -7], [-9, -24], [2, -10]].map(Lc)), '#C9D9EA'));
-    out.push(S(smooth([[-8, -6], [0, -9], [8, -8], [16, -4], [25, 0], [17, 3.5], [6, 6], [-4, 7], [-10, 2]].map(Lc)), 'url(#fxFur)', 1, { fb: '#F5FAFF', stroke: '#94A3B8', sw: 0.6 }));
-    out.push(S(poly([[0, -8], [-1, -26], [8, -9]].map(Lc)), '#F5FAFF', 1, { stroke: '#94A3B8', sw: 0.5 }));
-    out.push(S(poly([[1.2, -10], [0, -18], [5.6, -10]].map(Lc)), '#BAE6FD', 0.85));
-    // Hoa văn linh khí: giọt lửa trên trán + vệt má
-    out.push(S(smooth([[2, -7.5], [5, -10.5], [8, -7.8], [5, -5.5]].map(Lc)), '#7DD3FC', 0.9));
-    out.push(K(smooth([[4, 1.5], [10, 0.4], [15, 1.6]].map(Lc), false), '#7DD3FC', 1, 0.85));
-    out.push(S(smooth([[6, -3], [9.5, -5], [13, -3.4], [9.5, -1.8]].map(Lc)), '#0B1A2A'));
-    out.push(S(ellipse(Lc([10.5, -3.7]), 0.8, 0.7), '#7DD3FC'));
-    out.push(S(ellipse(Lc([24.6, 0.2]), 1.5, 1.2), '#0B1A2A'));
-    drawLeg(legs[2]); drawLeg(legs[3]);
-    return out;
-  },
-};
-
-/* ═══════════════ KỲ LÂN (ngựa trắng sừng vàng, đi 4 nhịp; bờm/đuôi pastel) ═══════════════ */
-const MANE = ['#C4B5FD', '#F9A8D4', '#A7F3D0', '#FDE68A', '#C4B5FD', '#F9A8D4', '#A7F3D0'];
-const UNICORN = {
-  w: 250, h: 210, period: 1.25,
-  defs: '<linearGradient id="unBody" x1="0" y1="70" x2="0" y2="140" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DCE3F0"/></linearGradient>'
-    + '<linearGradient id="unHorn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF7D6"/><stop offset="1" stop-color="#F59E0B"/></linearGradient>',
-  // o.drink: 0..1 cúi đầu uống nước (đứng yên khi > 0)
-  frame(t, o = {}) {
-    const drink = o.drink ?? 0, walk = 1 - ease(drink * 1.5), ph = (t / this.period) % 1, G = 198, out = [];
-    const bob = -2.2 * walk * Math.sin(TAU * ph * 2);
-    const Sh = [158, 104 + bob], Hp = [88, 108 + bob], mid = [123, 102 + bob];
-    const legs = [[Hp, 0.0, false, true], [Sh, 0.25, true, true], [Hp, 0.5, false, false], [Sh, 0.75, true, false]];
-    const drawLeg = ([root0, p0, front, far]) => {
-      const root = add(root0, front ? [2, 10] : [0, 8]);
-      const ft = walk > 0.01 ? footPath(ph + p0, root, G, 36 * walk, 13 * walk, 0.62, front ? 6 : -4) : [root[0] + (front ? 6 : -4) + (far ? -5 : 5), G];
-      const col = far ? '#D5DCE8' : 'url(#unBody)';
-      if (front) {
-        const [k, f] = ik2(root, add(ft, [0, -10]), 30, 27, 1);
-        out.push(S(limb([root, k, f], [8.5, 5, 3.6]), col, 1, { fb: '#F1F5F9', stroke: '#94A3B8', sw: 0.5 }));
-        out.push(S(limb([f, ft], [3.4, 3.2]), col, 1, { fb: '#F1F5F9' }));
-      } else {
-        const hock = add(ft, [-6, -26]);
-        const [k, a] = ik2(root, hock, 30, 26, -1);
-        out.push(S(limb([root, k, a], [13, 6.5, 4]), col, 1, { fb: '#F1F5F9', stroke: '#94A3B8', sw: 0.5 }));
-        out.push(S(limb([a, add(ft, [0, -8]), ft], [3.8, 3.4, 3.2]), col, 1, { fb: '#F1F5F9' }));
-      }
-      out.push(S(smooth([add(ft, [-4.5, -6]), add(ft, [4.5, -6]), add(ft, [5.5, 0]), add(ft, [-5, 0])]), '#F59E0B', 1, { stroke: '#B45309', sw: 0.5 }));
-      out.push(S(ellipse(add(ft, [0, -8]), 5, 3.2), far ? '#E9D5FF' : '#F3E8FF', 0.95));
-    };
-    drawLeg(legs[0]); drawLeg(legs[1]);
-    // Đuôi: 5 dải bay xuống sau
-    const tb = add(Hp, [-20, -14]);
-    [0, 1, 2, 3, 4].forEach((k) => {
-      const pts = rope(tb, 12, 6.4, (s, i) => Math.PI - 0.5 + k * 0.1 + 1.25 * s + 0.2 * Math.sin(TAU * ph - i * 0.45 + k * 0.8) * (0.4 + s));
-      out.push(S(tube(pts, (s) => 4.4 * Math.sin(Math.PI * Math.min(1, s * 1.1 + 0.08)) + 0.4), MANE[k], 0.95));
-    });
-    // Thân
-    out.push(S(smooth([add(Sh, [18, -10]), add(Sh, [2, -20]), add(mid, [0, -14]), add(Hp, [0, -21]), add(Hp, [-20, -10]), add(Hp, [-16, 12]), add(Hp, [4, 22]), add(mid, [0, 22]), add(Sh, [0, 22]), add(Sh, [17, 9])]), 'url(#unBody)', 1, { fb: '#F8FAFC', stroke: '#94A3B8', sw: 0.7 }));
-    // Cổ cong + đầu (cúi xuống khi uống)
-    const nod = 0.05 * walk * Math.sin(TAU * ph * 2 + 0.8), na = -1.05 + 1.55 * ease(drink) + nod;
-    const n0 = add(Sh, [6, -12]), n1 = pol(n0, na - 0.12, 22), n2 = pol(n1, na + 0.1, 22);
-    const ha = na + 1.35, Lc = (p) => add(n2, rot(p, ha));
-    // Bờm dọc cổ
-    for (let k = 0; k < 7; k++) {
-      const s0 = k / 6, root = add([lerp(n2[0], n0[0], s0), lerp(n2[1], n0[1], s0)], rot([-5, -3], na));
-      const pts = rope(root, 8, 6.2, (s, i) => 2.3 + 0.45 * s + 0.3 * Math.sin(TAU * ph - i * 0.6 + k * 0.7) * (0.3 + s));
-      out.push(S(tube(pts, (s) => 5.6 * (1 - s) + 0.6), MANE[k], 0.95));
-    }
-    out.push(S(tube([n0, n1, n2], (s) => lerp(14, 10, s)), 'url(#unBody)', 1, { fb: '#F8FAFC', stroke: '#94A3B8', sw: 0.6 }));
-    out.push(S(smooth([[-7, -8], [5, -10], [19, -5], [33, 3], [40, 9], [38, 15.5], [30, 17], [18, 12.5], [4, 8.5], [-7, 6]].map(Lc)), 'url(#unBody)', 1, { fb: '#F8FAFC', stroke: '#94A3B8', sw: 0.7 }));
-    out.push(S(poly([[0, -9], [-3, -22], [6, -10]].map(Lc)), '#F1F5F9', 1, { stroke: '#94A3B8', sw: 0.6 }));
-    out.push(S(poly([[1.4, -10.5], [-1, -18], [4.4, -10.5]].map(Lc)), '#FBCFE8'));
-    // Sừng xoắn vàng
-    const hb0 = Lc([7, -10]), hdir = ha - 1.95, tip = pol(hb0, hdir, 27);
-    out.push(S(poly([pol(hb0, hdir - Math.PI / 2, 3.4), tip, pol(hb0, hdir + Math.PI / 2, 3.4)]), 'url(#unHorn)', 1, { fb: '#FCD34D', stroke: '#B45309', sw: 0.5 }));
-    let sp = '';
-    for (let k = 1; k < 6; k++) { const c = pol(hb0, hdir, 27 * k / 6.5), w = 3.4 * (1 - k / 6.5); sp += line(pol(c, hdir - Math.PI / 2, w), pol(pol(c, hdir, 2.6), hdir + Math.PI / 2, w * 0.9)); }
-    out.push(K(sp, '#B45309', 0.7, 0.7));
-    // Mái tóc trước trán
-    [0, 1].forEach((k) => { const pts = rope(Lc([4 + k * 3, -9]), 5, 3.6, (s, i) => ha + 0.4 + k * 0.3 + 0.8 * s + 0.2 * Math.sin(TAU * ph - i + k)); out.push(S(tube(pts, (s) => 2.8 * (1 - s) + 0.4), MANE[k + 1], 0.95)); });
-    out.push(S(smooth([[5, -3.6], [9, -6.2], [13, -4], [9, -1.6]].map(Lc)), '#312E81'));
-    out.push(S(ellipse(Lc([10, -4.2]), 0.8, 0.7), '#FFFFFF'));
-    out.push(K(smooth([[6, -6.5], [9.5, -8], [13, -6.6]].map(Lc), false), '#475569', 0.8));
-    out.push(S(ellipse(Lc([35, 10]), 1.4, 1), '#94A3B8'));
-    out.push(K(smooth([[30, 14.5], [35, 14.2], [38.5, 14.5]].map(Lc), false), '#94A3B8', 0.8));
-    drawLeg(legs[2]); drawLeg(legs[3]);
-    return out;
-  },
-};
-
-/* ═══════════════ 2 MÈO ĐÁNH NHAU (đối mặt xù lông → lao vào → cuộn bụi → bật ra) ═══════════════ */
 const CATPAL = {
   black: { body: '#232838', light: '#3A4258', rim: '#7C879E', eye: '#5EF2C2', belly: '#3A4258', stripe: null, far: '#171B26' },
   orange: { body: '#F2994A', light: '#F8B977', rim: '#9A4A12', eye: '#84CC16', belly: '#FCE3C8', stripe: '#C96A22', far: '#C47A35' },
@@ -354,4 +208,4 @@ const CATS = {
   },
 };
 
-export const CREATURES = { eagle: EAGLE, fox: FOX, unicorn: UNICORN, cats: CATS };
+export const CREATURES = { eagle: EAGLE, cats: CATS };

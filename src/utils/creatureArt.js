@@ -1,11 +1,14 @@
 /**
- * Rồng vẽ bằng code cho Rừng tiên đêm (cảnh nháp `dragon_v2`, `dragon_v2_eu` trong taskFlyersElf.js):
+ * Con vật vẽ bằng code cho nền trang Nhiệm vụ (taskFlyersElf.js vẽ lại path mỗi khung bằng rAF qua `liveArt`):
+ * - FOX_9TAIL: hồ ly 9 đuôi trắng ánh băng — phi nước đại, chân 2–3 khớp giải IK theo quỹ đạo bàn chân, lưng co duỗi,
+ *   9 đuôi lượn trễ pha (cảnh `kitsune`, `foxlant`).
  * - DRAGON_EAST: rồng xanh phương Đông — xương sống lượn sóng (chuẩn hoá độ dài cung), bờm lửa, râu dài, chân đạp mây.
  * - DRAGON_WEST: rồng châu Âu — cánh dơi có xương ngón chiếu 3/4 (xoè khi đập xuống, gập khi nhấc lên), cổ chữ S,
  *   đuôi lượn với đầu mũi giáo.
- * Mỗi con: { w, h, period, defs, head: [x, y] (vị trí miệng theo tỉ lệ khung, tính từ tâm), frame(t) → hình }.
+ * Mỗi con: { w, h, period, defs, frame(t) → hình } + mốc theo tỉ lệ khung tính từ tâm: head / mouth (miệng),
+ * feet (mặt đất dưới tâm), tail (chóp đuôi).
  * Hình = [{ d, fill, op, stroke, sw }] thứ tự dưới → trên; fill 'url(#id)' trỏ gradient trong defs.
- * Hàm thuần, không DOM (self-check: src/__tests__/tasks/dragonArt.test.js). Đầu rồng hướng +x.
+ * Hàm thuần, không DOM (self-check: src/__tests__/tasks/creatureArt.test.js). Đầu con vật hướng +x.
  */
 const TAU = Math.PI * 2;
 const r1 = (v) => Math.round(v * 10) / 10;
@@ -56,6 +59,22 @@ function rope(root, n, seg, ang) {
   const pts = [root];
   for (let i = 1; i <= n; i++) pts.push(pol(pts[i - 1], ang(i / n, i), seg));
   return pts;
+}
+
+// IK 2 đốt: trả [khớp giữa, điểm cuối]; bend = +1/-1 chọn phía gập
+function ik2(a, b, l1, l2, bend) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], d = clamp(Math.hypot(dx, dy), Math.abs(l1 - l2) + 0.01, l1 + l2 - 0.01), ang = Math.atan2(dy, dx);
+  const off = Math.acos(clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1));
+  const k = pol(a, ang + bend * off, l1);
+  return [k, pol(a, ang, d)];
+}
+
+// Quỹ đạo bàn chân: chạm đất lùi về sau (stance), rồi nhấc lên đưa tới (swing)
+function footPath(p, root, ground, stride, lift, stance, reach = 0) {
+  const q = ((p % 1) + 1) % 1;
+  if (q < stance) return [root[0] + reach + stride / 2 - stride * (q / stance), ground];
+  const s = (q - stance) / (1 - stance);
+  return [root[0] + reach - stride / 2 + stride * ease(s), ground - lift * Math.sin(Math.PI * s)];
 }
 
 // Ống nối nhiều điểm (chân), bề ngang theo từng đoạn
@@ -248,6 +267,65 @@ export const DRAGON_WEST = {
     out.push(S(ellipse(Lc([37, -2.6]), 1.5, 1), '#450A0A'));
     horn(0, '#FEF3C7');
     wing(1, false);
+    return out;
+  },
+};
+
+/* ═══════════════ HỒ LY 9 ĐUÔI (cáo trắng ánh băng; phi nước đại, chân IK; 9 đuôi linh khí) ═══════════════ */
+export const FOX_9TAIL = {
+  w: 260, h: 160, period: 0.56, mouth: [0.37, -0.03], feet: 0.41, tail: [-0.33, -0.19],
+  defs: '<linearGradient id="fxFur" x1="0" y1="55" x2="0" y2="112" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".6" stop-color="#EEF6FF"/><stop offset="1" stop-color="#C9D9EA"/></linearGradient>'
+    + '<linearGradient id="fxTail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7DD3FC" stop-opacity=".35"/><stop offset=".45" stop-color="#BAE6FD" stop-opacity=".72"/><stop offset="1" stop-color="#F5FAFF" stop-opacity=".95"/></linearGradient>',
+  frame(t) {
+    const ph = (t / this.period) % 1, G = 146, out = [];
+    const bob = -4 * Math.sin(TAU * ph + 0.6), flex = Math.cos(TAU * ph);
+    const Sh = [166 + 4 * flex, 100 + bob], Hp = [114 - 4 * flex, 103 + bob - 2 * flex];
+    const mid = [(Sh[0] + Hp[0]) / 2, (Sh[1] + Hp[1]) / 2 - 2 * flex];
+    // Chân: [gốc, pha, trước?, xa?]
+    const legs = [[Sh, 0.0, true, true], [Hp, 0.5, false, true], [Sh, 0.12, true, false], [Hp, 0.62, false, false]];
+    const drawLeg = ([root0, p0, front, far]) => {
+      const root = add(root0, front ? [2, 6] : [0, 4]);
+      const ft = footPath(ph + p0, root, G, front ? 44 : 42, front ? 16 : 12, 0.38, front ? 10 : -6);
+      const fur = far ? '#C9D9EA' : 'url(#fxFur)', low = far ? '#B7C8DC' : '#DCE8F5';
+      if (front) {
+        const [k, f] = ik2(root, add(ft, [0, -5]), 17, 15, 1);
+        out.push(S(limb([root, k], [6.5, 4.2]), fur, 1, { stroke: '#94A3B8', sw: 0.4 }));
+        out.push(S(limb([k, f, ft], [3.6, 2.8, 2.6]), low, 1, { stroke: '#94A3B8', sw: 0.4 }));
+      } else {
+        const ankle = add(ft, [-7, -9]);
+        const [k, a] = ik2(root, ankle, 19, 16, -1);
+        out.push(S(limb([root, k], [11.5, 5.6]), fur, 1, { stroke: '#94A3B8', sw: 0.4 }));
+        out.push(S(limb([k, a], [5.2, 3.4]), low, 1, { stroke: '#94A3B8', sw: 0.4 }));
+        out.push(S(limb([a, ft], [3.2, 2.6]), low, 1, { stroke: '#94A3B8', sw: 0.4 }));
+      }
+      out.push(S(ellipse(add(ft, [2, -1.5]), 3.8, 2.3), far ? '#A9BBD1' : '#C9D9EA'));
+    };
+    drawLeg(legs[0]); drawLeg(legs[1]);
+    // 9 đuôi xoè như lửa băng: lượn trễ pha, chóp toả sáng
+    const tb = add(Hp, [-13, -8]);
+    for (let k = 0; k < 9; k++) {
+      const base = Math.PI - 1.08 + k * 0.165;
+      const pts = rope(tb, 12, 5.5 + (k % 3) * 0.35, (s, i) => base - 0.2 * s + (0.16 + 0.32 * s) * Math.sin(TAU * ph * 0.5 - i * 0.5 + k * 0.75));
+      out.push(S(tube(pts, (s) => 1.6 + 5.6 * Math.pow(Math.sin(Math.PI * Math.min(1, s * 1.08)), 0.7)), 'url(#fxTail)', k % 2 ? 0.85 : 1, { stroke: '#BAE6FD', sw: 0.5 }));
+      out.push(S(ellipse(pts[12], 3, 2, Math.atan2(pts[12][1] - pts[11][1], pts[12][0] - pts[11][0])), '#7DD3FC', 0.6));
+    }
+    // Thân
+    out.push(S(smooth([add(Sh, [13, -15]), add(Sh, [0, -16]), add(mid, [0, -13]), add(Hp, [2, -15]), add(Hp, [-14, -7]), add(Hp, [-12, 9]), add(Hp, [5, 14]), add(mid, [0, 12]), add(Sh, [3, 17]), add(Sh, [17, 8])]), 'url(#fxFur)', 1, { stroke: '#94A3B8', sw: 0.6 }));
+    out.push(K(smooth([add(Hp, [-4, -10]), add(mid, [0, -9]), add(Sh, [-6, -10])], false), '#BAE6FD', 1.2, 0.7));
+    // Cổ + đầu (lắc ngược nhịp thân)
+    const hb = 2.5 * Math.sin(TAU * ph + 2.4), hd0 = add(Sh, [30, -22 + hb]), ha = -0.08 + 0.06 * Math.sin(TAU * ph + 2.4), Lc = (p) => add(hd0, rot([p[0] * 1.3, p[1] * 1.3], ha));
+    out.push(S(tube([add(Sh, [6, -6]), add(Sh, [18, -14 + hb / 2]), Lc([-6, 2])], (s) => lerp(11, 8, s)), 'url(#fxFur)', 1));
+    out.push(S(poly([[-4, -7], [-9, -24], [2, -10]].map(Lc)), '#C9D9EA'));
+    out.push(S(smooth([[-8, -6], [0, -9], [8, -8], [16, -4], [25, 0], [17, 3.5], [6, 6], [-4, 7], [-10, 2]].map(Lc)), 'url(#fxFur)', 1, { stroke: '#94A3B8', sw: 0.6 }));
+    out.push(S(poly([[0, -8], [-1, -26], [8, -9]].map(Lc)), '#F5FAFF', 1, { stroke: '#94A3B8', sw: 0.5 }));
+    out.push(S(poly([[1.2, -10], [0, -18], [5.6, -10]].map(Lc)), '#BAE6FD', 0.85));
+    // Hoa văn linh khí: giọt lửa trên trán + vệt má
+    out.push(S(smooth([[2, -7.5], [5, -10.5], [8, -7.8], [5, -5.5]].map(Lc)), '#7DD3FC', 0.9));
+    out.push(K(smooth([[4, 1.5], [10, 0.4], [15, 1.6]].map(Lc), false), '#7DD3FC', 1, 0.85));
+    out.push(S(smooth([[6, -3], [9.5, -5], [13, -3.4], [9.5, -1.8]].map(Lc)), '#0B1A2A'));
+    out.push(S(ellipse(Lc([10.5, -3.7]), 0.8, 0.7), '#7DD3FC'));
+    out.push(S(ellipse(Lc([24.6, 0.2]), 1.5, 1.2), '#0B1A2A'));
+    drawLeg(legs[2]); drawLeg(legs[3]);
     return out;
   },
 };

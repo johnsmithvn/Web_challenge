@@ -10,7 +10,7 @@
  */
 import { NATURE_POOL, NATURE_TYPES, natureClick, runNature, skyMoon, bigRainbowArc } from './taskNatureFx';
 import { koiSvg } from './koiArt';
-import { DRAGON_EAST, DRAGON_WEST } from './dragonArt';
+import { DRAGON_EAST, DRAGON_WEST } from './creatureArt';
 
 export const hosts = {};
 // Khoá khung như mockup: c/a = sáng/tối desktop, cm/am = mobile (đặt vào data-frame của trang)
@@ -95,7 +95,7 @@ function flyKit(host, m) {
   return { W, H, k, R, rr, ln, cr, at, fly, fx1, walk, dot };
 }
 
-// Vẽ con vật thủ tục (utils/dragonArt.js) vào box: SVG đổi path mỗi khung bằng rAF, tự dừng khi box bị gỡ khỏi trang.
+// Vẽ con vật thủ tục (utils/creatureArt.js) vào box: SVG đổi path mỗi khung bằng rAF, tự dừng khi box bị gỡ khỏi trang.
 // id gradient gắn hậu tố riêng để 2 con cùng lúc không giẫm defs của nhau.
 let liveSeq = 0;
 function liveArt(box, C, css) {
@@ -148,7 +148,7 @@ function flySpawn(host, m, night, force) {
   const puff = (x, y, t, D) => { for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; tr('<span style="position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:rgba(186,230,253,.6);filter:blur(1.5px)"></span>', x, y, t, Math.min(1, t + .08), Math.cos(a) * 22 * k, Math.sin(a) * 18 * k - 10 * k, D); } };
   const FLM = '<span style="position:absolute;left:-5px;top:-10px;width:10px;height:14px;border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 50% 70%,#F0F9FF,#7DD3FC 45%,rgba(125,211,252,0) 75%)"></span>';
   if (type === 'dragon_v2' || type === 'dragon_v2_eu') {
-    // Nháp thay cảnh 'dragon': rồng vẽ bằng code (utils/dragonArt.js) lượn ngang trời, giữa đường hắt xì tia sáng
+    // Nháp thay cảnh 'dragon': rồng vẽ bằng code (utils/creatureArt.js) lượn ngang trời, giữa đường hắt xì tia sáng
     const C = type === 'dragon_v2' ? DRAGON_EAST : DRAGON_WEST, bw = type === 'dragon_v2' ? 240 : 180, bh = bw * C.h / C.w;
     const y = H * rr(.16, .36), D = rr(15, 19) * sp, kd = k * (m ? .75 : 1);
     const segs = cr(Array.from({ length: 7 }, (_, j) => P(X0 + (X1 - X0) * j / 6, y + Math.sin(j * 1.7) * 26 * k, j / 6)), 8), ts = rr(.4, .6), [nx, ny] = at(segs, ts);
