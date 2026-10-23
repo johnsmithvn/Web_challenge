@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v6.30.6 — 2026-10-23
+
+### Changed
+- **Finance mobile — form gọn hơn (`finance.css`, `ListScreen.jsx`):** Nhập nhanh: "Hôm nay · Hôm qua · ô ngày" chung một hàng — ô ngày lấp phần còn lại thay vì giữ bề rộng mặc định của `<input>` (~220px) rồi rớt xuống hàng riêng; Phân loại (Phải trả / Tùy chọn) trải đủ hàng. Form ngắn đi ~50px. Sửa giao dịch ≤600px: Số tiền + Ngày chung một hàng (`fin-edit-field--pair`, cùng cao 44px), các ô khác giữ một cột.
+
 ## v6.30.5 — 2026-10-23
 
 ### Fixed

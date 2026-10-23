@@ -1623,6 +1623,12 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-subs-strip button { height: 44px; padding: 0 14px; border-radius: 11px; font-size: 13.5px; }
   .fin-chips-row > button { height: 44px; padding: 0 13px; border-radius: 11px; gap: 7px; font-size: 13.5px; }
   .fin-chips-row .fin-datefield__box { min-height: 44px; border-radius: 11px; }
+  /* Ngày: Hôm nay · Hôm qua · ô ngày chung một hàng. Ô ngày lấp phần còn lại thay vì giữ bề
+     rộng mặc định của <input> (~220px, chữ ngày chỉ cần ~80px) rồi rớt xuống hàng riêng. */
+  .fin-entry-split > .fin-entry-section { flex: 1 1 100%; }
+  .fin-chips-row > .fin-datefield { flex: 1 1 112px; min-width: 0; }
+  /* Phân loại trải đủ hàng (trước chỉ ~nửa hàng, bên phải bỏ trống) */
+  .fin-cls-picker__opts, .fin-cls-picker__btn { flex: 1; }
   /* Thêm chi tiết: không đóng khung, ô 46px nền chìm */
   .fin-details-toggle { min-height: 44px; margin: -10px 0; font-size: 14px; }
   .fin-details-box { padding: 0; margin-top: 0; background: none; border: 0; }
@@ -1867,7 +1873,10 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 }
 
 @media (max-width: 600px) {
-  .fin-edit-grid { grid-template-columns: 1fr; }
+  /* Sửa giao dịch: Số tiền + Ngày chung một hàng (mỗi ô chỉ cần ~130px), các ô khác một cột */
+  .fin-edit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fin-edit-field:not(.fin-edit-field--pair) { grid-column: 1 / -1; }
+  .fin-edit-field--pair .fin-input { min-height: 44px; } /* ô tiền chữ 15px cao 44, ô ngày 40 → cân */
 }
 
 @media (max-width: 768px) {
