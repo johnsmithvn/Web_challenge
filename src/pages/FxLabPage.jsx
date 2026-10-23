@@ -68,7 +68,7 @@ const HINTS = [
   'Ban đêm: bấm sao ước nguyện đang bay → thẻ điều ước',
 ];
 const EXPERIMENTS = [
-  { id: 'animals', title: 'So sánh con vật', desc: 'Mèo đánh nhau, đại bàng săn mồi, rồng (xanh + châu Âu), hồ ly 9 đuôi, kỳ lân: Hiện tại vs Vẽ bằng code vs Lottie vs Rive', src: '/fx-experiments/animals.html' },
+  { id: 'animals', title: 'So sánh con vật', desc: 'Mèo đánh nhau, đại bàng săn mồi, hồ ly 9 đuôi, kỳ lân: Hiện tại vs Vẽ bằng code (2 rồng + mèo lai đã thành cảnh Nháp)', src: '/fx-experiments/animals.html' },
 ];
 
 function playOn(stage, type, { elf, night, m }) {
