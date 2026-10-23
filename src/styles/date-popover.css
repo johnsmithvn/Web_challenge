@@ -258,7 +258,7 @@
   background: transparent;
   color: var(--tk-text-main);
   font: 500 12.5px/1 'JetBrains Mono', monospace;
-  color-scheme: light;
+  color-scheme: only light;
   outline: none;
   cursor: pointer;
 }

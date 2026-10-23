@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v6.30.5 — 2026-10-23
+
+### Fixed
+- **Finance mobile — Sửa giao dịch không thấy / không bấm được nút Lưu (`finance.css`, `ListScreen.jsx`):** lớp sửa có `z-index: 99`, `top: 64px` (rule của `finance.css` thắng bản `finance-list.css` vì nạp sau) nên thanh tab đáy (`z-index: 100`) che mất chân Hủy / Lưu. ≤768px lớp sửa phủ cả màn (`top: 0`, `z-index: 110` — vẫn dưới lịch nổi `.fin-datepop`), chân chừa safe-area, 2 nút chia đôi, bỏ gợi ý phím "(Esc)" / "(Ctrl+Enter)" trên mobile.
+- **Finance mode sáng — ô nhập bị tô đen trên điện thoại bật "web tối" (`finance.css`, `finance-list.css`, `date-popover.css`):** `[data-theme="light"]` chặn Auto Dark Mode bằng `color-scheme: only light`, nhưng ô nhập/select của form sửa, bộ lọc, chọn ngày… đặt lại `color-scheme: light` (thiếu `only`) nên trình duyệt tô đen riêng các ô đó. Đổi hết sang `only light`; ô ngày ở khối trả nợ và select năm của bộ chọn kỳ trước ép `dark` cả ở mode sáng → thêm override sáng.
+- **Giao dịch — dòng phụ in lộ `` ` · $Tiền có sẵn` `` (`ListScreen.jsx`):** template literal viết thẳng trong JSX text thay vì trong `{}`.
+- **Giao dịch mobile — header và thanh lọc tràn mép phải (`finance-list.css`):** ≤640px tên + số khoản một hàng, "Xuất CSV" / "Ghi một khoản" chia đôi hàng dưới; kỳ + Lọc chung hàng, bỏ vạch ngăn treo, tab nhanh trải đủ ngang.
+- **Topbar Finance mobile:** nhãn màn dài ("· Định kỳ & Quỹ") cắt "…" thay vì bẻ 2 dòng (`FinancePage.jsx`).
+
 ## v6.30.4 — 2026-10-22
 
 ### Added

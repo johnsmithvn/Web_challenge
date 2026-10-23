@@ -160,7 +160,7 @@ export default function FinancePage() {
     <div className="finance-module">
       {/* ── MOBILE TOP BAR (<769px — Chuẩn Module giống Body) ────────── */}
       <div className="fin-mobile-topbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
           <button
             type="button"
             className="fin-mobile-back-hub"
@@ -183,7 +183,7 @@ export default function FinancePage() {
           <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--n-txt, #fff)', letterSpacing: '-0.02em' }}>
             Finance
           </span>
-          <span style={{ fontSize: '12px', color: 'var(--n-txt3, #9ca3af)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--n-txt3, #9ca3af)', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             · {active?.label || 'Tổng quan'}
           </span>
         </div>

@@ -434,6 +434,10 @@ Character:
 
 - **Dark-first.** `:root` is the dark theme; light is an override on
   `[data-theme="light"]`. Every new surface must be legible in both.
+  `color-scheme` in light mode is always `only light`, never plain `light`: the
+  property inherits, and a plain `light` on a control re-enables the browser's Auto
+  Dark Mode (Chrome/Samsung "dark web pages") for that element only — black inputs
+  inside a white form.
 - **Glassmorphic.** Content sits on translucent white-alpha panels over a
   near-black navy page, softened by `backdrop-filter: blur()`.
 - **Neon accents, quiet chrome.** Purple → cyan gradients carry brand and
