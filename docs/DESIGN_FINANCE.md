@@ -247,6 +247,13 @@ kind `finance`. Vault tag không liên quan vì được mã hóa.
 - Dark Nocturne là bản thiết kế của module, nhưng mọi text/control vẫn phải đọc được trong shell app.
 - Phosphor icon qua `AppIcon`; emoji không dùng làm icon điều khiển.
 - Desktop có child navigation trong sidebar; mobile giữ vùng chạm và sheet/detail phù hợp.
+- Mobile không có topbar riêng của module (thanh tên + Thêm + sáng/tối + avatar đã bỏ — chỉ có nút về Hub là duy nhất):
+  ô Home chỉ icon (40px) đứng đầu tab đáy `.fin-mobile-bottom-nav`, ngăn với 5 tab bằng vạch mảnh. Đổi sáng/tối ở
+  topbar chung của app (trang Home).
+- Báo cáo (Tổng quan, `finance-report.css`): bản sáng giữ màu canvas ấm (`#F7F6F3`, `#15161A`…); dark mode là khối
+  `[data-theme="dark"] .fin-report` cuối file, map sang `--n-*`. Màu inline trong `ReportScreen.jsx` viết
+  `var(--rp-x, <hex sáng>)` — biến `--rp-*` chỉ khai báo ở dark nên bản sáng rơi về hex cũ. Mobile: không tiêu đề,
+  header 2 hàng `‹ kỳ › · ▦ số thẻ · ⤓` / `Tháng | Quý | Năm` (chữ "Thẻ hiển thị", "Xuất CSV" chỉ hiện desktop).
 - Hub Định kỳ & Quỹ (v6.23):
   - Desktop: Layout 2 cột — Cột trái danh sách timeline, cột phải panel chi tiết; cả hai cuộn nội bộ (Workspace pattern), không cuộn trang. Không có thanh tiêu đề trang (ẩn `fin-header` của FinancePage): tháng và nút "Thêm nguồn chi" nằm trên thẻ Lịch chi.
   - Mobile (≤768px): 1 cột; panel chi tiết thành bottom sheet (cùng component với desktop) có backdrop, nút đóng, Escape; z-index trên tab dưới và FAB QuickCapture. Không thêm FAB riêng.

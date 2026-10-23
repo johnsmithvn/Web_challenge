@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v6.30.7 — 2026-10-23
+
+### Changed
+- **Finance mobile — bỏ topbar của module (`FinancePage.jsx`, `finance.css`):** dòng "Finance · <màn> · + Thêm · sáng/tối · avatar" chiếm 52px mà chỉ có nút về Hub là duy nhất ("+ Thêm" trùng tab Nhập nhanh, avatar không bấm được, sáng/tối có ở topbar chung của app). Về Hub bằng ô Home (icon, 40px) đầu tab đáy. Nhãn tab không bẻ dòng ở 360px.
+- **Báo cáo (Tổng quan) mobile — header gọn 2 hàng (`ReportScreen.jsx`, `finance-report.css`):** bỏ tiêu đề "Báo cáo chi tiêu"; `‹ kỳ ›` · `▦ 13` (icon + số thẻ) · `⤓` (Xuất CSV thành icon) một hàng, `Tháng | Quý | Năm` trải hàng dưới. Trước là 3–4 hàng (tiêu đề 2 dòng + kỳ, chế độ + thẻ, CSV). Desktop giữ tiêu đề và chữ, CSV thêm icon.
+
+### Fixed
+- **Báo cáo kẹt nền sáng ở dark mode (`finance-report.css`, `ReportScreen.jsx`):** `finance-report.css` chỉ có màu bản sáng. Thêm khối `[data-theme="dark"] .fin-report` map sang token Nocturne `--n-*` (thẻ, nút, viền, chữ 3 mức, rãnh, badge, lịch chi, vùng tô sparkline theo màu nhóm); màu trung tính inline (lưới biểu đồ, chữ trục, cột Phải trả/Tùy chọn, chú thích…) đổi sang `var(--rp-*, <hex sáng>)` nên bản sáng không đổi.
+
 ## v6.30.6 — 2026-10-23
 
 ### Changed

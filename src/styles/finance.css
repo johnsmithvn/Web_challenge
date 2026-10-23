@@ -233,7 +233,6 @@
   font-size: 13.5px !important;
 }
 .fin-subtabs { display: none !important; }
-.fin-mobile-topbar { display: none; }
 .fin-mobile-bottom-nav { display: none; }
 .fin-screen {
   flex: 1;
@@ -519,19 +518,6 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
     overflow: hidden;
   }
   .fin-header { display: none !important; }
-  .fin-mobile-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 52px;
-    padding: 0 16px;
-    background: var(--n-card);
-    border-bottom: 1px solid var(--n-border);
-    position: sticky;
-    top: 0;
-    z-index: 90;
-    flex-shrink: 0;
-  }
   .fin-content {
     flex: 1;
     min-height: 0;
@@ -545,7 +531,7 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-subtabs { display: none !important; }
   .fin-mobile-bottom-nav {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: 40px repeat(5, minmax(0, 1fr));
     height: 64px;
     background: var(--n-card);
     border-top: 1px solid var(--n-border);
@@ -571,14 +557,21 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
     transition: color 0.15s ease;
     -webkit-tap-highlight-color: transparent;
   }
+  /* Ô Home (về Life Hub) chỉ icon, ngăn với 5 tab bằng vạch mảnh */
+  .fin-mobile-nav-item--home {
+    margin: 12px 0;
+    padding: 0;
+    border-right: 1px solid var(--n-border);
+    color: var(--n-txt2);
+  }
   .fin-mobile-nav-item.active {
     color: var(--n-accent);
   }
   .fin-mobile-nav-label {
     font-size: 10.5px;
     font-weight: 500;
-    letter-spacing: 0.01em;
     line-height: 1;
+    white-space: nowrap; /* 360px: "Định kỳ & Quỹ" rộng hơn ô ~3px — tràn đều 2 bên thay vì bẻ dòng */
   }
   .fin-mobile-nav-item.active .fin-mobile-nav-label {
     font-weight: 700;
@@ -598,7 +591,6 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
 }
 
 @media (min-width: 769px) {
-  .fin-mobile-topbar { display: none !important; }
   .fin-mobile-bottom-nav { display: none !important; }
 }
 

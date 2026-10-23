@@ -1843,12 +1843,51 @@
     border-bottom: 1px solid #EDECE7;
   }
 
-  .fin-report__title {
-    font-size: 19px;
+  /* Header 2 hàng, bỏ tiêu đề (tab đáy đã ghi tên màn): ‹ kỳ › · ▦ 14 · ⤓ / Tháng | Quý | Năm.
+     title-wrap + actions "display: contents" để các control xếp chung một hàng flex. */
+  .fin-report__title-wrap,
+  .fin-report__actions {
+    display: contents;
   }
 
-  .fin-report__actions {
-    flex-wrap: wrap;
+  .fin-report__title,
+  .fin-report__btn-text {
+    display: none;
+  }
+
+  .fin-report__stepper {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 36px;
+  }
+
+  .fin-report__step-btn {
+    width: 36px;
+    height: 34px;
+  }
+
+  .fin-report__step-label {
+    flex: 1;
+    min-width: 0;
+    padding: 0 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+  }
+
+  .fin-report__btn {
+    height: 36px;
+    padding: 0 11px;
+    gap: 6px;
+  }
+
+  .fin-report__mode-toggle {
+    order: 1;
+    flex: 1 1 100%;
+  }
+
+  .fin-report__mode-btn {
+    flex: 1;
   }
 
   .fin-report__body {
@@ -1985,3 +2024,125 @@
     margin-top: 12px;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Dark mode — bản sáng giữ nguyên màu canvas ở trên; tối map sang token Nocturne
+   (--n-*, finance.css). Biến --rp-* chỉ định nghĩa ở đây: màu inline trong
+   ReportScreen.jsx viết var(--rp-x, <hex sáng>) nên bản sáng rơi về đúng hex cũ.
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] .fin-report {
+  --rp-ink: var(--n-txt);
+  --rp-txt2: var(--n-txt2);
+  --rp-muted: var(--n-txt3);
+  --rp-faint: #5d6382;
+  --rp-grid: var(--n-line);
+  --rp-track: var(--n-sink-2);
+  --rp-prev: #454a5c;
+  --rp-accent: var(--n-accent);
+  --rp-hl: color-mix(in srgb, var(--n-accent) 12%, transparent);
+  --rp-up: var(--n-danger);
+  --rp-down: var(--n-good);
+  --rp-must: #6e7287;
+  --rp-want: #4a4436;
+  --rp-want-cur: #a88d5a;
+  background: var(--n-bg);
+  border-color: var(--n-border);
+  color: var(--n-txt);
+  box-shadow: none;
+}
+
+/* Bề mặt thẻ / nút / popover */
+[data-theme="dark"] .fin-report :is(.fin-report__stepper, .fin-report__btn--mgr, .fin-report__btn--csv,
+  .fin-report__mgr-popover, .fin-report__spark-card, .fin-report__card, .fin-report__mobile-list) {
+  background: var(--n-card);
+  border-color: var(--n-border);
+  box-shadow: none;
+}
+[data-theme="dark"] .fin-report .fin-report__mobile-sheet { background: var(--n-bg); }
+[data-theme="dark"] .fin-report .fin-report__hero { box-shadow: inset 0 0 0 1px var(--n-border); }
+
+/* Nền chìm / hover */
+[data-theme="dark"] .fin-report :is(.fin-report__mode-toggle, .fin-report__rank-toggle-btn,
+  .fin-report__diff-sub-tr, .fin-report__outlier-item) {
+  background: var(--n-sink);
+  border-color: var(--n-border);
+}
+[data-theme="dark"] .fin-report :is(.fin-report__step-btn:hover, .fin-report__btn--mgr:hover,
+  .fin-report__btn--csv:hover, .fin-report__mgr-item:hover, .fin-report__rank-toggle-btn:hover,
+  .fin-report__diff-sub-tr:hover, .fin-report__mode-btn.is-active) {
+  background: var(--n-sink-2);
+  border-color: var(--n-border);
+  box-shadow: none;
+}
+[data-theme="dark"] .fin-report .fin-report__rank-row-head.has-subs:hover { background: rgba(255, 255, 255, 0.04); }
+[data-theme="dark"] .fin-report .fin-report__diff-row-tr:hover { background: color-mix(in srgb, var(--n-accent) 8%, transparent); }
+
+/* Rãnh / thanh nền / công tắc tắt */
+[data-theme="dark"] .fin-report :is(.fin-report__rank-track, .fin-report__rank-sub-track,
+  .fin-report__rank-sub-count, .fin-report__hero-top-bar) {
+  background: var(--n-sink-2);
+}
+[data-theme="dark"] .fin-report :is(.fin-report__mgr-switch:not(.is-checked), .fin-report__mobile-switch:not(.is-checked),
+  .fin-report__diff-legend-bar-sample, .fin-report__diff-bar-prev, .fin-report__yoy-bar--prev,
+  .fin-report__mobile-handle) {
+  background: var(--rp-prev);
+}
+
+/* Đường kẻ */
+[data-theme="dark"] .fin-report :is(.fin-report__header, .fin-report__step-label, .fin-report__mgr-footer,
+  .fin-report__rank-subs, .fin-report__mobile-row, .fin-report__diff-table th, .fin-report__diff-table td,
+  .fin-report__outlier-footer) {
+  border-color: var(--n-line);
+}
+
+/* Chữ: chính / phụ / mờ */
+[data-theme="dark"] .fin-report :is(.fin-report__title, .fin-report__step-label, .fin-report__step-btn:hover,
+  .fin-report__mode-btn:hover, .fin-report__mode-btn.is-active, .fin-report__btn--mgr:hover,
+  .fin-report__btn--csv:hover, .fin-report__mgr-item.is-active .fin-report__mgr-name, .fin-report__spark-val,
+  .fin-report__card-title, .fin-report__rank-val, .fin-report__rank-toggle-btn:hover, .fin-report__mobile-title,
+  .fin-report__mobile-row.is-active .fin-report__mobile-name, .fin-report__diff-name, .fin-report__diff-val,
+  .fin-report__diff-sub-val, .fin-report__outlier-name, .fin-report__outlier-amount, .fin-report__merchants-name) {
+  color: var(--n-txt);
+}
+[data-theme="dark"] .fin-report :is(.fin-report__mode-btn, .fin-report__btn--mgr, .fin-report__btn--csv,
+  .fin-report__spark-title, .fin-report__rank-name, .fin-report__rank-sub-name, .fin-report__rank-sub-val,
+  .fin-report__rank-toggle-btn, .fin-report__hist-count, .fin-report__diff-legend, .fin-report__diff-sub-name,
+  .fin-report__cal-footer) {
+  color: var(--n-txt2);
+}
+[data-theme="dark"] .fin-report :is(.fin-report__step-btn, .fin-report__mgr-heading, .fin-report__mgr-name,
+  .fin-report__mgr-size, .fin-report__mgr-hint, .fin-report__card-sub, .fin-report__card-unit,
+  .fin-report__rank-chevron, .fin-report__rank-sub-count, .fin-report__rank-sub-pct, .fin-report__empty-hint,
+  .fin-report__dow-name, .fin-report__treemap-legend-item, .fin-report__pareto-label, .fin-report__hist-label,
+  .fin-report__mobile-sub, .fin-report__mobile-drag, .fin-report__mobile-name, .fin-report__diff-table th,
+  .fin-report__diff-caret, .fin-report__diff-prev-val, .fin-report__diff-sub-prev-val, .fin-report__outlier-meta,
+  .fin-report__outlier-hint, .fin-report__outlier-footer, .fin-report__cal-dow, .fin-report__cal-legend) {
+  color: var(--n-txt3);
+}
+
+/* Điểm nhấn tím */
+[data-theme="dark"] .fin-report .fin-report__btn--mgr.is-open {
+  background: var(--n-accent-soft);
+  border-color: color-mix(in srgb, var(--n-accent) 45%, transparent);
+  color: var(--n-on-accent);
+}
+[data-theme="dark"] .fin-report .fin-report__mgr-done { color: var(--n-accent); }
+[data-theme="dark"] .fin-report .fin-report__mgr-done:hover { color: var(--n-on-accent); }
+[data-theme="dark"] .fin-report .fin-report__mobile-done-btn { background: var(--n-accent-2); }
+[data-theme="dark"] .fin-report .fin-report__mobile-done-btn:hover { background: var(--n-accent-3); }
+
+/* Sparkline: vùng tô pastel của bản sáng → màu nhóm pha trong */
+[data-theme="dark"] .fin-report .fin-report__spark-area { fill: color-mix(in srgb, var(--spark-col) 18%, transparent); }
+
+/* Badge chênh lệch / bất thường */
+[data-theme="dark"] .fin-report .fin-diff-badge--up { background: color-mix(in srgb, #E0446D 18%, transparent); color: var(--n-danger); }
+[data-theme="dark"] .fin-report .fin-diff-badge--down { background: color-mix(in srgb, #12A594 18%, transparent); color: var(--n-good); }
+[data-theme="dark"] .fin-report :is(.fin-diff-badge--new, .fin-outlier-badge--new) { background: color-mix(in srgb, #D97706 20%, transparent); color: var(--n-warn); }
+[data-theme="dark"] .fin-report .fin-diff-badge--same { background: var(--n-sink-2); color: var(--n-txt3); }
+[data-theme="dark"] .fin-report .fin-outlier-badge--surge { background: color-mix(in srgb, #DC2626 20%, transparent); color: var(--n-danger); }
+[data-theme="dark"] .fin-report .fin-report__outlier-marker { background: var(--n-txt); }
+
+/* Lịch chi tháng: mức nhạt của bản sáng chói trên nền tối → pha tím vào nền thẻ */
+[data-theme="dark"] .fin-report .fin-report__cal-cell--lvl0 { background: var(--n-sink-2); color: var(--n-txt3); }
+[data-theme="dark"] .fin-report .fin-report__cal-cell--lvl1 { background: color-mix(in srgb, #8B5CF6 22%, var(--n-card)); color: var(--n-txt2); }
+[data-theme="dark"] .fin-report .fin-report__cal-cell--lvl2 { background: color-mix(in srgb, #8B5CF6 48%, var(--n-card)); color: #fff; }
