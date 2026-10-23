@@ -1342,10 +1342,10 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                   <table className="fin-report__diff-table">
                     <thead>
                       <tr>
-                        <th style={{ width: '38%' }}>NHÓM</th>
-                        <th style={{ textAlign: 'right', width: '18%' }}>{periodDiffData.curLabelShort}</th>
-                        <th style={{ textAlign: 'right', width: '18%' }}>{periodDiffData.prevLabelShort}</th>
-                        <th style={{ textAlign: 'right', width: '26%' }}>CHÊNH LỆCH</th>
+                        <th>NHÓM</th>
+                        <th style={{ textAlign: 'right' }}>{periodDiffData.curLabelShort}</th>
+                        <th style={{ textAlign: 'right' }}>{periodDiffData.prevLabelShort}</th>
+                        <th style={{ textAlign: 'right' }}>CHÊNH LỆCH</th>
                       </tr>
                     </thead>
                     <tbody>

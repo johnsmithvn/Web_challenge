@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.30.8 — 2026-10-23
+
+### Changed
+- **Tổng quan mobile — bớt lề hai bên (`finance-report.css`, `OverviewScreen.jsx`):** thân báo cáo lùi thêm 18px mỗi bên trên lề 12px của `.fin-screen` nên thẻ cách mép 30px. Mobile bỏ lớp lề + nền riêng của báo cáo: thẻ rộng thêm 36px (366px ở màn 390). Nhịp chi trong kỳ rộng theo (vẽ theo bề rộng thật), lề phải dành cho nhãn cuối 65 → 54px khi khung hẹp.
+- **Kỳ này với kỳ trước mobile (`ReportScreen.jsx`, `finance-report.css`):** bỏ chấm màu nhóm (thanh mini dưới tên đã mang màu); độ rộng cột chuyển từ style inline sang CSS, mobile cột NHÓM 46% — tên nhóm một dòng ở màn 390 (360px còn tên dài nhất xuống dòng).
+
 ## v6.30.7 — 2026-10-23
 
 ### Changed

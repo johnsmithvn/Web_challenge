@@ -1366,6 +1366,12 @@
   font-size: 12.5px;
 }
 
+/* Độ rộng cột ở CSS (không inline) để mobile nới cột NHÓM */
+.fin-report__diff-table th:nth-child(1) { width: 38%; }
+.fin-report__diff-table th:nth-child(2),
+.fin-report__diff-table th:nth-child(3) { width: 18%; }
+.fin-report__diff-table th:nth-child(4) { width: 26%; }
+
 .fin-report__diff-table th {
   padding: 8px 10px;
   font-size: 10.5px;
@@ -1828,16 +1834,18 @@
 }
 
 @media (max-width: 768px) {
+  /* Mobile: báo cáo không còn là "tấm" riêng — thẻ nằm thẳng trên nền module, chỉ chừa lề 12px
+     của .fin-screen. Trước thân báo cáo lùi thêm 18px mỗi bên → thẻ cách mép 30px, nội dung hẹp. */
   .fin-report {
     border: none;
     border-radius: 0;
     box-shadow: none;
-    background: #F7F6F3;
+    background: transparent;
   }
 
   .fin-report__header {
     height: auto;
-    padding: 14px 18px 12px;
+    padding: 0 0 12px;
     flex-wrap: wrap;
     gap: 10px;
     border-bottom: 1px solid #EDECE7;
@@ -1891,7 +1899,7 @@
   }
 
   .fin-report__body {
-    padding: 0 18px 24px;
+    padding: 12px 0 24px;
     gap: 11px;
   }
 
@@ -1981,6 +1989,11 @@
     white-space: normal;
   }
 
+  .fin-report__diff-table th:nth-child(1) { width: 46%; }
+  .fin-report__diff-table th:nth-child(2) { width: 17%; }
+  .fin-report__diff-table th:nth-child(3) { width: 15%; }
+  .fin-report__diff-table th:nth-child(4) { width: 22%; }
+
   .fin-report__diff-group-cell,
   .fin-report__diff-sub-cell {
     flex-wrap: wrap;
@@ -2001,10 +2014,15 @@
     margin-left: 0;
   }
 
-  /* Thẳng hàng với tên nhóm: caret 14 + gap 8 + chấm 8 + gap 8 */
+  /* Bỏ chấm màu nhóm: thanh mini dưới tên đã mang màu nhóm, chừa chỗ cho tên khỏi xuống dòng */
+  .fin-report__diff-dot {
+    display: none;
+  }
+
+  /* Thẳng hàng với tên nhóm: caret 14 + gap 8 */
   .fin-report__diff-group-cell .fin-report__diff-minibars {
-    flex-basis: calc(100% - 38px);
-    margin-left: 38px;
+    flex-basis: calc(100% - 22px);
+    margin-left: 22px;
   }
 
   .fin-diff-badge {

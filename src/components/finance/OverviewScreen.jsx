@@ -311,7 +311,8 @@ function CumulativeRhythmChart({ transactions, period, prevPeriod, today }) {
   // không phải cuộn ngang. Khung rộng giữ viewBox 720 như cũ.
   const [ref, width] = useElementWidth();
   const W = width > 0 && width < 720 ? width : 720, H = 180;
-  const padL = 48, padR = 65, padT = 20, padB = 25;
+  // padR chừa chỗ nhãn cuối đường ("13,7tr" ≈ 46px); khung hẹp bớt phần dư cho vùng vẽ
+  const padL = 48, padR = W < 720 ? 54 : 65, padT = 20, padB = 25;
   const maxVal = Math.max(data.lastCurVal, data.lastPrevVal, 1_000_000);
 
   const curPts = makeStepPoints(data.curPoints, padL, padR, padT, padB, W, H, maxVal, data.totalDays);
