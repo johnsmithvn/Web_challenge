@@ -8,7 +8,6 @@ import {
   rekeyVaultItems,
   rotateVaultPassphrase,
   recoverVaultWithKey,
-  generateRecoveryKey,
   VAULT_ENCRYPTION_VERSION,
   VAULT_KDF_ITERATIONS,
 } from '../../utils/vaultCrypto.js';

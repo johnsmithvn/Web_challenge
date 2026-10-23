@@ -14,6 +14,7 @@ export default function AuthModal({ onClose }) {
     resetPassword,
     updatePassword,
     isRecoveringPassword,
+    setIsRecoveringPassword,
     isSupabaseEnabled,
   } = useAuth();
   const [tab, setTab] = useState(isRecoveringPassword ? 'updatePassword' : 'login');

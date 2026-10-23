@@ -36,7 +36,6 @@ export default function BankSelect({
   onChange,
   placeholder = 'Nhập hoặc chọn ngân hàng (VCB, MB, ACB, Tech...)',
   className = 'fin-input',
-  allowCustom = true,
   autoFocus = false,
   id,
   name,

@@ -23,6 +23,8 @@ const FinancePage       = lazy(() => import('./pages/FinancePage'));
 const AccountsPage      = lazy(() => import('./pages/AccountsPage'));
 const SettingsPage      = lazy(() => import('./pages/SettingsPage'));
 const BodyPage          = lazy(() => import('./pages/BodyPage'));
+// FX Lab (sidebar → Khác): xem trước hiệu ứng / kịch bản nền trang Nhiệm vụ
+const FxLabPage         = lazy(() => import('./pages/FxLabPage'));
 
 // ── SEO meta per route ─────────────────────────────────────────────
 const ROUTE_META = {
@@ -34,6 +36,7 @@ const ROUTE_META = {
   '/accounts':   { title: 'Vault — Life Hub',                                                  desc: 'Account Vault mã hóa toàn bộ nội dung bằng AES-GCM phía client.' },
   '/settings':   { title: 'Cài Đặt — Life Hub',                                                  desc: 'Quản lý tags, quotes và hồ sơ cá nhân.' },
   '/body':       { title: 'Body · Thể Hình & Sức Khỏe — Life Hub',                            desc: 'Lộ trình tập luyện, theo dõi cơ thể và tiến bộ từng buổi tập.' },
+  '/fx-lab':     { title: 'FX Lab — Life Hub',                                                 desc: 'Xem trước hiệu ứng và kịch bản nền trang Nhiệm vụ.' },
 };
 
 function PageMeta() {
@@ -85,6 +88,7 @@ function AppShell() {
                 <Route path="/accounts"     element={<AccountsPage key={user?.id || 'guest'} />} />
                 <Route path="/settings"     element={<SettingsPage />} />
                 <Route path="/focus"        element={<FocusPage />} />
+                <Route path="/fx-lab"       element={<FxLabPage />} />
                 {/* Redirect của các route đã gỡ. Giữ lại để link/bookmark cũ
                     không rơi vào catch-all im lặng. */}
                 <Route path="/tracker"      element={<Navigate to="/tasks" replace />} />

@@ -24,7 +24,6 @@ import { readFileSync } from 'node:fs';
 import { toDateStr } from '../../utils/dateUtils.js';
 
 const listSrc = readFileSync(new URL('../../components/TaskListSection.jsx', import.meta.url), 'utf8');
-const detailSrc = readFileSync(new URL('../../components/TaskDetailModal.jsx', import.meta.url), 'utf8');
 const calendarSrc = readFileSync(new URL('../../components/MonthCalendar.jsx', import.meta.url), 'utf8');
 const calendarCss = readFileSync(new URL('../../styles/calendar.css', import.meta.url), 'utf8');
 const tasksHookSrc = readFileSync(new URL('../../hooks/useUserTasks.js', import.meta.url), 'utf8');

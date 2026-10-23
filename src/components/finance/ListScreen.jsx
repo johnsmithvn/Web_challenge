@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { useUserTasks } from '../../hooks/useUserTasks';
 import { groupDigits, parseCurrencyInput, sanitizeDigits } from '../../utils/currencyUtils';
 import { formatDate, toDateStr } from '../../utils/dateUtils';
-import { periodTotals, groupByDate, billPeriods } from '../../utils/financeLogic';
+import { groupByDate, billPeriods } from '../../utils/financeLogic';
 import {
   money, catInfo, subLabel, pickableSubs, NECESSITY_META, PeriodPicker, TaskPicker, FinanceIcon, DateField,
   ItemQtyStepper,
@@ -44,10 +44,6 @@ export default function ListScreen({ fin, nav }) {
     () => fin.transactions.filter(tx => tx.occurred_at >= period.from && tx.occurred_at <= period.to),
     [fin.transactions, period]);
 
-  const totals = useMemo(
-    () => periodTotals(fin.transactions, period),
-    [fin.transactions, period],
-  );
 
   // Quick filter helpers
   const yesterday = useMemo(() => {

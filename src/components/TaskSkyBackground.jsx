@@ -242,7 +242,7 @@ function LightSky({ isMobile, dusk }) {
 }
 
 /* ── Vật bay ngẫu nhiên (flyTick của mockup): thả 1 cảnh mỗi 2,5–7,5s (mobile 4–10s), tối đa 5 (mobile 3) cùng lúc ── */
-function useFlyers(hostRef, { elf, night, m }) {
+function useFlyers(hostRef, { elf, night, m, auto }) {
   useEffect(() => {
     const host = hostRef.current;
     if (!host || reducedMotion()) return undefined;
@@ -258,7 +258,7 @@ function useFlyers(hostRef, { elf, night, m }) {
       }
       timer = setTimeout(tick, (elf ? (m ? 4500 : 3000) : (m ? 4000 : 2500)) + Math.random() * (m ? 6000 : 5000));
     };
-    timer = setTimeout(tick, elf ? 1500 + Math.random() * 2000 : 1200 + Math.random() * 1500);
+    if (auto) timer = setTimeout(tick, elf ? 1500 + Math.random() * 2000 : 1200 + Math.random() * 1500);
     // Sao ước nguyện (taskNatureFx) bấm được: trúng thì chặn click để không mở nhầm thứ phía dưới.
     // Đăng ký trước bgClick của Rừng tiên (hook gọi trước) nên chặn luôn cả rung cây.
     const onClick = (e) => {
@@ -270,7 +270,7 @@ function useFlyers(hostRef, { elf, night, m }) {
       window.removeEventListener('click', onClick, true);
       host.replaceChildren();
     };
-  }, [hostRef, elf, night, m]);
+  }, [hostRef, elf, night, m, auto]);
 }
 
 /* ── Rừng tiên: nấm + đom đóm bấm được, bấm nền rung cây, sương tan quanh con trỏ (mockup) ── */
@@ -357,7 +357,8 @@ function useStardustTrail(active) {
   }, [active]);
 }
 
-function TaskSkyBackground({ isMobile }) {
+// autoFly=false: không tự thả vật bay (trang /fx-lab tự gọi từng kịch bản)
+function TaskSkyBackground({ isMobile, autoFly = true }) {
   const { theme, taskStyle } = useTheme();
   const elf = taskStyle === 'elf';
   const night = theme !== 'light';
@@ -365,7 +366,7 @@ function TaskSkyBackground({ isMobile }) {
   const dusk = new Date().getHours() >= 12;
   const flyRef = useRef(null);
   const topRef = useRef(null);
-  useFlyers(flyRef, { elf, night, m: isMobile });
+  useFlyers(flyRef, { elf, night, m: isMobile, auto: autoFly });
   useElfInteractions(flyRef, topRef, { elf, fk });
   useStardustTrail(night);
 

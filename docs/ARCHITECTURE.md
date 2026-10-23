@@ -38,7 +38,10 @@ src/
 api/                   Vercel Functions cho upload/stream Google Drive
 data/                  SQL dùng cho fresh install/production handoff
 supabase/migrations/   snapshot migration timestamp cho local
-public/                manifest, service worker, icon
+public/                gốc: favicon, icon PWA, manifest.json, sw.js (chỉ vỏ app)
+├─ art/<tính-năng>/    ảnh app tải lúc chạy (sprite, nền) — RULES #16
+└─ fx-experiments/     thí nghiệm của /fx-lab: <tên>.html + <tên>/ (RULES #15)
+design/                (khi có) bản gốc / phương án thiết kế, không deploy
 docs/                  tài liệu hiện hành
 ```
 
@@ -57,6 +60,7 @@ không bị stale khi thêm/xóa component.
 | `/finance`, `/finance/:screen` | `FinancePage` | Lazy | Auth-only |
 | `/accounts` | `AccountsPage` | Lazy | Auth-only + Vault unlock |
 | `/settings` | `SettingsPage` | Lazy | Auth-only |
+| `/fx-lab` | `FxLabPage` | Lazy | Sidebar → Khác → FX Lab (mobile: menu Thêm): xem trước hiệu ứng nền trang Nhiệm vụ, không đụng dữ liệu; đổi Kiểu/Ngày-Đêm thật, rời trang trả lại (RULES #15) |
 | `/incubator`, `/tracker`, `/habits`, `/dashboard`, `/journey` | redirect `/tasks` | — | Bookmark/route cũ đã gỡ |
 | `*` | `LandingPage` | — | Catch-all |
 

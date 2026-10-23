@@ -1,8 +1,30 @@
 # CHANGELOG
 
+## v6.30.4 — 2026-10-22
+
+### Added
+- **FX Lab `/fx-lab` (`FxLabPage.jsx`, `fx-lab.css`; mục FX Lab ở nhóm Khác của sidebar / menu Thêm trên mobile):** một trang gom toàn bộ hiệu ứng nền trang Nhiệm vụ, chạy đúng code thật. Chọn Kiểu (Mặc định / Rừng tiên), Ngày/Đêm (đổi thật, rời trang trả lại), khung Desktop / Mobile 390 (iframe), bật/tắt tự thả ngẫu nhiên. Tab Kịch bản liệt kê mọi cảnh trong bể của 4 chế độ + thiên nhiên + ngoài bể (nguyệt thực), bấm là chạy, cảnh khác chế độ tự chuyển; tự chạy nốt chuỗi cú cháy lông → chữa lành, độc dược → mèo khổng lồ. Tab Tương tác: xong việc, xong hết, nước bắn, Thỏ ngọc. Tab Thí nghiệm nhúng trang tĩnh trong `public/fx-experiments/`: "So sánh con vật" (`public/fx-experiments/animals.html` — mèo đánh nhau, đại bàng săn mồi, rồng xanh + rồng châu Âu, hồ ly 9 đuôi, kỳ lân; mỗi con: hình hiện tại vs vẽ bằng code (bộ xương thủ tục, `animals/creatures.js`) vs Lottie vs Rive lấy từ kho miễn phí).
+- **Bể kịch bản export + ép chạy (`taskFlyersAurora.js` `AURORA_POOL`, `taskFlyersElf.js` `ELF_POOL`):** `spawnAuroraFlyer` / `spawnElfFlyer` nhận thêm `force`; trọng số 0 = bản nháp (app không bốc, lab chạy được). `TaskSkyBackground` thêm prop `autoFly`.
+- **Rule mới (CLAUDE.md, RULES #15):** thêm / sửa hiệu ứng phải cho user xem trên `/fx-lab` trước khi bật vào app; thay xong thì xoá bản cũ cả trong app lẫn preview.
+- **Rule cấu trúc tài nguyên (CLAUDE.md, RULES #16, cây thư mục ARCHITECTURE.md):** gốc `public/` chỉ giữ vỏ app; ảnh app dùng → `public/art/<tính-năng>/`; thí nghiệm → `public/fx-experiments/`; bản gốc thiết kế → `design/` (không deploy); quy ước tên + WebP; file không dùng thì xoá. Đã sắp lại theo rule: ảnh Chị Hằng → `public/art/tasks/`; gốc `public/` giờ chỉ còn vỏ app.
+
+### Changed
+- **Cá koi Rừng tiên đêm vẽ lại (`utils/koiArt.js` mới; `taskFlyersElf.js` cảnh `koi`, `koistar`, koi nhảy khi bấm nước):** thay koi SVG nghiêng (thân cứng, chỉ đuôi lắc) bằng koi Kohaku nhìn từ trên — thân uốn sóng đầu → đuôi, vây ngực quạt so le, đuôi gợn, mảng đỏ uốn theo thân, mỗi con lệch pha riêng. Hình học sinh thủ tục thành SVG + SMIL (`<animate attributeName="d">`), không thêm thư viện. Xoá koi SVG cũ, koi mini cũ và trang thí nghiệm koi Lottie (`public/fx-experiments/`).
+- **Nâng cấp hình tượng Chị Hằng bay lượn ban đêm (`taskFlyersAurora.js`, `public/art/tasks/hang-nga-*.webp`):** thay thế toàn bộ nét vẽ vector SVG thô sơ cũ bằng 2 bản Game Sprite HD trong suốt bóc tách từ tranh vẽ nghệ thuật gốc — Bản 1 (Chibi Tiên Nữ mắt to, cài trâm hoa quế vàng, ôm thỏ ngọc trắng) và Bản 3 (Anime Dạ Nguyệt tóc tím ánh trăng, dải lụa thiên hà phát sáng) xuất hiện ngẫu nhiên 50/50 mỗi lần xuất hiện từ cung trăng. Bổ sung hào quang ánh trăng kép (`glow drop-shadow`), vệt bụi sao băng và câu thoại chúc ngủ ngon / nhắc nhở task sinh động.
+
+### Removed
+- **Cảnh UFO đêm `nufo` (`taskFlyersAurora.js`, kèm helper `ufoP` / `beamS` chỉ nó dùng):** code chết — từ lúc port mockup chưa từng nằm trong bể bốc ngẫu nhiên nên app không bao giờ chạy; trùng ý với UFO bắt cóc (`abduct`) và UFO mái vòm (`dome`). FX Lab phát hiện, user duyệt xoá.
+- **Ảnh không dùng:** 9 phương án logo cực quang `public/icons/aurora/aurora-1…9.png` (912 KB, không chỗ nào gọi nhưng vẫn bị deploy) và đồ thừa mẫu Vite `public/icons.svg`, `src/assets/hero.png`. User duyệt xoá; git giữ lịch sử nếu cần lấy lại.
+- **Trang thử Chị Hằng (`preview-hang-nga.html` + ảnh gốc `ban-1-chibi.jpg`, `ban-3-anime.jpg`, 2 bản sao webp):** sprite đã vào app nên xoá theo RULES #15 (thay xong thì xoá bản cũ cả trong preview), kèm mục "Chị Hằng sprite" ở tab Thí nghiệm của `/fx-lab`. Các file này chưa từng commit nên không lấy lại được từ git.
+
+### Fixed
+- **Không đóng được hộp đăng nhập (`AuthModal.jsx`):** nút X và bấm ra ngoài gọi `setIsRecoveringPassword` nhưng hàm chưa lấy từ `useAuth()` → ReferenceError, hộp kẹt lại. Lấy thêm setter từ `useAuth()` (AuthContext đã cung cấp sẵn).
+- **`npm run lint` hết lỗi (14 → 0):** xoá biến / import khai báo mà không dùng ở 6 file test (`kbDeriveUtils`, `taskLogic`, `taskScreensContract`, `taskUiContract`, `vaultCrypto`, `vaultScreensContract`) và 5 component (`BankSelect` prop `allowCustom`, `ListScreen` `totals` + import `periodTotals`, `KBEditorView` prop `suggestions`, `KBGraphView` import `useCallback`, `KBReaderView` `hue`/`nMeta`). Không đổi hành vi; 42 cảnh báo react-hooks (mức warn) giữ nguyên.
+
 ## v6.30.3 — 2026-10-21
 
 ### Changed
+- **Mở rộng sidepanel chi tiết nhiệm vụ desktop (`tasks-aurora.css`, `DESIGN.md`):** tăng chiều rộng ngăn `.tk-drawer` từ 448px lên 560px (màn hình lớn ≥1600px tự động mở rộng lên 600px), giúp tiêu đề, thuộc tính, hàng việc con và khu vực Markdown rộng rãi hơn, tránh gãy dòng chật chội. Cập nhật `padding-right` của `.tasks-workspace.has-peek` sang `calc(var(--tk-drawer-width, 560px) + 28px)` để chế độ Danh sách/Lịch chừa đủ khoảng trống tương ứng.
 - **Cầu vồng lớn vắt ngang trời (`taskNatureFx.js` `bigRainbowArc`, `FX.rainbow`, `FX.moonbow`; `taskFlyersElf.js` `rainbow_slide`):** thay 3 cầu vồng nhỏ (760–820px, nhạt) bằng 1 cung dùng chung: phủ gần hết bề ngang, đỉnh lộ ở vùng tiêu đề, 2 chân mờ dần xuống đất, dải 6 màu + cầu vồng phụ mờ màu đảo + lòng cung sáng nhẹ; chỉ gradient, không blur. Ban đêm là cầu vồng trăng (nhạt, ngả trắng); sóc Rừng tiên trượt dọc cung lớn. Kiểu Mặc định ban ngày thêm cầu vồng sau mưa (trước chỉ Rừng tiên có).
 
 ### Removed

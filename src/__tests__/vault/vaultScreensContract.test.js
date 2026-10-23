@@ -21,11 +21,10 @@ import { readFileSync } from 'node:fs';
 import {
   matchesQuery, itemSubtitle, avatarHue, avatarLetter,
   scorePassword, generatePassword, parseCodes, codeSheet,
-  normalizeUrl, diffLog, maskValue, linkableValues,
+  normalizeUrl, diffLog,
 } from '../../utils/vaultLogic.js';
 
 const accountsPageSrc = readFileSync(new URL('../../pages/AccountsPage.jsx', import.meta.url), 'utf8');
-const detailSrc = readFileSync(new URL('../../components/AccountDetail.jsx', import.meta.url), 'utf8');
 
 /* ── 1. Màn Danh sách: Bất biến an toàn tìm kiếm (Search Security) ── */
 // Một item chứa mật khẩu cực kỳ nhạy cảm

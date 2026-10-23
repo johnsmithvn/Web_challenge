@@ -322,6 +322,7 @@
   --tk-ks-skip-glow: rgba(148, 163, 184, 0.3);  --tk-ks-skip-tint: transparent;
   --tk-ks-skip-fg: #A9B4C6;  --tk-ks-skip-bg: rgba(148, 163, 184, 0.08);  --tk-ks-skip-bd: rgba(148, 163, 184, 0.18);
 
+  --tk-drawer-width: 560px;
   --tk-drawer-bg: rgba(9, 13, 27, 0.95);
   --tk-drawer-border: rgba(255, 255, 255, 0.1);
   --tk-drawer-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9), 0 0 60px -24px rgba(94, 242, 194, 0.35);
@@ -1258,7 +1259,7 @@
 /* Kanban: ngăn chi tiết nổi ĐÈ lên bảng (không đẩy các cột co lại); view khác vẫn chừa chỗ */
 @media (min-width: 1280px) {
   .tasks-workspace.has-peek:not(.tasks-workspace--kanban) .tk-main {
-    padding-right: 476px;
+    padding-right: calc(var(--tk-drawer-width, 560px) + 28px);
   }
 }
 
@@ -3506,7 +3507,7 @@
   top: 14px;
   right: 14px;
   bottom: 14px;
-  width: 448px;
+  width: var(--tk-drawer-width, 560px);
   max-width: calc(100% - 28px);
   display: flex;
   flex-direction: column;
@@ -3516,6 +3517,12 @@
   box-shadow: var(--tk-drawer-shadow);
   overflow: hidden;
   animation: tkFadeIn 0.15s ease;
+}
+
+@media (min-width: 1600px) {
+  :root {
+    --tk-drawer-width: 600px;
+  }
 }
 
 .tk-drawer__head {

@@ -1251,8 +1251,8 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
 - Nền động (`TaskSkyBackground` / `TaskForestBackground`): `.task-cosmos-bg` có `contain: strict`; lớp vật bay
   `.task-fly-host` là size container (`cqw/cqh`). Không blur lớp gradient, chỉ animate transform/opacity
   (xem Performance rules ở Elevation & Depth). Thẻ Kanban Rừng tiên không kính mờ (cột đã kính mờ); thẻ mobile giữ.
-- Ngăn chi tiết `.tk-drawer` (448px, nổi phải): ở Kanban nổi **đè** lên bảng; Danh sách/Lịch ≥1280px vẫn chừa
-  `padding-right: 476px` cho `.tk-main`. Mobile = sheet dưới + `.tk-drawer-backdrop`.
+- Ngăn chi tiết `.tk-drawer` (560px, ≥1600px là 600px, nổi phải): ở Kanban nổi **đè** lên bảng; Danh sách/Lịch ≥1280px vẫn chừa
+  `padding-right: calc(var(--tk-drawer-width) + 28px)` (588px/628px) cho `.tk-main`. Mobile = sheet dưới + `.tk-drawer-backdrop`.
 - Hàng việc con (`.tk-subs__row` trên thẻ, `.tk-sub-row` trong ngăn chi tiết): tay nắm `.tk-sub-grip` (span
   `role="button"`, `touch-action: none`) + nút ưu tiên `.tk-sub-pr` (`.is-unset` mờ, chỉ hiện khi hover; `hover: none`
   luôn hiện mờ). Kéo thả qua `useSubtaskReorder` (Pointer Events): hàng `data-drag="self"` nhấc theo con trỏ,

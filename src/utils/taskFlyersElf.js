@@ -9,6 +9,7 @@
  * File là code mockup chuyển sang — giữ nguyên cấu trúc cho dễ đối chiếu khi mockup đổi.
  */
 import { NATURE_POOL, NATURE_TYPES, natureClick, runNature, skyMoon, bigRainbowArc } from './taskNatureFx';
+import { koiSvg } from './koiArt';
 
 export const hosts = {};
 // Khoá khung như mockup: c/a = sáng/tối desktop, cm/am = mobile (đặt vào data-frame của trang)
@@ -93,16 +94,24 @@ function flyKit(host, m) {
   return { W, H, k, R, rr, ln, cr, at, fly, fx1, walk, dot };
 }
 
-function flySpawn(host, m, night) {
+// Bể kịch bản [tên, trọng số]. Trọng số 0 = bản nháp: chỉ chạy được ở trang /fx-lab, app không tự bốc.
+export const ELF_POOL = {
+  night: [['lanterns', 2.5], ['owl', 2], ['koi', 2], ['veins', 2], ['ring', 1.5], ['starfall', 2], ['spirit', 1], ['bloom', 2.2], ['whale', 1.6], ['koistar', 1.6], ['owlmiss', 1.6], ['spiritbow', 1.2], ['dragon', 2], ['leafrider', 2], ['constel', 1.6], ['whaleeat', 1.4], ['owlsinge', 1.4], ...NATURE_POOL, ['kitsune', 1.8], ['unicorn', 1.5], ['wisp', 1.6], ['witch', 1.6], ['blackcat', 1.6], ['fairynap', 1.5], ['ent', 1.4], ['foxlant', 1.5], ['wispowl', 1.4], ['witchwhale', 1.3], ['heal', .9], ['catwisp', 1.4], ['witchpotion', 1.8], ['catgiant', 1.5], ['abduct_gnome', 1.8]],
+  day: [['deer', 2], ['butterflies', 2.5], ['bluebird', 2.5], ['mushroom', 2], ['dandelion', 2.5], ['squirrel', 2], ['sunray', 1.5], ['squirrelchase', 1.8], ['frog', 2], ['rainbow', 1.2], ['gnome', 2], ['bee', 2], ['deernut', 1.6], ['carrier_pigeon', 2.2], ['rainbow_slide', 1.8]],
+};
+
+// force: tên kịch bản chạy ngay, bỏ qua bốc ngẫu nhiên (trang /fx-lab)
+function flySpawn(host, m, night, force) {
   const { W, H, k, R, rr, ln, cr, at, fly, fx1, walk, dot } = flyKit(host, m);
-  const pool = (night ? [['lanterns', 2.5], ['owl', 2], ['koi', 2], ['veins', 2], ['ring', 1.5], ['starfall', 2], ['spirit', 1], ['bloom', 2.2], ['whale', 1.6], ['koistar', 1.6], ['owlmiss', 1.6], ['spiritbow', 1.2], ['dragon', 2], ['leafrider', 2], ['constel', 1.6], ['whaleeat', 1.4], ['owlsinge', 1.4], ...NATURE_POOL, ['kitsune', 1.8], ['unicorn', 1.5], ['wisp', 1.6], ['witch', 1.6], ['blackcat', 1.6], ['fairynap', 1.5], ['ent', 1.4], ['foxlant', 1.5], ['wispowl', 1.4], ['witchwhale', 1.3], ['heal', .9], ['catwisp', 1.4], ['witchpotion', 1.8], ['catgiant', 1.5], ['abduct_gnome', 1.8]] : [['deer', 2], ['butterflies', 2.5], ['bluebird', 2.5], ['mushroom', 2], ['dandelion', 2.5], ['squirrel', 2], ['sunray', 1.5], ['squirrelchase', 1.8], ['frog', 2], ['rainbow', 1.2], ['gnome', 2], ['bee', 2], ['deernut', 1.6], ['carrier_pigeon', 2.2], ['rainbow_slide', 1.8]]).filter(t => t[0] !== host.dataset.last);
+  const pool = ELF_POOL[night ? 'night' : 'day'].filter(t => t[1] > 0 && t[0] !== host.dataset.last);
   let pick = R() * pool.reduce((a, t) => a + t[1], 0), type = pool[0][0];
   for (const [n, w] of pool) { if ((pick -= w) <= 0) { type = n; break; } }
+  if (force) type = force;
   host.dataset.last = type;
-  if (night && host._next && Date.now() > host._next.at) { type = host._next.t; host._next = null; }
+  if (!force && night && host._next && Date.now() > host._next.at) { type = host._next.t; host._next = null; }
   if (type === 'owlsinge') host._next = { t: 'heal', at: Date.now() + 10000 };
   if (type === 'witchpotion') host._next = { t: 'catgiant', at: Date.now() + 6000 };
-  if (night && R() < 1 / 40) type = 'eclipse';
+  if (!force && night && R() < 1 / 40) type = 'eclipse';
   if (type === 'eclipse' || NATURE_TYPES.includes(type)) { const sk = Object.keys(hosts).find(z => hosts[z] === host); return runNature(type, host, m, { moon: skyMoon(W, m, true), top: sk && hosts[sk + '_t'] }); }
   const sp = m ? .55 : 1, dir = R() < .5 ? 1 : -1, flip = dir < 0, P = (x, y, t) => [dir > 0 ? x : W - x, y, t], X0 = -170 * k, X1 = W + 170 * k, hold = (p, t0, t1) => ln(p, p, t0, t1, 2);
   const bub = (txt, x, y, a, b, D) => fx1('<div style="position:absolute;left:0;top:0;transform:translate(-50%,-100%);padding:3px 8px;border-radius:9px;' + (night ? 'background:rgba(8,21,15,.92);border:1px solid rgba(94,242,194,.35);color:#E8FFF4' : 'background:rgba(255,255,255,.95);border:1px solid #D9EBDD;color:#2F5E44') + ';font:700 10px/1 \'Be Vietnam Pro\',sans-serif;white-space:nowrap">' + txt + '</div>', x, y, [{ opacity: 0, offset: 0 }, { opacity: 0, offset: Math.min(1, a) }, { opacity: 1, offset: Math.min(1, a + .02) }, { opacity: 1, offset: Math.min(1, b) }, { opacity: 0, offset: Math.min(1, b + .03) }, { opacity: 0, offset: 1 }], D);
@@ -602,16 +611,17 @@ function flySpawn(host, m, night) {
   }
   if (type === 'koi' || type === 'koistar') {
     const n = m ? 2 : 3, D = rr(22, 28) * sp;
-    const KOI = '<svg width="64" height="26" viewBox="0 0 64 26" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 8px rgba(94,242,194,.55))"><g style="transform-origin:16px 13px;animation:tkf-eTail .9s ease-in-out infinite alternate"><path d="M16 13 C10 6 4 2 0 3 C3 8 4 11 3 13 C4 15 3 18 0 23 C4 24 10 20 16 13 Z" fill="rgba(255,237,213,.75)" stroke="rgba(255,255,255,.8)" stroke-width=".6"/></g><path d="M14 13 C20 5 40 3 52 7 C60 9 63 12 63 13 C63 14 60 17 52 19 C40 23 20 21 14 13 Z" fill="rgba(255,251,242,.92)"/><path d="M30 6 C36 5 42 7 44 11 C40 12 34 11 30 6 Z M22 17 C26 19 32 20 36 18 C32 15 26 15 22 17 Z M50 8 C54 9 57 11 57 12 C53 12 51 10 50 8 Z" fill="#FB923C" fill-opacity=".85"/><g style="transform-origin:38px 18px;animation:tkf-eTail .7s ease-in-out -.3s infinite alternate"><path d="M38 18 C36 23 32 25 28 25 C31 22 33 20 34 18 Z" fill="rgba(255,237,213,.7)"/></g><path d="M36 4 C38 1 42 1 44 4 Z" fill="rgba(255,237,213,.7)"/><circle cx="56" cy="11.4" r="1" fill="#1E293B"/><path d="M62 14 C64 16 64 18 62 20" stroke="rgba(255,237,213,.6)" stroke-width=".6" fill="none"/></svg>';
+    // Koi Kohaku nhìn từ trên, thân uốn sóng (utils/koiArt.js); khung 120×70 ≈ cá dài 70px
+    const KOI = () => koiSvg({ width: 120, height: 70, css: 'position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 6px rgba(94,242,194,.45))' });
     if (type === 'koistar') {
       const xs0 = W * rr(.35, .65), ys = H * rr(.2, .3), yb = ys + 170 * k, D2 = rr(11, 13) * (m ? .75 : 1), tc = .55, sxS = P(xs0, ys)[0], a0 = [sxS + dir * 160 * k, -40], a1 = [a0[0] + (sxS - a0[0]) * .002, a0[1] + (ys - a0[1]) * .002];
       fly('<div style="position:absolute;left:-10px;top:1px;width:126px;height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(253,230,138,0),rgba(253,230,138,.6) 50%,#FFF7D6)"></div><span style="position:absolute;right:-6px;top:-4px;width:10px;height:10px;border-radius:50%;background:#FFF7D6;box-shadow:0 0 12px 5px rgba(253,230,138,.9)"></span>', 120, 4, [ln(a0, a1, 0, .3, 1), ln(a1, [sxS, ys], .3, tc, 10)], D2, { tk: 1, opf: t => t < .3 || t > tc - .005 ? 0 : 1 });
-      fly('<div data-k="g" style="position:absolute;left:-10px;top:-14px;width:84px;height:54px;border-radius:50%;background:radial-gradient(closest-side,rgba(253,230,138,.6),rgba(253,230,138,0));opacity:0"></div>' + KOI, 64, 26, cr([P(X0, yb + 30, 0), P(xs0 - 260 * k, yb, .3), P(xs0 - 90 * k, yb - 20 * k, .45), P(xs0, ys, tc), P(xs0 + 90 * k, yb - 20 * k, .65), P(xs0 + 260 * k, yb + 10 * k, .8), P(X1, yb + 30, 1)], 8), D2, { flip, tk: 1, sync: [['[data-k="g"]', [{ opacity: 0, offset: 0 }, { opacity: 0, offset: tc }, { opacity: 1, offset: tc + .02 }, { opacity: .6, offset: 1 }]]] });
+      fly('<div data-k="g" style="position:absolute;left:18px;top:8px;width:84px;height:54px;border-radius:50%;background:radial-gradient(closest-side,rgba(253,230,138,.6),rgba(253,230,138,0));opacity:0"></div>' + KOI(), 120, 70, cr([P(X0, yb + 30, 0), P(xs0 - 260 * k, yb, .3), P(xs0 - 90 * k, yb - 20 * k, .45), P(xs0, ys, tc), P(xs0 + 90 * k, yb - 20 * k, .65), P(xs0 + 260 * k, yb + 10 * k, .8), P(X1, yb + 30, 1)], 8), D2, { flip, tk: 1, sync: [['[data-k="g"]', [{ opacity: 0, offset: 0 }, { opacity: 0, offset: tc }, { opacity: 1, offset: tc + .02 }, { opacity: .6, offset: 1 }]]] });
       fx1('<div style="position:absolute;left:-50px;top:-50px;width:100px;height:100px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,247,214,.9),rgba(253,230,138,.3) 50%,rgba(253,230,138,0))"></div>', sxS, ys, [{ opacity: 0, transform: 'scale(.2)' }, { opacity: 1, transform: 'scale(' + k + ')', offset: .25 }, { opacity: 0, transform: 'scale(' + 1.5 * k + ')' }], 1, tc * D2);
       for (let i = 0; i < 16; i++) { const a = R() * Math.PI * 2, r = rr(30, 90) * k; fx1(dot(rr(2.5, 4), '#FFF3B0', '253,224,71'), sxS, ys, [{ transform: 'translate(0,0)', opacity: 0 }, { transform: 'translate(0,0)', opacity: 1, offset: .05 }, { transform: 'translate(' + (Math.cos(a) * r).toFixed(1) + 'px,' + (Math.sin(a) * r + 30 * k).toFixed(1) + 'px)', opacity: 0 }], rr(1.2, 2), tc * D2); }
       return D2 + 1;
     }
-    for (let i = 0; i < n; i++) { const y = H * rr(.15, .6), amp = rr(30, 60) * k; fly(KOI, 64, 26, cr(Array.from({ length: 9 }, (_, j) => P(X0 + (X1 - X0) * j / 8, y + (j % 2 ? amp : -amp) * (j && j < 8 ? 1 : .3), j / 8)), 8), D * rr(.85, 1.1), { flip, tk: 1, delay: i * rr(1.5, 3), k: k * rr(.75, 1.05) }); }
+    for (let i = 0; i < n; i++) { const y = H * rr(.15, .6), amp = rr(30, 60) * k; fly(KOI(), 120, 70, cr(Array.from({ length: 9 }, (_, j) => P(X0 + (X1 - X0) * j / 8, y + (j % 2 ? amp : -amp) * (j && j < 8 ? 1 : .3), j / 8)), 8), D * rr(.85, 1.1), { flip, tk: 1, delay: i * rr(1.5, 3), k: k * rr(.75, 1.05) }); }
     return D * 1.1 + 6;
   }
   if (type === 'veins') {
@@ -745,7 +755,7 @@ function waterSplash(top, x, y, k = 1) {
       { transform: 'translate(' + (Math.cos(a) * r).toFixed(1) + 'px,' + (Math.sin(a) * r - 12).toFixed(1) + 'px) scale(0)', opacity: 0 }
     ], 0.7);
   }
-  const KOI_MINI = '<svg width="34" height="18" viewBox="0 0 34 18" style="position:absolute;left:-17px;top:-9px;overflow:visible;filter:drop-shadow(0 0 6px rgba(94,242,194,.8))"><path d="M2 9 C8 3 24 2 32 9 C24 16 8 15 2 9 Z" fill="#FB923C"/><path d="M12 4 Q16 2 20 5 Z M10 13 Q14 16 18 13 Z" fill="#FDBA74"/><circle cx="28" cy="8" r="1" fill="#1E293B"/></svg>';
+  const KOI_MINI = koiSvg({ width: 58, height: 34, css: 'position:absolute;left:-29px;top:-17px;overflow:visible;filter:drop-shadow(0 0 6px rgba(94,242,194,.8))' });
   fx1(KOI_MINI, x, y, [
     { transform: 'translate(0, 4px) rotate(-35deg) scale(0.6)', opacity: 0 },
     { transform: 'translate(0, -28px) rotate(0deg) scale(1)', opacity: 1, offset: 0.45 },

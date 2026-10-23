@@ -20,7 +20,6 @@ export default function KBEditorView({
   onSave,
   onCancel,
   isSaving,
-  suggestions = [],
   isNew = false,
   onOpenLinkModal,
 }) {
