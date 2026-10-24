@@ -15,6 +15,7 @@ import {
   generatePassword,
   normalizeGroup, groupKey, inGroup, groupTree,
   normalizeIdent, identifiersOf, dependentsOf, isPasswordOnly,
+  rootsOf, upstreamOf, chainTo, untrackedIdentifiers, rootKind,
 } from '../../utils/vaultLogic.js';
 
 /* ── TYPES phải khớp CHECK constraint trong migration ──────────────────── */
@@ -470,5 +471,36 @@ assert.equal(isPasswordOnly({ auth: [{ kind: 'password', state: 'primary' }, { k
 assert.equal(isPasswordOnly({ auth: [{ kind: 'password', state: 'primary' }, { kind: 'totp', state: 'off' }] }), true,
   'phương thức đã tắt không tính');
 assert.equal(isPasswordOnly({ auth: [] }), false, 'chưa ghi phương thức nào ≠ chỉ có mật khẩu');
+
+/* ── Roots ────────────────────────────────────────────────────────────── */
+assert.deepEqual(fromGmail.map((d) => d.parentId), ['gmail', 'gmail', 'tcb'], 'parentId nối cây');
+
+const roots = rootsOf(vault);
+assert.deepEqual(roots.map((r) => r.item.id), ['phone', 'gmail'], 'chỉ item đại diện định danh, nhiều phụ thuộc trước');
+assert.deepEqual([roots[0].deps.length, roots[0].direct, roots[0].depth], [5, 4, 2]);
+assert.deepEqual([roots[1].deps.length, roots[1].direct, roots[1].depth], [3, 2, 2]);
+
+assert.deepEqual([rootKind(gmail), rootKind(phone), rootKind({ title: '+84 327 279 292' })], ['email', 'identity', 'phone']);
+assert.deepEqual(upstreamOf(vault, 'gmail').map((u) => [u.item.id, u.via]), [['phone', 'Recovery phone']]);
+assert.deepEqual(upstreamOf(vault, 'card').map((u) => u.item.id), ['tcb']);
+assert.deepEqual(upstreamOf(vault, 'phone'), [], 'không ai giữ mục Phone');
+assert.deepEqual(upstreamOf(vault, 'missing'), []);
+
+assert.deepEqual(chainTo(fromGmail, 'card').map((i) => i.id), ['tcb', 'card']);
+assert.deepEqual(chainTo(fromGmail, 'vib').map((i) => i.id), ['vib']);
+assert.deepEqual(chainTo(fromGmail).map((i) => i.id), ['tcb', 'card'], 'mặc định: tới nút sâu nhất');
+assert.deepEqual(chainTo(fromGmail, 'không-có').map((i) => i.id), ['tcb', 'card']);
+assert.deepEqual(chainTo([]), []);
+
+// kuroemon98 là username của 2 item nhưng không item nào đại diện cho nó
+const ms = { id: 'ms', title: 'Microsoft', fields: [f('Username', 'Kuroemon98@gmail.com'), f('Password', 'kuroemon98@gmail.com', 'password')] };
+const apple = { id: 'apple', title: 'AppleID', fields: [f('Username', 'kuroemon98@gmail.com')] };
+const lone = { id: 'lone', title: 'Lone', fields: [f('Username', 'only.once@gmail.com')] };
+const untracked = untrackedIdentifiers([...vault, ms, apple, lone]);
+assert.deepEqual(untracked.map((u) => [u.ident, u.value, u.items.map((i) => i.id)]),
+  [['kuroemon98@gmail.com', 'Kuroemon98@gmail.com', ['ms', 'apple']]],
+  'đã có gốc (SĐT, tunghnhn9x) không tính; dùng 1 lần không tính; field password không quét');
+assert.deepEqual(untrackedIdentifiers([...vault, ms, apple, { id: 'k', title: 'kuroemon98@gmail.com', fields: [] }]), [],
+  'có item tiêu đề là email đó thì không còn là "chưa có trong vault"');
 
 console.log('vaultLogic check: OK');

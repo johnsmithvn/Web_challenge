@@ -159,7 +159,8 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   tên). X / Huỷ / `Escape` bỏ bản nháp. Tên trống thì ô tên tự focus.
 
 - **Đổi ngày giờ** (nhãn hạn trên thẻ, ngăn chi tiết, bấm giờ của việc ở Lịch biểu): ô Bắt đầu + Kết thúc (tuỳ
-  chọn), lịch có ngày âm; ô đang chọn nhận lần bấm (không tự nhảy ô); ✕ "Bỏ hạn" xoá hết, ✕ "Bỏ ngày kết thúc" chỉ
+  chọn), lịch có ngày âm; bấm kiểu ClickUp: ngày đầu vào Bắt đầu rồi tự nhảy sang Kết thúc, bấm tiếp là ngày cuối
+  (rê chuột xem trước khoảng; bấm trước Bắt đầu = Bắt đầu mới, bấm trùng = 1 ngày); ✕ "Bỏ hạn" xoá hết, ✕ "Bỏ ngày kết thúc" chỉ
   bỏ ngày cuối; "Thêm giờ" mở dòng giờ bắt đầu → kết thúc (1 ngày có cả 2 giờ = khối giờ cùng ngày). Lưu mờ khi
   chưa đổi. Lọc khoảng ngày: 4 khoảng nhanh + "Bấm ngày đầu, rồi ngày cuối".
 - Phụ đề hàng điều hướng: Tuần "Bính Ngọ · N việc có giờ, M cả ngày", Tháng "Bính Ngọ · N việc có hạn".

@@ -700,8 +700,9 @@ export function useAccounts() {
     }
   }, [enabled, items, itemTitles, writeItem]);
 
-  // `group`: nhóm đang mở ở cột trái lúc bấm New item (Smart Prefill, RULES §14)
-  const createItem = useCallback(async (tplKey, { group = '' } = {}) => {
+  // Smart Prefill (RULES §14): `group` = nhóm đang mở ở cột trái lúc bấm New item;
+  // `title` + `values` ({ [nhãn field]: giá trị }) cho "Add as item" ở màn Roots.
+  const createItem = useCallback(async (tplKey, { group = '', title = '', values = {} } = {}) => {
     if (!enabled || !keyRef.current) return null;
     const tpl = TPL_BY_KEY.get(tplKey);
     if (!tpl) return null;
@@ -712,14 +713,14 @@ export function useAccounts() {
     const id = newId();
     const item = addLogs({
       id,
-      title: `New ${tpl.name.toLowerCase()}`,
+      title: title || `New ${tpl.name.toLowerCase()}`,
       tpl: tplKey,
       group,
       favorite: false,
       notes: '',
       tags: [],
       fields: tpl.fields.map((field) => ({
-        id: newId(), label: field.label, type: field.type, value: '', values: [], links: [],
+        id: newId(), label: field.label, type: field.type, value: values[field.label] || '', values: [], links: [],
       })),
       auth: (tpl.auth || []).map((kind, index) => ({
         id: newId(), kind, note: AUTH_KINDS[kind]?.note || '', state: index === 0 ? 'primary' : 'on',

@@ -25,6 +25,7 @@ import {
   buildAgendaRows,
   datePickDraft,
   datePickPatch,
+  datePickClick,
 } from '../../utils/calendarTimeUtils.js';
 
 // v6.21.0: khối thời gian = Bắt đầu → Hạn CÙNG ngày (không còn end_time).
@@ -375,5 +376,27 @@ console.log('agenda rows (week/gap): OK');
   assert.deepEqual(datePickDraft(startOnly), { a: '2026-10-12', b: null, ta: '09:00', tb: null });
 }
 console.log('date picker draft/patch: OK');
+
+// ── Popover đổi ngày giờ: bấm ngày kiểu ClickUp (Bắt đầu → tự nhảy Kết thúc) ──
+{
+  const E = { a: null, b: null, ta: null, tb: null };
+  // Bấm 24 rồi 31 → khoảng 24→31, xong quay về ô Bắt đầu
+  let r = datePickClick(E, 'a', '2026-10-24');
+  assert.deepEqual(r, { dr: { ...E, a: '2026-10-24' }, field: 'b' });
+  r = datePickClick(r.dr, r.field, '2026-10-31');
+  assert.deepEqual(r, { dr: { ...E, a: '2026-10-24', b: '2026-10-31' }, field: 'a' });
+  // Đang chờ ngày cuối mà bấm trước Bắt đầu → Bắt đầu mới, vẫn chờ ngày cuối
+  r = datePickClick({ ...E, a: '2026-10-24' }, 'b', '2026-10-20');
+  assert.deepEqual(r, { dr: { ...E, a: '2026-10-20' }, field: 'b' });
+  // Bấm trùng Bắt đầu → 1 ngày
+  r = datePickClick({ ...E, a: '2026-10-24', b: '2026-10-31' }, 'b', '2026-10-24');
+  assert.deepEqual(r, { dr: { ...E, a: '2026-10-24', b: null }, field: 'a' });
+  // Ô Bắt đầu: giữ Kết thúc nếu vẫn sau, bỏ nếu không
+  assert.deepEqual(datePickClick({ ...E, a: '2026-10-24', b: '2026-10-31' }, 'a', '2026-10-26').dr.b, '2026-10-31');
+  assert.equal(datePickClick({ ...E, a: '2026-10-24', b: '2026-10-31' }, 'a', '2026-11-02').dr.b, null);
+  // Ô Kết thúc khi chưa có Bắt đầu → đặt Bắt đầu
+  assert.deepEqual(datePickClick(E, 'b', '2026-10-24'), { dr: { ...E, a: '2026-10-24' }, field: 'b' });
+}
+console.log('date picker click flow: OK');
 
 console.log('\n✅ weekCalendarLogic — tất cả kiểm thử logic Lịch Tuần PASS (100% covered)');

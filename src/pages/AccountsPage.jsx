@@ -6,11 +6,12 @@ import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../components/ConfirmModal';
 import AccountDetail from '../components/AccountDetail';
 import AccountAvatar from '../components/AccountAvatar';
+import RootMap, { RootRow } from '../components/RootMap';
 import AppIcon from '../components/AppIcon';
 import SkeletonList from '../components/SkeletonList';
 import {
   matchesQuery, itemSubtitle, newId, relativeUpdated, avatarHue, groupTree, groupKey, inGroup,
-  isPasswordOnly,
+  isPasswordOnly, rootsOf, untrackedIdentifiers,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import '../styles/accounts.css';
@@ -56,7 +57,8 @@ export default function AccountsPage() {
   const { confirm, ConfirmModal } = useConfirm();
 
   const [query, setQuery] = useState('');
-  const [viewState, setView] = useState('all');   // 'all' | 'fav' | 'weak' | 'none' (Ungrouped) | 'g:<groupKey>'
+  const [viewState, setView] = useState('all');   // 'all' | 'fav' | 'weak' | 'roots' | 'none' (Ungrouped) | 'g:<groupKey>'
+  const [rootId, setRootId] = useState(null);     // gốc đang mở ở màn Roots (null = gốc đầu danh sách)
   const [tplFilter, setTplFilter] = useState(''); // '' = mọi loại
   const [tag, setTag] = useState(null);           // tag id
   const [selectedId, setSelectedId] = useState(null);
@@ -112,6 +114,18 @@ export default function AccountsPage() {
 
   const selected = items.find((i) => i.id === selectedId) || null;
 
+  // ── Roots ───────────────────────────────────────────────────
+  // ponytail: tính lại cả cây cho mọi gốc mỗi lần items đổi — vài trăm item vẫn
+  // nhẹ; cần cache theo gốc nếu vault lên hàng nghìn.
+  const roots = useMemo(() => rootsOf(items), [items]);
+  const untracked = useMemo(() => untrackedIdentifiers(items), [items]);
+  const rootIds = useMemo(() => new Set(roots.map((r) => r.item.id)), [roots]);
+  const visibleRoots = roots.filter((r) => matchesQuery(r.item, query));
+  const activeRoot = roots.find((r) => r.item.id === rootId) || visibleRoots[0] || null;
+  const pickRoot = (id) => { setView('roots'); setTag(null); setRootId(id); setScreen('detail'); };
+  // Từ bản đồ gốc mở một item thường → rời màn Roots, sang trang chi tiết của nó
+  const openItem = (id) => { setView('all'); setTag(null); open(id); };
+
   const counts = useMemo(() => {
     const c = { fav: 0, weak: 0 };
     for (const i of items) {
@@ -151,8 +165,10 @@ export default function AccountsPage() {
     : activeGroup ? activeGroup.name
       : view === 'fav' ? 'Favourites'
         : view === 'weak' ? 'Password only'
-          : view === 'none' ? 'Ungrouped'
-            : 'All items';
+          : view === 'roots' ? 'Roots'
+            : view === 'none' ? 'Ungrouped'
+              : 'All items';
+  const listCount = view === 'roots' ? visibleRoots.length : visible.length;
 
   // Ở màn 'home' (mobile) gõ tìm kiếm là tìm TOÀN vault → nhảy sang danh sách All.
   // Ô tìm kiếm nằm ở header, header vẫn hiện ở màn 'list' → input không bị
@@ -231,6 +247,19 @@ export default function AccountsPage() {
     open(id, { edit: true });
   };
 
+  // "Add as item" ở màn Roots: tiêu đề = chính email/SĐT đó nên item mới lập tức
+  // thành một gốc (luật identifiersOf), Username điền sẵn, mở thẳng chế độ sửa.
+  const handleAddRoot = async (u) => {
+    if (creating) return;
+    setCreating('account');
+    const id = await createItem('account', { title: u.value, values: { Username: u.value } });
+    setCreating(null);
+    if (!id) { showToast('Could not create the item', { icon: 'warning' }); return; }
+    setView('all');
+    setTag(null);
+    open(id, { edit: true });
+  };
+
   const handleDelete = async (item) => {
     // Đếm item khác đang trỏ tới nó — xoá xong chúng thành "Missing item"
     const inbound = items.filter((i) => i.id !== item.id
@@ -294,7 +323,7 @@ export default function AccountsPage() {
             <AppIcon name="caretLeft" size={16} /> Vault
           </button>
           <h2 className="acc-head__title">
-            {listTitle} <span className="acc-head__count">{visible.length}</span>
+            {listTitle} <span className="acc-head__count">{listCount}</span>
           </h2>
         </div>
 
@@ -349,6 +378,11 @@ export default function AccountsPage() {
             <GroupBtn warn icon="warning" label="Password only" count={counts.weak}
               on={view === 'weak' && !tag} onClick={() => pickView('weak')} />
           )}
+          {/* Bản đồ gốc định danh (PA3): mailbox / SĐT mà item khác dựa vào */}
+          {(roots.length > 0 || untracked.length > 0) && (
+            <GroupBtn icon="tree" label="Roots" count={roots.length}
+              on={view === 'roots' && !tag} onClick={() => pickView('roots')} />
+          )}
 
           <div className="acc-groups__cap">Groups</div>
           {tree.groups.map((g) => (
@@ -393,6 +427,47 @@ export default function AccountsPage() {
           </button>
         </nav>
 
+        {view === 'roots' ? (
+          <section className="acc-pane acc-pane--list" aria-label="Identity roots">
+            <div className="acc-listhead">
+              <h2 className="acc-listhead__title">Roots</h2>
+              <span className="acc-listhead__count">{visibleRoots.length}</span>
+            </div>
+            <p className="acc-roots__hint">Mailboxes and numbers other items lean on, most depended-on first.</p>
+
+            {visibleRoots.map((r) => (
+              <RootRow key={r.item.id} root={r} on={r.item.id === activeRoot?.item.id}
+                onOpen={() => pickRoot(r.item.id)} />
+            ))}
+            {!roots.length && (
+              <div className="acc-list__empty">
+                No roots yet. An item whose title is an email or phone number, or an Identity item, becomes one.
+              </div>
+            )}
+            {roots.length > 0 && !visibleRoots.length && (
+              <div className="acc-list__empty">No roots match this search.</div>
+            )}
+
+            {untracked.length > 0 && (
+              <>
+                <div className="acc-roots__cap">Not in vault yet</div>
+                {untracked.map((u) => (
+                  <div className="acc-untracked" key={u.ident}>
+                    <span className="acc-untracked__id">{u.value}</span>
+                    <span className="acc-untracked__why">
+                      Used by {u.items.map((i) => i.title).join(', ')}. It has no item of its own, so its
+                      password and 2-step aren&apos;t tracked.
+                    </span>
+                    <button type="button" className="acc-act acc-untracked__add"
+                      disabled={!!creating} onClick={() => handleAddRoot(u)}>
+                      {creating ? 'Creating…' : '+ Add as item'}
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+          </section>
+        ) : (
         <section className="acc-pane acc-pane--list">
           <div className="acc-listhead">
             <h2 className="acc-listhead__title">{listTitle}</h2>
@@ -431,9 +506,30 @@ export default function AccountsPage() {
             <ListRow key={i.id} item={i} on={i.id === selectedId} onOpen={() => open(i.id)} />
           ))}
         </section>
+        )}
 
         <section className="acc-pane acc-pane--detail">
-          {selected ? (
+          {view === 'roots' ? (
+            activeRoot ? (
+              <RootMap
+                key={activeRoot.item.id}
+                root={activeRoot}
+                items={items}
+                rootIds={rootIds}
+                backLabel="Roots"
+                onBack={() => setScreen('list')}
+                onOpenItem={openItem}
+                onPickRoot={pickRoot}
+              />
+            ) : (
+              <div className="acc-detail__blank">
+                <div>
+                  <h2>No root selected</h2>
+                  <p>Roots appear once an item is titled with an email or phone number.</p>
+                </div>
+              </div>
+            )
+          ) : selected ? (
             <AccountDetail
               /* key: buộc React dựng lại subtree khi đổi item, nhờ đó animation
                  acc-enter chạy lại — mốc thị giác cho biết nội dung đã đổi */

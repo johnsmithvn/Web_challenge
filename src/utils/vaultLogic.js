@@ -338,7 +338,8 @@ function directDependents(items, target) {
  * ponytail: O(n² · số field) — đủ cho vault cá nhân vài trăm mục, cần index ngược
  * nếu vault lên hàng nghìn.
  *
- * @return {Array<{item, via: string, depth: number}>} depth 1 = trực tiếp
+ * @return {Array<{item, via: string, depth: number, parentId: string}>} depth 1 = trực tiếp;
+ *   parentId = item ngay phía trên trong cây (gốc với depth 1)
  */
 export function dependentsOf(items, rootId, maxDepth = 3) {
   const root = items.find((i) => i.id === rootId);
@@ -360,12 +361,111 @@ export function dependentsOf(items, rootId, maxDepth = 3) {
   const out = [];
   const walk = (id, depth) => {
     for (const d of children.get(id) || []) {
-      out.push({ ...d, depth });
+      out.push({ ...d, depth, parentId: id });
       walk(d.item.id, depth + 1);
     }
   };
   walk(rootId, 1);
   return out;
+}
+
+/* ══ Roots (bản đồ gốc định danh) ═══════════════════════════════════════ */
+
+/**
+ * Mọi gốc định danh (luật ở identifiersOf) kèm cây phụ thuộc, sắp theo số item
+ * phụ thuộc giảm dần rồi theo tên. Gốc không ai dựa vào vẫn có trong danh sách
+ * (UI làm mờ) — nó vẫn là một mailbox / số điện thoại thật.
+ *
+ * @return {Array<{item, deps: Array, direct: number, depth: number}>}
+ */
+export function rootsOf(items) {
+  return items
+    .filter((it) => identifiersOf(it).size > 0)
+    .map((item) => {
+      const deps = dependentsOf(items, item.id);
+      return {
+        item,
+        deps,
+        direct: deps.filter((d) => d.depth === 1).length,
+        depth: deps.reduce((m, d) => Math.max(m, d.depth), 0),
+      };
+    })
+    .sort((a, b) => b.deps.length - a.deps.length || a.item.title.localeCompare(b.item.title, 'vi'));
+}
+
+/** Gốc là gì: tiêu đề là email → 'email', là SĐT → 'phone', còn lại (Identity) → 'identity'. */
+export function rootKind(item) {
+  const ident = normalizeIdent(item.title);
+  if (!ident) return 'identity';
+  return ident.includes('@') ? 'email' : 'phone';
+}
+
+/**
+ * Chiều ngược của dependentsOf, một cấp: item này dựa vào những item nào
+ * (Gmail ← mục Phone vì field "Recovery phone" của Gmail trùng số đó).
+ * `via` = nhãn field CỦA ITEM NÀY đã nối sang bên kia.
+ *
+ * @return {Array<{item, via: string}>}
+ */
+export function upstreamOf(items, id) {
+  const self = items.find((i) => i.id === id);
+  if (!self) return [];
+  const out = [];
+  for (const other of items) {
+    if (other.id === id) continue;
+    const hit = directDependents(items, other).find((d) => d.item.id === id);
+    if (hit) out.push({ item: other, via: hit.via });
+  }
+  return out;
+}
+
+/**
+ * Đường từ gốc xuống `targetId` trong cây dependentsOf (gốc KHÔNG nằm trong kết
+ * quả). Không có target hoặc target không thuộc cây → đường tới nút SÂU nhất,
+ * vì đó là chuỗi dài nhất người dùng cần thấy.
+ *
+ * @param {Array<{item, depth, parentId}>} deps kết quả của dependentsOf
+ * @return {Array<object>} các item, cấp 1 trước
+ */
+export function chainTo(deps, targetId) {
+  if (!deps.length) return [];
+  const byId = new Map(deps.map((d) => [d.item.id, d]));
+  let node = byId.get(targetId)
+    || deps.reduce((best, d) => (d.depth > best.depth ? d : best), deps[0]);
+  const path = [];
+  while (node) {
+    path.unshift(node.item);
+    node = byId.get(node.parentId);
+  }
+  return path;
+}
+
+/**
+ * Email / SĐT làm giá trị cho ≥2 item nhưng chưa item nào ĐẠI DIỆN cho nó (xem
+ * identifiersOf) — mailbox thật mà mật khẩu + 2 bước của chính nó không ai theo
+ * dõi. `value` là cách viết gặp đầu tiên (để điền sẵn khi tạo item).
+ * Secret không bao giờ được quét: trùng mật khẩu không phải là "dùng chung email".
+ *
+ * @return {Array<{ident: string, value: string, items: Array}>} nhiều item trước
+ */
+export function untrackedIdentifiers(items) {
+  const owned = new Set(items.flatMap((it) => [...identifiersOf(it)]));
+  const seen = new Map();          // ident → { value, items: Map(id → item) }
+  for (const it of items) {
+    for (const f of it.fields || []) {
+      if (isSecretType(f.type) || f.type === 'link') continue;
+      for (const v of fieldValues(f)) {
+        const ident = normalizeIdent(v);
+        if (!ident || owned.has(ident)) continue;
+        if (!seen.has(ident)) seen.set(ident, { value: String(v).trim(), items: new Map() });
+        seen.get(ident).items.set(it.id, it);
+      }
+    }
+  }
+  return [...seen.entries()]
+    .map(([ident, s]) => ({ ident, value: s.value, items: [...s.items.values()] }))
+    .filter((x) => x.items.length >= 2)
+    .sort((a, b) => b.items.length - a.items.length || a.ident.localeCompare(b.ident));
 }
 
 /** Đang đăng nhập chỉ bằng mật khẩu: có ít nhất một phương thức bật, và tất cả đều là password. */
