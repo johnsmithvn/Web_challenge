@@ -349,13 +349,15 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   Quy chuẩn: hộp thư ở nhà cung cấp (Email account) → Gmail / Outlook / iCloud Mail; tài khoản ở nhà cung cấp
   đăng nhập bằng email khác (Account) → Google / Microsoft / Apple ID. Gợi ý lọc theo loại item nên không
   xổ cả "Gmail" lẫn "Google" cho cùng một thứ.
-- **Bộ nhóm chuẩn:** Tài chính/Ngân hàng · Ví điện tử · Thẻ · Đầu tư, Email, Mạng xã hội, Mua sắm, Giải trí,
-  Nền tảng, Công việc, Định danh, Thiết bị & mạng — xổ ở ô Group / thanh Move to group (sau nhóm đã dùng).
-  Item mới không đứng trong nhóm nào vào nhóm chuẩn của loại (Thẻ → Tài chính/Thẻ, Email account → Email,
-  Identity → Định danh, Wi-Fi → Thiết bị & mạng, Server / Database / API key → Công việc). Vẫn gõ nhóm khác được.
+- **Bộ nhóm chuẩn (8 nhóm):** Tài chính (Ngân hàng · Ví điện tử · Thẻ · Đầu tư), Email, Tài khoản chính
+  (Google, Apple ID, Microsoft), Mạng xã hội, Mua sắm & giải trí, Công việc, Giấy tờ & SĐT, Wi-Fi & thiết bị.
+  Chọn bằng hàng nút có icon ở chế độ Edit và thanh Move to group (nhóm đã dùng đứng trước); chọn Tài chính
+  thì hiện hàng nhóm con; **Other…** để gõ nhóm khác ("/" tạo nhóm con). Item mới không đứng trong nhóm nào
+  vào nhóm chuẩn của loại (Thẻ → Tài chính/Thẻ, Email account → Email, Identity → Giấy tờ & SĐT,
+  Wi-Fi → Wi-Fi & thiết bị, Server / Database / API key → Công việc).
 - **Chuyển nhóm hàng loạt:** nút **Select** ở đầu danh sách → tick nhiều item (hoặc "Select all" theo bộ
-  lọc đang xem) → gõ / chọn nhóm ở thanh **Move to group** → Move. Gõ tên chưa có là tạo nhóm, để trống là
-  bỏ nhóm. **+ New group** ở cột nhóm mở thẳng chế độ chọn ở All items để tạo nhóm mới.
+  lọc đang xem) → chọn nhóm ở thanh **Move to group** → Move. Other… gõ tên chưa có là tạo nhóm, Ungrouped là
+  bỏ nhóm. **+ New group** ở cột nhóm mở thẳng chế độ chọn ở All items, ô gõ tên nhóm mở sẵn.
 - **Email account (EML) và Identity làm gốc:** hộp thư nên lưu bằng loại Email account — tiêu đề đặt tự
   do ("Gmail", "Gmail công việc"), địa chỉ ở field Email address; Roots nhận gốc theo field đó. Mỗi số
   điện thoại là một Identity (Phone numbers), dòng phụ ngoài danh sách hiện chính số đó. Item cũ có tiêu

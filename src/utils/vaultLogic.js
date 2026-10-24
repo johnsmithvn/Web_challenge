@@ -312,6 +312,12 @@ export function groupSuggestions(items, presets = []) {
   return out;
 }
 
+/** Icon theo từ khoá trong tên nhóm (`groupIcons` trong account-templates.json) — tên nhóm do user tự gõ nên không có chỗ lưu icon riêng. */
+export function groupIcon(name, { rules, fallback }) {
+  const n = String(name || '').toLocaleLowerCase('vi');
+  return rules.find((r) => r.match.some((m) => n.includes(m)))?.icon || fallback;
+}
+
 /* ══ Chuỗi phụ thuộc ("Depends on this") ═════════════════════════════════
    Ai sẽ bị kéo theo nếu item này mất/bị chiếm. Hai nguồn cạnh:
    1. Link thật: field `link` của item khác trỏ tới item này.

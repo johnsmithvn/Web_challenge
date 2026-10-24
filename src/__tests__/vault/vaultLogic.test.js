@@ -18,7 +18,7 @@ import {
   normalizeIdent, identifiersOf, dependentsOf, isPasswordOnly,
   rootsOf, upstreamOf, chainTo, untrackedIdentifiers, rootKind,
   guessLinkKind, linkKind, moneyLinksOf, moneyReach, moneyMatrix, moneySourcesOf,
-  mailboxTitle, titleSuggestions, groupSuggestions,
+  mailboxTitle, titleSuggestions, groupSuggestions, groupIcon,
 } from '../../utils/vaultLogic.js';
 
 /* ── TYPES phải khớp CHECK constraint trong migration ──────────────────── */
@@ -657,6 +657,13 @@ for (const t of tplJson.templates) {
   if (t.group) assert.ok(standard.has(groupKey(t.group)), `template ${t.key}.group "${t.group}" phải nằm trong groupPresets`);
 }
 assert.ok(tplJson.groupPresets.every((g) => normalizeGroup(g) === g), 'groupPresets viết sẵn dạng chuẩn (tối đa 2 cấp)');
+// Nút ở GroupPicker: nhóm chuẩn nào (cả nhóm cha) cũng có icon riêng, không rơi về folder.
+// Thứ tự quy tắc có nghĩa: "Wi-Fi & thiết bị" phải ra wifi chứ không phải deviceMobile.
+for (const g of new Set(tplJson.groupPresets.flatMap((p) => [p, p.split('/')[0]]))) {
+  assert.notEqual(groupIcon(g, tplJson.groupIcons), tplJson.groupIcons.fallback, `nhóm chuẩn "${g}" cần icon`);
+}
+assert.equal(groupIcon('Wi-Fi & thiết bị', tplJson.groupIcons), 'wifi');
+assert.equal(groupIcon('Tài chính/Ngân hàng', tplJson.groupIcons), 'bank', 'ngân hàng trước tài chính');
 
 assert.equal(itemSubtitle(phone, 'Identity'), '0327 279 292', 'Identity chỉ có SĐT → dòng phụ là SĐT');
 assert.equal(itemSubtitle(mailbox, 'Email account'), 'Kuroemon98@gmail.com');

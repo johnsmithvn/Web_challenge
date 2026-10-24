@@ -4,7 +4,7 @@ import { useAccounts } from '../hooks/useAccounts';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../components/ConfirmModal';
-import AccountDetail from '../components/AccountDetail';
+import AccountDetail, { GroupPicker } from '../components/AccountDetail';
 import AccountAvatar from '../components/AccountAvatar';
 import RootMap, { RootRow } from '../components/RootMap';
 import { MoneyMatrix, MoneyPanel } from '../components/MoneyLinks';
@@ -13,7 +13,7 @@ import SkeletonList from '../components/SkeletonList';
 import {
   matchesQuery, itemSubtitle, newId, relativeUpdated, avatarHue, groupTree, groupKey, inGroup,
   isPasswordOnly, rootsOf, untrackedIdentifiers, moneyMatrix, mailboxTitle, normalizeGroup,
-  groupSuggestions, NO_AUTOFILL,
+  groupSuggestions, groupIcon, NO_AUTOFILL,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import '../styles/accounts.css';
@@ -46,12 +46,6 @@ const {
 } = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 
-/** Icon theo từ khoá trong tên nhóm — tên nhóm do user tự gõ nên không có chỗ lưu icon riêng. */
-const groupIcon = (name) => {
-  const n = name.toLocaleLowerCase('vi');
-  return GROUP_ICONS.rules.find((r) => r.match.some((m) => n.includes(m)))?.icon || GROUP_ICONS.fallback;
-};
-
 export default function AccountsPage() {
   const { user } = useAuth();
   const { items, isLoading, saveItem, createItem, deleteItem, toggleFavorite,
@@ -83,7 +77,7 @@ export default function AccountsPage() {
   const [picked, setPicked] = useState(() => new Set());
   const [bulkGroup, setBulkGroup] = useState('');
   const [moving, setMoving] = useState(false);
-  const bulkInputRef = useRef(null);
+  const [newGroup, setNewGroup] = useState(0); // đổi = remount GroupPicker; >0 = "+ New group", mở sẵn ô gõ tên
   const [autoEditId, setAutoEditId] = useState(null); // item vừa tạo → mở sẵn edit
   const [revealed, setRevealed] = useState({});   // { [fieldId]: true }
   const [copied, setCopied] = useState(null);     // 1 key tại một thời điểm
@@ -288,8 +282,8 @@ export default function AccountsPage() {
 
   // ── Chuyển nhóm hàng loạt ───────────────────────────────────
   // Nhóm suy ra từ item nên "tạo nhóm" = chọn item rồi gõ tên nhóm mới vào thanh
-  // Move to group. "+ New group" ở cột nhóm chỉ mở chế độ chọn ở All items và đặt
-  // con trỏ vào ô tên nhóm.
+  // Move to group. "+ New group" ở cột nhóm chỉ mở chế độ chọn ở All items, ô gõ
+  // tên nhóm mở sẵn.
   const groupPaths = groupSuggestions(items, GROUP_PRESETS);
   const exitSelect = () => { setSelecting(false); setPicked(new Set()); setBulkGroup(''); };
   const startSelect = ({ fresh = false } = {}) => {
@@ -298,8 +292,7 @@ export default function AccountsPage() {
     setBulkGroup('');
     if (fresh) { setView('all'); setTag(null); }
     setScreen('list');
-    // Ô tên nhóm chỉ có sau khi render chế độ chọn → focus ở frame sau
-    if (fresh) requestAnimationFrame(() => bulkInputRef.current?.focus());
+    setNewGroup(fresh ? (n) => n + 1 : 0);
   };
   const togglePick = (id) => setPicked((s) => {
     const next = new Set(s);
@@ -469,11 +462,11 @@ export default function AccountsPage() {
           <div className="acc-groups__cap">Groups</div>
           {tree.groups.map((g) => (
             <Fragment key={g.key}>
-              <GroupBtn icon={groupIcon(g.name)} hue={avatarHue(g.name)} label={g.name} count={g.count}
+              <GroupBtn icon={groupIcon(g.name, GROUP_ICONS)} hue={avatarHue(g.name)} label={g.name} count={g.count}
                 on={view === `g:${g.key}` && !tag} onClick={() => pickView(`g:${g.key}`)} />
               {/* Con mang màu của CHA: cả nhánh đọc ra là một khối */}
               {g.children.map((c) => (
-                <GroupBtn key={c.key} sub icon={groupIcon(c.name)} hue={avatarHue(g.name)} label={c.name}
+                <GroupBtn key={c.key} sub icon={groupIcon(c.name, GROUP_ICONS)} hue={avatarHue(g.name)} label={c.name}
                   count={c.count} on={view === `g:${c.key}` && !tag} onClick={() => pickView(`g:${c.key}`)} />
               ))}
             </Fragment>
@@ -610,15 +603,9 @@ export default function AccountsPage() {
                   {allVisiblePicked ? 'Clear these' : `Select all ${visible.length}`}
                 </button>
               </div>
+              <GroupPicker key={newGroup} startCustom={newGroup > 0} value={bulkGroup} onChange={setBulkGroup}
+                paths={groupPaths} onEnter={moveSelected} />
               <div className="acc-bulkbar__row">
-                {/* Native datalist như ô Group ở chế độ sửa: gợi ý nhóm có sẵn, gõ tên mới = tạo nhóm */}
-                <input ref={bulkInputRef} className="acc-input" list="acc-bulk-groups" value={bulkGroup} {...NO_AUTOFILL}
-                  onChange={(e) => setBulkGroup(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); moveSelected(); } }}
-                  placeholder="Group, e.g. Tài chính/Ngân hàng (empty = Ungrouped)" aria-label="Move to group" />
-                <datalist id="acc-bulk-groups">
-                  {groupPaths.map((p) => <option key={p} value={p} />)}
-                </datalist>
                 <button type="button" className="acc-btn acc-btn--primary" onClick={moveSelected}
                   disabled={!picked.size || moving}>
                   {moving ? 'Moving…' : 'Move'}

@@ -1212,10 +1212,17 @@ Types/Tags filter bar is gone.
   the vault (the user's own spelling) → `titlePresets` in `account-templates.json`. Picking an
   exact suggestion fills the group only when the item has none — it never overwrites a group
   the user chose. Free typing always works; this is a hint list, not a picker.
-- **Standard groups.** `groupPresets` (12 paths) is the shared vocabulary for the group input,
-  the bulk bar and the title presets; templates carry a default `group` used when an item is
-  created outside any group. A test fails if a title-preset key or a template group drifts
-  outside the list, so the standard cannot silently fork.
+- **Standard groups.** `groupPresets` is 8 plain-language groups (Tài chính has 4 children) —
+  the shared vocabulary for the group picker, the bulk bar and the title presets; names must read
+  without explanation (no "Nền tảng", "Định danh"). Templates carry a default `group` used when an
+  item is created outside any group. A test fails if a title-preset key or a template group
+  drifts outside the list, so the standard cannot silently fork.
+- **Group picker, not a datalist.** `GroupPicker` (exported from `AccountDetail.jsx`) reuses the
+  `.acc-tagedit` box + `.acc-chip`: Ungrouped · top-level groups (vault groups first, then
+  presets) · Other…; the selected group's children show as an indented second row
+  (`.acc-tagedit__row--sub`); Other… opens a text input ("/" makes a sub-group). A native
+  `<datalist>` is drawn by the browser — narrow, truncated, unstyleable — so it is not used for
+  groups. In the mobile bulk bar the chip rows scroll sideways instead of wrapping.
 - **Vault inputs never feed the browser's password manager.** Every content input spreads
   `NO_AUTOFILL` (`autocomplete=off` + ignore flags for third-party managers) and secret inputs
   are `type="text"` masked with `-webkit-text-security` (`.acc-input--masked`): Chrome treats a
@@ -1225,9 +1232,9 @@ Types/Tags filter bar is gone.
 - **Bulk move to group.** **Select** in the list head turns rows into `<label>`s wrapping a
   real checkbox (`.acc-row--select`, `.acc-row--picked`) — no control nested in a `<button>`.
   `.acc-bulkbar` sticks to the bottom of the list pane (inside the scroll area, so it never
-  covers the last row) and is fixed to the vault bottom on mobile, like the copy bar. Its
-  group input shares the Edit-mode `<datalist>` idea; empty means Ungrouped. "+ New group"
-  in the groups column is the same flow started at All items with the input focused —
+  covers the last row) and is fixed to the vault bottom on mobile, like the copy bar. It
+  uses the same `GroupPicker`; Ungrouped clears the group. "+ New group" in the groups column
+  is the same flow started at All items with Other… already open and focused —
   there is no empty-group state to create, because groups are derived from items.
 - **Root titles are free text.** A root is recognised from data, not the title: an Identity's
   values, or an **Email account (EML)**'s first email field (only the first — a "Recovery

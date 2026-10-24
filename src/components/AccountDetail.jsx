@@ -3,7 +3,7 @@ import {
   TYPES, TYPE_HINT, isSecretType, scorePassword, generatePassword, parseCodes, codeSheet,
   linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl, itemSubtitle,
   normalizeGroup, dependentsOf, isPasswordOnly, linkKind, moneySourcesOf,
-  titleSuggestions, mailboxTitle, groupSuggestions, NO_AUTOFILL,
+  titleSuggestions, mailboxTitle, groupSuggestions, groupKey, groupIcon, NO_AUTOFILL,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import AppIcon from './AppIcon';
@@ -34,6 +34,7 @@ import AccountAvatar from './AccountAvatar';
 
 const {
   templates: TEMPLATES, authKinds: AUTH_KINDS, titlePresets: TITLE_PRESETS, groupPresets: GROUP_PRESETS,
+  groupIcons: GROUP_ICONS,
 } = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
@@ -245,19 +246,6 @@ export default function AccountDetail({
                   <option key={t.key} value={t.key}>{t.name} · {t.code}</option>
                 ))}
               </select>
-              {/* Native datalist: gợi ý nhóm đã có để khỏi gõ lệch thành nhóm mới;
-                  gõ tên chưa có = tạo nhóm. Chuẩn hoá ở cleanItem lúc lưu. */}
-              <input {...NO_AUTOFILL}
-                className="acc-input acc-title__group"
-                list="acc-group-paths"
-                value={draft.group || ''}
-                onChange={(e) => patch((d) => { d.group = e.target.value; })}
-                placeholder="Group, e.g. Tài chính/Ngân hàng"
-                aria-label="Group"
-              />
-              <datalist id="acc-group-paths">
-                {groupPaths.map((p) => <option key={p} value={p} />)}
-              </datalist>
             </div>
           ) : (
             <div className="acc-title__kicker">
@@ -283,6 +271,10 @@ export default function AccountDetail({
             </>
           ) : (
             <h1 className="acc-title__h1">{item.title}</h1>
+          )}
+
+          {editing && (
+            <GroupPicker value={draft.group || ''} onChange={(g) => patch((d) => { d.group = g; })} paths={groupPaths} />
           )}
 
           {editing ? (
@@ -606,6 +598,53 @@ function TagEditor({ tags, tagIds, setTagIds, newTag, setNewTag, onAddTag }) {
           {busy ? 'Adding…' : '+ Create'}
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ══ Group picker ════════════════════════════════════════════════
+   Thay <datalist>: ô gợi ý đó do trình duyệt vẽ (hẹp, cắt chữ, không style được).
+   Hàng 1 = nhóm cấp 1; nhóm đang chọn có nhóm con thì hiện hàng con. "Other…" mở
+   ô gõ tên mới ("/" = nhóm con), chuẩn hoá ở cleanItem lúc lưu. Dùng chung với
+   thanh Move to group (AccountsPage). So khớp không phân biệt hoa thường như groupKey. */
+export function GroupPicker({ value, onChange, paths, startCustom = false, onEnter }) {
+  const [custom, setCustom] = useState(startCustom);
+  const key = groupKey(value);
+  const topKey = key.split('/')[0];
+  const tops = [...new Map(paths.map((p) => [groupKey(p.split('/')[0]), p.split('/')[0]])).values()];
+  const subs = topKey ? paths.filter((p) => groupKey(p).startsWith(`${topKey}/`)) : [];
+  const known = !key || paths.some((p) => groupKey(p) === key) || (!key.includes('/') && tops.some((t) => groupKey(t) === key));
+  const typing = custom || !known;
+  const pick = (p) => { setCustom(false); onChange(p); };
+
+  const chip = (k, on, label, icon, onClick) => (
+    <button key={k} type="button" className={`acc-chip${on ? ' acc-chip--on' : ''}`} aria-pressed={on} onClick={onClick}>
+      <AppIcon name={icon} size={13} /> {label}
+    </button>
+  );
+
+  return (
+    <div className="acc-tagedit">
+      <div className="acc-tagedit__cap">Group</div>
+      <div className="acc-tagedit__row">
+        {chip('', !key && !typing, 'Ungrouped', GROUP_ICONS.ungrouped, () => pick(''))}
+        {tops.map((t) => chip(t, groupKey(t) === topKey, t, groupIcon(t, GROUP_ICONS), () => pick(t)))}
+        {chip('/other', typing, 'Other…', 'plus', () => { setCustom(true); onChange(''); })}
+      </div>
+      {subs.length > 0 && (
+        <div className="acc-tagedit__row acc-tagedit__row--sub">
+          {subs.map((p) => chip(p, groupKey(p) === key, p.split('/')[1], groupIcon(p, GROUP_ICONS), () => pick(p)))}
+        </div>
+      )}
+      {typing && (
+        <div className="acc-tagedit__new">
+          {/* autoFocus chỉ khi user chủ động mở ô (Other… / + New group), không giành focus của ô tiêu đề */}
+          <input {...NO_AUTOFILL} className="acc-input" value={value} autoFocus={custom}
+            onChange={(e) => { setCustom(true); onChange(e.target.value); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onEnter?.(); } }}
+            placeholder="New group, e.g. Gia đình or Tài chính/Bảo hiểm" aria-label="New group name" />
+        </div>
+      )}
     </div>
   );
 }

@@ -58,7 +58,7 @@
     },
     {
       "key": "identity",
-      "group": "Định danh",
+      "group": "Giấy tờ & SĐT",
       "name": "Identity",
       "code": "IDN",
       "chip": "Identity",
@@ -104,7 +104,7 @@
     },
     {
       "key": "wifi",
-      "group": "Thiết bị & mạng",
+      "group": "Wi-Fi & thiết bị",
       "name": "Wi-Fi network",
       "code": "WIF",
       "chip": "Wi-Fi",
@@ -200,8 +200,10 @@
       { "match": ["tài chính", "tai chinh", "finance", "tiền", "đầu tư"], "icon": "handCoins" },
       { "match": ["email", "mail", "thư"], "icon": "envelope" },
       { "match": ["mạng xã hội", "mxh", "social", "facebook", "zalo"], "icon": "users" },
-      { "match": ["giấy tờ", "giay to", "định danh", "identity", "cccd", "hộ chiếu", "passport"], "icon": "identification" },
+      { "match": ["giấy tờ", "giay to", "định danh", "sđt", "identity", "cccd", "hộ chiếu", "passport"], "icon": "identification" },
       { "match": ["công việc", "cong viec", "work", "dự án"], "icon": "briefcase" },
+      { "match": ["wi-fi", "wifi"], "icon": "wifi" },
+      { "match": ["tài khoản chính", "main account"], "icon": "user" },
       { "match": ["điện thoại", "thiết bị", "device", "phone"], "icon": "deviceMobile" },
       { "match": ["dev", "lập trình", "code", "server"], "icon": "code" },
       { "match": ["nền tảng", "platform", "cloud"], "icon": "cloud" },
@@ -212,10 +214,10 @@
     ]
   },
 
-  "_groupPresetsNote": "QUY CHUẨN NHÓM — bộ nhóm cố định gợi ý ở ô Group (Edit + thanh Move to group), nhóm đã dùng trong vault đứng trước (groupSuggestions). Mọi khoá của titlePresets và mọi `group` của template PHẢI nằm trong danh sách này — vaultLogic.test.js khoá điều đó. `group` trên template = nhóm điền sẵn khi tạo item loại đó mà không đứng trong nhóm nào (thẻ → Tài chính/Thẻ, Email account → Email…). Account và Secure note không có nhóm mặc định: nhóm của chúng phụ thuộc dịch vụ, gợi ý tiêu đề sẽ điền.",
+  "_groupPresetsNote": "QUY CHUẨN NHÓM — 8 nhóm (Tài chính có 4 nhóm con), hiện thành hàng nút ở GroupPicker (Edit + thanh Move to group), sau các nhóm đã dùng trong vault (groupSuggestions). Tên phải đọc là hiểu — đã bỏ \"Nền tảng\" (→ Tài khoản chính: Google, Apple ID, Microsoft), \"Định danh\" (→ Giấy tờ & SĐT), gộp Mua sắm + Giải trí. Mọi khoá của titlePresets và mọi `group` của template PHẢI nằm trong danh sách này — vaultLogic.test.js khoá điều đó. `group` trên template = nhóm điền sẵn khi tạo item loại đó mà không đứng trong nhóm nào (thẻ → Tài chính/Thẻ, Email account → Email…). Account và Secure note không có nhóm mặc định: nhóm của chúng phụ thuộc dịch vụ, gợi ý tiêu đề sẽ điền.",
   "groupPresets": [
     "Tài chính/Ngân hàng", "Tài chính/Ví điện tử", "Tài chính/Thẻ", "Tài chính/Đầu tư",
-    "Email", "Mạng xã hội", "Mua sắm", "Giải trí", "Nền tảng", "Công việc", "Định danh", "Thiết bị & mạng"
+    "Email", "Tài khoản chính", "Mạng xã hội", "Mua sắm & giải trí", "Công việc", "Giấy tờ & SĐT", "Wi-Fi & thiết bị"
   ],
 
   "_titlePresetsNote": "Gợi ý cho ô tiêu đề ở chế độ Edit (<datalist>, gõ tên khác vẫn được). Tiêu đề = tên dịch vụ, không phải username. Chọn đúng một tên ở đây khi item CHƯA có nhóm thì nhóm bên trái được điền theo — user đổi được. Tên đã dùng trong vault luôn đứng trước danh sách này (titleSuggestions). QUY CHUẨN TÊN: hộp thư của mình ở nhà cung cấp (loại Email account) → tên hộp thư (Gmail, Outlook, iCloud Mail); tài khoản ở nhà cung cấp đăng nhập bằng email khác (loại Account) → tên công ty (Google, Microsoft, Apple ID). Vì thế nhóm \"Email\" chỉ được gợi ý khi đặt tên Email account, các nhóm khác thì ngược lại.",
@@ -224,10 +226,9 @@
     "Tài chính/Ví điện tử": ["MoMo", "ZaloPay", "VNPAY", "ShopeePay", "Viettel Money"],
     "Email": ["Gmail", "Outlook", "iCloud Mail", "Yahoo Mail", "Proton Mail"],
     "Mạng xã hội": ["Facebook", "Zalo", "Instagram", "TikTok", "X (Twitter)", "Telegram", "Discord", "LinkedIn", "Threads"],
-    "Mua sắm": ["Shopee", "Lazada", "Tiki", "Grab", "Be", "Xanh SM"],
-    "Giải trí": ["Netflix", "Spotify", "YouTube", "FPT Play", "VieON"],
-    "Nền tảng": ["Google", "Microsoft", "Apple ID", "GitHub", "Dropbox"],
-    "Định danh": ["VNeID"],
+    "Mua sắm & giải trí": ["Shopee", "Lazada", "Tiki", "Grab", "Be", "Xanh SM", "Netflix", "Spotify", "YouTube", "FPT Play", "VieON"],
+    "Tài khoản chính": ["Google", "Apple ID", "Microsoft", "GitHub", "Dropbox"],
+    "Giấy tờ & SĐT": ["VNeID"],
     "Tài chính/Đầu tư": ["SSI", "VNDIRECT", "TCBS", "Binance"],
     "Công việc": ["Slack", "Notion", "Jira", "Zoom", "Microsoft Teams"]
   }

@@ -664,7 +664,7 @@
 .acc-bulkbar__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .acc-bulkbar__count { font-family: var(--acc-mono); font-size: 12.5px; }
 .acc-bulkbar__row { display: flex; flex-wrap: wrap; gap: 6px; }
-.acc-bulkbar__row .acc-input { flex: 1 1 100%; min-width: 0; }
+.acc-bulkbar .acc-tagedit { margin: 0; padding: 0; border: 0; background: none; }
 .acc-bulkbar__row .acc-btn { flex: 1 1 0; }
 
 /* ── Màn Roots: danh sách gốc (cột giữa) ── */
@@ -760,7 +760,6 @@
 /* Chế độ sửa: chọn loại + gõ nhóm cùng một hàng ở vị trí kicker */
 .acc-title__meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .acc-title__meta .acc-select--tpl { margin-bottom: 0; flex: 1 1 180px; }
-.acc-title__group { flex: 1 1 200px; max-width: 280px; font-size: 12px; }
 .acc-title__actions { display: flex; align-items: center; gap: 6px; flex: none; }
 
 /* Dải số liệu dưới tiêu đề (chỉ chế độ xem): phụ thuộc · độ sâu · đăng nhập ·
@@ -791,6 +790,8 @@
   color: color-mix(in srgb, var(--color-text) 64%, transparent);
 }
 .acc-tagedit__row { display: flex; flex-wrap: wrap; gap: 5px; }
+/* GroupPicker: hàng nhóm con của nhóm đang chọn (Tài chính › Ngân hàng…) */
+.acc-tagedit__row--sub { padding-left: 10px; border-left: 2px solid var(--color-accent-300); }
 .acc-tagedit__new { display: flex; align-items: center; gap: 6px; }
 .acc-tagedit__new .acc-input { flex: 1; min-width: 0; max-width: 240px; font-size: 12.5px; }
 
@@ -1581,7 +1582,9 @@ button.acc-guard:hover { border-color: var(--color-accent-300); }
 
   /* ── Chuyển nhóm hàng loạt trên mobile: thanh ghim đáy vault, chừa chỗ cho nó */
   .acc-bulkbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; margin: 0; }
-  .acc-pane--selecting { padding-bottom: 150px; }
+  .acc-pane--selecting { padding-bottom: 220px; }
+  /* Hàng nút nhóm cuộn ngang thay vì xuống 3–4 dòng, giữ thanh ghim đáy thấp */
+  .acc-bulkbar .acc-tagedit__row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .acc-row__check { width: 22px; height: 22px; }
 
   /* ── Roots mobile (R1–R2): bản đồ xếp dọc, dây quay xuống; chain cuộn ngang */
