@@ -140,8 +140,6 @@ export default function KBReaderView({
 
     // Draw node circles
     simNodes.forEach(n => {
-      const nMeta = TYPE_GLYPHS[n.type] || TYPE_GLYPHS.note;
-      const hue = nMeta.hueVar ? `var(${nMeta.hueVar})` : '#888';
 
       ctx.beginPath();
       ctx.arc(n.x, n.y, n.isCurrent ? 7.5 : 5, 0, Math.PI * 2);

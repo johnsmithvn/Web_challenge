@@ -450,7 +450,6 @@
 .kb-overlay {
   position: fixed; inset: 0; z-index: 40;
   background: color-mix(in oklab, var(--kb-bg) 62%, transparent);
-  backdrop-filter: blur(3px);
   display: flex; justify-content: center;
 }
 

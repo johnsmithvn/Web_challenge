@@ -434,6 +434,10 @@ Character:
 
 - **Dark-first.** `:root` is the dark theme; light is an override on
   `[data-theme="light"]`. Every new surface must be legible in both.
+  `color-scheme` in light mode is always `only light`, never plain `light`: the
+  property inherits, and a plain `light` on a control re-enables the browser's Auto
+  Dark Mode (Chrome/Samsung "dark web pages") for that element only — black inputs
+  inside a white form.
 - **Glassmorphic.** Content sits on translucent white-alpha panels over a
   near-black navy page, softened by `backdrop-filter: blur()`.
 - **Neon accents, quiet chrome.** Purple → cyan gradients carry brand and
@@ -613,10 +617,21 @@ The coloured glows are **spread-only** (`0 0 Npx`) — they signal state
 2. a 1px hairline border (`--bg-glass-border` or `rgba(255,255,255,0.06–0.1)`),
 3. `backdrop-filter: blur()` with the `-webkit-` prefix alongside.
 
-Observed blur radii, by active shared role: `4px` modal backdrops
-(`.generic-modal-backdrop`, `.cm-overlay`) · `12px` `.card`, audio player ·
-`16px` `.kb-sort-dropdown` · `20px` `.topbar`, nav menus · `24px` `.sidebar`,
-`.bottom-tabs`. Scoped domains keep their own values; Vault scrim uses `6px`.
+Observed blur radii, by active shared role: `12px` `.card` · `16px`
+`.kb-sort-dropdown` · `20px` `.topbar` · `24px` `.sidebar`, `.bottom-tabs`.
+
+**Performance rules (v6.29.1)** — `backdrop-filter` is re-computed every frame
+whenever anything behind it moves (the Tasks sky is always moving), so:
+
+- **Popups, drawers, sheets, dropdown menus and modal scrims use a solid fill,
+  no `backdrop-filter`** (fill alpha ≥ 0.94; scrims only darken). Glass stays on
+  persistent chrome (sidebar, topbar, bottom tabs, panels/columns).
+- Don't nest glass: a blurred element inside a blurred parent only blurs the
+  parent's fill (the parent is the backdrop root) — pure GPU cost.
+- Animated background layers animate only `transform` / `opacity`; never put
+  `filter: blur()` on a gradient layer (gradients are already soft) and never
+  animate `filter`. Layout properties (`left/top/width`) are not animated —
+  use `transform` (container units `cqw/cqh` when the path is in % of the frame).
 
 **Layer order** — page (`--bg-primary`) → glass card (white-alpha + blur) →
 solid panel (`--bg-secondary`, modals/dropdowns) → coloured glow on state.
@@ -1224,7 +1239,7 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
 - **Vật bay ngẫu nhiên** (cả 2 kiểu): DOM do `utils/taskFlyersAurora.js` / `taskFlyersElf.js` dựng vào `.task-fly-host`
   (cuối `.task-cosmos-bg`), bay bằng Web Animations rồi tự xoá. Keyframe CSS của chúng mang tiền tố `tkf-`
   (chung ở tasks-aurora.css, riêng Elf ở tasks-elf.css). Code là port mockup — khi mockup đổi, chép lại hàm `flySpawn`.
-  Ban đêm cả 2 kiểu trộn thêm `utils/taskNatureFx.js` (port `nature-fx.js`): cực quang, sao ước nguyện bấm được,
+  Ban đêm cả 2 kiểu trộn thêm `utils/taskNatureFx.js` (port `nature-fx.js`): sao ước nguyện bấm được,
   Thợ Săn, cầu vồng trăng, Ngân Hà, hồ, sương, lá bạc, bồ công anh, rêu + nguyệt thực (1/40 lượt). Hình bám trăng / chân
   trời lấy mốc thật qua `skyMoon` / `horizonY` (khớp `Moon`, `MobileMoon`, `.task-planet-horizon`); mặt đất mobile tính
   cách đáy trang (mockup 742/758 → `H - 16`) để không lọt khỏi màn hình thấp.
@@ -1237,6 +1252,20 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   `AppIcon color="var(--x)"` được chuyển sang `style.color` (thuộc tính SVG `fill` không nhận biến CSS).
 - Breakpoint mobile = `≤768px` (cùng khung app: topbar 52 + tab đáy 60). Nền mobile tối: aurora, Ngân Hà,
   sao, 3 sao băng, sao chổi nhỏ (không trăng / chòm sao / chân trời) như mockup.
+- Nền động (`TaskSkyBackground` / `TaskForestBackground`): `.task-cosmos-bg` có `contain: strict`; lớp vật bay
+  `.task-fly-host` là size container (`cqw/cqh`). Không blur lớp gradient, chỉ animate transform/opacity
+  (xem Performance rules ở Elevation & Depth). Thẻ Kanban Rừng tiên không kính mờ (cột đã kính mờ); thẻ mobile giữ.
+- Ngăn chi tiết `.tk-drawer` (560px, ≥1600px là 600px, nổi phải): ở Kanban nổi **đè** lên bảng; Danh sách/Lịch ≥1280px vẫn chừa
+  `padding-right: calc(var(--tk-drawer-width) + 28px)` (588px/628px) cho `.tk-main`. Mobile = sheet dưới + `.tk-drawer-backdrop`.
+- Hàng việc con (`.tk-subs__row` trên thẻ, `.tk-sub-row` trong ngăn chi tiết): tay nắm `.tk-sub-grip` (span
+  `role="button"`, `touch-action: none`) + nút ưu tiên `.tk-sub-pr` (`.is-unset` mờ, chỉ hiện khi hover; `hover: none`
+  luôn hiện mờ). Kéo thả qua `useSubtaskReorder` (Pointer Events): hàng `data-drag="self"` nhấc theo con trỏ,
+  `before|after` = vạch thả `--tk-accent`. Nút ▶/⏸ `.tk-sub-focus` (`.is-on`), hàng `.is-doing` (nền + vạch trái
+  `--tk-st-doing`), chip hạn `.tk-sub-due--{late|soon|today|upcoming}` dùng token `--tk-ks-*`; dòng `.tk-focus-line`
+  trên mặt thẻ. Mobile (≤768px): hàng việc con là lưới cột cố định, chip hạn nằm dưới tên; thẻ ẩn nút ưu tiên chưa
+  đặt, ngăn chi tiết chỉ hiện icon (`.tk-sub-btn__label` ẩn).
+- Khối giờ tab Ngày `.tk-dv-block.is-long` (≥96px): nội dung dồn lên đầu, nền `--k-bg` nhạt dần + viền `--k-bd`;
+  việc con `.tk-dv-sub` hàng 24px (mobile 30px) — đổi cỡ thì sửa cùng `BLOCK_HEAD`/`SUB_ROW` trong `CalendarDayView`.
 - Thành phần dùng chung: `TaskCard` (`variant` card/row/mobile), `TaskFilterBar`, `TaskTodayStrip`,
   `TaskQuickAdd` (sheet "Việc mới"), `TaskDetailDrawer`, `TaskSubtaskModal` (‹ › giữa các việc con),
   `CalendarNavHead` (hàng điều hướng khung lịch), `TaskDayPopover` (popover "Ngày": việc trong ngày +

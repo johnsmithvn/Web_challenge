@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import AppIcon from './AppIcon';
 import { StatusPopover, PriorityPopover, TaskDatePickerPopover, RecurrencePopover } from './TaskFloatingPopovers';
 import TaskSubtaskModal from './TaskSubtaskModal';
+import { SubtaskGrip, SubtaskPriorityBtn, SubtaskFocusBtn, SubtaskDueChip } from './TaskCard';
+import useSubtaskReorder from '../hooks/useSubtaskReorder';
 import { useActivityLog } from '../hooks/useActivityLog';
 import { useAuth } from '../contexts/AuthContext';
 import { toDateStr, formatDate } from '../utils/dateUtils';
@@ -178,6 +180,21 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
     return sortSubtasks([...map.values()]);
   }, [fetchedSubs, allTasks, taskId]);
   const subtasks = isDraft ? draftSubs.map((title, i) => ({ id: `draft-${i}`, title, status: 'todo' })) : savedSubs;
+
+  // Việc con không nằm trong state (task cha xong ngày cũ) chỉ có ở bản fetch → vá luôn bản đó
+  const patchFetchedSubs = (patchById) => setFetchedSubs((prev) => prev.map((s) => (patchById.has(s.id) ? { ...s, ...patchById.get(s.id) } : s)));
+  const reloadSubs = async () => {
+    const rows = await taskModel?.getSubtasks?.(taskId);
+    if (rows) setFetchedSubs(rows);
+  };
+  const { rowProps: subRowProps, handleProps: subHandleProps } = useSubtaskReorder(subtasks, async (next) => {
+    if (isDraft) {
+      setDraftSubs(next.map((s) => s.title));
+      return;
+    }
+    patchFetchedSubs(new Map(next.map((s, i) => [s.id, { sort_order: i }])));
+    if (!(await taskModel?.reorderSubtasks?.(next))) reloadSubs();
+  });
 
   // Bản nháp: mô tả đi cùng nút Tạo việc, không có trạng thái "Chưa lưu"
   const descDirty = !isDraft && descDraft !== savedDesc;
@@ -369,6 +386,17 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
         <PriorityPopover
           currentPriority={task.priority}
           onSelect={(p) => patchTask({ priority: p })}
+          onClose={() => setPopover(null)}
+          style={popStyle}
+        />
+      )}
+      {popover?.type === 'subPriority' && (
+        <PriorityPopover
+          currentPriority={popover.sub.priority}
+          onSelect={async (p) => {
+            patchFetchedSubs(new Map([[popover.sub.id, { priority: p }]]));
+            if (!(await updateTask?.(popover.sub.id, { priority: p }))) reloadSubs();
+          }}
           onClose={() => setPopover(null)}
           style={popStyle}
         />
@@ -602,9 +630,11 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
               <span className="tk-progress"><span style={{ width: `${subPct}%` }} /></span>
             </div>
             {subtasks.map((s, i) => {
-              const sDone = statusKeyOf(s) === 'done';
+              const sKey = statusKeyOf(s);
+              const sDone = sKey === 'done';
               return (
-                <div key={s.id} className="tk-sub-row">
+                <div key={s.id} className={`tk-sub-row${sKey === 'doing' ? ' is-doing' : ''}`} {...subRowProps(i)}>
+                  <SubtaskGrip title={s.title} {...subHandleProps(i)} />
                   <button
                     type="button"
                     className="tk-sub-row__check"
@@ -622,6 +652,27 @@ export default function TaskDetailDrawer({ task: savedTask, draft, onClose, task
                   <button type="button" className={`tk-sub-row__title${sDone ? ' is-done' : ''}`} onClick={() => { if (!isDraft) setSubIndex(i); }}>
                     {s.title}
                   </button>
+                  {!isDraft && <SubtaskDueChip sub={s} parentDue={task.due_date} />}
+                  {!isDraft && (
+                    <SubtaskPriorityBtn
+                      sub={s}
+                      withLabel
+                      onClick={(e) => {
+                        const r = e.currentTarget.getBoundingClientRect();
+                        setPopover({ type: 'subPriority', sub: s, x: r.left, y: r.bottom + 6 });
+                      }}
+                    />
+                  )}
+                  {!isDraft && taskModel?.focusSubtask && (
+                    <SubtaskFocusBtn
+                      sub={s}
+                      withLabel
+                      onClick={async () => {
+                        const changes = await taskModel.focusSubtask(s);
+                        patchFetchedSubs(new Map(changes.map((c) => [c.id, { status: c.status }])));
+                      }}
+                    />
+                  )}
                 </div>
               );
             })}

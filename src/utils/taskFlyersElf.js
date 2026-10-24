@@ -8,7 +8,9 @@
  * Kích thước khung = kích thước thật của host; keyframe CSS mang tiền tố `tkf-` (tasks-elf.css).
  * File là code mockup chuyển sang — giữ nguyên cấu trúc cho dễ đối chiếu khi mockup đổi.
  */
-import { NATURE_POOL, NATURE_TYPES, natureClick, runNature, skyMoon } from './taskNatureFx';
+import { NATURE_POOL, NATURE_TYPES, natureClick, runNature, skyMoon, bigRainbowArc } from './taskNatureFx';
+import { koiSvg } from './koiArt';
+import { DRAGON_EAST, DRAGON_WEST } from './dragonArt';
 
 export const hosts = {};
 // Khoá khung như mockup: c/a = sáng/tối desktop, cm/am = mobile (đặt vào data-frame của trang)
@@ -93,16 +95,45 @@ function flyKit(host, m) {
   return { W, H, k, R, rr, ln, cr, at, fly, fx1, walk, dot };
 }
 
-function flySpawn(host, m, night) {
+// Vẽ con vật thủ tục (utils/dragonArt.js) vào box: SVG đổi path mỗi khung bằng rAF, tự dừng khi box bị gỡ khỏi trang.
+// id gradient gắn hậu tố riêng để 2 con cùng lúc không giẫm defs của nhau.
+let liveSeq = 0;
+function liveArt(box, C, css) {
+  if (!box) return;
+  const id = ++liveSeq, NS = 'http://www.w3.org/2000/svg', own = (v) => v.replace(/url\(#(\w+)\)/, 'url(#$1-' + id + ')');
+  box.innerHTML = '<svg viewBox="0 0 ' + C.w + ' ' + C.h + '" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;' + css + '"><defs>' + C.defs.replace(/id="(\w+)"/g, 'id="$1-' + id + '"') + '</defs><g></g></svg>';
+  const g = box.querySelector('g'), els = [], t0 = performance.now() - Math.random() * C.period * 1000;
+  const step = (now) => {
+    if (!box.isConnected) return;
+    C.frame((now - t0) / 1000).forEach((s, i) => {
+      let p = els[i];
+      if (!p) { p = document.createElementNS(NS, 'path'); p.setAttribute('stroke-linecap', 'round'); p.setAttribute('stroke-linejoin', 'round'); g.appendChild(p); els.push(p); }
+      p.setAttribute('d', s.d); p.setAttribute('fill', own(s.fill)); p.setAttribute('opacity', s.op ?? 1);
+      if (s.stroke) { p.setAttribute('stroke', s.stroke); p.setAttribute('stroke-width', s.sw ?? 1); }
+    });
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// Bể kịch bản [tên, trọng số]. Trọng số 0 = bản nháp: chỉ chạy được ở trang /fx-lab, app không tự bốc.
+export const ELF_POOL = {
+  night: [['lanterns', 2.5], ['owl', 2], ['koi', 2], ['veins', 2], ['ring', 1.5], ['starfall', 2], ['spirit', 1], ['bloom', 2.2], ['whale', 1.6], ['koistar', 1.6], ['owlmiss', 1.6], ['spiritbow', 1.2], ['dragon', 2], ['dragon_v2', 0], ['dragon_v2_eu', 0], ['catfight', 0], ['leafrider', 2], ['constel', 1.6], ['whaleeat', 1.4], ['owlsinge', 1.4], ...NATURE_POOL, ['kitsune', 1.8], ['unicorn', 1.5], ['wisp', 1.6], ['witch', 1.6], ['blackcat', 1.6], ['fairynap', 1.5], ['ent', 1.4], ['foxlant', 1.5], ['wispowl', 1.4], ['witchwhale', 1.3], ['heal', .9], ['catwisp', 1.4], ['witchpotion', 1.8], ['catgiant', 1.5], ['abduct_gnome', 1.8]],
+  day: [['deer', 2], ['butterflies', 2.5], ['bluebird', 2.5], ['mushroom', 2], ['dandelion', 2.5], ['squirrel', 2], ['sunray', 1.5], ['squirrelchase', 1.8], ['frog', 2], ['rainbow', 1.2], ['gnome', 2], ['bee', 2], ['deernut', 1.6], ['carrier_pigeon', 2.2], ['rainbow_slide', 1.8]],
+};
+
+// force: tên kịch bản chạy ngay, bỏ qua bốc ngẫu nhiên (trang /fx-lab)
+function flySpawn(host, m, night, force) {
   const { W, H, k, R, rr, ln, cr, at, fly, fx1, walk, dot } = flyKit(host, m);
-  const pool = (night ? [['lanterns', 2.5], ['owl', 2], ['koi', 2], ['veins', 2], ['ring', 1.5], ['starfall', 2], ['spirit', 1], ['bloom', 2.2], ['whale', 1.6], ['koistar', 1.6], ['owlmiss', 1.6], ['spiritbow', 1.2], ['dragon', 2], ['leafrider', 2], ['constel', 1.6], ['whaleeat', 1.4], ['owlsinge', 1.4], ...NATURE_POOL, ['kitsune', 1.8], ['unicorn', 1.5], ['wisp', 1.6], ['witch', 1.6], ['blackcat', 1.6], ['fairynap', 1.5], ['ent', 1.4], ['foxlant', 1.5], ['wispowl', 1.4], ['witchwhale', 1.3], ['heal', .9], ['catwisp', 1.4], ['witchpotion', 1.8], ['catgiant', 1.5], ['abduct_gnome', 1.8]] : [['deer', 2], ['butterflies', 2.5], ['bluebird', 2.5], ['mushroom', 2], ['dandelion', 2.5], ['squirrel', 2], ['sunray', 1.5], ['squirrelchase', 1.8], ['frog', 2], ['rainbow', 1.2], ['gnome', 2], ['bee', 2], ['deernut', 1.6], ['carrier_pigeon', 2.2], ['rainbow_slide', 1.8]]).filter(t => t[0] !== host.dataset.last);
+  const pool = ELF_POOL[night ? 'night' : 'day'].filter(t => t[1] > 0 && t[0] !== host.dataset.last);
   let pick = R() * pool.reduce((a, t) => a + t[1], 0), type = pool[0][0];
   for (const [n, w] of pool) { if ((pick -= w) <= 0) { type = n; break; } }
+  if (force) type = force;
   host.dataset.last = type;
-  if (night && host._next && Date.now() > host._next.at) { type = host._next.t; host._next = null; }
+  if (!force && night && host._next && Date.now() > host._next.at) { type = host._next.t; host._next = null; }
   if (type === 'owlsinge') host._next = { t: 'heal', at: Date.now() + 10000 };
   if (type === 'witchpotion') host._next = { t: 'catgiant', at: Date.now() + 6000 };
-  if (night && R() < 1 / 40) type = 'eclipse';
+  if (!force && night && R() < 1 / 40) type = 'eclipse';
   if (type === 'eclipse' || NATURE_TYPES.includes(type)) { const sk = Object.keys(hosts).find(z => hosts[z] === host); return runNature(type, host, m, { moon: skyMoon(W, m, true), top: sk && hosts[sk + '_t'] }); }
   const sp = m ? .55 : 1, dir = R() < .5 ? 1 : -1, flip = dir < 0, P = (x, y, t) => [dir > 0 ? x : W - x, y, t], X0 = -170 * k, X1 = W + 170 * k, hold = (p, t0, t1) => ln(p, p, t0, t1, 2);
   const bub = (txt, x, y, a, b, D) => fx1('<div style="position:absolute;left:0;top:0;transform:translate(-50%,-100%);padding:3px 8px;border-radius:9px;' + (night ? 'background:rgba(8,21,15,.92);border:1px solid rgba(94,242,194,.35);color:#E8FFF4' : 'background:rgba(255,255,255,.95);border:1px solid #D9EBDD;color:#2F5E44') + ';font:700 10px/1 \'Be Vietnam Pro\',sans-serif;white-space:nowrap">' + txt + '</div>', x, y, [{ opacity: 0, offset: 0 }, { opacity: 0, offset: Math.min(1, a) }, { opacity: 1, offset: Math.min(1, a + .02) }, { opacity: 1, offset: Math.min(1, b) }, { opacity: 0, offset: Math.min(1, b + .03) }, { opacity: 0, offset: 1 }], D);
@@ -116,6 +147,53 @@ function flySpawn(host, m, night) {
   const tr = (art, x, y, t, t2, dx, dy, D) => fx1(art, x, y, [{ transform: 'translate(0,0)', opacity: 0, offset: 0 }, { transform: 'translate(0,0)', opacity: 0, offset: t }, { transform: 'translate(0,0)', opacity: 1, offset: Math.min(t2, t + .006) }, { transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)', opacity: 0, offset: t2 }, ...(t2 < 1 ? [{ transform: 'translate(0,0)', opacity: 0, offset: 1 }] : [])], D);
   const puff = (x, y, t, D) => { for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; tr('<span style="position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:rgba(186,230,253,.6);filter:blur(1.5px)"></span>', x, y, t, Math.min(1, t + .08), Math.cos(a) * 22 * k, Math.sin(a) * 18 * k - 10 * k, D); } };
   const FLM = '<span style="position:absolute;left:-5px;top:-10px;width:10px;height:14px;border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 50% 70%,#F0F9FF,#7DD3FC 45%,rgba(125,211,252,0) 75%)"></span>';
+  if (type === 'dragon_v2' || type === 'dragon_v2_eu') {
+    // Nháp thay cảnh 'dragon': rồng vẽ bằng code (utils/dragonArt.js) lượn ngang trời, giữa đường hắt xì tia sáng
+    const C = type === 'dragon_v2' ? DRAGON_EAST : DRAGON_WEST, bw = type === 'dragon_v2' ? 240 : 180, bh = bw * C.h / C.w;
+    const y = H * rr(.16, .36), D = rr(15, 19) * sp, kd = k * (m ? .75 : 1);
+    const segs = cr(Array.from({ length: 7 }, (_, j) => P(X0 + (X1 - X0) * j / 6, y + Math.sin(j * 1.7) * 26 * k, j / 6)), 8), ts = rr(.4, .6), [nx, ny] = at(segs, ts);
+    const glow = C === DRAGON_EAST ? 'rgba(94,242,194,.45)' : 'rgba(251,146,60,.45)';
+    fly('<div data-live style="position:absolute;inset:0"></div>', bw, bh, segs, D, { flip, tk: .25, k: kd, on: (el) => liveArt(el.querySelector('[data-live]'), C, 'filter:drop-shadow(0 0 6px ' + glow + ')') });
+    sneeze(nx + dir * C.head[0] * bw * kd, ny + C.head[1] * bh * kd, dir, kd, ts * D);
+    return D;
+  }
+  if (type === 'catfight') {
+    // Nháp: 2 mèo đen (hình EN.CAT) khè nhau → nhảy vồ → cuộn bụi bốp bốp → văng ra, sao choáng quay trên đầu
+    const D = 9, kz = k * 1.5, cx = W * rr(.32, .68), cy = GY - 17 * kz, gap = 84 * k, tL = .22, tC = .3, tO = .62, tB = .7, C = [cx, cy - 4 * k];
+    // Nhún co giãn từ gốc chân + nghiêng về phía đối thủ; ẩn trong đám bụi
+    const sq = [['scale(1,1) skewX(0deg)', 0, 0], ['scale(1,1) skewX(0deg)', .04, 1],
+      ['scale(1.06,1.12) skewX(-9deg)', .07, 1], ['scale(1,1) skewX(-2deg)', .1, 1], ['scale(1.08,1.14) skewX(-10deg)', .13, 1], ['scale(1,1) skewX(-2deg)', .16, 1], ['scale(1.06,1.12) skewX(-9deg)', .19, 1],
+      ['scale(1.18,.78) skewX(-12deg)', tL, 1], ['scale(.86,1.22) skewX(-18deg)', .26, 1], ['scale(1,1) skewX(0deg)', tC, 1], ['scale(1,1) skewX(0deg)', tC + .01, 0],
+      ['scale(1,1) skewX(0deg)', tO, 0], ['scale(.9,1.12) skewX(0deg)', tO + .01, 1], ['scale(1.22,.78) skewX(0deg)', tB, 1], ['scale(.96,1.05) skewX(0deg)', tB + .03, 1],
+      ['scale(1,1) skewX(7deg)', .8, 1], ['scale(1,1) skewX(-7deg)', .85, 1], ['scale(1,1) skewX(5deg)', .9, 1], ['scale(1,1) skewX(0deg)', .94, 1], ['scale(1,1) skewX(0deg)', 1, 0]]
+      .map(([transform, offset, opacity]) => ({ transform, offset, opacity }));
+    const spin = [{ transform: 'rotate(0deg)', offset: 0 }, { transform: 'rotate(0deg)', offset: tO }, { transform: 'rotate(-360deg)', offset: tB }, { transform: 'rotate(-360deg)', offset: 1 }];
+    const STAR = (s) => '<svg width="' + s + '" height="' + s + '" viewBox="-8 -8 16 16" style="position:absolute;left:' + (-s / 2) + 'px;top:' + (-s / 2) + 'px;overflow:visible;filter:drop-shadow(0 0 4px #FDE68A)"><path d="M0 -7 L2 -2 L7 -1.6 L3 1.6 L4.3 6.8 L0 4 L-4.3 6.8 L-3 1.6 L-7 -1.6 L-2 -2 Z" fill="#FDE68A"/></svg>';
+    [-1, 1].forEach((side) => {
+      const p0 = [cx + side * gap, cy], mid = [cx + side * 6 * k, C[1]], land = [cx + side * (gap + 36 * k), cy];
+      const segs = [hold(p0, 0, tL), ...cr([[p0[0], p0[1], tL], [(p0[0] + mid[0]) / 2, cy - 50 * k, (tL + tC) / 2], [mid[0], mid[1], tC]], 6), hold(mid, tC, tO), ...cr([[mid[0], mid[1], tO], [(mid[0] + land[0]) / 2, cy - 80 * k, (tO + tB) / 2], [land[0], land[1], tB]], 6), hold(land, tB, 1)];
+      fly('<div data-k="sq" style="position:absolute;inset:0;transform-origin:50% 100%"><div data-k="spin" style="position:absolute;inset:0;transform-origin:50% 60%">' + EN.CAT + '</div></div>', 34, 34, segs, D, { flip: side > 0, k: kz, sync: [['[data-k="sq"]', sq], ['[data-k="spin"]', spin]] });
+      bub(side < 0 ? 'Khè!' : 'Grừ…!', p0[0], cy - 40 * kz, side < 0 ? .06 : .11, side < 0 ? .15 : .2, D);
+      const ring = '<div style="position:absolute;left:0;top:0;animation:tkf-spin 1s linear infinite">' + [0, 1, 2].map((i) => '<div style="position:absolute;left:' + (Math.cos(i * 2.09) * 12 * k).toFixed(1) + 'px;top:' + (Math.sin(i * 2.09) * 12 * k).toFixed(1) + 'px">' + STAR(9) + '</div>').join('') + '</div>';
+      fx1(ring, land[0], cy - 36 * kz, [{ opacity: 0, offset: 0 }, { opacity: 0, offset: tB + .02 }, { opacity: 1, offset: tB + .05 }, { opacity: 1, offset: .9 }, { opacity: 0, offset: .95 }, { opacity: 0, offset: 1 }], D);
+    });
+    // Đám bụi rung lắc + móng / sao thò ra
+    for (let i = 0; i < 9; i++) {
+      const a = i * Math.PI * 2 / 9, r = rr(20, 28) * k, R0 = rr(16, 22) * k, x = C[0] + Math.cos(a) * r * 1.3, y = C[1] - 14 * k + Math.sin(a) * r * .7;
+      const fr = [{ transform: 'scale(0)', opacity: 0, offset: 0 }, { transform: 'scale(0)', opacity: 0, offset: tC - .01 }, { transform: 'scale(1)', opacity: 1, offset: tC + .02 }];
+      for (let s = tC + .05; s < tO - .03; s += .035) fr.push({ transform: 'translate(' + (rr(-6, 6) * k).toFixed(1) + 'px,' + (rr(-5, 5) * k).toFixed(1) + 'px) scale(' + rr(.88, 1.12).toFixed(2) + ')', opacity: 1, offset: +s.toFixed(3) });
+      fr.push({ transform: 'scale(1.3)', opacity: 0, offset: tO + .04 }, { transform: 'scale(1.3)', opacity: 0, offset: 1 });
+      fx1('<div style="position:absolute;left:' + (-R0).toFixed(1) + 'px;top:' + (-R0).toFixed(1) + 'px;width:' + (2 * R0).toFixed(1) + 'px;height:' + (2 * R0).toFixed(1) + 'px;border-radius:50%;background:radial-gradient(circle at 38% 35%,#F4F7F6,#AFC0BA 72%);box-shadow:0 0 10px rgba(94,242,194,.35)"></div>', x, y, fr, D);
+    }
+    const PAW = '<svg width="16" height="12" viewBox="0 0 16 12" style="position:absolute;left:-8px;top:-6px;overflow:visible;filter:drop-shadow(0 0 3px rgba(167,255,228,.6))"><ellipse cx="7" cy="6" rx="7" ry="4.5" fill="#050B09"/><path d="M13 3 L16 2 M13.5 6 L16.5 6 M13 9 L16 10" stroke="#F8FAFC" stroke-width=".9" stroke-linecap="round"/></svg>';
+    for (let i = 0; i < 8; i++) {
+      const a = rr(0, Math.PI * 2), t = tC + .03 + i * (tO - tC - .06) / 8, x = C[0] + Math.cos(a) * 46 * k, y = C[1] - 14 * k + Math.sin(a) * 28 * k;
+      fx1('<div style="position:absolute;left:0;top:0;transform:rotate(' + (a * 180 / Math.PI).toFixed(0) + 'deg)">' + (i % 3 === 2 ? STAR(16) : PAW) + '</div>', x, y, [{ opacity: 0, transform: 'scale(.3)', offset: 0 }, { opacity: 0, transform: 'scale(.3)', offset: t }, { opacity: 1, transform: 'scale(1.1)', offset: t + .012 }, { opacity: 0, transform: 'scale(.8)', offset: Math.min(.99, t + .04) }, { opacity: 0, transform: 'scale(.8)', offset: 1 }], D);
+    }
+    bub('Bốp! Bốp!', C[0], C[1] - 62 * k, .38, .5, D);
+    bub('Choáng quá…', cx, cy - 58 * kz, .78, .92, D);
+    return D;
+  }
   if (type === 'kitsune') {
     const kz = k * 1.25, y = GY - 18 * kz, D = rr(7, 8.5) * (m ? .8 : 1);
     const segs = cr(Array.from({ length: 9 }, (_, j) => [SA + (SB - SA) * j / 8, y - (j % 2 ? 12 : 0) * kz, j / 8]), 8);
@@ -412,27 +490,24 @@ function flySpawn(host, m, night) {
     return D;
   }
   if (type === 'rainbow_slide') {
-    const D = 14, rw = m ? 320 : 760, rh = rw / 2, cx = W * rr(.35, .65), top = H * rr(.1, .22);
-    fx1('<div style="position:absolute;left:' + (-rw / 2) + 'px;top:0;width:' + rw + 'px;height:' + rh + 'px;background:radial-gradient(circle ' + rh + 'px at 50% 100%,transparent 72%,rgba(239,68,68,.42) 75%,rgba(249,115,22,.42) 79%,rgba(250,204,21,.42) 83%,rgba(34,197,94,.38) 87%,rgba(59,130,246,.36) 91%,rgba(139,92,246,.34) 95%,transparent 98%);-webkit-mask-image:linear-gradient(to top,transparent,#000 40%);mask-image:linear-gradient(to top,transparent,#000 40%)"></div>', cx, top, [{ opacity: 0 }, { opacity: 0, offset: .2 }, { opacity: 1, offset: .35 }, { opacity: 1, offset: .85 }, { opacity: 0 }], D);
+    // Sóc trượt dọc cầu vồng lớn (bigRainbowArc dùng chung): chờ ở chân trái, trượt qua đỉnh xuống chân phải
+    const D = 14, bow = bigRainbowArc(W, H, m, false), rm = bow.r * 0.89, th0 = Math.PI - 0.3, th1 = 0.3;
+    const on = th => [bow.cx + rm * Math.cos(th), bow.cy - rm * Math.sin(th)];
+    fx1(bow.html, bow.x, bow.y, [{ opacity: 0 }, { opacity: 1, offset: .12 }, { opacity: 1, offset: .85 }, { opacity: 0 }], D);
     const SQ = '<svg width="34" height="26" viewBox="0 0 34 26" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 1px 2px rgba(60,40,20,.35))"><path d="M13 20 C2 23 -2 12 2 6 C5 1 12 2 12 8 C12 12 8 12 8 15 C9 18 12 18 14 18 Z" fill="#C2783F"/><ellipse cx="19" cy="17" rx="8" ry="6" fill="#B86B34"/><ellipse cx="20.5" cy="19" rx="5" ry="3.4" fill="#F1D3AE"/><path d="M15 22 L13 25 M22 22 L24 25" stroke="#9A5527" stroke-width="1.6" stroke-linecap="round"/><circle cx="26" cy="11" r="4.6" fill="#B86B34"/><circle cx="27.6" cy="10.4" r=".9" fill="#1A1A1A"/></svg>';
-    const startX = cx - rw * 0.35, endX = cx + rw * 0.35;
-    const arcY = t => top + rh - Math.sin(t * Math.PI) * rh * 0.85;
+    const [ex, ey] = on(th1);
     const slideSegs = cr([
-      [startX, top + rh, 0],
-      [startX, top + rh, 0.35],
-      [cx - rw * 0.18, arcY(0.3), 0.45],
-      [cx, arcY(0.5), 0.55],
-      [cx + rw * 0.18, arcY(0.7), 0.65],
-      [endX, top + rh - 10, 0.75],
-      [endX + 80 * k, top + rh - 5, 0.88],
-      [endX + 80 * k, top + rh - 5, 1]
+      [...on(th0), 0],
+      [...on(th0), 0.35],
+      ...[1, 2, 3, 4, 5, 6].map(i => [...on(th0 + (th1 - th0) * i / 6), 0.35 + i / 6 * 0.4]),
+      [ex + 80 * k, ey + 5, 0.88],
+      [ex + 80 * k, ey + 5, 1]
     ], 8);
     fly(SQ, 34, 26, slideSegs, D, {
       k: k * 1.15,
       tk: 0.6,
       opf: t => t < 0.32 ? 0 : Math.min(1, (1 - t) / 0.08)
     });
-    bub('Vui quá đi~ 🌈✨', cx + rw * 0.08, arcY(0.6) - 28 * k, 0.52, 0.74, D);
     for (let t = 0.38; t < 0.76; t += 0.04) {
       const [px, py] = at(slideSegs, t);
       fx1(dot(rr(2, 4), '#FDE047', '253,224,71'), px, py + 8 * k, [
@@ -456,12 +531,6 @@ function flySpawn(host, m, night) {
     fly(EA.DFLY, 26, 14, [...cr([[tx + sg * 260 * k, ty - 100 * k, 0], [tx + sg * 60 * k, ty - 40 * k, .18], [hv[0], hv[1], .26], [hv[0] + 3 * k, hv[1] - 2 * k, .34], [hv[0] - 2 * k, hv[1] + 2 * k, .42], [hv[0], hv[1], .5], [tx - sg * 20 * k, ty - 80 * k, .54], [tx - sg * 220 * k, -60, .75]], 6), ln([tx - sg * 220 * k, -60], [tx - sg * 220 * k, -60], .75, 1, 1)], D, { flip: sg > 0, tk: .2, opf: t => t > .75 ? 0 : 1 });
     bub('Lêu lêu~', tx - sg * 20 * k, ty - 90 * k, .54, .66, D);
     bub('Ặc… lá!', fx, fy - 26 * kf, .6, .82, D);
-    return D;
-  }
-  if (type === 'rainbow') {
-    const D = 14, rw = m ? 320 : 760, rh = rw / 2, cx = W * rr(.3, .7), top = H * rr(.1, .22), n = m ? 34 : 80;
-    for (let i = 0; i < n; i++) fx1('<span style="position:absolute;left:0;top:0;width:1.2px;height:' + rr(10, 18).toFixed(0) + 'px;transform:rotate(8deg);background:linear-gradient(rgba(150,190,225,0),rgba(140,180,220,.85))"></span>', rr(0, W + 60), -20, [{ transform: 'translate(0,0)', opacity: 0 }, { transform: 'translate(-8px,' + (H * .3).toFixed(0) + 'px)', opacity: 1, offset: .25 }, { transform: 'translate(-26px,' + (H + 40) + 'px)', opacity: .7 }], rr(.8, 1.2), R() * 4.2);
-    fx1('<div style="position:absolute;left:' + (-rw / 2) + 'px;top:0;width:' + rw + 'px;height:' + rh + 'px;background:radial-gradient(circle ' + rh + 'px at 50% 100%,transparent 72%,rgba(239,68,68,.42) 75%,rgba(249,115,22,.42) 79%,rgba(250,204,21,.42) 83%,rgba(34,197,94,.38) 87%,rgba(59,130,246,.36) 91%,rgba(139,92,246,.34) 95%,transparent 98%);-webkit-mask-image:linear-gradient(to top,transparent,#000 40%);mask-image:linear-gradient(to top,transparent,#000 40%)"></div>', cx, top, [{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1, offset: .42 }, { opacity: 1, offset: .82 }, { opacity: 0 }], D);
     return D;
   }
   if (type === 'gnome') {
@@ -611,16 +680,17 @@ function flySpawn(host, m, night) {
   }
   if (type === 'koi' || type === 'koistar') {
     const n = m ? 2 : 3, D = rr(22, 28) * sp;
-    const KOI = '<svg width="64" height="26" viewBox="0 0 64 26" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 8px rgba(94,242,194,.55))"><g style="transform-origin:16px 13px;animation:tkf-eTail .9s ease-in-out infinite alternate"><path d="M16 13 C10 6 4 2 0 3 C3 8 4 11 3 13 C4 15 3 18 0 23 C4 24 10 20 16 13 Z" fill="rgba(255,237,213,.75)" stroke="rgba(255,255,255,.8)" stroke-width=".6"/></g><path d="M14 13 C20 5 40 3 52 7 C60 9 63 12 63 13 C63 14 60 17 52 19 C40 23 20 21 14 13 Z" fill="rgba(255,251,242,.92)"/><path d="M30 6 C36 5 42 7 44 11 C40 12 34 11 30 6 Z M22 17 C26 19 32 20 36 18 C32 15 26 15 22 17 Z M50 8 C54 9 57 11 57 12 C53 12 51 10 50 8 Z" fill="#FB923C" fill-opacity=".85"/><g style="transform-origin:38px 18px;animation:tkf-eTail .7s ease-in-out -.3s infinite alternate"><path d="M38 18 C36 23 32 25 28 25 C31 22 33 20 34 18 Z" fill="rgba(255,237,213,.7)"/></g><path d="M36 4 C38 1 42 1 44 4 Z" fill="rgba(255,237,213,.7)"/><circle cx="56" cy="11.4" r="1" fill="#1E293B"/><path d="M62 14 C64 16 64 18 62 20" stroke="rgba(255,237,213,.6)" stroke-width=".6" fill="none"/></svg>';
+    // Koi Kohaku nhìn từ trên, thân uốn sóng (utils/koiArt.js); khung 120×70 ≈ cá dài 70px
+    const KOI = () => koiSvg({ width: 120, height: 70, css: 'position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 6px rgba(94,242,194,.45))' });
     if (type === 'koistar') {
       const xs0 = W * rr(.35, .65), ys = H * rr(.2, .3), yb = ys + 170 * k, D2 = rr(11, 13) * (m ? .75 : 1), tc = .55, sxS = P(xs0, ys)[0], a0 = [sxS + dir * 160 * k, -40], a1 = [a0[0] + (sxS - a0[0]) * .002, a0[1] + (ys - a0[1]) * .002];
       fly('<div style="position:absolute;left:-10px;top:1px;width:126px;height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(253,230,138,0),rgba(253,230,138,.6) 50%,#FFF7D6)"></div><span style="position:absolute;right:-6px;top:-4px;width:10px;height:10px;border-radius:50%;background:#FFF7D6;box-shadow:0 0 12px 5px rgba(253,230,138,.9)"></span>', 120, 4, [ln(a0, a1, 0, .3, 1), ln(a1, [sxS, ys], .3, tc, 10)], D2, { tk: 1, opf: t => t < .3 || t > tc - .005 ? 0 : 1 });
-      fly('<div data-k="g" style="position:absolute;left:-10px;top:-14px;width:84px;height:54px;border-radius:50%;background:radial-gradient(closest-side,rgba(253,230,138,.6),rgba(253,230,138,0));opacity:0"></div>' + KOI, 64, 26, cr([P(X0, yb + 30, 0), P(xs0 - 260 * k, yb, .3), P(xs0 - 90 * k, yb - 20 * k, .45), P(xs0, ys, tc), P(xs0 + 90 * k, yb - 20 * k, .65), P(xs0 + 260 * k, yb + 10 * k, .8), P(X1, yb + 30, 1)], 8), D2, { flip, tk: 1, sync: [['[data-k="g"]', [{ opacity: 0, offset: 0 }, { opacity: 0, offset: tc }, { opacity: 1, offset: tc + .02 }, { opacity: .6, offset: 1 }]]] });
+      fly('<div data-k="g" style="position:absolute;left:18px;top:8px;width:84px;height:54px;border-radius:50%;background:radial-gradient(closest-side,rgba(253,230,138,.6),rgba(253,230,138,0));opacity:0"></div>' + KOI(), 120, 70, cr([P(X0, yb + 30, 0), P(xs0 - 260 * k, yb, .3), P(xs0 - 90 * k, yb - 20 * k, .45), P(xs0, ys, tc), P(xs0 + 90 * k, yb - 20 * k, .65), P(xs0 + 260 * k, yb + 10 * k, .8), P(X1, yb + 30, 1)], 8), D2, { flip, tk: 1, sync: [['[data-k="g"]', [{ opacity: 0, offset: 0 }, { opacity: 0, offset: tc }, { opacity: 1, offset: tc + .02 }, { opacity: .6, offset: 1 }]]] });
       fx1('<div style="position:absolute;left:-50px;top:-50px;width:100px;height:100px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,247,214,.9),rgba(253,230,138,.3) 50%,rgba(253,230,138,0))"></div>', sxS, ys, [{ opacity: 0, transform: 'scale(.2)' }, { opacity: 1, transform: 'scale(' + k + ')', offset: .25 }, { opacity: 0, transform: 'scale(' + 1.5 * k + ')' }], 1, tc * D2);
       for (let i = 0; i < 16; i++) { const a = R() * Math.PI * 2, r = rr(30, 90) * k; fx1(dot(rr(2.5, 4), '#FFF3B0', '253,224,71'), sxS, ys, [{ transform: 'translate(0,0)', opacity: 0 }, { transform: 'translate(0,0)', opacity: 1, offset: .05 }, { transform: 'translate(' + (Math.cos(a) * r).toFixed(1) + 'px,' + (Math.sin(a) * r + 30 * k).toFixed(1) + 'px)', opacity: 0 }], rr(1.2, 2), tc * D2); }
       return D2 + 1;
     }
-    for (let i = 0; i < n; i++) { const y = H * rr(.15, .6), amp = rr(30, 60) * k; fly(KOI, 64, 26, cr(Array.from({ length: 9 }, (_, j) => P(X0 + (X1 - X0) * j / 8, y + (j % 2 ? amp : -amp) * (j && j < 8 ? 1 : .3), j / 8)), 8), D * rr(.85, 1.1), { flip, tk: 1, delay: i * rr(1.5, 3), k: k * rr(.75, 1.05) }); }
+    for (let i = 0; i < n; i++) { const y = H * rr(.15, .6), amp = rr(30, 60) * k; fly(KOI(), 120, 70, cr(Array.from({ length: 9 }, (_, j) => P(X0 + (X1 - X0) * j / 8, y + (j % 2 ? amp : -amp) * (j && j < 8 ? 1 : .3), j / 8)), 8), D * rr(.85, 1.1), { flip, tk: 1, delay: i * rr(1.5, 3), k: k * rr(.75, 1.05) }); }
     return D * 1.1 + 6;
   }
   if (type === 'veins') {
@@ -703,10 +773,11 @@ function addFF(s, host) {
   const m = s.length > 1, night = s[0] === 'a', { rr } = flyKit(host, m), c = night ? ['#F2FFB8', '210,255,120'] : ['#FFF3B0', '250,204,21'], e = document.createElement('div');
   e.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;pointer-events:none';
   e.innerHTML = '<span style="position:absolute;left:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:radial-gradient(closest-side,rgba(' + c[1] + ',.5),rgba(' + c[1] + ',0))"></span><span style="position:absolute;left:-2.5px;top:-2.5px;width:5px;height:5px;border-radius:50%;background:' + c[0] + ';box-shadow:0 0 6px 2px rgba(' + c[1] + ',.9)"></span>';
-  // Lượn theo % của lớp nền (không chốt px) → vẫn trong vùng đúng khi trang đổi cỡ (thanh địa chỉ mobile, xoay máy)
+  // Lượn theo % của lớp nền (cqw/cqh — host là container, không chốt px) → vẫn trong vùng đúng khi trang đổi cỡ
+  // (thanh địa chỉ mobile, xoay máy). Dùng transform thay left/top: chạy trên GPU, không tính lại layout mỗi khung.
   const pts = Array.from({ length: 6 }, () => [rr(.08, .92) * 100, rr(.22, .82) * 100]);
   host.appendChild(e);
-  e._an = e.animate(pts.map(p => ({ left: p[0].toFixed(2) + '%', top: p[1].toFixed(2) + '%', easing: 'ease-in-out' })), { duration: rr(26, 38) * 1000, iterations: Infinity, direction: 'alternate' });
+  e._an = e.animate(pts.map(p => ({ transform: 'translate(' + p[0].toFixed(2) + 'cqw,' + p[1].toFixed(2) + 'cqh)', easing: 'ease-in-out' })), { duration: rr(26, 38) * 1000, iterations: Infinity, direction: 'alternate' });
   e.firstChild.animate([{ opacity: .35 }, { opacity: 1 }], { duration: rr(1200, 2000), iterations: Infinity, direction: 'alternate' });
   (host._clk = host._clk || []).push({ kind: 'ff', el: e });
 }
@@ -753,7 +824,7 @@ function waterSplash(top, x, y, k = 1) {
       { transform: 'translate(' + (Math.cos(a) * r).toFixed(1) + 'px,' + (Math.sin(a) * r - 12).toFixed(1) + 'px) scale(0)', opacity: 0 }
     ], 0.7);
   }
-  const KOI_MINI = '<svg width="34" height="18" viewBox="0 0 34 18" style="position:absolute;left:-17px;top:-9px;overflow:visible;filter:drop-shadow(0 0 6px rgba(94,242,194,.8))"><path d="M2 9 C8 3 24 2 32 9 C24 16 8 15 2 9 Z" fill="#FB923C"/><path d="M12 4 Q16 2 20 5 Z M10 13 Q14 16 18 13 Z" fill="#FDBA74"/><circle cx="28" cy="8" r="1" fill="#1E293B"/></svg>';
+  const KOI_MINI = koiSvg({ width: 58, height: 34, css: 'position:absolute;left:-29px;top:-17px;overflow:visible;filter:drop-shadow(0 0 6px rgba(94,242,194,.8))' });
   fx1(KOI_MINI, x, y, [
     { transform: 'translate(0, 4px) rotate(-35deg) scale(0.6)', opacity: 0 },
     { transform: 'translate(0, -28px) rotate(0deg) scale(1)', opacity: 1, offset: 0.45 },
@@ -852,7 +923,6 @@ function celebrate(s, allDone) {
 }
 
 function bigCelebrate(s) {
-  if (s[0] === 'a' && hosts[s] && motionOK()) runNature('aurora', hosts[s], s.length > 1, { boost: true, D: 11 });
   const host = hosts && hosts[s + '_t']; if (!host || !host.isConnected) return;
   const m = s.length > 1, night = s[0] === 'a', { W, H, k, rr, fx1 } = flyKit(host, m), D = 7, cx = W / 2, S = m ? 6.5 : 10, cy = H * .38, n = m ? 36 : 54;
   fx1('<div style="position:absolute;left:0;top:0;width:' + W + 'px;height:' + H + 'px;background:radial-gradient(60% 55% at 50% 45%,' + (night ? 'rgba(94,242,194,.28)' : 'rgba(255,246,214,.6)') + ',rgba(255,246,214,0) 75%)"></div>', 0, 0, [{ opacity: 0 }, { opacity: 1, offset: .15 }, { opacity: 1, offset: .7 }, { opacity: 0 }], D);

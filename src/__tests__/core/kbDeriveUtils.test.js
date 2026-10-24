@@ -10,7 +10,6 @@ import {
   deriveGraph,
   findBacklinks,
   extractContext,
-  getOutboundLinks,
   filterArticles,
   readTime,
   markdownToPlainText,

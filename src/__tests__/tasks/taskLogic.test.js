@@ -19,7 +19,6 @@ import {
   WEEKDAYS,
   ACTIONS,
   TASK_FIELD_LABELS,
-  fieldLabel,
   normalizeFieldValue,
   diffTaskFields,
   describeRecurrence,
@@ -28,7 +27,6 @@ import {
   describeActivity,
 } from '../../utils/taskFields.js';
 import { computeNextDueDate, resolveDeletionIds } from '../../utils/recurrenceUtils.js';
-import { toDateStr } from '../../utils/dateUtils.js';
 
 /* ── 1. Phân loại trạng thái Task (Triage & Buckets) ────────── */
 const today = '2026-08-15';

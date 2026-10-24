@@ -536,7 +536,6 @@ h1, h2, h3, h4, h5, h6 {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.8);
-  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -747,9 +746,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .gap-container {
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* Nền đặc (không kính mờ) — trình phát nổi trên mọi trang, kể cả nền động của Nhiệm vụ */
+  background: var(--bg-secondary);
   border: 1px solid var(--bg-glass-border);
   border-radius: var(--radius-xl);
   padding: 1rem 1.25rem;

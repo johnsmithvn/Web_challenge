@@ -118,6 +118,36 @@ and the user verifies manually. Instead:
 
 ---
 
+# FX Lab — xem trước hiệu ứng trước khi bật vào app
+
+Mọi thêm / sửa vật bay, kịch bản, tương tác, nền động của trang Nhiệm vụ phải để user xem trước ở
+**`/fx-lab`** (`src/pages/FxLabPage.jsx`) rồi mới bật vào app. Không làm file preview rời rạc ngoài lab.
+
+- Kịch bản mới / làm lại lớn → vào bể với **trọng số 0** (nhãn "Nháp", app không tự bốc), user duyệt
+  xong mới đặt trọng số thật. Sửa nhỏ → sửa thẳng nhưng vẫn mời user xem trên lab trước khi commit.
+- Thí nghiệm chưa vào app (Lottie, Rive, sprite…) → trang tĩnh trong `public/fx-experiments/`,
+  đăng ký ở tab Thí nghiệm.
+- **Thay xong thì xoá bản cũ** — cả trong app lẫn trong preview: code/hình cũ + helper chỉ nó dùng, bản
+  `_v2` / Nháp đã dùng xong, trang thí nghiệm + mục tab Thí nghiệm tương ứng. Không để cũ và mới song song.
+
+Chi tiết: `docs/RULES.md` mục **#15**.
+
+---
+
+# Tài nguyên: ảnh, icon, hình vẽ
+
+Mỗi loại một chỗ, không thả file lung tung:
+
+- Gốc `public/` chỉ có vỏ app (favicon, icon PWA, `manifest.json`, `sw.js`).
+- Ảnh app dùng lúc chạy → `public/art/<tính-năng>/`; thí nghiệm → `public/fx-experiments/<tên>.html` + `<tên>/`;
+  bản gốc / phương án thiết kế → `design/<chủ-đề>/` (không deploy).
+- Icon giao diện → `AppIcon.jsx`; hình vẽ bằng code → module của cảnh, bộ sinh hình → `src/utils/<tên>Art.js`.
+- Tên `<tính-năng>-<vật>[-<biến-thể>]`, chữ thường gạch nối; WebP cho raster; file không còn dùng thì xoá.
+
+Chi tiết: `docs/RULES.md` mục **#16**.
+
+---
+
 # Testing
 
 For non-trivial business logic (date math, chain/cascade rules, anything with more than one

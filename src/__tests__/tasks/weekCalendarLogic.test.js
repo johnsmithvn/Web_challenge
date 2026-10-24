@@ -65,8 +65,10 @@ assert.equal(getTaskVisualStatus({ due_date: '2026-08-20' }, '2026-08-30'), 'ove
 assert.equal(getTaskVisualStatus({ due_date: '2026-08-30', due_time: '10:00' }, '2026-08-30', 720), 'overdue');
 assert.equal(getTaskVisualStatus({ due_date: '2026-08-30', due_time: '15:00' }, '2026-08-30', 720), 'active');
 assert.equal(getTaskVisualStatus({ due_date: '2026-09-01' }, '2026-08-30'), 'active');
-// Task không đặt giờ (00:00 = đã xoá giờ) hạn hôm nay: chưa quá hạn dù đã qua 00:00
-assert.equal(getTaskVisualStatus({ due_date: '2026-08-30', due_time: '00:00:00' }, '2026-08-30', 720), 'active');
+// Task không đặt giờ (NULL) hạn hôm nay: chưa quá hạn trong ngày
+assert.equal(getTaskVisualStatus({ due_date: '2026-08-30', due_time: null }, '2026-08-30', 720), 'active');
+// v6.30.0: 00:00 là giờ thật (bỏ quy ước cũ "00:00 = không giờ") → qua 0h là quá hạn
+assert.equal(getTaskVisualStatus({ due_date: '2026-08-30', due_time: '00:00:00' }, '2026-08-30', 720), 'overdue');
 console.log('getTaskVisualStatus classification: OK');
 
 /* ── 2. getWeekDays ───────────────────────────────────────────── */
@@ -110,21 +112,23 @@ assert.equal(t1Result._layout.height, 58);
 assert.equal(t1Result._layout.left, '0%');
 assert.ok(t1Result._layout.width.includes('100%'));
 
-// Giờ giả "không đặt giờ" (23:59 mặc định, 00:00 khi xoá giờ — DB trả HH:MM:SS)
-// phải vào hàng Cả ngày, không thành khối ở cuối/đầu lưới.
+// v6.30.0: bỏ quy ước cũ "23:59/00:00 = không giờ" (migration v6.21.0 đã đổi dữ liệu cũ về NULL).
+// Việc user đặt 0h / khối kết thúc 23:59 phải lên lưới, không rơi vào "Chưa xếp giờ".
 assert.equal(hasExplicitTime('09:00:00'), true);
-assert.equal(hasExplicitTime('23:59'), false);
-assert.equal(hasExplicitTime('23:59:00'), false);
-assert.equal(hasExplicitTime('00:00:00'), false);
+assert.equal(hasExplicitTime('23:59'), true);
+assert.equal(hasExplicitTime('23:59:00'), true);
+assert.equal(hasExplicitTime('00:00:00'), true);
 assert.equal(hasExplicitTime(null), false);
-const sentinelRes = computeDayLayout([
+assert.equal(hasExplicitTime(''), false);
+const midnightRes = computeDayLayout([
   { id: 's1', due_date: D, due_time: '23:59:00' },
   { id: 's2', due_date: D, due_time: '00:00' },
   { id: 's3', due_date: D, due_time: '08:30:00' },
+  { id: 'n', due_date: D, due_time: null },
 ], D, 45, 60);
-assert.deepEqual(sentinelRes.allDayTasks.map((t) => t.id), ['s1', 's2']);
-assert.deepEqual(sentinelRes.timedTasks.map((t) => t.id), ['s3']);
-console.log('no-time sentinel (23:59/00:00) → all-day: OK');
+assert.deepEqual(midnightRes.allDayTasks.map((t) => t.id), ['n'], 'chỉ việc NULL giờ vào Cả ngày');
+assert.deepEqual(midnightRes.timedTasks.map((t) => t.id).sort(), ['s1', 's2', 's3']);
+console.log('00:00 / 23:59 là giờ thật → lên lưới: OK');
 
 // Khối Bắt đầu→Hạn vs mốc: chỉ có giờ hạn (hoặc Bắt đầu khác ngày Hạn) thì là mốc ngắn
 // `markerMinutes`, không phải khối thời lượng giả. Bắt đầu có giờ mà Hạn không giờ → mốc ▶.
@@ -186,13 +190,14 @@ assert.deepEqual(Object.keys(monthEdge), ['2026-10-30', '2026-10-31', '2026-11-0
 console.log('bucketTasksByDay: OK');
 
 // Nhắc giờ hôm nay cho Service Worker: lúc Bắt đầu (kèm `until` = giờ Hạn cùng ngày) +
-// lúc Hạn. Bỏ task đã xong, đã Bỏ qua, ngày khác, Hạn không giờ (kể cả 23:59/00:00 cũ),
-// và nhắc "Đến giờ làm" của task đã sang Doing (đã bắt đầu thật).
+// lúc Hạn. Bỏ task đã xong, đã Bỏ qua, ngày khác, Hạn không giờ (NULL), và nhắc "Đến giờ làm"
+// của task đã sang Doing (đã bắt đầu thật). v6.30.0: 00:00 / 23:59 là giờ thật → có nhắc.
 const reminders = buildTodayReminders([
   block('a', '09:00:00', '10:30:00', { title: 'Viết báo cáo' }),
   { id: 'b', title: 'Nộp form', due_date: D, due_time: '14:00:00' },
-  { id: 'c', title: 'Không giờ', due_date: D, due_time: '00:00:00' },
-  { id: 'c2', title: 'Hết ngày cũ', due_date: D, due_time: '23:59:00' },
+  { id: 'c', title: 'Nửa đêm', due_date: D, due_time: '00:00:00' },
+  { id: 'c2', title: 'Cuối ngày', due_date: D, due_time: '23:59:00' },
+  { id: 'n', title: 'Không giờ', due_date: D, due_time: null },
   block('d', '08:00', '09:00', { title: 'Đã xong', completed: true }),
   { id: 'e', title: 'Ngày mai', due_date: '2026-10-06', due_time: '08:00' },
   block('f', '15:00', '17:00', { title: 'Bỏ qua', status: 'skip' }),
@@ -203,18 +208,21 @@ assert.deepEqual(reminders.map((r) => [r.tag, r.at, r.until]), [
   ['task-start-a', '09:00', '10:30'],
   ['task-a', '10:30', undefined],
   ['task-b', '14:00', undefined],
+  ['task-c', '00:00', undefined],
+  ['task-c2', '23:59', undefined],
   ['task-start-g', '07:00', undefined],
   ['task-h', '12:00', undefined],
 ]);
 assert.equal(reminders[0].body, 'Viết báo cáo (09:00–10:30)');
-assert.equal(reminders[3].body, 'Chỉ bắt đầu');
+assert.equal(reminders.find((r) => r.tag === 'task-start-g').body, 'Chỉ bắt đầu');
 console.log('buildTodayReminders (start + deadline): OK');
 
 // Nhãn ngắn của mốc trên thẻ + thời gian làm thật.
 assert.equal(formatWhenShort(D, '09:00:00', D), '09:00');
 assert.equal(formatWhenShort(D, null, D), 'Hôm nay');
 assert.equal(formatWhenShort('2026-10-06', '14:30', D), '6/10 14:30');
-assert.equal(formatWhenShort('2026-10-06', '23:59:00', D), '6/10');
+assert.equal(formatWhenShort('2026-10-06', '23:59:00', D), '6/10 23:59', 'v6.30.0: 23:59 là giờ thật');
+assert.equal(formatWhenShort('2026-10-06', null, D), '6/10');
 assert.equal(formatWhenShort(null, '09:00', D), '');
 assert.equal(formatSpent('2026-10-05T09:00:00Z', '2026-10-05T09:25:00Z'), '25p');
 assert.equal(formatSpent('2026-10-05T09:00:00Z', '2026-10-05T11:25:00Z'), '2h25p');
@@ -352,6 +360,8 @@ console.log('agenda rows (week/gap): OK');
   assert.deepEqual(datePickPatch({ a: '2026-10-12', b: null, ta: '09:00', tb: '10:30' }), { start_date: '2026-10-12', start_time: '09:00', due_date: '2026-10-12', due_time: '10:30' }, 'khối giờ cùng ngày');
   // Giờ kết thúc không sau giờ bắt đầu → bỏ giờ kết thúc (tránh Bắt đầu sau Hạn — DB CHECK)
   assert.deepEqual(datePickPatch({ a: '2026-10-12', b: null, ta: '10:00', tb: '09:00' }), { ...NONE, due_date: '2026-10-12', due_time: '10:00' });
+  // v6.30.0: chỉ nhập giờ kết thúc (xoá giờ bắt đầu) → giờ đó là giờ Hạn, không rơi mất
+  assert.deepEqual(datePickPatch({ a: '2026-10-12', b: null, ta: null, tb: '17:00' }), { ...NONE, due_date: '2026-10-12', due_time: '17:00' });
   // b không sau a (dữ liệu nháp lỗi) → coi như 1 ngày
   assert.deepEqual(datePickPatch({ a: '2026-10-12', b: '2026-10-12', ta: null, tb: null }), { ...NONE, due_date: '2026-10-12' });
   // Vòng tròn: task → nháp → patch giữ nguyên

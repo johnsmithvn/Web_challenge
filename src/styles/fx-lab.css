@@ -1,0 +1,403 @@
+/* ═══ FX Lab (/fx-lab) — sân khấu là .tasks-workspace thật, bảng điều khiển nổi bên phải ═══ */
+.fxlab {
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.fxlab-stage.tasks-workspace {
+  height: 100%;
+}
+
+/* Khung Mobile: iframe trỏ về /fx-lab?embed=1, rộng 390 thật để media query mobile chạy đúng */
+.fxlab-phone-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 360px;
+  background: radial-gradient(circle at 40% 40%, var(--bg-tertiary), var(--bg-primary) 70%);
+}
+
+.fxlab-phone {
+  width: 390px;
+  height: min(844px, calc(100dvh - 32px));
+  border: 0;
+  border-radius: 28px;
+  box-shadow: 0 0 0 8px #11131A, var(--shadow-lg);
+  background: #000;
+}
+
+/* ── Bảng điều khiển ── */
+.fxlab-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  bottom: 88px; /* chừa nút + (QuickCapture) góc phải dưới */
+  z-index: 70;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--bg-glass-border);
+  background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.fxlab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px 8px;
+}
+
+.fxlab-head strong {
+  display: block;
+  font-size: 15px;
+}
+
+.fxlab-head span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.fxlab-x {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fxlab-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 14px 10px;
+  border-bottom: 1px solid var(--bg-glass-border);
+}
+
+.fxlab-seg {
+  display: flex;
+  padding: 3px;
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+}
+
+.fxlab-seg button {
+  flex: 1;
+  min-height: 30px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.fxlab-seg button[aria-pressed='true'] {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.fxlab-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fxlab-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.fxlab-btn {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.fxlab-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.fxlab-note.is-warn {
+  color: var(--gold, #EAB308);
+}
+
+.fxlab-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 14px 0;
+}
+
+.fxlab-tabs button {
+  flex: 1;
+  min-height: 32px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fxlab-tabs button[aria-selected='true'] {
+  color: var(--text-accent);
+  border-bottom-color: currentColor;
+}
+
+.fxlab-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fxlab-body h4 {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fxlab-mode h3,
+.fxlab-mode summary {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: default;
+}
+
+.fxlab-mode summary {
+  margin: 0;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.fxlab-mode[open] summary {
+  margin-bottom: 8px;
+}
+
+.fxlab-mode small {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.fxlab-mode:not(.is-current) {
+  border-top: 1px solid var(--bg-glass-border);
+  padding-top: 4px;
+}
+
+.fxlab-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fxlab-chip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fxlab-chip:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+}
+
+.fxlab-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.fxlab-chip code,
+.fxlab-foot code {
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+.fxlab-chip small {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.fxlab-chip.is-last {
+  border-color: var(--text-accent);
+  box-shadow: 0 0 0 1px var(--text-accent);
+}
+
+.fxlab-chip.is-draft {
+  border-style: dashed;
+}
+
+.fxlab-chip em,
+.fxlab-draft {
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--gold, #EAB308);
+  color: #1C1917;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.fxlab-hints {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.fxlab-exps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fxlab-exp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fxlab-exp-card span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.fxlab-foot {
+  padding: 8px 14px;
+  border-top: 1px solid var(--bg-glass-border);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.fxlab-fab {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 70;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--bg-glass-border);
+  border-radius: var(--radius-full);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 700;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+
+/* Thí nghiệm mở đè lên sân khấu, chừa bảng điều khiển */
+.fxlab-exp {
+  position: absolute;
+  inset: 16px 372px 16px 16px;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--bg-glass-border);
+  background: var(--bg-primary);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.fxlab-exp header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 8px 16px;
+  border-bottom: 1px solid var(--bg-glass-border);
+  color: var(--text-primary);
+}
+
+.fxlab-exp iframe {
+  flex: 1;
+  width: 100%;
+  border: 0;
+}
+
+.fxlab button:focus-visible,
+.fxlab summary:focus-visible,
+.fxlab input:focus-visible {
+  outline: 2px solid var(--text-accent);
+  outline-offset: 2px;
+}
+
+/* Mở /fx-lab trên điện thoại: sân khấu mobile thật, bảng thành sheet đáy */
+@media (max-width: 768px) {
+  .fxlab {
+    height: calc(100dvh - var(--topbar-height, 52px) - var(--bottom-tabs-height, 60px));
+  }
+
+  .fxlab-panel {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: 64%;
+  }
+
+  .fxlab-fab {
+    top: auto;
+    bottom: 12px;
+    right: 76px; /* tránh nút + */
+  }
+
+  .fxlab-exp {
+    inset: 8px;
+    z-index: 90;
+  }
+}

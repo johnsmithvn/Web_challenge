@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
 import AppIcon from './AppIcon';
 import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, getZodiacHours } from '../utils/lunarUtils';
-import { STATUS_META, ksStyle, taskCardModel } from '../utils/kanbanUtils';
+import { STATUS_META, ksStyle, statusKeyOf, taskCardModel } from '../utils/kanbanUtils';
+import { sortSubtasks, subtaskDueInfo } from '../utils/subtaskUtils';
 import HOLIDAYS from '../data/holidays.json';
 import {
   bucketTasksByDay,
@@ -18,6 +19,11 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const PX_PER_HOUR = 56; // lưới 56px/giờ như mockup (đường kẻ giờ vẽ bằng CSS cùng bước, xem .tk-dv-canvas)
 const MARKER_MIN = 56; // mốc giờ hạn/bắt đầu cao ~50px như khối trong mockup
 const LONG_PRESS_MS = 320;
+// Khối dài (≥ LONG_MIN): nội dung dồn lên đầu, chỗ còn lại xếp việc con — đầu khối (giờ · tên ·
+// trạng thái) cao ~BLOCK_HEAD, mỗi hàng việc con SUB_ROW (mobile cao hơn cho ngón tay).
+const LONG_MIN = 96;
+const BLOCK_HEAD = { desktop: 66, mobile: 82 };
+const SUB_ROW = { desktop: 24, mobile: 30 };
 const hm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 /**
@@ -197,9 +203,13 @@ function useTouchTaskDrag({ enabled, scrollRef, canvasRef, unsRef, onDrop }) {
  *   Desktop: hàng Cả ngày + lưới giờ 56px (dải giờ hoàng đạo, khối việc, vạch hiện tại)
  *            | cột phải 320px: Chưa xếp giờ (kéo vào lưới) + bảng 12 giờ hoàng đạo.
  *   Mobile : dòng sự kiện → Chưa xếp giờ (2 việc, giữ-rồi-kéo) → lưới giờ toàn chiều rộng.
+ *   Khối dài hiện việc con (tick được, bấm tên mở hộp việc con; không vừa thì "+N việc con").
  */
 export default function CalendarDayView({
   pendingTasks = [],
+  allTasks = [],
+  onToggleSubtask,
+  onOpenSubtask,
   getCompletedTasksRange,
   onSelectTask,
   onOpenDay,
@@ -334,6 +344,16 @@ export default function CalendarDayView({
     return list;
   }, [targetDate, holidayToggles, customAnniversaries]);
 
+  // Việc con theo task cha (cùng thứ tự với Kanban: ưu tiên → kéo thả)
+  const subsByParent = useMemo(() => {
+    const map = new Map();
+    for (const t of allTasks) {
+      if (t.parent_task_id) map.set(t.parent_task_id, [...(map.get(t.parent_task_id) || []), t]);
+    }
+    for (const [k, list] of map) map.set(k, sortSubtasks(list));
+    return map;
+  }, [allTasks]);
+
   // Phân bổ layout các task có giờ
   const combinedTasks = useMemo(() => {
     return [...dayPending, ...completedTasks];
@@ -367,21 +387,32 @@ export default function CalendarDayView({
       });
     }
 
-    const combined = [...overdueList, ...dayUnscheduled];
-    return combined.sort((a, b) => {
+    const byDueThenPriority = (a, b) => {
       const ad = a.due_date || '9999-99-99';
       const bd = b.due_date || '9999-99-99';
       if (ad !== bd) return ad.localeCompare(bd);
       return (b.priority || 0) - (a.priority || 0);
-    });
+    };
+    // Việc của ngày chưa có giờ trước, rồi nhóm "Quá hạn" riêng (hạn từ hôm trước — có giờ vẫn ở đây vì
+    // giờ đó thuộc ngày cũ; kéo vào lưới = dời sang hôm nay). Trước đây trộn chung dưới "Chưa xếp giờ".
+    return [...dayUnscheduled.sort(byDueThenPriority), ...overdueList.sort(byDueThenPriority)];
   }, [allDayTasks, pendingTasks, isToday, todayStr]);
+  const isOverdue = (t) => !!t.due_date && t.due_date < todayStr;
+  const overdueCount = unscheduledTasks.filter(isOverdue).length;
+  const dayUnscheduledCount = unscheduledTasks.length - overdueCount;
 
+  // Thả vào "Chưa xếp giờ" một việc ĐANG nằm ở đó (kéo lỡ tay rồi thả lại) → bỏ qua. Trước đây việc
+  // quá hạn bị dời sang hôm nay + mất giờ dù không kéo đi đâu.
+  const unscheduledIds = new Set(unscheduledTasks.map((t) => String(t.id)));
+  const dropUnscheduled = (id) => {
+    if (!unscheduledIds.has(String(id))) onRescheduleTask(id, dateStr, null);
+  };
   const { drag: touchDrag, pressProps } = useTouchTaskDrag({
     enabled: !!onRescheduleTask && isMobile,
     scrollRef,
     canvasRef,
     unsRef,
-    onDrop: (id, timeStr) => onRescheduleTask(id, dateStr, timeStr),
+    onDrop: (id, timeStr) => (timeStr === null ? dropUnscheduled(id) : onRescheduleTask(id, dateStr, timeStr)),
   });
   const shownUnscheduled = isMobile && !unsOpen ? unscheduledTasks.slice(0, 2) : unscheduledTasks;
   const ghostOpacity = (t) => (touchDrag?.id === t.id ? 0.35 : 1);
@@ -390,11 +421,11 @@ export default function CalendarDayView({
     <div
       ref={unsRef}
       className={`tk-dv-uns${touchDrag?.slot === 'uns' ? ' is-drop-over' : ''}`}
-      {...(htmlDrag ? dropZoneProps((id) => onRescheduleTask(id, dateStr, null)) : {})}
+      {...(htmlDrag ? dropZoneProps(dropUnscheduled) : {})}
     >
       <div className="tk-dv-uns__head">
         <span className="tk-dv-cap">CHƯA XẾP GIỜ</span>
-        <span className="tk-dv-uns__count">{unscheduledTasks.length}</span>
+        <span className="tk-dv-uns__count">{dayUnscheduledCount}</span>
         {isMobile && onRescheduleTask && (
           <span className="tk-dv-uns__hint">
             <AppIcon name="handGrabbing" size={13} />
@@ -405,18 +436,27 @@ export default function CalendarDayView({
       {!isMobile && onRescheduleTask && (
         <span className="tk-dv-uns__help">Kéo việc sang lịch bên trái để xếp giờ. Kéo ngược về đây để bỏ giờ.</span>
       )}
-      {shownUnscheduled.map((t) => {
+      {shownUnscheduled.map((t, i) => {
         const m = taskCardModel(t, todayStr);
         const pr = PRIORITY_LABELS[m.priority] || PRIORITY_LABELS[0];
+        // Quá hạn: hiện đủ ngày + giờ cũ ("Hôm qua, 15:00") để thấy rõ giờ đó thuộc ngày khác
         const badge = (
-          <span className={`tk-due-badge${m.badge.dashed ? ' is-dashed' : ''}`}>
+          <span className={`tk-due-badge${m.badge.dashed ? ' is-dashed' : ''}`} title={m.badge.text}>
             {!isMobile && <AppIcon name={m.badge.icon} size={11.5} />}
-            {m.badge.card}
+            {m.k === 'late' ? m.badge.short : m.badge.card}
           </span>
         );
+        const firstOverdue = isOverdue(t) && (i === 0 || !isOverdue(shownUnscheduled[i - 1]));
         return (
+          <Fragment key={t.id}>
+          {firstOverdue && (
+            <div className="tk-dv-uns__sub">
+              <span className="tk-dv-cap">QUÁ HẠN</span>
+              <span className="tk-dv-uns__count is-late">{overdueCount}</span>
+              {onRescheduleTask && <span className="tk-dv-uns__subhint">kéo vào lịch để dời sang hôm nay</span>}
+            </div>
+          )}
           <div
-            key={t.id}
             className="tk-dv-ucard"
             style={{ ...ksStyle(m.k), opacity: ghostOpacity(t) }}
             draggable={htmlDrag}
@@ -448,6 +488,7 @@ export default function CalendarDayView({
               </>
             )}
           </div>
+          </Fragment>
         );
       })}
       {!isMobile && unscheduledTasks.length === 0 && <span className="tk-dv-uns__empty">Mọi việc trong ngày đã có giờ.</span>}
@@ -548,10 +589,18 @@ export default function CalendarDayView({
                   const L = t._layout;
                   const tall = L.height >= 44;
                   const time = L.kind === 'block' ? `${hm(L.startMinutes)}–${hm(L.endMinutes)}` : `${L.kind === 'start' ? '▶ ' : ''}${hm(L.startMinutes)}`;
+                  const subs = subsByParent.get(t.id) || [];
+                  const subDone = subs.filter((s) => statusKeyOf(s) === 'done').length;
+                  const size = isMobile ? 'mobile' : 'desktop';
+                  const long = L.height >= LONG_MIN;
+                  // Số hàng việc con vừa khối; thiếu chỗ thì hàng cuối là "+N việc con"
+                  const fit = long ? Math.floor((L.height - BLOCK_HEAD[size]) / SUB_ROW[size]) : 0;
+                  const shownSubs = subs.length > fit ? subs.slice(0, Math.max(0, fit - 1)) : subs;
+                  const moreSubs = subs.length - shownSubs.length;
                   return (
                     <div
                       key={t.id}
-                      className={`tk-dv-block${tall ? '' : ' is-short'}`}
+                      className={`tk-dv-block${tall ? '' : ' is-short'}${long ? ' is-long' : ''}`}
                       draggable={!m.done && htmlDrag}
                       onDragStart={(e) => taskDragStart(e, t)}
                       {...(!m.done ? pressProps(t) : {})}
@@ -570,7 +619,7 @@ export default function CalendarDayView({
                         <span className="tk-dv-block__time">{time}</span>
                         <span className={`tk-dv-block__title${m.done ? ' is-done' : ''}`}>{t.title}</span>
                       </div>
-                      {tall && !isMobile && (
+                      {tall && (!isMobile || long) && (
                         <div className="tk-dv-block__meta">
                           <span style={{ color: st.color }}>
                             <AppIcon name={st.icon} size={12} weight={st.weight} />
@@ -580,6 +629,67 @@ export default function CalendarDayView({
                             <span style={{ color: pr.color }}>
                               <AppIcon name={pr.icon} size={12} weight={m.priority === 5 ? 'fill' : 'regular'} />
                               {pr.label}
+                            </span>
+                          )}
+                          {subs.length > 0 && (
+                            <span className={`tk-dv-block__prog${subDone === subs.length ? ' is-done' : ''}`} title="Việc con đã xong">
+                              <AppIcon name="listChecks" size={12} />
+                              {subDone}/{subs.length}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {fit > 0 && subs.length > 0 && (
+                        <div className="tk-dv-subs">
+                          {shownSubs.map((s) => {
+                            const sKey = statusKeyOf(s);
+                            const sDone = sKey === 'done';
+                            const sp = PRIORITY_LABELS[Number(s.priority) || 0];
+                            const due = subtaskDueInfo(s, t.due_date);
+                            return (
+                              <div key={s.id} className={`tk-dv-sub${sKey === 'doing' ? ' is-doing' : ''}`}>
+                                <button
+                                  type="button"
+                                  className="tk-dv-sub__check"
+                                  title={sDone ? 'Bỏ đánh dấu xong' : 'Đánh dấu xong'}
+                                  disabled={!onToggleSubtask}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleSubtask?.(s);
+                                  }}
+                                >
+                                  <AppIcon
+                                    name={sDone ? 'checkSquare' : 'square'}
+                                    size={isMobile ? 17 : 15}
+                                    weight={sDone ? 'fill' : 'regular'}
+                                    style={{ color: sDone ? 'var(--tk-st-done)' : 'var(--tk-text-mute)' }}
+                                  />
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`tk-dv-sub__title${sDone ? ' is-done' : ''}`}
+                                  title="Mở việc con"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onOpenSubtask) onOpenSubtask(t, s);
+                                    else onSelectTask?.(t);
+                                  }}
+                                >
+                                  {s.title}
+                                </button>
+                                {due && <span className={`tk-sub-due tk-sub-due--${due.tone}`} title={due.title}>{due.label}</span>}
+                                {Number(s.priority) > 0 && sp && (
+                                  <span className="tk-dv-sub__pr" style={{ color: sp.color }} title={`Ưu tiên: ${sp.label}`}>
+                                    <AppIcon name={sp.icon} size={12} weight={Number(s.priority) === 5 ? 'fill' : 'regular'} />
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {moreSubs > 0 && (
+                            <span className="tk-dv-sub__more">
+                              <AppIcon name="dots" size={12} />
+                              {shownSubs.length ? `+${moreSubs} việc con` : `${moreSubs} việc con`}
                             </span>
                           )}
                         </div>

@@ -20,16 +20,15 @@ export function timeToMinutes(timeStr) {
 }
 
 /**
- * Task có giờ do user đặt hay không. Từ v6.21.0 "không giờ" là NULL; 23:59/00:00 là
- * giá trị giả của bản cũ (migration v6.21.0 đã đổi về NULL) — vẫn coi là không giờ
- * cho dữ liệu cache/khách còn sót. Task không giờ thuộc hàng "Cả ngày".
+ * Task có giờ do user đặt hay không. Từ v6.21.0 "không giờ" là NULL (migration v6.21.0 đã đổi
+ * giá trị giả 23:59/00:00 của bản cũ về NULL). v6.30.0 bỏ hẳn quy ước cũ: 00:00 / 23:59 là giờ
+ * thật — trước đó việc user đặt "0h" hoặc khối kết thúc 23:59 bị đẩy về "Chưa xếp giờ".
+ * Task không giờ thuộc hàng "Cả ngày".
  * @param {string|null|undefined} dueTime - "HH:mm" hoặc "HH:mm:ss" (DB)
  * @returns {boolean}
  */
 export function hasExplicitTime(dueTime) {
-  if (timeToMinutes(dueTime) === null) return false;
-  const hhmm = dueTime.trim().substring(0, 5);
-  return hhmm !== '23:59' && hhmm !== '00:00';
+  return timeToMinutes(dueTime) !== null;
 }
 
 /**
@@ -153,7 +152,7 @@ export function getTaskVisualStatus(task, todayStr = toDateStr(new Date()), nowM
 
   if (task.due_date < todayStr) return 'overdue';
 
-  // Task không đặt giờ (23:59/00:00) hạn hôm nay thì chưa quá hạn trong ngày.
+  // Task không đặt giờ (NULL) hạn hôm nay thì chưa quá hạn trong ngày.
   if (task.due_date === todayStr && hasExplicitTime(task.due_time) && typeof nowMinutes === 'number') {
     const taskMins = timeToMinutes(task.due_time);
     if (taskMins !== null && taskMins < nowMinutes) {
@@ -476,7 +475,8 @@ export function datePickPatch({ a, b, ta, tb }) {
   if (!a) return { start_date: null, start_time: null, due_date: null, due_time: null };
   if (b && b > a) return { start_date: a, start_time: ta || null, due_date: b, due_time: tb || null };
   if (ta && tb && tb > ta) return { start_date: a, start_time: ta, due_date: a, due_time: tb };
-  return { start_date: null, start_time: null, due_date: a, due_time: ta || null };
+  // 1 ngày chỉ có 1 giờ → giờ Hạn. Xoá giờ bắt đầu, chỉ nhập giờ kết thúc → vẫn giữ (trước bị rơi mất giờ)
+  return { start_date: null, start_time: null, due_date: a, due_time: ta || tb || null };
 }
 
 /** onDragStart cho thẻ task trên các view Lịch. */

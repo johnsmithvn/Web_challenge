@@ -80,6 +80,17 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   task của Finance/Knowledge. Thay checklist JSONB `subtasks` của v6.18.0 (cột cũ không còn dùng).
 - **Mặt trước** (thẻ Kanban, hàng Danh sách): badge `☑ 2/4`; mở ra tick trực tiếp, bấm tên → popup Chi tiết
   của subtask.
+- **Đang làm (v6.30.0):** nút ▶ trên hàng việc con (thẻ Kanban/Danh sách, ngăn chi tiết) chuyển việc đó sang
+  "Đang làm" (không cần đặt giờ; ⏸ = dừng, về Chưa làm). Mỗi task cha chỉ 1 việc con đang làm; task cha còn "Cần làm"
+  thì tự sang "Đang làm". Hàng đang làm nổi màu vàng + lên đầu; mặt thẻ (kể cả khi thu gọn) có dòng "● Đang làm: …".
+- **Nhắc hạn (v6.30.0):** việc con có giờ hạn hoặc hạn khác task cha hiện chip giờ: quá hạn / trễ giờ đỏ, còn ≤ 60
+  phút vàng đậm "còn 25p" (icon nhấp nháy), hôm nay vàng, sắp tới xanh. Việc con cùng hạn task cha, không giờ → không chip.
+- **Thứ tự (v6.29.0, v6.30.0):** việc con đang làm lên đầu, **đã xong / bỏ qua tự xuống cuối**; trong mỗi nhóm ưu
+  tiên cao trước (Khẩn → Không), cùng mức thì theo kéo thả — áp mọi nơi hiện subtask
+  (thẻ Kanban/Danh sách, ngăn chi tiết, popup Chi tiết, hộp việc con ‹ ›, khối giờ tab Ngày). **Kéo thả** bằng tay
+  nắm `⠿` trên thẻ Kanban/Danh sách và ngăn chi tiết (chuột + cảm ứng; bàn phím Alt + ↑/↓) chỉ đổi chỗ trong cùng
+  nhóm trạng thái + mức ưu tiên: kéo vượt nhóm thì dừng ở đầu/cuối nhóm, vạch thả hiện đúng chỗ sẽ rơi. Muốn đổi nhóm → đổi ưu tiên
+  bằng **nút ưu tiên trên từng hàng** (icon màu; chưa đặt thì icon mờ hiện khi rê chuột, cảm ứng luôn hiện mờ).
 - **Popup Chi tiết** task cha và form **sửa**: khu Subtask — tick, bấm tên để mở, **kéo thả sắp xếp** (bàn phím:
   Alt + ↑/↓ trên tay nắm), xoá (có xác nhận), Enter ở ô cuối để thêm (hạn = hạn task cha). Mọi thao tác lưu ngay.
 - Form **tạo** task: thêm subtask nháp (Enter thêm tiếp), tạo cùng task cha khi bấm Lưu.
@@ -121,10 +132,16 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   - `kanban` (Bảng Kanban): 4 cột To Do · Doing · Done · Skip, kéo thả hoặc nút chuyển cột trên mobile, thu gọn
     cột, bộ lọc thời gian (Tất cả / Hôm nay / 7 ngày / Tuỳ chọn — To Do/Doing/Skip lọc theo ngày hạn, Done theo
     ngày hoàn thành; task không hạn chỉ hiện ở Tất cả, xếp cuối cột), double-click cột hoặc nút "Thêm việc" để
-    tạo nhanh (không ngày). Chỉ khi đăng nhập.
+    tạo nhanh (không ngày). Bấm thẻ → ngăn chi tiết **nổi đè** lên bảng (không đẩy các cột co lại; mobile là sheet
+    dưới có phủ mờ). Chỉ khi đăng nhập.
   - `list` (Danh sách công việc): Chia việc theo Quá hạn, Hôm nay, Sắp tới; kèm thanh Mini Summary Bar (`Quá hạn | Hôm nay | Sắp tới`).
   - `agenda` (Lịch biểu): Dải ngày 45 ngày quanh ngày chọn, hiển thị cả ngày lễ và task theo timeline dọc.
   - `day` (Lịch Ngày): Lưới 24 giờ với trục thời gian thực (vạch đỏ), gom task cả ngày (All-day) và task có giờ.
+    Khối dài (≥ ~1g45) dồn nội dung lên đầu và hiện **việc con** (tick được, bấm tên mở hộp việc con) vừa đủ chiều
+    cao khối, thiếu chỗ thì "+N việc con"; dòng trạng thái có tiến độ `☑ 2/4`. Khung "Chưa xếp giờ" (xem hôm nay)
+    tách nhóm **Quá hạn** riêng — việc hạn từ hôm trước (kể cả có giờ, ghi "Hôm qua, 15:00"); kéo vào lưới = dời sang hôm nay.
+    Thả việc có giờ vào "Cả ngày" / "Chưa xếp giờ" = bỏ giờ, có toast **Hoàn tác**; thả lại đúng chỗ cũ thì không đổi gì.
+    Mọi giờ hợp lệ (kể cả 00:00, 23:59) là giờ thật; chỉ giờ trống mới là "không giờ".
   - `week` (Lịch Tuần): 7 cột ngày tương thích cả Chủ Nhật hoặc Thứ Hai khởi đầu, bố trí overlapping task thông minh.
   - `month` (Lịch Tháng): Hiển thị Task pending + completed, song song Dương lịch & Âm lịch Việt Nam, giới hạn chip thông minh và popup chi tiết ngày.
 - **Task đã xong trên Lịch** nằm ở ngày kế hoạch (Bắt đầu→Hạn), gạch/đánh dấu ✓ — không nhảy sang ngày bấm
@@ -165,12 +182,12 @@ Desktop nổi bên phải, mobile là sheet; mở bằng nút "Lịch & sự ki�
   đóm) / bình minh–hoàng hôn; Rừng tiên = rừng ngày (cây, suối, nắng, sương mù) / rừng đêm. Tắt hết khi máy bật giảm
   chuyển động.
 - Hình bay ngẫu nhiên qua trời (máy bay, UFO, Hằng Nga… / hươu, rồng, hồ ly, phù thuỷ…) + ban đêm có hiệu ứng thiên
-  nhiên chung: cực quang, sao ước nguyện (bấm trúng → thẻ điều ước), Thợ Săn, cầu vồng trăng, Ngân Hà, hồ, sương, lá
+  nhiên chung: sao ước nguyện (bấm trúng → thẻ điều ước), Thợ Săn, cầu vồng trăng, Ngân Hà, hồ, sương, lá
   bạc, bồ công anh, rêu; thỉnh thoảng nguyệt thực.
 - Nút "Ngắm cảnh" / "Ngắm rừng": ẩn giao diện để xem nền.
 - Rừng tiên: bấm nấm → "boing!", bấm đom đóm → bay theo chuột, bấm nền → rung cây; sương tan quanh con trỏ; thẻ trễ
-  có dây leo, xong có hoa, đang làm có đom đóm; xong việc → tiên bay lên, xong hết việc hôm nay → trái tim đom đóm
-  (đêm thêm cực quang); cây chuỗi ngày góc trái dưới (desktop).
+  có dây leo, xong có hoa, đang làm có đom đóm; xong việc → tiên bay lên, xong hết việc hôm nay → trái tim đom đóm;
+  cây chuỗi ngày góc trái dưới (desktop).
 
 ### Detail, lịch sử và XP
 - Detail modal cho xem/sửa Task, activity field-diff và note cá nhân. Khu Hoạt động & Ghi chú **thu gọn mặc

@@ -12,7 +12,7 @@ import { ForestDay, ForestNight, ForestNightMobile, DayFairiesTop, Constellation
  * + đom đóm sát đáy; desktop thêm nhãn trăng và đường chân trời hành tinh.
  * Sáng: trời bình minh (trước 12h) / hoàng hôn (từ 12h) + mặt trời mọc, mây màu nước nhấp nhô, hạt sáng bay.
  * Cả hai kiểu (Aurora / Rừng tiên) có vật bay ngẫu nhiên qua trời (utils/taskFlyers*); đêm thêm hiệu ứng
- * thiên nhiên dùng chung (utils/taskNatureFx: cực quang, sao ước nguyện bấm được, nguyệt thực…).
+ * thiên nhiên dùng chung (utils/taskNatureFx: sao ước nguyện bấm được, nguyệt thực…).
  * Toạ độ x desktop của mockup tính cả thanh bên 64px của khung → ở đây đã trừ 64.
  */
 const px = (v) => `${v}px`;
@@ -242,7 +242,7 @@ function LightSky({ isMobile, dusk }) {
 }
 
 /* ── Vật bay ngẫu nhiên (flyTick của mockup): thả 1 cảnh mỗi 2,5–7,5s (mobile 4–10s), tối đa 5 (mobile 3) cùng lúc ── */
-function useFlyers(hostRef, { elf, night, m }) {
+function useFlyers(hostRef, { elf, night, m, auto }) {
   useEffect(() => {
     const host = hostRef.current;
     if (!host || reducedMotion()) return undefined;
@@ -258,7 +258,7 @@ function useFlyers(hostRef, { elf, night, m }) {
       }
       timer = setTimeout(tick, (elf ? (m ? 4500 : 3000) : (m ? 4000 : 2500)) + Math.random() * (m ? 6000 : 5000));
     };
-    timer = setTimeout(tick, elf ? 1500 + Math.random() * 2000 : 1200 + Math.random() * 1500);
+    if (auto) timer = setTimeout(tick, elf ? 1500 + Math.random() * 2000 : 1200 + Math.random() * 1500);
     // Sao ước nguyện (taskNatureFx) bấm được: trúng thì chặn click để không mở nhầm thứ phía dưới.
     // Đăng ký trước bgClick của Rừng tiên (hook gọi trước) nên chặn luôn cả rung cây.
     const onClick = (e) => {
@@ -270,7 +270,7 @@ function useFlyers(hostRef, { elf, night, m }) {
       window.removeEventListener('click', onClick, true);
       host.replaceChildren();
     };
-  }, [hostRef, elf, night, m]);
+  }, [hostRef, elf, night, m, auto]);
 }
 
 /* ── Rừng tiên: nấm + đom đóm bấm được, bấm nền rung cây, sương tan quanh con trỏ (mockup) ── */
@@ -331,25 +331,34 @@ function useElfInteractions(backRef, topRef, { elf, fk }) {
 function useStardustTrail(active) {
   useEffect(() => {
     if (!active || reducedMotion()) return undefined;
+    // Hạt bụi nằm trong 1 lớp phủ cô lập (contain: strict): thêm/xoá hạt không bắt cả trang tính lại layout
+    const layer = document.createElement('div');
+    layer.setAttribute('aria-hidden', 'true');
+    layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;contain:strict';
+    document.body.appendChild(layer);
     let lastTime = 0;
     const onMove = (e) => {
       const now = performance.now();
       if (now - lastTime < 45) return;
       lastTime = now;
       const dot = document.createElement('span');
-      dot.style.cssText = `position:fixed;left:${e.clientX - 2}px;top:${e.clientY - 2}px;width:4px;height:4px;border-radius:50%;background:#FDE047;box-shadow:0 0 6px 1px rgba(253,224,71,.85);pointer-events:none;z-index:9999;will-change:transform,opacity`;
-      document.body.appendChild(dot);
+      dot.style.cssText = `position:absolute;left:${e.clientX - 2}px;top:${e.clientY - 2}px;width:4px;height:4px;border-radius:50%;background:#FDE047;box-shadow:0 0 6px 1px rgba(253,224,71,.85)`;
+      layer.appendChild(dot);
       dot.animate([
         { transform: 'scale(1) translate(0,0)', opacity: 0.9 },
         { transform: `scale(0.2) translate(${(Math.random() * 12 - 6).toFixed(1)}px, ${(Math.random() * 16 + 6).toFixed(1)}px)`, opacity: 0 }
       ], { duration: 750, easing: 'ease-out' }).onfinish = () => dot.remove();
     };
     window.addEventListener('pointermove', onMove, { passive: true });
-    return () => window.removeEventListener('pointermove', onMove);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      layer.remove();
+    };
   }, [active]);
 }
 
-function TaskSkyBackground({ isMobile }) {
+// autoFly=false: không tự thả vật bay (trang /fx-lab tự gọi từng kịch bản)
+function TaskSkyBackground({ isMobile, autoFly = true }) {
   const { theme, taskStyle } = useTheme();
   const elf = taskStyle === 'elf';
   const night = theme !== 'light';
@@ -357,7 +366,7 @@ function TaskSkyBackground({ isMobile }) {
   const dusk = new Date().getHours() >= 12;
   const flyRef = useRef(null);
   const topRef = useRef(null);
-  useFlyers(flyRef, { elf, night, m: isMobile });
+  useFlyers(flyRef, { elf, night, m: isMobile, auto: autoFly });
   useElfInteractions(flyRef, topRef, { elf, fk });
   useStardustTrail(night);
 

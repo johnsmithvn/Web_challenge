@@ -5,10 +5,12 @@
    ========================================================================== */
 
 /* ── KEYFRAMES ── */
+/* Hiệu năng: lớp nền chỉ animate transform/opacity (chạy trên GPU). Không blur/filter lên dải màu
+   chuyển — gradient vốn đã mềm; filter động trên lớp to cỡ màn hình = lọc lại ~1 triệu px mỗi khung. */
 @keyframes taskAuroraA {
-  0% { transform: translate3d(-4%, 0, 0) scaleY(1); filter: blur(34px) hue-rotate(0deg); }
+  0% { transform: translate3d(-4%, 0, 0) scaleY(1); }
   50% { transform: translate3d(2%, 3%, 0) scaleY(1.15); }
-  100% { transform: translate3d(5%, -2%, 0) scaleY(0.94); filter: blur(34px) hue-rotate(28deg); }
+  100% { transform: translate3d(5%, -2%, 0) scaleY(0.94); }
 }
 
 @keyframes taskAuroraC {
@@ -124,7 +126,6 @@
 /* Hiệu ứng thiên nhiên dùng chung (utils/taskNatureFx.js) */
 @keyframes tkf-nfxSpin { to { transform: rotate(360deg); } }
 @keyframes tkf-nfxTw { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
-@keyframes tkf-nfxWave { 0% { transform: translateX(-2%) skewY(-2deg) scaleY(0.94); } 100% { transform: translateX(2%) skewY(2deg) scaleY(1.08); } }
 
 /* Đom đóm lơ lửng nửa dưới trang (bản tối) */
 @keyframes taskFfWander {
@@ -321,6 +322,7 @@
   --tk-ks-skip-glow: rgba(148, 163, 184, 0.3);  --tk-ks-skip-tint: transparent;
   --tk-ks-skip-fg: #A9B4C6;  --tk-ks-skip-bg: rgba(148, 163, 184, 0.08);  --tk-ks-skip-bd: rgba(148, 163, 184, 0.18);
 
+  --tk-drawer-width: 560px;
   --tk-drawer-bg: rgba(9, 13, 27, 0.95);
   --tk-drawer-border: rgba(255, 255, 255, 0.1);
   --tk-drawer-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9), 0 0 60px -24px rgba(94, 242, 194, 0.35);
@@ -531,7 +533,7 @@
   --tk-ks-skip-glow: #CBD5E1;  --tk-ks-skip-tint: transparent;
   --tk-ks-skip-fg: #475569;  --tk-ks-skip-bg: #F1F5F9;  --tk-ks-skip-bd: #E2E8F0;
 
-  --tk-drawer-bg: rgba(255, 255, 255, 0.93);
+  --tk-drawer-bg: rgba(255, 255, 255, 0.97);
   --tk-drawer-border: #FFFFFF;
   --tk-drawer-shadow: 0 40px 90px -30px rgba(76, 55, 170, 0.5);
   --tk-label: #8B8FAE;
@@ -562,7 +564,7 @@
   --tk-popover-border: rgba(124, 108, 220, 0.15);
   --tk-popover-shadow: 0 20px 50px -16px rgba(30, 27, 58, 0.3);
   --tk-opt-on: #EDE9FE;
-  --tk-util-bg: rgba(255, 255, 255, 0.88);
+  --tk-util-bg: rgba(255, 255, 255, 0.96);
   --tk-util-bd: #FFFFFF;
   --tk-ut-tabs-bg: #F6F4FF;
   --tk-pp-soft: #F6F4FF;
@@ -602,6 +604,8 @@
   pointer-events: none;
   overflow: hidden;
   z-index: 0;
+  /* Cô lập layout/paint: vật bay (đom đóm Rừng tiên đổi left/top mỗi khung) không bắt cả trang tính lại */
+  contain: strict;
 }
 
 .task-cosmos-bg > * {
@@ -617,7 +621,6 @@
   background: radial-gradient(36% 58% at 20% 42%, rgba(52, 245, 197, 0.34), transparent 70%),
               radial-gradient(28% 50% at 50% 30%, rgba(34, 211, 238, 0.22), transparent 70%),
               radial-gradient(36% 60% at 84% 36%, rgba(139, 92, 246, 0.38), transparent 70%);
-  filter: blur(34px);
   animation: taskAuroraA 22s ease-in-out infinite alternate;
   will-change: transform;
 }
@@ -631,7 +634,6 @@
               radial-gradient(45% 45% at 92% 30%, rgba(251, 207, 232, 0.45), transparent 70%),
               radial-gradient(60% 42% at 30% 100%, rgba(254, 205, 170, 0.6), transparent 70%),
               radial-gradient(42% 38% at 88% 92%, rgba(251, 207, 232, 0.5), transparent 70%);
-  filter: blur(10px);
   animation: taskAuroraC 20s ease-in-out infinite alternate;
 }
 
@@ -653,7 +655,6 @@
   background: radial-gradient(50% 50% at 50% 50%, rgba(190, 205, 255, 0.17), rgba(170, 190, 240, 0.06) 50%, transparent 75%),
               radial-gradient(30% 40% at 34% 55%, rgba(200, 180, 255, 0.13), transparent 70%),
               radial-gradient(25% 35% at 70% 45%, rgba(140, 240, 215, 0.1), transparent 70%);
-  filter: blur(14px);
 }
 
 .task-milkyway--dust {
@@ -793,7 +794,6 @@
   width: 520px;
   height: 520px;
   border-radius: 50%;
-  filter: blur(10px);
   animation: taskAuroraC 18s ease-in-out infinite alternate;
 }
 
@@ -903,7 +903,6 @@
   background: radial-gradient(34% 55% at 20% 50%, rgba(253, 230, 138, 0.45), transparent 70%),
               radial-gradient(30% 50% at 52% 55%, rgba(251, 207, 232, 0.5), transparent 70%),
               radial-gradient(34% 55% at 82% 50%, rgba(196, 181, 253, 0.42), transparent 70%);
-  filter: blur(40px);
   animation: taskRibbon 22s ease-in-out infinite alternate;
   will-change: transform;
 }
@@ -916,7 +915,6 @@
 
 .task-blur-cloud {
   border-radius: 50%;
-  filter: blur(18px);
   opacity: 0.6;
   animation: taskDrift 40s ease-in-out infinite alternate;
 }
@@ -939,13 +937,11 @@
 
 .task-sun__halo {
   background: radial-gradient(circle, rgba(254, 240, 200, 0.6), rgba(251, 207, 232, 0.22) 45%, transparent 70%);
-  filter: blur(24px);
   animation: taskSunBreath 9s ease-in-out infinite alternate;
 }
 
 .task-sun__core {
   background: radial-gradient(circle, rgba(255, 244, 214, 0.95) 0, rgba(253, 214, 150, 0.6) 30%, rgba(251, 207, 232, 0.2) 60%, transparent 72%);
-  filter: blur(6px);
 }
 
 .is-dusk .task-sun__halo {
@@ -967,9 +963,11 @@
   animation: taskDrift 60s ease-in-out infinite alternate;
 }
 
-/* Lớp chứa vật bay (DOM do utils/taskFlyers* dựng), phủ kín trang */
+/* Lớp chứa vật bay (DOM do utils/taskFlyers* dựng), phủ kín trang. Là container (cqw/cqh) để đom đóm
+   Rừng tiên lượn theo % khung bằng transform (addFF trong taskFlyersElf.js). */
 .task-fly-host {
   inset: 0;
+  container-type: size;
 }
 
 /* Bóng chú Cuội & cây đa trên mặt trăng (kiểu Mặc định) */
@@ -1258,9 +1256,10 @@
   }
 }
 
+/* Kanban: ngăn chi tiết nổi ĐÈ lên bảng (không đẩy các cột co lại); view khác vẫn chừa chỗ */
 @media (min-width: 1280px) {
-  .tasks-workspace.has-peek .tk-main {
-    padding-right: 476px;
+  .tasks-workspace.has-peek:not(.tasks-workspace--kanban) .tk-main {
+    padding-right: calc(var(--tk-drawer-width, 560px) + 28px);
   }
 }
 
@@ -2259,6 +2258,257 @@
   color: var(--tk-text-main);
 }
 
+/* ── VIỆC CON: tay nắm kéo thả + nút ưu tiên (thẻ Kanban/Danh sách + ngăn chi tiết) ── */
+.tk-sub-grip {
+  flex: none;
+  width: 16px;
+  height: 24px;
+  margin-right: -4px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--tk-text-mute);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.tk-sub-grip:active {
+  cursor: grabbing;
+}
+
+.tk-sub-pr {
+  flex: none;
+  height: 22px;
+  min-width: 22px;
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  font: 600 11px/1 'Be Vietnam Pro', sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tk-sub-pr:hover {
+  background: var(--tk-hover);
+}
+
+.tk-sub-pr.is-unset {
+  color: var(--tk-text-mute);
+  border-style: dashed;
+  border-color: var(--tk-pr-set-bd);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.tk-subs__row:hover .tk-sub-grip,
+.tk-sub-row:hover .tk-sub-grip,
+.tk-subs__row:hover .tk-sub-pr.is-unset,
+.tk-sub-row:hover .tk-sub-pr.is-unset,
+.tk-sub-grip:focus-visible,
+.tk-sub-pr:focus-visible,
+[data-drag="self"] .tk-sub-grip {
+  opacity: 1;
+}
+
+/* Cảm ứng không có hover → luôn hiện mờ */
+@media (hover: none) {
+  .tk-sub-grip {
+    opacity: 0.75;
+  }
+
+  .tk-sub-pr.is-unset {
+    opacity: 0.55;
+  }
+}
+
+/* Đang kéo: hàng nhấc lên theo con trỏ; vạch thả = chỗ việc con sẽ rơi vào */
+.tk-subs__row[data-drag="self"],
+.tk-sub-row[data-drag="self"] {
+  position: relative;
+  z-index: 3;
+  background: var(--tk-drawer-bg);
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--tk-border-strong);
+}
+
+.tk-subs__row[data-drag="before"],
+.tk-sub-row[data-drag="before"] {
+  box-shadow: inset 0 2px 0 var(--tk-accent);
+}
+
+.tk-subs__row[data-drag="after"],
+.tk-sub-row[data-drag="after"] {
+  box-shadow: inset 0 -2px 0 var(--tk-accent);
+}
+
+/* ── VIỆC CON: nút Đang làm, hàng đang làm, chip nhắc hạn, dòng "Đang làm" trên thẻ (v6.30.0) ── */
+.tk-sub-focus {
+  flex: none;
+  height: 22px;
+  min-width: 22px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  color: var(--tk-text-mute);
+  font: 600 11px/1 'Be Vietnam Pro', sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.tk-sub-focus:hover {
+  background: var(--tk-hover);
+  color: var(--tk-ks-today-fg);
+}
+
+.tk-subs__row:hover .tk-sub-focus,
+.tk-sub-row:hover .tk-sub-focus,
+.tk-sub-focus:focus-visible,
+.tk-sub-focus.is-on {
+  opacity: 1;
+}
+
+.tk-sub-focus.is-on {
+  color: var(--tk-ks-today-fg);
+  background: color-mix(in srgb, var(--tk-st-doing) 14%, transparent);
+  border-color: color-mix(in srgb, var(--tk-st-doing) 40%, transparent);
+}
+
+@media (hover: none) {
+  .tk-sub-focus {
+    opacity: 0.6;
+  }
+}
+
+.tk-subs__row.is-doing,
+.tk-sub-row.is-doing,
+.tk-dv-sub.is-doing {
+  background: color-mix(in srgb, var(--tk-st-doing) 12%, transparent);
+  box-shadow: inset 2px 0 0 var(--tk-st-doing);
+}
+
+.tk-dv-sub.is-doing {
+  padding-left: 5px;
+  border-radius: 5px;
+}
+
+.is-doing .tk-subs__title,
+.is-doing .tk-sub-row__title,
+.is-doing .tk-dv-sub__title {
+  font-weight: 600;
+}
+
+.tk-sub-due {
+  flex: none;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--tk-ks-soon-bd);
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--tk-ks-soon-bg);
+  color: var(--tk-ks-soon-fg);
+  font: 600 10.5px/1 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+.tk-sub-due--today,
+.tk-sub-due--soon {
+  border-color: var(--tk-ks-today-bd);
+  background: var(--tk-ks-today-bg);
+  color: var(--tk-ks-today-fg);
+}
+
+.tk-sub-due--soon {
+  border-color: var(--tk-ks-today-glow);
+  font-weight: 700;
+}
+
+.tk-sub-due--late {
+  border-color: var(--tk-ks-late-bd);
+  background: var(--tk-ks-late-bg);
+  color: var(--tk-ks-late-fg);
+}
+
+.tk-focus-line {
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  height: 24px;
+  padding: 0 8px 0 7px;
+  border: 1px solid color-mix(in srgb, var(--tk-st-doing) 40%, transparent);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, var(--tk-st-doing) 12%, transparent);
+  font: 500 12px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tk-card .tk-focus-line {
+  margin: 2px 0 0 32px;
+  max-width: calc(100% - 32px);
+}
+
+.tk-focus-line__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tk-st-doing);
+}
+
+.tk-focus-line__label {
+  flex: none;
+  font-weight: 700;
+  color: var(--tk-ks-today-fg);
+}
+
+.tk-focus-line__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Nhịp nhắc: chỉ opacity/transform (chạy trên GPU), tắt khi giảm chuyển động */
+@media (prefers-reduced-motion: no-preference) {
+  .tk-focus-line__dot {
+    animation: tkFocusPulse 1.6s ease-in-out infinite;
+  }
+
+  .tk-sub-due--soon svg {
+    animation: tkFocusPulse 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes tkFocusPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.75); }
+}
+
 /* ── DANH SÁCH DESKTOP ── */
 .tk-list-panel {
   flex: 1;
@@ -2516,7 +2766,6 @@
   border-radius: 20px;
   background: var(--tk-util-bg);
   border: 1px solid var(--tk-util-bd);
-  backdrop-filter: blur(24px);
   box-shadow: 0 30px 80px -30px var(--tk-shadow);
   display: flex;
   flex-direction: column;
@@ -3258,17 +3507,22 @@
   top: 14px;
   right: 14px;
   bottom: 14px;
-  width: 448px;
+  width: var(--tk-drawer-width, 560px);
   max-width: calc(100% - 28px);
   display: flex;
   flex-direction: column;
   border-radius: 22px;
   background: var(--tk-drawer-bg);
   border: 1px solid var(--tk-drawer-border);
-  backdrop-filter: blur(24px);
   box-shadow: var(--tk-drawer-shadow);
   overflow: hidden;
   animation: tkFadeIn 0.15s ease;
+}
+
+@media (min-width: 1600px) {
+  :root {
+    --tk-drawer-width: 600px;
+  }
 }
 
 .tk-drawer__head {
@@ -4087,7 +4341,6 @@
   justify-content: center;
   padding: 16px;
   background: var(--tk-scrim);
-  backdrop-filter: blur(3px);
   animation: tkFadeIn 0.15s ease;
 }
 
@@ -4767,6 +5020,107 @@
   text-decoration: line-through;
 }
 
+/* Khối dài: nội dung dồn lên đầu (không treo giữa khối trống), nền nhạt dần + viền mảnh như thẻ */
+.tk-dv-block.is-long {
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 9px 10px 8px 12px;
+  background: linear-gradient(180deg, var(--k-bg) 0, var(--k-bg) 44px, transparent 140px), var(--tk-blk);
+  border: 1px solid var(--k-bd);
+  border-left: 3px solid var(--k-glow);
+}
+
+.tk-dv-block.is-long .tk-dv-block__title {
+  font-size: 13.5px;
+}
+
+.tk-dv-block__prog {
+  color: var(--tk-text-sub);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.tk-dv-block__prog.is-done {
+  color: var(--tk-st-done);
+}
+
+/* Việc con trong khối giờ (hàng 24px; mobile 30px — khớp SUB_ROW trong CalendarDayView) */
+.tk-dv-subs {
+  min-height: 0;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid var(--tk-divider);
+  display: flex;
+  flex-direction: column;
+  cursor: default;
+}
+
+.tk-dv-sub {
+  height: 24px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tk-dv-sub__check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tk-dv-sub__check:hover:not(:disabled) {
+  background: var(--tk-hover);
+}
+
+.tk-dv-sub__check:disabled {
+  cursor: default;
+}
+
+.tk-dv-sub__title {
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: 400 12.5px/1.3 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.tk-dv-sub__title:hover {
+  color: var(--tk-accent);
+}
+
+.tk-dv-sub__title.is-done {
+  color: var(--tk-text-mute);
+  text-decoration: line-through;
+}
+
+.tk-dv-sub__pr {
+  flex: none;
+  display: inline-flex;
+}
+
+.tk-dv-sub__more {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 3px;
+  font: 500 11.5px/1 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-sub);
+}
+
 .tk-dv-now {
   position: absolute;
   z-index: 3;
@@ -4835,6 +5189,26 @@
   font: 400 12px/1.45 'Be Vietnam Pro', sans-serif;
   color: var(--tk-text-mute);
   text-wrap: pretty;
+}
+
+/* Nhóm "Quá hạn" trong khung Chưa xếp giờ (hạn từ hôm trước, kể cả có giờ) */
+.tk-dv-uns__sub {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--tk-divider);
+}
+
+.tk-dv-uns__count.is-late {
+  color: var(--tk-ks-late-fg);
+}
+
+.tk-dv-uns__subhint {
+  font: 400 11.5px/1.3 'Be Vietnam Pro', sans-serif;
+  color: var(--tk-text-mute);
 }
 
 .tk-dv-uns__empty {
@@ -5017,6 +5391,29 @@
 
 .tasks-workspace [draggable='true'] {
   cursor: grab;
+}
+
+/* Kéo qua hàng "Cả ngày" (Ngày / Tuần): nói rõ thả vào là bỏ giờ — hàng này nằm sát mép trên lưới giờ,
+   kéo khối lên hơi quá tay là trúng (thả xong vẫn có toast Hoàn tác) */
+.tk-dv-allday.is-drop-over,
+.tk-wk-allcell.is-drop-over {
+  position: relative;
+}
+
+.tk-dv-allday.is-drop-over::after,
+.tk-wk-allcell.is-drop-over::after {
+  content: 'Thả vào đây = bỏ giờ';
+  position: absolute;
+  inset: 2px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: var(--tk-drawer-bg);
+  color: var(--tk-ks-today-fg);
+  font: 600 12px/1.2 'Be Vietnam Pro', sans-serif;
+  text-align: center;
+  pointer-events: none;
 }
 
 /* ── LỊCH BIỂU (mockup: banner quá hạn → tuần → cột ngày 132px | danh sách) ── */
@@ -6451,6 +6848,93 @@
     height: 36px;
   }
 
+  .tk-subs--mobile .tk-sub-grip,
+  .tk-drawer .tk-sub-grip {
+    width: 26px;
+    height: 36px;
+    margin-right: -6px;
+  }
+
+  .tk-subs--mobile .tk-sub-pr,
+  .tk-drawer .tk-sub-pr,
+  .tk-subs--mobile .tk-sub-focus,
+  .tk-drawer .tk-sub-focus {
+    height: 30px;
+    min-width: 30px;
+  }
+
+  /* Mobile chật: thẻ ẩn nút ưu tiên chưa đặt (đặt trong ngăn chi tiết), ngăn chi tiết chỉ hiện icon */
+  .tk-subs--mobile .tk-sub-pr.is-unset,
+  .tk-drawer .tk-sub-btn__label {
+    display: none;
+  }
+
+  .tk-sub-row__title {
+    overflow-wrap: anywhere;
+  }
+
+  /* Hàng việc con mobile: lưới cố định cột — chip giờ nằm DƯỚI tên (không chen ngang làm tên bị ép) */
+  .tk-subs--mobile .tk-subs__row,
+  .tk-drawer .tk-sub-row {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    column-gap: 4px;
+  }
+
+  .tk-drawer .tk-sub-row {
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+
+  .tk-subs--mobile .tk-sub-grip,
+  .tk-drawer .tk-sub-grip {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .tk-subs--mobile .tk-subs__check,
+  .tk-drawer .tk-sub-row__check {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .tk-drawer .tk-sub-row__check {
+    width: 32px;
+    height: 32px;
+  }
+
+  .tk-subs--mobile .tk-subs__title,
+  .tk-drawer .tk-sub-row__title {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .tk-subs--mobile .tk-sub-due,
+  .tk-drawer .tk-sub-due {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: start;
+    margin: 2px 0 4px;
+  }
+
+  .tk-subs--mobile .tk-sub-pr,
+  .tk-drawer .tk-sub-pr {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+  }
+
+  .tk-subs--mobile .tk-sub-focus,
+  .tk-drawer .tk-sub-focus {
+    grid-column: 5;
+    grid-row: 1 / span 2;
+  }
+
+  .tk-mcard .tk-focus-line {
+    height: 28px;
+    font-size: 13px;
+  }
+
   .tk-subs--mobile .tk-subs__title {
     font: 500 13.5px/1.35 'Be Vietnam Pro', sans-serif;
     white-space: normal;
@@ -6837,6 +7321,21 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 5px;
+  }
+
+  .tk-dv-sub,
+  .tk-dv-sub__more {
+    height: 30px;
+  }
+
+  .tk-dv-sub__check {
+    width: 28px;
+    height: 28px;
+    margin-left: -4px;
+  }
+
+  .tk-dv-sub__title {
+    font-size: 13.5px;
   }
 
   .tk-dv-block__title {

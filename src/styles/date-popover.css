@@ -15,7 +15,6 @@
   border: 1px solid var(--tk-popover-border);
   box-shadow: var(--tk-popover-shadow);
   color: var(--tk-text-main);
-  backdrop-filter: blur(16px);
 }
 
 /* ── Đổi ngày giờ / lọc khoảng ngày (mockup): rộng 256, ô 38px, lịch 29px có ngày âm, chân có vạch chia ── */
@@ -259,7 +258,7 @@
   background: transparent;
   color: var(--tk-text-main);
   font: 500 12.5px/1 'JetBrains Mono', monospace;
-  color-scheme: light;
+  color-scheme: only light;
   outline: none;
   cursor: pointer;
 }

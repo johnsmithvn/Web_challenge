@@ -8,6 +8,7 @@ import {
 } from './parts';
 import AppIcon from '../AppIcon';
 import AnalyzeScreen from './AnalyzeScreen';
+import { useElementWidth } from '../../hooks/useElementWidth';
 import '../../styles/skeleton.css';   // dùng .sk-* trực tiếp, không qua SkeletonList
 
 /**
@@ -306,8 +307,12 @@ function CumulativeRhythmChart({ transactions, period, prevPeriod, today }) {
     return computeCumulativeRhythm(transactions, period, prevPeriod, today);
   }, [transactions, period, prevPeriod, today]);
 
-  const W = 720, H = 180;
-  const padL = 48, padR = 65, padT = 20, padB = 25;
+  // Khung hẹp hơn 720 (mobile) vẽ đúng pixel thay vì co viewBox — chữ trục không bị thu nhỏ,
+  // không phải cuộn ngang. Khung rộng giữ viewBox 720 như cũ.
+  const [ref, width] = useElementWidth();
+  const W = width > 0 && width < 720 ? width : 720, H = 180;
+  // padR chừa chỗ nhãn cuối đường ("13,7tr" ≈ 46px); khung hẹp bớt phần dư cho vùng vẽ
+  const padL = 48, padR = W < 720 ? 54 : 65, padT = 20, padB = 25;
   const maxVal = Math.max(data.lastCurVal, data.lastPrevVal, 1_000_000);
 
   const curPts = makeStepPoints(data.curPoints, padL, padR, padT, padB, W, H, maxVal, data.totalDays);
@@ -327,7 +332,9 @@ function CumulativeRhythmChart({ transactions, period, prevPeriod, today }) {
   ];
 
   const xTicks = [];
-  const stepDays = data.totalDays <= 31 ? 5 : 10;
+  // Nhãn ngày cách nhau tối thiểu ~24px, nếu không khung hẹp / kỳ dài sẽ chồng chữ.
+  const minStep = Math.ceil((24 * Math.max(1, data.totalDays - 1)) / (W - padL - padR));
+  const stepDays = Math.max(data.totalDays <= 31 ? 5 : 10, Math.ceil(minStep / 5) * 5);
   for (let d = 1; d <= data.totalDays; d += stepDays) {
     const x = +(padL + ((d - 1) / Math.max(1, data.totalDays - 1)) * (W - padL - padR)).toFixed(1);
     xTicks.push({ d, x });
@@ -354,7 +361,7 @@ function CumulativeRhythmChart({ transactions, period, prevPeriod, today }) {
         </div>
       </div>
 
-      <div className="fin-rhythm__scroll">
+      <div ref={ref} className="fin-rhythm__scroll">
         <svg viewBox={`0 0 ${W} ${H}`} className="fin-rhythm__svg" aria-label="Biểu đồ lũy kế nhịp chi">
           <defs>
             <linearGradient id="gRhythmArea" x1="0" y1="0" x2="0" y2="1">

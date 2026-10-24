@@ -1,5 +1,121 @@
 # CHANGELOG
 
+## v6.30.8 — 2026-10-23
+
+### Changed
+- **Tổng quan mobile — bớt lề hai bên (`finance-report.css`, `OverviewScreen.jsx`):** thân báo cáo lùi thêm 18px mỗi bên trên lề 12px của `.fin-screen` nên thẻ cách mép 30px. Mobile bỏ lớp lề + nền riêng của báo cáo: thẻ rộng thêm 36px (366px ở màn 390). Nhịp chi trong kỳ rộng theo (vẽ theo bề rộng thật), lề phải dành cho nhãn cuối 65 → 54px khi khung hẹp.
+- **Kỳ này với kỳ trước mobile (`ReportScreen.jsx`, `finance-report.css`):** bỏ chấm màu nhóm (thanh mini dưới tên đã mang màu); độ rộng cột chuyển từ style inline sang CSS, mobile cột NHÓM 46% — tên nhóm một dòng ở màn 390 (360px còn tên dài nhất xuống dòng).
+
+## v6.30.7 — 2026-10-23
+
+### Changed
+- **Finance mobile — bỏ topbar của module (`FinancePage.jsx`, `finance.css`):** dòng "Finance · <màn> · + Thêm · sáng/tối · avatar" chiếm 52px mà chỉ có nút về Hub là duy nhất ("+ Thêm" trùng tab Nhập nhanh, avatar không bấm được, sáng/tối có ở topbar chung của app). Về Hub bằng ô Home (icon, 40px) đầu tab đáy. Nhãn tab không bẻ dòng ở 360px.
+- **Báo cáo (Tổng quan) mobile — header gọn 2 hàng (`ReportScreen.jsx`, `finance-report.css`):** bỏ tiêu đề "Báo cáo chi tiêu"; `‹ kỳ ›` · `▦ 13` (icon + số thẻ) · `⤓` (Xuất CSV thành icon) một hàng, `Tháng | Quý | Năm` trải hàng dưới. Trước là 3–4 hàng (tiêu đề 2 dòng + kỳ, chế độ + thẻ, CSV). Desktop giữ tiêu đề và chữ, CSV thêm icon.
+
+### Fixed
+- **Báo cáo kẹt nền sáng ở dark mode (`finance-report.css`, `ReportScreen.jsx`):** `finance-report.css` chỉ có màu bản sáng. Thêm khối `[data-theme="dark"] .fin-report` map sang token Nocturne `--n-*` (thẻ, nút, viền, chữ 3 mức, rãnh, badge, lịch chi, vùng tô sparkline theo màu nhóm); màu trung tính inline (lưới biểu đồ, chữ trục, cột Phải trả/Tùy chọn, chú thích…) đổi sang `var(--rp-*, <hex sáng>)` nên bản sáng không đổi.
+
+## v6.30.6 — 2026-10-23
+
+### Changed
+- **Finance mobile — form gọn hơn (`finance.css`, `ListScreen.jsx`):** Nhập nhanh: "Hôm nay · Hôm qua · ô ngày" chung một hàng — ô ngày lấp phần còn lại thay vì giữ bề rộng mặc định của `<input>` (~220px) rồi rớt xuống hàng riêng; Phân loại (Phải trả / Tùy chọn) trải đủ hàng. Form ngắn đi ~50px. Sửa giao dịch ≤600px: Số tiền + Ngày chung một hàng (`fin-edit-field--pair`, cùng cao 44px), các ô khác giữ một cột.
+
+## v6.30.5 — 2026-10-23
+
+### Fixed
+- **Finance mobile — Sửa giao dịch không thấy / không bấm được nút Lưu (`finance.css`, `ListScreen.jsx`):** lớp sửa có `z-index: 99`, `top: 64px` (rule của `finance.css` thắng bản `finance-list.css` vì nạp sau) nên thanh tab đáy (`z-index: 100`) che mất chân Hủy / Lưu. ≤768px lớp sửa phủ cả màn (`top: 0`, `z-index: 110` — vẫn dưới lịch nổi `.fin-datepop`), chân chừa safe-area, 2 nút chia đôi, bỏ gợi ý phím "(Esc)" / "(Ctrl+Enter)" trên mobile.
+- **Finance mode sáng — ô nhập bị tô đen trên điện thoại bật "web tối" (`finance.css`, `finance-list.css`, `date-popover.css`):** `[data-theme="light"]` chặn Auto Dark Mode bằng `color-scheme: only light`, nhưng ô nhập/select của form sửa, bộ lọc, chọn ngày… đặt lại `color-scheme: light` (thiếu `only`) nên trình duyệt tô đen riêng các ô đó. Đổi hết sang `only light`; ô ngày ở khối trả nợ và select năm của bộ chọn kỳ trước ép `dark` cả ở mode sáng → thêm override sáng.
+- **Giao dịch — dòng phụ in lộ `` ` · $Tiền có sẵn` `` (`ListScreen.jsx`):** template literal viết thẳng trong JSX text thay vì trong `{}`.
+- **Giao dịch mobile — header và thanh lọc tràn mép phải (`finance-list.css`):** ≤640px tên + số khoản một hàng, "Xuất CSV" / "Ghi một khoản" chia đôi hàng dưới; kỳ + Lọc chung hàng, bỏ vạch ngăn treo, tab nhanh trải đủ ngang.
+- **Topbar Finance mobile:** nhãn màn dài ("· Định kỳ & Quỹ") cắt "…" thay vì bẻ 2 dòng (`FinancePage.jsx`).
+
+## v6.30.4 — 2026-10-22
+
+### Added
+- **FX Lab `/fx-lab` (`FxLabPage.jsx`, `fx-lab.css`; mục FX Lab ở nhóm Khác của sidebar / menu Thêm trên mobile):** một trang gom toàn bộ hiệu ứng nền trang Nhiệm vụ, chạy đúng code thật. Chọn Kiểu (Mặc định / Rừng tiên), Ngày/Đêm (đổi thật, rời trang trả lại), khung Desktop / Mobile 390 (iframe), bật/tắt tự thả ngẫu nhiên. Tab Kịch bản liệt kê mọi cảnh trong bể của 4 chế độ + thiên nhiên + ngoài bể (nguyệt thực), bấm là chạy, cảnh khác chế độ tự chuyển; tự chạy nốt chuỗi cú cháy lông → chữa lành, độc dược → mèo khổng lồ. Tab Tương tác: xong việc, xong hết, nước bắn, Thỏ ngọc. Tab Thí nghiệm nhúng trang tĩnh trong `public/fx-experiments/`: "So sánh con vật" (`public/fx-experiments/animals.html` — mèo đánh nhau, đại bàng săn mồi, hồ ly 9 đuôi, kỳ lân; mỗi con: hình hiện tại vs vẽ bằng code (bộ xương thủ tục, `animals/creatures.js`)). Đã thử Lottie / Rive miễn phí rồi bỏ: file có nền vẽ sẵn, chuyển động quá ít, mỗi bản quay một hướng.
+- **Bể kịch bản export + ép chạy (`taskFlyersAurora.js` `AURORA_POOL`, `taskFlyersElf.js` `ELF_POOL`):** `spawnAuroraFlyer` / `spawnElfFlyer` nhận thêm `force`; trọng số 0 = bản nháp (app không bốc, lab chạy được). `TaskSkyBackground` thêm prop `autoFly`.
+- **Cảnh nháp Rừng tiên · Đêm (trọng số 0 — chỉ chạy ở `/fx-lab`, chờ duyệt):** `dragon_v2` rồng xanh phương Đông và `dragon_v2_eu` rồng châu Âu vẽ bằng code (`utils/dragonArt.js` mới — hàm thuần, self-check `dragonArt.test.js`; trang vẽ lại path mỗi khung bằng rAF qua `liveArt` trong `taskFlyersElf.js`), cùng đường bay + hắt xì như cảnh `dragon` cũ; `catfight` 2 mèo đánh nhau dùng hình mèo hiện tại (`EN.CAT`): khè + nghiêng người, nhảy vồ, cuộn bụi có móng / sao thò ra, văng ra xoay vòng, sao choáng quay trên đầu.
+- **Rule mới (CLAUDE.md, RULES #15):** thêm / sửa hiệu ứng phải cho user xem trên `/fx-lab` trước khi bật vào app; thay xong thì xoá bản cũ cả trong app lẫn preview.
+- **Rule cấu trúc tài nguyên (CLAUDE.md, RULES #16, cây thư mục ARCHITECTURE.md):** gốc `public/` chỉ giữ vỏ app; ảnh app dùng → `public/art/<tính-năng>/`; thí nghiệm → `public/fx-experiments/`; bản gốc thiết kế → `design/` (không deploy); quy ước tên + WebP; file không dùng thì xoá. Đã sắp lại theo rule: ảnh Chị Hằng → `public/art/tasks/`; gốc `public/` giờ chỉ còn vỏ app.
+
+### Changed
+- **Cá koi Rừng tiên đêm vẽ lại (`utils/koiArt.js` mới; `taskFlyersElf.js` cảnh `koi`, `koistar`, koi nhảy khi bấm nước):** thay koi SVG nghiêng (thân cứng, chỉ đuôi lắc) bằng koi Kohaku nhìn từ trên — thân uốn sóng đầu → đuôi, vây ngực quạt so le, đuôi gợn, mảng đỏ uốn theo thân, mỗi con lệch pha riêng. Hình học sinh thủ tục thành SVG + SMIL (`<animate attributeName="d">`), không thêm thư viện. Xoá koi SVG cũ, koi mini cũ và trang thí nghiệm koi Lottie (`public/fx-experiments/`).
+- **Nâng cấp hình tượng Chị Hằng bay lượn ban đêm (`taskFlyersAurora.js`, `public/art/tasks/hang-nga-*.webp`):** thay thế toàn bộ nét vẽ vector SVG thô sơ cũ bằng 2 bản Game Sprite HD trong suốt bóc tách từ tranh vẽ nghệ thuật gốc — Bản 1 (Chibi Tiên Nữ mắt to, cài trâm hoa quế vàng, ôm thỏ ngọc trắng) và Bản 3 (Anime Dạ Nguyệt tóc tím ánh trăng, dải lụa thiên hà phát sáng) xuất hiện ngẫu nhiên 50/50 mỗi lần xuất hiện từ cung trăng. Bổ sung hào quang ánh trăng kép (`glow drop-shadow`), vệt bụi sao băng và câu thoại chúc ngủ ngon / nhắc nhở task sinh động.
+
+### Removed
+- **Cảnh UFO đêm `nufo` (`taskFlyersAurora.js`, kèm helper `ufoP` / `beamS` chỉ nó dùng):** code chết — từ lúc port mockup chưa từng nằm trong bể bốc ngẫu nhiên nên app không bao giờ chạy; trùng ý với UFO bắt cóc (`abduct`) và UFO mái vòm (`dome`). FX Lab phát hiện, user duyệt xoá.
+- **Ảnh không dùng:** 9 phương án logo cực quang `public/icons/aurora/aurora-1…9.png` (912 KB, không chỗ nào gọi nhưng vẫn bị deploy) và đồ thừa mẫu Vite `public/icons.svg`, `src/assets/hero.png`. User duyệt xoá; git giữ lịch sử nếu cần lấy lại.
+- **Trang thử Chị Hằng (`preview-hang-nga.html` + ảnh gốc `ban-1-chibi.jpg`, `ban-3-anime.jpg`, 2 bản sao webp):** sprite đã vào app nên xoá theo RULES #15 (thay xong thì xoá bản cũ cả trong preview), kèm mục "Chị Hằng sprite" ở tab Thí nghiệm của `/fx-lab`. Các file này chưa từng commit nên không lấy lại được từ git.
+
+### Fixed
+- **Không đóng được hộp đăng nhập (`AuthModal.jsx`):** nút X và bấm ra ngoài gọi `setIsRecoveringPassword` nhưng hàm chưa lấy từ `useAuth()` → ReferenceError, hộp kẹt lại. Lấy thêm setter từ `useAuth()` (AuthContext đã cung cấp sẵn).
+- **`npm run lint` hết lỗi (14 → 0):** xoá biến / import khai báo mà không dùng ở 6 file test (`kbDeriveUtils`, `taskLogic`, `taskScreensContract`, `taskUiContract`, `vaultCrypto`, `vaultScreensContract`) và 5 component (`BankSelect` prop `allowCustom`, `ListScreen` `totals` + import `periodTotals`, `KBEditorView` prop `suggestions`, `KBGraphView` import `useCallback`, `KBReaderView` `hue`/`nMeta`). Không đổi hành vi; 42 cảnh báo react-hooks (mức warn) giữ nguyên.
+
+## v6.30.3 — 2026-10-21
+
+### Changed
+- **Mở rộng sidepanel chi tiết nhiệm vụ desktop (`tasks-aurora.css`, `DESIGN.md`):** tăng chiều rộng ngăn `.tk-drawer` từ 448px lên 560px (màn hình lớn ≥1600px tự động mở rộng lên 600px), giúp tiêu đề, thuộc tính, hàng việc con và khu vực Markdown rộng rãi hơn, tránh gãy dòng chật chội. Cập nhật `padding-right` của `.tasks-workspace.has-peek` sang `calc(var(--tk-drawer-width, 560px) + 28px)` để chế độ Danh sách/Lịch chừa đủ khoảng trống tương ứng.
+- **Cầu vồng lớn vắt ngang trời (`taskNatureFx.js` `bigRainbowArc`, `FX.rainbow`, `FX.moonbow`; `taskFlyersElf.js` `rainbow_slide`):** thay 3 cầu vồng nhỏ (760–820px, nhạt) bằng 1 cung dùng chung: phủ gần hết bề ngang, đỉnh lộ ở vùng tiêu đề, 2 chân mờ dần xuống đất, dải 6 màu + cầu vồng phụ mờ màu đảo + lòng cung sáng nhẹ; chỉ gradient, không blur. Ban đêm là cầu vồng trăng (nhạt, ngả trắng); sóc Rừng tiên trượt dọc cung lớn. Kiểu Mặc định ban ngày thêm cầu vồng sau mưa (trước chỉ Rừng tiên có).
+
+### Removed
+- Chữ chú thích của cầu vồng: "Cầu vồng trăng" và bong bóng "Vui quá đi~ 🌈✨" của sóc.
+
+## v6.30.2 — 2026-10-21
+
+### Removed
+- **Cực quang ngẫu nhiên ban đêm (`taskNatureFx.js` `FX.aurora`, `taskFlyersElf.js` `bigCelebrate`, keyframe `tkf-nfxWave`):** dải màu lớn hiện lên – uốn lượn – tắt (nhìn như nhấp nháy), kể cả bản "rực" khi xong hết việc ban đêm. Bỏ theo phản hồi user (xấu); đồng thời bớt 1 hiệu ứng nặng (SVG rộng cả màn hình blur 32px, animate trên luồng chính). Ánh nền tĩnh `.task-aurora-glow` giữ nguyên.
+
+## v6.30.1 — 2026-10-21
+
+### Fixed
+- **Giờ 00:00 / 23:59 bị coi là "không giờ" (`calendarTimeUtils.js` `hasExplicitTime`):** quy ước cũ (dữ liệu đã được migration v6.21.0 đổi về NULL) làm việc đặt "0h", hoặc khối giờ kết thúc 23:59 (kéo thả / form chặn ở 23:59), rơi vào "Chưa xếp giờ", không được nhắc giờ, không tính quá hạn trong ngày. Giờ mọi giờ hợp lệ đều là giờ thật; chỉ NULL là không giờ. 4 assertion cũ trong `weekCalendarLogic.test.js` khẳng định quy ước cũ được đổi theo luật mới (đã được user đồng ý).
+- **Kéo thả làm mất giờ không có đường lui (`TasksPage.jsx` `handleRescheduleTask`):** thả việc có giờ vào "Cả ngày" / "Chưa xếp giờ" (Ngày, Tuần) giờ hiện toast "Đã bỏ giờ …" + **Hoàn tác** (trả đúng ngày giờ cũ).
+- **Tab Ngày — kéo một thẻ trong "Chưa xếp giờ" rồi thả lại chỗ cũ (`CalendarDayView.jsx`):** việc quá hạn bị dời sang hôm nay và mất giờ dù không kéo đi đâu → giờ bỏ qua (cả chuột lẫn giữ-kéo mobile).
+- **Kéo khối giờ lên hơi quá tay là thả trúng hàng "Cả ngày" (bỏ giờ) (`tasks-aurora.css`):** hàng này nằm sát mép trên lưới giờ. Khi kéo qua, hàng "Cả ngày" (Ngày + Tuần) hiện rõ "Thả vào đây = bỏ giờ". Nhật ký một việc mất giờ lúc 11:02 (xoá cả giờ bắt đầu lẫn giờ hạn, ngày giữ nguyên) khớp đúng thao tác này; Kanban không có đường nào ghi giờ.
+
+## v6.30.0 — 2026-10-21
+
+### Added
+- **Việc con "Đang làm" (`TaskCard.jsx` `SubtaskFocusBtn`, `TaskDetailDrawer.jsx`, `useUserTasks.js` `focusSubtask`, `subtaskUtils.js` `subtaskFocusChanges`):** nút ▶ trên hàng việc con chuyển sang Đang làm (⏸ = dừng), không cần đặt giờ. Mỗi task cha 1 việc con đang làm; task cha còn Cần làm thì tự sang Đang làm. Hàng đang làm nổi màu + lên đầu; mặt thẻ Kanban/Danh sách/mobile có dòng "● Đang làm: <tên>" khi thu gọn (bấm mở việc con). Tab Ngày tô hàng đang làm.
+- **Chip nhắc hạn việc con (`subtaskDueInfo`, `SubtaskDueChip`):** chỉ khi có giờ hạn hoặc hạn khác task cha — quá hạn/trễ giờ đỏ, còn ≤ 60 phút "còn 25p" vàng đậm (icon nhấp nháy, tắt khi giảm chuyển động), hôm nay vàng, sắp tới xanh. Thẻ, ngăn chi tiết, tab Ngày.
+
+### Changed
+- **Thứ tự việc con:** đang làm lên đầu, xong / bỏ qua tự xuống cuối; trong nhóm vẫn ưu tiên → kéo thả. Kéo thả kẹp trong nhóm trạng thái + ưu tiên. Bản copy cho kỳ lặp sau giữ thứ tự tự xếp (không theo trạng thái kỳ cũ). Test `mergeSubtasks` đổi kỳ vọng theo luật mới (việc xong xuống cuối).
+- **Tab Ngày — khung "Chưa xếp giờ" tách nhóm "Quá hạn" (`CalendarDayView.jsx`):** việc hạn từ hôm trước (kể cả có giờ) trước đây trộn chung nên trông như "đặt giờ mà bị xếp vào Chưa xếp giờ"; giờ ở nhóm riêng, nhãn đủ ngày giờ cũ ("Hôm qua, 15:00"), số đếm Chưa xếp giờ không tính việc quá hạn.
+- **Mobile — hàng việc con:** lưới cột cố định, chip hạn nằm dưới tên (không ép tên còn 1 cột chữ); thẻ ẩn nút ưu tiên chưa đặt (đặt trong ngăn chi tiết), ngăn chi tiết chỉ hiện icon.
+
+### Fixed
+- **Popover "Đổi ngày giờ" làm mất giờ (`datePickPatch`):** xoá giờ bắt đầu, chỉ nhập giờ kết thúc → Lưu ra việc không giờ (rơi vào "Chưa xếp giờ"). Giờ kết thúc được giữ làm giờ Hạn.
+- **Gõ nhanh "3h chiều" ra 03:00 (`taskNlpParser.js`):** hiểu buổi sau giờ — chiều/tối +12h, đêm (6–11h) +12h, trưa (<6h) +12h, sáng giữ; chữ buổi không còn dính vào tên việc.
+
+## v6.29.1 — 2026-10-21
+
+### Fixed
+- **Rừng tiên — hiệu ứng ăn mừng khi xong việc bị văng giữa chừng (`taskFlyersElf.js` `celebrate`):** dùng `R` mà không lấy từ `flyKit` → `ReferenceError: R is not defined` ngay sau đốm sáng đầu: không ra bướm, vệt sáng, và màn "Xong hết việc hôm nay!" (`bigCelebrate`) không bao giờ chạy. Đã kiểm trên trình duyệt: code cũ văng lỗi, code mới dựng đủ hiệu ứng.
+- **Trình phát podcast nổi (`useRandomPodcast.js`):** không cấu hình Supabase thì văng `Cannot read properties of null (reading 'from')` ở mọi trang; chỉ lấy `id, title, url` thay vì kéo cả `body` (nội dung dài) của mọi podcast mỗi lần mở app.
+- **Không thấy nút thu gọn sidebar trên desktop (`navbar.css`):** nút `opacity: 0`, chỉ hiện khi rê chuột vào sidebar (máy không có hover thì không bao giờ hiện) → luôn hiện mờ 0.6, rê chuột vào thì rõ.
+
+### Changed — hiệu năng render
+- **Nền trang Nhiệm vụ (`tasks-aurora.css`, `tasks-elf.css`, `TaskForestBackground.jsx`):** bỏ `filter: blur()` trên các lớp dải màu chuyển cỡ lớn (cực quang, Ngân Hà, quầng trăng/mặt trời, mây, tia nắng, sương, tán lá — gradient vốn đã mềm, ảnh trước/sau gần như trùng), bỏ animation `filter: hue-rotate` của cực quang (lọc lại ~1 triệu px mỗi khung). `.task-cosmos-bg` thêm `contain: strict`; đom đóm Rừng tiên lượn bằng `transform` + `cqw/cqh` thay `left/top` (hết tính layout cả trang mỗi khung). Vệt bụi sao theo chuột nằm trong một lớp phủ cô lập thay vì gắn thẳng vào `body`.
+- **Popup không kính mờ:** ngăn chi tiết, popover, bảng Lịch & sự kiện, sheet/hộp việc con, Quick Capture, ConfirmModal, GenericModal, modal đăng nhập, menu người dùng, dropdown tab dưới, trình phát podcast, scrim Vault/Body/Finance/KB/Tiptap → nền đặc, bỏ `backdrop-filter`. Bản sáng tăng độ đục ngăn chi tiết 0.93→0.97, bảng tiện ích 0.88→0.96; trình phát podcast tối dùng `--bg-secondary` (trước 4% đục, phải nhờ blur mới đọc được).
+- **Thẻ Kanban Rừng tiên desktop bỏ kính mờ riêng:** nằm trong cột đã kính mờ nên blur thẻ chỉ làm nhoè nền cột; thẻ mobile giữ.
+- Đo bằng Chromium headless (không GPU, 1440×900, 6s): Mặc định tối 8,6 → 16,2 FPS · sáng 6,8 → 14,8 · Rừng tiên tối 7,0 → 14,1 · sáng 6,1 → 11,2; mobile 390×844 ~40 → ~60 FPS. Số tuyệt đối trên máy thật có GPU sẽ khác (chưa đo trên máy thật).
+
+## v6.29.0 — 2026-10-21
+
+### Added
+- **Việc con — kéo thả + ưu tiên ngay trên hàng (`TaskCard.jsx`, `TaskDetailDrawer.jsx`, `hooks/useSubtaskReorder.js`, `subtaskUtils.js` `reorderByDrag`/`dropIndexAt`):** tay nắm `⠿` trên thẻ Kanban/Danh sách và trong ngăn chi tiết, kéo bằng Pointer Events nên chạy cả chuột lẫn cảm ứng mobile (HTML5 drag cũ không chạy trên điện thoại); bàn phím Alt + ↑/↓. Nút ưu tiên trên từng hàng mở `PriorityPopover`. Tay nắm là nguồn kéo HTML5 bị huỷ ngay nên không kéo nhầm cả thẻ sang cột khác; chạm tay nắm không kích hoạt vuốt đổi cột Kanban mobile.
+- **Tab Ngày — khối giờ dài hiện việc con (`CalendarDayView.jsx`):** khối ≥96px dồn nội dung lên đầu (trước treo tên giữa khối trống), nền nhạt dần + viền mảnh; hiện việc con tick được / bấm tên mở hộp việc con, vừa đủ chiều cao khối, thiếu chỗ thì "+N việc con"; dòng trạng thái thêm tiến độ `☑ 2/4` (mobile cũng hiện ở khối dài).
+
+### Changed
+- **Thứ tự việc con theo ưu tiên (`sortSubtasks`):** Khẩn → Không, cùng mức mới xét thứ tự kéo thả. Kéo thả chỉ đổi chỗ trong cùng mức (kéo vượt nhóm thì dừng ở đầu/cuối nhóm, vạch thả hiện đúng chỗ rơi); `SubtaskList` (popup Chi tiết ở trang chủ) cũng theo luật này.
+- **Kanban — ngăn chi tiết nổi đè lên bảng (`tasks-aurora.css`):** ≥1280px không còn chừa `padding-right: 476px` làm 4 cột co lại khi bấm thẻ; Danh sách / Lịch giữ nguyên. Mobile vẫn là sheet dưới có phủ mờ.
+
+## v6.28.1 — 2026-10-19
+
+### Fixed
+- **Finance Tổng quan mobile — cả trang cuộn ngang, 3 biểu đồ tràn khung (`finance-report.css`, `ReportScreen.jsx`, `OverviewScreen.jsx`, `finance.css`):** hàng "Kỳ này với kỳ trước" + "Khoản lớn bất thường" dùng `1fr` (= `minmax(auto, 1fr)`) nên bảng kéo cột rộng theo min-content (~550px ở màn 360px) → đổi `minmax(0, 1fr)`. Bảng trên ≤768px vừa khung: tên nhóm xuống dòng, thanh mini nằm dưới tên, badge chênh lệch tách 2 dòng số tiền / % (desktop vẫn "+2tr · +61%"). "Nhịp chi trong kỳ" bỏ `min-width: 480px` + cuộn ngang trong thẻ: khung hẹp hơn 720px vẽ SVG đúng pixel (`useElementWidth`), nhãn ngày giãn theo bề rộng (≥24px) nên kỳ Năm cũng không chồng chữ. Cụm nút Tháng/Quý/Năm · Thẻ hiển thị · Xuất CSV được xuống dòng thay vì đẩy trang rộng ra.
+
 ## v6.28.0 — 2026-10-15
 
 ### Changed

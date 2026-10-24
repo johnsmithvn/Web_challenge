@@ -51,6 +51,8 @@ export default function TaskKanbanView({
     uncompleteTask,
     updateTask,
     addTask,
+    reorderSubtasks,
+    focusSubtask,
   } = taskModel;
 
   const today = toDateStr();
@@ -183,6 +185,9 @@ export default function TaskKanbanView({
     onToggleSub: (s) => (s.completed ? uncompleteTask(s.id) : completeTask(s.id)),
     onOpenSub: (s) => onOpenSubtask?.(task, s),
     onAddSub: (title) => addTask?.({ title, dueDate: task.due_date, parentTaskId: task.id }),
+    onReorderSub: reorderSubtasks,
+    onPrioritySub: (s, e) => openPop('priority', s)(e),
+    onFocusSub: focusSubtask,
   });
 
   const columns = COLUMNS.map((key) => ({ key, ...STATUS_META[key], tasks: grouped[key] || [] }));

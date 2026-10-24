@@ -2,6 +2,7 @@ import { useState, lazy, Suspense, useCallback, useEffect, useMemo, useRef } fro
 import TaskListSection from '../components/TaskListSection';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTags } from '../hooks/useTags';
 import TaskDetailDrawer from '../components/TaskDetailDrawer';
@@ -16,7 +17,7 @@ import { TaskDayPopover } from '../components/TaskFloatingPopovers';
 import CalendarNavHead, { TaskViewSwitcher, MobileViewMenu } from '../components/CalendarToolbar';
 import AppIcon from '../components/AppIcon';
 import { toDateStr } from '../utils/dateUtils';
-import { rescheduleTaskPatch } from '../utils/calendarTimeUtils';
+import { rescheduleTaskPatch, hasExplicitTime } from '../utils/calendarTimeUtils';
 import { calculateKanbanCounts, computeDoneStreak, getKanbanRange, matchTaskSearch } from '../utils/kanbanUtils';
 import { parseTaskQuickText, shiftDateDays } from '../utils/taskNlpParser';
 import { sortSubtasks } from '../utils/subtaskUtils';
@@ -45,6 +46,7 @@ const DLOW = ['Chủ nhật', 'thứ Hai', 'thứ Ba', 'thứ Tư', 'thứ Năm'
  */
 export default function TasksPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const { taskStyle, theme } = useTheme();
   const elf = taskStyle === 'elf';
   const taskModel = useUserTasks();
@@ -164,9 +166,22 @@ export default function TasksPage() {
     if (!task || task.completed) return;
     const patch = rescheduleTaskPatch(task, dateStr, timeStr);
     if (!patch) return;
-    await updateTask(task.id, patch);
+    // Giá trị cũ của đúng các trường bị đổi → Hoàn tác trả nguyên trạng
+    const before = Object.fromEntries(Object.keys(patch).map((k) => [k, task[k] ?? null]));
+    const ok = await updateTask(task.id, patch);
     refreshCalendars();
-  }, [tasks, updateTask, refreshCalendars]);
+    // Thả vào "Cả ngày" / "Chưa xếp giờ" làm mất giờ → báo + Hoàn tác (dễ lỡ tay khi bấm mở khối việc)
+    const hadTime = hasExplicitTime(task.due_time) || hasExplicitTime(task.start_time);
+    if (ok && timeStr === null && hadTime) {
+      showToast(`Đã bỏ giờ "${task.title}"`, {
+        actionLabel: 'Hoàn tác',
+        onAction: async () => {
+          await updateTask(task.id, before);
+          refreshCalendars();
+        },
+      });
+    }
+  }, [tasks, updateTask, refreshCalendars, showToast]);
 
   const handleCloseSelectedModal = useCallback(() => {
     setSelectedTask(null);
@@ -417,6 +432,9 @@ export default function TasksPage() {
           onRescheduleTask={handleRescheduleTask}
           isMobile={isMobile}
           pendingTasks={calendarPending}
+          allTasks={tasks}
+          onToggleSubtask={(s) => (s.completed ? taskModel.uncompleteTask(s.id) : taskModel.completeTask(s.id))}
+          onOpenSubtask={handleOpenSubtask}
           getCompletedTasksRange={getCompletedTasksRange}
           onSelectTask={handleSelectTaskFromCalendar}
           onOpenDay={openDayPop}

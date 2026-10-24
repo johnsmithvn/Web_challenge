@@ -49,4 +49,19 @@ assert.equal(shiftDateDays(-1, '2026-10-10'), '2026-10-09');
 assert.equal(formatFriendlyDate('2026-10-10', '2026-10-10'), 'Hôm nay');
 assert.equal(formatFriendlyDate('2026-10-11', '2026-10-10'), 'Ngày mai');
 
+// v6.30.0: buổi sau giờ — chiều/tối/đêm/trưa cộng 12 giờ, chữ buổi không dính vào tên việc
+{
+  const at = (txt) => parseTaskQuickText(txt, BASE_DATE);
+  assert.equal(at('Họp 3h chiều').due_time, '15:00');
+  assert.equal(at('Họp 3h chiều').title, 'Họp');
+  assert.equal(at('Ăn tối 8h30 tối').due_time, '20:30');
+  assert.equal(at('Gọi mẹ 11h đêm').due_time, '23:00');
+  assert.equal(at('Ngủ 2h đêm').due_time, '02:00', '2h đêm là rạng sáng');
+  assert.equal(at('Ăn trưa 1h trưa').due_time, '13:00');
+  assert.equal(at('Họp 11h trưa').due_time, '11:00');
+  assert.equal(at('Chạy bộ 6h sáng').due_time, '06:00');
+  assert.equal(at('Họp 15h chiều').due_time, '15:00', 'đã là giờ 24h thì giữ');
+  assert.equal(at('Họp 9h').due_time, '09:00', 'không có buổi → như cũ');
+}
+
 console.log('✅ taskNlpParser check: OK');

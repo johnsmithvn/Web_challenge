@@ -36,6 +36,7 @@ const FINANCE_NAV = [
 // Secondary: visible in sidebar, hidden in bottom tabs (dropdown)
 const SECONDARY_NAV = [
   { to: '/focus',         icon: 'timer',  label: 'Focus' },
+  { to: '/fx-lab',        icon: 'flask',  label: 'FX Lab' },
 ];
 
 const MOBILE_MORE_NAV = [

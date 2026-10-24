@@ -7,14 +7,15 @@ export function useRandomPodcast() {
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchRandomPodcast = useCallback(async () => {
+    // Chưa cấu hình Supabase (guest/local) → không có podcast; trước đây văng lỗi `null.from`.
+    if (!supabase) return;
     setIsLoading(true);
     try {
-      // Fetch all items that are either type='podcast' or have a valid audio url
-      // Actually, Supabase doesn't have a direct 'RANDOM()' function in JS client without RPC.
-      // We will just fetch podcast types and pick one in JS.
+      // Supabase JS không có RANDOM() nếu không dùng RPC → lấy danh sách rồi chọn ở client.
+      // Chỉ lấy cột trình phát cần (không kéo `body` dài của mọi podcast — chạy ở mọi trang).
       const { data, error } = await supabase
         .from('collections')
-        .select('id, title, url, body, type, content_format')
+        .select('id, title, url')
         .eq('type', 'podcast')
         .not('url', 'is', null);
 

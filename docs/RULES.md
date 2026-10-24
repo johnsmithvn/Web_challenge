@@ -217,3 +217,52 @@ Chi tiết quy chuẩn nằm tại `docs/DESIGN_SYSTEM.md`. Mọi thay đổi gi
    - Đệm né nút tròn `+` (`QuickCapture FAB`) luôn nằm nội bộ bên trong vùng cuộn (`padding-bottom: 40px`), không được thu hẹp khung ngoài làm hụt chân trang.
 4. **Form tạo mới**:
    - Phải có AutoFocus, điền sẵn ngữ cảnh (Smart Prefill), phím tắt `Ctrl + Enter` lưu nhanh và `Escape` đóng.
+
+## 15. FX Lab — xem trước hiệu ứng trước khi bật vào app
+
+Trang `/fx-lab` (`src/pages/FxLabPage.jsx`; sidebar → Khác → FX Lab, có cả ở bản build) chạy đúng code thật của nền trang
+Nhiệm vụ (`TaskSkyBackground`, `taskFlyersAurora/Elf.js`, `taskNatureFx.js`, CSS `tasks-*`), gom mọi kịch bản,
+tương tác và thí nghiệm vào một chỗ. Mọi thay đổi trong vùng này đi qua lab **trước** khi bật cho app:
+
+1. **Kịch bản mới** (vật bay, cảnh thiên nhiên): viết nhánh `type` như thường, thêm vào bể
+   (`AURORA_POOL` / `ELF_POOL` / `NATURE_POOL`) với **trọng số 0** → lab hiện nhãn "Nháp", app không tự bốc.
+   Thêm tên tiếng Việt vào `LABELS` của FxLabPage. Báo user: mở `/fx-lab`, chọn Kiểu + Ngày/Đêm, bấm cảnh đó.
+2. **Làm lại lớn kịch bản có sẵn**: tạo bản `<tên>_v2` trọng số 0 để user so cạnh bản cũ trên lab. Duyệt xong
+   mới thay bản cũ (xoá nhánh cũ, đổi tên / trọng số).
+3. **Sửa nhỏ** (màu, tốc độ, vị trí, lời thoại): sửa thẳng, nhưng vẫn mời user xem cảnh đó trên lab trước khi commit.
+4. **Tương tác / sự kiện** (bấm nền, xong việc…): thêm nút vào `EVENTS` hoặc dòng vào `HINTS` của FxLabPage.
+5. **Thí nghiệm chưa vào app** (thư viện mới như Lottie/Rive, sprite, ảnh AI…): trang tĩnh trong
+   `public/fx-experiments/`, đăng ký ở `EXPERIMENTS` (tab Thí nghiệm). Không tạo file preview rời ngoài lab;
+   chỉ thêm dependency vào app khi user duyệt đưa thí nghiệm vào thật.
+6. User duyệt trên lab xong mới đặt trọng số thật, ghi CHANGELOG, commit. Agent không tự browser-check
+   (mục 10): giao checklist cảnh cần xem trên lab.
+7. **Thay xong thì xoá bản cũ, cả trong app lẫn preview**, ngay trong cùng thay đổi: nhánh `type` / hằng SVG cũ
+   và helper chỉ nó dùng (grep cho chắc không còn ai gọi), bản `_v2` sau khi đổi tên, trang thí nghiệm trong
+   `public/fx-experiments/` (kèm dữ liệu, script sinh) + mục `EXPERIMENTS` của FxLabPage, dòng `LABELS` / `EXTRA`
+   không còn dùng. Không giữ bản cũ "để phòng" — lịch sử đã có trong git.
+
+## 16. Tài nguyên: ảnh, icon, hình vẽ
+
+Mỗi loại tài nguyên có đúng một chỗ:
+
+| Loại | Chỗ đặt | Ghi chú |
+|---|---|---|
+| Vỏ app: favicon, icon PWA, apple-touch, `manifest.json`, `sw.js` | gốc `public/` | Trình duyệt / PWA tìm ở gốc. Ngoài nhóm này không thả file nào vào gốc `public/` |
+| Ảnh raster app tải lúc chạy (sprite, nền, minh hoạ) | `public/art/<tính-năng>/` | Gọi `import.meta.env.BASE_URL + 'art/<tính-năng>/<file>'` |
+| Ảnh cần đi qua build (import trong JS/CSS để có hash) | `src/assets/<tính-năng>/` | Chỉ tạo khi thật sự import |
+| Icon giao diện | `src/components/AppIcon.jsx` | Thêm icon vào AppIcon, không thả SVG/PNG rời |
+| Hình vẽ bằng code của một cảnh | trong module của cảnh (`taskFlyers*.js`, `TaskForestBackground.jsx`, `TaskElfDecor.jsx`) | |
+| Bộ sinh hình thủ tục dùng lại được | `src/utils/<tên>Art.js` | Hàm thuần, có self-check (vd `koiArt.js`) |
+| Thí nghiệm chưa vào app | `public/fx-experiments/<tên>.html` + `public/fx-experiments/<tên>/` | Đăng ký tab Thí nghiệm của `/fx-lab` (mục 15) |
+| Bản gốc / phương án thiết kế (PSD, ảnh AI gốc, phương án logo) | `design/<chủ-đề>/` ở gốc repo | Không để trong `public/`: `public/` bị copy nguyên vào bản build và deploy |
+
+Quy ước:
+
+1. Tên file chữ thường, gạch nối, không dấu: `<tính-năng>-<vật>[-<biến-thể>].<đuôi>` (vd `hang-nga-chibi.webp`).
+2. Raster trong app dùng WebP (có alpha), vector dùng SVG; PNG chỉ cho favicon / icon PWA. Nén trước khi thêm;
+   ảnh trên 300 KB phải nêu lý do.
+3. Không còn chỗ nào dùng thì xoá (git giữ lịch sử). Grep tên file trước khi thêm, đổi tên hoặc xoá — kể cả
+   `index.html`, `public/manifest.json`, `public/sw.js`.
+4. Thêm thư mục tài nguyên mới thì cập nhật cây thư mục trong `ARCHITECTURE.md`.
+5. Ảnh của bên thứ ba ghi nguồn + giấy phép (CHANGELOG hoặc trang thí nghiệm); không đưa ảnh không rõ bản quyền
+   vào `public/`.

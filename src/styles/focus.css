@@ -96,7 +96,6 @@
   padding: 0.35rem;
   box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
   animation: fadeIn 0.12s ease;
-  backdrop-filter: blur(12px);
 }
 
 /* Option rows */
