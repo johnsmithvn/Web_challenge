@@ -23,13 +23,16 @@ import '../styles/accounts.css';
  *
  * Layout: header · body 3 cột (nhóm · danh sách · chi tiết), breakpoint 900px.
  * Cột nhóm đổi dạng chỉ bằng container query: đủ rộng thì có chữ, hẹp thì thành
- * rail icon, dưới 900px thành dải chip cuộn ngang trên danh sách — cùng một markup.
+ * rail icon — cùng một markup.
  *
  * KHÔNG có hook đo bề rộng và không có resize listener — khác prototype. Dưới
- * 900px CSS đổi `.acc-body[data-screen]` thành 2 màn hình; trên 900px cùng
- * attribute đó bị media query bỏ qua. Nên React chỉ giữ `screen` như một state
- * bình thường và bấm vào dòng nào cũng set nó, không cần biết đang ở bề rộng
- * nào. Nút "← All items" cũng do CSS ẩn ở desktop.
+ * 900px CSS đọc `.acc-vault[data-screen]` và cho 3 màn đi sâu dần (thiết kế
+ * M1–M3): 'home' = danh sách nhóm cả màn, 'list' = item trong nhóm, 'detail'.
+ * Trên 900px cùng attribute đó bị bỏ qua. Nên React chỉ giữ `screen` như một
+ * state bình thường và bấm vào đâu cũng set nó, không cần biết đang ở bề rộng
+ * nào. Nút back, thanh copy ghim đáy… cũng do CSS ẩn ở desktop.
+ * Bất biến dựa vào đó: trên desktop `screen` chỉ còn là 'home' khi chưa bấm gì
+ * (mọi lối chọn nhóm / tag / item đều set nó khác 'home').
  *
  * Dialog chọn template là dialog RIÊNG (`.acc-scrim`/`.acc-dialog`), cố ý không
  * dùng GenericModal: component đó mang style Life Hub vào và phá fidelity.
@@ -53,11 +56,11 @@ export default function AccountsPage() {
   const { confirm, ConfirmModal } = useConfirm();
 
   const [query, setQuery] = useState('');
-  const [viewState, setView] = useState('all');   // 'all' | 'fav' | 'none' (Ungrouped) | 'g:<groupKey>'
+  const [viewState, setView] = useState('all');   // 'all' | 'fav' | 'weak' | 'none' (Ungrouped) | 'g:<groupKey>'
   const [tplFilter, setTplFilter] = useState(''); // '' = mọi loại
   const [tag, setTag] = useState(null);           // tag id
   const [selectedId, setSelectedId] = useState(null);
-  const [screen, setScreen] = useState('list');   // chỉ có nghĩa dưới 900px
+  const [screen, setScreen] = useState('home');   // 'home' | 'list' | 'detail' — chỉ có nghĩa dưới 900px
   const [pickerOpen, setPickerOpen] = useState(false);
   const [changePassOpen, setChangePassOpen] = useState(false);
   const [recoveryKitKey, setRecoveryKitKey] = useState(null);
@@ -92,11 +95,13 @@ export default function AccountsPage() {
   // Nhóm đang chọn biến mất (item cuối vừa chuyển đi) → về All, khỏi kẹt ở danh sách rỗng
   const view = viewState.startsWith('g:') && !groupByKey.has(viewState.slice(2)) ? 'all' : viewState;
   const activeGroup = view.startsWith('g:') ? groupByKey.get(view.slice(2)) : null;
-  const pickView = (v) => { setView(v); setTag(null); };
+  const pickView = (v) => { setView(v); setTag(null); setScreen('list'); };
+  const pickTag = (id) => { setTag(tag === id ? null : id); setScreen('list'); };
 
   // ── Lọc ─────────────────────────────────────────────────────
   const visible = useMemo(() => items.filter((i) => {
     if (view === 'fav' && !i.favorite) return false;
+    if (view === 'weak' && !isPasswordOnly(i)) return false;
     if (view === 'none' && groupKey(i.group)) return false;
     if (activeGroup && !inGroup(i, activeGroup.key)) return false;
     if (tplFilter && i.tpl !== tplFilter) return false;
@@ -108,9 +113,10 @@ export default function AccountsPage() {
   const selected = items.find((i) => i.id === selectedId) || null;
 
   const counts = useMemo(() => {
-    const c = { fav: 0 };
+    const c = { fav: 0, weak: 0 };
     for (const i of items) {
       if (i.favorite) c.fav++;
+      if (isPasswordOnly(i)) c.weak++;
       c[i.tpl] = (c[i.tpl] || 0) + 1;
     }
     return c;
@@ -144,8 +150,17 @@ export default function AccountsPage() {
     ? `#${usedTags.find((t) => t.id === tag)?.name || 'tag'}`
     : activeGroup ? activeGroup.name
       : view === 'fav' ? 'Favourites'
-        : view === 'none' ? 'Ungrouped'
-          : 'All items';
+        : view === 'weak' ? 'Password only'
+          : view === 'none' ? 'Ungrouped'
+            : 'All items';
+
+  // Ở màn 'home' (mobile) gõ tìm kiếm là tìm TOÀN vault → nhảy sang danh sách All.
+  // Ô tìm kiếm nằm ở header, header vẫn hiện ở màn 'list' → input không bị
+  // unmount giữa chừng, bàn phím không tắt. Desktop: xem bất biến ở đầu file.
+  const onSearch = (value) => {
+    setQuery(value);
+    if (screen === 'home' && value) { setView('all'); setTag(null); setScreen('list'); }
+  };
 
   // ── Hành động ───────────────────────────────────────────────
   // Reveal là per-field và chỉ sống trong lúc item đang mở: đổi item thì mọi
@@ -186,7 +201,12 @@ export default function AccountsPage() {
 
   const handleLock = () => {
     setSelectedId(null);
-    setScreen('list');
+    // Mở lại là về màn Vault từ đầu. Xoá luôn bộ lọc + chuỗi tìm kiếm (có thể chứa
+    // chữ nhạy cảm), và giữ bất biến "screen 'home' = chưa chọn gì" ở đầu file.
+    setScreen('home');
+    setView('all');
+    setTag(null);
+    setQuery('');
     setRevealed({});
     setCopied(null);
     setPickerOpen(false);
@@ -260,12 +280,22 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="acc-vault">
+    <div className="acc-vault" data-screen={screen}>
       {/* ── Header ── */}
       <header className="acc-head">
         <div className="acc-brand">
           <span className="acc-brand__name">Keyplate</span>
           <span className="acc-brand__vault">Vault 01</span>
+        </div>
+
+        {/* Thanh điều hướng màn 'list' trên mobile (M2) — CSS ẩn ở desktop và ở các màn khác */}
+        <div className="acc-head__nav">
+          <button type="button" className="acc-head__back" onClick={() => setScreen('home')}>
+            <AppIcon name="caretLeft" size={16} /> Vault
+          </button>
+          <h2 className="acc-head__title">
+            {listTitle} <span className="acc-head__count">{visible.length}</span>
+          </h2>
         </div>
 
         <div className="acc-search">
@@ -274,8 +304,8 @@ export default function AccountsPage() {
             className="acc-input"
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search titles, usernames, URLs, tags…"
+            onChange={(e) => onSearch(e.target.value)}
+            placeholder={activeGroup ? `Search in ${activeGroup.name}` : `Search all ${items.length} items`}
             aria-label="Search the vault"
           />
         </div>
@@ -291,9 +321,12 @@ export default function AccountsPage() {
             </div>
           </div>
           <button className="acc-act" onClick={() => setChangePassOpen(true)}>Đổi mật khẩu</button>
-          <button className="acc-act" onClick={handleLock}>Lock</button>
-          <button className="acc-btn acc-btn--primary" onClick={() => setPickerOpen(true)}>
-            <AppIcon name="plus" size={15} /> New item
+          {/* Mobile: hai nút này thành nút icon 44px; chữ giấu bằng clip nên tên truy cập vẫn còn */}
+          <button className="acc-act acc-head__icon" onClick={handleLock}>
+            <AppIcon name="lock" size={15} /><span className="acc-head__label">Lock</span>
+          </button>
+          <button className="acc-btn acc-btn--primary acc-head__icon" onClick={() => setPickerOpen(true)}>
+            <AppIcon name="plus" size={15} /><span className="acc-head__label">New item</span>
           </button>
         </div>
       </header>
@@ -301,7 +334,7 @@ export default function AccountsPage() {
       {vaultError && <div className="acc-vault-error" role="alert">{vaultError}</div>}
 
       {/* ── Body ── */}
-      <div className="acc-body" data-screen={screen}>
+      <div className="acc-body">
         {/* ── Cột nhóm. Thay thanh lọc Types/Tags cũ: 14/18 item cùng loại ACC nên
             lọc theo loại gần như không chia được gì; loại lùi thành select ở đầu
             danh sách. ── */}
@@ -310,6 +343,12 @@ export default function AccountsPage() {
             on={view === 'all' && !tag} onClick={() => pickView('all')} />
           <GroupBtn icon={FILTER_ICONS.fav} label="Favourites" count={counts.fav}
             on={view === 'fav' && !tag} onClick={() => pickView('fav')} />
+          {/* Mặc định template Account chỉ có phương thức password → đây thường là danh
+              sách việc cần làm thật, nên nó đứng ngay dưới All / Favourites */}
+          {counts.weak > 0 && (
+            <GroupBtn warn icon="warning" label="Password only" count={counts.weak}
+              on={view === 'weak' && !tag} onClick={() => pickView('weak')} />
+          )}
 
           <div className="acc-groups__cap">Groups</div>
           {tree.groups.map((g) => (
@@ -340,12 +379,18 @@ export default function AccountsPage() {
                 {usedTags.map((t) => (
                   <button key={t.id} type="button" aria-pressed={tag === t.id}
                     className={`acc-chip acc-chip--tag${tag === t.id ? ' acc-chip--on' : ''}`}
-                    onClick={() => setTag(tag === t.id ? null : t.id)}
+                    onClick={() => pickTag(t.id)}
                   >#{t.name}</button>
                 ))}
               </div>
             </>
           )}
+
+          {/* Mobile: header không còn chỗ cho nút "Đổi mật khẩu" → nó xuống cuối màn Vault.
+              Desktop CSS ẩn dòng này (nút ở header vẫn còn). */}
+          <button type="button" className="acc-act acc-groups__passphrase" onClick={() => setChangePassOpen(true)}>
+            <AppIcon name="key" size={14} /> Đổi mật khẩu Vault
+          </button>
         </nav>
 
         <section className="acc-pane acc-pane--list">
@@ -399,6 +444,7 @@ export default function AccountsPage() {
               autoEdit={autoEditId === selected.id}
               revealed={revealed}
               copied={copied}
+              backLabel={listTitle}
               onBack={() => setScreen('list')}
               onOpen={open}
               onCopy={copy}
@@ -1023,14 +1069,17 @@ function VaultBackup({ onExport, onRestore }) {
 /* `hue` → `--h`, cùng công thức màu với avatar; không có hue (All, Favourites,
    Ungrouped) thì plate trung tính. Tên luôn nằm trong DOM: ở dạng rail CSS chỉ
    giấu bằng clip, nên nút vẫn có tên truy cập được; `title` là tooltip khi rê. */
-function GroupBtn({ icon, hue, label, count, on, sub, onClick }) {
+function GroupBtn({ icon, hue, label, count, on, sub, warn, onClick }) {
+  const tone = warn ? ' acc-grp--warn' : hue === undefined ? ' acc-grp--plain' : '';
   return (
     <button type="button" title={label} aria-pressed={on} onClick={onClick}
-      className={`acc-grp${sub ? ' acc-grp--sub' : ''}${hue === undefined ? ' acc-grp--plain' : ''}${on ? ' acc-grp--on' : ''}`}
+      className={`acc-grp${sub ? ' acc-grp--sub' : ''}${tone}${on ? ' acc-grp--on' : ''}`}
       style={hue === undefined ? undefined : { '--h': hue }}>
       <span className="acc-grp__plate"><AppIcon name={icon} size={15} /></span>
       <span className="acc-grp__name">{label}</span>
       <span className="acc-grp__num">{count}</span>
+      {/* Mũi tên "đi sâu" chỉ hiện ở màn Vault mobile (M1), nơi mỗi dòng mở ra một màn mới */}
+      <span className="acc-grp__chev" aria-hidden="true"><AppIcon name="caretRight" size={13} /></span>
     </button>
   );
 }

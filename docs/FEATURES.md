@@ -333,6 +333,12 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   vì một field của chúng trùng email/SĐT mà item này đại diện (Identity, hoặc item có tiêu đề chính là
   email/SĐT đó) — kèm cấp 2, 3 (Gmail → ngân hàng → thẻ). Có dòng tóm tắt và cảnh báo khi item chỉ
   đăng nhập bằng mật khẩu.
+- **Password only:** mục ngay dưới Favourites liệt kê item mà phương thức đăng nhập đang bật duy nhất
+  là mật khẩu; danh sách và trang chi tiết cũng gắn cờ vàng cho các item này.
+- **Mobile:** đi sâu từng màn — Vault (danh sách nhóm) → nhóm → chi tiết. Gõ tìm kiếm ở màn Vault là
+  tìm toàn vault. Trang chi tiết có thanh Copy username / Copy password ghim đáy; chế độ sửa ghim
+  Cancel · Save ở đáy. Nút Đổi mật khẩu Vault nằm cuối màn Vault. Nút tạo nhanh (QuickCapture) không
+  hiện ở `/accounts`.
 
 **Data:** `accounts` ciphertext + `vault_config`. Không có guest mode.
 

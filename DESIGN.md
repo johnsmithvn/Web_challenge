@@ -1206,7 +1206,35 @@ Types/Tags filter bar is gone.
   and the narrow rules live in `@container (max-width: 899px)`. The prototype's
   `min-width: 1040px` floor is **dropped** for the same reason; the real floor is
   the columns' own `300 + 520`. Touch targets ≥44px and inputs 16px when narrow
-  (iOS zoom). No JS breakpoint, no `useMediaQuery`, no duplicated mobile markup.
+  (iOS zoom). No JS breakpoint, no `useMediaQuery`, no duplicated mobile layout markup.
+- **Mobile (<900px) is its own drill-down layout, not the desktop squeezed** (designs
+  M1–M4 on the canvas, 2026-10-24). `screen` ∈ `home | list | detail` sits on
+  `.acc-vault[data-screen]`; CSS shows one pane per screen:
+  - **M1 `home`** — header = brand + Lock + "+" (icon-only 44px; labels hidden by
+    `clip-path`), search, then the groups column as a full-screen list of 50px rows
+    with `›` (`.acc-grp__chev`); `Password only` becomes an amber card; tags; "Đổi mật
+    khẩu Vault" at the bottom (`.acc-groups__passphrase`) because the header has no room
+    for it or the AES-GCM badge, both hidden on mobile.
+  - **M2 `list`** — header turns into `‹ Vault · Email 3` + "+" (`.acc-head__nav`). The
+    search input **stays in the header across M1 → M2**, so typing on M1 (which jumps to
+    a vault-wide `All` list) never unmounts the focused input. The list head keeps only
+    the type select.
+  - **M3 `detail`** — vault header hidden; `.acc-title` becomes a grid and
+    `.acc-title__main { display: contents }` lets `‹ <list title>` (`.acc-back`) share row
+    one with ☆ / Edit as a nav bar without separate markup. KPI strip is 2×2.
+    **`.acc-copybar`** pins "Copy username · Copy <secret field>" to the bottom (the
+    most frequent action, under the thumb); labels come from the field ("Copy card
+    number").
+  - **M4 edit** — `.acc-detail--editing .acc-title__actions` pins Cancel · Save to the
+    bottom like the Finance edit drawer; the back button is hidden (it would remount the
+    detail and drop the draft).
+  Both bars are `position: fixed` and land at the **vault's** bottom edge (above the app
+  tabs) because `container-type` makes `.acc-vault` their containing block — which is
+  also why `.acc-detail`'s enter animation is off on mobile: a transformed ancestor
+  would capture them instead. `QuickCapture` is hidden on `/accounts` so its round
+  button cannot sit on top of these bars. Desktop invariant the code relies on:
+  `screen` is `home` only before anything has been picked (every group / tag / item
+  pick sets it; Lock resets view + query too).
 - **The template dialog is portaled to `document.body`.** `container-type` implies
   `contain: layout`, which makes `.acc-vault` a containing block for
   `position: fixed` — a scrim rendered inside it would cover only the vault and
@@ -1225,8 +1253,9 @@ Types/Tags filter bar is gone.
   **One markup, three forms, container queries only:** ≥1180px a 216px column with
   names and counts; 900–1179px a 60px icon rail (names hidden by `clip-path`, not
   `display:none`, so buttons keep an accessible name; tags hidden — search still matches
-  tag names); <900px a horizontally scrolling chip strip above the list, hidden on the
-  detail screen. The rail exists because the vault sits beside the app's 232px sidebar:
+  tag names); <900px the whole column becomes the **Vault home screen** (see Mobile
+  below). A `Password only` view (`.acc-grp--warn`, amber plate) sits under Favourites
+  whenever any item's only active sign-in method is a password. The rail exists because the vault sits beside the app's 232px sidebar:
   on a 1366px laptop it gets ~1130px, less than 216 + 300 + 520. User preferred a vertical
   column over a top chip bar even with two sidebars side by side (2026-10-24).
 - **`.acc-cardview`** — the credit-card preview: `linear-gradient(140deg,…)` that

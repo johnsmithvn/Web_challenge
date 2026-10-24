@@ -287,6 +287,21 @@
 .acc-search .acc-input { padding-left: 30px; }
 
 .acc-head__right { margin-left: auto; display: flex; align-items: center; gap: 10.2px; }
+/* Thanh "‹ Vault · Email 3" của màn list trên mobile — desktop không dùng */
+.acc-head__nav { display: none; flex: 1; min-width: 0; align-items: center; gap: 2px; }
+.acc-head__back {
+  display: inline-flex; align-items: center; gap: 2px; flex: none;
+  height: 44px; padding: 0 8px 0 0; border: 0; background: transparent; cursor: pointer;
+  font: inherit; font-size: 15px; color: var(--color-accent-700);
+}
+.acc-head__title {
+  min-width: 0; margin: 0 0 0 4px; font-size: 17px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.acc-head__count {
+  font-family: var(--acc-mono); font-size: 13px; font-weight: 400;
+  color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
 .acc-head__lock {
   flex: none; font-size: 11.5px; white-space: nowrap;
   color: color-mix(in srgb, var(--color-text) 64%, transparent);
@@ -518,6 +533,12 @@
   color: color-mix(in srgb, var(--color-text) 64%, transparent);
 }
 .acc-grp--on .acc-grp__num { color: var(--color-accent-700); }
+/* "Password only" — dòng duy nhất mang màu rủi ro trong cột nhóm */
+.acc-grp--warn .acc-grp__plate,
+[data-theme="light"] .acc-grp--warn .acc-grp__plate { color: var(--warn); background: var(--warn-bg); }
+.acc-grp--warn .acc-grp__num { color: var(--warn-ink); }
+/* Chỉ dùng ở màn Vault mobile (xem container query cuối file) */
+.acc-grp__chev, .acc-groups__passphrase, .acc-copybar { display: none; }
 
 .acc-chip {
   display: inline-flex; align-items: center; gap: 6px; flex: none;
@@ -1202,39 +1223,97 @@
    @container, KHÔNG @media — đo bề rộng của vault chứ không của viewport
    (xem chú thích `container-type` ở đầu file). */
 @container (max-width: 899px) {
-  .acc-head { flex-wrap: wrap; gap: 10.2px; padding: 10.2px 13.6px; }
-  .acc-search { order: 3; flex-basis: 100%; max-width: none; width: 100%; }
-  .acc-head__lock { display: none; }
+  /* ── Header: M1 = brand + Lock + "+", M2 = "‹ Vault · Email 3" + "+", M3 = ẩn.
+     Ô tìm kiếm ở lại header qua cả M1 lẫn M2 nên gõ dở mà đổi màn không mất
+     bàn phím. "Đổi mật khẩu" + badge AES-GCM không còn chỗ: nút đổi mật khẩu
+     xuống cuối màn Vault (.acc-groups__passphrase). */
+  .acc-head { flex-wrap: wrap; gap: 8px; padding: 6px 8px 10px 13.6px; }
+  .acc-search { order: 3; flex-basis: 100%; max-width: none; width: 100%; margin-right: 5.6px; }
+  .acc-head__secure-tip,
+  .acc-head__right > .acc-act:not(.acc-head__icon) { display: none; }
+  .acc-head__right { gap: 4px; }
+  .acc-vault .acc-head .acc-head__icon { width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; }
+  .acc-head .acc-head__icon.acc-act { border-color: transparent; }
+  .acc-head__label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+  .acc-vault[data-screen="list"] .acc-brand,
+  .acc-vault[data-screen="list"] .acc-head__icon.acc-act { display: none; }
+  .acc-vault[data-screen="list"] .acc-head__nav { display: flex; }
+  .acc-vault[data-screen="detail"] .acc-head { display: none; }
 
-  /* Cột nhóm thành MỘT dải chip cuộn ngang trên danh sách, ẩn caption */
+  /* ── M1 · màn Vault: cột nhóm thành danh sách dọc cả màn, dòng to, có ›.
+     Thay dải chip cuộn ngang trước đây — đi sâu từng lớp như 1Password / Apple
+     Passwords thay vì nhồi bộ lọc lên đầu danh sách. */
   .acc-groups {
-    flex-direction: row; align-items: center; gap: 6px;
-    overflow-x: auto; overflow-y: hidden; padding: 8px 13.6px;
-    border-right: none; border-bottom: 1px solid var(--color-divider);
-    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    gap: 0; padding: 6px 13.6px 40px;
+    background: var(--color-bg); border-right: none;
   }
-  .acc-groups::-webkit-scrollbar { display: none; }
   .acc-grp, .acc-grp--sub {
-    width: auto; min-height: 44px; padding: 0 12px 0 6px;
-    border-color: var(--color-divider); border-radius: var(--r);
+    min-height: 50px; padding: 0 4px; border-radius: 0;
+    border-bottom: 1px solid var(--color-divider); font-size: 15px;
   }
-  .acc-grp--on { border-color: var(--color-accent); }
-  .acc-grp__plate { border-radius: var(--r); }
-  .acc-grp__name { overflow: visible; }
-  .acc-groups__cap { display: none; }
-  .acc-groups__hint { flex: none; white-space: nowrap; margin: 0 4px; }
-  .acc-groups__tags { flex-wrap: nowrap; padding: 0; }
-  .acc-body[data-screen="detail"] .acc-groups { display: none; }
+  .acc-grp--sub { min-height: 44px; padding-left: 30px; }
+  .acc-grp--on, .acc-grp--on:hover { background: transparent; }
+  .acc-grp__chev { display: inline-flex; color: color-mix(in srgb, var(--color-text) 40%, transparent); }
+  .acc-grp--warn {
+    margin: 10px 0 4px; padding: 0 10px; border: 1px solid var(--warn-line); border-radius: var(--r);
+    background: var(--warn-bg); color: var(--warn-ink); font-weight: 600;
+  }
+  .acc-grp--warn .acc-grp__chev { color: var(--warn-ink); }
+  .acc-groups__cap { margin: 20px 4px 6px; }
+  .acc-groups__hint { margin: 10px 4px; }
+  .acc-groups__tags { padding: 0; gap: 6px; }
+  .acc-groups .acc-chip { min-height: 36px; }
+  .acc-groups__passphrase { display: inline-flex; align-self: flex-start; min-height: 44px; margin-top: 28px; }
 
   .acc-body { grid-template-columns: minmax(0, 1fr); min-width: 0; }
   .acc-pane--list { border-right: none; }
-  .acc-pane--detail { padding: 17px 13.6px 68px; }
-  .acc-detail { max-width: none; }
+  /* Chừa chỗ cho thanh copy ghim đáy (M3) */
+  .acc-pane--detail { padding: 12px 13.6px 96px; }
+  /* Không animation transform: phần tử đang có transform thành containing block của
+     position:fixed → thanh copy / Cancel · Save sẽ bám theo article thay vì đáy vault */
+  .acc-detail { max-width: none; animation: none; }
 
-  /* Một pane hiện, pane kia display:none — không phải 2 bản markup */
-  .acc-body[data-screen="list"] .acc-pane--detail { display: none; }
-  .acc-body[data-screen="detail"] .acc-pane--list { display: none; }
+  /* Mỗi lúc một màn, các pane khác display:none — không phải 3 bản markup */
+  .acc-vault[data-screen="home"] .acc-pane--list,
+  .acc-vault[data-screen="home"] .acc-pane--detail,
+  .acc-vault[data-screen="list"] .acc-groups,
+  .acc-vault[data-screen="list"] .acc-pane--detail,
+  .acc-vault[data-screen="detail"] .acc-groups,
+  .acc-vault[data-screen="detail"] .acc-pane--list { display: none; }
+
+  /* ── M2: tiêu đề + số đếm đã lên header, đầu danh sách chỉ còn lọc loại */
+  .acc-listhead { padding: 8px 13.6px; }
+  .acc-listhead__title, .acc-listhead__count { display: none; }
+  .acc-vault .acc-select--filter { flex: 1; max-width: none; }
+  .acc-row { min-height: 64px; }
+
+  /* ── M3: back · ☆ · Edit cùng một hàng = thanh điều hướng. `display: contents`
+     cho con của __main thành ô của lưới .acc-title, nên đặt được back cạnh nút
+     hành động mà không phải tách markup. */
   .acc-back { display: inline-flex; }
+  .acc-title { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; margin-bottom: 20px; }
+  .acc-title__main { display: contents; }
+  .acc-title__main > * { grid-column: 1 / -1; }
+  .acc-title__main > .acc-back { grid-column: 1; grid-row: 1; justify-self: start; margin: 0 0 0 -10px; color: var(--color-accent-700); }
+  .acc-title__actions { grid-column: 2; grid-row: 1; }
+  .acc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: -8px; }
+  .acc-kpi:nth-child(odd) { border-left: 0; }
+  .acc-kpi:nth-child(n + 3) { border-top: 1px solid var(--color-divider); }
+
+  /* Thanh ghim đáy vault (vault là containing block của fixed vì container-type) */
+  .acc-copybar,
+  .acc-detail--editing .acc-title__actions {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    display: flex; gap: 8px; padding: 10px 13.6px;
+    background: var(--surface); border-top: 1px solid var(--color-divider);
+  }
+  .acc-copybar .acc-btn,
+  .acc-detail--editing .acc-title__actions .acc-btn { flex: 1; }
+  /* Đang sửa: back sẽ remount detail và mất draft không hỏi → ẩn, đã có Cancel */
+  .acc-detail--editing .acc-back { display: none; }
 
   /* Dòng field + sign-in xuống 1 cột, hành động thành hàng riêng canh trái */
   .acc-field, .acc-field--edit {
@@ -1250,10 +1329,7 @@
   .acc-linkedit .acc-select { grid-column: 1 / -1; }
   .acc-linkedit .acc-act--x { grid-column: 2; grid-row: 1; }
 
-  .acc-title { flex-direction: column; gap: 13.6px; }
-  .acc-title__h1 { font-size: 27px; }
-  .acc-title__actions { width: 100%; }
-  .acc-title__actions .acc-btn:not(.acc-btn--icon) { flex: 1; }
+  .acc-title__h1 { font-size: 22px; }
 
   /* Vùng chạm >= 44px, input 16px (dưới 16px iOS tự zoom khi focus) */
   .acc-vault .acc-btn { min-height: 44px; padding-left: 14px; padding-right: 14px; }

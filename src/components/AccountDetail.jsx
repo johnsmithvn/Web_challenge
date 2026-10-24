@@ -78,7 +78,7 @@ function fileToLogo(file) {
 }
 
 export default function AccountDetail({
-  item, items, tags, revealed, copied, autoEdit = false,
+  item, items, tags, revealed, copied, autoEdit = false, backLabel = 'All items',
   onBack, onOpen, onCopy, onToggleReveal, onToggleFavorite, onSave, onDelete,
   onSetAuthState, onSetCodeUsed, onAddTag,
 }) {
@@ -164,13 +164,24 @@ export default function AccountDetail({
     .flatMap((g) => [g.path, ...g.children.map((c) => c.path)]), [items]);
   const groupLabel = normalizeGroup(item.group).replace('/', ' › ');
 
+  // Thanh copy ghim đáy (chỉ mobile, M3): copy tên đăng nhập / secret là việc làm
+  // nhiều nhất, nên nó nằm dưới ngón cái thay vì giữa danh sách field. Nhãn lấy
+  // theo field ("Copy card number" cho thẻ) — không đoán là "password".
+  const firstValue = (f) => (f.type === 'multi' ? (f.values || [])[0] || '' : f.value || '');
+  const userField = item.fields.find((f) => !isSecretType(f.type)
+    && /^(username|email|emails|primary email)$/i.test(f.label) && firstValue(f));
+  const passField = item.fields.find((f) => f.type === 'password' && f.value);
+
   return (
-    <article className="acc-detail">
+    <article className={`acc-detail${editing ? ' acc-detail--editing' : ''}`}>
       {/* ── 1. Khối tiêu đề ── */}
       <header className="acc-title">
         <div className="acc-title__main">
-          {/* CSS ẩn nút này từ 900px trở lên — desktop có cả 2 pane cùng lúc */}
-          <button className="acc-btn acc-btn--ghost acc-back" onClick={onBack}>← All items</button>
+          {/* CSS ẩn nút này từ 900px trở lên — desktop có cả 2 pane cùng lúc.
+              Mobile: nó cùng hàng với ☆ / Edit thành thanh điều hướng (M3). */}
+          <button className="acc-btn acc-btn--ghost acc-back" onClick={onBack}>
+            <AppIcon name="caretLeft" size={15} /> {backLabel}
+          </button>
 
           {/* Logo lưu TRONG encrypted payload, không phải Storage/Drive: URL công
               khai ở hai chỗ đó là tự khai bạn có tài khoản dịch vụ nào. Đổi lại
@@ -474,6 +485,21 @@ export default function AccountDetail({
           <button className="acc-act acc-foot__del" onClick={onDelete}>Delete item</button>
         )}
       </footer>
+
+      {!editing && (userField || passField) && (
+        <div className="acc-copybar">
+          {userField && (
+            <button className="acc-btn" onClick={() => onCopy(firstValue(userField), 'bar:user')}>
+              {copied === 'bar:user' ? 'Copied' : `Copy ${userField.label.toLowerCase()}`}
+            </button>
+          )}
+          {passField && (
+            <button className="acc-btn acc-btn--primary" onClick={() => onCopy(passField.value, 'bar:pass')}>
+              {copied === 'bar:pass' ? 'Copied' : `Copy ${passField.label.toLowerCase()}`}
+            </button>
+          )}
+        </div>
+      )}
     </article>
   );
 }
