@@ -91,7 +91,6 @@ Các nguồn hiện hành gồm:
 - `account-templates.json`
 - `finance-categories.json`
 - `holidays.json`
-- `knowledge.json`
 - `quotes.json`
 - `ui-strings.json`
 
