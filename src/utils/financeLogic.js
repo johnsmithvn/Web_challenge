@@ -646,8 +646,9 @@ export function maturityWarn(matures_at, refStr) {
   return { days, warn: days >= 0 && days <= 45 };
 }
 
-/** Lãi trọn kỳ của một sổ: gốc × lãi suất × kỳ hạn/12; không kỳ hạn thì tính 1 năm. */
+/** Lãi trọn kỳ của một sổ: gốc × lãi suất × kỳ hạn/12; không kỳ hạn thì tính 1 năm. An Gia tính theo lịch góp. */
 export function maturityInterest(deposit) {
+  if (guessDepositType(deposit) === 'angia') return anGiaPlan(deposit).interest;
   const months = Number(deposit?.term) || 12;
   return Math.round((deposit?.amount || 0) * ((Number(deposit?.rate) || 0) / 100) * (months / 12));
 }
@@ -675,18 +676,55 @@ export function settleMaturity(deposit, { mode, interest, on, rate } = {}) {
   return { closedOn: date, next, income };
 }
 
-/** Phân loại nơi gửi: 'cd' (Chứng chỉ tiền gửi), 'term' (Sổ tiết kiệm có kỳ hạn), 'flex' (Tích lũy linh hoạt không kỳ hạn) */
+/**
+ * Tích lũy An Gia: gửi lần đầu X (`initial_amount`) ở ngày gửi, rồi góp Y (`monthly_amount`) đúng ngày đó mỗi
+ * tháng; kỳ hạn n tháng → n − 1 kỳ góp, kỳ cuối trước đáo hạn 1 tháng. Lãi đơn trả cuối kỳ, mỗi khoản hưởng lãi
+ * từ lúc góp tới đáo hạn: X × r × n/12 + Y × r × (n − 1)n/2 / 12.
+ * Có `today`: `expected` = X + Y × số kỳ góp đã tới hạn, `shortfall` = phần còn thiếu so với `amount`;
+ * `due` = kỳ góp rơi vào tháng của `today` (ngày cuối tháng nếu tháng ngắn hơn ngày gửi), `paid` khi đã đủ.
+ */
+export function anGiaPlan(deposit, today) {
+  const n = Number(deposit?.term) || 0;
+  const x = Number(deposit?.initial_amount) || 0;
+  const y = Number(deposit?.monthly_amount) || 0;
+  const r = (Number(deposit?.rate) || 0) / 100;
+  const periods = Math.max(0, n - 1);
+  const plan = {
+    periods,
+    principal: x + y * periods,
+    interest: Math.round(x * r * n / 12 + y * r * periods * n / 2 / 12),
+    expected: x,
+    shortfall: 0,
+    due: null,
+  };
+  const from = deposit?.opened_at;
+  if (!from || !today || today < from) return plan;
+  const m = (Number(today.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(today.slice(5, 7)) - Number(from.slice(5, 7));
+  const dueOn = dueDateInMonth(Number(from.slice(8)), today);
+  const amount = deposit.amount || 0;
+  plan.expected = x + y * Math.min(periods, dueOn <= today ? m : m - 1);
+  plan.shortfall = Math.max(0, plan.expected - amount);
+  if (m >= 1 && m <= periods) {
+    const need = Math.max(0, x + y * m - amount);
+    plan.due = { on: dueOn, period: m, need, paid: need === 0 };
+  }
+  return plan;
+}
+
+/** Phân loại nơi gửi: 'angia' (Tích lũy An Gia, góp hằng tháng), 'cd' (Chứng chỉ tiền gửi), 'term' (Sổ tiết kiệm có kỳ hạn), 'flex' (Tích lũy linh hoạt không kỳ hạn) */
 export function guessDepositType(deposit) {
   if (!deposit) return 'cd';
+  if (Number(deposit.monthly_amount) > 0) return 'angia';
   if (deposit.term === null || deposit.term === undefined || deposit.term === '' || Number(deposit.term) === 0) return 'flex';
   const name = (deposit.name || '').toLowerCase();
   if (name.includes('chứng chỉ') || name.includes('cd') || name.includes('cc tiền gửi')) return 'cd';
   return 'term';
 }
 
-/** Kiểm tra nơi gửi có cho phép nạp thêm tiền (gửi thêm) không. Chỉ 'flex' mới cho nạp thêm; 'term' và 'cd' đã khóa gốc. */
+/** Kiểm tra nơi gửi có cho phép nạp thêm tiền (gửi thêm) không. 'flex' nạp tự do, 'angia' góp hằng tháng; 'term' và 'cd' đã khóa gốc. */
 export function canDepositTopUp(deposit) {
-  return guessDepositType(deposit) === 'flex';
+  const type = guessDepositType(deposit);
+  return type === 'flex' || type === 'angia';
 }
 
 // ── Nhịp chi: cột theo ngày (1 tháng) hoặc theo tháng (kỳ dài) ───────────────

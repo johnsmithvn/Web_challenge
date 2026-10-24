@@ -346,4 +346,24 @@ assert.deepEqual(sum.banks, [{ bank: 'ABBank', amount: 250000000 }, { bank: 'Zal
 assert.equal(sum.next.id, 'dA', 'sổ đáo hạn gần nhất');
 assert.deepEqual(savingsSummary([]), { total: 0, weightedRate: 0, count: 0, interest: 0, banks: [], next: null });
 
+// ── 7. Sổ Tích lũy An Gia: kỳ góp hằng tháng lên dòng quỹ ────────────────────
+// Gửi 24/09: X 5tr, góp 1tr/tháng → kỳ 1 ngày 24/10. Hôm nay 10/10, chưa góp.
+const dG = { id: 'dG', fund_id: 'g_chung', name: 'An Gia', bank: 'VPBank', amount: 5000000, initial_amount: 5000000,
+  monthly_amount: 1000000, rate: 6, term: 36, opened_at: '2026-09-24', matures_at: '2029-09-24' };
+const chung = (deps, today = '2026-10-10') => buildHubItems({ today, goals: [{ id: 'g_chung', name: 'Tích lũy chung', goal: 0, is_default: true }],
+  deposits: deps }).find(i => i.id === 'g_chung');
+let gc = chung([dG, dC]);
+assert.deepEqual([gc.ev.due, gc.ev.amount, gc.ev.state, gc.overdue], ['2026-10-24', 1000000, 'due', false]);
+assert.equal(gc.sub, 'Góp An Gia 1 tr/tháng');
+// Đã góp kỳ 1 (amount 6tr) → xong tháng này
+assert.equal(chung([{ ...dG, amount: 6000000 }]).ev.state, 'paid');
+// Qua 24/10 chưa góp → quá hạn, sổ báo thiếu
+gc = chung([dG], '2026-10-26');
+assert.equal(gc.overdue, true);
+const iG = depositItem(dG, gc.source, '2026-10-26');
+assert.deepEqual([iG.icon, iG.note, iG.tone, iG.progress.label],
+  ['plant', 'thiếu 1 tr tiền góp', 'due', '6%/năm · 3 năm · góp 1 tr/tháng']);
+// Quỹ không có sổ An Gia vẫn không có kỳ
+assert.equal(chung([dC]).ev, null);
+
 console.log('recurringHub check: OK');
