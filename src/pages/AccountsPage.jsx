@@ -12,7 +12,7 @@ import AppIcon from '../components/AppIcon';
 import SkeletonList from '../components/SkeletonList';
 import {
   matchesQuery, itemSubtitle, newId, relativeUpdated, avatarHue, groupTree, groupKey, inGroup,
-  isPasswordOnly, rootsOf, untrackedIdentifiers, moneyMatrix, mailboxTitle,
+  isPasswordOnly, rootsOf, untrackedIdentifiers, moneyMatrix, mailboxTitle, normalizeGroup,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import '../styles/accounts.css';
@@ -75,6 +75,12 @@ export default function AccountsPage() {
     }
   }, [recoveryKey]);
   const [creating, setCreating] = useState(null); // tplKey đang tạo, null = rảnh
+  // Chuyển nhóm hàng loạt: chế độ chọn ở danh sách + thanh Move to group
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState(() => new Set());
+  const [bulkGroup, setBulkGroup] = useState('');
+  const [moving, setMoving] = useState(false);
+  const bulkInputRef = useRef(null);
   const [autoEditId, setAutoEditId] = useState(null); // item vừa tạo → mở sẵn edit
   const [revealed, setRevealed] = useState({});   // { [fieldId]: true }
   const [copied, setCopied] = useState(null);     // 1 key tại một thời điểm
@@ -238,6 +244,8 @@ export default function AccountsPage() {
     setCopied(null);
     setPickerOpen(false);
     setPendingTags([]);
+    setSelecting(false);
+    setPicked(new Set());
     lockVault();
   };
 
@@ -273,6 +281,56 @@ export default function AccountsPage() {
     setView('all');
     setTag(null);
     open(id, { edit: true });
+  };
+
+  // ── Chuyển nhóm hàng loạt ───────────────────────────────────
+  // Nhóm suy ra từ item nên "tạo nhóm" = chọn item rồi gõ tên nhóm mới vào thanh
+  // Move to group. "+ New group" ở cột nhóm chỉ mở chế độ chọn ở All items và đặt
+  // con trỏ vào ô tên nhóm.
+  const groupPaths = tree.groups.flatMap((g) => [g.path, ...g.children.map((c) => c.path)]);
+  const exitSelect = () => { setSelecting(false); setPicked(new Set()); setBulkGroup(''); };
+  const startSelect = ({ fresh = false } = {}) => {
+    setSelecting(true);
+    setPicked(new Set());
+    setBulkGroup('');
+    if (fresh) { setView('all'); setTag(null); }
+    setScreen('list');
+    // Ô tên nhóm chỉ có sau khi render chế độ chọn → focus ở frame sau
+    if (fresh) requestAnimationFrame(() => bulkInputRef.current?.focus());
+  };
+  const togglePick = (id) => setPicked((s) => {
+    const next = new Set(s);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const allVisiblePicked = visible.length > 0 && visible.every((i) => picked.has(i.id));
+  const toggleAllVisible = () => setPicked((s) => {
+    const next = new Set(s);
+    visible.forEach((i) => (allVisiblePicked ? next.delete(i.id) : next.add(i.id)));
+    return next;
+  });
+
+  const moveSelected = async () => {
+    if (moving || !picked.size) return;
+    const target = normalizeGroup(bulkGroup);
+    // Bỏ qua item đã ở đúng nhóm: không ghi, không thêm dòng log thừa
+    const todo = items.filter((i) => picked.has(i.id) && normalizeGroup(i.group) !== target);
+    setMoving(true);
+    let ok = 0;
+    // Tuần tự, không Promise.all: mỗi item là một lần ghi ciphertext có CAS riêng;
+    // ghi song song hàng chục request không nhanh hơn bao nhiêu mà lỗi thì khó báo.
+    for (const it of todo) {
+      if (await saveItem({ ...it, group: target })) ok++;
+    }
+    setMoving(false);
+    const where = target ? target.replace('/', ' › ') : 'Ungrouped';
+    if (ok < todo.length) {
+      showToast(`Moved ${ok} of ${todo.length} to ${where}. The rest failed.`, { icon: 'warning' });
+    } else {
+      showToast(todo.length ? `Moved ${ok} item${ok === 1 ? '' : 's'} to ${where}` : `Already in ${where}`);
+    }
+    exitSelect();
+    if (ok || !todo.length) pickView(target ? `g:${groupKey(target)}` : 'none');
   };
 
   const handleDelete = async (item) => {
@@ -421,7 +479,10 @@ export default function AccountsPage() {
               on={view === 'none' && !tag} onClick={() => pickView('none')} />
           )}
           {tree.groups.length === 0 && items.length > 0 && (
-            <p className="acc-groups__hint">Give an item a group in Edit, e.g. Tài chính/Ngân hàng.</p>
+            <p className="acc-groups__hint">Pick items with + New group, or give one a group in Edit.</p>
+          )}
+          {items.length > 0 && (
+            <GroupBtn icon="plus" label="New group" count="" on={false} onClick={() => startSelect({ fresh: true })} />
           )}
 
           {/* CỐ Ý chỉ liệt kê tag đang gắn trên item của vault, không phải toàn bộ
@@ -492,7 +553,7 @@ export default function AccountsPage() {
             )}
           </section>
         ) : (
-        <section className="acc-pane acc-pane--list">
+        <section className={`acc-pane acc-pane--list${selecting ? ' acc-pane--selecting' : ''}`}>
           <div className="acc-listhead">
             <h2 className="acc-listhead__title">{listTitle}</h2>
             <span className="acc-listhead__count">
@@ -506,6 +567,12 @@ export default function AccountsPage() {
                 <option key={t.key} value={t.key}>{t.chip} · {counts[t.key] || 0}</option>
               ))}
             </select>
+            {items.length > 0 && (
+              <button type="button" className={`acc-act${selecting ? ' acc-act--on' : ''}`} aria-pressed={selecting}
+                onClick={() => (selecting ? exitSelect() : startSelect())}>
+                {selecting ? 'Done' : 'Select'}
+              </button>
+            )}
           </div>
 
           {isLoading && items.length === 0 && (
@@ -527,8 +594,35 @@ export default function AccountsPage() {
           )}
 
           {visible.map((i) => (
-            <ListRow key={i.id} item={i} on={i.id === selectedId} onOpen={() => open(i.id)} />
+            <ListRow key={i.id} item={i} on={i.id === selectedId} onOpen={() => open(i.id)}
+              selecting={selecting} picked={picked.has(i.id)} onPick={() => togglePick(i.id)} />
           ))}
+
+          {selecting && (
+            <div className="acc-bulkbar" role="region" aria-label="Move selected items to a group">
+              <div className="acc-bulkbar__top">
+                <span className="acc-bulkbar__count">{picked.size} selected</span>
+                <button type="button" className="acc-act" onClick={toggleAllVisible} disabled={!visible.length}>
+                  {allVisiblePicked ? 'Clear these' : `Select all ${visible.length}`}
+                </button>
+              </div>
+              <div className="acc-bulkbar__row">
+                {/* Native datalist như ô Group ở chế độ sửa: gợi ý nhóm có sẵn, gõ tên mới = tạo nhóm */}
+                <input ref={bulkInputRef} className="acc-input" list="acc-bulk-groups" value={bulkGroup}
+                  onChange={(e) => setBulkGroup(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); moveSelected(); } }}
+                  placeholder="Group, e.g. Tài chính/Ngân hàng (empty = Ungrouped)" aria-label="Move to group" />
+                <datalist id="acc-bulk-groups">
+                  {groupPaths.map((p) => <option key={p} value={p} />)}
+                </datalist>
+                <button type="button" className="acc-btn acc-btn--primary" onClick={moveSelected}
+                  disabled={!picked.size || moving}>
+                  {moving ? 'Moving…' : 'Move'}
+                </button>
+                <button type="button" className="acc-btn" onClick={exitSelect} disabled={moving}>Cancel</button>
+              </div>
+            </div>
+          )}
         </section>
         )}
 
@@ -1221,10 +1315,15 @@ function GroupBtn({ icon, hue, label, count, on, sub, warn, onClick }) {
    mà cùng in "ACC" thì không quét được bằng mắt. Mã vẫn giữ, xuống thành badge
    nhỏ cạnh tiêu đề: nó vẫn cần để nhận loại, và chip link + dòng sign-in đang
    dùng cùng ngôn ngữ thị giác đó. */
-function ListRow({ item, on, onOpen }) {
+function ListRow({ item, on, onOpen, selecting, picked, onPick }) {
   const tpl = TPL_BY_KEY.get(item.tpl);
+  // Chế độ chọn: cả dòng là <label> bọc checkbox thật — bấm đâu cũng bật/tắt, và
+  // không có control lồng trong <button> (HTML không cho).
+  const Row = selecting ? 'label' : 'button';
   return (
-    <button className={`acc-row${on ? ' acc-row--on' : ''}`} onClick={onOpen}>
+    <Row className={`acc-row${selecting ? ' acc-row--select' : on ? ' acc-row--on' : ''}${picked ? ' acc-row--picked' : ''}`}
+      onClick={selecting ? undefined : onOpen}>
+      {selecting && <input type="checkbox" className="acc-row__check" checked={picked} onChange={onPick} />}
       <AccountAvatar item={item} />
       <span className="acc-row__body">
         <span className="acc-row__top">
@@ -1240,6 +1339,6 @@ function ListRow({ item, on, onOpen }) {
         {/* Chỉ cờ rủi ro, không cờ "an toàn": màu vàng chỉ xuất hiện khi có việc phải làm */}
         {isPasswordOnly(item) && <span className="acc-row__auth">PWD only</span>}
       </span>
-    </button>
+    </Row>
   );
 }

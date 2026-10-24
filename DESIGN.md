@@ -1207,6 +1207,13 @@ Types/Tags filter bar is gone.
   `min-width: 1040px` floor is **dropped** for the same reason; the real floor is
   the columns' own `300 + 520`. Touch targets ≥44px and inputs 16px when narrow
   (iOS zoom). No JS breakpoint, no `useMediaQuery`, no duplicated mobile layout markup.
+- **Bulk move to group.** **Select** in the list head turns rows into `<label>`s wrapping a
+  real checkbox (`.acc-row--select`, `.acc-row--picked`) — no control nested in a `<button>`.
+  `.acc-bulkbar` sticks to the bottom of the list pane (inside the scroll area, so it never
+  covers the last row) and is fixed to the vault bottom on mobile, like the copy bar. Its
+  group input shares the Edit-mode `<datalist>` idea; empty means Ungrouped. "+ New group"
+  in the groups column is the same flow started at All items with the input focused —
+  there is no empty-group state to create, because groups are derived from items.
 - **Root titles are free text.** A root is recognised from data, not the title: an Identity's
   values, or an **Email account (EML)**'s first email field (only the first — a "Recovery
   phone" must not turn a mailbox into the root of that number). So the convention is title

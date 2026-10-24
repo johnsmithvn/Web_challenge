@@ -343,6 +343,9 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   mất gốc thì kéo theo những gì. Mục **Not in vault yet** liệt kê email/SĐT làm giá trị cho ≥2 item mà
   chưa có item riêng; "Add as item" tạo item Account với tiêu đề + Username điền sẵn. Mobile: danh sách
   gốc → bản đồ xếp dọc.
+- **Chuyển nhóm hàng loạt:** nút **Select** ở đầu danh sách → tick nhiều item (hoặc "Select all" theo bộ
+  lọc đang xem) → gõ / chọn nhóm ở thanh **Move to group** → Move. Gõ tên chưa có là tạo nhóm, để trống là
+  bỏ nhóm. **+ New group** ở cột nhóm mở thẳng chế độ chọn ở All items để tạo nhóm mới.
 - **Email account (EML) và Identity làm gốc:** hộp thư nên lưu bằng loại Email account — tiêu đề đặt tự
   do ("Gmail", "Gmail công việc"), địa chỉ ở field Email address; Roots nhận gốc theo field đó. Mỗi số
   điện thoại là một Identity (Phone numbers), dòng phụ ngoài danh sách hiện chính số đó. Item cũ có tiêu

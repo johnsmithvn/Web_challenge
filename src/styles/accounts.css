@@ -79,7 +79,10 @@
 .acc-vault {
   background: var(--color-bg);
   display: grid;
-  grid-template-rows: auto auto auto 1fr;
+  /* header · thông báo lỗi (có điều kiện) · body. Body khai `grid-row: 3` tường
+     minh (xem .acc-body): để auto-placement thì khi danh sách ngắn body rơi vào
+     hàng `auto`, co theo nội dung và phần dưới màn hình trống trơn. */
+  grid-template-rows: auto auto minmax(0, 1fr);
   overflow-x: auto;
   /* Vault cần khung cao cố định để 2 pane cuộn độc lập. Chỗ DUY NHẤT module
      phải biết về app shell — dưới 768px shell có topbar + bottom tabs. */
@@ -569,6 +572,7 @@
    cuộn ngang, nên bỏ. Sàn thật: 216 + 300 + 520 = 1036px; hẹp hơn 1180px thì
    cột nhóm thu thành rail 60px (60 + 300 + 520 = 880), dưới 900px gộp 1 cột. */
 .acc-body {
+  grid-row: 3;
   display: grid;
   grid-template-columns: 216px minmax(300px, 360px) minmax(520px, 1fr);
   min-height: 0;
@@ -642,6 +646,23 @@
   padding: 34px 20.4px; text-align: center; font-size: 13px;
   color: color-mix(in srgb, var(--color-text) 64%, transparent);
 }
+
+/* ── Chuyển nhóm hàng loạt: dòng chọn được + thanh Move to group ──
+   Thanh dính đáy pane danh sách (desktop) — nằm trong vùng cuộn nên không che
+   dòng cuối. Mobile: ghim đáy vault như thanh copy (container query cuối file). */
+.acc-row--select { cursor: pointer; }
+.acc-row__check { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--color-accent); cursor: pointer; }
+.acc-row--picked, .acc-row--picked:hover { background: var(--color-accent-100); border-color: var(--color-accent-300); }
+.acc-bulkbar {
+  position: sticky; bottom: 0; z-index: 2;
+  display: grid; gap: 8px; margin-top: 8px; padding: 10px 13.6px 12px;
+  background: var(--surface); border-top: 1px solid var(--color-divider);
+}
+.acc-bulkbar__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.acc-bulkbar__count { font-family: var(--acc-mono); font-size: 12.5px; }
+.acc-bulkbar__row { display: flex; flex-wrap: wrap; gap: 6px; }
+.acc-bulkbar__row .acc-input { flex: 1 1 100%; min-width: 0; }
+.acc-bulkbar__row .acc-btn { flex: 1 1 0; }
 
 /* ── Màn Roots: danh sách gốc (cột giữa) ── */
 .acc-row--dim { opacity: .62; }
@@ -1554,6 +1575,11 @@ button.acc-guard:hover { border-color: var(--color-accent-300); }
   .acc-detail--editing .acc-title__actions .acc-btn { flex: 1; }
   /* Đang sửa: back sẽ remount detail và mất draft không hỏi → ẩn, đã có Cancel */
   .acc-detail--editing .acc-back { display: none; }
+
+  /* ── Chuyển nhóm hàng loạt trên mobile: thanh ghim đáy vault, chừa chỗ cho nó */
+  .acc-bulkbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; margin: 0; }
+  .acc-pane--selecting { padding-bottom: 150px; }
+  .acc-row__check { width: 22px; height: 22px; }
 
   /* ── Roots mobile (R1–R2): bản đồ xếp dọc, dây quay xuống; chain cuộn ngang */
   .acc-rootmap__map { flex-direction: column; align-items: stretch; }
