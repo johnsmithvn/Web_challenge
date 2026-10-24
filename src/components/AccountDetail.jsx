@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   TYPES, TYPE_HINT, isSecretType, scorePassword, generatePassword, parseCodes, codeSheet,
   linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl, itemSubtitle,
-  normalizeGroup, groupTree, dependentsOf, isPasswordOnly,
+  normalizeGroup, groupTree, dependentsOf, isPasswordOnly, linkKind, moneySourcesOf,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import AppIcon from './AppIcon';
@@ -152,6 +152,8 @@ export default function AccountDetail({
   // trị (username = SĐT/email của gốc) và đi tiếp xuống cấp 2, 3: Gmail → ngân
   // hàng → thẻ của ngân hàng đó.
   const dependents = useMemo(() => dependentsOf(items, item.id), [items, item.id]);
+  // Liên kết tiền KHÔNG nằm trong cây trên (xem LINK_KINDS) — ngân hàng thấy ví nào rút được từ nó ở đây
+  const moneySources = useMemo(() => moneySourcesOf(items, item.id), [items, item.id]);
   const directCount = dependents.filter((d) => d.depth === 1).length;
   const depth = dependents.reduce((m, d) => Math.max(m, d.depth), 0);
   const activeAuth = item.auth.filter((a) => a.state !== 'off');
@@ -169,7 +171,7 @@ export default function AccountDetail({
   // theo field ("Copy card number" cho thẻ) — không đoán là "password".
   const firstValue = (f) => (f.type === 'multi' ? (f.values || [])[0] || '' : f.value || '');
   const userField = item.fields.find((f) => !isSecretType(f.type)
-    && /^(username|email|emails|primary email)$/i.test(f.label) && firstValue(f));
+    && /^(username|email|emails|primary email|email address)$/i.test(f.label) && firstValue(f));
   const passField = item.fields.find((f) => f.type === 'password' && f.value);
 
   return (
@@ -371,6 +373,21 @@ export default function AccountDetail({
             </div>
             {dependents.map((d) => (
               <BacklinkRow key={d.item.id} src={d.item} via={d.via} depth={d.depth} onOpen={onOpen} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── 3c. Ví / thẻ rút được tiền từ item này (liên kết loại tiền trỏ tới đây) ── */}
+      {!editing && moneySources.length > 0 && (
+        <section className="acc-sect">
+          <div className="acc-sect__head">
+            <h3 className="acc-sect__title">Can move money out of this</h3>
+            <span className="acc-sect__meta">{moneySources.length}</span>
+          </div>
+          <div className="acc-panel">
+            {moneySources.map((s) => (
+              <BacklinkRow key={s.item.id} src={s.item} via={s.via} onOpen={onOpen} />
             ))}
           </div>
         </section>
@@ -702,7 +719,17 @@ function FieldRow({ field: f, idx, totalFields, editing, items, ownerId, reveale
               <div className="acc-field__typenote">{TYPE_LABEL[f.type]}</div>
             )}
           </>
-        ) : f.label}
+        ) : (
+          <>
+            {f.label}
+            {/* Nói rõ loại liên kết ngay ở chế độ xem: → đăng nhập, ⇒ tiền */}
+            {f.type === 'link' && (f.links || []).length > 0 && (
+              <div className={`acc-field__typenote${linkKind(f) === 'money' ? ' acc-field__typenote--money' : ''}`}>
+                {linkKind(f) === 'money' ? '⇒ Money link' : '→ Sign-in link'}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Cột 2: giá trị */}
@@ -879,7 +906,12 @@ function EditValue({ field: f, idx, items, ownerId, patch }) {
   }
 
   if (f.type === 'link') {
-    return <LinkEditor field={f} idx={idx} items={items} ownerId={ownerId} patch={patch} />;
+    return (
+      <>
+        <LinkEditor field={f} idx={idx} items={items} ownerId={ownerId} patch={patch} />
+        <LinkKindPicker field={f} idx={idx} patch={patch} />
+      </>
+    );
   }
 
   const sensitive = isSecretType(f.type);
@@ -974,6 +1006,34 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
           d.fields[idx].links.push({ id: newId(), itemId: other ? other.id : null, value: '' });
           d.fields[idx].value = '';
         })}>{links.length ? '+ Link another item' : '+ Link an item'}</button>
+    </div>
+  );
+}
+
+/* ── Loại liên kết của field link (thiết kế L3) ────────────────────
+   Hai nút bật/tắt (aria-pressed), không phải radio: radio đòi điều hướng bằng
+   phím mũi tên mà 2 lựa chọn thì không đáng. Chưa chọn tay → loại đoán theo nhãn
+   (guessLinkKind) và có dòng nói rõ là đang đoán. */
+function LinkKindPicker({ field: f, idx, patch }) {
+  const kind = linkKind(f);
+  const set = (k) => patch((d) => { d.fields[idx].kind = k; });
+  return (
+    <div className="acc-linkkind" role="group" aria-label="Link kind">
+      <div className="acc-linkkind__opts">
+        <button type="button" aria-pressed={kind === 'signin'} onClick={() => set('signin')}
+          className={`acc-linkkind__opt${kind === 'signin' ? ' acc-linkkind__opt--on' : ''}`}>
+          <span className="acc-linkkind__title"><span aria-hidden="true">→</span> Sign-in · recovery</span>
+          <span className="acc-linkkind__sub">This item is lost if the linked one is</span>
+        </button>
+        <button type="button" aria-pressed={kind === 'money'} onClick={() => set('money')}
+          className={`acc-linkkind__opt${kind === 'money' ? ' acc-linkkind__opt--on' : ''}`}>
+          <span className="acc-linkkind__title"><span aria-hidden="true" className="acc-linkkind__money">⇒</span> Money · pays from</span>
+          <span className="acc-linkkind__sub">This item can move money out of the linked one</span>
+        </button>
+      </div>
+      {!f.kind && (
+        <span className="acc-linkkind__hint">Guessed from the field name “{f.label || 'untitled'}”.</span>
+      )}
     </div>
   );
 }

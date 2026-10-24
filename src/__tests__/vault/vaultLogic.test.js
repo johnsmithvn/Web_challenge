@@ -16,6 +16,8 @@ import {
   normalizeGroup, groupKey, inGroup, groupTree,
   normalizeIdent, identifiersOf, dependentsOf, isPasswordOnly,
   rootsOf, upstreamOf, chainTo, untrackedIdentifiers, rootKind,
+  guessLinkKind, linkKind, moneyLinksOf, moneyReach, moneyMatrix, moneySourcesOf,
+  mailboxTitle,
 } from '../../utils/vaultLogic.js';
 
 /* ── TYPES phải khớp CHECK constraint trong migration ──────────────────── */
@@ -432,8 +434,11 @@ const vib = { id: 'vib', tpl: 'account', title: 'VIB',
 const bidv = { id: 'bidv', tpl: 'account', title: 'BIDV', fields: [f('Username', '0327279292')] };
 const tcb = { id: 'tcb', tpl: 'account', title: 'Techcombank',
   fields: [f('Username', '0327279292'), linkTo('Recovery email', 'gmail'), f('Password', '0327279292', 'password')] };
+// 'Bank login' trên thẻ là liên kết TIỀN (thẻ tiêu tiền của tài khoản) → không vào cây đăng nhập.
+// Cây 2 cấp được kiểm bằng 'Owner account' — một liên kết đăng nhập.
 const card = { id: 'card', tpl: 'card', title: 'TCB - VISA', fields: [linkTo('Bank login', 'tcb')] };
-const vault = [phone, gmail, vib, bidv, tcb, card];
+const app = { id: 'app', tpl: 'account', title: 'TCB app', fields: [linkTo('Owner account', 'tcb')] };
+const vault = [phone, gmail, vib, bidv, tcb, card, app];
 
 assert.deepEqual([...identifiersOf(phone)], ['0327279292']);
 assert.deepEqual([...identifiersOf(gmail)], ['tunghnhn9x@gmail.com'], 'chỉ tiêu đề — field Recovery phone không biến Gmail thành gốc của SĐT');
@@ -442,7 +447,7 @@ assert.equal(identifiersOf(vib).size, 0, 'VIB không đại diện cho SĐT dù 
 const fromGmail = dependentsOf(vault, 'gmail');
 assert.deepEqual(
   fromGmail.map((d) => [d.item.id, d.via, d.depth]),
-  [['vib', 'Recovery email', 1], ['tcb', 'Recovery email', 1], ['card', 'Bank login', 2]],
+  [['vib', 'Recovery email', 1], ['tcb', 'Recovery email', 1], ['app', 'Owner account', 2]],
   'cha trước, con ngay dưới'
 );
 
@@ -482,14 +487,15 @@ assert.deepEqual([roots[1].deps.length, roots[1].direct, roots[1].depth], [3, 2,
 
 assert.deepEqual([rootKind(gmail), rootKind(phone), rootKind({ title: '+84 327 279 292' })], ['email', 'identity', 'phone']);
 assert.deepEqual(upstreamOf(vault, 'gmail').map((u) => [u.item.id, u.via]), [['phone', 'Recovery phone']]);
-assert.deepEqual(upstreamOf(vault, 'card').map((u) => u.item.id), ['tcb']);
+assert.deepEqual(upstreamOf(vault, 'app').map((u) => u.item.id), ['tcb']);
+assert.deepEqual(upstreamOf(vault, 'card'), [], 'liên kết tiền không phải "dựa vào"');
 assert.deepEqual(upstreamOf(vault, 'phone'), [], 'không ai giữ mục Phone');
 assert.deepEqual(upstreamOf(vault, 'missing'), []);
 
-assert.deepEqual(chainTo(fromGmail, 'card').map((i) => i.id), ['tcb', 'card']);
+assert.deepEqual(chainTo(fromGmail, 'app').map((i) => i.id), ['tcb', 'app']);
 assert.deepEqual(chainTo(fromGmail, 'vib').map((i) => i.id), ['vib']);
-assert.deepEqual(chainTo(fromGmail).map((i) => i.id), ['tcb', 'card'], 'mặc định: tới nút sâu nhất');
-assert.deepEqual(chainTo(fromGmail, 'không-có').map((i) => i.id), ['tcb', 'card']);
+assert.deepEqual(chainTo(fromGmail).map((i) => i.id), ['tcb', 'app'], 'mặc định: tới nút sâu nhất');
+assert.deepEqual(chainTo(fromGmail, 'không-có').map((i) => i.id), ['tcb', 'app']);
 assert.deepEqual(chainTo([]), []);
 
 // kuroemon98 là username của 2 item nhưng không item nào đại diện cho nó
@@ -502,5 +508,87 @@ assert.deepEqual(untracked.map((u) => [u.ident, u.value, u.items.map((i) => i.id
   'đã có gốc (SĐT, tunghnhn9x) không tính; dùng 1 lần không tính; field password không quét');
 assert.deepEqual(untrackedIdentifiers([...vault, ms, apple, { id: 'k', title: 'kuroemon98@gmail.com', fields: [] }]), [],
   'có item tiêu đề là email đó thì không còn là "chưa có trong vault"');
+
+/* ── Loại liên kết + liên kết tiền ────────────────────────────────────── */
+assert.equal(guessLinkKind('Linked bank'), 'money');
+assert.equal(guessLinkKind('Bank login'), 'money');
+assert.equal(guessLinkKind('Nguồn tiền'), 'money');
+assert.equal(guessLinkKind('Recovery email'), 'signin');
+assert.equal(guessLinkKind('Owner account'), 'signin');
+assert.equal(guessLinkKind(undefined), 'signin', 'không đoán được → đăng nhập như trước');
+assert.equal(linkKind({ label: 'Linked bank', kind: 'signin' }), 'signin', 'chọn tay thắng đoán');
+assert.equal(linkKind({ label: 'Linked bank', kind: 'lạ' }), 'money', 'kind rác → đoán theo nhãn');
+
+assert.deepEqual(dependentsOf(vault, 'tcb').map((d) => d.item.id), ['app'],
+  'thẻ nối "Bank login" không còn là phụ thuộc đăng nhập của ngân hàng');
+
+const linksTo = (label, ids, kind) => ({
+  id: `${label}-${ids.join()}`, label, type: 'link', value: '', values: [], kind,
+  links: ids.map((itemId, i) => ({ id: `L${i}`, itemId, value: '' })),
+});
+const zalo = { id: 'zalo', title: 'ZaloPay', fields: [f('Username', '0327279292'), linksTo('Linked bank', ['vib', 'bidv', 'tcb', 'gone', 'vib'])] };
+const momo = { id: 'momo', title: 'MoMo', fields: [linksTo('Nguồn tiền', ['vib', 'tcb'])] };
+const odd = { id: 'odd', title: 'Odd', fields: [linksTo('Linked bank', ['vib'], 'signin')] };
+const wallets = [...vault, zalo, momo, odd];
+
+assert.deepEqual(moneyLinksOf(wallets, zalo).map((l) => [l.item.id, l.via]),
+  [['vib', 'Linked bank'], ['bidv', 'Linked bank'], ['tcb', 'Linked bank']],
+  'link tới item đã xoá bị bỏ, trùng đích chỉ một lần');
+assert.deepEqual(moneyLinksOf(wallets, odd), [], 'chọn tay "signin" thì không phải liên kết tiền');
+assert.ok(dependentsOf(wallets, 'vib').some((d) => d.item.id === 'odd'), '...mà là phụ thuộc đăng nhập');
+assert.ok(!dependentsOf(wallets, 'vib').some((d) => d.item.id === 'zalo'), 'ví rút tiền từ VIB KHÔNG phụ thuộc VIB');
+
+// Mất SĐT → ZaloPay (username) → tiền ở 3 ngân hàng; thẻ nối TCB không phải phụ thuộc của SĐT
+const phoneDeps = dependentsOf(wallets, 'phone');
+const reach = moneyReach(wallets, phone, phoneDeps);
+assert.deepEqual(reach.groups.map((g) => [g.source.id, g.targets.map((t) => t.item.id)]),
+  [['zalo', ['vib', 'bidv', 'tcb']]]);
+assert.deepEqual(reach.banks.map((b) => b.id), ['vib', 'bidv', 'tcb']);
+assert.deepEqual(moneyReach(wallets, gmail, dependentsOf(wallets, 'gmail')).banks, [], 'Gmail không có ví nào phía dưới');
+assert.deepEqual(rootsOf(wallets).find((r) => r.item.id === 'phone').money.banks.length, 3);
+
+const matrix = moneyMatrix(wallets);
+assert.deepEqual(matrix.rows.map((r) => r.item.id), ['momo', 'card', 'zalo'], 'hàng theo tên');
+assert.deepEqual(matrix.cols.map((c) => [c.item.id, c.sources.length]), [['tcb', 3], ['vib', 2], ['bidv', 1]],
+  'cột nhiều nguồn nhất trước');
+assert.equal(matrix.cells, 6);
+assert.deepEqual(moneySourcesOf(wallets, 'tcb').map((s) => [s.item.id, s.via]),
+  [['card', 'Bank login'], ['zalo', 'Linked bank'], ['momo', 'Nguồn tiền']]);
+assert.deepEqual(moneySourcesOf(wallets, 'zalo'), []);
+assert.deepEqual(moneyMatrix(vault.filter((i) => i.id !== 'card')), { rows: [], cols: [], cells: 0 });
+
+const kindBefore = { title: 'x', fields: [linksTo('Linked bank', ['vib'])] };
+const kindAfter = { title: 'x', fields: [{ ...linksTo('Linked bank', ['vib']), kind: 'signin' }] };
+assert.deepEqual(diffLog(kindBefore, kindAfter), [{ text: 'Linked bank link kind changed', detail: 'money → signin' }]);
+assert.deepEqual(diffLog(kindBefore, { title: 'x', fields: [{ ...linksTo('Linked bank', ['vib']), kind: 'money' }] }), [],
+  'chọn tay đúng như đoán thì không đổi gì');
+
+/* ── Email account (EML) + dòng phụ Identity ──────────────────────────── */
+// Tiêu đề tự do: gốc nhận theo field email đầu tiên, không theo tiêu đề
+const mailbox = { id: 'mb', tpl: 'email', title: 'Gmail', fields: [
+  f('Email address', 'Kuroemon98@gmail.com', 'email'),
+  f('Backup', 'other@gmail.com', 'email'),
+  f('Recovery phone', '0327279292', 'phone'),
+] };
+assert.deepEqual([...identifiersOf(mailbox)], ['kuroemon98@gmail.com'],
+  'chỉ email đầu tiên — Recovery phone không biến hộp thư thành gốc của SĐT');
+assert.equal(rootKind(mailbox), 'email');
+const withMailbox = [...vault, ms, apple, mailbox];
+assert.deepEqual(dependentsOf(withMailbox, 'mb').map((d) => [d.item.id, d.via]), [['ms', 'Username'], ['apple', 'Username']]);
+assert.ok(dependentsOf(withMailbox, 'phone').some((d) => d.item.id === 'mb' && d.via === 'Recovery phone'),
+  'hộp thư phụ thuộc SĐT khôi phục của nó');
+assert.deepEqual(untrackedIdentifiers(withMailbox), [], 'đã có Email account → không còn "chưa có trong vault"');
+assert.deepEqual(identifiersOf({ tpl: 'email', title: 'Gmail', fields: [f('Email address', '', 'email')] }).size, 0,
+  'chưa điền địa chỉ thì chưa là gốc');
+
+assert.equal(mailboxTitle('a@gmail.com'), 'Gmail');
+assert.equal(mailboxTitle('a@Hotmail.com'), 'Outlook');
+assert.equal(mailboxTitle('a@outlook.com.vn'), 'Outlook');
+assert.equal(mailboxTitle('a@icloud.com'), 'iCloud Mail');
+assert.equal(mailboxTitle('a@company.vn'), 'company.vn', 'lạ thì dùng tên miền');
+assert.equal(mailboxTitle(''), 'Email');
+
+assert.equal(itemSubtitle(phone, 'Identity'), '0327 279 292', 'Identity chỉ có SĐT → dòng phụ là SĐT');
+assert.equal(itemSubtitle(mailbox, 'Email account'), 'Kuroemon98@gmail.com');
 
 console.log('vaultLogic check: OK');

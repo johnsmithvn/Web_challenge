@@ -20,6 +20,22 @@
       "auth": ["password"]
     },
     {
+      "_why": "2026-10-24: tách khỏi Account KHÔNG phải vì hình dạng dữ liệu (xem _merge) mà vì vai trò: hộp thư là GỐC mà item khác dựa vào. Roots nhận gốc của EML theo field email đầu tiên (identifiersOf), nên tiêu đề đặt tự do ('Gmail', 'Gmail công việc') thay vì phải là địa chỉ. Recovery phone là type phone: khớp với Identity giữ SĐT đó → hộp thư phụ thuộc SĐT.",
+      "key": "email",
+      "name": "Email account",
+      "code": "EML",
+      "chip": "Email",
+      "summary": "Mailbox address, password, recovery — other accounts lean on it.",
+      "icon": "envelope",
+      "fields": [
+        { "label": "Email address", "type": "email" },
+        { "label": "Password", "type": "password" },
+        { "label": "Recovery email", "type": "link" },
+        { "label": "Recovery phone", "type": "phone" }
+      ],
+      "auth": ["password"]
+    },
+    {
       "key": "card",
       "name": "Credit card",
       "code": "CRD",

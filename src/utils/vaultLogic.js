@@ -7,7 +7,7 @@
  *
  * Shape dữ liệu ở đây là shape của ĐẶC TẢ, không phải shape của DB:
  *   Item  { id, tpl, title, group, fields[], notes, tags[], favorite, updated, auth[], codes[], log[] }
- *   Field { id, label, type, value, values[], links[] }
+ *   Field { id, label, type, value, values[], links[], kind? }   kind: 'signin' | 'money' (chỉ field link)
  *   Link  { id, itemId, value }
  *   Auth  { id, kind, note, state: 'primary'|'on'|'off' }
  *   Code  { id, code, used }
@@ -52,8 +52,9 @@ export const TYPE_HINT = {
  * Nhãn field được ưu tiên lấy làm dòng phụ của item trong danh sách, theo thứ
  * tự. Hết danh sách thì rơi về tên template.
  */
+// 'Phone numbers': Identity chỉ giữ một SĐT (gốc của Roots) trước đây hiện dòng phụ "Identity"
 const SUBTITLE_LABELS = [
-  'Primary email', 'Username', 'Emails', 'Email',
+  'Email address', 'Primary email', 'Username', 'Emails', 'Phone numbers', 'Email',
   'Network (SSID)', 'Service', 'Full name', 'Host', 'Product',
 ];
 
@@ -296,10 +297,38 @@ export function normalizeIdent(value) {
   return d.startsWith('84') && d.length === 11 ? `0${d.slice(2)}` : d;
 }
 
+/* ══ Loại liên kết: đăng nhập vs tiền ══════════════════════════════════
+   Hai loại rủi ro đi NGƯỢC chiều nhau nên không được trộn trong một cây:
+   - 'signin' (Recovery email, Owner account…): mất mục được trỏ tới → mất mục
+     này. Đây là cạnh của dependentsOf / Roots.
+   - 'money' (Linked bank, Pays from…): mục này rút được tiền từ mục được trỏ
+     tới. Mất ví → tiền ở ngân hàng đi; mất ngân hàng không đụng được ví. Không
+     vào cây phụ thuộc — đi vào ma trận Money links và "Money reachable".
+   `field.kind` lưu trong payload mã hoá, tuỳ chọn: thiếu thì đoán theo nhãn. Ghép
+   theo giá trị (username = SĐT) luôn là 'signin' — nó không có field link. */
+export const LINK_KINDS = ['signin', 'money'];
+const MONEY_LABEL_RE = /linked bank|bank login|bank account|pays? from|funding|auto.?debit|top.?up|ngân hàng liên kết|liên kết ngân hàng|nguồn tiền|trích nợ|nạp tiền/i;
+
+export function guessLinkKind(label) {
+  return MONEY_LABEL_RE.test(String(label || '')) ? 'money' : 'signin';
+}
+
+/** Loại của một field link: user chọn tay thì theo đó, không thì đoán theo nhãn. */
+export function linkKind(field) {
+  return LINK_KINDS.includes(field.kind) ? field.kind : guessLinkKind(field.label);
+}
+
 const IDENT_TYPES = ['text', 'email', 'phone', 'multi'];
 const fieldValues = (f) => (f.type === 'multi' ? f.values || [] : [f.value]);
 
-/** Định danh item này đại diện cho (xem luật ở trên). */
+/**
+ * Định danh item này đại diện cho (xem luật ở trên):
+ * - tiêu đề chính là email/SĐT (luật cũ, giữ để item đang có không mất gốc);
+ * - Identity: mọi giá trị text/email/phone/multi;
+ * - Email account: field email ĐẦU TIÊN có giá trị ("Email address") — chỉ một,
+ *   để "Recovery phone" (type phone) hay một email phụ không biến hộp thư thành
+ *   gốc của SĐT / hộp thư khác.
+ */
 export function identifiersOf(item) {
   const ids = new Set();
   const add = (v) => { const n = normalizeIdent(v); if (n) ids.add(n); };
@@ -309,7 +338,25 @@ export function identifiersOf(item) {
       if (IDENT_TYPES.includes(f.type)) fieldValues(f).forEach(add);
     }
   }
+  if (item.tpl === 'email') {
+    const address = (item.fields || []).find((f) => f.type === 'email' && f.value);
+    if (address) add(address.value);
+  }
   return ids;
+}
+
+const MAIL_PROVIDERS = [
+  [/^(gmail|googlemail)\.com$/, 'Gmail'],
+  [/^(outlook|hotmail|live|msn)\.[a-z.]+$/, 'Outlook'],
+  [/^(yahoo|ymail)\.[a-z.]+$/, 'Yahoo Mail'],
+  [/^(icloud|me|mac)\.com$/, 'iCloud Mail'],
+  [/^(proton\.me|protonmail\.(com|ch)|pm\.me)$/, 'Proton Mail'],
+];
+
+/** Tiêu đề gợi ý cho một hộp thư: tên dịch vụ theo tên miền, lạ thì chính tên miền. */
+export function mailboxTitle(address) {
+  const domain = (String(address || '').trim().split('@')[1] || '').toLowerCase();
+  return MAIL_PROVIDERS.find(([re]) => re.test(domain))?.[1] || domain || 'Email';
 }
 
 /** Các item phụ thuộc TRỰC TIẾP vào `target`, mỗi item một dòng, `via` = nhãn field. */
@@ -320,7 +367,9 @@ function directDependents(items, target) {
     if (it.id === target.id) continue;
     const via = [];
     for (const f of it.fields || []) {
-      const linked = (f.links || []).some((L) => L.itemId === target.id);
+      // Liên kết tiền không làm `it` phụ thuộc vào `target` — xem LINK_KINDS
+      const linked = f.type === 'link' && linkKind(f) === 'signin'
+        && (f.links || []).some((L) => L.itemId === target.id);
       const matched = ids.size > 0 && !isSecretType(f.type) && f.type !== 'link'
         && fieldValues(f).some((v) => ids.has(normalizeIdent(v)));
       if ((linked || matched) && !via.includes(f.label)) via.push(f.label);
@@ -369,6 +418,83 @@ export function dependentsOf(items, rootId, maxDepth = 3) {
   return out;
 }
 
+/* ══ Liên kết tiền ═════════════════════════════════════════════════════ */
+
+/**
+ * Các item mà `item` rút được tiền từ đó (field link loại 'money'), mỗi đích một
+ * lần. Link tới item đã xoá bị bỏ qua. `byId` truyền vào được khi gọi lặp.
+ *
+ * @return {Array<{item, via: string}>} via = nhãn field ("Linked bank")
+ */
+export function moneyLinksOf(items, item, byId = new Map(items.map((i) => [i.id, i]))) {
+  const out = [];
+  for (const f of item.fields || []) {
+    if (f.type !== 'link' || linkKind(f) !== 'money') continue;
+    for (const L of f.links || []) {
+      const t = byId.get(L.itemId);
+      if (t && t.id !== item.id && !out.some((o) => o.item.id === t.id)) out.push({ item: t, via: f.label });
+    }
+  }
+  return out;
+}
+
+/** Chiều ngược của moneyLinksOf: những item rút được tiền TỪ item `id`. */
+export function moneySourcesOf(items, id) {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  return items.flatMap((it) => {
+    const hit = it.id === id ? null : moneyLinksOf(items, it, byId).find((l) => l.item.id === id);
+    return hit ? [{ item: it, via: hit.via }] : [];
+  });
+}
+
+/**
+ * Tiền bị kéo theo khi mất một gốc: liên kết tiền của chính gốc và của mọi item
+ * phụ thuộc đăng nhập vào nó (Email B → ZaloPay ⇒ Ngân hàng A · B · C).
+ *
+ * @param {Array} deps kết quả dependentsOf(items, root.id)
+ * @return {{groups: Array<{source, targets: Array<{item, via}>}>, banks: Array<object>}}
+ *   banks = các đích khác nhau
+ */
+export function moneyReach(items, root, deps) {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const groups = [];
+  const banks = new Map();
+  for (const source of [root, ...deps.map((d) => d.item)]) {
+    const targets = moneyLinksOf(items, source, byId);
+    if (!targets.length) continue;
+    groups.push({ source, targets });
+    for (const t of targets) banks.set(t.item.id, t.item);
+  }
+  return { groups, banks: [...banks.values()] };
+}
+
+/**
+ * Ma trận Money links: hàng = item có ≥1 liên kết tiền (ví, thẻ), cột = item bị
+ * trỏ tới (ngân hàng), cột nhiều nguồn nhất đứng trước. `cells` = số liên kết.
+ *
+ * @return {{rows: Array<{item, links, targets: Set<string>}>, cols: Array<{item, sources: Array}>, cells: number}}
+ */
+export function moneyMatrix(items) {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const rows = [];
+  const cols = new Map();
+  for (const it of items) {
+    const links = moneyLinksOf(items, it, byId);
+    if (!links.length) continue;
+    rows.push({ item: it, links, targets: new Set(links.map((l) => l.item.id)) });
+    for (const l of links) {
+      if (!cols.has(l.item.id)) cols.set(l.item.id, { item: l.item, sources: [] });
+      cols.get(l.item.id).sources.push(it);
+    }
+  }
+  const byTitle = (a, b) => a.item.title.localeCompare(b.item.title, 'vi');
+  return {
+    rows: rows.sort(byTitle),
+    cols: [...cols.values()].sort((a, b) => b.sources.length - a.sources.length || byTitle(a, b)),
+    cells: rows.reduce((n, r) => n + r.targets.size, 0),
+  };
+}
+
 /* ══ Roots (bản đồ gốc định danh) ═══════════════════════════════════════ */
 
 /**
@@ -376,7 +502,8 @@ export function dependentsOf(items, rootId, maxDepth = 3) {
  * phụ thuộc giảm dần rồi theo tên. Gốc không ai dựa vào vẫn có trong danh sách
  * (UI làm mờ) — nó vẫn là một mailbox / số điện thoại thật.
  *
- * @return {Array<{item, deps: Array, direct: number, depth: number}>}
+ * @return {Array<{item, deps: Array, direct: number, depth: number, money: object}>}
+ *   money = moneyReach của gốc
  */
 export function rootsOf(items) {
   return items
@@ -388,13 +515,15 @@ export function rootsOf(items) {
         deps,
         direct: deps.filter((d) => d.depth === 1).length,
         depth: deps.reduce((m, d) => Math.max(m, d.depth), 0),
+        money: moneyReach(items, item, deps),
       };
     })
     .sort((a, b) => b.deps.length - a.deps.length || a.item.title.localeCompare(b.item.title, 'vi'));
 }
 
-/** Gốc là gì: tiêu đề là email → 'email', là SĐT → 'phone', còn lại (Identity) → 'identity'. */
+/** Gốc là gì: Email account hoặc tiêu đề là email → 'email', tiêu đề là SĐT → 'phone', còn lại (Identity) → 'identity'. */
 export function rootKind(item) {
+  if (item.tpl === 'email') return 'email';
   const ident = normalizeIdent(item.title);
   if (!ident) return 'identity';
   return ident.includes('@') ? 'email' : 'phone';
@@ -681,6 +810,10 @@ export function diffLog(before, after, { itemTitles = {}, authLabels = {} } = {}
     } else if (f.type === 'link') {
       if (linkDesc(b) !== linkDesc(f)) {
         out.push({ text: `${f.label} links changed`, detail: `${linkDesc(b)} → ${linkDesc(f)}` });
+      }
+      // Đổi loại liên kết đổi cả Roots lẫn Money links → phải có dòng log
+      if (b.type === 'link' && linkKind(b) !== linkKind(f)) {
+        out.push({ text: `${f.label} link kind changed`, detail: `${linkKind(b)} → ${linkKind(f)}` });
       }
     } else if (b.value !== f.value) {
       const secret = isSecretType(f.type);

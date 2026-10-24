@@ -720,7 +720,10 @@ export function useAccounts() {
       notes: '',
       tags: [],
       fields: tpl.fields.map((field) => ({
-        id: newId(), label: field.label, type: field.type, value: values[field.label] || '', values: [], links: [],
+        id: newId(), label: field.label, type: field.type,
+        value: field.type === 'multi' ? '' : values[field.label] || '',
+        values: field.type === 'multi' && values[field.label] ? [values[field.label]] : [],
+        links: [],
       })),
       auth: (tpl.auth || []).map((kind, index) => ({
         id: newId(), kind, note: AUTH_KINDS[kind]?.note || '', state: index === 0 ? 'primary' : 'on',

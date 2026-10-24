@@ -1025,6 +1025,114 @@ button.acc-guard:hover { border-color: var(--color-accent-300); }
 .acc-deprow__sub { flex: none; font-family: var(--acc-mono); font-size: 11.5px; color: color-mix(in srgb, var(--color-text) 64%, transparent); }
 .acc-deprow__open { width: 32px; height: 32px; padding: 0; justify-content: center; }
 
+/* ── Tiền trong bản đồ gốc: viền đứt + vàng — chưa phải phụ thuộc đăng nhập
+   nhưng là tiền đi theo khi mất gốc ── */
+.acc-rootmap__cap--money { margin-top: 10px; color: var(--warn-ink); }
+.acc-depgroup--money {
+  border-style: dashed; border-color: var(--warn-line);
+  background: color-mix(in srgb, var(--warn-bg) 55%, var(--surface));
+}
+.acc-depgroup--money .acc-depgroup__head { background: transparent; color: var(--warn-ink); }
+.acc-deprow--money { border-top-color: color-mix(in srgb, var(--warn-line) 60%, transparent); }
+.acc-deprow__money { flex: none; font-family: var(--acc-mono); color: var(--warn); }
+.acc-chain__arrow--money { color: var(--warn); }
+.acc-chain__node--money { border-style: dashed; border-color: var(--warn-line); }
+.acc-rootrow__money { color: var(--warn-ink); }
+.acc-field__typenote--money { color: var(--warn-ink); }
+
+/* ── Chọn loại liên kết khi sửa field link (AccountDetail LinkKindPicker) ── */
+.acc-linkkind { display: grid; gap: 6px; margin-top: 8px; }
+.acc-linkkind__opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.acc-linkkind__opt {
+  flex: 1 1 180px; display: grid; gap: 2px; min-height: 48px; padding: 7px 10px;
+  text-align: left; border-radius: var(--r); cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--color-text) 22%, transparent);
+  background: transparent; color: var(--color-text); font: inherit;
+}
+.acc-linkkind__opt:hover { border-color: var(--color-accent-300); }
+.acc-linkkind__opt--on, .acc-linkkind__opt--on:hover { border-color: var(--color-accent); background: var(--color-accent-100); }
+.acc-linkkind__title { font-size: 13px; font-weight: 500; }
+.acc-linkkind__opt--on .acc-linkkind__title { font-weight: 600; }
+.acc-linkkind__sub, .acc-linkkind__hint {
+  font-size: 11.5px; color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
+.acc-linkkind__money { color: var(--warn); }
+
+/* ══ Money links (MoneyLinks.jsx): ma trận ví/thẻ × tài khoản ═══════════════
+   Bảng thật (<table>) — đọc hàng/cột bằng screen reader được. Cột đầu dính trái
+   khi cuộn ngang; nền dính phải ĐẶC (accent-100 là màu trong suốt) nên ô chọn
+   xếp lớp accent trên surface. */
+.acc-money { display: grid; gap: 14px; padding: 4px 13.6px 24px; }
+.acc-money__kpis { margin: 0; }
+.acc-money__scroll {
+  overflow-x: auto; border: 1px solid var(--color-divider); border-radius: var(--r);
+  background: var(--surface);
+}
+.acc-money__table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.acc-money__table th, .acc-money__table td { border-bottom: 1px solid var(--color-divider); }
+.acc-money__table thead th { padding: 0; font-weight: 500; text-align: center; border-left: 1px solid var(--color-divider); }
+.acc-money__table thead th.acc-money__corner {
+  padding: 10px 12px; text-align: left; border-left: 0; white-space: nowrap;
+  font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
+.acc-money__colbtn, .acc-money__rowbtn {
+  border: 0; background: transparent; color: var(--color-text); font: inherit; cursor: pointer;
+}
+.acc-money__colbtn { width: 100%; min-height: 44px; padding: 6px 10px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.acc-money__colbtn:hover, .acc-money__rowbtn:hover { color: var(--color-accent-700); }
+.acc-money__table tbody th, .acc-money__table tfoot th {
+  position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left;
+}
+.acc-money__table tbody th { padding: 0; font-weight: 500; }
+.acc-money__rowbtn { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 6px 12px; text-align: left; }
+.acc-money__rowbtn .acc-avatar { width: 28px; height: 28px; border-radius: var(--r); font-size: 12px; }
+.acc-money__rowname { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-money__table td { min-width: 64px; text-align: center; border-left: 1px solid var(--color-divider); }
+.acc-money__table .acc-money__on,
+.acc-money__table tr.acc-money__on > td { background: var(--color-accent-100); }
+.acc-money__table tr.acc-money__on > th {
+  background: linear-gradient(var(--color-accent-100), var(--color-accent-100)), var(--surface);
+}
+.acc-money__dot {
+  display: inline-block; width: 14px; height: 14px; border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--color-text) 78%, transparent);
+}
+.acc-money__none {
+  display: inline-block; width: 4px; height: 4px; border-radius: 2px;
+  background: color-mix(in srgb, var(--color-text) 22%, transparent);
+}
+.acc-money__table tfoot th, .acc-money__table tfoot td { border-bottom: 0; }
+.acc-money__table tfoot th {
+  padding: 10px 12px; font-size: 12px; font-weight: 500;
+  color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
+.acc-money__table tfoot td { padding: 10px 8px; font-family: var(--acc-mono); font-size: 13px; }
+.acc-money__exposed { color: var(--warn-ink); }
+.acc-money__legend {
+  display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 12.5px;
+  color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
+.acc-money__legend .acc-money__dot { width: 12px; height: 12px; margin-right: 4px; vertical-align: -2px; }
+
+/* Panel bên phải: một dòng = một item mở được */
+.acc-moneyrow {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px;
+  padding: 6px 13.6px; border: 0; background: var(--surface); color: var(--color-text);
+  font: inherit; font-size: 13.5px; text-align: left; cursor: pointer;
+}
+.acc-moneyrow:hover { background: var(--color-accent-100); }
+.acc-moneyrow__title { flex: 1; min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-moneyrow__title--mono { font-family: var(--acc-mono); font-size: 13px; }
+.acc-moneyrow__sub { flex: none; font-size: 12px; color: color-mix(in srgb, var(--color-text) 64%, transparent); }
+.acc-moneyrow svg { flex: none; color: color-mix(in srgb, var(--color-text) 64%, transparent); }
+
+/* Money links cần pane giữa rộng (ma trận), pane phải hẹp (panel). Chỉ đổi ở
+   ≥1180px và ở dạng rail; dưới 900px vẫn 1 cột như mọi màn khác. */
+@container (min-width: 1180px) {
+  .acc-vault[data-view="money"] .acc-body { grid-template-columns: 216px minmax(0, 1fr) minmax(280px, 340px); }
+}
+
 /* Thanh độ mạnh */
 .acc-strength { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .acc-strength__track {
@@ -1335,6 +1443,7 @@ button.acc-guard:hover { border-color: var(--color-accent-300); }
    dạng này — ô tìm kiếm vẫn khớp tên tag. */
 @container (min-width: 900px) and (max-width: 1179px) {
   .acc-body { grid-template-columns: 60px minmax(300px, 360px) minmax(520px, 1fr); }
+  .acc-vault[data-view="money"] .acc-body { grid-template-columns: 60px minmax(0, 1fr) minmax(260px, 300px); }
   .acc-groups { align-items: center; padding: 10.2px 6px 27.2px; }
   .acc-grp, .acc-grp--sub { width: 44px; min-height: 44px; padding: 0; justify-content: center; }
   .acc-grp--sub { min-height: 36px; }

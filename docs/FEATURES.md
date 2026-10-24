@@ -343,6 +343,19 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   mất gốc thì kéo theo những gì. Mục **Not in vault yet** liệt kê email/SĐT làm giá trị cho ≥2 item mà
   chưa có item riêng; "Add as item" tạo item Account với tiêu đề + Username điền sẵn. Mobile: danh sách
   gốc → bản đồ xếp dọc.
+- **Email account (EML) và Identity làm gốc:** hộp thư nên lưu bằng loại Email account — tiêu đề đặt tự
+  do ("Gmail", "Gmail công việc"), địa chỉ ở field Email address; Roots nhận gốc theo field đó. Mỗi số
+  điện thoại là một Identity (Phone numbers), dòng phụ ngoài danh sách hiện chính số đó. Item cũ có tiêu
+  đề là email/SĐT vẫn là gốc như trước.
+- **Hai loại liên kết:** mỗi field *Linked item* là **Sign-in · recovery** (→, mất mục được trỏ tới thì
+  mất mục này) hoặc **Money · pays from** (⇒, mục này rút được tiền từ mục được trỏ tới). Chọn ở chế
+  độ Edit; chưa chọn thì đoán theo tên field ("Linked bank", "Bank login", "Nguồn tiền"… là tiền). Roots
+  và Depends on this chỉ đi theo liên kết đăng nhập; bản đồ gốc thêm **Money reachable** (Email B →
+  ZaloPay ⇒ Ngân hàng A · B · C) và chỉ số Money reach. Trang chi tiết của tài khoản có mục **Can move
+  money out of this**.
+- **Money links:** mục trong cột nhóm (hiện khi có liên kết tiền). Bảng ma trận ví/thẻ × tài khoản,
+  dòng cuối đếm số nguồn rút được từ mỗi tài khoản (vàng khi ≥ 2); bấm tên hàng / cột để xem panel:
+  rút tiền từ đâu / bị ai rút, đăng nhập bằng gì, cảnh báo. Mobile: bảng → panel.
 - **Mobile:** đi sâu từng màn — Vault (danh sách nhóm) → nhóm → chi tiết. Gõ tìm kiếm ở màn Vault là
   tìm toàn vault. Trang chi tiết có thanh Copy username / Copy password ghim đáy; chế độ sửa ghim
   Cancel · Save ở đáy. Nút Đổi mật khẩu Vault nằm cuối màn Vault. Nút tạo nhanh (QuickCapture) không

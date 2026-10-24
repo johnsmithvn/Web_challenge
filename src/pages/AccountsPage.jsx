@@ -7,11 +7,12 @@ import { useConfirm } from '../components/ConfirmModal';
 import AccountDetail from '../components/AccountDetail';
 import AccountAvatar from '../components/AccountAvatar';
 import RootMap, { RootRow } from '../components/RootMap';
+import { MoneyMatrix, MoneyPanel } from '../components/MoneyLinks';
 import AppIcon from '../components/AppIcon';
 import SkeletonList from '../components/SkeletonList';
 import {
   matchesQuery, itemSubtitle, newId, relativeUpdated, avatarHue, groupTree, groupKey, inGroup,
-  isPasswordOnly, rootsOf, untrackedIdentifiers,
+  isPasswordOnly, rootsOf, untrackedIdentifiers, moneyMatrix, mailboxTitle,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import '../styles/accounts.css';
@@ -59,6 +60,7 @@ export default function AccountsPage() {
   const [query, setQuery] = useState('');
   const [viewState, setView] = useState('all');   // 'all' | 'fav' | 'weak' | 'roots' | 'none' (Ungrouped) | 'g:<groupKey>'
   const [rootId, setRootId] = useState(null);     // gốc đang mở ở màn Roots (null = gốc đầu danh sách)
+  const [moneySel, setMoneySel] = useState(null); // { type: 'row' | 'col', id } ở màn Money links
   const [tplFilter, setTplFilter] = useState(''); // '' = mọi loại
   const [tag, setTag] = useState(null);           // tag id
   const [selectedId, setSelectedId] = useState(null);
@@ -126,6 +128,14 @@ export default function AccountsPage() {
   // Từ bản đồ gốc mở một item thường → rời màn Roots, sang trang chi tiết của nó
   const openItem = (id) => { setView('all'); setTag(null); open(id); };
 
+  // ── Money links ─────────────────────────────────────────────
+  const money = useMemo(() => moneyMatrix(items), [items]);
+  // Chưa chọn gì → hàng đầu bảng; hàng/cột đã chọn biến mất (sửa link) → cũng về hàng đầu
+  const moneyFallback = money.rows[0] ? { type: 'row', id: money.rows[0].item.id } : null;
+  const activeMoney = moneySel && (moneySel.type === 'row' ? money.rows : money.cols)
+    .some((x) => x.item.id === moneySel.id) ? moneySel : moneyFallback;
+  const pickMoney = (sel) => { setMoneySel(sel); setScreen('detail'); };
+
   const counts = useMemo(() => {
     const c = { fav: 0, weak: 0 };
     for (const i of items) {
@@ -166,9 +176,10 @@ export default function AccountsPage() {
       : view === 'fav' ? 'Favourites'
         : view === 'weak' ? 'Password only'
           : view === 'roots' ? 'Roots'
+            : view === 'money' ? 'Money links'
             : view === 'none' ? 'Ungrouped'
               : 'All items';
-  const listCount = view === 'roots' ? visibleRoots.length : visible.length;
+  const listCount = view === 'roots' ? visibleRoots.length : view === 'money' ? money.cells : visible.length;
 
   // Ở màn 'home' (mobile) gõ tìm kiếm là tìm TOÀN vault → nhảy sang danh sách All.
   // Ô tìm kiếm nằm ở header, header vẫn hiện ở màn 'list' → input không bị
@@ -247,12 +258,16 @@ export default function AccountsPage() {
     open(id, { edit: true });
   };
 
-  // "Add as item" ở màn Roots: tiêu đề = chính email/SĐT đó nên item mới lập tức
-  // thành một gốc (luật identifiersOf), Username điền sẵn, mở thẳng chế độ sửa.
+  // "Add as item" ở màn Roots: email → Email account (tiêu đề "Gmail"/"Outlook"… theo
+  // tên miền, địa chỉ vào field Email address), SĐT → Identity giữ số đó. Cả hai lập
+  // tức thành gốc (luật identifiersOf) mà tiêu đề không phải là chính địa chỉ.
   const handleAddRoot = async (u) => {
     if (creating) return;
-    setCreating('account');
-    const id = await createItem('account', { title: u.value, values: { Username: u.value } });
+    const isEmail = u.ident.includes('@');
+    setCreating(isEmail ? 'email' : 'identity');
+    const id = await createItem(isEmail ? 'email' : 'identity', isEmail
+      ? { title: mailboxTitle(u.value), values: { 'Email address': u.value } }
+      : { title: `Phone · ${u.value}`, values: { 'Phone numbers': u.value } });
     setCreating(null);
     if (!id) { showToast('Could not create the item', { icon: 'warning' }); return; }
     setView('all');
@@ -309,7 +324,7 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="acc-vault" data-screen={screen}>
+    <div className="acc-vault" data-screen={screen} data-view={view === 'money' ? 'money' : undefined}>
       {/* ── Header ── */}
       <header className="acc-head">
         <div className="acc-brand">
@@ -383,6 +398,11 @@ export default function AccountsPage() {
             <GroupBtn icon="tree" label="Roots" count={roots.length}
               on={view === 'roots' && !tag} onClick={() => pickView('roots')} />
           )}
+          {/* Ví / thẻ ⇒ tài khoản: liên kết tiền tách khỏi cây đăng nhập của Roots */}
+          {money.cells > 0 && (
+            <GroupBtn icon="money" label="Money links" count={money.cells}
+              on={view === 'money' && !tag} onClick={() => pickView('money')} />
+          )}
 
           <div className="acc-groups__cap">Groups</div>
           {tree.groups.map((g) => (
@@ -427,7 +447,11 @@ export default function AccountsPage() {
           </button>
         </nav>
 
-        {view === 'roots' ? (
+        {view === 'money' ? (
+          <section className="acc-pane acc-pane--list" aria-label="Money links">
+            <MoneyMatrix matrix={money} selected={activeMoney} onSelect={pickMoney} />
+          </section>
+        ) : view === 'roots' ? (
           <section className="acc-pane acc-pane--list" aria-label="Identity roots">
             <div className="acc-listhead">
               <h2 className="acc-listhead__title">Roots</h2>
@@ -509,7 +533,19 @@ export default function AccountsPage() {
         )}
 
         <section className="acc-pane acc-pane--detail">
-          {view === 'roots' ? (
+          {view === 'money' ? (
+            <MoneyPanel
+              key={activeMoney ? `${activeMoney.type}:${activeMoney.id}` : 'none'}
+              items={items}
+              matrix={money}
+              selected={activeMoney}
+              rootIds={rootIds}
+              backLabel="Money links"
+              onBack={() => setScreen('list')}
+              onOpenItem={openItem}
+              onPickRoot={pickRoot}
+            />
+          ) : view === 'roots' ? (
             activeRoot ? (
               <RootMap
                 key={activeRoot.item.id}

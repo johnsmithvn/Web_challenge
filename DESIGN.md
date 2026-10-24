@@ -1207,6 +1207,29 @@ Types/Tags filter bar is gone.
   `min-width: 1040px` floor is **dropped** for the same reason; the real floor is
   the columns' own `300 + 520`. Touch targets ≥44px and inputs 16px when narrow
   (iOS zoom). No JS breakpoint, no `useMediaQuery`, no duplicated mobile layout markup.
+- **Root titles are free text.** A root is recognised from data, not the title: an Identity's
+  values, or an **Email account (EML)**'s first email field (only the first — a "Recovery
+  phone" must not turn a mailbox into the root of that number). So the convention is title
+  = service ("Gmail", "VIB"), address in a field; `RootRow` and the root card show the real
+  address/number (`addressOf`) whenever the title is not itself one. Items titled with the
+  raw address still count (legacy rule).
+- **Two link kinds — sign-in (→) vs money (⇒) (design L0–L4 on the canvas, 2026-10-24).** A
+  wallet linked to a bank is risk flowing the *other* way from a recovery email, so the two
+  never share a tree. Every money-flavoured thing is drawn as money: `⇒` glyph, amber
+  (`--warn*`), dashed border (`.acc-depgroup--money`, `.acc-chain__node--money`); sign-in keeps
+  `→` and the accent. Edit mode shows `.acc-linkkind` — two `aria-pressed` buttons (not a
+  radiogroup: two options do not earn arrow-key handling) plus "Guessed from the field name"
+  while `kind` is unset. View mode labels each link field `→ Sign-in link` / `⇒ Money link`
+  (`.acc-field__typenote--money`).
+- **Money links (`MoneyLinks.jsx`) — a matrix, not a diagram.** Many-to-many wallet ↔ bank
+  lines cross from the third wallet on, so it is a real `<table>`: rows = items with money
+  links (`AccountAvatar` + name, sticky left with an *opaque* background — `accent-100` is
+  translucent, so a selected sticky cell layers it over `--surface`), columns = linked
+  accounts sorted by how many sources reach them, footer row counts sources (amber at ≥2).
+  Cells are indicators, not buttons; row and column headers are the buttons, so Tab walks
+  headers only. `.acc-vault[data-view="money"]` swaps the body grid to a wide middle pane and a
+  narrow detail pane (`MoneyPanel`) at ≥1180px and in rail mode; mobile keeps the normal
+  list → detail screens.
 - **Roots — identity root map (`RootMap.jsx`, design R0–R2 on the canvas).** A "Roots" entry
   (icon `tree`) in the groups column swaps the middle pane for the roots list (`RootRow`,
   reusing `.acc-row` + `.acc-avatar`; roots nothing depends on get `.acc-row--dim`) and
