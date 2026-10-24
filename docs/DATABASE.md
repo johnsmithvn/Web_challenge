@@ -69,8 +69,8 @@ auth.users
 | `finance_loans` | Khoản vay và kỳ trả (mình đi vay) |
 | `finance_lendings` | Cho vay — tiền mình cho người khác mượn. Thu về nhiều lần; số đã thu suy từ `finance_transactions.lending_id`. Giao dịch thu về `excluded` nên không bị tính là thu nhập. `rate` (%/năm) tính lãi theo NGÀY trên gốc còn lại; `forfeited_interest` là TIỀN TUYỆT ĐỐI (lãi mất do đập tiết kiệm trước hạn), cộng vào tổng phải thu và **không** nhân với số ngày. Lãi là số suy ra, không lưu cột nào |
 | `finance_cards` | Chu kỳ sao kê và thanh toán thẻ. `annual_fee_on` là DATE (không phải ngày-trong-tháng như `statement_day`/`due_day`) vì phí thường niên lặp mỗi năm; NULL = không nhắc |
-| `finance_saving_goals` | Quỹ tiết kiệm và chính sách khóa |
-| `finance_deposits` | Nơi gửi thuộc quỹ; đáo hạn suy ra từ kỳ hạn |
+| `finance_saving_goals` | Quỹ tiết kiệm và chính sách khóa. `is_default` = quỹ **Tích lũy chung** (v6.31.0): nơi gửi không thuộc mục tiêu nào vào đây, app tạo khi lưu nơi gửi đầu tiên chọn "Tích lũy chung"; unique index `finance_goals_one_default` giữ tối đa 1 quỹ mặc định **đang mở** mỗi user |
+| `finance_deposits` | Nơi gửi thuộc quỹ (`fund_id NOT NULL` — không có nơi gửi "không quỹ"); đáo hạn suy ra từ kỳ hạn (`term` luôn theo tháng). Tích lũy An Gia (v6.31.0): `initial_amount` (gửi lần đầu X) + `monthly_amount` (góp Y mỗi tháng, ngày góp = ngày gửi) đi cặp, có kỳ hạn; `amount` vẫn là số đang gửi thật, tăng theo mỗi lần góp. Đã góp đủ chưa = `amount` ≥ X + Y × số kỳ đã tới hạn (`anGiaPlan`), không dựa vào giao dịch vì giao dịch quỹ không ghi sổ nào |
 | `finance_shortcuts` | Mẫu nhập nhanh, không giữ số tiền cố định. `recent_amounts` (tối đa 3) là các mức đã dùng, hiện thành nút bấm-là-ghi khi mở shortcut. Đã cân nhắc thêm cột `default_amount` để bấm một cái ghi luôn và **bỏ** — xem mục "Đã thử rồi bỏ" trong CHANGELOG |
 | `finance_category_overrides` | Nhãn/màu/icon/subcategory tùy biến theo user (10 nhóm chi chính) |
 | `finance_transaction_tags` | Giao dịch ↔ Tag |

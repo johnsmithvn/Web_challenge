@@ -2314,6 +2314,10 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   gap: 8px;
   margin-bottom: 10px;
 }
+/* Form nơi gửi: 4 loại một hàng (mobile vẫn 1 cột theo media query bên dưới) */
+.fin-type-picker--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 .fin-type-picker__btn {
   display: flex;
   flex-direction: column;

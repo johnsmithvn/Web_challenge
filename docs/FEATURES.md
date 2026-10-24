@@ -298,7 +298,7 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   cũ trả muộn mang nhãn tháng mới, bỏ kỳ trước `opened_at`); thẻ hiện nợ sao kê kỳ trước còn treo — tiền trả
   trừ vào nợ cũ nhất trước.
 - Cho vay hiện lãi đơn theo ngày trên gốc còn lại, hỗ trợ tính lãi mất do rút tiết kiệm sớm (`forfeited_interest`).
-- Quỹ tiết kiệm: Quản lý nhiều nơi gửi/sổ ngân hàng, lãi suất bình quân, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ.
+- Quỹ tiết kiệm: Quản lý nhiều nơi gửi/sổ ngân hàng, lãi suất bình quân, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ. Nơi gửi có 4 loại: Chứng chỉ tiền gửi, Sổ tiết kiệm, Tích lũy linh hoạt, **Tích lũy An Gia** (gửi lần đầu X, góp cố định Y mỗi tháng vào ngày gửi, kỳ hạn theo năm; lãi dự kiến tính theo lịch góp; hub nhắc kỳ góp tháng này, sổ báo "thiếu … tiền góp" khi số đang gửi thấp hơn lịch; panel sổ có Góp tiền điền sẵn số còn thiếu; đáo hạn chỉ rút về). Ô quỹ trong form nơi gửi mặc định **Tích lũy chung** — quỹ riêng, app tự tạo khi cần — không còn lặng lẽ gắn vào quỹ mục tiêu đầu danh sách.
 - Sổ đã đáo hạn: nút Xử lý → rút về hoặc gửi lại (chỉ gốc / gốc + lãi). Sổ cũ đóng và vào "Lịch sử sổ đã tất toán" (mở lại được), gửi lại là một dòng sổ mới, lãi thực nhận ghi thành Thu › Lãi tiết kiệm; toast có Hoàn tác.
 
 **Data:** 10 bảng `finance_*` chính + `finance_transaction_tags`. Schema chi tiết ở
