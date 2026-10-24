@@ -358,6 +358,43 @@ const MAIL_PROVIDERS = [
   [/^(proton\.me|protonmail\.(com|ch)|pm\.me)$/, 'Proton Mail'],
 ];
 
+/**
+ * Gợi ý cho ô tiêu đề (tiêu đề = tên dịch vụ). Thứ tự: `extra` (vd tên hộp thư suy
+ * từ địa chỉ) → tên đã dùng trong vault, kèm nhóm của chính item đó → danh sách
+ * dịch vụ hay dùng. Trùng (không phân biệt hoa thường) chỉ giữ cái đứng trước.
+ * Bỏ tên là email/SĐT và tên mặc định "New …" — gợi ý chúng chỉ là rác.
+ *
+ * @param {Object<string,string[]>} presets { [nhóm]: [tên dịch vụ] }
+ * @param {string[]} extra
+ * @return {Array<{title: string, group: string}>} group '' = không gợi ý nhóm
+ */
+export function titleSuggestions(items, presets = {}, extra = []) {
+  const out = [];
+  const seen = new Set();
+  const push = (title, group = '') => {
+    const t = String(title || '').trim();
+    const k = t.toLocaleLowerCase('vi');
+    if (!t || seen.has(k) || normalizeIdent(t) || /^new\s/i.test(t)) return;
+    seen.add(k);
+    out.push({ title: t, group });
+  };
+  const presetGroup = new Map();
+  for (const [group, titles] of Object.entries(presets)) {
+    if (group.startsWith('_')) continue;
+    titles.forEach((t) => presetGroup.set(String(t).trim().toLocaleLowerCase('vi'), normalizeGroup(group)));
+  }
+  const groupOf = (t) => presetGroup.get(String(t || '').trim().toLocaleLowerCase('vi')) || '';
+  extra.forEach((t) => push(t, groupOf(t)));
+  // Item trong vault chưa có nhóm thì mượn nhóm của preset cùng tên (Zalo → Mạng xã hội)
+  [...items]
+    .sort((a, b) => a.title.localeCompare(b.title, 'vi'))
+    .forEach((it) => push(it.title, normalizeGroup(it.group) || groupOf(it.title)));
+  for (const [group, titles] of Object.entries(presets)) {
+    if (!group.startsWith('_')) titles.forEach((t) => push(t, normalizeGroup(group)));
+  }
+  return out;
+}
+
 /** Tiêu đề gợi ý cho một hộp thư: tên dịch vụ theo tên miền, lạ thì chính tên miền. */
 export function mailboxTitle(address) {
   const domain = (String(address || '').trim().split('@')[1] || '').toLowerCase();

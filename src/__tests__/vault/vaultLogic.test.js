@@ -17,7 +17,7 @@ import {
   normalizeIdent, identifiersOf, dependentsOf, isPasswordOnly,
   rootsOf, upstreamOf, chainTo, untrackedIdentifiers, rootKind,
   guessLinkKind, linkKind, moneyLinksOf, moneyReach, moneyMatrix, moneySourcesOf,
-  mailboxTitle,
+  mailboxTitle, titleSuggestions,
 } from '../../utils/vaultLogic.js';
 
 /* ── TYPES phải khớp CHECK constraint trong migration ──────────────────── */
@@ -598,6 +598,20 @@ assert.equal(mailboxTitle('a@outlook.com.vn'), 'Outlook');
 assert.equal(mailboxTitle('a@icloud.com'), 'iCloud Mail');
 assert.equal(mailboxTitle('a@company.vn'), 'company.vn', 'lạ thì dùng tên miền');
 assert.equal(mailboxTitle(''), 'Email');
+
+/* ── Gợi ý tiêu đề ────────────────────────────────────────────────────── */
+const sugg = titleSuggestions(
+  [{ title: 'VIB', group: 'Tài chính/Ngân hàng' }, { title: 'kuroemon98@gmail.com' }, { title: 'New account' }, { title: 'Zalo' }],
+  { 'Tài chính/Ngân hàng': ['Vietcombank', 'vib'], 'Mạng xã hội': ['Facebook', 'zalo'], Email: ['Gmail'], _note: ['x'] },
+  ['Gmail'],
+);
+assert.deepEqual(sugg.map((s) => [s.title, s.group]), [
+  ['Gmail', 'Email'],
+  ['VIB', 'Tài chính/Ngân hàng'],
+  ['Zalo', 'Mạng xã hội'],
+  ['Vietcombank', 'Tài chính/Ngân hàng'],
+  ['Facebook', 'Mạng xã hội'],
+], 'extra → tên trong vault (giữ cách viết; chưa có nhóm thì mượn nhóm preset) → preset; bỏ email, "New …", trùng, khoá _');
 
 assert.equal(itemSubtitle(phone, 'Identity'), '0327 279 292', 'Identity chỉ có SĐT → dòng phụ là SĐT');
 assert.equal(itemSubtitle(mailbox, 'Email account'), 'Kuroemon98@gmail.com');

@@ -343,6 +343,9 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   mất gốc thì kéo theo những gì. Mục **Not in vault yet** liệt kê email/SĐT làm giá trị cho ≥2 item mà
   chưa có item riêng; "Add as item" tạo item Account với tiêu đề + Username điền sẵn. Mobile: danh sách
   gốc → bản đồ xếp dọc.
+- **Tiêu đề = tên dịch vụ** (VIB, Gmail, Shopee), không phải username. Ô tiêu đề ở chế độ Edit xổ gợi ý:
+  tên đã dùng trong vault + danh sách dịch vụ hay dùng (`titlePresets`); chọn một tên khi item chưa có nhóm
+  thì nhóm được điền theo. Gõ tên khác vẫn được.
 - **Chuyển nhóm hàng loạt:** nút **Select** ở đầu danh sách → tick nhiều item (hoặc "Select all" theo bộ
   lọc đang xem) → gõ / chọn nhóm ở thanh **Move to group** → Move. Gõ tên chưa có là tạo nhóm, để trống là
   bỏ nhóm. **+ New group** ở cột nhóm mở thẳng chế độ chọn ở All items để tạo nhóm mới.

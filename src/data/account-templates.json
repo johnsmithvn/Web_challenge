@@ -199,7 +199,21 @@
       { "match": ["dev", "lập trình", "code", "server"], "icon": "code" },
       { "match": ["nền tảng", "platform", "cloud"], "icon": "cloud" },
       { "match": ["gia đình", "family", "home"], "icon": "house" },
-      { "match": ["sức khỏe", "sức khoẻ", "health"], "icon": "heart" }
+      { "match": ["sức khỏe", "sức khoẻ", "health"], "icon": "heart" },
+      { "match": ["mua sắm", "shopping"], "icon": "shopping" },
+      { "match": ["giải trí", "phim", "nhạc", "entertainment"], "icon": "film" }
     ]
+  },
+
+  "_titlePresetsNote": "Gợi ý cho ô tiêu đề ở chế độ Edit (<datalist>, gõ tên khác vẫn được). Tiêu đề = tên dịch vụ, không phải username. Chọn đúng một tên ở đây khi item CHƯA có nhóm thì nhóm bên trái được điền theo — user đổi được. Tên đã dùng trong vault luôn đứng trước danh sách này (titleSuggestions).",
+  "titlePresets": {
+    "Tài chính/Ngân hàng": ["Vietcombank", "VietinBank", "BIDV", "Agribank", "Techcombank", "MB Bank", "ACB", "VPBank", "TPBank", "VIB", "Sacombank", "HDBank", "SHB", "ABBANK", "OCB", "MSB", "SeABank", "Eximbank", "LPBank", "Nam A Bank", "Cake", "Timo"],
+    "Tài chính/Ví điện tử": ["MoMo", "ZaloPay", "VNPAY", "ShopeePay", "Viettel Money"],
+    "Email": ["Gmail", "Outlook", "iCloud Mail", "Yahoo Mail", "Proton Mail"],
+    "Mạng xã hội": ["Facebook", "Zalo", "Instagram", "TikTok", "X (Twitter)", "Telegram", "Discord", "LinkedIn", "Threads"],
+    "Mua sắm": ["Shopee", "Lazada", "Tiki", "Grab", "Be", "Xanh SM"],
+    "Giải trí": ["Netflix", "Spotify", "YouTube", "FPT Play", "VieON"],
+    "Nền tảng": ["Google", "Microsoft", "Apple ID", "GitHub", "Dropbox"],
+    "Giấy tờ": ["VNeID"]
   }
 }

@@ -1207,6 +1207,11 @@ Types/Tags filter bar is gone.
   `min-width: 1040px` floor is **dropped** for the same reason; the real floor is
   the columns' own `300 + 520`. Touch targets ≥44px and inputs 16px when narrow
   (iOS zoom). No JS breakpoint, no `useMediaQuery`, no duplicated mobile layout markup.
+- **Title = service name, with suggestions.** The Edit-mode title input carries a native
+  `<datalist>` (`titleSuggestions`): mailbox name derived from the address → titles already in
+  the vault (the user's own spelling) → `titlePresets` in `account-templates.json`. Picking an
+  exact suggestion fills the group only when the item has none — it never overwrites a group
+  the user chose. Free typing always works; this is a hint list, not a picker.
 - **Bulk move to group.** **Select** in the list head turns rows into `<label>`s wrapping a
   real checkbox (`.acc-row--select`, `.acc-row--picked`) — no control nested in a `<button>`.
   `.acc-bulkbar` sticks to the bottom of the list pane (inside the scroll area, so it never

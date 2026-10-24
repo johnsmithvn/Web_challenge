@@ -3,6 +3,7 @@ import {
   TYPES, TYPE_HINT, isSecretType, scorePassword, generatePassword, parseCodes, codeSheet,
   linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl, itemSubtitle,
   normalizeGroup, groupTree, dependentsOf, isPasswordOnly, linkKind, moneySourcesOf,
+  titleSuggestions, mailboxTitle,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import AppIcon from './AppIcon';
@@ -31,7 +32,7 @@ import AccountAvatar from './AccountAvatar';
  * only as an authenticated encrypted payload.
  */
 
-const { templates: TEMPLATES, authKinds: AUTH_KINDS } = ACCOUNT_TEMPLATES;
+const { templates: TEMPLATES, authKinds: AUTH_KINDS, titlePresets: TITLE_PRESETS } = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
 const AUTH_KIND_LIST = Object.entries(AUTH_KINDS).map(([value, v]) => ({ value, ...v }));
@@ -166,6 +167,22 @@ export default function AccountDetail({
     .flatMap((g) => [g.path, ...g.children.map((c) => c.path)]), [items]);
   const groupLabel = normalizeGroup(item.group).replace('/', ' › ');
 
+  // Gợi ý tiêu đề (tiêu đề = tên dịch vụ): Email account có địa chỉ thì "Gmail"/"Outlook"
+  // đứng đầu, rồi tên đã dùng trong vault, rồi danh sách dịch vụ hay dùng
+  const draftAddress = draft?.tpl === 'email'
+    ? (draft.fields.find((f) => f.type === 'email' && f.value) || draft.fields.find((f) => /@/.test(f.value || '')))?.value
+    : '';
+  const titleOptions = useMemo(
+    () => (draft ? titleSuggestions(items, TITLE_PRESETS, draftAddress ? [mailboxTitle(draftAddress)] : []) : []),
+    [draft, items, draftAddress],
+  );
+  // Chọn đúng một tên có trong gợi ý khi item CHƯA có nhóm → điền nhóm theo; đã có nhóm thì không đè
+  const setTitle = (value) => patch((d) => {
+    d.title = value;
+    const hit = titleOptions.find((o) => o.title.toLocaleLowerCase('vi') === value.trim().toLocaleLowerCase('vi'));
+    if (hit?.group && !normalizeGroup(d.group)) d.group = hit.group;
+  });
+
   // Thanh copy ghim đáy (chỉ mobile, M3): copy tên đăng nhập / secret là việc làm
   // nhiều nhất, nên nó nằm dưới ngón cái thay vì giữa danh sách field. Nhãn lấy
   // theo field ("Copy card number" cho thẻ) — không đoán là "password".
@@ -242,14 +259,21 @@ export default function AccountDetail({
           )}
 
           {editing ? (
-            <input
-              ref={titleRef}
-              className="acc-input acc-title__input"
-              value={draft.title}
-              onChange={(e) => patch((d) => { d.title = e.target.value; })}
-              placeholder="Title"
-              aria-label="Item title"
-            />
+            <>
+              <input
+                ref={titleRef}
+                className="acc-input acc-title__input"
+                value={draft.title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Service name, e.g. VIB, Gmail, Shopee"
+                aria-label="Item title"
+                list="acc-title-options"
+              />
+              {/* Native datalist: xổ danh sách để chọn, vẫn gõ tên tuỳ ý được */}
+              <datalist id="acc-title-options">
+                {titleOptions.map((o) => <option key={o.title} value={o.title} />)}
+              </datalist>
+            </>
           ) : (
             <h1 className="acc-title__h1">{item.title}</h1>
           )}
