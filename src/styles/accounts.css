@@ -643,6 +643,37 @@
   color: color-mix(in srgb, var(--color-text) 64%, transparent);
 }
 
+/* ── Màn Roots: danh sách gốc (cột giữa) ── */
+.acc-row--dim { opacity: .62; }
+.acc-rootrow__title { font-family: var(--acc-mono); font-weight: 500; font-size: 13.5px; }
+.acc-rootrow__count {
+  min-width: 26px; height: 22px; box-sizing: border-box; padding: 0 6px;
+  display: grid; place-items: center; border-radius: var(--r-sm);
+  font-family: var(--acc-mono); font-size: 12px;
+  background: color-mix(in srgb, var(--color-text) 9%, transparent);
+}
+.acc-row--on .acc-rootrow__count { background: var(--color-accent); color: var(--on-accent); }
+.acc-roots__hint {
+  margin: 0; padding: 8px 13.6px 4px; font-size: 12.5px; line-height: 1.45;
+  color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
+.acc-roots__cap {
+  margin: 20px 13.6px 6px;
+  font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
+/* "Not in vault yet" — viền đứt: thứ chưa tồn tại, không phải một item */
+.acc-untracked {
+  display: grid; gap: 8px; margin: 0 8.5px 8px; padding: 10px 12px;
+  border: 1px dashed color-mix(in srgb, var(--color-text) 24%, transparent); border-radius: var(--r);
+}
+.acc-untracked__id { font-family: var(--acc-mono); font-size: 13.5px; overflow-wrap: anywhere; }
+.acc-untracked__why {
+  font-size: 12.5px; line-height: 1.45;
+  color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
+.acc-untracked__add { justify-self: start; color: var(--color-accent-700); border-color: var(--color-accent-300); background: var(--color-accent-100); }
+
 /* ── Avatar: favicon → plate màu + chữ cái ────────────────────────────────
    Màu là HUE hash từ tiêu đề (JS chỉ trả hue qua `--h`; lightness do CSS quyết
    theo theme, vì chữ trên nền tối và trên nền sáng cần độ sáng khác nhau).
@@ -893,6 +924,106 @@
   border-bottom: 2px solid var(--color-accent-300);
   border-bottom-left-radius: 5px;
 }
+
+/* ══ Bản đồ gốc (RootMap.jsx) ══════════════════════════════════════════════
+   Desktop: [Protected by] ─▶ [gốc] ─▶ [Depends on this] xếp ngang, dây nối là
+   phần tử riêng (.acc-rootmap__wire) chứ không phải một <svg> — mỗi khối vẫn là
+   nút / chữ thật. Mobile xếp dọc, dây quay xuống (container query cuối file). */
+.acc-rootmap__ids {
+  margin-top: 4px; font-family: var(--acc-mono); font-size: 12.5px;
+  color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
+.acc-chain {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 10px 12px; border: 1px solid var(--color-divider); border-radius: var(--r);
+  background: var(--surface);
+}
+.acc-chain__step { display: inline-flex; align-items: center; gap: 6px; }
+.acc-chain__arrow { font-family: var(--acc-mono); color: color-mix(in srgb, var(--color-text) 40%, transparent); }
+.acc-chain__node {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 30px;
+  padding: 0 10px 0 6px; border: 1px solid var(--color-divider); border-radius: var(--r);
+  background: var(--surface-2); color: var(--color-text);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.acc-chain__node:hover { border-color: var(--color-accent-300); }
+.acc-chain__node--here,
+.acc-chain__node--here:hover { border-color: var(--color-accent-300); background: var(--color-accent-100); font-weight: 600; cursor: default; }
+
+.acc-rootmap__map { display: flex; align-items: center; margin-bottom: 27.2px; }
+.acc-rootmap__col { flex: 1 1 160px; min-width: 0; display: grid; gap: 8px; align-content: start; }
+.acc-rootmap__col--deps { flex: 1.5 1 240px; }
+.acc-rootmap__cap {
+  margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
+.acc-rootmap__wire {
+  position: relative; flex: 0 0 30px; height: 1px; align-self: center; margin-top: 18px;
+  background: var(--color-accent-300);
+}
+.acc-rootmap__wire::after {
+  content: ""; position: absolute; right: -1px; top: -4px;
+  border-left: 6px solid var(--color-accent); border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent;
+}
+.acc-rootmap__root {
+  flex: 1 1 170px; min-width: 0; display: grid; gap: 8px; justify-items: start;
+  padding: 14px; border: 1px solid var(--color-accent); border-radius: var(--r);
+  background: var(--color-accent-100);
+}
+.acc-rootmap__root-id { font-family: var(--acc-mono); font-size: 13.5px; overflow-wrap: anywhere; }
+.acc-rootmap__root-sub { font-size: 12px; color: color-mix(in srgb, var(--color-text) 64%, transparent); }
+.acc-rootmap__empty {
+  padding: 10px 12px; font-size: 13px; border-radius: var(--r);
+  border: 1px dashed color-mix(in srgb, var(--color-text) 24%, transparent);
+  color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
+.acc-rootmap__impact { border: 1px solid var(--warn-line); border-radius: var(--r); }
+
+/* Một khối ở cột "Protected by": phương thức đăng nhập (div) hoặc item mà gốc dựa vào (nút) */
+.acc-guard {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 46px;
+  box-sizing: border-box; padding: 6px 10px; text-align: left;
+  border: 1px solid var(--color-divider); border-radius: var(--r);
+  background: var(--surface); color: var(--color-text); font: inherit;
+}
+button.acc-guard { cursor: pointer; }
+button.acc-guard:hover { border-color: var(--color-accent-300); }
+.acc-guard--warn { border-color: var(--warn-line); }
+.acc-guard__code {
+  flex: none; width: 30px; height: 30px; display: grid; place-items: center;
+  border: 1px solid var(--color-divider); border-radius: var(--r);
+  font-family: var(--acc-mono); font-size: 11px; color: var(--color-accent-700);
+}
+.acc-guard--warn .acc-guard__code, .acc-guard--warn .acc-guard__sub { color: var(--warn-ink); }
+.acc-guard__body { min-width: 0; display: grid; gap: 1px; }
+.acc-guard__title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-guard__sub { font-size: 11.5px; color: color-mix(in srgb, var(--color-text) 64%, transparent); }
+
+/* Cột "Depends on this": gom theo field cấp 1, con thụt theo --depth */
+.acc-depgroup { border: 1px solid var(--color-divider); border-radius: var(--r); background: var(--surface); overflow: hidden; }
+.acc-depgroup__head {
+  padding: 7px 10px; font-size: 11.5px;
+  background: color-mix(in srgb, var(--color-text) 4%, transparent);
+  color: color-mix(in srgb, var(--color-text) 64%, transparent);
+}
+.acc-deprow {
+  display: flex; align-items: center; gap: 4px;
+  padding: 0 6px 0 calc(4px + var(--depth) * 18px);
+  border-top: 1px solid var(--color-divider);
+}
+.acc-deprow--on { background: var(--color-accent-100); }
+.acc-deprow__trace {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 40px;
+  padding: 4px 6px; border: 0; background: transparent; color: var(--color-text);
+  font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+}
+.acc-deprow--nested .acc-deprow__trace::before {
+  content: ""; flex: none; width: 8px; height: 12px; margin-top: -8px;
+  border-left: 1px solid var(--color-accent-300); border-bottom: 1px solid var(--color-accent-300);
+}
+.acc-deprow__title { flex: 1; min-width: 0; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-deprow__sub { flex: none; font-family: var(--acc-mono); font-size: 11.5px; color: color-mix(in srgb, var(--color-text) 64%, transparent); }
+.acc-deprow__open { width: 32px; height: 32px; padding: 0; justify-content: center; }
 
 /* Thanh độ mạnh */
 .acc-strength { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
@@ -1314,6 +1445,23 @@
   .acc-detail--editing .acc-title__actions .acc-btn { flex: 1; }
   /* Đang sửa: back sẽ remount detail và mất draft không hỏi → ẩn, đã có Cancel */
   .acc-detail--editing .acc-back { display: none; }
+
+  /* ── Roots mobile (R1–R2): bản đồ xếp dọc, dây quay xuống; chain cuộn ngang */
+  .acc-rootmap__map { flex-direction: column; align-items: stretch; }
+  .acc-rootmap__col, .acc-rootmap__col--deps, .acc-rootmap__root { flex: none; }
+  .acc-rootmap__wire { flex: 0 0 22px; width: 1px; height: auto; margin: 0; }
+  .acc-rootmap__wire::after {
+    right: auto; top: auto; left: -4px; bottom: -1px;
+    border-left: 4.5px solid transparent; border-right: 4.5px solid transparent;
+    border-top: 6px solid var(--color-accent); border-bottom: 0;
+  }
+  .acc-rootmap__root { justify-items: start; }
+  .acc-chain { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .acc-chain::-webkit-scrollbar { display: none; }
+  .acc-chain__step, .acc-chain__node { flex: none; }
+  .acc-deprow__trace { min-height: 44px; }
+  .acc-deprow__open { width: 40px; height: 40px; }
+  .acc-untracked__add { justify-self: stretch; min-height: 44px; justify-content: center; }
 
   /* Dòng field + sign-in xuống 1 cột, hành động thành hàng riêng canh trái */
   .acc-field, .acc-field--edit {

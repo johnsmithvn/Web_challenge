@@ -1207,6 +1207,22 @@ Types/Tags filter bar is gone.
   `min-width: 1040px` floor is **dropped** for the same reason; the real floor is
   the columns' own `300 + 520`. Touch targets ≥44px and inputs 16px when narrow
   (iOS zoom). No JS breakpoint, no `useMediaQuery`, no duplicated mobile layout markup.
+- **Roots — identity root map (`RootMap.jsx`, design R0–R2 on the canvas).** A "Roots" entry
+  (icon `tree`) in the groups column swaps the middle pane for the roots list (`RootRow`,
+  reusing `.acc-row` + `.acc-avatar`; roots nothing depends on get `.acc-row--dim`) and
+  the detail pane for the map of the selected root — still three panes, no new layout.
+  The map reads top to bottom: `.acc-kpis` → `.acc-chain` (path from the root's own
+  upstream root down to the traced dependent; pills, `→` between) → `.acc-rootmap__map`
+  = *Protected by* (`.acc-guard`: active sign-in methods as plain rows, upstream items as
+  buttons) ─▶ root card (accent border) ─▶ *Depends on this* (`.acc-depgroup` per first-
+  level field, `.acc-deprow` indented by `--depth`) → amber `.acc-rootmap__impact`.
+  Wires are their own elements (`.acc-rootmap__wire` + `::after` arrowhead), not one
+  `<svg>`, so every block stays a real button/text. **A dependent row has two
+  buttons on purpose:** the row traces the chain, the `↗` opens the item — tracing is
+  the common action on this screen and must not navigate away. "Not in vault yet"
+  (`.acc-untracked`, dashed = not an item yet) lists identifiers used by ≥2 items with
+  no owning item. Mobile: list → map stacked vertically with wires turned downward, the
+  chain scrolls horizontally.
 - **Mobile (<900px) is its own drill-down layout, not the desktop squeezed** (designs
   M1–M4 on the canvas, 2026-10-24). `screen` ∈ `home | list | detail` sits on
   `.acc-vault[data-screen]`; CSS shows one pane per screen:

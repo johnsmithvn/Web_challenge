@@ -336,6 +336,13 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   đăng nhập bằng mật khẩu.
 - **Password only:** mục ngay dưới Favourites liệt kê item mà phương thức đăng nhập đang bật duy nhất
   là mật khẩu; danh sách và trang chi tiết cũng gắn cờ vàng cho các item này.
+- **Roots (bản đồ gốc định danh):** mục trong cột nhóm. Cột giữa liệt kê các gốc (item có tiêu đề là
+  email/SĐT, hoặc Identity) theo số item phụ thuộc; cột phải là bản đồ của gốc đang chọn: dải số liệu,
+  CHAIN (đường từ gốc phía trên xuống item đang trỏ — bấm một dòng phụ thuộc để vẽ lại), *Protected by*
+  (phương thức đăng nhập + item mà gốc dựa vào) → gốc → *Depends on this* (gom theo field), cảnh báo
+  mất gốc thì kéo theo những gì. Mục **Not in vault yet** liệt kê email/SĐT làm giá trị cho ≥2 item mà
+  chưa có item riêng; "Add as item" tạo item Account với tiêu đề + Username điền sẵn. Mobile: danh sách
+  gốc → bản đồ xếp dọc.
 - **Mobile:** đi sâu từng màn — Vault (danh sách nhóm) → nhóm → chi tiết. Gõ tìm kiếm ở màn Vault là
   tìm toàn vault. Trang chi tiết có thanh Copy username / Copy password ghim đáy; chế độ sửa ghim
   Cancel · Save ở đáy. Nút Đổi mật khẩu Vault nằm cuối màn Vault. Nút tạo nhanh (QuickCapture) không
