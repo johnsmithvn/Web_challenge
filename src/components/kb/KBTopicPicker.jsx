@@ -3,11 +3,12 @@
  * Dùng ở trình soạn thảo và thanh gán chủ đề hàng loạt.
  * `value`: topic id · `null` = Chưa xếp · `undefined` = chưa chọn gì (thanh gán hàng loạt).
  * `suggestedId` (từ suggestTopic) được đánh dấu "gợi ý" khi bài chưa có chủ đề.
+ * `showKeys`: hiện phím số 1–9 trước mỗi chủ đề (Xếp nhanh).
  */
-export default function KBTopicPicker({ topics, value, onChange, suggestedId = null, allowNone = true }) {
+export default function KBTopicPicker({ topics, value, onChange, suggestedId = null, allowNone = true, showKeys = false }) {
   return (
     <div className="kb-topic-picker" role="radiogroup" aria-label="Chủ đề">
-      {topics.map(t => {
+      {topics.map((t, i) => {
         const active = value === t.id;
         const suggested = !value && suggestedId === t.id;
         return (
@@ -20,6 +21,7 @@ export default function KBTopicPicker({ topics, value, onChange, suggestedId = n
             onClick={() => onChange(t.id)}
             title={t.description || t.name}
           >
+            {showKeys && <kbd className="kb-chip__key">{i + 1}</kbd>}
             <span className="kb-chip__dot" style={{ background: t.color }} />
             {t.name}
             {suggested && <span className="kb-chip__hint">gợi ý</span>}

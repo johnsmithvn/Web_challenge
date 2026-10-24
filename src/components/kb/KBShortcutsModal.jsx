@@ -9,10 +9,18 @@ const GROUPS = [
       ['J / K', 'Bài kế / bài trước'],
       ['↵', 'Mở bài đang chọn'],
       ['Esc', 'Quay lại · đóng lớp phủ · xóa lọc'],
-      ['G rồi L', 'Về danh sách'],
+      ['G rồi T', 'Tổng quan'],
+      ['G rồi L', 'Danh sách'],
       ['G rồi G', 'Sơ đồ liên kết'],
       ['G rồi C', 'Canvas'],
-      ['G rồi Q', 'Gallery trích dẫn'],
+      ['G rồi Q', 'Gallery'],
+    ],
+  },
+  {
+    title: 'Xếp nhanh (Tổng quan)',
+    items: [
+      ['1 – 8', 'Xếp bài vào chủ đề theo số'],
+      ['→', 'Để sau'],
     ],
   },
   {

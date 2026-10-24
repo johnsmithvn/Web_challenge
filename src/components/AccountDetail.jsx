@@ -116,7 +116,10 @@ export default function AccountDetail({
 
   const save = async () => {
     setSaving(true);
-    const ok = await onSave(draft, tagIds);
+    // Email account để trống tiêu đề (hoặc còn "New email account") → tự đặt theo địa
+    // chỉ (Gmail, Outlook…), đúng quy chuẩn tên — khỏi phải nghĩ tên cho hộp thư
+    const autoTitle = draft.tpl === 'email' && draftAddress && (!draft.title.trim() || /^new\s/i.test(draft.title));
+    const ok = await onSave(autoTitle ? { ...draft, title: mailboxTitle(draftAddress) } : draft, tagIds);
     setSaving(false);
     if (ok) setDraft(null);
   };
@@ -269,7 +272,7 @@ export default function AccountDetail({
                 className="acc-input acc-title__input"
                 value={draft.title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Service name, e.g. VIB, Gmail, Shopee"
+                placeholder={draftAddress ? `${mailboxTitle(draftAddress)} (set from the address on save)` : 'Service name, e.g. VIB, Gmail, Shopee'}
                 aria-label="Item title"
                 list="acc-title-options"
               />

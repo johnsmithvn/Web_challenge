@@ -25,6 +25,8 @@ import {
   suggestTopic,
   pickResurface,
   pushRecent,
+  isMine,
+  quickSortQueue,
 } from '../../utils/kbDeriveUtils.js';
 
 const NOW = Date.parse('2026-10-24T12:00:00Z');
@@ -359,6 +361,38 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   assert.deepEqual(pickResurface(items, '2026-10-24', 3, NOW).map(a => a.id), day1, 'cùng ngày cùng kết quả');
   assert.equal(pickResurface(items, '2026-10-24', 2, NOW).length, 2);
   console.log('pickResurface: OK');
+}
+
+/* ── isMine + preset filters ───────────────────────────────── */
+{
+  assert.equal(isMine({ url: '' }), true, 'ghi chú / trích dẫn không link');
+  assert.equal(isMine({ url: 'https://x.com', _noteCount: 1 }), true, 'bài có ghi chú rút ra');
+  assert.equal(isMine({ url: 'https://x.com' }), false, 'link trơn');
+
+  const arts = [
+    { id: 'u', title: 'a', type: 'note', status: 'unread', url: 'https://x.com', body: '', created_at: daysAgo(2) },
+    { id: 'r', title: 'b', type: 'note', status: 'read', url: 'https://y.com', body: '', created_at: daysAgo(3) },
+    { id: 'n', title: 'c', type: 'note', status: 'read', url: '', body: '', created_at: daysAgo(4) },
+    { id: 'z', title: 'd', type: 'note', status: 'archived', url: '', body: '', created_at: daysAgo(5) },
+  ];
+  const ids = preset => filterArticles(arts, { preset }).map(a => a.id).sort().join(',');
+  assert.equal(ids('unread'), 'u');
+  assert.equal(ids('mine'), 'n', 'bài lưu trữ không vào');
+  assert.equal(ids(''), 'n,r,u');
+  console.log('isMine + preset: OK');
+}
+
+/* ── quickSortQueue ────────────────────────────────────────── */
+{
+  const items = [
+    { id: 'new', topic_id: null, created_at: daysAgo(1) },
+    { id: 'edge', topic_id: null, created_at: daysAgo(30) },
+    { id: 'old', topic_id: null, created_at: daysAgo(31) },
+    { id: 'sorted', topic_id: 'T', created_at: daysAgo(2) },
+    { id: 'gone', topic_id: null, status: 'archived', created_at: daysAgo(3) },
+  ];
+  assert.deepEqual(quickSortQueue(items, NOW).map(a => a.id), ['new', 'edge'], 'chỉ bài chưa xếp trong 30 ngày, mới trước');
+  console.log('quickSortQueue: OK');
 }
 
 /* ── pushRecent ────────────────────────────────────────────── */

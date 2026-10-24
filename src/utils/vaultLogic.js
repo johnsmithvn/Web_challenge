@@ -404,8 +404,11 @@ const MAIL_PROVIDERS = [
  * Quy chuẩn tên (để không có cả "Gmail" lẫn "Google" cho cùng một thứ):
  * hộp thư của mình ở nhà cung cấp (Email account) → tên hộp thư: Gmail, Outlook…;
  * tài khoản ở nhà cung cấp đăng nhập bằng email khác (Account) → tên công ty:
- * Google, Microsoft, Apple ID. `mailbox` = đang đặt tên cho một Email account: chỉ
- * gợi ý nhóm preset "Email" + tiêu đề của Email account khác; ngược lại thì bỏ chúng.
+ * Google, Microsoft, Apple ID. `mailbox` = đang đặt tên cho một Email account: KHÔNG
+ * gợi ý tiêu đề của item khác (mỗi hộp thư một tên riêng, chép tên hộp thư khác vô
+ * ích — và đó là đường "Google" lọt vào khi user lỡ đặt). Đã biết địa chỉ (`extra`)
+ * thì chỉ gợi ý đúng tên đó; chưa biết thì liệt kê nhà cung cấp (nhóm preset "Email").
+ * Ngược lại (item khác) thì bỏ tên hộp thư.
  *
  * @param {Object<string,string[]>} presets { [nhóm]: [tên dịch vụ] }
  * @param {string[]} extra
@@ -430,13 +433,21 @@ export function titleSuggestions(items, presets = {}, extra = [], { mailbox = fa
   }
   const groupOf = (t) => presetGroup.get(String(t || '').trim().toLocaleLowerCase('vi')) || '';
   extra.forEach((t) => push(t, groupOf(t)));
+  if (mailbox) {
+    if (!out.length) {
+      for (const [group, titles] of Object.entries(presets)) {
+        if (!group.startsWith('_') && isMailGroup(group)) titles.forEach((t) => push(t, normalizeGroup(group)));
+      }
+    }
+    return out;
+  }
   // Item trong vault chưa có nhóm thì mượn nhóm của preset cùng tên (Zalo → Mạng xã hội)
   [...items]
-    .filter((it) => (it.tpl === 'email') === mailbox)
+    .filter((it) => it.tpl !== 'email')
     .sort((a, b) => a.title.localeCompare(b.title, 'vi'))
     .forEach((it) => push(it.title, normalizeGroup(it.group) || groupOf(it.title)));
   for (const [group, titles] of Object.entries(presets)) {
-    if (!group.startsWith('_') && isMailGroup(group) === mailbox) titles.forEach((t) => push(t, normalizeGroup(group)));
+    if (!group.startsWith('_') && !isMailGroup(group)) titles.forEach((t) => push(t, normalizeGroup(group)));
   }
   return out;
 }

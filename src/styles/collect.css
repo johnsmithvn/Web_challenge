@@ -257,6 +257,123 @@
   text-transform: uppercase; letter-spacing: 0.08em;
   color: var(--kb-faint);
 }
+.kb-chip__key {
+  font-family: var(--kb-mono); font-size: 0.7rem;
+  border: 1px solid var(--kb-line); border-radius: 3px;
+  padding: 0 4px; color: var(--kb-faint);
+}
+
+/* ── Tổng quan (KBOverview) ────────────────────────────────── */
+.kb-overview {
+  max-width: 1080px; margin: 0 auto;
+  padding: 28px 24px 100px;
+  display: flex; flex-direction: column; gap: 36px;
+}
+.kb-ov-head {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.kb-ov-head__title {
+  margin: 0;
+  font-family: var(--kb-mono); font-size: 0.78rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.14em; color: var(--kb-tx);
+}
+.kb-ov-head__count { color: var(--kb-faint); }
+.kb-ov-head__note { font-style: italic; font-size: 0.92rem; color: var(--kb-faint); }
+.kb-ov-head__spacer { flex: 1; }
+.kb-ov-head__action {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: var(--kb-mono); font-size: 0.75rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--kb-brass);
+}
+
+/* Xếp nhanh */
+.kb-ov-sort {
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--kb-p1); border: 1px solid var(--kb-line); border-radius: 4px;
+  padding: 18px 20px;
+}
+.kb-ov-sort__title {
+  align-self: flex-start;
+  background: none; border: none; padding: 0; cursor: pointer; text-align: left;
+  font-family: var(--kb-serif); font-size: 1.3rem; line-height: 1.3; color: var(--kb-tx);
+}
+.kb-ov-sort__title:hover { color: var(--kb-brass); }
+.kb-ov-sort__excerpt {
+  margin: 0; font-style: italic; font-size: 0.95rem; line-height: 1.5; color: var(--kb-dim);
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.kb-ov-sort__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+
+/* Cards (Đọc dở, chủ đề, Gặp lại) */
+.kb-ov-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.kb-ov-card {
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--kb-p1); border: 1px solid var(--kb-line); border-radius: 4px;
+  padding: 14px 16px; cursor: pointer; min-width: 0;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.kb-ov-card:hover, .kb-ov-card:focus-visible { border-color: var(--kb-brass); outline: none; }
+.kb-ov-card--stale { border-color: color-mix(in oklab, var(--kb-brass) 45%, var(--kb-line)); }
+.kb-ov-card--mine { border-style: dashed; }
+.kb-ov-card__title {
+  margin: 0; font-family: var(--kb-serif); font-size: 1.08rem; font-weight: 500; line-height: 1.35;
+  color: var(--kb-tx);
+}
+.kb-ov-card__name {
+  display: flex; align-items: center; gap: 8px; margin: 0;
+  font-family: var(--kb-serif); font-size: 1.15rem; font-weight: 500; color: var(--kb-tx);
+}
+.kb-ov-card__num { margin-left: auto; font-family: var(--kb-mono); font-size: 0.75rem; color: var(--kb-faint); }
+.kb-ov-card__desc { margin: 0; font-style: italic; font-size: 0.9rem; line-height: 1.45; color: var(--kb-dim); }
+.kb-ov-card__list {
+  list-style: none; margin: 4px 0 0; padding: 8px 0 0;
+  border-top: 1px solid var(--kb-line);
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 0.92rem; color: var(--kb-tx);
+}
+.kb-ov-card__list li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb-ov-card__list span { font-family: var(--kb-mono); font-size: 0.75rem; color: var(--kb-faint); }
+.kb-ov-card__foot {
+  margin-top: auto; padding-top: 10px; border-top: 1px solid var(--kb-line);
+  font-family: var(--kb-mono); font-size: 0.75rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--kb-faint);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.kb-ov-card__foot--brass { color: var(--kb-brass); }
+.kb-ov-card__ask {
+  font-family: var(--kb-serif); font-style: italic; font-size: 0.92rem;
+  text-transform: none; letter-spacing: 0; color: var(--kb-tx);
+}
+.kb-ov-card__btns { display: flex; gap: 8px; }
+.kb-ov-card__quote {
+  margin: 0; font-style: italic; font-size: 0.92rem; line-height: 1.5; color: var(--kb-dim);
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+}
+.kb-ov-topic { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--kb-dim); }
+
+/* Gặp lại · Mở gần đây */
+.kb-ov-two { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 28px; }
+.kb-ov-stack { display: flex; flex-direction: column; gap: 10px; }
+.kb-ov-recent { display: flex; flex-direction: column; }
+.kb-ov-recent__row {
+  display: flex; align-items: center; gap: 12px;
+  background: none; border: none; border-bottom: 1px solid var(--kb-line);
+  padding: 11px 2px; cursor: pointer; text-align: left; color: var(--kb-tx);
+  font-family: var(--kb-serif); font-size: 0.98rem;
+}
+.kb-ov-recent__row:hover .kb-ov-recent__title { color: var(--kb-brass); }
+.kb-ov-recent__glyph { font-family: var(--kb-mono); font-size: 0.8rem; width: 22px; flex-shrink: 0; }
+.kb-ov-recent__title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 900px) {
+  .kb-ov-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kb-ov-two { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .kb-overview { padding: 20px 16px 100px; gap: 28px; }
+  .kb-ov-grid { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* Tag filter row */
 .kb-tag-row {
@@ -1318,7 +1435,11 @@
   .kb-split__panes { grid-template-columns: 1fr; }
   .kb-graph__aside { display: none; }
   .kb-subheader { gap: 8px; }
+  .kb-subheader__inner { flex-wrap: wrap; row-gap: 8px; }
   .kb-subheader__search { width: 100%; max-width: none; order: 10; }
+  /* 5 kiểu xem không vừa một hàng điện thoại → cuộn ngang thay vì tràn */
+  .kb-subheader .kb-segmented { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .kb-subheader .kb-segmented__item { flex-shrink: 0; white-space: nowrap; }
 }
 
 /* ── Tag input (editor) ────────────────────────────────────── */

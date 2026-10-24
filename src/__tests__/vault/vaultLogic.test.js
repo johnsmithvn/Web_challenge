@@ -621,7 +621,14 @@ const mailSugg = titleSuggestions(
   [],
   { mailbox: true },
 );
-assert.deepEqual(mailSugg.map((s) => s.title), ['Gmail · work', 'Gmail', 'Outlook'], 'không có Google / Microsoft');
+assert.deepEqual(mailSugg.map((s) => s.title), ['Gmail', 'Outlook'],
+  'chưa có địa chỉ: chỉ nhà cung cấp — không Google / Microsoft, không chép tên hộp thư khác');
+assert.deepEqual(
+  titleSuggestions([{ title: 'Google', tpl: 'email' }], { Email: ['Gmail', 'Outlook'] }, ['Gmail'], { mailbox: true })
+    .map((s) => [s.title, s.group]),
+  [['Gmail', 'Email']],
+  'đã có địa chỉ @gmail.com: chỉ "Gmail" — "Google" user lỡ đặt cho hộp thư khác không lọt vào',
+);
 const accSugg = titleSuggestions(
   [{ title: 'Gmail · work', tpl: 'email' }, { title: 'Google', tpl: 'account' }],
   { Email: ['Gmail', 'Outlook'], 'Nền tảng': ['Google', 'Microsoft'] },

@@ -99,7 +99,7 @@ function ListRow({ item, pendingTaskIds, isCursor, isBulk, isChecked, onToggleCh
 
 /* ── KBListView ────────────────────────────────────────────── */
 export default function KBListView({
-  articles, allTags, topics, currentTopic, onManageTopics, pendingTaskIds, cursor,
+  articles, allTags, topics, heading, onManageTopics, pendingTaskIds, cursor,
   activeTagIds, onToggleTag,
   sort, onSort,
   bulk, onToggleBulk, picked, onTogglePick, onSelectAll, onDeselectAll,
@@ -118,17 +118,19 @@ export default function KBListView({
 
   return (
     <div className="kb-list-view" style={{ animation: 'kb-in .22s ease' }}>
-      {/* Topic page header */}
-      {currentTopic && (
+      {/* Heading: topic page, or a preset (Đọc dở / Ghi chú của tôi) */}
+      {heading && (
         <div className="kb-topic-head">
           <div className="kb-topic-head__text">
             <h2 className="kb-topic-head__name">
-              <span className="kb-chip__dot" style={{ background: currentTopic.color }} />
-              {currentTopic.name}
+              {heading.color && <span className="kb-chip__dot" style={{ background: heading.color }} />}
+              {heading.name}
             </h2>
-            {currentTopic.description && <p className="kb-topic-head__desc">{currentTopic.description}</p>}
+            {heading.description && <p className="kb-topic-head__desc">{heading.description}</p>}
           </div>
-          <button className="kb-btn-ghost kb-btn-ghost--small" onClick={onManageTopics} title="Quản lý chủ đề">⋯</button>
+          {heading.manage && (
+            <button className="kb-btn-ghost kb-btn-ghost--small" onClick={onManageTopics} title="Quản lý chủ đề">⋯</button>
+          )}
         </div>
       )}
 

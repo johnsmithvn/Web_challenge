@@ -7,6 +7,7 @@ import { useRef, useEffect } from 'react';
  */
 
 const VIEW_ITEMS = [
+  { key: 'overview', label: 'Tổng quan' },
   { key: 'list',    label: 'Danh sách' },
   { key: 'gallery', label: 'Gallery' },
   { key: 'graph',   label: 'Sơ đồ' },

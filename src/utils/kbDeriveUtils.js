@@ -187,8 +187,13 @@ export function itemPlainText(item) {
 }
 
 /** Whole days since `created_at` (0 = today). */
-function ageDays(item, now) {
+export function ageDays(item, now = Date.now()) {
   return Math.floor((now - Date.parse(item.created_at)) / DAY_MS);
+}
+
+/** "Ghi chú của tôi": your own words — a note / quote without a link, or any bài you wrote notes on. */
+export function isMine(item) {
+  return !item.url || (item._noteCount || 0) > 0;
 }
 
 /* ── Filter & sort ─────────────────────────────────────────── */
@@ -205,14 +210,19 @@ function ageDays(item, now) {
  * @param {string} params.kind - contentKind() value, '' = all
  * @param {string} params.time - '' | '7' | '30' | '90' (saved within N days) | 'old' (> 90 days)
  * @param {boolean} params.archived - include archived items
+ * @param {string} params.preset - '' | 'unread' (Đọc dở) | 'mine' (ghi chú / trích dẫn của mình + bài đã rút ra)
  * @param {number} params.now - clock for `time` (ms)
  * @returns {Array}
  */
 export function filterArticles(articles, {
   q = '', type = 'all', tags = [], sort = 'new', taskId = '',
-  topic = '', kind = '', time = '', archived = false, now = Date.now(),
+  topic = '', kind = '', time = '', archived = false, preset = '', now = Date.now(),
 } = {}) {
   let list = articles.filter(a => a.type !== 'inbox' && (archived || a.status !== 'archived'));
+
+  // Preset views opened from Tổng quan
+  if (preset === 'unread') list = list.filter(a => a.status === 'unread');
+  else if (preset === 'mine') list = list.filter(isMine);
 
   // Type filter
   if (type && type !== 'all') {
@@ -463,6 +473,16 @@ export function isStale(item, now = Date.now(), days = 30) {
   return item.status === 'unread' && ageDays(item, now) > days;
 }
 
+/**
+ * "Xếp nhanh" queue: bài with no topic saved in the last `days` days, newest first.
+ * Older unsorted bài stay out of Tổng quan (sorted in bulk from the list instead).
+ */
+export function quickSortQueue(items, now = Date.now(), days = 30) {
+  return items
+    .filter(a => a.type !== 'inbox' && a.status !== 'archived' && !a.topic_id && ageDays(a, now) <= days)
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+}
+
 /* ── Neighbors ("Xung quanh") ──────────────────────────────── */
 /**
  * Three groups, no item repeated across groups:
@@ -547,7 +567,7 @@ function hashStr(s) {
 export function pickResurface(items, dateStr, n = 3, now = Date.now()) {
   return items
     .filter(a => a.type !== 'inbox' && a.status !== 'archived' && ageDays(a, now) > 30)
-    .filter(a => (a._noteCount || 0) > 0 || a.type === 'quote' || !a.url)
+    .filter(a => isMine(a) || a.type === 'quote')
     .map(a => ({ a, h: hashStr(`${dateStr}|${a.id}`) }))
     .sort((x, y) => x.h - y.h)
     .slice(0, n)

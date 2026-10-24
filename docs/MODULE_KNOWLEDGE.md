@@ -79,16 +79,25 @@ Một query, tối đa 500 bài mới nhất, kèm join: thẻ, id task đã n�
 
 ### A3.1. Đầu trang (`KBSubHeader`)
 
-Hàng 1: tiêu đề "Kho Tàng Kiến Thức" + số bài · ô tìm (phím `/`) · chọn kiểu xem **Danh sách · Gallery · Sơ đồ · Canvas** ·
-nút **＋ Bài mới**. Hàng 2: chip chủ đề `Tất cả · <chủ đề> · Chưa xếp · ⋯` (lọc Danh sách, Gallery, Sơ đồ, Canvas;
-`⋯` mở Quản lý chủ đề). Ẩn khi đang đọc hoặc soạn.
+Hàng 1: tiêu đề "Kho Tàng Kiến Thức" + số bài · ô tìm (phím `/`) · chọn kiểu xem
+**Tổng quan · Danh sách · Gallery · Sơ đồ · Canvas** · nút **＋ Bài mới**. Hàng 2: chip chủ đề
+`Tất cả · <chủ đề> · Chưa xếp · ⋯` (lọc Danh sách, Gallery, Sơ đồ, Canvas; bấm chip khi đang ở Tổng quan thì chuyển sang
+Danh sách của chủ đề đó; `⋯` mở Quản lý chủ đề). Ẩn khi đang đọc hoặc soạn. Điện thoại: hàng 1 xuống dòng, thanh kiểu
+xem và hàng chip cuộn ngang.
+
+Mở Knowledge vào **Tổng quan**. Đọc / soạn xong, "← Thư viện" và `Esc` quay về đúng kiểu xem trước đó.
 
 Tìm kiếm (`filterArticles`): không cần dấu, nhiều từ cùng lúc (mọi từ phải khớp), trên tiêu đề, chữ của bài
 (`body_text`, không phải JSON thô), link, tên thẻ, ghi chú. Gõ `#tên` để lọc theo thẻ.
 
-### A3.2. Danh sách (`KBListView`)
+### A3.2. Tổng quan (`KBOverview`)
 
-- Khi lọc một chủ đề: đầu danh sách hiện tên + định nghĩa chủ đề + `⋯` (đây là "trang chủ đề").
+Xem §B5.3. Đang gõ tìm thì Tổng quan hiện kết quả dạng Danh sách; xoá chữ là quay lại.
+
+### A3.2b. Danh sách (`KBListView`)
+
+- Khi lọc một chủ đề: đầu danh sách hiện tên + định nghĩa chủ đề + `⋯` (đây là "trang chủ đề"). Mở từ Tổng quan
+  "Xem cả" / "Ghi chú của tôi" thì đầu danh sách là **Đọc dở** hoặc **Ghi chú của tôi** (bộ lọc `preset`).
 - Sắp xếp Mới nhất / Cũ nhất / Dài nhất, nút Chọn.
 - Hàng thẻ để lọc (nhiều thẻ = AND), chỉ gồm thẻ đang được bài Knowledge dùng.
 - Mỗi dòng: ký hiệu loại tô màu chủ đề, dòng meta (chủ đề · loại · tên miền · ngày · phút đọc), tiêu đề, trích 200 chữ,
@@ -123,7 +132,9 @@ Tìm kiếm (`filterArticles`): không cần dấu, nhiều từ cùng lúc (m�
 ### A3.6. Phím tắt (`CollectPage`)
 
 `/` tìm · `N` bài mới · `V` chọn nhiều · `J`/`K` di chuyển · `Enter` mở · `E` sửa · `Backspace` xoá ·
-`⌘Z` hoàn tác xoá · `G` rồi `L`/`G`/`C`/`Q` đổi kiểu xem · `?` bảng phím tắt · `Esc` lùi từng lớp.
+`⌘Z` hoàn tác xoá (không chạy khi đang gõ) · `G` rồi `T`/`L`/`G`/`C`/`Q` = Tổng quan / Danh sách / Sơ đồ / Canvas / Gallery ·
+`?` bảng phím tắt · `Esc` lùi từng lớp (Sơ đồ, Canvas → Tổng quan). Tổng quan: `1`–`8` xếp bài vào chủ đề, `→` để sau.
+Phím tắt trang không chạy khi đang mở hộp thoại.
 
 ### A3.7. Xoá và hoàn tác
 
@@ -206,8 +217,8 @@ gỡ khỏi mọi bài (cascade).
 | B0 | Duyệt thiết kế | ✓ |
 | B1 | Logic thuần + test (§B7) | ✓ `npm test` xanh |
 | B2 | Migration + `useCollectionTopics` + sửa `useCollections` | ✓ Migration đã chạy (2026-10-24) |
-| B3 | Hàng chip chủ đề, Quản lý chủ đề, trình soạn thảo, Danh sách + Gán chủ đề hàng loạt | ✓ Code xong, chờ test tay |
-| B4 | Tab Tổng quan | Chưa |
+| B3 | Hàng chip chủ đề, Quản lý chủ đề, trình soạn thảo, Danh sách + Gán chủ đề hàng loạt | ✓ Đã test tay |
+| B4 | Tab Tổng quan | ✓ Code xong, chờ test tay |
 | B5 | Trang đọc: Đọc xong, Tiến độ, Xung quanh, Thực hành, Lưu trữ | Chưa |
 | B6 | `DATABASE.md`, `FEATURES.md`, `ARCHITECTURE.md`, `DESIGN.md`, `CHANGELOG.md` | Chưa |
 
@@ -389,13 +400,13 @@ User chưa có chủ đề nào → nút "Dùng bộ chủ đề gợi ý" (RPC 
 
 | # | Khối | Hiện khi | Giới hạn |
 |---|---|---|---|
-| 1 | "Đã lưu trữ … · Hoàn tác" | Vừa lưu trữ | 1 dòng |
-| 2 | **Xếp nhanh · n/N** | Có bài chưa có chủ đề trong 30 ngày | 1 bài một lúc |
-| 3 | **Đọc dở · N** | Có bài `unread` | 3 thẻ + "Xem cả N"; bài > 30 ngày hiện câu hỏi |
-| 4 | **Các chủ đề** | Luôn | Thẻ: tên, số bài, định nghĩa, 2 bài mới nhất, "N đọc dở"; thẻ cuối **Ghi chú của tôi** |
-| 5 | **Gặp lại hôm nay · Mở gần đây** | Có dữ liệu | 2 cột × 3 bài |
+| 1 | **Xếp nhanh · còn N** (`quickSortQueue`) | Có bài chưa có chủ đề trong 30 ngày | 1 bài một lúc: chip chủ đề có số phím + gợi ý, "Để sau →" (chỉ trong lần mở này), "Lưu trữ" |
+| 2 | **Đọc dở · N** | Có bài `unread` | 3 thẻ + "Xem cả N →"; bài > 30 ngày hỏi "Còn muốn đọc không?" [Đọc xong] [Lưu trữ] |
+| 3 | **Các chủ đề · n/8** | Luôn | Thẻ: tên, số bài, định nghĩa, 2 bài mới nhất, "N đọc dở"; thẻ cuối **Ghi chú của tôi** (`isMine`) |
+| 4 | **Gặp lại hôm nay · Mở gần đây** | Có dữ liệu | 2 cột × 3 bài |
 
-Đang gõ tìm thì các khối ẩn, hiện kết quả như Danh sách.
+Kho trống → "Kho đang trống" + ＋ Bài mới. **Lưu trữ** báo bằng toast có nút "Hoàn tác" (cùng kiểu với xoá), không có
+thanh riêng. Đang gõ tìm thì các khối ẩn, hiện kết quả như Danh sách. Điện thoại: lưới 3 cột → 2 → 1 cột.
 
 ### B5.4. Danh sách (`KBListView`, sửa nhẹ)
 
@@ -510,14 +521,18 @@ phím tắt không chạy khi đang mở hộp thoại, ⌘Z không cướp hoà
 
 **Còn lại:**
 
+**Đã làm (B4):** `KBOverview.jsx` (mới) · `CollectPage.jsx` (view `overview` mặc định, quay về đúng kiểu xem, bộ lọc
+`preset`, Mở gần đây `vl_kb_recent`, Lưu trữ + hoàn tác bằng toast, Đọc xong, xếp nhanh, `g t`) · `KBSubHeader.jsx`
+(tab Tổng quan; thanh kiểu xem cuộn ngang trên điện thoại) · `KBListView.jsx` (đầu danh sách dùng chung cho chủ đề và
+preset) · `KBTopicPicker.jsx` (`showKeys`) · `KBShortcutsModal.jsx` · `kbDeriveUtils.js` (`isMine`, `quickSortQueue`,
+`ageDays` export, `preset` trong `filterArticles`) + test · `collect.css`.
+
 | File | Việc | Bước |
 |---|---|---|
-| `src/pages/CollectPage.jsx` | View `overview` mặc định; đọc xong; lưu trữ + hoàn tác; `g t` | B4–B5 |
-| `src/components/kb/KBSubHeader.jsx` | Tab Tổng quan | B4 |
-| `src/components/kb/KBOverview.jsx` (mới) | Tab Tổng quan §B5.3 | B4 |
-| `src/components/kb/KBReaderView.jsx` | §B5.5 | B5 |
-| `src/components/kb/KBShortcutsModal.jsx` | Phím mới | B4 |
-| `src/styles/collect.css` | Style phần mới | B3–B5 |
+| `src/pages/CollectPage.jsx` | Đọc xong / Lưu trữ ở trang đọc; Thực hành | B5 |
+| `src/components/kb/KBReaderView.jsx` | §B5.5; sửa cảnh báo lint memo backlink | B5 |
+| `src/styles/collect.css` | Style trang đọc mới | B5 |
+| `docs/ARCHITECTURE.md` | Ghi key `localStorage` `vl_kb_recent` | B6 |
 | `docs/DATABASE.md`, `FEATURES.md`, `ARCHITECTURE.md`, `DESIGN.md`, `CHANGELOG.md` | Cập nhật đúng vai trò (RULES §11); chỉ thêm phần Knowledge | B6 |
 
 Không xoá component nào.
