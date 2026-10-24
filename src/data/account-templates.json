@@ -164,5 +164,26 @@
   "filterIcons": {
     "all": "list",
     "fav": "star"
+  },
+
+  "_groupIconsNote": "Icon cột nhóm. Tên nhóm do user tự gõ (lưu trong payload mã hoá) nên không có chỗ lưu icon riêng: icon suy từ từ khoá trong tên, quy tắc ĐẦU TIÊN khớp thắng (so chữ thường, chứa chuỗi). Thứ tự có nghĩa: 'ngân hàng' phải đứng trước 'tài chính'. Không khớp gì → fallback.",
+  "groupIcons": {
+    "fallback": "folder",
+    "ungrouped": "tray",
+    "rules": [
+      { "match": ["ngân hàng", "ngan hang", "bank"], "icon": "bank" },
+      { "match": ["ví", "wallet", "momo", "zalopay"], "icon": "wallet" },
+      { "match": ["thẻ", "card"], "icon": "creditCard" },
+      { "match": ["tài chính", "tai chinh", "finance", "tiền", "đầu tư"], "icon": "handCoins" },
+      { "match": ["email", "mail", "thư"], "icon": "envelope" },
+      { "match": ["mạng xã hội", "mxh", "social", "facebook", "zalo"], "icon": "users" },
+      { "match": ["giấy tờ", "giay to", "định danh", "identity", "cccd", "hộ chiếu", "passport"], "icon": "identification" },
+      { "match": ["công việc", "cong viec", "work", "dự án"], "icon": "briefcase" },
+      { "match": ["điện thoại", "thiết bị", "device", "phone"], "icon": "deviceMobile" },
+      { "match": ["dev", "lập trình", "code", "server"], "icon": "code" },
+      { "match": ["nền tảng", "platform", "cloud"], "icon": "cloud" },
+      { "match": ["gia đình", "family", "home"], "icon": "house" },
+      { "match": ["sức khỏe", "sức khoẻ", "health"], "icon": "heart" }
+    ]
   }
 }

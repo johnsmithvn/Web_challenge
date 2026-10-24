@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   TYPES, TYPE_HINT, isSecretType, scorePassword, generatePassword, parseCodes, codeSheet,
   linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl, itemSubtitle,
+  normalizeGroup, groupTree, dependentsOf, isPasswordOnly,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import AppIcon from './AppIcon';
@@ -147,13 +148,21 @@ export default function AccountDetail({
 
   // Link là một chiều: field `link` chỉ sống ở item NGUỒN, item đích không biết
   // ai trỏ tới mình. Quét ngược `items` (đã giải mã sẵn trong AccountsPage) để
-  // item đích thấy được — không thêm cột/bảng nào, một item link 2 field thì ra
-  // 2 dòng vì đó là 2 đường dẫn khác nhau.
-  const backlinks = items.flatMap((x) => (
-    x.id === item.id ? [] : (x.fields || [])
-      .filter((f) => (f.links || []).some((L) => L.itemId === item.id))
-      .map((f) => ({ key: `${x.id}:${f.id}`, src: x, via: f.label }))
-  ));
+  // item đích thấy được — không thêm cột/bảng nào. dependentsOf còn ghép theo giá
+  // trị (username = SĐT/email của gốc) và đi tiếp xuống cấp 2, 3: Gmail → ngân
+  // hàng → thẻ của ngân hàng đó.
+  const dependents = useMemo(() => dependentsOf(items, item.id), [items, item.id]);
+  const directCount = dependents.filter((d) => d.depth === 1).length;
+  const depth = dependents.reduce((m, d) => Math.max(m, d.depth), 0);
+  const activeAuth = item.auth.filter((a) => a.state !== 'off');
+  const passwordOnly = isPasswordOnly(item);
+  const signinLabel = !activeAuth.length ? 'None'
+    : passwordOnly ? 'Password only'
+      : activeAuth.length === 1 ? AUTH_KINDS[activeAuth[0].kind]?.label || activeAuth[0].kind
+        : `${activeAuth.length} methods`;
+  const groupPaths = useMemo(() => groupTree(items).groups
+    .flatMap((g) => [g.path, ...g.children.map((c) => c.path)]), [items]);
+  const groupLabel = normalizeGroup(item.group).replace('/', ' › ');
 
   return (
     <article className="acc-detail">
@@ -188,18 +197,35 @@ export default function AccountDetail({
               lúc tạo. Mọi `tpl` đọc lên đều là key hợp lệ nhờ alias trong
               cleanItem (useAccounts.js), nên select luôn khớp một option. */}
           {editing ? (
-            <select
-              className="acc-select acc-select--tpl"
-              value={shown.tpl}
-              onChange={(e) => patch((d) => { d.tpl = e.target.value; })}
-              aria-label="Item type"
-            >
-              {TEMPLATES.map((t) => (
-                <option key={t.key} value={t.key}>{t.name} · {t.code}</option>
-              ))}
-            </select>
+            <div className="acc-title__meta">
+              <select
+                className="acc-select acc-select--tpl"
+                value={shown.tpl}
+                onChange={(e) => patch((d) => { d.tpl = e.target.value; })}
+                aria-label="Item type"
+              >
+                {TEMPLATES.map((t) => (
+                  <option key={t.key} value={t.key}>{t.name} · {t.code}</option>
+                ))}
+              </select>
+              {/* Native datalist: gợi ý nhóm đã có để khỏi gõ lệch thành nhóm mới;
+                  gõ tên chưa có = tạo nhóm. Chuẩn hoá ở cleanItem lúc lưu. */}
+              <input
+                className="acc-input acc-title__group"
+                list="acc-group-paths"
+                value={draft.group || ''}
+                onChange={(e) => patch((d) => { d.group = e.target.value; })}
+                placeholder="Group, e.g. Tài chính/Ngân hàng"
+                aria-label="Group"
+              />
+              <datalist id="acc-group-paths">
+                {groupPaths.map((p) => <option key={p} value={p} />)}
+              </datalist>
+            </div>
           ) : (
-            <div className="acc-title__kicker">{tpl?.name || 'Item'} · {tpl?.code || '···'}</div>
+            <div className="acc-title__kicker">
+              {groupLabel ? `${groupLabel} · ${tpl?.code || '···'}` : `${tpl?.name || 'Item'} · ${tpl?.code || '···'}`}
+            </div>
           )}
 
           {editing ? (
@@ -248,6 +274,16 @@ export default function AccountDetail({
           )}
         </div>
       </header>
+
+      {/* ── 1b. Dải số liệu: item này quan trọng cỡ nào, trước khi phải cuộn ── */}
+      {!editing && (
+        <dl className="acc-kpis">
+          <div className="acc-kpi"><dt>Dependents</dt><dd>{dependents.length}</dd></div>
+          <div className="acc-kpi"><dt>Depth</dt><dd>{depth || '—'}</dd></div>
+          <div className={`acc-kpi${passwordOnly ? ' acc-kpi--warn' : ''}`}><dt>Sign-in</dt><dd>{signinLabel}</dd></div>
+          <div className="acc-kpi"><dt>Updated</dt><dd>{relativeUpdated(item.updated)}</dd></div>
+        </dl>
+      )}
 
       {/* ── 2. Card preview (chỉ item loại card) ── */}
       {shown.tpl === 'card' && <CardPreview item={shown} revealed={revealed} />}
@@ -302,17 +338,28 @@ export default function AccountDetail({
         {editing && <AddFieldPanel patch={patch} />}
       </section>
 
-      {/* ── 3b. Được link từ item khác. Ẩn khi đang sửa: bấm sang item khác là
-             remount detail → mất draft mà không hỏi. */}
-      {!editing && backlinks.length > 0 && (
+      {/* ── 3b. Item nào phụ thuộc vào item này. Ẩn khi đang sửa: bấm sang item
+             khác là remount detail → mất draft mà không hỏi. */}
+      {!editing && dependents.length > 0 && (
         <section className="acc-sect">
           <div className="acc-sect__head">
-            <h3 className="acc-sect__title">Linked from</h3>
-            <span className="acc-sect__meta">{backlinks.length} incoming</span>
+            <h3 className="acc-sect__title">Depends on this</h3>
+            <span className="acc-sect__meta">
+              {dependents.length} {dependents.length === 1 ? 'item' : 'items'}
+              {dependents.length > directCount && ` · ${Math.max(...dependents.map((d) => d.depth))} levels`}
+            </span>
           </div>
           <div className="acc-panel">
-            {backlinks.map((b) => (
-              <BacklinkRow key={b.key} src={b.src} via={b.via} onOpen={onOpen} />
+            <div className={`acc-impact${passwordOnly ? ' acc-impact--warn' : ''}`}>
+              <AppIcon name={passwordOnly ? 'warning' : 'link'} size={16} />
+              <span>
+                {directCount} {directCount === 1 ? 'item relies' : 'items rely'} on this one
+                {dependents.length > directCount && `, and ${dependents.length - directCount} more through them`}.
+                {passwordOnly && ' It signs in with a password only.'}
+              </span>
+            </div>
+            {dependents.map((d) => (
+              <BacklinkRow key={d.item.id} src={d.item} via={d.via} depth={d.depth} onOpen={onOpen} />
             ))}
           </div>
         </section>
@@ -517,22 +564,23 @@ function CardPreview({ item, revealed }) {
   );
 }
 
-/* ══ Một dòng "Linked from" ══════════════════════════════════════
-   Đọc như một field: cột trái là ô đã trỏ tới đây ("Bank login"), cột giữa là
-   item nguồn. "Details" xổ giá trị của nó NGAY TẠI CHỖ — link kiểu này hầu hết
+/* ══ Một dòng "Depends on this" ══════════════════════════════════
+   Đọc như một field: cột trái là ô của item kia đã trỏ tới / trùng giá trị với
+   đây ("Bank login", "Username"), cột giữa là item đó. `depth` > 1 thụt vào theo
+   cấp — dòng thuộc về item ngay phía trên nó. "Details" xổ giá trị NGAY TẠI CHỖ — link kiểu này hầu hết
    dùng để liếc ("thẻ nào của bank này, hết hạn bao giờ"), mà nhảy sang item rồi
    quay lại thì mất chỗ đang đứng.
 
    Giá trị lấy qua linkableValues: nó đã là nơi duy nhất định nghĩa "cái gì được
    phép hiện ra ngoài mà không cần Reveal" (secret bị loại) — tự duyệt fields ở
    đây là mở một đường rò thứ hai. Phần tử [0] là "— whole item —", bỏ. */
-function BacklinkRow({ src, via, onOpen }) {
+function BacklinkRow({ src, via, depth = 1, onOpen }) {
   const [open, setOpen] = useState(false);
   const tpl = TPL_BY_KEY.get(src.tpl);
   const detail = linkableValues(src).slice(1);
 
   return (
-    <div className="acc-field">
+    <div className={`acc-field${depth > 1 ? ' acc-field--nested' : ''}`} style={{ '--depth': depth - 1 }}>
       <div className="acc-field__label">{via}</div>
 
       <div className="acc-field__col">

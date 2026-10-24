@@ -13,6 +13,8 @@ import {
   linkableValues, matchesQuery, itemSubtitle, diffLog, formatStamp, relativeUpdated,
   normalizeUrl, avatarHue, avatarLetter,
   generatePassword,
+  normalizeGroup, groupKey, inGroup, groupTree,
+  normalizeIdent, identifiersOf, dependentsOf, isPasswordOnly,
 } from '../../utils/vaultLogic.js';
 
 /* ── TYPES phải khớp CHECK constraint trong migration ──────────────────── */
@@ -373,5 +375,100 @@ assert.deepEqual(diffLog(before, regen, ctx), [
 const usedFlipped = JSON.parse(JSON.stringify(before));
 usedFlipped.codes[0].used = true;
 assert.deepEqual(diffLog(before, usedFlipped, ctx), []);
+
+/* ── Nhóm ─────────────────────────────────────────────────────────────── */
+assert.equal(normalizeGroup('  Tài chính  /  Ngân   hàng '), 'Tài chính/Ngân hàng');
+assert.equal(normalizeGroup('A//B'), 'A/B', 'đoạn rỗng bị bỏ');
+assert.equal(normalizeGroup('A/B/C'), 'A/B', 'tối đa 2 cấp');
+assert.equal(normalizeGroup(undefined), '');
+assert.equal(groupKey('TÀI CHÍNH/Ngân hàng'), groupKey('tài chính/ngân hàng'));
+
+const grouped = [
+  { id: 'g1', group: 'Tài chính/Ngân hàng' },
+  { id: 'g2', group: 'tài chính/ngân hàng' },   // khác hoa thường → cùng nhóm
+  { id: 'g3', group: 'Tài chính/Thẻ' },
+  { id: 'g4', group: 'Email' },
+  { id: 'g5', group: '' },
+  { id: 'g6' },
+];
+const tree = groupTree(grouped);
+assert.equal(tree.ungrouped, 2);
+assert.deepEqual(tree.groups.map((g) => [g.name, g.count]), [['Email', 1], ['Tài chính', 3]]);
+assert.deepEqual(
+  tree.groups[1].children.map((c) => [c.name, c.count, c.path]),
+  [['Ngân hàng', 2, 'Tài chính/Ngân hàng'], ['Thẻ', 1, 'Tài chính/Thẻ']],
+  'tên hiển thị theo cách viết gặp đầu tiên'
+);
+assert.equal(inGroup(grouped[2], groupKey('Tài chính')), true, 'nhóm cha gồm cả nhóm con');
+assert.equal(inGroup(grouped[2], groupKey('Tài chính/Ngân hàng')), false);
+assert.equal(inGroup({ group: 'Tài chính 2' }, groupKey('Tài chính')), false, 'tiền tố tên không tính');
+
+assert.equal(matchesQuery({ title: 'VIB', group: 'Tài chính/Ngân hàng' }, 'ngân hàng'), true);
+assert.deepEqual(
+  diffLog({ title: 'x', group: '' }, { title: 'x', group: 'Email' }),
+  [{ text: 'Group changed', detail: 'Ungrouped → Email' }]
+);
+assert.deepEqual(diffLog({ title: 'x', group: 'Email' }, { title: 'x', group: ' Email ' }), [],
+  'chỉ khác khoảng trắng thì không phải đổi nhóm');
+
+/* ── Định danh + chuỗi phụ thuộc ──────────────────────────────────────── */
+assert.equal(normalizeIdent('+84 327 279 292'), '0327279292');
+assert.equal(normalizeIdent('84327279292'), '0327279292');
+assert.equal(normalizeIdent('0327.279.292'), '0327279292');
+assert.equal(normalizeIdent(' Tung@Gmail.com '), 'tung@gmail.com');
+assert.equal(normalizeIdent('VIB'), '');
+assert.equal(normalizeIdent('1234'), '', 'quá ngắn để là SĐT');
+
+const f = (label, value, type = 'text') => ({ id: `${label}-${value}`, label, type, value, values: [], links: [] });
+const linkTo = (label, itemId) => ({ id: `${label}-${itemId}`, label, type: 'link', value: '', values: [], links: [{ id: 'L', itemId, value: '' }] });
+
+const phone = { id: 'phone', tpl: 'identity', title: 'Phone',
+  fields: [{ id: 'pn', label: 'Phone numbers', type: 'multi', value: '', values: ['0327 279 292'], links: [] }] };
+const gmail = { id: 'gmail', tpl: 'account', title: 'tunghnhn9x@gmail.com',
+  fields: [f('Username', 'tunghnhn9x@gmail.com'), f('Recovery phone', '+84327279292', 'phone')] };
+const vib = { id: 'vib', tpl: 'account', title: 'VIB',
+  fields: [f('Username', '0327279292'), linkTo('Recovery email', 'gmail')] };
+const bidv = { id: 'bidv', tpl: 'account', title: 'BIDV', fields: [f('Username', '0327279292')] };
+const tcb = { id: 'tcb', tpl: 'account', title: 'Techcombank',
+  fields: [f('Username', '0327279292'), linkTo('Recovery email', 'gmail'), f('Password', '0327279292', 'password')] };
+const card = { id: 'card', tpl: 'card', title: 'TCB - VISA', fields: [linkTo('Bank login', 'tcb')] };
+const vault = [phone, gmail, vib, bidv, tcb, card];
+
+assert.deepEqual([...identifiersOf(phone)], ['0327279292']);
+assert.deepEqual([...identifiersOf(gmail)], ['tunghnhn9x@gmail.com'], 'chỉ tiêu đề — field Recovery phone không biến Gmail thành gốc của SĐT');
+assert.equal(identifiersOf(vib).size, 0, 'VIB không đại diện cho SĐT dù username là SĐT');
+
+const fromGmail = dependentsOf(vault, 'gmail');
+assert.deepEqual(
+  fromGmail.map((d) => [d.item.id, d.via, d.depth]),
+  [['vib', 'Recovery email', 1], ['tcb', 'Recovery email', 1], ['card', 'Bank login', 2]],
+  'cha trước, con ngay dưới'
+);
+
+const fromPhone = dependentsOf(vault, 'phone');
+assert.deepEqual(
+  fromPhone.filter((d) => d.depth === 1).map((d) => [d.item.id, d.via]),
+  [['gmail', 'Recovery phone'], ['vib', 'Username'], ['bidv', 'Username'], ['tcb', 'Username']],
+  '+84 khớp 0…; field password trùng giá trị KHÔNG được tính'
+);
+assert.equal(fromPhone.filter((d) => d.item.id === 'vib').length, 1,
+  'VIB tới được qua cả SĐT lẫn Gmail nhưng chỉ hiện một lần, ở đường ngắn nhất');
+assert.deepEqual(dependentsOf(vault, 'bidv'), [], 'không ai phụ thuộc BIDV');
+assert.equal(dependentsOf(vault, 'card').length, 0);
+assert.deepEqual(dependentsOf(vault, 'missing'), []);
+
+// Vòng link A ↔ B không lặp vô hạn
+const a = { id: 'a', title: 'A', fields: [linkTo('x', 'b')] };
+const b = { id: 'b', title: 'B', fields: [linkTo('y', 'a')] };
+assert.deepEqual(dependentsOf([a, b], 'a').map((d) => d.item.id), ['b']);
+
+// maxDepth chặn cây
+assert.deepEqual(dependentsOf(vault, 'gmail', 1).map((d) => d.item.id), ['vib', 'tcb']);
+
+assert.equal(isPasswordOnly({ auth: [{ kind: 'password', state: 'primary' }] }), true);
+assert.equal(isPasswordOnly({ auth: [{ kind: 'password', state: 'primary' }, { kind: 'totp', state: 'on' }] }), false);
+assert.equal(isPasswordOnly({ auth: [{ kind: 'password', state: 'primary' }, { kind: 'totp', state: 'off' }] }), true,
+  'phương thức đã tắt không tính');
+assert.equal(isPasswordOnly({ auth: [] }), false, 'chưa ghi phương thức nào ≠ chỉ có mật khẩu');
 
 console.log('vaultLogic check: OK');

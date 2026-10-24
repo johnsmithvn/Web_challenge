@@ -323,6 +323,17 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 - Update/delete dùng `updated_at` làm revision để chặn ghi đè giữa tab/device.
 - Logo item do user tự chọn, vẽ qua canvas thành PNG 48×48 lưu trong encrypted payload; không gọi mạng bên ngoài.
 
+### Sắp xếp và chuỗi phụ thuộc
+- **Nhóm theo mục đích** là điều hướng chính (cột trái): mỗi item có một nhóm tối đa 2 cấp
+  (`Tài chính/Ngân hàng`), gõ ở chế độ Edit với gợi ý nhóm đã có. Nhóm nằm trong encrypted payload
+  như tag; danh sách nhóm suy ra từ item, không có nhóm rỗng. Item chưa có nhóm ở mục Ungrouped.
+  Tạo item khi đang mở một nhóm thì item mới vào sẵn nhóm đó. Lọc theo loại là select nhỏ ở đầu
+  danh sách; tìm kiếm khớp cả tên nhóm.
+- **Depends on this** ở trang chi tiết: những item phụ thuộc vào item đang xem — qua link thật, hoặc
+  vì một field của chúng trùng email/SĐT mà item này đại diện (Identity, hoặc item có tiêu đề chính là
+  email/SĐT đó) — kèm cấp 2, 3 (Gmail → ngân hàng → thẻ). Có dòng tóm tắt và cảnh báo khi item chỉ
+  đăng nhập bằng mật khẩu.
+
 **Data:** `accounts` ciphertext + `vault_config`. Không có guest mode.
 
 ## 9. Body — Thể Hình & Sức Khỏe (`/body`)

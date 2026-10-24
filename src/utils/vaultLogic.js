@@ -6,7 +6,7 @@
  * KHÔNG import JSON, KHÔNG import React — file này phải chạy được bằng `node`.
  *
  * Shape dữ liệu ở đây là shape của ĐẶC TẢ, không phải shape của DB:
- *   Item  { id, tpl, title, fields[], notes, tags[], favorite, updated, auth[], codes[], log[] }
+ *   Item  { id, tpl, title, group, fields[], notes, tags[], favorite, updated, auth[], codes[], log[] }
  *   Field { id, label, type, value, values[], links[] }
  *   Link  { id, itemId, value }
  *   Auth  { id, kind, note, state: 'primary'|'on'|'off' }
@@ -191,7 +191,7 @@ export function codeSheet(n) {
  * mượn chúng ra ngoài không nói lên điều gì ("Port: 5432" trên một chip link).
  *
  * `field` là nhãn của field nguồn, tách riêng cho nơi nào muốn dựng hai cột
- * (khối "Linked from") thay vì đọc nguyên chuỗi `label` của một <option>.
+ * (khối "Depends on this") thay vì đọc nguyên chuỗi `label` của một <option>.
  *
  * @return {Array<{value: string, label: string, field?: string}>} phần tử đầu luôn là "— whole item —"
  */
@@ -213,6 +213,167 @@ export function linkableValues(target) {
   return out;
 }
 
+/* ══ Nhóm ════════════════════════════════════════════════════════════════
+   Nhóm là MỘT chuỗi đường dẫn trên item (`group: "Tài chính/Ngân hàng"`), nằm
+   trong payload mã hoá như tag. Không có bảng/danh sách nhóm riêng: cây nhóm suy
+   ra từ item (cùng cách usedTags). Hệ quả có chủ ý: nhóm rỗng không tồn tại, và
+   đổi tên nhóm = ghi lại từng item. Rỗng = Ungrouped. */
+
+/** Tối đa 2 cấp — cấp thứ 3 trở đi bị bỏ; gộp khoảng trắng, bỏ đoạn rỗng. */
+export function normalizeGroup(input) {
+  return String(input || '')
+    .split('/')
+    .map((s) => s.trim().replace(/\s+/g, ' ').slice(0, 60))
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('/');
+}
+
+/** Khoá so sánh: không phân biệt hoa thường, để "tài chính" và "Tài chính" là một nhóm. */
+export function groupKey(input) {
+  return normalizeGroup(input).toLocaleLowerCase('vi');
+}
+
+/** Item thuộc nhóm `key` hoặc một nhóm con của nó. */
+export function inGroup(item, key) {
+  const k = groupKey(item.group);
+  return k === key || k.startsWith(`${key}/`);
+}
+
+/**
+ * Cây nhóm 2 cấp kèm số đếm (nhóm cha đếm cả item của nhóm con). Tên hiển thị
+ * lấy theo cách viết gặp đầu tiên. Sắp theo tên tiếng Việt.
+ *
+ * @return {{groups: Array<{key, name, path, count, children: Array<{key, name, path, count}>}>, ungrouped: number}}
+ */
+export function groupTree(items) {
+  const top = new Map();
+  let ungrouped = 0;
+
+  for (const it of items) {
+    const path = normalizeGroup(it.group);
+    if (!path) { ungrouped++; continue; }
+    const [a, b] = path.split('/');
+    const ka = a.toLocaleLowerCase('vi');
+    let node = top.get(ka);
+    if (!node) top.set(ka, (node = { key: ka, name: a, path: a, count: 0, children: new Map() }));
+    node.count++;
+    if (b) {
+      const kb = `${ka}/${b.toLocaleLowerCase('vi')}`;
+      let child = node.children.get(kb);
+      if (!child) node.children.set(kb, (child = { key: kb, name: b, path: `${node.name}/${b}`, count: 0 }));
+      child.count++;
+    }
+  }
+
+  const byName = (x, y) => x.name.localeCompare(y.name, 'vi');
+  return {
+    groups: [...top.values()].sort(byName)
+      .map((n) => ({ ...n, children: [...n.children.values()].sort(byName) })),
+    ungrouped,
+  };
+}
+
+/* ══ Chuỗi phụ thuộc ("Depends on this") ═════════════════════════════════
+   Ai sẽ bị kéo theo nếu item này mất/bị chiếm. Hai nguồn cạnh:
+   1. Link thật: field `link` của item khác trỏ tới item này.
+   2. Ghép theo giá trị: field không-secret của item khác BẰNG một định danh của
+      item này (username ngân hàng = số điện thoại). Có cái này thì SĐT/Gmail
+      làm gốc được mà không phải link tay từng mục.
+   Chỉ item ĐẠI DIỆN cho định danh mới có định danh: tiêu đề chính là email/SĐT,
+   hoặc là Identity. Không có luật này thì VIB và BIDV — cùng username 0327… —
+   thành phụ thuộc lẫn nhau. */
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Email → chữ thường; SĐT → chỉ chữ số, +84 / 84 quy về 0. Không phải hai loại đó → ''. */
+export function normalizeIdent(value) {
+  const s = String(value || '').trim();
+  if (EMAIL_RE.test(s)) return s.toLowerCase();
+  const digits = s.replace(/[\s.\-()]/g, '');
+  if (!/^\+?\d{8,15}$/.test(digits)) return '';
+  const d = digits.replace(/^\+/, '');
+  return d.startsWith('84') && d.length === 11 ? `0${d.slice(2)}` : d;
+}
+
+const IDENT_TYPES = ['text', 'email', 'phone', 'multi'];
+const fieldValues = (f) => (f.type === 'multi' ? f.values || [] : [f.value]);
+
+/** Định danh item này đại diện cho (xem luật ở trên). */
+export function identifiersOf(item) {
+  const ids = new Set();
+  const add = (v) => { const n = normalizeIdent(v); if (n) ids.add(n); };
+  add(item.title);
+  if (item.tpl === 'identity') {
+    for (const f of item.fields || []) {
+      if (IDENT_TYPES.includes(f.type)) fieldValues(f).forEach(add);
+    }
+  }
+  return ids;
+}
+
+/** Các item phụ thuộc TRỰC TIẾP vào `target`, mỗi item một dòng, `via` = nhãn field. */
+function directDependents(items, target) {
+  const ids = identifiersOf(target);
+  const out = [];
+  for (const it of items) {
+    if (it.id === target.id) continue;
+    const via = [];
+    for (const f of it.fields || []) {
+      const linked = (f.links || []).some((L) => L.itemId === target.id);
+      const matched = ids.size > 0 && !isSecretType(f.type) && f.type !== 'link'
+        && fieldValues(f).some((v) => ids.has(normalizeIdent(v)));
+      if ((linked || matched) && !via.includes(f.label)) via.push(f.label);
+    }
+    if (via.length) out.push({ item: it, via: via.join(', ') });
+  }
+  return out;
+}
+
+/**
+ * Cây phụ thuộc của item `rootId`, trải phẳng theo thứ tự đọc (cha trước, con
+ * ngay dưới). BFS để mỗi item nằm ở đường NGẮN nhất tới gốc và chỉ xuất hiện một
+ * lần — vòng link A↔B không lặp vô hạn. Gốc không nằm trong kết quả.
+ *
+ * ponytail: O(n² · số field) — đủ cho vault cá nhân vài trăm mục, cần index ngược
+ * nếu vault lên hàng nghìn.
+ *
+ * @return {Array<{item, via: string, depth: number}>} depth 1 = trực tiếp
+ */
+export function dependentsOf(items, rootId, maxDepth = 3) {
+  const root = items.find((i) => i.id === rootId);
+  if (!root) return [];
+
+  const seen = new Set([rootId]);
+  const children = new Map();          // id → [{item, via}]
+  let frontier = [root];
+  for (let depth = 1; depth <= maxDepth && frontier.length; depth++) {
+    const next = [];
+    for (const node of frontier) {
+      const kids = directDependents(items, node).filter((d) => !seen.has(d.item.id));
+      kids.forEach((d) => { seen.add(d.item.id); next.push(d.item); });
+      children.set(node.id, kids);
+    }
+    frontier = next;
+  }
+
+  const out = [];
+  const walk = (id, depth) => {
+    for (const d of children.get(id) || []) {
+      out.push({ ...d, depth });
+      walk(d.item.id, depth + 1);
+    }
+  };
+  walk(rootId, 1);
+  return out;
+}
+
+/** Đang đăng nhập chỉ bằng mật khẩu: có ít nhất một phương thức bật, và tất cả đều là password. */
+export function isPasswordOnly(item) {
+  const active = (item.auth || []).filter((a) => a.state !== 'off');
+  return active.length > 0 && active.every((a) => a.kind === 'password');
+}
+
 /**
  * Item có khớp chuỗi tìm kiếm hay không. Tìm trong tiêu đề, tag, ghi chú, nhãn
  * field và giá trị field KHÔNG phải secret.
@@ -226,6 +387,8 @@ export function matchesQuery(item, query) {
 
   const hay = [
     item.title,
+    // "Tài chính/Ngân hàng" → gõ "ngân hàng" cũng ra
+    normalizeGroup(item.group).replace('/', ' '),
     // tag là object {id,name,color} khi đến từ hook, là chuỗi khi đến từ test /
     // seed — nhận cả hai để không phải giữ hai bản danh sách tag trên item.
     (item.tags || []).map((t) => t?.name ?? t).join(' '),
@@ -378,6 +541,11 @@ export function diffLog(before, after, { itemTitles = {}, authLabels = {} } = {}
   // item tự nhiên đổi mã/chip mà History không giải thích được vì sao.
   if (before.tpl !== after.tpl) {
     out.push({ text: 'Item type changed', detail: `${before.tpl} → ${after.tpl}` });
+  }
+  const bg = normalizeGroup(before.group);
+  const ag = normalizeGroup(after.group);
+  if (bg !== ag) {
+    out.push({ text: 'Group changed', detail: `${bg || 'Ungrouped'} → ${ag || 'Ungrouped'}` });
   }
 
   // ── Field ──

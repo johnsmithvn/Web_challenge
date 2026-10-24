@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { Fragment, useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAccounts } from '../hooks/useAccounts';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +8,10 @@ import AccountDetail from '../components/AccountDetail';
 import AccountAvatar from '../components/AccountAvatar';
 import AppIcon from '../components/AppIcon';
 import SkeletonList from '../components/SkeletonList';
-import { matchesQuery, itemSubtitle, newId, relativeUpdated } from '../utils/vaultLogic';
+import {
+  matchesQuery, itemSubtitle, newId, relativeUpdated, avatarHue, groupTree, groupKey, inGroup,
+  isPasswordOnly,
+} from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import '../styles/accounts.css';
 
@@ -18,7 +21,9 @@ import '../styles/accounts.css';
  * Every user-authored item property is decrypted only after the separate Vault
  * passphrase unlocks the in-memory DEK. Locked means no list or metadata browse.
  *
- * Layout: header · banner · filter bar · body 2 pane, breakpoint 900px.
+ * Layout: header · body 3 cột (nhóm · danh sách · chi tiết), breakpoint 900px.
+ * Cột nhóm đổi dạng chỉ bằng container query: đủ rộng thì có chữ, hẹp thì thành
+ * rail icon, dưới 900px thành dải chip cuộn ngang trên danh sách — cùng một markup.
  *
  * KHÔNG có hook đo bề rộng và không có resize listener — khác prototype. Dưới
  * 900px CSS đổi `.acc-body[data-screen]` thành 2 màn hình; trên 900px cùng
@@ -30,8 +35,14 @@ import '../styles/accounts.css';
  * dùng GenericModal: component đó mang style Life Hub vào và phá fidelity.
  */
 
-const { templates: TEMPLATES, filterIcons: FILTER_ICONS } = ACCOUNT_TEMPLATES;
+const { templates: TEMPLATES, filterIcons: FILTER_ICONS, groupIcons: GROUP_ICONS } = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
+
+/** Icon theo từ khoá trong tên nhóm — tên nhóm do user tự gõ nên không có chỗ lưu icon riêng. */
+const groupIcon = (name) => {
+  const n = name.toLocaleLowerCase('vi');
+  return GROUP_ICONS.rules.find((r) => r.match.some((m) => n.includes(m)))?.icon || GROUP_ICONS.fallback;
+};
 
 export default function AccountsPage() {
   const { user } = useAuth();
@@ -42,7 +53,8 @@ export default function AccountsPage() {
   const { confirm, ConfirmModal } = useConfirm();
 
   const [query, setQuery] = useState('');
-  const [cat, setCat] = useState('all');          // 'all' | 'fav' | <tpl key>
+  const [viewState, setView] = useState('all');   // 'all' | 'fav' | 'none' (Ungrouped) | 'g:<groupKey>'
+  const [tplFilter, setTplFilter] = useState(''); // '' = mọi loại
   const [tag, setTag] = useState(null);           // tag id
   const [selectedId, setSelectedId] = useState(null);
   const [screen, setScreen] = useState('list');   // chỉ có nghĩa dưới 900px
@@ -72,19 +84,31 @@ export default function AccountsPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [pickerOpen]);
 
+  // ── Nhóm ────────────────────────────────────────────────────
+  const tree = useMemo(() => groupTree(items), [items]);
+  const groupByKey = useMemo(() => new Map(
+    tree.groups.flatMap((g) => [[g.key, g], ...g.children.map((c) => [c.key, c])])
+  ), [tree]);
+  // Nhóm đang chọn biến mất (item cuối vừa chuyển đi) → về All, khỏi kẹt ở danh sách rỗng
+  const view = viewState.startsWith('g:') && !groupByKey.has(viewState.slice(2)) ? 'all' : viewState;
+  const activeGroup = view.startsWith('g:') ? groupByKey.get(view.slice(2)) : null;
+  const pickView = (v) => { setView(v); setTag(null); };
+
   // ── Lọc ─────────────────────────────────────────────────────
   const visible = useMemo(() => items.filter((i) => {
-    if (cat === 'fav' && !i.favorite) return false;
-    if (cat !== 'all' && cat !== 'fav' && i.tpl !== cat) return false;
+    if (view === 'fav' && !i.favorite) return false;
+    if (view === 'none' && groupKey(i.group)) return false;
+    if (activeGroup && !inGroup(i, activeGroup.key)) return false;
+    if (tplFilter && i.tpl !== tplFilter) return false;
     if (tag && !i.tags.some((t) => t.id === tag)) return false;
     // matchesQuery loại giá trị secret khỏi vùng tìm — xem vaultLogic.js
     return matchesQuery(i, query);
-  }), [items, cat, tag, query]);
+  }), [items, view, activeGroup, tplFilter, tag, query]);
 
   const selected = items.find((i) => i.id === selectedId) || null;
 
   const counts = useMemo(() => {
-    const c = { all: items.length, fav: 0 };
+    const c = { fav: 0 };
     for (const i of items) {
       if (i.favorite) c.fav++;
       c[i.tpl] = (c[i.tpl] || 0) + 1;
@@ -116,12 +140,12 @@ export default function AccountsPage() {
     return created;
   }, [tags]);
 
-  const dirty = cat !== 'all' || !!tag || !!query;
   const listTitle = tag
     ? `#${usedTags.find((t) => t.id === tag)?.name || 'tag'}`
-    : cat === 'all' ? 'All items'
-      : cat === 'fav' ? 'Favourites'
-        : TPL_BY_KEY.get(cat)?.name || 'Items';
+    : activeGroup ? activeGroup.name
+      : view === 'fav' ? 'Favourites'
+        : view === 'none' ? 'Ungrouped'
+          : 'All items';
 
   // ── Hành động ───────────────────────────────────────────────
   // Reveal là per-field và chỉ sống trong lúc item đang mở: đổi item thì mọi
@@ -180,7 +204,7 @@ export default function AccountsPage() {
   const handleCreate = async (tplKey) => {
     if (creating) return;               // chặn double-click tạo 2 item
     setCreating(tplKey);
-    const id = await createItem(tplKey);
+    const id = await createItem(tplKey, { group: activeGroup?.path || '' });
     setCreating(null);
     if (!id) { showToast('Could not create the item', { icon: 'warning' }); return; }
     setPickerOpen(false);
@@ -276,54 +300,68 @@ export default function AccountsPage() {
 
       {vaultError && <div className="acc-vault-error" role="alert">{vaultError}</div>}
 
-      {/* ── Filter bar ── */}
-      <div className="acc-filters">
-        <div className="acc-filters__cap acc-filters__cap--types">Types</div>
-        <div className="acc-filters__row acc-filters__row--types">
-          <Chip icon={FILTER_ICONS.all} label="All" count={counts.all}
-            on={cat === 'all'} onClick={() => { setCat('all'); setTag(null); }} />
-          <Chip icon={FILTER_ICONS.fav} label="Favourites" count={counts.fav}
-            on={cat === 'fav'} onClick={() => { setCat('fav'); setTag(null); }} />
-          {TEMPLATES.map((t) => (
-            <Chip key={t.key} icon={t.icon} label={t.chip} count={counts[t.key] || 0}
-              on={cat === t.key} onClick={() => { setCat(t.key); setTag(null); }} />
-          ))}
-        </div>
-
-        {dirty && (
-          <div className="acc-filters__clear">
-            <button className="acc-btn acc-btn--ghost"
-              onClick={() => { setCat('all'); setTag(null); setQuery(''); }}>Clear</button>
-          </div>
-        )}
-
-        <div className="acc-filters__cap acc-filters__cap--tags">Tags</div>
-        {/* Hàng này CỐ Ý chỉ liệt kê tag đang gắn trên item của vault, không phải
-            toàn bộ tag hệ thống: bấm một tag chưa item nào dùng thì chỉ ra danh
-            sách rỗng. Chỗ chọn tag từ cả hệ thống là ở chế độ sửa của item. */}
-        <div className="acc-filters__row acc-filters__row--tags">
-          {usedTags.length === 0 && (
-            <span className="acc-sect__meta">
-              No item is tagged yet — add tags while editing an item
-            </span>
-          )}
-          {usedTags.map((t) => (
-            <button key={t.id}
-              className={`acc-chip acc-chip--tag${tag === t.id ? ' acc-chip--on' : ''}`}
-              onClick={() => setTag(tag === t.id ? null : t.id)}
-            >#{t.name}</button>
-          ))}
-        </div>
-      </div>
-
       {/* ── Body ── */}
       <div className="acc-body" data-screen={screen}>
+        {/* ── Cột nhóm. Thay thanh lọc Types/Tags cũ: 14/18 item cùng loại ACC nên
+            lọc theo loại gần như không chia được gì; loại lùi thành select ở đầu
+            danh sách. ── */}
+        <nav className="acc-pane acc-groups" aria-label="Groups">
+          <GroupBtn icon={FILTER_ICONS.all} label="All items" count={items.length}
+            on={view === 'all' && !tag} onClick={() => pickView('all')} />
+          <GroupBtn icon={FILTER_ICONS.fav} label="Favourites" count={counts.fav}
+            on={view === 'fav' && !tag} onClick={() => pickView('fav')} />
+
+          <div className="acc-groups__cap">Groups</div>
+          {tree.groups.map((g) => (
+            <Fragment key={g.key}>
+              <GroupBtn icon={groupIcon(g.name)} hue={avatarHue(g.name)} label={g.name} count={g.count}
+                on={view === `g:${g.key}` && !tag} onClick={() => pickView(`g:${g.key}`)} />
+              {/* Con mang màu của CHA: cả nhánh đọc ra là một khối */}
+              {g.children.map((c) => (
+                <GroupBtn key={c.key} sub icon={groupIcon(c.name)} hue={avatarHue(g.name)} label={c.name}
+                  count={c.count} on={view === `g:${c.key}` && !tag} onClick={() => pickView(`g:${c.key}`)} />
+              ))}
+            </Fragment>
+          ))}
+          {tree.ungrouped > 0 && (
+            <GroupBtn icon={GROUP_ICONS.ungrouped} label="Ungrouped" count={tree.ungrouped}
+              on={view === 'none' && !tag} onClick={() => pickView('none')} />
+          )}
+          {tree.groups.length === 0 && items.length > 0 && (
+            <p className="acc-groups__hint">Give an item a group in Edit, e.g. Tài chính/Ngân hàng.</p>
+          )}
+
+          {/* CỐ Ý chỉ liệt kê tag đang gắn trên item của vault, không phải toàn bộ
+              tag hệ thống. Chỗ chọn tag từ cả hệ thống là ở chế độ sửa của item. */}
+          {usedTags.length > 0 && (
+            <>
+              <div className="acc-groups__cap acc-groups__cap--tags">Tags</div>
+              <div className="acc-groups__tags">
+                {usedTags.map((t) => (
+                  <button key={t.id} type="button" aria-pressed={tag === t.id}
+                    className={`acc-chip acc-chip--tag${tag === t.id ? ' acc-chip--on' : ''}`}
+                    onClick={() => setTag(tag === t.id ? null : t.id)}
+                  >#{t.name}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </nav>
+
         <section className="acc-pane acc-pane--list">
           <div className="acc-listhead">
             <h2 className="acc-listhead__title">{listTitle}</h2>
             <span className="acc-listhead__count">
               {visible.length} {visible.length === 1 ? 'entry' : 'entries'}
             </span>
+            {/* Chỉ liệt kê loại đang có item — 6 loại rỗng không chiếm chỗ */}
+            <select className="acc-select acc-select--filter" value={tplFilter}
+              onChange={(e) => setTplFilter(e.target.value)} aria-label="Filter by type">
+              <option value="">All types</option>
+              {TEMPLATES.filter((t) => counts[t.key] || t.key === tplFilter).map((t) => (
+                <option key={t.key} value={t.key}>{t.chip} · {counts[t.key] || 0}</option>
+              ))}
+            </select>
           </div>
 
           {isLoading && items.length === 0 && (
@@ -981,13 +1019,18 @@ function VaultBackup({ onExport, onRestore }) {
   );
 }
 
-/* ── Chip của filter bar ─────────────────────────────────────── */
-function Chip({ icon, label, count, on, onClick }) {
+/* ── Một dòng của cột nhóm ───────────────────────────────────── */
+/* `hue` → `--h`, cùng công thức màu với avatar; không có hue (All, Favourites,
+   Ungrouped) thì plate trung tính. Tên luôn nằm trong DOM: ở dạng rail CSS chỉ
+   giấu bằng clip, nên nút vẫn có tên truy cập được; `title` là tooltip khi rê. */
+function GroupBtn({ icon, hue, label, count, on, sub, onClick }) {
   return (
-    <button className={`acc-chip${on ? ' acc-chip--on' : ''}`} onClick={onClick}>
-      <AppIcon name={icon} size={13} />
-      <span>{label}</span>
-      <span className="acc-chip__num">{count}</span>
+    <button type="button" title={label} aria-pressed={on} onClick={onClick}
+      className={`acc-grp${sub ? ' acc-grp--sub' : ''}${hue === undefined ? ' acc-grp--plain' : ''}${on ? ' acc-grp--on' : ''}`}
+      style={hue === undefined ? undefined : { '--h': hue }}>
+      <span className="acc-grp__plate"><AppIcon name={icon} size={15} /></span>
+      <span className="acc-grp__name">{label}</span>
+      <span className="acc-grp__num">{count}</span>
     </button>
   );
 }
@@ -1011,7 +1054,11 @@ function ListRow({ item, on, onOpen }) {
         </span>
         <span className="acc-row__sub">{itemSubtitle(item, tpl?.name || 'Item')}</span>
       </span>
-      <span className="acc-row__at">{relativeUpdated(item.updated)}</span>
+      <span className="acc-row__side">
+        <span className="acc-row__at">{relativeUpdated(item.updated)}</span>
+        {/* Chỉ cờ rủi ro, không cờ "an toàn": màu vàng chỉ xuất hiện khi có việc phải làm */}
+        {isPasswordOnly(item) && <span className="acc-row__auth">PWD only</span>}
+      </span>
     </button>
   );
 }

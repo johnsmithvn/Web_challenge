@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
-import { codeSheet, diffLog, newId } from '../utils/vaultLogic';
+import { codeSheet, diffLog, newId, normalizeGroup } from '../utils/vaultLogic';
 import {
   createVaultConfig,
   decryptVaultItem,
@@ -69,6 +69,8 @@ function cleanItem(item) {
     // duy nhất chặn được trường hợp còn sót một item lưu key cũ — mất nó thì item
     // đó rơi về kicker "Item · ···" và biến khỏi chip filter. Giá bằng 0, đừng dọn.
     tpl: item.tpl === 'login' ? 'account' : (item.tpl || 'account'),
+    // Optional từ đầu nên không bump ITEM_SCHEMA: item cũ thiếu key → '' (Ungrouped).
+    group: normalizeGroup(item.group),
     favorite: !!item.favorite,
     logo: typeof item.logo === 'string' && item.logo.length <= LOGO_LIMIT ? item.logo : '',
     notes: item.notes || '',
@@ -698,7 +700,8 @@ export function useAccounts() {
     }
   }, [enabled, items, itemTitles, writeItem]);
 
-  const createItem = useCallback(async (tplKey) => {
+  // `group`: nhóm đang mở ở cột trái lúc bấm New item (Smart Prefill, RULES §14)
+  const createItem = useCallback(async (tplKey, { group = '' } = {}) => {
     if (!enabled || !keyRef.current) return null;
     const tpl = TPL_BY_KEY.get(tplKey);
     if (!tpl) return null;
@@ -711,6 +714,7 @@ export function useAccounts() {
       id,
       title: `New ${tpl.name.toLowerCase()}`,
       tpl: tplKey,
+      group,
       favorite: false,
       notes: '',
       tags: [],

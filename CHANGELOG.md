@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v6.31.0 — 2026-10-24
+
+### Added
+- **Vault — nhóm theo mục đích (`vaultLogic.js`, `useAccounts.js`, `AccountsPage.jsx`, `AccountDetail.jsx`, `accounts.css`, `account-templates.json`):** cột nhóm bên trái thay thanh lọc Types/Tags 2 hàng (14/18 item cùng loại ACC nên lọc theo loại gần như không chia được gì). Item có `group` dạng đường dẫn 2 cấp (`Tài chính/Ngân hàng`) trong encrypted payload, không đổi schema; item cũ ở Ungrouped. Gõ nhóm ở chế độ Edit (datalist gợi ý nhóm đã có), đổi nhóm ghi History, tạo item khi đang mở nhóm thì điền sẵn nhóm, tìm kiếm khớp tên nhóm. Icon nhóm suy theo từ khoá (`groupIcons`), màu theo hue của nhóm cha. Vault ≥1180px là cột có chữ, 900–1179px rail icon, <900px dải chip cuộn ngang. Lọc loại thành select ở đầu danh sách, chỉ liệt kê loại đang có item.
+- **Vault — "Depends on this" thay "Linked from" (`vaultLogic.js` `dependentsOf`, `AccountDetail.jsx`):** ngoài link thật, ghép theo giá trị — username ngân hàng trùng SĐT của Identity / của item có tiêu đề là SĐT đó thì tính là phụ thuộc (không cần link tay); đi tiếp tới cấp 3 dạng cây (Gmail → ngân hàng → thẻ), BFS chống vòng. Dòng tóm tắt số item bị kéo theo, cảnh báo khi item chỉ đăng nhập bằng mật khẩu. Self-check mới trong `vaultLogic.test.js` (chuẩn hoá nhóm, cây nhóm, +84 ≡ 0, VIB/BIDV cùng username không ghép nhau, vòng link, maxDepth).
+
+### Changed
+- **Vault — giao diện "Ops console" thay bộ Keyplate tím (`accounts.css`, `index.html`, `AccountsPage.jsx`, `AccountDetail.jsx`):** bộ cũ (tím `#7c5cff` + glow, nút pill, bo 18px, bóng mềm, chữ in hoa giãn khắp nơi) trông như landing page SaaS. Bộ mới: nền graphite / trắng, IBM Plex Sans + IBM Plex Mono cho mọi giá trị, số đếm, mã, giờ; góc 4px (`--r`), không glow, không bóng mềm, không nhấc nút khi hover. Cyan chỉ cho hành động và chọn (bản sáng: xanh thép `#0a7bbf`), vàng/đỏ chỉ cho rủi ro (`--warn*`, `--danger*`, `--ok*`). Nút nhỏ (`.acc-act`) thành nút viền chữ thường, Delete item đỏ. Thêm dải số liệu dưới tiêu đề (Dependents · Depth · Sign-in · Updated) và cờ "PWD only" màu vàng ở dòng danh sách cho item chỉ đăng nhập bằng mật khẩu. Cả bản tối và sáng.
+
+### Notes
+- Tab / PWA còn chạy bản cũ mà lưu một item sẽ làm mất `group` của item đó (`cleanItem` cũ không biết key này) — reload sau khi deploy.
+
 ## v6.30.8 — 2026-10-23
 
 ### Changed
