@@ -580,6 +580,17 @@ assert.ok(dependentsOf(withMailbox, 'phone').some((d) => d.item.id === 'mb' && d
 assert.deepEqual(untrackedIdentifiers(withMailbox), [], 'đã có Email account → không còn "chưa có trong vault"');
 assert.deepEqual(identifiersOf({ tpl: 'email', title: 'Gmail', fields: [f('Email address', '', 'email')] }).size, 0,
   'chưa điền địa chỉ thì chưa là gốc');
+// Đổi loại Account → Email account rồi đổi tiêu đề thành "Gmail": địa chỉ ở Username (text)
+const converted = { tpl: 'email', title: 'Gmail', fields: [
+  f('Website', 'gmail.com', 'url'),
+  f('Username', 'kuroemon98@gmail.com'),
+  f('Password', 'a@b.co', 'password'),
+  { ...linkTo('Recovery email', 'gmail'), value: 'other@gmail.com' },
+] };
+assert.deepEqual([...identifiersOf(converted)], ['kuroemon98@gmail.com'],
+  'lấy Username có giá trị là email; bỏ qua password và field link');
+assert.deepEqual([...identifiersOf({ ...converted, fields: [f('Username', 'x@gmail.com'), f('Email address', 'y@gmail.com', 'email')] })],
+  ['y@gmail.com'], 'có field kiểu email thì nó thắng');
 
 assert.equal(mailboxTitle('a@gmail.com'), 'Gmail');
 assert.equal(mailboxTitle('a@Hotmail.com'), 'Outlook');

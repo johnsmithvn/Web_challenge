@@ -339,7 +339,12 @@ export function identifiersOf(item) {
     }
   }
   if (item.tpl === 'email') {
-    const address = (item.fields || []).find((f) => f.type === 'email' && f.value);
+    // Ưu tiên field kiểu email. Item đổi loại từ Account sang (đổi loại không thêm/
+    // bớt field) thì địa chỉ nằm ở "Username" kiểu text → lấy field không-secret đầu
+    // tiên có giá trị là email. Field link (Recovery email) không bao giờ được lấy.
+    const fields = item.fields || [];
+    const address = fields.find((f) => f.type === 'email' && f.value)
+      || fields.find((f) => !isSecretType(f.type) && f.type !== 'link' && EMAIL_RE.test(String(f.value || '').trim()));
     if (address) add(address.value);
   }
   return ids;

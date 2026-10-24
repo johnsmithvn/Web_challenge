@@ -256,7 +256,9 @@ dùng lại `src/styles/kb-tokens.css` (đã có cả bản tối và sáng), n�
 - **Cột phải — giữ** 6 thẻ hiện có (thông tin, sơ đồ nhỏ, mục lục, liên kết đi, backlink, task liên kết).
   **Thêm:** **Tiến độ 5 bước** vào thẻ thông tin; thẻ mới **Xung quanh** ngay dưới thẻ thông tin:
   *Cùng chủ đề* (3 bài) · *Cùng nguồn* (cùng chủ repo / kênh / tên miền) · đường gạch · *Lưu gần thời điểm* (±7 ngày, khác chủ đề) kèm chú thích "có thể khác chủ đề".
-- Thẻ task liên kết hiện cả task đã xong (đang chỉ hiện task chưa xong).
+- Thẻ task liên kết giữ như cũ (chỉ task chưa xong). `useUserTasks` chỉ tải task chưa xong + xong trong hôm nay,
+  nên "Đã thực hành" được suy ra: task đã nối mà không còn trong danh sách chưa xong ⇒ đã xong (task bị xoá thì
+  junction cascade theo). Thẻ hiện thêm dòng "N task đã xong".
 
 ### 5.6. Trình soạn thảo (giữ `KBEditorView`, sửa)
 
@@ -371,7 +373,7 @@ Thêm vào `src/utils/kbDeriveUtils.js`; ca kiểm bổ sung vào `src/__tests__
 | `progressOf(item, tasks)` | Tiến độ §3.4 | unread; read; read + note; task mở; mọi task xong |
 | `filterArticles(…)` (nâng cấp, giữ tên) | Thêm lọc chủ đề, loại, thời gian, lưu trữ; tìm không dấu nhiều từ | không dấu; AND nhiều từ; tìm trong ghi chú và `body_text`; `#thẻ` vẫn chạy; biên 7/30/90 ngày |
 | `findNeighbors(item, items)` | 3 nhóm Xung quanh, không trùng | cùng chủ đề; cùng nguồn trừ đã có; gần thời điểm khác chủ đề |
-| `suggestTopic(item, items, topics)` | Gợi ý: cùng nguồn hay xếp ở đâu (≥ 2 lần) → từ khoá chủ đề → không gợi ý | ít dữ liệu → null, không đoán bừa |
+| `suggestTopic(item, items, topics)` | Gợi ý: cùng nguồn hay xếp ở đâu (≥ 2 lần) → cùng loại dồn hẳn về một chủ đề (≥ 3 bài, ≥ 60%, ví dụ repo) → tên chủ đề xuất hiện trong tiêu đề/nội dung (chỉ khi khớp đúng một chủ đề) → không gợi ý | ít dữ liệu → null, không đoán bừa; "ai" quá ngắn không tính |
 | `pickResurface(items, dateStr, n)` | 3 bài "Gặp lại", cố định trong ngày | cùng ngày cùng kết quả; chỉ bài > 30 ngày; không bốc link trơn |
 | `isStale(item, today)` | *Chưa đọc xong* > 30 ngày | biên 30/31 ngày |
 
@@ -405,7 +407,7 @@ Thêm vào `src/utils/kbDeriveUtils.js`; ca kiểm bổ sung vào `src/__tests__
 | `src/components/LinkKBModal.jsx` | `TYPE_ICONS` cũ → `KIND_META` |
 | `src/hooks/useCollections.js` | Đọc/ghi `topic_id`; join số ghi chú; trạng thái mặc định theo §3.4; tuỳ chọn lấy cả bài lưu trữ |
 | `src/utils/kbDeriveUtils.js` | Hàm §7 |
-| `src/data/knowledge.json` | 7 loại → bộ chủ đề khởi đầu (tên, định nghĩa, màu, từ khoá gợi ý), `KIND_META`, giới hạn (8 chủ đề, 30 ngày, 3 bài/khối) |
+| `src/data/knowledge.json` | 7 loại → bộ chủ đề khởi đầu (tên, định nghĩa, màu), giới hạn (8 chủ đề, 30 ngày, 3 bài/khối). `KIND_META` nằm trong `kbDeriveUtils.js` (cấu hình nhỏ gắn với code, test Node đọc được không cần import JSON) |
 | `src/styles/collect.css` | Style phần mới theo 1a |
 | `src/__tests__/core/kbDeriveUtils.test.js` | Ca kiểm §7 |
 | `docs/DATABASE.md`, `docs/FEATURES.md`, `docs/ARCHITECTURE.md`, `docs/MODULE_KNOWLEDGE.md`, `DESIGN.md`, `CHANGELOG.md` | Cập nhật đúng vai trò (RULES §11); FEATURES có quy chuẩn §3 |

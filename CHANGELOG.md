@@ -14,6 +14,7 @@
 
 ### Fixed
 - **Vault — khung không kéo hết chiều cao khi danh sách ngắn (`accounts.css`):** sau khi bỏ thanh lọc, body rơi vào hàng `auto` của lưới `.acc-vault` nên co theo nội dung (Password only 11 mục → nửa dưới màn hình trống). Lưới còn `auto auto minmax(0, 1fr)`, `.acc-body` khai `grid-row: 3` tường minh.
+- **Vault — Email account đổi loại từ Account mất vai trò gốc khi đổi tiêu đề (`vaultLogic.js` `identifiersOf`):** đổi loại không thêm field nên địa chỉ vẫn ở "Username" kiểu text, mà luật EML chỉ đọc field kiểu email → đặt tiêu đề "Gmail" là hộp thư hết là gốc. Giờ không có field kiểu email thì lấy field không-secret đầu tiên có giá trị là email (field link không bao giờ tính).
 
 ### Changed
 - **Vault — giao diện "Ops console" thay bộ Keyplate tím (`accounts.css`, `index.html`, `AccountsPage.jsx`, `AccountDetail.jsx`):** bộ cũ (tím `#7c5cff` + glow, nút pill, bo 18px, bóng mềm, chữ in hoa giãn khắp nơi) trông như landing page SaaS. Bộ mới: nền graphite / trắng, IBM Plex Sans + IBM Plex Mono cho mọi giá trị, số đếm, mã, giờ; góc 4px (`--r`), không glow, không bóng mềm, không nhấc nút khi hover. Cyan chỉ cho hành động và chọn (bản sáng: xanh thép `#0a7bbf`), vàng/đỏ chỉ cho rủi ro (`--warn*`, `--danger*`, `--ok*`). Nút nhỏ (`.acc-act`) thành nút viền chữ thường, Delete item đỏ. Thêm dải số liệu dưới tiêu đề (Dependents · Depth · Sign-in · Updated) và cờ "PWD only" màu vàng ở dòng danh sách cho item chỉ đăng nhập bằng mật khẩu. Cả bản tối và sáng.
