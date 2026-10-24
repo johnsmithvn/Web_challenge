@@ -346,6 +346,13 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 - **Tiêu đề = tên dịch vụ** (VIB, Gmail, Shopee), không phải username. Ô tiêu đề ở chế độ Edit xổ gợi ý:
   tên đã dùng trong vault + danh sách dịch vụ hay dùng (`titlePresets`); chọn một tên khi item chưa có nhóm
   thì nhóm được điền theo. Gõ tên khác vẫn được.
+  Quy chuẩn: hộp thư ở nhà cung cấp (Email account) → Gmail / Outlook / iCloud Mail; tài khoản ở nhà cung cấp
+  đăng nhập bằng email khác (Account) → Google / Microsoft / Apple ID. Gợi ý lọc theo loại item nên không
+  xổ cả "Gmail" lẫn "Google" cho cùng một thứ.
+- **Bộ nhóm chuẩn:** Tài chính/Ngân hàng · Ví điện tử · Thẻ · Đầu tư, Email, Mạng xã hội, Mua sắm, Giải trí,
+  Nền tảng, Công việc, Định danh, Thiết bị & mạng — xổ ở ô Group / thanh Move to group (sau nhóm đã dùng).
+  Item mới không đứng trong nhóm nào vào nhóm chuẩn của loại (Thẻ → Tài chính/Thẻ, Email account → Email,
+  Identity → Định danh, Wi-Fi → Thiết bị & mạng, Server / Database / API key → Công việc). Vẫn gõ nhóm khác được.
 - **Chuyển nhóm hàng loạt:** nút **Select** ở đầu danh sách → tick nhiều item (hoặc "Select all" theo bộ
   lọc đang xem) → gõ / chọn nhóm ở thanh **Move to group** → Move. Gõ tên chưa có là tạo nhóm, để trống là
   bỏ nhóm. **+ New group** ở cột nhóm mở thẳng chế độ chọn ở All items để tạo nhóm mới.

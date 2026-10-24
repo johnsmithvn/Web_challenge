@@ -1,6 +1,9 @@
-import { useMemo } from 'react';
-import { TYPE_GLYPHS, readTime, isTiptapBody, tiptapToPlainText, markdownToPlainText, safeHostname, parseWikiLinks } from '../../utils/kbDeriveUtils';
+import { useMemo, useState } from 'react';
+import {
+  KIND_META, PROGRESS_META, contentKind, progressOf, itemPlainText, readTime, safeHostname, parseWikiLinks,
+} from '../../utils/kbDeriveUtils';
 import { formatDate } from '../../utils/dateUtils';
+import KBTopicPicker from './KBTopicPicker';
 
 /* ── Sort segmented ────────────────────────────────────────── */
 const SORT_ITEMS = [
@@ -10,20 +13,16 @@ const SORT_ITEMS = [
 ];
 
 /* ── ListRow — single article row ──────────────────────────── */
-function ListRow({ item, isCursor, isBulk, isChecked, onToggleCheck, onClick, onEdit, onDelete }) {
-  const meta = TYPE_GLYPHS[item.type] || TYPE_GLYPHS.note;
-  const isTiptap = isTiptapBody(item);
+function ListRow({ item, pendingTaskIds, isCursor, isBulk, isChecked, onToggleCheck, onClick, onEdit, onDelete }) {
+  const kind = KIND_META[contentKind(item)];
+  const topic = item._topic;
+  const progress = PROGRESS_META[progressOf(item, pendingTaskIds)];
 
-  let plainText = item.body_text || '';
-  if (!plainText && isTiptap) plainText = tiptapToPlainText(item.body);
-  else if (!plainText) plainText = markdownToPlainText(item.body || '');
-
+  const plainText = itemPlainText(item);
   const mins = item.word_count ? Math.max(1, Math.ceil(item.word_count / 220)) : readTime(plainText);
   const excerpt = plainText.slice(0, 200);
   const tags = item._tags || [];
   const linkCount = parseWikiLinks(item.body || '').length;
-  const taskCount = item._linkedTaskCount || 0;
-  const noteCount = item._noteCount || 0;
 
   return (
     <article
@@ -45,16 +44,19 @@ function ListRow({ item, isCursor, isBulk, isChecked, onToggleCheck, onClick, on
         </label>
       )}
 
-      {/* Icon box */}
-      <div className="kb-row__icon" style={{ color: `var(${meta.hueVar})`, borderColor: isCursor ? 'var(--kb-brass)' : undefined }}>
-        {meta.glyph}
+      {/* Kind mark, tinted with the topic colour */}
+      <div className="kb-row__icon" style={{ color: topic?.color || 'var(--kb-faint)', borderColor: isCursor ? 'var(--kb-brass)' : undefined }}>
+        {kind.glyph}
       </div>
 
       {/* Content */}
       <div className="kb-row__content">
-        {/* Metadata line */}
         <div className="kb-row__meta">
-          <span style={{ color: `var(${meta.hueVar})` }}>{meta.label}</span>
+          {topic
+            ? <span style={{ color: topic.color }}>{topic.name}</span>
+            : <span>Chưa xếp</span>}
+          <span className="kb-row__sep">·</span>
+          <span>{kind.label}</span>
           {item.url && <><span className="kb-row__sep">·</span><span>{safeHostname(item.url)}</span></>}
           <span className="kb-row__sep">·</span>
           <span>{formatDate(item.created_at)}</span>
@@ -62,36 +64,26 @@ function ListRow({ item, isCursor, isBulk, isChecked, onToggleCheck, onClick, on
           <span>{mins} phút</span>
         </div>
 
-        {/* Title */}
         <h3 className="kb-row__title">{item.title}</h3>
 
-        {/* Excerpt */}
         {excerpt && (
           <p className="kb-row__excerpt">
             {excerpt}{plainText.length > 200 ? '…' : ''}
           </p>
         )}
 
-        {/* Badges */}
         <div className="kb-row__badges">
-          {tags.map(t => {
-            const name = typeof t === 'string' ? t : t.name;
-            const color = typeof t === 'string' ? 'var(--kb-dim)' : (t.color || 'var(--kb-dim)');
-            return (
-              <span key={name} className="kb-badge kb-badge--tag">
-                <span className="kb-badge__dot" style={{ background: color }} />
-                {name}
-              </span>
-            );
-          })}
+          {progress && (
+            <span className={`kb-badge kb-badge--${progress.tone}`}>{progress.glyph} {progress.label}</span>
+          )}
+          {tags.map(t => (
+            <span key={t.id || t.name} className="kb-badge kb-badge--tag">
+              <span className="kb-badge__dot" style={{ background: t.color || 'var(--kb-dim)' }} />
+              {t.name}
+            </span>
+          ))}
           {linkCount > 0 && (
             <span className="kb-badge kb-badge--link">↔ {linkCount} liên kết</span>
-          )}
-          {taskCount > 0 && (
-            <span className="kb-badge kb-badge--task">◇ {taskCount} nhiệm vụ</span>
-          )}
-          {noteCount > 0 && (
-            <span className="kb-badge kb-badge--note">✎ {noteCount} ghi chú</span>
           )}
         </div>
       </div>
@@ -107,70 +99,41 @@ function ListRow({ item, isCursor, isBulk, isChecked, onToggleCheck, onClick, on
 
 /* ── KBListView ────────────────────────────────────────────── */
 export default function KBListView({
-  articles, allTags, cursor,
-  typeFilter, onTypeFilter,
+  articles, allTags, topics, currentTopic, onManageTopics, pendingTaskIds, cursor,
   activeTagIds, onToggleTag,
   sort, onSort,
   bulk, onToggleBulk, picked, onTogglePick, onSelectAll, onDeselectAll,
-  onBulkTag, onBulkDelete,
+  onBulkTag, onBulkAssign, onBulkDelete,
   onOpenReader, onOpenEditor, onDelete,
   hasFilter, onClearFilter,
 }) {
-  // Type counts based on current filtered set (before type filter)
-  const typeCounts = useMemo(() => {
-    const counts = {};
-    articles.forEach(a => {
-      if (a.type !== 'inbox' && a.status !== 'archived') {
-        counts[a.type] = (counts[a.type] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [articles]);
+  const [assigning, setAssigning] = useState(false);
 
-  const totalCount = Object.values(typeCounts).reduce((s, n) => s + n, 0);
-
-  // Tag counts for display
+  // Tag counts within the current list
   const tagCounts = useMemo(() => {
     const counts = {};
-    articles.forEach(a => {
-      if (a.type === 'inbox' || a.status === 'archived') return;
-      (a._tags || []).forEach(t => {
-        const id = typeof t === 'string' ? t : t.id;
-        counts[id] = (counts[id] || 0) + 1;
-      });
-    });
+    articles.forEach(a => (a._tags || []).forEach(t => { counts[t.id] = (counts[t.id] || 0) + 1; }));
     return counts;
   }, [articles]);
 
   return (
     <div className="kb-list-view" style={{ animation: 'kb-in .22s ease' }}>
-      {/* Type filter row */}
-      <div className="kb-type-row">
-        <div className="kb-type-chips">
-          <button
-            className={`kb-type-chip${!typeFilter ? ' kb-type-chip--active' : ''}`}
-            onClick={() => onTypeFilter('')}
-          >
-            Tất cả <span className="kb-type-chip__count">{totalCount}</span>
-          </button>
-          {Object.entries(TYPE_GLYPHS).map(([key, meta]) => {
-            const count = typeCounts[key] || 0;
-            if (count === 0) return null;
-            return (
-              <button
-                key={key}
-                className={`kb-type-chip${typeFilter === key ? ' kb-type-chip--active' : ''}`}
-                onClick={() => onTypeFilter(typeFilter === key ? '' : key)}
-              >
-                <span className="kb-type-chip__dot" style={{ background: `var(${meta.hueVar})` }} />
-                {meta.label}
-                <span className="kb-type-chip__count">{count}</span>
-              </button>
-            );
-          })}
+      {/* Topic page header */}
+      {currentTopic && (
+        <div className="kb-topic-head">
+          <div className="kb-topic-head__text">
+            <h2 className="kb-topic-head__name">
+              <span className="kb-chip__dot" style={{ background: currentTopic.color }} />
+              {currentTopic.name}
+            </h2>
+            {currentTopic.description && <p className="kb-topic-head__desc">{currentTopic.description}</p>}
+          </div>
+          <button className="kb-btn-ghost kb-btn-ghost--small" onClick={onManageTopics} title="Quản lý chủ đề">⋯</button>
         </div>
+      )}
 
-        {/* Sort segmented */}
+      {/* Sort + bulk */}
+      <div className="kb-list-toolbar">
         <div className="kb-segmented kb-segmented--small">
           {SORT_ITEMS.map(s => (
             <button
@@ -183,10 +146,9 @@ export default function KBListView({
           ))}
         </div>
 
-        {/* Bulk toggle */}
         <button
           className={`kb-btn-ghost kb-btn-ghost--small${bulk ? ' kb-btn-ghost--active' : ''}`}
-          onClick={onToggleBulk}
+          onClick={() => { setAssigning(false); onToggleBulk(); }}
         >
           {bulk ? '✕ Thoát' : '☐ Chọn'}
         </button>
@@ -230,12 +192,29 @@ export default function KBListView({
           <div className="kb-bulk-bar__spacer" />
           {picked.length > 0 && (
             <>
+              <button
+                className={`kb-btn-ghost kb-btn-ghost--small${assigning ? ' kb-btn-ghost--active' : ''}`}
+                onClick={() => setAssigning(a => !a)}
+                aria-expanded={assigning}
+              >
+                Gán chủ đề
+              </button>
               <button className="kb-btn-ghost kb-btn-ghost--small" onClick={onBulkTag}>Gắn thẻ</button>
               <button className="kb-btn-ghost kb-btn-ghost--small kb-btn-ghost--danger" onClick={onBulkDelete}>
                 Xóa {picked.length}
               </button>
             </>
           )}
+        </div>
+      )}
+      {bulk && assigning && picked.length > 0 && (
+        <div className="kb-bulk-assign">
+          <span className="kb-bulk-assign__label">Chuyển {picked.length} bài vào</span>
+          <KBTopicPicker
+            topics={topics}
+            value={undefined}
+            onChange={id => { setAssigning(false); onBulkAssign(id); }}
+          />
         </div>
       )}
 
@@ -253,6 +232,7 @@ export default function KBListView({
             <ListRow
               key={item.id}
               item={item}
+              pendingTaskIds={pendingTaskIds}
               isCursor={idx === cursor}
               isBulk={bulk}
               isChecked={picked.includes(item.id)}

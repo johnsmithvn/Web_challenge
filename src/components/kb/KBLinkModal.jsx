@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { TYPE_GLYPHS } from '../../utils/kbDeriveUtils';
 
 /**
  * KBLinkModal — Modal liên kết bài viết.
@@ -60,7 +59,6 @@ export default function KBLinkModal({
             <div className="kb-palette__empty">Không tìm thấy bài viết</div>
           ) : (
             filtered.map(a => {
-              const meta = TYPE_GLYPHS[a.type] || TYPE_GLYPHS.note;
               const isLinked = currentBody.includes(`[[${a.title}]]`);
               return (
                 <button
@@ -71,7 +69,7 @@ export default function KBLinkModal({
                     onClose();
                   }}
                 >
-                  <span className="kb-badge__dot" style={{ background: `var(${meta.hueVar})` }} />
+                  <span className="kb-badge__dot" style={{ background: a._topic?.color || 'var(--kb-faint)' }} />
                   <span className="kb-palette__label">{a.title}</span>
                   <span
                     style={{

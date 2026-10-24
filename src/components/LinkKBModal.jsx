@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import AppIcon from './AppIcon';
+import { KIND_META, contentKind } from '../utils/kbDeriveUtils';
 
 /**
  * LinkKBModal — Search + checkbox modal to link/unlink Knowledge Base articles to a task.
@@ -63,10 +64,6 @@ export default function LinkKBModal({ taskId, linkedIds = [], allCollections = [
   }, [taskId, linkedIds, allCollections, onLink, onUnlink]);
 
   const linkedSet = new Set(linkedIds);
-
-  const TYPE_ICONS = {
-    link: 'link', quote: 'quote', learn: 'book', idea: 'lightbulb',
-  };
 
   return (
     <div
@@ -162,7 +159,7 @@ export default function LinkKBModal({ taskId, linkedIds = [], allCollections = [
                     color: isLinked ? '#22d3ee' : 'var(--text-primary)',
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>
-                    <AppIcon name={TYPE_ICONS[item.type] || 'file'} size={14} /> {item.title || '(Không tiêu đề)'}
+                    <AppIcon name={KIND_META[contentKind(item)].icon} size={14} /> {item.title || '(Không tiêu đề)'}
                   </div>
                   {(item.body_text || item.body) && (
                     <div style={{

@@ -2,8 +2,8 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   TYPES, TYPE_HINT, isSecretType, scorePassword, generatePassword, parseCodes, codeSheet,
   linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl, itemSubtitle,
-  normalizeGroup, groupTree, dependentsOf, isPasswordOnly, linkKind, moneySourcesOf,
-  titleSuggestions, mailboxTitle,
+  normalizeGroup, dependentsOf, isPasswordOnly, linkKind, moneySourcesOf,
+  titleSuggestions, mailboxTitle, groupSuggestions, NO_AUTOFILL,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import AppIcon from './AppIcon';
@@ -32,7 +32,9 @@ import AccountAvatar from './AccountAvatar';
  * only as an authenticated encrypted payload.
  */
 
-const { templates: TEMPLATES, authKinds: AUTH_KINDS, titlePresets: TITLE_PRESETS } = ACCOUNT_TEMPLATES;
+const {
+  templates: TEMPLATES, authKinds: AUTH_KINDS, titlePresets: TITLE_PRESETS, groupPresets: GROUP_PRESETS,
+} = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
 const AUTH_KIND_LIST = Object.entries(AUTH_KINDS).map(([value, v]) => ({ value, ...v }));
@@ -163,8 +165,8 @@ export default function AccountDetail({
     : passwordOnly ? 'Password only'
       : activeAuth.length === 1 ? AUTH_KINDS[activeAuth[0].kind]?.label || activeAuth[0].kind
         : `${activeAuth.length} methods`;
-  const groupPaths = useMemo(() => groupTree(items).groups
-    .flatMap((g) => [g.path, ...g.children.map((c) => c.path)]), [items]);
+  // Nhóm đã dùng trước, rồi bộ nhóm chuẩn — xem _groupPresetsNote trong account-templates.json
+  const groupPaths = useMemo(() => groupSuggestions(items, GROUP_PRESETS), [items]);
   const groupLabel = normalizeGroup(item.group).replace('/', ' › ');
 
   // Gợi ý tiêu đề (tiêu đề = tên dịch vụ): Email account có địa chỉ thì "Gmail"/"Outlook"
@@ -173,7 +175,9 @@ export default function AccountDetail({
     ? (draft.fields.find((f) => f.type === 'email' && f.value) || draft.fields.find((f) => /@/.test(f.value || '')))?.value
     : '';
   const titleOptions = useMemo(
-    () => (draft ? titleSuggestions(items, TITLE_PRESETS, draftAddress ? [mailboxTitle(draftAddress)] : []) : []),
+    () => (draft
+      ? titleSuggestions(items, TITLE_PRESETS, draftAddress ? [mailboxTitle(draftAddress)] : [], { mailbox: draft.tpl === 'email' })
+      : []),
     [draft, items, draftAddress],
   );
   // Chọn đúng một tên có trong gợi ý khi item CHƯA có nhóm → điền nhóm theo; đã có nhóm thì không đè
@@ -240,7 +244,7 @@ export default function AccountDetail({
               </select>
               {/* Native datalist: gợi ý nhóm đã có để khỏi gõ lệch thành nhóm mới;
                   gõ tên chưa có = tạo nhóm. Chuẩn hoá ở cleanItem lúc lưu. */}
-              <input
+              <input {...NO_AUTOFILL}
                 className="acc-input acc-title__group"
                 list="acc-group-paths"
                 value={draft.group || ''}
@@ -260,7 +264,7 @@ export default function AccountDetail({
 
           {editing ? (
             <>
-              <input
+              <input {...NO_AUTOFILL}
                 ref={titleRef}
                 className="acc-input acc-title__input"
                 value={draft.title}
@@ -469,7 +473,7 @@ export default function AccountDetail({
       <section className="acc-sect">
         <div className="acc-sect__head"><h3 className="acc-sect__title">Notes</h3></div>
         {editing ? (
-          <textarea
+          <textarea {...NO_AUTOFILL}
             className="acc-textarea acc-notes-input"
             value={draft.notes}
             onChange={(e) => patch((d) => { d.notes = e.target.value; })}
@@ -590,7 +594,7 @@ function TagEditor({ tags, tagIds, setTagIds, newTag, setNewTag, onAddTag }) {
       )}
 
       <div className="acc-tagedit__new">
-        <input className="acc-input" value={newTag}
+        <input {...NO_AUTOFILL} className="acc-input" value={newTag}
           onChange={(e) => setNewTag(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); create(); } }}
           placeholder={tags.length ? 'Or create a new tag…' : 'Create your first tag…'}
@@ -735,7 +739,7 @@ function FieldRow({ field: f, idx, totalFields, editing, items, ownerId, reveale
       <div className="acc-field__label">
         {editing ? (
           <>
-            <input className="acc-input" value={f.label}
+            <input {...NO_AUTOFILL} className="acc-input" value={f.label}
               onChange={(e) => patch((d) => { d.fields[idx].label = e.target.value; })}
               placeholder="Field name" aria-label="Field name" />
             {/* Nhãn loại — chỉ hiện với 4 loại có hành vi cần nói rõ */}
@@ -912,7 +916,7 @@ function EditValue({ field: f, idx, items, ownerId, patch }) {
       <div className="acc-multi acc-multi--edit">
         {values.map((v, vi) => (
           <div className="acc-multi__row" key={vi}>
-            <input className="acc-input" value={v}
+            <input {...NO_AUTOFILL} className="acc-input" value={v}
               onChange={(e) => patch((d) => { d.fields[idx].values[vi] = e.target.value; })}
               placeholder={placeholderFor(f.type)} aria-label="Value" />
             <button className={`acc-act acc-act--star${vi === 0 ? ' acc-act--on' : ''}`}
@@ -939,23 +943,25 @@ function EditValue({ field: f, idx, items, ownerId, patch }) {
   }
 
   const sensitive = isSecretType(f.type);
-  const type = sensitive && !showSensitive
-    ? 'password'
-    : f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text';
+  // Secret che bằng CSS (`-webkit-text-security`, .acc-input--masked) thay vì
+  // type="password": trình quản lý mật khẩu của trình duyệt chỉ bắt ô password,
+  // nên không còn đòi lưu secret của vault — xem NO_AUTOFILL.
+  const masked = sensitive && !showSensitive;
+  const type = f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text';
   // Field `Brand` của template card: gợi ý tổ chức thẻ qua <datalist> native —
   // chọn từ list nhưng vẫn gõ được brand ngoài list, khác <select> đóng cứng.
   const suggest = f.label === 'Brand' && f.type === 'text';
   return (
     <div className="acc-editvalue">
       <input
-        className="acc-input" type={type}
+        className={`acc-input${masked ? ' acc-input--masked' : ''}`} type={type}
         value={f.value}
         onChange={(e) => patch((d) => { d.fields[idx].value = e.target.value; })}
         placeholder={suggest ? 'Visa, Mastercard …' : placeholderFor(f.type)}
         aria-label="Field value"
         list={suggest ? 'acc-brands' : undefined}
         inputMode={f.type === 'phone' ? 'tel' : f.type === 'url' ? 'url' : f.type === 'email' ? 'email' : undefined}
-        autoComplete={sensitive ? 'new-password' : undefined}
+        {...NO_AUTOFILL}
         autoCorrect={sensitive ? 'off' : undefined}
         autoCapitalize={sensitive ? 'none' : undefined}
         spellCheck={sensitive ? false : undefined}
@@ -1019,7 +1025,7 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
       })}
 
       {links.length === 0 && (
-        <input className="acc-input" value={f.value || ''}
+        <input {...NO_AUTOFILL} className="acc-input" value={f.value || ''}
           onChange={(e) => patch((d) => { d.fields[idx].value = e.target.value; })}
           placeholder="Or type a plain value (not linked)" />
       )}
@@ -1092,7 +1098,7 @@ function AddFieldPanel({ patch }) {
     <div className="acc-box acc-box--addfield">
       <div className="acc-fieldgrp acc-fieldgrp--name">
         <label htmlFor="acc-newfield">Custom field name</label>
-        <input id="acc-newfield" className="acc-input" value={label}
+        <input {...NO_AUTOFILL} id="acc-newfield" className="acc-input" value={label}
           onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Recovery email" />
       </div>
       <div className="acc-fieldgrp acc-fieldgrp--type">
@@ -1141,7 +1147,7 @@ function AuthRow({ auth: a, idx, editing, accountId, onSetAuthState, patch }) {
           </span>
         </div>
         {editing ? (
-          <input className="acc-input" value={a.note || ''}
+          <input {...NO_AUTOFILL} className="acc-input" value={a.note || ''}
             onChange={(e) => patch((d) => { d.auth[idx].note = e.target.value; })}
             placeholder="Device, number or detail" aria-label="Method detail" />
         ) : a.note ? <div className="acc-authrow__note">{a.note}</div> : null}
@@ -1236,7 +1242,7 @@ function PasteImport({ patch }) {
   return (
     <div className="acc-box acc-box--paste">
       <div className="acc-box__cap">Paste codes from your provider</div>
-      <textarea className="acc-textarea acc-paste" value={text}
+      <textarea {...NO_AUTOFILL} className="acc-textarea acc-paste" value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={'1234 5678\n2345 6789\n3456 7890'} />
       <div className="acc-box__row">

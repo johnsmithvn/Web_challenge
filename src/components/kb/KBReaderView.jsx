@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  TYPE_GLYPHS,
+  KIND_META,
+  contentKind,
   readTime,
   isTiptapBody,
   extractHeadings,
@@ -57,7 +58,9 @@ export default function KBReaderView({
     }
   };
 
-  const meta = TYPE_GLYPHS[article.type] || TYPE_GLYPHS.note;
+  const kind = KIND_META[contentKind(article)];
+  const topic = article._topic;
+  const topicColor = topic?.color || 'var(--kb-faint)';
   const isTiptap = isTiptapBody(article);
   const wordsCount = (article.body_text || article.body || '').trim().split(/\s+/).filter(Boolean).length;
   const mins = article.word_count ? Math.max(1, Math.ceil(article.word_count / 220)) : readTime(article.body_text || article.body || '');
@@ -245,7 +248,7 @@ export default function KBReaderView({
 
           <div className="kb-subheader__spacer" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 8px' }}>
             <span style={{ fontFamily: 'var(--kb-mono)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--kb-faint)' }}>
-              {meta.label} · {article.title}
+              {kind.label} · {article.title}
             </span>
           </div>
 
@@ -296,7 +299,9 @@ export default function KBReaderView({
           <div className="kb-reader__paper">
             {/* Metadata line */}
             <div className="kb-reader__hero-meta">
-              <span style={{ color: `var(${meta.hueVar})` }}>{meta.label}</span>
+              <span style={{ color: topicColor }}>{topic ? topic.name : 'Chưa xếp'}</span>
+              <span>·</span>
+              <span>{kind.label}</span>
               {article.url && <><span>·</span><span>{stripMediaTag(article.url)}</span></>}
               <span>·</span>
               <span>{formatDate(article.created_at)}</span>
@@ -425,8 +430,8 @@ export default function KBReaderView({
             <div className="kb-rail-card">
               <div className="kb-rail-card__header">
                 <span className="kb-rail-card__title">Thông tin bài viết</span>
-                <span className="kb-badge kb-badge--tag" style={{ color: `var(${meta.hueVar})` }}>
-                  {meta.label}
+                <span className="kb-badge kb-badge--tag" style={{ color: topicColor }}>
+                  {kind.label}
                 </span>
               </div>
               <div className="kb-rail-info-grid">
@@ -509,14 +514,13 @@ export default function KBReaderView({
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {outboundLinks.map(target => {
-                      const tMeta = TYPE_GLYPHS[target.type] || TYPE_GLYPHS.note;
                       return (
                         <div
                           key={target.id}
                           onClick={() => onOpenArticle(target)}
                           className="kb-rail-link-row"
                         >
-                          <span className="kb-badge__dot" style={{ background: `var(${tMeta.hueVar})` }} />
+                          <span className="kb-badge__dot" style={{ background: target._topic?.color || 'var(--kb-faint)' }} />
                           <span className="kb-rail-link-title">{target.title}</span>
                         </div>
                       );

@@ -2,7 +2,8 @@ import { useRef, useEffect } from 'react';
 
 /**
  * KBSubHeader — sub-header cố định cho Knowledge Base.
- * Chứa: tiêu đề, ô tìm kiếm, view switcher, nút ⌘K, nút bài mới.
+ * Hàng 1: tiêu đề, ô tìm kiếm, view switcher, nút bài mới.
+ * Hàng 2: chip chủ đề — lọc mọi kiểu xem; "…" mở Quản lý chủ đề.
  */
 
 const VIEW_ITEMS = [
@@ -12,9 +13,25 @@ const VIEW_ITEMS = [
   { key: 'canvas',  label: 'Canvas' },
 ];
 
+function TopicChip({ active, onClick, label, count, color, title, quiet = false }) {
+  return (
+    <button
+      className={`kb-chip${quiet ? ' kb-chip--quiet' : ''}${active ? ' kb-chip--active' : ''}`}
+      onClick={onClick}
+      aria-pressed={active}
+      title={title}
+    >
+      {color && <span className="kb-chip__dot" style={{ background: color }} />}
+      {label}
+      <span className="kb-chip__count">{count}</span>
+    </button>
+  );
+}
+
 export default function KBSubHeader({
   view, onViewChange, search, onSearchChange,
   articleCount, onNewArticle,
+  topics, topicFilter, onTopicFilter, topicCounts, onManageTopics,
 }) {
   const searchRef = useRef(null);
 
@@ -81,6 +98,34 @@ export default function KBSubHeader({
           ＋ Bài mới
         </button>
       </div>
+
+      {/* Topic chips */}
+      <nav className="kb-topic-row" aria-label="Lọc theo chủ đề">
+        <TopicChip active={!topicFilter} onClick={() => onTopicFilter('')} label="Tất cả" count={topicCounts.all} />
+        {topics.map(t => (
+          <TopicChip
+            key={t.id}
+            active={topicFilter === t.id}
+            onClick={() => onTopicFilter(topicFilter === t.id ? '' : t.id)}
+            label={t.name}
+            count={topicCounts[t.id] || 0}
+            color={t.color}
+            title={t.description}
+          />
+        ))}
+        {topicCounts.none > 0 && (
+          <TopicChip
+            active={topicFilter === 'none'}
+            onClick={() => onTopicFilter(topicFilter === 'none' ? '' : 'none')}
+            label="Chưa xếp"
+            count={topicCounts.none}
+            quiet
+          />
+        )}
+        <button className="kb-chip kb-chip--quiet" onClick={onManageTopics} title="Quản lý chủ đề">
+          {topics.length === 0 ? '＋ Tạo chủ đề' : '⋯'}
+        </button>
+      </nav>
     </header>
   );
 }

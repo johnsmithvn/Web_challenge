@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCollections } from '../hooks/useCollections';
+import { useCollectionTopics } from '../hooks/useCollectionTopics';
 import { useUserTasks } from '../hooks/useUserTasks';
 import { useTags } from '../hooks/useTags';
 import { useCollectionNotes } from '../hooks/useCollectionNotes';
@@ -20,12 +21,16 @@ import KBEditorView from '../components/kb/KBEditorView';
 import KBShortcutsModal from '../components/kb/KBShortcutsModal';
 import KBLinkModal from '../components/kb/KBLinkModal';
 import KBTagModal from '../components/kb/KBTagModal';
+import KBTopicModal from '../components/kb/KBTopicModal';
 
 import { filterArticles } from '../utils/kbDeriveUtils';
 
 export default function CollectPage() {
   const { user } = useAuth();
-  const { items, isLoading, fetchItems, addItem, updateItem, deleteItem } = useCollections();
+  const { items, isLoading, fetchItems, addItem, updateItem, updateItems, deleteItem } = useCollections();
+  const {
+    topics, addTopic, updateTopic, moveTopic, deleteTopic, mergeTopics, seedStarterTopics,
+  } = useCollectionTopics();
   const { addTask, linkCollection, pendingTasks } = useUserTasks();
   const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag, deleteTag: deleteCentralTag } = useTags();
   const notesHook = useCollectionNotes();
@@ -39,7 +44,7 @@ export default function CollectPage() {
 
   // Filters
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [topicFilter, setTopicFilter] = useState(''); // '' all · 'none' Chưa xếp · topic id
   const [activeTagIds, setActiveTagIds] = useState([]);
   const [sort, setSort] = useState('new');
   const [filterTaskId, setFilterTaskId] = useState('');
@@ -52,6 +57,7 @@ export default function CollectPage() {
   const [keysOpen, setKeysOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
+  const [topicsOpen, setTopicsOpen] = useState(false);
 
   // Undo trash buffer
   const [trash, setTrash] = useState(null);
@@ -66,43 +72,59 @@ export default function CollectPage() {
     if (user) fetchItems({});
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Tags list
-  const allTags = useMemo(() => {
-    const map = new Map();
-    items.filter(i => i.type !== 'inbox').forEach(i => {
-      (i._tags || []).forEach(t => { if (t && t.id) map.set(t.id, t); });
-    });
-    centralTags.forEach(t => map.set(t.id, t));
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  // Tags used by Knowledge bài only — the filter row must not show Finance/Tasks tags.
+  // Central tags give the current name/colour; the tag manager still works on all tags.
+  const kbTags = useMemo(() => {
+    const central = new Map(centralTags.map(t => [t.id, t]));
+    const used = new Map();
+    items.forEach(i => (i._tags || []).forEach(t => { if (t?.id) used.set(t.id, central.get(t.id) || t); }));
+    return [...used.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [items, centralTags]);
 
-  // Attach linked tasks to items for display
-  const articlesWithTasks = useMemo(() => {
-    return items.map(item => {
-      const linkedTasks = pendingTasks.filter(t => (item._linkedTaskIds || []).includes(t.id));
-      return {
-        ...item,
-        _linkedTasks: linkedTasks,
-      };
+  const topicById = useMemo(() => new Map(topics.map(t => [t.id, t])), [topics]);
+  const pendingTaskIds = useMemo(() => new Set(pendingTasks.map(t => t.id)), [pendingTasks]);
+
+  // Attach topic + open linked tasks to items for display
+  const articlesWithTasks = useMemo(() => items.map(item => ({
+    ...item,
+    _topic: topicById.get(item.topic_id) || null,
+    _linkedTasks: pendingTasks.filter(t => (item._linkedTaskIds || []).includes(t.id)),
+  })), [items, pendingTasks, topicById]);
+
+  // Bài per topic for the chip row and the topic manager
+  const topicCounts = useMemo(() => {
+    const counts = { all: 0, none: 0 };
+    items.forEach(i => {
+      if (i.type === 'inbox' || i.status === 'archived') return;
+      counts.all += 1;
+      const key = i.topic_id || 'none';
+      counts[key] = (counts[key] || 0) + 1;
     });
-  }, [items, pendingTasks]);
+    return counts;
+  }, [items]);
 
   // Filtered & sorted list
   const filteredArticles = useMemo(() => {
     return filterArticles(articlesWithTasks, {
       q: search,
-      type: typeFilter,
       tags: activeTagIds,
       sort,
       taskId: filterTaskId,
+      topic: topicFilter,
     });
-  }, [articlesWithTasks, search, typeFilter, activeTagIds, sort, filterTaskId]);
+  }, [articlesWithTasks, search, activeTagIds, sort, filterTaskId, topicFilter]);
 
-  const hasFilter = !!(search || typeFilter || activeTagIds.length > 0 || filterTaskId);
+  // Sơ đồ / Canvas: chỉ lọc theo chủ đề
+  const topicArticles = useMemo(
+    () => filterArticles(articlesWithTasks, { topic: topicFilter }),
+    [articlesWithTasks, topicFilter],
+  );
+
+  const hasFilter = !!(search || topicFilter || activeTagIds.length > 0 || filterTaskId);
 
   const clearFilters = useCallback(() => {
     setSearch('');
-    setTypeFilter('');
+    setTopicFilter('');
     setActiveTagIds([]);
     setFilterTaskId('');
     setCursor(0);
@@ -145,6 +167,52 @@ export default function CollectPage() {
     setBulk(false);
     fetchItems({});
   }, [picked, confirm, deleteItem, showToast, fetchItems]);
+
+  const handleBulkAssign = useCallback(async (topicId) => {
+    if (picked.length === 0) return;
+    if (!(await updateItems(picked, { topic_id: topicId }))) {
+      showToast('Không gán được chủ đề. Thử lại.');
+      return;
+    }
+    showToast(`Đã chuyển ${picked.length} bài vào ${topicId ? topicById.get(topicId)?.name : 'Chưa xếp'}`);
+    setPicked([]);
+    setBulk(false);
+  }, [picked, updateItems, topicById, showToast]);
+
+  // Topic manager: confirm the destructive ones, then reload bài (their topic_id changed in the DB)
+  const handleDeleteTopic = useCallback(async (topic) => {
+    const n = topicCounts[topic.id] || 0;
+    const ok = await confirm({
+      title: `Xóa chủ đề "${topic.name}"?`,
+      message: n ? `${n} bài trong chủ đề này sẽ về Chưa xếp. Bài không bị xóa.` : 'Chủ đề đang trống.',
+      confirmLabel: 'Xóa chủ đề',
+      danger: true,
+    });
+    if (!ok) return;
+    if (!(await deleteTopic(topic.id))) {
+      showToast('Không xóa được chủ đề. Thử lại.');
+      return;
+    }
+    if (topicFilter === topic.id) setTopicFilter('');
+    fetchItems({});
+  }, [topicCounts, confirm, deleteTopic, showToast, topicFilter, fetchItems]);
+
+  const handleMergeTopic = useCallback(async (from, to) => {
+    const n = topicCounts[from.id] || 0;
+    const ok = await confirm({
+      title: `Gộp "${from.name}" vào "${to.name}"?`,
+      message: `${n} bài sẽ chuyển sang ${to.name}, rồi chủ đề ${from.name} bị xóa.`,
+      confirmLabel: 'Gộp',
+    });
+    if (!ok) return;
+    if (!(await mergeTopics(from.id, to.id))) {
+      showToast('Không gộp được chủ đề. Thử lại.');
+      return;
+    }
+    if (topicFilter === from.id) setTopicFilter(to.id);
+    showToast(`Đã gộp vào ${to.name}`);
+    fetchItems({});
+  }, [topicCounts, confirm, mergeTopics, showToast, topicFilter, fetchItems]);
 
   // Navigation handlers
   const openReader = useCallback((article) => {
@@ -210,6 +278,7 @@ export default function CollectPage() {
         word_count:     draft.word_count || 0,
         content_format: draft.content_format || 'markdown',
         type:           draft.type,
+        topic_id:       draft.topic_id || null,
         url:            draft.url || null,
       };
 
@@ -218,7 +287,8 @@ export default function CollectPage() {
         await updateItem(selectedArticle.id, payload);
         savedId = selectedArticle.id;
       } else {
-        const created = await addItem({ ...payload, status: 'read' });
+        // Bài có link là thứ cần đọc → "Chưa đọc xong"; ghi chú / trích dẫn của mình thì đã đọc.
+        const created = await addItem({ ...payload, status: payload.url ? 'unread' : 'read' });
         savedId = created?.id;
       }
 
@@ -249,13 +319,13 @@ export default function CollectPage() {
       showToast(`Đã lưu "${draft.title}"`);
 
       // Open reader of the saved article
-      const updatedArticle = { ...draft, id: savedId };
+      const updatedArticle = { ...draft, id: savedId, _topic: topicById.get(draft.topic_id) || null };
       setSelectedArticle(updatedArticle);
       setView('reader');
     } finally {
       setIsSaving(false);
     }
-  }, [selectedArticle, updateItem, addItem, addCentralTag, linkTag, unlinkTag, fetchItems, showToast]);
+  }, [selectedArticle, updateItem, addItem, addCentralTag, linkTag, unlinkTag, fetchItems, showToast, topicById]);
 
   // Toggle wiki link in article
   const handleToggleWikiLink = useCallback(async (targetArticle) => {
@@ -281,19 +351,22 @@ export default function CollectPage() {
       const isTyping = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
       const mod = e.metaKey || e.ctrlKey;
 
-      // ⌘Z — Undo delete
-      if (mod && e.key.toLowerCase() === 'z' && trash) {
+      // ⌘Z — Undo delete (not while typing: there ⌘Z undoes text)
+      if (mod && e.key.toLowerCase() === 'z' && trash && !isTyping) {
         e.preventDefault();
         handleUndo();
         return;
       }
 
+      const modalOpen = keysOpen || linkOpen || tagsOpen || topicsOpen;
+
       // Escape key priority chain
       if (e.key === 'Escape') {
-        if (keysOpen || linkOpen || tagsOpen) {
+        if (modalOpen) {
           setKeysOpen(false);
           setLinkOpen(false);
           setTagsOpen(false);
+          setTopicsOpen(false);
           return;
         }
         if (isTyping) {
@@ -316,7 +389,8 @@ export default function CollectPage() {
         return;
       }
 
-      if (isTyping) return;
+      // Page shortcuts never act behind an open dialog
+      if (isTyping || modalOpen) return;
 
       const k = e.key.toLowerCase();
 
@@ -392,7 +466,7 @@ export default function CollectPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [keysOpen, linkOpen, tagsOpen, view, bulk, hasFilter, trash, cursor, filteredArticles, selectedArticle, openEditor, openReader, handleDeleteArticle, handleUndo, clearFilters]);
+  }, [keysOpen, linkOpen, tagsOpen, topicsOpen, view, bulk, hasFilter, trash, cursor, filteredArticles, selectedArticle, openEditor, openReader, handleDeleteArticle, handleUndo, clearFilters]);
 
   if (!user) {
     return (
@@ -418,6 +492,11 @@ export default function CollectPage() {
           onSearchChange={q => { setSearch(q); setCursor(0); }}
           articleCount={filteredArticles.length}
           onNewArticle={() => openEditor(null)}
+          topics={topics}
+          topicFilter={topicFilter}
+          onTopicFilter={t => { setTopicFilter(t); setCursor(0); }}
+          topicCounts={topicCounts}
+          onManageTopics={() => setTopicsOpen(true)}
         />
       )}
 
@@ -428,10 +507,12 @@ export default function CollectPage() {
         ) : view === 'list' ? (
           <KBListView
             articles={filteredArticles}
-            allTags={allTags}
+            allTags={kbTags}
+            topics={topics}
+            currentTopic={topicById.get(topicFilter) || null}
+            onManageTopics={() => setTopicsOpen(true)}
+            pendingTaskIds={pendingTaskIds}
             cursor={cursor}
-            typeFilter={typeFilter}
-            onTypeFilter={t => { setTypeFilter(t); setCursor(0); }}
             activeTagIds={activeTagIds}
             onToggleTag={toggleTag}
             sort={sort}
@@ -443,6 +524,7 @@ export default function CollectPage() {
             onSelectAll={selectAll}
             onDeselectAll={deselectAll}
             onBulkTag={() => setTagsOpen(true)}
+            onBulkAssign={handleBulkAssign}
             onBulkDelete={handleBulkDelete}
             onOpenReader={openReader}
             onOpenEditor={openEditor}
@@ -457,12 +539,13 @@ export default function CollectPage() {
           />
         ) : view === 'graph' ? (
           <KBGraphView
-            articles={articlesWithTasks}
+            articles={topicArticles}
+            topics={topics}
             onOpenReader={openReader}
           />
         ) : view === 'canvas' ? (
           <KBCanvasView
-            articles={articlesWithTasks}
+            articles={topicArticles}
             onOpenReader={openReader}
           />
         ) : view === 'reader' && selectedArticle ? (
@@ -508,7 +591,8 @@ export default function CollectPage() {
             onSave={handleSaveArticle}
             onCancel={goLibrary}
             isSaving={isSaving}
-            suggestions={allTags}
+            topics={topics}
+            allArticles={articlesWithTasks}
             isNew={!selectedArticle}
             onOpenLinkModal={() => setLinkOpen(true)}
           />
@@ -541,7 +625,7 @@ export default function CollectPage() {
       <KBTagModal
         open={tagsOpen}
         onClose={() => setTagsOpen(false)}
-        tags={allTags}
+        tags={centralTags}
         onAddTag={async (name) => {
           await addCentralTag(name, '#8b5cf6');
           showToast(`Đã thêm thẻ #${name}`);
@@ -554,6 +638,20 @@ export default function CollectPage() {
           }
         }}
       />
+
+      {topicsOpen && (
+        <KBTopicModal
+          onClose={() => setTopicsOpen(false)}
+          topics={topics}
+          counts={topicCounts}
+          onSeed={seedStarterTopics}
+          onAdd={addTopic}
+          onUpdate={updateTopic}
+          onMove={moveTopic}
+          onMerge={handleMergeTopic}
+          onDelete={handleDeleteTopic}
+        />
+      )}
     </div>
   );
 }

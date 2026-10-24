@@ -8,6 +8,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   TYPES, isSecretType, maskValue, scorePassword, parseCodes, codeSheet,
   linkableValues, matchesQuery, itemSubtitle, diffLog, formatStamp, relativeUpdated,
@@ -17,7 +18,7 @@ import {
   normalizeIdent, identifiersOf, dependentsOf, isPasswordOnly,
   rootsOf, upstreamOf, chainTo, untrackedIdentifiers, rootKind,
   guessLinkKind, linkKind, moneyLinksOf, moneyReach, moneyMatrix, moneySourcesOf,
-  mailboxTitle, titleSuggestions,
+  mailboxTitle, titleSuggestions, groupSuggestions,
 } from '../../utils/vaultLogic.js';
 
 /* ── TYPES phải khớp CHECK constraint trong migration ──────────────────── */
@@ -612,6 +613,43 @@ assert.deepEqual(sugg.map((s) => [s.title, s.group]), [
   ['Vietcombank', 'Tài chính/Ngân hàng'],
   ['Facebook', 'Mạng xã hội'],
 ], 'extra → tên trong vault (giữ cách viết; chưa có nhóm thì mượn nhóm preset) → preset; bỏ email, "New …", trùng, khoá _');
+
+// Quy chuẩn: đặt tên Email account chỉ thấy tên hộp thư; mục loại khác không thấy chúng
+const mailSugg = titleSuggestions(
+  [{ title: 'Gmail · work', tpl: 'email' }, { title: 'Google', tpl: 'account' }],
+  { Email: ['Gmail', 'Outlook'], 'Nền tảng': ['Google', 'Microsoft'] },
+  [],
+  { mailbox: true },
+);
+assert.deepEqual(mailSugg.map((s) => s.title), ['Gmail · work', 'Gmail', 'Outlook'], 'không có Google / Microsoft');
+const accSugg = titleSuggestions(
+  [{ title: 'Gmail · work', tpl: 'email' }, { title: 'Google', tpl: 'account' }],
+  { Email: ['Gmail', 'Outlook'], 'Nền tảng': ['Google', 'Microsoft'] },
+);
+assert.deepEqual(accSugg.map((s) => s.title), ['Google', 'Microsoft'], 'không có tên hộp thư');
+
+/* ── Quy chuẩn nhóm ───────────────────────────────────────────────────── */
+assert.deepEqual(
+  groupSuggestions(
+    [{ group: 'tài chính/ngân hàng' }, { group: 'Việc nhà' }, { group: '' }],
+    ['Tài chính/Ngân hàng', 'Email', 'Email'],
+  ),
+  ['tài chính', 'tài chính/ngân hàng', 'Việc nhà', 'Email'],
+  'nhóm của user (đúng cách viết) trước, preset trùng không phân biệt hoa thường bị bỏ',
+);
+
+// Khoá quy chuẩn trong account-templates.json: gợi ý tiêu đề và nhóm mặc định của
+// template không được trỏ ra ngoài bộ nhóm chuẩn — sửa JSON lệch là test đỏ.
+const tplJson = JSON.parse(readFileSync(new URL('../../data/account-templates.json', import.meta.url), 'utf8'));
+const standard = new Set(tplJson.groupPresets.map((g) => groupKey(g)));
+assert.equal(standard.size, tplJson.groupPresets.length, 'groupPresets không trùng');
+for (const key of Object.keys(tplJson.titlePresets)) {
+  assert.ok(standard.has(groupKey(key)), `titlePresets "${key}" phải nằm trong groupPresets`);
+}
+for (const t of tplJson.templates) {
+  if (t.group) assert.ok(standard.has(groupKey(t.group)), `template ${t.key}.group "${t.group}" phải nằm trong groupPresets`);
+}
+assert.ok(tplJson.groupPresets.every((g) => normalizeGroup(g) === g), 'groupPresets viết sẵn dạng chuẩn (tối đa 2 cấp)');
 
 assert.equal(itemSubtitle(phone, 'Identity'), '0327 279 292', 'Identity chỉ có SĐT → dòng phụ là SĐT');
 assert.equal(itemSubtitle(mailbox, 'Email account'), 'Kuroemon98@gmail.com');

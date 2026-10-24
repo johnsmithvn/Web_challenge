@@ -184,6 +184,9 @@
 .acc-textarea::placeholder { color: color-mix(in srgb, var(--color-text) 35%, transparent); }
 .acc-input:focus, .acc-select:focus, .acc-textarea:focus { box-shadow: var(--ring); outline: none; }
 .acc-textarea { resize: vertical; line-height: 1.55; }
+/* Secret khi sửa: che bằng CSS, KHÔNG type="password" — trình quản lý mật khẩu của
+   trình duyệt chỉ bắt ô password nên không còn đòi lưu secret của vault (NO_AUTOFILL) */
+.acc-input--masked { -webkit-text-security: disc; font-family: var(--acc-mono); letter-spacing: .12em; }
 
 .acc-select {
   cursor: pointer;

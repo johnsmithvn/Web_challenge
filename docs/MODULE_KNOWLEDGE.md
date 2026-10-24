@@ -79,24 +79,27 @@ Một query, tối đa 500 bài mới nhất, kèm join: thẻ, id task đã n�
 
 ### A3.1. Đầu trang (`KBSubHeader`)
 
-Tiêu đề "Kho Tàng Kiến Thức" + số bài · ô tìm (phím `/`) · chọn kiểu xem **Danh sách · Gallery · Sơ đồ · Canvas** ·
-nút **＋ Bài mới**. Ẩn khi đang đọc hoặc soạn.
+Hàng 1: tiêu đề "Kho Tàng Kiến Thức" + số bài · ô tìm (phím `/`) · chọn kiểu xem **Danh sách · Gallery · Sơ đồ · Canvas** ·
+nút **＋ Bài mới**. Hàng 2: chip chủ đề `Tất cả · <chủ đề> · Chưa xếp · ⋯` (lọc Danh sách, Gallery, Sơ đồ, Canvas;
+`⋯` mở Quản lý chủ đề). Ẩn khi đang đọc hoặc soạn.
 
 Tìm kiếm (`filterArticles`): không cần dấu, nhiều từ cùng lúc (mọi từ phải khớp), trên tiêu đề, chữ của bài
 (`body_text`, không phải JSON thô), link, tên thẻ, ghi chú. Gõ `#tên` để lọc theo thẻ.
 
 ### A3.2. Danh sách (`KBListView`)
 
-- Hàng chip loại (7 loại cũ, có số đếm), sắp xếp Mới nhất / Cũ nhất / Dài nhất, nút Chọn.
-- Hàng thẻ để lọc (nhiều thẻ = AND).
-- Mỗi dòng: icon loại, dòng meta (loại · tên miền · ngày · phút đọc), tiêu đề, trích 200 chữ, nhãn thẻ /
-  số liên kết `[[ ]]` / số task / số ghi chú, nút Sửa và Xoá.
-- Chọn nhiều: Chọn tất cả, Gắn thẻ, Xoá hàng loạt.
+- Khi lọc một chủ đề: đầu danh sách hiện tên + định nghĩa chủ đề + `⋯` (đây là "trang chủ đề").
+- Sắp xếp Mới nhất / Cũ nhất / Dài nhất, nút Chọn.
+- Hàng thẻ để lọc (nhiều thẻ = AND), chỉ gồm thẻ đang được bài Knowledge dùng.
+- Mỗi dòng: ký hiệu loại tô màu chủ đề, dòng meta (chủ đề · loại · tên miền · ngày · phút đọc), tiêu đề, trích 200 chữ,
+  nhãn tiến độ (Chưa đọc xong / Đã rút ra / Đang thực hành / Đã thực hành; "Đã đọc" không có nhãn), thẻ, số liên kết
+  `[[ ]]`, nút Sửa và Xoá.
+- Chọn nhiều: Chọn tất cả, **Gán chủ đề** (một request cho cả loạt), Gắn thẻ, Xoá hàng loạt.
 
 ### A3.3. Gallery, Sơ đồ, Canvas
 
-- **Gallery:** lưới thẻ cho mọi bài: nhãn loại, câu trích, tiêu đề và ngày.
-- **Sơ đồ:** đồ thị lực, cạnh từ `[[ ]]` và từ thẻ chung (`deriveGraph`), có panel bên.
+- **Gallery:** lưới thẻ cho mọi bài: chủ đề · loại (màu chủ đề), câu trích, tiêu đề và ngày.
+- **Sơ đồ:** đồ thị lực, cạnh từ `[[ ]]` và từ thẻ chung (`deriveGraph`), node tô màu chủ đề, có panel bên.
 - **Canvas:** bảng trắng kéo thả node và nối cạnh; lưu ở `localStorage` (`kb_canvas_nodes`, `kb_canvas_edges`).
 
 ### A3.4. Trang đọc (`KBReaderView`)
@@ -111,7 +114,9 @@ Tìm kiếm (`filterArticles`): không cần dấu, nhiều từ cùng lúc (m�
 ### A3.5. Trình soạn thảo (`KBEditorView`)
 
 - Chọn Markdown / Visual (bài mới; bài đã có giữ nguyên định dạng), thống kê chữ, nút nối `[[ ]]`, Lưu (`Ctrl+S`).
-- Tiêu đề, hàng chip loại, ô thẻ, ô URL (có Audio / Video).
+- Tiêu đề; hàng **chủ đề** (gợi ý tô viền đứt + chữ "gợi ý", có Chưa xếp); **Kiểu** Bài viết / Trích dẫn / Podcast;
+  ô thẻ; ô URL — rời ô URL khi tiêu đề trống thì tự điền tiêu đề đoán từ link.
+- Bài mới có link lưu `unread`, không có link lưu `read`.
 - **Markdown:** khung viết + xem trước song song, thanh công cụ, chèn ảnh / YouTube / audio.
 - **Visual (Tiptap):** thanh công cụ, menu `/`, bảng, task list, dán URL media tự thành khối, dán/thả ảnh tự upload.
 
@@ -177,9 +182,9 @@ gỡ khỏi mọi bài (cascade).
 
 | # | Vấn đề | Xử lý |
 |---|---|---|
-| 1 | Hàng thẻ gộp toàn bộ thẻ của user, lẫn thẻ Finance/Tasks | v2 §B5.4 |
-| 2 | Không có nút lưu trữ; bài mới luôn lưu `read` | v2 §B3.4, §B3.5 |
-| 3 | `LinkKBModal.TYPE_ICONS` chỉ biết 4 loại cũ (`link/quote/learn/idea`) | v2 §B8 |
+| 1 | Không có nút lưu trữ | v2 §B3.5 (B5) |
+| 2 | "Gắn thẻ" trong chọn nhiều chỉ mở hộp quản lý thẻ, không gắn thẻ vào các bài đã chọn | Chưa xử lý |
+| 3 | `KBLinkModal`, `KBTagModal` gọi setState trong effect khi mở (cảnh báo lint) | Chưa xử lý |
 | 4 | Xoá hàng loạt gọi `deleteItem` tuần tự | Chưa xử lý |
 | 5 | Kiểu xem / bài đang đọc không có URL riêng: F5 về danh sách, Back rời trang | Chưa xử lý, có chủ đích |
 | 6 | `useRandomPodcast` không lọc `user_id`, dựa hoàn toàn vào RLS | Chưa xử lý |
@@ -200,8 +205,8 @@ gỡ khỏi mọi bài (cascade).
 |---|---|---|
 | B0 | Duyệt thiết kế | ✓ |
 | B1 | Logic thuần + test (§B7) | ✓ `npm test` xanh |
-| B2 | Migration + `useCollectionTopics` + sửa `useCollections` | Code xong. **Chờ chạy preflight + migration** (§B6.3) |
-| B3 | Hàng chip chủ đề, Quản lý chủ đề, trình soạn thảo, Danh sách + Gán chủ đề hàng loạt | Chưa |
+| B2 | Migration + `useCollectionTopics` + sửa `useCollections` | ✓ Migration đã chạy (2026-10-24) |
+| B3 | Hàng chip chủ đề, Quản lý chủ đề, trình soạn thảo, Danh sách + Gán chủ đề hàng loạt | ✓ Code xong, chờ test tay |
 | B4 | Tab Tổng quan | Chưa |
 | B5 | Trang đọc: Đọc xong, Tiến độ, Xung quanh, Thực hành, Lưu trữ | Chưa |
 | B6 | `DATABASE.md`, `FEATURES.md`, `ARCHITECTURE.md`, `DESIGN.md`, `CHANGELOG.md` | Chưa |
@@ -487,7 +492,8 @@ Thu gọn `type` còn `note/quote/podcast`, bỏ `'inbox'` khỏi CHECK, đổi 
 | `pickResurface` | 3 bài Gặp lại, cố định theo ngày (hash FNV-1a) |
 | `pushRecent` | Danh sách Mở gần đây: đưa lên đầu, bỏ trùng, tối đa 10 |
 
-`TYPE_GLYPHS` (7 loại cũ) còn dùng tới B3, sau đó thay bằng `KIND_META` + màu chủ đề.
+`PROGRESS_META`: nhãn tiến độ trên dòng bài. `TYPE_GLYPHS` (7 loại cũ) và token `--kb-hue-*` đã xoá ở B3;
+màu lấy từ chủ đề, nhãn / ký hiệu từ `KIND_META`.
 
 ## B8. Kế hoạch theo file
 
@@ -495,18 +501,19 @@ Thu gọn `type` còn `note/quote/podcast`, bỏ `'inbox'` khỏi CHECK, đổi 
 chuỗi fallback cũ; join ghi chú; ghi `topic_id`) · migration (mới) · xoá `src/data/knowledge.json` (không còn ai
 import từ khi bỏ Inbox) và gỡ khỏi danh sách ở `RULES.md` §6.
 
+**Đã làm (B3):** `KBTopicPicker.jsx`, `KBTopicModal.jsx` (mới; modal chỉ mount khi mở) · `CollectPage.jsx` (lọc chủ
+đề, `_topic` cho bài, đếm bài theo chủ đề, gán chủ đề hàng loạt, xoá / gộp chủ đề có xác nhận, trạng thái bài mới,
+phím tắt không chạy khi đang mở hộp thoại, ⌘Z không cướp hoàn tác chữ khi đang gõ) · `KBSubHeader.jsx` (hàng chip) ·
+`KBListView.jsx` · `KBEditorView.jsx` · `KBGalleryView.jsx`, `KBGraphView.jsx`, `KBReaderView.jsx`, `KBLinkModal.jsx`,
+`LinkKBModal.jsx` (bỏ `TYPE_GLYPHS` / `TYPE_ICONS`) · `useCollections.updateItems` · `collect.css` (`.kb-type-*` →
+`.kb-chip`, `.kb-list-toolbar`, style chủ đề) · xoá token `--kb-hue-*`.
+
 **Còn lại:**
 
 | File | Việc | Bước |
 |---|---|---|
-| `src/components/kb/KBTopicPicker.jsx` (mới) | Hàng chip chọn chủ đề + gợi ý | B3 |
-| `src/components/kb/KBTopicModal.jsx` (mới) | Quản lý chủ đề (theo mẫu `KBTagModal`) | B3 |
-| `src/pages/CollectPage.jsx` | Lọc chủ đề; gán chủ đề lẻ / hàng loạt; trạng thái bài mới theo §B3.4; `_topic` cho bài; view `overview` mặc định; đọc xong; lưu trữ + hoàn tác; `g t` | B3–B5 |
-| `src/components/kb/KBSubHeader.jsx` | Tab Tổng quan; hàng chip chủ đề | B3–B4 |
-| `src/components/kb/KBListView.jsx` | §B5.4 | B3 |
-| `src/components/kb/KBEditorView.jsx` | §B5.6 | B3 |
-| `src/components/kb/KBGalleryView.jsx`, `KBGraphView.jsx`, `KBCanvasView.jsx` | Màu / nhãn theo chủ đề | B3 |
-| `src/components/LinkKBModal.jsx` | `TYPE_ICONS` → `KIND_META` | B3 |
+| `src/pages/CollectPage.jsx` | View `overview` mặc định; đọc xong; lưu trữ + hoàn tác; `g t` | B4–B5 |
+| `src/components/kb/KBSubHeader.jsx` | Tab Tổng quan | B4 |
 | `src/components/kb/KBOverview.jsx` (mới) | Tab Tổng quan §B5.3 | B4 |
 | `src/components/kb/KBReaderView.jsx` | §B5.5 | B5 |
 | `src/components/kb/KBShortcutsModal.jsx` | Phím mới | B4 |

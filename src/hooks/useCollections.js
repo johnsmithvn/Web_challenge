@@ -124,6 +124,26 @@ export function useCollections() {
     }
   }, [enabled, user, fetchItems]);
 
+  // ── Update many items with the same change (one request) ────
+  const updateItems = useCallback(async (ids, updates) => {
+    if (!enabled || ids.length === 0) return false;
+    const idSet = new Set(ids);
+
+    setItems(prev => prev.map(item => (idSet.has(item.id) ? { ...item, ...updates } : item)));
+
+    const { error } = await supabase
+      .from('collections')
+      .update(updates)
+      .in('id', ids)
+      .eq('user_id', user.id);
+    if (error) {
+      logger.warn('[useCollections] bulk update error:', error.message);
+      fetchItems();
+      return false;
+    }
+    return true;
+  }, [enabled, user, fetchItems]);
+
   // ── Delete item ─────────────────────────────────────────────
   const deleteItem = useCallback(async (id) => {
     if (!enabled) return false;
@@ -175,6 +195,7 @@ export function useCollections() {
     fetchStats,    // (sinceDate) => Promise<{ total, createdAt[] } | null>
     addItem,       // (item) => Promise<row|null>
     updateItem,    // (id, updates) => Promise<boolean>
+    updateItems,   // (ids, updates) => Promise<boolean>
     deleteItem,    // (id) => Promise<boolean>
     enabled,       // boolean
   };

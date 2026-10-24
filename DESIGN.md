@@ -1212,6 +1212,16 @@ Types/Tags filter bar is gone.
   the vault (the user's own spelling) → `titlePresets` in `account-templates.json`. Picking an
   exact suggestion fills the group only when the item has none — it never overwrites a group
   the user chose. Free typing always works; this is a hint list, not a picker.
+- **Standard groups.** `groupPresets` (12 paths) is the shared vocabulary for the group input,
+  the bulk bar and the title presets; templates carry a default `group` used when an item is
+  created outside any group. A test fails if a title-preset key or a template group drifts
+  outside the list, so the standard cannot silently fork.
+- **Vault inputs never feed the browser's password manager.** Every content input spreads
+  `NO_AUTOFILL` (`autocomplete=off` + ignore flags for third-party managers) and secret inputs
+  are `type="text"` masked with `-webkit-text-security` (`.acc-input--masked`): Chrome treats a
+  password input that disappears after typing as a login and offers to save it, which would
+  copy vault secrets into a second store. Only the unlock / change-passphrase forms keep
+  `type="password"`.
 - **Bulk move to group.** **Select** in the list head turns rows into `<label>`s wrapping a
   real checkbox (`.acc-row--select`, `.acc-row--picked`) — no control nested in a `<button>`.
   `.acc-bulkbar` sticks to the bottom of the list pane (inside the scroll area, so it never

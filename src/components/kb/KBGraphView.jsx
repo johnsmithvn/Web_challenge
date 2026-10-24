@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { deriveGraph, TYPE_GLYPHS } from '../../utils/kbDeriveUtils';
+import { deriveGraph } from '../../utils/kbDeriveUtils';
 
 /**
  * KBGraphView — Force-directed graph visualization.
- * Canvas rendering + aside panel.
+ * Canvas rendering + aside panel. Nodes are coloured by topic (Chưa xếp = faint).
  */
 
 const MODE_ITEMS = [
@@ -86,9 +86,15 @@ function stepSimulation(nodes, edges, W, H, alpha) {
   });
 }
 
-export default function KBGraphView({ articles, onOpenReader, inferTagLinks = true }) {
+export default function KBGraphView({ articles, topics, onOpenReader, inferTagLinks = true }) {
   const [graphMode, setGraphMode] = useState('all');
   const [focusNode, setFocusNode] = useState(null);
+  const topicMap = useMemo(() => new Map(topics.map(t => [t.id, t])), [topics]);
+  // Topics that actually have a node here, for the legend
+  const legendTopics = useMemo(
+    () => topics.filter(t => articles.some(a => a.topic_id === t.id)),
+    [topics, articles],
+  );
   const canvasRef = useRef(null);
   const simRef = useRef(null);
   const dragRef = useRef(null);
@@ -138,6 +144,7 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
     canvas.style.width = W + 'px';
     canvas.style.height = H + 'px';
     ctx.scale(devicePixelRatio, devicePixelRatio);
+    const unsortedColor = getComputedStyle(canvas).getPropertyValue('--kb-faint').trim() || '#888';
 
     // Init sim nodes
     const simNodes = graph.nodes.map(n => ({ ...n }));
@@ -175,12 +182,10 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
       // Draw nodes
       simNodes.forEach(n => {
         const r = 5 + Math.min(n.degree * 2, 12);
-        const meta = TYPE_GLYPHS[n.type] || TYPE_GLYPHS.note;
-        const hueStyle = getComputedStyle(canvas).getPropertyValue(meta.hueVar).trim() || '#888';
 
         ctx.beginPath();
         ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = hueStyle;
+        ctx.fillStyle = topicMap.get(n.topic_id)?.color || unsortedColor;
         ctx.fill();
 
         // Focus ring
@@ -225,7 +230,7 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
       cancelAnimationFrame(rafId);
       canvas.removeEventListener('click', handleClick);
     };
-  }, [graph.nodes, visibleEdges, focusNode]);
+  }, [graph.nodes, visibleEdges, focusNode, topicMap]);
 
   return (
     <div className="kb-graph-view" style={{ animation: 'kb-in .22s ease' }}>
@@ -237,10 +242,10 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
         <div className="kb-graph__overlay-tl">
           <div className="kb-graph__stats">{graph.nodes.length} điểm · {visibleEdges.length} liên kết</div>
           <div className="kb-graph__legend">
-            {Object.entries(TYPE_GLYPHS).map(([key, m]) => (
-              <div key={key} className="kb-graph__legend-row">
-                <span className="kb-badge__dot" style={{ background: `var(${m.hueVar})` }} />
-                <span>{m.label}</span>
+            {legendTopics.map(t => (
+              <div key={t.id} className="kb-graph__legend-row">
+                <span className="kb-badge__dot" style={{ background: t.color }} />
+                <span>{t.name}</span>
               </div>
             ))}
             <div className="kb-graph__legend-row"><span style={{ width: 12, height: 2, background: 'var(--kb-brass)', display: 'inline-block' }} /> wiki</div>
@@ -273,8 +278,8 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
       <aside className="kb-graph__aside">
         {focusArticle ? (
           <div style={{ animation: 'kb-in .22s ease' }}>
-            <div className="kb-graph__aside-type" style={{ color: `var(${(TYPE_GLYPHS[focusArticle.type] || TYPE_GLYPHS.note).hueVar})` }}>
-              {(TYPE_GLYPHS[focusArticle.type] || TYPE_GLYPHS.note).label}
+            <div className="kb-graph__aside-type" style={{ color: topicMap.get(focusArticle.topic_id)?.color || 'var(--kb-faint)' }}>
+              {topicMap.get(focusArticle.topic_id)?.name || 'Chưa xếp'}
             </div>
             <h2 className="kb-graph__aside-title">{focusArticle.title}</h2>
             <p className="kb-graph__aside-excerpt">{(focusArticle.body_text || '').slice(0, 160)}</p>
@@ -299,7 +304,7 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
                 <h3 className="kb-graph__neighbors-title">Nối với · {neighbors.length}</h3>
                 {neighbors.map(n => (
                   <button key={n.article.id} className="kb-graph__neighbor-row" onClick={() => setFocusNode(n.article.id)}>
-                    <span className="kb-badge__dot" style={{ background: `var(${(TYPE_GLYPHS[n.article.type] || TYPE_GLYPHS.note).hueVar})` }} />
+                    <span className="kb-badge__dot" style={{ background: topicMap.get(n.article.topic_id)?.color || 'var(--kb-faint)' }} />
                     <span className="kb-graph__neighbor-title">{n.article.title}</span>
                     <span className="kb-graph__neighbor-via">{n.via === 'wiki' ? 'wiki' : 'thẻ'}</span>
                   </button>

@@ -57,7 +57,7 @@ export function deriveGraph(articles, { inferTagLinks = true } = {}) {
   const nodes = articles.map(a => ({
     id: a.id,
     title: a.title,
-    type: a.type,
+    topic_id: a.topic_id || null,
     degree: 0,
   }));
 
@@ -305,17 +305,6 @@ export function safeHostname(url) {
   catch { return url.replace(/^https?:\/\//, '').split('/')[0] || url; }
 }
 
-/* ── Type metadata ─────────────────────────────────────────── */
-export const TYPE_GLYPHS = {
-  note:          { glyph: '▤', label: 'Bài viết',  hueVar: '--kb-hue-note' },
-  quote:         { glyph: '❝', label: 'Trích dẫn', hueVar: '--kb-hue-quote' },
-  learn:         { glyph: '▮', label: 'Học',       hueVar: '--kb-hue-learn' },
-  idea:          { glyph: '◍', label: 'Ý tưởng',   hueVar: '--kb-hue-idea' },
-  ai:            { glyph: '⚙', label: 'AI',        hueVar: '--kb-hue-ai' },
-  entertainment: { glyph: '▶', label: 'Giải trí',  hueVar: '--kb-hue-entertainment' },
-  podcast:       { glyph: '◍', label: 'Podcast',   hueVar: '--kb-hue-podcast' },
-};
-
 /* ── Extract headings (for TOC) ────────────────────────────── */
 export function extractHeadings(text) {
   const lines = (text || '').split('\n');
@@ -353,14 +342,23 @@ export function tiptapToPlainText(body) {
 }
 
 /* ── Content kind (derived from url + type) ────────────────── */
+// glyph: text mark inside Knowledge; icon: AppIcon name for app-wide UI (e.g. LinkKBModal).
 export const KIND_META = {
-  repo:    { label: 'Repo',      glyph: '{ }' },
-  video:   { label: 'Video',     glyph: '▶' },
-  fb:      { label: 'Bài FB',    glyph: 'f' },
-  audio:   { label: 'Âm thanh',  glyph: '♪' },
-  article: { label: 'Bài viết',  glyph: '≡' },
-  note:    { label: 'Ghi chú',   glyph: '✎' },
-  quote:   { label: 'Trích dẫn', glyph: '❝' },
+  repo:    { label: 'Repo',      glyph: '{ }', icon: 'code' },
+  video:   { label: 'Video',     glyph: '▶',   icon: 'play' },
+  fb:      { label: 'Bài FB',    glyph: 'f',   icon: 'users' },
+  audio:   { label: 'Âm thanh',  glyph: '♪',   icon: 'headphones' },
+  article: { label: 'Bài viết',  glyph: '≡',   icon: 'link' },
+  note:    { label: 'Ghi chú',   glyph: '✎',   icon: 'pencil' },
+  quote:   { label: 'Trích dẫn', glyph: '❝',   icon: 'quote' },
+};
+
+// Progress labels shown on rows; 'read' is the quiet default and has none.
+export const PROGRESS_META = {
+  unread:     { label: 'Chưa đọc xong',  glyph: '○', tone: 'note' },
+  noted:      { label: 'Đã rút ra',      glyph: '✎', tone: 'link' },
+  practicing: { label: 'Đang thực hành', glyph: '◇', tone: 'task' },
+  practiced:  { label: 'Đã thực hành',   glyph: '◆', tone: 'task' },
 };
 
 // Path segments on github.com that are not `<owner>/<repo>`.

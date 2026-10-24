@@ -1,20 +1,14 @@
-import { TYPE_GLYPHS, isTiptapBody, tiptapToPlainText, markdownToPlainText } from '../../utils/kbDeriveUtils';
+import { KIND_META, contentKind, itemPlainText } from '../../utils/kbDeriveUtils';
 import { formatDate } from '../../utils/dateUtils';
 
 /**
- * KBGalleryView — postcard grid for all article types.
- * Each card shows: type label, pull/excerpt quote, title + date at bottom.
+ * KBGalleryView — postcard grid for all bài.
+ * Each card shows: kind label (topic colour), pull/excerpt quote, title + date at bottom.
  */
 
 function GalleryCard({ item, onClick }) {
-  const meta = TYPE_GLYPHS[item.type] || TYPE_GLYPHS.note;
-  const isTiptap = isTiptapBody(item);
-
-  let text = item.body_text || '';
-  if (!text && isTiptap) text = tiptapToPlainText(item.body);
-  else if (!text) text = markdownToPlainText(item.body || '');
-
-  const displayText = text || item.title;
+  const kind = KIND_META[contentKind(item)];
+  const displayText = itemPlainText(item) || item.title;
   const isShort = displayText.length < 120;
 
   return (
@@ -26,8 +20,8 @@ function GalleryCard({ item, onClick }) {
       onKeyDown={e => e.key === 'Enter' && onClick(item)}
     >
       {/* Type label */}
-      <span className="kb-gallery-card__type" style={{ color: `var(${meta.hueVar})` }}>
-        {meta.label}
+      <span className="kb-gallery-card__type" style={{ color: item._topic?.color || 'var(--kb-faint)' }}>
+        {item._topic ? `${item._topic.name} · ${kind.label}` : kind.label}
       </span>
 
       {/* Pull quote / excerpt */}

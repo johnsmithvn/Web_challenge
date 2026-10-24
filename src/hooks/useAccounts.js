@@ -715,7 +715,8 @@ export function useAccounts() {
       id,
       title: title || `New ${tpl.name.toLowerCase()}`,
       tpl: tplKey,
-      group,
+      // Không đứng trong nhóm nào thì lấy nhóm chuẩn của loại (thẻ → Tài chính/Thẻ…)
+      group: group || tpl.group || '',
       favorite: false,
       notes: '',
       tags: [],

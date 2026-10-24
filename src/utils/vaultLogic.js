@@ -58,6 +58,23 @@ const SUBTITLE_LABELS = [
   'Network (SSID)', 'Service', 'Full name', 'Host', 'Product',
 ];
 
+/**
+ * Thuộc tính cho MỌI ô nhập nội dung vault (không áp cho ô passphrase mở khoá):
+ * - autoComplete off: tắt lịch sử nhập của trình duyệt — nó chen vào <datalist>
+ *   gợi ý của app và làm lộ giá trị cũ ngay dưới ô.
+ * - data-*-ignore: 1Password / LastPass / Bitwarden / Dashlane bỏ qua ô này.
+ * Ô secret còn không dùng type="password" (xem EditValue) — Chrome coi mọi ô
+ * password biến mất sau khi gõ là "vừa đăng nhập" và đòi lưu vào Google Password
+ * Manager, tức chép secret của vault ra một kho thứ hai.
+ */
+export const NO_AUTOFILL = {
+  autoComplete: 'off',
+  'data-1p-ignore': 'true',
+  'data-lpignore': 'true',
+  'data-bwignore': 'true',
+  'data-form-type': 'other',
+};
+
 /** Loại nào là secret: mask khi xem, loại khỏi tìm kiếm, không bao giờ làm giá trị link. */
 export function isSecretType(type) {
   return type === 'password' || type === 'secret';
@@ -275,6 +292,26 @@ export function groupTree(items) {
   };
 }
 
+/**
+ * Gợi ý cho ô Group: nhóm đã dùng trong vault trước (đúng cách viết của user), rồi
+ * bộ nhóm chuẩn (`groupPresets` trong account-templates.json). Trùng không phân
+ * biệt hoa thường chỉ giữ một.
+ */
+export function groupSuggestions(items, presets = []) {
+  const seen = new Set();
+  const out = [];
+  const push = (p) => {
+    const n = normalizeGroup(p);
+    const k = n.toLocaleLowerCase('vi');
+    if (!n || seen.has(k)) return;
+    seen.add(k);
+    out.push(n);
+  };
+  groupTree(items).groups.forEach((g) => { push(g.path); g.children.forEach((c) => push(c.path)); });
+  presets.forEach(push);
+  return out;
+}
+
 /* ══ Chuỗi phụ thuộc ("Depends on this") ═════════════════════════════════
    Ai sẽ bị kéo theo nếu item này mất/bị chiếm. Hai nguồn cạnh:
    1. Link thật: field `link` của item khác trỏ tới item này.
@@ -364,11 +401,19 @@ const MAIL_PROVIDERS = [
  * dịch vụ hay dùng. Trùng (không phân biệt hoa thường) chỉ giữ cái đứng trước.
  * Bỏ tên là email/SĐT và tên mặc định "New …" — gợi ý chúng chỉ là rác.
  *
+ * Quy chuẩn tên (để không có cả "Gmail" lẫn "Google" cho cùng một thứ):
+ * hộp thư của mình ở nhà cung cấp (Email account) → tên hộp thư: Gmail, Outlook…;
+ * tài khoản ở nhà cung cấp đăng nhập bằng email khác (Account) → tên công ty:
+ * Google, Microsoft, Apple ID. `mailbox` = đang đặt tên cho một Email account: chỉ
+ * gợi ý nhóm preset "Email" + tiêu đề của Email account khác; ngược lại thì bỏ chúng.
+ *
  * @param {Object<string,string[]>} presets { [nhóm]: [tên dịch vụ] }
  * @param {string[]} extra
+ * @param {{mailbox?: boolean}} [opts]
  * @return {Array<{title: string, group: string}>} group '' = không gợi ý nhóm
  */
-export function titleSuggestions(items, presets = {}, extra = []) {
+export function titleSuggestions(items, presets = {}, extra = [], { mailbox = false } = {}) {
+  const isMailGroup = (g) => { const k = groupKey(g); return k === 'email' || k.startsWith('email/'); };
   const out = [];
   const seen = new Set();
   const push = (title, group = '') => {
@@ -387,10 +432,11 @@ export function titleSuggestions(items, presets = {}, extra = []) {
   extra.forEach((t) => push(t, groupOf(t)));
   // Item trong vault chưa có nhóm thì mượn nhóm của preset cùng tên (Zalo → Mạng xã hội)
   [...items]
+    .filter((it) => (it.tpl === 'email') === mailbox)
     .sort((a, b) => a.title.localeCompare(b.title, 'vi'))
     .forEach((it) => push(it.title, normalizeGroup(it.group) || groupOf(it.title)));
   for (const [group, titles] of Object.entries(presets)) {
-    if (!group.startsWith('_')) titles.forEach((t) => push(t, normalizeGroup(group)));
+    if (!group.startsWith('_') && isMailGroup(group) === mailbox) titles.forEach((t) => push(t, normalizeGroup(group)));
   }
   return out;
 }

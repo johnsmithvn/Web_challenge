@@ -13,6 +13,7 @@ import SkeletonList from '../components/SkeletonList';
 import {
   matchesQuery, itemSubtitle, newId, relativeUpdated, avatarHue, groupTree, groupKey, inGroup,
   isPasswordOnly, rootsOf, untrackedIdentifiers, moneyMatrix, mailboxTitle, normalizeGroup,
+  groupSuggestions, NO_AUTOFILL,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import '../styles/accounts.css';
@@ -40,7 +41,9 @@ import '../styles/accounts.css';
  * dùng GenericModal: component đó mang style Life Hub vào và phá fidelity.
  */
 
-const { templates: TEMPLATES, filterIcons: FILTER_ICONS, groupIcons: GROUP_ICONS } = ACCOUNT_TEMPLATES;
+const {
+  templates: TEMPLATES, filterIcons: FILTER_ICONS, groupIcons: GROUP_ICONS, groupPresets: GROUP_PRESETS,
+} = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 
 /** Icon theo từ khoá trong tên nhóm — tên nhóm do user tự gõ nên không có chỗ lưu icon riêng. */
@@ -287,7 +290,7 @@ export default function AccountsPage() {
   // Nhóm suy ra từ item nên "tạo nhóm" = chọn item rồi gõ tên nhóm mới vào thanh
   // Move to group. "+ New group" ở cột nhóm chỉ mở chế độ chọn ở All items và đặt
   // con trỏ vào ô tên nhóm.
-  const groupPaths = tree.groups.flatMap((g) => [g.path, ...g.children.map((c) => c.path)]);
+  const groupPaths = groupSuggestions(items, GROUP_PRESETS);
   const exitSelect = () => { setSelecting(false); setPicked(new Set()); setBulkGroup(''); };
   const startSelect = ({ fresh = false } = {}) => {
     setSelecting(true);
@@ -407,6 +410,7 @@ export default function AccountsPage() {
             type="search"
             value={query}
             onChange={(e) => onSearch(e.target.value)}
+            {...NO_AUTOFILL}
             placeholder={activeGroup ? `Search in ${activeGroup.name}` : `Search all ${items.length} items`}
             aria-label="Search the vault"
           />
@@ -608,7 +612,7 @@ export default function AccountsPage() {
               </div>
               <div className="acc-bulkbar__row">
                 {/* Native datalist như ô Group ở chế độ sửa: gợi ý nhóm có sẵn, gõ tên mới = tạo nhóm */}
-                <input ref={bulkInputRef} className="acc-input" list="acc-bulk-groups" value={bulkGroup}
+                <input ref={bulkInputRef} className="acc-input" list="acc-bulk-groups" value={bulkGroup} {...NO_AUTOFILL}
                   onChange={(e) => setBulkGroup(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); moveSelected(); } }}
                   placeholder="Group, e.g. Tài chính/Ngân hàng (empty = Ungrouped)" aria-label="Move to group" />
