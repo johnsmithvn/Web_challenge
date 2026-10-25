@@ -311,18 +311,14 @@ export default function KBReaderView({
   return (
     <div className={`kb-reader${focusMode ? ' kb-reader--focus' : ''}`} style={{ animation: 'kb-up .25s ease' }}>
       {/* Thanh trên: quay lại · vị trí · ↑↓ · chủ đề · 4 nút */}
+      {/* Thanh trong suốt, hai cụm nổi — trời và trăng vẫn hiện phía sau */}
       <div className="kb-reader__bar">
-        <button className="kb-icon-btn kb-icon-btn--box" onClick={onBack} title="Quay lại (Esc)" aria-label="Quay lại">
-          <AppIcon name="back" size={16} />
-        </button>
-        <nav className="kb-crumbs" aria-label="Vị trí">
-          <button className="kb-crumbs__link" onClick={onBack}>Kiến thức</button>
-          <span className="kb-crumbs__sep">/</span>
-          <span className="kb-crumbs__part">{topic ? topic.name : 'Chưa xếp'}</span>
-          <span className="kb-crumbs__sep">/</span>
-          <span className="kb-crumbs__here">{article.title}</span>
-        </nav>
-        <div className="kb-reader__nav">
+        <div className="kb-reader__group">
+          <button className="kb-reader__back" onClick={onBack} title="Quay lại (Esc)" aria-label="Quay lại Kiến thức">
+            <AppIcon name="back" size={16} />
+            <span>Kiến thức</span>
+          </button>
+          <span className="kb-reader__divider" />
           <button className="kb-icon-btn" onClick={onPrev || undefined} disabled={!onPrev} title="Bài trước (K)" aria-label="Bài trước">
             <AppIcon name="caretUp" size={16} />
           </button>
@@ -330,41 +326,42 @@ export default function KBReaderView({
             <AppIcon name="caretDown" size={16} />
           </button>
         </div>
-        <span className="kb-spacer" />
 
-        {/* Chủ đề: đổi một chạm (native select — không cần popover riêng) */}
-        <label className={`kb-reader__topic${topic ? '' : ' is-empty'}`} style={topic ? { '--kb-topic': topic.color } : undefined} title="Đổi chủ đề">
-          <span className="kb-dot" />
-          <select
-            ref={topicSelectRef}
-            value={article.topic_id || ''}
-            onChange={e => onAssignTopic(e.target.value || null)}
-            aria-label="Chủ đề của bài"
+        <div className="kb-reader__group">
+          {/* Chủ đề: đổi một chạm (native select — không cần popover riêng) */}
+          <label className={`kb-reader__topic${topic ? '' : ' is-empty'}`} style={topic ? { '--kb-topic': topic.color } : undefined} title="Đổi chủ đề">
+            <span className="kb-dot" />
+            <select
+              ref={topicSelectRef}
+              value={article.topic_id || ''}
+              onChange={e => onAssignTopic(e.target.value || null)}
+              aria-label="Chủ đề của bài"
+            >
+              {topics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              <option value="">Chưa xếp</option>
+            </select>
+            <AppIcon name="caretDown" size={12} />
+          </label>
+          <span className="kb-reader__divider" />
+
+          <button className="kb-icon-btn" onClick={onOpenLinkModal} title="Liên kết bài viết" aria-label="Liên kết bài viết">
+            <AppIcon name="linkSimple" size={17} />
+          </button>
+          <button
+            className={`kb-icon-btn kb-reader__focus${focusMode ? ' is-on' : ''}`}
+            onClick={() => setFocusMode(v => !v)}
+            title={focusMode ? 'Hiện cột phải (F)' : 'Đọc tập trung (F)'}
+            aria-pressed={focusMode}
           >
-            {topics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            <option value="">Chưa xếp</option>
-          </select>
-          <AppIcon name="caretDown" size={12} />
-        </label>
-        <span className="kb-reader__divider" />
-
-        <button className="kb-icon-btn" onClick={onOpenLinkModal} title="Liên kết bài viết" aria-label="Liên kết bài viết">
-          <AppIcon name="linkSimple" size={17} />
-        </button>
-        <button
-          className={`kb-icon-btn${focusMode ? ' is-on' : ''}`}
-          onClick={() => setFocusMode(v => !v)}
-          title={focusMode ? 'Hiện cột phải (F)' : 'Đọc tập trung (F)'}
-          aria-pressed={focusMode}
-        >
-          <AppIcon name="arrowsOutSimple" size={17} />
-        </button>
-        <button className="kb-icon-btn" onClick={onEdit} title="Sửa (E)" aria-label="Sửa">
-          <AppIcon name="pencil" size={17} />
-        </button>
-        <button className="kb-icon-btn kb-icon-btn--danger" onClick={onDelete} title="Xoá bài" aria-label="Xoá bài">
-          <AppIcon name="trash" size={17} />
-        </button>
+            <AppIcon name="arrowsOutSimple" size={17} />
+          </button>
+          <button className="kb-icon-btn" onClick={onEdit} title="Sửa (E)" aria-label="Sửa">
+            <AppIcon name="pencil" size={17} />
+          </button>
+          <button className="kb-icon-btn kb-icon-btn--danger" onClick={onDelete} title="Xoá bài" aria-label="Xoá bài">
+            <AppIcon name="trash" size={17} />
+          </button>
+        </div>
       </div>
 
       {/* Reading progress line */}

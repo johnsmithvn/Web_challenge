@@ -183,8 +183,10 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
 
 ### 4.5. Trang đọc (`KBReaderView`)
 
-- **Thanh trên:** ← · đường dẫn "Kiến thức / chủ đề / tiêu đề" · ↑ ↓ · **viên chủ đề** (select native, đổi một lần chọn) · nút biểu tượng Liên kết · Tập trung (`F`, ẩn cột phải) · Sửa (`E`) · Xoá.
-  Vạch tiến độ cuộn trang (scaleX). Điện thoại: ẩn đường dẫn.
+- **Thanh trên:** trong suốt, hai cụm viên nổi để trời và trăng hiện phía sau — trái: ← Kiến thức · ↑ ↓; phải: **viên chủ đề**
+  (select native, đổi một lần chọn) · Liên kết · Tập trung (`F`, ẩn cột phải) · Sửa (`E`) · Xoá. Không có đường dẫn
+  (tiêu đề đã ở H1, chủ đề ở viên). Vạch tiến độ cuộn trang (scaleX). Điện thoại (≤640px): nút về chỉ còn mũi tên, ẩn nút
+  Tập trung (cột phải đã nằm dưới bài).
 - **Nội dung:** meta (loại · nguồn · ngày · phút đọc), tiêu đề Unbounded, "+ Gán chủ đề" (khi Chưa xếp, mở thẳng select) + #thẻ, media preview, thân bài, **Ghi chú của bạn**.
 - **Cột phải:** độ dài / ngày tạo / nguồn · **Lân cận** (sơ đồ sao nhỏ, "Mở bầu trời ↗") · **Xung quanh** (§5.2, mỗi dòng ghi cùng chủ đề / cùng nguồn / cất cùng lúc) · Mục lục (Markdown) · Trỏ tới · Được trỏ về · Nhiệm vụ liên kết (task chưa xong).
 - Bài đang đọc / soạn chỉ giữ **id**; nội dung lấy từ dữ liệu sống nên đổi chủ đề, link, `[[ ]]` hiện ngay. Thêm / xoá ghi chú → tải lại danh sách.
@@ -296,7 +298,9 @@ wiki link (`parseWikiLinks`, `findBacklinks`, `getOutboundLinks`, `extractContex
 (nhóm theo tháng / chủ đề / loại / không, giữ thứ tự danh sách),
 `normalizeVi`, `itemPlainText`, `isMine`, `ageDays`, `KIND_META`, `contentKind`, `sourceKey`, `guessTitle`,
 `quickSortQueue`, `findNeighbors`, `suggestTopic`, `pickResurface`, `pushRecent`, `readTime`, `markdownToPlainText`,
-`extractHeadings`, `isTiptapBody`, `tiptapToPlainText`.
+`extractHeadings`, `isTiptapBody`, `tiptapToPlainText`, `isThemeBreakingColor` + `migrateTiptapDoc` (gỡ màu chữ inline
+xám / đen / trắng / quá tối / quá sáng khi nạp bài Visual, đổi `audioBlock` → `mediaBlock`; `TiptapEditor` và
+`TiptapReadOnly` cùng gọi).
 Contract test thẻ / ghi chú: `src/__tests__/core/tagsAndKnowledgeContract.test.js`. Code gọi Supabase / React test tay.
 
 ## 11. Quyết định thiết kế

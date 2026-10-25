@@ -1356,8 +1356,12 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
 - **Khung**: `.kb-shell` lưới `252px | minmax(0,1fr)` (cột trái `.kb-side`); trang đọc / soạn `--doc` một cột.
   ≤860px cột trái thành thanh trên (viên cuộn ngang); ≤768px chiều cao trừ topbar + bottom tabs.
 - **Nút**: `.kb-btn-primary` (nền mint + quầng `--kb-glow`), `.kb-btn-soft` (nền accent-soft), `.kb-btn-ghost` (viền),
-  `.kb-btn-violet`, `.kb-icon-btn` (32px, `--box`, `--danger`, `.is-on`), `.kb-link`. Nhóm chọn một: `.kb-seg`
+  `.kb-btn-violet`, `.kb-icon-btn` (32px, `--danger`, `.is-on`), `.kb-link`. Nhóm chọn một: `.kb-seg`
   (`--quiet` không khung). Chip chủ đề trong bộ chọn: `.kb-chip` viên tròn `999px`.
+- **Trang đọc**: thanh trên trong suốt, chỉ có hai cụm `.kb-reader__group` (viên, nền `--kb-pop` 72%) để trời / trăng
+  không bị che. Cột chữ `max-width: 760px` giữa vùng đọc, cột phải 320px.
+- **Màu chữ trong bài**: không vá bằng CSS `span[style*=color]`; màu inline làm chìm chữ bị gỡ khi nạp
+  (`migrateTiptapDoc` trong `kbDeriveUtils`), màu nhấn (tím, đỏ…) giữ nguyên.
 - **Hiệu năng**: không `backdrop-filter` ở đâu trong Knowledge — trời phía sau chuyển động nên blur sẽ tính lại mỗi khung;
   cột / thanh dùng `color-mix(--kb-bg, transparent)`, hộp thoại `--kb-pop` đặc. Chỉ animate transform / opacity
   (vạch đọc dùng `scaleX`).

@@ -8,7 +8,7 @@
 - **Knowledge — Danh sách 4a (`KBListView.jsx`, `kbDeriveUtils.groupArticles`):** đầu danh sách luôn có (quả cầu màu, tên, số bài, định nghĩa, Xếp nhanh / Quản lý chủ đề, hàng thẻ + Quản lý thẻ); lọc **Loại** (kèm số) và **↔ Có liên kết** (`filterArticles` nhận `linked`); **Nhóm theo** Tháng / Chủ đề / Loại / Không, nhóm thu gọn được; thanh chọn nhiều nổi dính đáy; trạng thái trống của chủ đề có "Xếp nhanh · N bài chờ". Nhóm tính ở `CollectPage` nên `J`/`K` và ↑ ↓ ở trang đọc đi đúng thứ tự đang hiện.
 - **Knowledge — Quản lý chủ đề 4b (`KBTopicModal.jsx`, `useCollectionTopics.reorderTopics`):** kéo ⋮⋮ đổi thứ tự (pointer events, chạy cả cảm ứng; ↑ ↓ khi tay cầm được chọn), quả cầu màu mở bảng màu, sửa tên / định nghĩa tại chỗ, nhãn "Đang xem", Gộp / Xoá hiện khi rê (cảm ứng: ⋯); ô thêm có 7 màu, mặc định màu chưa dùng.
 - **Knowledge — Tổng quan 1a:** lời chào theo giờ + bầu trời nhỏ (bài có liên kết sáng và nối thành chòm, bấm → Sơ đồ); Xếp nhanh có vạch tiến độ và lưới chủ đề có phím số; Gần đây 5 bài có loại · chủ đề · ngày.
-- **Knowledge — trang đọc:** phím `F` đọc tập trung giờ chạy thật (trước chỉ có chữ trên nút); đường dẫn "Kiến thức / chủ đề / bài"; "+ Gán chủ đề" mở thẳng ô chọn; cột phải thêm **Lân cận** (sơ đồ sao nhỏ) và nhãn cùng chủ đề / cùng nguồn / cất cùng lúc ở Xung quanh.
+- **Knowledge — trang đọc:** phím `F` đọc tập trung giờ chạy thật (trước chỉ có chữ trên nút); thanh trên trong suốt với hai cụm viên nổi (trời và trăng hiện phía sau, bỏ đường dẫn vì tiêu đề đã ở H1 và chủ đề ở viên; điện thoại một hàng); "+ Gán chủ đề" mở thẳng ô chọn; cột phải thêm **Lân cận** (sơ đồ sao nhỏ) và nhãn cùng chủ đề / cùng nguồn / cất cùng lúc ở Xung quanh.
 - Bài mới viết khi đang xem một chủ đề thì mặc định vào chủ đề đó.
 
 ### Changed
@@ -19,8 +19,11 @@
 - `useCollectionTopics`: `moveTopic(id, dir)` thay bằng `reorderTopics(ids)`.
 - Tài liệu: `MODULE_KNOWLEDGE.md`, `FEATURES.md`, `DESIGN.md` (contract Knowledge, nền trời), `ARCHITECTURE.md`, `RULES.md` #15.
 
+### Fixed
+- **Bài Visual chữ chìm trên nền tối (`kbDeriveUtils.migrateTiptapDoc`, `TiptapEditor.jsx`):** màu chữ dán từ web / Docs (xám, đen, xanh than…) lọt qua danh sách trắng cũ nên thân bài gần như không đọc được. Nay gỡ mọi màu inline xám / đen / trắng / quá tối / quá sáng khi nạp bài (đọc và sửa), giữ màu nhấn; bỏ `isMonochromeColor` và 19 rule CSS `span[style*=color]` trong `kb-tokens.css`. Có test.
+
 ### Removed
-- **Knowledge:** nút `?` nổi góc phải (vào bảng phím tắt bằng `?` hoặc nút ở cột trái); nút "Gắn thẻ" trong chọn nhiều (chỉ mở hộp quản lý thẻ, giờ vào bằng "Quản lý thẻ" ở đầu danh sách); hàng chip chủ đề dưới tiêu đề; các class / token cũ (`--kb-brass`, `--kb-serif`, `kb-subheader*`, `kb-help-btn`, `kb-rail-card*`, `kb-mode-*`, `kb-format-badge`…).
+- **Knowledge:** nút `?` nổi góc phải (vào bảng phím tắt bằng `?` hoặc nút ở cột trái); nút "Gắn thẻ" trong chọn nhiều (chỉ mở hộp quản lý thẻ, giờ vào bằng "Quản lý thẻ" ở đầu danh sách); hàng chip chủ đề dưới tiêu đề; các class / token cũ (`--kb-brass`, `--kb-serif`, `kb-subheader*`, `kb-help-btn`, `kb-rail-card*`, `kb-mode-*`, `kb-format-badge`, `kb-crumbs*`, `kb-reader__nav`, `kb-icon-btn--box`…).
 
 ### Notes
 - Không có migration. Đổi nền trời (sao băng) cần xem trên `/fx-lab` trước khi commit.

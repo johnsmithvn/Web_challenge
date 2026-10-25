@@ -26,6 +26,8 @@ import {
   isMine,
   quickSortQueue,
   groupArticles,
+  isThemeBreakingColor,
+  migrateTiptapDoc,
 } from '../../utils/kbDeriveUtils.js';
 
 const NOW = Date.parse('2026-10-24T12:00:00Z');
@@ -422,6 +424,43 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   assert.equal(flat[0].items, items);
   assert.deepEqual(groupArticles([], 'month'), []);
   console.log('groupArticles: OK');
+}
+
+/* ── isThemeBreakingColor / migrateTiptapDoc ──────────────── */
+{
+  // gray / black / white / too dark / too light → stripped
+  for (const c of ['#333', 'rgb(36, 41, 47)', '#1e1b4b', '#fef3c7', 'white', '#FFF', 'rgba(0,0,0,0.87)']) {
+    assert.equal(isThemeBreakingColor(c), true, c);
+  }
+  // accents and unparseable colours → kept
+  for (const c of ['#8b5cf6', '#ef4444', 'rgb(16, 185, 129)', 'hsl(0 0% 20%)', 'var(--x)', '#12345', undefined, '']) {
+    assert.equal(isThemeBreakingColor(c), false, String(c));
+  }
+
+  const text = marks => ({ type: 'text', text: 'x', marks });
+  const doc = {
+    type: 'doc',
+    content: [
+      { type: 'paragraph', content: [
+        text([{ type: 'textStyle', attrs: { color: '#333' } }, { type: 'bold' }]),
+        text([{ type: 'textStyle', attrs: { color: '#8b5cf6' } }]),
+        text([{ type: 'textStyle', attrs: { color: 'rgb(30, 30, 30)', fontFamily: 'Inter' } }]),
+        text([{ type: 'textStyle', attrs: { color: '#000', fontFamily: null } }]),
+      ] },
+      { type: 'audioBlock', attrs: { src: 'a.mp3' } },
+    ],
+  };
+  const before = JSON.stringify(doc);
+  const out = migrateTiptapDoc(doc);
+  const [p1, media] = out.content;
+  assert.deepEqual(p1.content[0].marks, [{ type: 'bold' }]);
+  assert.deepEqual(p1.content[1].marks, [{ type: 'textStyle', attrs: { color: '#8b5cf6' } }]);
+  assert.deepEqual(p1.content[2].marks, [{ type: 'textStyle', attrs: { fontFamily: 'Inter' } }]);
+  assert.deepEqual(p1.content[3].marks, []);
+  assert.equal(media.type, 'mediaBlock');
+  assert.equal(JSON.stringify(doc), before, 'input not mutated');
+  assert.equal(migrateTiptapDoc(null), null);
+  console.log('isThemeBreakingColor / migrateTiptapDoc: OK');
 }
 
 console.log('\n✅ All kbDeriveUtils checks passed.');

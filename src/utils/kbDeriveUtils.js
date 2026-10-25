@@ -393,6 +393,54 @@ export function tiptapToPlainText(body) {
   } catch { return ''; }
 }
 
+/* ── Inline text colour that breaks light/dark theme ───────── */
+const NAMED_RGB = { black: [0, 0, 0], white: [255, 255, 255], gray: [128, 128, 128], grey: [128, 128, 128] };
+
+function parseCssRgb(color) {
+  const c = String(color).trim().toLowerCase();
+  if (NAMED_RGB[c]) return NAMED_RGB[c];
+  let m = c.match(/^#([0-9a-f]+)$/);
+  if (m) {
+    let h = m[1];
+    if (![3, 4, 6, 8].includes(h.length)) return null;
+    if (h.length < 6) h = [...h.slice(0, 3)].map(x => x + x).join('');
+    return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  }
+  m = c.match(/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/);
+  return m ? [m[1], m[2], m[3]].map(Number) : null;
+}
+
+// Màu dán từ web/Docs: xám/đen/trắng hoặc quá tối/quá sáng → chìm trên một trong hai nền.
+// Màu nhấn (tím, đỏ…) giữ; màu không đọc được (hsl, var…) giữ nguyên.
+export function isThemeBreakingColor(color) {
+  if (!color) return false;
+  const rgb = parseCssRgb(color);
+  if (!rgb) return false;
+  const [r, g, b] = rgb;
+  if (Math.max(r, g, b) - Math.min(r, g, b) <= 40) return true;
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return lum < 0.22 || lum > 0.9;
+}
+
+/* ── Tiptap JSON migrations (không sửa input) ─────────────────
+   audioBlock → mediaBlock; bỏ màu chữ inline làm hỏng theme. */
+export function migrateTiptapDoc(node) {
+  if (Array.isArray(node)) return node.map(migrateTiptapDoc);
+  if (!node || typeof node !== 'object') return node;
+  const out = { ...node };
+  if (out.type === 'audioBlock') out.type = 'mediaBlock';
+  if (Array.isArray(out.marks)) {
+    out.marks = out.marks.flatMap(mark => {
+      if (mark.type !== 'textStyle' || !isThemeBreakingColor(mark.attrs?.color)) return [mark];
+      const rest = { ...mark.attrs };
+      delete rest.color;
+      return Object.values(rest).some(v => v != null) ? [{ ...mark, attrs: rest }] : [];
+    });
+  }
+  if (out.content) out.content = migrateTiptapDoc(out.content);
+  return out;
+}
+
 /* ── Content kind (derived from url + type) ────────────────── */
 // glyph: text mark inside Knowledge; icon: AppIcon name for app-wide UI (e.g. LinkKBModal).
 export const KIND_META = {
