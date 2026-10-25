@@ -1354,7 +1354,9 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
 - **Màu chủ đề** lấy từ `collection_topics.color`, truyền qua biến `--kb-topic` đặt inline (`.kb-dot`, `.kb-orb`,
   quầng thẻ chủ đề, viên chủ đề trang đọc). Chưa có chủ đề → `--kb-faint` hoặc `--kb-gold`.
 - **Khung**: `.kb-shell` lưới `252px | minmax(0,1fr)` (cột trái `.kb-side`); trang đọc / soạn `--doc` một cột.
-  ≤860px cột trái thành thanh trên (viên cuộn ngang); ≤768px chiều cao trừ topbar + bottom tabs.
+  769–860px cột trái thành thanh trên (viên cuộn ngang). ≤768px (đã đăng nhập) như Finance: ẩn thanh Life Hub + tab đáy
+  chung (`body.in-knowledge-workspace`); `.kb-shell` 3 hàng: `.kb-mbar` (trong suốt: ô tìm · `.kb-topic-select` ·
+  nút ＋ tròn) · nội dung · `.kb-tabbar` (Home · 5 kiểu xem, `order: 1`). Viên `.kb-topic-select` dùng chung với trang đọc.
   Danh sách / Tổng quan / Gallery chung `max-width: 1120px` + lề `28px 32px`; `.kb-content` có
   `scrollbar-gutter: stable`.
 - **Chống nhảy**: lọc / đổi kiểu xem không được đổi chiều cao phần trên hay đẩy nút cạnh — hàng thẻ đếm theo phạm vi,

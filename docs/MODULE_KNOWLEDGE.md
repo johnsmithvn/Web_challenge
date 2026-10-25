@@ -224,9 +224,17 @@ Xoá có xác nhận; toast "Hoàn tác" hoặc `⌘Z` chèn lại bài (giữ n
 
 ### 4.10. Điện thoại
 
-Dưới 860px cột trái thành thanh trên: ô tìm + Viết bài mới, rồi hai hàng viên cuộn ngang (kiểu xem, chủ đề). Tổng quan,
-Xếp nhanh, hai khối cuối xuống một cột; dưới 1000px trang đọc đưa cột phải xuống dưới, Sơ đồ đưa cột phải xuống dưới.
-Chiều cao trang trừ topbar + bottom tabs như Vault.
+**Điện thoại (≤768px, đã đăng nhập)** — như Finance: thanh Life Hub + tab đáy chung của app ẩn ở `/collect`
+(`body.in-knowledge-workspace` do `CollectPage` gắn; `Navbar` không vẽ hai thanh đó). `KBSidebar` (`isMobile`) vẽ:
+- **Hàng trên trong suốt** (trời hiện phía sau): ô tìm · **viên chủ đề** (select native: Tất cả bài / Chưa xếp / từng chủ đề /
+  Ghi chú của tôi; chọn ở Tổng quan thì sang Danh sách) · nút **＋** Viết bài mới.
+- **Tab đáy riêng**: Home (về Life Hub, nơi có đổi sáng / tối, tài khoản) · Tổng quan · Danh sách · Gallery · Sơ đồ · Canvas.
+- Trang đọc / soạn: không có hai thanh này (thanh của trang đọc có nút về). Chưa đăng nhập: giữ thanh chung để còn nút đăng nhập.
+- Nút tròn QuickCapture ẩn ở `/collect` (đã có Viết bài mới; trên điện thoại sẽ đè tab đáy).
+
+**769–860px** (máy tính bảng hẹp, còn sidebar của app): cột trái thành thanh trên — ô tìm + Viết bài mới,
+rồi hai hàng viên cuộn ngang (kiểu xem, chủ đề). Tổng quan, Xếp nhanh, hai khối cuối xuống một cột; dưới 1000px trang đọc
+đưa cột phải xuống dưới, Sơ đồ đưa cột phải xuống dưới.
 
 ---
 

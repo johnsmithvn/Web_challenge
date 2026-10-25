@@ -96,7 +96,6 @@ function TopicHeader({ heading, tags, tagCounts, activeTagIds, onToggleTag, onMa
   return (
     <header className="kb-topic-head" style={heading.color ? { '--kb-topic': heading.color } : undefined}>
       <div className="kb-topic-head__top">
-        <span className={`kb-orb${heading.color ? '' : ' kb-orb--plain'}`} aria-hidden="true" />
         <div className="kb-topic-head__text">
           <div className="kb-topic-head__line">
             <h2 className="kb-topic-head__name">{heading.name}</h2>
