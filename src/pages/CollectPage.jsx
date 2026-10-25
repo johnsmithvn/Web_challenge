@@ -54,7 +54,9 @@ export default function CollectPage() {
 
   // Navigation & View state
   const [view, setView] = useState('overview'); // LIBRARY_VIEWS | 'reader' | 'editor'
-  const [selectedArticle, setSelectedArticle] = useState(null);
+  // Only the id is kept; the bài itself always comes from live data (see selectedArticle below),
+  // so topic / status / notes / link changes show in the reader without manual syncing.
+  const [selectedId, setSelectedId] = useState(null);
   const [cursor, setCursor] = useState(0);
   const returnViewRef = useRef('overview');
   const [recentIds, setRecentIds] = useState(readRecent);
@@ -108,6 +110,11 @@ export default function CollectPage() {
     _topic: topicById.get(item.topic_id) || null,
     _linkedTasks: pendingTasks.filter(t => (item._linkedTaskIds || []).includes(t.id)),
   })), [items, pendingTasks, topicById]);
+
+  const selectedArticle = useMemo(
+    () => (selectedId ? articlesWithTasks.find(a => a.id === selectedId) || null : null),
+    [articlesWithTasks, selectedId],
+  );
 
   // Bài per topic for the chip row and the topic manager
   const topicCounts = useMemo(() => {
@@ -264,7 +271,7 @@ export default function CollectPage() {
     const idx = filteredArticles.findIndex(a => a.id === article.id);
     if (idx >= 0) setCursor(idx);
     rememberReturn();
-    setSelectedArticle(article);
+    setSelectedId(article.id);
     setView('reader');
 
     const next = pushRecent(recentIds, article.id);
@@ -274,13 +281,13 @@ export default function CollectPage() {
 
   const openEditor = useCallback((article = null) => {
     rememberReturn();
-    setSelectedArticle(article);
+    setSelectedId(article?.id ?? null);
     setView('editor');
   }, [rememberReturn]);
 
   const goLibrary = useCallback(() => {
     setView(returnViewRef.current);
-    setSelectedArticle(null);
+    setSelectedId(null);
   }, []);
 
   // Delete article with undo trash buffer
@@ -355,16 +362,19 @@ export default function CollectPage() {
 
       let savedId;
       if (selectedArticle?.id) {
-        await updateItem(selectedArticle.id, payload);
-        savedId = selectedArticle.id;
+        if (await updateItem(selectedArticle.id, payload)) savedId = selectedArticle.id;
       } else {
         // Bài có link là thứ cần đọc → "Chưa đọc xong"; ghi chú / trích dẫn của mình thì đã đọc.
         const created = await addItem({ ...payload, status: payload.url ? 'unread' : 'read' });
         savedId = created?.id;
       }
+      if (!savedId) {
+        showToast('Không lưu được bài. Thử lại.');
+        return;
+      }
 
       // Sync tags via junction table
-      if (savedId && draft.tags) {
+      if (draft.tags) {
         const draftTagNames = draft.tags.map(t => typeof t === 'string' ? t : t.name);
         const existingTags = selectedArticle?._tags || [];
         const existingNames = existingTags.map(t => t.name);
@@ -390,13 +400,12 @@ export default function CollectPage() {
       showToast(`Đã lưu "${draft.title}"`);
 
       // Open reader of the saved article
-      const updatedArticle = { ...draft, id: savedId, _topic: topicById.get(draft.topic_id) || null };
-      setSelectedArticle(updatedArticle);
+      setSelectedId(savedId);
       setView('reader');
     } finally {
       setIsSaving(false);
     }
-  }, [selectedArticle, updateItem, addItem, addCentralTag, linkTag, unlinkTag, fetchItems, showToast, topicById]);
+  }, [selectedArticle, updateItem, addItem, addCentralTag, linkTag, unlinkTag, fetchItems, showToast]);
 
   // Toggle wiki link in article
   const handleToggleWikiLink = useCallback(async (targetArticle) => {
@@ -412,9 +421,7 @@ export default function CollectPage() {
       showToast(`Đã nối tới "${targetArticle.title}"`);
     }
     await updateItem(selectedArticle.id, { body: newBody });
-    setSelectedArticle(prev => ({ ...prev, body: newBody }));
-    fetchItems({});
-  }, [selectedArticle, updateItem, showToast, fetchItems]);
+  }, [selectedArticle, updateItem, showToast]);
 
   // Keyboard Shortcuts Handler (Global)
   useEffect(() => {
@@ -497,7 +504,7 @@ export default function CollectPage() {
         if (view === 'reader') {
           const nextIdx = Math.min(filteredArticles.length - 1, cursor + 1);
           setCursor(nextIdx);
-          setSelectedArticle(filteredArticles[nextIdx]);
+          if (filteredArticles[nextIdx]) setSelectedId(filteredArticles[nextIdx].id);
         } else {
           setCursor(c => Math.min(filteredArticles.length - 1, c + 1));
         }
@@ -508,7 +515,7 @@ export default function CollectPage() {
         if (view === 'reader') {
           const prevIdx = Math.max(0, cursor - 1);
           setCursor(prevIdx);
-          setSelectedArticle(filteredArticles[prevIdx]);
+          if (filteredArticles[prevIdx]) setSelectedId(filteredArticles[prevIdx].id);
         } else {
           setCursor(c => Math.max(0, c - 1));
         }
@@ -645,19 +652,28 @@ export default function CollectPage() {
           <KBReaderView
             article={selectedArticle}
             allArticles={articlesWithTasks}
+            topics={topics}
+            pendingTaskIds={pendingTaskIds}
             onBack={goLibrary}
             onPrev={cursor > 0 ? () => {
               const idx = cursor - 1;
               setCursor(idx);
-              setSelectedArticle(filteredArticles[idx]);
+              setSelectedId(filteredArticles[idx].id);
             } : null}
             onNext={cursor < filteredArticles.length - 1 ? () => {
               const idx = cursor + 1;
               setCursor(idx);
-              setSelectedArticle(filteredArticles[idx]);
+              setSelectedId(filteredArticles[idx].id);
             } : null}
             onEdit={() => openEditor(selectedArticle)}
             onDelete={() => handleDeleteArticle(selectedArticle)}
+            onArchive={async () => {
+              await handleArchive(selectedArticle);
+              goLibrary();
+            }}
+            onToggleRead={() => updateItem(selectedArticle.id, { status: selectedArticle.status === 'read' ? 'unread' : 'read' })}
+            onAssignTopic={topicId => handleAssignTopic(selectedArticle, topicId)}
+            onNotesChange={() => fetchItems({})}
             notesHook={notesHook}
             onOpenArticle={openReader}
             onOpenGraph={() => setView('graph')}
@@ -669,14 +685,11 @@ export default function CollectPage() {
               });
               if (result) {
                 await linkCollection(result.id, item.id);
-                showToast(`Đã tạo nhiệm vụ cho "${item.title}"`);
+                showToast(`Đã tạo task thực hành cho "${item.title}"`);
+                fetchItems({}); // _linkedTaskIds → tiến độ "Đang thực hành"
               }
             }}
-            onUpdateUrl={async (oldUrl, newUrl) => {
-              await updateItem(selectedArticle.id, { url: newUrl });
-              setSelectedArticle(prev => ({ ...prev, url: newUrl }));
-              fetchItems({});
-            }}
+            onUpdateUrl={(oldUrl, newUrl) => updateItem(selectedArticle.id, { url: newUrl })}
           />
         ) : view === 'editor' ? (
           <KBEditorView

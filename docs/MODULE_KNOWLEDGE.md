@@ -113,12 +113,15 @@ Xem §B5.3. Đang gõ tìm thì Tổng quan hiện kết quả dạng Danh sách
 
 ### A3.4. Trang đọc (`KBReaderView`)
 
-- **Thanh trên:** ← Thư viện · ↑ ↓ bài trước/sau · Tập trung (`F`) · ↔ Liên kết · ◇ Nhiệm vụ (tạo task nối với bài) ·
-  ✎ Sửa (`E`) · ⌫ Xoá. Có vạch tiến độ đọc.
-- **Nội dung:** meta, tiêu đề, thẻ, media preview nếu có link, thân bài (Tiptap read-only hoặc Markdown),
-  phần **Ghi chú cá nhân**.
-- **Cột phải, 6 thẻ:** thông tin & thống kê · sơ đồ nhỏ quanh bài · mục lục (bài Markdown) · liên kết đi ·
-  backlink · task liên kết.
+- **Thanh trên:** ← Thư viện · ↑ ↓ bài trước/sau · **chủ đề** (select, đổi một chạm) · Tập trung (`F`) · ↔ Liên kết ·
+  **Đọc xong** / "✓ Đã đọc" (bật/tắt `status`; bấm Đọc xong thì cuộn tới ô ghi chú) · **◇ Thực hành** (tạo task nối với
+  bài) · ✎ Sửa (`E`) · **Lưu trữ** · ⌫ Xoá. Có vạch tiến độ đọc. Điện thoại: thanh xuống dòng.
+- **Nội dung:** meta (chủ đề · loại · nguồn · ngày · phút đọc), tiêu đề, thẻ, media preview nếu có link, thân bài
+  (Tiptap read-only hoặc Markdown), phần **Ghi chú cá nhân** — ô thêm mới hỏi "Rút ra gì không?".
+- **Cột phải:** thông tin & thống kê + **Tiến độ 5 bước** · **Xung quanh** (cùng chủ đề · cùng nguồn · lưu gần thời
+  điểm) · sơ đồ nhỏ · mục lục (bài Markdown) · liên kết đi · backlink · task liên kết (task chưa xong + "N task đã xong").
+- Bài đang đọc chỉ giữ **id**; nội dung lấy từ dữ liệu sống nên đổi chủ đề / Đọc xong / ghi chú / link hiện ngay.
+  Thêm / xoá ghi chú, tạo task thực hành → tải lại danh sách để tiến độ cập nhật.
 
 ### A3.5. Trình soạn thảo (`KBEditorView`)
 
@@ -218,8 +221,8 @@ gỡ khỏi mọi bài (cascade).
 | B1 | Logic thuần + test (§B7) | ✓ `npm test` xanh |
 | B2 | Migration + `useCollectionTopics` + sửa `useCollections` | ✓ Migration đã chạy (2026-10-24) |
 | B3 | Hàng chip chủ đề, Quản lý chủ đề, trình soạn thảo, Danh sách + Gán chủ đề hàng loạt | ✓ Đã test tay |
-| B4 | Tab Tổng quan | ✓ Code xong, chờ test tay |
-| B5 | Trang đọc: Đọc xong, Tiến độ, Xung quanh, Thực hành, Lưu trữ | Chưa |
+| B4 | Tab Tổng quan | ✓ Đã test tay |
+| B5 | Trang đọc: Đọc xong, Tiến độ, Xung quanh, Thực hành, Lưu trữ | ✓ Code xong, chờ test tay |
 | B6 | `DATABASE.md`, `FEATURES.md`, `ARCHITECTURE.md`, `DESIGN.md`, `CHANGELOG.md` | Chưa |
 
 > **Thứ tự bắt buộc:** chạy migration **trước** khi chạy bản code có B2 — `addItem` đã ghi cột `topic_id`,
@@ -527,11 +530,12 @@ phím tắt không chạy khi đang mở hộp thoại, ⌘Z không cướp hoà
 preset) · `KBTopicPicker.jsx` (`showKeys`) · `KBShortcutsModal.jsx` · `kbDeriveUtils.js` (`isMine`, `quickSortQueue`,
 `ageDays` export, `preset` trong `filterArticles`) + test · `collect.css`.
 
+**Đã làm (B5):** `KBReaderView.jsx` (chủ đề bằng select, Đọc xong, Thực hành, Lưu trữ, Tiến độ, Xung quanh, task đã
+xong, ô "Rút ra gì không?", sửa cảnh báo lint memo backlink) · `CollectPage.jsx` (bài đang đọc / soạn giữ bằng id,
+bỏ các chỗ đồng bộ tay; lưu thất bại thì báo và ở lại trình soạn thảo) · `collect.css`.
+
 | File | Việc | Bước |
 |---|---|---|
-| `src/pages/CollectPage.jsx` | Đọc xong / Lưu trữ ở trang đọc; Thực hành | B5 |
-| `src/components/kb/KBReaderView.jsx` | §B5.5; sửa cảnh báo lint memo backlink | B5 |
-| `src/styles/collect.css` | Style trang đọc mới | B5 |
 | `docs/ARCHITECTURE.md` | Ghi key `localStorage` `vl_kb_recent` | B6 |
 | `docs/DATABASE.md`, `FEATURES.md`, `ARCHITECTURE.md`, `DESIGN.md`, `CHANGELOG.md` | Cập nhật đúng vai trò (RULES §11); chỉ thêm phần Knowledge | B6 |
 
