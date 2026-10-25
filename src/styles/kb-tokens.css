@@ -7,7 +7,7 @@
 /* ── Font families ─────────────────────────────────────────── */
 .kb-page {
   --kb-font:    'Be Vietnam Pro', system-ui, sans-serif;
-  --kb-display: 'Unbounded', 'Be Vietnam Pro', sans-serif; /* tiêu đề */
+  --kb-display: 'Spectral', Georgia, serif; /* tiêu đề: chữ có chân, phần nhấn in nghiêng .kb-em */
   --kb-mono:    'JetBrains Mono', ui-monospace, monospace; /* chỉ cho phím tắt, code */
 }
 
@@ -27,7 +27,7 @@
   --kb-on-accent:   #04140F;
   --kb-glow:        rgba(110, 242, 199, 0.35);
   --kb-violet: #B18CFF;
-  --kb-gold:  #FFD27F;
+  --kb-gold:  #E3AC64;                  /* vàng đồng: Chưa xếp, phần nhấn tiêu đề */
   --kb-sage:  #9AE66E;
   --kb-red:   #FF8A8A;
   --kb-code-bg: rgba(3, 6, 14, 0.8);

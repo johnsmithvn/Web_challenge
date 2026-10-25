@@ -20,7 +20,7 @@
 | Route | `/collect`, lazy chunk `CollectPage` (`src/App.jsx`) |
 | Đăng nhập | Bắt buộc. Chưa đăng nhập → "Đăng nhập để xem Kho Kiến Thức" |
 | Mục đích | Nơi **cất, xem và đọc lại** kiến thức. Không có quy trình đọc / thực hành / lưu trữ (§11) |
-| Giao diện | Kiểu **"Cực quang"**: trời đêm + nhấn mint `--kb-accent` `#6EF2C7`, tiêu đề Unbounded (`--kb-display`), chữ Be Vietnam Pro (`--kb-font`), mono chỉ cho phím tắt / code. Bản sáng = trời bình minh / hoàng hôn, nhấn violet. Token `src/styles/kb-tokens.css`; style `src/styles/collect.css`. Nền trời động dùng chung `SkyBackground` bản `calm` (không vật bay, không bụi sao theo chuột) |
+| Giao diện | Kiểu **"Cực quang"**: trời đêm + nhấn mint `--kb-accent` `#6EF2C7`, tiêu đề chữ có chân Spectral (`--kb-display`) với phần nhấn in nghiêng `.kb-em` ("Kho Tàng *Kiến Thức*", tên bạn ở lời chào; màu chủ đề nếu có, không thì vàng đồng `--kb-gold`), chữ Be Vietnam Pro (`--kb-font`), mono chỉ cho phím tắt / code. Bản sáng = trời bình minh / hoàng hôn, nhấn violet. Token `src/styles/kb-tokens.css`; style `src/styles/collect.css`. Nền trời động dùng chung `SkyBackground` bản `calm` (không vật bay, không bụi sao theo chuột) |
 | Media | Chỉ là link ngoài (YouTube, Google Drive, file âm thanh / video). Không dùng Supabase Storage |
 
 ### 1.1. Bản đồ file
@@ -163,7 +163,8 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
 
 ### 4.3. Danh sách (`KBListView`)
 
-- **Đầu danh sách** (luôn có, dải mở không đóng khung: quầng màu chủ đề + vạch dưới): quả cầu màu + tên + số bài +
+- **Đầu danh sách** (luôn có, dải mở không đóng khung: quầng màu chủ đề + vạch dưới, không quả cầu nên không thụt): tên in nghiêng
+  (màu chủ đề; Tất cả / Chưa xếp / Ghi chú của tôi màu vàng đồng) + số bài +
   định nghĩa của phạm vi đang xem (một chủ đề · Chưa xếp · Ghi chú của tôi · Tất cả bài). Nút **Xếp nhanh** (Chưa xếp)
   hoặc **Quản lý chủ đề**. Hàng **thẻ** để lọc (AND) và "Quản lý thẻ": thẻ đếm trong **phạm vi** (`scopeTagCounts` ở
   `CollectPage`), không theo bộ lọc, nên lọc không làm hàng thẻ biến mất và cả danh sách nhảy.
@@ -192,7 +193,7 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
   (select native, đổi một lần chọn) · Liên kết · Tập trung (`F`, ẩn cột phải) · Sửa (`E`) · Xoá. Không có đường dẫn
   (tiêu đề đã ở H1, chủ đề ở viên). Vạch tiến độ cuộn trang (scaleX). Điện thoại (≤640px): nút về chỉ còn mũi tên, ẩn nút
   Tập trung (cột phải đã nằm dưới bài).
-- **Nội dung:** meta (loại · nguồn · ngày · phút đọc), tiêu đề Unbounded, "+ Gán chủ đề" (khi Chưa xếp, mở thẳng select) + #thẻ, media preview, thân bài, **Ghi chú của bạn**.
+- **Nội dung:** meta (loại · nguồn · ngày · phút đọc), tiêu đề Spectral, "+ Gán chủ đề" (khi Chưa xếp, mở thẳng select) + #thẻ, media preview, thân bài, **Ghi chú của bạn**.
 - **Cột phải:** độ dài / ngày tạo / nguồn · **Lân cận** (sơ đồ sao nhỏ, "Mở bầu trời ↗") · **Xung quanh** (§5.2, mỗi dòng ghi cùng chủ đề / cùng nguồn / cất cùng lúc) · Mục lục (Markdown) · Trỏ tới · Được trỏ về · Nhiệm vụ liên kết (task chưa xong).
 - Bài đang đọc / soạn chỉ giữ **id**; nội dung lấy từ dữ liệu sống nên đổi chủ đề, link, `[[ ]]` hiện ngay. Thêm / xoá ghi chú → tải lại danh sách.
 
@@ -333,7 +334,7 @@ Contract test thẻ / ghi chú: `src/__tests__/core/tagsAndKnowledgeContract.tes
 | Nền trời Knowledge | `SkyBackground calm`: sao, cực quang, sao băng; không vật bay, không bụi sao theo chuột | Trang để đọc, nền không được giành chú ý |
 | Ô "Lọc trong mục này" thứ hai của bản thiết kế | Không làm | Đã có ô tìm ở cột trái |
 | Bộ lọc tiến độ của bản thiết kế | Bỏ, không thay bằng gì | Không có trạng thái đọc (xem trên). Từng thử lọc **Loại** thay vào, bỏ vì gần như không tách được gì và trùng vai Chủ đề |
-| Bề rộng Danh sách / Tổng quan / Gallery | Chung `max-width: 1120px` + lề, `.kb-content` `scrollbar-gutter: stable` | Đổi kiểu xem hoặc lọc ra danh sách ngắn không làm nội dung co giãn, dịch ngang |
+| Bề rộng Danh sách / Tổng quan / Gallery | Chung `max-width: 1280px` (bằng Gallery cũ, rộng nhất) + lề, `.kb-content` `scrollbar-gutter: stable` | Đổi kiểu xem hoặc lọc ra danh sách ngắn không làm nội dung co giãn, dịch ngang |
 | Bộ chủ đề khởi đầu | Chỉ định nghĩa trong SQL | Một nguồn sự thật cho migration và user mới |
 
 ## 12. Nợ đã biết

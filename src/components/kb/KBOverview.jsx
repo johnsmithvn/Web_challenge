@@ -161,7 +161,7 @@ export default function KBOverview({
           <p className="kb-ov-hero__date">
             {new Date(now).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
-          <h1 className="kb-ov-hero__title">{greetingOf(new Date(now).getHours())}, {name}.</h1>
+          <h1 className="kb-ov-hero__title">{greetingOf(new Date(now).getHours())}, <em className="kb-em">{name}</em>.</h1>
           <p className="kb-ov-hero__line">
             Bầu trời của bạn có <b>{library.length} ngôi sao</b> và {linkCount} đường nối.
             {fullQueue.length > 0 && ` ${fullQueue.length} bài mới đang chờ được xếp vào chòm.`}

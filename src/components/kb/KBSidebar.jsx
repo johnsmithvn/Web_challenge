@@ -122,7 +122,7 @@ export default function KBSidebar({ isMobile,
   return (
     <aside className="kb-side">
       <div className="kb-side__brand">
-        <h1 className="kb-side__title">Kho Tàng Kiến Thức</h1>
+        <h1 className="kb-side__title">Kho Tàng <em className="kb-em">Kiến Thức</em></h1>
         <p className="kb-side__stats">{articleCount} bài · {linkCount} liên kết</p>
       </div>
 

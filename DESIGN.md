@@ -1349,7 +1349,8 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
   `--kb-faint`, nhấn `--kb-accent` (mint `#6EF2C7`; sáng: violet `#7C3AED`) + `--kb-accent-soft` / `--kb-on-accent` /
   `--kb-glow`, phụ `--kb-violet` (đang chọn, ghi chú), `--kb-gold` (Chưa xếp, cạnh thẻ chung), `--kb-sage`, `--kb-red`;
   `--kb-scrim` (nền sau hộp thoại), `--kb-shadow`.
-  Font: `--kb-display` (Unbounded) cho tiêu đề, `--kb-font` (Be Vietnam Pro) cho chữ, `--kb-mono` chỉ cho phím tắt / code.
+  Font: `--kb-display` (Spectral, có chân) cho tiêu đề — phần nhấn in nghiêng `.kb-em` màu `--kb-topic` hoặc
+  `--kb-gold` ("Kho Tàng *Kiến Thức*"); `--kb-font` (Be Vietnam Pro) cho chữ, `--kb-mono` chỉ cho phím tắt / code.
 - **Nhãn**: chữ thường, `≥12px`, không mono viết hoa. Bỏ nhãn thừa.
 - **Màu chủ đề** lấy từ `collection_topics.color`, truyền qua biến `--kb-topic` đặt inline (`.kb-dot`, `.kb-orb`,
   quầng thẻ chủ đề, viên chủ đề trang đọc). Chưa có chủ đề → `--kb-faint` hoặc `--kb-gold`.
@@ -1357,12 +1358,13 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
   769–860px cột trái thành thanh trên (viên cuộn ngang). ≤768px (đã đăng nhập) như Finance: ẩn thanh Life Hub + tab đáy
   chung (`body.in-knowledge-workspace`); `.kb-shell` 3 hàng: `.kb-mbar` (trong suốt: ô tìm · `.kb-topic-select` ·
   nút ＋ tròn) · nội dung · `.kb-tabbar` (Home · 5 kiểu xem, `order: 1`). Viên `.kb-topic-select` dùng chung với trang đọc.
-  Danh sách / Tổng quan / Gallery chung `max-width: 1120px` + lề `28px 32px`; `.kb-content` có
+  Danh sách / Tổng quan / Gallery chung `max-width: 1280px` + lề `28px 32px`; `.kb-content` có
   `scrollbar-gutter: stable`.
 - **Chống nhảy**: lọc / đổi kiểu xem không được đổi chiều cao phần trên hay đẩy nút cạnh — hàng thẻ đếm theo phạm vi,
   nút bật / tắt giữ nguyên chữ (trạng thái bằng màu + `aria-pressed`), không thêm / bớt tab theo kết quả lọc.
 - **Đầu danh sách** `.kb-topic-head`: dải mở, không khung — quầng `--kb-topic` góc trên trái + `border-bottom`,
-  quả cầu 44px, tên 30px, số bài là viên `--kb-p2`, hàng thẻ thụt thẳng tên.
+  không quả cầu; tên Spectral nghiêng 34px màu `--kb-topic` (không có thì `--kb-gold`; nền sáng pha 55% với `--kb-tx`),
+  số bài là viên `--kb-p2`, hàng thẻ thẳng lề trái.
 - **Nút**: `.kb-btn-primary` (nền mint + quầng `--kb-glow`), `.kb-btn-soft` (nền accent-soft), `.kb-btn-ghost` (viền),
   `.kb-btn-violet`, `.kb-icon-btn` (32px, `--danger`, `.is-on`), `.kb-link`. Nhóm chọn một: `.kb-seg`
   (`--quiet` không khung). Chip chủ đề trong bộ chọn: `.kb-chip` viên tròn `999px`.
