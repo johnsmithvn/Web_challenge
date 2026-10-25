@@ -122,22 +122,21 @@ const target = {
   ],
 };
 const opts = linkableValues(target);
-assert.deepEqual(opts[0], { value: '', label: '— whole item —' });
-assert.deepEqual(opts.slice(1).map(o => o.label), [
+assert.deepEqual(opts.map(o => `${o.field}: ${o.value}`), [
   'Username: tao',
   'Emails: a@x.com',
   'Emails: b@y.com',
   'Website: x.com',
 ]);
-// ⚠️ Bất biến: secret KHÔNG BAO GIỜ được chào làm giá trị link (link chip hiện
-//    giá trị ra ở chế độ xem, không có bước reveal nào).
+// ⚠️ Bất biến: secret KHÔNG BAO GIỜ lọt ra đây (bảng Details của "Depends on this"
+//    hiện giá trị ở chế độ xem, không có bước reveal nào).
 const optBlob = JSON.stringify(opts);
 assert.equal(optBlob.includes('hunter2-not-in-list'), false);
 assert.equal(optBlob.includes('4471'), false);
-// number/date bị loại vì mượn ra ngoài không nói lên gì; giá trị rỗng cũng vậy
+// number/date bị loại vì hiện ra ngoài không nói lên gì; giá trị rỗng cũng vậy
 assert.equal(optBlob.includes('5432'), false);
 assert.equal(optBlob.includes('Blank'), false);
-assert.deepEqual(linkableValues(null), [{ value: '', label: '— whole item —' }]);
+assert.deepEqual(linkableValues(null), []);
 
 /* ── matchesQuery ─────────────────────────────────────────────────────── */
 const item = {

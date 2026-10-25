@@ -8,7 +8,7 @@
  * Shape dữ liệu ở đây là shape của ĐẶC TẢ, không phải shape của DB:
  *   Item  { id, tpl, title, group, fields[], notes, tags[], favorite, updated, auth[], codes[], log[] }
  *   Field { id, label, type, value, values[], links[], kind? }   kind: 'signin' | 'money' (chỉ field link)
- *   Link  { id, itemId, value }
+ *   Link  { id, itemId, value? }   link trỏ cả item; `value` chỉ còn ở link cũ (thời chọn từng field), không đặt mới
  *   Auth  { id, kind, note, state: 'primary'|'on'|'off' }
  *   Code  { id, code, used }
  *   Log   { id, at, text, detail }
@@ -200,21 +200,18 @@ export function codeSheet(n) {
 }
 
 /**
- * Giá trị của item đích mà một link được phép "mượn" để hiển thị.
+ * Giá trị của một item được phép hiện ra ngoài item đó mà không cần Reveal
+ * (bảng "Details" của khối "Depends on this").
  *
- * ⚠️ SECRET KHÔNG BAO GIỜ được chào làm giá trị link — link chip hiện giá trị
- *    đó ra ngoài, ở chế độ xem, không có bước reveal nào.
+ * ⚠️ SECRET KHÔNG BAO GIỜ nằm trong đây — chỗ hiện không có bước reveal nào.
  *
  * Chỉ nhận multi + text/email/phone/url có giá trị. `number`/`date` bị loại vì
- * mượn chúng ra ngoài không nói lên điều gì ("Port: 5432" trên một chip link).
+ * hiện chúng ra ngoài không nói lên điều gì ("Port: 5432").
  *
- * `field` là nhãn của field nguồn, tách riêng cho nơi nào muốn dựng hai cột
- * (khối "Depends on this") thay vì đọc nguyên chuỗi `label` của một <option>.
- *
- * @return {Array<{value: string, label: string, field?: string}>} phần tử đầu luôn là "— whole item —"
+ * @return {Array<{value: string, field: string}>} `field` = nhãn field nguồn
  */
 export function linkableValues(target) {
-  const out = [{ value: '', label: '— whole item —' }];
+  const out = [];
   if (!target) return out;
 
   for (const f of target.fields || []) {
@@ -222,10 +219,10 @@ export function linkableValues(target) {
 
     if (f.type === 'multi') {
       for (const v of f.values || []) {
-        if (v) out.push({ value: v, label: `${f.label}: ${v}`, field: f.label });
+        if (v) out.push({ value: v, field: f.label });
       }
     } else if (f.value && ['email', 'phone', 'text', 'url'].includes(f.type)) {
-      out.push({ value: f.value, label: `${f.label}: ${f.value}`, field: f.label });
+      out.push({ value: f.value, field: f.label });
     }
   }
   return out;

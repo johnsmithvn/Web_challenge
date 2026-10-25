@@ -349,8 +349,7 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   Quy chuẩn: hộp thư ở nhà cung cấp (Email account) → Gmail / Outlook / iCloud Mail; tài khoản ở nhà cung cấp
   đăng nhập bằng email khác (Account) → Google / Microsoft / Apple ID. Gợi ý lọc theo loại item nên không
   xổ cả "Gmail" lẫn "Google" cho cùng một thứ.
-- **Bộ nhóm chuẩn (8 nhóm):** Tài chính (Ngân hàng · Ví điện tử · Thẻ · Đầu tư), Email, Tài khoản chính
-  (Google, Apple ID, Microsoft), Mạng xã hội, Mua sắm & giải trí, Công việc, Giấy tờ & SĐT, Wi-Fi & thiết bị.
+- **Bộ nhóm chuẩn (8 nhóm):** Tài chính (Ngân hàng · Ví điện tử · Thẻ · Đầu tư), Email, Google · Apple · Microsoft, Mạng xã hội, Mua sắm & giải trí, Công việc, Giấy tờ & SĐT, Wi-Fi & thiết bị.
   Chọn bằng hàng nút có icon ở chế độ Edit và thanh Move to group (nhóm đã dùng đứng trước); chọn Tài chính
   thì hiện hàng nhóm con; **Other…** để gõ nhóm khác ("/" tạo nhóm con). Item mới không đứng trong nhóm nào
   vào nhóm chuẩn của loại (Thẻ → Tài chính/Thẻ, Email account → Email, Identity → Giấy tờ & SĐT,

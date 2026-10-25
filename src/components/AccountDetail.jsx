@@ -3,7 +3,7 @@ import {
   TYPES, TYPE_HINT, isSecretType, scorePassword, generatePassword, parseCodes, codeSheet,
   linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl, itemSubtitle,
   normalizeGroup, dependentsOf, isPasswordOnly, linkKind, moneySourcesOf,
-  titleSuggestions, mailboxTitle, groupSuggestions, groupKey, groupIcon, NO_AUTOFILL,
+  titleSuggestions, mailboxTitle, groupSuggestions, groupKey, NO_AUTOFILL,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import AppIcon from './AppIcon';
@@ -34,7 +34,6 @@ import AccountAvatar from './AccountAvatar';
 
 const {
   templates: TEMPLATES, authKinds: AUTH_KINDS, titlePresets: TITLE_PRESETS, groupPresets: GROUP_PRESETS,
-  groupIcons: GROUP_ICONS,
 } = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
@@ -246,6 +245,7 @@ export default function AccountDetail({
                   <option key={t.key} value={t.key}>{t.name} · {t.code}</option>
                 ))}
               </select>
+              <GroupPicker value={draft.group || ''} onChange={(g) => patch((d) => { d.group = g; })} paths={groupPaths} />
             </div>
           ) : (
             <div className="acc-title__kicker">
@@ -271,10 +271,6 @@ export default function AccountDetail({
             </>
           ) : (
             <h1 className="acc-title__h1">{item.title}</h1>
-          )}
-
-          {editing && (
-            <GroupPicker value={draft.group || ''} onChange={(g) => patch((d) => { d.group = g; })} paths={groupPaths} />
           )}
 
           {editing ? (
@@ -603,49 +599,51 @@ function TagEditor({ tags, tagIds, setTagIds, newTag, setNewTag, onAddTag }) {
 }
 
 /* ══ Group picker ════════════════════════════════════════════════
-   Thay <datalist>: ô gợi ý đó do trình duyệt vẽ (hẹp, cắt chữ, không style được).
-   Hàng 1 = nhóm cấp 1; nhóm đang chọn có nhóm con thì hiện hàng con. "Other…" mở
-   ô gõ tên mới ("/" = nhóm con), chuẩn hoá ở cleanItem lúc lưu. Dùng chung với
-   thanh Move to group (AccountsPage). So khớp không phân biệt hoa thường như groupKey. */
+   Một <select> như ô loại item bên cạnh: nhóm có nhóm con thành <optgroup>
+   (Tài chính › Ngân hàng / Thẻ…), "New group…" mở ô gõ tên ("/" = nhóm con),
+   chuẩn hoá ở cleanItem lúc lưu. Không dùng <datalist> (hẹp, cắt chữ) hay hàng
+   nút (chiếm 3 dòng cho một lựa chọn). Dùng chung với thanh Move to group
+   (AccountsPage). So khớp không phân biệt hoa thường như groupKey. */
+const NEW_GROUP = '/new'; // normalizeGroup không bao giờ trả chuỗi bắt đầu bằng "/"
+
 export function GroupPicker({ value, onChange, paths, startCustom = false, onEnter }) {
   const [custom, setCustom] = useState(startCustom);
   const key = groupKey(value);
-  const topKey = key.split('/')[0];
   const tops = [...new Map(paths.map((p) => [groupKey(p.split('/')[0]), p.split('/')[0]])).values()];
-  const subs = topKey ? paths.filter((p) => groupKey(p).startsWith(`${topKey}/`)) : [];
-  const known = !key || paths.some((p) => groupKey(p) === key) || (!key.includes('/') && tops.some((t) => groupKey(t) === key));
-  const typing = custom || !known;
-  const pick = (p) => { setCustom(false); onChange(p); };
+  const match = [...paths, ...tops].find((p) => groupKey(p) === key);
+  const typing = custom || (!!key && !match);
 
-  const chip = (k, on, label, icon, onClick) => (
-    <button key={k} type="button" className={`acc-chip${on ? ' acc-chip--on' : ''}`} aria-pressed={on} onClick={onClick}>
-      <AppIcon name={icon} size={13} /> {label}
-    </button>
-  );
+  const choose = (v) => {
+    setCustom(v === NEW_GROUP);
+    onChange(v === NEW_GROUP ? '' : v);
+  };
 
   return (
-    <div className="acc-tagedit">
-      <div className="acc-tagedit__cap">Group</div>
-      <div className="acc-tagedit__row">
-        {chip('', !key && !typing, 'Ungrouped', GROUP_ICONS.ungrouped, () => pick(''))}
-        {tops.map((t) => chip(t, groupKey(t) === topKey, t, groupIcon(t, GROUP_ICONS), () => pick(t)))}
-        {chip('/other', typing, 'Other…', 'plus', () => { setCustom(true); onChange(''); })}
-      </div>
-      {subs.length > 0 && (
-        <div className="acc-tagedit__row acc-tagedit__row--sub">
-          {subs.map((p) => chip(p, groupKey(p) === key, p.split('/')[1], groupIcon(p, GROUP_ICONS), () => pick(p)))}
-        </div>
-      )}
+    <>
+      <select className="acc-select acc-select--group" value={typing ? NEW_GROUP : match || ''}
+        onChange={(e) => choose(e.target.value)} aria-label="Group">
+        <option value="">Ungrouped</option>
+        {tops.map((t) => {
+          const subs = paths.filter((p) => groupKey(p).startsWith(`${groupKey(t)}/`));
+          if (!subs.length) return <option key={t} value={t}>{t}</option>;
+          return (
+            <optgroup key={t} label={t}>
+              {/* item nằm thẳng ở nhóm cha (không nhóm con) vẫn phải hiện được */}
+              {groupKey(t) === key && <option value={match}>{t}</option>}
+              {subs.map((p) => <option key={p} value={p}>{p.split('/')[1]}</option>)}
+            </optgroup>
+          );
+        })}
+        <option value={NEW_GROUP}>New group…</option>
+      </select>
       {typing && (
-        <div className="acc-tagedit__new">
-          {/* autoFocus chỉ khi user chủ động mở ô (Other… / + New group), không giành focus của ô tiêu đề */}
-          <input {...NO_AUTOFILL} className="acc-input" value={value} autoFocus={custom}
-            onChange={(e) => { setCustom(true); onChange(e.target.value); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onEnter?.(); } }}
-            placeholder="New group, e.g. Gia đình or Tài chính/Bảo hiểm" aria-label="New group name" />
-        </div>
+        // autoFocus chỉ khi user chủ động mở (New group… / + New group), không giành focus của ô tiêu đề
+        <input {...NO_AUTOFILL} className="acc-input acc-input--group" value={value} autoFocus={custom}
+          onChange={(e) => { setCustom(true); onChange(e.target.value); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onEnter?.(); } }}
+          placeholder="Group name, e.g. Gia đình" aria-label="New group name" />
       )}
-    </div>
+    </>
   );
 }
 
@@ -686,11 +684,11 @@ function CardPreview({ item, revealed }) {
 
    Giá trị lấy qua linkableValues: nó đã là nơi duy nhất định nghĩa "cái gì được
    phép hiện ra ngoài mà không cần Reveal" (secret bị loại) — tự duyệt fields ở
-   đây là mở một đường rò thứ hai. Phần tử [0] là "— whole item —", bỏ. */
+   đây là mở một đường rò thứ hai. */
 function BacklinkRow({ src, via, depth = 1, onOpen }) {
   const [open, setOpen] = useState(false);
   const tpl = TPL_BY_KEY.get(src.tpl);
-  const detail = linkableValues(src).slice(1);
+  const detail = linkableValues(src);
 
   return (
     <div className={`acc-field${depth > 1 ? ' acc-field--nested' : ''}`} style={{ '--depth': depth - 1 }}>
@@ -896,7 +894,7 @@ function ViewValue({ field: f, items, revealed, copied, onCopy, onOpen }) {
             <button key={L.id} className="acc-link" onClick={() => onOpen(target.id)}>
               <span className="acc-link__code">{t?.code || '···'}</span>
               <span className="acc-link__title">{target.title}</span>
-              <span className="acc-link__sub">{L.value || t?.name || ''}</span>
+              <span className="acc-link__sub">{itemSubtitle(target, t?.name || '')}</span>
               <span className="acc-link__arrow" aria-hidden="true">↗</span>
             </button>
           );
@@ -979,7 +977,7 @@ function EditValue({ field: f, idx, items, ownerId, patch }) {
     return (
       <>
         <LinkEditor field={f} idx={idx} items={items} ownerId={ownerId} patch={patch} />
-        <LinkKindPicker field={f} idx={idx} patch={patch} />
+        {(f.links || []).length > 0 && <LinkKindPicker field={f} idx={idx} patch={patch} />}
       </>
     );
   }
@@ -1031,14 +1029,11 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
   return (
     <div className="acc-multi acc-multi--edit">
       {links.map((L, li) => {
-        const target = items.find((x) => x.id === L.itemId);
-        const valueOptions = linkableValues(target);
         return (
           <div className="acc-linkedit" key={L.id}>
             <select className="acc-select" value={L.itemId || ''} aria-label="Linked item"
               onChange={(e) => patch((d) => {
                 d.fields[idx].links[li].itemId = e.target.value || null;
-                d.fields[idx].links[li].value = '';
               })}>
               <option value="">— choose an item —</option>
               {/* Kèm subtitle (username/email nhận diện) — chỉ `code · title` thì
@@ -1055,11 +1050,6 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
                 );
               })}
             </select>
-            <select className="acc-select" value={L.value || ''} disabled={!target}
-              aria-label="Borrowed value"
-              onChange={(e) => patch((d) => { d.fields[idx].links[li].value = e.target.value; })}>
-              {valueOptions.map((o, oi) => <option key={oi} value={o.value}>{o.label}</option>)}
-            </select>
             <button className="acc-act acc-act--x" title="Remove link" aria-label="Xóa liên kết"
               onClick={() => patch((d) => { d.fields[idx].links.splice(li, 1); })}><AppIcon name="x" size={14} /></button>
           </div>
@@ -1075,37 +1065,34 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
       <button className="acc-act acc-addrow" disabled={linkOptions.length === 0}
         onClick={() => patch((d) => {
           const other = linkOptions[0];
-          d.fields[idx].links.push({ id: newId(), itemId: other ? other.id : null, value: '' });
+          d.fields[idx].links.push({ id: newId(), itemId: other ? other.id : null });
           d.fields[idx].value = '';
         })}>{links.length ? '+ Link another item' : '+ Link an item'}</button>
     </div>
   );
 }
 
-/* ── Loại liên kết của field link (thiết kế L3) ────────────────────
-   Hai nút bật/tắt (aria-pressed), không phải radio: radio đòi điều hướng bằng
-   phím mũi tên mà 2 lựa chọn thì không đáng. Chưa chọn tay → loại đoán theo nhãn
-   (guessLinkKind) và có dòng nói rõ là đang đoán. */
+/* ── Loại liên kết của field link ────────────────────────────────
+   Hai chip bật/tắt (aria-pressed), không phải radio: radio đòi điều hướng bằng
+   phím mũi tên mà 2 lựa chọn thì không đáng. Một dòng chú thích cho loại đang
+   chọn; chưa chọn tay → loại đoán theo nhãn (guessLinkKind) và nói rõ là đoán. */
 function LinkKindPicker({ field: f, idx, patch }) {
   const kind = linkKind(f);
   const set = (k) => patch((d) => { d.fields[idx].kind = k; });
+  const opt = (k, arrow, label) => (
+    <button type="button" aria-pressed={kind === k} onClick={() => set(k)}
+      className={`acc-chip${kind === k ? ' acc-chip--on' : ''}`}>
+      <span aria-hidden="true" className={k === 'money' ? 'acc-linkkind__money' : undefined}>{arrow}</span> {label}
+    </button>
+  );
   return (
     <div className="acc-linkkind" role="group" aria-label="Link kind">
-      <div className="acc-linkkind__opts">
-        <button type="button" aria-pressed={kind === 'signin'} onClick={() => set('signin')}
-          className={`acc-linkkind__opt${kind === 'signin' ? ' acc-linkkind__opt--on' : ''}`}>
-          <span className="acc-linkkind__title"><span aria-hidden="true">→</span> Sign-in · recovery</span>
-          <span className="acc-linkkind__sub">This item is lost if the linked one is</span>
-        </button>
-        <button type="button" aria-pressed={kind === 'money'} onClick={() => set('money')}
-          className={`acc-linkkind__opt${kind === 'money' ? ' acc-linkkind__opt--on' : ''}`}>
-          <span className="acc-linkkind__title"><span aria-hidden="true" className="acc-linkkind__money">⇒</span> Money · pays from</span>
-          <span className="acc-linkkind__sub">This item can move money out of the linked one</span>
-        </button>
-      </div>
-      {!f.kind && (
-        <span className="acc-linkkind__hint">Guessed from the field name “{f.label || 'untitled'}”.</span>
-      )}
+      {opt('signin', '→', 'Sign-in')}
+      {opt('money', '⇒', 'Money')}
+      <span className="acc-linkkind__hint">
+        {kind === 'money' ? 'This item can move money out of the linked one' : 'This item is lost if the linked one is'}
+        {!f.kind && ' · guessed from the field name'}
+      </span>
     </div>
   );
 }

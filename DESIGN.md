@@ -1151,8 +1151,9 @@ Types/Tags filter bar is gone.
     logo.dev): handing one party the full list of domains you hold accounts at is
     self-disclosure of which bank and which exchange you use.
 - **`.acc-link`** — the pointer to another item: accent-alpha plate (`--r`) with a
-  bordered accent edge, a mono code badge, target title, borrowed value and a trailing
-  `↗` that marks it as navigation. A link whose target is gone becomes `.acc-link--dead` (divider
+  bordered accent edge, a mono code badge, target title, the target's subtitle (its email /
+  phone, `itemSubtitle`) and a trailing `↗` that marks it as navigation. A link points at the
+  whole item — there is no per-field target to pick. A link whose target is gone becomes `.acc-link--dead` (divider
   border, no hover, "Missing item / link broken") — a normal state (jsonb links
   have no FK), not an error.
   - **"Depends on this" section (was "Linked from") — an incoming dependency reads as a
@@ -1214,15 +1215,15 @@ Types/Tags filter bar is gone.
   the user chose. Free typing always works; this is a hint list, not a picker.
 - **Standard groups.** `groupPresets` is 8 plain-language groups (Tài chính has 4 children) —
   the shared vocabulary for the group picker, the bulk bar and the title presets; names must read
-  without explanation (no "Nền tảng", "Định danh"). Templates carry a default `group` used when an
+  without explanation and must not look alike at a glance (no "Nền tảng", "Định danh",
+  "Tài khoản chính" — it reads as "Tài chính"; it is "Google · Apple · Microsoft"). Templates carry a default `group` used when an
   item is created outside any group. A test fails if a title-preset key or a template group
   drifts outside the list, so the standard cannot silently fork.
-- **Group picker, not a datalist.** `GroupPicker` (exported from `AccountDetail.jsx`) reuses the
-  `.acc-tagedit` box + `.acc-chip`: Ungrouped · top-level groups (vault groups first, then
-  presets) · Other…; the selected group's children show as an indented second row
-  (`.acc-tagedit__row--sub`); Other… opens a text input ("/" makes a sub-group). A native
-  `<datalist>` is drawn by the browser — narrow, truncated, unstyleable — so it is not used for
-  groups. In the mobile bulk bar the chip rows scroll sideways instead of wrapping.
+- **Group picker = one `<select>`.** `GroupPicker` (exported from `AccountDetail.jsx`) sits next
+  to the item-type select and looks like it (`.acc-select--group`): Ungrouped · groups (vault
+  groups first, then presets), a group with children is an `<optgroup>` · New group… which
+  reveals a text input (`.acc-input--group`, "/" makes a sub-group). Rejected: a `<datalist>`
+  (browser-drawn, narrow, truncates) and a chip row (three rows of buttons for one choice).
 - **Vault inputs never feed the browser's password manager.** Every content input spreads
   `NO_AUTOFILL` (`autocomplete=off` + ignore flags for third-party managers) and secret inputs
   are `type="text"` masked with `-webkit-text-security` (`.acc-input--masked`): Chrome treats a
@@ -1234,7 +1235,7 @@ Types/Tags filter bar is gone.
   `.acc-bulkbar` sticks to the bottom of the list pane (inside the scroll area, so it never
   covers the last row) and is fixed to the vault bottom on mobile, like the copy bar. It
   uses the same `GroupPicker`; Ungrouped clears the group. "+ New group" in the groups column
-  is the same flow started at All items with Other… already open and focused —
+  is the same flow started at All items with the name input already open and focused —
   there is no empty-group state to create, because groups are derived from items.
 - **Root titles are free text.** A root is recognised from data, not the title: an Identity's
   values, or an **Email account (EML)**'s first email field (only the first — a "Recovery
@@ -1246,9 +1247,10 @@ Types/Tags filter bar is gone.
   wallet linked to a bank is risk flowing the *other* way from a recovery email, so the two
   never share a tree. Every money-flavoured thing is drawn as money: `⇒` glyph, amber
   (`--warn*`), dashed border (`.acc-depgroup--money`, `.acc-chain__node--money`); sign-in keeps
-  `→` and the accent. Edit mode shows `.acc-linkkind` — two `aria-pressed` buttons (not a
-  radiogroup: two options do not earn arrow-key handling) plus "Guessed from the field name"
-  while `kind` is unset. View mode labels each link field `→ Sign-in link` / `⇒ Money link`
+  `→` and the accent. Edit mode shows `.acc-linkkind` — one line: two `aria-pressed`
+  `.acc-chip`s (→ Sign-in, ⇒ Money; not a radiogroup: two options do not earn arrow-key
+  handling) and a hint for the chosen kind, "· guessed from the field name" while `kind` is
+  unset. It appears only once something is linked. View mode labels each link field `→ Sign-in link` / `⇒ Money link`
   (`.acc-field__typenote--money`).
 - **Money links (`MoneyLinks.jsx`) — a matrix, not a diagram.** Many-to-many wallet ↔ bank
   lines cross from the third wallet on, so it is a real `<table>`: rows = items with money

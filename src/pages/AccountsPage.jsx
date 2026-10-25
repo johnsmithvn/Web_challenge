@@ -603,9 +603,9 @@ export default function AccountsPage() {
                   {allVisiblePicked ? 'Clear these' : `Select all ${visible.length}`}
                 </button>
               </div>
-              <GroupPicker key={newGroup} startCustom={newGroup > 0} value={bulkGroup} onChange={setBulkGroup}
-                paths={groupPaths} onEnter={moveSelected} />
               <div className="acc-bulkbar__row">
+                <GroupPicker key={newGroup} startCustom={newGroup > 0} value={bulkGroup} onChange={setBulkGroup}
+                  paths={groupPaths} onEnter={moveSelected} />
                 <button type="button" className="acc-btn acc-btn--primary" onClick={moveSelected}
                   disabled={!picked.size || moving}>
                   {moving ? 'Moving…' : 'Move'}
