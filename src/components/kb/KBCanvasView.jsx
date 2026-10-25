@@ -23,10 +23,10 @@ let nextId = Date.now();
 function genId() { return 'cn_' + (nextId++); }
 
 const NODE_KINDS = [
-  { key: 'idea',   label: 'Ý tưởng',   accent: 'oklch(0.78 0.11 72)' },
-  { key: 'note',   label: 'Ghi chú',    accent: 'oklch(0.74 0.10 250)' },
-  { key: 'task',   label: 'Nhiệm vụ',   accent: 'oklch(0.74 0.09 165)' },
-  { key: 'ref',    label: 'Tham chiếu',  accent: 'oklch(0.74 0.10 300)' },
+  { key: 'idea',   label: 'Ý tưởng',   accent: '#FFD27F' },
+  { key: 'note',   label: 'Ghi chú',    accent: '#7FD6FF' },
+  { key: 'task',   label: 'Nhiệm vụ',   accent: '#9AE66E' },
+  { key: 'ref',    label: 'Tham chiếu',  accent: '#B18CFF' },
 ];
 
 export default function KBCanvasView({ articles, onOpenReader }) {
@@ -44,7 +44,7 @@ export default function KBCanvasView({ articles, onOpenReader }) {
   const addBlankNode = useCallback(() => {
     const kind = NODE_KINDS[0];
     setNodes(prev => [...prev, {
-      id: genId(), kind: kind.key, text: '', accent: kind.accent,
+      id: genId(), kind: kind.key, text: '',
       x: 100 + Math.random() * 300, y: 100 + Math.random() * 200,
       w: 220, ref: null,
     }]);
@@ -54,7 +54,7 @@ export default function KBCanvasView({ articles, onOpenReader }) {
     if (articles.length === 0) return;
     const a = articles[0]; // TODO: open picker
     setNodes(prev => [...prev, {
-      id: genId(), kind: 'ref', text: a.title, accent: NODE_KINDS[3].accent,
+      id: genId(), kind: 'ref', text: a.title,
       x: 150 + Math.random() * 300, y: 150 + Math.random() * 200,
       w: 240, ref: a.id,
     }]);
@@ -137,7 +137,7 @@ export default function KBCanvasView({ articles, onOpenReader }) {
                 key={i}
                 x1={from.x + (from.w || 220) / 2} y1={from.y + 30}
                 x2={to.x + (to.w || 220) / 2} y2={to.y + 30}
-                stroke="var(--kb-line)" strokeWidth={1.5}
+                stroke="var(--kb-accent)" strokeOpacity={0.45} strokeWidth={1.5}
               />
             );
           })}
@@ -146,21 +146,21 @@ export default function KBCanvasView({ articles, onOpenReader }) {
         {/* Nodes */}
         {nodes.map(node => {
           const refArticle = node.ref ? articles.find(a => a.id === node.ref) : null;
+          // Màu theo loại lúc vẽ — thẻ cũ trong localStorage còn lưu màu bảng cũ
+          const kind = NODE_KINDS.find(k => k.key === node.kind) || NODE_KINDS[0];
           return (
             <div
               key={node.id}
               className="kb-canvas-node"
               style={{
                 left: node.x, top: node.y, width: node.w || 220,
-                borderLeftColor: node.accent,
+                borderLeftColor: kind.accent,
               }}
               onPointerDown={e => handlePointerDown(e, node.id)}
             >
               <div className="kb-canvas-node__header">
-                <span className="kb-canvas-node__dot" style={{ background: node.accent }} />
-                <span className="kb-canvas-node__kind">
-                  {(NODE_KINDS.find(k => k.key === node.kind) || NODE_KINDS[0]).label}
-                </span>
+                <span className="kb-canvas-node__dot" style={{ background: kind.accent }} />
+                <span className="kb-canvas-node__kind">{kind.label}</span>
                 <button className="kb-canvas-node__close" onClick={() => deleteNode(node.id)}>×</button>
               </div>
               <div

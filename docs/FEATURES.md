@@ -237,20 +237,22 @@ Desktop nổi bên phải, mobile là sheet; mở bằng nút "Lịch & sự ki�
 Chi tiết (quy chuẩn phân loại, dữ liệu, từng màn): [`docs/MODULE_KNOWLEDGE.md`](MODULE_KNOWLEDGE.md).
 
 Nơi cất, xem và đọc lại kiến thức. Mỗi mục là một bài viết (Markdown hoặc Visual); media là link ngoài.
+Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm vụ (bản yên tĩnh); cột trái gồm tìm, viết bài, kiểu xem, chủ đề.
 
 - **Chủ đề** (tối đa 8, mỗi bài một chủ đề hoặc Chưa xếp; bộ khởi đầu 7 chủ đề): chọn trong trình soạn thảo
-  (có gợi ý), đổi ở trang đọc, gán hàng loạt ở Danh sách, quản lý (đổi tên / màu / thứ tự / gộp / xoá) qua `⋯`.
+  (có gợi ý), đổi ở trang đọc, gán hàng loạt ở Danh sách, quản lý (kéo đổi thứ tự, đổi tên / màu, gộp / xoá) từ "Quản lý" ở cột trái.
 - **Loại** tự nhận từ link (Repo, Video, Bài FB, Âm thanh, Bài viết, Ghi chú, Trích dẫn); tiêu đề tự điền từ link khi trống.
-- **Tổng quan** (màn mở đầu): Xếp nhanh bài mới chưa có chủ đề (phím `1`–`8`), thẻ các chủ đề, Ghi chú của tôi,
-  Gặp lại hôm nay, Mở gần đây.
-- **Danh sách / Gallery / Sơ đồ / Canvas**, lọc bằng hàng chip chủ đề; lọc thẻ (chỉ thẻ của Knowledge); sắp xếp; chọn nhiều.
+- **Tổng quan** (màn mở đầu): lời chào + bầu trời nhỏ (bài có liên kết thành chòm sao), Xếp nhanh bài mới chưa có chủ đề
+  (phím `1`–`8`), thẻ các chủ đề, Ghi chú của tôi, Gặp lại hôm nay, Gần đây.
+- **Danh sách / Gallery / Sơ đồ / Canvas**, lọc theo chủ đề ở cột trái. Danh sách: lọc Loại, Có liên kết, thẻ (chỉ thẻ của
+  Knowledge); nhóm theo Tháng / Chủ đề / Loại; sắp xếp; chọn nhiều (gán chủ đề, xoá). Sơ đồ là "bầu trời": mỗi bài một ngôi sao.
 - **Tìm kiếm** không cần dấu, nhiều từ, trong cả ghi chú và tên chủ đề; `#thẻ`.
 - **Trang đọc:** mục lục, `[[liên kết]]` + backlink, khung **Xung quanh** (cùng chủ đề / cùng nguồn / lưu gần thời
-  điểm), sơ đồ nhỏ, ghi chú cá nhân, nhiệm vụ liên kết, chế độ tập trung.
+  điểm), sơ đồ nhỏ, ghi chú cá nhân, nhiệm vụ liên kết, chế độ tập trung (`F`).
 - Xoá có hoàn tác (toast / `⌘Z`). Không có trạng thái đọc, lưu trữ hay nút tạo task (nối bài với task từ Nhiệm vụ).
 
 **Data:** `collections` (+ `topic_id`), `collection_topics`, `collection_notes`, `collection_tags`, `task_collections`.
-**Local:** `vl_kb_recent` (Mở gần đây), `kb_editor_mode`, `kb_canvas_nodes`, `kb_canvas_edges`.
+**Local:** `vl_kb_recent` (Gần đây), `kb_editor_mode`, `kb_canvas_nodes`, `kb_canvas_edges`.
 
 ## 6. Tags và Cài đặt (`/settings`)
 

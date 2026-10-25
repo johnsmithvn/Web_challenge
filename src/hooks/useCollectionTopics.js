@@ -104,22 +104,16 @@ export function useCollectionTopics() {
     return true;
   }, [enabled, userId, topics, setTopics]);
 
-  /** Swap sort_order with the neighbour above (-1) or below (+1). Optimistic; refetches on error. */
-  const moveTopic = useCallback(async (id, dir) => {
+  /** New order (every topic id, top first) → sort_order 1..n; only changed rows are written. Optimistic; refetches on error. */
+  const reorderTopics = useCallback(async (ids) => {
     if (!enabled) return false;
-    const i = topics.findIndex(t => t.id === id);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= topics.length) return false;
-    const a = topics[i];
-    const b = topics[j];
+    const rank = new Map(ids.map((id, i) => [id, i + 1]));
+    const changed = topics.filter(t => rank.has(t.id) && t.sort_order !== rank.get(t.id));
+    if (!changed.length) return true;
 
-    setTopics(prev => prev
-      .map(t => (t.id === a.id ? { ...t, sort_order: b.sort_order } : t.id === b.id ? { ...t, sort_order: a.sort_order } : t))
-      .sort(byOrder));
-    const results = await Promise.all([
-      supabase.from('collection_topics').update({ sort_order: b.sort_order }).eq('id', a.id).eq('user_id', userId),
-      supabase.from('collection_topics').update({ sort_order: a.sort_order }).eq('id', b.id).eq('user_id', userId),
-    ]);
+    setTopics(prev => prev.map(t => (rank.has(t.id) ? { ...t, sort_order: rank.get(t.id) } : t)).sort(byOrder));
+    const results = await Promise.all(changed.map(t => supabase
+      .from('collection_topics').update({ sort_order: rank.get(t.id) }).eq('id', t.id).eq('user_id', userId)));
     const failed = results.find(r => r.error);
     if (failed) {
       logger.error('[useCollectionTopics] reorder error:', failed.error.message);
@@ -160,7 +154,7 @@ export function useCollectionTopics() {
     seedStarterTopics, // () => Promise<boolean>
     addTopic,          // ({name, description?, color?}) => Promise<{topic?, error?}>
     updateTopic,       // (id, updates) => Promise<boolean>
-    moveTopic,         // (id, -1 | 1) => Promise<boolean>
+    reorderTopics,     // (ids in new order) => Promise<boolean>
     deleteTopic,       // (id) => Promise<boolean>
     mergeTopics,       // (fromId, toId) => Promise<boolean>
   };

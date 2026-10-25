@@ -1,6 +1,6 @@
 import {
   Archive, ArrowClockwise, ArrowDown, ArrowLeft, ArrowRight, ArrowSquareOut,
-  ArrowUp, ArrowUpRight, Bank, Barbell, Bell, BellSimple, BookOpen, BowlFood, Brain, Briefcase, Buildings, CalendarBlank,
+  ArrowUp, ArrowUpRight, Bank, Barbell, Bell, BellSimple, BookOpen, BowlFood, Briefcase, Buildings, CalendarBlank,
   Calculator, Camera, CaretDown, CaretLeft, CaretRight, CaretUp, ChartDonut, ChartLineUp, ChatTeardropText, Check,
   CheckCircle, CheckSquare, Clock, Cloud, Coffee, Copy, CreditCard, Crown, CurrencyCircleDollar,
   DeviceMobile, DotsThree, Drop, Television, DotsSixVertical, DownloadSimple, Egg, Envelope, Eye, EyeSlash, FileText,
@@ -92,7 +92,6 @@ const ICONS = {
   bellSimple: BellSimple,
   book: BookOpen,
   bowlFood: BowlFood,
-  brain: Brain,
   briefcase: Briefcase,
   buildings: Buildings,
   calendar: CalendarBlank,

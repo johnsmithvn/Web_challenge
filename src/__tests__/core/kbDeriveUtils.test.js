@@ -25,6 +25,7 @@ import {
   pushRecent,
   isMine,
   quickSortQueue,
+  groupArticles,
 } from '../../utils/kbDeriveUtils.js';
 
 const NOW = Date.parse('2026-10-24T12:00:00Z');
@@ -140,6 +141,10 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   // Tag search with #
   const tagSearch = filterArticles(arts, { q: '#wis' });
   assert.equal(tagSearch.length, 1);
+
+  // "Có liên kết": only ids in the set; null = no filter
+  assert.deepEqual(filterArticles(arts, { linked: new Set(['2', '3']) }).map(a => a.id), ['2']);
+  assert.equal(filterArticles(arts, { linked: null }).length, 2);
 
   // Sort newest
   const newest = filterArticles(arts, { sort: 'new' });
@@ -379,6 +384,44 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   assert.deepEqual(pushRecent(['a', 'b'], 'z', 2), ['z', 'a']);
   assert.deepEqual(pushRecent([], 'a'), ['a']);
   console.log('pushRecent: OK');
+}
+
+/* ── groupArticles ─────────────────────────────────────────── */
+{
+  // Local-time timestamps so the month never shifts with the machine's timezone.
+  const at = (y, m, d) => new Date(y, m - 1, d, 12).toISOString();
+  const items = [
+    { id: 'a', title: 'A', created_at: at(2026, 10, 20), topic_id: 't2', url: 'https://youtube.com/watch?v=1' },
+    { id: 'b', title: 'B', created_at: at(2026, 10, 2), topic_id: null, body: 'ghi chú' },
+    { id: 'c', title: 'C', created_at: at(2026, 9, 30), topic_id: 't1', url: 'https://example.com/x' },
+    { id: 'd', title: 'D', created_at: at(2025, 12, 1), topic_id: 't2', body: 'ghi chú' },
+  ];
+  const topics = [{ id: 't1', name: 'Một', color: '#111' }, { id: 't2', name: 'Hai', color: '#222' }];
+  const now = new Date(2026, 9, 25).getTime();
+  const ids = g => g.items.map(a => a.id);
+
+  // month: list order kept, year shown only for other years
+  const byMonth = groupArticles(items, 'month', { now });
+  assert.deepEqual(byMonth.map(g => g.label), ['Tháng 10', 'Tháng 9', 'Tháng 12/2025']);
+  assert.deepEqual(byMonth.map(ids), [['a', 'b'], ['c'], ['d']]);
+
+  // topic: topic order, "Chưa xếp" last, colour carried
+  const byTopic = groupArticles(items, 'topic', { topics });
+  assert.deepEqual(byTopic.map(g => g.label), ['Một', 'Hai', 'Chưa xếp']);
+  assert.deepEqual(byTopic.map(ids), [['c'], ['a', 'd'], ['b']]);
+  assert.equal(byTopic[1].color, '#222');
+  assert.equal(byTopic[2].color, undefined);
+
+  // kind: KIND_META order (video before article before note)
+  assert.deepEqual(groupArticles(items, 'kind').map(g => g.key), ['video', 'article', 'note']);
+
+  // none: one unlabeled group, same array
+  const flat = groupArticles(items, 'none');
+  assert.equal(flat.length, 1);
+  assert.equal(flat[0].label, '');
+  assert.equal(flat[0].items, items);
+  assert.deepEqual(groupArticles([], 'month'), []);
+  console.log('groupArticles: OK');
 }
 
 console.log('\n✅ All kbDeriveUtils checks passed.');

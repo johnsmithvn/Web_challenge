@@ -16,7 +16,7 @@ import '../styles/auth.css';
 // Primary: always visible (bottom tabs on mobile, sidebar on desktop)
 const PRIMARY_NAV = [
   { to: '/tasks',     icon: 'pushPin', label: 'Nhiệm Vụ' },
-  { to: '/collect',   icon: 'brain', label: 'Knowledge' },
+  { to: '/collect',   icon: 'book', label: 'Knowledge' },
   { to: '/finance',   icon: 'wallet', label: 'Finance' },
   { to: '/body',      icon: 'barbell', label: 'Body' },
   { to: '/accounts',  icon: 'lock', label: 'Tài Khoản' },

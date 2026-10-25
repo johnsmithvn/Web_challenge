@@ -1,46 +1,47 @@
 import { useRef, useEffect } from 'react';
+import AppIcon from '../AppIcon';
 
 /**
- * KBSubHeader — sub-header cố định cho Knowledge Base.
- * Hàng 1: tiêu đề, ô tìm kiếm, view switcher, nút bài mới.
- * Hàng 2: chip chủ đề — lọc mọi kiểu xem; "…" mở Quản lý chủ đề.
+ * KBSidebar — cột trái của Knowledge: tìm, viết bài, chế độ xem, chủ đề.
+ * Chủ đề lọc mọi kiểu xem. Điện thoại: CSS biến cột thành thanh trên + hàng cuộn ngang.
  */
 
 const VIEW_ITEMS = [
-  { key: 'overview', label: 'Tổng quan' },
-  { key: 'list',    label: 'Danh sách' },
-  { key: 'gallery', label: 'Gallery' },
-  { key: 'graph',   label: 'Sơ đồ' },
-  { key: 'canvas',  label: 'Canvas' },
+  { key: 'overview', label: 'Tổng quan', icon: 'houseSimple', keys: 'G T' },
+  { key: 'list',     label: 'Danh sách', icon: 'listBullets', keys: 'G L' },
+  { key: 'gallery',  label: 'Gallery',   icon: 'squares',     keys: 'G Q' },
+  { key: 'graph',    label: 'Sơ đồ',     icon: 'moonStars',   keys: 'G G' },
+  { key: 'canvas',   label: 'Canvas',    icon: 'kanban',      keys: 'G C' },
 ];
 
-function TopicChip({ active, onClick, label, count, color, title, quiet = false }) {
+function NavItem({ active, onClick, dot, label, count, title, dim = false, className = '' }) {
   return (
     <button
-      className={`kb-chip${quiet ? ' kb-chip--quiet' : ''}${active ? ' kb-chip--active' : ''}`}
+      className={`kb-side__item${active ? ' is-active' : ''}${dim ? ' is-dim' : ''} ${className}`}
       onClick={onClick}
       aria-pressed={active}
       title={title}
     >
-      {color && <span className="kb-chip__dot" style={{ background: color }} />}
-      {label}
-      <span className="kb-chip__count">{count}</span>
+      {dot}
+      <span className="kb-side__label">{label}</span>
+      <span className="kb-side__count">{count}</span>
     </button>
   );
 }
 
-export default function KBSubHeader({
+export default function KBSidebar({
   view, onViewChange, search, onSearchChange,
-  articleCount, onNewArticle,
-  topics, topicFilter, onTopicFilter, topicCounts, onManageTopics,
+  articleCount, linkCount, onNewArticle,
+  topics, topicFilter, mineOnly, onTopicFilter, onOpenMine, topicCounts, mineCount,
+  onManageTopics, onShowKeys,
 }) {
   const searchRef = useRef(null);
 
-  // Focus search on "/" key (handled by parent, but also allow direct)
+  // "/" nhảy vào ô tìm
   useEffect(() => {
     const handler = (e) => {
       if (e.key === '/' && !e.ctrlKey && !e.metaKey &&
-          !['INPUT', 'TEXTAREA'].includes(e.target.tagName) &&
+          !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) &&
           !e.target.isContentEditable) {
         e.preventDefault();
         searchRef.current?.focus();
@@ -51,82 +52,105 @@ export default function KBSubHeader({
   }, []);
 
   return (
-    <header className="kb-subheader">
-      <div className="kb-subheader__inner">
-        {/* Logo + count */}
-        <div className="kb-subheader__left">
-          <h1 className="kb-subheader__logo">
-            Kho Tàng <em>Kiến Thức</em>
-          </h1>
-          <span className="kb-subheader__count kb-hide">
-            {articleCount} bài
-          </span>
-        </div>
+    <aside className="kb-side">
+      <div className="kb-side__brand">
+        <h1 className="kb-side__title">Kho Tàng Kiến Thức</h1>
+        <p className="kb-side__stats">{articleCount} bài · {linkCount} liên kết</p>
+      </div>
 
-        {/* Spacer */}
-        <div className="kb-subheader__spacer" />
-
-        {/* Search */}
-        <div className="kb-subheader__search">
-          <span className="kb-subheader__search-icon">⌕</span>
+      <div className="kb-side__actions">
+        <label className="kb-search">
+          <AppIcon name="search" size={15} />
           <input
             ref={searchRef}
             type="text"
-            className="kb-subheader__search-input"
-            placeholder="Tìm bài, nội dung, #thẻ"
+            className="kb-search__input"
+            placeholder="Tìm bài, #thẻ…"
             value={search}
             onChange={e => onSearchChange(e.target.value)}
             aria-label="Tìm bài viết"
           />
-          <kbd className="kb-subheader__search-kbd">/</kbd>
-        </div>
-
-        {/* View switcher */}
-        <div className="kb-segmented">
-          {VIEW_ITEMS.map(v => (
-            <button
-              key={v.key}
-              className={`kb-segmented__item${view === v.key ? ' kb-segmented__item--active' : ''}`}
-              onClick={() => onViewChange(v.key)}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
-
-        {/* New article */}
-        <button className="kb-btn-primary" onClick={onNewArticle}>
-          ＋ Bài mới
+          {search
+            ? <button className="kb-search__clear" onClick={() => onSearchChange('')} aria-label="Xoá tìm kiếm">✕</button>
+            : <kbd className="kb-kbd">/</kbd>}
+        </label>
+        <button className="kb-btn-primary kb-side__new" onClick={onNewArticle}>
+          <AppIcon name="plus" size={15} weight="bold" />
+          <span>Viết bài mới</span>
         </button>
       </div>
 
-      {/* Topic chips */}
-      <nav className="kb-topic-row" aria-label="Lọc theo chủ đề">
-        <TopicChip active={!topicFilter} onClick={() => onTopicFilter('')} label="Tất cả" count={topicCounts.all} />
-        {topics.map(t => (
-          <TopicChip
-            key={t.id}
-            active={topicFilter === t.id}
-            onClick={() => onTopicFilter(topicFilter === t.id ? '' : t.id)}
-            label={t.name}
-            count={topicCounts[t.id] || 0}
-            color={t.color}
-            title={t.description}
-          />
-        ))}
-        {topicCounts.none > 0 && (
-          <TopicChip
-            active={topicFilter === 'none'}
-            onClick={() => onTopicFilter(topicFilter === 'none' ? '' : 'none')}
-            label="Chưa xếp"
-            count={topicCounts.none}
-            quiet
-          />
-        )}
-        <button className="kb-chip kb-chip--quiet" onClick={onManageTopics} title="Quản lý chủ đề">
-          {topics.length === 0 ? '＋ Tạo chủ đề' : '⋯'}
-        </button>
+      <nav className="kb-side__group" aria-label="Chế độ xem">
+        <span className="kb-side__heading">Chế độ xem</span>
+        <div className="kb-side__list">
+          {VIEW_ITEMS.map(v => (
+            <button
+              key={v.key}
+              className={`kb-side__item kb-side__item--view${view === v.key ? ' is-active' : ''}`}
+              onClick={() => onViewChange(v.key)}
+              aria-pressed={view === v.key}
+            >
+              <AppIcon name={v.icon} size={17} />
+              <span className="kb-side__label">{v.label}</span>
+              <kbd className="kb-side__keys">{v.keys}</kbd>
+            </button>
+          ))}
+        </div>
       </nav>
-    </header>
+
+      <nav className="kb-side__group" aria-label="Lọc theo chủ đề">
+        <span className="kb-side__heading">
+          Chủ đề
+          <button className="kb-link" onClick={onManageTopics}>{topics.length ? 'Quản lý' : '＋ Tạo'}</button>
+        </span>
+        <div className="kb-side__list kb-side__list--topics">
+          <NavItem
+            active={!topicFilter && !mineOnly}
+            onClick={() => onTopicFilter('')}
+            dot={<span className="kb-side__dot kb-side__dot--all" />}
+            label="Tất cả bài"
+            count={topicCounts.all}
+          />
+          {topicCounts.none > 0 && (
+            <NavItem
+              active={topicFilter === 'none'}
+              onClick={() => onTopicFilter(topicFilter === 'none' ? '' : 'none')}
+              dot={<span className="kb-side__dot kb-side__dot--none" />}
+              label="Chưa xếp"
+              count={topicCounts.none}
+              className="kb-side__item--unsorted"
+            />
+          )}
+          {topics.map(t => {
+            const n = topicCounts[t.id] || 0;
+            return (
+              <NavItem
+                key={t.id}
+                active={topicFilter === t.id}
+                onClick={() => onTopicFilter(topicFilter === t.id ? '' : t.id)}
+                dot={<span className="kb-side__dot" style={{ '--kb-topic': t.color }} />}
+                label={t.name}
+                count={n}
+                title={t.description}
+                dim={n === 0}
+              />
+            );
+          })}
+          {mineCount > 0 && (
+            <NavItem
+              active={mineOnly}
+              onClick={onOpenMine}
+              dot={<AppIcon name="pencil" size={13} className="kb-side__mine-icon" />}
+              label="Ghi chú của tôi"
+              count={mineCount}
+            />
+          )}
+        </div>
+      </nav>
+
+      <button className="kb-side__keys-btn" onClick={onShowKeys}>
+        Phím tắt <kbd className="kb-kbd">?</kbd>
+      </button>
+    </aside>
   );
 }

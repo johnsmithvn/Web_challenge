@@ -217,7 +217,7 @@ export function runNature(type, host, m, o) {
   return fn(kit(host, m, o || {}));
 }
 
-/* Mốc cảnh thật trên trang (để hình bay/nguyệt thực khớp chỗ vẽ trong TaskSkyBackground / TaskForestBackground) */
+/* Mốc cảnh thật trên trang (để hình bay/nguyệt thực khớp chỗ vẽ trong SkyBackground / TaskForestBackground) */
 // Tâm + cỡ trăng: desktop Moon (436, -1, 64px); mobile Mặc định 46px tại x 300/390, y 50; mobile Rừng tiên 44px tại x 302/390, y 56
 export const skyMoon = (W, m, elf) => (!m ? [468, 31, 64] : elf ? [W * 302 / 390 + 22, 78, 44] : [W * 300 / 390 + 23, 73, 46]);
 // Mép trên đường chân trời hành tinh (.task-planet-horizon: elip rộng 124% trang, đỉnh cách đáy 165px, cao 900px)

@@ -3,23 +3,34 @@ import {
   KIND_META, contentKind, itemPlainText, readTime, safeHostname, parseWikiLinks,
 } from '../../utils/kbDeriveUtils';
 import { formatDate } from '../../utils/dateUtils';
+import AppIcon from '../AppIcon';
 import KBTopicPicker from './KBTopicPicker';
 
-/* ── Sort segmented ────────────────────────────────────────── */
+/**
+ * KBListView — Danh sách (4a): phần đầu chủ đề, Loại · Có liên kết · Nhóm theo · sắp xếp,
+ * nhóm thu gọn được, thẻ bài, thanh chọn nhiều nổi ở đáy.
+ * Lọc / nhóm do CollectPage tính (groups) để J/K và ↑↓ ở trang đọc đi đúng thứ tự đang hiện.
+ */
+
 const SORT_ITEMS = [
   { key: 'new', label: 'Mới nhất' },
   { key: 'old', label: 'Cũ nhất' },
   { key: 'long', label: 'Dài nhất' },
 ];
 
-/* ── ListRow — single article row ──────────────────────────── */
-function ListRow({ item, isCursor, isBulk, isChecked, onToggleCheck, onClick, onEdit, onDelete }) {
+const GROUP_ITEMS = [
+  { key: 'month', label: 'Tháng' },
+  { key: 'topic', label: 'Chủ đề' },
+  { key: 'kind', label: 'Loại' },
+  { key: 'none', label: 'Không' },
+];
+
+/* ── Row ───────────────────────────────────────────────────── */
+function ListRow({ item, showTopic, isCursor, isBulk, isChecked, onToggleCheck, onClick, onEdit, onDelete }) {
   const kind = KIND_META[contentKind(item)];
   const topic = item._topic;
-
   const plainText = itemPlainText(item);
   const mins = item.word_count ? Math.max(1, Math.ceil(item.word_count / 220)) : readTime(plainText);
-  const excerpt = plainText.slice(0, 200);
   const tags = item._tags || [];
   const linkCount = parseWikiLinks(item.body || '').length;
   const taskCount = item._linkedTaskCount || 0;
@@ -27,228 +38,299 @@ function ListRow({ item, isCursor, isBulk, isChecked, onToggleCheck, onClick, on
 
   return (
     <article
-      className={`kb-row${isCursor ? ' kb-row--cursor' : ''}`}
-      onClick={() => onClick(item)}
+      className={`kb-row${isCursor ? ' kb-row--cursor' : ''}${isChecked ? ' kb-row--picked' : ''}`}
+      onClick={() => (isBulk ? onToggleCheck(item.id) : onClick(item))}
       role="button"
       tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onClick(item)}
     >
       {isBulk && (
-        <label className="kb-row__check" onClick={e => e.stopPropagation()}>
-          <input
-            type="checkbox"
-            checked={isChecked}
-            onChange={() => onToggleCheck(item.id)}
-            className="kb-row__checkbox"
-          />
-          {isChecked && <span className="kb-row__checkmark">✓</span>}
-        </label>
+        <input
+          type="checkbox"
+          className="kb-check"
+          checked={isChecked}
+          onChange={() => onToggleCheck(item.id)}
+          onClick={e => e.stopPropagation()}
+          aria-label={`Chọn ${item.title}`}
+        />
       )}
 
-      {/* Kind mark, tinted with the topic colour */}
-      <div className="kb-row__icon" style={{ color: topic?.color || 'var(--kb-faint)', borderColor: isCursor ? 'var(--kb-brass)' : undefined }}>
-        {kind.glyph}
-      </div>
+      <span className="kb-row__icon"><AppIcon name={kind.icon} size={16} /></span>
 
-      {/* Content */}
       <div className="kb-row__content">
         <div className="kb-row__meta">
-          {topic
+          {showTopic && (topic
             ? <span style={{ color: topic.color }}>{topic.name}</span>
-            : <span>Chưa xếp</span>}
-          <span className="kb-row__sep">·</span>
+            : <span className="kb-row__unsorted">Chưa xếp</span>)}
           <span>{kind.label}</span>
-          {item.url && <><span className="kb-row__sep">·</span><span>{safeHostname(item.url)}</span></>}
-          <span className="kb-row__sep">·</span>
+          {item.url && <span>{safeHostname(item.url)}</span>}
           <span>{formatDate(item.created_at)}</span>
-          <span className="kb-row__sep">·</span>
           <span>{mins} phút</span>
+          {tags.map(t => <span key={t.id || t.name} className="kb-row__tag">#{t.name}</span>)}
         </div>
-
         <h3 className="kb-row__title">{item.title}</h3>
-
-        {excerpt && (
-          <p className="kb-row__excerpt">
-            {excerpt}{plainText.length > 200 ? '…' : ''}
-          </p>
-        )}
-
-        <div className="kb-row__badges">
-          {tags.map(t => (
-            <span key={t.id || t.name} className="kb-badge kb-badge--tag">
-              <span className="kb-badge__dot" style={{ background: t.color || 'var(--kb-dim)' }} />
-              {t.name}
-            </span>
-          ))}
-          {linkCount > 0 && (
-            <span className="kb-badge kb-badge--link">↔ {linkCount} liên kết</span>
-          )}
-          {taskCount > 0 && (
-            <span className="kb-badge kb-badge--task">◇ {taskCount} nhiệm vụ</span>
-          )}
-          {noteCount > 0 && (
-            <span className="kb-badge kb-badge--note">✎ {noteCount} ghi chú</span>
-          )}
-        </div>
+        {plainText && <p className="kb-row__excerpt">{plainText.slice(0, 220)}</p>}
       </div>
 
-      {/* Action buttons (desktop) */}
-      <div className="kb-row__actions kb-hide">
-        <button className="kb-row__action-btn" onClick={e => { e.stopPropagation(); onEdit(item); }} title="Sửa">✎</button>
-        <button className="kb-row__action-btn kb-row__action-btn--danger" onClick={e => { e.stopPropagation(); onDelete(item); }} title="Xóa">⌫</button>
+      <div className="kb-row__side">
+        {linkCount > 0 && <span className="kb-pill" title={`${linkCount} liên kết [[wiki]]`}>↔ {linkCount}</span>}
+        {taskCount > 0 && <span className="kb-pill kb-pill--task" title={`${taskCount} nhiệm vụ`}>◇ {taskCount}</span>}
+        {noteCount > 0 && <span className="kb-pill" title={`${noteCount} ghi chú`}>✎ {noteCount}</span>}
+        {!isBulk && (
+          <span className="kb-row__actions kb-hide">
+            <button className="kb-icon-btn" onClick={e => { e.stopPropagation(); onEdit(item); }} title="Sửa (E)" aria-label="Sửa">
+              <AppIcon name="pencil" size={14} />
+            </button>
+            <button className="kb-icon-btn kb-icon-btn--danger" onClick={e => { e.stopPropagation(); onDelete(item); }} title="Xoá" aria-label="Xoá">
+              <AppIcon name="trash" size={14} />
+            </button>
+          </span>
+        )}
       </div>
     </article>
   );
 }
 
-/* ── KBListView ────────────────────────────────────────────── */
-export default function KBListView({
-  articles, allTags, topics, heading, onManageTopics, cursor,
-  activeTagIds, onToggleTag,
-  sort, onSort,
-  bulk, onToggleBulk, picked, onTogglePick, onSelectAll, onDeselectAll,
-  onBulkTag, onBulkAssign, onBulkDelete,
-  onOpenReader, onOpenEditor, onDelete,
-  hasFilter, onClearFilter,
-}) {
-  const [assigning, setAssigning] = useState(false);
-
-  // Tag counts within the current list
-  const tagCounts = useMemo(() => {
-    const counts = {};
-    articles.forEach(a => (a._tags || []).forEach(t => { counts[t.id] = (counts[t.id] || 0) + 1; }));
-    return counts;
-  }, [articles]);
-
+/* ── Topic header ──────────────────────────────────────────── */
+function TopicHeader({ heading, tags, tagCounts, activeTagIds, onToggleTag, onManageTags, onManageTopics, onQuickSort }) {
   return (
-    <div className="kb-list-view" style={{ animation: 'kb-in .22s ease' }}>
-      {/* Heading: topic page, or "Ghi chú của tôi" */}
-      {heading && (
-        <div className="kb-topic-head">
-          <div className="kb-topic-head__text">
-            <h2 className="kb-topic-head__name">
-              {heading.color && <span className="kb-chip__dot" style={{ background: heading.color }} />}
-              {heading.name}
-            </h2>
-            {heading.description && <p className="kb-topic-head__desc">{heading.description}</p>}
+    <header className="kb-topic-head" style={heading.color ? { '--kb-topic': heading.color } : undefined}>
+      <div className="kb-topic-head__top">
+        <span className={`kb-orb${heading.color ? '' : ' kb-orb--plain'}`} aria-hidden="true" />
+        <div className="kb-topic-head__text">
+          <div className="kb-topic-head__line">
+            <h2 className="kb-topic-head__name">{heading.name}</h2>
+            <span className="kb-topic-head__count">{heading.count} bài</span>
           </div>
-          {heading.manage && (
-            <button className="kb-btn-ghost kb-btn-ghost--small" onClick={onManageTopics} title="Quản lý chủ đề">⋯</button>
+          {heading.description && <p className="kb-topic-head__desc">{heading.description}</p>}
+        </div>
+        <div className="kb-topic-head__btns">
+          {heading.kind === 'none' && <button className="kb-btn-soft" onClick={onQuickSort}>Xếp nhanh</button>}
+          {(heading.kind === 'topic' || heading.kind === 'all') && (
+            <button className="kb-btn-ghost" onClick={onManageTopics}>Quản lý chủ đề</button>
           )}
         </div>
-      )}
-
-      {/* Sort + bulk */}
-      <div className="kb-list-toolbar">
-        <div className="kb-segmented kb-segmented--small">
-          {SORT_ITEMS.map(s => (
-            <button
-              key={s.key}
-              className={`kb-segmented__item${sort === s.key ? ' kb-segmented__item--active' : ''}`}
-              onClick={() => onSort(s.key)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-
-        <button
-          className={`kb-btn-ghost kb-btn-ghost--small${bulk ? ' kb-btn-ghost--active' : ''}`}
-          onClick={() => { setAssigning(false); onToggleBulk(); }}
-        >
-          {bulk ? '✕ Thoát' : '☐ Chọn'}
-        </button>
       </div>
 
-      {/* Tag filter row */}
-      {allTags.length > 0 && (
+      {tags.length > 0 && (
         <div className="kb-tag-row">
           <span className="kb-tag-row__label">Thẻ</span>
-          {allTags.map(t => (
+          {tags.map(t => (
             <button
               key={t.id}
-              className={`kb-tag-chip${activeTagIds.includes(t.id) ? ' kb-tag-chip--active' : ''}`}
+              className={`kb-tag-chip${activeTagIds.includes(t.id) ? ' is-active' : ''}`}
               onClick={() => onToggleTag(t.id)}
+              aria-pressed={activeTagIds.includes(t.id)}
             >
-              <span className="kb-badge__dot" style={{ background: t.color || 'var(--kb-dim)' }} />
-              {t.name}
+              #{t.name}
               {tagCounts[t.id] > 0 && <span className="kb-tag-chip__count">{tagCounts[t.id]}</span>}
             </button>
           ))}
+          <button className="kb-link" onClick={onManageTags}>Quản lý thẻ</button>
+        </div>
+      )}
+    </header>
+  );
+}
+
+/* ── Segmented (pill group) ────────────────────────────────── */
+function Segmented({ items, value, onChange, label, quiet = false }) {
+  return (
+    <div className={`kb-seg${quiet ? ' kb-seg--quiet' : ''}`} role="group" aria-label={label}>
+      {items.map(i => (
+        <button
+          key={i.key}
+          className={`kb-seg__item${value === i.key ? ' is-active' : ''}`}
+          onClick={() => onChange(i.key)}
+          aria-pressed={value === i.key}
+        >
+          {i.label}
+          {i.count !== undefined && <span className="kb-seg__count">{i.count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ── KBListView ────────────────────────────────────────────── */
+export default function KBListView({
+  groups, total, scopeTags, topics, heading, unsortedCount,
+  onManageTopics, onManageTags, onQuickSort, onNewArticle,
+  cursorId, activeTagIds, onToggleTag,
+  kind, kindCounts, onKind, linkedOnly, onToggleLinked, groupBy, onGroupBy, sort, onSort,
+  bulk, onToggleBulk, picked, onTogglePick, onSelectAll, onDeselectAll, onBulkAssign, onBulkDelete,
+  onOpenReader, onOpenEditor, onDelete,
+  filtering, onClearFilter,
+}) {
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const [assigning, setAssigning] = useState(false);
+
+  // Thẻ trong danh sách đang hiện; thẻ đang bật luôn còn chip để tắt
+  const tagCounts = useMemo(() => {
+    const counts = {};
+    groups.forEach(g => g.items.forEach(a => (a._tags || []).forEach(t => { counts[t.id] = (counts[t.id] || 0) + 1; })));
+    return counts;
+  }, [groups]);
+  const tags = scopeTags.filter(t => tagCounts[t.id] > 0 || activeTagIds.includes(t.id));
+
+  const allCount = Object.values(kindCounts).reduce((s, n) => s + n, 0);
+  const kindItems = [
+    { key: '', label: 'Tất cả', count: allCount },
+    ...Object.entries(KIND_META)
+      .filter(([k]) => kindCounts[k] > 0 || kind === k)
+      .map(([k, m]) => ({ key: k, label: m.label, count: kindCounts[k] || 0 })),
+  ];
+
+  const toggleGroup = key => setCollapsed(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+
+  const showTopic = (heading.kind === 'all' || heading.kind === 'mine') && groupBy !== 'topic';
+  const allPicked = total > 0 && picked.length >= total;
+
+  return (
+    <div className="kb-list-view" style={{ animation: 'kb-in .22s ease' }}>
+      <TopicHeader
+        heading={heading}
+        tags={tags}
+        tagCounts={tagCounts}
+        activeTagIds={activeTagIds}
+        onToggleTag={onToggleTag}
+        onManageTags={onManageTags}
+        onManageTopics={onManageTopics}
+        onQuickSort={onQuickSort}
+      />
+
+      {(total > 0 || filtering) && (
+        <div className="kb-list-toolbar">
+          <div className="kb-list-toolbar__row">
+            <Segmented items={kindItems} value={kind} onChange={onKind} label="Loại" />
+            <button
+              className={`kb-btn-ghost${linkedOnly ? ' kb-btn-ghost--active' : ''}`}
+              onClick={onToggleLinked}
+              aria-pressed={linkedOnly}
+              title="Chỉ bài có liên kết [[wiki]] tới bài khác hoặc được trỏ về"
+            >
+              ↔ Có liên kết{linkedOnly && ' ✓'}
+            </button>
+            <span className="kb-spacer" />
+            <button className={`kb-btn-ghost${bulk ? ' kb-btn-ghost--active' : ''}`} onClick={() => { setAssigning(false); onToggleBulk(); }} aria-pressed={bulk}>
+              <span className="kb-btn-ghost__box" aria-hidden="true" />
+              {bulk ? 'Thôi chọn' : 'Chọn'}
+            </button>
+          </div>
+          <div className="kb-list-toolbar__row">
+            <span className="kb-list-toolbar__label">Nhóm theo</span>
+            <Segmented items={GROUP_ITEMS} value={groupBy} onChange={onGroupBy} label="Nhóm theo" quiet />
+            {filtering && (
+              <span className="kb-list-toolbar__result">
+                {total} kết quả · <button className="kb-link" onClick={onClearFilter}>Xoá lọc</button>
+              </span>
+            )}
+            <span className="kb-spacer" />
+            <Segmented items={SORT_ITEMS} value={sort} onChange={onSort} label="Sắp xếp" quiet />
+          </div>
         </div>
       )}
 
-      {/* Active filter bar */}
-      {hasFilter && (
-        <div className="kb-filter-bar">
-          <span className="kb-filter-bar__text">Bộ lọc đang bật</span>
-          <button className="kb-filter-bar__clear" onClick={onClearFilter}>
-            Xóa lọc · Esc
-          </button>
-        </div>
-      )}
-
-      {/* Bulk action bar */}
-      {bulk && (
-        <div className="kb-bulk-bar">
-          <button className="kb-btn-ghost kb-btn-ghost--small" onClick={picked.length >= articles.length ? onDeselectAll : onSelectAll}>
-            {picked.length >= articles.length ? 'Bỏ chọn' : 'Chọn tất cả'}
-          </button>
-          <span className="kb-bulk-bar__count">đã chọn {picked.length}</span>
-          <div className="kb-bulk-bar__spacer" />
-          {picked.length > 0 && (
-            <>
-              <button
-                className={`kb-btn-ghost kb-btn-ghost--small${assigning ? ' kb-btn-ghost--active' : ''}`}
-                onClick={() => setAssigning(a => !a)}
-                aria-expanded={assigning}
-              >
-                Gán chủ đề
-              </button>
-              <button className="kb-btn-ghost kb-btn-ghost--small" onClick={onBulkTag}>Gắn thẻ</button>
-              <button className="kb-btn-ghost kb-btn-ghost--small kb-btn-ghost--danger" onClick={onBulkDelete}>
-                Xóa {picked.length}
-              </button>
-            </>
-          )}
-        </div>
-      )}
-      {bulk && assigning && picked.length > 0 && (
-        <div className="kb-bulk-assign">
-          <span className="kb-bulk-assign__label">Chuyển {picked.length} bài vào</span>
-          <KBTopicPicker
-            topics={topics}
-            value={undefined}
-            onChange={id => { setAssigning(false); onBulkAssign(id); }}
-          />
-        </div>
-      )}
-
-      {/* Article list */}
-      <div className="kb-rows">
-        {articles.length === 0 ? (
-          <div className="kb-empty-state">
-            <span className="kb-empty-state__icon">◌</span>
-            <h2 className="kb-empty-state__title">Không có bài nào khớp</h2>
-            <p className="kb-empty-state__desc">Thử bỏ một thẻ, hoặc xóa từ khóa tìm kiếm.</p>
-            <button className="kb-btn-ghost" onClick={onClearFilter}>Xóa mọi bộ lọc</button>
+      {total === 0 ? (
+        filtering ? (
+          <div className="kb-empty">
+            <h3 className="kb-empty__title">Không có bài nào khớp</h3>
+            <p className="kb-empty__desc">Thử bỏ bớt bộ lọc hoặc đổi từ khoá.</p>
+            <button className="kb-btn-soft" onClick={onClearFilter}>Xoá lọc</button>
           </div>
         ) : (
-          articles.map((item, idx) => (
-            <ListRow
-              key={item.id}
-              item={item}
-              isCursor={idx === cursor}
-              isBulk={bulk}
-              isChecked={picked.includes(item.id)}
-              onToggleCheck={onTogglePick}
-              onClick={onOpenReader}
-              onEdit={onOpenEditor}
-              onDelete={onDelete}
-            />
-          ))
-        )}
-      </div>
+          <div className="kb-empty">
+            <div className="kb-empty__stars" aria-hidden="true">
+              <span /><span className="kb-orb" /><span />
+            </div>
+            <h3 className="kb-empty__title">
+              {heading.kind === 'topic' ? `Chưa có bài nào trong ${heading.name}` : 'Chưa có bài nào ở đây'}
+            </h3>
+            {heading.kind === 'topic' && (
+              <p className="kb-empty__desc">Xếp bài từ mục Chưa xếp vào đây, hoặc viết bài mới ngay trong chủ đề này.</p>
+            )}
+            <div className="kb-empty__btns">
+              {heading.kind === 'topic' && unsortedCount > 0 && (
+                <button className="kb-btn-soft" onClick={onQuickSort}>Xếp nhanh · {unsortedCount} bài chờ</button>
+              )}
+              <button className="kb-btn-ghost" onClick={onNewArticle}>Viết bài mới</button>
+            </div>
+          </div>
+        )
+      ) : (
+        <div className="kb-groups">
+          {groups.map(g => {
+            const open = !collapsed.has(g.key);
+            return (
+              <section key={g.key} className="kb-group">
+                {g.label && (
+                  <button className={`kb-group__head${open ? '' : ' is-closed'}`} onClick={() => toggleGroup(g.key)} aria-expanded={open}>
+                    <AppIcon name="caretDown" size={12} weight="bold" className="kb-group__caret" />
+                    {g.color && <span className="kb-dot" style={{ '--kb-topic': g.color }} />}
+                    {g.label}
+                    <span className="kb-group__count">{g.items.length}</span>
+                    <span className="kb-group__line" />
+                  </button>
+                )}
+                {open && (
+                  <div className="kb-rows">
+                    {g.items.map(item => (
+                      <ListRow
+                        key={item.id}
+                        item={item}
+                        showTopic={showTopic}
+                        isCursor={item.id === cursorId}
+                        isBulk={bulk}
+                        isChecked={picked.includes(item.id)}
+                        onToggleCheck={onTogglePick}
+                        onClick={onOpenReader}
+                        onEdit={onOpenEditor}
+                        onDelete={onDelete}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Thanh chọn nhiều — nổi ở đáy vùng cuộn */}
+      {bulk && (
+        <div className="kb-bulk">
+          {assigning && picked.length > 0 && (
+            <div className="kb-bulk__pop">
+              <span className="kb-bulk__pop-label">Chuyển {picked.length} bài vào</span>
+              <KBTopicPicker
+                topics={topics}
+                value={undefined}
+                onChange={id => { setAssigning(false); onBulkAssign(id); }}
+              />
+            </div>
+          )}
+          <div className="kb-bulk__bar">
+            <span className="kb-bulk__count">Đã chọn {picked.length}</span>
+            <button className="kb-bulk__btn" onClick={allPicked ? onDeselectAll : onSelectAll}>
+              {allPicked ? 'Bỏ chọn hết' : 'Chọn tất cả'}
+            </button>
+            <button
+              className={`kb-bulk__btn${assigning ? ' is-on' : ''}`}
+              onClick={() => setAssigning(a => !a)}
+              disabled={picked.length === 0}
+              aria-expanded={assigning}
+            >
+              Gán chủ đề
+            </button>
+            <button className="kb-bulk__btn kb-bulk__btn--danger" onClick={onBulkDelete} disabled={picked.length === 0}>Xoá</button>
+            <button className="kb-bulk__close" onClick={onToggleBulk} title="Thôi chọn (Esc)" aria-label="Thôi chọn">✕</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

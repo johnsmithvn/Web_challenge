@@ -34,15 +34,12 @@ export default function KBLinkModal({
     <div className="kb-overlay" onClick={onClose}>
       <div
         className="kb-palette"
-        style={{ width: 'min(560px, 92vw)', marginTop: '13vh' }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--kb-line)' }}>
-          <div style={{ fontFamily: 'var(--kb-mono)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--kb-faint)' }}>
-            Liên kết bài viết
-          </div>
-          <div style={{ fontFamily: 'var(--kb-serif)', fontSize: '1.2rem', fontWeight: 500, marginTop: '6px', color: 'var(--kb-tx)' }}>
-            {currentArticle?.title || 'Bài đang soạn'}
+        <div className="kb-palette__head">
+          <div>
+            <div className="kb-palette__kicker">Liên kết bài viết</div>
+            <div className="kb-palette__heading">{currentArticle?.title || 'Bài đang soạn'}</div>
           </div>
         </div>
 
@@ -69,18 +66,9 @@ export default function KBLinkModal({
                     onClose();
                   }}
                 >
-                  <span className="kb-badge__dot" style={{ background: a._topic?.color || 'var(--kb-faint)' }} />
+                  <span className="kb-dot" style={a._topic ? { '--kb-topic': a._topic.color } : undefined} />
                   <span className="kb-palette__label">{a.title}</span>
-                  <span
-                    style={{
-                      fontFamily: 'var(--kb-mono)',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '.06em',
-                      color: isLinked ? 'var(--kb-brass)' : 'var(--kb-faint)',
-                    }}
-                  >
+                  <span className={`kb-palette__state${isLinked ? ' is-on' : ''}`}>
                     {isLinked ? 'đã nối' : 'nối'}
                   </span>
                 </button>

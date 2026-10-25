@@ -210,16 +210,18 @@ export function isMine(item) {
  * @param {string} params.kind - contentKind() value, '' = all
  * @param {string} params.time - '' | '7' | '30' | '90' (saved within N days) | 'old' (> 90 days)
  * @param {boolean} params.mine - only "Ghi chú của tôi" (isMine)
+ * @param {Set<string>|null} params.linked - keep only these ids ("Có liên kết"), null = no filter
  * @param {number} params.now - clock for `time` (ms)
  * @returns {Array}
  */
 export function filterArticles(articles, {
   q = '', type = 'all', tags = [], sort = 'new', taskId = '',
-  topic = '', kind = '', time = '', mine = false, now = Date.now(),
+  topic = '', kind = '', time = '', mine = false, linked = null, now = Date.now(),
 } = {}) {
   let list = articles.filter(a => a.type !== 'inbox' && a.status !== 'archived');
 
   if (mine) list = list.filter(isMine);
+  if (linked) list = list.filter(a => linked.has(a.id));
 
   // Type filter
   if (type && type !== 'all') {
@@ -283,6 +285,49 @@ export function filterArticles(articles, {
   }
 
   return sorted;
+}
+
+/* ── Group (Danh sách "Nhóm theo") ─────────────────────────── */
+const monthKey = a => {
+  const d = new Date(a.created_at);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+/**
+ * Split an already sorted list into display groups; items keep their order inside a group.
+ * month: local month of created_at, in list order · topic: topic order, "Chưa xếp" last ·
+ * kind: KIND_META order · none: one group without a label.
+ * @returns {Array<{ key: string, label: string, color?: string, items: Array }>}
+ */
+export function groupArticles(articles, by, { topics = [], now = Date.now() } = {}) {
+  if (!by || by === 'none') return [{ key: 'all', label: '', items: articles }];
+  const keyOf = { month: monthKey, topic: a => a.topic_id || 'none', kind: contentKind }[by];
+  const groups = new Map();
+  articles.forEach(a => {
+    const k = keyOf(a);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(a);
+  });
+
+  if (by === 'month') {
+    const year = new Date(now).getFullYear();
+    return [...groups].map(([key, items]) => {
+      const [y, m] = key.split('-').map(Number);
+      return { key, label: y === year ? `Tháng ${m}` : `Tháng ${m}/${y}`, items };
+    });
+  }
+  if (by === 'topic') {
+    const byId = new Map(topics.map(t => [t.id, t]));
+    const order = [...topics.map(t => t.id), 'none'];
+    const rank = k => (order.includes(k) ? order.indexOf(k) : order.length);
+    return [...groups]
+      .sort(([a], [b]) => rank(a) - rank(b))
+      .map(([key, items]) => ({ key, label: byId.get(key)?.name || 'Chưa xếp', color: byId.get(key)?.color, items }));
+  }
+  const kinds = Object.keys(KIND_META);
+  return [...groups]
+    .sort(([a], [b]) => kinds.indexOf(a) - kinds.indexOf(b))
+    .map(([key, items]) => ({ key, label: KIND_META[key].label, items }));
 }
 
 /* ── Read time ─────────────────────────────────────────────── */

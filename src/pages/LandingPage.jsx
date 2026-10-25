@@ -42,7 +42,7 @@ const MODULES = [
     ],
   },
   {
-    to: '/collect', icon: 'brain', name: 'Knowledge', accent: '#a78bfa',
+    to: '/collect', icon: 'book', name: 'Knowledge', accent: '#a78bfa',
     desc: 'Kho bài viết cá nhân, viết và đọc lại.',
     points: [
       'Trình soạn thảo đầy đủ: bảng, checklist, ảnh, YouTube, audio',

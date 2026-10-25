@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import TaskSkyBackground from '../components/TaskSkyBackground';
+import SkyBackground from '../components/SkyBackground';
 import { AURORA_POOL, spawnAuroraFlyer } from '../utils/taskFlyersAurora';
 import { ELF_POOL, spawnElfFlyer, hosts as elfHosts, frameKey, celebrate, handleMoonClick, waterSplash, setLastPointer } from '../utils/taskFlyersElf';
 import { NATURE_TYPES } from '../utils/taskNatureFx';
@@ -11,7 +11,7 @@ import '../styles/fx-lab.css';
 
 /**
  * FX Lab (/fx-lab, sidebar → Khác → FX Lab): xem trước mọi vật bay, kịch bản, tương tác của nền
- * trang Nhiệm vụ. Chạy đúng code thật (TaskSkyBackground + taskFlyers* + CSS) → thấy gì ở đây app chạy y vậy.
+ * trang Nhiệm vụ. Chạy đúng code thật (SkyBackground + taskFlyers* + CSS) → thấy gì ở đây app chạy y vậy.
  * Quy trình (docs/RULES.md): hiệu ứng mới / sửa lớn vào bể với trọng số 0 (Nháp) → user xem ở đây → duyệt
  * xong mới đặt trọng số thật. Thí nghiệm chưa vào app (Lottie, sprite…) là trang tĩnh trong public/ nhúng ở tab Thí nghiệm.
  * ?embed=1: chỉ vẽ nền (khung Mobile 390 là iframe trỏ về chính trang này), nhận lệnh qua window.__fxLab.
@@ -217,7 +217,7 @@ export default function FxLabPage() {
 
   const stage = (
     <div key={stageKey} ref={stageRef} className={`tasks-workspace fxlab-stage${elf ? ' tk-elf' : ''}`} data-frame={elf ? frameKey(theme, m) : undefined}>
-      <TaskSkyBackground isMobile={m} autoFly={auto} />
+      <SkyBackground isMobile={m} autoFly={auto} />
     </div>
   );
   if (embed) return stage;

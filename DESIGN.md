@@ -1337,24 +1337,31 @@ Types/Tags filter bar is gone.
 - Motion collapses to `1ms` under `prefers-reduced-motion: reduce` via a single
   `--acc-dur` override on `.acc-vault`.
 
-### Knowledge (Thư phòng) — `.kb-*` (`kb-tokens.css`, `collect.css`)
+### Knowledge (Cực quang) — `.kb-*` (`kb-tokens.css`, `collect.css`)
 
-Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradient chung của app.
+Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradient chung của app. Bản thiết kế:
+"Kiến Thức Redesign" 1a (kiểu) / 2a (màn), Danh sách 4a, Quản lý chủ đề 4b (v6.33.0).
 
-- **Token** (`kb-tokens.css`, có giá trị tối và sáng): nền `--kb-bg` / `--kb-p1` / `--kb-p2`, viền `--kb-line`,
-  chữ `--kb-tx` / `--kb-dim` / `--kb-faint`, nhấn `--kb-brass` (vàng đồng), `--kb-sage`, `--kb-red`.
-  Font: `--kb-serif` (Spectral) cho tiêu đề và đoạn đọc, `--kb-mono` (JetBrains Mono) cho nhãn nhỏ viết hoa.
-- **Màu chủ đề** lấy từ `collection_topics.color` (chấm màu, chữ meta, node Sơ đồ); bài Chưa xếp dùng `--kb-faint`.
-  Không còn bảng màu cố định theo loại bài.
-- **`.kb-chip`** — chip mono viết hoa `0.8rem/600`, bo `4px`, viền `--kb-line`; `--active` nền `--kb-p2` + viền/chữ
-  brass; `--quiet` viền đứt, nền trong (Chưa xếp, `⋯`); `--suggested` viền đứt brass + chữ "gợi ý"; `__key` ô phím số
-  (Xếp nhanh). Dùng cho hàng chip chủ đề (`.kb-topic-row`, một dòng, cuộn ngang) và bộ chọn chủ đề (`.kb-topic-picker`).
-- **Tổng quan** — `.kb-overview` tối đa `1080px`; tiêu đề khối `.kb-ov-head__title` mono `0.78rem` tracking `0.14em`;
-  thẻ `.kb-ov-card` nền `--kb-p1`, viền `--kb-line`, hover/focus viền brass; lưới 3 → 2 (≤900px) → 1 cột (≤640px).
-- **Trang chủ đề / Ghi chú của tôi** — `.kb-topic-head`: tên serif `1.6rem` + định nghĩa nghiêng `--kb-dim`.
-- **Trang đọc** — chủ đề là `<select>` native trong `.kb-reader__topic`; thẻ **Xung quanh** (`.kb-around`) có nhãn
-  nhóm mono và đường gạch đứt trước nhóm "Lưu gần thời điểm".
-- Chữ mono nhỏ nhất `0.7rem`; nhãn hành động ưu tiên `0.75rem` trở lên.
+- **Nền**: `<SkyBackground calm />` (cùng trời với Nhiệm vụ, xem Tasks workspace bên dưới) đặt trong `.kb-page`
+  (`position: relative; isolation: isolate`), `--kb-sky` là lớp tĩnh dưới nó. `calm` = không vật bay, không bụi sao theo chuột.
+- **Token** (`kb-tokens.css`, có giá trị tối và sáng): trời `--kb-sky`, nền `--kb-bg`, lớp `--kb-p1` (thẻ, kính
+  trong) / `--kb-p2` (hover, ô nhập), hộp thoại nền đặc `--kb-pop`, viền `--kb-line`, chữ `--kb-tx` / `--kb-dim` /
+  `--kb-faint`, nhấn `--kb-accent` (mint `#6EF2C7`; sáng: violet `#7C3AED`) + `--kb-accent-soft` / `--kb-on-accent` /
+  `--kb-glow`, phụ `--kb-violet` (đang chọn, ghi chú), `--kb-gold` (Chưa xếp, cạnh thẻ chung), `--kb-sage`, `--kb-red`;
+  `--kb-scrim` (nền sau hộp thoại), `--kb-shadow`.
+  Font: `--kb-display` (Unbounded) cho tiêu đề, `--kb-font` (Be Vietnam Pro) cho chữ, `--kb-mono` chỉ cho phím tắt / code.
+- **Nhãn**: chữ thường, `≥12px`, không mono viết hoa. Bỏ nhãn thừa.
+- **Màu chủ đề** lấy từ `collection_topics.color`, truyền qua biến `--kb-topic` đặt inline (`.kb-dot`, `.kb-orb`,
+  quầng thẻ chủ đề, viên chủ đề trang đọc). Chưa có chủ đề → `--kb-faint` hoặc `--kb-gold`.
+- **Khung**: `.kb-shell` lưới `252px | minmax(0,1fr)` (cột trái `.kb-side`); trang đọc / soạn `--doc` một cột.
+  ≤860px cột trái thành thanh trên (viên cuộn ngang); ≤768px chiều cao trừ topbar + bottom tabs.
+- **Nút**: `.kb-btn-primary` (nền mint + quầng `--kb-glow`), `.kb-btn-soft` (nền accent-soft), `.kb-btn-ghost` (viền),
+  `.kb-btn-violet`, `.kb-icon-btn` (32px, `--box`, `--danger`, `.is-on`), `.kb-link`. Nhóm chọn một: `.kb-seg`
+  (`--quiet` không khung). Chip chủ đề trong bộ chọn: `.kb-chip` viên tròn `999px`.
+- **Hiệu năng**: không `backdrop-filter` ở đâu trong Knowledge — trời phía sau chuyển động nên blur sẽ tính lại mỗi khung;
+  cột / thanh dùng `color-mix(--kb-bg, transparent)`, hộp thoại `--kb-pop` đặc. Chỉ animate transform / opacity
+  (vạch đọc dùng `scaleX`).
+- **Focus**: `.kb-page :focus-visible` viền `2px --kb-accent`; `prefers-reduced-motion` tắt chuyển động trong `.kb-page`.
 
 ### Other active shared atoms (`global.css`)
 
@@ -1371,8 +1378,8 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
 
 Trang Nhiệm vụ dùng bộ token riêng `--tk-*`, khai báo trên `.tasks-workspace`
 theo `[data-theme]`: tối = mockup 2a (mint `#5EF2C2`, nền trời `#0C1634→#060914`), sáng = mockup 2b
-(violet `#7C3AED`, nền `#F4F2FF`). Nền trời do `TaskSkyBackground.jsx` vẽ:
-tối = aurora, Ngân Hà, 4 lớp sao, sao băng, sao chổi; desktop thêm trăng đúng pha âm lịch hôm nay,
+(violet `#7C3AED`, nền `#F4F2FF`). Nền trời do `SkyBackground.jsx` + `sky.css` vẽ (dùng chung với Knowledge — bản `calm` — và FX Lab):
+tối = aurora, Ngân Hà, 4 lớp sao, sao băng vệt sáng mint (góc 32°, lấy từ bản thiết kế Kiến Thức), sao chổi; desktop thêm trăng đúng pha âm lịch hôm nay,
 sao sáng 4 cánh, 6 chòm sao lần lượt hiện (chu kỳ 150s) và chân trời hành tinh.
 Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt trời mọc, mây màu nước SVG, hạt sáng bay.
 `prefers-reduced-motion` tắt mọi chuyển động nền.
@@ -1388,7 +1395,7 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   sương mù ngẫu nhiên (`FogBank`: lớp sau giữa cây tầng giữa/gần, lớp trước mỏng phủ cây gần; mỗi lớp kéo đến rồi tan
   theo chu kỳ riêng 38–64s, tan hết thì xếp mảng sương lại chỗ ngẫu nhiên; mobile ít mảng, không blur);
   desktop sáng có tiên đốm sáng bay TRÊN nội dung (`.task-fx-top`, z-index 40, không nhận chuột).
-  Tương tác (`utils/taskFlyersElf.js`, gắn ở `TaskSkyBackground` khi kiểu Elf): workspace mang `data-frame` = c/a/cm/am;
+  Tương tác (`utils/taskFlyersElf.js`, gắn ở `SkyBackground` khi kiểu Elf): workspace mang `data-frame` = c/a/cm/am;
   nấm + đom đóm bấm được, bấm nền rung lá, sương (`[data-fog]`) tan quanh con trỏ, xong việc → `celebrate`.
   Thẻ: dây leo (trễ), dây leo nở hoa (xong), đom đóm (đang làm); cây chuỗi ngày `ElfStreakTree` góc trái dưới desktop.
   Sidebar toàn app dùng skin kính lá của mockup này (`.sidebar--elf`, luôn gắn trong Navbar, CSS ở `navbar.css`):
@@ -1413,7 +1420,7 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   `AppIcon color="var(--x)"` được chuyển sang `style.color` (thuộc tính SVG `fill` không nhận biến CSS).
 - Breakpoint mobile = `≤768px` (cùng khung app: topbar 52 + tab đáy 60). Nền mobile tối: aurora, Ngân Hà,
   sao, 3 sao băng, sao chổi nhỏ (không trăng / chòm sao / chân trời) như mockup.
-- Nền động (`TaskSkyBackground` / `TaskForestBackground`): `.task-cosmos-bg` có `contain: strict`; lớp vật bay
+- Nền động (`SkyBackground` / `TaskForestBackground`): `.task-cosmos-bg` có `contain: strict`; lớp vật bay
   `.task-fly-host` là size container (`cqw/cqh`). Không blur lớp gradient, chỉ animate transform/opacity
   (xem Performance rules ở Elevation & Depth). Thẻ Kanban Rừng tiên không kính mờ (cột đã kính mờ); thẻ mobile giữ.
 - Ngăn chi tiết `.tk-drawer` (560px, ≥1600px là 600px, nổi phải): ở Kanban nổi **đè** lên bảng; Danh sách/Lịch ≥1280px vẫn chừa

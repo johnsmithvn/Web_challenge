@@ -32,6 +32,7 @@ export default function KBEditorView({
   onCancel,
   isSaving,
   isNew = false,
+  defaultTopicId = null, // bài mới viết khi đang xem một chủ đề → vào sẵn chủ đề đó
   topics,
   allArticles,
   onOpenLinkModal,
@@ -46,7 +47,7 @@ export default function KBEditorView({
     body_text: initial?.body_text || '',
     tags: initial?._tags || initial?.tags || [],
     type: normalizeType(initial?.type),
-    topic_id: initial?.topic_id || null,
+    topic_id: initial?.topic_id || defaultTopicId,
     url: initial?.url || '',
     content_format: initialFormat,
   }));
@@ -158,15 +159,15 @@ export default function KBEditorView({
         <button className="kb-back-btn" onClick={onCancel}>← Hủy</button>
 
         {/* Editor mode toggle */}
-        <div className="kb-segmented kb-segmented--small">
+        <div className="kb-seg">
           <button
-            className={`kb-segmented__item${draft.content_format === 'markdown' ? ' kb-segmented__item--active' : ''}`}
+            className={`kb-seg__item${draft.content_format === 'markdown' ? ' is-active' : ''}`}
             onClick={() => switchFormat('markdown')}
           >
             Markdown
           </button>
           <button
-            className={`kb-segmented__item${draft.content_format === 'tiptap' ? ' kb-segmented__item--active' : ''}`}
+            className={`kb-seg__item${draft.content_format === 'tiptap' ? ' is-active' : ''}`}
             onClick={() => switchFormat('tiptap')}
           >
             Trực quan
@@ -217,14 +218,14 @@ export default function KBEditorView({
 
         <div className="kb-editor__meta-row">
           {/* Type */}
-          <div className="kb-segmented kb-segmented--small" role="radiogroup" aria-label="Kiểu bài">
+          <div className="kb-seg" role="radiogroup" aria-label="Kiểu bài">
             {TYPES.map(t => (
               <button
                 key={t.key}
                 type="button"
                 role="radio"
                 aria-checked={draft.type === t.key}
-                className={`kb-segmented__item${draft.type === t.key ? ' kb-segmented__item--active' : ''}`}
+                className={`kb-seg__item${draft.type === t.key ? ' is-active' : ''}`}
                 onClick={() => set('type', t.key)}
               >
                 {t.label}
@@ -235,7 +236,7 @@ export default function KBEditorView({
           <span className="kb-editor__meta-sep" />
 
           {/* Tags */}
-          <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="kb-editor__tags">
             {draft.tags.map(t => {
               const name = typeof t === 'string' ? t : t.name;
               return (
@@ -267,15 +268,7 @@ export default function KBEditorView({
           {/* URL input */}
           <input
             type="text"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              fontFamily: 'var(--kb-mono)',
-              fontSize: '0.85rem',
-              color: 'var(--kb-dim)',
-              outline: 'none',
-              minWidth: '160px',
-            }}
+            className="kb-editor__url"
             placeholder="URL nguồn (tùy chọn)"
             value={draft.url || ''}
             onChange={e => set('url', e.target.value)}
@@ -369,7 +362,7 @@ export default function KBEditorView({
                       {draft.body}
                     </ReactMarkdown>
                   ) : (
-                    <p style={{ color: 'var(--kb-faint)', fontStyle: 'italic' }}>Bản xem trước sẽ hiện ở đây…</p>
+                    <p className="kb-prose__empty">Bản xem trước sẽ hiện ở đây…</p>
                   )}
                 </div>
               </div>

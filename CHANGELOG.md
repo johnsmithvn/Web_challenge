@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## v6.33.0 — 2026-10-25
+
+### Added
+- **Nền trời dùng chung (`SkyBackground.jsx`, `sky.css`):** `TaskSkyBackground` đổi tên thành `SkyBackground` và tách CSS nền ra `sky.css` để module khác import được (Nhiệm vụ, Kiến thức, FX Lab). Prop `calm` tắt vật bay và bụi sao theo chuột. Sao băng đổi sang vệt sáng mint của bản thiết kế Kiến Thức (góc 32°).
+- **Knowledge — cột trái (`KBSidebar.jsx`, thay `KBSubHeader.jsx`):** tìm, Viết bài mới, 5 kiểu xem (rê chuột hiện phím), danh sách chủ đề có số bài (0 bài thì mờ, Chưa xếp chỉ hiện khi có), **Ghi chú của tôi**, nút Phím tắt. Điện thoại (≤860px): thanh trên với hai hàng viên cuộn ngang.
+- **Knowledge — Danh sách 4a (`KBListView.jsx`, `kbDeriveUtils.groupArticles`):** đầu danh sách luôn có (quả cầu màu, tên, số bài, định nghĩa, Xếp nhanh / Quản lý chủ đề, hàng thẻ + Quản lý thẻ); lọc **Loại** (kèm số) và **↔ Có liên kết** (`filterArticles` nhận `linked`); **Nhóm theo** Tháng / Chủ đề / Loại / Không, nhóm thu gọn được; thanh chọn nhiều nổi dính đáy; trạng thái trống của chủ đề có "Xếp nhanh · N bài chờ". Nhóm tính ở `CollectPage` nên `J`/`K` và ↑ ↓ ở trang đọc đi đúng thứ tự đang hiện.
+- **Knowledge — Quản lý chủ đề 4b (`KBTopicModal.jsx`, `useCollectionTopics.reorderTopics`):** kéo ⋮⋮ đổi thứ tự (pointer events, chạy cả cảm ứng; ↑ ↓ khi tay cầm được chọn), quả cầu màu mở bảng màu, sửa tên / định nghĩa tại chỗ, nhãn "Đang xem", Gộp / Xoá hiện khi rê (cảm ứng: ⋯); ô thêm có 7 màu, mặc định màu chưa dùng.
+- **Knowledge — Tổng quan 1a:** lời chào theo giờ + bầu trời nhỏ (bài có liên kết sáng và nối thành chòm, bấm → Sơ đồ); Xếp nhanh có vạch tiến độ và lưới chủ đề có phím số; Gần đây 5 bài có loại · chủ đề · ngày.
+- **Knowledge — trang đọc:** phím `F` đọc tập trung giờ chạy thật (trước chỉ có chữ trên nút); đường dẫn "Kiến thức / chủ đề / bài"; "+ Gán chủ đề" mở thẳng ô chọn; cột phải thêm **Lân cận** (sơ đồ sao nhỏ) và nhãn cùng chủ đề / cùng nguồn / cất cùng lúc ở Xung quanh.
+- Bài mới viết khi đang xem một chủ đề thì mặc định vào chủ đề đó.
+
+### Changed
+- **Knowledge — giao diện "Cực quang"** (bản thiết kế "Kiến Thức Redesign" 1a/2a): token `kb-tokens.css` viết lại (trời đêm, nhấn mint `#6EF2C7`, phụ violet / vàng; bản sáng là trời bình minh / hoàng hôn, nhấn violet), tiêu đề Unbounded thay Spectral, chữ Be Vietnam Pro, bỏ nhãn mono viết hoa; `collect.css` viết lại toàn bộ. Không `backdrop-filter` (trời phía sau chuyển động), hộp thoại nền đặc.
+- **Knowledge — Sơ đồ thành "bầu trời":** sao to theo số nối và sáng màu chủ đề, cạnh `[[ ]]` liền / cạnh thẻ chung đứt vàng, sao đang chọn có vòng violet; bấm sao không còn làm mô phỏng chạy lại từ đầu; cột phải có "Sao sáng nhất". Điện thoại: cột phải xuống dưới thay vì bị ẩn.
+- **Knowledge — Gallery:** thẻ so le, tiêu đề lên đầu, trích tối đa 4 dòng, chân thẻ là chủ đề + số liên kết. **Canvas:** đổi màu theo bảng mới, màu node lấy theo loại lúc vẽ (node cũ còn lưu màu cũ).
+- **Icon Kiến thức** đổi thành quyển sách mở (Navbar, Trang chủ, Landing); bỏ icon `brain` khỏi `AppIcon`.
+- `useCollectionTopics`: `moveTopic(id, dir)` thay bằng `reorderTopics(ids)`.
+- Tài liệu: `MODULE_KNOWLEDGE.md`, `FEATURES.md`, `DESIGN.md` (contract Knowledge, nền trời), `ARCHITECTURE.md`, `RULES.md` #15.
+
+### Removed
+- **Knowledge:** nút `?` nổi góc phải (vào bảng phím tắt bằng `?` hoặc nút ở cột trái); nút "Gắn thẻ" trong chọn nhiều (chỉ mở hộp quản lý thẻ, giờ vào bằng "Quản lý thẻ" ở đầu danh sách); hàng chip chủ đề dưới tiêu đề; các class / token cũ (`--kb-brass`, `--kb-serif`, `kb-subheader*`, `kb-help-btn`, `kb-rail-card*`, `kb-mode-*`, `kb-format-badge`…).
+
+### Notes
+- Không có migration. Đổi nền trời (sao băng) cần xem trên `/fx-lab` trước khi commit.
+
 ## v6.32.0 — 2026-10-25
 
 ### Added

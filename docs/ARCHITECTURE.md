@@ -30,7 +30,7 @@ src/
 ├─ contexts/           Auth, Theme, Toast
 ├─ utils/              logic thuần: kbDeriveUtils, calendarTimeUtils, lunarUtils, financeLogic, vaultCrypto
 ├─ data/               JSON tĩnh: taxonomy, template, holiday, quote, UI copy
-├─ styles/             CSS theo domain (kb-tokens, tasks-aurora, tasks-elf...); global.css giữ token chung
+├─ styles/             CSS theo domain (kb-tokens, sky — nền trời dùng chung, tasks-aurora, tasks-elf...); global.css giữ token chung
 ├─ extensions/         Tiptap MediaNode
 ├─ lib/supabase.js     Supabase singleton + graceful disabled mode
 └─ __tests__/          self-check node:assert phân theo 4 domain: tasks/, vault/, finance/, core/
@@ -107,15 +107,16 @@ useUserTasks
 ### Knowledge
 
 ```text
-CollectPage (view, lọc chủ đề / thẻ / tìm, bài đang đọc giữ bằng id)
-  ├─ KBSubHeader (tìm, kiểu xem, hàng chip chủ đề)
-  ├─ KBOverview (Xếp nhanh, Các chủ đề, Gặp lại hôm nay, Mở gần đây)
+CollectPage (view, lọc chủ đề / loại / có liên kết / thẻ / tìm, nhóm theo, bài đang đọc giữ bằng id)
+  ├─ SkyBackground calm (nền trời dùng chung với Nhiệm vụ)
+  ├─ KBSidebar (tìm, viết bài, kiểu xem, chủ đề)
+  ├─ KBOverview (lời chào + bầu trời nhỏ, Xếp nhanh, Các chủ đề, Gặp lại hôm nay, Gần đây)
   ├─ KBListView / KBGalleryView / KBGraphView / KBCanvasView
   ├─ KBReaderView (Xung quanh, backlink, mục lục, ghi chú cá nhân)
   ├─ KBEditorView (Markdown / Tiptap, chọn chủ đề + kiểu)
   └─ KBTopicModal / KBTopicPicker / KBTagModal / KBLinkModal
         ↓
-kbDeriveUtils (pure: filterArticles, contentKind, sourceKey, findNeighbors, suggestTopic, pickResurface, wiki links…)
+kbDeriveUtils (pure: filterArticles, groupArticles, contentKind, sourceKey, findNeighbors, suggestTopic, pickResurface, wiki links…)
         ↓
 useCollections / useCollectionTopics / useCollectionNotes / useTags
 ```

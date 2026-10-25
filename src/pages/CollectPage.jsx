@@ -8,10 +8,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from '../components/ConfirmModal';
 import SkeletonList from '../components/SkeletonList';
 import { useToast } from '../contexts/ToastContext';
+import SkyBackground from '../components/SkyBackground';
 import '../styles/collect.css';
 
 // Sub-components
-import KBSubHeader from '../components/kb/KBSubHeader';
+import KBSidebar from '../components/kb/KBSidebar';
 import KBListView from '../components/kb/KBListView';
 import KBGalleryView from '../components/kb/KBGalleryView';
 import KBGraphView from '../components/kb/KBGraphView';
@@ -24,7 +25,9 @@ import KBTagModal from '../components/kb/KBTagModal';
 import KBTopicModal from '../components/kb/KBTopicModal';
 import KBOverview from '../components/kb/KBOverview';
 
-import { filterArticles, pushRecent } from '../utils/kbDeriveUtils';
+import { filterArticles, pushRecent, deriveGraph, groupArticles, contentKind } from '../utils/kbDeriveUtils';
+
+const MOBILE_MQ = '(max-width: 768px)';
 
 // "Mở gần đây" — per-device convenience, so localStorage (RULES §4: new keys use vl_).
 const RECENT_KEY = 'vl_kb_recent';
@@ -35,13 +38,15 @@ const readRecent = () => {
 // Views Esc / "← Thư viện" can return to.
 const LIBRARY_VIEWS = ['overview', 'list', 'gallery', 'graph', 'canvas'];
 
-const MINE_HEADING = { name: 'Ghi chú của tôi', description: 'Ghi chú, trích dẫn của bạn và những bài bạn có ghi chú.' };
+const MINE_HEADING = { kind: 'mine', name: 'Ghi chú của tôi', description: 'Ghi chú, trích dẫn của bạn và những bài bạn có ghi chú.' };
+const UNSORTED_HEADING = { kind: 'none', name: 'Chưa xếp', description: 'Bài chưa vào chủ đề nào. Xếp nhanh từng bài ở Tổng quan, hoặc bấm Chọn để gán nhiều bài một lần.' };
+const ALL_HEADING = { kind: 'all', name: 'Tất cả bài' };
 
 export default function CollectPage() {
   const { user } = useAuth();
   const { items, isLoading, fetchItems, addItem, updateItem, updateItems, deleteItem } = useCollections();
   const {
-    topics, addTopic, updateTopic, moveTopic, deleteTopic, mergeTopics, seedStarterTopics,
+    topics, addTopic, updateTopic, reorderTopics, deleteTopic, mergeTopics, seedStarterTopics,
   } = useCollectionTopics();
   const { pendingTasks } = useUserTasks();
   const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag, deleteTag: deleteCentralTag } = useTags();
@@ -65,6 +70,18 @@ export default function CollectPage() {
   const [activeTagIds, setActiveTagIds] = useState([]);
   const [sort, setSort] = useState('new');
   const [filterTaskId, setFilterTaskId] = useState('');
+  const [kind, setKind] = useState(''); // contentKind, '' = mọi loại
+  const [linkedOnly, setLinkedOnly] = useState(false);
+  const [groupBy, setGroupBy] = useState('month'); // month | topic | kind | none
+
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia?.(MOBILE_MQ).matches ?? false);
+  useEffect(() => {
+    const mq = window.matchMedia?.(MOBILE_MQ);
+    if (!mq) return undefined;
+    const onChange = (e) => setIsMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   // Bulk mode
   const [bulk, setBulk] = useState(false);
@@ -124,17 +141,34 @@ export default function CollectPage() {
     return counts;
   }, [items]);
 
-  // Filtered & sorted list
-  const filteredArticles = useMemo(() => {
-    return filterArticles(articlesWithTasks, {
-      q: search,
-      tags: activeTagIds,
-      sort,
-      taskId: filterTaskId,
-      topic: topicFilter,
-      mine: mineOnly,
-    });
-  }, [articlesWithTasks, search, activeTagIds, sort, filterTaskId, topicFilter, mineOnly]);
+  // [[wiki]] links across the whole kho: the "N liên kết" count and the "Có liên kết" filter
+  const wikiEdges = useMemo(() => deriveGraph(items, { inferTagLinks: false }).edges, [items]);
+  const linkedIds = useMemo(() => new Set(wikiEdges.flatMap(e => [e.from, e.to])), [wikiEdges]);
+
+  // List before the Loại filter — the Loại segmented counts come from it
+  const baseArticles = useMemo(() => filterArticles(articlesWithTasks, {
+    q: search,
+    tags: activeTagIds,
+    sort,
+    taskId: filterTaskId,
+    topic: topicFilter,
+    mine: mineOnly,
+    linked: linkedOnly ? linkedIds : null,
+  }), [articlesWithTasks, search, activeTagIds, sort, filterTaskId, topicFilter, mineOnly, linkedOnly, linkedIds]);
+
+  const kindCounts = useMemo(() => {
+    const counts = {};
+    baseArticles.forEach(a => { const k = contentKind(a); counts[k] = (counts[k] || 0) + 1; });
+    return counts;
+  }, [baseArticles]);
+
+  // Grouped for the list; the flat order (J/K, ↑↓ in the reader, Gallery) follows the groups
+  const groups = useMemo(() => groupArticles(
+    kind ? baseArticles.filter(a => contentKind(a) === kind) : baseArticles, groupBy, { topics },
+  ), [baseArticles, kind, groupBy, topics]);
+  const filteredArticles = useMemo(() => groups.flatMap(g => g.items), [groups]);
+
+  const mineCount = useMemo(() => filterArticles(articlesWithTasks, { mine: true }).length, [articlesWithTasks]);
 
   // Sơ đồ / Canvas: chỉ lọc theo chủ đề
   const topicArticles = useMemo(
@@ -142,29 +176,46 @@ export default function CollectPage() {
     [articlesWithTasks, topicFilter],
   );
 
-  const hasFilter = !!(search || topicFilter || mineOnly || activeTagIds.length > 0 || filterTaskId);
+  // Filters inside the list ("Xoá lọc"); the topic / "Ghi chú của tôi" scope is the sidebar's
+  const listFiltering = !!(search || kind || linkedOnly || activeTagIds.length > 0 || filterTaskId);
+  const hasFilter = listFiltering || !!(topicFilter || mineOnly);
 
-  const clearFilters = useCallback(() => {
+  const clearListFilters = useCallback(() => {
     setSearch('');
-    setTopicFilter('');
-    setMineOnly(false);
+    setKind('');
+    setLinkedOnly(false);
     setActiveTagIds([]);
     setFilterTaskId('');
     setCursor(0);
   }, []);
 
-  // Heading above the list: the topic page, or "Ghi chú của tôi"
+  const clearFilters = useCallback(() => {
+    clearListFilters();
+    setTopicFilter('');
+    setMineOnly(false);
+  }, [clearListFilters]);
+
+  // Heading above the list: topic page, Chưa xếp, Ghi chú của tôi, or Tất cả bài
   const currentTopic = topicById.get(topicFilter) || null;
   const listHeading = currentTopic
-    ? { name: currentTopic.name, description: currentTopic.description, color: currentTopic.color, manage: true }
-    : mineOnly ? MINE_HEADING : null;
+    ? { kind: 'topic', name: currentTopic.name, description: currentTopic.description, color: currentTopic.color, count: topicCounts[currentTopic.id] || 0 }
+    : topicFilter === 'none' ? { ...UNSORTED_HEADING, count: topicCounts.none }
+      : mineOnly ? { ...MINE_HEADING, count: mineCount }
+        : { ...ALL_HEADING, count: topicCounts.all };
+
+  // "Xếp nhanh" lives in Tổng quan, which shows every bài
+  const goQuickSort = useCallback(() => {
+    setTopicFilter('');
+    setMineOnly(false);
+    setView('overview');
+  }, []);
 
   // Chip row / Tổng quan → list filtered to one topic (a chip replaces "Ghi chú của tôi")
   const chooseTopic = useCallback((topicId) => {
     setTopicFilter(topicId);
     setMineOnly(false);
     setCursor(0);
-    if (topicId && view === 'overview') setView('list');
+    if (view === 'overview') setView('list');
   }, [view]);
 
   const openMine = useCallback(() => {
@@ -531,37 +582,45 @@ export default function CollectPage() {
   if (!user) {
     return (
       <div className="kb-page">
-        <div className="kb-empty-state">
-          <span className="kb-empty-state__icon">🔒</span>
-          <h2 className="kb-empty-state__title">Đăng nhập để xem Kho Kiến Thức</h2>
+        <div className="kb-empty kb-empty--page">
+          <h2 className="kb-empty__title">Đăng nhập để xem Kho Kiến Thức</h2>
         </div>
       </div>
     );
   }
 
+  const isDoc = view === 'reader' || view === 'editor';
+
   return (
     <div className="kb-page">
+      <SkyBackground isMobile={isMobile} calm />
       {ConfirmModal}
 
-      {/* Sub-header (only visible when not in reader or editor mode) */}
-      {view !== 'reader' && view !== 'editor' && (
-        <KBSubHeader
+      <div className={`kb-shell${isDoc ? ' kb-shell--doc' : ''}`}>
+      {/* Cột trái — ẩn ở trang đọc / soạn để có chỗ đọc */}
+      {!isDoc && (
+        <KBSidebar
           view={view}
           onViewChange={setView}
           search={search}
           onSearchChange={q => { setSearch(q); setCursor(0); }}
-          articleCount={filteredArticles.length}
+          articleCount={topicCounts.all}
+          linkCount={wikiEdges.length}
           onNewArticle={() => openEditor(null)}
           topics={topics}
           topicFilter={topicFilter}
+          mineOnly={mineOnly}
           onTopicFilter={chooseTopic}
+          onOpenMine={openMine}
           topicCounts={topicCounts}
+          mineCount={mineCount}
           onManageTopics={() => setTopicsOpen(true)}
+          onShowKeys={() => setKeysOpen(true)}
         />
       )}
 
       {/* Content views */}
-      <div className="kb-content">
+      <main className="kb-content">
         {isLoading ? (
           <SkeletonList rows={6} gap="6px" label="Đang tải kho kiến thức" />
         ) : view === 'overview' && !search.trim() ? (
@@ -577,18 +636,33 @@ export default function CollectPage() {
             onManageTopics={() => setTopicsOpen(true)}
             onNewArticle={() => openEditor(null)}
             onAssign={handleAssignTopic}
+            linkCount={wikiEdges.length}
+            edges={wikiEdges}
+            onOpenGraph={() => setView('graph')}
           />
         ) : view === 'list' || view === 'overview' ? (
           // Tổng quan + đang gõ tìm → kết quả hiện như Danh sách
           <KBListView
-            articles={filteredArticles}
-            allTags={kbTags}
+            groups={groups}
+            total={filteredArticles.length}
+            scopeTags={kbTags}
             topics={topics}
             heading={listHeading}
+            unsortedCount={topicCounts.none}
             onManageTopics={() => setTopicsOpen(true)}
-            cursor={cursor}
+            onManageTags={() => setTagsOpen(true)}
+            onQuickSort={goQuickSort}
+            onNewArticle={() => openEditor(null)}
+            cursorId={filteredArticles[cursor]?.id}
             activeTagIds={activeTagIds}
             onToggleTag={toggleTag}
+            kind={kind}
+            kindCounts={kindCounts}
+            onKind={k => { setKind(k); setCursor(0); }}
+            linkedOnly={linkedOnly}
+            onToggleLinked={() => { setLinkedOnly(v => !v); setCursor(0); }}
+            groupBy={groupBy}
+            onGroupBy={g => { setGroupBy(g); setCursor(0); }}
             sort={sort}
             onSort={setSort}
             bulk={bulk}
@@ -597,14 +671,13 @@ export default function CollectPage() {
             onTogglePick={togglePick}
             onSelectAll={selectAll}
             onDeselectAll={deselectAll}
-            onBulkTag={() => setTagsOpen(true)}
             onBulkAssign={handleBulkAssign}
             onBulkDelete={handleBulkDelete}
             onOpenReader={openReader}
             onOpenEditor={openEditor}
             onDelete={handleDeleteArticle}
-            hasFilter={hasFilter}
-            onClearFilter={clearFilters}
+            filtering={listFiltering}
+            onClearFilter={clearListFilters}
           />
         ) : view === 'gallery' ? (
           <KBGalleryView
@@ -657,19 +730,12 @@ export default function CollectPage() {
             topics={topics}
             allArticles={articlesWithTasks}
             isNew={!selectedArticle}
+            defaultTopicId={currentTopic?.id ?? null}
             onOpenLinkModal={() => setLinkOpen(true)}
           />
         ) : null}
+      </main>
       </div>
-
-      {/* Floating help button (?) */}
-      <button
-        className="kb-help-btn"
-        onClick={() => setKeysOpen(true)}
-        title="Bảng phím tắt (?)"
-      >
-        ?
-      </button>
 
       {/* Modals & Overlays */}
       <KBShortcutsModal
@@ -707,10 +773,11 @@ export default function CollectPage() {
           onClose={() => setTopicsOpen(false)}
           topics={topics}
           counts={topicCounts}
+          currentId={topicFilter}
           onSeed={seedStarterTopics}
           onAdd={addTopic}
           onUpdate={updateTopic}
-          onMove={moveTopic}
+          onReorder={reorderTopics}
           onMerge={handleMergeTopic}
           onDelete={handleDeleteTopic}
         />

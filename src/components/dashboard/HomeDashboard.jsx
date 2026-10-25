@@ -1152,7 +1152,7 @@ export default function HomeDashboard() {
 
             <Link to="/collect" className="dash-mod-card dash-mod--knowledge">
               <div className="dash-mod-card__top">
-                <span className="dash-mod-card__icon-box"><AppIcon name="brain" size={15} weight="fill" /></span>
+                <span className="dash-mod-card__icon-box"><AppIcon name="book" size={15} weight="fill" /></span>
                 <span className="dash-mod-card__name">Knowledge</span>
                 <AppIcon name="arrowUpRight" size={14} className="dash-mod-card__arrow" />
               </div>
