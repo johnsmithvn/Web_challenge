@@ -8,6 +8,8 @@ import {
   decryptVaultItem,
   encryptVaultItem,
   unlockVaultKey,
+  unlockVaultKeyDetails,
+  importVaultKeyFromRaw,
   rekeyVaultItems,
   rotateVaultPassphrase,
   recoverVaultWithKey,
@@ -32,6 +34,8 @@ const BACKUP_FORMAT = 'lifehub-vault-backup';
 const BACKUP_VERSION = 1;
 
 const VAULT_CACHE_PREFIX = 'vl_vault_cache_';
+const VAULT_SESSION_PREFIX = 'vl_vault_session_';
+const VAULT_SESSION_PREF_PREFIX = 'vl_vault_pref_ttl_';
 
 // Chỉ lưu ciphertext đã mã hoá (config, items) vào cache máy — KHÔNG lưu key, passphrase hay plaintext.
 function saveVaultCache(userId, config, items) {
@@ -57,6 +61,76 @@ function loadVaultCache(userId) {
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
+  }
+}
+
+// ── Quản lý phiên mở khóa tạm thời có thời hạn (Session TTL) ───────────────
+function saveVaultSession(userId, rawDek, ttlMinutes) {
+  if (!userId || !rawDek) return;
+  try {
+    if (!ttlMinutes || ttlMinutes <= 0) {
+      localStorage.removeItem(`${VAULT_SESSION_PREFIX}${userId}`);
+      return;
+    }
+    const expiresAt = Date.now() + ttlMinutes * 60 * 1000;
+    const payload = {
+      v: 1,
+      rawDek,
+      ttlMinutes,
+      expiresAt,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(`${VAULT_SESSION_PREFIX}${userId}`, JSON.stringify(payload));
+  } catch (e) {
+    logger.warn('[useAccounts] failed to save vault session:', e);
+  }
+}
+
+function loadVaultSession(userId) {
+  if (!userId) return null;
+  try {
+    const raw = localStorage.getItem(`${VAULT_SESSION_PREFIX}${userId}`);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data?.rawDek || !data?.expiresAt) {
+      localStorage.removeItem(`${VAULT_SESSION_PREFIX}${userId}`);
+      return null;
+    }
+    if (Date.now() >= data.expiresAt) {
+      localStorage.removeItem(`${VAULT_SESSION_PREFIX}${userId}`);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function clearVaultSession(userId) {
+  if (!userId) return;
+  try {
+    localStorage.removeItem(`${VAULT_SESSION_PREFIX}${userId}`);
+  } catch {
+    // Ignore
+  }
+}
+
+export function savePreferredVaultTtl(userId, ttlMinutes) {
+  if (!userId) return;
+  try {
+    localStorage.setItem(`${VAULT_SESSION_PREF_PREFIX}${userId}`, String(ttlMinutes));
+  } catch {
+    // Ignore
+  }
+}
+
+export function loadPreferredVaultTtl(userId) {
+  if (!userId) return 0;
+  try {
+    const val = localStorage.getItem(`${VAULT_SESSION_PREF_PREFIX}${userId}`);
+    return val !== null ? parseInt(val, 10) : 0;
+  } catch {
+    return 0;
   }
 }
 
@@ -125,7 +199,9 @@ export function useAccounts() {
   const [vaultStatus, setVaultStatus] = useState(enabled ? 'loading' : 'signed-out');
   const [vaultError, setVaultError] = useState('');
   const [recoveryKey, setRecoveryKey] = useState(null);
+  const [sessionInfo, setSessionInfo] = useState(null); // { ttlMinutes, expiresAt }
   const keyRef = useRef(null);
+  const rawDekRef = useRef(null);
   const configRef = useRef(null);
   const sessionRef = useRef(0);
   const fetchRef = useRef(0);
@@ -195,6 +271,7 @@ export function useAccounts() {
     setItems([]);
     setIsLoading(false);
     keyRef.current = null;
+    rawDekRef.current = null;
     configRef.current = null;
     try {
       const { data, error } = await supabase.from('vault_config')
@@ -217,13 +294,64 @@ export function useAccounts() {
         }
       }
       configRef.current = data;
-      setVaultStatus(data ? 'locked' : 'setup');
       saveVaultCache(userId, data, undefined);
+
+      if (!data) {
+        setVaultStatus('setup');
+        return;
+      }
+
+      // Kiểm tra xem có phiên mở khoá hợp lệ còn hạn trong localStorage không
+      const activeSession = loadVaultSession(userId);
+      if (activeSession?.rawDek) {
+        try {
+          const key = await importVaultKeyFromRaw(activeSession.rawDek);
+          if (sessionRef.current !== session) return;
+          keyRef.current = key;
+          rawDekRef.current = activeSession.rawDek;
+          const loaded = await fetchAll(key);
+          if (sessionRef.current !== session) return;
+          if (loaded) {
+            setSessionInfo({
+              ttlMinutes: activeSession.ttlMinutes,
+              expiresAt: activeSession.expiresAt,
+            });
+            setVaultStatus('unlocked');
+            return;
+          }
+        } catch (e) {
+          logger.warn('[useAccounts] auto-unlock session invalid or damaged:', e);
+          clearVaultSession(userId);
+        }
+      }
+
+      setVaultStatus('locked');
     } catch (error) {
       if (sessionRef.current !== session) return;
       const cached = loadVaultCache(userId);
       if (cached?.config) {
         configRef.current = cached.config;
+        const activeSession = loadVaultSession(userId);
+        if (activeSession?.rawDek) {
+          try {
+            const key = await importVaultKeyFromRaw(activeSession.rawDek);
+            if (sessionRef.current !== session) return;
+            keyRef.current = key;
+            rawDekRef.current = activeSession.rawDek;
+            const loaded = await fetchAll(key);
+            if (sessionRef.current !== session) return;
+            if (loaded) {
+              setSessionInfo({
+                ttlMinutes: activeSession.ttlMinutes,
+                expiresAt: activeSession.expiresAt,
+              });
+              setVaultStatus('unlocked');
+              return;
+            }
+          } catch {
+            clearVaultSession(userId);
+          }
+        }
         setVaultStatus('locked');
         return;
       }
@@ -231,7 +359,7 @@ export function useAccounts() {
       setVaultError('Vault encryption schema is not available yet. Run the v6.2 migration first.');
       setVaultStatus('error');
     }
-  }, [enabled, userId]);
+  }, [enabled, userId, fetchAll]);
 
   useEffect(() => {
     if (enabled) loadVaultConfig();
@@ -239,21 +367,24 @@ export function useAccounts() {
       sessionRef.current += 1;
       fetchRef.current += 1;
       keyRef.current = null;
+      rawDekRef.current = null;
       configRef.current = null;
       setItems([]);
       setIsLoading(false);
       setVaultStatus('signed-out');
       setVaultError('');
+      setSessionInfo(null);
     }
     return () => {
       sessionRef.current += 1;
       fetchRef.current += 1;
       keyRef.current = null;
+      rawDekRef.current = null;
       configRef.current = null;
     };
   }, [enabled, userId, loadVaultConfig]);
 
-  const setupVault = useCallback(async (passphrase) => {
+  const setupVault = useCallback(async (passphrase, { ttlMinutes = 0 } = {}) => {
     if (!enabled || vaultStatus !== 'setup') return { ok: false, error: 'Vault cannot be set up now' };
     const session = sessionRef.current;
     try {
@@ -265,7 +396,7 @@ export function useAccounts() {
         return { ok: false, error: 'Vault is already configured for this account. Please unlock with your passphrase.' };
       }
 
-      const { config, key, recoveryKey: initialKey } = await createVaultConfig(passphrase, userId);
+      const { config, key, rawDek, recoveryKey: initialKey } = await createVaultConfig(passphrase, userId);
       if (sessionRef.current !== session) {
         return { ok: false, error: 'Vault state changed; try again' };
       }
@@ -282,6 +413,7 @@ export function useAccounts() {
       configRef.current = config;
       const unlockedSession = ++sessionRef.current;
       keyRef.current = key;
+      rawDekRef.current = rawDek;
       setVaultStatus('loading');
       setVaultError('');
       const loaded = await fetchAll(key);
@@ -290,9 +422,22 @@ export function useAccounts() {
       }
       if (!loaded) {
         keyRef.current = null;
+        rawDekRef.current = null;
         setItems([]);
         setVaultStatus('locked');
         return { ok: false, error: 'Could not load the encrypted Vault' };
+      }
+      if (ttlMinutes > 0 && rawDek) {
+        saveVaultSession(userId, rawDek, ttlMinutes);
+        savePreferredVaultTtl(userId, ttlMinutes);
+        setSessionInfo({
+          ttlMinutes,
+          expiresAt: Date.now() + ttlMinutes * 60 * 1000,
+        });
+      } else {
+        clearVaultSession(userId);
+        savePreferredVaultTtl(userId, 0);
+        setSessionInfo(null);
       }
       setVaultStatus('unlocked');
       return { ok: true };
@@ -305,19 +450,20 @@ export function useAccounts() {
     }
   }, [enabled, userId, vaultStatus, fetchAll]);
 
-  const unlockVault = useCallback(async (passphrase) => {
+  const unlockVault = useCallback(async (passphrase, { ttlMinutes = 0 } = {}) => {
     if (!enabled || vaultStatus !== 'locked' || !configRef.current) {
       return { ok: false, error: 'Vault cannot be unlocked now' };
     }
     const session = sessionRef.current;
     const config = configRef.current;
     try {
-      const key = await unlockVaultKey(passphrase, userId, config);
+      const { key, rawDek } = await unlockVaultKeyDetails(passphrase, userId, config);
       if (sessionRef.current !== session || configRef.current !== config) {
         return { ok: false, error: 'Vault state changed; try again' };
       }
       const unlockedSession = ++sessionRef.current;
       keyRef.current = key;
+      rawDekRef.current = rawDek;
       setVaultStatus('loading');
       setVaultError('');
       const loaded = await fetchAll(key);
@@ -326,9 +472,22 @@ export function useAccounts() {
       }
       if (!loaded) {
         keyRef.current = null;
+        rawDekRef.current = null;
         setItems([]);
         setVaultStatus('locked');
         return { ok: false, error: 'Could not load the encrypted Vault' };
+      }
+      if (ttlMinutes > 0 && rawDek) {
+        saveVaultSession(userId, rawDek, ttlMinutes);
+        savePreferredVaultTtl(userId, ttlMinutes);
+        setSessionInfo({
+          ttlMinutes,
+          expiresAt: Date.now() + ttlMinutes * 60 * 1000,
+        });
+      } else {
+        clearVaultSession(userId);
+        savePreferredVaultTtl(userId, 0);
+        setSessionInfo(null);
       }
       setVaultStatus('unlocked');
       return { ok: true };
@@ -345,7 +504,7 @@ export function useAccounts() {
       return { ok: false, error: 'Vault is not ready' };
     }
     try {
-      const { key: newKey, config: newConfig } = await rotateVaultPassphrase(
+      const { key: newKey, rawDek, config: newConfig } = await rotateVaultPassphrase(
         currentPassphrase,
         newPassphrase,
         userId,
@@ -365,19 +524,25 @@ export function useAccounts() {
       if (error) throw error;
       configRef.current = newConfig;
       keyRef.current = newKey;
+      rawDekRef.current = rawDek;
+      if (sessionInfo?.ttlMinutes > 0 && rawDek) {
+        saveVaultSession(userId, rawDek, sessionInfo.ttlMinutes);
+      }
       return { ok: true };
     } catch (err) {
       logger.error('[useAccounts] changePassphrase error:', err.message);
       return { ok: false, error: err.message || 'Could not change passphrase' };
     }
-  }, [enabled, userId]);
+  }, [enabled, userId, sessionInfo]);
 
   const recoverVault = useCallback(async (recoveryKeyInput, newPassphrase) => {
+    const options = (typeof arguments !== 'undefined' && arguments[2]) || {};
+    const ttlMinutes = options.ttlMinutes || 0;
     if (!enabled || !configRef.current) {
       return { ok: false, error: 'Vault is not ready for recovery' };
     }
     try {
-      const { key: newKey, config: newConfig, newRecoveryKey } = await recoverVaultWithKey(
+      const { key: newKey, rawDek, config: newConfig, newRecoveryKey } = await recoverVaultWithKey(
         recoveryKeyInput,
         newPassphrase,
         userId,
@@ -406,15 +571,29 @@ export function useAccounts() {
 
       configRef.current = newConfig;
       keyRef.current = newKey;
+      rawDekRef.current = rawDek;
       setRecoveryKey(newRecoveryKey);
       setVaultStatus('loading');
       setVaultError('');
       const loaded = await fetchAll(newKey);
       if (!loaded) {
         keyRef.current = null;
+        rawDekRef.current = null;
         setItems([]);
         setVaultStatus('locked');
         return { ok: false, error: 'Could not load the encrypted Vault' };
+      }
+      if (ttlMinutes > 0 && rawDek) {
+        saveVaultSession(userId, rawDek, ttlMinutes);
+        savePreferredVaultTtl(userId, ttlMinutes);
+        setSessionInfo({
+          ttlMinutes,
+          expiresAt: Date.now() + ttlMinutes * 60 * 1000,
+        });
+      } else {
+        clearVaultSession(userId);
+        savePreferredVaultTtl(userId, 0);
+        setSessionInfo(null);
       }
       setVaultStatus('unlocked');
       return { ok: true, newRecoveryKey };
@@ -423,6 +602,21 @@ export function useAccounts() {
       return { ok: false, error: err.message || 'Could not recover Vault' };
     }
   }, [enabled, userId, fetchAll]);
+
+  const updateSessionTtl = useCallback((ttlMinutes) => {
+    if (!userId) return;
+    savePreferredVaultTtl(userId, ttlMinutes);
+    if (ttlMinutes <= 0) {
+      clearVaultSession(userId);
+      setSessionInfo(null);
+    } else if (rawDekRef.current) {
+      saveVaultSession(userId, rawDekRef.current, ttlMinutes);
+      setSessionInfo({
+        ttlMinutes,
+        expiresAt: Date.now() + ttlMinutes * 60 * 1000,
+      });
+    }
+  }, [userId]);
 
   /* ── Backup / restore ─────────────────────────────────────────────
      Export KHÔNG cần key: nó chỉ copy ciphertext + vault_config, nên sao lưu
@@ -469,11 +663,14 @@ export function useAccounts() {
     sessionRef.current += 1;
     fetchRef.current += 1;
     keyRef.current = null;
+    rawDekRef.current = null;
+    clearVaultSession(userId);
+    setSessionInfo(null);
     setItems([]);
     setIsLoading(false);
     setVaultError('');
     setVaultStatus(configRef.current ? 'locked' : 'setup');
-  }, []);
+  }, [userId]);
 
   /* Restore CHỈ chạy vào Vault TRỐNG. Không xoá gì cả → không có đường mất data,
      nên không cần dialog "bạn có chắc". Cùng pattern migration v6.2 đã dùng
@@ -871,5 +1068,8 @@ export function useAccounts() {
     toggleFavorite,
     setAuthState,
     setCodeUsed,
+    sessionInfo,
+    updateSessionTtl,
+    preferredTtl: loadPreferredVaultTtl(userId),
   };
 }

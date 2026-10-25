@@ -109,6 +109,7 @@ export async function createVaultConfig(passphrase, userId) {
 
   return {
     key: await importDek(rawDek),
+    rawDek: toBase64(rawDek),
     recoveryKey,
     config: {
       user_id: userId,
@@ -124,8 +125,10 @@ export async function createVaultConfig(passphrase, userId) {
   };
 }
 
-/** Derive the KEK again and unwrap the in-memory DEK. */
-export async function unlockVaultKey(passphrase, userId, config) {
+/**
+ * Derive the KEK, unwrap the in-memory DEK, and return both the CryptoKey and raw DEK base64.
+ */
+export async function unlockVaultKeyDetails(passphrase, userId, config) {
   validateVaultPassphrase(passphrase);
   requireId(userId, 'userId');
   validateConfig(config);
@@ -148,10 +151,24 @@ export async function unlockVaultKey(passphrase, userId, config) {
       kek,
       wrapped
     );
-    return importDek(new Uint8Array(rawDek));
+    const rawDekBytes = new Uint8Array(rawDek);
+    const key = await importDek(rawDekBytes);
+    return { key, rawDek: toBase64(rawDekBytes) };
   } catch {
     throw new Error('Wrong passphrase or damaged vault configuration');
   }
+}
+
+/** Derive the KEK again and unwrap the in-memory DEK. Backward-compatible. */
+export async function unlockVaultKey(passphrase, userId, config) {
+  const { key } = await unlockVaultKeyDetails(passphrase, userId, config);
+  return key;
+}
+
+/** Import a raw DEK base64 string directly into a WebCrypto AES-GCM CryptoKey. */
+export async function importVaultKeyFromRaw(rawDekBase64) {
+  const bytes = fromBase64(rawDekBase64, 'raw DEK');
+  return importDek(bytes);
 }
 
 /** Encrypt one complete Vault item. Every user-authored property stays inside payload. */
@@ -318,6 +335,7 @@ export async function rotateVaultPassphrase(currentPassphrase, newPassphrase, us
 
   return {
     key: await importDek(new Uint8Array(rawDekBuffer)),
+    rawDek: toBase64(new Uint8Array(rawDekBuffer)),
     newRecoveryKey: freshRecoveryKey,
     config: {
       ...config,
@@ -423,6 +441,7 @@ export async function recoverVaultWithKey(recoveryKey, newPassphrase, userId, co
 
   return {
     key: await importDek(new Uint8Array(rawDekBuffer)),
+    rawDek: toBase64(new Uint8Array(rawDekBuffer)),
     newRecoveryKey: freshRecoveryKey,
     config: {
       ...config,

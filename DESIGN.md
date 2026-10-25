@@ -1216,7 +1216,9 @@ Types/Tags filter bar is gone.
 - **Standard groups.** `groupPresets` is 8 plain-language groups (Tài chính has 4 children) —
   the shared vocabulary for the group picker, the bulk bar and the title presets; names must read
   without explanation and must not look alike at a glance (no "Nền tảng", "Định danh",
-  "Tài khoản chính" — it reads as "Tài chính"; it is "Google · Apple · Microsoft"). Templates carry a default `group` used when an
+  "Tài khoản chính" — it reads as "Tài chính"; Apple ID / Microsoft / GitHub / ChatGPT are
+  "Công nghệ"). One sign-in = one item, so there is no "Google" title preset: a Google account
+  *is* the Gmail mailbox, one Email account item. Templates carry a default `group` used when an
   item is created outside any group. A test fails if a title-preset key or a template group
   drifts outside the list, so the standard cannot silently fork.
 - **Group picker = one `<select>`.** `GroupPicker` (exported from `AccountDetail.jsx`) sits next

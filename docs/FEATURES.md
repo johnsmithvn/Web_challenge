@@ -346,16 +346,16 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
 - **Tiêu đề = tên dịch vụ** (VIB, Gmail, Shopee), không phải username. Ô tiêu đề ở chế độ Edit xổ gợi ý:
   tên đã dùng trong vault + danh sách dịch vụ hay dùng (`titlePresets`); chọn một tên khi item chưa có nhóm
   thì nhóm được điền theo. Gõ tên khác vẫn được.
-  Quy chuẩn: hộp thư ở nhà cung cấp (Email account) → Gmail / Outlook / iCloud Mail; tài khoản ở nhà cung cấp
-  đăng nhập bằng email khác (Account) → Google / Microsoft / Apple ID. Gợi ý lọc theo loại item nên không
-  xổ cả "Gmail" lẫn "Google" cho cùng một thứ.
-- **Bộ nhóm chuẩn (8 nhóm):** Tài chính (Ngân hàng · Ví điện tử · Thẻ · Đầu tư), Email, Google · Apple · Microsoft, Mạng xã hội, Mua sắm & giải trí, Công việc, Giấy tờ & SĐT, Wi-Fi & thiết bị.
-  Chọn bằng hàng nút có icon ở chế độ Edit và thanh Move to group (nhóm đã dùng đứng trước); chọn Tài chính
-  thì hiện hàng nhóm con; **Other…** để gõ nhóm khác ("/" tạo nhóm con). Item mới không đứng trong nhóm nào
+  Quy chuẩn: **một lần đăng nhập = một item**. Hộp thư (Email account) → Gmail / Outlook / iCloud Mail;
+  tài khoản Google chính là hộp thư Gmail đó, không tạo thêm item "Google" — Gemini, Google One, Drive… ghi
+  vào chính item Gmail. Tài khoản riêng ở công ty khác đăng nhập bằng email (Account) → Microsoft / Apple ID.
+- **Bộ nhóm chuẩn (8 nhóm):** Tài chính (Ngân hàng · Ví điện tử · Thẻ · Đầu tư), Email, Công nghệ (Apple ID, Microsoft, GitHub, ChatGPT…), Mạng xã hội, Mua sắm & giải trí, Công việc, Giấy tờ & SĐT, Wi-Fi & thiết bị.
+  Chọn ở ô Group cạnh ô loại item (chế độ Edit) và thanh Move to group, nhóm đã dùng đứng trước; Tài chính
+  xổ thành Ngân hàng / Thẻ / …; **New group…** để gõ nhóm khác ("/" tạo nhóm con). Item mới không đứng trong nhóm nào
   vào nhóm chuẩn của loại (Thẻ → Tài chính/Thẻ, Email account → Email, Identity → Giấy tờ & SĐT,
   Wi-Fi → Wi-Fi & thiết bị, Server / Database / API key → Công việc).
 - **Chuyển nhóm hàng loạt:** nút **Select** ở đầu danh sách → tick nhiều item (hoặc "Select all" theo bộ
-  lọc đang xem) → chọn nhóm ở thanh **Move to group** → Move. Other… gõ tên chưa có là tạo nhóm, Ungrouped là
+  lọc đang xem) → chọn nhóm ở thanh **Move to group** → Move. New group… gõ tên chưa có là tạo nhóm, Ungrouped là
   bỏ nhóm. **+ New group** ở cột nhóm mở thẳng chế độ chọn ở All items, ô gõ tên nhóm mở sẵn.
 - **Email account (EML) và Identity làm gốc:** hộp thư nên lưu bằng loại Email account — tiêu đề đặt tự
   do ("Gmail", "Gmail công việc"), địa chỉ ở field Email address; Roots nhận gốc theo field đó. Mỗi số

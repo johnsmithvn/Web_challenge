@@ -50,7 +50,8 @@ export default function AccountsPage() {
   const { user } = useAuth();
   const { items, isLoading, saveItem, createItem, deleteItem, toggleFavorite,
     setAuthState, setCodeUsed, vaultStatus, vaultError,
-    setupVault, unlockVault, lockVault, changePassphrase, recoverVault, recoveryKey, exportVault, restoreVault } = useAccounts();
+    setupVault, unlockVault, lockVault, changePassphrase, recoverVault, recoveryKey, exportVault, restoreVault,
+    sessionInfo, updateSessionTtl, preferredTtl } = useAccounts();
   const { showToast } = useToast();
   const { confirm, ConfirmModal } = useConfirm();
 
@@ -64,6 +65,7 @@ export default function AccountsPage() {
   const [screen, setScreen] = useState('home');   // 'home' | 'list' | 'detail' — chỉ có nghĩa dưới 900px
   const [pickerOpen, setPickerOpen] = useState(false);
   const [changePassOpen, setChangePassOpen] = useState(false);
+  const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [recoveryKitKey, setRecoveryKitKey] = useState(null);
 
   useEffect(() => {
@@ -368,6 +370,7 @@ export default function AccountsPage() {
       <VaultGate
         status={vaultStatus}
         error={vaultError}
+        preferredTtl={preferredTtl}
         onSetup={setupVault}
         onUnlock={unlockVault}
         onRecover={recoverVault}
@@ -419,6 +422,15 @@ export default function AccountsPage() {
               <p>Titles, usernames, URLs, notes, tags, fields, codes and history are sent to Supabase only as AES-GCM ciphertext.</p>
             </div>
           </div>
+          <button
+            className="acc-act"
+            onClick={() => setSessionModalOpen(true)}
+            title="Cài đặt thời hạn mở khóa két"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+          >
+            <AppIcon name="clock" size={14} />
+            <span>{sessionInfo ? formatTtlShort(sessionInfo.expiresAt) : 'Thời hạn'}</span>
+          </button>
           <button className="acc-act" onClick={() => setChangePassOpen(true)}>Đổi mật khẩu</button>
           {/* Mobile: hai nút này thành nút icon 44px; chữ giấu bằng clip nên tên truy cập vẫn còn */}
           <button className="acc-act acc-head__icon" onClick={handleLock}>
@@ -729,6 +741,18 @@ export default function AccountsPage() {
         onChangePassphrase={changePassphrase}
       />
 
+      <VaultSessionModal
+        isOpen={sessionModalOpen}
+        onClose={() => setSessionModalOpen(false)}
+        sessionInfo={sessionInfo}
+        preferredTtl={preferredTtl}
+        onUpdateTtl={(ttl) => {
+          updateSessionTtl(ttl);
+          showToast(ttl > 0 ? `Đã lưu thời hạn phiên (${formatTtlLabel(ttl)})` : 'Đã tắt lưu phiên mở khóa', { icon: 'check' });
+        }}
+        onLock={handleLock}
+      />
+
       <RecoveryKeyModal
         recoveryKey={recoveryKitKey}
         onClose={() => setRecoveryKitKey(null)}
@@ -858,6 +882,127 @@ function ChangePassphraseModal({ isOpen, onClose, onChangePassphrase }) {
   );
 }
 
+function formatTtlLabel(mins) {
+  if (!mins || mins <= 0) return 'Không lưu';
+  if (mins === 15) return '15 phút';
+  if (mins === 60) return '1 giờ';
+  if (mins === 480) return '8 giờ';
+  if (mins === 1440) return '1 ngày';
+  if (mins === 10080) return '7 ngày';
+  if (mins === 43200) return '30 ngày';
+  return `${mins} phút`;
+}
+
+function formatTtlShort(expiresAt) {
+  if (!expiresAt) return 'Thời hạn';
+  const diff = expiresAt - Date.now();
+  if (diff <= 0) return 'Hết hạn';
+  const mins = Math.ceil(diff / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.ceil(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.ceil(hours / 24);
+  return `${days}d`;
+}
+
+function formatTtlRemaining(expiresAt) {
+  if (!expiresAt) return '';
+  const diff = expiresAt - Date.now();
+  if (diff <= 0) return 'Đã hết hạn';
+  const mins = Math.ceil(diff / 60000);
+  if (mins < 60) return `còn ${mins} phút`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  if (hours < 24) return `còn ${hours} giờ ${remMins > 0 ? remMins + ' phút' : ''}`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return `còn ${days} ngày ${remHours > 0 ? remHours + ' giờ' : ''}`;
+}
+
+function VaultSessionModal({ isOpen, onClose, sessionInfo, preferredTtl, onUpdateTtl, onLock }) {
+  const [selectedTtl, setSelectedTtl] = useState(sessionInfo?.ttlMinutes ?? preferredTtl ?? 0);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedTtl(sessionInfo?.ttlMinutes ?? preferredTtl ?? 0);
+    }
+  }, [isOpen, sessionInfo, preferredTtl]);
+
+  if (!isOpen) return null;
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    onUpdateTtl(Number(selectedTtl));
+    onClose();
+  };
+
+  return createPortal(
+    <div className="acc-scrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="Cài đặt phiên mở khóa Vault">
+      <div className="acc-dialog" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="acc-dialog__head">
+          <h3 className="acc-dialog__title">Thời hạn mở khóa két</h3>
+          <button className="acc-btn acc-btn--ghost" onClick={onClose}>Đóng</button>
+        </div>
+        <p className="acc-dialog__lede">
+          Thiết lập thời gian lưu khóa giải mã trên trình duyệt này. Trong khoảng thời gian này, bạn tải lại trang (F5) hoặc mở tab mới sẽ không cần nhập lại mật khẩu Vault.
+        </p>
+
+        <form onSubmit={handleSave} style={{ display: 'grid', gap: '14px', marginTop: '12px' }}>
+          <div>
+            <label className="acc-sect__meta" style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }} htmlFor="vault-session-ttl">
+              Tự động khóa sau:
+            </label>
+            <select
+              id="vault-session-ttl"
+              className="acc-input"
+              value={selectedTtl}
+              onChange={(e) => setSelectedTtl(Number(e.target.value))}
+            >
+              <option value={0}>Không lưu (khóa ngay khi tải lại trang)</option>
+              <option value={15}>15 phút</option>
+              <option value={60}>1 giờ</option>
+              <option value={480}>8 giờ (1 ngày làm việc)</option>
+              <option value={1440}>1 ngày</option>
+              <option value={10080}>7 ngày</option>
+              <option value={43200}>30 ngày</option>
+            </select>
+          </div>
+
+          {sessionInfo?.expiresAt && (
+            <div className="acc-gate__ttl-current">
+              <AppIcon name="clock" size={14} />
+              <span>Phiên hiện tại: {formatTtlRemaining(sessionInfo.expiresAt)}</span>
+            </div>
+          )}
+
+          <div className="acc-gate__warning">
+            <AppIcon name="shieldCheck" size={14} />
+            <span>Chỉ nên bật thời hạn mở khóa trên thiết bị cá nhân của riêng bạn. Nếu dùng máy công cộng, hãy chọn "Không lưu" hoặc bấm Khóa két ngay khi dùng xong.</span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+            <button
+              type="button"
+              className="acc-btn acc-btn--ghost"
+              style={{ color: 'var(--danger)' }}
+              onClick={() => {
+                onClose();
+                onLock();
+              }}
+            >
+              Khóa két ngay
+            </button>
+            <button type="submit" className="acc-btn acc-btn--primary">
+              Lưu cài đặt
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function RecoveryKeyModal({ recoveryKey, onClose }) {
   const [copied, setCopied] = useState(false);
 
@@ -933,13 +1078,20 @@ function RecoveryKeyModal({ recoveryKey, onClose }) {
   );
 }
 
-function VaultGate({ status, error, onSetup, onUnlock, onRecover, onExport, onRestore }) {
+function VaultGate({ status, error, preferredTtl = 0, onSetup, onUnlock, onRecover, onExport, onRestore }) {
   const [mode, setMode] = useState('standard'); // 'standard' | 'recover'
   const [passphrase, setPassphrase] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [recoveryKeyInput, setRecoveryKeyInput] = useState('');
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [ttl, setTtl] = useState(preferredTtl || 0);
+
+  useEffect(() => {
+    if (preferredTtl !== undefined) {
+      setTtl(preferredTtl);
+    }
+  }, [preferredTtl]);
 
   if (status === 'loading') {
     return (
@@ -991,7 +1143,7 @@ function VaultGate({ status, error, onSetup, onUnlock, onRecover, onExport, onRe
       return;
     }
     setBusy(true);
-    const result = setup ? await onSetup(passphrase) : await onUnlock(passphrase);
+    const result = setup ? await onSetup(passphrase, { ttlMinutes: ttl }) : await onUnlock(passphrase, { ttlMinutes: ttl });
     setBusy(false);
     if (!result.ok) setFormError(result.error || 'Could not open the Vault.');
   };
@@ -1102,6 +1254,32 @@ function VaultGate({ status, error, onSetup, onUnlock, onRecover, onExport, onRe
                 </div>
               </>
             )}
+
+            <div className="acc-gate__ttl">
+              <label htmlFor="vault-passphrase-ttl" className="acc-gate__ttl-label">
+                <AppIcon name="clock" size={13} /> Ghi nhớ mở khóa trên máy này:
+              </label>
+              <select
+                id="vault-passphrase-ttl"
+                className="acc-input acc-gate__ttl-select"
+                value={ttl}
+                onChange={(e) => setTtl(Number(e.target.value))}
+              >
+                <option value={0}>Không lưu (khóa ngay khi tải lại trang)</option>
+                <option value={15}>15 phút</option>
+                <option value={60}>1 giờ</option>
+                <option value={480}>8 giờ (1 ngày làm việc)</option>
+                <option value={1440}>1 ngày</option>
+                <option value={10080}>7 ngày</option>
+                <option value={43200}>30 ngày</option>
+              </select>
+              {ttl > 0 && (
+                <div className="acc-gate__ttl-hint">
+                  <AppIcon name="shieldCheck" size={12} />
+                  <span>Khóa giải mã sẽ lưu tạm trên trình duyệt này. Sau {formatTtlLabel(ttl)} két sẽ tự khóa lại.</span>
+                </div>
+              )}
+            </div>
 
             {(formError || error) && (
               <div className="acc-gate__error" role="alert">{formError || error}</div>
