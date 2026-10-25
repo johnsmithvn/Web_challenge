@@ -329,7 +329,7 @@ export default function KBReaderView({
 
         <div className="kb-reader__group">
           {/* Chủ đề: đổi một chạm (native select — không cần popover riêng) */}
-          <label className={`kb-reader__topic${topic ? '' : ' is-empty'}`} style={topic ? { '--kb-topic': topic.color } : undefined} title="Đổi chủ đề">
+          <label className={`kb-topic-select${topic ? '' : ' is-empty'}`} style={topic ? { '--kb-topic': topic.color } : undefined} title="Đổi chủ đề">
             <span className="kb-dot" />
             <select
               ref={topicSelectRef}

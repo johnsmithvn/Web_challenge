@@ -1001,7 +1001,8 @@ span.kb-tag-chip { cursor: default; }
   transition: background 0.12s, color 0.12s;
 }
 .kb-reader__back:hover { background: var(--kb-p2); color: var(--kb-tx); }
-.kb-reader__topic {
+/* Viên chọn chủ đề: dấu chấm màu + select native (trang đọc, hàng trên điện thoại) */
+.kb-topic-select {
   display: inline-flex; align-items: center; gap: 7px; flex: 0 1 auto;
   min-width: 0;
   height: 32px;
@@ -1012,9 +1013,9 @@ span.kb-tag-chip { cursor: default; }
   color: var(--kb-tx);
   cursor: pointer;
 }
-.kb-reader__topic:focus-within { outline: 2px solid var(--kb-accent); outline-offset: 2px; }
-.kb-reader__topic.is-empty { border-style: dashed; color: var(--kb-dim); }
-.kb-reader__topic select {
+.kb-topic-select:focus-within { outline: 2px solid var(--kb-accent); outline-offset: 2px; }
+.kb-topic-select.is-empty { border-style: dashed; color: var(--kb-dim); }
+.kb-topic-select select {
   min-width: 0;
   max-width: 170px;
   padding: 0;
@@ -1025,8 +1026,8 @@ span.kb-tag-chip { cursor: default; }
   appearance: none;
   cursor: pointer;
 }
-.kb-reader__topic option { background: var(--kb-pop); color: var(--kb-tx); }
-.kb-reader__topic svg { color: var(--kb-faint); }
+.kb-topic-select option { background: var(--kb-pop); color: var(--kb-tx); }
+.kb-topic-select svg { color: var(--kb-faint); }
 .kb-reader__divider { width: 1px; height: 20px; margin: 0 4px; background: var(--kb-line); }
 .kb-reader__progress { height: 2px; flex: none; overflow: hidden; }
 .kb-reader__progress-fill {
@@ -1539,6 +1540,48 @@ span.kb-tag-chip { cursor: default; }
 }
 .kb-shortcuts-desc { font-size: 13.5px; color: var(--kb-dim); }
 
+/* ── Điện thoại (KBSidebar isMobile): hàng trên trong suốt + tab đáy riêng ──
+   Thanh Life Hub + tab đáy chung ẩn ở /collect (body.in-knowledge-workspace, navbar.css) như Finance.
+   Hai thanh là con trực tiếp của .kb-shell: hàng trên · nội dung · tab đáy (order). */
+.kb-mbar {
+  display: flex; align-items: center; gap: 8px;
+  min-width: 0;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 6px;
+}
+.kb-mbar .kb-search,
+.kb-mbar .kb-topic-select { height: 40px; background: color-mix(in srgb, var(--kb-pop) 72%, transparent); }
+.kb-mbar .kb-search { flex: 1; min-width: 0; }
+.kb-mbar .kb-kbd { display: none; }
+.kb-mbar .kb-topic-select { padding: 0 12px; }
+.kb-mbar .kb-topic-select select { max-width: 112px; font-size: 13.5px; text-overflow: ellipsis; }
+.kb-mbar__new { flex: none; width: 40px; height: 40px; padding: 0; border-radius: 999px; }
+
+.kb-tabbar {
+  order: 1;
+  display: grid;
+  grid-template-columns: 44px repeat(5, minmax(0, 1fr));
+  height: calc(62px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-top: 1px solid var(--kb-line);
+  background: color-mix(in srgb, var(--kb-pop) 88%, transparent);
+}
+.kb-tabbar__item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--kb-faint);
+  font: 500 11px var(--kb-font);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s;
+}
+.kb-tabbar__item.is-active { color: var(--kb-accent); font-weight: 600; }
+.kb-tabbar__item--home { margin: 14px 0; border-right: 1px solid var(--kb-line); color: var(--kb-dim); }
+
 /* ── Responsive ────────────────────────────────────────────── */
 @media (max-width: 1000px) {
   .kb-hide { display: none !important; }
@@ -1601,8 +1644,9 @@ span.kb-tag-chip { cursor: default; }
 }
 
 @media (max-width: 768px) {
-  /* Shell app có topbar + bottom tabs ở điện thoại — như Vault */
-  .kb-page {
+  .kb-shell:not(.kb-shell--doc) { grid-template-rows: auto minmax(0, 1fr) auto; }
+  /* Chưa đăng nhập: còn thanh Life Hub + tab đáy chung của app */
+  body:not(.in-knowledge-workspace) .kb-page {
     height: calc(100dvh - var(--topbar-height, 52px)
                  - var(--bottom-tabs-height, 60px) - env(safe-area-inset-bottom, 0px));
   }
@@ -1617,8 +1661,8 @@ span.kb-tag-chip { cursor: default; }
   .kb-reader__back span,
   .kb-reader__divider,
   .kb-reader__focus { display: none; }
-  .kb-reader__topic { padding: 0 8px; }
-  .kb-reader__topic select { max-width: 120px; }
+  .kb-topic-select { padding: 0 8px; }
+  .kb-topic-select select { max-width: 120px; }
   .kb-ov-recent__kind,
   .kb-ov-recent__date { display: none; }
   .kb-ov-recent__row { grid-template-columns: minmax(0, 1fr) auto; }

@@ -1,9 +1,12 @@
 import { useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import AppIcon from '../AppIcon';
 
 /**
  * KBSidebar — cột trái của Knowledge: tìm, viết bài, chế độ xem, chủ đề.
- * Chủ đề lọc mọi kiểu xem. Điện thoại: CSS biến cột thành thanh trên + hàng cuộn ngang.
+ * Chủ đề lọc mọi kiểu xem. Máy tính bảng hẹp (≤860px): CSS biến cột thành thanh trên + hàng cuộn ngang.
+ * Điện thoại (isMobile, ≤768px): một hàng trên trong suốt (tìm · viên chủ đề · viết) + tab đáy riêng
+ * (Home · 5 kiểu xem) như Finance; thanh Life Hub + tab đáy chung của app ẩn ở /collect.
  */
 
 const VIEW_ITEMS = [
@@ -29,7 +32,27 @@ function NavItem({ active, onClick, dot, label, count, title, dim = false, class
   );
 }
 
-export default function KBSidebar({
+function SearchBox({ inputRef, search, onSearchChange }) {
+  return (
+    <label className="kb-search">
+      <AppIcon name="search" size={15} />
+      <input
+        ref={inputRef}
+        type="text"
+        className="kb-search__input"
+        placeholder="Tìm bài, #thẻ…"
+        value={search}
+        onChange={e => onSearchChange(e.target.value)}
+        aria-label="Tìm bài viết"
+      />
+      {search
+        ? <button className="kb-search__clear" onClick={() => onSearchChange('')} aria-label="Xoá tìm kiếm">✕</button>
+        : <kbd className="kb-kbd">/</kbd>}
+    </label>
+  );
+}
+
+export default function KBSidebar({ isMobile,
   view, onViewChange, search, onSearchChange,
   articleCount, linkCount, onNewArticle,
   topics, topicFilter, mineOnly, onTopicFilter, onOpenMine, topicCounts, mineCount,
@@ -51,6 +74,51 @@ export default function KBSidebar({
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  if (isMobile) {
+    const current = topics.find(t => t.id === topicFilter);
+    return (
+      <>
+        <header className="kb-mbar">
+          <SearchBox inputRef={searchRef} search={search} onSearchChange={onSearchChange} />
+          <label className="kb-topic-select" style={current ? { '--kb-topic': current.color } : undefined}>
+            <span className="kb-dot" />
+            <select
+              value={mineOnly ? 'mine' : topicFilter}
+              onChange={e => (e.target.value === 'mine' ? onOpenMine() : onTopicFilter(e.target.value))}
+              aria-label="Chủ đề"
+            >
+              <option value="">Tất cả bài</option>
+              {(topicCounts.none > 0 || topicFilter === 'none') && <option value="none">Chưa xếp</option>}
+              {topics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              {(mineCount > 0 || mineOnly) && <option value="mine">Ghi chú của tôi</option>}
+            </select>
+            <AppIcon name="caretDown" size={12} />
+          </label>
+          <button className="kb-btn-primary kb-mbar__new" onClick={onNewArticle} title="Viết bài mới" aria-label="Viết bài mới">
+            <AppIcon name="plus" size={18} weight="bold" />
+          </button>
+        </header>
+
+        <nav className="kb-tabbar" aria-label="Chế độ xem">
+          <Link to="/" className="kb-tabbar__item kb-tabbar__item--home" title="Về Life Hub" aria-label="Về Life Hub">
+            <AppIcon name="house" size={20} />
+          </Link>
+          {VIEW_ITEMS.map(v => (
+            <button
+              key={v.key}
+              className={`kb-tabbar__item${view === v.key ? ' is-active' : ''}`}
+              onClick={() => onViewChange(v.key)}
+              aria-pressed={view === v.key}
+            >
+              <AppIcon name={v.icon} size={20} weight={view === v.key ? 'fill' : 'regular'} />
+              <span>{v.label}</span>
+            </button>
+          ))}
+        </nav>
+      </>
+    );
+  }
+
   return (
     <aside className="kb-side">
       <div className="kb-side__brand">
@@ -59,21 +127,7 @@ export default function KBSidebar({
       </div>
 
       <div className="kb-side__actions">
-        <label className="kb-search">
-          <AppIcon name="search" size={15} />
-          <input
-            ref={searchRef}
-            type="text"
-            className="kb-search__input"
-            placeholder="Tìm bài, #thẻ…"
-            value={search}
-            onChange={e => onSearchChange(e.target.value)}
-            aria-label="Tìm bài viết"
-          />
-          {search
-            ? <button className="kb-search__clear" onClick={() => onSearchChange('')} aria-label="Xoá tìm kiếm">✕</button>
-            : <kbd className="kb-kbd">/</kbd>}
-        </label>
+        <SearchBox inputRef={searchRef} search={search} onSearchChange={onSearchChange} />
         <button className="kb-btn-primary kb-side__new" onClick={onNewArticle}>
           <AppIcon name="plus" size={15} weight="bold" />
           <span>Viết bài mới</span>

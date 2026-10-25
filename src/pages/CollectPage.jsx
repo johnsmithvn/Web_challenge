@@ -82,6 +82,14 @@ export default function CollectPage() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  // Điện thoại: KB có hàng trên + tab đáy riêng → ẩn thanh Life Hub + tab đáy chung (như Finance).
+  // Chưa đăng nhập thì giữ thanh chung để còn nút đăng nhập.
+  useEffect(() => {
+    if (!user) return undefined;
+    document.body.classList.add('in-knowledge-workspace');
+    return () => document.body.classList.remove('in-knowledge-workspace');
+  }, [user]);
+
   // Bulk mode
   const [bulk, setBulk] = useState(false);
   const [picked, setPicked] = useState([]);
@@ -598,6 +606,7 @@ export default function CollectPage() {
       {/* Cột trái — ẩn ở trang đọc / soạn để có chỗ đọc */}
       {!isDoc && (
         <KBSidebar
+          isMobile={isMobile}
           view={view}
           onViewChange={setView}
           search={search}

@@ -185,7 +185,9 @@ export default function Navbar() {
   const isLanding = location.pathname === '/';
   const isBody = location.pathname.startsWith('/body');
   const isFinance = location.pathname.startsWith('/finance');
-  const hideGlobalMobileNav = isBody || isFinance;
+  // Knowledge có hàng trên + tab đáy riêng (khi đã đăng nhập; chưa thì cần thanh chung để đăng nhập)
+  const isKnowledge = location.pathname.startsWith('/collect') && !!user;
+  const hideGlobalMobileNav = isBody || isFinance || isKnowledge;
   if (isLanding && !user) return showAuth ? <AuthModal onClose={() => setShowAuth(false)} /> : null;
 
   return (

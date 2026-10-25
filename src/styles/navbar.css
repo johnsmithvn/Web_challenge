@@ -558,19 +558,22 @@
 
   /* #root có min-height 100vh (index.css) + padding 2 thanh ở body → trang dư 112px,
      cuộn xuống đáy bị đẩy lên một khoảng trắng. Trừ chiều cao 2 thanh ra. */
-  body:not(.in-body-workspace):not(.in-finance-workspace) #root {
+  body:not(.in-body-workspace):not(.in-finance-workspace):not(.in-knowledge-workspace) #root {
     min-height: calc(100dvh - var(--topbar-height) - var(--bottom-tabs-height));
   }
 
   body.in-body-workspace,
-  body.in-finance-workspace {
+  body.in-finance-workspace,
+  body.in-knowledge-workspace {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
   body.in-body-workspace .topbar,
   body.in-body-workspace .bottom-tabs,
   body.in-finance-workspace .topbar,
-  body.in-finance-workspace .bottom-tabs {
+  body.in-finance-workspace .bottom-tabs,
+  body.in-knowledge-workspace .topbar,
+  body.in-knowledge-workspace .bottom-tabs {
     display: none !important;
   }
 }

@@ -21,6 +21,8 @@ export default function QuickCapture() {
   if (pathname.startsWith('/tasks')) return null;
   // Vault có nút + riêng, và trên mobile có thanh copy / Cancel · Save ghim đáy — nút tròn sẽ đè lên.
   if (pathname.startsWith('/accounts')) return null;
+  // Kiến thức có nút Viết bài mới riêng, và trên điện thoại có tab đáy riêng — nút tròn sẽ đè lên.
+  if (pathname.startsWith('/collect')) return null;
   return <QuickCaptureCore />;
 }
 
