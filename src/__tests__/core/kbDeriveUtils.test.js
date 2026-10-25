@@ -414,9 +414,6 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   assert.equal(byTopic[1].color, '#222');
   assert.equal(byTopic[2].color, undefined);
 
-  // kind: KIND_META order (video before article before note)
-  assert.deepEqual(groupArticles(items, 'kind').map(g => g.key), ['video', 'article', 'note']);
-
   // none: one unlabeled group, same array
   const flat = groupArticles(items, 'none');
   assert.equal(flat.length, 1);

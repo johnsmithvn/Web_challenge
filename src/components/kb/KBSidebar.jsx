@@ -33,7 +33,7 @@ export default function KBSidebar({
   view, onViewChange, search, onSearchChange,
   articleCount, linkCount, onNewArticle,
   topics, topicFilter, mineOnly, onTopicFilter, onOpenMine, topicCounts, mineCount,
-  onManageTopics, onShowKeys,
+  onManageTopics,
 }) {
   const searchRef = useRef(null);
 
@@ -147,10 +147,6 @@ export default function KBSidebar({
           )}
         </div>
       </nav>
-
-      <button className="kb-side__keys-btn" onClick={onShowKeys}>
-        Phím tắt <kbd className="kb-kbd">?</kbd>
-      </button>
     </aside>
   );
 }

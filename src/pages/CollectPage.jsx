@@ -25,7 +25,7 @@ import KBTagModal from '../components/kb/KBTagModal';
 import KBTopicModal from '../components/kb/KBTopicModal';
 import KBOverview from '../components/kb/KBOverview';
 
-import { filterArticles, pushRecent, deriveGraph, groupArticles, contentKind } from '../utils/kbDeriveUtils';
+import { filterArticles, pushRecent, deriveGraph, groupArticles } from '../utils/kbDeriveUtils';
 
 const MOBILE_MQ = '(max-width: 768px)';
 
@@ -70,9 +70,8 @@ export default function CollectPage() {
   const [activeTagIds, setActiveTagIds] = useState([]);
   const [sort, setSort] = useState('new');
   const [filterTaskId, setFilterTaskId] = useState('');
-  const [kind, setKind] = useState(''); // contentKind, '' = mọi loại
   const [linkedOnly, setLinkedOnly] = useState(false);
-  const [groupBy, setGroupBy] = useState('month'); // month | topic | kind | none
+  const [groupBy, setGroupBy] = useState('month'); // month | topic | none
 
   const [isMobile, setIsMobile] = useState(() => window.matchMedia?.(MOBILE_MQ).matches ?? false);
   useEffect(() => {
@@ -145,8 +144,8 @@ export default function CollectPage() {
   const wikiEdges = useMemo(() => deriveGraph(items, { inferTagLinks: false }).edges, [items]);
   const linkedIds = useMemo(() => new Set(wikiEdges.flatMap(e => [e.from, e.to])), [wikiEdges]);
 
-  // List before the Loại filter — the Loại segmented counts come from it
-  const baseArticles = useMemo(() => filterArticles(articlesWithTasks, {
+  // Grouped for the list; the flat order (J/K, ↑↓ in the reader, Gallery) follows the groups
+  const groups = useMemo(() => groupArticles(filterArticles(articlesWithTasks, {
     q: search,
     tags: activeTagIds,
     sort,
@@ -154,21 +153,21 @@ export default function CollectPage() {
     topic: topicFilter,
     mine: mineOnly,
     linked: linkedOnly ? linkedIds : null,
-  }), [articlesWithTasks, search, activeTagIds, sort, filterTaskId, topicFilter, mineOnly, linkedOnly, linkedIds]);
-
-  const kindCounts = useMemo(() => {
-    const counts = {};
-    baseArticles.forEach(a => { const k = contentKind(a); counts[k] = (counts[k] || 0) + 1; });
-    return counts;
-  }, [baseArticles]);
-
-  // Grouped for the list; the flat order (J/K, ↑↓ in the reader, Gallery) follows the groups
-  const groups = useMemo(() => groupArticles(
-    kind ? baseArticles.filter(a => contentKind(a) === kind) : baseArticles, groupBy, { topics },
-  ), [baseArticles, kind, groupBy, topics]);
+  }), groupBy, { topics }), [
+    articlesWithTasks, search, activeTagIds, sort, filterTaskId, topicFilter, mineOnly, linkedOnly, linkedIds, groupBy, topics,
+  ]);
   const filteredArticles = useMemo(() => groups.flatMap(g => g.items), [groups]);
 
   const mineCount = useMemo(() => filterArticles(articlesWithTasks, { mine: true }).length, [articlesWithTasks]);
+
+  // Hàng thẻ đầu danh sách đếm trong phạm vi (chủ đề / Ghi chú của tôi), không theo bộ lọc —
+  // lọc thì hàng thẻ vẫn đứng yên, không làm cả danh sách nhảy
+  const scopeTagCounts = useMemo(() => {
+    const counts = {};
+    filterArticles(articlesWithTasks, { topic: topicFilter, mine: mineOnly })
+      .forEach(a => (a._tags || []).forEach(t => { counts[t.id] = (counts[t.id] || 0) + 1; }));
+    return counts;
+  }, [articlesWithTasks, topicFilter, mineOnly]);
 
   // Sơ đồ / Canvas: chỉ lọc theo chủ đề
   const topicArticles = useMemo(
@@ -177,12 +176,11 @@ export default function CollectPage() {
   );
 
   // Filters inside the list ("Xoá lọc"); the topic / "Ghi chú của tôi" scope is the sidebar's
-  const listFiltering = !!(search || kind || linkedOnly || activeTagIds.length > 0 || filterTaskId);
+  const listFiltering = !!(search || linkedOnly || activeTagIds.length > 0 || filterTaskId);
   const hasFilter = listFiltering || !!(topicFilter || mineOnly);
 
   const clearListFilters = useCallback(() => {
     setSearch('');
-    setKind('');
     setLinkedOnly(false);
     setActiveTagIds([]);
     setFilterTaskId('');
@@ -615,7 +613,6 @@ export default function CollectPage() {
           topicCounts={topicCounts}
           mineCount={mineCount}
           onManageTopics={() => setTopicsOpen(true)}
-          onShowKeys={() => setKeysOpen(true)}
         />
       )}
 
@@ -646,6 +643,7 @@ export default function CollectPage() {
             groups={groups}
             total={filteredArticles.length}
             scopeTags={kbTags}
+            tagCounts={scopeTagCounts}
             topics={topics}
             heading={listHeading}
             unsortedCount={topicCounts.none}
@@ -656,9 +654,6 @@ export default function CollectPage() {
             cursorId={filteredArticles[cursor]?.id}
             activeTagIds={activeTagIds}
             onToggleTag={toggleTag}
-            kind={kind}
-            kindCounts={kindCounts}
-            onKind={k => { setKind(k); setCursor(0); }}
             linkedOnly={linkedOnly}
             onToggleLinked={() => { setLinkedOnly(v => !v); setCursor(0); }}
             groupBy={groupBy}

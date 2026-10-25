@@ -143,7 +143,8 @@ chủ đề cho user đang có bài, gán chủ đề theo `type` cũ (`ai` → 
 
 - Trên xuống: "Kho Tàng Kiến Thức" + `N bài · M liên kết` · ô tìm (`/`) · **Viết bài mới** · **Chế độ xem** (Tổng quan ·
   Danh sách · Gallery · Sơ đồ · Canvas; rê chuột hiện phím `G` + chữ) · **Chủ đề** (Tất cả bài · Chưa xếp (chỉ khi có) ·
-  từng chủ đề với chấm màu + số bài, chủ đề 0 bài mờ đi · Ghi chú của tôi (khi có)) · "Quản lý" / "＋ Tạo" · "Phím tắt ?".
+  từng chủ đề với chấm màu + số bài, chủ đề 0 bài mờ đi · Ghi chú của tôi (khi có)) · "Quản lý" / "＋ Tạo". Không có nút Phím tắt (bảng
+  mở bằng `?`; menu tài khoản đã có mục Phím tắt).
 - Chủ đề lọc mọi kiểu xem. Chọn chủ đề khi đang ở Tổng quan thì sang Danh sách. Bài mới viết mặc định vào chủ đề đang xem.
 - Ẩn khi đang đọc hoặc soạn. Mở Knowledge vào **Tổng quan**; đọc / soạn xong, nút quay lại và `Esc` về đúng kiểu xem trước đó.
 
@@ -162,11 +163,15 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
 
 ### 4.3. Danh sách (`KBListView`)
 
-- **Đầu danh sách** (luôn có): quả cầu màu + tên + số bài + định nghĩa của phạm vi đang xem (một chủ đề · Chưa xếp ·
-  Ghi chú của tôi · Tất cả bài). Nút **Xếp nhanh** (Chưa xếp) hoặc **Quản lý chủ đề**. Hàng **thẻ** để lọc (AND, chỉ
-  thẻ bài trong danh sách đang hiện + thẻ đang bật) và "Quản lý thẻ".
-- **Thanh lọc:** **Loại** (Tất cả + các loại có bài, kèm số) · **↔ Có liên kết** (bài có `[[ ]]` đi hoặc được trỏ về) ·
-  Chọn. Hàng hai: **Nhóm theo** Tháng / Chủ đề / Loại / Không · "N kết quả · Xoá lọc" · sắp xếp Mới nhất / Cũ nhất / Dài nhất.
+- **Đầu danh sách** (luôn có, dải mở không đóng khung: quầng màu chủ đề + vạch dưới): quả cầu màu + tên + số bài +
+  định nghĩa của phạm vi đang xem (một chủ đề · Chưa xếp · Ghi chú của tôi · Tất cả bài). Nút **Xếp nhanh** (Chưa xếp)
+  hoặc **Quản lý chủ đề**. Hàng **thẻ** để lọc (AND) và "Quản lý thẻ": thẻ đếm trong **phạm vi** (`scopeTagCounts` ở
+  `CollectPage`), không theo bộ lọc, nên lọc không làm hàng thẻ biến mất và cả danh sách nhảy.
+- **Thanh lọc (một hàng):** **↔ Có liên kết** (bài có `[[ ]]` đi hoặc được trỏ về) · **Nhóm theo** Tháng / Chủ đề / Không ·
+  "N kết quả · Xoá lọc" · sắp xếp Mới nhất / Cũ nhất / Dài nhất · Chọn. Nút bật / tắt giữ nguyên chữ (trạng thái bằng màu)
+  để các nút cạnh không bị đẩy.
+- **Không có lọc Loại** (bỏ ở v6.33.0): Loại tự suy từ link nên với kho thiên về ghi chú gần như không tách được gì, và
+  trùng vai với Chủ đề. Loại vẫn hiện ở biểu tượng + meta từng bài, Gallery, Tổng quan.
 - **Nhóm** thu gọn được (mũi tên). Nhóm do `CollectPage` tính (`groupArticles`) nên `J`/`K` và ↑ ↓ ở trang đọc đi
   đúng thứ tự đang hiện.
 - **Thẻ bài:** biểu tượng loại; meta (chủ đề khi xem Tất cả / Ghi chú của tôi) · loại · tên miền · ngày · phút đọc · #thẻ;
@@ -210,7 +215,7 @@ Chưa có chủ đề nào → "Dùng bộ 7 chủ đề gợi ý".
 
 `/` tìm · `N` bài mới · `V` chọn nhiều · `J`/`K` di chuyển · `Enter` mở · `E` sửa · `F` đọc tập trung · `Backspace` xoá · `⌘Z` hoàn tác xoá
 (không chạy khi đang gõ) · `G` rồi `T`/`L`/`G`/`C`/`Q` = Tổng quan / Danh sách / Sơ đồ / Canvas / Gallery · `?` bảng phím
-tắt (hoặc nút "Phím tắt" cuối cột trái) · `Esc` lùi từng lớp (Sơ đồ, Canvas → Tổng quan) · Tổng quan: `1`–`8` xếp bài vào chủ đề, `→` để sau.
+tắt · `Esc` lùi từng lớp (Sơ đồ, Canvas → Tổng quan) · Tổng quan: `1`–`8` xếp bài vào chủ đề, `→` để sau.
 Phím tắt trang không chạy khi đang mở hộp thoại.
 
 ### 4.9. Xoá và hoàn tác
@@ -231,8 +236,7 @@ Chiều cao trang trừ topbar + bottom tabs như Vault.
 
 Không cần dấu ("tam ly" ra "Tâm lý"), nhiều từ cùng lúc (mọi từ phải khớp), trên tiêu đề, chữ của bài (`body_text`,
 không phải JSON thô), link, tên chủ đề, tên thẻ, nội dung ghi chú. `#tên` lọc theo thẻ. Hàm còn hỗ trợ lọc loại /
-thời gian (`kind`, `time`) và `linked` (Set id bài có liên kết `[[ ]]`). Danh sách dùng `linked`; Loại lọc ở `CollectPage`
-sau khi đếm số mỗi loại; `time` UI chưa dùng.
+thời gian (`kind`, `time`) và `linked` (Set id bài có liên kết `[[ ]]`). Danh sách dùng `linked`; `kind`, `time` UI chưa dùng.
 
 ### 5.2. Xung quanh (`findNeighbors`)
 
@@ -295,7 +299,7 @@ Knowledge không tạo task; nối bài với task làm từ phía Tasks.
 
 `src/utils/kbDeriveUtils.js`, test `src/__tests__/core/kbDeriveUtils.test.js` (trong `npm test`):
 wiki link (`parseWikiLinks`, `findBacklinks`, `getOutboundLinks`, `extractContext`), `deriveGraph`, `filterArticles`, `groupArticles`
-(nhóm theo tháng / chủ đề / loại / không, giữ thứ tự danh sách),
+(nhóm theo tháng / chủ đề / không, giữ thứ tự danh sách),
 `normalizeVi`, `itemPlainText`, `isMine`, `ageDays`, `KIND_META`, `contentKind`, `sourceKey`, `guessTitle`,
 `quickSortQueue`, `findNeighbors`, `suggestTopic`, `pickResurface`, `pushRecent`, `readTime`, `markdownToPlainText`,
 `extractHeadings`, `isTiptapBody`, `tiptapToPlainText`, `isThemeBreakingColor` + `migrateTiptapDoc` (gỡ màu chữ inline
@@ -320,7 +324,8 @@ Contract test thẻ / ghi chú: `src/__tests__/core/tagsAndKnowledgeContract.tes
 | Giao diện | **v6.33.0: "Cực quang"** (bản thiết kế "Kiến Thức Redesign" 1a/2a; Danh sách 4a, Quản lý chủ đề 4b). Thay "Thư phòng" vàng đồng | Cùng bầu trời với Nhiệm vụ; liên kết giữa bài thành "chòm sao" |
 | Nền trời Knowledge | `SkyBackground calm`: sao, cực quang, sao băng; không vật bay, không bụi sao theo chuột | Trang để đọc, nền không được giành chú ý |
 | Ô "Lọc trong mục này" thứ hai của bản thiết kế | Không làm | Đã có ô tìm ở cột trái |
-| Bộ lọc tiến độ của bản thiết kế | Đổi thành lọc **Loại** | Không có trạng thái đọc (xem trên) |
+| Bộ lọc tiến độ của bản thiết kế | Bỏ, không thay bằng gì | Không có trạng thái đọc (xem trên). Từng thử lọc **Loại** thay vào, bỏ vì gần như không tách được gì và trùng vai Chủ đề |
+| Bề rộng Danh sách / Tổng quan / Gallery | Chung `max-width: 1120px` + lề, `.kb-content` `scrollbar-gutter: stable` | Đổi kiểu xem hoặc lọc ra danh sách ngắn không làm nội dung co giãn, dịch ngang |
 | Bộ chủ đề khởi đầu | Chỉ định nghĩa trong SQL | Một nguồn sự thật cho migration và user mới |
 
 ## 12. Nợ đã biết
@@ -351,7 +356,7 @@ Cần đăng nhập.
 - [ ] Soạn Markdown / Visual, media YouTube / Drive, `[[ ]]`, backlink, Sơ đồ, Canvas, Gallery, chọn nhiều, thẻ, J/K, ⌘Z.
 - [ ] Bài mới dán link GitHub, tiêu đề trống → tự `owner/repo`; chọn chủ đề và Kiểu; bỏ trống chủ đề → Chưa xếp.
 - [ ] Chủ đề ở cột trái lọc đúng Danh sách / Gallery / Sơ đồ / Canvas; Chưa xếp + Chọn nhiều + Gán chủ đề chuyển cả loạt.
-- [ ] Danh sách: Loại, ↔ Có liên kết, Nhóm theo Tháng / Chủ đề / Loại / Không, thu gọn nhóm; `J`/`K` đi đúng thứ tự đang hiện.
+- [ ] Danh sách: ↔ Có liên kết, Nhóm theo Tháng / Chủ đề / Không, thu gọn nhóm; bật lọc không làm đầu danh sách / nút nhảy; `J`/`K` đi đúng thứ tự đang hiện.
 - [ ] Tổng quan: Xếp nhanh chỉ bài 30 ngày, phím `1`–`8`, `→`; thẻ chủ đề mở đúng danh sách; Ghi chú của tôi; Gặp lại; Mở gần đây.
 - [ ] Trang đọc: đổi chủ đề bằng select hiện ngay; Xung quanh 3 nhóm không lặp; thêm ghi chú → số ghi chú ở danh sách cập nhật.
 - [ ] Quản lý chủ đề: kéo ⋮⋮ đổi thứ tự (cả trên điện thoại), ↑ ↓ khi tay cầm được chọn; đổi tên / màu; chủ đề thứ 9 bị chặn; gộp chuyển hết bài; xoá → bài về Chưa xếp.

@@ -296,12 +296,12 @@ const monthKey = a => {
 /**
  * Split an already sorted list into display groups; items keep their order inside a group.
  * month: local month of created_at, in list order · topic: topic order, "Chưa xếp" last ·
- * kind: KIND_META order · none: one group without a label.
+ * none: one group without a label.
  * @returns {Array<{ key: string, label: string, color?: string, items: Array }>}
  */
 export function groupArticles(articles, by, { topics = [], now = Date.now() } = {}) {
   if (!by || by === 'none') return [{ key: 'all', label: '', items: articles }];
-  const keyOf = { month: monthKey, topic: a => a.topic_id || 'none', kind: contentKind }[by];
+  const keyOf = by === 'month' ? monthKey : a => a.topic_id || 'none';
   const groups = new Map();
   articles.forEach(a => {
     const k = keyOf(a);
@@ -316,18 +316,12 @@ export function groupArticles(articles, by, { topics = [], now = Date.now() } = 
       return { key, label: y === year ? `Tháng ${m}` : `Tháng ${m}/${y}`, items };
     });
   }
-  if (by === 'topic') {
-    const byId = new Map(topics.map(t => [t.id, t]));
-    const order = [...topics.map(t => t.id), 'none'];
-    const rank = k => (order.includes(k) ? order.indexOf(k) : order.length);
-    return [...groups]
-      .sort(([a], [b]) => rank(a) - rank(b))
-      .map(([key, items]) => ({ key, label: byId.get(key)?.name || 'Chưa xếp', color: byId.get(key)?.color, items }));
-  }
-  const kinds = Object.keys(KIND_META);
+  const byId = new Map(topics.map(t => [t.id, t]));
+  const order = [...topics.map(t => t.id), 'none'];
+  const rank = k => (order.includes(k) ? order.indexOf(k) : order.length);
   return [...groups]
-    .sort(([a], [b]) => kinds.indexOf(a) - kinds.indexOf(b))
-    .map(([key, items]) => ({ key, label: KIND_META[key].label, items }));
+    .sort(([a], [b]) => rank(a) - rank(b))
+    .map(([key, items]) => ({ key, label: byId.get(key)?.name || 'Chưa xếp', color: byId.get(key)?.color, items }));
 }
 
 /* ── Read time ─────────────────────────────────────────────── */

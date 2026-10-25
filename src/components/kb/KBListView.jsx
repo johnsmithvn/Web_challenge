@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   KIND_META, contentKind, itemPlainText, readTime, safeHostname, parseWikiLinks,
 } from '../../utils/kbDeriveUtils';
@@ -7,8 +7,9 @@ import AppIcon from '../AppIcon';
 import KBTopicPicker from './KBTopicPicker';
 
 /**
- * KBListView — Danh sách (4a): phần đầu chủ đề, Loại · Có liên kết · Nhóm theo · sắp xếp,
+ * KBListView — Danh sách (4a): phần đầu chủ đề, một hàng Có liên kết · Nhóm theo · sắp xếp · Chọn,
  * nhóm thu gọn được, thẻ bài, thanh chọn nhiều nổi ở đáy.
+ * Chống nhảy: hàng thẻ đếm theo phạm vi (tagCounts từ CollectPage), nút bật / tắt không đổi chữ.
  * Lọc / nhóm do CollectPage tính (groups) để J/K và ↑↓ ở trang đọc đi đúng thứ tự đang hiện.
  */
 
@@ -21,7 +22,6 @@ const SORT_ITEMS = [
 const GROUP_ITEMS = [
   { key: 'month', label: 'Tháng' },
   { key: 'topic', label: 'Chủ đề' },
-  { key: 'kind', label: 'Loại' },
   { key: 'none', label: 'Không' },
 ];
 
@@ -145,7 +145,6 @@ function Segmented({ items, value, onChange, label, quiet = false }) {
           aria-pressed={value === i.key}
         >
           {i.label}
-          {i.count !== undefined && <span className="kb-seg__count">{i.count}</span>}
         </button>
       ))}
     </div>
@@ -154,10 +153,10 @@ function Segmented({ items, value, onChange, label, quiet = false }) {
 
 /* ── KBListView ────────────────────────────────────────────── */
 export default function KBListView({
-  groups, total, scopeTags, topics, heading, unsortedCount,
+  groups, total, scopeTags, tagCounts, topics, heading, unsortedCount,
   onManageTopics, onManageTags, onQuickSort, onNewArticle,
   cursorId, activeTagIds, onToggleTag,
-  kind, kindCounts, onKind, linkedOnly, onToggleLinked, groupBy, onGroupBy, sort, onSort,
+  linkedOnly, onToggleLinked, groupBy, onGroupBy, sort, onSort,
   bulk, onToggleBulk, picked, onTogglePick, onSelectAll, onDeselectAll, onBulkAssign, onBulkDelete,
   onOpenReader, onOpenEditor, onDelete,
   filtering, onClearFilter,
@@ -165,21 +164,8 @@ export default function KBListView({
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [assigning, setAssigning] = useState(false);
 
-  // Thẻ trong danh sách đang hiện; thẻ đang bật luôn còn chip để tắt
-  const tagCounts = useMemo(() => {
-    const counts = {};
-    groups.forEach(g => g.items.forEach(a => (a._tags || []).forEach(t => { counts[t.id] = (counts[t.id] || 0) + 1; })));
-    return counts;
-  }, [groups]);
+  // Thẻ có trong phạm vi; thẻ đang bật luôn còn chip để tắt
   const tags = scopeTags.filter(t => tagCounts[t.id] > 0 || activeTagIds.includes(t.id));
-
-  const allCount = Object.values(kindCounts).reduce((s, n) => s + n, 0);
-  const kindItems = [
-    { key: '', label: 'Tất cả', count: allCount },
-    ...Object.entries(KIND_META)
-      .filter(([k]) => kindCounts[k] > 0 || kind === k)
-      .map(([k, m]) => ({ key: k, label: m.label, count: kindCounts[k] || 0 })),
-  ];
 
   const toggleGroup = key => setCollapsed(prev => {
     const next = new Set(prev);
@@ -205,33 +191,27 @@ export default function KBListView({
 
       {(total > 0 || filtering) && (
         <div className="kb-list-toolbar">
-          <div className="kb-list-toolbar__row">
-            <Segmented items={kindItems} value={kind} onChange={onKind} label="Loại" />
-            <button
-              className={`kb-btn-ghost${linkedOnly ? ' kb-btn-ghost--active' : ''}`}
-              onClick={onToggleLinked}
-              aria-pressed={linkedOnly}
-              title="Chỉ bài có liên kết [[wiki]] tới bài khác hoặc được trỏ về"
-            >
-              ↔ Có liên kết{linkedOnly && ' ✓'}
-            </button>
-            <span className="kb-spacer" />
-            <button className={`kb-btn-ghost${bulk ? ' kb-btn-ghost--active' : ''}`} onClick={() => { setAssigning(false); onToggleBulk(); }} aria-pressed={bulk}>
-              <span className="kb-btn-ghost__box" aria-hidden="true" />
-              {bulk ? 'Thôi chọn' : 'Chọn'}
-            </button>
-          </div>
-          <div className="kb-list-toolbar__row">
-            <span className="kb-list-toolbar__label">Nhóm theo</span>
-            <Segmented items={GROUP_ITEMS} value={groupBy} onChange={onGroupBy} label="Nhóm theo" quiet />
-            {filtering && (
-              <span className="kb-list-toolbar__result">
-                {total} kết quả · <button className="kb-link" onClick={onClearFilter}>Xoá lọc</button>
-              </span>
-            )}
-            <span className="kb-spacer" />
-            <Segmented items={SORT_ITEMS} value={sort} onChange={onSort} label="Sắp xếp" quiet />
-          </div>
+          <button
+            className={`kb-btn-ghost${linkedOnly ? ' kb-btn-ghost--active' : ''}`}
+            onClick={onToggleLinked}
+            aria-pressed={linkedOnly}
+            title="Chỉ bài có liên kết [[wiki]] tới bài khác hoặc được trỏ về"
+          >
+            ↔ Có liên kết
+          </button>
+          <span className="kb-list-toolbar__label">Nhóm theo</span>
+          <Segmented items={GROUP_ITEMS} value={groupBy} onChange={onGroupBy} label="Nhóm theo" quiet />
+          {filtering && (
+            <span className="kb-list-toolbar__result">
+              {total} kết quả · <button className="kb-link" onClick={onClearFilter}>Xoá lọc</button>
+            </span>
+          )}
+          <span className="kb-spacer" />
+          <Segmented items={SORT_ITEMS} value={sort} onChange={onSort} label="Sắp xếp" quiet />
+          <button className={`kb-btn-ghost${bulk ? ' kb-btn-ghost--active' : ''}`} onClick={() => { setAssigning(false); onToggleBulk(); }} aria-pressed={bulk}>
+            <span className="kb-btn-ghost__box" aria-hidden="true" />
+            Chọn
+          </button>
         </div>
       )}
 

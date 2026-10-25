@@ -1355,6 +1355,12 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
   quầng thẻ chủ đề, viên chủ đề trang đọc). Chưa có chủ đề → `--kb-faint` hoặc `--kb-gold`.
 - **Khung**: `.kb-shell` lưới `252px | minmax(0,1fr)` (cột trái `.kb-side`); trang đọc / soạn `--doc` một cột.
   ≤860px cột trái thành thanh trên (viên cuộn ngang); ≤768px chiều cao trừ topbar + bottom tabs.
+  Danh sách / Tổng quan / Gallery chung `max-width: 1120px` + lề `28px 32px`; `.kb-content` có
+  `scrollbar-gutter: stable`.
+- **Chống nhảy**: lọc / đổi kiểu xem không được đổi chiều cao phần trên hay đẩy nút cạnh — hàng thẻ đếm theo phạm vi,
+  nút bật / tắt giữ nguyên chữ (trạng thái bằng màu + `aria-pressed`), không thêm / bớt tab theo kết quả lọc.
+- **Đầu danh sách** `.kb-topic-head`: dải mở, không khung — quầng `--kb-topic` góc trên trái + `border-bottom`,
+  quả cầu 44px, tên 30px, số bài là viên `--kb-p2`, hàng thẻ thụt thẳng tên.
 - **Nút**: `.kb-btn-primary` (nền mint + quầng `--kb-glow`), `.kb-btn-soft` (nền accent-soft), `.kb-btn-ghost` (viền),
   `.kb-btn-violet`, `.kb-icon-btn` (32px, `--danger`, `.is-on`), `.kb-link`. Nhóm chọn một: `.kb-seg`
   (`--quiet` không khung). Chip chủ đề trong bộ chọn: `.kb-chip` viên tròn `999px`.
