@@ -1337,6 +1337,25 @@ Types/Tags filter bar is gone.
 - Motion collapses to `1ms` under `prefers-reduced-motion: reduce` via a single
   `--acc-dur` override on `.acc-vault`.
 
+### Knowledge (Thư phòng) — `.kb-*` (`kb-tokens.css`, `collect.css`)
+
+Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradient chung của app.
+
+- **Token** (`kb-tokens.css`, có giá trị tối và sáng): nền `--kb-bg` / `--kb-p1` / `--kb-p2`, viền `--kb-line`,
+  chữ `--kb-tx` / `--kb-dim` / `--kb-faint`, nhấn `--kb-brass` (vàng đồng), `--kb-sage`, `--kb-red`.
+  Font: `--kb-serif` (Spectral) cho tiêu đề và đoạn đọc, `--kb-mono` (JetBrains Mono) cho nhãn nhỏ viết hoa.
+- **Màu chủ đề** lấy từ `collection_topics.color` (chấm màu, chữ meta, node Sơ đồ); bài Chưa xếp dùng `--kb-faint`.
+  Không còn bảng màu cố định theo loại bài.
+- **`.kb-chip`** — chip mono viết hoa `0.8rem/600`, bo `4px`, viền `--kb-line`; `--active` nền `--kb-p2` + viền/chữ
+  brass; `--quiet` viền đứt, nền trong (Chưa xếp, `⋯`); `--suggested` viền đứt brass + chữ "gợi ý"; `__key` ô phím số
+  (Xếp nhanh). Dùng cho hàng chip chủ đề (`.kb-topic-row`, một dòng, cuộn ngang) và bộ chọn chủ đề (`.kb-topic-picker`).
+- **Tổng quan** — `.kb-overview` tối đa `1080px`; tiêu đề khối `.kb-ov-head__title` mono `0.78rem` tracking `0.14em`;
+  thẻ `.kb-ov-card` nền `--kb-p1`, viền `--kb-line`, hover/focus viền brass; lưới 3 → 2 (≤900px) → 1 cột (≤640px).
+- **Trang chủ đề / Ghi chú của tôi** — `.kb-topic-head`: tên serif `1.6rem` + định nghĩa nghiêng `--kb-dim`.
+- **Trang đọc** — chủ đề là `<select>` native trong `.kb-reader__topic`; thẻ **Xung quanh** (`.kb-around`) có nhãn
+  nhóm mono và đường gạch đứt trước nhóm "Lưu gần thời điểm".
+- Chữ mono nhỏ nhất `0.7rem`; nhãn hành động ưu tiên `0.75rem` trở lên.
+
 ### Other active shared atoms (`global.css`)
 
 - **`.section-label`** — uppercase pill, `0.4rem 1rem`,

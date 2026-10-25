@@ -8,7 +8,7 @@ import { logger } from '../utils/logger';
  *
  * type: note | quote | podcast (older rows may still hold learn / idea / ai / entertainment).
  * topic_id: chủ đề, see useCollectionTopics. NULL = Chưa xếp.
- * status: unread (chưa đọc xong) | read | archived.
+ * status: unread | read | archived (DB values; the Knowledge UI saves read and hides archived rows).
  *
  * Fetched items carry: _tags, _linkedTaskIds, _linkedTaskCount, _notes ({content}[]), _noteCount.
  *
@@ -23,7 +23,7 @@ export function useCollections() {
   const [isLoading, setIsLoading] = useState(enabled);
 
   // ── Fetch items (recent 500) with tags, linked tasks and notes ──
-  // filters: { type?, status?, includeArchived? } — archived rows are skipped unless asked for.
+  // filters: { type?, status? } — archived rows are skipped unless a status is asked for.
   const fetchItems = useCallback(async (filters = {}) => {
     if (!enabled) return;
     setIsLoading(true);
@@ -36,7 +36,7 @@ export function useCollections() {
       .limit(500);
     if (filters.type) query = query.eq('type', filters.type);
     if (filters.status) query = query.eq('status', filters.status);
-    else if (!filters.includeArchived) query = query.neq('status', 'archived');
+    else query = query.neq('status', 'archived');
 
     const { data, error } = await query;
     if (error) {

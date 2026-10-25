@@ -314,7 +314,6 @@
   transition: border-color 0.15s, transform 0.15s;
 }
 .kb-ov-card:hover, .kb-ov-card:focus-visible { border-color: var(--kb-brass); outline: none; }
-.kb-ov-card--stale { border-color: color-mix(in oklab, var(--kb-brass) 45%, var(--kb-line)); }
 .kb-ov-card--mine { border-style: dashed; }
 .kb-ov-card__title {
   margin: 0; font-family: var(--kb-serif); font-size: 1.08rem; font-weight: 500; line-height: 1.35;
@@ -334,18 +333,6 @@
 }
 .kb-ov-card__list li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kb-ov-card__list span { font-family: var(--kb-mono); font-size: 0.75rem; color: var(--kb-faint); }
-.kb-ov-card__foot {
-  margin-top: auto; padding-top: 10px; border-top: 1px solid var(--kb-line);
-  font-family: var(--kb-mono); font-size: 0.75rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.08em; color: var(--kb-faint);
-  display: flex; flex-direction: column; gap: 8px;
-}
-.kb-ov-card__foot--brass { color: var(--kb-brass); }
-.kb-ov-card__ask {
-  font-family: var(--kb-serif); font-style: italic; font-size: 0.92rem;
-  text-transform: none; letter-spacing: 0; color: var(--kb-tx);
-}
-.kb-ov-card__btns { display: flex; gap: 8px; }
 .kb-ov-card__quote {
   margin: 0; font-style: italic; font-size: 0.92rem; line-height: 1.5; color: var(--kb-dim);
   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
@@ -1131,35 +1118,6 @@
   text-transform: uppercase; letter-spacing: 0.06em;
 }
 .kb-reader__topic option { background: var(--kb-p1); color: var(--kb-tx); text-transform: none; }
-.kb-btn-ghost--done {
-  color: var(--kb-sage);
-  border-color: color-mix(in oklab, var(--kb-sage) 50%, var(--kb-line));
-}
-
-/* Tiến độ 5 bước (rail info card) */
-.kb-progress {
-  list-style: none; margin: 0; padding: 12px 14px;
-  border-top: 1px solid var(--kb-line);
-  display: flex; flex-direction: column; gap: 7px;
-}
-.kb-progress__step {
-  display: grid; grid-template-columns: 12px minmax(0, 1fr); column-gap: 10px; align-items: center;
-  color: var(--kb-faint);
-}
-.kb-progress__dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--kb-line); }
-.kb-progress__label { font-size: 0.92rem; }
-.kb-progress__hint {
-  grid-column: 2;
-  font-family: var(--kb-mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--kb-faint);
-}
-.kb-progress__step--done .kb-progress__dot { background: var(--kb-sage); border-color: var(--kb-sage); }
-.kb-progress__step--done .kb-progress__label { color: var(--kb-dim); }
-.kb-progress__step--current .kb-progress__dot {
-  background: var(--kb-brass); border-color: var(--kb-brass);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--kb-brass) 25%, transparent);
-}
-.kb-progress__step--current .kb-progress__label { color: var(--kb-tx); font-weight: 500; }
 
 /* Xung quanh (rail card) */
 .kb-around { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 8px; }

@@ -19,8 +19,6 @@ import {
   contentKind,
   sourceKey,
   guessTitle,
-  progressOf,
-  isStale,
   findNeighbors,
   suggestTopic,
   pickResurface,
@@ -253,24 +251,7 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   console.log('guessTitle: OK');
 }
 
-/* ── progressOf + isStale ──────────────────────────────────── */
-{
-  const pending = new Set(['t1']);
-  assert.equal(progressOf({ status: 'archived', _linkedTaskIds: ['t1'] }, pending), 'archived');
-  assert.equal(progressOf({ status: 'read', _linkedTaskIds: ['t1', 't2'] }, pending), 'practicing');
-  assert.equal(progressOf({ status: 'read', _linkedTaskIds: ['t2'] }, pending), 'practiced', 'task nối mà không còn chưa xong ⇒ đã xong');
-  assert.equal(progressOf({ status: 'read', _noteCount: 1 }, pending), 'noted');
-  assert.equal(progressOf({ status: 'unread', _noteCount: 2 }), 'noted', 'có ghi chú tính là đã rút ra');
-  assert.equal(progressOf({ status: 'read' }), 'read');
-  assert.equal(progressOf({ status: 'unread' }), 'unread');
-
-  assert.equal(isStale({ status: 'unread', created_at: daysAgo(30) }, NOW), false, 'đúng 30 ngày chưa tính là lâu');
-  assert.equal(isStale({ status: 'unread', created_at: daysAgo(31) }, NOW), true);
-  assert.equal(isStale({ status: 'read', created_at: daysAgo(40) }, NOW), false);
-  console.log('progressOf + isStale: OK');
-}
-
-/* ── filterArticles: search, topic, kind, time, archived ───── */
+/* ── filterArticles: search, topic, kind, time ─────────────── */
 {
   const tiptap = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Nội dung' }] }] });
   const arts = [
@@ -295,7 +276,6 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   assert.equal(f({ time: '7' }), 'a');
   assert.equal(f({ time: '30' }), 'a,b');
   assert.equal(f({ time: 'old' }), 'c');
-  assert.equal(f({ archived: true, topic: 'T1' }), 'a,d', 'gồm cả đã lưu trữ');
   console.log('filterArticles (v2): OK');
 }
 
@@ -363,23 +343,21 @@ const daysAgo = d => new Date(NOW - d * 86400000).toISOString();
   console.log('pickResurface: OK');
 }
 
-/* ── isMine + preset filters ───────────────────────────────── */
+/* ── isMine + mine filter ──────────────────────────────────── */
 {
   assert.equal(isMine({ url: '' }), true, 'ghi chú / trích dẫn không link');
-  assert.equal(isMine({ url: 'https://x.com', _noteCount: 1 }), true, 'bài có ghi chú rút ra');
+  assert.equal(isMine({ url: 'https://x.com', _noteCount: 1 }), true, 'bài có ghi chú của mình');
   assert.equal(isMine({ url: 'https://x.com' }), false, 'link trơn');
 
   const arts = [
-    { id: 'u', title: 'a', type: 'note', status: 'unread', url: 'https://x.com', body: '', created_at: daysAgo(2) },
     { id: 'r', title: 'b', type: 'note', status: 'read', url: 'https://y.com', body: '', created_at: daysAgo(3) },
     { id: 'n', title: 'c', type: 'note', status: 'read', url: '', body: '', created_at: daysAgo(4) },
     { id: 'z', title: 'd', type: 'note', status: 'archived', url: '', body: '', created_at: daysAgo(5) },
   ];
-  const ids = preset => filterArticles(arts, { preset }).map(a => a.id).sort().join(',');
-  assert.equal(ids('unread'), 'u');
-  assert.equal(ids('mine'), 'n', 'bài lưu trữ không vào');
-  assert.equal(ids(''), 'n,r,u');
-  console.log('isMine + preset: OK');
+  const ids = mine => filterArticles(arts, { mine }).map(a => a.id).sort().join(',');
+  assert.equal(ids(true), 'n', 'bài lưu trữ cũ không vào');
+  assert.equal(ids(false), 'n,r');
+  console.log('isMine + mine: OK');
 }
 
 /* ── quickSortQueue ────────────────────────────────────────── */

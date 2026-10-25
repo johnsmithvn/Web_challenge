@@ -4,7 +4,6 @@ import remarkGfm from 'remark-gfm';
 import {
   KIND_META,
   contentKind,
-  progressOf,
   findNeighbors,
   readTime,
   isTiptapBody,
@@ -20,15 +19,6 @@ import { stripMediaTag } from '../../utils/mediaUtils';
 const TiptapReadOnly = lazy(() => import('../TiptapEditor').then(m => ({ default: m.TiptapReadOnly })));
 
 const REMARK_PLUGINS = [remarkGfm];
-
-// Tiến độ 5 bước (progressOf), theo thứ tự
-const PROGRESS_STEPS = [
-  { key: 'unread', label: 'Chưa đọc xong', hint: 'vừa cất' },
-  { key: 'read', label: 'Đã đọc', hint: 'bấm Đọc xong' },
-  { key: 'noted', label: 'Đã rút ra', hint: 'có ghi chú của bạn' },
-  { key: 'practicing', label: 'Đang thực hành', hint: 'có task chưa xong' },
-  { key: 'practiced', label: 'Đã thực hành', hint: 'task đã xong' },
-];
 
 function AroundGroup({ title, note, items, onOpen }) {
   if (items.length === 0) return null;
@@ -49,16 +39,12 @@ export default function KBReaderView({
   article,
   allArticles,
   topics,
-  pendingTaskIds,
   onBack,
   onPrev,
   onNext,
   onEdit,
   onDelete,
-  onArchive,
-  onToggleRead,
   onAssignTopic,
-  onCreateTask,
   onNotesChange,
   notesHook,
   onOpenArticle,
@@ -70,7 +56,6 @@ export default function KBReaderView({
   const [readProg, setReadProg] = useState(0);
   const scrollRef = useRef(null);
   const miniCanvasRef = useRef(null);
-  const noteInputRef = useRef(null);
 
   // Sub-notes state
   const { notes, isLoading: isNotesLoading, fetchNotes, addNote, updateNote, deleteNote } = notesHook;
@@ -113,23 +98,8 @@ export default function KBReaderView({
   // Xung quanh: cùng chủ đề · cùng nguồn · lưu gần thời điểm
   const around = useMemo(() => findNeighbors(article, allArticles), [article, allArticles]);
 
-  // Tasks associated with this collection (only open ones are loaded; the rest are done)
+  // Tasks associated with this collection
   const tasks = article._linkedTasks || [];
-  const doneTaskCount = (article._linkedTaskIds || []).filter(id => !pendingTaskIds.has(id)).length;
-
-  // One source: the bài row (onNotesChange refetches it after a note is added / removed)
-  const progress = progressOf(article, pendingTaskIds);
-  const progressIdx = PROGRESS_STEPS.findIndex(s => s.key === progress);
-  const isRead = article.status === 'read';
-
-  const handleToggleRead = () => {
-    onToggleRead();
-    if (!isRead) {
-      // Vừa đọc xong → mời rút ra một câu ngay trong ô ghi chú
-      noteInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      noteInputRef.current?.focus({ preventScroll: true });
-    }
-  };
 
   // Mini graph for rail (always renders a lively local cluster)
   useEffect(() => {
@@ -337,29 +307,8 @@ export default function KBReaderView({
             ↔ Liên kết
           </button>
 
-          <button
-            className={`kb-btn-ghost kb-btn-ghost--small${isRead ? ' kb-btn-ghost--done' : ''}`}
-            onClick={handleToggleRead}
-            aria-pressed={isRead}
-            title={isRead ? 'Bấm để đánh dấu lại là chưa đọc xong' : 'Đánh dấu đã đọc xong'}
-          >
-            {isRead ? '✓ Đã đọc' : 'Đọc xong'}
-          </button>
-
-          <button
-            className="kb-btn-ghost kb-btn-ghost--small"
-            onClick={() => onCreateTask(article)}
-            title="Tạo task để thử / áp dụng điều trong bài"
-          >
-            ◇ Thực hành
-          </button>
-
           <button className="kb-btn-ghost kb-btn-ghost--small" onClick={onEdit}>
             ✎ Sửa · E
-          </button>
-
-          <button className="kb-btn-ghost kb-btn-ghost--small" onClick={onArchive} title="Ẩn khỏi mọi danh sách, không xoá">
-            Lưu trữ
           </button>
 
           <button className="kb-btn-ghost kb-btn-ghost--small kb-btn-ghost--danger" onClick={onDelete} title="Xóa bài">
@@ -484,9 +433,8 @@ export default function KBReaderView({
                 {/* Add new note box */}
                 <div style={{ border: '1px dashed var(--kb-line)', borderRadius: '3px', padding: '11px 14px' }}>
                   <textarea
-                    ref={noteInputRef}
                     className="kb-subnote-form__textarea"
-                    placeholder="Rút ra gì không? Điều đáng nhớ nhất, áp dụng ở đâu… (⌘↵ để lưu)"
+                    placeholder="Ghi lại một ý khi đọc… (⌘↵ để lưu)"
                     aria-label="Ghi chú của bạn về bài này"
                     value={newNote}
                     onChange={e => setNewNote(e.target.value)}
@@ -546,21 +494,6 @@ export default function KBReaderView({
                   </div>
                 )}
               </div>
-
-              {/* Tiến độ 5 bước */}
-              <ol className="kb-progress" aria-label="Tiến độ">
-                {PROGRESS_STEPS.map((s, i) => (
-                  <li
-                    key={s.key}
-                    className={`kb-progress__step${i < progressIdx ? ' kb-progress__step--done' : ''}${i === progressIdx ? ' kb-progress__step--current' : ''}`}
-                    aria-current={i === progressIdx ? 'step' : undefined}
-                  >
-                    <span className="kb-progress__dot" />
-                    <span className="kb-progress__label">{s.label}</span>
-                    <span className="kb-progress__hint">{s.hint}</span>
-                  </li>
-                ))}
-              </ol>
             </div>
 
             {/* 1b. Xung quanh */}
@@ -687,12 +620,12 @@ export default function KBReaderView({
             <div className="kb-rail-card">
               <div className="kb-rail-card__header">
                 <span className="kb-rail-card__title">Nhiệm vụ liên kết</span>
-                <span className="kb-rail-card__count">{tasks.length + doneTaskCount}</span>
+                <span className="kb-rail-card__count">{tasks.length}</span>
               </div>
               <div style={{ padding: '8px 10px' }}>
-                {tasks.length === 0 && doneTaskCount === 0 ? (
+                {tasks.length === 0 ? (
                   <div style={{ fontSize: '0.88rem', color: 'var(--kb-faint)', lineHeight: 1.5 }}>
-                    Chưa có task nào. Bấm <strong>"◇ Thực hành"</strong> ở thanh trên để tạo.
+                    Chưa có task nào. Nối bài với task từ trang Nhiệm vụ (Liên kết bài viết).
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -702,12 +635,6 @@ export default function KBReaderView({
                         <span style={{ color: 'var(--kb-dim)' }}>{t.title}</span>
                       </div>
                     ))}
-                    {doneTaskCount > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem', color: 'var(--kb-sage)' }}>
-                        <span>✓</span>
-                        <span>{doneTaskCount} task đã xong</span>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

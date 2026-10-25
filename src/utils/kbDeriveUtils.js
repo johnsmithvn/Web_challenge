@@ -2,7 +2,7 @@
  * kbDeriveUtils.js — Pure utility functions for Knowledge Base.
  *
  * Wiki-link parsing, graph derivation, backlink extraction, filtering,
- * content kind / source / progress, neighbors, topic suggestion, resurfacing.
+ * content kind / source, neighbors, topic suggestion, resurfacing.
  * No Supabase, no React — testable with node:assert.
  */
 import { getMediaType, normalizeHttpUrl } from './mediaUtils.js';
@@ -209,20 +209,17 @@ export function isMine(item) {
  * @param {string} params.topic - '' = all, 'none' = no topic, else topic id
  * @param {string} params.kind - contentKind() value, '' = all
  * @param {string} params.time - '' | '7' | '30' | '90' (saved within N days) | 'old' (> 90 days)
- * @param {boolean} params.archived - include archived items
- * @param {string} params.preset - '' | 'unread' (Đọc dở) | 'mine' (ghi chú / trích dẫn của mình + bài đã rút ra)
+ * @param {boolean} params.mine - only "Ghi chú của tôi" (isMine)
  * @param {number} params.now - clock for `time` (ms)
  * @returns {Array}
  */
 export function filterArticles(articles, {
   q = '', type = 'all', tags = [], sort = 'new', taskId = '',
-  topic = '', kind = '', time = '', archived = false, preset = '', now = Date.now(),
+  topic = '', kind = '', time = '', mine = false, now = Date.now(),
 } = {}) {
-  let list = articles.filter(a => a.type !== 'inbox' && (archived || a.status !== 'archived'));
+  let list = articles.filter(a => a.type !== 'inbox' && a.status !== 'archived');
 
-  // Preset views opened from Tổng quan
-  if (preset === 'unread') list = list.filter(a => a.status === 'unread');
-  else if (preset === 'mine') list = list.filter(isMine);
+  if (mine) list = list.filter(isMine);
 
   // Type filter
   if (type && type !== 'all') {
@@ -363,14 +360,6 @@ export const KIND_META = {
   quote:   { label: 'Trích dẫn', glyph: '❝',   icon: 'quote' },
 };
 
-// Progress labels shown on rows; 'read' is the quiet default and has none.
-export const PROGRESS_META = {
-  unread:     { label: 'Chưa đọc xong',  glyph: '○', tone: 'note' },
-  noted:      { label: 'Đã rút ra',      glyph: '✎', tone: 'link' },
-  practicing: { label: 'Đang thực hành', glyph: '◇', tone: 'task' },
-  practiced:  { label: 'Đã thực hành',   glyph: '◆', tone: 'task' },
-};
-
 // Path segments on github.com that are not `<owner>/<repo>`.
 const GITHUB_NON_OWNERS = new Set(['orgs', 'topics', 'collections', 'marketplace', 'sponsors', 'settings', 'features', 'trending', 'search', 'explore', 'login']);
 // facebook.com/<segment> that is not a page or person.
@@ -446,31 +435,6 @@ export function guessTitle(url) {
   if (media === 'youtube') return 'Video YouTube';
   if (isFacebookHost(link.host)) return 'Bài Facebook';
   return link.host;
-}
-
-/* ── Progress ──────────────────────────────────────────────── */
-/**
- * Tiến độ của một bài, suy ra từ việc đã làm.
- * Task đã nối mà không còn trong danh sách task chưa xong ⇒ đã xong (task bị xoá thì
- * junction task_collections cascade theo, nên không lọt vào đây).
- * @param {Object} item - needs status, _linkedTaskIds, _noteCount
- * @param {Set<string>} pendingTaskIds - ids of tasks not yet completed
- * @returns {'archived'|'practicing'|'practiced'|'noted'|'read'|'unread'}
- */
-export function progressOf(item, pendingTaskIds = new Set()) {
-  if (item.status === 'archived') return 'archived';
-  const linked = item._linkedTaskIds || [];
-  if (linked.some(id => pendingTaskIds.has(id))) return 'practicing';
-  if (linked.length) return 'practiced';
-  if ((item._noteCount || 0) > 0) return 'noted';
-  return item.status === 'read' ? 'read' : 'unread';
-}
-
-/**
- * "Chưa đọc xong" for more than `days` days → time to ask "còn muốn đọc không?".
- */
-export function isStale(item, now = Date.now(), days = 30) {
-  return item.status === 'unread' && ageDays(item, now) > days;
 }
 
 /**

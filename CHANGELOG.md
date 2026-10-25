@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## v6.32.0 — 2026-10-25
+
+### Added
+- **Knowledge — Chủ đề thay 7 loại (`20261025000000_knowledge_topics_v6_32_0.sql`, `useCollectionTopics.js`, `KBTopicPicker.jsx`, `KBTopicModal.jsx`, `KBSubHeader.jsx`, `CollectPage.jsx`):** bảng `collection_topics` (tối đa 8/user, trigger chặn), cột `collections.topic_id` với FK hai cột `(user_id, topic_id)` `ON DELETE SET NULL (topic_id)` (cần Postgres 15+). Bộ 7 chủ đề khởi đầu định nghĩa một chỗ trong RPC `seed_starter_collection_topics`; gộp chủ đề qua RPC `merge_collection_topics` (một transaction). Migration tạo bộ chủ đề cho user đang có bài và gán theo `type` cũ (`ai` / `entertainment` / `learn` / `idea`) mà không đổi `updated_at`. UI: hàng chip chủ đề dưới tiêu đề lọc mọi kiểu xem; Quản lý chủ đề (đổi tên / định nghĩa / màu / thứ tự / gộp / xoá); chọn chủ đề trong trình soạn thảo có gợi ý; đổi chủ đề ở trang đọc; **Gán chủ đề** hàng loạt (`useCollections.updateItems`, một request); lọc một chủ đề = trang chủ đề có tiêu đề + định nghĩa.
+- **Knowledge — tab Tổng quan, màn mở đầu (`KBOverview.jsx`):** Xếp nhanh từng bài chưa có chủ đề trong 30 ngày (chip có phím `1`–`8`, `→` để sau), thẻ các chủ đề, thẻ Ghi chú của tôi, Gặp lại hôm nay (3 bài cũ, cố định trong ngày), Mở gần đây (`localStorage` `vl_kb_recent`). `G` rồi `T` về Tổng quan.
+- **Knowledge — Xung quanh ở trang đọc:** cùng chủ đề · cùng nguồn (chủ repo GitHub, trang / nhóm Facebook, tên miền) · lưu gần thời điểm (±7 ngày, khác chủ đề).
+- **Knowledge — loại bài tự nhận từ link** (Repo, Video, Bài FB, Âm thanh, Bài viết, Ghi chú, Trích dẫn) cho icon và meta; tiêu đề tự điền từ link khi trống (`guessTitle`). Trình soạn thảo chọn **Kiểu** Bài viết / Trích dẫn / Podcast.
+- **`kbDeriveUtils.js`:** `normalizeVi`, `itemPlainText`, `isMine`, `ageDays`, `KIND_META`, `contentKind`, `sourceKey`, `guessTitle`, `quickSortQueue`, `findNeighbors`, `suggestTopic`, `pickResurface`, `pushRecent`, kèm self-check trong `kbDeriveUtils.test.js`.
+
+### Changed
+- **Knowledge — tìm kiếm:** không cần dấu, nhiều từ (mọi từ phải khớp), tìm trên `body_text` thay vì JSON thô của bài Visual (gõ "paragraph" không còn khớp mọi bài), trong cả ghi chú cá nhân và tên chủ đề.
+- **Knowledge — Danh sách:** bỏ hàng chip 7 loại; dòng meta hiện chủ đề · loại; hàng lọc thẻ chỉ còn thẻ đang được bài Knowledge dùng (trước lẫn thẻ Finance / Tasks); số ghi chú ở dòng bài giờ đúng (trước luôn 0 vì không join).
+- **Knowledge — điều hướng:** đọc / soạn xong quay về đúng kiểu xem trước đó; `Esc` ở Sơ đồ / Canvas về Tổng quan; phím tắt trang không chạy khi đang mở hộp thoại; `⌘Z` không cướp hoàn tác chữ khi đang gõ. Bài đang đọc / soạn giữ bằng id, nội dung lấy từ dữ liệu sống (bỏ các chỗ đồng bộ tay). Lưu bài thất bại thì báo và ở lại trình soạn thảo.
+- **Knowledge — màu** theo chủ đề ở Gallery / Sơ đồ / trang đọc; `LinkKBModal` dùng icon theo loại bài.
+- **`useCollections`:** một query thay chuỗi fallback 3 tầng cho schema trước v4.5; join `collection_notes(content)`.
+- **Tài liệu:** gộp `DESIGN_KNOWLEDGE_TOPICS.md` vào `docs/MODULE_KNOWLEDGE.md` (viết lại theo code hiện tại); cập nhật `FEATURES.md`, `DATABASE.md`, `ARCHITECTURE.md`, `DESIGN.md` (contract Knowledge).
+
+### Removed
+- **Knowledge:** nút ◇ Nhiệm vụ ở trang đọc (nối bài với task làm từ phía Tasks); hằng `TYPE_GLYPHS` và token `--kb-hue-*`; `src/data/knowledge.json` (không còn ai import từ khi bỏ Inbox). Lớp trạng thái đọc (Đọc xong, Đọc dở, Tiến độ) và Lưu trữ đã thử trong lúc làm v6.32.0 rồi bỏ: Knowledge để xem và đọc, không thêm thao tác quy trình.
+
+### Notes
+- Chạy `20261025000000_knowledge_topics_v6_32_0.sql` **trước** khi deploy: lưu bài ghi cột `topic_id`, chưa có cột thì lưu lỗi.
+
 ## v6.31.0 — 2026-10-24
 
 ### Added

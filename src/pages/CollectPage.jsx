@@ -35,10 +35,7 @@ const readRecent = () => {
 // Views Esc / "← Thư viện" can return to.
 const LIBRARY_VIEWS = ['overview', 'list', 'gallery', 'graph', 'canvas'];
 
-const PRESET_HEADINGS = {
-  unread: { name: 'Đọc dở', description: 'Bài có link bạn chưa đánh dấu đọc xong.' },
-  mine: { name: 'Ghi chú của tôi', description: 'Ghi chú, trích dẫn của bạn và những bài bạn đã rút ra điều gì đó.' },
-};
+const MINE_HEADING = { name: 'Ghi chú của tôi', description: 'Ghi chú, trích dẫn của bạn và những bài bạn có ghi chú.' };
 
 export default function CollectPage() {
   const { user } = useAuth();
@@ -46,7 +43,7 @@ export default function CollectPage() {
   const {
     topics, addTopic, updateTopic, moveTopic, deleteTopic, mergeTopics, seedStarterTopics,
   } = useCollectionTopics();
-  const { addTask, linkCollection, pendingTasks } = useUserTasks();
+  const { pendingTasks } = useUserTasks();
   const { tags: centralTags, addTag: addCentralTag, linkTag, unlinkTag, deleteTag: deleteCentralTag } = useTags();
   const notesHook = useCollectionNotes();
   const { confirm, ConfirmModal } = useConfirm();
@@ -64,7 +61,7 @@ export default function CollectPage() {
   // Filters
   const [search, setSearch] = useState('');
   const [topicFilter, setTopicFilter] = useState(''); // '' all · 'none' Chưa xếp · topic id
-  const [preset, setPreset] = useState(''); // '' · 'unread' · 'mine' (opened from Tổng quan)
+  const [mineOnly, setMineOnly] = useState(false); // "Ghi chú của tôi", opened from Tổng quan
   const [activeTagIds, setActiveTagIds] = useState([]);
   const [sort, setSort] = useState('new');
   const [filterTaskId, setFilterTaskId] = useState('');
@@ -102,7 +99,6 @@ export default function CollectPage() {
   }, [items, centralTags]);
 
   const topicById = useMemo(() => new Map(topics.map(t => [t.id, t])), [topics]);
-  const pendingTaskIds = useMemo(() => new Set(pendingTasks.map(t => t.id)), [pendingTasks]);
 
   // Attach topic + open linked tasks to items for display
   const articlesWithTasks = useMemo(() => items.map(item => ({
@@ -136,9 +132,9 @@ export default function CollectPage() {
       sort,
       taskId: filterTaskId,
       topic: topicFilter,
-      preset,
+      mine: mineOnly,
     });
-  }, [articlesWithTasks, search, activeTagIds, sort, filterTaskId, topicFilter, preset]);
+  }, [articlesWithTasks, search, activeTagIds, sort, filterTaskId, topicFilter, mineOnly]);
 
   // Sơ đồ / Canvas: chỉ lọc theo chủ đề
   const topicArticles = useMemo(
@@ -146,33 +142,33 @@ export default function CollectPage() {
     [articlesWithTasks, topicFilter],
   );
 
-  const hasFilter = !!(search || topicFilter || preset || activeTagIds.length > 0 || filterTaskId);
+  const hasFilter = !!(search || topicFilter || mineOnly || activeTagIds.length > 0 || filterTaskId);
 
   const clearFilters = useCallback(() => {
     setSearch('');
     setTopicFilter('');
-    setPreset('');
+    setMineOnly(false);
     setActiveTagIds([]);
     setFilterTaskId('');
     setCursor(0);
   }, []);
 
-  // Heading above the list: the topic page, or a preset opened from Tổng quan
+  // Heading above the list: the topic page, or "Ghi chú của tôi"
   const currentTopic = topicById.get(topicFilter) || null;
   const listHeading = currentTopic
     ? { name: currentTopic.name, description: currentTopic.description, color: currentTopic.color, manage: true }
-    : PRESET_HEADINGS[preset] || null;
+    : mineOnly ? MINE_HEADING : null;
 
-  // Chip row / Tổng quan → list filtered to one topic (a chip always replaces a preset)
+  // Chip row / Tổng quan → list filtered to one topic (a chip replaces "Ghi chú của tôi")
   const chooseTopic = useCallback((topicId) => {
     setTopicFilter(topicId);
-    setPreset('');
+    setMineOnly(false);
     setCursor(0);
     if (topicId && view === 'overview') setView('list');
   }, [view]);
 
-  const openPreset = useCallback((p) => {
-    setPreset(p);
+  const openMine = useCallback(() => {
+    setMineOnly(true);
     setTopicFilter('');
     setCursor(0);
     setView('list');
@@ -325,24 +321,6 @@ export default function CollectPage() {
     fetchItems({});
   }, [trash, addItem, showToast, fetchItems]);
 
-  // Lưu trữ: ẩn khỏi mọi danh sách, không xoá; toast cho hoàn tác về trạng thái cũ
-  const handleArchive = useCallback(async (article) => {
-    const before = article.status;
-    if (!(await updateItem(article.id, { status: 'archived' }))) {
-      showToast('Không lưu trữ được. Thử lại.');
-      return;
-    }
-    showToast(`Đã lưu trữ "${article.title}"`, {
-      actionLabel: 'Hoàn tác',
-      onAction: async () => {
-        await updateItem(article.id, { status: before });
-        fetchItems({}); // a refetch in between drops archived rows from state
-      },
-    });
-  }, [updateItem, showToast, fetchItems]);
-
-  const handleMarkRead = useCallback((article) => updateItem(article.id, { status: 'read' }), [updateItem]);
-
   const handleAssignTopic = useCallback((article, topicId) => updateItem(article.id, { topic_id: topicId }), [updateItem]);
 
   // Save Article
@@ -364,8 +342,7 @@ export default function CollectPage() {
       if (selectedArticle?.id) {
         if (await updateItem(selectedArticle.id, payload)) savedId = selectedArticle.id;
       } else {
-        // Bài có link là thứ cần đọc → "Chưa đọc xong"; ghi chú / trích dẫn của mình thì đã đọc.
-        const created = await addItem({ ...payload, status: payload.url ? 'unread' : 'read' });
+        const created = await addItem({ ...payload, status: 'read' });
         savedId = created?.id;
       }
       if (!savedId) {
@@ -596,12 +573,10 @@ export default function CollectPage() {
             keysDisabled={keysOpen || linkOpen || tagsOpen || topicsOpen}
             onOpenReader={openReader}
             onOpenTopic={chooseTopic}
-            onOpenPreset={openPreset}
+            onOpenMine={openMine}
             onManageTopics={() => setTopicsOpen(true)}
             onNewArticle={() => openEditor(null)}
             onAssign={handleAssignTopic}
-            onArchive={handleArchive}
-            onMarkRead={handleMarkRead}
           />
         ) : view === 'list' || view === 'overview' ? (
           // Tổng quan + đang gõ tìm → kết quả hiện như Danh sách
@@ -611,7 +586,6 @@ export default function CollectPage() {
             topics={topics}
             heading={listHeading}
             onManageTopics={() => setTopicsOpen(true)}
-            pendingTaskIds={pendingTaskIds}
             cursor={cursor}
             activeTagIds={activeTagIds}
             onToggleTag={toggleTag}
@@ -653,7 +627,6 @@ export default function CollectPage() {
             article={selectedArticle}
             allArticles={articlesWithTasks}
             topics={topics}
-            pendingTaskIds={pendingTaskIds}
             onBack={goLibrary}
             onPrev={cursor > 0 ? () => {
               const idx = cursor - 1;
@@ -667,28 +640,12 @@ export default function CollectPage() {
             } : null}
             onEdit={() => openEditor(selectedArticle)}
             onDelete={() => handleDeleteArticle(selectedArticle)}
-            onArchive={async () => {
-              await handleArchive(selectedArticle);
-              goLibrary();
-            }}
-            onToggleRead={() => updateItem(selectedArticle.id, { status: selectedArticle.status === 'read' ? 'unread' : 'read' })}
             onAssignTopic={topicId => handleAssignTopic(selectedArticle, topicId)}
             onNotesChange={() => fetchItems({})}
             notesHook={notesHook}
             onOpenArticle={openReader}
             onOpenGraph={() => setView('graph')}
             onOpenLinkModal={() => setLinkOpen(true)}
-            onCreateTask={async (item) => {
-              const result = await addTask({
-                title: item.title,
-                description: item.url || (item.body_text || '').slice(0, 200) || '',
-              });
-              if (result) {
-                await linkCollection(result.id, item.id);
-                showToast(`Đã tạo task thực hành cho "${item.title}"`);
-                fetchItems({}); // _linkedTaskIds → tiến độ "Đang thực hành"
-              }
-            }}
             onUpdateUrl={(oldUrl, newUrl) => updateItem(selectedArticle.id, { url: newUrl })}
           />
         ) : view === 'editor' ? (

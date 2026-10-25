@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  KIND_META, PROGRESS_META, contentKind, progressOf, itemPlainText, readTime, safeHostname, parseWikiLinks,
+  KIND_META, contentKind, itemPlainText, readTime, safeHostname, parseWikiLinks,
 } from '../../utils/kbDeriveUtils';
 import { formatDate } from '../../utils/dateUtils';
 import KBTopicPicker from './KBTopicPicker';
@@ -13,16 +13,17 @@ const SORT_ITEMS = [
 ];
 
 /* ── ListRow — single article row ──────────────────────────── */
-function ListRow({ item, pendingTaskIds, isCursor, isBulk, isChecked, onToggleCheck, onClick, onEdit, onDelete }) {
+function ListRow({ item, isCursor, isBulk, isChecked, onToggleCheck, onClick, onEdit, onDelete }) {
   const kind = KIND_META[contentKind(item)];
   const topic = item._topic;
-  const progress = PROGRESS_META[progressOf(item, pendingTaskIds)];
 
   const plainText = itemPlainText(item);
   const mins = item.word_count ? Math.max(1, Math.ceil(item.word_count / 220)) : readTime(plainText);
   const excerpt = plainText.slice(0, 200);
   const tags = item._tags || [];
   const linkCount = parseWikiLinks(item.body || '').length;
+  const taskCount = item._linkedTaskCount || 0;
+  const noteCount = item._noteCount || 0;
 
   return (
     <article
@@ -73,9 +74,6 @@ function ListRow({ item, pendingTaskIds, isCursor, isBulk, isChecked, onToggleCh
         )}
 
         <div className="kb-row__badges">
-          {progress && (
-            <span className={`kb-badge kb-badge--${progress.tone}`}>{progress.glyph} {progress.label}</span>
-          )}
           {tags.map(t => (
             <span key={t.id || t.name} className="kb-badge kb-badge--tag">
               <span className="kb-badge__dot" style={{ background: t.color || 'var(--kb-dim)' }} />
@@ -84,6 +82,12 @@ function ListRow({ item, pendingTaskIds, isCursor, isBulk, isChecked, onToggleCh
           ))}
           {linkCount > 0 && (
             <span className="kb-badge kb-badge--link">↔ {linkCount} liên kết</span>
+          )}
+          {taskCount > 0 && (
+            <span className="kb-badge kb-badge--task">◇ {taskCount} nhiệm vụ</span>
+          )}
+          {noteCount > 0 && (
+            <span className="kb-badge kb-badge--note">✎ {noteCount} ghi chú</span>
           )}
         </div>
       </div>
@@ -99,7 +103,7 @@ function ListRow({ item, pendingTaskIds, isCursor, isBulk, isChecked, onToggleCh
 
 /* ── KBListView ────────────────────────────────────────────── */
 export default function KBListView({
-  articles, allTags, topics, heading, onManageTopics, pendingTaskIds, cursor,
+  articles, allTags, topics, heading, onManageTopics, cursor,
   activeTagIds, onToggleTag,
   sort, onSort,
   bulk, onToggleBulk, picked, onTogglePick, onSelectAll, onDeselectAll,
@@ -118,7 +122,7 @@ export default function KBListView({
 
   return (
     <div className="kb-list-view" style={{ animation: 'kb-in .22s ease' }}>
-      {/* Heading: topic page, or a preset (Đọc dở / Ghi chú của tôi) */}
+      {/* Heading: topic page, or "Ghi chú của tôi" */}
       {heading && (
         <div className="kb-topic-head">
           <div className="kb-topic-head__text">
@@ -234,7 +238,6 @@ export default function KBListView({
             <ListRow
               key={item.id}
               item={item}
-              pendingTaskIds={pendingTaskIds}
               isCursor={idx === cursor}
               isBulk={bulk}
               isChecked={picked.includes(item.id)}

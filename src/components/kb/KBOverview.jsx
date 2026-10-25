@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  KIND_META, contentKind, itemPlainText, safeHostname, ageDays, isStale,
+  KIND_META, contentKind, itemPlainText, safeHostname, ageDays,
   filterArticles, quickSortQueue, suggestTopic, pickResurface,
 } from '../../utils/kbDeriveUtils';
 import { toDateStr } from '../../utils/dateUtils';
@@ -8,8 +8,8 @@ import KBTopicPicker from './KBTopicPicker';
 
 /**
  * KBOverview — tab "Tổng quan": điểm vào của Knowledge.
- * Xếp nhanh (bài mới chưa có chủ đề, từng bài một) · Đọc dở · Các chủ đề · Gặp lại hôm nay · Mở gần đây.
- * Mọi khối đều giới hạn số mục; không có số đếm đỏ, không ép dọn hết.
+ * Xếp nhanh (bài mới chưa có chủ đề, từng bài một) · Các chủ đề · Gặp lại hôm nay · Mở gần đây.
+ * Chỉ để xem và tìm lại: không có trạng thái đọc, không có việc phải dọn.
  */
 
 const ago = d => (d <= 0 ? 'hôm nay' : `${d} ngày`);
@@ -25,7 +25,7 @@ function Head({ title, count, note, action, onAction }) {
   );
 }
 
-/** A clickable card that may hold its own buttons, so it is not a <button>. */
+/** Clickable card. A div (not <button>) because it holds headings and lists. */
 function Card({ onOpen, className = '', children }) {
   return (
     <div
@@ -33,7 +33,7 @@ function Card({ onOpen, className = '', children }) {
       role="button"
       tabIndex={0}
       onClick={onOpen}
-      onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) onOpen(); }}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
     >
       {children}
     </div>
@@ -49,8 +49,7 @@ const TopicDot = ({ topic }) => (
 
 export default function KBOverview({
   articles, topics, topicCounts, recentIds, keysDisabled,
-  onOpenReader, onOpenTopic, onOpenPreset, onManageTopics, onNewArticle,
-  onAssign, onArchive, onMarkRead,
+  onOpenReader, onOpenTopic, onOpenMine, onManageTopics, onNewArticle, onAssign,
 }) {
   // One clock per visit: ages and "Gặp lại hôm nay" stay stable while the tab is open.
   const [now] = useState(() => Date.now());
@@ -67,14 +66,13 @@ export default function KBOverview({
   );
   const skip = () => setSkipped(prev => new Set(prev).add(current.id));
 
-  const reading = useMemo(() => filterArticles(articles, { preset: 'unread' }), [articles]);
-  const mine = useMemo(() => filterArticles(articles, { preset: 'mine' }), [articles]);
+  const mine = useMemo(() => filterArticles(articles, { mine: true }), [articles]);
   const mineSnippet = mine.find(a => a._notes?.length)?._notes[0].content;
 
-  const topicCards = useMemo(() => topics.map(t => {
-    const inTopic = filterArticles(articles, { topic: t.id });
-    return { topic: t, latest: inTopic.slice(0, 2), unread: inTopic.filter(a => a.status === 'unread').length };
-  }), [topics, articles]);
+  const topicCards = useMemo(
+    () => topics.map(t => ({ topic: t, latest: filterArticles(articles, { topic: t.id }).slice(0, 2) })),
+    [topics, articles],
+  );
 
   const resurface = useMemo(() => pickResurface(articles, toDateStr(new Date(now)), 3, now), [articles, now]);
   const recent = useMemo(() => {
@@ -140,57 +138,16 @@ export default function KBOverview({
               />
               <span className="kb-ov-head__spacer" />
               <button className="kb-btn-ghost kb-btn-ghost--small" onClick={skip}>Để sau →</button>
-              <button className="kb-btn-ghost kb-btn-ghost--small kb-btn-ghost--danger" onClick={() => onArchive(current)}>Lưu trữ</button>
             </div>
           </div>
         </section>
       )}
 
-      {/* 2 · Đọc dở */}
-      {reading.length > 0 && (
-        <section>
-          <Head
-            title="Đọc dở"
-            count={reading.length}
-            action={reading.length > 3 ? `Xem cả ${reading.length} →` : null}
-            onAction={() => onOpenPreset('unread')}
-          />
-          <div className="kb-ov-grid">
-            {reading.slice(0, 3).map(a => {
-              const stale = isStale(a, now);
-              return (
-                <Card key={a.id} onOpen={() => onOpenReader(a)} className={stale ? 'kb-ov-card--stale' : ''}>
-                  <div className="kb-row__meta">
-                    <span>{KIND_META[contentKind(a)].glyph} {KIND_META[contentKind(a)].label}</span>
-                    {a.url && <><span className="kb-row__sep">·</span><span>{safeHostname(a.url)}</span></>}
-                  </div>
-                  <h3 className="kb-ov-card__title">{a.title}</h3>
-                  <TopicDot topic={a._topic} />
-                  <div className="kb-ov-card__foot">
-                    {stale ? (
-                      <>
-                        <span className="kb-ov-card__ask">Lưu {ago(ageDays(a, now))} rồi. Còn muốn đọc không?</span>
-                        <div className="kb-ov-card__btns">
-                          <button className="kb-btn-primary" onClick={e => { e.stopPropagation(); onMarkRead(a); }}>Đọc xong</button>
-                          <button className="kb-btn-ghost kb-btn-ghost--small" onClick={e => { e.stopPropagation(); onArchive(a); }}>Lưu trữ</button>
-                        </div>
-                      </>
-                    ) : (
-                      <span>Lưu {ago(ageDays(a, now))} trước</span>
-                    )}
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* 3 · Các chủ đề */}
+      {/* 2 · Các chủ đề */}
       <section>
         <Head title="Các chủ đề" count={`${topics.length}/8`} action="Quản lý" onAction={onManageTopics} />
         <div className="kb-ov-grid">
-          {topicCards.map(({ topic, latest, unread }) => (
+          {topicCards.map(({ topic, latest }) => (
             <Card key={topic.id} onOpen={() => onOpenTopic(topic.id)}>
               <h3 className="kb-ov-card__name">
                 <span className="kb-chip__dot" style={{ background: topic.color }} />
@@ -203,21 +160,20 @@ export default function KBOverview({
                   {latest.map(a => <li key={a.id}><span>{KIND_META[contentKind(a)].glyph}</span> {a.title}</li>)}
                 </ul>
               )}
-              {unread > 0 && <div className="kb-ov-card__foot kb-ov-card__foot--brass">{unread} đọc dở</div>}
             </Card>
           ))}
-          <Card onOpen={() => onOpenPreset('mine')} className="kb-ov-card--mine">
+          <Card onOpen={onOpenMine} className="kb-ov-card--mine">
             <h3 className="kb-ov-card__name">
               ✎ Ghi chú của tôi
               <span className="kb-ov-card__num">{mine.length}</span>
             </h3>
-            <p className="kb-ov-card__desc">Ghi chú, trích dẫn và điều bạn đã rút ra</p>
+            <p className="kb-ov-card__desc">Ghi chú, trích dẫn của bạn và những bài bạn có ghi chú</p>
             {mineSnippet && <p className="kb-ov-card__quote">“{mineSnippet.slice(0, 120)}”</p>}
           </Card>
         </div>
       </section>
 
-      {/* 4 · Gặp lại hôm nay · Mở gần đây */}
+      {/* 3 · Gặp lại hôm nay · Mở gần đây */}
       {(resurface.length > 0 || recent.length > 0) && (
         <div className="kb-ov-two">
           {resurface.length > 0 && (

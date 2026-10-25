@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub
 
-**Version:** v6.22.0 · **Updated:** 2026-10-08
+**Version:** v6.32.0 · **Updated:** 2026-10-25
 
 Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và chi tiết release nằm trong
 [`CHANGELOG.md`](../CHANGELOG.md).
@@ -13,7 +13,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 | Nhiệm vụ | `/tasks` | List in-memory | Full sync + Lịch 5 chế độ |
 | Focus | `/focus` | In-memory | Sync session + XP |
 | Inbox | `/inbox` | — | ✅ |
-| Knowledge (PKM) | `/collect` | — | ✅ |
+| Knowledge | `/collect` | — | ✅ |
 | Finance | `/finance/:screen?` | — | ✅ |
 | Body | `/body` | — | ✅ |
 | Vault | `/accounts` | — | Login + Vault unlock |
@@ -228,27 +228,29 @@ Desktop nổi bên phải, mobile là sheet; mở bằng nút "Lịch & sự ki�
 
 **Data:** `collections`; handoff tạm: `lh_inbox_to_finance`.
 
-## 5. Knowledge Base — PKM Athenaeum (`/collect`)
+## 5. Knowledge (`/collect`)
 
 **Files:** `src/pages/CollectPage.jsx`, `src/components/kb/*`, `src/utils/kbDeriveUtils.js`,
-`src/styles/kb-tokens.css`, `src/hooks/useCollections.js`, `src/hooks/useCollectionNotes.js`
+`src/styles/kb-tokens.css`, `src/hooks/useCollections.js`, `src/hooks/useCollectionTopics.js`,
+`src/hooks/useCollectionNotes.js`
 
-Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KNOWLEDGE.md).
+Chi tiết (quy chuẩn phân loại, dữ liệu, từng màn): [`docs/MODULE_KNOWLEDGE.md`](MODULE_KNOWLEDGE.md).
 
-### Tính năng Quản trị Tri thức PKM (Obsidian / Zettelkasten)
-- **Liên kết 2 chiều (`[[Wiki-links]]`):** Trích dẫn bài viết khác trong nội dung bằng cú pháp `[[Tên bài viết]]`. Hệ thống tự động phân tích và tạo siêu liên kết điều hướng mượt mà giữa các bài viết.
-- **Biểu đồ tri thức tương tác (`KbGraphView`):** Canvas tương tác mô phỏng mạng lưới các bài viết (nodes) và liên kết liên trang (edges). Hỗ trợ zoom, pan, hover xem tên bài và click để mở bài viết.
-- **Bảng Backlinks ngữ cảnh (`KbBacklinks`):** Tự động phát hiện và trích đoạn câu chứa liên kết từ tất cả các bài viết khác đang trỏ tới bài hiện tại.
-- **Chế độ đọc tập trung (`KbReader`):** Giao diện đọc tĩnh tinh tế, tự động trích xuất Mục lục (TOC / Headings navigation), hiển thị ước tính thời gian đọc (read time) và khối Backlinks cuối trang.
-- **Trình soạn thảo kép (Dual-mode Editor):**
-  - **Split Markdown Editor (`KbSplitEditor`):** Soạn thảo Markdown với đồng bộ cuộn thời gian thực (sync scroll) và khung xem trước (live preview).
-  - **Visual Editor (`KbVisualEditor`):** Soạn thảo trực quan phong phú dựa trên Tiptap Rich Text.
-- **Bảng Thống kê tri thức (`KbStats`):** Thống kê định lượng toàn bộ kho kiến thức: tổng số bài, tổng số từ, liên kết nội bộ, thời gian đọc trung bình.
-- **Phím tắt nhanh (`KbShortcutsModal`):** Hỗ trợ tra cứu nhanh toàn bộ phím tắt thao tác.
-- **Phân loại & Lọc chuyên sâu:** 7 danh mục (Ghi chú, Trích dẫn, Học tập, Ý tưởng, AI, Giải trí, Podcast), lọc theo tag, tìm kiếm tức thì theo từ khóa.
-- **Media & Attachment:** Hỗ trợ chèn ảnh, YouTube, Audio player inline; tải tệp lên Google Drive qua `api/upload.js`.
+Nơi cất, xem và đọc lại kiến thức. Mỗi mục là một bài viết (Markdown hoặc Visual); media là link ngoài.
 
-**Data:** `collections`, `collection_notes`, `collection_tags`, `task_collections`.
+- **Chủ đề** (tối đa 8, mỗi bài một chủ đề hoặc Chưa xếp; bộ khởi đầu 7 chủ đề): chọn trong trình soạn thảo
+  (có gợi ý), đổi ở trang đọc, gán hàng loạt ở Danh sách, quản lý (đổi tên / màu / thứ tự / gộp / xoá) qua `⋯`.
+- **Loại** tự nhận từ link (Repo, Video, Bài FB, Âm thanh, Bài viết, Ghi chú, Trích dẫn); tiêu đề tự điền từ link khi trống.
+- **Tổng quan** (màn mở đầu): Xếp nhanh bài mới chưa có chủ đề (phím `1`–`8`), thẻ các chủ đề, Ghi chú của tôi,
+  Gặp lại hôm nay, Mở gần đây.
+- **Danh sách / Gallery / Sơ đồ / Canvas**, lọc bằng hàng chip chủ đề; lọc thẻ (chỉ thẻ của Knowledge); sắp xếp; chọn nhiều.
+- **Tìm kiếm** không cần dấu, nhiều từ, trong cả ghi chú và tên chủ đề; `#thẻ`.
+- **Trang đọc:** mục lục, `[[liên kết]]` + backlink, khung **Xung quanh** (cùng chủ đề / cùng nguồn / lưu gần thời
+  điểm), sơ đồ nhỏ, ghi chú cá nhân, nhiệm vụ liên kết, chế độ tập trung.
+- Xoá có hoàn tác (toast / `⌘Z`). Không có trạng thái đọc, lưu trữ hay nút tạo task (nối bài với task từ Nhiệm vụ).
+
+**Data:** `collections` (+ `topic_id`), `collection_topics`, `collection_notes`, `collection_tags`, `task_collections`.
+**Local:** `vl_kb_recent` (Mở gần đây), `kb_editor_mode`, `kb_canvas_nodes`, `kb_canvas_edges`.
 
 ## 6. Tags và Cài đặt (`/settings`)
 
