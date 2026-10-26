@@ -9,6 +9,10 @@
 - **Không còn theo `prefers-reduced-motion` của trình duyệt:** máy / trình duyệt báo bật là trang Nhiệm vụ mất hết vật bay, hiệu ứng sự kiện (xong việc, nước bắn, bấm trăng, rung cây) và bụi sao mà không có chỗ nào trong app giải thích. `SkyBackground.jsx`, `taskFlyersElf.js`, `FxLabPage.jsx` đọc cài đặt mới; mọi khối CSS `@media (prefers-reduced-motion)` (accounts, collect, dashboard, finance, infotip, landing, navbar, skeleton, sky, tasks, tasks-aurora) đổi thành `:root[data-reduce-motion] …`.
 - Tài liệu: `RULES.md` §5, `DESIGN.md`, `ARCHITECTURE.md` (key localStorage), `FEATURES.md`.
 - **Vault — field Linked item chưa có link (`AccountDetail.jsx` `LinkEditor`):** ô gõ thường + nút "+ Link an item" thành một `SearchSelect` gõ là gợi ý item (khớp tên và subtitle — gõ SĐT / email ra đúng item), chọn gợi ý thì thành link, gõ tự do vẫn giữ làm giá trị thường. Đã có link thì vẫn "+ Link another item".
+- **Vault — mọi ô chọn dùng chung `SearchSelect`:** loại item, kiểu field, Brand (thay `<datalist>`), phương thức đăng nhập mới, kiểu field mới, lọc loại ở đầu danh sách và hai ô thời gian nhớ mở khoá (gom thành `TTL_OPTIONS`). Bỏ CSS `.acc-select*`, `.acc-gate__ttl-select`; kích thước theo `.acc-pick--type / --kind / --tpl / --filter`. `.acc-dialog` mở `overflow` khi menu đang mở như `.acc-panel`.
+
+### Fixed
+- **Vault — dòng phụ của item rỗng khi email đăng nhập là link (`vaultLogic.itemSubtitle`):** "Email address" link tới hộp thư Gmail thì value rỗng nên danh sách, gợi ý Linked item và chip link không hiện email nào (hai item cùng tên không phân biệt được). Nay field nhận diện là link thì lấy dòng phụ (hoặc tiêu đề) của item được link, một cấp. Có test.
 
 ## v6.33.0 — 2026-10-25
 

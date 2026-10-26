@@ -9,6 +9,7 @@ import AccountAvatar from '../components/AccountAvatar';
 import RootMap, { RootRow } from '../components/RootMap';
 import { MoneyMatrix, MoneyPanel } from '../components/MoneyLinks';
 import AppIcon from '../components/AppIcon';
+import SearchSelect from '../components/SearchSelect';
 import SkeletonList from '../components/SkeletonList';
 import {
   matchesQuery, itemSubtitle, newId, relativeUpdated, avatarHue, groupTree, groupKey, inGroup,
@@ -45,6 +46,16 @@ const {
   templates: TEMPLATES, filterIcons: FILTER_ICONS, groupIcons: GROUP_ICONS, groupPresets: GROUP_PRESETS,
 } = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
+// Thời gian nhớ khoá giải mã trên máy (phút) — ô chọn ở màn mở khoá và hộp Phiên mở khoá
+const TTL_OPTIONS = [
+  { value: 0, label: 'Không lưu (khóa ngay khi tải lại trang)' },
+  { value: 15, label: '15 phút' },
+  { value: 60, label: '1 giờ' },
+  { value: 480, label: '8 giờ (1 ngày làm việc)' },
+  { value: 1440, label: '1 ngày' },
+  { value: 10080, label: '7 ngày' },
+  { value: 43200, label: '30 ngày' },
+];
 
 export default function AccountsPage() {
   const { user } = useAuth();
@@ -569,13 +580,20 @@ export default function AccountsPage() {
               {visible.length} {visible.length === 1 ? 'entry' : 'entries'}
             </span>
             {/* Chỉ liệt kê loại đang có item — 6 loại rỗng không chiếm chỗ */}
-            <select className="acc-select acc-select--filter" value={tplFilter}
-              onChange={(e) => setTplFilter(e.target.value)} aria-label="Filter by type">
-              <option value="">All types</option>
-              {TEMPLATES.filter((t) => counts[t.key] || t.key === tplFilter).map((t) => (
-                <option key={t.key} value={t.key}>{t.chip} · {counts[t.key] || 0}</option>
-              ))}
-            </select>
+            {/* Trống = All types (nút X để bỏ lọc) */}
+            <SearchSelect
+              className="acc-pick--filter"
+              size="sm"
+              clearable
+              value={tplFilter}
+              onChange={(v) => setTplFilter(v || '')}
+              options={TEMPLATES.filter((t) => counts[t.key] || t.key === tplFilter)
+                .map((t) => ({ value: t.key, label: `${t.chip} · ${counts[t.key] || 0}` }))}
+              placeholder="All types"
+              searchPlaceholder="Search types…"
+              noResultsText="No matching type"
+              ariaLabel="Filter by type"
+            />
             {items.length > 0 && (
               <button type="button" className={`acc-act${selecting ? ' acc-act--on' : ''}`} aria-pressed={selecting}
                 onClick={() => (selecting ? exitSelect() : startSelect())}>
@@ -603,7 +621,7 @@ export default function AccountsPage() {
           )}
 
           {visible.map((i) => (
-            <ListRow key={i.id} item={i} on={i.id === selectedId} onOpen={() => open(i.id)}
+            <ListRow key={i.id} item={i} items={items} on={i.id === selectedId} onOpen={() => open(i.id)}
               selecting={selecting} picked={picked.has(i.id)} onPick={() => togglePick(i.id)} />
           ))}
 
@@ -952,20 +970,14 @@ function VaultSessionModal({ isOpen, onClose, sessionInfo, preferredTtl, onUpdat
             <label className="acc-sect__meta" style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }} htmlFor="vault-session-ttl">
               Tự động khóa sau:
             </label>
-            <select
-              id="vault-session-ttl"
-              className="acc-input"
+            <SearchSelect
               value={selectedTtl}
-              onChange={(e) => setSelectedTtl(Number(e.target.value))}
-            >
-              <option value={0}>Không lưu (khóa ngay khi tải lại trang)</option>
-              <option value={15}>15 phút</option>
-              <option value={60}>1 giờ</option>
-              <option value={480}>8 giờ (1 ngày làm việc)</option>
-              <option value={1440}>1 ngày</option>
-              <option value={10080}>7 ngày</option>
-              <option value={43200}>30 ngày</option>
-            </select>
+              onChange={(v) => setSelectedTtl(Number(v))}
+              options={TTL_OPTIONS}
+              searchPlaceholder="Tìm thời gian…"
+              ariaLabel="Tự động khóa sau"
+              inputProps={{ id: 'vault-session-ttl' }}
+            />
           </div>
 
           {sessionInfo?.expiresAt && (
@@ -1259,20 +1271,14 @@ function VaultGate({ status, error, preferredTtl = 0, onSetup, onUnlock, onRecov
               <label htmlFor="vault-passphrase-ttl" className="acc-gate__ttl-label">
                 <AppIcon name="clock" size={13} /> Ghi nhớ mở khóa trên máy này:
               </label>
-              <select
-                id="vault-passphrase-ttl"
-                className="acc-input acc-gate__ttl-select"
+              <SearchSelect
                 value={ttl}
-                onChange={(e) => setTtl(Number(e.target.value))}
-              >
-                <option value={0}>Không lưu (khóa ngay khi tải lại trang)</option>
-                <option value={15}>15 phút</option>
-                <option value={60}>1 giờ</option>
-                <option value={480}>8 giờ (1 ngày làm việc)</option>
-                <option value={1440}>1 ngày</option>
-                <option value={10080}>7 ngày</option>
-                <option value={43200}>30 ngày</option>
-              </select>
+                onChange={(v) => setTtl(Number(v))}
+                options={TTL_OPTIONS}
+                searchPlaceholder="Tìm thời gian…"
+                ariaLabel="Ghi nhớ mở khóa trên máy này"
+                inputProps={{ id: 'vault-passphrase-ttl' }}
+              />
               {ttl > 0 && (
                 <div className="acc-gate__ttl-hint">
                   <AppIcon name="shieldCheck" size={12} />
@@ -1484,7 +1490,7 @@ function GroupBtn({ icon, hue, label, count, on, sub, warn, onClick }) {
    mà cùng in "ACC" thì không quét được bằng mắt. Mã vẫn giữ, xuống thành badge
    nhỏ cạnh tiêu đề: nó vẫn cần để nhận loại, và chip link + dòng sign-in đang
    dùng cùng ngôn ngữ thị giác đó. */
-function ListRow({ item, on, onOpen, selecting, picked, onPick }) {
+function ListRow({ item, items, on, onOpen, selecting, picked, onPick }) {
   const tpl = TPL_BY_KEY.get(item.tpl);
   // Chế độ chọn: cả dòng là <label> bọc checkbox thật — bấm đâu cũng bật/tắt, và
   // không có control lồng trong <button> (HTML không cho).
@@ -1501,7 +1507,7 @@ function ListRow({ item, on, onOpen, selecting, picked, onPick }) {
           {item.favorite && <span className="acc-row__star" role="img" aria-label="Favourite"><AppIcon name="star" size={13} weight="fill" /></span>}
           <span className="acc-row__code">{tpl?.code || '···'}</span>
         </span>
-        <span className="acc-row__sub">{itemSubtitle(item, tpl?.name || 'Item')}</span>
+        <span className="acc-row__sub">{itemSubtitle(item, tpl?.name || 'Item', items)}</span>
       </span>
       <span className="acc-row__side">
         <span className="acc-row__at">{relativeUpdated(item.updated)}</span>

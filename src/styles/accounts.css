@@ -161,12 +161,11 @@
   transition-duration: 1ms !important;
 }
 
-/* ══ Nguyên tử: input · select · textarea ═══════════════════════════════════
+/* ══ Nguyên tử: input · textarea (ô chọn dùng SearchSelect, xem cuối mục) ═════
    ⚠️ Ở thiết kế này input CÓ VIỀN THẬT (radius 12px + focus ring). Bản trước
    làm input không viền theo pattern Proton Pass — sai, chính là chỗ khiến chế
    độ sửa trông như text trần. */
 .acc-input,
-.acc-select,
 .acc-textarea {
   width: 100%;
   font: inherit;
@@ -181,29 +180,20 @@
 }
 .acc-input::placeholder,
 .acc-textarea::placeholder { color: color-mix(in srgb, var(--color-text) 35%, transparent); }
-.acc-input:focus, .acc-select:focus, .acc-textarea:focus { box-shadow: var(--ring); outline: none; }
+.acc-input:focus, .acc-textarea:focus { box-shadow: var(--ring); outline: none; }
 .acc-textarea { resize: vertical; line-height: 1.55; }
 /* Secret khi sửa: che bằng CSS, KHÔNG type="password" — trình quản lý mật khẩu của
    trình duyệt chỉ bắt ô password nên không còn đòi lưu secret của vault (NO_AUTOFILL) */
 .acc-input--masked { -webkit-text-security: disc; font-family: var(--acc-mono); letter-spacing: .12em; }
 
-.acc-select {
-  cursor: pointer;
-  appearance: none;
-  padding-right: 28px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238f8ca6' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 9px center;
-}
-.acc-select:disabled { opacity: .5; cursor: not-allowed; }
-
+/* Ô chọn = SearchSelect dùng chung (components/SearchSelect.jsx), không còn <select> native.
+   `.search-select.` ở đầu để thắng `width: 100%` của search-select.css bất kể thứ tự nạp CSS. */
 /* Ô nhỏ trong cột hành động của dòng field */
-.acc-select--type { width: 104px; font-size: 12px; flex: none; }
-.acc-select--kind { width: 190px; font-size: 12px; flex: none; }
-/* Đứng ở vị trí kicker (dòng "Account · ACC") nên phải nhỏ như kicker */
-.acc-select--tpl { width: 100%; max-width: 260px; font-size: 12px; margin-bottom: 6px; }
+.search-select.acc-pick--type { width: 104px; flex: none; }
+.acc-pick--type .search-select__control { font-size: 12px; }
+.search-select.acc-pick--kind { width: 190px; flex: none; }
 /* Lọc loại ở đầu danh sách — thay hàng chip Types cũ, nên nhỏ như một nhãn phụ */
-.acc-select--filter { width: auto; max-width: 150px; flex: none; font-size: 12px; padding-top: 5px; padding-bottom: 5px; }
+.search-select.acc-pick--filter { width: 150px; flex: none; }
 
 /* ══ Nút ═══════════════════════════════════════════════════════════════════ */
 .acc-btn {
@@ -494,11 +484,6 @@
   font-weight: 700;
   color: color-mix(in srgb, var(--color-text) 85%, transparent);
 }
-.acc-gate__ttl-select {
-  height: 38px;
-  font-size: 13px;
-  cursor: pointer;
-}
 .acc-gate__ttl-hint {
   display: flex;
   align-items: center;
@@ -702,7 +687,7 @@
 .acc-bulkbar__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .acc-bulkbar__count { font-family: var(--acc-mono); font-size: 12.5px; }
 .acc-bulkbar__row { display: flex; flex-wrap: wrap; gap: 6px; }
-.acc-bulkbar__row .acc-select, .acc-bulkbar__row .acc-input, .acc-bulkbar__row .acc-grouppicker { flex: 1 1 100%; min-width: 0; }
+.acc-bulkbar__row .acc-input, .acc-bulkbar__row .acc-grouppicker { flex: 1 1 100%; min-width: 0; }
 .acc-bulkbar__row .acc-btn { flex: 1 1 0; }
 
 /* ── Màn Roots: danh sách gốc (cột giữa) ── */
@@ -807,7 +792,7 @@
 .acc-title__tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
 /* Chế độ sửa: chọn loại + gõ nhóm cùng một hàng ở vị trí kicker */
 .acc-title__meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
-.acc-title__meta .acc-select--tpl { margin-bottom: 0; flex: 1 1 180px; }
+.acc-title__meta .acc-pick--tpl { flex: 1 1 180px; max-width: 260px; }
 .acc-title__meta .acc-grouppicker { flex: 1 1 200px; max-width: 280px; }
 .acc-title__actions { display: flex; align-items: center; gap: 6px; flex: none; }
 
@@ -886,8 +871,8 @@
   border-radius: var(--r); overflow: hidden;
   box-shadow: var(--lift-1);
 }
-/* overflow: hidden ở trên cắt mất menu SearchSelect (ô Linked item) — mở khi menu đang mở */
-.acc-panel:has(.search-select__menu) { overflow: visible; }
+/* overflow: hidden / auto cắt mất menu SearchSelect (ô trong dòng field, trong hộp thoại) — mở khi menu đang mở */
+.acc-panel:has(.search-select__menu), .acc-dialog:has(.search-select__menu) { overflow: visible; }
 .acc-panel--fields { margin-bottom: 17px; }
 .acc-panel__empty {
   padding: 17px 13.6px; background: var(--color-bg); font-size: 13px;
@@ -1588,7 +1573,7 @@ button.acc-guard:hover { border-color: var(--color-accent-300); }
   /* ── M2: tiêu đề + số đếm đã lên header, đầu danh sách chỉ còn lọc loại */
   .acc-listhead { padding: 8px 13.6px; }
   .acc-listhead__title, .acc-listhead__count { display: none; }
-  .acc-vault .acc-select--filter { flex: 1; max-width: none; }
+  .acc-vault .search-select.acc-pick--filter { flex: 1; width: auto; }
   .acc-row { min-height: 64px; }
 
   /* ── M3: back · ☆ · Edit cùng một hàng = thanh điều hướng. `display: contents`
@@ -1655,11 +1640,11 @@ button.acc-guard:hover { border-color: var(--color-accent-300); }
   .acc-vault .acc-btn { min-height: 44px; padding-left: 14px; padding-right: 14px; }
   .acc-vault .acc-btn--ghost { min-height: 40px; }
   .acc-vault .acc-btn--icon { width: 44px; height: 44px; }
-  .acc-vault .acc-input, .acc-vault .acc-select, .acc-vault .acc-textarea,
+  .acc-vault .acc-input, .acc-vault .acc-textarea,
   .acc-vault .search-select .search-select__control {
     min-height: 44px; font-size: 16px;
   }
-  .acc-vault .acc-select--type, .acc-vault .acc-select--kind { width: auto; flex: 1; }
+  .acc-vault .search-select.acc-pick--type, .acc-vault .search-select.acc-pick--kind { width: auto; flex: 1; }
 }
 
 /* Dialog portal ra body nên KHÔNG có ancestor container → phải dùng @media.
@@ -1673,7 +1658,8 @@ button.acc-guard:hover { border-color: var(--color-accent-300); }
   }
   .acc-tplgrid { grid-template-columns: 1fr; gap: 8px; }
   .acc-scrim .acc-btn { min-height: 44px; }
-  .acc-scrim .acc-input, .acc-scrim .acc-select, .acc-scrim .acc-textarea {
+  .acc-scrim .acc-input, .acc-scrim .acc-textarea,
+  .acc-scrim .search-select .search-select__control {
     min-height: 44px; font-size: 16px;
   }
 }

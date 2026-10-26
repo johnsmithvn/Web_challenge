@@ -80,8 +80,9 @@ Guest data dùng React memory và được phép mất khi reload; không lén �
 - Chuyển động phải tắt được bằng cài đặt **Giảm chuyển động** của app (Cài đặt → Chung, mặc định tắt): CSS dùng
   `:root[data-reduce-motion] …`, JS đọc `reduceMotion` của `useTheme()` (ngoài React: thuộc tính `data-reduce-motion`
   trên `<html>`). Không dùng `prefers-reduced-motion` — trình duyệt báo bật là app mất hết hiệu ứng mà user không biết vì sao.
-- Vault Keyplate và Finance Nocturne có scoped design contract riêng. Native select/dialog trong Vault
-  là ngoại lệ được ghi trong DESIGN; không copy ngoại lệ sang module khác.
+- Vault Keyplate và Finance Nocturne có scoped design contract riêng. Dialog tự dựng trong Vault (không
+  GenericModal) là ngoại lệ được ghi trong DESIGN; không copy ngoại lệ sang module khác. Ô chọn trong Vault
+  dùng `SearchSelect`.
 - Không bắt buộc custom component khi native control đơn giản hơn và không phá contract/accessibility.
 
 ## 6. Static content

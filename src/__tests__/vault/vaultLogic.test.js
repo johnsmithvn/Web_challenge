@@ -238,6 +238,23 @@ assert.equal(itemSubtitle({
 assert.equal(itemSubtitle({ tpl: 'card', fields: [] }, 'Credit card'), 'Credit card');
 // Không có nhãn nào khớp → tên template
 assert.equal(itemSubtitle({ tpl: 'note', fields: [] }, 'Secure note'), 'Secure note');
+// Field nhận diện là LINK (Email address → hộp thư Gmail): value rỗng → lấy dòng phụ của item được link
+{
+  const gmail = { id: 'g', title: 'Gmail', tpl: 'email', fields: [{ label: 'Email address', type: 'email', value: 'me@gmail.com' }] };
+  const bare = { id: 'b', title: 'Hộp thư phụ', tpl: 'email', fields: [] };
+  const viaLink = (itemId) => ({
+    id: 'p', title: 'Paypal', tpl: 'account',
+    fields: [{ label: 'Email address', type: 'link', value: '', links: [{ id: 'l', itemId }] }],
+  });
+  assert.equal(itemSubtitle(viaLink('g'), 'Account', [gmail, bare]), 'me@gmail.com');
+  assert.equal(itemSubtitle(viaLink('b'), 'Account', [gmail, bare]), 'Hộp thư phụ', 'đích không có dòng phụ → tiêu đề đích');
+  assert.equal(itemSubtitle(viaLink('gone'), 'Account', [gmail]), 'Account', 'link chết → rơi về fallback');
+  assert.equal(itemSubtitle(viaLink('g'), 'Account'), 'Account', 'không truyền items → như cũ');
+  // Link vòng (A → B → A) chỉ đi một cấp, không lặp vô hạn
+  const a = { id: 'a', title: 'A', tpl: 'account', fields: [{ label: 'Username', type: 'link', links: [{ id: 'x', itemId: 'c' }] }] };
+  const c = { id: 'c', title: 'C', tpl: 'account', fields: [{ label: 'Username', type: 'link', links: [{ id: 'y', itemId: 'a' }] }] };
+  assert.equal(itemSubtitle(a, 'Account', [a, c]), 'C');
+}
 
 /* ── diffLog — hành vi cốt lõi ────────────────────────────────────────── */
 const PASS_BEFORE = 'abcdefgh';            // 8 ký tự

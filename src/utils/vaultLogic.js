@@ -737,9 +737,12 @@ export function matchesQuery(item, query) {
 /**
  * Dòng phụ của item trong danh sách.
  * Item loại thẻ hiện 4 số cuối đã mask; còn lại lấy field nhận diện đầu tiên
- * theo SUBTITLE_LABELS. Không có gì thì rơi về `fallback` (tên template).
+ * theo SUBTITLE_LABELS. Field đó là link (Email address → item Gmail) thì giá trị
+ * rỗng, nên lấy dòng phụ của item được link (hoặc tiêu đề của nó) — cần truyền
+ * `items`. Chỉ một cấp: gọi lại không kèm `items` nên link vòng không lặp.
+ * Không có gì thì rơi về `fallback` (tên template).
  */
-export function itemSubtitle(item, fallback = '') {
+export function itemSubtitle(item, fallback = '', items = []) {
   const val = (f) => (f.type === 'multi' ? (f.values || [])[0] || '' : f.value || '');
 
   if (item.tpl === 'card') {
@@ -749,7 +752,14 @@ export function itemSubtitle(item, fallback = '') {
 
   for (const label of SUBTITLE_LABELS) {
     const f = (item.fields || []).find((x) => x.label === label);
-    if (f && val(f)) return val(f);
+    if (!f) continue;
+    if (val(f)) return val(f);
+    if (f.type === 'link') {
+      // Link đầu tiên còn trỏ tới item có thật (link chết thì bỏ qua)
+      const target = (f.links || []).map((L) => items.find((x) => x.id === L.itemId)).find(Boolean);
+      const sub = target ? itemSubtitle(target) || target.title : '';
+      if (sub) return sub;
+    }
   }
   return fallback;
 }

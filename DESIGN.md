@@ -1093,7 +1093,7 @@ Types/Tags filter bar is gone.
   an earlier pass did) leaves the panel edgeless and the whole page reads flat — it is
   the only elevation cue now that there are no shadows.
 - **Edit mode uses real bordered controls, not borderless inline text.**
-  `.acc-input` / `.acc-select` / `.acc-textarea` carry a `1px divider` border, sit on
+  `.acc-input` / `.acc-textarea` / SearchSelect's control carry a `1px divider` border, sit on
   `--color-bg` (sunk into the page, not raised like a panel), `--r` radius and a
   `--ring` focus shadow. This is the **opposite** of the
   Proton-Pass-derived pattern the previous `/accounts` used ("the border belongs
@@ -1188,12 +1188,16 @@ Types/Tags filter bar is gone.
 - **`.acc-hist`** — a left rail (`border-left` divider) with 7px round accent dots
   carrying a 3px `--color-bg` halo; timestamps in mono 11.5px,
   detail lines switch to monospace when they contain masked bullets.
-- **Native `<select>` (`.acc-select`) and a hand-built dialog, not a shared dropdown
-  / `GenericModal`.** RULES §5 recommends the shared controls, but the vault
-  overrides both **on purpose** — those components are
-  styled to Life Hub tokens and would break the scoped vault look. Native
-  controls styled with vault tokens (select arrow via inline SVG background) keep
-  fidelity and are less code. Exception noted in `AccountDetail.jsx`.
+- **Every dropdown is `SearchSelect` (`components/SearchSelect.jsx`, `search-select.css`); no
+  native `<select>` / `<datalist>` is left in the vault.** Item type, group, title, field type,
+  Brand, linked item, new sign-in method, new field type, the list's type filter and both
+  unlock-TTL pickers use it. It reads vault tokens (`--color-bg`, `--surface`, `--r`, `--ring`)
+  so it keeps the Keyplate look; per-slot sizes are `.acc-pick--type / --kind / --tpl / --filter`.
+  `allowCustom` = combobox (title, group, Brand, unlinked Linked item): typing keeps free text,
+  Enter keeps what was typed unless ↓ picked a row. Its menu is absolute, so containers that
+  clip (`.acc-panel`, `.acc-dialog`) switch to `overflow: visible` via `:has(.search-select__menu)`
+  while it is open. The dialogs stay hand-built, not `GenericModal` — that component brings
+  Life Hub tokens and breaks the scoped vault look. Exception noted in `AccountDetail.jsx`.
 - **`.acc-act` (Reveal / Copy / Generate) never hover-reveals** — permanent
   bordered buttons, same reasoning as `.td-del`: touch has no hover, and
   reveal/copy are the two controls a phone user reaches for. Generate is enabled
@@ -1210,8 +1214,8 @@ Types/Tags filter bar is gone.
   `min-width: 1040px` floor is **dropped** for the same reason; the real floor is
   the columns' own `300 + 520`. Touch targets ≥44px and inputs 16px when narrow
   (iOS zoom). No JS breakpoint, no `useMediaQuery`, no duplicated mobile layout markup.
-- **Title = service name, with suggestions.** The Edit-mode title input carries a native
-  `<datalist>` (`titleSuggestions`): mailbox name derived from the address → titles already in
+- **Title = service name, with suggestions.** The Edit-mode title is a `SearchSelect allowCustom`
+  fed by `titleSuggestions` (each row shows its preset group): mailbox name derived from the address → titles already in
   the vault (the user's own spelling) → `titlePresets` in `account-templates.json`. Picking an
   exact suggestion fills the group only when the item has none — it never overwrites a group
   the user chose. Free typing always works; this is a hint list, not a picker.
@@ -1223,11 +1227,13 @@ Types/Tags filter bar is gone.
   *is* the Gmail mailbox, one Email account item. Templates carry a default `group` used when an
   item is created outside any group. A test fails if a title-preset key or a template group
   drifts outside the list, so the standard cannot silently fork.
-- **Group picker = one `<select>`.** `GroupPicker` (exported from `AccountDetail.jsx`) sits next
-  to the item-type select and looks like it (`.acc-select--group`): Ungrouped · groups (vault
-  groups first, then presets), a group with children is an `<optgroup>` · New group… which
-  reveals a text input (`.acc-input--group`, "/" makes a sub-group). Rejected: a `<datalist>`
-  (browser-drawn, narrow, truncates) and a chip row (three rows of buttons for one choice).
+- **Group picker = one combobox.** `GroupPicker` (exported from `AccountDetail.jsx`) is a
+  `SearchSelect allowCustom` (`.acc-grouppicker`, size `sm`) next to the item-type picker:
+  empty = Ungrouped (X clears), rows are groups (vault groups first, then presets) with their
+  group icon, a sub-group reads "Parent › Child"; typing a name that matches nothing offers
+  "New group: …" ("/" makes a sub-group). Opening it with a group already set still lists every
+  group — it filters only after you type. Rejected: a `<datalist>` (browser-drawn, narrow,
+  truncates) and a chip row (three rows of buttons for one choice).
 - **Vault inputs never feed the browser's password manager.** Every content input spreads
   `NO_AUTOFILL` (`autocomplete=off` + ignore flags for third-party managers) and secret inputs
   are `type="text"` masked with `-webkit-text-security` (`.acc-input--masked`): Chrome treats a
@@ -1318,7 +1324,7 @@ Types/Tags filter bar is gone.
   It is a hand-built dialog, not `GenericModal` — see the scoped exception above.
 - **Groups column (`.acc-groups` / `.acc-grp`) — purpose groups, not item types, are the
   primary navigation.** With 14 of 18 items sharing the `ACC` type, a Types chip row
-  partitioned nothing; type is now a small native `<select>` (`.acc-select--filter`) in
+  partitioned nothing; type is now a small `SearchSelect` (`.acc-pick--filter`, empty = All types) in
   the list header, listing only types that have items. A group is one path string on the
   item (`group: "Tài chính/Ngân hàng"`, max 2 levels) inside the encrypted payload; the
   tree is derived from items like `usedTags`, so an empty group cannot exist. Plate colour

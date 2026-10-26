@@ -21,8 +21,8 @@ import SearchSelect from './SearchSelect';
  * log NGAY qua onSetAuthState / onSetCodeUsed. Trong chế độ sửa, các thay đổi
  * đó vào draft và chỉ thành log khi Save.
  *
- * ⚠️ Ở chế độ sửa, mọi control là input/select CÓ VIỀN THẬT (`.acc-input`,
- *    `.acc-select`) — đúng như template của bản thiết kế. Bản trước làm input
+ * ⚠️ Ở chế độ sửa, mọi control là input / ô chọn CÓ VIỀN THẬT (`.acc-input`,
+ *    SearchSelect) — đúng như template của bản thiết kế. Bản trước làm input
  *    không viền theo pattern Proton Pass; đó là lý do chế độ sửa trông như text
  *    trần. Đừng "dọn" viền đi lần nữa.
  *
@@ -39,6 +39,7 @@ const {
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
 const AUTH_KIND_LIST = Object.entries(AUTH_KINDS).map(([value, v]) => ({ value, ...v }));
+const TPL_OPTIONS = TEMPLATES.map((t) => ({ value: t.key, label: t.name, badge: t.code }));
 const CARD_BRANDS = ['Visa', 'Mastercard', 'JCB', 'American Express', 'UnionPay', 'Napas', 'Discover'];
 
 const clone = (x) => structuredClone(x);
@@ -233,19 +234,19 @@ export default function AccountDetail({
 
           {/* Đổi Type KHÔNG thêm/bớt field: field thuộc item, template chỉ điền sẵn
               lúc tạo. Mọi `tpl` đọc lên đều là key hợp lệ nhờ alias trong
-              cleanItem (useAccounts.js), nên select luôn khớp một option. */}
+              cleanItem (useAccounts.js), nên ô chọn luôn khớp một option. */}
           {editing ? (
             <div className="acc-title__meta">
-              <select
-                className="acc-select acc-select--tpl"
+              <SearchSelect
+                className="acc-pick--tpl"
+                size="sm"
                 value={shown.tpl}
-                onChange={(e) => patch((d) => { d.tpl = e.target.value; })}
-                aria-label="Item type"
-              >
-                {TEMPLATES.map((t) => (
-                  <option key={t.key} value={t.key}>{t.name} · {t.code}</option>
-                ))}
-              </select>
+                onChange={(v) => patch((d) => { d.tpl = v; })}
+                options={TPL_OPTIONS}
+                searchPlaceholder="Search item types…"
+                noResultsText="No matching type"
+                ariaLabel="Item type"
+              />
               <GroupPicker value={draft.group || ''} onChange={(g) => patch((d) => { d.group = g; })} paths={groupPaths} />
             </div>
           ) : (
@@ -395,7 +396,7 @@ export default function AccountDetail({
               </span>
             </div>
             {dependents.map((d) => (
-              <BacklinkRow key={d.item.id} src={d.item} via={d.via} depth={d.depth} onOpen={onOpen} />
+              <BacklinkRow key={d.item.id} src={d.item} via={d.via} depth={d.depth} items={items} onOpen={onOpen} />
             ))}
           </div>
         </section>
@@ -410,7 +411,7 @@ export default function AccountDetail({
           </div>
           <div className="acc-panel">
             {moneySources.map((s) => (
-              <BacklinkRow key={s.item.id} src={s.item} via={s.via} onOpen={onOpen} />
+              <BacklinkRow key={s.item.id} src={s.item} via={s.via} items={items} onOpen={onOpen} />
             ))}
           </div>
         </section>
@@ -422,10 +423,16 @@ export default function AccountDetail({
           <h3 className="acc-sect__title">Sign-in methods</h3>
           {editing && (
             <div className="acc-sect__tools">
-              <select className="acc-select acc-select--kind" value={newAuthKind}
-                onChange={(e) => setNewAuthKind(e.target.value)} aria-label="New sign-in method">
-                {AUTH_KIND_LIST.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
-              </select>
+              <SearchSelect
+                className="acc-pick--kind"
+                size="sm"
+                value={newAuthKind}
+                onChange={setNewAuthKind}
+                options={AUTH_KIND_LIST}
+                searchPlaceholder="Search methods…"
+                noResultsText="No matching method"
+                ariaLabel="New sign-in method"
+              />
               <button className="acc-act" onClick={() => patch((d) => {
                 d.auth.push({
                   id: newId(), kind: newAuthKind,
@@ -710,7 +717,7 @@ function CardPreview({ item, revealed }) {
    Giá trị lấy qua linkableValues: nó đã là nơi duy nhất định nghĩa "cái gì được
    phép hiện ra ngoài mà không cần Reveal" (secret bị loại) — tự duyệt fields ở
    đây là mở một đường rò thứ hai. */
-function BacklinkRow({ src, via, depth = 1, onOpen }) {
+function BacklinkRow({ src, via, depth = 1, items, onOpen }) {
   const [open, setOpen] = useState(false);
   const tpl = TPL_BY_KEY.get(src.tpl);
   const detail = linkableValues(src);
@@ -723,7 +730,7 @@ function BacklinkRow({ src, via, depth = 1, onOpen }) {
         <button className="acc-link" onClick={() => onOpen(src.id)}>
           <span className="acc-link__code">{tpl?.code || '···'}</span>
           <span className="acc-link__title">{src.title}</span>
-          <span className="acc-link__sub">{itemSubtitle(src, tpl?.name || '')}</span>
+          <span className="acc-link__sub">{itemSubtitle(src, tpl?.name || '', items)}</span>
           <span className="acc-link__arrow" aria-hidden="true">↗</span>
         </button>
 
@@ -853,10 +860,17 @@ function FieldRow({ field: f, idx, totalFields, editing, items, ownerId, reveale
           </button>
         )}
         {editing && (
-          <select className="acc-select acc-select--type" value={f.type}
-            onChange={(e) => setType(e.target.value)} aria-label="Field type">
-            {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
+          <SearchSelect
+            className="acc-pick--type"
+            value={f.type}
+            onChange={setType}
+            options={TYPES}
+            searchPlaceholder="Type…"
+            noResultsText="No match"
+            ariaLabel="Field type"
+            // Ô hẹp (104px) đứng sát mép phải → menu rộng hơn ô, neo phải mở sang trái
+            menuStyle={{ left: 'auto', width: 170 }}
+          />
         )}
         {editing && (
           <button className="acc-act acc-act--x" title="Remove field" aria-label="Xóa trường"
@@ -919,7 +933,7 @@ function ViewValue({ field: f, items, revealed, copied, onCopy, onOpen }) {
             <button key={L.id} className="acc-link" onClick={() => onOpen(target.id)}>
               <span className="acc-link__code">{t?.code || '···'}</span>
               <span className="acc-link__title">{target.title}</span>
-              <span className="acc-link__sub">{itemSubtitle(target, t?.name || '')}</span>
+              <span className="acc-link__sub">{itemSubtitle(target, t?.name || '', items)}</span>
               <span className="acc-link__arrow" aria-hidden="true">↗</span>
             </button>
           );
@@ -1013,29 +1027,36 @@ function EditValue({ field: f, idx, items, ownerId, patch }) {
   // nên không còn đòi lưu secret của vault — xem NO_AUTOFILL.
   const masked = sensitive && !showSensitive;
   const type = f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text';
-  // Field `Brand` của template card: gợi ý tổ chức thẻ qua <datalist> native —
-  // chọn từ list nhưng vẫn gõ được brand ngoài list, khác <select> đóng cứng.
-  const suggest = f.label === 'Brand' && f.type === 'text';
+  // Field `Brand` của template card: gợi ý tổ chức thẻ qua SearchSelect allowCustom —
+  // chọn từ list nhưng vẫn gõ được brand ngoài list, khác ô chọn đóng cứng.
+  if (f.label === 'Brand' && f.type === 'text') {
+    return (
+      <SearchSelect
+        allowCustom
+        value={f.value || ''}
+        onChange={(v) => patch((d) => { d.fields[idx].value = v; })}
+        options={CARD_BRANDS}
+        placeholder="Visa, Mastercard …"
+        noResultsText="Not in the list — kept as typed"
+        ariaLabel="Field value"
+        inputProps={NO_AUTOFILL}
+      />
+    );
+  }
   return (
     <div className="acc-editvalue">
       <input
         className={`acc-input${masked ? ' acc-input--masked' : ''}`} type={type}
         value={f.value}
         onChange={(e) => patch((d) => { d.fields[idx].value = e.target.value; })}
-        placeholder={suggest ? 'Visa, Mastercard …' : placeholderFor(f.type)}
+        placeholder={placeholderFor(f.type)}
         aria-label="Field value"
-        list={suggest ? 'acc-brands' : undefined}
         inputMode={f.type === 'phone' ? 'tel' : f.type === 'url' ? 'url' : f.type === 'email' ? 'email' : undefined}
         {...NO_AUTOFILL}
         autoCorrect={sensitive ? 'off' : undefined}
         autoCapitalize={sensitive ? 'none' : undefined}
         spellCheck={sensitive ? false : undefined}
       />
-      {suggest && (
-        <datalist id="acc-brands">
-          {CARD_BRANDS.map((b) => <option key={b} value={b} />)}
-        </datalist>
-      )}
       {sensitive && (
         <button type="button" className="acc-act" onClick={() => setShowSensitive((value) => !value)}>
           {showSensitive ? 'Hide' : 'Reveal'}
@@ -1056,14 +1077,14 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
   // giờ lôi giá trị secret vào đây.
   const selectOptions = useMemo(() => linkOptions.map((it) => {
     const t = TPL_BY_KEY.get(it.tpl);
-    const sub = itemSubtitle(it);
+    const sub = itemSubtitle(it, '', items);
     return {
       value: it.id,
       label: it.title,
       badge: t?.code || '···',
       sub: sub || undefined,
     };
-  }), [linkOptions]);
+  }), [linkOptions, items]);
 
   return (
     <div className="acc-multi acc-multi--edit">
@@ -1184,10 +1205,15 @@ function AddFieldPanel({ patch }) {
       </div>
       <div className="acc-fieldgrp acc-fieldgrp--type">
         <label htmlFor="acc-newtype">Type</label>
-        <select id="acc-newtype" className="acc-select" value={type}
-          onChange={(e) => setType(e.target.value)}>
-          {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
+        <SearchSelect
+          value={type}
+          onChange={setType}
+          options={TYPES}
+          searchPlaceholder="Search types…"
+          noResultsText="No matching type"
+          ariaLabel="Type"
+          inputProps={{ id: 'acc-newtype' }}
+        />
       </div>
       <button className="acc-btn" onClick={add}>+ Add field</button>
       <div className="acc-box__hint">
