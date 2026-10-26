@@ -1102,7 +1102,7 @@ Types/Tags filter bar is gone.
   these borders.
 - **Every small action is a bordered `12px` sentence-case button** (`.acc-act`, 28px
   min height, `--r-sm`): Reveal, Hide, Copy, Generate, Make primary, Turn on/off, + Add
-  value, + Link an item, Regenerate, Append, Show all N events. The border is what keeps
+  value, + Link another item, Regenerate, Append, Show all N events. The border is what keeps
   them reading as controls rather than body copy (the old rule made them uppercase
   instead). `Delete item` (`.acc-foot__del`) is the same button in `--danger`.
 - **`.acc-btn--primary` is solid accent with `--on-accent` text — no gradient, no glow.**

@@ -1089,18 +1089,37 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
         );
       })}
 
+      {/* Chưa có link: một ô vừa gợi ý item (khớp tên + subtitle, gõ SĐT/email là ra item đó) vừa nhận
+          giá trị thường — chọn gợi ý thì thành link, gõ tự do thì giữ làm value không link. */}
       {links.length === 0 && (
-        <input {...NO_AUTOFILL} className="acc-input" value={f.value || ''}
-          onChange={(e) => patch((d) => { d.fields[idx].value = e.target.value; })}
-          placeholder="Or type a plain value (not linked)" />
+        <SearchSelect
+          allowCustom
+          value={f.value || ''}
+          onChange={(val, opt) => patch((d) => {
+            const fd = d.fields[idx];
+            if (opt) {
+              (fd.links ||= []).push({ id: newId(), itemId: val });
+              fd.value = '';
+            } else {
+              fd.value = val;
+            }
+          })}
+          options={selectOptions}
+          placeholder="Pick an item, or type a plain value (not linked)"
+          noResultsText="No matching item — kept as a plain value"
+          ariaLabel="Linked item or plain value"
+          inputProps={NO_AUTOFILL}
+        />
       )}
 
-      <button className="acc-act acc-addrow" disabled={linkOptions.length === 0}
-        onClick={() => patch((d) => {
-          const other = linkOptions[0];
-          d.fields[idx].links.push({ id: newId(), itemId: other ? other.id : null });
-          d.fields[idx].value = '';
-        })}>{links.length ? '+ Link another item' : '+ Link an item'}</button>
+      {links.length > 0 && (
+        <button className="acc-act acc-addrow" disabled={linkOptions.length === 0}
+          onClick={() => patch((d) => {
+            const other = linkOptions[0];
+            d.fields[idx].links.push({ id: newId(), itemId: other ? other.id : null });
+            d.fields[idx].value = '';
+          })}>+ Link another item</button>
+      )}
     </div>
   );
 }
