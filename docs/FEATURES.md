@@ -1,6 +1,6 @@
 # FEATURES.md — Life Hub
 
-**Version:** v6.22.0 · **Updated:** 2026-10-08
+**Version:** v6.32.0 · **Updated:** 2026-10-25
 
 Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và chi tiết release nằm trong
 [`CHANGELOG.md`](../CHANGELOG.md).
@@ -13,7 +13,7 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
 | Nhiệm vụ | `/tasks` | List in-memory | Full sync + Lịch 5 chế độ |
 | Focus | `/focus` | In-memory | Sync session + XP |
 | Inbox | `/inbox` | — | ✅ |
-| Knowledge (PKM) | `/collect` | — | ✅ |
+| Knowledge | `/collect` | — | ✅ |
 | Finance | `/finance/:screen?` | — | ✅ |
 | Body | `/body` | — | ✅ |
 | Vault | `/accounts` | — | Login + Vault unlock |
@@ -159,7 +159,8 @@ Tài liệu này chỉ mô tả tính năng đang chạy. Feature đã xóa và 
   tên). X / Huỷ / `Escape` bỏ bản nháp. Tên trống thì ô tên tự focus.
 
 - **Đổi ngày giờ** (nhãn hạn trên thẻ, ngăn chi tiết, bấm giờ của việc ở Lịch biểu): ô Bắt đầu + Kết thúc (tuỳ
-  chọn), lịch có ngày âm; ô đang chọn nhận lần bấm (không tự nhảy ô); ✕ "Bỏ hạn" xoá hết, ✕ "Bỏ ngày kết thúc" chỉ
+  chọn), lịch có ngày âm; bấm kiểu ClickUp: ngày đầu vào Bắt đầu rồi tự nhảy sang Kết thúc, bấm tiếp là ngày cuối
+  (rê chuột xem trước khoảng; bấm trước Bắt đầu = Bắt đầu mới, bấm trùng = 1 ngày); ✕ "Bỏ hạn" xoá hết, ✕ "Bỏ ngày kết thúc" chỉ
   bỏ ngày cuối; "Thêm giờ" mở dòng giờ bắt đầu → kết thúc (1 ngày có cả 2 giờ = khối giờ cùng ngày). Lưu mờ khi
   chưa đổi. Lọc khoảng ngày: 4 khoảng nhanh + "Bấm ngày đầu, rồi ngày cuối".
 - Phụ đề hàng điều hướng: Tuần "Bính Ngọ · N việc có giờ, M cả ngày", Tháng "Bính Ngọ · N việc có hạn".
@@ -227,27 +228,31 @@ Desktop nổi bên phải, mobile là sheet; mở bằng nút "Lịch & sự ki�
 
 **Data:** `collections`; handoff tạm: `lh_inbox_to_finance`.
 
-## 5. Knowledge Base — PKM Athenaeum (`/collect`)
+## 5. Knowledge (`/collect`)
 
 **Files:** `src/pages/CollectPage.jsx`, `src/components/kb/*`, `src/utils/kbDeriveUtils.js`,
-`src/styles/kb-tokens.css`, `src/hooks/useCollections.js`, `src/hooks/useCollectionNotes.js`
+`src/styles/kb-tokens.css`, `src/hooks/useCollections.js`, `src/hooks/useCollectionTopics.js`,
+`src/hooks/useCollectionNotes.js`
 
-Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KNOWLEDGE.md).
+Chi tiết (quy chuẩn phân loại, dữ liệu, từng màn): [`docs/MODULE_KNOWLEDGE.md`](MODULE_KNOWLEDGE.md).
 
-### Tính năng Quản trị Tri thức PKM (Obsidian / Zettelkasten)
-- **Liên kết 2 chiều (`[[Wiki-links]]`):** Trích dẫn bài viết khác trong nội dung bằng cú pháp `[[Tên bài viết]]`. Hệ thống tự động phân tích và tạo siêu liên kết điều hướng mượt mà giữa các bài viết.
-- **Biểu đồ tri thức tương tác (`KbGraphView`):** Canvas tương tác mô phỏng mạng lưới các bài viết (nodes) và liên kết liên trang (edges). Hỗ trợ zoom, pan, hover xem tên bài và click để mở bài viết.
-- **Bảng Backlinks ngữ cảnh (`KbBacklinks`):** Tự động phát hiện và trích đoạn câu chứa liên kết từ tất cả các bài viết khác đang trỏ tới bài hiện tại.
-- **Chế độ đọc tập trung (`KbReader`):** Giao diện đọc tĩnh tinh tế, tự động trích xuất Mục lục (TOC / Headings navigation), hiển thị ước tính thời gian đọc (read time) và khối Backlinks cuối trang.
-- **Trình soạn thảo kép (Dual-mode Editor):**
-  - **Split Markdown Editor (`KbSplitEditor`):** Soạn thảo Markdown với đồng bộ cuộn thời gian thực (sync scroll) và khung xem trước (live preview).
-  - **Visual Editor (`KbVisualEditor`):** Soạn thảo trực quan phong phú dựa trên Tiptap Rich Text.
-- **Bảng Thống kê tri thức (`KbStats`):** Thống kê định lượng toàn bộ kho kiến thức: tổng số bài, tổng số từ, liên kết nội bộ, thời gian đọc trung bình.
-- **Phím tắt nhanh (`KbShortcutsModal`):** Hỗ trợ tra cứu nhanh toàn bộ phím tắt thao tác.
-- **Phân loại & Lọc chuyên sâu:** 7 danh mục (Ghi chú, Trích dẫn, Học tập, Ý tưởng, AI, Giải trí, Podcast), lọc theo tag, tìm kiếm tức thì theo từ khóa.
-- **Media & Attachment:** Hỗ trợ chèn ảnh, YouTube, Audio player inline; tải tệp lên Google Drive qua `api/upload.js`.
+Nơi cất, xem và đọc lại kiến thức. Mỗi mục là một bài viết (Markdown hoặc Visual); media là link ngoài.
+Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm vụ (bản yên tĩnh); cột trái gồm tìm, viết bài, kiểu xem, chủ đề.
 
-**Data:** `collections`, `collection_notes`, `collection_tags`, `task_collections`.
+- **Chủ đề** (tối đa 8, mỗi bài một chủ đề hoặc Chưa xếp; bộ khởi đầu 7 chủ đề): chọn trong trình soạn thảo
+  (có gợi ý), đổi ở trang đọc, gán hàng loạt ở Danh sách, quản lý (kéo đổi thứ tự, đổi tên / màu, gộp / xoá) từ "Quản lý" ở cột trái.
+- **Loại** tự nhận từ link (Repo, Video, Bài FB, Âm thanh, Bài viết, Ghi chú, Trích dẫn); tiêu đề tự điền từ link khi trống.
+- **Tổng quan** (màn mở đầu): lời chào + bầu trời nhỏ (bài có liên kết thành chòm sao), Xếp nhanh bài mới chưa có chủ đề
+  (phím `1`–`8`), thẻ các chủ đề, Ghi chú của tôi, Gặp lại hôm nay, Gần đây.
+- **Danh sách / Gallery / Sơ đồ / Canvas**, lọc theo chủ đề ở cột trái. Danh sách: lọc Loại, Có liên kết, thẻ (chỉ thẻ của
+  Knowledge); nhóm theo Tháng / Chủ đề / Loại; sắp xếp; chọn nhiều (gán chủ đề, xoá). Sơ đồ là "bầu trời": mỗi bài một ngôi sao.
+- **Tìm kiếm** không cần dấu, nhiều từ, trong cả ghi chú và tên chủ đề; `#thẻ`.
+- **Trang đọc:** mục lục, `[[liên kết]]` + backlink, khung **Xung quanh** (cùng chủ đề / cùng nguồn / lưu gần thời
+  điểm), sơ đồ nhỏ, ghi chú cá nhân, nhiệm vụ liên kết, chế độ tập trung (`F`).
+- Xoá có hoàn tác (toast / `⌘Z`). Không có trạng thái đọc, lưu trữ hay nút tạo task (nối bài với task từ Nhiệm vụ).
+
+**Data:** `collections` (+ `topic_id`), `collection_topics`, `collection_notes`, `collection_tags`, `task_collections`.
+**Local:** `vl_kb_recent` (Gần đây), `kb_editor_mode`, `kb_canvas_nodes`, `kb_canvas_edges`.
 
 ## 6. Tags và Cài đặt (`/settings`)
 
@@ -297,7 +302,7 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   cũ trả muộn mang nhãn tháng mới, bỏ kỳ trước `opened_at`); thẻ hiện nợ sao kê kỳ trước còn treo — tiền trả
   trừ vào nợ cũ nhất trước.
 - Cho vay hiện lãi đơn theo ngày trên gốc còn lại, hỗ trợ tính lãi mất do rút tiết kiệm sớm (`forfeited_interest`).
-- Quỹ tiết kiệm: Quản lý nhiều nơi gửi/sổ ngân hàng, lãi suất bình quân, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ.
+- Quỹ tiết kiệm: Quản lý nhiều nơi gửi/sổ ngân hàng, lãi suất bình quân, đáo hạn, lock soft/term/external và yêu cầu rút term chờ 48 giờ. Nơi gửi có 4 loại: Chứng chỉ tiền gửi, Sổ tiết kiệm, Tích lũy linh hoạt, **Tích lũy An Gia** (gửi lần đầu X, góp cố định Y mỗi tháng vào ngày gửi, kỳ hạn theo năm; lãi dự kiến tính theo lịch góp; hub nhắc kỳ góp tháng này, sổ báo "thiếu … tiền góp" khi số đang gửi thấp hơn lịch; panel sổ có Góp tiền điền sẵn số còn thiếu; đáo hạn chỉ rút về). Ô quỹ trong form nơi gửi mặc định **Tích lũy chung** — quỹ riêng, app tự tạo khi cần — không còn lặng lẽ gắn vào quỹ mục tiêu đầu danh sách.
 - Sổ đã đáo hạn: nút Xử lý → rút về hoặc gửi lại (chỉ gốc / gốc + lãi). Sổ cũ đóng và vào "Lịch sử sổ đã tất toán" (mở lại được), gửi lại là một dòng sổ mới, lãi thực nhận ghi thành Thu › Lãi tiết kiệm; toast có Hoàn tác.
 
 **Data:** 10 bảng `finance_*` chính + `finance_transaction_tags`. Schema chi tiết ở
@@ -322,6 +327,57 @@ Chi tiết kiến trúc và thiết kế: [`docs/MODULE_KNOWLEDGE.md`](MODULE_KN
   - **Plaintext JSON Export:** Xuất toàn bộ dữ liệu ra file JSON rõ nghĩa sau khi xác thực lại Master Passphrase thành công.
 - Update/delete dùng `updated_at` làm revision để chặn ghi đè giữa tab/device.
 - Logo item do user tự chọn, vẽ qua canvas thành PNG 48×48 lưu trong encrypted payload; không gọi mạng bên ngoài.
+
+### Sắp xếp và chuỗi phụ thuộc
+- **Nhóm theo mục đích** là điều hướng chính (cột trái): mỗi item có một nhóm tối đa 2 cấp
+  (`Tài chính/Ngân hàng`), gõ ở chế độ Edit với gợi ý nhóm đã có. Nhóm nằm trong encrypted payload
+  như tag; danh sách nhóm suy ra từ item, không có nhóm rỗng. Item chưa có nhóm ở mục Ungrouped.
+  Tạo item khi đang mở một nhóm thì item mới vào sẵn nhóm đó. Lọc theo loại là select nhỏ ở đầu
+  danh sách; tìm kiếm khớp cả tên nhóm.
+- **Depends on this** ở trang chi tiết: những item phụ thuộc vào item đang xem — qua link thật, hoặc
+  vì một field của chúng trùng email/SĐT mà item này đại diện (Identity, hoặc item có tiêu đề chính là
+  email/SĐT đó) — kèm cấp 2, 3 (Gmail → ngân hàng → thẻ). Có dòng tóm tắt và cảnh báo khi item chỉ
+  đăng nhập bằng mật khẩu.
+- **Password only:** mục ngay dưới Favourites liệt kê item mà phương thức đăng nhập đang bật duy nhất
+  là mật khẩu; danh sách và trang chi tiết cũng gắn cờ vàng cho các item này.
+- **Roots (bản đồ gốc định danh):** mục trong cột nhóm. Cột giữa liệt kê các gốc (item có tiêu đề là
+  email/SĐT, hoặc Identity) theo số item phụ thuộc; cột phải là bản đồ của gốc đang chọn: dải số liệu,
+  CHAIN (đường từ gốc phía trên xuống item đang trỏ — bấm một dòng phụ thuộc để vẽ lại), *Protected by*
+  (phương thức đăng nhập + item mà gốc dựa vào) → gốc → *Depends on this* (gom theo field), cảnh báo
+  mất gốc thì kéo theo những gì. Mục **Not in vault yet** liệt kê email/SĐT làm giá trị cho ≥2 item mà
+  chưa có item riêng; "Add as item" tạo item Account với tiêu đề + Username điền sẵn. Mobile: danh sách
+  gốc → bản đồ xếp dọc.
+- **Tiêu đề = tên dịch vụ** (VIB, Gmail, Shopee), không phải username. Ô tiêu đề ở chế độ Edit xổ gợi ý:
+  tên đã dùng trong vault + danh sách dịch vụ hay dùng (`titlePresets`); chọn một tên khi item chưa có nhóm
+  thì nhóm được điền theo. Gõ tên khác vẫn được.
+  Quy chuẩn: **một lần đăng nhập = một item**. Hộp thư (Email account) → Gmail / Outlook / iCloud Mail;
+  tài khoản Google chính là hộp thư Gmail đó, không tạo thêm item "Google" — Gemini, Google One, Drive… ghi
+  vào chính item Gmail. Tài khoản riêng ở công ty khác đăng nhập bằng email (Account) → Microsoft / Apple ID.
+- **Bộ nhóm chuẩn (8 nhóm):** Tài chính (Ngân hàng · Ví điện tử · Thẻ · Đầu tư), Email, Công nghệ (Apple ID, Microsoft, GitHub, ChatGPT…), Mạng xã hội, Mua sắm & giải trí, Công việc, Giấy tờ & SĐT, Wi-Fi & thiết bị.
+  Chọn ở ô Group cạnh ô loại item (chế độ Edit) và thanh Move to group, nhóm đã dùng đứng trước; Tài chính
+  xổ thành Ngân hàng / Thẻ / …; **New group…** để gõ nhóm khác ("/" tạo nhóm con). Item mới không đứng trong nhóm nào
+  vào nhóm chuẩn của loại (Thẻ → Tài chính/Thẻ, Email account → Email, Identity → Giấy tờ & SĐT,
+  Wi-Fi → Wi-Fi & thiết bị, Server / Database / API key → Công việc).
+- **Chuyển nhóm hàng loạt:** nút **Select** ở đầu danh sách → tick nhiều item (hoặc "Select all" theo bộ
+  lọc đang xem) → chọn nhóm ở thanh **Move to group** → Move. New group… gõ tên chưa có là tạo nhóm, Ungrouped là
+  bỏ nhóm. **+ New group** ở cột nhóm mở thẳng chế độ chọn ở All items, ô gõ tên nhóm mở sẵn.
+- **Email account (EML) và Identity làm gốc:** hộp thư nên lưu bằng loại Email account — tiêu đề đặt tự
+  do ("Gmail", "Gmail công việc"), địa chỉ ở field Email address; Roots nhận gốc theo field đó. Mỗi số
+  điện thoại là một Identity (Phone numbers), dòng phụ ngoài danh sách hiện chính số đó. Item cũ có tiêu
+  đề là email/SĐT vẫn là gốc như trước.
+- **Hai loại liên kết:** mỗi field *Linked item* là **Sign-in · recovery** (→, mất mục được trỏ tới thì
+  mất mục này) hoặc **Money · pays from** (⇒, mục này rút được tiền từ mục được trỏ tới). Chọn ở chế
+  độ Edit; chưa chọn thì đoán theo tên field ("Linked bank", "Bank login", "Nguồn tiền"… là tiền). Roots
+  và Depends on this chỉ đi theo liên kết đăng nhập; bản đồ gốc thêm **Money reachable** (Email B →
+  ZaloPay ⇒ Ngân hàng A · B · C) và chỉ số Money reach. Trang chi tiết của tài khoản có mục **Can move
+  money out of this**.
+- **Money links:** mục trong cột nhóm (hiện khi có liên kết tiền). Bảng ma trận ví/thẻ × tài khoản,
+  dòng cuối đếm số nguồn rút được từ mỗi tài khoản (vàng khi ≥ 2); bấm tên hàng / cột để xem panel:
+  rút tiền từ đâu / bị ai rút, đăng nhập bằng gì, cảnh báo. Mobile: bảng → panel.
+- **Mobile:** đi sâu từng màn — Vault (danh sách nhóm) → nhóm → chi tiết. Gõ tìm kiếm ở màn Vault là
+  tìm toàn vault. Trang chi tiết có thanh Copy username / Copy password ghim đáy; chế độ sửa ghim
+  Cancel · Save ở đáy. Nút Đổi mật khẩu Vault nằm cuối màn Vault. Nút tạo nhanh (QuickCapture) không
+  hiện ở `/accounts`.
 
 **Data:** `accounts` ciphertext + `vault_config`. Không có guest mode.
 

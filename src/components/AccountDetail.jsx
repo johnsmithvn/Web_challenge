@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   TYPES, TYPE_HINT, isSecretType, scorePassword, generatePassword, parseCodes, codeSheet,
   linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl, itemSubtitle,
+  normalizeGroup, dependentsOf, isPasswordOnly, linkKind, moneySourcesOf,
+  titleSuggestions, mailboxTitle, groupSuggestions, groupKey, NO_AUTOFILL,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import AppIcon from './AppIcon';
@@ -30,7 +32,9 @@ import AccountAvatar from './AccountAvatar';
  * only as an authenticated encrypted payload.
  */
 
-const { templates: TEMPLATES, authKinds: AUTH_KINDS } = ACCOUNT_TEMPLATES;
+const {
+  templates: TEMPLATES, authKinds: AUTH_KINDS, titlePresets: TITLE_PRESETS, groupPresets: GROUP_PRESETS,
+} = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
 const AUTH_KIND_LIST = Object.entries(AUTH_KINDS).map(([value, v]) => ({ value, ...v }));
@@ -77,7 +81,7 @@ function fileToLogo(file) {
 }
 
 export default function AccountDetail({
-  item, items, tags, revealed, copied, autoEdit = false,
+  item, items, tags, revealed, copied, autoEdit = false, backLabel = 'All items',
   onBack, onOpen, onCopy, onToggleReveal, onToggleFavorite, onSave, onDelete,
   onSetAuthState, onSetCodeUsed, onAddTag,
 }) {
@@ -112,7 +116,10 @@ export default function AccountDetail({
 
   const save = async () => {
     setSaving(true);
-    const ok = await onSave(draft, tagIds);
+    // Email account để trống tiêu đề (hoặc còn "New email account") → tự đặt theo địa
+    // chỉ (Gmail, Outlook…), đúng quy chuẩn tên — khỏi phải nghĩ tên cho hộp thư
+    const autoTitle = draft.tpl === 'email' && draftAddress && (!draft.title.trim() || /^new\s/i.test(draft.title));
+    const ok = await onSave(autoTitle ? { ...draft, title: mailboxTitle(draftAddress) } : draft, tagIds);
     setSaving(false);
     if (ok) setDraft(null);
   };
@@ -147,21 +154,60 @@ export default function AccountDetail({
 
   // Link là một chiều: field `link` chỉ sống ở item NGUỒN, item đích không biết
   // ai trỏ tới mình. Quét ngược `items` (đã giải mã sẵn trong AccountsPage) để
-  // item đích thấy được — không thêm cột/bảng nào, một item link 2 field thì ra
-  // 2 dòng vì đó là 2 đường dẫn khác nhau.
-  const backlinks = items.flatMap((x) => (
-    x.id === item.id ? [] : (x.fields || [])
-      .filter((f) => (f.links || []).some((L) => L.itemId === item.id))
-      .map((f) => ({ key: `${x.id}:${f.id}`, src: x, via: f.label }))
-  ));
+  // item đích thấy được — không thêm cột/bảng nào. dependentsOf còn ghép theo giá
+  // trị (username = SĐT/email của gốc) và đi tiếp xuống cấp 2, 3: Gmail → ngân
+  // hàng → thẻ của ngân hàng đó.
+  const dependents = useMemo(() => dependentsOf(items, item.id), [items, item.id]);
+  // Liên kết tiền KHÔNG nằm trong cây trên (xem LINK_KINDS) — ngân hàng thấy ví nào rút được từ nó ở đây
+  const moneySources = useMemo(() => moneySourcesOf(items, item.id), [items, item.id]);
+  const directCount = dependents.filter((d) => d.depth === 1).length;
+  const depth = dependents.reduce((m, d) => Math.max(m, d.depth), 0);
+  const activeAuth = item.auth.filter((a) => a.state !== 'off');
+  const passwordOnly = isPasswordOnly(item);
+  const signinLabel = !activeAuth.length ? 'None'
+    : passwordOnly ? 'Password only'
+      : activeAuth.length === 1 ? AUTH_KINDS[activeAuth[0].kind]?.label || activeAuth[0].kind
+        : `${activeAuth.length} methods`;
+  // Nhóm đã dùng trước, rồi bộ nhóm chuẩn — xem _groupPresetsNote trong account-templates.json
+  const groupPaths = useMemo(() => groupSuggestions(items, GROUP_PRESETS), [items]);
+  const groupLabel = normalizeGroup(item.group).replace('/', ' › ');
+
+  // Gợi ý tiêu đề (tiêu đề = tên dịch vụ): Email account có địa chỉ thì "Gmail"/"Outlook"
+  // đứng đầu, rồi tên đã dùng trong vault, rồi danh sách dịch vụ hay dùng
+  const draftAddress = draft?.tpl === 'email'
+    ? (draft.fields.find((f) => f.type === 'email' && f.value) || draft.fields.find((f) => /@/.test(f.value || '')))?.value
+    : '';
+  const titleOptions = useMemo(
+    () => (draft
+      ? titleSuggestions(items, TITLE_PRESETS, draftAddress ? [mailboxTitle(draftAddress)] : [], { mailbox: draft.tpl === 'email' })
+      : []),
+    [draft, items, draftAddress],
+  );
+  // Chọn đúng một tên có trong gợi ý khi item CHƯA có nhóm → điền nhóm theo; đã có nhóm thì không đè
+  const setTitle = (value) => patch((d) => {
+    d.title = value;
+    const hit = titleOptions.find((o) => o.title.toLocaleLowerCase('vi') === value.trim().toLocaleLowerCase('vi'));
+    if (hit?.group && !normalizeGroup(d.group)) d.group = hit.group;
+  });
+
+  // Thanh copy ghim đáy (chỉ mobile, M3): copy tên đăng nhập / secret là việc làm
+  // nhiều nhất, nên nó nằm dưới ngón cái thay vì giữa danh sách field. Nhãn lấy
+  // theo field ("Copy card number" cho thẻ) — không đoán là "password".
+  const firstValue = (f) => (f.type === 'multi' ? (f.values || [])[0] || '' : f.value || '');
+  const userField = item.fields.find((f) => !isSecretType(f.type)
+    && /^(username|email|emails|primary email|email address)$/i.test(f.label) && firstValue(f));
+  const passField = item.fields.find((f) => f.type === 'password' && f.value);
 
   return (
-    <article className="acc-detail">
+    <article className={`acc-detail${editing ? ' acc-detail--editing' : ''}`}>
       {/* ── 1. Khối tiêu đề ── */}
       <header className="acc-title">
         <div className="acc-title__main">
-          {/* CSS ẩn nút này từ 900px trở lên — desktop có cả 2 pane cùng lúc */}
-          <button className="acc-btn acc-btn--ghost acc-back" onClick={onBack}>← All items</button>
+          {/* CSS ẩn nút này từ 900px trở lên — desktop có cả 2 pane cùng lúc.
+              Mobile: nó cùng hàng với ☆ / Edit thành thanh điều hướng (M3). */}
+          <button className="acc-btn acc-btn--ghost acc-back" onClick={onBack}>
+            <AppIcon name="caretLeft" size={15} /> {backLabel}
+          </button>
 
           {/* Logo lưu TRONG encrypted payload, không phải Storage/Drive: URL công
               khai ở hai chỗ đó là tự khai bạn có tài khoản dịch vụ nào. Đổi lại
@@ -188,29 +234,41 @@ export default function AccountDetail({
               lúc tạo. Mọi `tpl` đọc lên đều là key hợp lệ nhờ alias trong
               cleanItem (useAccounts.js), nên select luôn khớp một option. */}
           {editing ? (
-            <select
-              className="acc-select acc-select--tpl"
-              value={shown.tpl}
-              onChange={(e) => patch((d) => { d.tpl = e.target.value; })}
-              aria-label="Item type"
-            >
-              {TEMPLATES.map((t) => (
-                <option key={t.key} value={t.key}>{t.name} · {t.code}</option>
-              ))}
-            </select>
+            <div className="acc-title__meta">
+              <select
+                className="acc-select acc-select--tpl"
+                value={shown.tpl}
+                onChange={(e) => patch((d) => { d.tpl = e.target.value; })}
+                aria-label="Item type"
+              >
+                {TEMPLATES.map((t) => (
+                  <option key={t.key} value={t.key}>{t.name} · {t.code}</option>
+                ))}
+              </select>
+              <GroupPicker value={draft.group || ''} onChange={(g) => patch((d) => { d.group = g; })} paths={groupPaths} />
+            </div>
           ) : (
-            <div className="acc-title__kicker">{tpl?.name || 'Item'} · {tpl?.code || '···'}</div>
+            <div className="acc-title__kicker">
+              {groupLabel ? `${groupLabel} · ${tpl?.code || '···'}` : `${tpl?.name || 'Item'} · ${tpl?.code || '···'}`}
+            </div>
           )}
 
           {editing ? (
-            <input
-              ref={titleRef}
-              className="acc-input acc-title__input"
-              value={draft.title}
-              onChange={(e) => patch((d) => { d.title = e.target.value; })}
-              placeholder="Title"
-              aria-label="Item title"
-            />
+            <>
+              <input {...NO_AUTOFILL}
+                ref={titleRef}
+                className="acc-input acc-title__input"
+                value={draft.title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={draftAddress ? `${mailboxTitle(draftAddress)} (set from the address on save)` : 'Service name, e.g. VIB, Gmail, Shopee'}
+                aria-label="Item title"
+                list="acc-title-options"
+              />
+              {/* Native datalist: xổ danh sách để chọn, vẫn gõ tên tuỳ ý được */}
+              <datalist id="acc-title-options">
+                {titleOptions.map((o) => <option key={o.title} value={o.title} />)}
+              </datalist>
+            </>
           ) : (
             <h1 className="acc-title__h1">{item.title}</h1>
           )}
@@ -248,6 +306,16 @@ export default function AccountDetail({
           )}
         </div>
       </header>
+
+      {/* ── 1b. Dải số liệu: item này quan trọng cỡ nào, trước khi phải cuộn ── */}
+      {!editing && (
+        <dl className="acc-kpis">
+          <div className="acc-kpi"><dt>Dependents</dt><dd>{dependents.length}</dd></div>
+          <div className="acc-kpi"><dt>Depth</dt><dd>{depth || '—'}</dd></div>
+          <div className={`acc-kpi${passwordOnly ? ' acc-kpi--warn' : ''}`}><dt>Sign-in</dt><dd>{signinLabel}</dd></div>
+          <div className="acc-kpi"><dt>Updated</dt><dd>{relativeUpdated(item.updated)}</dd></div>
+        </dl>
+      )}
 
       {/* ── 2. Card preview (chỉ item loại card) ── */}
       {shown.tpl === 'card' && <CardPreview item={shown} revealed={revealed} />}
@@ -302,17 +370,43 @@ export default function AccountDetail({
         {editing && <AddFieldPanel patch={patch} />}
       </section>
 
-      {/* ── 3b. Được link từ item khác. Ẩn khi đang sửa: bấm sang item khác là
-             remount detail → mất draft mà không hỏi. */}
-      {!editing && backlinks.length > 0 && (
+      {/* ── 3b. Item nào phụ thuộc vào item này. Ẩn khi đang sửa: bấm sang item
+             khác là remount detail → mất draft mà không hỏi. */}
+      {!editing && dependents.length > 0 && (
         <section className="acc-sect">
           <div className="acc-sect__head">
-            <h3 className="acc-sect__title">Linked from</h3>
-            <span className="acc-sect__meta">{backlinks.length} incoming</span>
+            <h3 className="acc-sect__title">Depends on this</h3>
+            <span className="acc-sect__meta">
+              {dependents.length} {dependents.length === 1 ? 'item' : 'items'}
+              {dependents.length > directCount && ` · ${Math.max(...dependents.map((d) => d.depth))} levels`}
+            </span>
           </div>
           <div className="acc-panel">
-            {backlinks.map((b) => (
-              <BacklinkRow key={b.key} src={b.src} via={b.via} onOpen={onOpen} />
+            <div className={`acc-impact${passwordOnly ? ' acc-impact--warn' : ''}`}>
+              <AppIcon name={passwordOnly ? 'warning' : 'link'} size={16} />
+              <span>
+                {directCount} {directCount === 1 ? 'item relies' : 'items rely'} on this one
+                {dependents.length > directCount && `, and ${dependents.length - directCount} more through them`}.
+                {passwordOnly && ' It signs in with a password only.'}
+              </span>
+            </div>
+            {dependents.map((d) => (
+              <BacklinkRow key={d.item.id} src={d.item} via={d.via} depth={d.depth} onOpen={onOpen} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── 3c. Ví / thẻ rút được tiền từ item này (liên kết loại tiền trỏ tới đây) ── */}
+      {!editing && moneySources.length > 0 && (
+        <section className="acc-sect">
+          <div className="acc-sect__head">
+            <h3 className="acc-sect__title">Can move money out of this</h3>
+            <span className="acc-sect__meta">{moneySources.length}</span>
+          </div>
+          <div className="acc-panel">
+            {moneySources.map((s) => (
+              <BacklinkRow key={s.item.id} src={s.item} via={s.via} onOpen={onOpen} />
             ))}
           </div>
         </section>
@@ -370,7 +464,7 @@ export default function AccountDetail({
       <section className="acc-sect">
         <div className="acc-sect__head"><h3 className="acc-sect__title">Notes</h3></div>
         {editing ? (
-          <textarea
+          <textarea {...NO_AUTOFILL}
             className="acc-textarea acc-notes-input"
             value={draft.notes}
             onChange={(e) => patch((d) => { d.notes = e.target.value; })}
@@ -427,6 +521,21 @@ export default function AccountDetail({
           <button className="acc-act acc-foot__del" onClick={onDelete}>Delete item</button>
         )}
       </footer>
+
+      {!editing && (userField || passField) && (
+        <div className="acc-copybar">
+          {userField && (
+            <button className="acc-btn" onClick={() => onCopy(firstValue(userField), 'bar:user')}>
+              {copied === 'bar:user' ? 'Copied' : `Copy ${userField.label.toLowerCase()}`}
+            </button>
+          )}
+          {passField && (
+            <button className="acc-btn acc-btn--primary" onClick={() => onCopy(passField.value, 'bar:pass')}>
+              {copied === 'bar:pass' ? 'Copied' : `Copy ${passField.label.toLowerCase()}`}
+            </button>
+          )}
+        </div>
+      )}
     </article>
   );
 }
@@ -476,7 +585,7 @@ function TagEditor({ tags, tagIds, setTagIds, newTag, setNewTag, onAddTag }) {
       )}
 
       <div className="acc-tagedit__new">
-        <input className="acc-input" value={newTag}
+        <input {...NO_AUTOFILL} className="acc-input" value={newTag}
           onChange={(e) => setNewTag(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); create(); } }}
           placeholder={tags.length ? 'Or create a new tag…' : 'Create your first tag…'}
@@ -486,6 +595,55 @@ function TagEditor({ tags, tagIds, setTagIds, newTag, setNewTag, onAddTag }) {
         </button>
       </div>
     </div>
+  );
+}
+
+/* ══ Group picker ════════════════════════════════════════════════
+   Một <select> như ô loại item bên cạnh: nhóm có nhóm con thành <optgroup>
+   (Tài chính › Ngân hàng / Thẻ…), "New group…" mở ô gõ tên ("/" = nhóm con),
+   chuẩn hoá ở cleanItem lúc lưu. Không dùng <datalist> (hẹp, cắt chữ) hay hàng
+   nút (chiếm 3 dòng cho một lựa chọn). Dùng chung với thanh Move to group
+   (AccountsPage). So khớp không phân biệt hoa thường như groupKey. */
+const NEW_GROUP = '/new'; // normalizeGroup không bao giờ trả chuỗi bắt đầu bằng "/"
+
+export function GroupPicker({ value, onChange, paths, startCustom = false, onEnter }) {
+  const [custom, setCustom] = useState(startCustom);
+  const key = groupKey(value);
+  const tops = [...new Map(paths.map((p) => [groupKey(p.split('/')[0]), p.split('/')[0]])).values()];
+  const match = [...paths, ...tops].find((p) => groupKey(p) === key);
+  const typing = custom || (!!key && !match);
+
+  const choose = (v) => {
+    setCustom(v === NEW_GROUP);
+    onChange(v === NEW_GROUP ? '' : v);
+  };
+
+  return (
+    <>
+      <select className="acc-select acc-select--group" value={typing ? NEW_GROUP : match || ''}
+        onChange={(e) => choose(e.target.value)} aria-label="Group">
+        <option value="">Ungrouped</option>
+        {tops.map((t) => {
+          const subs = paths.filter((p) => groupKey(p).startsWith(`${groupKey(t)}/`));
+          if (!subs.length) return <option key={t} value={t}>{t}</option>;
+          return (
+            <optgroup key={t} label={t}>
+              {/* item nằm thẳng ở nhóm cha (không nhóm con) vẫn phải hiện được */}
+              {groupKey(t) === key && <option value={match}>{t}</option>}
+              {subs.map((p) => <option key={p} value={p}>{p.split('/')[1]}</option>)}
+            </optgroup>
+          );
+        })}
+        <option value={NEW_GROUP}>New group…</option>
+      </select>
+      {typing && (
+        // autoFocus chỉ khi user chủ động mở (New group… / + New group), không giành focus của ô tiêu đề
+        <input {...NO_AUTOFILL} className="acc-input acc-input--group" value={value} autoFocus={custom}
+          onChange={(e) => { setCustom(true); onChange(e.target.value); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onEnter?.(); } }}
+          placeholder="Group name, e.g. Gia đình" aria-label="New group name" />
+      )}
+    </>
   );
 }
 
@@ -517,22 +675,23 @@ function CardPreview({ item, revealed }) {
   );
 }
 
-/* ══ Một dòng "Linked from" ══════════════════════════════════════
-   Đọc như một field: cột trái là ô đã trỏ tới đây ("Bank login"), cột giữa là
-   item nguồn. "Details" xổ giá trị của nó NGAY TẠI CHỖ — link kiểu này hầu hết
+/* ══ Một dòng "Depends on this" ══════════════════════════════════
+   Đọc như một field: cột trái là ô của item kia đã trỏ tới / trùng giá trị với
+   đây ("Bank login", "Username"), cột giữa là item đó. `depth` > 1 thụt vào theo
+   cấp — dòng thuộc về item ngay phía trên nó. "Details" xổ giá trị NGAY TẠI CHỖ — link kiểu này hầu hết
    dùng để liếc ("thẻ nào của bank này, hết hạn bao giờ"), mà nhảy sang item rồi
    quay lại thì mất chỗ đang đứng.
 
    Giá trị lấy qua linkableValues: nó đã là nơi duy nhất định nghĩa "cái gì được
    phép hiện ra ngoài mà không cần Reveal" (secret bị loại) — tự duyệt fields ở
-   đây là mở một đường rò thứ hai. Phần tử [0] là "— whole item —", bỏ. */
-function BacklinkRow({ src, via, onOpen }) {
+   đây là mở một đường rò thứ hai. */
+function BacklinkRow({ src, via, depth = 1, onOpen }) {
   const [open, setOpen] = useState(false);
   const tpl = TPL_BY_KEY.get(src.tpl);
-  const detail = linkableValues(src).slice(1);
+  const detail = linkableValues(src);
 
   return (
-    <div className="acc-field">
+    <div className={`acc-field${depth > 1 ? ' acc-field--nested' : ''}`} style={{ '--depth': depth - 1 }}>
       <div className="acc-field__label">{via}</div>
 
       <div className="acc-field__col">
@@ -620,7 +779,7 @@ function FieldRow({ field: f, idx, totalFields, editing, items, ownerId, reveale
       <div className="acc-field__label">
         {editing ? (
           <>
-            <input className="acc-input" value={f.label}
+            <input {...NO_AUTOFILL} className="acc-input" value={f.label}
               onChange={(e) => patch((d) => { d.fields[idx].label = e.target.value; })}
               placeholder="Field name" aria-label="Field name" />
             {/* Nhãn loại — chỉ hiện với 4 loại có hành vi cần nói rõ */}
@@ -628,7 +787,17 @@ function FieldRow({ field: f, idx, totalFields, editing, items, ownerId, reveale
               <div className="acc-field__typenote">{TYPE_LABEL[f.type]}</div>
             )}
           </>
-        ) : f.label}
+        ) : (
+          <>
+            {f.label}
+            {/* Nói rõ loại liên kết ngay ở chế độ xem: → đăng nhập, ⇒ tiền */}
+            {f.type === 'link' && (f.links || []).length > 0 && (
+              <div className={`acc-field__typenote${linkKind(f) === 'money' ? ' acc-field__typenote--money' : ''}`}>
+                {linkKind(f) === 'money' ? '⇒ Money link' : '→ Sign-in link'}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Cột 2: giá trị */}
@@ -725,7 +894,7 @@ function ViewValue({ field: f, items, revealed, copied, onCopy, onOpen }) {
             <button key={L.id} className="acc-link" onClick={() => onOpen(target.id)}>
               <span className="acc-link__code">{t?.code || '···'}</span>
               <span className="acc-link__title">{target.title}</span>
-              <span className="acc-link__sub">{L.value || t?.name || ''}</span>
+              <span className="acc-link__sub">{itemSubtitle(target, t?.name || '')}</span>
               <span className="acc-link__arrow" aria-hidden="true">↗</span>
             </button>
           );
@@ -787,7 +956,7 @@ function EditValue({ field: f, idx, items, ownerId, patch }) {
       <div className="acc-multi acc-multi--edit">
         {values.map((v, vi) => (
           <div className="acc-multi__row" key={vi}>
-            <input className="acc-input" value={v}
+            <input {...NO_AUTOFILL} className="acc-input" value={v}
               onChange={(e) => patch((d) => { d.fields[idx].values[vi] = e.target.value; })}
               placeholder={placeholderFor(f.type)} aria-label="Value" />
             <button className={`acc-act acc-act--star${vi === 0 ? ' acc-act--on' : ''}`}
@@ -805,27 +974,34 @@ function EditValue({ field: f, idx, items, ownerId, patch }) {
   }
 
   if (f.type === 'link') {
-    return <LinkEditor field={f} idx={idx} items={items} ownerId={ownerId} patch={patch} />;
+    return (
+      <>
+        <LinkEditor field={f} idx={idx} items={items} ownerId={ownerId} patch={patch} />
+        {(f.links || []).length > 0 && <LinkKindPicker field={f} idx={idx} patch={patch} />}
+      </>
+    );
   }
 
   const sensitive = isSecretType(f.type);
-  const type = sensitive && !showSensitive
-    ? 'password'
-    : f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text';
+  // Secret che bằng CSS (`-webkit-text-security`, .acc-input--masked) thay vì
+  // type="password": trình quản lý mật khẩu của trình duyệt chỉ bắt ô password,
+  // nên không còn đòi lưu secret của vault — xem NO_AUTOFILL.
+  const masked = sensitive && !showSensitive;
+  const type = f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text';
   // Field `Brand` của template card: gợi ý tổ chức thẻ qua <datalist> native —
   // chọn từ list nhưng vẫn gõ được brand ngoài list, khác <select> đóng cứng.
   const suggest = f.label === 'Brand' && f.type === 'text';
   return (
     <div className="acc-editvalue">
       <input
-        className="acc-input" type={type}
+        className={`acc-input${masked ? ' acc-input--masked' : ''}`} type={type}
         value={f.value}
         onChange={(e) => patch((d) => { d.fields[idx].value = e.target.value; })}
         placeholder={suggest ? 'Visa, Mastercard …' : placeholderFor(f.type)}
         aria-label="Field value"
         list={suggest ? 'acc-brands' : undefined}
         inputMode={f.type === 'phone' ? 'tel' : f.type === 'url' ? 'url' : f.type === 'email' ? 'email' : undefined}
-        autoComplete={sensitive ? 'new-password' : undefined}
+        {...NO_AUTOFILL}
         autoCorrect={sensitive ? 'off' : undefined}
         autoCapitalize={sensitive ? 'none' : undefined}
         spellCheck={sensitive ? false : undefined}
@@ -853,14 +1029,11 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
   return (
     <div className="acc-multi acc-multi--edit">
       {links.map((L, li) => {
-        const target = items.find((x) => x.id === L.itemId);
-        const valueOptions = linkableValues(target);
         return (
           <div className="acc-linkedit" key={L.id}>
             <select className="acc-select" value={L.itemId || ''} aria-label="Linked item"
               onChange={(e) => patch((d) => {
                 d.fields[idx].links[li].itemId = e.target.value || null;
-                d.fields[idx].links[li].value = '';
               })}>
               <option value="">— choose an item —</option>
               {/* Kèm subtitle (username/email nhận diện) — chỉ `code · title` thì
@@ -877,11 +1050,6 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
                 );
               })}
             </select>
-            <select className="acc-select" value={L.value || ''} disabled={!target}
-              aria-label="Borrowed value"
-              onChange={(e) => patch((d) => { d.fields[idx].links[li].value = e.target.value; })}>
-              {valueOptions.map((o, oi) => <option key={oi} value={o.value}>{o.label}</option>)}
-            </select>
             <button className="acc-act acc-act--x" title="Remove link" aria-label="Xóa liên kết"
               onClick={() => patch((d) => { d.fields[idx].links.splice(li, 1); })}><AppIcon name="x" size={14} /></button>
           </div>
@@ -889,7 +1057,7 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
       })}
 
       {links.length === 0 && (
-        <input className="acc-input" value={f.value || ''}
+        <input {...NO_AUTOFILL} className="acc-input" value={f.value || ''}
           onChange={(e) => patch((d) => { d.fields[idx].value = e.target.value; })}
           placeholder="Or type a plain value (not linked)" />
       )}
@@ -897,9 +1065,34 @@ function LinkEditor({ field: f, idx, items, ownerId, patch }) {
       <button className="acc-act acc-addrow" disabled={linkOptions.length === 0}
         onClick={() => patch((d) => {
           const other = linkOptions[0];
-          d.fields[idx].links.push({ id: newId(), itemId: other ? other.id : null, value: '' });
+          d.fields[idx].links.push({ id: newId(), itemId: other ? other.id : null });
           d.fields[idx].value = '';
         })}>{links.length ? '+ Link another item' : '+ Link an item'}</button>
+    </div>
+  );
+}
+
+/* ── Loại liên kết của field link ────────────────────────────────
+   Hai chip bật/tắt (aria-pressed), không phải radio: radio đòi điều hướng bằng
+   phím mũi tên mà 2 lựa chọn thì không đáng. Một dòng chú thích cho loại đang
+   chọn; chưa chọn tay → loại đoán theo nhãn (guessLinkKind) và nói rõ là đoán. */
+function LinkKindPicker({ field: f, idx, patch }) {
+  const kind = linkKind(f);
+  const set = (k) => patch((d) => { d.fields[idx].kind = k; });
+  const opt = (k, arrow, label) => (
+    <button type="button" aria-pressed={kind === k} onClick={() => set(k)}
+      className={`acc-chip${kind === k ? ' acc-chip--on' : ''}`}>
+      <span aria-hidden="true" className={k === 'money' ? 'acc-linkkind__money' : undefined}>{arrow}</span> {label}
+    </button>
+  );
+  return (
+    <div className="acc-linkkind" role="group" aria-label="Link kind">
+      {opt('signin', '→', 'Sign-in')}
+      {opt('money', '⇒', 'Money')}
+      <span className="acc-linkkind__hint">
+        {kind === 'money' ? 'This item can move money out of the linked one' : 'This item is lost if the linked one is'}
+        {!f.kind && ' · guessed from the field name'}
+      </span>
     </div>
   );
 }
@@ -934,7 +1127,7 @@ function AddFieldPanel({ patch }) {
     <div className="acc-box acc-box--addfield">
       <div className="acc-fieldgrp acc-fieldgrp--name">
         <label htmlFor="acc-newfield">Custom field name</label>
-        <input id="acc-newfield" className="acc-input" value={label}
+        <input {...NO_AUTOFILL} id="acc-newfield" className="acc-input" value={label}
           onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Recovery email" />
       </div>
       <div className="acc-fieldgrp acc-fieldgrp--type">
@@ -983,7 +1176,7 @@ function AuthRow({ auth: a, idx, editing, accountId, onSetAuthState, patch }) {
           </span>
         </div>
         {editing ? (
-          <input className="acc-input" value={a.note || ''}
+          <input {...NO_AUTOFILL} className="acc-input" value={a.note || ''}
             onChange={(e) => patch((d) => { d.auth[idx].note = e.target.value; })}
             placeholder="Device, number or detail" aria-label="Method detail" />
         ) : a.note ? <div className="acc-authrow__note">{a.note}</div> : null}
@@ -1078,7 +1271,7 @@ function PasteImport({ patch }) {
   return (
     <div className="acc-box acc-box--paste">
       <div className="acc-box__cap">Paste codes from your provider</div>
-      <textarea className="acc-textarea acc-paste" value={text}
+      <textarea {...NO_AUTOFILL} className="acc-textarea acc-paste" value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={'1234 5678\n2345 6789\n3456 7890'} />
       <div className="acc-box__row">

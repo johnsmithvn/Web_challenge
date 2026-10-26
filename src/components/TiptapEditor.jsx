@@ -33,6 +33,7 @@ import {
 import { SlashCommandExtension } from './SlashCommand';
 import UrlInputPopover from './UrlInputPopover';
 import { extractDriveDirectUrl } from '../utils/mediaUtils';
+import { migrateTiptapDoc } from '../utils/kbDeriveUtils';
 import { showToast } from '../contexts/ToastContext';
 import AppIcon from './AppIcon';
 import '../styles/tiptap.css';
@@ -427,66 +428,11 @@ async function uploadAndInsertImage(tr, view, file) {
 }
 
 /* ── Backward Compatibility & Theme Adaptation Helper ───────── */
-const isMonochromeColor = (color) => {
-  if (!color || typeof color !== 'string') return false;
-  const c = color.trim().toLowerCase();
-  return (
-    c === '#000' ||
-    c === '#000000' ||
-    c === 'black' ||
-    c === 'rgb(0,0,0)' ||
-    c === 'rgb(0, 0, 0)' ||
-    c === 'rgba(0,0,0,1)' ||
-    c === 'rgba(0, 0, 0, 1)' ||
-    c === '#fff' ||
-    c === '#ffffff' ||
-    c === 'white' ||
-    c === 'rgb(255,255,255)' ||
-    c === 'rgb(255, 255, 255)' ||
-    c === 'rgba(255,255,255,1)' ||
-    c === 'rgba(255, 255, 255, 1)' ||
-    c === '#0f172a' ||
-    c === '#1e1b4b' ||
-    c === '#111827' ||
-    c === '#1f2937' ||
-    c === '#f0f0ff'
-  );
-};
-
-function migrateJson(node) {
-  if (!node) return node;
-  if (Array.isArray(node)) {
-    return node.map(migrateJson);
-  }
-  if (typeof node === 'object') {
-    const updated = { ...node };
-    if (updated.type === 'audioBlock') {
-      updated.type = 'mediaBlock';
-    }
-    // Remove monochrome color marks that break light/dark mode contrast
-    if (Array.isArray(updated.marks)) {
-      updated.marks = updated.marks.filter(mark => {
-        if (mark.type === 'textStyle' && mark.attrs?.color && isMonochromeColor(mark.attrs.color)) {
-          const otherAttrs = Object.keys(mark.attrs).filter(k => k !== 'color');
-          if (otherAttrs.length === 0) return false;
-          delete mark.attrs.color;
-        }
-        return true;
-      });
-    }
-    if (updated.content) {
-      updated.content = migrateJson(updated.content);
-    }
-    return updated;
-  }
-  return node;
-}
-
 function migrateTiptapContent(content) {
   if (!content) return '';
   try {
     const parsed = typeof content === 'string' ? JSON.parse(content) : content;
-    return migrateJson(parsed);
+    return migrateTiptapDoc(parsed);
   } catch {
     return content;
   }

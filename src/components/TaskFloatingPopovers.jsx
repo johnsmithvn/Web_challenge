@@ -4,7 +4,7 @@ import { PRIORITY_LABELS } from '../utils/taskNlpParser';
 import { STATUS_META, ksStyle, taskCardModel } from '../utils/kanbanUtils';
 import { toDateStr } from '../utils/dateUtils';
 import { solarToLunar, lunarLabel } from '../utils/lunarUtils';
-import { datePickDraft, datePickPatch } from '../utils/calendarTimeUtils';
+import { datePickDraft, datePickPatch, datePickClick } from '../utils/calendarTimeUtils';
 import '../styles/date-popover.css';
 
 /**
@@ -110,8 +110,9 @@ function usePopoverShell(ref, onClose) {
  * (off = ngày không chọn được, vd sau mốc `max`).
  * nav 'center' = ‹ Tháng › (popover đổi hạn) · 'left' = Tháng ‹ › (popover lọc khoảng ngày) như mockup.
  * joined: ô trong khoảng nối liền (bo 2 đầu khoảng) — popover đổi hạn.
+ * onHover(v | null): ngày đang rê chuột, để xem trước khoảng.
  */
-function MonthGrid({ month, setMonth, cellState, onPick, nav = 'center', joined = false }) {
+function MonthGrid({ month, setMonth, cellState, onPick, onHover, nav = 'center', joined = false }) {
   const todayStr = toDateStr();
   const Y = month.getFullYear();
   const M = month.getMonth();
@@ -137,7 +138,7 @@ function MonthGrid({ month, setMonth, cellState, onPick, nav = 'center', joined 
       <div className={`tk-dp-nav is-${nav}`}>
         {nav === 'center' ? <>{prev}{title}{next}</> : <>{title}{prev}{next}</>}
       </div>
-      <div className={`tk-dp-grid${joined ? ' is-joined' : ''}`}>
+      <div className={`tk-dp-grid${joined ? ' is-joined' : ''}`} onMouseLeave={onHover && (() => onHover(null))}>
         {DOW_SHORT.map((d, i) => (
           <span key={d} className={`tk-dp-dow${i === 0 ? ' is-sun' : ''}`}>{d}</span>
         ))}
@@ -153,7 +154,7 @@ function MonthGrid({ month, setMonth, cellState, onPick, nav = 'center', joined 
             (first + d - 1) % 7 === 0 ? 'is-sun' : '',
           ].filter(Boolean).join(' ');
           return (
-            <button key={v} type="button" onClick={() => onPick(v)} className={cls} disabled={off}>
+            <button key={v} type="button" onClick={() => onPick(v)} onMouseEnter={onHover && (() => onHover(v))} className={cls} disabled={off}>
               <span className="tk-cal-cell__n">{d}</span>
               <span className="tk-cal-cell__l">{lunarLabel(solarToLunar(d, M + 1, Y))}</span>
             </button>
@@ -222,8 +223,8 @@ export function DatePopover({ value, max, onPick, onClose, style, className = ''
 
 /**
  * Đổi ngày giờ của việc (mockup): ô Bắt đầu + Kết thúc (tuỳ chọn), lịch có ngày âm, dòng giờ bắt đầu → kết thúc.
- * Ô đang chọn quyết định ngày bấm: Bắt đầu đặt ngày chính (giữ Kết thúc nếu vẫn sau); Kết thúc đặt ngày cuối
- * (bấm trước Bắt đầu thì thành Bắt đầu mới). ✕ "Bỏ hạn" xoá hết, ✕ "Bỏ ngày kết thúc" chỉ bỏ ngày cuối.
+ * Bấm ngày kiểu ClickUp: Bắt đầu xong tự nhảy sang Kết thúc (`datePickClick`), rê chuột xem trước khoảng.
+ * ✕ "Bỏ hạn" xoá hết, ✕ "Bỏ ngày kết thúc" chỉ bỏ ngày cuối.
  * Chỉ lưu khi bấm Lưu (mờ khi chưa đổi); onSave nhận patch { start_date, start_time, due_date, due_time }.
  */
 export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
@@ -234,11 +235,15 @@ export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
   const [field, setField] = useState('a');
   const [timeOn, setTimeOn] = useState(() => !!(dr.ta || dr.tb));
   const [month, setMonth] = useState(() => monthOf(dr.a || toDateStr()));
+  const [hover, setHover] = useState(null);
   const B = dr.a && dr.b && dr.b > dr.a ? dr.b : null;
+  // Đang chờ ngày cuối: ngày rê chuột (sau Bắt đầu) là ngày cuối xem trước
+  const P = field === 'b' && dr.a && hover > dr.a ? hover : B;
 
   const pick = (v) => {
-    if (field === 'b' && dr.a) setDr((d) => (v < d.a ? { ...d, a: v } : { ...d, b: v === d.a ? null : v }));
-    else setDr((d) => ({ ...d, a: v, b: d.b && d.b > v ? d.b : null }));
+    const r = datePickClick(dr, field, v);
+    setDr(r.dr);
+    setField(r.field);
   };
   const clearA = (e) => {
     e.stopPropagation();
@@ -305,11 +310,12 @@ export function TaskDatePickerPopover({ task, onSave, onClose, style }) {
         setMonth={setMonth}
         joined
         cellState={(v) => ({
-          sel: v === dr.a || v === B,
-          inRange: !!(B && v > dr.a && v < B),
-          edge: B && v === dr.a ? 'a' : B && v === B ? 'b' : null,
+          sel: v === dr.a || (v === B && P === B),
+          inRange: !!(P && v > dr.a && v <= P),
+          edge: P && v === dr.a ? 'a' : P && v === P ? 'b' : null,
         })}
         onPick={pick}
+        onHover={setHover}
       />
 
       {timeOn && (

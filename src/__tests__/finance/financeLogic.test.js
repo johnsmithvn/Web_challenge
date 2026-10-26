@@ -53,6 +53,7 @@ import {
   canDepositTopUp,
   maturityInterest,
   settleMaturity,
+  anGiaPlan,
   spendingRhythm,
   groupByDate,
 } from '../../utils/financeLogic.js';
@@ -1157,6 +1158,42 @@ assert.equal(roll.next.amount, 101200000, 'gửi lại gốc + lãi');
 assert.equal(roll.next.rate, 7.2, 'không nhập lãi suất mới thì giữ cũ');
 assert.equal(settleMaturity(cd2, { mode: 'withdraw', interest: 0 }).income, null, 'lãi 0 → không ghi giao dịch');
 console.log('maturityInterest / settleMaturity check: OK');
+
+/* ── Tích lũy An Gia: gửi lần đầu X, góp Y mỗi tháng, kỳ hạn theo năm ── */
+// X 5tr + góp 1tr/tháng, 6%/năm, 3 năm (36 tháng → 35 kỳ góp), gửi 24/10/2026
+const ag = { name: 'VPBank · Tích lũy An Gia 3 năm', amount: 5_000_000, initial_amount: 5_000_000,
+  monthly_amount: 1_000_000, rate: 6, term: 36, opened_at: '2026-10-24' };
+assert.equal(guessDepositType(ag), 'angia');
+assert.equal(canDepositTopUp(ag), true, 'An Gia được góp thêm hằng tháng');
+const agPlan = anGiaPlan(ag);
+assert.equal(agPlan.periods, 35);
+assert.equal(agPlan.principal, 40_000_000, 'gốc khi đáo hạn = 5tr + 35 × 1tr');
+// X: 5tr × 6% × 3 năm = 900k; Y: 1tr × 6% × (35 × 36 / 2) tháng / 12 = 3,15tr
+assert.equal(agPlan.interest, 4_050_000);
+assert.equal(maturityInterest(ag), 4_050_000, 'lãi đáo hạn An Gia theo lịch góp, không lấy amount × kỳ hạn');
+// Trước ngày góp kỳ 1 → chưa thiếu, kỳ tháng này còn chờ góp
+let st = anGiaPlan(ag, '2026-11-23');
+assert.equal(st.shortfall, 0);
+assert.deepEqual(st.due, { on: '2026-11-24', period: 1, need: 1_000_000, paid: false });
+// Qua ngày góp mà chưa góp → thiếu 1 kỳ
+st = anGiaPlan(ag, '2026-11-25');
+assert.equal(st.expected, 6_000_000);
+assert.equal(st.shortfall, 1_000_000);
+// Đã góp kỳ 1 (amount tăng lên 6tr) → đủ
+st = anGiaPlan({ ...ag, amount: 6_000_000 }, '2026-11-25');
+assert.equal(st.shortfall, 0);
+assert.equal(st.due.paid, true);
+// Bỏ lỡ kỳ 1, tháng 12 phải góp bù 2 kỳ
+assert.equal(anGiaPlan(ag, '2026-12-10').due.need, 2_000_000);
+// Gửi ngày 31 → tháng 2 góp ngày cuối tháng
+const ag31 = { ...ag, opened_at: '2027-01-31' };
+assert.equal(anGiaPlan(ag31, '2027-02-28').due.on, '2027-02-28');
+assert.equal(anGiaPlan(ag31, '2027-02-28').expected, 6_000_000, 'ngày 28/2 đã tới kỳ góp 1');
+// Tháng mở sổ và sau đáo hạn không có kỳ góp; số phải có dừng ở 35 kỳ
+assert.equal(anGiaPlan(ag, '2026-10-30').due, null);
+assert.equal(anGiaPlan(ag, '2030-01-01').due, null);
+assert.equal(anGiaPlan(ag, '2030-01-01').expected, 40_000_000);
+console.log('anGiaPlan check: OK');
 
 console.log('\n✅ financeLogic — tất cả self-check PASS (100% functions & rules covered)');
 

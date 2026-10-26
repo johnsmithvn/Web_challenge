@@ -32,14 +32,11 @@ export default function KBTagModal({
     <div className="kb-overlay" onClick={onClose}>
       <div
         className="kb-palette"
-        style={{ width: 'min(520px, 92vw)', marginTop: '12vh' }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--kb-line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontFamily: 'var(--kb-mono)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--kb-faint)' }}>
-            Quản lý thẻ · {tags.length}
-          </div>
-          <button className="kb-btn-ghost kb-btn-ghost--small" onClick={onClose}>esc</button>
+        <div className="kb-palette__head">
+          <div className="kb-palette__heading">Quản lý thẻ <span className="kb-palette__count">{tags.length}</span></div>
+          <button className="kb-btn-ghost kb-btn-ghost--small" onClick={onClose}>Đóng <kbd className="kb-kbd">Esc</kbd></button>
         </div>
 
         <div className="kb-palette__list">
@@ -47,23 +44,10 @@ export default function KBTagModal({
             <div className="kb-palette__empty">Chưa có thẻ nào</div>
           ) : (
             tags.map(t => (
-              <div
-                key={t.id || t.name}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '11px',
-                  padding: '9px 18px',
-                  borderBottom: '1px solid var(--kb-line)',
-                }}
-              >
-                <span className="kb-badge__dot" style={{ background: t.color || 'var(--kb-dim)' }} />
-                <span style={{ flex: 1, fontSize: '0.95rem', fontWeight: 500, color: 'var(--kb-tx)' }}>#{t.name}</span>
-                {t.count !== undefined && (
-                  <span style={{ fontFamily: 'var(--kb-mono)', fontSize: '0.78rem', color: 'var(--kb-faint)' }}>
-                    {t.count} bài
-                  </span>
-                )}
+              <div key={t.id || t.name} className="kb-palette__item">
+                <span className="kb-dot" style={t.color ? { '--kb-topic': t.color } : undefined} />
+                <span className="kb-palette__label">#{t.name}</span>
+                {t.count !== undefined && <span className="kb-palette__count">{t.count} bài</span>}
                 {onDeleteTag && (
                   <button
                     className="kb-btn-ghost kb-btn-ghost--small kb-btn-ghost--danger"
@@ -79,11 +63,10 @@ export default function KBTagModal({
         </div>
 
         {/* Bottom add input */}
-        <div style={{ borderTop: '1px solid var(--kb-line)', padding: '11px 18px', display: 'flex', gap: '8px' }}>
+        <div className="kb-palette__add">
           <input
             ref={inputRef}
-            className="kb-subheader__search-input"
-            style={{ flex: 1 }}
+            className="kb-input"
             placeholder="Tên thẻ mới…"
             value={newTagName}
             onChange={e => setNewTagName(e.target.value)}

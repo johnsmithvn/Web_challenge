@@ -4,6 +4,8 @@ import {
   decryptVaultItem,
   encryptVaultItem,
   unlockVaultKey,
+  unlockVaultKeyDetails,
+  importVaultKeyFromRaw,
   validateVaultPassphrase,
   rekeyVaultItems,
   rotateVaultPassphrase,
@@ -246,6 +248,22 @@ await assert.rejects(
 const tolerantKey = recoveryKey.toLowerCase().replace(/-/g, ' ');
 const recoveredTolerant = await recoverVaultWithKey(tolerantKey, 'yet another brand new passphrase 123', userId, config);
 assert.ok(recoveredTolerant.config.wrapped_key);
+
+// 10. Session rawDek unwrapping and direct importing
+const details = await unlockVaultKeyDetails(passphrase, userId, config);
+assert.ok(details.key, 'unlockVaultKeyDetails must return a CryptoKey');
+assert.ok(typeof details.rawDek === 'string' && details.rawDek.length > 0, 'unlockVaultKeyDetails must return rawDek base64');
+
+// Import rawDek back directly (simulating session restoration)
+const sessionKey = await importVaultKeyFromRaw(details.rawDek);
+const decryptedViaSession = await decryptVaultItem(sessionKey, userId, { id: itemId, ...encrypted });
+assert.deepEqual(decryptedViaSession, payload, 'Key imported from rawDek must decrypt items identically');
+
+// Wrong passphrase in unlockVaultKeyDetails rejects
+await assert.rejects(
+  unlockVaultKeyDetails('wrong passphrase long enough', userId, config),
+  /Wrong passphrase/
+);
 
 console.log('vault crypto checks: OK');
 

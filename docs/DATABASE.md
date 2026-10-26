@@ -1,15 +1,15 @@
 # DATABASE.md — Life Hub
 
-**Target:** Supabase PostgreSQL · **Version:** v6.22.0 · **Updated:** 2026-10-09
+**Target:** Supabase PostgreSQL · **Version:** v6.32.0 · **Updated:** 2026-10-25
 
 Runbook cài đặt duy nhất nằm trong [`README.md`](../README.md). File này mô tả trạng thái schema cuối,
 không thay thế SQL thật.
 
 ## Trạng thái schema cuối
 
-Sau khi chạy đủ baseline và các migration domain, database có **36 bảng public đang hoạt động**:
+Sau khi chạy đủ baseline và các migration domain, database có **37 bảng public đang hoạt động**:
 
-- 11 bảng core
+- 12 bảng core
 - 12 bảng Finance (11 bảng chính + junction tag)
 - 2 bảng Vault
 - 11 bảng Body (Thể hình & Sức khỏe)
@@ -20,7 +20,7 @@ của toàn bộ v6.2.
 ```text
 auth.users
 ├─ profiles
-│  ├─ user_tasks ── task_collections ── collections
+│  ├─ user_tasks ── task_collections ── collections ── collection_topics
 │  │      │                              ├─ collection_notes
 │  │      └─ activity_logs               └─ collection_tags ── tags
 │  │      └─ task_tags ────────────────────────────────┘
@@ -44,7 +44,7 @@ auth.users
 
 ## Inventory
 
-### Core — 11 bảng
+### Core — 12 bảng
 
 | Table | Vai trò | Ràng buộc đáng chú ý |
 |---|---|---|
@@ -52,7 +52,8 @@ auth.users
 | `focus_sessions` | Lịch sử Pomodoro | own-row RLS |
 | `xp_logs` | Event XP | amount giới hạn; app có thể xóa event khi bỏ hoàn thành Task |
 | `user_tasks` | Task cá nhân | priority, recurrence JSON, recurrence parent, completion/timestamps. Thời gian (v6.21.0) = 2 mốc tuỳ chọn: Hạn `due_date` (NULL = task không ngày) + `due_time` (NULL = không giờ) và Bắt đầu `start_date` + `start_time`; CHECK có giờ thì phải có ngày, Bắt đầu không sau Hạn. `started_at` = lúc bắt đầu làm thật (app ghi khi sang Doing lần đầu). `end_time` (v6.17.0) đã xoá ở v6.21.0. `parent_task_id` (v6.19.0) ≠ NULL = **subtask** — chỉ hiện bên trong task cha, app loại khỏi mọi danh sách/lịch; FK composite `(parent_task_id, user_id) → (id, user_id)` (cần UNIQUE `user_tasks_id_user_key`) ép cùng chủ, `ON DELETE CASCADE` (v6.20.0); CHECK không tự trỏ; 1 cấp do app quản lý. `sort_order` (v6.20.0) = thứ tự kéo thả subtask, NULL xếp sau theo `created_at`. `subtasks` JSONB (v6.18.0) **không còn dùng** từ v6.20.0 (checklist cũ) — giữ cột, chưa xoá |
-| `collections` | Inbox + Knowledge | type/status được CHECK; updated-at trigger |
+| `collections` | Bài Knowledge (Inbox cũ đã chuyển sang Tasks) | type/status được CHECK (app chỉ ghi `type` note/quote/podcast, `status` read); `topic_id` (v6.32.0) FK hai cột `(user_id, topic_id) → collection_topics (user_id, id) ON DELETE SET NULL (topic_id)`; updated-at trigger |
+| `collection_topics` | Chủ đề Knowledge (v6.32.0) | own-row RLS; tên duy nhất theo user (không phân biệt hoa thường); trigger tối đa 8 chủ đề/user; `UNIQUE (user_id, id)` làm đích FK |
 | `task_collections` | Task ↔ Knowledge M:N | FK hai phía, cascade, RLS hai phía |
 | `activity_logs` | Field diff + note của Task | FK `task_id` cascade; chỉ note được update |
 | `tags` | Tag dùng chung | unique theo `(user_id, name)` |
@@ -69,8 +70,8 @@ auth.users
 | `finance_loans` | Khoản vay và kỳ trả (mình đi vay) |
 | `finance_lendings` | Cho vay — tiền mình cho người khác mượn. Thu về nhiều lần; số đã thu suy từ `finance_transactions.lending_id`. Giao dịch thu về `excluded` nên không bị tính là thu nhập. `rate` (%/năm) tính lãi theo NGÀY trên gốc còn lại; `forfeited_interest` là TIỀN TUYỆT ĐỐI (lãi mất do đập tiết kiệm trước hạn), cộng vào tổng phải thu và **không** nhân với số ngày. Lãi là số suy ra, không lưu cột nào |
 | `finance_cards` | Chu kỳ sao kê và thanh toán thẻ. `annual_fee_on` là DATE (không phải ngày-trong-tháng như `statement_day`/`due_day`) vì phí thường niên lặp mỗi năm; NULL = không nhắc |
-| `finance_saving_goals` | Quỹ tiết kiệm và chính sách khóa |
-| `finance_deposits` | Nơi gửi thuộc quỹ; đáo hạn suy ra từ kỳ hạn |
+| `finance_saving_goals` | Quỹ tiết kiệm và chính sách khóa. `is_default` = quỹ **Tích lũy chung** (v6.31.0): nơi gửi không thuộc mục tiêu nào vào đây, app tạo khi lưu nơi gửi đầu tiên chọn "Tích lũy chung"; unique index `finance_goals_one_default` giữ tối đa 1 quỹ mặc định **đang mở** mỗi user |
+| `finance_deposits` | Nơi gửi thuộc quỹ (`fund_id NOT NULL` — không có nơi gửi "không quỹ"); đáo hạn suy ra từ kỳ hạn (`term` luôn theo tháng). Tích lũy An Gia (v6.31.0): `initial_amount` (gửi lần đầu X) + `monthly_amount` (góp Y mỗi tháng, ngày góp = ngày gửi) đi cặp, có kỳ hạn; `amount` vẫn là số đang gửi thật, tăng theo mỗi lần góp. Đã góp đủ chưa = `amount` ≥ X + Y × số kỳ đã tới hạn (`anGiaPlan`), không dựa vào giao dịch vì giao dịch quỹ không ghi sổ nào |
 | `finance_shortcuts` | Mẫu nhập nhanh, không giữ số tiền cố định. `recent_amounts` (tối đa 3) là các mức đã dùng, hiện thành nút bấm-là-ghi khi mở shortcut. Đã cân nhắc thêm cột `default_amount` để bấm một cái ghi luôn và **bỏ** — xem mục "Đã thử rồi bỏ" trong CHANGELOG |
 | `finance_category_overrides` | Nhãn/màu/icon/subcategory tùy biến theo user (10 nhóm chi chính) |
 | `finance_transaction_tags` | Giao dịch ↔ Tag |
@@ -173,6 +174,15 @@ own-row và không public-select.
 Migration còn có helper validate/refresh/cycle và trigger sync progress. Không gọi RPC write trực tiếp
 từ UI ngoài data owner `useFinance`.
 
+### Knowledge RPC (v6.32.0)
+
+- `seed_starter_collection_topics(p_user)` — chèn bộ 7 chủ đề khởi đầu, chỉ khi user chưa có chủ đề nào. Nguồn duy
+  nhất của bộ khởi đầu.
+- `merge_collection_topics(p_from, p_to)` — chuyển bài sang chủ đề đích rồi xoá chủ đề nguồn, một transaction.
+
+Cả hai `SECURITY INVOKER` (RLS giới hạn trong dữ liệu của chính user), chỉ cấp `EXECUTE` cho `authenticated`;
+gọi qua `useCollectionTopics`.
+
 ## RLS và grants
 
 - Tất cả bảng public user-owned bật RLS.
@@ -237,6 +247,7 @@ Snapshot đã tồn tại là bất biến. Schema change mới phải dùng mig
 20. `supabase/migrations/20261008000001_body_biometrics_v6_22_0.sql`
 21. `supabase/migrations/20261008000002_body_nutrition_checkin_v6_22_0.sql`
 22. `supabase/migrations/20261009000000_body_exercise_videos_v6_22_0.sql`
+23. `supabase/migrations/20261025000000_knowledge_topics_v6_32_0.sql` (cần Postgres 15+)
 
 Dọn dẹp bảng cũ (tùy chọn):
 - `data/drop_incubator_tables.sql` (gỡ bỏ các bảng `intention_*` của phân hệ Ươm mầm đã ngưng phát triển).

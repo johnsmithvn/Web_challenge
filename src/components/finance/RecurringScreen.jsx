@@ -7,7 +7,7 @@ import {
   loanCycle, lendingInterest, forfeitedInterest,
   dueDateInMonth, daysUntilDue, addDaysStr, daysInclusive, nextAnnualFee,
   billCycle, billSettled, billPeriods, billPeriodForDate, periodTotals, currentMonthPeriod,
-  guessDepositType, maturityInterest,
+  guessDepositType, maturityInterest, anGiaPlan,
 } from '../../utils/financeLogic';
 import {
   buildHubItems, groupHubItems, hubTotals, calendarDays, weekBounds, shortMoney, periodHistory,
@@ -1416,7 +1416,7 @@ export default function RecurringScreen({ fin, nav }) {
             {selected.kind === 'card' && <CardDetail key={selected.id} card={selected.source} {...detailProps} />}
             {selected.kind === 'loan' && <LoanDetail key={selected.id} loan={selected.source} {...detailProps} />}
             {selected.kind === 'lend' && <LendDetail key={selected.id} lending={selected.source} {...detailProps} />}
-            {selected.kind === 'save' && !selected.deposit && <SaveDetail key={selected.id} goal={selected.source} {...detailProps}
+            {selected.kind === 'save' && !selected.deposit && <SaveDetail key={selected.id} goal={selected.source} ev={selected.ev} {...detailProps}
               onAddDeposit={() => openDeposit(selected.source)}
               onPickDeposit={(id) => { setOpenFunds(prev => new Set(prev).add(selected.id)); pick(id); }} />}
             {selected.deposit && <DepositDetail key={selected.id} item={selected} {...detailProps}
@@ -1855,17 +1855,22 @@ function LendDetail({ fin, tasks, act, lending: l, payId, setPayId, onEdit, onCl
 
 // ── Quỹ tiết kiệm ────────────────────────────────────────────────────────────
 // Góp/rút ngay trong panel (SavingMoveForm); sổ là dòng con xổ dưới quỹ, thêm/sửa qua DepositForm.
-function SaveDetail({ fin, act, goal: g, payId, setPayId, onEdit, onClose, onAddDeposit, onPickDeposit }) {
+function SaveDetail({ fin, act, goal: g, ev, payId, setPayId, onEdit, onClose, onAddDeposit, onPickDeposit }) {
   const deps = fin.deposits.filter(d => d.fund_id === g.id && !d.closed_on);
   const matured = deps.filter(d => d.matures_at && d.matures_at <= fin.today);
   const sum = savingsSummary(deps);
   const bal = sum.total;
   const plan = g.auto_deposit?.amount ? g.auto_deposit : null;
+  // Quỹ có sổ An Gia: kỳ góp tháng này lấy từ dòng hub (buildHubItems), không tự tính lại
+  const agEv = !plan && ev ? ev : null;
+  const agMonthly = deps.filter(d => guessDepositType(d) === 'angia').reduce((s, d) => s + Number(d.monthly_amount), 0);
   const month = fin.today.slice(0, 7);
   const depositTx = fin.transactions.find(t => t.saving_goal_id === g.id && t.saving_dir === 'in' && t.occurred_at?.slice(0, 7) === month);
-  const state = !plan ? { tone: 'wait', text: 'Gửi tay' } : depositTx
+  const state = plan ? (depositTx
     ? { tone: 'paid', text: `Đã góp ngày ${dmy(depositTx.occurred_at)}` }
-    : dueState({ days: daysUntilDue(plan.day, fin.today) });
+    : dueState({ days: daysUntilDue(plan.day, fin.today) }))
+    : agEv ? (agEv.state === 'paid' ? { tone: 'paid', text: 'Đã góp đủ kỳ này' } : dueState({ days: daysTo(fin.today, agEv.due) }))
+    : { tone: 'wait', text: 'Gửi tay' };
   // "Dự kiến đủ" = số tháng còn thiếu chia cho mức góp mỗi tháng.
   const monthsLeft = plan && g.goal > bal ? Math.ceil((g.goal - bal) / plan.amount) : null;
   const doneAt = monthsLeft != null ? new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + monthsLeft, 1) : null;
@@ -1877,10 +1882,11 @@ function SaveDetail({ fin, act, goal: g, payId, setPayId, onEdit, onClose, onAdd
   return (
     <>
       <DetailHead kind="save" title={g.name}
-        sub={plan ? `Góp ${shortMoney(plan.amount)} · ngày ${plan.day} hằng tháng` : `${deps.length} sổ · gửi tay`}
+        sub={plan ? `Góp ${shortMoney(plan.amount)} · ngày ${plan.day} hằng tháng`
+          : agMonthly ? `${deps.length} sổ · góp An Gia ${shortMoney(agMonthly)}/tháng` : `${deps.length} sổ · gửi tay`}
         onEdit={onEdit} onClose={onClose} />
-      <AmountBox caption={plan ? `Góp kỳ ${month.slice(5)}/${month.slice(0, 4)}` : 'Đang gửi'}
-        value={money(plan ? plan.amount : bal)} state={state} />
+      <AmountBox caption={plan ? `Góp kỳ ${month.slice(5)}/${month.slice(0, 4)}` : agEv ? `Góp An Gia kỳ ${month.slice(5)}/${month.slice(0, 4)}` : 'Đang gửi'}
+        value={money(plan ? plan.amount : agEv ? agEv.amount : bal)} state={state} />
       {!moving && (
         <div className="fin-hub__detail-actions">
           {deps.length ? (
@@ -1912,7 +1918,7 @@ function SaveDetail({ fin, act, goal: g, payId, setPayId, onEdit, onClose, onAdd
       {g.goal > 0 && <ProgressBox label="Mục tiêu" pct={bal / g.goal * 100} left={`Đang gửi ${money(bal)}`} right={`Mục tiêu ${money(g.goal)}`} />}
       <HistoryChart history={periodHistory({ id: g.id, kind: 'save' }, fin.transactions)} />
       <KV rows={[
-        ['Góp mỗi kỳ', plan ? money(plan.amount) : 'Gửi tay'],
+        ['Góp mỗi kỳ', plan ? money(plan.amount) : agMonthly ? `${money(agMonthly)} · An Gia` : 'Gửi tay'],
         doneAt && ['Dự kiến đủ', `Tháng ${doneAt.getMonth() + 1}/${doneAt.getFullYear()}`],
         ['Nơi gửi', deps.length ? `${deps.length} sổ · ${new Set(deps.map(d => d.bank).filter(Boolean)).size} ngân hàng` : 'Chưa gắn sổ nào'],
         sum.interest > 0 && ['Lãi khi đáo hạn', `+${money(sum.interest)}`],
@@ -1935,13 +1941,17 @@ function SaveDetail({ fin, act, goal: g, payId, setPayId, onEdit, onClose, onAdd
 }
 
 // ── Sổ / nơi gửi (dòng con của quỹ) ─────────────────────────────────────────
-const DEPOSIT_CAT = { cd: 'CHỨNG CHỈ TIỀN GỬI', term: 'SỔ TIẾT KIỆM', flex: 'TÍCH LŨY LINH HOẠT' };
+const DEPOSIT_CAT = { cd: 'CHỨNG CHỈ TIỀN GỬI', term: 'SỔ TIẾT KIỆM', flex: 'TÍCH LŨY LINH HOẠT', angia: 'TÍCH LŨY AN GIA' };
 
 function DepositDetail({ fin, nav, act, item, payId, setPayId, onEdit, onClose, onPickFund }) {
   const d = item.source;
   const closed = Boolean(d.closed_on);
   const days = !closed && d.matures_at ? daysTo(fin.today, d.matures_at) : null;
+  const ag = guessDepositType(d) === 'angia' ? anGiaPlan(d, fin.today) : null;
+  const termLabel = ag ? `${d.term / 12} năm` : `${d.term} tháng`;
+  const topping = payId === `${d.id}:in`;
   const state = closed ? { tone: 'paid', text: `Đã tất toán ${dmy(d.closed_on)}` }
+    : ag?.shortfall ? { tone: 'due', text: `Thiếu ${money(ag.shortfall)} tiền góp` }
     : days == null ? { tone: 'wait', text: 'Linh hoạt · rút bất cứ lúc nào' }
     : days < 0 ? { tone: 'due', text: `Đã đáo hạn ${-days} ngày` }
     : days === 0 ? { tone: 'due', text: 'Đáo hạn hôm nay' }
@@ -1961,20 +1971,32 @@ function DepositDetail({ fin, nav, act, item, payId, setPayId, onEdit, onClose, 
         </div>
       )}
       {settling && <MaturityForm key={d.id} fin={fin} nav={nav} deposit={d} onDone={() => setPayId(null)} />}
+      {ag && days > 0 && item.fund && !topping && (
+        <div className="fin-hub__detail-actions">
+          <button type="button" className="fin-btn fin-btn--primary fin-hub__primary" onClick={() => setPayId(`${d.id}:in`)}>
+            <AppIcon name="arrowDown" size={16} /> Góp tiền
+          </button>
+        </div>
+      )}
+      {topping && <SavingMoveForm key={`${d.id}:in`} fin={fin} goal={item.fund} dir="in" initialDepositId={d.id}
+        onDone={() => setPayId(null)} />}
       {closed && (
         <button type="button" className="fin-btn fin-btn--ghost fin-btn--sm fin-hub__undo" onClick={() => act.reopenDeposit(d)}>
           <AppIcon name="refresh" size={13} /> Mở lại sổ
         </button>
       )}
       {!closed && d.matures_at && d.opened_at && (
-        <ProgressBox label={`Kỳ hạn ${d.term} tháng`} pct={item.progress.pct}
+        <ProgressBox label={`Kỳ hạn ${termLabel}`} pct={item.progress.pct}
           left={`Gửi ${dmy(d.opened_at)}`} right={`Đáo hạn ${dmy(d.matures_at)}`} />
       )}
       <KV rows={[
         ['Thuộc quỹ', item.fund
           ? <button type="button" className="fin-inline-command" onClick={onPickFund}>{item.fund.name}</button> : '—'],
         ['Lãi suất', `${d.rate || 0}%/năm`],
-        ['Kỳ hạn', d.term ? `${d.term} tháng` : 'Không kỳ hạn'],
+        ['Kỳ hạn', d.term ? termLabel : 'Không kỳ hạn'],
+        ag && ['Gửi lần đầu', money(d.initial_amount)],
+        ag && d.opened_at && ['Góp mỗi tháng', `${money(d.monthly_amount)} · ngày ${Number(d.opened_at.slice(8))}`],
+        ag && ['Gốc khi đáo hạn', `${money(ag.principal)} · ${ag.periods} kỳ góp`],
         [d.term ? 'Lãi khi đáo hạn' : 'Lãi ước tính 1 năm', `+${money(maturityInterest(d))}`],
         d.opened_at && ['Ngày gửi', dmy(d.opened_at)],
         d.account_no && ['Số tài khoản', d.account_no],

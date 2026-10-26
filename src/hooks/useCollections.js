@@ -4,12 +4,15 @@ import { useAuth } from '../contexts/AuthContext';
 import { logger } from '../utils/logger';
 
 /**
- * useCollections — CRUD for the `collections` table.
+ * useCollections — CRUD for the `collections` table (Knowledge bài).
  *
- * Types: the seven keys in `src/data/knowledge.json`.
- * Status: unread | read | archived.
+ * type: note | quote | podcast (older rows may still hold learn / idea / ai / entertainment).
+ * topic_id: chủ đề, see useCollectionTopics. NULL = Chưa xếp.
+ * status: unread | read | archived (DB values; the Knowledge UI saves read and hides archived rows).
  *
- * Used by: CollectPage (Knowledge types), TaskListSection (for linking).
+ * Fetched items carry: _tags, _linkedTaskIds, _linkedTaskCount, _notes ({content}[]), _noteCount.
+ *
+ * Used by: CollectPage, TaskListSection (for linking).
  */
 export function useCollections() {
   const { user, isAuthenticated } = useAuth();
@@ -19,94 +22,40 @@ export function useCollections() {
   // Bắt đầu ở true khi có user: CollectPage gọi fetchItems trong effect, frame đầu không được hiện kho rỗng.
   const [isLoading, setIsLoading] = useState(enabled);
 
-  // ── Fetch all items (recent 500) — joins collection_tags + task_collections ──
+  // ── Fetch items (recent 500) with tags, linked tasks and notes ──
+  // filters: { type?, status? } — archived rows are skipped unless a status is asked for.
   const fetchItems = useCallback(async (filters = {}) => {
     if (!enabled) return;
     setIsLoading(true);
 
-    const applyFilters = (q, f) => {
-      if (f.type)   q = q.eq('type', f.type);
-      if (f.status) q = q.eq('status', f.status);
-      else          q = q.neq('status', 'archived');
-      return q;
-    };
+    let query = supabase
+      .from('collections')
+      .select('*, collection_tags(tags(id, name, color)), task_collections(task_id), collection_notes(content)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (filters.type) query = query.eq('type', filters.type);
+    if (filters.status) query = query.eq('status', filters.status);
+    else query = query.neq('status', 'archived');
 
-    try {
-      let joinLevel = 'full'; // full | tags-only | none
-
-      // Step 1: Try with both collection_tags + task_collections (v4.5.0)
-      let query = supabase
-        .from('collections')
-        .select('*, collection_tags(tag_id, tags(id, name, color)), task_collections(task_id)')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(500);
-      query = applyFilters(query, filters);
-
-      let { data, error } = await query;
-
-      // Step 2: Fallback without task_collections (keeps collection_tags)
-      if (error) {
-        logger.warn('[useCollections] full join failed, trying tags-only:', error.message);
-        joinLevel = 'tags-only';
-        let q2 = supabase
-          .from('collections')
-          .select('*, collection_tags(tag_id, tags(id, name, color))')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(500);
-        q2 = applyFilters(q2, filters);
-        const r2 = await q2;
-
-        if (r2.error) {
-          // Step 3: Plain select (no joins at all)
-          logger.warn('[useCollections] tags join failed, plain select:', r2.error.message);
-          joinLevel = 'none';
-          let q3 = supabase
-            .from('collections')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(500);
-          q3 = applyFilters(q3, filters);
-          const r3 = await q3;
-          if (r3.error) throw r3.error;
-          data = r3.data;
-        } else {
-          data = r2.data;
-        }
-      }
-
-      // Map results based on join level
-      const mapped = (data || []).map(item => {
-        const _tags = joinLevel !== 'none'
-          ? (item.collection_tags || []).map(ct => ct.tags).filter(Boolean)
-          : (item.tags || []).map(t => ({ name: t, color: '#8b5cf6' }));
-
-        const _linkedTaskIds = joinLevel === 'full'
-          ? (item.task_collections || []).map(tc => tc.task_id).filter(Boolean)
-          : [];
-
+    const { data, error } = await query;
+    if (error) {
+      logger.warn('[useCollections] fetch error:', error.message);
+    } else {
+      setItems((data || []).map(({ collection_tags, task_collections, collection_notes, ...item }) => {
+        const _linkedTaskIds = (task_collections || []).map(tc => tc.task_id);
+        const _notes = collection_notes || [];
         return {
           ...item,
-          _tags,
+          _tags: (collection_tags || []).map(ct => ct.tags).filter(Boolean),
           _linkedTaskIds,
           _linkedTaskCount: _linkedTaskIds.length,
+          _notes,
+          _noteCount: _notes.length,
         };
-      });
-
-      // Clean raw junction data
-      mapped.forEach(item => {
-        delete item.collection_tags;
-        delete item.task_collections;
-      });
-
-      setItems(mapped);
-    } catch (err) {
-      logger.warn('[useCollections] fetch error:', err.message);
-    } finally {
-      setIsLoading(false);
+      }));
     }
+    setIsLoading(false);
   }, [enabled, user]);
 
   // ── Add item ────────────────────────────────────────────────
@@ -116,6 +65,7 @@ export function useCollections() {
     const newItem = {
       user_id:        user.id,
       type:           item.type    || 'note',
+      topic_id:       item.topic_id || null,
       title:          item.title,
       url:            item.url     || null,
       body:           item.body    || '',
@@ -138,11 +88,9 @@ export function useCollections() {
         throw error;
       }
 
-      // Attach empty _tags for consistency with fetched items
-      const withTags = { ...data, _tags: [] };
-
-      // Optimistic: prepend to local list
-      setItems(prev => [withTags, ...prev]);
+      // Same shape as fetched items
+      const shaped = { ...data, _tags: [], _linkedTaskIds: [], _linkedTaskCount: 0, _notes: [], _noteCount: 0 };
+      setItems(prev => [shaped, ...prev]);
       return data;
     } catch (err) {
       logger.error('[useCollections] addItem failed:', err.message);
@@ -174,6 +122,26 @@ export function useCollections() {
       fetchItems();
       return false;
     }
+  }, [enabled, user, fetchItems]);
+
+  // ── Update many items with the same change (one request) ────
+  const updateItems = useCallback(async (ids, updates) => {
+    if (!enabled || ids.length === 0) return false;
+    const idSet = new Set(ids);
+
+    setItems(prev => prev.map(item => (idSet.has(item.id) ? { ...item, ...updates } : item)));
+
+    const { error } = await supabase
+      .from('collections')
+      .update(updates)
+      .in('id', ids)
+      .eq('user_id', user.id);
+    if (error) {
+      logger.warn('[useCollections] bulk update error:', error.message);
+      fetchItems();
+      return false;
+    }
+    return true;
   }, [enabled, user, fetchItems]);
 
   // ── Delete item ─────────────────────────────────────────────
@@ -227,6 +195,7 @@ export function useCollections() {
     fetchStats,    // (sinceDate) => Promise<{ total, createdAt[] } | null>
     addItem,       // (item) => Promise<row|null>
     updateItem,    // (id, updates) => Promise<boolean>
+    updateItems,   // (ids, updates) => Promise<boolean>
     deleteItem,    // (id) => Promise<boolean>
     enabled,       // boolean
   };

@@ -3,7 +3,7 @@ import {
   billCycle, billSettled, billAmountEstimate,
   cardStatementSummary, cardCarryOver, cardBalance,
   loanSchedule, loanCycle,
-  daysInclusive, fundBalance, maturityInterest, maturityWarn, guessDepositType,
+  daysInclusive, fundBalance, maturityInterest, maturityWarn, guessDepositType, anGiaPlan,
 } from './financeLogic.js';
 
 const WD_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -191,10 +191,27 @@ export function buildHubItems(fin = {}) {
       ev = { day, due, amount, approx: false, state, paidOn };
     }
 
-    const overdue = Boolean(ev && ev.state === 'due' && ev.due < today);
     // Sổ đang mở của quỹ — danh sách xổ ra dưới dòng quỹ. Sổ có hạn lên trước, linh hoạt cuối.
     const deps = deposits.filter(d => d.fund_id === g.id && !d.closed_on)
       .sort((a, b) => (a.matures_at || '9999').localeCompare(b.matures_at || '9999'));
+    // Sổ An Gia: kỳ góp tháng này. Đủ hay chưa xét theo số đang gửi (amount ≥ X + Y × kỳ), không theo
+    // giao dịch — giao dịch quỹ không ghi sổ nào. Nhiều sổ thì gộp: ngày sớm nhất, cộng số còn thiếu.
+    const angia = deps.filter(d => guessDepositType(d) === 'angia');
+    const monthly = angia.reduce((s, d) => s + Number(d.monthly_amount), 0);
+    if (!ev) {
+      const dues = angia.map(d => anGiaPlan(d, today).due).filter(Boolean);
+      const open = dues.filter(x => !x.paid);
+      if (dues.length) {
+        const due = (open.length ? open : dues).map(x => x.on).sort()[0];
+        ev = {
+          day: Number(due.slice(8)), due, approx: false, paidOn: null,
+          amount: open.length ? open.reduce((s, x) => s + x.need, 0) : monthly,
+          state: open.length ? 'due' : 'paid',
+        };
+      }
+    }
+
+    const overdue = Boolean(ev && ev.state === 'due' && ev.due < today);
     const bal = deps.reduce((s, d) => s + (d.amount || 0), 0);
     const progress = { pct: pctOf(bal, g.goal), label: g.goal ? `${shortMoney(bal)} / ${shortMoney(g.goal)}` : shortMoney(bal) };
     const matured = deps.filter(d => d.matures_at && d.matures_at <= today).length;
@@ -206,6 +223,7 @@ export function buildHubItems(fin = {}) {
       name: g.name,
       sub: g.auto_deposit?.amount
         ? `Góp ${shortMoney(g.auto_deposit.amount)} · ngày ${g.auto_deposit.day} hằng tháng`
+        : monthly ? `Góp An Gia ${shortMoney(monthly)}/tháng`
         : deps.length ? `${deps.length} sổ · ${banks} ngân hàng · gửi tay` : 'chưa có sổ · gửi tay',
       icon: 'piggyBank',
       categoryId: 'saving',
@@ -261,7 +279,7 @@ export function buildHubItems(fin = {}) {
   return items;
 }
 
-const DEPOSIT_ICON = { cd: 'certificate', term: 'bank', flex: 'deviceMobile' };
+const DEPOSIT_ICON = { cd: 'certificate', term: 'bank', flex: 'deviceMobile', angia: 'plant' };
 
 /**
  * Một sổ (finance_deposits) dưới dạng dòng hub: dòng con của quỹ, hoặc dòng lưu trữ khi
@@ -272,7 +290,9 @@ export function depositItem(d, fund, today) {
   const type = guessDepositType(d);
   const closed = Boolean(d.closed_on);
   const days = !closed && d.matures_at ? maturityWarn(d.matures_at, today).days : null;
+  const short = type === 'angia' && !closed ? anGiaPlan(d, today).shortfall : 0;
   const note = closed ? `tất toán ${dmyFull(d.closed_on)}`
+    : short ? `thiếu ${shortMoney(short)} tiền góp`
     : days == null ? 'linh hoạt'
     : days < 0 ? `đã đáo hạn ${-days} ngày`
     : days === 0 ? 'đáo hạn hôm nay' : `còn ${days} ngày`;
@@ -288,10 +308,11 @@ export function depositItem(d, fund, today) {
     icon: DEPOSIT_ICON[type],
     main: d.amount || 0,
     note,
-    tone: closed ? 'paid' : days != null && days <= 0 ? 'due' : null,
+    tone: closed ? 'paid' : short || (days != null && days <= 0) ? 'due' : null,
     done: closed,
     nd: d.matures_at ? [Number(d.matures_at.slice(8)), `T${Number(d.matures_at.slice(5, 7))}`] : null,
-    progress: { pct: closed ? 100 : pctOf(gone, span), label: `${d.rate || 0}%/năm · ${d.term ? `${d.term} tháng` : 'linh hoạt'}` },
+    progress: { pct: closed ? 100 : pctOf(gone, span), label: `${d.rate || 0}%/năm · ${
+      type === 'angia' ? `${d.term / 12} năm · góp ${shortMoney(d.monthly_amount)}/tháng` : d.term ? `${d.term} tháng` : 'linh hoạt'}` },
     source: d,
     fund,
     ev: null,

@@ -400,17 +400,17 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
       const last = monthlyValues[5] || 0;
       const prev = monthlyValues[4] || 0;
       let d = '0%';
-      let dfg = '#8A8A84';
+      let dfg = 'var(--rp-muted, #8A8A84)';
       if (!prev && last > 0) {
         d = 'mới';
       } else if (prev > 0) {
         const diff = Math.round(((last - prev) / prev) * 100);
         if (diff > 0) {
           d = `+${diff}%`;
-          dfg = '#B42318';
+          dfg = 'var(--rp-up, #B42318)';
         } else if (diff < 0) {
           d = `${diff}%`.replace('-', '−');
-          dfg = '#067647';
+          dfg = 'var(--rp-down, #067647)';
         }
       }
 
@@ -519,8 +519,8 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
           n: d.n,
           v: (d.amount / 1_000_000).toFixed(1).replace('.', ','),
           h: Math.max(4, Math.round((d.amount / maxDow) * 100)),
-          bg: isPeak ? '#6949E8' : '#DEDCD5',
-          vfg: isPeak ? '#15161A' : '#B5B4AE',
+          bg: isPeak ? '#6949E8' : 'var(--rp-track, #DEDCD5)',
+          vfg: isPeak ? 'var(--rp-ink, #15161A)' : 'var(--rp-faint, #B5B4AE)',
         };
       }),
     };
@@ -588,7 +588,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
       n: b.n,
       c: b.c,
       h: Math.max(3, Math.round((b.c / maxCount) * 100)),
-      bg: b.c === 0 ? '#F0EFEA' : '#6949E8',
+      bg: b.c === 0 ? 'var(--rp-track, #F0EFEA)' : '#6949E8',
     }));
   }, [periodTxs]);
 
@@ -1045,7 +1045,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
           <div className="fin-report__spark-val">{s.v}</div>
           <div className="fin-report__spark-delta" style={{ color: s.dfg }}>{s.d}</div>
           <svg viewBox="0 0 120 34" className="fin-report__spark-svg" aria-label="Sparkline nhóm">
-            <path d={s.area} fill={s.soft} />
+            <path d={s.area} fill={s.soft} className="fin-report__spark-area" style={{ '--spark-col': s.col }} />
             <path d={s.path} fill="none" stroke={s.col} strokeWidth="2" strokeLinejoin="round" />
           </svg>
         </div>
@@ -1189,7 +1189,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
           </div>
         ))}
         {!merchantData.length && (
-          <div style={{ color: '#93938C', fontSize: '12px', textAlign: 'center', padding: '24px 0' }}>
+          <div style={{ color: 'var(--rp-muted, #93938C)', fontSize: '12px', textAlign: 'center', padding: '24px 0' }}>
             Chưa có giao dịch nào trong kỳ
           </div>
         )}
@@ -1253,19 +1253,24 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
             type="button"
             className={`fin-report__btn fin-report__btn--mgr ${mgrOpen ? 'is-open' : ''}`}
             onClick={() => setMgrOpen(!mgrOpen)}
+            aria-label={`Thẻ hiển thị: ${shownCount}`}
+            title="Thẻ hiển thị"
           >
             <svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
               <path d="M104,40H56A16,16,0,0,0,40,56v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V56A16,16,0,0,0,104,40Zm0,64H56V56h48ZM200,40H152a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V56A16,16,0,0,0,200,40Zm0,64H152V56h48ZM104,136H56a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V152A16,16,0,0,0,104,136Zm0,64H56V152h48Zm96-64H152a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V152A16,16,0,0,0,200,136Zm0,64H152V152h48Z" />
             </svg>
-            <span>Thẻ hiển thị · {shownCount}</span>
+            <span><span className="fin-report__btn-text">Thẻ hiển thị · </span>{shownCount}</span>
           </button>
 
           <button
             type="button"
             className="fin-report__btn fin-report__btn--csv"
             onClick={handleExportCSV}
+            aria-label="Xuất CSV"
+            title="Xuất CSV"
           >
-            Xuất CSV
+            <AppIcon name="upload" size={14} />
+            <span className="fin-report__btn-text">Xuất CSV</span>
           </button>
 
           {/* Popover Card Manager trên Desktop */}
@@ -1337,10 +1342,10 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                   <table className="fin-report__diff-table">
                     <thead>
                       <tr>
-                        <th style={{ width: '38%' }}>NHÓM</th>
-                        <th style={{ textAlign: 'right', width: '18%' }}>{periodDiffData.curLabelShort}</th>
-                        <th style={{ textAlign: 'right', width: '18%' }}>{periodDiffData.prevLabelShort}</th>
-                        <th style={{ textAlign: 'right', width: '26%' }}>CHÊNH LỆCH</th>
+                        <th>NHÓM</th>
+                        <th style={{ textAlign: 'right' }}>{periodDiffData.curLabelShort}</th>
+                        <th style={{ textAlign: 'right' }}>{periodDiffData.prevLabelShort}</th>
+                        <th style={{ textAlign: 'right' }}>CHÊNH LỆCH</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1432,7 +1437,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                       })}
                       {periodDiffData.rows.length === 0 && (
                         <tr>
-                          <td colSpan={4} style={{ textAlign: 'center', padding: '28px 0', color: '#93938C', fontSize: '12px' }}>
+                          <td colSpan={4} style={{ textAlign: 'center', padding: '28px 0', color: 'var(--rp-muted, #93938C)', fontSize: '12px' }}>
                             Chưa có dữ liệu chi tiêu trong kỳ này
                           </td>
                         </tr>
@@ -1491,7 +1496,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                   ))}
 
                   {!outlierData.items.length && (
-                    <div style={{ color: '#93938C', fontSize: '12px', textAlign: 'center', padding: '24px 0' }}>
+                    <div style={{ color: 'var(--rp-muted, #93938C)', fontSize: '12px', textAlign: 'center', padding: '24px 0' }}>
                       Tất cả các khoản chi trong kỳ đều nằm trong mức thông thường
                     </div>
                   )}
@@ -1528,14 +1533,14 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                     <stop offset="1" stopColor="#6949E8" stopOpacity="0" />
                   </linearGradient>
                 </defs>
-                <rect x="643" y="0" width="77" height="170" rx="6" fill="#F3F0FE" />
-                <line x1="0" y1="170" x2="720" y2="170" stroke="#EDECE7" />
-                <line x1="0" y1="115" x2="720" y2="115" stroke="#EDECE7" />
-                <line x1="0" y1="60" x2="720" y2="60" stroke="#EDECE7" />
-                <line x1="0" y1="5" x2="720" y2="5" stroke="#EDECE7" />
+                <rect x="643" y="0" width="77" height="170" rx="6" style={{ fill: 'var(--rp-hl, #F3F0FE)' }} />
+                <line x1="0" y1="170" x2="720" y2="170" style={{ stroke: 'var(--rp-grid, #EDECE7)' }} />
+                <line x1="0" y1="115" x2="720" y2="115" style={{ stroke: 'var(--rp-grid, #EDECE7)' }} />
+                <line x1="0" y1="60" x2="720" y2="60" style={{ stroke: 'var(--rp-grid, #EDECE7)' }} />
+                <line x1="0" y1="5" x2="720" y2="5" style={{ stroke: 'var(--rp-grid, #EDECE7)' }} />
                 <path d={trendData.trendArea} fill="url(#gTrend)" />
-                <path d={trendData.trendLine} fill="none" stroke="#6949E8" strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
-                <line x1="0" y1={trendData.avgY} x2="720" y2={trendData.avgY} stroke="#BEBBB2" strokeWidth="1" strokeDasharray="4 5" />
+                <path d={trendData.trendLine} fill="none" style={{ stroke: 'var(--rp-accent, #6949E8)' }} strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+                <line x1="0" y1={trendData.avgY} x2="720" y2={trendData.avgY} style={{ stroke: 'var(--rp-faint, #BEBBB2)' }} strokeWidth="1" strokeDasharray="4 5" />
                 {trendData.trendDots.map((p, i) => (
                   <circle
                     key={i}
@@ -1553,7 +1558,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                   <span
                     key={m.n}
                     className="fin-report__trend-month"
-                    style={{ color: m.isCurrent ? '#6949E8' : '#B0B0AA', fontWeight: m.isCurrent ? 600 : 400 }}
+                    style={{ color: m.isCurrent ? 'var(--rp-accent, #6949E8)' : 'var(--rp-faint, #B0B0AA)', fontWeight: m.isCurrent ? 600 : 400 }}
                   >
                     {m.n}
                   </span>
@@ -1664,17 +1669,17 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                 <span className="fin-report__card-unit">LŨY KẾ %</span>
               </div>
               <svg viewBox="0 0 420 180" className="fin-report__pareto-svg" aria-label="Biểu đồ Pareto">
-                <line x1="0" y1="170" x2="420" y2="170" stroke="#EDECE7" />
-                <line x1="0" y1="113" x2="420" y2="113" stroke="#EDECE7" />
-                <line x1="0" y1="56" x2="420" y2="56" stroke="#EDECE7" />
+                <line x1="0" y1="170" x2="420" y2="170" style={{ stroke: 'var(--rp-grid, #EDECE7)' }} />
+                <line x1="0" y1="113" x2="420" y2="113" style={{ stroke: 'var(--rp-grid, #EDECE7)' }} />
+                <line x1="0" y1="56" x2="420" y2="56" style={{ stroke: 'var(--rp-grid, #EDECE7)' }} />
                 {paretoData.bars.map((p, i) => (
                   <rect key={i} x={p.x} y={p.y} width="44" height={p.h} rx="5" fill={p.col} />
                 ))}
                 {paretoData.paretoLine && (
-                  <path d={paretoData.paretoLine} fill="none" stroke="#15161A" strokeWidth="2" strokeDasharray="3 3" />
+                  <path d={paretoData.paretoLine} fill="none" style={{ stroke: 'var(--rp-ink, #15161A)' }} strokeWidth="2" strokeDasharray="3 3" />
                 )}
                 {paretoData.bars.map((p, i) => (
-                  <circle key={i} cx={p.cx} cy={p.cy} r="3.2" fill="#15161A" />
+                  <circle key={i} cx={p.cx} cy={p.cy} r="3.2" style={{ fill: 'var(--rp-ink, #15161A)' }} />
                 ))}
               </svg>
               <div className="fin-report__pareto-labels">
@@ -1697,11 +1702,11 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', margin: '8px 0 14px', fontSize: '11px' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#15161A' }} />
+                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--rp-ink, #15161A)' }} />
                   <span>Phải trả <strong>{necessityData.curMustStr}</strong></span>
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#E8D5B5' }} />
+                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--rp-want-cur, #E8D5B5)' }} />
                   <span>Tùy chọn <strong>{necessityData.curWantStr}</strong></span>
                 </span>
               </div>
@@ -1714,7 +1719,7 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                         className="fin-report__stacked-bar-want"
                         style={{
                           height: `${m.wantH}%`,
-                          background: m.isCurrent ? '#F2DEB9' : '#EAE4D5',
+                          background: m.isCurrent ? 'var(--rp-want-cur, #F2DEB9)' : 'var(--rp-want, #EAE4D5)',
                         }}
                         title={`Tùy chọn: ${money(m.wantAmt)}`}
                       />
@@ -1722,12 +1727,12 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                         className="fin-report__stacked-bar-must"
                         style={{
                           height: `${m.mustH}%`,
-                          background: m.isCurrent ? '#15161A' : '#8A8A85',
+                          background: m.isCurrent ? 'var(--rp-ink, #15161A)' : 'var(--rp-must, #8A8A85)',
                         }}
                         title={`Phải trả: ${money(m.mustAmt)}`}
                       />
                     </div>
-                    <span className="fin-report__stacked-lbl" style={{ color: m.isCurrent ? '#15161A' : '#A8A8A2', fontWeight: m.isCurrent ? 600 : 400 }}>
+                    <span className="fin-report__stacked-lbl" style={{ color: m.isCurrent ? 'var(--rp-ink, #15161A)' : 'var(--rp-faint, #A8A8A2)', fontWeight: m.isCurrent ? 600 : 400 }}>
                       {m.n}
                     </span>
                   </div>
@@ -1819,17 +1824,17 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                   Mỗi tháng {yoyMonthsData.curYear} đặt cạnh cùng tháng {yoyMonthsData.prevYear} · triệu ₫
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '11.5px', color: '#6A6A64' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '11.5px', color: 'var(--rp-txt2, #6A6A64)' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: '#DEDCD5' }} />
+                  <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: 'var(--rp-prev, #DEDCD5)' }} />
                   <span>{yoyMonthsData.prevYear}</span>
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                   <span style={{ width: '9px', height: '9px', borderRadius: '2px', background: '#6949E8' }} />
-                  <strong style={{ color: '#15161A' }}>{yoyMonthsData.curYear}</strong>
+                  <strong style={{ color: 'var(--rp-ink, #15161A)' }}>{yoyMonthsData.curYear}</strong>
                 </span>
                 {yoyMonthsData.totalCurMillions && (
-                  <span style={{ borderLeft: '1px solid #E8E7E2', paddingLeft: '12px', color: '#15161A' }}>
+                  <span style={{ borderLeft: '1px solid var(--rp-grid, #E8E7E2)', paddingLeft: '12px', color: 'var(--rp-ink, #15161A)' }}>
                     {yoyMonthsData.monthsCount} tháng {yoyMonthsData.curYear} <strong>{yoyMonthsData.totalCurMillions}tr</strong>{' '}
                     {yoyMonthsData.deltaYTD != null && (
                       <span style={{ color: yoyMonthsData.deltaYTD > 0 ? '#E0446D' : '#12A594', fontWeight: 600 }}>
@@ -1866,13 +1871,13 @@ export default function ReportScreen({ fin, nav, lead, footer }) {
                         />
                       </div>
                     </div>
-                    <span className="fin-report__yoy-lbl" style={{ color: isCurrent ? '#6949E8' : '#73736C', fontWeight: isCurrent ? 600 : 500 }}>
+                    <span className="fin-report__yoy-lbl" style={{ color: isCurrent ? 'var(--rp-accent, #6949E8)' : 'var(--rp-txt2, #73736C)', fontWeight: isCurrent ? 600 : 500 }}>
                       {m.m}
                     </span>
                     <span
                       className="fin-report__yoy-pct"
                       style={{
-                        color: m.pct == null ? '#C4C2BA' : m.pct > 0 ? '#E0446D' : '#12A594',
+                        color: m.pct == null ? 'var(--rp-faint, #C4C2BA)' : m.pct > 0 ? '#E0446D' : '#12A594',
                         fontWeight: m.pct != null ? 600 : 400,
                       }}
                     >

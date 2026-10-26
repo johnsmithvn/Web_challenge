@@ -1,7 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { useFinance } from '../hooks/useFinance';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../components/ConfirmModal';
@@ -31,8 +29,6 @@ const VALID_PERIOD_KEY = /^(?:\d{4}-(?:0[1-9]|1[0-2])|year-\d{4}|all)$/;
 
 export default function FinancePage() {
   const fin = useFinance();
-  const { user } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
   const { confirm, ConfirmModal } = useConfirm();
   const location = useLocation();
@@ -158,98 +154,6 @@ export default function FinancePage() {
 
   return (
     <div className="finance-module">
-      {/* ── MOBILE TOP BAR (<769px — Chuẩn Module giống Body) ────────── */}
-      <div className="fin-mobile-topbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            type="button"
-            className="fin-mobile-back-hub"
-            onClick={() => navigate('/')}
-            title="Về Life Hub"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--n-txt3, #9ca3af)',
-              cursor: 'pointer',
-              display: 'grid',
-              placeItems: 'center',
-              padding: '4px',
-              borderRadius: '8px'
-            }}
-          >
-            <AppIcon name="sparkle" size={18} weight="fill" />
-          </button>
-          <AppIcon name="wallet" size={20} style={{ color: 'var(--n-accent, #6366f1)' }} />
-          <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--n-txt, #fff)', letterSpacing: '-0.02em' }}>
-            Finance
-          </span>
-          <span style={{ fontSize: '12px', color: 'var(--n-txt3, #9ca3af)' }}>
-            · {active?.label || 'Tổng quan'}
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {screen !== 'add' && (
-            <button
-              type="button"
-              onClick={() => go('add')}
-              style={{
-                background: 'var(--n-accent-soft, rgba(99, 102, 241, 0.15))',
-                border: '1px solid var(--n-accent, #6366f1)',
-                borderRadius: '8px',
-                height: '30px',
-                padding: '0 9px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                color: 'var(--n-accent, #6366f1)',
-                fontSize: '11.5px',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-              title="Ghi chép chi tiêu mới"
-            >
-              <AppIcon name="plus" size={13} weight="bold" />
-              <span>Thêm</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={toggleTheme}
-            style={{
-              background: 'none',
-              border: '1px solid var(--n-border, rgba(255, 255, 255, 0.1))',
-              borderRadius: '8px',
-              width: '32px',
-              height: '32px',
-              display: 'grid',
-              placeItems: 'center',
-              color: 'var(--n-txt2, #d1d5db)',
-              cursor: 'pointer'
-            }}
-            title="Đổi giao diện Sáng / Tối"
-          >
-            <AppIcon name={theme === 'dark' ? 'sun' : 'moon'} size={15} weight="fill" />
-          </button>
-
-          <span style={{
-            width: '30px',
-            height: '30px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--n-accent, #6366f1), #8b5cf6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#FFFFFF',
-            fontSize: '12px',
-            fontWeight: 700
-          }}>
-            {(user?.user_metadata?.full_name || user?.email || 'F')[0].toUpperCase()}
-          </span>
-        </div>
-      </div>
-
       <section className="fin-content">
         {/* Định kỳ & Quỹ tự có header (tiêu đề · tháng · Thêm nguồn chi) theo bản chốt. */}
         {screen !== 'list' && screen !== 'overview' && screen !== 'recurring' && (
@@ -294,6 +198,10 @@ export default function FinancePage() {
 
       {/* ── MOBILE BOTTOM NAVIGATION (64px — 5 TABS CHUẨN DESIGN GIỐNG BODY) ──── */}
       <nav className="fin-mobile-bottom-nav">
+        {/* Module không còn topbar riêng (chiếm 52px mà chỉ có nút về Hub) → Home nằm đầu tab đáy */}
+        <button type="button" className="fin-mobile-nav-item fin-mobile-nav-item--home" onClick={() => navigate('/')} aria-label="Về Life Hub" title="Về Life Hub">
+          <AppIcon name="house" size={20} />
+        </button>
         {SCREENS.map(s => {
           const isActive = screen === s.key;
           return (

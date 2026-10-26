@@ -1,19 +1,30 @@
-import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, lazy, Suspense } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  TYPE_GLYPHS,
   markdownToPlainText,
   tiptapToPlainText,
   readTime,
   parseWikiLinks,
+  guessTitle,
+  suggestTopic,
 } from '../../utils/kbDeriveUtils';
 import UrlInputPopover from '../UrlInputPopover';
+import KBTopicPicker from './KBTopicPicker';
 
 const TiptapEditor = lazy(() => import('../TiptapEditor'));
 
 const REMARK_PLUGINS = [remarkGfm];
 const EDITOR_MODE_KEY = 'kb_editor_mode';
+
+// Kiểu bài: chỉ giữ những gì còn có tính năng riêng (gallery trích dẫn, trình phát podcast).
+// Bài cũ mang learn / idea / ai / entertainment được coi là Bài viết.
+const TYPES = [
+  { key: 'note', label: 'Bài viết' },
+  { key: 'quote', label: 'Trích dẫn' },
+  { key: 'podcast', label: 'Podcast' },
+];
+const normalizeType = type => (TYPES.some(t => t.key === type) ? type : 'note');
 
 export default function KBEditorView({
   initial,
@@ -21,6 +32,9 @@ export default function KBEditorView({
   onCancel,
   isSaving,
   isNew = false,
+  defaultTopicId = null, // bài mới viết khi đang xem một chủ đề → vào sẵn chủ đề đó
+  topics,
+  allArticles,
   onOpenLinkModal,
 }) {
   const savedMode = localStorage.getItem(EDITOR_MODE_KEY) || 'markdown';
@@ -32,10 +46,19 @@ export default function KBEditorView({
     body: initial?.body || '',
     body_text: initial?.body_text || '',
     tags: initial?._tags || initial?.tags || [],
-    type: initial?.type || 'note',
+    type: normalizeType(initial?.type),
+    topic_id: initial?.topic_id || defaultTopicId,
     url: initial?.url || '',
     content_format: initialFormat,
   }));
+
+  // Gợi ý chủ đề khi bài chưa có — dựa trên tiêu đề, link, kiểu (không theo từng ký tự thân bài).
+  const suggestedId = useMemo(
+    () => (draft.topic_id ? null : suggestTopic(
+      { id: draft.id, title: draft.title, url: draft.url, type: draft.type }, allArticles, topics,
+    )),
+    [draft.id, draft.title, draft.url, draft.type, draft.topic_id, allArticles, topics],
+  );
 
   const [tagInput, setTagInput] = useState('');
   const [mdMediaPopover, setMdMediaPopover] = useState(null);
@@ -136,15 +159,15 @@ export default function KBEditorView({
         <button className="kb-back-btn" onClick={onCancel}>← Hủy</button>
 
         {/* Editor mode toggle */}
-        <div className="kb-segmented kb-segmented--small">
+        <div className="kb-seg">
           <button
-            className={`kb-segmented__item${draft.content_format === 'markdown' ? ' kb-segmented__item--active' : ''}`}
+            className={`kb-seg__item${draft.content_format === 'markdown' ? ' is-active' : ''}`}
             onClick={() => switchFormat('markdown')}
           >
             Markdown
           </button>
           <button
-            className={`kb-segmented__item${draft.content_format === 'tiptap' ? ' kb-segmented__item--active' : ''}`}
+            className={`kb-seg__item${draft.content_format === 'tiptap' ? ' is-active' : ''}`}
             onClick={() => switchFormat('tiptap')}
           >
             Trực quan
@@ -173,7 +196,7 @@ export default function KBEditorView({
         </button>
       </div>
 
-      {/* Header section: Title + Types + Tags + URL */}
+      {/* Header section: Title + Topic + Type + Tags + URL */}
       <div className="kb-editor__title-wrap">
         <input
           className="kb-editor__title-input"
@@ -183,17 +206,29 @@ export default function KBEditorView({
           autoFocus
         />
 
+        <div className="kb-editor__topic-row">
+          <span className="kb-editor__row-label">Chủ đề</span>
+          <KBTopicPicker
+            topics={topics}
+            value={draft.topic_id}
+            onChange={id => set('topic_id', id)}
+            suggestedId={suggestedId}
+          />
+        </div>
+
         <div className="kb-editor__meta-row">
-          {/* Type chips */}
-          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-            {Object.entries(TYPE_GLYPHS).map(([key, m]) => (
+          {/* Type */}
+          <div className="kb-seg" role="radiogroup" aria-label="Kiểu bài">
+            {TYPES.map(t => (
               <button
-                key={key}
-                className={`kb-type-chip${draft.type === key ? ' kb-type-chip--active' : ''}`}
-                onClick={() => set('type', key)}
+                key={t.key}
+                type="button"
+                role="radio"
+                aria-checked={draft.type === t.key}
+                className={`kb-seg__item${draft.type === t.key ? ' is-active' : ''}`}
+                onClick={() => set('type', t.key)}
               >
-                <span className="kb-type-chip__dot" style={{ background: `var(${m.hueVar})` }} />
-                {m.label}
+                {t.label}
               </button>
             ))}
           </div>
@@ -201,7 +236,7 @@ export default function KBEditorView({
           <span className="kb-editor__meta-sep" />
 
           {/* Tags */}
-          <div style={{ display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="kb-editor__tags">
             {draft.tags.map(t => {
               const name = typeof t === 'string' ? t : t.name;
               return (
@@ -233,18 +268,12 @@ export default function KBEditorView({
           {/* URL input */}
           <input
             type="text"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              fontFamily: 'var(--kb-mono)',
-              fontSize: '0.85rem',
-              color: 'var(--kb-dim)',
-              outline: 'none',
-              minWidth: '160px',
-            }}
+            className="kb-editor__url"
             placeholder="URL nguồn (tùy chọn)"
             value={draft.url || ''}
             onChange={e => set('url', e.target.value)}
+            onBlur={() => { if (!draft.title.trim()) set('title', guessTitle(draft.url)); }}
+            aria-label="URL nguồn"
           />
         </div>
       </div>
@@ -333,7 +362,7 @@ export default function KBEditorView({
                       {draft.body}
                     </ReactMarkdown>
                   ) : (
-                    <p style={{ color: 'var(--kb-faint)', fontStyle: 'italic' }}>Bản xem trước sẽ hiện ở đây…</p>
+                    <p className="kb-prose__empty">Bản xem trước sẽ hiện ở đây…</p>
                   )}
                 </div>
               </div>

@@ -423,7 +423,7 @@ export default function ListScreen({ fin, nav }) {
                             <div className="fin-nhipchi__row-sub">
                               {info.label}
                               {subLabel(tx.subcategory_id, fin.cats) ? ` · ${subLabel(tx.subcategory_id, fin.cats)}` : ''}
-                              ` · ${tx.merchant || source}`
+                              {` · ${tx.merchant || source}`}
                             </div>
                           </div>
 
@@ -897,7 +897,7 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, o
                 <input className="fin-input" aria-label="Tiêu đề giao dịch" value={note} onChange={event => setNote(event.target.value)} maxLength={200} placeholder="Ví dụ: Xăng xe, Cơm trưa, Siêu thị..." />
               </div>
 
-              <div className="fin-edit-field">
+              <div className="fin-edit-field fin-edit-field--pair">
                 <label className="fin-label">Số tiền</label>
                 <div className="fin-input-money">
                   <input className="fin-input" aria-label="Số tiền" inputMode="numeric" pattern="[0-9.]*" value={groupDigits(amount)} onChange={event => setAmount(sanitizeDigits(event.target.value))} />
@@ -905,7 +905,7 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, o
                 </div>
               </div>
 
-              <div className="fin-edit-field">
+              <div className="fin-edit-field fin-edit-field--pair">
                 <label className="fin-label">Ngày</label>
                 <DateField value={occurredAt} onChange={setOccurredAt} />
               </div>
@@ -1043,8 +1043,8 @@ function TxDetail({ tx, fin, nav, tasks, inPeriod = [], isMobileSheet = false, o
           </div>
 
           <div className="fin-slide-drawer__foot">
-            <button className="fin-btn fin-btn--secondary" onClick={cancelEdit}>Hủy (Esc)</button>
-            <button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="floppyDisk" size={15} /> Lưu thay đổi (Ctrl+Enter)</button>
+            <button className="fin-btn fin-btn--secondary" onClick={cancelEdit}>Hủy<span className="fin-slide-drawer__kbd"> (Esc)</span></button>
+            <button className="fin-btn fin-btn--primary" onClick={save}><AppIcon name="floppyDisk" size={15} /> Lưu thay đổi<span className="fin-slide-drawer__kbd"> (Ctrl+Enter)</span></button>
           </div>
         </div>
       </div>

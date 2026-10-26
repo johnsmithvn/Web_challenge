@@ -5,9 +5,11 @@ import { spawnAuroraFlyer } from '../utils/taskFlyersAurora';
 import { natureClick } from '../utils/taskNatureFx';
 import { hosts as elfHosts, frameKey, spawnElfFlyer, initClk, bgClick, setLastPointer, handleMoonClick } from '../utils/taskFlyersElf';
 import { ForestDay, ForestNight, ForestNightMobile, DayFairiesTop, Constellations } from './TaskForestBackground';
+import '../styles/sky.css';
 
 /**
- * Nền trang Nhiệm vụ theo mockup "Kanban tối & sáng" (fxA / fxAm / fxC / fxCm).
+ * Nền trời dùng chung (Nhiệm vụ, Kiến thức, FX Lab), gốc từ mockup Nhiệm vụ "Kanban tối & sáng" (fxA / fxAm / fxC / fxCm).
+ * Trang dùng: đặt <SkyBackground /> làm con đầu của khung position:relative, nội dung phía trên z-index ≥ 1.
  * Tối: aurora + Ngân Hà + sao + sao băng + sao chổi + trăng âm lịch (có chú Cuội) + sao sáng + chòm sao
  * + đom đóm sát đáy; desktop thêm nhãn trăng và đường chân trời hành tinh.
  * Sáng: trời bình minh (trước 12h) / hoàng hôn (từ 12h) + mặt trời mọc, mây màu nước nhấp nhô, hạt sáng bay.
@@ -22,8 +24,8 @@ const seeded = (a, b) => (i) => { const x = Math.sin(i * a + b) * 43758.5453; re
 const rnd = seeded(41.37, 1.9);
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-// [top, left, width, thời lượng, trễ]
-const SHOOTS = [['70px', '81%', 170, 9, 1], ['24px', '59%', 130, 13, 5.5], ['150px', '97%', 210, 17, 9], ['10px', '39%', 150, 23, 14]];
+// [top, left, width, thời lượng, trễ] — vệt dài 140–280px như thiết kế Kiến Thức "Cực quang"
+const SHOOTS = [['70px', '81%', 210, 9, 1], ['24px', '59%', 140, 13, 5.5], ['150px', '97%', 280, 17, 9], ['10px', '39%', 210, 23, 14], ['110px', '72%', 140, 15, 3.5], ['46px', '90%', 280, 19, 11.5]];
 // Rừng tiên đêm: 3 sao băng khác chỗ, không sao chổi
 const SHOOTS_ELF = [['60px', '74%', 160, 10, 2], ['28px', '51%', 120, 14, 7], ['130px', '96%', 190, 18, 11]];
 const SHOOTS_M = [['64px', '87%', 110, 9, 1.5], ['18px', '59%', 90, 14, 6], ['140px', '103%', 130, 19, 10.5]];
@@ -357,10 +359,11 @@ function useStardustTrail(active) {
   }, [active]);
 }
 
-// autoFly=false: không tự thả vật bay (trang /fx-lab tự gọi từng kịch bản)
-function TaskSkyBackground({ isMobile, autoFly = true }) {
+// autoFly=false: không tự thả vật bay (trang /fx-lab tự gọi từng kịch bản).
+// calm: bản tĩnh cho trang cần đọc (Kiến thức) — luôn kiểu Mặc định, không vật bay, không vệt bụi sao theo chuột.
+function SkyBackground({ isMobile, autoFly = true, calm = false }) {
   const { theme, taskStyle } = useTheme();
-  const elf = taskStyle === 'elf';
+  const elf = !calm && taskStyle === 'elf';
   const night = theme !== 'light';
   const fk = frameKey(theme, isMobile);
   const dusk = new Date().getHours() >= 12;
@@ -368,7 +371,7 @@ function TaskSkyBackground({ isMobile, autoFly = true }) {
   const topRef = useRef(null);
   useFlyers(flyRef, { elf, night, m: isMobile, auto: autoFly });
   useElfInteractions(flyRef, topRef, { elf, fk });
-  useStardustTrail(night);
+  useStardustTrail(night && !calm);
 
   let sky;
   if (night) sky = elf && isMobile ? <><div className="task-aurora-glow" /><ForestNightMobile /></> : <DarkSky isMobile={isMobile} elf={elf} />;
@@ -378,7 +381,7 @@ function TaskSkyBackground({ isMobile, autoFly = true }) {
     <>
       <div className={`task-cosmos-bg${dusk ? ' is-dusk' : ''}`} aria-hidden="true">
         {sky}
-        <div ref={flyRef} className="task-fly-host" />
+        {!calm && <div ref={flyRef} className="task-fly-host" />}
       </div>
       {/* Lớp phía trên nội dung (không nhận chuột): tiên đốm sáng (Rừng tiên sáng desktop), đom đóm đi theo, ăn mừng xong việc */}
       {elf && (
@@ -391,4 +394,4 @@ function TaskSkyBackground({ isMobile, autoFly = true }) {
   );
 }
 
-export default memo(TaskSkyBackground);
+export default memo(SkyBackground);

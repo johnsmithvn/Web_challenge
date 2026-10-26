@@ -37,7 +37,7 @@
   --nhip-stat-dark-border: #1C1917;
   --nhip-shadow-popover: 0 16px 40px rgba(28, 25, 23, 0.16);
   --nhip-shadow-card: 0 1px 3px rgba(28, 25, 23, 0.04);
-  --nhip-color-scheme: light;
+  --nhip-color-scheme: only light;
 }
 
 [data-theme="dark"] .fin-nhipchi,
@@ -1415,5 +1415,42 @@
     width: auto !important;
     max-width: none !important;
     top: calc(100% + 6px) !important;
+  }
+
+  /* Header: tên + số khoản một hàng, 2 nút chia đôi hàng dưới — trước đây cả cụm
+     nằm một hàng 60px nên "Ghi một khoản" tràn khỏi mép phải. */
+  .fin-nhipchi__header {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+  .fin-nhipchi__header-title-wrap {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .fin-nhipchi__header-sub {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .fin-nhipchi__header-actions {
+    flex: 1 1 100%;
+  }
+  .fin-nhipchi__header-actions .fin-canvas-btn {
+    flex: 1;
+  }
+
+  /* Thanh lọc: kỳ + Lọc chung một hàng (bỏ vạch ngăn treo cuối hàng), tab nhanh đủ bề ngang */
+  .fin-nhipchi__sep {
+    display: none;
+  }
+  .fin-nhipchi__quicktabs {
+    flex: 1 1 100%;
+  }
+  .fin-nhipchi__quicktab {
+    flex: 1;
+    padding: 0 6px;
   }
 }

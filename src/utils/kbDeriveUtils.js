@@ -1,9 +1,13 @@
 /**
  * kbDeriveUtils.js — Pure utility functions for Knowledge Base.
  *
- * Wiki-link parsing, graph derivation, backlink extraction, filtering.
+ * Wiki-link parsing, graph derivation, backlink extraction, filtering,
+ * content kind / source, neighbors, topic suggestion, resurfacing.
  * No Supabase, no React — testable with node:assert.
  */
+import { getMediaType, normalizeHttpUrl } from './mediaUtils.js';
+
+const DAY_MS = 86400000;
 
 /* ── Wiki-link parsing ─────────────────────────────────────── */
 const WIKI_RE = /\[\[([^\]]+)\]\]/g;
@@ -53,7 +57,7 @@ export function deriveGraph(articles, { inferTagLinks = true } = {}) {
   const nodes = articles.map(a => ({
     id: a.id,
     title: a.title,
-    type: a.type,
+    topic_id: a.topic_id || null,
     degree: 0,
   }));
 
@@ -162,25 +166,78 @@ export function getOutboundLinks(article, allArticles) {
   return links.map(t => titleMap.get(t)).filter(Boolean);
 }
 
+/* ── Vietnamese-insensitive text ───────────────────────────── */
+/**
+ * Bỏ dấu tiếng Việt + chữ thường, để "tam ly" khớp "Tâm Lý".
+ * @param {string} s
+ * @returns {string}
+ */
+export function normalizeVi(s = '') {
+  return String(s)
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase();
+}
+
+/** Plain text of an item: body_text if saved, else derived from Tiptap JSON / Markdown. */
+export function itemPlainText(item) {
+  if (item.body_text) return item.body_text;
+  return isTiptapBody(item) ? tiptapToPlainText(item.body) : markdownToPlainText(item.body || '');
+}
+
+/** Whole days since `created_at` (0 = today). */
+export function ageDays(item, now = Date.now()) {
+  return Math.floor((now - Date.parse(item.created_at)) / DAY_MS);
+}
+
+/** "Ghi chú của tôi": your own words — a note / quote without a link, or any bài you wrote notes on. */
+export function isMine(item) {
+  return !item.url || (item._noteCount || 0) > 0;
+}
+
 /* ── Filter & sort ─────────────────────────────────────────── */
 /**
  * Filter and sort articles.
  * @param {Array} articles
  * @param {Object} params
- * @param {string} params.q - search query
+ * @param {string} params.q - search query; '#x' searches tag names; else every word must match (accent-insensitive)
  * @param {string} params.type - type filter or 'all'
  * @param {string[]} params.tags - tag ids (AND logic)
  * @param {string} params.sort - 'new' | 'old' | 'long'
  * @param {string} params.taskId - filter by linked task
+ * @param {string} params.topic - '' = all, 'none' = no topic, else topic id
+ * @param {string} params.kind - contentKind() value, '' = all
+ * @param {string} params.time - '' | '7' | '30' | '90' (saved within N days) | 'old' (> 90 days)
+ * @param {boolean} params.mine - only "Ghi chú của tôi" (isMine)
+ * @param {Set<string>|null} params.linked - keep only these ids ("Có liên kết"), null = no filter
+ * @param {number} params.now - clock for `time` (ms)
  * @returns {Array}
  */
-export function filterArticles(articles, { q = '', type = 'all', tags = [], sort = 'new', taskId = '' } = {}) {
+export function filterArticles(articles, {
+  q = '', type = 'all', tags = [], sort = 'new', taskId = '',
+  topic = '', kind = '', time = '', mine = false, linked = null, now = Date.now(),
+} = {}) {
   let list = articles.filter(a => a.type !== 'inbox' && a.status !== 'archived');
+
+  if (mine) list = list.filter(isMine);
+  if (linked) list = list.filter(a => linked.has(a.id));
 
   // Type filter
   if (type && type !== 'all') {
     list = list.filter(a => a.type === type);
   }
+
+  // Topic filter
+  if (topic === 'none') list = list.filter(a => !a.topic_id);
+  else if (topic) list = list.filter(a => a.topic_id === topic);
+
+  // Kind filter
+  if (kind) list = list.filter(a => contentKind(a) === kind);
+
+  // Time filter
+  if (time === 'old') list = list.filter(a => ageDays(a, now) > 90);
+  else if (time) list = list.filter(a => ageDays(a, now) <= Number(time));
 
   // Tag filter (AND)
   if (tags.length > 0) {
@@ -196,20 +253,25 @@ export function filterArticles(articles, { q = '', type = 'all', tags = [], sort
   }
 
   // Search
-  if (q) {
-    const lower = q.toLowerCase();
-    if (lower.startsWith('#')) {
-      const tagQ = lower.slice(1);
-      list = list.filter(a =>
-        (a._tags || []).some(t => (typeof t === 'string' ? t : t.name).toLowerCase().includes(tagQ))
-      );
-    } else {
-      list = list.filter(a =>
-        a.title.toLowerCase().includes(lower) ||
-        (a.body || '').toLowerCase().includes(lower) ||
-        (a.url || '').toLowerCase().includes(lower)
-      );
-    }
+  const query = normalizeVi(q.trim());
+  if (query.startsWith('#')) {
+    const tagQ = query.slice(1);
+    list = list.filter(a =>
+      (a._tags || []).some(t => normalizeVi(typeof t === 'string' ? t : t.name).includes(tagQ))
+    );
+  } else if (query) {
+    const words = query.split(/\s+/);
+    list = list.filter(a => {
+      const hay = normalizeVi([
+        a.title,
+        itemPlainText(a),
+        a.url,
+        a._topic?.name,
+        ...(a._tags || []).map(t => (typeof t === 'string' ? t : t.name)),
+        ...(a._notes || []).map(n => n.content),
+      ].filter(Boolean).join(' '));
+      return words.every(w => hay.includes(w));
+    });
   }
 
   // Sort
@@ -223,6 +285,43 @@ export function filterArticles(articles, { q = '', type = 'all', tags = [], sort
   }
 
   return sorted;
+}
+
+/* ── Group (Danh sách "Nhóm theo") ─────────────────────────── */
+const monthKey = a => {
+  const d = new Date(a.created_at);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+/**
+ * Split an already sorted list into display groups; items keep their order inside a group.
+ * month: local month of created_at, in list order · topic: topic order, "Chưa xếp" last ·
+ * none: one group without a label.
+ * @returns {Array<{ key: string, label: string, color?: string, items: Array }>}
+ */
+export function groupArticles(articles, by, { topics = [], now = Date.now() } = {}) {
+  if (!by || by === 'none') return [{ key: 'all', label: '', items: articles }];
+  const keyOf = by === 'month' ? monthKey : a => a.topic_id || 'none';
+  const groups = new Map();
+  articles.forEach(a => {
+    const k = keyOf(a);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(a);
+  });
+
+  if (by === 'month') {
+    const year = new Date(now).getFullYear();
+    return [...groups].map(([key, items]) => {
+      const [y, m] = key.split('-').map(Number);
+      return { key, label: y === year ? `Tháng ${m}` : `Tháng ${m}/${y}`, items };
+    });
+  }
+  const byId = new Map(topics.map(t => [t.id, t]));
+  const order = [...topics.map(t => t.id), 'none'];
+  const rank = k => (order.includes(k) ? order.indexOf(k) : order.length);
+  return [...groups]
+    .sort(([a], [b]) => rank(a) - rank(b))
+    .map(([key, items]) => ({ key, label: byId.get(key)?.name || 'Chưa xếp', color: byId.get(key)?.color, items }));
 }
 
 /* ── Read time ─────────────────────────────────────────────── */
@@ -251,17 +350,6 @@ export function safeHostname(url) {
   try { return new URL(url).hostname; }
   catch { return url.replace(/^https?:\/\//, '').split('/')[0] || url; }
 }
-
-/* ── Type metadata ─────────────────────────────────────────── */
-export const TYPE_GLYPHS = {
-  note:          { glyph: '▤', label: 'Bài viết',  hueVar: '--kb-hue-note' },
-  quote:         { glyph: '❝', label: 'Trích dẫn', hueVar: '--kb-hue-quote' },
-  learn:         { glyph: '▮', label: 'Học',       hueVar: '--kb-hue-learn' },
-  idea:          { glyph: '◍', label: 'Ý tưởng',   hueVar: '--kb-hue-idea' },
-  ai:            { glyph: '⚙', label: 'AI',        hueVar: '--kb-hue-ai' },
-  entertainment: { glyph: '▶', label: 'Giải trí',  hueVar: '--kb-hue-entertainment' },
-  podcast:       { glyph: '◍', label: 'Podcast',   hueVar: '--kb-hue-podcast' },
-};
 
 /* ── Extract headings (for TOC) ────────────────────────────── */
 export function extractHeadings(text) {
@@ -297,4 +385,247 @@ export function tiptapToPlainText(body) {
     };
     return walk(json).trim();
   } catch { return ''; }
+}
+
+/* ── Inline text colour that breaks light/dark theme ───────── */
+const NAMED_RGB = { black: [0, 0, 0], white: [255, 255, 255], gray: [128, 128, 128], grey: [128, 128, 128] };
+
+function parseCssRgb(color) {
+  const c = String(color).trim().toLowerCase();
+  if (NAMED_RGB[c]) return NAMED_RGB[c];
+  let m = c.match(/^#([0-9a-f]+)$/);
+  if (m) {
+    let h = m[1];
+    if (![3, 4, 6, 8].includes(h.length)) return null;
+    if (h.length < 6) h = [...h.slice(0, 3)].map(x => x + x).join('');
+    return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  }
+  m = c.match(/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/);
+  return m ? [m[1], m[2], m[3]].map(Number) : null;
+}
+
+// Màu dán từ web/Docs: xám/đen/trắng hoặc quá tối/quá sáng → chìm trên một trong hai nền.
+// Màu nhấn (tím, đỏ…) giữ; màu không đọc được (hsl, var…) giữ nguyên.
+export function isThemeBreakingColor(color) {
+  if (!color) return false;
+  const rgb = parseCssRgb(color);
+  if (!rgb) return false;
+  const [r, g, b] = rgb;
+  if (Math.max(r, g, b) - Math.min(r, g, b) <= 40) return true;
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return lum < 0.22 || lum > 0.9;
+}
+
+/* ── Tiptap JSON migrations (không sửa input) ─────────────────
+   audioBlock → mediaBlock; bỏ màu chữ inline làm hỏng theme. */
+export function migrateTiptapDoc(node) {
+  if (Array.isArray(node)) return node.map(migrateTiptapDoc);
+  if (!node || typeof node !== 'object') return node;
+  const out = { ...node };
+  if (out.type === 'audioBlock') out.type = 'mediaBlock';
+  if (Array.isArray(out.marks)) {
+    out.marks = out.marks.flatMap(mark => {
+      if (mark.type !== 'textStyle' || !isThemeBreakingColor(mark.attrs?.color)) return [mark];
+      const rest = { ...mark.attrs };
+      delete rest.color;
+      return Object.values(rest).some(v => v != null) ? [{ ...mark, attrs: rest }] : [];
+    });
+  }
+  if (out.content) out.content = migrateTiptapDoc(out.content);
+  return out;
+}
+
+/* ── Content kind (derived from url + type) ────────────────── */
+// glyph: text mark inside Knowledge; icon: AppIcon name for app-wide UI (e.g. LinkKBModal).
+export const KIND_META = {
+  repo:    { label: 'Repo',      glyph: '{ }', icon: 'code' },
+  video:   { label: 'Video',     glyph: '▶',   icon: 'play' },
+  fb:      { label: 'Bài FB',    glyph: 'f',   icon: 'users' },
+  audio:   { label: 'Âm thanh',  glyph: '♪',   icon: 'headphones' },
+  article: { label: 'Bài viết',  glyph: '≡',   icon: 'link' },
+  note:    { label: 'Ghi chú',   glyph: '✎',   icon: 'pencil' },
+  quote:   { label: 'Trích dẫn', glyph: '❝',   icon: 'quote' },
+};
+
+// Path segments on github.com that are not `<owner>/<repo>`.
+const GITHUB_NON_OWNERS = new Set(['orgs', 'topics', 'collections', 'marketplace', 'sponsors', 'settings', 'features', 'trending', 'search', 'explore', 'login']);
+// facebook.com/<segment> that is not a page or person.
+const FB_NON_OWNERS = new Set(['share', 'watch', 'reel', 'photo', 'photo.php', 'story.php', 'permalink.php', 'events', 'marketplace']);
+
+function parseLink(url) {
+  const href = normalizeHttpUrl(url);
+  if (!href) return null;
+  const u = new URL(href);
+  return {
+    host: u.hostname.replace(/^(www|m|mobile)\./, '').toLowerCase(),
+    segs: u.pathname.split('/').filter(Boolean),
+  };
+}
+
+function githubRepo(link) {
+  if (!link || link.host !== 'github.com' || link.segs.length < 2) return null;
+  const [owner, repo] = link.segs;
+  return GITHUB_NON_OWNERS.has(owner.toLowerCase()) ? null : `${owner}/${repo.replace(/\.git$/, '')}`;
+}
+
+const isFacebookHost = host => host === 'facebook.com' || host === 'fb.com' || host === 'fb.watch';
+
+/**
+ * What an item is, for icons and the "Loại" filter.
+ * `quote` wins over the url; Drive links follow MediaPreview (audio unless #video).
+ * @returns {'repo'|'video'|'fb'|'audio'|'article'|'note'|'quote'}
+ */
+export function contentKind(item) {
+  if (item.type === 'quote') return 'quote';
+  const link = parseLink(item.url);
+  if (!link) return 'note';
+  if (githubRepo(link)) return 'repo';
+  const media = getMediaType(item.url);
+  if (media === 'youtube' || media === 'video') return 'video';
+  if (media === 'drive') return /#video/i.test(item.url) ? 'video' : 'audio';
+  if (media === 'audio') return 'audio';
+  if (isFacebookHost(link.host)) return 'fb';
+  return 'article';
+}
+
+/**
+ * Key for "Cùng nguồn": repo owner, Facebook page/group, else hostname.
+ * YouTube returns null — a video URL carries no channel, and "all of YouTube" is not a source.
+ * @param {string} url
+ * @returns {string|null}
+ */
+export function sourceKey(url) {
+  const link = parseLink(url);
+  if (!link || link.host === 'youtube.com' || link.host === 'youtu.be') return null;
+  const [first, second] = link.segs;
+  if (link.host === 'github.com') {
+    return first && !GITHUB_NON_OWNERS.has(first.toLowerCase()) ? `github.com/${first.toLowerCase()}` : null;
+  }
+  if (isFacebookHost(link.host)) {
+    if (first === 'groups' && second) return `facebook.com/groups/${second}`;
+    return first && !FB_NON_OWNERS.has(first) ? `facebook.com/${first.toLowerCase()}` : null;
+  }
+  return link.host;
+}
+
+/**
+ * Title guessed from a pasted link, used only when the title box is empty.
+ * @param {string} url
+ * @returns {string} '' when the link is not usable
+ */
+export function guessTitle(url) {
+  const link = parseLink(url);
+  if (!link) return '';
+  const repo = githubRepo(link);
+  if (repo) return repo;
+  const media = getMediaType(url);
+  if (media === 'youtube') return 'Video YouTube';
+  if (isFacebookHost(link.host)) return 'Bài Facebook';
+  return link.host;
+}
+
+/**
+ * "Xếp nhanh" queue: bài with no topic saved in the last `days` days, newest first.
+ * Older unsorted bài stay out of Tổng quan (sorted in bulk from the list instead).
+ */
+export function quickSortQueue(items, now = Date.now(), days = 30) {
+  return items
+    .filter(a => a.type !== 'inbox' && a.status !== 'archived' && !a.topic_id && ageDays(a, now) <= days)
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+}
+
+/* ── Neighbors ("Xung quanh") ──────────────────────────────── */
+/**
+ * Three groups, no item repeated across groups:
+ * same topic (newest first) → same source → saved within ±nearDays in another topic (closest first).
+ */
+export function findNeighbors(item, all, { limit = 3, nearDays = 7 } = {}) {
+  const others = all.filter(a => a.id !== item.id && a.type !== 'inbox' && a.status !== 'archived');
+  const taken = new Set();
+  const take = list => {
+    const picked = list.slice(0, limit);
+    picked.forEach(a => taken.add(a.id));
+    return picked;
+  };
+  const byNewest = (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at);
+
+  const sameTopic = take(item.topic_id ? others.filter(a => a.topic_id === item.topic_id).sort(byNewest) : []);
+
+  const key = sourceKey(item.url);
+  const sameSource = take(key ? others.filter(a => !taken.has(a.id) && sourceKey(a.url) === key).sort(byNewest) : []);
+
+  const t0 = Date.parse(item.created_at);
+  const gap = a => Math.abs(Date.parse(a.created_at) - t0);
+  const nearTime = take(others
+    .filter(a => !taken.has(a.id) && (!item.topic_id || a.topic_id !== item.topic_id) && gap(a) <= nearDays * DAY_MS)
+    .sort((a, b) => gap(a) - gap(b)));
+
+  return { sameTopic, sameSource, nearTime };
+}
+
+/* ── Topic suggestion ──────────────────────────────────────── */
+function dominantTopic(items, minCount, minShare) {
+  const counts = new Map();
+  items.forEach(a => { if (a.topic_id) counts.set(a.topic_id, (counts.get(a.topic_id) || 0) + 1); });
+  const total = [...counts.values()].reduce((s, n) => s + n, 0);
+  let best = null;
+  counts.forEach((n, id) => { if (!best || n > best.n) best = { id, n }; });
+  return best && best.n >= minCount && best.n / total >= minShare ? best.id : null;
+}
+
+/**
+ * Suggest a topic id, or null when the evidence is thin — a wrong guess costs more than no guess.
+ * 1. same source already filed somewhere ≥ 2 times
+ * 2. same kind clearly concentrated in one topic (≥ 3 items, ≥ 60%) — e.g. repos
+ * 3. a topic name phrase ("tâm lý", "giải trí"…) appears in the title/text, one topic only
+ * @param {Object} item - title, url, type, body/body_text
+ * @param {Array} all - items already saved (with topic_id)
+ * @param {Array<{id,name}>} topics
+ */
+export function suggestTopic(item, all, topics) {
+  const others = all.filter(a => a.id !== item.id);
+
+  const key = sourceKey(item.url);
+  if (key) {
+    const bySource = dominantTopic(others.filter(a => sourceKey(a.url) === key), 2, 0.5);
+    if (bySource) return bySource;
+  }
+
+  const kind = contentKind(item);
+  if (kind !== 'note' && kind !== 'article') {
+    const byKind = dominantTopic(others.filter(a => contentKind(a) === kind), 3, 0.6);
+    if (byKind) return byKind;
+  }
+
+  const text = ` ${normalizeVi(`${item.title || ''} ${itemPlainText(item)}`).replace(/[^a-z0-9]+/g, ' ')} `;
+  const hits = topics.filter(t =>
+    normalizeVi(t.name).split('&').map(p => p.trim()).some(p => p.length >= 4 && text.includes(` ${p} `))
+  );
+  return hits.length === 1 ? hits[0].id : null;
+}
+
+/* ── Resurfacing ("Gặp lại hôm nay") ───────────────────────── */
+function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/**
+ * Up to `n` items older than 30 days worth rereading: has notes, a quote, or your own note
+ * (no bare links). Same `dateStr` → same picks all day.
+ */
+export function pickResurface(items, dateStr, n = 3, now = Date.now()) {
+  return items
+    .filter(a => a.type !== 'inbox' && a.status !== 'archived' && ageDays(a, now) > 30)
+    .filter(a => isMine(a) || a.type === 'quote')
+    .map(a => ({ a, h: hashStr(`${dateStr}|${a.id}`) }))
+    .sort((x, y) => x.h - y.h)
+    .slice(0, n)
+    .map(x => x.a);
+}
+
+/** "Mở gần đây": put `id` first, drop duplicates, keep at most `max`. */
+export function pushRecent(ids, id, max = 10) {
+  return [id, ...ids.filter(x => x !== id)].slice(0, max);
 }

@@ -25,12 +25,12 @@ ThemeProvider
 src/
 ├─ App.jsx             route, shell, provider wiring
 ├─ pages/              một page theo route (Tasks, Finance, Accounts, Inbox, Collect, Focus, Settings)
-├─ components/         UI dùng lại; components/finance (màn Finance), components/kb (màn Knowledge PKM)
+├─ components/         UI dùng lại; components/finance (màn Finance), components/kb (màn Knowledge)
 ├─ hooks/              state + Supabase/domain actions
 ├─ contexts/           Auth, Theme, Toast
 ├─ utils/              logic thuần: kbDeriveUtils, calendarTimeUtils, lunarUtils, financeLogic, vaultCrypto
 ├─ data/               JSON tĩnh: taxonomy, template, holiday, quote, UI copy
-├─ styles/             CSS theo domain (kb-tokens, tasks-aurora, tasks-elf...); global.css giữ token chung
+├─ styles/             CSS theo domain (kb-tokens, sky — nền trời dùng chung, tasks-aurora, tasks-elf...); global.css giữ token chung
 ├─ extensions/         Tiptap MediaNode
 ├─ lib/supabase.js     Supabase singleton + graceful disabled mode
 └─ __tests__/          self-check node:assert phân theo 4 domain: tasks/, vault/, finance/, core/
@@ -104,24 +104,29 @@ useUserTasks
 - Activity diff và note gắn FK thật vào `task_id`; xóa Task sẽ cascade log.
 - 5 chế độ xem chia sẻ chung state `tasks`, tính toán layout thời gian thực client-side qua `calendarTimeUtils.js` và `lunarUtils.js`.
 
-### Inbox và Knowledge Base (PKM)
+### Knowledge
 
 ```text
-CollectPage
-  ├─ KbListView (Filter by type, tag, collections, search)
-  ├─ KbGraphView (Interactive Canvas Node Graph)
-  ├─ KbReader (TOC / Headings extraction, Read Time, Backlinks)
-  ├─ KbSplitEditor (Markdown + Live Preview + Sync Scroll)
-  └─ KbVisualEditor (Tiptap Rich Text)
+CollectPage (view, lọc chủ đề / loại / có liên kết / thẻ / tìm, nhóm theo, bài đang đọc giữ bằng id)
+  ├─ SkyBackground calm (nền trời dùng chung với Nhiệm vụ)
+  ├─ KBSidebar (tìm, viết bài, kiểu xem, chủ đề)
+  ├─ KBOverview (lời chào + bầu trời nhỏ, Xếp nhanh, Các chủ đề, Gặp lại hôm nay, Gần đây)
+  ├─ KBListView / KBGalleryView / KBGraphView / KBCanvasView
+  ├─ KBReaderView (Xung quanh, backlink, mục lục, ghi chú cá nhân)
+  ├─ KBEditorView (Markdown / Tiptap, chọn chủ đề + kiểu)
+  └─ KBTopicModal / KBTopicPicker / KBTagModal / KBLinkModal
         ↓
-kbDeriveUtils (pure: parseWikiLinks, deriveGraph, findBacklinks)
+kbDeriveUtils (pure: filterArticles, groupArticles, contentKind, sourceKey, findNeighbors, suggestTopic, pickResurface, wiki links…)
         ↓
-useCollections / useCollectionNotes / useTags
+useCollections / useCollectionTopics / useCollectionNotes / useTags
 ```
 
-- `collections` chứa cả Inbox và Knowledge; `type`/`status` phân nhánh UI. `collection_tags` và
-`task_collections` giữ tag/link M:N. `collection_notes` là sub-note của bài Knowledge.
+- `collections` là bài Knowledge (Inbox cũ đã chuyển sang Tasks). `topic_id` → `collection_topics` (tối đa 8,
+  FK hai cột giữ cùng chủ). `collection_tags` và `task_collections` giữ tag/link M:N. `collection_notes` là
+  ghi chú cá nhân của bài.
+- Loại bài (Repo, Video, Bài FB…) suy ra từ URL ở client, không lưu.
 - Wiki-links cú pháp `[[Tên trang]]` được phân tích tự động bằng `parseWikiLinks` và `slugifyVi` để dựng mạng lưới liên kết 2 chiều và Backlinks client-side mà không cần cột dữ liệu phụ trợ trên server.
+- Chi tiết: [`MODULE_KNOWLEDGE.md`](MODULE_KNOWLEDGE.md).
 - Inbox có hai handoff sang Finance qua `sessionStorage`: giao dịch (`kind=tx`) và hóa đơn/quy tắc
 (`kind=out`). Handoff chỉ là dữ liệu tạm của thao tác điều hướng, không phải nguồn dữ liệu bền.
 - Trang chủ (`HomeDashboard`) mở thẳng tab con của màn Định kỳ bằng navigation state
@@ -176,6 +181,8 @@ instance; đây không phải quota phân tán toàn hệ thống.
 | `vl_xp_store` | dữ liệu XP legacy chỉ để migrate rồi xóa |
 | `vl_xp_migrated` | cờ migration XP theo user |
 | `kb_editor_mode` | Markdown/Tiptap visual preference |
+| `kb_canvas_nodes`, `kb_canvas_edges` | vị trí node / cạnh của Canvas Knowledge |
+| `vl_kb_recent` | id 10 bài Knowledge mở gần nhất (khối "Mở gần đây") |
 | `lh_usd_rate`, `lh_auto_k` | preference nhập/đổi tiền |
 | `lh_finance_saving_as_expense` | preference báo cáo Finance |
 | `lh_fin_hidden_seed_shortcuts` | shortcut mẫu đã ẩn ở màn Nhập nhanh |

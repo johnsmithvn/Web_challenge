@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { deriveGraph, TYPE_GLYPHS } from '../../utils/kbDeriveUtils';
+import { deriveGraph, itemPlainText } from '../../utils/kbDeriveUtils';
+import { formatDate } from '../../utils/dateUtils';
 
 /**
- * KBGraphView — Force-directed graph visualization.
- * Canvas rendering + aside panel.
+ * KBGraphView — Sơ đồ dạng bầu trời sao (mô phỏng lực).
+ * Canvas + cột phải. Sao màu theo chủ đề, cỡ và độ sáng theo số đường nối.
  */
 
 const MODE_ITEMS = [
@@ -86,12 +87,16 @@ function stepSimulation(nodes, edges, W, H, alpha) {
   });
 }
 
-export default function KBGraphView({ articles, onOpenReader, inferTagLinks = true }) {
+const starRadius = degree => (degree ? 2.6 + Math.min(degree, 6) * 0.75 : 1.8);
+
+export default function KBGraphView({ articles, topics, onOpenReader, inferTagLinks = true }) {
   const [graphMode, setGraphMode] = useState('all');
   const [focusNode, setFocusNode] = useState(null);
+  const topicMap = useMemo(() => new Map(topics.map(t => [t.id, t])), [topics]);
   const canvasRef = useRef(null);
-  const simRef = useRef(null);
-  const dragRef = useRef(null);
+  // Vòng vẽ đọc sao đang chọn qua ref: đổi lựa chọn không khởi động lại mô phỏng
+  const focusRef = useRef(null);
+  useEffect(() => { focusRef.current = focusNode; }, [focusNode]);
 
   // Derive graph
   const graph = useMemo(() => deriveGraph(articles, { inferTagLinks }), [articles, inferTagLinks]);
@@ -102,9 +107,9 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
     return graph.edges.filter(e => e.kind === graphMode);
   }, [graph.edges, graphMode]);
 
-  // Hub articles (sorted by degree)
+  // Sao sáng nhất (nhiều đường nối nhất)
   const hubs = useMemo(() =>
-    [...graph.nodes].sort((a, b) => b.degree - a.degree).slice(0, 8),
+    [...graph.nodes].filter(n => n.degree > 0).sort((a, b) => b.degree - a.degree).slice(0, 6),
   [graph.nodes]);
 
   const focusArticle = useMemo(() =>
@@ -139,65 +144,75 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
     canvas.style.height = H + 'px';
     ctx.scale(devicePixelRatio, devicePixelRatio);
 
-    // Init sim nodes
+    // Màu theo token của trang (đổi theo nền sáng / tối)
+    const css = getComputedStyle(canvas);
+    const color = name => css.getPropertyValue(name).trim();
+    const accent = color('--kb-accent');
+    const gold = color('--kb-gold');
+    const violet = color('--kb-violet');
+    const tx = color('--kb-tx');
+    const dim = color('--kb-dim');
+    const font = color('--kb-font');
+
     const simNodes = graph.nodes.map(n => ({ ...n }));
     initPositions(simNodes, W, H);
-    simRef.current = simNodes;
     let alpha = 1;
     let rafId;
 
     const draw = () => {
-      if (dragRef.current === null) {
-        stepSimulation(simNodes, visibleEdges, W, H, alpha);
-        alpha *= ALPHA_DECAY;
-        if (alpha < ALPHA_MIN) alpha = ALPHA_MIN;
-      }
+      stepSimulation(simNodes, visibleEdges, W, H, alpha);
+      alpha = Math.max(ALPHA_MIN, alpha * ALPHA_DECAY);
 
+      const focus = focusRef.current;
       ctx.clearRect(0, 0, W, H);
       const nodeMap = new Map(simNodes.map(n => [n.id, n]));
 
-      // Draw edges
+      // Đường chòm sao: [[wiki]] liền, thẻ chung đứt
       visibleEdges.forEach(e => {
         const a = nodeMap.get(e.from);
         const b = nodeMap.get(e.to);
         if (!a || !b) return;
+        const lit = focus && (e.from === focus || e.to === focus);
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
-        ctx.strokeStyle = e.kind === 'wiki' ? 'oklch(0.78 0.11 72 / 0.3)' : 'oklch(0.312 0.014 275 / 0.3)';
-        ctx.lineWidth = e.kind === 'wiki' ? 1.5 : 1;
-        if (e.kind === 'tag') ctx.setLineDash([4, 4]);
-        else ctx.setLineDash([]);
+        ctx.strokeStyle = lit ? violet : e.kind === 'wiki' ? accent : gold;
+        ctx.globalAlpha = lit ? 0.95 : 0.5;
+        ctx.lineWidth = lit ? 2 : 1.2;
+        ctx.setLineDash(e.kind === 'tag' ? [4, 5] : []);
         ctx.stroke();
       });
       ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
 
-      // Draw nodes
+      // Sao: bài có nối sáng và to hơn, màu theo chủ đề
       simNodes.forEach(n => {
-        const r = 5 + Math.min(n.degree * 2, 12);
-        const meta = TYPE_GLYPHS[n.type] || TYPE_GLYPHS.note;
-        const hueStyle = getComputedStyle(canvas).getPropertyValue(meta.hueVar).trim() || '#888';
+        const r = starRadius(n.degree);
+        const fill = topicMap.get(n.topic_id)?.color || tx;
 
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = hueStyle;
-        ctx.fill();
-
-        // Focus ring
-        if (n.id === focusNode) {
+        if (n.id === focus) {
           ctx.beginPath();
-          ctx.arc(n.x, n.y, r + 4, 0, Math.PI * 2);
-          ctx.strokeStyle = 'oklch(0.78 0.11 72)';
-          ctx.lineWidth = 2;
+          ctx.arc(n.x, n.y, r + 9, 0, Math.PI * 2);
+          ctx.strokeStyle = violet;
+          ctx.lineWidth = 1.5;
           ctx.stroke();
         }
 
-        // Label
-        ctx.font = '500 13px "Spectral", Georgia, serif';
-        ctx.fillStyle = 'oklch(0.92 0.008 275)';
+        ctx.shadowBlur = n.degree ? 6 + r * 2 : 0;
+        ctx.shadowColor = fill;
+        ctx.globalAlpha = n.degree ? 1 : 0.6;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+
+        ctx.font = `${n.id === focus ? 600 : 400} 12px ${font}`;
+        ctx.fillStyle = n.id === focus ? tx : dim;
         ctx.textAlign = 'center';
         const label = n.title.length > 20 ? n.title.slice(0, 18) + '…' : n.title;
-        ctx.fillText(label, n.x, n.y + r + 14);
+        ctx.fillText(label, n.x, n.y + r + 15);
       });
 
       rafId = requestAnimationFrame(draw);
@@ -205,19 +220,12 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
 
     draw();
 
-    // Click handler
     const handleClick = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      for (const n of simNodes) {
-        const r = 5 + Math.min(n.degree * 2, 12);
-        if (Math.hypot(mx - n.x, my - n.y) <= r + 4) {
-          setFocusNode(prev => prev === n.id ? null : n.id);
-          return;
-        }
-      }
-      setFocusNode(null);
+      const box = canvas.getBoundingClientRect();
+      const mx = e.clientX - box.left;
+      const my = e.clientY - box.top;
+      const hit = simNodes.find(n => Math.hypot(mx - n.x, my - n.y) <= starRadius(n.degree) + 8);
+      setFocusNode(prev => (hit && prev !== hit.id ? hit.id : null));
     };
     canvas.addEventListener('click', handleClick);
 
@@ -225,37 +233,30 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
       cancelAnimationFrame(rafId);
       canvas.removeEventListener('click', handleClick);
     };
-  }, [graph.nodes, visibleEdges, focusNode]);
+  }, [graph.nodes, visibleEdges, topicMap]);
 
   return (
     <div className="kb-graph-view" style={{ animation: 'kb-in .22s ease' }}>
-      {/* Canvas */}
       <div className="kb-graph__canvas-wrap">
         <canvas ref={canvasRef} className="kb-graph__canvas" />
 
-        {/* Overlay: stats + legend */}
         <div className="kb-graph__overlay-tl">
-          <div className="kb-graph__stats">{graph.nodes.length} điểm · {visibleEdges.length} liên kết</div>
+          <div className="kb-graph__stats"><b>{graph.nodes.length} sao</b> · {visibleEdges.length} đường nối</div>
           <div className="kb-graph__legend">
-            {Object.entries(TYPE_GLYPHS).map(([key, m]) => (
-              <div key={key} className="kb-graph__legend-row">
-                <span className="kb-badge__dot" style={{ background: `var(${m.hueVar})` }} />
-                <span>{m.label}</span>
-              </div>
-            ))}
-            <div className="kb-graph__legend-row"><span style={{ width: 12, height: 2, background: 'var(--kb-brass)', display: 'inline-block' }} /> wiki</div>
-            <div className="kb-graph__legend-row"><span style={{ width: 12, height: 0, borderTop: '1px dashed var(--kb-line)', display: 'inline-block' }} /> thẻ chung</div>
+            <div className="kb-graph__legend-row"><span className="kb-graph__swatch kb-graph__swatch--wiki" />Liên kết [[wiki]]</div>
+            <div className="kb-graph__legend-row"><span className="kb-graph__swatch kb-graph__swatch--tag" />Thẻ chung</div>
+            <div className="kb-graph__legend-row"><span className="kb-graph__swatch kb-graph__swatch--lone" />Chưa nối</div>
           </div>
         </div>
 
-        {/* Mode switcher */}
-        <div className="kb-graph__overlay-br">
-          <div className="kb-segmented kb-segmented--small">
+        <div className="kb-graph__overlay-tr">
+          <div className="kb-seg" role="group" aria-label="Kiểu nối">
             {MODE_ITEMS.map(m => (
               <button
                 key={m.key}
-                className={`kb-segmented__item${graphMode === m.key ? ' kb-segmented__item--active' : ''}`}
+                className={`kb-seg__item${graphMode === m.key ? ' is-active' : ''}`}
                 onClick={() => setGraphMode(m.key)}
+                aria-pressed={graphMode === m.key}
               >
                 {m.label}
               </button>
@@ -263,45 +264,32 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
           </div>
         </div>
 
-        {/* Hint */}
-        <div className="kb-graph__overlay-bl">
-          kéo node để sắp lại · bấm để xem · cuộn để phóng
-        </div>
+        <div className="kb-graph__overlay-bl">Bấm một sao để xem · bấm lần nữa để bỏ chọn</div>
       </div>
 
-      {/* Aside */}
       <aside className="kb-graph__aside">
         {focusArticle ? (
-          <div style={{ animation: 'kb-in .22s ease' }}>
-            <div className="kb-graph__aside-type" style={{ color: `var(${(TYPE_GLYPHS[focusArticle.type] || TYPE_GLYPHS.note).hueVar})` }}>
-              {(TYPE_GLYPHS[focusArticle.type] || TYPE_GLYPHS.note).label}
+          <div className="kb-graph__focus" style={{ animation: 'kb-in .22s ease' }}>
+            <div className="kb-graph__aside-top">
+              <span className="kb-graph__picked">Đang chọn</span>
+              <button className="kb-icon-btn" onClick={() => setFocusNode(null)} title="Bỏ chọn" aria-label="Bỏ chọn">✕</button>
+            </div>
+            <div className="kb-graph__aside-type">
+              <span style={{ color: topicMap.get(focusArticle.topic_id)?.color }}>{topicMap.get(focusArticle.topic_id)?.name || 'Chưa xếp'}</span>
+              {` · ${formatDate(focusArticle.created_at)}`}
             </div>
             <h2 className="kb-graph__aside-title">{focusArticle.title}</h2>
-            <p className="kb-graph__aside-excerpt">{(focusArticle.body_text || '').slice(0, 160)}</p>
-
-            {(focusArticle._tags || []).length > 0 && (
-              <div className="kb-graph__aside-tags">
-                {focusArticle._tags.map(t => (
-                  <span key={t.id || t.name} className="kb-tag-chip">
-                    <span className="kb-badge__dot" style={{ background: t.color || 'var(--kb-dim)' }} />
-                    {t.name}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <button className="kb-btn-ghost" style={{ marginTop: 14 }} onClick={() => onOpenReader(focusArticle)}>
-              Mở bài này →
-            </button>
+            <p className="kb-graph__aside-excerpt">{itemPlainText(focusArticle).slice(0, 200)}</p>
+            <button className="kb-btn-violet" onClick={() => onOpenReader(focusArticle)}>Mở bài ↗</button>
 
             {neighbors.length > 0 && (
               <div className="kb-graph__neighbors">
                 <h3 className="kb-graph__neighbors-title">Nối với · {neighbors.length}</h3>
                 {neighbors.map(n => (
                   <button key={n.article.id} className="kb-graph__neighbor-row" onClick={() => setFocusNode(n.article.id)}>
-                    <span className="kb-badge__dot" style={{ background: `var(${(TYPE_GLYPHS[n.article.type] || TYPE_GLYPHS.note).hueVar})` }} />
+                    <span className="kb-dot" style={n.article._topic ? { '--kb-topic': n.article._topic.color } : undefined} />
                     <span className="kb-graph__neighbor-title">{n.article.title}</span>
-                    <span className="kb-graph__neighbor-via">{n.via === 'wiki' ? 'wiki' : 'thẻ'}</span>
+                    <span className="kb-graph__neighbor-via">{n.via === 'wiki' ? '[[wiki]]' : 'thẻ chung'}</span>
                   </button>
                 ))}
               </div>
@@ -309,23 +297,22 @@ export default function KBGraphView({ articles, onOpenReader, inferTagLinks = tr
           </div>
         ) : (
           <div>
-            <h2 className="kb-graph__aside-title">Bản đồ tri thức</h2>
+            <h2 className="kb-graph__aside-title">Bầu trời tri thức</h2>
             <p className="kb-graph__aside-excerpt">
-              Mỗi chấm là một bài viết. Đường nối cho thấy các bài liên kết qua [[wiki-link]] hoặc có thẻ chung.
-              Bấm vào chấm để xem chi tiết.
+              Mỗi ngôi sao là một bài. Đường nối là liên kết [[wiki]] hoặc thẻ chung — bài càng nhiều nối càng sáng.
             </p>
+          </div>
+        )}
 
-            {hubs.length > 0 && (
-              <div className="kb-graph__hubs">
-                <h3 className="kb-graph__neighbors-title">Hub chính</h3>
-                {hubs.filter(h => h.degree > 0).map(h => (
-                  <button key={h.id} className="kb-graph__neighbor-row" onClick={() => setFocusNode(h.id)}>
-                    <span className="kb-graph__hub-degree">{h.degree}</span>
-                    <span className="kb-graph__neighbor-title">{h.title}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+        {hubs.length > 0 && (
+          <div className="kb-graph__neighbors">
+            <h3 className="kb-graph__neighbors-title">Sao sáng nhất</h3>
+            {hubs.map(h => (
+              <button key={h.id} className="kb-graph__neighbor-row" onClick={() => setFocusNode(h.id)}>
+                <span className="kb-graph__neighbor-title">{h.title}</span>
+                <span className="kb-graph__neighbor-via">{h.degree} nối</span>
+              </button>
+            ))}
           </div>
         )}
       </aside>

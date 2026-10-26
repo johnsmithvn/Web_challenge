@@ -66,8 +66,9 @@ Một encrypted JSON cho mỗi account
 - Passphrase riêng với Supabase Auth, tối thiểu 12 ký tự; không lưu vào database hay browser storage.
 - PBKDF2-SHA256 600.000 vòng dùng Web Crypto native, không thêm dependency.
 - Mỗi user có một DEK ngẫu nhiên. Database chỉ lưu DEK đã được KEK bọc trong `vault_config`.
-- DEK đã unwrap chỉ nằm trong memory (`useRef`) của phiên hiện tại; không lưu `localStorage`, session
-  storage hoặc Supabase.
+- DEK đã unwrap nằm trong memory (`useRef`). Mặc định không lưu vào browser storage hay Supabase.
+  Người dùng có thể tuỳ chọn (opt-in) bật ghi nhớ mở khóa có thời hạn (15 phút – 30 ngày) lưu tạm DEK
+  trong `localStorage` (`vl_vault_session_<user_id>`), tự huỷ khi hết hạn hoặc khi bấm Khóa két.
 - Mỗi lần tạo/sửa account sinh nonce AES-GCM 12 byte mới và ghi lại toàn bộ payload ciphertext.
 - AES-GCM vừa mã hóa vừa xác thực; ciphertext/AAD bị sửa hoặc tráo item sẽ không giải mã được.
 

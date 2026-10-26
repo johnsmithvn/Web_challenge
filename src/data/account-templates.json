@@ -20,7 +20,25 @@
       "auth": ["password"]
     },
     {
+      "_why": "2026-10-24: tách khỏi Account KHÔNG phải vì hình dạng dữ liệu (xem _merge) mà vì vai trò: hộp thư là GỐC mà item khác dựa vào. Roots nhận gốc của EML theo field email đầu tiên (identifiersOf), nên tiêu đề đặt tự do ('Gmail', 'Gmail công việc') thay vì phải là địa chỉ. Recovery phone là type phone: khớp với Identity giữ SĐT đó → hộp thư phụ thuộc SĐT.",
+      "key": "email",
+      "group": "Email",
+      "name": "Email account",
+      "code": "EML",
+      "chip": "Email",
+      "summary": "Mailbox address, password, recovery — other accounts lean on it.",
+      "icon": "envelope",
+      "fields": [
+        { "label": "Email address", "type": "email" },
+        { "label": "Password", "type": "password" },
+        { "label": "Recovery email", "type": "link" },
+        { "label": "Recovery phone", "type": "phone" }
+      ],
+      "auth": ["password"]
+    },
+    {
       "key": "card",
+      "group": "Tài chính/Thẻ",
       "name": "Credit card",
       "code": "CRD",
       "chip": "Cards",
@@ -40,6 +58,7 @@
     },
     {
       "key": "identity",
+      "group": "Giấy tờ & SĐT",
       "name": "Identity",
       "code": "IDN",
       "chip": "Identity",
@@ -67,6 +86,7 @@
     },
     {
       "key": "apikey",
+      "group": "Công việc",
       "name": "API credential",
       "code": "API",
       "chip": "API keys",
@@ -84,6 +104,7 @@
     },
     {
       "key": "wifi",
+      "group": "Wi-Fi & thiết bị",
       "name": "Wi-Fi network",
       "code": "WIF",
       "chip": "Wi-Fi",
@@ -99,6 +120,7 @@
     },
     {
       "key": "database",
+      "group": "Công việc",
       "name": "Database",
       "code": "DBS",
       "chip": "Databases",
@@ -115,6 +137,7 @@
     },
     {
       "key": "server",
+      "group": "Công việc",
       "name": "SSH / Server",
       "code": "SRV",
       "chip": "Servers",
@@ -164,5 +187,49 @@
   "filterIcons": {
     "all": "list",
     "fav": "star"
+  },
+
+  "_groupIconsNote": "Icon cột nhóm. Tên nhóm do user tự gõ (lưu trong payload mã hoá) nên không có chỗ lưu icon riêng: icon suy từ từ khoá trong tên, quy tắc ĐẦU TIÊN khớp thắng (so chữ thường, chứa chuỗi). Thứ tự có nghĩa: 'ngân hàng' phải đứng trước 'tài chính'. Không khớp gì → fallback.",
+  "groupIcons": {
+    "fallback": "folder",
+    "ungrouped": "tray",
+    "rules": [
+      { "match": ["ngân hàng", "ngan hang", "bank"], "icon": "bank" },
+      { "match": ["ví", "wallet", "momo", "zalopay"], "icon": "wallet" },
+      { "match": ["thẻ", "card"], "icon": "creditCard" },
+      { "match": ["tài chính", "tai chinh", "finance", "tiền", "đầu tư"], "icon": "handCoins" },
+      { "match": ["email", "mail", "thư"], "icon": "envelope" },
+      { "match": ["mạng xã hội", "mxh", "social", "facebook", "zalo"], "icon": "users" },
+      { "match": ["giấy tờ", "giay to", "định danh", "sđt", "identity", "cccd", "hộ chiếu", "passport"], "icon": "identification" },
+      { "match": ["công việc", "cong viec", "work", "dự án"], "icon": "briefcase" },
+      { "match": ["wi-fi", "wifi"], "icon": "wifi" },
+      { "match": ["công nghệ", "cong nghe", "tech", "phần mềm", "software"], "icon": "keyboard" },
+      { "match": ["điện thoại", "thiết bị", "device", "phone"], "icon": "deviceMobile" },
+      { "match": ["dev", "lập trình", "code", "server"], "icon": "code" },
+      { "match": ["nền tảng", "platform", "cloud"], "icon": "cloud" },
+      { "match": ["gia đình", "family", "home"], "icon": "house" },
+      { "match": ["sức khỏe", "sức khoẻ", "health"], "icon": "heart" },
+      { "match": ["mua sắm", "shopping"], "icon": "shopping" },
+      { "match": ["giải trí", "phim", "nhạc", "entertainment"], "icon": "film" }
+    ]
+  },
+
+  "_groupPresetsNote": "QUY CHUẨN NHÓM — 8 nhóm (Tài chính có 4 nhóm con), chọn ở ô Group (GroupPicker: <select> có optgroup, Edit + thanh Move to group), sau các nhóm đã dùng trong vault (groupSuggestions). Tên phải đọc là hiểu và không na ná nhau — đã bỏ \"Nền tảng\" và \"Tài khoản chính\" (đọc lướt giống \"Tài chính\") → Công nghệ (Apple ID, Microsoft, GitHub, ChatGPT…), \"Định danh\" → Giấy tờ & SĐT, gộp Mua sắm + Giải trí. Không có gợi ý tiêu đề \"Google\": tài khoản Google = hộp thư Gmail, MỘT item Email account (một lần đăng nhập = một item). Mọi khoá của titlePresets và mọi `group` của template PHẢI nằm trong danh sách này — vaultLogic.test.js khoá điều đó. `group` trên template = nhóm điền sẵn khi tạo item loại đó mà không đứng trong nhóm nào (thẻ → Tài chính/Thẻ, Email account → Email…). Account và Secure note không có nhóm mặc định: nhóm của chúng phụ thuộc dịch vụ, gợi ý tiêu đề sẽ điền.",
+  "groupPresets": [
+    "Tài chính/Ngân hàng", "Tài chính/Ví điện tử", "Tài chính/Thẻ", "Tài chính/Đầu tư",
+    "Email", "Công nghệ", "Mạng xã hội", "Mua sắm & giải trí", "Công việc", "Giấy tờ & SĐT", "Wi-Fi & thiết bị"
+  ],
+
+  "_titlePresetsNote": "Gợi ý cho ô tiêu đề ở chế độ Edit (<datalist>, gõ tên khác vẫn được). Tiêu đề = tên dịch vụ, không phải username. Chọn đúng một tên ở đây khi item CHƯA có nhóm thì nhóm bên trái được điền theo — user đổi được. Tên đã dùng trong vault luôn đứng trước danh sách này (titleSuggestions). QUY CHUẨN TÊN: hộp thư của mình ở nhà cung cấp (loại Email account) → tên hộp thư (Gmail, Outlook, iCloud Mail); tài khoản riêng ở công ty khác, đăng nhập bằng một email (loại Account) → tên công ty (Microsoft, Apple ID). Một lần đăng nhập = một item: tài khoản Google chính là hộp thư Gmail nên không có tên \"Google\" ở đây. Vì thế nhóm \"Email\" chỉ được gợi ý khi đặt tên Email account, các nhóm khác thì ngược lại.",
+  "titlePresets": {
+    "Tài chính/Ngân hàng": ["Vietcombank", "VietinBank", "BIDV", "Agribank", "Techcombank", "MB Bank", "ACB", "VPBank", "TPBank", "VIB", "Sacombank", "HDBank", "SHB", "ABBANK", "OCB", "MSB", "SeABank", "Eximbank", "LPBank", "Nam A Bank", "Cake", "Timo"],
+    "Tài chính/Ví điện tử": ["MoMo", "ZaloPay", "VNPAY", "ShopeePay", "Viettel Money"],
+    "Email": ["Gmail", "Outlook", "iCloud Mail", "Yahoo Mail", "Proton Mail"],
+    "Mạng xã hội": ["Facebook", "Zalo", "Instagram", "TikTok", "X (Twitter)", "Telegram", "Discord", "LinkedIn", "Threads"],
+    "Mua sắm & giải trí": ["Shopee", "Lazada", "Tiki", "Grab", "Be", "Xanh SM", "Netflix", "Spotify", "YouTube", "FPT Play", "VieON"],
+    "Công nghệ": ["Apple ID", "Microsoft", "GitHub", "Dropbox", "ChatGPT", "Canva"],
+    "Giấy tờ & SĐT": ["VNeID"],
+    "Tài chính/Đầu tư": ["SSI", "VNDIRECT", "TCBS", "Binance"],
+    "Công việc": ["Slack", "Notion", "Jira", "Zoom", "Microsoft Teams"]
   }
 }

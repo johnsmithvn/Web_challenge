@@ -10,7 +10,7 @@ import TaskSubtaskModal from '../components/TaskSubtaskModal';
 import TaskFilterBar from '../components/TaskFilterBar';
 import TaskTodayStrip from '../components/TaskTodayStrip';
 import TaskQuickAdd from '../components/TaskQuickAdd';
-import TaskSkyBackground from '../components/TaskSkyBackground';
+import SkyBackground from '../components/SkyBackground';
 import { ElfStreakTree } from '../components/TaskElfDecor';
 import { frameKey, celebrate } from '../utils/taskFlyersElf';
 import { TaskDayPopover } from '../components/TaskFloatingPopovers';
@@ -491,7 +491,7 @@ export default function TasksPage() {
       ].filter(Boolean).join(' ')}
       data-frame={elf ? frameKey(theme, isMobile) : undefined}
     >
-      <TaskSkyBackground isMobile={isMobile} />
+      <SkyBackground isMobile={isMobile} />
       <button
         type="button"
         className={`tk-scene-btn${isMobile ? ' is-m' : ''}`}

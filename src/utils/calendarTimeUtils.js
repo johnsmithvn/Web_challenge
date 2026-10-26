@@ -479,6 +479,20 @@ export function datePickPatch({ a, b, ta, tb }) {
   return { start_date: null, start_time: null, due_date: a, due_time: ta || tb || null };
 }
 
+/**
+ * Bấm 1 ngày trên popover đổi ngày giờ (kiểu ClickUp / Airbnb): ô Bắt đầu nhận ngày rồi tự nhảy sang Kết thúc
+ * (giữ Kết thúc cũ nếu vẫn sau); ô Kết thúc nhận ngày cuối rồi quay về Bắt đầu. Ở Kết thúc mà bấm trước Bắt đầu
+ * → thành Bắt đầu mới, vẫn chờ ngày cuối; bấm trùng Bắt đầu → 1 ngày.
+ * @returns {{ dr: Object, field: 'a'|'b' }}
+ */
+export function datePickClick(dr, field, v) {
+  if (field === 'b' && dr.a) {
+    if (v < dr.a) return { dr: { ...dr, a: v }, field: 'b' };
+    return { dr: { ...dr, b: v === dr.a ? null : v }, field: 'a' };
+  }
+  return { dr: { ...dr, a: v, b: dr.b && dr.b > v ? dr.b : null }, field: 'b' };
+}
+
 /** onDragStart cho thẻ task trên các view Lịch. */
 export function taskDragStart(e, task) {
   e.stopPropagation();

@@ -5,7 +5,7 @@ import { formatDate } from '../../utils/dateUtils';
 import {
   periodTotals,
   monthStart, monthEnd, parseYmd, maturityWarn,
-  guessDepositType, canDepositTopUp, maturityInterest, settleMaturity,
+  guessDepositType, canDepositTopUp, maturityInterest, settleMaturity, anGiaPlan,
 } from '../../utils/financeLogic';
 import { money, catInfo, Segmented, TaskPicker, FinanceIcon, DateField, BankSelect } from './parts';
 import AppIcon from '../AppIcon';
@@ -38,29 +38,46 @@ const DEPOSIT_TYPES = [
   { id: 'cd', label: 'Chứng chỉ tiền gửi (CD)', icon: 'certificate', hint: 'Khóa cứng đến đáo hạn, không rút sớm' },
   { id: 'term', label: 'Sổ tiết kiệm', icon: 'bank', hint: 'Rút trước hạn mất lãi kỳ hạn (~0.1%/năm)' },
   { id: 'flex', label: 'Tích lũy linh hoạt', icon: 'deviceMobile', hint: 'Không kỳ hạn · rút bất cứ lúc nào' },
+  { id: 'angia', label: 'Tích lũy An Gia', icon: 'plant', hint: 'Góp cố định hằng tháng · kỳ hạn theo năm' },
 ];
 
 const QUICK_TERMS = ['1', '2', '3', '6', '12', '24'];
+const QUICK_YEARS = [1, 2, 3, 5, 10];
 
 export function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone }) {
+  // Quỹ Tích lũy chung (is_default): lựa chọn mặc định '' trong ô quỹ, tạo khi lưu lần đầu.
+  const defaultFund = fin.goals.find(g => g.is_default && !g.closed_at);
+  const goalChoices = activeGoals.filter(g => !g.is_default);
   const [depositType, setDepositType] = useState(() => guessDepositType(deposit));
-  const [selectedGoalId, setSelectedGoalId] = useState(() => goal?.id || deposit?.fund_id || '');
+  const [selectedGoalId, setSelectedGoalId] = useState(() => {
+    const id = goal?.id || deposit?.fund_id || '';
+    return id === defaultFund?.id ? '' : id;
+  });
   const [isNameCustomized, setIsNameCustomized] = useState(() => !!deposit?.name);
   const [showAdvanced, setShowAdvanced] = useState(() => !!deposit?.account_no);
   const [form, setForm] = useState(() => {
-    if (deposit) return { ...deposit, amount: deposit.amount ? String(deposit.amount) : '', rate: deposit.rate ? String(deposit.rate) : '', term: deposit.term ? String(deposit.term) : '' };
-    return { name: '', bank: '', account_no: '', amount: '', rate: '', term: '1', opened_at: fin.today, closed_on: '' };
+    if (deposit) return { ...deposit, amount: deposit.amount ? String(deposit.amount) : '', rate: deposit.rate ? String(deposit.rate) : '', term: deposit.term ? String(deposit.term) : '',
+      initial_amount: deposit.initial_amount ? String(deposit.initial_amount) : '', monthly_amount: deposit.monthly_amount ? String(deposit.monthly_amount) : '' };
+    return { name: '', bank: '', account_no: '', amount: '', initial_amount: '', monthly_amount: '', rate: '', term: '1', opened_at: fin.today, closed_on: '' };
   });
   const [isSaving, setIsSaving] = useState(false);
 
+  const isAnGia = depositType === 'angia';
   const maturity = projectedMaturity(form.opened_at, Number(form.term));
   const warning = maturity ? maturityWarn(maturity, fin.today) : null;
+  const agPlan = isAnGia ? anGiaPlan({
+    initial_amount: parseCurrencyInput(form.initial_amount), monthly_amount: parseCurrencyInput(form.monthly_amount),
+    rate: form.rate, term: form.term, opened_at: form.opened_at,
+  }, fin.today) : null;
+  const principal = isAnGia ? agPlan.principal : parseCurrencyInput(form.amount);
+  const interest = isAnGia ? agPlan.interest
+    : maturityInterest({ amount: principal, rate: form.rate, term: depositType === 'flex' ? null : form.term });
 
   const updateAutoName = (bank, typeId, term) => {
     if (isNameCustomized) return;
     const typeObj = DEPOSIT_TYPES.find(t => t.id === typeId) || DEPOSIT_TYPES[0];
-    const typeLabel = typeObj.id === 'cd' ? 'Chứng chỉ tiền gửi' : typeObj.id === 'term' ? 'Sổ tiết kiệm' : 'Tích lũy linh hoạt';
-    const termSuffix = typeId === 'flex' || !term ? '' : ` ${term}T`;
+    const typeLabel = typeObj.id === 'cd' ? 'Chứng chỉ tiền gửi' : typeObj.id === 'term' ? 'Sổ tiết kiệm' : typeObj.label;
+    const termSuffix = typeId === 'flex' || !term ? '' : typeId === 'angia' ? ` ${Number(term) / 12} năm` : ` ${term}T`;
     const bankPrefix = bank ? bank : 'Ngân hàng';
     setForm(prev => ({ ...prev, name: `${bankPrefix} · ${typeLabel}${termSuffix}` }));
   };
@@ -74,9 +91,23 @@ export function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone 
       newTerm = '1';
     } else if (typeId === 'term' && (!newTerm || newTerm === '0')) {
       newTerm = '12';
+    } else if (typeId === 'angia' && (!newTerm || Number(newTerm) % 12)) {
+      newTerm = '12';
     }
-    setForm(prev => ({ ...prev, term: newTerm }));
+    // An Gia nhập "Gửi lần đầu" (initial_amount), loại khác nhập "Số tiền gửi" (amount): đổi loại thì mang số đã gõ sang.
+    setForm(prev => ({
+      ...prev, term: newTerm,
+      initial_amount: typeId === 'angia' && !prev.initial_amount ? prev.amount : prev.initial_amount,
+      amount: typeId !== 'angia' && !prev.amount ? prev.initial_amount : prev.amount,
+    }));
     updateAutoName(form.bank, typeId, newTerm);
+  };
+
+  const handleYearsChange = (value) => {
+    const years = sanitizeDigits(String(value), 2);
+    const term = Number(years) ? String(Number(years) * 12) : '';
+    setForm(prev => ({ ...prev, term }));
+    updateAutoName(form.bank, depositType, term);
   };
 
   const handleBankChange = (bank) => {
@@ -97,29 +128,26 @@ export function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone 
 
   const save = async (e) => {
     e.preventDefault();
-    const finalName = form.name?.trim() || `${form.bank || 'Ngân hàng'} · ${depositType === 'cd' ? 'Chứng chỉ tiền gửi' : depositType === 'term' ? 'Sổ tiết kiệm' : 'Tích lũy'}`;
+    const finalName = form.name?.trim() || `${form.bank || 'Ngân hàng'} · ${depositType === 'cd' ? 'Chứng chỉ tiền gửi' : depositType === 'term' ? 'Sổ tiết kiệm' : isAnGia ? 'Tích lũy An Gia' : 'Tích lũy'}`;
     if (!finalName || (Number(form.term) > 0 && !form.opened_at) || isSaving) return;
 
-    let targetFundId = selectedGoalId || deposit?.fund_id || goal?.id;
+    // '' = Tích lũy chung; chưa có thì tạo (trước đây rơi vào quỹ đầu danh sách, kể cả quỹ đã đóng).
+    let targetFundId = selectedGoalId || defaultFund?.id;
     if (!targetFundId) {
-      const existing = fin.goals[0];
-      if (existing) {
-        targetFundId = existing.id;
-      } else {
-        setIsSaving(true);
-        const createdGoal = await fin.addGoal({
-          name: 'Tích lũy & Tiết kiệm',
-          goal: 0,
-          lock_mode: 'soft',
-          in_wallet: false,
-        });
-        if (!createdGoal) {
-          setIsSaving(false);
-          nav.showToast('Không thể lưu nơi gửi. Vui lòng thử lại.', { icon: 'warning' });
-          return;
-        }
-        targetFundId = createdGoal.id;
+      setIsSaving(true);
+      const createdGoal = await fin.addGoal({
+        name: 'Tích lũy chung',
+        goal: 0,
+        lock_mode: 'soft',
+        in_wallet: false,
+        is_default: true,
+      });
+      if (!createdGoal) {
+        setIsSaving(false);
+        nav.showToast('Không thể lưu nơi gửi. Vui lòng thử lại.', { icon: 'warning' });
+        return;
       }
+      targetFundId = createdGoal.id;
     }
 
     setIsSaving(true);
@@ -128,9 +156,14 @@ export function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone 
       name: finalName,
       bank: form.bank || null,
       account_no: form.account_no || null,
-      amount: parseCurrencyInput(form.amount) || 0,
+      // An Gia: sổ mới coi như đã góp đủ tới hôm nay (thêm sổ mở từ trước); sửa sổ thì giữ số đang gửi,
+      // tiền góp đi qua "Góp tiền".
+      amount: !isAnGia ? parseCurrencyInput(form.amount) || 0
+        : guessDepositType(deposit) === 'angia' ? deposit.amount : agPlan.expected,
       rate: Number(form.rate) || 0,
       term: depositType === 'flex' ? null : (Number(form.term) || null),
+      monthly_amount: isAnGia ? parseCurrencyInput(form.monthly_amount) || null : null,
+      initial_amount: isAnGia ? parseCurrencyInput(form.initial_amount) || 0 : null,
       opened_at: form.opened_at || null,
       closed_on: form.closed_on || null,
     };
@@ -155,7 +188,7 @@ export function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone 
 
       <div style={{ marginBottom: '10px' }}>
         <span className="fin-label" style={{ marginBottom: '6px', display: 'block' }}>Loại hình tiền gửi</span>
-        <div className="fin-type-picker">
+        <div className="fin-type-picker fin-type-picker--4">
           {DEPOSIT_TYPES.map(t => (
             <button
               key={t.id}
@@ -183,20 +216,43 @@ export function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone 
           />
         </label>
         <label className="fin-label" style={{ flex: 1 }}>
-          Số tiền gửi (VNĐ)
+          {isAnGia ? 'Gửi lần đầu (VNĐ)' : 'Số tiền gửi (VNĐ)'}
           <input
             className="fin-input"
             inputMode="numeric"
             pattern="[0-9]*"
-            value={form.amount || ''}
-            onChange={field('amount', sanitizeDigits)}
-            aria-label="Số tiền đang gửi"
-            placeholder="Ví dụ: 50.000.000"
+            value={(isAnGia ? form.initial_amount : form.amount) || ''}
+            onChange={field(isAnGia ? 'initial_amount' : 'amount', sanitizeDigits)}
+            aria-label={isAnGia ? 'Số tiền gửi lần đầu' : 'Số tiền đang gửi'}
+            placeholder={isAnGia ? 'Ví dụ: 5.000.000' : 'Ví dụ: 50.000.000'}
             autoFocus={!deposit}
             required
           />
         </label>
       </div>
+
+      {isAnGia && (
+        <div className="fin-form__row">
+          <label className="fin-label" style={{ flex: 1 }}>
+            Góp mỗi tháng (VNĐ)
+            <input
+              className="fin-input"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={form.monthly_amount || ''}
+              onChange={field('monthly_amount', sanitizeDigits)}
+              placeholder="Ví dụ: 1.000.000"
+              required
+            />
+          </label>
+          <label className="fin-label" style={{ flex: 1 }}>
+            Ngày góp
+            <span className="fin-input fin-input--readonly">
+              Ngày {Number((form.opened_at || fin.today).slice(8))} hằng tháng · theo ngày gửi
+            </span>
+          </label>
+        </div>
+      )}
 
       <div className="fin-form__row">
         <label className="fin-label" style={{ flex: 1 }}>
@@ -209,7 +265,32 @@ export function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone 
             placeholder="Ví dụ: 5,2"
           />
         </label>
-        {depositType !== 'flex' ? (
+        {isAnGia ? (
+          <label className="fin-label" style={{ flex: 1 }}>
+            Kỳ hạn (năm)
+            <input
+              className="fin-input"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={form.term ? String(Number(form.term) / 12) : ''}
+              onChange={e => handleYearsChange(e.target.value)}
+              placeholder="Ví dụ: 1, 3, 5..."
+              required
+            />
+            <div className="fin-term-quick">
+              {QUICK_YEARS.map(y => (
+                <button
+                  key={y}
+                  type="button"
+                  className={`fin-term-chip ${form.term === String(y * 12) ? 'is-active' : ''}`}
+                  onClick={() => handleYearsChange(y)}
+                >
+                  {y} năm
+                </button>
+              ))}
+            </div>
+          </label>
+        ) : depositType !== 'flex' ? (
           <label className="fin-label" style={{ flex: 1 }}>
             Kỳ hạn (tháng)
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -270,7 +351,7 @@ export function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone 
         </label>
       </div>
 
-      {parseCurrencyInput(form.amount) > 0 && Number(form.rate) > 0 && (
+      {principal > 0 && Number(form.rate) > 0 && (
         <div style={{
           padding: '8px 12px',
           borderRadius: '8px',
@@ -283,34 +364,30 @@ export function DepositForm({ fin, nav, goal, deposit, activeGoals = [], onDone 
           color: 'var(--n-txt1)'
         }}>
           <span>
-            {depositType !== 'flex' && form.term ? `Lãi thực nhận khi đáo hạn (${form.term} tháng):` : 'Lãi ước tính 1 năm:'}
+            {isAnGia ? `Lãi dự kiến khi đáo hạn (${Number(form.term) / 12} năm):`
+              : depositType !== 'flex' && form.term ? `Lãi thực nhận khi đáo hạn (${form.term} tháng):` : 'Lãi ước tính 1 năm:'}
             <strong className="is-positive" style={{ marginLeft: '6px' }}>
-              + {money(depositType !== 'flex' && Number(form.term)
-                ? Math.round(parseCurrencyInput(form.amount) * Number(form.rate) / 100 * (Number(form.term) / 12))
-                : Math.round(parseCurrencyInput(form.amount) * Number(form.rate) / 100))}
+              + {money(interest)}
             </strong>
           </span>
           <span style={{ color: 'var(--n-txt2)' }}>
-            Tổng nhận về: <strong>
-              {money(parseCurrencyInput(form.amount) + (depositType !== 'flex' && Number(form.term)
-                ? Math.round(parseCurrencyInput(form.amount) * Number(form.rate) / 100 * (Number(form.term) / 12))
-                : Math.round(parseCurrencyInput(form.amount) * Number(form.rate) / 100)))}
-            </strong>
+            {isAnGia && <>Gốc {money(principal)} ({agPlan.periods} kỳ góp) · </>}
+            Tổng nhận về: <strong>{money(principal + interest)}</strong>
           </span>
         </div>
       )}
 
       <div className="fin-form__row">
-        {activeGoals.length > 0 && (
+        {goalChoices.length > 0 && (
           <label className="fin-label" style={{ flex: 1 }}>
-            Thuộc quỹ mục tiêu (tùy chọn)
+            Thuộc quỹ
             <select
               className="fin-input"
               value={selectedGoalId}
               onChange={e => setSelectedGoalId(e.target.value)}
             >
-              <option value="">Không gắn mục tiêu (Tích lũy chung)</option>
-              {activeGoals.map(g => (
+              <option value="">Tích lũy chung</option>
+              {goalChoices.map(g => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
             </select>
@@ -438,7 +515,8 @@ export function MaturityForm({ fin, nav, deposit, onDone }) {
       </div>
 
       <div className="fin-type-picker" style={{ marginBottom: '10px' }}>
-        {SETTLE_MODES.map(m => (
+        {/* An Gia đáo hạn là xong gói (lịch góp không mang sang kỳ mới) → chỉ rút về */}
+        {(guessDepositType(deposit) === 'angia' ? SETTLE_MODES.slice(0, 1) : SETTLE_MODES).map(m => (
           <button key={m.id} type="button" aria-pressed={mode === m.id}
             className={`fin-type-picker__btn ${mode === m.id ? 'is-active' : ''}`} onClick={() => setMode(m.id)}>
             <div className="fin-type-picker__head"><AppIcon name={m.icon} size={15} /><span>{m.label}</span></div>
@@ -509,21 +587,31 @@ function projectedMaturity(openedAt, term) {
   return `${targetYear}-${String(normalizedMonth + 1).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
 }
 
-export function SavingMoveForm({ fin, goal, dir, onDone, onOpenNewDeposit }) {
+export function SavingMoveForm({ fin, goal, dir, onDone, onOpenNewDeposit, initialDepositId }) {
   const { pendingTasks } = useUserTasks();
   const deposits = fin.deposits.filter(d => d.fund_id === goal.id && !d.closed_on);
   const flexDeposits = deposits.filter(d => canDepositTopUp(d));
   const hasFlex = flexDeposits.length > 0;
+  // Sổ An Gia: điền sẵn số còn phải góp tháng này, đủ rồi thì 1 kỳ góp
+  const anGiaFill = (id) => {
+    const d = dir === 'in' && deposits.find(x => x.id === id);
+    return d && guessDepositType(d) === 'angia' ? String(anGiaPlan(d, fin.today).due?.need || d.monthly_amount) : '';
+  };
 
   const request = goal.withdrawal_request;
   const effectiveLock = goal.lock_mode === 'term' && goal.lock_until && goal.lock_until <= fin.today ? 'soft' : goal.lock_mode;
 
   const [depositId, setDepositId] = useState(() => {
     if (request?.deposit_id) return request.deposit_id;
-    if (dir === 'in' && hasFlex) return flexDeposits[0].id;
+    if (initialDepositId) return initialDepositId;
+    if (dir === 'in' && hasFlex) {
+      // Ưu tiên sổ An Gia còn thiếu tiền góp tháng này
+      const owing = flexDeposits.find(d => guessDepositType(d) === 'angia' && anGiaPlan(d, fin.today).due?.need);
+      return (owing || flexDeposits[0]).id;
+    }
     return deposits[0]?.id || '';
   });
-  const [amount, setAmount] = useState(request?.amount ? String(request.amount) : '');
+  const [amount, setAmount] = useState(() => (request?.amount ? String(request.amount) : anGiaFill(depositId)));
   const [occurredAt, setOccurredAt] = useState(fin.today);
   const [note, setNote] = useState('');
   const [taskId, setTaskId] = useState(null);
@@ -601,12 +689,16 @@ export function SavingMoveForm({ fin, goal, dir, onDone, onOpenNewDeposit }) {
 
       <div className="fin-form__row">
         <label className="fin-label" style={{ flex: 1 }}>
-          {dir === 'in' ? 'Nơi nhận tiền (Tích lũy linh hoạt)' : 'Sổ / Nơi rút tiền'}
+          {dir === 'in' ? 'Nơi nhận tiền' : 'Sổ / Nơi rút tiền'}
           <select
             className="fin-input"
             aria-label={dir === 'in' ? 'Chọn nơi nhận tiền' : 'Chọn nơi rút tiền'}
             value={depositId}
-            onChange={e => setDepositId(e.target.value)}
+            onChange={e => {
+              setDepositId(e.target.value);
+              const fill = anGiaFill(e.target.value);
+              if (fill) setAmount(fill);
+            }}
           >
             {deposits.map(d => {
               const isLocked = dir === 'in' && !canDepositTopUp(d);
@@ -638,7 +730,7 @@ export function SavingMoveForm({ fin, goal, dir, onDone, onOpenNewDeposit }) {
       {dir === 'in' && onOpenNewDeposit && (
         <div style={{ margin: '-4px 0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
           <small style={{ color: 'var(--n-txt3)', fontSize: '11.5px' }}>
-            * Chỉ tài khoản tích lũy không kỳ hạn mới có thể nạp thêm.
+            * Chỉ nạp thêm được vào Tích lũy linh hoạt hoặc sổ An Gia (góp hằng tháng).
           </small>
           <button
             type="button"

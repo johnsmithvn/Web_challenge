@@ -1,52 +1,63 @@
 /* ================================================================
    KNOWLEDGE BASE — Design Tokens (scoped to .kb-page)
-   Spec: Handoff "Kho Tàng Kiến Thức"
+   Kiểu "Cực quang": trời đêm + mint. Nền trời động là <SkyBackground calm /> (sky.css);
+   --kb-sky chỉ là lớp nền tĩnh bên dưới nó.
    ================================================================ */
 
 /* ── Font families ─────────────────────────────────────────── */
 .kb-page {
-  --kb-serif: 'Spectral', Georgia, serif;
-  --kb-mono:  'JetBrains Mono', ui-monospace, monospace;
+  --kb-font:    'Be Vietnam Pro', system-ui, sans-serif;
+  --kb-display: 'Spectral', Georgia, serif; /* tiêu đề: chữ có chân, phần nhấn in nghiêng .kb-em */
+  --kb-mono:    'JetBrains Mono', ui-monospace, monospace; /* chỉ cho phím tắt, code */
 }
 
 /* ── Dark theme (default) ──────────────────────────────────── */
 .kb-page {
-  --kb-bg:    oklch(0.168 0.010 275);
-  --kb-p1:    oklch(0.208 0.012 275);
-  --kb-p2:    oklch(0.252 0.014 275);
-  --kb-line:  oklch(0.312 0.014 275);
-  --kb-tx:    oklch(0.945 0.008 275);
-  --kb-dim:   oklch(0.715 0.010 275);
-  --kb-faint: oklch(0.555 0.012 275);
-  --kb-brass: oklch(0.78 0.11 72);
-  --kb-sage:  oklch(0.74 0.09 165);
-  --kb-red:   oklch(0.70 0.14 22);
+  --kb-sky:   radial-gradient(120% 80% at 70% -10%, #0E1B40 0%, #070B18 45%, #04060D 100%);
+  --kb-bg:    #070B18;                  /* chữ trên nền mint, viền tách lớp */
+  --kb-p1:    rgba(14, 21, 44, 0.55);   /* thẻ, cột — kính mờ trên trời */
+  --kb-p2:    rgba(255, 255, 255, 0.07);/* hover, mục đang chọn */
+  --kb-pop:   #0E1530;                  /* hộp thoại, popover: nền đặc */
+  --kb-line:  rgba(160, 180, 255, 0.12);
+  --kb-tx:    #E6EAF5;
+  --kb-dim:   #A3ACC8;
+  --kb-faint: #6E7799;
+  --kb-accent:      #6EF2C7;
+  --kb-accent-soft: rgba(110, 242, 199, 0.12);
+  --kb-on-accent:   #04140F;
+  --kb-glow:        rgba(110, 242, 199, 0.35);
+  --kb-violet: #B18CFF;
+  --kb-gold:  #E3AC64;                  /* vàng đồng: Chưa xếp, phần nhấn tiêu đề */
+  --kb-sage:  #9AE66E;
+  --kb-red:   #FF8A8A;
+  --kb-code-bg: rgba(3, 6, 14, 0.8);
+  --kb-scrim:  rgba(3, 5, 12, 0.62);    /* nền mờ sau hộp thoại */
+  --kb-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
 }
 
-/* ── Light theme ───────────────────────────────────────────── */
+/* ── Light theme (trời bình minh / hoàng hôn) ──────────────── */
 [data-theme="light"] .kb-page,
 .kb-page[data-theme="light"] {
-  --kb-bg:    oklch(0.978 0.006 85);
-  --kb-p1:    oklch(0.949 0.008 85);
-  --kb-p2:    oklch(0.908 0.011 85);
-  --kb-line:  oklch(0.858 0.012 85);
-  --kb-tx:    oklch(0.248 0.014 60);
-  --kb-dim:   oklch(0.445 0.012 60);
-  --kb-faint: oklch(0.615 0.010 60);
-  --kb-brass: oklch(0.52 0.11 60);
-  --kb-sage:  oklch(0.46 0.09 160);
-  --kb-red:   oklch(0.52 0.16 22);
-}
-
-/* ── Type hues ─────────────────────────────────────────────── */
-.kb-page {
-  --kb-hue-note:          oklch(0.74 0.10 250);
-  --kb-hue-quote:         oklch(0.78 0.11 72);
-  --kb-hue-learn:         oklch(0.74 0.09 165);
-  --kb-hue-idea:          oklch(0.74 0.10 300);
-  --kb-hue-ai:            oklch(0.74 0.10 300);
-  --kb-hue-entertainment: oklch(0.72 0.13 22);
-  --kb-hue-podcast:       oklch(0.74 0.10 300);
+  --kb-sky:   linear-gradient(180deg, #F7F5FF 0%, #F4F2FF 60%, #EFEDFF 100%);
+  --kb-bg:    #F4F2FF;
+  --kb-p1:    rgba(255, 255, 255, 0.72);
+  --kb-p2:    rgba(124, 58, 237, 0.07);
+  --kb-pop:   #FFFFFF;
+  --kb-line:  rgba(124, 108, 220, 0.18);
+  --kb-tx:    #1E1B3A;
+  --kb-dim:   #4B4F6B;
+  --kb-faint: #6B6F8E;
+  --kb-accent:      #7C3AED;
+  --kb-accent-soft: #EDE9FE;
+  --kb-on-accent:   #FFFFFF;
+  --kb-glow:        rgba(124, 58, 237, 0.25);
+  --kb-violet: #7C3AED;
+  --kb-gold:  #B45309;
+  --kb-sage:  #059669;
+  --kb-red:   #DC2626;
+  --kb-code-bg: #F1EEFF;
+  --kb-scrim:  rgba(30, 27, 58, 0.28);
+  --kb-shadow: 0 24px 60px rgba(60, 40, 140, 0.18);
 }
 
 /* ── Animations ────────────────────────────────────────────── */
@@ -64,17 +75,18 @@
 }
 
 /* ── Scrollbar ─────────────────────────────────────────────── */
-.kb-page ::-webkit-scrollbar { width: 9px; }
+.kb-page ::-webkit-scrollbar { width: 9px; height: 9px; }
 .kb-page ::-webkit-scrollbar-track { background: transparent; }
 .kb-page ::-webkit-scrollbar-thumb {
   background: var(--kb-line);
+  background-clip: padding-box;
+  border: 2px solid transparent;
   border-radius: 9px;
-  border: 2px solid var(--kb-bg);
 }
 
 /* ── Prose (reader + preview) ──────────────────────────────── */
 .kb-prose {
-  font-family: var(--kb-serif);
+  font-family: var(--kb-font);
   width: 100%;
   max-width: 100%;
   color: var(--kb-tx);
@@ -86,50 +98,45 @@
   width: 100%;
   max-width: 100%;
 }
-.kb-prose h1 {
-  font-family: var(--kb-serif);
-  font-size: 2rem; font-weight: 600; margin: 36px 0 16px;
-  color: var(--kb-tx);
-}
-.kb-prose h2 {
-  font-family: var(--kb-serif);
-  font-size: 1.55rem; font-weight: 500; margin: 36px 0 14px;
-  letter-spacing: -0.012em; scroll-margin-top: 86px;
-  color: var(--kb-tx);
-}
+.kb-prose h1,
+.kb-prose h2,
 .kb-prose h3 {
-  font-family: var(--kb-serif);
-  font-size: 1.25rem; font-weight: 500; margin: 28px 0 10px;
-  scroll-margin-top: 86px; color: var(--kb-tx);
-}
-.kb-prose p {
-  font-size: 1.05rem; line-height: 1.8; margin: 0 0 20px;
+  font-family: var(--kb-display);
+  font-weight: 500;
   color: var(--kb-tx);
+  scroll-margin-top: 86px;
+}
+.kb-prose h1 { font-size: 1.75rem; margin: 38px 0 16px; letter-spacing: -0.02em; }
+.kb-prose h2 { font-size: 1.375rem; margin: 38px 0 16px; letter-spacing: -0.01em; }
+.kb-prose h3 { font-size: 1.125rem; margin: 28px 0 10px; }
+.kb-prose p {
+  font-size: 1.0625rem; line-height: 1.8; margin: 0 0 18px;
+  color: color-mix(in srgb, var(--kb-tx) 82%, var(--kb-dim));
   text-wrap: pretty;
   max-width: 82ch;
 }
 .kb-prose blockquote {
-  margin: 26px 0; padding: 6px 0 6px 22px;
-  border-left: 3px solid var(--kb-brass);
-  font-style: italic; font-size: 1.15rem; line-height: 1.7;
+  margin: 26px 0; padding: 4px 0 4px 20px;
+  border-left: 2px solid var(--kb-accent);
+  font-size: 1.125rem; line-height: 1.7;
   color: var(--kb-dim);
   max-width: 82ch;
 }
 .kb-prose code {
-  font-family: var(--kb-mono); font-size: 0.9rem;
+  font-family: var(--kb-mono); font-size: 0.875rem;
   background: var(--kb-p2); padding: 2px 6px;
-  border-radius: 4px; color: var(--kb-sage);
+  border-radius: 6px; color: var(--kb-accent);
 }
 .kb-prose pre {
-  background: color-mix(in oklab, var(--kb-p1) 40%, var(--kb-p2));
+  background: var(--kb-code-bg);
   border: 1px solid var(--kb-line);
-  padding: 18px 22px;
-  border-radius: 6px;
+  padding: 16px 18px;
+  border-radius: 12px;
   overflow-x: auto;
   font-family: var(--kb-mono);
-  font-size: 0.88rem;
-  line-height: 1.65;
-  color: var(--kb-dim);
+  font-size: 0.85rem;
+  line-height: 1.8;
+  color: var(--kb-accent);
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -145,70 +152,47 @@
 .kb-prose table {
   width: 100%;
   max-width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   margin: 24px 0;
-  font-size: 0.95rem;
-  border-radius: 6px;
+  font-size: 0.92rem;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--kb-line);
+  background: var(--kb-p1);
 }
 .kb-prose th,
 .kb-prose td {
   padding: 11px 16px;
-  border: 1px solid var(--kb-line);
+  border-top: 1px solid var(--kb-line);
   text-align: left;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--kb-tx);
 }
 .kb-prose th {
+  border-top: none;
   background: var(--kb-p2);
-  font-weight: 600;
-  color: var(--kb-tx);
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: var(--kb-dim);
 }
-.kb-prose tr:nth-child(even) td {
-  background: color-mix(in oklab, var(--kb-p1) 70%, var(--kb-p2));
-}
-.kb-prose ul, .kb-prose ol { padding-left: 24px; margin: 0 0 20px; max-width: 82ch; }
+.kb-prose ul, .kb-prose ol { padding-left: 24px; margin: 0 0 18px; max-width: 82ch; }
 
-/* ── Inline color contrast adaptivity ──────────────────────── */
-:root:not([data-theme="light"]) .kb-prose span[style*="color: #000"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: #111"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: #222"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: #333"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: #1a1a1a"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: #0f172a"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: #1e1b4b"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: #1f2937"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: #2e2e2e"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: rgb(0, 0, 0)"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: rgb(15, 23, 42)"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: rgb(30, 27, 75)"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: rgb(31, 41, 55)"],
-:root:not([data-theme="light"]) .kb-prose span[style*="color: rgb(55, 65, 81)"] {
-  color: var(--kb-tx) !important;
-}
-
-[data-theme="light"] .kb-prose span[style*="color: #fff"],
-[data-theme="light"] .kb-prose span[style*="color: #f8fafc"],
-[data-theme="light"] .kb-prose span[style*="color: #f1f5f9"],
-[data-theme="light"] .kb-prose span[style*="color: #f0f0ff"],
-[data-theme="light"] .kb-prose span[style*="color: rgb(255, 255, 255)"] {
-  color: var(--kb-tx) !important;
-}
-.kb-prose li { font-size: 1.05rem; line-height: 1.75; margin-bottom: 8px; }
+/* Màu chữ inline dán vào làm chìm chữ được gỡ ở JS: migrateTiptapDoc (kbDeriveUtils). */
+.kb-prose li { font-size: 1.0625rem; line-height: 1.75; margin-bottom: 8px; }
 .kb-prose hr { border: none; border-top: 1px solid var(--kb-line); margin: 32px 0; }
 .kb-prose strong { font-weight: 600; color: var(--kb-tx); }
 .kb-prose:first-child > :first-child { margin-top: 0; }
 
 /* ── Wiki-link ─────────────────────────────────────────────── */
 .kb-wl {
-  color: var(--kb-brass);
-  border-bottom: 1px dashed color-mix(in oklab, var(--kb-brass) 50%, transparent);
+  color: var(--kb-accent);
+  border-bottom: 1px dashed color-mix(in srgb, var(--kb-accent) 50%, transparent);
   cursor: pointer; padding: 0 1px;
   transition: background 0.12s;
 }
 .kb-wl:hover {
-  background: color-mix(in oklab, var(--kb-brass) 16%, transparent);
+  background: color-mix(in srgb, var(--kb-accent) 16%, transparent);
 }
 .kb-wl--missing {
   opacity: 0.5;

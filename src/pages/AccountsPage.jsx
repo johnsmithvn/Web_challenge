@@ -1,14 +1,20 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { Fragment, useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAccounts } from '../hooks/useAccounts';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../components/ConfirmModal';
-import AccountDetail from '../components/AccountDetail';
+import AccountDetail, { GroupPicker } from '../components/AccountDetail';
 import AccountAvatar from '../components/AccountAvatar';
+import RootMap, { RootRow } from '../components/RootMap';
+import { MoneyMatrix, MoneyPanel } from '../components/MoneyLinks';
 import AppIcon from '../components/AppIcon';
 import SkeletonList from '../components/SkeletonList';
-import { matchesQuery, itemSubtitle, newId, relativeUpdated } from '../utils/vaultLogic';
+import {
+  matchesQuery, itemSubtitle, newId, relativeUpdated, avatarHue, groupTree, groupKey, inGroup,
+  isPasswordOnly, rootsOf, untrackedIdentifiers, moneyMatrix, mailboxTitle, normalizeGroup,
+  groupSuggestions, groupIcon, NO_AUTOFILL,
+} from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import '../styles/accounts.css';
 
@@ -18,36 +24,48 @@ import '../styles/accounts.css';
  * Every user-authored item property is decrypted only after the separate Vault
  * passphrase unlocks the in-memory DEK. Locked means no list or metadata browse.
  *
- * Layout: header · banner · filter bar · body 2 pane, breakpoint 900px.
+ * Layout: header · body 3 cột (nhóm · danh sách · chi tiết), breakpoint 900px.
+ * Cột nhóm đổi dạng chỉ bằng container query: đủ rộng thì có chữ, hẹp thì thành
+ * rail icon — cùng một markup.
  *
  * KHÔNG có hook đo bề rộng và không có resize listener — khác prototype. Dưới
- * 900px CSS đổi `.acc-body[data-screen]` thành 2 màn hình; trên 900px cùng
- * attribute đó bị media query bỏ qua. Nên React chỉ giữ `screen` như một state
- * bình thường và bấm vào dòng nào cũng set nó, không cần biết đang ở bề rộng
- * nào. Nút "← All items" cũng do CSS ẩn ở desktop.
+ * 900px CSS đọc `.acc-vault[data-screen]` và cho 3 màn đi sâu dần (thiết kế
+ * M1–M3): 'home' = danh sách nhóm cả màn, 'list' = item trong nhóm, 'detail'.
+ * Trên 900px cùng attribute đó bị bỏ qua. Nên React chỉ giữ `screen` như một
+ * state bình thường và bấm vào đâu cũng set nó, không cần biết đang ở bề rộng
+ * nào. Nút back, thanh copy ghim đáy… cũng do CSS ẩn ở desktop.
+ * Bất biến dựa vào đó: trên desktop `screen` chỉ còn là 'home' khi chưa bấm gì
+ * (mọi lối chọn nhóm / tag / item đều set nó khác 'home').
  *
  * Dialog chọn template là dialog RIÊNG (`.acc-scrim`/`.acc-dialog`), cố ý không
  * dùng GenericModal: component đó mang style Life Hub vào và phá fidelity.
  */
 
-const { templates: TEMPLATES, filterIcons: FILTER_ICONS } = ACCOUNT_TEMPLATES;
+const {
+  templates: TEMPLATES, filterIcons: FILTER_ICONS, groupIcons: GROUP_ICONS, groupPresets: GROUP_PRESETS,
+} = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 
 export default function AccountsPage() {
   const { user } = useAuth();
   const { items, isLoading, saveItem, createItem, deleteItem, toggleFavorite,
     setAuthState, setCodeUsed, vaultStatus, vaultError,
-    setupVault, unlockVault, lockVault, changePassphrase, recoverVault, recoveryKey, exportVault, restoreVault } = useAccounts();
+    setupVault, unlockVault, lockVault, changePassphrase, recoverVault, recoveryKey, exportVault, restoreVault,
+    sessionInfo, updateSessionTtl, preferredTtl } = useAccounts();
   const { showToast } = useToast();
   const { confirm, ConfirmModal } = useConfirm();
 
   const [query, setQuery] = useState('');
-  const [cat, setCat] = useState('all');          // 'all' | 'fav' | <tpl key>
+  const [viewState, setView] = useState('all');   // 'all' | 'fav' | 'weak' | 'roots' | 'none' (Ungrouped) | 'g:<groupKey>'
+  const [rootId, setRootId] = useState(null);     // gốc đang mở ở màn Roots (null = gốc đầu danh sách)
+  const [moneySel, setMoneySel] = useState(null); // { type: 'row' | 'col', id } ở màn Money links
+  const [tplFilter, setTplFilter] = useState(''); // '' = mọi loại
   const [tag, setTag] = useState(null);           // tag id
   const [selectedId, setSelectedId] = useState(null);
-  const [screen, setScreen] = useState('list');   // chỉ có nghĩa dưới 900px
+  const [screen, setScreen] = useState('home');   // 'home' | 'list' | 'detail' — chỉ có nghĩa dưới 900px
   const [pickerOpen, setPickerOpen] = useState(false);
   const [changePassOpen, setChangePassOpen] = useState(false);
+  const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [recoveryKitKey, setRecoveryKitKey] = useState(null);
 
   useEffect(() => {
@@ -56,6 +74,12 @@ export default function AccountsPage() {
     }
   }, [recoveryKey]);
   const [creating, setCreating] = useState(null); // tplKey đang tạo, null = rảnh
+  // Chuyển nhóm hàng loạt: chế độ chọn ở danh sách + thanh Move to group
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState(() => new Set());
+  const [bulkGroup, setBulkGroup] = useState('');
+  const [moving, setMoving] = useState(false);
+  const [newGroup, setNewGroup] = useState(0); // đổi = remount GroupPicker; >0 = "+ New group", mở sẵn ô gõ tên
   const [autoEditId, setAutoEditId] = useState(null); // item vừa tạo → mở sẵn edit
   const [revealed, setRevealed] = useState({});   // { [fieldId]: true }
   const [copied, setCopied] = useState(null);     // 1 key tại một thời điểm
@@ -72,21 +96,56 @@ export default function AccountsPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [pickerOpen]);
 
+  // ── Nhóm ────────────────────────────────────────────────────
+  const tree = useMemo(() => groupTree(items), [items]);
+  const groupByKey = useMemo(() => new Map(
+    tree.groups.flatMap((g) => [[g.key, g], ...g.children.map((c) => [c.key, c])])
+  ), [tree]);
+  // Nhóm đang chọn biến mất (item cuối vừa chuyển đi) → về All, khỏi kẹt ở danh sách rỗng
+  const view = viewState.startsWith('g:') && !groupByKey.has(viewState.slice(2)) ? 'all' : viewState;
+  const activeGroup = view.startsWith('g:') ? groupByKey.get(view.slice(2)) : null;
+  const pickView = (v) => { setView(v); setTag(null); setScreen('list'); };
+  const pickTag = (id) => { setTag(tag === id ? null : id); setScreen('list'); };
+
   // ── Lọc ─────────────────────────────────────────────────────
   const visible = useMemo(() => items.filter((i) => {
-    if (cat === 'fav' && !i.favorite) return false;
-    if (cat !== 'all' && cat !== 'fav' && i.tpl !== cat) return false;
+    if (view === 'fav' && !i.favorite) return false;
+    if (view === 'weak' && !isPasswordOnly(i)) return false;
+    if (view === 'none' && groupKey(i.group)) return false;
+    if (activeGroup && !inGroup(i, activeGroup.key)) return false;
+    if (tplFilter && i.tpl !== tplFilter) return false;
     if (tag && !i.tags.some((t) => t.id === tag)) return false;
     // matchesQuery loại giá trị secret khỏi vùng tìm — xem vaultLogic.js
     return matchesQuery(i, query);
-  }), [items, cat, tag, query]);
+  }), [items, view, activeGroup, tplFilter, tag, query]);
 
   const selected = items.find((i) => i.id === selectedId) || null;
 
+  // ── Roots ───────────────────────────────────────────────────
+  // ponytail: tính lại cả cây cho mọi gốc mỗi lần items đổi — vài trăm item vẫn
+  // nhẹ; cần cache theo gốc nếu vault lên hàng nghìn.
+  const roots = useMemo(() => rootsOf(items), [items]);
+  const untracked = useMemo(() => untrackedIdentifiers(items), [items]);
+  const rootIds = useMemo(() => new Set(roots.map((r) => r.item.id)), [roots]);
+  const visibleRoots = roots.filter((r) => matchesQuery(r.item, query));
+  const activeRoot = roots.find((r) => r.item.id === rootId) || visibleRoots[0] || null;
+  const pickRoot = (id) => { setView('roots'); setTag(null); setRootId(id); setScreen('detail'); };
+  // Từ bản đồ gốc mở một item thường → rời màn Roots, sang trang chi tiết của nó
+  const openItem = (id) => { setView('all'); setTag(null); open(id); };
+
+  // ── Money links ─────────────────────────────────────────────
+  const money = useMemo(() => moneyMatrix(items), [items]);
+  // Chưa chọn gì → hàng đầu bảng; hàng/cột đã chọn biến mất (sửa link) → cũng về hàng đầu
+  const moneyFallback = money.rows[0] ? { type: 'row', id: money.rows[0].item.id } : null;
+  const activeMoney = moneySel && (moneySel.type === 'row' ? money.rows : money.cols)
+    .some((x) => x.item.id === moneySel.id) ? moneySel : moneyFallback;
+  const pickMoney = (sel) => { setMoneySel(sel); setScreen('detail'); };
+
   const counts = useMemo(() => {
-    const c = { all: items.length, fav: 0 };
+    const c = { fav: 0, weak: 0 };
     for (const i of items) {
       if (i.favorite) c.fav++;
+      if (isPasswordOnly(i)) c.weak++;
       c[i.tpl] = (c[i.tpl] || 0) + 1;
     }
     return c;
@@ -116,12 +175,24 @@ export default function AccountsPage() {
     return created;
   }, [tags]);
 
-  const dirty = cat !== 'all' || !!tag || !!query;
   const listTitle = tag
     ? `#${usedTags.find((t) => t.id === tag)?.name || 'tag'}`
-    : cat === 'all' ? 'All items'
-      : cat === 'fav' ? 'Favourites'
-        : TPL_BY_KEY.get(cat)?.name || 'Items';
+    : activeGroup ? activeGroup.name
+      : view === 'fav' ? 'Favourites'
+        : view === 'weak' ? 'Password only'
+          : view === 'roots' ? 'Roots'
+            : view === 'money' ? 'Money links'
+            : view === 'none' ? 'Ungrouped'
+              : 'All items';
+  const listCount = view === 'roots' ? visibleRoots.length : view === 'money' ? money.cells : visible.length;
+
+  // Ở màn 'home' (mobile) gõ tìm kiếm là tìm TOÀN vault → nhảy sang danh sách All.
+  // Ô tìm kiếm nằm ở header, header vẫn hiện ở màn 'list' → input không bị
+  // unmount giữa chừng, bàn phím không tắt. Desktop: xem bất biến ở đầu file.
+  const onSearch = (value) => {
+    setQuery(value);
+    if (screen === 'home' && value) { setView('all'); setTag(null); setScreen('list'); }
+  };
 
   // ── Hành động ───────────────────────────────────────────────
   // Reveal là per-field và chỉ sống trong lúc item đang mở: đổi item thì mọi
@@ -162,11 +233,18 @@ export default function AccountsPage() {
 
   const handleLock = () => {
     setSelectedId(null);
-    setScreen('list');
+    // Mở lại là về màn Vault từ đầu. Xoá luôn bộ lọc + chuỗi tìm kiếm (có thể chứa
+    // chữ nhạy cảm), và giữ bất biến "screen 'home' = chưa chọn gì" ở đầu file.
+    setScreen('home');
+    setView('all');
+    setTag(null);
+    setQuery('');
     setRevealed({});
     setCopied(null);
     setPickerOpen(false);
     setPendingTags([]);
+    setSelecting(false);
+    setPicked(new Set());
     lockVault();
   };
 
@@ -180,11 +258,77 @@ export default function AccountsPage() {
   const handleCreate = async (tplKey) => {
     if (creating) return;               // chặn double-click tạo 2 item
     setCreating(tplKey);
-    const id = await createItem(tplKey);
+    const id = await createItem(tplKey, { group: activeGroup?.path || '' });
     setCreating(null);
     if (!id) { showToast('Could not create the item', { icon: 'warning' }); return; }
     setPickerOpen(false);
     open(id, { edit: true });
+  };
+
+  // "Add as item" ở màn Roots: email → Email account (tiêu đề "Gmail"/"Outlook"… theo
+  // tên miền, địa chỉ vào field Email address), SĐT → Identity giữ số đó. Cả hai lập
+  // tức thành gốc (luật identifiersOf) mà tiêu đề không phải là chính địa chỉ.
+  const handleAddRoot = async (u) => {
+    if (creating) return;
+    const isEmail = u.ident.includes('@');
+    setCreating(isEmail ? 'email' : 'identity');
+    const id = await createItem(isEmail ? 'email' : 'identity', isEmail
+      ? { title: mailboxTitle(u.value), values: { 'Email address': u.value } }
+      : { title: `Phone · ${u.value}`, values: { 'Phone numbers': u.value } });
+    setCreating(null);
+    if (!id) { showToast('Could not create the item', { icon: 'warning' }); return; }
+    setView('all');
+    setTag(null);
+    open(id, { edit: true });
+  };
+
+  // ── Chuyển nhóm hàng loạt ───────────────────────────────────
+  // Nhóm suy ra từ item nên "tạo nhóm" = chọn item rồi gõ tên nhóm mới vào thanh
+  // Move to group. "+ New group" ở cột nhóm chỉ mở chế độ chọn ở All items, ô gõ
+  // tên nhóm mở sẵn.
+  const groupPaths = groupSuggestions(items, GROUP_PRESETS);
+  const exitSelect = () => { setSelecting(false); setPicked(new Set()); setBulkGroup(''); };
+  const startSelect = ({ fresh = false } = {}) => {
+    setSelecting(true);
+    setPicked(new Set());
+    setBulkGroup('');
+    if (fresh) { setView('all'); setTag(null); }
+    setScreen('list');
+    setNewGroup(fresh ? (n) => n + 1 : 0);
+  };
+  const togglePick = (id) => setPicked((s) => {
+    const next = new Set(s);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const allVisiblePicked = visible.length > 0 && visible.every((i) => picked.has(i.id));
+  const toggleAllVisible = () => setPicked((s) => {
+    const next = new Set(s);
+    visible.forEach((i) => (allVisiblePicked ? next.delete(i.id) : next.add(i.id)));
+    return next;
+  });
+
+  const moveSelected = async () => {
+    if (moving || !picked.size) return;
+    const target = normalizeGroup(bulkGroup);
+    // Bỏ qua item đã ở đúng nhóm: không ghi, không thêm dòng log thừa
+    const todo = items.filter((i) => picked.has(i.id) && normalizeGroup(i.group) !== target);
+    setMoving(true);
+    let ok = 0;
+    // Tuần tự, không Promise.all: mỗi item là một lần ghi ciphertext có CAS riêng;
+    // ghi song song hàng chục request không nhanh hơn bao nhiêu mà lỗi thì khó báo.
+    for (const it of todo) {
+      if (await saveItem({ ...it, group: target })) ok++;
+    }
+    setMoving(false);
+    const where = target ? target.replace('/', ' › ') : 'Ungrouped';
+    if (ok < todo.length) {
+      showToast(`Moved ${ok} of ${todo.length} to ${where}. The rest failed.`, { icon: 'warning' });
+    } else {
+      showToast(todo.length ? `Moved ${ok} item${ok === 1 ? '' : 's'} to ${where}` : `Already in ${where}`);
+    }
+    exitSelect();
+    if (ok || !todo.length) pickView(target ? `g:${groupKey(target)}` : 'none');
   };
 
   const handleDelete = async (item) => {
@@ -226,6 +370,7 @@ export default function AccountsPage() {
       <VaultGate
         status={vaultStatus}
         error={vaultError}
+        preferredTtl={preferredTtl}
         onSetup={setupVault}
         onUnlock={unlockVault}
         onRecover={recoverVault}
@@ -236,12 +381,22 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="acc-vault">
+    <div className="acc-vault" data-screen={screen} data-view={view === 'money' ? 'money' : undefined}>
       {/* ── Header ── */}
       <header className="acc-head">
         <div className="acc-brand">
           <span className="acc-brand__name">Keyplate</span>
           <span className="acc-brand__vault">Vault 01</span>
+        </div>
+
+        {/* Thanh điều hướng màn 'list' trên mobile (M2) — CSS ẩn ở desktop và ở các màn khác */}
+        <div className="acc-head__nav">
+          <button type="button" className="acc-head__back" onClick={() => setScreen('home')}>
+            <AppIcon name="caretLeft" size={16} /> Vault
+          </button>
+          <h2 className="acc-head__title">
+            {listTitle} <span className="acc-head__count">{listCount}</span>
+          </h2>
         </div>
 
         <div className="acc-search">
@@ -250,8 +405,9 @@ export default function AccountsPage() {
             className="acc-input"
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search titles, usernames, URLs, tags…"
+            onChange={(e) => onSearch(e.target.value)}
+            {...NO_AUTOFILL}
+            placeholder={activeGroup ? `Search in ${activeGroup.name}` : `Search all ${items.length} items`}
             aria-label="Search the vault"
           />
         </div>
@@ -266,64 +422,166 @@ export default function AccountsPage() {
               <p>Titles, usernames, URLs, notes, tags, fields, codes and history are sent to Supabase only as AES-GCM ciphertext.</p>
             </div>
           </div>
+          <button
+            className="acc-act"
+            onClick={() => setSessionModalOpen(true)}
+            title="Cài đặt thời hạn mở khóa két"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+          >
+            <AppIcon name="clock" size={14} />
+            <span>{sessionInfo ? formatTtlShort(sessionInfo.expiresAt) : 'Thời hạn'}</span>
+          </button>
           <button className="acc-act" onClick={() => setChangePassOpen(true)}>Đổi mật khẩu</button>
-          <button className="acc-act" onClick={handleLock}>Lock</button>
-          <button className="acc-btn acc-btn--primary" onClick={() => setPickerOpen(true)}>
-            <AppIcon name="plus" size={15} /> New item
+          {/* Mobile: hai nút này thành nút icon 44px; chữ giấu bằng clip nên tên truy cập vẫn còn */}
+          <button className="acc-act acc-head__icon" onClick={handleLock}>
+            <AppIcon name="lock" size={15} /><span className="acc-head__label">Lock</span>
+          </button>
+          <button className="acc-btn acc-btn--primary acc-head__icon" onClick={() => setPickerOpen(true)}>
+            <AppIcon name="plus" size={15} /><span className="acc-head__label">New item</span>
           </button>
         </div>
       </header>
 
       {vaultError && <div className="acc-vault-error" role="alert">{vaultError}</div>}
 
-      {/* ── Filter bar ── */}
-      <div className="acc-filters">
-        <div className="acc-filters__cap acc-filters__cap--types">Types</div>
-        <div className="acc-filters__row acc-filters__row--types">
-          <Chip icon={FILTER_ICONS.all} label="All" count={counts.all}
-            on={cat === 'all'} onClick={() => { setCat('all'); setTag(null); }} />
-          <Chip icon={FILTER_ICONS.fav} label="Favourites" count={counts.fav}
-            on={cat === 'fav'} onClick={() => { setCat('fav'); setTag(null); }} />
-          {TEMPLATES.map((t) => (
-            <Chip key={t.key} icon={t.icon} label={t.chip} count={counts[t.key] || 0}
-              on={cat === t.key} onClick={() => { setCat(t.key); setTag(null); }} />
-          ))}
-        </div>
-
-        {dirty && (
-          <div className="acc-filters__clear">
-            <button className="acc-btn acc-btn--ghost"
-              onClick={() => { setCat('all'); setTag(null); setQuery(''); }}>Clear</button>
-          </div>
-        )}
-
-        <div className="acc-filters__cap acc-filters__cap--tags">Tags</div>
-        {/* Hàng này CỐ Ý chỉ liệt kê tag đang gắn trên item của vault, không phải
-            toàn bộ tag hệ thống: bấm một tag chưa item nào dùng thì chỉ ra danh
-            sách rỗng. Chỗ chọn tag từ cả hệ thống là ở chế độ sửa của item. */}
-        <div className="acc-filters__row acc-filters__row--tags">
-          {usedTags.length === 0 && (
-            <span className="acc-sect__meta">
-              No item is tagged yet — add tags while editing an item
-            </span>
-          )}
-          {usedTags.map((t) => (
-            <button key={t.id}
-              className={`acc-chip acc-chip--tag${tag === t.id ? ' acc-chip--on' : ''}`}
-              onClick={() => setTag(tag === t.id ? null : t.id)}
-            >#{t.name}</button>
-          ))}
-        </div>
-      </div>
-
       {/* ── Body ── */}
-      <div className="acc-body" data-screen={screen}>
-        <section className="acc-pane acc-pane--list">
+      <div className="acc-body">
+        {/* ── Cột nhóm. Thay thanh lọc Types/Tags cũ: 14/18 item cùng loại ACC nên
+            lọc theo loại gần như không chia được gì; loại lùi thành select ở đầu
+            danh sách. ── */}
+        <nav className="acc-pane acc-groups" aria-label="Groups">
+          <GroupBtn icon={FILTER_ICONS.all} label="All items" count={items.length}
+            on={view === 'all' && !tag} onClick={() => pickView('all')} />
+          <GroupBtn icon={FILTER_ICONS.fav} label="Favourites" count={counts.fav}
+            on={view === 'fav' && !tag} onClick={() => pickView('fav')} />
+          {/* Mặc định template Account chỉ có phương thức password → đây thường là danh
+              sách việc cần làm thật, nên nó đứng ngay dưới All / Favourites */}
+          {counts.weak > 0 && (
+            <GroupBtn warn icon="warning" label="Password only" count={counts.weak}
+              on={view === 'weak' && !tag} onClick={() => pickView('weak')} />
+          )}
+          {/* Bản đồ gốc định danh (PA3): mailbox / SĐT mà item khác dựa vào */}
+          {(roots.length > 0 || untracked.length > 0) && (
+            <GroupBtn icon="tree" label="Roots" count={roots.length}
+              on={view === 'roots' && !tag} onClick={() => pickView('roots')} />
+          )}
+          {/* Ví / thẻ ⇒ tài khoản: liên kết tiền tách khỏi cây đăng nhập của Roots */}
+          {money.cells > 0 && (
+            <GroupBtn icon="money" label="Money links" count={money.cells}
+              on={view === 'money' && !tag} onClick={() => pickView('money')} />
+          )}
+
+          <div className="acc-groups__cap">Groups</div>
+          {tree.groups.map((g) => (
+            <Fragment key={g.key}>
+              <GroupBtn icon={groupIcon(g.name, GROUP_ICONS)} hue={avatarHue(g.name)} label={g.name} count={g.count}
+                on={view === `g:${g.key}` && !tag} onClick={() => pickView(`g:${g.key}`)} />
+              {/* Con mang màu của CHA: cả nhánh đọc ra là một khối */}
+              {g.children.map((c) => (
+                <GroupBtn key={c.key} sub icon={groupIcon(c.name, GROUP_ICONS)} hue={avatarHue(g.name)} label={c.name}
+                  count={c.count} on={view === `g:${c.key}` && !tag} onClick={() => pickView(`g:${c.key}`)} />
+              ))}
+            </Fragment>
+          ))}
+          {tree.ungrouped > 0 && (
+            <GroupBtn icon={GROUP_ICONS.ungrouped} label="Ungrouped" count={tree.ungrouped}
+              on={view === 'none' && !tag} onClick={() => pickView('none')} />
+          )}
+          {tree.groups.length === 0 && items.length > 0 && (
+            <p className="acc-groups__hint">Pick items with + New group, or give one a group in Edit.</p>
+          )}
+          {items.length > 0 && (
+            <GroupBtn icon="plus" label="New group" count="" on={false} onClick={() => startSelect({ fresh: true })} />
+          )}
+
+          {/* CỐ Ý chỉ liệt kê tag đang gắn trên item của vault, không phải toàn bộ
+              tag hệ thống. Chỗ chọn tag từ cả hệ thống là ở chế độ sửa của item. */}
+          {usedTags.length > 0 && (
+            <>
+              <div className="acc-groups__cap acc-groups__cap--tags">Tags</div>
+              <div className="acc-groups__tags">
+                {usedTags.map((t) => (
+                  <button key={t.id} type="button" aria-pressed={tag === t.id}
+                    className={`acc-chip acc-chip--tag${tag === t.id ? ' acc-chip--on' : ''}`}
+                    onClick={() => pickTag(t.id)}
+                  >#{t.name}</button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Mobile: header không còn chỗ cho nút "Đổi mật khẩu" → nó xuống cuối màn Vault.
+              Desktop CSS ẩn dòng này (nút ở header vẫn còn). */}
+          <button type="button" className="acc-act acc-groups__passphrase" onClick={() => setChangePassOpen(true)}>
+            <AppIcon name="key" size={14} /> Đổi mật khẩu Vault
+          </button>
+        </nav>
+
+        {view === 'money' ? (
+          <section className="acc-pane acc-pane--list" aria-label="Money links">
+            <MoneyMatrix matrix={money} selected={activeMoney} onSelect={pickMoney} />
+          </section>
+        ) : view === 'roots' ? (
+          <section className="acc-pane acc-pane--list" aria-label="Identity roots">
+            <div className="acc-listhead">
+              <h2 className="acc-listhead__title">Roots</h2>
+              <span className="acc-listhead__count">{visibleRoots.length}</span>
+            </div>
+            <p className="acc-roots__hint">Mailboxes and numbers other items lean on, most depended-on first.</p>
+
+            {visibleRoots.map((r) => (
+              <RootRow key={r.item.id} root={r} on={r.item.id === activeRoot?.item.id}
+                onOpen={() => pickRoot(r.item.id)} />
+            ))}
+            {!roots.length && (
+              <div className="acc-list__empty">
+                No roots yet. An item whose title is an email or phone number, or an Identity item, becomes one.
+              </div>
+            )}
+            {roots.length > 0 && !visibleRoots.length && (
+              <div className="acc-list__empty">No roots match this search.</div>
+            )}
+
+            {untracked.length > 0 && (
+              <>
+                <div className="acc-roots__cap">Not in vault yet</div>
+                {untracked.map((u) => (
+                  <div className="acc-untracked" key={u.ident}>
+                    <span className="acc-untracked__id">{u.value}</span>
+                    <span className="acc-untracked__why">
+                      Used by {u.items.map((i) => i.title).join(', ')}. It has no item of its own, so its
+                      password and 2-step aren&apos;t tracked.
+                    </span>
+                    <button type="button" className="acc-act acc-untracked__add"
+                      disabled={!!creating} onClick={() => handleAddRoot(u)}>
+                      {creating ? 'Creating…' : '+ Add as item'}
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+          </section>
+        ) : (
+        <section className={`acc-pane acc-pane--list${selecting ? ' acc-pane--selecting' : ''}`}>
           <div className="acc-listhead">
             <h2 className="acc-listhead__title">{listTitle}</h2>
             <span className="acc-listhead__count">
               {visible.length} {visible.length === 1 ? 'entry' : 'entries'}
             </span>
+            {/* Chỉ liệt kê loại đang có item — 6 loại rỗng không chiếm chỗ */}
+            <select className="acc-select acc-select--filter" value={tplFilter}
+              onChange={(e) => setTplFilter(e.target.value)} aria-label="Filter by type">
+              <option value="">All types</option>
+              {TEMPLATES.filter((t) => counts[t.key] || t.key === tplFilter).map((t) => (
+                <option key={t.key} value={t.key}>{t.chip} · {counts[t.key] || 0}</option>
+              ))}
+            </select>
+            {items.length > 0 && (
+              <button type="button" className={`acc-act${selecting ? ' acc-act--on' : ''}`} aria-pressed={selecting}
+                onClick={() => (selecting ? exitSelect() : startSelect())}>
+                {selecting ? 'Done' : 'Select'}
+              </button>
+            )}
           </div>
 
           {isLoading && items.length === 0 && (
@@ -345,12 +603,66 @@ export default function AccountsPage() {
           )}
 
           {visible.map((i) => (
-            <ListRow key={i.id} item={i} on={i.id === selectedId} onOpen={() => open(i.id)} />
+            <ListRow key={i.id} item={i} on={i.id === selectedId} onOpen={() => open(i.id)}
+              selecting={selecting} picked={picked.has(i.id)} onPick={() => togglePick(i.id)} />
           ))}
+
+          {selecting && (
+            <div className="acc-bulkbar" role="region" aria-label="Move selected items to a group">
+              <div className="acc-bulkbar__top">
+                <span className="acc-bulkbar__count">{picked.size} selected</span>
+                <button type="button" className="acc-act" onClick={toggleAllVisible} disabled={!visible.length}>
+                  {allVisiblePicked ? 'Clear these' : `Select all ${visible.length}`}
+                </button>
+              </div>
+              <div className="acc-bulkbar__row">
+                <GroupPicker key={newGroup} startCustom={newGroup > 0} value={bulkGroup} onChange={setBulkGroup}
+                  paths={groupPaths} onEnter={moveSelected} />
+                <button type="button" className="acc-btn acc-btn--primary" onClick={moveSelected}
+                  disabled={!picked.size || moving}>
+                  {moving ? 'Moving…' : 'Move'}
+                </button>
+                <button type="button" className="acc-btn" onClick={exitSelect} disabled={moving}>Cancel</button>
+              </div>
+            </div>
+          )}
         </section>
+        )}
 
         <section className="acc-pane acc-pane--detail">
-          {selected ? (
+          {view === 'money' ? (
+            <MoneyPanel
+              key={activeMoney ? `${activeMoney.type}:${activeMoney.id}` : 'none'}
+              items={items}
+              matrix={money}
+              selected={activeMoney}
+              rootIds={rootIds}
+              backLabel="Money links"
+              onBack={() => setScreen('list')}
+              onOpenItem={openItem}
+              onPickRoot={pickRoot}
+            />
+          ) : view === 'roots' ? (
+            activeRoot ? (
+              <RootMap
+                key={activeRoot.item.id}
+                root={activeRoot}
+                items={items}
+                rootIds={rootIds}
+                backLabel="Roots"
+                onBack={() => setScreen('list')}
+                onOpenItem={openItem}
+                onPickRoot={pickRoot}
+              />
+            ) : (
+              <div className="acc-detail__blank">
+                <div>
+                  <h2>No root selected</h2>
+                  <p>Roots appear once an item is titled with an email or phone number.</p>
+                </div>
+              </div>
+            )
+          ) : selected ? (
             <AccountDetail
               /* key: buộc React dựng lại subtree khi đổi item, nhờ đó animation
                  acc-enter chạy lại — mốc thị giác cho biết nội dung đã đổi */
@@ -361,6 +673,7 @@ export default function AccountsPage() {
               autoEdit={autoEditId === selected.id}
               revealed={revealed}
               copied={copied}
+              backLabel={listTitle}
               onBack={() => setScreen('list')}
               onOpen={open}
               onCopy={copy}
@@ -426,6 +739,18 @@ export default function AccountsPage() {
           if (success) showToast('Đã đổi mật khẩu Vault thành công!', { icon: 'check' });
         }}
         onChangePassphrase={changePassphrase}
+      />
+
+      <VaultSessionModal
+        isOpen={sessionModalOpen}
+        onClose={() => setSessionModalOpen(false)}
+        sessionInfo={sessionInfo}
+        preferredTtl={preferredTtl}
+        onUpdateTtl={(ttl) => {
+          updateSessionTtl(ttl);
+          showToast(ttl > 0 ? `Đã lưu thời hạn phiên (${formatTtlLabel(ttl)})` : 'Đã tắt lưu phiên mở khóa', { icon: 'check' });
+        }}
+        onLock={handleLock}
       />
 
       <RecoveryKeyModal
@@ -557,6 +882,127 @@ function ChangePassphraseModal({ isOpen, onClose, onChangePassphrase }) {
   );
 }
 
+function formatTtlLabel(mins) {
+  if (!mins || mins <= 0) return 'Không lưu';
+  if (mins === 15) return '15 phút';
+  if (mins === 60) return '1 giờ';
+  if (mins === 480) return '8 giờ';
+  if (mins === 1440) return '1 ngày';
+  if (mins === 10080) return '7 ngày';
+  if (mins === 43200) return '30 ngày';
+  return `${mins} phút`;
+}
+
+function formatTtlShort(expiresAt) {
+  if (!expiresAt) return 'Thời hạn';
+  const diff = expiresAt - Date.now();
+  if (diff <= 0) return 'Hết hạn';
+  const mins = Math.ceil(diff / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.ceil(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.ceil(hours / 24);
+  return `${days}d`;
+}
+
+function formatTtlRemaining(expiresAt) {
+  if (!expiresAt) return '';
+  const diff = expiresAt - Date.now();
+  if (diff <= 0) return 'Đã hết hạn';
+  const mins = Math.ceil(diff / 60000);
+  if (mins < 60) return `còn ${mins} phút`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  if (hours < 24) return `còn ${hours} giờ ${remMins > 0 ? remMins + ' phút' : ''}`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return `còn ${days} ngày ${remHours > 0 ? remHours + ' giờ' : ''}`;
+}
+
+function VaultSessionModal({ isOpen, onClose, sessionInfo, preferredTtl, onUpdateTtl, onLock }) {
+  const [selectedTtl, setSelectedTtl] = useState(sessionInfo?.ttlMinutes ?? preferredTtl ?? 0);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedTtl(sessionInfo?.ttlMinutes ?? preferredTtl ?? 0);
+    }
+  }, [isOpen, sessionInfo, preferredTtl]);
+
+  if (!isOpen) return null;
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    onUpdateTtl(Number(selectedTtl));
+    onClose();
+  };
+
+  return createPortal(
+    <div className="acc-scrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="Cài đặt phiên mở khóa Vault">
+      <div className="acc-dialog" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="acc-dialog__head">
+          <h3 className="acc-dialog__title">Thời hạn mở khóa két</h3>
+          <button className="acc-btn acc-btn--ghost" onClick={onClose}>Đóng</button>
+        </div>
+        <p className="acc-dialog__lede">
+          Thiết lập thời gian lưu khóa giải mã trên trình duyệt này. Trong khoảng thời gian này, bạn tải lại trang (F5) hoặc mở tab mới sẽ không cần nhập lại mật khẩu Vault.
+        </p>
+
+        <form onSubmit={handleSave} style={{ display: 'grid', gap: '14px', marginTop: '12px' }}>
+          <div>
+            <label className="acc-sect__meta" style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }} htmlFor="vault-session-ttl">
+              Tự động khóa sau:
+            </label>
+            <select
+              id="vault-session-ttl"
+              className="acc-input"
+              value={selectedTtl}
+              onChange={(e) => setSelectedTtl(Number(e.target.value))}
+            >
+              <option value={0}>Không lưu (khóa ngay khi tải lại trang)</option>
+              <option value={15}>15 phút</option>
+              <option value={60}>1 giờ</option>
+              <option value={480}>8 giờ (1 ngày làm việc)</option>
+              <option value={1440}>1 ngày</option>
+              <option value={10080}>7 ngày</option>
+              <option value={43200}>30 ngày</option>
+            </select>
+          </div>
+
+          {sessionInfo?.expiresAt && (
+            <div className="acc-gate__ttl-current">
+              <AppIcon name="clock" size={14} />
+              <span>Phiên hiện tại: {formatTtlRemaining(sessionInfo.expiresAt)}</span>
+            </div>
+          )}
+
+          <div className="acc-gate__warning">
+            <AppIcon name="shieldCheck" size={14} />
+            <span>Chỉ nên bật thời hạn mở khóa trên thiết bị cá nhân của riêng bạn. Nếu dùng máy công cộng, hãy chọn "Không lưu" hoặc bấm Khóa két ngay khi dùng xong.</span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+            <button
+              type="button"
+              className="acc-btn acc-btn--ghost"
+              style={{ color: 'var(--danger)' }}
+              onClick={() => {
+                onClose();
+                onLock();
+              }}
+            >
+              Khóa két ngay
+            </button>
+            <button type="submit" className="acc-btn acc-btn--primary">
+              Lưu cài đặt
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function RecoveryKeyModal({ recoveryKey, onClose }) {
   const [copied, setCopied] = useState(false);
 
@@ -632,13 +1078,20 @@ function RecoveryKeyModal({ recoveryKey, onClose }) {
   );
 }
 
-function VaultGate({ status, error, onSetup, onUnlock, onRecover, onExport, onRestore }) {
+function VaultGate({ status, error, preferredTtl = 0, onSetup, onUnlock, onRecover, onExport, onRestore }) {
   const [mode, setMode] = useState('standard'); // 'standard' | 'recover'
   const [passphrase, setPassphrase] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [recoveryKeyInput, setRecoveryKeyInput] = useState('');
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [ttl, setTtl] = useState(preferredTtl || 0);
+
+  useEffect(() => {
+    if (preferredTtl !== undefined) {
+      setTtl(preferredTtl);
+    }
+  }, [preferredTtl]);
 
   if (status === 'loading') {
     return (
@@ -690,7 +1143,7 @@ function VaultGate({ status, error, onSetup, onUnlock, onRecover, onExport, onRe
       return;
     }
     setBusy(true);
-    const result = setup ? await onSetup(passphrase) : await onUnlock(passphrase);
+    const result = setup ? await onSetup(passphrase, { ttlMinutes: ttl }) : await onUnlock(passphrase, { ttlMinutes: ttl });
     setBusy(false);
     if (!result.ok) setFormError(result.error || 'Could not open the Vault.');
   };
@@ -801,6 +1254,32 @@ function VaultGate({ status, error, onSetup, onUnlock, onRecover, onExport, onRe
                 </div>
               </>
             )}
+
+            <div className="acc-gate__ttl">
+              <label htmlFor="vault-passphrase-ttl" className="acc-gate__ttl-label">
+                <AppIcon name="clock" size={13} /> Ghi nhớ mở khóa trên máy này:
+              </label>
+              <select
+                id="vault-passphrase-ttl"
+                className="acc-input acc-gate__ttl-select"
+                value={ttl}
+                onChange={(e) => setTtl(Number(e.target.value))}
+              >
+                <option value={0}>Không lưu (khóa ngay khi tải lại trang)</option>
+                <option value={15}>15 phút</option>
+                <option value={60}>1 giờ</option>
+                <option value={480}>8 giờ (1 ngày làm việc)</option>
+                <option value={1440}>1 ngày</option>
+                <option value={10080}>7 ngày</option>
+                <option value={43200}>30 ngày</option>
+              </select>
+              {ttl > 0 && (
+                <div className="acc-gate__ttl-hint">
+                  <AppIcon name="shieldCheck" size={12} />
+                  <span>Khóa giải mã sẽ lưu tạm trên trình duyệt này. Sau {formatTtlLabel(ttl)} két sẽ tự khóa lại.</span>
+                </div>
+              )}
+            </div>
 
             {(formError || error) && (
               <div className="acc-gate__error" role="alert">{formError || error}</div>
@@ -981,13 +1460,21 @@ function VaultBackup({ onExport, onRestore }) {
   );
 }
 
-/* ── Chip của filter bar ─────────────────────────────────────── */
-function Chip({ icon, label, count, on, onClick }) {
+/* ── Một dòng của cột nhóm ───────────────────────────────────── */
+/* `hue` → `--h`, cùng công thức màu với avatar; không có hue (All, Favourites,
+   Ungrouped) thì plate trung tính. Tên luôn nằm trong DOM: ở dạng rail CSS chỉ
+   giấu bằng clip, nên nút vẫn có tên truy cập được; `title` là tooltip khi rê. */
+function GroupBtn({ icon, hue, label, count, on, sub, warn, onClick }) {
+  const tone = warn ? ' acc-grp--warn' : hue === undefined ? ' acc-grp--plain' : '';
   return (
-    <button className={`acc-chip${on ? ' acc-chip--on' : ''}`} onClick={onClick}>
-      <AppIcon name={icon} size={13} />
-      <span>{label}</span>
-      <span className="acc-chip__num">{count}</span>
+    <button type="button" title={label} aria-pressed={on} onClick={onClick}
+      className={`acc-grp${sub ? ' acc-grp--sub' : ''}${tone}${on ? ' acc-grp--on' : ''}`}
+      style={hue === undefined ? undefined : { '--h': hue }}>
+      <span className="acc-grp__plate"><AppIcon name={icon} size={15} /></span>
+      <span className="acc-grp__name">{label}</span>
+      <span className="acc-grp__num">{count}</span>
+      {/* Mũi tên "đi sâu" chỉ hiện ở màn Vault mobile (M1), nơi mỗi dòng mở ra một màn mới */}
+      <span className="acc-grp__chev" aria-hidden="true"><AppIcon name="caretRight" size={13} /></span>
     </button>
   );
 }
@@ -997,10 +1484,15 @@ function Chip({ icon, label, count, on, onClick }) {
    mà cùng in "ACC" thì không quét được bằng mắt. Mã vẫn giữ, xuống thành badge
    nhỏ cạnh tiêu đề: nó vẫn cần để nhận loại, và chip link + dòng sign-in đang
    dùng cùng ngôn ngữ thị giác đó. */
-function ListRow({ item, on, onOpen }) {
+function ListRow({ item, on, onOpen, selecting, picked, onPick }) {
   const tpl = TPL_BY_KEY.get(item.tpl);
+  // Chế độ chọn: cả dòng là <label> bọc checkbox thật — bấm đâu cũng bật/tắt, và
+  // không có control lồng trong <button> (HTML không cho).
+  const Row = selecting ? 'label' : 'button';
   return (
-    <button className={`acc-row${on ? ' acc-row--on' : ''}`} onClick={onOpen}>
+    <Row className={`acc-row${selecting ? ' acc-row--select' : on ? ' acc-row--on' : ''}${picked ? ' acc-row--picked' : ''}`}
+      onClick={selecting ? undefined : onOpen}>
+      {selecting && <input type="checkbox" className="acc-row__check" checked={picked} onChange={onPick} />}
       <AccountAvatar item={item} />
       <span className="acc-row__body">
         <span className="acc-row__top">
@@ -1011,7 +1503,11 @@ function ListRow({ item, on, onOpen }) {
         </span>
         <span className="acc-row__sub">{itemSubtitle(item, tpl?.name || 'Item')}</span>
       </span>
-      <span className="acc-row__at">{relativeUpdated(item.updated)}</span>
-    </button>
+      <span className="acc-row__side">
+        <span className="acc-row__at">{relativeUpdated(item.updated)}</span>
+        {/* Chỉ cờ rủi ro, không cờ "an toàn": màu vàng chỉ xuất hiện khi có việc phải làm */}
+        {isPasswordOnly(item) && <span className="acc-row__auth">PWD only</span>}
+      </span>
+    </Row>
   );
 }

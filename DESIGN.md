@@ -434,6 +434,10 @@ Character:
 
 - **Dark-first.** `:root` is the dark theme; light is an override on
   `[data-theme="light"]`. Every new surface must be legible in both.
+  `color-scheme` in light mode is always `only light`, never plain `light`: the
+  property inherits, and a plain `light` on a control re-enables the browser's Auto
+  Dark Mode (Chrome/Samsung "dark web pages") for that element only — black inputs
+  inside a white form.
 - **Glassmorphic.** Content sits on translucent white-alpha panels over a
   near-black navy page, softened by `backdrop-filter: blur()`.
 - **Neon accents, quiet chrome.** Purple → cyan gradients carry brand and
@@ -1045,29 +1049,37 @@ form. Built **on `GenericModal`**, not a fourth modal system.
 
 ### Account vault — `.acc-*` (`accounts.css`)
 
-Rebuilt v5.2.0 for `/accounts` to the **Keyplate** design handoff. Header · filter
-bar · two-pane body (item list · detail), breakpoint 900px.
+Rebuilt v5.2.0 for `/accounts` (Keyplate handoff), re-skinned v6.31.0 to the **"Ops
+console"** style (user pick 2026-10-24, option S2 on the design canvas). Layout: header ·
+three-pane body (groups · item list · detail), breakpoints 1180px / 900px. The old two-row
+Types/Tags filter bar is gone.
 
+- **Why the re-skin:** the Keyplate look (violet `#7c5cff` with a glow on the primary
+  button, pill buttons, 18px rounded cards, soft drop shadows, letter-spaced uppercase
+  micro-labels everywhere, Plus Jakarta Sans) read as a generic SaaS landing page, not a
+  security tool. S2 is graphite / white paper, **IBM Plex Sans** for UI + **IBM Plex Mono**
+  for every value, count, code and timestamp, `4px` corners (`--r`, `--r-sm: 3px`), no
+  glow, no soft shadows, no hover lift. **Cyan is only for action and selection; amber /
+  red only for risk** (`--warn*`, `--danger*`, `--ok*`) — never decorative.
 - **This module owns a scoped token set — one of two deliberate domain
-  exceptions alongside Finance Nocturne (`--n-*`).** Everything inside Vault
-  otherwise reads its Keyplate tokens instead of `--purple` / `--radius-*` from
-  `global.css`; the vault instead declares a *scoped* Keyplate palette on
-  `.acc-vault` (`--color-accent: #7c5cff`, `--surface`, radius `18px`,
-  `--lift-1/2`, a full dark set and a `[data-theme="light"] .acc-vault` override).
-  The scope means **not one of these variables leaks** to the rest of the app.
-  User decision (2026-08-05): `/accounts` must look exactly like the handoff. To
-  retune vault colour/spacing, edit `accounts.css`, **not** `global.css`. This is
-  the sanctioned way to carry a self-contained design into the app without
-  polluting the global layer — do not copy the pattern casually.
-- **Dark is the default, light is the override** — inverse of the handoff (which
-  ships light-only) because the app's `:root` is dark. Two swaps easy to get
-  wrong: `--color-accent-700` must **invert to a light step** (`#b4a0ff`) on dark
-  because it carries every accent-coloured text (kicker, 3-letter codes, PRIMARY
-  badges); and `--lift-1/2` become **hairline box-shadows** on dark because black
-  shadows vanish on a dark ground and the whole interface goes flat.
+  exceptions alongside Finance Nocturne (`--n-*`).** Everything inside Vault reads its
+  own tokens instead of `--purple` / `--radius-*` from `global.css`; the vault declares a
+  *scoped* palette on `.acc-vault, .acc-scrim` (`--color-accent`, `--surface`,
+  `--surface-2`, `--on-accent`, `--warn*`, `--ok*`, `--danger*`, `--r`, a full dark set
+  and a `[data-theme="light"]` override). The scope means **not one of these variables
+  leaks** to the rest of the app. To retune vault colour/spacing, edit `accounts.css`,
+  **not** `global.css`. Do not copy the pattern casually.
+- **Dark is the default, light is the override** because the app's `:root` is dark. Swaps
+  easy to get wrong: `--color-accent-700` (every accent-coloured text) is a **light step**
+  on dark (`#7fd3ff`) and a **dark step** on light (`#075f94`); the light accent itself is
+  steel blue `#0a7bbf` because cyan `#4cc2ff` on white is ~2:1; `--on-accent` flips from
+  near-black (on cyan) to white (on steel blue). Elevation is the panel's own 1px border
+  (`--lift-1: none`); only floating dialogs get `--lift-2`.
 - **Muted text is always `color-mix(in srgb, var(--color-text) N%, transparent)`,
   never a hard grey** — flipping `--color-text` fixes the whole muted ramp at once
-  so it survives the theme flip untouched.
+  so it survives the theme flip untouched. Readable muted text uses **64%**: anything
+  under ~60% drops below 4.5:1 on the light theme's white surface. Lower mixes (28–35%)
+  are only for placeholders, empty-value dashes and disabled icons.
 - **`.acc-warn--secure`** — the non-dismissible encryption status banner. It uses
   a green success treatment to state that full-content AES-GCM is active and
   enumerates which user-entered fields reach Supabase only as ciphertext.
@@ -1075,25 +1087,38 @@ bar · two-pane body (item list · detail), breakpoint 900px.
   sign-in methods and the code sheet. Built as `display: grid; gap: 1px;
   background: divider` so the 1px gaps *are* the row rules and each row sits on
   `--surface` — **plus a real `1px solid divider` border around the panel** and
-  `overflow: hidden` + `18px` radius + `--lift-1`. Dropping that outer border (as
-  an earlier pass did) leaves the panel edgeless and the whole page reads flat.
+  `overflow: hidden` + `--r` radius. Dropping that outer border (as
+  an earlier pass did) leaves the panel edgeless and the whole page reads flat — it is
+  the only elevation cue now that there are no shadows.
 - **Edit mode uses real bordered controls, not borderless inline text.**
-  `.acc-input` / `.acc-select` / `.acc-textarea` carry a `1px divider` border,
-  `12px` radius and a `--ring` focus shadow. This is the **opposite** of the
+  `.acc-input` / `.acc-select` / `.acc-textarea` carry a `1px divider` border, sit on
+  `--color-bg` (sunk into the page, not raised like a panel), `--r` radius and a
+  `--ring` focus shadow. This is the **opposite** of the
   Proton-Pass-derived pattern the previous `/accounts` used ("the border belongs
   to the card, never the input"); that idea is not part of this design and
   re-applying it is what made edit mode look like naked text. Do not "clean up"
   these borders.
-- **Every small ghost action is `11px / .08em / uppercase`** (`.acc-act`):
-  Reveal, Hide, Copy, Generate, Make primary, Turn on/off, + Add value,
-  + Link an item, Regenerate, Append, Show all N events, Delete item. Sentence
-  case here reads as body copy and breaks the row rhythm.
-- **`.acc-btn--primary` carries a violet glow** (`0 8px 20px -8px
-  rgba(124,92,255,.65)`, deepening on hover). Without it the primary action is a
-  flat purple rectangle — it is the single biggest contributor to the page
-  feeling cheap.
-- **`.acc-code`** — the 36px `12px`-radius chip carrying a template's 3-letter
-  code, used in the sign-in rows. Accent-tinted when it marks a primary method.
+- **Every small action is a bordered `12px` sentence-case button** (`.acc-act`, 28px
+  min height, `--r-sm`): Reveal, Hide, Copy, Generate, Make primary, Turn on/off, + Add
+  value, + Link an item, Regenerate, Append, Show all N events. The border is what keeps
+  them reading as controls rather than body copy (the old rule made them uppercase
+  instead). `Delete item` (`.acc-foot__del`) is the same button in `--danger`.
+- **`.acc-btn--primary` is solid accent with `--on-accent` text — no gradient, no glow.**
+  Next to outline buttons a solid fill is enough emphasis; the previous gradient + violet
+  glow was the single biggest "looks AI-made" tell.
+- **Values are monospace:** `.acc-field__val`, `.acc-multi__val`, counts
+  (`.acc-grp__num`, `.acc-listhead__count`, `.acc-sect__meta`), timestamps, `.acc-code`
+  and the `.acc-link__code` / `.acc-row__code` badges use `--acc-mono`. Labels
+  (`.acc-field__label`) are sentence-case 13px muted; only section titles and KPI captions
+  stay uppercase, at `.08em`.
+- **`.acc-kpis` — a stat strip under the title (view mode):** Dependents · Depth · Sign-in ·
+  Updated, so "how much hangs on this item" is answered before scrolling. Sign-in turns
+  `--warn-ink` when the item signs in with a password only.
+- **`.acc-row__auth` — risk at list level:** a `PWD only` amber dot under the timestamp
+  for items whose only active sign-in method is a password. Deliberately no "safe" badge:
+  amber appears only when there is something to fix.
+- **`.acc-code`** — the 36px chip carrying a template's 3-letter code (mono), used in
+  the sign-in rows. Accent-tinted when it marks a primary method.
 - **`.acc-avatar` — the list row's 36px identity plate, and a deliberate
   departure from the handoff.** The prototype puts the 3-letter template code in
   this slot; with twenty `ACC` items that makes every row identical and unscannable.
@@ -1107,7 +1132,7 @@ bar · two-pane body (item list · detail), breakpoint 900px.
     (`hsl(var(--h) 62% 70%)` dark / `58% 36%` light), because a single letter
     needs different lightness on a dark vs light ground. Deliberately not the
     seven Life Hub brand tokens — those are tuned to the app's purple/cyan and
-    would fight the vault's violet.
+    would fight the vault's own accent.
   - **`img` sits at `68%` with `object-fit: contain`,** not edge to edge. Logos are
     square-ish marks, not photos; stretching one to fill 36px turns it to mush,
     while insetting it reads as a logo on a plate.
@@ -1125,16 +1150,24 @@ bar · two-pane body (item list · detail), breakpoint 900px.
     Never reintroduce a favicon aggregator (google.com/s2, DuckDuckGo, Clearbit,
     logo.dev): handing one party the full list of domains you hold accounts at is
     self-disclosure of which bank and which exchange you use.
-- **`.acc-link`** — the pointer to another item: accent-alpha pill with a small
-  code badge, target title, borrowed value and a trailing `↗`. Pill because it
-  navigates. A link whose target is gone becomes `.acc-link--dead` (divider
+- **`.acc-link`** — the pointer to another item: accent-alpha plate (`--r`) with a
+  bordered accent edge, a mono code badge, target title, the target's subtitle (its email /
+  phone, `itemSubtitle`) and a trailing `↗` that marks it as navigation. A link points at the
+  whole item — there is no per-field target to pick. A link whose target is gone becomes `.acc-link--dead` (divider
   border, no hover, "Missing item / link broken") — a normal state (jsonb links
   have no FK), not an error.
-  - **"Linked from" section — an incoming link reads as a field row, not a chip in a
-    bag.** A link is stored only on the source item, so without this the target (a
-    bank account every card links to) looked unconnected. Each row reuses the
+  - **"Depends on this" section (was "Linked from") — an incoming dependency reads as a
+    field row, not a chip in a bag.** A link is stored only on the source item, so
+    without this the target (a bank account every card links to) looked unconnected.
+    Rows come from `dependentsOf()`: explicit links **plus value matches** (a bank's
+    Username equals the phone number of an Identity item, or of an item whose title *is*
+    that email/phone), walked down to 3 levels by BFS so Gmail → bank → that bank's card
+    shows as a tree. Deeper rows indent by `--depth` with a corner hook
+    (`.acc-field--nested`). A `.acc-impact` row on top sums it up ("2 items rely on this
+    one, and 1 more through them") and turns warn-coloured when the item signs in with a
+    password only. Each row reuses the
     `.acc-field` grid: label column = the **source field** that points here ("Bank
-    login"), value column = the `.acc-link` chip for the source item, action column =
+    login", "Username"), value column = the `.acc-link` chip for the source item, action column =
     a `Details` toggle. Details expands `.acc-backdetail` — a `dt`/`dd` pair per
     value, indented behind a divider rule so it reads as belonging to the chip above.
     **Expand in place rather than navigate:** these links are consulted at a glance
@@ -1143,28 +1176,29 @@ bar · two-pane body (item list · detail), breakpoint 900px.
     may show without a Reveal step, so secrets can never leak in through this view.
     Section is hidden in edit mode, since navigating away drops the draft without
     asking.
-- **`.acc-strength`** — a `180×5px` pill track at `9%` text with a pill fill whose
+- **`.acc-strength`** — a `180×5px` track at `9%` text with a fill whose
   `width` and `background-color` transition over 320ms. View-mode only, and only
   for `type="password"`; `secret` is never scored.
 - **Masked values read as redacted, not a glyph blob:** `.acc-field__val--mask` is
   monospace with `0.12em` letter-spacing; revealing drops the spacing (`--open`).
 - **`.acc-codecell__strike`** — a 1px rule animating `width: 0 → 100%` over 300ms
   when a single-use code is marked used, the cell fading to `opacity: 0.5`.
-- **`.acc-hist`** — a left rail (`border-left` divider) with 8px round accent dots
-  carrying a 3px `--color-bg` halo; timestamps 11px `.08em` uppercase tabular,
+- **`.acc-hist`** — a left rail (`border-left` divider) with 7px round accent dots
+  carrying a 3px `--color-bg` halo; timestamps in mono 11.5px,
   detail lines switch to monospace when they contain masked bullets.
 - **Native `<select>` (`.acc-select`) and a hand-built dialog, not a shared dropdown
   / `GenericModal`.** RULES §5 recommends the shared controls, but the vault
   overrides both **on purpose** — those components are
-  styled to Life Hub tokens and would break the scoped Keyplate look. Native
+  styled to Life Hub tokens and would break the scoped vault look. Native
   controls styled with vault tokens (select arrow via inline SVG background) keep
   fidelity and are less code. Exception noted in `AccountDetail.jsx`.
 - **`.acc-act` (Reveal / Copy / Generate) never hover-reveals** — permanent
-  `62%`-text pills, same reasoning as `.td-del`: touch has no hover, and
+  bordered buttons, same reasoning as `.td-del`: touch has no hover, and
   reveal/copy are the two controls a phone user reaches for. Generate is enabled
   and uses Web Crypto CSPRNG because every save path now writes ciphertext.
-- **Two-pane, CSS-only breakpoint — and it is a `@container` query, not
-  `@media`.** `.acc-body` is `minmax(300px,360px) minmax(520px,1fr)`; React holds
+- **Multi-pane, CSS-only breakpoints — and they are `@container` queries, not
+  `@media`.** `.acc-body` is `216px minmax(300px,360px) minmax(520px,1fr)` (groups
+  column first, see above); React holds
   only `selectedId` + `screen`. The handoff's 900px breakpoint measures **the
   vault's own width**; the prototype filled the viewport so the two were the same,
   but here the vault sits beside the 232px sidebar. Measured against the viewport,
@@ -1173,7 +1207,106 @@ bar · two-pane body (item list · detail), breakpoint 900px.
   and the narrow rules live in `@container (max-width: 899px)`. The prototype's
   `min-width: 1040px` floor is **dropped** for the same reason; the real floor is
   the columns' own `300 + 520`. Touch targets ≥44px and inputs 16px when narrow
-  (iOS zoom). No JS breakpoint, no `useMediaQuery`, no duplicated mobile markup.
+  (iOS zoom). No JS breakpoint, no `useMediaQuery`, no duplicated mobile layout markup.
+- **Title = service name, with suggestions.** The Edit-mode title input carries a native
+  `<datalist>` (`titleSuggestions`): mailbox name derived from the address → titles already in
+  the vault (the user's own spelling) → `titlePresets` in `account-templates.json`. Picking an
+  exact suggestion fills the group only when the item has none — it never overwrites a group
+  the user chose. Free typing always works; this is a hint list, not a picker.
+- **Standard groups.** `groupPresets` is 8 plain-language groups (Tài chính has 4 children) —
+  the shared vocabulary for the group picker, the bulk bar and the title presets; names must read
+  without explanation and must not look alike at a glance (no "Nền tảng", "Định danh",
+  "Tài khoản chính" — it reads as "Tài chính"; Apple ID / Microsoft / GitHub / ChatGPT are
+  "Công nghệ"). One sign-in = one item, so there is no "Google" title preset: a Google account
+  *is* the Gmail mailbox, one Email account item. Templates carry a default `group` used when an
+  item is created outside any group. A test fails if a title-preset key or a template group
+  drifts outside the list, so the standard cannot silently fork.
+- **Group picker = one `<select>`.** `GroupPicker` (exported from `AccountDetail.jsx`) sits next
+  to the item-type select and looks like it (`.acc-select--group`): Ungrouped · groups (vault
+  groups first, then presets), a group with children is an `<optgroup>` · New group… which
+  reveals a text input (`.acc-input--group`, "/" makes a sub-group). Rejected: a `<datalist>`
+  (browser-drawn, narrow, truncates) and a chip row (three rows of buttons for one choice).
+- **Vault inputs never feed the browser's password manager.** Every content input spreads
+  `NO_AUTOFILL` (`autocomplete=off` + ignore flags for third-party managers) and secret inputs
+  are `type="text"` masked with `-webkit-text-security` (`.acc-input--masked`): Chrome treats a
+  password input that disappears after typing as a login and offers to save it, which would
+  copy vault secrets into a second store. Only the unlock / change-passphrase forms keep
+  `type="password"`.
+- **Bulk move to group.** **Select** in the list head turns rows into `<label>`s wrapping a
+  real checkbox (`.acc-row--select`, `.acc-row--picked`) — no control nested in a `<button>`.
+  `.acc-bulkbar` sticks to the bottom of the list pane (inside the scroll area, so it never
+  covers the last row) and is fixed to the vault bottom on mobile, like the copy bar. It
+  uses the same `GroupPicker`; Ungrouped clears the group. "+ New group" in the groups column
+  is the same flow started at All items with the name input already open and focused —
+  there is no empty-group state to create, because groups are derived from items.
+- **Root titles are free text.** A root is recognised from data, not the title: an Identity's
+  values, or an **Email account (EML)**'s first email field (only the first — a "Recovery
+  phone" must not turn a mailbox into the root of that number). So the convention is title
+  = service ("Gmail", "VIB"), address in a field; `RootRow` and the root card show the real
+  address/number (`addressOf`) whenever the title is not itself one. Items titled with the
+  raw address still count (legacy rule).
+- **Two link kinds — sign-in (→) vs money (⇒) (design L0–L4 on the canvas, 2026-10-24).** A
+  wallet linked to a bank is risk flowing the *other* way from a recovery email, so the two
+  never share a tree. Every money-flavoured thing is drawn as money: `⇒` glyph, amber
+  (`--warn*`), dashed border (`.acc-depgroup--money`, `.acc-chain__node--money`); sign-in keeps
+  `→` and the accent. Edit mode shows `.acc-linkkind` — one line: two `aria-pressed`
+  `.acc-chip`s (→ Sign-in, ⇒ Money; not a radiogroup: two options do not earn arrow-key
+  handling) and a hint for the chosen kind, "· guessed from the field name" while `kind` is
+  unset. It appears only once something is linked. View mode labels each link field `→ Sign-in link` / `⇒ Money link`
+  (`.acc-field__typenote--money`).
+- **Money links (`MoneyLinks.jsx`) — a matrix, not a diagram.** Many-to-many wallet ↔ bank
+  lines cross from the third wallet on, so it is a real `<table>`: rows = items with money
+  links (`AccountAvatar` + name, sticky left with an *opaque* background — `accent-100` is
+  translucent, so a selected sticky cell layers it over `--surface`), columns = linked
+  accounts sorted by how many sources reach them, footer row counts sources (amber at ≥2).
+  Cells are indicators, not buttons; row and column headers are the buttons, so Tab walks
+  headers only. `.acc-vault[data-view="money"]` swaps the body grid to a wide middle pane and a
+  narrow detail pane (`MoneyPanel`) at ≥1180px and in rail mode; mobile keeps the normal
+  list → detail screens.
+- **Roots — identity root map (`RootMap.jsx`, design R0–R2 on the canvas).** A "Roots" entry
+  (icon `tree`) in the groups column swaps the middle pane for the roots list (`RootRow`,
+  reusing `.acc-row` + `.acc-avatar`; roots nothing depends on get `.acc-row--dim`) and
+  the detail pane for the map of the selected root — still three panes, no new layout.
+  The map reads top to bottom: `.acc-kpis` → `.acc-chain` (path from the root's own
+  upstream root down to the traced dependent; pills, `→` between) → `.acc-rootmap__map`
+  = *Protected by* (`.acc-guard`: active sign-in methods as plain rows, upstream items as
+  buttons) ─▶ root card (accent border) ─▶ *Depends on this* (`.acc-depgroup` per first-
+  level field, `.acc-deprow` indented by `--depth`) → amber `.acc-rootmap__impact`.
+  Wires are their own elements (`.acc-rootmap__wire` + `::after` arrowhead), not one
+  `<svg>`, so every block stays a real button/text. **A dependent row has two
+  buttons on purpose:** the row traces the chain, the `↗` opens the item — tracing is
+  the common action on this screen and must not navigate away. "Not in vault yet"
+  (`.acc-untracked`, dashed = not an item yet) lists identifiers used by ≥2 items with
+  no owning item. Mobile: list → map stacked vertically with wires turned downward, the
+  chain scrolls horizontally.
+- **Mobile (<900px) is its own drill-down layout, not the desktop squeezed** (designs
+  M1–M4 on the canvas, 2026-10-24). `screen` ∈ `home | list | detail` sits on
+  `.acc-vault[data-screen]`; CSS shows one pane per screen:
+  - **M1 `home`** — header = brand + Lock + "+" (icon-only 44px; labels hidden by
+    `clip-path`), search, then the groups column as a full-screen list of 50px rows
+    with `›` (`.acc-grp__chev`); `Password only` becomes an amber card; tags; "Đổi mật
+    khẩu Vault" at the bottom (`.acc-groups__passphrase`) because the header has no room
+    for it or the AES-GCM badge, both hidden on mobile.
+  - **M2 `list`** — header turns into `‹ Vault · Email 3` + "+" (`.acc-head__nav`). The
+    search input **stays in the header across M1 → M2**, so typing on M1 (which jumps to
+    a vault-wide `All` list) never unmounts the focused input. The list head keeps only
+    the type select.
+  - **M3 `detail`** — vault header hidden; `.acc-title` becomes a grid and
+    `.acc-title__main { display: contents }` lets `‹ <list title>` (`.acc-back`) share row
+    one with ☆ / Edit as a nav bar without separate markup. KPI strip is 2×2.
+    **`.acc-copybar`** pins "Copy username · Copy <secret field>" to the bottom (the
+    most frequent action, under the thumb); labels come from the field ("Copy card
+    number").
+  - **M4 edit** — `.acc-detail--editing .acc-title__actions` pins Cancel · Save to the
+    bottom like the Finance edit drawer; the back button is hidden (it would remount the
+    detail and drop the draft).
+  Both bars are `position: fixed` and land at the **vault's** bottom edge (above the app
+  tabs) because `container-type` makes `.acc-vault` their containing block — which is
+  also why `.acc-detail`'s enter animation is off on mobile: a transformed ancestor
+  would capture them instead. `QuickCapture` is hidden on `/accounts` so its round
+  button cannot sit on top of these bars. Desktop invariant the code relies on:
+  `screen` is `home` only before anything has been picked (every group / tag / item
+  pick sets it; Lock resets view + query too).
 - **The template dialog is portaled to `document.body`.** `container-type` implies
   `contain: layout`, which makes `.acc-vault` a containing block for
   `position: fixed` — a scrim rendered inside it would cover only the vault and
@@ -1181,15 +1314,68 @@ bar · two-pane body (item list · detail), breakpoint 900px.
   the token block is declared on **`.acc-vault, .acc-scrim`** rather than the
   vault alone, and the dialog's narrow rules use `@media` (no ancestor container).
   It is a hand-built dialog, not `GenericModal` — see the scoped exception above.
-- **Filter-bar cells carry explicit `grid-column`/`grid-row`.** The Clear button
-  is conditional; without explicit placement, auto-placement reflows the whole bar
-  when it appears or disappears.
+- **Groups column (`.acc-groups` / `.acc-grp`) — purpose groups, not item types, are the
+  primary navigation.** With 14 of 18 items sharing the `ACC` type, a Types chip row
+  partitioned nothing; type is now a small native `<select>` (`.acc-select--filter`) in
+  the list header, listing only types that have items. A group is one path string on the
+  item (`group: "Tài chính/Ngân hàng"`, max 2 levels) inside the encrypted payload; the
+  tree is derived from items like `usedTags`, so an empty group cannot exist. Plate colour
+  is the parent's `avatarHue` (children share it so a branch reads as one block); the icon
+  comes from keyword rules in `account-templates.json` `groupIcons`, first match wins.
+  **One markup, three forms, container queries only:** ≥1180px a 216px column with
+  names and counts; 900–1179px a 60px icon rail (names hidden by `clip-path`, not
+  `display:none`, so buttons keep an accessible name; tags hidden — search still matches
+  tag names); <900px the whole column becomes the **Vault home screen** (see Mobile
+  below). A `Password only` view (`.acc-grp--warn`, amber plate) sits under Favourites
+  whenever any item's only active sign-in method is a password. The rail exists because the vault sits beside the app's 232px sidebar:
+  on a 1366px laptop it gets ~1130px, less than 216 + 300 + 520. User preferred a vertical
+  column over a top chip bar even with two sidebars side by side (2026-10-24).
 - **`.acc-cardview`** — the credit-card preview: `linear-gradient(140deg,…)` that
   **lightens on dark** (`#5b46c9 → #34277f → #241d52`) with a `1px` accent
   hairline so it does not merge into a dark page; number masked to the last 4
   until the Card number field is revealed.
 - Motion collapses to `1ms` under `prefers-reduced-motion: reduce` via a single
   `--acc-dur` override on `.acc-vault`.
+
+### Knowledge (Cực quang) — `.kb-*` (`kb-tokens.css`, `collect.css`)
+
+Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradient chung của app. Bản thiết kế:
+"Kiến Thức Redesign" 1a (kiểu) / 2a (màn), Danh sách 4a, Quản lý chủ đề 4b (v6.33.0).
+
+- **Nền**: `<SkyBackground calm />` (cùng trời với Nhiệm vụ, xem Tasks workspace bên dưới) đặt trong `.kb-page`
+  (`position: relative; isolation: isolate`), `--kb-sky` là lớp tĩnh dưới nó. `calm` = không vật bay, không bụi sao theo chuột.
+- **Token** (`kb-tokens.css`, có giá trị tối và sáng): trời `--kb-sky`, nền `--kb-bg`, lớp `--kb-p1` (thẻ, kính
+  trong) / `--kb-p2` (hover, ô nhập), hộp thoại nền đặc `--kb-pop`, viền `--kb-line`, chữ `--kb-tx` / `--kb-dim` /
+  `--kb-faint`, nhấn `--kb-accent` (mint `#6EF2C7`; sáng: violet `#7C3AED`) + `--kb-accent-soft` / `--kb-on-accent` /
+  `--kb-glow`, phụ `--kb-violet` (đang chọn, ghi chú), `--kb-gold` (Chưa xếp, cạnh thẻ chung), `--kb-sage`, `--kb-red`;
+  `--kb-scrim` (nền sau hộp thoại), `--kb-shadow`.
+  Font: `--kb-display` (Spectral, có chân) cho tiêu đề — phần nhấn in nghiêng `.kb-em` màu `--kb-topic` hoặc
+  `--kb-gold` ("Kho Tàng *Kiến Thức*"); `--kb-font` (Be Vietnam Pro) cho chữ, `--kb-mono` chỉ cho phím tắt / code.
+- **Nhãn**: chữ thường, `≥12px`, không mono viết hoa. Bỏ nhãn thừa.
+- **Màu chủ đề** lấy từ `collection_topics.color`, truyền qua biến `--kb-topic` đặt inline (`.kb-dot`, `.kb-orb`,
+  quầng thẻ chủ đề, viên chủ đề trang đọc). Chưa có chủ đề → `--kb-faint` hoặc `--kb-gold`.
+- **Khung**: `.kb-shell` lưới `252px | minmax(0,1fr)` (cột trái `.kb-side`); trang đọc / soạn `--doc` một cột.
+  769–860px cột trái thành thanh trên (viên cuộn ngang). ≤768px (đã đăng nhập) như Finance: ẩn thanh Life Hub + tab đáy
+  chung (`body.in-knowledge-workspace`); `.kb-shell` 3 hàng: `.kb-mbar` (trong suốt: ô tìm · `.kb-topic-select` ·
+  nút ＋ tròn) · nội dung · `.kb-tabbar` (Home · 5 kiểu xem, `order: 1`). Viên `.kb-topic-select` dùng chung với trang đọc.
+  Danh sách / Tổng quan / Gallery chung `max-width: 1280px` + lề `28px 32px`; `.kb-content` có
+  `scrollbar-gutter: stable`.
+- **Chống nhảy**: lọc / đổi kiểu xem không được đổi chiều cao phần trên hay đẩy nút cạnh — hàng thẻ đếm theo phạm vi,
+  nút bật / tắt giữ nguyên chữ (trạng thái bằng màu + `aria-pressed`), không thêm / bớt tab theo kết quả lọc.
+- **Đầu danh sách** `.kb-topic-head`: dải mở, không khung — quầng `--kb-topic` góc trên trái + `border-bottom`,
+  không quả cầu; tên Spectral nghiêng 34px màu `--kb-topic` (không có thì `--kb-gold`; nền sáng pha 55% với `--kb-tx`),
+  số bài là viên `--kb-p2`, hàng thẻ thẳng lề trái.
+- **Nút**: `.kb-btn-primary` (nền mint + quầng `--kb-glow`), `.kb-btn-soft` (nền accent-soft), `.kb-btn-ghost` (viền),
+  `.kb-btn-violet`, `.kb-icon-btn` (32px, `--danger`, `.is-on`), `.kb-link`. Nhóm chọn một: `.kb-seg`
+  (`--quiet` không khung). Chip chủ đề trong bộ chọn: `.kb-chip` viên tròn `999px`.
+- **Trang đọc**: thanh trên trong suốt, chỉ có hai cụm `.kb-reader__group` (viên, nền `--kb-pop` 72%) để trời / trăng
+  không bị che. Cột chữ `max-width: 760px` giữa vùng đọc, cột phải 320px.
+- **Màu chữ trong bài**: không vá bằng CSS `span[style*=color]`; màu inline làm chìm chữ bị gỡ khi nạp
+  (`migrateTiptapDoc` trong `kbDeriveUtils`), màu nhấn (tím, đỏ…) giữ nguyên.
+- **Hiệu năng**: không `backdrop-filter` ở đâu trong Knowledge — trời phía sau chuyển động nên blur sẽ tính lại mỗi khung;
+  cột / thanh dùng `color-mix(--kb-bg, transparent)`, hộp thoại `--kb-pop` đặc. Chỉ animate transform / opacity
+  (vạch đọc dùng `scaleX`).
+- **Focus**: `.kb-page :focus-visible` viền `2px --kb-accent`; `prefers-reduced-motion` tắt chuyển động trong `.kb-page`.
 
 ### Other active shared atoms (`global.css`)
 
@@ -1206,8 +1392,8 @@ bar · two-pane body (item list · detail), breakpoint 900px.
 
 Trang Nhiệm vụ dùng bộ token riêng `--tk-*`, khai báo trên `.tasks-workspace`
 theo `[data-theme]`: tối = mockup 2a (mint `#5EF2C2`, nền trời `#0C1634→#060914`), sáng = mockup 2b
-(violet `#7C3AED`, nền `#F4F2FF`). Nền trời do `TaskSkyBackground.jsx` vẽ:
-tối = aurora, Ngân Hà, 4 lớp sao, sao băng, sao chổi; desktop thêm trăng đúng pha âm lịch hôm nay,
+(violet `#7C3AED`, nền `#F4F2FF`). Nền trời do `SkyBackground.jsx` + `sky.css` vẽ (dùng chung với Knowledge — bản `calm` — và FX Lab):
+tối = aurora, Ngân Hà, 4 lớp sao, sao băng vệt sáng mint (góc 32°, lấy từ bản thiết kế Kiến Thức), sao chổi; desktop thêm trăng đúng pha âm lịch hôm nay,
 sao sáng 4 cánh, 6 chòm sao lần lượt hiện (chu kỳ 150s) và chân trời hành tinh.
 Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt trời mọc, mây màu nước SVG, hạt sáng bay.
 `prefers-reduced-motion` tắt mọi chuyển động nền.
@@ -1223,7 +1409,7 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   sương mù ngẫu nhiên (`FogBank`: lớp sau giữa cây tầng giữa/gần, lớp trước mỏng phủ cây gần; mỗi lớp kéo đến rồi tan
   theo chu kỳ riêng 38–64s, tan hết thì xếp mảng sương lại chỗ ngẫu nhiên; mobile ít mảng, không blur);
   desktop sáng có tiên đốm sáng bay TRÊN nội dung (`.task-fx-top`, z-index 40, không nhận chuột).
-  Tương tác (`utils/taskFlyersElf.js`, gắn ở `TaskSkyBackground` khi kiểu Elf): workspace mang `data-frame` = c/a/cm/am;
+  Tương tác (`utils/taskFlyersElf.js`, gắn ở `SkyBackground` khi kiểu Elf): workspace mang `data-frame` = c/a/cm/am;
   nấm + đom đóm bấm được, bấm nền rung lá, sương (`[data-fog]`) tan quanh con trỏ, xong việc → `celebrate`.
   Thẻ: dây leo (trễ), dây leo nở hoa (xong), đom đóm (đang làm); cây chuỗi ngày `ElfStreakTree` góc trái dưới desktop.
   Sidebar toàn app dùng skin kính lá của mockup này (`.sidebar--elf`, luôn gắn trong Navbar, CSS ở `navbar.css`):
@@ -1248,7 +1434,7 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
   `AppIcon color="var(--x)"` được chuyển sang `style.color` (thuộc tính SVG `fill` không nhận biến CSS).
 - Breakpoint mobile = `≤768px` (cùng khung app: topbar 52 + tab đáy 60). Nền mobile tối: aurora, Ngân Hà,
   sao, 3 sao băng, sao chổi nhỏ (không trăng / chòm sao / chân trời) như mockup.
-- Nền động (`TaskSkyBackground` / `TaskForestBackground`): `.task-cosmos-bg` có `contain: strict`; lớp vật bay
+- Nền động (`SkyBackground` / `TaskForestBackground`): `.task-cosmos-bg` có `contain: strict`; lớp vật bay
   `.task-fly-host` là size container (`cqw/cqh`). Không blur lớp gradient, chỉ animate transform/opacity
   (xem Performance rules ở Elevation & Depth). Thẻ Kanban Rừng tiên không kính mờ (cột đã kính mờ); thẻ mobile giữ.
 - Ngăn chi tiết `.tk-drawer` (560px, ≥1600px là 600px, nổi phải): ở Kanban nổi **đè** lên bảng; Danh sách/Lịch ≥1280px vẫn chừa
@@ -1293,11 +1479,11 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
 
 - **Do** use `src/styles/global.css` as the default source for colour, radius,
   spacing and shadow tokens. The only domain-scoped token systems are Vault
-  Keyplate in `accounts.css`, Finance Nocturne (`--n-*`) in `finance.css` and the home dashboard
+  Ops console in `accounts.css`, Finance Nocturne (`--n-*`) in `finance.css` and the home dashboard
   palette (`--dash-*`) in `dashboard.css`.
 - **Home dashboard palette (`dashboard.css`):** the redesigned home page follows its own design file,
   so `.dash-workspace` declares a scoped `--dash-*` palette (paper light by default, override under
-  `[data-theme="dark"] .dash-workspace`) — the third scoped system next to Vault Keyplate and Finance
+  `[data-theme="dark"] .dash-workspace`) — the third scoped system next to Vault (Ops console) and Finance
   Nocturne. State colours (calendar cells, priority pills, body/recovery states, chart strokes) are
   classes over that palette; JSX keeps only geometry (`width`, `height`, `top/left`) inline.
 - **Don't** hard-code a hex or rgba for something a token already covers.
