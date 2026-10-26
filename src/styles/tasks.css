@@ -286,11 +286,9 @@
 
 .task-checkbox-btn:active::after { opacity: 1; transform: scale(1); }
 
-@media (prefers-reduced-motion: reduce) {
-  .task-checkbox-btn,
-  .task-checkbox-btn::after { transition: none; }
-  .task-checkbox-btn:active { transform: none; }
-}
+:root[data-reduce-motion] .task-checkbox-btn,
+:root[data-reduce-motion] .task-checkbox-btn::after { transition: none; }
+:root[data-reduce-motion] .task-checkbox-btn:active { transform: none; }
 
 .task-option-btn {
   padding: 0.3rem 0.65rem;
@@ -598,9 +596,7 @@
 
 .subtask-draft-row > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 
-@media (prefers-reduced-motion: reduce) {
-  .subtask-list__bar > span { transition: none; }
-}
+:root[data-reduce-motion] .subtask-list__bar > span { transition: none; }
 
 /* Chip "↳ Task cha" ở đầu popup Chi tiết của subtask */
 .task-parent-chip {

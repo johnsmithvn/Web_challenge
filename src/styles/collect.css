@@ -1666,12 +1666,10 @@ span.kb-tag-chip { cursor: default; }
   .kb-editor__stats { display: none; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .kb-page *,
-  .kb-page *::before,
-  .kb-page *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+:root[data-reduce-motion] .kb-page *,
+:root[data-reduce-motion] .kb-page *::before,
+:root[data-reduce-motion] .kb-page *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }

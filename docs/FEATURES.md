@@ -180,8 +180,8 @@ Desktop nổi bên phải, mobile là sheet; mở bằng nút "Lịch & sự ki�
 
 ### Nền trang & hiệu ứng (kiểu Mặc định / Rừng tiên)
 - Nền theo giờ và theme: Mặc định = trời đêm (aurora, Ngân Hà, trăng đúng pha âm lịch có chú Cuội, chòm sao, đom
-  đóm) / bình minh–hoàng hôn; Rừng tiên = rừng ngày (cây, suối, nắng, sương mù) / rừng đêm. Tắt hết khi máy bật giảm
-  chuyển động.
+  đóm) / bình minh–hoàng hôn; Rừng tiên = rừng ngày (cây, suối, nắng, sương mù) / rừng đêm. Tắt hết khi bật Giảm
+  chuyển động trong Cài đặt (mặc định tắt, không theo trình duyệt).
 - Hình bay ngẫu nhiên qua trời (máy bay, UFO, Hằng Nga… / hươu, rồng, hồ ly, phù thuỷ…) + ban đêm có hiệu ứng thiên
   nhiên chung: sao ước nguyện (bấm trúng → thẻ điều ước), Thợ Săn, cầu vồng trăng, Ngân Hà, hồ, sương, lá
   bạc, bồ công anh, rêu; thỉnh thoảng nguyệt thực.
@@ -258,7 +258,9 @@ Giao diện "Cực quang" trên nền trời đêm dùng chung với Nhiệm v�
 
 **Files:** `src/pages/SettingsPage.jsx`, `src/hooks/useTags.js`
 
-- Hai tab: **Chung** (giao diện trang Nhiệm vụ + tag) và **Hồ sơ**.
+- Hai tab: **Chung** (giao diện trang Nhiệm vụ, Giảm chuyển động, tag) và **Hồ sơ**.
+- Giảm chuyển động: một công tắc cho toàn app (vật bay, hiệu ứng sự kiện, nền động, animation chuyển trang), mặc
+  định tắt, lưu trên máy (`vl_reduce_motion`). Không theo `prefers-reduced-motion` của trình duyệt.
 - Ô tiền lưu đúng số gõ; chỉ nhân khi có chữ chỉ độ lớn (`50k`, `2 triệu`, `3tr`, `1 củ`).
   Auto-K và tỷ giá USD đã bỏ 2026-10-11 (key localStorage cũ `lh_auto_k`, `lh_usd_rate` không còn đọc).
 - Tag manager: tạo, đổi tên/màu, xem usage breakdown và xóa link có xác nhận.

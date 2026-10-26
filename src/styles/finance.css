@@ -594,11 +594,9 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-mobile-bottom-nav { display: none !important; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .finance-module .fin-screen,
-  .finance-module .fin-card { animation: none; }
-  .finance-module * { scroll-behavior: auto !important; transition-duration: 1ms !important; }
-}
+:root[data-reduce-motion] .finance-module .fin-screen,
+:root[data-reduce-motion] .finance-module .fin-card { animation: none; }
+:root[data-reduce-motion] .finance-module * { scroll-behavior: auto !important; transition-duration: 1ms !important; }
 /* Extended Finance handoff surfaces. Loaded after finance.css. */
 .fin-card__title--icon, .fin-inline-message, .fin-source-card,
 .fin-bill-history__head,
@@ -1953,11 +1951,10 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-templates__chips { max-height: 132px; overflow-y: auto; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .finance-module *, .finance-module *::before, .finance-module *::after {
-    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important; scroll-behavior: auto !important;
-  }
+:root[data-reduce-motion] .finance-module *, :root[data-reduce-motion] .finance-module *::before,
+:root[data-reduce-motion] .finance-module *::after {
+  animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important; scroll-behavior: auto !important;
 }
 
 /* Finance taxonomy + schema: dense reference layout from the handoff. */
@@ -2811,6 +2808,4 @@ select.fin-input { color-scheme: dark; cursor: pointer; }
   .fin-hub__cal-grid, .fin-hub__cal-legend, .fin-hub__cal-divider { display: none; }
   .fin-hub__add { margin-left: auto; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .fin-hub__detail, .fin-hub__detail-backdrop, .fin-hub__tile, .fin-sm__toggle > i > b { transition: none; }
-}
+:root[data-reduce-motion] :is(.fin-hub__detail, .fin-hub__detail-backdrop, .fin-hub__tile, .fin-sm__toggle > i > b) { transition: none; }

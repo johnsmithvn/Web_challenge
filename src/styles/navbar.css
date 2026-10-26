@@ -598,10 +598,8 @@
 }
 
 /* Respect reduced motion preference */
-@media (prefers-reduced-motion: reduce) {
-  .page-transition {
-    animation: none;
-  }
+:root[data-reduce-motion] .page-transition {
+  animation: none;
 }
 
 .topbar__theme-toggle:hover {
@@ -810,11 +808,9 @@
   border-radius: 12px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sidebar,
-  .app-content {
-    transition: none;
-  }
+:root[data-reduce-motion] .sidebar,
+:root[data-reduce-motion] .app-content {
+  transition: none;
 }
 
 /* ── SIDEBAR KÍNH LÁ (mockup Rừng tiên, dùng chung mọi trang) ──

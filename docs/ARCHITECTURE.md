@@ -176,6 +176,7 @@ instance; đây không phải quota phân tán toàn hệ thống.
 | Key | Nội dung |
 |---|---|
 | `vl_theme` | light/dark preference |
+| `vl_reduce_motion` | cài đặt Giảm chuyển động (`1`/`0`, mặc định tắt) — `ThemeContext` gắn `data-reduce-motion` lên `<html>` |
 | `vl_onboarded` | đã đóng onboarding |
 | `vl_focus_settings` | thời lượng Focus/break |
 | `vl_xp_store` | dữ liệu XP legacy chỉ để migrate rồi xóa |

@@ -22,7 +22,6 @@ const pct = (v) => `${(v * 100).toFixed(2)}%`;
 const seeded = (a, b) => (i) => { const x = Math.sin(i * a + b) * 43758.5453; return x - Math.floor(x); };
 // Số giả ngẫu nhiên cố định (như mockup) để mây không đổi hình mỗi lần render
 const rnd = seeded(41.37, 1.9);
-const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 // [top, left, width, thời lượng, trễ] — vệt dài 140–280px như thiết kế Kiến Thức "Cực quang"
 const SHOOTS = [['70px', '81%', 210, 9, 1], ['24px', '59%', 140, 13, 5.5], ['150px', '97%', 280, 17, 9], ['10px', '39%', 210, 23, 14], ['110px', '72%', 140, 15, 3.5], ['46px', '90%', 280, 19, 11.5]];
@@ -244,10 +243,10 @@ function LightSky({ isMobile, dusk }) {
 }
 
 /* ── Vật bay ngẫu nhiên (flyTick của mockup): thả 1 cảnh mỗi 2,5–7,5s (mobile 4–10s), tối đa 5 (mobile 3) cùng lúc ── */
-function useFlyers(hostRef, { elf, night, m, auto }) {
+function useFlyers(hostRef, { elf, night, m, auto, still }) {
   useEffect(() => {
     const host = hostRef.current;
-    if (!host || reducedMotion()) return undefined;
+    if (!host || still) return undefined;
     let timer;
     let ends = [];
     const tick = () => {
@@ -272,7 +271,7 @@ function useFlyers(hostRef, { elf, night, m, auto }) {
       window.removeEventListener('click', onClick, true);
       host.replaceChildren();
     };
-  }, [hostRef, elf, night, m, auto]);
+  }, [hostRef, elf, night, m, auto, still]);
 }
 
 /* ── Rừng tiên: nấm + đom đóm bấm được, bấm nền rung cây, sương tan quanh con trỏ (mockup) ── */
@@ -305,10 +304,10 @@ function fogMove(e) {
   st.raf = requestAnimationFrame(tick);
 }
 
-function useElfInteractions(backRef, topRef, { elf, fk }) {
+function useElfInteractions(backRef, topRef, { elf, fk, still }) {
   useEffect(() => {
     const back = backRef.current, top = topRef.current;
-    if (!elf || !back || !top || reducedMotion()) return undefined;
+    if (!elf || !back || !top || still) return undefined;
     elfHosts[fk] = back;
     elfHosts[`${fk}_t`] = top;
     const t = setTimeout(() => initClk(fk, back), 900);
@@ -327,12 +326,12 @@ function useElfInteractions(backRef, topRef, { elf, fk }) {
       if (elfHosts[fk] === back) delete elfHosts[fk];
       if (elfHosts[`${fk}_t`] === top) delete elfHosts[`${fk}_t`];
     };
-  }, [backRef, topRef, elf, fk]);
+  }, [backRef, topRef, elf, fk, still]);
 }
 
 function useStardustTrail(active) {
   useEffect(() => {
-    if (!active || reducedMotion()) return undefined;
+    if (!active) return undefined;
     // Hạt bụi nằm trong 1 lớp phủ cô lập (contain: strict): thêm/xoá hạt không bắt cả trang tính lại layout
     const layer = document.createElement('div');
     layer.setAttribute('aria-hidden', 'true');
@@ -362,16 +361,17 @@ function useStardustTrail(active) {
 // autoFly=false: không tự thả vật bay (trang /fx-lab tự gọi từng kịch bản).
 // calm: bản tĩnh cho trang cần đọc (Kiến thức) — luôn kiểu Mặc định, không vật bay, không vệt bụi sao theo chuột.
 function SkyBackground({ isMobile, autoFly = true, calm = false }) {
-  const { theme, taskStyle } = useTheme();
+  // reduceMotion: cài đặt Giảm chuyển động của app (ThemeContext), không phải prefers-reduced-motion
+  const { theme, taskStyle, reduceMotion } = useTheme();
   const elf = !calm && taskStyle === 'elf';
   const night = theme !== 'light';
   const fk = frameKey(theme, isMobile);
   const dusk = new Date().getHours() >= 12;
   const flyRef = useRef(null);
   const topRef = useRef(null);
-  useFlyers(flyRef, { elf, night, m: isMobile, auto: autoFly });
-  useElfInteractions(flyRef, topRef, { elf, fk });
-  useStardustTrail(night && !calm);
+  useFlyers(flyRef, { elf, night, m: isMobile, auto: autoFly, still: reduceMotion });
+  useElfInteractions(flyRef, topRef, { elf, fk, still: reduceMotion });
+  useStardustTrail(night && !calm && !reduceMotion);
 
   let sky;
   if (night) sky = elf && isMobile ? <><div className="task-aurora-glow" /><ForestNightMobile /></> : <DarkSky isMobile={isMobile} elf={elf} />;

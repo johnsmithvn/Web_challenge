@@ -642,8 +642,10 @@ Hovered cards additionally lift `translateY(-2px)` and take `--shadow-purple`.
 `0.4s cubic-bezier(0.34, 1.56, 0.64, 1)`. The universal
 `*, *::before, *::after` rule cross-fades `background-color`, `border-color`,
 `color` and `box-shadow` over `0.25s ease` so theme switching animates.
-`.page-transition` (0.22s) is disabled under
-`prefers-reduced-motion: reduce`.
+`.page-transition` (0.22s) is disabled by the app's **Giảm chuyển động** setting
+(Settings → Chung): `ThemeContext` sets `data-reduce-motion` on `<html>`, every CSS escape is
+`:root[data-reduce-motion] …`, JS reads `reduceMotion` from `useTheme()`. Off by default and deliberately
+**not** tied to `prefers-reduced-motion` — a browser reporting it silently killed every Tasks effect.
 
 ## Shapes
 
@@ -741,7 +743,7 @@ Hiệu ứng là **một** vệt sáng chạy ngang cả danh sách (`.sk-list::
 `linear-gradient(100deg, …)` + `background-position` 1.7s), không phải mỗi ô tự
 nhấp nháy: một layer animate, và mắt đọc là "đang tải" chứ không phải "hỏng". Nền
 `--sk-fill` `rgba(255,255,255,0.07)`, đảo sang `rgba(15,23,42,0.08)` ở
-`[data-theme="light"]`. `prefers-reduced-motion` tắt vệt sáng, giữ khung tĩnh.
+`[data-theme="light"]`. Giảm chuyển động tắt vệt sáng, giữ khung tĩnh.
 
 Props: `rows` · `icon` · `lines` · `right` · `plain` (bỏ viền) · `heading` (thanh
 tiêu đề, chỉ dùng cho skeleton toàn trang) · `gap`. Container mang
@@ -888,7 +890,7 @@ is introduced.
   pseudo-element, so ticking needs no extra DOM and no React state: `:hover`
   → green border + `0.55` opacity glyph, `:active` → `scale(1.35)` +
   `--shadow-green` + full glyph. Wrapped in a
-  `prefers-reduced-motion: reduce` escape that drops both the transition and
+  Giảm chuyển động (`:root[data-reduce-motion]`) escape that drops both the transition and
   the scale.
 - **Priority stripe** — a `3px` `border-left` on `.task-item`, coloured from
   `PRIORITY_OPTIONS` in `TaskListSection.jsx` (`#94a3b8` → `#ef4444`). Applied
@@ -945,7 +947,7 @@ is a login door and a module map, not a sales pitch.
 - **`.lp__theme`** — a `40px` fixed glass circle. It exists because `Navbar`
   returns `null` on `/` for logged-out visitors, so without it a guest cannot
   reach the light/dark toggle at all. Same `rotate(15deg) scale(1.05)` hover as
-  the sidebar toggle, with a `prefers-reduced-motion` escape.
+  the sidebar toggle, with a Giảm chuyển động escape.
 - **Grids use `minmax(min(100%, Nrem), 1fr)`**, not bare `minmax(Nrem, 1fr)` —
   the bare form overflows below `Nrem` viewports instead of collapsing to one
   column.
@@ -1334,8 +1336,8 @@ Types/Tags filter bar is gone.
   **lightens on dark** (`#5b46c9 → #34277f → #241d52`) with a `1px` accent
   hairline so it does not merge into a dark page; number masked to the last 4
   until the Card number field is revealed.
-- Motion collapses to `1ms` under `prefers-reduced-motion: reduce` via a single
-  `--acc-dur` override on `.acc-vault`.
+- Motion collapses to `1ms` when Giảm chuyển động is on
+  (`:root[data-reduce-motion] .acc-vault *`, plus `.acc-scrim` / `.acc-dialog`).
 
 ### Knowledge (Cực quang) — `.kb-*` (`kb-tokens.css`, `collect.css`)
 
@@ -1375,7 +1377,7 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
 - **Hiệu năng**: không `backdrop-filter` ở đâu trong Knowledge — trời phía sau chuyển động nên blur sẽ tính lại mỗi khung;
   cột / thanh dùng `color-mix(--kb-bg, transparent)`, hộp thoại `--kb-pop` đặc. Chỉ animate transform / opacity
   (vạch đọc dùng `scaleX`).
-- **Focus**: `.kb-page :focus-visible` viền `2px --kb-accent`; `prefers-reduced-motion` tắt chuyển động trong `.kb-page`.
+- **Focus**: `.kb-page :focus-visible` viền `2px --kb-accent`; Giảm chuyển động tắt chuyển động trong `.kb-page`.
 
 ### Other active shared atoms (`global.css`)
 
@@ -1396,7 +1398,7 @@ theo `[data-theme]`: tối = mockup 2a (mint `#5EF2C2`, nền trời `#0C1634→
 tối = aurora, Ngân Hà, 4 lớp sao, sao băng vệt sáng mint (góc 32°, lấy từ bản thiết kế Kiến Thức), sao chổi; desktop thêm trăng đúng pha âm lịch hôm nay,
 sao sáng 4 cánh, 6 chòm sao lần lượt hiện (chu kỳ 150s) và chân trời hành tinh.
 Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt trời mọc, mây màu nước SVG, hạt sáng bay.
-`prefers-reduced-motion` tắt mọi chuyển động nền.
+Bật Giảm chuyển động (Cài đặt) thì tắt mọi chuyển động nền, vật bay và hiệu ứng sự kiện.
 
 - **Kiểu "Rừng tiên"** (`src/styles/tasks-elf.css`, mockup "Nhiệm vụ - Rừng tiên (Elf)"): chọn ở Cài đặt → Chung →
   "Giao diện trang Nhiệm vụ" (`taskStyle` trong `ThemeContext`, localStorage `vl_task_style`, mặc định `default`).
@@ -1556,7 +1558,7 @@ Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt tr
 - **Do** use `--transition-spring` for interactive feedback and
   `--transition-base` for property changes.
 - **Don't** animate anything essential without a
-  `prefers-reduced-motion: reduce` escape, as `.page-transition` does.
+  Giảm chuyển động escape (`:root[data-reduce-motion]`), as `.page-transition` does.
 
 **Accessibility**
 

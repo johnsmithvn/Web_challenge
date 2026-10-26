@@ -1955,15 +1955,13 @@
   white-space: nowrap;
 }
 
-/* Nhịp nhắc: chỉ opacity/transform (chạy trên GPU), tắt khi giảm chuyển động */
-@media (prefers-reduced-motion: no-preference) {
-  .tk-focus-line__dot {
-    animation: tkFocusPulse 1.6s ease-in-out infinite;
-  }
+/* Nhịp nhắc: chỉ opacity/transform (chạy trên GPU), tắt khi bật Giảm chuyển động (Cài đặt) */
+:root:not([data-reduce-motion]) .tk-focus-line__dot {
+  animation: tkFocusPulse 1.6s ease-in-out infinite;
+}
 
-  .tk-sub-due--soon svg {
-    animation: tkFocusPulse 1.2s ease-in-out infinite;
-  }
+:root:not([data-reduce-motion]) .tk-sub-due--soon svg {
+  animation: tkFocusPulse 1.2s ease-in-out infinite;
 }
 
 @keyframes tkFocusPulse {
@@ -7162,12 +7160,7 @@
 }
 
 /* ── GIẢM CHUYỂN ĐỘNG ── */
-@media (prefers-reduced-motion: reduce) {
-  .tk-card,
-  .tk-drawer,
-  .tk-qa,
-  .tk-main {
-    transition: none;
-    animation: none;
-  }
+:root[data-reduce-motion] :is(.tk-card, .tk-drawer, .tk-qa, .tk-main) {
+  transition: none;
+  animation: none;
 }

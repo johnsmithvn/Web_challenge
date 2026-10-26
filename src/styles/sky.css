@@ -563,13 +563,12 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .task-cosmos-bg *,
-  .task-cosmos-bg *::after {
-    animation: none !important;
-  }
+/* Giảm chuyển động: cài đặt của app (ThemeContext gắn data-reduce-motion lên <html>), không theo trình duyệt */
+:root[data-reduce-motion] .task-cosmos-bg *,
+:root[data-reduce-motion] .task-cosmos-bg *::after {
+  animation: none !important;
+}
 
-  .task-orb {
-    opacity: 0.7;
-  }
+:root[data-reduce-motion] .task-orb {
+  opacity: 0.7;
 }

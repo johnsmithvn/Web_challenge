@@ -5,7 +5,7 @@ import { useConfirm } from '../components/ConfirmModal';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   GearSix as Settings, Tag, Plus, PencilSimple as Pencil, Trash as Trash2, Check, X,
-  Palette, User, FloppyDisk as Save, Envelope as Mail, At as AtSign,
+  Palette, User, FloppyDisk as Save, Envelope as Mail, At as AtSign, Sparkle,
 } from '@phosphor-icons/react';
 import AppIcon from '../components/AppIcon';
 import SkeletonList from '../components/SkeletonList';
@@ -75,6 +75,43 @@ function TaskStyleSection() {
       </div>
       <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
         Mỗi kiểu đều có bản sáng và tối — đổi bằng nút sáng/tối như bình thường. Lựa chọn lưu trên máy này.
+      </div>
+    </section>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MOTION SECTION — Giảm chuyển động cho toàn app (mặc định tắt, không theo trình duyệt)
+   ══════════════════════════════════════════════════════════════ */
+function MotionSection() {
+  const { reduceMotion, setReduceMotion } = useTheme();
+  return (
+    <section className="settings-section" style={{ marginBottom: '1.5rem' }}>
+      <div className="settings-section__header">
+        <Sparkle size={20} />
+        <h2>Chuyển động</h2>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={reduceMotion}
+        onClick={() => setReduceMotion((v) => !v)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', marginTop: '1.25rem', padding: '0.75rem',
+          textAlign: 'left', cursor: 'pointer', borderRadius: '12px', background: 'transparent', color: 'inherit', font: 'inherit',
+          border: `1.5px solid ${reduceMotion ? 'var(--text-accent)' : 'var(--bg-glass-border)'}`,
+        }}
+      >
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Giảm chuyển động</span>
+          <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Tắt vật bay, hiệu ứng sự kiện, nền động và animation chuyển trang trong toàn app
+          </span>
+        </span>
+        {reduceMotion && <Check size={18} color="var(--text-accent)" />}
+      </button>
+      <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+        Mặc định tắt, không theo cài đặt giảm chuyển động của trình duyệt. Lựa chọn lưu trên máy này.
       </div>
     </section>
   );
@@ -533,6 +570,7 @@ export default function SettingsPage() {
           {activeTab === 'general' && (
             <>
               <TaskStyleSection />
+              <MotionSection />
               <TagManagerSection user={user} />
             </>
           )}

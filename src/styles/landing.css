@@ -267,7 +267,5 @@
   .lp-hero__cta .btn { flex: 1 1 100%; justify-content: center; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .lp__theme { transition: none; }
-  .lp__theme:hover { transform: none; }
-}
+:root[data-reduce-motion] .lp__theme { transition: none; }
+:root[data-reduce-motion] .lp__theme:hover { transform: none; }

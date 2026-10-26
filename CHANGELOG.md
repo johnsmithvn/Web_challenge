@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v6.34.0 — 2026-10-26
+
+### Added
+- **Cài đặt Giảm chuyển động (`SettingsPage.jsx` → Chung, `ThemeContext.jsx`):** một công tắc cho toàn app, mặc định tắt, lưu `vl_reduce_motion`; bật thì `<html data-reduce-motion>`.
+
+### Changed
+- **Không còn theo `prefers-reduced-motion` của trình duyệt:** máy / trình duyệt báo bật là trang Nhiệm vụ mất hết vật bay, hiệu ứng sự kiện (xong việc, nước bắn, bấm trăng, rung cây) và bụi sao mà không có chỗ nào trong app giải thích. `SkyBackground.jsx`, `taskFlyersElf.js`, `FxLabPage.jsx` đọc cài đặt mới; mọi khối CSS `@media (prefers-reduced-motion)` (accounts, collect, dashboard, finance, infotip, landing, navbar, skeleton, sky, tasks, tasks-aurora) đổi thành `:root[data-reduce-motion] …`.
+- Tài liệu: `RULES.md` §5, `DESIGN.md`, `ARCHITECTURE.md` (key localStorage), `FEATURES.md`.
+
 ## v6.33.0 — 2026-10-25
 
 ### Added

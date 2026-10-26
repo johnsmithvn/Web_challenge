@@ -24,10 +24,20 @@ export function ThemeProvider({ children }) {
     localStorage.setItem('vl_task_style', taskStyle);
   }, [taskStyle]);
 
+  // Giảm chuyển động: cài đặt của app (Settings), mặc định TẮT — cố ý không theo prefers-reduced-motion
+  // của trình duyệt (máy báo bật là app mất hết hiệu ứng mà user không biết vì sao).
+  // CSS đọc qua :root[data-reduce-motion]; code thả hiệu ứng đọc reduceMotion hoặc thuộc tính đó.
+  const [reduceMotion, setReduceMotion] = useState(() => localStorage.getItem('vl_reduce_motion') === '1');
+
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-reduce-motion', reduceMotion);
+    localStorage.setItem('vl_reduce_motion', reduceMotion ? '1' : '0');
+  }, [reduceMotion]);
+
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, taskStyle, setTaskStyle }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, taskStyle, setTaskStyle, reduceMotion, setReduceMotion }}>
       {children}
     </ThemeContext.Provider>
   );

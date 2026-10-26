@@ -78,6 +78,4 @@
   from { opacity: 0; transform: translateY(-3px); }
   to   { opacity: 1; transform: none; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .infotip .infotip__bubble { animation: none; }
-}
+:root[data-reduce-motion] .infotip .infotip__bubble { animation: none; }

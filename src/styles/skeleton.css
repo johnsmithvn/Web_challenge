@@ -89,6 +89,4 @@
 .sk-block { display: block; height: 120px; border-radius: 9px; background: var(--sk-fill); }
 
 /* Không có data thì cũng không có gì để nhấp nháy: bỏ vệt sáng, giữ khung tĩnh. */
-@media (prefers-reduced-motion: reduce) {
-  .sk-list::after { animation: none; background: none; }
-}
+:root[data-reduce-motion] .sk-list::after { animation: none; background: none; }

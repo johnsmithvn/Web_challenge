@@ -131,7 +131,7 @@ function ModeScenes({ mode, current, last, onPlay }) {
 
 export default function FxLabPage() {
   const [embed] = useState(() => new URLSearchParams(window.location.search).get('embed') === '1');
-  const { theme, toggleTheme, taskStyle, setTaskStyle } = useTheme();
+  const { theme, toggleTheme, taskStyle, setTaskStyle, reduceMotion: reduced } = useTheme();
   const elf = taskStyle === 'elf', night = theme !== 'light';
   const [narrow, setNarrow] = useState(() => window.matchMedia?.(MOBILE_MQ).matches ?? false);
   const [frame, setFrame] = useState('desktop');
@@ -146,7 +146,6 @@ export default function FxLabPage() {
   const m = embed || narrow, phone = !embed && !narrow && frame === 'mobile';
   const ctx = { elf, night, theme, m };
   const stageKey = `${taskStyle}-${theme}-${auto}-${round}-${m}-${frame}`;
-  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
   useEffect(() => {
     const mq = window.matchMedia?.(MOBILE_MQ);
@@ -249,7 +248,7 @@ export default function FxLabPage() {
               <button type="button" className="fxlab-btn" onClick={() => setRound((r) => r + 1)}>Dọn trời</button>
             </div>
             <p className="fxlab-note">Kiểu và Ngày/Đêm ở đây là đổi thật trong app; rời trang sẽ trả lại như cũ.</p>
-            {reduced && <p className="fxlab-note is-warn">Máy đang bật Giảm chuyển động: app tắt nền động nên nhiều hiệu ứng ở đây cũng không chạy.</p>}
+            {reduced && <p className="fxlab-note is-warn">Đang bật Giảm chuyển động (Cài đặt → Chung): app tắt nền động nên nhiều hiệu ứng ở đây cũng không chạy.</p>}
           </div>
 
           <div className="fxlab-tabs" role="tablist">

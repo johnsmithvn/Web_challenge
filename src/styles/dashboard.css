@@ -2058,15 +2058,13 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .dash-pulse-dot__ring {
-    animation: none;
-    opacity: 0;
-  }
-  .dash-mod-card:hover {
-    transform: none;
-  }
-  .dash-progress-bar {
-    transition: none;
-  }
+:root[data-reduce-motion] .dash-pulse-dot__ring {
+  animation: none;
+  opacity: 0;
+}
+:root[data-reduce-motion] .dash-mod-card:hover {
+  transform: none;
+}
+:root[data-reduce-motion] .dash-progress-bar {
+  transition: none;
 }
