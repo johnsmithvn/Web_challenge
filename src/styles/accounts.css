@@ -703,7 +703,7 @@
 .acc-bulkbar__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .acc-bulkbar__count { font-family: var(--acc-mono); font-size: 12.5px; }
 .acc-bulkbar__row { display: flex; flex-wrap: wrap; gap: 6px; }
-.acc-bulkbar__row .acc-select, .acc-bulkbar__row .acc-input { flex: 1 1 100%; min-width: 0; }
+.acc-bulkbar__row .acc-select, .acc-bulkbar__row .acc-input, .acc-bulkbar__row .acc-grouppicker { flex: 1 1 100%; min-width: 0; }
 .acc-bulkbar__row .acc-btn { flex: 1 1 0; }
 
 /* ── Màn Roots: danh sách gốc (cột giữa) ── */
@@ -794,14 +794,22 @@
   color: color-mix(in srgb, var(--color-text) 64%, transparent); margin-bottom: 4px;
 }
 .acc-title__h1 { font-size: 24px; margin: 0; line-height: 1.2; font-weight: 600; overflow-wrap: anywhere; }
-.acc-title__input { font-size: 24px; font-weight: 700; min-height: 42px; }
+.acc-title__searchselect { width: 100%; }
+.acc-title__searchselect .search-select__control {
+  min-height: 42px;
+  border-radius: var(--r);
+  background: var(--color-bg);
+  border: 1px solid var(--color-divider);
+}
+.acc-title__searchselect .search-select__input {
+  font-size: 22px;
+  font-weight: 700;
+}
 .acc-title__tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
 /* Chế độ sửa: chọn loại + gõ nhóm cùng một hàng ở vị trí kicker */
 .acc-title__meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .acc-title__meta .acc-select--tpl { margin-bottom: 0; flex: 1 1 180px; }
-/* GroupPicker cạnh ô loại item: cùng cỡ chữ; ô gõ nhóm mới xuống dòng khi hẹp */
-.acc-title__meta .acc-select--group { flex: 1 1 180px; max-width: 260px; font-size: 12px; }
-.acc-title__meta .acc-input--group { flex: 1 1 200px; max-width: 280px; font-size: 12px; }
+.acc-title__meta .acc-grouppicker { flex: 1 1 200px; max-width: 280px; }
 .acc-title__actions { display: flex; align-items: center; gap: 6px; flex: none; }
 
 /* Dải số liệu dưới tiêu đề (chỉ chế độ xem): phụ thuộc · độ sâu · đăng nhập ·
@@ -879,6 +887,8 @@
   border-radius: var(--r); overflow: hidden;
   box-shadow: var(--lift-1);
 }
+/* overflow: hidden ở trên cắt mất menu SearchSelect (ô Linked item) — mở khi menu đang mở */
+.acc-panel:has(.search-select__menu) { overflow: visible; }
 .acc-panel--fields { margin-bottom: 17px; }
 .acc-panel__empty {
   padding: 17px 13.6px; background: var(--color-bg); font-size: 13px;
@@ -1646,7 +1656,8 @@ button.acc-guard:hover { border-color: var(--color-accent-300); }
   .acc-vault .acc-btn { min-height: 44px; padding-left: 14px; padding-right: 14px; }
   .acc-vault .acc-btn--ghost { min-height: 40px; }
   .acc-vault .acc-btn--icon { width: 44px; height: 44px; }
-  .acc-vault .acc-input, .acc-vault .acc-select, .acc-vault .acc-textarea {
+  .acc-vault .acc-input, .acc-vault .acc-select, .acc-vault .acc-textarea,
+  .acc-vault .search-select .search-select__control {
     min-height: 44px; font-size: 16px;
   }
   .acc-vault .acc-select--type, .acc-vault .acc-select--kind { width: auto; flex: 1; }

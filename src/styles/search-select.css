@@ -1,0 +1,352 @@
+/* ══ SearchSelect: Combobox / Searchable Dropdown & Multi-Select ═══════════
+   Lấy cảm hứng từ SearchSelect của badminclub, chuẩn hoá theo hệ thống Design
+   Life Hub: hỗ trợ cả dark/light theme qua CSS variables (--color-bg, --surface,
+   --color-divider, --color-accent, --ring, --r). */
+
+.search-select {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.search-select__label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: color-mix(in srgb, var(--color-text, #f0f0ff) 64%, transparent);
+  user-select: none;
+}
+
+/* Khung điều khiển input */
+.search-select__control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--color-bg, #0d0d1a);
+  border: 1px solid var(--color-divider, rgba(255, 255, 255, 0.12));
+  border-radius: var(--r, 8px);
+  color: var(--color-text, #f0f0ff);
+  cursor: text;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  position: relative;
+}
+
+.search-select__control:hover:not(.search-select__control--disabled) {
+  border-color: color-mix(in srgb, var(--color-text, #f0f0ff) 30%, transparent);
+}
+
+/* :focus-within: ô gõ tắt viền riêng (xem .search-select__input), viền focus nằm ở khung */
+.search-select__control--open,
+.search-select__control:focus-within {
+  border-color: var(--color-accent, #4cc2ff) !important;
+  box-shadow: var(--ring, 0 0 0 3px rgba(76, 194, 255, 0.22)) !important;
+  outline: none;
+}
+
+.search-select__control--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Các kích cỡ */
+.search-select--sm .search-select__control {
+  min-height: 30px;
+  padding: 2px 7px;
+  font-size: 12px;
+}
+
+.search-select--md .search-select__control {
+  min-height: 36px;
+  padding: 5px 10px;
+  font-size: 13.5px;
+}
+
+.search-select--lg .search-select__control {
+  min-height: 42px;
+  padding: 6px 12px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* Vùng chứa nội dung giá trị + input */
+.search-select__content {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.search-select__content--nowrap {
+  flex-wrap: nowrap;
+}
+
+/* Hiển thị giá trị đã chọn ở chế độ single select */
+.search-select__selected {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  font-weight: 500;
+  user-select: none;
+}
+
+.search-select__selected-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text, #f0f0ff);
+}
+
+.search-select__selected-sub {
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--color-text, #f0f0ff) 58%, transparent);
+  font-family: var(--acc-mono, inherit);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Chip tag cho multi-select */
+.search-select__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--r, 6px);
+  background: var(--color-accent-100, rgba(76, 194, 255, 0.12));
+  border: 1px solid var(--color-accent-200, rgba(76, 194, 255, 0.25));
+  color: var(--color-accent, #4cc2ff);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  animation: acc-rise 120ms ease;
+}
+
+.search-select__tag-remove {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  opacity: 0.75;
+  transition: opacity 120ms ease, transform 120ms ease;
+  border-radius: 50%;
+}
+
+.search-select__tag-remove:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* Input gõ tìm kiếm hoặc tự do */
+.search-select__input {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font: inherit;
+  color: var(--color-text, #f0f0ff);
+  padding: 0 !important;
+  margin: 0;
+  flex: 1;
+  min-width: 40px;
+  cursor: inherit;
+}
+
+.search-select__input::placeholder {
+  color: color-mix(in srgb, var(--color-text, #f0f0ff) 38%, transparent);
+}
+
+.search-select__input--collapsed {
+  min-width: 4px;
+  width: 4px;
+  flex: 0 0 4px;
+}
+
+/* Các nút hành động bên phải (Clear, Arrow) */
+.search-select__actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.search-select__btn {
+  background: transparent;
+  border: none;
+  color: color-mix(in srgb, var(--color-text, #f0f0ff) 45%, transparent);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 120ms ease, transform 150ms ease;
+}
+
+.search-select__btn:hover {
+  color: var(--color-text, #f0f0ff);
+}
+
+.search-select__arrow--open {
+  transform: rotate(180deg);
+  color: var(--color-accent, #4cc2ff);
+}
+
+/* ══ Popover danh sách thả xuống ══════════════════════════════════════════ */
+.search-select__menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 150;
+  box-sizing: border-box;
+  background: var(--surface, #111125);
+  border: 1px solid var(--color-divider, rgba(255, 255, 255, 0.14));
+  border-radius: var(--r, 10px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), 0 2px 10px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: acc-rise 140ms ease-out;
+}
+
+.search-select__menu--bottom {
+  top: calc(100% + 5px);
+}
+
+.search-select__menu--top {
+  bottom: calc(100% + 5px);
+}
+
+.search-select__list {
+  max-height: 250px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+
+/* Từng dòng option */
+.search-select__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: calc(var(--r, 8px) - 2px);
+  cursor: pointer;
+  background: transparent;
+  transition: background-color 120ms ease, color 120ms ease;
+  user-select: none;
+  font-size: 13px;
+  color: var(--color-text, #f0f0ff);
+}
+
+.search-select__option--highlighted {
+  background: var(--color-accent-100, rgba(76, 194, 255, 0.12));
+}
+
+.search-select__option--selected {
+  background: var(--color-accent-200, rgba(76, 194, 255, 0.2));
+  color: var(--color-accent, #4cc2ff);
+  font-weight: 600;
+}
+
+.search-select__option--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.search-select__option-main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+}
+
+.search-select__option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-select__option-sub {
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--color-text, #f0f0ff) 55%, transparent);
+  font-family: var(--acc-mono, inherit);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Badge (ví dụ: mã template ACC, CRD, EML) */
+.search-select__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--acc-mono, monospace);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--color-accent-100, rgba(76, 194, 255, 0.15));
+  color: var(--color-accent, #4cc2ff);
+  flex-shrink: 0;
+}
+
+/* Nhãn nhóm (Group header) */
+.search-select__group-header {
+  padding: 6px 10px 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text, #f0f0ff) 45%, transparent);
+  user-select: none;
+}
+
+/* Option tạo mới (Create new) */
+.search-select__option--create {
+  border-top: 1px dashed var(--color-divider, rgba(255, 255, 255, 0.12));
+  color: var(--color-accent, #4cc2ff);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.search-select__empty {
+  padding: 16px 12px;
+  text-align: center;
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--color-text, #f0f0ff) 45%, transparent);
+}
+
+.search-select__footer {
+  padding: 5px;
+  text-align: center;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--color-text, #f0f0ff) 40%, transparent);
+  border-top: 1px solid var(--color-divider, rgba(255, 255, 255, 0.08));
+}

@@ -3,11 +3,12 @@ import {
   TYPES, TYPE_HINT, isSecretType, scorePassword, generatePassword, parseCodes, codeSheet,
   linkableValues, relativeUpdated, formatStamp, newId, normalizeUrl, itemSubtitle,
   normalizeGroup, dependentsOf, isPasswordOnly, linkKind, moneySourcesOf,
-  titleSuggestions, mailboxTitle, groupSuggestions, groupKey, NO_AUTOFILL,
+  titleSuggestions, mailboxTitle, groupSuggestions, groupKey, NO_AUTOFILL, groupIcon,
 } from '../utils/vaultLogic';
 import ACCOUNT_TEMPLATES from '../data/account-templates.json';
 import AppIcon from './AppIcon';
 import AccountAvatar from './AccountAvatar';
+import SearchSelect from './SearchSelect';
 
 /**
  * AccountDetail — pane chi tiết một item, cả chế độ XEM và SỬA.
@@ -33,7 +34,7 @@ import AccountAvatar from './AccountAvatar';
  */
 
 const {
-  templates: TEMPLATES, authKinds: AUTH_KINDS, titlePresets: TITLE_PRESETS, groupPresets: GROUP_PRESETS,
+  templates: TEMPLATES, authKinds: AUTH_KINDS, titlePresets: TITLE_PRESETS, groupPresets: GROUP_PRESETS, groupIcons: GROUP_ICONS,
 } = ACCOUNT_TEMPLATES;
 const TPL_BY_KEY = new Map(TEMPLATES.map((t) => [t.key, t]));
 const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
@@ -254,21 +255,24 @@ export default function AccountDetail({
           )}
 
           {editing ? (
-            <>
-              <input {...NO_AUTOFILL}
-                ref={titleRef}
-                className="acc-input acc-title__input"
-                value={draft.title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={draftAddress ? `${mailboxTitle(draftAddress)} (set from the address on save)` : 'Service name, e.g. VIB, Gmail, Shopee'}
-                aria-label="Item title"
-                list="acc-title-options"
-              />
-              {/* Native datalist: xổ danh sách để chọn, vẫn gõ tên tuỳ ý được */}
-              <datalist id="acc-title-options">
-                {titleOptions.map((o) => <option key={o.title} value={o.title} />)}
-              </datalist>
-            </>
+            <SearchSelect
+              allowCustom
+              size="lg"
+              className="acc-title__searchselect"
+              value={draft.title}
+              onChange={(val) => setTitle(val)}
+              options={titleOptions.map((o) => ({
+                value: o.title,
+                label: o.title,
+                sub: o.group ? o.group.replace('/', ' › ') : undefined,
+              }))}
+              placeholder={draftAddress ? `${mailboxTitle(draftAddress)} (set from the address on save)` : 'Service name, e.g. VIB, Gmail, Shopee'}
+              noResultsText="No matching service"
+              ariaLabel="Item title"
+              inputRef={titleRef}
+              inputProps={NO_AUTOFILL}
+              clearable
+            />
           ) : (
             <h1 className="acc-title__h1">{item.title}</h1>
           )}
@@ -599,51 +603,72 @@ function TagEditor({ tags, tagIds, setTagIds, newTag, setNewTag, onAddTag }) {
 }
 
 /* ══ Group picker ════════════════════════════════════════════════
-   Một <select> như ô loại item bên cạnh: nhóm có nhóm con thành <optgroup>
-   (Tài chính › Ngân hàng / Thẻ…), "New group…" mở ô gõ tên ("/" = nhóm con),
-   chuẩn hoá ở cleanItem lúc lưu. Không dùng <datalist> (hẹp, cắt chữ) hay hàng
-   nút (chiếm 3 dòng cho một lựa chọn). Dùng chung với thanh Move to group
-   (AccountsPage). So khớp không phân biệt hoa thường như groupKey. */
-const NEW_GROUP = '/new'; // normalizeGroup không bao giờ trả chuỗi bắt đầu bằng "/"
+   Combobox chọn hoặc gõ nhóm nhanh với SearchSelect. Hỗ trợ hiển thị
+   nhóm cha/con phân cấp đẹp mắt, có icon nhóm trực quan, gõ tìm kiếm
+   hoặc gõ tạo nhóm mới tuỳ ý mà không cần nhảy thêm ô input phụ.
+   Dùng chung với thanh Move to group (AccountsPage). */
+export function GroupPicker({ value = '', onChange, paths = [], startCustom = false, onEnter }) {
+  const tops = useMemo(
+    () => [...new Map(paths.map((p) => [groupKey(p.split('/')[0]), p.split('/')[0]])).values()],
+    [paths],
+  );
 
-export function GroupPicker({ value, onChange, paths, startCustom = false, onEnter }) {
-  const [custom, setCustom] = useState(startCustom);
-  const key = groupKey(value);
-  const tops = [...new Map(paths.map((p) => [groupKey(p.split('/')[0]), p.split('/')[0]])).values()];
-  const match = [...paths, ...tops].find((p) => groupKey(p) === key);
-  const typing = custom || (!!key && !match);
-
-  const choose = (v) => {
-    setCustom(v === NEW_GROUP);
-    onChange(v === NEW_GROUP ? '' : v);
-  };
+  const groupOptions = useMemo(() => {
+    const list = [];
+    tops.forEach((top) => {
+      const subs = paths.filter((p) => groupKey(p).startsWith(`${groupKey(top)}/`));
+      if (!subs.length) {
+        list.push({
+          value: top,
+          label: top,
+          icon: groupIcon(top, GROUP_ICONS),
+        });
+      } else {
+        list.push({
+          value: top,
+          label: top,
+          icon: groupIcon(top, GROUP_ICONS),
+        });
+        subs.forEach((subPath) => {
+          const subName = subPath.split('/')[1] || subPath;
+          list.push({
+            value: subPath,
+            label: `${top} › ${subName}`,
+            sub: subPath, // chỉ để tìm: gõ "Tài chính/Ngân" vẫn khớp
+            icon: groupIcon(subPath, GROUP_ICONS),
+          });
+        });
+      }
+    });
+    return list;
+  }, [paths, tops]);
 
   return (
-    <>
-      <select className="acc-select acc-select--group" value={typing ? NEW_GROUP : match || ''}
-        onChange={(e) => choose(e.target.value)} aria-label="Group">
-        <option value="">Ungrouped</option>
-        {tops.map((t) => {
-          const subs = paths.filter((p) => groupKey(p).startsWith(`${groupKey(t)}/`));
-          if (!subs.length) return <option key={t} value={t}>{t}</option>;
-          return (
-            <optgroup key={t} label={t}>
-              {/* item nằm thẳng ở nhóm cha (không nhóm con) vẫn phải hiện được */}
-              {groupKey(t) === key && <option value={match}>{t}</option>}
-              {subs.map((p) => <option key={p} value={p}>{p.split('/')[1]}</option>)}
-            </optgroup>
-          );
-        })}
-        <option value={NEW_GROUP}>New group…</option>
-      </select>
-      {typing && (
-        // autoFocus chỉ khi user chủ động mở (New group… / + New group), không giành focus của ô tiêu đề
-        <input {...NO_AUTOFILL} className="acc-input acc-input--group" value={value} autoFocus={custom}
-          onChange={(e) => { setCustom(true); onChange(e.target.value); }}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onEnter?.(); } }}
-          placeholder="Group name, e.g. Gia đình" aria-label="New group name" />
+    <SearchSelect
+      allowCustom
+      allowCreate="New group"
+      value={value}
+      onChange={(v) => onChange?.(v || '')}
+      options={groupOptions}
+      placeholder="Ungrouped"
+      noResultsText="No matching group"
+      size="sm"
+      className="acc-grouppicker"
+      clearable
+      onEnter={onEnter}
+      ariaLabel="Group"
+      // autoFocus chỉ khi user chủ động mở (+ New group), không giành focus của ô tiêu đề
+      inputProps={{ ...NO_AUTOFILL, autoFocus: startCustom }}
+      renderOption={(opt, { isSelected }) => (
+        <>
+          <div className="search-select__option-main">
+            {opt.icon && <AppIcon name={opt.icon} size={14} />}
+            <span className="search-select__option-label">{opt.label}</span>
+          </div>
+          {isSelected && <AppIcon name="check" size={14} />}
+        </>
       )}
-    </>
+    />
   );
 }
 
@@ -1024,32 +1049,40 @@ function EditValue({ field: f, idx, items, ownerId, patch }) {
 function LinkEditor({ field: f, idx, items, ownerId, patch }) {
   const links = f.links || [];
   // Loại chính item đang mở khỏi danh sách chọn — không cho tự-link
-  const linkOptions = items.filter((x) => x.id !== ownerId);
+  const linkOptions = useMemo(() => items.filter((x) => x.id !== ownerId), [items, ownerId]);
+
+  // Kèm subtitle (username/email nhận diện) — chỉ `code · title` thì nhiều tài khoản cùng
+  // dịch vụ ra mấy dòng GIỐNG HỆT nhau. itemSubtitle chỉ đọc SUBTITLE_LABELS nên không bao
+  // giờ lôi giá trị secret vào đây.
+  const selectOptions = useMemo(() => linkOptions.map((it) => {
+    const t = TPL_BY_KEY.get(it.tpl);
+    const sub = itemSubtitle(it);
+    return {
+      value: it.id,
+      label: it.title,
+      badge: t?.code || '···',
+      sub: sub || undefined,
+    };
+  }), [linkOptions]);
 
   return (
     <div className="acc-multi acc-multi--edit">
       {links.map((L, li) => {
         return (
           <div className="acc-linkedit" key={L.id}>
-            <select className="acc-select" value={L.itemId || ''} aria-label="Linked item"
-              onChange={(e) => patch((d) => {
-                d.fields[idx].links[li].itemId = e.target.value || null;
-              })}>
-              <option value="">— choose an item —</option>
-              {/* Kèm subtitle (username/email nhận diện) — chỉ `code · title` thì
-                  nhiều tài khoản cùng dịch vụ ra mấy dòng GIỐNG HỆT nhau, không
-                  chọn được. itemSubtitle chỉ đọc SUBTITLE_LABELS nên không bao giờ
-                  lôi giá trị secret vào đây. */}
-              {linkOptions.map((it) => {
-                const t = TPL_BY_KEY.get(it.tpl);
-                const sub = itemSubtitle(it);
-                return (
-                  <option key={it.id} value={it.id}>
-                    {t?.code || '···'} · {it.title}{sub ? ` · ${sub}` : ''}
-                  </option>
-                );
+            <SearchSelect
+              value={L.itemId || ''}
+              onChange={(val) => patch((d) => {
+                d.fields[idx].links[li].itemId = val || null;
               })}
-            </select>
+              options={selectOptions}
+              placeholder="— choose an item —"
+              searchPlaceholder="Search items…"
+              noResultsText="No matching item"
+              clearable
+              size="sm"
+              ariaLabel="Linked item"
+            />
             <button className="acc-act acc-act--x" title="Remove link" aria-label="Xóa liên kết"
               onClick={() => patch((d) => { d.fields[idx].links.splice(li, 1); })}><AppIcon name="x" size={14} /></button>
           </div>
