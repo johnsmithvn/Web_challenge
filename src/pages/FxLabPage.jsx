@@ -29,11 +29,11 @@ const LABELS = {
   sunray: 'Tia nắng', squirrelchase: 'Sóc rượt nhau', frog: 'Ếch trêu', gnome: 'Chú lùn', bee: 'Ong rơi mật',
   deernut: 'Hươu + hạt dẻ', carrier_pigeon: 'Bồ câu đưa thư', rainbow_slide: 'Sóc trượt cầu vồng',
   koi: 'Cá koi bay', veins: 'Gân sáng mọc từ đất', ring: 'Vòng tiên', starfall: 'Sao rơi', spirit: 'Linh hồn rừng',
-  bloom: 'Hoa sen ngọc nở', koistar: 'Koi đớp sao', owlmiss: 'Cú vồ hụt', spiritbow: 'Linh hồn + cầu vồng', dragon: 'Rồng',
-  dragon_v2: 'Rồng xanh phương Đông (vẽ bằng code)', dragon_v2_eu: 'Rồng châu Âu (vẽ bằng code)', catfight: '2 mèo đánh nhau',
+  bloom: 'Hoa sen ngọc nở', koistar: 'Koi đớp sao', owlmiss: 'Cú vồ hụt', spiritbow: 'Linh hồn + cầu vồng', dragon: 'Rồng nhỏ hắt xì',
+  dragon_east: 'Rồng xanh phương Đông', dragon_west: 'Rồng châu Âu', catfight: '2 mèo đánh nhau',
   leafrider: 'Tiên cưỡi lá', constel: 'Chòm sao hiện hình', whaleeat: 'Cá voi nuốt đom đóm',
-  owlsinge: 'Cú cháy lông → kỳ lân chữa lành', kitsune: 'Hồ ly', unicorn: 'Kỳ lân uống suối', wisp: 'Ma trơi dụ đường',
-  witch: 'Phù thuỷ cưỡi chổi', blackcat: 'Mèo đen', fairynap: 'Tiên ngủ gật', ent: 'Người cây ngáp', foxlant: 'Cáo giật đèn',
+  owlsinge: 'Cú cháy lông → kỳ lân chữa lành', kitsune: 'Hồ ly 9 đuôi', unicorn: 'Kỳ lân uống suối', wisp: 'Ma trơi dụ đường',
+  witch: 'Phù thuỷ cưỡi chổi', blackcat: 'Mèo đen', fairynap: 'Tiên ngủ gật', ent: 'Người cây ngáp', foxlant: 'Hồ ly giật đèn lồng',
   wispowl: 'Ma trơi doạ cú', witchwhale: 'Phù thuỷ đụng cá voi', heal: 'Kỳ lân chữa lành cú', catwisp: 'Mèo vồ ma trơi',
   witchpotion: 'Phù thuỷ rơi độc dược → mèo khổng lồ', catgiant: 'Mèo hoá khổng lồ', abduct_gnome: 'UFO bắt chú lùn',
   wish: 'Sao ước nguyện (bấm được)', orion: 'Chòm Thợ Săn', moonbow: 'Cầu vồng trăng', milky: 'Ngân Hà', lake: 'Hồ phát sáng',
@@ -68,7 +68,7 @@ const HINTS = [
   'Ban đêm: bấm sao ước nguyện đang bay → thẻ điều ước',
 ];
 const EXPERIMENTS = [
-  { id: 'animals', title: 'So sánh con vật', desc: 'Mèo đánh nhau, đại bàng săn mồi, hồ ly 9 đuôi, kỳ lân: Hiện tại vs Vẽ bằng code (2 rồng + mèo lai đã thành cảnh Nháp)', src: '/fx-experiments/animals.html' },
+  { id: 'animals', title: 'So sánh đại bàng', desc: 'Đại bàng săn mồi: Hiện tại vs Vẽ bằng code (hồ ly 9 đuôi, 2 rồng, mèo đánh nhau đã vào app)', src: '/fx-experiments/animals.html' },
 ];
 
 function playOn(stage, type, { elf, night, m }) {

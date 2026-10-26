@@ -1,5 +1,5 @@
 /**
- * creatureArt.test.js — con vật vẽ bằng code: 2 rồng (cảnh nháp dragon_v2 / dragon_v2_eu) + hồ ly 9 đuôi (kitsune, foxlant).
+ * creatureArt.test.js — con vật vẽ bằng code: 2 rồng (cảnh dragon_east / dragon_west) + hồ ly 9 đuôi (kitsune, foxlant).
  * Chạy: `node src/__tests__/tasks/creatureArt.test.js`
  *
  * Trang vẽ lại path mỗi khung (rAF) theo thứ tự: số hình phải cố định ở mọi thời điểm, không NaN, gradient

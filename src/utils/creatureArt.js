@@ -6,7 +6,7 @@
  * - DRAGON_WEST: rồng châu Âu — cánh dơi có xương ngón chiếu 3/4 (xoè khi đập xuống, gập khi nhấc lên), cổ chữ S,
  *   đuôi lượn với đầu mũi giáo.
  * Mỗi con: { w, h, period, defs, frame(t) → hình } + mốc theo tỉ lệ khung tính từ tâm: head / mouth (miệng),
- * feet (mặt đất dưới tâm), tail (chóp đuôi).
+ * feet (mặt đất dưới tâm), tail (chóp đuôi); run = tốc độ bàn chân lướt đất (đơn vị khung / giây, tốc độ 1×).
  * Hình = [{ d, fill, op, stroke, sw }] thứ tự dưới → trên; fill 'url(#id)' trỏ gradient trong defs.
  * Hàm thuần, không DOM (self-check: src/__tests__/tasks/creatureArt.test.js). Đầu con vật hướng +x.
  */
@@ -273,7 +273,7 @@ export const DRAGON_WEST = {
 
 /* ═══════════════ HỒ LY 9 ĐUÔI (cáo trắng ánh băng; phi nước đại, chân IK; 9 đuôi linh khí) ═══════════════ */
 export const FOX_9TAIL = {
-  w: 260, h: 160, period: 0.56, mouth: [0.37, -0.03], feet: 0.41, tail: [-0.33, -0.19],
+  w: 260, h: 160, period: 0.56, mouth: [0.37, -0.03], feet: 0.41, tail: [-0.33, -0.19], run: 207,
   defs: '<linearGradient id="fxFur" x1="0" y1="55" x2="0" y2="112" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".6" stop-color="#EEF6FF"/><stop offset="1" stop-color="#C9D9EA"/></linearGradient>'
     + '<linearGradient id="fxTail" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7DD3FC" stop-opacity=".35"/><stop offset=".45" stop-color="#BAE6FD" stop-opacity=".72"/><stop offset="1" stop-color="#F5FAFF" stop-opacity=".95"/></linearGradient>',
   frame(t) {
@@ -304,8 +304,8 @@ export const FOX_9TAIL = {
     // 9 đuôi xoè như lửa băng: lượn trễ pha, chóp toả sáng
     const tb = add(Hp, [-13, -8]);
     for (let k = 0; k < 9; k++) {
-      const base = Math.PI - 1.08 + k * 0.165;
-      const pts = rope(tb, 12, 5.5 + (k % 3) * 0.35, (s, i) => base - 0.2 * s + (0.16 + 0.32 * s) * Math.sin(TAU * ph * 0.5 - i * 0.5 + k * 0.75));
+      const base = Math.PI - 0.62 + k * 0.17;   // quạt từ chếch xuống (k=0) tới chếch lên; đuôi thấp nhất vẫn trên mặt đất
+      const pts = rope(tb, 12, 5.5 + (k % 3) * 0.35, (s, i) => base + 0.15 * s + (0.14 + 0.28 * s) * Math.sin(TAU * ph * 0.5 - i * 0.5 + k * 0.75));
       out.push(S(tube(pts, (s) => 1.6 + 5.6 * Math.pow(Math.sin(Math.PI * Math.min(1, s * 1.08)), 0.7)), 'url(#fxTail)', k % 2 ? 0.85 : 1, { stroke: '#BAE6FD', sw: 0.5 }));
       out.push(S(ellipse(pts[12], 3, 2, Math.atan2(pts[12][1] - pts[11][1], pts[12][0] - pts[11][0])), '#7DD3FC', 0.6));
     }

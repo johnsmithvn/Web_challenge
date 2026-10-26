@@ -10,7 +10,7 @@
  */
 import { NATURE_POOL, NATURE_TYPES, natureClick, runNature, skyMoon, bigRainbowArc } from './taskNatureFx';
 import { koiSvg } from './koiArt';
-import { DRAGON_EAST, DRAGON_WEST } from './creatureArt';
+import { DRAGON_EAST, DRAGON_WEST, FOX_9TAIL } from './creatureArt';
 
 export const hosts = {};
 // Khoá khung như mockup: c/a = sáng/tối desktop, cm/am = mobile (đặt vào data-frame của trang)
@@ -45,7 +45,6 @@ const EN = {
   LANT: '<div style="position:absolute;left:-10px;top:-8px;width:34px;height:38px;border-radius:50%;background:radial-gradient(closest-side,rgba(253,224,130,.5),rgba(253,224,130,0));animation:tkf-twinkleB 1.6s ease-in-out infinite"></div><span style="position:absolute;left:6.5px;top:-6px;width:1px;height:7px;background:rgba(227,194,122,.8)"></span><span style="position:absolute;left:2px;top:1px;width:10px;height:2px;border-radius:1px;background:#8A6416"></span><span style="position:absolute;left:1px;top:3px;width:12px;height:14px;border-radius:40%;background:radial-gradient(60% 60% at 50% 55%,#FFF7D6,#FCD34D 55%,#F59E0B);box-shadow:0 0 10px 3px rgba(252,211,77,.55)"></span><span style="position:absolute;left:2px;top:17px;width:10px;height:2px;border-radius:1px;background:#8A6416"></span><span style="position:absolute;left:6.5px;top:19px;width:1px;height:4px;background:rgba(227,194,122,.8)"></span>',
   FF: '<span style="position:absolute;left:-10px;top:-10px;width:20px;height:20px;border-radius:50%;background:radial-gradient(closest-side,rgba(210,255,120,.5),rgba(210,255,120,0))"></span><span style="position:absolute;left:-2px;top:-2px;width:4px;height:4px;border-radius:50%;background:#F2FFB8;box-shadow:0 0 6px 2px rgba(210,255,120,.85)"></span>',
   WISP: '<div style="position:absolute;left:-14px;top:-11px;width:48px;height:48px;border-radius:50%;background:radial-gradient(closest-side,rgba(125,211,252,.45),rgba(125,211,252,0));animation:tkf-twinkleB 1.4s ease-in-out infinite"></div><svg width="20" height="26" viewBox="0 0 20 26" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 6px rgba(125,211,252,.95))"><g style="transform-origin:10px 22px;animation:tkf-eWob .6s ease-in-out infinite alternate"><path d="M10 0 C13 6 18 10 18 16 C18 21 14 25 10 25 C6 25 2 21 2 16 C2 11 7 8 10 0 Z" fill="rgba(186,230,253,.7)"/><path d="M10 8 C12 12 14 14 14 17 C14 20 12 22 10 22 C8 22 6 20 6 17 C6 14 9 12 10 8 Z" fill="#F0F9FF"/></g><circle cx="8.2" cy="17" r=".9" fill="#0C4A6E"/><circle cx="11.8" cy="17" r=".9" fill="#0C4A6E"/></svg>',
-  FOX: '<svg width="64" height="36" viewBox="0 0 64 36" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 6px rgba(125,211,252,.85))">' + Array.from({ length: 9 }, (_, i) => { const th = (165 + i * 11.5) * Math.PI / 180, L = 20 + (i % 3) * 3, tx = 20 + Math.cos(th) * L, ty = 19 + Math.sin(th) * L, mx = (20 + tx) / 2, my = (19 + ty) / 2, px = -Math.sin(th) * 4.5, py = Math.cos(th) * 4.5; return '<g style="transform-origin:20px 19px;animation:tkf-eTail ' + (.5 + (i % 4) * .12).toFixed(2) + 's ease-in-out ' + (-i * .13).toFixed(2) + 's infinite alternate"><path d="M20 19 Q' + (mx + px).toFixed(1) + ' ' + (my + py).toFixed(1) + ' ' + tx.toFixed(1) + ' ' + ty.toFixed(1) + ' Q' + (mx - px).toFixed(1) + ' ' + (my - py).toFixed(1) + ' 20 19 Z" fill="rgba(125,211,252,.5)" stroke="#BAE6FD" stroke-width=".7"/></g>'; }).join('') + ENL(1, '26px 23px', 'M26 23 L24 34', '#C9D9EA', 2.4) + ENL(2, '46px 22px', 'M46 22 L48 34', '#C9D9EA', 2.4) + '<path d="M20 21 C19 15 27 13 37 14 C45 15 49 13 51 11 L55 9 C59 11 59 17 55 21 C51 25 31 27 24 25.5 C21 24.5 20 23 20 21 Z" fill="#EEF6FF"/><path d="M49 13 C50 7 54 4 58 5 L63 9.5 C64 11.5 62.5 13 60 13 C58 15 54 16 51 16.5 Z" fill="#F5FAFF"/><path d="M52 7 L52.5 .5 L56 5.5 Z M56 5 L59 0 L59.5 6 Z" fill="#F5FAFF"/><path d="M53 5.5 L53.3 2.4 M57.2 4.6 L58.6 2" stroke="#7DD3FC" stroke-width=".8"/><circle cx="57.5" cy="8.6" r=".95" fill="#0B1A2A"/><circle cx="63" cy="10.6" r=".8" fill="#0B1A2A"/><path d="M42 15.5 Q47 17.5 52 15.5" stroke="#7DD3FC" stroke-width=".8" fill="none"/>' + ENL(0, '29px 23px', 'M29 23 L30 34', '#EEF6FF', 2.6) + ENL(3, '50px 21px', 'M50 21 L52 34', '#EEF6FF', 2.6) + '</svg>',
   UNI: '<svg width="90" height="80" viewBox="0 0 90 80" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 8px rgba(233,213,255,.85)) drop-shadow(0 2px 3px rgba(20,30,40,.3))">' + ENL(1, '30px 50px', 'M30 49 L28 64 L27 77', '#E4DDF2', 3.2) + ENL(2, '57px 49px', 'M57 48 L59 63 L58 77', '#E4DDF2', 3.2) + '<g style="transform-origin:19px 40px;animation:tkf-eTail 1.6s ease-in-out infinite alternate"><path d="M19 40 C9 38 5 46 8 58 C10 51 14 47 19 45 Z" fill="#C4B5FD"/><path d="M19 42 C12 42 9 48 11 55 C13 50 16 47 19 46 Z" fill="#F9A8D4"/></g><path d="M18 40 C17 33 26 30 40 31 C52 32 58 30 62 27 L66 24 C70 30 68 40 63 47 C57 54 34 55 25 52 C19 50 18 45 18 40 Z" fill="#FFFFFF"/><g data-k="head" style="transform-origin:62px 34px"><path d="M60 30 C62 24 64 18 68 15 C72 12 78 13 81 17 C84 20 85 23 83 25.5 C80 26.5 76 25.5 72 27 C69 29 67 33 66 38 Z" fill="#FFFFFF"/><path d="M67 15 C60 17 58 25 59 33 C61 27 63 23 66 21 Z" fill="#C4B5FD"/><path d="M65 18 C60 20 57 25 56 30 C59 27 62 24 65 22 Z" fill="#F9A8D4"/><path d="M69 14 L67 8 L72 12 Z" fill="#F3EEFF"/><path d="M73 13 L80 -3 L76 14 Z" fill="#FDE68A" stroke="#FFF7D6" stroke-width=".6"/><path d="M74.5 9 L78 8 M75.5 5 L78.5 4" stroke="#E3B04B" stroke-width=".6"/><circle data-k="hg" cx="79.6" cy="-2.5" r="5" fill="rgba(255,247,214,.9)" style="opacity:0"/><circle cx="76" cy="18.6" r="1.2" fill="#2E2A3B"/><circle cx="83.4" cy="23.4" r="1" fill="#C7B8D8"/></g>' + ENL(0, '34px 50px', 'M34 50 L35 64 L34 78', '#FFFFFF', 3.4) + ENL(3, '61px 47px', 'M61 46 L64 62 L64 78', '#FFFFFF', 3.4) + '</svg>',
   WITCH: '<svg width="56" height="34" viewBox="0 0 56 34" style="position:absolute;inset:0;overflow:visible;filter:drop-shadow(0 0 2px rgba(167,255,228,.6))"><g data-k="broom"><path d="M2 25 L55 18" stroke="#3A2A18" stroke-width="2" stroke-linecap="round"/><path d="M5 25 L-9 18 L-11 25 L-8 31 Z" fill="#5A4024"/><path d="M-8 20 L3 24 M-10 25 L3 25.5 M-8 30 L3 26.5" stroke="#7A5A34" stroke-width=".6"/></g><g style="transform-origin:26px 11px;animation:tkf-eRibbon .5s ease-in-out infinite alternate"><path d="M27 10 C19 9 11 14 3 11 C9 16 17 19 25 18 Z" fill="#1E3A2E"/></g><path d="M22 23 C20 15 24 9 30 9 C34 9 36 13 36 17 L41 23 C35 25 28 25 22 23 Z" fill="#0A1410"/><path d="M33 22 L37 28 L41 28.5" stroke="#0A1410" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="32.5" cy="6.5" r="3.6" fill="#0A1410"/><path d="M26 4.5 L40 3.6 L35 -2 L32 -11 L30 -3 Z" fill="#0A1410"/><path d="M24.5 5 L42 3.4" stroke="#0A1410" stroke-width="1.8" stroke-linecap="round"/><path d="M35.8 6.2 L37.4 7" stroke="#FDE68A" stroke-width=".8"/></svg>',
   BROOM: '<svg width="66" height="16" viewBox="-11 16 66 16" style="position:absolute;left:-33px;top:-8px;overflow:visible"><path d="M2 25 L55 18" stroke="#3A2A18" stroke-width="2" stroke-linecap="round"/><path d="M5 25 L-9 18 L-11 25 L-8 31 Z" fill="#5A4024"/><path d="M-8 20 L3 24 M-10 25 L3 25.5 M-8 30 L3 26.5" stroke="#7A5A34" stroke-width=".6"/></svg>',
@@ -96,16 +95,16 @@ function flyKit(host, m) {
 }
 
 // Vẽ con vật thủ tục (utils/creatureArt.js) vào box: SVG đổi path mỗi khung bằng rAF, tự dừng khi box bị gỡ khỏi trang.
-// id gradient gắn hậu tố riêng để 2 con cùng lúc không giẫm defs của nhau.
+// id gradient gắn hậu tố riêng để 2 con cùng lúc không giẫm defs của nhau. pace: nhân tốc độ chuyển động (khớp chân với tốc độ chạy).
 let liveSeq = 0;
-function liveArt(box, C, css) {
+function liveArt(box, C, css, pace = 1) {
   if (!box) return;
   const id = ++liveSeq, NS = 'http://www.w3.org/2000/svg', own = (v) => v.replace(/url\(#(\w+)\)/, 'url(#$1-' + id + ')');
   box.innerHTML = '<svg viewBox="0 0 ' + C.w + ' ' + C.h + '" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;' + css + '"><defs>' + C.defs.replace(/id="(\w+)"/g, 'id="$1-' + id + '"') + '</defs><g></g></svg>';
   const g = box.querySelector('g'), els = [], t0 = performance.now() - Math.random() * C.period * 1000;
   const step = (now) => {
     if (!box.isConnected) return;
-    C.frame((now - t0) / 1000).forEach((s, i) => {
+    C.frame(((now - t0) / 1000) * pace).forEach((s, i) => {
       let p = els[i];
       if (!p) { p = document.createElementNS(NS, 'path'); p.setAttribute('stroke-linecap', 'round'); p.setAttribute('stroke-linejoin', 'round'); g.appendChild(p); els.push(p); }
       p.setAttribute('d', s.d); p.setAttribute('fill', own(s.fill)); p.setAttribute('opacity', s.op ?? 1);
@@ -118,7 +117,7 @@ function liveArt(box, C, css) {
 
 // Bể kịch bản [tên, trọng số]. Trọng số 0 = bản nháp: chỉ chạy được ở trang /fx-lab, app không tự bốc.
 export const ELF_POOL = {
-  night: [['lanterns', 2.5], ['owl', 2], ['koi', 2], ['veins', 2], ['ring', 1.5], ['starfall', 2], ['spirit', 1], ['bloom', 2.2], ['whale', 1.6], ['koistar', 1.6], ['owlmiss', 1.6], ['spiritbow', 1.2], ['dragon', 2], ['dragon_v2', 0], ['dragon_v2_eu', 0], ['catfight', 0], ['leafrider', 2], ['constel', 1.6], ['whaleeat', 1.4], ['owlsinge', 1.4], ...NATURE_POOL, ['kitsune', 1.8], ['unicorn', 1.5], ['wisp', 1.6], ['witch', 1.6], ['blackcat', 1.6], ['fairynap', 1.5], ['ent', 1.4], ['foxlant', 1.5], ['wispowl', 1.4], ['witchwhale', 1.3], ['heal', .9], ['catwisp', 1.4], ['witchpotion', 1.8], ['catgiant', 1.5], ['abduct_gnome', 1.8]],
+  night: [['lanterns', 2.5], ['owl', 2], ['koi', 2], ['veins', 2], ['ring', 1.5], ['starfall', 2], ['spirit', 1], ['bloom', 2.2], ['whale', 1.6], ['koistar', 1.6], ['owlmiss', 1.6], ['spiritbow', 1.2], ['dragon', 1.5], ['dragon_east', 1.5], ['dragon_west', 1.5], ['catfight', 1.5], ['leafrider', 2], ['constel', 1.6], ['whaleeat', 1.4], ['owlsinge', 1.4], ...NATURE_POOL, ['kitsune', 1.8], ['unicorn', 1.5], ['wisp', 1.6], ['witch', 1.6], ['blackcat', 1.6], ['fairynap', 1.5], ['ent', 1.4], ['foxlant', 1.5], ['wispowl', 1.4], ['witchwhale', 1.3], ['heal', .9], ['catwisp', 1.4], ['witchpotion', 1.8], ['catgiant', 1.5], ['abduct_gnome', 1.8]],
   day: [['deer', 2], ['butterflies', 2.5], ['bluebird', 2.5], ['mushroom', 2], ['dandelion', 2.5], ['squirrel', 2], ['sunray', 1.5], ['squirrelchase', 1.8], ['frog', 2], ['rainbow', 1.2], ['gnome', 2], ['bee', 2], ['deernut', 1.6], ['carrier_pigeon', 2.2], ['rainbow_slide', 1.8]],
 };
 
@@ -147,9 +146,12 @@ function flySpawn(host, m, night, force) {
   const tr = (art, x, y, t, t2, dx, dy, D) => fx1(art, x, y, [{ transform: 'translate(0,0)', opacity: 0, offset: 0 }, { transform: 'translate(0,0)', opacity: 0, offset: t }, { transform: 'translate(0,0)', opacity: 1, offset: Math.min(t2, t + .006) }, { transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)', opacity: 0, offset: t2 }, ...(t2 < 1 ? [{ transform: 'translate(0,0)', opacity: 0, offset: 1 }] : [])], D);
   const puff = (x, y, t, D) => { for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; tr('<span style="position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:rgba(186,230,253,.6);filter:blur(1.5px)"></span>', x, y, t, Math.min(1, t + .08), Math.cos(a) * 22 * k, Math.sin(a) * 18 * k - 10 * k, D); } };
   const FLM = '<span style="position:absolute;left:-5px;top:-10px;width:10px;height:14px;border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 50% 70%,#F0F9FF,#7DD3FC 45%,rgba(125,211,252,0) 75%)"></span>';
-  if (type === 'dragon_v2' || type === 'dragon_v2_eu') {
-    // Nháp thay cảnh 'dragon': rồng vẽ bằng code (utils/creatureArt.js) lượn ngang trời, giữa đường hắt xì tia sáng
-    const C = type === 'dragon_v2' ? DRAGON_EAST : DRAGON_WEST, bw = type === 'dragon_v2' ? 240 : 180, bh = bw * C.h / C.w;
+  // Hồ ly 9 đuôi: quầng xanh băng + nhân tốc độ phi theo tốc độ chạy (px/giây) để chân không trượt trên đất
+  const FOX_GLOW = 'filter:drop-shadow(0 0 6px rgba(125,211,252,.6))', foxPace = (v, w) => Math.min(2.2, Math.max(1, v / (FOX_9TAIL.run * w / FOX_9TAIL.w)));
+  if (type === 'dragon_east' || type === 'dragon_west') {
+    // Rồng xanh phương Đông / rồng châu Âu vẽ bằng code (utils/creatureArt.js), bốc ngẫu nhiên cùng rồng nhỏ 'dragon':
+    // lượn ngang trời, giữa đường hắt xì tia sáng
+    const C = type === 'dragon_east' ? DRAGON_EAST : DRAGON_WEST, bw = type === 'dragon_east' ? 240 : 180, bh = bw * C.h / C.w;
     const y = H * rr(.16, .36), D = rr(15, 19) * sp, kd = k * (m ? .75 : 1);
     const segs = cr(Array.from({ length: 7 }, (_, j) => P(X0 + (X1 - X0) * j / 6, y + Math.sin(j * 1.7) * 26 * k, j / 6)), 8), ts = rr(.4, .6), [nx, ny] = at(segs, ts);
     const glow = C === DRAGON_EAST ? 'rgba(94,242,194,.45)' : 'rgba(251,146,60,.45)';
@@ -158,7 +160,7 @@ function flySpawn(host, m, night, force) {
     return D;
   }
   if (type === 'catfight') {
-    // Nháp: 2 mèo đen (hình EN.CAT) khè nhau → nhảy vồ → cuộn bụi bốp bốp → văng ra, sao choáng quay trên đầu
+    // 2 mèo đen (hình EN.CAT) khè nhau → nhảy vồ → cuộn bụi bốp bốp → văng ra, sao choáng quay trên đầu
     const D = 9, kz = k * 1.5, cx = W * rr(.32, .68), cy = GY - 17 * kz, gap = 84 * k, tL = .22, tC = .3, tO = .62, tB = .7, C = [cx, cy - 4 * k];
     // Nhún co giãn từ gốc chân + nghiêng về phía đối thủ; ẩn trong đám bụi
     const sq = [['scale(1,1) skewX(0deg)', 0, 0], ['scale(1,1) skewX(0deg)', .04, 1],
@@ -195,10 +197,11 @@ function flySpawn(host, m, night, force) {
     return D;
   }
   if (type === 'kitsune') {
-    const kz = k * 1.25, y = GY - 18 * kz, D = rr(7, 8.5) * (m ? .8 : 1);
-    const segs = cr(Array.from({ length: 9 }, (_, j) => [SA + (SB - SA) * j / 8, y - (j % 2 ? 12 : 0) * kz, j / 8]), 8);
-    fly(EN.FOX, 64, 36, segs, D, { flip, k: kz, tk: .3, on: (el, ms, dl) => walk(el, ms, dl, null, null, 150, 28) });
-    for (let t = .03; t < .97; t += .025) { const [px, py] = at(segs, t); tr(FLM, px - dir * 28 * kz, py + rr(-10, 4) * kz, t, Math.min(1, t + .1), -dir * rr(4, 16) * k, -rr(14, 34) * k, D); }
+    // Hồ ly 9 đuôi vẽ bằng code (utils/creatureArt.js): phi nước đại, nhịp chân khớp tốc độ chạy, vệt lửa băng sau đuôi
+    const F = FOX_9TAIL, kz = k * 1.25, bw = 110, bh = bw * F.h / F.w, y = GY - F.feet * bh * kz, D = rr(9.5, 11) * (m ? .8 : 1);
+    const segs = cr(Array.from({ length: 9 }, (_, j) => [SA + (SB - SA) * j / 8, y - (j % 2 ? 5 : 0) * kz, j / 8]), 8);
+    fly('<div data-live style="position:absolute;inset:0"></div>', bw, bh, segs, D, { flip, k: kz, tk: .2, on: (el) => liveArt(el.querySelector('[data-live]'), F, FOX_GLOW, foxPace(Math.abs(SB - SA) / D, bw * kz)) });
+    for (let t = .03; t < .97; t += .025) { const [px, py] = at(segs, t); tr(FLM, px + dir * F.tail[0] * bw * kz, py + F.tail[1] * bh * kz + rr(-6, 6) * kz, t, Math.min(1, t + .1), -dir * rr(4, 16) * k, -rr(14, 34) * k, D); }
     return D;
   }
   if (type === 'unicorn') {
@@ -254,9 +257,11 @@ function flySpawn(host, m, night, force) {
     return D;
   }
   if (type === 'foxlant') {
-    const kz = k * 1.25, y = GY - 18 * kz, D = 11 * (m ? .85 : 1), lx = W * rr(.38, .62), ly = GY - 66 * kz;
-    const segs = cr([[SA, y, 0], [lx - dir * 130 * kz, y, .3], [lx - dir * 31 * kz, ly + 7 * kz, .4], [lx + dir * 60 * kz, y, .5], [lx + dir * 240 * kz, y - 8 * kz, .64], [SB, y, 1]], 8);
-    fly(EN.FOX + '<div data-k="lt" style="position:absolute;left:57px;top:13px;opacity:0;transform:scale(.8);transform-origin:0 0">' + EN.LANT + '</div>', 64, 36, segs, D, { flip, k: kz, tk: .3, on: (el, ms, dl) => walk(el, ms, dl, .35, .47, 150, 28), sync: [['[data-k="lt"]', [{ opacity: 0, offset: 0 }, { opacity: 0, offset: .399 }, { opacity: 1, offset: .401 }, { opacity: 1, offset: 1 }]]] });
+    // Hồ ly 9 đuôi nhảy lên đớp chiếc đèn lồng (miệng chạm đúng đèn lúc t = .4) rồi ngậm chạy đi
+    const F = FOX_9TAIL, kz = k * 1.25, bw = 110, bh = bw * F.h / F.w, y = GY - F.feet * bh * kz, D = 11 * (m ? .85 : 1), lx = W * rr(.38, .62), ly = GY - 66 * kz;
+    const mx = F.mouth[0] * bw * kz, my = F.mouth[1] * bh * kz;
+    const segs = cr([[SA, y, 0], [lx - dir * (mx + 100 * kz), y, .3], [lx - dir * mx, ly - my, .4], [lx + dir * 60 * kz, y, .5], [lx + dir * 240 * kz, y - 8 * kz, .64], [SB, y, 1]], 8);
+    fly('<div data-live style="position:absolute;inset:0"></div><div data-k="lt" style="position:absolute;left:' + (bw / 2 + F.mouth[0] * bw - 2).toFixed(1) + 'px;top:' + (bh / 2 + F.mouth[1] * bh).toFixed(1) + 'px;opacity:0;transform:scale(.8);transform-origin:0 0">' + EN.LANT + '</div>', bw, bh, segs, D, { flip, k: kz, tk: .2, on: (el) => liveArt(el.querySelector('[data-live]'), F, FOX_GLOW, foxPace(Math.abs(SB - SA) / D, bw * kz)), sync: [['[data-k="lt"]', [{ opacity: 0, offset: 0 }, { opacity: 0, offset: .399 }, { opacity: 1, offset: .401 }, { opacity: 1, offset: 1 }]]] });
     fx1('<div style="position:absolute;left:-7px;top:-9px;transform:scale(' + kz.toFixed(2) + ');transform-origin:7px 9px">' + EN.LANT + '</div>', lx, ly, [{ transform: 'translateY(0)', opacity: 0, offset: 0 }, { transform: 'translateY(-4px)', opacity: 1, offset: .08 }, { transform: 'translateY(3px)', opacity: 1, offset: .22 }, { transform: 'translateY(-3px)', opacity: 1, offset: .36 }, { transform: 'translateY(0)', opacity: 1, offset: .399 }, { transform: 'translateY(0)', opacity: 0, offset: .401 }, { transform: 'translateY(0)', opacity: 0, offset: 1 }], D);
     for (let i = 0; i < (m ? 5 : 8); i++) {
       const ph = rr(0, 6.28), r0 = rr(16, 30) * k, lag = rr(.05, .13), Qf = [];
