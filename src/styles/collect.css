@@ -998,33 +998,38 @@ span.kb-tag-chip { cursor: default; }
   transition: background 0.12s, color 0.12s;
 }
 .kb-reader__back:hover { background: var(--kb-p2); color: var(--kb-tx); }
-/* Viên chọn chủ đề: dấu chấm màu + select native (trang đọc, hàng trên điện thoại) */
-.kb-topic-select {
-  display: inline-flex; align-items: center; gap: 7px; flex: 0 1 auto;
-  min-width: 0;
-  height: 32px;
-  padding: 0 10px;
+/* SearchSelect (dropdown dùng chung) trong Knowledge: map token mà search-select.css đọc sang --kb-*
+   (sáng lẫn tối). Menu nền đặc, không backdrop-filter — trời phía sau chuyển động. */
+.kb-page .search-select {
+  --color-bg: var(--kb-bg);
+  --surface: var(--kb-pop);
+  --color-divider: var(--kb-line);
+  --color-text: var(--kb-tx);
+  --color-accent: var(--kb-accent);
+  --color-accent-100: var(--kb-accent-soft);
+  --color-accent-200: color-mix(in srgb, var(--kb-accent) 20%, transparent);
+  --ring: 0 0 0 3px var(--kb-glow);
+  --r: 10px;
+  --acc-mono: var(--kb-mono);
+}
+.kb-page .search-select__menu { box-shadow: var(--kb-shadow); backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* Viên chọn chủ đề (trang đọc, hàng trên điện thoại) = KBTopicSelect (KBTopicPicker.jsx): viên tròn
+   tô theo --kb-topic. `.search-select.` ở đầu để thắng search-select.css bất kể thứ tự nạp CSS. */
+.search-select.kb-topic-select { width: auto; flex: 0 1 auto; min-width: 0; }
+.search-select.kb-topic-select .search-select__control {
+  height: 32px; min-height: 32px;
+  padding: 0 8px 0 10px; gap: 4px;
   border: 1px solid color-mix(in srgb, var(--kb-topic, var(--kb-line)) 45%, var(--kb-line));
   border-radius: 999px;
   background: color-mix(in srgb, var(--kb-topic, transparent) 10%, transparent);
-  color: var(--kb-tx);
-  cursor: pointer;
-}
-.kb-topic-select:focus-within { outline: 2px solid var(--kb-accent); outline-offset: 2px; }
-.kb-topic-select.is-empty { border-style: dashed; color: var(--kb-dim); }
-.kb-topic-select select {
-  min-width: 0;
-  max-width: 170px;
-  padding: 0;
-  border: none; outline: none;
-  background: transparent;
-  color: inherit;
   font: 500 13px var(--kb-font);
-  appearance: none;
   cursor: pointer;
 }
-.kb-topic-select option { background: var(--kb-pop); color: var(--kb-tx); }
-.kb-topic-select svg { color: var(--kb-faint); }
+.search-select.kb-topic-select.is-empty .search-select__control { border-style: dashed; color: var(--kb-dim); }
+.kb-topic-select .search-select__selected { gap: 7px; font-weight: 500; }
+.kb-topic-select .search-select__selected-text { max-width: 170px; color: inherit; }
+.kb-topic-select .search-select__btn { padding: 2px; color: var(--kb-faint); }
 .kb-reader__divider { width: 1px; height: 20px; margin: 0 4px; background: var(--kb-line); }
 .kb-reader__progress { height: 2px; flex: none; overflow: hidden; }
 .kb-reader__progress-fill {
@@ -1546,11 +1551,11 @@ span.kb-tag-chip { cursor: default; }
   padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 6px;
 }
 .kb-mbar .kb-search,
-.kb-mbar .kb-topic-select { height: 40px; background: color-mix(in srgb, var(--kb-pop) 72%, transparent); }
+.kb-mbar .search-select.kb-topic-select .search-select__control { height: 40px; background: color-mix(in srgb, var(--kb-pop) 72%, transparent); }
 .kb-mbar .kb-search { flex: 1; min-width: 0; }
 .kb-mbar .kb-kbd { display: none; }
-.kb-mbar .kb-topic-select { padding: 0 12px; }
-.kb-mbar .kb-topic-select select { max-width: 112px; font-size: 13.5px; text-overflow: ellipsis; }
+.kb-mbar .search-select.kb-topic-select .search-select__control { min-height: 40px; padding: 0 10px 0 12px; font-size: 13.5px; }
+.kb-mbar .kb-topic-select .search-select__selected-text { max-width: 112px; }
 .kb-mbar__new { flex: none; width: 40px; height: 40px; padding: 0; border-radius: 999px; }
 
 .kb-tabbar {
@@ -1656,8 +1661,8 @@ span.kb-tag-chip { cursor: default; }
   .kb-reader__back span,
   .kb-reader__divider,
   .kb-reader__focus { display: none; }
-  .kb-topic-select { padding: 0 8px; }
-  .kb-topic-select select { max-width: 120px; }
+  .search-select.kb-topic-select .search-select__control { padding: 0 6px 0 8px; }
+  .kb-topic-select .search-select__selected-text { max-width: 120px; }
   .kb-ov-recent__kind,
   .kb-ov-recent__date { display: none; }
   .kb-ov-recent__row { grid-template-columns: minmax(0, 1fr) auto; }

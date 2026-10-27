@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AppIcon from '../AppIcon';
+import { KBTopicSelect } from './KBTopicPicker';
 
 /**
  * KBSidebar — cột trái của Knowledge: tìm, viết bài, chế độ xem, chủ đề.
@@ -75,25 +76,22 @@ export default function KBSidebar({ isMobile,
   }, []);
 
   if (isMobile) {
-    const current = topics.find(t => t.id === topicFilter);
     return (
       <>
         <header className="kb-mbar">
           <SearchBox inputRef={searchRef} search={search} onSearchChange={onSearchChange} />
-          <label className="kb-topic-select" style={current ? { '--kb-topic': current.color } : undefined}>
-            <span className="kb-dot" />
-            <select
-              value={mineOnly ? 'mine' : topicFilter}
-              onChange={e => (e.target.value === 'mine' ? onOpenMine() : onTopicFilter(e.target.value))}
-              aria-label="Chủ đề"
-            >
-              <option value="">Tất cả bài</option>
-              {(topicCounts.none > 0 || topicFilter === 'none') && <option value="none">Chưa xếp</option>}
-              {topics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              {(mineCount > 0 || mineOnly) && <option value="mine">Ghi chú của tôi</option>}
-            </select>
-            <AppIcon name="caretDown" size={12} />
-          </label>
+          {/* 'all' = Tất cả bài (topicFilter ''), 'none' = Chưa xếp, 'mine' = Ghi chú của tôi */}
+          <KBTopicSelect
+            options={[
+              { value: 'all', label: 'Tất cả bài' },
+              ...(topicCounts.none > 0 || topicFilter === 'none' ? [{ value: 'none', label: 'Chưa xếp', color: 'var(--kb-gold)' }] : []),
+              ...topics.map(t => ({ value: t.id, label: t.name, color: t.color })),
+              ...(mineCount > 0 || mineOnly ? [{ value: 'mine', label: 'Ghi chú của tôi', color: 'var(--kb-violet)' }] : []),
+            ]}
+            value={mineOnly ? 'mine' : topicFilter || 'all'}
+            onChange={v => (v === 'mine' ? onOpenMine() : onTopicFilter(v === 'all' ? '' : v))}
+            ariaLabel="Chủ đề"
+          />
           <button className="kb-btn-primary kb-mbar__new" onClick={onNewArticle} title="Viết bài mới" aria-label="Viết bài mới">
             <AppIcon name="plus" size={18} weight="bold" />
           </button>

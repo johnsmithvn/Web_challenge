@@ -190,7 +190,7 @@ Bài chưa xếp cũ hơn 30 ngày không hiện ở đây (xếp hàng loạt t
 ### 4.5. Trang đọc (`KBReaderView`)
 
 - **Thanh trên:** trong suốt, hai cụm viên nổi để trời và trăng hiện phía sau — trái: ← Kiến thức · ↑ ↓; phải: **viên chủ đề**
-  (select native, đổi một lần chọn) · Liên kết · Tập trung (`F`, ẩn cột phải) · Sửa (`E`) · Xoá. Không có đường dẫn
+  (`KBTopicSelect` = SearchSelect dùng chung, chấm màu từng chủ đề, đổi một lần chọn; "+ Gán chủ đề" mở thẳng nó) · Liên kết · Tập trung (`F`, ẩn cột phải) · Sửa (`E`) · Xoá. Không có đường dẫn
   (tiêu đề đã ở H1, chủ đề ở viên). Vạch tiến độ cuộn trang (scaleX). Điện thoại (≤640px): nút về chỉ còn mũi tên, ẩn nút
   Tập trung (cột phải đã nằm dưới bài).
 - **Nội dung:** meta (loại · nguồn · ngày · phút đọc), tiêu đề Spectral, "+ Gán chủ đề" (khi Chưa xếp, mở thẳng select) + #thẻ, media preview, thân bài, **Ghi chú của bạn**.
@@ -227,7 +227,7 @@ Xoá có xác nhận; toast "Hoàn tác" hoặc `⌘Z` chèn lại bài (giữ n
 
 **Điện thoại (≤768px, đã đăng nhập)** — như Finance: thanh Life Hub + tab đáy chung của app ẩn ở `/collect`
 (`body.in-knowledge-workspace` do `CollectPage` gắn; `Navbar` không vẽ hai thanh đó). `KBSidebar` (`isMobile`) vẽ:
-- **Hàng trên trong suốt** (trời hiện phía sau): ô tìm · **viên chủ đề** (select native: Tất cả bài / Chưa xếp / từng chủ đề /
+- **Hàng trên trong suốt** (trời hiện phía sau): ô tìm · **viên chủ đề** (`KBTopicSelect`: Tất cả bài / Chưa xếp / từng chủ đề /
   Ghi chú của tôi; chọn ở Tổng quan thì sang Danh sách) · nút **＋** Viết bài mới.
 - **Tab đáy riêng**: Home (về Life Hub, nơi có đổi sáng / tối, tài khoản) · Tổng quan · Danh sách · Gallery · Sơ đồ · Canvas.
 - Trang đọc / soạn: không có hai thanh này (thanh của trang đọc có nút về). Chưa đăng nhập: giữ thanh chung để còn nút đăng nhập.

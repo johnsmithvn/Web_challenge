@@ -15,6 +15,7 @@ import {
 } from '../../utils/kbDeriveUtils';
 import { formatDate, formatDateTime } from '../../utils/dateUtils';
 import AppIcon from '../AppIcon';
+import { KBTopicSelect } from './KBTopicPicker';
 import MediaPreview from '../MediaPreview';
 import { stripMediaTag } from '../../utils/mediaUtils';
 
@@ -122,11 +123,9 @@ export default function KBReaderView({
   // Tasks associated with this collection
   const tasks = article._linkedTasks || [];
 
-  // "+ Gán chủ đề" mở luôn ô chọn chủ đề trên thanh trên
-  const openTopicPicker = () => {
-    const el = topicSelectRef.current;
-    try { el?.showPicker(); } catch { el?.focus(); }
-  };
+  // "+ Gán chủ đề" mở luôn ô chọn chủ đề trên thanh trên: click vào ô gõ của SearchSelect
+  // nổi lên khung điều khiển, khung mở menu và focus ô gõ
+  const openTopicPicker = () => topicSelectRef.current?.click();
 
   // Mini graph for rail (always renders a lively local cluster)
   useEffect(() => {
@@ -328,20 +327,18 @@ export default function KBReaderView({
         </div>
 
         <div className="kb-reader__group">
-          {/* Chủ đề: đổi một chạm (native select — không cần popover riêng) */}
-          <label className={`kb-topic-select${topic ? '' : ' is-empty'}`} style={topic ? { '--kb-topic': topic.color } : undefined} title="Đổi chủ đề">
-            <span className="kb-dot" />
-            <select
-              ref={topicSelectRef}
-              value={article.topic_id || ''}
-              onChange={e => onAssignTopic(e.target.value || null)}
-              aria-label="Chủ đề của bài"
-            >
-              {topics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              <option value="">Chưa xếp</option>
-            </select>
-            <AppIcon name="caretDown" size={12} />
-          </label>
+          {/* Chủ đề: đổi một chạm. 'none' = Chưa xếp (SearchSelect coi '' là chưa chọn) */}
+          <KBTopicSelect
+            options={[
+              ...topics.map(t => ({ value: t.id, label: t.name, color: t.color })),
+              { value: 'none', label: 'Chưa xếp', color: 'var(--kb-gold)' },
+            ]}
+            value={article.topic_id || 'none'}
+            onChange={v => onAssignTopic(v === 'none' ? null : v)}
+            empty={!topic}
+            ariaLabel="Chủ đề của bài"
+            inputRef={topicSelectRef}
+          />
           <span className="kb-reader__divider" />
 
           <button className="kb-icon-btn" onClick={onOpenLinkModal} title="Liên kết bài viết" aria-label="Liên kết bài viết">
