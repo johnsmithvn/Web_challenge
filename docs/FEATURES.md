@@ -183,8 +183,8 @@ Desktop nổi bên phải, mobile là sheet; mở bằng nút "Lịch & sự ki�
   đóm) / bình minh–hoàng hôn; Rừng tiên = rừng ngày (cây, suối, nắng, sương mù) / rừng đêm. Tắt hết khi bật Giảm
   chuyển động trong Cài đặt (mặc định tắt, không theo trình duyệt).
 - Hình bay ngẫu nhiên qua trời (máy bay, UFO, Hằng Nga… / hươu, rồng, hồ ly, phù thuỷ…) + ban đêm có hiệu ứng thiên
-  nhiên chung: sao ước nguyện (bấm trúng → thẻ điều ước), Thợ Săn, cầu vồng trăng, Ngân Hà, hồ, sương, lá
-  bạc, bồ công anh, rêu; thỉnh thoảng nguyệt thực.
+  nhiên chung: sao ước nguyện (bấm trúng → thẻ điều ước), Thợ Săn, cầu vồng trăng, Ngân Hà, sương, lá
+  bạc, bồ công anh; thỉnh thoảng nguyệt thực.
 - Nút "Ngắm cảnh" / "Ngắm rừng": ẩn giao diện để xem nền.
 - Rừng tiên: bấm nấm → "boing!", bấm đom đóm → bay theo chuột, bấm nền → rung cây; sương tan quanh con trỏ; thẻ trễ
   có dây leo, xong có hoa, đang làm có đom đóm; xong việc → tiên bay lên, xong hết việc hôm nay → trái tim đom đóm;

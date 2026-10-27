@@ -245,8 +245,7 @@ Xen kẽ vào bầu trời đêm của cả **2a Tối** và **3b Rừng tiên �
 6. `dew` (8s): Giọt sương thần ngưng tụ từ đỉnh trời rơi xuống mặt đất toé sóng nước lấp lánh.
 7. `silverleaf` (10s): Lốc xoáy cuốn theo muôn vàn chiếc lá bạc lướt ngang màn hình.
 8. `glowdand` (13s): Bồ công anh dạ quang vươn lên từ mặt đất, cánh hoa bung bay toả sáng.
-9. `moss` (12s): Thảm rêu phát quang ma thuật lan tỏa theo từng bước chân vô hình.
-10. `eclipse` (18s): Hiện tượng Nguyệt thực Trăng Máu huyền bí (xác suất 1/40 đè lên kịch bản thường).
+9. `eclipse` (18s): Hiện tượng Nguyệt thực Trăng Máu huyền bí (xác suất 1/40 đè lên kịch bản thường).
 
 ---
 

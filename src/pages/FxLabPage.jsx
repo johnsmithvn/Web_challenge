@@ -37,7 +37,7 @@ const LABELS = {
   wispowl: 'Ma trơi doạ cú', witchwhale: 'Phù thuỷ đụng cá voi', heal: 'Kỳ lân chữa lành cú', catwisp: 'Mèo vồ ma trơi',
   witchpotion: 'Phù thuỷ rơi độc dược → mèo khổng lồ', catgiant: 'Mèo hoá khổng lồ', abduct_gnome: 'UFO bắt chú lùn',
   wish: 'Sao ước nguyện (bấm được)', orion: 'Chòm Thợ Săn', moonbow: 'Cầu vồng trăng', milky: 'Ngân Hà',
-  dew: 'Sương rơi', silverleaf: 'Lá bạc', glowdand: 'Bồ công anh phát sáng', moss: 'Rêu phát sáng', eclipse: 'Nguyệt thực',
+  dew: 'Sương rơi', silverleaf: 'Lá bạc', glowdand: 'Bồ công anh phát sáng', eclipse: 'Nguyệt thực',
 };
 const ELF_LABELS = { lanterns: 'Đèn lồng', whale: 'Cá voi', owl: 'Cú', rainbow: 'Cầu vồng' };
 const label = (type, style) => (style === 'elf' && ELF_LABELS[type]) || LABELS[type] || `${type} (chưa đặt tên)`;

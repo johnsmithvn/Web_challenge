@@ -1,7 +1,8 @@
 /**
  * Hiệu ứng thiên nhiên dùng chung cho nền trang Nhiệm vụ (cả Mặc định lẫn Rừng tiên) — port nature-fx.js của mockup:
- * sao ước nguyện (bấm được → thẻ điều ước), chòm Thợ Săn, cầu vồng trăng (+ cầu vồng ban ngày), Ngân Hà, hồ phát sáng,
- * sương rơi, lá bạc, bồ công anh phát sáng, rêu phát sáng + nguyệt thực (1/40 lượt đêm). Chỉ dùng ban đêm.
+ * sao ước nguyện (bấm được → thẻ điều ước), chòm Thợ Săn, cầu vồng trăng (+ cầu vồng ban ngày), Ngân Hà,
+ * sương rơi, lá bạc, bồ công anh phát sáng + nguyệt thực (1/40 lượt đêm). Chỉ dùng ban đêm.
+ * Đã gỡ (user thấy lạc lõng): hồ phát sáng, rêu phát sáng.
  * Khung = cỡ thật của host; keyframe CSS mang tiền tố `tkf-` (tasks-aurora.css).
  * File là code mockup chuyển sang — giữ nguyên cấu trúc cho dễ đối chiếu khi mockup đổi.
  */
@@ -180,19 +181,8 @@ FX.glowdand = K => {
   }
   return D;
 };
-FX.moss = K => {
-  const { W, k, m, fx1, dot, gyAt, gx } = K, D = 12, dir = R() < .5 ? 1 : -1, n = m ? 8 : 13, step = 34 * k, span = step * (n - 1), xa = W * gx[0] + 30 * k, xb = Math.max(xa, W * gx[1] - 30 * k - span), x0 = xa + R() * (xb - xa);
-  let sp = ''; for (let i = 0; i < 6; i++) sp += '<circle cx="' + f(rr(-8, 8)) + '" cy="' + f(rr(-4, 4)) + '" r=".6" fill="#C8FFEA"/>';
-  const pr = '<svg width="18" height="12" viewBox="-9 -6 18 12" style="position:absolute;left:-9px;top:-6px;overflow:visible;filter:drop-shadow(0 0 5px rgba(94,242,194,.9))' + (dir < 0 ? ';transform:scaleX(-1)' : '') + '"><ellipse rx="9" ry="4" fill="rgba(94,242,194,.18)"/><ellipse cx="-1" rx="4.6" ry="2.7" fill="rgba(125,232,196,.8)"/><circle cx="4.6" cy="-2" r=".9" fill="#A7FFE4"/><circle cx="5.4" cy="0" r=".9" fill="#A7FFE4"/><circle cx="4.6" cy="2" r=".9" fill="#A7FFE4"/>' + sp + '</svg>';
-  for (let i = 0; i < n; i++) {
-    const x = dir > 0 ? x0 + i * step : x0 + span - i * step, y = gyAt(x) - 8 * k + (i % 2 ? 5 : -5) * k, ti = .04 + i * (.5 / n), sc = k.toFixed(2);
-    fx1(pr, x, y, [{ transform: 'scale(0)', opacity: 0, offset: 0 }, { transform: 'scale(0)', opacity: 0, offset: ti }, { transform: 'scale(' + (k * 1.25).toFixed(2) + ')', opacity: 1, offset: ti + .03 }, { transform: 'scale(' + sc + ')', opacity: .9, offset: ti + .08 }, { transform: 'scale(' + sc + ')', opacity: .55, offset: .82 }, { transform: 'scale(' + sc + ')', opacity: 0, offset: 1 }], D);
-    for (let j = 0; j < 2; j++) fx1(dot(rr(1.6, 2.6), '#C8FFEA', '94,242,194'), x + rr(-5, 5) * k, y, [{ transform: 'translate(0,0)', opacity: 0 }, { transform: 'translate(0,' + f(-6 * k) + 'px)', opacity: 1, offset: .2 }, { transform: 'translate(' + f(rr(-8, 8)) + 'px,' + f(-rr(22, 40) * k) + 'px)', opacity: 0 }], 1.8, ti * D + j * .3);
-  }
-  return D;
-};
-export const NATURE_TYPES = ['wish', 'orion', 'moonbow', 'rainbow', 'milky', 'dew', 'silverleaf', 'glowdand', 'moss'];
-export const NATURE_POOL = [['wish', 1.8], ['orion', 1.4], ['moonbow', 1.2], ['milky', 1.3], ['dew', 1.6], ['silverleaf', 1.6], ['glowdand', 1.6], ['moss', 1.5]];
+export const NATURE_TYPES = ['wish', 'orion', 'moonbow', 'rainbow', 'milky', 'dew', 'silverleaf', 'glowdand'];
+export const NATURE_POOL = [['wish', 1.8], ['orion', 1.4], ['moonbow', 1.2], ['milky', 1.3], ['dew', 1.6], ['silverleaf', 1.6], ['glowdand', 1.6]];
 
 /**
  * Chạy 1 hiệu ứng. o: moon [x, y, cỡ] (tâm trăng, px thật) · top (lớp trên nội dung) · font · gx [từ, đến] (dải

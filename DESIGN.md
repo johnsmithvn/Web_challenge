@@ -1447,7 +1447,7 @@ Bật Giảm chuyển động (Cài đặt) thì tắt mọi chuyển động n�
   (cuối `.task-cosmos-bg`), bay bằng Web Animations rồi tự xoá. Keyframe CSS của chúng mang tiền tố `tkf-`
   (chung ở tasks-aurora.css, riêng Elf ở tasks-elf.css). Code là port mockup — khi mockup đổi, chép lại hàm `flySpawn`.
   Ban đêm cả 2 kiểu trộn thêm `utils/taskNatureFx.js` (port `nature-fx.js`): sao ước nguyện bấm được,
-  Thợ Săn, cầu vồng trăng, Ngân Hà, hồ, sương, lá bạc, bồ công anh, rêu + nguyệt thực (1/40 lượt). Hình bám trăng / chân
+  Thợ Săn, cầu vồng trăng, Ngân Hà, sương, lá bạc, bồ công anh + nguyệt thực (1/40 lượt). Hình bám trăng / chân
   trời lấy mốc thật qua `skyMoon` / `horizonY` (khớp `Moon`, `MobileMoon`, `.task-planet-horizon`); mặt đất mobile tính
   cách đáy trang (mockup 742/758 → `H - 16`) để không lọt khỏi màn hình thấp.
 - **Ngắm cảnh**: `.tasks-workspace.is-scene` ẩn mọi con trừ `.task-cosmos-bg`, `.tk-scene-btn`, `.tk-elf-streak`.
