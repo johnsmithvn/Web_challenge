@@ -1041,12 +1041,13 @@ span.kb-tag-chip { cursor: default; }
 }
 .kb-reader__layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   flex: 1;
   min-height: 0;
 }
 .kb-reader--focus .kb-reader__layout { grid-template-columns: minmax(0, 1fr); }
-.kb-reader__main { min-width: 0; overflow-y: auto; padding: 32px 48px 120px; }
+/* container: khối rộng trong bài đo vùng đọc bằng cqw (xem .kb-reader__body bên dưới) */
+.kb-reader__main { min-width: 0; overflow-y: auto; padding: 32px 48px 120px; container-type: inline-size; }
 .kb-reader__article { max-width: 760px; margin: 0 auto; }
 .kb-reader__hero-meta { display: flex; flex-wrap: wrap; font-size: 13px; color: var(--kb-faint); }
 .kb-reader__hero-meta > span + span::before { content: '·'; margin: 0 8px; opacity: 0.7; }
@@ -1071,6 +1072,24 @@ span.kb-tag-chip { cursor: default; }
 .kb-reader__assign:hover { background: var(--kb-accent-soft); }
 .kb-reader__media { margin-top: 24px; }
 .kb-reader__body { margin-top: 30px; }
+/* Khối rộng tràn khỏi cột chữ 760px, tối đa 960px và không quá vùng đọc (100cqw = bề rộng nội dung
+   .kb-reader__main): code / sơ đồ ASCII và bảng. Cột chữ canh giữa vùng đọc nên margin âm hai bên
+   bằng nhau là vẫn giữa. Chỉ khối cấp đầu của bài — cả Markdown lẫn Tiptap (.tp-content). */
+.kb-reader__body.kb-prose > :is(pre, table),
+.kb-reader__body .tp-content > :is(pre, table, .tableWrapper) {
+  --kb-wide: min(960px, 100cqw);
+  width: var(--kb-wide);
+  max-width: none;
+  margin-inline: calc((100% - var(--kb-wide)) / 2);
+}
+/* Ảnh: giữ cỡ thật, chỉ nới trần từ 760 lên 960px; canh giữa cột (ảnh to tràn đều hai bên) */
+.kb-reader__body.kb-prose > p > img:only-child,
+.kb-reader__body .tp-content > img {
+  display: block;
+  max-width: min(960px, 100cqw);
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
 .kb-prose__empty { color: var(--kb-faint); }
 
 .kb-reader__rail {

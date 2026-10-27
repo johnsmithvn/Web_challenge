@@ -1380,7 +1380,9 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
   `.kb-btn-violet`, `.kb-icon-btn` (32px, `--danger`, `.is-on`), `.kb-link`. Nhóm chọn một: `.kb-seg`
   (`--quiet` không khung). Chip chủ đề trong bộ chọn: `.kb-chip` viên tròn `999px`.
 - **Trang đọc**: thanh trên trong suốt, chỉ có hai cụm `.kb-reader__group` (viên, nền `--kb-pop` 72%) để trời / trăng
-  không bị che. Cột chữ `max-width: 760px` giữa vùng đọc, cột phải 320px.
+  không bị che. Cột chữ `max-width: 760px` giữa vùng đọc (~90 ký tự/dòng — đã là trần dễ đọc, đừng nới chữ), cột phải
+  360px. Khối cấp đầu rộng — code / sơ đồ ASCII, bảng (`width`), ảnh (`max-width`, giữ cỡ thật, canh giữa) — tràn đều hai
+  bên tới `min(960px, 100cqw)`; `.kb-reader__main` là container nên màn hẹp không tràn ra ngoài.
 - **Màu chữ trong bài**: không vá bằng CSS `span[style*=color]`; màu inline làm chìm chữ bị gỡ khi nạp
   (`migrateTiptapDoc` trong `kbDeriveUtils`), màu nhấn (tím, đỏ…) giữ nguyên.
 - **Hiệu năng**: không `backdrop-filter` ở đâu trong Knowledge — trời phía sau chuyển động nên blur sẽ tính lại mỗi khung;
