@@ -242,12 +242,11 @@ Xen kẽ vào bầu trời đêm của cả **2a Tối** và **3b Rừng tiên �
 3. `orion` (15s): Chòm sao Thợ Săn Orion tự nối các vì sao, giương cung bắn mũi tên sao nổ hạt lung linh.
 4. `moonbow` (15s): Màn mưa phùn mỏng quét qua, để lộ cầu vồng trăng tỏa ánh bạc dịu kỳ.
 5. `milky` (26s): Dải Ngân Hà nghiêng chậm rãi xoay tròn giữa vòm trời.
-6. `lake` (15s): Vùng hồ tiên phát sáng phản chiếu bóng mây và đom đóm dập dờn.
-7. `dew` (8s): Giọt sương thần ngưng tụ từ đỉnh trời rơi xuống mặt đất toé sóng nước lấp lánh.
-8. `silverleaf` (10s): Lốc xoáy cuốn theo muôn vàn chiếc lá bạc lướt ngang màn hình.
-9. `glowdand` (13s): Bồ công anh dạ quang vươn lên từ mặt đất, cánh hoa bung bay toả sáng.
-10. `moss` (12s): Thảm rêu phát quang ma thuật lan tỏa theo từng bước chân vô hình.
-11. `eclipse` (18s): Hiện tượng Nguyệt thực Trăng Máu huyền bí (xác suất 1/40 đè lên kịch bản thường).
+6. `dew` (8s): Giọt sương thần ngưng tụ từ đỉnh trời rơi xuống mặt đất toé sóng nước lấp lánh.
+7. `silverleaf` (10s): Lốc xoáy cuốn theo muôn vàn chiếc lá bạc lướt ngang màn hình.
+8. `glowdand` (13s): Bồ công anh dạ quang vươn lên từ mặt đất, cánh hoa bung bay toả sáng.
+9. `moss` (12s): Thảm rêu phát quang ma thuật lan tỏa theo từng bước chân vô hình.
+10. `eclipse` (18s): Hiện tượng Nguyệt thực Trăng Máu huyền bí (xác suất 1/40 đè lên kịch bản thường).
 
 ---
 

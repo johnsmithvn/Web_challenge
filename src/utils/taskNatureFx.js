@@ -139,19 +139,6 @@ FX.milky = K => {
   fx1('<div style="position:absolute;left:' + f(-bw / 2) + 'px;top:' + f(-bh / 2) + 'px;width:' + f(bw) + 'px;height:' + bh + 'px;-webkit-mask-image:' + em + ';mask-image:' + em + '"><div style="position:absolute;inset:0;background:linear-gradient(transparent 16%,rgba(170,195,255,.12) 36%,rgba(226,212,255,.22) 49%,rgba(255,232,206,.17) 56%,rgba(170,195,255,.1) 68%,transparent 84%);filter:blur(' + (m ? 6 : 10) + 'px)"></div><div style="position:absolute;inset:0;background:linear-gradient(transparent 44%,rgba(4,10,14,.42) 49%,rgba(4,10,14,.2) 54%,transparent 59%);filter:blur(4px);transform:skewX(-12deg)"></div><div style="position:absolute;inset:0;background:' + dust + ';background-size:96px 74px"></div><div style="position:absolute;inset:0;background:' + dust2 + ';background-size:41px 37px;opacity:.8"></div></div>', cx, cy, [{ transform: 'rotate(' + f(a0) + 'deg)', opacity: 0 }, { transform: 'rotate(' + f(a0 + sg * 1.5) + 'deg)', opacity: 1, offset: .2 }, { transform: 'rotate(' + f(a0 + sg * 5.5) + 'deg)', opacity: 1, offset: .8 }, { transform: 'rotate(' + f(a0 + sg * 7) + 'deg)', opacity: 0 }], D);
   return D;
 };
-FX.lake = K => {
-  const { W, k, m, fx1, gyAt, gx } = K, D = 15, lw = 420 * k, lh = 46 * k, cx = Math.max(W * gx[0] + lw / 2, Math.min(W * gx[1] - lw / 2, W * rr(gx[0], gx[1]))), wl = gyAt(cx) - lh * .8;
-  let sh = '';
-  for (let i = 0; i < 7; i++) sh += '<span style="position:absolute;left:' + f(rr(.15, .75) * lw) + 'px;top:' + f(rr(.2, .7) * lh) + 'px;width:' + f(rr(14, 34) * k) + 'px;height:1px;background:rgba(200,255,235,.45);animation:tkf-nfxTw ' + rr(1.6, 3).toFixed(1) + 's ease-in-out ' + (-rr(0, 3)).toFixed(1) + 's infinite"></span>';
-  fx1('<div style="position:absolute;left:' + f(-lw / 2) + 'px;top:0;width:' + f(lw) + 'px;height:' + f(lh) + 'px;border-radius:50%;background:radial-gradient(50% 50% at 50% 42%,rgba(30,78,80,.8),rgba(12,36,38,.75) 62%,rgba(12,36,38,0) 100%);box-shadow:inset 0 2px 0 rgba(167,255,228,.22);overflow:hidden">' + sh + '</div>', cx, wl, K.env(.1, .88), D);
-  for (let i = 0; i < (m ? 5 : 8); i++) {
-    const a = [], b = [], N = 6, dl = rr(.5, 2), dd = D - dl - .5;
-    for (let j = 0; j <= N; j++) { const u = j / N, x = cx + rr(-.4, .4) * lw, h = rr(12, 64) * k, op = j === 0 || j === N ? 0 : (j % 2 ? 1 : .55); a.push({ transform: 'translate(' + f(x) + 'px,' + f(wl - h) + 'px)', opacity: op, offset: u }); b.push({ transform: 'translate(' + f(x + rr(-2, 2)) + 'px,' + f(wl + 4 * k + h * .45) + 'px) scaleX(1.6)', opacity: op * .5, offset: u }); }
-    fx1('<span style="position:absolute;left:-10px;top:-10px;width:20px;height:20px;border-radius:50%;background:radial-gradient(closest-side,rgba(210,255,120,.5),rgba(210,255,120,0))"></span><span style="position:absolute;left:-2px;top:-2px;width:4px;height:4px;border-radius:50%;background:#F2FFB8;box-shadow:0 0 6px 2px rgba(210,255,120,.85)"></span>', 0, 0, a, dd, dl);
-    fx1('<span style="position:absolute;left:-3px;top:-1.5px;width:6px;height:3px;border-radius:50%;background:#F2FFB8;filter:blur(1px);box-shadow:0 0 6px 2px rgba(210,255,120,.55)"></span>', 0, 0, b, dd, dl);
-  }
-  return D;
-};
 FX.dew = K => {
   const { W, H, k, m, fx1, dot, gyAt, gx } = K, D = 8;
   const drop = '<svg width="8" height="11" viewBox="0 0 8 11" style="position:absolute;left:-4px;top:-8px;overflow:visible;filter:drop-shadow(0 0 4px rgba(186,230,253,.9))"><path d="M4 0 C5.5 3 8 5 8 7.5 C8 9.5 6.2 11 4 11 C1.8 11 0 9.5 0 7.5 C0 5 2.5 3 4 0 Z" fill="rgba(200,240,255,.75)" stroke="#fff" stroke-width=".5"/><circle cx="2.8" cy="7" r="1" fill="#fff"/></svg>';
@@ -204,8 +191,8 @@ FX.moss = K => {
   }
   return D;
 };
-export const NATURE_TYPES = ['wish', 'orion', 'moonbow', 'rainbow', 'milky', 'lake', 'dew', 'silverleaf', 'glowdand', 'moss'];
-export const NATURE_POOL = [['wish', 1.8], ['orion', 1.4], ['moonbow', 1.2], ['milky', 1.3], ['lake', 1.6], ['dew', 1.6], ['silverleaf', 1.6], ['glowdand', 1.6], ['moss', 1.5]];
+export const NATURE_TYPES = ['wish', 'orion', 'moonbow', 'rainbow', 'milky', 'dew', 'silverleaf', 'glowdand', 'moss'];
+export const NATURE_POOL = [['wish', 1.8], ['orion', 1.4], ['moonbow', 1.2], ['milky', 1.3], ['dew', 1.6], ['silverleaf', 1.6], ['glowdand', 1.6], ['moss', 1.5]];
 
 /**
  * Chạy 1 hiệu ứng. o: moon [x, y, cỡ] (tâm trăng, px thật) · top (lớp trên nội dung) · font · gx [từ, đến] (dải

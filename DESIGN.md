@@ -1066,9 +1066,11 @@ Types/Tags filter bar is gone.
 - **Shared night sky behind the vault (v6.34.0, user request):** `.acc-page` wraps every vault
   screen (signed out, unlock gate, vault) with `<SkyBackground calm />` as first child and
   `background: var(--sky-base)` (`sky.css`). `.acc-vault` itself is transparent and
-  `position: relative` (paints above the sky without a new stacking context). Header, group
-  column, sticky list head and every panel keep their solid `--surface` / `--color-bg`, so
-  small mono text stays crisp; the sky only shows behind list rows and around detail panels.
+  `position: relative` (paints above the sky without a new stacking context). The header
+  `.acc-head` is transparent with no bottom rule, like Knowledge (Body's `.body-header` /
+  `.body-mhead` too). Group column, sticky list head and every panel keep their solid
+  `--surface` / `--color-bg`, so small mono text stays crisp; the sky shows behind the header,
+  list rows and around detail panels.
 - **This module owns a scoped token set — one of two deliberate domain
   exceptions alongside Finance Nocturne (`--n-*`).** Everything inside Vault reads its
   own tokens instead of `--purple` / `--radius-*` from `global.css`; the vault declares a

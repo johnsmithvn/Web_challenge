@@ -97,7 +97,7 @@
   box-sizing: border-box;
 }
 
-/* Header ghim tĩnh (desktop) */
+/* Header ghim tĩnh (desktop): trong suốt trên nền trời như Kiến thức — không nền, không vạch dưới */
 .body-header {
   height: 76px;
   flex: none;
@@ -106,8 +106,6 @@
   justify-content: space-between;
   gap: 20px;
   padding: 0 32px;
-  border-bottom: 1px solid var(--body-card-border);
-  background: var(--body-card-bg);
   z-index: 10;
 }
 
@@ -284,13 +282,12 @@
 }
 
 @media (max-width: 840px) {
+  /* Trong suốt trên nền trời như header desktop */
   .body-mhead {
     flex: none;
     position: relative;
     z-index: 90;
     padding: 12px 0 10px;
-    border-bottom: 1px solid var(--body-card-border);
-    background: var(--body-card-bg);
     display: flex;
     flex-direction: column;
     gap: 10px;

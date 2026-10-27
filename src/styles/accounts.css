@@ -267,11 +267,10 @@
 .acc-act--star.acc-act--on { color: var(--color-accent); }
 
 /* ══ Header ════════════════════════════════════════════════════════════════ */
+/* Trong suốt trên nền trời như Kiến thức — không nền, không vạch dưới */
 .acc-head {
   display: flex; align-items: center; gap: 16px;
   padding: 10px 18px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--color-divider);
 }
 .acc-brand { display: flex; align-items: baseline; gap: 8px; flex: none; }
 .acc-brand__name { font-size: 15px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
