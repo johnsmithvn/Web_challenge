@@ -88,7 +88,8 @@
   flex-direction: column;
   height: 100dvh;
   width: 100%;
-  background: var(--body-bg);
+  /* Nền trời dùng chung: <SkyBackground calm /> là con đầu (sky.css), --sky-base là lớp tĩnh dưới nó */
+  background: var(--sky-base);
   color: var(--body-text-main);
   font-family: var(--body-font);
   overflow: hidden;
@@ -412,6 +413,8 @@
 
 /* Body Content Area */
 .body-content {
+  /* position: vẽ trên lớp trời (cùng tầng, sau nó trong DOM) mà không tạo stacking context — modal bên trong vẫn phủ app */
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;

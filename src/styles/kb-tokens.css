@@ -1,7 +1,7 @@
 /* ================================================================
    KNOWLEDGE BASE — Design Tokens (scoped to .kb-page)
    Kiểu "Cực quang": trời đêm + mint. Nền trời động là <SkyBackground calm /> (sky.css);
-   --kb-sky chỉ là lớp nền tĩnh bên dưới nó.
+   lớp nền tĩnh bên dưới nó là --sky-base (sky.css, dùng chung với Body, Tài khoản).
    ================================================================ */
 
 /* ── Font families ─────────────────────────────────────────── */
@@ -13,8 +13,7 @@
 
 /* ── Dark theme (default) ──────────────────────────────────── */
 .kb-page {
-  --kb-sky:   radial-gradient(120% 80% at 70% -10%, #0E1B40 0%, #070B18 45%, #04060D 100%);
-  --kb-bg:    #070B18;                  /* chữ trên nền mint, viền tách lớp */
+  --kb-bg:    #070B18;                 /* chữ trên nền mint, viền tách lớp */
   --kb-p1:    rgba(14, 21, 44, 0.55);   /* thẻ, cột — kính mờ trên trời */
   --kb-p2:    rgba(255, 255, 255, 0.07);/* hover, mục đang chọn */
   --kb-pop:   #0E1530;                  /* hộp thoại, popover: nền đặc */
@@ -38,7 +37,6 @@
 /* ── Light theme (trời bình minh / hoàng hôn) ──────────────── */
 [data-theme="light"] .kb-page,
 .kb-page[data-theme="light"] {
-  --kb-sky:   linear-gradient(180deg, #F7F5FF 0%, #F4F2FF 60%, #EFEDFF 100%);
   --kb-bg:    #F4F2FF;
   --kb-p1:    rgba(255, 255, 255, 0.72);
   --kb-p2:    rgba(124, 58, 237, 0.07);

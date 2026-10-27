@@ -9,6 +9,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { ConfirmModal } from '../components/ConfirmModal';
 import SkeletonList from '../components/SkeletonList';
+import SkyBackground from '../components/SkyBackground';
+import { useIsMobile } from '../hooks/useIsMobile';
 import OverviewScreen from '../components/body/OverviewScreen';
 import RoutineScreen from '../components/body/RoutineScreen';
 import LiveSessionScreen from '../components/body/LiveSessionScreen';
@@ -34,6 +36,7 @@ const mmss = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')
 export default function BodyPage() {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const isMobile = useIsMobile();
   const { screen: routeScreen } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -340,6 +343,8 @@ export default function BodyPage() {
 
   return (
     <div className="body-workspace">
+      <SkyBackground isMobile={isMobile} calm />
+
       {/* ── HEADER DESKTOP ─────────────────────────────────────────── */}
       {!isSession && (
       <header className="body-header">

@@ -1063,6 +1063,12 @@ Types/Tags filter bar is gone.
   for every value, count, code and timestamp, `4px` corners (`--r`, `--r-sm: 3px`), no
   glow, no soft shadows, no hover lift. **Cyan is only for action and selection; amber /
   red only for risk** (`--warn*`, `--danger*`, `--ok*`) — never decorative.
+- **Shared night sky behind the vault (v6.34.0, user request):** `.acc-page` wraps every vault
+  screen (signed out, unlock gate, vault) with `<SkyBackground calm />` as first child and
+  `background: var(--sky-base)` (`sky.css`). `.acc-vault` itself is transparent and
+  `position: relative` (paints above the sky without a new stacking context). Header, group
+  column, sticky list head and every panel keep their solid `--surface` / `--color-bg`, so
+  small mono text stays crisp; the sky only shows behind list rows and around detail panels.
 - **This module owns a scoped token set — one of two deliberate domain
   exceptions alongside Finance Nocturne (`--n-*`).** Everything inside Vault reads its
   own tokens instead of `--purple` / `--radius-*` from `global.css`; the vault declares a
@@ -1350,9 +1356,10 @@ Types/Tags filter bar is gone.
 Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradient chung của app. Bản thiết kế:
 "Kiến Thức Redesign" 1a (kiểu) / 2a (màn), Danh sách 4a, Quản lý chủ đề 4b (v6.33.0).
 
-- **Nền**: `<SkyBackground calm />` (cùng trời với Nhiệm vụ, xem Tasks workspace bên dưới) đặt trong `.kb-page`
-  (`position: relative; isolation: isolate`), `--kb-sky` là lớp tĩnh dưới nó. `calm` = không vật bay, không bụi sao theo chuột.
-- **Token** (`kb-tokens.css`, có giá trị tối và sáng): trời `--kb-sky`, nền `--kb-bg`, lớp `--kb-p1` (thẻ, kính
+- **Nền**: `<SkyBackground calm />` (cùng trời với Nhiệm vụ, Body, Tài khoản — xem Tasks workspace bên dưới) đặt trong
+  `.kb-page` (`position: relative; isolation: isolate`), lớp tĩnh dưới nó là `--sky-base` (`sky.css`, dùng chung).
+  `calm` = không vật bay, không bụi sao theo chuột.
+- **Token** (`kb-tokens.css`, có giá trị tối và sáng): nền `--kb-bg`, lớp `--kb-p1` (thẻ, kính
   trong) / `--kb-p2` (hover, ô nhập), hộp thoại nền đặc `--kb-pop`, viền `--kb-line`, chữ `--kb-tx` / `--kb-dim` /
   `--kb-faint`, nhấn `--kb-accent` (mint `#6EF2C7`; sáng: violet `#7C3AED`) + `--kb-accent-soft` / `--kb-on-accent` /
   `--kb-glow`, phụ `--kb-violet` (đang chọn, ghi chú), `--kb-gold` (Chưa xếp, cạnh thẻ chung), `--kb-sage`, `--kb-red`;
@@ -1407,7 +1414,8 @@ Knowledge có contract riêng, scoped trên `.kb-page`; không dùng glass/gradi
 
 Trang Nhiệm vụ dùng bộ token riêng `--tk-*`, khai báo trên `.tasks-workspace`
 theo `[data-theme]`: tối = mockup 2a (mint `#5EF2C2`, nền trời `#0C1634→#060914`), sáng = mockup 2b
-(violet `#7C3AED`, nền `#F4F2FF`). Nền trời do `SkyBackground.jsx` + `sky.css` vẽ (dùng chung với Knowledge — bản `calm` — và FX Lab):
+(violet `#7C3AED`, nền `#F4F2FF`). Nền trời do `SkyBackground.jsx` + `sky.css` vẽ (dùng chung với Knowledge, Body, Tài khoản — bản `calm`, nền gốc
+`--sky-base` — và FX Lab):
 tối = aurora, Ngân Hà, 4 lớp sao, sao băng vệt sáng mint (góc 32°, lấy từ bản thiết kế Kiến Thức), sao chổi; desktop thêm trăng đúng pha âm lịch hôm nay,
 sao sáng 4 cánh, 6 chòm sao lần lượt hiện (chu kỳ 150s) và chân trời hành tinh.
 Sáng = bình minh (trước 12h) / hoàng hôn (`.is-dusk`, từ 12h): mặt trời mọc, mây màu nước SVG, hạt sáng bay.

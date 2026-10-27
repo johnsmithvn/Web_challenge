@@ -29,7 +29,7 @@
 |---|---|
 | Trang, điều phối view, phím tắt | `src/pages/CollectPage.jsx` |
 | Cột trái (tìm, viết bài, kiểu xem, chủ đề) | `src/components/kb/KBSidebar.jsx` |
-| Nền trời (dùng chung với Nhiệm vụ, FX Lab) | `src/components/SkyBackground.jsx` + `src/styles/sky.css` |
+| Nền trời (dùng chung với Nhiệm vụ, Body, Tài khoản, FX Lab; nền gốc `--sky-base`) | `src/components/SkyBackground.jsx` + `src/styles/sky.css` |
 | Tổng quan | `src/components/kb/KBOverview.jsx` |
 | Danh sách | `src/components/kb/KBListView.jsx` |
 | Gallery / Sơ đồ / Canvas | `KBGalleryView.jsx`, `KBGraphView.jsx`, `KBCanvasView.jsx` |

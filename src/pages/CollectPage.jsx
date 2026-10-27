@@ -9,6 +9,7 @@ import { useConfirm } from '../components/ConfirmModal';
 import SkeletonList from '../components/SkeletonList';
 import { useToast } from '../contexts/ToastContext';
 import SkyBackground from '../components/SkyBackground';
+import { useIsMobile } from '../hooks/useIsMobile';
 import '../styles/collect.css';
 
 // Sub-components
@@ -26,8 +27,6 @@ import KBTopicModal from '../components/kb/KBTopicModal';
 import KBOverview from '../components/kb/KBOverview';
 
 import { filterArticles, pushRecent, deriveGraph, groupArticles } from '../utils/kbDeriveUtils';
-
-const MOBILE_MQ = '(max-width: 768px)';
 
 // "Mở gần đây" — per-device convenience, so localStorage (RULES §4: new keys use vl_).
 const RECENT_KEY = 'vl_kb_recent';
@@ -73,14 +72,7 @@ export default function CollectPage() {
   const [linkedOnly, setLinkedOnly] = useState(false);
   const [groupBy, setGroupBy] = useState('month'); // month | topic | none
 
-  const [isMobile, setIsMobile] = useState(() => window.matchMedia?.(MOBILE_MQ).matches ?? false);
-  useEffect(() => {
-    const mq = window.matchMedia?.(MOBILE_MQ);
-    if (!mq) return undefined;
-    const onChange = (e) => setIsMobile(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  const isMobile = useIsMobile();
 
   // Điện thoại: KB có hàng trên + tab đáy riêng → ẩn thanh Life Hub + tab đáy chung (như Finance).
   // Chưa đăng nhập thì giữ thanh chung để còn nút đăng nhập.

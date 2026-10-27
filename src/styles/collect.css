@@ -12,7 +12,7 @@
   isolation: isolate;
   height: 100dvh;
   overflow: hidden;
-  background: var(--kb-sky);
+  background: var(--sky-base);
   color: var(--kb-tx);
   font-family: var(--kb-font);
   font-size: 15px;

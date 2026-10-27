@@ -224,7 +224,7 @@ Chi tiết quy chuẩn nằm tại `docs/DESIGN_SYSTEM.md`. Mọi thay đổi gi
 ## 15. FX Lab — xem trước hiệu ứng trước khi bật vào app
 
 Trang `/fx-lab` (`src/pages/FxLabPage.jsx`; sidebar → Khác → FX Lab, có cả ở bản build) chạy đúng code thật của nền trang
-Nhiệm vụ (`SkyBackground` + `sky.css` — nền dùng chung, Knowledge dùng bản `calm` —, `taskFlyersAurora/Elf.js`, `taskNatureFx.js`, CSS `tasks-*`), gom mọi kịch bản,
+Nhiệm vụ (`SkyBackground` + `sky.css` — nền dùng chung, Knowledge / Body / Tài khoản dùng bản `calm` —, `taskFlyersAurora/Elf.js`, `taskNatureFx.js`, CSS `tasks-*`), gom mọi kịch bản,
 tương tác và thí nghiệm vào một chỗ. Mọi thay đổi trong vùng này đi qua lab **trước** khi bật cho app:
 
 1. **Kịch bản mới** (vật bay, cảnh thiên nhiên): viết nhánh `type` như thường, thêm vào bể

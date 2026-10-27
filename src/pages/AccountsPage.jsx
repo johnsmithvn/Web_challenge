@@ -11,6 +11,8 @@ import { MoneyMatrix, MoneyPanel } from '../components/MoneyLinks';
 import AppIcon from '../components/AppIcon';
 import SearchSelect from '../components/SearchSelect';
 import SkeletonList from '../components/SkeletonList';
+import SkyBackground from '../components/SkyBackground';
+import { useIsMobile } from '../hooks/useIsMobile';
 import {
   matchesQuery, itemSubtitle, newId, relativeUpdated, avatarHue, groupTree, groupKey, inGroup,
   isPasswordOnly, rootsOf, untrackedIdentifiers, moneyMatrix, mailboxTitle, normalizeGroup,
@@ -57,7 +59,18 @@ const TTL_OPTIONS = [
   { value: 43200, label: '30 ngày' },
 ];
 
+/** Nền trời dùng chung nằm sau mọi màn của vault: chưa đăng nhập, mở khoá, vault. */
 export default function AccountsPage() {
+  const isMobile = useIsMobile();
+  return (
+    <div className="acc-page">
+      <SkyBackground isMobile={isMobile} calm />
+      <Vault />
+    </div>
+  );
+}
+
+function Vault() {
   const { user } = useAuth();
   const { items, isLoading, saveItem, createItem, deleteItem, toggleFavorite,
     setAuthState, setCodeUsed, vaultStatus, vaultError,

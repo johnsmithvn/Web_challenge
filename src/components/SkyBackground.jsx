@@ -8,7 +8,7 @@ import { ForestDay, ForestNight, ForestNightMobile, DayFairiesTop, Constellation
 import '../styles/sky.css';
 
 /**
- * Nền trời dùng chung (Nhiệm vụ, Kiến thức, FX Lab), gốc từ mockup Nhiệm vụ "Kanban tối & sáng" (fxA / fxAm / fxC / fxCm).
+ * Nền trời dùng chung (Nhiệm vụ, Kiến thức, Body, Tài khoản, FX Lab), gốc từ mockup Nhiệm vụ "Kanban tối & sáng" (fxA / fxAm / fxC / fxCm).
  * Trang dùng: đặt <SkyBackground /> làm con đầu của khung position:relative, nội dung phía trên z-index ≥ 1.
  * Tối: aurora + Ngân Hà + sao + sao băng + sao chổi + trăng âm lịch (có chú Cuội) + sao sáng + chòm sao
  * + đom đóm sát đáy; desktop thêm nhãn trăng và đường chân trời hành tinh.
@@ -359,7 +359,7 @@ function useStardustTrail(active) {
 }
 
 // autoFly=false: không tự thả vật bay (trang /fx-lab tự gọi từng kịch bản).
-// calm: bản tĩnh cho trang cần đọc (Kiến thức) — luôn kiểu Mặc định, không vật bay, không vệt bụi sao theo chuột.
+// calm: bản tĩnh cho trang cần đọc (Kiến thức, Body, Tài khoản) — luôn kiểu Mặc định, không vật bay, không vệt bụi sao theo chuột.
 function SkyBackground({ isMobile, autoFly = true, calm = false }) {
   // reduceMotion: cài đặt Giảm chuyển động của app (ThemeContext), không phải prefers-reduced-motion
   const { theme, taskStyle, reduceMotion } = useTheme();

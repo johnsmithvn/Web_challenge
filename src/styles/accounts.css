@@ -76,8 +76,12 @@
 }
 
 /* ── Layout của shell (chỉ vault, không áp cho dialog) ── */
+/* Khung trang: nền trời dùng chung (<SkyBackground calm /> + --sky-base, sky.css) nằm sau vault */
+.acc-page { position: relative; background: var(--sky-base); }
 .acc-vault {
-  background: var(--color-bg);
+  /* Trong suốt để thấy trời; position: vẽ trên lớp trời (cùng tầng, sau nó trong DOM). Thanh, cột nhóm,
+     panel vẫn nền đặc của Keyplate nên chữ nhỏ vẫn rõ. */
+  position: relative;
   display: grid;
   /* header · thông báo lỗi (có điều kiện) · body. Body khai `grid-row: 3` tường
      minh (xem .acc-body): để auto-placement thì khi danh sách ngắn body rơi vào
